@@ -154,6 +154,30 @@ var _ = Describe("artistArtworkReader", func() {
 			})
 		})
 
+		When("artist folder name contains glob metacharacters", func() {
+			BeforeEach(func() {
+				artistDir := filepath.Join(tempDir, "Artist [Live]")
+				Expect(os.MkdirAll(artistDir, 0755)).To(Succeed())
+
+				artistImagePath := filepath.Join(artistDir, "artist.jpg")
+				Expect(os.WriteFile(artistImagePath, []byte("bracketed artist image"), 0600)).To(Succeed())
+
+				testFunc = fromArtistFolder(ctx, libFS, tempDir, artistDir, "artist.*")
+			})
+
+			It("treats the folder path literally when globbing through the library fs", func() {
+				reader, path, err := testFunc()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(reader).ToNot(BeNil())
+				Expect(path).To(ContainSubstring("Artist [Live]" + string(filepath.Separator) + "artist.jpg"))
+
+				data, err := io.ReadAll(reader)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(string(data)).To(Equal("bracketed artist image"))
+				reader.Close()
+			})
+		})
+
 		When("artist folder is empty but parent contains image", func() {
 			BeforeEach(func() {
 				// Create test structure: /temp/parent/artist.jpg and /temp/parent/artist/album/

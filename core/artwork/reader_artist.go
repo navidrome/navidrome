@@ -185,7 +185,7 @@ func findImageInFolder(ctx context.Context, libFS fs.FS, relFolder, absFolder, p
 	log.Trace(ctx, "looking for artist image", "pattern", pattern, "folder", absFolder)
 	globPattern := pattern
 	if relFolder != "." {
-		globPattern = path.Join(relFolder, pattern)
+		globPattern = path.Join(escapeGlobLiteral(relFolder), pattern)
 	}
 	matches, err := fs.Glob(libFS, globPattern)
 	if err != nil {
@@ -217,6 +217,19 @@ func findImageInFolder(ctx context.Context, libFS fs.FS, relFolder, absFolder, p
 	}
 
 	return nil, "", fmt.Errorf(`no matches for '%s' in '%s'`, pattern, absFolder)
+}
+
+func escapeGlobLiteral(s string) string {
+	var b strings.Builder
+	b.Grow(len(s))
+	for _, r := range s {
+		switch r {
+		case '\\', '*', '?', '[', ']':
+			b.WriteByte('\\')
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
 }
 
 func loadArtistFolder(ctx context.Context, ds model.DataStore, albums model.Albums, paths []string) (string, time.Time, error) {
