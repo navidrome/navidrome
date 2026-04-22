@@ -61,8 +61,8 @@ type configOptions struct {
 	SmartPlaylistRefreshDelay       time.Duration
 	AutoTranscodeDownload           bool
 	DefaultDownsamplingFormat       string
-	Search                          searchOptions `json:",omitzero"`
-	SimilarSongsMatchThreshold      int
+	Search                          searchOptions  `json:",omitzero"`
+	Matcher                         matcherOptions `json:",omitzero"`
 	RecentlyAddedByModTime          bool
 	PreferSortTags                  bool
 	IgnoredArticles                 string
@@ -262,6 +262,11 @@ type searchOptions struct {
 	FullString bool
 }
 
+type matcherOptions struct {
+	PreferStarred  bool
+	FuzzyThreshold int
+}
+
 // logFatal prints a fatal error message to stderr and exits.
 // Overridden in tests to allow testing fatal paths.
 var logFatal = func(args ...any) {
@@ -298,6 +303,7 @@ func Load(noConfigDump bool) {
 	mapDeprecatedOption("ReverseProxyUserHeader", "ExtAuth.UserHeader")
 	mapDeprecatedOption("HTTPSecurityHeaders.CustomFrameOptionsValue", "HTTPHeaders.FrameOptions")
 	mapDeprecatedOption("CoverJpegQuality", "CoverArtQuality")
+	mapDeprecatedOption("SimilarSongsMatchThreshold", "Matcher.FuzzyThreshold")
 
 	err := viper.Unmarshal(&Server)
 	if err != nil {
@@ -436,6 +442,7 @@ func Load(noConfigDump bool) {
 	logDeprecatedOptions("ReverseProxyUserHeader", "ExtAuth.UserHeader")
 	logDeprecatedOptions("HTTPSecurityHeaders.CustomFrameOptionsValue", "HTTPHeaders.FrameOptions")
 	logDeprecatedOptions("CoverJpegQuality", "CoverArtQuality")
+	logDeprecatedOptions("SimilarSongsMatchThreshold", "Matcher.FuzzyThreshold")
 
 	// Removed options
 	logRemovedOptions("Spotify.ID", "Spotify.Secret")
@@ -741,7 +748,8 @@ func setViperDefaults() {
 	viper.SetDefault("defaultdownsamplingformat", consts.DefaultDownsamplingFormat)
 	viper.SetDefault("search.fullstring", false)
 	viper.SetDefault("search.backend", "fts")
-	viper.SetDefault("similarsongsmatchthreshold", 85)
+	viper.SetDefault("matcher.preferstarred", true)
+	viper.SetDefault("matcher.fuzzythreshold", 85)
 	viper.SetDefault("recentlyaddedbymodtime", false)
 	viper.SetDefault("prefersorttags", false)
 	viper.SetDefault("ignoredarticles", "The El La Los Las Le Les Os As O A")
