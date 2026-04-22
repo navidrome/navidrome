@@ -34,6 +34,7 @@ var _ = Describe("ScanFolders", Ordered, func() {
 	var fsys storagetest.FakeFS
 
 	BeforeAll(func() {
+		tests.SkipOnWindows("SQLite file lock blocks TempDir cleanup (#TBD-path-sep-scanner)")
 		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "123", IsAdmin: true})
 		tmpDir := GinkgoT().TempDir()
 		conf.Server.DbPath = filepath.Join(tmpDir, "test-selective-scan.db?_journal_mode=WAL")

@@ -27,6 +27,7 @@ type configOptions struct {
 	Address                         string
 	Port                            int
 	UnixSocketPerm                  string
+	EnforceNonRootUser              bool
 	MusicFolder                     string
 	DataFolder                      string
 	CacheFolder                     string
@@ -60,8 +61,8 @@ type configOptions struct {
 	SmartPlaylistRefreshDelay       time.Duration
 	AutoTranscodeDownload           bool
 	DefaultDownsamplingFormat       string
-	Search                          searchOptions `json:",omitzero"`
-	SimilarSongsMatchThreshold      int
+	Search                          searchOptions  `json:",omitzero"`
+	Matcher                         matcherOptions `json:",omitzero"`
 	RecentlyAddedByModTime          bool
 	PreferSortTags                  bool
 	IgnoredArticles                 string
@@ -261,11 +262,22 @@ type searchOptions struct {
 	FullString bool
 }
 
+type matcherOptions struct {
+	PreferStarred  bool
+	FuzzyThreshold int
+}
+
 // logFatal prints a fatal error message to stderr and exits.
 // Overridden in tests to allow testing fatal paths.
 var logFatal = func(args ...any) {
 	_, _ = fmt.Fprintln(os.Stderr, append([]any{"FATAL:"}, args...)...)
 	os.Exit(1)
+}
+
+var getEUID = os.Geteuid
+
+var currentGOOS = func() string {
+	return runtime.GOOS
 }
 
 var (
@@ -291,10 +303,16 @@ func Load(noConfigDump bool) {
 	mapDeprecatedOption("ReverseProxyUserHeader", "ExtAuth.UserHeader")
 	mapDeprecatedOption("HTTPSecurityHeaders.CustomFrameOptionsValue", "HTTPHeaders.FrameOptions")
 	mapDeprecatedOption("CoverJpegQuality", "CoverArtQuality")
+	mapDeprecatedOption("SimilarSongsMatchThreshold", "Matcher.FuzzyThreshold")
 
 	err := viper.Unmarshal(&Server)
 	if err != nil {
 		logFatal("Error parsing config:", err)
+	}
+
+	// Validate non-root user early, before any filesystem operations
+	if err := validateEnforceNonRootUser(); err != nil {
+		logFatal(err)
 	}
 
 	err = os.MkdirAll(Server.DataFolder, os.ModePerm)
@@ -424,6 +442,7 @@ func Load(noConfigDump bool) {
 	logDeprecatedOptions("ReverseProxyUserHeader", "ExtAuth.UserHeader")
 	logDeprecatedOptions("HTTPSecurityHeaders.CustomFrameOptionsValue", "HTTPHeaders.FrameOptions")
 	logDeprecatedOptions("CoverJpegQuality", "CoverArtQuality")
+	logDeprecatedOptions("SimilarSongsMatchThreshold", "Matcher.FuzzyThreshold")
 
 	// Removed options
 	logRemovedOptions("Spotify.ID", "Spotify.Secret")
@@ -592,6 +611,18 @@ func validateMaxImageUploadSize() error {
 	return nil
 }
 
+func validateEnforceNonRootUser() error {
+	if !Server.EnforceNonRootUser || currentGOOS() == "windows" {
+		return nil
+	}
+
+	if getEUID() == 0 {
+		return fmt.Errorf("EnforceNonRootUser is enabled but Navidrome is running as root")
+	}
+
+	return nil
+}
+
 func validateScanSchedule() error {
 	if Server.Scanner.Schedule == "0" || Server.Scanner.Schedule == "" {
 		Server.Scanner.Schedule = ""
@@ -691,6 +722,7 @@ func setViperDefaults() {
 	viper.SetDefault("address", "0.0.0.0")
 	viper.SetDefault("port", 4533)
 	viper.SetDefault("unixsocketperm", "0660")
+	viper.SetDefault("enforcenonrootuser", false)
 	viper.SetDefault("sessiontimeout", consts.DefaultSessionTimeout)
 	viper.SetDefault("baseurl", "")
 	viper.SetDefault("tlscert", "")
@@ -716,7 +748,8 @@ func setViperDefaults() {
 	viper.SetDefault("defaultdownsamplingformat", consts.DefaultDownsamplingFormat)
 	viper.SetDefault("search.fullstring", false)
 	viper.SetDefault("search.backend", "fts")
-	viper.SetDefault("similarsongsmatchthreshold", 85)
+	viper.SetDefault("matcher.preferstarred", true)
+	viper.SetDefault("matcher.fuzzythreshold", 85)
 	viper.SetDefault("recentlyaddedbymodtime", false)
 	viper.SetDefault("prefersorttags", false)
 	viper.SetDefault("ignoredarticles", "The El La Los Las Le Les Os As O A")

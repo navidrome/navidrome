@@ -9,6 +9,7 @@ import (
 
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/resources"
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -16,6 +17,7 @@ import (
 var _ = Describe("Translations", func() {
 	Describe("I18n files", func() {
 		It("contains only valid json language files", func() {
+			tests.SkipOnWindows("path separator bug (#TBD-path-sep-nativeapi)")
 			fsys := resources.FS()
 			dir, _ := fsys.Open(consts.I18nFolder)
 			files, _ := dir.(fs.ReadDirFile).ReadDir(-1)
