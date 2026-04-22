@@ -24,6 +24,7 @@ type scannerImpl struct {
 	ds  model.DataStore
 	cw  artwork.CacheWarmer
 	pls playlists.Playlists
+	spe playlists.SmartPlaylistEvaluator
 }
 
 // scanState holds the state of an in-progress scan, to be passed to the various phases
@@ -148,7 +149,7 @@ func (s *scannerImpl) scanFolders(ctx context.Context, fullScan bool, targets []
 			runPhase[*model.Album](ctx, 3, createPhaseRefreshAlbums(ctx, &state, s.ds)),
 
 			// Phase 4: Import/update playlists
-			runPhase[*model.Folder](ctx, 4, createPhasePlaylists(ctx, &state, s.ds, s.pls, s.cw)),
+			runPhase[*model.Folder](ctx, 4, createPhasePlaylists(ctx, &state, s.ds, s.pls, s.cw, s.spe)),
 		),
 
 		// Final Steps (cannot be parallelized):

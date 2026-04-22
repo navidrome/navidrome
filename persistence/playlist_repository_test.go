@@ -254,6 +254,57 @@ var _ = Describe("PlaylistRepository", func() {
 		})
 	})
 
+	Describe("Evaluate", func() {
+		var testPlaylistID string
+
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+		})
+
+		AfterEach(func() {
+			if testPlaylistID != "" {
+				_ = repo.Delete(testPlaylistID)
+				testPlaylistID = ""
+			}
+		})
+
+		It("evaluates a smart playlist and sets EvaluatedAt and SongCount", func() {
+			rules := &criteria.Criteria{
+				Expression: criteria.All{
+					criteria.Contains{"title": "Day"},
+				},
+			}
+			newPls := model.Playlist{Name: "Evaluate Test", OwnerID: "userid", Rules: rules}
+			Expect(repo.Put(&newPls)).To(Succeed())
+			testPlaylistID = newPls.ID
+
+			Expect(repo.Evaluate(newPls.ID)).To(Succeed())
+
+			saved, err := repo.Get(newPls.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(saved.EvaluatedAt).ToNot(BeNil())
+			Expect(*saved.EvaluatedAt).To(BeTemporally("~", time.Now(), 2*time.Second))
+			Expect(saved.SongCount).To(BeNumerically(">", 0))
+		})
+
+		It("is a no-op for non-smart playlists", func() {
+			newPls := model.Playlist{Name: "Regular Playlist", OwnerID: "userid"}
+			Expect(repo.Put(&newPls)).To(Succeed())
+			testPlaylistID = newPls.ID
+
+			Expect(repo.Evaluate(newPls.ID)).To(Succeed())
+
+			saved, err := repo.Get(newPls.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(saved.EvaluatedAt).To(BeNil())
+		})
+
+		It("returns ErrNotFound for a non-existent playlist ID", func() {
+			err := repo.Evaluate("nonexistent-id")
+			Expect(err).To(MatchError(model.ErrNotFound))
+		})
+	})
+
 	Describe("Playlist Track Sorting", func() {
 		var testPlaylistID string
 

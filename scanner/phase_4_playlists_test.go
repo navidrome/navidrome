@@ -42,7 +42,7 @@ var _ = Describe("phasePlaylists", func() {
 		pls = &mockPlaylists{}
 		cw = artwork.NoopCacheWarmer()
 		state = &scanState{}
-		phase = createPhasePlaylists(ctx, state, ds, pls, cw)
+		phase = createPhasePlaylists(ctx, state, ds, pls, cw, playlists.NoopSmartPlaylistEvaluator())
 	})
 
 	Describe("description", func() {
