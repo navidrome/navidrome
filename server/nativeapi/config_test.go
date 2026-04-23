@@ -81,6 +81,7 @@ var _ = Describe("Config API", func() {
 				conf.Server.PasswordEncryptionKey = "encryptionkey789"
 				conf.Server.DevAutoCreateAdminPassword = "adminpassword123"
 				conf.Server.Prometheus.Password = "prometheuspass"
+				conf.Server.Proxy.URL = "http://user:secret@proxy.example.com:8080"
 
 				req := createAuthenticatedConfigRequest(adminToken)
 				w := httptest.NewRecorder()
@@ -106,6 +107,11 @@ var _ = Describe("Config API", func() {
 				prometheus, ok := resp.Config["Prometheus"].(map[string]any)
 				Expect(ok).To(BeTrue())
 				Expect(prometheus["Password"]).To(Equal("****"))
+
+				// Check Proxy.URL (fully masked because it may include credentials)
+				proxyConfig, ok := resp.Config["Proxy"].(map[string]any)
+				Expect(ok).To(BeTrue())
+				Expect(proxyConfig["URL"]).To(Equal("****"))
 			})
 
 			It("handles empty sensitive values", func() {

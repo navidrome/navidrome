@@ -103,6 +103,7 @@ type configOptions struct {
 	ExtAuth                         extAuthOptions
 	Plugins                         pluginsOptions
 	HTTPHeaders                     httpHeaderOptions   `json:",omitzero"`
+	Proxy                           proxyOptions        `json:",omitzero"`
 	Prometheus                      prometheusOptions   `json:",omitzero"`
 	Scanner                         scannerOptions      `json:",omitzero"`
 	Jukebox                         jukeboxOptions      `json:",omitzero"`
@@ -208,6 +209,10 @@ type listenBrainzOptions struct {
 
 type httpHeaderOptions struct {
 	FrameOptions string
+}
+
+type proxyOptions struct {
+	URL string
 }
 
 type prometheusOptions struct {
@@ -381,6 +386,7 @@ func Load(noConfigDump bool) {
 		validatePlaylistsPath,
 		validatePurgeMissingOption,
 		validateMaxImageUploadSize,
+		validateProxyURL("Proxy.URL", Server.Proxy.URL),
 		validateURL("ExtAuth.LogoutURL", Server.ExtAuth.LogoutURL),
 	)
 	if err != nil {
@@ -672,6 +678,29 @@ func validateURL(optionName, optionURL string) func() error {
 	}
 }
 
+// validateProxyURL checks if the provided proxy URL is valid and has one of the
+// supported proxy schemes.
+func validateProxyURL(optionName, optionURL string) func() error {
+	return func() error {
+		if optionURL == "" {
+			return nil
+		}
+		u, err := url.Parse(optionURL)
+		if err != nil {
+			return fmt.Errorf("invalid %s %q: %w", optionName, optionURL, err)
+		}
+		switch u.Scheme {
+		case "http", "https", "socks5", "socks5h":
+		default:
+			return fmt.Errorf("invalid scheme for %s: '%s'. Only 'http', 'https', 'socks5', and 'socks5h' are allowed", optionName, u.Scheme)
+		}
+		if u.Host == "" || u.Opaque != "" {
+			return fmt.Errorf("invalid %s: '%s'. A full proxy URL with a non-empty host is required", optionName, optionURL)
+		}
+		return nil
+	}
+}
+
 func normalizeSearchBackend(value string) string {
 	v := strings.ToLower(strings.TrimSpace(value))
 	switch v {
@@ -829,6 +858,7 @@ func setViperDefaults() {
 	viper.SetDefault("listenbrainz.trackalgorithm", consts.DefaultListenBrainzTrackAlgorithm)
 	viper.SetDefault("enablescrobblehistory", true)
 	viper.SetDefault("httpheaders.frameoptions", "DENY")
+	viper.SetDefault("proxy.url", "")
 	viper.SetDefault("backup.path", "")
 	viper.SetDefault("backup.schedule", "")
 	viper.SetDefault("backup.count", 0)

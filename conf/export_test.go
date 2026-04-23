@@ -10,6 +10,8 @@ var ParseLanguages = parseLanguages
 
 var ValidateURL = validateURL
 
+var ValidateProxyURL = validateProxyURL
+
 var NormalizeSearchBackend = normalizeSearchBackend
 
 var ToPascalCase = toPascalCase

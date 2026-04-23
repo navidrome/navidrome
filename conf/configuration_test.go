@@ -100,6 +100,31 @@ var _ = Describe("Configuration", func() {
 		})
 	})
 
+	Describe("ValidateProxyURL", func() {
+		DescribeTable("accepts supported proxy URLs",
+			func(input string) {
+				fn := conf.ValidateProxyURL("Proxy.URL", input)
+				Expect(fn()).To(Succeed())
+			},
+			Entry("empty URL", ""),
+			Entry("http proxy", "http://proxy.example.com:8080"),
+			Entry("https proxy", "https://proxy.example.com:8443"),
+			Entry("socks5 proxy", "socks5://proxy.example.com:1080"),
+			Entry("socks5h proxy", "socks5h://proxy.example.com:1080"),
+			Entry("proxy with auth", "http://user:pass@proxy.example.com:8080"),
+		)
+
+		DescribeTable("rejects invalid proxy URLs",
+			func(input string, expected string) {
+				fn := conf.ValidateProxyURL("Proxy.URL", input)
+				Expect(fn()).To(MatchError(ContainSubstring(expected)))
+			},
+			Entry("unsupported scheme", "ftp://proxy.example.com", "invalid scheme"),
+			Entry("missing host", "http:///path", "non-empty host is required"),
+			Entry("opaque URL", "socks5:user:pass@proxy.example.com:1080", "non-empty host is required"),
+		)
+	})
+
 	DescribeTable("NormalizeSearchBackend",
 		func(input, expected string) {
 			Expect(conf.NormalizeSearchBackend(input)).To(Equal(expected))

@@ -30,6 +30,7 @@ var sensitiveFieldsPartialMask = []string{
 var sensitiveFieldsFullMask = []string{
 	"DevAutoCreateAdminPassword",
 	"PasswordEncryptionKey",
+	"Proxy.URL",
 	"Prometheus.Password",
 }
 
