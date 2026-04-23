@@ -39,8 +39,14 @@ func SanitizeStrings(text ...string) string {
 var policy = bluemonday.UGCPolicy()
 
 func SanitizeText(text string) string {
-	s := policy.Sanitize(text)
-	return html.UnescapeString(s)
+	// Unescape HTML entities first so that payloads like
+	// &lt;script&gt;alert(1)&lt;/script&gt; are fed to the sanitizer as
+	// real tags it can strip. The previous order (sanitize then
+	// unescape) let entity-encoded markup round-trip through the
+	// bluemonday policy unchanged and then get decoded back to
+	// dangerous HTML by html.UnescapeString — e.g. the Login.jsx
+	// welcomeMessage rendering via dangerouslySetInnerHTML.
+	return policy.Sanitize(html.UnescapeString(text))
 }
 
 func SanitizeFieldForSorting(originalValue string) string {
