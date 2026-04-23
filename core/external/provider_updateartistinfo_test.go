@@ -105,6 +105,29 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 		ag.AssertExpectations(GinkgoT())
 	})
 
+	It("preserves decoded plain text in biography storage", func() {
+		originalArtist := &model.Artist{
+			ID:   "ar-encoded-bio",
+			Name: "Encoded Bio Artist",
+		}
+		mockArtistRepo.SetData(model.Artists{*originalArtist})
+
+		expectedMBID := "mbid-encoded-bio"
+		expectedBio := "R&amp;B"
+
+		ag.On("GetArtistMBID", ctx, "ar-encoded-bio", "Encoded Bio Artist").Return(expectedMBID, nil).Once()
+		ag.On("GetArtistImages", ctx, "ar-encoded-bio", "Encoded Bio Artist", expectedMBID).Return(nil, nil).Maybe()
+		ag.On("GetArtistBiography", ctx, "ar-encoded-bio", "Encoded Bio Artist", expectedMBID).Return(expectedBio, nil).Once()
+		ag.On("GetArtistURL", ctx, "ar-encoded-bio", "Encoded Bio Artist", expectedMBID).Return("", nil).Maybe()
+		ag.On("GetSimilarArtists", ctx, "ar-encoded-bio", "Encoded Bio Artist", expectedMBID, 100).Return(nil, nil).Maybe()
+
+		updatedArtist, err := p.UpdateArtistInfo(ctx, "ar-encoded-bio", 10, false)
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(updatedArtist).NotTo(BeNil())
+		Expect(updatedArtist.Biography).To(Equal("R&B"))
+	})
+
 	It("returns cached info when artist exists and info is not expired", func() {
 		now := time.Now()
 		originalArtist := &model.Artist{

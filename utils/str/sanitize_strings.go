@@ -38,9 +38,18 @@ func SanitizeStrings(text ...string) string {
 
 var policy = bluemonday.UGCPolicy()
 
+// SanitizeText unescapes the input string before sanitizing it as text.
+// This should be used for fields rendered as plain text in the UI (e.g. lyrics, song titles, artist names)
 func SanitizeText(text string) string {
 	s := policy.Sanitize(text)
 	return html.UnescapeString(s)
+}
+
+// SanitizeHTML unescapes the input string before sanitizing it as HTML.
+// This should be used for fields rendered as HTML by clients (e.g. biographies, welcome messages)
+// to prevent XSS bypasses via entity-encoded tags.
+func SanitizeHTML(text string) string {
+	return policy.Sanitize(html.UnescapeString(text))
 }
 
 func SanitizeFieldForSorting(originalValue string) string {

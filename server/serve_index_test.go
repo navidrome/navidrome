@@ -108,6 +108,18 @@ var _ = Describe("serveIndex", func() {
 		Entry("extAuthLogoutURL", func() { conf.Server.ExtAuth.LogoutURL = "https://auth.example.com/logout" }, "extAuthLogoutURL", "https://auth.example.com/logout"),
 	)
 
+	It("sanitizes entity-encoded welcomeMessage as html", func() {
+		conf.Server.UIWelcomeMessage = `&lt;img src=x onerror=alert(1)&gt;&lt;b&gt;Hello&lt;/b&gt;`
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs, nil)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKey("welcomeMessage"))
+		Expect(config["welcomeMessage"]).To(Equal(`<img src="x"><b>Hello</b>`))
+	})
+
 	DescribeTable("sets other UI configuration values",
 		func(configKey string, expectedValueFunc func() any) {
 			r := httptest.NewRequest("GET", "/index.html", nil)
