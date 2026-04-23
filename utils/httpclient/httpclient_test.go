@@ -94,7 +94,7 @@ var _ = Describe("New", func() {
 
 		conf.Server.Proxy.URL = proxy.URL
 		transport := Transport().Clone()
-		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec // Test server uses a self-signed certificate.
 		client := &http.Client{
 			Timeout:   2 * time.Second,
 			Transport: transport,
@@ -191,7 +191,7 @@ func newProxyServer() (*httptest.Server, *proxyRecorder) {
 }
 
 func handleConnect(w http.ResponseWriter, r *http.Request) {
-	targetConn, err := net.DialTimeout("tcp", r.Host, 2*time.Second)
+	targetConn, err := net.DialTimeout("tcp", r.Host, 2*time.Second) //nolint:gosec // Test-only proxy forwards to httptest targets.
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
