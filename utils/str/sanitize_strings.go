@@ -43,6 +43,10 @@ func SanitizeText(text string) string {
 	return html.UnescapeString(s)
 }
 
+func SanitizeHTML(text string) string {
+	return policy.Sanitize(html.UnescapeString(text))
+}
+
 func SanitizeFieldForSorting(originalValue string) string {
 	v := strings.TrimSpace(sanitize.Accents(originalValue))
 	return Clear(strings.ToLower(v))
