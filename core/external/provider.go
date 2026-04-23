@@ -508,7 +508,7 @@ func (e *provider) callGetBiography(ctx context.Context, agent agents.ArtistBiog
 	if err != nil {
 		return
 	}
-	bio = str.SanitizeHTML(bio)
+	bio = str.SanitizeText(bio)
 	bio = strings.ReplaceAll(bio, "\n", " ")
 	artist.Biography = strings.ReplaceAll(bio, "<a ", "<a target='_blank' ")
 }
