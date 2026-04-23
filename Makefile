@@ -75,8 +75,8 @@ test-i18n: ##@Development Validate all translations files
 
 install-golangci-lint: ##@Development Install golangci-lint if not present
 	@INSTALL=false; \
-	if PATH=$$PATH:./bin which golangci-lint > /dev/null 2>&1; then \
-		CURRENT_VERSION=$$(PATH=$$PATH:./bin golangci-lint version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n1); \
+	if PATH=./bin:$$PATH which golangci-lint > /dev/null 2>&1; then \
+		CURRENT_VERSION=$$(PATH=./bin:$$PATH golangci-lint version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n1); \
 		REQUIRED_VERSION=$$(echo "$(GOLANGCI_LINT_VERSION)" | sed 's/^v//'); \
 		if [ "$$CURRENT_VERSION" != "$$REQUIRED_VERSION" ]; then \
 			echo "Found golangci-lint $$CURRENT_VERSION, but $$REQUIRED_VERSION is required. Reinstalling..."; \
@@ -93,7 +93,7 @@ install-golangci-lint: ##@Development Install golangci-lint if not present
 .PHONY: install-golangci-lint
 
 lint: install-golangci-lint ##@Development Lint Go code
-	PATH=$$PATH:./bin golangci-lint run --timeout 5m
+	PATH=./bin:$$PATH golangci-lint run --timeout 5m
 .PHONY: lint
 
 lintall: lint ##@Development Lint Go and JS code
