@@ -22,12 +22,11 @@ var _ = Describe("fields", func() {
 			gomega.Expect(field.IsTag).To(gomega.BeTrue())
 		})
 
-		It("marks pseudo fields", func() {
+		It("finds special fields", func() {
 			field, ok := LookupField("value")
 
 			gomega.Expect(ok).To(gomega.BeTrue())
 			gomega.Expect(field.Name).To(gomega.Equal("value"))
-			gomega.Expect(field.Pseudo).To(gomega.BeTrue())
 		})
 
 		It("finds registered tag names", func() {

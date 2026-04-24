@@ -135,51 +135,51 @@ func exprSQL(expr criteria.Expression) (squirrel.Sqlizer, error) {
 		}
 		return or, nil
 	case criteria.Is:
-		return mapExpr(map[string]any(e), func(fields map[string]any) squirrel.Sqlizer {
+		return mapExpr(e, func(fields map[string]any) squirrel.Sqlizer {
 			return squirrel.Eq(fields)
 		}, false)
 	case criteria.IsNot:
-		return isNotExpr(map[string]any(e))
+		return isNotExpr(e)
 	case criteria.Gt:
-		return mapExpr(map[string]any(e), func(fields map[string]any) squirrel.Sqlizer {
+		return mapExpr(e, func(fields map[string]any) squirrel.Sqlizer {
 			return squirrel.Gt(fields)
 		}, false)
 	case criteria.Lt:
-		return mapExpr(map[string]any(e), func(fields map[string]any) squirrel.Sqlizer {
+		return mapExpr(e, func(fields map[string]any) squirrel.Sqlizer {
 			return squirrel.Lt(fields)
 		}, false)
 	case criteria.Before:
-		return mapExpr(map[string]any(e), func(fields map[string]any) squirrel.Sqlizer {
+		return mapExpr(e, func(fields map[string]any) squirrel.Sqlizer {
 			return squirrel.Lt(fields)
 		}, false)
 	case criteria.After:
-		return mapExpr(map[string]any(criteria.Gt(e)), func(fields map[string]any) squirrel.Sqlizer {
+		return mapExpr(e, func(fields map[string]any) squirrel.Sqlizer {
 			return squirrel.Gt(fields)
 		}, false)
 	case criteria.Contains:
-		return likeExpr(map[string]any(e), "%%%v%%", false)
+		return likeExpr(e, "%%%v%%", false)
 	case criteria.NotContains:
-		return likeExpr(map[string]any(e), "%%%v%%", true)
+		return likeExpr(e, "%%%v%%", true)
 	case criteria.StartsWith:
-		return likeExpr(map[string]any(e), "%v%%", false)
+		return likeExpr(e, "%v%%", false)
 	case criteria.EndsWith:
-		return likeExpr(map[string]any(e), "%%%v", false)
+		return likeExpr(e, "%%%v", false)
 	case criteria.InTheRange:
-		return rangeExpr(map[string]any(e))
+		return rangeExpr(e)
 	case criteria.InTheLast:
-		return periodExpr(map[string]any(e), false)
+		return periodExpr(e, false)
 	case criteria.NotInTheLast:
-		return periodExpr(map[string]any(e), true)
+		return periodExpr(e, true)
 	case criteria.InPlaylist:
-		return inList(map[string]any(e), false)
+		return inList(e, false)
 	case criteria.NotInPlaylist:
-		return inList(map[string]any(e), true)
+		return inList(e, true)
 	default:
 		return nil, fmt.Errorf("unknown criteria expression type %T", expr)
 	}
 }
 
-func isNotExpr(values map[string]any) (squirrel.Sqlizer, error) {
+func isNotExpr[T ~map[string]any](values T) (squirrel.Sqlizer, error) {
 	if _, value, info, ok := singleField(values); ok && (info.IsTag || info.IsRole) {
 		return jsonExpr(info, squirrel.Eq{"value": value}, true), nil
 	}
@@ -190,7 +190,7 @@ func isNotExpr(values map[string]any) (squirrel.Sqlizer, error) {
 	return squirrel.NotEq(fields), nil
 }
 
-func mapExpr(values map[string]any, makeCond func(map[string]any) squirrel.Sqlizer, negateJSON bool) (squirrel.Sqlizer, error) {
+func mapExpr[T ~map[string]any](values T, makeCond func(map[string]any) squirrel.Sqlizer, negateJSON bool) (squirrel.Sqlizer, error) {
 	if _, value, info, ok := singleField(values); ok && (info.IsTag || info.IsRole) {
 		return jsonExpr(info, makeCond(map[string]any{"value": value}), negateJSON), nil
 	}
@@ -201,9 +201,8 @@ func mapExpr(values map[string]any, makeCond func(map[string]any) squirrel.Sqliz
 	return makeCond(fields), nil
 }
 
-func likeExpr(values map[string]any, pattern string, negate bool) (squirrel.Sqlizer, error) {
-	if key, value, info, ok := singleField(values); ok && (info.IsTag || info.IsRole) {
-		_ = key
+func likeExpr[T ~map[string]any](values T, pattern string, negate bool) (squirrel.Sqlizer, error) {
+	if _, value, info, ok := singleField(values); ok && (info.IsTag || info.IsRole) {
 		return jsonExpr(info, squirrel.Like{"value": fmt.Sprintf(pattern, value)}, negate), nil
 	}
 	fields, err := sqlFields(values)
@@ -224,7 +223,7 @@ func likeExpr(values map[string]any, pattern string, negate bool) (squirrel.Sqli
 	return lk, nil
 }
 
-func rangeExpr(values map[string]any) (squirrel.Sqlizer, error) {
+func rangeExpr[T ~map[string]any](values T) (squirrel.Sqlizer, error) {
 	fields, err := sqlFields(values)
 	if err != nil {
 		return nil, err
@@ -243,7 +242,7 @@ func rangeExpr(values map[string]any) (squirrel.Sqlizer, error) {
 	return and, nil
 }
 
-func periodExpr(values map[string]any, negate bool) (squirrel.Sqlizer, error) {
+func periodExpr[T ~map[string]any](values T, negate bool) (squirrel.Sqlizer, error) {
 	fields, err := sqlFields(values)
 	if err != nil {
 		return nil, err
@@ -272,7 +271,7 @@ func startOfPeriod(numDays int64, from time.Time) string {
 	return from.Add(time.Duration(-24*numDays) * time.Hour).Format("2006-01-02")
 }
 
-func inList(values map[string]any, negate bool) (squirrel.Sqlizer, error) {
+func inList[T ~map[string]any](values T, negate bool) (squirrel.Sqlizer, error) {
 	playlistID, ok := values["id"].(string)
 	if !ok {
 		return nil, errors.New("playlist id not given")
@@ -335,7 +334,7 @@ func (e roleCond) ToSql() (string, []any, error) {
 	return cond, args, err
 }
 
-func singleField(values map[string]any) (string, any, criteria.FieldInfo, bool) {
+func singleField[T ~map[string]any](values T) (string, any, criteria.FieldInfo, bool) {
 	if len(values) != 1 {
 		return "", nil, criteria.FieldInfo{}, false
 	}
@@ -346,7 +345,7 @@ func singleField(values map[string]any) (string, any, criteria.FieldInfo, bool) 
 	return "", nil, criteria.FieldInfo{}, false
 }
 
-func sqlFields(values map[string]any) (map[string]any, error) {
+func sqlFields[T ~map[string]any](values T) (map[string]any, error) {
 	fields := make(map[string]any, len(values))
 	for field, value := range values {
 		info, ok := criteria.LookupField(field)

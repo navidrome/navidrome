@@ -8,7 +8,6 @@ type FieldInfo struct {
 	IsTag   bool
 	IsRole  bool
 	Numeric bool
-	Pseudo  bool
 }
 
 var fieldMap = map[string]*fieldMetadata{
@@ -77,9 +76,8 @@ var fieldMap = map[string]*fieldMetadata{
 	// Backward compatibility: albumtype is an alias for the releasetype tag.
 	"albumtype": {name: "releasetype", isTag: true},
 
-	// Pseudo fields are valid criteria names that do not map to a media file field.
-	"random": {name: "random", pseudo: true},
-	"value":  {name: "value", pseudo: true},
+	"random": {name: "random"},
+	"value":  {name: "value"},
 }
 
 type fieldMetadata struct {
@@ -88,7 +86,6 @@ type fieldMetadata struct {
 	isTag   bool
 	alias   string
 	numeric bool
-	pseudo  bool
 }
 
 // LookupField returns semantic metadata for a criteria field name.
@@ -102,7 +99,6 @@ func LookupField(name string) (FieldInfo, bool) {
 		IsTag:   f.isTag,
 		IsRole:  f.isRole,
 		Numeric: f.numeric,
-		Pseudo:  f.pseudo,
 	}, true
 }
 
