@@ -46,18 +46,20 @@ func New(ds model.DataStore) *Matcher {
 // # Fuzzy Matching Details
 //
 // For title+artist matching, the algorithm uses Jaro-Winkler similarity (threshold configurable
-// via SimilarSongsMatchThreshold, default 85%). Matches are ranked by:
+// via Matcher.FuzzyThreshold, default 85%). Matches are ranked by:
 //
 //  1. Title similarity (Jaro-Winkler score, 0.0-1.0)
 //  2. Duration proximity (closer duration = higher score, 1.0 if unknown)
-//  3. Specificity level (0-5, based on metadata precision):
+//  3. Preferred track flag (enabled by Matcher.PreferStarred; prioritized when the track is
+//     starred or has rating >= 4)
+//  4. Specificity level (0-5, based on metadata precision):
 //     - Level 5: Title + Artist MBID + Album MBID (most specific)
 //     - Level 4: Title + Artist MBID + Album name (fuzzy)
 //     - Level 3: Title + Artist name + Album name (fuzzy)
 //     - Level 2: Title + Artist MBID
 //     - Level 1: Title + Artist name
 //     - Level 0: Title only
-//  4. Album similarity (Jaro-Winkler, as final tiebreaker)
+//  5. Album similarity (Jaro-Winkler, as final tiebreaker)
 //
 // # Examples
 //
@@ -250,6 +252,7 @@ type songQuery struct {
 type matchScore struct {
 	titleSimilarity   float64
 	durationProximity float64
+	preferredMatch    bool
 	albumSimilarity   float64
 	specificityLevel  int
 }
@@ -261,6 +264,9 @@ func (s matchScore) betterThan(other matchScore) bool {
 	}
 	if s.durationProximity != other.durationProximity {
 		return s.durationProximity > other.durationProximity
+	}
+	if s.preferredMatch != other.preferredMatch {
+		return s.preferredMatch
 	}
 	if s.specificityLevel != other.specificityLevel {
 		return s.specificityLevel > other.specificityLevel
@@ -322,7 +328,7 @@ func (m *Matcher) loadTracksByTitleAndArtist(ctx context.Context, songs []agents
 		return map[string]model.MediaFile{}, nil
 	}
 
-	threshold := float64(conf.Server.SimilarSongsMatchThreshold) / 100.0
+	threshold := float64(conf.Server.Matcher.FuzzyThreshold) / 100.0
 
 	byArtist := map[string][]songQuery{}
 	for _, q := range queries {
@@ -393,6 +399,7 @@ func (m *Matcher) findBestMatch(q songQuery, sanitizedTracks []sanitizedTrack, t
 		score := matchScore{
 			titleSimilarity:   titleSim,
 			durationProximity: durationProximity(q.durationMs, t.mf.Duration),
+			preferredMatch:    conf.Server.Matcher.PreferStarred && isPreferredTrack(t.mf),
 			albumSimilarity:   albumSim,
 			specificityLevel:  computeSpecificityLevel(q, t, threshold),
 		}
@@ -404,6 +411,10 @@ func (m *Matcher) findBestMatch(q songQuery, sanitizedTracks []sanitizedTrack, t
 		}
 	}
 	return bestMatch, found
+}
+
+func isPreferredTrack(mf *model.MediaFile) bool {
+	return mf.Starred || mf.Rating >= 4
 }
 
 // buildTitleQueries converts agent songs into normalized songQuery structs for title+artist matching.

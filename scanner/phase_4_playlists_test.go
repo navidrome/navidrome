@@ -111,6 +111,7 @@ var _ = Describe("phasePlaylists", func() {
 		})
 
 		It("reports an error if there is an error reading files", func() {
+			tests.SkipOnWindows("relies on Unix /etc filesystem")
 			progress := make(chan *ProgressInfo)
 			state.progress = progress
 			folder := &model.Folder{Path: "/invalid/path"}

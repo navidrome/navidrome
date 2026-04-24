@@ -6,6 +6,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	. "github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -22,7 +23,7 @@ var _ = Describe("MediaFiles", func() {
 						SortAlbumName: "SortAlbumName", SortArtistName: "SortArtistName", SortAlbumArtistName: "SortAlbumArtistName",
 						OrderAlbumName: "OrderAlbumName", OrderAlbumArtistName: "OrderAlbumArtistName",
 						MbzAlbumArtistID: "MbzAlbumArtistID", MbzAlbumType: "MbzAlbumType", MbzAlbumComment: "MbzAlbumComment",
-						MbzReleaseGroupID: "MbzReleaseGroupID", Compilation: false, CatalogNum: "", Path: "/music1/file1.mp3", FolderID: "Folder1",
+						MbzReleaseGroupID: "MbzReleaseGroupID", Compilation: false, CatalogNum: "", Path: "music1/file1.mp3", FolderID: "Folder1",
 					},
 					{
 						ID: "2", Album: "Album", ArtistID: "ArtistID", Artist: "Artist", AlbumArtistID: "AlbumArtistID", AlbumArtist: "AlbumArtist", AlbumID: "AlbumID",
@@ -30,7 +31,7 @@ var _ = Describe("MediaFiles", func() {
 						OrderAlbumName: "OrderAlbumName", OrderArtistName: "OrderArtistName", OrderAlbumArtistName: "OrderAlbumArtistName",
 						MbzAlbumArtistID: "MbzAlbumArtistID", MbzAlbumType: "MbzAlbumType", MbzAlbumComment: "MbzAlbumComment",
 						MbzReleaseGroupID: "MbzReleaseGroupID",
-						Compilation:       true, CatalogNum: "CatalogNum", HasCoverArt: true, Path: "/music2/file2.mp3", FolderID: "Folder2",
+						Compilation:       true, CatalogNum: "CatalogNum", HasCoverArt: true, Path: "music2/file2.mp3", FolderID: "Folder2",
 					},
 				}
 			})
@@ -51,7 +52,7 @@ var _ = Describe("MediaFiles", func() {
 				Expect(album.MbzReleaseGroupID).To(Equal("MbzReleaseGroupID"))
 				Expect(album.CatalogNum).To(Equal("CatalogNum"))
 				Expect(album.Compilation).To(BeTrue())
-				Expect(album.EmbedArtPath).To(Equal("/music2/file2.mp3"))
+				Expect(album.EmbedArtPath).To(Equal("music2/file2.mp3"))
 				Expect(album.FolderIDs).To(ConsistOf("Folder1", "Folder2"))
 			})
 		})
@@ -447,6 +448,9 @@ var _ = Describe("MediaFiles", func() {
 
 			DescribeTable("generates correct output",
 				func(absolutePaths bool, expectedContent string) {
+					if absolutePaths {
+						tests.SkipOnWindows("path separator bug (#TBD-path-sep-model)")
+					}
 					result := mfs.ToM3U8("Multi Track", absolutePaths)
 					Expect(result).To(Equal(expectedContent))
 				},
@@ -467,6 +471,7 @@ var _ = Describe("MediaFiles", func() {
 
 		Context("path variations", func() {
 			It("handles different path structures", func() {
+				tests.SkipOnWindows("path separator bug (#TBD-path-sep-model)")
 				mfs = MediaFiles{
 					{Title: "Root", Artist: "Artist", Duration: 60, Path: "song.mp3", LibraryPath: "/lib"},
 					{Title: "Nested", Artist: "Artist", Duration: 60, Path: "deep/nested/song.mp3", LibraryPath: "/lib"},

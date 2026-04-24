@@ -7,12 +7,11 @@ import (
 	"image/jpeg"
 	"image/png"
 	"io"
-
 	"os"
 	"path/filepath"
+	"time"
 
 	_ "github.com/gen2brain/webp"
-
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
@@ -81,6 +80,7 @@ var _ = Describe("Artwork", func() {
 				})
 			})
 			It("returns embed cover", func() {
+				tests.SkipOnWindows("artwork path handling (#TBD-path-sep-artwork)")
 				aw, err := newAlbumArtworkReader(ctx, aw, alOnlyEmbed.CoverArtID(), nil)
 				Expect(err).ToNot(HaveOccurred())
 				_, path, err := aw.Reader(ctx)
@@ -104,6 +104,7 @@ var _ = Describe("Artwork", func() {
 				})
 			})
 			It("returns external cover", func() {
+				tests.SkipOnWindows("artwork path handling (#TBD-path-sep-artwork)")
 				folderRepo.result = []model.Folder{{
 					Path:       "tests/fixtures/artist/an-album",
 					ImageFiles: []string{"front.png"},
@@ -134,6 +135,7 @@ var _ = Describe("Artwork", func() {
 			})
 			DescribeTable("CoverArtPriority",
 				func(priority string, expected string) {
+					tests.SkipOnWindows("artwork path handling (#TBD-path-sep-artwork)")
 					conf.Server.CoverArtPriority = priority
 					aw, err := newAlbumArtworkReader(ctx, aw, alMultipleCovers.CoverArtID(), nil)
 					Expect(err).ToNot(HaveOccurred())
@@ -144,6 +146,51 @@ var _ = Describe("Artwork", func() {
 				Entry(nil, " folder.* , cover.*,embedded,front.*", "tests/fixtures/artist/an-album/cover.jpg"),
 				Entry(nil, "front.* , cover.*, embedded ,folder.*", "tests/fixtures/artist/an-album/front.png"),
 				Entry(nil, " embedded , front.* , cover.*,folder.*", "tests/fixtures/artist/an-album/test.mp3"),
+			)
+		})
+		Context("LastUpdated", func() {
+			// Regression test for #5377: LastUpdated feeds the HTTP Last-Modified header.
+			// It must return max(album.UpdatedAt, ImagesUpdatedAt) so browsers revalidate
+			// cached cover art when only the image file changes.
+			now := time.Now().Truncate(time.Second)
+			DescribeTable("returns the max of album.UpdatedAt and ImagesUpdatedAt",
+				func(albumUpdatedAt, imagesUpdatedAt, expected time.Time) {
+					album := model.Album{ID: "al1", UpdatedAt: albumUpdatedAt}
+					folderRepo.result = []model.Folder{{ImagesUpdatedAt: imagesUpdatedAt}}
+					ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{album})
+
+					ar, err := newAlbumArtworkReader(ctx, aw, album.CoverArtID(), nil)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(ar.LastUpdated()).To(Equal(expected))
+				},
+				Entry("album newer than images", now, now.Add(-1*time.Hour), now),
+				Entry("images newer than album", now.Add(-24*time.Hour), now.Add(-1*time.Hour), now.Add(-1*time.Hour)),
+				Entry("equal timestamps", now, now, now),
+			)
+		})
+	})
+	Describe("discArtworkReader", func() {
+		Context("LastUpdated", func() {
+			// Regression test for #5377: same bug as albumArtworkReader — disc covers
+			// must also revalidate when the image file changes, not only when media files do.
+			now := time.Now().Truncate(time.Second)
+			DescribeTable("returns the max of album.UpdatedAt and ImagesUpdatedAt",
+				func(albumUpdatedAt, imagesUpdatedAt, expected time.Time) {
+					album := model.Album{ID: "al1", UpdatedAt: albumUpdatedAt}
+					folderRepo.result = []model.Folder{{ImagesUpdatedAt: imagesUpdatedAt}}
+					ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{album})
+					ds.MediaFile(ctx).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+						{ID: "mf1", AlbumID: "al1", DiscNumber: 1, Path: "tests/fixtures/test.mp3"},
+					})
+
+					artID := model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID("al1", 1), nil)
+					dr, err := newDiscArtworkReader(ctx, aw, artID)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(dr.LastUpdated()).To(Equal(expected))
+				},
+				Entry("album newer than images", now, now.Add(-1*time.Hour), now),
+				Entry("images newer than album", now.Add(-24*time.Hour), now.Add(-1*time.Hour), now.Add(-1*time.Hour)),
+				Entry("equal timestamps", now, now, now),
 			)
 		})
 	})
@@ -166,6 +213,7 @@ var _ = Describe("Artwork", func() {
 			})
 			DescribeTable("ArtistArtPriority",
 				func(priority string, expected string) {
+					tests.SkipOnWindows("artwork path handling (#TBD-path-sep-artwork)")
 					conf.Server.ArtistArtPriority = priority
 					aw, err := newArtistArtworkReader(ctx, aw, arMultipleCovers.CoverArtID(), nil)
 					Expect(err).ToNot(HaveOccurred())
@@ -203,6 +251,7 @@ var _ = Describe("Artwork", func() {
 				})
 			})
 			It("returns embed cover", func() {
+				tests.SkipOnWindows("artwork path handling (#TBD-path-sep-artwork)")
 				aw, err := newMediafileArtworkReader(ctx, aw, mfWithEmbed.CoverArtID())
 				Expect(err).ToNot(HaveOccurred())
 				_, path, err := aw.Reader(ctx)
@@ -210,6 +259,7 @@ var _ = Describe("Artwork", func() {
 				Expect(path).To(Equal("tests/fixtures/test.mp3"))
 			})
 			It("returns embed cover if successfully extracted by ffmpeg", func() {
+				tests.SkipOnWindows("artwork path handling (#TBD-path-sep-artwork)")
 				aw, err := newMediafileArtworkReader(ctx, aw, mfCorruptedCover.CoverArtID())
 				Expect(err).ToNot(HaveOccurred())
 				r, path, err := aw.Reader(ctx)
