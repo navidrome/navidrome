@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"bufio"
 	"context"
 	"encoding/csv"
 	"encoding/json"
@@ -18,6 +17,8 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/utils/ioutils"
+	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/navidrome/navidrome/utils/str"
 	"github.com/spf13/cobra"
 )
@@ -296,9 +297,9 @@ func countM3UTrackLines(path string) int {
 	defer file.Close()
 
 	count := 0
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
+	reader := ioutils.UTF8Reader(file)
+	for line := range slice.LinesFrom(reader) {
+		line = strings.TrimSpace(line)
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
