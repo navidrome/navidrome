@@ -151,25 +151,21 @@ func sanitizeFilename(name string) string {
 func runExport(ctx context.Context) {
 	ds, ctx := getAdminContext(ctx)
 
-	// Single playlist to stdout (no -o)
 	if playlistID != "" && outputFile == "" {
 		playlist := findPlaylist(ctx, ds, playlistID)
 		println(playlist.ToM3U8())
 		return
 	}
 
-	// Bulk export requires -o
 	if outputFile == "" {
 		log.Fatal("Output directory (-o) is required for bulk export or when filtering by user")
 	}
 
-	// Validate output directory exists
 	info, err := os.Stat(outputFile)
 	if err != nil || !info.IsDir() {
 		log.Fatal("Output path must be an existing directory", "path", outputFile)
 	}
 
-	// Single playlist to directory
 	if playlistID != "" {
 		pls := findPlaylist(ctx, ds, playlistID)
 		filename := sanitizeFilename(pls.Name) + ".m3u"
@@ -182,7 +178,6 @@ func runExport(ctx context.Context) {
 		return
 	}
 
-	// Bulk export (all playlists, optionally filtered by user)
 	options := model.QueryOptions{Sort: "name"}
 	if userID != "" {
 		user, err := getUser(ctx, userID, ds)
@@ -197,7 +192,6 @@ func runExport(ctx context.Context) {
 		log.Fatal(ctx, "Failed to retrieve playlists", err)
 	}
 
-	// Detect name collisions
 	nameCounts := make(map[string]int)
 	for _, pls := range playlists {
 		nameCounts[sanitizeFilename(pls.Name)]++

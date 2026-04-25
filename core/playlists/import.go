@@ -20,7 +20,6 @@ import (
 
 type importSyncKey struct{}
 
-// WithImportSync sets the sync preference for playlist imports via context.
 func WithImportSync(ctx context.Context, sync bool) context.Context {
 	return context.WithValue(ctx, importSyncKey{}, sync)
 }
@@ -45,7 +44,6 @@ func (s *playlists) ImportFile(ctx context.Context, absolutePath string) (*model
 		if err != nil {
 			return nil, err
 		}
-		// Override sync flag if set via context
 		if syncVal, ok := importSyncFromContext(ctx); ok {
 			if pls.Sync != syncVal {
 				pls.Sync = syncVal
@@ -57,7 +55,6 @@ func (s *playlists) ImportFile(ctx context.Context, absolutePath string) (*model
 		return pls, nil
 	}
 
-	// File is outside all libraries — fall back to ImportM3U (absolute paths still resolve)
 	log.Debug(ctx, "Playlist file is outside all libraries, using reader-based import", "path", absPath)
 	file, err := os.Open(absPath)
 	if err != nil {
@@ -75,17 +72,9 @@ func (s *playlists) resolveFolder(ctx context.Context, dir string) (*model.Folde
 		return nil, err
 	}
 	matcher := newLibraryMatcher(libs)
-	libID, _ := matcher.findLibraryForPath(dir)
-	if libID == 0 {
+	lib, ok := matcher.findLibrary(dir)
+	if !ok {
 		return nil, fmt.Errorf("path not in any library: %s", dir)
-	}
-
-	var lib model.Library
-	for _, l := range libs {
-		if l.ID == libID {
-			lib = l
-			break
-		}
 	}
 
 	folder, err := s.ds.Folder(ctx).GetByPath(lib, dir)
