@@ -68,7 +68,7 @@ var (
 	}
 )
 
-func buildTestFS() storagetest.FakeFS {
+func buildTestFS() {
 	abbeyRoad := template(_t{
 		"albumartist": "The Beatles",
 		"artist":      "The Beatles",
@@ -135,7 +135,6 @@ func buildTestFS() storagetest.FakeFS {
 			_t{"composer": "Freddie Mercury", "bpm": 64})),
 	})
 	storagetest.Register("fake", &fs)
-	return fs
 }
 
 func findMediaFileByTitle(title string) string {
@@ -258,13 +257,13 @@ var _ = BeforeSuite(func() {
 
 	ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
 
-	Expect(ds.MediaFile(ctx).SetStar(true, findMediaFileByTitle("Come Together"))).To(Succeed())
+	comeTogetherID := findMediaFileByTitle("Come Together")
+	Expect(ds.MediaFile(ctx).SetStar(true, comeTogetherID)).To(Succeed())
 	Expect(ds.MediaFile(ctx).SetStar(true, findMediaFileByTitle("So What"))).To(Succeed())
 	Expect(ds.MediaFile(ctx).SetRating(3, findMediaFileByTitle("Stairway To Heaven"))).To(Succeed())
 	Expect(ds.MediaFile(ctx).SetRating(5, findMediaFileByTitle("Bohemian Rhapsody"))).To(Succeed())
-	Expect(ds.MediaFile(ctx).IncPlayCount(findMediaFileByTitle("Come Together"), time.Now())).To(Succeed())
-	for i := 0; i < 9; i++ {
-		Expect(ds.MediaFile(ctx).IncPlayCount(findMediaFileByTitle("Come Together"), time.Now())).To(Succeed())
+	for range 10 {
+		Expect(ds.MediaFile(ctx).IncPlayCount(comeTogetherID, time.Now())).To(Succeed())
 	}
 	Expect(ds.MediaFile(ctx).IncPlayCount(findMediaFileByTitle("Black Dog"), time.Now())).To(Succeed())
 
@@ -302,6 +301,7 @@ func restoreDB() {
 
 	_, err = sqlDB.Exec("BEGIN TRANSACTION")
 	Expect(err).ToNot(HaveOccurred())
+	defer func() { _, _ = sqlDB.Exec("ROLLBACK") }()
 
 	for _, table := range snapshotTables {
 		_, err = sqlDB.Exec(`DELETE FROM main."` + table + `"`) //nolint:gosec
