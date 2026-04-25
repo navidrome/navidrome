@@ -317,9 +317,10 @@ func restoreDB() {
 	rows.Close()
 
 	for _, table := range tables {
-		_, err = sqlDB.Exec(`DELETE FROM main."` + table + `"`)
+		// Table names come from sqlite_master, not user input, so concatenation is safe here
+		_, err = sqlDB.Exec(`DELETE FROM main."` + table + `"`) //nolint:gosec
 		Expect(err).ToNot(HaveOccurred())
-		_, err = sqlDB.Exec(`INSERT INTO main."` + table + `" SELECT * FROM snapshot."` + table + `"`)
+		_, err = sqlDB.Exec(`INSERT INTO main."` + table + `" SELECT * FROM snapshot."` + table + `"`) //nolint:gosec
 		Expect(err).ToNot(HaveOccurred())
 	}
 
