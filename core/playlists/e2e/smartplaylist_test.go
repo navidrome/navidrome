@@ -25,6 +25,16 @@ var _ = Describe("Smart Playlists", func() {
 			results := evaluateRule(`{"all":[{"startsWith":{"artist":"Led"}}]}`)
 			Expect(results).To(ConsistOf("Stairway To Heaven", "Black Dog"))
 		})
+
+		It("matches by title isNot", func() {
+			results := evaluateRule(`{"all":[{"isNot":{"title":"Something"}},{"is":{"artist":"The Beatles"}}]}`)
+			Expect(results).To(ConsistOf("Come Together"))
+		})
+
+		It("matches by artist endsWith", func() {
+			results := evaluateRule(`{"all":[{"endsWith":{"artist":"Davis"}}]}`)
+			Expect(results).To(ConsistOf("So What"))
+		})
 	})
 
 	Describe("Numeric fields", func() {
