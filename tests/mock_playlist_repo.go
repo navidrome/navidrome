@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/deluan/rest"
+
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
 )
@@ -17,12 +18,13 @@ func CreateMockPlaylistRepo() *MockPlaylistRepo {
 
 type MockPlaylistRepo struct {
 	model.PlaylistRepository
-	Data       map[string]*model.Playlist // keyed by ID
-	PathMap    map[string]*model.Playlist // keyed by path
-	Last       *model.Playlist
-	Deleted    []string
-	Err        bool
-	TracksRepo model.PlaylistTrackRepository
+	Data            map[string]*model.Playlist // keyed by ID
+	PathMap         map[string]*model.Playlist // keyed by path
+	Last            *model.Playlist
+	Deleted         []string
+	Err             bool
+	TracksRepo      model.PlaylistTrackRepository
+	PermissionsRepo model.PlaylistPermissionRepository
 }
 
 func (m *MockPlaylistRepo) SetError(err bool) {
@@ -81,6 +83,10 @@ func (m *MockPlaylistRepo) Delete(id string) error {
 
 func (m *MockPlaylistRepo) Tracks(_ string, _ bool) model.PlaylistTrackRepository {
 	return m.TracksRepo
+}
+
+func (m *MockPlaylistRepo) Permissions(_ string) model.PlaylistPermissionRepository {
+	return m.PermissionsRepo
 }
 
 func (m *MockPlaylistRepo) Exists(id string) (bool, error) {
