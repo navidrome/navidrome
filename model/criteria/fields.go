@@ -88,6 +88,15 @@ type fieldMetadata struct {
 	numeric bool
 }
 
+// AllFieldNames returns the names of all registered criteria fields.
+func AllFieldNames() []string {
+	names := make([]string, 0, len(fieldMap))
+	for name := range fieldMap {
+		names = append(names, name)
+	}
+	return names
+}
+
 // LookupField returns semantic metadata for a criteria field name.
 func LookupField(name string) (FieldInfo, bool) {
 	f, ok := fieldMap[strings.ToLower(name)]

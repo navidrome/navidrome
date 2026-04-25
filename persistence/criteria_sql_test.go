@@ -123,6 +123,18 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 		})
 	})
 
+	It("has SQL mappings for all non-tag/non-role criteria fields", func() {
+		for _, name := range criteria.AllFieldNames() {
+			info, ok := criteria.LookupField(name)
+			Expect(ok).To(BeTrue(), "field %q registered but LookupField fails", name)
+			if info.IsTag || info.IsRole {
+				continue
+			}
+			_, hasSQLField := smartPlaylistFields[info.Name]
+			Expect(hasSQLField).To(BeTrue(), "criteria field %q (name=%q) has no entry in smartPlaylistFields", name, info.Name)
+		}
+	})
+
 	Describe("joins", func() {
 		It("excludes sort-only joins from expression joins", func() {
 			c := criteria.Criteria{Expression: criteria.All{criteria.Contains{"title": "love"}}, Sort: "albumRating"}
