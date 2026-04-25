@@ -192,7 +192,7 @@ func (c smartPlaylistCriteria) exprSQL(expr criteria.Expression) (squirrel.Sqliz
 	}
 }
 
-func isNotExpr[T ~map[string]any](values T) (squirrel.Sqlizer, error) {
+func isNotExpr(values map[string]any) (squirrel.Sqlizer, error) {
 	if _, value, info, ok := singleField(values); ok && (info.IsTag || info.IsRole) {
 		return jsonExpr(info, squirrel.Eq{"value": value}, true), nil
 	}
@@ -203,7 +203,7 @@ func isNotExpr[T ~map[string]any](values T) (squirrel.Sqlizer, error) {
 	return squirrel.NotEq(fields), nil
 }
 
-func mapExpr[T ~map[string]any](values T, makeCond func(map[string]any) squirrel.Sqlizer, negateJSON bool) (squirrel.Sqlizer, error) {
+func mapExpr(values map[string]any, makeCond func(map[string]any) squirrel.Sqlizer, negateJSON bool) (squirrel.Sqlizer, error) {
 	if _, value, info, ok := singleField(values); ok && (info.IsTag || info.IsRole) {
 		return jsonExpr(info, makeCond(map[string]any{"value": value}), negateJSON), nil
 	}
@@ -214,7 +214,7 @@ func mapExpr[T ~map[string]any](values T, makeCond func(map[string]any) squirrel
 	return makeCond(fields), nil
 }
 
-func likeExpr[T ~map[string]any](values T, pattern string, negate bool) (squirrel.Sqlizer, error) {
+func likeExpr(values map[string]any, pattern string, negate bool) (squirrel.Sqlizer, error) {
 	if _, value, info, ok := singleField(values); ok && (info.IsTag || info.IsRole) {
 		return jsonExpr(info, squirrel.Like{"value": fmt.Sprintf(pattern, value)}, negate), nil
 	}
@@ -236,7 +236,7 @@ func likeExpr[T ~map[string]any](values T, pattern string, negate bool) (squirre
 	return lk, nil
 }
 
-func rangeExpr[T ~map[string]any](values T) (squirrel.Sqlizer, error) {
+func rangeExpr(values map[string]any) (squirrel.Sqlizer, error) {
 	fields, err := sqlFields(values)
 	if err != nil {
 		return nil, err
@@ -255,7 +255,7 @@ func rangeExpr[T ~map[string]any](values T) (squirrel.Sqlizer, error) {
 	return and, nil
 }
 
-func periodExpr[T ~map[string]any](values T, negate bool) (squirrel.Sqlizer, error) {
+func periodExpr(values map[string]any, negate bool) (squirrel.Sqlizer, error) {
 	fields, err := sqlFields(values)
 	if err != nil {
 		return nil, err
@@ -355,7 +355,7 @@ func (e roleCond) ToSql() (string, []any, error) {
 	return cond, args, err
 }
 
-func singleField[T ~map[string]any](values T) (string, any, criteria.FieldInfo, bool) {
+func singleField(values map[string]any) (string, any, criteria.FieldInfo, bool) {
 	if len(values) != 1 {
 		return "", nil, criteria.FieldInfo{}, false
 	}
@@ -366,7 +366,7 @@ func singleField[T ~map[string]any](values T) (string, any, criteria.FieldInfo, 
 	return "", nil, criteria.FieldInfo{}, false
 }
 
-func sqlFields[T ~map[string]any](values T) (map[string]any, error) {
+func sqlFields(values map[string]any) (map[string]any, error) {
 	fields := make(map[string]any, len(values))
 	for field, value := range values {
 		info, ok := criteria.LookupField(field)
