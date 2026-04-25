@@ -281,7 +281,7 @@ var _ = Describe("Playlists - Import", func() {
 				Expect(pls.ExternalImageURL).To(Equal("https://example.com/new-cover.jpg"))
 			})
 
-			It("upgrades non-synced playlist to synced when re-imported", func() {
+			It("skips non-synced playlist on re-import (respects user's choice)", func() {
 				tmpDir := GinkgoT().TempDir()
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
 				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3"}}
@@ -302,10 +302,9 @@ var _ = Describe("Playlists - Import", func() {
 				plsFolder := &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: ""}
 				pls, err := ps.ImportFromFolder(ctx, plsFolder, "test.m3u")
 				Expect(err).ToNot(HaveOccurred())
-				// ImportFromFolder creates with Sync=true (via newSyncedPlaylist),
-				// so a non-synced existing playlist should get upgraded.
-				Expect(pls.ID).To(Equal("existing-id"))
-				Expect(pls.Sync).To(BeTrue())
+				// updatePlaylist skips the non-synced playlist, so the returned
+				// playlist has no ID (was never persisted/updated).
+				Expect(pls.ID).To(BeEmpty())
 			})
 
 			It("clears ExternalImageURL on re-scan when directive is removed", func() {

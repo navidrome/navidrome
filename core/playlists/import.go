@@ -29,7 +29,7 @@ func (s *playlists) ImportFile(ctx context.Context, absolutePath string, sync bo
 
 	folder, err := s.resolveFolder(ctx, dir)
 	if err == nil {
-		pls, err := s.ImportFromFolder(ctx, folder, filename)
+		pls, err := s.importFromFolder(ctx, folder, filename, sync)
 		if err != nil {
 			return nil, err
 		}
@@ -73,13 +73,17 @@ func (s *playlists) resolveFolder(ctx context.Context, dir string) (*model.Folde
 }
 
 func (s *playlists) ImportFromFolder(ctx context.Context, folder *model.Folder, filename string) (*model.Playlist, error) {
+	return s.importFromFolder(ctx, folder, filename, false)
+}
+
+func (s *playlists) importFromFolder(ctx context.Context, folder *model.Folder, filename string, forceSync bool) (*model.Playlist, error) {
 	pls, err := s.parsePlaylist(ctx, filename, folder)
 	if err != nil {
 		log.Error(ctx, "Error parsing playlist", "path", filepath.Join(folder.AbsolutePath(), filename), err)
 		return nil, err
 	}
 	log.Debug(ctx, "Found playlist", "name", pls.Name, "lastUpdated", pls.UpdatedAt, "path", pls.Path, "numTracks", len(pls.Tracks))
-	err = s.updatePlaylist(ctx, pls)
+	err = s.updatePlaylist(ctx, pls, forceSync)
 	if err != nil {
 		log.Error(ctx, "Error updating playlist", "path", filepath.Join(folder.AbsolutePath(), filename), err)
 	}
@@ -129,37 +133,36 @@ func (s *playlists) parsePlaylist(ctx context.Context, playlistFile string, fold
 	return pls, err
 }
 
-func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist) error {
-	owner, _ := request.UserFrom(ctx)
-
-	// Try to find existing playlist by path. Since filesystem normalization differs across
-	// platforms (macOS uses NFD, Linux/Windows use NFC), we try both forms to match
-	// playlists that may have been imported on a different platform.
-	pls, err := s.ds.Playlist(ctx).FindByPath(newPls.Path)
+// findByPathNormalized looks up a playlist by path, trying both NFC and NFD Unicode
+// normalization forms to handle cross-platform filesystem differences.
+func (s *playlists) findByPathNormalized(ctx context.Context, path string) (*model.Playlist, error) {
+	pls, err := s.ds.Playlist(ctx).FindByPath(path)
 	if errors.Is(err, model.ErrNotFound) {
-		// Try alternate normalization form
-		altPath := norm.NFD.String(newPls.Path)
-		if altPath == newPls.Path {
-			altPath = norm.NFC.String(newPls.Path)
+		altPath := norm.NFD.String(path)
+		if altPath == path {
+			altPath = norm.NFC.String(path)
 		}
-		if altPath != newPls.Path {
+		if altPath != path {
 			pls, err = s.ds.Playlist(ctx).FindByPath(altPath)
 		}
 	}
+	return pls, err
+}
+
+func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist, forceSync bool) error {
+	owner, _ := request.UserFrom(ctx)
+
+	pls, err := s.findByPathNormalized(ctx, newPls.Path)
 	if err != nil && !errors.Is(err, model.ErrNotFound) {
 		return err
 	}
-	if err == nil && !pls.Sync && !newPls.Sync {
+	if err == nil && !pls.Sync && !forceSync {
 		log.Debug(ctx, "Playlist already imported and not synced", "playlist", pls.Name, "path", pls.Path)
 		return nil
 	}
 
 	if err == nil {
-		if newPls.Sync && !pls.Sync {
-			log.Info(ctx, "Upgrading playlist to synced", "playlist", pls.Name, "path", newPls.Path)
-		} else {
-			log.Info(ctx, "Updating synced playlist", "playlist", pls.Name, "path", newPls.Path)
-		}
+		log.Info(ctx, "Updating synced playlist", "playlist", pls.Name, "path", newPls.Path)
 		newPls.ID = pls.ID
 		newPls.Name = pls.Name
 		newPls.Comment = pls.Comment
