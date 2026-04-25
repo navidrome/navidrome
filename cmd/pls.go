@@ -17,6 +17,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/utils/str"
 	"github.com/spf13/cobra"
 )
 
@@ -149,21 +150,6 @@ func runExporter(ctx context.Context) {
 	}
 }
 
-func sanitizeFilename(name string) string {
-	replacer := strings.NewReplacer(
-		"/", "_",
-		"\\", "_",
-		":", "_",
-		"*", "_",
-		"?", "_",
-		"\"", "_",
-		"<", "_",
-		">", "_",
-		"|", "_",
-	)
-	return replacer.Replace(name)
-}
-
 func runExport(ctx context.Context) {
 	ds, ctx := getAdminContext(ctx)
 
@@ -184,7 +170,7 @@ func runExport(ctx context.Context) {
 
 	if playlistID != "" {
 		pls := findPlaylist(ctx, ds, playlistID)
-		filename := sanitizeFilename(pls.Name) + ".m3u"
+		filename := str.SanitizeFilename(pls.Name) + ".m3u"
 		path := filepath.Join(outputFile, filename)
 		err := os.WriteFile(path, []byte(pls.ToM3U8()), 0600)
 		if err != nil {
@@ -198,7 +184,7 @@ func runExport(ctx context.Context) {
 
 	nameCounts := make(map[string]int)
 	for _, pls := range allPls {
-		nameCounts[sanitizeFilename(pls.Name)]++
+		nameCounts[str.SanitizeFilename(pls.Name)]++
 	}
 
 	exported := 0
@@ -209,7 +195,7 @@ func runExport(ctx context.Context) {
 			continue
 		}
 
-		sanitized := sanitizeFilename(pls.Name)
+		sanitized := str.SanitizeFilename(pls.Name)
 		filename := sanitized + ".m3u"
 		if nameCounts[sanitized] > 1 {
 			shortID := pls.ID
