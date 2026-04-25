@@ -7,7 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/log"
@@ -20,6 +22,7 @@ var (
 	outputFile   string
 	userID       string
 	outputFormat string
+	syncFlag     bool
 )
 
 type displayPlaylist struct {
@@ -41,6 +44,11 @@ func init() {
 	listCommand.Flags().StringVarP(&userID, "user", "u", "", "username or ID")
 	listCommand.Flags().StringVarP(&outputFormat, "format", "f", "csv", "output format [supported values: csv, json]")
 	plsCmd.AddCommand(listCommand)
+
+	exportCommand.Flags().StringVarP(&playlistID, "playlist", "p", "", "playlist name or ID")
+	exportCommand.Flags().StringVarP(&outputFile, "output", "o", "", "output directory")
+	exportCommand.Flags().StringVarP(&userID, "user", "u", "", "username or ID")
+	plsCmd.AddCommand(exportCommand)
 }
 
 var (
@@ -60,39 +68,152 @@ var (
 			runList(cmd.Context())
 		},
 	}
+
+	exportCommand = &cobra.Command{
+		Use:   "export",
+		Short: "Export playlists to M3U files",
+		Long:  "Export one or more Navidrome playlists to M3U files",
+		Run: func(cmd *cobra.Command, args []string) {
+			runExport(cmd.Context())
+		},
+	}
 )
 
-func runExporter(ctx context.Context) {
-	ds, ctx := getAdminContext(ctx)
-	playlist, err := ds.Playlist(ctx).GetWithTracks(playlistID, true, false)
+func findPlaylist(ctx context.Context, ds model.DataStore, nameOrID string) *model.Playlist {
+	playlist, err := ds.Playlist(ctx).GetWithTracks(nameOrID, true, false)
 	if err != nil && !errors.Is(err, model.ErrNotFound) {
-		log.Fatal("Error retrieving playlist", "name", playlistID, err)
+		log.Fatal("Error retrieving playlist", "name", nameOrID, err)
 	}
 	if errors.Is(err, model.ErrNotFound) {
-		playlists, err := ds.Playlist(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"playlist.name": playlistID}})
+		playlists, err := ds.Playlist(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"playlist.name": nameOrID}})
 		if err != nil {
-			log.Fatal("Error retrieving playlist", "name", playlistID, err)
+			log.Fatal("Error retrieving playlist", "name", nameOrID, err)
 		}
 		if len(playlists) > 0 {
 			playlist, err = ds.Playlist(ctx).GetWithTracks(playlists[0].ID, true, false)
 			if err != nil {
-				log.Fatal("Error retrieving playlist", "name", playlistID, err)
+				log.Fatal("Error retrieving playlist", "name", nameOrID, err)
 			}
 		}
 	}
 	if playlist == nil {
-		log.Fatal("Playlist not found", "name", playlistID)
+		log.Fatal("Playlist not found", "name", nameOrID)
 	}
+	return playlist
+}
+
+func runExporter(ctx context.Context) {
+	ds, ctx := getAdminContext(ctx)
+	playlist := findPlaylist(ctx, ds, playlistID)
 	pls := playlist.ToM3U8()
 	if outputFile == "-" || outputFile == "" {
 		println(pls)
 		return
 	}
-
-	err = os.WriteFile(outputFile, []byte(pls), 0600)
+	err := os.WriteFile(outputFile, []byte(pls), 0600)
 	if err != nil {
 		log.Fatal("Error writing to the output file", "file", outputFile, err)
 	}
+}
+
+func sanitizeFilename(name string) string {
+	replacer := strings.NewReplacer(
+		"/", "_",
+		"\\", "_",
+		":", "_",
+		"*", "_",
+		"?", "_",
+		"\"", "_",
+		"<", "_",
+		">", "_",
+		"|", "_",
+	)
+	return replacer.Replace(name)
+}
+
+func runExport(ctx context.Context) {
+	ds, ctx := getAdminContext(ctx)
+
+	// Single playlist to stdout (no -o)
+	if playlistID != "" && outputFile == "" {
+		playlist := findPlaylist(ctx, ds, playlistID)
+		println(playlist.ToM3U8())
+		return
+	}
+
+	// Bulk export requires -o
+	if outputFile == "" {
+		log.Fatal("Output directory (-o) is required for bulk export")
+	}
+
+	// Validate output directory exists
+	info, err := os.Stat(outputFile)
+	if err != nil || !info.IsDir() {
+		log.Fatal("Output path must be an existing directory", "path", outputFile)
+	}
+
+	// Single playlist to directory
+	if playlistID != "" {
+		pls := findPlaylist(ctx, ds, playlistID)
+		filename := sanitizeFilename(pls.Name) + ".m3u"
+		path := filepath.Join(outputFile, filename)
+		err := os.WriteFile(path, []byte(pls.ToM3U8()), 0600)
+		if err != nil {
+			log.Fatal("Error writing playlist", "file", path, err)
+		}
+		fmt.Printf("Exported \"%s\" to %s\n", pls.Name, path)
+		return
+	}
+
+	// Bulk export (all playlists, optionally filtered by user)
+	options := model.QueryOptions{Sort: "name"}
+	if userID != "" {
+		user, err := getUser(ctx, userID, ds)
+		if err != nil {
+			log.Fatal(ctx, "Error retrieving user", "username or id", userID)
+		}
+		options.Filters = squirrel.Eq{"owner_id": user.ID}
+	}
+
+	playlists, err := ds.Playlist(ctx).GetAll(options)
+	if err != nil {
+		log.Fatal(ctx, "Failed to retrieve playlists", err)
+	}
+
+	// Detect name collisions
+	nameCounts := make(map[string]int)
+	for _, pls := range playlists {
+		nameCounts[sanitizeFilename(pls.Name)]++
+	}
+
+	exported := 0
+	for _, pls := range playlists {
+		plsWithTracks, err := ds.Playlist(ctx).GetWithTracks(pls.ID, true, false)
+		if err != nil {
+			log.Error("Error loading playlist tracks", "playlist", pls.Name, err)
+			continue
+		}
+
+		sanitized := sanitizeFilename(pls.Name)
+		filename := sanitized + ".m3u"
+		if nameCounts[sanitized] > 1 {
+			shortID := pls.ID
+			if len(shortID) > 6 {
+				shortID = shortID[:6]
+			}
+			filename = sanitized + "_" + shortID + ".m3u"
+		}
+
+		path := filepath.Join(outputFile, filename)
+		err = os.WriteFile(path, []byte(plsWithTracks.ToM3U8()), 0600)
+		if err != nil {
+			log.Error("Error writing playlist", "file", path, err)
+			continue
+		}
+		fmt.Printf("Exported \"%s\" to %s\n", pls.Name, path)
+		exported++
+	}
+	fmt.Printf("\nExported %d playlists to %s\n", exported, outputFile)
 }
 
 func runList(ctx context.Context) {
