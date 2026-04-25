@@ -616,6 +616,59 @@ var _ = Describe("Playlists - Import", func() {
 		})
 	})
 
+	Describe("ImportFile", func() {
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+			ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3", "test.ogg"}}
+		})
+
+		It("resolves file inside a library and imports it", func() {
+			tmpDir := GinkgoT().TempDir()
+			mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
+
+			mockFolderRepo := &mockFolderRepoForImport{
+				folder: &model.Folder{
+					ID:          "1",
+					LibraryID:   1,
+					LibraryPath: tmpDir,
+					Path:        "",
+					Name:        "",
+				},
+			}
+			ds.MockedFolder = mockFolderRepo
+			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+
+			plsContent := "#PLAYLIST:My Playlist\ntest.mp3\ntest.ogg\n"
+			plsFile := filepath.Join(tmpDir, "my-playlist.m3u")
+			Expect(os.WriteFile(plsFile, []byte(plsContent), 0600)).To(Succeed())
+
+			pls, err := ps.ImportFile(ctx, plsFile)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(pls.Name).To(Equal("My Playlist"))
+			Expect(pls.Tracks).To(HaveLen(2))
+			Expect(pls.Path).To(Equal(plsFile))
+			Expect(pls.Sync).To(BeTrue())
+		})
+
+		It("falls back to ImportM3U for files outside all libraries", func() {
+			tmpDir := GinkgoT().TempDir()
+			libDir := filepath.Join(tmpDir, "music")
+			Expect(os.Mkdir(libDir, 0755)).To(Succeed())
+			mockLibRepo.SetData([]model.Library{{ID: 1, Path: libDir}})
+			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+
+			plsContent := "#PLAYLIST:External Playlist\n" + libDir + "/test.mp3\n"
+			plsFile := filepath.Join(tmpDir, "external.m3u")
+			Expect(os.WriteFile(plsFile, []byte(plsContent), 0600)).To(Succeed())
+
+			pls, err := ps.ImportFile(ctx, plsFile)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(pls.Name).To(Equal("External Playlist"))
+			Expect(pls.Path).To(BeEmpty())
+			Expect(pls.Sync).To(BeFalse())
+		})
+	})
+
 	Describe("ImportM3U", func() {
 		var repo *mockedMediaFileFromListRepo
 		BeforeEach(func() {
@@ -924,4 +977,16 @@ func (r *mockedMediaFileFromListRepo) FindByPaths(paths []string) (model.MediaFi
 		}
 	}
 	return mfs, nil
+}
+
+type mockFolderRepoForImport struct {
+	model.FolderRepository
+	folder *model.Folder
+}
+
+func (m *mockFolderRepoForImport) GetByPath(_ model.Library, _ string) (*model.Folder, error) {
+	if m.folder != nil {
+		return m.folder, nil
+	}
+	return nil, model.ErrNotFound
 }

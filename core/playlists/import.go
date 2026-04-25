@@ -3,6 +3,7 @@ package playlists
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -16,6 +17,59 @@ import (
 	"github.com/navidrome/navidrome/utils/ioutils"
 	"golang.org/x/text/unicode/norm"
 )
+
+func (s *playlists) ImportFile(ctx context.Context, absolutePath string) (*model.Playlist, error) {
+	absPath, err := filepath.Abs(absolutePath)
+	if err != nil {
+		return nil, fmt.Errorf("resolving absolute path: %w", err)
+	}
+
+	dir := filepath.Dir(absPath)
+	filename := filepath.Base(absPath)
+
+	folder, err := s.resolveFolder(ctx, dir)
+	if err == nil {
+		return s.ImportFromFolder(ctx, folder, filename)
+	}
+
+	// File is outside all libraries — fall back to ImportM3U (absolute paths still resolve)
+	log.Debug(ctx, "Playlist file is outside all libraries, using reader-based import", "path", absPath)
+	file, err := os.Open(absPath)
+	if err != nil {
+		return nil, fmt.Errorf("opening playlist file: %w", err)
+	}
+	defer file.Close()
+
+	reader := ioutils.UTF8Reader(file)
+	return s.ImportM3U(ctx, reader)
+}
+
+func (s *playlists) resolveFolder(ctx context.Context, dir string) (*model.Folder, error) {
+	libs, err := s.ds.Library(ctx).GetAll()
+	if err != nil {
+		return nil, err
+	}
+	matcher := newLibraryMatcher(libs)
+	libID, _ := matcher.findLibraryForPath(dir)
+	if libID == 0 {
+		return nil, fmt.Errorf("path not in any library: %s", dir)
+	}
+
+	var lib model.Library
+	for _, l := range libs {
+		if l.ID == libID {
+			lib = l
+			break
+		}
+	}
+
+	folder, err := s.ds.Folder(ctx).GetByPath(lib, dir)
+	if err != nil {
+		return nil, fmt.Errorf("resolving folder for path %s: %w", dir, err)
+	}
+	folder.LibraryPath = lib.Path
+	return folder, nil
+}
 
 func (s *playlists) ImportFromFolder(ctx context.Context, folder *model.Folder, filename string) (*model.Playlist, error) {
 	pls, err := s.parsePlaylist(ctx, filename, folder)
