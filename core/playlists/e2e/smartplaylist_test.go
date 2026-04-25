@@ -93,6 +93,12 @@ var _ = Describe("Smart Playlists", func() {
 			results := evaluateRule(`{"all":[{"is":{"genre":"Pop"}}]}`)
 			Expect(results).To(ConsistOf("We Are the Champions"))
 		})
+
+		It("matches genre startsWith", func() {
+			results := evaluateRule(`{"all":[{"startsWith":{"genre":"Ro"}}]}`)
+			Expect(results).To(ConsistOf("Come Together", "Something", "Stairway To Heaven", "Black Dog",
+				"Bohemian Rhapsody", "All Along the Watchtower", "We Are the Champions"))
+		})
 	})
 
 	Describe("Participants", func() {
@@ -109,6 +115,11 @@ var _ = Describe("Smart Playlists", func() {
 		It("matches by composer isNot", func() {
 			results := evaluateRule(`{"all":[{"isNot":{"composer":"Freddie Mercury"}}]}`)
 			Expect(results).To(ConsistOf("Come Together", "Something", "Stairway To Heaven", "Black Dog", "So What", "All Along the Watchtower"))
+		})
+
+		It("matches by composer endsWith", func() {
+			results := evaluateRule(`{"all":[{"endsWith":{"composer":"Mercury"}}]}`)
+			Expect(results).To(ConsistOf("Bohemian Rhapsody", "We Are the Champions"))
 		})
 	})
 
@@ -144,7 +155,20 @@ var _ = Describe("Smart Playlists", func() {
 		})
 	})
 
+	Describe("Negated string operators", func() {
+		It("matches by title notContains", func() {
+			results := evaluateRule(`{"all":[{"notContains":{"title":"the"}}]}`)
+			Expect(results).To(ConsistOf("Something", "Stairway To Heaven", "Black Dog", "So What", "Bohemian Rhapsody"))
+		})
+	})
+
 	Describe("Date/time fields", func() {
+		It("matches dateAdded before a far-future date", func() {
+			results := evaluateRule(`{"all":[{"before":{"dateadded":"2099-01-01"}}]}`)
+			Expect(results).To(ConsistOf("Come Together", "Something", "Stairway To Heaven", "Black Dog",
+				"So What", "Bohemian Rhapsody", "All Along the Watchtower", "We Are the Champions"))
+		})
+
 		It("matches lastPlayed inTheLast 1 day", func() {
 			results := evaluateRule(`{"all":[{"inTheLast":{"lastplayed":1}}]}`)
 			Expect(results).To(ConsistOf("Come Together", "Black Dog"))
