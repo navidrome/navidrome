@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	squirrel "github.com/Masterminds/squirrel"
+	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/criteria"
 )
@@ -32,11 +32,24 @@ type smartPlaylistField struct {
 }
 
 type smartPlaylistCriteria struct {
-	criteria criteria.Criteria
+	criteria     criteria.Criteria
+	ownerID      string
+	ownerIsAdmin bool
 }
 
-func newSmartPlaylistCriteria(c criteria.Criteria) smartPlaylistCriteria {
-	return smartPlaylistCriteria{criteria: c}
+func newSmartPlaylistCriteria(c criteria.Criteria, opts ...func(*smartPlaylistCriteria)) smartPlaylistCriteria {
+	cSQL := smartPlaylistCriteria{criteria: c}
+	for _, opt := range opts {
+		opt(&cSQL)
+	}
+	return cSQL
+}
+
+func withSmartPlaylistOwner(ownerID string, ownerIsAdmin bool) func(*smartPlaylistCriteria) {
+	return func(c *smartPlaylistCriteria) {
+		c.ownerID = ownerID
+		c.ownerIsAdmin = ownerIsAdmin
+	}
 }
 
 var smartPlaylistFields = map[string]smartPlaylistField{
@@ -109,15 +122,15 @@ func (c smartPlaylistCriteria) Where() (squirrel.Sqlizer, error) {
 	if c.criteria.Expression == nil {
 		return squirrel.Expr("1 = 1"), nil
 	}
-	return exprSQL(c.criteria.Expression)
+	return c.exprSQL(c.criteria.Expression)
 }
 
-func exprSQL(expr criteria.Expression) (squirrel.Sqlizer, error) {
+func (c smartPlaylistCriteria) exprSQL(expr criteria.Expression) (squirrel.Sqlizer, error) {
 	switch e := expr.(type) {
 	case criteria.All:
 		and := squirrel.And{}
 		for _, child := range e {
-			cond, err := exprSQL(child)
+			cond, err := c.exprSQL(child)
 			if err != nil {
 				return nil, err
 			}
@@ -127,7 +140,7 @@ func exprSQL(expr criteria.Expression) (squirrel.Sqlizer, error) {
 	case criteria.Any:
 		or := squirrel.Or{}
 		for _, child := range e {
-			cond, err := exprSQL(child)
+			cond, err := c.exprSQL(child)
 			if err != nil {
 				return nil, err
 			}
@@ -171,9 +184,9 @@ func exprSQL(expr criteria.Expression) (squirrel.Sqlizer, error) {
 	case criteria.NotInTheLast:
 		return periodExpr(e, true)
 	case criteria.InPlaylist:
-		return inList(e, false)
+		return inList(e, false, c.ownerID, c.ownerIsAdmin)
 	case criteria.NotInPlaylist:
-		return inList(e, true)
+		return inList(e, true, c.ownerID, c.ownerIsAdmin)
 	default:
 		return nil, fmt.Errorf("unknown criteria expression type %T", expr)
 	}
@@ -271,18 +284,26 @@ func startOfPeriod(numDays int64, from time.Time) string {
 	return from.Add(time.Duration(-24*numDays) * time.Hour).Format("2006-01-02")
 }
 
-func inList[T ~map[string]any](values T, negate bool) (squirrel.Sqlizer, error) {
+func inList[T ~map[string]any](values T, negate bool, ownerID string, ownerIsAdmin bool) (squirrel.Sqlizer, error) {
 	playlistID, ok := values["id"].(string)
 	if !ok {
 		return nil, errors.New("playlist id not given")
 	}
+	filters := squirrel.And{squirrel.Eq{"pl.playlist_id": playlistID}}
+	if !ownerIsAdmin {
+		if ownerID == "" {
+			filters = append(filters, squirrel.Eq{"playlist.public": 1})
+		} else {
+			filters = append(filters, squirrel.Or{
+				squirrel.Eq{"playlist.public": 1},
+				squirrel.Eq{"playlist.owner_id": ownerID},
+			})
+		}
+	}
 	subQuery := squirrel.Select("media_file_id").
 		From("playlist_tracks pl").
 		LeftJoin("playlist on pl.playlist_id = playlist.id").
-		Where(squirrel.And{
-			squirrel.Eq{"pl.playlist_id": playlistID},
-			squirrel.Eq{"playlist.public": 1},
-		})
+		Where(filters)
 	subSQL, subArgs, err := subQuery.PlaceholderFormat(squirrel.Question).ToSql()
 	if err != nil {
 		return nil, err

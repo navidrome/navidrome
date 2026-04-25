@@ -1,8 +1,10 @@
 package e2e
 
 import (
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/sirupsen/logrus"
 )
 
 var _ = Describe("Smart Playlists", func() {
@@ -269,10 +271,51 @@ var _ = Describe("Smart Playlists", func() {
 			Expect(results).To(BeEmpty())
 		})
 
-		It("does not match tracks from a private playlist", func() {
-			refID := createPrivatePlaylist(testUser, "Come Together", "So What")
+		It("does not refresh a playlist or its children when an admin views another user's smart playlist", func() {
+			smartBID := createPrivateSmartPlaylist(testUser, `{"all":[{"is":{"genre":"Jazz"}}]}`)
+			smartAID := createPublicSmartPlaylist(otherUser, `{"all":[{"inPlaylist":{"id":"`+smartBID+`"}}]}`)
+
+			loadedA, err := ds.Playlist(ctx).GetWithTracks(smartAID, true, false)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(loadedA.Tracks).To(BeEmpty())
+			Expect(loadedA.EvaluatedAt).To(BeNil())
+
+			loadedB, err := ds.Playlist(ctx).Get(smartBID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(loadedB.EvaluatedAt).To(BeNil())
+		})
+
+		It("matches tracks from a private playlist owned by the same user", func() {
+			refID := createPrivatePlaylist(otherUser, "Come Together", "So What")
+			results := evaluateRuleAs(otherUser, `{"all":[{"inPlaylist":{"id":"`+refID+`"}}]}`)
+			Expect(results).To(ConsistOf("Come Together", "So What"))
+		})
+
+		It("allows admin-owned smart playlists to reference private playlists owned by other users", func() {
+			refID := createPrivatePlaylist(otherUser, "Bohemian Rhapsody")
 			results := evaluateRule(`{"all":[{"inPlaylist":{"id":"` + refID + `"}}]}`)
+			Expect(results).To(ConsistOf("Bohemian Rhapsody"))
+		})
+
+		It("does not match tracks from a private playlist owned by another regular user", func() {
+			refID := createPrivatePlaylist(testUser, "Come Together", "So What")
+			results := evaluateRuleAs(otherUser, `{"all":[{"inPlaylist":{"id":"`+refID+`"}}]}`)
 			Expect(results).To(BeEmpty())
+		})
+
+		It("warns when a referenced playlist is inaccessible to the smart playlist owner", func() {
+			hook, cleanup := tests.LogHook()
+			defer cleanup()
+
+			refID := createPrivatePlaylist(testUser, "Come Together")
+			results := evaluateRuleAs(otherUser, `{"all":[{"notInPlaylist":{"id":"`+refID+`"}}]}`)
+			Expect(results).To(ConsistOf("Come Together", "Something", "Stairway To Heaven", "Black Dog",
+				"So What", "Bohemian Rhapsody", "All Along the Watchtower", "We Are the Champions"))
+
+			Expect(hook.LastEntry()).ToNot(BeNil())
+			Expect(hook.LastEntry().Level).To(Equal(logrus.WarnLevel))
+			Expect(hook.LastEntry().Message).To(Equal("Referenced playlist is not accessible to smart playlist owner"))
+			Expect(hook.LastEntry().Data).To(HaveKeyWithValue("childId", refID))
 		})
 
 		It("matches tracks in a public playlist owned by another user", func() {
@@ -281,10 +324,5 @@ var _ = Describe("Smart Playlists", func() {
 			Expect(results).To(ConsistOf("Bohemian Rhapsody"))
 		})
 
-		It("does not match tracks from a private playlist owned by another user", func() {
-			refID := createPrivatePlaylist(otherUser, "Bohemian Rhapsody")
-			results := evaluateRule(`{"all":[{"inPlaylist":{"id":"` + refID + `"}}]}`)
-			Expect(results).To(BeEmpty())
-		})
 	})
 })

@@ -147,25 +147,36 @@ func findMediaFileByTitle(title string) string {
 }
 
 func evaluateRule(jsonRule string) []string {
-	titles := evaluateRuleOrdered(jsonRule)
+	titles := evaluateRuleOrderedAs(testUser, jsonRule)
 	sort.Strings(titles)
 	return titles
 }
 
 func evaluateRuleOrdered(jsonRule string) []string {
+	return evaluateRuleOrderedAs(testUser, jsonRule)
+}
+
+func evaluateRuleAs(owner model.User, jsonRule string) []string {
+	titles := evaluateRuleOrderedAs(owner, jsonRule)
+	sort.Strings(titles)
+	return titles
+}
+
+func evaluateRuleOrderedAs(owner model.User, jsonRule string) []string {
+	userCtx := request.WithUser(GinkgoT().Context(), owner)
 	var rules criteria.Criteria
 	err := json.Unmarshal([]byte(jsonRule), &rules)
 	Expect(err).ToNot(HaveOccurred(), "invalid criteria JSON: %s", jsonRule)
 
 	pls := &model.Playlist{
 		Name:    "test-smart-playlist",
-		OwnerID: testUser.ID,
+		OwnerID: owner.ID,
 		Rules:   &rules,
 	}
-	err = ds.Playlist(ctx).Put(pls)
+	err = ds.Playlist(userCtx).Put(pls)
 	Expect(err).ToNot(HaveOccurred())
 
-	loaded, err := ds.Playlist(ctx).GetWithTracks(pls.ID, true, false)
+	loaded, err := ds.Playlist(userCtx).GetWithTracks(pls.ID, true, false)
 	Expect(err).ToNot(HaveOccurred())
 
 	titles := make([]string, len(loaded.Tracks))
@@ -198,12 +209,20 @@ func createPrivatePlaylist(owner model.User, titles ...string) string {
 }
 
 func createPublicSmartPlaylist(owner model.User, jsonRule string) string {
+	return createSmartPlaylist(owner, true, jsonRule)
+}
+
+func createPrivateSmartPlaylist(owner model.User, jsonRule string) string {
+	return createSmartPlaylist(owner, false, jsonRule)
+}
+
+func createSmartPlaylist(owner model.User, public bool, jsonRule string) string {
 	var rules criteria.Criteria
 	Expect(json.Unmarshal([]byte(jsonRule), &rules)).To(Succeed())
 	pls := &model.Playlist{
 		Name:    "ref-smart-playlist",
 		OwnerID: owner.ID,
-		Public:  true,
+		Public:  public,
 		Rules:   &rules,
 	}
 	Expect(ds.Playlist(ctx).Put(pls)).To(Succeed())

@@ -14,7 +14,6 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/pocketbase/dbx"
 )
 
@@ -228,13 +227,17 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 
 	// Re-populate playlist based on Smart Playlist criteria
 	rules := *pls.Rules
-	rulesSQL := newSmartPlaylistCriteria(rules)
+	rulesSQL := newSmartPlaylistCriteria(rules, withSmartPlaylistOwner(pls.OwnerID, usr.IsAdmin))
 
 	// If the playlist depends on other playlists, recursively refresh them first
 	childPlaylistIds := rules.ChildPlaylistIds()
 	for _, id := range childPlaylistIds {
 		childPls, err := r.Get(id)
 		if err != nil {
+			if errors.Is(err, model.ErrNotFound) {
+				log.Warn(r.ctx, "Referenced playlist is not accessible to smart playlist owner", "playlist", pls.Name, "id", pls.ID, "childId", id, "ownerId", pls.OwnerID)
+				continue
+			}
 			log.Error(r.ctx, "Error loading child playlist", "id", pls.ID, "childId", id, err)
 			return false
 		}
@@ -286,7 +289,7 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 	}
 
 	// Apply the criteria rules
-	sq, err = r.addCriteria(sq, rules)
+	sq, err = r.addCriteria(sq, rulesSQL)
 	if err != nil {
 		log.Error(r.ctx, "Error building smart playlist criteria", "playlist", pls.Name, "id", pls.ID, err)
 		return false
@@ -337,15 +340,14 @@ func (r *playlistRepository) addSmartPlaylistAnnotationJoins(sq SelectBuilder, j
 	return sq
 }
 
-func (r *playlistRepository) addCriteria(sql SelectBuilder, c criteria.Criteria) (SelectBuilder, error) {
-	cSQL := newSmartPlaylistCriteria(c)
+func (r *playlistRepository) addCriteria(sql SelectBuilder, cSQL smartPlaylistCriteria) (SelectBuilder, error) {
 	cond, err := cSQL.Where()
 	if err != nil {
 		return sql, err
 	}
 	sql = sql.Where(cond)
-	if c.Limit > 0 {
-		sql = sql.Limit(uint64(c.Limit)).Offset(uint64(c.Offset))
+	if cSQL.criteria.Limit > 0 {
+		sql = sql.Limit(uint64(cSQL.criteria.Limit)).Offset(uint64(cSQL.criteria.Offset))
 	}
 	if order := cSQL.OrderBy(); order != "" {
 		sql = sql.OrderBy(order)

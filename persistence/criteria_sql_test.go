@@ -59,6 +59,34 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 		Entry("role not contains", criteria.NotContains{"artist": "u2"}, "not exists (select 1 from json_tree(media_file.participants, '$.artist') where key='name' and value LIKE ?)", "%u2%"),
 	)
 
+	Describe("playlist permissions", func() {
+		It("allows public or same-owner playlist references for regular users", func() {
+			sqlizer, err := newSmartPlaylistCriteria(
+				criteria.Criteria{Expression: criteria.InPlaylist{"id": "deadbeef-dead-beef"}},
+				withSmartPlaylistOwner("owner-id", false),
+			).Where()
+			Expect(err).ToNot(HaveOccurred())
+
+			sql, args, err := sqlizer.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(sql).To(Equal("media_file.id IN (SELECT media_file_id FROM playlist_tracks pl LEFT JOIN playlist on pl.playlist_id = playlist.id WHERE (pl.playlist_id = ? AND (playlist.public = ? OR playlist.owner_id = ?)))"))
+			Expect(args).To(HaveExactElements("deadbeef-dead-beef", 1, "owner-id"))
+		})
+
+		It("allows all playlist references for admins", func() {
+			sqlizer, err := newSmartPlaylistCriteria(
+				criteria.Criteria{Expression: criteria.InPlaylist{"id": "deadbeef-dead-beef"}},
+				withSmartPlaylistOwner("admin-id", true),
+			).Where()
+			Expect(err).ToNot(HaveOccurred())
+
+			sql, args, err := sqlizer.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(sql).To(Equal("media_file.id IN (SELECT media_file_id FROM playlist_tracks pl LEFT JOIN playlist on pl.playlist_id = playlist.id WHERE (pl.playlist_id = ?))"))
+			Expect(args).To(HaveExactElements("deadbeef-dead-beef"))
+		})
+	})
+
 	It("builds relative date expressions", func() {
 		sqlizer, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: criteria.InTheLast{"lastPlayed": 30}}).Where()
 		Expect(err).ToNot(HaveOccurred())
