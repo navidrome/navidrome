@@ -39,17 +39,17 @@ var _ = Describe("Smart Playlists", func() {
 
 	Describe("Numeric fields", func() {
 		It("matches by year greater than", func() {
-			results := evaluateRule(`{"all":[{"gt":{"year":"1970"}}]}`)
+			results := evaluateRule(`{"all":[{"gt":{"year":1970}}]}`)
 			Expect(results).To(ConsistOf("Stairway To Heaven", "Black Dog", "Bohemian Rhapsody", "We Are the Champions"))
 		})
 
 		It("matches by year less than", func() {
-			results := evaluateRule(`{"all":[{"lt":{"year":"1969"}}]}`)
+			results := evaluateRule(`{"all":[{"lt":{"year":1969}}]}`)
 			Expect(results).To(ConsistOf("So What", "All Along the Watchtower"))
 		})
 
 		It("matches by BPM in range", func() {
-			results := evaluateRule(`{"all":[{"inTheRange":{"bpm":["100","130"]}}]}`)
+			results := evaluateRule(`{"all":[{"inTheRange":{"bpm":[100,130]}}]}`)
 			Expect(results).To(ConsistOf("Come Together", "Something", "All Along the Watchtower"))
 		})
 	})
@@ -146,12 +146,12 @@ var _ = Describe("Smart Playlists", func() {
 
 	Describe("Date/time fields", func() {
 		It("matches lastPlayed inTheLast 1 day", func() {
-			results := evaluateRule(`{"all":[{"inTheLast":{"lastplayed":"1"}}]}`)
+			results := evaluateRule(`{"all":[{"inTheLast":{"lastplayed":1}}]}`)
 			Expect(results).To(ConsistOf("Come Together", "Black Dog"))
 		})
 
 		It("matches lastPlayed notInTheLast (far future)", func() {
-			results := evaluateRule(`{"all":[{"notInTheLast":{"lastplayed":"99999"}}]}`)
+			results := evaluateRule(`{"all":[{"notInTheLast":{"lastplayed":99999}}]}`)
 			Expect(results).To(ConsistOf("Something", "Stairway To Heaven", "So What",
 				"Bohemian Rhapsody", "All Along the Watchtower", "We Are the Champions"))
 		})
@@ -167,7 +167,7 @@ var _ = Describe("Smart Playlists", func() {
 		})
 
 		It("matches dateAdded inTheLast 1 day", func() {
-			results := evaluateRule(`{"all":[{"inTheLast":{"dateadded":"1"}}]}`)
+			results := evaluateRule(`{"all":[{"inTheLast":{"dateadded":1}}]}`)
 			Expect(results).To(ConsistOf("Come Together", "Something", "Stairway To Heaven", "Black Dog",
 				"So What", "Bohemian Rhapsody", "All Along the Watchtower", "We Are the Champions"))
 		})
@@ -175,7 +175,7 @@ var _ = Describe("Smart Playlists", func() {
 
 	Describe("Logic operators", func() {
 		It("matches with ALL (AND)", func() {
-			results := evaluateRule(`{"all":[{"is":{"genre":"Blues"}},{"gt":{"bpm":"130"}}]}`)
+			results := evaluateRule(`{"all":[{"is":{"genre":"Blues"}},{"gt":{"bpm":130}}]}`)
 			Expect(results).To(ConsistOf("Black Dog"))
 		})
 
@@ -185,14 +185,14 @@ var _ = Describe("Smart Playlists", func() {
 		})
 
 		It("matches nested all/any", func() {
-			results := evaluateRule(`{"all":[{"any":[{"is":{"genre":"Blues"}},{"is":{"genre":"Jazz"}}]},{"gt":{"year":"1960"}}]}`)
+			results := evaluateRule(`{"all":[{"any":[{"is":{"genre":"Blues"}},{"is":{"genre":"Jazz"}}]},{"gt":{"year":1960}}]}`)
 			Expect(results).To(ConsistOf("Come Together", "Black Dog", "All Along the Watchtower"))
 		})
 	})
 
 	Describe("Sorting and limits", func() {
 		It("returns tracks sorted by year descending with limit", func() {
-			results := evaluateRuleOrdered(`{"all":[{"gt":{"year":"0"}}],"sort":"year","order":"desc","limit":2}`)
+			results := evaluateRuleOrdered(`{"all":[{"gt":{"year":0}}],"sort":"year","order":"desc","limit":2}`)
 			Expect(results).To(Equal([]string{"We Are the Champions", "Bohemian Rhapsody"}))
 		})
 
@@ -211,7 +211,7 @@ var _ = Describe("Smart Playlists", func() {
 						{"is":{"genre":"Folk"}}
 					]},
 					{"isNot":{"genre":"Jazz"}},
-					{"gt":{"year":"1965"}}
+					{"gt":{"year":1965}}
 				],
 				"sort":"-year,title"
 			}`)

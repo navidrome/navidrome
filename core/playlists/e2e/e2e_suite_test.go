@@ -49,8 +49,9 @@ var (
 	ds  *tests.MockDataStore
 	lib model.Library
 
-	dbFilePath   string
-	snapshotPath string
+	dbFilePath     string
+	snapshotPath   string
+	snapshotTables []string
 
 	testUser = model.User{
 		ID:       "sp-test-user-1",
@@ -147,25 +148,7 @@ func findMediaFileByTitle(title string) string {
 }
 
 func evaluateRule(jsonRule string) []string {
-	var rules criteria.Criteria
-	err := json.Unmarshal([]byte(jsonRule), &rules)
-	Expect(err).ToNot(HaveOccurred(), "invalid criteria JSON: %s", jsonRule)
-
-	pls := &model.Playlist{
-		Name:    "test-smart-playlist",
-		OwnerID: testUser.ID,
-		Rules:   &rules,
-	}
-	err = ds.Playlist(ctx).Put(pls)
-	Expect(err).ToNot(HaveOccurred())
-
-	loaded, err := ds.Playlist(ctx).GetWithTracks(pls.ID, true, false)
-	Expect(err).ToNot(HaveOccurred())
-
-	titles := make([]string, len(loaded.Tracks))
-	for i, t := range loaded.Tracks {
-		titles[i] = t.Title
-	}
+	titles := evaluateRuleOrdered(jsonRule)
 	sort.Strings(titles)
 	return titles
 }
@@ -285,6 +268,16 @@ var _ = BeforeSuite(func() {
 	}
 	Expect(ds.MediaFile(ctx).IncPlayCount(findMediaFileByTitle("Black Dog"), time.Now())).To(Succeed())
 
+	rows, err := db.Db().Query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '%_fts' AND name NOT LIKE '%_fts_%'")
+	Expect(err).ToNot(HaveOccurred())
+	defer rows.Close()
+	for rows.Next() {
+		var name string
+		Expect(rows.Scan(&name)).To(Succeed())
+		snapshotTables = append(snapshotTables, name)
+	}
+	Expect(rows.Err()).ToNot(HaveOccurred())
+
 	_, err = db.Db().Exec("PRAGMA wal_checkpoint(TRUNCATE)")
 	Expect(err).ToNot(HaveOccurred())
 	data, err := os.ReadFile(dbFilePath)
@@ -301,32 +294,23 @@ func restoreDB() {
 
 	_, err := sqlDB.Exec("PRAGMA foreign_keys = OFF")
 	Expect(err).ToNot(HaveOccurred())
+	defer func() { _, _ = sqlDB.Exec("PRAGMA foreign_keys = ON") }()
 
 	_, err = sqlDB.Exec("ATTACH DATABASE ? AS snapshot", snapshotPath)
 	Expect(err).ToNot(HaveOccurred())
+	defer func() { _, _ = sqlDB.Exec("DETACH DATABASE snapshot") }()
 
-	rows, err := sqlDB.Query("SELECT name FROM main.sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '%_fts' AND name NOT LIKE '%_fts_%'")
+	_, err = sqlDB.Exec("BEGIN TRANSACTION")
 	Expect(err).ToNot(HaveOccurred())
-	var tables []string
-	for rows.Next() {
-		var name string
-		Expect(rows.Scan(&name)).To(Succeed())
-		tables = append(tables, name)
-	}
-	Expect(rows.Err()).ToNot(HaveOccurred())
-	rows.Close()
 
-	for _, table := range tables {
-		// Table names come from sqlite_master, not user input, so concatenation is safe here
+	for _, table := range snapshotTables {
 		_, err = sqlDB.Exec(`DELETE FROM main."` + table + `"`) //nolint:gosec
 		Expect(err).ToNot(HaveOccurred())
 		_, err = sqlDB.Exec(`INSERT INTO main."` + table + `" SELECT * FROM snapshot."` + table + `"`) //nolint:gosec
 		Expect(err).ToNot(HaveOccurred())
 	}
 
-	_, err = sqlDB.Exec("DETACH DATABASE snapshot")
-	Expect(err).ToNot(HaveOccurred())
-	_, err = sqlDB.Exec("PRAGMA foreign_keys = ON")
+	_, err = sqlDB.Exec("COMMIT")
 	Expect(err).ToNot(HaveOccurred())
 }
 
