@@ -45,7 +45,13 @@ func (s *playlists) ImportFile(ctx context.Context, absolutePath string, sync bo
 		return pls, nil
 	}
 
-	log.Debug(ctx, "Playlist file is outside all libraries, using reader-based import", "path", absPath)
+	log.Debug(ctx, "Playlist file is outside all libraries, using path-based import", "path", absPath)
+	pls, err := s.newSyncedPlaylist(dir, filename)
+	if err != nil {
+		return nil, fmt.Errorf("reading playlist file: %w", err)
+	}
+	pls.Sync = sync
+
 	file, err := os.Open(absPath)
 	if err != nil {
 		return nil, fmt.Errorf("opening playlist file: %w", err)
@@ -53,7 +59,13 @@ func (s *playlists) ImportFile(ctx context.Context, absolutePath string, sync bo
 	defer file.Close()
 
 	reader := ioutils.UTF8Reader(file)
-	return s.ImportM3U(ctx, reader)
+	if err := s.parseM3U(ctx, pls, nil, reader); err != nil {
+		return nil, err
+	}
+	if err := s.updatePlaylist(ctx, pls, sync); err != nil {
+		return nil, err
+	}
+	return pls, nil
 }
 
 var errNotInLibrary = fmt.Errorf("path not in any library")

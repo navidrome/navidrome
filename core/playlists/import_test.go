@@ -676,7 +676,7 @@ var _ = Describe("Playlists - Import", func() {
 			Expect(pls.Sync).To(BeTrue())
 		})
 
-		It("falls back to ImportM3U for files outside all libraries", func() {
+		It("records path for files outside all libraries", func() {
 			tmpDir := GinkgoT().TempDir()
 			libDir := filepath.Join(tmpDir, "music")
 			Expect(os.Mkdir(libDir, 0755)).To(Succeed())
@@ -690,7 +690,7 @@ var _ = Describe("Playlists - Import", func() {
 			pls, err := ps.ImportFile(ctx, plsFile, false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(pls.Name).To(Equal("External Playlist"))
-			Expect(pls.Path).To(BeEmpty())
+			Expect(pls.Path).To(Equal(plsFile))
 			Expect(pls.Sync).To(BeFalse())
 		})
 
