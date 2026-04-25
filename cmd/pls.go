@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"context"
 	"encoding/csv"
 	"encoding/json"
@@ -288,13 +289,16 @@ func runImport(ctx context.Context, files []string) {
 }
 
 func countM3UTrackLines(path string) int {
-	data, err := os.ReadFile(path)
+	file, err := os.Open(path)
 	if err != nil {
 		return 0
 	}
+	defer file.Close()
+
 	count := 0
-	for line := range strings.SplitSeq(string(data), "\n") {
-		line = strings.TrimSpace(line)
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}

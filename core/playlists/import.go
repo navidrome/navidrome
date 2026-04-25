@@ -28,12 +28,15 @@ func (s *playlists) ImportFile(ctx context.Context, absolutePath string, sync bo
 	filename := filepath.Base(absPath)
 
 	folder, err := s.resolveFolder(ctx, dir)
+	if err != nil && !errors.Is(err, errNotInLibrary) {
+		return nil, err
+	}
 	if err == nil {
 		pls, err := s.importFromFolder(ctx, folder, filename, sync)
 		if err != nil {
 			return nil, err
 		}
-		if pls.Sync != sync {
+		if pls.ID != "" && pls.Sync != sync {
 			pls.Sync = sync
 			if putErr := s.ds.Playlist(ctx).Put(pls); putErr != nil {
 				return nil, putErr
@@ -53,6 +56,8 @@ func (s *playlists) ImportFile(ctx context.Context, absolutePath string, sync bo
 	return s.ImportM3U(ctx, reader)
 }
 
+var errNotInLibrary = fmt.Errorf("path not in any library")
+
 func (s *playlists) resolveFolder(ctx context.Context, dir string) (*model.Folder, error) {
 	libs, err := s.ds.Library(ctx).GetAll()
 	if err != nil {
@@ -61,7 +66,7 @@ func (s *playlists) resolveFolder(ctx context.Context, dir string) (*model.Folde
 	matcher := newLibraryMatcher(libs)
 	lib, ok := matcher.findLibrary(dir)
 	if !ok {
-		return nil, fmt.Errorf("path not in any library: %s", dir)
+		return nil, fmt.Errorf("%w: %s", errNotInLibrary, dir)
 	}
 
 	folder, err := s.ds.Folder(ctx).GetByPath(lib, dir)
