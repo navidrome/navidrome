@@ -53,14 +53,14 @@ var (
 	snapshotPath   string
 	snapshotTables []string
 
-	testUser = model.User{
+	adminUser = model.User{
 		ID:       "sp-test-user-1",
 		UserName: "sptestuser",
 		Name:     "SP Test User",
 		IsAdmin:  true,
 	}
 
-	otherUser = model.User{
+	regularUser = model.User{
 		ID:       "sp-test-user-2",
 		UserName: "spotheruser",
 		Name:     "SP Other User",
@@ -147,25 +147,36 @@ func findMediaFileByTitle(title string) string {
 }
 
 func evaluateRule(jsonRule string) []string {
-	titles := evaluateRuleOrdered(jsonRule)
+	titles := evaluateRuleOrderedAs(adminUser, jsonRule)
 	sort.Strings(titles)
 	return titles
 }
 
 func evaluateRuleOrdered(jsonRule string) []string {
+	return evaluateRuleOrderedAs(adminUser, jsonRule)
+}
+
+func evaluateRuleAs(owner model.User, jsonRule string) []string {
+	titles := evaluateRuleOrderedAs(owner, jsonRule)
+	sort.Strings(titles)
+	return titles
+}
+
+func evaluateRuleOrderedAs(owner model.User, jsonRule string) []string {
+	userCtx := request.WithUser(GinkgoT().Context(), owner)
 	var rules criteria.Criteria
 	err := json.Unmarshal([]byte(jsonRule), &rules)
 	Expect(err).ToNot(HaveOccurred(), "invalid criteria JSON: %s", jsonRule)
 
 	pls := &model.Playlist{
 		Name:    "test-smart-playlist",
-		OwnerID: testUser.ID,
+		OwnerID: owner.ID,
 		Rules:   &rules,
 	}
-	err = ds.Playlist(ctx).Put(pls)
+	err = ds.Playlist(userCtx).Put(pls)
 	Expect(err).ToNot(HaveOccurred())
 
-	loaded, err := ds.Playlist(ctx).GetWithTracks(pls.ID, true, false)
+	loaded, err := ds.Playlist(userCtx).GetWithTracks(pls.ID, true, false)
 	Expect(err).ToNot(HaveOccurred())
 
 	titles := make([]string, len(loaded.Tracks))
@@ -198,12 +209,20 @@ func createPrivatePlaylist(owner model.User, titles ...string) string {
 }
 
 func createPublicSmartPlaylist(owner model.User, jsonRule string) string {
+	return createSmartPlaylist(owner, true, jsonRule)
+}
+
+func createPrivateSmartPlaylist(owner model.User, jsonRule string) string {
+	return createSmartPlaylist(owner, false, jsonRule)
+}
+
+func createSmartPlaylist(owner model.User, public bool, jsonRule string) string {
 	var rules criteria.Criteria
 	Expect(json.Unmarshal([]byte(jsonRule), &rules)).To(Succeed())
 	pls := &model.Playlist{
 		Name:    "ref-smart-playlist",
 		OwnerID: owner.ID,
-		Public:  true,
+		Public:  public,
 		Rules:   &rules,
 	}
 	Expect(ds.Playlist(ctx).Put(pls)).To(Succeed())
@@ -211,7 +230,7 @@ func createPublicSmartPlaylist(owner model.User, jsonRule string) string {
 }
 
 var _ = BeforeSuite(func() {
-	ctx = request.WithUser(GinkgoT().Context(), testUser)
+	ctx = request.WithUser(GinkgoT().Context(), adminUser)
 	tmpDir := GinkgoT().TempDir()
 	dbFilePath = filepath.Join(tmpDir, "smartplaylist-e2e.db")
 	snapshotPath = filepath.Join(tmpDir, "smartplaylist-e2e.db.snapshot")
@@ -226,28 +245,28 @@ var _ = BeforeSuite(func() {
 
 	initDS := &tests.MockDataStore{RealDS: persistence.New(db.Db())}
 
-	userWithPass := testUser
+	userWithPass := adminUser
 	userWithPass.NewPassword = "password"
 	Expect(initDS.User(ctx).Put(&userWithPass)).To(Succeed())
 
-	otherUserWithPass := otherUser
-	otherUserWithPass.NewPassword = "password"
-	Expect(initDS.User(ctx).Put(&otherUserWithPass)).To(Succeed())
+	regularUserWithPass := regularUser
+	regularUserWithPass.NewPassword = "password"
+	Expect(initDS.User(ctx).Put(&regularUserWithPass)).To(Succeed())
 
 	lib = model.Library{ID: 1, Name: "Music Library", Path: "fake:///music"}
 	Expect(initDS.Library(ctx).Put(&lib)).To(Succeed())
-	Expect(initDS.User(ctx).SetUserLibraries(testUser.ID, []int{lib.ID})).To(Succeed())
-	Expect(initDS.User(ctx).SetUserLibraries(otherUser.ID, []int{lib.ID})).To(Succeed())
+	Expect(initDS.User(ctx).SetUserLibraries(adminUser.ID, []int{lib.ID})).To(Succeed())
+	Expect(initDS.User(ctx).SetUserLibraries(regularUser.ID, []int{lib.ID})).To(Succeed())
 
-	loadedUser, err := initDS.User(ctx).FindByUsername(testUser.UserName)
+	loadedUser, err := initDS.User(ctx).FindByUsername(adminUser.UserName)
 	Expect(err).ToNot(HaveOccurred())
-	testUser.Libraries = loadedUser.Libraries
+	adminUser.Libraries = loadedUser.Libraries
 
-	loadedOther, err := initDS.User(ctx).FindByUsername(otherUser.UserName)
+	loadedOther, err := initDS.User(ctx).FindByUsername(regularUser.UserName)
 	Expect(err).ToNot(HaveOccurred())
-	otherUser.Libraries = loadedOther.Libraries
+	regularUser.Libraries = loadedOther.Libraries
 
-	ctx = request.WithUser(GinkgoT().Context(), testUser)
+	ctx = request.WithUser(GinkgoT().Context(), adminUser)
 
 	buildTestFS()
 	s := scanner.New(ctx, initDS, artwork.NoopCacheWarmer(), events.NoopBroker(),
@@ -315,7 +334,7 @@ func restoreDB() {
 }
 
 func setupTestDB() {
-	ctx = request.WithUser(GinkgoT().Context(), testUser)
+	ctx = request.WithUser(GinkgoT().Context(), adminUser)
 	DeferCleanup(configtest.SetupConfig())
 	conf.Server.MusicFolder = "fake:///music"
 	conf.Server.DevExternalScanner = false
