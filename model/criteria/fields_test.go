@@ -6,11 +6,58 @@ import (
 )
 
 var _ = Describe("fields", func() {
-	Describe("mapFields", func() {
-		It("ignores random fields", func() {
-			m := map[string]any{"random": "123"}
-			m = mapFields(m)
-			gomega.Expect(m).To(gomega.BeEmpty())
+	Describe("LookupField", func() {
+		It("finds built-in fields case-insensitively", func() {
+			field, ok := LookupField("Title")
+
+			gomega.Expect(ok).To(gomega.BeTrue())
+			gomega.Expect(field).To(gomega.Equal(FieldInfo{Name: "title"}))
+		})
+
+		It("resolves aliases to their semantic field name", func() {
+			field, ok := LookupField("albumtype")
+
+			gomega.Expect(ok).To(gomega.BeTrue())
+			gomega.Expect(field.Name).To(gomega.Equal("releasetype"))
+			gomega.Expect(field.IsTag).To(gomega.BeTrue())
+		})
+
+		It("finds special fields", func() {
+			field, ok := LookupField("value")
+
+			gomega.Expect(ok).To(gomega.BeTrue())
+			gomega.Expect(field.Name).To(gomega.Equal("value"))
+		})
+
+		It("finds registered tag names", func() {
+			AddTagNames([]string{"task3_mood"})
+
+			field, ok := LookupField("task3_mood")
+
+			gomega.Expect(ok).To(gomega.BeTrue())
+			gomega.Expect(field.Name).To(gomega.Equal("task3_mood"))
+			gomega.Expect(field.IsTag).To(gomega.BeTrue())
+		})
+
+		It("marks registered numeric tags", func() {
+			AddTagNames([]string{"task3_score"})
+			AddNumericTags([]string{"task3_score"})
+
+			field, ok := LookupField("task3_score")
+
+			gomega.Expect(ok).To(gomega.BeTrue())
+			gomega.Expect(field.IsTag).To(gomega.BeTrue())
+			gomega.Expect(field.Numeric).To(gomega.BeTrue())
+		})
+
+		It("finds registered roles", func() {
+			AddRoles([]string{"task3_producer"})
+
+			field, ok := LookupField("task3_producer")
+
+			gomega.Expect(ok).To(gomega.BeTrue())
+			gomega.Expect(field.Name).To(gomega.Equal("task3_producer"))
+			gomega.Expect(field.IsRole).To(gomega.BeTrue())
 		})
 	})
 })

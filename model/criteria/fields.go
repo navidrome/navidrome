@@ -1,280 +1,133 @@
 package criteria
 
-import (
-	"fmt"
-	"reflect"
-	"strings"
+import "strings"
 
-	"github.com/Masterminds/squirrel"
-	"github.com/navidrome/navidrome/log"
-)
-
-// JoinType is a bitmask indicating which additional JOINs are needed by a smart playlist expression.
-type JoinType int
-
-const (
-	JoinNone            JoinType = 0
-	JoinAlbumAnnotation JoinType = 1 << iota
-	JoinArtistAnnotation
-)
-
-// Has returns true if j contains all bits in other.
-func (j JoinType) Has(other JoinType) bool { return j&other != 0 }
-
-var fieldMap = map[string]*mappedField{
-	"title":           {field: "media_file.title"},
-	"album":           {field: "media_file.album"},
-	"hascoverart":     {field: "media_file.has_cover_art"},
-	"tracknumber":     {field: "media_file.track_number"},
-	"discnumber":      {field: "media_file.disc_number"},
-	"year":            {field: "media_file.year"},
-	"date":            {field: "media_file.date", alias: "recordingdate"},
-	"originalyear":    {field: "media_file.original_year"},
-	"originaldate":    {field: "media_file.original_date"},
-	"releaseyear":     {field: "media_file.release_year"},
-	"releasedate":     {field: "media_file.release_date"},
-	"size":            {field: "media_file.size"},
-	"compilation":     {field: "media_file.compilation"},
-	"missing":         {field: "media_file.missing"},
-	"explicitstatus":  {field: "media_file.explicit_status"},
-	"dateadded":       {field: "media_file.created_at"},
-	"datemodified":    {field: "media_file.updated_at"},
-	"discsubtitle":    {field: "media_file.disc_subtitle"},
-	"comment":         {field: "media_file.comment"},
-	"lyrics":          {field: "media_file.lyrics"},
-	"sorttitle":       {field: "media_file.sort_title"},
-	"sortalbum":       {field: "media_file.sort_album_name"},
-	"sortartist":      {field: "media_file.sort_artist_name"},
-	"sortalbumartist": {field: "media_file.sort_album_artist_name"},
-	"albumcomment":    {field: "media_file.mbz_album_comment"},
-	"catalognumber":   {field: "media_file.catalog_num"},
-	"filepath":        {field: "media_file.path"},
-	"filetype":        {field: "media_file.suffix"},
-	"codec":           {field: "media_file.codec"},
-	"duration":        {field: "media_file.duration"},
-	"bitrate":         {field: "media_file.bit_rate"},
-	"bitdepth":        {field: "media_file.bit_depth"},
-	"samplerate":      {field: "media_file.sample_rate"},
-	"bpm":             {field: "media_file.bpm"},
-	"channels":        {field: "media_file.channels"},
-	"loved":           {field: "COALESCE(annotation.starred, false)"},
-	"dateloved":       {field: "annotation.starred_at"},
-	"lastplayed":      {field: "annotation.play_date"},
-	"daterated":       {field: "annotation.rated_at"},
-	"playcount":       {field: "COALESCE(annotation.play_count, 0)"},
-	"rating":          {field: "COALESCE(annotation.rating, 0)"},
-	"averagerating":   {field: "media_file.average_rating", numeric: true},
-	"albumrating":     {field: "COALESCE(album_annotation.rating, 0)", joinType: JoinAlbumAnnotation},
-	"albumloved":      {field: "COALESCE(album_annotation.starred, false)", joinType: JoinAlbumAnnotation},
-	"albumplaycount":  {field: "COALESCE(album_annotation.play_count, 0)", joinType: JoinAlbumAnnotation},
-	"albumlastplayed": {field: "album_annotation.play_date", joinType: JoinAlbumAnnotation},
-	"albumdateloved":  {field: "album_annotation.starred_at", joinType: JoinAlbumAnnotation},
-	"albumdaterated":  {field: "album_annotation.rated_at", joinType: JoinAlbumAnnotation},
-
-	"artistrating":     {field: "COALESCE(artist_annotation.rating, 0)", joinType: JoinArtistAnnotation},
-	"artistloved":      {field: "COALESCE(artist_annotation.starred, false)", joinType: JoinArtistAnnotation},
-	"artistplaycount":  {field: "COALESCE(artist_annotation.play_count, 0)", joinType: JoinArtistAnnotation},
-	"artistlastplayed": {field: "artist_annotation.play_date", joinType: JoinArtistAnnotation},
-	"artistdateloved":  {field: "artist_annotation.starred_at", joinType: JoinArtistAnnotation},
-	"artistdaterated":  {field: "artist_annotation.rated_at", joinType: JoinArtistAnnotation},
-
-	"mbz_album_id":         {field: "media_file.mbz_album_id"},
-	"mbz_album_artist_id":  {field: "media_file.mbz_album_artist_id"},
-	"mbz_artist_id":        {field: "media_file.mbz_artist_id"},
-	"mbz_recording_id":     {field: "media_file.mbz_recording_id"},
-	"mbz_release_track_id": {field: "media_file.mbz_release_track_id"},
-	"mbz_release_group_id": {field: "media_file.mbz_release_group_id"},
-	"library_id":           {field: "media_file.library_id", numeric: true},
-
-	// Backward compatibility: albumtype is an alias for releasetype tag
-	"albumtype": {field: "releasetype", isTag: true},
-
-	// special fields
-	"random": {field: "", order: "random()"}, // pseudo-field for random sorting
-	"value":  {field: "value"},               // pseudo-field for tag and roles values
+// FieldInfo describes a criteria field without tying it to persistence details.
+type FieldInfo struct {
+	Name    string
+	IsTag   bool
+	IsRole  bool
+	Numeric bool
 }
 
-type mappedField struct {
-	field    string
-	order    string
-	isRole   bool     // true if the field is a role (e.g. "artist", "composer", "conductor", etc.)
-	isTag    bool     // true if the field is a tag imported from the file metadata
-	alias    string   // name from `mappings.yml` that may differ from the name used in the smart playlist
-	numeric  bool     // true if the field/tag should be treated as numeric
-	joinType JoinType // which additional JOINs this field requires
+var fieldMap = map[string]*fieldMetadata{
+	"title":                {name: "title"},
+	"album":                {name: "album"},
+	"hascoverart":          {name: "hascoverart"},
+	"tracknumber":          {name: "tracknumber"},
+	"discnumber":           {name: "discnumber"},
+	"year":                 {name: "year"},
+	"date":                 {name: "date", alias: "recordingdate"},
+	"originalyear":         {name: "originalyear"},
+	"originaldate":         {name: "originaldate"},
+	"releaseyear":          {name: "releaseyear"},
+	"releasedate":          {name: "releasedate"},
+	"size":                 {name: "size"},
+	"compilation":          {name: "compilation"},
+	"missing":              {name: "missing"},
+	"explicitstatus":       {name: "explicitstatus"},
+	"dateadded":            {name: "dateadded"},
+	"datemodified":         {name: "datemodified"},
+	"discsubtitle":         {name: "discsubtitle"},
+	"comment":              {name: "comment"},
+	"lyrics":               {name: "lyrics"},
+	"sorttitle":            {name: "sorttitle"},
+	"sortalbum":            {name: "sortalbum"},
+	"sortartist":           {name: "sortartist"},
+	"sortalbumartist":      {name: "sortalbumartist"},
+	"albumcomment":         {name: "albumcomment"},
+	"catalognumber":        {name: "catalognumber"},
+	"filepath":             {name: "filepath"},
+	"filetype":             {name: "filetype"},
+	"codec":                {name: "codec"},
+	"duration":             {name: "duration"},
+	"bitrate":              {name: "bitrate"},
+	"bitdepth":             {name: "bitdepth"},
+	"samplerate":           {name: "samplerate"},
+	"bpm":                  {name: "bpm"},
+	"channels":             {name: "channels"},
+	"loved":                {name: "loved"},
+	"dateloved":            {name: "dateloved"},
+	"lastplayed":           {name: "lastplayed"},
+	"daterated":            {name: "daterated"},
+	"playcount":            {name: "playcount"},
+	"rating":               {name: "rating"},
+	"averagerating":        {name: "averagerating", numeric: true},
+	"albumrating":          {name: "albumrating"},
+	"albumloved":           {name: "albumloved"},
+	"albumplaycount":       {name: "albumplaycount"},
+	"albumlastplayed":      {name: "albumlastplayed"},
+	"albumdateloved":       {name: "albumdateloved"},
+	"albumdaterated":       {name: "albumdaterated"},
+	"artistrating":         {name: "artistrating"},
+	"artistloved":          {name: "artistloved"},
+	"artistplaycount":      {name: "artistplaycount"},
+	"artistlastplayed":     {name: "artistlastplayed"},
+	"artistdateloved":      {name: "artistdateloved"},
+	"artistdaterated":      {name: "artistdaterated"},
+	"mbz_album_id":         {name: "mbz_album_id"},
+	"mbz_album_artist_id":  {name: "mbz_album_artist_id"},
+	"mbz_artist_id":        {name: "mbz_artist_id"},
+	"mbz_recording_id":     {name: "mbz_recording_id"},
+	"mbz_release_track_id": {name: "mbz_release_track_id"},
+	"mbz_release_group_id": {name: "mbz_release_group_id"},
+	"library_id":           {name: "library_id", numeric: true},
+
+	// Backward compatibility: albumtype is an alias for the releasetype tag.
+	"albumtype": {name: "releasetype", isTag: true},
+
+	"random": {name: "random"},
+	"value":  {name: "value"},
 }
 
-func mapFields(expr map[string]any) map[string]any {
-	m := make(map[string]any)
-	for f, v := range expr {
-		if dbf := fieldMap[strings.ToLower(f)]; dbf != nil && dbf.field != "" {
-			m[dbf.field] = v
-		} else {
-			log.Error("Invalid field in criteria", "field", f)
-		}
+type fieldMetadata struct {
+	name    string
+	isRole  bool
+	isTag   bool
+	alias   string
+	numeric bool
+}
+
+// AllFieldNames returns the names of all registered criteria fields.
+func AllFieldNames() []string {
+	names := make([]string, 0, len(fieldMap))
+	for name := range fieldMap {
+		names = append(names, name)
 	}
-	return m
+	return names
 }
 
-// mapExpr maps a normal field expression to a specific type of expression (tag or role).
-// This is required because tags are handled differently than other fields,
-// as they are stored as a JSON column in the database.
-func mapExpr(expr squirrel.Sqlizer, negate bool, exprFunc func(string, squirrel.Sqlizer, bool) squirrel.Sqlizer) squirrel.Sqlizer {
-	rv := reflect.ValueOf(expr)
-	if rv.Kind() != reflect.Map || rv.Type().Key().Kind() != reflect.String {
-		log.Fatal(fmt.Sprintf("expr is not a map-based operator: %T", expr))
+// LookupField returns semantic metadata for a criteria field name.
+func LookupField(name string) (FieldInfo, bool) {
+	f, ok := fieldMap[strings.ToLower(name)]
+	if !ok {
+		return FieldInfo{}, false
 	}
-
-	// Extract the field name and value, then build a new map keyed by "value"
-	// for the inner condition. The original map is left untouched so that
-	// ToSql can be called multiple times without corruption.
-	var k string
-	var v any
-	for _, key := range rv.MapKeys() {
-		k = key.String()
-		v = rv.MapIndex(key).Interface()
-		break // only one key is expected (and supported)
-	}
-
-	// Create a new map-based expression with "value" as the key, matching the
-	// column name inside json_tree subqueries.
-	newMap := reflect.MakeMap(rv.Type())
-	newMap.SetMapIndex(reflect.ValueOf("value"), reflect.ValueOf(v))
-	newExpr := newMap.Interface().(squirrel.Sqlizer)
-
-	return exprFunc(k, newExpr, negate)
-}
-
-// mapTagExpr maps a normal field expression to a tag expression.
-func mapTagExpr(expr squirrel.Sqlizer, negate bool) squirrel.Sqlizer {
-	return mapExpr(expr, negate, tagExpr)
-}
-
-// mapRoleExpr maps a normal field expression to an artist role expression.
-func mapRoleExpr(expr squirrel.Sqlizer, negate bool) squirrel.Sqlizer {
-	return mapExpr(expr, negate, roleExpr)
-}
-
-func isTagExpr(expr map[string]any) bool {
-	for f := range expr {
-		if f2, ok := fieldMap[strings.ToLower(f)]; ok && f2.isTag {
-			return true
-		}
-	}
-	return false
-}
-
-func isRoleExpr(expr map[string]any) bool {
-	for f := range expr {
-		if f2, ok := fieldMap[strings.ToLower(f)]; ok && f2.isRole {
-			return true
-		}
-	}
-	return false
-}
-
-func tagExpr(tag string, cond squirrel.Sqlizer, negate bool) squirrel.Sqlizer {
-	return tagCond{tag: tag, cond: cond, not: negate}
-}
-
-type tagCond struct {
-	tag  string
-	cond squirrel.Sqlizer
-	not  bool
-}
-
-func (e tagCond) ToSql() (string, []any, error) {
-	cond, args, err := e.cond.ToSql()
-
-	// Resolve the actual tag name (handles aliases like albumtype -> releasetype)
-	tagName := e.tag
-	if fm, ok := fieldMap[e.tag]; ok {
-		if fm.field != "" {
-			tagName = fm.field
-		}
-		if fm.numeric {
-			cond = strings.ReplaceAll(cond, "value", "CAST(value AS REAL)")
-		}
-	}
-
-	cond = fmt.Sprintf("exists (select 1 from json_tree(media_file.tags, '$.%s') where key='value' and %s)",
-		tagName, cond)
-	if e.not {
-		cond = "not " + cond
-	}
-	return cond, args, err
-}
-
-func roleExpr(role string, cond squirrel.Sqlizer, negate bool) squirrel.Sqlizer {
-	return roleCond{role: role, cond: cond, not: negate}
-}
-
-type roleCond struct {
-	role string
-	cond squirrel.Sqlizer
-	not  bool
-}
-
-func (e roleCond) ToSql() (string, []any, error) {
-	cond, args, err := e.cond.ToSql()
-	cond = fmt.Sprintf(`exists (select 1 from json_tree(media_file.participants, '$.%s') where key='name' and %s)`,
-		e.role, cond)
-	if e.not {
-		cond = "not " + cond
-	}
-	return cond, args, err
-}
-
-// fieldJoinType returns the JoinType for a given field name (case-insensitive).
-func fieldJoinType(name string) JoinType {
-	if f, ok := fieldMap[strings.ToLower(name)]; ok {
-		return f.joinType
-	}
-	return JoinNone
-}
-
-// extractJoinTypes walks an expression tree and collects all required JoinType flags.
-func extractJoinTypes(expr any) JoinType {
-	result := JoinNone
-	switch e := expr.(type) {
-	case All:
-		for _, sub := range e {
-			result |= extractJoinTypes(sub)
-		}
-	case Any:
-		for _, sub := range e {
-			result |= extractJoinTypes(sub)
-		}
-	default:
-		// Leaf expression: use reflection to check if it's a map with field names
-		rv := reflect.ValueOf(expr)
-		if rv.Kind() == reflect.Map && rv.Type().Key().Kind() == reflect.String {
-			for _, key := range rv.MapKeys() {
-				result |= fieldJoinType(key.String())
-			}
-		}
-	}
-	return result
+	return FieldInfo{
+		Name:    f.name,
+		IsTag:   f.isTag,
+		IsRole:  f.isRole,
+		Numeric: f.numeric,
+	}, true
 }
 
 // AddRoles adds roles to the field map. This is used to add all artist roles to the field map, so they can be used in
-// smart playlists. If a role already exists in the field map, it is ignored, so calls to this function are idempotent.
+// smart playlists.
 func AddRoles(roles []string) {
 	for _, role := range roles {
 		name := strings.ToLower(role)
 		if _, ok := fieldMap[name]; ok {
 			continue
 		}
-		fieldMap[name] = &mappedField{field: name, isRole: true}
+		fieldMap[name] = &fieldMetadata{name: name, isRole: true}
 	}
 }
 
 // AddTagNames adds tag names to the field map. This is used to add all tags mapped in the `mappings.yml`
-// file to the field map, so they can be used in smart playlists.
-// If a tag name already exists in the field map, it is ignored, so calls to this function are idempotent.
+// configuration file.
 func AddTagNames(tagNames []string) {
-	for _, name := range tagNames {
-		name := strings.ToLower(name)
+	for _, tagName := range tagNames {
+		name := strings.ToLower(tagName)
 		if _, ok := fieldMap[name]; ok {
 			continue
 		}
@@ -285,20 +138,19 @@ func AddTagNames(tagNames []string) {
 			}
 		}
 		if _, ok := fieldMap[name]; !ok {
-			fieldMap[name] = &mappedField{field: name, isTag: true}
+			fieldMap[name] = &fieldMetadata{name: name, isTag: true}
 		}
 	}
 }
 
-// AddNumericTags marks the given tag names as numeric so they can be cast
-// when used in comparisons or sorting.
+// AddNumericTags adds tags that should be treated as numbers.
 func AddNumericTags(tagNames []string) {
-	for _, name := range tagNames {
-		name := strings.ToLower(name)
+	for _, tagName := range tagNames {
+		name := strings.ToLower(tagName)
 		if fm, ok := fieldMap[name]; ok {
 			fm.numeric = true
 		} else {
-			fieldMap[name] = &mappedField{field: name, isTag: true, numeric: true}
+			fieldMap[name] = &fieldMetadata{name: name, isTag: true, numeric: true}
 		}
 	}
 }

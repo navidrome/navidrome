@@ -228,6 +228,7 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 
 	// Re-populate playlist based on Smart Playlist criteria
 	rules := *pls.Rules
+	rulesSQL := newSmartPlaylistCriteria(rules)
 
 	// If the playlist depends on other playlists, recursively refresh them first
 	childPlaylistIds := rules.ChildPlaylistIds()
@@ -240,14 +241,15 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 		r.refreshSmartPlaylist(childPls)
 	}
 
-	sq := Select("row_number() over (order by "+rules.OrderBy()+") as id", "'"+pls.ID+"' as playlist_id", "media_file.id as media_file_id").
+	orderBy := rulesSQL.OrderBy()
+	sq := Select("row_number() over (order by "+orderBy+") as id", "'"+pls.ID+"' as playlist_id", "media_file.id as media_file_id").
 		From("media_file").LeftJoin("annotation on ("+
 		"annotation.item_id = media_file.id"+
 		" AND annotation.item_type = 'media_file'"+
 		" AND annotation.user_id = ?)", usr.ID)
 
 	// Conditionally join album/artist annotation tables only when referenced by criteria or sort
-	requiredJoins := rules.RequiredJoins()
+	requiredJoins := rulesSQL.RequiredJoins()
 	sq = r.addSmartPlaylistAnnotationJoins(sq, requiredJoins, usr.ID)
 
 	// Only include media files from libraries the user has access to
@@ -256,7 +258,7 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 	// Resolve percentage-based limit to an absolute number before applying criteria
 	if rules.IsPercentageLimit() {
 		// Use only expression-based joins for the COUNT query (sort joins are unnecessary)
-		exprJoins := rules.ExpressionJoins()
+		exprJoins := rulesSQL.ExpressionJoins()
 		countSq := Select("count(*) as count").From("media_file").
 			LeftJoin("annotation on ("+
 				"annotation.item_id = media_file.id"+
@@ -264,7 +266,12 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 				" AND annotation.user_id = ?)", usr.ID)
 		countSq = r.addSmartPlaylistAnnotationJoins(countSq, exprJoins, usr.ID)
 		countSq = r.applyLibraryFilter(countSq, "media_file")
-		countSq = countSq.Where(rules)
+		cond, err := rulesSQL.Where()
+		if err != nil {
+			log.Error(r.ctx, "Error building smart playlist criteria", "playlist", pls.Name, "id", pls.ID, err)
+			return false
+		}
+		countSq = countSq.Where(cond)
 
 		var res struct{ Count int64 }
 		err = r.queryOne(countSq, &res)
@@ -279,7 +286,11 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 	}
 
 	// Apply the criteria rules
-	sq = r.addCriteria(sq, rules)
+	sq, err = r.addCriteria(sq, rules)
+	if err != nil {
+		log.Error(r.ctx, "Error building smart playlist criteria", "playlist", pls.Name, "id", pls.ID, err)
+		return false
+	}
 	insSql := Insert("playlist_tracks").Columns("id", "playlist_id", "media_file_id").Select(sq)
 	_, err = r.executeSQL(insSql)
 	if err != nil {
@@ -310,14 +321,14 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 	return true
 }
 
-func (r *playlistRepository) addSmartPlaylistAnnotationJoins(sq SelectBuilder, joins criteria.JoinType, userID string) SelectBuilder {
-	if joins.Has(criteria.JoinAlbumAnnotation) {
+func (r *playlistRepository) addSmartPlaylistAnnotationJoins(sq SelectBuilder, joins smartPlaylistJoinType, userID string) SelectBuilder {
+	if joins.has(smartPlaylistJoinAlbumAnnotation) {
 		sq = sq.LeftJoin("annotation AS album_annotation ON ("+
 			"album_annotation.item_id = media_file.album_id"+
 			" AND album_annotation.item_type = 'album'"+
 			" AND album_annotation.user_id = ?)", userID)
 	}
-	if joins.Has(criteria.JoinArtistAnnotation) {
+	if joins.has(smartPlaylistJoinArtistAnnotation) {
 		sq = sq.LeftJoin("annotation AS artist_annotation ON ("+
 			"artist_annotation.item_id = media_file.artist_id"+
 			" AND artist_annotation.item_type = 'artist'"+
@@ -326,15 +337,20 @@ func (r *playlistRepository) addSmartPlaylistAnnotationJoins(sq SelectBuilder, j
 	return sq
 }
 
-func (r *playlistRepository) addCriteria(sql SelectBuilder, c criteria.Criteria) SelectBuilder {
-	sql = sql.Where(c)
+func (r *playlistRepository) addCriteria(sql SelectBuilder, c criteria.Criteria) (SelectBuilder, error) {
+	cSQL := newSmartPlaylistCriteria(c)
+	cond, err := cSQL.Where()
+	if err != nil {
+		return sql, err
+	}
+	sql = sql.Where(cond)
 	if c.Limit > 0 {
 		sql = sql.Limit(uint64(c.Limit)).Offset(uint64(c.Offset))
 	}
-	if order := c.OrderBy(); order != "" {
+	if order := cSQL.OrderBy(); order != "" {
 		sql = sql.OrderBy(order)
 	}
-	return sql
+	return sql, nil
 }
 
 func (r *playlistRepository) updateTracks(id string, tracks model.MediaFiles) error {
