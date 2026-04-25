@@ -179,4 +179,49 @@ var _ = Describe("Smart Playlists", func() {
 			Expect(results).To(Equal([]string{"Black Dog", "Stairway To Heaven", "Come Together", "All Along the Watchtower"}))
 		})
 	})
+
+	Describe("Playlist operators", func() {
+		It("matches tracks in a public regular playlist", func() {
+			refID := createPublicPlaylist(testUser, "Come Together", "So What")
+			results := evaluateRule(`{"all":[{"inPlaylist":{"id":"` + refID + `"}}]}`)
+			Expect(results).To(ConsistOf("Come Together", "So What"))
+		})
+
+		It("matches tracks not in a public regular playlist", func() {
+			refID := createPublicPlaylist(testUser, "Come Together", "So What")
+			results := evaluateRule(`{"all":[{"notInPlaylist":{"id":"` + refID + `"}}]}`)
+			Expect(results).To(ConsistOf("Something", "Stairway To Heaven", "Black Dog",
+				"Bohemian Rhapsody", "All Along the Watchtower", "We Are the Champions"))
+		})
+
+		It("recursively refreshes a referenced smart playlist owned by the same user", func() {
+			smartBID := createPublicSmartPlaylist(testUser, `{"all":[{"is":{"genre":"Jazz"}}]}`)
+			results := evaluateRule(`{"all":[{"inPlaylist":{"id":"` + smartBID + `"}}]}`)
+			Expect(results).To(ConsistOf("So What"))
+		})
+
+		It("does not refresh a referenced smart playlist owned by another user", func() {
+			smartBID := createPublicSmartPlaylist(otherUser, `{"all":[{"is":{"genre":"Jazz"}}]}`)
+			results := evaluateRule(`{"all":[{"inPlaylist":{"id":"` + smartBID + `"}}]}`)
+			Expect(results).To(BeEmpty())
+		})
+
+		It("does not match tracks from a private playlist", func() {
+			refID := createPrivatePlaylist(testUser, "Come Together", "So What")
+			results := evaluateRule(`{"all":[{"inPlaylist":{"id":"` + refID + `"}}]}`)
+			Expect(results).To(BeEmpty())
+		})
+
+		It("matches tracks in a public playlist owned by another user", func() {
+			refID := createPublicPlaylist(otherUser, "Bohemian Rhapsody")
+			results := evaluateRule(`{"all":[{"inPlaylist":{"id":"` + refID + `"}}]}`)
+			Expect(results).To(ConsistOf("Bohemian Rhapsody"))
+		})
+
+		It("does not match tracks from a private playlist owned by another user", func() {
+			refID := createPrivatePlaylist(otherUser, "Bohemian Rhapsody")
+			results := evaluateRule(`{"all":[{"inPlaylist":{"id":"` + refID + `"}}]}`)
+			Expect(results).To(BeEmpty())
+		})
+	})
 })
