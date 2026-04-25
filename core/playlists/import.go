@@ -18,6 +18,18 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
+type importSyncKey struct{}
+
+// WithImportSync sets the sync preference for playlist imports via context.
+func WithImportSync(ctx context.Context, sync bool) context.Context {
+	return context.WithValue(ctx, importSyncKey{}, sync)
+}
+
+func importSyncFromContext(ctx context.Context) (bool, bool) {
+	v, ok := ctx.Value(importSyncKey{}).(bool)
+	return v, ok
+}
+
 func (s *playlists) ImportFile(ctx context.Context, absolutePath string) (*model.Playlist, error) {
 	absPath, err := filepath.Abs(absolutePath)
 	if err != nil {
@@ -29,7 +41,20 @@ func (s *playlists) ImportFile(ctx context.Context, absolutePath string) (*model
 
 	folder, err := s.resolveFolder(ctx, dir)
 	if err == nil {
-		return s.ImportFromFolder(ctx, folder, filename)
+		pls, err := s.ImportFromFolder(ctx, folder, filename)
+		if err != nil {
+			return nil, err
+		}
+		// Override sync flag if set via context
+		if syncVal, ok := importSyncFromContext(ctx); ok {
+			if pls.Sync != syncVal {
+				pls.Sync = syncVal
+				if putErr := s.ds.Playlist(ctx).Put(pls); putErr != nil {
+					return nil, putErr
+				}
+			}
+		}
+		return pls, nil
 	}
 
 	// File is outside all libraries — fall back to ImportM3U (absolute paths still resolve)

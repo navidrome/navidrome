@@ -12,8 +12,11 @@ import (
 	"strings"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/spf13/cobra"
 )
 
@@ -49,6 +52,10 @@ func init() {
 	exportCommand.Flags().StringVarP(&outputFile, "output", "o", "", "output directory")
 	exportCommand.Flags().StringVarP(&userID, "user", "u", "", "username or ID")
 	plsCmd.AddCommand(exportCommand)
+
+	importCommand.Flags().StringVarP(&userID, "user", "u", "", "owner username or ID (default: first admin)")
+	importCommand.Flags().BoolVar(&syncFlag, "sync", false, "mark imported playlists as synced")
+	plsCmd.AddCommand(importCommand)
 }
 
 var (
@@ -75,6 +82,16 @@ var (
 		Long:  "Export one or more Navidrome playlists to M3U files",
 		Run: func(cmd *cobra.Command, args []string) {
 			runExport(cmd.Context())
+		},
+	}
+
+	importCommand = &cobra.Command{
+		Use:   "import [files...]",
+		Short: "Import M3U playlists",
+		Long:  "Import one or more M3U files as Navidrome playlists",
+		Args:  cobra.MinimumNArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			runImport(cmd.Context(), args)
 		},
 	}
 )
@@ -257,4 +274,61 @@ func runList(ctx context.Context) {
 		j, _ := json.Marshal(display)
 		fmt.Printf("%s\n", j)
 	}
+}
+
+func runImport(ctx context.Context, files []string) {
+	ds, ctx := getAdminContext(ctx)
+
+	if userID != "" {
+		user, err := getUser(ctx, userID, ds)
+		if err != nil {
+			log.Fatal(ctx, "Error retrieving user", "username or id", userID)
+		}
+		ctx = request.WithUser(ctx, *user)
+	}
+
+	ctx = playlists.WithImportSync(ctx, syncFlag)
+	pls := playlists.NewPlaylists(ds, core.NewImageUploadService())
+
+	for _, file := range files {
+		absPath, err := filepath.Abs(file)
+		if err != nil {
+			log.Error("Error resolving path", "file", file, err)
+			fmt.Fprintf(os.Stderr, "Error: could not resolve path %s: %v\n", file, err)
+			continue
+		}
+
+		totalLines := countM3UTrackLines(absPath)
+
+		imported, err := pls.ImportFile(ctx, absPath)
+		if err != nil {
+			log.Error("Error importing playlist", "file", absPath, err)
+			fmt.Fprintf(os.Stderr, "Error importing %s: %v\n", file, err)
+			continue
+		}
+
+		matched := len(imported.Tracks)
+		if totalLines > 0 {
+			notFound := totalLines - matched
+			fmt.Printf("Imported \"%s\" — %d/%d tracks matched (%d not found)\n", imported.Name, matched, totalLines, notFound)
+		} else {
+			fmt.Printf("Imported \"%s\" — %d tracks\n", imported.Name, matched)
+		}
+	}
+}
+
+func countM3UTrackLines(path string) int {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return 0
+	}
+	count := 0
+	for line := range strings.SplitSeq(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		count++
+	}
+	return count
 }
