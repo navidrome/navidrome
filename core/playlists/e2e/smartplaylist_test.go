@@ -144,6 +144,35 @@ var _ = Describe("Smart Playlists", func() {
 		})
 	})
 
+	Describe("Date/time fields", func() {
+		It("matches lastPlayed inTheLast 1 day", func() {
+			results := evaluateRule(`{"all":[{"inTheLast":{"lastplayed":"1"}}]}`)
+			Expect(results).To(ConsistOf("Come Together", "Black Dog"))
+		})
+
+		It("matches lastPlayed notInTheLast (far future)", func() {
+			results := evaluateRule(`{"all":[{"notInTheLast":{"lastplayed":"99999"}}]}`)
+			Expect(results).To(ConsistOf("Something", "Stairway To Heaven", "So What",
+				"Bohemian Rhapsody", "All Along the Watchtower", "We Are the Champions"))
+		})
+
+		It("matches dateLoved after a past date", func() {
+			results := evaluateRule(`{"all":[{"after":{"dateloved":"2020-01-01"}}]}`)
+			Expect(results).To(ConsistOf("Come Together", "So What"))
+		})
+
+		It("matches dateRated after a past date", func() {
+			results := evaluateRule(`{"all":[{"after":{"daterated":"2020-01-01"}}]}`)
+			Expect(results).To(ConsistOf("Stairway To Heaven", "Bohemian Rhapsody"))
+		})
+
+		It("matches dateAdded inTheLast 1 day", func() {
+			results := evaluateRule(`{"all":[{"inTheLast":{"dateadded":"1"}}]}`)
+			Expect(results).To(ConsistOf("Come Together", "Something", "Stairway To Heaven", "Black Dog",
+				"So What", "Bohemian Rhapsody", "All Along the Watchtower", "We Are the Champions"))
+		})
+	})
+
 	Describe("Logic operators", func() {
 		It("matches with ALL (AND)", func() {
 			results := evaluateRule(`{"all":[{"is":{"genre":"Blues"}},{"gt":{"bpm":"130"}}]}`)
