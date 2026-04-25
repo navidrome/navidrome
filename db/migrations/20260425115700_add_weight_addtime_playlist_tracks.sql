@@ -24,15 +24,21 @@ CREATE TABLE IF NOT EXISTS "playlist_tracks_new"
                         references playlist
                                 on update cascade on delete cascade,
         media_file_id varchar(255) not null,
+                constraint playlist_tracks_media_file_id_fk
+                        references media_file
+                                on update cascade on delete cascade,
+        missing boolean default 0 not null,
 
         add_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        weight INTEGER DEFAULT (random())
+        weight INTEGER DEFAULT (random()),
+
+        PRIMARY KEY (playlist_id, id)
 );
 
 -- Copy old table data into patched table; the new fields will be
 -- filled with defaults.
-INSERT INTO playlist_tracks_new (id,playlist_id,media_file_id)
-SELECT id,playlist_id,media_file_id FROM playlist_tracks;
+INSERT INTO playlist_tracks_new (id,playlist_id,media_file_id,missing)
+SELECT id,playlist_id,media_file_id,missing FROM playlist_tracks;
 
 -- Drop old table
 DROP TABLE playlist_tracks;
