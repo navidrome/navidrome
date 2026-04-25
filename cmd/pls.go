@@ -160,7 +160,7 @@ func runExport(ctx context.Context) {
 
 	// Bulk export requires -o
 	if outputFile == "" {
-		log.Fatal("Output directory (-o) is required for bulk export")
+		log.Fatal("Output directory (-o) is required for bulk export or when filtering by user")
 	}
 
 	// Validate output directory exists
