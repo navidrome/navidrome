@@ -96,6 +96,22 @@ var (
 	}
 )
 
+func fetchPlaylists(ctx context.Context, ds model.DataStore, sort string) model.Playlists {
+	options := model.QueryOptions{Sort: sort}
+	if userID != "" {
+		user, err := getUser(ctx, userID, ds)
+		if err != nil {
+			log.Fatal(ctx, "Error retrieving user", "username or id", userID)
+		}
+		options.Filters = squirrel.Eq{"owner_id": user.ID}
+	}
+	pls, err := ds.Playlist(ctx).GetAll(options)
+	if err != nil {
+		log.Fatal(ctx, "Failed to retrieve playlists", err)
+	}
+	return pls
+}
+
 func findPlaylist(ctx context.Context, ds model.DataStore, nameOrID string) *model.Playlist {
 	playlist, err := ds.Playlist(ctx).GetWithTracks(nameOrID, true, false)
 	if err != nil && !errors.Is(err, model.ErrNotFound) {
@@ -178,27 +194,15 @@ func runExport(ctx context.Context) {
 		return
 	}
 
-	options := model.QueryOptions{Sort: "name"}
-	if userID != "" {
-		user, err := getUser(ctx, userID, ds)
-		if err != nil {
-			log.Fatal(ctx, "Error retrieving user", "username or id", userID)
-		}
-		options.Filters = squirrel.Eq{"owner_id": user.ID}
-	}
-
-	playlists, err := ds.Playlist(ctx).GetAll(options)
-	if err != nil {
-		log.Fatal(ctx, "Failed to retrieve playlists", err)
-	}
+	allPls := fetchPlaylists(ctx, ds, "name")
 
 	nameCounts := make(map[string]int)
-	for _, pls := range playlists {
+	for _, pls := range allPls {
 		nameCounts[sanitizeFilename(pls.Name)]++
 	}
 
 	exported := 0
-	for _, pls := range playlists {
+	for _, pls := range allPls {
 		plsWithTracks, err := ds.Playlist(ctx).GetWithTracks(pls.ID, true, false)
 		if err != nil {
 			log.Error("Error loading playlist tracks", "playlist", pls.Name, err)
@@ -233,31 +237,18 @@ func runList(ctx context.Context) {
 	}
 
 	ds, ctx := getAdminContext(ctx)
-	options := model.QueryOptions{Sort: "owner_name"}
-
-	if userID != "" {
-		user, err := getUser(ctx, userID, ds)
-		if err != nil {
-			log.Fatal(ctx, "Error retrieving user", "username or id", userID)
-		}
-		options.Filters = squirrel.Eq{"owner_id": user.ID}
-	}
-
-	playlists, err := ds.Playlist(ctx).GetAll(options)
-	if err != nil {
-		log.Fatal(ctx, "Failed to retrieve playlists", err)
-	}
+	allPls := fetchPlaylists(ctx, ds, "owner_name")
 
 	if outputFormat == "csv" {
 		w := csv.NewWriter(os.Stdout)
 		_ = w.Write([]string{"playlist id", "playlist name", "owner id", "owner name", "public"})
-		for _, playlist := range playlists {
+		for _, playlist := range allPls {
 			_ = w.Write([]string{playlist.ID, playlist.Name, playlist.OwnerID, playlist.OwnerName, strconv.FormatBool(playlist.Public)})
 		}
 		w.Flush()
 	} else {
-		display := make(displayPlaylists, len(playlists))
-		for idx, playlist := range playlists {
+		display := make(displayPlaylists, len(allPls))
+		for idx, playlist := range allPls {
 			display[idx].Id = playlist.ID
 			display[idx].Name = playlist.Name
 			display[idx].OwnerId = playlist.OwnerID
