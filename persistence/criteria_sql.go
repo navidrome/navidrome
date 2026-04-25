@@ -184,9 +184,9 @@ func (c smartPlaylistCriteria) exprSQL(expr criteria.Expression) (squirrel.Sqliz
 	case criteria.NotInTheLast:
 		return periodExpr(e, true)
 	case criteria.InPlaylist:
-		return inList(e, false, c.ownerID, c.ownerIsAdmin)
+		return c.inList(e, false)
 	case criteria.NotInPlaylist:
-		return inList(e, true, c.ownerID, c.ownerIsAdmin)
+		return c.inList(e, true)
 	default:
 		return nil, fmt.Errorf("unknown criteria expression type %T", expr)
 	}
@@ -284,19 +284,19 @@ func startOfPeriod(numDays int64, from time.Time) string {
 	return from.Add(time.Duration(-24*numDays) * time.Hour).Format("2006-01-02")
 }
 
-func inList[T ~map[string]any](values T, negate bool, ownerID string, ownerIsAdmin bool) (squirrel.Sqlizer, error) {
+func (c smartPlaylistCriteria) inList(values map[string]any, negate bool) (squirrel.Sqlizer, error) {
 	playlistID, ok := values["id"].(string)
 	if !ok {
 		return nil, errors.New("playlist id not given")
 	}
 	filters := squirrel.And{squirrel.Eq{"pl.playlist_id": playlistID}}
-	if !ownerIsAdmin {
-		if ownerID == "" {
+	if !c.ownerIsAdmin {
+		if c.ownerID == "" {
 			filters = append(filters, squirrel.Eq{"playlist.public": 1})
 		} else {
 			filters = append(filters, squirrel.Or{
 				squirrel.Eq{"playlist.public": 1},
-				squirrel.Eq{"playlist.owner_id": ownerID},
+				squirrel.Eq{"playlist.owner_id": c.ownerID},
 			})
 		}
 	}
