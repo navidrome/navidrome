@@ -281,7 +281,6 @@ func runImport(ctx context.Context, files []string) {
 		ctx = request.WithUser(ctx, *user)
 	}
 
-	ctx = playlists.WithImportSync(ctx, syncFlag)
 	pls := playlists.NewPlaylists(ds, core.NewImageUploadService())
 
 	for _, file := range files {
@@ -294,7 +293,7 @@ func runImport(ctx context.Context, files []string) {
 
 		totalLines := countM3UTrackLines(absPath)
 
-		imported, err := pls.ImportFile(ctx, absPath)
+		imported, err := pls.ImportFile(ctx, absPath, syncFlag)
 		if err != nil {
 			log.Error("Error importing playlist", "file", absPath, err)
 			fmt.Fprintf(os.Stderr, "Error importing %s: %v\n", file, err)

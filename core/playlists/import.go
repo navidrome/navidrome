@@ -18,18 +18,7 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
-type importSyncKey struct{}
-
-func WithImportSync(ctx context.Context, sync bool) context.Context {
-	return context.WithValue(ctx, importSyncKey{}, sync)
-}
-
-func importSyncFromContext(ctx context.Context) (bool, bool) {
-	v, ok := ctx.Value(importSyncKey{}).(bool)
-	return v, ok
-}
-
-func (s *playlists) ImportFile(ctx context.Context, absolutePath string) (*model.Playlist, error) {
+func (s *playlists) ImportFile(ctx context.Context, absolutePath string, sync bool) (*model.Playlist, error) {
 	absPath, err := filepath.Abs(absolutePath)
 	if err != nil {
 		return nil, fmt.Errorf("resolving absolute path: %w", err)
@@ -44,12 +33,10 @@ func (s *playlists) ImportFile(ctx context.Context, absolutePath string) (*model
 		if err != nil {
 			return nil, err
 		}
-		if syncVal, ok := importSyncFromContext(ctx); ok {
-			if pls.Sync != syncVal {
-				pls.Sync = syncVal
-				if putErr := s.ds.Playlist(ctx).Put(pls); putErr != nil {
-					return nil, putErr
-				}
+		if pls.Sync != sync {
+			pls.Sync = sync
+			if putErr := s.ds.Playlist(ctx).Put(pls); putErr != nil {
+				return nil, putErr
 			}
 		}
 		return pls, nil

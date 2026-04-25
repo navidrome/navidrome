@@ -669,7 +669,7 @@ var _ = Describe("Playlists - Import", func() {
 			plsFile := filepath.Join(tmpDir, "my-playlist.m3u")
 			Expect(os.WriteFile(plsFile, []byte(plsContent), 0600)).To(Succeed())
 
-			pls, err := ps.ImportFile(ctx, plsFile)
+			pls, err := ps.ImportFile(ctx, plsFile, true)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(pls.Name).To(Equal("My Playlist"))
 			Expect(pls.Tracks).To(HaveLen(2))
@@ -688,14 +688,14 @@ var _ = Describe("Playlists - Import", func() {
 			plsFile := filepath.Join(tmpDir, "external.m3u")
 			Expect(os.WriteFile(plsFile, []byte(plsContent), 0600)).To(Succeed())
 
-			pls, err := ps.ImportFile(ctx, plsFile)
+			pls, err := ps.ImportFile(ctx, plsFile, false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(pls.Name).To(Equal("External Playlist"))
 			Expect(pls.Path).To(BeEmpty())
 			Expect(pls.Sync).To(BeFalse())
 		})
 
-		It("imports with Sync=false when context has sync=false", func() {
+		It("imports with Sync=false", func() {
 			tmpDir := GinkgoT().TempDir()
 			mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
 
@@ -710,13 +710,12 @@ var _ = Describe("Playlists - Import", func() {
 			plsFile := filepath.Join(tmpDir, "test.m3u")
 			Expect(os.WriteFile(plsFile, []byte("test.mp3\n"), 0600)).To(Succeed())
 
-			syncCtx := playlists.WithImportSync(ctx, false)
-			pls, err := ps.ImportFile(syncCtx, plsFile)
+			pls, err := ps.ImportFile(ctx, plsFile, false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(pls.Sync).To(BeFalse())
 		})
 
-		It("imports with Sync=true when context has sync=true", func() {
+		It("imports with Sync=true", func() {
 			tmpDir := GinkgoT().TempDir()
 			mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
 
@@ -731,8 +730,7 @@ var _ = Describe("Playlists - Import", func() {
 			plsFile := filepath.Join(tmpDir, "test.m3u")
 			Expect(os.WriteFile(plsFile, []byte("test.mp3\n"), 0600)).To(Succeed())
 
-			syncCtx := playlists.WithImportSync(ctx, true)
-			pls, err := ps.ImportFile(syncCtx, plsFile)
+			pls, err := ps.ImportFile(ctx, plsFile, true)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(pls.Sync).To(BeTrue())
 		})
@@ -752,15 +750,13 @@ var _ = Describe("Playlists - Import", func() {
 			plsFile := filepath.Join(tmpDir, "test.m3u")
 			Expect(os.WriteFile(plsFile, []byte("test.mp3\n"), 0600)).To(Succeed())
 
-			// Existing non-synced playlist
 			existingPls := &model.Playlist{
 				ID: "existing-id", Name: "Existing", Path: plsFile,
 				Sync: false, OwnerID: "123",
 			}
 			mockPlsRepo.PathMap = map[string]*model.Playlist{plsFile: existingPls}
 
-			syncCtx := playlists.WithImportSync(ctx, true)
-			pls, err := ps.ImportFile(syncCtx, plsFile)
+			pls, err := ps.ImportFile(ctx, plsFile, true)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(pls.ID).To(Equal("existing-id"))
 			Expect(pls.Sync).To(BeTrue())
