@@ -26,4 +26,157 @@ var _ = Describe("Smart Playlists", func() {
 			Expect(results).To(ConsistOf("Stairway To Heaven", "Black Dog"))
 		})
 	})
+
+	Describe("Numeric fields", func() {
+		It("matches by year greater than", func() {
+			results := evaluateRule(`{"all":[{"gt":{"year":"1970"}}]}`)
+			Expect(results).To(ConsistOf("Stairway To Heaven", "Black Dog", "Bohemian Rhapsody", "We Are the Champions"))
+		})
+
+		It("matches by year less than", func() {
+			results := evaluateRule(`{"all":[{"lt":{"year":"1969"}}]}`)
+			Expect(results).To(ConsistOf("So What", "All Along the Watchtower"))
+		})
+
+		It("matches by BPM in range", func() {
+			results := evaluateRule(`{"all":[{"inTheRange":{"bpm":["100","130"]}}]}`)
+			Expect(results).To(ConsistOf("Come Together", "Something", "All Along the Watchtower"))
+		})
+	})
+
+	Describe("Boolean fields", func() {
+		It("matches compilations", func() {
+			results := evaluateRule(`{"all":[{"is":{"compilation":true}}]}`)
+			Expect(results).To(ConsistOf("We Are the Champions"))
+		})
+
+		It("matches non-compilations", func() {
+			results := evaluateRule(`{"all":[{"is":{"compilation":false}}]}`)
+			Expect(results).To(ConsistOf("Come Together", "Something", "Stairway To Heaven", "Black Dog", "So What", "Bohemian Rhapsody", "All Along the Watchtower"))
+		})
+	})
+
+	Describe("File type fields", func() {
+		It("matches by filetype", func() {
+			results := evaluateRule(`{"all":[{"is":{"filetype":"flac"}}]}`)
+			Expect(results).To(ConsistOf("Stairway To Heaven", "Black Dog"))
+		})
+	})
+
+	Describe("Multi-valued tags", func() {
+		It("matches tracks with Blues genre", func() {
+			results := evaluateRule(`{"all":[{"is":{"genre":"Blues"}}]}`)
+			Expect(results).To(ConsistOf("Come Together", "Black Dog", "All Along the Watchtower"))
+		})
+
+		It("excludes tracks with Rock genre", func() {
+			results := evaluateRule(`{"all":[{"isNot":{"genre":"Rock"}}]}`)
+			Expect(results).To(ConsistOf("So What"))
+		})
+
+		It("matches genre contains", func() {
+			results := evaluateRule(`{"all":[{"contains":{"genre":"ol"}}]}`)
+			Expect(results).To(ConsistOf("Stairway To Heaven"))
+		})
+
+		It("matches tracks with Pop genre", func() {
+			results := evaluateRule(`{"all":[{"is":{"genre":"Pop"}}]}`)
+			Expect(results).To(ConsistOf("We Are the Champions"))
+		})
+	})
+
+	Describe("Participants", func() {
+		It("matches by exact composer", func() {
+			results := evaluateRule(`{"all":[{"is":{"composer":"Harrison"}}]}`)
+			Expect(results).To(ConsistOf("Something"))
+		})
+
+		It("matches by composer contains", func() {
+			results := evaluateRule(`{"all":[{"contains":{"composer":"Plant"}}]}`)
+			Expect(results).To(ConsistOf("Stairway To Heaven", "Black Dog"))
+		})
+
+		It("matches by composer isNot", func() {
+			results := evaluateRule(`{"all":[{"isNot":{"composer":"Freddie Mercury"}}]}`)
+			Expect(results).To(ConsistOf("Come Together", "Something", "Stairway To Heaven", "Black Dog", "So What", "All Along the Watchtower"))
+		})
+	})
+
+	Describe("Annotations", func() {
+		It("matches starred tracks", func() {
+			results := evaluateRule(`{"all":[{"is":{"loved":true}}]}`)
+			Expect(results).To(ConsistOf("Come Together", "So What"))
+		})
+
+		It("matches unstarred tracks", func() {
+			results := evaluateRule(`{"all":[{"is":{"loved":false}}]}`)
+			Expect(results).To(ConsistOf("Something", "Stairway To Heaven", "Black Dog", "Bohemian Rhapsody", "All Along the Watchtower", "We Are the Champions"))
+		})
+
+		It("matches by rating greater than", func() {
+			results := evaluateRule(`{"all":[{"gt":{"rating":3}}]}`)
+			Expect(results).To(ConsistOf("Bohemian Rhapsody"))
+		})
+
+		It("matches by rating greater than or equal via inTheRange", func() {
+			results := evaluateRule(`{"all":[{"inTheRange":{"rating":[3,5]}}]}`)
+			Expect(results).To(ConsistOf("Stairway To Heaven", "Bohemian Rhapsody"))
+		})
+
+		It("matches by play count greater than", func() {
+			results := evaluateRule(`{"all":[{"gt":{"playcount":5}}]}`)
+			Expect(results).To(ConsistOf("Come Together"))
+		})
+
+		It("matches by play count greater than zero", func() {
+			results := evaluateRule(`{"all":[{"gt":{"playcount":0}}]}`)
+			Expect(results).To(ConsistOf("Come Together", "Black Dog"))
+		})
+	})
+
+	Describe("Logic operators", func() {
+		It("matches with ALL (AND)", func() {
+			results := evaluateRule(`{"all":[{"is":{"genre":"Blues"}},{"gt":{"bpm":"130"}}]}`)
+			Expect(results).To(ConsistOf("Black Dog"))
+		})
+
+		It("matches with ANY (OR)", func() {
+			results := evaluateRule(`{"any":[{"is":{"genre":"Jazz"}},{"is":{"compilation":true}}]}`)
+			Expect(results).To(ConsistOf("So What", "We Are the Champions"))
+		})
+
+		It("matches nested all/any", func() {
+			results := evaluateRule(`{"all":[{"any":[{"is":{"genre":"Blues"}},{"is":{"genre":"Jazz"}}]},{"gt":{"year":"1960"}}]}`)
+			Expect(results).To(ConsistOf("Come Together", "Black Dog", "All Along the Watchtower"))
+		})
+	})
+
+	Describe("Sorting and limits", func() {
+		It("returns tracks sorted by year descending with limit", func() {
+			results := evaluateRuleOrdered(`{"all":[{"gt":{"year":"0"}}],"sort":"year","order":"desc","limit":2}`)
+			Expect(results).To(Equal([]string{"We Are the Champions", "Bohemian Rhapsody"}))
+		})
+
+		It("returns tracks sorted by title ascending", func() {
+			results := evaluateRuleOrdered(`{"all":[{"is":{"genre":"Blues"}}],"sort":"title","order":"asc"}`)
+			Expect(results).To(Equal([]string{"All Along the Watchtower", "Black Dog", "Come Together"}))
+		})
+	})
+
+	Describe("Combined real-world patterns", func() {
+		It("matches genre filter with exclusion and year range", func() {
+			results := evaluateRuleOrdered(`{
+				"all":[
+					{"any":[
+						{"is":{"genre":"Blues"}},
+						{"is":{"genre":"Folk"}}
+					]},
+					{"isNot":{"genre":"Jazz"}},
+					{"gt":{"year":"1965"}}
+				],
+				"sort":"-year,title"
+			}`)
+			Expect(results).To(Equal([]string{"Black Dog", "Stairway To Heaven", "Come Together", "All Along the Watchtower"}))
+		})
+	})
 })
