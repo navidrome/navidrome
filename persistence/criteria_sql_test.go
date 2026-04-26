@@ -3,6 +3,7 @@ package persistence
 import (
 	"time"
 
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -64,7 +65,7 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 		It("allows public or same-owner playlist references for regular users", func() {
 			sqlizer, err := newSmartPlaylistCriteria(
 				criteria.Criteria{Expression: criteria.InPlaylist{"id": "deadbeef-dead-beef"}},
-				withSmartPlaylistOwner("owner-id", false),
+				withSmartPlaylistOwner(model.User{ID: "owner-id", IsAdmin: false}),
 			).Where()
 			Expect(err).ToNot(HaveOccurred())
 
@@ -77,7 +78,7 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 		It("allows all playlist references for admins", func() {
 			sqlizer, err := newSmartPlaylistCriteria(
 				criteria.Criteria{Expression: criteria.InPlaylist{"id": "deadbeef-dead-beef"}},
-				withSmartPlaylistOwner("admin-id", true),
+				withSmartPlaylistOwner(model.User{ID: "admin-id", IsAdmin: true}),
 			).Where()
 			Expect(err).ToNot(HaveOccurred())
 

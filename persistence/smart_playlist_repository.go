@@ -31,7 +31,7 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 		return false
 	}
 
-	rulesSQL := newSmartPlaylistCriteria(*pls.Rules, withSmartPlaylistOwner(pls.OwnerID, usr.IsAdmin))
+	rulesSQL := newSmartPlaylistCriteria(*pls.Rules, withSmartPlaylistOwner(*usr))
 
 	r.refreshChildPlaylists(pls, rulesSQL)
 

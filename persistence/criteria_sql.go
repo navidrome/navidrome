@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
 )
 
@@ -32,8 +33,7 @@ type smartPlaylistField struct {
 
 type smartPlaylistCriteria struct {
 	criteria.Criteria
-	ownerID      string
-	ownerIsAdmin bool
+	owner model.User
 }
 
 func newSmartPlaylistCriteria(c criteria.Criteria, opts ...func(*smartPlaylistCriteria)) smartPlaylistCriteria {
@@ -44,10 +44,9 @@ func newSmartPlaylistCriteria(c criteria.Criteria, opts ...func(*smartPlaylistCr
 	return cSQL
 }
 
-func withSmartPlaylistOwner(ownerID string, ownerIsAdmin bool) func(*smartPlaylistCriteria) {
+func withSmartPlaylistOwner(owner model.User) func(*smartPlaylistCriteria) {
 	return func(c *smartPlaylistCriteria) {
-		c.ownerID = ownerID
-		c.ownerIsAdmin = ownerIsAdmin
+		c.owner = owner
 	}
 }
 
@@ -289,13 +288,13 @@ func (c smartPlaylistCriteria) inList(values map[string]any, negate bool) (squir
 		return nil, errors.New("playlist id not given")
 	}
 	filters := squirrel.And{squirrel.Eq{"pl.playlist_id": playlistID}}
-	if !c.ownerIsAdmin {
-		if c.ownerID == "" {
+	if !c.owner.IsAdmin {
+		if c.owner.ID == "" {
 			filters = append(filters, squirrel.Eq{"playlist.public": 1})
 		} else {
 			filters = append(filters, squirrel.Or{
 				squirrel.Eq{"playlist.public": 1},
-				squirrel.Eq{"playlist.owner_id": c.ownerID},
+				squirrel.Eq{"playlist.owner_id": c.owner.ID},
 			})
 		}
 	}
