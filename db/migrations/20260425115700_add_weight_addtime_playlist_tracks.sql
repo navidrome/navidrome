@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS "playlist_tracks_new"
                                 on update cascade on delete cascade,
         missing boolean default 0 not null,
 
-        add_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
         PRIMARY KEY (playlist_id, id)
 );
