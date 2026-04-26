@@ -52,6 +52,22 @@ func SanitizeHTML(text string) string {
 	return policy.Sanitize(html.UnescapeString(text))
 }
 
+var filenameReplacer = strings.NewReplacer(
+	"/", "_",
+	"\\", "_",
+	":", "_",
+	"*", "_",
+	"?", "_",
+	"\"", "_",
+	"<", "_",
+	">", "_",
+	"|", "_",
+)
+
+func SanitizeFilename(name string) string {
+	return filenameReplacer.Replace(name)
+}
+
 func SanitizeFieldForSorting(originalValue string) string {
 	v := strings.TrimSpace(sanitize.Accents(originalValue))
 	return Clear(strings.ToLower(v))
