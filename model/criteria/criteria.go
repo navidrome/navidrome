@@ -9,7 +9,7 @@ import (
 )
 
 type Expression interface {
-	criteriaExpression()
+	fields() map[string]any
 }
 
 type Criteria struct {
@@ -53,7 +53,7 @@ func (c Criteria) ChildPlaylistIds() []string {
 		return nil
 	}
 
-	if parent, ok := c.Expression.(interface{ ChildPlaylistIds() (ids []string) }); ok {
+	if parent, ok := c.Expression.(conjunction); ok {
 		return parent.ChildPlaylistIds()
 	}
 
