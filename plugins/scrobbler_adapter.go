@@ -130,6 +130,7 @@ func mediaFileToTrackInfo(p *plugin, mf *model.MediaFile) capabilities.TrackInfo
 		MBZReleaseTrackID: mf.MbzReleaseTrackID,
 	}
 	if p.hasLibraryFilesystemAccess(mf.LibraryID) {
+		ti.LibraryID = int32(mf.LibraryID)
 		ti.Path = mf.Path
 	}
 	return ti
