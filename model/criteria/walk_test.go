@@ -9,7 +9,7 @@ import (
 
 type unknownExpression struct{}
 
-func (unknownExpression) criteriaExpression() {}
+func (unknownExpression) fields() map[string]any { return nil }
 
 var _ = Describe("Walk", func() {
 	It("visits the expression tree depth-first", func() {
