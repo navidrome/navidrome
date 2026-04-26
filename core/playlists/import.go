@@ -173,7 +173,8 @@ func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist, 
 	if err != nil && !errors.Is(err, model.ErrNotFound) {
 		return err
 	}
-	if err == nil && !pls.Sync && !forceSync {
+	alreadyImportedAndNotSynced := err == nil && !pls.Sync && !forceSync
+	if alreadyImportedAndNotSynced {
 		log.Debug(ctx, "Playlist already imported and not synced", "playlist", pls.Name, "path", pls.Path)
 		return nil
 	}
