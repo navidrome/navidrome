@@ -226,11 +226,10 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 	}
 
 	// Re-populate playlist based on Smart Playlist criteria
-	rules := *pls.Rules
-	rulesSQL := newSmartPlaylistCriteria(rules, withSmartPlaylistOwner(pls.OwnerID, usr.IsAdmin))
+	rulesSQL := newSmartPlaylistCriteria(*pls.Rules, withSmartPlaylistOwner(pls.OwnerID, usr.IsAdmin))
 
 	// If the playlist depends on other playlists, recursively refresh them first
-	childPlaylistIds := rules.ChildPlaylistIds()
+	childPlaylistIds := rulesSQL.ChildPlaylistIds()
 	for _, id := range childPlaylistIds {
 		childPls, err := r.Get(id)
 		if err != nil {
@@ -259,7 +258,7 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 	sq = r.applyLibraryFilter(sq, "media_file")
 
 	// Resolve percentage-based limit to an absolute number before applying criteria
-	if rules.IsPercentageLimit() {
+	if rulesSQL.IsPercentageLimit() {
 		// Use only expression-based joins for the COUNT query (sort joins are unnecessary)
 		exprJoins := rulesSQL.ExpressionJoins()
 		countSq := Select("count(*) as count").From("media_file").
@@ -282,11 +281,10 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 			log.Error(r.ctx, "Error counting matching tracks for percentage limit", "playlist", pls.Name, "id", pls.ID, err)
 			return false
 		}
-		resolvedLimit := rules.EffectiveLimit(res.Count)
-		log.Debug(r.ctx, "Resolved percentage limit", "playlist", pls.Name, "percent", rules.LimitPercent, "totalMatching", res.Count, "resolvedLimit", resolvedLimit)
-		rules.Limit = resolvedLimit
-		rules.LimitPercent = 0
-		rulesSQL.criteria = rules
+		resolvedLimit := rulesSQL.EffectiveLimit(res.Count)
+		log.Debug(r.ctx, "Resolved percentage limit", "playlist", pls.Name, "percent", rulesSQL.LimitPercent, "totalMatching", res.Count, "resolvedLimit", resolvedLimit)
+		rulesSQL.Limit = resolvedLimit
+		rulesSQL.LimitPercent = 0
 	}
 
 	// Apply the criteria rules
@@ -347,8 +345,8 @@ func (r *playlistRepository) addCriteria(sql SelectBuilder, cSQL smartPlaylistCr
 		return sql, err
 	}
 	sql = sql.Where(cond)
-	if cSQL.criteria.Limit > 0 {
-		sql = sql.Limit(uint64(cSQL.criteria.Limit)).Offset(uint64(cSQL.criteria.Offset))
+	if cSQL.Criteria.Limit > 0 {
+		sql = sql.Limit(uint64(cSQL.Criteria.Limit)).Offset(uint64(cSQL.Criteria.Offset))
 	}
 	if order := cSQL.OrderBy(); order != "" {
 		sql = sql.OrderBy(order)

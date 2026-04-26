@@ -31,13 +31,13 @@ type smartPlaylistField struct {
 }
 
 type smartPlaylistCriteria struct {
-	criteria     criteria.Criteria
+	criteria.Criteria
 	ownerID      string
 	ownerIsAdmin bool
 }
 
 func newSmartPlaylistCriteria(c criteria.Criteria, opts ...func(*smartPlaylistCriteria)) smartPlaylistCriteria {
-	cSQL := smartPlaylistCriteria{criteria: c}
+	cSQL := smartPlaylistCriteria{Criteria: c}
 	for _, opt := range opts {
 		opt(&cSQL)
 	}
@@ -118,10 +118,10 @@ var smartPlaylistFields = map[string]smartPlaylistField{
 }
 
 func (c smartPlaylistCriteria) Where() (squirrel.Sqlizer, error) {
-	if c.criteria.Expression == nil {
+	if c.Criteria.Expression == nil {
 		return squirrel.Expr("1 = 1"), nil
 	}
-	return c.exprSQL(c.criteria.Expression)
+	return c.exprSQL(c.Criteria.Expression)
 }
 
 func (c smartPlaylistCriteria) exprSQL(expr criteria.Expression) (squirrel.Sqlizer, error) {
@@ -403,7 +403,7 @@ func fieldJoinType(name string) smartPlaylistJoinType {
 
 func (c smartPlaylistCriteria) ExpressionJoins() smartPlaylistJoinType {
 	var joins smartPlaylistJoinType
-	_ = criteria.Walk(c.criteria.Expression, func(expr criteria.Expression) error {
+	_ = criteria.Walk(c.Criteria.Expression, func(expr criteria.Expression) error {
 		for field := range criteria.Fields(expr) {
 			joins |= fieldJoinType(field)
 		}
@@ -414,14 +414,14 @@ func (c smartPlaylistCriteria) ExpressionJoins() smartPlaylistJoinType {
 
 func (c smartPlaylistCriteria) RequiredJoins() smartPlaylistJoinType {
 	joins := c.ExpressionJoins()
-	for _, name := range c.criteria.SortFieldNames() {
+	for _, name := range c.Criteria.SortFieldNames() {
 		joins |= fieldJoinType(name)
 	}
 	return joins
 }
 
 func (c smartPlaylistCriteria) OrderBy() string {
-	sortFields := c.criteria.OrderByFields()
+	sortFields := c.Criteria.OrderByFields()
 	parts := make([]string, 0, len(sortFields))
 	for _, sf := range sortFields {
 		mapped, ok := sortExpr(sf.Field)
