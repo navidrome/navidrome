@@ -67,10 +67,11 @@ func normalizeForFTS(values ...string) string {
 	}
 	for _, v := range values {
 		for _, word := range strings.Fields(v) {
+			transliterated := sanitize.Accents(word)
 			// Concatenated ASCII form: R.E.M. → REM, AC/DC → ACDC, St-Étienne → StEtienne.
-			add(word, sanitize.Accents(fts5PunctStrip.ReplaceAllString(word, "")))
+			add(word, fts5PunctStrip.ReplaceAllString(transliterated, ""))
 			// Accent-only transliteration for words without name-punctuation (Bjørk → Bjork).
-			add(word, sanitize.Accents(word))
+			add(word, transliterated)
 		}
 	}
 	return strings.Join(result, " ")
