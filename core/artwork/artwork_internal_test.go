@@ -80,12 +80,11 @@ var _ = Describe("Artwork", func() {
 				})
 			})
 			It("returns embed cover", func() {
-				tests.SkipOnWindows("artwork path handling (#TBD-path-sep-artwork)")
 				aw, err := newAlbumArtworkReader(ctx, aw, alOnlyEmbed.CoverArtID(), nil)
 				Expect(err).ToNot(HaveOccurred())
 				_, path, err := aw.Reader(ctx)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(path).To(Equal("tests/fixtures/artist/an-album/test.mp3"))
+				Expect(path).To(Equal(filepath.FromSlash("tests/fixtures/artist/an-album/test.mp3")))
 			})
 			It("returns ErrUnavailable if embed path is not available", func() {
 				ffmpeg.Error = errors.New("not available")
@@ -104,7 +103,6 @@ var _ = Describe("Artwork", func() {
 				})
 			})
 			It("returns external cover", func() {
-				tests.SkipOnWindows("artwork path handling (#TBD-path-sep-artwork)")
 				folderRepo.result = []model.Folder{{
 					Path:       "tests/fixtures/artist/an-album",
 					ImageFiles: []string{"front.png"},
@@ -113,7 +111,7 @@ var _ = Describe("Artwork", func() {
 				Expect(err).ToNot(HaveOccurred())
 				_, path, err := aw.Reader(ctx)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(path).To(Equal("tests/fixtures/artist/an-album/front.png"))
+				Expect(path).To(Equal(filepath.FromSlash("tests/fixtures/artist/an-album/front.png")))
 			})
 			It("returns ErrUnavailable if external file is not available", func() {
 				folderRepo.result = []model.Folder{}
@@ -135,13 +133,12 @@ var _ = Describe("Artwork", func() {
 			})
 			DescribeTable("CoverArtPriority",
 				func(priority string, expected string) {
-					tests.SkipOnWindows("artwork path handling (#TBD-path-sep-artwork)")
 					conf.Server.CoverArtPriority = priority
 					aw, err := newAlbumArtworkReader(ctx, aw, alMultipleCovers.CoverArtID(), nil)
 					Expect(err).ToNot(HaveOccurred())
 					_, path, err := aw.Reader(ctx)
 					Expect(err).ToNot(HaveOccurred())
-					Expect(path).To(Equal(expected))
+					Expect(path).To(Equal(filepath.FromSlash(expected)))
 				},
 				Entry(nil, " folder.* , cover.*,embedded,front.*", "tests/fixtures/artist/an-album/cover.jpg"),
 				Entry(nil, "front.* , cover.*, embedded ,folder.*", "tests/fixtures/artist/an-album/front.png"),
@@ -213,13 +210,12 @@ var _ = Describe("Artwork", func() {
 			})
 			DescribeTable("ArtistArtPriority",
 				func(priority string, expected string) {
-					tests.SkipOnWindows("artwork path handling (#TBD-path-sep-artwork)")
 					conf.Server.ArtistArtPriority = priority
 					aw, err := newArtistArtworkReader(ctx, aw, arMultipleCovers.CoverArtID(), nil)
 					Expect(err).ToNot(HaveOccurred())
 					_, path, err := aw.Reader(ctx)
 					Expect(err).ToNot(HaveOccurred())
-					Expect(path).To(Equal(expected))
+					Expect(path).To(Equal(filepath.FromSlash(expected)))
 				},
 				Entry(nil, " folder.* , artist.*,album/artist.*", "tests/fixtures/artist/artist.jpg"),
 				Entry(nil, "album/artist.*, folder.*,artist.*", "tests/fixtures/artist/an-album/artist.png"),
@@ -251,22 +247,20 @@ var _ = Describe("Artwork", func() {
 				})
 			})
 			It("returns embed cover", func() {
-				tests.SkipOnWindows("artwork path handling (#TBD-path-sep-artwork)")
 				aw, err := newMediafileArtworkReader(ctx, aw, mfWithEmbed.CoverArtID())
 				Expect(err).ToNot(HaveOccurred())
 				_, path, err := aw.Reader(ctx)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(path).To(Equal("tests/fixtures/test.mp3"))
+				Expect(path).To(Equal(filepath.FromSlash("tests/fixtures/test.mp3")))
 			})
 			It("returns embed cover if successfully extracted by ffmpeg", func() {
-				tests.SkipOnWindows("artwork path handling (#TBD-path-sep-artwork)")
 				aw, err := newMediafileArtworkReader(ctx, aw, mfCorruptedCover.CoverArtID())
 				Expect(err).ToNot(HaveOccurred())
 				r, path, err := aw.Reader(ctx)
 				Expect(err).ToNot(HaveOccurred())
 				data, _ := io.ReadAll(r)
 				Expect(data).ToNot(BeEmpty())
-				Expect(path).To(Equal("tests/fixtures/test.ogg"))
+				Expect(path).To(Equal(filepath.FromSlash("tests/fixtures/test.ogg")))
 			})
 			It("returns album cover if cannot read embed artwork", func() {
 				// Force fromTag to fail
