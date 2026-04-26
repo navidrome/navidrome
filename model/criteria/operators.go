@@ -2,12 +2,17 @@ package criteria
 
 import "time"
 
+// Conjunctions need to implement this interface, to allow Criteria to extract child playlist IDs recursively
+type conjunction interface {
+	ChildPlaylistIds() []string
+}
+
 type (
 	All []Expression
 	And = All
 )
 
-func (All) criteriaExpression() {}
+func (All) fields() map[string]any { return nil }
 
 func (all All) MarshalJSON() ([]byte, error) {
 	return marshalConjunction("all", all)
@@ -22,7 +27,7 @@ type (
 	Or  = Any
 )
 
-func (Any) criteriaExpression() {}
+func (Any) fields() map[string]any { return nil }
 
 func (any Any) MarshalJSON() ([]byte, error) {
 	return marshalConjunction("any", any)
@@ -35,107 +40,107 @@ func (any Any) ChildPlaylistIds() (ids []string) {
 type Is map[string]any
 type Eq = Is
 
-func (Is) criteriaExpression() {}
-
 func (is Is) MarshalJSON() ([]byte, error) {
 	return marshalExpression("is", is)
 }
 
+func (is Is) fields() map[string]any { return is }
+
 type IsNot map[string]any
 
-func (IsNot) criteriaExpression() {}
-
-func (in IsNot) MarshalJSON() ([]byte, error) {
-	return marshalExpression("isNot", in)
+func (isn IsNot) MarshalJSON() ([]byte, error) {
+	return marshalExpression("isNot", isn)
 }
 
-type Gt map[string]any
+func (isn IsNot) fields() map[string]any { return isn }
 
-func (Gt) criteriaExpression() {}
+type Gt map[string]any
 
 func (gt Gt) MarshalJSON() ([]byte, error) {
 	return marshalExpression("gt", gt)
 }
 
-type Lt map[string]any
+func (gt Gt) fields() map[string]any { return gt }
 
-func (Lt) criteriaExpression() {}
+type Lt map[string]any
 
 func (lt Lt) MarshalJSON() ([]byte, error) {
 	return marshalExpression("lt", lt)
 }
 
-type Before map[string]any
+func (lt Lt) fields() map[string]any { return lt }
 
-func (Before) criteriaExpression() {}
+type Before map[string]any
 
 func (bf Before) MarshalJSON() ([]byte, error) {
 	return marshalExpression("before", bf)
 }
 
-type After Gt
+func (bf Before) fields() map[string]any { return bf }
 
-func (After) criteriaExpression() {}
+type After Gt
 
 func (af After) MarshalJSON() ([]byte, error) {
 	return marshalExpression("after", af)
 }
 
-type Contains map[string]any
+func (af After) fields() map[string]any { return af }
 
-func (Contains) criteriaExpression() {}
+type Contains map[string]any
 
 func (ct Contains) MarshalJSON() ([]byte, error) {
 	return marshalExpression("contains", ct)
 }
 
-type NotContains map[string]any
+func (ct Contains) fields() map[string]any { return ct }
 
-func (NotContains) criteriaExpression() {}
+type NotContains map[string]any
 
 func (nct NotContains) MarshalJSON() ([]byte, error) {
 	return marshalExpression("notContains", nct)
 }
 
-type StartsWith map[string]any
+func (nct NotContains) fields() map[string]any { return nct }
 
-func (StartsWith) criteriaExpression() {}
+type StartsWith map[string]any
 
 func (sw StartsWith) MarshalJSON() ([]byte, error) {
 	return marshalExpression("startsWith", sw)
 }
 
+func (sw StartsWith) fields() map[string]any { return sw }
+
 type EndsWith map[string]any
 
-func (EndsWith) criteriaExpression() {}
-
-func (sw EndsWith) MarshalJSON() ([]byte, error) {
-	return marshalExpression("endsWith", sw)
+func (ew EndsWith) MarshalJSON() ([]byte, error) {
+	return marshalExpression("endsWith", ew)
 }
 
-type InTheRange map[string]any
+func (ew EndsWith) fields() map[string]any { return ew }
 
-func (InTheRange) criteriaExpression() {}
+type InTheRange map[string]any
 
 func (itr InTheRange) MarshalJSON() ([]byte, error) {
 	return marshalExpression("inTheRange", itr)
 }
 
-type InTheLast map[string]any
+func (itr InTheRange) fields() map[string]any { return itr }
 
-func (InTheLast) criteriaExpression() {}
+type InTheLast map[string]any
 
 func (itl InTheLast) MarshalJSON() ([]byte, error) {
 	return marshalExpression("inTheLast", itl)
 }
 
-type NotInTheLast map[string]any
+func (itl InTheLast) fields() map[string]any { return itl }
 
-func (NotInTheLast) criteriaExpression() {}
+type NotInTheLast map[string]any
 
 func (nitl NotInTheLast) MarshalJSON() ([]byte, error) {
 	return marshalExpression("notInTheLast", nitl)
 }
+
+func (nitl NotInTheLast) fields() map[string]any { return nitl }
 
 func startOfPeriod(numDays int64, from time.Time) string {
 	return from.Add(time.Duration(-24*numDays) * time.Hour).Format("2006-01-02")
@@ -143,19 +148,19 @@ func startOfPeriod(numDays int64, from time.Time) string {
 
 type InPlaylist map[string]any
 
-func (InPlaylist) criteriaExpression() {}
-
 func (ipl InPlaylist) MarshalJSON() ([]byte, error) {
 	return marshalExpression("inPlaylist", ipl)
 }
 
+func (ipl InPlaylist) fields() map[string]any { return ipl }
+
 type NotInPlaylist map[string]any
 
-func (NotInPlaylist) criteriaExpression() {}
-
-func (ipl NotInPlaylist) MarshalJSON() ([]byte, error) {
-	return marshalExpression("notInPlaylist", ipl)
+func (nipl NotInPlaylist) MarshalJSON() ([]byte, error) {
+	return marshalExpression("notInPlaylist", nipl)
 }
+
+func (nipl NotInPlaylist) fields() map[string]any { return nipl }
 
 func extractPlaylistIds(inputRule any) (ids []string) {
 	var id string
