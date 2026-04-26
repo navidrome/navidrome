@@ -69,7 +69,7 @@ var _ = Describe("Playlists", func() {
 		It("returns error when playlist not found", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 			err := ps.Delete(ctx, "nonexistent")
-			Expect(err).To(Equal(model.ErrNotFound))
+			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 	})
 
@@ -167,7 +167,7 @@ var _ = Describe("Playlists", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 			newName := "Updated Name"
 			err := ps.Update(ctx, "nonexistent", &newName, nil, nil, nil, nil)
-			Expect(err).To(Equal(model.ErrNotFound))
+			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 
 		It("denies adding tracks to a smart playlist", func() {
@@ -235,7 +235,7 @@ var _ = Describe("Playlists", func() {
 		It("returns error when playlist not found", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 			_, err := ps.AddTracks(ctx, "nonexistent", []string{"song-1"})
-			Expect(err).To(Equal(model.ErrNotFound))
+			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 	})
 
@@ -361,7 +361,7 @@ var _ = Describe("Playlists", func() {
 		It("returns error when playlist not found", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 			err := ps.SetImage(ctx, "nonexistent", strings.NewReader("data"), ".jpg")
-			Expect(err).To(Equal(model.ErrNotFound))
+			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 	})
 
@@ -412,7 +412,7 @@ var _ = Describe("Playlists", func() {
 		It("returns error when playlist not found", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 			err := ps.RemoveImage(ctx, "nonexistent")
-			Expect(err).To(Equal(model.ErrNotFound))
+			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 	})
 })

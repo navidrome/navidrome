@@ -2,6 +2,7 @@ package playlists
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/deluan/rest"
+
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
@@ -209,7 +211,7 @@ func (s *playlists) Update(ctx context.Context, playlistID string,
 func (s *playlists) checkWritable(ctx context.Context, id string) (*model.Playlist, error) {
 	pls, err := s.ds.Playlist(ctx).Get(id)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed getting playlist with ID %q: %w", id, err)
 	}
 	usr, _ := request.UserFrom(ctx)
 	if !usr.IsAdmin && pls.OwnerID != usr.ID {
