@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
 )
 
@@ -32,23 +32,21 @@ type smartPlaylistField struct {
 }
 
 type smartPlaylistCriteria struct {
-	criteria     criteria.Criteria
-	ownerID      string
-	ownerIsAdmin bool
+	criteria.Criteria
+	owner model.User
 }
 
 func newSmartPlaylistCriteria(c criteria.Criteria, opts ...func(*smartPlaylistCriteria)) smartPlaylistCriteria {
-	cSQL := smartPlaylistCriteria{criteria: c}
+	cSQL := smartPlaylistCriteria{Criteria: c}
 	for _, opt := range opts {
 		opt(&cSQL)
 	}
 	return cSQL
 }
 
-func withSmartPlaylistOwner(ownerID string, ownerIsAdmin bool) func(*smartPlaylistCriteria) {
+func withSmartPlaylistOwner(owner model.User) func(*smartPlaylistCriteria) {
 	return func(c *smartPlaylistCriteria) {
-		c.ownerID = ownerID
-		c.ownerIsAdmin = ownerIsAdmin
+		c.owner = owner
 	}
 }
 
@@ -119,10 +117,10 @@ var smartPlaylistFields = map[string]smartPlaylistField{
 }
 
 func (c smartPlaylistCriteria) Where() (squirrel.Sqlizer, error) {
-	if c.criteria.Expression == nil {
+	if c.Criteria.Expression == nil {
 		return squirrel.Expr("1 = 1"), nil
 	}
-	return c.exprSQL(c.criteria.Expression)
+	return c.exprSQL(c.Criteria.Expression)
 }
 
 func (c smartPlaylistCriteria) exprSQL(expr criteria.Expression) (squirrel.Sqlizer, error) {
@@ -290,13 +288,13 @@ func (c smartPlaylistCriteria) inList(values map[string]any, negate bool) (squir
 		return nil, errors.New("playlist id not given")
 	}
 	filters := squirrel.And{squirrel.Eq{"pl.playlist_id": playlistID}}
-	if !c.ownerIsAdmin {
-		if c.ownerID == "" {
+	if !c.owner.IsAdmin {
+		if c.owner.ID == "" {
 			filters = append(filters, squirrel.Eq{"playlist.public": 1})
 		} else {
 			filters = append(filters, squirrel.Or{
 				squirrel.Eq{"playlist.public": 1},
-				squirrel.Eq{"playlist.owner_id": c.ownerID},
+				squirrel.Eq{"playlist.owner_id": c.owner.ID},
 			})
 		}
 	}
@@ -404,7 +402,7 @@ func fieldJoinType(name string) smartPlaylistJoinType {
 
 func (c smartPlaylistCriteria) ExpressionJoins() smartPlaylistJoinType {
 	var joins smartPlaylistJoinType
-	_ = criteria.Walk(c.criteria.Expression, func(expr criteria.Expression) error {
+	_ = criteria.Walk(c.Criteria.Expression, func(expr criteria.Expression) error {
 		for field := range criteria.Fields(expr) {
 			joins |= fieldJoinType(field)
 		}
@@ -415,69 +413,27 @@ func (c smartPlaylistCriteria) ExpressionJoins() smartPlaylistJoinType {
 
 func (c smartPlaylistCriteria) RequiredJoins() smartPlaylistJoinType {
 	joins := c.ExpressionJoins()
-	for _, sortField := range sortFields(c.criteria.Sort) {
-		joins |= fieldJoinType(sortField)
+	for _, name := range c.Criteria.SortFieldNames() {
+		joins |= fieldJoinType(name)
 	}
 	return joins
 }
 
 func (c smartPlaylistCriteria) OrderBy() string {
-	sortValue := c.criteria.Sort
-	if sortValue == "" {
-		sortValue = "title"
-	}
-
-	order := strings.ToLower(strings.TrimSpace(c.criteria.Order))
-	if order != "" && order != "asc" && order != "desc" {
-		log.Error("Invalid value in 'order' field. Valid values: 'asc', 'desc'", "order", c.criteria.Order)
-		order = ""
-	}
-
-	parts := strings.Split(sortValue, ",")
-	fields := make([]string, 0, len(parts))
-	for _, part := range parts {
-		part = strings.TrimSpace(part)
-		if part == "" {
+	sortFields := c.Criteria.OrderByFields()
+	parts := make([]string, 0, len(sortFields))
+	for _, sf := range sortFields {
+		mapped, ok := sortExpr(sf.Field)
+		if !ok {
 			continue
 		}
 		dir := "asc"
-		if strings.HasPrefix(part, "+") || strings.HasPrefix(part, "-") {
-			if strings.HasPrefix(part, "-") {
-				dir = "desc"
-			}
-			part = strings.TrimSpace(part[1:])
+		if sf.Desc {
+			dir = "desc"
 		}
-		sortField := strings.ToLower(part)
-		mapped, ok := sortExpr(sortField)
-		if !ok {
-			log.Error("Invalid field in 'sort' field", "sort", sortField)
-			continue
-		}
-		if order == "desc" {
-			if dir == "asc" {
-				dir = "desc"
-			} else {
-				dir = "asc"
-			}
-		}
-		fields = append(fields, mapped+" "+dir)
+		parts = append(parts, mapped+" "+dir)
 	}
-	return strings.Join(fields, ", ")
-}
-
-func sortFields(sortValue string) []string {
-	if sortValue == "" {
-		sortValue = "title"
-	}
-	parts := strings.Split(sortValue, ",")
-	fields := make([]string, 0, len(parts))
-	for _, part := range parts {
-		part = strings.TrimSpace(strings.TrimLeft(strings.TrimSpace(part), "+-"))
-		if part != "" {
-			fields = append(fields, part)
-		}
-	}
-	return fields
+	return strings.Join(parts, ", ")
 }
 
 func sortExpr(sortField string) (string, bool) {

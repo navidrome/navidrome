@@ -4,6 +4,7 @@ package criteria
 import (
 	"encoding/json"
 	"errors"
+	"slices"
 
 	"github.com/navidrome/navidrome/log"
 )
@@ -42,6 +43,16 @@ func (c Criteria) EffectiveLimit(totalCount int64) int {
 	return 0
 }
 
+// ResolveLimit converts a percentage-based limit into an absolute Limit using
+// the given totalCount. It is a no-op when a fixed Limit is already set or when
+// no percentage limit is configured.
+func (c *Criteria) ResolveLimit(totalCount int64) {
+	if !c.IsPercentageLimit() {
+		return
+	}
+	c.Limit = c.EffectiveLimit(totalCount)
+}
+
 // IsPercentageLimit returns true when the criteria uses a valid percentage-based
 // limit (i.e. LimitPercent is in [1, 100] and no fixed Limit overrides it).
 func (c Criteria) IsPercentageLimit() bool {
@@ -53,11 +64,14 @@ func (c Criteria) ChildPlaylistIds() []string {
 		return nil
 	}
 
-	if parent, ok := c.Expression.(conjunction); ok {
-		return parent.ChildPlaylistIds()
+	parent, ok := c.Expression.(conjunction)
+	if !ok {
+		return nil
 	}
 
-	return nil
+	ids := parent.ChildPlaylistIds()
+	slices.Sort(ids)
+	return slices.Compact(ids)
 }
 
 func (c Criteria) MarshalJSON() ([]byte, error) {

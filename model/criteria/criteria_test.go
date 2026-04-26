@@ -177,6 +177,39 @@ var _ = Describe("Criteria", func() {
 			})
 		})
 
+		Describe("ResolveLimit", func() {
+			It("resolves percentage to absolute limit preserving LimitPercent", func() {
+				c := Criteria{LimitPercent: 10}
+				c.ResolveLimit(450)
+				gomega.Expect(c.Limit).To(gomega.Equal(45))
+			})
+
+			It("does nothing when Limit is already set", func() {
+				c := Criteria{Limit: 50, LimitPercent: 10}
+				c.ResolveLimit(1000)
+				gomega.Expect(c.Limit).To(gomega.Equal(50))
+			})
+
+			It("does nothing when no limit is configured", func() {
+				c := Criteria{}
+				c.ResolveLimit(1000)
+				gomega.Expect(c.Limit).To(gomega.Equal(0))
+			})
+
+			It("sets minimum 1 when percentage rounds to 0 and totalCount > 0", func() {
+				c := Criteria{LimitPercent: 1}
+				c.ResolveLimit(5)
+				gomega.Expect(c.Limit).To(gomega.Equal(1))
+			})
+
+			It("is idempotent when called twice", func() {
+				c := Criteria{LimitPercent: 10}
+				c.ResolveLimit(450)
+				c.ResolveLimit(450)
+				gomega.Expect(c.Limit).To(gomega.Equal(45))
+			})
+		})
+
 		Describe("IsPercentageLimit", func() {
 			It("returns true when LimitPercent is set and Limit is 0", func() {
 				c := Criteria{LimitPercent: 10}
@@ -268,6 +301,20 @@ var _ = Describe("Criteria", func() {
 		It("returns empty list for leaf expressions", func() {
 			ids := Criteria{Expression: Is{"title": "Low Rider"}}.ChildPlaylistIds()
 			gomega.Expect(ids).To(gomega.BeEmpty())
+		})
+		It("deduplicates repeated playlist IDs", func() {
+			sharedID := uuid.NewString()
+			goObj = Criteria{
+				Expression: All{
+					InPlaylist{"id": sharedID},
+					Any{
+						InPlaylist{"id": sharedID},
+						NotInPlaylist{"id": sharedID},
+					},
+				},
+			}
+			ids := goObj.ChildPlaylistIds()
+			gomega.Expect(ids).To(gomega.Equal([]string{sharedID}))
 		})
 	})
 })
