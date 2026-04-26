@@ -30,7 +30,6 @@ CREATE TABLE IF NOT EXISTS "playlist_tracks_new"
         missing boolean default 0 not null,
 
         add_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        weight INTEGER DEFAULT (random()),
 
         PRIMARY KEY (playlist_id, id)
 );
@@ -45,7 +44,5 @@ DROP TABLE playlist_tracks;
 
 -- Put new table to work
 ALTER TABLE playlist_tracks_new RENAME TO playlist_tracks;
-
--- +goose Down
 
 SELECT 1;
