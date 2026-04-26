@@ -11,7 +11,7 @@ import (
 var _ = Describe("Smart playlist criteria SQL", func() {
 	BeforeEach(func() {
 		criteria.AddRoles([]string{"artist", "composer", "producer"})
-		criteria.AddTagNames([]string{"genre", "mood", "releasetype"})
+		criteria.AddTagNames([]string{"genre", "mood", "releasetype", "recordingdate"})
 		criteria.AddNumericTags([]string{"rate"})
 	})
 
@@ -54,6 +54,7 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 		Entry("tag not contains", criteria.NotContains{"genre": "Rock"}, "not exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value LIKE ?)", "%Rock%"),
 		Entry("numeric tag", criteria.Lt{"rate": 6}, "exists (select 1 from json_tree(media_file.tags, '$.rate') where key='value' and CAST(value AS REAL) < ?)", 6),
 		Entry("tag alias", criteria.Is{"albumtype": "album"}, "exists (select 1 from json_tree(media_file.tags, '$.releasetype') where key='value' and value = ?)", "album"),
+		Entry("field alias via tag registration", criteria.Is{"recordingdate": "2024-01-01"}, "media_file.date = ?", "2024-01-01"),
 		Entry("role is", criteria.Is{"artist": "u2"}, "exists (select 1 from json_tree(media_file.participants, '$.artist') where key='name' and value = ?)", "u2"),
 		Entry("role contains", criteria.Contains{"composer": "Lennon"}, "exists (select 1 from json_tree(media_file.participants, '$.composer') where key='name' and value LIKE ?)", "%Lennon%"),
 		Entry("role not contains", criteria.NotContains{"artist": "u2"}, "not exists (select 1 from json_tree(media_file.participants, '$.artist') where key='name' and value LIKE ?)", "%u2%"),

@@ -197,6 +197,11 @@ var _ = Describe("Smart Playlists", func() {
 			Expect(results).To(ConsistOf("Come Together", "Something", "Stairway To Heaven", "Black Dog",
 				"So What", "Bohemian Rhapsody", "All Along the Watchtower", "We Are the Champions"))
 		})
+
+		It("resolves recordingdate alias to the date column", func() {
+			results := evaluateRule(`{"all":[{"is":{"recordingdate":"1959"}}]}`)
+			Expect(results).To(ConsistOf("So What"))
+		})
 	})
 
 	Describe("Logic operators", func() {
