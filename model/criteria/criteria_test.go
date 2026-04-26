@@ -302,5 +302,19 @@ var _ = Describe("Criteria", func() {
 			ids := Criteria{Expression: Is{"title": "Low Rider"}}.ChildPlaylistIds()
 			gomega.Expect(ids).To(gomega.BeEmpty())
 		})
+		It("deduplicates repeated playlist IDs", func() {
+			sharedID := uuid.NewString()
+			goObj = Criteria{
+				Expression: All{
+					InPlaylist{"id": sharedID},
+					Any{
+						InPlaylist{"id": sharedID},
+						NotInPlaylist{"id": sharedID},
+					},
+				},
+			}
+			ids := goObj.ChildPlaylistIds()
+			gomega.Expect(ids).To(gomega.Equal([]string{sharedID}))
+		})
 	})
 })

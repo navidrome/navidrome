@@ -4,6 +4,7 @@ package criteria
 import (
 	"encoding/json"
 	"errors"
+	"slices"
 
 	"github.com/navidrome/navidrome/log"
 )
@@ -63,11 +64,14 @@ func (c Criteria) ChildPlaylistIds() []string {
 		return nil
 	}
 
-	if parent, ok := c.Expression.(conjunction); ok {
-		return parent.ChildPlaylistIds()
+	parent, ok := c.Expression.(conjunction)
+	if !ok {
+		return nil
 	}
 
-	return nil
+	ids := parent.ChildPlaylistIds()
+	slices.Sort(ids)
+	return slices.Compact(ids)
 }
 
 func (c Criteria) MarshalJSON() ([]byte, error) {
