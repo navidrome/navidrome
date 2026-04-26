@@ -2,90 +2,83 @@ package criteria
 
 import "strings"
 
-// FieldInfo describes a criteria field without tying it to persistence details.
+// FieldInfo contains semantic metadata about a criteria field
 type FieldInfo struct {
 	Name    string
 	IsTag   bool
 	IsRole  bool
 	Numeric bool
+	alias   string
 }
 
-var fieldMap = map[string]*fieldMetadata{
-	"title":                {name: "title"},
-	"album":                {name: "album"},
-	"hascoverart":          {name: "hascoverart"},
-	"tracknumber":          {name: "tracknumber"},
-	"discnumber":           {name: "discnumber"},
-	"year":                 {name: "year"},
-	"date":                 {name: "date", alias: "recordingdate"},
-	"originalyear":         {name: "originalyear"},
-	"originaldate":         {name: "originaldate"},
-	"releaseyear":          {name: "releaseyear"},
-	"releasedate":          {name: "releasedate"},
-	"size":                 {name: "size"},
-	"compilation":          {name: "compilation"},
-	"missing":              {name: "missing"},
-	"explicitstatus":       {name: "explicitstatus"},
-	"dateadded":            {name: "dateadded"},
-	"datemodified":         {name: "datemodified"},
-	"discsubtitle":         {name: "discsubtitle"},
-	"comment":              {name: "comment"},
-	"lyrics":               {name: "lyrics"},
-	"sorttitle":            {name: "sorttitle"},
-	"sortalbum":            {name: "sortalbum"},
-	"sortartist":           {name: "sortartist"},
-	"sortalbumartist":      {name: "sortalbumartist"},
-	"albumcomment":         {name: "albumcomment"},
-	"catalognumber":        {name: "catalognumber"},
-	"filepath":             {name: "filepath"},
-	"filetype":             {name: "filetype"},
-	"codec":                {name: "codec"},
-	"duration":             {name: "duration"},
-	"bitrate":              {name: "bitrate"},
-	"bitdepth":             {name: "bitdepth"},
-	"samplerate":           {name: "samplerate"},
-	"bpm":                  {name: "bpm"},
-	"channels":             {name: "channels"},
-	"loved":                {name: "loved"},
-	"dateloved":            {name: "dateloved"},
-	"lastplayed":           {name: "lastplayed"},
-	"daterated":            {name: "daterated"},
-	"playcount":            {name: "playcount"},
-	"rating":               {name: "rating"},
-	"averagerating":        {name: "averagerating", numeric: true},
-	"albumrating":          {name: "albumrating"},
-	"albumloved":           {name: "albumloved"},
-	"albumplaycount":       {name: "albumplaycount"},
-	"albumlastplayed":      {name: "albumlastplayed"},
-	"albumdateloved":       {name: "albumdateloved"},
-	"albumdaterated":       {name: "albumdaterated"},
-	"artistrating":         {name: "artistrating"},
-	"artistloved":          {name: "artistloved"},
-	"artistplaycount":      {name: "artistplaycount"},
-	"artistlastplayed":     {name: "artistlastplayed"},
-	"artistdateloved":      {name: "artistdateloved"},
-	"artistdaterated":      {name: "artistdaterated"},
-	"mbz_album_id":         {name: "mbz_album_id"},
-	"mbz_album_artist_id":  {name: "mbz_album_artist_id"},
-	"mbz_artist_id":        {name: "mbz_artist_id"},
-	"mbz_recording_id":     {name: "mbz_recording_id"},
-	"mbz_release_track_id": {name: "mbz_release_track_id"},
-	"mbz_release_group_id": {name: "mbz_release_group_id"},
-	"library_id":           {name: "library_id", numeric: true},
+var fieldMap = map[string]FieldInfo{
+	"title":                {Name: "title"},
+	"album":                {Name: "album"},
+	"hascoverart":          {Name: "hascoverart"},
+	"tracknumber":          {Name: "tracknumber"},
+	"discnumber":           {Name: "discnumber"},
+	"year":                 {Name: "year"},
+	"date":                 {Name: "date", alias: "recordingdate"},
+	"originalyear":         {Name: "originalyear"},
+	"originaldate":         {Name: "originaldate"},
+	"releaseyear":          {Name: "releaseyear"},
+	"releasedate":          {Name: "releasedate"},
+	"size":                 {Name: "size"},
+	"compilation":          {Name: "compilation"},
+	"missing":              {Name: "missing"},
+	"explicitstatus":       {Name: "explicitstatus"},
+	"dateadded":            {Name: "dateadded"},
+	"datemodified":         {Name: "datemodified"},
+	"discsubtitle":         {Name: "discsubtitle"},
+	"comment":              {Name: "comment"},
+	"lyrics":               {Name: "lyrics"},
+	"sorttitle":            {Name: "sorttitle"},
+	"sortalbum":            {Name: "sortalbum"},
+	"sortartist":           {Name: "sortartist"},
+	"sortalbumartist":      {Name: "sortalbumartist"},
+	"albumcomment":         {Name: "albumcomment"},
+	"catalognumber":        {Name: "catalognumber"},
+	"filepath":             {Name: "filepath"},
+	"filetype":             {Name: "filetype"},
+	"codec":                {Name: "codec"},
+	"duration":             {Name: "duration"},
+	"bitrate":              {Name: "bitrate"},
+	"bitdepth":             {Name: "bitdepth"},
+	"samplerate":           {Name: "samplerate"},
+	"bpm":                  {Name: "bpm"},
+	"channels":             {Name: "channels"},
+	"loved":                {Name: "loved"},
+	"dateloved":            {Name: "dateloved"},
+	"lastplayed":           {Name: "lastplayed"},
+	"daterated":            {Name: "daterated"},
+	"playcount":            {Name: "playcount"},
+	"rating":               {Name: "rating"},
+	"averagerating":        {Name: "averagerating", Numeric: true},
+	"albumrating":          {Name: "albumrating"},
+	"albumloved":           {Name: "albumloved"},
+	"albumplaycount":       {Name: "albumplaycount"},
+	"albumlastplayed":      {Name: "albumlastplayed"},
+	"albumdateloved":       {Name: "albumdateloved"},
+	"albumdaterated":       {Name: "albumdaterated"},
+	"artistrating":         {Name: "artistrating"},
+	"artistloved":          {Name: "artistloved"},
+	"artistplaycount":      {Name: "artistplaycount"},
+	"artistlastplayed":     {Name: "artistlastplayed"},
+	"artistdateloved":      {Name: "artistdateloved"},
+	"artistdaterated":      {Name: "artistdaterated"},
+	"mbz_album_id":         {Name: "mbz_album_id"},
+	"mbz_album_artist_id":  {Name: "mbz_album_artist_id"},
+	"mbz_artist_id":        {Name: "mbz_artist_id"},
+	"mbz_recording_id":     {Name: "mbz_recording_id"},
+	"mbz_release_track_id": {Name: "mbz_release_track_id"},
+	"mbz_release_group_id": {Name: "mbz_release_group_id"},
+	"library_id":           {Name: "library_id", Numeric: true},
 
 	// Backward compatibility: albumtype is an alias for the releasetype tag.
-	"albumtype": {name: "releasetype", isTag: true},
+	"albumtype": {Name: "releasetype", IsTag: true},
 
-	"random": {name: "random"},
-	"value":  {name: "value"},
-}
-
-type fieldMetadata struct {
-	name    string
-	isRole  bool
-	isTag   bool
-	alias   string
-	numeric bool
+	"random": {Name: "random"},
+	"value":  {Name: "value"},
 }
 
 // AllFieldNames returns the names of all registered criteria fields.
@@ -100,15 +93,7 @@ func AllFieldNames() []string {
 // LookupField returns semantic metadata for a criteria field name.
 func LookupField(name string) (FieldInfo, bool) {
 	f, ok := fieldMap[strings.ToLower(name)]
-	if !ok {
-		return FieldInfo{}, false
-	}
-	return FieldInfo{
-		Name:    f.name,
-		IsTag:   f.isTag,
-		IsRole:  f.isRole,
-		Numeric: f.numeric,
-	}, true
+	return f, ok
 }
 
 // AddRoles adds roles to the field map. This is used to add all artist roles to the field map, so they can be used in
@@ -119,7 +104,7 @@ func AddRoles(roles []string) {
 		if _, ok := fieldMap[name]; ok {
 			continue
 		}
-		fieldMap[name] = &fieldMetadata{name: name, isRole: true}
+		fieldMap[name] = FieldInfo{Name: name, IsRole: true}
 	}
 }
 
@@ -138,7 +123,7 @@ func AddTagNames(tagNames []string) {
 			}
 		}
 		if _, ok := fieldMap[name]; !ok {
-			fieldMap[name] = &fieldMetadata{name: name, isTag: true}
+			fieldMap[name] = FieldInfo{Name: name, IsTag: true}
 		}
 	}
 }
@@ -148,9 +133,10 @@ func AddNumericTags(tagNames []string) {
 	for _, tagName := range tagNames {
 		name := strings.ToLower(tagName)
 		if fm, ok := fieldMap[name]; ok {
-			fm.numeric = true
+			fm.Numeric = true
+			fieldMap[name] = fm
 		} else {
-			fieldMap[name] = &fieldMetadata{name: name, isTag: true, numeric: true}
+			fieldMap[name] = FieldInfo{Name: name, IsTag: true, Numeric: true}
 		}
 	}
 }
