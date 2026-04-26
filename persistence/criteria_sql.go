@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/criteria"
 )
 
@@ -415,69 +414,27 @@ func (c smartPlaylistCriteria) ExpressionJoins() smartPlaylistJoinType {
 
 func (c smartPlaylistCriteria) RequiredJoins() smartPlaylistJoinType {
 	joins := c.ExpressionJoins()
-	for _, sortField := range sortFields(c.criteria.Sort) {
-		joins |= fieldJoinType(sortField)
+	for _, name := range c.criteria.SortFieldNames() {
+		joins |= fieldJoinType(name)
 	}
 	return joins
 }
 
 func (c smartPlaylistCriteria) OrderBy() string {
-	sortValue := c.criteria.Sort
-	if sortValue == "" {
-		sortValue = "title"
-	}
-
-	order := strings.ToLower(strings.TrimSpace(c.criteria.Order))
-	if order != "" && order != "asc" && order != "desc" {
-		log.Error("Invalid value in 'order' field. Valid values: 'asc', 'desc'", "order", c.criteria.Order)
-		order = ""
-	}
-
-	parts := strings.Split(sortValue, ",")
-	fields := make([]string, 0, len(parts))
-	for _, part := range parts {
-		part = strings.TrimSpace(part)
-		if part == "" {
+	sortFields := c.criteria.OrderByFields()
+	parts := make([]string, 0, len(sortFields))
+	for _, sf := range sortFields {
+		mapped, ok := sortExpr(sf.Field)
+		if !ok {
 			continue
 		}
 		dir := "asc"
-		if strings.HasPrefix(part, "+") || strings.HasPrefix(part, "-") {
-			if strings.HasPrefix(part, "-") {
-				dir = "desc"
-			}
-			part = strings.TrimSpace(part[1:])
+		if sf.Desc {
+			dir = "desc"
 		}
-		sortField := strings.ToLower(part)
-		mapped, ok := sortExpr(sortField)
-		if !ok {
-			log.Error("Invalid field in 'sort' field", "sort", sortField)
-			continue
-		}
-		if order == "desc" {
-			if dir == "asc" {
-				dir = "desc"
-			} else {
-				dir = "asc"
-			}
-		}
-		fields = append(fields, mapped+" "+dir)
+		parts = append(parts, mapped+" "+dir)
 	}
-	return strings.Join(fields, ", ")
-}
-
-func sortFields(sortValue string) []string {
-	if sortValue == "" {
-		sortValue = "title"
-	}
-	parts := strings.Split(sortValue, ",")
-	fields := make([]string, 0, len(parts))
-	for _, part := range parts {
-		part = strings.TrimSpace(strings.TrimLeft(strings.TrimSpace(part), "+-"))
-		if part != "" {
-			fields = append(fields, part)
-		}
-	}
-	return fields
+	return strings.Join(parts, ", ")
 }
 
 func sortExpr(sortField string) (string, bool) {
