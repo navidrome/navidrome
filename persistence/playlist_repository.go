@@ -281,10 +281,8 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 			log.Error(r.ctx, "Error counting matching tracks for percentage limit", "playlist", pls.Name, "id", pls.ID, err)
 			return false
 		}
-		resolvedLimit := rulesSQL.EffectiveLimit(res.Count)
-		log.Debug(r.ctx, "Resolved percentage limit", "playlist", pls.Name, "percent", rulesSQL.LimitPercent, "totalMatching", res.Count, "resolvedLimit", resolvedLimit)
-		rulesSQL.Limit = resolvedLimit
-		rulesSQL.LimitPercent = 0
+		rulesSQL.ResolveLimit(res.Count)
+		log.Debug(r.ctx, "Resolved percentage limit", "playlist", pls.Name, "percent", rulesSQL.LimitPercent, "totalMatching", res.Count, "resolvedLimit", rulesSQL.Limit)
 	}
 
 	// Apply the criteria rules
