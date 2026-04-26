@@ -12,7 +12,6 @@ import (
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -62,13 +61,12 @@ var _ = Describe("artistArtworkReader", func() {
 
 		When("artist has only one album", func() {
 			It("returns the parent folder", func() {
-				tests.SkipOnWindows("artwork path handling (#TBD-path-sep-artwork)")
 				paths = []string{
 					filepath.FromSlash("/music/artist/album1"),
 				}
 				folder, upd, err := loadArtistFolder(ctx, fds, albums, paths)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(folder).To(Equal("/music/artist"))
+				Expect(folder).To(Equal(filepath.FromSlash("/music/artist")))
 				Expect(upd).To(Equal(expectedUpdTime))
 			})
 		})
@@ -88,14 +86,13 @@ var _ = Describe("artistArtworkReader", func() {
 
 		When("the album paths contain same prefix", func() {
 			It("returns the common prefix", func() {
-				tests.SkipOnWindows("artwork path handling (#TBD-path-sep-artwork)")
 				paths = []string{
 					filepath.FromSlash("/music/artist/album1"),
 					filepath.FromSlash("/music/artist/album2"),
 				}
 				folder, upd, err := loadArtistFolder(ctx, fds, albums, paths)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(folder).To(Equal("/music/artist"))
+				Expect(folder).To(Equal(filepath.FromSlash("/music/artist")))
 				Expect(upd).To(Equal(expectedUpdTime))
 			})
 		})
