@@ -41,6 +41,7 @@ var _ = Describe("Artwork", func() {
 			MockedTranscoding: &tests.MockTranscodingRepo{},
 			MockedFolder:      folderRepo,
 		}
+		// Paths use forward slashes because the scanner stores fs.FS-relative paths in the DB.
 		alOnlyEmbed = model.Album{ID: "222", Name: "Only embed", EmbedArtPath: "tests/fixtures/artist/an-album/test.mp3", FolderIDs: []string{"f1"}}
 		alEmbedNotFound = model.Album{ID: "333", Name: "Embed not found", EmbedArtPath: "tests/fixtures/NON_EXISTENT.mp3", FolderIDs: []string{"f1"}}
 		alOnlyExternal = model.Album{ID: "444", Name: "Only external", FolderIDs: []string{"f1"}, Discs: model.Discs{1: "", 2: ""}}
