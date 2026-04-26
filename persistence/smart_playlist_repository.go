@@ -33,7 +33,9 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 
 	rulesSQL := newSmartPlaylistCriteria(*pls.Rules, withSmartPlaylistOwner(*usr))
 
-	r.refreshChildPlaylists(pls, rulesSQL)
+	if !r.refreshChildPlaylists(pls, rulesSQL) {
+		return false
+	}
 
 	if err := r.resolvePercentageLimit(pls, &rulesSQL, usr.ID); err != nil {
 		return false
@@ -86,16 +88,17 @@ func (r *playlistRepository) shouldRefreshSmartPlaylist(pls *model.Playlist, usr
 }
 
 // refreshChildPlaylists handles refreshing any child playlists that are referenced in the smart playlist criteria.
-func (r *playlistRepository) refreshChildPlaylists(pls *model.Playlist, rulesSQL smartPlaylistCriteria) {
+// Returns false if child playlists could not be loaded (DB error), signaling the parent refresh should abort.
+func (r *playlistRepository) refreshChildPlaylists(pls *model.Playlist, rulesSQL smartPlaylistCriteria) bool {
 	childPlaylistIds := rulesSQL.ChildPlaylistIds()
 	if len(childPlaylistIds) == 0 {
-		return
+		return true
 	}
 
 	childPlaylists, err := r.GetAll(model.QueryOptions{Filters: Eq{"playlist.id": childPlaylistIds}})
 	if err != nil {
 		log.Error(r.ctx, "Error loading child playlists for smart playlist refresh", "playlist", pls.Name, "id", pls.ID, "childIds", childPlaylistIds, err)
-		return
+		return false
 	}
 
 	found := make(map[string]struct{}, len(childPlaylists))
@@ -108,6 +111,7 @@ func (r *playlistRepository) refreshChildPlaylists(pls *model.Playlist, rulesSQL
 			log.Warn(r.ctx, "Referenced playlist is not accessible to smart playlist owner", "playlist", pls.Name, "id", pls.ID, "childId", id, "ownerId", pls.OwnerID)
 		}
 	}
+	return true
 }
 
 // resolvePercentageLimit calculates the actual limit for a smart playlist criteria that uses a percentage-based limit.

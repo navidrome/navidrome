@@ -47,6 +47,11 @@ var _ = Describe("OrderByFields", func() {
 		gomega.Expect(c.OrderByFields()).To(gomega.Equal([]SortField{{Field: "title", Desc: false}}))
 	})
 
+	It("falls back to title when all fields are invalid", func() {
+		c := Criteria{Sort: "bogus,invalid"}
+		gomega.Expect(c.OrderByFields()).To(gomega.Equal([]SortField{{Field: "title", Desc: false}}))
+	})
+
 	It("resolves tag aliases (albumtype -> releasetype)", func() {
 		c := Criteria{Sort: "albumtype"}
 		gomega.Expect(c.OrderByFields()).To(gomega.Equal([]SortField{{Field: "releasetype", Desc: false}}))

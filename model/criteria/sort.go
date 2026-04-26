@@ -45,6 +45,9 @@ func (c Criteria) OrderByFields() []SortField {
 		}
 		fields = append(fields, SortField{Field: info.Name, Desc: desc})
 	}
+	if len(fields) == 0 {
+		return []SortField{{Field: "title", Desc: false}}
+	}
 	return fields
 }
 
