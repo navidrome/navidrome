@@ -45,6 +45,23 @@ func (m *MockPodcastEpisodeRepo) GetNewest(count int) (model.PodcastEpisodes, er
 	return all, nil
 }
 
+func (m *MockPodcastEpisodeRepo) GetByChannels(channelIDs []string) (model.PodcastEpisodes, error) {
+	if m.Err {
+		return nil, errors.New("error")
+	}
+	ids := make(map[string]bool, len(channelIDs))
+	for _, id := range channelIDs {
+		ids[id] = true
+	}
+	var result model.PodcastEpisodes
+	for _, ep := range m.Data {
+		if ids[ep.ChannelID] {
+			result = append(result, *ep)
+		}
+	}
+	return result, nil
+}
+
 func (m *MockPodcastEpisodeRepo) GetByChannel(channelID string) (model.PodcastEpisodes, error) {
 	if m.Err {
 		return nil, errors.New("error")

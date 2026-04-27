@@ -64,6 +64,7 @@ type PodcastEpisodeRepository interface {
 	Get(id string) (*PodcastEpisode, error)
 	GetNewest(count int) (PodcastEpisodes, error)
 	GetByChannel(channelID string) (PodcastEpisodes, error)
+	GetByChannels(channelIDs []string) (PodcastEpisodes, error)
 	GetByGUID(channelID, guid string) (*PodcastEpisode, error)
 	Create(ep *PodcastEpisode) error
 	Update(ep *PodcastEpisode) error
