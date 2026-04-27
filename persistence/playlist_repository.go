@@ -100,6 +100,9 @@ func (r *playlistRepository) Delete(id string) error {
 func (r *playlistRepository) Put(p *model.Playlist, cols ...string) error {
 	pls := dbPlaylist{Playlist: *p}
 	if len(cols) > 0 {
+		if pls.ID == "" {
+			return errors.New("playlist id is required for partial update")
+		}
 		_, err := r.put(pls.ID, pls, cols...)
 		return err
 	}

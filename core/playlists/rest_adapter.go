@@ -106,7 +106,7 @@ func (s *playlists) updatePlaylistEntity(ctx context.Context, id string, entity 
 			current.OwnerID = entity.OwnerID
 		}
 		current.Rules = entity.Rules
-		if current.Path != "" {
+		if current.Path != "" && current.Sync != entity.Sync {
 			current.Sync = entity.Sync
 		}
 		return s.updateMetadata(ctx, s.ds, current, &entity.Name, &entity.Comment, &entity.Public)
@@ -129,7 +129,7 @@ func (s *playlists) updatePlaylistEntity(ctx context.Context, id string, entity 
 }
 
 func rulesEqual(a, b *criteria.Criteria) bool {
-	if a == nil && b == nil {
+	if a == b {
 		return true
 	}
 	if a == nil || b == nil {
