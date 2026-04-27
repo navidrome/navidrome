@@ -122,6 +122,10 @@ pub struct TrackInfo {
     /// MBZReleaseTrackID is the MusicBrainz release track ID.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub mbz_release_track_id: String,
+    /// LibraryID is the ID of the library the track belongs to.
+    /// Only included if the plugin has library permission with filesystem access for the track's library.
+    #[serde(default, skip_serializing_if = "is_zero_i32")]
+    pub library_id: i32,
     /// Path is the full path to the track file, relative to the library root.
     /// Only included if the plugin has library permission with filesystem access for the track's library.
     #[serde(default, skip_serializing_if = "String::is_empty")]

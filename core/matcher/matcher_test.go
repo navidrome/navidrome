@@ -75,7 +75,7 @@ var _ = Describe("Matcher", func() {
 			Return(artistTracks, nil).Maybe()
 	}
 
-	Describe("MatchSongsToLibrary", func() {
+	Describe("MatchSongs", func() {
 		Context("matching by direct ID", func() {
 			It("matches songs with an ID field to MediaFiles by ID", func() {
 				conf.Server.Matcher.FuzzyThreshold = 100
@@ -87,7 +87,7 @@ var _ = Describe("Matcher", func() {
 				}
 				expectIDPhase(model.MediaFiles{idMatch})
 				allowOtherPhases()
-				result, err := m.MatchSongsToLibrary(ctx, songs, 5)
+				result, err := m.MatchSongs(ctx, songs, 5)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result).To(HaveLen(1))
 				Expect(result[0].ID).To(Equal("track-1"))
@@ -106,7 +106,7 @@ var _ = Describe("Matcher", func() {
 				}
 				expectMBIDPhase(model.MediaFiles{mbidMatch})
 				allowOtherPhases()
-				result, err := m.MatchSongsToLibrary(ctx, songs, 5)
+				result, err := m.MatchSongs(ctx, songs, 5)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result).To(HaveLen(1))
 				Expect(result[0].ID).To(Equal("track-mbid"))
@@ -125,7 +125,7 @@ var _ = Describe("Matcher", func() {
 				}
 				expectISRCPhase(model.MediaFiles{isrcMatch})
 				allowOtherPhases()
-				result, err := m.MatchSongsToLibrary(ctx, songs, 5)
+				result, err := m.MatchSongs(ctx, songs, 5)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result).To(HaveLen(1))
 				Expect(result[0].ID).To(Equal("track-isrc"))
@@ -142,7 +142,7 @@ var _ = Describe("Matcher", func() {
 					ID: "track-title", Title: "Enjoy the Silence", Artist: "Depeche Mode",
 				}
 				setupTitleOnlyExpectations(model.MediaFiles{titleMatch})
-				result, err := m.MatchSongsToLibrary(ctx, songs, 5)
+				result, err := m.MatchSongs(ctx, songs, 5)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result).To(HaveLen(1))
 				Expect(result[0].ID).To(Equal("track-title"))
@@ -157,7 +157,7 @@ var _ = Describe("Matcher", func() {
 					ID: "track-fuzzy", Title: "Bohemian Rhapsody (Live)", Artist: "Queen",
 				}
 				setupTitleOnlyExpectations(model.MediaFiles{fuzzyMatch})
-				result, err := m.MatchSongsToLibrary(ctx, songs, 5)
+				result, err := m.MatchSongs(ctx, songs, 5)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result).To(HaveLen(1))
 				Expect(result[0].ID).To(Equal("track-fuzzy"))
@@ -172,7 +172,7 @@ var _ = Describe("Matcher", func() {
 					{ID: "different", Title: "Tomorrow Never Knows", Artist: "The Beatles"},
 				}
 				setupTitleOnlyExpectations(differentTracks)
-				result, err := m.MatchSongsToLibrary(ctx, songs, 5)
+				result, err := m.MatchSongs(ctx, songs, 5)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result).To(BeEmpty())
 			})
@@ -189,7 +189,7 @@ var _ = Describe("Matcher", func() {
 					ID: "br-live", Title: "Bohemian Rhapsody (Live)", Artist: "Queen",
 				}
 				setupTitleOnlyExpectations(model.MediaFiles{libraryTrack})
-				result, err := m.MatchSongsToLibrary(ctx, songs, 5)
+				result, err := m.MatchSongs(ctx, songs, 5)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result).To(HaveLen(1))
 				Expect(result[0].ID).To(Equal("br-live"))
@@ -205,7 +205,7 @@ var _ = Describe("Matcher", func() {
 					ID: "br", Title: "Bohemian Rhapsody", Artist: "Queen", Album: "A Night at the Opera",
 				}
 				setupTitleOnlyExpectations(model.MediaFiles{libraryTrack})
-				result, err := m.MatchSongsToLibrary(ctx, songs, 5)
+				result, err := m.MatchSongs(ctx, songs, 5)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result).To(HaveLen(2))
 				Expect(result[0].ID).To(Equal("br"))
@@ -227,7 +227,7 @@ var _ = Describe("Matcher", func() {
 				}
 				expectIDPhase(model.MediaFiles{idMatch})
 				allowOtherPhases()
-				result, err := m.MatchSongsToLibrary(ctx, songs, 5)
+				result, err := m.MatchSongs(ctx, songs, 5)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result).To(HaveLen(1))
 				Expect(result[0].ID).To(Equal("track-id"))
@@ -248,7 +248,7 @@ var _ = Describe("Matcher", func() {
 					{ID: "c", Title: "Song C", Artist: "Artist"},
 				}
 				setupTitleOnlyExpectations(tracks)
-				result, err := m.MatchSongsToLibrary(ctx, songs, 2)
+				result, err := m.MatchSongs(ctx, songs, 2)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result).To(HaveLen(2))
 			})
@@ -256,10 +256,57 @@ var _ = Describe("Matcher", func() {
 
 		Context("empty input", func() {
 			It("returns empty results for no songs", func() {
-				result, err := m.MatchSongsToLibrary(ctx, []agents.Song{}, 5)
+				result, err := m.MatchSongs(ctx, []agents.Song{}, 5)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result).To(BeEmpty())
 			})
+		})
+	})
+
+	Describe("MatchSongsIndexed", func() {
+		It("returns index-keyed map of matched songs", func() {
+			songs := []agents.Song{
+				{ID: "track-1", Name: "Song One", Artist: "Artist A"},
+				{ID: "track-2", Name: "Song Two", Artist: "Artist B"},
+				{ID: "track-3", Name: "Song Three", Artist: "Artist C"},
+			}
+			mf1 := model.MediaFile{ID: "track-1", Title: "Song One", Artist: "Artist A"}
+			mf2 := model.MediaFile{ID: "track-2", Title: "Song Two", Artist: "Artist B"}
+
+			expectIDPhase(model.MediaFiles{mf1, mf2})
+			allowOtherPhases()
+
+			result, err := m.MatchSongsIndexed(ctx, songs)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(HaveLen(2))
+			Expect(result[0].ID).To(Equal("track-1"))
+			Expect(result[1].ID).To(Equal("track-2"))
+			_, exists := result[2]
+			Expect(exists).To(BeFalse())
+		})
+
+		It("preserves original indices when some songs don't match", func() {
+			songs := []agents.Song{
+				{Name: "Unknown Song", Artist: "Unknown Artist"},
+				{ID: "track-1", Name: "Known Song", Artist: "Known Artist"},
+			}
+			mf1 := model.MediaFile{ID: "track-1", Title: "Known Song", Artist: "Known Artist"}
+
+			expectIDPhase(model.MediaFiles{mf1})
+			allowOtherPhases()
+
+			result, err := m.MatchSongsIndexed(ctx, songs)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(HaveLen(1))
+			_, exists := result[0]
+			Expect(exists).To(BeFalse())
+			Expect(result[1].ID).To(Equal("track-1"))
+		})
+
+		It("returns empty map for empty input", func() {
+			result, err := m.MatchSongsIndexed(ctx, nil)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(BeEmpty())
 		})
 	})
 
@@ -283,7 +330,7 @@ var _ = Describe("Matcher", func() {
 
 			setupTitleOnlyExpectations(model.MediaFiles{wrongMatch, correctMatch})
 
-			result, err := m.MatchSongsToLibrary(ctx, songs, 5)
+			result, err := m.MatchSongs(ctx, songs, 5)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(HaveLen(1))
@@ -303,7 +350,7 @@ var _ = Describe("Matcher", func() {
 
 			setupTitleOnlyExpectations(model.MediaFiles{wrongMatch, correctMatch})
 
-			result, err := m.MatchSongsToLibrary(ctx, songs, 5)
+			result, err := m.MatchSongs(ctx, songs, 5)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(HaveLen(1))
@@ -323,7 +370,7 @@ var _ = Describe("Matcher", func() {
 
 			setupTitleOnlyExpectations(model.MediaFiles{wrongMatch, correctMatch})
 
-			result, err := m.MatchSongsToLibrary(ctx, songs, 5)
+			result, err := m.MatchSongs(ctx, songs, 5)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(HaveLen(1))
@@ -337,7 +384,7 @@ var _ = Describe("Matcher", func() {
 
 			setupTitleOnlyExpectations(model.MediaFiles{})
 
-			result, err := m.MatchSongsToLibrary(ctx, songs, 5)
+			result, err := m.MatchSongs(ctx, songs, 5)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(BeEmpty())
@@ -356,7 +403,7 @@ var _ = Describe("Matcher", func() {
 
 			setupTitleOnlyExpectations(model.MediaFiles{cover1, cover2, cover3})
 
-			result, err := m.MatchSongsToLibrary(ctx, songs, 5)
+			result, err := m.MatchSongs(ctx, songs, 5)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(HaveLen(3))
@@ -384,7 +431,7 @@ var _ = Describe("Matcher", func() {
 
 			setupTitleOnlyExpectations(model.MediaFiles{lessAccurateMatch, preciseMatch, artistTwoMatch})
 
-			result, err := m.MatchSongsToLibrary(ctx, songs, 5)
+			result, err := m.MatchSongs(ctx, songs, 5)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(HaveLen(2))
@@ -407,7 +454,7 @@ var _ = Describe("Matcher", func() {
 
 				setupTitleOnlyExpectations(artistTracks)
 
-				result, err := m.MatchSongsToLibrary(ctx, songs, 5)
+				result, err := m.MatchSongs(ctx, songs, 5)
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result).To(HaveLen(1))
@@ -426,7 +473,7 @@ var _ = Describe("Matcher", func() {
 
 				setupTitleOnlyExpectations(artistTracks)
 
-				result, err := m.MatchSongsToLibrary(ctx, songs, 5)
+				result, err := m.MatchSongs(ctx, songs, 5)
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result).To(HaveLen(1))
@@ -447,7 +494,7 @@ var _ = Describe("Matcher", func() {
 
 				setupTitleOnlyExpectations(artistTracks)
 
-				result, err := m.MatchSongsToLibrary(ctx, songs, 5)
+				result, err := m.MatchSongs(ctx, songs, 5)
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result).To(BeEmpty())
@@ -467,7 +514,7 @@ var _ = Describe("Matcher", func() {
 
 				setupTitleOnlyExpectations(artistTracks)
 
-				result, err := m.MatchSongsToLibrary(ctx, songs, 5)
+				result, err := m.MatchSongs(ctx, songs, 5)
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result).To(HaveLen(1))
@@ -495,7 +542,7 @@ var _ = Describe("Matcher", func() {
 
 			setupTitleOnlyExpectations(model.MediaFiles{wrongMatch, correctMatch})
 
-			result, err := m.MatchSongsToLibrary(ctx, songs, 5)
+			result, err := m.MatchSongs(ctx, songs, 5)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(HaveLen(1))
@@ -515,7 +562,7 @@ var _ = Describe("Matcher", func() {
 
 			setupTitleOnlyExpectations(model.MediaFiles{wrongMatch, correctMatch})
 
-			result, err := m.MatchSongsToLibrary(ctx, songs, 5)
+			result, err := m.MatchSongs(ctx, songs, 5)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(HaveLen(1))
@@ -535,7 +582,7 @@ var _ = Describe("Matcher", func() {
 
 			setupTitleOnlyExpectations(model.MediaFiles{fuzzyMatch, exactMatch})
 
-			result, err := m.MatchSongsToLibrary(ctx, songs, 5)
+			result, err := m.MatchSongs(ctx, songs, 5)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(HaveLen(1))
@@ -556,7 +603,7 @@ var _ = Describe("Matcher", func() {
 
 			setupTitleOnlyExpectations(model.MediaFiles{albumMatch, starredTrack})
 
-			result, err := m.MatchSongsToLibrary(ctx, songs, 5)
+			result, err := m.MatchSongs(ctx, songs, 5)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(HaveLen(1))
@@ -577,7 +624,7 @@ var _ = Describe("Matcher", func() {
 
 			setupTitleOnlyExpectations(model.MediaFiles{albumMatch, ratedTrack})
 
-			result, err := m.MatchSongsToLibrary(ctx, songs, 5)
+			result, err := m.MatchSongs(ctx, songs, 5)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(HaveLen(1))
@@ -603,7 +650,7 @@ var _ = Describe("Matcher", func() {
 
 			setupTitleOnlyExpectations(model.MediaFiles{wrongDuration, correctMatch})
 
-			result, err := m.MatchSongsToLibrary(ctx, songs, 5)
+			result, err := m.MatchSongs(ctx, songs, 5)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(HaveLen(1))
@@ -620,7 +667,7 @@ var _ = Describe("Matcher", func() {
 
 			setupTitleOnlyExpectations(model.MediaFiles{closeDuration})
 
-			result, err := m.MatchSongsToLibrary(ctx, songs, 5)
+			result, err := m.MatchSongs(ctx, songs, 5)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(HaveLen(1))
@@ -640,7 +687,7 @@ var _ = Describe("Matcher", func() {
 
 			setupTitleOnlyExpectations(model.MediaFiles{farDuration, closeDuration})
 
-			result, err := m.MatchSongsToLibrary(ctx, songs, 5)
+			result, err := m.MatchSongs(ctx, songs, 5)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(HaveLen(1))
@@ -657,7 +704,7 @@ var _ = Describe("Matcher", func() {
 
 			setupTitleOnlyExpectations(model.MediaFiles{differentDuration})
 
-			result, err := m.MatchSongsToLibrary(ctx, songs, 5)
+			result, err := m.MatchSongs(ctx, songs, 5)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(HaveLen(1))
@@ -677,7 +724,7 @@ var _ = Describe("Matcher", func() {
 
 			setupTitleOnlyExpectations(model.MediaFiles{differentTitle, correctTitle})
 
-			result, err := m.MatchSongsToLibrary(ctx, songs, 5)
+			result, err := m.MatchSongs(ctx, songs, 5)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(HaveLen(1))
@@ -694,7 +741,7 @@ var _ = Describe("Matcher", func() {
 
 			setupTitleOnlyExpectations(model.MediaFiles{anyTrack})
 
-			result, err := m.MatchSongsToLibrary(ctx, songs, 5)
+			result, err := m.MatchSongs(ctx, songs, 5)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(HaveLen(1))
@@ -711,7 +758,7 @@ var _ = Describe("Matcher", func() {
 
 			setupTitleOnlyExpectations(model.MediaFiles{shortTrack})
 
-			result, err := m.MatchSongsToLibrary(ctx, songs, 5)
+			result, err := m.MatchSongs(ctx, songs, 5)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(HaveLen(1))
@@ -737,7 +784,7 @@ var _ = Describe("Matcher", func() {
 
 			setupTitleOnlyExpectations(model.MediaFiles{libraryTrack})
 
-			result, err := m.MatchSongsToLibrary(ctx, songs, 5)
+			result, err := m.MatchSongs(ctx, songs, 5)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(HaveLen(2))
@@ -757,7 +804,7 @@ var _ = Describe("Matcher", func() {
 
 			setupTitleOnlyExpectations(model.MediaFiles{trackA, trackB, trackC})
 
-			result, err := m.MatchSongsToLibrary(ctx, songs, 5)
+			result, err := m.MatchSongs(ctx, songs, 5)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(HaveLen(3))
@@ -778,7 +825,7 @@ var _ = Describe("Matcher", func() {
 
 			setupTitleOnlyExpectations(model.MediaFiles{trackA, trackB})
 
-			result, err := m.MatchSongsToLibrary(ctx, songs, 2)
+			result, err := m.MatchSongs(ctx, songs, 2)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(HaveLen(2))

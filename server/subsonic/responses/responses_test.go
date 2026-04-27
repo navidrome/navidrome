@@ -1114,4 +1114,33 @@ var _ = Describe("Responses", func() {
 		})
 	})
 
+	Describe("SonicMatches", func() {
+		Context("without data", func() {
+			BeforeEach(func() {
+				response.SonicMatches = &Array[SonicMatch]{}
+			})
+			It("should match .XML", func() {
+				Expect(xml.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+		})
+
+		Context("with data", func() {
+			BeforeEach(func() {
+				response.SonicMatches = &Array[SonicMatch]{
+					{Entry: Child{Id: "1", Title: "Bohemian Rhapsody", IsDir: false}, Similarity: 0.95},
+					{Entry: Child{Id: "2", Title: "We Will Rock You", IsDir: false}, Similarity: 0.78},
+				}
+			})
+			It("should match .XML", func() {
+				Expect(xml.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+		})
+	})
+
 })

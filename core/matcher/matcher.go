@@ -23,7 +23,7 @@ func New(ds model.DataStore) *Matcher {
 	return &Matcher{ds: ds}
 }
 
-// MatchSongsToLibrary matches agent song results to local library tracks using a multi-phase
+// MatchSongs matches agent song results to local library tracks using a multi-phase
 // matching algorithm that prioritizes accuracy over recall.
 //
 // # Algorithm Overview
@@ -107,25 +107,58 @@ func New(ds model.DataStore) *Matcher {
 //
 // Returns up to 'count' MediaFiles from the library that best match the input songs,
 // preserving the original order from the agent. Songs that cannot be matched are skipped.
-func (m *Matcher) MatchSongsToLibrary(ctx context.Context, songs []agents.Song, count int) (model.MediaFiles, error) {
-	idMatches, err := m.loadTracksByID(ctx, songs)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load tracks by ID: %w", err)
-	}
-	mbidMatches, err := m.loadTracksByMBID(ctx, songs, idMatches)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load tracks by MBID: %w", err)
-	}
-	isrcMatches, err := m.loadTracksByISRC(ctx, songs, idMatches, mbidMatches)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load tracks by ISRC: %w", err)
-	}
-	titleMatches, err := m.loadTracksByTitleAndArtist(ctx, songs, idMatches, mbidMatches, isrcMatches)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load tracks by title: %w", err)
+func (m *Matcher) MatchSongs(ctx context.Context, songs []agents.Song, count int) (model.MediaFiles, error) {
+	if len(songs) == 0 {
+		return nil, nil
 	}
 
-	return m.selectBestMatchingSongs(songs, idMatches, mbidMatches, isrcMatches, titleMatches, count), nil
+	byID, byMBID, byISRC, byTitle, err := m.loadAllMatches(ctx, songs)
+	if err != nil {
+		return nil, err
+	}
+	return m.selectBestMatchingSongs(songs, byID, byMBID, byISRC, byTitle, count), nil
+}
+
+// MatchSongsIndexed matches agent song results to local library tracks and returns a map
+// from input song index to matched MediaFile. Songs that cannot be matched are omitted from the map.
+// This preserves original indices, allowing callers to correlate results back to the input slice.
+func (m *Matcher) MatchSongsIndexed(ctx context.Context, songs []agents.Song) (map[int]model.MediaFile, error) {
+	if len(songs) == 0 {
+		return nil, nil
+	}
+
+	byID, byMBID, byISRC, byTitle, err := m.loadAllMatches(ctx, songs)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make(map[int]model.MediaFile, len(songs))
+	for i, t := range songs {
+		if mf, found := findMatchingTrack(t, byID, byMBID, byISRC, byTitle); found {
+			result[i] = mf
+		}
+	}
+	return result, nil
+}
+
+func (m *Matcher) loadAllMatches(ctx context.Context, songs []agents.Song) (byID, byMBID, byISRC, byTitle map[string]model.MediaFile, err error) {
+	byID, err = m.loadTracksByID(ctx, songs)
+	if err != nil {
+		return nil, nil, nil, nil, fmt.Errorf("failed to load tracks by ID: %w", err)
+	}
+	byMBID, err = m.loadTracksByMBID(ctx, songs, byID)
+	if err != nil {
+		return nil, nil, nil, nil, fmt.Errorf("failed to load tracks by MBID: %w", err)
+	}
+	byISRC, err = m.loadTracksByISRC(ctx, songs, byID, byMBID)
+	if err != nil {
+		return nil, nil, nil, nil, fmt.Errorf("failed to load tracks by ISRC: %w", err)
+	}
+	byTitle, err = m.loadTracksByTitleAndArtist(ctx, songs, byID, byMBID, byISRC)
+	if err != nil {
+		return nil, nil, nil, nil, fmt.Errorf("failed to load tracks by title: %w", err)
+	}
+	return byID, byMBID, byISRC, byTitle, nil
 }
 
 // songMatchedIn checks if a song has already been matched in any of the provided match maps.
