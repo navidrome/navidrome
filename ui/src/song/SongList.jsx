@@ -20,7 +20,6 @@ import {
   SongContextMenu,
   SongDatagrid,
   SongInfo,
-  QuickFilter,
   SongTitleField,
   SongSimpleList,
   RatingField,
@@ -119,10 +118,9 @@ const SongFilter = (props) => {
         />
       </ReferenceArrayInput>
       {config.enableFavourites && (
-        <QuickFilter
+        <NullableBooleanInput
           source="starred"
           label={<FavoriteIcon fontSize={'small'} />}
-          defaultValue={true}
         />
       )}
       {isAdmin && <NullableBooleanInput source="missing" />}
