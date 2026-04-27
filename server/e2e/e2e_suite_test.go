@@ -519,6 +519,7 @@ func setupTestDB() {
 		metrics.NewNoopInstance(),
 		lyrics.NewLyrics(nil),
 		decider,
+		nil,
 	)
 }
 

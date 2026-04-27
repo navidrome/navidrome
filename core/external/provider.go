@@ -302,7 +302,7 @@ func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (mode
 	}
 
 	if err == nil && len(songs) > 0 {
-		return e.matcher.MatchSongsToLibrary(ctx, songs, count)
+		return e.matcher.MatchSongs(ctx, songs, count)
 	}
 
 	// Fallback to existing similar artists + top songs algorithm
@@ -481,7 +481,7 @@ func (e *provider) getMatchingTopSongs(ctx context.Context, agent agents.ArtistT
 		}
 	}
 
-	mfs, err := e.matcher.MatchSongsToLibrary(ctx, songs, count)
+	mfs, err := e.matcher.MatchSongs(ctx, songs, count)
 	if err != nil {
 		return nil, err
 	}
