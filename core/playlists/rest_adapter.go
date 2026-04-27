@@ -99,5 +99,9 @@ func (s *playlists) updatePlaylistEntity(ctx context.Context, id string, entity 
 	}
 	// Apply smart playlist rules update
 	current.Rules = entity.Rules
+	// Apply sync toggle only for file-backed playlists
+	if current.Path != "" {
+		current.Sync = entity.Sync
+	}
 	return s.updateMetadata(ctx, s.ds, current, &entity.Name, &entity.Comment, &entity.Public)
 }

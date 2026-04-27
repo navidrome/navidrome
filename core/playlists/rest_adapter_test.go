@@ -142,6 +142,38 @@ var _ = Describe("REST Adapter", func() {
 				Expect(mockPlsRepo.Last.Rules).To(Equal(newRules))
 			})
 
+			It("allows toggling sync for file-backed playlists", func() {
+				mockPlsRepo.Data["file-pls"] = &model.Playlist{
+					ID:      "file-pls",
+					Name:    "File Playlist",
+					OwnerID: "user-1",
+					Path:    "/music/playlist.m3u",
+					Sync:    true,
+				}
+				ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+				repo = ps.NewRepository(ctx).(rest.Persistable)
+				pls := &model.Playlist{Name: "File Playlist", Sync: false}
+				err := repo.Update("file-pls", pls)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mockPlsRepo.Last.Sync).To(BeFalse())
+			})
+
+			It("does not allow setting sync on non-file-backed playlists", func() {
+				mockPlsRepo.Data["manual-pls"] = &model.Playlist{
+					ID:      "manual-pls",
+					Name:    "Manual Playlist",
+					OwnerID: "user-1",
+					Path:    "",
+					Sync:    false,
+				}
+				ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+				repo = ps.NewRepository(ctx).(rest.Persistable)
+				pls := &model.Playlist{Name: "Manual Playlist", Sync: true}
+				err := repo.Update("manual-pls", pls)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mockPlsRepo.Last.Sync).To(BeFalse())
+			})
+
 			It("returns rest.ErrNotFound when playlist doesn't exist", func() {
 				ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 				repo = ps.NewRepository(ctx).(rest.Persistable)
