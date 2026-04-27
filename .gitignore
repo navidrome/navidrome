@@ -44,3 +44,6 @@ go.work*
 
 # Temp benchmark files
 zz_*_test.go
+
+# Downloaded podcast episode audio files should not be tracked
+podcasts/
