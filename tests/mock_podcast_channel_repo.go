@@ -57,6 +57,18 @@ func (m *MockPodcastChannelRepo) UpdateChannel(channel *model.PodcastChannel) er
 	return nil
 }
 
+func (m *MockPodcastChannelRepo) ExistsByURL(url string) (bool, error) {
+	if m.Err {
+		return false, errors.New("error")
+	}
+	for _, c := range m.Data {
+		if c.URL == url {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func (m *MockPodcastChannelRepo) Delete(chanID string) error {
 	if m.Err {
 		return errors.New("error")
