@@ -4,11 +4,13 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	. "github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/req"
 )
 
@@ -24,15 +26,13 @@ func (pub *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if info.shareID != "" {
-		exists, err := pub.ds.Share(ctx).Exists(info.shareID)
+		share, err := pub.ds.Share(ctx).Get(info.shareID)
 		if err != nil {
-			log.Error(ctx, "Error checking share existence", "shareID", info.shareID, err)
-			http.Error(w, "internal error", http.StatusInternalServerError)
+			checkShareError(ctx, w, err, info.shareID)
 			return
 		}
-		if !exists {
-			log.Warn(ctx, "Share not found for stream token", "shareID", info.shareID)
-			http.Error(w, "not found", http.StatusNotFound)
+		if expiresAt := V(share.ExpiresAt); !expiresAt.IsZero() && expiresAt.Before(time.Now()) {
+			checkShareError(ctx, w, model.ErrExpired, info.shareID)
 			return
 		}
 	}

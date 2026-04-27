@@ -162,6 +162,17 @@ var _ = Describe("handleStream", func() {
 		Expect(w.Code).To(Equal(http.StatusNotFound))
 	})
 
+	It("returns 410 when share has been set to expired", func() {
+		shareRepo.ID = "share123"
+		expired := time.Now().Add(-time.Hour)
+		shareRepo.Entity = &model.Share{ID: "share123", ExpiresAt: &expired}
+
+		claims := auth.Claims{ID: "mf-123", ShareID: "share123"}
+		token, _ := auth.CreatePublicToken(claims)
+		w := makeRequest(token)
+		Expect(w.Code).To(Equal(http.StatusGone))
+	})
+
 	It("returns 500 when share lookup fails", func() {
 		shareRepo.Error = errors.New("db error")
 		claims := auth.Claims{ID: "mf-123", ShareID: "share123"}
