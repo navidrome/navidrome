@@ -21,6 +21,7 @@ const defaultConfig = {
   defaultLanguage: '',
   defaultUIVolume: 100,
   uiSearchDebounceMs: 200,
+  uiCoverArtSize: 600,
   enableUserEditing: true,
   enableArtworkUpload: true,
   enableSharing: true,

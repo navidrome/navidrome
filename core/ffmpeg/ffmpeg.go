@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
@@ -49,12 +50,18 @@ type FFmpeg interface {
 	ProbeAudioStream(ctx context.Context, filePath string) (*AudioProbeResult, error)
 	CmdPath() (string, error)
 	IsAvailable() bool
+	IsProbeAvailable() bool
 	Version() string
 }
 
 func New() FFmpeg {
 	return &ffmpeg{}
 }
+
+// ErrAnimatedWebPUnsupported is returned by ConvertAnimatedImage when the
+// ffmpeg binary lacks the libwebp_anim encoder. Callers can use errors.Is to
+// detect this specific case and fall back to static resize.
+var ErrAnimatedWebPUnsupported = errors.New("ffmpeg lacks libwebp_anim encoder — install an ffmpeg build with libwebp")
 
 const (
 	extractImageCmd     = "ffmpeg -i %s -map 0:v -map -0:V -vcodec copy -f image2pipe -"
@@ -85,6 +92,9 @@ func (e *ffmpeg) ConvertAnimatedImage(ctx context.Context, reader io.Reader, max
 	if err != nil {
 		return nil, err
 	}
+	if !animWebP.has(cmdPath, "libwebp_anim") {
+		return nil, ErrAnimatedWebPUnsupported
+	}
 
 	args := []string{cmdPath, "-i", "pipe:0"}
 	if maxSize > 0 {
@@ -95,6 +105,19 @@ func (e *ffmpeg) ConvertAnimatedImage(ctx context.Context, reader io.Reader, max
 		"-quality", strconv.Itoa(quality), "-f", "webp", "-")
 
 	return e.start(ctx, args, reader)
+}
+
+// parseEncodersOutput scans the stdout of `ffmpeg -encoders` for a whole-word
+// match of encoder name. The output has rows like " V....D libwebp_anim  ..."
+// where the name is the 2nd whitespace-separated field.
+func parseEncodersOutput(out []byte, name string) bool {
+	for line := range strings.SplitSeq(string(out), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) >= 2 && fields[1] == name {
+			return true
+		}
+	}
+	return false
 }
 
 func (e *ffmpeg) ExtractImage(ctx context.Context, path string) (io.ReadCloser, error) {
@@ -222,6 +245,19 @@ func (e *ffmpeg) CmdPath() (string, error) {
 func (e *ffmpeg) IsAvailable() bool {
 	_, err := ffmpegCmd()
 	return err == nil
+}
+
+func (e *ffmpeg) IsProbeAvailable() bool {
+	if _, err := ffmpegCmd(); err != nil {
+		return false
+	}
+	probeOnce.Do(func() {
+		probePath := ffprobePath(ffmpegPath)
+		if _, err := exec.LookPath(probePath); err == nil {
+			probeAvail = true
+		}
+	})
+	return probeAvail
 }
 
 // Version executes ffmpeg -version and extracts the version from the output.
@@ -373,18 +409,7 @@ func buildDynamicArgs(opts TranscodeOptions) []string {
 	if opts.BitRate > 0 {
 		args = append(args, "-b:a", strconv.Itoa(opts.BitRate)+"k")
 	}
-	if opts.SampleRate > 0 {
-		args = append(args, "-ar", strconv.Itoa(opts.SampleRate))
-	}
-	if opts.Channels > 0 {
-		args = append(args, "-ac", strconv.Itoa(opts.Channels))
-	}
-	// Only pass -sample_fmt for lossless output formats where bit depth matters.
-	// Lossy codecs (mp3, aac, opus) handle sample format conversion internally,
-	// and passing interleaved formats like "s16" causes silent failures.
-	if opts.BitDepth >= 16 && isLosslessOutputFormat(opts.Format) {
-		args = append(args, "-sample_fmt", bitDepthToSampleFmt(opts.BitDepth))
-	}
+	args = injectDynamicAudioFlags(args, opts)
 
 	args = append(args, "-v", "0")
 
@@ -398,12 +423,19 @@ func buildDynamicArgs(opts TranscodeOptions) []string {
 
 // buildTemplateArgs handles user-customized command templates, with dynamic injection
 // of sample rate, channels, and bit depth when requested by the transcode decision.
-// Note: these flags are injected unconditionally when non-zero, even if the template
-// already includes them. FFmpeg uses the last occurrence of duplicate flags.
+// Values in opts have already been clamped to codec limits upstream (see
+// core/stream/codec.go codecMax* helpers), so injecting them unconditionally is safe —
+// ffmpeg honors the last occurrence of a duplicate flag.
 func buildTemplateArgs(opts TranscodeOptions) []string {
 	args := createFFmpegCommand(opts.Command, opts.FilePath, opts.BitRate, opts.Offset)
+	return injectDynamicAudioFlags(args, opts)
+}
 
-	// Dynamically inject -ar, -ac, and -sample_fmt before the output target
+// injectDynamicAudioFlags appends -ar, -ac, and -sample_fmt flags based on opts.
+// Only passes -sample_fmt for lossless output formats where bit depth matters:
+// lossy codecs (mp3, aac, opus) handle sample format conversion internally, and
+// passing interleaved formats like "s16" causes silent failures.
+func injectDynamicAudioFlags(args []string, opts TranscodeOptions) []string {
 	if opts.SampleRate > 0 {
 		args = injectBeforeOutput(args, "-ar", strconv.Itoa(opts.SampleRate))
 	}
@@ -528,9 +560,55 @@ func ffmpegCmd() (string, error) {
 	return ffmpegPath, ffmpegErr
 }
 
+type encoderProbeState uint8
+
+const (
+	encoderProbeUnknown encoderProbeState = iota
+	encoderProbeAvailable
+	encoderProbeUnavailable
+)
+
+type encoderProbe struct {
+	mu    sync.Mutex
+	state encoderProbeState
+}
+
+func (p *encoderProbe) has(cmdPath, encoder string) bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	switch p.state {
+	case encoderProbeAvailable:
+		return true
+	case encoderProbeUnavailable:
+		return false
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, cmdPath, "-hide_banner", "-encoders").Output() // #nosec
+	if err != nil {
+		log.Warn(ctx, "Could not probe ffmpeg encoders; will retry on next animated cover", err)
+		return false
+	}
+
+	if parseEncodersOutput(out, encoder) {
+		p.state = encoderProbeAvailable
+		return true
+	}
+
+	p.state = encoderProbeUnavailable
+	log.Warn(ctx, "ffmpeg has no libwebp_anim encoder; animated covers will be served as static images",
+		"path", cmdPath, "hint", "install ffmpeg built with libwebp (e.g. `brew install ffmpeg@7`)")
+	return false
+}
+
 // These variables are accessible here for tests. Do not use them directly in production code. Use ffmpegCmd() instead.
 var (
 	ffOnce     sync.Once
 	ffmpegPath string
 	ffmpegErr  error
+	probeOnce  sync.Once
+	probeAvail bool
+	animWebP   encoderProbe
 )

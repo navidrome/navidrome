@@ -219,6 +219,80 @@ var _ = Describe("Configuration", func() {
 
 	})
 
+	Describe("ValidateMaxImageUploadSize", func() {
+		BeforeEach(func() {
+			viper.Reset()
+			conf.SetViperDefaults()
+			viper.SetDefault("datafolder", GinkgoT().TempDir())
+			viper.SetDefault("loglevel", "error")
+			conf.ResetConf()
+		})
+
+		DescribeTable("accepts valid size values",
+			func(input string) {
+				conf.Server.MaxImageUploadSize = input
+				Expect(conf.ValidateMaxImageUploadSize()).To(Succeed())
+			},
+			Entry("megabytes", "10MB"),
+			Entry("gigabytes", "1GB"),
+			Entry("raw bytes", "10485760"),
+			Entry("mebibytes", "10MiB"),
+			Entry("lower case", "50mb"),
+		)
+
+		DescribeTable("rejects invalid size values",
+			func(input string) {
+				conf.Server.MaxImageUploadSize = input
+				Expect(conf.ValidateMaxImageUploadSize()).To(MatchError(ContainSubstring("invalid MaxImageUploadSize")))
+			},
+			Entry("garbage string", "not-a-size"),
+			Entry("negative-looking", "-10MB"),
+		)
+	})
+
+	Describe("EnforceNonRootUser", func() {
+		It("defaults to false", func() {
+			conf.Load(true)
+
+			Expect(conf.Server.EnforceNonRootUser).To(BeFalse())
+		})
+
+		It("allows startup for non-root users when enabled", func() {
+			DeferCleanup(conf.SetRuntimeInfoForTest("linux", 1000))
+			viper.Set("enforcenonrootuser", true)
+
+			conf.Load(true)
+
+			Expect(conf.Server.EnforceNonRootUser).To(BeTrue())
+		})
+
+		It("exits when enabled and running as root without having created a data folder", func() {
+			// Create a path that doesn't exist yet
+			tempBase := GinkgoT().TempDir()
+			nonExistentDataFolder := filepath.Join(tempBase, "nonexistent", "data")
+			DeferCleanup(conf.SetRuntimeInfoForTest("linux", 0))
+			viper.Set("enforcenonrootuser", true)
+			viper.Set("datafolder", nonExistentDataFolder)
+
+			// Attempt to load config as root user - should fail before creating directories
+			Expect(func() {
+				conf.Load(true)
+			}).To(PanicWith(ContainSubstring("EnforceNonRootUser is enabled but Navidrome is running as root")))
+
+			// Verify that the data folder was NOT created
+			Expect(nonExistentDataFolder).ToNot(BeAnExistingFile())
+		})
+
+		It("is a no-op on non-unix platforms", func() {
+			DeferCleanup(conf.SetRuntimeInfoForTest("windows", 0))
+			viper.Set("enforcenonrootuser", true)
+
+			conf.Load(true)
+
+			Expect(conf.Server.EnforceNonRootUser).To(BeTrue())
+		})
+	})
+
 	DescribeTable("should load configuration from",
 		func(format string) {
 			filename := filepath.Join("testdata", "cfg."+format)

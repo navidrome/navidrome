@@ -2,6 +2,7 @@ package stream
 
 import (
 	"errors"
+	"strings"
 	"time"
 )
 
@@ -45,6 +46,18 @@ type DirectPlayProfile struct {
 	AudioCodecs      []string
 	Protocols        []string
 	MaxAudioChannels int
+}
+
+func (p DirectPlayProfile) String() string {
+	containers := strings.Join(p.Containers, ",")
+	if containers == "" {
+		containers = "*"
+	}
+	codecs := strings.Join(p.AudioCodecs, ",")
+	if codecs == "" {
+		return "[" + containers + "]"
+	}
+	return "[" + containers + "/" + codecs + "]"
 }
 
 // Profile describes a transcoding target the client supports

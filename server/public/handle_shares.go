@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"path"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/publicurl"
@@ -81,7 +82,7 @@ func checkShareError(ctx context.Context, w http.ResponseWriter, err error, id s
 
 func (pub *Router) mapShareInfo(r *http.Request, s model.Share) *model.Share {
 	s.URL = ShareURL(r, s.ID)
-	s.ImageURL = publicurl.ImageURL(r, s.CoverArtID(), consts.UICoverArtSize)
+	s.ImageURL = publicurl.ImageURL(r, s.CoverArtID(), conf.Server.UICoverArtSize)
 	for i := range s.Tracks {
 		s.Tracks[i].ID = encodeMediafileShare(s, s.Tracks[i].ID)
 	}

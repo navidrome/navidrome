@@ -11,6 +11,7 @@ import (
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/agents"
 	. "github.com/navidrome/navidrome/core/external"
+	"github.com/navidrome/navidrome/core/matcher"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -51,7 +52,7 @@ var _ = Describe("Provider - ArtistImage", func() {
 			imageAgent: mockImageAgent,
 		}
 
-		provider = NewProvider(ds, agentsCombined)
+		provider = NewProvider(ds, agentsCombined, matcher.New(ds))
 
 		// Default mocks for successful Get calls
 		mockArtistRepo.On("Get", "artist-1").Return(&model.Artist{ID: "artist-1", Name: "Artist One"}, nil).Maybe()

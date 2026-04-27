@@ -1,4 +1,4 @@
-package taglib
+package matcher_test
 
 import (
 	"testing"
@@ -9,9 +9,9 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestTagLib(t *testing.T) {
-	tests.Init(t, true)
+func TestMatcher(t *testing.T) {
+	tests.Init(t, false)
 	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "TagLib Suite")
+	RunSpecs(t, "Matcher Suite")
 }

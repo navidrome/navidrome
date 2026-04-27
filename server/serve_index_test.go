@@ -86,6 +86,7 @@ var _ = Describe("serveIndex", func() {
 		Entry("defaultLanguage", func() { conf.Server.DefaultLanguage = "pt" }, "defaultLanguage", "pt"),
 		Entry("defaultUIVolume", func() { conf.Server.DefaultUIVolume = 45 }, "defaultUIVolume", float64(45)),
 		Entry("uiSearchDebounceMs", func() { conf.Server.UISearchDebounceMs = 500 }, "uiSearchDebounceMs", float64(500)),
+		Entry("uiCoverArtSize", func() { conf.Server.UICoverArtSize = 300 }, "uiCoverArtSize", float64(300)),
 		Entry("enableCoverAnimation", func() { conf.Server.EnableCoverAnimation = true }, "enableCoverAnimation", true),
 		Entry("enableNowPlaying", func() { conf.Server.EnableNowPlaying = true }, "enableNowPlaying", true),
 		Entry("gaTrackingId", func() { conf.Server.GATrackingID = "UA-12345" }, "gaTrackingId", "UA-12345"),
@@ -106,6 +107,18 @@ var _ = Describe("serveIndex", func() {
 		Entry("devNewEventStream", func() { conf.Server.DevNewEventStream = true }, "devNewEventStream", true),
 		Entry("extAuthLogoutURL", func() { conf.Server.ExtAuth.LogoutURL = "https://auth.example.com/logout" }, "extAuthLogoutURL", "https://auth.example.com/logout"),
 	)
+
+	It("sanitizes entity-encoded welcomeMessage as html", func() {
+		conf.Server.UIWelcomeMessage = `&lt;img src=x onerror=alert(1)&gt;&lt;b&gt;Hello&lt;/b&gt;`
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs, nil)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKey("welcomeMessage"))
+		Expect(config["welcomeMessage"]).To(Equal(`<img src="x"><b>Hello</b>`))
+	})
 
 	DescribeTable("sets other UI configuration values",
 		func(configKey string, expectedValueFunc func() any) {

@@ -22,6 +22,8 @@
         "bitRate": "Bit rate",
         "bitDepth": "Bit depth",
         "sampleRate": "Sample rate",
+        "albumGain": "Album gain",
+        "trackGain": "Track gain",
         "channels": "Channels",
         "disc": "Disc %{discNumber}",
         "discSubtitle": "Disc Subtitle",

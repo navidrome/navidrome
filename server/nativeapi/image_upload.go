@@ -13,14 +13,22 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/dustin/go-humanize"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	_ "golang.org/x/image/webp"
 )
 
-const maxImageSize = 10 << 20 // 10MB
+func maxImageUploadSize() int64 {
+	if size, err := humanize.ParseBytes(conf.Server.MaxImageUploadSize); err == nil && size > 0 {
+		return int64(size)
+	}
+	size, _ := humanize.ParseBytes(consts.DefaultMaxImageUploadSize)
+	return int64(size)
+}
 
 func checkImageUploadPermission(w http.ResponseWriter, r *http.Request) bool {
 	user, _ := request.UserFrom(r.Context())
@@ -32,13 +40,14 @@ func checkImageUploadPermission(w http.ResponseWriter, r *http.Request) bool {
 }
 
 func handleImageUpload(saveFn func(ctx context.Context, reader io.Reader, ext string) error) http.HandlerFunc {
+	maxImageSize := maxImageUploadSize()
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		if !checkImageUploadPermission(w, r) {
 			return
 		}
 		r.Body = http.MaxBytesReader(w, r.Body, maxImageSize)
-		if err := r.ParseMultipartForm(maxImageSize / 2); err != nil {
+		if err := r.ParseMultipartForm(min(maxImageSize, 10<<20)); err != nil {
 			log.Error(ctx, "Error parsing multipart form", err)
 			http.Error(w, "file too large or invalid form", http.StatusBadRequest)
 			return

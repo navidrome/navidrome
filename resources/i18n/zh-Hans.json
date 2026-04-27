@@ -23,6 +23,7 @@
         "bitDepth": "位深度",
         "sampleRate": "采样率",
         "channels": "声道",
+        "disc": "碟片 %{discNumber}",
         "discSubtitle": "碟片副标题",
         "starred": "收藏",
         "comment": "注释",
@@ -355,7 +356,8 @@
         "allUsers": "允许所有用户",
         "selectedUsers": "指定用户",
         "allLibraries": "允许所有媒体库",
-        "selectedLibraries": "指定媒体库"
+        "selectedLibraries": "指定媒体库",
+        "allowWriteAccess": "允许写入权限"
       },
       "sections": {
         "status": "状态",
@@ -400,6 +402,7 @@
         "allLibrariesHelp": "启用时，插件将可以访问所有媒体库，包括将来创建的。",
         "noLibraries": "未选择媒体库",
         "librariesRequired": "此插件需要访问媒体库信息。请选择允许此插件访问的媒体库, 或启用 '允许所有媒体库'。",
+        "allowWriteAccessHelp": "启用时，插件将可以修改媒体库目录中的文件。默认情况下，插件仅拥有只读权限。",
         "requiredHosts": "必需的主机"
       },
       "placeholders": {
@@ -554,6 +557,12 @@
     }
   },
   "message": {
+    "uploadCover": "上传封面",
+    "removeCover": "移除封面",
+    "coverUploaded": "封面已上传",
+    "coverRemoved": "封面已移除",
+    "coverUploadError": "上传封面时出错",
+    "coverRemoveError": "移除封面时出错",
     "note": "注意",
     "transcodingDisabled": "出于安全原因，从 Web 界面更改转码配置的功能已被禁用。要更改（编辑或新增）转码选项，请在启用 %{config} 选项的情况下重新启动服务器。",
     "transcodingEnabled": "Navidrome 当前与 %{config} 一起使用，可以通过从 Web 界面配置转码选项来执行任意命令。建议禁用此选项，并且仅在需要配置转码选项时启用此功能。",
@@ -673,6 +682,7 @@
       "currentValue": "当前值",
       "configurationFile": "配置文件",
       "exportToml": "导出配置（TOML）",
+      "downloadToml": "下载配置（TOML）",
       "exportSuccess": "配置以 TOML 格式导出到剪贴板完成",
       "exportFailed": "复制配置失败",
       "devFlagsHeader": "开发标志（可能会更改/删除）",

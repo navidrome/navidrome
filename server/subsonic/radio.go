@@ -75,8 +75,12 @@ func (api *Router) GetInternetRadios(r *http.Request) (*responses.Subsonic, erro
 			continue
 		}
 		// Add coverArt if not legacy client
+		var coverArt string
+		if g.UploadedImage != "" {
+			coverArt = g.CoverArtID().String()
+		}
 		res[i].OpenSubsonicRadio = &responses.OpenSubsonicRadio{
-			CoverArt: g.UploadedImage,
+			CoverArt: coverArt,
 		}
 	}
 

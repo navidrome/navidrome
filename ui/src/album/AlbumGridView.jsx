@@ -20,7 +20,8 @@ import {
   OverflowTooltip,
   useImageUrl,
 } from '../common'
-import { COVER_ART_SIZE, DraggableTypes } from '../consts'
+import config from '../config'
+import { DraggableTypes } from '../consts'
 import clsx from 'clsx'
 import { AlbumDatesField } from './AlbumDatesField.jsx'
 
@@ -135,7 +136,7 @@ const Cover = withContentRect('bounds')(({
     [record],
   )
 
-  const url = subsonic.getCoverArtUrl(record, COVER_ART_SIZE, true)
+  const url = subsonic.getCoverArtUrl(record, config.uiCoverArtSize, true)
   const { imgUrl, loading: imageLoading } = useImageUrl(url)
 
   return (

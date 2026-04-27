@@ -5,7 +5,7 @@ import (
 	"crypto/md5"
 	"fmt"
 	"io"
-	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -13,7 +13,6 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -24,10 +23,11 @@ type discArtworkReader struct {
 	a              *artwork
 	album          model.Album
 	discNumber     int
-	imgFiles       []string
-	discFolders    map[string]bool
+	imgFiles       []string        // library-relative, forward-slash, no leading slash
+	discFoldersRel map[string]bool // library-relative folder paths
 	isMultiFolder  bool
-	firstTrackPath string
+	firstTrackRel  string // library-relative; for fromTag / ffmpeg via lib.Abs
+	lib            libraryView
 	updatedAt      *time.Time
 }
 
@@ -57,18 +57,23 @@ func newDiscArtworkReader(ctx context.Context, a *artwork, artID model.ArtworkID
 		return nil, err
 	}
 
-	// Build disc folder set and find first track
-	discFolders := make(map[string]bool)
-	var firstTrackPath string
+	lib, err := loadLibraryView(ctx, a.ds, al.LibraryID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Build disc folder set and find first track. mf.Path is already library-relative.
+	var firstTrackRel string
 	allFolderIDs := make(map[string]bool)
 	for _, mf := range mfs {
 		allFolderIDs[mf.FolderID] = true
-		if firstTrackPath == "" {
-			firstTrackPath = mf.Path
+		if firstTrackRel == "" {
+			firstTrackRel = filepath.ToSlash(mf.Path)
 		}
 	}
 
-	// Resolve folder IDs to absolute paths
+	// Resolve folder IDs to library-relative paths
+	discFoldersRel := make(map[string]bool)
 	if len(allFolderIDs) > 0 {
 		folderIDs := make([]string, 0, len(allFolderIDs))
 		for id := range allFolderIDs {
@@ -81,7 +86,8 @@ func newDiscArtworkReader(ctx context.Context, a *artwork, artID model.ArtworkID
 			return nil, err
 		}
 		for _, f := range folders {
-			discFolders[f.AbsolutePath()] = true
+			rel := strings.TrimPrefix(path.Join(f.Path, f.Name), "/")
+			discFoldersRel[rel] = true
 		}
 	}
 
@@ -92,9 +98,10 @@ func newDiscArtworkReader(ctx context.Context, a *artwork, artID model.ArtworkID
 		album:          *al,
 		discNumber:     discNumber,
 		imgFiles:       imgFiles,
-		discFolders:    discFolders,
+		discFoldersRel: discFoldersRel,
 		isMultiFolder:  isMultiFolder,
-		firstTrackPath: core.AbsolutePath(ctx, a.ds, al.LibraryID, firstTrackPath),
+		firstTrackRel:  firstTrackRel,
+		lib:            lib,
 		updatedAt:      imagesUpdatedAt,
 	}
 	r.cacheKey.artID = artID
@@ -116,7 +123,7 @@ func (d *discArtworkReader) Key() string {
 }
 
 func (d *discArtworkReader) LastUpdated() time.Time {
-	return d.album.UpdatedAt
+	return d.lastUpdate
 }
 
 func (d *discArtworkReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
@@ -133,7 +140,10 @@ func (d *discArtworkReader) fromDiscArtPriority(ctx context.Context, ffmpeg ffmp
 		pattern = strings.TrimSpace(pattern)
 		switch {
 		case pattern == "embedded":
-			ff = append(ff, fromTag(ctx, d.firstTrackPath), fromFFmpegTag(ctx, ffmpeg, d.firstTrackPath))
+			ff = append(ff,
+				fromTag(ctx, d.lib.FS, d.firstTrackRel),
+				fromFFmpegTag(ctx, ffmpeg, d.lib.Abs(d.firstTrackRel)),
+			)
 		case pattern == "external":
 			// Not supported for disc art, silently ignore
 		case pattern == "discsubtitle":
@@ -152,12 +162,12 @@ func (d *discArtworkReader) fromDiscArtPriority(ctx context.Context, ffmpeg ffmp
 func (d *discArtworkReader) fromDiscSubtitle(ctx context.Context, subtitle string) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
 		for _, file := range d.imgFiles {
-			_, name := filepath.Split(file)
-			stem := strings.TrimSuffix(name, filepath.Ext(name))
+			name := path.Base(file)
+			stem := strings.TrimSuffix(name, path.Ext(name))
 			if !strings.EqualFold(stem, subtitle) {
 				continue
 			}
-			f, err := os.Open(file)
+			f, err := d.lib.FS.Open(file)
 			if err != nil {
 				log.Warn(ctx, "Could not open disc art file", "file", file, err)
 				continue
@@ -168,47 +178,38 @@ func (d *discArtworkReader) fromDiscSubtitle(ctx context.Context, subtitle strin
 	}
 }
 
-// extractDiscNumber extracts a disc number from a filename based on a glob pattern.
-// It finds the portion of the filename that the wildcard matched and parses leading
-// digits as the disc number. Returns (0, false) if the pattern doesn't match or
-// no leading digits are found in the wildcard portion.
+// globMetaChars holds the substitution metacharacters understood by
+// filepath.Match. The '\' escape character is intentionally excluded:
+// disc art patterns come from user config and never include escaped
+// metachars in practice, and treating '\' as a metachar would misalign
+// the literal-prefix extraction in extractDiscNumber.
+const globMetaChars = "*?["
+
+// extractDiscNumber parses the disc number from a filename matched by a
+// filepath.Match-style glob pattern.
+//
+// Both pattern and filename must already be lowercased by the caller, which
+// is also expected to have verified that filepath.Match(pattern, filename)
+// is true before calling this function.
 func extractDiscNumber(pattern, filename string) (int, bool) {
-	filename = strings.ToLower(filename)
-	pattern = strings.ToLower(pattern)
-
-	matched, err := filepath.Match(pattern, filename)
-	if err != nil || !matched {
+	metaIdx := strings.IndexAny(pattern, globMetaChars)
+	if metaIdx < 0 {
 		return 0, false
 	}
-
-	// Find the prefix before the first '*' in the pattern
-	starIdx := strings.IndexByte(pattern, '*')
-	if starIdx < 0 {
-		return 0, false
-	}
-	prefix := pattern[:starIdx]
-
-	// Strip the prefix from the filename to get the wildcard-matched portion
+	prefix := pattern[:metaIdx]
 	if !strings.HasPrefix(filename, prefix) {
 		return 0, false
 	}
-	remainder := filename[len(prefix):]
 
-	// Extract leading ASCII digits from the remainder
-	var digits []byte
-	for _, r := range remainder {
-		if r >= '0' && r <= '9' {
-			digits = append(digits, byte(r))
-		} else {
-			break
-		}
+	start := len(prefix)
+	end := start
+	for end < len(filename) && filename[end] >= '0' && filename[end] <= '9' {
+		end++
 	}
-
-	if len(digits) == 0 {
+	if end == start {
 		return 0, false
 	}
-
-	num, err := strconv.Atoi(string(digits))
+	num, err := strconv.Atoi(filename[start:end])
 	if err != nil {
 		return 0, false
 	}
@@ -216,20 +217,15 @@ func extractDiscNumber(pattern, filename string) (int, bool) {
 }
 
 // fromExternalFile returns a sourceFunc that matches image files against a glob
-// pattern with disc-number-aware filtering.
-//
-// Matching rules:
-//   - If a disc number can be extracted from the filename, the file matches only if
-//     the number equals the target disc number.
-//   - If no number is found and this is a multi-folder album, the file matches if
-//     it's in a folder containing tracks for this disc.
-//   - If no number is found and this is a single-folder album, the file is skipped
-//     (ambiguous).
+// pattern. A numbered filename whose number equals the target disc wins over
+// any unnumbered candidate; callers must pass a lowercase pattern.
 func (d *discArtworkReader) fromExternalFile(ctx context.Context, pattern string) sourceFunc {
+	isLiteral := !strings.ContainsAny(pattern, globMetaChars)
 	return func() (io.ReadCloser, string, error) {
+		var fallbacks []string
 		for _, file := range d.imgFiles {
-			_, name := filepath.Split(file)
-			match, err := filepath.Match(pattern, strings.ToLower(name))
+			name := strings.ToLower(path.Base(file))
+			match, err := filepath.Match(pattern, name)
 			if err != nil {
 				log.Warn(ctx, "Error matching disc art file to pattern", "pattern", pattern, "file", file)
 				continue
@@ -238,25 +234,28 @@ func (d *discArtworkReader) fromExternalFile(ctx context.Context, pattern string
 				continue
 			}
 
-			// Try to extract disc number from filename
-			num, hasNum := extractDiscNumber(pattern, name)
-			if hasNum {
-				// File has a disc number — must match target disc
-				if num != d.discNumber {
-					continue
+			if !isLiteral {
+				if num, hasNum := extractDiscNumber(pattern, name); hasNum {
+					if num != d.discNumber {
+						continue
+					}
+					f, err := d.lib.FS.Open(file)
+					if err != nil {
+						log.Warn(ctx, "Could not open disc art file", "file", file, err)
+						continue
+					}
+					return f, file, nil
 				}
-			} else if d.isMultiFolder {
-				// No number, multi-folder: match by folder association
-				dir := filepath.Dir(file)
-				if !d.discFolders[dir] {
-					continue
-				}
-			} else {
-				// No number, single-folder: ambiguous, skip
-				continue
 			}
 
-			f, err := os.Open(file)
+			if d.isMultiFolder && !d.discFoldersRel[path.Dir(file)] {
+				continue
+			}
+			fallbacks = append(fallbacks, file)
+		}
+
+		for _, file := range fallbacks {
+			f, err := d.lib.FS.Open(file)
 			if err != nil {
 				log.Warn(ctx, "Could not open disc art file", "file", file, err)
 				continue

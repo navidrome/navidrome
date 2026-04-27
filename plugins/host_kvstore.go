@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -35,6 +36,8 @@ type kvstoreServiceImpl struct {
 	pluginName string
 	db         *sql.DB
 	maxSize    int64
+	cancel     context.CancelFunc
+	wg         sync.WaitGroup
 }
 
 // newKVStoreService creates a new kvstoreServiceImpl instance with its own SQLite database.
@@ -74,12 +77,15 @@ func newKVStoreService(ctx context.Context, pluginName string, perm *KVStorePerm
 
 	log.Debug("Initialized plugin kvstore", "plugin", pluginName, "path", dbPath, "maxSize", humanize.Bytes(uint64(maxSize)))
 
+	cleanupCtx, cancel := context.WithCancel(ctx)
 	svc := &kvstoreServiceImpl{
 		pluginName: pluginName,
 		db:         db,
 		maxSize:    maxSize,
+		cancel:     cancel,
 	}
-	go svc.cleanupLoop(ctx)
+	svc.wg.Add(1)
+	go svc.cleanupLoop(cleanupCtx)
 	return svc, nil
 }
 
@@ -335,6 +341,7 @@ func (s *kvstoreServiceImpl) GetMany(ctx context.Context, keys []string) (map[st
 // cleanupLoop periodically removes expired keys from the database.
 // It stops when the provided context is cancelled.
 func (s *kvstoreServiceImpl) cleanupLoop(ctx context.Context) {
+	defer s.wg.Done()
 	ticker := time.NewTicker(cleanupInterval)
 	defer ticker.Stop()
 	for {
@@ -359,17 +366,12 @@ func (s *kvstoreServiceImpl) cleanupExpired(ctx context.Context) {
 	}
 }
 
-// Close runs a final cleanup and closes the SQLite database connection.
-// The cleanup goroutine is stopped by the context passed to newKVStoreService.
+// Close stops the cleanup goroutine and closes the SQLite database connection.
 func (s *kvstoreServiceImpl) Close() error {
-	if s.db != nil {
-		log.Debug("Closing plugin kvstore", "plugin", s.pluginName)
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		s.cleanupExpired(ctx)
-		return s.db.Close()
-	}
-	return nil
+	log.Debug("Closing plugin kvstore", "plugin", s.pluginName)
+	s.cancel()
+	s.wg.Wait()
+	return s.db.Close()
 }
 
 // Compile-time verification

@@ -92,6 +92,9 @@ type TrackInfo struct {
 	MBZReleaseGroupID string `json:"mbzReleaseGroupId,omitempty"`
 	// MBZReleaseTrackID is the MusicBrainz release track ID.
 	MBZReleaseTrackID string `json:"mbzReleaseTrackId,omitempty"`
+	// Path is the full path to the track file, relative to the library root.
+	// Only included if the plugin has library permission with filesystem access for the track's library.
+	Path string `json:"path,omitempty"`
 }
 
 // Scrobbler requires all methods to be implemented.

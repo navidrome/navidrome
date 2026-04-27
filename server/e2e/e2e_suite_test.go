@@ -172,6 +172,10 @@ func buildTestFS() storagetest.FakeFS {
 			"title": "TC MKA Opus", "track": 6, "suffix": "mka", "codec": "opus",
 			"bitrate": 128, "samplerate": 48000, "bitdepth": 0, "channels": 2, "duration": int64(220),
 		}),
+		"Test/Transcode Formats/07 - TC FLAC Multichannel.flac": file(tcBase, _t{
+			"title": "TC FLAC Multichannel", "track": 7, "suffix": "flac",
+			"bitrate": 4500, "samplerate": 48000, "bitdepth": 24, "channels": 6, "duration": int64(180),
+		}),
 
 		// _empty folder (directory with no audio)
 		"_empty/.keep": &fstest.MapFile{Data: []byte{}, ModTime: time.Now()},
@@ -337,6 +341,7 @@ func (n noopFFmpeg) ConvertAnimatedImage(context.Context, io.Reader, int, int) (
 
 func (n noopFFmpeg) CmdPath() (string, error) { return "", nil }
 func (n noopFFmpeg) IsAvailable() bool        { return false }
+func (n noopFFmpeg) IsProbeAvailable() bool   { return true }
 func (n noopFFmpeg) Version() string          { return "noop" }
 
 // noopArchiver implements core.Archiver
@@ -463,6 +468,13 @@ var _ = BeforeSuite(func() {
 	data, err := os.ReadFile(dbFilePath)
 	Expect(err).ToNot(HaveOccurred())
 	Expect(os.WriteFile(snapshotPath, data, 0600)).To(Succeed())
+})
+
+// Close the database before the suite's TempDir cleanup runs. Required on
+// Windows where open SQLite handles hold file locks that block temp-dir
+// removal; harmless on other OSes.
+var _ = AfterSuite(func() {
+	db.Close(ctx)
 })
 
 // setupTestDB restores the database from the golden snapshot and creates the
