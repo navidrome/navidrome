@@ -97,8 +97,12 @@ func (r *playlistRepository) Delete(id string) error {
 	return r.delete(And{Eq{"id": id}, r.userFilter()})
 }
 
-func (r *playlistRepository) Put(p *model.Playlist) error {
+func (r *playlistRepository) Put(p *model.Playlist, cols ...string) error {
 	pls := dbPlaylist{Playlist: *p}
+	if len(cols) > 0 {
+		_, err := r.put(pls.ID, pls, cols...)
+		return err
+	}
 	if pls.ID == "" {
 		pls.CreatedAt = time.Now()
 	}

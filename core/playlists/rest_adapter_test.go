@@ -143,12 +143,14 @@ var _ = Describe("REST Adapter", func() {
 			})
 
 			It("allows toggling sync for file-backed playlists", func() {
+				originalTime := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
 				mockPlsRepo.Data["file-pls"] = &model.Playlist{
-					ID:      "file-pls",
-					Name:    "File Playlist",
-					OwnerID: "user-1",
-					Path:    "/music/playlist.m3u",
-					Sync:    true,
+					ID:        "file-pls",
+					Name:      "File Playlist",
+					OwnerID:   "user-1",
+					Path:      "/music/playlist.m3u",
+					Sync:      true,
+					UpdatedAt: originalTime,
 				}
 				ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 				repo = ps.NewRepository(ctx).(rest.Persistable)
@@ -156,6 +158,7 @@ var _ = Describe("REST Adapter", func() {
 				err := repo.Update("file-pls", pls)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mockPlsRepo.Last.Sync).To(BeFalse())
+				Expect(mockPlsRepo.Last.UpdatedAt).To(Equal(originalTime))
 			})
 
 			It("does not allow setting sync on non-file-backed playlists", func() {
@@ -171,6 +174,41 @@ var _ = Describe("REST Adapter", func() {
 				pls := &model.Playlist{Name: "Manual Playlist", Sync: true}
 				err := repo.Update("manual-pls", pls)
 				Expect(err).ToNot(HaveOccurred())
+				Expect(mockPlsRepo.Last).To(BeNil())
+			})
+
+			It("does not bump updatedAt when only public changes", func() {
+				originalTime := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+				mockPlsRepo.Data["pls-pub"] = &model.Playlist{
+					ID:        "pls-pub",
+					Name:      "My Playlist",
+					OwnerID:   "user-1",
+					Public:    false,
+					UpdatedAt: originalTime,
+				}
+				ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+				repo = ps.NewRepository(ctx).(rest.Persistable)
+				pls := &model.Playlist{Name: "My Playlist", Public: true}
+				err := repo.Update("pls-pub", pls)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mockPlsRepo.Last.Public).To(BeTrue())
+				Expect(mockPlsRepo.Last.UpdatedAt).To(Equal(originalTime))
+			})
+
+			It("bumps updatedAt when name changes along with sync", func() {
+				mockPlsRepo.Data["file-pls2"] = &model.Playlist{
+					ID:      "file-pls2",
+					Name:    "Old Name",
+					OwnerID: "user-1",
+					Path:    "/music/playlist.m3u",
+					Sync:    true,
+				}
+				ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+				repo = ps.NewRepository(ctx).(rest.Persistable)
+				pls := &model.Playlist{Name: "New Name", Sync: false}
+				err := repo.Update("file-pls2", pls)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mockPlsRepo.Last.Name).To(Equal("New Name"))
 				Expect(mockPlsRepo.Last.Sync).To(BeFalse())
 			})
 

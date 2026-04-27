@@ -3,9 +3,11 @@ package playlists
 import (
 	"context"
 	"errors"
+	"reflect"
 
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/request"
 )
 
@@ -77,7 +79,7 @@ func (s *playlists) savePlaylist(ctx context.Context, pls *model.Playlist) (stri
 
 // updatePlaylistEntity updates playlist metadata with permission checks.
 // Used by the REST API wrapper.
-func (s *playlists) updatePlaylistEntity(ctx context.Context, id string, entity *model.Playlist, cols ...string) error {
+func (s *playlists) updatePlaylistEntity(ctx context.Context, id string, entity *model.Playlist, _ ...string) error {
 	current, err := s.checkWritable(ctx, id)
 	if err != nil {
 		switch {
@@ -93,15 +95,45 @@ func (s *playlists) updatePlaylistEntity(ctx context.Context, id string, entity 
 	if !usr.IsAdmin && entity.OwnerID != "" && entity.OwnerID != current.OwnerID {
 		return rest.ErrPermissionDenied
 	}
-	// Apply ownership change (admin only)
-	if entity.OwnerID != "" {
-		current.OwnerID = entity.OwnerID
+
+	contentChanged := entity.Name != current.Name ||
+		entity.Comment != current.Comment ||
+		(entity.OwnerID != "" && entity.OwnerID != current.OwnerID) ||
+		!rulesEqual(current.Rules, entity.Rules)
+
+	if contentChanged {
+		if entity.OwnerID != "" {
+			current.OwnerID = entity.OwnerID
+		}
+		current.Rules = entity.Rules
+		if current.Path != "" {
+			current.Sync = entity.Sync
+		}
+		return s.updateMetadata(ctx, s.ds, current, &entity.Name, &entity.Comment, &entity.Public)
 	}
-	// Apply smart playlist rules update
-	current.Rules = entity.Rules
-	// Apply sync toggle only for file-backed playlists
-	if current.Path != "" {
+
+	// Only sync/public changed — skip updatedAt so cover art URLs stay stable
+	var cols []string
+	if current.Path != "" && current.Sync != entity.Sync {
 		current.Sync = entity.Sync
+		cols = append(cols, "sync")
 	}
-	return s.updateMetadata(ctx, s.ds, current, &entity.Name, &entity.Comment, &entity.Public)
+	if current.Public != entity.Public {
+		current.Public = entity.Public
+		cols = append(cols, "public")
+	}
+	if len(cols) == 0 {
+		return nil
+	}
+	return s.ds.Playlist(ctx).Put(current, cols...)
+}
+
+func rulesEqual(a, b *criteria.Criteria) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return reflect.DeepEqual(a, b)
 }
