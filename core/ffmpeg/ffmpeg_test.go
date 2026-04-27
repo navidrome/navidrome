@@ -3,8 +3,10 @@ package ffmpeg
 import (
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	sync "sync"
 	"testing"
 	"time"
@@ -691,6 +693,59 @@ var _ = Describe("ffmpeg", func() {
 				_, err = stream.Read(buf)
 				Expect(err).To(HaveOccurred())
 			})
+		})
+	})
+
+	Describe("parseEncodersOutput", func() {
+		const sample = `Encoders:
+ V..... = Video
+ ------
+ V....D apng                 APNG (Animated Portable Network Graphics) image
+ V....D libwebp_anim         libwebp WebP image (codec webp)
+ V....D libwebp              libwebp WebP image (codec webp)
+ A....D aac                  AAC (Advanced Audio Coding)
+`
+		It("returns true when the encoder is present", func() {
+			Expect(parseEncodersOutput([]byte(sample), "libwebp_anim")).To(BeTrue())
+			Expect(parseEncodersOutput([]byte(sample), "libwebp")).To(BeTrue())
+			Expect(parseEncodersOutput([]byte(sample), "aac")).To(BeTrue())
+		})
+		It("returns false when the encoder is absent", func() {
+			Expect(parseEncodersOutput([]byte(sample), "libwebp_missing")).To(BeFalse())
+			Expect(parseEncodersOutput([]byte(sample), "")).To(BeFalse())
+		})
+		It("does not match partial names", func() {
+			// libwebp is a prefix of libwebp_anim; the parser must treat names as whole-word.
+			stripped := `Encoders:
+ V....D libwebp              libwebp WebP image (codec webp)
+`
+			Expect(parseEncodersOutput([]byte(stripped), "libwebp_anim")).To(BeFalse())
+		})
+		It("handles empty output", func() {
+			Expect(parseEncodersOutput(nil, "libwebp_anim")).To(BeFalse())
+			Expect(parseEncodersOutput([]byte(""), "libwebp_anim")).To(BeFalse())
+		})
+	})
+
+	Describe("ConvertAnimatedImage", func() {
+		// Point ffmpegCmd at a stand-in binary that produces empty `-encoders`
+		// output so hasAnimatedWebPEncoder returns false. /usr/bin/true is
+		// portable across POSIX systems.
+		It("returns ErrAnimatedWebPUnsupported when the binary lacks libwebp_anim", func() {
+			truePath, err := exec.LookPath("true")
+			if err != nil {
+				Skip("true(1) not available")
+			}
+			origPath, origErr := ffmpegPath, ffmpegErr
+			ffmpegPath = truePath
+			ffmpegErr = nil
+			defer func() {
+				ffmpegPath, ffmpegErr = origPath, origErr
+			}()
+
+			ff := &ffmpeg{}
+			_, err = ff.ConvertAnimatedImage(GinkgoT().Context(), strings.NewReader("x"), 100, 75)
+			Expect(err).To(MatchError(ErrAnimatedWebPUnsupported))
 		})
 	})
 })

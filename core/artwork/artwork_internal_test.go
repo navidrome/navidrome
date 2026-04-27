@@ -7,12 +7,11 @@ import (
 	"image/jpeg"
 	"image/png"
 	"io"
-
 	"os"
 	"path/filepath"
+	"time"
 
 	_ "github.com/gen2brain/webp"
-
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
@@ -38,10 +37,15 @@ var _ = Describe("Artwork", func() {
 		conf.Server.CoverArtPriority = "folder.*, cover.*, embedded , front.*"
 
 		folderRepo = &fakeFolderRepo{}
+		libRepo := &tests.MockLibraryRepo{}
+		repoRoot, _ := os.Getwd()
+		libRepo.SetData(model.Libraries{{ID: 0, Path: testFileLibPath(repoRoot)}})
 		ds = &tests.MockDataStore{
 			MockedTranscoding: &tests.MockTranscodingRepo{},
 			MockedFolder:      folderRepo,
+			MockedLibrary:     libRepo,
 		}
+		// Paths use forward slashes because the scanner stores fs.FS-relative paths in the DB.
 		alOnlyEmbed = model.Album{ID: "222", Name: "Only embed", EmbedArtPath: "tests/fixtures/artist/an-album/test.mp3", FolderIDs: []string{"f1"}}
 		alEmbedNotFound = model.Album{ID: "333", Name: "Embed not found", EmbedArtPath: "tests/fixtures/NON_EXISTENT.mp3", FolderIDs: []string{"f1"}}
 		alOnlyExternal = model.Album{ID: "444", Name: "Only external", FolderIDs: []string{"f1"}, Discs: model.Discs{1: "", 2: ""}}
@@ -146,13 +150,61 @@ var _ = Describe("Artwork", func() {
 				Entry(nil, " embedded , front.* , cover.*,folder.*", "tests/fixtures/artist/an-album/test.mp3"),
 			)
 		})
+		Context("LastUpdated", func() {
+			// Regression test for #5377: LastUpdated feeds the HTTP Last-Modified header.
+			// It must return max(album.UpdatedAt, ImagesUpdatedAt) so browsers revalidate
+			// cached cover art when only the image file changes.
+			now := time.Now().Truncate(time.Second)
+			DescribeTable("returns the max of album.UpdatedAt and ImagesUpdatedAt",
+				func(albumUpdatedAt, imagesUpdatedAt, expected time.Time) {
+					album := model.Album{ID: "al1", UpdatedAt: albumUpdatedAt}
+					folderRepo.result = []model.Folder{{ImagesUpdatedAt: imagesUpdatedAt}}
+					ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{album})
+
+					ar, err := newAlbumArtworkReader(ctx, aw, album.CoverArtID(), nil)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(ar.LastUpdated()).To(Equal(expected))
+				},
+				Entry("album newer than images", now, now.Add(-1*time.Hour), now),
+				Entry("images newer than album", now.Add(-24*time.Hour), now.Add(-1*time.Hour), now.Add(-1*time.Hour)),
+				Entry("equal timestamps", now, now, now),
+			)
+		})
+	})
+	Describe("discArtworkReader", func() {
+		Context("LastUpdated", func() {
+			// Regression test for #5377: same bug as albumArtworkReader — disc covers
+			// must also revalidate when the image file changes, not only when media files do.
+			now := time.Now().Truncate(time.Second)
+			DescribeTable("returns the max of album.UpdatedAt and ImagesUpdatedAt",
+				func(albumUpdatedAt, imagesUpdatedAt, expected time.Time) {
+					album := model.Album{ID: "al1", UpdatedAt: albumUpdatedAt}
+					folderRepo.result = []model.Folder{{ImagesUpdatedAt: imagesUpdatedAt}}
+					ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{album})
+					ds.MediaFile(ctx).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+						{ID: "mf1", AlbumID: "al1", DiscNumber: 1, Path: "tests/fixtures/test.mp3"},
+					})
+
+					artID := model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID("al1", 1), nil)
+					dr, err := newDiscArtworkReader(ctx, aw, artID)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(dr.LastUpdated()).To(Equal(expected))
+				},
+				Entry("album newer than images", now, now.Add(-1*time.Hour), now),
+				Entry("images newer than album", now.Add(-24*time.Hour), now.Add(-1*time.Hour), now.Add(-1*time.Hour)),
+				Entry("equal timestamps", now, now, now),
+			)
+		})
 	})
 	Describe("artistArtworkReader", func() {
 		Context("Multiple covers", func() {
 			BeforeEach(func() {
+				repoRoot, err := os.Getwd()
+				Expect(err).ToNot(HaveOccurred())
 				folderRepo.result = []model.Folder{{
-					Path:       "tests/fixtures/artist/an-album",
-					ImageFiles: []string{"artist.png"},
+					LibraryPath: testFileLibPath(repoRoot),
+					Path:        "tests/fixtures/artist/an-album",
+					ImageFiles:  []string{"artist.png"},
 				}}
 				ds.Artist(ctx).(*tests.MockArtistRepo).SetData(model.Artists{
 					arMultipleCovers,
@@ -171,7 +223,7 @@ var _ = Describe("Artwork", func() {
 					Expect(err).ToNot(HaveOccurred())
 					_, path, err := aw.Reader(ctx)
 					Expect(err).ToNot(HaveOccurred())
-					Expect(path).To(Equal(expected))
+					Expect(filepath.ToSlash(path)).To(HaveSuffix(expected))
 				},
 				Entry(nil, " folder.* , artist.*,album/artist.*", "tests/fixtures/artist/artist.jpg"),
 				Entry(nil, "album/artist.*, folder.*,artist.*", "tests/fixtures/artist/an-album/artist.png"),
@@ -415,7 +467,10 @@ var _ = Describe("Artwork", func() {
 						Name:      "Only external",
 						FolderIDs: []string{"tmp"},
 					}
-					folderRepo.result = []model.Folder{{Path: dirName, ImageFiles: []string{coverFileName}}}
+					folderRepo.result = []model.Folder{{ImageFiles: []string{coverFileName}}}
+					rootLibRepo := &tests.MockLibraryRepo{}
+					rootLibRepo.SetData(model.Libraries{{ID: 0, Path: testFileLibPath(dirName)}})
+					ds.(*tests.MockDataStore).MockedLibrary = rootLibRepo
 					ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{
 						alCover,
 					})
@@ -503,7 +558,10 @@ var _ = Describe("Artwork", func() {
 					Name:      "Only external",
 					FolderIDs: []string{"tmp"},
 				}
-				folderRepo.result = []model.Folder{{Path: dirName, ImageFiles: []string{"cover.png"}}}
+				folderRepo.result = []model.Folder{{ImageFiles: []string{"cover.png"}}}
+				rootLibRepo := &tests.MockLibraryRepo{}
+				rootLibRepo.SetData(model.Libraries{{ID: 0, Path: testFileLibPath(dirName)}})
+				ds.(*tests.MockDataStore).MockedLibrary = rootLibRepo
 				ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{alCover})
 
 				conf.Server.CoverArtPriority = "cover.png"

@@ -27,12 +27,14 @@ var _ = Describe("MediaAnnotationController", func() {
 		ds = &tests.MockDataStore{}
 		playTracker = &fakePlayTracker{}
 		eventBroker = &fakeEventBroker{}
-		router = New(ds, nil, nil, nil, nil, nil, nil, eventBroker, nil, playTracker, nil, nil, nil, nil, nil)
+		router = New(ds, nil, nil, nil, nil, nil, nil, eventBroker, nil, playTracker, nil, nil, nil, nil, nil, nil)
 	})
 
 	Describe("Scrobble", func() {
 		It("submit all scrobbles with only the id", func() {
-			submissionTime := time.Now()
+			// Back-date the baseline so the assertion still passes on platforms
+			// with millisecond clock resolution (e.g. Windows).
+			submissionTime := time.Now().Add(-time.Second)
 			r := newGetRequest("id=12", "id=34")
 
 			_, err := router.Scrobble(r)

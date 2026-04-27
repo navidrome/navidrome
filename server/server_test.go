@@ -30,6 +30,7 @@ var _ = Describe("createUnixSocketFile", func() {
 
 	When("unixSocketPerm is valid", func() {
 		It("updates the permission of the unix socket file and returns nil", func() {
+			tests.SkipOnWindows("uses Unix file permission bits")
 			_, err := createUnixSocketFile(socketPath, "0777")
 			fileInfo, _ := os.Stat(socketPath)
 			actualPermission := fileInfo.Mode().Perm()
@@ -50,6 +51,7 @@ var _ = Describe("createUnixSocketFile", func() {
 
 	When("file already exists", func() {
 		It("recreates the file as a socket with the right permissions", func() {
+			tests.SkipOnWindows("uses Unix file permission bits")
 			_, err := os.Create(socketPath)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(os.Chmod(socketPath, os.FileMode(0777))).To(Succeed())

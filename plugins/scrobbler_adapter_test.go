@@ -259,19 +259,25 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 			},
 		}
 
-		It("includes Path when the plugin has filesystem access to the track's library", func() {
+		It("includes LibraryID and Path when the plugin has filesystem access to the track's library", func() {
 			p := &plugin{manifest: fsManifest, libraries: newLibraryAccess([]int{1}, false)}
-			Expect(mediaFileToTrackInfo(p, track).Path).To(Equal("/music/test.flac"))
+			ti := mediaFileToTrackInfo(p, track)
+			Expect(ti.LibraryID).To(Equal(int32(1)))
+			Expect(ti.Path).To(Equal("/music/test.flac"))
 		})
 
-		It("omits Path when the plugin lacks filesystem permission", func() {
+		It("omits LibraryID and Path when the plugin lacks filesystem permission", func() {
 			p := &plugin{manifest: &Manifest{}, libraries: newLibraryAccess([]int{1}, false)}
-			Expect(mediaFileToTrackInfo(p, track).Path).To(BeEmpty())
+			ti := mediaFileToTrackInfo(p, track)
+			Expect(ti.LibraryID).To(BeZero())
+			Expect(ti.Path).To(BeEmpty())
 		})
 
-		It("omits Path when the track's library is not in the allowed set", func() {
+		It("omits LibraryID and Path when the track's library is not in the allowed set", func() {
 			p := &plugin{manifest: fsManifest, libraries: newLibraryAccess([]int{2}, false)}
-			Expect(mediaFileToTrackInfo(p, track).Path).To(BeEmpty())
+			ti := mediaFileToTrackInfo(p, track)
+			Expect(ti.LibraryID).To(BeZero())
+			Expect(ti.Path).To(BeEmpty())
 		})
 	})
 })
