@@ -24,7 +24,7 @@ type SimilarMatch struct {
 
 type Provider interface {
 	GetSonicSimilarTracks(ctx context.Context, mf *model.MediaFile, count int) ([]SimilarResult, error)
-	FindSonicPath(ctx context.Context, startMf, endMf *model.MediaFile, count int) ([]SimilarResult, error)
+	FindSonicPath(ctx context.Context, startMF, endMF *model.MediaFile, count int) ([]SimilarResult, error)
 }
 
 type PluginLoader interface {
@@ -111,16 +111,16 @@ func (s *Sonic) FindSonicPath(ctx context.Context, startID, endID string, count 
 		return nil, err
 	}
 
-	startMf, err := s.ds.MediaFile(ctx).Get(startID)
+	startMF, err := s.ds.MediaFile(ctx).Get(startID)
 	if err != nil {
 		return nil, fmt.Errorf("getting start media file %s: %w", startID, err)
 	}
-	endMf, err := s.ds.MediaFile(ctx).Get(endID)
+	endMF, err := s.ds.MediaFile(ctx).Get(endID)
 	if err != nil {
 		return nil, fmt.Errorf("getting end media file %s: %w", endID, err)
 	}
 
-	results, err := provider.FindSonicPath(ctx, startMf, endMf, count)
+	results, err := provider.FindSonicPath(ctx, startMF, endMF, count)
 	if err != nil {
 		log.Error(ctx, "Plugin FindSonicPath failed", "startId", startID, "endId", endID, err)
 		return nil, err
