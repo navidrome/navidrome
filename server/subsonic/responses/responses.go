@@ -62,6 +62,7 @@ type Subsonic struct {
 	LyricsList             *LyricsList             `xml:"lyricsList,omitempty"              json:"lyricsList,omitempty"`
 	PlayQueueByIndex       *PlayQueueByIndex       `xml:"playQueueByIndex,omitempty" json:"playQueueByIndex,omitempty"`
 	TranscodeDecision      *TranscodeDecision      `xml:"transcodeDecision,omitempty"       json:"transcodeDecision,omitempty"`
+	SonicMatches           *Array[SonicMatch]      `xml:"sonicMatch,omitempty"              json:"sonicMatch,omitempty"`
 }
 
 const (
@@ -439,6 +440,11 @@ type SimilarSongs2 struct {
 
 type TopSongs struct {
 	Song []Child `xml:"song,omitempty"         json:"song,omitempty"`
+}
+
+type SonicMatch struct {
+	Entry      Child   `xml:"entry"      json:"entry"`
+	Similarity float64 `xml:"similarity" json:"similarity"`
 }
 
 type PlayQueue struct {
