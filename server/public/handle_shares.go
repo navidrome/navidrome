@@ -102,6 +102,7 @@ func encodeMediafileShare(s model.Share, id string) string {
 		ID:      id,
 		Format:  s.Format,
 		BitRate: s.MaxBitRate,
+		ShareID: s.ID,
 	}
 	token, _ := auth.CreateExpiringPublicToken(V(s.ExpiresAt), claims)
 	return token
