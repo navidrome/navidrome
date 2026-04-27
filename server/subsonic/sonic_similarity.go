@@ -7,9 +7,10 @@ import (
 	"github.com/navidrome/navidrome/utils/req"
 )
 
-func (api *Router) GetSonicSimilarTracks(r *http.Request) (*responses.Subsonic, error) {
-	if api.sonic == nil {
-		return nil, newError(responses.ErrorDataNotFound, "sonicSimilarity not supported")
+func (api *Router) GetSonicSimilarTracks(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	if api.sonic == nil || !api.sonic.HasProvider() {
+		w.WriteHeader(http.StatusNotFound)
+		return nil, nil
 	}
 	ctx := r.Context()
 	p := req.Params(r)
@@ -35,9 +36,10 @@ func (api *Router) GetSonicSimilarTracks(r *http.Request) (*responses.Subsonic, 
 	return response, nil
 }
 
-func (api *Router) FindSonicPath(r *http.Request) (*responses.Subsonic, error) {
-	if api.sonic == nil {
-		return nil, newError(responses.ErrorDataNotFound, "sonicSimilarity not supported")
+func (api *Router) FindSonicPath(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	if api.sonic == nil || !api.sonic.HasProvider() {
+		w.WriteHeader(http.StatusNotFound)
+		return nil, nil
 	}
 	ctx := r.Context()
 	p := req.Params(r)

@@ -1,7 +1,8 @@
 package e2e
 
 import (
-	"github.com/navidrome/navidrome/server/subsonic/responses"
+	"net/http"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -12,22 +13,16 @@ var _ = Describe("Sonic Similarity Endpoints", func() {
 	})
 
 	Describe("getSonicSimilarTracks", func() {
-		It("returns data not found error when no sonic similarity plugin is available", func() {
-			resp := doReq("getSonicSimilarTracks", "id", "any-song-id")
-
-			Expect(resp.Status).To(Equal(responses.StatusFailed))
-			Expect(resp.Error).ToNot(BeNil())
-			Expect(resp.Error.Code).To(Equal(responses.ErrorDataNotFound))
+		It("returns 404 when no sonic similarity plugin is available", func() {
+			w := doRawReq("getSonicSimilarTracks", "id", "any-song-id")
+			Expect(w.Code).To(Equal(http.StatusNotFound))
 		})
 	})
 
 	Describe("findSonicPath", func() {
-		It("returns data not found error when no sonic similarity plugin is available", func() {
-			resp := doReq("findSonicPath", "startSongId", "any-song-id", "endSongId", "another-song-id")
-
-			Expect(resp.Status).To(Equal(responses.StatusFailed))
-			Expect(resp.Error).ToNot(BeNil())
-			Expect(resp.Error.Code).To(Equal(responses.ErrorDataNotFound))
+		It("returns 404 when no sonic similarity plugin is available", func() {
+			w := doRawReq("findSonicPath", "startSongId", "any-song-id", "endSongId", "another-song-id")
+			Expect(w.Code).To(Equal(http.StatusNotFound))
 		})
 	})
 })
