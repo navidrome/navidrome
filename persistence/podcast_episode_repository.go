@@ -45,6 +45,16 @@ func (r *podcastEpisodeRepository) GetByChannel(channelID string) (model.Podcast
 	return eps, err
 }
 
+func (r *podcastEpisodeRepository) GetByChannels(channelIDs []string) (model.PodcastEpisodes, error) {
+	if len(channelIDs) == 0 {
+		return nil, nil
+	}
+	sel := r.newSelect().Columns("*").Where(Eq{"channel_id": channelIDs}).OrderBy("channel_id, publish_date DESC")
+	var eps model.PodcastEpisodes
+	err := r.queryAll(sel, &eps)
+	return eps, err
+}
+
 func (r *podcastEpisodeRepository) GetByGUID(channelID, guid string) (*model.PodcastEpisode, error) {
 	sel := r.newSelect().Columns("*").Where(Eq{"channel_id": channelID, "guid": guid})
 	res := model.PodcastEpisode{}
