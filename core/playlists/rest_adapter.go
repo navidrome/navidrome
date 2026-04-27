@@ -34,8 +34,8 @@ func (r *playlistRepositoryWrapper) Save(entity any) (string, error) {
 	return r.service.savePlaylist(r.ctx, entity.(*model.Playlist))
 }
 
-func (r *playlistRepositoryWrapper) Update(id string, entity any, cols ...string) error {
-	return r.service.updatePlaylistEntity(r.ctx, id, entity.(*model.Playlist), cols...)
+func (r *playlistRepositoryWrapper) Update(id string, entity any, _ ...string) error {
+	return r.service.updatePlaylistEntity(r.ctx, id, entity.(*model.Playlist))
 }
 
 func (r *playlistRepositoryWrapper) Delete(id string) error {
@@ -79,7 +79,7 @@ func (s *playlists) savePlaylist(ctx context.Context, pls *model.Playlist) (stri
 
 // updatePlaylistEntity updates playlist metadata with permission checks.
 // Used by the REST API wrapper.
-func (s *playlists) updatePlaylistEntity(ctx context.Context, id string, entity *model.Playlist, _ ...string) error {
+func (s *playlists) updatePlaylistEntity(ctx context.Context, id string, entity *model.Playlist) error {
 	current, err := s.checkWritable(ctx, id)
 	if err != nil {
 		switch {
