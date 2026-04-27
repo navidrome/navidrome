@@ -50,7 +50,7 @@ var _ = Describe("PodcastService", func() {
 		DeferCleanup(mockServer.Close)
 
 		conf.Server.DataFolder = GinkgoT().TempDir()
-		svc = podcasts.NewPodcastService(ds, nil)
+		svc = podcasts.NewPodcastService(ds, nil, nil)
 	})
 
 	Describe("AddChannel", func() {
@@ -123,6 +123,11 @@ var _ = Describe("PodcastService", func() {
 		var episode *model.PodcastEpisode
 
 		BeforeEach(func() {
+			channelRepo.Data["ch-1"] = &model.PodcastChannel{
+				ID:    "ch-1",
+				Title: "Test Channel",
+				URL:   "http://example.com/feed.xml",
+			}
 			episode = &model.PodcastEpisode{
 				ID:           "ep-1",
 				ChannelID:    "ch-1",
@@ -164,11 +169,11 @@ var _ = Describe("PodcastService", func() {
 	})
 
 	Describe("DeleteEpisode", func() {
-		It("removes episode from DB", func() {
-			episodeRepo.Data["ep-1"] = &model.PodcastEpisode{ID: "ep-1", ChannelID: "ch-1"}
+		It("resets episode to new status", func() {
+			episodeRepo.Data["ep-1"] = &model.PodcastEpisode{ID: "ep-1", ChannelID: "ch-1", Status: model.PodcastStatusCompleted}
 			err := svc.DeleteEpisode(ctx, "ep-1")
 			Expect(err).ToNot(HaveOccurred())
-			Expect(episodeRepo.Data).To(BeEmpty())
+			Expect(episodeRepo.Data["ep-1"].Status).To(Equal(model.PodcastStatusNew))
 		})
 
 		It("deletes the downloaded file when path is set", func() {
@@ -208,6 +213,9 @@ var _ = Describe("PodcastService", func() {
 	})
 
 	Describe("DownloadEpisode error handling", func() {
+		BeforeEach(func() {
+			channelRepo.Data["ch-1"] = &model.PodcastChannel{ID: "ch-1", Title: "Test Channel"}
+		})
 		It("sets status to error when download fails", func() {
 			episodeRepo.Data["ep-bad"] = &model.PodcastEpisode{
 				ID:           "ep-bad",
@@ -238,6 +246,9 @@ var _ = Describe("PodcastService", func() {
 	})
 
 	Describe("DownloadEpisode with timestamp", func() {
+		BeforeEach(func() {
+			channelRepo.Data["ch-1"] = &model.PodcastChannel{ID: "ch-1", Title: "Test Channel"}
+		})
 		It("sets updated_at after status change", func() {
 			episodeRepo.Data["ep-ts"] = &model.PodcastEpisode{
 				ID:           "ep-ts",
