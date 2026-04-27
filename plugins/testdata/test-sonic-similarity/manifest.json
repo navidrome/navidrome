@@ -1,0 +1,7 @@
+{
+  "name": "Test Sonic Similarity",
+  "author": "Navidrome Test",
+  "version": "1.0.0",
+  "description": "A test plugin for sonic similarity integration testing",
+  "capabilities": ["SonicSimilarity"]
+}
