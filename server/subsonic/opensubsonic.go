@@ -16,6 +16,7 @@ func (api *Router) GetOpenSubsonicExtensions(_ *http.Request) (*responses.Subson
 		{Name: "transcoding", Versions: []int32{1}},
 		{Name: "playbackReport", Versions: []int32{1}},
 		{Name: "topSongsByArtistId", Versions: []int32{1}},
+		{Name: "getPodcastEpisode", Versions: []int32{1}},
 	}
 	if api.sonic != nil && api.sonic.HasProvider() {
 		extensions = append(extensions, responses.OpenSubsonicExtension{

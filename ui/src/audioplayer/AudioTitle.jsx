@@ -49,9 +49,11 @@ const AudioTitle = React.memo(({ audioInfo, gainInfo, isMobile }) => {
 
   const linkTo = audioInfo.isRadio
     ? `/radio/${audioInfo.trackId}/show`
-    : song.playlistId
-      ? `/playlist/${song.playlistId}/show`
-      : `/album/${song.albumId}/show`
+    : song.isPodcast
+      ? `/podcast/${song.channelId}/show`
+      : song.playlistId
+        ? `/playlist/${song.playlistId}/show`
+        : `/album/${song.albumId}/show`
 
   return (
     <Link to={linkTo} className={className} ref={dragSongRef}>
