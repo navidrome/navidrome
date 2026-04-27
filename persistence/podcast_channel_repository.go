@@ -43,14 +43,22 @@ func (r *podcastChannelRepository) GetAll(withEpisodes bool) (model.PodcastChann
 	if err := r.queryAll(sel, &channels); err != nil {
 		return nil, err
 	}
-	if withEpisodes {
+	if withEpisodes && len(channels) > 0 {
+		ids := make([]string, len(channels))
+		for i, ch := range channels {
+			ids[i] = ch.ID
+		}
 		epRepo := NewPodcastEpisodeRepository(r.ctx, r.db)
+		allEps, err := epRepo.GetByChannels(ids)
+		if err != nil {
+			return nil, err
+		}
+		epsByChannel := make(map[string]model.PodcastEpisodes, len(channels))
+		for _, ep := range allEps {
+			epsByChannel[ep.ChannelID] = append(epsByChannel[ep.ChannelID], ep)
+		}
 		for i := range channels {
-			eps, err := epRepo.GetByChannel(channels[i].ID)
-			if err != nil {
-				return nil, err
-			}
-			channels[i].Episodes = eps
+			channels[i].Episodes = epsByChannel[channels[i].ID]
 		}
 	}
 	return channels, nil

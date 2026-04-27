@@ -153,6 +153,8 @@ func (s *podcastService) DownloadEpisode(ctx context.Context, id string) error {
 		return err
 	}
 
+	// Use context.Background() so the download is not cancelled when the HTTP
+	// request completes. TODO: tie to server shutdown context for graceful termination.
 	go s.doDownload(context.Background(), ep, ch)
 	return nil
 }
@@ -176,7 +178,8 @@ func (s *podcastService) doDownload(ctx context.Context, ep *model.PodcastEpisod
 	}
 	defer f.Close()
 
-	resp, err := http.Get(ep.EnclosureURL) //nolint:gosec
+	httpClient := &http.Client{Timeout: 30 * time.Second}
+	resp, err := httpClient.Get(ep.EnclosureURL) //nolint:gosec
 	if err != nil {
 		s.setEpisodeError(ctx, ep, err)
 		return
@@ -287,6 +290,12 @@ func (s *podcastService) setEpisodeError(ctx context.Context, ep *model.PodcastE
 	}
 }
 
+// sanitizeMetadata removes null bytes and trims whitespace from ffmpeg metadata values.
+// Since exec.Command passes args directly (no shell), only null bytes need sanitizing.
+func sanitizeMetadata(s string) string {
+	return strings.ReplaceAll(strings.TrimSpace(s), "\x00", "")
+}
+
 func (s *podcastService) writeID3Tags(ctx context.Context, dest, suffix, title, album string) {
 	if s.ff == nil {
 		return
@@ -298,8 +307,8 @@ func (s *podcastService) writeID3Tags(ctx context.Context, dest, suffix, title, 
 	tmp := dest + ".tmp." + suffix
 	cmd := exec.CommandContext(ctx, ffmpegPath,
 		"-i", dest,
-		"-metadata", "title="+title,
-		"-metadata", "album="+album,
+		"-metadata", "title="+sanitizeMetadata(title),
+		"-metadata", "album="+sanitizeMetadata(album),
 		"-metadata", "artist=",
 		"-metadata", "genre=Podcast",
 		"-c", "copy", "-y", tmp,
@@ -386,7 +395,8 @@ func (pw *progressWriter) Write(p []byte) (int, error) {
 }
 
 func fetchAndParse(rssURL string) (*rssFeed, error) {
-	resp, err := http.Get(rssURL) //nolint:gosec
+	httpClient := &http.Client{Timeout: 15 * time.Second}
+	resp, err := httpClient.Get(rssURL) //nolint:gosec
 	if err != nil {
 		return nil, fmt.Errorf("fetching RSS feed: %w", err)
 	}
