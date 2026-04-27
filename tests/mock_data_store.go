@@ -26,8 +26,10 @@ type MockDataStore struct {
 	MockedUserProps      model.UserPropsRepository
 	MockedScrobbleBuffer model.ScrobbleBufferRepository
 	MockedScrobble       model.ScrobbleRepository
-	MockedRadio          model.RadioRepository
-	MockedPlugin         model.PluginRepository
+	MockedRadio           model.RadioRepository
+	MockedPlugin          model.PluginRepository
+	MockedPodcastChannel  model.PodcastChannelRepository
+	MockedPodcastEpisode  model.PodcastEpisodeRepository
 	scrobbleBufferMu     sync.Mutex
 	repoMu               sync.Mutex
 
@@ -247,6 +249,28 @@ func (db *MockDataStore) Plugin(ctx context.Context) model.PluginRepository {
 	return db.MockedPlugin
 }
 
+func (db *MockDataStore) PodcastChannel(ctx context.Context) model.PodcastChannelRepository {
+	if db.MockedPodcastChannel != nil {
+		return db.MockedPodcastChannel
+	}
+	if db.RealDS != nil {
+		return db.RealDS.PodcastChannel(ctx)
+	}
+	db.MockedPodcastChannel = CreateMockPodcastChannelRepo()
+	return db.MockedPodcastChannel
+}
+
+func (db *MockDataStore) PodcastEpisode(ctx context.Context) model.PodcastEpisodeRepository {
+	if db.MockedPodcastEpisode != nil {
+		return db.MockedPodcastEpisode
+	}
+	if db.RealDS != nil {
+		return db.RealDS.PodcastEpisode(ctx)
+	}
+	db.MockedPodcastEpisode = CreateMockPodcastEpisodeRepo()
+	return db.MockedPodcastEpisode
+}
+
 func (db *MockDataStore) WithTx(block func(tx model.DataStore) error, label ...string) error {
 	return block(db)
 }
@@ -269,6 +293,8 @@ func (db *MockDataStore) Resource(ctx context.Context, m any) model.ResourceRepo
 		return db.Playlist(ctx).(model.ResourceRepository)
 	case model.Radio, *model.Radio:
 		return db.Radio(ctx).(model.ResourceRepository)
+	case model.PodcastChannel, *model.PodcastChannel:
+		return db.PodcastChannel(ctx).(model.ResourceRepository)
 	case model.Share, *model.Share:
 		return db.Share(ctx).(model.ResourceRepository)
 	case model.Genre, *model.Genre:

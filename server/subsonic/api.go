@@ -17,6 +17,7 @@ import (
 	lyricssvc "github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
+	podcastsvc "github.com/navidrome/navidrome/core/podcasts"
 	playlistsvc "github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	sonicsvc "github.com/navidrome/navidrome/core/sonic"
@@ -53,6 +54,7 @@ type Router struct {
 	metrics           metrics.Metrics
 	lyrics            lyricssvc.Lyrics
 	transcodeDecision stream.TranscodeDecider
+	podcasts          podcastsvc.Podcasts
 	sonic             *sonicsvc.Sonic
 }
 
@@ -60,6 +62,7 @@ func New(ds model.DataStore, artwork artwork.Artwork, streamer stream.MediaStrea
 	players core.Players, provider external.Provider, scanner model.Scanner, broker events.Broker,
 	playlists playlistsvc.Playlists, scrobbler scrobbler.PlayTracker, share core.Share, playback playback.PlaybackServer,
 	metrics metrics.Metrics, lyrics lyricssvc.Lyrics, transcodeDecision stream.TranscodeDecider,
+	podcasts podcastsvc.Podcasts,
 	sonic *sonicsvc.Sonic,
 ) *Router {
 	r := &Router{
@@ -78,6 +81,7 @@ func New(ds model.DataStore, artwork artwork.Artwork, streamer stream.MediaStrea
 		metrics:           metrics,
 		lyrics:            lyrics,
 		transcodeDecision: transcodeDecision,
+		podcasts:          podcasts,
 		sonic:             sonic,
 	}
 	r.Handler = r.routes()
@@ -227,9 +231,17 @@ func (api *Router) routes() http.Handler {
 			h501(r, "jukeboxControl")
 		}
 
-		// Not Implemented (yet?)
-		h501(r, "getPodcasts", "getNewestPodcasts", "refreshPodcasts", "createPodcastChannel", "deletePodcastChannel",
-			"deletePodcastEpisode", "downloadPodcastEpisode")
+		r.Group(func(r chi.Router) {
+			r.Use(getPlayer(api.players))
+			h(r, "getPodcasts", api.GetPodcasts)
+			h(r, "getNewestPodcasts", api.GetNewestPodcasts)
+			h(r, "createPodcastChannel", api.CreatePodcastChannel)
+			h(r, "refreshPodcasts", api.RefreshPodcasts)
+			h(r, "deletePodcastChannel", api.DeletePodcastChannel)
+			h(r, "deletePodcastEpisode", api.DeletePodcastEpisode)
+			h(r, "downloadPodcastEpisode", api.DownloadPodcastEpisode)
+			h(r, "getPodcastEpisode", api.GetPodcastEpisode)
+		})
 		h501(r, "createUser", "updateUser", "deleteUser", "changePassword")
 
 		// Deprecated/Won't implement/Out of scope endpoints

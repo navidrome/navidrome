@@ -54,6 +54,10 @@ type Subsonic struct {
 
 	InternetRadioStations *InternetRadioStations `xml:"internetRadioStations,omitempty"   json:"internetRadioStations,omitempty"`
 
+	Podcasts       *Podcasts       `xml:"podcasts,omitempty"        json:"podcasts,omitempty"`
+	NewestPodcasts *NewestPodcasts `xml:"newestPodcasts,omitempty"  json:"newestPodcasts,omitempty"`
+	PodcastEpisode *PodcastEpisode `xml:"podcastEpisode,omitempty"  json:"podcastEpisode,omitempty"`
+
 	JukeboxStatus   *JukeboxStatus   `xml:"jukeboxStatus,omitempty"                       json:"jukeboxStatus,omitempty"`
 	JukeboxPlaylist *JukeboxPlaylist `xml:"jukeboxPlaylist,omitempty"                     json:"jukeboxPlaylist,omitempty"`
 
@@ -164,7 +168,12 @@ type Child struct {
 	SongCount             int32      `xml:"songCount,attr,omitempty"                json:"songCount,omitempty"`
 	IsVideo               bool       `xml:"isVideo,attr,omitempty"                  json:"isVideo,omitempty"`
 	BookmarkPosition      int64      `xml:"bookmarkPosition,attr,omitempty"         json:"bookmarkPosition,omitempty"`
-	*OpenSubsonicChild    `xml:",omitempty" json:",omitempty"`
+	// Podcast-specific fields (used in getNewestPodcasts)
+	ChannelId   string `xml:"channelId,attr,omitempty"   json:"channelId,omitempty"`
+	Description string `xml:"description,attr,omitempty" json:"description,omitempty"`
+	Status      string `xml:"status,attr,omitempty"      json:"status,omitempty"`
+	PublishDate string `xml:"publishDate,attr,omitempty" json:"publishDate,omitempty"`
+	*OpenSubsonicChild `xml:",omitempty" json:",omitempty"`
 }
 
 type OpenSubsonicChild struct {
@@ -640,6 +649,45 @@ type TranscodeDecision struct {
 	TranscodeParams  string         `xml:"transcodeParams,attr,omitempty"   json:"transcodeParams,omitempty"`
 	SourceStream     *StreamDetails `xml:"sourceStream,omitempty"           json:"sourceStream,omitempty"`
 	TranscodeStream  *StreamDetails `xml:"transcodeStream,omitempty"        json:"transcodeStream,omitempty"`
+}
+
+// Podcast types
+
+type Podcasts struct {
+	Channel []PodcastChannel `xml:"channel,omitempty" json:"channel,omitempty"`
+}
+
+type NewestPodcasts struct {
+	Episode []Child `xml:"episode,omitempty" json:"episode,omitempty"`
+}
+
+type PodcastChannel struct {
+	ID               string           `xml:"id,attr"                         json:"id"`
+	URL              string           `xml:"url,attr"                        json:"url"`
+	Title            string           `xml:"title,attr,omitempty"            json:"title,omitempty"`
+	Description      string           `xml:"description,attr,omitempty"      json:"description,omitempty"`
+	CoverArt         string           `xml:"coverArt,attr,omitempty"         json:"coverArt,omitempty"`
+	OriginalImageUrl string           `xml:"originalImageUrl,attr,omitempty" json:"originalImageUrl,omitempty"`
+	Status           string           `xml:"status,attr"                     json:"status"`
+	ErrorMessage     string           `xml:"errorMessage,attr,omitempty"     json:"errorMessage,omitempty"`
+	Episode          []PodcastEpisode `xml:"episode,omitempty"               json:"episode,omitempty"`
+}
+
+type PodcastEpisode struct {
+	ID           string `xml:"id,attr"                      json:"id"`
+	StreamId     string `xml:"streamId,attr,omitempty"      json:"streamId,omitempty"`
+	ChannelId    string `xml:"channelId,attr,omitempty"     json:"channelId,omitempty"`
+	Title        string `xml:"title,attr,omitempty"         json:"title,omitempty"`
+	Description  string `xml:"description,attr,omitempty"   json:"description,omitempty"`
+	PublishDate  string `xml:"publishDate,attr,omitempty"   json:"publishDate,omitempty"`
+	Status       string `xml:"status,attr"                  json:"status"`
+	ErrorMessage string `xml:"errorMessage,attr,omitempty"  json:"errorMessage,omitempty"`
+	Duration     int    `xml:"duration,attr,omitempty"      json:"duration,omitempty"`
+	Size         int64  `xml:"size,attr,omitempty"          json:"size,omitempty"`
+	Suffix       string `xml:"suffix,attr,omitempty"        json:"suffix,omitempty"`
+	ContentType  string `xml:"contentType,attr,omitempty"   json:"contentType,omitempty"`
+	BitRate         int   `xml:"bitRate,attr,omitempty"          json:"bitRate,omitempty"`
+	DownloadedBytes int64 `xml:"downloadedBytes,attr,omitempty"  json:"downloadedBytes,omitempty"`
 }
 
 // StreamDetails describes audio stream properties for transcoding decisions

@@ -194,3 +194,61 @@ describe('getAvatarUrl', () => {
     expect(url).toContain('username=john')
   })
 })
+
+describe('podcast API URL builders', () => {
+  beforeEach(() => {
+    const localStorageMock = {
+      getItem: vi.fn((key) => {
+        const values = {
+          username: 'testuser',
+          'subsonic-token': 'testtoken',
+          'subsonic-salt': 'testsalt',
+        }
+        return values[key] || null
+      }),
+    }
+    Object.defineProperty(window, 'localStorage', { value: localStorageMock })
+  })
+
+  it('getPodcasts includes includeEpisodes param', () => {
+    const result = subsonic.url('getPodcasts', null, { includeEpisodes: true })
+    expect(result).toContain('getPodcasts')
+    expect(result).toContain('includeEpisodes=true')
+  })
+
+  it('getPodcasts includes id when provided', () => {
+    const result = subsonic.url('getPodcasts', 'ch-1', { includeEpisodes: true })
+    expect(result).toContain('id=ch-1')
+  })
+
+  it('getNewestPodcasts includes count', () => {
+    const result = subsonic.url('getNewestPodcasts', null, { count: 5 })
+    expect(result).toContain('getNewestPodcasts')
+    expect(result).toContain('count=5')
+  })
+
+  it('createPodcastChannel includes url param', () => {
+    const feedUrl = 'https://example.com/feed.xml'
+    const result = subsonic.url('createPodcastChannel', null, { url: feedUrl })
+    expect(result).toContain('createPodcastChannel')
+    expect(result).toContain(encodeURIComponent(feedUrl))
+  })
+
+  it('deletePodcastChannel includes id', () => {
+    const result = subsonic.url('deletePodcastChannel', 'ch-1')
+    expect(result).toContain('deletePodcastChannel')
+    expect(result).toContain('id=ch-1')
+  })
+
+  it('deletePodcastEpisode includes id', () => {
+    const result = subsonic.url('deletePodcastEpisode', 'ep-1')
+    expect(result).toContain('deletePodcastEpisode')
+    expect(result).toContain('id=ep-1')
+  })
+
+  it('downloadPodcastEpisode includes id', () => {
+    const result = subsonic.url('downloadPodcastEpisode', 'ep-1')
+    expect(result).toContain('downloadPodcastEpisode')
+    expect(result).toContain('id=ep-1')
+  })
+})

@@ -97,6 +97,14 @@ func (s *SQLStore) Plugin(ctx context.Context) model.PluginRepository {
 	return NewPluginRepository(ctx, s.getDBXBuilder())
 }
 
+func (s *SQLStore) PodcastChannel(ctx context.Context) model.PodcastChannelRepository {
+	return NewPodcastChannelRepository(ctx, s.getDBXBuilder())
+}
+
+func (s *SQLStore) PodcastEpisode(ctx context.Context) model.PodcastEpisodeRepository {
+	return NewPodcastEpisodeRepository(ctx, s.getDBXBuilder())
+}
+
 func (s *SQLStore) Resource(ctx context.Context, m any) model.ResourceRepository {
 	switch m.(type) {
 	case model.User:
@@ -117,6 +125,8 @@ func (s *SQLStore) Resource(ctx context.Context, m any) model.ResourceRepository
 		return s.Playlist(ctx).(model.ResourceRepository)
 	case model.Radio:
 		return s.Radio(ctx).(model.ResourceRepository)
+	case model.PodcastChannel:
+		return s.PodcastChannel(ctx).(model.ResourceRepository)
 	case model.Share:
 		return s.Share(ctx).(model.ResourceRepository)
 	case model.Tag:

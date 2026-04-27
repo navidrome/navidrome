@@ -137,7 +137,8 @@
       "actions": {
         "topSongs": "Top Songs",
         "shuffle": "Shuffle",
-        "radio": "Radio"
+        "radio": "Radio",
+        "podcast": "Podcasts"
       }
     },
     "user": {
@@ -241,6 +242,42 @@
       },
       "actions": {
         "playNow": "Play Now"
+      }
+    },
+    "podcast": {
+      "name": "Podcast |||| Podcasts",
+      "fields": {
+        "title": "Title",
+        "url": "Feed URL",
+        "description": "Description",
+        "status": "Status",
+        "publishDate": "Published",
+        "duration": "Duration",
+        "episodeCount": "Episodes"
+      },
+      "actions": {
+        "refresh": "Refresh All",
+        "download": "Download",
+        "addChannel": "Add Channel",
+        "fetchFeed": "Fetch Feed Info",
+        "copyUrl": "Copy Feed URL"
+      },
+      "notifications": {
+        "refreshStarted": "Podcast refresh started",
+        "downloadStarted": "Download started",
+        "channelAdded": "Channel added",
+        "urlCopied": "Feed URL copied to clipboard",
+        "alreadyExists": "This channel is already registered.",
+        "channelDeleted": "Channel deleted",
+        "episodeDeleted": "Episode deleted"
+      },
+      "status": {
+        "new": "New",
+        "downloading": "Downloading",
+        "completed": "Downloaded",
+        "error": "Error",
+        "skipped": "Skipped",
+        "deleted": "Deleted"
       }
     },
     "share": {
