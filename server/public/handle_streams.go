@@ -23,6 +23,20 @@ func (pub *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if info.shareID != "" {
+		exists, err := pub.ds.Share(ctx).Exists(info.shareID)
+		if err != nil {
+			log.Error(ctx, "Error checking share existence", "shareID", info.shareID, err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		if !exists {
+			log.Warn(ctx, "Share not found for stream token", "shareID", info.shareID)
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+	}
+
 	mf, err := pub.ds.MediaFile(ctx).Get(info.id)
 	if err != nil {
 		if errors.Is(err, model.ErrNotFound) {
@@ -63,17 +77,14 @@ type shareTrackInfo struct {
 	id      string
 	format  string
 	bitrate int
+	shareID string
 }
 
 func decodeStreamInfo(tokenString string) (shareTrackInfo, error) {
-	token, err := auth.TokenAuth.Decode(tokenString)
+	c, err := auth.Validate(tokenString)
 	if err != nil {
 		return shareTrackInfo{}, err
 	}
-	if token == nil {
-		return shareTrackInfo{}, errors.New("unauthorized")
-	}
-	c := auth.ClaimsFromToken(token)
 	if c.ID == "" {
 		return shareTrackInfo{}, errors.New("required claim \"id\" not found")
 	}
@@ -81,5 +92,6 @@ func decodeStreamInfo(tokenString string) (shareTrackInfo, error) {
 		id:      c.ID,
 		format:  c.Format,
 		bitrate: c.BitRate,
+		shareID: c.ShareID,
 	}, nil
 }
