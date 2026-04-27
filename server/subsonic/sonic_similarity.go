@@ -8,6 +8,9 @@ import (
 )
 
 func (api *Router) GetSonicSimilarTracks(r *http.Request) (*responses.Subsonic, error) {
+	if api.sonic == nil {
+		return nil, newError(responses.ErrorDataNotFound, "sonicSimilarity not supported")
+	}
 	ctx := r.Context()
 	p := req.Params(r)
 	id, err := p.String("id")
@@ -33,6 +36,9 @@ func (api *Router) GetSonicSimilarTracks(r *http.Request) (*responses.Subsonic, 
 }
 
 func (api *Router) FindSonicPath(r *http.Request) (*responses.Subsonic, error) {
+	if api.sonic == nil {
+		return nil, newError(responses.ErrorDataNotFound, "sonicSimilarity not supported")
+	}
 	ctx := r.Context()
 	p := req.Params(r)
 	startSongID, err := p.String("startSongId")
