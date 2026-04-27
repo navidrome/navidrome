@@ -42,6 +42,8 @@ type DataStore interface {
 	Plugin(ctx context.Context) PluginRepository
 	Artwork(ctx context.Context) ArtworkRepository
 	ArtworkQueue(ctx context.Context) ArtworkQueueRepository
+	PodcastChannel(ctx context.Context) PodcastChannelRepository
+	PodcastEpisode(ctx context.Context) PodcastEpisodeRepository
 
 	Resource(ctx context.Context, model any) ResourceRepository
 
