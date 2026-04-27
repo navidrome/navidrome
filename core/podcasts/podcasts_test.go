@@ -50,7 +50,7 @@ var _ = Describe("PodcastService", func() {
 		DeferCleanup(mockServer.Close)
 
 		conf.Server.DataFolder = GinkgoT().TempDir()
-		svc = podcasts.NewPodcastService(ds, nil, nil)
+		svc = podcasts.NewPodcastService(ctx, ds, nil, nil)
 	})
 
 	Describe("AddChannel", func() {

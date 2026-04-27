@@ -31,13 +31,14 @@ type Podcasts interface {
 }
 
 type podcastService struct {
-	ds     model.DataStore
-	ff     ffmpeg.FFmpeg
-	broker events.Broker
+	rootCtx context.Context
+	ds      model.DataStore
+	ff      ffmpeg.FFmpeg
+	broker  events.Broker
 }
 
-func NewPodcastService(ds model.DataStore, ff ffmpeg.FFmpeg, broker events.Broker) Podcasts {
-	return &podcastService{ds: ds, ff: ff, broker: broker}
+func NewPodcastService(rootCtx context.Context, ds model.DataStore, ff ffmpeg.FFmpeg, broker events.Broker) Podcasts {
+	return &podcastService{rootCtx: rootCtx, ds: ds, ff: ff, broker: broker}
 }
 
 // podcastLibraryID returns the ID of the podcast virtual library,
@@ -153,9 +154,7 @@ func (s *podcastService) DownloadEpisode(ctx context.Context, id string) error {
 		return err
 	}
 
-	// Use context.Background() so the download is not cancelled when the HTTP
-	// request completes. TODO: tie to server shutdown context for graceful termination.
-	go s.doDownload(context.Background(), ep, ch)
+	go s.doDownload(s.rootCtx, ep, ch)
 	return nil
 }
 

@@ -427,7 +427,7 @@ func setupTestDB() {
 		metrics.NewNoopInstance(),
 		lyrics.NewLyrics(ds, nil),
 		decider,
-		podcasts.NewPodcastService(ds, ffmpeg.New(), events.NoopBroker()),
+		podcasts.NewPodcastService(context.Background(), ds, ffmpeg.New(), events.NoopBroker()),
 		nil,
 	)
 }
