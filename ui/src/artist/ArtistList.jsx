@@ -24,7 +24,6 @@ import {
   ArtistContextMenu,
   CoverArtAvatar,
   List,
-  QuickFilter,
   useGetHandleArtistClick,
   RatingField,
   useSelectedFields,
@@ -88,10 +87,9 @@ const ArtistFilter = (props) => {
       <SearchInput id="search" source="name" alwaysOn />
       <SelectInput source="role" choices={roles} alwaysOn />
       {config.enableFavourites && (
-        <QuickFilter
+        <NullableBooleanInput
           source="starred"
           label={<FavoriteIcon fontSize={'small'} />}
-          defaultValue={true}
         />
       )}
       {isAdmin && <NullableBooleanInput source="missing" />}
