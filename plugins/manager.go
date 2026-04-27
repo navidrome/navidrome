@@ -18,6 +18,7 @@ import (
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/core/scrobbler"
+	"github.com/navidrome/navidrome/core/sonic"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/events"
@@ -294,6 +295,22 @@ func (m *Manager) LoadLyricsProvider(name string) (lyrics.Lyrics, bool) {
 	}
 
 	return &LyricsPlugin{
+		name:   plugin.name,
+		plugin: plugin,
+	}, true
+}
+
+// LoadSonicSimilarity loads and returns a sonic similarity provider plugin by name.
+func (m *Manager) LoadSonicSimilarity(name string) (sonic.Provider, bool) {
+	m.mu.RLock()
+	plugin, ok := m.plugins[name]
+	m.mu.RUnlock()
+
+	if !ok || !hasCapability(plugin.capabilities, CapabilitySonicSimilarity) {
+		return nil, false
+	}
+
+	return &SonicSimilarityAdapter{
 		name:   plugin.name,
 		plugin: plugin,
 	}, true
