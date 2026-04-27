@@ -9,7 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("SonicSimilarityAdapter", Ordered, func() {
+var _ = Describe("SonicSimilarityPlugin", Ordered, func() {
 	var (
 		manager  *Manager
 		provider sonic.Provider
@@ -75,7 +75,7 @@ var _ = Describe("SonicSimilarityAdapter", Ordered, func() {
 	})
 })
 
-var _ = Describe("SonicSimilarityAdapter error handling", Ordered, func() {
+var _ = Describe("SonicSimilarityPlugin error handling", Ordered, func() {
 	var (
 		errorManager  *Manager
 		errorProvider sonic.Provider

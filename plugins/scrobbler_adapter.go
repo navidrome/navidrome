@@ -30,6 +30,20 @@ func init() {
 	)
 }
 
+func newScrobblerPlugin(p *plugin) *ScrobblerPlugin {
+	userIDMap := make(map[string]struct{})
+	for _, id := range p.allowedUserIDs {
+		userIDMap[id] = struct{}{}
+	}
+	return &ScrobblerPlugin{
+		name:           p.name,
+		plugin:         p,
+		allowedUserIDs: p.allowedUserIDs,
+		allUsers:       p.allUsers,
+		userIDMap:      userIDMap,
+	}
+}
+
 // ScrobblerPlugin is an adapter that wraps an Extism plugin and implements
 // the scrobbler.Scrobbler interface for scrobbling to external services.
 type ScrobblerPlugin struct {

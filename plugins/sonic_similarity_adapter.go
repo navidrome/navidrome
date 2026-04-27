@@ -23,12 +23,16 @@ func init() {
 	)
 }
 
-type SonicSimilarityAdapter struct {
+func newSonicSimilarityPlugin(p *plugin) *SonicSimilarityPlugin {
+	return &SonicSimilarityPlugin{name: p.name, plugin: p}
+}
+
+type SonicSimilarityPlugin struct {
 	name   string
 	plugin *plugin
 }
 
-func (a *SonicSimilarityAdapter) GetSonicSimilarTracks(ctx context.Context, mf *model.MediaFile, count int) ([]sonic.SimilarResult, error) {
+func (a *SonicSimilarityPlugin) GetSonicSimilarTracks(ctx context.Context, mf *model.MediaFile, count int) ([]sonic.SimilarResult, error) {
 	req := capabilities.GetSonicSimilarTracksRequest{
 		Song:  mediaFileToSongRef(mf),
 		Count: int32(count),
@@ -42,7 +46,7 @@ func (a *SonicSimilarityAdapter) GetSonicSimilarTracks(ctx context.Context, mf *
 	return sonicMatchesToSimilarResults(resp.Matches), nil
 }
 
-func (a *SonicSimilarityAdapter) FindSonicPath(ctx context.Context, startMf, endMf *model.MediaFile, count int) ([]sonic.SimilarResult, error) {
+func (a *SonicSimilarityPlugin) FindSonicPath(ctx context.Context, startMf, endMf *model.MediaFile, count int) ([]sonic.SimilarResult, error) {
 	req := capabilities.FindSonicPathRequest{
 		StartSong: mediaFileToSongRef(startMf),
 		EndSong:   mediaFileToSongRef(endMf),
@@ -85,4 +89,4 @@ func sonicMatchesToSimilarResults(matches []capabilities.SonicMatch) []sonic.Sim
 	return results
 }
 
-var _ sonic.Provider = (*SonicSimilarityAdapter)(nil)
+var _ sonic.Provider = (*SonicSimilarityPlugin)(nil)

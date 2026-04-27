@@ -45,6 +45,10 @@ func init() {
 	)
 }
 
+func newMetadataAgent(p *plugin) *MetadataAgent {
+	return &MetadataAgent{name: p.name, plugin: p}
+}
+
 // MetadataAgent is an adapter that wraps an Extism plugin and implements
 // the agents interfaces for metadata retrieval.
 type MetadataAgent struct {
