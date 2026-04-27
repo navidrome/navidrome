@@ -68,7 +68,7 @@ func (s *Sonic) resolveMatches(ctx context.Context, results []SimilarResult) ([]
 		songs[i] = r.Song
 	}
 
-	matchMap, err := s.matcher.MatchSongsToLibraryMap(ctx, songs)
+	matchMap, err := s.matcher.MatchSongsIndexed(ctx, songs)
 	if err != nil {
 		return nil, fmt.Errorf("matching songs to library: %w", err)
 	}

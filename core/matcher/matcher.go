@@ -23,7 +23,7 @@ func New(ds model.DataStore) *Matcher {
 	return &Matcher{ds: ds}
 }
 
-// MatchSongsToLibrary matches agent song results to local library tracks using a multi-phase
+// MatchSongs matches agent song results to local library tracks using a multi-phase
 // matching algorithm that prioritizes accuracy over recall.
 //
 // # Algorithm Overview
@@ -107,7 +107,7 @@ func New(ds model.DataStore) *Matcher {
 //
 // Returns up to 'count' MediaFiles from the library that best match the input songs,
 // preserving the original order from the agent. Songs that cannot be matched are skipped.
-func (m *Matcher) MatchSongsToLibrary(ctx context.Context, songs []agents.Song, count int) (model.MediaFiles, error) {
+func (m *Matcher) MatchSongs(ctx context.Context, songs []agents.Song, count int) (model.MediaFiles, error) {
 	if len(songs) == 0 {
 		return nil, nil
 	}
@@ -119,10 +119,10 @@ func (m *Matcher) MatchSongsToLibrary(ctx context.Context, songs []agents.Song, 
 	return m.selectBestMatchingSongs(songs, byID, byMBID, byISRC, byTitle, count), nil
 }
 
-// MatchSongsToLibraryMap matches agent song results to local library tracks and returns a map
+// MatchSongsIndexed matches agent song results to local library tracks and returns a map
 // from input song index to matched MediaFile. Songs that cannot be matched are omitted from the map.
 // This preserves original indices, allowing callers to correlate results back to the input slice.
-func (m *Matcher) MatchSongsToLibraryMap(ctx context.Context, songs []agents.Song) (map[int]model.MediaFile, error) {
+func (m *Matcher) MatchSongsIndexed(ctx context.Context, songs []agents.Song) (map[int]model.MediaFile, error) {
 	if len(songs) == 0 {
 		return nil, nil
 	}
