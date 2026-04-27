@@ -123,7 +123,7 @@ type PlaylistRepository interface {
 	ResourceRepository
 	CountAll(options ...QueryOptions) (int64, error)
 	Exists(id string) (bool, error)
-	Put(pls *Playlist) error
+	Put(pls *Playlist, cols ...string) error
 	Get(id string) (*Playlist, error)
 	GetWithTracks(id string, refreshSmartPlaylist, includeMissing bool) (*Playlist, error)
 	GetAll(options ...QueryOptions) (Playlists, error)
