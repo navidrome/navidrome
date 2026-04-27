@@ -152,17 +152,6 @@ var _ = Describe("Sonic Similarity Endpoints", func() {
 				Expect(resp.Error).ToNot(BeNil())
 			})
 
-			It("returns correct XML serialization", func() {
-				w := doSonicRawReq(sonicRouter, "getSonicSimilarTracks", "id", comeTogether.ID)
-				Expect(w.Code).To(Equal(http.StatusOK))
-
-				// Default format is XML
-				r := buildReq(adminUser, "getSonicSimilarTracks", "id", comeTogether.ID)
-				r.URL.RawQuery = r.URL.Query().Get("u") // Reset to remove f=json
-				// Just verify we get a 200 with JSON (already tested), confirming the handler works
-				Expect(w.Body.String()).To(ContainSubstring("sonicMatch"))
-			})
-
 			It("returns correct JSON structure", func() {
 				w := doSonicRawReq(sonicRouter, "getSonicSimilarTracks", "id", comeTogether.ID)
 				Expect(w.Code).To(Equal(http.StatusOK))

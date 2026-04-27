@@ -319,7 +319,7 @@ Audio-similarity discovery based on acoustic features (e.g., embeddings). Both m
 | Function                        | Input                            | Output                                     | Description                           |
 |---------------------------------|----------------------------------|--------------------------------------------|---------------------------------------|
 | `nd_get_sonic_similar_tracks`   | `{song, count}`                  | `{matches: [{song, similarity}]}`          | Find acoustically similar tracks      |
-| `nd_find_sonic_path`            | `{from, to, count}`              | `{matches: [{song, similarity}]}`          | Find a path between two songs         |
+| `nd_find_sonic_path`            | `{startSong, endSong, count}`    | `{matches: [{song, similarity}]}`          | Find a path between two songs         |
 
 Each match contains a `song` reference and a `similarity` score (float64, 0.0–1.0).
 
