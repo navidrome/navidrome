@@ -112,7 +112,7 @@ func CreateSubsonicAPIRouter(ctx context.Context) *subsonic.Router {
 	playbackServer := playback.GetInstance(dataStore)
 	lyricsLyrics := lyrics.NewLyrics(manager)
 	transcodeDecider := stream.NewTranscodeDecider(dataStore, fFmpeg)
-	podcastService := podcasts.NewPodcastService(dataStore, fFmpeg, broker)
+	podcastService := podcasts.NewPodcastService(ctx, dataStore, fFmpeg, broker)
 	sonicSonic := sonic.New(dataStore, manager, matcherMatcher)
 	router := subsonic.New(dataStore, artworkArtwork, mediaStreamer, archiver, players, provider, modelScanner, broker, playlistsPlaylists, playTracker, share, playbackServer, metricsMetrics, lyricsLyrics, transcodeDecider, podcastService, sonicSonic)
 	return router
