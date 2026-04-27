@@ -1,8 +1,10 @@
 package subsonic
 
 import (
+	"context"
 	"net/http"
 
+	"github.com/navidrome/navidrome/core/sonic"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/req"
 )
@@ -25,15 +27,7 @@ func (api *Router) GetSonicSimilarTracks(w http.ResponseWriter, r *http.Request)
 		return nil, err
 	}
 
-	response := newResponse()
-	response.SonicMatches = make([]responses.SonicMatch, len(matches))
-	for i, m := range matches {
-		response.SonicMatches[i] = responses.SonicMatch{
-			Entry:      childFromMediaFile(ctx, m.MediaFile),
-			Similarity: m.Similarity,
-		}
-	}
-	return response, nil
+	return sonicMatchResponse(ctx, matches), nil
 }
 
 func (api *Router) FindSonicPath(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
@@ -58,6 +52,10 @@ func (api *Router) FindSonicPath(w http.ResponseWriter, r *http.Request) (*respo
 		return nil, err
 	}
 
+	return sonicMatchResponse(ctx, matches), nil
+}
+
+func sonicMatchResponse(ctx context.Context, matches []sonic.SimilarMatch) *responses.Subsonic {
 	response := newResponse()
 	response.SonicMatches = make([]responses.SonicMatch, len(matches))
 	for i, m := range matches {
@@ -66,5 +64,5 @@ func (api *Router) FindSonicPath(w http.ResponseWriter, r *http.Request) (*respo
 			Similarity: m.Similarity,
 		}
 	}
-	return response, nil
+	return response
 }

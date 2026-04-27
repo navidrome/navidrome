@@ -78,7 +78,7 @@ func sonicMatchesToSimilarResults(matches []capabilities.SonicMatch) []sonic.Sim
 	results := make([]sonic.SimilarResult, len(matches))
 	for i, m := range matches {
 		results[i] = sonic.SimilarResult{
-			Song:       songRefsToAgentSongs([]capabilities.SongRef{m.Song})[0],
+			Song:       songRefToAgentSong(m.Song),
 			Similarity: m.Similarity,
 		}
 	}

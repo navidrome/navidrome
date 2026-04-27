@@ -10,6 +10,8 @@ import (
 	"github.com/navidrome/navidrome/model"
 )
 
+const capabilitySonicSimilarity = "SonicSimilarity"
+
 type SimilarResult struct {
 	Song       agents.Song
 	Similarity float64
@@ -45,11 +47,11 @@ func New(ds model.DataStore, pluginLoader PluginLoader, matcher *matcher.Matcher
 }
 
 func (s *Sonic) HasProvider() bool {
-	return len(s.pluginLoader.PluginNames("SonicSimilarity")) > 0
+	return len(s.pluginLoader.PluginNames(capabilitySonicSimilarity)) > 0
 }
 
 func (s *Sonic) loadProvider() (Provider, error) {
-	names := s.pluginLoader.PluginNames("SonicSimilarity")
+	names := s.pluginLoader.PluginNames(capabilitySonicSimilarity)
 	if len(names) == 0 {
 		return nil, model.ErrNotFound
 	}
