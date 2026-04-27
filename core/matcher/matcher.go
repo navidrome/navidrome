@@ -128,6 +128,40 @@ func (m *Matcher) MatchSongsToLibrary(ctx context.Context, songs []agents.Song, 
 	return m.selectBestMatchingSongs(songs, idMatches, mbidMatches, isrcMatches, titleMatches, count), nil
 }
 
+// MatchSongsToLibraryMap matches agent song results to local library tracks and returns a map
+// from input song index to matched MediaFile. Songs that cannot be matched are omitted from the map.
+// This preserves original indices, allowing callers to correlate results back to the input slice.
+func (m *Matcher) MatchSongsToLibraryMap(ctx context.Context, songs []agents.Song) (map[int]model.MediaFile, error) {
+	if len(songs) == 0 {
+		return map[int]model.MediaFile{}, nil
+	}
+
+	idMatches, err := m.loadTracksByID(ctx, songs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load tracks by ID: %w", err)
+	}
+	mbidMatches, err := m.loadTracksByMBID(ctx, songs, idMatches)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load tracks by MBID: %w", err)
+	}
+	isrcMatches, err := m.loadTracksByISRC(ctx, songs, idMatches, mbidMatches)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load tracks by ISRC: %w", err)
+	}
+	titleMatches, err := m.loadTracksByTitleAndArtist(ctx, songs, idMatches, mbidMatches, isrcMatches)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load tracks by title: %w", err)
+	}
+
+	result := make(map[int]model.MediaFile, len(songs))
+	for i, t := range songs {
+		if mf, found := findMatchingTrack(t, idMatches, mbidMatches, isrcMatches, titleMatches); found {
+			result[i] = mf
+		}
+	}
+	return result, nil
+}
+
 // songMatchedIn checks if a song has already been matched in any of the provided match maps.
 func songMatchedIn(s agents.Song, priorMatches ...map[string]model.MediaFile) bool {
 	_, found := lookupByIdentifiers(s, priorMatches...)

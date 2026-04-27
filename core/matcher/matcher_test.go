@@ -263,6 +263,53 @@ var _ = Describe("Matcher", func() {
 		})
 	})
 
+	Describe("MatchSongsToLibraryMap", func() {
+		It("returns index-keyed map of matched songs", func() {
+			songs := []agents.Song{
+				{ID: "track-1", Name: "Song One", Artist: "Artist A"},
+				{ID: "track-2", Name: "Song Two", Artist: "Artist B"},
+				{ID: "track-3", Name: "Song Three", Artist: "Artist C"},
+			}
+			mf1 := model.MediaFile{ID: "track-1", Title: "Song One", Artist: "Artist A"}
+			mf2 := model.MediaFile{ID: "track-2", Title: "Song Two", Artist: "Artist B"}
+
+			expectIDPhase(model.MediaFiles{mf1, mf2})
+			allowOtherPhases()
+
+			result, err := m.MatchSongsToLibraryMap(ctx, songs)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(HaveLen(2))
+			Expect(result[0].ID).To(Equal("track-1"))
+			Expect(result[1].ID).To(Equal("track-2"))
+			_, exists := result[2]
+			Expect(exists).To(BeFalse())
+		})
+
+		It("preserves original indices when some songs don't match", func() {
+			songs := []agents.Song{
+				{Name: "Unknown Song", Artist: "Unknown Artist"},
+				{ID: "track-1", Name: "Known Song", Artist: "Known Artist"},
+			}
+			mf1 := model.MediaFile{ID: "track-1", Title: "Known Song", Artist: "Known Artist"}
+
+			expectIDPhase(model.MediaFiles{mf1})
+			allowOtherPhases()
+
+			result, err := m.MatchSongsToLibraryMap(ctx, songs)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(HaveLen(1))
+			_, exists := result[0]
+			Expect(exists).To(BeFalse())
+			Expect(result[1].ID).To(Equal("track-1"))
+		})
+
+		It("returns empty map for empty input", func() {
+			result, err := m.MatchSongsToLibraryMap(ctx, nil)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(BeEmpty())
+		})
+	})
+
 	Describe("specificity level matching", func() {
 		BeforeEach(func() {
 			conf.Server.Matcher.FuzzyThreshold = 100
