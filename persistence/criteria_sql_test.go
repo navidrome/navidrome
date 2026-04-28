@@ -59,6 +59,10 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 		Entry("role is", criteria.Is{"artist": "u2"}, "exists (select 1 from json_tree(media_file.participants, '$.artist') where key='name' and value = ?)", "u2"),
 		Entry("role contains", criteria.Contains{"composer": "Lennon"}, "exists (select 1 from json_tree(media_file.participants, '$.composer') where key='name' and value LIKE ?)", "%Lennon%"),
 		Entry("role not contains", criteria.NotContains{"artist": "u2"}, "not exists (select 1 from json_tree(media_file.participants, '$.artist') where key='name' and value LIKE ?)", "%u2%"),
+		// ReplayGain fields
+		Entry("rgAlbumGain is", criteria.Is{"rgAlbumGain": 0}, "media_file.rg_album_gain = ?", 0),
+		Entry("rgAlbumGain gt", criteria.Gt{"rgAlbumGain": -6.0}, "media_file.rg_album_gain > ?", -6.0),
+		Entry("rgTrackPeak lt", criteria.Lt{"rgTrackPeak": 1.0}, "media_file.rg_track_peak < ?", 1.0),
 		// isMissing — tags
 		Entry("isMissing tag [true]", criteria.IsMissing{"genre": true},
 			"not exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value')"),
