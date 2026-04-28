@@ -88,6 +88,11 @@ const useStyles = makeStyles((theme) => ({
   tableWrapper: { marginTop: theme.spacing(2), overflowX: 'auto' },
 }))
 
+const buildSrcSet = (images) => {
+  if (!images || images.length === 0) return undefined
+  return images.map((img) => `${img.url} ${img.width}w`).join(', ')
+}
+
 const formatDuration = (seconds) => {
   if (!seconds) return ''
   const h = Math.floor(seconds / 3600)
@@ -153,6 +158,8 @@ const PodcastShow = (props) => {
             {record.imageUrl ? (
               <img
                 src={record.imageUrl}
+                srcSet={buildSrcSet(record.images)}
+                sizes="192px"
                 alt={record.title}
                 style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 4 }}
               />

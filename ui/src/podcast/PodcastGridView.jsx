@@ -42,6 +42,11 @@ const useStyles = makeStyles((theme) => ({
   },
 }))
 
+const buildSrcSet = (images) => {
+  if (!images || images.length === 0) return undefined
+  return images.map((img) => `${img.url} ${img.width}w`).join(', ')
+}
+
 const getColsForWidth = (width) => {
   if (width === 'xs') return 2
   if (width === 'sm') return 3
@@ -67,7 +72,13 @@ const PodcastGridView = ({ width, ...props }) => {
               <div className={classes.tileContainer}>
                 <Link className={classes.link} to={linkToRecord(basePath, id, 'show')}>
                   {record.imageUrl ? (
-                    <img src={record.imageUrl} alt={record.title} className={classes.cover} />
+                    <img
+                      src={record.imageUrl}
+                      srcSet={buildSrcSet(record.images)}
+                      sizes="(max-width: 600px) 50vw, (max-width: 960px) 33vw, (max-width: 1280px) 25vw, 20vw"
+                      alt={record.title}
+                      className={classes.cover}
+                    />
                   ) : (
                     <div className={classes.placeholder}>
                       <MicIcon className={classes.placeholderIcon} style={{ fontSize: 48, color: '#888' }} />
