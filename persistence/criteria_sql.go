@@ -205,7 +205,7 @@ func isNotExpr(values map[string]any) (squirrel.Sqlizer, error) {
 	return squirrel.NotEq(fields), nil
 }
 
-func missingExpr(values map[string]any, defaultNegate bool) (squirrel.Sqlizer, error) {
+func missingExpr(values map[string]any, checkAbsence bool) (squirrel.Sqlizer, error) {
 	_, value, info, ok := singleField(values)
 	if !ok {
 		return nil, fmt.Errorf("invalid field in criteria: isMissing/isPresent requires exactly one field")
@@ -214,7 +214,8 @@ func missingExpr(values map[string]any, defaultNegate bool) (squirrel.Sqlizer, e
 		return nil, fmt.Errorf("isMissing/isPresent operator is only supported for tag and role fields, got: %s", info.Name)
 	}
 
-	negate := defaultNegate == criteria.IsTruthy(value)
+	truthy := criteria.IsTruthy(value)
+	negate := checkAbsence == truthy
 
 	var cond string
 	if info.IsRole {
