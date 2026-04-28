@@ -1,7 +1,7 @@
 package criteria
 
 import (
-	"strings"
+	"strconv"
 	"time"
 )
 
@@ -188,8 +188,8 @@ func IsTruthy(v any) bool {
 	case float64:
 		return val != 0
 	case string:
-		lower := strings.ToLower(val)
-		return lower != "" && lower != "false" && lower != "0"
+		b, err := strconv.ParseBool(val)
+		return err == nil && b
 	default:
 		return v != nil
 	}
