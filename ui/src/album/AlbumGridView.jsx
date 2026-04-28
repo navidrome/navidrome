@@ -34,6 +34,7 @@ const useStyles = makeStyles(
     tileBar: {
       transition: 'all 150ms ease-out',
       opacity: 0,
+      pointerEvents: 'none',
       textAlign: 'left',
       background:
         'linear-gradient(to top, rgba(0,0,0,0.7) 0%,rgba(0,0,0,0.4) 70%,rgba(0,0,0,0) 100%)',
@@ -80,6 +81,7 @@ const useStyles = makeStyles(
       textDecoration: 'none',
       '&:hover $tileBar, &:focus-within $tileBar': {
         opacity: 1,
+        pointerEvents: 'auto',
       },
     },
     albumLink: {
