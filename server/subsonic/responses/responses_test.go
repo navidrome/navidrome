@@ -1,8 +1,3 @@
-//go:build unix
-
-// TODO Fix snapshot tests in Windows
-// Response Snapshot tests. Only run in Linux and macOS, as they fail in Windows
-// Probably because of EOL char differences
 package responses_test
 
 import (
