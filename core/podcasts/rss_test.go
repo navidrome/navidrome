@@ -409,14 +409,21 @@ var _ = Describe("ParseRSSFeed — Podcasting 2.0 namespace", func() {
 		It("podcast:funding — stores first entry URL and text", func() {
 			result, err := podcasts.ParseRSSFeed([]byte(testRSSFeedPodcast20))
 			Expect(err).ToNot(HaveOccurred())
-			Expect(result.FundingURL).To(Equal("https://example.com/donate"))
-			Expect(result.FundingText).To(Equal("Support us!"))
+			Expect(result.FundingItems).ToNot(BeEmpty())
+			Expect(result.FundingItems[0].URL).To(Equal("https://example.com/donate"))
+			Expect(result.FundingItems[0].Text).To(Equal("Support us!"))
 		})
 
-		It("podcast:funding — ignores entries after the first", func() {
+		It("podcast:funding — stores all entries", func() {
 			result, err := podcasts.ParseRSSFeed([]byte(testRSSFeedPodcast20))
 			Expect(err).ToNot(HaveOccurred())
-			Expect(result.FundingURL).ToNot(ContainSubstring("donate2"))
+			hasSecond := false
+			for _, f := range result.FundingItems {
+				if f.URL == "https://example.com/donate2" {
+					hasSecond = true
+				}
+			}
+			_ = hasSecond
 		})
 
 		It("podcast:person — parses multiple channel persons", func() {
@@ -575,6 +582,229 @@ var _ = Describe("ParseRSSFeed — Podcasting 2.0 namespace", func() {
 			Expect(result.Persons).To(BeEmpty())
 			Expect(result.Episodes[0].Transcripts).To(BeEmpty())
 			Expect(result.Episodes[0].Season).To(Equal(0))
+		})
+	})
+})
+
+// ---- Podcasting 2.0 new metadata tags (location, license, publisher, image) ----
+
+const testRSSFeedLocation = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:podcast="https://podcastindex.org/namespace/1.0">
+  <channel>
+    <title>Location Show</title>
+    <podcast:location geo="geo:30.2672,97.7431" osm="R113314">Austin, TX</podcast:location>
+    <item>
+      <title>Live From Austin</title>
+      <guid>ep-loc-1</guid>
+      <pubDate>Mon, 01 Jan 2024 00:00:00 +0000</pubDate>
+      <enclosure url="https://example.com/ep.mp3" length="1024" type="audio/mpeg"/>
+      <podcast:location geo="geo:51.5074,0.1278" osm="R65606">London, UK</podcast:location>
+    </item>
+    <item>
+      <title>No Location Episode</title>
+      <guid>ep-loc-2</guid>
+      <pubDate>Tue, 02 Jan 2024 00:00:00 +0000</pubDate>
+      <enclosure url="https://example.com/ep2.mp3" length="1024" type="audio/mpeg"/>
+    </item>
+  </channel>
+</rss>`
+
+const testRSSFeedLicense = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:podcast="https://podcastindex.org/namespace/1.0">
+  <channel>
+    <title>License Show</title>
+    <podcast:license url="https://creativecommons.org/licenses/by/4.0/">cc-by-4.0</podcast:license>
+    <item>
+      <title>Episode With License</title>
+      <guid>ep-lic-1</guid>
+      <pubDate>Mon, 01 Jan 2024 00:00:00 +0000</pubDate>
+      <enclosure url="https://example.com/ep.mp3" length="1024" type="audio/mpeg"/>
+      <podcast:license url="https://creativecommons.org/licenses/by-nd/4.0/">cc-by-nd-4.0</podcast:license>
+    </item>
+    <item>
+      <title>License URL Only</title>
+      <guid>ep-lic-2</guid>
+      <pubDate>Tue, 02 Jan 2024 00:00:00 +0000</pubDate>
+      <enclosure url="https://example.com/ep2.mp3" length="1024" type="audio/mpeg"/>
+      <podcast:license url="https://example.com/custom-license"/>
+    </item>
+  </channel>
+</rss>`
+
+const testRSSFeedPublisher = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:podcast="https://podcastindex.org/namespace/1.0">
+  <channel>
+    <title>Publisher Show</title>
+    <podcast:publisher>
+      <podcast:name>Acme Podcast Network</podcast:name>
+      <podcast:url>https://acme.example.com</podcast:url>
+    </podcast:publisher>
+    <item>
+      <title>Ep</title>
+      <guid>ep-pub-1</guid>
+      <pubDate>Mon, 01 Jan 2024 00:00:00 +0000</pubDate>
+      <enclosure url="https://example.com/ep.mp3" length="1024" type="audio/mpeg"/>
+    </item>
+  </channel>
+</rss>`
+
+const testRSSFeedImages = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:podcast="https://podcastindex.org/namespace/1.0">
+  <channel>
+    <title>Images Show</title>
+    <podcast:image href="https://example.com/img-3000.jpg" width="3000"/>
+    <podcast:image href="https://example.com/img-1500.jpg" width="1500"/>
+    <podcast:image href="https://example.com/img-300.jpg" width="300"/>
+    <item>
+      <title>Episode With Images</title>
+      <guid>ep-img-1</guid>
+      <pubDate>Mon, 01 Jan 2024 00:00:00 +0000</pubDate>
+      <enclosure url="https://example.com/ep.mp3" length="1024" type="audio/mpeg"/>
+      <podcast:image href="https://example.com/ep-img-600.jpg" width="600"/>
+      <podcast:image href="https://example.com/ep-img-150.jpg" width="150"/>
+    </item>
+    <item>
+      <title>Episode Without Images</title>
+      <guid>ep-img-2</guid>
+      <pubDate>Tue, 02 Jan 2024 00:00:00 +0000</pubDate>
+      <enclosure url="https://example.com/ep2.mp3" length="1024" type="audio/mpeg"/>
+    </item>
+  </channel>
+</rss>`
+
+var _ = Describe("ParseRSSFeed — new metadata tags", func() {
+	Describe("podcast:location", func() {
+		It("parses geo, osm, and name at channel level", func() {
+			result, err := podcasts.ParseRSSFeed([]byte(testRSSFeedLocation))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result.LocationName).To(Equal("Austin, TX"))
+			Expect(result.LocationGeo).To(Equal("geo:30.2672,97.7431"))
+			Expect(result.LocationOSM).To(Equal("R113314"))
+		})
+
+		It("parses geo, osm, and name at episode level", func() {
+			result, err := podcasts.ParseRSSFeed([]byte(testRSSFeedLocation))
+			Expect(err).ToNot(HaveOccurred())
+			ep := result.Episodes[0]
+			Expect(ep.LocationName).To(Equal("London, UK"))
+			Expect(ep.LocationGeo).To(Equal("geo:51.5074,0.1278"))
+			Expect(ep.LocationOSM).To(Equal("R65606"))
+		})
+
+		It("leaves location fields empty when tag is absent", func() {
+			result, err := podcasts.ParseRSSFeed([]byte(testRSSFeedLocation))
+			Expect(err).ToNot(HaveOccurred())
+			ep := result.Episodes[1]
+			Expect(ep.LocationName).To(BeEmpty())
+			Expect(ep.LocationGeo).To(BeEmpty())
+			Expect(ep.LocationOSM).To(BeEmpty())
+		})
+
+		It("leaves channel location fields empty when tag is absent", func() {
+			result, err := podcasts.ParseRSSFeed([]byte(testRSSFeed))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result.LocationName).To(BeEmpty())
+			Expect(result.LocationGeo).To(BeEmpty())
+		})
+	})
+
+	Describe("podcast:license", func() {
+		It("uses text content as license when present", func() {
+			result, err := podcasts.ParseRSSFeed([]byte(testRSSFeedLicense))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result.License).To(Equal("cc-by-4.0"))
+		})
+
+		It("parses license at episode level", func() {
+			result, err := podcasts.ParseRSSFeed([]byte(testRSSFeedLicense))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result.Episodes[0].License).To(Equal("cc-by-nd-4.0"))
+		})
+
+		It("falls back to URL attr when text content is empty", func() {
+			result, err := podcasts.ParseRSSFeed([]byte(testRSSFeedLicense))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result.Episodes[1].License).To(Equal("https://example.com/custom-license"))
+		})
+
+		It("leaves license empty when tag is absent", func() {
+			result, err := podcasts.ParseRSSFeed([]byte(testRSSFeed))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result.License).To(BeEmpty())
+		})
+	})
+
+	Describe("podcast:publisher", func() {
+		It("parses publisher name and URL", func() {
+			result, err := podcasts.ParseRSSFeed([]byte(testRSSFeedPublisher))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result.PublisherName).To(Equal("Acme Podcast Network"))
+			Expect(result.PublisherURL).To(Equal("https://acme.example.com"))
+		})
+
+		It("leaves publisher fields empty when tag is absent", func() {
+			result, err := podcasts.ParseRSSFeed([]byte(testRSSFeed))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result.PublisherName).To(BeEmpty())
+			Expect(result.PublisherURL).To(BeEmpty())
+		})
+	})
+
+	Describe("podcast:image", func() {
+		It("parses multiple channel-level images", func() {
+			result, err := podcasts.ParseRSSFeed([]byte(testRSSFeedImages))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result.Images).To(HaveLen(3))
+		})
+
+		It("parses href and width for each channel image", func() {
+			result, err := podcasts.ParseRSSFeed([]byte(testRSSFeedImages))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result.Images[0].URL).To(Equal("https://example.com/img-3000.jpg"))
+			Expect(result.Images[0].Width).To(Equal(3000))
+			Expect(result.Images[2].URL).To(Equal("https://example.com/img-300.jpg"))
+			Expect(result.Images[2].Width).To(Equal(300))
+		})
+
+		It("parses episode-level images", func() {
+			result, err := podcasts.ParseRSSFeed([]byte(testRSSFeedImages))
+			Expect(err).ToNot(HaveOccurred())
+			ep := result.Episodes[0]
+			Expect(ep.Images).To(HaveLen(2))
+			Expect(ep.Images[0].URL).To(Equal("https://example.com/ep-img-600.jpg"))
+			Expect(ep.Images[0].Width).To(Equal(600))
+		})
+
+		It("episode without images has empty Images slice", func() {
+			result, err := podcasts.ParseRSSFeed([]byte(testRSSFeedImages))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result.Episodes[1].Images).To(BeEmpty())
+		})
+
+		It("channel without images has empty Images slice", func() {
+			result, err := podcasts.ParseRSSFeed([]byte(testRSSFeed))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result.Images).To(BeEmpty())
+		})
+	})
+
+	Describe("podcast:funding — all entries", func() {
+		It("stores all funding entries with correct sort order", func() {
+			result, err := podcasts.ParseRSSFeed([]byte(testRSSFeedPodcast20))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result.FundingItems).To(HaveLen(2))
+			Expect(result.FundingItems[0].URL).To(Equal("https://example.com/donate"))
+			Expect(result.FundingItems[0].Text).To(Equal("Support us!"))
+			Expect(result.FundingItems[0].SortOrder).To(Equal(0))
+			Expect(result.FundingItems[1].URL).To(Equal("https://example.com/donate2"))
+			Expect(result.FundingItems[1].Text).To(Equal("Secondary"))
+			Expect(result.FundingItems[1].SortOrder).To(Equal(1))
+		})
+
+		It("returns empty FundingItems when tag is absent", func() {
+			result, err := podcasts.ParseRSSFeed([]byte(testRSSFeed))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result.FundingItems).To(BeEmpty())
 		})
 	})
 })

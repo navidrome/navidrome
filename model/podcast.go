@@ -81,6 +81,12 @@ type PodcastChannel struct {
 	UpdateFrequency string `structs:"update_frequency" json:"updateFrequency,omitempty"`
 	UpdateRRule     string `structs:"update_rrule"     json:"updateRRule,omitempty"`
 	Complete        bool   `structs:"complete"         json:"complete,omitempty"`
+	LocationName    string `structs:"location_name"    json:"locationName,omitempty"`
+	LocationGeo     string `structs:"location_geo"     json:"locationGeo,omitempty"`
+	LocationOSM     string `structs:"location_osm"     json:"locationOsm,omitempty"`
+	License         string `structs:"license"          json:"license,omitempty"`
+	PublisherName   string `structs:"publisher_name"   json:"publisherName,omitempty"`
+	PublisherURL    string `structs:"publisher_url"    json:"publisherUrl,omitempty"`
 
 	// Podcasting 2.0 — Tier 3
 	UsesPodping bool               `structs:"uses_podping" json:"usesPodping,omitempty"`
@@ -88,8 +94,10 @@ type PodcastChannel struct {
 	LiveItem    *PodcastLiveItem    `structs:"-"            json:"liveItem,omitempty"`
 
 	// loaded separately
-	Episodes PodcastEpisodes `structs:"-" json:"episodes,omitempty"`
-	Persons  PodcastPersons  `structs:"-" json:"persons,omitempty"`
+	Episodes     PodcastEpisodes     `structs:"-" json:"episodes,omitempty"`
+	Persons      PodcastPersons      `structs:"-" json:"persons,omitempty"`
+	FundingItems PodcastFundingItems `structs:"-" json:"funding,omitempty"`
+	Images       PodcastImages       `structs:"-" json:"images,omitempty"`
 }
 
 type PodcastEpisode struct {
@@ -125,10 +133,15 @@ type PodcastEpisode struct {
 	SoundbiteStart float64 `structs:"soundbite_start" json:"soundbiteStart,omitempty"`
 	SoundbiteDur   float64 `structs:"soundbite_dur"   json:"soundbiteDur,omitempty"`
 	SoundbiteTitle string  `structs:"soundbite_title" json:"soundbiteTitle,omitempty"`
+	LocationName   string  `structs:"location_name"   json:"locationName,omitempty"`
+	LocationGeo    string  `structs:"location_geo"    json:"locationGeo,omitempty"`
+	LocationOSM    string  `structs:"location_osm"    json:"locationOsm,omitempty"`
+	License        string  `structs:"license"         json:"license,omitempty"`
 
 	// loaded separately
 	Transcripts PodcastTranscripts `structs:"-" json:"transcripts,omitempty"`
 	Persons     PodcastPersons     `structs:"-" json:"persons,omitempty"`
+	Images      PodcastImages      `structs:"-" json:"images,omitempty"`
 }
 
 type PodcastTranscript struct {
@@ -153,10 +166,30 @@ type PodcastPerson struct {
 	CreatedAt time.Time `structs:"created_at" json:"createdAt"`
 }
 
+type PodcastFundingItem struct {
+	ID        string    `structs:"id"         json:"id"`
+	ChannelID string    `structs:"channel_id" json:"channelId"`
+	URL       string    `structs:"url"        json:"url"`
+	Text      string    `structs:"text"       json:"text,omitempty"`
+	SortOrder int       `structs:"sort_order" json:"sortOrder"`
+	CreatedAt time.Time `structs:"created_at" json:"createdAt"`
+}
+
+type PodcastImage struct {
+	ID        string    `structs:"id"         json:"id"`
+	ChannelID string    `structs:"channel_id" json:"channelId,omitempty"`
+	EpisodeID string    `structs:"episode_id" json:"episodeId,omitempty"`
+	URL       string    `structs:"url"        json:"url"`
+	Width     int       `structs:"width"      json:"width,omitempty"`
+	CreatedAt time.Time `structs:"created_at" json:"createdAt"`
+}
+
 type PodcastChannels    []PodcastChannel
 type PodcastEpisodes    []PodcastEpisode
 type PodcastTranscripts []PodcastTranscript
 type PodcastPersons     []PodcastPerson
+type PodcastFundingItems []PodcastFundingItem
+type PodcastImages       []PodcastImage
 
 type PodcastChannelRepository interface {
 	Get(id string) (*PodcastChannel, error)
@@ -191,4 +224,19 @@ type PodcastPersonRepository interface {
 	GetByEpisodes(episodeIDs []string) (PodcastPersons, error)
 	SaveForChannel(channelID string, persons []PodcastPerson) error
 	SaveForEpisode(episodeID string, persons []PodcastPerson) error
+}
+
+type PodcastFundingRepository interface {
+	GetByChannel(channelID string) (PodcastFundingItems, error)
+	GetByChannels(channelIDs []string) (PodcastFundingItems, error)
+	SaveForChannel(channelID string, items []PodcastFundingItem) error
+}
+
+type PodcastImageRepository interface {
+	GetByChannel(channelID string) (PodcastImages, error)
+	GetByChannels(channelIDs []string) (PodcastImages, error)
+	GetByEpisode(episodeID string) (PodcastImages, error)
+	GetByEpisodes(episodeIDs []string) (PodcastImages, error)
+	SaveForChannel(channelID string, images []PodcastImage) error
+	SaveForEpisode(episodeID string, images []PodcastImage) error
 }
