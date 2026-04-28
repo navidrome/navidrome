@@ -38,6 +38,16 @@ func (matcher *snapshotMatcher) Match(actual any) (success bool, err error) {
 	actualStr := strings.TrimSpace(string(actualBytes))
 
 	snapshotPath := filepath.Join(".snapshots", name)
+
+	// Support UPDATE_SNAPSHOTS=true for `make snapshots`
+	if _, update := os.LookupEnv("UPDATE_SNAPSHOTS"); update {
+		err := os.MkdirAll(".snapshots", os.ModePerm)
+		if err != nil {
+			return false, err
+		}
+		return true, os.WriteFile(snapshotPath, []byte(actualStr+"\n"), 0600)
+	}
+
 	expected, err := os.ReadFile(snapshotPath)
 	if err != nil {
 		return false, err
