@@ -330,4 +330,45 @@ var _ = Describe("Smart Playlists", func() {
 		})
 
 	})
+
+	Describe("isMissing/isPresent operators", func() {
+		It("isMissing finds tracks without grouping tag", func() {
+			results := evaluateRule(`{"all":[{"isMissing":{"grouping":true}}]}`)
+			Expect(results).To(ConsistOf("Stairway To Heaven", "Black Dog", "So What",
+				"Bohemian Rhapsody", "All Along the Watchtower", "We Are the Champions"))
+		})
+
+		It("isMissing false finds tracks with grouping tag", func() {
+			results := evaluateRule(`{"all":[{"isMissing":{"grouping":false}}]}`)
+			Expect(results).To(ConsistOf("Come Together", "Something"))
+		})
+
+		It("isPresent finds tracks with grouping tag", func() {
+			results := evaluateRule(`{"all":[{"isPresent":{"grouping":true}}]}`)
+			Expect(results).To(ConsistOf("Come Together", "Something"))
+		})
+
+		It("isPresent false finds tracks without grouping tag", func() {
+			results := evaluateRule(`{"all":[{"isPresent":{"grouping":false}}]}`)
+			Expect(results).To(ConsistOf("Stairway To Heaven", "Black Dog", "So What",
+				"Bohemian Rhapsody", "All Along the Watchtower", "We Are the Champions"))
+		})
+
+		It("isMissing returns all tracks for a tag nobody has", func() {
+			results := evaluateRule(`{"all":[{"isMissing":{"lyricist":true}}]}`)
+			Expect(results).To(ConsistOf("Come Together", "Something", "Stairway To Heaven", "Black Dog",
+				"So What", "Bohemian Rhapsody", "All Along the Watchtower", "We Are the Champions"))
+		})
+
+		It("isPresent returns all tracks for a role everyone has", func() {
+			results := evaluateRule(`{"all":[{"isPresent":{"composer":true}}]}`)
+			Expect(results).To(ConsistOf("Come Together", "Something", "Stairway To Heaven", "Black Dog",
+				"So What", "Bohemian Rhapsody", "All Along the Watchtower", "We Are the Champions"))
+		})
+
+		It("combines isMissing with other operators", func() {
+			results := evaluateRule(`{"all":[{"isMissing":{"grouping":true}},{"is":{"genre":"Blues"}}]}`)
+			Expect(results).To(ConsistOf("Black Dog", "All Along the Watchtower"))
+		})
+	})
 })
