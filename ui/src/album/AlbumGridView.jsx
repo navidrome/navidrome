@@ -78,7 +78,7 @@ const useStyles = makeStyles(
       position: 'relative',
       display: 'block',
       textDecoration: 'none',
-      '&:hover $tileBar': {
+      '&:hover $tileBar, &:focus-within $tileBar': {
         opacity: 1,
       },
     },
