@@ -72,6 +72,10 @@ var fieldMap = map[string]FieldInfo{
 	"mbz_recording_id":     {Name: "mbz_recording_id"},
 	"mbz_release_track_id": {Name: "mbz_release_track_id"},
 	"mbz_release_group_id": {Name: "mbz_release_group_id"},
+	"rgalbumgain":          {Name: "rgalbumgain", Numeric: true},
+	"rgalbumpeak":          {Name: "rgalbumpeak", Numeric: true},
+	"rgtrackgain":          {Name: "rgtrackgain", Numeric: true},
+	"rgtrackpeak":          {Name: "rgtrackpeak", Numeric: true},
 	"library_id":           {Name: "library_id", Numeric: true},
 
 	// Backward compatibility: albumtype is an alias for the releasetype tag.
