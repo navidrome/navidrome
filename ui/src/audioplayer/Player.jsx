@@ -210,6 +210,7 @@ const Player = () => {
       audioLists: playerState.queue.map((item) => item),
       playIndex: playerState.playIndex,
       autoPlay:
+        playerState.queue.length > 0 &&
         playerState.autoPlay !== false &&
         (playerState.clear || playerState.playIndex === 0),
       clearPriorAudioLists: playerState.clear,
