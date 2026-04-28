@@ -15,6 +15,7 @@ type mediafileArtworkReader struct {
 	a         *artwork
 	mediafile model.MediaFile
 	album     model.Album
+	lib       libraryView
 }
 
 func newMediafileArtworkReader(ctx context.Context, artwork *artwork, artID model.ArtworkID) (*mediafileArtworkReader, error) {
@@ -30,10 +31,15 @@ func newMediafileArtworkReader(ctx context.Context, artwork *artwork, artID mode
 	if err != nil {
 		return nil, err
 	}
+	lib, err := loadLibraryView(ctx, artwork.ds, mf.LibraryID)
+	if err != nil {
+		return nil, err
+	}
 	a := &mediafileArtworkReader{
 		a:         artwork,
 		mediafile: *mf,
 		album:     *al,
+		lib:       lib,
 	}
 	a.cacheKey.artID = artID
 	a.cacheKey.lastUpdate = mf.UpdatedAt
@@ -60,10 +66,9 @@ func (a *mediafileArtworkReader) LastUpdated() time.Time {
 func (a *mediafileArtworkReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
 	var ff []sourceFunc
 	if a.mediafile.CoverArtID().Kind == model.KindMediaFileArtwork {
-		path := a.mediafile.AbsolutePath()
 		ff = []sourceFunc{
-			fromTag(ctx, path),
-			fromFFmpegTag(ctx, a.a.ffmpeg, path),
+			fromTag(ctx, a.lib.FS, a.mediafile.Path),
+			fromFFmpegTag(ctx, a.a.ffmpeg, a.lib.Abs(a.mediafile.Path)),
 		}
 	}
 	// For multi-disc albums, fall back to disc artwork first; for single-disc albums,

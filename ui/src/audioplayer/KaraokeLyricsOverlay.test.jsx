@@ -61,11 +61,11 @@ describe('<KaraokeLyricsOverlay /> behavior', () => {
   it('shows tooltips for translation, pronunciation, and appearance controls', async () => {
     renderOverlay()
 
-    fireEvent.mouseOver(screen.getByTestId('lyrics-toggle-translation'))
-    expect(await screen.findByText('Toggle translations')).toBeInTheDocument()
+    fireEvent.mouseOver(screen.getByTestId('lyrics-language-badge-tr'))
+    expect(await screen.findByText('Show translation')).toBeInTheDocument()
 
-    fireEvent.mouseOver(screen.getByTestId('lyrics-toggle-pronunciation'))
-    expect(await screen.findByText('Toggle pronunciations')).toBeInTheDocument()
+    fireEvent.mouseOver(screen.getByTestId('lyrics-language-badge-pr'))
+    expect(await screen.findByText('Hide pronunciation')).toBeInTheDocument()
 
     fireEvent.mouseOver(screen.getByTestId('lyrics-settings-button'))
     expect(await screen.findByText('Appearance')).toBeInTheDocument()

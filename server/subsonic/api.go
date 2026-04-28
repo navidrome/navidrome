@@ -19,6 +19,7 @@ import (
 	"github.com/navidrome/navidrome/core/playback"
 	playlistsvc "github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/core/scrobbler"
+	sonicsvc "github.com/navidrome/navidrome/core/sonic"
 	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -52,12 +53,14 @@ type Router struct {
 	metrics           metrics.Metrics
 	lyrics            lyricssvc.Lyrics
 	transcodeDecision stream.TranscodeDecider
+	sonic             *sonicsvc.Sonic
 }
 
 func New(ds model.DataStore, artwork artwork.Artwork, streamer stream.MediaStreamer, archiver core.Archiver,
 	players core.Players, provider external.Provider, scanner model.Scanner, broker events.Broker,
 	playlists playlistsvc.Playlists, scrobbler scrobbler.PlayTracker, share core.Share, playback playback.PlaybackServer,
 	metrics metrics.Metrics, lyrics lyricssvc.Lyrics, transcodeDecision stream.TranscodeDecider,
+	sonic *sonicsvc.Sonic,
 ) *Router {
 	r := &Router{
 		ds:                ds,
@@ -75,6 +78,7 @@ func New(ds model.DataStore, artwork artwork.Artwork, streamer stream.MediaStrea
 		metrics:           metrics,
 		lyrics:            lyrics,
 		transcodeDecision: transcodeDecision,
+		sonic:             sonic,
 	}
 	r.Handler = r.routes()
 	return r
@@ -121,6 +125,8 @@ func (api *Router) routes() http.Handler {
 			h(r, "getTopSongs", api.GetTopSongs)
 			h(r, "getSimilarSongs", api.GetSimilarSongs)
 			h(r, "getSimilarSongs2", api.GetSimilarSongs2)
+			hr(r, "getSonicSimilarTracks", api.GetSonicSimilarTracks)
+			hr(r, "findSonicPath", api.FindSonicPath)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(getPlayer(api.players))

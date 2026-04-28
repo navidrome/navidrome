@@ -9,7 +9,6 @@ require (
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/andybalholm/cascadia v1.3.3
 	github.com/bmatcuk/doublestar/v4 v4.10.0
-	github.com/bradleyjkemp/cupaloy/v2 v2.8.0
 	github.com/deluan/rest v0.0.0-20211102003136-6260bc399cbf
 	github.com/deluan/sanitize v0.0.0-20241120162836-fdfd8fdfaa55
 	github.com/dexterlb/mpvipc v0.0.0-20241005113212-7cdefca0e933
@@ -35,15 +34,16 @@ require (
 	github.com/jellydator/ttlcache/v3 v3.4.0
 	github.com/kardianos/service v1.2.4
 	github.com/kr/pretty v0.3.1
-	github.com/lestrrat-go/jwx/v3 v3.0.13
+	github.com/lestrrat-go/jwx/v3 v3.1.0
 	github.com/mattn/go-sqlite3 v1.14.42
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/mileusna/useragent v1.3.5
-	github.com/onsi/ginkgo/v2 v2.28.1
+	github.com/onsi/ginkgo/v2 v2.28.2
 	github.com/onsi/gomega v1.39.1
 	github.com/pelletier/go-toml/v2 v2.3.0
+	github.com/pmezard/go-difflib v1.0.0
 	github.com/pocketbase/dbx v1.12.0
-	github.com/pressly/goose/v3 v3.27.0
+	github.com/pressly/goose/v3 v3.27.1
 	github.com/prometheus/client_golang v1.23.2
 	github.com/rjeczalik/notify v0.9.3
 	github.com/robfig/cron/v3 v3.0.1
@@ -112,10 +112,9 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/ogier/pflag v0.0.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.67.5 // indirect
-	github.com/prometheus/procfs v0.19.2 // indirect
+	github.com/prometheus/procfs v0.20.1 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
 	github.com/sanity-io/litter v1.5.8 // indirect

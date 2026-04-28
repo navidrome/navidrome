@@ -128,6 +128,12 @@ components:
                 mbzReleaseTrackId:
                     type: string
                     description: MBZReleaseTrackID is the MusicBrainz release track ID.
+                libraryId:
+                    type: integer
+                    format: int32
+                    description: |-
+                        LibraryID is the ID of the library the track belongs to.
+                        Only included if the plugin has library permission with filesystem access for the track's library.
                 path:
                     type: string
                     description: |-
