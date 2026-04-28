@@ -75,9 +75,26 @@ func (api *Router) GetPodcasts(r *http.Request) (*responses.Subsonic, error) {
 		}
 	}
 
-	// Bulk-load episode transcripts and persons when including episodes
+	// Bulk-load podcast:funding items
+	fundingRepo := api.ds.PodcastFunding(ctx)
+	allFunding, _ := fundingRepo.GetByChannels(channelIDs)
+	fundingMap := make(map[string]model.PodcastFundingItems)
+	for _, f := range allFunding {
+		fundingMap[f.ChannelID] = append(fundingMap[f.ChannelID], f)
+	}
+
+	// Bulk-load podcast:image (channel level)
+	imageRepo := api.ds.PodcastImage(ctx)
+	allChannelImages, _ := imageRepo.GetByChannels(channelIDs)
+	channelImageMap := make(map[string]model.PodcastImages)
+	for _, img := range allChannelImages {
+		channelImageMap[img.ChannelID] = append(channelImageMap[img.ChannelID], img)
+	}
+
+	// Bulk-load episode transcripts, persons, and images when including episodes
 	var epTranscripts map[string]model.PodcastTranscripts
 	var epPersons map[string]model.PodcastPersons
+	var epImages map[string]model.PodcastImages
 	if includeEpisodes {
 		var epIDs []string
 		for _, ch := range channels {
@@ -101,6 +118,13 @@ func (api *Router) GetPodcasts(r *http.Request) (*responses.Subsonic, error) {
 					epPersons[p.EpisodeID] = append(epPersons[p.EpisodeID], p)
 				}
 			}
+			allEpImages, err := imageRepo.GetByEpisodes(epIDs)
+			if err == nil {
+				epImages = make(map[string]model.PodcastImages)
+				for _, img := range allEpImages {
+					epImages[img.EpisodeID] = append(epImages[img.EpisodeID], img)
+				}
+			}
 		}
 	}
 
@@ -119,10 +143,14 @@ func (api *Router) GetPodcasts(r *http.Request) (*responses.Subsonic, error) {
 			PodcastGuid:     ch.PodcastGUID,
 			Locked:          ch.Locked,
 			Medium:          ch.Medium,
-			FundingUrl:      ch.FundingURL,
-			FundingText:     ch.FundingText,
 			UpdateFrequency: ch.UpdateFrequency,
 			Complete:        ch.Complete,
+			LocationName:    ch.LocationName,
+			LocationGeo:     ch.LocationGeo,
+			LocationOSM:     ch.LocationOSM,
+			License:         ch.License,
+			PublisherName:   ch.PublisherName,
+			PublisherURL:    ch.PublisherURL,
 			// Podcasting 2.0 Tier 3
 			UsesPodping: ch.UsesPodping,
 		}
@@ -133,6 +161,18 @@ func (api *Router) GetPodcasts(r *http.Request) (*responses.Subsonic, error) {
 				Group: p.Group,
 				Img:   p.Img,
 				Href:  p.Href,
+			})
+		}
+		for _, f := range fundingMap[ch.ID] {
+			rch.Funding = append(rch.Funding, responses.PodcastFundingResp{
+				URL:  f.URL,
+				Text: f.Text,
+			})
+		}
+		for _, img := range channelImageMap[ch.ID] {
+			rch.Images = append(rch.Images, responses.PodcastImageResp{
+				URL:   img.URL,
+				Width: img.Width,
 			})
 		}
 		for _, pr := range podrollMap[ch.ID] {
@@ -164,6 +204,7 @@ func (api *Router) GetPodcasts(r *http.Request) (*responses.Subsonic, error) {
 			for _, ep := range ch.Episodes {
 				ep.Transcripts = epTranscripts[ep.ID]
 				ep.Persons = epPersons[ep.ID]
+				ep.Images = epImages[ep.ID]
 				rch.Episode = append(rch.Episode, buildPodcastEpisode(ep))
 			}
 		}
@@ -291,6 +332,7 @@ func (api *Router) GetPodcastEpisode(r *http.Request) (*responses.Subsonic, erro
 
 	ep.Transcripts, _ = api.ds.PodcastTranscript(ctx).GetByEpisode(ep.ID)
 	ep.Persons, _ = api.ds.PodcastPerson(ctx).GetByEpisode(ep.ID)
+	ep.Images, _ = api.ds.PodcastImage(ctx).GetByEpisode(ep.ID)
 
 	resp := newResponse()
 	re := buildPodcastEpisode(*ep)
@@ -321,6 +363,10 @@ func buildPodcastEpisode(ep model.PodcastEpisode) responses.PodcastEpisode {
 		ChaptersUrl:    ep.ChaptersURL,
 		SoundbiteStart: ep.SoundbiteStart,
 		SoundbiteDur:   ep.SoundbiteDur,
+		LocationName:   ep.LocationName,
+		LocationGeo:    ep.LocationGeo,
+		LocationOSM:    ep.LocationOSM,
+		License:        ep.License,
 	}
 	if !ep.PublishDate.IsZero() {
 		re.PublishDate = ep.PublishDate.UTC().Format(time.RFC3339)
@@ -340,6 +386,12 @@ func buildPodcastEpisode(ep model.PodcastEpisode) responses.PodcastEpisode {
 			Group: p.Group,
 			Img:   p.Img,
 			Href:  p.Href,
+		})
+	}
+	for _, img := range ep.Images {
+		re.Images = append(re.Images, responses.PodcastImageResp{
+			URL:   img.URL,
+			Width: img.Width,
 		})
 	}
 	return re
