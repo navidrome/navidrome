@@ -185,6 +185,10 @@ func (c smartPlaylistCriteria) exprSQL(expr criteria.Expression) (squirrel.Sqliz
 		return c.inList(e, false)
 	case criteria.NotInPlaylist:
 		return c.inList(e, true)
+	case criteria.IsMissing:
+		return missingExpr(e, true)
+	case criteria.IsPresent:
+		return missingExpr(e, false)
 	default:
 		return nil, fmt.Errorf("unknown criteria expression type %T", expr)
 	}
@@ -199,6 +203,22 @@ func isNotExpr(values map[string]any) (squirrel.Sqlizer, error) {
 		return nil, err
 	}
 	return squirrel.NotEq(fields), nil
+}
+
+func missingExpr(values map[string]any, checkAbsence bool) (squirrel.Sqlizer, error) {
+	field, value, info, ok := singleField(values)
+	if !ok {
+		if len(values) != 1 {
+			return nil, fmt.Errorf("invalid field in criteria: isMissing/isPresent requires exactly one field")
+		}
+		return nil, fmt.Errorf("invalid field in criteria: %s", field)
+	}
+	if !info.IsTag && !info.IsRole {
+		return nil, fmt.Errorf("isMissing/isPresent operator is only supported for tag and role fields, got: %s", field)
+	}
+
+	negate := checkAbsence == criteria.IsTruthy(value)
+	return jsonExpr(info, nil, negate), nil
 }
 
 func mapExpr(values map[string]any, makeCond func(map[string]any) squirrel.Sqlizer, negateJSON bool) (squirrel.Sqlizer, error) {
@@ -327,11 +347,18 @@ type tagCond struct {
 }
 
 func (e tagCond) ToSql() (string, []any, error) {
-	cond, args, err := e.cond.ToSql()
-	if e.numeric {
-		cond = strings.ReplaceAll(cond, "value", "CAST(value AS REAL)")
+	var cond string
+	var args []any
+	var err error
+	if e.cond != nil {
+		cond, args, err = e.cond.ToSql()
+		if e.numeric {
+			cond = strings.ReplaceAll(cond, "value", "CAST(value AS REAL)")
+		}
+		cond = fmt.Sprintf("exists (select 1 from json_tree(media_file.tags, '$.%s') where key='value' and %s)", e.tag, cond)
+	} else {
+		cond = fmt.Sprintf("exists (select 1 from json_tree(media_file.tags, '$.%s') where key='value')", e.tag)
 	}
-	cond = fmt.Sprintf("exists (select 1 from json_tree(media_file.tags, '$.%s') where key='value' and %s)", e.tag, cond)
 	if e.not {
 		cond = "not " + cond
 	}
@@ -345,8 +372,15 @@ type roleCond struct {
 }
 
 func (e roleCond) ToSql() (string, []any, error) {
-	cond, args, err := e.cond.ToSql()
-	cond = fmt.Sprintf("exists (select 1 from json_tree(media_file.participants, '$.%s') where key='name' and %s)", e.role, cond)
+	var cond string
+	var args []any
+	var err error
+	if e.cond != nil {
+		cond, args, err = e.cond.ToSql()
+		cond = fmt.Sprintf("exists (select 1 from json_tree(media_file.participants, '$.%s') where key='name' and %s)", e.role, cond)
+	} else {
+		cond = fmt.Sprintf("exists (select 1 from json_tree(media_file.participants, '$.%s') where key='name')", e.role)
+	}
 	if e.not {
 		cond = "not " + cond
 	}
