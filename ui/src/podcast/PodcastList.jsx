@@ -42,11 +42,18 @@ const PodcastFilter = (props) => (
   </Filter>
 )
 
+const bestImageUrl = (record, targetWidth) => {
+  if (!record.images || record.images.length === 0) return record.imageUrl
+  const sorted = [...record.images].sort((a, b) => a.width - b.width)
+  const best = sorted.find((img) => img.width >= targetWidth) || sorted[sorted.length - 1]
+  return best ? best.url : record.imageUrl
+}
+
 const CoverArtField = ({ record }) => {
   if (!record) return null
   if (record.imageUrl) {
     return (
-      <Avatar src={record.imageUrl} variant="rounded" style={{ width: 55, height: 55 }} alt={record.title} />
+      <Avatar src={bestImageUrl(record, 55)} variant="rounded" style={{ width: 55, height: 55 }} alt={record.title} />
     )
   }
   return (

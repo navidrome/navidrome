@@ -57,7 +57,10 @@ AlbumOrChannelLinkField.defaultProps = { addLabel: true, sortBy: 'album' }
 
 const PodcastAwareArtistField = (props) => {
   const record = props.record
-  if (record?.genre === 'Podcast' && !record?.artist) {
+  const isPodcast = record?.genre === 'Podcast'
+  const hasNoRealArtist =
+    !record?.artist || record?.artist === '[Unknown Artist]'
+  if (isPodcast && hasNoRealArtist) {
     return <span>-</span>
   }
   return <ArtistLinkField {...props} />
