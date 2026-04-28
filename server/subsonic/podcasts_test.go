@@ -343,14 +343,20 @@ var _ = Describe("Podcasts", func() {
 			Expect(resp.Podcasts.Channel[0].Medium).To(Equal("podcast"))
 		})
 
-		It("includes fundingUrl and fundingText in response", func() {
+		It("includes funding items in response", func() {
+			fundingRepo := tests.CreateMockPodcastFundingRepo()
+			_ = fundingRepo.SaveForChannel("ch-p20", []model.PodcastFundingItem{
+				{URL: "https://example.com/donate", Text: "Support us!"},
+			})
+			ds.MockedPodcastFunding = fundingRepo
 			r := httptest.NewRequest("GET", "/rest/getPodcasts", nil)
 			r = r.WithContext(userCtx)
 			resp, err := api.GetPodcasts(r)
 			Expect(err).ToNot(HaveOccurred())
 			ch := resp.Podcasts.Channel[0]
-			Expect(ch.FundingUrl).To(Equal("https://example.com/donate"))
-			Expect(ch.FundingText).To(Equal("Support us!"))
+			Expect(ch.Funding).To(HaveLen(1))
+			Expect(ch.Funding[0].URL).To(Equal("https://example.com/donate"))
+			Expect(ch.Funding[0].Text).To(Equal("Support us!"))
 		})
 
 		It("includes updateFrequency in response", func() {
