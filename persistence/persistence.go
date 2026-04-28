@@ -121,6 +121,14 @@ func (s *SQLStore) PodcastLiveItem(ctx context.Context) model.PodcastLiveItemRep
 	return NewPodcastLiveItemRepository(ctx, s.getDBXBuilder())
 }
 
+func (s *SQLStore) PodcastFunding(ctx context.Context) model.PodcastFundingRepository {
+	return NewPodcastFundingRepository(ctx, s.getDBXBuilder())
+}
+
+func (s *SQLStore) PodcastImage(ctx context.Context) model.PodcastImageRepository {
+	return NewPodcastImageRepository(ctx, s.getDBXBuilder())
+}
+
 func (s *SQLStore) Resource(ctx context.Context, m any) model.ResourceRepository {
 	switch m.(type) {
 	case model.User:

@@ -34,6 +34,8 @@ type MockDataStore struct {
 	MockedPodcastPerson     model.PodcastPersonRepository
 	MockedPodcastPodroll    model.PodcastPodrollRepository
 	MockedPodcastLiveItem   model.PodcastLiveItemRepository
+	MockedPodcastFunding    model.PodcastFundingRepository
+	MockedPodcastImage      model.PodcastImageRepository
 	scrobbleBufferMu        sync.Mutex
 	repoMu               sync.Mutex
 
@@ -317,6 +319,28 @@ func (db *MockDataStore) PodcastLiveItem(ctx context.Context) model.PodcastLiveI
 	}
 	db.MockedPodcastLiveItem = CreateMockPodcastLiveItemRepo()
 	return db.MockedPodcastLiveItem
+}
+
+func (db *MockDataStore) PodcastFunding(ctx context.Context) model.PodcastFundingRepository {
+	if db.MockedPodcastFunding != nil {
+		return db.MockedPodcastFunding
+	}
+	if db.RealDS != nil {
+		return db.RealDS.PodcastFunding(ctx)
+	}
+	db.MockedPodcastFunding = CreateMockPodcastFundingRepo()
+	return db.MockedPodcastFunding
+}
+
+func (db *MockDataStore) PodcastImage(ctx context.Context) model.PodcastImageRepository {
+	if db.MockedPodcastImage != nil {
+		return db.MockedPodcastImage
+	}
+	if db.RealDS != nil {
+		return db.RealDS.PodcastImage(ctx)
+	}
+	db.MockedPodcastImage = CreateMockPodcastImageRepo()
+	return db.MockedPodcastImage
 }
 
 func (db *MockDataStore) WithTx(block func(tx model.DataStore) error, label ...string) error {

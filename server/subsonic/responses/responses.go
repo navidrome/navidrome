@@ -661,6 +661,16 @@ type NewestPodcasts struct {
 	Episode []Child `xml:"episode,omitempty" json:"episode,omitempty"`
 }
 
+type PodcastFundingResp struct {
+	URL  string `xml:"url,attr,omitempty"  json:"url,omitempty"`
+	Text string `xml:"text,attr,omitempty" json:"text,omitempty"`
+}
+
+type PodcastImageResp struct {
+	URL   string `xml:"url,attr,omitempty"   json:"url,omitempty"`
+	Width int    `xml:"width,attr,omitempty" json:"width,omitempty"`
+}
+
 type PodcastChannel struct {
 	ID               string           `xml:"id,attr"                         json:"id"`
 	URL              string           `xml:"url,attr"                        json:"url"`
@@ -673,14 +683,20 @@ type PodcastChannel struct {
 	Episode          []PodcastEpisode `xml:"episode,omitempty"               json:"episode,omitempty"`
 
 	// Podcasting 2.0 Tier 1 & 2
-	PodcastGuid     string              `xml:"podcastGuid,attr,omitempty"     json:"podcastGuid,omitempty"`
-	Locked          bool                `xml:"locked,attr,omitempty"          json:"locked,omitempty"`
-	Medium          string              `xml:"medium,attr,omitempty"          json:"medium,omitempty"`
-	FundingUrl      string              `xml:"fundingUrl,attr,omitempty"      json:"fundingUrl,omitempty"`
-	FundingText     string              `xml:"fundingText,attr,omitempty"     json:"fundingText,omitempty"`
-	UpdateFrequency string              `xml:"updateFrequency,attr,omitempty" json:"updateFrequency,omitempty"`
-	Complete        bool                `xml:"complete,attr,omitempty"        json:"complete,omitempty"`
-	Person          []PodcastPersonResp `xml:"person,omitempty"               json:"person,omitempty"`
+	PodcastGuid     string               `xml:"podcastGuid,attr,omitempty"     json:"podcastGuid,omitempty"`
+	Locked          bool                 `xml:"locked,attr,omitempty"          json:"locked,omitempty"`
+	Medium          string               `xml:"medium,attr,omitempty"          json:"medium,omitempty"`
+	UpdateFrequency string               `xml:"updateFrequency,attr,omitempty" json:"updateFrequency,omitempty"`
+	Complete        bool                 `xml:"complete,attr,omitempty"        json:"complete,omitempty"`
+	LocationName    string               `xml:"locationName,attr,omitempty"    json:"locationName,omitempty"`
+	LocationGeo     string               `xml:"locationGeo,attr,omitempty"     json:"locationGeo,omitempty"`
+	LocationOSM     string               `xml:"locationOsm,attr,omitempty"     json:"locationOsm,omitempty"`
+	License         string               `xml:"license,attr,omitempty"         json:"license,omitempty"`
+	PublisherName   string               `xml:"publisherName,attr,omitempty"   json:"publisherName,omitempty"`
+	PublisherURL    string               `xml:"publisherUrl,attr,omitempty"    json:"publisherUrl,omitempty"`
+	Person          []PodcastPersonResp  `xml:"person,omitempty"               json:"person,omitempty"`
+	Funding         []PodcastFundingResp `xml:"funding,omitempty"              json:"funding,omitempty"`
+	Images          []PodcastImageResp   `xml:"image,omitempty"                json:"images,omitempty"`
 
 	// Podcasting 2.0 Tier 3
 	UsesPodping bool                 `xml:"usesPodping,attr,omitempty" json:"usesPodping,omitempty"`
@@ -732,8 +748,13 @@ type PodcastEpisode struct {
 	ChaptersUrl    string                  `xml:"chaptersUrl,attr,omitempty"    json:"chaptersUrl,omitempty"`
 	SoundbiteStart float64                 `xml:"soundbiteStart,attr,omitempty" json:"soundbiteStart,omitempty"`
 	SoundbiteDur   float64                 `xml:"soundbiteDur,attr,omitempty"   json:"soundbiteDur,omitempty"`
+	LocationName   string                  `xml:"locationName,attr,omitempty"   json:"locationName,omitempty"`
+	LocationGeo    string                  `xml:"locationGeo,attr,omitempty"    json:"locationGeo,omitempty"`
+	LocationOSM    string                  `xml:"locationOsm,attr,omitempty"    json:"locationOsm,omitempty"`
+	License        string                  `xml:"license,attr,omitempty"        json:"license,omitempty"`
 	Transcript     []PodcastTranscriptResp `xml:"transcript,omitempty"          json:"transcript,omitempty"`
 	Person         []PodcastPersonResp     `xml:"person,omitempty"              json:"person,omitempty"`
+	Images         []PodcastImageResp      `xml:"image,omitempty"               json:"images,omitempty"`
 }
 
 type PodcastTranscriptResp struct {

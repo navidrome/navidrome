@@ -285,12 +285,16 @@ var _ = Describe("PodcastService", func() {
 			}
 		})
 
-		It("stores first FundingURL and FundingText from feed", func() {
+		It("saves funding items to funding repo", func() {
+			fundingRepo := tests.CreateMockPodcastFundingRepo()
+			ds.MockedPodcastFunding = fundingRepo
 			Expect(svc.AddChannel(ctx, p20Server.URL+"/feed.xml")).To(Succeed())
-			for _, ch := range channelRepo.Data {
-				Expect(ch.FundingURL).To(Equal("https://example.com/donate"))
-				Expect(ch.FundingText).To(Equal("Support us!"))
+			Expect(fundingRepo.Data).ToNot(BeEmpty())
+			var urls []string
+			for _, f := range fundingRepo.Data {
+				urls = append(urls, f.URL)
 			}
+			Expect(urls).To(ContainElement("https://example.com/donate"))
 		})
 
 		It("stores UpdateFrequency and UpdateRRule from feed", func() {

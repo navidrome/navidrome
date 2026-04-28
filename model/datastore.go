@@ -46,6 +46,8 @@ type DataStore interface {
 	PodcastPerson(ctx context.Context) PodcastPersonRepository
 	PodcastPodroll(ctx context.Context) PodcastPodrollRepository
 	PodcastLiveItem(ctx context.Context) PodcastLiveItemRepository
+	PodcastFunding(ctx context.Context) PodcastFundingRepository
+	PodcastImage(ctx context.Context) PodcastImageRepository
 
 	Resource(ctx context.Context, model any) ResourceRepository
 

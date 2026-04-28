@@ -88,12 +88,16 @@ func (s *podcastService) AddChannel(ctx context.Context, rssURL string) error {
 		Locked:          feed.Locked,
 		LockedOwner:     feed.LockedOwner,
 		Medium:          feed.Medium,
-		FundingURL:      feed.FundingURL,
-		FundingText:     feed.FundingText,
 		UpdateFrequency: feed.UpdateFrequency,
 		UpdateRRule:     feed.UpdateRRule,
 		Complete:        feed.Complete,
 		UsesPodping:     feed.UsesPodping,
+		LocationName:    feed.LocationName,
+		LocationGeo:     feed.LocationGeo,
+		LocationOSM:     feed.LocationOSM,
+		License:         feed.License,
+		PublisherName:   feed.PublisherName,
+		PublisherURL:    feed.PublisherURL,
 	}
 	if err := s.ds.PodcastChannel(ctx).Create(ch); err != nil {
 		return err
@@ -103,6 +107,23 @@ func (s *podcastService) AddChannel(ctx context.Context, rssURL string) error {
 	if len(feed.Persons) > 0 {
 		if err := s.ds.PodcastPerson(ctx).SaveForChannel(ch.ID, feed.Persons); err != nil {
 			log.Warn(ctx, "Failed to save podcast channel persons", "channel", ch.ID, err)
+		}
+	}
+
+	// Save podcast:funding items
+	if len(feed.FundingItems) > 0 {
+		for i := range feed.FundingItems {
+			feed.FundingItems[i].ChannelID = ch.ID
+		}
+		if err := s.ds.PodcastFunding(ctx).SaveForChannel(ch.ID, feed.FundingItems); err != nil {
+			log.Warn(ctx, "Failed to save podcast funding items", "channel", ch.ID, err)
+		}
+	}
+
+	// Save podcast:image (channel level)
+	if len(feed.Images) > 0 {
+		if err := s.ds.PodcastImage(ctx).SaveForChannel(ch.ID, feed.Images); err != nil {
+			log.Warn(ctx, "Failed to save podcast channel images", "channel", ch.ID, err)
 		}
 	}
 
@@ -127,8 +148,10 @@ func (s *podcastService) AddChannel(ctx context.Context, rssURL string) error {
 		ep.Status = model.PodcastStatusNew
 		transcripts := ep.Transcripts
 		persons := ep.Persons
+		images := ep.Images
 		ep.Transcripts = nil
 		ep.Persons = nil
+		ep.Images = nil
 		if err := s.ds.PodcastEpisode(ctx).Create(&ep); err != nil {
 			return err
 		}
@@ -145,6 +168,12 @@ func (s *podcastService) AddChannel(ctx context.Context, rssURL string) error {
 		if len(persons) > 0 {
 			if err := s.ds.PodcastPerson(ctx).SaveForEpisode(ep.ID, persons); err != nil {
 				log.Warn(ctx, "Failed to save podcast episode persons", "episode", ep.ID, err)
+			}
+		}
+		// Save episode images
+		if len(images) > 0 {
+			if err := s.ds.PodcastImage(ctx).SaveForEpisode(ep.ID, images); err != nil {
+				log.Warn(ctx, "Failed to save podcast episode images", "episode", ep.ID, err)
 			}
 		}
 	}
@@ -176,6 +205,16 @@ func (s *podcastService) refreshChannel(ctx context.Context, ch model.PodcastCha
 		return err
 	}
 
+	// Refresh podcast:funding items
+	if err := s.ds.PodcastFunding(ctx).SaveForChannel(ch.ID, feed.FundingItems); err != nil {
+		log.Warn(ctx, "Failed to refresh funding items", "channel", ch.ID, err)
+	}
+
+	// Refresh podcast:image (channel level)
+	if err := s.ds.PodcastImage(ctx).SaveForChannel(ch.ID, feed.Images); err != nil {
+		log.Warn(ctx, "Failed to refresh channel images", "channel", ch.ID, err)
+	}
+
 	// Refresh podcast:podroll
 	if err := s.ds.PodcastPodroll(ctx).SaveForChannel(ch.ID, feed.Podroll); err != nil {
 		log.Warn(ctx, "Failed to refresh podroll", "channel", ch.ID, err)
@@ -200,8 +239,10 @@ func (s *podcastService) refreshChannel(ctx context.Context, ch model.PodcastCha
 		ep.Status = model.PodcastStatusNew
 		transcripts := ep.Transcripts
 		persons := ep.Persons
+		images := ep.Images
 		ep.Transcripts = nil
 		ep.Persons = nil
+		ep.Images = nil
 		if err := epRepo.Create(&ep); err != nil {
 			return err
 		}
@@ -218,6 +259,12 @@ func (s *podcastService) refreshChannel(ctx context.Context, ch model.PodcastCha
 		if len(persons) > 0 {
 			if err := s.ds.PodcastPerson(ctx).SaveForEpisode(ep.ID, persons); err != nil {
 				log.Warn(ctx, "Failed to save podcast episode persons", "episode", ep.ID, err)
+			}
+		}
+		// Save episode images
+		if len(images) > 0 {
+			if err := s.ds.PodcastImage(ctx).SaveForEpisode(ep.ID, images); err != nil {
+				log.Warn(ctx, "Failed to save podcast episode images", "episode", ep.ID, err)
 			}
 		}
 	}
@@ -300,6 +347,8 @@ func (s *podcastService) doDownload(ctx context.Context, ep *model.PodcastEpisod
 	} else {
 		relPath := strings.TrimPrefix(dest, conf.Server.DataFolder+string(filepath.Separator))
 		now := time.Now()
+		tags := model.Tags{}
+		tags.Add("genre", "Podcast")
 		mf := &model.MediaFile{
 			ID:          id.NewRandom(),
 			LibraryID:   libID,
@@ -310,6 +359,7 @@ func (s *podcastService) doDownload(ctx context.Context, ep *model.PodcastEpisod
 			Artist:      "",
 			AlbumArtist: ch.Title,
 			Genre:       "Podcast",
+			Tags:        tags,
 			Duration:    float32(ep.Duration),
 			Size:        size,
 			BitRate:     ep.BitRate,

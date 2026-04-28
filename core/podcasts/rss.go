@@ -15,9 +15,49 @@ import (
 
 const podcastNS = "https://podcastindex.org/namespace/1.0"
 
-// Go's encoding/xml has a known limitation with inherited namespace prefixes.
-// We fall back to a regex scan for itunes:image when struct tag parsing yields nothing.
-var itunesImageRe = regexp.MustCompile(`<[^:>]*:image[^>]+href="([^"]*)"`)
+// Go's encoding/xml has a known bug where a namespace-qualified slice field (e.g.
+// `xml:"ns image"`) is not populated when the same struct also has a no-namespace
+// field with the same local name (e.g. `xml:"image"`).  This affects rssChannel
+// because it has both Image rssImage `xml:"image"` and PodcastImages `xml:"ns image"`.
+// rssItem has no such conflict, so episode-level podcast:image works via struct tags.
+// We use regex fallbacks for both itunes:image and channel-level podcast:image.
+var itunesImageRe = regexp.MustCompile(`<itunes:image\b[^>]+href="([^"]*)"`)
+
+// podcastImageElemRe matches a podcast:image element and captures its attributes.
+// We intentionally match only the "podcast:" prefix (the de-facto standard) rather
+// than any arbitrary prefix, to avoid false matches against itunes:image or rss <image>.
+var podcastImageElemRe = regexp.MustCompile(`<podcast:image\b([^>]*)(?:/>|>)`)
+var hrefAttrRe = regexp.MustCompile(`\bhref="([^"]*)"`)
+var widthAttrRe = regexp.MustCompile(`\bwidth="(\d+)"`)
+
+// extractChannelImages extracts podcast:image elements that appear in the channel
+// header (before the first <item> block) using regex, working around the Go xml
+// namespace conflict bug.
+func extractChannelImages(data []byte) []model.PodcastImage {
+	// Narrow to channel header to avoid matching episode-level podcast:image elements.
+	channelStart := strings.Index(string(data), "<channel")
+	if channelStart < 0 {
+		return nil
+	}
+	header := data[channelStart:]
+	if itemIdx := strings.Index(string(header), "<item"); itemIdx >= 0 {
+		header = header[:itemIdx]
+	}
+	var images []model.PodcastImage
+	for _, m := range podcastImageElemRe.FindAllSubmatch(header, -1) {
+		attrs := string(m[1])
+		hm := hrefAttrRe.FindStringSubmatch(attrs)
+		if len(hm) < 2 || hm[1] == "" {
+			continue
+		}
+		img := model.PodcastImage{URL: hm[1]}
+		if wm := widthAttrRe.FindStringSubmatch(attrs); len(wm) >= 2 {
+			img.Width, _ = strconv.Atoi(wm[1])
+		}
+		images = append(images, img)
+	}
+	return images
+}
 
 func extractItunesImageHref(data []byte) string {
 	if m := itunesImageRe.FindSubmatch(data); len(m) > 1 {
@@ -37,12 +77,18 @@ type rssFeed struct {
 	Locked          bool
 	LockedOwner     string
 	Medium          string
-	FundingURL      string
-	FundingText     string
 	UpdateFrequency string
 	UpdateRRule     string
 	Complete        bool
 	Persons         []model.PodcastPerson
+	FundingItems    []model.PodcastFundingItem
+	LocationName    string
+	LocationGeo     string
+	LocationOSM     string
+	License         string
+	PublisherName   string
+	PublisherURL    string
+	Images          []model.PodcastImage
 
 	// Podcasting 2.0 Tier 3 channel fields
 	UsesPodping bool
@@ -69,6 +115,11 @@ func ParseFeedPreview(rssURL string) (*FeedPreview, error) {
 	if err != nil {
 		return nil, err
 	}
+	var fundingURL, fundingText string
+	if len(feed.FundingItems) > 0 {
+		fundingURL = feed.FundingItems[0].URL
+		fundingText = feed.FundingItems[0].Text
+	}
 	return &FeedPreview{
 		Title:           feed.Title,
 		Description:     feed.Description,
@@ -76,8 +127,8 @@ func ParseFeedPreview(rssURL string) (*FeedPreview, error) {
 		EpisodeCount:    len(feed.Episodes),
 		Medium:          feed.Medium,
 		UpdateFrequency: feed.UpdateFrequency,
-		FundingURL:      feed.FundingURL,
-		FundingText:     feed.FundingText,
+		FundingURL:      fundingURL,
+		FundingText:     fundingText,
 	}, nil
 }
 
@@ -101,6 +152,10 @@ type rssChannel struct {
 	PodcastFundings   []podcastFunding  `xml:"https://podcastindex.org/namespace/1.0 funding"`
 	PodcastPersons    []podcastPerson   `xml:"https://podcastindex.org/namespace/1.0 person"`
 	PodcastUpdateFreq podcastUpdateFreq `xml:"https://podcastindex.org/namespace/1.0 updateFrequency"`
+	PodcastLocation   podcastLocation   `xml:"https://podcastindex.org/namespace/1.0 location"`
+	PodcastLicense    podcastLicense    `xml:"https://podcastindex.org/namespace/1.0 license"`
+	PodcastPublisher  podcastPublisher  `xml:"https://podcastindex.org/namespace/1.0 publisher"`
+	PodcastImages     []podcastImageTag `xml:"https://podcastindex.org/namespace/1.0 image"`
 
 	// Podcasting 2.0 channel tags — Tier 3
 	PodcastPodping   podcastPodping       `xml:"https://podcastindex.org/namespace/1.0 podping"`
@@ -187,6 +242,9 @@ type rssItem struct {
 	PodcastEpisodeNum  podcastEpisodeNum  `xml:"https://podcastindex.org/namespace/1.0 episode"`
 	PodcastSoundbite   podcastSoundbite   `xml:"https://podcastindex.org/namespace/1.0 soundbite"`
 	PodcastPersons     []podcastPerson    `xml:"https://podcastindex.org/namespace/1.0 person"`
+	PodcastLocation    podcastLocation    `xml:"https://podcastindex.org/namespace/1.0 location"`
+	PodcastLicense     podcastLicense     `xml:"https://podcastindex.org/namespace/1.0 license"`
+	PodcastImages      []podcastImageTag  `xml:"https://podcastindex.org/namespace/1.0 image"`
 }
 
 type enclosure struct {
@@ -223,6 +281,27 @@ type podcastSoundbite struct {
 	Title     string `xml:",chardata"`
 }
 
+type podcastLocation struct {
+	Geo  string `xml:"geo,attr"`
+	OSM  string `xml:"osm,attr"`
+	Name string `xml:",chardata"`
+}
+
+type podcastLicense struct {
+	URL   string `xml:"url,attr"`
+	Value string `xml:",chardata"`
+}
+
+type podcastPublisher struct {
+	Name string `xml:"https://podcastindex.org/namespace/1.0 name"`
+	URL  string `xml:"https://podcastindex.org/namespace/1.0 url"`
+}
+
+type podcastImageTag struct {
+	Href  string `xml:"href,attr"`
+	Width int    `xml:"width,attr"`
+}
+
 // ---- Parsing ----
 
 func ParseRSSFeed(data []byte) (*rssFeed, error) {
@@ -255,11 +334,34 @@ func ParseRSSFeed(data []byte) (*rssFeed, error) {
 		feed.ImageURL = ch.Image.URL
 	}
 
-	// first funding entry
-	if len(ch.PodcastFundings) > 0 {
-		feed.FundingURL = ch.PodcastFundings[0].URL
-		feed.FundingText = strings.TrimSpace(ch.PodcastFundings[0].Text)
+	// all funding entries
+	for i, f := range ch.PodcastFundings {
+		feed.FundingItems = append(feed.FundingItems, model.PodcastFundingItem{
+			URL:       f.URL,
+			Text:      strings.TrimSpace(f.Text),
+			SortOrder: i,
+		})
 	}
+
+	// location
+	if ch.PodcastLocation.Name != "" || ch.PodcastLocation.Geo != "" {
+		feed.LocationName = strings.TrimSpace(ch.PodcastLocation.Name)
+		feed.LocationGeo = ch.PodcastLocation.Geo
+		feed.LocationOSM = ch.PodcastLocation.OSM
+	}
+
+	// license
+	feed.License = strings.TrimSpace(ch.PodcastLicense.Value)
+	if feed.License == "" {
+		feed.License = ch.PodcastLicense.URL
+	}
+
+	// publisher
+	feed.PublisherName = strings.TrimSpace(ch.PodcastPublisher.Name)
+	feed.PublisherURL = ch.PodcastPublisher.URL
+
+	// channel images — use regex fallback due to Go xml namespace conflict with rssImage
+	feed.Images = extractChannelImages(data)
 
 	// channel persons
 	for _, p := range ch.PodcastPersons {
@@ -352,6 +454,26 @@ func ParseRSSFeed(data []byte) (*rssFeed, error) {
 				Img:   p.Img,
 				Href:  p.Href,
 			})
+		}
+
+		// episode location
+		if item.PodcastLocation.Name != "" || item.PodcastLocation.Geo != "" {
+			ep.LocationName = strings.TrimSpace(item.PodcastLocation.Name)
+			ep.LocationGeo = item.PodcastLocation.Geo
+			ep.LocationOSM = item.PodcastLocation.OSM
+		}
+
+		// episode license
+		ep.License = strings.TrimSpace(item.PodcastLicense.Value)
+		if ep.License == "" {
+			ep.License = item.PodcastLicense.URL
+		}
+
+		// episode images
+		for _, img := range item.PodcastImages {
+			if img.Href != "" {
+				ep.Images = append(ep.Images, model.PodcastImage{URL: img.Href, Width: img.Width})
+			}
 		}
 
 		feed.Episodes = append(feed.Episodes, ep)
