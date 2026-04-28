@@ -46,5 +46,9 @@ var _ = Describe("Operators", func() {
 		Entry("notInTheLast", NotInTheLast{"lastPlayed": 30.0}, `{"notInTheLast":{"lastPlayed":30}}`),
 		Entry("inPlaylist", InPlaylist{"id": "deadbeef-dead-beef"}, `{"inPlaylist":{"id":"deadbeef-dead-beef"}}`),
 		Entry("notInPlaylist", NotInPlaylist{"id": "deadbeef-dead-beef"}, `{"notInPlaylist":{"id":"deadbeef-dead-beef"}}`),
+		Entry("isMissing [true]", IsMissing{"genre": true}, `{"isMissing":{"genre":true}}`),
+		Entry("isMissing [false]", IsMissing{"genre": false}, `{"isMissing":{"genre":false}}`),
+		Entry("isPresent [true]", IsPresent{"genre": true}, `{"isPresent":{"genre":true}}`),
+		Entry("isPresent [false]", IsPresent{"genre": false}, `{"isPresent":{"genre":false}}`),
 	)
 })
