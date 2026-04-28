@@ -79,22 +79,73 @@ func (s *podcastService) AddChannel(ctx context.Context, rssURL string) error {
 	}
 
 	ch := &model.PodcastChannel{
-		URL:         rssURL,
-		Title:       feed.Title,
-		Description: feed.Description,
-		ImageURL:    feed.ImageURL,
-		Status:      model.PodcastStatusNew,
+		URL:             rssURL,
+		Title:           feed.Title,
+		Description:     feed.Description,
+		ImageURL:        feed.ImageURL,
+		Status:          model.PodcastStatusNew,
+		PodcastGUID:     feed.PodcastGUID,
+		Locked:          feed.Locked,
+		LockedOwner:     feed.LockedOwner,
+		Medium:          feed.Medium,
+		FundingURL:      feed.FundingURL,
+		FundingText:     feed.FundingText,
+		UpdateFrequency: feed.UpdateFrequency,
+		UpdateRRule:     feed.UpdateRRule,
+		Complete:        feed.Complete,
+		UsesPodping:     feed.UsesPodping,
 	}
 	if err := s.ds.PodcastChannel(ctx).Create(ch); err != nil {
 		return err
+	}
+
+	// Save channel-level persons
+	if len(feed.Persons) > 0 {
+		if err := s.ds.PodcastPerson(ctx).SaveForChannel(ch.ID, feed.Persons); err != nil {
+			log.Warn(ctx, "Failed to save podcast channel persons", "channel", ch.ID, err)
+		}
+	}
+
+	// Save podcast:podroll items
+	if len(feed.Podroll) > 0 {
+		if err := s.ds.PodcastPodroll(ctx).SaveForChannel(ch.ID, feed.Podroll); err != nil {
+			log.Warn(ctx, "Failed to save podcast podroll", "channel", ch.ID, err)
+		}
+	}
+
+	// Save podcast:liveItem entries
+	for _, li := range feed.LiveItems {
+		li.ChannelID = ch.ID
+		if err := s.ds.PodcastLiveItem(ctx).Upsert(&li); err != nil {
+			log.Warn(ctx, "Failed to save podcast live item", "channel", ch.ID, err)
+		}
 	}
 
 	for i := range feed.Episodes {
 		ep := feed.Episodes[i]
 		ep.ChannelID = ch.ID
 		ep.Status = model.PodcastStatusNew
+		transcripts := ep.Transcripts
+		persons := ep.Persons
+		ep.Transcripts = nil
+		ep.Persons = nil
 		if err := s.ds.PodcastEpisode(ctx).Create(&ep); err != nil {
 			return err
+		}
+		// Save episode transcripts
+		if len(transcripts) > 0 {
+			for j := range transcripts {
+				transcripts[j].EpisodeID = ep.ID
+			}
+			if err := s.ds.PodcastTranscript(ctx).Save(transcripts); err != nil {
+				log.Warn(ctx, "Failed to save podcast episode transcripts", "episode", ep.ID, err)
+			}
+		}
+		// Save episode persons
+		if len(persons) > 0 {
+			if err := s.ds.PodcastPerson(ctx).SaveForEpisode(ep.ID, persons); err != nil {
+				log.Warn(ctx, "Failed to save podcast episode persons", "episode", ep.ID, err)
+			}
 		}
 	}
 
@@ -109,6 +160,9 @@ func (s *podcastService) RefreshChannels(ctx context.Context) error {
 	}
 
 	for _, ch := range channels {
+		if ch.UsesPodping {
+			continue // skip — this channel uses Podping for updates
+		}
 		if err := s.refreshChannel(ctx, ch); err != nil {
 			log.Warn(ctx, "Failed to refresh podcast channel", "channel", ch.Title, err)
 		}
@@ -122,6 +176,19 @@ func (s *podcastService) refreshChannel(ctx context.Context, ch model.PodcastCha
 		return err
 	}
 
+	// Refresh podcast:podroll
+	if err := s.ds.PodcastPodroll(ctx).SaveForChannel(ch.ID, feed.Podroll); err != nil {
+		log.Warn(ctx, "Failed to refresh podroll", "channel", ch.ID, err)
+	}
+
+	// Refresh podcast:liveItem
+	for _, li := range feed.LiveItems {
+		li.ChannelID = ch.ID
+		if err := s.ds.PodcastLiveItem(ctx).Upsert(&li); err != nil {
+			log.Warn(ctx, "Failed to upsert live item", "channel", ch.ID, err)
+		}
+	}
+
 	epRepo := s.ds.PodcastEpisode(ctx)
 	for i := range feed.Episodes {
 		ep := feed.Episodes[i]
@@ -131,8 +198,27 @@ func (s *podcastService) refreshChannel(ctx context.Context, ch model.PodcastCha
 		}
 		ep.ChannelID = ch.ID
 		ep.Status = model.PodcastStatusNew
+		transcripts := ep.Transcripts
+		persons := ep.Persons
+		ep.Transcripts = nil
+		ep.Persons = nil
 		if err := epRepo.Create(&ep); err != nil {
 			return err
+		}
+		// Save episode transcripts
+		if len(transcripts) > 0 {
+			for j := range transcripts {
+				transcripts[j].EpisodeID = ep.ID
+			}
+			if err := s.ds.PodcastTranscript(ctx).Save(transcripts); err != nil {
+				log.Warn(ctx, "Failed to save podcast episode transcripts", "episode", ep.ID, err)
+			}
+		}
+		// Save episode persons
+		if len(persons) > 0 {
+			if err := s.ds.PodcastPerson(ctx).SaveForEpisode(ep.ID, persons); err != nil {
+				log.Warn(ctx, "Failed to save podcast episode persons", "episode", ep.ID, err)
+			}
 		}
 	}
 	return nil

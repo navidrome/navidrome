@@ -115,7 +115,7 @@ var _ = Describe("PodcastService", func() {
 			}
 			err := svc.RefreshChannels(ctx)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(episodeRepo.Data).To(HaveLen(2)) // 기존 1 + 신규 1
+			Expect(episodeRepo.Data).To(HaveLen(2)) // 1 existing + 1 new
 		})
 	})
 
@@ -245,6 +245,160 @@ var _ = Describe("PodcastService", func() {
 		})
 	})
 
+	Describe("AddChannel — Podcasting 2.0 field persistence", func() {
+		var transcriptRepo *tests.MockPodcastTranscriptRepo
+		var personRepo *tests.MockPodcastPersonRepo
+		var p20Server *httptest.Server
+
+		BeforeEach(func() {
+			transcriptRepo = tests.CreateMockPodcastTranscriptRepo()
+			personRepo = tests.CreateMockPodcastPersonRepo()
+			ds.MockedPodcastTranscript = transcriptRepo
+			ds.MockedPodcastPerson = personRepo
+
+			p20Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/rss+xml")
+				fmt.Fprint(w, testRSSFeedPodcast20)
+			}))
+			DeferCleanup(p20Server.Close)
+		})
+
+		It("stores PodcastGUID from feed", func() {
+			Expect(svc.AddChannel(ctx, p20Server.URL+"/feed.xml")).To(Succeed())
+			for _, ch := range channelRepo.Data {
+				Expect(ch.PodcastGUID).To(Equal("917393e3-1b1e-5cef-ace4-edaa54e1f810"))
+			}
+		})
+
+		It("stores Locked flag and LockedOwner from feed", func() {
+			Expect(svc.AddChannel(ctx, p20Server.URL+"/feed.xml")).To(Succeed())
+			for _, ch := range channelRepo.Data {
+				Expect(ch.Locked).To(BeTrue())
+				Expect(ch.LockedOwner).To(Equal("owner@example.com"))
+			}
+		})
+
+		It("stores Medium from feed", func() {
+			Expect(svc.AddChannel(ctx, p20Server.URL+"/feed.xml")).To(Succeed())
+			for _, ch := range channelRepo.Data {
+				Expect(ch.Medium).To(Equal("podcast"))
+			}
+		})
+
+		It("stores first FundingURL and FundingText from feed", func() {
+			Expect(svc.AddChannel(ctx, p20Server.URL+"/feed.xml")).To(Succeed())
+			for _, ch := range channelRepo.Data {
+				Expect(ch.FundingURL).To(Equal("https://example.com/donate"))
+				Expect(ch.FundingText).To(Equal("Support us!"))
+			}
+		})
+
+		It("stores UpdateFrequency and UpdateRRule from feed", func() {
+			Expect(svc.AddChannel(ctx, p20Server.URL+"/feed.xml")).To(Succeed())
+			for _, ch := range channelRepo.Data {
+				Expect(ch.UpdateFrequency).To(Equal("Weekly"))
+				Expect(ch.UpdateRRule).To(Equal("FREQ=WEEKLY"))
+			}
+		})
+
+		It("saves channel-level podcast:person entries", func() {
+			Expect(svc.AddChannel(ctx, p20Server.URL+"/feed.xml")).To(Succeed())
+			Expect(personRepo.Data).ToNot(BeEmpty())
+			var channelPersons []string
+			for _, p := range personRepo.Data {
+				if p.ChannelID != "" {
+					channelPersons = append(channelPersons, p.Name)
+				}
+			}
+			Expect(channelPersons).To(ConsistOf("Jane Host", "Bob Producer"))
+		})
+
+		It("saves episode podcast:transcript entries", func() {
+			Expect(svc.AddChannel(ctx, p20Server.URL+"/feed.xml")).To(Succeed())
+			Expect(transcriptRepo.Data).ToNot(BeEmpty())
+			var mimeTypes []string
+			for _, t := range transcriptRepo.Data {
+				mimeTypes = append(mimeTypes, t.MimeType)
+			}
+			Expect(mimeTypes).To(ConsistOf("text/vtt", "application/x-subrip"))
+		})
+
+		It("stores transcript language and rel attributes", func() {
+			Expect(svc.AddChannel(ctx, p20Server.URL+"/feed.xml")).To(Succeed())
+			var vttLanguage, vttRel string
+			for _, t := range transcriptRepo.Data {
+				if t.MimeType == "text/vtt" {
+					vttLanguage = t.Language
+					vttRel = t.Rel
+				}
+			}
+			Expect(vttLanguage).To(Equal("en"))
+			Expect(vttRel).To(Equal("captions"))
+		})
+
+		It("saves episode-level podcast:person entries", func() {
+			Expect(svc.AddChannel(ctx, p20Server.URL+"/feed.xml")).To(Succeed())
+			var episodePersonNames []string
+			for _, p := range personRepo.Data {
+				if p.EpisodeID != "" {
+					episodePersonNames = append(episodePersonNames, p.Name)
+				}
+			}
+			Expect(episodePersonNames).To(ContainElement("John Guest"))
+		})
+
+		It("stores episode ChaptersURL", func() {
+			Expect(svc.AddChannel(ctx, p20Server.URL+"/feed.xml")).To(Succeed())
+			var chaptersURLs []string
+			for _, ep := range episodeRepo.Data {
+				if ep.ChaptersURL != "" {
+					chaptersURLs = append(chaptersURLs, ep.ChaptersURL)
+				}
+			}
+			Expect(chaptersURLs).To(ContainElement("https://example.com/ep1/chapters.json"))
+		})
+
+		It("stores episode Season number and name", func() {
+			Expect(svc.AddChannel(ctx, p20Server.URL+"/feed.xml")).To(Succeed())
+			var ep1 *model.PodcastEpisode
+			for _, ep := range episodeRepo.Data {
+				if ep.GUID == "guid-ep-001" {
+					ep1 = ep
+				}
+			}
+			Expect(ep1).ToNot(BeNil())
+			Expect(ep1.Season).To(Equal(1))
+			Expect(ep1.SeasonName).To(Equal("Season One"))
+		})
+
+		It("stores episode EpisodeNumber and EpisodeDisplay", func() {
+			Expect(svc.AddChannel(ctx, p20Server.URL+"/feed.xml")).To(Succeed())
+			var ep1 *model.PodcastEpisode
+			for _, ep := range episodeRepo.Data {
+				if ep.GUID == "guid-ep-001" {
+					ep1 = ep
+				}
+			}
+			Expect(ep1).ToNot(BeNil())
+			Expect(ep1.EpisodeNumber).To(Equal("1"))
+			Expect(ep1.EpisodeDisplay).To(Equal("Ep.1"))
+		})
+
+		It("stores episode Soundbite fields", func() {
+			Expect(svc.AddChannel(ctx, p20Server.URL+"/feed.xml")).To(Succeed())
+			var ep1 *model.PodcastEpisode
+			for _, ep := range episodeRepo.Data {
+				if ep.GUID == "guid-ep-001" {
+					ep1 = ep
+				}
+			}
+			Expect(ep1).ToNot(BeNil())
+			Expect(ep1.SoundbiteStart).To(BeNumerically("~", 73.5, 0.001))
+			Expect(ep1.SoundbiteDur).To(BeNumerically("~", 60.0, 0.001))
+			Expect(ep1.SoundbiteTitle).To(Equal("Best moment"))
+		})
+	})
+
 	Describe("DownloadEpisode with timestamp", func() {
 		BeforeEach(func() {
 			channelRepo.Data["ch-1"] = &model.PodcastChannel{ID: "ch-1", Title: "Test Channel"}
@@ -262,6 +416,115 @@ var _ = Describe("PodcastService", func() {
 			Eventually(func() bool {
 				return !episodeRepo.Data["ep-ts"].UpdatedAt.IsZero()
 			}, "3s").Should(BeTrue())
+		})
+	})
+
+	Describe("AddChannel — Tier 3 field persistence", func() {
+		var podrollRepo *tests.MockPodcastPodrollRepo
+		var liveItemRepo *tests.MockPodcastLiveItemRepo
+		var tier3Server *httptest.Server
+
+		BeforeEach(func() {
+			podrollRepo = tests.CreateMockPodcastPodrollRepo()
+			liveItemRepo = tests.CreateMockPodcastLiveItemRepo()
+			ds.MockedPodcastPodroll = podrollRepo
+			ds.MockedPodcastLiveItem = liveItemRepo
+		})
+
+		Context("when feed has podcast:podping usesPodping=true", func() {
+			BeforeEach(func() {
+				tier3Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("Content-Type", "application/rss+xml")
+					fmt.Fprint(w, testRSSFeedPodping)
+				}))
+				DeferCleanup(tier3Server.Close)
+			})
+
+			It("stores UsesPodping=true on the channel", func() {
+				Expect(svc.AddChannel(ctx, tier3Server.URL+"/feed.xml")).To(Succeed())
+				for _, ch := range channelRepo.Data {
+					Expect(ch.UsesPodping).To(BeTrue())
+				}
+			})
+		})
+
+		Context("when feed has podcast:podroll", func() {
+			BeforeEach(func() {
+				tier3Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("Content-Type", "application/rss+xml")
+					fmt.Fprint(w, testRSSFeedPodroll)
+				}))
+				DeferCleanup(tier3Server.Close)
+			})
+
+			It("saves podroll items for the channel", func() {
+				Expect(svc.AddChannel(ctx, tier3Server.URL+"/feed.xml")).To(Succeed())
+				Expect(podrollRepo.Data).ToNot(BeEmpty())
+				var urls []string
+				for _, item := range podrollRepo.Data {
+					urls = append(urls, item.FeedURL)
+				}
+				Expect(urls).To(ConsistOf(
+					"https://example.com/feed.xml",
+					"https://other.com/feed.xml",
+				))
+			})
+		})
+
+		Context("when feed has podcast:liveItem", func() {
+			BeforeEach(func() {
+				tier3Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("Content-Type", "application/rss+xml")
+					fmt.Fprint(w, testRSSFeedLiveItem)
+				}))
+				DeferCleanup(tier3Server.Close)
+			})
+
+			It("saves the live item for the channel", func() {
+				Expect(svc.AddChannel(ctx, tier3Server.URL+"/feed.xml")).To(Succeed())
+				Expect(liveItemRepo.Data).ToNot(BeEmpty())
+				for _, li := range liveItemRepo.Data {
+					Expect(li.Status).To(Equal("live"))
+					Expect(li.GUID).To(Equal("live-guid-001"))
+				}
+			})
+		})
+	})
+
+	Describe("RefreshChannels — Tier 3 podping skip", func() {
+		var podrollRepo *tests.MockPodcastPodrollRepo
+		var liveItemRepo *tests.MockPodcastLiveItemRepo
+
+		BeforeEach(func() {
+			podrollRepo = tests.CreateMockPodcastPodrollRepo()
+			liveItemRepo = tests.CreateMockPodcastLiveItemRepo()
+			ds.MockedPodcastPodroll = podrollRepo
+			ds.MockedPodcastLiveItem = liveItemRepo
+		})
+
+		It("skips channels with UsesPodping=true during refresh", func() {
+			// UsesPodping channel points to a server that would add episodes.
+			channelRepo.Data["ch-podping"] = &model.PodcastChannel{
+				ID:          "ch-podping",
+				URL:         mockServer.URL + "/feed.xml",
+				UsesPodping: true,
+			}
+			initialEpisodeCount := len(episodeRepo.Data)
+
+			Expect(svc.RefreshChannels(ctx)).To(Succeed())
+			// No new episodes should be added because the only channel uses podping.
+			Expect(episodeRepo.Data).To(HaveLen(initialEpisodeCount))
+		})
+
+		It("still refreshes channels with UsesPodping=false", func() {
+			channelRepo.Data["ch-normal"] = &model.PodcastChannel{
+				ID:          "ch-normal",
+				URL:         mockServer.URL + "/feed.xml",
+				UsesPodping: false,
+			}
+			Expect(svc.RefreshChannels(ctx)).To(Succeed())
+			// Episodes from the mock feed should have been added.
+			Expect(episodeRepo.Data).ToNot(BeEmpty())
 		})
 	})
 })
