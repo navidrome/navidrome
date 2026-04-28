@@ -36,7 +36,11 @@
         "tags": "추가 태그",
         "mappedTags": "매핑된 태그",
         "rawTags": "원시 태그",
-        "missing": "누락"
+        "missing": "누락",
+        "composer": "작곡가",
+        "albumGain": "앨범 게인",
+        "trackGain": "트랙 게인",
+        "disc": "디스크 %{discNumber}"
       },
       "actions": {
         "addToQueue": "나중에 재생",
@@ -45,7 +49,9 @@
         "shuffleAll": "모든 노래 셔플",
         "download": "다운로드",
         "playNext": "다음 재생",
-        "info": "정보 얻기"
+        "info": "정보 얻기",
+        "showInPlaylist": "재생목록에서 보기",
+        "instantMix": "인스턴트 믹스"
       }
     },
     "album": {
@@ -131,7 +137,8 @@
       "actions": {
         "topSongs": "인기곡",
         "shuffle": "셔플",
-        "radio": "라디오"
+        "radio": "라디오",
+        "podcast": "팟캐스트"
       }
     },
     "user": {
@@ -237,6 +244,42 @@
         "playNow": "지금 재생"
       }
     },
+    "podcast": {
+      "name": "팟캐스트 |||| 팟캐스트",
+      "fields": {
+        "title": "제목",
+        "url": "피드 URL",
+        "description": "설명",
+        "status": "상태",
+        "publishDate": "게시됨",
+        "duration": "시간",
+        "episodeCount": "에피소드"
+      },
+      "actions": {
+        "refresh": "전체 갱신",
+        "download": "다운로드",
+        "addChannel": "채널 추가",
+        "fetchFeed": "피드 정보 가져오기",
+        "copyUrl": "피드 URL 복사"
+      },
+      "notifications": {
+        "refreshStarted": "팟캐스트 갱신 시작됨",
+        "downloadStarted": "다운로드 시작됨",
+        "channelAdded": "채널 추가됨",
+        "urlCopied": "피드 URL이 클립보드에 복사됨",
+        "alreadyExists": "이미 등록된 채널입니다.",
+        "channelDeleted": "채널 삭제됨",
+        "episodeDeleted": "에피소드 삭제됨"
+      },
+      "status": {
+        "new": "새 항목",
+        "downloading": "다운로드 중",
+        "completed": "다운로드됨",
+        "error": "오류",
+        "skipped": "건너뜀",
+        "deleted": "삭제됨"
+      }
+    },
     "share": {
       "name": "공유 |||| 공유되는 것들",
       "fields": {
@@ -301,15 +344,20 @@
       },
       "actions": {
         "scan": "라이브러리 스캔",
-        "manageUsers": "자용자 접속 관리",
+        "quickScan": "빠른 스캔",
+        "fullScan": "전체 스캔",
+        "manageUsers": "사용자 접속 관리",
         "viewDetails": "상세 보기"
       },
       "notifications": {
         "created": "라이브러리가 성공적으로 생성됨",
         "updated": "라이브러리가 성공적으로 업데이트됨",
         "deleted": "라이브러리가 성공적으로 삭제됨",
-        "scanStarted": "라이브러리 스캔 스작됨",
-        "scanCompleted": "라이브러리 스캔 완료됨"
+        "scanStarted": "라이브러리 스캔 시작됨",
+        "scanCompleted": "라이브러리 스캔 완료됨",
+        "quickScanStarted": "빠른 스캔 시작됨",
+        "fullScanStarted": "전체 스캔 시작됨",
+        "scanError": "스캔 시작 오류. 로그를 확인하세요"
       },
       "validation": {
         "nameRequired": "라이브러리 이름이 필요함",
@@ -323,6 +371,82 @@
         "deleteConfirm": "이 라이브러리를 삭제할까요? 삭제하면 연결된 모든 데이터와 사용자 접속 권한이 제거됩니다.",
         "scanInProgress": "스캔 진행 중...",
         "noLibrariesAssigned": "이 사용자에게 할당된 라이브러리가 없음"
+      }
+    },
+    "plugin": {
+      "name": "플러그인 |||| 플러그인들",
+      "fields": {
+        "id": "ID",
+        "name": "이름",
+        "description": "설명",
+        "version": "버전",
+        "author": "작성자",
+        "website": "웹사이트",
+        "permissions": "권한",
+        "enabled": "활성화",
+        "status": "상태",
+        "path": "경로",
+        "lastError": "오류",
+        "hasError": "오류",
+        "updatedAt": "업데이트됨",
+        "createdAt": "설치됨",
+        "configKey": "키",
+        "configValue": "값",
+        "allUsers": "모든 사용자 허용",
+        "selectedUsers": "선택된 사용자",
+        "allLibraries": "모든 라이브러리 허용",
+        "selectedLibraries": "선택된 라이브러리",
+        "allowWriteAccess": "쓰기 접근 허용"
+      },
+      "sections": {
+        "status": "상태",
+        "info": "플러그인 정보",
+        "configuration": "구성",
+        "manifest": "매니페스트",
+        "usersPermission": "사용자 권한",
+        "libraryPermission": "라이브러리 권한"
+      },
+      "status": {
+        "enabled": "활성화",
+        "disabled": "비활성화"
+      },
+      "actions": {
+        "enable": "활성화",
+        "disable": "비활성화",
+        "disabledDueToError": "활성화하기 전에 오류를 수정하세요",
+        "disabledUsersRequired": "활성화하기 전에 사용자를 선택하세요",
+        "disabledLibrariesRequired": "활성화하기 전에 라이브러리를 선택하세요",
+        "addConfig": "구성 추가",
+        "rescan": "재스캔"
+      },
+      "notifications": {
+        "enabled": "플러그인 활성화됨",
+        "disabled": "플러그인 비활성화됨",
+        "updated": "플러그인 업데이트됨",
+        "error": "플러그인 업데이트 오류"
+      },
+      "validation": {
+        "invalidJson": "구성은 유효한 JSON이어야 함"
+      },
+      "messages": {
+        "configHelp": "키-값 쌍을 사용하여 플러그인을 구성하세요. 구성이 필요 없는 경우 비워두세요.",
+        "configValidationError": "구성 유효성 검사 실패:",
+        "schemaRenderError": "구성 양식을 렌더링할 수 없습니다. 플러그인의 스키마가 유효하지 않을 수 있습니다.",
+        "clickPermissions": "권한을 클릭하면 자세한 내용을 볼 수 있음",
+        "noConfig": "설정된 구성 없음",
+        "allUsersHelp": "활성화하면 플러그인이 미래에 생성될 사용자를 포함한 모든 사용자에 접근할 수 있습니다.",
+        "noUsers": "선택된 사용자 없음",
+        "permissionReason": "이유",
+        "usersRequired": "이 플러그인은 사용자 정보에 접근해야 합니다. 플러그인이 접근할 수 있는 사용자를 선택하거나 '모든 사용자 허용'을 활성화하세요.",
+        "allLibrariesHelp": "활성화하면 플러그인이 미래에 생성될 라이브러리를 포함한 모든 라이브러리에 접근할 수 있습니다.",
+        "noLibraries": "선택된 라이브러리 없음",
+        "librariesRequired": "이 플러그인은 라이브러리 정보에 접근해야 합니다. 플러그인이 접근할 수 있는 라이브러리를 선택하거나 '모든 라이브러리 허용'을 활성화하세요.",
+        "allowWriteAccessHelp": "활성화하면 플러그인이 라이브러리 디렉터리의 파일을 수정할 수 있습니다. 기본적으로 플러그인은 읽기 전용 접근 권한을 가집니다.",
+        "requiredHosts": "필수 호스트"
+      },
+      "placeholders": {
+        "configKey": "키",
+        "configValue": "값"
       }
     }
   },
@@ -507,7 +631,14 @@
     "shareSuccess": "URL이 클립보드에 복사되었음: %{url}",
     "shareFailure": "URL %{url}을 클립보드에 복사하는 중 오류가 발생하였음",
     "downloadDialogTitle": "%{resource} '%{name}' (%{size}) 다운로드",
-    "downloadOriginalFormat": "오리지널 형식으로 다운로드"
+    "downloadOriginalFormat": "오리지널 형식으로 다운로드",
+    "uploadCover": "커버 업로드",
+    "removeCover": "커버 제거",
+    "coverUploaded": "커버 아트 업데이트됨",
+    "coverRemoved": "커버 아트 제거됨",
+    "coverUploadError": "커버 아트 업로드 오류",
+    "coverRemoveError": "커버 아트 제거 오류",
+    "startingInstantMix": "인스턴트 믹스 로딩 중..."
   },
   "menu": {
     "library": "라이브러리",
@@ -590,6 +721,7 @@
       "currentValue": "현재 값",
       "configurationFile": "구성 파일",
       "exportToml": "구성 내보내기 (TOML)",
+      "downloadToml": "구성 다운로드 (TOML)",
       "exportSuccess": "TOML 형식으로 클립보드로 내보낸 구성",
       "exportFailed": "구성 복사 실패",
       "devFlagsHeader": "개발 플래그 (변경/삭제 가능)",
@@ -604,6 +736,7 @@
     "serverUptime": "서버 가동 시간",
     "serverDown": "오프라인",
     "scanType": "유형",
+    "selectiveScan": "선택적",
     "status": "스캔 오류",
     "elapsedTime": "경과 시간"
   },
