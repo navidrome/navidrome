@@ -44,6 +44,10 @@ type DataStore interface {
 	ArtworkQueue(ctx context.Context) ArtworkQueueRepository
 	PodcastChannel(ctx context.Context) PodcastChannelRepository
 	PodcastEpisode(ctx context.Context) PodcastEpisodeRepository
+	PodcastTranscript(ctx context.Context) PodcastTranscriptRepository
+	PodcastPerson(ctx context.Context) PodcastPersonRepository
+	PodcastPodroll(ctx context.Context) PodcastPodrollRepository
+	PodcastLiveItem(ctx context.Context) PodcastLiveItemRepository
 
 	Resource(ctx context.Context, model any) ResourceRepository
 
