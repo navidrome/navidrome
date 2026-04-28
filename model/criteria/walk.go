@@ -24,7 +24,7 @@ func Walk(expr Expression, visit Visitor) error {
 				return err
 			}
 		}
-	case Is, IsNot, Gt, Lt, Before, After, Contains, NotContains, StartsWith, EndsWith, InTheRange, InTheLast, NotInTheLast, InPlaylist, NotInPlaylist:
+	case Is, IsNot, Gt, Lt, Before, After, Contains, NotContains, StartsWith, EndsWith, InTheRange, InTheLast, NotInTheLast, InPlaylist, NotInPlaylist, IsMissing, IsPresent:
 		return nil
 	default:
 		return fmt.Errorf("unknown criteria expression type %T", expr)
