@@ -185,6 +185,10 @@ func (c smartPlaylistCriteria) exprSQL(expr criteria.Expression) (squirrel.Sqliz
 		return c.inList(e, false)
 	case criteria.NotInPlaylist:
 		return c.inList(e, true)
+	case criteria.IsMissing:
+		return missingExpr(e, true)
+	case criteria.IsPresent:
+		return missingExpr(e, false)
 	default:
 		return nil, fmt.Errorf("unknown criteria expression type %T", expr)
 	}
@@ -199,6 +203,29 @@ func isNotExpr(values map[string]any) (squirrel.Sqlizer, error) {
 		return nil, err
 	}
 	return squirrel.NotEq(fields), nil
+}
+
+func missingExpr(values map[string]any, defaultNegate bool) (squirrel.Sqlizer, error) {
+	_, value, info, ok := singleField(values)
+	if !ok {
+		return nil, fmt.Errorf("invalid field in criteria: isMissing/isPresent requires exactly one field")
+	}
+	if !info.IsTag && !info.IsRole {
+		return nil, fmt.Errorf("isMissing/isPresent operator is only supported for tag and role fields, got: %s", info.Name)
+	}
+
+	negate := defaultNegate == criteria.IsTruthy(value)
+
+	var cond string
+	if info.IsRole {
+		cond = fmt.Sprintf("exists (select 1 from json_tree(media_file.participants, '$.%s') where key='name')", info.Name)
+	} else {
+		cond = fmt.Sprintf("exists (select 1 from json_tree(media_file.tags, '$.%s') where key='value')", info.Name)
+	}
+	if negate {
+		cond = "not " + cond
+	}
+	return squirrel.Expr(cond), nil
 }
 
 func mapExpr(values map[string]any, makeCond func(map[string]any) squirrel.Sqlizer, negateJSON bool) (squirrel.Sqlizer, error) {

@@ -59,6 +59,26 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 		Entry("role is", criteria.Is{"artist": "u2"}, "exists (select 1 from json_tree(media_file.participants, '$.artist') where key='name' and value = ?)", "u2"),
 		Entry("role contains", criteria.Contains{"composer": "Lennon"}, "exists (select 1 from json_tree(media_file.participants, '$.composer') where key='name' and value LIKE ?)", "%Lennon%"),
 		Entry("role not contains", criteria.NotContains{"artist": "u2"}, "not exists (select 1 from json_tree(media_file.participants, '$.artist') where key='name' and value LIKE ?)", "%u2%"),
+		// isMissing — tags
+		Entry("isMissing tag [true]", criteria.IsMissing{"genre": true},
+			"not exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value')"),
+		Entry("isMissing tag [false]", criteria.IsMissing{"genre": false},
+			"exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value')"),
+		// isMissing — roles
+		Entry("isMissing role [true]", criteria.IsMissing{"artist": true},
+			"not exists (select 1 from json_tree(media_file.participants, '$.artist') where key='name')"),
+		Entry("isMissing role [false]", criteria.IsMissing{"artist": false},
+			"exists (select 1 from json_tree(media_file.participants, '$.artist') where key='name')"),
+		// isPresent — tags
+		Entry("isPresent tag [true]", criteria.IsPresent{"genre": true},
+			"exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value')"),
+		Entry("isPresent tag [false]", criteria.IsPresent{"genre": false},
+			"not exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value')"),
+		// isPresent — roles
+		Entry("isPresent role [true]", criteria.IsPresent{"composer": true},
+			"exists (select 1 from json_tree(media_file.participants, '$.composer') where key='name')"),
+		Entry("isPresent role [false]", criteria.IsPresent{"composer": false},
+			"not exists (select 1 from json_tree(media_file.participants, '$.composer') where key='name')"),
 	)
 
 	Describe("playlist permissions", func() {
@@ -113,6 +133,16 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 		_, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: criteria.EndsWith{"unknown": "value"}}).Where()
 
 		Expect(err).To(MatchError("invalid field in criteria: unknown"))
+	})
+
+	It("returns an error when isMissing is used with a regular field", func() {
+		_, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: criteria.IsMissing{"year": true}}).Where()
+		Expect(err).To(MatchError(ContainSubstring("isMissing/isPresent operator is only supported for tag and role fields")))
+	})
+
+	It("returns an error when isPresent is used with a regular field", func() {
+		_, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: criteria.IsPresent{"title": true}}).Where()
+		Expect(err).To(MatchError(ContainSubstring("isMissing/isPresent operator is only supported for tag and role fields")))
 	})
 
 	Describe("sort", func() {
