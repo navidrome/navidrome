@@ -42,6 +42,68 @@ func (api *Router) GetPodcasts(r *http.Request) (*responses.Subsonic, error) {
 		channels[0].Episodes = eps
 	}
 
+	// Collect channel IDs for bulk queries.
+	channelIDs := make([]string, len(channels))
+	for i, ch := range channels {
+		channelIDs[i] = ch.ID
+	}
+
+	// Load channel persons
+	personRepo := api.ds.PodcastPerson(ctx)
+	channelPersons := make(map[string]model.PodcastPersons)
+	for _, ch := range channels {
+		persons, err := personRepo.GetByChannel(ch.ID)
+		if err == nil {
+			channelPersons[ch.ID] = persons
+		}
+	}
+
+	// Bulk-load podcast:podroll items
+	podrollRepo := api.ds.PodcastPodroll(ctx)
+	allPodrolls, _ := podrollRepo.GetByChannels(channelIDs)
+	podrollMap := make(map[string]model.PodcastPodrollItems)
+	for _, pr := range allPodrolls {
+		podrollMap[pr.ChannelID] = append(podrollMap[pr.ChannelID], pr)
+	}
+
+	// Load podcast:liveItem per channel
+	liveItemRepo := api.ds.PodcastLiveItem(ctx)
+	liveItemMap := make(map[string]*model.PodcastLiveItem)
+	for _, chID := range channelIDs {
+		if li, err := liveItemRepo.GetByChannel(chID); err == nil {
+			liveItemMap[chID] = li
+		}
+	}
+
+	// Bulk-load episode transcripts and persons when including episodes
+	var epTranscripts map[string]model.PodcastTranscripts
+	var epPersons map[string]model.PodcastPersons
+	if includeEpisodes {
+		var epIDs []string
+		for _, ch := range channels {
+			for _, ep := range ch.Episodes {
+				epIDs = append(epIDs, ep.ID)
+			}
+		}
+		if len(epIDs) > 0 {
+			transcriptRepo := api.ds.PodcastTranscript(ctx)
+			allTranscripts, err := transcriptRepo.GetByEpisodes(epIDs)
+			if err == nil {
+				epTranscripts = make(map[string]model.PodcastTranscripts)
+				for _, t := range allTranscripts {
+					epTranscripts[t.EpisodeID] = append(epTranscripts[t.EpisodeID], t)
+				}
+			}
+			allPersons, err := personRepo.GetByEpisodes(epIDs)
+			if err == nil {
+				epPersons = make(map[string]model.PodcastPersons)
+				for _, p := range allPersons {
+					epPersons[p.EpisodeID] = append(epPersons[p.EpisodeID], p)
+				}
+			}
+		}
+	}
+
 	resp := newResponse()
 	resp.Podcasts = &responses.Podcasts{}
 	for _, ch := range channels {
@@ -53,9 +115,55 @@ func (api *Router) GetPodcasts(r *http.Request) (*responses.Subsonic, error) {
 			OriginalImageUrl: ch.ImageURL,
 			Status:           string(ch.Status),
 			ErrorMessage:     ch.ErrorMessage,
+			// Podcasting 2.0 Tier 1 & 2
+			PodcastGuid:     ch.PodcastGUID,
+			Locked:          ch.Locked,
+			Medium:          ch.Medium,
+			FundingUrl:      ch.FundingURL,
+			FundingText:     ch.FundingText,
+			UpdateFrequency: ch.UpdateFrequency,
+			Complete:        ch.Complete,
+			// Podcasting 2.0 Tier 3
+			UsesPodping: ch.UsesPodping,
+		}
+		for _, p := range channelPersons[ch.ID] {
+			rch.Person = append(rch.Person, responses.PodcastPersonResp{
+				Name:  p.Name,
+				Role:  p.Role,
+				Group: p.Group,
+				Img:   p.Img,
+				Href:  p.Href,
+			})
+		}
+		for _, pr := range podrollMap[ch.ID] {
+			rch.Podroll = append(rch.Podroll, responses.PodcastPodrollResp{
+				FeedGUID: pr.FeedGUID,
+				FeedURL:  pr.FeedURL,
+				Title:    pr.Title,
+			})
+		}
+		if li := liveItemMap[ch.ID]; li != nil {
+			liveResp := &responses.PodcastLiveItemResp{
+				Status:          li.Status,
+				Title:           li.Title,
+				GUID:            li.GUID,
+				EnclosureURL:    li.EnclosureURL,
+				EnclosureType:   li.EnclosureType,
+				ContentLinkURL:  li.ContentLinkURL,
+				ContentLinkText: li.ContentLinkText,
+			}
+			if !li.StartTime.IsZero() {
+				liveResp.StartTime = li.StartTime.UTC().Format(time.RFC3339)
+			}
+			if !li.EndTime.IsZero() {
+				liveResp.EndTime = li.EndTime.UTC().Format(time.RFC3339)
+			}
+			rch.LiveItem = liveResp
 		}
 		if includeEpisodes {
 			for _, ep := range ch.Episodes {
+				ep.Transcripts = epTranscripts[ep.ID]
+				ep.Persons = epPersons[ep.ID]
 				rch.Episode = append(rch.Episode, buildPodcastEpisode(ep))
 			}
 		}
@@ -175,10 +283,15 @@ func (api *Router) GetPodcastEpisode(r *http.Request) (*responses.Subsonic, erro
 	if err != nil {
 		return nil, err
 	}
-	ep, err := api.ds.PodcastEpisode(r.Context()).Get(id)
+	ctx := r.Context()
+	ep, err := api.ds.PodcastEpisode(ctx).Get(id)
 	if err != nil {
 		return nil, err
 	}
+
+	ep.Transcripts, _ = api.ds.PodcastTranscript(ctx).GetByEpisode(ep.ID)
+	ep.Persons, _ = api.ds.PodcastPerson(ctx).GetByEpisode(ep.ID)
+
 	resp := newResponse()
 	re := buildPodcastEpisode(*ep)
 	resp.PodcastEpisode = &re
@@ -200,9 +313,34 @@ func buildPodcastEpisode(ep model.PodcastEpisode) responses.PodcastEpisode {
 		ContentType:     ep.ContentType,
 		BitRate:         ep.BitRate,
 		DownloadedBytes: ep.DownloadedBytes,
+		// Podcasting 2.0
+		Season:         ep.Season,
+		SeasonName:     ep.SeasonName,
+		EpisodeNumber:  ep.EpisodeNumber,
+		EpisodeDisplay: ep.EpisodeDisplay,
+		ChaptersUrl:    ep.ChaptersURL,
+		SoundbiteStart: ep.SoundbiteStart,
+		SoundbiteDur:   ep.SoundbiteDur,
 	}
 	if !ep.PublishDate.IsZero() {
 		re.PublishDate = ep.PublishDate.UTC().Format(time.RFC3339)
+	}
+	for _, t := range ep.Transcripts {
+		re.Transcript = append(re.Transcript, responses.PodcastTranscriptResp{
+			URL:      t.URL,
+			Type:     t.MimeType,
+			Language: t.Language,
+			Rel:      t.Rel,
+		})
+	}
+	for _, p := range ep.Persons {
+		re.Person = append(re.Person, responses.PodcastPersonResp{
+			Name:  p.Name,
+			Role:  p.Role,
+			Group: p.Group,
+			Img:   p.Img,
+			Href:  p.Href,
+		})
 	}
 	return re
 }
