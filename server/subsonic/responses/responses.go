@@ -671,23 +671,84 @@ type PodcastChannel struct {
 	Status           string           `xml:"status,attr"                     json:"status"`
 	ErrorMessage     string           `xml:"errorMessage,attr,omitempty"     json:"errorMessage,omitempty"`
 	Episode          []PodcastEpisode `xml:"episode,omitempty"               json:"episode,omitempty"`
+
+	// Podcasting 2.0 Tier 1 & 2
+	PodcastGuid     string              `xml:"podcastGuid,attr,omitempty"     json:"podcastGuid,omitempty"`
+	Locked          bool                `xml:"locked,attr,omitempty"          json:"locked,omitempty"`
+	Medium          string              `xml:"medium,attr,omitempty"          json:"medium,omitempty"`
+	FundingUrl      string              `xml:"fundingUrl,attr,omitempty"      json:"fundingUrl,omitempty"`
+	FundingText     string              `xml:"fundingText,attr,omitempty"     json:"fundingText,omitempty"`
+	UpdateFrequency string              `xml:"updateFrequency,attr,omitempty" json:"updateFrequency,omitempty"`
+	Complete        bool                `xml:"complete,attr,omitempty"        json:"complete,omitempty"`
+	Person          []PodcastPersonResp `xml:"person,omitempty"               json:"person,omitempty"`
+
+	// Podcasting 2.0 Tier 3
+	UsesPodping bool                 `xml:"usesPodping,attr,omitempty" json:"usesPodping,omitempty"`
+	Podroll     []PodcastPodrollResp `xml:"podroll,omitempty"          json:"podroll,omitempty"`
+	LiveItem    *PodcastLiveItemResp `xml:"liveItem,omitempty"         json:"liveItem,omitempty"`
+}
+
+// PodcastPodrollResp represents a single recommended feed in a podcast:podroll.
+type PodcastPodrollResp struct {
+	FeedGUID string `xml:"feedGuid,attr,omitempty" json:"feedGuid,omitempty"`
+	FeedURL  string `xml:"feedUrl,attr,omitempty"  json:"feedUrl,omitempty"`
+	Title    string `xml:"title,attr,omitempty"    json:"title,omitempty"`
+}
+
+// PodcastLiveItemResp represents a podcast:liveItem in the API response.
+type PodcastLiveItemResp struct {
+	Status          string `xml:"status,attr"                       json:"status"`
+	StartTime       string `xml:"startTime,attr,omitempty"          json:"startTime,omitempty"`
+	EndTime         string `xml:"endTime,attr,omitempty"            json:"endTime,omitempty"`
+	Title           string `xml:"title,attr,omitempty"              json:"title,omitempty"`
+	GUID            string `xml:"guid,attr,omitempty"               json:"guid,omitempty"`
+	EnclosureURL    string `xml:"enclosureUrl,attr,omitempty"       json:"enclosureUrl,omitempty"`
+	EnclosureType   string `xml:"enclosureType,attr,omitempty"      json:"enclosureType,omitempty"`
+	ContentLinkURL  string `xml:"contentLinkUrl,attr,omitempty"     json:"contentLinkUrl,omitempty"`
+	ContentLinkText string `xml:"contentLinkText,attr,omitempty"    json:"contentLinkText,omitempty"`
 }
 
 type PodcastEpisode struct {
-	ID           string `xml:"id,attr"                      json:"id"`
-	StreamId     string `xml:"streamId,attr,omitempty"      json:"streamId,omitempty"`
-	ChannelId    string `xml:"channelId,attr,omitempty"     json:"channelId,omitempty"`
-	Title        string `xml:"title,attr,omitempty"         json:"title,omitempty"`
-	Description  string `xml:"description,attr,omitempty"   json:"description,omitempty"`
-	PublishDate  string `xml:"publishDate,attr,omitempty"   json:"publishDate,omitempty"`
-	Status       string `xml:"status,attr"                  json:"status"`
-	ErrorMessage string `xml:"errorMessage,attr,omitempty"  json:"errorMessage,omitempty"`
-	Duration     int    `xml:"duration,attr,omitempty"      json:"duration,omitempty"`
-	Size         int64  `xml:"size,attr,omitempty"          json:"size,omitempty"`
-	Suffix       string `xml:"suffix,attr,omitempty"        json:"suffix,omitempty"`
-	ContentType  string `xml:"contentType,attr,omitempty"   json:"contentType,omitempty"`
-	BitRate         int   `xml:"bitRate,attr,omitempty"          json:"bitRate,omitempty"`
-	DownloadedBytes int64 `xml:"downloadedBytes,attr,omitempty"  json:"downloadedBytes,omitempty"`
+	ID              string `xml:"id,attr"                      json:"id"`
+	StreamId        string `xml:"streamId,attr,omitempty"      json:"streamId,omitempty"`
+	ChannelId       string `xml:"channelId,attr,omitempty"     json:"channelId,omitempty"`
+	Title           string `xml:"title,attr,omitempty"         json:"title,omitempty"`
+	Description     string `xml:"description,attr,omitempty"   json:"description,omitempty"`
+	PublishDate     string `xml:"publishDate,attr,omitempty"   json:"publishDate,omitempty"`
+	Status          string `xml:"status,attr"                  json:"status"`
+	ErrorMessage    string `xml:"errorMessage,attr,omitempty"  json:"errorMessage,omitempty"`
+	Duration        int    `xml:"duration,attr,omitempty"      json:"duration,omitempty"`
+	Size            int64  `xml:"size,attr,omitempty"          json:"size,omitempty"`
+	Suffix          string `xml:"suffix,attr,omitempty"        json:"suffix,omitempty"`
+	ContentType     string `xml:"contentType,attr,omitempty"   json:"contentType,omitempty"`
+	BitRate         int    `xml:"bitRate,attr,omitempty"       json:"bitRate,omitempty"`
+	DownloadedBytes int64  `xml:"downloadedBytes,attr,omitempty" json:"downloadedBytes,omitempty"`
+
+	// Podcasting 2.0
+	Season         int                     `xml:"season,attr,omitempty"         json:"season,omitempty"`
+	SeasonName     string                  `xml:"seasonName,attr,omitempty"     json:"seasonName,omitempty"`
+	EpisodeNumber  string                  `xml:"episode,attr,omitempty"        json:"episode,omitempty"`
+	EpisodeDisplay string                  `xml:"episodeDisplay,attr,omitempty" json:"episodeDisplay,omitempty"`
+	ChaptersUrl    string                  `xml:"chaptersUrl,attr,omitempty"    json:"chaptersUrl,omitempty"`
+	SoundbiteStart float64                 `xml:"soundbiteStart,attr,omitempty" json:"soundbiteStart,omitempty"`
+	SoundbiteDur   float64                 `xml:"soundbiteDur,attr,omitempty"   json:"soundbiteDur,omitempty"`
+	Transcript     []PodcastTranscriptResp `xml:"transcript,omitempty"          json:"transcript,omitempty"`
+	Person         []PodcastPersonResp     `xml:"person,omitempty"              json:"person,omitempty"`
+}
+
+type PodcastTranscriptResp struct {
+	URL      string `xml:"url,attr"                json:"url"`
+	Type     string `xml:"type,attr"               json:"type"`
+	Language string `xml:"language,attr,omitempty" json:"language,omitempty"`
+	Rel      string `xml:"rel,attr,omitempty"      json:"rel,omitempty"`
+}
+
+type PodcastPersonResp struct {
+	Name  string `xml:"name,attr"            json:"name"`
+	Role  string `xml:"role,attr,omitempty"  json:"role,omitempty"`
+	Group string `xml:"group,attr,omitempty" json:"group,omitempty"`
+	Img   string `xml:"img,attr,omitempty"   json:"img,omitempty"`
+	Href  string `xml:"href,attr,omitempty"  json:"href,omitempty"`
 }
 
 // StreamDetails describes audio stream properties for transcoding decisions

@@ -15,6 +15,15 @@ func (api *Router) GetOpenSubsonicExtensions(_ *http.Request) (*responses.Subson
 		{Name: "indexBasedQueue", Versions: []int32{1}},
 		{Name: "transcoding", Versions: []int32{1}},
 		{Name: "getPodcastEpisode", Versions: []int32{1}},
+		{Name: "podcastChapters", Versions: []int32{1}},
+		{Name: "podcastTranscripts", Versions: []int32{1}},
+		{Name: "podcastSeason", Versions: []int32{1}},
+		{Name: "podcastPerson", Versions: []int32{1}},
+		{Name: "podcastFunding", Versions: []int32{1}},
+		{Name: "podcastMedium", Versions: []int32{1}},
+		{Name: "podcastPodroll", Versions: []int32{1}},
+		{Name: "podcastLiveItem", Versions: []int32{1}},
+		{Name: "podcastPodping", Versions: []int32{1}},
 	}
 	if api.sonic != nil && api.sonic.HasProvider() {
 		extensions = append(extensions, responses.OpenSubsonicExtension{

@@ -28,9 +28,13 @@ type MockDataStore struct {
 	MockedScrobble       model.ScrobbleRepository
 	MockedRadio           model.RadioRepository
 	MockedPlugin          model.PluginRepository
-	MockedPodcastChannel  model.PodcastChannelRepository
-	MockedPodcastEpisode  model.PodcastEpisodeRepository
-	scrobbleBufferMu     sync.Mutex
+	MockedPodcastChannel    model.PodcastChannelRepository
+	MockedPodcastEpisode    model.PodcastEpisodeRepository
+	MockedPodcastTranscript model.PodcastTranscriptRepository
+	MockedPodcastPerson     model.PodcastPersonRepository
+	MockedPodcastPodroll    model.PodcastPodrollRepository
+	MockedPodcastLiveItem   model.PodcastLiveItemRepository
+	scrobbleBufferMu        sync.Mutex
 	repoMu               sync.Mutex
 
 	// GC tracking
@@ -269,6 +273,50 @@ func (db *MockDataStore) PodcastEpisode(ctx context.Context) model.PodcastEpisod
 	}
 	db.MockedPodcastEpisode = CreateMockPodcastEpisodeRepo()
 	return db.MockedPodcastEpisode
+}
+
+func (db *MockDataStore) PodcastTranscript(ctx context.Context) model.PodcastTranscriptRepository {
+	if db.MockedPodcastTranscript != nil {
+		return db.MockedPodcastTranscript
+	}
+	if db.RealDS != nil {
+		return db.RealDS.PodcastTranscript(ctx)
+	}
+	db.MockedPodcastTranscript = CreateMockPodcastTranscriptRepo()
+	return db.MockedPodcastTranscript
+}
+
+func (db *MockDataStore) PodcastPerson(ctx context.Context) model.PodcastPersonRepository {
+	if db.MockedPodcastPerson != nil {
+		return db.MockedPodcastPerson
+	}
+	if db.RealDS != nil {
+		return db.RealDS.PodcastPerson(ctx)
+	}
+	db.MockedPodcastPerson = CreateMockPodcastPersonRepo()
+	return db.MockedPodcastPerson
+}
+
+func (db *MockDataStore) PodcastPodroll(ctx context.Context) model.PodcastPodrollRepository {
+	if db.MockedPodcastPodroll != nil {
+		return db.MockedPodcastPodroll
+	}
+	if db.RealDS != nil {
+		return db.RealDS.PodcastPodroll(ctx)
+	}
+	db.MockedPodcastPodroll = CreateMockPodcastPodrollRepo()
+	return db.MockedPodcastPodroll
+}
+
+func (db *MockDataStore) PodcastLiveItem(ctx context.Context) model.PodcastLiveItemRepository {
+	if db.MockedPodcastLiveItem != nil {
+		return db.MockedPodcastLiveItem
+	}
+	if db.RealDS != nil {
+		return db.RealDS.PodcastLiveItem(ctx)
+	}
+	db.MockedPodcastLiveItem = CreateMockPodcastLiveItemRepo()
+	return db.MockedPodcastLiveItem
 }
 
 func (db *MockDataStore) WithTx(block func(tx model.DataStore) error, label ...string) error {
