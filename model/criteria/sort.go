@@ -43,7 +43,7 @@ func (c Criteria) OrderByFields() []SortField {
 		if order == "desc" {
 			desc = !desc
 		}
-		fields = append(fields, SortField{Field: info.Name, Desc: desc})
+		fields = append(fields, SortField{Field: info.Name(), Desc: desc})
 	}
 	if len(fields) == 0 {
 		log.Warn("No valid sort fields found in 'sort', falling back to 'title'", "sort", sortValue)
