@@ -88,8 +88,8 @@ var fieldMap = map[string]FieldInfo{
 	// Backward compatibility: albumtype is an alias for the releasetype tag.
 	"albumtype": {Alias: "releasetype", IsTag: true},
 
+	// Pseudo-field for random sorting
 	"random": {},
-	"value":  {},
 }
 
 // AllFieldNames returns the names of all registered criteria fields.
