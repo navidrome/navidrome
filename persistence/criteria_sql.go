@@ -117,7 +117,6 @@ var smartPlaylistFields = map[string]smartPlaylistField{
 	"rgtrackpeak":          {expr: "media_file.rg_track_peak"},
 	"library_id":           {expr: "media_file.library_id"},
 	"random":               {order: "random()"},
-	"value":                {expr: "value"},
 }
 
 func (c smartPlaylistCriteria) Where() (squirrel.Sqlizer, error) {
