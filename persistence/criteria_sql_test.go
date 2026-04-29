@@ -194,8 +194,8 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 			if info.IsTag || info.IsRole {
 				continue
 			}
-			_, hasSQLField := smartPlaylistFields[info.Name]
-			Expect(hasSQLField).To(BeTrue(), "criteria field %q (name=%q) has no entry in smartPlaylistFields", name, info.Name)
+			_, hasSQLField := smartPlaylistFields[info.Name()]
+			Expect(hasSQLField).To(BeTrue(), "criteria field %q (name=%q) has no entry in smartPlaylistFields", name, info.Name())
 		}
 	})
 

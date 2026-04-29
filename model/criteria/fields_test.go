@@ -11,14 +11,14 @@ var _ = Describe("fields", func() {
 			field, ok := LookupField("Title")
 
 			gomega.Expect(ok).To(gomega.BeTrue())
-			gomega.Expect(field).To(gomega.Equal(FieldInfo{Name: "title"}))
+			gomega.Expect(field.Name()).To(gomega.Equal("title"))
 		})
 
-		It("resolves aliases to their semantic field name", func() {
+		It("resolves aliases to their canonical field name", func() {
 			field, ok := LookupField("albumtype")
 
 			gomega.Expect(ok).To(gomega.BeTrue())
-			gomega.Expect(field.Name).To(gomega.Equal("releasetype"))
+			gomega.Expect(field.Name()).To(gomega.Equal("releasetype"))
 			gomega.Expect(field.IsTag).To(gomega.BeTrue())
 		})
 
@@ -26,7 +26,7 @@ var _ = Describe("fields", func() {
 			field, ok := LookupField("value")
 
 			gomega.Expect(ok).To(gomega.BeTrue())
-			gomega.Expect(field.Name).To(gomega.Equal("value"))
+			gomega.Expect(field.Name()).To(gomega.Equal("value"))
 		})
 
 		It("finds registered tag names", func() {
@@ -35,7 +35,7 @@ var _ = Describe("fields", func() {
 			field, ok := LookupField("task3_mood")
 
 			gomega.Expect(ok).To(gomega.BeTrue())
-			gomega.Expect(field.Name).To(gomega.Equal("task3_mood"))
+			gomega.Expect(field.Name()).To(gomega.Equal("task3_mood"))
 			gomega.Expect(field.IsTag).To(gomega.BeTrue())
 		})
 
@@ -56,7 +56,7 @@ var _ = Describe("fields", func() {
 			field, ok := LookupField("task3_producer")
 
 			gomega.Expect(ok).To(gomega.BeTrue())
-			gomega.Expect(field.Name).To(gomega.Equal("task3_producer"))
+			gomega.Expect(field.Name()).To(gomega.Equal("task3_producer"))
 			gomega.Expect(field.IsRole).To(gomega.BeTrue())
 		})
 	})

@@ -338,9 +338,9 @@ func (c smartPlaylistCriteria) inList(values map[string]any, negate bool) (squir
 
 func jsonExpr(info criteria.FieldInfo, cond squirrel.Sqlizer, negate bool) squirrel.Sqlizer {
 	if info.IsRole {
-		return roleCond{role: info.Name, cond: cond, not: negate}
+		return roleCond{role: info.Name(), cond: cond, not: negate}
 	}
-	return tagCond{tag: info.Name, numeric: info.Numeric, cond: cond, not: negate}
+	return tagCond{tag: info.Name(), numeric: info.Numeric, cond: cond, not: negate}
 }
 
 type tagCond struct {
@@ -412,7 +412,7 @@ func sqlFields(values map[string]any) (map[string]any, error) {
 		if info.IsTag || info.IsRole {
 			return nil, fmt.Errorf("tag and role criteria must contain exactly one field: %s", field)
 		}
-		sqlField, ok := fieldExpr(info.Name)
+		sqlField, ok := fieldExpr(info.Name())
 		if !ok || sqlField == "" {
 			return nil, fmt.Errorf("invalid field in criteria: %s", field)
 		}
@@ -431,7 +431,7 @@ func fieldJoinType(name string) smartPlaylistJoinType {
 	if !ok {
 		return smartPlaylistJoinNone
 	}
-	field, ok := smartPlaylistFields[info.Name]
+	field, ok := smartPlaylistFields[info.Name()]
 	if !ok {
 		return smartPlaylistJoinNone
 	}
@@ -479,17 +479,17 @@ func sortExpr(sortField string) (string, bool) {
 	if !ok {
 		return "", false
 	}
-	if field, ok := smartPlaylistFields[info.Name]; ok && field.order != "" {
+	if field, ok := smartPlaylistFields[info.Name()]; ok && field.order != "" {
 		return field.order, true
 	}
 	var mapped string
 	switch {
 	case info.IsTag:
-		mapped = "COALESCE(json_extract(media_file.tags, '$." + info.Name + "[0].value'), '')"
+		mapped = "COALESCE(json_extract(media_file.tags, '$." + info.Name() + "[0].value'), '')"
 	case info.IsRole:
-		mapped = "COALESCE(json_extract(media_file.participants, '$." + info.Name + "[0].name'), '')"
+		mapped = "COALESCE(json_extract(media_file.participants, '$." + info.Name() + "[0].name'), '')"
 	default:
-		field, ok := smartPlaylistFields[info.Name]
+		field, ok := smartPlaylistFields[info.Name()]
 		if !ok || field.expr == "" {
 			return "", false
 		}
