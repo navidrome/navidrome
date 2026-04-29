@@ -164,13 +164,15 @@ const reduceSetVolume = (state, { data: { volume } }) => {
 }
 
 const reduceSyncQueue = (state, { data: { audioInfo, audioLists } }) => {
-  // Only keep clear and playIndex alive when there is an actual pending
-  // track switch (playIndex differs from savedPlayIndex). This lets
-  // PLAYER_PLAY_TRACKS selections survive the sync, while allowing
-  // PLAYER_PLAY_NEXT (which sets playIndex to the current track) to
-  // reset immediately and avoid restarting playback.
+  // Keep clear and playIndex alive when there is a pending track switch.
+  // A switch is pending when playIndex is set AND either:
+  //   - playIndex differs from savedPlayIndex, OR
+  //   - clear is true (a new queue was loaded, e.g. after clearQueue + playTracks)
+  // The clear check handles the edge case where both playIndex and
+  // savedPlayIndex are 0 (close player then play a new album from track 1).
   const hasPendingSwitch =
-    state.playIndex != null && state.playIndex !== state.savedPlayIndex
+    state.playIndex != null &&
+    (state.clear || state.playIndex !== state.savedPlayIndex)
   return {
     ...state,
     queue: audioLists,
