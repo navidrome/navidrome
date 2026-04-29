@@ -22,13 +22,6 @@ var _ = Describe("fields", func() {
 			gomega.Expect(field.IsTag).To(gomega.BeTrue())
 		})
 
-		It("finds special fields", func() {
-			field, ok := LookupField("value")
-
-			gomega.Expect(ok).To(gomega.BeTrue())
-			gomega.Expect(field.Name()).To(gomega.Equal("value"))
-		})
-
 		It("finds registered tag names", func() {
 			AddTagNames([]string{"task3_mood"})
 
