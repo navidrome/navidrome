@@ -90,12 +90,14 @@ var _ = Describe("MediaAnnotationController", func() {
 				Expect(playTracker.Submissions).To(BeEmpty())
 			})
 
-			It("registers a NowPlaying", func() {
+			It("registers a NowPlaying via ReportPlayback", func() {
 				_, err := router.Scrobble(req)
 
 				Expect(err).ToNot(HaveOccurred())
-				Expect(playTracker.Playing).To(HaveLen(1))
-				Expect(playTracker.Playing).To(HaveKey("player-1"))
+				Expect(playTracker.ReportedPlayback).To(HaveLen(1))
+				Expect(playTracker.ReportedPlayback[0].MediaId).To(Equal("12"))
+				Expect(playTracker.ReportedPlayback[0].State).To(Equal(scrobbler.StatePlaying))
+				Expect(playTracker.ReportedPlayback[0].ClientId).To(Equal("player-1"))
 			})
 		})
 	})
@@ -187,20 +189,8 @@ var _ = Describe("MediaAnnotationController", func() {
 
 type fakePlayTracker struct {
 	Submissions      []scrobbler.Submission
-	Playing          map[string]string
 	ReportedPlayback []scrobbler.ReportPlaybackParams
 	Error            error
-}
-
-func (f *fakePlayTracker) NowPlaying(_ context.Context, playerId string, _ string, trackId string, position int) error {
-	if f.Error != nil {
-		return f.Error
-	}
-	if f.Playing == nil {
-		f.Playing = make(map[string]string)
-	}
-	f.Playing[playerId] = trackId
-	return nil
 }
 
 func (f *fakePlayTracker) GetNowPlaying(_ context.Context) ([]scrobbler.NowPlayingInfo, error) {

@@ -66,7 +66,6 @@ type nowPlayingEntry struct {
 }
 
 type PlayTracker interface {
-	NowPlaying(ctx context.Context, playerId string, playerName string, trackId string, position int) error
 	GetNowPlaying(ctx context.Context) ([]NowPlayingInfo, error)
 	Submit(ctx context.Context, submissions []Submission) error
 	ReportPlayback(ctx context.Context, params ReportPlaybackParams) error
@@ -232,17 +231,6 @@ func remainingTTL(durationSec float32, positionMs int64, rate float64) time.Dura
 	remainingMs := float64(int64(durationSec*1000)-positionMs) / rate
 	remainingSec := max(int(remainingMs/1000), 0)
 	return time.Duration(remainingSec+5) * time.Second
-}
-
-func (p *playTracker) NowPlaying(ctx context.Context, playerId string, playerName string, trackId string, position int) error {
-	return p.ReportPlayback(ctx, ReportPlaybackParams{
-		MediaId:      trackId,
-		PositionMs:   int64(position) * 1000,
-		State:        StatePlaying,
-		PlaybackRate: 1.0,
-		ClientId:     playerId,
-		ClientName:   playerName,
-	})
 }
 
 func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackParams) error {

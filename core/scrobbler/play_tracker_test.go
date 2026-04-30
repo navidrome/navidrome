@@ -107,104 +107,21 @@ var _ = Describe("PlayTracker", func() {
 		Expect(tracker.(*playTracker).builtinScrobblers).ToNot(HaveKey("disabled"))
 	})
 
-	Describe("NowPlaying", func() {
-		It("sends track to agent", func() {
-			err := tracker.NowPlaying(ctx, "player-1", "player-one", "123", 0)
-			Expect(err).ToNot(HaveOccurred())
-			Eventually(func() bool { return fake.GetNowPlayingCalled() }).Should(BeTrue())
-			Expect(fake.GetUserID()).To(Equal("u-1"))
-			Expect(fake.GetTrack().ID).To(Equal("123"))
-			Expect(fake.GetTrack().Participants).To(Equal(track.Participants))
-		})
-		It("does not send track to agent if user has not authorized", func() {
-			fake.Authorized = false
-
-			err := tracker.NowPlaying(ctx, "player-1", "player-one", "123", 0)
-
-			Expect(err).ToNot(HaveOccurred())
-			Expect(fake.GetNowPlayingCalled()).To(BeFalse())
-		})
-		It("does not send track to agent if player is not enabled to send scrobbles", func() {
-			ctx = request.WithPlayer(ctx, model.Player{ScrobbleEnabled: false})
-
-			err := tracker.NowPlaying(ctx, "player-1", "player-one", "123", 0)
-
-			Expect(err).ToNot(HaveOccurred())
-			Expect(fake.GetNowPlayingCalled()).To(BeFalse())
-		})
-		It("does not send track to agent if artist is unknown", func() {
-			track.Artist = consts.UnknownArtist
-
-			err := tracker.NowPlaying(ctx, "player-1", "player-one", "123", 0)
-
-			Expect(err).ToNot(HaveOccurred())
-			Expect(fake.GetNowPlayingCalled()).To(BeFalse())
-		})
-
-		It("stores position when greater than zero", func() {
-			pos := 42
-			err := tracker.NowPlaying(ctx, "player-1", "player-one", "123", pos)
-			Expect(err).ToNot(HaveOccurred())
-
-			Eventually(func() int { return fake.GetPosition() }).Should(Equal(pos))
-
-			playing, err := tracker.GetNowPlaying(ctx)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(playing).To(HaveLen(1))
-			Expect(playing[0].PositionMs).To(BeNumerically(">=", int64(pos*1000)))
-		})
-
-		It("sends event with count", func() {
-			err := tracker.NowPlaying(ctx, "player-1", "player-one", "123", 0)
-			Expect(err).ToNot(HaveOccurred())
-			eventList := eventBroker.getEvents()
-			Expect(eventList).ToNot(BeEmpty())
-			evt, ok := eventList[0].(*events.NowPlayingCount)
-			Expect(ok).To(BeTrue())
-			Expect(evt.Count).To(Equal(1))
-		})
-
-		It("does not send event when disabled", func() {
-			conf.Server.EnableNowPlaying = false
-			err := tracker.NowPlaying(ctx, "player-1", "player-one", "123", 0)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(eventBroker.getEvents()).To(BeEmpty())
-		})
-
-		It("passes user to scrobbler via context (fix for issue #4787)", func() {
-			ctx = request.WithUser(ctx, model.User{ID: "u-1", UserName: "testuser"})
-			ctx = request.WithPlayer(ctx, model.Player{ScrobbleEnabled: true})
-
-			err := tracker.NowPlaying(ctx, "player-1", "player-one", "123", 0)
-			Expect(err).ToNot(HaveOccurred())
-			Eventually(func() bool { return fake.GetNowPlayingCalled() }).Should(BeTrue())
-			// Verify the username was passed through async dispatch via context
-			Eventually(func() string { return fake.GetUsername() }).Should(Equal("testuser"))
-		})
-
-		It("populates State, PositionMs, PlaybackRate for legacy clients", func() {
-			err := tracker.NowPlaying(ctx, "player-1", "player-one", "123", 42)
-			Expect(err).ToNot(HaveOccurred())
-
-			playing, err := tracker.GetNowPlaying(ctx)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(playing).To(HaveLen(1))
-			Expect(playing[0].State).To(Equal("playing"))
-			Expect(playing[0].PositionMs).To(Equal(int64(42000)))
-			Expect(playing[0].PlaybackRate).To(Equal(1.0))
-			Expect(playing[0].LastReport).To(BeTemporally("~", time.Now(), 2*time.Second))
-		})
-	})
-
 	Describe("GetNowPlaying", func() {
 		It("returns current playing music", func() {
 			track2 := track
 			track2.ID = "456"
 			_ = ds.MediaFile(ctx).Put(&track2)
-			ctx = request.WithUser(GinkgoT().Context(), model.User{UserName: "user-1"})
-			_ = tracker.NowPlaying(ctx, "player-1", "player-one", "123", 0)
-			ctx = request.WithUser(GinkgoT().Context(), model.User{UserName: "user-2"})
-			_ = tracker.NowPlaying(ctx, "player-2", "player-two", "456", 0)
+			ctx1 := request.WithUser(GinkgoT().Context(), model.User{UserName: "user-1"})
+			ctx1 = request.WithPlayer(ctx1, model.Player{ScrobbleEnabled: true})
+			_ = tracker.ReportPlayback(ctx1, ReportPlaybackParams{
+				MediaId: "123", PositionMs: 0, State: StatePlaying, PlaybackRate: 1.0, ClientId: "player-1", ClientName: "player-one",
+			})
+			ctx2 := request.WithUser(GinkgoT().Context(), model.User{UserName: "user-2"})
+			ctx2 = request.WithPlayer(ctx2, model.Player{ScrobbleEnabled: true})
+			_ = tracker.ReportPlayback(ctx2, ReportPlaybackParams{
+				MediaId: "456", PositionMs: 0, State: StatePlaying, PlaybackRate: 1.0, ClientId: "player-2", ClientName: "player-two",
+			})
 
 			playing, err := tracker.GetNowPlaying(ctx)
 
@@ -628,15 +545,6 @@ var _ = Describe("PlayTracker", func() {
 				Expect(playing[0].PositionMs).To(Equal(int64(180000))) // track.Duration * 1000
 			})
 
-			It("estimates position for legacy NowPlaying entries", func() {
-				err := tracker.NowPlaying(ctx, "client-1", "player-one", "123", 10)
-				Expect(err).ToNot(HaveOccurred())
-				time.Sleep(50 * time.Millisecond)
-				playing, err := tracker.GetNowPlaying(ctx)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(playing).To(HaveLen(1))
-				Expect(playing[0].PositionMs).To(BeNumerically(">", int64(10000)))
-			})
 		})
 
 		Describe("TTL behavior", func() {
@@ -770,27 +678,32 @@ var _ = Describe("PlayTracker", func() {
 		})
 
 		It("registers and uses plugin scrobbler for NowPlaying", func() {
-			err := tracker.NowPlaying(ctx, "player-1", "player-one", "123", 0)
+			err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+				MediaId: "123", PositionMs: 0, State: StatePlaying, PlaybackRate: 1.0, ClientId: "player-1",
+			})
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(func() bool { return pluginFake.GetNowPlayingCalled() }).Should(BeTrue())
 		})
 
 		It("removes plugin scrobbler if not present anymore", func() {
-			// First call: plugin present
-			_ = tracker.NowPlaying(ctx, "player-1", "player-one", "123", 0)
+			_ = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+				MediaId: "123", PositionMs: 0, State: StatePlaying, PlaybackRate: 1.0, ClientId: "player-1",
+			})
 			Eventually(func() bool { return pluginFake.GetNowPlayingCalled() }).Should(BeTrue())
 			pluginFake.nowPlayingCalled.Store(false)
-			// Remove plugin
 			pluginLoader.SetNames([]string{})
-			_ = tracker.NowPlaying(ctx, "player-1", "player-one", "123", 0)
-			// Should not be called since plugin was removed
+			_ = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+				MediaId: "123", PositionMs: 0, State: StatePlaying, PlaybackRate: 1.0, ClientId: "player-1",
+			})
 			Consistently(func() bool { return pluginFake.GetNowPlayingCalled() }).Should(BeFalse())
 		})
 
 		It("calls both builtin and plugin scrobblers for NowPlaying", func() {
 			fake.nowPlayingCalled.Store(false)
 			pluginFake.nowPlayingCalled.Store(false)
-			err := tracker.NowPlaying(ctx, "player-1", "player-one", "123", 0)
+			err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+				MediaId: "123", PositionMs: 0, State: StatePlaying, PlaybackRate: 1.0, ClientId: "player-1",
+			})
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(func() bool { return fake.GetNowPlayingCalled() }).Should(BeTrue())
 			Eventually(func() bool { return pluginFake.GetNowPlayingCalled() }).Should(BeTrue())
