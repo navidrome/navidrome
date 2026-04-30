@@ -244,6 +244,23 @@ var _ = Describe("Request Helpers", func() {
 		})
 	})
 
+	Describe("Float64Or", func() {
+		It("returns parsed float value", func() {
+			r := req.Params(httptest.NewRequest("GET", "/test?rate=1.5", nil))
+			Expect(r.Float64Or("rate", 1.0)).To(Equal(1.5))
+		})
+
+		It("returns default when param is missing", func() {
+			r := req.Params(httptest.NewRequest("GET", "/test", nil))
+			Expect(r.Float64Or("rate", 1.0)).To(Equal(1.0))
+		})
+
+		It("returns default when param is not a valid float", func() {
+			r := req.Params(httptest.NewRequest("GET", "/test?rate=abc", nil))
+			Expect(r.Float64Or("rate", 1.0)).To(Equal(1.0))
+		})
+	})
+
 	Describe("ParamBoolPtr", func() {
 		Context("value is true", func() {
 			BeforeEach(func() {
