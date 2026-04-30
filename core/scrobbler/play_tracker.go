@@ -289,12 +289,12 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 		_ = p.playMap.AddWithTTL(clientId, info, remainingTTL(mf.Duration, params.PositionMs))
 
 	case StatePlaying, StatePaused:
-		mf, err := p.ds.MediaFile(ctx).Get(params.MediaId)
-		if err != nil {
-			return err
-		}
 		info, getErr := p.playMap.Get(clientId)
 		if getErr != nil {
+			mf, err := p.ds.MediaFile(ctx).Get(params.MediaId)
+			if err != nil {
+				return err
+			}
 			info = NowPlayingInfo{
 				MediaFile:  *mf,
 				Start:      now.Add(-time.Duration(params.PositionMs) * time.Millisecond),
@@ -309,7 +309,7 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 		info.LastReport = now
 		ttl := 30 * time.Minute
 		if params.State == StatePlaying {
-			ttl = remainingTTL(mf.Duration, params.PositionMs)
+			ttl = remainingTTL(info.MediaFile.Duration, params.PositionMs)
 		}
 		_ = p.playMap.AddWithTTL(clientId, info, ttl)
 
