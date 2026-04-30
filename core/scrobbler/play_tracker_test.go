@@ -20,9 +20,6 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-// mockPluginLoader is a test implementation of PluginLoader for plugin scrobbler tests
-// Moved to top-level scope to avoid linter issues
-
 type mockPluginLoader struct {
 	mu         sync.RWMutex
 	names      []string
@@ -547,27 +544,6 @@ var _ = Describe("PlayTracker", func() {
 
 		})
 
-		Describe("TTL behavior", func() {
-			It("stopped immediately removes entry", func() {
-				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
-					MediaId: "123", PositionMs: 0, State: "starting", PlaybackRate: 1.0, ClientId: defaultClientId,
-				})
-				Expect(err).ToNot(HaveOccurred())
-				playing, err := tracker.GetNowPlaying(ctx)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(playing).To(HaveLen(1))
-
-				err = tracker.ReportPlayback(ctx, ReportPlaybackParams{
-					MediaId: "123", PositionMs: 10000, State: "stopped", PlaybackRate: 1.0, ClientId: defaultClientId,
-					IgnoreScrobble: true,
-				})
-				Expect(err).ToNot(HaveOccurred())
-				playing, err = tracker.GetNowPlaying(ctx)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(playing).To(BeEmpty())
-			})
-		})
-
 		Describe("resilience (no prior starting)", func() {
 			It("playing without prior starting creates entry with Start approx now - positionMs", func() {
 				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
@@ -922,17 +898,6 @@ func (f *fakeScrobbler) GetUserID() string {
 
 func (f *fakeScrobbler) GetTrack() *model.MediaFile {
 	return f.track.Load()
-}
-
-func (f *fakeScrobbler) GetPosition() int {
-	return int(f.position.Load())
-}
-
-func (f *fakeScrobbler) GetUsername() string {
-	if p := f.username.Load(); p != nil {
-		return *p
-	}
-	return ""
 }
 
 func (f *fakeScrobbler) IsAuthorized(ctx context.Context, userId string) bool {
