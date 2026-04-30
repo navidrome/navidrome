@@ -223,9 +223,13 @@ func (p *playTracker) getActiveScrobblers() map[string]Scrobbler {
 	return combined
 }
 
-func remainingTTL(durationSec float32, positionMs int64) time.Duration {
-	remaining := max(int(durationSec)-int(positionMs/1000), 0)
-	return time.Duration(remaining+5) * time.Second
+func remainingTTL(durationSec float32, positionMs int64, rate float64) time.Duration {
+	if rate <= 0 {
+		rate = 1.0
+	}
+	remainingMs := float64(int64(durationSec*1000)-positionMs) / rate
+	remainingSec := max(int(remainingMs/1000), 0)
+	return time.Duration(remainingSec+5) * time.Second
 }
 
 func (p *playTracker) NowPlaying(ctx context.Context, playerId string, playerName string, trackId string, position int) error {
@@ -249,7 +253,7 @@ func (p *playTracker) NowPlaying(ctx context.Context, playerId string, playerNam
 		LastReport:   time.Now(),
 	}
 
-	ttl := remainingTTL(mf.Duration, positionMs)
+	ttl := remainingTTL(mf.Duration, positionMs, 1.0)
 	err = p.playMap.AddWithTTL(playerId, info, ttl)
 	if err != nil {
 		log.Warn(ctx, "Error adding NowPlayingInfo to cache", "playerId", playerId, "trackId", trackId, err)
@@ -293,14 +297,14 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 			PlaybackRate: params.PlaybackRate,
 			LastReport:   now,
 		}
-		err = p.playMap.AddWithTTL(clientId, info, remainingTTL(mf.Duration, params.PositionMs))
+		err = p.playMap.AddWithTTL(clientId, info, remainingTTL(mf.Duration, params.PositionMs, params.PlaybackRate))
 		if err != nil {
 			log.Warn(ctx, "Error adding NowPlayingInfo to cache", "clientId", clientId, "mediaId", params.MediaId, "state", params.State, err)
 		}
 
 	case StatePlaying, StatePaused:
 		info, getErr := p.playMap.Get(clientId)
-		if getErr != nil {
+		if getErr != nil || info.MediaFile.ID != params.MediaId {
 			mf, err := p.ds.MediaFile(ctx).Get(params.MediaId)
 			if err != nil {
 				return err
@@ -319,7 +323,7 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 		info.LastReport = now
 		ttl := 30 * time.Minute
 		if params.State == StatePlaying {
-			ttl = remainingTTL(info.MediaFile.Duration, params.PositionMs)
+			ttl = remainingTTL(info.MediaFile.Duration, params.PositionMs, params.PlaybackRate)
 		}
 		err := p.playMap.AddWithTTL(clientId, info, ttl)
 		if err != nil {

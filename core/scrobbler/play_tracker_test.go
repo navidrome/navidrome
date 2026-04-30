@@ -969,6 +969,24 @@ var _ = Describe("PlayTracker", func() {
 	})
 })
 
+var _ = DescribeTable("remainingTTL",
+	func(durationSec float32, positionMs int64, rate float64, expected time.Duration) {
+		Expect(remainingTTL(durationSec, positionMs, rate)).To(Equal(expected))
+	},
+	Entry("full track at 1x", float32(300), int64(0), 1.0, 305*time.Second),
+	Entry("halfway through at 1x", float32(300), int64(150000), 1.0, 155*time.Second),
+	Entry("near end at 1x", float32(300), int64(298000), 1.0, 7*time.Second),
+	Entry("at end of track", float32(300), int64(300000), 1.0, 5*time.Second),
+	Entry("past end of track", float32(300), int64(310000), 1.0, 5*time.Second),
+	Entry("2x speed halves remaining time", float32(300), int64(0), 2.0, 155*time.Second),
+	Entry("2x speed halfway", float32(300), int64(150000), 2.0, 80*time.Second),
+	Entry("0.5x speed doubles remaining time", float32(300), int64(0), 0.5, 605*time.Second),
+	Entry("zero rate defaults to 1x", float32(300), int64(0), 0.0, 305*time.Second),
+	Entry("negative rate defaults to 1x", float32(300), int64(0), -1.0, 305*time.Second),
+	Entry("short track", float32(3.5), int64(0), 1.0, 8*time.Second),
+	Entry("zero duration", float32(0), int64(0), 1.0, 5*time.Second),
+)
+
 type fakeScrobbler struct {
 	Authorized       bool
 	nowPlayingCalled atomic.Bool
