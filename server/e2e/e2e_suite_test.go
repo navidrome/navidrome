@@ -405,6 +405,10 @@ func (n noopPlayTracker) Submit(context.Context, []scrobbler.Submission) error {
 	return nil
 }
 
+func (n noopPlayTracker) ReportPlayback(context.Context, scrobbler.ReportPlaybackParams) error {
+	return nil
+}
+
 // Compile-time interface checks
 var (
 	_ artwork.Artwork       = noopArtwork{}

@@ -349,6 +349,102 @@ var _ = Describe("PlayTracker", func() {
 		})
 	})
 
+	Describe("ReportPlayback", func() {
+		BeforeEach(func() {
+			ctx = request.WithPlayer(ctx, model.Player{ID: "p1", ScrobbleEnabled: true})
+			ctx = request.WithClientUniqueId(ctx, "client-1")
+		})
+
+		It("creates entry on starting and removes on stopped", func() {
+			err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+				MediaId: "123", PositionMs: 0, State: "starting", PlaybackRate: 1.0,
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			playing, err := tracker.GetNowPlaying(ctx)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(playing).To(HaveLen(1))
+			Expect(playing[0].State).To(Equal("starting"))
+			Expect(playing[0].MediaFile.ID).To(Equal("123"))
+
+			err = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+				MediaId: "123", PositionMs: 0, State: "stopped", PlaybackRate: 1.0,
+				IgnoreScrobble: true,
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			playing, err = tracker.GetNowPlaying(ctx)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(playing).To(BeEmpty())
+		})
+
+		It("full lifecycle: starting -> playing -> paused -> playing -> stopped", func() {
+			_ = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+				MediaId: "123", PositionMs: 0, State: "starting", PlaybackRate: 1.0,
+			})
+			_ = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+				MediaId: "123", PositionMs: 10000, State: "playing", PlaybackRate: 1.0,
+			})
+			playing, _ := tracker.GetNowPlaying(ctx)
+			Expect(playing).To(HaveLen(1))
+			Expect(playing[0].State).To(Equal("playing"))
+			Expect(playing[0].PositionMs).To(BeNumerically(">=", int64(10000)))
+
+			_ = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+				MediaId: "123", PositionMs: 30000, State: "paused", PlaybackRate: 1.0,
+			})
+			playing, _ = tracker.GetNowPlaying(ctx)
+			Expect(playing[0].State).To(Equal("paused"))
+			Expect(playing[0].PositionMs).To(Equal(int64(30000)))
+
+			_ = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+				MediaId: "123", PositionMs: 30000, State: "playing", PlaybackRate: 1.0,
+			})
+
+			_ = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+				MediaId: "123", PositionMs: 100000, State: "stopped", PlaybackRate: 1.0,
+			})
+			playing, _ = tracker.GetNowPlaying(ctx)
+			Expect(playing).To(BeEmpty())
+		})
+
+		It("starting replaces existing entry for same player", func() {
+			_ = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+				MediaId: "123", PositionMs: 50000, State: "playing", PlaybackRate: 1.0,
+			})
+			_ = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+				MediaId: "123", PositionMs: 0, State: "starting", PlaybackRate: 1.0,
+			})
+			playing, _ := tracker.GetNowPlaying(ctx)
+			Expect(playing).To(HaveLen(1))
+			Expect(playing[0].State).To(Equal("starting"))
+			Expect(playing[0].PositionMs).To(Equal(int64(0)))
+		})
+
+		It("multiple players have independent sessions", func() {
+			ctx1 := request.WithUser(ctx, model.User{ID: "u-1", UserName: "user1"})
+			ctx1 = request.WithPlayer(ctx1, model.Player{ID: "p1", ScrobbleEnabled: true})
+			ctx1 = request.WithClientUniqueId(ctx1, "client-1")
+
+			ctx2 := request.WithUser(ctx, model.User{ID: "u-1", UserName: "user1"})
+			ctx2 = request.WithPlayer(ctx2, model.Player{ID: "p2", ScrobbleEnabled: true})
+			ctx2 = request.WithClientUniqueId(ctx2, "client-2")
+
+			track2 := track
+			track2.ID = "456"
+			_ = ds.MediaFile(ctx).Put(&track2)
+
+			_ = tracker.ReportPlayback(ctx1, ReportPlaybackParams{
+				MediaId: "123", PositionMs: 0, State: "playing", PlaybackRate: 1.0,
+			})
+			_ = tracker.ReportPlayback(ctx2, ReportPlaybackParams{
+				MediaId: "456", PositionMs: 0, State: "playing", PlaybackRate: 1.0,
+			})
+			playing, _ := tracker.GetNowPlaying(ctx)
+			Expect(playing).To(HaveLen(2))
+		})
+	})
+
 	Describe("Plugin scrobbler logic", func() {
 		var pluginLoader *mockPluginLoader
 		var pluginFake *fakeScrobbler

@@ -129,6 +129,10 @@ func (f *fakePlayTracker) Submit(_ context.Context, submissions []scrobbler.Subm
 	return nil
 }
 
+func (f *fakePlayTracker) ReportPlayback(_ context.Context, _ scrobbler.ReportPlaybackParams) error {
+	return f.Error
+}
+
 var _ scrobbler.PlayTracker = (*fakePlayTracker)(nil)
 
 type fakeEventBroker struct {

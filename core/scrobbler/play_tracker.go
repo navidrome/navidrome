@@ -35,6 +35,14 @@ type Submission struct {
 	Timestamp time.Time
 }
 
+type ReportPlaybackParams struct {
+	MediaId        string
+	PositionMs     int64
+	State          string
+	PlaybackRate   float64
+	IgnoreScrobble bool
+}
+
 type nowPlayingEntry struct {
 	ctx      context.Context
 	userId   string
@@ -46,6 +54,7 @@ type PlayTracker interface {
 	NowPlaying(ctx context.Context, playerId string, playerName string, trackId string, position int) error
 	GetNowPlaying(ctx context.Context) ([]NowPlayingInfo, error)
 	Submit(ctx context.Context, submissions []Submission) error
+	ReportPlayback(ctx context.Context, params ReportPlaybackParams) error
 }
 
 // PluginLoader is a minimal interface for plugin manager usage in PlayTracker
@@ -231,6 +240,100 @@ func (p *playTracker) NowPlaying(ctx context.Context, playerId string, playerNam
 	if player.ScrobbleEnabled {
 		p.enqueueNowPlaying(ctx, playerId, user.ID, mf, position)
 	}
+	return nil
+}
+
+func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackParams) error {
+	mf, err := p.ds.MediaFile(ctx).GetWithParticipants(params.MediaId)
+	if err != nil {
+		return err
+	}
+
+	player, _ := request.PlayerFrom(ctx)
+	user, _ := request.UserFrom(ctx)
+	client, _ := request.ClientFrom(ctx)
+	clientId, ok := request.ClientUniqueIdFrom(ctx)
+	if !ok {
+		clientId = player.ID
+	}
+
+	now := time.Now()
+
+	switch params.State {
+	case "starting":
+		info := NowPlayingInfo{
+			MediaFile:    *mf,
+			Start:        now,
+			Username:     user.UserName,
+			PlayerId:     clientId,
+			PlayerName:   client,
+			State:        params.State,
+			PositionMs:   params.PositionMs,
+			PlaybackRate: params.PlaybackRate,
+			LastReport:   now,
+		}
+		remaining := max(int(mf.Duration)-int(params.PositionMs/1000), 0)
+		ttl := time.Duration(remaining+5) * time.Second
+		_ = p.playMap.AddWithTTL(clientId, info, ttl)
+
+	case "playing":
+		info, err := p.playMap.Get(clientId)
+		if err != nil {
+			info = NowPlayingInfo{
+				MediaFile:  *mf,
+				Start:      now.Add(-time.Duration(params.PositionMs) * time.Millisecond),
+				Username:   user.UserName,
+				PlayerId:   clientId,
+				PlayerName: client,
+			}
+		}
+		info.State = params.State
+		info.PositionMs = params.PositionMs
+		info.PlaybackRate = params.PlaybackRate
+		info.LastReport = now
+		remaining := max(int(mf.Duration)-int(params.PositionMs/1000), 0)
+		ttl := time.Duration(remaining+5) * time.Second
+		_ = p.playMap.AddWithTTL(clientId, info, ttl)
+
+	case "paused":
+		info, err := p.playMap.Get(clientId)
+		if err != nil {
+			info = NowPlayingInfo{
+				MediaFile:  *mf,
+				Start:      now.Add(-time.Duration(params.PositionMs) * time.Millisecond),
+				Username:   user.UserName,
+				PlayerId:   clientId,
+				PlayerName: client,
+			}
+		}
+		info.State = params.State
+		info.PositionMs = params.PositionMs
+		info.PlaybackRate = params.PlaybackRate
+		info.LastReport = now
+		_ = p.playMap.AddWithTTL(clientId, info, 30*time.Minute)
+
+	case "stopped":
+		if !params.IgnoreScrobble && player.ScrobbleEnabled {
+			trackDurationMs := int64(mf.Duration * 1000)
+			threshold := min(trackDurationMs*50/100, 240_000)
+			if params.PositionMs >= threshold {
+				_ = p.incPlay(ctx, mf, now)
+				p.dispatchScrobble(ctx, mf, now)
+			}
+		}
+		p.playMap.Remove(clientId)
+	}
+
+	if conf.Server.EnableNowPlaying {
+		p.broker.SendBroadcastMessage(ctx, &events.NowPlayingCount{Count: p.playMap.Len()})
+	}
+
+	// Dispatch to external scrobblers for starting/playing (not paused/stopped)
+	if !params.IgnoreScrobble && player.ScrobbleEnabled &&
+		(params.State == "starting" || params.State == "playing") {
+		p.enqueueNowPlaying(ctx, clientId, user.ID, mf, int(params.PositionMs/1000))
+	}
+
 	return nil
 }
 
