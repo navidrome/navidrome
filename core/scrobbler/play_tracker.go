@@ -54,6 +54,8 @@ type ReportPlaybackParams struct {
 	State          string
 	PlaybackRate   float64
 	IgnoreScrobble bool
+	ClientId       string
+	ClientName     string
 }
 
 type nowPlayingEntry struct {
@@ -233,56 +235,28 @@ func remainingTTL(durationSec float32, positionMs int64, rate float64) time.Dura
 }
 
 func (p *playTracker) NowPlaying(ctx context.Context, playerId string, playerName string, trackId string, position int) error {
-	mf, err := p.ds.MediaFile(ctx).GetWithParticipants(trackId)
-	if err != nil {
-		log.Error(ctx, "Error retrieving mediaFile", "id", trackId, err)
-		return err
-	}
-
-	user, _ := request.UserFrom(ctx)
-	positionMs := int64(position) * 1000
-	info := NowPlayingInfo{
-		MediaFile:    *mf,
-		Start:        time.Now(),
-		Username:     user.UserName,
-		PlayerId:     playerId,
-		PlayerName:   playerName,
+	return p.ReportPlayback(ctx, ReportPlaybackParams{
+		MediaId:      trackId,
+		PositionMs:   int64(position) * 1000,
 		State:        StatePlaying,
-		PositionMs:   positionMs,
 		PlaybackRate: 1.0,
-		LastReport:   time.Now(),
-	}
-
-	ttl := remainingTTL(mf.Duration, positionMs, 1.0)
-	err = p.playMap.AddWithTTL(playerId, info, ttl)
-	if err != nil {
-		log.Warn(ctx, "Error adding NowPlayingInfo to cache", "playerId", playerId, "trackId", trackId, err)
-	}
-	if conf.Server.EnableNowPlaying {
-		p.broker.SendBroadcastMessage(ctx, &events.NowPlayingCount{Count: p.playMap.Len()})
-	}
-	player, _ := request.PlayerFrom(ctx)
-	if player.ScrobbleEnabled {
-		p.enqueueNowPlaying(ctx, playerId, user.ID, mf, position)
-	}
-	return nil
+		ClientId:     playerId,
+		ClientName:   playerName,
+	})
 }
 
 func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackParams) error {
 	player, _ := request.PlayerFrom(ctx)
 	user, _ := request.UserFrom(ctx)
-	client, _ := request.ClientFrom(ctx)
-	clientId, ok := request.ClientUniqueIdFrom(ctx)
-	if !ok {
-		clientId = player.ID
-	}
+	clientId := params.ClientId
+	client := params.ClientName
 
 	now := time.Now()
 	prevCount := p.playMap.Len()
 
 	switch params.State {
 	case StateStarting:
-		mf, err := p.ds.MediaFile(ctx).Get(params.MediaId)
+		mf, err := p.ds.MediaFile(ctx).GetWithParticipants(params.MediaId)
 		if err != nil {
 			return err
 		}
@@ -305,7 +279,7 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 	case StatePlaying, StatePaused:
 		info, getErr := p.playMap.Get(clientId)
 		if getErr != nil || info.MediaFile.ID != params.MediaId {
-			mf, err := p.ds.MediaFile(ctx).Get(params.MediaId)
+			mf, err := p.ds.MediaFile(ctx).GetWithParticipants(params.MediaId)
 			if err != nil {
 				return err
 			}

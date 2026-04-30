@@ -259,12 +259,21 @@ func (api *Router) ReportPlayback(r *http.Request) (*responses.Subsonic, error) 
 		log.Warn(ctx, "reportPlayback received unsupported mediaType", "mediaType", mediaType, "mediaId", mediaId)
 	}
 
+	player, _ := request.PlayerFrom(ctx)
+	client, _ := request.ClientFrom(ctx)
+	clientId, ok := request.ClientUniqueIdFrom(ctx)
+	if !ok {
+		clientId = player.ID
+	}
+
 	err = api.scrobbler.ReportPlayback(ctx, scrobbler.ReportPlaybackParams{
 		MediaId:        mediaId,
 		PositionMs:     positionMs,
 		State:          state,
 		PlaybackRate:   playbackRate,
 		IgnoreScrobble: ignoreScrobble,
+		ClientId:       clientId,
+		ClientName:     client,
 	})
 	if err != nil {
 		log.Error(ctx, "Error in ReportPlayback", "mediaId", mediaId, "state", state, err)
