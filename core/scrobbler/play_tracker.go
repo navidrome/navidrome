@@ -246,7 +246,10 @@ func (p *playTracker) NowPlaying(ctx context.Context, playerId string, playerNam
 	}
 
 	ttl := remainingTTL(mf.Duration, positionMs)
-	_ = p.playMap.AddWithTTL(playerId, info, ttl)
+	err = p.playMap.AddWithTTL(playerId, info, ttl)
+	if err != nil {
+		log.Warn(ctx, "Error adding NowPlayingInfo to cache", "playerId", playerId, "trackId", trackId, err)
+	}
 	if conf.Server.EnableNowPlaying {
 		p.broker.SendBroadcastMessage(ctx, &events.NowPlayingCount{Count: p.playMap.Len()})
 	}
@@ -286,7 +289,10 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 			PlaybackRate: params.PlaybackRate,
 			LastReport:   now,
 		}
-		_ = p.playMap.AddWithTTL(clientId, info, remainingTTL(mf.Duration, params.PositionMs))
+		err = p.playMap.AddWithTTL(clientId, info, remainingTTL(mf.Duration, params.PositionMs))
+		if err != nil {
+			log.Warn(ctx, "Error adding NowPlayingInfo to cache", "clientId", clientId, "mediaId", params.MediaId, "state", params.State, err)
+		}
 
 	case StatePlaying, StatePaused:
 		info, getErr := p.playMap.Get(clientId)
@@ -311,7 +317,10 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 		if params.State == StatePlaying {
 			ttl = remainingTTL(info.MediaFile.Duration, params.PositionMs)
 		}
-		_ = p.playMap.AddWithTTL(clientId, info, ttl)
+		err := p.playMap.AddWithTTL(clientId, info, ttl)
+		if err != nil {
+			log.Warn(ctx, "Error updating NowPlayingInfo in cache", "clientId", clientId, "mediaId", params.MediaId, "state", params.State, err)
+		}
 
 	case StateStopped:
 		if !params.IgnoreScrobble && player.ScrobbleEnabled {
@@ -322,7 +331,10 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 			trackDurationMs := int64(mf.Duration * 1000)
 			threshold := min(trackDurationMs*50/100, 240_000)
 			if params.PositionMs >= threshold {
-				_ = p.incPlay(ctx, mf, now)
+				err = p.incPlay(ctx, mf, now)
+				if err != nil {
+					log.Warn(ctx, "Error updating play counts", "id", mf.ID, "track", mf.Title, "user", user.UserName, err)
+				}
 				p.dispatchScrobble(ctx, mf, now)
 			}
 		}
