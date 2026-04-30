@@ -358,10 +358,13 @@ type Starred2 struct {
 
 type NowPlayingEntry struct {
 	Child
-	UserName   string `xml:"username,attr"                        json:"username"`
-	MinutesAgo int32  `xml:"minutesAgo,attr"                      json:"minutesAgo"`
-	PlayerId   int32  `xml:"playerId,attr"                        json:"playerId"`
-	PlayerName string `xml:"playerName,attr"                      json:"playerName,omitempty"`
+	UserName     string  `xml:"username,attr"                        json:"username"`
+	MinutesAgo   int32   `xml:"minutesAgo,attr"                      json:"minutesAgo"`
+	PlayerId     int32   `xml:"playerId,attr"                        json:"playerId"`
+	PlayerName   string  `xml:"playerName,attr"                      json:"playerName,omitempty"`
+	State        string  `xml:"state,attr"                           json:"state"`
+	PositionMs   int64   `xml:"positionMs,attr"                      json:"positionMs"`
+	PlaybackRate float64 `xml:"playbackRate,attr"                    json:"playbackRate"`
 }
 
 type NowPlaying struct {
