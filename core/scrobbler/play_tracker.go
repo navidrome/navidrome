@@ -98,8 +98,12 @@ func GetPlayTracker(ds model.DataStore, broker events.Broker, pluginManager Plug
 	})
 }
 
-// This constructor only exists for testing. For normal usage, the PlayTracker has to be a singleton, returned by
-// the GetPlayTracker function above
+// NewPlayTracker creates a new PlayTracker instance. For normal usage, the PlayTracker has to be a singleton,
+// returned by the GetPlayTracker function above. This constructor is exported for testing.
+func NewPlayTracker(ds model.DataStore, broker events.Broker, pluginManager PluginLoader) PlayTracker {
+	return newPlayTracker(ds, broker, pluginManager)
+}
+
 func newPlayTracker(ds model.DataStore, broker events.Broker, pluginManager PluginLoader) *playTracker {
 	m := cache.NewSimpleCache[string, NowPlayingInfo]()
 	p := &playTracker{
