@@ -3,7 +3,7 @@ package scrobbler
 import (
 	"context"
 	"maps"
-	"sort"
+	"slices"
 	"sync"
 	"time"
 
@@ -425,8 +425,8 @@ func (p *playTracker) dispatchNowPlaying(ctx context.Context, userId string, t *
 
 func (p *playTracker) GetNowPlaying(_ context.Context) ([]NowPlayingInfo, error) {
 	res := p.playMap.Values()
-	sort.Slice(res, func(i, j int) bool {
-		return res[i].Start.After(res[j].Start)
+	slices.SortFunc(res, func(a, b NowPlayingInfo) int {
+		return b.Start.Compare(a.Start)
 	})
 	for i := range res {
 		if res[i].State == StatePlaying {
