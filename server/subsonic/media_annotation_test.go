@@ -131,6 +131,36 @@ var _ = Describe("MediaAnnotationController", func() {
 			Expect(err).To(HaveOccurred())
 		})
 
+		It("returns error for negative positionMs", func() {
+			r := newGetRequest("mediaId=123", "mediaType=song", "positionMs=-1", "state=playing")
+			_, err := router.ReportPlayback(r)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("returns error for NaN playbackRate", func() {
+			r := newGetRequest("mediaId=123", "mediaType=song", "positionMs=0", "state=playing", "playbackRate=NaN")
+			_, err := router.ReportPlayback(r)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("returns error for Inf playbackRate", func() {
+			r := newGetRequest("mediaId=123", "mediaType=song", "positionMs=0", "state=playing", "playbackRate=Inf")
+			_, err := router.ReportPlayback(r)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("returns error for negative playbackRate", func() {
+			r := newGetRequest("mediaId=123", "mediaType=song", "positionMs=0", "state=playing", "playbackRate=-1.0")
+			_, err := router.ReportPlayback(r)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("returns error for zero playbackRate", func() {
+			r := newGetRequest("mediaId=123", "mediaType=song", "positionMs=0", "state=playing", "playbackRate=0")
+			_, err := router.ReportPlayback(r)
+			Expect(err).To(HaveOccurred())
+		})
+
 		It("accepts mediaType=podcast without error", func() {
 			r := newGetRequest("mediaId=123", "mediaType=podcast", "positionMs=0", "state=playing")
 			ctx := request.WithPlayer(r.Context(), model.Player{ID: "p1"})

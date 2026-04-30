@@ -3,6 +3,7 @@ package subsonic
 import (
 	"context"
 	"fmt"
+	"math"
 	"net/http"
 	"time"
 
@@ -235,6 +236,9 @@ func (api *Router) ReportPlayback(r *http.Request) (*responses.Subsonic, error) 
 	if err != nil {
 		return nil, err
 	}
+	if positionMs < 0 {
+		return nil, newError(responses.ErrorGeneric, "positionMs must be non-negative")
+	}
 	state, err := p.String("state")
 	if err != nil {
 		return nil, err
@@ -245,6 +249,9 @@ func (api *Router) ReportPlayback(r *http.Request) (*responses.Subsonic, error) 
 	}
 
 	playbackRate := p.Float64Or("playbackRate", 1.0)
+	if math.IsNaN(playbackRate) || math.IsInf(playbackRate, 0) || playbackRate <= 0 {
+		return nil, newError(responses.ErrorGeneric, "playbackRate must be a finite positive number")
+	}
 	ignoreScrobble := p.BoolOr("ignoreScrobble", false)
 
 	ctx := r.Context()
