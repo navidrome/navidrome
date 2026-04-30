@@ -220,3 +220,56 @@ func (api *Router) scrobblerNowPlaying(ctx context.Context, trackId string, posi
 	err = api.scrobbler.NowPlaying(ctx, clientId, client, trackId, position)
 	return err
 }
+
+var validStates = map[string]bool{
+	"starting": true,
+	"playing":  true,
+	"paused":   true,
+	"stopped":  true,
+}
+
+func (api *Router) ReportPlayback(r *http.Request) (*responses.Subsonic, error) {
+	p := req.Params(r)
+	mediaId, err := p.String("mediaId")
+	if err != nil {
+		return nil, err
+	}
+	mediaType, err := p.String("mediaType")
+	if err != nil {
+		return nil, err
+	}
+	positionMs, err := p.Int64("positionMs")
+	if err != nil {
+		return nil, err
+	}
+	state, err := p.String("state")
+	if err != nil {
+		return nil, err
+	}
+
+	if !validStates[state] {
+		return nil, newError(responses.ErrorGeneric, "Invalid state: %s", state)
+	}
+
+	playbackRate := p.Float64Or("playbackRate", 1.0)
+	ignoreScrobble := p.BoolOr("ignoreScrobble", false)
+
+	ctx := r.Context()
+	if mediaType != "song" {
+		log.Warn(ctx, "reportPlayback received unsupported mediaType", "mediaType", mediaType, "mediaId", mediaId)
+	}
+
+	err = api.scrobbler.ReportPlayback(ctx, scrobbler.ReportPlaybackParams{
+		MediaId:        mediaId,
+		PositionMs:     positionMs,
+		State:          state,
+		PlaybackRate:   playbackRate,
+		IgnoreScrobble: ignoreScrobble,
+	})
+	if err != nil {
+		log.Error(ctx, "Error in ReportPlayback", "mediaId", mediaId, "state", state, err)
+		return nil, err
+	}
+
+	return newResponse(), nil
+}

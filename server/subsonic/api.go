@@ -144,6 +144,7 @@ func (api *Router) routes() http.Handler {
 			h(r, "star", api.Star)
 			h(r, "unstar", api.Unstar)
 			h(r, "scrobble", api.Scrobble)
+			h(r, "reportPlayback", api.ReportPlayback)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(getPlayer(api.players))
