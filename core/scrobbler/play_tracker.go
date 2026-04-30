@@ -18,12 +18,16 @@ import (
 )
 
 type NowPlayingInfo struct {
-	MediaFile  model.MediaFile
-	Start      time.Time
-	Position   int
-	Username   string
-	PlayerId   string
-	PlayerName string
+	MediaFile    model.MediaFile
+	Start        time.Time
+	Position     int
+	Username     string
+	PlayerId     string
+	PlayerName   string
+	State        string    // "starting", "playing", "paused", "stopped"
+	PositionMs   int64     // millisecond-precision position
+	PlaybackRate float64   // playback speed multiplier (default 1.0)
+	LastReport   time.Time // timestamp of last report
 }
 
 type Submission struct {
@@ -202,12 +206,16 @@ func (p *playTracker) NowPlaying(ctx context.Context, playerId string, playerNam
 
 	user, _ := request.UserFrom(ctx)
 	info := NowPlayingInfo{
-		MediaFile:  *mf,
-		Start:      time.Now(),
-		Position:   position,
-		Username:   user.UserName,
-		PlayerId:   playerId,
-		PlayerName: playerName,
+		MediaFile:    *mf,
+		Start:        time.Now(),
+		Position:     position,
+		Username:     user.UserName,
+		PlayerId:     playerId,
+		PlayerName:   playerName,
+		State:        "playing",
+		PositionMs:   int64(position) * 1000,
+		PlaybackRate: 1.0,
+		LastReport:   time.Now(),
 	}
 
 	// Calculate TTL based on remaining track duration. If position exceeds track duration,

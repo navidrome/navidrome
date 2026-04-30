@@ -181,6 +181,19 @@ var _ = Describe("PlayTracker", func() {
 			// Verify the username was passed through async dispatch via context
 			Eventually(func() string { return fake.GetUsername() }).Should(Equal("testuser"))
 		})
+
+		It("populates State, PositionMs, PlaybackRate for legacy clients", func() {
+			err := tracker.NowPlaying(ctx, "player-1", "player-one", "123", 42)
+			Expect(err).ToNot(HaveOccurred())
+
+			playing, err := tracker.GetNowPlaying(ctx)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(playing).To(HaveLen(1))
+			Expect(playing[0].State).To(Equal("playing"))
+			Expect(playing[0].PositionMs).To(Equal(int64(42000)))
+			Expect(playing[0].PlaybackRate).To(Equal(1.0))
+			Expect(playing[0].LastReport).To(BeTemporally("~", time.Now(), 2*time.Second))
+		})
 	})
 
 	Describe("GetNowPlaying", func() {
