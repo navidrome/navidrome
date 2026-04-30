@@ -1115,6 +1115,9 @@ var _ = Describe("Responses", func() {
 		})
 
 		Describe("without data", func() {
+			It("should match .XML", func() {
+				Expect(xml.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
 			It("should match .JSON", func() {
 				Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
 			})
@@ -1132,6 +1135,9 @@ var _ = Describe("Responses", func() {
 					PositionMs:   120000,
 					PlaybackRate: 1.5,
 				}}
+			})
+			It("should match .XML", func() {
+				Expect(xml.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
 			})
 			It("should match .JSON", func() {
 				Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
