@@ -151,7 +151,7 @@ var _ = Describe("PlayTracker", func() {
 			playing, err := tracker.GetNowPlaying(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(playing).To(HaveLen(1))
-			Expect(playing[0].Position).To(Equal(pos))
+			Expect(playing[0].PositionMs).To(BeNumerically(">=", int64(pos*1000)))
 		})
 
 		It("sends event with count", func() {
@@ -442,6 +442,278 @@ var _ = Describe("PlayTracker", func() {
 			})
 			playing, _ := tracker.GetNowPlaying(ctx)
 			Expect(playing).To(HaveLen(2))
+		})
+
+		Describe("auto-scrobble", func() {
+			It("scrobbles on stopped when positionMs >= 50% of track", func() {
+				_ = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 0, State: "starting", PlaybackRate: 1.0,
+				})
+				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 90000, State: "stopped", PlaybackRate: 1.0,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(track.PlayCount).To(Equal(int64(1)))
+				Expect(album.PlayCount).To(Equal(int64(1)))
+				Expect(artist1.PlayCount).To(Equal(int64(1)))
+			})
+
+			It("scrobbles on stopped when positionMs >= 4 min for long tracks", func() {
+				longTrack := model.MediaFile{
+					ID: "long", Title: "Long Song", Album: "Album", AlbumID: "al-1",
+					Duration: 600,
+					Participants: map[model.Role]model.ParticipantList{
+						model.RoleArtist: []model.Participant{_p("ar-1", "Artist 1")},
+					},
+				}
+				_ = ds.MediaFile(ctx).Put(&longTrack)
+
+				_ = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "long", PositionMs: 0, State: "starting", PlaybackRate: 1.0,
+				})
+				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "long", PositionMs: 240000, State: "stopped", PlaybackRate: 1.0,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(longTrack.PlayCount).To(Equal(int64(1)))
+			})
+
+			It("does NOT scrobble when positionMs below threshold", func() {
+				_ = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 0, State: "starting", PlaybackRate: 1.0,
+				})
+				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 10000, State: "stopped", PlaybackRate: 1.0,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(track.PlayCount).To(Equal(int64(0)))
+			})
+
+			It("does NOT scrobble when ignoreScrobble=true even if threshold met", func() {
+				_ = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 0, State: "starting", PlaybackRate: 1.0,
+				})
+				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 90000, State: "stopped", PlaybackRate: 1.0,
+					IgnoreScrobble: true,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(track.PlayCount).To(Equal(int64(0)))
+			})
+
+			It("does NOT scrobble when player ScrobbleEnabled=false even if threshold met", func() {
+				ctx = request.WithPlayer(ctx, model.Player{ID: "p1", ScrobbleEnabled: false})
+				ctx = request.WithClientUniqueId(ctx, "client-1")
+
+				_ = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 0, State: "starting", PlaybackRate: 1.0,
+				})
+				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 90000, State: "stopped", PlaybackRate: 1.0,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(track.PlayCount).To(Equal(int64(0)))
+			})
+
+			It("scrobbles twice for two separate sessions of same song", func() {
+				_ = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 0, State: "starting", PlaybackRate: 1.0,
+				})
+				_ = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 90000, State: "stopped", PlaybackRate: 1.0,
+				})
+				_ = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 0, State: "starting", PlaybackRate: 1.0,
+				})
+				_ = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 90000, State: "stopped", PlaybackRate: 1.0,
+				})
+				Expect(track.PlayCount).To(Equal(int64(2)))
+			})
+
+			It("dispatches to external scrobblers on auto-scrobble", func() {
+				fake.ScrobbleCalled.Store(false)
+				_ = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 0, State: "starting", PlaybackRate: 1.0,
+				})
+				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 90000, State: "stopped", PlaybackRate: 1.0,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(fake.ScrobbleCalled.Load()).To(BeTrue())
+			})
+		})
+
+		Describe("position estimation", func() {
+			It("estimates position for playing state based on elapsed time", func() {
+				_ = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 10000, State: "playing", PlaybackRate: 1.0,
+				})
+				time.Sleep(50 * time.Millisecond)
+				playing, err := tracker.GetNowPlaying(ctx)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(playing).To(HaveLen(1))
+				Expect(playing[0].PositionMs).To(BeNumerically(">", int64(10000)))
+			})
+
+			It("does NOT estimate for paused", func() {
+				_ = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 10000, State: "paused", PlaybackRate: 1.0,
+				})
+				time.Sleep(50 * time.Millisecond)
+				playing, err := tracker.GetNowPlaying(ctx)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(playing).To(HaveLen(1))
+				Expect(playing[0].PositionMs).To(Equal(int64(10000)))
+			})
+
+			It("does NOT estimate for starting", func() {
+				_ = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 0, State: "starting", PlaybackRate: 1.0,
+				})
+				time.Sleep(50 * time.Millisecond)
+				playing, err := tracker.GetNowPlaying(ctx)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(playing).To(HaveLen(1))
+				Expect(playing[0].PositionMs).To(Equal(int64(0)))
+			})
+
+			It("respects playbackRate", func() {
+				_ = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 10000, State: "playing", PlaybackRate: 2.0,
+				})
+				time.Sleep(100 * time.Millisecond)
+				playing, err := tracker.GetNowPlaying(ctx)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(playing).To(HaveLen(1))
+				// At 2x speed, 100ms real time = ~200ms playback time
+				Expect(playing[0].PositionMs).To(BeNumerically(">", int64(10100)))
+			})
+
+			It("caps estimated position at track duration", func() {
+				_ = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 179990, State: "playing", PlaybackRate: 1.0,
+				})
+				time.Sleep(50 * time.Millisecond)
+				playing, err := tracker.GetNowPlaying(ctx)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(playing).To(HaveLen(1))
+				Expect(playing[0].PositionMs).To(Equal(int64(180000))) // track.Duration * 1000
+			})
+
+			It("estimates position for legacy NowPlaying entries", func() {
+				err := tracker.NowPlaying(ctx, "client-1", "player-one", "123", 10)
+				Expect(err).ToNot(HaveOccurred())
+				time.Sleep(50 * time.Millisecond)
+				playing, err := tracker.GetNowPlaying(ctx)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(playing).To(HaveLen(1))
+				Expect(playing[0].PositionMs).To(BeNumerically(">", int64(10000)))
+			})
+		})
+
+		Describe("TTL behavior", func() {
+			It("stopped immediately removes entry", func() {
+				_ = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 0, State: "starting", PlaybackRate: 1.0,
+				})
+				playing, _ := tracker.GetNowPlaying(ctx)
+				Expect(playing).To(HaveLen(1))
+
+				_ = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 10000, State: "stopped", PlaybackRate: 1.0,
+					IgnoreScrobble: true,
+				})
+				playing, _ = tracker.GetNowPlaying(ctx)
+				Expect(playing).To(BeEmpty())
+			})
+		})
+
+		Describe("resilience (no prior starting)", func() {
+			It("playing without prior starting creates entry with Start approx now - positionMs", func() {
+				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 30000, State: "playing", PlaybackRate: 1.0,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				playing, err := tracker.GetNowPlaying(ctx)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(playing).To(HaveLen(1))
+				Expect(playing[0].State).To(Equal("playing"))
+				expectedStart := time.Now().Add(-30 * time.Second)
+				Expect(playing[0].Start).To(BeTemporally("~", expectedStart, 2*time.Second))
+			})
+
+			It("paused without prior starting creates entry", func() {
+				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 30000, State: "paused", PlaybackRate: 1.0,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				playing, err := tracker.GetNowPlaying(ctx)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(playing).To(HaveLen(1))
+				Expect(playing[0].State).To(Equal("paused"))
+			})
+
+			It("stopped without prior starting auto-scrobbles if threshold met", func() {
+				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 90000, State: "stopped", PlaybackRate: 1.0,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(track.PlayCount).To(Equal(int64(1)))
+			})
+
+			It("stopped without prior starting does NOT scrobble if below threshold", func() {
+				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 10000, State: "stopped", PlaybackRate: 1.0,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(track.PlayCount).To(Equal(int64(0)))
+			})
+		})
+
+		Describe("external scrobbler dispatch", func() {
+			It("dispatches NowPlaying on starting", func() {
+				fake.nowPlayingCalled.Store(false)
+				_ = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 0, State: "starting", PlaybackRate: 1.0,
+				})
+				Eventually(func() bool { return fake.GetNowPlayingCalled() }).Should(BeTrue())
+			})
+
+			It("dispatches NowPlaying on playing", func() {
+				fake.nowPlayingCalled.Store(false)
+				_ = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 10000, State: "playing", PlaybackRate: 1.0,
+				})
+				Eventually(func() bool { return fake.GetNowPlayingCalled() }).Should(BeTrue())
+			})
+
+			It("does NOT dispatch on paused", func() {
+				fake.nowPlayingCalled.Store(false)
+				_ = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 10000, State: "paused", PlaybackRate: 1.0,
+				})
+				Consistently(func() bool { return fake.GetNowPlayingCalled() }).Should(BeFalse())
+			})
+
+			It("does NOT dispatch when ignoreScrobble=true", func() {
+				fake.nowPlayingCalled.Store(false)
+				_ = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 0, State: "starting", PlaybackRate: 1.0,
+					IgnoreScrobble: true,
+				})
+				Consistently(func() bool { return fake.GetNowPlayingCalled() }).Should(BeFalse())
+			})
+
+			It("does NOT dispatch when ScrobbleEnabled=false", func() {
+				fake.nowPlayingCalled.Store(false)
+				ctx = request.WithPlayer(ctx, model.Player{ID: "p1", ScrobbleEnabled: false})
+				ctx = request.WithClientUniqueId(ctx, "client-1")
+				_ = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 0, State: "starting", PlaybackRate: 1.0,
+				})
+				Consistently(func() bool { return fake.GetNowPlayingCalled() }).Should(BeFalse())
+			})
 		})
 	})
 

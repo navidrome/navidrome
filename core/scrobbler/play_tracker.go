@@ -17,17 +17,30 @@ import (
 	"github.com/navidrome/navidrome/utils/singleton"
 )
 
+const (
+	StateStarting = "starting"
+	StatePlaying  = "playing"
+	StatePaused   = "paused"
+	StateStopped  = "stopped"
+)
+
+var ValidStates = map[string]bool{
+	StateStarting: true,
+	StatePlaying:  true,
+	StatePaused:   true,
+	StateStopped:  true,
+}
+
 type NowPlayingInfo struct {
 	MediaFile    model.MediaFile
 	Start        time.Time
-	Position     int
 	Username     string
 	PlayerId     string
 	PlayerName   string
-	State        string    // "starting", "playing", "paused", "stopped"
-	PositionMs   int64     // millisecond-precision position
-	PlaybackRate float64   // playback speed multiplier (default 1.0)
-	LastReport   time.Time // timestamp of last report
+	State        string
+	PositionMs   int64
+	PlaybackRate float64
+	LastReport   time.Time
 }
 
 type Submission struct {
@@ -206,6 +219,11 @@ func (p *playTracker) getActiveScrobblers() map[string]Scrobbler {
 	return combined
 }
 
+func remainingTTL(durationSec float32, positionMs int64) time.Duration {
+	remaining := max(int(durationSec)-int(positionMs/1000), 0)
+	return time.Duration(remaining+5) * time.Second
+}
+
 func (p *playTracker) NowPlaying(ctx context.Context, playerId string, playerName string, trackId string, position int) error {
 	mf, err := p.ds.MediaFile(ctx).GetWithParticipants(trackId)
 	if err != nil {
@@ -214,24 +232,20 @@ func (p *playTracker) NowPlaying(ctx context.Context, playerId string, playerNam
 	}
 
 	user, _ := request.UserFrom(ctx)
+	positionMs := int64(position) * 1000
 	info := NowPlayingInfo{
 		MediaFile:    *mf,
 		Start:        time.Now(),
-		Position:     position,
 		Username:     user.UserName,
 		PlayerId:     playerId,
 		PlayerName:   playerName,
-		State:        "playing",
-		PositionMs:   int64(position) * 1000,
+		State:        StatePlaying,
+		PositionMs:   positionMs,
 		PlaybackRate: 1.0,
 		LastReport:   time.Now(),
 	}
 
-	// Calculate TTL based on remaining track duration. If position exceeds track duration,
-	// remaining is set to 0 to avoid negative TTL.
-	remaining := max(int(mf.Duration)-position, 0)
-	// Add 5 seconds buffer to ensure the NowPlaying info is available slightly longer than the track duration.
-	ttl := time.Duration(remaining+5) * time.Second
+	ttl := remainingTTL(mf.Duration, positionMs)
 	_ = p.playMap.AddWithTTL(playerId, info, ttl)
 	if conf.Server.EnableNowPlaying {
 		p.broker.SendBroadcastMessage(ctx, &events.NowPlayingCount{Count: p.playMap.Len()})
@@ -244,11 +258,6 @@ func (p *playTracker) NowPlaying(ctx context.Context, playerId string, playerNam
 }
 
 func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackParams) error {
-	mf, err := p.ds.MediaFile(ctx).GetWithParticipants(params.MediaId)
-	if err != nil {
-		return err
-	}
-
 	player, _ := request.PlayerFrom(ctx)
 	user, _ := request.UserFrom(ctx)
 	client, _ := request.ClientFrom(ctx)
@@ -258,9 +267,14 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 	}
 
 	now := time.Now()
+	prevCount := p.playMap.Len()
 
 	switch params.State {
-	case "starting":
+	case StateStarting:
+		mf, err := p.ds.MediaFile(ctx).Get(params.MediaId)
+		if err != nil {
+			return err
+		}
 		info := NowPlayingInfo{
 			MediaFile:    *mf,
 			Start:        now,
@@ -272,13 +286,15 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 			PlaybackRate: params.PlaybackRate,
 			LastReport:   now,
 		}
-		remaining := max(int(mf.Duration)-int(params.PositionMs/1000), 0)
-		ttl := time.Duration(remaining+5) * time.Second
-		_ = p.playMap.AddWithTTL(clientId, info, ttl)
+		_ = p.playMap.AddWithTTL(clientId, info, remainingTTL(mf.Duration, params.PositionMs))
 
-	case "playing":
-		info, err := p.playMap.Get(clientId)
+	case StatePlaying, StatePaused:
+		mf, err := p.ds.MediaFile(ctx).Get(params.MediaId)
 		if err != nil {
+			return err
+		}
+		info, getErr := p.playMap.Get(clientId)
+		if getErr != nil {
 			info = NowPlayingInfo{
 				MediaFile:  *mf,
 				Start:      now.Add(-time.Duration(params.PositionMs) * time.Millisecond),
@@ -291,29 +307,18 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 		info.PositionMs = params.PositionMs
 		info.PlaybackRate = params.PlaybackRate
 		info.LastReport = now
-		remaining := max(int(mf.Duration)-int(params.PositionMs/1000), 0)
-		ttl := time.Duration(remaining+5) * time.Second
+		ttl := 30 * time.Minute
+		if params.State == StatePlaying {
+			ttl = remainingTTL(mf.Duration, params.PositionMs)
+		}
 		_ = p.playMap.AddWithTTL(clientId, info, ttl)
 
-	case "paused":
-		info, err := p.playMap.Get(clientId)
-		if err != nil {
-			info = NowPlayingInfo{
-				MediaFile:  *mf,
-				Start:      now.Add(-time.Duration(params.PositionMs) * time.Millisecond),
-				Username:   user.UserName,
-				PlayerId:   clientId,
-				PlayerName: client,
-			}
-		}
-		info.State = params.State
-		info.PositionMs = params.PositionMs
-		info.PlaybackRate = params.PlaybackRate
-		info.LastReport = now
-		_ = p.playMap.AddWithTTL(clientId, info, 30*time.Minute)
-
-	case "stopped":
+	case StateStopped:
 		if !params.IgnoreScrobble && player.ScrobbleEnabled {
+			mf, err := p.ds.MediaFile(ctx).GetWithParticipants(params.MediaId)
+			if err != nil {
+				return err
+			}
 			trackDurationMs := int64(mf.Duration * 1000)
 			threshold := min(trackDurationMs*50/100, 240_000)
 			if params.PositionMs >= threshold {
@@ -324,14 +329,15 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 		p.playMap.Remove(clientId)
 	}
 
-	if conf.Server.EnableNowPlaying {
+	if conf.Server.EnableNowPlaying && p.playMap.Len() != prevCount {
 		p.broker.SendBroadcastMessage(ctx, &events.NowPlayingCount{Count: p.playMap.Len()})
 	}
 
-	// Dispatch to external scrobblers for starting/playing (not paused/stopped)
 	if !params.IgnoreScrobble && player.ScrobbleEnabled &&
-		(params.State == "starting" || params.State == "playing") {
-		p.enqueueNowPlaying(ctx, clientId, user.ID, mf, int(params.PositionMs/1000))
+		(params.State == StateStarting || params.State == StatePlaying) {
+		if info, err := p.playMap.Get(clientId); err == nil {
+			p.enqueueNowPlaying(ctx, clientId, user.ID, &info.MediaFile, int(params.PositionMs/1000))
+		}
 	}
 
 	return nil
@@ -410,6 +416,14 @@ func (p *playTracker) GetNowPlaying(_ context.Context) ([]NowPlayingInfo, error)
 	sort.Slice(res, func(i, j int) bool {
 		return res[i].Start.After(res[j].Start)
 	})
+	for i := range res {
+		if res[i].State == StatePlaying {
+			elapsed := time.Since(res[i].LastReport).Milliseconds()
+			estimated := res[i].PositionMs + int64(float64(elapsed)*res[i].PlaybackRate)
+			trackDurationMs := int64(res[i].MediaFile.Duration * 1000)
+			res[i].PositionMs = min(estimated, trackDurationMs)
+		}
+	}
 	return res, nil
 }
 

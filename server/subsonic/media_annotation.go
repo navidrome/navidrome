@@ -221,13 +221,6 @@ func (api *Router) scrobblerNowPlaying(ctx context.Context, trackId string, posi
 	return err
 }
 
-var validStates = map[string]bool{
-	"starting": true,
-	"playing":  true,
-	"paused":   true,
-	"stopped":  true,
-}
-
 func (api *Router) ReportPlayback(r *http.Request) (*responses.Subsonic, error) {
 	p := req.Params(r)
 	mediaId, err := p.String("mediaId")
@@ -247,7 +240,7 @@ func (api *Router) ReportPlayback(r *http.Request) (*responses.Subsonic, error) 
 		return nil, err
 	}
 
-	if !validStates[state] {
+	if !scrobbler.ValidStates[state] {
 		return nil, newError(responses.ErrorGeneric, "Invalid state: %s", state)
 	}
 
