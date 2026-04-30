@@ -130,3 +130,4 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 		return nil, model.ErrNotFound
 	}
 }
+

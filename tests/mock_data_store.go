@@ -26,9 +26,17 @@ type MockDataStore struct {
 	MockedUserProps      model.UserPropsRepository
 	MockedScrobbleBuffer model.ScrobbleBufferRepository
 	MockedScrobble       model.ScrobbleRepository
-	MockedRadio          model.RadioRepository
-	MockedPlugin         model.PluginRepository
-	scrobbleBufferMu     sync.Mutex
+	MockedRadio           model.RadioRepository
+	MockedPlugin          model.PluginRepository
+	MockedPodcastChannel    model.PodcastChannelRepository
+	MockedPodcastEpisode    model.PodcastEpisodeRepository
+	MockedPodcastTranscript model.PodcastTranscriptRepository
+	MockedPodcastPerson     model.PodcastPersonRepository
+	MockedPodcastPodroll    model.PodcastPodrollRepository
+	MockedPodcastLiveItem   model.PodcastLiveItemRepository
+	MockedPodcastFunding    model.PodcastFundingRepository
+	MockedPodcastImage      model.PodcastImageRepository
+	scrobbleBufferMu        sync.Mutex
 	repoMu               sync.Mutex
 
 	// GC tracking
@@ -247,6 +255,94 @@ func (db *MockDataStore) Plugin(ctx context.Context) model.PluginRepository {
 	return db.MockedPlugin
 }
 
+func (db *MockDataStore) PodcastChannel(ctx context.Context) model.PodcastChannelRepository {
+	if db.MockedPodcastChannel != nil {
+		return db.MockedPodcastChannel
+	}
+	if db.RealDS != nil {
+		return db.RealDS.PodcastChannel(ctx)
+	}
+	db.MockedPodcastChannel = CreateMockPodcastChannelRepo()
+	return db.MockedPodcastChannel
+}
+
+func (db *MockDataStore) PodcastEpisode(ctx context.Context) model.PodcastEpisodeRepository {
+	if db.MockedPodcastEpisode != nil {
+		return db.MockedPodcastEpisode
+	}
+	if db.RealDS != nil {
+		return db.RealDS.PodcastEpisode(ctx)
+	}
+	db.MockedPodcastEpisode = CreateMockPodcastEpisodeRepo()
+	return db.MockedPodcastEpisode
+}
+
+func (db *MockDataStore) PodcastTranscript(ctx context.Context) model.PodcastTranscriptRepository {
+	if db.MockedPodcastTranscript != nil {
+		return db.MockedPodcastTranscript
+	}
+	if db.RealDS != nil {
+		return db.RealDS.PodcastTranscript(ctx)
+	}
+	db.MockedPodcastTranscript = CreateMockPodcastTranscriptRepo()
+	return db.MockedPodcastTranscript
+}
+
+func (db *MockDataStore) PodcastPerson(ctx context.Context) model.PodcastPersonRepository {
+	if db.MockedPodcastPerson != nil {
+		return db.MockedPodcastPerson
+	}
+	if db.RealDS != nil {
+		return db.RealDS.PodcastPerson(ctx)
+	}
+	db.MockedPodcastPerson = CreateMockPodcastPersonRepo()
+	return db.MockedPodcastPerson
+}
+
+func (db *MockDataStore) PodcastPodroll(ctx context.Context) model.PodcastPodrollRepository {
+	if db.MockedPodcastPodroll != nil {
+		return db.MockedPodcastPodroll
+	}
+	if db.RealDS != nil {
+		return db.RealDS.PodcastPodroll(ctx)
+	}
+	db.MockedPodcastPodroll = CreateMockPodcastPodrollRepo()
+	return db.MockedPodcastPodroll
+}
+
+func (db *MockDataStore) PodcastLiveItem(ctx context.Context) model.PodcastLiveItemRepository {
+	if db.MockedPodcastLiveItem != nil {
+		return db.MockedPodcastLiveItem
+	}
+	if db.RealDS != nil {
+		return db.RealDS.PodcastLiveItem(ctx)
+	}
+	db.MockedPodcastLiveItem = CreateMockPodcastLiveItemRepo()
+	return db.MockedPodcastLiveItem
+}
+
+func (db *MockDataStore) PodcastFunding(ctx context.Context) model.PodcastFundingRepository {
+	if db.MockedPodcastFunding != nil {
+		return db.MockedPodcastFunding
+	}
+	if db.RealDS != nil {
+		return db.RealDS.PodcastFunding(ctx)
+	}
+	db.MockedPodcastFunding = CreateMockPodcastFundingRepo()
+	return db.MockedPodcastFunding
+}
+
+func (db *MockDataStore) PodcastImage(ctx context.Context) model.PodcastImageRepository {
+	if db.MockedPodcastImage != nil {
+		return db.MockedPodcastImage
+	}
+	if db.RealDS != nil {
+		return db.RealDS.PodcastImage(ctx)
+	}
+	db.MockedPodcastImage = CreateMockPodcastImageRepo()
+	return db.MockedPodcastImage
+}
+
 func (db *MockDataStore) WithTx(block func(tx model.DataStore) error, label ...string) error {
 	return block(db)
 }
@@ -269,6 +365,8 @@ func (db *MockDataStore) Resource(ctx context.Context, m any) model.ResourceRepo
 		return db.Playlist(ctx).(model.ResourceRepository)
 	case model.Radio, *model.Radio:
 		return db.Radio(ctx).(model.ResourceRepository)
+	case model.PodcastChannel, *model.PodcastChannel:
+		return db.PodcastChannel(ctx).(model.ResourceRepository)
 	case model.Share, *model.Share:
 		return db.Share(ctx).(model.ResourceRepository)
 	case model.Genre, *model.Genre:

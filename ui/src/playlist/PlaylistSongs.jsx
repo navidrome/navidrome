@@ -1,14 +1,15 @@
 import React, { useCallback, useEffect, useMemo } from 'react'
 import {
   BulkActionsToolbar,
+  FunctionField,
+  Link,
   ListToolbar,
-  TextField,
   NumberField,
+  TextField,
   useDataProvider,
+  useListContext,
   useNotify,
   useVersion,
-  useListContext,
-  FunctionField,
 } from 'react-admin'
 import clsx from 'clsx'
 import { useDispatch } from 'react-redux'
@@ -16,23 +17,55 @@ import { Card, useMediaQuery } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import ReactDragListView from 'react-drag-listview'
 import {
+  ArtistLinkField,
+  DateField,
   DurationField,
-  SongInfo,
+  QualityInfo,
+  RatingField,
   SongContextMenu,
   SongDatagrid,
+  SongInfo,
   SongTitleField,
-  QualityInfo,
-  useSelectedFields,
   useResourceRefresh,
-  DateField,
-  ArtistLinkField,
-  RatingField,
+  useSelectedFields,
 } from '../common'
-import { AlbumLinkField } from '../song/AlbumLinkField'
-import { playTracks } from '../actions'
+import { closeExtendedInfoDialog, playTracks } from '../actions'
 import PlaylistSongBulkActions from './PlaylistSongBulkActions'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 import config from '../config'
+
+const AlbumOrChannelLinkField = (props) => {
+  const dispatch = useDispatch()
+  const record = props.record
+  const isPodcast = record?.genre === 'Podcast'
+  const linkTo = isPodcast
+    ? `/podcast/${record.albumId}/show`
+    : `/album/${record.albumId}/show`
+  return (
+    <Link
+      to={linkTo}
+      onClick={(e) => {
+        e.stopPropagation()
+        dispatch(closeExtendedInfoDialog())
+      }}
+    >
+      {record?.album}
+    </Link>
+  )
+}
+AlbumOrChannelLinkField.defaultProps = { addLabel: true, sortBy: 'album' }
+
+const PodcastAwareArtistField = (props) => {
+  const record = props.record
+  const isPodcast = record?.genre === 'Podcast'
+  const hasNoRealArtist =
+    !record?.artist || record?.artist === '[Unknown Artist]'
+  if (isPodcast && hasNoRealArtist) {
+    return <span>-</span>
+  }
+  return <ArtistLinkField {...props} />
+}
+PodcastAwareArtistField.defaultProps = { addLabel: true, sortBy: 'artist' }
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -147,8 +180,8 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
     return {
       trackNumber: isDesktop && <TextField source="id" label={'#'} />,
       title: <SongTitleField source="title" showTrackNumbers={false} />,
-      album: isDesktop && <AlbumLinkField source="album" />,
-      artist: isDesktop && <ArtistLinkField source="artist" />,
+      album: isDesktop && <AlbumOrChannelLinkField source="album" />,
+      artist: isDesktop && <PodcastAwareArtistField source="artist" />,
       albumArtist: isDesktop && <ArtistLinkField source="albumArtist" />,
       duration: (
         <DurationField source="duration" className={classes.draggable} />

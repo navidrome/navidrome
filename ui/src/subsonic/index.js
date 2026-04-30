@@ -120,6 +120,29 @@ const getTopSongs = (artist, count = 50) => {
   return httpClient(url('getTopSongs', null, { artist, count }))
 }
 
+const getPodcasts = (id = null, includeEpisodes = true) =>
+  httpClient(url('getPodcasts', id, { includeEpisodes }))
+
+const getNewestPodcasts = (count = 20) =>
+  httpClient(url('getNewestPodcasts', null, { count }))
+
+const createPodcastChannel = (feedUrl) =>
+  httpClient(url('createPodcastChannel', null, { url: feedUrl }))
+
+const previewPodcastFeed = (feedUrl) =>
+  httpClient(baseUrl(`/api/podcast/preview?url=${encodeURIComponent(feedUrl)}`))
+
+const refreshPodcasts = () => httpClient(url('refreshPodcasts'))
+
+const deletePodcastChannel = (id) =>
+  httpClient(url('deletePodcastChannel', id))
+
+const deletePodcastEpisode = (id) =>
+  httpClient(url('deletePodcastEpisode', id))
+
+const downloadPodcastEpisode = (id) =>
+  httpClient(url('downloadPodcastEpisode', id))
+
 const streamUrl = (id, options) => {
   return baseUrl(
     url('stream', id, {
@@ -149,4 +172,12 @@ export default {
   getArtistInfo,
   getTopSongs,
   getSimilarSongs2,
+  getPodcasts,
+  getNewestPodcasts,
+  createPodcastChannel,
+  previewPodcastFeed,
+  refreshPodcasts,
+  deletePodcastChannel,
+  deletePodcastEpisode,
+  downloadPodcastEpisode,
 }

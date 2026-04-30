@@ -4,6 +4,7 @@ import (
 	"context"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	_ "github.com/mattn/go-sqlite3"
@@ -146,6 +147,41 @@ var (
 )
 
 var (
+	podcastChannel1 = model.PodcastChannel{
+		ID:          "pc-1",
+		URL:         "https://example.com/feed1.xml",
+		Title:       "Test Podcast",
+		Description: "A test podcast",
+		Status:      model.PodcastStatusCompleted,
+	}
+	podcastChannel2 = model.PodcastChannel{
+		ID:     "pc-2",
+		URL:    "https://example.com/feed2.xml",
+		Title:  "Another Podcast",
+		Status: model.PodcastStatusNew,
+	}
+	testPodcastChannels = model.PodcastChannels{podcastChannel1, podcastChannel2}
+
+	podcastEpisode1 = model.PodcastEpisode{
+		ID:          "pe-1",
+		ChannelID:   "pc-1",
+		GUID:        "guid-001",
+		Title:       "Episode 1",
+		Status:      model.PodcastStatusCompleted,
+		PublishDate: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+	}
+	podcastEpisode2 = model.PodcastEpisode{
+		ID:          "pe-2",
+		ChannelID:   "pc-1",
+		GUID:        "guid-002",
+		Title:       "Episode 2",
+		Status:      model.PodcastStatusNew,
+		PublishDate: time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC),
+	}
+	testPodcastEpisodes = model.PodcastEpisodes{podcastEpisode1, podcastEpisode2}
+)
+
+var (
 	plsBest       model.Playlist
 	plsCool       model.Playlist
 	testPlaylists []*model.Playlist
@@ -246,6 +282,22 @@ var _ = BeforeSuite(func() {
 		r := testRadios[i]
 		err := rar.Put(&r)
 		if err != nil {
+			panic(err)
+		}
+	}
+
+	pcr := NewPodcastChannelRepository(ctx, conn)
+	for i := range testPodcastChannels {
+		c := testPodcastChannels[i]
+		if err := pcr.Create(&c); err != nil {
+			panic(err)
+		}
+	}
+
+	per := NewPodcastEpisodeRepository(ctx, conn)
+	for i := range testPodcastEpisodes {
+		e := testPodcastEpisodes[i]
+		if err := per.Create(&e); err != nil {
 			panic(err)
 		}
 	}

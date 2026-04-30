@@ -97,6 +97,38 @@ func (s *SQLStore) Plugin(ctx context.Context) model.PluginRepository {
 	return NewPluginRepository(ctx, s.getDBXBuilder())
 }
 
+func (s *SQLStore) PodcastChannel(ctx context.Context) model.PodcastChannelRepository {
+	return NewPodcastChannelRepository(ctx, s.getDBXBuilder())
+}
+
+func (s *SQLStore) PodcastEpisode(ctx context.Context) model.PodcastEpisodeRepository {
+	return NewPodcastEpisodeRepository(ctx, s.getDBXBuilder())
+}
+
+func (s *SQLStore) PodcastTranscript(ctx context.Context) model.PodcastTranscriptRepository {
+	return NewPodcastTranscriptRepository(ctx, s.getDBXBuilder())
+}
+
+func (s *SQLStore) PodcastPerson(ctx context.Context) model.PodcastPersonRepository {
+	return NewPodcastPersonRepository(ctx, s.getDBXBuilder())
+}
+
+func (s *SQLStore) PodcastPodroll(ctx context.Context) model.PodcastPodrollRepository {
+	return NewPodcastPodrollRepository(ctx, s.getDBXBuilder())
+}
+
+func (s *SQLStore) PodcastLiveItem(ctx context.Context) model.PodcastLiveItemRepository {
+	return NewPodcastLiveItemRepository(ctx, s.getDBXBuilder())
+}
+
+func (s *SQLStore) PodcastFunding(ctx context.Context) model.PodcastFundingRepository {
+	return NewPodcastFundingRepository(ctx, s.getDBXBuilder())
+}
+
+func (s *SQLStore) PodcastImage(ctx context.Context) model.PodcastImageRepository {
+	return NewPodcastImageRepository(ctx, s.getDBXBuilder())
+}
+
 func (s *SQLStore) Resource(ctx context.Context, m any) model.ResourceRepository {
 	switch m.(type) {
 	case model.User:
@@ -117,6 +149,8 @@ func (s *SQLStore) Resource(ctx context.Context, m any) model.ResourceRepository
 		return s.Playlist(ctx).(model.ResourceRepository)
 	case model.Radio:
 		return s.Radio(ctx).(model.ResourceRepository)
+	case model.PodcastChannel:
+		return s.PodcastChannel(ctx).(model.ResourceRepository)
 	case model.Share:
 		return s.Share(ctx).(model.ResourceRepository)
 	case model.Tag:

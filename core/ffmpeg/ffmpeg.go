@@ -34,12 +34,13 @@ type TranscodeOptions struct {
 
 // AudioProbeResult contains authoritative audio stream properties from ffprobe.
 type AudioProbeResult struct {
-	Codec      string `json:"codec"`
-	Profile    string `json:"profile,omitempty"`
-	BitRate    int    `json:"bitRate"`
-	SampleRate int    `json:"sampleRate"`
-	BitDepth   int    `json:"bitDepth"`
-	Channels   int    `json:"channels"`
+	Codec      string  `json:"codec"`
+	Profile    string  `json:"profile,omitempty"`
+	BitRate    int     `json:"bitRate"`
+	SampleRate int     `json:"sampleRate"`
+	BitDepth   int     `json:"bitDepth"`
+	Channels   int     `json:"channels"`
+	Duration   float64 `json:"duration"`
 }
 
 type FFmpeg interface {
@@ -176,7 +177,8 @@ type probeOutput struct {
 }
 
 type probeFormat struct {
-	BitRate string `json:"bit_rate"`
+	BitRate  string `json:"bit_rate"`
+	Duration string `json:"duration"`
 }
 
 type probeStream struct {
@@ -230,6 +232,11 @@ func parseProbeOutput(data []byte) (*AudioProbeResult, error) {
 		if result.BitRate == 0 && output.Format.BitRate != "" {
 			bps, _ := strconv.Atoi(output.Format.BitRate)
 			result.BitRate = bps / 1000
+		}
+
+		// Duration from format section (seconds as float string)
+		if output.Format.Duration != "" {
+			result.Duration, _ = strconv.ParseFloat(output.Format.Duration, 64)
 		}
 
 		return result, nil
