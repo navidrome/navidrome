@@ -2,83 +2,94 @@ package criteria
 
 import "strings"
 
-// FieldInfo contains semantic metadata about a criteria field
+// FieldInfo contains semantic metadata about a criteria field.
 type FieldInfo struct {
-	Name    string
+	Alias   string // If set, this field is a backward-compat alias for another canonical name
 	IsTag   bool
 	IsRole  bool
 	Numeric bool
-	alias   string
+
+	tagAlias string // If set, a tag name from mappings.yml that resolves to this field
+	name     string // Canonical name, populated by LookupField from the map key
+}
+
+// Name returns the canonical field name (the map key used to register this field).
+func (f FieldInfo) Name() string {
+	return f.name
 }
 
 var fieldMap = map[string]FieldInfo{
-	"title":                {Name: "title"},
-	"album":                {Name: "album"},
-	"hascoverart":          {Name: "hascoverart"},
-	"tracknumber":          {Name: "tracknumber"},
-	"discnumber":           {Name: "discnumber"},
-	"year":                 {Name: "year"},
-	"date":                 {Name: "date", alias: "recordingdate"},
-	"originalyear":         {Name: "originalyear"},
-	"originaldate":         {Name: "originaldate"},
-	"releaseyear":          {Name: "releaseyear"},
-	"releasedate":          {Name: "releasedate"},
-	"size":                 {Name: "size"},
-	"compilation":          {Name: "compilation"},
-	"missing":              {Name: "missing"},
-	"explicitstatus":       {Name: "explicitstatus"},
-	"dateadded":            {Name: "dateadded"},
-	"datemodified":         {Name: "datemodified"},
-	"discsubtitle":         {Name: "discsubtitle"},
-	"comment":              {Name: "comment"},
-	"lyrics":               {Name: "lyrics"},
-	"sorttitle":            {Name: "sorttitle"},
-	"sortalbum":            {Name: "sortalbum"},
-	"sortartist":           {Name: "sortartist"},
-	"sortalbumartist":      {Name: "sortalbumartist"},
-	"albumcomment":         {Name: "albumcomment"},
-	"catalognumber":        {Name: "catalognumber"},
-	"filepath":             {Name: "filepath"},
-	"filetype":             {Name: "filetype"},
-	"codec":                {Name: "codec"},
-	"duration":             {Name: "duration"},
-	"bitrate":              {Name: "bitrate"},
-	"bitdepth":             {Name: "bitdepth"},
-	"samplerate":           {Name: "samplerate"},
-	"bpm":                  {Name: "bpm"},
-	"channels":             {Name: "channels"},
-	"loved":                {Name: "loved"},
-	"dateloved":            {Name: "dateloved"},
-	"lastplayed":           {Name: "lastplayed"},
-	"daterated":            {Name: "daterated"},
-	"playcount":            {Name: "playcount"},
-	"rating":               {Name: "rating"},
-	"averagerating":        {Name: "averagerating", Numeric: true},
-	"albumrating":          {Name: "albumrating"},
-	"albumloved":           {Name: "albumloved"},
-	"albumplaycount":       {Name: "albumplaycount"},
-	"albumlastplayed":      {Name: "albumlastplayed"},
-	"albumdateloved":       {Name: "albumdateloved"},
-	"albumdaterated":       {Name: "albumdaterated"},
-	"artistrating":         {Name: "artistrating"},
-	"artistloved":          {Name: "artistloved"},
-	"artistplaycount":      {Name: "artistplaycount"},
-	"artistlastplayed":     {Name: "artistlastplayed"},
-	"artistdateloved":      {Name: "artistdateloved"},
-	"artistdaterated":      {Name: "artistdaterated"},
-	"mbz_album_id":         {Name: "mbz_album_id"},
-	"mbz_album_artist_id":  {Name: "mbz_album_artist_id"},
-	"mbz_artist_id":        {Name: "mbz_artist_id"},
-	"mbz_recording_id":     {Name: "mbz_recording_id"},
-	"mbz_release_track_id": {Name: "mbz_release_track_id"},
-	"mbz_release_group_id": {Name: "mbz_release_group_id"},
-	"library_id":           {Name: "library_id", Numeric: true},
+	"title":                {},
+	"album":                {},
+	"hascoverart":          {},
+	"tracknumber":          {},
+	"discnumber":           {},
+	"year":                 {},
+	"date":                 {tagAlias: "recordingdate"},
+	"originalyear":         {},
+	"originaldate":         {},
+	"releaseyear":          {},
+	"releasedate":          {},
+	"size":                 {},
+	"compilation":          {},
+	"missing":              {},
+	"explicitstatus":       {},
+	"dateadded":            {},
+	"datemodified":         {},
+	"discsubtitle":         {},
+	"comment":              {},
+	"lyrics":               {},
+	"sorttitle":            {},
+	"sortalbum":            {},
+	"sortartist":           {},
+	"sortalbumartist":      {},
+	"albumcomment":         {},
+	"catalognumber":        {},
+	"filepath":             {},
+	"filetype":             {},
+	"codec":                {},
+	"duration":             {},
+	"bitrate":              {},
+	"bitdepth":             {},
+	"samplerate":           {},
+	"bpm":                  {},
+	"channels":             {},
+	"loved":                {},
+	"dateloved":            {},
+	"lastplayed":           {},
+	"daterated":            {},
+	"playcount":            {},
+	"rating":               {},
+	"averagerating":        {Numeric: true},
+	"albumrating":          {},
+	"albumloved":           {},
+	"albumplaycount":       {},
+	"albumlastplayed":      {},
+	"albumdateloved":       {},
+	"albumdaterated":       {},
+	"artistrating":         {},
+	"artistloved":          {},
+	"artistplaycount":      {},
+	"artistlastplayed":     {},
+	"artistdateloved":      {},
+	"artistdaterated":      {},
+	"mbz_album_id":         {},
+	"mbz_album_artist_id":  {},
+	"mbz_artist_id":        {},
+	"mbz_recording_id":     {},
+	"mbz_release_track_id": {},
+	"mbz_release_group_id": {},
+	"rgalbumgain":          {Numeric: true},
+	"rgalbumpeak":          {Numeric: true},
+	"rgtrackgain":          {Numeric: true},
+	"rgtrackpeak":          {Numeric: true},
+	"library_id":           {Numeric: true},
 
 	// Backward compatibility: albumtype is an alias for the releasetype tag.
-	"albumtype": {Name: "releasetype", IsTag: true},
+	"albumtype": {Alias: "releasetype", IsTag: true},
 
-	"random": {Name: "random"},
-	"value":  {Name: "value"},
+	// Pseudo-field for random sorting
+	"random": {},
 }
 
 // AllFieldNames returns the names of all registered criteria fields.
@@ -92,7 +103,15 @@ func AllFieldNames() []string {
 
 // LookupField returns semantic metadata for a criteria field name.
 func LookupField(name string) (FieldInfo, bool) {
-	f, ok := fieldMap[strings.ToLower(name)]
+	key := strings.ToLower(name)
+	f, ok := fieldMap[key]
+	if ok {
+		if f.Alias != "" {
+			f.name = f.Alias
+		} else {
+			f.name = key
+		}
+	}
 	return f, ok
 }
 
@@ -104,7 +123,7 @@ func AddRoles(roles []string) {
 		if _, ok := fieldMap[name]; ok {
 			continue
 		}
-		fieldMap[name] = FieldInfo{Name: name, IsRole: true}
+		fieldMap[name] = FieldInfo{IsRole: true}
 	}
 }
 
@@ -116,14 +135,16 @@ func AddTagNames(tagNames []string) {
 		if _, ok := fieldMap[name]; ok {
 			continue
 		}
-		for _, fm := range fieldMap {
-			if fm.alias == name {
+		for key, fm := range fieldMap {
+			if fm.tagAlias == name {
+				fm.Alias = key
+				fm.tagAlias = ""
 				fieldMap[name] = fm
 				break
 			}
 		}
 		if _, ok := fieldMap[name]; !ok {
-			fieldMap[name] = FieldInfo{Name: name, IsTag: true}
+			fieldMap[name] = FieldInfo{IsTag: true}
 		}
 	}
 }
@@ -136,7 +157,7 @@ func AddNumericTags(tagNames []string) {
 			fm.Numeric = true
 			fieldMap[name] = fm
 		} else {
-			fieldMap[name] = FieldInfo{Name: name, IsTag: true, Numeric: true}
+			fieldMap[name] = FieldInfo{IsTag: true, Numeric: true}
 		}
 	}
 }

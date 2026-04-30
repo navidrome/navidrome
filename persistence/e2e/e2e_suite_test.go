@@ -116,9 +116,9 @@ func buildTestFS() {
 	fs := storagetest.FakeFS{}
 	fs.SetFiles(fstest.MapFS{
 		"Rock/The Beatles/Abbey Road/01 - Come Together.mp3": abbeyRoad(track(1, "Come Together",
-			_t{"genre": "Rock;Blues", "composer": "Lennon/McCartney", "bpm": 120})),
+			_t{"genre": "Rock;Blues", "composer": "Lennon/McCartney", "bpm": 120, "grouping": "Beatles Tracks"})),
 		"Rock/The Beatles/Abbey Road/02 - Something.mp3": abbeyRoad(track(2, "Something",
-			_t{"genre": "Rock", "composer": "Harrison", "bpm": 100})),
+			_t{"genre": "Rock", "composer": "Harrison", "bpm": 100, "grouping": "Beatles Tracks"})),
 		"Rock/Led Zeppelin/IV/01 - Stairway To Heaven.flac": ledZepIV(track(1, "Stairway To Heaven",
 			_t{"genre": "Rock;Folk", "composer": "Page/Plant", "bpm": 82, "suffix": "flac",
 				"bitrate": 900, "samplerate": 44100, "bitdepth": 16})),

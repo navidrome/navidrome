@@ -96,6 +96,88 @@ describe('playerReducer', () => {
     })
   })
 
+  describe('play new album after closing player (issue #5440)', () => {
+    it('SYNC_QUEUE preserves pending playIndex=0 after clearQueue', () => {
+      // Scenario: user plays album A, advances to track 3, closes player,
+      // then plays album B. After clearQueue, savedPlayIndex=0.
+      // PLAYER_PLAY_TRACKS sets playIndex=0. SYNC_QUEUE must NOT clear it.
+      const stateAfterClearThenPlay = {
+        queue: [
+          { trackId: 'b1', uuid: 'u1', name: 'B Song 1' },
+          { trackId: 'b2', uuid: 'u2', name: 'B Song 2' },
+          { trackId: 'b3', uuid: 'u3', name: 'B Song 3' },
+        ],
+        current: {},
+        playIndex: 0,
+        savedPlayIndex: 0, // reset by clearQueue
+        clear: true,
+        volume: 1,
+      }
+
+      const action = {
+        type: PLAYER_SYNC_QUEUE,
+        data: {
+          audioInfo: {},
+          audioLists: stateAfterClearThenPlay.queue,
+        },
+      }
+      const result = playerReducer(stateAfterClearThenPlay, action)
+      expect(result.playIndex).toBe(0)
+      expect(result.clear).toBe(true)
+    })
+
+    it('CURRENT for wrong track preserves pending playIndex=0 after clearQueue', () => {
+      // The music player fires onAudioPlay for the old track (at index 3)
+      // before switching to the new track at index 0.
+      const stateAfterClearThenPlay = {
+        queue: [
+          { trackId: 'b1', uuid: 'u1', name: 'B Song 1' },
+          { trackId: 'b2', uuid: 'u2', name: 'B Song 2' },
+          { trackId: 'b3', uuid: 'u3', name: 'B Song 3' },
+          { trackId: 'b4', uuid: 'u4', name: 'B Song 4' },
+        ],
+        current: {},
+        playIndex: 0,
+        savedPlayIndex: 0,
+        clear: true,
+        volume: 1,
+      }
+
+      // Player reports track at index 3 as current (stale callback)
+      const action = {
+        type: PLAYER_CURRENT,
+        data: { uuid: 'u4', name: 'B Song 4', volume: 1 },
+      }
+      const result = playerReducer(stateAfterClearThenPlay, action)
+      expect(result.playIndex).toBe(0)
+      expect(result.clear).toBe(true)
+    })
+
+    it('CURRENT for correct track consumes pending playIndex=0', () => {
+      const stateAfterClearThenPlay = {
+        queue: [
+          { trackId: 'b1', uuid: 'u1', name: 'B Song 1' },
+          { trackId: 'b2', uuid: 'u2', name: 'B Song 2' },
+        ],
+        current: {},
+        playIndex: 0,
+        savedPlayIndex: 0,
+        clear: true,
+        volume: 1,
+      }
+
+      // Player confirms it switched to track at index 0
+      const action = {
+        type: PLAYER_CURRENT,
+        data: { uuid: 'u1', name: 'B Song 1', volume: 1 },
+      }
+      const result = playerReducer(stateAfterClearThenPlay, action)
+      expect(result.playIndex).toBeUndefined()
+      expect(result.clear).toBe(false)
+      expect(result.savedPlayIndex).toBe(0)
+    })
+  })
+
   describe('PLAYER_REFRESH_QUEUE', () => {
     it('clamps negative savedPlayIndex to 0', () => {
       const state = {

@@ -1,6 +1,9 @@
 package criteria
 
-import "time"
+import (
+	"strconv"
+	"time"
+)
 
 // Conjunctions need to implement this interface, to allow Criteria to extract child playlist IDs recursively
 type conjunction interface {
@@ -161,6 +164,36 @@ func (nipl NotInPlaylist) MarshalJSON() ([]byte, error) {
 }
 
 func (nipl NotInPlaylist) fields() map[string]any { return nipl }
+
+type IsMissing map[string]any
+
+func (im IsMissing) MarshalJSON() ([]byte, error) {
+	return marshalExpression("isMissing", im)
+}
+
+func (im IsMissing) fields() map[string]any { return im }
+
+type IsPresent map[string]any
+
+func (ip IsPresent) MarshalJSON() ([]byte, error) {
+	return marshalExpression("isPresent", ip)
+}
+
+func (ip IsPresent) fields() map[string]any { return ip }
+
+func IsTruthy(v any) bool {
+	switch val := v.(type) {
+	case bool:
+		return val
+	case float64:
+		return val != 0
+	case string:
+		b, err := strconv.ParseBool(val)
+		return err == nil && b
+	default:
+		return v != nil
+	}
+}
 
 func extractPlaylistIds(inputRule any) (ids []string) {
 	var id string
