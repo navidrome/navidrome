@@ -58,7 +58,7 @@ var _ = Describe("GetOpenSubsonicExtensions", func() {
 				HaveLen(5),
 				ContainElement(responses.OpenSubsonicExtension{Name: "transcodeOffset", Versions: []int32{1}}),
 				ContainElement(responses.OpenSubsonicExtension{Name: "formPost", Versions: []int32{1}}),
-				ContainElement(responses.OpenSubsonicExtension{Name: "songLyrics", Versions: []int32{1}}),
+				ContainElement(responses.OpenSubsonicExtension{Name: "songLyrics", Versions: []int32{1, 2}}),
 				ContainElement(responses.OpenSubsonicExtension{Name: "indexBasedQueue", Versions: []int32{1}}),
 				ContainElement(responses.OpenSubsonicExtension{Name: "transcoding", Versions: []int32{1}}),
 			))
@@ -87,7 +87,7 @@ var _ = Describe("GetOpenSubsonicExtensions", func() {
 				HaveLen(6),
 				ContainElement(responses.OpenSubsonicExtension{Name: "transcodeOffset", Versions: []int32{1}}),
 				ContainElement(responses.OpenSubsonicExtension{Name: "formPost", Versions: []int32{1}}),
-				ContainElement(responses.OpenSubsonicExtension{Name: "songLyrics", Versions: []int32{1}}),
+				ContainElement(responses.OpenSubsonicExtension{Name: "songLyrics", Versions: []int32{1, 2}}),
 				ContainElement(responses.OpenSubsonicExtension{Name: "indexBasedQueue", Versions: []int32{1}}),
 				ContainElement(responses.OpenSubsonicExtension{Name: "transcoding", Versions: []int32{1}}),
 				ContainElement(responses.OpenSubsonicExtension{Name: "sonicSimilarity", Versions: []int32{1}}),

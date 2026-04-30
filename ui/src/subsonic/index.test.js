@@ -1,6 +1,12 @@
 import { vi } from 'vitest'
-import config from '../config'
+import { httpClient } from '../dataProvider'
 import subsonic from './index'
+
+vi.mock('../dataProvider', () => ({
+  httpClient: vi.fn(() => Promise.resolve({})),
+}))
+
+const COVER_ART_SIZE = 600
 
 describe('getCoverArtUrl', () => {
   beforeEach(() => {
@@ -31,11 +37,7 @@ describe('getCoverArtUrl', () => {
       updatedAt: '2023-01-01T00:00:00Z',
     }
 
-    const url = subsonic.getCoverArtUrl(
-      playlistRecord,
-      config.uiCoverArtSize,
-      true,
-    )
+    const url = subsonic.getCoverArtUrl(playlistRecord, COVER_ART_SIZE, true)
 
     expect(url).toContain('pl-playlist-123')
     expect(url).toContain('size=600')
@@ -49,11 +51,7 @@ describe('getCoverArtUrl', () => {
       sync: true,
     }
 
-    const url = subsonic.getCoverArtUrl(
-      playlistRecord,
-      config.uiCoverArtSize,
-      true,
-    )
+    const url = subsonic.getCoverArtUrl(playlistRecord, COVER_ART_SIZE, true)
 
     expect(url).toContain('pl-playlist-123')
     expect(url).toContain('size=600')
@@ -68,11 +66,7 @@ describe('getCoverArtUrl', () => {
       updatedAt: '2023-01-01T00:00:00Z',
     }
 
-    const url = subsonic.getCoverArtUrl(
-      albumRecord,
-      config.uiCoverArtSize,
-      true,
-    )
+    const url = subsonic.getCoverArtUrl(albumRecord, COVER_ART_SIZE, true)
 
     expect(url).toContain('al-album-123')
     expect(url).toContain('size=600')
@@ -86,7 +80,7 @@ describe('getCoverArtUrl', () => {
       updatedAt: '2023-01-01T00:00:00Z',
     }
 
-    const url = subsonic.getCoverArtUrl(songRecord, config.uiCoverArtSize, true)
+    const url = subsonic.getCoverArtUrl(songRecord, COVER_ART_SIZE, true)
 
     expect(url).toContain('mf-song-123')
     expect(url).toContain('size=600')
@@ -99,11 +93,7 @@ describe('getCoverArtUrl', () => {
       updatedAt: '2023-01-01T00:00:00Z',
     }
 
-    const url = subsonic.getCoverArtUrl(
-      artistRecord,
-      config.uiCoverArtSize,
-      true,
-    )
+    const url = subsonic.getCoverArtUrl(artistRecord, COVER_ART_SIZE, true)
 
     expect(url).toContain('ar-artist-123')
     expect(url).toContain('size=600')
@@ -192,5 +182,32 @@ describe('getAvatarUrl', () => {
     const url = subsonic.getAvatarUrl('john')
     expect(url).toContain('getAvatar')
     expect(url).toContain('username=john')
+  })
+})
+
+describe('getLyricsBySongId', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    const localStorageMock = {
+      getItem: vi.fn((key) => {
+        const values = {
+          username: 'testuser',
+          'subsonic-token': 'testtoken',
+          'subsonic-salt': 'testsalt',
+        }
+        return values[key] || null
+      }),
+    }
+    Object.defineProperty(window, 'localStorage', { value: localStorageMock })
+  })
+
+  it('calls the getLyricsBySongId endpoint with enhanced=true', async () => {
+    await subsonic.getLyricsBySongId('song-1')
+
+    expect(httpClient).toHaveBeenCalledTimes(1)
+    const calledUrl = httpClient.mock.calls[0][0]
+    expect(calledUrl).toContain('/rest/getLyricsBySongId?')
+    expect(calledUrl).toContain('id=song-1')
+    expect(calledUrl).toContain('enhanced=true')
   })
 })
