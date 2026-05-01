@@ -43,10 +43,12 @@ const reportPlaybackUrl = (mediaId, positionMs, state) =>
 const reportPlayback = (mediaId, positionMs, state) =>
   httpClient(reportPlaybackUrl(mediaId, positionMs, state))
 
-const reportPlaybackBeacon = (mediaId, positionMs, state) => {
+const reportPlaybackSync = (mediaId, positionMs, state) => {
   const u = reportPlaybackUrl(mediaId, positionMs, state)
   if (u) {
-    navigator.sendBeacon(baseUrl(u))
+    const xhr = new XMLHttpRequest()
+    xhr.open('GET', baseUrl(u), false)
+    xhr.send()
   }
 }
 
@@ -135,7 +137,7 @@ export default {
   url,
   ping,
   reportPlayback,
-  reportPlaybackBeacon,
+  reportPlaybackSync,
   download,
   star,
   unstar,

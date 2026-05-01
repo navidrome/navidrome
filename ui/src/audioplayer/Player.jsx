@@ -166,7 +166,7 @@ const Player = () => {
   useEffect(() => {
     const handleBeforeUnload = (e) => {
       if (currentTrackIdRef.current && !playerState.current?.isRadio) {
-        subsonic.reportPlaybackBeacon(
+        subsonic.reportPlaybackSync(
           currentTrackIdRef.current,
           lastPositionMsRef.current,
           'stopped',
