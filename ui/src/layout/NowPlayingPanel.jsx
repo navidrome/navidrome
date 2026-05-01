@@ -18,7 +18,7 @@ import {
   useTheme,
   useMediaQuery,
 } from '@material-ui/core'
-import { FaRegCirclePlay, FaPlay, FaPause } from 'react-icons/fa6'
+import { FaRegCirclePlay, FaPause } from 'react-icons/fa6'
 import subsonic from '../subsonic'
 import { useInterval } from '../common'
 import { nowPlayingCountUpdate } from '../actions'
@@ -181,7 +181,6 @@ NowPlayingButton.propTypes = {
   onClick: PropTypes.func.isRequired,
 }
 
-// NowPlayingItem component - Discord-style card layout
 const NowPlayingItem = React.memo(
   ({ nowPlayingEntry, onLinkClick, getArtistLink, now }) => {
     const classes = useStyles()
@@ -197,15 +196,13 @@ const NowPlayingItem = React.memo(
       : basePositionMs
     const durationMs = (nowPlayingEntry.duration || 0) * 1000
     const clampedMs = Math.max(0, interpolatedMs)
-    const positionMs = durationMs > 0 ? Math.min(clampedMs, durationMs) : clampedMs
+    const positionMs =
+      durationMs > 0 ? Math.min(clampedMs, durationMs) : clampedMs
     const positionSec = positionMs / 1000
     const durationSec = nowPlayingEntry.duration || 0
-    const progress =
-      durationSec > 0 ? (positionSec / durationSec) * 100 : 0
-    const artistId =
-      nowPlayingEntry.albumArtistId || nowPlayingEntry.artistId
-    const artistName =
-      nowPlayingEntry.albumArtist || nowPlayingEntry.artist
+    const progress = durationSec > 0 ? (positionSec / durationSec) * 100 : 0
+    const artistId = nowPlayingEntry.albumArtistId || nowPlayingEntry.artistId
+    const artistName = nowPlayingEntry.albumArtist || nowPlayingEntry.artist
 
     return (
       <ListItem className={classes.listItem}>
@@ -222,16 +219,17 @@ const NowPlayingItem = React.memo(
               loading="lazy"
             />
           </Link>
-          <div className={classes.stateOverlay}>
-            {isPaused ? (
+          {isPaused && (
+            <div className={classes.stateOverlay}>
               <FaPause className={classes.stateIcon} />
-            ) : (
-              <FaPlay className={classes.stateIcon} />
-            )}
-          </div>
+            </div>
+          )}
         </div>
         <div className={classes.entryContent}>
-          <Typography className={classes.trackTitle} title={nowPlayingEntry.title}>
+          <Typography
+            className={classes.trackTitle}
+            title={nowPlayingEntry.title}
+          >
             {nowPlayingEntry.title}
           </Typography>
           {artistId ? (
@@ -247,7 +245,10 @@ const NowPlayingItem = React.memo(
               {artistName}
             </Typography>
           )}
-          <Typography className={classes.trackDetail} title={nowPlayingEntry.album}>
+          <Typography
+            className={classes.trackDetail}
+            title={nowPlayingEntry.album}
+          >
             {nowPlayingEntry.album}
           </Typography>
           <div className={classes.progressRow}>
@@ -447,10 +448,7 @@ const NowPlayingPanel = () => {
   }, [lastUpdate, open, fetchList, serverUp])
 
   // Update current time every second when open to animate progress bars
-  useInterval(
-    () => setNow(Date.now()),
-    open ? 1000 : null,
-  )
+  useInterval(() => setNow(Date.now()), open ? 1000 : null)
 
   // Periodic refresh when panel is open (10 seconds)
   useInterval(
