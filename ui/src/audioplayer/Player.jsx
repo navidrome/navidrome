@@ -165,14 +165,14 @@ const Player = () => {
 
   useEffect(() => {
     const handleBeforeUnload = (e) => {
+      if (currentTrackIdRef.current && !playerState.current?.isRadio) {
+        subsonic.reportPlaybackBeacon(
+          currentTrackIdRef.current,
+          lastPositionMsRef.current,
+          'stopped',
+        )
+      }
       if (playerState.current?.uuid && audioInstance && !audioInstance.paused) {
-        if (currentTrackIdRef.current && !playerState.current?.isRadio) {
-          subsonic.reportPlaybackBeacon(
-            currentTrackIdRef.current,
-            lastPositionMsRef.current,
-            'stopped',
-          )
-        }
         e.preventDefault()
         e.returnValue = ''
       }
@@ -370,10 +370,15 @@ const Player = () => {
 
   const onBeforeDestroy = useCallback(() => {
     return new Promise((resolve, reject) => {
+      if (currentTrackId && !playerState.current?.isRadio) {
+        subsonic.reportPlayback(currentTrackId, lastPositionMsRef.current, 'stopped')
+      }
+      setHeartbeatTrackId(null)
+      setCurrentTrackId(null)
       dispatch(clearQueue())
       reject()
     })
-  }, [dispatch])
+  }, [dispatch, currentTrackId, playerState.current?.isRadio])
 
   if (!visible) {
     document.title = 'Navidrome'
