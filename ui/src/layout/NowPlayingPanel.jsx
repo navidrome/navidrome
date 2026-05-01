@@ -30,8 +30,8 @@ const useStyles = makeStyles((theme) => ({
   list: {
     width: '26em',
     maxHeight: (props) => {
-      const entryHeight = 100
-      const maxEntries = Math.min(props.entryCount || 0, 4)
+      const entryHeight = 120
+      const maxEntries = Math.min(props.entryCount || 0, 3)
       return maxEntries > 0 ? `${maxEntries * entryHeight}px` : '12em'
     },
     overflowY: 'auto',
