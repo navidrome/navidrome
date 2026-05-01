@@ -183,7 +183,7 @@ NowPlayingButton.propTypes = {
 
 // NowPlayingItem component - Discord-style card layout
 const NowPlayingItem = React.memo(
-  ({ nowPlayingEntry, onLinkClick, getArtistLink, fetchedAt }) => {
+  ({ nowPlayingEntry, onLinkClick, getArtistLink, now, fetchedAt }) => {
     const classes = useStyles()
     const isPaused = nowPlayingEntry.state === 'paused'
     const isPlaying =
@@ -191,7 +191,7 @@ const NowPlayingItem = React.memo(
       nowPlayingEntry.state === 'starting'
     const basePositionMs = nowPlayingEntry.positionMs || 0
     const rate = nowPlayingEntry.playbackRate || 1
-    const elapsedSinceFetch = Date.now() - fetchedAt
+    const elapsedSinceFetch = now - fetchedAt
     const interpolatedMs = isPlaying
       ? basePositionMs + elapsedSinceFetch * rate
       : basePositionMs
@@ -296,12 +296,13 @@ NowPlayingItem.propTypes = {
   }).isRequired,
   onLinkClick: PropTypes.func.isRequired,
   getArtistLink: PropTypes.func.isRequired,
+  now: PropTypes.number.isRequired,
   fetchedAt: PropTypes.number.isRequired,
 }
 
 // NowPlayingList component - handles the popover content
 const NowPlayingList = React.memo(
-  ({ anchorEl, open, onClose, entries, onLinkClick, getArtistLink, fetchedAt }) => {
+  ({ anchorEl, open, onClose, entries, onLinkClick, getArtistLink, now, fetchedAt }) => {
     const classes = useStyles({ entryCount: entries.length })
     const translate = useTranslate()
 
@@ -333,6 +334,7 @@ const NowPlayingList = React.memo(
                     nowPlayingEntry={nowPlayingEntry}
                     onLinkClick={onLinkClick}
                     getArtistLink={getArtistLink}
+                    now={now}
                     fetchedAt={fetchedAt}
                   />
                 ))}
@@ -354,6 +356,7 @@ NowPlayingList.propTypes = {
   entries: PropTypes.arrayOf(PropTypes.object).isRequired,
   onLinkClick: PropTypes.func.isRequired,
   getArtistLink: PropTypes.func.isRequired,
+  now: PropTypes.number.isRequired,
   fetchedAt: PropTypes.number.isRequired,
 }
 
@@ -374,7 +377,7 @@ const NowPlayingPanel = () => {
 
   const [anchorEl, setAnchorEl] = useState(null)
   const [entries, setEntries] = useState([])
-  const [, setRenderTick] = useState(0)
+  const [now, setNow] = useState(Date.now())
   const fetchedAtRef = useRef(Date.now())
   const open = Boolean(anchorEl)
 
@@ -436,9 +439,9 @@ const NowPlayingPanel = () => {
     if (open && serverUp) fetchList()
   }, [count, open, fetchList, serverUp])
 
-  // Force re-render every second when open to animate progress bars
+  // Update current time every second when open to animate progress bars
   useInterval(
-    () => setRenderTick((t) => t + 1),
+    () => setNow(Date.now()),
     open ? 1000 : null,
   )
 
@@ -466,6 +469,7 @@ const NowPlayingPanel = () => {
         open={open}
         onClose={handleMenuClose}
         entries={entries}
+        now={now}
         fetchedAt={fetchedAtRef.current}
         onLinkClick={handleLinkClick}
         getArtistLink={getArtistLink}
