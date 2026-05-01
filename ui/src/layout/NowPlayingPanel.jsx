@@ -196,7 +196,8 @@ const NowPlayingItem = React.memo(
       ? basePositionMs + elapsedSinceFetch * rate
       : basePositionMs
     const durationMs = (nowPlayingEntry.duration || 0) * 1000
-    const positionMs = durationMs > 0 ? Math.min(interpolatedMs, durationMs) : interpolatedMs
+    const clampedMs = Math.max(0, interpolatedMs)
+    const positionMs = durationMs > 0 ? Math.min(clampedMs, durationMs) : clampedMs
     const positionSec = positionMs / 1000
     const durationSec = nowPlayingEntry.duration || 0
     const progress =
