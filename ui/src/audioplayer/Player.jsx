@@ -165,16 +165,20 @@ const Player = () => {
 
   useEffect(() => {
     const handleBeforeUnload = (e) => {
-      if (currentTrackIdRef.current && !playerState.current?.isRadio) {
-        subsonic.reportPlaybackSync(
-          currentTrackIdRef.current,
-          lastPositionMsRef.current,
-          'stopped',
-        )
-      }
       if (playerState.current?.uuid && audioInstance && !audioInstance.paused) {
         e.preventDefault()
         e.returnValue = ''
+      }
+      if (currentTrackIdRef.current && !playerState.current?.isRadio) {
+        try {
+          subsonic.reportPlaybackSync(
+            currentTrackIdRef.current,
+            lastPositionMsRef.current,
+            'stopped',
+          )
+        } catch {
+          // Sync XHR may be blocked; ignore
+        }
       }
     }
 

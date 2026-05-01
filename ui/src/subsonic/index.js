@@ -46,9 +46,12 @@ const reportPlayback = (mediaId, positionMs, state) =>
 const reportPlaybackSync = (mediaId, positionMs, state) => {
   const u = reportPlaybackUrl(mediaId, positionMs, state)
   if (u) {
-    const xhr = new XMLHttpRequest()
-    xhr.open('GET', baseUrl(u), false)
-    xhr.send()
+    const fullUrl = baseUrl(u)
+    try {
+      fetch(fullUrl, { keepalive: true })
+    } catch {
+      navigator.sendBeacon(fullUrl)
+    }
   }
 }
 
