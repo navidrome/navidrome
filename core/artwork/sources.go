@@ -5,9 +5,9 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"net/url"
-	"os"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -53,7 +53,7 @@ func (f sourceFunc) String() string {
 	return name
 }
 
-func fromExternalFile(ctx context.Context, files []string, pattern string) sourceFunc {
+func fromExternalFile(ctx context.Context, libFS fs.FS, files []string, pattern string) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
 		for _, file := range files {
 			_, name := filepath.Split(file)
@@ -65,12 +65,12 @@ func fromExternalFile(ctx context.Context, files []string, pattern string) sourc
 			if !match {
 				continue
 			}
-			f, err := os.Open(file)
+			f, err := libFS.Open(file)
 			if err != nil {
 				log.Warn(ctx, "Could not open cover art file", "file", file, err)
 				continue
 			}
-			return f, file, err
+			return f, file, nil
 		}
 		return nil, "", fmt.Errorf("pattern '%s' not matched by files %v", pattern, files)
 	}
@@ -83,28 +83,43 @@ var picTypeRegexes = []*regexp.Regexp{
 	regexp.MustCompile(`(?i).*cover.*`),
 }
 
-func fromTag(ctx context.Context, path string) sourceFunc {
+func fromTag(ctx context.Context, libFS fs.FS, relPath string) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
-		if path == "" {
+		if relPath == "" {
 			return nil, "", nil
 		}
-		f, err := taglib.OpenReadOnly(path, taglib.WithReadStyle(taglib.ReadStyleFast))
+		f, err := libFS.Open(relPath)
 		if err != nil {
 			return nil, "", err
 		}
+		rs, ok := f.(io.ReadSeeker)
+		if !ok {
+			f.Close()
+			return nil, "", fmt.Errorf("FS file %s is not seekable; cannot read tags", relPath)
+		}
+		tf, err := taglib.OpenStream(rs,
+			taglib.WithReadStyle(taglib.ReadStyleFast),
+			taglib.WithFilename(relPath),
+		)
+		if err != nil {
+			f.Close()
+			return nil, "", err
+		}
+		// Close in LIFO order: tf first (it holds rs internally), then f.
 		defer f.Close()
+		defer tf.Close()
 
-		images := f.Properties().Images
+		images := tf.Properties().Images
 		if len(images) == 0 {
-			return nil, "", fmt.Errorf("no embedded image found in %s", path)
+			return nil, "", fmt.Errorf("no embedded image found in %s", relPath)
 		}
 
-		imageIndex := findBestImageIndex(ctx, images, path)
-		data, err := f.Image(imageIndex)
+		imageIndex := findBestImageIndex(ctx, images, relPath)
+		data, err := tf.Image(imageIndex)
 		if err != nil || len(data) == 0 {
-			return nil, "", fmt.Errorf("could not load embedded image from %s", path)
+			return nil, "", fmt.Errorf("could not load embedded image from %s", relPath)
 		}
-		return io.NopCloser(bytes.NewReader(data)), path, nil
+		return io.NopCloser(bytes.NewReader(data)), relPath, nil
 	}
 }
 
@@ -121,6 +136,13 @@ func findBestImageIndex(ctx context.Context, images []taglib.ImageDesc, path str
 	return 0
 }
 
+// fromFFmpegTag is intentionally absolute-path-based. ffmpeg is a subprocess
+// and cannot read from arbitrary fs.FS implementations; piping via stdin is a
+// non-trivial refactor with stream/seek implications.
+//
+// TODO(artwork-musicfs): when the storage backing the library is not local
+// (e.g. a future S3 backend, or FakeFS in tests), short-circuit this source
+// func to return (nil, "", nil) so callers fall through cleanly.
 func fromFFmpegTag(ctx context.Context, ffmpeg ffmpeg.FFmpeg, path string) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
 		if path == "" {

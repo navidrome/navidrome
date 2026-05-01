@@ -1,5 +1,9 @@
 import { baseUrl } from '../utils'
-import { httpClient } from '../dataProvider'
+import {
+  httpClient,
+  clientUniqueId,
+  clientUniqueIdHeader,
+} from '../dataProvider'
 
 const url = (command, id, options) => {
   const username = localStorage.getItem('username')
@@ -37,16 +41,21 @@ const url = (command, id, options) => {
 
 const ping = () => httpClient(url('ping'))
 
-const scrobble = (id, time, submission = true, position = null) =>
-  httpClient(
-    url('scrobble', id, {
-      ...(submission && time && { time }),
-      submission,
-      ...(!submission && position !== null && { position }),
-    }),
-  )
+const reportPlaybackUrl = (mediaId, positionMs, state) =>
+  url('reportPlayback', null, { mediaId, mediaType: 'song', positionMs, state })
 
-const nowPlaying = (id, position = null) => scrobble(id, null, false, position)
+const reportPlayback = (mediaId, positionMs, state) =>
+  httpClient(reportPlaybackUrl(mediaId, positionMs, state))
+
+const reportPlaybackKeepalive = (mediaId, positionMs, state) => {
+  const u = reportPlaybackUrl(mediaId, positionMs, state)
+  if (u) {
+    fetch(baseUrl(u), {
+      keepalive: true,
+      headers: { [clientUniqueIdHeader]: clientUniqueId },
+    })
+  }
+}
 
 const star = (id) => httpClient(url('star', id))
 
@@ -132,8 +141,8 @@ const streamUrl = (id, options) => {
 export default {
   url,
   ping,
-  scrobble,
-  nowPlaying,
+  reportPlayback,
+  reportPlaybackKeepalive,
   download,
   star,
   unstar,

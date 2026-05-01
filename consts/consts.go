@@ -67,11 +67,12 @@ const (
 	ScanIgnoreFile = ".ndignore"
 	ArtworkFolder  = "artwork"
 
-	PlaceholderArtistArt      = "artist-placeholder.webp"
-	PlaceholderAlbumArt       = "album-placeholder.webp"
-	PlaceholderAvatar         = "logo-192x192.png"
-	DefaultUIVolume           = 100
-	DefaultUISearchDebounceMs = 200
+	PlaceholderArtistArt            = "artist-placeholder.webp"
+	PlaceholderAlbumArt             = "album-placeholder.webp"
+	PlaceholderAvatar               = "logo-192x192.png"
+	DefaultUIVolume                 = 100
+	DefaultUISearchDebounceMs       = 200
+	DefaultUIPlaybackReportInterval = time.Minute
 
 	DefaultHttpClientTimeOut = 10 * time.Second
 

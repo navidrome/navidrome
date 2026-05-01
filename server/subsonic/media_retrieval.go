@@ -37,7 +37,7 @@ func (api *Router) GetAvatar(w http.ResponseWriter, r *http.Request) (*responses
 		log.Warn(ctx, "User needs an email for gravatar to work", "username", username)
 		return api.getPlaceHolderAvatar(w, r)
 	}
-	http.Redirect(w, r, gravatar.Url(u.Email, 0), http.StatusFound)
+	http.Redirect(w, r, gravatar.Url(u.Email, 0), http.StatusFound) //nolint:gosec // URL is not constructed from user input
 	return nil, nil
 }
 

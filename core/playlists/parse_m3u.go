@@ -163,17 +163,26 @@ type libraryMatcher struct {
 // findLibraryForPath finds which library contains the given absolute path.
 // Returns library ID and path, or 0 and empty string if not found.
 func (lm *libraryMatcher) findLibraryForPath(absolutePath string) (int, string) {
+	lib, ok := lm.findLibrary(absolutePath)
+	if !ok {
+		return 0, ""
+	}
+	return lib.ID, filepath.Clean(lib.Path)
+}
+
+// findLibrary checks if the absolute path is under any of the library paths.
+func (lm *libraryMatcher) findLibrary(absolutePath string) (model.Library, bool) {
 	// Check sorted libraries (longest path first) to find the best match
 	for i, cleanLibPath := range lm.cleanedPaths {
 		// Check if absolutePath is under this library path
 		if strings.HasPrefix(absolutePath, cleanLibPath) {
 			// Ensure it's a proper path boundary (not just a prefix)
 			if len(absolutePath) == len(cleanLibPath) || absolutePath[len(cleanLibPath)] == filepath.Separator {
-				return lm.libraries[i].ID, cleanLibPath
+				return lm.libraries[i], true
 			}
 		}
 	}
-	return 0, ""
+	return model.Library{}, false
 }
 
 // newLibraryMatcher creates a libraryMatcher with libraries sorted by path length (longest first).

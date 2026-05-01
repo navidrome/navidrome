@@ -37,10 +37,15 @@ var _ = Describe("Artwork", func() {
 		conf.Server.CoverArtPriority = "folder.*, cover.*, embedded , front.*"
 
 		folderRepo = &fakeFolderRepo{}
+		libRepo := &tests.MockLibraryRepo{}
+		repoRoot, _ := os.Getwd()
+		libRepo.SetData(model.Libraries{{ID: 0, Path: testFileLibPath(repoRoot)}})
 		ds = &tests.MockDataStore{
 			MockedTranscoding: &tests.MockTranscodingRepo{},
 			MockedFolder:      folderRepo,
+			MockedLibrary:     libRepo,
 		}
+		// Paths use forward slashes because the scanner stores fs.FS-relative paths in the DB.
 		alOnlyEmbed = model.Album{ID: "222", Name: "Only embed", EmbedArtPath: "tests/fixtures/artist/an-album/test.mp3", FolderIDs: []string{"f1"}}
 		alEmbedNotFound = model.Album{ID: "333", Name: "Embed not found", EmbedArtPath: "tests/fixtures/NON_EXISTENT.mp3", FolderIDs: []string{"f1"}}
 		alOnlyExternal = model.Album{ID: "444", Name: "Only external", FolderIDs: []string{"f1"}, Discs: model.Discs{1: "", 2: ""}}
@@ -80,7 +85,6 @@ var _ = Describe("Artwork", func() {
 				})
 			})
 			It("returns embed cover", func() {
-				tests.SkipOnWindows("artwork path handling (#TBD-path-sep-artwork)")
 				aw, err := newAlbumArtworkReader(ctx, aw, alOnlyEmbed.CoverArtID(), nil)
 				Expect(err).ToNot(HaveOccurred())
 				_, path, err := aw.Reader(ctx)
@@ -104,7 +108,6 @@ var _ = Describe("Artwork", func() {
 				})
 			})
 			It("returns external cover", func() {
-				tests.SkipOnWindows("artwork path handling (#TBD-path-sep-artwork)")
 				folderRepo.result = []model.Folder{{
 					Path:       "tests/fixtures/artist/an-album",
 					ImageFiles: []string{"front.png"},
@@ -135,7 +138,6 @@ var _ = Describe("Artwork", func() {
 			})
 			DescribeTable("CoverArtPriority",
 				func(priority string, expected string) {
-					tests.SkipOnWindows("artwork path handling (#TBD-path-sep-artwork)")
 					conf.Server.CoverArtPriority = priority
 					aw, err := newAlbumArtworkReader(ctx, aw, alMultipleCovers.CoverArtID(), nil)
 					Expect(err).ToNot(HaveOccurred())
@@ -197,9 +199,12 @@ var _ = Describe("Artwork", func() {
 	Describe("artistArtworkReader", func() {
 		Context("Multiple covers", func() {
 			BeforeEach(func() {
+				repoRoot, err := os.Getwd()
+				Expect(err).ToNot(HaveOccurred())
 				folderRepo.result = []model.Folder{{
-					Path:       "tests/fixtures/artist/an-album",
-					ImageFiles: []string{"artist.png"},
+					LibraryPath: testFileLibPath(repoRoot),
+					Path:        "tests/fixtures/artist/an-album",
+					ImageFiles:  []string{"artist.png"},
 				}}
 				ds.Artist(ctx).(*tests.MockArtistRepo).SetData(model.Artists{
 					arMultipleCovers,
@@ -213,13 +218,12 @@ var _ = Describe("Artwork", func() {
 			})
 			DescribeTable("ArtistArtPriority",
 				func(priority string, expected string) {
-					tests.SkipOnWindows("artwork path handling (#TBD-path-sep-artwork)")
 					conf.Server.ArtistArtPriority = priority
 					aw, err := newArtistArtworkReader(ctx, aw, arMultipleCovers.CoverArtID(), nil)
 					Expect(err).ToNot(HaveOccurred())
 					_, path, err := aw.Reader(ctx)
 					Expect(err).ToNot(HaveOccurred())
-					Expect(path).To(Equal(expected))
+					Expect(filepath.ToSlash(path)).To(HaveSuffix(expected))
 				},
 				Entry(nil, " folder.* , artist.*,album/artist.*", "tests/fixtures/artist/artist.jpg"),
 				Entry(nil, "album/artist.*, folder.*,artist.*", "tests/fixtures/artist/an-album/artist.png"),
@@ -251,7 +255,6 @@ var _ = Describe("Artwork", func() {
 				})
 			})
 			It("returns embed cover", func() {
-				tests.SkipOnWindows("artwork path handling (#TBD-path-sep-artwork)")
 				aw, err := newMediafileArtworkReader(ctx, aw, mfWithEmbed.CoverArtID())
 				Expect(err).ToNot(HaveOccurred())
 				_, path, err := aw.Reader(ctx)
@@ -259,7 +262,6 @@ var _ = Describe("Artwork", func() {
 				Expect(path).To(Equal("tests/fixtures/test.mp3"))
 			})
 			It("returns embed cover if successfully extracted by ffmpeg", func() {
-				tests.SkipOnWindows("artwork path handling (#TBD-path-sep-artwork)")
 				aw, err := newMediafileArtworkReader(ctx, aw, mfCorruptedCover.CoverArtID())
 				Expect(err).ToNot(HaveOccurred())
 				r, path, err := aw.Reader(ctx)
@@ -465,7 +467,10 @@ var _ = Describe("Artwork", func() {
 						Name:      "Only external",
 						FolderIDs: []string{"tmp"},
 					}
-					folderRepo.result = []model.Folder{{Path: dirName, ImageFiles: []string{coverFileName}}}
+					folderRepo.result = []model.Folder{{ImageFiles: []string{coverFileName}}}
+					rootLibRepo := &tests.MockLibraryRepo{}
+					rootLibRepo.SetData(model.Libraries{{ID: 0, Path: testFileLibPath(dirName)}})
+					ds.(*tests.MockDataStore).MockedLibrary = rootLibRepo
 					ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{
 						alCover,
 					})
@@ -553,7 +558,10 @@ var _ = Describe("Artwork", func() {
 					Name:      "Only external",
 					FolderIDs: []string{"tmp"},
 				}
-				folderRepo.result = []model.Folder{{Path: dirName, ImageFiles: []string{"cover.png"}}}
+				folderRepo.result = []model.Folder{{ImageFiles: []string{"cover.png"}}}
+				rootLibRepo := &tests.MockLibraryRepo{}
+				rootLibRepo.SetData(model.Libraries{{ID: 0, Path: testFileLibPath(dirName)}})
+				ds.(*tests.MockDataStore).MockedLibrary = rootLibRepo
 				ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{alCover})
 
 				conf.Server.CoverArtPriority = "cover.png"
