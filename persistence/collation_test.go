@@ -17,45 +17,45 @@ import (
 var _ = Describe("Collation", func() {
 	conn := db.Db()
 	DescribeTable("Column collation",
-		func(table, column string) {
-			Expect(checkCollation(conn, table, column)).To(Succeed())
+		func(table, column, expectedCollation string) {
+			Expect(checkCollation(conn, table, column, expectedCollation)).To(Succeed())
 		},
-		Entry("artist.order_artist_name", "artist", "order_artist_name"),
-		Entry("artist.sort_artist_name", "artist", "sort_artist_name"),
-		Entry("album.order_album_name", "album", "order_album_name"),
-		Entry("album.order_album_artist_name", "album", "order_album_artist_name"),
-		Entry("album.sort_album_name", "album", "sort_album_name"),
-		Entry("album.sort_album_artist_name", "album", "sort_album_artist_name"),
-		Entry("media_file.order_title", "media_file", "order_title"),
-		Entry("media_file.order_album_name", "media_file", "order_album_name"),
-		Entry("media_file.order_artist_name", "media_file", "order_artist_name"),
-		Entry("media_file.sort_title", "media_file", "sort_title"),
-		Entry("media_file.sort_album_name", "media_file", "sort_album_name"),
-		Entry("media_file.sort_artist_name", "media_file", "sort_artist_name"),
-		Entry("playlist.name", "playlist", "name"),
-		Entry("radio.name", "radio", "name"),
-		Entry("user.name", "user", "name"),
+		Entry("artist.order_artist_name", "artist", "order_artist_name", "NATURALSORT"),
+		Entry("artist.sort_artist_name", "artist", "sort_artist_name", "NATURALSORT"),
+		Entry("album.order_album_name", "album", "order_album_name", "NATURALSORT"),
+		Entry("album.order_album_artist_name", "album", "order_album_artist_name", "NATURALSORT"),
+		Entry("album.sort_album_name", "album", "sort_album_name", "NATURALSORT"),
+		Entry("album.sort_album_artist_name", "album", "sort_album_artist_name", "NATURALSORT"),
+		Entry("media_file.order_title", "media_file", "order_title", "NATURALSORT"),
+		Entry("media_file.order_album_name", "media_file", "order_album_name", "NATURALSORT"),
+		Entry("media_file.order_artist_name", "media_file", "order_artist_name", "NATURALSORT"),
+		Entry("media_file.sort_title", "media_file", "sort_title", "NATURALSORT"),
+		Entry("media_file.sort_album_name", "media_file", "sort_album_name", "NATURALSORT"),
+		Entry("media_file.sort_artist_name", "media_file", "sort_artist_name", "NATURALSORT"),
+		Entry("playlist.name", "playlist", "name", "NATURALSORT"),
+		Entry("radio.name", "radio", "name", "NATURALSORT"),
+		Entry("user.name", "user", "name", "NOCASE"),
 	)
 
 	DescribeTable("Index collation",
 		func(table, column string) {
 			Expect(checkIndexUsage(conn, table, column)).To(Succeed())
 		},
-		Entry("artist.order_artist_name", "artist", "order_artist_name collate nocase"),
-		Entry("artist.sort_artist_name", "artist", "coalesce(nullif(sort_artist_name,''),order_artist_name) collate nocase"),
-		Entry("album.order_album_name", "album", "order_album_name collate nocase"),
-		Entry("album.order_album_artist_name", "album", "order_album_artist_name collate nocase"),
-		Entry("album.sort_album_name", "album", "coalesce(nullif(sort_album_name,''),order_album_name) collate nocase"),
-		Entry("album.sort_album_artist_name", "album", "coalesce(nullif(sort_album_artist_name,''),order_album_artist_name) collate nocase"),
-		Entry("media_file.order_title", "media_file", "order_title collate nocase"),
-		Entry("media_file.order_album_name", "media_file", "order_album_name collate nocase"),
-		Entry("media_file.order_artist_name", "media_file", "order_artist_name collate nocase"),
-		Entry("media_file.sort_title", "media_file", "coalesce(nullif(sort_title,''),order_title) collate nocase"),
-		Entry("media_file.sort_album_name", "media_file", "coalesce(nullif(sort_album_name,''),order_album_name) collate nocase"),
-		Entry("media_file.sort_artist_name", "media_file", "coalesce(nullif(sort_artist_name,''),order_artist_name) collate nocase"),
+		Entry("artist.order_artist_name", "artist", "order_artist_name collate NATURALSORT"),
+		Entry("artist.sort_artist_name", "artist", "coalesce(nullif(sort_artist_name,''),order_artist_name) collate NATURALSORT"),
+		Entry("album.order_album_name", "album", "order_album_name collate NATURALSORT"),
+		Entry("album.order_album_artist_name", "album", "order_album_artist_name collate NATURALSORT"),
+		Entry("album.sort_album_name", "album", "coalesce(nullif(sort_album_name,''),order_album_name) collate NATURALSORT"),
+		Entry("album.sort_album_artist_name", "album", "coalesce(nullif(sort_album_artist_name,''),order_album_artist_name) collate NATURALSORT"),
+		Entry("media_file.order_title", "media_file", "order_title collate NATURALSORT"),
+		Entry("media_file.order_album_name", "media_file", "order_album_name collate NATURALSORT"),
+		Entry("media_file.order_artist_name", "media_file", "order_artist_name collate NATURALSORT"),
+		Entry("media_file.sort_title", "media_file", "coalesce(nullif(sort_title,''),order_title) collate NATURALSORT"),
+		Entry("media_file.sort_album_name", "media_file", "coalesce(nullif(sort_album_name,''),order_album_name) collate NATURALSORT"),
+		Entry("media_file.sort_artist_name", "media_file", "coalesce(nullif(sort_artist_name,''),order_artist_name) collate NATURALSORT"),
 		Entry("media_file.path", "media_file", "path collate nocase"),
-		Entry("playlist.name", "playlist", "name collate nocase"),
-		Entry("radio.name", "radio", "name collate nocase"),
+		Entry("playlist.name", "playlist", "name collate NATURALSORT"),
+		Entry("radio.name", "radio", "name collate NATURALSORT"),
 		Entry("user.user_name", "user", "user_name collate nocase"),
 	)
 })
@@ -91,7 +91,7 @@ order by %[2]s`, table, column))
 	return errors.New("no rows returned")
 }
 
-func checkCollation(conn *sql.DB, table string, column string) error {
+func checkCollation(conn *sql.DB, table, column, expectedCollation string) error {
 	rows, err := conn.Query(fmt.Sprintf("SELECT sql FROM sqlite_master WHERE type='table' AND tbl_name='%s'", table))
 	if err != nil {
 		return err
@@ -113,12 +113,12 @@ func checkCollation(conn *sql.DB, table string, column string) error {
 		if !re.MatchString(res) {
 			return fmt.Errorf("column '%s' not found in table '%s'", column, table)
 		}
-		re = regexp.MustCompile(fmt.Sprintf(`(?i)\b%s\b.*collate\s+NOCASE`, column))
+		re = regexp.MustCompile(fmt.Sprintf(`(?i)\b%s\b.*collate\s+%s`, column, expectedCollation))
 		if re.MatchString(res) {
 			return nil
 		}
 	} else {
 		return fmt.Errorf("table '%s' not found", table)
 	}
-	return fmt.Errorf("column '%s' in table '%s' does not have NOCASE collation", column, table)
+	return fmt.Errorf("column '%s' in table '%s' does not have %s collation", column, table, expectedCollation)
 }
