@@ -267,7 +267,7 @@ const Player = () => {
     if (info.ended) {
       document.title = 'Navidrome'
     }
-    if (!info.isRadio && info.currentTime) {
+    if (!info.isRadio && info.currentTime != null) {
       lastPositionMsRef.current = Math.floor(info.currentTime * 1000)
     }
   }, [])
@@ -277,10 +277,11 @@ const Player = () => {
       if (!info.isRadio && currentTrackId) {
         const posMs = Math.floor(info.currentTime * 1000)
         lastPositionMsRef.current = posMs
-        subsonic.reportPlayback(currentTrackId, posMs, 'playing')
+        const state = audioInstance?.paused ? 'paused' : 'playing'
+        subsonic.reportPlayback(currentTrackId, posMs, state)
       }
     },
-    [currentTrackId],
+    [currentTrackId, audioInstance],
   )
 
   const onAudioVolumeChange = useCallback(

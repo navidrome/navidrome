@@ -328,9 +328,9 @@ const NowPlayingList = React.memo(
                 dense
                 aria-label={translate('nowPlaying.title')}
               >
-                {entries.map((nowPlayingEntry, idx) => (
+                {entries.map((nowPlayingEntry) => (
                   <NowPlayingItem
-                    key={`${nowPlayingEntry.username}-${nowPlayingEntry.playerName}-${idx}`}
+                    key={`${nowPlayingEntry.username}-${nowPlayingEntry.playerName}`}
                     nowPlayingEntry={nowPlayingEntry}
                     onLinkClick={onLinkClick}
                     getArtistLink={getArtistLink}
@@ -384,7 +384,6 @@ const NowPlayingPanel = () => {
 
   const handleMenuClose = useCallback(() => {
     setAnchorEl(null)
-    setEntries([])
   }, [])
 
   // Close panel when link is clicked on small screens
@@ -431,6 +430,12 @@ const NowPlayingPanel = () => {
       fetchTimerRef.current = null
       doFetchRef.current()
     }, 300)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (fetchTimerRef.current) clearTimeout(fetchTimerRef.current)
+    }
   }, [])
 
   // Initialize count and entries on mount, and refresh on server/stream changes

@@ -210,9 +210,7 @@ describe('reportPlayback', () => {
     Object.defineProperty(window, 'localStorage', { value: localStorageMock })
   })
 
-  it('should call httpClient with reportPlayback URL and correct parameters', async () => {
-    // reportPlayback uses httpClient internally, which is imported from dataProvider
-    // We need to verify the URL is constructed correctly
+  it('should construct reportPlayback URL with correct parameters', () => {
     const url = subsonic.url('reportPlayback', null, {
       mediaId: 'song-123',
       mediaType: 'song',
