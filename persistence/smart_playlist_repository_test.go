@@ -281,6 +281,71 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 
 			Expect(pls.Tracks).To(BeEmpty())
 		})
+
+		It("matches loved tracks when loved value is a string in nested group (issue #4826)", func() {
+			// songComeTogether (ID "1002") is starred in test fixtures
+			rules := &criteria.Criteria{
+				Expression: criteria.All{
+					criteria.Any{
+						criteria.Is{"loved": "true"},
+					},
+				},
+			}
+			newPls := model.Playlist{Name: "String Loved Nested", OwnerID: "userid", Rules: rules}
+			Expect(repo.Put(&newPls)).To(Succeed())
+			testPlaylistID = newPls.ID
+
+			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+			pls, err := repo.GetWithTracks(newPls.ID, true, false)
+			Expect(err).ToNot(HaveOccurred())
+
+			trackIDs := make([]string, len(pls.Tracks))
+			for i, t := range pls.Tracks {
+				trackIDs[i] = t.MediaFileID
+			}
+			Expect(trackIDs).To(ContainElement("1002"))
+			Expect(len(pls.Tracks)).To(BeNumerically(">=", 1))
+		})
+
+		It("returns same results for string and bool loved values (issue #4826)", func() {
+			boolRules := &criteria.Criteria{
+				Expression: criteria.All{
+					criteria.Any{
+						criteria.Is{"loved": true},
+					},
+				},
+			}
+			boolPls := model.Playlist{Name: "Bool Loved", OwnerID: "userid", Rules: boolRules}
+			Expect(repo.Put(&boolPls)).To(Succeed())
+			DeferCleanup(func() { _ = repo.Delete(boolPls.ID) })
+
+			stringRules := &criteria.Criteria{
+				Expression: criteria.All{
+					criteria.Any{
+						criteria.Is{"loved": "true"},
+					},
+				},
+			}
+			stringPls := model.Playlist{Name: "String Loved", OwnerID: "userid", Rules: stringRules}
+			Expect(repo.Put(&stringPls)).To(Succeed())
+			testPlaylistID = stringPls.ID
+
+			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+			boolResult, err := repo.GetWithTracks(boolPls.ID, true, false)
+			Expect(err).ToNot(HaveOccurred())
+			stringResult, err := repo.GetWithTracks(stringPls.ID, true, false)
+			Expect(err).ToNot(HaveOccurred())
+
+			boolIDs := make([]string, len(boolResult.Tracks))
+			for i, t := range boolResult.Tracks {
+				boolIDs[i] = t.MediaFileID
+			}
+			stringIDs := make([]string, len(stringResult.Tracks))
+			for i, t := range stringResult.Tracks {
+				stringIDs[i] = t.MediaFileID
+			}
+			Expect(stringIDs).To(ConsistOf(boolIDs))
+		})
 	})
 
 	Describe("Smart Playlists with Tag Criteria", func() {
