@@ -37,25 +37,16 @@ const url = (command, id, options) => {
 
 const ping = () => httpClient(url('ping'))
 
+const reportPlaybackUrl = (mediaId, positionMs, state) =>
+  url('reportPlayback', null, { mediaId, mediaType: 'song', positionMs, state })
+
 const reportPlayback = (mediaId, positionMs, state) =>
-  httpClient(
-    url('reportPlayback', null, {
-      mediaId,
-      mediaType: 'song',
-      positionMs,
-      state,
-    }),
-  )
+  httpClient(reportPlaybackUrl(mediaId, positionMs, state))
 
 const reportPlaybackBeacon = (mediaId, positionMs, state) => {
-  const beaconUrl = url('reportPlayback', null, {
-    mediaId,
-    mediaType: 'song',
-    positionMs,
-    state,
-  })
-  if (beaconUrl) {
-    navigator.sendBeacon(baseUrl(beaconUrl))
+  const u = reportPlaybackUrl(mediaId, positionMs, state)
+  if (u) {
+    navigator.sendBeacon(baseUrl(u))
   }
 }
 

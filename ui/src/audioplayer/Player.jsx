@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useInterval } from '../common'
 import { useDispatch, useSelector } from 'react-redux'
 import { useMediaQuery } from '@material-ui/core'
 import { ThemeProvider } from '@material-ui/core/styles'
@@ -42,8 +43,9 @@ const Player = () => {
   const playerState = useSelector((state) => state.player)
   const dispatch = useDispatch()
   const [currentTrackId, setCurrentTrackId] = useState(null)
-  const heartbeatRef = useRef(null)
+  const [heartbeatTrackId, setHeartbeatTrackId] = useState(null)
   const lastPositionMsRef = useRef(0)
+  const currentTrackIdRef = useRef(null)
   const [audioInstance, setAudioInstance] = useState(null)
   const isDesktop = useMediaQuery('(min-width:810px)')
   const isMobilePlayer =
@@ -58,27 +60,13 @@ const Player = () => {
   const playerStateRef = useRef(playerState)
   playerStateRef.current = playerState
 
-  const stopHeartbeat = useCallback(() => {
-    if (heartbeatRef.current) {
-      clearInterval(heartbeatRef.current)
-      heartbeatRef.current = null
-    }
-  }, [])
+  currentTrackIdRef.current = currentTrackId
 
-  const startHeartbeat = useCallback(
-    (trackId) => {
-      stopHeartbeat()
-      if (!trackId || !config.playbackReportIntervalMs) return
-      heartbeatRef.current = setInterval(() => {
-        if (audioInstance) {
-          const posMs = Math.floor(audioInstance.currentTime * 1000)
-          lastPositionMsRef.current = posMs
-          subsonic.reportPlayback(trackId, posMs, 'playing')
-        }
-      }, config.playbackReportIntervalMs)
-    },
-    [stopHeartbeat, audioInstance],
-  )
+  useInterval(() => {
+    if (heartbeatTrackId) {
+      subsonic.reportPlayback(heartbeatTrackId, lastPositionMsRef.current, 'playing')
+    }
+  }, heartbeatTrackId ? config.playbackReportIntervalMs : null)
 
   // Detect browser codec profile and eagerly resolve transcode URLs for the
   // persisted queue once on mount (e.g. after a browser refresh)
@@ -129,10 +117,6 @@ const Player = () => {
     }
   }, [playerState.queue, playerState.savedPlayIndex])
 
-  useEffect(() => {
-    return () => stopHeartbeat()
-  }, [stopHeartbeat])
-
   const visible = authenticated && playerState.queue.length > 0
   const isRadio = playerState.current?.isRadio || false
   const classes = useStyle({
@@ -182,9 +166,9 @@ const Player = () => {
   useEffect(() => {
     const handleBeforeUnload = (e) => {
       if (playerState.current?.uuid && audioInstance && !audioInstance.paused) {
-        if (currentTrackId && !playerState.current?.isRadio) {
+        if (currentTrackIdRef.current && !playerState.current?.isRadio) {
           subsonic.reportPlaybackBeacon(
-            currentTrackId,
+            currentTrackIdRef.current,
             lastPositionMsRef.current,
             'stopped',
           )
@@ -196,7 +180,7 @@ const Player = () => {
 
     window.addEventListener('beforeunload', handleBeforeUnload)
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
-  }, [playerState, audioInstance, currentTrackId])
+  }, [playerState, audioInstance])
 
   const defaultOptions = useMemo(
     () => ({
@@ -297,7 +281,7 @@ const Player = () => {
           } else {
             subsonic.reportPlayback(info.trackId, posMs, 'playing')
           }
-          startHeartbeat(info.trackId)
+          setHeartbeatTrackId(info.trackId)
         }
         if (config.gaTrackingId) {
           ReactGA.event({
@@ -315,16 +299,16 @@ const Player = () => {
         }
       }
     },
-    [context, dispatch, showNotifications, currentTrackId, startHeartbeat],
+    [context, dispatch, showNotifications, currentTrackId],
   )
 
   const onAudioPlayTrackChange = useCallback(() => {
     if (currentTrackId) {
       subsonic.reportPlayback(currentTrackId, lastPositionMsRef.current, 'stopped')
     }
-    stopHeartbeat()
+    setHeartbeatTrackId(null)
     setCurrentTrackId(null)
-  }, [currentTrackId, stopHeartbeat])
+  }, [currentTrackId])
 
   const onAudioPause = useCallback(
     (info) => {
@@ -334,9 +318,9 @@ const Player = () => {
         lastPositionMsRef.current = posMs
         subsonic.reportPlayback(currentTrackId, posMs, 'paused')
       }
-      stopHeartbeat()
+      setHeartbeatTrackId(null)
     },
-    [dispatch, currentTrackId, stopHeartbeat],
+    [dispatch, currentTrackId],
   )
 
   const onAudioEnded = useCallback(
@@ -345,7 +329,7 @@ const Player = () => {
         const posMs = Math.floor((info.duration || 0) * 1000)
         subsonic.reportPlayback(currentTrackId, posMs, 'stopped')
       }
-      stopHeartbeat()
+      setHeartbeatTrackId(null)
       setCurrentTrackId(null)
       dispatch(currentPlaying(info))
       dataProvider
@@ -353,7 +337,7 @@ const Player = () => {
         // eslint-disable-next-line no-console
         .catch((e) => console.log('Keepalive error:', e))
     },
-    [dispatch, dataProvider, currentTrackId, stopHeartbeat],
+    [dispatch, dataProvider, currentTrackId],
   )
 
   const onCoverClick = useCallback((mode, audioLists, audioInfo) => {
