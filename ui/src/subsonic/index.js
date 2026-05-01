@@ -37,16 +37,27 @@ const url = (command, id, options) => {
 
 const ping = () => httpClient(url('ping'))
 
-const scrobble = (id, time, submission = true, position = null) =>
+const reportPlayback = (mediaId, positionMs, state) =>
   httpClient(
-    url('scrobble', id, {
-      ...(submission && time && { time }),
-      submission,
-      ...(!submission && position !== null && { position }),
+    url('reportPlayback', null, {
+      mediaId,
+      mediaType: 'song',
+      positionMs,
+      state,
     }),
   )
 
-const nowPlaying = (id, position = null) => scrobble(id, null, false, position)
+const reportPlaybackBeacon = (mediaId, positionMs, state) => {
+  const beaconUrl = url('reportPlayback', null, {
+    mediaId,
+    mediaType: 'song',
+    positionMs,
+    state,
+  })
+  if (beaconUrl) {
+    navigator.sendBeacon(baseUrl(beaconUrl))
+  }
+}
 
 const star = (id) => httpClient(url('star', id))
 
@@ -132,8 +143,8 @@ const streamUrl = (id, options) => {
 export default {
   url,
   ping,
-  scrobble,
-  nowPlaying,
+  reportPlayback,
+  reportPlaybackBeacon,
   download,
   star,
   unstar,
