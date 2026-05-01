@@ -240,7 +240,6 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 	client := params.ClientName
 
 	now := time.Now()
-	prevCount := p.playMap.Len()
 
 	switch params.State {
 	case StateStarting:
@@ -311,7 +310,7 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 		p.playMap.Remove(clientId)
 	}
 
-	if conf.Server.EnableNowPlaying && p.playMap.Len() != prevCount {
+	if conf.Server.EnableNowPlaying {
 		p.broker.SendBroadcastMessage(ctx, &events.NowPlayingCount{Count: p.playMap.Len()})
 	}
 
