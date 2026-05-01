@@ -207,7 +207,7 @@ const NowPlayingItem = React.memo(
       nowPlayingEntry.albumArtist || nowPlayingEntry.artist
 
     return (
-      <ListItem key={nowPlayingEntry.playerId} className={classes.listItem}>
+      <ListItem className={classes.listItem}>
         <div className={classes.avatarContainer}>
           <Link
             to={`/album/${nowPlayingEntry.albumId}/show`}
@@ -327,9 +327,9 @@ const NowPlayingList = React.memo(
                 dense
                 aria-label={translate('nowPlaying.title')}
               >
-                {entries.map((nowPlayingEntry) => (
+                {entries.map((nowPlayingEntry, idx) => (
                   <NowPlayingItem
-                    key={nowPlayingEntry.playerId}
+                    key={`${nowPlayingEntry.username}-${nowPlayingEntry.playerName}-${idx}`}
                     nowPlayingEntry={nowPlayingEntry}
                     onLinkClick={onLinkClick}
                     getArtistLink={getArtistLink}
