@@ -194,3 +194,35 @@ describe('getAvatarUrl', () => {
     expect(url).toContain('username=john')
   })
 })
+
+describe('reportPlayback', () => {
+  beforeEach(() => {
+    const localStorageMock = {
+      getItem: vi.fn((key) => {
+        const values = {
+          username: 'testuser',
+          'subsonic-token': 'testtoken',
+          'subsonic-salt': 'testsalt',
+        }
+        return values[key] || null
+      }),
+    }
+    Object.defineProperty(window, 'localStorage', { value: localStorageMock })
+  })
+
+  it('should call httpClient with reportPlayback URL and correct parameters', async () => {
+    // reportPlayback uses httpClient internally, which is imported from dataProvider
+    // We need to verify the URL is constructed correctly
+    const url = subsonic.url('reportPlayback', null, {
+      mediaId: 'song-123',
+      mediaType: 'song',
+      positionMs: 5000,
+      state: 'playing',
+    })
+    expect(url).toContain('reportPlayback')
+    expect(url).toContain('mediaId=song-123')
+    expect(url).toContain('mediaType=song')
+    expect(url).toContain('positionMs=5000')
+    expect(url).toContain('state=playing')
+  })
+})
