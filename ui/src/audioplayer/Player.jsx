@@ -268,6 +268,17 @@ const Player = () => {
     [],
   )
 
+  const onAudioSeeked = useCallback(
+    (info) => {
+      if (!info.isRadio && currentTrackId) {
+        const posMs = Math.floor(info.currentTime * 1000)
+        lastPositionMsRef.current = posMs
+        subsonic.reportPlayback(currentTrackId, posMs, 'playing')
+      }
+    },
+    [currentTrackId],
+  )
+
   const onAudioVolumeChange = useCallback(
     // sqrt to compensate for the logarithmic volume
     (volume) => dispatch(setVolume(Math.sqrt(volume))),
@@ -418,6 +429,7 @@ const Player = () => {
         onAudioListsChange={onAudioListsChange}
         onAudioVolumeChange={onAudioVolumeChange}
         onAudioProgress={onAudioProgress}
+        onAudioSeeked={onAudioSeeked}
         onAudioPlay={onAudioPlay}
         onAudioPlayTrackChange={onAudioPlayTrackChange}
         onAudioPause={onAudioPause}
