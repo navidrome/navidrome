@@ -170,6 +170,9 @@ const Player = () => {
         e.preventDefault()
         e.returnValue = ''
       }
+    }
+
+    const handlePageHide = () => {
       if (currentTrackIdRef.current && !playerState.current?.isRadio) {
         stoppedRef.current = true
         try {
@@ -185,7 +188,11 @@ const Player = () => {
     }
 
     window.addEventListener('beforeunload', handleBeforeUnload)
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+    window.addEventListener('pagehide', handlePageHide)
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      window.removeEventListener('pagehide', handlePageHide)
+    }
   }, [playerState, audioInstance])
 
   const defaultOptions = useMemo(
