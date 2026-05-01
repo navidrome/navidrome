@@ -1109,6 +1109,42 @@ var _ = Describe("Responses", func() {
 		})
 	})
 
+	Describe("NowPlaying", func() {
+		BeforeEach(func() {
+			response.NowPlaying = &NowPlaying{}
+		})
+
+		Describe("without data", func() {
+			It("should match .XML", func() {
+				Expect(xml.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+		})
+
+		Describe("with data", func() {
+			BeforeEach(func() {
+				response.NowPlaying.Entry = []NowPlayingEntry{{
+					Child:        Child{Id: "1", Title: "Song", IsDir: false},
+					UserName:     "testuser",
+					MinutesAgo:   2,
+					PlayerId:     1,
+					PlayerName:   "TestPlayer",
+					State:        "playing",
+					PositionMs:   120000,
+					PlaybackRate: 1.5,
+				}}
+			})
+			It("should match .XML", func() {
+				Expect(xml.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+		})
+	})
+
 	Describe("SonicMatches", func() {
 		Context("without data", func() {
 			BeforeEach(func() {

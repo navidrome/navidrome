@@ -170,3 +170,15 @@ func (r *Values) BoolOr(param string, def bool) bool {
 	}
 	return v
 }
+
+func (r *Values) Float64Or(param string, def float64) float64 {
+	v, err := r.String(param)
+	if err != nil {
+		return def
+	}
+	f, err := strconv.ParseFloat(v, 64)
+	if err != nil {
+		return def
+	}
+	return f
+}
