@@ -14,8 +14,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  CROSS_TAGLIB_VERSION: "2.2.0-1"
-  CGO_CFLAGS_ALLOW: "--define-prefix"
   IS_RELEASE: ${{ startsWith(github.ref, 'refs/tags/') && 'true' || 'false' }}
 
 jobs:
@@ -66,10 +64,9 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Download TagLib
-        uses: ./.github/actions/download-taglib
+      - uses: actions/setup-go@v6
         with:
-          version: ${{ env.CROSS_TAGLIB_VERSION }}
+          go-version-file: go.mod
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
@@ -106,18 +103,15 @@ jobs:
       - name: Check out code into the Go module directory
         uses: actions/checkout@v6
 
-      - name: Download TagLib
-        uses: ./.github/actions/download-taglib
+      - uses: actions/setup-go@v6
         with:
-          version: ${{ env.CROSS_TAGLIB_VERSION }}
+          go-version-file: go.mod
 
       - name: Download dependencies
         run: go mod download
 
       - name: Test
-        run: |
-          pkg-config --define-prefix --cflags --libs taglib # for debugging
-          go test -shuffle=on -tags netgo,sqlite_fts5 -race ./... -v
+        run: go test -shuffle=on -tags netgo,sqlite_fts5 -race ./... -v
 
       - name: Test ndpgen
         run: |
@@ -125,6 +119,79 @@ jobs:
           go test -shuffle=on -v
           go build -o ndpgen .
           ./ndpgen --help
+
+  go-windows:
+    name: Test Go code (Windows)
+    runs-on: windows-2022
+    env:
+      FFMPEG_VERSION: "7.1"
+      FFMPEG_REPOSITORY: navidrome/ffmpeg-windows-builds
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          install: mingw-w64-x86_64-gcc
+          update: false
+
+      - name: Add mingw64 to PATH
+        shell: bash
+        run: echo "C:/msys64/mingw64/bin" >> $GITHUB_PATH
+
+      - name: Cache ffmpeg
+        id: ffmpeg-cache
+        uses: actions/cache@v4
+        with:
+          path: C:\ffmpeg
+          key: ffmpeg-${{ env.FFMPEG_VERSION }}-win64
+
+      - name: Download ffmpeg
+        if: steps.ffmpeg-cache.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          $asset = "ffmpeg-n${env:FFMPEG_VERSION}-latest-win64-gpl-${env:FFMPEG_VERSION}"
+          $url = "https://github.com/${env:FFMPEG_REPOSITORY}/releases/download/latest/$asset.zip"
+          Invoke-WebRequest -Uri $url -OutFile ffmpeg.zip
+          Expand-Archive ffmpeg.zip -DestinationPath C:\ffmpeg-extracted
+          New-Item -ItemType Directory -Force -Path C:\ffmpeg\bin | Out-Null
+          Copy-Item "C:\ffmpeg-extracted\$asset\bin\ffmpeg.exe"  C:\ffmpeg\bin
+          Copy-Item "C:\ffmpeg-extracted\$asset\bin\ffprobe.exe" C:\ffmpeg\bin
+
+      - name: Add ffmpeg to PATH
+        shell: bash
+        run: echo "C:/ffmpeg/bin" >> $GITHUB_PATH
+
+      - name: Verify toolchain
+        shell: pwsh
+        run: |
+          go version
+          where.exe gcc
+          gcc --version
+          ffmpeg -version
+          ffprobe -version
+
+      - name: Download dependencies
+        shell: bash
+        run: go mod download
+
+      - name: Test
+        shell: bash
+        env:
+          CGO_ENABLED: "1"
+        run: go test -shuffle=on -tags netgo,sqlite_fts5 ./... -v
+
+      - name: Test ndpgen
+        shell: pwsh
+        run: |
+          cd plugins\cmd\ndpgen
+          go test -shuffle=on -v
+          go build -o ndpgen.exe .
+          .\ndpgen.exe --help
 
   js:
     name: Test JS code
@@ -190,7 +257,7 @@ jobs:
 
   build:
     name: Build
-    needs: [js, go, go-lint, i18n-lint, git-version, check-push-enabled]
+    needs: [js, go, go-windows, go-lint, i18n-lint, git-version, check-push-enabled]
     strategy:
       matrix:
         platform: [ linux/amd64, linux/arm64, linux/arm/v5, linux/arm/v6, linux/arm/v7, linux/386, linux/riscv64, darwin/amd64, darwin/arm64, windows/amd64, windows/386 ]
@@ -232,7 +299,6 @@ jobs:
           build-args: |
             GIT_SHA=${{ env.GIT_SHA }}
             GIT_TAG=${{ env.GIT_TAG }}
-            CROSS_TAGLIB_VERSION=${{ env.CROSS_TAGLIB_VERSION }}
 
       - name: Upload Binaries
         uses: actions/upload-artifact@v7
@@ -253,7 +319,6 @@ jobs:
           build-args: |
             GIT_SHA=${{ env.GIT_SHA }}
             GIT_TAG=${{ env.GIT_TAG }}
-            CROSS_TAGLIB_VERSION=${{ env.CROSS_TAGLIB_VERSION }}
           outputs: |
             type=image,name=${{ steps.docker.outputs.hub_repository }},push-by-digest=true,name-canonical=true,push=${{ steps.docker.outputs.hub_enabled }}
             type=image,name=ghcr.io/${{ github.repository }},push-by-digest=true,name-canonical=true,push=true
@@ -338,7 +403,7 @@ jobs:
           hub_password: ${{ secrets.DOCKER_HUB_PASSWORD }}
 
       - name: Create manifest list and push to Docker Hub
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 5
           max_attempts: 3

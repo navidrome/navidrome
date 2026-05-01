@@ -2,6 +2,7 @@ package conf_test
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -24,6 +25,11 @@ var _ = Describe("Configuration", func() {
 		viper.SetDefault("datafolder", GinkgoT().TempDir())
 		viper.SetDefault("loglevel", "error")
 		conf.ResetConf()
+
+		// Panic instead of exiting on fatal errors to allow testing error conditions
+		DeferCleanup(conf.SetLogFatal(func(args ...any) {
+			panic(fmt.Sprint(args...))
+		}))
 	})
 
 	Describe("ParseLanguages", func() {
@@ -107,6 +113,185 @@ var _ = Describe("Configuration", func() {
 		Entry("falls back to 'fts' for unrecognized values", "invalid", "fts"),
 		Entry("falls back to 'fts' for empty string", "", "fts"),
 	)
+
+	DescribeTable("ToPascalCase",
+		func(input, expected string) {
+			Expect(conf.ToPascalCase(input)).To(Equal(expected))
+		},
+		Entry("simple key", "address", "Address"),
+		Entry("dotted key", "scanner.schedule", "Scanner.Schedule"),
+		Entry("already capitalized", "Address", "Address"),
+		Entry("multi-segment", "lastfm.enabled", "Lastfm.Enabled"),
+		Entry("empty string", "", ""),
+	)
+
+	Describe("remapEnvVarKeysFromConfig", func() {
+		BeforeEach(func() {
+			viper.Reset()
+			conf.SetViperDefaults()
+			viper.SetDefault("datafolder", GinkgoT().TempDir())
+			viper.SetDefault("loglevel", "error")
+			conf.ResetConf()
+		})
+
+		It("remaps ND_-prefixed keys to canonical keys", func() {
+			filename := filepath.Join("testdata", "cfg_nd_keys.toml")
+			conf.InitConfig(filename, false)
+			conf.Load(true)
+
+			Expect(conf.Server.Address).To(Equal("127.0.0.1"))
+			Expect(conf.Server.Port).To(Equal(4531))
+			Expect(conf.Server.Scanner.Schedule).To(Equal("@every 1h"))
+		})
+
+		It("exits with fatal error when both ND_ and canonical key exist", func() {
+			filename := filepath.Join("testdata", "cfg_nd_conflict.toml")
+			conf.InitConfig(filename, false)
+
+			Expect(func() { conf.Load(true) }).To(PanicWith(And(
+				ContainSubstring("ND_ADDRESS"),
+				ContainSubstring("Address"),
+				ContainSubstring("only needed for environment variables"),
+			)))
+		})
+
+		It("does nothing when no ND_ keys are present", func() {
+			filename := filepath.Join("testdata", "cfg.toml")
+			conf.InitConfig(filename, false)
+			conf.Load(true)
+
+			// Verify normal config loading still works
+			Expect(conf.Server.MusicFolder).To(Equal("/toml/music"))
+		})
+	})
+
+	Describe("logFatal", func() {
+		var invalidPath string
+		BeforeEach(func() {
+			viper.Reset()
+			conf.SetViperDefaults()
+			viper.SetDefault("loglevel", "error")
+			conf.ResetConf()
+
+			// Create a file so that any path under it is invalid on all OSes
+			f, err := os.CreateTemp(GinkgoT().TempDir(), "blocker")
+			Expect(err).ToNot(HaveOccurred())
+			f.Close()
+			invalidPath = filepath.Join(f.Name(), "subdir")
+		})
+
+		It("is called when LoadFromFile gets an invalid config file", func() {
+			Expect(func() {
+				conf.LoadFromFile(filepath.Join(invalidPath, "file.toml"))
+			}).To(PanicWith(ContainSubstring("Error reading config file")))
+		})
+
+		It("is called when DataFolder is not writable", func() {
+			viper.SetDefault("datafolder", invalidPath)
+			Expect(func() {
+				conf.Load(true)
+			}).To(PanicWith(ContainSubstring("Error creating data path")))
+		})
+
+		It("is called when CacheFolder is not writable", func() {
+			viper.SetDefault("datafolder", GinkgoT().TempDir())
+			viper.SetDefault("cachefolder", invalidPath)
+			Expect(func() {
+				conf.Load(true)
+			}).To(PanicWith(ContainSubstring("Error creating cache path")))
+		})
+
+		It("is called when LogFile path is not writable", func() {
+			viper.SetDefault("datafolder", GinkgoT().TempDir())
+			viper.SetDefault("logfile", filepath.Join(invalidPath, "log.txt"))
+			Expect(func() {
+				conf.Load(true)
+			}).To(PanicWith(ContainSubstring("Error opening log file")))
+		})
+
+		It("is called when BaseURL is invalid", func() {
+			viper.SetDefault("datafolder", GinkgoT().TempDir())
+			viper.SetDefault("baseurl", "://invalid")
+			Expect(func() {
+				conf.Load(true)
+			}).To(PanicWith(ContainSubstring("Invalid BaseURL")))
+		})
+
+	})
+
+	Describe("ValidateMaxImageUploadSize", func() {
+		BeforeEach(func() {
+			viper.Reset()
+			conf.SetViperDefaults()
+			viper.SetDefault("datafolder", GinkgoT().TempDir())
+			viper.SetDefault("loglevel", "error")
+			conf.ResetConf()
+		})
+
+		DescribeTable("accepts valid size values",
+			func(input string) {
+				conf.Server.MaxImageUploadSize = input
+				Expect(conf.ValidateMaxImageUploadSize()).To(Succeed())
+			},
+			Entry("megabytes", "10MB"),
+			Entry("gigabytes", "1GB"),
+			Entry("raw bytes", "10485760"),
+			Entry("mebibytes", "10MiB"),
+			Entry("lower case", "50mb"),
+		)
+
+		DescribeTable("rejects invalid size values",
+			func(input string) {
+				conf.Server.MaxImageUploadSize = input
+				Expect(conf.ValidateMaxImageUploadSize()).To(MatchError(ContainSubstring("invalid MaxImageUploadSize")))
+			},
+			Entry("garbage string", "not-a-size"),
+			Entry("negative-looking", "-10MB"),
+		)
+	})
+
+	Describe("EnforceNonRootUser", func() {
+		It("defaults to false", func() {
+			conf.Load(true)
+
+			Expect(conf.Server.EnforceNonRootUser).To(BeFalse())
+		})
+
+		It("allows startup for non-root users when enabled", func() {
+			DeferCleanup(conf.SetRuntimeInfoForTest("linux", 1000))
+			viper.Set("enforcenonrootuser", true)
+
+			conf.Load(true)
+
+			Expect(conf.Server.EnforceNonRootUser).To(BeTrue())
+		})
+
+		It("exits when enabled and running as root without having created a data folder", func() {
+			// Create a path that doesn't exist yet
+			tempBase := GinkgoT().TempDir()
+			nonExistentDataFolder := filepath.Join(tempBase, "nonexistent", "data")
+			DeferCleanup(conf.SetRuntimeInfoForTest("linux", 0))
+			viper.Set("enforcenonrootuser", true)
+			viper.Set("datafolder", nonExistentDataFolder)
+
+			// Attempt to load config as root user - should fail before creating directories
+			Expect(func() {
+				conf.Load(true)
+			}).To(PanicWith(ContainSubstring("EnforceNonRootUser is enabled but Navidrome is running as root")))
+
+			// Verify that the data folder was NOT created
+			Expect(nonExistentDataFolder).ToNot(BeAnExistingFile())
+		})
+
+		It("is a no-op on non-unix platforms", func() {
+			DeferCleanup(conf.SetRuntimeInfoForTest("windows", 0))
+			viper.Set("enforcenonrootuser", true)
+
+			conf.Load(true)
+
+			Expect(conf.Server.EnforceNonRootUser).To(BeTrue())
+		})
+	})
 
 	DescribeTable("should load configuration from",
 		func(format string) {

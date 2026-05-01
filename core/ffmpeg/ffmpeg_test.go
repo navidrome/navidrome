@@ -3,8 +3,10 @@ package ffmpeg
 import (
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	sync "sync"
 	"testing"
 	"time"
@@ -584,9 +586,12 @@ var _ = Describe("ffmpeg", func() {
 				// Cancel the context
 				cancel()
 
-				// Next read should fail due to cancelled context
-				_, err = stream.Read(buf)
-				Expect(err).To(HaveOccurred())
+				// Subsequent reads should eventually fail due to cancelled context.
+				// There may be buffered data in the pipe, so we drain until an error occurs.
+				Eventually(func() error {
+					_, err = stream.Read(buf)
+					return err
+				}).WithTimeout(5 * time.Second).WithPolling(10 * time.Millisecond).Should(HaveOccurred())
 			})
 
 			It("should handle immediate context cancellation", func() {
@@ -601,6 +606,46 @@ var _ = Describe("ffmpeg", func() {
 					BitRate:  128,
 				})
 				Expect(err).To(MatchError(context.Canceled))
+			})
+		})
+
+		Context("stderr capture", func() {
+			BeforeEach(func() {
+				if runtime.GOOS == "windows" {
+					Skip("stderr capture tests use /bin/sh, skipping on Windows")
+				}
+			})
+
+			It("should include stderr in error when process fails", func() {
+				ff := &ffmpeg{}
+				ctx := GinkgoT().Context()
+
+				// Directly call start() with a bash command that writes to stderr and fails
+				args := []string{"/bin/sh", "-c", "echo 'codec not found: libopus' >&2; exit 1"}
+				stream, err := ff.start(ctx, args)
+				Expect(err).ToNot(HaveOccurred())
+				defer stream.Close()
+
+				buf := make([]byte, 1024)
+				_, err = stream.Read(buf)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("codec not found: libopus"))
+			})
+
+			It("should not include stderr in error when process succeeds", func() {
+				ff := &ffmpeg{}
+				ctx := GinkgoT().Context()
+
+				// Command that writes to stderr but exits successfully
+				args := []string{"/bin/sh", "-c", "echo 'warning: something' >&2; printf 'output'"}
+				stream, err := ff.start(ctx, args)
+				Expect(err).ToNot(HaveOccurred())
+				defer stream.Close()
+
+				buf := make([]byte, 1024)
+				n, err := stream.Read(buf)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(string(buf[:n])).To(Equal("output"))
 			})
 		})
 
@@ -648,6 +693,59 @@ var _ = Describe("ffmpeg", func() {
 				_, err = stream.Read(buf)
 				Expect(err).To(HaveOccurred())
 			})
+		})
+	})
+
+	Describe("parseEncodersOutput", func() {
+		const sample = `Encoders:
+ V..... = Video
+ ------
+ V....D apng                 APNG (Animated Portable Network Graphics) image
+ V....D libwebp_anim         libwebp WebP image (codec webp)
+ V....D libwebp              libwebp WebP image (codec webp)
+ A....D aac                  AAC (Advanced Audio Coding)
+`
+		It("returns true when the encoder is present", func() {
+			Expect(parseEncodersOutput([]byte(sample), "libwebp_anim")).To(BeTrue())
+			Expect(parseEncodersOutput([]byte(sample), "libwebp")).To(BeTrue())
+			Expect(parseEncodersOutput([]byte(sample), "aac")).To(BeTrue())
+		})
+		It("returns false when the encoder is absent", func() {
+			Expect(parseEncodersOutput([]byte(sample), "libwebp_missing")).To(BeFalse())
+			Expect(parseEncodersOutput([]byte(sample), "")).To(BeFalse())
+		})
+		It("does not match partial names", func() {
+			// libwebp is a prefix of libwebp_anim; the parser must treat names as whole-word.
+			stripped := `Encoders:
+ V....D libwebp              libwebp WebP image (codec webp)
+`
+			Expect(parseEncodersOutput([]byte(stripped), "libwebp_anim")).To(BeFalse())
+		})
+		It("handles empty output", func() {
+			Expect(parseEncodersOutput(nil, "libwebp_anim")).To(BeFalse())
+			Expect(parseEncodersOutput([]byte(""), "libwebp_anim")).To(BeFalse())
+		})
+	})
+
+	Describe("ConvertAnimatedImage", func() {
+		// Point ffmpegCmd at a stand-in binary that produces empty `-encoders`
+		// output so hasAnimatedWebPEncoder returns false. /usr/bin/true is
+		// portable across POSIX systems.
+		It("returns ErrAnimatedWebPUnsupported when the binary lacks libwebp_anim", func() {
+			truePath, err := exec.LookPath("true")
+			if err != nil {
+				Skip("true(1) not available")
+			}
+			origPath, origErr := ffmpegPath, ffmpegErr
+			ffmpegPath = truePath
+			ffmpegErr = nil
+			defer func() {
+				ffmpegPath, ffmpegErr = origPath, origErr
+			}()
+
+			ff := &ffmpeg{}
+			_, err = ff.ConvertAnimatedImage(GinkgoT().Context(), strings.NewReader("x"), 100, 75)
+			Expect(err).To(MatchError(ErrAnimatedWebPUnsupported))
 		})
 	})
 })

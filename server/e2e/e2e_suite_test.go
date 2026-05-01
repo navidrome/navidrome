@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"testing/fstest"
 	"time"
@@ -171,6 +172,10 @@ func buildTestFS() storagetest.FakeFS {
 			"title": "TC MKA Opus", "track": 6, "suffix": "mka", "codec": "opus",
 			"bitrate": 128, "samplerate": 48000, "bitdepth": 0, "channels": 2, "duration": int64(220),
 		}),
+		"Test/Transcode Formats/07 - TC FLAC Multichannel.flac": file(tcBase, _t{
+			"title": "TC FLAC Multichannel", "track": 7, "suffix": "flac",
+			"bitrate": 4500, "samplerate": 48000, "bitdepth": 24, "channels": 6, "duration": int64(180),
+		}),
 
 		// _empty folder (directory with no audio)
 		"_empty/.keep": &fstest.MapFile{Data: []byte{}, ModTime: time.Now()},
@@ -287,18 +292,28 @@ func (n noopArtwork) GetOrPlaceholder(_ context.Context, _ string, _ int, _ bool
 // spyStreamer captures the Request passed to NewStream for test assertions,
 // then returns a minimal fake Stream so the handler completes without error.
 type spyStreamer struct {
-	LastRequest   stream.Request
-	LastMediaFile *model.MediaFile
+	LastRequest         stream.Request
+	LastMediaFile       *model.MediaFile
+	SimulateError       error // When set, NewStream returns this error
+	SimulateEmptyStream bool  // When true, returns a 0-byte stream (simulates ffmpeg producing no output)
 }
 
 func (s *spyStreamer) NewStream(_ context.Context, mf *model.MediaFile, req stream.Request) (*stream.Stream, error) {
 	s.LastRequest = req
 	s.LastMediaFile = mf
+	if s.SimulateError != nil {
+		return nil, s.SimulateError
+	}
 	format := req.Format
 	if format == "" || format == "raw" {
 		format = mf.Suffix
 	}
-	return stream.NewTestStream(mf, format, req.BitRate), nil
+	content := "fake audio data"
+	if s.SimulateEmptyStream {
+		content = ""
+	}
+	r := io.NopCloser(strings.NewReader(content))
+	return stream.NewStream(mf, format, req.BitRate, r), nil
 }
 
 // noopFFmpeg implements ffmpeg.FFmpeg with no-op methods.
@@ -326,6 +341,7 @@ func (n noopFFmpeg) ConvertAnimatedImage(context.Context, io.Reader, int, int) (
 
 func (n noopFFmpeg) CmdPath() (string, error) { return "", nil }
 func (n noopFFmpeg) IsAvailable() bool        { return false }
+func (n noopFFmpeg) IsProbeAvailable() bool   { return true }
 func (n noopFFmpeg) Version() string          { return "noop" }
 
 // noopArchiver implements core.Archiver
@@ -374,29 +390,13 @@ func (n noopProvider) AlbumImage(context.Context, string) (*url.URL, error) {
 	return nil, model.ErrNotFound
 }
 
-// noopPlayTracker implements scrobbler.PlayTracker
-type noopPlayTracker struct{}
-
-func (n noopPlayTracker) NowPlaying(context.Context, string, string, string, int) error {
-	return nil
-}
-
-func (n noopPlayTracker) GetNowPlaying(context.Context) ([]scrobbler.NowPlayingInfo, error) {
-	return nil, nil
-}
-
-func (n noopPlayTracker) Submit(context.Context, []scrobbler.Submission) error {
-	return nil
-}
-
 // Compile-time interface checks
 var (
-	_ artwork.Artwork       = noopArtwork{}
-	_ stream.MediaStreamer  = &spyStreamer{}
-	_ core.Archiver         = noopArchiver{}
-	_ external.Provider     = noopProvider{}
-	_ scrobbler.PlayTracker = noopPlayTracker{}
-	_ ffmpeg.FFmpeg         = noopFFmpeg{}
+	_ artwork.Artwork      = noopArtwork{}
+	_ stream.MediaStreamer = &spyStreamer{}
+	_ core.Archiver        = noopArchiver{}
+	_ external.Provider    = noopProvider{}
+	_ ffmpeg.FFmpeg        = noopFFmpeg{}
 )
 
 var _ = BeforeSuite(func() {
@@ -454,6 +454,13 @@ var _ = BeforeSuite(func() {
 	Expect(os.WriteFile(snapshotPath, data, 0600)).To(Succeed())
 })
 
+// Close the database before the suite's TempDir cleanup runs. Required on
+// Windows where open SQLite handles hold file locks that block temp-dir
+// removal; harmless on other OSes.
+var _ = AfterSuite(func() {
+	db.Close(ctx)
+})
+
 // setupTestDB restores the database from the golden snapshot and creates the
 // Subsonic Router. Call this from BeforeEach/BeforeAll in each test container.
 func setupTestDB() {
@@ -490,12 +497,13 @@ func setupTestDB() {
 		s,
 		events.NoopBroker(),
 		playlists.NewPlaylists(ds, core.NewImageUploadService()),
-		noopPlayTracker{},
+		scrobbler.NewPlayTracker(ds, events.NoopBroker(), nil),
 		core.NewShare(ds),
 		playback.PlaybackServer(nil),
 		metrics.NewNoopInstance(),
 		lyrics.NewLyrics(nil),
 		decider,
+		nil,
 	)
 }
 

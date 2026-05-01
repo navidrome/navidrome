@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
@@ -113,13 +114,14 @@ const (
 var _ = Describe("Transcode Endpoints", Ordered, func() {
 	// Track IDs resolved in BeforeAll
 	var (
-		mp3TrackID       string // Come Together (mp3, 320kbps)
-		flacTrackID      string // TC FLAC Standard (flac, 900kbps)
-		flacHiResTrackID string // TC FLAC HiRes (flac, 3000kbps)
-		alacTrackID      string // TC ALAC Track (m4a, alac)
-		dsdTrackID       string // TC DSD Track (dsf, dsd)
-		opusTrackID      string // TC Opus Track (opus, 128kbps)
-		mkaOpusTrackID   string // TC MKA Opus (mka, opus via codec tag)
+		mp3TrackID         string // Come Together (mp3, 320kbps)
+		flacTrackID        string // TC FLAC Standard (flac, 900kbps)
+		flacHiResTrackID   string // TC FLAC HiRes (flac, 3000kbps)
+		flacMultichTrackID string // TC FLAC Multichannel (flac, 6ch)
+		alacTrackID        string // TC ALAC Track (m4a, alac)
+		dsdTrackID         string // TC DSD Track (dsf, dsd)
+		opusTrackID        string // TC Opus Track (opus, 128kbps)
+		mkaOpusTrackID     string // TC MKA Opus (mka, opus via codec tag)
 	)
 
 	BeforeAll(func() {
@@ -139,6 +141,7 @@ var _ = Describe("Transcode Endpoints", Ordered, func() {
 		mp3TrackID = ensureGetTrackID("Come Together")
 		flacTrackID = ensureGetTrackID("TC FLAC Standard")
 		flacHiResTrackID = ensureGetTrackID("TC FLAC HiRes")
+		flacMultichTrackID = ensureGetTrackID("TC FLAC Multichannel")
 		alacTrackID = ensureGetTrackID("TC ALAC Track")
 		dsdTrackID = ensureGetTrackID("TC DSD Track")
 		opusTrackID = ensureGetTrackID("TC Opus Track")
@@ -351,6 +354,19 @@ var _ = Describe("Transcode Endpoints", Ordered, func() {
 				Expect(resp.TranscodeDecision.TranscodeStream).ToNot(BeNil())
 				// maxTranscodingAudioBitrate is 192000 bps = 192 kbps → response in bps
 				Expect(resp.TranscodeDecision.TranscodeStream.AudioBitrate).To(Equal(int32(192000)))
+			})
+
+			It("clamps multichannel FLAC to 2 channels when transcoding to MP3 (#5336)", func() {
+				// mp3OnlyClient has no MaxAudioChannels set, so this exercises the
+				// codec-intrinsic clamp in core/stream/codec.go (codecMaxChannels).
+				resp := doPostReq("getTranscodeDecision", mp3OnlyClient, "mediaId", flacMultichTrackID, "mediaType", "song")
+				Expect(resp.Status).To(Equal(responses.StatusOK))
+				Expect(resp.TranscodeDecision).ToNot(BeNil())
+				Expect(resp.TranscodeDecision.CanTranscode).To(BeTrue())
+				Expect(resp.TranscodeDecision.SourceStream.AudioChannels).To(Equal(int32(6)))
+				Expect(resp.TranscodeDecision.TranscodeStream).ToNot(BeNil())
+				Expect(resp.TranscodeDecision.TranscodeStream.Codec).To(Equal("mp3"))
+				Expect(resp.TranscodeDecision.TranscodeStream.AudioChannels).To(Equal(int32(2)))
 			})
 		})
 
@@ -601,6 +617,36 @@ var _ = Describe("Transcode Endpoints", Ordered, func() {
 				// Restore original UpdatedAt
 				mf.UpdatedAt = originalUpdatedAt
 				Expect(ds.MediaFile(ctx).Put(mf)).To(Succeed())
+			})
+
+			It("returns 500 when stream creation fails", func() {
+				// Get a valid decision token
+				resp := doPostReq("getTranscodeDecision", mp3OnlyClient, "mediaId", flacTrackID, "mediaType", "song")
+				Expect(resp.Status).To(Equal(responses.StatusOK))
+				token := resp.TranscodeDecision.TranscodeParams
+				Expect(token).ToNot(BeEmpty())
+
+				// Simulate streamer failure (e.g., ffmpeg missing codec)
+				streamerSpy.SimulateError = errors.New("ffmpeg exited with non-zero status code: 1: Unknown encoder 'libopus'")
+				defer func() { streamerSpy.SimulateError = nil }()
+
+				w := doRawReq("getTranscodeStream", "mediaId", flacTrackID, "mediaType", "song", "transcodeParams", token)
+				Expect(w.Code).To(Equal(http.StatusInternalServerError))
+			})
+
+			It("returns 500 when transcoded stream is empty", func() {
+				// Get a valid decision token
+				resp := doPostReq("getTranscodeDecision", mp3OnlyClient, "mediaId", flacTrackID, "mediaType", "song")
+				Expect(resp.Status).To(Equal(responses.StatusOK))
+				token := resp.TranscodeDecision.TranscodeParams
+				Expect(token).ToNot(BeEmpty())
+
+				// Simulate ffmpeg producing 0 bytes
+				streamerSpy.SimulateEmptyStream = true
+				defer func() { streamerSpy.SimulateEmptyStream = false }()
+
+				w := doRawReq("getTranscodeStream", "mediaId", flacTrackID, "mediaType", "song", "transcodeParams", token)
+				Expect(w.Code).To(Equal(http.StatusInternalServerError))
 			})
 		})
 

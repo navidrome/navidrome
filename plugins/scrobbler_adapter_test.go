@@ -240,6 +240,46 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 			Expect(names).ToNot(ContainElement("test-metadata-agent"))
 		})
 	})
+
+	Describe("mediaFileToTrackInfo", func() {
+		var track *model.MediaFile
+
+		BeforeEach(func() {
+			track = &model.MediaFile{
+				ID:        "track-1",
+				Title:     "Test Song",
+				Path:      "/music/test.flac",
+				LibraryID: 1,
+			}
+		})
+
+		fsManifest := &Manifest{
+			Permissions: &Permissions{
+				Library: &LibraryPermission{Filesystem: true},
+			},
+		}
+
+		It("includes LibraryID and Path when the plugin has filesystem access to the track's library", func() {
+			p := &plugin{manifest: fsManifest, libraries: newLibraryAccess([]int{1}, false)}
+			ti := mediaFileToTrackInfo(p, track)
+			Expect(ti.LibraryID).To(Equal(int32(1)))
+			Expect(ti.Path).To(Equal("/music/test.flac"))
+		})
+
+		It("omits LibraryID and Path when the plugin lacks filesystem permission", func() {
+			p := &plugin{manifest: &Manifest{}, libraries: newLibraryAccess([]int{1}, false)}
+			ti := mediaFileToTrackInfo(p, track)
+			Expect(ti.LibraryID).To(BeZero())
+			Expect(ti.Path).To(BeEmpty())
+		})
+
+		It("omits LibraryID and Path when the track's library is not in the allowed set", func() {
+			p := &plugin{manifest: fsManifest, libraries: newLibraryAccess([]int{2}, false)}
+			ti := mediaFileToTrackInfo(p, track)
+			Expect(ti.LibraryID).To(BeZero())
+			Expect(ti.Path).To(BeEmpty())
+		})
+	})
 })
 
 var _ = Describe("mapScrobblerError", func() {

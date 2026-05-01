@@ -67,13 +67,12 @@ const (
 	ScanIgnoreFile = ".ndignore"
 	ArtworkFolder  = "artwork"
 
-	PlaceholderArtistArt      = "artist-placeholder.webp"
-	PlaceholderAlbumArt       = "album-placeholder.webp"
-	PlaceholderAvatar         = "logo-192x192.png"
-	UICoverArtSize            = 300
-	UIThumbnailSize           = 80
-	DefaultUIVolume           = 100
-	DefaultUISearchDebounceMs = 200
+	PlaceholderArtistArt            = "artist-placeholder.webp"
+	PlaceholderAlbumArt             = "album-placeholder.webp"
+	PlaceholderAvatar               = "logo-192x192.png"
+	DefaultUIVolume                 = 100
+	DefaultUISearchDebounceMs       = 200
+	DefaultUIPlaybackReportInterval = time.Minute
 
 	DefaultHttpClientTimeOut = 10 * time.Second
 
@@ -84,6 +83,11 @@ const (
 	DefaultScannerExtractor = "taglib"
 	DefaultWatcherWait      = 5 * time.Second
 	Zwsp                    = string('\u200b')
+)
+
+const (
+	DefaultUICoverArtSize     = 300
+	DefaultMaxImageUploadSize = "10MB"
 )
 
 // Prometheus options
@@ -108,6 +112,7 @@ const (
 const (
 	EntityArtist   = "artist"
 	EntityPlaylist = "playlist"
+	EntityRadio    = "radio"
 )
 
 const (

@@ -1,16 +1,25 @@
+import subsonic from '../subsonic'
+import config from '../config'
+import { RADIO_PLACEHOLDER_IMAGE } from '../consts'
+
 export async function songFromRadio(radio) {
   if (!radio) {
     return undefined
   }
 
-  let cover = 'internet-radio-icon.svg'
-  try {
-    const url = new URL(radio.homePageUrl ?? radio.streamUrl)
-    url.pathname = '/favicon.ico'
-    await resourceExists(url)
-    cover = url.toString()
-  } catch {
-    // ignore
+  let cover = RADIO_PLACEHOLDER_IMAGE
+  if (radio.uploadedImage) {
+    cover = subsonic.getCoverArtUrl(radio, config.uiCoverArtSize, true)
+  } else {
+    // Try favicon as fallback
+    try {
+      const url = new URL(radio.homePageUrl ?? radio.streamUrl)
+      url.pathname = '/favicon.ico'
+      await resourceExists(url)
+      cover = url.toString()
+    } catch {
+      // No cover available
+    }
   }
 
   return {

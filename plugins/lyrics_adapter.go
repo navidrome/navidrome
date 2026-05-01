@@ -21,6 +21,10 @@ func init() {
 	)
 }
 
+func newLyricsPlugin(p *plugin) *LyricsPlugin {
+	return &LyricsPlugin{name: p.name, plugin: p}
+}
+
 // LyricsPlugin adapts a WASM plugin with the Lyrics capability.
 type LyricsPlugin struct {
 	name   string
@@ -31,7 +35,7 @@ type LyricsPlugin struct {
 // using model.ToLyrics.
 func (l *LyricsPlugin) GetLyrics(ctx context.Context, mf *model.MediaFile) (model.LyricList, error) {
 	req := capabilities.GetLyricsRequest{
-		Track: mediaFileToTrackInfo(mf),
+		Track: mediaFileToTrackInfo(l.plugin, mf),
 	}
 	resp, err := callPluginFunction[capabilities.GetLyricsRequest, capabilities.GetLyricsResponse](
 		ctx, l.plugin, FuncLyricsGetLyrics, req,
