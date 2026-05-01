@@ -183,7 +183,7 @@ NowPlayingButton.propTypes = {
 
 // NowPlayingItem component - Discord-style card layout
 const NowPlayingItem = React.memo(
-  ({ nowPlayingEntry, onLinkClick, getArtistLink, now, fetchedAt }) => {
+  ({ nowPlayingEntry, onLinkClick, getArtistLink, now }) => {
     const classes = useStyles()
     const isPaused = nowPlayingEntry.state === 'paused'
     const isPlaying =
@@ -191,7 +191,7 @@ const NowPlayingItem = React.memo(
       nowPlayingEntry.state === 'starting'
     const basePositionMs = nowPlayingEntry.positionMs || 0
     const rate = nowPlayingEntry.playbackRate || 1
-    const elapsedSinceFetch = now - fetchedAt
+    const elapsedSinceFetch = now - (nowPlayingEntry._fetchedAt || now)
     const interpolatedMs = isPlaying
       ? basePositionMs + elapsedSinceFetch * rate
       : basePositionMs
@@ -297,12 +297,11 @@ NowPlayingItem.propTypes = {
   onLinkClick: PropTypes.func.isRequired,
   getArtistLink: PropTypes.func.isRequired,
   now: PropTypes.number.isRequired,
-  fetchedAt: PropTypes.number.isRequired,
 }
 
 // NowPlayingList component - handles the popover content
 const NowPlayingList = React.memo(
-  ({ anchorEl, open, onClose, entries, onLinkClick, getArtistLink, now, fetchedAt }) => {
+  ({ anchorEl, open, onClose, entries, onLinkClick, getArtistLink, now }) => {
     const classes = useStyles({ entryCount: entries.length })
     const translate = useTranslate()
 
@@ -335,7 +334,6 @@ const NowPlayingList = React.memo(
                     onLinkClick={onLinkClick}
                     getArtistLink={getArtistLink}
                     now={now}
-                    fetchedAt={fetchedAt}
                   />
                 ))}
               </List>
@@ -357,7 +355,6 @@ NowPlayingList.propTypes = {
   onLinkClick: PropTypes.func.isRequired,
   getArtistLink: PropTypes.func.isRequired,
   now: PropTypes.number.isRequired,
-  fetchedAt: PropTypes.number.isRequired,
 }
 
 // Main NowPlayingPanel component
@@ -377,7 +374,6 @@ const NowPlayingPanel = () => {
 
   const [anchorEl, setAnchorEl] = useState(null)
   const [entries, setEntries] = useState([])
-  const [fetchedAt, setFetchedAt] = useState(Date.now())
   const [now, setNow] = useState(Date.now())
   const open = Boolean(anchorEl)
 
@@ -412,9 +408,9 @@ const NowPlayingPanel = () => {
           if (data.status === 'ok') {
             const nowPlayingEntries = data.nowPlaying?.entry || []
             const fetchTime = Date.now()
-            setEntries(nowPlayingEntries)
-            setFetchedAt(fetchTime)
-            setNow(fetchTime)
+            setEntries(
+              nowPlayingEntries.map((e) => ({ ...e, _fetchedAt: fetchTime })),
+            )
             // Also update the count in Redux store
             dispatch(nowPlayingCountUpdate({ count: nowPlayingEntries.length }))
           } else {
@@ -472,7 +468,6 @@ const NowPlayingPanel = () => {
         onClose={handleMenuClose}
         entries={entries}
         now={now}
-        fetchedAt={fetchedAt}
         onLinkClick={handleLinkClick}
         getArtistLink={getArtistLink}
       />
