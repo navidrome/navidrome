@@ -276,7 +276,9 @@ const Player = () => {
           lastPositionMsRef.current = posMs
           const isNewTrack = info.trackId !== currentTrackId
           if (isNewTrack) {
-            subsonic.reportPlayback(info.trackId, posMs, 'starting')
+            subsonic.reportPlayback(info.trackId, posMs, 'starting').then(
+              () => subsonic.reportPlayback(info.trackId, posMs, 'playing'),
+            )
             setCurrentTrackId(info.trackId)
           } else {
             subsonic.reportPlayback(info.trackId, posMs, 'playing')
