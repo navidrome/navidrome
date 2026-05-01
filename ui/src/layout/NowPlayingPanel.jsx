@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import PropTypes from 'prop-types'
-import { useSelector, useDispatch } from 'react-redux'
+import { useSelector } from 'react-redux'
 import { useTranslate, Link, useNotify } from 'react-admin'
 import {
   Popover,
@@ -21,7 +21,6 @@ import {
 import { FaRegCirclePlay, FaPause } from 'react-icons/fa6'
 import subsonic from '../subsonic'
 import { useInterval } from '../common'
-import { nowPlayingCountUpdate } from '../actions'
 import { formatDuration } from '../utils'
 import config from '../config'
 
@@ -361,7 +360,6 @@ NowPlayingList.propTypes = {
 
 // Main NowPlayingPanel component
 const NowPlayingPanel = () => {
-  const dispatch = useDispatch()
   const count = useSelector((state) => state.activity.nowPlayingCount)
   const lastUpdate = useSelector((state) => state.activity.nowPlayingLastUpdate)
   const streamReconnected = useSelector(
@@ -415,7 +413,6 @@ const NowPlayingPanel = () => {
           setEntries(
             nowPlayingEntries.map((e) => ({ ...e, _fetchedAt: fetchTime })),
           )
-          dispatch(nowPlayingCountUpdate({ count: nowPlayingEntries.length }))
         } else {
           throw new Error(
             data.error?.message || 'Failed to fetch now playing data',
@@ -466,7 +463,7 @@ const NowPlayingPanel = () => {
 
   return (
     <div>
-      <NowPlayingButton count={count} onClick={handleMenuOpen} />
+      <NowPlayingButton count={entries.length || count} onClick={handleMenuOpen} />
       <NowPlayingList
         anchorEl={anchorEl}
         open={open}
