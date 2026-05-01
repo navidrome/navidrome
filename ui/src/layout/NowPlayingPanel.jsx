@@ -401,13 +401,10 @@ const NowPlayingPanel = () => {
       : `/album?filter={"artist_id":"${artistId}"}&order=ASC&sort=max_year&displayedFilters={"compilation":true}&perPage=15`
   }, [])
 
-  const lastFetchRef = useRef(0)
-  const fetchList = useCallback(
-    () => {
-      const fetchNow = Date.now()
-      if (fetchNow - lastFetchRef.current < 1000) return Promise.resolve()
-      lastFetchRef.current = fetchNow
-      return subsonic
+  const fetchTimerRef = useRef(null)
+  const doFetch = useCallback(
+    () =>
+      subsonic
         .getNowPlaying()
         .then((resp) => resp.json['subsonic-response'])
         .then((data) => {
@@ -428,10 +425,16 @@ const NowPlayingPanel = () => {
           notify('ra.page.error', 'warning', {
             messageArgs: { error: error.message || 'Unknown error' },
           })
-        })
-    },
+        }),
     [dispatch, notify],
   )
+  const fetchList = useCallback(() => {
+    if (fetchTimerRef.current) clearTimeout(fetchTimerRef.current)
+    fetchTimerRef.current = setTimeout(() => {
+      fetchTimerRef.current = null
+      doFetch()
+    }, 300)
+  }, [doFetch])
 
   // Initialize count and entries on mount, and refresh on server/stream changes
   useEffect(() => {
