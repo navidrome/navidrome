@@ -190,7 +190,8 @@ const NowPlayingItem = React.memo(
       nowPlayingEntry.state === 'playing' ||
       nowPlayingEntry.state === 'starting'
     const basePositionMs = nowPlayingEntry.positionMs || 0
-    const interpolatedMs = isPlaying ? basePositionMs + tick * 1000 : basePositionMs
+    const rate = nowPlayingEntry.playbackRate || 1
+    const interpolatedMs = isPlaying ? basePositionMs + tick * 1000 * rate : basePositionMs
     const durationMs = (nowPlayingEntry.duration || 0) * 1000
     const positionMs = durationMs > 0 ? Math.min(interpolatedMs, durationMs) : interpolatedMs
     const positionSec = positionMs / 1000
