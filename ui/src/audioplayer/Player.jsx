@@ -165,6 +165,13 @@ const Player = () => {
 
   useEffect(() => {
     const handleBeforeUnload = (e) => {
+      if (playerState.current?.uuid && audioInstance && !audioInstance.paused) {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+
+    const handlePageHide = () => {
       if (currentTrackIdRef.current && !playerState.current?.isRadio) {
         subsonic.reportPlaybackBeacon(
           currentTrackIdRef.current,
@@ -172,14 +179,14 @@ const Player = () => {
           'stopped',
         )
       }
-      if (playerState.current?.uuid && audioInstance && !audioInstance.paused) {
-        e.preventDefault()
-        e.returnValue = ''
-      }
     }
 
     window.addEventListener('beforeunload', handleBeforeUnload)
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+    window.addEventListener('pagehide', handlePageHide)
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      window.removeEventListener('pagehide', handlePageHide)
+    }
   }, [playerState, audioInstance])
 
   const defaultOptions = useMemo(
