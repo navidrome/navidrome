@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import PropTypes from 'prop-types'
 import { useSelector, useDispatch } from 'react-redux'
 import { useTranslate, Link, useNotify } from 'react-admin'
@@ -401,9 +401,13 @@ const NowPlayingPanel = () => {
       : `/album?filter={"artist_id":"${artistId}"}&order=ASC&sort=max_year&displayedFilters={"compilation":true}&perPage=15`
   }, [])
 
+  const lastFetchRef = useRef(0)
   const fetchList = useCallback(
-    () =>
-      subsonic
+    () => {
+      const now = Date.now()
+      if (now - lastFetchRef.current < 1000) return Promise.resolve()
+      lastFetchRef.current = now
+      return subsonic
         .getNowPlaying()
         .then((resp) => resp.json['subsonic-response'])
         .then((data) => {
@@ -413,7 +417,6 @@ const NowPlayingPanel = () => {
             setEntries(
               nowPlayingEntries.map((e) => ({ ...e, _fetchedAt: fetchTime })),
             )
-            // Also update the count in Redux store
             dispatch(nowPlayingCountUpdate({ count: nowPlayingEntries.length }))
           } else {
             throw new Error(
@@ -425,7 +428,8 @@ const NowPlayingPanel = () => {
           notify('ra.page.error', 'warning', {
             messageArgs: { error: error.message || 'Unknown error' },
           })
-        }),
+        })
+    },
     [dispatch, notify],
   )
 
