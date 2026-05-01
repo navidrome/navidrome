@@ -32,16 +32,10 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 		Entry("any group",
 			criteria.Any{criteria.Is{"title": "Low Rider"}, criteria.Is{"album": "Best Of"}},
 			"(media_file.title = ? OR media_file.album = ?)", "Low Rider", "Best Of"),
-		Entry("nested any with bool string loved (issue #4826)",
-			criteria.All{criteria.Contains{"title": "love"}, criteria.Any{criteria.Is{"loved": "true"}, criteria.Gt{"rating": 2}}},
-			"(media_file.title LIKE ? AND (COALESCE(annotation.starred, false) = ? OR COALESCE(annotation.rating, 0) > ?))", "%love%", true, 2),
 		Entry("is string", criteria.Is{"title": "Low Rider"}, "media_file.title = ?", "Low Rider"),
 		Entry("is bool", criteria.Is{"loved": true}, "COALESCE(annotation.starred, false) = ?", true),
-		Entry("is bool string true", criteria.Is{"loved": "true"}, "COALESCE(annotation.starred, false) = ?", true),
-		Entry("is bool string false", criteria.Is{"loved": "false"}, "COALESCE(annotation.starred, false) = ?", false),
 		Entry("is numeric list", criteria.Is{"library_id": []int{1, 2}}, "media_file.library_id IN (?,?)", 1, 2),
 		Entry("is not", criteria.IsNot{"title": "Low Rider"}, "media_file.title <> ?", "Low Rider"),
-		Entry("is not bool string", criteria.IsNot{"loved": "true"}, "COALESCE(annotation.starred, false) <> ?", true),
 		Entry("gt", criteria.Gt{"playCount": 10}, "COALESCE(annotation.play_count, 0) > ?", 10),
 		Entry("lt", criteria.Lt{"playCount": 10}, "COALESCE(annotation.play_count, 0) < ?", 10),
 		Entry("contains", criteria.Contains{"title": "Low Rider"}, "media_file.title LIKE ?", "%Low Rider%"),
@@ -153,6 +147,11 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 	It("returns an error when isPresent is used with a regular field", func() {
 		_, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: criteria.IsPresent{"title": true}}).Where()
 		Expect(err).To(MatchError(ContainSubstring("isMissing/isPresent operator is only supported for tag and role fields")))
+	})
+
+	It("returns an error when isMissing has a non-boolean value", func() {
+		_, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: criteria.IsMissing{"genre": "hello"}}).Where()
+		Expect(err).To(MatchError(ContainSubstring("invalid boolean value for 'missing' expression")))
 	})
 
 	Describe("sort", func() {

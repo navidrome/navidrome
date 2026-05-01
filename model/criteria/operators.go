@@ -1,9 +1,6 @@
 package criteria
 
-import (
-	"strconv"
-	"time"
-)
+import "time"
 
 // Conjunctions need to implement this interface, to allow Criteria to extract child playlist IDs recursively
 type conjunction interface {
@@ -180,33 +177,6 @@ func (ip IsPresent) MarshalJSON() ([]byte, error) {
 }
 
 func (ip IsPresent) fields() map[string]any { return ip }
-
-func IsTruthy(v any) bool {
-	switch val := v.(type) {
-	case bool:
-		return val
-	case float64:
-		return val != 0
-	case string:
-		b, err := strconv.ParseBool(val)
-		return err == nil && b
-	default:
-		return v != nil
-	}
-}
-
-// NormalizeBoolValue converts string boolean representations ("true", "false", "1", "0", etc.)
-// to actual Go bool values, so they bind correctly as integers in SQLite.
-func NormalizeBoolValue(v any) any {
-	s, ok := v.(string)
-	if !ok {
-		return v
-	}
-	if b, err := strconv.ParseBool(s); err == nil {
-		return b
-	}
-	return v
-}
 
 func extractPlaylistIds(inputRule any) (ids []string) {
 	var id string

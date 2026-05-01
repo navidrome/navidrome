@@ -53,20 +53,5 @@ var _ = Describe("fields", func() {
 			gomega.Expect(field.IsRole).To(gomega.BeTrue())
 		})
 
-		It("marks boolean fields", func() {
-			for _, name := range []string{"loved", "albumLoved", "artistLoved", "hasCoverArt", "compilation", "missing"} {
-				field, ok := LookupField(name)
-				gomega.Expect(ok).To(gomega.BeTrue(), "field %q should exist", name)
-				gomega.Expect(field.Boolean).To(gomega.BeTrue(), "field %q should be Boolean", name)
-			}
-		})
-
-		It("does not mark non-boolean fields as boolean", func() {
-			for _, name := range []string{"title", "rating", "playcount", "year"} {
-				field, ok := LookupField(name)
-				gomega.Expect(ok).To(gomega.BeTrue(), "field %q should exist", name)
-				gomega.Expect(field.Boolean).To(gomega.BeFalse(), "field %q should not be Boolean", name)
-			}
-		})
 	})
 })

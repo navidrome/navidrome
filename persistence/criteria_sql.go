@@ -220,7 +220,11 @@ func missingExpr(values map[string]any, checkAbsence bool) (squirrel.Sqlizer, er
 		return nil, fmt.Errorf("isMissing/isPresent operator is only supported for tag and role fields, got: %s", field)
 	}
 
-	negate := checkAbsence == criteria.IsTruthy(value)
+	b, ok := value.(bool)
+	if !ok {
+		return nil, fmt.Errorf("invalid boolean value for 'missing' expression: %s: %v", field, value)
+	}
+	negate := checkAbsence == b
 	return jsonExpr(info, nil, negate), nil
 }
 
@@ -414,9 +418,6 @@ func sqlFields(values map[string]any) (map[string]any, error) {
 		sqlField, ok := fieldExpr(info.Name())
 		if !ok || sqlField == "" {
 			return nil, fmt.Errorf("invalid field in criteria: %s", field)
-		}
-		if info.Boolean {
-			value = criteria.NormalizeBoolValue(value)
 		}
 		fields[sqlField] = value
 	}

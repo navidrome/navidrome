@@ -3,6 +3,7 @@ package criteria
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -38,6 +39,7 @@ func unmarshalExpression(opName string, rawValue json.RawMessage) Expression {
 	if err != nil {
 		return nil
 	}
+	normalizeBoolFields(m)
 	switch opName {
 	case "is":
 		return Is(m)
@@ -70,11 +72,45 @@ func unmarshalExpression(opName string, rawValue json.RawMessage) Expression {
 	case "notinplaylist":
 		return NotInPlaylist(m)
 	case "ismissing":
+		normalizeAllBoolFields(m)
 		return IsMissing(m)
 	case "ispresent":
+		normalizeAllBoolFields(m)
 		return IsPresent(m)
 	}
 	return nil
+}
+
+func normalizeAllBoolFields(m map[string]any) {
+	for k, v := range m {
+		m[k] = normalizeBoolValue(v)
+	}
+}
+
+func normalizeBoolFields(m map[string]any) {
+	for field, value := range m {
+		info, ok := LookupField(field)
+		if ok && info.Boolean {
+			m[field] = normalizeBoolValue(value)
+		}
+	}
+}
+
+func normalizeBoolValue(v any) any {
+	switch val := v.(type) {
+	case string:
+		if b, err := strconv.ParseBool(val); err == nil {
+			return b
+		}
+	case float64:
+		if val == 1 {
+			return true
+		}
+		if val == 0 {
+			return false
+		}
+	}
+	return v
 }
 
 func unmarshalConjunction(conjName string, rawValue json.RawMessage) Expression {

@@ -600,5 +600,51 @@ var _ = Describe("Playlist Endpoints", Ordered, func() {
 			}
 			Expect(entryIDs).To(ContainElement(songID))
 		})
+
+		It("isPresent with string 'true' matches songs that have the tag", func() {
+			pls := &model.Playlist{
+				Name:    "Genre Present String",
+				OwnerID: adminUser.ID,
+				Rules:   &criteria.Criteria{Expression: criteria.All{criteria.IsPresent{"genre": "true"}}},
+			}
+			Expect(ds.Playlist(ctx).Put(pls)).To(Succeed())
+
+			resp := doReq("getPlaylist", "id", pls.ID)
+			Expect(resp.Status).To(Equal(responses.StatusOK))
+			Expect(resp.Playlist.SongCount).To(BeNumerically(">=", int32(1)))
+		})
+
+		It("isMissing with string 'true' excludes songs that have the tag", func() {
+			pls := &model.Playlist{
+				Name:    "Genre Missing String",
+				OwnerID: adminUser.ID,
+				Rules:   &criteria.Criteria{Expression: criteria.All{criteria.IsMissing{"genre": "true"}}},
+			}
+			Expect(ds.Playlist(ctx).Put(pls)).To(Succeed())
+
+			resp := doReq("getPlaylist", "id", pls.ID)
+			Expect(resp.Status).To(Equal(responses.StatusOK))
+			Expect(resp.Playlist.SongCount).To(Equal(int32(0)))
+		})
+
+		It("isMissing with string 'true' returns same results as bool true", func() {
+			boolPls := &model.Playlist{
+				Name:    "Genre Missing Bool",
+				OwnerID: adminUser.ID,
+				Rules:   &criteria.Criteria{Expression: criteria.All{criteria.IsMissing{"genre": true}}},
+			}
+			Expect(ds.Playlist(ctx).Put(boolPls)).To(Succeed())
+
+			stringPls := &model.Playlist{
+				Name:    "Genre Missing String2",
+				OwnerID: adminUser.ID,
+				Rules:   &criteria.Criteria{Expression: criteria.All{criteria.IsMissing{"genre": "true"}}},
+			}
+			Expect(ds.Playlist(ctx).Put(stringPls)).To(Succeed())
+
+			boolResp := doReq("getPlaylist", "id", boolPls.ID)
+			stringResp := doReq("getPlaylist", "id", stringPls.ID)
+			Expect(stringResp.Playlist.SongCount).To(Equal(boolResp.Playlist.SongCount))
+		})
 	})
 })
