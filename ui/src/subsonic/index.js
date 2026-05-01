@@ -43,7 +43,7 @@ const reportPlaybackUrl = (mediaId, positionMs, state) =>
 const reportPlayback = (mediaId, positionMs, state) =>
   httpClient(reportPlaybackUrl(mediaId, positionMs, state))
 
-const reportPlaybackSync = (mediaId, positionMs, state) => {
+const reportPlaybackKeepalive = (mediaId, positionMs, state) => {
   const u = reportPlaybackUrl(mediaId, positionMs, state)
   if (u) {
     fetch(baseUrl(u), {
@@ -138,7 +138,7 @@ export default {
   url,
   ping,
   reportPlayback,
-  reportPlaybackSync,
+  reportPlaybackKeepalive,
   download,
   star,
   unstar,

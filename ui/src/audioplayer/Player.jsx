@@ -176,7 +176,7 @@ const Player = () => {
       if (currentTrackIdRef.current && !playerState.current?.isRadio) {
         stoppedRef.current = true
         try {
-          subsonic.reportPlaybackSync(
+          subsonic.reportPlaybackKeepalive(
             currentTrackIdRef.current,
             lastPositionMsRef.current,
             'stopped',
