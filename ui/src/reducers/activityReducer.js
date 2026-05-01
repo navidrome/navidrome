@@ -3,6 +3,7 @@ import {
   EVENT_SCAN_STATUS,
   EVENT_SERVER_START,
   EVENT_NOW_PLAYING_COUNT,
+  EVENT_NOW_PLAYING_COUNT_SYNC,
   EVENT_STREAM_RECONNECTED,
 } from '../actions'
 import config from '../config'
@@ -51,6 +52,8 @@ export const activityReducer = (previousState = initialState, payload) => {
         nowPlayingCount: data.count,
         nowPlayingLastUpdate: Date.now(),
       }
+    case EVENT_NOW_PLAYING_COUNT_SYNC:
+      return { ...previousState, nowPlayingCount: data.count }
     case EVENT_STREAM_RECONNECTED:
       return { ...previousState, streamReconnected: Date.now() }
     default:
