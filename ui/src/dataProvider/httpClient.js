@@ -7,7 +7,7 @@ import { removeHomeCache } from '../utils/removeHomeCache'
 
 const customAuthorizationHeader = 'X-ND-Authorization'
 const clientUniqueIdHeader = 'X-ND-Client-Unique-Id'
-const clientUniqueId = uuidv4()
+export const clientUniqueId = uuidv4()
 
 const httpClient = (url, options = {}) => {
   url = baseUrl(url)

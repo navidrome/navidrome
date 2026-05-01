@@ -1,5 +1,5 @@
 import { baseUrl } from '../utils'
-import { httpClient } from '../dataProvider'
+import { httpClient, clientUniqueId } from '../dataProvider'
 
 const url = (command, id, options) => {
   const username = localStorage.getItem('username')
@@ -48,7 +48,10 @@ const reportPlaybackSync = (mediaId, positionMs, state) => {
   if (u) {
     const fullUrl = baseUrl(u)
     try {
-      fetch(fullUrl, { keepalive: true })
+      fetch(fullUrl, {
+        keepalive: true,
+        headers: { 'X-ND-Client-Unique-Id': clientUniqueId },
+      })
     } catch {
       navigator.sendBeacon(fullUrl)
     }
