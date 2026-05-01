@@ -371,6 +371,69 @@ var _ = Describe("PlayTracker", func() {
 			Expect(playing).To(HaveLen(2))
 		})
 
+		Describe("SSE broadcast on state change", func() {
+			BeforeEach(func() {
+				eventBroker = &fakeEventBroker{}
+				tracker = newPlayTracker(ds, eventBroker, nil)
+				tracker.(*playTracker).builtinScrobblers["fake"] = fake
+			})
+
+			It("broadcasts NowPlayingCount on every state change", func() {
+				// starting -> count should be 1
+				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 0, State: "starting", PlaybackRate: 1.0, ClientId: defaultClientId,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				evts := eventBroker.getEvents()
+				Expect(evts).To(HaveLen(1))
+				Expect(evts[0].(*events.NowPlayingCount).Count).To(Equal(1))
+
+				// playing -> count should be 1
+				err = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 10000, State: "playing", PlaybackRate: 1.0, ClientId: defaultClientId,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				evts = eventBroker.getEvents()
+				Expect(evts).To(HaveLen(2))
+				Expect(evts[1].(*events.NowPlayingCount).Count).To(Equal(1))
+
+				// paused -> count should be 1
+				err = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 30000, State: "paused", PlaybackRate: 1.0, ClientId: defaultClientId,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				evts = eventBroker.getEvents()
+				Expect(evts).To(HaveLen(3))
+				Expect(evts[2].(*events.NowPlayingCount).Count).To(Equal(1))
+
+				// stopped -> count should be 0
+				err = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 30000, State: "stopped", PlaybackRate: 1.0, ClientId: defaultClientId,
+					IgnoreScrobble: true,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				evts = eventBroker.getEvents()
+				Expect(evts).To(HaveLen(4))
+				Expect(evts[3].(*events.NowPlayingCount).Count).To(Equal(0))
+			})
+
+			It("does NOT broadcast when EnableNowPlaying is false", func() {
+				conf.Server.EnableNowPlaying = false
+				tracker = newPlayTracker(ds, eventBroker, nil)
+				tracker.(*playTracker).builtinScrobblers["fake"] = fake
+
+				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 0, State: "starting", PlaybackRate: 1.0, ClientId: defaultClientId,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				err = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 10000, State: "playing", PlaybackRate: 1.0, ClientId: defaultClientId,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(eventBroker.getEvents()).To(BeEmpty())
+			})
+		})
+
 		Describe("auto-scrobble", func() {
 			It("scrobbles on stopped when positionMs >= 50% of track", func() {
 				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{

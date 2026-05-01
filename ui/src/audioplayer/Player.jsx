@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useInterval } from '../common'
 import { useDispatch, useSelector } from 'react-redux'
 import { useMediaQuery } from '@material-ui/core'
 import { ThemeProvider } from '@material-ui/core/styles'
@@ -41,9 +42,11 @@ const Player = () => {
   const dataProvider = useDataProvider()
   const playerState = useSelector((state) => state.player)
   const dispatch = useDispatch()
-  const [startTime, setStartTime] = useState(null)
-  const [scrobbled, setScrobbled] = useState(false)
-  const [preloaded, setPreload] = useState(false)
+  const [currentTrackId, setCurrentTrackId] = useState(null)
+  const [heartbeatTrackId, setHeartbeatTrackId] = useState(null)
+  const lastPositionMsRef = useRef(0)
+  const currentTrackIdRef = useRef(null)
+  const stoppedRef = useRef(false)
   const [audioInstance, setAudioInstance] = useState(null)
   const isDesktop = useMediaQuery('(min-width:810px)')
   const isMobilePlayer =
@@ -57,6 +60,21 @@ const Player = () => {
   // without re-triggering on every queue/position change
   const playerStateRef = useRef(playerState)
   playerStateRef.current = playerState
+
+  currentTrackIdRef.current = currentTrackId
+
+  useInterval(
+    () => {
+      if (heartbeatTrackId && !stoppedRef.current) {
+        subsonic.reportPlayback(
+          heartbeatTrackId,
+          lastPositionMsRef.current,
+          'playing',
+        )
+      }
+    },
+    heartbeatTrackId ? config.playbackReportIntervalMs : null,
+  )
 
   // Detect browser codec profile and eagerly resolve transcode URLs for the
   // persisted queue once on mount (e.g. after a browser refresh)
@@ -155,15 +173,33 @@ const Player = () => {
 
   useEffect(() => {
     const handleBeforeUnload = (e) => {
-      // Check there's a current track and is actually playing/not paused
       if (playerState.current?.uuid && audioInstance && !audioInstance.paused) {
         e.preventDefault()
-        e.returnValue = '' // Chrome requires returnValue to be set
+        e.returnValue = ''
+      }
+    }
+
+    const handlePageHide = () => {
+      if (currentTrackIdRef.current && !playerState.current?.isRadio) {
+        stoppedRef.current = true
+        try {
+          subsonic.reportPlaybackKeepalive(
+            currentTrackIdRef.current,
+            lastPositionMsRef.current,
+            'stopped',
+          )
+        } catch {
+          // fetch/sendBeacon may throw; ignore
+        }
       }
     }
 
     window.addEventListener('beforeunload', handleBeforeUnload)
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+    window.addEventListener('pagehide', handlePageHide)
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      window.removeEventListener('pagehide', handlePageHide)
+    }
   }, [playerState, audioInstance])
 
   const defaultOptions = useMemo(
@@ -227,44 +263,25 @@ const Player = () => {
     [dispatch],
   )
 
-  const nextSong = useCallback(() => {
-    const idx = playerState.queue.findIndex(
-      (item) => item.uuid === playerState.current.uuid,
-    )
-    return idx !== null ? playerState.queue[idx + 1] : null
-  }, [playerState])
+  const onAudioProgress = useCallback((info) => {
+    if (info.ended) {
+      document.title = 'Navidrome'
+    }
+    if (!info.isRadio && info.currentTime != null) {
+      lastPositionMsRef.current = Math.floor(info.currentTime * 1000)
+    }
+  }, [])
 
-  const onAudioProgress = useCallback(
+  const onAudioSeeked = useCallback(
     (info) => {
-      if (info.ended) {
-        document.title = 'Navidrome'
-      }
-
-      const progress = (info.currentTime / info.duration) * 100
-      if (isNaN(info.duration) || (progress < 50 && info.currentTime < 240)) {
-        return
-      }
-
-      if (info.isRadio) {
-        return
-      }
-
-      if (!preloaded) {
-        const next = nextSong()
-        if (next != null && !next.isRadio) {
-          // Trigger decision pre-fetch (this also warms the cache)
-          decisionService.prefetchDecisions([next.trackId])
-        }
-        setPreload(true)
-        return
-      }
-
-      if (!scrobbled) {
-        info.trackId && subsonic.scrobble(info.trackId, startTime)
-        setScrobbled(true)
+      if (!info.isRadio && currentTrackId) {
+        const posMs = Math.floor(info.currentTime * 1000)
+        lastPositionMsRef.current = posMs
+        const state = audioInstance?.paused ? 'paused' : 'playing'
+        subsonic.reportPlayback(currentTrackId, posMs, state)
       }
     },
-    [startTime, scrobbled, nextSong, preloaded],
+    [currentTrackId, audioInstance],
   )
 
   const onAudioVolumeChange = useCallback(
@@ -275,24 +292,30 @@ const Player = () => {
 
   const onAudioPlay = useCallback(
     (info) => {
-      // Do this to start the context; on chrome-based browsers, the context
-      // will start paused since it is created prior to user interaction
       if (context && context.state !== 'running') {
         context.resume()
       }
 
       dispatch(currentPlaying(info))
-      if (startTime === null) {
-        setStartTime(Date.now())
-      }
       if (info.duration) {
         const song = info.song
         document.title = `${song.title} - ${song.artist} - Navidrome`
         if (!info.isRadio) {
-          const pos = startTime === null ? null : Math.floor(info.currentTime)
-          subsonic.nowPlaying(info.trackId, pos)
+          const posMs = Math.floor(info.currentTime * 1000)
+          lastPositionMsRef.current = posMs
+          const isNewTrack = info.trackId !== currentTrackId
+          if (isNewTrack) {
+            subsonic
+              .reportPlayback(info.trackId, posMs, 'starting')
+              .then(() =>
+                subsonic.reportPlayback(info.trackId, posMs, 'playing'),
+              )
+            setCurrentTrackId(info.trackId)
+          } else {
+            subsonic.reportPlayback(info.trackId, posMs, 'playing')
+          }
+          setHeartbeatTrackId(info.trackId)
         }
-        setPreload(false)
         if (config.gaTrackingId) {
           ReactGA.event({
             category: 'Player',
@@ -309,34 +332,49 @@ const Player = () => {
         }
       }
     },
-    [context, dispatch, showNotifications, startTime],
+    [context, dispatch, showNotifications, currentTrackId],
   )
 
   const onAudioPlayTrackChange = useCallback(() => {
-    if (scrobbled) {
-      setScrobbled(false)
+    if (currentTrackId) {
+      subsonic.reportPlayback(
+        currentTrackId,
+        lastPositionMsRef.current,
+        'stopped',
+      )
     }
-    if (startTime !== null) {
-      setStartTime(null)
-    }
-  }, [scrobbled, startTime])
+    setHeartbeatTrackId(null)
+    setCurrentTrackId(null)
+  }, [currentTrackId])
 
   const onAudioPause = useCallback(
-    (info) => dispatch(currentPlaying(info)),
-    [dispatch],
+    (info) => {
+      dispatch(currentPlaying(info))
+      if (!info.isRadio && currentTrackId) {
+        const posMs = Math.floor(info.currentTime * 1000)
+        lastPositionMsRef.current = posMs
+        subsonic.reportPlayback(currentTrackId, posMs, 'paused')
+      }
+      setHeartbeatTrackId(null)
+    },
+    [dispatch, currentTrackId],
   )
 
   const onAudioEnded = useCallback(
     (currentPlayId, audioLists, info) => {
-      setScrobbled(false)
-      setStartTime(null)
+      if (currentTrackId && !info.isRadio) {
+        const posMs = Math.floor((info.duration || 0) * 1000)
+        subsonic.reportPlayback(currentTrackId, posMs, 'stopped')
+      }
+      setHeartbeatTrackId(null)
+      setCurrentTrackId(null)
       dispatch(currentPlaying(info))
       dataProvider
         .getOne('keepalive', { id: info.trackId })
         // eslint-disable-next-line no-console
         .catch((e) => console.log('Keepalive error:', e))
     },
-    [dispatch, dataProvider],
+    [dispatch, dataProvider, currentTrackId],
   )
 
   const onCoverClick = useCallback((mode, audioLists, audioInfo) => {
@@ -369,10 +407,19 @@ const Player = () => {
 
   const onBeforeDestroy = useCallback(() => {
     return new Promise((resolve, reject) => {
+      if (currentTrackId && !playerStateRef.current?.current?.isRadio) {
+        subsonic.reportPlayback(
+          currentTrackId,
+          lastPositionMsRef.current,
+          'stopped',
+        )
+      }
+      setHeartbeatTrackId(null)
+      setCurrentTrackId(null)
       dispatch(clearQueue())
       reject()
     })
-  }, [dispatch])
+  }, [dispatch, currentTrackId])
 
   if (!visible) {
     document.title = 'Navidrome'
@@ -397,6 +444,7 @@ const Player = () => {
         onAudioListsChange={onAudioListsChange}
         onAudioVolumeChange={onAudioVolumeChange}
         onAudioProgress={onAudioProgress}
+        onAudioSeeked={onAudioSeeked}
         onAudioPlay={onAudioPlay}
         onAudioPlayTrackChange={onAudioPlayTrackChange}
         onAudioPause={onAudioPause}
