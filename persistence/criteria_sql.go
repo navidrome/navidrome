@@ -220,7 +220,11 @@ func missingExpr(values map[string]any, checkAbsence bool) (squirrel.Sqlizer, er
 		return nil, fmt.Errorf("isMissing/isPresent operator is only supported for tag and role fields, got: %s", field)
 	}
 
-	negate := checkAbsence == criteria.IsTruthy(value)
+	b, ok := value.(bool)
+	if !ok {
+		return nil, fmt.Errorf("invalid boolean value for 'missing' expression: %s: %v", field, value)
+	}
+	negate := checkAbsence == b
 	return jsonExpr(info, nil, negate), nil
 }
 

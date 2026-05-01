@@ -8,6 +8,7 @@ type FieldInfo struct {
 	IsTag   bool
 	IsRole  bool
 	Numeric bool
+	Boolean bool
 
 	tagAlias string // If set, a tag name from mappings.yml that resolves to this field
 	name     string // Canonical name, populated by LookupField from the map key
@@ -21,7 +22,7 @@ func (f FieldInfo) Name() string {
 var fieldMap = map[string]FieldInfo{
 	"title":                {},
 	"album":                {},
-	"hascoverart":          {},
+	"hascoverart":          {Boolean: true},
 	"tracknumber":          {},
 	"discnumber":           {},
 	"year":                 {},
@@ -31,8 +32,8 @@ var fieldMap = map[string]FieldInfo{
 	"releaseyear":          {},
 	"releasedate":          {},
 	"size":                 {},
-	"compilation":          {},
-	"missing":              {},
+	"compilation":          {Boolean: true},
+	"missing":              {Boolean: true},
 	"explicitstatus":       {},
 	"dateadded":            {},
 	"datemodified":         {},
@@ -54,7 +55,7 @@ var fieldMap = map[string]FieldInfo{
 	"samplerate":           {},
 	"bpm":                  {},
 	"channels":             {},
-	"loved":                {},
+	"loved":                {Boolean: true},
 	"dateloved":            {},
 	"lastplayed":           {},
 	"daterated":            {},
@@ -62,13 +63,13 @@ var fieldMap = map[string]FieldInfo{
 	"rating":               {},
 	"averagerating":        {Numeric: true},
 	"albumrating":          {},
-	"albumloved":           {},
+	"albumloved":           {Boolean: true},
 	"albumplaycount":       {},
 	"albumlastplayed":      {},
 	"albumdateloved":       {},
 	"albumdaterated":       {},
 	"artistrating":         {},
-	"artistloved":          {},
+	"artistloved":          {Boolean: true},
 	"artistplaycount":      {},
 	"artistlastplayed":     {},
 	"artistdateloved":      {},

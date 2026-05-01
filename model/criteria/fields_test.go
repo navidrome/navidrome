@@ -52,5 +52,6 @@ var _ = Describe("fields", func() {
 			gomega.Expect(field.Name()).To(gomega.Equal("task3_producer"))
 			gomega.Expect(field.IsRole).To(gomega.BeTrue())
 		})
+
 	})
 })
