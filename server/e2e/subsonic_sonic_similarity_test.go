@@ -14,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/core/playlists"
+	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/core/sonic"
 	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/model"
@@ -42,7 +43,7 @@ func buildSonicRouter(provider sonic.Provider) *subsonic.Router {
 		nil, // scanner
 		events.NoopBroker(),
 		playlists.NewPlaylists(ds, core.NewImageUploadService()),
-		noopPlayTracker{},
+		scrobbler.NewPlayTracker(ds, events.NoopBroker(), nil),
 		core.NewShare(ds),
 		playback.PlaybackServer(nil),
 		metrics.NewNoopInstance(),

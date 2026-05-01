@@ -390,29 +390,13 @@ func (n noopProvider) AlbumImage(context.Context, string) (*url.URL, error) {
 	return nil, model.ErrNotFound
 }
 
-// noopPlayTracker implements scrobbler.PlayTracker
-type noopPlayTracker struct{}
-
-func (n noopPlayTracker) NowPlaying(context.Context, string, string, string, int) error {
-	return nil
-}
-
-func (n noopPlayTracker) GetNowPlaying(context.Context) ([]scrobbler.NowPlayingInfo, error) {
-	return nil, nil
-}
-
-func (n noopPlayTracker) Submit(context.Context, []scrobbler.Submission) error {
-	return nil
-}
-
 // Compile-time interface checks
 var (
-	_ artwork.Artwork       = noopArtwork{}
-	_ stream.MediaStreamer  = &spyStreamer{}
-	_ core.Archiver         = noopArchiver{}
-	_ external.Provider     = noopProvider{}
-	_ scrobbler.PlayTracker = noopPlayTracker{}
-	_ ffmpeg.FFmpeg         = noopFFmpeg{}
+	_ artwork.Artwork      = noopArtwork{}
+	_ stream.MediaStreamer = &spyStreamer{}
+	_ core.Archiver        = noopArchiver{}
+	_ external.Provider    = noopProvider{}
+	_ ffmpeg.FFmpeg        = noopFFmpeg{}
 )
 
 var _ = BeforeSuite(func() {
@@ -513,7 +497,7 @@ func setupTestDB() {
 		s,
 		events.NoopBroker(),
 		playlists.NewPlaylists(ds, core.NewImageUploadService()),
-		noopPlayTracker{},
+		scrobbler.NewPlayTracker(ds, events.NoopBroker(), nil),
 		core.NewShare(ds),
 		playback.PlaybackServer(nil),
 		metrics.NewNoopInstance(),

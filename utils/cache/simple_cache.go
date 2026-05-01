@@ -17,6 +17,7 @@ type SimpleCache[K comparable, V any] interface {
 	AddWithTTL(key K, value V, ttl time.Duration) error
 	Get(key K) (V, error)
 	GetWithLoader(key K, loader func(key K) (V, time.Duration, error)) (V, error)
+	Remove(key K)
 	Keys() []K
 	Values() []V
 	Len() int
@@ -75,6 +76,10 @@ func (c *simpleCache[K, V]) AddWithTTL(key K, value V, ttl time.Duration) error 
 		return errors.New("failed to add item")
 	}
 	return nil
+}
+
+func (c *simpleCache[K, V]) Remove(key K) {
+	c.data.Delete(key)
 }
 
 func (c *simpleCache[K, V]) Get(key K) (V, error) {
