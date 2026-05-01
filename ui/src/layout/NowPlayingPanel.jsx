@@ -384,6 +384,7 @@ const NowPlayingPanel = () => {
 
   const handleMenuClose = useCallback(() => {
     setAnchorEl(null)
+    setEntries([])
   }, [])
 
   // Close panel when link is clicked on small screens
