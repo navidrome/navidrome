@@ -403,39 +403,37 @@ const NowPlayingPanel = () => {
   }, [])
 
   const fetchTimerRef = useRef(null)
-  const doFetch = useCallback(
-    () =>
-      subsonic
-        .getNowPlaying()
-        .then((resp) => resp.json['subsonic-response'])
-        .then((data) => {
-          if (data.status === 'ok') {
-            const nowPlayingEntries = data.nowPlaying?.entry || []
-            const fetchTime = Date.now()
-            setEntries(
-              nowPlayingEntries.map((e) => ({ ...e, _fetchedAt: fetchTime })),
-            )
-            dispatch(nowPlayingCountUpdate({ count: nowPlayingEntries.length }))
-          } else {
-            throw new Error(
-              data.error?.message || 'Failed to fetch now playing data',
-            )
-          }
+  const doFetchRef = useRef()
+  doFetchRef.current = () =>
+    subsonic
+      .getNowPlaying()
+      .then((resp) => resp.json['subsonic-response'])
+      .then((data) => {
+        if (data.status === 'ok') {
+          const nowPlayingEntries = data.nowPlaying?.entry || []
+          const fetchTime = Date.now()
+          setEntries(
+            nowPlayingEntries.map((e) => ({ ...e, _fetchedAt: fetchTime })),
+          )
+          dispatch(nowPlayingCountUpdate({ count: nowPlayingEntries.length }))
+        } else {
+          throw new Error(
+            data.error?.message || 'Failed to fetch now playing data',
+          )
+        }
+      })
+      .catch((error) => {
+        notify('ra.page.error', 'warning', {
+          messageArgs: { error: error.message || 'Unknown error' },
         })
-        .catch((error) => {
-          notify('ra.page.error', 'warning', {
-            messageArgs: { error: error.message || 'Unknown error' },
-          })
-        }),
-    [dispatch, notify],
-  )
+      })
   const fetchList = useCallback(() => {
     if (fetchTimerRef.current) clearTimeout(fetchTimerRef.current)
     fetchTimerRef.current = setTimeout(() => {
       fetchTimerRef.current = null
-      doFetch()
+      doFetchRef.current()
     }, 300)
-  }, [doFetch])
+  }, [])
 
   // Initialize count and entries on mount, and refresh on server/stream changes
   useEffect(() => {
