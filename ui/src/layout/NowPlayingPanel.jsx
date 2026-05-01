@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import PropTypes from 'prop-types'
 import { useSelector, useDispatch } from 'react-redux'
 import { useTranslate, Link, useNotify } from 'react-admin'
@@ -377,8 +377,8 @@ const NowPlayingPanel = () => {
 
   const [anchorEl, setAnchorEl] = useState(null)
   const [entries, setEntries] = useState([])
+  const [fetchedAt, setFetchedAt] = useState(Date.now())
   const [now, setNow] = useState(Date.now())
-  const fetchedAtRef = useRef(Date.now())
   const open = Boolean(anchorEl)
 
   const handleMenuOpen = useCallback((event) => {
@@ -411,8 +411,10 @@ const NowPlayingPanel = () => {
         .then((data) => {
           if (data.status === 'ok') {
             const nowPlayingEntries = data.nowPlaying?.entry || []
+            const fetchTime = Date.now()
             setEntries(nowPlayingEntries)
-            fetchedAtRef.current = Date.now()
+            setFetchedAt(fetchTime)
+            setNow(fetchTime)
             // Also update the count in Redux store
             dispatch(nowPlayingCountUpdate({ count: nowPlayingEntries.length }))
           } else {
@@ -470,7 +472,7 @@ const NowPlayingPanel = () => {
         onClose={handleMenuClose}
         entries={entries}
         now={now}
-        fetchedAt={fetchedAtRef.current}
+        fetchedAt={fetchedAt}
         onLinkClick={handleLinkClick}
         getArtistLink={getArtistLink}
       />
