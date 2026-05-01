@@ -46,6 +46,7 @@ const Player = () => {
   const [heartbeatTrackId, setHeartbeatTrackId] = useState(null)
   const lastPositionMsRef = useRef(0)
   const currentTrackIdRef = useRef(null)
+  const stoppedRef = useRef(false)
   const [audioInstance, setAudioInstance] = useState(null)
   const isDesktop = useMediaQuery('(min-width:810px)')
   const isMobilePlayer =
@@ -63,7 +64,7 @@ const Player = () => {
   currentTrackIdRef.current = currentTrackId
 
   useInterval(() => {
-    if (heartbeatTrackId) {
+    if (heartbeatTrackId && !stoppedRef.current) {
       subsonic.reportPlayback(heartbeatTrackId, lastPositionMsRef.current, 'playing')
     }
   }, heartbeatTrackId ? config.playbackReportIntervalMs : null)
@@ -170,6 +171,7 @@ const Player = () => {
         e.returnValue = ''
       }
       if (currentTrackIdRef.current && !playerState.current?.isRadio) {
+        stoppedRef.current = true
         try {
           subsonic.reportPlaybackSync(
             currentTrackIdRef.current,
@@ -177,7 +179,7 @@ const Player = () => {
             'stopped',
           )
         } catch {
-          // Sync XHR may be blocked; ignore
+          // fetch/sendBeacon may throw; ignore
         }
       }
     }
