@@ -404,9 +404,9 @@ const NowPlayingPanel = () => {
   const lastFetchRef = useRef(0)
   const fetchList = useCallback(
     () => {
-      const now = Date.now()
-      if (now - lastFetchRef.current < 1000) return Promise.resolve()
-      lastFetchRef.current = now
+      const fetchNow = Date.now()
+      if (fetchNow - lastFetchRef.current < 1000) return Promise.resolve()
+      lastFetchRef.current = fetchNow
       return subsonic
         .getNowPlaying()
         .then((resp) => resp.json['subsonic-response'])

@@ -396,7 +396,7 @@ const Player = () => {
 
   const onBeforeDestroy = useCallback(() => {
     return new Promise((resolve, reject) => {
-      if (currentTrackId && !playerState.current?.isRadio) {
+      if (currentTrackId && !playerStateRef.current?.current?.isRadio) {
         subsonic.reportPlayback(currentTrackId, lastPositionMsRef.current, 'stopped')
       }
       setHeartbeatTrackId(null)
@@ -404,7 +404,7 @@ const Player = () => {
       dispatch(clearQueue())
       reject()
     })
-  }, [dispatch, currentTrackId, playerState.current?.isRadio])
+  }, [dispatch, currentTrackId])
 
   if (!visible) {
     document.title = 'Navidrome'
