@@ -46,7 +46,11 @@ export const activityReducer = (previousState = initialState, payload) => {
         },
       }
     case EVENT_NOW_PLAYING_COUNT:
-      return { ...previousState, nowPlayingCount: data.count, nowPlayingLastUpdate: Date.now() }
+      return {
+        ...previousState,
+        nowPlayingCount: data.count,
+        nowPlayingLastUpdate: Date.now(),
+      }
     case EVENT_STREAM_RECONNECTED:
       return { ...previousState, streamReconnected: Date.now() }
     default:

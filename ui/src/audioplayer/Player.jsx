@@ -63,11 +63,18 @@ const Player = () => {
 
   currentTrackIdRef.current = currentTrackId
 
-  useInterval(() => {
-    if (heartbeatTrackId && !stoppedRef.current) {
-      subsonic.reportPlayback(heartbeatTrackId, lastPositionMsRef.current, 'playing')
-    }
-  }, heartbeatTrackId ? config.playbackReportIntervalMs : null)
+  useInterval(
+    () => {
+      if (heartbeatTrackId && !stoppedRef.current) {
+        subsonic.reportPlayback(
+          heartbeatTrackId,
+          lastPositionMsRef.current,
+          'playing',
+        )
+      }
+    },
+    heartbeatTrackId ? config.playbackReportIntervalMs : null,
+  )
 
   // Detect browser codec profile and eagerly resolve transcode URLs for the
   // persisted queue once on mount (e.g. after a browser refresh)
@@ -256,17 +263,14 @@ const Player = () => {
     [dispatch],
   )
 
-  const onAudioProgress = useCallback(
-    (info) => {
-      if (info.ended) {
-        document.title = 'Navidrome'
-      }
-      if (!info.isRadio && info.currentTime) {
-        lastPositionMsRef.current = Math.floor(info.currentTime * 1000)
-      }
-    },
-    [],
-  )
+  const onAudioProgress = useCallback((info) => {
+    if (info.ended) {
+      document.title = 'Navidrome'
+    }
+    if (!info.isRadio && info.currentTime) {
+      lastPositionMsRef.current = Math.floor(info.currentTime * 1000)
+    }
+  }, [])
 
   const onAudioSeeked = useCallback(
     (info) => {
@@ -300,9 +304,11 @@ const Player = () => {
           lastPositionMsRef.current = posMs
           const isNewTrack = info.trackId !== currentTrackId
           if (isNewTrack) {
-            subsonic.reportPlayback(info.trackId, posMs, 'starting').then(
-              () => subsonic.reportPlayback(info.trackId, posMs, 'playing'),
-            )
+            subsonic
+              .reportPlayback(info.trackId, posMs, 'starting')
+              .then(() =>
+                subsonic.reportPlayback(info.trackId, posMs, 'playing'),
+              )
             setCurrentTrackId(info.trackId)
           } else {
             subsonic.reportPlayback(info.trackId, posMs, 'playing')
@@ -330,7 +336,11 @@ const Player = () => {
 
   const onAudioPlayTrackChange = useCallback(() => {
     if (currentTrackId) {
-      subsonic.reportPlayback(currentTrackId, lastPositionMsRef.current, 'stopped')
+      subsonic.reportPlayback(
+        currentTrackId,
+        lastPositionMsRef.current,
+        'stopped',
+      )
     }
     setHeartbeatTrackId(null)
     setCurrentTrackId(null)
@@ -397,7 +407,11 @@ const Player = () => {
   const onBeforeDestroy = useCallback(() => {
     return new Promise((resolve, reject) => {
       if (currentTrackId && !playerStateRef.current?.current?.isRadio) {
-        subsonic.reportPlayback(currentTrackId, lastPositionMsRef.current, 'stopped')
+        subsonic.reportPlayback(
+          currentTrackId,
+          lastPositionMsRef.current,
+          'stopped',
+        )
       }
       setHeartbeatTrackId(null)
       setCurrentTrackId(null)

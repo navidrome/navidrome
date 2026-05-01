@@ -1,5 +1,9 @@
 import { baseUrl } from '../utils'
-import { httpClient, clientUniqueId, clientUniqueIdHeader } from '../dataProvider'
+import {
+  httpClient,
+  clientUniqueId,
+  clientUniqueIdHeader,
+} from '../dataProvider'
 
 const url = (command, id, options) => {
   const username = localStorage.getItem('username')
