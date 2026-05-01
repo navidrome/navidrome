@@ -10,6 +10,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/events"
+	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -89,32 +90,107 @@ var _ = Describe("MediaAnnotationController", func() {
 				Expect(playTracker.Submissions).To(BeEmpty())
 			})
 
-			It("registers a NowPlaying", func() {
+			It("registers a NowPlaying via ReportPlayback", func() {
 				_, err := router.Scrobble(req)
 
 				Expect(err).ToNot(HaveOccurred())
-				Expect(playTracker.Playing).To(HaveLen(1))
-				Expect(playTracker.Playing).To(HaveKey("player-1"))
+				Expect(playTracker.ReportedPlayback).To(HaveLen(1))
+				Expect(playTracker.ReportedPlayback[0].MediaId).To(Equal("12"))
+				Expect(playTracker.ReportedPlayback[0].State).To(Equal(scrobbler.StatePlaying))
+				Expect(playTracker.ReportedPlayback[0].ClientId).To(Equal("player-1"))
 			})
+		})
+	})
+
+	Describe("ReportPlayback", func() {
+		It("returns error when mediaId is missing", func() {
+			r := newGetRequest("mediaType=song", "positionMs=0", "state=playing")
+			_, err := router.ReportPlayback(r)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("returns error when mediaType is missing", func() {
+			r := newGetRequest("mediaId=123", "positionMs=0", "state=playing")
+			_, err := router.ReportPlayback(r)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("returns error when positionMs is missing", func() {
+			r := newGetRequest("mediaId=123", "mediaType=song", "state=playing")
+			_, err := router.ReportPlayback(r)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("returns error when state is missing", func() {
+			r := newGetRequest("mediaId=123", "mediaType=song", "positionMs=0")
+			_, err := router.ReportPlayback(r)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("returns error for invalid state value", func() {
+			r := newGetRequest("mediaId=123", "mediaType=song", "positionMs=0", "state=invalid")
+			_, err := router.ReportPlayback(r)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("returns error for negative positionMs", func() {
+			r := newGetRequest("mediaId=123", "mediaType=song", "positionMs=-1", "state=playing")
+			_, err := router.ReportPlayback(r)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("returns error for NaN playbackRate", func() {
+			r := newGetRequest("mediaId=123", "mediaType=song", "positionMs=0", "state=playing", "playbackRate=NaN")
+			_, err := router.ReportPlayback(r)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("returns error for Inf playbackRate", func() {
+			r := newGetRequest("mediaId=123", "mediaType=song", "positionMs=0", "state=playing", "playbackRate=Inf")
+			_, err := router.ReportPlayback(r)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("returns error for negative playbackRate", func() {
+			r := newGetRequest("mediaId=123", "mediaType=song", "positionMs=0", "state=playing", "playbackRate=-1.0")
+			_, err := router.ReportPlayback(r)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("returns error for zero playbackRate", func() {
+			r := newGetRequest("mediaId=123", "mediaType=song", "positionMs=0", "state=playing", "playbackRate=0")
+			_, err := router.ReportPlayback(r)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("accepts mediaType=podcast without error", func() {
+			r := newGetRequest("mediaId=123", "mediaType=podcast", "positionMs=0", "state=playing")
+			ctx := request.WithPlayer(r.Context(), model.Player{ID: "p1"})
+			r = r.WithContext(ctx)
+			resp, err := router.ReportPlayback(r)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.Status).To(Equal(responses.StatusOK))
+		})
+
+		It("defaults playbackRate to 1.0 and ignoreScrobble to false", func() {
+			r := newGetRequest("mediaId=123", "mediaType=song", "positionMs=5000", "state=playing")
+			ctx := request.WithPlayer(r.Context(), model.Player{ID: "p1"})
+			r = r.WithContext(ctx)
+			_, err := router.ReportPlayback(r)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(playTracker.ReportedPlayback).To(HaveLen(1))
+			Expect(playTracker.ReportedPlayback[0].PlaybackRate).To(Equal(1.0))
+			Expect(playTracker.ReportedPlayback[0].IgnoreScrobble).To(BeFalse())
+			Expect(playTracker.ReportedPlayback[0].ClientId).To(Equal("p1"))
+			Expect(playTracker.ReportedPlayback[0].ClientName).To(BeEmpty())
 		})
 	})
 })
 
 type fakePlayTracker struct {
-	Submissions []scrobbler.Submission
-	Playing     map[string]string
-	Error       error
-}
-
-func (f *fakePlayTracker) NowPlaying(_ context.Context, playerId string, _ string, trackId string, position int) error {
-	if f.Error != nil {
-		return f.Error
-	}
-	if f.Playing == nil {
-		f.Playing = make(map[string]string)
-	}
-	f.Playing[playerId] = trackId
-	return nil
+	Submissions      []scrobbler.Submission
+	ReportedPlayback []scrobbler.ReportPlaybackParams
+	Error            error
 }
 
 func (f *fakePlayTracker) GetNowPlaying(_ context.Context) ([]scrobbler.NowPlayingInfo, error) {
@@ -126,6 +202,14 @@ func (f *fakePlayTracker) Submit(_ context.Context, submissions []scrobbler.Subm
 		return f.Error
 	}
 	f.Submissions = append(f.Submissions, submissions...)
+	return nil
+}
+
+func (f *fakePlayTracker) ReportPlayback(_ context.Context, params scrobbler.ReportPlaybackParams) error {
+	if f.Error != nil {
+		return f.Error
+	}
+	f.ReportedPlayback = append(f.ReportedPlayback, params)
 	return nil
 }
 
