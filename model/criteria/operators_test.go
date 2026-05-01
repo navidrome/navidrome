@@ -31,6 +31,7 @@ var _ = Describe("Operators", func() {
 		},
 		Entry("is [string]", Is{"title": "Low Rider"}, `{"is":{"title":"Low Rider"}}`),
 		Entry("is [bool]", Is{"loved": false}, `{"is":{"loved":false}}`),
+		Entry("is [string does not coerce non-boolean field]", Is{"title": "true"}, `{"is":{"title":"true"}}`),
 		Entry("isNot", IsNot{"title": "Low Rider"}, `{"isNot":{"title":"Low Rider"}}`),
 		Entry("gt", Gt{"playCount": 10.0}, `{"gt":{"playCount":10}}`),
 		Entry("lt", Lt{"playCount": 10.0}, `{"lt":{"playCount":10}}`),
@@ -51,4 +52,78 @@ var _ = Describe("Operators", func() {
 		Entry("isPresent [true]", IsPresent{"genre": true}, `{"isPresent":{"genre":true}}`),
 		Entry("isPresent [false]", IsPresent{"genre": false}, `{"isPresent":{"genre":false}}`),
 	)
+
+	Describe("Boolean string coercion at unmarshal time (issue #4826)", func() {
+		It("coerces string 'true' to bool for boolean fields", func() {
+			var obj UnmarshalConjunctionType
+			err := json.Unmarshal([]byte(`[{"is":{"loved":"true"}}]`), &obj)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			gomega.Expect(obj[0]).To(gomega.Equal(Is{"loved": true}))
+		})
+
+		It("coerces string 'false' to bool for boolean fields", func() {
+			var obj UnmarshalConjunctionType
+			err := json.Unmarshal([]byte(`[{"is":{"loved":"false"}}]`), &obj)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			gomega.Expect(obj[0]).To(gomega.Equal(Is{"loved": false}))
+		})
+
+		It("does not coerce string values for non-boolean fields", func() {
+			var obj UnmarshalConjunctionType
+			err := json.Unmarshal([]byte(`[{"is":{"title":"true"}}]`), &obj)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			gomega.Expect(obj[0]).To(gomega.Equal(Is{"title": "true"}))
+		})
+
+		It("coerces numeric 1 to bool true for boolean fields", func() {
+			var obj UnmarshalConjunctionType
+			err := json.Unmarshal([]byte(`[{"is":{"loved":1}}]`), &obj)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			gomega.Expect(obj[0]).To(gomega.Equal(Is{"loved": true}))
+		})
+
+		It("coerces numeric 0 to bool false for boolean fields", func() {
+			var obj UnmarshalConjunctionType
+			err := json.Unmarshal([]byte(`[{"is":{"loved":0}}]`), &obj)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			gomega.Expect(obj[0]).To(gomega.Equal(Is{"loved": false}))
+		})
+
+		It("coerces in nested any/all groups", func() {
+			var c Criteria
+			err := json.Unmarshal([]byte(`{"all":[{"contains":{"title":"love"}},{"any":[{"is":{"loved":"true"}}]}]}`), &c)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			all := c.Expression.(All)
+			nested := all[1].(Any)
+			gomega.Expect(nested[0]).To(gomega.Equal(Is{"loved": true}))
+		})
+
+		It("coerces isMissing string 'true' to bool", func() {
+			var obj UnmarshalConjunctionType
+			err := json.Unmarshal([]byte(`[{"isMissing":{"genre":"true"}}]`), &obj)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			gomega.Expect(obj[0]).To(gomega.Equal(IsMissing{"genre": true}))
+		})
+
+		It("coerces isMissing numeric 0 to bool false", func() {
+			var obj UnmarshalConjunctionType
+			err := json.Unmarshal([]byte(`[{"isMissing":{"genre":0}}]`), &obj)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			gomega.Expect(obj[0]).To(gomega.Equal(IsMissing{"genre": false}))
+		})
+
+		It("coerces isPresent string 'false' to bool", func() {
+			var obj UnmarshalConjunctionType
+			err := json.Unmarshal([]byte(`[{"isPresent":{"genre":"false"}}]`), &obj)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			gomega.Expect(obj[0]).To(gomega.Equal(IsPresent{"genre": false}))
+		})
+
+		It("coerces isPresent numeric 1 to bool true", func() {
+			var obj UnmarshalConjunctionType
+			err := json.Unmarshal([]byte(`[{"isPresent":{"genre":1}}]`), &obj)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			gomega.Expect(obj[0]).To(gomega.Equal(IsPresent{"genre": true}))
+		})
+	})
 })
