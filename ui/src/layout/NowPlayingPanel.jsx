@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import PropTypes from 'prop-types'
 import { useSelector, useDispatch } from 'react-redux'
 import { useTranslate, Link, useNotify } from 'react-admin'
@@ -183,10 +183,17 @@ NowPlayingButton.propTypes = {
 
 // NowPlayingItem component - Discord-style card layout
 const NowPlayingItem = React.memo(
-  ({ nowPlayingEntry, onLinkClick, getArtistLink }) => {
+  ({ nowPlayingEntry, onLinkClick, getArtistLink, tick }) => {
     const classes = useStyles()
     const isPaused = nowPlayingEntry.state === 'paused'
-    const positionSec = (nowPlayingEntry.positionMs || 0) / 1000
+    const isPlaying =
+      nowPlayingEntry.state === 'playing' ||
+      nowPlayingEntry.state === 'starting'
+    const basePositionMs = nowPlayingEntry.positionMs || 0
+    const interpolatedMs = isPlaying ? basePositionMs + tick * 1000 : basePositionMs
+    const durationMs = (nowPlayingEntry.duration || 0) * 1000
+    const positionMs = durationMs > 0 ? Math.min(interpolatedMs, durationMs) : interpolatedMs
+    const positionSec = positionMs / 1000
     const durationSec = nowPlayingEntry.duration || 0
     const progress =
       durationSec > 0 ? (positionSec / durationSec) * 100 : 0
@@ -285,11 +292,12 @@ NowPlayingItem.propTypes = {
   }).isRequired,
   onLinkClick: PropTypes.func.isRequired,
   getArtistLink: PropTypes.func.isRequired,
+  tick: PropTypes.number.isRequired,
 }
 
 // NowPlayingList component - handles the popover content
 const NowPlayingList = React.memo(
-  ({ anchorEl, open, onClose, entries, onLinkClick, getArtistLink }) => {
+  ({ anchorEl, open, onClose, entries, onLinkClick, getArtistLink, tick }) => {
     const classes = useStyles({ entryCount: entries.length })
     const translate = useTranslate()
 
@@ -321,6 +329,7 @@ const NowPlayingList = React.memo(
                     nowPlayingEntry={nowPlayingEntry}
                     onLinkClick={onLinkClick}
                     getArtistLink={getArtistLink}
+                    tick={tick}
                   />
                 ))}
               </List>
@@ -341,6 +350,7 @@ NowPlayingList.propTypes = {
   entries: PropTypes.arrayOf(PropTypes.object).isRequired,
   onLinkClick: PropTypes.func.isRequired,
   getArtistLink: PropTypes.func.isRequired,
+  tick: PropTypes.number.isRequired,
 }
 
 // Main NowPlayingPanel component
@@ -360,6 +370,7 @@ const NowPlayingPanel = () => {
 
   const [anchorEl, setAnchorEl] = useState(null)
   const [entries, setEntries] = useState([])
+  const [tick, setTick] = useState(0)
   const open = Boolean(anchorEl)
 
   const handleMenuOpen = useCallback((event) => {
@@ -393,6 +404,7 @@ const NowPlayingPanel = () => {
           if (data.status === 'ok') {
             const nowPlayingEntries = data.nowPlaying?.entry || []
             setEntries(nowPlayingEntries)
+            setTick(0)
             // Also update the count in Redux store
             dispatch(nowPlayingCountUpdate({ count: nowPlayingEntries.length }))
           } else {
@@ -419,6 +431,12 @@ const NowPlayingPanel = () => {
     if (open && serverUp) fetchList()
   }, [count, open, fetchList, serverUp])
 
+  // Tick every second when open to animate progress bars
+  useInterval(
+    () => setTick((t) => t + 1),
+    open ? 1000 : null,
+  )
+
   // Periodic refresh when panel is open (10 seconds)
   useInterval(
     () => {
@@ -443,6 +461,7 @@ const NowPlayingPanel = () => {
         open={open}
         onClose={handleMenuClose}
         entries={entries}
+        tick={tick}
         onLinkClick={handleLinkClick}
         getArtistLink={getArtistLink}
       />
