@@ -361,6 +361,7 @@ NowPlayingList.propTypes = {
 const NowPlayingPanel = () => {
   const dispatch = useDispatch()
   const count = useSelector((state) => state.activity.nowPlayingCount)
+  const lastUpdate = useSelector((state) => state.activity.nowPlayingLastUpdate)
   const streamReconnected = useSelector(
     (state) => state.activity.streamReconnected,
   )
@@ -432,10 +433,10 @@ const NowPlayingPanel = () => {
     if (serverUp) fetchList()
   }, [fetchList, serverUp, streamReconnected])
 
-  // Refresh when count changes from WebSocket events (if panel is open)
+  // Refresh when NowPlaying updates from SSE events (if panel is open)
   useEffect(() => {
     if (open && serverUp) fetchList()
-  }, [count, open, fetchList, serverUp])
+  }, [lastUpdate, open, fetchList, serverUp])
 
   // Update current time every second when open to animate progress bars
   useInterval(
