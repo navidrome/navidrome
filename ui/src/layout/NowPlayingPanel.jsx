@@ -464,7 +464,10 @@ const NowPlayingPanel = () => {
 
   return (
     <div>
-      <NowPlayingButton count={entries.length || count} onClick={handleMenuOpen} />
+      <NowPlayingButton
+        count={entries.length || count}
+        onClick={handleMenuOpen}
+      />
       <NowPlayingList
         anchorEl={anchorEl}
         open={open}

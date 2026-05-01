@@ -144,7 +144,9 @@ describe('activityReducer', () => {
     const afterTimestamp = Date.now()
 
     expect(newState.nowPlayingCount).toEqual(3)
-    expect(newState.nowPlayingLastUpdate).toBeGreaterThanOrEqual(beforeTimestamp)
+    expect(newState.nowPlayingLastUpdate).toBeGreaterThanOrEqual(
+      beforeTimestamp,
+    )
     expect(newState.nowPlayingLastUpdate).toBeLessThanOrEqual(afterTimestamp)
   })
 

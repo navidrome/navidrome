@@ -135,9 +135,7 @@ describe('<NowPlayingPanel />', () => {
 
     fireEvent.click(screen.getByRole('button'))
     await waitFor(() => {
-      expect(
-        screen.getByText('u1 (Chrome Browser)'),
-      ).toBeInTheDocument()
+      expect(screen.getByText('u1 (Chrome Browser)')).toBeInTheDocument()
     })
   })
 
