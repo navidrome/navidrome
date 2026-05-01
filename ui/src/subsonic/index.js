@@ -46,15 +46,10 @@ const reportPlayback = (mediaId, positionMs, state) =>
 const reportPlaybackSync = (mediaId, positionMs, state) => {
   const u = reportPlaybackUrl(mediaId, positionMs, state)
   if (u) {
-    const fullUrl = baseUrl(u)
-    try {
-      fetch(fullUrl, {
-        keepalive: true,
-        headers: { [clientUniqueIdHeader]: clientUniqueId },
-      })
-    } catch {
-      navigator.sendBeacon(fullUrl)
-    }
+    fetch(baseUrl(u), {
+      keepalive: true,
+      headers: { [clientUniqueIdHeader]: clientUniqueId },
+    })
   }
 }
 
