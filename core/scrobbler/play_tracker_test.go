@@ -505,7 +505,7 @@ var _ = Describe("PlayTracker", func() {
 				Expect(playing[0].PositionMs).To(Equal(int64(10000)))
 			})
 
-			It("does NOT estimate for starting", func() {
+			It("estimates for starting", func() {
 				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
 					MediaId: "123", PositionMs: 0, State: "starting", PlaybackRate: 1.0, ClientId: defaultClientId,
 				})
@@ -514,7 +514,7 @@ var _ = Describe("PlayTracker", func() {
 				playing, err := tracker.GetNowPlaying(ctx)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(playing).To(HaveLen(1))
-				Expect(playing[0].PositionMs).To(Equal(int64(0)))
+				Expect(playing[0].PositionMs).To(BeNumerically(">=", int64(40)))
 			})
 
 			It("respects playbackRate", func() {

@@ -399,7 +399,7 @@ func (p *playTracker) GetNowPlaying(_ context.Context) ([]NowPlayingInfo, error)
 		return b.Start.Compare(a.Start)
 	})
 	for i := range res {
-		if res[i].State == StatePlaying {
+		if res[i].State == StatePlaying || res[i].State == StateStarting {
 			elapsed := time.Since(res[i].LastReport).Milliseconds()
 			estimated := res[i].PositionMs + int64(float64(elapsed)*res[i].PlaybackRate)
 			trackDurationMs := int64(res[i].MediaFile.Duration * 1000)
