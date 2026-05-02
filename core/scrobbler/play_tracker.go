@@ -65,6 +65,12 @@ type nowPlayingEntry struct {
 	position int
 }
 
+type playbackReportEntry struct {
+	ctx    context.Context
+	userId string
+	info   NowPlayingInfo
+}
+
 type PlayTracker interface {
 	GetNowPlaying(ctx context.Context) ([]NowPlayingInfo, error)
 	Submit(ctx context.Context, submissions []Submission) error
@@ -91,6 +97,10 @@ type playTracker struct {
 	npSignal          chan struct{}
 	shutdown          chan struct{}
 	workerDone        chan struct{}
+	prQueue           []playbackReportEntry
+	prMu              sync.Mutex
+	prSignal          chan struct{}
+	prWorkerDone      chan struct{}
 }
 
 func GetPlayTracker(ds model.DataStore, broker events.Broker, pluginManager PluginLoader) PlayTracker {
@@ -118,6 +128,8 @@ func newPlayTracker(ds model.DataStore, broker events.Broker, pluginManager Plug
 		npSignal:          make(chan struct{}, 1),
 		shutdown:          make(chan struct{}),
 		workerDone:        make(chan struct{}),
+		prSignal:          make(chan struct{}, 1),
+		prWorkerDone:      make(chan struct{}),
 	}
 	if conf.Server.EnableNowPlaying {
 		m.OnExpiration(func(_ string, _ NowPlayingInfo) {
@@ -138,13 +150,15 @@ func newPlayTracker(ds model.DataStore, broker events.Broker, pluginManager Plug
 	}
 	log.Debug("List of builtin scrobblers enabled", "names", enabled)
 	go p.nowPlayingWorker()
+	go p.playbackReportWorker()
 	return p
 }
 
-// stopNowPlayingWorker stops the background worker. This is primarily for testing.
+// stopNowPlayingWorker stops the background workers. This is primarily for testing.
 func (p *playTracker) stopNowPlayingWorker() {
 	close(p.shutdown)
-	<-p.workerDone // Wait for worker to finish
+	<-p.workerDone   // Wait for nowPlaying worker to finish
+	<-p.prWorkerDone // Wait for playbackReport worker to finish
 }
 
 // pluginNamesMatchScrobblers returns true if the set of pluginNames matches the keys in pluginScrobblers.
@@ -262,6 +276,7 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 		if err != nil {
 			log.Warn(ctx, "Error adding NowPlayingInfo to cache", "clientId", clientId, "mediaId", params.MediaId, "state", params.State, err)
 		}
+		p.enqueuePlaybackReport(ctx, user.ID, info)
 
 	case StatePlaying, StatePaused:
 		info, getErr := p.playMap.Get(clientId)
@@ -290,6 +305,7 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 		if err != nil {
 			log.Warn(ctx, "Error updating NowPlayingInfo in cache", "clientId", clientId, "mediaId", params.MediaId, "state", params.State, err)
 		}
+		p.enqueuePlaybackReport(ctx, user.ID, info)
 
 	case StateStopped:
 		if !params.IgnoreScrobble && player.ScrobbleEnabled {
@@ -307,6 +323,25 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 				p.dispatchScrobble(ctx, mf, now)
 			}
 		}
+		stoppedInfo := NowPlayingInfo{
+			Username:     user.UserName,
+			PlayerId:     clientId,
+			PlayerName:   client,
+			State:        params.State,
+			PositionMs:   params.PositionMs,
+			PlaybackRate: params.PlaybackRate,
+			LastReport:   now,
+		}
+		if info, getErr := p.playMap.Get(clientId); getErr == nil {
+			stoppedInfo.MediaFile = info.MediaFile
+			stoppedInfo.Start = info.Start
+		} else {
+			mf, mfErr := p.ds.MediaFile(ctx).GetWithParticipants(params.MediaId)
+			if mfErr == nil {
+				stoppedInfo.MediaFile = *mf
+			}
+		}
+		p.enqueuePlaybackReport(ctx, user.ID, stoppedInfo)
 		p.playMap.Remove(clientId)
 	}
 
@@ -369,6 +404,64 @@ func (p *playTracker) nowPlayingWorker() {
 		// Process entries without holding lock
 		for _, entry := range entries {
 			p.dispatchNowPlaying(entry.ctx, entry.userId, entry.track, entry.position)
+		}
+	}
+}
+
+func (p *playTracker) enqueuePlaybackReport(ctx context.Context, userId string, info NowPlayingInfo) {
+	p.prMu.Lock()
+	defer p.prMu.Unlock()
+	ctx = context.WithoutCancel(ctx)
+	p.prQueue = append(p.prQueue, playbackReportEntry{
+		ctx:    ctx,
+		userId: userId,
+		info:   info,
+	})
+	p.sendPlaybackReportSignal()
+}
+
+func (p *playTracker) sendPlaybackReportSignal() {
+	select {
+	case p.prSignal <- struct{}{}:
+	default:
+	}
+}
+
+func (p *playTracker) playbackReportWorker() {
+	defer close(p.prWorkerDone)
+	for {
+		select {
+		case <-p.shutdown:
+			return
+		case <-p.prSignal:
+		}
+
+		p.prMu.Lock()
+		if len(p.prQueue) == 0 {
+			p.prMu.Unlock()
+			continue
+		}
+		entries := p.prQueue
+		p.prQueue = nil
+		p.prMu.Unlock()
+
+		for _, entry := range entries {
+			p.dispatchPlaybackReport(entry.ctx, entry.userId, entry.info)
+		}
+	}
+}
+
+func (p *playTracker) dispatchPlaybackReport(ctx context.Context, userId string, info NowPlayingInfo) {
+	allScrobblers := p.getActiveScrobblers()
+	for name, s := range allScrobblers {
+		if !s.IsAuthorized(ctx, userId) {
+			continue
+		}
+		log.Debug(ctx, "Sending PlaybackReport", "scrobbler", name, "track", info.MediaFile.Title, "state", info.State, "positionMs", info.PositionMs)
+		err := s.PlaybackReport(ctx, userId, info)
+		if err != nil {
+			log.Error(ctx, "Error sending PlaybackReport", "scrobbler", name, "track", info.MediaFile.Title, "state", info.State, err)
+			continue
 		}
 	}
 }

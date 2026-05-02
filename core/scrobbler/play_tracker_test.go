@@ -697,6 +697,96 @@ var _ = Describe("PlayTracker", func() {
 				Consistently(func() bool { return fake.GetNowPlayingCalled() }).Should(BeFalse())
 			})
 		})
+
+		Describe("PlaybackReport dispatch", func() {
+			It("dispatches PlaybackReport for starting state", func() {
+				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 0, State: StateStarting, PlaybackRate: 1.0,
+					ClientId: "client-1", ClientName: "Test Player",
+				})
+				Expect(err).ToNot(HaveOccurred())
+
+				Eventually(func() bool {
+					return fake.PlaybackReportCalled.Load()
+				}).Should(BeTrue())
+
+				info := fake.LastPlaybackReport.Load()
+				Expect(info).ToNot(BeNil())
+				Expect(info.MediaFile.ID).To(Equal("123"))
+				Expect(info.State).To(Equal(StateStarting))
+				Expect(info.PositionMs).To(Equal(int64(0)))
+				Expect(info.PlaybackRate).To(Equal(1.0))
+				Expect(info.PlayerId).To(Equal("client-1"))
+				Expect(info.PlayerName).To(Equal("Test Player"))
+			})
+
+			It("dispatches PlaybackReport for playing state", func() {
+				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 0, State: StateStarting, PlaybackRate: 1.0,
+					ClientId: "client-1", ClientName: "Test Player",
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Eventually(func() bool { return fake.PlaybackReportCalled.Load() }).Should(BeTrue())
+				fake.PlaybackReportCalled.Store(false)
+				fake.LastPlaybackReport.Store(nil)
+
+				err = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 30000, State: StatePlaying, PlaybackRate: 1.5,
+					ClientId: "client-1", ClientName: "Test Player",
+				})
+				Expect(err).ToNot(HaveOccurred())
+
+				Eventually(func() bool { return fake.PlaybackReportCalled.Load() }).Should(BeTrue())
+				info := fake.LastPlaybackReport.Load()
+				Expect(info.State).To(Equal(StatePlaying))
+				Expect(info.PositionMs).To(Equal(int64(30000)))
+				Expect(info.PlaybackRate).To(Equal(1.5))
+			})
+
+			It("dispatches PlaybackReport for paused state", func() {
+				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 0, State: StateStarting, PlaybackRate: 1.0,
+					ClientId: "client-1", ClientName: "Test Player",
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Eventually(func() bool { return fake.PlaybackReportCalled.Load() }).Should(BeTrue())
+				fake.PlaybackReportCalled.Store(false)
+				fake.LastPlaybackReport.Store(nil)
+
+				err = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 45000, State: StatePaused, PlaybackRate: 1.0,
+					ClientId: "client-1", ClientName: "Test Player",
+				})
+				Expect(err).ToNot(HaveOccurred())
+
+				Eventually(func() bool { return fake.PlaybackReportCalled.Load() }).Should(BeTrue())
+				info := fake.LastPlaybackReport.Load()
+				Expect(info.State).To(Equal(StatePaused))
+				Expect(info.PositionMs).To(Equal(int64(45000)))
+			})
+
+			It("dispatches PlaybackReport for stopped state", func() {
+				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 0, State: StateStarting, PlaybackRate: 1.0,
+					ClientId: "client-1", ClientName: "Test Player",
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Eventually(func() bool { return fake.PlaybackReportCalled.Load() }).Should(BeTrue())
+				fake.PlaybackReportCalled.Store(false)
+				fake.LastPlaybackReport.Store(nil)
+
+				err = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 100000, State: StateStopped, PlaybackRate: 1.0,
+					ClientId: "client-1", ClientName: "Test Player",
+				})
+				Expect(err).ToNot(HaveOccurred())
+
+				Eventually(func() bool { return fake.PlaybackReportCalled.Load() }).Should(BeTrue())
+				info := fake.LastPlaybackReport.Load()
+				Expect(info.State).To(Equal(StateStopped))
+				Expect(info.PositionMs).To(Equal(int64(100000)))
+			})
+		})
 	})
 
 	Describe("Plugin scrobbler logic", func() {
