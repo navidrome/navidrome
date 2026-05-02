@@ -212,7 +212,7 @@ func (api *Router) GetNowPlaying(r *http.Request) (*responses.Subsonic, error) {
 	response := newResponse()
 	response.NowPlaying = &responses.NowPlaying{}
 	var i int32
-	response.NowPlaying.Entry = slice.Map(npInfo, func(np scrobbler.NowPlayingInfo) responses.NowPlayingEntry {
+	response.NowPlaying.Entry = slice.Map(npInfo, func(np scrobbler.PlaybackSession) responses.NowPlayingEntry {
 		i++
 		return responses.NowPlayingEntry{
 			Child:        childFromMediaFile(ctx, np.MediaFile),
