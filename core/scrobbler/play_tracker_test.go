@@ -48,7 +48,7 @@ func (m *mockPluginLoader) LoadScrobbler(name string) (Scrobbler, bool) {
 var _ = Describe("PlayTracker", func() {
 	var ctx context.Context
 	var ds model.DataStore
-	var tracker PlayTracker
+	var tracker *playTracker
 	var eventBroker *fakeEventBroker
 	var track model.MediaFile
 	var album model.Album
@@ -71,7 +71,7 @@ var _ = Describe("PlayTracker", func() {
 		})
 		eventBroker = &fakeEventBroker{}
 		tracker = newPlayTracker(ds, eventBroker, nil)
-		tracker.(*playTracker).builtinScrobblers["fake"] = fake // Bypass buffering for tests
+		tracker.builtinScrobblers["fake"] = fake // Bypass buffering for tests
 
 		track = model.MediaFile{
 			ID:             "123",
@@ -96,12 +96,12 @@ var _ = Describe("PlayTracker", func() {
 
 	AfterEach(func() {
 		// Stop the worker goroutine to prevent data races between tests
-		tracker.(*playTracker).stopNowPlayingWorker()
+		tracker.stopBackgroundWorkers()
 	})
 
 	It("does not register disabled scrobblers", func() {
-		Expect(tracker.(*playTracker).builtinScrobblers).To(HaveKey("fake"))
-		Expect(tracker.(*playTracker).builtinScrobblers).ToNot(HaveKey("disabled"))
+		Expect(tracker.builtinScrobblers).To(HaveKey("fake"))
+		Expect(tracker.builtinScrobblers).ToNot(HaveKey("disabled"))
 	})
 
 	Describe("GetNowPlaying", func() {
@@ -139,7 +139,7 @@ var _ = Describe("PlayTracker", func() {
 	Describe("Expiration events", func() {
 		It("sends event when entry expires", func() {
 			info := PlaybackSession{MediaFile: track, Start: time.Now(), Username: "user"}
-			_ = tracker.(*playTracker).playMap.AddWithTTL("player-1", info, 10*time.Millisecond)
+			_ = tracker.playMap.AddWithTTL("player-1", info, 10*time.Millisecond)
 			Eventually(func() int { return len(eventBroker.getEvents()) }).Should(BeNumerically(">", 0))
 			eventList := eventBroker.getEvents()
 			evt, ok := eventList[len(eventList)-1].(*events.NowPlayingCount)
@@ -151,7 +151,7 @@ var _ = Describe("PlayTracker", func() {
 			conf.Server.EnableNowPlaying = false
 			tracker = newPlayTracker(ds, eventBroker, nil)
 			info := PlaybackSession{MediaFile: track, Start: time.Now(), Username: "user"}
-			_ = tracker.(*playTracker).playMap.AddWithTTL("player-2", info, 10*time.Millisecond)
+			_ = tracker.playMap.AddWithTTL("player-2", info, 10*time.Millisecond)
 			Consistently(func() int { return len(eventBroker.getEvents()) }).Should(Equal(0))
 		})
 	})
@@ -375,7 +375,7 @@ var _ = Describe("PlayTracker", func() {
 			BeforeEach(func() {
 				eventBroker = &fakeEventBroker{}
 				tracker = newPlayTracker(ds, eventBroker, nil)
-				tracker.(*playTracker).builtinScrobblers["fake"] = fake
+				tracker.builtinScrobblers["fake"] = fake
 			})
 
 			It("broadcasts NowPlayingCount on every state change", func() {
@@ -420,7 +420,7 @@ var _ = Describe("PlayTracker", func() {
 			It("does NOT broadcast when EnableNowPlaying is false", func() {
 				conf.Server.EnableNowPlaying = false
 				tracker = newPlayTracker(ds, eventBroker, nil)
-				tracker.(*playTracker).builtinScrobblers["fake"] = fake
+				tracker.builtinScrobblers["fake"] = fake
 
 				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
 					MediaId: "123", PositionMs: 0, State: "starting", PlaybackRate: 1.0, ClientId: defaultClientId,
@@ -802,8 +802,8 @@ var _ = Describe("PlayTracker", func() {
 			tracker = newPlayTracker(ds, events.GetBroker(), pluginLoader)
 
 			// Bypass buffering for both built-in and plugin scrobblers
-			tracker.(*playTracker).builtinScrobblers["fake"] = fake
-			tracker.(*playTracker).pluginScrobblers["plugin1"] = pluginFake
+			tracker.builtinScrobblers["fake"] = fake
+			tracker.pluginScrobblers["plugin1"] = pluginFake
 		})
 
 		It("registers and uses plugin scrobbler for NowPlaying", func() {
@@ -920,7 +920,7 @@ var _ = Describe("PlayTracker", func() {
 		})
 
 		AfterEach(func() {
-			pTracker.stopNowPlayingWorker()
+			pTracker.stopBackgroundWorkers()
 		})
 
 		It("uses the new plugin instance after reload (simulating config update)", func() {

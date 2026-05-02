@@ -154,8 +154,8 @@ func newPlayTracker(ds model.DataStore, broker events.Broker, pluginManager Plug
 	return p
 }
 
-// stopNowPlayingWorker stops the background workers. This is primarily for testing.
-func (p *playTracker) stopNowPlayingWorker() {
+// stopBackgroundWorkers stops the background workers. This is primarily for testing.
+func (p *playTracker) stopBackgroundWorkers() {
 	close(p.shutdown)
 	<-p.workerDone   // Wait for nowPlaying worker to finish
 	<-p.prWorkerDone // Wait for playbackReport worker to finish
