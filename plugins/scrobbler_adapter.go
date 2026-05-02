@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"github.com/navidrome/navidrome/core/scrobbler"
@@ -16,9 +17,10 @@ const CapabilityScrobbler Capability = "Scrobbler"
 
 // Scrobbler function names (snake_case as per design)
 const (
-	FuncScrobblerIsAuthorized = "nd_scrobbler_is_authorized"
-	FuncScrobblerNowPlaying   = "nd_scrobbler_now_playing"
-	FuncScrobblerScrobble     = "nd_scrobbler_scrobble"
+	FuncScrobblerIsAuthorized   = "nd_scrobbler_is_authorized"
+	FuncScrobblerNowPlaying     = "nd_scrobbler_now_playing"
+	FuncScrobblerScrobble       = "nd_scrobbler_scrobble"
+	FuncScrobblerPlaybackReport = "nd_scrobbler_playback_report"
 )
 
 func init() {
@@ -27,6 +29,7 @@ func init() {
 		FuncScrobblerIsAuthorized,
 		FuncScrobblerNowPlaying,
 		FuncScrobblerScrobble,
+		FuncScrobblerPlaybackReport,
 	)
 }
 
@@ -180,6 +183,26 @@ func mapScrobblerError(err error) error {
 	default:
 		return scrobbler.ErrUnrecoverable
 	}
+}
+
+// PlaybackReport sends a playback state report to the scrobbler
+func (s *ScrobblerPlugin) PlaybackReport(ctx context.Context, info scrobbler.PlaybackSession) error {
+	input := capabilities.PlaybackReportRequest{
+		Username:     info.Username,
+		Track:        mediaFileToTrackInfo(s.plugin, &info.MediaFile),
+		State:        info.State,
+		PositionMs:   info.PositionMs,
+		PlaybackRate: info.PlaybackRate,
+		PlayerId:     info.PlayerId,
+		PlayerName:   info.PlayerName,
+		Timestamp:    info.LastReport.Unix(),
+	}
+
+	err := callPluginFunctionNoOutput(ctx, s.plugin, FuncScrobblerPlaybackReport, input)
+	if errors.Is(err, errFunctionNotFound) || errors.Is(err, errNotImplemented) {
+		return nil
+	}
+	return mapScrobblerError(err)
 }
 
 // Verify interface implementation at compile time
