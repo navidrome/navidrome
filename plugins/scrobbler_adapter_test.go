@@ -231,7 +231,7 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 
 	Describe("PlaybackReport", func() {
 		It("successfully calls the plugin", func() {
-			info := scrobbler.NowPlayingInfo{
+			info := scrobbler.PlaybackSession{
 				MediaFile: model.MediaFile{
 					ID:          "track-1",
 					Title:       "Test Song",
@@ -273,7 +273,7 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 			})
 
 			It("returns ErrRetryLater", func() {
-				info := scrobbler.NowPlayingInfo{
+				info := scrobbler.PlaybackSession{
 					MediaFile:  model.MediaFile{ID: "track-1", Title: "Test Song"},
 					State:      "playing",
 					LastReport: time.Now(),

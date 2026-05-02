@@ -80,7 +80,7 @@ func (b *bufferedScrobbler) Scrobble(ctx context.Context, userId string, s Scrob
 	return nil
 }
 
-func (b *bufferedScrobbler) PlaybackReport(ctx context.Context, userId string, info NowPlayingInfo) error {
+func (b *bufferedScrobbler) PlaybackReport(ctx context.Context, userId string, info PlaybackSession) error {
 	s, ok := b.loader()
 	if !ok {
 		return errors.New("scrobbler not available")

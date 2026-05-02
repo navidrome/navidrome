@@ -193,7 +193,7 @@ type fakePlayTracker struct {
 	Error            error
 }
 
-func (f *fakePlayTracker) GetNowPlaying(_ context.Context) ([]scrobbler.NowPlayingInfo, error) {
+func (f *fakePlayTracker) GetNowPlaying(_ context.Context) ([]scrobbler.PlaybackSession, error) {
 	return nil, f.Error
 }
 

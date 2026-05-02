@@ -31,7 +31,7 @@ var ValidStates = map[string]bool{
 	StateStopped:  true,
 }
 
-type NowPlayingInfo struct {
+type PlaybackSession struct {
 	MediaFile    model.MediaFile
 	Start        time.Time
 	Username     string
@@ -68,11 +68,11 @@ type nowPlayingEntry struct {
 type playbackReportEntry struct {
 	ctx    context.Context
 	userId string
-	info   NowPlayingInfo
+	info   PlaybackSession
 }
 
 type PlayTracker interface {
-	GetNowPlaying(ctx context.Context) ([]NowPlayingInfo, error)
+	GetNowPlaying(ctx context.Context) ([]PlaybackSession, error)
 	Submit(ctx context.Context, submissions []Submission) error
 	ReportPlayback(ctx context.Context, params ReportPlaybackParams) error
 }
@@ -87,7 +87,7 @@ type PluginLoader interface {
 type playTracker struct {
 	ds                model.DataStore
 	broker            events.Broker
-	playMap           cache.SimpleCache[string, NowPlayingInfo]
+	playMap           cache.SimpleCache[string, PlaybackSession]
 	builtinScrobblers map[string]Scrobbler
 	pluginScrobblers  map[string]Scrobbler
 	pluginLoader      PluginLoader
@@ -116,7 +116,7 @@ func NewPlayTracker(ds model.DataStore, broker events.Broker, pluginManager Plug
 }
 
 func newPlayTracker(ds model.DataStore, broker events.Broker, pluginManager PluginLoader) *playTracker {
-	m := cache.NewSimpleCache[string, NowPlayingInfo]()
+	m := cache.NewSimpleCache[string, PlaybackSession]()
 	p := &playTracker{
 		ds:                ds,
 		playMap:           m,
@@ -132,7 +132,7 @@ func newPlayTracker(ds model.DataStore, broker events.Broker, pluginManager Plug
 		prWorkerDone:      make(chan struct{}),
 	}
 	if conf.Server.EnableNowPlaying {
-		m.OnExpiration(func(_ string, _ NowPlayingInfo) {
+		m.OnExpiration(func(_ string, _ PlaybackSession) {
 			broker.SendBroadcastMessage(context.Background(), &events.NowPlayingCount{Count: m.Len()})
 		})
 	}
@@ -261,7 +261,7 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 		if err != nil {
 			return err
 		}
-		info := NowPlayingInfo{
+		info := PlaybackSession{
 			MediaFile:    *mf,
 			Start:        now,
 			Username:     user.UserName,
@@ -274,7 +274,7 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 		}
 		err = p.playMap.AddWithTTL(clientId, info, remainingTTL(mf.Duration, params.PositionMs, params.PlaybackRate))
 		if err != nil {
-			log.Warn(ctx, "Error adding NowPlayingInfo to cache", "clientId", clientId, "mediaId", params.MediaId, "state", params.State, err)
+			log.Warn(ctx, "Error adding PlaybackSession to cache", "clientId", clientId, "mediaId", params.MediaId, "state", params.State, err)
 		}
 		p.enqueuePlaybackReport(ctx, user.ID, info)
 
@@ -285,7 +285,7 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 			if err != nil {
 				return err
 			}
-			info = NowPlayingInfo{
+			info = PlaybackSession{
 				MediaFile:  *mf,
 				Start:      now.Add(-time.Duration(params.PositionMs) * time.Millisecond),
 				Username:   user.UserName,
@@ -303,7 +303,7 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 		}
 		err := p.playMap.AddWithTTL(clientId, info, ttl)
 		if err != nil {
-			log.Warn(ctx, "Error updating NowPlayingInfo in cache", "clientId", clientId, "mediaId", params.MediaId, "state", params.State, err)
+			log.Warn(ctx, "Error updating PlaybackSession in cache", "clientId", clientId, "mediaId", params.MediaId, "state", params.State, err)
 		}
 		p.enqueuePlaybackReport(ctx, user.ID, info)
 
@@ -325,7 +325,7 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 				p.dispatchScrobble(ctx, mf, now)
 			}
 		}
-		stoppedInfo := NowPlayingInfo{
+		stoppedInfo := PlaybackSession{
 			Username:     user.UserName,
 			PlayerId:     clientId,
 			PlayerName:   client,
@@ -412,7 +412,7 @@ func (p *playTracker) nowPlayingWorker() {
 	}
 }
 
-func (p *playTracker) enqueuePlaybackReport(ctx context.Context, userId string, info NowPlayingInfo) {
+func (p *playTracker) enqueuePlaybackReport(ctx context.Context, userId string, info PlaybackSession) {
 	p.prMu.Lock()
 	defer p.prMu.Unlock()
 	ctx = context.WithoutCancel(ctx)
@@ -456,7 +456,7 @@ func (p *playTracker) playbackReportWorker() {
 	}
 }
 
-func (p *playTracker) dispatchPlaybackReport(ctx context.Context, userId string, info NowPlayingInfo, allScrobblers map[string]Scrobbler) {
+func (p *playTracker) dispatchPlaybackReport(ctx context.Context, userId string, info PlaybackSession, allScrobblers map[string]Scrobbler) {
 	for name, s := range allScrobblers {
 		if !s.IsAuthorized(ctx, userId) {
 			continue
@@ -483,15 +483,15 @@ func (p *playTracker) dispatchNowPlaying(ctx context.Context, userId string, t *
 		log.Debug(ctx, "Sending NowPlaying update", "scrobbler", name, "track", t.Title, "artist", t.Artist, "position", position)
 		err := s.NowPlaying(ctx, userId, t, position)
 		if err != nil {
-			log.Error(ctx, "Error sending NowPlayingInfo", "scrobbler", name, "track", t.Title, "artist", t.Artist, err)
+			log.Error(ctx, "Error sending PlaybackSession", "scrobbler", name, "track", t.Title, "artist", t.Artist, err)
 			continue
 		}
 	}
 }
 
-func (p *playTracker) GetNowPlaying(_ context.Context) ([]NowPlayingInfo, error) {
+func (p *playTracker) GetNowPlaying(_ context.Context) ([]PlaybackSession, error) {
 	res := p.playMap.Values()
-	slices.SortFunc(res, func(a, b NowPlayingInfo) int {
+	slices.SortFunc(res, func(a, b PlaybackSession) int {
 		return b.Start.Compare(a.Start)
 	})
 	for i := range res {
