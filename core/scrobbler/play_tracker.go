@@ -308,11 +308,13 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 		p.enqueuePlaybackReport(ctx, user.ID, info)
 
 	case StateStopped:
+		var loadedMF *model.MediaFile
 		if !params.IgnoreScrobble && player.ScrobbleEnabled {
 			mf, err := p.ds.MediaFile(ctx).GetWithParticipants(params.MediaId)
 			if err != nil {
 				return err
 			}
+			loadedMF = mf
 			trackDurationMs := int64(mf.Duration * 1000)
 			threshold := min(trackDurationMs*50/100, 240_000)
 			if params.PositionMs >= threshold {
@@ -335,6 +337,8 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 		if info, getErr := p.playMap.Get(clientId); getErr == nil {
 			stoppedInfo.MediaFile = info.MediaFile
 			stoppedInfo.Start = info.Start
+		} else if loadedMF != nil {
+			stoppedInfo.MediaFile = *loadedMF
 		} else {
 			mf, mfErr := p.ds.MediaFile(ctx).GetWithParticipants(params.MediaId)
 			if mfErr == nil {
@@ -445,14 +449,14 @@ func (p *playTracker) playbackReportWorker() {
 		p.prQueue = nil
 		p.prMu.Unlock()
 
+		allScrobblers := p.getActiveScrobblers()
 		for _, entry := range entries {
-			p.dispatchPlaybackReport(entry.ctx, entry.userId, entry.info)
+			p.dispatchPlaybackReport(entry.ctx, entry.userId, entry.info, allScrobblers)
 		}
 	}
 }
 
-func (p *playTracker) dispatchPlaybackReport(ctx context.Context, userId string, info NowPlayingInfo) {
-	allScrobblers := p.getActiveScrobblers()
+func (p *playTracker) dispatchPlaybackReport(ctx context.Context, userId string, info NowPlayingInfo, allScrobblers map[string]Scrobbler) {
 	for name, s := range allScrobblers {
 		if !s.IsAuthorized(ctx, userId) {
 			continue
