@@ -347,13 +347,16 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 		if info, getErr := p.playMap.Get(clientId); getErr == nil {
 			stoppedInfo.MediaFile = info.MediaFile
 			stoppedInfo.Start = info.Start
-		} else if loadedMF != nil {
-			stoppedInfo.MediaFile = *loadedMF
 		} else {
-			mf, mfErr := p.ds.MediaFile(ctx).GetWithParticipants(params.MediaId)
-			if mfErr == nil {
-				stoppedInfo.MediaFile = *mf
+			mf := loadedMF
+			if mf == nil {
+				var mfErr error
+				mf, mfErr = p.ds.MediaFile(ctx).GetWithParticipants(params.MediaId)
+				if mfErr != nil {
+					return mfErr
+				}
 			}
+			stoppedInfo.MediaFile = *mf
 		}
 		p.enqueuePlaybackReport(ctx, stoppedInfo)
 		p.playMap.Remove(clientId)
