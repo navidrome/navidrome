@@ -35,7 +35,7 @@ var _ = Describe("TagWriter", func() {
 		})
 
 		It("returns error for unsupported formats", func() {
-			testFile := filepath.Join(testDir, "test.ogg")
+			testFile := filepath.Join(testDir, "test.xyz")
 			f, err := os.Create(testFile)
 			Expect(err).NotTo(HaveOccurred())
 			f.Close()
@@ -87,17 +87,24 @@ var _ = Describe("TagWriter", func() {
 	})
 
 	Describe("IsSupportedFormat", func() {
-		It("returns true for supported formats", func() {
+It("returns true for supported formats", func() {
 			Expect(IsSupportedFormat("test.mp3")).To(BeTrue())
 			Expect(IsSupportedFormat("test.MP3")).To(BeTrue())
 			Expect(IsSupportedFormat("test.flac")).To(BeTrue())
 			Expect(IsSupportedFormat("test.FLAC")).To(BeTrue())
+			Expect(IsSupportedFormat("test.wav")).To(BeTrue())
+			Expect(IsSupportedFormat("test.WAV")).To(BeTrue())
+			Expect(IsSupportedFormat("test.wave")).To(BeTrue())
+			Expect(IsSupportedFormat("test.m4a")).To(BeTrue())
+			Expect(IsSupportedFormat("test.M4A")).To(BeTrue())
+			Expect(IsSupportedFormat("test.mp4")).To(BeTrue())
+			Expect(IsSupportedFormat("test.ogg")).To(BeTrue())
+			Expect(IsSupportedFormat("test.OGG")).To(BeTrue())
 		})
 
 		It("returns false for unsupported formats", func() {
-			Expect(IsSupportedFormat("test.ogg")).To(BeFalse())
-			Expect(IsSupportedFormat("test.wav")).To(BeFalse())
-			Expect(IsSupportedFormat("test.m4a")).To(BeFalse())
+			Expect(IsSupportedFormat("test.xyz")).To(BeFalse())
+			Expect(IsSupportedFormat("test.abc")).To(BeFalse())
 		})
 	})
 

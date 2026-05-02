@@ -82,6 +82,12 @@ func (t *tagWriter) WriteTags(filePath string, tags Tags) error {
 		writeErr = writeMP3Tags(absPath, tags)
 	case ".flac":
 		writeErr = writeFLACTags(absPath, tags)
+	case ".wav", ".wave":
+		writeErr = writeWAVTags(absPath, tags)
+	case ".m4a", ".mp4":
+		writeErr = writeM4ATags(absPath, tags)
+	case ".ogg":
+		writeErr = writeOGGTags(absPath, tags)
 	default:
 		return ErrUnsupportedFormat
 	}
@@ -116,7 +122,7 @@ func (t *tagWriter) checkFilePermissions(filePath string) error {
 }
 
 func SupportedFormats() []string {
-	return []string{".mp3", ".mp2", ".flac"}
+	return []string{".mp3", ".mp2", ".flac", ".wav", ".wave", ".m4a", ".mp4", ".ogg"}
 }
 
 func IsSupportedFormat(filePath string) bool {
