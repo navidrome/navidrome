@@ -154,6 +154,44 @@ var _ = Describe("PlayTracker", func() {
 			_ = tracker.playMap.AddWithTTL("player-2", info, 10*time.Millisecond)
 			Consistently(func() int { return len(eventBroker.getEvents()) }).Should(Equal(0))
 		})
+
+		It("sends expired playback report when session expires", func() {
+			info := PlaybackSession{
+				MediaFile:  track,
+				Start:      time.Now(),
+				UserId:     "u-1",
+				Username:   "user",
+				PlayerId:   "player-3",
+				PlayerName: "test-player",
+				State:      StatePlaying,
+				PositionMs: 5000,
+			}
+			_ = tracker.playMap.AddWithTTL("player-3", info, 10*time.Millisecond)
+			Eventually(func() *PlaybackSession {
+				return fake.LastPlaybackReport.Load()
+			}).ShouldNot(BeNil())
+			report := fake.LastPlaybackReport.Load()
+			Expect(report.State).To(Equal(StateExpired))
+			Expect(report.MediaFile.ID).To(Equal("123"))
+			Expect(report.PlayerId).To(Equal("player-3"))
+		})
+
+		It("does not send expired report when session was already stopped", func() {
+			info := PlaybackSession{
+				MediaFile:  track,
+				Start:      time.Now(),
+				UserId:     "u-1",
+				Username:   "user",
+				PlayerId:   "player-4",
+				PlayerName: "test-player",
+				State:      StateStopped,
+				PositionMs: 180000,
+			}
+			_ = tracker.playMap.AddWithTTL("player-4", info, 10*time.Millisecond)
+			Consistently(func() *PlaybackSession {
+				return fake.LastPlaybackReport.Load()
+			}).Should(BeNil())
+		})
 	})
 
 	Describe("Submit", func() {
@@ -1090,12 +1128,13 @@ func (f *fakeScrobbler) Scrobble(ctx context.Context, userId string, s Scrobble)
 	return nil
 }
 
-func (f *fakeScrobbler) PlaybackReport(ctx context.Context, userId string, info PlaybackSession) error {
+func (f *fakeScrobbler) PlaybackReport(ctx context.Context, info PlaybackSession) error {
 	f.PlaybackReportCalled.Store(true)
 	if f.Error != nil {
 		return f.Error
 	}
-	f.userID.Store(&userId)
+	uid := info.UserId
+	f.userID.Store(&uid)
 	f.LastPlaybackReport.Store(&info)
 	return nil
 }
@@ -1156,6 +1195,6 @@ func (m *mockBufferedScrobbler) Scrobble(ctx context.Context, userId string, s S
 	return m.wrapped.Scrobble(ctx, userId, s)
 }
 
-func (m *mockBufferedScrobbler) PlaybackReport(ctx context.Context, userId string, info PlaybackSession) error {
-	return m.wrapped.PlaybackReport(ctx, userId, info)
+func (m *mockBufferedScrobbler) PlaybackReport(ctx context.Context, info PlaybackSession) error {
+	return m.wrapped.PlaybackReport(ctx, info)
 }

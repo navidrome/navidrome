@@ -22,6 +22,7 @@ const (
 	StatePlaying  = "playing"
 	StatePaused   = "paused"
 	StateStopped  = "stopped"
+	StateExpired  = "expired"
 )
 
 var ValidStates = map[string]bool{
@@ -34,6 +35,7 @@ var ValidStates = map[string]bool{
 type PlaybackSession struct {
 	MediaFile    model.MediaFile
 	Start        time.Time
+	UserId       string
 	Username     string
 	PlayerId     string
 	PlayerName   string
@@ -66,9 +68,8 @@ type nowPlayingEntry struct {
 }
 
 type playbackReportEntry struct {
-	ctx    context.Context
-	userId string
-	info   PlaybackSession
+	ctx  context.Context
+	info PlaybackSession
 }
 
 type PlayTracker interface {
@@ -131,11 +132,16 @@ func newPlayTracker(ds model.DataStore, broker events.Broker, pluginManager Plug
 		prSignal:          make(chan struct{}, 1),
 		prWorkerDone:      make(chan struct{}),
 	}
-	if conf.Server.EnableNowPlaying {
-		m.OnExpiration(func(_ string, _ PlaybackSession) {
+	m.OnExpiration(func(_ string, info PlaybackSession) {
+		if conf.Server.EnableNowPlaying {
 			broker.SendBroadcastMessage(context.Background(), &events.NowPlayingCount{Count: m.Len()})
-		})
-	}
+		}
+		if info.State != StateStopped {
+			info.State = StateExpired
+			info.LastReport = time.Now()
+			p.enqueuePlaybackReport(context.Background(), info)
+		}
+	})
 
 	var enabled []string
 	for name, constructor := range constructors {
@@ -264,6 +270,7 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 		info := PlaybackSession{
 			MediaFile:    *mf,
 			Start:        now,
+			UserId:       user.ID,
 			Username:     user.UserName,
 			PlayerId:     clientId,
 			PlayerName:   client,
@@ -276,7 +283,7 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 		if err != nil {
 			log.Warn(ctx, "Error adding PlaybackSession to cache", "clientId", clientId, "mediaId", params.MediaId, "state", params.State, err)
 		}
-		p.enqueuePlaybackReport(ctx, user.ID, info)
+		p.enqueuePlaybackReport(ctx, info)
 
 	case StatePlaying, StatePaused:
 		info, getErr := p.playMap.Get(clientId)
@@ -288,6 +295,7 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 			info = PlaybackSession{
 				MediaFile:  *mf,
 				Start:      now.Add(-time.Duration(params.PositionMs) * time.Millisecond),
+				UserId:     user.ID,
 				Username:   user.UserName,
 				PlayerId:   clientId,
 				PlayerName: client,
@@ -305,7 +313,7 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 		if err != nil {
 			log.Warn(ctx, "Error updating PlaybackSession in cache", "clientId", clientId, "mediaId", params.MediaId, "state", params.State, err)
 		}
-		p.enqueuePlaybackReport(ctx, user.ID, info)
+		p.enqueuePlaybackReport(ctx, info)
 
 	case StateStopped:
 		var loadedMF *model.MediaFile
@@ -326,6 +334,7 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 			}
 		}
 		stoppedInfo := PlaybackSession{
+			UserId:       user.ID,
 			Username:     user.UserName,
 			PlayerId:     clientId,
 			PlayerName:   client,
@@ -345,7 +354,7 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 				stoppedInfo.MediaFile = *mf
 			}
 		}
-		p.enqueuePlaybackReport(ctx, user.ID, stoppedInfo)
+		p.enqueuePlaybackReport(ctx, stoppedInfo)
 		p.playMap.Remove(clientId)
 	}
 

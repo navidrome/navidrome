@@ -255,7 +255,7 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 				LastReport:   time.Now(),
 			}
 
-			err := s.PlaybackReport(ctxWithUser(), "user-1", info)
+			err := s.PlaybackReport(ctxWithUser(), info)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -278,7 +278,7 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 					State:      "playing",
 					LastReport: time.Now(),
 				}
-				err := retryScrobbler.PlaybackReport(ctxWithUser(), "user-1", info)
+				err := retryScrobbler.PlaybackReport(ctxWithUser(), info)
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(MatchError(scrobbler.ErrRetryLater))
 			})

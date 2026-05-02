@@ -6,14 +6,13 @@ import (
 	"github.com/navidrome/navidrome/log"
 )
 
-func (p *playTracker) enqueuePlaybackReport(ctx context.Context, userId string, info PlaybackSession) {
+func (p *playTracker) enqueuePlaybackReport(ctx context.Context, info PlaybackSession) {
 	p.prMu.Lock()
 	defer p.prMu.Unlock()
 	ctx = context.WithoutCancel(ctx)
 	p.prQueue = append(p.prQueue, playbackReportEntry{
-		ctx:    ctx,
-		userId: userId,
-		info:   info,
+		ctx:  ctx,
+		info: info,
 	})
 	p.sendPlaybackReportSignal()
 }
@@ -45,18 +44,18 @@ func (p *playTracker) playbackReportWorker() {
 
 		allScrobblers := p.getActiveScrobblers()
 		for _, entry := range entries {
-			p.dispatchPlaybackReport(entry.ctx, entry.userId, entry.info, allScrobblers)
+			p.dispatchPlaybackReport(entry.ctx, entry.info, allScrobblers)
 		}
 	}
 }
 
-func (p *playTracker) dispatchPlaybackReport(ctx context.Context, userId string, info PlaybackSession, allScrobblers map[string]Scrobbler) {
+func (p *playTracker) dispatchPlaybackReport(ctx context.Context, info PlaybackSession, allScrobblers map[string]Scrobbler) {
 	for name, s := range allScrobblers {
-		if !s.IsAuthorized(ctx, userId) {
+		if !s.IsAuthorized(ctx, info.UserId) {
 			continue
 		}
 		log.Debug(ctx, "Sending PlaybackReport", "scrobbler", name, "track", info.MediaFile.Title, "state", info.State, "positionMs", info.PositionMs)
-		err := s.PlaybackReport(ctx, userId, info)
+		err := s.PlaybackReport(ctx, info)
 		if err != nil {
 			log.Error(ctx, "Error sending PlaybackReport", "scrobbler", name, "track", info.MediaFile.Title, "state", info.State, err)
 			continue

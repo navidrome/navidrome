@@ -80,12 +80,12 @@ func (b *bufferedScrobbler) Scrobble(ctx context.Context, userId string, s Scrob
 	return nil
 }
 
-func (b *bufferedScrobbler) PlaybackReport(ctx context.Context, userId string, info PlaybackSession) error {
+func (b *bufferedScrobbler) PlaybackReport(ctx context.Context, info PlaybackSession) error {
 	s, ok := b.loader()
 	if !ok {
 		return errors.New("scrobbler not available")
 	}
-	return s.PlaybackReport(ctx, userId, info)
+	return s.PlaybackReport(ctx, info)
 }
 
 func (b *bufferedScrobbler) sendWakeSignal() {

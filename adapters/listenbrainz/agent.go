@@ -212,7 +212,7 @@ func (l *listenBrainzAgent) GetSimilarSongsByTrack(ctx context.Context, id strin
 	return songs, nil
 }
 
-func (l *listenBrainzAgent) PlaybackReport(context.Context, string, scrobbler.PlaybackSession) error {
+func (l *listenBrainzAgent) PlaybackReport(context.Context, scrobbler.PlaybackSession) error {
 	return nil
 }
 

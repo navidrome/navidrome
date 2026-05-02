@@ -416,7 +416,7 @@ func (l *lastfmAgent) IsAuthorized(ctx context.Context, userId string) bool {
 	return err == nil && sk != ""
 }
 
-func (l *lastfmAgent) PlaybackReport(context.Context, string, scrobbler.PlaybackSession) error {
+func (l *lastfmAgent) PlaybackReport(context.Context, scrobbler.PlaybackSession) error {
 	return nil
 }
 
