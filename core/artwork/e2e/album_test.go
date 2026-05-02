@@ -39,7 +39,7 @@ var _ = Describe("Album artwork resolution", func() {
 
 	// Bug 2 variant: cover.* basenames tie across album-root and per-disc folders;
 	// compareImageFiles' lexicographic full-path tiebreaker ranks disc-subfolder
-	// files first. Flip from PIt to It once it prefers shorter/parent paths.
+	// files first.
 	When("a multi-disc album has a cover.jpg at the album root and per-disc covers", func() {
 		// Artist/
 		// └── Album/
@@ -50,7 +50,7 @@ var _ = Describe("Album artwork resolution", func() {
 		//     │   ├── 01 - Track.mp3
 		//     │   └── cover.jpg
 		//     └── cover.jpg            ← should win (album-root fallback)
-		PIt("uses the album-root cover (currently picks a disc subfolder image — bug)", func() {
+		It("prefers the album-root cover over per-disc covers", func() {
 			conf.Server.CoverArtPriority = defaultCoverPriority
 			setLayout(fstest.MapFS{
 				"Artist/Album/CD1/01 - Track.mp3": trackFile(1, "Track CD1"),
@@ -71,7 +71,6 @@ var _ = Describe("Album artwork resolution", func() {
 	// Bug 2: folder.jpg basenames tie across album-root and per-disc folders;
 	// the lexicographic full-path tiebreaker in compareImageFiles ranks
 	// "Artist/Album/CD1/folder.jpg" ahead of "Artist/Album/folder.jpg".
-	// Flip from PIt to It once compareImageFiles prefers shorter/parent paths.
 	When("a multi-disc album has folder.jpg at the album root AND in each disc subfolder", func() {
 		// Artist/
 		// └── Album/
@@ -82,7 +81,7 @@ var _ = Describe("Album artwork resolution", func() {
 		//     │   ├── 01 - Track.mp3
 		//     │   └── folder.jpg
 		//     └── folder.jpg           ← should win (album-root fallback)
-		PIt("uses the album-root folder.jpg (currently picks a disc subfolder image — bug)", func() {
+		It("prefers the album-root folder.jpg over per-disc folder.jpg", func() {
 			conf.Server.CoverArtPriority = defaultCoverPriority
 			setLayout(fstest.MapFS{
 				"Artist/Album/CD1/01 - Track.mp3": trackFile(1, "Track CD1"),
@@ -100,15 +99,14 @@ var _ = Describe("Album artwork resolution", func() {
 
 	// Bug 1: commonParentFolder's `len(folders) < 2` guard skips the parent-folder
 	// lookup whenever an album lives entirely under a single subfolder, so an
-	// album-root cover is never considered. Flip from PIt to It once the guard
-	// accepts single-folder albums whose parent isn't already in the folder set.
+	// album-root cover is never considered.
 	When("an album lives entirely under a single disc subfolder with cover.jpg at the parent", func() {
 		// Artist/
 		// └── Album/
 		//     ├── disc1/
 		//     │   └── 01 - Track.mp3
 		//     └── cover.jpg            ← should win (parent-folder fallback, currently ignored — bug)
-		PIt("uses the parent-folder cover (currently ignored — bug)", func() {
+		It("uses the parent-folder cover for single-disc-subfolder albums", func() {
 			conf.Server.CoverArtPriority = defaultCoverPriority
 			setLayout(fstest.MapFS{
 				"Artist/Album/disc1/01 - Track.mp3": trackFile(1, "Track"),
