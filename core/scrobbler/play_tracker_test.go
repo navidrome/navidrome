@@ -937,15 +937,17 @@ var _ = DescribeTable("remainingTTL",
 )
 
 type fakeScrobbler struct {
-	Authorized       bool
-	nowPlayingCalled atomic.Bool
-	ScrobbleCalled   atomic.Bool
-	userID           atomic.Pointer[string]
-	username         atomic.Pointer[string]
-	track            atomic.Pointer[model.MediaFile]
-	position         atomic.Int32
-	LastScrobble     atomic.Pointer[Scrobble]
-	Error            error
+	Authorized           bool
+	nowPlayingCalled     atomic.Bool
+	ScrobbleCalled       atomic.Bool
+	PlaybackReportCalled atomic.Bool
+	userID               atomic.Pointer[string]
+	username             atomic.Pointer[string]
+	track                atomic.Pointer[model.MediaFile]
+	position             atomic.Int32
+	LastScrobble         atomic.Pointer[Scrobble]
+	LastPlaybackReport   atomic.Pointer[NowPlayingInfo]
+	Error                error
 }
 
 func (f *fakeScrobbler) GetNowPlayingCalled() bool {
@@ -995,6 +997,16 @@ func (f *fakeScrobbler) Scrobble(ctx context.Context, userId string, s Scrobble)
 	if f.Error != nil {
 		return f.Error
 	}
+	return nil
+}
+
+func (f *fakeScrobbler) PlaybackReport(ctx context.Context, userId string, info NowPlayingInfo) error {
+	f.PlaybackReportCalled.Store(true)
+	if f.Error != nil {
+		return f.Error
+	}
+	f.userID.Store(&userId)
+	f.LastPlaybackReport.Store(&info)
 	return nil
 }
 
@@ -1052,4 +1064,8 @@ func (m *mockBufferedScrobbler) NowPlaying(ctx context.Context, userId string, t
 
 func (m *mockBufferedScrobbler) Scrobble(ctx context.Context, userId string, s Scrobble) error {
 	return m.wrapped.Scrobble(ctx, userId, s)
+}
+
+func (m *mockBufferedScrobbler) PlaybackReport(ctx context.Context, userId string, info NowPlayingInfo) error {
+	return m.wrapped.PlaybackReport(ctx, userId, info)
 }

@@ -416,6 +416,10 @@ func (l *lastfmAgent) IsAuthorized(ctx context.Context, userId string) bool {
 	return err == nil && sk != ""
 }
 
+func (l *lastfmAgent) PlaybackReport(context.Context, string, scrobbler.NowPlayingInfo) error {
+	return nil
+}
+
 func init() {
 	conf.AddHook(func() {
 		agents.Register(lastFMAgentName, func(ds model.DataStore) agents.Interface {

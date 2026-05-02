@@ -182,5 +182,9 @@ func mapScrobblerError(err error) error {
 	}
 }
 
+func (s *ScrobblerPlugin) PlaybackReport(context.Context, string, scrobbler.NowPlayingInfo) error {
+	return nil
+}
+
 // Verify interface implementation at compile time
 var _ scrobbler.Scrobbler = (*ScrobblerPlugin)(nil)
