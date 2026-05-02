@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"github.com/navidrome/navidrome/core/scrobbler"
@@ -199,6 +200,9 @@ func (s *ScrobblerPlugin) PlaybackReport(ctx context.Context, userId string, inf
 	}
 
 	err := callPluginFunctionNoOutput(ctx, s.plugin, FuncScrobblerPlaybackReport, input)
+	if errors.Is(err, errFunctionNotFound) || errors.Is(err, errNotImplemented) {
+		return nil
+	}
 	return mapScrobblerError(err)
 }
 
