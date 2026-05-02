@@ -106,7 +106,7 @@ type PlaybackReportRequest struct {
 	Username string `json:"username"`
 	// Track is the track being played.
 	Track TrackInfo `json:"track"`
-	// State is the current playback state (starting/playing/paused/stopped).
+	// State is the current playback state (starting/playing/paused/stopped/expired).
 	State string `json:"state"`
 	// PositionMs is the current playback position in milliseconds.
 	PositionMs int64 `json:"positionMs"`

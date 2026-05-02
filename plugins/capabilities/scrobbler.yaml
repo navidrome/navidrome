@@ -75,7 +75,7 @@ components:
                     description: Track is the track being played.
                 state:
                     type: string
-                    description: State is the current playback state (starting/playing/paused/stopped).
+                    description: State is the current playback state (starting/playing/paused/stopped/expired).
                 positionMs:
                     type: integer
                     format: int64

@@ -72,7 +72,7 @@ pub struct PlaybackReportRequest {
     /// Track is the track being played.
     #[serde(default)]
     pub track: TrackInfo,
-    /// State is the current playback state (starting/playing/paused/stopped).
+    /// State is the current playback state (starting/playing/paused/stopped/expired).
     #[serde(default)]
     pub state: String,
     /// PositionMs is the current playback position in milliseconds.
