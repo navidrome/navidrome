@@ -132,8 +132,9 @@ func newPlayTracker(ds model.DataStore, broker events.Broker, pluginManager Plug
 		prSignal:          make(chan struct{}, 1),
 		prWorkerDone:      make(chan struct{}),
 	}
+	enableNowPlaying := conf.Server.EnableNowPlaying
 	m.OnExpiration(func(_ string, info PlaybackSession) {
-		if conf.Server.EnableNowPlaying {
+		if enableNowPlaying {
 			broker.SendBroadcastMessage(context.Background(), &events.NowPlayingCount{Count: m.Len()})
 		}
 		if info.State != StateStopped {
