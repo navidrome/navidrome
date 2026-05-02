@@ -18,6 +18,11 @@ exports:
         input:
             $ref: '#/components/schemas/ScrobbleRequest'
             contentType: application/json
+    nd_scrobbler_playback_report:
+        description: PlaybackReport sends a playback state report to the scrobbling service.
+        input:
+            $ref: '#/components/schemas/PlaybackReportRequest'
+            contentType: application/json
 components:
     schemas:
         ArtistRef:
@@ -59,6 +64,45 @@ components:
                 - username
                 - track
                 - position
+        PlaybackReportRequest:
+            description: PlaybackReportRequest is the request for playback report notifications.
+            properties:
+                username:
+                    type: string
+                    description: Username is the username of the user.
+                track:
+                    $ref: '#/components/schemas/TrackInfo'
+                    description: Track is the track being played.
+                state:
+                    type: string
+                    description: State is the current playback state (starting/playing/paused/stopped/expired).
+                positionMs:
+                    type: integer
+                    format: int64
+                    description: PositionMs is the current playback position in milliseconds.
+                playbackRate:
+                    type: number
+                    format: float
+                    description: PlaybackRate is the playback speed (1.0 = normal).
+                playerId:
+                    type: string
+                    description: PlayerId is the unique client identifier.
+                playerName:
+                    type: string
+                    description: PlayerName is the human-readable player name.
+                timestamp:
+                    type: integer
+                    format: int64
+                    description: Timestamp is the Unix timestamp when this report was generated.
+            required:
+                - username
+                - track
+                - state
+                - positionMs
+                - playbackRate
+                - playerId
+                - playerName
+                - timestamp
         ScrobbleRequest:
             description: ScrobbleRequest is the request for submitting a scrobble.
             properties:
