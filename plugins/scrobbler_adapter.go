@@ -187,9 +187,8 @@ func mapScrobblerError(err error) error {
 
 // PlaybackReport sends a playback state report to the scrobbler
 func (s *ScrobblerPlugin) PlaybackReport(ctx context.Context, info scrobbler.PlaybackSession) error {
-	username := getUsernameFromContext(ctx)
 	input := capabilities.PlaybackReportRequest{
-		Username:     username,
+		Username:     info.Username,
 		Track:        mediaFileToTrackInfo(s.plugin, &info.MediaFile),
 		State:        info.State,
 		PositionMs:   info.PositionMs,

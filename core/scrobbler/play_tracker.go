@@ -134,13 +134,17 @@ func newPlayTracker(ds model.DataStore, broker events.Broker, pluginManager Plug
 	}
 	enableNowPlaying := conf.Server.EnableNowPlaying
 	m.OnExpiration(func(_ string, info PlaybackSession) {
+		log.Debug("PlaybackSession expired", "clientId", info.PlayerId, "mediaId", info.MediaFile.ID, "state",
+			info.State, "username", info.Username, "userId", info.UserId)
 		if enableNowPlaying {
 			broker.SendBroadcastMessage(context.Background(), &events.NowPlayingCount{Count: m.Len()})
 		}
+		ctx := request.WithUser(context.Background(), model.User{ID: info.UserId, UserName: info.Username})
 		if info.State != StateStopped {
+			log.Trace("Enqueueing PlaybackReport for expired session", "session", info)
 			info.State = StateExpired
 			info.LastReport = time.Now()
-			p.enqueuePlaybackReport(context.Background(), info)
+			p.enqueuePlaybackReport(ctx, info)
 		}
 	})
 
@@ -310,6 +314,7 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 		if params.State == StatePlaying {
 			ttl = remainingTTL(info.MediaFile.Duration, params.PositionMs, params.PlaybackRate)
 		}
+		log.Trace(ctx, "Updating PlaybackSession in cache", "clientId", clientId, "mediaId", params.MediaId, "state", params.State, "positionMs", params.PositionMs, "playbackRate", params.PlaybackRate, "ttl", ttl)
 		err := p.playMap.AddWithTTL(clientId, info, ttl)
 		if err != nil {
 			log.Warn(ctx, "Error updating PlaybackSession in cache", "clientId", clientId, "mediaId", params.MediaId, "state", params.State, err)
