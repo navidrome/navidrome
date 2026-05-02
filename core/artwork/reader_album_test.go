@@ -213,9 +213,42 @@ var _ = Describe("Album Artwork Reader", func() {
 			Expect(repo.getCallCount).To(Equal(0))
 		})
 
-		It("does not query parent for single-folder albums", func() {
-			// A single-folder album's parent is typically the artist folder,
-			// which should not be searched for cover art
+		It("does not include top-level parent for multi-folder albums", func() {
+			// Two album parts under the same artist folder — parent is artist-level
+			repo.result = []model.Folder{
+				{
+					ID:              "folder1",
+					Path:            ".",
+					Name:            "AlbumPart1",
+					ParentID:        "artistFolder",
+					ImagesUpdatedAt: now,
+					ImageFiles:      []string{"cover.jpg"},
+				},
+				{
+					ID:              "folder2",
+					Path:            ".",
+					Name:            "AlbumPart2",
+					ParentID:        "artistFolder",
+					ImagesUpdatedAt: now,
+					ImageFiles:      []string{},
+				},
+			}
+			repo.parentResult = &model.Folder{
+				ID:         "artistFolder",
+				Path:       ".",
+				Name:       "Artist",
+				ImageFiles: []string{"artist.jpg"},
+			}
+
+			_, imgFiles, _, err := loadAlbumFoldersPaths(ctx, ds, album)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(imgFiles).To(HaveLen(1))
+			Expect(imgFiles[0]).To(Equal("AlbumPart1/cover.jpg"))
+			Expect(repo.getCallCount).To(Equal(1))
+		})
+
+		It("does not query parent for single-folder albums that already have images", func() {
 			repo.result = []model.Folder{
 				{
 					ID:              "folder1",
@@ -232,8 +265,35 @@ var _ = Describe("Album Artwork Reader", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(imgFiles).To(HaveLen(1))
 			Expect(imgFiles[0]).To(Equal("Artist/Album/cover.jpg"))
-			// Get should not have been called (single folder, no parent lookup)
 			Expect(repo.getCallCount).To(Equal(0))
+		})
+
+		It("includes parent images for single-disc-subfolder albums", func() {
+			repo.result = []model.Folder{
+				{
+					ID:              "folder1",
+					Path:            "Artist/Album",
+					Name:            "disc1",
+					ParentID:        "albumFolder",
+					ImagesUpdatedAt: now,
+					ImageFiles:      []string{},
+				},
+			}
+			repo.parentResult = &model.Folder{
+				ID:              "albumFolder",
+				Path:            "Artist",
+				Name:            "Album",
+				ImagesUpdatedAt: expectedAt,
+				ImageFiles:      []string{"cover.jpg"},
+			}
+
+			_, imgFiles, imagesUpdatedAt, err := loadAlbumFoldersPaths(ctx, ds, album)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(*imagesUpdatedAt).To(Equal(expectedAt))
+			Expect(imgFiles).To(HaveLen(1))
+			Expect(imgFiles[0]).To(Equal("Artist/Album/cover.jpg"))
+			Expect(repo.getCallCount).To(Equal(1))
 		})
 
 		It("propagates non-ErrNotFound errors from parent folder lookup", func() {
