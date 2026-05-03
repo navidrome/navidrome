@@ -38,7 +38,9 @@
         "missing": "遺失",
         "libraryName": "媒體庫",
         "composer": "作曲者",
-        "disc": "光碟 %{discNumber}"
+        "disc": "光碟 %{discNumber}",
+        "albumGain": "專輯增益",
+        "trackGain": "曲目增益"
       },
       "actions": {
         "addToQueue": "加入至播放佇列",
