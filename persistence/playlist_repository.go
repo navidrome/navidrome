@@ -158,17 +158,12 @@ func (r *playlistRepository) FindByPath(path string) (*model.Playlist, error) {
 
 func (r *playlistRepository) findBy(sql Sqlizer) (*model.Playlist, error) {
 	sel := r.selectPlaylist().Where(sql)
-	var pls []dbPlaylist
-	err := r.queryAll(sel, &pls)
-	if err != nil {
+	var pls dbPlaylist
+	if err := r.queryOne(sel, &pls); err != nil {
 		return nil, err
 	}
-	if len(pls) == 0 {
-		return nil, model.ErrNotFound
-	}
-
-	setPermissionField(&pls[0], loggedUser(r.ctx))
-	return &pls[0].Playlist, nil
+	setPermissionField(&pls, loggedUser(r.ctx))
+	return &pls.Playlist, nil
 }
 
 func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playlists, error) {
