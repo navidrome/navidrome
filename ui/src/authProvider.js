@@ -26,6 +26,11 @@ function storeAuthenticationInfo(authInfo) {
   localStorage.setItem('is-authenticated', 'true')
 }
 
+const isNetworkError = (error) => {
+  const msg = error?.message || ''
+  return msg === 'Failed to fetch' || msg.includes('NetworkError')
+}
+
 const authProvider = {
   login: ({ username, password }) => {
     let url = baseUrl('/auth/login')
@@ -53,10 +58,7 @@ const authProvider = {
         return response
       })
       .catch((error) => {
-        if (
-          error.message === 'Failed to fetch' ||
-          error.stack === 'TypeError: Failed to fetch'
-        ) {
+        if (isNetworkError(error)) {
           throw new Error('errors.network_error')
         }
 
@@ -78,10 +80,23 @@ const authProvider = {
       ? Promise.resolve()
       : Promise.reject(),
 
-  checkError: ({ status }) => {
-    if (status === 401) {
+  checkError: (error) => {
+    if (error?.status === 401) {
       removeItems()
       return Promise.reject()
+    }
+    if (config.extAuthLogoutURL && isNetworkError(error)) {
+      const now = Date.now()
+      const lastReload = parseInt(
+        sessionStorage.getItem('ext-auth-reload-ts') || '0',
+        10,
+      )
+      if (now - lastReload > 30000) {
+        sessionStorage.setItem('ext-auth-reload-ts', String(now))
+        removeItems()
+        window.location.reload()
+        return new Promise(() => {})
+      }
     }
     return Promise.resolve()
   },
