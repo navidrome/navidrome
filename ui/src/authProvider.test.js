@@ -66,10 +66,7 @@ describe('authProvider', () => {
 
     it('does not reload-loop within 30 seconds', async () => {
       config.extAuthLogoutURL = 'https://auth.example.com/logout'
-      sessionStorage.setItem(
-        'ext-auth-reload-ts',
-        String(Date.now() - 10000),
-      )
+      sessionStorage.setItem('ext-auth-reload-ts', String(Date.now() - 10000))
       await expect(
         authProvider.checkError(new TypeError('Failed to fetch')),
       ).resolves.toBeUndefined()
@@ -78,10 +75,7 @@ describe('authProvider', () => {
 
     it('allows reload again after 30 seconds', () => {
       config.extAuthLogoutURL = 'https://auth.example.com/logout'
-      sessionStorage.setItem(
-        'ext-auth-reload-ts',
-        String(Date.now() - 31000),
-      )
+      sessionStorage.setItem('ext-auth-reload-ts', String(Date.now() - 31000))
       try {
         authProvider.checkError(new TypeError('Failed to fetch'))
       } catch {
