@@ -62,6 +62,18 @@ var _ = Describe("ArtworkID", func() {
 		)
 	})
 
+	Describe("ParseArtworkID - folder kind", func() {
+		It("parses a folder artwork ID with fo prefix", func() {
+			now := time.Now()
+			id := model.NewArtworkID(model.KindFolderArtwork, "folder-id-123", &now)
+			parsedId, err := model.ParseArtworkID(id.String())
+			Expect(err).ToNot(HaveOccurred())
+			Expect(parsedId.Kind).To(Equal(model.KindFolderArtwork))
+			Expect(parsedId.ID).To(Equal("folder-id-123"))
+			Expect(parsedId.LastUpdate.Unix()).To(Equal(now.Unix()))
+		})
+	})
+
 	Describe("ParseArtworkID()", func() {
 		It("parses album artwork ids", func() {
 			id, err := model.ParseArtworkID("al-1234")
