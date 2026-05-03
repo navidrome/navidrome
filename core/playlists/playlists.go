@@ -229,6 +229,35 @@ func hasOwnerPermission(ctx context.Context, pls *model.Playlist) bool {
 	return false
 }
 
+// checkEditor fetches the playlist and verifies the current user is at least editor.
+func (s *playlists) checkEditor(ctx context.Context, playlistID string) (*model.Playlist, error) {
+	pls, err := s.ds.Playlist(ctx).Get(playlistID)
+	if err != nil {
+		return nil, err
+	}
+
+	// First check: is owner / admin?
+	if hasOwnerPermission(ctx, pls) {
+		// User is playlist owner or admin
+		return pls, nil
+	}
+
+	// Second check: has user edit permission on playlist?
+	hasEditorPerms, err := s.hasEditorPermission(ctx, playlistID)
+	if err != nil {
+		return nil, err
+	}
+	if hasEditorPerms {
+		return pls, nil
+	}
+	return nil, model.ErrNotAuthorized
+}
+
+func (s *playlists) hasEditorPermission(ctx context.Context, playlistID string) (bool, error) {
+	usr, _ := request.UserFrom(ctx)
+	return s.ds.Playlist(ctx).Permissions(playlistID).IsUserAllowed(usr.ID, []model.Permission{model.PermissionEditor})
+}
+
 // checkTracksEditable verifies the user can modify tracks (user is admin / owner or editor + not smart playlist).
 func (s *playlists) checkTracksEditable(ctx context.Context, playlistID string) (*model.Playlist, error) {
 	pls, err := s.checkOwner(ctx, playlistID)
