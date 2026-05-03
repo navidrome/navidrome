@@ -7,10 +7,10 @@
         "album": "Албум",
         "albumArtist": "Уметник албума",
         "artist": "Уметник",
-        "bitDepth": "Битова",
+        "bitDepth": "Битска дубина",
         "bitRate": "Битски проток",
         "bpm": "BPM",
-        "channels": "Канала",
+        "channels": "Канали",
         "comment": "Коментар",
         "compilation": "Компилација",
         "createdAt": "Датум додавања",
@@ -200,7 +200,7 @@
       }
     },
     "radio": {
-      "name": "Радио |||| Радији",
+      "name": "Радио |||| Радио-станице",
       "fields": {
         "createdAt": "Креирана",
         "homePageUrl": "URL почетне странице",
@@ -327,12 +327,12 @@
     },
     "input": {
       "file": {
-        "upload_several": "Упустите фајлове да се отпреме, или кликните да их изаберете.",
-        "upload_single": "Упустите фајл да се отпреми, или кликните да га изаберете."
+        "upload_several": "Превуците фајлове да се отпреме, или кликните да их изаберете.",
+        "upload_single": "Превуците фајл да се отпреми, или кликните да га изаберете."
       },
       "image": {
-        "upload_several": "Упустите слике да се отпреме, или кликните да их изаберете.",
-        "upload_single": "Упустите слику да се отпреми, или кликните да је изаберете."
+        "upload_several": "Превуците слике да се отпреме, или кликните да их изаберете.",
+        "upload_single": "Превуците слику да се отпреми, или кликните да је изаберете."
       },
       "password": {
         "toggle_hidden": "Прикажи лозинку",
@@ -369,7 +369,7 @@
       "page_out_of_boundaries": "Број странице %{page} је ван опсега",
       "page_range_info": "%{offsetBegin}-%{offsetEnd} од %{total}",
       "page_rows_per_page": "Ставки по страници:",
-      "prev": "Претход",
+      "prev": "Претх.",
       "skip_nav": "Прескочи на садржај"
     },
     "notification": {
@@ -457,8 +457,8 @@
   },
   "player": {
     "clickToDeleteText": "Кликните да обришете %{name}",
-    "clickToPauseText": "Кликни за паузирање",
-    "clickToPlayText": "Кликни за пуштање",
+    "clickToPauseText": "Кликните за паузирање",
+    "clickToPlayText": "Кликните за пуштање",
     "closeText": "Затвори",
     "destroyText": "Уништи",
     "downloadText": "Преузми",
@@ -482,7 +482,7 @@
   },
   "about": {
     "links": {
-      "featureRequests": "Захтеви за функцијама",
+      "featureRequests": "Захтеви за функције",
       "homepage": "Почетна страница",
       "insights": {
         "disabled": "Искључено",
