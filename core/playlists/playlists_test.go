@@ -22,10 +22,13 @@ var _ = Describe("Playlists", func() {
 	var ds *tests.MockDataStore
 	var ps playlists.Playlists
 	var mockPlsRepo *tests.MockPlaylistRepo
+	var mockPermissionRepo *tests.MockPlaylistPermissionRepo
 	ctx := context.Background()
 
 	BeforeEach(func() {
 		mockPlsRepo = tests.CreateMockPlaylistRepo()
+		mockPermissionRepo = tests.CreateMockPlaylistPermissionRepo()
+		mockPlsRepo.PermissionsRepo = mockPermissionRepo
 		ds = &tests.MockDataStore{
 			MockedPlaylist: mockPlsRepo,
 			MockedLibrary:  &tests.MockLibraryRepo{},
@@ -69,7 +72,7 @@ var _ = Describe("Playlists", func() {
 		It("returns error when playlist not found", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 			err := ps.Delete(ctx, "nonexistent")
-			Expect(err).To(Equal(model.ErrNotFound))
+			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 	})
 
@@ -138,6 +141,10 @@ var _ = Describe("Playlists", func() {
 				"pls-smart": {ID: "pls-smart", Name: "Smart", OwnerID: "user-1",
 					Rules: &criteria.Criteria{Expression: criteria.Contains{"title": "test"}}},
 			}
+			mockPermissionRepo.Data = map[string]*model.PlaylistPermission{
+				"editor-1": {PlaylistID: "pls-1", UserID: "editor-1", Permission: model.PermissionEditor},
+				"viewer-1": {PlaylistID: "pls-1", UserID: "viewer-1", Permission: model.PermissionViewer},
+			}
 			mockPlsRepo.TracksRepo = mockTracks
 			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
 		})
@@ -155,8 +162,21 @@ var _ = Describe("Playlists", func() {
 			err := ps.Update(ctx, "pls-other", &newName, nil, nil, nil, nil)
 			Expect(err).ToNot(HaveOccurred())
 		})
+		It("allows user with editor permission to update the playlist", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "editor-1", IsAdmin: false})
+			newName := "Updated Name"
+			err := ps.Update(ctx, "pls-1", &newName, nil, nil, nil, nil)
+			Expect(err).ToNot(HaveOccurred())
+		})
 
-		It("denies non-owner, non-admin from updating", func() {
+		It("denies user with viewer permission from updating the playlist", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "viewer-1", IsAdmin: false})
+			newName := "Updated Name"
+			err := ps.Update(ctx, "pls-1", &newName, nil, nil, nil, nil)
+			Expect(err).To(MatchError(model.ErrNotAuthorized))
+		})
+
+		It("denies non-owner, non-admin & non-editor from updating", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "other-user", IsAdmin: false})
 			newName := "Updated Name"
 			err := ps.Update(ctx, "pls-1", &newName, nil, nil, nil, nil)
@@ -167,7 +187,7 @@ var _ = Describe("Playlists", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 			newName := "Updated Name"
 			err := ps.Update(ctx, "nonexistent", &newName, nil, nil, nil, nil)
-			Expect(err).To(Equal(model.ErrNotFound))
+			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 
 		It("denies adding tracks to a smart playlist", func() {
@@ -235,7 +255,7 @@ var _ = Describe("Playlists", func() {
 		It("returns error when playlist not found", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 			_, err := ps.AddTracks(ctx, "nonexistent", []string{"song-1"})
-			Expect(err).To(Equal(model.ErrNotFound))
+			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 	})
 
@@ -361,7 +381,7 @@ var _ = Describe("Playlists", func() {
 		It("returns error when playlist not found", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 			err := ps.SetImage(ctx, "nonexistent", strings.NewReader("data"), ".jpg")
-			Expect(err).To(Equal(model.ErrNotFound))
+			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 	})
 
@@ -412,7 +432,7 @@ var _ = Describe("Playlists", func() {
 		It("returns error when playlist not found", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 			err := ps.RemoveImage(ctx, "nonexistent")
-			Expect(err).To(Equal(model.ErrNotFound))
+			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 	})
 })

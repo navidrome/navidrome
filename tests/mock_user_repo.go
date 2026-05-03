@@ -20,8 +20,8 @@ func CreateMockUserRepo() *MockedUserRepo {
 type MockedUserRepo struct {
 	model.UserRepository
 	Error         error
-	Data          map[string]*model.User
-	UserLibraries map[string][]int // userID -> libraryIDs
+	Data          map[string]*model.User // keyed by lower case username
+	UserLibraries map[string][]int       // userID -> libraryIDs
 }
 
 func (u *MockedUserRepo) CountAll(qo ...model.QueryOptions) (int64, error) {

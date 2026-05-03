@@ -39,3 +39,5 @@ AGENTS.md
 openspec/
 go.work*
 .worktrees/
+
+.direnv/
