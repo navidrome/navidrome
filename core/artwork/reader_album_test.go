@@ -251,7 +251,7 @@ var _ = Describe("Album Artwork Reader", func() {
 		})
 
 		It("includes top-level album folder for multi-disc albums", func() {
-			// Album folder directly under artist root, with disc subfolders
+			// Album folder directly under library root, with disc subfolders
 			repo.result = []model.Folder{
 				{
 					ID:              "folder1",
