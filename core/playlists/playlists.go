@@ -167,7 +167,7 @@ func (s *playlists) Update(ctx context.Context, playlistID string,
 	if hasTrackChanges {
 		pls, err = s.checkTracksEditable(ctx, playlistID)
 	} else {
-		pls, err = s.checkOwner(ctx, playlistID)
+		pls, err = s.checkEditor(ctx, playlistID)
 	}
 	if err != nil {
 		return err
