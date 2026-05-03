@@ -1,4 +1,4 @@
-import { describe, it, beforeEach, afterEach, vi, expect } from 'vitest'
+import { describe, it, beforeEach, afterEach, expect } from 'vitest'
 import config from './config'
 import authProvider from './authProvider'
 

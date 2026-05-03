@@ -87,10 +87,8 @@ const authProvider = {
     }
     if (config.extAuthLogoutURL && isNetworkError(error)) {
       const now = Date.now()
-      const lastReload = parseInt(
-        sessionStorage.getItem('ext-auth-reload-ts') || '0',
-        10,
-      )
+      const lastReload =
+        Number(sessionStorage.getItem('ext-auth-reload-ts')) || 0
       if (now - lastReload > 30000) {
         sessionStorage.setItem('ext-auth-reload-ts', String(now))
         removeItems()
