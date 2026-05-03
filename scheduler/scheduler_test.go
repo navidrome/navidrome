@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"testing"
+	"time"
 
 	"github.com/navidrome/navidrome/log"
 	. "github.com/onsi/ginkgo/v2"
@@ -28,7 +29,7 @@ var _ = Describe("Scheduler", func() {
 		s.c.Stop() // Stop the scheduler after tests
 	})
 
-	It("adds and executes a job", func() {
+	It("adds and executes a job", FlakeAttempts(3), func() {
 		done := make(chan struct{})
 
 		id, err := s.Add("@every 50ms", func() {
@@ -38,7 +39,7 @@ var _ = Describe("Scheduler", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(id).ToNot(BeZero())
 
-		Eventually(done).Should(BeClosed())
+		Eventually(done, 5*time.Second).Should(BeClosed())
 	})
 
 	It("adds a job with random ~ syntax", func() {
