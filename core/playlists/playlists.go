@@ -337,6 +337,7 @@ func (s *playlists) ReorderTrack(ctx context.Context, playlistID string, pos int
 // --- Cover art operations ---
 
 func (s *playlists) SetImage(ctx context.Context, playlistID string, reader io.Reader, ext string) error {
+	// TODO: also change to `checkEditor`
 	pls, err := s.checkOwner(ctx, playlistID)
 	if err != nil {
 		return err
@@ -353,6 +354,7 @@ func (s *playlists) SetImage(ctx context.Context, playlistID string, reader io.R
 }
 
 func (s *playlists) RemoveImage(ctx context.Context, playlistID string) error {
+	// TODO: also change to `checkEditor`
 	pls, err := s.checkOwner(ctx, playlistID)
 	if err != nil {
 		return err
