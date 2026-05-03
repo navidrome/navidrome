@@ -37,15 +37,15 @@ var _ = Describe("Album artwork resolution", func() {
 		})
 	})
 
-	// Bug 2 variant: cover.* basenames tie across album-root and per-disc folders;
-	// compareImageFiles' lexicographic full-path tiebreaker ranks disc-subfolder
-	// files first.
+	// https://github.com/navidrome/navidrome/issues/5376
+	// cover.* basenames tie across album-root and per-disc folders;
+	// compareImageFiles must prefer shallower paths.
 	When("a multi-disc album has a cover.jpg at the album root and per-disc covers", func() {
 		// Artist/
 		// └── Album/
 		//     ├── CD1/
 		//     │   ├── 01 - Track.mp3
-		//     │   └── cover.jpg        ← currently wins (bug)
+		//     │   └── cover.jpg        ← should not win
 		//     ├── CD2/
 		//     │   ├── 01 - Track.mp3
 		//     │   └── cover.jpg
@@ -68,15 +68,15 @@ var _ = Describe("Album artwork resolution", func() {
 		})
 	})
 
-	// Bug 2: folder.jpg basenames tie across album-root and per-disc folders;
-	// the lexicographic full-path tiebreaker in compareImageFiles ranks
-	// "Artist/Album/CD1/folder.jpg" ahead of "Artist/Album/folder.jpg".
+	// https://github.com/navidrome/navidrome/issues/5376
+	// folder.jpg basenames tie across album-root and per-disc folders;
+	// compareImageFiles must prefer shallower paths.
 	When("a multi-disc album has folder.jpg at the album root AND in each disc subfolder", func() {
 		// Artist/
 		// └── Album/
 		//     ├── CD1/
 		//     │   ├── 01 - Track.mp3
-		//     │   └── folder.jpg       ← currently wins (bug)
+		//     │   └── folder.jpg       ← should not win
 		//     ├── CD2/
 		//     │   ├── 01 - Track.mp3
 		//     │   └── folder.jpg
@@ -97,9 +97,8 @@ var _ = Describe("Album artwork resolution", func() {
 		})
 	})
 
-	// Bug 1: commonParentFolder's `len(folders) < 2` guard skips the parent-folder
-	// lookup whenever an album lives entirely under a single subfolder, so an
-	// album-root cover is never considered.
+	// https://github.com/navidrome/navidrome/issues/5376
+	// Single-subfolder albums must still consider the parent folder's images.
 	When("an album lives entirely under a single disc subfolder with cover.jpg at the parent", func() {
 		// Artist/
 		// └── Album/
@@ -119,7 +118,7 @@ var _ = Describe("Album artwork resolution", func() {
 		})
 	})
 
-	// Reproduces https://github.com/navidrome/navidrome/issues/5456
+	// https://github.com/navidrome/navidrome/issues/5456
 	When("a top-level multi-disc album has cover.jpg at the album root and per-disc folder.jpg", func() {
 		// Album/                        (top-level folder, Path=".")
 		// ├── CD1/
