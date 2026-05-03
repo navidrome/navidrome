@@ -105,12 +105,30 @@ var _ = Describe("Album artwork resolution", func() {
 		// └── Album/
 		//     ├── disc1/
 		//     │   └── 01 - Track.mp3
-		//     └── cover.jpg            ← should win (parent-folder fallback, currently ignored — bug)
+		//     └── cover.jpg            ← should win (parent-folder fallback)
 		It("uses the parent-folder cover for single-disc-subfolder albums", func() {
 			conf.Server.CoverArtPriority = defaultCoverPriority
 			setLayout(fstest.MapFS{
 				"Artist/Album/disc1/01 - Track.mp3": trackFile(1, "Track"),
 				"Artist/Album/cover.jpg":            imageFile("album-root"),
+			})
+			scan()
+
+			al := firstAlbum()
+			Expect(readArtwork(al.CoverArtID())).To(Equal(imageBytes("album-root")))
+		})
+	})
+
+	// Reproduces https://github.com/navidrome/navidrome/issues/5456
+	When("a top-level multi-disc album has cover.jpg at the album root and per-disc folder.jpg", func() {
+		It("prefers the album-root cover.jpg", func() {
+			conf.Server.CoverArtPriority = defaultCoverPriority
+			setLayout(fstest.MapFS{
+				"Album/CD1/01 - Track.mp3": trackFile(1, "Track CD1"),
+				"Album/CD2/01 - Track.mp3": trackFile(1, "Track CD2"),
+				"Album/cover.jpg":          imageFile("album-root"),
+				"Album/CD1/folder.jpg":     imageFile("disc1"),
+				"Album/CD2/folder.jpg":     imageFile("disc2"),
 			})
 			scan()
 

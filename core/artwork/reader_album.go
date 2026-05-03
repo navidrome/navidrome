@@ -131,7 +131,7 @@ func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, albums ...mo
 			} else if err != nil {
 				return nil, nil, nil, err
 			}
-			if parentFolder != nil && parentFolder.Path != "." {
+			if parentFolder != nil && parentFolder.ParentID != "" {
 				folders = append(folders, *parentFolder)
 			}
 		}

@@ -1,6 +1,7 @@
 package artworke2e_test
 
 import (
+	"fmt"
 	"testing/fstest"
 
 	"github.com/navidrome/navidrome/conf"
@@ -252,6 +253,45 @@ var _ = Describe("Disc artwork resolution", func() {
 			al := firstAlbum()
 			discID := model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID(al.ID, 1), &al.UpdatedAt)
 			Expect(readArtwork(discID)).To(Equal(imageBytes("bonus-tracks")))
+		})
+	})
+
+	// Reproduces https://github.com/navidrome/navidrome/issues/5456
+	When("a top-level multi-disc album has cover.jpg and per-disc folder.jpg", func() {
+		// Album/                       (top-level, Path=".")
+		// ├── cover.jpg                ← album-level cover
+		// ├── Disc 01/
+		// │   ├── 01 - Track.mp3
+		// │   └── folder.jpg           ← disc 1 art
+		// ├── Disc 02/
+		// │   ├── 01 - Track.mp3
+		// │   └── folder.jpg
+		// └── Disc 03/
+		//     ├── 01 - Track.mp3
+		//     └── folder.jpg
+		It("uses album-root cover.jpg for album art and per-disc folder.jpg for each disc", func() {
+			conf.Server.DiscArtPriority = defaultDiscPriority
+			conf.Server.CoverArtPriority = defaultCoverPriority
+			layout := fstest.MapFS{
+				"Album/cover.jpg": imageFile("album-root-cover"),
+			}
+			for i := 1; i <= 3; i++ {
+				prefix := fmt.Sprintf("Album/Disc %02d/", i)
+				layout[prefix+"01 - Track.mp3"] = trackFile(1, fmt.Sprintf("T%d", i), map[string]any{"disc": fmt.Sprintf("%d", i)})
+				layout[prefix+"folder.jpg"] = imageFile(fmt.Sprintf("disc-%02d-folder", i))
+			}
+			setLayout(layout)
+			scan()
+
+			al := firstAlbum()
+
+			Expect(readArtwork(al.CoverArtID())).To(Equal(imageBytes("album-root-cover")))
+
+			for i := 1; i <= 3; i++ {
+				discID := model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID(al.ID, i), &al.UpdatedAt)
+				Expect(readArtwork(discID)).To(Equal(imageBytes(fmt.Sprintf("disc-%02d-folder", i))),
+					"disc %d should use its own folder.jpg", i)
+			}
 		})
 	})
 
