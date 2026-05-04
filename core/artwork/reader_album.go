@@ -18,6 +18,7 @@ import (
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/natural"
 )
 
@@ -53,10 +54,9 @@ func newAlbumArtworkReader(ctx context.Context, artwork *artwork, artID model.Ar
 		lib:       lib,
 	}
 	a.cacheKey.artID = artID
-	if a.updatedAt != nil && a.updatedAt.After(al.UpdatedAt) {
-		a.cacheKey.lastUpdate = *a.updatedAt
-	} else {
-		a.cacheKey.lastUpdate = al.UpdatedAt
+	a.cacheKey.lastUpdate = utils.TimeNewest(al.UpdatedAt, al.ImportedAt)
+	if imagesUpdateAt != nil {
+		a.cacheKey.lastUpdate = utils.TimeNewest(a.cacheKey.lastUpdate, *imagesUpdateAt)
 	}
 	return a, nil
 }
@@ -131,7 +131,7 @@ func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, albums ...mo
 			} else if err != nil {
 				return nil, nil, nil, err
 			}
-			if parentFolder != nil && parentFolder.Path != "." {
+			if parentFolder != nil && parentFolder.ParentID != "" {
 				folders = append(folders, *parentFolder)
 			}
 		}

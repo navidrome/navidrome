@@ -1,6 +1,7 @@
 package artworke2e_test
 
 import (
+	"fmt"
 	"testing/fstest"
 
 	"github.com/navidrome/navidrome/conf"
@@ -252,6 +253,100 @@ var _ = Describe("Disc artwork resolution", func() {
 			al := firstAlbum()
 			discID := model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID(al.ID, 1), &al.UpdatedAt)
 			Expect(readArtwork(discID)).To(Equal(imageBytes("bonus-tracks")))
+		})
+	})
+
+	// Reproduces https://github.com/navidrome/navidrome/issues/5456
+	// Deeply nested layout matching the reporter's actual structure.
+	When("a deeply nested multi-disc album has cover.jpg and per-disc folder.jpg", func() {
+		// Genre/Artist/Album/                 ← album root with cover.jpg
+		// ├── cover.jpg                       ← album-level cover
+		// ├── Disc 01 (Subtitle)/
+		// │   ├── 01 - Track.mp3
+		// │   └── folder.jpg                  ← disc 1 art
+		// ├── Disc 02 (Subtitle)/
+		// │   ├── 01 - Track.mp3
+		// │   └── folder.jpg
+		// └── ... (12 discs)
+		It("uses album-root cover.jpg for album art and per-disc folder.jpg for each disc", func() {
+			conf.Server.DiscArtPriority = defaultDiscPriority
+			conf.Server.CoverArtPriority = defaultCoverPriority
+			discNames := []string{
+				"Disc 01 (Birth of the Dead - The Studio Sides)",
+				"Disc 02 (Birth of the Dead - The Live Sides)",
+				"Disc 03 (The Grateful Dead)",
+				"Disc 04 (Anthem of the Sun)",
+				"Disc 05 (Aoxomoxoa)",
+				"Disc 06 (Live; Dead)",
+				"Disc 07 (Workingman's Dead)",
+				"Disc 08 (American Beauty)",
+				"Disc 09 (Grateful Dead)",
+				"Disc 10 (Europe '72)",
+				"Disc 11 (Europe '72)",
+				"Disc 12 (History of the Grateful Dead, Volume One (Bear's Choice))",
+			}
+			layout := fstest.MapFS{
+				"Pop; Rock/Grateful Dead/(2001) The Golden Road/cover.jpg": imageFile("album-root-cover"),
+			}
+			for i, name := range discNames {
+				discNum := i + 1
+				prefix := fmt.Sprintf("Pop; Rock/Grateful Dead/(2001) The Golden Road/%s/", name)
+				layout[prefix+"01 - Track.mp3"] = trackFile(1, fmt.Sprintf("T%d", discNum), map[string]any{"disc": fmt.Sprintf("%d", discNum)})
+				layout[prefix+"folder.jpg"] = imageFile(fmt.Sprintf("disc-%02d-folder", discNum))
+			}
+			setLayout(layout)
+			scan()
+
+			al := firstAlbum()
+
+			Expect(readArtwork(al.CoverArtID())).To(Equal(imageBytes("album-root-cover")))
+
+			for i := range discNames {
+				discNum := i + 1
+				discID := model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID(al.ID, discNum), &al.UpdatedAt)
+				Expect(readArtwork(discID)).To(Equal(imageBytes(fmt.Sprintf("disc-%02d-folder", discNum))),
+					"disc %d should use its own folder.jpg", discNum)
+			}
+		})
+	})
+
+	// https://github.com/navidrome/navidrome/issues/5456
+	// Top-level album variant — album folder at library root (Path=".").
+	When("a top-level multi-disc album has cover.jpg and per-disc folder.jpg", func() {
+		// Album/                       (top-level, Path=".")
+		// ├── cover.jpg                ← album-level cover
+		// ├── Disc 01/
+		// │   ├── 01 - Track.mp3
+		// │   └── folder.jpg           ← disc 1 art
+		// ├── Disc 02/
+		// │   ├── 01 - Track.mp3
+		// │   └── folder.jpg
+		// └── Disc 03/
+		//     ├── 01 - Track.mp3
+		//     └── folder.jpg
+		It("uses album-root cover.jpg for album art and per-disc folder.jpg for each disc", func() {
+			conf.Server.DiscArtPriority = defaultDiscPriority
+			conf.Server.CoverArtPriority = defaultCoverPriority
+			layout := fstest.MapFS{
+				"Album/cover.jpg": imageFile("album-root-cover"),
+			}
+			for i := 1; i <= 3; i++ {
+				prefix := fmt.Sprintf("Album/Disc %02d/", i)
+				layout[prefix+"01 - Track.mp3"] = trackFile(1, fmt.Sprintf("T%d", i), map[string]any{"disc": fmt.Sprintf("%d", i)})
+				layout[prefix+"folder.jpg"] = imageFile(fmt.Sprintf("disc-%02d-folder", i))
+			}
+			setLayout(layout)
+			scan()
+
+			al := firstAlbum()
+
+			Expect(readArtwork(al.CoverArtID())).To(Equal(imageBytes("album-root-cover")))
+
+			for i := 1; i <= 3; i++ {
+				discID := model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID(al.ID, i), &al.UpdatedAt)
+				Expect(readArtwork(discID)).To(Equal(imageBytes(fmt.Sprintf("disc-%02d-folder", i))),
+					"disc %d should use its own folder.jpg", i)
+			}
 		})
 	})
 
