@@ -149,6 +149,11 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 		Expect(err).To(MatchError(ContainSubstring("isMissing/isPresent operator is only supported for tag and role fields")))
 	})
 
+	It("returns an error when isMissing has a non-boolean value", func() {
+		_, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: criteria.IsMissing{"genre": "hello"}}).Where()
+		Expect(err).To(MatchError(ContainSubstring("invalid boolean value for 'missing' expression")))
+	})
+
 	Describe("sort", func() {
 		It("sorts by regular fields", func() {
 			Expect(newSmartPlaylistCriteria(criteria.Criteria{Sort: "title"}).OrderBy()).To(Equal("media_file.title asc"))

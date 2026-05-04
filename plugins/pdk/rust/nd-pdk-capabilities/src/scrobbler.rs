@@ -62,6 +62,35 @@ pub struct NowPlayingRequest {
     #[serde(default)]
     pub position: i32,
 }
+/// PlaybackReportRequest is the request for playback report notifications.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlaybackReportRequest {
+    /// Username is the username of the user.
+    #[serde(default)]
+    pub username: String,
+    /// Track is the track being played.
+    #[serde(default)]
+    pub track: TrackInfo,
+    /// State is the current playback state (starting/playing/paused/stopped/expired).
+    #[serde(default)]
+    pub state: String,
+    /// PositionMs is the current playback position in milliseconds.
+    #[serde(default)]
+    pub position_ms: i64,
+    /// PlaybackRate is the playback speed (1.0 = normal).
+    #[serde(default)]
+    pub playback_rate: f64,
+    /// PlayerId is the unique client identifier.
+    #[serde(default)]
+    pub player_id: String,
+    /// PlayerName is the human-readable player name.
+    #[serde(default)]
+    pub player_name: String,
+    /// Timestamp is the Unix timestamp when this report was generated.
+    #[serde(default)]
+    pub timestamp: i64,
+}
 /// ScrobbleRequest is the request for submitting a scrobble.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -158,7 +187,7 @@ impl Error {
 /// ListenBrainz, or custom scrobbling backends.
 /// 
 /// All methods are required - plugins implementing this capability must provide
-/// all three functions: IsAuthorized, NowPlaying, and Scrobble.
+/// all four functions: IsAuthorized, NowPlaying, Scrobble, and PlaybackReport.
 pub trait Scrobbler {
     /// IsAuthorized - IsAuthorized checks if a user is authorized to scrobble to this service.
     fn is_authorized(&self, req: IsAuthorizedRequest) -> Result<bool, Error>;
@@ -166,6 +195,8 @@ pub trait Scrobbler {
     fn now_playing(&self, req: NowPlayingRequest) -> Result<(), Error>;
     /// Scrobble - Scrobble submits a completed scrobble to the scrobbling service.
     fn scrobble(&self, req: ScrobbleRequest) -> Result<(), Error>;
+    /// PlaybackReport - PlaybackReport sends a playback state report to the scrobbling service.
+    fn playback_report(&self, req: PlaybackReportRequest) -> Result<(), Error>;
 }
 
 /// Register all exports for the Scrobbler capability.
@@ -195,6 +226,14 @@ macro_rules! register_scrobbler {
         ) -> extism_pdk::FnResult<()> {
             let plugin = <$plugin_type>::default();
             $crate::scrobbler::Scrobbler::scrobble(&plugin, req.into_inner())?;
+            Ok(())
+        }
+        #[extism_pdk::plugin_fn]
+        pub fn nd_scrobbler_playback_report(
+            req: extism_pdk::Json<$crate::scrobbler::PlaybackReportRequest>
+        ) -> extism_pdk::FnResult<()> {
+            let plugin = <$plugin_type>::default();
+            $crate::scrobbler::Scrobbler::playback_report(&plugin, req.into_inner())?;
             Ok(())
         }
     };

@@ -5,7 +5,7 @@ package capabilities
 // ListenBrainz, or custom scrobbling backends.
 //
 // All methods are required - plugins implementing this capability must provide
-// all three functions: IsAuthorized, NowPlaying, and Scrobble.
+// all four functions: IsAuthorized, NowPlaying, Scrobble, and PlaybackReport.
 //
 //nd:capability name=scrobbler required=true
 type Scrobbler interface {
@@ -20,6 +20,10 @@ type Scrobbler interface {
 	// Scrobble submits a completed scrobble to the scrobbling service.
 	//nd:export name=nd_scrobbler_scrobble
 	Scrobble(ScrobbleRequest) error
+
+	// PlaybackReport sends a playback state report to the scrobbling service.
+	//nd:export name=nd_scrobbler_playback_report
+	PlaybackReport(PlaybackReportRequest) error
 }
 
 // IsAuthorizedRequest is the request for authorization check.
@@ -93,6 +97,26 @@ type ScrobbleRequest struct {
 	// Track is the track that was played.
 	Track TrackInfo `json:"track"`
 	// Timestamp is the Unix timestamp when the track started playing.
+	Timestamp int64 `json:"timestamp"`
+}
+
+// PlaybackReportRequest is the request for playback report notifications.
+type PlaybackReportRequest struct {
+	// Username is the username of the user.
+	Username string `json:"username"`
+	// Track is the track being played.
+	Track TrackInfo `json:"track"`
+	// State is the current playback state (starting/playing/paused/stopped/expired).
+	State string `json:"state"`
+	// PositionMs is the current playback position in milliseconds.
+	PositionMs int64 `json:"positionMs"`
+	// PlaybackRate is the playback speed (1.0 = normal).
+	PlaybackRate float64 `json:"playbackRate"`
+	// PlayerId is the unique client identifier.
+	PlayerId string `json:"playerId"`
+	// PlayerName is the human-readable player name.
+	PlayerName string `json:"playerName"`
+	// Timestamp is the Unix timestamp when this report was generated.
 	Timestamp int64 `json:"timestamp"`
 }
 
