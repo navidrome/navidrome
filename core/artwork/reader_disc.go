@@ -16,6 +16,7 @@ import (
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils"
 )
 
 type discArtworkReader struct {
@@ -105,12 +106,9 @@ func newDiscArtworkReader(ctx context.Context, a *artwork, artID model.ArtworkID
 		updatedAt:      imagesUpdatedAt,
 	}
 	r.cacheKey.artID = artID
-	r.cacheKey.lastUpdate = al.UpdatedAt
-	if r.updatedAt != nil && r.updatedAt.After(r.cacheKey.lastUpdate) {
-		r.cacheKey.lastUpdate = *r.updatedAt
-	}
-	if al.ImportedAt.After(r.cacheKey.lastUpdate) {
-		r.cacheKey.lastUpdate = al.ImportedAt
+	r.cacheKey.lastUpdate = utils.TimeNewest(al.UpdatedAt, al.ImportedAt)
+	if imagesUpdatedAt != nil {
+		r.cacheKey.lastUpdate = utils.TimeNewest(r.cacheKey.lastUpdate, *imagesUpdatedAt)
 	}
 	return r, nil
 }

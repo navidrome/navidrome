@@ -18,6 +18,7 @@ import (
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/natural"
 )
 
@@ -53,12 +54,9 @@ func newAlbumArtworkReader(ctx context.Context, artwork *artwork, artID model.Ar
 		lib:       lib,
 	}
 	a.cacheKey.artID = artID
-	a.cacheKey.lastUpdate = al.UpdatedAt
-	if a.updatedAt != nil && a.updatedAt.After(a.cacheKey.lastUpdate) {
-		a.cacheKey.lastUpdate = *a.updatedAt
-	}
-	if al.ImportedAt.After(a.cacheKey.lastUpdate) {
-		a.cacheKey.lastUpdate = al.ImportedAt
+	a.cacheKey.lastUpdate = utils.TimeNewest(al.UpdatedAt, al.ImportedAt)
+	if imagesUpdateAt != nil {
+		a.cacheKey.lastUpdate = utils.TimeNewest(a.cacheKey.lastUpdate, *imagesUpdateAt)
 	}
 	return a, nil
 }
