@@ -103,6 +103,7 @@ func (p *phaseRefreshAlbums) refreshAlbum(album *model.Album) (*model.Album, err
 		return nil, nil
 	}
 	start := time.Now()
+	album.UpdatedAt = start
 	err := p.ds.Album(p.ctx).Put(album)
 	log.Debug(p.ctx, "Scanner: refreshing album", "album_id", album.ID, "name", album.Name, "songCount", album.SongCount, "elapsed", time.Since(start), err)
 	if err != nil {
