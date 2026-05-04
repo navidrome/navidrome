@@ -205,8 +205,8 @@ func libraryIdFilter(_ string, value any) Sqlizer {
 func (r sqlRepository) applyLibraryFilter(sq SelectBuilder, tableName ...string) SelectBuilder {
 	user := loggedUser(r.ctx)
 
-	// If the user is an admin, or the user ID is empty/invalid (e.g., when no user is logged in), skip the library filter
-	if user.IsAdmin || user.ID == "" || user.ID == invalidUserId {
+	// If the user is an admin, or the user ID is invalid (e.g., when no user is logged in), skip the library filter
+	if user.IsAdmin || user.ID == invalidUserId {
 		return sq
 	}
 
