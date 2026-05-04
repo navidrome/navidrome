@@ -105,10 +105,12 @@ func newDiscArtworkReader(ctx context.Context, a *artwork, artID model.ArtworkID
 		updatedAt:      imagesUpdatedAt,
 	}
 	r.cacheKey.artID = artID
-	if r.updatedAt != nil && r.updatedAt.After(al.UpdatedAt) {
+	r.cacheKey.lastUpdate = al.UpdatedAt
+	if r.updatedAt != nil && r.updatedAt.After(r.cacheKey.lastUpdate) {
 		r.cacheKey.lastUpdate = *r.updatedAt
-	} else {
-		r.cacheKey.lastUpdate = al.UpdatedAt
+	}
+	if al.ImportedAt.After(r.cacheKey.lastUpdate) {
+		r.cacheKey.lastUpdate = al.ImportedAt
 	}
 	return r, nil
 }
