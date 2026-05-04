@@ -50,7 +50,7 @@ func (p *phasePlaylists) produce(put func(entry *model.Folder)) error {
 		return nil
 	}
 	u, _ := request.UserFrom(p.ctx)
-	if !u.IsAdmin && u.ID == "" {
+	if u.ID == "" {
 		log.Warn(p.ctx, "Playlists will not be imported, as there are no admin users yet, "+
 			"Please create an admin user first, and then update the playlists for them to be imported")
 		return nil
