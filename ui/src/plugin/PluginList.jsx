@@ -2,6 +2,7 @@ import React, { useMemo, useState, useCallback } from 'react'
 import {
   Button,
   Datagrid,
+  Empty,
   TextField,
   TopToolbar,
   useNotify,
@@ -10,7 +11,13 @@ import {
   useTranslate,
 } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
-import { useMediaQuery, Tooltip, Chip, Typography } from '@material-ui/core'
+import {
+  useMediaQuery,
+  Tooltip,
+  Chip,
+  Typography,
+  Box,
+} from '@material-ui/core'
 import { MdError, MdRefresh } from 'react-icons/md'
 import { List, DateField, SimpleList, useResourceRefresh } from '../common'
 import { httpClient } from '../dataProvider'
@@ -72,8 +79,7 @@ const ManifestField = ({ source }) => {
   return <Typography variant="body2">{manifest[source] || '-'}</Typography>
 }
 
-const PluginListActions = () => {
-  const translate = useTranslate()
+const RescanButton = () => {
   const notify = useNotify()
   const refresh = useRefresh()
   const [loading, setLoading] = useState(false)
@@ -93,16 +99,33 @@ const PluginListActions = () => {
   }, [notify, refresh])
 
   return (
+    <Button
+      onClick={handleRescan}
+      disabled={loading}
+      label="resources.plugin.actions.rescan"
+      data-testid="rescan-button"
+    >
+      <MdRefresh />
+    </Button>
+  )
+}
+
+const PluginListActions = () => {
+  return (
     <TopToolbar>
-      <Button
-        onClick={handleRescan}
-        disabled={loading}
-        label={translate('resources.plugin.actions.rescan')}
-        data-testid="rescan-button"
-      >
-        <MdRefresh />
-      </Button>
+      <RescanButton />
     </TopToolbar>
+  )
+}
+
+const PluginEmpty = () => {
+  return (
+    <>
+      <Empty />
+      <Box textAlign="center" mt={2}>
+        <RescanButton />
+      </Box>
+    </>
   )
 }
 
@@ -118,6 +141,7 @@ const PluginList = (props) => {
       exporter={false}
       bulkActionButtons={false}
       actions={<PluginListActions />}
+      empty={<PluginEmpty />}
     >
       {isXsmall ? (
         <SimpleList
