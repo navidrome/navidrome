@@ -34,6 +34,7 @@ vi.mock('react-admin', async () => {
     TopToolbar: ({ children }) => (
       <div data-testid="top-toolbar">{children}</div>
     ),
+    Empty: () => <div data-testid="ra-empty">No resources</div>,
     Datagrid: ({ children }) => <div data-testid="datagrid">{children}</div>,
     TextField: ({ source }) => <span data-testid={`text-${source}`} />,
   }
@@ -42,9 +43,10 @@ vi.mock('react-admin', async () => {
 // Mock common components
 vi.mock('../common', async () => {
   return {
-    List: ({ children, actions, ...props }) => (
+    List: ({ children, actions, empty, ...props }) => (
       <div data-testid="list">
         {actions}
+        {empty && <div data-testid="empty-state">{empty}</div>}
         {children}
       </div>
     ),
@@ -94,14 +96,18 @@ describe('PluginList', () => {
     expect(screen.getByTestId('datagrid')).toBeInTheDocument()
   })
 
-  it('renders the rescan button', () => {
+  it('renders the rescan button in the toolbar', () => {
     render(<PluginList />)
-    expect(screen.getByTestId('rescan-button')).toBeInTheDocument()
+    const toolbar = screen.getByTestId('top-toolbar')
+    expect(
+      toolbar.querySelector('[data-testid="rescan-button"]'),
+    ).toBeInTheDocument()
   })
 
   it('calls rescan endpoint when rescan button is clicked', async () => {
     render(<PluginList />)
-    const rescanButton = screen.getByTestId('rescan-button')
+    const toolbar = screen.getByTestId('top-toolbar')
+    const rescanButton = toolbar.querySelector('[data-testid="rescan-button"]')
 
     fireEvent.click(rescanButton)
 
@@ -114,7 +120,8 @@ describe('PluginList', () => {
 
   it('calls refresh after successful rescan', async () => {
     render(<PluginList />)
-    const rescanButton = screen.getByTestId('rescan-button')
+    const toolbar = screen.getByTestId('top-toolbar')
+    const rescanButton = toolbar.querySelector('[data-testid="rescan-button"]')
 
     fireEvent.click(rescanButton)
 
@@ -127,13 +134,39 @@ describe('PluginList', () => {
     mockHttpClient.mockRejectedValue(new Error('Network error'))
 
     render(<PluginList />)
-    const rescanButton = screen.getByTestId('rescan-button')
+    const toolbar = screen.getByTestId('top-toolbar')
+    const rescanButton = toolbar.querySelector('[data-testid="rescan-button"]')
 
     fireEvent.click(rescanButton)
 
     await waitFor(() => {
       expect(mockNotify).toHaveBeenCalledWith('Network error', {
         type: 'warning',
+      })
+    })
+  })
+
+  it('renders a rescan button in the empty state', () => {
+    render(<PluginList />)
+    const emptyState = screen.getByTestId('empty-state')
+    expect(emptyState).toBeInTheDocument()
+    expect(
+      emptyState.querySelector('[data-testid="rescan-button"]'),
+    ).toBeInTheDocument()
+  })
+
+  it('empty state rescan button triggers rescan', async () => {
+    render(<PluginList />)
+    const emptyState = screen.getByTestId('empty-state')
+    const rescanButton = emptyState.querySelector(
+      '[data-testid="rescan-button"]',
+    )
+
+    fireEvent.click(rescanButton)
+
+    await waitFor(() => {
+      expect(mockHttpClient).toHaveBeenCalledWith('/api/plugin/rescan', {
+        method: 'POST',
       })
     })
   })
