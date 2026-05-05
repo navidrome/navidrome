@@ -1,5 +1,11 @@
 import React from 'react'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const mockNotify = vi.fn()
@@ -99,15 +105,13 @@ describe('PluginList', () => {
   it('renders the rescan button in the toolbar', () => {
     render(<PluginList />)
     const toolbar = screen.getByTestId('top-toolbar')
-    expect(
-      toolbar.querySelector('[data-testid="rescan-button"]'),
-    ).toBeInTheDocument()
+    expect(within(toolbar).getByTestId('rescan-button')).toBeInTheDocument()
   })
 
   it('calls rescan endpoint when rescan button is clicked', async () => {
     render(<PluginList />)
     const toolbar = screen.getByTestId('top-toolbar')
-    const rescanButton = toolbar.querySelector('[data-testid="rescan-button"]')
+    const rescanButton = within(toolbar).getByTestId('rescan-button')
 
     fireEvent.click(rescanButton)
 
@@ -121,7 +125,7 @@ describe('PluginList', () => {
   it('calls refresh after successful rescan', async () => {
     render(<PluginList />)
     const toolbar = screen.getByTestId('top-toolbar')
-    const rescanButton = toolbar.querySelector('[data-testid="rescan-button"]')
+    const rescanButton = within(toolbar).getByTestId('rescan-button')
 
     fireEvent.click(rescanButton)
 
@@ -135,7 +139,7 @@ describe('PluginList', () => {
 
     render(<PluginList />)
     const toolbar = screen.getByTestId('top-toolbar')
-    const rescanButton = toolbar.querySelector('[data-testid="rescan-button"]')
+    const rescanButton = within(toolbar).getByTestId('rescan-button')
 
     fireEvent.click(rescanButton)
 
@@ -150,17 +154,13 @@ describe('PluginList', () => {
     render(<PluginList />)
     const emptyState = screen.getByTestId('empty-state')
     expect(emptyState).toBeInTheDocument()
-    expect(
-      emptyState.querySelector('[data-testid="rescan-button"]'),
-    ).toBeInTheDocument()
+    expect(within(emptyState).getByTestId('rescan-button')).toBeInTheDocument()
   })
 
   it('empty state rescan button triggers rescan', async () => {
     render(<PluginList />)
     const emptyState = screen.getByTestId('empty-state')
-    const rescanButton = emptyState.querySelector(
-      '[data-testid="rescan-button"]',
-    )
+    const rescanButton = within(emptyState).getByTestId('rescan-button')
 
     fireEvent.click(rescanButton)
 

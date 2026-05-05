@@ -80,7 +80,6 @@ const ManifestField = ({ source }) => {
 }
 
 const RescanButton = () => {
-  const translate = useTranslate()
   const notify = useNotify()
   const refresh = useRefresh()
   const [loading, setLoading] = useState(false)
@@ -103,7 +102,7 @@ const RescanButton = () => {
     <Button
       onClick={handleRescan}
       disabled={loading}
-      label={translate('resources.plugin.actions.rescan')}
+      label="resources.plugin.actions.rescan"
       data-testid="rescan-button"
     >
       <MdRefresh />
