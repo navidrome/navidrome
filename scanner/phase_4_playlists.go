@@ -50,7 +50,7 @@ func (p *phasePlaylists) produce(put func(entry *model.Folder)) error {
 		return nil
 	}
 	u, _ := request.UserFrom(p.ctx)
-	if !u.IsAdmin {
+	if !u.IsAdmin || u.ID == "" {
 		log.Warn(p.ctx, "Playlists will not be imported, as there are no admin users yet, "+
 			"Please create an admin user first, and then update the playlists for them to be imported")
 		return nil
@@ -100,7 +100,7 @@ func (p *phasePlaylists) processPlaylistsInFolder(folder *model.Folder) (*model.
 			continue
 		}
 		// BFR: Check if playlist needs to be refreshed (timestamp, sync flag, etc)
-		pls, err := p.pls.ImportFile(p.ctx, folder, f.Name())
+		pls, err := p.pls.ImportFromFolder(p.ctx, folder, f.Name())
 		if err != nil {
 			continue
 		}

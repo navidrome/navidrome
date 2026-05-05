@@ -12,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"golang.org/x/sync/errgroup"
@@ -229,6 +230,7 @@ var _ = Describe("walk_dir_tree", func() {
 
 			Context("with symlinks enabled", func() {
 				BeforeEach(func() {
+					tests.SkipOnWindows("symlink semantics")
 					conf.Server.Scanner.FollowSymlinks = true
 				})
 

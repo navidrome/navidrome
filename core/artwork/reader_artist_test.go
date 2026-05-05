@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"time"
@@ -66,7 +67,7 @@ var _ = Describe("artistArtworkReader", func() {
 				}
 				folder, upd, err := loadArtistFolder(ctx, fds, albums, paths)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(folder).To(Equal("/music/artist"))
+				Expect(folder).To(Equal(filepath.FromSlash("/music/artist")))
 				Expect(upd).To(Equal(expectedUpdTime))
 			})
 		})
@@ -92,7 +93,7 @@ var _ = Describe("artistArtworkReader", func() {
 				}
 				folder, upd, err := loadArtistFolder(ctx, fds, albums, paths)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(folder).To(Equal("/music/artist"))
+				Expect(folder).To(Equal(filepath.FromSlash("/music/artist")))
 				Expect(upd).To(Equal(expectedUpdTime))
 			})
 		})
@@ -117,12 +118,14 @@ var _ = Describe("artistArtworkReader", func() {
 		var (
 			ctx      context.Context
 			tempDir  string
+			libFS    fs.FS
 			testFunc sourceFunc
 		)
 
 		BeforeEach(func() {
 			ctx = context.Background()
 			tempDir = GinkgoT().TempDir()
+			libFS = os.DirFS(tempDir)
 		})
 
 		When("artist folder contains matching image", func() {
@@ -134,7 +137,7 @@ var _ = Describe("artistArtworkReader", func() {
 				artistImagePath := filepath.Join(artistDir, "artist.jpg")
 				Expect(os.WriteFile(artistImagePath, []byte("fake image data"), 0600)).To(Succeed())
 
-				testFunc = fromArtistFolder(ctx, artistDir, "artist.*")
+				testFunc = fromArtistFolder(ctx, libFS, tempDir, artistDir, "artist.*")
 			})
 
 			It("finds and returns the image", func() {
@@ -151,6 +154,30 @@ var _ = Describe("artistArtworkReader", func() {
 			})
 		})
 
+		When("artist folder name contains glob metacharacters", func() {
+			BeforeEach(func() {
+				artistDir := filepath.Join(tempDir, "Artist [Live]")
+				Expect(os.MkdirAll(artistDir, 0755)).To(Succeed())
+
+				artistImagePath := filepath.Join(artistDir, "artist.jpg")
+				Expect(os.WriteFile(artistImagePath, []byte("bracketed artist image"), 0600)).To(Succeed())
+
+				testFunc = fromArtistFolder(ctx, libFS, tempDir, artistDir, "artist.*")
+			})
+
+			It("treats the folder path literally when globbing through the library fs", func() {
+				reader, path, err := testFunc()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(reader).ToNot(BeNil())
+				Expect(path).To(ContainSubstring("Artist [Live]" + string(filepath.Separator) + "artist.jpg"))
+
+				data, err := io.ReadAll(reader)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(string(data)).To(Equal("bracketed artist image"))
+				reader.Close()
+			})
+		})
+
 		When("artist folder is empty but parent contains image", func() {
 			BeforeEach(func() {
 				// Create test structure: /temp/parent/artist.jpg and /temp/parent/artist/album/
@@ -163,7 +190,7 @@ var _ = Describe("artistArtworkReader", func() {
 				artistImagePath := filepath.Join(parentDir, "artist.jpg")
 				Expect(os.WriteFile(artistImagePath, []byte("parent image"), 0600)).To(Succeed())
 
-				testFunc = fromArtistFolder(ctx, artistDir, "artist.*")
+				testFunc = fromArtistFolder(ctx, libFS, tempDir, artistDir, "artist.*")
 			})
 
 			It("finds image in parent directory", func() {
@@ -191,7 +218,7 @@ var _ = Describe("artistArtworkReader", func() {
 				artistImagePath := filepath.Join(grandparentDir, "artist.jpg")
 				Expect(os.WriteFile(artistImagePath, []byte("grandparent image"), 0600)).To(Succeed())
 
-				testFunc = fromArtistFolder(ctx, artistDir, "artist.*")
+				testFunc = fromArtistFolder(ctx, libFS, tempDir, artistDir, "artist.*")
 			})
 
 			It("finds image in grandparent directory", func() {
@@ -220,7 +247,7 @@ var _ = Describe("artistArtworkReader", func() {
 				Expect(os.WriteFile(filepath.Join(parentDir, "artist.jpg"), []byte("parent level"), 0600)).To(Succeed())
 				Expect(os.WriteFile(filepath.Join(grandparentDir, "artist.jpg"), []byte("grandparent level"), 0600)).To(Succeed())
 
-				testFunc = fromArtistFolder(ctx, artistDir, "artist.*")
+				testFunc = fromArtistFolder(ctx, libFS, tempDir, artistDir, "artist.*")
 			})
 
 			It("prioritizes the closest (artist folder) image", func() {
@@ -246,7 +273,7 @@ var _ = Describe("artistArtworkReader", func() {
 				Expect(os.WriteFile(filepath.Join(artistDir, "artist.png"), []byte("png image"), 0600)).To(Succeed())
 				Expect(os.WriteFile(filepath.Join(artistDir, "artist.jpg"), []byte("jpg image"), 0600)).To(Succeed())
 
-				testFunc = fromArtistFolder(ctx, artistDir, "artist.*")
+				testFunc = fromArtistFolder(ctx, libFS, tempDir, artistDir, "artist.*")
 			})
 
 			It("returns the first valid image file in sorted order", func() {
@@ -273,7 +300,7 @@ var _ = Describe("artistArtworkReader", func() {
 				Expect(os.WriteFile(filepath.Join(artistDir, "artist.jpg"), []byte("artist main"), 0600)).To(Succeed())
 				Expect(os.WriteFile(filepath.Join(artistDir, "artist.2.jpg"), []byte("artist 2"), 0600)).To(Succeed())
 
-				testFunc = fromArtistFolder(ctx, artistDir, "artist.*")
+				testFunc = fromArtistFolder(ctx, libFS, tempDir, artistDir, "artist.*")
 			})
 
 			It("returns artist.jpg before artist.1.jpg and artist.2.jpg", func() {
@@ -301,7 +328,7 @@ var _ = Describe("artistArtworkReader", func() {
 				Expect(os.WriteFile(filepath.Join(artistDir, "artist.jpg"), []byte("artist"), 0600)).To(Succeed())
 				Expect(os.WriteFile(filepath.Join(artistDir, "BACK.jpg"), []byte("back"), 0600)).To(Succeed())
 
-				testFunc = fromArtistFolder(ctx, artistDir, "*.*")
+				testFunc = fromArtistFolder(ctx, libFS, tempDir, artistDir, "*.*")
 			})
 
 			It("sorts case-insensitively", func() {
@@ -327,7 +354,7 @@ var _ = Describe("artistArtworkReader", func() {
 				// Create non-matching files
 				Expect(os.WriteFile(filepath.Join(artistDir, "cover.jpg"), []byte("cover image"), 0600)).To(Succeed())
 
-				testFunc = fromArtistFolder(ctx, artistDir, "artist.*")
+				testFunc = fromArtistFolder(ctx, libFS, tempDir, artistDir, "artist.*")
 			})
 
 			It("returns an error", func() {
@@ -346,7 +373,7 @@ var _ = Describe("artistArtworkReader", func() {
 				artistDir := filepath.Join(tempDir, "artist")
 				Expect(os.MkdirAll(artistDir, 0755)).To(Succeed())
 
-				testFunc = fromArtistFolder(ctx, artistDir, "artist.*")
+				testFunc = fromArtistFolder(ctx, libFS, tempDir, artistDir, "artist.*")
 			})
 
 			It("handles root boundary gracefully", func() {
@@ -367,7 +394,7 @@ var _ = Describe("artistArtworkReader", func() {
 				restrictedFile := filepath.Join(artistDir, "artist.jpg")
 				Expect(os.WriteFile(restrictedFile, []byte("restricted"), 0600)).To(Succeed())
 
-				testFunc = fromArtistFolder(ctx, artistDir, "artist.*")
+				testFunc = fromArtistFolder(ctx, libFS, tempDir, artistDir, "artist.*")
 			})
 
 			It("logs warning and continues searching", func() {
@@ -397,7 +424,7 @@ var _ = Describe("artistArtworkReader", func() {
 				Expect(os.WriteFile(artistImagePath, []byte("single album artist image"), 0600)).To(Succeed())
 
 				// The fromArtistFolder is called with the artist folder path
-				testFunc = fromArtistFolder(ctx, artistDir, "artist.*")
+				testFunc = fromArtistFolder(ctx, libFS, tempDir, artistDir, "artist.*")
 			})
 
 			It("finds artist.jpg in artist folder for single album artist", func() {

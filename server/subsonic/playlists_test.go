@@ -24,7 +24,7 @@ var _ = Describe("buildPlaylist", func() {
 
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{}
-		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 		ctx = context.Background()
 	})
 
@@ -128,6 +128,23 @@ var _ = Describe("buildPlaylist", func() {
 			})
 		})
 
+		Context("with legacy client", func() {
+			BeforeEach(func() {
+				conf.Server.Subsonic.LegacyClients = "legacy-client"
+				player := model.Player{Client: "legacy-client"}
+				ctx = request.WithPlayer(ctx, player)
+			})
+
+			It("returns all standard fields but no OpenSubsonic extensions", func() {
+				result := router.buildPlaylist(ctx, playlist)
+
+				Expect(result.Comment).To(Equal("Test comment"))
+				Expect(result.Owner).To(Equal("admin"))
+				Expect(result.Public).To(BeTrue())
+				Expect(result.OpenSubsonicPlaylist).To(BeNil())
+			})
+		})
+
 		Context("when no player in context", func() {
 			It("returns all fields", func() {
 				result := router.buildPlaylist(ctx, playlist)
@@ -213,6 +230,23 @@ var _ = Describe("buildPlaylist", func() {
 				Expect(result.ValidUntil).To(Equal(&validUntil))
 			})
 		})
+
+		Context("with legacy client", func() {
+			BeforeEach(func() {
+				conf.Server.Subsonic.LegacyClients = "legacy-client"
+				player := model.Player{Client: "legacy-client"}
+				ctx = request.WithPlayer(ctx, player)
+			})
+
+			It("returns standard fields but no OpenSubsonic extensions", func() {
+				result := router.buildPlaylist(ctx, playlist)
+
+				Expect(result.Comment).To(Equal("Test comment"))
+				Expect(result.Owner).To(Equal("admin"))
+				Expect(result.Public).To(BeTrue())
+				Expect(result.OpenSubsonicPlaylist).To(BeNil())
+			})
+		})
 	})
 })
 
@@ -224,7 +258,7 @@ var _ = Describe("UpdatePlaylist", func() {
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{}
 		playlists = &fakePlaylists{}
-		router = New(ds, nil, nil, nil, nil, nil, nil, nil, playlists, nil, nil, nil, nil, nil, nil)
+		router = New(ds, nil, nil, nil, nil, nil, nil, nil, playlists, nil, nil, nil, nil, nil, nil, nil)
 	})
 
 	It("clears the comment when parameter is empty", func() {

@@ -44,10 +44,14 @@ func (s *deciderService) MakeDecision(ctx context.Context, mf *model.MediaFile, 
 
 	var probe *ffmpeg.AudioProbeResult
 	if !opts.SkipProbe {
-		var err error
-		probe, err = s.ensureProbed(ctx, mf)
-		if err != nil {
-			return nil, err
+		if !s.ff.IsProbeAvailable() {
+			log.Debug(ctx, "ffprobe not available, using tag metadata for transcode decision", "mediaID", mf.ID)
+		} else {
+			var err error
+			probe, err = s.ensureProbed(ctx, mf)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -195,6 +199,17 @@ func parseProbeData(data string) (*ffmpeg.AudioProbeResult, error) {
 	return &result, nil
 }
 
+// matchesPCMWAVBridge bridges Navidrome's internal "pcm" codec name with the
+// "wav" codec name that browsers use to advertise audio/wav support. The match
+// is scoped to WAV-container sources so AIFF files (which also normalize to
+// codec "pcm" but use a different container) cannot false-match a codec-only
+// ["wav"] profile.
+func matchesPCMWAVBridge(src *Details, profile *DirectPlayProfile) bool {
+	return strings.EqualFold(src.Codec, "pcm") &&
+		strings.EqualFold(src.Container, "wav") &&
+		containsIgnoreCase(profile.AudioCodecs, "wav")
+}
+
 // checkDirectPlayProfile returns "" if the profile matches (direct play OK),
 // or a typed reason string if it doesn't match.
 func (s *deciderService) checkDirectPlayProfile(src *Details, profile *DirectPlayProfile, clientInfo *ClientInfo) string {
@@ -205,17 +220,17 @@ func (s *deciderService) checkDirectPlayProfile(src *Details, profile *DirectPla
 
 	// Check container
 	if len(profile.Containers) > 0 && !matchesContainer(src.Container, profile.Containers) {
-		return "container not supported"
+		return fmt.Sprintf("container '%s' not supported by profile %s", src.Container, profile)
 	}
 
 	// Check codec
-	if len(profile.AudioCodecs) > 0 && !matchesCodec(src.Codec, profile.AudioCodecs) {
-		return "audio codec not supported"
+	if len(profile.AudioCodecs) > 0 && !matchesCodec(src.Codec, profile.AudioCodecs) && !matchesPCMWAVBridge(src, profile) {
+		return fmt.Sprintf("audio codec '%s' not supported by profile %s", src.Codec, profile)
 	}
 
 	// Check channels
 	if profile.MaxAudioChannels > 0 && src.Channels > profile.MaxAudioChannels {
-		return "audio channels not supported"
+		return fmt.Sprintf("audio channels %d not supported by profile %s (max %d)", src.Channels, profile, profile.MaxAudioChannels)
 	}
 
 	// Check codec-specific limitations
@@ -279,14 +294,19 @@ func (s *deciderService) computeTranscodedStream(ctx context.Context, src *Detai
 	if maxRate := codecMaxSampleRate(ts.Codec); maxRate > 0 && ts.SampleRate > maxRate {
 		ts.SampleRate = maxRate
 	}
+	if maxCh := codecMaxChannels(ts.Codec); maxCh > 0 && ts.Channels > maxCh {
+		ts.Channels = maxCh
+	}
 
 	// Determine target bitrate (all in kbps)
 	if ok := s.computeBitrate(ctx, src, targetFormat, targetIsLossless, clientInfo, ts); !ok {
 		return nil, ""
 	}
 
-	// Apply MaxAudioChannels from the transcoding profile
-	if profile.MaxAudioChannels > 0 && src.Channels > profile.MaxAudioChannels {
+	// Apply MaxAudioChannels from the transcoding profile. Compare against the
+	// already-clamped ts.Channels (not src.Channels) so the codec hard limit
+	// applied above is never raised by a looser profile setting.
+	if profile.MaxAudioChannels > 0 && ts.Channels > profile.MaxAudioChannels {
 		ts.Channels = profile.MaxAudioChannels
 	}
 

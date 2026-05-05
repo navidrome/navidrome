@@ -67,11 +67,12 @@ const (
 	ScanIgnoreFile = ".ndignore"
 	ArtworkFolder  = "artwork"
 
-	PlaceholderArtistArt      = "artist-placeholder.webp"
-	PlaceholderAlbumArt       = "album-placeholder.webp"
-	PlaceholderAvatar         = "logo-192x192.png"
-	DefaultUIVolume           = 100
-	DefaultUISearchDebounceMs = 200
+	PlaceholderArtistArt            = "artist-placeholder.webp"
+	PlaceholderAlbumArt             = "album-placeholder.webp"
+	PlaceholderAvatar               = "logo-192x192.png"
+	DefaultUIVolume                 = 100
+	DefaultUISearchDebounceMs       = 200
+	DefaultUIPlaybackReportInterval = time.Minute
 
 	DefaultHttpClientTimeOut = 10 * time.Second
 	DefaultLastFMBaseURL     = "https://ws.audioscrobbler.com/2.0/"
@@ -87,10 +88,9 @@ const (
 )
 
 const (
-	UICoverArtSize = 600
+	DefaultUICoverArtSize     = 300
+	DefaultMaxImageUploadSize = "10MB"
 )
-
-var CacheWarmerImageSizes = []int{UICoverArtSize}
 
 // Prometheus options
 const (

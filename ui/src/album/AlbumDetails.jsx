@@ -18,7 +18,7 @@ import {
   useTranslate,
 } from 'react-admin'
 import Lightbox from 'react-image-lightbox'
-import { COVER_ART_SIZE } from '../consts'
+import config from '../config'
 import 'react-image-lightbox/style.css'
 import subsonic from '../subsonic'
 import {
@@ -32,7 +32,6 @@ import {
   useAlbumsPerPage,
   useImageLoadingState,
 } from '../common'
-import config from '../config'
 import { formatFullDate, intersperse } from '../utils'
 import AlbumExternalLinks from './AlbumExternalLinks'
 import { SafeHTML } from '../common/SafeHTML'
@@ -255,7 +254,7 @@ const AlbumDetails = (props) => {
       })
   }, [record])
 
-  const imageUrl = subsonic.getCoverArtUrl(record, COVER_ART_SIZE)
+  const imageUrl = subsonic.getCoverArtUrl(record, config.uiCoverArtSize)
   const fullImageUrl = subsonic.getCoverArtUrl(record)
 
   return (

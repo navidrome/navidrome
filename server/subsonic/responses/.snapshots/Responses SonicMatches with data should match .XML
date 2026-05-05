@@ -1,0 +1,10 @@
+<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.16.1" type="navidrome" serverVersion="v0.55.0" openSubsonic="true">
+  <sonicMatch>
+    <entry id="1" isDir="false" title="Bohemian Rhapsody"></entry>
+    <similarity>0.95</similarity>
+  </sonicMatch>
+  <sonicMatch>
+    <entry id="2" isDir="false" title="We Will Rock You"></entry>
+    <similarity>0.78</similarity>
+  </sonicMatch>
+</subsonic-response>

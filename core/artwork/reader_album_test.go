@@ -3,7 +3,6 @@ package artwork
 import (
 	"context"
 	"errors"
-	"path/filepath"
 	"time"
 
 	"github.com/navidrome/navidrome/model"
@@ -69,11 +68,11 @@ var _ = Describe("Album Artwork Reader", func() {
 			// Files should be sorted by base filename without extension, then by full path
 			// "back" < "cover", so back.jpg comes first
 			// Then all cover.jpg files, sorted by path
-			Expect(imgFiles[0]).To(Equal(filepath.FromSlash("Artist/Album/Disc1/back.jpg")))
-			Expect(imgFiles[1]).To(Equal(filepath.FromSlash("Artist/Album/Disc1/cover.jpg")))
-			Expect(imgFiles[2]).To(Equal(filepath.FromSlash("Artist/Album/Disc2/cover.jpg")))
-			Expect(imgFiles[3]).To(Equal(filepath.FromSlash("Artist/Album/Disc10/cover.jpg")))
-			Expect(imgFiles[4]).To(Equal(filepath.FromSlash("Artist/Album/Disc1/cover.1.jpg")))
+			Expect(imgFiles[0]).To(Equal("Artist/Album/Disc1/back.jpg"))
+			Expect(imgFiles[1]).To(Equal("Artist/Album/Disc1/cover.jpg"))
+			Expect(imgFiles[2]).To(Equal("Artist/Album/Disc2/cover.jpg"))
+			Expect(imgFiles[3]).To(Equal("Artist/Album/Disc10/cover.jpg"))
+			Expect(imgFiles[4]).To(Equal("Artist/Album/Disc1/cover.1.jpg"))
 		})
 
 		It("prioritizes files without numeric suffixes", func() {
@@ -92,9 +91,9 @@ var _ = Describe("Album Artwork Reader", func() {
 			Expect(imgFiles).To(HaveLen(3))
 
 			// cover.jpg should come first because "cover" < "cover.1" < "cover.2"
-			Expect(imgFiles[0]).To(Equal(filepath.FromSlash("Artist/Album/cover.jpg")))
-			Expect(imgFiles[1]).To(Equal(filepath.FromSlash("Artist/Album/cover.1.jpg")))
-			Expect(imgFiles[2]).To(Equal(filepath.FromSlash("Artist/Album/cover.2.jpg")))
+			Expect(imgFiles[0]).To(Equal("Artist/Album/cover.jpg"))
+			Expect(imgFiles[1]).To(Equal("Artist/Album/cover.1.jpg"))
+			Expect(imgFiles[2]).To(Equal("Artist/Album/cover.2.jpg"))
 		})
 
 		It("handles case-insensitive sorting", func() {
@@ -113,9 +112,9 @@ var _ = Describe("Album Artwork Reader", func() {
 			Expect(imgFiles).To(HaveLen(3))
 
 			// Files should be sorted case-insensitively: BACK, cover, Folder
-			Expect(imgFiles[0]).To(Equal(filepath.FromSlash("Artist/Album/BACK.jpg")))
-			Expect(imgFiles[1]).To(Equal(filepath.FromSlash("Artist/Album/cover.jpg")))
-			Expect(imgFiles[2]).To(Equal(filepath.FromSlash("Artist/Album/Folder.jpg")))
+			Expect(imgFiles[0]).To(Equal("Artist/Album/BACK.jpg"))
+			Expect(imgFiles[1]).To(Equal("Artist/Album/cover.jpg"))
+			Expect(imgFiles[2]).To(Equal("Artist/Album/Folder.jpg"))
 		})
 
 		It("includes images from parent folder for multi-disc albums", func() {
@@ -142,6 +141,7 @@ var _ = Describe("Album Artwork Reader", func() {
 				ID:              "parentFolder",
 				Path:            "Artist",
 				Name:            "Album",
+				ParentID:        "artistFolder",
 				ImagesUpdatedAt: expectedAt,
 				ImageFiles:      []string{"cover.jpg", "back.jpg"},
 			}
@@ -151,8 +151,8 @@ var _ = Describe("Album Artwork Reader", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(*imagesUpdatedAt).To(Equal(expectedAt))
 			Expect(imgFiles).To(HaveLen(2))
-			Expect(imgFiles[0]).To(Equal(filepath.FromSlash("Artist/Album/back.jpg")))
-			Expect(imgFiles[1]).To(Equal(filepath.FromSlash("Artist/Album/cover.jpg")))
+			Expect(imgFiles[0]).To(Equal("Artist/Album/back.jpg"))
+			Expect(imgFiles[1]).To(Equal("Artist/Album/cover.jpg"))
 		})
 
 		It("does not query parent when parent ID is already in album folders", func() {
@@ -179,7 +179,7 @@ var _ = Describe("Album Artwork Reader", func() {
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(imgFiles).To(HaveLen(1))
-			Expect(imgFiles[0]).To(Equal(filepath.FromSlash("Artist/Album/cover.jpg")))
+			Expect(imgFiles[0]).To(Equal("Artist/Album/cover.jpg"))
 			// Get should not have been called (parent already in folder set)
 			Expect(repo.getCallCount).To(Equal(0))
 		})
@@ -209,14 +209,88 @@ var _ = Describe("Album Artwork Reader", func() {
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(imgFiles).To(HaveLen(1))
-			Expect(imgFiles[0]).To(Equal(filepath.FromSlash("Artist1/Album/part1/cover.jpg")))
+			Expect(imgFiles[0]).To(Equal("Artist1/Album/part1/cover.jpg"))
 			// Get should not have been called (different parents)
 			Expect(repo.getCallCount).To(Equal(0))
 		})
 
-		It("does not query parent for single-folder albums", func() {
-			// A single-folder album's parent is typically the artist folder,
-			// which should not be searched for cover art
+		It("does not include library root parent for multi-folder albums", func() {
+			// Two album parts directly under the library root — parent is the root itself
+			repo.result = []model.Folder{
+				{
+					ID:              "folder1",
+					Path:            ".",
+					Name:            "AlbumPart1",
+					ParentID:        "rootFolder",
+					ImagesUpdatedAt: now,
+					ImageFiles:      []string{"cover.jpg"},
+				},
+				{
+					ID:              "folder2",
+					Path:            ".",
+					Name:            "AlbumPart2",
+					ParentID:        "rootFolder",
+					ImagesUpdatedAt: now,
+					ImageFiles:      []string{},
+				},
+			}
+			repo.parentResult = &model.Folder{
+				ID:         "rootFolder",
+				Path:       "",
+				Name:       ".",
+				ParentID:   "",
+				ImageFiles: []string{"unrelated.jpg"},
+			}
+
+			_, imgFiles, _, err := loadAlbumFoldersPaths(ctx, ds, album)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(imgFiles).To(HaveLen(1))
+			Expect(imgFiles[0]).To(Equal("AlbumPart1/cover.jpg"))
+			Expect(repo.getCallCount).To(Equal(1))
+		})
+
+		It("includes top-level album folder for multi-disc albums", func() {
+			// Album folder directly under library root, with disc subfolders
+			repo.result = []model.Folder{
+				{
+					ID:              "folder1",
+					Path:            "Album",
+					Name:            "Disc1",
+					ParentID:        "albumFolder",
+					ImagesUpdatedAt: now,
+					ImageFiles:      []string{"folder.jpg"},
+				},
+				{
+					ID:              "folder2",
+					Path:            "Album",
+					Name:            "Disc2",
+					ParentID:        "albumFolder",
+					ImagesUpdatedAt: now,
+					ImageFiles:      []string{"folder.jpg"},
+				},
+			}
+			repo.parentResult = &model.Folder{
+				ID:              "albumFolder",
+				Path:            ".",
+				Name:            "Album",
+				ParentID:        "rootFolder",
+				ImagesUpdatedAt: expectedAt,
+				ImageFiles:      []string{"cover.jpg"},
+			}
+
+			_, imgFiles, imagesUpdatedAt, err := loadAlbumFoldersPaths(ctx, ds, album)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(*imagesUpdatedAt).To(Equal(expectedAt))
+			Expect(imgFiles).To(HaveLen(3))
+			Expect(imgFiles[0]).To(Equal("Album/cover.jpg"))
+			Expect(imgFiles[1]).To(Equal("Album/Disc1/folder.jpg"))
+			Expect(imgFiles[2]).To(Equal("Album/Disc2/folder.jpg"))
+			Expect(repo.getCallCount).To(Equal(1))
+		})
+
+		It("does not query parent for single-folder albums that already have images", func() {
 			repo.result = []model.Folder{
 				{
 					ID:              "folder1",
@@ -232,9 +306,37 @@ var _ = Describe("Album Artwork Reader", func() {
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(imgFiles).To(HaveLen(1))
-			Expect(imgFiles[0]).To(Equal(filepath.FromSlash("Artist/Album/cover.jpg")))
-			// Get should not have been called (single folder, no parent lookup)
+			Expect(imgFiles[0]).To(Equal("Artist/Album/cover.jpg"))
 			Expect(repo.getCallCount).To(Equal(0))
+		})
+
+		It("includes parent images for single-disc-subfolder albums", func() {
+			repo.result = []model.Folder{
+				{
+					ID:              "folder1",
+					Path:            "Artist/Album",
+					Name:            "disc1",
+					ParentID:        "albumFolder",
+					ImagesUpdatedAt: now,
+					ImageFiles:      []string{},
+				},
+			}
+			repo.parentResult = &model.Folder{
+				ID:              "albumFolder",
+				Path:            "Artist",
+				Name:            "Album",
+				ParentID:        "artistFolder",
+				ImagesUpdatedAt: expectedAt,
+				ImageFiles:      []string{"cover.jpg"},
+			}
+
+			_, imgFiles, imagesUpdatedAt, err := loadAlbumFoldersPaths(ctx, ds, album)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(*imagesUpdatedAt).To(Equal(expectedAt))
+			Expect(imgFiles).To(HaveLen(1))
+			Expect(imgFiles[0]).To(Equal("Artist/Album/cover.jpg"))
+			Expect(repo.getCallCount).To(Equal(1))
 		})
 
 		It("propagates non-ErrNotFound errors from parent folder lookup", func() {
@@ -290,7 +392,7 @@ var _ = Describe("Album Artwork Reader", func() {
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(imgFiles).To(HaveLen(1))
-			Expect(imgFiles[0]).To(Equal(filepath.FromSlash("Artist/Album/CD1/cover.jpg")))
+			Expect(imgFiles[0]).To(Equal("Artist/Album/CD1/cover.jpg"))
 			Expect(repo.getCallCount).To(Equal(1))
 		})
 	})

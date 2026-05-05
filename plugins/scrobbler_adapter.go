@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"github.com/navidrome/navidrome/core/scrobbler"
@@ -16,9 +17,10 @@ const CapabilityScrobbler Capability = "Scrobbler"
 
 // Scrobbler function names (snake_case as per design)
 const (
-	FuncScrobblerIsAuthorized = "nd_scrobbler_is_authorized"
-	FuncScrobblerNowPlaying   = "nd_scrobbler_now_playing"
-	FuncScrobblerScrobble     = "nd_scrobbler_scrobble"
+	FuncScrobblerIsAuthorized   = "nd_scrobbler_is_authorized"
+	FuncScrobblerNowPlaying     = "nd_scrobbler_now_playing"
+	FuncScrobblerScrobble       = "nd_scrobbler_scrobble"
+	FuncScrobblerPlaybackReport = "nd_scrobbler_playback_report"
 )
 
 func init() {
@@ -27,7 +29,22 @@ func init() {
 		FuncScrobblerIsAuthorized,
 		FuncScrobblerNowPlaying,
 		FuncScrobblerScrobble,
+		FuncScrobblerPlaybackReport,
 	)
+}
+
+func newScrobblerPlugin(p *plugin) *ScrobblerPlugin {
+	userIDMap := make(map[string]struct{})
+	for _, id := range p.allowedUserIDs {
+		userIDMap[id] = struct{}{}
+	}
+	return &ScrobblerPlugin{
+		name:           p.name,
+		plugin:         p,
+		allowedUserIDs: p.allowedUserIDs,
+		allUsers:       p.allUsers,
+		userIDMap:      userIDMap,
+	}
 }
 
 // ScrobblerPlugin is an adapter that wraps an Extism plugin and implements
@@ -80,7 +97,7 @@ func (s *ScrobblerPlugin) NowPlaying(ctx context.Context, userId string, track *
 	username := getUsernameFromContext(ctx)
 	input := capabilities.NowPlayingRequest{
 		Username: username,
-		Track:    mediaFileToTrackInfo(track),
+		Track:    mediaFileToTrackInfo(s.plugin, track),
 		Position: int32(position),
 	}
 
@@ -93,7 +110,7 @@ func (s *ScrobblerPlugin) Scrobble(ctx context.Context, userId string, sc scrobb
 	username := getUsernameFromContext(ctx)
 	input := capabilities.ScrobbleRequest{
 		Username:  username,
-		Track:     mediaFileToTrackInfo(&sc.MediaFile),
+		Track:     mediaFileToTrackInfo(s.plugin, &sc.MediaFile),
 		Timestamp: sc.TimeStamp.Unix(),
 	}
 
@@ -109,9 +126,11 @@ func getUsernameFromContext(ctx context.Context) string {
 	return ""
 }
 
-// mediaFileToTrackInfo converts a model.MediaFile to capabilities.TrackInfo
-func mediaFileToTrackInfo(mf *model.MediaFile) capabilities.TrackInfo {
-	return capabilities.TrackInfo{
+// mediaFileToTrackInfo converts a model.MediaFile to capabilities.TrackInfo.
+// Path is populated only when the plugin is allowed filesystem access to the
+// track's library.
+func mediaFileToTrackInfo(p *plugin, mf *model.MediaFile) capabilities.TrackInfo {
+	ti := capabilities.TrackInfo{
 		ID:                mf.ID,
 		Title:             mf.Title,
 		Album:             mf.Album,
@@ -127,6 +146,11 @@ func mediaFileToTrackInfo(mf *model.MediaFile) capabilities.TrackInfo {
 		MBZReleaseGroupID: mf.MbzReleaseGroupID,
 		MBZReleaseTrackID: mf.MbzReleaseTrackID,
 	}
+	if p.hasLibraryFilesystemAccess(mf.LibraryID) {
+		ti.LibraryID = int32(mf.LibraryID)
+		ti.Path = mf.Path
+	}
+	return ti
 }
 
 // participantsToArtistRefs converts a ParticipantList to a slice of ArtistRef
@@ -159,6 +183,26 @@ func mapScrobblerError(err error) error {
 	default:
 		return scrobbler.ErrUnrecoverable
 	}
+}
+
+// PlaybackReport sends a playback state report to the scrobbler
+func (s *ScrobblerPlugin) PlaybackReport(ctx context.Context, info scrobbler.PlaybackSession) error {
+	input := capabilities.PlaybackReportRequest{
+		Username:     info.Username,
+		Track:        mediaFileToTrackInfo(s.plugin, &info.MediaFile),
+		State:        info.State,
+		PositionMs:   info.PositionMs,
+		PlaybackRate: info.PlaybackRate,
+		PlayerId:     info.PlayerId,
+		PlayerName:   info.PlayerName,
+		Timestamp:    info.LastReport.Unix(),
+	}
+
+	err := callPluginFunctionNoOutput(ctx, s.plugin, FuncScrobblerPlaybackReport, input)
+	if errors.Is(err, errFunctionNotFound) || errors.Is(err, errNotImplemented) {
+		return nil
+	}
+	return mapScrobblerError(err)
 }
 
 // Verify interface implementation at compile time

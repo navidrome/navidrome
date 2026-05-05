@@ -71,7 +71,7 @@ var _ = Describe("Radio", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(response.InternetRadioStations.Radios).To(HaveLen(2))
 				Expect(response.InternetRadioStations.Radios[0].OpenSubsonicRadio).ToNot(BeNil())
-				Expect(response.InternetRadioStations.Radios[0].CoverArt).To(Equal("rd-1_cover.jpg"))
+				Expect(response.InternetRadioStations.Radios[0].CoverArt).To(Equal("ra-rd-1_0"))
 				Expect(response.InternetRadioStations.Radios[1].OpenSubsonicRadio).ToNot(BeNil())
 				Expect(response.InternetRadioStations.Radios[1].CoverArt).To(BeEmpty())
 			})
@@ -129,7 +129,7 @@ var _ = Describe("Radio", func() {
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(response.InternetRadioStations.Radios[0].OpenSubsonicRadio).ToNot(BeNil())
-				Expect(response.InternetRadioStations.Radios[0].CoverArt).To(Equal("rd-1_cover.jpg"))
+				Expect(response.InternetRadioStations.Radios[0].CoverArt).To(Equal("ra-rd-1_0"))
 			})
 		})
 

@@ -3,6 +3,7 @@ package subsonic
 import (
 	"context"
 	"fmt"
+	"math"
 	"net/http"
 	"time"
 
@@ -217,6 +218,73 @@ func (api *Router) scrobblerNowPlaying(ctx context.Context, trackId string, posi
 	}
 
 	log.Info(ctx, "Now Playing", "title", mf.Title, "artist", mf.Artist, "user", username, "player", player.Name, "position", position)
-	err = api.scrobbler.NowPlaying(ctx, clientId, client, trackId, position)
-	return err
+	return api.scrobbler.ReportPlayback(ctx, scrobbler.ReportPlaybackParams{
+		MediaId:      trackId,
+		PositionMs:   int64(position) * 1000,
+		State:        scrobbler.StatePlaying,
+		PlaybackRate: 1.0,
+		ClientId:     clientId,
+		ClientName:   client,
+	})
+}
+
+func (api *Router) ReportPlayback(r *http.Request) (*responses.Subsonic, error) {
+	p := req.Params(r)
+	mediaId, err := p.String("mediaId")
+	if err != nil {
+		return nil, err
+	}
+	mediaType, err := p.String("mediaType")
+	if err != nil {
+		return nil, err
+	}
+	positionMs, err := p.Int64("positionMs")
+	if err != nil {
+		return nil, err
+	}
+	if positionMs < 0 {
+		return nil, newError(responses.ErrorGeneric, "positionMs must be non-negative")
+	}
+	state, err := p.String("state")
+	if err != nil {
+		return nil, err
+	}
+
+	if !scrobbler.ValidStates[state] {
+		return nil, newError(responses.ErrorGeneric, "Invalid state: %s", state)
+	}
+
+	playbackRate := p.Float64Or("playbackRate", 1.0)
+	if math.IsNaN(playbackRate) || math.IsInf(playbackRate, 0) || playbackRate <= 0 {
+		return nil, newError(responses.ErrorGeneric, "playbackRate must be a finite positive number")
+	}
+	ignoreScrobble := p.BoolOr("ignoreScrobble", false)
+
+	ctx := r.Context()
+	if mediaType != "song" {
+		log.Warn(ctx, "reportPlayback received unsupported mediaType", "mediaType", mediaType, "mediaId", mediaId)
+	}
+
+	player, _ := request.PlayerFrom(ctx)
+	client, _ := request.ClientFrom(ctx)
+	clientId, ok := request.ClientUniqueIdFrom(ctx)
+	if !ok {
+		clientId = player.ID
+	}
+
+	err = api.scrobbler.ReportPlayback(ctx, scrobbler.ReportPlaybackParams{
+		MediaId:        mediaId,
+		PositionMs:     positionMs,
+		State:          state,
+		PlaybackRate:   playbackRate,
+		IgnoreScrobble: ignoreScrobble,
+		ClientId:       clientId,
+		ClientName:     client,
+	})
+	if err != nil {
+		log.Error(ctx, "Error in ReportPlayback", "mediaId", mediaId, "state", state, err)
+		return nil, err
+	}
+
+	return newResponse(), nil
 }
