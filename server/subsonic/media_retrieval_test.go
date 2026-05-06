@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"net/http"
 	"net/http/httptest"
 	"slices"
 	"time"
@@ -16,6 +17,7 @@ import (
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -34,7 +36,7 @@ var _ = Describe("MediaRetrievalController", func() {
 			MockedMediaFile: mockRepo,
 		}
 		artwork = &fakeArtwork{data: "image data"}
-		router = New(ds, artwork, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, lyrics.NewLyrics(nil), nil, nil)
+		router = New(ds, artwork, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, lyrics.NewLyrics(nil), nil, nil, nil)
 		w = httptest.NewRecorder()
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.LyricsPriority = "embedded,.lrc"
@@ -74,6 +76,92 @@ var _ = Describe("MediaRetrievalController", func() {
 			_, err := router.GetCoverArt(w, r)
 
 			Expect(err).To(MatchError("weird error"))
+		})
+
+		When("artwork throttle is enabled", func() {
+			BeforeEach(func() {
+				conf.Server.DevArtworkMaxRequests = 1
+				conf.Server.DevArtworkThrottleBacklogLimit = 0
+				conf.Server.DevArtworkThrottleBacklogTimeout = time.Second
+				router.artworkThrottle = server.NewRequestThrottle()
+			})
+
+			It("should return data when throttle token is available", func() {
+				r := newGetRequest("id=34", "size=128")
+				_, err := router.GetCoverArt(w, r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(w.Body.String()).To(Equal(artwork.data))
+			})
+
+			It("should return 429 when throttle capacity is exceeded", func() {
+				// Hold the only token by starting a DoBuffered call that blocks
+				held := make(chan struct{})
+				done := make(chan struct{})
+				go func() {
+					defer close(done)
+					_, _, _ = router.artworkThrottle.DoBuffered(context.Background(), func() (io.ReadCloser, time.Time, error) {
+						close(held) // signal that we're holding the token
+						time.Sleep(2 * time.Second)
+						return io.NopCloser(bytes.NewReader(nil)), time.Time{}, nil
+					})
+				}()
+				<-held // wait until token is held
+
+				r := newGetRequest("id=34", "size=128")
+				_, err := router.GetCoverArt(w, r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(w.Code).To(Equal(http.StatusTooManyRequests))
+				Eventually(done, 3*time.Second).Should(BeClosed())
+			})
+
+			It("should not starve concurrent requests when a client is slow to read (regression)", func() {
+				// Reproduces the starvation scenario from the bug report: with only 1
+				// throttle token, a slow client that blocks during response writing must
+				// NOT prevent other requests from being served. The fix buffers the image
+				// and releases the token before writing to the client.
+				conf.Server.DevArtworkMaxRequests = 1
+				conf.Server.DevArtworkThrottleBacklogLimit = 1
+				conf.Server.DevArtworkThrottleBacklogTimeout = 5 * time.Second
+				router.artworkThrottle = server.NewRequestThrottle()
+
+				unblocked := make(chan struct{})
+				slow := &slowResponseWriter{
+					ResponseRecorder: httptest.NewRecorder(),
+					unblocked:        unblocked,
+				}
+
+				// Start a request that will stall on the slow writer
+				reqDone := make(chan struct{})
+				go func() {
+					defer close(reqDone)
+					r := newGetRequest("id=slow", "size=128")
+					_, _ = router.GetCoverArt(slow, r)
+				}()
+
+				// A concurrent request should succeed while the first is still writing
+				Eventually(func() int {
+					w2 := httptest.NewRecorder()
+					r2 := newGetRequest("id=concurrent", "size=64")
+					_, _ = router.GetCoverArt(w2, r2)
+					return w2.Code
+				}, 2*time.Second, 10*time.Millisecond).Should(Equal(http.StatusOK))
+
+				close(unblocked)
+				Eventually(reqDone, 2*time.Second).Should(BeClosed())
+			})
+		})
+
+		When("artwork throttle is disabled (nil)", func() {
+			It("should still return data normally", func() {
+				router.artworkThrottle = nil
+				r := newGetRequest("id=34", "size=128")
+				_, err := router.GetCoverArt(w, r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(w.Body.String()).To(Equal(artwork.data))
+			})
 		})
 
 		When("client disconnects (context is cancelled)", func() {
@@ -344,10 +432,22 @@ func (c *fakeArtwork) GetOrPlaceholder(_ context.Context, id string, size int, s
 	c.recvSize = size
 	c.recvSquare = square
 	if c.ctxCancelFunc != nil {
-		c.ctxCancelFunc() // Simulate context cancellation
+		c.ctxCancelFunc()
 		return nil, time.Time{}, context.Canceled
 	}
 	return io.NopCloser(bytes.NewReader([]byte(c.data))), time.Time{}, nil
+}
+
+// slowResponseWriter simulates a client that stalls during response reading.
+// Write blocks until unblocked is closed, reproducing the starvation scenario.
+type slowResponseWriter struct {
+	*httptest.ResponseRecorder
+	unblocked chan struct{}
+}
+
+func (w *slowResponseWriter) Write(p []byte) (int, error) {
+	<-w.unblocked
+	return w.ResponseRecorder.Write(p)
 }
 
 type mockedMediaFile struct {

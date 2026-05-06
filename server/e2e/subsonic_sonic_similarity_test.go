@@ -50,6 +50,7 @@ func buildSonicRouter(provider sonic.Provider) *subsonic.Router {
 		lyrics.NewLyrics(nil),
 		decider,
 		sonicSvc,
+		nil,
 	)
 }
 

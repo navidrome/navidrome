@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/resources"
+	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/subsonic/filter"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/gravatar"
@@ -54,7 +55,6 @@ func (api *Router) getPlaceHolderAvatar(w http.ResponseWriter, r *http.Request) 
 }
 
 func (api *Router) GetCoverArt(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	// If context is already canceled, discard request without further processing
 	if r.Context().Err() != nil {
 		return nil, nil //nolint:nilerr
 	}
@@ -67,9 +67,19 @@ func (api *Router) GetCoverArt(w http.ResponseWriter, r *http.Request) (*respons
 	size := p.IntOr("size", 0)
 	square := p.BoolOr("square", false)
 
-	imgReader, lastUpdate, err := api.artwork.GetOrPlaceholder(ctx, id, size, square)
+	buf, lastUpdate, err := api.artworkThrottle.DoBuffered(ctx, func() (io.ReadCloser, time.Time, error) {
+		return api.artwork.GetOrPlaceholder(ctx, id, size, square)
+	})
 	switch {
 	case errors.Is(err, context.Canceled):
+		return nil, nil
+	case errors.Is(err, server.ErrThrottleCapacityExceeded):
+		log.Warn(ctx, "Artwork throttle capacity exceeded", "id", id)
+		http.Error(w, "Server capacity exceeded", http.StatusTooManyRequests)
+		return nil, nil
+	case errors.Is(err, server.ErrThrottleTimeout):
+		log.Warn(ctx, "Artwork throttle backlog timeout", "id", id)
+		http.Error(w, "Timed out waiting for artwork processing slot", http.StatusTooManyRequests)
 		return nil, nil
 	case errors.Is(err, model.ErrNotFound):
 		log.Warn(r, "Couldn't find coverArt", "id", id, err)
@@ -79,11 +89,13 @@ func (api *Router) GetCoverArt(w http.ResponseWriter, r *http.Request) (*respons
 		return nil, err
 	}
 
-	defer imgReader.Close()
+	if err := server.SetWriteTimeout(w, consts.ArtworkWriteTimeout); err != nil {
+		log.Debug(ctx, "Could not set write timeout for artwork response", err)
+	}
 	w.Header().Set("cache-control", "public, max-age=315360000")
 	w.Header().Set("last-modified", lastUpdate.Format(http.TimeFormat))
 
-	cnt, err := io.Copy(w, imgReader)
+	cnt, err := io.Copy(w, buf)
 	if err != nil {
 		log.Warn(ctx, "Error sending image", "count", cnt, err)
 	}
