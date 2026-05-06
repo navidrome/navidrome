@@ -10,11 +10,66 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("ThrottleBacklog", func() {
+	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
+	})
+
+	It("is a passthrough when limit is 0", func() {
+		m := ThrottleBacklog(0, 10, time.Second)
+		r := chi.NewRouter()
+		r.Use(m)
+		r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write([]byte("ok"))
+		})
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/test", nil)
+		r.ServeHTTP(w, req)
+
+		Expect(w.Code).To(Equal(http.StatusOK))
+		Expect(w.Body.String()).To(Equal("ok"))
+	})
+
+	It("falls back to Chi's ThrottleBacklog when buffered mode is disabled", func() {
+		conf.Server.DevArtworkThrottleBuffered = false
+
+		m := ThrottleBacklog(1, 1, 500*time.Millisecond)
+		held := make(chan struct{})
+		r := chi.NewRouter()
+		r.Use(m)
+		r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("X-Handler", "reached")
+			close(held)
+			time.Sleep(2 * time.Second)
+			_, _ = w.Write([]byte("ok"))
+		})
+
+		// With Chi's ThrottleBacklog (non-buffered), a slow client holds the
+		// token for the entire handler duration, so the second request should
+		// get 429 after the backlog timeout.
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			w := httptest.NewRecorder()
+			req, _ := http.NewRequest("GET", "/test", nil)
+			r.ServeHTTP(w, req)
+		}()
+		<-held
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/test", nil)
+		r.ServeHTTP(w, req)
+		Expect(w.Code).To(Equal(http.StatusTooManyRequests))
+		Eventually(done, 3*time.Second).Should(BeClosed())
+	})
+
 	It("passes requests through when capacity is available", func() {
 		m := ThrottleBacklog(2, 0, time.Second)
 		r := chi.NewRouter()

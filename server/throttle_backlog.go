@@ -10,6 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 )
@@ -33,6 +35,9 @@ type requestThrottle struct {
 func ThrottleBacklog(limit, backlogLimit int, backlogTimeout time.Duration) func(http.Handler) http.Handler {
 	if limit <= 0 {
 		return func(next http.Handler) http.Handler { return next }
+	}
+	if !conf.Server.DevArtworkThrottleBuffered {
+		return middleware.ThrottleBacklog(limit, backlogLimit, backlogTimeout)
 	}
 	t := &requestThrottle{
 		tokens:         make(chan struct{}, limit),
@@ -141,7 +146,7 @@ func (w *bufferedResponseWriter) WriteHeader(code int) {
 	w.code = code
 }
 
-// SetWriteTimeout sets a write deadline on the response writer by walking the
+// setWriteTimeout sets a write deadline on the response writer by walking the
 // Unwrap chain to find a writer that supports SetWriteDeadline.
 func setWriteTimeout(rw io.Writer, timeout time.Duration) error {
 	for {
