@@ -53,6 +53,30 @@ var _ = Describe("ThrottleBacklog", func() {
 		Expect(secondStatus).To(Equal(http.StatusTooManyRequests))
 	})
 
+	It("releases capacity when the handler panics", func() {
+		m := ThrottleBacklog(1, 0, time.Second)
+		r := chi.NewRouter()
+		r.Use(middleware.Recoverer)
+		r.Use(m)
+		r.Get("/panic", func(w http.ResponseWriter, r *http.Request) {
+			panic("boom")
+		})
+		r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write([]byte("ok"))
+		})
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/panic", nil)
+		r.ServeHTTP(w, req)
+		Expect(w.Code).To(Equal(http.StatusInternalServerError))
+
+		w = httptest.NewRecorder()
+		req, _ = http.NewRequest("GET", "/test", nil)
+		r.ServeHTTP(w, req)
+		Expect(w.Code).To(Equal(http.StatusOK))
+		Expect(w.Body.String()).To(Equal("ok"))
+	})
+
 	It("preserves response headers and status code", func() {
 		m := ThrottleBacklog(2, 0, time.Second)
 		r := chi.NewRouter()

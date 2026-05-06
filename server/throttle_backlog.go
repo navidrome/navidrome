@@ -32,6 +32,10 @@ type requestThrottle struct {
 // response while holding the token, releases it, then flushes the buffer to
 // the client with a write deadline. This prevents slow clients from holding
 // throttle capacity.
+//
+// Because it buffers the entire response in memory, this middleware should only
+// be used for endpoints that return small responses (e.g., artwork images). Do
+// not use it for audio streaming or download endpoints.
 func ThrottleBacklog(limit, backlogLimit int, backlogTimeout time.Duration) func(http.Handler) http.Handler {
 	if limit <= 0 {
 		return func(next http.Handler) http.Handler { return next }
@@ -70,8 +74,10 @@ func (t *requestThrottle) handler(next http.Handler) http.Handler {
 		}
 
 		buf := &bufferedResponseWriter{header: make(http.Header)}
-		next.ServeHTTP(buf, r)
-		release()
+		func() {
+			defer release()
+			next.ServeHTTP(buf, r)
+		}()
 
 		if err := setWriteTimeout(w, consts.ArtworkWriteTimeout); err != nil {
 			log.Debug(ctx, "Could not set write timeout", err)
