@@ -9,7 +9,6 @@ import (
 	"regexp"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
@@ -190,14 +189,8 @@ func (api *Router) routes() http.Handler {
 			hr(r, "getTranscodeStream", api.GetTranscodeStream)
 		})
 		r.Group(func(r chi.Router) {
-			// configure request throttling
-			if conf.Server.DevArtworkMaxRequests > 0 {
-				log.Debug("Throttling Subsonic getCoverArt endpoint", "maxRequests", conf.Server.DevArtworkMaxRequests,
-					"backlogLimit", conf.Server.DevArtworkThrottleBacklogLimit, "backlogTimeout",
-					conf.Server.DevArtworkThrottleBacklogTimeout)
-				r.Use(middleware.ThrottleBacklog(conf.Server.DevArtworkMaxRequests, conf.Server.DevArtworkThrottleBacklogLimit,
-					conf.Server.DevArtworkThrottleBacklogTimeout))
-			}
+			r.Use(server.ThrottleBacklog(conf.Server.DevArtworkMaxRequests, conf.Server.DevArtworkThrottleBacklogLimit,
+				conf.Server.DevArtworkThrottleBacklogTimeout))
 			hr(r, "getCoverArt", api.GetCoverArt)
 		})
 		r.Group(func(r chi.Router) {
