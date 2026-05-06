@@ -488,6 +488,8 @@ var _ = Describe("Transcode Endpoints", Ordered, func() {
 				Expect(resp.TranscodeDecision.CanTranscode).To(BeTrue())
 				Expect(resp.TranscodeDecision.TranscodeStream).ToNot(BeNil())
 				Expect(resp.TranscodeDecision.TranscodeStream.Codec).To(Equal("opus"))
+				// Bitrate should be opus format default (128kbps), not player cap (320kbps)
+				Expect(resp.TranscodeDecision.TranscodeStream.AudioBitrate).To(Equal(int32(128000)))
 			})
 
 			It("uses only client maxTranscodingAudioBitrate, ignoring player cap", func() {
