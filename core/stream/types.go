@@ -16,9 +16,6 @@ type TranscodeOptions struct {
 	// SkipProbe prevents MakeTranscodeDecision from running ffprobe on the media file.
 	// When true, source stream details are derived from tag metadata only.
 	SkipProbe bool
-	// ApplyServerOverride enables server-side player transcoding overrides
-	// (forced format and MaxBitRate cap). Only used by the legacy stream endpoint.
-	ApplyServerOverride bool
 }
 
 // Request contains the resolved parameters for creating a media stream.
