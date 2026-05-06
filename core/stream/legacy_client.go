@@ -7,12 +7,11 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 )
 
 // buildLegacyClientInfo translates legacy Subsonic stream/download parameters
 // into a ClientInfo for use with MakeDecision.
-// It does NOT read request.TranscodingFrom(ctx) — that is handled by
-// MakeDecision's applyServerOverride.
 func buildLegacyClientInfo(mf *model.MediaFile, reqFormat string, reqBitRate int) *ClientInfo {
 	ci := &ClientInfo{Name: "legacy"}
 
@@ -65,6 +64,19 @@ func (s *deciderService) ResolveRequest(ctx context.Context, mf *model.MediaFile
 	}
 
 	clientInfo := buildLegacyClientInfo(mf, reqFormat, reqBitRate)
+
+	// Apply server-side player transcoding override before making the decision
+	if trc, ok := request.TranscodingFrom(ctx); ok && trc.TargetFormat != "" {
+		clientInfo = applyServerOverride(ctx, clientInfo, &trc)
+	} else if player, ok := request.PlayerFrom(ctx); ok && player.MaxBitRate > 0 {
+		if clientInfo.MaxAudioBitrate == 0 || player.MaxBitRate < clientInfo.MaxAudioBitrate {
+			modified := *clientInfo
+			modified.MaxAudioBitrate = player.MaxBitRate
+			clientInfo = &modified
+			log.Debug(ctx, "Applied player MaxBitRate cap", "playerMaxBitRate", player.MaxBitRate, "client", clientInfo.Name)
+		}
+	}
+
 	decision, err := s.MakeDecision(ctx, mf, clientInfo, TranscodeOptions{SkipProbe: true})
 	if err != nil {
 		log.Error(ctx, "Error making transcode decision, falling back to raw", "id", mf.ID, err)
