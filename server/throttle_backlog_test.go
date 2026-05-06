@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	. "github.com/onsi/ginkgo/v2"
@@ -17,10 +19,6 @@ import (
 )
 
 var _ = Describe("ThrottleBacklog", func() {
-	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-	})
-
 	It("is a passthrough when limit is 0", func() {
 		m := ThrottleBacklog(0, 10, time.Second)
 		r := chi.NewRouter()
@@ -37,144 +35,22 @@ var _ = Describe("ThrottleBacklog", func() {
 		Expect(w.Body.String()).To(Equal("ok"))
 	})
 
-	It("falls back to Chi's ThrottleBacklog when buffered mode is disabled", func() {
+	It("falls back to Chi middleware when DevArtworkThrottleBuffered is false", func() {
+		DeferCleanup(configtest.SetupConfig())
 		conf.Server.DevArtworkThrottleBuffered = false
 
-		m := ThrottleBacklog(1, 1, 500*time.Millisecond)
-		held := make(chan struct{})
-		r := chi.NewRouter()
-		r.Use(m)
-		r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("X-Handler", "reached")
-			close(held)
-			time.Sleep(2 * time.Second)
-			_, _ = w.Write([]byte("ok"))
-		})
-
-		// With Chi's ThrottleBacklog (non-buffered), a slow client holds the
-		// token for the entire handler duration, so the second request should
-		// get 429 after the backlog timeout.
-		done := make(chan struct{})
-		go func() {
-			defer close(done)
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("GET", "/test", nil)
-			r.ServeHTTP(w, req)
-		}()
-		<-held
-
-		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", "/test", nil)
-		r.ServeHTTP(w, req)
-		Expect(w.Code).To(Equal(http.StatusTooManyRequests))
-		Eventually(done, 3*time.Second).Should(BeClosed())
-	})
-
-	It("passes requests through when capacity is available", func() {
-		m := ThrottleBacklog(2, 0, time.Second)
-		r := chi.NewRouter()
-		r.Use(m)
-		r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
-			_, _ = w.Write([]byte("ok"))
-		})
-
-		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", "/test", nil)
-		r.ServeHTTP(w, req)
-
-		Expect(w.Code).To(Equal(http.StatusOK))
-		Expect(w.Body.String()).To(Equal("ok"))
+		_, secondStatus := runTwoRequests(ThrottleBacklog(1, 0, time.Second))
+		Expect(secondStatus).To(Equal(http.StatusTooManyRequests))
 	})
 
 	It("returns 429 when capacity is exceeded", func() {
-		m := ThrottleBacklog(1, 0, time.Second)
-		held := make(chan struct{})
-		r := chi.NewRouter()
-		r.Use(m)
-		r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
-			close(held)
-			time.Sleep(2 * time.Second)
-			_, _ = w.Write([]byte("ok"))
-		})
-
-		done := make(chan struct{})
-		go func() {
-			defer close(done)
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("GET", "/test", nil)
-			r.ServeHTTP(w, req)
-		}()
-		<-held
-
-		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", "/test", nil)
-		r.ServeHTTP(w, req)
-
-		Expect(w.Code).To(Equal(http.StatusTooManyRequests))
-		Eventually(done, 3*time.Second).Should(BeClosed())
+		_, secondStatus := runTwoRequests(ThrottleBacklog(1, 0, time.Second))
+		Expect(secondStatus).To(Equal(http.StatusTooManyRequests))
 	})
 
 	It("returns 429 when backlog times out", func() {
-		m := ThrottleBacklog(1, 1, 50*time.Millisecond)
-		held := make(chan struct{})
-		r := chi.NewRouter()
-		r.Use(m)
-		r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
-			close(held)
-			time.Sleep(2 * time.Second)
-			_, _ = w.Write([]byte("ok"))
-		})
-
-		done := make(chan struct{})
-		go func() {
-			defer close(done)
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("GET", "/test", nil)
-			r.ServeHTTP(w, req)
-		}()
-		<-held
-
-		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", "/test", nil)
-		r.ServeHTTP(w, req)
-
-		Expect(w.Code).To(Equal(http.StatusTooManyRequests))
-		Eventually(done, 3*time.Second).Should(BeClosed())
-	})
-
-	It("buffers the response and releases the token before writing to client", func() {
-		m := ThrottleBacklog(1, 1, 5*time.Second)
-		artworkData := "fake image data"
-		r := chi.NewRouter()
-		r.Use(m)
-		r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("X-Custom", "value")
-			_, _ = io.Copy(w, strings.NewReader(artworkData))
-		})
-
-		unblocked := make(chan struct{})
-		slow := &slowTestWriter{
-			ResponseRecorder: httptest.NewRecorder(),
-			unblocked:        unblocked,
-		}
-
-		reqDone := make(chan struct{})
-		go func() {
-			defer close(reqDone)
-			req, _ := http.NewRequest("GET", "/test", nil)
-			r.ServeHTTP(slow, req)
-		}()
-
-		// A concurrent request should succeed while the first is stalled on writing
-		Eventually(func() int {
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("GET", "/test", nil)
-			r.ServeHTTP(w, req)
-			return w.Code
-		}, 2*time.Second, 10*time.Millisecond).Should(Equal(http.StatusOK))
-
-		close(unblocked)
-		Eventually(reqDone, 2*time.Second).Should(BeClosed())
+		_, secondStatus := runTwoRequests(ThrottleBacklog(1, 1, 50*time.Millisecond))
+		Expect(secondStatus).To(Equal(http.StatusTooManyRequests))
 	})
 
 	It("preserves response headers and status code", func() {
@@ -233,8 +109,102 @@ var _ = Describe("ThrottleBacklog", func() {
 		wg.Wait()
 		Expect(maxConcurrent.Load()).To(BeNumerically("<=", limit))
 	})
+
+	// Regression: with only 1 token, a slow client blocking during response
+	// writing must NOT prevent other requests from being served. Chi's original
+	// ThrottleBacklog holds the token for the entire handler lifecycle including
+	// io.Copy, causing starvation. The buffered implementation releases it first.
+	Context("when a client is slow to read the response", func() {
+		slowClientTest := func(m func(http.Handler) http.Handler) (*chi.Mux, chan struct{}, chan struct{}) {
+			handlerReached := make(chan struct{}, 1)
+			router := chi.NewRouter()
+			router.Use(m)
+			router.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+				select {
+				case handlerReached <- struct{}{}:
+				default:
+				}
+				_, _ = io.Copy(w, strings.NewReader("image data"))
+			})
+
+			unblocked := make(chan struct{})
+			slow := newSlowTestWriter(unblocked)
+
+			reqDone := make(chan struct{})
+			go func() {
+				defer close(reqDone)
+				req, _ := http.NewRequest("GET", "/test", nil)
+				router.ServeHTTP(slow, req)
+			}()
+			<-handlerReached
+
+			return router, unblocked, reqDone
+		}
+
+		It("does not starve concurrent requests with buffered middleware", func() {
+			router, unblocked, reqDone := slowClientTest(ThrottleBacklog(1, 1, 500*time.Millisecond))
+
+			Eventually(func() int {
+				w := httptest.NewRecorder()
+				req, _ := http.NewRequest("GET", "/test", nil)
+				router.ServeHTTP(w, req)
+				return w.Code
+			}, 2*time.Second, 10*time.Millisecond).Should(Equal(http.StatusOK))
+
+			close(unblocked)
+			Eventually(reqDone, 2*time.Second).Should(BeClosed())
+		})
+
+		It("starves concurrent requests with Chi's original middleware", func() {
+			router, unblocked, reqDone := slowClientTest(middleware.ThrottleBacklog(1, 1, 500*time.Millisecond))
+
+			w := httptest.NewRecorder()
+			req, _ := http.NewRequest("GET", "/test", nil)
+			router.ServeHTTP(w, req)
+			Expect(w.Code).To(Equal(http.StatusTooManyRequests))
+
+			close(unblocked)
+			Eventually(reqDone, 2*time.Second).Should(BeClosed())
+		})
+	})
 })
-var _ = Describe("SetWriteTimeout", func() {
+
+// runTwoRequests sends two concurrent requests through a throttled router. The
+// first request holds the token until the second has been dispatched.
+func runTwoRequests(m func(http.Handler) http.Handler) (firstStatus, secondStatus int) {
+	held := make(chan struct{})
+	release := make(chan struct{})
+	r := chi.NewRouter()
+	r.Use(m)
+	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case held <- struct{}{}:
+		default:
+		}
+		<-release
+		_, _ = w.Write([]byte("ok"))
+	})
+
+	done := make(chan int)
+	go func() {
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/test", nil)
+		r.ServeHTTP(w, req)
+		done <- w.Code
+	}()
+	<-held
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/test", nil)
+	r.ServeHTTP(w, req)
+	secondStatus = w.Code
+
+	close(release)
+	firstStatus = <-done
+	return firstStatus, secondStatus
+}
+
+var _ = Describe("setWriteTimeout", func() {
 	It("sets the write deadline on a writer that supports SetWriteDeadline", func() {
 		w := &mockDeadlineWriter{}
 		err := setWriteTimeout(w, 30*time.Second)
@@ -257,7 +227,6 @@ var _ = Describe("SetWriteTimeout", func() {
 	})
 })
 
-// mockDeadlineWriter implements io.Writer + SetWriteDeadline
 type mockDeadlineWriter struct {
 	deadline time.Time
 }
@@ -271,7 +240,6 @@ func (w *mockDeadlineWriter) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-// mockDeadlineResponseWriter implements http.ResponseWriter + SetWriteDeadline
 type mockDeadlineResponseWriter struct {
 	httptest.ResponseRecorder
 	deadline time.Time
@@ -282,7 +250,6 @@ func (w *mockDeadlineResponseWriter) SetWriteDeadline(t time.Time) error {
 	return nil
 }
 
-// mockUnwrappingWriter wraps a ResponseWriter via Unwrap (no SetWriteDeadline itself)
 type mockUnwrappingWriter struct {
 	inner http.ResponseWriter
 }
@@ -295,12 +262,26 @@ func (w *mockUnwrappingWriter) Unwrap() http.ResponseWriter {
 	return w.inner
 }
 
+// slowTestWriter implements http.ResponseWriter without embedding
+// httptest.ResponseRecorder. This is necessary because ResponseRecorder
+// promotes io.ReaderFrom, which io.Copy prefers over Write — bypassing
+// our blocking Write and defeating the slow-client simulation.
 type slowTestWriter struct {
-	*httptest.ResponseRecorder
+	header    http.Header
+	body      bytes.Buffer
+	code      int
 	unblocked chan struct{}
 }
 
+func newSlowTestWriter(unblocked chan struct{}) *slowTestWriter {
+	return &slowTestWriter{header: make(http.Header), unblocked: unblocked}
+}
+
+func (w *slowTestWriter) Header() http.Header { return w.header }
+
+func (w *slowTestWriter) WriteHeader(code int) { w.code = code }
+
 func (w *slowTestWriter) Write(p []byte) (int, error) {
 	<-w.unblocked
-	return w.ResponseRecorder.Write(p)
+	return w.body.Write(p)
 }
