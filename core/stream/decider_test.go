@@ -1055,7 +1055,7 @@ var _ = Describe("Decider", func() {
 				overrideCtx := request.WithTranscoding(ctx, model.Transcoding{TargetFormat: "mp3", DefaultBitRate: 192})
 				overrideCtx = request.WithPlayer(overrideCtx, model.Player{MaxBitRate: 0})
 
-				decision, err := svc.MakeDecision(overrideCtx, mf, ci, TranscodeOptions{})
+				decision, err := svc.MakeDecision(overrideCtx, mf, ci, TranscodeOptions{ApplyServerOverride: true})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(decision.CanDirectPlay).To(BeFalse())
 				Expect(decision.CanTranscode).To(BeTrue())
@@ -1073,7 +1073,7 @@ var _ = Describe("Decider", func() {
 				}
 				overrideCtx := request.WithTranscoding(ctx, model.Transcoding{TargetFormat: "mp3", DefaultBitRate: 256})
 
-				decision, err := svc.MakeDecision(overrideCtx, mf, ci, TranscodeOptions{})
+				decision, err := svc.MakeDecision(overrideCtx, mf, ci, TranscodeOptions{ApplyServerOverride: true})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(decision.CanDirectPlay).To(BeTrue())
 				Expect(decision.CanTranscode).To(BeFalse())
@@ -1086,7 +1086,7 @@ var _ = Describe("Decider", func() {
 				}
 				overrideCtx := request.WithTranscoding(ctx, model.Transcoding{TargetFormat: "mp3", DefaultBitRate: 192})
 
-				decision, err := svc.MakeDecision(overrideCtx, mf, ci, TranscodeOptions{})
+				decision, err := svc.MakeDecision(overrideCtx, mf, ci, TranscodeOptions{ApplyServerOverride: true})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(decision.CanDirectPlay).To(BeFalse())
 				Expect(decision.CanTranscode).To(BeTrue())
@@ -1102,7 +1102,7 @@ var _ = Describe("Decider", func() {
 				overrideCtx := request.WithTranscoding(ctx, model.Transcoding{TargetFormat: "mp3", DefaultBitRate: 192})
 				overrideCtx = request.WithPlayer(overrideCtx, model.Player{MaxBitRate: 320})
 
-				decision, err := svc.MakeDecision(overrideCtx, mf, ci, TranscodeOptions{})
+				decision, err := svc.MakeDecision(overrideCtx, mf, ci, TranscodeOptions{ApplyServerOverride: true})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(decision.CanTranscode).To(BeTrue())
 				Expect(decision.TargetFormat).To(Equal("mp3"))
@@ -1117,12 +1117,27 @@ var _ = Describe("Decider", func() {
 				overrideCtx := request.WithTranscoding(ctx, model.Transcoding{TargetFormat: "mp3", DefaultBitRate: 0})
 				overrideCtx = request.WithPlayer(overrideCtx, model.Player{MaxBitRate: 0})
 
-				decision, err := svc.MakeDecision(overrideCtx, mf, ci, TranscodeOptions{})
+				decision, err := svc.MakeDecision(overrideCtx, mf, ci, TranscodeOptions{ApplyServerOverride: true})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(decision.CanTranscode).To(BeTrue())
 				Expect(decision.TargetFormat).To(Equal("mp3"))
 				// With no cap, lossless→lossy uses format default bitrate (160 for mp3 from mock)
 				Expect(decision.TargetBitrate).To(Equal(160))
+			})
+
+			It("does not apply override when ApplyServerOverride is false", func() {
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100})
+				ci := &ClientInfo{
+					Name: "TestClient",
+					DirectPlayProfiles: []DirectPlayProfile{
+						{Containers: []string{"flac"}, Protocols: []string{ProtocolHTTP}},
+					},
+				}
+				overrideCtx := request.WithTranscoding(ctx, model.Transcoding{TargetFormat: "mp3", DefaultBitRate: 192})
+				// ApplyServerOverride is false — override in context should be ignored
+				decision, err := svc.MakeDecision(overrideCtx, mf, ci, TranscodeOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanDirectPlay).To(BeTrue())
 			})
 
 			It("does not apply override when no transcoding is in context", func() {
@@ -1134,7 +1149,7 @@ var _ = Describe("Decider", func() {
 					},
 				}
 				// No override in context — client profiles used as-is
-				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
+				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{ApplyServerOverride: true})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(decision.CanDirectPlay).To(BeTrue())
 			})
@@ -1155,7 +1170,7 @@ var _ = Describe("Decider", func() {
 				}
 				playerCtx := request.WithPlayer(ctx, model.Player{MaxBitRate: 320})
 
-				decision, err := svc.MakeDecision(playerCtx, mf, ci, TranscodeOptions{})
+				decision, err := svc.MakeDecision(playerCtx, mf, ci, TranscodeOptions{ApplyServerOverride: true})
 				Expect(err).ToNot(HaveOccurred())
 				// Source bitrate 1000 > player cap 320, so direct play is not possible
 				Expect(decision.CanDirectPlay).To(BeFalse())
@@ -1176,7 +1191,7 @@ var _ = Describe("Decider", func() {
 				}
 				playerCtx := request.WithPlayer(ctx, model.Player{MaxBitRate: 500})
 
-				decision, err := svc.MakeDecision(playerCtx, mf, ci, TranscodeOptions{})
+				decision, err := svc.MakeDecision(playerCtx, mf, ci, TranscodeOptions{ApplyServerOverride: true})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(decision.CanTranscode).To(BeTrue())
 				// Client limit 256 < player cap 500, so player cap doesn't apply; client limit wins
@@ -1193,8 +1208,24 @@ var _ = Describe("Decider", func() {
 				}
 				playerCtx := request.WithPlayer(ctx, model.Player{MaxBitRate: 0})
 
+				decision, err := svc.MakeDecision(playerCtx, mf, ci, TranscodeOptions{ApplyServerOverride: true})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanDirectPlay).To(BeTrue())
+			})
+
+			It("ignores player MaxBitRate when ApplyServerOverride is false", func() {
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: 16})
+				ci := &ClientInfo{
+					Name: "TestClient",
+					DirectPlayProfiles: []DirectPlayProfile{
+						{Containers: []string{"flac"}, Protocols: []string{ProtocolHTTP}},
+					},
+				}
+				playerCtx := request.WithPlayer(ctx, model.Player{MaxBitRate: 320})
+
 				decision, err := svc.MakeDecision(playerCtx, mf, ci, TranscodeOptions{})
 				Expect(err).ToNot(HaveOccurred())
+				// Without ApplyServerOverride, player MaxBitRate is not applied
 				Expect(decision.CanDirectPlay).To(BeTrue())
 			})
 		})

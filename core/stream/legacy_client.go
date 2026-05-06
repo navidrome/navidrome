@@ -65,7 +65,7 @@ func (s *deciderService) ResolveRequest(ctx context.Context, mf *model.MediaFile
 	}
 
 	clientInfo := buildLegacyClientInfo(mf, reqFormat, reqBitRate)
-	decision, err := s.MakeDecision(ctx, mf, clientInfo, TranscodeOptions{SkipProbe: true})
+	decision, err := s.MakeDecision(ctx, mf, clientInfo, TranscodeOptions{SkipProbe: true, ApplyServerOverride: true})
 	if err != nil {
 		log.Error(ctx, "Error making transcode decision, falling back to raw", "id", mf.ID, err)
 		req.Format = "raw"
