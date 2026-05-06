@@ -209,7 +209,7 @@ var _ = Describe("ThrottleBacklog", func() {
 // runTwoRequests sends two concurrent requests through a throttled router. The
 // first request holds the token until the second has been dispatched.
 func runTwoRequests(m func(http.Handler) http.Handler) (firstStatus, secondStatus int) {
-	held := make(chan struct{})
+	held := make(chan struct{}, 1)
 	release := make(chan struct{})
 	r := chi.NewRouter()
 	r.Use(m)
