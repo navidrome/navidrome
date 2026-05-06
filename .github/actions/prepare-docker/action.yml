@@ -73,7 +73,7 @@ runs:
       id: meta
       uses: docker/metadata-action@v6
       with:
-        token: ${{ inputs.github_token }}
+        github-token: ${{ inputs.github_token }}
         labels: |
           maintainer=deluan@navidrome.org
         images: |
