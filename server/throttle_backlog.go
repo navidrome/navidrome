@@ -4,15 +4,12 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
-	"io"
 	"net/http"
 	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 )
 
@@ -79,9 +76,6 @@ func (t *requestThrottle) handler(next http.Handler) http.Handler {
 			next.ServeHTTP(buf, r)
 		}()
 
-		if err := setWriteTimeout(w, consts.ArtworkWriteTimeout); err != nil {
-			log.Debug(ctx, "Could not set write timeout", err)
-		}
 		for k, v := range buf.header {
 			w.Header()[k] = v
 		}
@@ -153,19 +147,4 @@ func (w *bufferedResponseWriter) WriteHeader(code int) {
 		return
 	}
 	w.code = code
-}
-
-// setWriteTimeout sets a write deadline on the response writer by walking the
-// Unwrap chain to find a writer that supports SetWriteDeadline.
-func setWriteTimeout(rw io.Writer, timeout time.Duration) error {
-	for {
-		switch t := rw.(type) {
-		case interface{ SetWriteDeadline(time.Time) error }:
-			return t.SetWriteDeadline(time.Now().Add(timeout))
-		case interface{ Unwrap() http.ResponseWriter }:
-			rw = t.Unwrap()
-		default:
-			return fmt.Errorf("%T - %w", rw, http.ErrNotSupported)
-		}
-	}
 }

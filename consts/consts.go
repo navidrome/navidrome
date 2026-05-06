@@ -55,7 +55,6 @@ const (
 	RequestThrottleBacklogTimeout = time.Minute
 
 	ServerReadHeaderTimeout = 3 * time.Second
-	ArtworkWriteTimeout     = 30 * time.Second
 
 	DefaultInfoLanguage = "en"
 

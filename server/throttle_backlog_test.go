@@ -241,64 +241,6 @@ func runTwoRequests(m func(http.Handler) http.Handler) (firstStatus, secondStatu
 	return firstStatus, secondStatus
 }
 
-var _ = Describe("setWriteTimeout", func() {
-	It("sets the write deadline on a writer that supports SetWriteDeadline", func() {
-		w := &mockDeadlineWriter{}
-		err := setWriteTimeout(w, 30*time.Second)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(w.deadline).To(BeTemporally("~", time.Now().Add(30*time.Second), time.Second))
-	})
-
-	It("unwraps wrapped writers to find SetWriteDeadline", func() {
-		inner := &mockDeadlineResponseWriter{}
-		wrapped := &mockUnwrappingWriter{inner: inner}
-		err := setWriteTimeout(wrapped, 15*time.Second)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(inner.deadline).To(BeTemporally("~", time.Now().Add(15*time.Second), time.Second))
-	})
-
-	It("returns ErrNotSupported for writers without SetWriteDeadline", func() {
-		w := httptest.NewRecorder()
-		err := setWriteTimeout(w, 10*time.Second)
-		Expect(err).To(MatchError(http.ErrNotSupported))
-	})
-})
-
-type mockDeadlineWriter struct {
-	deadline time.Time
-}
-
-func (w *mockDeadlineWriter) SetWriteDeadline(t time.Time) error {
-	w.deadline = t
-	return nil
-}
-
-func (w *mockDeadlineWriter) Write(p []byte) (int, error) {
-	return len(p), nil
-}
-
-type mockDeadlineResponseWriter struct {
-	httptest.ResponseRecorder
-	deadline time.Time
-}
-
-func (w *mockDeadlineResponseWriter) SetWriteDeadline(t time.Time) error {
-	w.deadline = t
-	return nil
-}
-
-type mockUnwrappingWriter struct {
-	inner http.ResponseWriter
-}
-
-func (w *mockUnwrappingWriter) Write(p []byte) (int, error) {
-	return w.inner.Write(p)
-}
-
-func (w *mockUnwrappingWriter) Unwrap() http.ResponseWriter {
-	return w.inner
-}
-
 // slowTestWriter implements http.ResponseWriter without embedding
 // httptest.ResponseRecorder. This is necessary because ResponseRecorder
 // promotes io.ReaderFrom, which io.Copy prefers over Write — bypassing
