@@ -5,14 +5,12 @@ import (
 	"path"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/publicurl"
 	"github.com/navidrome/navidrome/core/stream"
-	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/ui"
@@ -43,13 +41,8 @@ func (pub *Router) routes() http.Handler {
 	r.Group(func(r chi.Router) {
 		r.Use(server.URLParamsMiddleware)
 		r.Group(func(r chi.Router) {
-			if conf.Server.DevArtworkMaxRequests > 0 {
-				log.Debug("Throttling public images endpoint", "maxRequests", conf.Server.DevArtworkMaxRequests,
-					"backlogLimit", conf.Server.DevArtworkThrottleBacklogLimit, "backlogTimeout",
-					conf.Server.DevArtworkThrottleBacklogTimeout)
-				r.Use(middleware.ThrottleBacklog(conf.Server.DevArtworkMaxRequests, conf.Server.DevArtworkThrottleBacklogLimit,
-					conf.Server.DevArtworkThrottleBacklogTimeout))
-			}
+			r.Use(server.ThrottleBacklog(conf.Server.DevArtworkMaxRequests, conf.Server.DevArtworkThrottleBacklogLimit,
+				conf.Server.DevArtworkThrottleBacklogTimeout))
 			r.HandleFunc("/img/{id}", pub.handleImages)
 		})
 		if conf.Server.EnableSharing {
