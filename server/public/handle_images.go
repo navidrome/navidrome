@@ -7,16 +7,15 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/utils/req"
 )
 
 func (pub *Router) handleImages(w http.ResponseWriter, r *http.Request) {
+	// If context is already canceled, discard request without further processing
 	if r.Context().Err() != nil {
 		return
 	}
@@ -41,19 +40,9 @@ func (pub *Router) handleImages(w http.ResponseWriter, r *http.Request) {
 	size := p.IntOr("size", 0)
 	square := p.BoolOr("square", false)
 
-	buf, lastUpdate, err := pub.artworkThrottle.DoBuffered(ctx, func() (io.ReadCloser, time.Time, error) {
-		return pub.artwork.Get(ctx, artId, size, square)
-	})
+	imgReader, lastUpdate, err := pub.artwork.Get(ctx, artId, size, square)
 	switch {
 	case errors.Is(err, context.Canceled):
-		return
-	case errors.Is(err, server.ErrThrottleCapacityExceeded):
-		log.Warn(ctx, "Artwork throttle capacity exceeded", "id", id)
-		http.Error(w, "Server capacity exceeded", http.StatusTooManyRequests)
-		return
-	case errors.Is(err, server.ErrThrottleTimeout):
-		log.Warn(ctx, "Artwork throttle backlog timeout", "id", id)
-		http.Error(w, "Timed out waiting for artwork processing slot", http.StatusTooManyRequests)
 		return
 	case errors.Is(err, model.ErrNotFound):
 		log.Warn(r, "Couldn't find coverArt", "id", id, err)
@@ -69,12 +58,10 @@ func (pub *Router) handleImages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := server.SetWriteTimeout(w, consts.ArtworkWriteTimeout); err != nil {
-		log.Debug(ctx, "Could not set write timeout for artwork response", err)
-	}
+	defer imgReader.Close()
 	w.Header().Set("Cache-Control", "public, max-age=315360000")
 	w.Header().Set("Last-Modified", lastUpdate.Format(http.TimeFormat))
-	cnt, err := io.Copy(w, buf)
+	cnt, err := io.Copy(w, imgReader)
 	if err != nil {
 		log.Warn(ctx, "Error sending image", "count", cnt, err)
 	}

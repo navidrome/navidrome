@@ -53,14 +53,13 @@ type Router struct {
 	lyrics            lyricssvc.Lyrics
 	transcodeDecision stream.TranscodeDecider
 	sonic             *sonicsvc.Sonic
-	artworkThrottle   *server.RequestThrottle
 }
 
 func New(ds model.DataStore, artwork artwork.Artwork, streamer stream.MediaStreamer, archiver core.Archiver,
 	players core.Players, provider external.Provider, scanner model.Scanner, broker events.Broker,
 	playlists playlistsvc.Playlists, scrobbler scrobbler.PlayTracker, share core.Share, playback playback.PlaybackServer,
 	metrics metrics.Metrics, lyrics lyricssvc.Lyrics, transcodeDecision stream.TranscodeDecider,
-	sonic *sonicsvc.Sonic, artworkThrottle *server.RequestThrottle,
+	sonic *sonicsvc.Sonic,
 ) *Router {
 	r := &Router{
 		ds:                ds,
@@ -79,7 +78,6 @@ func New(ds model.DataStore, artwork artwork.Artwork, streamer stream.MediaStrea
 		lyrics:            lyrics,
 		transcodeDecision: transcodeDecision,
 		sonic:             sonic,
-		artworkThrottle:   artworkThrottle,
 	}
 	r.Handler = r.routes()
 	return r
@@ -190,7 +188,11 @@ func (api *Router) routes() http.Handler {
 			hr(r, "getTranscodeDecision", api.GetTranscodeDecision)
 			hr(r, "getTranscodeStream", api.GetTranscodeStream)
 		})
-		hr(r, "getCoverArt", api.GetCoverArt)
+		r.Group(func(r chi.Router) {
+			r.Use(server.ThrottleBacklog(conf.Server.DevArtworkMaxRequests, conf.Server.DevArtworkThrottleBacklogLimit,
+				conf.Server.DevArtworkThrottleBacklogTimeout))
+			hr(r, "getCoverArt", api.GetCoverArt)
+		})
 		r.Group(func(r chi.Router) {
 			r.Use(getPlayer(api.players))
 			h(r, "createInternetRadioStation", api.CreateInternetRadio)

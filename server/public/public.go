@@ -18,17 +18,16 @@ import (
 
 type Router struct {
 	http.Handler
-	artwork         artwork.Artwork
-	streamer        stream.MediaStreamer
-	archiver        core.Archiver
-	share           core.Share
-	assetsHandler   http.Handler
-	ds              model.DataStore
-	artworkThrottle *server.RequestThrottle
+	artwork       artwork.Artwork
+	streamer      stream.MediaStreamer
+	archiver      core.Archiver
+	share         core.Share
+	assetsHandler http.Handler
+	ds            model.DataStore
 }
 
-func New(ds model.DataStore, artwork artwork.Artwork, streamer stream.MediaStreamer, share core.Share, archiver core.Archiver, artworkThrottle *server.RequestThrottle) *Router {
-	p := &Router{ds: ds, artwork: artwork, streamer: streamer, share: share, archiver: archiver, artworkThrottle: artworkThrottle}
+func New(ds model.DataStore, artwork artwork.Artwork, streamer stream.MediaStreamer, share core.Share, archiver core.Archiver) *Router {
+	p := &Router{ds: ds, artwork: artwork, streamer: streamer, share: share, archiver: archiver}
 	shareRoot := path.Join(conf.Server.BasePath, consts.URLPathPublic)
 	p.assetsHandler = http.StripPrefix(shareRoot, http.FileServer(http.FS(ui.BuildAssets())))
 	p.Handler = p.routes()
@@ -41,7 +40,11 @@ func (pub *Router) routes() http.Handler {
 
 	r.Group(func(r chi.Router) {
 		r.Use(server.URLParamsMiddleware)
-		r.HandleFunc("/img/{id}", pub.handleImages)
+		r.Group(func(r chi.Router) {
+			r.Use(server.ThrottleBacklog(conf.Server.DevArtworkMaxRequests, conf.Server.DevArtworkThrottleBacklogLimit,
+				conf.Server.DevArtworkThrottleBacklogTimeout))
+			r.HandleFunc("/img/{id}", pub.handleImages)
+		})
 		if conf.Server.EnableSharing {
 			r.HandleFunc("/s/{id}", pub.handleStream)
 			if conf.Server.EnableDownloads {
