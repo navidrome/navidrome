@@ -149,6 +149,9 @@ func (w *bufferedResponseWriter) Write(b []byte) (int, error) {
 }
 
 func (w *bufferedResponseWriter) WriteHeader(code int) {
+	if w.code != 0 {
+		return
+	}
 	w.code = code
 }
 

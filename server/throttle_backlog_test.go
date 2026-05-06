@@ -35,14 +35,6 @@ var _ = Describe("ThrottleBacklog", func() {
 		Expect(w.Body.String()).To(Equal("ok"))
 	})
 
-	It("falls back to Chi middleware when DevArtworkThrottleBuffered is false", func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.DevArtworkThrottleBuffered = false
-
-		_, secondStatus := runTwoRequests(ThrottleBacklog(1, 0, time.Second))
-		Expect(secondStatus).To(Equal(http.StatusTooManyRequests))
-	})
-
 	It("returns 429 when capacity is exceeded", func() {
 		_, secondStatus := runTwoRequests(ThrottleBacklog(1, 0, time.Second))
 		Expect(secondStatus).To(Equal(http.StatusTooManyRequests))
@@ -95,6 +87,24 @@ var _ = Describe("ThrottleBacklog", func() {
 		Expect(w.Code).To(Equal(http.StatusCreated))
 		Expect(w.Header().Get("Content-Type")).To(Equal("image/jpeg"))
 		Expect(w.Header().Get("Cache-Control")).To(Equal("public"))
+		Expect(w.Body.String()).To(Equal("body"))
+	})
+
+	It("uses the first response status code", func() {
+		m := ThrottleBacklog(2, 0, time.Second)
+		r := chi.NewRouter()
+		r.Use(m)
+		r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusCreated)
+			w.WriteHeader(http.StatusAccepted)
+			_, _ = w.Write([]byte("body"))
+		})
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/test", nil)
+		r.ServeHTTP(w, req)
+
+		Expect(w.Code).To(Equal(http.StatusCreated))
 		Expect(w.Body.String()).To(Equal("body"))
 	})
 
@@ -180,7 +190,10 @@ var _ = Describe("ThrottleBacklog", func() {
 		})
 
 		It("starves concurrent requests with Chi's original middleware", func() {
-			router, unblocked, reqDone := slowClientTest(middleware.ThrottleBacklog(1, 1, 500*time.Millisecond))
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.DevArtworkThrottleBuffered = false
+
+			router, unblocked, reqDone := slowClientTest(ThrottleBacklog(1, 1, 500*time.Millisecond))
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", "/test", nil)
