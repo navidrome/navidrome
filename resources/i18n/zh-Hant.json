@@ -180,7 +180,7 @@
         "name": "名稱",
         "transcodingId": "轉碼",
         "maxBitRate": "最大位元率",
-        "client": "客戶端",
+        "client": "用戶端",
         "userName": "使用者名稱",
         "lastSeen": "上次上線",
         "reportRealPath": "回報實際路徑",
@@ -333,7 +333,7 @@
       }
     },
     "plugin": {
-      "name": "插件 |||| 插件",
+      "name": "外掛 |||| 外掛",
       "fields": {
         "id": "ID",
         "name": "名稱",
@@ -359,7 +359,7 @@
       },
       "sections": {
         "status": "狀態",
-        "info": "插件資訊",
+        "info": "外掛資訊",
         "configuration": "設定",
         "manifest": "資訊清單",
         "usersPermission": "使用者權限",
@@ -379,29 +379,29 @@
         "rescan": "重新掃描"
       },
       "notifications": {
-        "enabled": "插件已啟用",
-        "disabled": "插件已停用",
-        "updated": "插件已更新",
-        "error": "更新插件時發生錯誤"
+        "enabled": "外掛已啟用",
+        "disabled": "外掛已停用",
+        "updated": "外掛已更新",
+        "error": "更新外掛時發生錯誤"
       },
       "validation": {
         "invalidJson": "設定必須是有效的 JSON"
       },
       "messages": {
-        "configHelp": "使用鍵值對設定插件。若插件無需設定則留空。",
+        "configHelp": "使用鍵值對設定外掛。若外掛無需設定則留空。",
         "clickPermissions": "點擊權限以查看詳細資訊",
         "noConfig": "無設定",
-        "allUsersHelp": "啟用後，插件將可存取所有使用者，包含未來建立的使用者。",
+        "allUsersHelp": "啟用後，外掛將可存取所有使用者，包含未來建立的使用者。",
         "noUsers": "未選擇使用者",
         "permissionReason": "原因",
-        "usersRequired": "此插件需要存取使用者資訊。請選擇插件可存取的使用者，或啟用「允許所有使用者」。",
-        "allLibrariesHelp": "啟用後，插件將可存取所有媒體庫，包含未來建立的媒體庫。",
+        "usersRequired": "此外掛需要存取使用者資訊。請選擇外掛可存取的使用者，或啟用「允許所有使用者」。",
+        "allLibrariesHelp": "啟用後，外掛將可存取所有媒體庫，包含未來建立的媒體庫。",
         "noLibraries": "未選擇媒體庫",
-        "librariesRequired": "此插件需要存取媒體庫資訊。請選擇插件可存取的媒體庫，或啟用「允許所有媒體庫」。",
+        "librariesRequired": "此外掛需要存取媒體庫資訊。請選擇外掛可存取的媒體庫，或啟用「允許所有媒體庫」。",
         "requiredHosts": "必要的 Hosts",
         "configValidationError": "設定驗證失敗：",
-        "schemaRenderError": "無法顯示設定表單。插件的 schema 可能無效。",
-        "allowWriteAccessHelp": "啟用後，插件可以修改媒體庫目錄中的檔案。 預設情況下，插件具有唯讀權限。"
+        "schemaRenderError": "無法顯示設定表單。外掛的 schema 可能無效。",
+        "allowWriteAccessHelp": "啟用後，外掛可以修改媒體庫目錄中的檔案。 預設情況下，外掛具有唯讀權限。"
       },
       "placeholders": {
         "configKey": "鍵",
@@ -452,7 +452,7 @@
       "delete": "刪除",
       "edit": "編輯",
       "export": "匯出",
-      "list": "列表",
+      "list": "清單",
       "refresh": "重新整理",
       "remove_filter": "清除此條件",
       "remove": "移除",
@@ -497,9 +497,9 @@
         "upload_single": "拖曳單個圖片上傳或點擊選擇一個"
       },
       "references": {
-        "all_missing": "未找到參考數據",
-        "many_missing": "至少有一條參考數據不再可用",
-        "single_missing": "關聯的參考數據不再可用"
+        "all_missing": "未找到參考資料",
+        "many_missing": "至少有一條參考資料不再可用",
+        "single_missing": "關聯的參考資料不再可用"
       },
       "password": {
         "toggle_visible": "隱藏密碼",
@@ -514,7 +514,7 @@
       "delete_content": "您確定要刪除該項目？",
       "delete_title": "刪除 %{name} #%{id}",
       "details": "詳細資訊",
-      "error": "發生客戶端錯誤，您的請求無法完成",
+      "error": "發生用戶端錯誤，您的請求無法完成",
       "invalid_form": "提交內容無效，請檢查錯誤",
       "loading": "正在載入頁面，請稍候",
       "no": "否",
@@ -564,19 +564,19 @@
     "delete_user_content": "您確定要刪除此使用者及其所有資料（包括播放清單和偏好設定）嗎？",
     "notifications_blocked": "您已在瀏覽器設定中封鎖了此網站的通知",
     "notifications_not_available": "此瀏覽器不支援桌面通知，或您並非透過 HTTPS 存取 Navidrome",
-    "lastfmLinkSuccess": "已成功連接 Last.fm 並開啟音樂記錄",
-    "lastfmLinkFailure": "無法連接 Last.fm",
-    "lastfmUnlinkSuccess": "已取消與 Last.fm 的連接並停用音樂記錄",
-    "lastfmUnlinkFailure": "無法取消與 Last.fm 的連接",
+    "lastfmLinkSuccess": "已成功連結 Last.fm 並開啟音樂記錄",
+    "lastfmLinkFailure": "無法連結 Last.fm",
+    "lastfmUnlinkSuccess": "已取消與 Last.fm 的連結並停用音樂記錄",
+    "lastfmUnlinkFailure": "無法取消與 Last.fm 的連結",
     "openIn": {
       "lastfm": "在 Last.fm 中開啟",
       "musicbrainz": "在 MusicBrainz 中開啟"
     },
     "lastfmLink": "查看更多…",
-    "listenBrainzLinkSuccess": "已成功以 %{user} 的身份連接 ListenBrainz 並開啟音樂記錄",
-    "listenBrainzLinkFailure": "無法連接 ListenBrainz：%{error}",
-    "listenBrainzUnlinkSuccess": "已取消與 ListenBrainz 的連接並停用音樂記錄",
-    "listenBrainzUnlinkFailure": "無法取消與 ListenBrainz 的連接",
+    "listenBrainzLinkSuccess": "已成功以 %{user} 的身份連結 ListenBrainz 並開啟音樂記錄",
+    "listenBrainzLinkFailure": "無法連結 ListenBrainz：%{error}",
+    "listenBrainzUnlinkSuccess": "已取消與 ListenBrainz 的連結並停用音樂記錄",
+    "listenBrainzUnlinkFailure": "無法取消與 ListenBrainz 的連結",
     "downloadOriginalFormat": "下載原始格式",
     "shareOriginalFormat": "分享原始格式",
     "shareDialogTitle": "分享 %{resource} '%{name}'",
