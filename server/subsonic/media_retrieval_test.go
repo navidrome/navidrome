@@ -34,7 +34,7 @@ var _ = Describe("MediaRetrievalController", func() {
 			MockedMediaFile: mockRepo,
 		}
 		artwork = &fakeArtwork{data: "image data"}
-		router = New(ds, artwork, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, lyrics.NewLyrics(nil), nil)
+		router = New(ds, artwork, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, lyrics.NewLyrics(nil), nil, nil)
 		w = httptest.NewRecorder()
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.LyricsPriority = "embedded,.lrc"
@@ -78,16 +78,13 @@ var _ = Describe("MediaRetrievalController", func() {
 
 		When("client disconnects (context is cancelled)", func() {
 			It("should not call the service if cancelled before the call", func() {
-				// Create a request
 				ctx, cancel := context.WithCancel(context.Background())
 				r := newGetRequest("id=34", "size=128", "square=true")
 				r = r.WithContext(ctx)
-				cancel() // Cancel the context before the call
+				cancel()
 
-				// Call the GetCoverArt method
 				_, err := router.GetCoverArt(w, r)
 
-				// Expect no error and no call to the artwork service
 				Expect(err).ToNot(HaveOccurred())
 				Expect(artwork.recvId).To(Equal(""))
 				Expect(artwork.recvSize).To(Equal(0))
@@ -96,17 +93,14 @@ var _ = Describe("MediaRetrievalController", func() {
 			})
 
 			It("should not return data if cancelled during the call", func() {
-				// Create a request with a context that will be cancelled
 				ctx, cancel := context.WithCancel(context.Background())
-				defer cancel() // Ensure the context is cancelled after the test (best practices)
+				defer cancel()
 				r := newGetRequest("id=34", "size=128", "square=true")
 				r = r.WithContext(ctx)
-				artwork.ctxCancelFunc = cancel // Set the cancel function to simulate cancellation in the service
+				artwork.ctxCancelFunc = cancel
 
-				// Call the GetCoverArt method
 				_, err := router.GetCoverArt(w, r)
 
-				// Expect no error and the service to have been called
 				Expect(err).ToNot(HaveOccurred())
 				Expect(artwork.recvId).To(Equal("34"))
 				Expect(artwork.recvSize).To(Equal(128))
@@ -344,7 +338,7 @@ func (c *fakeArtwork) GetOrPlaceholder(_ context.Context, id string, size int, s
 	c.recvSize = size
 	c.recvSquare = square
 	if c.ctxCancelFunc != nil {
-		c.ctxCancelFunc() // Simulate context cancellation
+		c.ctxCancelFunc()
 		return nil, time.Time{}, context.Canceled
 	}
 	return io.NopCloser(bytes.NewReader([]byte(c.data))), time.Time{}, nil
@@ -363,9 +357,7 @@ func (m *mockedMediaFile) GetAll(opts ...model.QueryOptions) (model.MediaFiles, 
 		return data, nil
 	}
 
-	// Hardcoded support for lyrics sorting
 	result := slices.Clone(data)
-	// Sort by presence of lyrics, then by updated_at. Respect the order specified in opts.
 	slices.SortFunc(result, func(a, b model.MediaFile) int {
 		diff := cmp.Or(
 			cmp.Compare(a.Lyrics, b.Lyrics),

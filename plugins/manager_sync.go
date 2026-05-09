@@ -138,11 +138,13 @@ func (m *Manager) syncPlugins(ctx context.Context, folder string) error {
 	filesOnDisk := make(map[string]string) // name -> path
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), PackageExtension) {
+			log.Trace(ctx, "Skipping non-plugin entry", "name", entry.Name(), "isDir", entry.IsDir())
 			continue
 		}
 		name := strings.TrimSuffix(entry.Name(), PackageExtension)
 		filesOnDisk[name] = filepath.Join(folder, entry.Name())
 	}
+	log.Debug(ctx, "Plugin sync: scanned folder", "folder", folder, "entriesTotal", len(entries), "pluginsFound", len(filesOnDisk))
 
 	// Get all plugins from DB
 	repo := m.ds.Plugin(adminCtx)
@@ -154,6 +156,7 @@ func (m *Manager) syncPlugins(ctx context.Context, folder string) error {
 	for i := range dbPlugins {
 		pluginsInDB[dbPlugins[i].ID] = &dbPlugins[i]
 	}
+	log.Debug(ctx, "Plugin sync: current DB state", "pluginsInDB", len(pluginsInDB))
 
 	now := time.Now()
 

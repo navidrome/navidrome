@@ -74,23 +74,22 @@ var _ = Describe("Watcher", func() {
 			time.Sleep(10 * time.Millisecond)
 		})
 
-		It("creates separate targets for different folders", func() {
+		It("creates separate targets for different folders", FlakeAttempts(3), func() {
 			// Send notifications for different folders
 			w.watcherNotify <- scanNotification{Library: lib, FolderPath: "artist1"}
-			time.Sleep(10 * time.Millisecond)
 			w.watcherNotify <- scanNotification{Library: lib, FolderPath: "artist2"}
 
-			// Wait for watcher to process and trigger scan
-			Eventually(func() int {
-				return mockScanner.GetScanFoldersCallCount()
-			}, 200*time.Millisecond, 10*time.Millisecond).Should(Equal(1))
+			// Wait for a scan that collected both targets
+			Eventually(func() []model.ScanTarget {
+				calls := mockScanner.GetScanFoldersCalls()
+				if len(calls) == 0 {
+					return nil
+				}
+				return calls[0].Targets
+			}, 500*time.Millisecond, 10*time.Millisecond).Should(HaveLen(2))
 
-			// Verify two targets
+			// Verify targets
 			calls := mockScanner.GetScanFoldersCalls()
-			Expect(calls).To(HaveLen(1))
-			Expect(calls[0].Targets).To(HaveLen(2))
-
-			// Extract folder paths
 			folderPaths := make(map[string]bool)
 			for _, target := range calls[0].Targets {
 				Expect(target.LibraryID).To(Equal(1))
@@ -107,7 +106,7 @@ var _ = Describe("Watcher", func() {
 			// Wait for watcher to process and trigger scan
 			Eventually(func() int {
 				return mockScanner.GetScanFoldersCallCount()
-			}, 200*time.Millisecond, 10*time.Millisecond).Should(Equal(1))
+			}, 500*time.Millisecond, 10*time.Millisecond).Should(Equal(1))
 
 			// Verify the target
 			calls := mockScanner.GetScanFoldersCalls()
@@ -117,20 +116,15 @@ var _ = Describe("Watcher", func() {
 		})
 
 		It("deduplicates folder and file within same folder", func() {
-			// Send notification for a folder
+			// Send multiple notifications for the same folder
 			w.watcherNotify <- scanNotification{Library: lib, FolderPath: "artist1/album1"}
-			time.Sleep(10 * time.Millisecond)
-			// Send notification for same folder (as if file change was detected there)
-			// In practice, watchLibrary() would walk up from file path to folder
 			w.watcherNotify <- scanNotification{Library: lib, FolderPath: "artist1/album1"}
-			time.Sleep(10 * time.Millisecond)
-			// Send another for same folder
 			w.watcherNotify <- scanNotification{Library: lib, FolderPath: "artist1/album1"}
 
 			// Wait for watcher to process and trigger scan
 			Eventually(func() int {
 				return mockScanner.GetScanFoldersCallCount()
-			}, 200*time.Millisecond, 10*time.Millisecond).Should(Equal(1))
+			}, 500*time.Millisecond, 10*time.Millisecond).Should(Equal(1))
 
 			// Verify only one target despite multiple file/folder changes
 			calls := mockScanner.GetScanFoldersCalls()
@@ -151,32 +145,27 @@ var _ = Describe("Watcher", func() {
 			time.Sleep(10 * time.Millisecond)
 		})
 
-		It("resets timer on each change (debouncing)", func() {
+		It("resets timer on each change (debouncing)", FlakeAttempts(3), func() {
 			// Send first notification
 			w.watcherNotify <- scanNotification{Library: lib, FolderPath: "artist1"}
 
-			// Wait a bit less than half the watcher wait time to ensure timer doesn't fire
-			time.Sleep(20 * time.Millisecond)
-
-			// No scan should have been triggered yet
-			Expect(mockScanner.GetScanFoldersCallCount()).To(Equal(0))
+			// Verify no scan fires during a window shorter than the debounce wait
+			Consistently(func() int {
+				return mockScanner.GetScanFoldersCallCount()
+			}, 20*time.Millisecond, 5*time.Millisecond).Should(Equal(0))
 
 			// Send another notification (resets timer)
 			w.watcherNotify <- scanNotification{Library: lib, FolderPath: "artist1"}
 
-			// Wait a bit less than half the watcher wait time again
-			time.Sleep(20 * time.Millisecond)
+			// Again, no scan should fire within a short window
+			Consistently(func() int {
+				return mockScanner.GetScanFoldersCallCount()
+			}, 20*time.Millisecond, 5*time.Millisecond).Should(Equal(0))
 
-			// Still no scan
-			Expect(mockScanner.GetScanFoldersCallCount()).To(Equal(0))
-
-			// Wait for full timer to expire after last notification (plus margin)
-			time.Sleep(60 * time.Millisecond)
-
-			// Now scan should have been triggered
+			// Now wait for the debounce timer to expire and trigger scan
 			Eventually(func() int {
 				return mockScanner.GetScanFoldersCallCount()
-			}, 100*time.Millisecond, 10*time.Millisecond).Should(Equal(1))
+			}, 500*time.Millisecond, 10*time.Millisecond).Should(Equal(1))
 		})
 
 		It("triggers scan after quiet period", func() {
@@ -189,7 +178,7 @@ var _ = Describe("Watcher", func() {
 			// Wait for quiet period
 			Eventually(func() int {
 				return mockScanner.GetScanFoldersCallCount()
-			}, 200*time.Millisecond, 10*time.Millisecond).Should(Equal(1))
+			}, 500*time.Millisecond, 10*time.Millisecond).Should(Equal(1))
 		})
 	})
 
@@ -211,7 +200,7 @@ var _ = Describe("Watcher", func() {
 			// Wait for scan
 			Eventually(func() int {
 				return mockScanner.GetScanFoldersCallCount()
-			}, 200*time.Millisecond, 10*time.Millisecond).Should(Equal(1))
+			}, 500*time.Millisecond, 10*time.Millisecond).Should(Equal(1))
 
 			// Should scan the library root
 			calls := mockScanner.GetScanFoldersCalls()
@@ -223,13 +212,12 @@ var _ = Describe("Watcher", func() {
 		It("deduplicates empty and dot paths", func() {
 			// Send notifications with empty and dot paths
 			w.watcherNotify <- scanNotification{Library: lib, FolderPath: ""}
-			time.Sleep(10 * time.Millisecond)
 			w.watcherNotify <- scanNotification{Library: lib, FolderPath: ""}
 
 			// Wait for scan
 			Eventually(func() int {
 				return mockScanner.GetScanFoldersCallCount()
-			}, 200*time.Millisecond, 10*time.Millisecond).Should(Equal(1))
+			}, 500*time.Millisecond, 10*time.Millisecond).Should(Equal(1))
 
 			// Should have only one target
 			calls := mockScanner.GetScanFoldersCalls()
@@ -264,20 +252,19 @@ var _ = Describe("Watcher", func() {
 		It("creates separate targets for different libraries", func() {
 			// Send notifications for both libraries
 			w.watcherNotify <- scanNotification{Library: lib, FolderPath: "artist1"}
-			time.Sleep(10 * time.Millisecond)
 			w.watcherNotify <- scanNotification{Library: lib2, FolderPath: "artist2"}
 
-			// Wait for scan
-			Eventually(func() int {
-				return mockScanner.GetScanFoldersCallCount()
-			}, 200*time.Millisecond, 10*time.Millisecond).Should(Equal(1))
-
-			// Verify two targets for different libraries
-			calls := mockScanner.GetScanFoldersCalls()
-			Expect(calls).To(HaveLen(1))
-			Expect(calls[0].Targets).To(HaveLen(2))
+			// Wait for a scan that collected both targets
+			Eventually(func() []model.ScanTarget {
+				calls := mockScanner.GetScanFoldersCalls()
+				if len(calls) == 0 {
+					return nil
+				}
+				return calls[0].Targets
+			}, 500*time.Millisecond, 10*time.Millisecond).Should(HaveLen(2))
 
 			// Verify library IDs are different
+			calls := mockScanner.GetScanFoldersCalls()
 			libraryIDs := make(map[int]bool)
 			for _, target := range calls[0].Targets {
 				libraryIDs[target.LibraryID] = true

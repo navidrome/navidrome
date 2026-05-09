@@ -62,6 +62,7 @@ type Subsonic struct {
 	LyricsList             *LyricsList             `xml:"lyricsList,omitempty"              json:"lyricsList,omitempty"`
 	PlayQueueByIndex       *PlayQueueByIndex       `xml:"playQueueByIndex,omitempty" json:"playQueueByIndex,omitempty"`
 	TranscodeDecision      *TranscodeDecision      `xml:"transcodeDecision,omitempty"       json:"transcodeDecision,omitempty"`
+	SonicMatches           *Array[SonicMatch]      `xml:"sonicMatch,omitempty"              json:"sonicMatch,omitempty"`
 }
 
 const (
@@ -357,10 +358,13 @@ type Starred2 struct {
 
 type NowPlayingEntry struct {
 	Child
-	UserName   string `xml:"username,attr"                        json:"username"`
-	MinutesAgo int32  `xml:"minutesAgo,attr"                      json:"minutesAgo"`
-	PlayerId   int32  `xml:"playerId,attr"                        json:"playerId"`
-	PlayerName string `xml:"playerName,attr"                      json:"playerName,omitempty"`
+	UserName     string  `xml:"username,attr"                        json:"username"`
+	MinutesAgo   int32   `xml:"minutesAgo,attr"                      json:"minutesAgo"`
+	PlayerId     int32   `xml:"playerId,attr"                        json:"playerId"`
+	PlayerName   string  `xml:"playerName,attr"                      json:"playerName,omitempty"`
+	State        string  `xml:"state,attr"                           json:"state"`
+	PositionMs   int64   `xml:"positionMs,attr"                      json:"positionMs"`
+	PlaybackRate float64 `xml:"playbackRate,attr"                    json:"playbackRate"`
 }
 
 type NowPlaying struct {
@@ -439,6 +443,11 @@ type SimilarSongs2 struct {
 
 type TopSongs struct {
 	Song []Child `xml:"song,omitempty"         json:"song,omitempty"`
+}
+
+type SonicMatch struct {
+	Entry      Child   `xml:"entry"      json:"entry"`
+	Similarity float64 `xml:"similarity" json:"similarity"`
 }
 
 type PlayQueue struct {
