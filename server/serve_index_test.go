@@ -106,6 +106,7 @@ var _ = Describe("serveIndex", func() {
 		Entry("enableSharing", func() { conf.Server.EnableSharing = true }, "enableSharing", true),
 		Entry("devNewEventStream", func() { conf.Server.DevNewEventStream = true }, "devNewEventStream", true),
 		Entry("extAuthLogoutURL", func() { conf.Server.ExtAuth.LogoutURL = "https://auth.example.com/logout" }, "extAuthLogoutURL", "https://auth.example.com/logout"),
+		Entry("playbackReportIntervalMs", func() { conf.Server.UIPlaybackReportInterval = 30 * time.Second }, "playbackReportIntervalMs", float64(30000)),
 	)
 
 	It("sanitizes entity-encoded welcomeMessage as html", func() {

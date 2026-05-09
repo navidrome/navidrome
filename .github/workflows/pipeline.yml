@@ -145,7 +145,7 @@ jobs:
 
       - name: Cache ffmpeg
         id: ffmpeg-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: C:\ffmpeg
           key: ffmpeg-${{ env.FFMPEG_VERSION }}-win64

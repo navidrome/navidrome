@@ -95,6 +95,7 @@ type configOptions struct {
 	EnableReplayGain                bool
 	EnableCoverAnimation            bool
 	EnableNowPlaying                bool
+	UIPlaybackReportInterval        time.Duration
 	GATrackingID                    string
 	EnableLogRedacting              bool
 	AuthRequestLimit                int
@@ -133,6 +134,7 @@ type configOptions struct {
 	DevArtworkMaxRequests             int
 	DevArtworkThrottleBacklogLimit    int
 	DevArtworkThrottleBacklogTimeout  time.Duration
+	DevArtworkThrottleBuffered        bool
 	DevArtistInfoTimeToLive           time.Duration
 	DevAlbumInfoTimeToLive            time.Duration
 	DevExternalScanner                bool
@@ -776,6 +778,7 @@ func setViperDefaults() {
 	viper.SetDefault("enablereplaygain", true)
 	viper.SetDefault("enablecoveranimation", true)
 	viper.SetDefault("enablenowplaying", true)
+	viper.SetDefault("uiplaybackreportinterval", consts.DefaultUIPlaybackReportInterval)
 	viper.SetDefault("enableartworkupload", true)
 	viper.SetDefault("maximageuploadsize", consts.DefaultMaxImageUploadSize)
 	viper.SetDefault("enablesharing", false)
@@ -859,6 +862,7 @@ func setViperDefaults() {
 	viper.SetDefault("devartworkmaxrequests", max(2, runtime.NumCPU()/2))
 	viper.SetDefault("devartworkthrottlebackloglimit", consts.RequestThrottleBacklogLimit)
 	viper.SetDefault("devartworkthrottlebacklogtimeout", consts.RequestThrottleBacklogTimeout)
+	viper.SetDefault("devartworkthrottlebuffered", true)
 	viper.SetDefault("devartistinfotimetolive", consts.ArtistInfoTimeToLive)
 	viper.SetDefault("devalbuminfotimetolive", consts.AlbumInfoTimeToLive)
 	viper.SetDefault("devexternalscanner", true)

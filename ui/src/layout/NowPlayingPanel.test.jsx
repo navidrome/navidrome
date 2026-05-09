@@ -70,7 +70,12 @@ describe('<NowPlayingPanel />', () => {
     )
   }
 
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   beforeEach(() => {
+    vi.useFakeTimers()
     vi.clearAllMocks()
     mockUseMediaQuery.mockReturnValue(false) // Default to large screen
 
@@ -105,10 +110,8 @@ describe('<NowPlayingPanel />', () => {
       </Provider>,
     )
 
-    // Wait for initial fetch to complete
-    await waitFor(() => {
-      expect(subsonic.getNowPlaying).toHaveBeenCalled()
-    })
+    // Advance past debounce and flush promises
+    await vi.advanceTimersByTimeAsync(500)
 
     fireEvent.click(screen.getByRole('button'))
     await waitFor(() => {
@@ -128,21 +131,16 @@ describe('<NowPlayingPanel />', () => {
       </Provider>,
     )
 
-    // Wait for initial fetch to complete
-    await waitFor(() => {
-      expect(subsonic.getNowPlaying).toHaveBeenCalled()
-    })
+    await vi.advanceTimersByTimeAsync(500)
 
     fireEvent.click(screen.getByRole('button'))
     await waitFor(() => {
-      expect(
-        screen.getByText('u1 (Chrome Browser) • nowPlaying.minutesAgo'),
-      ).toBeInTheDocument()
+      expect(screen.getByText('u1 (Chrome Browser)')).toBeInTheDocument()
     })
   })
 
   it('handles entries without player name', async () => {
-    subsonic.getNowPlaying.mockResolvedValueOnce({
+    subsonic.getNowPlaying.mockResolvedValue({
       json: {
         'subsonic-response': {
           status: 'ok',
@@ -170,19 +168,16 @@ describe('<NowPlayingPanel />', () => {
       </Provider>,
     )
 
-    // Wait for initial fetch to complete
-    await waitFor(() => {
-      expect(subsonic.getNowPlaying).toHaveBeenCalled()
-    })
+    await vi.advanceTimersByTimeAsync(500)
 
     fireEvent.click(screen.getByRole('button'))
     await waitFor(() => {
-      expect(screen.getByText('u1 • nowPlaying.minutesAgo')).toBeInTheDocument()
+      expect(screen.getByText('u1')).toBeInTheDocument()
     })
   })
 
   it('shows empty message when no entries', async () => {
-    subsonic.getNowPlaying.mockResolvedValueOnce({
+    subsonic.getNowPlaying.mockResolvedValue({
       json: {
         'subsonic-response': { status: 'ok', nowPlaying: { entry: [] } },
       },
@@ -194,10 +189,7 @@ describe('<NowPlayingPanel />', () => {
       </Provider>,
     )
 
-    // Wait for initial fetch
-    await waitFor(() => {
-      expect(subsonic.getNowPlaying).toHaveBeenCalled()
-    })
+    await vi.advanceTimersByTimeAsync(500)
 
     fireEvent.click(screen.getByRole('button'))
     await waitFor(() => {
@@ -215,10 +207,7 @@ describe('<NowPlayingPanel />', () => {
       </Provider>,
     )
 
-    // Wait for initial fetch to complete
-    await waitFor(() => {
-      expect(subsonic.getNowPlaying).toHaveBeenCalled()
-    })
+    await vi.advanceTimersByTimeAsync(500)
 
     // Open the panel
     fireEvent.click(screen.getByRole('button'))
@@ -268,7 +257,9 @@ describe('<NowPlayingPanel />', () => {
     expect(subsonic.getNowPlaying).not.toHaveBeenCalled()
   })
 
-  it('does not double-fetch on server reconnection', () => {
+  it('does not double-fetch on server reconnection', async () => {
+    vi.useFakeTimers()
+
     const initialStore = createMockStore({
       nowPlayingCount: 1,
       serverStart: { startTime: null }, // Server initially down
@@ -295,8 +286,13 @@ describe('<NowPlayingPanel />', () => {
       </Provider>,
     )
 
+    // Advance past the debounce window
+    vi.advanceTimersByTime(500)
+
     // Should only make one call despite both serverUp and streamReconnected changing
     expect(subsonic.getNowPlaying).toHaveBeenCalledTimes(1)
+
+    vi.useRealTimers()
   })
 
   it('skips polling when server is down', () => {

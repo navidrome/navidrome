@@ -229,6 +229,62 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 		})
 	})
 
+	Describe("PlaybackReport", func() {
+		It("successfully calls the plugin", func() {
+			info := scrobbler.PlaybackSession{
+				MediaFile: model.MediaFile{
+					ID:          "track-1",
+					Title:       "Test Song",
+					Album:       "Test Album",
+					Artist:      "Test Artist",
+					AlbumArtist: "Test Album Artist",
+					Duration:    180,
+					TrackNumber: 1,
+					DiscNumber:  1,
+					Participants: model.Participants{
+						model.RoleArtist:      {{Artist: model.Artist{ID: "artist-1", Name: "Test Artist"}}},
+						model.RoleAlbumArtist: {{Artist: model.Artist{ID: "album-artist-1", Name: "Test Album Artist"}}},
+					},
+				},
+				Username:     "testuser",
+				PlayerId:     "player-1",
+				PlayerName:   "Test Player",
+				State:        "playing",
+				PositionMs:   30000,
+				PlaybackRate: 1.0,
+				LastReport:   time.Now(),
+			}
+
+			err := s.PlaybackReport(ctxWithUser(), info)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		Context("when plugin returns error", Ordered, func() {
+			var retryScrobbler scrobbler.Scrobbler
+
+			BeforeAll(func() {
+				mgr, _ := createTestManagerWithPlugins(map[string]map[string]string{
+					"test-scrobbler": {"error": "service unavailable", "error_type": "scrobbler(retry_later)"},
+				}, "test-scrobbler"+PackageExtension)
+
+				var ok bool
+				retryScrobbler, ok = mgr.LoadScrobbler("test-scrobbler")
+				Expect(ok).To(BeTrue())
+			})
+
+			It("returns ErrRetryLater", func() {
+				info := scrobbler.PlaybackSession{
+					MediaFile:  model.MediaFile{ID: "track-1", Title: "Test Song"},
+					State:      "playing",
+					LastReport: time.Now(),
+				}
+				err := retryScrobbler.PlaybackReport(ctxWithUser(), info)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError(scrobbler.ErrRetryLater))
+			})
+		})
+	})
+
 	Describe("PluginNames", func() {
 		It("returns plugin names with Scrobbler capability", func() {
 			names := scrobblerManager.PluginNames("Scrobbler")
