@@ -182,6 +182,7 @@ type OpenSubsonicChild struct {
 	SamplingRate       int32               `xml:"samplingRate,attr,omitempty"       json:"samplingRate"`
 	BitDepth           int32               `xml:"bitDepth,attr,omitempty"           json:"bitDepth"`
 	Moods              Array[string]       `xml:"moods,omitempty"                   json:"moods"`
+	Groupings          Array[string]       `xml:"groupings,omitempty"               json:"groupings"`
 	Artists            Array[ArtistID3Ref] `xml:"artists,omitempty"                 json:"artists"`
 	DisplayArtist      string              `xml:"displayArtist,attr,omitempty"      json:"displayArtist"`
 	AlbumArtists       Array[ArtistID3Ref] `xml:"albumArtists,omitempty"            json:"albumArtists"`

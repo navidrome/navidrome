@@ -22,6 +22,7 @@
         "samplingRate": 0,
         "bitDepth": 0,
         "moods": [],
+        "groupings": [],
         "artists": [],
         "displayArtist": "",
         "albumArtists": [],

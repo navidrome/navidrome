@@ -8,6 +8,8 @@
       <replayGain trackGain="1" albumGain="2" trackPeak="3" albumPeak="4" baseGain="5" fallbackGain="6"></replayGain>
       <moods>happy</moods>
       <moods>sad</moods>
+      <groupings>Soundtrack</groupings>
+      <groupings>Live</groupings>
       <artists id="1" name="artist1"></artists>
       <artists id="2" name="artist2"></artists>
       <albumArtists id="1" name="album artist1"></albumArtists>

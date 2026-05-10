@@ -329,6 +329,9 @@ var _ = Describe("helpers", func() {
 				Title:   "Test Song",
 				Artist:  "Test Artist",
 				Comment: "Test Comment",
+				Tags: model.Tags{
+					model.TagGrouping: {"Soundtrack", "Live"},
+				},
 			}
 			ctx = context.Background()
 		})
@@ -357,6 +360,7 @@ var _ = Describe("helpers", func() {
 				osChild := osChildFromMediaFile(ctx, mf)
 				Expect(osChild).ToNot(BeNil())
 				Expect(osChild.Comment).To(Equal("Test Comment"))
+				Expect(osChild.Groupings).To(Equal(responses.Array[string]{"Soundtrack", "Live"}))
 			})
 		})
 

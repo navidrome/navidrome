@@ -32,6 +32,7 @@
           "mood1",
           "mood2"
         ],
+        "groupings": [],
         "artists": [
           {
             "id": "artist-1",

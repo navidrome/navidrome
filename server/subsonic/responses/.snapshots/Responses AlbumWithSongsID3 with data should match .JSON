@@ -125,6 +125,10 @@
           "happy",
           "sad"
         ],
+        "groupings": [
+          "Soundtrack",
+          "Live"
+        ],
         "artists": [
           {
             "id": "1",
@@ -204,6 +208,7 @@
         "samplingRate": 0,
         "bitDepth": 0,
         "moods": [],
+        "groupings": [],
         "artists": [],
         "displayArtist": "",
         "albumArtists": [],
