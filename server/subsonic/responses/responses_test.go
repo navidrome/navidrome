@@ -224,6 +224,7 @@ var _ = Describe("Responses", func() {
 					Isrc: []string{"ISRC-1", "ISRC-2"},
 					BPM:  127, ChannelCount: 2, SamplingRate: 44100, BitDepth: 16,
 					Moods:         []string{"happy", "sad"},
+					Groupings:     []string{"Soundtrack", "Live"},
 					ReplayGain:    ReplayGain{TrackGain: gg.P(1.0), AlbumGain: gg.P(2.0), TrackPeak: gg.P(3.0), AlbumPeak: gg.P(4.0), BaseGain: gg.P(5.0), FallbackGain: gg.P(6.0)},
 					DisplayArtist: "artist 1 & artist 2",
 					Artists: []ArtistID3Ref{
@@ -320,6 +321,7 @@ var _ = Describe("Responses", func() {
 					Comment: "a comment", MediaType: MediaTypeSong, MusicBrainzId: "4321", SortName: "sorted song",
 					Isrc:       []string{"ISRC-1"},
 					Moods:      []string{"happy", "sad"},
+					Groupings:  []string{"Soundtrack", "Live"},
 					ReplayGain: ReplayGain{TrackGain: gg.P(1.0), AlbumGain: gg.P(2.0), TrackPeak: gg.P(3.0), AlbumPeak: gg.P(4.0), BaseGain: gg.P(5.0), FallbackGain: gg.P(6.0)},
 					BPM:        127, ChannelCount: 2, SamplingRate: 44100, BitDepth: 16,
 					DisplayArtist: "artist1 & artist2",
@@ -424,6 +426,7 @@ var _ = Describe("Responses", func() {
 						ItemGenre{Name: "Genre 2"},
 					},
 					Moods:         []string{"mood1", "mood2"},
+					Groupings:     []string{"Soundtrack"},
 					DisplayArtist: "Display artist",
 					Artists: Array[ArtistID3Ref]{
 						ArtistID3Ref{Id: "artist-1", Name: "Artist 1"},
