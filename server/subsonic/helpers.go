@@ -266,6 +266,7 @@ func osChildFromMediaFile(ctx context.Context, mf model.MediaFile) *responses.Op
 	child.BitDepth = int32(mf.BitDepth)
 	child.Genres = toItemGenres(mf.Genres)
 	child.Moods = mf.Tags.Values(model.TagMood)
+	child.Groupings = mf.Tags.Values(model.TagGrouping)
 	child.DisplayArtist = mf.Artist
 	child.Artists = artistRefs(mf.Participants[model.RoleArtist])
 	child.DisplayAlbumArtist = mf.AlbumArtist
@@ -375,6 +376,7 @@ func osChildFromAlbum(ctx context.Context, al model.Album) *responses.OpenSubson
 	child.MusicBrainzId = al.MbzAlbumID
 	child.Genres = toItemGenres(al.Genres)
 	child.Moods = al.Tags.Values(model.TagMood)
+	child.Groupings = al.Tags.Values(model.TagGrouping)
 	child.DisplayArtist = al.AlbumArtist
 	child.Artists = artistRefs(al.Participants[model.RoleAlbumArtist])
 	child.DisplayAlbumArtist = al.AlbumArtist
