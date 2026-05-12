@@ -350,9 +350,20 @@ var _ = Describe("Library API", func() {
 					Expect(w.Body.String()).To(ContainSubstring("library ID 999 does not exist"))
 				})
 
-				It("requires at least one library for regular users", func() {
+				It("allows removing all libraries from regular users", func() {
+					// First assign some libraries
+					setupRequest := map[string][]int{
+						"libraryIds": {1, 2},
+					}
+					setupBody, _ := json.Marshal(setupRequest)
+					setupReq := createAuthenticatedRequest("PUT", fmt.Sprintf("/user/%s/library", regularUser.ID), bytes.NewBuffer(setupBody), adminToken)
+					setupW := httptest.NewRecorder()
+					router.ServeHTTP(setupW, setupReq)
+					Expect(setupW.Code).To(Equal(http.StatusOK))
+
+					// Then remove all libraries
 					request := map[string][]int{
-						"libraryIds": {}, // Empty libraries
+						"libraryIds": {},
 					}
 					body, _ := json.Marshal(request)
 					req := createAuthenticatedRequest("PUT", fmt.Sprintf("/user/%s/library", regularUser.ID), bytes.NewBuffer(body), adminToken)
@@ -360,8 +371,12 @@ var _ = Describe("Library API", func() {
 
 					router.ServeHTTP(w, req)
 
-					Expect(w.Code).To(Equal(http.StatusBadRequest))
-					Expect(w.Body.String()).To(ContainSubstring("at least one library must be assigned"))
+					Expect(w.Code).To(Equal(http.StatusOK))
+
+					var libraries []model.Library
+					err := json.Unmarshal(w.Body.Bytes(), &libraries)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(libraries).To(BeEmpty())
 				})
 
 				It("prevents manual assignment to admin users", func() {

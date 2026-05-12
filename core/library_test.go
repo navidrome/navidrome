@@ -535,11 +535,12 @@ var _ = Describe("Library Service", func() {
 				Expect(err.Error()).To(ContainSubstring("cannot manually assign libraries to admin users"))
 			})
 
-			It("fails when no libraries provided for regular user", func() {
+			It("allows setting empty libraries for regular user", func() {
 				err := service.SetUserLibraries(ctx, "user1", []int{})
 
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("at least one library must be assigned to non-admin users"))
+				Expect(err).NotTo(HaveOccurred())
+				libraries := userRepo.UserLibraries["user1"]
+				Expect(libraries).To(BeEmpty())
 			})
 
 			It("fails when library doesn't exist", func() {

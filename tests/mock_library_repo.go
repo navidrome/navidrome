@@ -14,9 +14,10 @@ import (
 
 type MockLibraryRepo struct {
 	model.LibraryRepository
-	Data  map[int]model.Library
-	Err   error
-	PutFn func(*model.Library) error // Allow custom Put behavior for testing
+	Data          map[int]model.Library
+	UserLibraries map[string][]int // per-user library ID assignments
+	Err           error
+	PutFn         func(*model.Library) error // Allow custom Put behavior for testing
 }
 
 func (m *MockLibraryRepo) SetData(data model.Libraries) {
@@ -266,16 +267,23 @@ func (m *MockLibraryRepo) GetUserLibraries(ctx context.Context, userID string) (
 	if userID == "non-existent" {
 		return nil, model.ErrNotFound
 	}
-	// Convert map to slice for return
-	var libraries model.Libraries
-	for _, lib := range m.Data {
-		libraries = append(libraries, lib)
+	if m.UserLibraries != nil {
+		ids, ok := m.UserLibraries[userID]
+		if !ok {
+			return nil, nil
+		}
+		var libraries model.Libraries
+		for _, id := range ids {
+			if lib, exists := m.Data[id]; exists {
+				libraries = append(libraries, lib)
+			}
+		}
+		slices.SortFunc(libraries, func(a, b model.Library) int {
+			return a.ID - b.ID
+		})
+		return libraries, nil
 	}
-	// Sort by ID for predictable order
-	slices.SortFunc(libraries, func(a, b model.Library) int {
-		return a.ID - b.ID
-	})
-	return libraries, nil
+	return m.GetAll()
 }
 
 func (m *MockLibraryRepo) SetUserLibraries(ctx context.Context, userID string, libraryIDs []int) error {
@@ -288,15 +296,15 @@ func (m *MockLibraryRepo) SetUserLibraries(ctx context.Context, userID string, l
 	if userID == "admin-1" {
 		return fmt.Errorf("%w: cannot manually assign libraries to admin users", model.ErrValidation)
 	}
-	if len(libraryIDs) == 0 {
-		return fmt.Errorf("%w: at least one library must be assigned to non-admin users", model.ErrValidation)
-	}
-	// Validate all library IDs exist
 	for _, id := range libraryIDs {
 		if _, exists := m.Data[id]; !exists {
 			return fmt.Errorf("%w: library ID %d does not exist", model.ErrValidation, id)
 		}
 	}
+	if m.UserLibraries == nil {
+		m.UserLibraries = make(map[string][]int)
+	}
+	m.UserLibraries[userID] = libraryIDs
 	return nil
 }
 
