@@ -21,7 +21,7 @@ var _ = Describe("ImageUploadService", func() {
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
 		tmpDir = GinkgoT().TempDir()
-		conf.Server.DataFolder = tmpDir
+		conf.Server.DataFolder = conf.NewDir(tmpDir)
 		svc = core.NewImageUploadService()
 	})
 

@@ -484,7 +484,7 @@ func createTestUsers(mockUserRepo *tests.MockedUserRepo) {
 // setupTestUsersConfig sets up common plugin configuration
 func setupTestUsersConfig(tmpDir string) {
 	conf.Server.Plugins.Enabled = true
-	conf.Server.Plugins.Folder = tmpDir
+	conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
 	conf.Server.Plugins.AutoReload = false
 }
 

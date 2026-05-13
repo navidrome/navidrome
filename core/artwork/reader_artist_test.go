@@ -452,7 +452,7 @@ var _ = Describe("artistArtworkReader", func() {
 		BeforeEach(func() {
 			DeferCleanup(configtest.SetupConfig())
 			tempDir = GinkgoT().TempDir()
-			conf.Server.DataFolder = tempDir
+			conf.Server.DataFolder = conf.NewDir(tempDir)
 
 			// Create the artwork/artist directory
 			Expect(os.MkdirAll(filepath.Join(tempDir, "artwork", "artist"), 0755)).To(Succeed())
