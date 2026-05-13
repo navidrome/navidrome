@@ -47,15 +47,15 @@ var _ = Describe("ffmpeg", func() {
 		})
 		Context("when command has time offset param", func() {
 			It("creates a valid command line with offset", func() {
-				args := createFFmpegCommand("ffmpeg -i %s -b:a %bk -ss %t mp3 -", "/music library/file.mp3", 123, 456)
-				Expect(args).To(Equal([]string{"ffmpeg", "-i", "/music library/file.mp3", "-b:a", "123k", "-ss", "456", "mp3", "-"}))
+				args := createFFmpegCommand("ffmpeg -ss %t -i %s -b:a %bk mp3 -", "/music library/file.mp3", 123, 456)
+				Expect(args).To(Equal([]string{"ffmpeg", "-ss", "456", "-i", "/music library/file.mp3", "-b:a", "123k", "mp3", "-"}))
 			})
 
 		})
 		Context("when command does not have time offset param", func() {
-			It("adds time offset after the input file name", func() {
+			It("adds time offset before the input file name", func() {
 				args := createFFmpegCommand("ffmpeg -i %s -b:a %bk mp3 -", "/music library/file.mp3", 123, 456)
-				Expect(args).To(Equal([]string{"ffmpeg", "-i", "/music library/file.mp3", "-ss", "456", "-b:a", "123k", "mp3", "-"}))
+				Expect(args).To(Equal([]string{"ffmpeg", "-ss", "456", "-i", "/music library/file.mp3", "-b:a", "123k", "mp3", "-"}))
 			})
 		})
 	})
@@ -82,16 +82,16 @@ var _ = Describe("ffmpeg", func() {
 
 	Describe("isDefaultCommand", func() {
 		It("returns true for known default mp3 command", func() {
-			Expect(isDefaultCommand("mp3", "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -f mp3 -")).To(BeTrue())
+			Expect(isDefaultCommand("mp3", "ffmpeg -ss %t -i %s -map 0:a:0 -b:a %bk -v 0 -f mp3 -")).To(BeTrue())
 		})
 		It("returns true for known default opus command", func() {
-			Expect(isDefaultCommand("opus", "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a libopus -f opus -")).To(BeTrue())
+			Expect(isDefaultCommand("opus", "ffmpeg -ss %t -i %s -map 0:a:0 -b:a %bk -v 0 -c:a libopus -f opus -")).To(BeTrue())
 		})
 		It("returns true for known default aac command", func() {
-			Expect(isDefaultCommand("aac", "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a aac -f adts -")).To(BeTrue())
+			Expect(isDefaultCommand("aac", "ffmpeg -ss %t -i %s -map 0:a:0 -b:a %bk -v 0 -c:a aac -f adts -")).To(BeTrue())
 		})
 		It("returns true for known default flac command", func() {
-			Expect(isDefaultCommand("flac", "ffmpeg -i %s -ss %t -map 0:a:0 -v 0 -c:a flac -f flac -")).To(BeTrue())
+			Expect(isDefaultCommand("flac", "ffmpeg -ss %t -i %s -map 0:a:0 -v 0 -c:a flac -f flac -")).To(BeTrue())
 		})
 		It("returns false for a custom command", func() {
 			Expect(isDefaultCommand("mp3", "ffmpeg -i %s -b:a %bk -custom-flag -f mp3 -")).To(BeFalse())
@@ -165,8 +165,9 @@ var _ = Describe("ffmpeg", func() {
 				Offset:   30,
 			})
 			Expect(args).To(Equal([]string{
-				"ffmpeg", "-i", "/music/file.mp3",
+				"ffmpeg",
 				"-ss", "30",
+				"-i", "/music/file.mp3",
 				"-map", "0:a:0",
 				"-c:a", "libmp3lame",
 				"-b:a", "192k",
