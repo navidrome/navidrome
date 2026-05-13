@@ -26,6 +26,9 @@ type Playlist struct {
 	ExternalImageURL string         `structs:"external_image_url" json:"externalImageUrl,omitempty"`
 	CreatedAt        time.Time      `structs:"created_at" json:"createdAt"`
 	UpdatedAt        time.Time      `structs:"updated_at" json:"updatedAt"`
+	// Permission holds the permission the calling uses has on the playlist.
+	// Can be: `owner`, `editor`, `viewer`, `admin`
+	Permission string `structs:"-" json:"permission"`
 
 	// SmartPlaylist attributes
 	Rules       *criteria.Criteria `structs:"rules" json:"rules"`
@@ -131,6 +134,7 @@ type PlaylistRepository interface {
 	Delete(id string) error
 	Tracks(playlistId string, refreshSmartPlaylist bool) PlaylistTrackRepository
 	GetPlaylists(mediaFileId string) (Playlists, error)
+	Permissions(playlistId string) PlaylistPermissionRepository
 }
 
 type PlaylistTrack struct {
@@ -161,4 +165,26 @@ type PlaylistTrackRepository interface {
 	Delete(id ...string) error
 	DeleteAll() error
 	Reorder(pos int, newPos int) error
+}
+
+type PlaylistPermission struct {
+	PlaylistID string     `json:"playlistId"`
+	UserID     string     `json:"userId"`
+	Permission Permission `json:"permission"`
+}
+
+type Permission string
+
+const (
+	PermissionEditor Permission = "editor"
+	PermissionViewer Permission = "viewer"
+)
+
+type PlaylistPermissions []PlaylistPermission
+
+type PlaylistPermissionRepository interface {
+	GetAll() (PlaylistPermissions, error)
+	IsUserAllowed(userID string, permissions []Permission) (bool, error)
+	Put(userID string, permission Permission) error
+	Delete(userID string) error
 }

@@ -23,6 +23,7 @@ type playlistRepository struct {
 type dbPlaylist struct {
 	model.Playlist `structs:",flatten"`
 	Rules          sql.NullString `structs:"-"`
+	Permission     sql.NullString `structs:"-"`
 }
 
 func (p *dbPlaylist) PostScan() error {
@@ -73,28 +74,38 @@ func smartPlaylistFilter(string, any) Sqlizer {
 	}
 }
 
-func (r *playlistRepository) userFilter() Sqlizer {
+func (r *playlistRepository) userFilter(sel SelectBuilder) SelectBuilder {
 	user := loggedUser(r.ctx)
 	if user.IsAdmin {
-		return And{}
+		return sel
 	}
-	return Or{
-		Eq{"public": true},
-		Eq{"owner_id": user.ID},
-	}
+	return sel.
+		LeftJoin("playlist_permissions ON playlist.id = playlist_permissions.playlist_id").
+		Where(Or{
+			Eq{"playlist.owner_id": user.ID},
+			Eq{"playlist.public": true},
+			And{
+				Eq{"playlist_permissions.user_id": user.ID},
+				Or{
+					Eq{"permission": model.PermissionEditor},
+					Eq{"permission": model.PermissionViewer},
+				},
+			},
+		}).
+		Columns("playlist_permissions.permission as permission")
 }
 
 func (r *playlistRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	sq := Select().Where(r.userFilter())
+	sq := r.userFilter(Select())
 	return r.count(sq, options...)
 }
 
 func (r *playlistRepository) Exists(id string) (bool, error) {
-	return r.exists(And{Eq{"id": id}, r.userFilter()})
+	return r.exists(Eq{"id": id})
 }
 
 func (r *playlistRepository) Delete(id string) error {
-	return r.delete(And{Eq{"id": id}, r.userFilter()})
+	return r.delete(Eq{"id": id})
 }
 
 func (r *playlistRepository) Put(p *model.Playlist, cols ...string) error {
@@ -129,7 +140,7 @@ func (r *playlistRepository) Put(p *model.Playlist, cols ...string) error {
 }
 
 func (r *playlistRepository) Get(id string) (*model.Playlist, error) {
-	return r.findBy(And{Eq{"playlist.id": id}, r.userFilter()})
+	return r.findBy(Eq{"playlist.id": id})
 }
 
 func (r *playlistRepository) GetWithTracks(id string, refreshSmartPlaylist, includeMissing bool) (*model.Playlist, error) {
@@ -156,37 +167,56 @@ func (r *playlistRepository) FindByPath(path string) (*model.Playlist, error) {
 }
 
 func (r *playlistRepository) findBy(sql Sqlizer) (*model.Playlist, error) {
-	sel := r.selectPlaylist().Where(sql)
-	var pls []dbPlaylist
-	err := r.queryAll(sel, &pls)
-	if err != nil {
+	sel := r.userFilter(r.selectPlaylist().Where(sql))
+	var pls dbPlaylist
+	if err := r.queryOne(sel, &pls); err != nil {
 		return nil, err
 	}
-	if len(pls) == 0 {
-		return nil, model.ErrNotFound
-	}
-
-	return &pls[0].Playlist, nil
+	setPermissionField(&pls, loggedUser(r.ctx))
+	return &pls.Playlist, nil
 }
 
 func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playlists, error) {
-	sel := r.selectPlaylist(options...).Where(r.userFilter())
+	sel := r.userFilter(r.selectPlaylist(options...))
 	var res []dbPlaylist
 	err := r.queryAll(sel, &res)
 	if err != nil {
 		return nil, err
 	}
+
+	user := loggedUser(r.ctx)
+
 	playlists := make(model.Playlists, len(res))
 	for i, p := range res {
+		setPermissionField(&p, user)
 		playlists[i] = p.Playlist
 	}
 	return playlists, err
 }
 
+func setPermissionField(dbPls *dbPlaylist, user *model.User) {
+	if dbPls.Playlist.OwnerID == user.ID {
+		dbPls.Playlist.Permission = "owner"
+		return
+	}
+	if user.IsAdmin {
+		dbPls.Playlist.Permission = "admin"
+		return
+	}
+	if dbPls.Permission.Valid {
+		dbPls.Playlist.Permission = dbPls.Permission.String
+		return
+	}
+	if dbPls.Public {
+		dbPls.Playlist.Permission = "viewer"
+		return
+	}
+}
+
 func (r *playlistRepository) GetPlaylists(mediaFileId string) (model.Playlists, error) {
-	sel := r.selectPlaylist(model.QueryOptions{Sort: "name"}).
+	sel := r.userFilter(r.selectPlaylist(model.QueryOptions{Sort: "name"})).
 		Join("playlist_tracks on playlist.id = playlist_tracks.playlist_id").
-		Where(And{Eq{"playlist_tracks.media_file_id": mediaFileId}, r.userFilter()})
+		Where(Eq{"playlist_tracks.media_file_id": mediaFileId})
 	var res []dbPlaylist
 	err := r.queryAll(sel, &res)
 	if err != nil {
@@ -411,5 +441,7 @@ func (r *playlistRepository) renumber(id string) error {
 }
 
 var _ model.PlaylistRepository = (*playlistRepository)(nil)
+
 var _ rest.Repository = (*playlistRepository)(nil)
+
 var _ rest.Persistable = (*playlistRepository)(nil)

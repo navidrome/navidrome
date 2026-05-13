@@ -12,6 +12,7 @@ import (
 
 	"github.com/deluan/rest"
 	"github.com/go-chi/chi/v5"
+
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -238,4 +239,105 @@ func deletePlaylistImage(pls playlists.Playlists) http.HandlerFunc {
 		playlistId := chi.URLParamFromCtx(ctx, "id")
 		return pls.RemoveImage(ctx, playlistId)
 	})
+}
+
+func getPlaylistPermissions(pls playlists.Playlists) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		playlistID := chi.URLParamFromCtx(ctx, "id")
+
+		getPlaylistPermissionsHelper(ctx, playlistID, pls, w, r)
+	}
+
+}
+
+func addPlaylistPermission(pls playlists.Playlists) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		playlistID := chi.URLParamFromCtx(ctx, "id")
+
+		var request struct {
+			UserID     string           `json:"userId"`
+			Permission model.Permission `json:"permission"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			log.Error(r.Context(), "Error decoding request", err)
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		if err := pls.AddPermission(ctx, playlistID, request.UserID, request.Permission); err != nil {
+			log.Error(r.Context(), "Error granting user permission on playlist", "playlistID", playlistID, "userID", request.UserID, "permission", request.Permission, err)
+			if errors.Is(err, model.ErrNotFound) {
+				http.Error(w, err.Error(), http.StatusNotFound)
+				return
+			}
+			if errors.Is(err, model.ErrValidation) {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			if errors.Is(err, model.ErrNotAuthorized) {
+				http.Error(w, err.Error(), http.StatusForbidden)
+				return
+			}
+			http.Error(w, "Failed to add user to playlist", http.StatusInternalServerError)
+			return
+		}
+
+		// Return updated permissions of playlist
+		getPlaylistPermissionsHelper(ctx, playlistID, pls, w, r)
+	}
+}
+
+func deletePlaylistPermission(pls playlists.Playlists) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		playlistID := chi.URLParamFromCtx(ctx, "id")
+
+		userID, err := req.Params(r).String("userId")
+		if errors.Is(err, req.ErrMissingParam) {
+			log.Error(r.Context(), fmt.Sprintf("%q query parameter missing", "userId"))
+			http.Error(w, fmt.Sprintf("%q query parameter missing", "userId"), http.StatusBadRequest)
+			return
+		}
+
+		if err := pls.RemovePermission(ctx, playlistID, userID); err != nil {
+			log.Error(r.Context(), "Error removing playlist permission for user", "playlistID", playlistID, "userID", userID, err)
+			if errors.Is(err, model.ErrNotFound) {
+				http.Error(w, err.Error(), http.StatusNotFound)
+				return
+			}
+			if errors.Is(err, model.ErrNotAuthorized) {
+				http.Error(w, err.Error(), http.StatusForbidden)
+				return
+			}
+			http.Error(w, "Failed to remove user from playlist", http.StatusInternalServerError)
+			return
+		}
+
+		// Return updated permissions of playlist
+		getPlaylistPermissionsHelper(ctx, playlistID, pls, w, r)
+	}
+}
+
+func getPlaylistPermissionsHelper(ctx context.Context, playlistID string, pls playlists.Playlists, w http.ResponseWriter, r *http.Request) {
+	permissions, err := pls.GetPermissionsForPlaylist(ctx, playlistID)
+	if err != nil {
+		log.Error(r.Context(), "Error getting playlist permissions", "playlistID", playlistID, err)
+		if errors.Is(err, model.ErrNotFound) {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		if errors.Is(err, model.ErrNotAuthorized) {
+			http.Error(w, err.Error(), http.StatusForbidden)
+			return
+		}
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(permissions); err != nil {
+		log.Error(r.Context(), "Error encoding playlist permissions", err)
+	}
 }
