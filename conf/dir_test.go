@@ -48,9 +48,7 @@ var _ = Describe("Dir", func() {
 		})
 
 		It("returns an error when directory cannot be created", func() {
-			// Use a file as the parent to make MkdirAll fail
-			f, err := GinkgoT().TempDir(), error(nil)
-			_ = err
+			f := GinkgoT().TempDir()
 			blocker := f + "/blocker"
 			By("creating a file that blocks directory creation")
 			Expect(os.WriteFile(blocker, []byte("x"), 0600)).To(Succeed())

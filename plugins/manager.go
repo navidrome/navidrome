@@ -133,14 +133,12 @@ func (m *Manager) Start(ctx context.Context) error {
 		return fmt.Errorf("creating wazero compilation cache: %w", err)
 	}
 
-	folder := conf.Server.Plugins.Folder.String()
-	if folder == "" {
+	if conf.Server.Plugins.Folder.String() == "" {
 		log.Debug(ctx, "No plugins folder configured")
 		return nil
 	}
 
-	// Ensure plugins folder exists (lazy creation via MustPath)
-	folder = conf.Server.Plugins.Folder.MustPath()
+	folder := conf.Server.Plugins.Folder.MustPath()
 
 	log.Info(ctx, "Starting plugin manager", "folder", folder)
 

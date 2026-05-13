@@ -117,7 +117,11 @@ func Restore(ctx context.Context, path string) error {
 }
 
 func Prune(ctx context.Context) (int, error) {
-	files, err := os.ReadDir(conf.Server.Backup.Path.MustPath())
+	backupDir, err := conf.Server.Backup.Path.Path()
+	if err != nil {
+		return 0, fmt.Errorf("backup directory not available: %w", err)
+	}
+	files, err := os.ReadDir(backupDir)
 	if err != nil {
 		return 0, fmt.Errorf("unable to read database backup entries: %w", err)
 	}

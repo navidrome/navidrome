@@ -289,15 +289,18 @@ var (
 	hooks  []func()
 )
 
-// SnapshotConfig returns a function that, when called, restores Server to the
-// state it was in when SnapshotConfig was called. It uses JSON round-tripping
-// so that Dir fields (which contain sync.Once) get fresh zero-value mutexes
-// in the restored copy. Intended for use in tests.
+// SnapshotConfig returns a function that restores Server to its current state.
+// Uses JSON round-tripping so Dir fields get fresh sync.Once values.
 func SnapshotConfig() func() {
-	snapshot, _ := json.Marshal(Server)
+	snapshot, err := json.Marshal(Server)
+	if err != nil {
+		panic(fmt.Sprintf("SnapshotConfig: marshal failed: %v", err))
+	}
 	return func() {
 		var restored configOptions
-		_ = json.Unmarshal(snapshot, &restored)
+		if err := json.Unmarshal(snapshot, &restored); err != nil {
+			panic(fmt.Sprintf("SnapshotConfig: unmarshal failed: %v", err))
+		}
 		Server = &restored
 	}
 }
@@ -343,7 +346,7 @@ func Load(noConfigDump bool) {
 	}
 
 	if Server.Plugins.Enabled && Server.Plugins.Folder.String() == "" {
-		Server.Plugins.Folder = NewDir(filepath.Join(Server.DataFolder.String(), "plugins"))
+		Server.Plugins.Folder = NewDirWithPerm(filepath.Join(Server.DataFolder.String(), "plugins"), 0700)
 	}
 
 	Server.ConfigFile = viper.GetViper().ConfigFileUsed()
