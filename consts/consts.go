@@ -153,25 +153,25 @@ var (
 			Name:           "mp3 audio",
 			TargetFormat:   "mp3",
 			DefaultBitRate: 192,
-			Command:        "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -f mp3 -",
+			Command:        "ffmpeg -ss %t -i %s -map 0:a:0 -b:a %bk -v 0 -f mp3 -",
 		},
 		{
 			Name:           "opus audio",
 			TargetFormat:   "opus",
 			DefaultBitRate: 128,
-			Command:        "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a libopus -f opus -",
+			Command:        "ffmpeg -ss %t -i %s -map 0:a:0 -b:a %bk -v 0 -c:a libopus -f opus -",
 		},
 		{
 			Name:           "aac audio",
 			TargetFormat:   "aac",
 			DefaultBitRate: 256,
-			Command:        "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a aac -f adts -",
+			Command:        "ffmpeg -ss %t -i %s -map 0:a:0 -b:a %bk -v 0 -c:a aac -f adts -",
 		},
 		{
 			Name:           "flac audio",
 			TargetFormat:   "flac",
 			DefaultBitRate: 0,
-			Command:        "ffmpeg -i %s -ss %t -map 0:a:0 -v 0 -c:a flac -f flac -",
+			Command:        "ffmpeg -ss %t -i %s -map 0:a:0 -v 0 -c:a flac -f flac -",
 		},
 	}
 )

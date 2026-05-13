@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -394,12 +395,13 @@ func isDefaultCommand(format, command string) bool {
 // including all transcoding parameters (bitrate, sample rate, channels).
 func buildDynamicArgs(opts TranscodeOptions) []string {
 	cmdPath, _ := ffmpegCmd()
-	args := []string{cmdPath, "-i", opts.FilePath}
+	args := []string{cmdPath}
 
 	if opts.Offset > 0 {
 		args = append(args, "-ss", strconv.Itoa(opts.Offset))
 	}
 
+	args = append(args, "-i", opts.FilePath)
 	args = append(args, "-map", "0:a:0")
 
 	if codec, ok := formatCodecMap[opts.Format]; ok {
@@ -491,11 +493,20 @@ func createFFmpegCommand(cmd, path string, maxBitRate, offset int) []string {
 	var args []string
 	for _, s := range fixCmd(cmd) {
 		if strings.Contains(s, "%s") {
+			if offset > 0 && !strings.Contains(cmd, "%t") {
+				// Pre-input seeking: ffmpeg seeks at the demuxer level (fast)
+				// instead of decoding all frames up to the offset (slow).
+				insertAt := len(args)
+				for i := len(args) - 1; i >= 0; i-- {
+					if args[i] == "-i" {
+						insertAt = i
+						break
+					}
+				}
+				args = slices.Insert(args, insertAt, "-ss", strconv.Itoa(offset))
+			}
 			s = strings.ReplaceAll(s, "%s", path)
 			args = append(args, s)
-			if offset > 0 && !strings.Contains(cmd, "%t") {
-				args = append(args, "-ss", strconv.Itoa(offset))
-			}
 		} else {
 			s = strings.ReplaceAll(s, "%t", strconv.Itoa(offset))
 			s = strings.ReplaceAll(s, "%b", strconv.Itoa(maxBitRate))
