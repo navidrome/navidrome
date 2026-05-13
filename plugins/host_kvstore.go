@@ -54,7 +54,7 @@ func newKVStoreService(ctx context.Context, pluginName string, perm *KVStorePerm
 	}
 
 	// Create plugin data directory
-	dataDir := filepath.Join(conf.Server.DataFolder, "plugins", pluginName)
+	dataDir := filepath.Join(conf.Server.DataFolder.String(), "plugins", pluginName)
 	if err := os.MkdirAll(dataDir, 0700); err != nil {
 		return nil, fmt.Errorf("creating plugin data directory: %w", err)
 	}

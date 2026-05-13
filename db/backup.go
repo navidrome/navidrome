@@ -27,7 +27,7 @@ const backupSuffixLayout = "2006.01.02_15.04.05"
 
 func backupPath(t time.Time) string {
 	return filepath.Join(
-		conf.Server.Backup.Path,
+		conf.Server.Backup.Path.MustPath(),
 		fmt.Sprintf("%s_%s.db", backupPrefix, t.Format(backupSuffixLayout)),
 	)
 }
@@ -117,7 +117,7 @@ func Restore(ctx context.Context, path string) error {
 }
 
 func Prune(ctx context.Context) (int, error) {
-	files, err := os.ReadDir(conf.Server.Backup.Path)
+	files, err := os.ReadDir(conf.Server.Backup.Path.MustPath())
 	if err != nil {
 		return 0, fmt.Errorf("unable to read database backup entries: %w", err)
 	}

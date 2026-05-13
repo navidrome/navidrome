@@ -75,7 +75,7 @@ var (
 
 func runBackup(ctx context.Context) {
 	if backupDir != "" {
-		conf.Server.Backup.Path = backupDir
+		conf.Server.Backup.Path = conf.NewDir(backupDir)
 	}
 
 	idx := strings.LastIndex(conf.Server.DbPath, "?")
@@ -104,7 +104,7 @@ func runBackup(ctx context.Context) {
 
 func runPrune(ctx context.Context) {
 	if backupDir != "" {
-		conf.Server.Backup.Path = backupDir
+		conf.Server.Backup.Path = conf.NewDir(backupDir)
 	}
 
 	if backupCount != -1 {

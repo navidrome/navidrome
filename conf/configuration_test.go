@@ -187,18 +187,17 @@ var _ = Describe("Configuration", func() {
 		})
 
 		It("is called when DataFolder is not writable", func() {
-			viper.SetDefault("datafolder", invalidPath)
+			d := conf.NewDir(invalidPath)
 			Expect(func() {
-				conf.Load(true)
-			}).To(PanicWith(ContainSubstring("Error creating data path")))
+				d.MustPath()
+			}).To(PanicWith(ContainSubstring("creating directory")))
 		})
 
 		It("is called when CacheFolder is not writable", func() {
-			viper.SetDefault("datafolder", GinkgoT().TempDir())
-			viper.SetDefault("cachefolder", invalidPath)
+			d := conf.NewDir(invalidPath)
 			Expect(func() {
-				conf.Load(true)
-			}).To(PanicWith(ContainSubstring("Error creating cache path")))
+				d.MustPath()
+			}).To(PanicWith(ContainSubstring("creating directory")))
 		})
 
 		It("is called when LogFile path is not writable", func() {

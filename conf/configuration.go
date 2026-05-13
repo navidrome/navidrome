@@ -2,6 +2,7 @@ package conf
 
 import (
 	"cmp"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/dustin/go-humanize"
 	"github.com/go-viper/encoding/ini"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/kr/pretty"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
@@ -29,8 +31,8 @@ type configOptions struct {
 	UnixSocketPerm                  string
 	EnforceNonRootUser              bool
 	MusicFolder                     string
-	DataFolder                      string
-	CacheFolder                     string
+	DataFolder                      Dir
+	CacheFolder                     Dir
 	DbPath                          string
 	LogLevel                        string
 	LogFile                         string
@@ -229,7 +231,7 @@ type jukeboxOptions struct {
 
 type backupOptions struct {
 	Count    int
-	Path     string
+	Path     Dir
 	Schedule string
 }
 
@@ -247,7 +249,7 @@ type inspectOptions struct {
 
 type pluginsOptions struct {
 	Enabled    bool
-	Folder     string
+	Folder     Dir
 	CacheSize  string
 	AutoReload bool
 	LogLevel   string
@@ -287,6 +289,19 @@ var (
 	hooks  []func()
 )
 
+// SnapshotConfig returns a function that, when called, restores Server to the
+// state it was in when SnapshotConfig was called. It uses JSON round-tripping
+// so that Dir fields (which contain sync.Once) get fresh zero-value mutexes
+// in the restored copy. Intended for use in tests.
+func SnapshotConfig() func() {
+	snapshot, _ := json.Marshal(Server)
+	return func() {
+		var restored configOptions
+		_ = json.Unmarshal(snapshot, &restored)
+		Server = &restored
+	}
+}
+
 func LoadFromFile(confFile string) {
 	viper.SetConfigFile(confFile)
 	err := viper.ReadInConfig()
@@ -307,7 +322,13 @@ func Load(noConfigDump bool) {
 	mapDeprecatedOption("CoverJpegQuality", "CoverArtQuality")
 	mapDeprecatedOption("SimilarSongsMatchThreshold", "Matcher.FuzzyThreshold")
 
-	err := viper.Unmarshal(&Server)
+	err := viper.Unmarshal(&Server, viper.DecodeHook(
+		mapstructure.ComposeDecodeHookFunc(
+			mapstructure.TextUnmarshallerHookFunc(),
+			mapstructure.StringToTimeDurationHookFunc(),
+			mapstructure.StringToSliceHookFunc(","),
+		),
+	))
 	if err != nil {
 		logFatal("Error parsing config:", err)
 	}
@@ -317,44 +338,17 @@ func Load(noConfigDump bool) {
 		logFatal(err)
 	}
 
-	err = os.MkdirAll(Server.DataFolder, os.ModePerm)
-	if err != nil {
-		logFatal("Error creating data path:", err)
+	if Server.CacheFolder.String() == "" {
+		Server.CacheFolder = NewDir(filepath.Join(Server.DataFolder.String(), "cache"))
 	}
 
-	if Server.CacheFolder == "" {
-		Server.CacheFolder = filepath.Join(Server.DataFolder, "cache")
-	}
-	err = os.MkdirAll(Server.CacheFolder, os.ModePerm)
-	if err != nil {
-		logFatal("Error creating cache path:", err)
-	}
-
-	err = os.MkdirAll(filepath.Join(Server.DataFolder, consts.ArtworkFolder), os.ModePerm)
-	if err != nil {
-		logFatal("Error creating artwork path:", err)
-	}
-
-	if Server.Plugins.Enabled {
-		if Server.Plugins.Folder == "" {
-			Server.Plugins.Folder = filepath.Join(Server.DataFolder, "plugins")
-		}
-		err = os.MkdirAll(Server.Plugins.Folder, 0700)
-		if err != nil {
-			logFatal("Error creating plugins path:", err)
-		}
+	if Server.Plugins.Enabled && Server.Plugins.Folder.String() == "" {
+		Server.Plugins.Folder = NewDir(filepath.Join(Server.DataFolder.String(), "plugins"))
 	}
 
 	Server.ConfigFile = viper.GetViper().ConfigFileUsed()
 	if Server.DbPath == "" {
-		Server.DbPath = filepath.Join(Server.DataFolder, consts.DefaultDbPath)
-	}
-
-	if Server.Backup.Path != "" {
-		err = os.MkdirAll(Server.Backup.Path, os.ModePerm)
-		if err != nil {
-			logFatal("Error creating backup path:", err)
-		}
+		Server.DbPath = filepath.Join(Server.DataFolder.String(), consts.DefaultDbPath)
 	}
 
 	out := os.Stderr
@@ -636,7 +630,7 @@ func validateScanSchedule() error {
 }
 
 func validateBackupSchedule() error {
-	if Server.Backup.Path == "" || Server.Backup.Schedule == "" || Server.Backup.Count == 0 {
+	if Server.Backup.Path.String() == "" || Server.Backup.Schedule == "" || Server.Backup.Count == 0 {
 		Server.Backup.Schedule = ""
 		return nil
 	}

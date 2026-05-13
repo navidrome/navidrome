@@ -16,6 +16,6 @@ var embedFS embed.FS
 func FS() fs.FS {
 	return merge.FS{
 		Base:    embedFS,
-		Overlay: os.DirFS(path.Join(conf.Server.DataFolder, "resources")),
+		Overlay: os.DirFS(path.Join(conf.Server.DataFolder.String(), "resources")),
 	}
 }
