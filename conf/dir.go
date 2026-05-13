@@ -55,6 +55,12 @@ func (d *Dir) MustPath() string {
 	return path
 }
 
+// GoString implements fmt.GoStringer so that %#v (used by pretty.Sprintf)
+// prints the path string instead of the internal struct fields.
+func (d Dir) GoString() string { //nolint:govet
+	return fmt.Sprintf("%q", d.path)
+}
+
 // MarshalText returns the raw path bytes. No side effects.
 func (d *Dir) MarshalText() ([]byte, error) {
 	return []byte(d.path), nil
