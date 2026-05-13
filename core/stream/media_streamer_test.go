@@ -23,7 +23,8 @@ var _ = Describe("MediaStreamer", func() {
 
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
-		conf.Server.CacheFolder, _ = os.MkdirTemp("", "file_caches")
+		cacheDir, _ := os.MkdirTemp("", "file_caches")
+		conf.Server.CacheFolder = conf.NewDir(cacheDir)
 		conf.Server.TranscodingCacheSize = "100MB"
 		ds = &tests.MockDataStore{MockedTranscoding: &tests.MockTranscodingRepo{}}
 		ds.MediaFile(ctx).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
@@ -34,7 +35,7 @@ var _ = Describe("MediaStreamer", func() {
 		streamer = stream.NewMediaStreamer(ds, ffmpeg, testCache)
 	})
 	AfterEach(func() {
-		_ = os.RemoveAll(conf.Server.CacheFolder)
+		_ = os.RemoveAll(conf.Server.CacheFolder.String())
 	})
 
 	Context("NewStream", func() {

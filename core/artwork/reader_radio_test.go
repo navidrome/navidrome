@@ -21,7 +21,7 @@ var _ = Describe("radioArtworkReader", func() {
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
 		tempDir = GinkgoT().TempDir()
-		conf.Server.DataFolder = tempDir
+		conf.Server.DataFolder = conf.NewDir(tempDir)
 
 		Expect(os.MkdirAll(filepath.Join(tempDir, "artwork", "radio"), 0755)).To(Succeed())
 

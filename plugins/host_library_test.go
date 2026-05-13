@@ -263,7 +263,7 @@ var _ = Describe("LibraryService", Ordered, func() {
 			// the service registration and configuration without full plugin execution
 			DeferCleanup(configtest.SetupConfig())
 			conf.Server.Plugins.Enabled = true
-			conf.Server.Plugins.Folder = tmpDir
+			conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
 
 			// Create mock &tests.MockLibraryRepo{}
 			mockLibRepo := &tests.MockLibraryRepo{}
@@ -357,7 +357,7 @@ var _ = Describe("LibraryService Integration", Ordered, func() {
 		// Setup config
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.Plugins.Enabled = true
-		conf.Server.Plugins.Folder = tmpDir
+		conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
 		conf.Server.Plugins.AutoReload = false
 
 		// Setup mock DataStore with pre-enabled plugin and library
