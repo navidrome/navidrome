@@ -50,7 +50,7 @@ func (d *Dir) Path() (string, error) {
 func (d *Dir) MustPath() string {
 	path, err := d.Path()
 	if err != nil {
-		logFatal(err)
+		logFatal("creating directory:", err)
 	}
 	return path
 }
