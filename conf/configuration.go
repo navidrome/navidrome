@@ -345,8 +345,12 @@ func Load(noConfigDump bool) {
 		Server.CacheFolder = NewDir(filepath.Join(Server.DataFolder.String(), "cache"))
 	}
 
-	if Server.Plugins.Enabled && Server.Plugins.Folder.String() == "" {
-		Server.Plugins.Folder = NewDirWithPerm(filepath.Join(Server.DataFolder.String(), "plugins"), 0700)
+	if Server.Plugins.Enabled {
+		if Server.Plugins.Folder.String() == "" {
+			Server.Plugins.Folder = NewDirWithPerm(filepath.Join(Server.DataFolder.String(), "plugins"), 0700)
+		} else {
+			Server.Plugins.Folder = NewDirWithPerm(Server.Plugins.Folder.String(), 0700)
+		}
 	}
 
 	Server.ConfigFile = viper.GetViper().ConfigFileUsed()
@@ -356,6 +360,9 @@ func Load(noConfigDump bool) {
 
 	out := os.Stderr
 	if Server.LogFile != "" {
+		if mkErr := os.MkdirAll(filepath.Dir(Server.LogFile), os.ModePerm); mkErr != nil {
+			logFatal(fmt.Sprintf("Error creating log file directory: %s", mkErr.Error()))
+		}
 		out, err = os.OpenFile(Server.LogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			logFatal(fmt.Sprintf("Error opening log file %s: %s", Server.LogFile, err.Error()))
