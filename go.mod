@@ -9,6 +9,8 @@ require (
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/andybalholm/cascadia v1.3.3
 	github.com/bmatcuk/doublestar/v4 v4.10.0
+	github.com/bogem/id3v2 v1.1.1
+	github.com/go-flac/go-flac v0.3.1
 	github.com/deluan/rest v0.0.0-20211102003136-6260bc399cbf
 	github.com/deluan/sanitize v0.0.0-20241120162836-fdfd8fdfaa55
 	github.com/dexterlb/mpvipc v0.0.0-20241005113212-7cdefca0e933
