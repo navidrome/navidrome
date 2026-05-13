@@ -63,7 +63,7 @@ func setupHarness() {
 	// Reuse the suite-level DB path so the singleton connection keeps working
 	// across specs (see suiteDBTempDir comment).
 	conf.Server.DbPath = filepath.Join(suiteDBTempDir, "artwork-e2e.db") + "?_journal_mode=WAL"
-	conf.Server.DataFolder = tempDir
+	conf.Server.DataFolder = conf.NewDir(tempDir)
 	conf.Server.MusicFolder = fakeLibPath
 	conf.Server.DevExternalScanner = false
 	conf.Server.ImageCacheSize = "0" // disabled cache → reader runs on every call
