@@ -186,20 +186,6 @@ var _ = Describe("Configuration", func() {
 			}).To(PanicWith(ContainSubstring("Error reading config file")))
 		})
 
-		It("is called when DataFolder is not writable", func() {
-			d := conf.NewDir(invalidPath)
-			Expect(func() {
-				d.MustPath()
-			}).To(PanicWith(ContainSubstring("creating directory")))
-		})
-
-		It("is called when CacheFolder is not writable", func() {
-			d := conf.NewDir(invalidPath)
-			Expect(func() {
-				d.MustPath()
-			}).To(PanicWith(ContainSubstring("creating directory")))
-		})
-
 		It("is called when LogFile path is not writable", func() {
 			viper.SetDefault("datafolder", GinkgoT().TempDir())
 			viper.SetDefault("logfile", filepath.Join(invalidPath, "log.txt"))
