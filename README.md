@@ -43,7 +43,23 @@ docker compose -f docker-compose.dev.yml up --build
 docker compose -f docker-compose.dev.yml up
 ```
 
-Open **http://localhost:4533**. Default credentials are **`admin` / `admin`**. Drop your audio files into the `music/` folder at the project root — the scanner picks them up automatically.
+Open **http://localhost:4533**.
+
+### Default credentials
+
+| Username | Password |
+|----------|----------|
+| `admin`  | `admin`  |
+
+### Adding music
+
+Place your audio files in the `music/` folder at the project root. If the folder doesn't exist yet, create it first:
+
+```bash
+mkdir music
+```
+
+The scanner picks up new files automatically.
 
 ```bash
 # Run in the background
@@ -58,7 +74,22 @@ docker compose -f docker-compose.dev.yml down
 
 Both services support hot-reload: editing `.go` files restarts the backend via `reflex`, and editing frontend source triggers Vite's HMR.
 
-> See [CLAUDE.md](CLAUDE.md) for additional development notes, including how to inspect the database.
+### Inspecting the database
+
+Open a SQLite shell inside the running backend container:
+
+```bash
+docker compose -f docker-compose.dev.yml exec backend sqlite3 /data/navidrome.db
+```
+
+Useful commands once inside:
+
+```sql
+.tables               -- list all tables
+.schema media_file    -- show a table's schema
+SELECT * FROM user;   -- query data
+.quit                 -- exit
+```
 
 ## Installation
 
