@@ -1,0 +1,41 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "4633:4633"
+    volumes:
+      - .:/workspace
+      - ./music:/music:ro
+      - ./data:/data
+      - go-mod-cache:/go/pkg/mod
+      - go-build-cache:/root/.cache/go-build
+    environment:
+      ND_PORT: "4633"
+      ND_MUSICFOLDER: /music
+      ND_DATAFOLDER: /data
+      ND_LOGLEVEL: info
+      ND_ENABLEINSIGHTSCOLLECTOR: "false"
+      ND_DEVAUTOCREATEADMINPASSWORD: "admin"
+    command: sh -c "mkdir -p ui/build/3rdparty && touch ui/build/3rdparty/placeholder && go mod download && go tool reflex -d none -c reflex.conf"
+
+  frontend:
+    image: node:24
+    working_dir: /app
+    ports:
+      - "4533:4533"
+    volumes:
+      - ./ui:/app
+      - node-modules:/app/node_modules
+    environment:
+      PORT: "4533"
+      BACKEND_HOST: backend
+    command: sh -c "npm ci && npm start"
+    depends_on:
+      - backend
+
+volumes:
+  go-mod-cache:
+  go-build-cache:
+  node-modules:
