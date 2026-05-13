@@ -48,8 +48,9 @@ var _ = Describe("walk_dir_tree", func() {
 					},
 				}
 				job = &scanJob{
-					fs:  fsys,
-					lib: model.Library{Path: "/music"},
+					fs:               fsys,
+					lib:              model.Library{Path: "/music"},
+					visitedRealPaths: make(map[string]struct{}),
 				}
 			})
 
@@ -120,8 +121,9 @@ var _ = Describe("walk_dir_tree", func() {
 					},
 				}
 				job = &scanJob{
-					fs:  fsys,
-					lib: model.Library{Path: "/music"},
+					fs:               fsys,
+					lib:              model.Library{Path: "/music"},
+					visitedRealPaths: make(map[string]struct{}),
 				}
 			})
 
@@ -214,6 +216,47 @@ var _ = Describe("walk_dir_tree", func() {
 
 				// Folders not in targets should remain in lastUpdates
 				Expect(job.lastUpdates).To(HaveKey(model.FolderID(job.lib, "OtherArtist/Album3")))
+			})
+		})
+
+		Context("with symlink cycles", func() {
+			var tmpDir string
+
+			BeforeEach(func() {
+				DeferCleanup(configtest.SetupConfig())
+				conf.Server.Scanner.FollowSymlinks = true
+				ctx = GinkgoT().Context()
+
+				var err error
+				tmpDir, err = os.MkdirTemp("", "navidrome-test-*")
+				Expect(err).ToNot(HaveOccurred())
+				DeferCleanup(func() { os.RemoveAll(tmpDir) })
+
+				// Structure: tmpDir/tracks/track.mp3, tmpDir/tracks/loop -> tmpDir (cycle back to root)
+				tracksDir := filepath.Join(tmpDir, "tracks")
+				Expect(os.MkdirAll(tracksDir, 0755)).To(Succeed())
+				Expect(os.WriteFile(filepath.Join(tracksDir, "track.mp3"), []byte{}, 0600)).To(Succeed())
+				Expect(os.Symlink(tmpDir, filepath.Join(tracksDir, "loop"))).To(Succeed())
+
+				job = &scanJob{
+					fs:               &localMusicFS{base: os.DirFS(tmpDir)},
+					lib:              model.Library{Path: tmpDir},
+					visitedRealPaths: make(map[string]struct{}),
+				}
+			})
+
+			It("should not follow cyclic symlinks", func() {
+				results, err := walkDirTree(ctx, job)
+				Expect(err).ToNot(HaveOccurred())
+
+				folders := map[string]*folderEntry{}
+				for folder := range results {
+					folders[folder.path] = folder
+				}
+
+				Expect(folders).To(HaveKey("."))
+				Expect(folders).To(HaveKey("tracks"))
+				Expect(folders).ToNot(HaveKey("tracks/loop"))
 			})
 		})
 	})
@@ -351,6 +394,16 @@ func (fd *fakeDirFile) ReadDir(int) ([]fs.DirEntry, error) {
 		dirs = append(dirs, e)
 	}
 	return dirs, nil
+}
+
+// localMusicFS wraps an os.DirFS for tests that need real OS symlinks
+type localMusicFS struct {
+	storage.MusicFS // zero value; ReadTags not called in these tests
+	base            fs.FS
+}
+
+func (l *localMusicFS) Open(name string) (fs.File, error) {
+	return l.base.Open(name)
 }
 
 func getDirEntry(baseDir, name string) os.DirEntry {

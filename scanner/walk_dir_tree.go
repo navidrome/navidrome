@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"maps"
 	"path"
+	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
@@ -115,6 +116,13 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string, checker *IgnoreC
 		return folder, children, err
 	}
 
+	// Mark current dir's real path as visited to detect symlink cycles
+	if conf.Server.Scanner.FollowSymlinks && job.visitedRealPaths != nil {
+		if realPath, e := filepath.EvalSymlinks(filepath.Join(job.lib.Path, dirPath)); e == nil {
+			job.visitedRealPaths[realPath] = struct{}{}
+		}
+	}
+
 	entries := fullReadDir(ctx, dirFile)
 	children = make([]string, 0, len(entries))
 	for _, entry := range entries {
@@ -136,6 +144,15 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string, checker *IgnoreC
 			continue
 		}
 		if isDir && !isDirIgnored(entry.Name()) && isDirReadable(ctx, job.fs, entryPath) {
+			if entry.Type()&fs.ModeSymlink != 0 && job.visitedRealPaths != nil {
+				realPath, e := filepath.EvalSymlinks(filepath.Join(job.lib.Path, entryPath))
+				if e == nil {
+					if _, seen := job.visitedRealPaths[realPath]; seen {
+						log.Warn(ctx, "Scanner: Skipping symlink cycle", "path", entryPath)
+						continue
+					}
+				}
+			}
 			children = append(children, entryPath)
 			folder.numSubFolders++
 		} else {
