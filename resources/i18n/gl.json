@@ -38,7 +38,9 @@
         "missing": "Falta",
         "libraryName": "Biblioteca",
         "composer": "Composición",
-        "disc": "Disco %{discNumber}"
+        "disc": "Disco %{discNumber}",
+        "albumGain": "Gañancia de Album",
+        "trackGain": "Gañancia de Canción"
       },
       "actions": {
         "addToQueue": "Ao final da cola",
