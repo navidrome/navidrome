@@ -38,7 +38,9 @@
         "missing": "Puuttuva",
         "libraryName": "Kirjasto",
         "composer": "Säveltäjä",
-        "disc": "Levy %{discNumber}"
+        "disc": "Levy %{discNumber}",
+        "albumGain": "Albumin äänenvoimakkuus",
+        "trackGain": "Kappaleen äänenvoimakkuus"
       },
       "actions": {
         "addToQueue": "Lisää jonoon",
