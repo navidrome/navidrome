@@ -23,6 +23,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/storage/local"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/metadata"
 	"go.senan.xyz/taglib"
 )
@@ -37,6 +38,27 @@ func (e extractor) Parse(files ...string) (map[string]metadata.Info, error) {
 		props, err := e.extractMetadata(path)
 		if err != nil {
 			continue
+			log.Warn("gotaglib: Error reading metadata from file. Importing without metadata", "filePath", path, err)
++			f, openErr := e.fs.Open(path)
++			if openErr != nil {
++				continue
++			}
++			info, statErr := f.Stat()
++			_ = f.Close()
++			if statErr != nil {
++				continue
++			}
++			fileInfo, ok := info.(metadata.FileInfo)
++			if !ok {
++				continue
++			}
++			results[path] = metadata.Info{
++				FileInfo:        fileInfo,
++				Tags:            model.RawTags{},
++				AudioProperties: metadata.AudioProperties{},
++				HasPicture:      false,
++			}
++			continue
 		}
 		results[path] = *props
 	}
