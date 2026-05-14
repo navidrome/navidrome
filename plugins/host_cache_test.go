@@ -343,7 +343,7 @@ var _ = Describe("CacheService Integration", Ordered, func() {
 		// Setup config
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.Plugins.Enabled = true
-		conf.Server.Plugins.Folder = tmpDir
+		conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
 		conf.Server.Plugins.AutoReload = false
 
 		// Setup mock DataStore with pre-enabled plugin

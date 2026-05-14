@@ -2,6 +2,7 @@ package conf
 
 import (
 	"cmp"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/dustin/go-humanize"
 	"github.com/go-viper/encoding/ini"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/kr/pretty"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
@@ -29,8 +31,8 @@ type configOptions struct {
 	UnixSocketPerm                  string
 	EnforceNonRootUser              bool
 	MusicFolder                     string
-	DataFolder                      string
-	CacheFolder                     string
+	DataFolder                      Dir
+	CacheFolder                     Dir
 	DbPath                          string
 	LogLevel                        string
 	LogFile                         string
@@ -134,6 +136,7 @@ type configOptions struct {
 	DevArtworkMaxRequests             int
 	DevArtworkThrottleBacklogLimit    int
 	DevArtworkThrottleBacklogTimeout  time.Duration
+	DevArtworkThrottleBuffered        bool
 	DevArtistInfoTimeToLive           time.Duration
 	DevAlbumInfoTimeToLive            time.Duration
 	DevExternalScanner                bool
@@ -229,7 +232,7 @@ type jukeboxOptions struct {
 
 type backupOptions struct {
 	Count    int
-	Path     string
+	Path     Dir
 	Schedule string
 }
 
@@ -247,7 +250,7 @@ type inspectOptions struct {
 
 type pluginsOptions struct {
 	Enabled    bool
-	Folder     string
+	Folder     Dir
 	CacheSize  string
 	AutoReload bool
 	LogLevel   string
@@ -287,6 +290,22 @@ var (
 	hooks  []func()
 )
 
+// SnapshotConfig returns a function that restores Server to its current state.
+// Uses JSON round-tripping so Dir fields get fresh sync.Once values.
+func SnapshotConfig() func() {
+	snapshot, err := json.Marshal(Server)
+	if err != nil {
+		panic(fmt.Sprintf("SnapshotConfig: marshal failed: %v", err))
+	}
+	return func() {
+		var restored configOptions
+		if err := json.Unmarshal(snapshot, &restored); err != nil {
+			panic(fmt.Sprintf("SnapshotConfig: unmarshal failed: %v", err))
+		}
+		Server = &restored
+	}
+}
+
 func LoadFromFile(confFile string) {
 	viper.SetConfigFile(confFile)
 	err := viper.ReadInConfig()
@@ -307,7 +326,13 @@ func Load(noConfigDump bool) {
 	mapDeprecatedOption("CoverJpegQuality", "CoverArtQuality")
 	mapDeprecatedOption("SimilarSongsMatchThreshold", "Matcher.FuzzyThreshold")
 
-	err := viper.Unmarshal(&Server)
+	err := viper.Unmarshal(&Server, viper.DecodeHook(
+		mapstructure.ComposeDecodeHookFunc(
+			mapstructure.TextUnmarshallerHookFunc(),
+			mapstructure.StringToTimeDurationHookFunc(),
+			mapstructure.StringToSliceHookFunc(","),
+		),
+	))
 	if err != nil {
 		logFatal("Error parsing config:", err)
 	}
@@ -317,48 +342,28 @@ func Load(noConfigDump bool) {
 		logFatal(err)
 	}
 
-	err = os.MkdirAll(Server.DataFolder, os.ModePerm)
-	if err != nil {
-		logFatal("Error creating data path:", err)
-	}
-
-	if Server.CacheFolder == "" {
-		Server.CacheFolder = filepath.Join(Server.DataFolder, "cache")
-	}
-	err = os.MkdirAll(Server.CacheFolder, os.ModePerm)
-	if err != nil {
-		logFatal("Error creating cache path:", err)
-	}
-
-	err = os.MkdirAll(filepath.Join(Server.DataFolder, consts.ArtworkFolder), os.ModePerm)
-	if err != nil {
-		logFatal("Error creating artwork path:", err)
+	if Server.CacheFolder.String() == "" {
+		Server.CacheFolder = NewDir(filepath.Join(Server.DataFolder.String(), "cache"))
 	}
 
 	if Server.Plugins.Enabled {
-		if Server.Plugins.Folder == "" {
-			Server.Plugins.Folder = filepath.Join(Server.DataFolder, "plugins")
-		}
-		err = os.MkdirAll(Server.Plugins.Folder, 0700)
-		if err != nil {
-			logFatal("Error creating plugins path:", err)
+		if Server.Plugins.Folder.String() == "" {
+			Server.Plugins.Folder = NewDirWithPerm(filepath.Join(Server.DataFolder.String(), "plugins"), 0700)
+		} else {
+			Server.Plugins.Folder = NewDirWithPerm(Server.Plugins.Folder.String(), 0700)
 		}
 	}
 
 	Server.ConfigFile = viper.GetViper().ConfigFileUsed()
 	if Server.DbPath == "" {
-		Server.DbPath = filepath.Join(Server.DataFolder, consts.DefaultDbPath)
-	}
-
-	if Server.Backup.Path != "" {
-		err = os.MkdirAll(Server.Backup.Path, os.ModePerm)
-		if err != nil {
-			logFatal("Error creating backup path:", err)
-		}
+		Server.DbPath = filepath.Join(Server.DataFolder.String(), consts.DefaultDbPath)
 	}
 
 	out := os.Stderr
 	if Server.LogFile != "" {
+		if mkErr := os.MkdirAll(filepath.Dir(Server.LogFile), os.ModePerm); mkErr != nil {
+			logFatal(fmt.Sprintf("Error creating log file directory: %s", mkErr.Error()))
+		}
 		out, err = os.OpenFile(Server.LogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			logFatal(fmt.Sprintf("Error opening log file %s: %s", Server.LogFile, err.Error()))
@@ -636,7 +641,7 @@ func validateScanSchedule() error {
 }
 
 func validateBackupSchedule() error {
-	if Server.Backup.Path == "" || Server.Backup.Schedule == "" || Server.Backup.Count == 0 {
+	if Server.Backup.Path.String() == "" || Server.Backup.Schedule == "" || Server.Backup.Count == 0 {
 		Server.Backup.Schedule = ""
 		return nil
 	}
@@ -863,6 +868,7 @@ func setViperDefaults() {
 	viper.SetDefault("devartworkmaxrequests", max(2, runtime.NumCPU()/2))
 	viper.SetDefault("devartworkthrottlebackloglimit", consts.RequestThrottleBacklogLimit)
 	viper.SetDefault("devartworkthrottlebacklogtimeout", consts.RequestThrottleBacklogTimeout)
+	viper.SetDefault("devartworkthrottlebuffered", true)
 	viper.SetDefault("devartistinfotimetolive", consts.ArtistInfoTimeToLive)
 	viper.SetDefault("devalbuminfotimetolive", consts.AlbumInfoTimeToLive)
 	viper.SetDefault("devexternalscanner", true)

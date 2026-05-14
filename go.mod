@@ -3,7 +3,7 @@ module github.com/navidrome/navidrome
 go 1.26
 
 // Fork to implement raw tags support
-replace go.senan.xyz/taglib => github.com/deluan/go-taglib v0.0.0-20260407173416-cf47afbaa67a
+replace go.senan.xyz/taglib => github.com/deluan/go-taglib v0.0.0-20260511232939-ccd334abae3a
 
 require (
 	github.com/Masterminds/squirrel v1.5.4
@@ -25,6 +25,7 @@ require (
 	github.com/go-chi/httprate v0.15.0
 	github.com/go-chi/jwtauth/v5 v5.4.0
 	github.com/go-viper/encoding/ini v0.1.1
+	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/gohugoio/hashstructure v0.6.0
 	github.com/google/go-pipeline v0.0.0-20230411140531-6cbedfc1d3fc
 	github.com/google/uuid v1.6.0
@@ -34,7 +35,7 @@ require (
 	github.com/jellydator/ttlcache/v3 v3.4.0
 	github.com/kardianos/service v1.2.4
 	github.com/kr/pretty v0.3.1
-	github.com/lestrrat-go/jwx/v3 v3.1.0
+	github.com/lestrrat-go/jwx/v3 v3.1.1
 	github.com/mattn/go-sqlite3 v1.14.44
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/mileusna/useragent v1.3.5
@@ -53,17 +54,17 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
-	github.com/tetratelabs/wazero v1.11.0
+	github.com/tetratelabs/wazero v1.11.1-0.20260428013916-2bbd517b7633
 	github.com/unrolled/secure v1.17.0
 	github.com/xrash/smetrics v0.0.0-20250705151800-55b8f293f342
 	go.senan.xyz/taglib v0.11.1
 	go.uber.org/goleak v1.3.0
-	golang.org/x/image v0.39.0
-	golang.org/x/net v0.53.0
+	golang.org/x/image v0.40.0
+	golang.org/x/net v0.54.0
 	golang.org/x/sync v0.20.0
-	golang.org/x/sys v0.43.0
-	golang.org/x/term v0.42.0
-	golang.org/x/text v0.36.0
+	golang.org/x/sys v0.44.0
+	golang.org/x/term v0.43.0
+	golang.org/x/text v0.37.0
 	golang.org/x/time v0.15.0
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -81,19 +82,18 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.1 // indirect
 	github.com/dylibso/observe-sdk/go v0.0.0-20240828172851-9145d8ad07e1 // indirect
 	github.com/ebitengine/purego v0.10.0 // indirect
-	github.com/fsnotify/fsnotify v1.10.0 // indirect
+	github.com/fsnotify/fsnotify v1.10.1 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
-	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/goccy/go-json v0.10.6 // indirect
 	github.com/goccy/go-yaml v1.19.2 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
-	github.com/google/pprof v0.0.0-20260402051712-545e8a4df936 // indirect
+	github.com/google/pprof v0.0.0-20260507013755-92041b743c96 // indirect
 	github.com/google/subcommands v1.2.0 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
-	github.com/ianlancetaylor/demangle v0.0.0-20260502231528-600b0e508b8c // indirect
+	github.com/ianlancetaylor/demangle v0.0.0-20260505044615-1ff4bf46051f // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
@@ -133,10 +133,10 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/crypto v0.50.0 // indirect
-	golang.org/x/mod v0.35.0 // indirect
-	golang.org/x/telemetry v0.0.0-20260409153401-be6f6cb8b1fa // indirect
-	golang.org/x/tools v0.44.0 // indirect
+	golang.org/x/crypto v0.51.0 // indirect
+	golang.org/x/mod v0.36.0 // indirect
+	golang.org/x/telemetry v0.0.0-20260508192327-42602be52be6 // indirect
+	golang.org/x/tools v0.45.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/ini.v1 v1.67.2 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect

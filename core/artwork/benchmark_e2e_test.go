@@ -52,7 +52,7 @@ func setupE2EBenchmark(b *testing.B, cacheSize string) (Artwork, model.ArtworkID
 
 	// Configure cache
 	conf.Server.ImageCacheSize = cacheSize
-	conf.Server.CacheFolder = tmpDir
+	conf.Server.CacheFolder = conf.NewDir(tmpDir)
 	conf.Server.CoverArtQuality = 75
 	conf.Server.CoverArtPriority = "cover.*"
 

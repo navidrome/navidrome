@@ -45,8 +45,8 @@ func (s *scannerExternal) scan(ctx context.Context, fullScan bool, targets []mod
 		"scan",
 		"--nobanner", "--subprocess",
 		"--configfile", conf.Server.ConfigFile,
-		"--datafolder", conf.Server.DataFolder,
-		"--cachefolder", conf.Server.CacheFolder,
+		"--datafolder", conf.Server.DataFolder.String(),
+		"--cachefolder", conf.Server.CacheFolder.String(),
 	}
 
 	// Add targets if provided

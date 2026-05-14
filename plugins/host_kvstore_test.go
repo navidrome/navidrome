@@ -34,7 +34,7 @@ var _ = Describe("KVStoreService", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		DeferCleanup(configtest.SetupConfig())
-		conf.Server.DataFolder = tmpDir
+		conf.Server.DataFolder = conf.NewDir(tmpDir)
 
 		// Create service with 1KB limit for testing
 		maxSize := "1KB"
@@ -705,9 +705,9 @@ var _ = Describe("KVStoreService Integration", Ordered, func() {
 		// Setup config
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.Plugins.Enabled = true
-		conf.Server.Plugins.Folder = tmpDir
+		conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
 		conf.Server.Plugins.AutoReload = false
-		conf.Server.DataFolder = tmpDir
+		conf.Server.DataFolder = conf.NewDir(tmpDir)
 
 		// Setup mock DataStore with pre-enabled plugin
 		mockPluginRepo := tests.CreateMockPluginRepo()

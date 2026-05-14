@@ -32,6 +32,8 @@
       <contributors role="role2" subRole="subrole4">
         <artist id="2" name="artist2"></artist>
       </contributors>
+      <groupings>Soundtrack</groupings>
+      <groupings>Live</groupings>
     </song>
     <song id="2" isDir="true" title="title" album="album" artist="artist" track="1" year="1985" genre="Rock" coverArt="1" size="8421341" contentType="audio/flac" suffix="flac" starred="2016-03-02T20:30:00Z" transcodedContentType="audio/mpeg" transcodedSuffix="mp3" duration="146" bitRate="320">
       <replayGain trackGain="0" albumGain="0" trackPeak="0" albumPeak="0" baseGain="0" fallbackGain="0"></replayGain>

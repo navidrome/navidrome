@@ -38,6 +38,8 @@ func Db() *sql.DB {
 		if Path == ":memory:" {
 			Path = "file::memory:?cache=shared&_foreign_keys=on"
 			conf.Server.DbPath = Path
+		} else {
+			conf.Server.DataFolder.MustPath()
 		}
 		log.Debug("Opening DataBase", "dbPath", Path, "driver", Driver)
 		db, err := sql.Open(Driver, Path)

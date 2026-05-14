@@ -100,7 +100,7 @@ func WithAdminUser(ctx context.Context, ds model.DataStore) context.Context {
 		} else {
 			log.Error(ctx, "No admin user found!", err)
 		}
-		u = &model.User{}
+		u = &model.User{IsAdmin: true, UserName: "admin"}
 	}
 
 	ctx = request.WithUsername(ctx, u.UserName)

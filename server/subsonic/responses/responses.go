@@ -189,6 +189,7 @@ type OpenSubsonicChild struct {
 	Contributors       Array[Contributor]  `xml:"contributors,omitempty"            json:"contributors"`
 	DisplayComposer    string              `xml:"displayComposer,attr,omitempty"    json:"displayComposer"`
 	ExplicitStatus     string              `xml:"explicitStatus,attr,omitempty"     json:"explicitStatus"`
+	Groupings          Array[string]       `xml:"groupings,omitempty"               json:"groupings"`
 }
 
 type Songs struct {

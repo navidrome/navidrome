@@ -186,27 +186,12 @@ var _ = Describe("Configuration", func() {
 			}).To(PanicWith(ContainSubstring("Error reading config file")))
 		})
 
-		It("is called when DataFolder is not writable", func() {
-			viper.SetDefault("datafolder", invalidPath)
-			Expect(func() {
-				conf.Load(true)
-			}).To(PanicWith(ContainSubstring("Error creating data path")))
-		})
-
-		It("is called when CacheFolder is not writable", func() {
-			viper.SetDefault("datafolder", GinkgoT().TempDir())
-			viper.SetDefault("cachefolder", invalidPath)
-			Expect(func() {
-				conf.Load(true)
-			}).To(PanicWith(ContainSubstring("Error creating cache path")))
-		})
-
 		It("is called when LogFile path is not writable", func() {
 			viper.SetDefault("datafolder", GinkgoT().TempDir())
 			viper.SetDefault("logfile", filepath.Join(invalidPath, "log.txt"))
 			Expect(func() {
 				conf.Load(true)
-			}).To(PanicWith(ContainSubstring("Error opening log file")))
+			}).To(PanicWith(ContainSubstring("Error creating log file directory")))
 		})
 
 		It("is called when BaseURL is invalid", func() {
