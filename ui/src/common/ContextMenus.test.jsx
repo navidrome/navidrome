@@ -67,6 +67,17 @@ describe('AlbumContextMenu', () => {
     render(<AlbumContextMenu record={albumRecord} />)
     expect(capturedLoveButtonProps.resource).toBe('album')
   })
+
+  it('hides LoveButton when record.missing is true', () => {
+    render(<AlbumContextMenu record={{ ...albumRecord, missing: true }} />)
+    expect(capturedLoveButtonProps.visible).toBe(false)
+    expect(screen.queryByTestId('love-button')).not.toBeInTheDocument()
+  })
+
+  it('renders nothing when record is undefined', () => {
+    const { container } = render(<AlbumContextMenu />)
+    expect(container).toBeEmptyDOMElement()
+  })
 })
 
 describe('ArtistContextMenu', () => {
@@ -95,5 +106,16 @@ describe('ArtistContextMenu', () => {
   it('passes resource="artist" to LoveButton', () => {
     render(<ArtistContextMenu record={artistRecord} />)
     expect(capturedLoveButtonProps.resource).toBe('artist')
+  })
+
+  it('hides LoveButton when record.missing is true', () => {
+    render(<ArtistContextMenu record={{ ...artistRecord, missing: true }} />)
+    expect(capturedLoveButtonProps.visible).toBe(false)
+    expect(screen.queryByTestId('love-button')).not.toBeInTheDocument()
+  })
+
+  it('renders nothing when record is undefined', () => {
+    const { container } = render(<ArtistContextMenu />)
+    expect(container).toBeEmptyDOMElement()
   })
 })
