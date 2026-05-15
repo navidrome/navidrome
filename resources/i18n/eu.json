@@ -2,7 +2,7 @@
   "languageName": "Euskara",
   "resources": {
     "song": {
-      "name": "Abestia |||| Abesti",
+      "name": "Abestia |||| Abestiak",
       "fields": {
         "albumArtist": "Albumaren artista",
         "duration": "Iraupena",
@@ -22,6 +22,8 @@
         "bitRate": "Bit-tasa",
         "bitDepth": "Bit-sakonera",
         "sampleRate": "Lagin-tasa",
+        "albumGain": "Album-irabazia",
+        "trackGain": "Pista-irabazia",
         "channels": "Kanalak",
         "disc": "%{discNumber}. diskoa",
         "discSubtitle": "Diskoaren azpititulua",
@@ -53,7 +55,7 @@
       }
     },
     "album": {
-      "name": "Albuma |||| Album",
+      "name": "Albuma |||| Albumak",
       "fields": {
         "albumArtist": "Albumaren artista",
         "artist": "Artista",
@@ -104,7 +106,7 @@
       }
     },
     "artist": {
-      "name": "Artista |||| Artista",
+      "name": "Artista |||| Artistak",
       "fields": {
         "name": "Izena",
         "albumCount": "Album kopurua",
@@ -117,7 +119,7 @@
         "missing": "Ez da aurkitu"
       },
       "roles": {
-        "albumartist": "Albumeko egilea |||| Albumeko artistak",
+        "albumartist": "Albumeko artista |||| Albumeko artistak",
         "artist": "Artista |||| Artistak",
         "composer": "Konpositorea |||| Konpositoreak",
         "conductor": "Orkestra zuzendaria |||| Orkestra zuzendariak",
@@ -335,7 +337,7 @@
       }
     },
     "plugin": {
-      "name": "Plugina |||| Plugin",
+      "name": "Plugina |||| Pluginak",
       "fields": {
         "id": "IDa",
         "name": "Izena",
@@ -492,7 +494,7 @@
     "input": {
       "file": {
         "upload_several": "Jaregin edo hautatu igo nahi dituzun fitxategiak.",
-        "upload_single": "AJaregin edo hautatu igo nahi duzun fitxategia."
+        "upload_single": "Jaregin edo hautatu igo nahi duzun fitxategia."
       },
       "image": {
         "upload_several": "Jaregin edo hautatu igo nahi dituzun irudiak.",
@@ -537,9 +539,9 @@
       "skip_nav": "Joan edukira"
     },
     "notification": {
-      "updated": "Elementu bat eguneratu da |||| %{smart_count} elementu eguneratu dira",
+      "updated": "Elementua eguneratu da |||| %{smart_count} elementu eguneratu dira",
       "created": "Elementua sortu da",
-      "deleted": "Elementu bat ezabatu da |||| %{smart_count} elementu ezabatu dira.",
+      "deleted": "Elementua ezabatu da |||| %{smart_count} elementu ezabatu dira.",
       "bad_item": "Elementu okerra",
       "item_doesnt_exist": "Elementua ez dago",
       "http_error": "Errorea zerbitzariarekin komunikatzerakoan",
@@ -588,7 +590,7 @@
     "listenBrainzUnlinkSuccess": "ListenBrainz deskonektatu da eta erabiltzailearen ohiturak hirugarrenen zerbitzuekin partekatzea desaktibatu da",
     "listenBrainzUnlinkFailure": "Ezin izan da ListenBrainz deskonektatu",
     "openIn": {
-      "lastfm": "Ikusi Last.fm-n",
+      "lastfm": "Ikusi Last.fm-en",
       "musicbrainz": "Ikusi MusicBrainz-en"
     },
     "lastfmLink": "Irakurri gehiago…",
