@@ -106,7 +106,7 @@ const stylesheet = `
     color: #7aa2f7
 }
 
-.audio-lists-panel-content .audio-item:active .group:not([class=".player-delete"]) svg, .audio-lists-panel-content .audio-item:hover .group:not([class=".player-delete"]) svg {
+.audio-lists-panel-content .audio-item:active .group:not(.player-delete) svg, .audio-lists-panel-content .audio-item:hover .group:not(.player-delete) svg {
     color: #7aa2f7
 }
 

@@ -123,12 +123,8 @@ export default {
       },
     },
     MuiFormHelperText: {
-      root: {
-        Mui: {
-          error: {
-            color: red,
-          },
-        },
+      error: {
+        color: red,
       },
     },
     MuiToolbar: {
