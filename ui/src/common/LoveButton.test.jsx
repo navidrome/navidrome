@@ -26,6 +26,14 @@ vi.mock('../utils/validations', () => ({
   isDateSet: vi.fn(),
 }))
 
+vi.mock('@material-ui/icons/Favorite', () => ({
+  default: () => <span data-testid="favorite-icon" />,
+}))
+
+vi.mock('@material-ui/icons/FavoriteBorder', () => ({
+  default: () => <span data-testid="favorite-border-icon" />,
+}))
+
 describe('LoveButton', () => {
   const mockToggleLove = vi.fn()
 
@@ -83,18 +91,32 @@ describe('LoveButton', () => {
   })
 
   it('shows starredAt date as title when starredAt is set', () => {
-    useRecordContext.mockReturnValue({
-      id: 'song-1',
-      starred: true,
-      starredAt: '2024-01-15T12:00:00Z',
-    })
+    const starredAt = '2024-01-15T12:00:00Z'
+    useRecordContext.mockReturnValue({ id: 'song-1', starred: true, starredAt })
     isDateSet.mockReturnValue(true)
     render(<LoveButton resource="song" />)
-    expect(screen.getByRole('button')).toHaveAttribute('title')
+    expect(screen.getByRole('button')).toHaveAttribute(
+      'title',
+      new Date(starredAt).toLocaleString(),
+    )
+    expect(isDateSet).toHaveBeenCalledWith(starredAt)
   })
 
   it('has no title attribute when starredAt is not set', () => {
     render(<LoveButton resource="song" />)
     expect(screen.getByRole('button')).not.toHaveAttribute('title')
+  })
+
+  it('renders FavoriteIcon when record is starred', () => {
+    useRecordContext.mockReturnValue({ id: 'song-1', starred: true })
+    render(<LoveButton resource="song" />)
+    expect(screen.getByTestId('favorite-icon')).toBeInTheDocument()
+    expect(screen.queryByTestId('favorite-border-icon')).not.toBeInTheDocument()
+  })
+
+  it('renders FavoriteBorderIcon when record is not starred', () => {
+    render(<LoveButton resource="song" />)
+    expect(screen.getByTestId('favorite-border-icon')).toBeInTheDocument()
+    expect(screen.queryByTestId('favorite-icon')).not.toBeInTheDocument()
   })
 })
