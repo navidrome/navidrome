@@ -31,6 +31,7 @@ type Router struct {
 	client      *client
 	apiKey      string
 	secret      string
+	authURL     string
 }
 
 func NewRouter(ds model.DataStore) *Router {
@@ -38,13 +39,14 @@ func NewRouter(ds model.DataStore) *Router {
 		ds:          ds,
 		apiKey:      conf.Server.LastFM.ApiKey,
 		secret:      conf.Server.LastFM.Secret,
+		authURL:     conf.Server.LastFM.AuthURL,
 		sessionKeys: &agents.SessionKeys{DataStore: ds, KeyName: sessionKeyProperty},
 	}
 	r.Handler = r.routes()
 	hc := &http.Client{
 		Timeout: consts.DefaultHttpClientTimeOut,
 	}
-	r.client = newClient(r.apiKey, r.secret, hc)
+	r.client = newClient(r.apiKey, r.secret, conf.Server.LastFM.BaseURL, hc)
 	return r
 }
 
@@ -66,7 +68,8 @@ func (s *Router) routes() http.Handler {
 
 func (s *Router) getLinkStatus(w http.ResponseWriter, r *http.Request) {
 	resp := map[string]any{
-		"apiKey": s.apiKey,
+		"apiKey":  s.apiKey,
+		"authUrl": s.authURL,
 	}
 	u, _ := request.UserFrom(r.Context())
 	key, err := s.sessionKeys.Get(r.Context(), u.ID)
