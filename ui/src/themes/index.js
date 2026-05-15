@@ -15,6 +15,8 @@ import NutballTheme from './nutball'
 import AmusicTheme from './amusic'
 import SquiddiesGlassTheme from './SquiddiesGlass'
 import NautilineTheme from './nautiline'
+import TokyoNightTheme from './tokyoNight'
+import TokyoNightLightTheme from './tokyoNightLight'
 
 export default {
   // Classic default themes
@@ -37,4 +39,6 @@ export default {
   NutballTheme,
   SpotifyTheme,
   SquiddiesGlassTheme,
+  TokyoNightTheme,
+  TokyoNightLightTheme,
 }
