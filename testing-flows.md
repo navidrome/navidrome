@@ -43,3 +43,24 @@ curl "http://localhost:4533/rest/star?u=admin&t=47b1fbf1aaa6b36d0dec0c8ae0b1a6ef
 ```
 
 A `status: "ok"` with no error field means the item was successfully starred.
+
+## Running Star/Unstar Tests
+
+### Backend
+
+```bash
+go test ./server/subsonic/ --ginkgo.focus="Star/Unstar songs"
+```
+
+### Frontend
+
+```bash
+npm --prefix ui test -- useToggleLove.test.js --run
+```
+
+### Database
+
+```bash
+docker compose -f docker-compose.dev.yml exec backend \
+go test ./tests/db -run TestStarEndpoint -
+```
