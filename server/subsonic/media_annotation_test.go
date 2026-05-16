@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"time"
 
 	"github.com/navidrome/navidrome/core/scrobbler"
@@ -33,8 +34,6 @@ var _ = Describe("MediaAnnotationController", func() {
 
 	Describe("Scrobble", func() {
 		It("submit all scrobbles with only the id", func() {
-			// Back-date the baseline so the assertion still passes on platforms
-			// with millisecond clock resolution (e.g. Windows).
 			submissionTime := time.Now().Add(-time.Second)
 			r := newGetRequest("id=12", "id=34")
 
@@ -99,6 +98,59 @@ var _ = Describe("MediaAnnotationController", func() {
 				Expect(playTracker.ReportedPlayback[0].State).To(Equal(scrobbler.StatePlaying))
 				Expect(playTracker.ReportedPlayback[0].ClientId).To(Equal("player-1"))
 			})
+		})
+	})
+
+	Describe("Star/Unstar songs", func() {
+		var mediaRepo *recordingMediaFileRepo
+
+		BeforeEach(func() {
+			mediaRepo = &recordingMediaFileRepo{}
+			ds.(*tests.MockDataStore).MockedAlbum = &alwaysMissingAlbumRepo{}
+			ds.(*tests.MockDataStore).MockedArtist = &alwaysMissingArtistRepo{}
+			ds.(*tests.MockDataStore).MockedMediaFile = mediaRepo
+		})
+
+		It("stars a song by id", func() {
+			resp, err := router.Star(newGetRequest("id=song-1"))
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.Status).To(Equal(responses.StatusOK))
+			Expect(mediaRepo.SetStarCalls).To(Equal([]setStarCall{{Starred: true, ItemIDs: []string{"song-1"}}}))
+			Expect(eventBroker.Events).To(HaveLen(1))
+			Expect(eventBroker.Events[0].Data(eventBroker.Events[0])).To(Equal(`{"song":["song-1"]}`))
+		})
+
+		It("unstars a song by id", func() {
+			resp, err := router.Unstar(newGetRequest("id=song-1"))
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.Status).To(Equal(responses.StatusOK))
+			Expect(mediaRepo.SetStarCalls).To(Equal([]setStarCall{{Starred: false, ItemIDs: []string{"song-1"}}}))
+			Expect(eventBroker.Events).To(HaveLen(1))
+			Expect(eventBroker.Events[0].Data(eventBroker.Events[0])).To(Equal(`{"song":["song-1"]}`))
+		})
+
+		It("rejects unauthenticated star requests before favoriting the song", func() {
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/star?u=missing&v=1.16.1&c=test&id=song-1", nil)
+
+			router.ServeHTTP(w, r)
+
+			Expect(w.Body.String()).To(ContainSubstring(`code="40"`))
+			Expect(mediaRepo.SetStarCalls).To(BeEmpty())
+			Expect(eventBroker.Events).To(BeEmpty())
+		})
+
+		It("rejects unauthenticated unstar requests before unfavoriting the song", func() {
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/unstar?u=missing&v=1.16.1&c=test&id=song-1", nil)
+
+			router.ServeHTTP(w, r)
+
+			Expect(w.Body.String()).To(ContainSubstring(`code="40"`))
+			Expect(mediaRepo.SetStarCalls).To(BeEmpty())
+			Expect(eventBroker.Events).To(BeEmpty())
 		})
 	})
 
@@ -214,6 +266,41 @@ func (f *fakePlayTracker) ReportPlayback(_ context.Context, params scrobbler.Rep
 }
 
 var _ scrobbler.PlayTracker = (*fakePlayTracker)(nil)
+
+type setStarCall struct {
+	Starred bool
+	ItemIDs []string
+}
+
+type recordingMediaFileRepo struct {
+	model.MediaFileRepository
+	SetStarCalls []setStarCall
+	Err          error
+}
+
+func (r *recordingMediaFileRepo) SetStar(starred bool, itemIDs ...string) error {
+	r.SetStarCalls = append(r.SetStarCalls, setStarCall{
+		Starred: starred,
+		ItemIDs: append([]string(nil), itemIDs...),
+	})
+	return r.Err
+}
+
+type alwaysMissingAlbumRepo struct {
+	model.AlbumRepository
+}
+
+func (r *alwaysMissingAlbumRepo) Exists(string) (bool, error) {
+	return false, nil
+}
+
+type alwaysMissingArtistRepo struct {
+	model.ArtistRepository
+}
+
+func (r *alwaysMissingArtistRepo) Exists(string) (bool, error) {
+	return false, nil
+}
 
 type fakeEventBroker struct {
 	http.Handler
