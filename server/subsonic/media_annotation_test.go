@@ -2,6 +2,7 @@ package subsonic
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -129,6 +130,40 @@ var _ = Describe("MediaAnnotationController", func() {
 			Expect(mediaRepo.SetStarCalls).To(Equal([]setStarCall{{Starred: false, ItemIDs: []string{"song-1"}}}))
 			Expect(eventBroker.Events).To(HaveLen(1))
 			Expect(eventBroker.Events[0].Data(eventBroker.Events[0])).To(Equal(`{"song":["song-1"]}`))
+		})
+
+		It("stars returns error when no id parameter is provided", func() {
+			_, err := router.Star(newGetRequest())
+
+			Expect(err).To(HaveOccurred())
+			Expect(mediaRepo.SetStarCalls).To(BeEmpty())
+			Expect(eventBroker.Events).To(BeEmpty())
+		})
+
+		It("unstars returns error when no id parameter is provided", func() {
+			_, err := router.Unstar(newGetRequest())
+
+			Expect(err).To(HaveOccurred())
+			Expect(mediaRepo.SetStarCalls).To(BeEmpty())
+			Expect(eventBroker.Events).To(BeEmpty())
+		})
+
+		It("returns error and calls repository when star persistence fails", func() {
+			mediaRepo.Err = errors.New("db failure")
+			_, err := router.Star(newGetRequest("id=song-1"))
+
+			Expect(err).To(HaveOccurred())
+			Expect(mediaRepo.SetStarCalls).To(HaveLen(1))
+			Expect(eventBroker.Events).To(BeEmpty())
+		})
+
+		It("returns error and calls repository when unstar persistence fails", func() {
+			mediaRepo.Err = errors.New("db failure")
+			_, err := router.Unstar(newGetRequest("id=song-1"))
+
+			Expect(err).To(HaveOccurred())
+			Expect(mediaRepo.SetStarCalls).To(HaveLen(1))
+			Expect(eventBroker.Events).To(BeEmpty())
 		})
 
 		It("rejects unauthenticated star requests before favoriting the song", func() {
