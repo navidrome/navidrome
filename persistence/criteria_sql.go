@@ -310,11 +310,15 @@ func startOfPeriod(numDays int64, from time.Time) string {
 }
 
 func (c smartPlaylistCriteria) inList(values map[string]any, negate bool) (squirrel.Sqlizer, error) {
-	playlistID, ok := values["id"].(string)
-	if !ok {
-		return nil, errors.New("playlist id not given")
+	var condition squirrel.Sqlizer
+	if playlistId, ok := values["id"].(string); ok {
+		condition = squirrel.Eq{"pl.playlist_id": playlistId}
+	} else if playlistPath, ok := values["path"].(string); ok {
+		condition = squirrel.Eq{"playlist.path": playlistPath}
+	} else {
+		return nil, errors.New("playlist id or path not given")
 	}
-	filters := squirrel.And{squirrel.Eq{"pl.playlist_id": playlistID}}
+	filters := squirrel.And{condition}
 	if !c.owner.IsAdmin {
 		if c.owner.ID == "" {
 			filters = append(filters, squirrel.Eq{"playlist.public": 1})
