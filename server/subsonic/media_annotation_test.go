@@ -103,21 +103,33 @@ var _ = Describe("MediaAnnotationController", func() {
 	})
 
 	Describe("Star/Unstar songs", func() {
+		// recordingMediaFileRepo is a spy: it records every SetStar call so tests
+		// can assert on whether and how the repository was invoked.
 		var mediaRepo *recordingMediaFileRepo
 
 		BeforeEach(func() {
+			// Fresh spy before each test so recorded calls don't bleed between cases.
 			mediaRepo = &recordingMediaFileRepo{}
+			// alwaysMissingAlbumRepo and alwaysMissingArtistRepo are stubs: they
+			// always report Exists=false, steering the handler to treat every id as
+			// a media-file id without needing real album/artist data in the DB.
 			ds.(*tests.MockDataStore).MockedAlbum = &alwaysMissingAlbumRepo{}
 			ds.(*tests.MockDataStore).MockedArtist = &alwaysMissingArtistRepo{}
+			// Inject the spy into the mock data store so the router uses it.
 			ds.(*tests.MockDataStore).MockedMediaFile = mediaRepo
 		})
 
 		It("stars a song by id", func() {
+			// newGetRequest builds a pre-authenticated fake HTTP request; no real
+			// network or auth middleware is involved.
 			resp, err := router.Star(newGetRequest("id=song-1"))
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.Status).To(Equal(responses.StatusOK))
+			// Spy assertion: verify the repository received the correct arguments.
 			Expect(mediaRepo.SetStarCalls).To(Equal([]setStarCall{{Starred: true, ItemIDs: []string{"song-1"}}}))
+			// fakeEventBroker is a spy: it captures broadcast events so we can
+			// verify the success notification was fired with the right payload.
 			Expect(eventBroker.Events).To(HaveLen(1))
 			Expect(eventBroker.Events[0].Data(eventBroker.Events[0])).To(Equal(`{"song":["song-1"]}`))
 		})
@@ -132,11 +144,14 @@ var _ = Describe("MediaAnnotationController", func() {
 			Expect(eventBroker.Events[0].Data(eventBroker.Events[0])).To(Equal(`{"song":["song-1"]}`))
 		})
 
+		// FAV-03: missing id parameter must be rejected before touching any dependency.
 		It("stars returns error when no id parameter is provided", func() {
 			_, err := router.Star(newGetRequest())
 
 			Expect(err).To(HaveOccurred())
+			// Spy confirms the repository was never reached — validation failed first.
 			Expect(mediaRepo.SetStarCalls).To(BeEmpty())
+			// Spy confirms no event was broadcast on failure.
 			Expect(eventBroker.Events).To(BeEmpty())
 		})
 
@@ -148,15 +163,22 @@ var _ = Describe("MediaAnnotationController", func() {
 			Expect(eventBroker.Events).To(BeEmpty())
 		})
 
+		// FAV-05: repository failure must propagate and suppress the success event.
 		It("returns error and calls repository when star persistence fails", func() {
+			// Sabotage the spy by setting its Err field — this turns it into a stub
+			// that returns a controlled error, simulating a DB write failure.
 			mediaRepo.Err = errors.New("db failure")
 			_, err := router.Star(newGetRequest("id=song-1"))
 
 			Expect(err).To(HaveOccurred())
+			// Spy confirms the repository WAS called — the failure is from persistence,
+			// not from input validation.
 			Expect(mediaRepo.SetStarCalls).To(HaveLen(1))
+			// No event should be broadcast when the write fails.
 			Expect(eventBroker.Events).To(BeEmpty())
 		})
 
+		// FAV-06: same as FAV-05 for the Unstar path.
 		It("returns error and calls repository when unstar persistence fails", func() {
 			mediaRepo.Err = errors.New("db failure")
 			_, err := router.Unstar(newGetRequest("id=song-1"))
@@ -167,12 +189,16 @@ var _ = Describe("MediaAnnotationController", func() {
 		})
 
 		It("rejects unauthenticated star requests before favoriting the song", func() {
+			// Use httptest.ResponseRecorder to exercise the full HTTP stack including
+			// auth middleware, rather than calling the handler method directly.
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("GET", "/star?u=missing&v=1.16.1&c=test&id=song-1", nil)
 
 			router.ServeHTTP(w, r)
 
+			// Auth middleware returns error code 40 before the handler runs.
 			Expect(w.Body.String()).To(ContainSubstring(`code="40"`))
+			// Spy confirms the repository was never reached.
 			Expect(mediaRepo.SetStarCalls).To(BeEmpty())
 			Expect(eventBroker.Events).To(BeEmpty())
 		})
