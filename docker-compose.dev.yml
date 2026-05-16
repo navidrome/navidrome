@@ -35,6 +35,16 @@ services:
     depends_on:
       - backend
 
+  frontend-test:
+    image: node:24
+    working_dir: /app
+    volumes:
+      - ./ui:/app
+      - node-modules:/app/node_modules
+    command: sh -c "npm ci && npm test"
+    profiles:
+      - test
+
 volumes:
   go-mod-cache:
   go-build-cache:
