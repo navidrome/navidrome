@@ -176,7 +176,7 @@ func (api *Router) routes() http.Handler {
 		r.Group(func(r chi.Router) {
 			r.Use(getPlayer(api.players))
 			h(r, "getScanStatus", api.GetScanStatus)
-			h(r, "startScan", api.StartScan)
+			h(r.With(adminOnly), "startScan", api.StartScan)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(getPlayer(api.players))
