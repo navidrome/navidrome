@@ -326,8 +326,7 @@ func (j *ffCmd) start(ctx context.Context) error {
 
 func (j *ffCmd) wait() {
 	if err := j.cmd.Wait(); err != nil {
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
+		if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
 			errMsg := fmt.Sprintf("%s exited with non-zero status code: %d", j.args[0], exitErr.ExitCode())
 			if stderrOutput := strings.TrimSpace(j.stderr.String()); stderrOutput != "" {
 				errMsg += ": " + stderrOutput

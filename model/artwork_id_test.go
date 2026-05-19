@@ -11,8 +11,7 @@ import (
 var _ = Describe("ArtworkID", func() {
 	Describe("NewArtworkID()", func() {
 		It("creates a valid parseable ArtworkID", func() {
-			now := time.Now()
-			id := model.NewArtworkID(model.KindAlbumArtwork, "1234", &now)
+			id := model.NewArtworkID(model.KindAlbumArtwork, "1234", new(time.Now()))
 			parsedId, err := model.ParseArtworkID(id.String())
 			Expect(err).ToNot(HaveOccurred())
 			Expect(parsedId.Kind).To(Equal(id.Kind))

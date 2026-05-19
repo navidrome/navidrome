@@ -13,7 +13,6 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
-	"github.com/navidrome/navidrome/utils/gg"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
@@ -137,7 +136,7 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 			ExternalUrl:           "http://cached.url",
 			Biography:             "Cached Bio",
 			LargeImageUrl:         "http://cached_large.jpg",
-			ExternalInfoUpdatedAt: gg.P(now.Add(-conf.Server.DevArtistInfoTimeToLive / 2)),
+			ExternalInfoUpdatedAt: new(now.Add(-conf.Server.DevArtistInfoTimeToLive / 2)),
 			SimilarArtists: model.Artists{
 				{ID: "ar-similar-present", Name: "Similar Present"},
 				{ID: "ar-similar-absent", Name: "Similar Absent"},
@@ -174,7 +173,7 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 		originalArtist := &model.Artist{
 			ID:                    "ar-expired",
 			Name:                  "Expired Artist",
-			ExternalInfoUpdatedAt: gg.P(expiredTime),
+			ExternalInfoUpdatedAt: new(expiredTime),
 			SimilarArtists: model.Artists{
 				{ID: "ar-exp-similar", Name: "Expired Similar"},
 			},
@@ -205,7 +204,7 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 		originalArtist := &model.Artist{
 			ID:                    "ar-similar-test",
 			Name:                  "Similar Test Artist",
-			ExternalInfoUpdatedAt: gg.P(now.Add(-conf.Server.DevArtistInfoTimeToLive / 2)),
+			ExternalInfoUpdatedAt: new(now.Add(-conf.Server.DevArtistInfoTimeToLive / 2)),
 			SimilarArtists: model.Artists{
 				{ID: "ar-sim-present", Name: "Similar Present"},
 				{ID: "", Name: "Similar Absent Raw"},
