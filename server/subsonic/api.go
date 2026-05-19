@@ -171,7 +171,7 @@ func (api *Router) routes() http.Handler {
 		r.Group(func(r chi.Router) {
 			r.Use(getPlayer(api.players))
 			h(r, "getUser", api.GetUser)
-			h(r, "getUsers", api.GetUsers)
+			h(r.With(adminOnly), "getUsers", api.GetUsers)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(getPlayer(api.players))
