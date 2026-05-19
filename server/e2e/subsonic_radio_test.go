@@ -46,6 +46,15 @@ var _ = Describe("Internet Radio Endpoints", Ordered, func() {
 		Expect(radioID).ToNot(BeEmpty())
 	})
 
+	It("getInternetRadioStations remains available to regular users", func() {
+		resp := doReqWithUser(regularUser, "getInternetRadioStations")
+
+		Expect(resp.Status).To(Equal(responses.StatusOK))
+		Expect(resp.InternetRadioStations).ToNot(BeNil())
+		Expect(resp.InternetRadioStations.Radios).To(HaveLen(1))
+		Expect(resp.InternetRadioStations.Radios[0].Name).To(Equal("Test Radio"))
+	})
+
 	It("createInternetRadioStation requires admin user", func() {
 		resp := doReqWithUser(regularUser, "createInternetRadioStation",
 			"streamUrl", "https://stream.example.com/hacked",
