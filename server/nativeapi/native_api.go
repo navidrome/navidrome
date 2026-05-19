@@ -143,6 +143,11 @@ func (api *Router) addPlaylistRoute(r chi.Router) {
 			r.Delete("/", rest.Delete(constructor))
 			r.Post("/image", uploadPlaylistImage(api.playlists))
 			r.Delete("/image", deletePlaylistImage(api.playlists))
+			r.Route("/permissions", func(r chi.Router) {
+				r.Get("/", getPlaylistPermissions(api.playlists))
+				r.Post("/", addPlaylistPermission(api.playlists))
+				r.Delete("/", deletePlaylistPermission(api.playlists))
+			})
 		})
 	})
 }

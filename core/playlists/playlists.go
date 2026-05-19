@@ -2,6 +2,7 @@ package playlists
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/deluan/rest"
+
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
@@ -49,6 +51,11 @@ type Playlists interface {
 	// REST adapters
 	NewRepository(ctx context.Context) rest.Repository
 	TracksRepository(ctx context.Context, playlistId string, refreshSmartPlaylist bool) rest.Repository
+
+	// Permission Management
+	GetPermissionsForPlaylist(ctx context.Context, playlistID string) (model.PlaylistPermissions, error)
+	AddPermission(ctx context.Context, playlistID string, userID string, permission model.Permission) error
+	RemovePermission(ctx context.Context, playlistID string, userID string) error
 }
 
 // ImageUploadService is a local interface satisfied by core.ImageUploadService.
@@ -134,7 +141,7 @@ func (s *playlists) Create(ctx context.Context, playlistId string, name string, 
 }
 
 func (s *playlists) Delete(ctx context.Context, id string) error {
-	pls, err := s.checkWritable(ctx, id)
+	pls, err := s.checkOwner(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -149,6 +156,8 @@ func (s *playlists) Delete(ctx context.Context, id string) error {
 	return s.ds.Playlist(ctx).Delete(id)
 }
 
+// Update updates the playlist metadata & tracks
+// Currently only used for the subsonic API implementation.
 func (s *playlists) Update(ctx context.Context, playlistID string,
 	name *string, comment *string, public *bool,
 	idsToAdd []string, idxToRemove []int) error {
@@ -158,7 +167,7 @@ func (s *playlists) Update(ctx context.Context, playlistID string,
 	if hasTrackChanges {
 		pls, err = s.checkTracksEditable(ctx, playlistID)
 	} else {
-		pls, err = s.checkWritable(ctx, playlistID)
+		pls, err = s.checkEditor(ctx, playlistID)
 	}
 	if err != nil {
 		return err
@@ -193,36 +202,90 @@ func (s *playlists) Update(ctx context.Context, playlistID string,
 		if name == nil && comment == nil && public == nil {
 			return nil
 		}
-		// Reuse the playlist from checkWritable (no tracks loaded, so Put only refreshes counters)
+		// Reuse the playlist from checkEditor (no tracks loaded, so Put only refreshes counters)
 		return s.updateMetadata(ctx, tx, pls, name, comment, public)
 	})
 }
 
 // --- Permission helpers ---
 
-// checkWritable fetches the playlist and verifies the current user can modify it.
-func (s *playlists) checkWritable(ctx context.Context, id string) (*model.Playlist, error) {
-	pls, err := s.ds.Playlist(ctx).Get(id)
+// checkOwner fetches the playlist and verifies the current user is the owner or an admin.
+func (s *playlists) checkOwner(ctx context.Context, playlistID string) (*model.Playlist, error) {
+	pls, err := s.ds.Playlist(ctx).Get(playlistID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed getting playlist with ID %q: %w", playlistID, err)
 	}
-	usr, _ := request.UserFrom(ctx)
-	if !usr.IsAdmin && pls.OwnerID != usr.ID {
-		return nil, model.ErrNotAuthorized
+	if hasOwnerPermission(ctx, pls) {
+		return pls, nil
 	}
-	return pls, nil
+	return nil, model.ErrNotAuthorized
 }
 
-// checkTracksEditable verifies the user can modify tracks (ownership + not smart playlist).
-func (s *playlists) checkTracksEditable(ctx context.Context, playlistID string) (*model.Playlist, error) {
-	pls, err := s.checkWritable(ctx, playlistID)
+func hasOwnerPermission(ctx context.Context, pls *model.Playlist) bool {
+	user, _ := request.UserFrom(ctx)
+	if user.IsAdmin || pls.OwnerID == user.ID {
+		return true
+	}
+	return false
+}
+
+// checkEditor fetches the playlist and verifies the current user is at least editor.
+func (s *playlists) checkEditor(ctx context.Context, playlistID string) (*model.Playlist, error) {
+	pls, err := s.ds.Playlist(ctx).Get(playlistID)
 	if err != nil {
 		return nil, err
 	}
+
+	// First check: is owner / admin?
+	if hasOwnerPermission(ctx, pls) {
+		// User is playlist owner or admin
+		return pls, nil
+	}
+
+	// Second check: has user edit permission on playlist?
+	hasEditorPerms, err := s.hasEditorPermission(ctx, playlistID)
+	if err != nil {
+		return nil, err
+	}
+	if hasEditorPerms {
+		return pls, nil
+	}
+	return nil, model.ErrNotAuthorized
+}
+
+func (s *playlists) hasEditorPermission(ctx context.Context, playlistID string) (bool, error) {
+	usr, _ := request.UserFrom(ctx)
+	return s.ds.Playlist(ctx).Permissions(playlistID).IsUserAllowed(usr.ID, []model.Permission{model.PermissionEditor})
+}
+
+// checkTracksEditable verifies the user can modify tracks (user is admin / owner or editor + not smart playlist).
+func (s *playlists) checkTracksEditable(ctx context.Context, playlistID string) (*model.Playlist, error) {
+	pls, err := s.ds.Playlist(ctx).Get(playlistID)
+	if err != nil {
+		return nil, err
+	}
+
 	if pls.IsSmartPlaylist() {
+		// It's a smart playlist, no need to continue with actual permission checks
 		return nil, model.ErrNotAuthorized
 	}
-	return pls, nil
+
+	// First check: is owner / admin?
+	if hasOwnerPermission(ctx, pls) {
+		// User is playlist owner or admin
+		return pls, nil
+	}
+
+	// Second check: has user edit permission on playlist?
+	hasEditorPerms, err := s.hasEditorPermission(ctx, playlistID)
+	if err != nil {
+		return nil, err
+	}
+	if hasEditorPerms {
+		return pls, nil
+	}
+
+	return nil, model.ErrNotAuthorized
 }
 
 // updateMetadata applies optional metadata changes to a playlist and persists it.
@@ -292,7 +355,8 @@ func (s *playlists) ReorderTrack(ctx context.Context, playlistID string, pos int
 // --- Cover art operations ---
 
 func (s *playlists) SetImage(ctx context.Context, playlistID string, reader io.Reader, ext string) error {
-	pls, err := s.checkWritable(ctx, playlistID)
+	// TODO: also change to `checkEditor`
+	pls, err := s.checkOwner(ctx, playlistID)
 	if err != nil {
 		return err
 	}
@@ -308,7 +372,8 @@ func (s *playlists) SetImage(ctx context.Context, playlistID string, reader io.R
 }
 
 func (s *playlists) RemoveImage(ctx context.Context, playlistID string) error {
-	pls, err := s.checkWritable(ctx, playlistID)
+	// TODO: also change to `checkEditor`
+	pls, err := s.checkOwner(ctx, playlistID)
 	if err != nil {
 		return err
 	}

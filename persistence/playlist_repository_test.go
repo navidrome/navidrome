@@ -36,11 +36,12 @@ var _ = Describe("PlaylistRepository", func() {
 		It("returns an existing playlist", func() {
 			p, err := repo.Get(plsBest.ID)
 			Expect(err).To(BeNil())
-			// Compare all but Tracks and timestamps
+			// Compare all but tracks, timestamps & permission
 			p2 := *p
 			p2.Tracks = plsBest.Tracks
 			p2.UpdatedAt = plsBest.UpdatedAt
 			p2.CreatedAt = plsBest.CreatedAt
+			p2.Permission = plsBest.Permission
 			Expect(p2).To(Equal(plsBest))
 			// Compare tracks
 			for i := range p.Tracks {

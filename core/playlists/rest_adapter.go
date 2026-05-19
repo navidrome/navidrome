@@ -6,6 +6,7 @@ import (
 	"reflect"
 
 	"github.com/deluan/rest"
+
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/request"
@@ -80,7 +81,7 @@ func (s *playlists) savePlaylist(ctx context.Context, pls *model.Playlist) (stri
 // updatePlaylistEntity updates playlist metadata with permission checks.
 // Used by the REST API wrapper.
 func (s *playlists) updatePlaylistEntity(ctx context.Context, id string, entity *model.Playlist) error {
-	current, err := s.checkWritable(ctx, id)
+	current, err := s.checkOwner(ctx, id)
 	if err != nil {
 		switch {
 		case errors.Is(err, model.ErrNotFound):
