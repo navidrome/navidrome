@@ -308,6 +308,36 @@ var _ = Describe("Middlewares", func() {
 		})
 	})
 
+	Describe("AdminOnly", func() {
+		It("passes admin users", func() {
+			r := newGetRequest()
+			r = r.WithContext(request.WithUser(r.Context(), model.User{ID: "admin-id", IsAdmin: true}))
+
+			adminOnly(next).ServeHTTP(w, r)
+
+			Expect(next.called).To(BeTrue())
+		})
+
+		It("rejects non-admin users", func() {
+			r := newGetRequest()
+			r = r.WithContext(request.WithUser(r.Context(), model.User{ID: "user-id", IsAdmin: false}))
+
+			adminOnly(next).ServeHTTP(w, r)
+
+			Expect(w.Body.String()).To(ContainSubstring(`code="50"`))
+			Expect(next.called).To(BeFalse())
+		})
+
+		It("returns an internal error when user is missing from context", func() {
+			r := newGetRequest()
+
+			adminOnly(next).ServeHTTP(w, r)
+
+			Expect(w.Body.String()).To(ContainSubstring(`code="0"`))
+			Expect(next.called).To(BeFalse())
+		})
+	})
+
 	Describe("GetPlayer", func() {
 		var mockedPlayers *mockPlayers
 		var r *http.Request

@@ -195,9 +195,13 @@ func (api *Router) routes() http.Handler {
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(getPlayer(api.players))
+			h(r, "getInternetRadioStations", api.GetInternetRadios)
+		})
+		r.Group(func(r chi.Router) {
+			r.Use(getPlayer(api.players))
+			r.Use(adminOnly)
 			h(r, "createInternetRadioStation", api.CreateInternetRadio)
 			h(r, "deleteInternetRadioStation", api.DeleteInternetRadio)
-			h(r, "getInternetRadioStations", api.GetInternetRadios)
 			h(r, "updateInternetRadioStation", api.UpdateInternetRadio)
 		})
 		if conf.Server.EnableSharing {
