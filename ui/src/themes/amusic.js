@@ -192,6 +192,11 @@ export default {
         paddingBottom: '1rem',
       },
     },
+    RaConfirm: {
+      confirmPrimary: {
+        color: '#fff',
+      },
+    },
     RaDeleteWithConfirmButton: {
       deleteButton: {
         color: '#fff !important',
