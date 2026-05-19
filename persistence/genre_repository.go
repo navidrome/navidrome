@@ -14,9 +14,8 @@ type genreRepository struct {
 }
 
 func NewGenreRepository(ctx context.Context, db dbx.Builder) model.GenreRepository {
-	genreFilter := model.TagGenre
 	return &genreRepository{
-		baseTagRepository: newBaseTagRepository(ctx, db, &genreFilter),
+		baseTagRepository: newBaseTagRepository(ctx, db, new(model.TagGenre)),
 	}
 }
 

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils/gg"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -74,15 +73,15 @@ var _ = Describe("sources", func() {
 					Lang:          "eng",
 					Line: []model.Line{
 						{
-							Start: gg.P(int64(18800)),
+							Start: new(int64(18800)),
 							Value: "We're no strangers to love",
 						},
 						{
-							Start: gg.P(int64(22801)),
+							Start: new(int64(22801)),
 							Value: "You know the rules and so do I",
 						},
 					},
-					Offset: gg.P(int64(-100)),
+					Offset: new(int64(-100)),
 					Synced: true,
 				},
 			}))
@@ -122,7 +121,7 @@ var _ = Describe("sources", func() {
 			// The critical assertion: even with BOM, synced should be true
 			Expect(lyrics[0].Synced).To(BeTrue(), "Lyrics with BOM marker should be recognized as synced")
 			Expect(lyrics[0].Line).To(HaveLen(1))
-			Expect(lyrics[0].Line[0].Start).To(Equal(gg.P(int64(0))))
+			Expect(lyrics[0].Line[0].Start).To(Equal(new(int64(0))))
 			Expect(lyrics[0].Line[0].Value).To(ContainSubstring("作曲"))
 		})
 
@@ -137,9 +136,9 @@ var _ = Describe("sources", func() {
 			// UTF-16 should be properly converted to UTF-8
 			Expect(lyrics[0].Synced).To(BeTrue(), "UTF-16 encoded lyrics should be recognized as synced")
 			Expect(lyrics[0].Line).To(HaveLen(2))
-			Expect(lyrics[0].Line[0].Start).To(Equal(gg.P(int64(18800))))
+			Expect(lyrics[0].Line[0].Start).To(Equal(new(int64(18800))))
 			Expect(lyrics[0].Line[0].Value).To(Equal("We're no strangers to love"))
-			Expect(lyrics[0].Line[1].Start).To(Equal(gg.P(int64(22801))))
+			Expect(lyrics[0].Line[1].Start).To(Equal(new(int64(22801))))
 			Expect(lyrics[0].Line[1].Value).To(Equal("You know the rules and so do I"))
 		})
 	})

@@ -302,8 +302,7 @@ func (s *webSocketServiceImpl) readLoop(ctx context.Context, connectionID string
 			if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseNoStatusReceived) {
 				closeCode := websocket.CloseNoStatusReceived
 				closeReason := ""
-				var ce *websocket.CloseError
-				if errors.As(err, &ce) {
+				if ce, ok := errors.AsType[*websocket.CloseError](err); ok {
 					closeCode = ce.Code
 					closeReason = ce.Text
 				}
