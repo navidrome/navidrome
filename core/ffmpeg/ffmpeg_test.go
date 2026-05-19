@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	sync "sync"
+	"sync"
 	"testing"
 	"time"
 

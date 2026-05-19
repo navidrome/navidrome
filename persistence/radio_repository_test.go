@@ -11,10 +11,6 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var (
-	NewId string = "123-456-789"
-)
-
 var _ = Describe("RadioRepository", func() {
 	var repo model.RadioRepository
 
@@ -139,7 +135,7 @@ var _ = Describe("RadioRepository", func() {
 			It("returns an existing item", func() {
 				res, err := repo.Get(radioWithHomePage.ID)
 
-				Expect(err).To((BeNil()))
+				Expect(err).To(BeNil())
 				Expect(res.ID).To(Equal(radioWithHomePage.ID))
 			})
 
