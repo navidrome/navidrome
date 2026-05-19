@@ -171,12 +171,12 @@ func (api *Router) routes() http.Handler {
 		r.Group(func(r chi.Router) {
 			r.Use(getPlayer(api.players))
 			h(r, "getUser", api.GetUser)
-			h(r, "getUsers", api.GetUsers)
+			h(r.With(adminOnly), "getUsers", api.GetUsers)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(getPlayer(api.players))
 			h(r, "getScanStatus", api.GetScanStatus)
-			h(r, "startScan", api.StartScan)
+			h(r.With(adminOnly), "startScan", api.StartScan)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(getPlayer(api.players))
@@ -195,10 +195,13 @@ func (api *Router) routes() http.Handler {
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(getPlayer(api.players))
-			h(r, "createInternetRadioStation", api.CreateInternetRadio)
-			h(r, "deleteInternetRadioStation", api.DeleteInternetRadio)
 			h(r, "getInternetRadioStations", api.GetInternetRadios)
-			h(r, "updateInternetRadioStation", api.UpdateInternetRadio)
+			r.Group(func(r chi.Router) {
+				r.Use(adminOnly)
+				h(r, "createInternetRadioStation", api.CreateInternetRadio)
+				h(r, "deleteInternetRadioStation", api.DeleteInternetRadio)
+				h(r, "updateInternetRadioStation", api.UpdateInternetRadio)
+			})
 		})
 		if conf.Server.EnableSharing {
 			r.Group(func(r chi.Router) {
