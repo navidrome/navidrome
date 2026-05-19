@@ -57,7 +57,7 @@ func (d *Dir) MustPath() string {
 
 // GoString implements fmt.GoStringer so that %#v (used by pretty.Sprintf)
 // prints the path string instead of the internal struct fields.
-func (d Dir) GoString() string { //nolint:govet
+func (d Dir) GoString() string { //nolint:govet // uses a value receiver so Dir values satisfy GoStringer
 	return fmt.Sprintf("%q", d.path)
 }
 

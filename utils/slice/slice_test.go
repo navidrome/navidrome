@@ -134,7 +134,7 @@ var _ = Describe("Slice Utils", func() {
 			count := 0
 			file, _ := os.Open(path)
 			defer file.Close()
-			for _ = range slice.LinesFrom(file) {
+			for range slice.LinesFrom(file) {
 				count++
 			}
 			Expect(count).To(Equal(expected))
