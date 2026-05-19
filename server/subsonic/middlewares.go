@@ -155,6 +155,23 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 	}
 }
 
+func adminOnly(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		loggedUser, ok := request.UserFrom(r.Context())
+		if !ok {
+			sendError(w, r, newError(responses.ErrorGeneric, "Internal error"))
+			return
+		}
+
+		if !loggedUser.IsAdmin {
+			sendError(w, r, newError(responses.ErrorAuthorizationFail))
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 func validateCredentials(user *model.User, pass, token, salt, jwt string) error {
 	valid := false
 
