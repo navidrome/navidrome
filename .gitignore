@@ -37,5 +37,6 @@ AGENTS.md
 *.wasm
 *.ndp
 openspec/
+.agents
 go.work*
 .worktrees/

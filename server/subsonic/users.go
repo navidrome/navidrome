@@ -46,8 +46,7 @@ func (api *Router) GetUser(r *http.Request) (*responses.Subsonic, error) {
 		return nil, newError(responses.ErrorAuthorizationFail)
 	}
 	response := newResponse()
-	user := buildUserResponse(loggedUser)
-	response.User = &user
+	response.User = new(buildUserResponse(loggedUser))
 	return response, nil
 }
 

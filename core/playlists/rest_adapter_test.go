@@ -63,7 +63,6 @@ var _ = Describe("REST Adapter", func() {
 			It("clears server-managed fields to prevent injection via REST API", func() {
 				ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 				repo = ps.NewRepository(ctx).(rest.Persistable)
-				now := time.Now()
 				pls := &model.Playlist{
 					Name:             "Legit Playlist",
 					Comment:          "A comment",
@@ -73,7 +72,7 @@ var _ = Describe("REST Adapter", func() {
 					Sync:             true,
 					UploadedImage:    "injected-image-path",
 					ExternalImageURL: "http://evil.example.com/ssrf",
-					EvaluatedAt:      &now,
+					EvaluatedAt:      new(time.Now()),
 				}
 				_, err := repo.Save(pls)
 				Expect(err).ToNot(HaveOccurred())

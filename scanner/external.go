@@ -97,8 +97,7 @@ func (s *scannerExternal) scan(ctx context.Context, fullScan bool, targets []mod
 
 func (s *scannerExternal) wait(cmd *exec.Cmd, out *io.PipeWriter) {
 	if err := cmd.Wait(); err != nil {
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
+		if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
 			_ = out.CloseWithError(fmt.Errorf("%s exited with non-zero status code: %w", cmd, exitErr))
 		} else {
 			_ = out.CloseWithError(fmt.Errorf("waiting %s cmd: %w", cmd, err))

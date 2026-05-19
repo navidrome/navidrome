@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/jellydator/ttlcache/v3"
-	. "github.com/navidrome/navidrome/utils/gg"
 )
 
 type SimpleCache[K comparable, V any] interface {
@@ -119,7 +118,7 @@ func (c *simpleCache[K, V]) GetWithLoader(key K, loader func(key K) (V, time.Dur
 func (c *simpleCache[K, V]) evictExpired() {
 	if c.evictionDeadline.Load() == nil || c.evictionDeadline.Load().Before(time.Now()) {
 		c.data.DeleteExpired()
-		c.evictionDeadline.Store(P(time.Now().Add(evictionTimeout)))
+		c.evictionDeadline.Store(new(time.Now().Add(evictionTimeout)))
 	}
 }
 

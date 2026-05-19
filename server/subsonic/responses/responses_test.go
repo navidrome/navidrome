@@ -8,7 +8,6 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	. "github.com/navidrome/navidrome/server/subsonic/responses"
-	"github.com/navidrome/navidrome/utils/gg"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -94,11 +93,10 @@ var _ = Describe("Responses", func() {
 		Context("with data", func() {
 			BeforeEach(func() {
 				artists := make([]Artist, 1)
-				t := time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)
 				artists[0] = Artist{
 					Id:             "111",
 					Name:           "aaa",
-					Starred:        &t,
+					Starred:        new(time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)),
 					UserRating:     3,
 					ArtistImageUrl: "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
 				}
@@ -133,11 +131,10 @@ var _ = Describe("Responses", func() {
 		Context("with data", func() {
 			BeforeEach(func() {
 				artists := make([]ArtistID3, 1)
-				t := time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)
 				artists[0] = ArtistID3{
 					Id:             "111",
 					Name:           "aaa",
-					Starred:        &t,
+					Starred:        new(time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)),
 					UserRating:     3,
 					AlbumCount:     2,
 					ArtistImageUrl: "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
@@ -158,11 +155,10 @@ var _ = Describe("Responses", func() {
 		Context("with OpenSubsonic data", func() {
 			BeforeEach(func() {
 				artists := make([]ArtistID3, 1)
-				t := time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)
 				artists[0] = ArtistID3{
 					Id:             "111",
 					Name:           "aaa",
-					Starred:        &t,
+					Starred:        new(time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)),
 					UserRating:     3,
 					AlbumCount:     2,
 					ArtistImageUrl: "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
@@ -211,12 +207,11 @@ var _ = Describe("Responses", func() {
 			BeforeEach(func() {
 				response.Directory = &Directory{Id: "1", Name: "N"}
 				child := make([]Child, 2)
-				t := time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)
 				child[0] = Child{
 					Id: "1", IsDir: true, Title: "title", Album: "album", Artist: "artist", Track: 1,
 					Year: 1985, Genre: "Rock", CoverArt: "1", Size: 8421341, ContentType: "audio/flac",
 					Suffix: "flac", TranscodedContentType: "audio/mpeg", TranscodedSuffix: "mp3",
-					Duration: 146, BitRate: 320, Starred: &t,
+					Duration: 146, BitRate: 320, Starred: new(time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)),
 				}
 				child[0].OpenSubsonicChild = &OpenSubsonicChild{
 					Genres:  []ItemGenre{{Name: "rock"}, {Name: "progressive"}},
@@ -225,7 +220,7 @@ var _ = Describe("Responses", func() {
 					BPM:  127, ChannelCount: 2, SamplingRate: 44100, BitDepth: 16,
 					Moods:         []string{"happy", "sad"},
 					Groupings:     []string{"Soundtrack", "Live"},
-					ReplayGain:    ReplayGain{TrackGain: gg.P(1.0), AlbumGain: gg.P(2.0), TrackPeak: gg.P(3.0), AlbumPeak: gg.P(4.0), BaseGain: gg.P(5.0), FallbackGain: gg.P(6.0)},
+					ReplayGain:    ReplayGain{TrackGain: new(1.0), AlbumGain: new(2.0), TrackPeak: new(3.0), AlbumPeak: new(4.0), BaseGain: new(5.0), FallbackGain: new(6.0)},
 					DisplayArtist: "artist 1 & artist 2",
 					Artists: []ArtistID3Ref{
 						{Id: "1", Name: "artist1"},
@@ -246,7 +241,7 @@ var _ = Describe("Responses", func() {
 					ExplicitStatus: "clean",
 				}
 				child[1].OpenSubsonicChild = &OpenSubsonicChild{
-					ReplayGain: ReplayGain{TrackGain: gg.P(0.0), AlbumGain: gg.P(0.0), TrackPeak: gg.P(0.0), AlbumPeak: gg.P(0.0), BaseGain: gg.P(0.0), FallbackGain: gg.P(0.0)},
+					ReplayGain: ReplayGain{TrackGain: new(0.0), AlbumGain: new(0.0), TrackPeak: new(0.0), AlbumPeak: new(0.0), BaseGain: new(0.0), FallbackGain: new(0.0)},
 				}
 				response.Directory.Child = child
 			})
@@ -322,7 +317,7 @@ var _ = Describe("Responses", func() {
 					Isrc:       []string{"ISRC-1"},
 					Moods:      []string{"happy", "sad"},
 					Groupings:  []string{"Soundtrack", "Live"},
-					ReplayGain: ReplayGain{TrackGain: gg.P(1.0), AlbumGain: gg.P(2.0), TrackPeak: gg.P(3.0), AlbumPeak: gg.P(4.0), BaseGain: gg.P(5.0), FallbackGain: gg.P(6.0)},
+					ReplayGain: ReplayGain{TrackGain: new(1.0), AlbumGain: new(2.0), TrackPeak: new(3.0), AlbumPeak: new(4.0), BaseGain: new(5.0), FallbackGain: new(6.0)},
 					BPM:        127, ChannelCount: 2, SamplingRate: 44100, BitDepth: 16,
 					DisplayArtist: "artist1 & artist2",
 					Artists: []ArtistID3Ref{
@@ -342,7 +337,7 @@ var _ = Describe("Responses", func() {
 					ExplicitStatus:  "clean",
 				}
 				songs[1].OpenSubsonicChild = &OpenSubsonicChild{
-					ReplayGain: ReplayGain{TrackGain: gg.P(0.0), AlbumGain: gg.P(0.0), TrackPeak: gg.P(0.0), AlbumPeak: gg.P(0.0), BaseGain: gg.P(0.0), FallbackGain: gg.P(0.0)},
+					ReplayGain: ReplayGain{TrackGain: new(0.0), AlbumGain: new(0.0), TrackPeak: new(0.0), AlbumPeak: new(0.0), BaseGain: new(0.0), FallbackGain: new(0.0)},
 				}
 				response.AlbumWithSongsID3.AlbumID3 = album
 				response.AlbumWithSongsID3.Song = songs
@@ -804,7 +799,7 @@ var _ = Describe("Responses", func() {
 		Context("with data", func() {
 			BeforeEach(func() {
 				response.PlayQueueByIndex.Username = "user1"
-				response.PlayQueueByIndex.CurrentIndex = gg.P(0)
+				response.PlayQueueByIndex.CurrentIndex = new(0)
 				response.PlayQueueByIndex.Position = 243
 				response.PlayQueueByIndex.Changed = time.Time{}
 				response.PlayQueueByIndex.ChangedBy = "a_client"

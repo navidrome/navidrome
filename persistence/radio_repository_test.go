@@ -34,8 +34,7 @@ var _ = Describe("RadioRepository", func() {
 			}
 
 			for i := range testRadios {
-				r := testRadios[i]
-				err := repo.Put(&r)
+				err := repo.Put(new(testRadios[i]))
 				if err != nil {
 					panic(err)
 				}
