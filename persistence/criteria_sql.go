@@ -415,9 +415,9 @@ func roleExistsSQL(innerCond string) string {
 }
 
 // roleCondBatchSize limits how many conditions are ORed inside a single EXISTS subquery
-// to stay within SQLite's expression tree depth limit (max 1000). Each condition adds ~2
-// levels of depth (the OR node + the LIKE/= comparison), and the EXISTS wrapper adds ~10.
-const roleCondBatchSize = 200
+// to stay within SQLite's expression tree depth limit (max 1000). The EXISTS wrapper
+// consumes ~4 levels; each ORed condition adds 1 level. Empirically, 496 is the maximum.
+const roleCondBatchSize = 350
 
 // mergeRoleConds collapses multiple non-negated roleCond entries for the same role
 // within an OR group into batched EXISTS subqueries with the conditions ORed inside.
