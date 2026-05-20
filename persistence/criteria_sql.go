@@ -3,6 +3,7 @@ package persistence
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"reflect"
 	"slices"
 	"strconv"
@@ -463,7 +464,8 @@ func mergeJsonConds(or squirrel.Or) squirrel.Sqlizer {
 	merged := false
 	remove := make(map[int]bool)
 	var additions []squirrel.Sqlizer
-	for key, g := range groups {
+	for _, key := range slices.Sorted(maps.Keys(groups)) {
+		g := groups[key]
 		if len(g.entries) < 2 {
 			continue
 		}

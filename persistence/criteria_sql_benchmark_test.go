@@ -122,10 +122,10 @@ func runBenchQuery(b *testing.B, ctx context.Context, query string, args []any) 
 			var id string
 			_ = rows.Scan(&id)
 		}
+		rows.Close()
 		if err := rows.Err(); err != nil {
 			b.Fatal(err)
 		}
-		rows.Close()
 	}
 }
 
