@@ -1,6 +1,8 @@
 package persistence
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/navidrome/navidrome/model"
@@ -56,9 +58,9 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 		Entry("numeric tag", criteria.Lt{"rate": 6}, "exists (select 1 from json_tree(media_file.tags, '$.rate') where key='value' and CAST(value AS REAL) < ?)", 6),
 		Entry("tag alias", criteria.Is{"albumtype": "album"}, "exists (select 1 from json_tree(media_file.tags, '$.releasetype') where key='value' and value = ?)", "album"),
 		Entry("field alias via tag registration", criteria.Is{"recordingdate": "2024-01-01"}, "media_file.date = ?", "2024-01-01"),
-		Entry("role is", criteria.Is{"artist": "u2"}, "exists (select 1 from json_tree(media_file.participants, '$.artist') where key='name' and value = ?)", "u2"),
-		Entry("role contains", criteria.Contains{"composer": "Lennon"}, "exists (select 1 from json_tree(media_file.participants, '$.composer') where key='name' and value LIKE ?)", "%Lennon%"),
-		Entry("role not contains", criteria.NotContains{"artist": "u2"}, "not exists (select 1 from json_tree(media_file.participants, '$.artist') where key='name' and value LIKE ?)", "%u2%"),
+		Entry("role is", criteria.Is{"artist": "u2"}, "exists (select 1 from media_file_artists mfa join artist on artist.id = mfa.artist_id where mfa.media_file_id = media_file.id and mfa.role = ? and artist.name = ?)", "artist", "u2"),
+		Entry("role contains", criteria.Contains{"composer": "Lennon"}, "exists (select 1 from media_file_artists mfa join artist on artist.id = mfa.artist_id where mfa.media_file_id = media_file.id and mfa.role = ? and artist.name LIKE ?)", "composer", "%Lennon%"),
+		Entry("role not contains", criteria.NotContains{"artist": "u2"}, "not exists (select 1 from media_file_artists mfa join artist on artist.id = mfa.artist_id where mfa.media_file_id = media_file.id and mfa.role = ? and artist.name LIKE ?)", "artist", "%u2%"),
 		// ReplayGain fields
 		Entry("rgAlbumGain is", criteria.Is{"rgAlbumGain": 0}, "media_file.rg_album_gain = ?", 0),
 		Entry("rgAlbumGain gt", criteria.Gt{"rgAlbumGain": -6.0}, "media_file.rg_album_gain > ?", -6.0),
@@ -70,9 +72,9 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 			"exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value')"),
 		// isMissing — roles
 		Entry("isMissing role [true]", criteria.IsMissing{"artist": true},
-			"not exists (select 1 from json_tree(media_file.participants, '$.artist') where key='name')"),
+			"not exists (select 1 from media_file_artists mfa where mfa.media_file_id = media_file.id and mfa.role = ?)", "artist"),
 		Entry("isMissing role [false]", criteria.IsMissing{"artist": false},
-			"exists (select 1 from json_tree(media_file.participants, '$.artist') where key='name')"),
+			"exists (select 1 from media_file_artists mfa where mfa.media_file_id = media_file.id and mfa.role = ?)", "artist"),
 		// isPresent — tags
 		Entry("isPresent tag [true]", criteria.IsPresent{"genre": true},
 			"exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value')"),
@@ -80,9 +82,9 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 			"not exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value')"),
 		// isPresent — roles
 		Entry("isPresent role [true]", criteria.IsPresent{"composer": true},
-			"exists (select 1 from json_tree(media_file.participants, '$.composer') where key='name')"),
+			"exists (select 1 from media_file_artists mfa where mfa.media_file_id = media_file.id and mfa.role = ?)", "composer"),
 		Entry("isPresent role [false]", criteria.IsPresent{"composer": false},
-			"not exists (select 1 from json_tree(media_file.participants, '$.composer') where key='name')"),
+			"not exists (select 1 from media_file_artists mfa where mfa.media_file_id = media_file.id and mfa.role = ?)", "composer"),
 	)
 
 	Describe("playlist permissions", func() {
@@ -202,6 +204,86 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 			_, hasSQLField := smartPlaylistFields[info.Name()]
 			Expect(hasSQLField).To(BeTrue(), "criteria field %q (name=%q) has no entry in smartPlaylistFields", name, info.Name())
 		}
+	})
+
+	Describe("role condition merging", func() {
+		It("merges multiple role conditions in an OR group into a single EXISTS", func() {
+			expr := criteria.Any{
+				criteria.Contains{"artist": "Beatles"},
+				criteria.Contains{"artist": "Kraftwerk"},
+				criteria.Contains{"artist": "Pink Floyd"},
+			}
+			sqlizer, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: expr}).Where()
+			Expect(err).ToNot(HaveOccurred())
+
+			sql, args, err := sqlizer.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(sql).To(Equal("(exists (select 1 from media_file_artists mfa join artist on artist.id = mfa.artist_id where mfa.media_file_id = media_file.id and mfa.role = ? and (artist.name LIKE ? OR artist.name LIKE ? OR artist.name LIKE ?)))"))
+			Expect(args).To(HaveExactElements("artist", "%Beatles%", "%Kraftwerk%", "%Pink Floyd%"))
+		})
+
+		It("does not merge role conditions from different roles", func() {
+			expr := criteria.Any{
+				criteria.Contains{"artist": "Beatles"},
+				criteria.Contains{"composer": "Lennon"},
+			}
+			sqlizer, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: expr}).Where()
+			Expect(err).ToNot(HaveOccurred())
+
+			sql, _, err := sqlizer.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(sql).To(ContainSubstring("mfa.role = ?"))
+			// Two separate EXISTS since roles differ
+			Expect(strings.Count(sql, "exists")).To(Equal(2))
+		})
+
+		It("does not merge negated role conditions", func() {
+			expr := criteria.Any{
+				criteria.NotContains{"artist": "Beatles"},
+				criteria.NotContains{"artist": "Kraftwerk"},
+			}
+			sqlizer, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: expr}).Where()
+			Expect(err).ToNot(HaveOccurred())
+
+			sql, _, err := sqlizer.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			// Two separate "not exists" since they are negated
+			Expect(strings.Count(sql, "not exists")).To(Equal(2))
+		})
+
+		It("batches large groups to avoid SQLite expression tree depth limit", func() {
+			// Create roleCondBatchSize + 1 conditions to trigger batching into 2 groups
+			anyExprs := make(criteria.Any, roleCondBatchSize+1)
+			for i := range anyExprs {
+				anyExprs[i] = criteria.Contains{"artist": fmt.Sprintf("Artist%d", i)}
+			}
+			sqlizer, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: anyExprs}).Where()
+			Expect(err).ToNot(HaveOccurred())
+
+			sql, args, err := sqlizer.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			// Should produce 2 EXISTS subqueries (one batch of roleCondBatchSize, one of 1)
+			Expect(strings.Count(sql, "exists")).To(Equal(2))
+			// First batch has roleCondBatchSize patterns, second has 1 => total args:
+			// 2 roles + (roleCondBatchSize + 1) patterns
+			Expect(args).To(HaveLen(2 + roleCondBatchSize + 1))
+		})
+
+		It("merges role conditions while preserving non-role conditions", func() {
+			expr := criteria.Any{
+				criteria.Contains{"title": "Love"},
+				criteria.Contains{"artist": "Beatles"},
+				criteria.Contains{"artist": "Kraftwerk"},
+			}
+			sqlizer, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: expr}).Where()
+			Expect(err).ToNot(HaveOccurred())
+
+			sql, args, err := sqlizer.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(sql).To(ContainSubstring("media_file.title LIKE ?"))
+			Expect(sql).To(ContainSubstring("artist.name LIKE ? OR artist.name LIKE ?"))
+			Expect(args).To(HaveExactElements("%Love%", "artist", "%Beatles%", "%Kraftwerk%"))
+		})
 	})
 
 	Describe("joins", func() {

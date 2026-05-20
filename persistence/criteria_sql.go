@@ -147,7 +147,7 @@ func (c smartPlaylistCriteria) exprSQL(expr criteria.Expression) (squirrel.Sqliz
 			}
 			or = append(or, cond)
 		}
-		return or, nil
+		return mergeRoleConds(or), nil
 	case criteria.Is:
 		return mapExpr(e, func(fields map[string]any) squirrel.Sqlizer {
 			return squirrel.Eq(fields)
@@ -384,14 +384,108 @@ func (e roleCond) ToSql() (string, []any, error) {
 	var err error
 	if e.cond != nil {
 		cond, args, err = e.cond.ToSql()
-		cond = fmt.Sprintf("exists (select 1 from json_tree(media_file.participants, '$.%s') where key='name' and %s)", e.role, cond)
+		cond = strings.ReplaceAll(cond, "value", "artist.name")
+		cond = fmt.Sprintf("exists (select 1 from media_file_artists mfa join artist on artist.id = mfa.artist_id where mfa.media_file_id = media_file.id and mfa.role = ? and %s)", cond)
+		args = append([]any{e.role}, args...)
 	} else {
-		cond = fmt.Sprintf("exists (select 1 from json_tree(media_file.participants, '$.%s') where key='name')", e.role)
+		cond = "exists (select 1 from media_file_artists mfa where mfa.media_file_id = media_file.id and mfa.role = ?)"
+		args = []any{e.role}
 	}
 	if e.not {
 		cond = "not " + cond
 	}
 	return cond, args, err
+}
+
+// roleCondBatchSize limits how many conditions are ORed inside a single EXISTS subquery
+// to stay within SQLite's expression tree depth limit (max 1000). Each condition adds ~2
+// levels of depth (the OR node + the LIKE/= comparison), and the EXISTS wrapper adds ~10.
+const roleCondBatchSize = 200
+
+// mergeRoleConds collapses multiple non-negated roleCond entries for the same role
+// within an OR group into batched EXISTS subqueries with the conditions ORed inside.
+// This turns N separate correlated subqueries into ceil(N/batchSize), dramatically
+// improving performance for smart playlists with many artist patterns.
+func mergeRoleConds(or squirrel.Or) squirrel.Sqlizer {
+	// Group non-negated roleConds by role
+	type group struct {
+		indices []int
+		conds   []roleCond
+	}
+	groups := make(map[string]*group)
+	for i, s := range or {
+		rc, ok := s.(roleCond)
+		if !ok || rc.not || rc.cond == nil {
+			continue
+		}
+		g, exists := groups[rc.role]
+		if !exists {
+			g = &group{}
+			groups[rc.role] = g
+		}
+		g.indices = append(g.indices, i)
+		g.conds = append(g.conds, rc)
+	}
+
+	// Only merge groups with 2+ conditions
+	merged := false
+	remove := make(map[int]bool)
+	var additions []squirrel.Sqlizer
+	for _, g := range groups {
+		if len(g.conds) < 2 {
+			continue
+		}
+		merged = true
+		for _, idx := range g.indices {
+			remove[idx] = true
+		}
+		// Split into batches to avoid SQLite expression tree depth limit
+		for start := 0; start < len(g.conds); start += roleCondBatchSize {
+			end := min(start+roleCondBatchSize, len(g.conds))
+			additions = append(additions, roleCondGroup{
+				role:  g.conds[0].role,
+				conds: g.conds[start:end],
+			})
+		}
+	}
+
+	if !merged {
+		return or
+	}
+
+	// Build the new OR list
+	result := make(squirrel.Or, 0, len(or)-len(remove)+len(additions))
+	for i, s := range or {
+		if !remove[i] {
+			result = append(result, s)
+		}
+	}
+	result = append(result, additions...)
+	return result
+}
+
+// roleCondGroup represents multiple role conditions for the same role, merged into
+// a single EXISTS subquery for performance.
+type roleCondGroup struct {
+	role  string
+	conds []roleCond
+}
+
+func (g roleCondGroup) ToSql() (string, []any, error) {
+	innerParts := make([]string, 0, len(g.conds))
+	allArgs := []any{g.role}
+	for _, rc := range g.conds {
+		part, args, err := rc.cond.ToSql()
+		if err != nil {
+			return "", nil, err
+		}
+		part = strings.ReplaceAll(part, "value", "artist.name")
+		innerParts = append(innerParts, part)
+		allArgs = append(allArgs, args...)
+	}
+	cond := fmt.Sprintf("exists (select 1 from media_file_artists mfa join artist on artist.id = mfa.artist_id where mfa.media_file_id = media_file.id and mfa.role = ? and (%s))",
+		strings.Join(innerParts, " OR "))
+	return cond, allArgs, nil
 }
 
 func singleField(values map[string]any) (string, any, criteria.FieldInfo, bool) {
