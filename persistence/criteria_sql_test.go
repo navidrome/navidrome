@@ -206,7 +206,7 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 		}
 	})
 
-	Describe("role condition merging", func() {
+	Describe("JSON condition merging", func() {
 		It("merges multiple role conditions in an OR group into a single EXISTS", func() {
 			expr := criteria.Any{
 				criteria.Contains{"artist": "Beatles"},
@@ -252,8 +252,8 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 		})
 
 		It("batches large groups to avoid SQLite expression tree depth limit", func() {
-			// Create roleCondBatchSize + 1 conditions to trigger batching into 2 groups
-			anyExprs := make(criteria.Any, roleCondBatchSize+1)
+			// Create jsonCondBatchSize + 1 conditions to trigger batching into 2 groups
+			anyExprs := make(criteria.Any, jsonCondBatchSize+1)
 			for i := range anyExprs {
 				anyExprs[i] = criteria.Contains{"artist": fmt.Sprintf("Artist%d", i)}
 			}
@@ -262,11 +262,11 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 
 			sql, args, err := sqlizer.ToSql()
 			Expect(err).ToNot(HaveOccurred())
-			// Should produce 2 EXISTS subqueries (one batch of roleCondBatchSize, one of 1)
+			// Should produce 2 EXISTS subqueries (one batch of jsonCondBatchSize, one of 1)
 			Expect(strings.Count(sql, "exists")).To(Equal(2))
-			// First batch has roleCondBatchSize patterns, second has 1 => total args:
-			// 2 roles + (roleCondBatchSize + 1) patterns
-			Expect(args).To(HaveLen(2 + roleCondBatchSize + 1))
+			// First batch has jsonCondBatchSize patterns, second has 1 => total args:
+			// 2 roles + (jsonCondBatchSize + 1) patterns
+			Expect(args).To(HaveLen(2 + jsonCondBatchSize + 1))
 		})
 
 		It("merges role conditions while preserving non-role conditions", func() {
@@ -283,6 +283,66 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 			Expect(sql).To(ContainSubstring("media_file.title LIKE ?"))
 			Expect(sql).To(ContainSubstring("artist.name LIKE ? OR artist.name LIKE ?"))
 			Expect(args).To(HaveExactElements("%Love%", "artist", "%Beatles%", "%Kraftwerk%"))
+		})
+
+		It("merges multiple tag conditions in an OR group into a single EXISTS", func() {
+			expr := criteria.Any{
+				criteria.Contains{"genre": "Rock"},
+				criteria.Contains{"genre": "Metal"},
+				criteria.Contains{"genre": "Punk"},
+			}
+			sqlizer, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: expr}).Where()
+			Expect(err).ToNot(HaveOccurred())
+
+			sql, args, err := sqlizer.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(sql).To(Equal("(exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and (value LIKE ? OR value LIKE ? OR value LIKE ?)))"))
+			Expect(args).To(HaveExactElements("%Rock%", "%Metal%", "%Punk%"))
+		})
+
+		It("does not merge tag conditions from different tags", func() {
+			expr := criteria.Any{
+				criteria.Contains{"genre": "Rock"},
+				criteria.Contains{"mood": "Happy"},
+			}
+			sqlizer, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: expr}).Where()
+			Expect(err).ToNot(HaveOccurred())
+
+			sql, _, err := sqlizer.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(strings.Count(sql, "exists")).To(Equal(2))
+		})
+
+		It("does not merge negated tag conditions", func() {
+			expr := criteria.Any{
+				criteria.NotContains{"genre": "Rock"},
+				criteria.NotContains{"genre": "Metal"},
+			}
+			sqlizer, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: expr}).Where()
+			Expect(err).ToNot(HaveOccurred())
+
+			sql, _, err := sqlizer.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(strings.Count(sql, "not exists")).To(Equal(2))
+		})
+
+		It("merges role and tag conditions independently", func() {
+			expr := criteria.Any{
+				criteria.Contains{"artist": "Beatles"},
+				criteria.Contains{"artist": "Kraftwerk"},
+				criteria.Contains{"genre": "Rock"},
+				criteria.Contains{"genre": "Metal"},
+			}
+			sqlizer, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: expr}).Where()
+			Expect(err).ToNot(HaveOccurred())
+
+			sql, args, err := sqlizer.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			// Two merged EXISTS: one for roles, one for tags
+			Expect(strings.Count(sql, "exists")).To(Equal(2))
+			Expect(sql).To(ContainSubstring("artist.name LIKE ? OR artist.name LIKE ?"))
+			Expect(sql).To(ContainSubstring("value LIKE ? OR value LIKE ?"))
+			Expect(args).To(HaveLen(2 + 2 + 1)) // 2 tag patterns + 2 role patterns + 1 role name
 		})
 	})
 

@@ -66,8 +66,8 @@ func benchmarkMergedJoinTable(b *testing.B, ctx context.Context, patterns []stri
 	var sb strings.Builder
 	var args []any
 	sb.WriteString("SELECT media_file.id FROM media_file WHERE (")
-	for start := 0; start < len(patterns); start += roleCondBatchSize {
-		end := min(start+roleCondBatchSize, len(patterns))
+	for start := 0; start < len(patterns); start += jsonCondBatchSize {
+		end := min(start+jsonCondBatchSize, len(patterns))
 		batch := patterns[start:end]
 		if start > 0 {
 			sb.WriteString(" OR ")
@@ -95,8 +95,8 @@ func benchmarkMergedJSONTree(b *testing.B, ctx context.Context, patterns []strin
 	var sb strings.Builder
 	var args []any
 	sb.WriteString("SELECT media_file.id FROM media_file WHERE (")
-	for start := 0; start < len(patterns); start += roleCondBatchSize {
-		end := min(start+roleCondBatchSize, len(patterns))
+	for start := 0; start < len(patterns); start += jsonCondBatchSize {
+		end := min(start+jsonCondBatchSize, len(patterns))
 		batch := patterns[start:end]
 		if start > 0 {
 			sb.WriteString(" OR ")

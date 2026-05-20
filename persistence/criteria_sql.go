@@ -148,7 +148,7 @@ func (c smartPlaylistCriteria) exprSQL(expr criteria.Expression) (squirrel.Sqliz
 			}
 			or = append(or, cond)
 		}
-		return mergeRoleConds(or), nil
+		return mergeJsonConds(or), nil
 	case criteria.Is:
 		return mapExpr(e, func(fields map[string]any) squirrel.Sqlizer {
 			return squirrel.Eq(fields)
@@ -414,53 +414,76 @@ func roleExistsSQL(innerCond string) string {
 		"where mfa.media_file_id = media_file.id and mfa.role = ? and %s)", innerCond)
 }
 
-// roleCondBatchSize limits how many conditions are ORed inside a single EXISTS subquery
+// jsonCondBatchSize limits how many conditions are ORed inside a single EXISTS subquery
 // to stay within SQLite's expression tree depth limit (max 1000). The EXISTS wrapper
 // consumes ~4 levels; each ORed condition adds 1 level. Empirically, 496 is the maximum.
-const roleCondBatchSize = 350
+const jsonCondBatchSize = 350
 
-// mergeRoleConds collapses multiple non-negated roleCond entries for the same role
-// within an OR group into batched EXISTS subqueries with the conditions ORed inside.
+// mergeJsonConds collapses multiple non-negated roleCond or tagCond entries for the same
+// field within an OR group into batched EXISTS subqueries with the conditions ORed inside.
 // This turns N separate correlated subqueries into ceil(N/batchSize), dramatically
-// improving performance for smart playlists with many artist patterns.
-func mergeRoleConds(or squirrel.Or) squirrel.Sqlizer {
-	// Group non-negated roleConds by role
+// improving performance for smart playlists with many patterns.
+func mergeJsonConds(or squirrel.Or) squirrel.Sqlizer {
+	type condEntry struct {
+		index int
+		cond  squirrel.Sqlizer
+	}
 	type group struct {
-		indices []int
-		conds   []roleCond
+		entries []condEntry
+		isRole  bool
+		numeric bool
+		tag     string
 	}
 	groups := make(map[string]*group)
 	for i, s := range or {
-		rc, ok := s.(roleCond)
-		if !ok || rc.not || rc.cond == nil {
-			continue
+		switch c := s.(type) {
+		case roleCond:
+			if c.not || c.cond == nil {
+				continue
+			}
+			g, exists := groups["role:"+c.role]
+			if !exists {
+				g = &group{isRole: true}
+				groups["role:"+c.role] = g
+			}
+			g.entries = append(g.entries, condEntry{index: i, cond: c.cond})
+		case tagCond:
+			if c.not || c.cond == nil {
+				continue
+			}
+			g, exists := groups["tag:"+c.tag]
+			if !exists {
+				g = &group{tag: c.tag, numeric: c.numeric}
+				groups["tag:"+c.tag] = g
+			}
+			g.entries = append(g.entries, condEntry{index: i, cond: c.cond})
 		}
-		g, exists := groups[rc.role]
-		if !exists {
-			g = &group{}
-			groups[rc.role] = g
-		}
-		g.indices = append(g.indices, i)
-		g.conds = append(g.conds, rc)
 	}
 
-	// Only merge groups with 2+ conditions
 	merged := false
 	remove := make(map[int]bool)
 	var additions []squirrel.Sqlizer
-	for _, g := range groups {
-		if len(g.conds) < 2 {
+	for key, g := range groups {
+		if len(g.entries) < 2 {
 			continue
 		}
 		merged = true
-		for _, idx := range g.indices {
-			remove[idx] = true
+		for _, e := range g.entries {
+			remove[e.index] = true
 		}
-		for batch := range slices.Chunk(g.conds, roleCondBatchSize) {
-			additions = append(additions, roleCondGroup{
-				role:  g.conds[0].role,
-				conds: batch,
-			})
+		conds := make([]squirrel.Sqlizer, len(g.entries))
+		for i, e := range g.entries {
+			conds[i] = e.cond
+		}
+		if g.isRole {
+			role := key[len("role:"):]
+			for batch := range slices.Chunk(conds, jsonCondBatchSize) {
+				additions = append(additions, roleCondGroup{role: role, conds: batch})
+			}
+		} else {
+			for batch := range slices.Chunk(conds, jsonCondBatchSize) {
+				additions = append(additions, tagCondGroup{tag: g.tag, numeric: g.numeric, conds: batch})
+			}
 		}
 	}
 
@@ -468,7 +491,6 @@ func mergeRoleConds(or squirrel.Or) squirrel.Sqlizer {
 		return or
 	}
 
-	// Build the new OR list
 	result := make(squirrel.Or, 0, len(or)-len(remove)+len(additions))
 	for i, s := range or {
 		if !remove[i] {
@@ -483,14 +505,14 @@ func mergeRoleConds(or squirrel.Or) squirrel.Sqlizer {
 // a single EXISTS subquery for performance.
 type roleCondGroup struct {
 	role  string
-	conds []roleCond
+	conds []squirrel.Sqlizer
 }
 
 func (g roleCondGroup) ToSql() (string, []any, error) {
 	innerParts := make([]string, 0, len(g.conds))
 	allArgs := []any{g.role}
-	for _, rc := range g.conds {
-		part, args, err := roleCondSQL(rc.cond)
+	for _, c := range g.conds {
+		part, args, err := roleCondSQL(c)
 		if err != nil {
 			return "", nil, err
 		}
@@ -498,6 +520,33 @@ func (g roleCondGroup) ToSql() (string, []any, error) {
 		allArgs = append(allArgs, args...)
 	}
 	cond := roleExistsSQL("(" + strings.Join(innerParts, " OR ") + ")")
+	return cond, allArgs, nil
+}
+
+// tagCondGroup represents multiple tag conditions for the same tag, merged into
+// a single EXISTS subquery for performance.
+type tagCondGroup struct {
+	tag     string
+	numeric bool
+	conds   []squirrel.Sqlizer
+}
+
+func (g tagCondGroup) ToSql() (string, []any, error) {
+	innerParts := make([]string, 0, len(g.conds))
+	var allArgs []any
+	for _, c := range g.conds {
+		part, args, err := c.ToSql()
+		if err != nil {
+			return "", nil, err
+		}
+		if g.numeric {
+			part = strings.ReplaceAll(part, "value", "CAST(value AS REAL)")
+		}
+		innerParts = append(innerParts, part)
+		allArgs = append(allArgs, args...)
+	}
+	cond := fmt.Sprintf("exists (select 1 from json_tree(media_file.tags, '$.%s') where key='value' and (%s))",
+		g.tag, strings.Join(innerParts, " OR "))
 	return cond, allArgs, nil
 }
 
