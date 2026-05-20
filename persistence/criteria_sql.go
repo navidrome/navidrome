@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -381,12 +382,13 @@ type roleCond struct {
 func (e roleCond) ToSql() (string, []any, error) {
 	var cond string
 	var args []any
-	var err error
 	if e.cond != nil {
-		cond, args, err = e.cond.ToSql()
-		cond = strings.ReplaceAll(cond, "value", "artist.name")
-		cond = fmt.Sprintf("exists (select 1 from media_file_artists mfa join artist on artist.id = mfa.artist_id where mfa.media_file_id = media_file.id and mfa.role = ? and %s)", cond)
-		args = append([]any{e.role}, args...)
+		innerSQL, innerArgs, err := roleCondSQL(e.cond)
+		if err != nil {
+			return "", nil, err
+		}
+		cond = roleExistsSQL(innerSQL)
+		args = append([]any{e.role}, innerArgs...)
 	} else {
 		cond = "exists (select 1 from media_file_artists mfa where mfa.media_file_id = media_file.id and mfa.role = ?)"
 		args = []any{e.role}
@@ -394,7 +396,22 @@ func (e roleCond) ToSql() (string, []any, error) {
 	if e.not {
 		cond = "not " + cond
 	}
-	return cond, args, err
+	return cond, args, nil
+}
+
+// roleCondSQL extracts SQL from a squirrel condition and rewrites the placeholder column name.
+func roleCondSQL(cond squirrel.Sqlizer) (string, []any, error) {
+	sql, args, err := cond.ToSql()
+	if err != nil {
+		return "", nil, err
+	}
+	return strings.ReplaceAll(sql, "value", "artist.name"), args, nil
+}
+
+// roleExistsSQL wraps a condition fragment in the standard role EXISTS subquery.
+func roleExistsSQL(innerCond string) string {
+	return fmt.Sprintf("exists (select 1 from media_file_artists mfa join artist on artist.id = mfa.artist_id "+
+		"where mfa.media_file_id = media_file.id and mfa.role = ? and %s)", innerCond)
 }
 
 // roleCondBatchSize limits how many conditions are ORed inside a single EXISTS subquery
@@ -439,12 +456,10 @@ func mergeRoleConds(or squirrel.Or) squirrel.Sqlizer {
 		for _, idx := range g.indices {
 			remove[idx] = true
 		}
-		// Split into batches to avoid SQLite expression tree depth limit
-		for start := 0; start < len(g.conds); start += roleCondBatchSize {
-			end := min(start+roleCondBatchSize, len(g.conds))
+		for batch := range slices.Chunk(g.conds, roleCondBatchSize) {
 			additions = append(additions, roleCondGroup{
 				role:  g.conds[0].role,
-				conds: g.conds[start:end],
+				conds: batch,
 			})
 		}
 	}
@@ -475,16 +490,14 @@ func (g roleCondGroup) ToSql() (string, []any, error) {
 	innerParts := make([]string, 0, len(g.conds))
 	allArgs := []any{g.role}
 	for _, rc := range g.conds {
-		part, args, err := rc.cond.ToSql()
+		part, args, err := roleCondSQL(rc.cond)
 		if err != nil {
 			return "", nil, err
 		}
-		part = strings.ReplaceAll(part, "value", "artist.name")
 		innerParts = append(innerParts, part)
 		allArgs = append(allArgs, args...)
 	}
-	cond := fmt.Sprintf("exists (select 1 from media_file_artists mfa join artist on artist.id = mfa.artist_id where mfa.media_file_id = media_file.id and mfa.role = ? and (%s))",
-		strings.Join(innerParts, " OR "))
+	cond := roleExistsSQL("(" + strings.Join(innerParts, " OR ") + ")")
 	return cond, allArgs, nil
 }
 

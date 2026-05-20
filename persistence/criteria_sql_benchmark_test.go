@@ -59,11 +59,9 @@ func BenchmarkSmartPlaylistRole(b *testing.B) {
 	})
 }
 
-// MergedJoinTable: batched EXISTS with patterns ORed inside each batch, using media_file_artists join.
-// Mirrors the production roleCondGroup batching with roleCondBatchSize.
+// benchmarkMergedJoinTable: batched EXISTS with patterns ORed inside each batch, using media_file_artists join.
 func benchmarkMergedJoinTable(b *testing.B, ctx context.Context, patterns []string) {
 	b.Helper()
-	sqlDB := db.Db()
 
 	var sb strings.Builder
 	var args []any
@@ -86,30 +84,13 @@ func benchmarkMergedJoinTable(b *testing.B, ctx context.Context, patterns []stri
 		sb.WriteString("))")
 	}
 	sb.WriteString(") ORDER BY media_file.title LIMIT 500")
-	query := sb.String()
 
-	b.ResetTimer()
-	for range b.N {
-		rows, err := sqlDB.QueryContext(ctx, query, args...)
-		if err != nil {
-			b.Fatal(err)
-		}
-		for rows.Next() {
-			var id string
-			_ = rows.Scan(&id)
-		}
-		if err := rows.Err(); err != nil {
-			b.Fatal(err)
-		}
-		rows.Close()
-	}
+	runBenchQuery(b, ctx, sb.String(), args)
 }
 
-// MergedJSONTree: batched EXISTS with patterns ORed inside each batch, using json_tree.
-// Mirrors the production batching with roleCondBatchSize.
+// benchmarkMergedJSONTree: batched EXISTS with patterns ORed inside each batch, using json_tree.
 func benchmarkMergedJSONTree(b *testing.B, ctx context.Context, patterns []string) {
 	b.Helper()
-	sqlDB := db.Db()
 
 	var sb strings.Builder
 	var args []any
@@ -131,29 +112,13 @@ func benchmarkMergedJSONTree(b *testing.B, ctx context.Context, patterns []strin
 		sb.WriteString("))")
 	}
 	sb.WriteString(") ORDER BY media_file.title LIMIT 500")
-	query := sb.String()
 
-	b.ResetTimer()
-	for range b.N {
-		rows, err := sqlDB.QueryContext(ctx, query, args...)
-		if err != nil {
-			b.Fatal(err)
-		}
-		for rows.Next() {
-			var id string
-			_ = rows.Scan(&id)
-		}
-		if err := rows.Err(); err != nil {
-			b.Fatal(err)
-		}
-		rows.Close()
-	}
+	runBenchQuery(b, ctx, sb.String(), args)
 }
 
-// UnmergedJSONTree: 200 separate EXISTS subqueries (the old baseline approach)
+// benchmarkUnmergedJSONTree: N separate EXISTS subqueries (the old baseline approach).
 func benchmarkUnmergedJSONTree(b *testing.B, ctx context.Context, patterns []string) {
 	b.Helper()
-	sqlDB := db.Db()
 
 	var sb strings.Builder
 	sb.WriteString("SELECT media_file.id FROM media_file WHERE (")
@@ -166,8 +131,13 @@ func benchmarkUnmergedJSONTree(b *testing.B, ctx context.Context, patterns []str
 		args = append(args, p)
 	}
 	sb.WriteString(") ORDER BY media_file.title LIMIT 500")
-	query := sb.String()
 
+	runBenchQuery(b, ctx, sb.String(), args)
+}
+
+func runBenchQuery(b *testing.B, ctx context.Context, query string, args []any) {
+	b.Helper()
+	sqlDB := db.Db()
 	b.ResetTimer()
 	for range b.N {
 		rows, err := sqlDB.QueryContext(ctx, query, args...)
