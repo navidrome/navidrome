@@ -174,7 +174,11 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 // committed by the time the UPDATE returns.
 func validateAppPasswordCredentials(ctx context.Context, ds model.DataStore, user *model.User, pass, token, salt string) error {
 	aps, err := ds.AppPassword(ctx).GetActiveForUser(ctx, user.ID)
-	if err != nil || len(aps) == 0 {
+	if err != nil {
+		log.Error(ctx, "Failed to load app passwords during auth", "userId", user.ID, err)
+		return model.ErrInvalidAuth
+	}
+	if len(aps) == 0 {
 		return model.ErrInvalidAuth
 	}
 
