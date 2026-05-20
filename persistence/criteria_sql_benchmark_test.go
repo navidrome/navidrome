@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/db"
@@ -25,8 +26,9 @@ const (
 	benchArtistsPerTrack = 3
 )
 
-// BenchmarkSmartPlaylistRole compares role-based smart playlist query performance across
-// three strategies: merged join-table, merged json_tree, and unmerged json_tree (baseline).
+// BenchmarkSmartPlaylistRole compares role-based smart playlist query performance
+// between the current implementation (merged join-table via criteria pipeline) and
+// the old baseline (unmerged json_tree subqueries).
 func BenchmarkSmartPlaylistRole(b *testing.B) {
 	configtest.SetupConfig()
 	tmpDir := b.TempDir()
@@ -43,92 +45,64 @@ func BenchmarkSmartPlaylistRole(b *testing.B) {
 	setupBenchData(b, ctx, conn, user)
 	criteria.AddRoles([]string{"artist"})
 
-	patterns := make([]string, benchNumPatterns)
+	// Build the criteria expression: 500 "contains artist" patterns in an OR group
+	anyExprs := make(criteria.Any, benchNumPatterns)
 	for i := range benchNumPatterns {
-		patterns[i] = fmt.Sprintf("%%Artist %04d%%", i)
+		anyExprs[i] = criteria.Contains{"artist": fmt.Sprintf("Artist %04d", i)}
 	}
+	expr := criteria.Criteria{Expression: anyExprs, Sort: "title", Limit: 500}
 
-	b.Run("MergedJoinTable", func(b *testing.B) {
-		benchmarkMergedJoinTable(b, ctx, patterns)
+	b.Run("Current", func(b *testing.B) {
+		benchmarkCriteriaPipeline(b, ctx, expr)
 	})
-	b.Run("MergedJSONTree", func(b *testing.B) {
-		benchmarkMergedJSONTree(b, ctx, patterns)
-	})
-	b.Run("UnmergedJSONTree", func(b *testing.B) {
-		benchmarkUnmergedJSONTree(b, ctx, patterns)
+	b.Run("Baseline_UnmergedJSONTree", func(b *testing.B) {
+		benchmarkUnmergedJSONTree(b, ctx)
 	})
 }
 
-// benchmarkMergedJoinTable: batched EXISTS with patterns ORed inside each batch, using media_file_artists join.
-func benchmarkMergedJoinTable(b *testing.B, ctx context.Context, patterns []string) {
+// benchmarkCriteriaPipeline runs the criteria through the actual production code path:
+// newSmartPlaylistCriteria → Where() → ToSql(), then executes the resulting query.
+func benchmarkCriteriaPipeline(b *testing.B, ctx context.Context, expr criteria.Criteria) {
 	b.Helper()
 
-	var sb strings.Builder
-	var args []any
-	sb.WriteString("SELECT media_file.id FROM media_file WHERE (")
-	for start := 0; start < len(patterns); start += jsonCondBatchSize {
-		end := min(start+jsonCondBatchSize, len(patterns))
-		batch := patterns[start:end]
-		if start > 0 {
-			sb.WriteString(" OR ")
-		}
-		sb.WriteString("exists (select 1 from media_file_artists mfa join artist on artist.id = mfa.artist_id where mfa.media_file_id = media_file.id and mfa.role = ? and (")
-		args = append(args, "artist")
-		for i, p := range batch {
-			if i > 0 {
-				sb.WriteString(" OR ")
-			}
-			sb.WriteString("artist.name LIKE ?")
-			args = append(args, p)
-		}
-		sb.WriteString("))")
-	}
-	sb.WriteString(") ORDER BY media_file.title LIMIT 500")
+	cSQL := newSmartPlaylistCriteria(expr)
 
-	runBenchQuery(b, ctx, sb.String(), args)
+	// Build the full query matching buildSmartPlaylistQuery + addCriteria
+	sq := squirrel.Select("media_file.id").From("media_file")
+	cond, err := cSQL.Where()
+	if err != nil {
+		b.Fatal(err)
+	}
+	sq = sq.Where(cond)
+	if expr.Limit > 0 {
+		sq = sq.Limit(uint64(expr.Limit))
+	}
+	if order := cSQL.OrderBy(); order != "" {
+		sq = sq.OrderBy(order)
+	}
+
+	query, args, err := sq.PlaceholderFormat(squirrel.Question).ToSql()
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	runBenchQuery(b, ctx, query, args)
 }
 
-// benchmarkMergedJSONTree: batched EXISTS with patterns ORed inside each batch, using json_tree.
-func benchmarkMergedJSONTree(b *testing.B, ctx context.Context, patterns []string) {
-	b.Helper()
-
-	var sb strings.Builder
-	var args []any
-	sb.WriteString("SELECT media_file.id FROM media_file WHERE (")
-	for start := 0; start < len(patterns); start += jsonCondBatchSize {
-		end := min(start+jsonCondBatchSize, len(patterns))
-		batch := patterns[start:end]
-		if start > 0 {
-			sb.WriteString(" OR ")
-		}
-		sb.WriteString("exists (select 1 from json_tree(media_file.participants, '$.artist') where key='name' and (")
-		for i, p := range batch {
-			if i > 0 {
-				sb.WriteString(" OR ")
-			}
-			sb.WriteString("value LIKE ?")
-			args = append(args, p)
-		}
-		sb.WriteString("))")
-	}
-	sb.WriteString(") ORDER BY media_file.title LIMIT 500")
-
-	runBenchQuery(b, ctx, sb.String(), args)
-}
-
-// benchmarkUnmergedJSONTree: N separate EXISTS subqueries (the old baseline approach).
-func benchmarkUnmergedJSONTree(b *testing.B, ctx context.Context, patterns []string) {
+// benchmarkUnmergedJSONTree builds the old-style query with N separate json_tree EXISTS
+// subqueries (the pre-optimization baseline).
+func benchmarkUnmergedJSONTree(b *testing.B, ctx context.Context) {
 	b.Helper()
 
 	var sb strings.Builder
 	sb.WriteString("SELECT media_file.id FROM media_file WHERE (")
-	args := make([]any, 0, len(patterns))
-	for i, p := range patterns {
+	args := make([]any, 0, benchNumPatterns)
+	for i := range benchNumPatterns {
 		if i > 0 {
 			sb.WriteString(" OR ")
 		}
 		sb.WriteString("exists (select 1 from json_tree(media_file.participants, '$.artist') where key='name' and value LIKE ?)")
-		args = append(args, p)
+		args = append(args, fmt.Sprintf("%%Artist %04d%%", i))
 	}
 	sb.WriteString(") ORDER BY media_file.title LIMIT 500")
 
