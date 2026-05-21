@@ -72,7 +72,7 @@ var _ = Describe("lastfmAgent", func() {
 		var httpClient *tests.FakeHttpClient
 		BeforeEach(func() {
 			httpClient = &tests.FakeHttpClient{}
-			client := newClient("API_KEY", "SECRET", httpClient)
+			client := newClient("API_KEY", "SECRET", "", httpClient)
 			agent = lastFMConstructor(ds)
 			agent.client = client
 		})
@@ -114,7 +114,7 @@ var _ = Describe("lastfmAgent", func() {
 			It("returns content in first language when available (1 API call)", func() {
 				conf.Server.LastFM.Languages = []string{"pt", "en"}
 				agent = lastFMConstructor(ds)
-				agent.client = newClient("API_KEY", "SECRET", httpClient)
+				agent.client = newClient("API_KEY", "SECRET", "", httpClient)
 
 				// Portuguese biography available
 				f, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.json")
@@ -131,7 +131,7 @@ var _ = Describe("lastfmAgent", func() {
 			It("falls back to second language when first returns empty (2 API calls)", func() {
 				conf.Server.LastFM.Languages = []string{"ja", "en"}
 				agent = lastFMConstructor(ds)
-				agent.client = newClient("API_KEY", "SECRET", httpClient)
+				agent.client = newClient("API_KEY", "SECRET", "", httpClient)
 
 				// Japanese returns empty/ignored biography (actual Last.fm response with just "Read more" link)
 				fJa, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.empty.json")
@@ -152,7 +152,7 @@ var _ = Describe("lastfmAgent", func() {
 			It("returns ErrNotFound when all languages return empty", func() {
 				conf.Server.LastFM.Languages = []string{"ja", "xx"}
 				agent = lastFMConstructor(ds)
-				agent.client = newClient("API_KEY", "SECRET", httpClient)
+				agent.client = newClient("API_KEY", "SECRET", "", httpClient)
 
 				// Both languages return empty/ignored biography (using actual Last.fm response format)
 				fJa, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.empty.json")
@@ -179,7 +179,7 @@ var _ = Describe("lastfmAgent", func() {
 			It("falls back to second language when first returns empty description (2 API calls)", func() {
 				conf.Server.LastFM.Languages = []string{"ja", "en"}
 				agent = lastFMConstructor(ds)
-				agent.client = newClient("API_KEY", "SECRET", httpClient)
+				agent.client = newClient("API_KEY", "SECRET", "", httpClient)
 
 				// Japanese returns album without wiki/description (actual Last.fm response)
 				fJa, _ := os.Open("tests/fixtures/lastfm.album.getinfo.empty.json")
@@ -201,7 +201,7 @@ var _ = Describe("lastfmAgent", func() {
 			It("returns album without description when all languages return empty", func() {
 				conf.Server.LastFM.Languages = []string{"ja", "xx"}
 				agent = lastFMConstructor(ds)
-				agent.client = newClient("API_KEY", "SECRET", httpClient)
+				agent.client = newClient("API_KEY", "SECRET", "", httpClient)
 
 				// Both languages return album without description
 				fJa, _ := os.Open("tests/fixtures/lastfm.album.getinfo.empty.json")
@@ -224,7 +224,7 @@ var _ = Describe("lastfmAgent", func() {
 		var httpClient *tests.FakeHttpClient
 		BeforeEach(func() {
 			httpClient = &tests.FakeHttpClient{}
-			client := newClient("API_KEY", "SECRET", httpClient)
+			client := newClient("API_KEY", "SECRET", "", httpClient)
 			agent = lastFMConstructor(ds)
 			agent.client = client
 		})
@@ -262,7 +262,7 @@ var _ = Describe("lastfmAgent", func() {
 		var httpClient *tests.FakeHttpClient
 		BeforeEach(func() {
 			httpClient = &tests.FakeHttpClient{}
-			client := newClient("API_KEY", "SECRET", httpClient)
+			client := newClient("API_KEY", "SECRET", "", httpClient)
 			agent = lastFMConstructor(ds)
 			agent.client = client
 		})
@@ -300,7 +300,7 @@ var _ = Describe("lastfmAgent", func() {
 		var httpClient *tests.FakeHttpClient
 		BeforeEach(func() {
 			httpClient = &tests.FakeHttpClient{}
-			client := newClient("API_KEY", "SECRET", httpClient)
+			client := newClient("API_KEY", "SECRET", "", httpClient)
 			agent = lastFMConstructor(ds)
 			agent.client = client
 		})
@@ -350,7 +350,7 @@ var _ = Describe("lastfmAgent", func() {
 		BeforeEach(func() {
 			_ = ds.UserProps(ctx).Put("user-1", sessionKeyProperty, "SK-1")
 			httpClient = &tests.FakeHttpClient{}
-			client := newClient("API_KEY", "SECRET", httpClient)
+			client := newClient("API_KEY", "SECRET", "", httpClient)
 			agent = lastFMConstructor(ds)
 			agent.client = client
 			track = &model.MediaFile{
@@ -524,7 +524,7 @@ var _ = Describe("lastfmAgent", func() {
 		var httpClient *tests.FakeHttpClient
 		BeforeEach(func() {
 			httpClient = &tests.FakeHttpClient{}
-			client := newClient("API_KEY", "SECRET", httpClient)
+			client := newClient("API_KEY", "SECRET", "", httpClient)
 			agent = lastFMConstructor(ds)
 			agent.client = client
 		})
@@ -594,7 +594,7 @@ var _ = Describe("lastfmAgent", func() {
 		BeforeEach(func() {
 			apiClient = &tests.FakeHttpClient{}
 			httpClient = &tests.FakeHttpClient{}
-			client := newClient("API_KEY", "SECRET", apiClient)
+			client := newClient("API_KEY", "SECRET", "", apiClient)
 			agent = lastFMConstructor(ds)
 			agent.client = client
 			agent.httpClient = httpClient

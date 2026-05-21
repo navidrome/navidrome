@@ -14,11 +14,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
-)
-
-const (
-	apiBaseUrl = "https://ws.audioscrobbler.com/2.0/"
 )
 
 type lastFMError struct {
@@ -34,14 +31,15 @@ type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-func newClient(apiKey string, secret string, hc httpDoer) *client {
-	return &client{apiKey, secret, hc}
+func newClient(apiKey string, secret string, baseURL string, hc httpDoer) *client {
+	return &client{apiKey, secret, normalizeLastFMBaseURL(baseURL), hc}
 }
 
 type client struct {
-	apiKey string
-	secret string
-	hc     httpDoer
+	apiKey  string
+	secret  string
+	baseURL string
+	hc      httpDoer
 }
 
 func (c *client) albumGetInfo(ctx context.Context, name string, artist string, mbid string, lang string) (*Album, error) {
@@ -200,10 +198,10 @@ func (c *client) makeRequest(ctx context.Context, method string, params url.Valu
 	var req *http.Request
 	if method == http.MethodPost {
 		body := strings.NewReader(params.Encode())
-		req, _ = http.NewRequestWithContext(ctx, method, apiBaseUrl, body)
+		req, _ = http.NewRequestWithContext(ctx, method, c.baseURL, body)
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	} else {
-		req, _ = http.NewRequestWithContext(ctx, method, apiBaseUrl, nil)
+		req, _ = http.NewRequestWithContext(ctx, method, c.baseURL, nil)
 		req.URL.RawQuery = params.Encode()
 	}
 
@@ -229,6 +227,17 @@ func (c *client) makeRequest(ctx context.Context, method string, params url.Valu
 	}
 
 	return &response, nil
+}
+
+func normalizeLastFMBaseURL(baseURL string) string {
+	baseURL = strings.TrimSpace(baseURL)
+	if baseURL == "" {
+		return consts.DefaultLastFMBaseURL
+	}
+	if !strings.HasSuffix(baseURL, "/") {
+		return baseURL + "/"
+	}
+	return baseURL
 }
 
 func (c *client) sign(params url.Values) {

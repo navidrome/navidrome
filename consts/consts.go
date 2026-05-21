@@ -75,6 +75,8 @@ const (
 	DefaultUIPlaybackReportInterval = time.Minute
 
 	DefaultHttpClientTimeOut = 10 * time.Second
+	DefaultLastFMBaseURL     = "https://ws.audioscrobbler.com/2.0/"
+	DefaultLastFMAuthURL     = "https://www.last.fm/api/auth/"
 
 	DefaultListenBrainzBaseURL         = "https://api.listenbrainz.org/1/"
 	DefaultListenBrainzArtistAlgorithm = "session_based_days_9000_session_300_contribution_5_threshold_15_limit_50_skip_30"

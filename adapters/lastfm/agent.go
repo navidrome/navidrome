@@ -64,7 +64,7 @@ func lastFMConstructor(ds model.DataStore) *lastfmAgent {
 	}
 	chc := cache.NewHTTPClient(hc, consts.DefaultHttpClientTimeOut)
 	l.httpClient = chc
-	l.client = newClient(l.apiKey, l.secret, chc)
+	l.client = newClient(l.apiKey, l.secret, conf.Server.LastFM.BaseURL, chc)
 	return l
 }
 
