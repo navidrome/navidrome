@@ -441,7 +441,7 @@ func buildAlbumID3(ctx context.Context, album model.Album) responses.AlbumID3 {
 	dir.PlayCount = album.PlayCount
 	dir.Year = int32(cmp.Or(album.MaxOriginalYear, album.MaxYear))
 	dir.Genre = album.Genre
-	dir.Created = new(albumCreatedAt(album))
+	dir.Created = albumCreatedAt(album)
 	if album.Starred {
 		dir.Starred = album.StarredAt
 	}
