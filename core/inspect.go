@@ -7,7 +7,6 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/metadata"
-	. "github.com/navidrome/navidrome/utils/gg"
 )
 
 type InspectOutput struct {
@@ -44,7 +43,7 @@ func Inspect(filePath string, libraryId int, folderId string) (*InspectOutput, e
 	result := &InspectOutput{
 		File:       filePath,
 		RawTags:    tags[file].Tags,
-		MappedTags: P(md.ToMediaFile(libraryId, folderId)),
+		MappedTags: new(md.ToMediaFile(libraryId, folderId)),
 	}
 
 	return result, nil

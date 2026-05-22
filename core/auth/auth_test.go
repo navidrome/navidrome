@@ -21,8 +21,7 @@ func TestAuth(t *testing.T) {
 }
 
 const (
-	testJWTSecret = "not so secret"
-	oneDay        = 24 * time.Hour
+	oneDay = 24 * time.Hour
 )
 
 var _ = BeforeSuite(func() {

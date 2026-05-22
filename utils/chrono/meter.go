@@ -2,8 +2,6 @@ package chrono
 
 import (
 	"time"
-
-	. "github.com/navidrome/navidrome/utils/gg"
 )
 
 // Meter is a simple stopwatch
@@ -13,7 +11,7 @@ type Meter struct {
 }
 
 func (m *Meter) Start() {
-	m.mark = P(time.Now())
+	m.mark = new(time.Now())
 }
 
 func (m *Meter) Stop() time.Duration {

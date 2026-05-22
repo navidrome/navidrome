@@ -8,7 +8,6 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/metadata"
 	"github.com/navidrome/navidrome/utils"
-	"github.com/navidrome/navidrome/utils/gg"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -274,8 +273,8 @@ var _ = Describe("Metadata", func() {
 					mf := createMF("replaygain_track_gain", tagValue)
 					Expect(mf.RGTrackGain).To(Equal(expected))
 				},
-				Entry("0", "0", gg.P(0.0)),
-				Entry("1.2dB", "1.2dB", gg.P(1.2)),
+				Entry("0", "0", new(0.0)),
+				Entry("1.2dB", "1.2dB", new(1.2)),
 				Entry("Infinity", "Infinity", nil),
 				Entry("Invalid value", "INVALID VALUE", nil),
 				Entry("NaN", "NaN", nil),
@@ -285,9 +284,9 @@ var _ = Describe("Metadata", func() {
 					mf := createMF("replaygain_track_peak", tagValue)
 					Expect(mf.RGTrackPeak).To(Equal(expected))
 				},
-				Entry("0", "0", gg.P(0.0)),
-				Entry("1.0", "1.0", gg.P(1.0)),
-				Entry("0.5", "0.5", gg.P(0.5)),
+				Entry("0", "0", new(0.0)),
+				Entry("1.0", "1.0", new(1.0)),
+				Entry("0.5", "0.5", new(0.5)),
 				Entry("Invalid dB suffix", "0.7dB", nil),
 				Entry("Infinity", "Infinity", nil),
 				Entry("Invalid value", "INVALID VALUE", nil),
@@ -299,8 +298,8 @@ var _ = Describe("Metadata", func() {
 					Expect(mf.RGTrackGain).To(Equal(expected))
 
 				},
-				Entry("0", "0", gg.P(5.0)),
-				Entry("-3776", "-3776", gg.P(-9.75)),
+				Entry("0", "0", new(5.0)),
+				Entry("-3776", "-3776", new(-9.75)),
 				Entry("Infinity", "Infinity", nil),
 				Entry("Invalid value", "INVALID VALUE", nil),
 			)
