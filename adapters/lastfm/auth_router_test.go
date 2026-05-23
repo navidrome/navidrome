@@ -192,12 +192,27 @@ var _ = Describe("auth_router", func() {
 			Expect(err).To(HaveOccurred())
 		})
 
-		It("rejects a public token that lacks the link scope", func() {
-			otherToken, err := auth.CreatePublicToken(auth.Claims{UserID: victimID})
+		It("rejects a token whose scope claim is wrong", func() {
+			wrongScopeToken, err := auth.EncodeToken(map[string]any{
+				"uid":   victimID,
+				"scope": "some-other-scope",
+				"exp":   time.Now().Add(linkTokenTTL).UTC().Unix(),
+			})
 			Expect(err).ToNot(HaveOccurred())
 
-			_, err = verifyLinkToken(otherToken)
+			_, err = verifyLinkToken(wrongScopeToken)
 			Expect(err).To(MatchError("invalid link token scope"))
+		})
+
+		It("rejects a scoped token that has no expiration", func() {
+			nonExpiringToken, err := auth.EncodeToken(map[string]any{
+				"uid":   victimID,
+				"scope": linkTokenScope,
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			_, err = verifyLinkToken(nonExpiringToken)
+			Expect(err).To(MatchError("link token missing expiration"))
 		})
 	})
 })

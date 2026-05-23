@@ -35,6 +35,12 @@ func verifyLinkToken(tokenStr string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	// jwtauth.VerifyToken treats a token without `exp` as non-expiring; require
+	// it explicitly so a future regression in createLinkToken cannot silently
+	// turn link tokens into permanent bearer credentials.
+	if exp, ok := token.Expiration(); !ok || exp.IsZero() {
+		return "", errors.New("link token missing expiration")
+	}
 	var scope string
 	if err := token.Get("scope", &scope); err != nil || scope != linkTokenScope {
 		return "", errors.New("invalid link token scope")
