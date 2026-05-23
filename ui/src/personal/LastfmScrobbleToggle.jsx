@@ -79,10 +79,7 @@ export const LastfmScrobbleToggle = (props) => {
   }, [setLinked, setApiKey])
 
   const startLink = () => {
-    // Open the tab synchronously inside the click handler so popup blockers
-    // (Safari, Firefox-strict) keep it tied to the user gesture. The fetch
-    // for the signed link token runs in parallel; once it resolves we
-    // redirect the placeholder tab to Last.fm's auth URL.
+    // Open the tab synchronously so popup blockers attribute it to the click.
     const tab = openInNewTab('about:blank')
     openedTab.current = tab
     setCheckingLink(true)

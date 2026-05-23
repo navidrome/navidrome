@@ -109,9 +109,6 @@ func (s *Router) callback(w http.ResponseWriter, r *http.Request) {
 		_ = rest.RespondWithError(w, http.StatusBadRequest, "uid not received")
 		return
 	}
-	// The `uid` parameter is a signed link token issued by getLinkStatus to the
-	// authenticated user. Verifying it here is what stops a third party from
-	// pointing the callback at someone else's account.
 	uid, err := verifyLinkToken(linkToken)
 	if err != nil {
 		log.Warn(r.Context(), "Rejected LastFM callback with invalid link token", "requestId", middleware.GetReqID(r.Context()), err)

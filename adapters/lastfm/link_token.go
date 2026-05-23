@@ -12,11 +12,9 @@ const (
 	linkTokenTTL   = 5 * time.Minute
 )
 
-// createLinkToken issues a short-lived, signed token that binds the Last.fm
-// link-callback to the authenticated user who initiated the OAuth flow. The
-// resulting opaque value is passed back through Last.fm via the `cb` URL and
-// verified on the callback, replacing the previously-trusted raw `uid` query
-// parameter.
+// createLinkToken issues a signed token binding the Last.fm callback to the
+// user who initiated the OAuth flow. It travels back through Last.fm via the
+// `cb` URL in place of the previously-trusted raw `uid` query parameter.
 func createLinkToken(userID string) (string, error) {
 	claims := map[string]any{
 		"uid":   userID,
@@ -35,9 +33,8 @@ func verifyLinkToken(tokenStr string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	// jwtauth.VerifyToken treats a token without `exp` as non-expiring; require
-	// it explicitly so a future regression in createLinkToken cannot silently
-	// turn link tokens into permanent bearer credentials.
+	// jwtauth treats a token without `exp` as non-expiring; require it
+	// explicitly so an accidental regression cannot mint permanent tokens.
 	if exp, ok := token.Expiration(); !ok || exp.IsZero() {
 		return "", errors.New("link token missing expiration")
 	}
