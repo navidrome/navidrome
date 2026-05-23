@@ -28,13 +28,19 @@ type MediaStreamer interface {
 type TranscodingCache cache.FileCache
 
 func NewMediaStreamer(ds model.DataStore, t ffmpeg.FFmpeg, cache TranscodingCache) MediaStreamer {
-	return &mediaStreamer{ds: ds, transcoder: t, cache: cache}
+	return &mediaStreamer{
+		ds:         ds,
+		transcoder: t,
+		cache:      cache,
+		limiter:    NewTranscodeLimiter(conf.Server.Transcoding.MaxConcurrent, conf.Server.Transcoding.MaxConcurrentPerUser),
+	}
 }
 
 type mediaStreamer struct {
 	ds         model.DataStore
 	transcoder ffmpeg.FFmpeg
 	cache      cache.FileCache
+	limiter    TranscodeLimiter
 }
 
 type streamJob struct {
@@ -217,6 +223,15 @@ func NewTranscodingCache() TranscodingCache {
 				return nil, os.ErrInvalid
 			}
 
+			release, err := job.ms.limiter.Acquire(ctx, userName(ctx))
+			if err != nil {
+				log.Warn(ctx, "Refusing transcode: concurrent transcode limit reached",
+					"id", job.mf.ID, "user", userName(ctx),
+					"maxConcurrent", conf.Server.Transcoding.MaxConcurrent,
+					"maxPerUser", conf.Server.Transcoding.MaxConcurrentPerUser)
+				return nil, err
+			}
+
 			// Choose the appropriate context based on EnableTranscodingCancellation configuration.
 			// This is where we decide whether transcoding processes should be cancellable or not.
 			var transcodingCtx context.Context
@@ -240,10 +255,11 @@ func NewTranscodingCache() TranscodingCache {
 				Offset:     job.offset,
 			})
 			if err != nil {
+				release()
 				log.Error(ctx, "Error starting transcoder", "id", job.mf.ID, err)
 				return nil, os.ErrInvalid
 			}
-			return out, nil
+			return &releasingReadCloser{ReadCloser: out, release: release}, nil
 		})
 }
 

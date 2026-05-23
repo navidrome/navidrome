@@ -2,6 +2,7 @@ package stream_test
 
 import (
 	"context"
+	"errors"
 	"io"
 	"os"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -61,6 +63,58 @@ var _ = Describe("MediaStreamer", func() {
 			Expect(s.Seekable()).To(BeFalse())
 			Expect(s.Duration()).To(Equal(float32(257.0)))
 		})
+		It("rejects transcode requests beyond MaxConcurrent with ErrTooManyTranscodes", func() {
+			// Rebuild the streamer with a tight cap. The first request will hold the
+			// ffmpeg reader open (we don't read/close it), saturating the single slot.
+			conf.Server.Transcoding.MaxConcurrent = 1
+			conf.Server.Transcoding.MaxConcurrentPerUser = 0
+			tightStreamer := stream.NewMediaStreamer(ds, ffmpeg, stream.NewTranscodingCache())
+
+			userCtx := request.WithUsername(ctx, "alice")
+			s1, err := tightStreamer.NewStream(userCtx, mf, stream.Request{Format: "mp3", BitRate: 64})
+			Expect(err).ToNot(HaveOccurred())
+			defer s1.Close()
+
+			// Different cache key so it doesn't dedupe with the first request.
+			_, err = tightStreamer.NewStream(userCtx, mf, stream.Request{Format: "mp3", BitRate: 96})
+			Expect(errors.Is(err, stream.ErrTooManyTranscodes)).To(BeTrue())
+		})
+
+		It("releases the slot once the stream is closed", func() {
+			conf.Server.Transcoding.MaxConcurrent = 1
+			conf.Server.Transcoding.MaxConcurrentPerUser = 0
+			tightStreamer := stream.NewMediaStreamer(ds, ffmpeg, stream.NewTranscodingCache())
+
+			userCtx := request.WithUsername(ctx, "alice")
+			s1, err := tightStreamer.NewStream(userCtx, mf, stream.Request{Format: "mp3", BitRate: 64})
+			Expect(err).ToNot(HaveOccurred())
+			_, _ = io.ReadAll(s1)
+			_ = s1.Close()
+			Eventually(func() bool { return ffmpeg.IsClosed() }, "3s").Should(BeTrue())
+
+			// Slot should now be free for a different transcode.
+			s2, err := tightStreamer.NewStream(userCtx, mf, stream.Request{Format: "mp3", BitRate: 96})
+			Expect(err).ToNot(HaveOccurred())
+			defer s2.Close()
+		})
+
+		It("does not consume a slot for raw streams", func() {
+			conf.Server.Transcoding.MaxConcurrent = 1
+			conf.Server.Transcoding.MaxConcurrentPerUser = 0
+			tightStreamer := stream.NewMediaStreamer(ds, ffmpeg, stream.NewTranscodingCache())
+
+			userCtx := request.WithUsername(ctx, "alice")
+			// First, saturate the single transcode slot.
+			s1, err := tightStreamer.NewStream(userCtx, mf, stream.Request{Format: "mp3", BitRate: 64})
+			Expect(err).ToNot(HaveOccurred())
+			defer s1.Close()
+
+			// Raw stream must still succeed.
+			s2, err := tightStreamer.NewStream(userCtx, mf, stream.Request{Format: "raw"})
+			Expect(err).ToNot(HaveOccurred())
+			defer s2.Close()
+		})
+
 		It("returns a seekable stream if the file is complete in the cache", func() {
 			s, err := streamer.NewStream(ctx, mf, stream.Request{Format: "mp3", BitRate: 32})
 			Expect(err).To(BeNil())

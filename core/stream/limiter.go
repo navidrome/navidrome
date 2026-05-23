@@ -3,6 +3,7 @@ package stream
 import (
 	"context"
 	"errors"
+	"io"
 	"sync"
 	"sync/atomic"
 )
@@ -36,6 +37,20 @@ func NewTranscodeLimiter(maxConcurrent, maxPerUser int) TranscodeLimiter {
 		global:        make(chan struct{}, maxConcurrent),
 		perUser:       make(map[string]int),
 	}
+}
+
+// releasingReadCloser wraps an io.ReadCloser so that closing it also releases
+// the limiter slot exactly once. release must be the function returned by
+// TranscodeLimiter.Acquire; its own idempotency makes double-Close safe too.
+type releasingReadCloser struct {
+	io.ReadCloser
+	release func()
+}
+
+func (r *releasingReadCloser) Close() error {
+	err := r.ReadCloser.Close()
+	r.release()
+	return err
 }
 
 type noopLimiter struct{}
