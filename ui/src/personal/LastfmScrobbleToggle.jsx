@@ -80,7 +80,13 @@ export const LastfmScrobbleToggle = (props) => {
 
   const startLink = () => {
     // Open the tab synchronously so popup blockers attribute it to the click.
-    const tab = openInNewTab('about:blank')
+    let tab
+    try {
+      tab = openInNewTab('about:blank')
+    } catch {
+      notify('message.lastfmLinkFailure', 'warning')
+      return
+    }
     openedTab.current = tab
     setCheckingLink(true)
     httpClient('/api/lastfm/link')

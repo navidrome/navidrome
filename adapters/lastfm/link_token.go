@@ -44,7 +44,7 @@ func verifyLinkToken(tokenStr string) (string, error) {
 	}
 	var uid string
 	if err := token.Get("uid", &uid); err != nil || uid == "" {
-		return "", errors.New("invalid link token subject")
+		return "", errors.New("invalid link token user ID")
 	}
 	return uid, nil
 }
