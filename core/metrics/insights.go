@@ -165,7 +165,7 @@ var staticData = sync.OnceValue(func() insights.Data {
 	data.OS.Containerized = consts.InContainer
 
 	// Install info
-	packageFilename := filepath.Join(conf.Server.DataFolder, ".package")
+	packageFilename := filepath.Join(conf.Server.DataFolder.String(), ".package")
 	packageFileData, err := os.ReadFile(packageFilename)
 	if err == nil {
 		data.OS.Package = string(packageFileData)
@@ -179,12 +179,12 @@ var staticData = sync.OnceValue(func() insights.Data {
 
 	// FS info
 	data.FS.Music = getFSInfo(conf.Server.MusicFolder)
-	data.FS.Data = getFSInfo(conf.Server.DataFolder)
-	if conf.Server.CacheFolder != "" {
-		data.FS.Cache = getFSInfo(conf.Server.CacheFolder)
+	data.FS.Data = getFSInfo(conf.Server.DataFolder.String())
+	if conf.Server.CacheFolder.String() != "" {
+		data.FS.Cache = getFSInfo(conf.Server.CacheFolder.String())
 	}
-	if conf.Server.Backup.Path != "" {
-		data.FS.Backup = getFSInfo(conf.Server.Backup.Path)
+	if conf.Server.Backup.Path.String() != "" {
+		data.FS.Backup = getFSInfo(conf.Server.Backup.Path.String())
 	}
 
 	// Config info
@@ -193,13 +193,16 @@ var staticData = sync.OnceValue(func() insights.Data {
 	data.Config.TLSConfigured = conf.Server.TLSCert != "" && conf.Server.TLSKey != ""
 	data.Config.DefaultBackgroundURLSet = conf.Server.UILoginBackgroundURL == consts.DefaultUILoginBackgroundURL
 	data.Config.EnableArtworkPrecache = conf.Server.EnableArtworkPrecache
+	data.Config.EnableArtworkUpload = conf.Server.EnableArtworkUpload
+	data.Config.CoverArtQuality = conf.Server.CoverArtQuality
+	data.Config.EnableWebPEncoding = conf.Server.EnableWebPEncoding
+	data.Config.UICoverArtSize = conf.Server.UICoverArtSize
 	data.Config.EnableCoverAnimation = conf.Server.EnableCoverAnimation
 	data.Config.EnableNowPlaying = conf.Server.EnableNowPlaying
 	data.Config.EnableDownloads = conf.Server.EnableDownloads
 	data.Config.EnableSharing = conf.Server.EnableSharing
 	data.Config.EnableStarRating = conf.Server.EnableStarRating
 	data.Config.EnableLastFM = conf.Server.LastFM.Enabled && conf.Server.LastFM.ApiKey != "" && conf.Server.LastFM.Secret != ""
-	data.Config.EnableSpotify = conf.Server.Spotify.ID != "" && conf.Server.Spotify.Secret != ""
 	data.Config.EnableListenBrainz = conf.Server.ListenBrainz.Enabled
 	data.Config.EnableDeezer = conf.Server.Deezer.Enabled
 	data.Config.EnableMediaFileCoverArt = conf.Server.EnableMediaFileCoverArt

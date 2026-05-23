@@ -48,10 +48,10 @@ var _ = Describe("MediaRepository", func() {
 		var mp3File, flacFile1, flacFile2, flacUpperFile model.MediaFile
 
 		BeforeEach(func() {
-			mp3File = model.MediaFile{ID: "suffix-mp3", LibraryID: 1, Suffix: "mp3", Path: "/test/file.mp3"}
-			flacFile1 = model.MediaFile{ID: "suffix-flac1", LibraryID: 1, Suffix: "flac", Path: "/test/file1.flac"}
-			flacFile2 = model.MediaFile{ID: "suffix-flac2", LibraryID: 1, Suffix: "flac", Path: "/test/file2.flac"}
-			flacUpperFile = model.MediaFile{ID: "suffix-FLAC", LibraryID: 1, Suffix: "FLAC", Path: "/test/file.FLAC"}
+			mp3File = model.MediaFile{ID: "suffix-mp3", LibraryID: 1, Suffix: "mp3", Path: "test/file.mp3"}
+			flacFile1 = model.MediaFile{ID: "suffix-flac1", LibraryID: 1, Suffix: "flac", Path: "test/file1.flac"}
+			flacFile2 = model.MediaFile{ID: "suffix-flac2", LibraryID: 1, Suffix: "flac", Path: "test/file2.flac"}
+			flacUpperFile = model.MediaFile{ID: "suffix-FLAC", LibraryID: 1, Suffix: "FLAC", Path: "test/file.FLAC"}
 
 			Expect(mr.Put(&mp3File)).To(Succeed())
 			Expect(mr.Put(&flacFile1)).To(Succeed())
@@ -109,7 +109,7 @@ var _ = Describe("MediaRepository", func() {
 	Describe("Put CreatedAt behavior (#5050)", func() {
 		It("sets CreatedAt to now when inserting a new file with zero CreatedAt", func() {
 			before := time.Now().Add(-time.Second)
-			newFile := model.MediaFile{ID: id.NewRandom(), LibraryID: 1, Path: "/test/created-at-zero.mp3"}
+			newFile := model.MediaFile{ID: id.NewRandom(), LibraryID: 1, Path: "test/created-at-zero.mp3"}
 			Expect(mr.Put(&newFile)).To(Succeed())
 
 			retrieved, err := mr.Get(newFile.ID)
@@ -124,7 +124,7 @@ var _ = Describe("MediaRepository", func() {
 			newFile := model.MediaFile{
 				ID:        id.NewRandom(),
 				LibraryID: 1,
-				Path:      "/test/created-at-preserved.mp3",
+				Path:      "test/created-at-preserved.mp3",
 				CreatedAt: originalTime,
 			}
 			Expect(mr.Put(&newFile)).To(Succeed())
@@ -142,7 +142,7 @@ var _ = Describe("MediaRepository", func() {
 			newFile := model.MediaFile{
 				ID:        fileID,
 				LibraryID: 1,
-				Path:      "/test/created-at-update.mp3",
+				Path:      "test/created-at-update.mp3",
 				Title:     "Original Title",
 				CreatedAt: originalTime,
 			}
@@ -152,7 +152,7 @@ var _ = Describe("MediaRepository", func() {
 			updatedFile := model.MediaFile{
 				ID:        fileID,
 				LibraryID: 1,
-				Path:      "/test/created-at-update.mp3",
+				Path:      "test/created-at-update.mp3",
 				Title:     "Updated Title",
 				// CreatedAt is zero - should NOT overwrite the stored value
 			}
@@ -231,7 +231,7 @@ var _ = Describe("MediaRepository", func() {
 
 			It("returns 0 when no ratings exist", func() {
 				newID := id.NewRandom()
-				Expect(mr.Put(&model.MediaFile{LibraryID: 1, ID: newID, Path: "/test/no-rating.mp3"})).To(Succeed())
+				Expect(mr.Put(&model.MediaFile{LibraryID: 1, ID: newID, Path: "test/no-rating.mp3"})).To(Succeed())
 
 				mf, err := mr.Get(newID)
 				Expect(err).ToNot(HaveOccurred())
@@ -242,7 +242,7 @@ var _ = Describe("MediaRepository", func() {
 
 			It("returns the user's rating as average when only one user rated", func() {
 				newID := id.NewRandom()
-				Expect(mr.Put(&model.MediaFile{LibraryID: 1, ID: newID, Path: "/test/single-rating.mp3"})).To(Succeed())
+				Expect(mr.Put(&model.MediaFile{LibraryID: 1, ID: newID, Path: "test/single-rating.mp3"})).To(Succeed())
 				Expect(mr.SetRating(5, newID)).To(Succeed())
 
 				mf, err := mr.Get(newID)
@@ -255,7 +255,7 @@ var _ = Describe("MediaRepository", func() {
 
 			It("calculates average across multiple users", func() {
 				newID := id.NewRandom()
-				Expect(mr.Put(&model.MediaFile{LibraryID: 1, ID: newID, Path: "/test/multi-rating.mp3"})).To(Succeed())
+				Expect(mr.Put(&model.MediaFile{LibraryID: 1, ID: newID, Path: "test/multi-rating.mp3"})).To(Succeed())
 
 				Expect(mr.SetRating(3, newID)).To(Succeed())
 
@@ -273,7 +273,7 @@ var _ = Describe("MediaRepository", func() {
 
 			It("excludes zero ratings from average calculation", func() {
 				newID := id.NewRandom()
-				Expect(mr.Put(&model.MediaFile{LibraryID: 1, ID: newID, Path: "/test/zero-excluded.mp3"})).To(Succeed())
+				Expect(mr.Put(&model.MediaFile{LibraryID: 1, ID: newID, Path: "test/zero-excluded.mp3"})).To(Succeed())
 
 				Expect(mr.SetRating(4, newID)).To(Succeed())
 
@@ -343,19 +343,19 @@ var _ = Describe("MediaRepository", func() {
 						ID:        id.NewRandom(),
 						LibraryID: 1,
 						Title:     "Old Song",
-						Path:      "/test/old.mp3",
+						Path:      "test/old.mp3",
 					},
 					{
 						ID:        id.NewRandom(),
 						LibraryID: 1,
 						Title:     "Middle Song",
-						Path:      "/test/middle.mp3",
+						Path:      "test/middle.mp3",
 					},
 					{
 						ID:        id.NewRandom(),
 						LibraryID: 1,
 						Title:     "New Song",
-						Path:      "/test/new.mp3",
+						Path:      "test/new.mp3",
 					},
 				}
 
@@ -486,7 +486,7 @@ var _ = Describe("MediaRepository", func() {
 		var mfWithoutAnnotation model.MediaFile
 
 		BeforeEach(func() {
-			mfWithoutAnnotation = model.MediaFile{ID: "no-annotation-file", LibraryID: 1, Path: "/test/no-annotation.mp3", Title: "No Annotation"}
+			mfWithoutAnnotation = model.MediaFile{ID: "no-annotation-file", LibraryID: 1, Path: "test/no-annotation.mp3", Title: "No Annotation"}
 			Expect(mr.Put(&mfWithoutAnnotation)).To(Succeed())
 		})
 
@@ -566,7 +566,7 @@ var _ = Describe("MediaRepository", func() {
 					MbzRecordingID:    "550e8400-e29b-41d4-a716-446655440020", // Valid UUID v4
 					MbzReleaseTrackID: "550e8400-e29b-41d4-a716-446655440021", // Valid UUID v4
 					LibraryID:         1,
-					Path:              "/test/path/test.mp3",
+					Path:              "test/path/test.mp3",
 				}
 
 				// Insert the test media file into the database
@@ -608,7 +608,7 @@ var _ = Describe("MediaRepository", func() {
 					Title:          "Test Missing MBID MediaFile",
 					MbzRecordingID: "550e8400-e29b-41d4-a716-446655440022",
 					LibraryID:      1,
-					Path:           "/test/path/missing.mp3",
+					Path:           "test/path/missing.mp3",
 					Missing:        true,
 				}
 

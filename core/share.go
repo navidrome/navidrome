@@ -41,7 +41,7 @@ func (s *shareService) Load(ctx context.Context, id string) (*model.Share, error
 	if !expiresAt.IsZero() && expiresAt.Before(time.Now()) {
 		return nil, model.ErrExpired
 	}
-	share.LastVisitedAt = P(time.Now())
+	share.LastVisitedAt = new(time.Now())
 	share.VisitCount++
 
 	err = repo.(rest.Persistable).Update(id, share, "last_visited_at", "visit_count")
@@ -95,7 +95,7 @@ func (r *shareRepositoryWrapper) Save(entity any) (string, error) {
 	}
 	s.ID = id
 	if V(s.ExpiresAt).IsZero() {
-		s.ExpiresAt = P(time.Now().Add(conf.Server.DefaultShareExpiration))
+		s.ExpiresAt = new(time.Now().Add(conf.Server.DefaultShareExpiration))
 	}
 
 	firstId := strings.SplitN(s.ResourceIDs, ",", 2)[0]

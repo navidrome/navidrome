@@ -66,4 +66,26 @@ var _ = Describe("Codec", func() {
 			Expect(normalizeProbeCodec("DSD_LSBF_PLANAR")).To(Equal("dsd"))
 		})
 	})
+
+	Describe("codecMaxChannels", func() {
+		It("returns 2 for mp3", func() {
+			Expect(codecMaxChannels("mp3")).To(Equal(2))
+		})
+
+		It("returns 8 for opus", func() {
+			Expect(codecMaxChannels("opus")).To(Equal(8))
+		})
+
+		It("is case-insensitive", func() {
+			Expect(codecMaxChannels("MP3")).To(Equal(2))
+			Expect(codecMaxChannels("Opus")).To(Equal(8))
+		})
+
+		It("returns 0 for codecs with no hard limit", func() {
+			Expect(codecMaxChannels("aac")).To(Equal(0))
+			Expect(codecMaxChannels("flac")).To(Equal(0))
+			Expect(codecMaxChannels("vorbis")).To(Equal(0))
+			Expect(codecMaxChannels("")).To(Equal(0))
+		})
+	})
 })

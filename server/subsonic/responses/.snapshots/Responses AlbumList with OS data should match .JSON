@@ -9,6 +9,7 @@
       {
         "id": "1",
         "isDir": false,
+        "title": "",
         "bpm": 0,
         "comment": "",
         "sortName": "sort name",
@@ -55,7 +56,10 @@
         "displayAlbumArtist": "Display album artist",
         "contributors": [],
         "displayComposer": "",
-        "explicitStatus": "explicit"
+        "explicitStatus": "explicit",
+        "groupings": [
+          "Soundtrack"
+        ]
       }
     ]
   }

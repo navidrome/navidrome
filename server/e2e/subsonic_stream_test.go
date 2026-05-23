@@ -1,17 +1,21 @@
 package e2e
 
 import (
+	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/server/subsonic/responses"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("stream.view (legacy streaming)", Ordered, func() {
 	var (
-		mp3TrackID  string // Come Together (mp3, 320kbps)
-		flacTrackID string // TC FLAC Standard (flac, 900kbps)
+		mp3TrackID         string // Come Together (mp3, 320kbps)
+		flacTrackID        string // TC FLAC Standard (flac, 900kbps)
+		flacMultichTrackID string // TC FLAC Multichannel (flac, 6ch)
 	)
 
 	BeforeAll(func() {
@@ -27,6 +31,8 @@ var _ = Describe("stream.view (legacy streaming)", Ordered, func() {
 		Expect(mp3TrackID).ToNot(BeEmpty())
 		flacTrackID = byTitle["TC FLAC Standard"]
 		Expect(flacTrackID).ToNot(BeEmpty())
+		flacMultichTrackID = byTitle["TC FLAC Multichannel"]
+		Expect(flacMultichTrackID).ToNot(BeEmpty())
 	})
 
 	Describe("raw / direct play", func() {
@@ -98,6 +104,13 @@ var _ = Describe("stream.view (legacy streaming)", Ordered, func() {
 			Expect(streamerSpy.LastRequest.Format).To(Equal("mp3"))
 			Expect(streamerSpy.LastRequest.BitRate).To(Equal(128))
 		})
+
+		It("clamps multichannel FLAC to 2 channels when transcoding to mp3 (#5336)", func() {
+			w := doRawReq("stream", "id", flacMultichTrackID, "format", "mp3", "maxBitRate", "256")
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(streamerSpy.LastRequest.Format).To(Equal("mp3"))
+			Expect(streamerSpy.LastRequest.Channels).To(Equal(2))
+		})
 	})
 
 	Describe("downsampling with maxBitRate only", func() {
@@ -122,6 +135,58 @@ var _ = Describe("stream.view (legacy streaming)", Ordered, func() {
 			w := doRawReq("stream", "id", flacTrackID, "format", "mp3", "timeOffset", "30")
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(streamerSpy.LastRequest.Offset).To(Equal(30))
+		})
+	})
+
+	Describe("stream creation failure", func() {
+		BeforeEach(func() {
+			streamerSpy.SimulateError = errors.New("ffmpeg exited with non-zero status code: 1: Unknown encoder 'libopus'")
+		})
+		AfterEach(func() {
+			streamerSpy.SimulateError = nil
+		})
+
+		It("returns a Subsonic error for stream endpoint", func() {
+			w := doRawReq("stream", "id", flacTrackID, "format", "opus")
+			Expect(w.Code).To(Equal(http.StatusOK)) // Subsonic errors are returned as 200
+
+			var wrapper responses.JsonWrapper
+			Expect(json.Unmarshal(w.Body.Bytes(), &wrapper)).To(Succeed())
+			Expect(wrapper.Subsonic.Status).To(Equal(responses.StatusFailed))
+			Expect(wrapper.Subsonic.Error).ToNot(BeNil())
+		})
+
+		It("returns a Subsonic error for download endpoint", func() {
+			conf.Server.EnableDownloads = true
+			w := doRawReq("download", "id", flacTrackID, "format", "opus")
+			Expect(w.Code).To(Equal(http.StatusOK))
+
+			var wrapper responses.JsonWrapper
+			Expect(json.Unmarshal(w.Body.Bytes(), &wrapper)).To(Succeed())
+			Expect(wrapper.Subsonic.Status).To(Equal(responses.StatusFailed))
+			Expect(wrapper.Subsonic.Error).ToNot(BeNil())
+		})
+	})
+
+	Describe("empty transcoded output", func() {
+		BeforeEach(func() {
+			streamerSpy.SimulateEmptyStream = true
+		})
+		AfterEach(func() {
+			streamerSpy.SimulateEmptyStream = false
+		})
+
+		It("returns 200 with empty body for stream endpoint", func() {
+			w := doRawReq("stream", "id", flacTrackID, "format", "opus")
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Body.Len()).To(Equal(0))
+		})
+
+		It("returns 200 with empty body for download endpoint", func() {
+			conf.Server.EnableDownloads = true
+			w := doRawReq("download", "id", flacTrackID, "format", "opus")
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Body.Len()).To(Equal(0))
 		})
 	})
 })

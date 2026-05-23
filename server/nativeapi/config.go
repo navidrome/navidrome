@@ -16,13 +16,11 @@ import (
 // using partial masking (first and last character visible, middle replaced with *).
 // For values with 7+ characters: "secretvalue123" becomes "s***********3"
 // For values with <7 characters: "short" becomes "****"
-// Add field paths using dot notation (e.g., "LastFM.ApiKey", "Spotify.Secret")
+// Add field paths using dot notation (e.g., "LastFM.ApiKey")
 var sensitiveFieldsPartialMask = []string{
 	"LastFM.ApiKey",
 	"LastFM.Secret",
 	"Prometheus.MetricsPath",
-	"Spotify.ID",
-	"Spotify.Secret",
 	"DevAutoLoginUsername",
 }
 
@@ -99,7 +97,7 @@ func getConfig(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Marshal the actual configuration struct to preserve original field names
-	configBytes, err := json.Marshal(*conf.Server)
+	configBytes, err := json.Marshal(conf.Server)
 	if err != nil {
 		log.Error(ctx, "Error marshaling config", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)

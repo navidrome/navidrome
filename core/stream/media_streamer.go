@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"io"
 	"mime"
+	"net/http"
 	"os"
-	"strings"
+	"strconv"
 	"sync"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/cache"
+	"github.com/navidrome/navidrome/utils/req"
 )
 
 type MediaStreamer interface {
@@ -51,6 +53,9 @@ func (j *streamJob) Key() string {
 	return fmt.Sprintf("%s.%s.%d.%d.%d.%d.%s.%d", j.mf.ID, j.mf.UpdatedAt.Format(time.RFC3339Nano), j.bitRate, j.sampleRate, j.bitDepth, j.channels, j.format, j.offset)
 }
 
+// NewStream creates a Stream for the given MediaFile and Request. It handles both raw streaming (no transcoding)
+// and transcoded streaming based on the requested format and bitrate. It also logs detailed information about
+// the streaming request and whether the transcoding result was served from cache or not.
 func (ms *mediaStreamer) NewStream(ctx context.Context, mf *model.MediaFile, req Request) (*Stream, error) {
 	var format string
 	var bitRate int
@@ -133,14 +138,59 @@ func (s *Stream) EstimatedContentLength() int {
 	return int(s.mf.Duration * float32(s.bitRate) / 8 * 1024)
 }
 
-// NewTestStream creates a Stream for testing purposes.
-func NewTestStream(mf *model.MediaFile, format string, bitRate int) *Stream {
+// Serve writes the stream to the HTTP response. For seekable streams it uses http.ServeContent
+// (supporting range requests). For non-seekable streams it writes directly and logs any errors.
+// Returns the number of bytes written and an error only when io.Copy fails with 0 bytes written
+// (meaning the HTTP 200 status has not been flushed yet and the caller can still send an error response).
+// Empty output (0 bytes, no error) is logged but not treated as an error.
+func (s *Stream) Serve(ctx context.Context, w http.ResponseWriter, r *http.Request) (int64, error) {
+	if s.Seekable() {
+		http.ServeContent(w, r, s.Name(), s.ModTime(), s)
+		return -1, nil
+	}
+
+	w.Header().Set("Accept-Ranges", "none")
+	w.Header().Set("Content-Type", s.ContentType())
+
+	if req.Params(r).BoolOr("estimateContentLength", false) {
+		length := strconv.Itoa(s.EstimatedContentLength())
+		log.Trace(ctx, "Estimated content-length", "contentLength", length)
+		w.Header().Set("Content-Length", length)
+	}
+
+	if r.Method == http.MethodHead {
+		go func() { _, _ = io.Copy(io.Discard, s) }()
+		return 0, nil
+	}
+
+	id := s.mf.ID
+	c, err := io.Copy(w, s)
+	if err != nil {
+		log.Error(ctx, "Error sending transcoded file", "id", id, err)
+		if c == 0 {
+			w.Header().Del("Content-Length")
+			return 0, fmt.Errorf("sending transcoded file: %w", err)
+		}
+		return c, nil
+	}
+	if c == 0 {
+		log.Error(ctx, "Transcoding returned empty output, ffmpeg may have failed. "+
+			"Check that ffmpeg supports the requested codec. Enable Trace logging for ffmpeg stderr details",
+			"id", id, "format", s.ContentType())
+	} else {
+		log.Trace(ctx, "Success sending transcoded file", "id", id, "size", c)
+	}
+	return c, nil
+}
+
+// NewStream creates a non-seekable Stream from the given components.
+func NewStream(mf *model.MediaFile, format string, bitRate int, r io.ReadCloser) *Stream {
 	return &Stream{
 		ctx:        context.Background(),
 		mf:         mf,
 		format:     format,
 		bitRate:    bitRate,
-		ReadCloser: io.NopCloser(strings.NewReader("")),
+		ReadCloser: r,
 	}
 }
 

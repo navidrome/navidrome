@@ -37,7 +37,8 @@
         "sampleRate": "Fréquence d'échantillonnage",
         "missing": "Manquant",
         "libraryName": "Bibliothèque",
-        "composer": "Compositeur·e"
+        "composer": "Compositeur·e",
+        "disc": "Disque %{discNumber}"
       },
       "actions": {
         "addToQueue": "Ajouter à la file",
@@ -353,7 +354,8 @@
         "allUsers": "Autoriser tous les utilisateur·rices",
         "selectedUsers": "Utilisateur·rices sélectionné.e.s",
         "allLibraries": "Autoriser toutes les bibliothèques",
-        "selectedLibraries": "Bibliothèques sélectionnées"
+        "selectedLibraries": "Bibliothèques sélectionnées",
+        "allowWriteAccess": "Autoriser l'accès en écriture"
       },
       "sections": {
         "status": "Statut",
@@ -398,7 +400,8 @@
         "librariesRequired": "Cette extension nécessite l'accès aux information de la bibliothèque. Sélectionnez à quelles bibliothèque cette extension a accès, ou sélectionnez 'Autoriser toutes les bibliothèques'.",
         "requiredHosts": "Hôtes requis",
         "configValidationError": "Erreur lors de la validation de la configuration",
-        "schemaRenderError": "Impossible de processer la configuration. Le schéma de l'extension n'est peut-être pas valide."
+        "schemaRenderError": "Impossible de processer la configuration. Le schéma de l'extension n'est peut-être pas valide.",
+        "allowWriteAccessHelp": "Lorsque cette option est activée, le plugin peut modifier les fichiers dans les répertoires de la bibliothèque. Par défaut, les plugins ont un accès en lecture seule."
       },
       "placeholders": {
         "configKey": "clef",
@@ -588,7 +591,13 @@
     "remove_all_missing_content": "Êtes-vous sûr(e) de vouloir supprimer tous les fichiers manquants de la base de données ? Cette action est permanente et supprimera leurs nombres d'écoutes,  leur notations et tout ce qui y fait référence.",
     "noSimilarSongsFound": "Aucun titre similaire n'a été trouvé",
     "noTopSongsFound": "Aucun meilleur titre n'a été trouvé",
-    "startingInstantMix": "Chargement du mix instantanné..."
+    "startingInstantMix": "Chargement du mix instantané...",
+    "uploadCover": "Téléverser la pochette",
+    "removeCover": "Supprimer la pochette",
+    "coverUploaded": "Pochette mise à jour",
+    "coverRemoved": "Pochette supprimée",
+    "coverUploadError": "Erreur lors du téléversement de la pochette",
+    "coverRemoveError": "Erreur lors de la suppression de la pochette"
   },
   "menu": {
     "library": "Bibliothèque",
@@ -674,7 +683,8 @@
       "exportSuccess": "La configuration a été copiée vers le presse-papier au format TOML",
       "exportFailed": "Une erreur est survenue en copiant la configuration",
       "devFlagsHeader": "Options de développement (peuvent être amenés à changer / être supprimés)",
-      "devFlagsComment": "Ces paramètres sont expérimentaux et peuvent être amenés à changer dans le futur"
+      "devFlagsComment": "Ces paramètres sont expérimentaux et peuvent être amenés à changer dans le futur",
+      "downloadToml": "Télécharger la configuration (TOML)"
     }
   },
   "activity": {

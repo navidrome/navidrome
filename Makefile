@@ -1,9 +1,10 @@
 GO_VERSION=$(shell grep "^go " go.mod | cut -f 2 -d ' ')
 NODE_VERSION=$(shell cat .nvmrc)
-GO_BUILD_TAGS=netgo,sqlite_fts5
+
+comma:=,
+GO_BUILD_TAGS=netgo,sqlite_fts5$(if $(EXTRA_BUILD_TAGS),$(comma)$(EXTRA_BUILD_TAGS))
 
 # Set global environment variables, required for most targets
-export CGO_CFLAGS_ALLOW=--define-prefix
 export ND_ENABLEINSIGHTSCOLLECTOR=false
 
 ifneq ("$(wildcard .git/HEAD)","")
@@ -19,9 +20,7 @@ IMAGE_PLATFORMS ?= $(shell echo $(SUPPORTED_PLATFORMS) | tr ',' '\n' | grep "lin
 PLATFORMS ?= $(SUPPORTED_PLATFORMS)
 DOCKER_TAG ?= deluan/navidrome:develop
 
-# Taglib version to use in cross-compilation, from https://github.com/navidrome/cross-taglib
-CROSS_TAGLIB_VERSION ?= 2.2.1-1
-GOLANGCI_LINT_VERSION ?= v2.11.1
+GOLANGCI_LINT_VERSION ?= v2.12.0
 
 UI_SRC_FILES := $(shell find ui -type f -not -path "ui/build/*" -not -path "ui/node_modules/*")
 
@@ -76,8 +75,8 @@ test-i18n: ##@Development Validate all translations files
 
 install-golangci-lint: ##@Development Install golangci-lint if not present
 	@INSTALL=false; \
-	if PATH=$$PATH:./bin which golangci-lint > /dev/null 2>&1; then \
-		CURRENT_VERSION=$$(PATH=$$PATH:./bin golangci-lint version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n1); \
+	if PATH=./bin:$$PATH which golangci-lint > /dev/null 2>&1; then \
+		CURRENT_VERSION=$$(PATH=./bin:$$PATH golangci-lint version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n1); \
 		REQUIRED_VERSION=$$(echo "$(GOLANGCI_LINT_VERSION)" | sed 's/^v//'); \
 		if [ "$$CURRENT_VERSION" != "$$REQUIRED_VERSION" ]; then \
 			echo "Found golangci-lint $$CURRENT_VERSION, but $$REQUIRED_VERSION is required. Reinstalling..."; \
@@ -94,7 +93,7 @@ install-golangci-lint: ##@Development Install golangci-lint if not present
 .PHONY: install-golangci-lint
 
 lint: install-golangci-lint ##@Development Lint Go code
-	PATH=$$PATH:./bin golangci-lint run --timeout 5m
+	PATH=./bin:$$PATH golangci-lint run --timeout 5m
 .PHONY: lint
 
 lintall: lint ##@Development Lint Go and JS code
@@ -177,7 +176,6 @@ docker-build: ##@Cross_Compilation Cross-compile for any supported platform (che
 		--platform $(PLATFORMS) \
 		--build-arg GIT_TAG=${GIT_TAG} \
 		--build-arg GIT_SHA=${GIT_SHA} \
-		--build-arg CROSS_TAGLIB_VERSION=${CROSS_TAGLIB_VERSION} \
 		--output "./binaries" --target binary .
 .PHONY: docker-build
 
@@ -189,7 +187,6 @@ docker-image: ##@Cross_Compilation Build Docker image, tagged as `deluan/navidro
 		--platform $(IMAGE_PLATFORMS) \
 		--build-arg GIT_TAG=${GIT_TAG} \
 		--build-arg GIT_SHA=${GIT_SHA} \
-		--build-arg CROSS_TAGLIB_VERSION=${CROSS_TAGLIB_VERSION} \
 		--tag $(DOCKER_TAG) .
 .PHONY: docker-image
 
@@ -232,6 +229,39 @@ get-music: ##@Development Download some free music from Navidrome's demo instanc
 	@echo "Done. Remember to set your MusicFolder to ./music"
 .PHONY: get-music
 
+
+##########################################
+#### Worktrees
+
+WORKTREES_DIR := .worktrees
+
+wt: check_go_env ##@Worktrees Create and setup a git worktree. Usage: make wt name=feature-name [go=1]
+	@if [ -z "${name}" ]; then echo "Usage: make wt name=<branch-name> [go=1]"; exit 1; fi
+	@mkdir -p $(WORKTREES_DIR)
+	@echo "Creating worktree for branch '${name}'..."
+	@git worktree add $(WORKTREES_DIR)/${name} -b ${name} 2>/dev/null || \
+		git worktree add $(WORKTREES_DIR)/${name} ${name}
+	@if [ -n "${go}" ]; then \
+		./scripts/setup-worktree.sh $(WORKTREES_DIR)/${name} --go-only; \
+	else \
+		./scripts/setup-worktree.sh $(WORKTREES_DIR)/${name}; \
+	fi
+	@echo "\nWorktree ready at $(WORKTREES_DIR)/${name}"
+	@echo "  cd $(WORKTREES_DIR)/${name}"
+.PHONY: wt
+
+rm-wt: ##@Worktrees Remove a git worktree. Usage: make rm-wt name=feature-name
+	@if [ -z "${name}" ]; then echo "Usage: make rm-wt name=<branch-name>"; exit 1; fi
+	@if [ ! -d "$(WORKTREES_DIR)/${name}" ]; then echo "Worktree '${name}' not found in $(WORKTREES_DIR)/"; exit 1; fi
+	@echo "Removing worktree '${name}'..."
+	@git worktree remove --force $(WORKTREES_DIR)/${name}
+	@echo "Worktree '${name}' removed."
+	@echo "Note: branch '${name}' still exists. Delete it with: git branch -D ${name}"
+.PHONY: rm-wt
+
+ls-wt: ##@Worktrees List all active git worktrees
+	@git worktree list
+.PHONY: ls-wt
 
 ##########################################
 #### Miscellaneous

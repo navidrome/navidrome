@@ -9,6 +9,7 @@
       {
         "id": "1",
         "isDir": false,
+        "title": "",
         "bpm": 0,
         "comment": "",
         "sortName": "",
@@ -27,7 +28,8 @@
         "displayAlbumArtist": "",
         "contributors": [],
         "displayComposer": "",
-        "explicitStatus": ""
+        "explicitStatus": "",
+        "groupings": []
       }
     ],
     "id": "",

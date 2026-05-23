@@ -7,6 +7,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/core/agents"
 	. "github.com/navidrome/navidrome/core/external"
+	"github.com/navidrome/navidrome/core/matcher"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -48,7 +49,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 			similarAgent:  mockSimilarAgent,
 		}
 
-		provider = NewProvider(ds, agentsCombined)
+		provider = NewProvider(ds, agentsCombined, matcher.New(ds))
 	})
 
 	Describe("dispatch by entity type", func() {

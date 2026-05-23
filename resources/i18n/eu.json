@@ -23,6 +23,7 @@
         "bitDepth": "Bit-sakonera",
         "sampleRate": "Lagin-tasa",
         "channels": "Kanalak",
+        "disc": "%{discNumber}. diskoa",
         "discSubtitle": "Diskoaren azpititulua",
         "starred": "Gogokoa",
         "comment": "Iruzkina",
@@ -355,7 +356,8 @@
         "allUsers": "Baimendu erabiltzaile guztiak",
         "selectedUsers": "Hautatutako erabiltzaileak",
         "allLibraries": "Baimendu liburutegi guztiak",
-        "selectedLibraries": "Hautatutako liburutegiak"
+        "selectedLibraries": "Hautatutako liburutegiak",
+        "allowWriteAccess": "Eman idazteko baimena"
       },
       "sections": {
         "status": "Egoera",
@@ -400,6 +402,7 @@
         "allLibrariesHelp": "Gaituta dagoenean, pluginak liburutegi guztietara izango du sarbidea, baita etorkizunean sortuko direnetara ere.",
         "noLibraries": "Ez da liburutegirik hautatu",
         "librariesRequired": "Plugin honek liburutegien informaziora sarbidea behar du. Hautatu zein liburutegi atzitu dezakeen pluginak, edo gaitu 'Baimendu liburutegi guztiak'.",
+        "allowWriteAccessHelp": "Gaituta dagoenean, pluginak liburutegien direktorioko fitxategiak moldatu ditzake. Defektuz, pluginek bakarrik irakurtzeko baimena dute.",
         "requiredHosts": "Beharrezko ostatatzaileak"
       },
       "placeholders": {
@@ -554,6 +557,12 @@
     }
   },
   "message": {
+    "uploadCover": "Igo azala",
+    "removeCover": "Kendu azala",
+    "coverUploaded": "Diskoaren azala eguneratu da",
+    "coverRemoved": "Diskoaren azala kendu da",
+    "coverUploadError": "Errorea diskoaren azala igotzean",
+    "coverRemoveError": "Errorea diskoaren azala kentzean",
     "note": "OHARRA",
     "transcodingDisabled": "Segurtasun arrazoiak direla-eta, transkodeketaren ezarpenak web-interfazearen bidez aldatzea ezgaituta dago. Transkodeketa-aukerak aldatu (editatu edo gehitu) nahi badituzu, berrabiarazi zerbitzaria konfigurazio-aukeraren %{config}-arekin.",
     "transcodingEnabled": "Navidrome %{config}-ekin martxan dago eta, beraz, web-interfazeko transkodeketa-ataletik sistema-komandoak exekuta daitezke. Segurtasun arrazoiak tarteko, ezgaitzea gomendatzen dugu, eta transkodeketa-aukerak konfiguratzen ari zarenean bakarrik gaitzea.",
@@ -673,6 +682,7 @@
       "currentValue": "Uneko balioa",
       "configurationFile": "Konfigurazio-fitxategia",
       "exportToml": "Esportatu konfigurazioa (TOML)",
+      "downloadToml": "Deskargatu konfigurazioa (TOML)",
       "exportSuccess": "Konfigurazioa arbelera esportatu da TOML formatuan",
       "exportFailed": "Konfigurazioa kopiatzeak huts egin du",
       "devFlagsHeader": "Garapen-adierazleak (aldatu/kendu litezke)",

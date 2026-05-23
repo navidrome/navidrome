@@ -22,7 +22,7 @@ func buildUserResponse(user model.User) responses.User {
 		ScrobblingEnabled: true,
 		DownloadRole:      conf.Server.EnableDownloads,
 		ShareRole:         conf.Server.EnableSharing,
-		CoverArtRole:      conf.Server.EnableCoverArtUpload || user.IsAdmin,
+		CoverArtRole:      conf.Server.EnableArtworkUpload || user.IsAdmin,
 		Folder:            slice.Map(user.Libraries, func(lib model.Library) int32 { return int32(lib.ID) }),
 	}
 
@@ -46,8 +46,7 @@ func (api *Router) GetUser(r *http.Request) (*responses.Subsonic, error) {
 		return nil, newError(responses.ErrorAuthorizationFail)
 	}
 	response := newResponse()
-	user := buildUserResponse(loggedUser)
-	response.User = &user
+	response.User = new(buildUserResponse(loggedUser))
 	return response, nil
 }
 

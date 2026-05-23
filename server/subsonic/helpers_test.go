@@ -309,6 +309,14 @@ var _ = Describe("helpers", func() {
 				Expect(child.Artist).To(Equal("Test Artist"))
 			})
 		})
+
+		Context("when MediaFile has an empty title", func() {
+			It("still includes the title field in the response", func() {
+				mf.Title = ""
+				child := childFromMediaFile(ctx, mf)
+				Expect(child.Title).To(Equal(""))
+			})
+		})
 	})
 
 	Describe("osChildFromMediaFile", func() {
@@ -560,6 +568,35 @@ var _ = Describe("helpers", func() {
 				}
 				artist := toArtistID3(r, a)
 				Expect(artist.AverageRating).To(Equal(2.5))
+			})
+		})
+
+		Describe("buildAlbumID3 Created field", func() {
+			It("uses CreatedAt when set", func() {
+				t := time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC)
+				al := model.Album{ID: "a1", Name: "A", CreatedAt: t}
+				dir := buildAlbumID3(ctx, al)
+				Expect(dir.Created).To(Equal(t))
+			})
+
+			It("falls back to UpdatedAt when CreatedAt is zero", func() {
+				updated := time.Date(2019, 5, 6, 7, 8, 9, 0, time.UTC)
+				al := model.Album{ID: "a2", Name: "A", UpdatedAt: updated}
+				dir := buildAlbumID3(ctx, al)
+				Expect(dir.Created).To(Equal(updated))
+			})
+
+			It("falls back to ImportedAt when CreatedAt and UpdatedAt are zero", func() {
+				imported := time.Date(2021, 8, 9, 10, 11, 12, 0, time.UTC)
+				al := model.Album{ID: "a3", Name: "A", ImportedAt: imported}
+				dir := buildAlbumID3(ctx, al)
+				Expect(dir.Created).To(Equal(imported))
+			})
+
+			It("leaves Created as zero time when all timestamps are zero", func() {
+				al := model.Album{ID: "a4", Name: "A"}
+				dir := buildAlbumID3(ctx, al)
+				Expect(dir.Created.IsZero()).To(BeTrue())
 			})
 		})
 

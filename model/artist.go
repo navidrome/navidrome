@@ -4,6 +4,8 @@ import (
 	"maps"
 	"slices"
 	"time"
+
+	"github.com/navidrome/navidrome/consts"
 )
 
 type Artist struct {
@@ -34,6 +36,8 @@ type Artist struct {
 
 	Missing bool `structs:"missing" json:"missing"`
 
+	UploadedImage string `structs:"uploaded_image" json:"uploadedImage,omitempty"`
+
 	CreatedAt *time.Time `structs:"created_at" json:"createdAt,omitempty"`
 	UpdatedAt *time.Time `structs:"updated_at" json:"updatedAt,omitempty"`
 }
@@ -56,6 +60,10 @@ func (a Artist) ArtistImageUrl() string {
 
 func (a Artist) CoverArtID() ArtworkID {
 	return artworkIDFromArtist(a)
+}
+
+func (a Artist) UploadedImagePath() string {
+	return UploadedImagePath(consts.EntityArtist, a.UploadedImage)
 }
 
 // Roles returns the roles this artist has participated in., based on the Stats field

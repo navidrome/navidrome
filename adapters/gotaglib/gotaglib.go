@@ -58,7 +58,20 @@ func (e extractor) Version() string {
 	return "unknown"
 }
 
-func (e extractor) extractMetadata(filePath string) (*metadata.Info, error) {
+func (e extractor) extractMetadata(filePath string) (info *metadata.Info, err error) {
+	// Recover from panics in the WASM runtime that can occur during any taglib
+	// operation (opening, reading tags, or reading properties). This catches crashes
+	// from malformed files or WASM runtime issues (e.g., wazero mmap failures on
+	// hardened systems with MemoryDenyWriteExecute=true).
+	debug.SetPanicOnFault(true)
+	defer func() {
+		if r := recover(); r != nil {
+			log.Error("gotaglib: WASM runtime panic reading file. Skipping", "filePath", filePath, "panic", r)
+			debug.PrintStack()
+			err = fmt.Errorf("WASM runtime panic: %v", r)
+		}
+	}()
+
 	f, close, err := e.openFile(filePath)
 	if err != nil {
 		log.Warn("gotaglib: Error reading metadata from file. Skipping", "filePath", filePath, err)
@@ -112,16 +125,6 @@ func (e extractor) extractMetadata(filePath string) (*metadata.Info, error) {
 // openFile opens the file at filePath using the extractor's filesystem.
 // It returns a TagLib File handle and a cleanup function to close resources.
 func (e extractor) openFile(filePath string) (f *taglib.File, closeFunc func(), err error) {
-	// Recover from panics in the WASM runtime (e.g., wazero failing to mmap executable memory
-	// on hardened systems like NixOS with MemoryDenyWriteExecute=true)
-	debug.SetPanicOnFault(true)
-	defer func() {
-		if r := recover(); r != nil {
-			log.Error("WASM runtime panic: This may be caused by a hardened system that blocks executable memory mapping.", "file", filePath, "panic", r)
-			err = fmt.Errorf("WASM runtime panic (hardened system?): %v", r)
-		}
-	}()
-
 	// Open the file from the filesystem
 	file, err := e.fs.Open(filePath)
 	if err != nil {

@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
@@ -74,7 +75,7 @@ func runScanner(ctx context.Context) {
 	sqlDB := db.Db()
 	defer db.Db().Close()
 	ds := persistence.New(sqlDB)
-	pls := playlists.NewPlaylists(ds)
+	pls := playlists.NewPlaylists(ds, core.NewImageUploadService())
 
 	// Parse targets from command line or file
 	var scanTargets []model.ScanTarget

@@ -1,0 +1,723 @@
+{
+  "languageName": "Slovenčina",
+  "resources": {
+    "song": {
+      "name": "Skladba |||| Skladieb",
+      "fields": {
+        "albumArtist": "Interpret albumu",
+        "duration": "Dĺžka",
+        "trackNumber": "#",
+        "playCount": "Počet prehratí",
+        "title": "Názov",
+        "artist": "Interpret",
+        "composer": "Skladateľ",
+        "album": "Album",
+        "path": "Cesta k súboru",
+        "libraryName": "Knižnica",
+        "genre": "Žáner",
+        "compilation": "Kompilácia",
+        "year": "Rok",
+        "size": "Veľkosť súboru",
+        "updatedAt": "Nahrané",
+        "bitRate": "Prenosová rýchlosť",
+        "bitDepth": "Bitová hĺbka",
+        "sampleRate": "Vzorkovacia frekvencia",
+        "channels": "Kanály",
+        "disc": "Disk %{discNumber}",
+        "discSubtitle": "Podtitul disku",
+        "starred": "Obľúbené",
+        "comment": "Komentár",
+        "rating": "Hodnotenie",
+        "quality": "Kvalita",
+        "bpm": "BPM",
+        "playDate": "Naposledy prehraná skladba",
+        "createdAt": "Pridané",
+        "grouping": "Zoskupovanie",
+        "mood": "Nálada",
+        "participants": "Ďalší účastníci",
+        "tags": "Ďalšie značky",
+        "mappedTags": "Mapované značky",
+        "rawTags": "Nespracované značky",
+        "missing": "Chýbajúce"
+      },
+      "actions": {
+        "addToQueue": "Prehrať neskôr",
+        "playNow": "Prehrať teraz",
+        "addToPlaylist": "Pridať do zoznamu skladieb",
+        "showInPlaylist": "Zobraziť v zozname skladieb",
+        "shuffleAll": "Zamiešať všetko",
+        "download": "Stiahnuť",
+        "playNext": "Prehrať ako ďalšie",
+        "info": "Získať informácie",
+        "instantMix": "Okamžitý mix"
+      }
+    },
+    "album": {
+      "name": "Album |||| Albumy",
+      "fields": {
+        "albumArtist": "Interpret albumu",
+        "artist": "Interpret",
+        "duration": "Dĺžka",
+        "songCount": "Skladby",
+        "playCount": "Počet prehratí",
+        "size": "Veľkosť",
+        "name": "Názov",
+        "libraryName": "Knižnica",
+        "genre": "Žáner",
+        "compilation": "Kompilácia",
+        "year": "Rok",
+        "date": "Dátum záznamu",
+        "originalDate": "Pôvodné",
+        "releaseDate": "Vydané",
+        "releases": "Vydanie |||| Vydania",
+        "released": "Vydané",
+        "updatedAt": "Aktualizované",
+        "comment": "Komentár",
+        "rating": "Hodnotenie",
+        "createdAt": "Pridané",
+        "recordLabel": "Štítok",
+        "catalogNum": "Katalógové číslo",
+        "releaseType": "Typ vydania",
+        "grouping": "Zoskupovanie",
+        "media": "Médiá",
+        "mood": "Nálada",
+        "missing": "Chýbajúce"
+      },
+      "actions": {
+        "playAll": "Prehrať",
+        "playNext": "Prehrať ako ďalšie",
+        "addToQueue": "Prehrať neskôr",
+        "share": "Zdieľať",
+        "shuffle": "Zamiešať",
+        "addToPlaylist": "Pridať do zoznamu skladieb",
+        "download": "Stiahnuť",
+        "info": "Získať informácie"
+      },
+      "lists": {
+        "all": "Všetko",
+        "random": "Náhodné",
+        "recentlyAdded": "Nedávno pridané",
+        "recentlyPlayed": "Nedávno prehrané",
+        "mostPlayed": "Najviac prehrávané",
+        "starred": "Obľúbené",
+        "topRated": "Najlepšie hodnotené"
+      }
+    },
+    "artist": {
+      "name": "Interpret |||| Interpreti",
+      "fields": {
+        "name": "Názov",
+        "albumCount": "Počet albumov",
+        "songCount": "Počet skladieb",
+        "size": "Veľkosť",
+        "playCount": "Prehrania",
+        "rating": "Hodnotenie",
+        "genre": "Žáner",
+        "role": "Rola",
+        "missing": "Chýbajúci"
+      },
+      "roles": {
+        "albumartist": "Interpret albumu |||| Interpreti albumov",
+        "artist": "Interpret |||| Interpreti",
+        "composer": "Skladateľ |||| Skladatelia",
+        "conductor": "Dirigent |||| Dirigenti",
+        "lyricist": "Textár |||| Textári",
+        "arranger": "Aranžér |||| Aranžéri",
+        "producer": "Producent |||| Producenti",
+        "director": "Režisér |||| Režiséri",
+        "engineer": "Zvukový technik |||| Zvukoví technici",
+        "mixer": "Mixér |||| Mixéri",
+        "remixer": "Remixér |||| Remixéri",
+        "djmixer": "DJ Mixér |||| DJ Mixéri",
+        "performer": "Účinkujúci |||| Účinkujúci",
+        "maincredit": "Interpret albumu alebo interpret |||| Interpreti albumov alebo interpreti"
+      },
+      "actions": {
+        "topSongs": "Najpopulárnejšie skladby",
+        "shuffle": "Zamiešať",
+        "radio": "Rádio"
+      }
+    },
+    "user": {
+      "name": "Používateľ |||| Používatelia",
+      "fields": {
+        "userName": "Používateľské meno",
+        "isAdmin": "Správca",
+        "lastLoginAt": "Naposledy prihlásený",
+        "lastAccessAt": "Posledný Prístup",
+        "updatedAt": "Upravený",
+        "name": "Meno",
+        "password": "Heslo",
+        "createdAt": "Vytvorený",
+        "changePassword": "Zmeniť heslo?",
+        "currentPassword": "Súčastné heslo",
+        "newPassword": "Nové heslo",
+        "token": "Token",
+        "libraries": "Knižnice"
+      },
+      "helperTexts": {
+        "name": "Zmena mena sa zobrazí až po ďalšom prihlásení",
+        "libraries": "Vyberte konkrétne knižnice pre tohto používateľa alebo nechajte pole prázdne, ak chcete použiť predvolené knižnice"
+      },
+      "notifications": {
+        "created": "Používateľ vytvorený",
+        "updated": "Používateľ upravený",
+        "deleted": "Používateľ odstránený"
+      },
+      "validation": {
+        "librariesRequired": "Pre používateľov bez administrátorských práv musí byť vybratá aspoň jedna knižnica"
+      },
+      "message": {
+        "listenBrainzToken": "Vložte svoj používateľský ListenBrainz token.",
+        "clickHereForToken": "Kliknite sem pre získanie svojho tokenu",
+        "selectAllLibraries": "Vybrať všetky knižnice",
+        "adminAutoLibraries": "Administrátori majú automaticky prístup ku všetkým knižniciam"
+      }
+    },
+    "player": {
+      "name": "Prehrávač |||| Prehrávače",
+      "fields": {
+        "name": "Názov",
+        "transcodingId": "ID transkódovania",
+        "maxBitRate": "Max. prenosová rýchlosť",
+        "client": "Klient",
+        "userName": "Používateľské meno",
+        "lastSeen": "Naposledy videný",
+        "reportRealPath": "Skutočná cesta hlásenia",
+        "scrobbleEnabled": "Odosielať scrobbling na externé služby"
+      }
+    },
+    "transcoding": {
+      "name": "Transkódovanie |||| Transkódovania",
+      "fields": {
+        "name": "Názov",
+        "targetFormat": "Cieľový formát",
+        "defaultBitRate": "Predvolená prenosová rýchlosť",
+        "command": "Príkaz"
+      }
+    },
+    "playlist": {
+      "name": "Zoznam skladieb |||| Zoznamy skladieb",
+      "fields": {
+        "name": "Názov",
+        "duration": "Dĺžka",
+        "ownerName": "Autor",
+        "public": "Verejný",
+        "updatedAt": "Nahraný",
+        "createdAt": "Vytvorený",
+        "songCount": "Skladby",
+        "comment": "Komentár",
+        "sync": "Auto-import",
+        "path": "Importovať z"
+      },
+      "actions": {
+        "selectPlaylist": "Vybrať zoznam skladieb:",
+        "addNewPlaylist": "Vytvoriť \"%{name}\"",
+        "export": "Export",
+        "saveQueue": "Uložiť rad do zoznamu skladieb",
+        "makePublic": "Zverejniť",
+        "makePrivate": "Nastaviť ako súkromné",
+        "searchOrCreate": "Vyhľadajte zoznamy skladieb alebo napíšte pre vytvorenie nového...",
+        "pressEnterToCreate": "Stlačte Enter pre vytvorenie nového zoznamu skladieb",
+        "removeFromSelection": "Odstrániť z výberu"
+      },
+      "message": {
+        "duplicate_song": "Pridať duplicitné položky",
+        "song_exist": "Pridávate duplikát už existujúcej položky v zozname skladieb. Chcete pridať duplikát alebo ho preskočiť?",
+        "noPlaylistsFound": "Žiadne zoznamy skladieb sa nenašli",
+        "noPlaylists": "Žiadne zoznamy skladieb nie sú dostupné"
+      }
+    },
+    "radio": {
+      "name": "Rádio |||| Rádiá",
+      "fields": {
+        "name": "Názov",
+        "streamUrl": "URL streamu",
+        "homePageUrl": "URL stránky",
+        "updatedAt": "Nahrané",
+        "createdAt": "Vytvorené"
+      },
+      "actions": {
+        "playNow": "Spustiť"
+      }
+    },
+    "share": {
+      "name": "Zdieľanie |||| Zdieľania",
+      "fields": {
+        "username": "Zdieľané",
+        "url": "URL",
+        "description": "Popis",
+        "downloadable": "Povoliť sťahovanie?",
+        "contents": "Obsah",
+        "expiresAt": "Vyprší",
+        "lastVisitedAt": "Naposledy navštívené",
+        "visitCount": "Počet návštev",
+        "format": "Formát",
+        "maxBitRate": "Max. Bit Rate",
+        "updatedAt": "Nahrané",
+        "createdAt": "Vytvorené"
+      },
+      "notifications": {},
+      "actions": {}
+    },
+    "missing": {
+      "name": "Chýbajúci súbor |||| Chýbajúce súbory",
+      "empty": "Žiadne chýbajúce súbory",
+      "fields": {
+        "path": "Cesta",
+        "size": "Veľkosť",
+        "libraryName": "Knižnica",
+        "updatedAt": "Zmizol dňa"
+      },
+      "actions": {
+        "remove": "Odstrániť",
+        "remove_all": "Odstrániť všetky"
+      },
+      "notifications": {
+        "removed": "Chýbajúce súbory odstránené"
+      }
+    },
+    "library": {
+      "name": "Knižnica |||| Knižnice",
+      "fields": {
+        "name": "Názov",
+        "path": "Cesta",
+        "remotePath": "Vzdialená cesta",
+        "lastScanAt": "Posledný sken",
+        "songCount": "Skladby",
+        "albumCount": "Albumy",
+        "artistCount": "Interpreti",
+        "totalSongs": "Skladby",
+        "totalAlbums": "Albumy",
+        "totalArtists": "Interpreti",
+        "totalFolders": "Priečinky",
+        "totalFiles": "Súbory",
+        "totalMissingFiles": "Chýbajúce súbory",
+        "totalSize": "Celková veľkosť",
+        "totalDuration": "Dĺžka",
+        "defaultNewUsers": "Predvolené pre nových používateľov",
+        "createdAt": "Vytvorené",
+        "updatedAt": "Aktualizované"
+      },
+      "sections": {
+        "basic": "Základné informácie",
+        "statistics": "Štatistiky"
+      },
+      "actions": {
+        "scan": "Skenovať knižnicu",
+        "quickScan": "Rýchly sken",
+        "fullScan": "Úplný sken",
+        "manageUsers": "Spravovať prístup používateľov",
+        "viewDetails": "Zobraziť detaily"
+      },
+      "notifications": {
+        "created": "Knižnica úspešne vytvorená",
+        "updated": "Knižnica úspešne aktualizovaná",
+        "deleted": "Knižnica úspešne odstránená",
+        "scanStarted": "Skenovanie knižnice spustené",
+        "quickScanStarted": "Rýchly sken spustený",
+        "fullScanStarted": "Úplný sken spustený",
+        "scanError": "Chyba pri spustení skenu. Skontrolujte logy",
+        "scanCompleted": "Skenovanie knižnice dokončené"
+      },
+      "validation": {
+        "nameRequired": "Názov knižnice je povinný",
+        "pathRequired": "Cesta ku knižnici je povinná",
+        "pathNotDirectory": "Cesta ku knižnici musí byť priečinok",
+        "pathNotFound": "Cesta ku knižnici sa nenašla",
+        "pathNotAccessible": "Cesta ku knižnici nie je dostupná",
+        "pathInvalid": "Neplatná cesta ku knižnici"
+      },
+      "messages": {
+        "deleteConfirm": "Ste si istý, že chcete odstrániť túto knižnicu? Tým sa odstránia všetky súvisiace dáta a prístupy používateľov.",
+        "scanInProgress": "Skenovanie prebieha...",
+        "noLibrariesAssigned": "Tomuto používateľovi nie sú priradené žiadne knižnice"
+      }
+    },
+    "plugin": {
+      "name": "Plugin |||| Pluginy",
+      "fields": {
+        "id": "ID",
+        "name": "Názov",
+        "description": "Popis",
+        "version": "Verzia",
+        "author": "Autor",
+        "website": "Webová stránka",
+        "permissions": "Oprávnenia",
+        "enabled": "Povolený",
+        "status": "Stav",
+        "path": "Cesta",
+        "lastError": "Chyba",
+        "hasError": "Chyba",
+        "updatedAt": "Aktualizovaný",
+        "createdAt": "Nainštalovaný",
+        "configKey": "Kľúč",
+        "configValue": "Hodnota",
+        "allUsers": "Povoliť všetkých používateľov",
+        "selectedUsers": "Vybraní používatelia",
+        "allLibraries": "Povoliť všetky knižnice",
+        "selectedLibraries": "Vybrané knižnice",
+        "allowWriteAccess": "Povoliť prístup na zápis"
+      },
+      "sections": {
+        "status": "Stav",
+        "info": "Informácie o plugine",
+        "configuration": "Konfigurácia",
+        "manifest": "Manifest",
+        "usersPermission": "Oprávnenia používateľov",
+        "libraryPermission": "Oprávnenia knižnice"
+      },
+      "status": {
+        "enabled": "Povolený",
+        "disabled": "Zakázaný"
+      },
+      "actions": {
+        "enable": "Povoliť",
+        "disable": "Zakázať",
+        "disabledDueToError": "Opravte chybu pred povolením",
+        "disabledUsersRequired": "Vyberte používateľov pred povolením",
+        "disabledLibrariesRequired": "Vyberte knižnice pred povolením",
+        "addConfig": "Pridať konfiguráciu",
+        "rescan": "Znovu skenovať"
+      },
+      "notifications": {
+        "enabled": "Plugin povolený",
+        "disabled": "Plugin zakázaný",
+        "updated": "Plugin aktualizovaný",
+        "error": "Chyba pri aktualizácii pluginu"
+      },
+      "validation": {
+        "invalidJson": "Konfigurácia musí byť platný JSON"
+      },
+      "messages": {
+        "configHelp": "Nakonfigurujte plugin pomocou párov kľúč-hodnota. Nechajte prázdne, ak plugin nevyžaduje žiadnu konfiguráciu.",
+        "configValidationError": "Overenie konfigurácie zlyhalo:",
+        "schemaRenderError": "Nie je možné zobraziť konfiguračný formulár. Schéma pluginu môže byť neplatná.",
+        "clickPermissions": "Kliknite na oprávnenie pre detaily",
+        "noConfig": "Žiadna konfigurácia nastavená",
+        "allUsersHelp": "Keď je povolené, plugin bude mať prístup ku všetkým používateľom, vrátane tých vytvorených v budúcnosti.",
+        "noUsers": "Žiadni používatelia nevybraní",
+        "permissionReason": "Dôvod",
+        "usersRequired": "Tento plugin vyžaduje prístup k informáciám o používateľoch. Vyberte, ku ktorým používateľom má plugin prístup, alebo povolte 'Povoliť všetkých používateľov'.",
+        "allLibrariesHelp": "Keď je povolené, plugin bude mať prístup ku všetkým knižniciam, vrátane tých vytvorených v budúcnosti.",
+        "noLibraries": "Žiadne knižnice nevybrané",
+        "librariesRequired": "Tento plugin vyžaduje prístup k informáciám o knižniciach. Vyberte, ku ktorým knižniciam má plugin prístup, alebo povolte 'Povoliť všetky knižnice'.",
+        "allowWriteAccessHelp": "Keď je povolené, plugin môže upravovať súbory v adresároch knižníc. Predvolene majú pluginy prístup iba na čítanie.",
+        "requiredHosts": "Požadovaní hostitelia"
+      },
+      "placeholders": {
+        "configKey": "kľúč",
+        "configValue": "hodnota"
+      }
+    }
+  },
+  "ra": {
+    "auth": {
+      "welcome1": "Ďakujeme, že ste si nainštalovali Navidrome!",
+      "welcome2": "Najskôr vytvorte účet správcu",
+      "confirmPassword": "Potvrďte heslo",
+      "buttonCreateAdmin": "Vytvoriť správcu",
+      "auth_check_error": "Pre pokračovanie sa prosím prihláste",
+      "user_menu": "Profil",
+      "username": "Používateľské meno",
+      "password": "Heslo",
+      "sign_in": "Prihlásiť sa",
+      "sign_in_error": "Overenie zlyhalo, skúste to znova",
+      "logout": "Odhlásiť sa",
+      "insightsCollectionNote": "Navidrome zhromažďuje anonymné údaje\n o používaní, aby pomohol zlepšiť projekt.\nKliknite [sem] a dozviete sa viac a v prípade\npotreby sa odhláste."
+    },
+    "validation": {
+      "invalidChars": "Prosím, používajte iba písmená a čísla",
+      "passwordDoesNotMatch": "Heslá sa nezhodujú",
+      "required": "Povinné pole",
+      "minLength": "Musí obsahovať najmenej %{min} znakov",
+      "maxLength": "Môže obsahovať maximálne %{max} znakov",
+      "minValue": "Musí byť aspoň %{min}",
+      "maxValue": "Môže byť maximálne %{max}",
+      "number": "Musí byť číslo",
+      "email": "Musí byť platná e-mailová adresa",
+      "oneOf": "Musí spĺňať jedno z: %{options}",
+      "regex": "Musí byť v špecifickom formáte (regexp): %{pattern}",
+      "unique": "Musí byť jedinečný",
+      "url": "Musí byť platná URL"
+    },
+    "action": {
+      "add_filter": "Pridať filter",
+      "add": "Pridať",
+      "back": "Ísť späť",
+      "bulk_actions": "1 vybraná |||| %{smart_count} vybraných",
+      "bulk_actions_mobile": "1 |||| %{smart_count}",
+      "cancel": "Zrušiť",
+      "clear_input_value": "Vymazať hodnotu",
+      "clone": "Klonovať",
+      "confirm": "Potvrdiť",
+      "create": "Vytvoriť",
+      "delete": "Vymazať",
+      "edit": "Upraviť",
+      "export": "Exportovať",
+      "list": "Zoznam",
+      "refresh": "Obnoviť",
+      "remove_filter": "Odstrániť filter",
+      "remove": "Odstrániť",
+      "save": "Uložiť",
+      "search": "Vyhľadať",
+      "show": "Zobraziť",
+      "sort": "Zoradiť",
+      "undo": "Vrátiť",
+      "expand": "Rozbaliť",
+      "close": "Zavrieť",
+      "open_menu": "Otvoriť ponuku",
+      "close_menu": "Zavrieť ponuku",
+      "unselect": "Zrušiť výber",
+      "skip": "Preskočiť",
+      "share": "Zdieľať",
+      "download": "Stiahnuť"
+    },
+    "boolean": {
+      "true": "Áno",
+      "false": "Nie"
+    },
+    "page": {
+      "create": "Vytvoriť %{name}",
+      "dashboard": "Dashboard",
+      "edit": "%{name} #%{id}",
+      "error": "Niečo sa pokazilo",
+      "list": "%{name}",
+      "loading": "Načítavanie",
+      "not_found": "Nenájdené",
+      "show": "%{name} #%{id}",
+      "empty": "Zatiaľ žiaden %{name}.",
+      "invite": "Chcete pridať nové?"
+    },
+    "input": {
+      "file": {
+        "upload_several": "Presuňte súbory pre nahranie alebo kliknite pre výber.",
+        "upload_single": "Presuňte súbor pre nahranie alebo kliknite pre jeho výber."
+      },
+      "image": {
+        "upload_several": "Presuňte obrázky pre nahranie alebo kliknite pre výber.",
+        "upload_single": "Presuňte obrázok pre nahranie alebo kliknite pre jeho výber."
+      },
+      "references": {
+        "all_missing": "Referencované dáta sa nenašli.",
+        "many_missing": "Aspoň jedna z referencií už nie je dostupná.",
+        "single_missing": "Referencia sa zdá byť nedostupná."
+      },
+      "password": {
+        "toggle_visible": "Skryť heslo",
+        "toggle_hidden": "Zobraziť heslo"
+      }
+    },
+    "message": {
+      "about": "O Navidrome",
+      "are_you_sure": "Ste si istý?",
+      "bulk_delete_content": "Ste si istý, že chcete vymazať %{name}? |||| Ste si istý, že chcete vymazať týchto %{smart_count} položiek?",
+      "bulk_delete_title": "Vymazať %{name} |||| Vymazať %{smart_count} %{name} položiek",
+      "delete_content": "Ste si istý, že chcete vymazať túto položku?",
+      "delete_title": "Vymazať %{name} #%{id}",
+      "details": "Detaily",
+      "error": "Vyskytla sa chyba klienta a vaša požiadavka nemohla byť splnená.",
+      "invalid_form": "Formulár nie je platný. Prosím skontrolujte ho.",
+      "loading": "Stránka sa načítava, prosím počkajte",
+      "no": "Nie",
+      "not_found": "Zadali ste nesprávnu adresu URL, alebo ste nasledovali nesprávny odkaz.",
+      "yes": "Áno",
+      "unsaved_changes": "Niektoré vaše zmeny neboli uložené. Ste si istí, že ich chcete ignorovať?"
+    },
+    "navigation": {
+      "no_results": "Nenašli sa žiadne výsledky",
+      "no_more_results": "Stránka číslo %{page} je mimo rozsah. Skúste predchádzajúcu.",
+      "page_out_of_boundaries": "Stránka číslo %{page} je mimo rozsah",
+      "page_out_from_end": "Nemožno ísť za poslednú stranu",
+      "page_out_from_begin": "Nemožno ísť pred prvú stranu",
+      "page_range_info": "%{offsetBegin}-%{offsetEnd} z %{total}",
+      "page_rows_per_page": "Položiek na stránke:",
+      "next": "Ďalší",
+      "prev": "Predchádzajúci",
+      "skip_nav": "Preskočiť na obsah"
+    },
+    "notification": {
+      "updated": "Prvok aktualizovaný |||| %{smart_count} prvkov aktualizovaných",
+      "created": "Prvok vytvorený",
+      "deleted": "Prvok vymazaný |||| %{smart_count} prvkov vymazaných",
+      "bad_item": "Nesprávny prvok",
+      "item_doesnt_exist": "Prvok neexistuje",
+      "http_error": "Chyba komunikácie servera",
+      "data_provider_error": "Chyba dataProvideru. Detaily nájdete v konzole.",
+      "i18n_error": "Nemožno načítať preklady pre vybraný jazyk",
+      "canceled": "Akcia zrušená",
+      "logged_out": "Vaša relácia skončila, prosím pripojte sa znova.",
+      "new_version": "Je dostupná nová verzia! Prosím obnovte toto okno."
+    },
+    "toggleFieldsMenu": {
+      "columnsToDisplay": "Stĺpce na zobrazenie",
+      "layout": "Rozloženie",
+      "grid": "Mriežka",
+      "table": "Tabuľka"
+    }
+  },
+  "message": {
+    "uploadCover": "Nahrať obrázok obalu",
+    "removeCover": "Odstrániť obrázok obalu",
+    "coverUploaded": "Obrázok obalu albumu aktualizovaný",
+    "coverRemoved": "Obrázok obalu albumu odstránený",
+    "coverUploadError": "Chyba pri nahrávaní obrázku obalu albumu",
+    "coverRemoveError": "Chyba pri odstraňovaní obrázku obalu albumu",
+    "note": "POZNÁMKA",
+    "transcodingDisabled": "Zmena nastavení transkódovania je vo webovom prostredí vypnutá z bezpečnostných dôvodov. Ak chcete zmeniť (upraviť alebo pridať) možnosti transkódovania, reštartujte server s možnosťou %{config}.",
+    "transcodingEnabled": "Navidrome práve beží s možnosťou %{config}, ktorá umožňuje spúšťanie systémových príkazov z nastavení transkódovania pomocou webového rozhrania. Odporúčame ju vypnúť z bezpečnostných dôvodov a používať ju iba pri úprave nastavení transkódovania.",
+    "songsAddedToPlaylist": "1 skladba pridaná do zoznamu skladieb |||| %{smart_count} skladieb pridaných do zoznamu skladieb",
+    "noSimilarSongsFound": "Nenašli sa žiadne podobné skladby",
+    "startingInstantMix": "Načítava sa Instant Mix...",
+    "noTopSongsFound": "Nenašli sa žiadne top skladby",
+    "noPlaylistsAvailable": "Žiadne nie sú dostupné",
+    "delete_user_title": "Odstrániť používateľa '%{name}'",
+    "delete_user_content": "Ste si istí, že chcete odstrániť tohto používateľa a všetky jeho dáta (vrátane zoznamov skladieb a nastavení)?",
+    "remove_missing_title": "Odstráňte chýbajúce súbory",
+    "remove_missing_content": "Naozaj chcete odstrániť vybraté chýbajúce súbory z databázy? Týmto sa natrvalo odstránia všetky odkazy na ne vrátane ich počtu prehratí a hodnotení.",
+    "remove_all_missing_title": "Odstráňte všetky chýbajúce súbory",
+    "remove_all_missing_content": "Naozaj chcete z databázy odstrániť všetky chýbajúce súbory? Týmto sa natrvalo odstránia všetky odkazy na ne vrátane ich počtu prehratí a hodnotení.",
+    "notifications_blocked": "Zablokovali ste si oznámenia pre túto stránku v nastaveniach vášho prehliadača",
+    "notifications_not_available": "Tento prehliadač nepodporuje oznámenia na ploche alebo nepristupujete k Navidrome cez https",
+    "lastfmLinkSuccess": "Last.fm úspešne pripojené a scrobbling zapnutý",
+    "lastfmLinkFailure": "Last.fm sa nepodarilo pripojiť",
+    "lastfmUnlinkSuccess": "Last.fm odpojené a scrobbling vypnutý",
+    "lastfmUnlinkFailure": "Last.fm sa nepodarilo odpojiť",
+    "listenBrainzLinkSuccess": "ListenBrainz úspešne pripojený a scrobbling zapnutý ako používateľ: %{user}",
+    "listenBrainzLinkFailure": "ListenBrainz sa nepodarilo pripojiť: %{error}",
+    "listenBrainzUnlinkSuccess": "ListenBrainz odpojený a scrobbling vypnutý",
+    "listenBrainzUnlinkFailure": "ListenBrainz sa nepodarilo odpojiť",
+    "openIn": {
+      "lastfm": "Otvoriť na Last.fm",
+      "musicbrainz": "Otvoriť na MusicBrainz"
+    },
+    "lastfmLink": "Čítať ďalej...",
+    "shareOriginalFormat": "Zdieľať v pôvodnom formáte",
+    "shareDialogTitle": "Zdieľať %{resource} '%{name}'",
+    "shareBatchDialogTitle": "Zdieľať 1 %{resource} |||| Zdieľať %{smart_count} %{resource}",
+    "shareCopyToClipboard": "Skopírovať do schránky: Ctrl+C, Enter",
+    "shareSuccess": "URL skopírovaná do schránky: %{url}",
+    "shareFailure": "Chyba pri kopírovaní URL %{url} do schránky",
+    "downloadDialogTitle": "Stiahnuť %{resource} '%{name}' (%{size})",
+    "downloadOriginalFormat": "Stiahnuť v pôvodnom formáte"
+  },
+  "menu": {
+    "library": "Knižnica",
+    "librarySelector": {
+      "allLibraries": "Všetky knižnice (%{count})",
+      "multipleLibraries": "%{selected} z %{total} knižníc",
+      "selectLibraries": "Vyberte knižnice",
+      "none": "Žiadne"
+    },
+    "settings": "Nastavenia",
+    "version": "Verzia",
+    "theme": "Téma",
+    "personal": {
+      "name": "Osobné",
+      "options": {
+        "theme": "Téma",
+        "language": "Jazyk",
+        "defaultView": "Predvolená stránka",
+        "desktop_notifications": "Oznámenia na ploche",
+        "lastfmNotConfigured": "Kľúč API Last.fm nie je nakonfigurovaný",
+        "lastfmScrobbling": "Scrobblovať na Last.fm",
+        "listenBrainzScrobbling": "Scrobblovať na ListenBrainz",
+        "replaygain": "Mód ReplayGain",
+        "preAmp": "ReplayGain PreAmp (dB)",
+        "gain": {
+          "none": "Vypnuté",
+          "album": "Použiť Album Gain",
+          "track": "Použiť Track Gain"
+        }
+      }
+    },
+    "albumList": "Albumy",
+    "playlists": "Zoznamy skladieb",
+    "sharedPlaylists": "Zdieľané zoznamy skladieb",
+    "about": "O Navidrome"
+  },
+  "player": {
+    "playListsText": "Rad",
+    "openText": "Otvoriť",
+    "closeText": "Zavrieť",
+    "notContentText": "Žiadne skladby",
+    "clickToPlayText": "Kliknite pre prehranie",
+    "clickToPauseText": "Kliknite pre pozastavenie",
+    "nextTrackText": "Ďalšia skladba",
+    "previousTrackText": "Predchádzajúca skladba",
+    "reloadText": "Znovu načítať",
+    "volumeText": "Hlasitosť",
+    "toggleLyricText": "Prepnúť text",
+    "toggleMiniModeText": "Zmenšiť",
+    "destroyText": "Zničiť",
+    "downloadText": "Stiahnuť",
+    "removeAudioListsText": "Vymazať zoznam",
+    "clickToDeleteText": "Kliknite pre odstránenie %{name}",
+    "emptyLyricText": "Bez textu",
+    "playModeText": {
+      "order": "Po poradí",
+      "orderLoop": "Opakovať",
+      "singleLoop": "Opakovať raz",
+      "shufflePlay": "Zamiešať"
+    }
+  },
+  "about": {
+    "links": {
+      "homepage": "Domovská stránka",
+      "source": "Zdrojový kód",
+      "featureRequests": "Požiadavky na funkcie",
+      "lastInsightsCollection": "Posledný zber štatistík",
+      "insights": {
+        "disabled": "Zakázané",
+        "waiting": "Čakanie"
+      }
+    },
+    "tabs": {
+      "about": "O aplikácii",
+      "config": "Konfigurácia"
+    },
+    "config": {
+      "configName": "Názov konfigurácie",
+      "environmentVariable": "Premenná prostredia",
+      "currentValue": "Aktuálna hodnota",
+      "configurationFile": "Konfiguračný súbor",
+      "exportToml": "Exportovať konfiguráciu (TOML)",
+      "downloadToml": "Stiahnuť konfiguráciu (TOML)",
+      "exportSuccess": "Konfigurácia exportovaná do schránky vo formáte TOML",
+      "exportFailed": "Nepodarilo sa skopírovať konfiguráciu",
+      "devFlagsHeader": "Vývojové príznaky (môžu byť zmenené/odstránené)",
+      "devFlagsComment": "Toto sú experimentálne nastavenia a môžu byť odstránené v budúcich verziách"
+    }
+  },
+  "activity": {
+    "title": "Aktivita",
+    "totalScanned": "Naskenované priečinky",
+    "quickScan": "Rýchly sken",
+    "fullScan": "Úplný sken",
+    "selectiveScan": "Selektívne",
+    "serverUptime": "Doba od spustenia",
+    "serverDown": "OFFLINE",
+    "scanType": "Posledný Sken",
+    "status": "Chyba skenovania",
+    "elapsedTime": "Uplynutý čas"
+  },
+  "nowPlaying": {
+    "title": "Práve hrá",
+    "empty": "Nič sa neprehráva",
+    "minutesAgo": "pred %{smart_count} minútou |||| pred %{smart_count} minútami"
+  },
+  "help": {
+    "title": "Klávesové skratky Navidrome",
+    "hotkeys": {
+      "show_help": "Zobraziť túto nápovedu",
+      "toggle_menu": "Prepnúť bočné menu",
+      "toggle_play": "Prehrať / Pozastaviť",
+      "prev_song": "Predchádzajúca skladba",
+      "next_song": "Nasledujúca skladba",
+      "current_song": "Prejsť na aktuálnu skladbu",
+      "vol_up": "Zvýšiť hlasitosť",
+      "vol_down": "Znížiť hlasitosť",
+      "toggle_love": "Pridať túto skladbu do obľúbených"
+    }
+  }
+}

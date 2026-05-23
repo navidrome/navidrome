@@ -6,6 +6,7 @@ import (
 	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/core/lyrics"
+	"github.com/navidrome/navidrome/core/matcher"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/core/playlists"
@@ -23,9 +24,12 @@ var Set = wire.NewSet(
 	NewLibrary,
 	NewUser,
 	NewMaintenance,
+	NewImageUploadService,
+	wire.Bind(new(playlists.ImageUploadService), new(ImageUploadService)),
 	stream.NewTranscodeDecider,
 	agents.GetAgents,
 	external.NewProvider,
+	matcher.New,
 	wire.Bind(new(external.Agents), new(*agents.Agents)),
 	ffmpeg.New,
 	scrobbler.GetPlayTracker,

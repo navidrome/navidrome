@@ -28,7 +28,7 @@ func setupBenchCache(b *testing.B, cacheSize string, getReader ReadFunc) (*fileC
 		b.Fatal(err)
 	}
 	b.Cleanup(configtest.SetupConfig())
-	conf.Server.CacheFolder = tmpDir
+	conf.Server.CacheFolder = conf.NewDir(tmpDir)
 
 	fc := NewFileCache("bench", cacheSize, "bench", 0, getReader).(*fileCache)
 

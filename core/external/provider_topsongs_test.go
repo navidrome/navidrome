@@ -6,11 +6,11 @@ import (
 
 	_ "github.com/navidrome/navidrome/adapters/lastfm"
 	_ "github.com/navidrome/navidrome/adapters/listenbrainz"
-	_ "github.com/navidrome/navidrome/adapters/spotify"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/agents"
 	. "github.com/navidrome/navidrome/core/external"
+	"github.com/navidrome/navidrome/core/matcher"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -30,7 +30,7 @@ var _ = Describe("Provider - TopSongs", func() {
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
 		// Disable fuzzy matching for these tests to avoid unexpected GetAll calls
-		conf.Server.SimilarSongsMatchThreshold = 100
+		conf.Server.Matcher.FuzzyThreshold = 100
 
 		ctx = GinkgoT().Context()
 
@@ -45,7 +45,7 @@ var _ = Describe("Provider - TopSongs", func() {
 
 		ag = new(mockAgents)
 
-		p = NewProvider(ds, ag)
+		p = NewProvider(ds, ag, matcher.New(ds))
 	})
 
 	It("returns top songs for a known artist", func() {

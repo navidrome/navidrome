@@ -38,6 +38,8 @@ pub struct HTTPRequest {
     #[serde(default)]
     pub headers: std::collections::HashMap<String, String>,
     #[serde(default)]
+    pub no_follow_redirects: bool,
+    #[serde(default)]
     #[serde(with = "base64_bytes")]
     pub body: Vec<u8>,
     #[serde(default)]

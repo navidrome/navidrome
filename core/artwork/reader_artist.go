@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -29,11 +30,13 @@ const (
 
 type artistReader struct {
 	cacheKey
-	a            *artwork
-	provider     external.Provider
-	artist       model.Artist
-	artistFolder string
-	imgFiles     []string
+	a                *artwork
+	provider         external.Provider
+	artist           model.Artist
+	artistFolder     string
+	imgFiles         []string
+	imgFolderImgPath string // cached path from ArtistImageFolder lookup
+	lib              libraryView
 }
 
 func newArtistArtworkReader(ctx context.Context, artwork *artwork, artID model.ArtworkID, provider external.Provider) (*artistReader, error) {
@@ -59,27 +62,46 @@ func newArtistArtworkReader(ctx context.Context, artwork *artwork, artID model.A
 	if err != nil {
 		return nil, err
 	}
+	var lib libraryView
+	if len(als) > 0 {
+		lib, err = loadLibraryView(ctx, artwork.ds, als[0].LibraryID)
+		if err != nil {
+			return nil, err
+		}
+	}
 	a := &artistReader{
 		a:            artwork,
 		provider:     provider,
 		artist:       *ar,
 		artistFolder: artistFolder,
 		imgFiles:     imgFiles,
+		lib:          lib,
 	}
 	// TODO Find a way to factor in the ExternalUpdateInfoAt in the cache key. Problem is that it can
 	// change _after_ retrieving from external sources, making the key invalid
 	//a.cacheKey.lastUpdate = ar.ExternalInfoUpdatedAt
 
 	a.cacheKey.lastUpdate = *imagesUpdatedAt
+	if ar.UpdatedAt != nil && ar.UpdatedAt.After(a.cacheKey.lastUpdate) {
+		a.cacheKey.lastUpdate = *ar.UpdatedAt
+	}
 	if artistFolderLastUpdate.After(a.cacheKey.lastUpdate) {
 		a.cacheKey.lastUpdate = artistFolderLastUpdate
+	}
+	if conf.Server.ArtistImageFolder != "" && strings.Contains(strings.ToLower(conf.Server.ArtistArtPriority), "image-folder") {
+		a.imgFolderImgPath = findImageInArtistFolder(conf.Server.ArtistImageFolder, ar.MbzArtistID, ar.Name)
+		if a.imgFolderImgPath != "" {
+			if info, err := os.Stat(a.imgFolderImgPath); err == nil && info.ModTime().After(a.cacheKey.lastUpdate) {
+				a.cacheKey.lastUpdate = info.ModTime()
+			}
+		}
 	}
 	a.cacheKey.artID = artID
 	return a, nil
 }
 
 func (a *artistReader) Key() string {
-	hash := md5.Sum([]byte(conf.Server.Agents + conf.Server.Spotify.ID))
+	hash := md5.Sum([]byte(conf.Server.Agents))
 	return fmt.Sprintf(
 		"%s.%t.%x",
 		a.cacheKey.Key(),
@@ -93,8 +115,13 @@ func (a *artistReader) LastUpdated() time.Time {
 }
 
 func (a *artistReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
-	var ff = a.fromArtistArtPriority(ctx, conf.Server.ArtistArtPriority)
+	ff := []sourceFunc{a.fromArtistUploadedImage()}
+	ff = append(ff, a.fromArtistArtPriority(ctx, conf.Server.ArtistArtPriority)...)
 	return selectImageReader(ctx, a.artID, ff...)
+}
+
+func (a *artistReader) fromArtistUploadedImage() sourceFunc {
+	return fromLocalFile(a.artist.UploadedImagePath())
 }
 
 func (a *artistReader) fromArtistArtPriority(ctx context.Context, priority string) []sourceFunc {
@@ -104,39 +131,65 @@ func (a *artistReader) fromArtistArtPriority(ctx context.Context, priority strin
 		switch {
 		case pattern == "external":
 			ff = append(ff, fromArtistExternalSource(ctx, a.artist, a.provider))
+		case pattern == "image-folder":
+			ff = append(ff, a.fromArtistImageFolder(ctx))
 		case strings.HasPrefix(pattern, "album/"):
-			ff = append(ff, fromExternalFile(ctx, a.imgFiles, strings.TrimPrefix(pattern, "album/")))
+			if a.lib.FS != nil {
+				ff = append(ff, fromExternalFile(ctx, a.lib.FS, a.imgFiles, strings.TrimPrefix(pattern, "album/")))
+			}
 		default:
-			ff = append(ff, fromArtistFolder(ctx, a.artistFolder, pattern))
+			ff = append(ff, fromArtistFolder(ctx, a.lib.FS, a.lib.absRoot, a.artistFolder, pattern))
 		}
 	}
 	return ff
 }
 
-func fromArtistFolder(ctx context.Context, artistFolder string, pattern string) sourceFunc {
+// fromArtistFolder walks up from artistFolder toward libPath looking for a
+// file matching pattern. Traversal is bounded by both maxArtistFolderTraversalDepth
+// and the library root: once we reach libPath (or if artistFolder is outside
+// libPath), the walk stops. All reads go through libFS, which keeps artwork
+// resolution scoped to the configured library.
+func fromArtistFolder(ctx context.Context, libFS fs.FS, libPath, artistFolder, pattern string) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
+		if libFS == nil {
+			return nil, "", fmt.Errorf("artist folder lookup unavailable")
+		}
+		rel, err := filepath.Rel(libPath, artistFolder)
+		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			return nil, "", fmt.Errorf(`artist folder '%s' is outside library '%s'`, artistFolder, libPath)
+		}
+		// fs.Glob / path.Join below expect forward-slash paths; filepath.Rel may
+		// return backslash separators on Windows.
+		rel = filepath.ToSlash(rel)
 		current := artistFolder
 		for range maxArtistFolderTraversalDepth {
-			if reader, path, err := findImageInFolder(ctx, current, pattern); err == nil {
-				return reader, path, nil
+			reader, hit, err := findImageInFolder(ctx, libFS, rel, current, pattern)
+			if err == nil {
+				return reader, hit, nil
 			}
-
-			parent := filepath.Dir(current)
-			if parent == current {
-				break
+			if rel == "." {
+				break // reached library root; don't traverse above it
 			}
-			current = parent
+			rel = path.Dir(rel)
+			current = filepath.Dir(current)
 		}
-		return nil, "", fmt.Errorf(`no matches for '%s' in '%s' or its parent directories`, pattern, artistFolder)
+		return nil, "", fmt.Errorf(`no matches for '%s' in '%s' or its parent directories (within library)`, pattern, artistFolder)
 	}
 }
 
-func findImageInFolder(ctx context.Context, folder, pattern string) (io.ReadCloser, string, error) {
-	log.Trace(ctx, "looking for artist image", "pattern", pattern, "folder", folder)
-	fsys := os.DirFS(folder)
-	matches, err := fs.Glob(fsys, pattern)
+// findImageInFolder globs libFS at relFolder for pattern and returns the first
+// matching image. absFolder is used only for the returned display path and log
+// messages so callers see absolute-looking paths consistent with the rest of
+// the artwork pipeline.
+func findImageInFolder(ctx context.Context, libFS fs.FS, relFolder, absFolder, pattern string) (io.ReadCloser, string, error) {
+	log.Trace(ctx, "looking for artist image", "pattern", pattern, "folder", absFolder)
+	globPattern := pattern
+	if relFolder != "." {
+		globPattern = path.Join(escapeGlobLiteral(relFolder), pattern)
+	}
+	matches, err := fs.Glob(libFS, globPattern)
 	if err != nil {
-		log.Warn(ctx, "Error matching artist image pattern", "pattern", pattern, "folder", folder, err)
+		log.Warn(ctx, "Error matching artist image pattern", "pattern", pattern, "folder", absFolder, err)
 		return nil, "", err
 	}
 
@@ -153,18 +206,30 @@ func findImageInFolder(ctx context.Context, folder, pattern string) (io.ReadClos
 	// suffixes (e.g., artist.jpg before artist.1.jpg)
 	slices.SortFunc(imagePaths, compareImageFiles)
 
-	// Try to open files in sorted order
 	for _, p := range imagePaths {
-		filePath := filepath.Join(folder, p)
-		f, err := os.Open(filePath)
+		f, err := libFS.Open(p)
 		if err != nil {
-			log.Warn(ctx, "Could not open cover art file", "file", filePath, err)
+			log.Warn(ctx, "Could not open cover art file", "file", p, err)
 			continue
 		}
-		return f, filePath, nil
+		_, name := path.Split(p)
+		return f, filepath.Join(absFolder, name), nil
 	}
 
-	return nil, "", fmt.Errorf(`no matches for '%s' in '%s'`, pattern, folder)
+	return nil, "", fmt.Errorf(`no matches for '%s' in '%s'`, pattern, absFolder)
+}
+
+func escapeGlobLiteral(s string) string {
+	var b strings.Builder
+	b.Grow(len(s))
+	for _, r := range s {
+		switch r {
+		case '\\', '*', '?', '[', ']':
+			b.WriteByte('\\')
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
 }
 
 func loadArtistFolder(ctx context.Context, ds model.DataStore, albums model.Albums, paths []string) (string, time.Time, error) {
@@ -195,4 +260,52 @@ func loadArtistFolder(ctx context.Context, ds model.DataStore, albums model.Albu
 		return "", time.Time{}, err
 	}
 	return folderPath, folders[0].ImagesUpdatedAt, nil
+}
+
+func (a *artistReader) fromArtistImageFolder(ctx context.Context) sourceFunc {
+	return func() (io.ReadCloser, string, error) {
+		folder := conf.Server.ArtistImageFolder
+		if folder == "" {
+			return nil, "", nil
+		}
+		// Use cached path from newArtistArtworkReader if available,
+		// avoiding a second directory scan.
+		path := a.imgFolderImgPath
+		if path == "" {
+			path = findImageInArtistFolder(folder, a.artist.MbzArtistID, a.artist.Name)
+		}
+		if path == "" {
+			return nil, "", fmt.Errorf("no image found for artist %q in %s", a.artist.Name, folder)
+		}
+		f, err := os.Open(path)
+		if err != nil {
+			return nil, "", err
+		}
+		return f, path, nil
+	}
+}
+
+// findImageInArtistFolder scans a folder for an image file matching the artist's MBID or name
+// (case-insensitive). Returns the full path, or empty string if not found.
+func findImageInArtistFolder(folder, mbzArtistID, artistName string) string {
+	entries, err := os.ReadDir(folder)
+	if err != nil {
+		return ""
+	}
+	for _, candidate := range []string{mbzArtistID, artistName} {
+		if candidate == "" {
+			continue
+		}
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue
+			}
+			name := entry.Name()
+			base := strings.TrimSuffix(name, filepath.Ext(name))
+			if strings.EqualFold(base, candidate) && model.IsImageFile(name) {
+				return filepath.Join(folder, name)
+			}
+		}
+	}
+	return ""
 }

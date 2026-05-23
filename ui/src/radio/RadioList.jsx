@@ -1,4 +1,4 @@
-import { makeStyles, useMediaQuery } from '@material-ui/core'
+import { Avatar, makeStyles, useMediaQuery } from '@material-ui/core'
 import React, { cloneElement } from 'react'
 import {
   CreateButton,
@@ -14,11 +14,17 @@ import {
   UrlField,
   useTranslate,
 } from 'react-admin'
-import { List } from '../common'
-import { ToggleFieldsMenu, useSelectedFields } from '../common'
+import {
+  List,
+  useImageUrl,
+  ToggleFieldsMenu,
+  useSelectedFields,
+} from '../common'
+import subsonic from '../subsonic'
 import { StreamField } from './StreamField'
 import { setTrack } from '../actions'
 import { songFromRadio } from './helper'
+import { RADIO_PLACEHOLDER_IMAGE } from '../consts'
 import { useDispatch } from 'react-redux'
 
 const useStyles = makeStyles({
@@ -73,6 +79,21 @@ const RadioListActions = ({
   )
 }
 
+const avatarStyle = { width: 40, height: 40 }
+
+const CoverArtField = ({ record }) => {
+  const directUrl = record?.uploadedImage
+    ? subsonic.getCoverArtUrl(record, 40, true)
+    : null
+  const { imgUrl } = useImageUrl(directUrl)
+  if (!record) return null
+  const src = imgUrl || RADIO_PLACEHOLDER_IMAGE
+  return (
+    <Avatar src={src} variant="rounded" style={avatarStyle} alt={record.name} />
+  )
+}
+CoverArtField.defaultProps = { label: '' }
+
 const RadioList = ({ permissions, ...props }) => {
   const classes = useStyles()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
@@ -80,6 +101,7 @@ const RadioList = ({ permissions, ...props }) => {
   const isAdmin = permissions === 'admin'
 
   const toggleableFields = {
+    coverArt: <CoverArtField source="id" sortable={false} />,
     name: <TextField source="name" />,
     homePageUrl: (
       <UrlField
@@ -97,7 +119,7 @@ const RadioList = ({ permissions, ...props }) => {
   const columns = useSelectedFields({
     resource: 'radio',
     columns: toggleableFields,
-    defaultOff: ['createdAt'],
+    defaultOff: ['streamUrl', 'createdAt'],
   })
 
   const handleRowClick = async (id, basePath, record) => {
@@ -117,6 +139,7 @@ const RadioList = ({ permissions, ...props }) => {
     >
       {isXsmall ? (
         <SimpleList
+          leftAvatar={(r) => <CoverArtField record={r} />}
           leftIcon={(r) => (
             <StreamField
               record={r}

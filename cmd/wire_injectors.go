@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/core/scrobbler"
+	"github.com/navidrome/navidrome/core/sonic"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
@@ -43,9 +44,11 @@ var allProviders = wire.NewSet(
 	metrics.GetPrometheusInstance,
 	db.Db,
 	plugins.GetManager,
+	sonic.New,
 	wire.Bind(new(agents.PluginLoader), new(*plugins.Manager)),
 	wire.Bind(new(scrobbler.PluginLoader), new(*plugins.Manager)),
 	wire.Bind(new(lyrics.PluginLoader), new(*plugins.Manager)),
+	wire.Bind(new(sonic.PluginLoader), new(*plugins.Manager)),
 	wire.Bind(new(nativeapi.PluginManager), new(*plugins.Manager)),
 	wire.Bind(new(core.PluginUnloader), new(*plugins.Manager)),
 	wire.Bind(new(plugins.PluginMetricsRecorder), new(metrics.Metrics)),

@@ -119,7 +119,16 @@ func (mf MediaFile) CoverArtID() ArtworkID {
 	if mf.HasCoverArt && conf.Server.EnableMediaFileCoverArt {
 		return artworkIDFromMediaFile(mf)
 	}
-	// if it does not have a coverArt, fallback to the album cover
+	// Otherwise fallback to disc (if available) or album cover
+	return mf.DiscCoverArtID()
+}
+
+// DiscCoverArtID returns the disc artwork ID when the media file has a disc number,
+// otherwise it returns the album artwork ID.
+func (mf MediaFile) DiscCoverArtID() ArtworkID {
+	if mf.DiscNumber > 0 {
+		return NewArtworkID(KindDiscArtwork, DiscArtworkID(mf.AlbumID, mf.DiscNumber), nil)
+	}
 	return mf.AlbumCoverArtID()
 }
 
@@ -351,6 +360,9 @@ func newer(t1, t2 time.Time) time.Time {
 func older(t1, t2 time.Time) time.Time {
 	if t1.IsZero() {
 		return t2
+	}
+	if t2.IsZero() {
+		return t1
 	}
 	if t1.After(t2) {
 		return t2

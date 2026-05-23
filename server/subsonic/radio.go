@@ -2,8 +2,11 @@ package subsonic
 
 import (
 	"net/http"
+	"strings"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/req"
 )
@@ -66,6 +69,19 @@ func (api *Router) GetInternetRadios(r *http.Request) (*responses.Subsonic, erro
 			StreamUrl:   g.StreamUrl,
 			HomepageUrl: g.HomePageUrl,
 		}
+
+		player, _ := request.PlayerFrom(ctx)
+		if strings.Contains(conf.Server.Subsonic.LegacyClients, player.Client) {
+			continue
+		}
+		// Add coverArt if not legacy client
+		var coverArt string
+		if g.UploadedImage != "" {
+			coverArt = g.CoverArtID().String()
+		}
+		res[i].OpenSubsonicRadio = &responses.OpenSubsonicRadio{
+			CoverArt: coverArt,
+		}
 	}
 
 	response := newResponse()
@@ -103,7 +119,7 @@ func (api *Router) UpdateInternetRadio(r *http.Request) (*responses.Subsonic, er
 		Name:        name,
 	}
 
-	err = api.ds.Radio(ctx).Put(radio)
+	err = api.ds.Radio(ctx).Put(radio, "StreamUrl", "HomePageUrl", "Name")
 	if err != nil {
 		return nil, err
 	}

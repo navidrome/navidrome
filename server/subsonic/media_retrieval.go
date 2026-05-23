@@ -37,7 +37,7 @@ func (api *Router) GetAvatar(w http.ResponseWriter, r *http.Request) (*responses
 		log.Warn(ctx, "User needs an email for gravatar to work", "username", username)
 		return api.getPlaceHolderAvatar(w, r)
 	}
-	http.Redirect(w, r, gravatar.Url(u.Email, 0), http.StatusFound)
+	http.Redirect(w, r, gravatar.Url(u.Email, 0), http.StatusFound) //nolint:gosec // URL is not constructed from user input
 	return nil, nil
 }
 
@@ -81,7 +81,7 @@ func (api *Router) GetCoverArt(w http.ResponseWriter, r *http.Request) (*respons
 
 	defer imgReader.Close()
 	w.Header().Set("cache-control", "public, max-age=315360000")
-	w.Header().Set("last-modified", lastUpdate.Format(time.RFC1123))
+	w.Header().Set("last-modified", lastUpdate.Format(http.TimeFormat))
 
 	cnt, err := io.Copy(w, imgReader)
 	if err != nil {

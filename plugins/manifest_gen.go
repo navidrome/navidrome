@@ -57,7 +57,7 @@ type HTTPPermission struct {
 	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
 
 	// List of required host patterns for HTTP requests (e.g., 'api.example.com',
-	// '*.spotify.com')
+	// '*.musicbrainz.org')
 	RequiredHosts []string `json:"requiredHosts,omitempty" yaml:"requiredHosts,omitempty" mapstructure:"requiredHosts,omitempty"`
 }
 
@@ -251,6 +251,6 @@ type WebSocketPermission struct {
 	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
 
 	// List of required host patterns for WebSocket connections (e.g.,
-	// 'api.example.com', '*.spotify.com')
+	// 'api.example.com', '*.musicbrainz.org')
 	RequiredHosts []string `json:"requiredHosts,omitempty" yaml:"requiredHosts,omitempty" mapstructure:"requiredHosts,omitempty"`
 }

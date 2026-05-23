@@ -1,15 +1,12 @@
 package model
 
 import (
-	"path/filepath"
 	"slices"
 	"strconv"
 	"time"
 
-	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model/criteria"
-	"github.com/navidrome/navidrome/utils"
 )
 
 type Playlist struct {
@@ -108,16 +105,6 @@ func (pls *Playlist) AddMediaFiles(mfs MediaFiles) {
 	pls.refreshStats()
 }
 
-// ImageFilename returns a human-friendly filename for an uploaded playlist cover image.
-// Format: <ID>_<clean_name><ext>, falling back to <ID><ext> if the name cleans to empty.
-func (pls Playlist) ImageFilename(ext string) string {
-	clean := utils.CleanFileName(pls.Name)
-	if clean == "" {
-		return pls.ID + ext
-	}
-	return pls.ID + "_" + clean + ext
-}
-
 func (pls Playlist) CoverArtID() ArtworkID {
 	return artworkIDFromPlaylist(pls)
 }
@@ -127,10 +114,7 @@ func (pls Playlist) CoverArtID() ArtworkID {
 // This does NOT cover sidecar images or external URLs — those are resolved
 // by the artwork reader's fallback chain.
 func (pls Playlist) UploadedImagePath() string {
-	if pls.UploadedImage == "" {
-		return ""
-	}
-	return filepath.Join(conf.Server.DataFolder, consts.ArtworkFolder, "playlist", pls.UploadedImage)
+	return UploadedImagePath(consts.EntityPlaylist, pls.UploadedImage)
 }
 
 type Playlists []Playlist
@@ -139,7 +123,7 @@ type PlaylistRepository interface {
 	ResourceRepository
 	CountAll(options ...QueryOptions) (int64, error)
 	Exists(id string) (bool, error)
-	Put(pls *Playlist) error
+	Put(pls *Playlist, cols ...string) error
 	Get(id string) (*Playlist, error)
 	GetWithTracks(id string, refreshSmartPlaylist, includeMissing bool) (*Playlist, error)
 	GetAll(options ...QueryOptions) (Playlists, error)

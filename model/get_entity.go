@@ -22,5 +22,9 @@ func GetEntityByID(ctx context.Context, ds DataStore, id string) (any, error) {
 	if err == nil {
 		return mf, nil
 	}
+	r, err := ds.Radio(ctx).Get(id)
+	if err == nil {
+		return r, nil
+	}
 	return nil, err
 }

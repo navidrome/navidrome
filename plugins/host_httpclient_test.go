@@ -311,6 +311,26 @@ var _ = Describe("httpServiceImpl", func() {
 			Expect(err.Error()).To(ContainSubstring("context canceled"))
 		})
 
+		It("should not follow redirects when NoFollowRedirects is true", func() {
+			dest := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				_, _ = w.Write([]byte("final"))
+			}))
+			defer dest.Close()
+			ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				http.Redirect(w, r, dest.URL, http.StatusFound)
+			}))
+			resp, err := svc.Send(context.Background(), host.HTTPRequest{
+				Method:            "GET",
+				URL:               ts.URL,
+				TimeoutMs:         1000,
+				NoFollowRedirects: true,
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.StatusCode).To(Equal(int32(302)))
+			Expect(resp.Headers["Location"]).To(Equal(dest.URL))
+			Expect(string(resp.Body)).ToNot(Equal("final"))
+		})
+
 		It("should send request headers", func() {
 			ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				_, _ = w.Write([]byte(r.Header.Get("X-Custom")))

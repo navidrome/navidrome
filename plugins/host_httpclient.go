@@ -22,6 +22,12 @@ const (
 	httpClientMaxResponseBodyLen = 10 * 1024 * 1024 // 10 MB
 )
 
+// contextKey is used for per-request redirect control via context.
+type contextKey struct{}
+
+// noFollowRedirectsKey signals the CheckRedirect callback to stop following redirects.
+var noFollowRedirectsKey = contextKey{}
+
 // httpServiceImpl implements host.HTTPService.
 type httpServiceImpl struct {
 	pluginName    string
@@ -44,6 +50,9 @@ func newHTTPService(pluginName string, permission *HTTPPermission) *httpServiceI
 		// Timeout is set per-request via context deadline, not here.
 		// CheckRedirect validates hosts and enforces redirect limits.
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if req.Context().Value(noFollowRedirectsKey) != nil {
+				return http.ErrUseLastResponse
+			}
 			if len(via) >= httpClientMaxRedirects {
 				log.Warn(req.Context(), "HTTP redirect limit exceeded", "plugin", svc.pluginName, "url", req.URL.String(), "redirectCount", len(via))
 				return http.ErrUseLastResponse
@@ -79,6 +88,11 @@ func (s *httpServiceImpl) Send(ctx context.Context, request host.HTTPRequest) (*
 	timeout := cmp.Or(time.Duration(request.TimeoutMs)*time.Millisecond, httpClientDefaultTimeout)
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
+
+	// Signal CheckRedirect to not follow redirects for this request
+	if request.NoFollowRedirects {
+		ctx = context.WithValue(ctx, noFollowRedirectsKey, true)
+	}
 
 	// Build request body
 	method := strings.ToUpper(request.Method)

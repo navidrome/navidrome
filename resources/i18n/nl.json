@@ -37,7 +37,8 @@
         "sampleRate": "Sample waarde",
         "missing": "Ontbrekend",
         "libraryName": "Bibliotheek",
-        "composer": ""
+        "composer": "Componist",
+        "disc": "Schijf %{discNumber}"
       },
       "actions": {
         "addToQueue": "Voeg toe aan wachtrij",
@@ -48,7 +49,7 @@
         "playNext": "Volgende",
         "info": "Meer info",
         "showInPlaylist": "Toon in afspeellijst",
-        "instantMix": ""
+        "instantMix": "Instant mix"
       }
     },
     "album": {
@@ -350,10 +351,11 @@
         "createdAt": "Geinstalleerd",
         "configKey": "Sleutel",
         "configValue": "Waarde",
-        "allUsers": "Alle gebruikers toelaten",
+        "allUsers": "Sta toe voor alle gebruikers",
         "selectedUsers": "Geselecteerde gebruikers",
-        "allLibraries": "Alle bibliotheken toestaan",
-        "selectedLibraries": "Geselecteerde bibliotheken"
+        "allLibraries": "Sta toe voor alle bibliotheken",
+        "selectedLibraries": "Geselecteerde bibliotheken",
+        "allowWriteAccess": "Sta schrijftoegang toe"
       },
       "sections": {
         "status": "Status",
@@ -379,26 +381,27 @@
       "notifications": {
         "enabled": "Plugin actief",
         "disabled": "Plugin niet actief",
-        "updated": "Plugin geupdate",
+        "updated": "Plugin bijgewerkt",
         "error": "Fout bij updaten plugin"
       },
       "validation": {
         "invalidJson": "Configuratie moet geldige JSON zijn"
       },
       "messages": {
-        "configHelp": "",
+        "configHelp": "Configureer de plug-in met key-value paren. Leeglaten als de plug-in niet geconfigueerd hoeft te worden.",
         "clickPermissions": "Klik op permissie voor details",
         "noConfig": "Geen configuratie ingesteld",
-        "allUsersHelp": "",
+        "allUsersHelp": "Als dit aanstaat heeft de plug-in toegang tot alle gebruikers, inclusief toekomstige.",
         "noUsers": "Geen gebruikers geselecteerd",
         "permissionReason": "Reden",
-        "usersRequired": "",
-        "allLibrariesHelp": "",
+        "usersRequired": "Deze plug-in heeft toegang nodig tot gebruikersinformatie. Selecteer welke gebruikers de plug-in toegang toe heeft, of schakel 'sta toe voor alle gebruikers' in.",
+        "allLibrariesHelp": "Als dit aanstaat, heeft de plug-in toegang tot alle bibliotheken, inclusief toekomstige.",
         "noLibraries": "Geen bibliotheken geselecteerd",
-        "librariesRequired": "",
+        "librariesRequired": "Deze plug-in heeft toegang nodig tot bibliotheek informatie. Selecteer welke bibliotheken de plug-in toegang to heeft, of schakel 'sta toe voor alle bibliotheken' in.",
         "requiredHosts": "Benodigde hosts",
-        "configValidationError": "",
-        "schemaRenderError": ""
+        "configValidationError": "Configuratiecheck mislukt",
+        "schemaRenderError": "Kan het configuratieformulier niet verwerken. Het plugin schema is wellicht ongeldig.",
+        "allowWriteAccessHelp": "Met dit ingeschakeld, kan de plug-in bestanden bewerken in de bibliotheekmappen. Standaard kunnen plug-ins alleen lezen."
       },
       "placeholders": {
         "configKey": "Sleutel",
@@ -588,7 +591,13 @@
     "remove_all_missing_content": "Weet je zeker dat je alle ontbrekende bestanden van de database wil verwijderen? Dit wist permanent al hun referenties inclusief afspeel tellers en beoordelingen.",
     "noSimilarSongsFound": "Geen vergelijkbare nummers gevonden",
     "noTopSongsFound": "Geen beste nummers gevonden",
-    "startingInstantMix": ""
+    "startingInstantMix": "Laden van Instant mix...",
+    "uploadCover": "Albumhoes toevoegen",
+    "removeCover": "Verwijder albumhoes",
+    "coverUploaded": "Albumhoes bijgewerkt",
+    "coverRemoved": "Albumhoes verwijderd",
+    "coverUploadError": "Fout bij het toevoegen albumhoes",
+    "coverRemoveError": "Fout bij verwijderen albumhoes"
   },
   "menu": {
     "library": "Bibliotheek",
@@ -674,7 +683,8 @@
       "exportSuccess": "Configuratie geëxporteerd naar klembord in TOML formaat",
       "exportFailed": "Kopiëren van configuratie mislukt",
       "devFlagsHeader": "Ontwikkelaarsinstellingen (onder voorbehoud)",
-      "devFlagsComment": "Dit zijn experimentele instellingen en worden mogelijk in latere versies verwijderd"
+      "devFlagsComment": "Dit zijn experimentele instellingen en worden mogelijk in latere versies verwijderd",
+      "downloadToml": "Download configuratie (TOML)"
     }
   },
   "activity": {

@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"time"
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -63,6 +64,11 @@ var _ = Describe("LibraryRepository", func() {
 
 				originalID := lib.ID
 				originalCreatedAt := lib.CreatedAt
+
+				// Ensure the update's timestamp is strictly greater than the
+				// create's timestamp on platforms with coarse clock resolution
+				// (Windows' time.Now() is millisecond-granular).
+				time.Sleep(2 * time.Millisecond)
 
 				// Now update it
 				lib.Name = "Updated Library"

@@ -60,7 +60,7 @@ func (pub *Router) handleImages(w http.ResponseWriter, r *http.Request) {
 
 	defer imgReader.Close()
 	w.Header().Set("Cache-Control", "public, max-age=315360000")
-	w.Header().Set("Last-Modified", lastUpdate.Format(time.RFC1123))
+	w.Header().Set("Last-Modified", lastUpdate.Format(http.TimeFormat))
 	cnt, err := io.Copy(w, imgReader)
 	if err != nil {
 		log.Warn(ctx, "Error sending image", "count", cnt, err)

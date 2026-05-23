@@ -149,7 +149,7 @@
         },
         "requiredHosts": {
           "type": "array",
-          "description": "List of required host patterns for HTTP requests (e.g., 'api.example.com', '*.spotify.com')",
+          "description": "List of required host patterns for HTTP requests (e.g., 'api.example.com', '*.musicbrainz.org')",
           "items": {
             "type": "string"
           }
@@ -189,7 +189,7 @@
         },
         "requiredHosts": {
           "type": "array",
-          "description": "List of required host patterns for WebSocket connections (e.g., 'api.example.com', '*.spotify.com')",
+          "description": "List of required host patterns for WebSocket connections (e.g., 'api.example.com', '*.musicbrainz.org')",
           "items": {
             "type": "string"
           }

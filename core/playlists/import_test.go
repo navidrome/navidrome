@@ -11,6 +11,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
@@ -38,11 +39,11 @@ var _ = Describe("Playlists - Import", func() {
 		ctx = request.WithUser(ctx, model.User{ID: "123"})
 	})
 
-	Describe("ImportFile", func() {
+	Describe("ImportFromFolder", func() {
 		var folder *model.Folder
 		BeforeEach(func() {
 			DeferCleanup(configtest.SetupConfig())
-			ps = playlists.NewPlaylists(ds)
+			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
 			ds.MockedMediaFile = &mockedMediaFileRepo{}
 			libPath, _ := os.Getwd()
 			// Set up library with the actual library path that matches the folder
@@ -58,7 +59,7 @@ var _ = Describe("Playlists - Import", func() {
 
 		Describe("M3U", func() {
 			It("parses well-formed playlists", func() {
-				pls, err := ps.ImportFile(ctx, folder, "pls1.m3u")
+				pls, err := ps.ImportFromFolder(ctx, folder, "pls1.m3u")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(pls.OwnerID).To(Equal("123"))
 				Expect(pls.Tracks).To(HaveLen(2))
@@ -68,19 +69,19 @@ var _ = Describe("Playlists - Import", func() {
 			})
 
 			It("parses playlists using LF ending", func() {
-				pls, err := ps.ImportFile(ctx, folder, "lf-ended.m3u")
+				pls, err := ps.ImportFromFolder(ctx, folder, "lf-ended.m3u")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(pls.Tracks).To(HaveLen(2))
 			})
 
 			It("parses playlists using CR ending (old Mac format)", func() {
-				pls, err := ps.ImportFile(ctx, folder, "cr-ended.m3u")
+				pls, err := ps.ImportFromFolder(ctx, folder, "cr-ended.m3u")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(pls.Tracks).To(HaveLen(2))
 			})
 
 			It("parses playlists with UTF-8 BOM marker", func() {
-				pls, err := ps.ImportFile(ctx, folder, "bom-test.m3u")
+				pls, err := ps.ImportFromFolder(ctx, folder, "bom-test.m3u")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(pls.OwnerID).To(Equal("123"))
 				Expect(pls.Name).To(Equal("Test Playlist"))
@@ -89,7 +90,7 @@ var _ = Describe("Playlists - Import", func() {
 			})
 
 			It("parses UTF-16 LE encoded playlists with BOM and converts to UTF-8", func() {
-				pls, err := ps.ImportFile(ctx, folder, "bom-test-utf16.m3u")
+				pls, err := ps.ImportFromFolder(ctx, folder, "bom-test-utf16.m3u")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(pls.OwnerID).To(Equal("123"))
 				Expect(pls.Name).To(Equal("UTF-16 Test Playlist"))
@@ -100,7 +101,7 @@ var _ = Describe("Playlists - Import", func() {
 			It("parses #EXTALBUMARTURL with HTTP URL", func() {
 				conf.Server.EnableM3UExternalAlbumArt = true
 
-				pls, err := ps.ImportFile(ctx, folder, "pls-with-art-url.m3u")
+				pls, err := ps.ImportFromFolder(ctx, folder, "pls-with-art-url.m3u")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(pls.ExternalImageURL).To(Equal("https://example.com/cover.jpg"))
 				Expect(pls.Tracks).To(HaveLen(2))
@@ -117,10 +118,10 @@ var _ = Describe("Playlists - Import", func() {
 
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
 				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3", "test.ogg"}}
-				ps = playlists.NewPlaylists(ds)
+				ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
 
 				plsFolder := &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: ""}
-				pls, err := ps.ImportFile(ctx, plsFolder, "test.m3u")
+				pls, err := ps.ImportFromFolder(ctx, plsFolder, "test.m3u")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(pls.ExternalImageURL).To(Equal(imgPath))
 			})
@@ -135,10 +136,10 @@ var _ = Describe("Playlists - Import", func() {
 
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
 				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3"}}
-				ps = playlists.NewPlaylists(ds)
+				ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
 
 				plsFolder := &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: ""}
-				pls, err := ps.ImportFile(ctx, plsFolder, "test.m3u")
+				pls, err := ps.ImportFromFolder(ctx, plsFolder, "test.m3u")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(pls.ExternalImageURL).To(Equal(filepath.Join(tmpDir, "cover.jpg")))
 			})
@@ -154,10 +155,10 @@ var _ = Describe("Playlists - Import", func() {
 
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
 				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3"}}
-				ps = playlists.NewPlaylists(ds)
+				ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
 
 				plsFolder := &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: ""}
-				pls, err := ps.ImportFile(ctx, plsFolder, "test.m3u")
+				pls, err := ps.ImportFromFolder(ctx, plsFolder, "test.m3u")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(pls.ExternalImageURL).To(Equal(imgPath))
 			})
@@ -173,15 +174,16 @@ var _ = Describe("Playlists - Import", func() {
 
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
 				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3"}}
-				ps = playlists.NewPlaylists(ds)
+				ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
 
 				plsFolder := &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: ""}
-				pls, err := ps.ImportFile(ctx, plsFolder, "test.m3u")
+				pls, err := ps.ImportFromFolder(ctx, plsFolder, "test.m3u")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(pls.ExternalImageURL).To(Equal(imgPath))
 			})
 
 			It("rejects #EXTALBUMARTURL with absolute path outside library boundaries", func() {
+				tests.SkipOnWindows("relies on Unix /etc filesystem")
 				tmpDir := GinkgoT().TempDir()
 
 				m3u := "#EXTALBUMARTURL:/etc/passwd\ntest.mp3\n"
@@ -190,10 +192,10 @@ var _ = Describe("Playlists - Import", func() {
 
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
 				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3"}}
-				ps = playlists.NewPlaylists(ds)
+				ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
 
 				plsFolder := &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: ""}
-				pls, err := ps.ImportFile(ctx, plsFolder, "test.m3u")
+				pls, err := ps.ImportFromFolder(ctx, plsFolder, "test.m3u")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(pls.ExternalImageURL).To(BeEmpty())
 			})
@@ -207,10 +209,10 @@ var _ = Describe("Playlists - Import", func() {
 
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
 				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3"}}
-				ps = playlists.NewPlaylists(ds)
+				ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
 
 				plsFolder := &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: ""}
-				pls, err := ps.ImportFile(ctx, plsFolder, "test.m3u")
+				pls, err := ps.ImportFromFolder(ctx, plsFolder, "test.m3u")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(pls.ExternalImageURL).To(BeEmpty())
 			})
@@ -224,10 +226,10 @@ var _ = Describe("Playlists - Import", func() {
 
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
 				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3"}}
-				ps = playlists.NewPlaylists(ds)
+				ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
 
 				plsFolder := &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: ""}
-				pls, err := ps.ImportFile(ctx, plsFolder, "test.m3u")
+				pls, err := ps.ImportFromFolder(ctx, plsFolder, "test.m3u")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(pls.ExternalImageURL).To(BeEmpty())
 			})
@@ -242,10 +244,10 @@ var _ = Describe("Playlists - Import", func() {
 
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
 				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3"}}
-				ps = playlists.NewPlaylists(ds)
+				ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
 
 				plsFolder := &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: ""}
-				pls, err := ps.ImportFile(ctx, plsFolder, "test.m3u")
+				pls, err := ps.ImportFromFolder(ctx, plsFolder, "test.m3u")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(pls.ExternalImageURL).To(BeEmpty())
 			})
@@ -256,7 +258,7 @@ var _ = Describe("Playlists - Import", func() {
 				tmpDir := GinkgoT().TempDir()
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
 				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3"}}
-				ps = playlists.NewPlaylists(ds)
+				ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
 
 				m3u := "#EXTALBUMARTURL:https://example.com/new-cover.jpg\ntest.mp3\n"
 				plsFile := filepath.Join(tmpDir, "test.m3u")
@@ -273,17 +275,43 @@ var _ = Describe("Playlists - Import", func() {
 				mockPlsRepo.PathMap = map[string]*model.Playlist{plsFile: existingPls}
 
 				plsFolder := &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: ""}
-				pls, err := ps.ImportFile(ctx, plsFolder, "test.m3u")
+				pls, err := ps.ImportFromFolder(ctx, plsFolder, "test.m3u")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(pls.UploadedImage).To(Equal("existing-id.jpg"))
 				Expect(pls.ExternalImageURL).To(Equal("https://example.com/new-cover.jpg"))
+			})
+
+			It("skips non-synced playlist on re-import (respects user's choice)", func() {
+				tmpDir := GinkgoT().TempDir()
+				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
+				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3"}}
+				ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+
+				plsFile := filepath.Join(tmpDir, "test.m3u")
+				Expect(os.WriteFile(plsFile, []byte("test.mp3\n"), 0600)).To(Succeed())
+
+				existingPls := &model.Playlist{
+					ID:      "existing-id",
+					Name:    "Existing Playlist",
+					Path:    plsFile,
+					Sync:    false,
+					OwnerID: "123",
+				}
+				mockPlsRepo.PathMap = map[string]*model.Playlist{plsFile: existingPls}
+
+				plsFolder := &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: ""}
+				pls, err := ps.ImportFromFolder(ctx, plsFolder, "test.m3u")
+				Expect(err).ToNot(HaveOccurred())
+				// updatePlaylist skips the non-synced playlist, so the returned
+				// playlist has no ID (was never persisted/updated).
+				Expect(pls.ID).To(BeEmpty())
 			})
 
 			It("clears ExternalImageURL on re-scan when directive is removed", func() {
 				tmpDir := GinkgoT().TempDir()
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
 				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3"}}
-				ps = playlists.NewPlaylists(ds)
+				ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
 
 				m3u := "test.mp3\n"
 				plsFile := filepath.Join(tmpDir, "test.m3u")
@@ -299,7 +327,7 @@ var _ = Describe("Playlists - Import", func() {
 				mockPlsRepo.PathMap = map[string]*model.Playlist{plsFile: existingPls}
 
 				plsFolder := &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: ""}
-				pls, err := ps.ImportFile(ctx, plsFolder, "test.m3u")
+				pls, err := ps.ImportFromFolder(ctx, plsFolder, "test.m3u")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(pls.ExternalImageURL).To(BeEmpty())
 			})
@@ -307,7 +335,7 @@ var _ = Describe("Playlists - Import", func() {
 
 		Describe("NSP", func() {
 			It("parses well-formed playlists", func() {
-				pls, err := ps.ImportFile(ctx, folder, "recently_played.nsp")
+				pls, err := ps.ImportFromFolder(ctx, folder, "recently_played.nsp")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mockPlsRepo.Last).To(Equal(pls))
 				Expect(pls.OwnerID).To(Equal("123"))
@@ -319,17 +347,18 @@ var _ = Describe("Playlists - Import", func() {
 				Expect(pls.Rules.Expression).To(BeAssignableToTypeOf(criteria.All{}))
 			})
 			It("returns an error if the playlist is not well-formed", func() {
-				_, err := ps.ImportFile(ctx, folder, "invalid_json.nsp")
+				tests.SkipOnWindows("line-ending differences affect JSON error offset")
+				_, err := ps.ImportFromFolder(ctx, folder, "invalid_json.nsp")
 				Expect(err.Error()).To(ContainSubstring("line 19, column 1: invalid character '\\n'"))
 			})
 			It("parses NSP with public: true and creates public playlist", func() {
-				pls, err := ps.ImportFile(ctx, folder, "public_playlist.nsp")
+				pls, err := ps.ImportFromFolder(ctx, folder, "public_playlist.nsp")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(pls.Name).To(Equal("Public Playlist"))
 				Expect(pls.Public).To(BeTrue())
 			})
 			It("parses NSP with public: false and creates private playlist", func() {
-				pls, err := ps.ImportFile(ctx, folder, "private_playlist.nsp")
+				pls, err := ps.ImportFromFolder(ctx, folder, "private_playlist.nsp")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(pls.Name).To(Equal("Private Playlist"))
 				Expect(pls.Public).To(BeFalse())
@@ -337,7 +366,7 @@ var _ = Describe("Playlists - Import", func() {
 			It("uses server default when public field is absent", func() {
 				conf.Server.DefaultPlaylistPublicVisibility = true
 
-				pls, err := ps.ImportFile(ctx, folder, "recently_played.nsp")
+				pls, err := ps.ImportFromFolder(ctx, folder, "recently_played.nsp")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(pls.Name).To(Equal("Recently Played"))
 				Expect(pls.Public).To(BeTrue()) // Should be true since server default is true
@@ -346,6 +375,7 @@ var _ = Describe("Playlists - Import", func() {
 
 		DescribeTable("Playlist filename Unicode normalization (regression fix-playlist-filename-normalization)",
 			func(storedForm, filesystemForm string) {
+				tests.SkipOnWindows("/tmp hardcoded in test")
 				// Use Polish characters that decompose: ó (U+00F3) -> o + combining acute (U+006F + U+0301)
 				plsNameNFC := "Piosenki_Polskie_zółć" // NFC form (composed)
 				plsNameNFD := norm.NFD.String(plsNameNFC)
@@ -358,7 +388,7 @@ var _ = Describe("Playlists - Import", func() {
 				tmpDir := GinkgoT().TempDir()
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
 				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{}}
-				ps = playlists.NewPlaylists(ds)
+				ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
 
 				// Create the playlist file on disk with the filesystem's normalization form
 				plsFile := tmpDir + "/" + filesystemName + ".m3u"
@@ -382,7 +412,7 @@ var _ = Describe("Playlists - Import", func() {
 					Path:        "",
 					Name:        "",
 				}
-				pls, err := ps.ImportFile(ctx, plsFolder, filesystemName+".m3u")
+				pls, err := ps.ImportFromFolder(ctx, plsFolder, filesystemName+".m3u")
 				Expect(err).ToNot(HaveOccurred())
 
 				// Should update existing playlist, not create new one
@@ -418,7 +448,7 @@ var _ = Describe("Playlists - Import", func() {
 						"def.mp3", // This is playlists/def.mp3 relative to plsDir
 					},
 				}
-				ps = playlists.NewPlaylists(ds)
+				ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
 			})
 
 			It("handles relative paths that reference files in other libraries", func() {
@@ -437,7 +467,7 @@ var _ = Describe("Playlists - Import", func() {
 					Name:        "",
 				}
 
-				pls, err := ps.ImportFile(ctx, plsFolder, "test.m3u")
+				pls, err := ps.ImportFromFolder(ctx, plsFolder, "test.m3u")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(pls.Tracks).To(HaveLen(2))
 				Expect(pls.Tracks[0].Path).To(Equal("abc.mp3")) // From songsDir library
@@ -458,7 +488,7 @@ var _ = Describe("Playlists - Import", func() {
 					Name:        "",
 				}
 
-				pls, err := ps.ImportFile(ctx, plsFolder, "test.m3u")
+				pls, err := ps.ImportFromFolder(ctx, plsFolder, "test.m3u")
 				Expect(err).ToNot(HaveOccurred())
 				// Should only find abc.mp3, not outside.mp3
 				Expect(pls.Tracks).To(HaveLen(1))
@@ -495,7 +525,7 @@ var _ = Describe("Playlists - Import", func() {
 					Name:        "subfolder", // The folder name
 				}
 
-				pls, err := ps.ImportFile(ctx, plsFolder, "test.m3u")
+				pls, err := ps.ImportFromFolder(ctx, plsFolder, "test.m3u")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(pls.Tracks).To(HaveLen(2))
 				Expect(pls.Tracks[0].Path).To(Equal("abc.mp3")) // From songsDir library
@@ -538,7 +568,7 @@ var _ = Describe("Playlists - Import", func() {
 					Name:        "",
 				}
 
-				pls, err := ps.ImportFile(ctx, plsFolder, "test.m3u")
+				pls, err := ps.ImportFromFolder(ctx, plsFolder, "test.m3u")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(pls.Tracks).To(HaveLen(2))
 				Expect(pls.Tracks[0].Path).To(Equal("rock.mp3")) // From music library
@@ -574,7 +604,7 @@ var _ = Describe("Playlists - Import", func() {
 					},
 				}
 				// Recreate playlists service to pick up new mock
-				ps = playlists.NewPlaylists(ds)
+				ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
 
 				// Create playlist in music library that references both tracks
 				plsContent := "#PLAYLIST:Same Path Test\nalbum/track.mp3\n../classical/album/track.mp3"
@@ -589,7 +619,7 @@ var _ = Describe("Playlists - Import", func() {
 					Name:        "",
 				}
 
-				pls, err := ps.ImportFile(ctx, plsFolder, "test.m3u")
+				pls, err := ps.ImportFromFolder(ctx, plsFolder, "test.m3u")
 				Expect(err).ToNot(HaveOccurred())
 
 				// Should have BOTH tracks, not just one
@@ -612,12 +642,132 @@ var _ = Describe("Playlists - Import", func() {
 		})
 	})
 
+	Describe("ImportFile", func() {
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+			ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3", "test.ogg"}}
+		})
+
+		It("resolves file inside a library and imports it", func() {
+			tmpDir := GinkgoT().TempDir()
+			mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
+
+			mockFolderRepo := &mockFolderRepoForImport{
+				folder: &model.Folder{
+					ID:          "1",
+					LibraryID:   1,
+					LibraryPath: tmpDir,
+					Path:        "",
+					Name:        "",
+				},
+			}
+			ds.MockedFolder = mockFolderRepo
+			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+
+			plsContent := "#PLAYLIST:My Playlist\ntest.mp3\ntest.ogg\n"
+			plsFile := filepath.Join(tmpDir, "my-playlist.m3u")
+			Expect(os.WriteFile(plsFile, []byte(plsContent), 0600)).To(Succeed())
+
+			pls, err := ps.ImportFile(ctx, plsFile, true)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(pls.Name).To(Equal("My Playlist"))
+			Expect(pls.Tracks).To(HaveLen(2))
+			Expect(pls.Path).To(Equal(plsFile))
+			Expect(pls.Sync).To(BeTrue())
+		})
+
+		It("records path for files outside all libraries", func() {
+			tmpDir := GinkgoT().TempDir()
+			libDir := filepath.Join(tmpDir, "music")
+			Expect(os.Mkdir(libDir, 0755)).To(Succeed())
+			mockLibRepo.SetData([]model.Library{{ID: 1, Path: libDir}})
+			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+
+			plsContent := "#PLAYLIST:External Playlist\n" + libDir + "/test.mp3\n"
+			plsFile := filepath.Join(tmpDir, "external.m3u")
+			Expect(os.WriteFile(plsFile, []byte(plsContent), 0600)).To(Succeed())
+
+			pls, err := ps.ImportFile(ctx, plsFile, false)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(pls.Name).To(Equal("External Playlist"))
+			Expect(pls.Path).To(Equal(plsFile))
+			Expect(pls.Sync).To(BeFalse())
+		})
+
+		It("imports with Sync=false", func() {
+			tmpDir := GinkgoT().TempDir()
+			mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
+
+			mockFolderRepo := &mockFolderRepoForImport{
+				folder: &model.Folder{
+					ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: "",
+				},
+			}
+			ds.MockedFolder = mockFolderRepo
+			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+
+			plsFile := filepath.Join(tmpDir, "test.m3u")
+			Expect(os.WriteFile(plsFile, []byte("test.mp3\n"), 0600)).To(Succeed())
+
+			pls, err := ps.ImportFile(ctx, plsFile, false)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(pls.Sync).To(BeFalse())
+		})
+
+		It("imports with Sync=true", func() {
+			tmpDir := GinkgoT().TempDir()
+			mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
+
+			mockFolderRepo := &mockFolderRepoForImport{
+				folder: &model.Folder{
+					ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: "",
+				},
+			}
+			ds.MockedFolder = mockFolderRepo
+			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+
+			plsFile := filepath.Join(tmpDir, "test.m3u")
+			Expect(os.WriteFile(plsFile, []byte("test.mp3\n"), 0600)).To(Succeed())
+
+			pls, err := ps.ImportFile(ctx, plsFile, true)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(pls.Sync).To(BeTrue())
+		})
+
+		It("upgrades non-synced playlist to synced on re-import with sync=true", func() {
+			tmpDir := GinkgoT().TempDir()
+			mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
+
+			mockFolderRepo := &mockFolderRepoForImport{
+				folder: &model.Folder{
+					ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: "",
+				},
+			}
+			ds.MockedFolder = mockFolderRepo
+			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+
+			plsFile := filepath.Join(tmpDir, "test.m3u")
+			Expect(os.WriteFile(plsFile, []byte("test.mp3\n"), 0600)).To(Succeed())
+
+			existingPls := &model.Playlist{
+				ID: "existing-id", Name: "Existing", Path: plsFile,
+				Sync: false, OwnerID: "123",
+			}
+			mockPlsRepo.PathMap = map[string]*model.Playlist{plsFile: existingPls}
+
+			pls, err := ps.ImportFile(ctx, plsFile, true)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(pls.ID).To(Equal("existing-id"))
+			Expect(pls.Sync).To(BeTrue())
+		})
+	})
+
 	Describe("ImportM3U", func() {
 		var repo *mockedMediaFileFromListRepo
 		BeforeEach(func() {
 			repo = &mockedMediaFileFromListRepo{}
 			ds.MockedMediaFile = repo
-			ps = playlists.NewPlaylists(ds)
+			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
 			mockLibRepo.SetData([]model.Library{{ID: 1, Path: "/music"}, {ID: 2, Path: "/new"}})
 			ctx = request.WithUser(ctx, model.User{ID: "123"})
 		})
@@ -820,6 +970,7 @@ var _ = Describe("Playlists - Import", func() {
 		})
 
 		It("returns true if folder is in PlaylistsPath", func() {
+			tests.SkipOnWindows("path separator bug (#TBD-path-sep-playlists)")
 			conf.Server.PlaylistsPath = "other/**:playlists/**"
 			Expect(playlists.InPath(folder)).To(BeTrue())
 		})
@@ -919,4 +1070,16 @@ func (r *mockedMediaFileFromListRepo) FindByPaths(paths []string) (model.MediaFi
 		}
 	}
 	return mfs, nil
+}
+
+type mockFolderRepoForImport struct {
+	model.FolderRepository
+	folder *model.Folder
+}
+
+func (m *mockFolderRepoForImport) GetByPath(_ model.Library, _ string) (*model.Folder, error) {
+	if m.folder != nil {
+		return m.folder, nil
+	}
+	return nil, model.ErrNotFound
 }

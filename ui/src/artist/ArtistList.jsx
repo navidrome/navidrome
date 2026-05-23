@@ -22,8 +22,8 @@ import { useDrag } from 'react-dnd'
 import clsx from 'clsx'
 import {
   ArtistContextMenu,
+  CoverArtAvatar,
   List,
-  QuickFilter,
   useGetHandleArtistClick,
   RatingField,
   useSelectedFields,
@@ -43,6 +43,10 @@ const useStyles = makeStyles({
     verticalAlign: 'text-top',
   },
   row: {
+    '& td': {
+      paddingTop: '4px !important',
+      paddingBottom: '4px !important',
+    },
     '&:hover': {
       '& $contextMenu': {
         visibility: 'visible',
@@ -83,10 +87,9 @@ const ArtistFilter = (props) => {
       <SearchInput id="search" source="name" alwaysOn />
       <SelectInput source="role" choices={roles} alwaysOn />
       {config.enableFavourites && (
-        <QuickFilter
+        <NullableBooleanInput
           source="starred"
           label={<FavoriteIcon fontSize={'small'} />}
-          defaultValue={true}
         />
       )}
       {isAdmin && <NullableBooleanInput source="missing" />}
@@ -170,6 +173,7 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
     />
   ) : (
     <ArtistDatagrid rowClick={handleArtistLink} classes={{ row: classes.row }}>
+      <CoverArtAvatar source="id" />
       <TextField source="name" />
       <FunctionField
         source="albumCount"

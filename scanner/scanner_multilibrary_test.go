@@ -11,6 +11,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playlists"
@@ -42,6 +43,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 	}
 
 	BeforeAll(func() {
+		tests.SkipOnWindows("SQLite file lock blocks TempDir cleanup (#TBD-path-sep-scanner)")
 		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "123", IsAdmin: true})
 		tmpDir := GinkgoT().TempDir()
 		conf.Server.DbPath = filepath.Join(tmpDir, "test-scanner-multilibrary.db?_journal_mode=WAL")
@@ -77,7 +79,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 		Expect(ds.User(ctx).Put(&adminUser)).To(Succeed())
 
 		s = scanner.New(ctx, ds, artwork.NoopCacheWarmer(), events.NoopBroker(),
-			playlists.NewPlaylists(ds), metrics.NewNoopInstance())
+			playlists.NewPlaylists(ds, core.NewImageUploadService()), metrics.NewNoopInstance())
 
 		// Create two test libraries (let DB auto-assign IDs)
 		lib1 = model.Library{Name: "Rock Collection", Path: "rock:///music"}

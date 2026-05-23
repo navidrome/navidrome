@@ -17,11 +17,12 @@ import (
 // HTTPRequest represents the HTTPRequest data structure.
 // HTTPRequest represents an outbound HTTP request from a plugin.
 type HTTPRequest struct {
-	Method    string            `json:"method"`
-	URL       string            `json:"url"`
-	Headers   map[string]string `json:"headers"`
-	Body      []byte            `json:"body"`
-	TimeoutMs int32             `json:"timeoutMs"`
+	Method            string            `json:"method"`
+	URL               string            `json:"url"`
+	Headers           map[string]string `json:"headers"`
+	NoFollowRedirects bool              `json:"noFollowRedirects"`
+	Body              []byte            `json:"body"`
+	TimeoutMs         int32             `json:"timeoutMs"`
 }
 
 // HTTPResponse represents the HTTPResponse data structure.

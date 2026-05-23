@@ -73,7 +73,7 @@ func (m *MockedRadioRepo) GetAll(qo ...model.QueryOptions) (model.Radios, error)
 	return m.All, nil
 }
 
-func (m *MockedRadioRepo) Put(radio *model.Radio) error {
+func (m *MockedRadioRepo) Put(radio *model.Radio, _ ...string) error {
 	if m.Err {
 		return errors.New("error")
 	}

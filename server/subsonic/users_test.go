@@ -105,8 +105,8 @@ var _ = Describe("Users", func() {
 	)
 
 	DescribeTable("CoverArt role permissions",
-		func(enableCoverArtUpload, isAdmin, expectedCoverArtRole bool) {
-			conf.Server.EnableCoverArtUpload = enableCoverArtUpload
+		func(enableArtworkUpload, isAdmin, expectedCoverArtRole bool) {
+			conf.Server.EnableArtworkUpload = enableArtworkUpload
 			testUser.IsAdmin = isAdmin
 
 			response := buildUserResponse(testUser)
