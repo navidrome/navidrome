@@ -20,13 +20,30 @@ const Progress = (props) => {
   const openedTab = useRef()
 
   useEffect(() => {
-    const callbackEndpoint = baseUrl(
-      `/api/lastfm/link/callback?uid=${localStorage.getItem('userId')}`,
-    )
-    const callbackUrl = `${window.location.origin}${callbackEndpoint}`
-    openedTab.current = openInNewTab(
-      `https://www.last.fm/api/auth/?api_key=${apiKey}&cb=${callbackUrl}`,
-    )
+    // Fetch a fresh, short-lived signed link token right before redirecting
+    // to Last.fm. The callback uses this token to authenticate the user,
+    // since the redirect back from Last.fm cannot carry an auth header.
+    httpClient('/api/lastfm/link')
+      .then((response) => {
+        const linkToken = response.json.linkToken
+        if (!linkToken) {
+          notify('message.lastfmLinkFailure', 'warning')
+          setCheckingLink(false)
+          return
+        }
+        const callbackEndpoint = baseUrl(
+          `/api/lastfm/link/callback?uid=${encodeURIComponent(linkToken)}`,
+        )
+        const callbackUrl = `${window.location.origin}${callbackEndpoint}`
+        openedTab.current = openInNewTab(
+          `https://www.last.fm/api/auth/?api_key=${apiKey}&cb=${callbackUrl}`,
+        )
+      })
+      .catch(() => {
+        notify('message.lastfmLinkFailure', 'warning')
+        setCheckingLink(false)
+      })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiKey])
 
   const endChecking = (success) => {
