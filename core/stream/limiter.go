@@ -24,19 +24,22 @@ type TranscodeLimiter interface {
 	Acquire(ctx context.Context, user string) (release func(), err error)
 }
 
-// NewTranscodeLimiter returns a limiter enforcing the given caps. A maxConcurrent
-// of zero or less disables the limiter entirely; maxPerUser of zero or less
-// disables the per-user cap.
+// NewTranscodeLimiter returns a limiter enforcing the given caps. Each cap is
+// independent: a value of zero or less disables that cap. When both caps are
+// disabled the limiter is a no-op.
 func NewTranscodeLimiter(maxConcurrent, maxPerUser int) TranscodeLimiter {
-	if maxConcurrent <= 0 {
+	if maxConcurrent <= 0 && maxPerUser <= 0 {
 		return noopLimiter{}
 	}
-	return &transcodeLimiter{
+	l := &transcodeLimiter{
 		maxConcurrent: maxConcurrent,
 		maxPerUser:    maxPerUser,
-		global:        make(chan struct{}, maxConcurrent),
 		perUser:       make(map[string]int),
 	}
+	if maxConcurrent > 0 {
+		l.global = make(chan struct{}, maxConcurrent)
+	}
+	return l
 }
 
 // releasingReadCloser wraps an io.ReadCloser so that closing it also releases
@@ -81,19 +84,13 @@ func (l *transcodeLimiter) Acquire(_ context.Context, user string) (func(), erro
 		l.mu.Unlock()
 	}
 
-	select {
-	case l.global <- struct{}{}:
-	default:
-		// Roll back the per-user reservation since we couldn't get a global slot.
-		if l.maxPerUser > 0 {
-			l.mu.Lock()
-			l.perUser[user]--
-			if l.perUser[user] <= 0 {
-				delete(l.perUser, user)
-			}
-			l.mu.Unlock()
+	if l.global != nil {
+		select {
+		case l.global <- struct{}{}:
+		default:
+			l.releasePerUser(user)
+			return nil, ErrTooManyTranscodes
 		}
-		return nil, ErrTooManyTranscodes
 	}
 
 	var released atomic.Bool
@@ -101,14 +98,21 @@ func (l *transcodeLimiter) Acquire(_ context.Context, user string) (func(), erro
 		if !released.CompareAndSwap(false, true) {
 			return
 		}
-		<-l.global
-		if l.maxPerUser > 0 {
-			l.mu.Lock()
-			l.perUser[user]--
-			if l.perUser[user] <= 0 {
-				delete(l.perUser, user)
-			}
-			l.mu.Unlock()
+		if l.global != nil {
+			<-l.global
 		}
+		l.releasePerUser(user)
 	}, nil
+}
+
+func (l *transcodeLimiter) releasePerUser(user string) {
+	if l.maxPerUser <= 0 {
+		return
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.perUser[user]--
+	if l.perUser[user] <= 0 {
+		delete(l.perUser, user)
+	}
 }

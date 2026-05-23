@@ -14,7 +14,7 @@ import (
 var _ = Describe("TranscodeLimiter", func() {
 	ctx := log.NewContext(context.TODO())
 
-	Describe("Disabled (MaxConcurrent <= 0)", func() {
+	Describe("Disabled (both caps <= 0)", func() {
 		It("never blocks and never returns ErrTooManyTranscodes", func() {
 			lim := stream.NewTranscodeLimiter(0, 0)
 			for range 100 {
@@ -22,6 +22,31 @@ var _ = Describe("TranscodeLimiter", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(rel).ToNot(BeNil())
 			}
+		})
+	})
+
+	Describe("Per-user cap only (no global cap)", func() {
+		It("still enforces the per-user limit when MaxConcurrent is disabled", func() {
+			lim := stream.NewTranscodeLimiter(0, 2)
+
+			rel1, err := lim.Acquire(ctx, "alice")
+			Expect(err).ToNot(HaveOccurred())
+			rel2, err := lim.Acquire(ctx, "alice")
+			Expect(err).ToNot(HaveOccurred())
+
+			_, err = lim.Acquire(ctx, "alice")
+			Expect(errors.Is(err, stream.ErrTooManyTranscodes)).To(BeTrue())
+
+			// Other users have their own buckets.
+			rel3, err := lim.Acquire(ctx, "bob")
+			Expect(err).ToNot(HaveOccurred())
+
+			rel1()
+			_, err = lim.Acquire(ctx, "alice")
+			Expect(err).ToNot(HaveOccurred())
+
+			rel2()
+			rel3()
 		})
 	})
 
