@@ -34,23 +34,25 @@ type TagConf struct {
 	SplitRx   *regexp.Regexp `yaml:"-"`
 }
 
-// SplitTagValue splits a tag value by the split separators, but only if it has a single value.
+// SplitTagValue splits tag values by the configured split separators.
+// Each value in the input slice is individually split and trimmed.
 func (c TagConf) SplitTagValue(values []string) []string {
-	// If there's not exactly one value or no separators, return early.
-	if len(values) != 1 || c.SplitRx == nil {
+	if c.SplitRx == nil || len(values) == 0 {
 		return values
 	}
-	tag := values[0]
 
-	// Replace all occurrences of any separator with the zero-width space.
-	tag = c.SplitRx.ReplaceAllString(tag, consts.Zwsp)
+	var result []string
+	for _, tag := range values {
+		// Replace all occurrences of any separator with the zero-width space.
+		tag = c.SplitRx.ReplaceAllString(tag, consts.Zwsp)
 
-	// Split by the zero-width space and trim each substring.
-	parts := strings.Split(tag, consts.Zwsp)
-	for i, part := range parts {
-		parts[i] = strings.TrimSpace(part)
+		// Split by the zero-width space and trim each substring.
+		parts := strings.Split(tag, consts.Zwsp)
+		for _, part := range parts {
+			result = append(result, strings.TrimSpace(part))
+		}
 	}
-	return parts
+	return result
 }
 
 type TagType string
