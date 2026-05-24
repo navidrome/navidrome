@@ -136,12 +136,13 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 
 // handleArchiveErr swallows ErrTooManyTranscodes from archive downloads so the
 // outer error handler does not try to write a 429 onto a response whose status
-// and Content-Disposition have already been flushed. The truncated zip is the
-// best signal we can give the client at this point; the server still logs the
-// rejection so operators can diagnose it.
+// and Content-Disposition have already been flushed. The archive ends up with
+// the tracks that were written before the rejection (the rejected track and
+// any following ones are omitted); the server-side log is the unambiguous
+// signal operators can act on.
 func handleArchiveErr(ctx context.Context, id string, err error) error {
 	if errors.Is(err, stream.ErrTooManyTranscodes) {
-		log.Warn(ctx, "Archive download truncated: transcode cap reached", "id", id, err)
+		log.Warn(ctx, "Archive download finalized early: transcode cap reached", "id", id, err)
 		return nil
 	}
 	return err
