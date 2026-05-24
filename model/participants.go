@@ -110,6 +110,12 @@ func (p Participants) AddWithSubRole(role Role, subRole string, artists ...Artis
 	p.add(role, participants...)
 }
 
+// AddParticipants adds Participants directly (preserving CreditedAs and SubRole),
+// ignoring duplicates.
+func (p Participants) AddParticipants(role Role, participants ...Participant) {
+	p.add(role, participants...)
+}
+
 func (p Participants) Sort() {
 	for _, artists := range p {
 		slices.SortFunc(artists, func(a1, a2 Participant) int {

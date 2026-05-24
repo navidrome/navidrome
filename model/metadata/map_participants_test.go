@@ -802,4 +802,65 @@ var _ = Describe("Participants", func() {
 			}
 		})
 	})
+
+	Describe("CreditedAs population", func() {
+		It("uses the canonical name as CreditedAs when no credit tag is present", func() {
+			mf = toMediaFile(model.RawTags{
+				"ARTISTS": {"Some Artist"},
+			})
+			artists := mf.Participants[model.RoleArtist]
+			Expect(artists).To(HaveLen(1))
+			Expect(artists[0].Name).To(Equal("Some Artist"))
+			Expect(artists[0].CreditedAs).To(Equal("Some Artist"))
+		})
+
+		It("uses the credit tag value when present, paired positionally", func() {
+			mf = toMediaFile(model.RawTags{
+				"ARTISTS":       {"Planetary Assault Systems", "Other"},
+				"ARTISTSCREDIT": {"PAS", "Other"},
+			})
+			artists := mf.Participants[model.RoleArtist]
+			Expect(artists).To(HaveLen(2))
+			Expect(artists[0].Name).To(Equal("Planetary Assault Systems"))
+			Expect(artists[0].CreditedAs).To(Equal("PAS"))
+			Expect(artists[1].Name).To(Equal("Other"))
+			Expect(artists[1].CreditedAs).To(Equal("Other"))
+		})
+
+		It("falls back to canonical name when credit list length differs from name list", func() {
+			mf = toMediaFile(model.RawTags{
+				"ARTISTS":       {"A", "B", "C"},
+				"ARTISTSCREDIT": {"only one"}, // mismatch
+			})
+			artists := mf.Participants[model.RoleArtist]
+			Expect(artists).To(HaveLen(3))
+			for _, a := range artists {
+				Expect(a.CreditedAs).To(Equal(a.Name))
+			}
+		})
+
+		It("populates CreditedAs for non-artist roles (composer)", func() {
+			mf = toMediaFile(model.RawTags{
+				"COMPOSER":       {"Real Composer"},
+				"COMPOSERCREDIT": {"R. Composer"},
+			})
+			composers := mf.Participants[model.RoleComposer]
+			Expect(composers).To(HaveLen(1))
+			Expect(composers[0].CreditedAs).To(Equal("R. Composer"))
+		})
+
+		It("always populates CreditedAs (never empty)", func() {
+			mf = toMediaFile(model.RawTags{
+				"ARTIST":           {"Track Artist"},
+				"ALBUMARTIST":      {"Album Artist"},
+				"COMPOSER":         {"A Composer"},
+				"PERFORMER:GUITAR": {"A Guitarist"},
+			})
+			for role, list := range mf.Participants {
+				for _, p := range list {
+					Expect(p.CreditedAs).NotTo(BeEmpty(), "role: %s, participant: %+v", role, p)
+				}
+			}
+		})
+	})
 })
