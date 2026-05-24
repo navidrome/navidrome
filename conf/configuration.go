@@ -47,7 +47,6 @@ type configOptions struct {
 	UIWelcomeMessage                string
 	MaxSidebarPlaylists             int
 	EnableTranscodingConfig         bool
-	EnableTranscodingCancellation   bool
 	EnableDownloads                 bool
 	EnableExternalServices          bool
 	EnableM3UExternalAlbumArt       bool
@@ -169,6 +168,7 @@ type scannerOptions struct {
 type transcodingOptions struct {
 	MaxConcurrent        int
 	MaxConcurrentPerUser int
+	EnableCancellation   bool
 }
 
 type subsonicOptions struct {
@@ -330,6 +330,7 @@ func Load(noConfigDump bool) {
 	mapDeprecatedOption("HTTPSecurityHeaders.CustomFrameOptionsValue", "HTTPHeaders.FrameOptions")
 	mapDeprecatedOption("CoverJpegQuality", "CoverArtQuality")
 	mapDeprecatedOption("SimilarSongsMatchThreshold", "Matcher.FuzzyThreshold")
+	mapDeprecatedOption("EnableTranscodingCancellation", "Transcoding.EnableCancellation")
 
 	err := viper.Unmarshal(&Server, viper.DecodeHook(
 		mapstructure.ComposeDecodeHookFunc(
@@ -455,6 +456,7 @@ func Load(noConfigDump bool) {
 	logDeprecatedOptions("HTTPSecurityHeaders.CustomFrameOptionsValue", "HTTPHeaders.FrameOptions")
 	logDeprecatedOptions("CoverJpegQuality", "CoverArtQuality")
 	logDeprecatedOptions("SimilarSongsMatchThreshold", "Matcher.FuzzyThreshold")
+	logDeprecatedOptions("EnableTranscodingCancellation", "Transcoding.EnableCancellation")
 
 	// Removed options
 	logRemovedOptions("Spotify.ID", "Spotify.Secret")
@@ -743,7 +745,6 @@ func setViperDefaults() {
 	viper.SetDefault("uiwelcomemessage", "")
 	viper.SetDefault("maxsidebarplaylists", consts.DefaultMaxSidebarPlaylists)
 	viper.SetDefault("enabletranscodingconfig", false)
-	viper.SetDefault("enabletranscodingcancellation", false)
 	viper.SetDefault("transcodingcachesize", "100MB")
 	viper.SetDefault("imagecachesize", "100MB")
 	viper.SetDefault("albumplaycountmode", consts.AlbumPlayCountModeAbsolute)
@@ -830,6 +831,7 @@ func setViperDefaults() {
 	viper.SetDefault("subsonic.minimalclients", "SubMusic")
 	viper.SetDefault("transcoding.maxconcurrent", 0)
 	viper.SetDefault("transcoding.maxconcurrentperuser", 0)
+	viper.SetDefault("transcoding.enablecancellation", false)
 	viper.SetDefault("agents", "deezer,lastfm,listenbrainz")
 	viper.SetDefault("lastfm.enabled", true)
 	viper.SetDefault("lastfm.language", consts.DefaultInfoLanguage)
