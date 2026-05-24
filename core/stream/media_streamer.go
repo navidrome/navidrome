@@ -2,6 +2,7 @@ package stream
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"mime"
@@ -116,7 +117,12 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, mf *model.MediaFile, req
 	}
 	r, err := ms.cache.Get(ctx, job)
 	if err != nil {
-		log.Error(ctx, "Error accessing transcoding cache", "id", mf.ID, err)
+		// Rate-limit rejections are already logged at warn level by the
+		// producer; treating them as cache failures here would both
+		// double-log and mask actual cache problems.
+		if !errors.Is(err, ErrTooManyTranscodes) {
+			log.Error(ctx, "Error accessing transcoding cache", "id", mf.ID, err)
+		}
 		return nil, err
 	}
 	cached = r.Cached
