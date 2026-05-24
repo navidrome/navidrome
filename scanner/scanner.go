@@ -309,6 +309,11 @@ func (s *scannerImpl) runUpdateLibraries(ctx context.Context, state *scanState) 
 					log.Error(ctx, "Scanner: Error updating album PID conf", err)
 					return fmt.Errorf("updating album PID conf: %w", err)
 				}
+				err = tx.Property(ctx).Put(consts.PIDArtistKey, conf.Server.PID.Artist)
+				if err != nil {
+					log.Error(ctx, "Scanner: Error updating artist PID conf", err)
+					return fmt.Errorf("updating artist PID conf: %w", err)
+				}
 				if state.changesDetected.Load() {
 					log.Debug(ctx, "Scanner: Refreshing library stats", "lib", lib.Name)
 					if err := tx.Library(ctx).RefreshStats(lib.ID); err != nil {
