@@ -3,11 +3,13 @@ package subsonic
 import (
 	"encoding/json"
 	"encoding/xml"
+	"fmt"
 	"math"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 
+	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -150,6 +152,24 @@ var _ = Describe("sendResponse", func() {
 			Expect(wrapper.Subsonic.Version).To(Equal(payload.Version))
 			Expect(wrapper.Subsonic.Error.Message).To(ContainSubstring("json: unsupported value: +Inf"))
 		})
+	})
+
+	It("responds with HTTP 429 and Retry-After when the transcode limiter rejects", func() {
+		w = httptest.NewRecorder()
+		r = httptest.NewRequest("GET", "/rest/stream", nil)
+
+		sendError(w, r, fmt.Errorf("rejected: %w", stream.ErrTooManyTranscodes))
+
+		Expect(w.Code).To(Equal(http.StatusTooManyRequests))
+		Expect(w.Header().Get("Retry-After")).ToNot(BeEmpty())
+
+		var subsonicResponse responses.Subsonic
+		err := xml.Unmarshal(w.Body.Bytes(), &subsonicResponse)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(subsonicResponse.Status).To(Equal(responses.StatusFailed))
+		Expect(subsonicResponse.Error).ToNot(BeNil())
+		Expect(subsonicResponse.Error.Code).To(Equal(responses.ErrorGeneric))
+		Expect(subsonicResponse.Error.Message).To(ContainSubstring("transcode"))
 	})
 
 	It("updates status pointer when an error occurs", func() {

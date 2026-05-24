@@ -3,6 +3,7 @@ package core
 import (
 	"archive/zip"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -60,7 +61,15 @@ func (a *archiver) zipAlbums(ctx context.Context, id string, format string, bitr
 			"format", format, "bitrate", bitrate, "isMultiDisc", isMultiDisc, "numTracks", len(album))
 		for _, mf := range album {
 			file := a.albumFilename(mf, format, isMultiDisc)
-			_ = a.addFileToZip(ctx, z, mf, format, bitrate, file)
+			if addErr := a.addFileToZip(ctx, z, mf, format, bitrate, file); errors.Is(addErr, stream.ErrTooManyTranscodes) {
+				// Stop iterating: continuing would just rack up more
+				// rejections from the limiter. Close finalises whatever
+				// tracks were already written; the rejected one is not
+				// present in the archive (addFileToZip aborts before
+				// writing its entry header).
+				_ = z.Close()
+				return addErr
+			}
 		}
 	}
 	err = z.Close()
@@ -120,7 +129,12 @@ func (a *archiver) zipMediaFiles(ctx context.Context, id, name string, format st
 	zippedMfs := make(model.MediaFiles, len(mfs))
 	for idx, mf := range mfs {
 		file := a.playlistFilename(mf, format, idx)
-		_ = a.addFileToZip(ctx, z, mf, format, bitrate, file)
+		if addErr := a.addFileToZip(ctx, z, mf, format, bitrate, file); errors.Is(addErr, stream.ErrTooManyTranscodes) {
+			// Abort the whole archive: continuing would silently emit
+			// empty zip entries since the headers are already written.
+			_ = z.Close()
+			return addErr
+		}
 		mf.Path = file
 		zippedMfs[idx] = mf
 	}
@@ -162,17 +176,12 @@ func (a *archiver) playlistFilename(mf model.MediaFile, format string, idx int) 
 
 func (a *archiver) addFileToZip(ctx context.Context, z *zip.Writer, mf model.MediaFile, format string, bitrate int, filename string) error {
 	path := mf.AbsolutePath()
-	w, err := z.CreateHeader(&zip.FileHeader{
-		Name:     filename,
-		Modified: mf.UpdatedAt,
-		Method:   zip.Store,
-	})
-	if err != nil {
-		log.Error(ctx, "Error creating zip entry", "file", path, err)
-		return err
-	}
 
+	// Open the source before writing the zip entry header so a rejection
+	// (limiter, missing file, etc.) does not leave an empty entry in the
+	// archive.
 	var r io.ReadCloser
+	var err error
 	if format != "raw" && format != "" {
 		r, err = a.ms.NewStream(ctx, &mf, stream.Request{Format: format, BitRate: bitrate})
 	} else {
@@ -182,12 +191,21 @@ func (a *archiver) addFileToZip(ctx context.Context, z *zip.Writer, mf model.Med
 		log.Error(ctx, "Error opening file for zipping", "file", path, "format", format, err)
 		return err
 	}
-
 	defer func() {
 		if err := r.Close(); err != nil && log.IsGreaterOrEqualTo(log.LevelDebug) {
 			log.Error(ctx, "Error closing stream", "id", mf.ID, "file", path, err)
 		}
 	}()
+
+	w, err := z.CreateHeader(&zip.FileHeader{
+		Name:     filename,
+		Modified: mf.UpdatedAt,
+		Method:   zip.Store,
+	})
+	if err != nil {
+		log.Error(ctx, "Error creating zip entry", "file", path, err)
+		return err
+	}
 
 	_, err = io.Copy(w, r)
 	if err != nil {
