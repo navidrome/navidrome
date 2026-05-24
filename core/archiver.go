@@ -3,6 +3,7 @@ package core
 import (
 	"archive/zip"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -60,7 +61,12 @@ func (a *archiver) zipAlbums(ctx context.Context, id string, format string, bitr
 			"format", format, "bitrate", bitrate, "isMultiDisc", isMultiDisc, "numTracks", len(album))
 		for _, mf := range album {
 			file := a.albumFilename(mf, format, isMultiDisc)
-			_ = a.addFileToZip(ctx, z, mf, format, bitrate, file)
+			if addErr := a.addFileToZip(ctx, z, mf, format, bitrate, file); errors.Is(addErr, stream.ErrTooManyTranscodes) {
+				// Abort the whole archive: continuing would silently emit
+				// empty zip entries since the headers are already written.
+				_ = z.Close()
+				return addErr
+			}
 		}
 	}
 	err = z.Close()
@@ -120,7 +126,12 @@ func (a *archiver) zipMediaFiles(ctx context.Context, id, name string, format st
 	zippedMfs := make(model.MediaFiles, len(mfs))
 	for idx, mf := range mfs {
 		file := a.playlistFilename(mf, format, idx)
-		_ = a.addFileToZip(ctx, z, mf, format, bitrate, file)
+		if addErr := a.addFileToZip(ctx, z, mf, format, bitrate, file); errors.Is(addErr, stream.ErrTooManyTranscodes) {
+			// Abort the whole archive: continuing would silently emit
+			// empty zip entries since the headers are already written.
+			_ = z.Close()
+			return addErr
+		}
 		mf.Path = file
 		zippedMfs[idx] = mf
 	}

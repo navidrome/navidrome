@@ -1,12 +1,15 @@
 package subsonic
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -119,14 +122,27 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 		return nil, err
 	case *model.Album:
 		setHeaders(v.Name)
-		return nil, api.archiver.ZipAlbum(ctx, id, format, maxBitRate, w)
+		return nil, handleArchiveErr(ctx, id, api.archiver.ZipAlbum(ctx, id, format, maxBitRate, w))
 	case *model.Artist:
 		setHeaders(v.Name)
-		return nil, api.archiver.ZipArtist(ctx, id, format, maxBitRate, w)
+		return nil, handleArchiveErr(ctx, id, api.archiver.ZipArtist(ctx, id, format, maxBitRate, w))
 	case *model.Playlist:
 		setHeaders(v.Name)
-		return nil, api.archiver.ZipPlaylist(ctx, id, format, maxBitRate, w)
+		return nil, handleArchiveErr(ctx, id, api.archiver.ZipPlaylist(ctx, id, format, maxBitRate, w))
 	default:
 		return nil, model.ErrNotFound
 	}
+}
+
+// handleArchiveErr swallows ErrTooManyTranscodes from archive downloads so the
+// outer error handler does not try to write a 429 onto a response whose status
+// and Content-Disposition have already been flushed. The truncated zip is the
+// best signal we can give the client at this point; the server still logs the
+// rejection so operators can diagnose it.
+func handleArchiveErr(ctx context.Context, id string, err error) error {
+	if errors.Is(err, stream.ErrTooManyTranscodes) {
+		log.Warn(ctx, "Archive download truncated: transcode cap reached", "id", id, err)
+		return nil
+	}
+	return err
 }
