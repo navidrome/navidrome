@@ -124,6 +124,12 @@ func computeArtistPID(p model.Participant, spec string, hash hashFunc) string {
 	return hash(pid)
 }
 
+// ComputeArtistPID is the exported entry point for callers outside this package
+// (e.g. the scanner) that need to compute an artist PID under a specific spec.
+func ComputeArtistPID(p model.Participant, spec string) string {
+	return computeArtistPID(p, spec, id.NewHash)
+}
+
 func getArtistPIDAttr(p model.Participant, attr string, hash hashFunc) string {
 	switch strings.TrimSpace(strings.ToLower(attr)) {
 	case "name":
