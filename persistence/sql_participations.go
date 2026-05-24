@@ -10,9 +10,10 @@ import (
 )
 
 type participant struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	SubRole string `json:"subRole,omitempty"`
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	SubRole    string `json:"subRole,omitempty"`
+	CreditedAs string `json:"creditedAs,omitempty"`
 }
 
 // flatParticipant represents a flattened participant structure for SQL processing
@@ -26,7 +27,12 @@ func marshalParticipants(participants model.Participants) string {
 	dbParticipants := make(map[model.Role][]participant)
 	for role, artists := range participants {
 		for _, artist := range artists {
-			dbParticipants[role] = append(dbParticipants[role], participant{ID: artist.ID, SubRole: artist.SubRole, Name: artist.Name})
+			dbParticipants[role] = append(dbParticipants[role], participant{
+				ID:         artist.ID,
+				Name:       artist.Name,
+				SubRole:    artist.SubRole,
+				CreditedAs: artist.CreditedAs,
+			})
 		}
 	}
 	res, _ := json.Marshal(dbParticipants)
@@ -43,7 +49,11 @@ func unmarshalParticipants(data string) (model.Participants, error) {
 	participants := make(model.Participants, len(dbParticipants))
 	for role, participantList := range dbParticipants {
 		artists := slice.Map(participantList, func(p participant) model.Participant {
-			return model.Participant{Artist: model.Artist{ID: p.ID, Name: p.Name}, SubRole: p.SubRole}
+			return model.Participant{
+				Artist:     model.Artist{ID: p.ID, Name: p.Name},
+				SubRole:    p.SubRole,
+				CreditedAs: p.CreditedAs,
+			}
 		})
 		participants[role] = artists
 	}
