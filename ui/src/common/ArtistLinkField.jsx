@@ -12,6 +12,10 @@ const ALink = withWidth()((props) => {
   const artistLink = useGetHandleArtistClick(width)
   const dispatch = useDispatch()
 
+  const displayName = artist.creditedAs || artist.name
+  const showCanonicalTooltip =
+    artist.creditedAs && artist.creditedAs !== artist.name
+
   return (
     <Link
       key={artist.id}
@@ -20,9 +24,10 @@ const ALink = withWidth()((props) => {
         e.stopPropagation()
         dispatch(closeExtendedInfoDialog())
       }}
+      title={showCanonicalTooltip ? artist.name : undefined}
       {...rest}
     >
-      {artist.name}
+      {displayName}
       {artist.subroles?.length > 0 ? ` (${artist.subroles.join(', ')})` : ''}
     </Link>
   )
@@ -37,7 +42,8 @@ const parseAndReplaceArtists = (
   let lastIndex = 0
 
   albumArtists?.forEach((artist) => {
-    const index = displayAlbumArtist.indexOf(artist.name, lastIndex)
+    const matchName = artist.creditedAs || artist.name
+    const index = displayAlbumArtist.indexOf(matchName, lastIndex)
     if (index !== -1) {
       // Add text before the artist name
       if (index > lastIndex) {
@@ -47,7 +53,7 @@ const parseAndReplaceArtists = (
       result.push(
         <ALink artist={artist} className={className} key={artist.id} />,
       )
-      lastIndex = index + artist.name.length
+      lastIndex = index + matchName.length
     }
   })
 

@@ -213,6 +213,81 @@ describe('ArtistLinkField', () => {
     })
   })
 
+  describe('creditedAs', () => {
+    it('renders creditedAs as the link text when present', () => {
+      const record = {
+        artist: 'PAS',
+        participants: {
+          artist: [
+            {
+              id: 'canon-1',
+              name: 'Planetary Assault Systems',
+              creditedAs: 'PAS',
+            },
+          ],
+        },
+      }
+
+      render(<ArtistLinkField record={record} source="artist" />)
+
+      expect(screen.getByText('PAS')).toBeInTheDocument()
+      expect(
+        screen.queryByText('Planetary Assault Systems'),
+      ).not.toBeInTheDocument()
+    })
+
+    it('sets a title tooltip with the canonical name when creditedAs differs', () => {
+      const record = {
+        artist: 'PAS',
+        participants: {
+          artist: [
+            {
+              id: 'canon-1',
+              name: 'Planetary Assault Systems',
+              creditedAs: 'PAS',
+            },
+          ],
+        },
+      }
+
+      render(<ArtistLinkField record={record} source="artist" />)
+
+      const link = screen.getByRole('link')
+      expect(link).toHaveAttribute('title', 'Planetary Assault Systems')
+    })
+
+    it('falls back to name when creditedAs is missing', () => {
+      const record = {
+        artist: 'Some Artist',
+        participants: {
+          artist: [{ id: 'canon-2', name: 'Some Artist' }],
+        },
+      }
+
+      render(<ArtistLinkField record={record} source="artist" />)
+
+      expect(screen.getByText('Some Artist')).toBeInTheDocument()
+      const link = screen.getByRole('link')
+      expect(link).not.toHaveAttribute('title')
+    })
+
+    it('does not set a tooltip when creditedAs equals name', () => {
+      const record = {
+        artist: 'Same Name',
+        participants: {
+          artist: [
+            { id: 'canon-3', name: 'Same Name', creditedAs: 'Same Name' },
+          ],
+        },
+      }
+
+      render(<ArtistLinkField record={record} source="artist" />)
+
+      const link = screen.getByRole('link')
+      expect(link).not.toHaveAttribute('title')
+    })
+  })
+
   describe('when limiting displayed artists', () => {
     it('limits the number of artists displayed', () => {
       const record = {
