@@ -236,7 +236,7 @@ func NewTranscodingCache() TranscodingCache {
 				return nil, os.ErrInvalid
 			}
 
-			release, err := job.ms.limiter.Acquire(ctx, userName(ctx))
+			release, err := job.ms.limiter.Acquire(ctx, limiterKey(ctx))
 			if err != nil {
 				log.Warn(ctx, "Refusing transcode: concurrent transcode limit reached",
 					"id", job.mf.ID, "user", userName(ctx),
@@ -286,4 +286,17 @@ func userName(ctx context.Context) string {
 	} else {
 		return user.UserName
 	}
+}
+
+// limiterKey returns the per-user bucket key used by the transcode limiter.
+// For anonymous requests (e.g. public shares) it returns the empty string,
+// which signals the limiter to skip the per-user cap entirely — otherwise
+// every anonymous viewer of a public share would collide on the same key
+// and starve each other within MaxConcurrentPerUser slots. The global cap
+// still applies and remains the protection against runaway anonymous load.
+func limiterKey(ctx context.Context) string {
+	if user, ok := request.UserFrom(ctx); ok {
+		return user.UserName
+	}
+	return ""
 }

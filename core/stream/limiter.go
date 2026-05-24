@@ -73,8 +73,11 @@ type transcodeLimiter struct {
 
 func (l *transcodeLimiter) Acquire(_ context.Context, user string) (func(), error) {
 	// Reserve a per-user slot first so a noisy user can't burn through
-	// global slots only to be rejected later.
-	if l.maxPerUser > 0 {
+	// global slots only to be rejected later. An empty user key means
+	// "anonymous" (e.g. public share viewers); we skip the per-user cap
+	// entirely so unrelated anonymous clients do not share a bucket.
+	perUserActive := l.maxPerUser > 0 && user != ""
+	if perUserActive {
 		l.mu.Lock()
 		if l.perUser[user] >= l.maxPerUser {
 			l.mu.Unlock()
@@ -88,7 +91,9 @@ func (l *transcodeLimiter) Acquire(_ context.Context, user string) (func(), erro
 		select {
 		case l.global <- struct{}{}:
 		default:
-			l.releasePerUser(user)
+			if perUserActive {
+				l.releasePerUser(user)
+			}
 			return nil, ErrTooManyTranscodes
 		}
 	}
@@ -101,14 +106,13 @@ func (l *transcodeLimiter) Acquire(_ context.Context, user string) (func(), erro
 		if l.global != nil {
 			<-l.global
 		}
-		l.releasePerUser(user)
+		if perUserActive {
+			l.releasePerUser(user)
+		}
 	}, nil
 }
 
 func (l *transcodeLimiter) releasePerUser(user string) {
-	if l.maxPerUser <= 0 {
-		return
-	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.perUser[user]--

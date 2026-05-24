@@ -111,16 +111,37 @@ var _ = Describe("TranscodeLimiter", func() {
 			rel3()
 		})
 
-		It("treats anonymous users as a shared bucket", func() {
+		It("skips the per-user cap for anonymous users (empty key)", func() {
+			// Anonymous requests (e.g. public share viewers) deliberately
+			// bypass the per-user cap so unrelated anonymous clients are not
+			// collapsed into a single shared bucket. The global cap remains
+			// the only ceiling on anonymous traffic.
 			lim := stream.NewTranscodeLimiter(10, 1)
 
-			rel, err := lim.Acquire(ctx, "")
+			rels := make([]func(), 0, 5)
+			for range 5 {
+				rel, err := lim.Acquire(ctx, "")
+				Expect(err).ToNot(HaveOccurred())
+				rels = append(rels, rel)
+			}
+			for _, rel := range rels {
+				rel()
+			}
+		})
+
+		It("still applies the global cap to anonymous users", func() {
+			lim := stream.NewTranscodeLimiter(2, 1)
+
+			rel1, err := lim.Acquire(ctx, "")
+			Expect(err).ToNot(HaveOccurred())
+			rel2, err := lim.Acquire(ctx, "")
 			Expect(err).ToNot(HaveOccurred())
 
 			_, err = lim.Acquire(ctx, "")
 			Expect(errors.Is(err, stream.ErrTooManyTranscodes)).To(BeTrue())
 
-			rel()
+			rel1()
+			rel2()
 		})
 	})
 
