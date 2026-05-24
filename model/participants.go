@@ -92,6 +92,21 @@ func (p ParticipantList) Join(sep string) string {
 	}), sep)
 }
 
+// JoinCredited joins the credited names of the participants with sep.
+// Falls back to Name when CreditedAs is empty.
+func (p ParticipantList) JoinCredited(sep string) string {
+	return strings.Join(slice.Map(p, func(part Participant) string {
+		n := part.CreditedAs
+		if n == "" {
+			n = part.Name
+		}
+		if part.SubRole != "" {
+			return n + " (" + part.SubRole + ")"
+		}
+		return n
+	}), sep)
+}
+
 type Participants map[Role]ParticipantList
 
 // Add adds the artists to the role, ignoring duplicates.
