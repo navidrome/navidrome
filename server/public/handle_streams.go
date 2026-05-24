@@ -53,7 +53,7 @@ func (pub *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		if errors.Is(err, streampkg.ErrTooManyTranscodes) {
-			w.Header().Set("Retry-After", "5")
+			w.Header().Set("Retry-After", strconv.Itoa(streampkg.RetryAfterSeconds))
 			http.Error(w, "too many concurrent transcodes, please retry shortly", http.StatusTooManyRequests)
 			return
 		}

@@ -13,6 +13,11 @@ import (
 // into an HTTP 429 response so well-behaved clients back off and retry.
 var ErrTooManyTranscodes = errors.New("too many concurrent transcodes")
 
+// RetryAfterSeconds is the value returned in the HTTP Retry-After header when
+// a request is rejected with ErrTooManyTranscodes. Most transcodes finish well
+// within this window, so retrying after this delay typically succeeds.
+const RetryAfterSeconds = 5
+
 // TranscodeLimiter gates the number of concurrent ffmpeg transcodes. It enforces
 // both a global cap (to protect the host from process exhaustion) and an optional
 // per-user cap (to keep one client from starving the others). Acquire never
@@ -31,13 +36,12 @@ func NewTranscodeLimiter(maxConcurrent, maxPerUser int) TranscodeLimiter {
 	if maxConcurrent <= 0 && maxPerUser <= 0 {
 		return noopLimiter{}
 	}
-	l := &transcodeLimiter{
-		maxConcurrent: maxConcurrent,
-		maxPerUser:    maxPerUser,
-		perUser:       make(map[string]int),
-	}
+	l := &transcodeLimiter{maxPerUser: maxPerUser}
 	if maxConcurrent > 0 {
 		l.global = make(chan struct{}, maxConcurrent)
+	}
+	if maxPerUser > 0 {
+		l.perUser = make(map[string]int)
 	}
 	return l
 }
@@ -63,9 +67,8 @@ func (noopLimiter) Acquire(context.Context, string) (func(), error) {
 }
 
 type transcodeLimiter struct {
-	maxConcurrent int
-	maxPerUser    int
-	global        chan struct{}
+	maxPerUser int
+	global     chan struct{}
 
 	mu      sync.Mutex
 	perUser map[string]int

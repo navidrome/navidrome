@@ -315,14 +315,9 @@ func mapToSubsonicError(err error) subError {
 	return subErr
 }
 
-// transcodeRetryAfterSeconds is the Retry-After hint returned with HTTP 429
-// when the transcode limiter rejects a request. Most transcodes finish well
-// within this window, so retrying after this delay typically succeeds.
-const transcodeRetryAfterSeconds = 5
-
 func sendError(w http.ResponseWriter, r *http.Request, err error) {
 	if errors.Is(err, stream.ErrTooManyTranscodes) {
-		w.Header().Set("Retry-After", strconv.Itoa(transcodeRetryAfterSeconds))
+		w.Header().Set("Retry-After", strconv.Itoa(stream.RetryAfterSeconds))
 		sendResponseWithStatus(w, r, errorResponse(err), http.StatusTooManyRequests)
 		return
 	}
