@@ -100,10 +100,7 @@ func (p ParticipantList) Join(sep string) string {
 // Falls back to Name when CreditedAs is empty.
 func (p ParticipantList) JoinCredited(sep string) string {
 	return strings.Join(slice.Map(p, func(part Participant) string {
-		n := part.CreditedAs
-		if n == "" {
-			n = part.Name
-		}
+		n := part.DisplayName()
 		if part.SubRole != "" {
 			return n + " (" + part.SubRole + ")"
 		}
