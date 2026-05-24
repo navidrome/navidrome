@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/conf"
@@ -304,6 +305,8 @@ func mapToSubsonicError(err error) subError {
 		err = newError(responses.ErrorDataNotFound, "data not found")
 	case errors.Is(err, model.ErrNotAuthorized):
 		err = newError(responses.ErrorAuthorizationFail)
+	case errors.Is(err, stream.ErrTooManyTranscodes):
+		err = newError(responses.ErrorGeneric, "too many concurrent transcodes, please retry shortly")
 	default:
 		err = newError(responses.ErrorGeneric, fmt.Sprintf("Internal Server Error: %s", err))
 	}
@@ -313,15 +316,31 @@ func mapToSubsonicError(err error) subError {
 }
 
 func sendError(w http.ResponseWriter, r *http.Request, err error) {
+	if errors.Is(err, stream.ErrTooManyTranscodes) {
+		w.Header().Set("Retry-After", strconv.Itoa(stream.RetryAfterSeconds))
+		sendResponseWithStatus(w, r, errorResponse(err), http.StatusTooManyRequests)
+		return
+	}
+	sendResponse(w, r, errorResponse(err))
+}
+
+func errorResponse(err error) *responses.Subsonic {
 	subErr := mapToSubsonicError(err)
 	response := newResponse()
 	response.Status = responses.StatusFailed
 	response.Error = &responses.Error{Code: subErr.code, Message: subErr.Error()}
-
-	sendResponse(w, r, response)
+	return response
 }
 
 func sendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Subsonic) {
+	sendResponseWithStatus(w, r, payload, 0)
+}
+
+// sendResponseWithStatus writes the response body in the format requested by
+// the client. When status is non-zero, WriteHeader is called with that code
+// before the body is written; callers that need to set additional headers
+// (e.g. Retry-After) must set them before calling.
+func sendResponseWithStatus(w http.ResponseWriter, r *http.Request, payload *responses.Subsonic, status int) {
 	p := req.Params(r)
 	f, _ := p.String("f")
 	var response []byte
@@ -355,6 +374,9 @@ func sendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Sub
 		log.Error(r.Context(), "Error marshalling response", "format", f, err)
 		sendError(w, r, err)
 		return
+	}
+	if status != 0 {
+		w.WriteHeader(status)
 	}
 
 	if payload.Status == responses.StatusOK {
