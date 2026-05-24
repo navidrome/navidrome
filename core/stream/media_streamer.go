@@ -248,10 +248,10 @@ func NewTranscodingCache() TranscodingCache {
 			// the DoS the limiter is meant to prevent.
 			//
 			// When the limiter is disabled, preserve the legacy behavior
-			// governed by EnableTranscodingCancellation so this PR does not
-			// change observable behavior for operators who have not opted in.
+			// governed by Transcoding.EnableCancellation so unchanged configs
+			// keep their previous observable behavior.
 			var transcodingCtx context.Context
-			if job.ms.limiter.Enabled() || conf.Server.EnableTranscodingCancellation {
+			if job.ms.limiter.Enabled() || conf.Server.Transcoding.EnableCancellation {
 				transcodingCtx = ctx
 			} else {
 				transcodingCtx = request.AddValues(context.Background(), ctx)
