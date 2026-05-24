@@ -54,12 +54,6 @@ type streamJob struct {
 	bitDepth   int
 	channels   int
 	offset     int
-
-	// release is set by the cache producer when it acquires a limiter slot.
-	// The caller of cache.Get reads it after Get returns and wires it into
-	// the consumer-side Stream.Close so the slot is held for the lifetime
-	// of the client connection, not the lifetime of the ffmpeg process.
-	release func()
 }
 
 func (j *streamJob) Key() string {
@@ -127,14 +121,7 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, mf *model.MediaFile, req
 	}
 	cached = r.Cached
 
-	// If the producer acquired a limiter slot (cache miss), tie the release
-	// to the consumer Close so the slot is held only while a client is
-	// actually consuming the stream — not for the full ffmpeg duration.
-	if job.release != nil {
-		s.ReadCloser = &releasingReadCloser{ReadCloser: r, release: job.release}
-	} else {
-		s.ReadCloser = r
-	}
+	s.ReadCloser = r
 	s.Seeker = r.Seeker
 
 	log.Debug(ctx, "Streaming TRANSCODED file", "id", mf.ID, "path", filePath,
@@ -251,15 +238,22 @@ func NewTranscodingCache() TranscodingCache {
 				return nil, err
 			}
 
-			// Choose the appropriate context based on EnableTranscodingCancellation configuration.
-			// This is where we decide whether transcoding processes should be cancellable or not.
+			// Choose the context that drives the ffmpeg process.
+			//
+			// When the limiter is enabled, force the request context so a
+			// client disconnect cancels ffmpeg and frees the slot promptly.
+			// Otherwise a client could open many transcodes, disconnect
+			// immediately, and still leave the configured cap's worth of
+			// ffmpeg processes draining in the background — which is exactly
+			// the DoS the limiter is meant to prevent.
+			//
+			// When the limiter is disabled, preserve the legacy behavior
+			// governed by EnableTranscodingCancellation so this PR does not
+			// change observable behavior for operators who have not opted in.
 			var transcodingCtx context.Context
-			if conf.Server.EnableTranscodingCancellation {
-				// Use the request context directly, allowing cancellation when client disconnects
+			if job.ms.limiter.Enabled() || conf.Server.EnableTranscodingCancellation {
 				transcodingCtx = ctx
 			} else {
-				// Use background context with request values preserved.
-				// This prevents cancellation but maintains request metadata (user, client, etc.)
 				transcodingCtx = request.AddValues(context.Background(), ctx)
 			}
 
@@ -278,10 +272,10 @@ func NewTranscodingCache() TranscodingCache {
 				log.Error(ctx, "Error starting transcoder", "id", job.mf.ID, err)
 				return nil, os.ErrInvalid
 			}
-			// Hand the release back to the caller via the job; it will be
-			// invoked when the consumer-side Stream is closed.
-			job.release = release
-			return out, nil
+			// Tie the slot to the ffmpeg process: copyAndClose calls Close
+			// on this reader after io.Copy returns, which is exactly when
+			// ffmpeg has exited (either EOF or context cancellation).
+			return &releasingReadCloser{ReadCloser: out, release: release}, nil
 		})
 }
 

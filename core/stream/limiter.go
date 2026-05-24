@@ -27,6 +27,12 @@ type TranscodeLimiter interface {
 	// function that must be called exactly once when the transcode is done.
 	// Calling release more than once is safe and idempotent.
 	Acquire(ctx context.Context, user string) (release func(), err error)
+
+	// Enabled reports whether the limiter actually enforces any cap. Callers
+	// can use it to decide whether to bind ffmpeg's lifetime to the request
+	// context so disconnects free slots quickly, rather than letting the
+	// process drain to completion in the background.
+	Enabled() bool
 }
 
 // NewTranscodeLimiter returns a limiter enforcing the given caps. Each cap is
@@ -66,6 +72,8 @@ func (noopLimiter) Acquire(context.Context, string) (func(), error) {
 	return func() {}, nil
 }
 
+func (noopLimiter) Enabled() bool { return false }
+
 type transcodeLimiter struct {
 	maxPerUser int
 	global     chan struct{}
@@ -73,6 +81,8 @@ type transcodeLimiter struct {
 	mu      sync.Mutex
 	perUser map[string]int
 }
+
+func (*transcodeLimiter) Enabled() bool { return true }
 
 func (l *transcodeLimiter) Acquire(_ context.Context, user string) (func(), error) {
 	// Reserve a per-user slot first so a noisy user can't burn through
