@@ -77,7 +77,8 @@ func RoleFromString(role string) Role {
 
 type Participant struct {
 	Artist
-	SubRole string `json:"subRole,omitempty"`
+	SubRole    string `json:"subRole,omitempty"`
+	CreditedAs string `json:"creditedAs,omitempty"`
 }
 
 type ParticipantList []Participant

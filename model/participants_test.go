@@ -182,6 +182,36 @@ var _ = Describe("Participants", func() {
 	})
 })
 
+var _ = Describe("Participant.CreditedAs", func() {
+	It("round-trips through JSON when set", func() {
+		p := Participant{
+			Artist:     Artist{ID: "abc", Name: "Planetary Assault Systems"},
+			CreditedAs: "PAS",
+		}
+		data, err := json.Marshal(p)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(string(data)).To(ContainSubstring(`"creditedAs":"PAS"`))
+
+		var back Participant
+		Expect(json.Unmarshal(data, &back)).To(Succeed())
+		Expect(back.CreditedAs).To(Equal("PAS"))
+	})
+
+	It("omits CreditedAs from JSON when empty", func() {
+		p := Participant{Artist: Artist{ID: "abc", Name: "Foo"}}
+		data, err := json.Marshal(p)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(string(data)).NotTo(ContainSubstring("creditedAs"))
+	})
+
+	It("deserializes legacy JSON without the creditedAs key", func() {
+		legacy := `{"id":"abc","name":"Foo","subRole":""}`
+		var p Participant
+		Expect(json.Unmarshal([]byte(legacy), &p)).To(Succeed())
+		Expect(p.CreditedAs).To(Equal(""))
+	})
+})
+
 var _ = Describe("ParticipantList", func() {
 	Describe("Join", func() {
 		It("joins the participants with the given separator", func() {
