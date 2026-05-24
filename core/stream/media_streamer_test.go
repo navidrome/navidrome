@@ -80,6 +80,27 @@ var _ = Describe("MediaStreamer", func() {
 			Expect(errors.Is(err, stream.ErrTooManyTranscodes)).To(BeTrue())
 		})
 
+		It("releases the slot when the consumer stream is closed without reading", func() {
+			// This proves the release is tied to the consumer-side Close,
+			// not to ffmpeg exhausting its output. Without that wiring, a
+			// client that disconnects mid-stream would leak the slot until
+			// the full transcode finishes.
+			conf.Server.Transcoding.MaxConcurrent = 1
+			conf.Server.Transcoding.MaxConcurrentPerUser = 0
+			tightStreamer := stream.NewMediaStreamer(ds, ffmpeg, stream.NewTranscodingCache())
+
+			userCtx := request.WithUsername(ctx, "alice")
+			s1, err := tightStreamer.NewStream(userCtx, mf, stream.Request{Format: "mp3", BitRate: 64})
+			Expect(err).ToNot(HaveOccurred())
+			// Close without reading — simulates an early client disconnect.
+			_ = s1.Close()
+
+			// Slot must be free immediately for an unrelated transcode.
+			s2, err := tightStreamer.NewStream(userCtx, mf, stream.Request{Format: "mp3", BitRate: 96})
+			Expect(err).ToNot(HaveOccurred())
+			defer s2.Close()
+		})
+
 		It("releases the slot once the stream is closed", func() {
 			conf.Server.Transcoding.MaxConcurrent = 1
 			conf.Server.Transcoding.MaxConcurrentPerUser = 0

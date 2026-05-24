@@ -53,6 +53,12 @@ type streamJob struct {
 	bitDepth   int
 	channels   int
 	offset     int
+
+	// release is set by the cache producer when it acquires a limiter slot.
+	// The caller of cache.Get reads it after Get returns and wires it into
+	// the consumer-side Stream.Close so the slot is held for the lifetime
+	// of the client connection, not the lifetime of the ffmpeg process.
+	release func()
 }
 
 func (j *streamJob) Key() string {
@@ -115,7 +121,14 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, mf *model.MediaFile, req
 	}
 	cached = r.Cached
 
-	s.ReadCloser = r
+	// If the producer acquired a limiter slot (cache miss), tie the release
+	// to the consumer Close so the slot is held only while a client is
+	// actually consuming the stream — not for the full ffmpeg duration.
+	if job.release != nil {
+		s.ReadCloser = &releasingReadCloser{ReadCloser: r, release: job.release}
+	} else {
+		s.ReadCloser = r
+	}
 	s.Seeker = r.Seeker
 
 	log.Debug(ctx, "Streaming TRANSCODED file", "id", mf.ID, "path", filePath,
@@ -259,7 +272,10 @@ func NewTranscodingCache() TranscodingCache {
 				log.Error(ctx, "Error starting transcoder", "id", job.mf.ID, err)
 				return nil, os.ErrInvalid
 			}
-			return &releasingReadCloser{ReadCloser: out, release: release}, nil
+			// Hand the release back to the caller via the job; it will be
+			// invoked when the consumer-side Stream is closed.
+			job.release = release
+			return out, nil
 		})
 }
 
