@@ -87,10 +87,64 @@ func (md Metadata) albumID(mf model.MediaFile, pidConf string) string {
 	return computePID(mf, md, pidConf, true, id.NewHash)
 }
 
-// BFR Must be configurable?
+// computeArtistPID computes a persistent ID for a single participant using the
+// given spec. The spec grammar is the same pipe/comma form used by Album/Track
+// PIDs. Attributes recognised:
+//   - name                 → hash(clear(lower(participant.Name))) — the inner
+//     hash matches the historical 'albumartistid' path
+//     so the default spec "name" produces byte-identical
+//     IDs to the previous hardcoded artistID().
+//   - musicbrainz_artistid → participant.MbzArtistID (opaque identifier — no
+//     normalization).
+//   - sort_name            → participant.SortArtistName (raw — sort forms are
+//     already canonicalized by taggers, and folding case
+//     could collapse legitimately distinct sort variants).
+//
+// Unlike album/track PIDs, no library prefix is applied: artists are shared
+// across libraries by design.
+func computeArtistPID(p model.Participant, spec string, hash hashFunc) string {
+	pid := ""
+	fields := strings.SplitSeq(spec, "|")
+	for field := range fields {
+		attributes := strings.Split(field, ",")
+		values := make([]string, len(attributes))
+		hasValue := false
+		for i, attr := range attributes {
+			v := getArtistPIDAttr(p, attr, hash)
+			if v != "" {
+				hasValue = true
+			}
+			values[i] = v
+		}
+		if hasValue {
+			pid += strings.Join(values, "\\")
+			break
+		}
+	}
+	return hash(pid)
+}
+
+func getArtistPIDAttr(p model.Participant, attr string, hash hashFunc) string {
+	switch strings.TrimSpace(strings.ToLower(attr)) {
+	case "name":
+		if p.Name == "" {
+			return ""
+		}
+		return hash(str.Clear(strings.ToLower(p.Name)))
+	case "musicbrainz_artistid":
+		return p.MbzArtistID
+	case "sort_name":
+		return p.SortArtistName
+	}
+	return ""
+}
+
+// artistID is kept temporarily as a thin wrapper so any in-progress callers
+// continue to compile; it will be removed once map_participants.go switches
+// to computeArtistPID directly (Task 4).
 func (md Metadata) artistID(name string) string {
-	mf := model.MediaFile{AlbumArtist: name}
-	return computePID(mf, md, "albumartistid", false, id.NewHash)
+	return computeArtistPID(model.Participant{Artist: model.Artist{Name: name}},
+		conf.Server.PID.Artist, id.NewHash)
 }
 
 func (md Metadata) mapTrackTitle() string {
