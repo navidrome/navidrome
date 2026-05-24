@@ -139,14 +139,6 @@ func getArtistPIDAttr(p model.Participant, attr string, hash hashFunc) string {
 	return ""
 }
 
-// artistID is kept temporarily as a thin wrapper so any in-progress callers
-// continue to compile; it will be removed once map_participants.go switches
-// to computeArtistPID directly (Task 4).
-func (md Metadata) artistID(name string) string {
-	return computeArtistPID(model.Participant{Artist: model.Artist{Name: name}},
-		conf.Server.PID.Artist, id.NewHash)
-}
-
 func (md Metadata) mapTrackTitle() string {
 	if title := md.String(model.TagTitle); title != "" {
 		return title

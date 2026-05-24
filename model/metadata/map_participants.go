@@ -7,6 +7,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/utils/str"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -100,11 +101,15 @@ func (md Metadata) processPerformers(participants model.Participants, rolesMbzId
 		subRole := titleCaser.String(performer.Key())
 
 		artist := model.Artist{
-			ID:              md.artistID(name),
 			Name:            name,
 			OrderArtistName: str.SanitizeFieldForSortingNoArticle(name),
 			MbzArtistID:     md.getPerformerMbid(subRole, rolesMbzIdMap, roleIdx),
 		}
+		artist.ID = computeArtistPID(
+			model.Participant{Artist: artist},
+			conf.Server.PID.Artist,
+			id.NewHash,
+		)
 		participants.AddWithSubRole(model.RolePerformer, subRole, artist)
 	}
 }
@@ -154,9 +159,7 @@ func (md Metadata) parseArtists(
 func (md Metadata) buildArtists(names, sorts, mbids []string) []model.Artist {
 	var artists []model.Artist
 	for i, name := range names {
-		id := md.artistID(name)
 		artist := model.Artist{
-			ID:              id,
 			Name:            name,
 			OrderArtistName: str.SanitizeFieldForSortingNoArticle(name),
 		}
@@ -166,6 +169,12 @@ func (md Metadata) buildArtists(names, sorts, mbids []string) []model.Artist {
 		if i < len(mbids) {
 			artist.MbzArtistID = mbids[i]
 		}
+		// Compute ID from the participant fields we just populated so MBID/sort-based specs work.
+		artist.ID = computeArtistPID(
+			model.Participant{Artist: artist},
+			conf.Server.PID.Artist,
+			id.NewHash,
+		)
 		artists = append(artists, artist)
 	}
 	return artists

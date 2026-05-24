@@ -381,4 +381,19 @@ var _ = Describe("computeArtistPID", func() {
 				NotTo(Panic())
 		})
 	})
+
+	It("buildArtists produces the same Artist.ID as the legacy artistID() under default PID.Artist", func() {
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.PID.Artist = consts.DefaultArtistPID
+
+		name := "Some Artist"
+		md := Metadata{}
+		artists := md.buildArtists([]string{name}, nil, nil)
+
+		// Legacy result computed independently via the old "albumartistid" path:
+		legacyMF := model.MediaFile{AlbumArtist: name}
+		expected := computePID(legacyMF, Metadata{}, "albumartistid", false, id.NewHash)
+		Expect(artists).To(HaveLen(1))
+		Expect(artists[0].ID).To(Equal(expected))
+	})
 })
