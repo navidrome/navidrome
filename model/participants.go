@@ -81,6 +81,10 @@ type Participant struct {
 	CreditedAs string `json:"creditedAs,omitempty"`
 }
 
+func (p Participant) DisplayName() string {
+	return cmp.Or(p.CreditedAs, p.Name)
+}
+
 type ParticipantList []Participant
 
 func (p ParticipantList) Join(sep string) string {

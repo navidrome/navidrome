@@ -282,7 +282,7 @@ func osChildFromMediaFile(ctx context.Context, mf model.MediaFile) *responses.Op
 				SubRole: participant.SubRole,
 				Artist: responses.ArtistID3Ref{
 					Id:   participant.ID,
-					Name: participantDisplayName(participant),
+					Name: participant.DisplayName(),
 				},
 			})
 		}
@@ -296,18 +296,9 @@ func artistRefs(participants model.ParticipantList) []responses.ArtistID3Ref {
 	return slice.Map(participants, func(p model.Participant) responses.ArtistID3Ref {
 		return responses.ArtistID3Ref{
 			Id:   p.ID,
-			Name: participantDisplayName(p),
+			Name: p.DisplayName(),
 		}
 	})
-}
-
-// participantDisplayName returns CreditedAs if set, otherwise the canonical Name.
-// Legacy rows (pre-rescan) have empty CreditedAs and continue to show canonical.
-func participantDisplayName(p model.Participant) string {
-	if p.CreditedAs != "" {
-		return p.CreditedAs
-	}
-	return p.Name
 }
 
 func fakePath(mf model.MediaFile) string {
