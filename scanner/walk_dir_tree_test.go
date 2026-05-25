@@ -45,6 +45,7 @@ var _ = Describe("walk_dir_tree", func() {
 						"root/d/f3.mp3":          {},
 						"root/e/original/f1.mp3": {},
 						"root/e/symlink":         {Mode: fs.ModeSymlink, Data: []byte("original")},
+						"root/f/.5 The Gray Chapter/track.mp3": {},
 					},
 				}
 				job = &scanJob{
@@ -92,6 +93,10 @@ var _ = Describe("walk_dir_tree", func() {
 					Expect(folders["root/c"].audioFiles).To(BeEmpty())
 					Expect(folders["root/c"].imageFiles).To(BeEmpty())
 					Expect(folders).ToNot(HaveKey("root/d"))
+					Expect(folders["root/f/.5 The Gray Chapter"].audioFiles).To(SatisfyAll(
+						HaveLen(1),
+						HaveKey("track.mp3"),
+					))
 
 					// Symlink specific checks
 					if followSymlinks {
@@ -100,8 +105,8 @@ var _ = Describe("walk_dir_tree", func() {
 						Expect(folders).ToNot(HaveKey("root/e/symlink"))
 					}
 				},
-				Entry("with symlinks enabled", true, 7),
-				Entry("with symlinks disabled", false, 6),
+				Entry("with symlinks enabled", true, 8),
+				Entry("with symlinks disabled", false, 7),
 			)
 		})
 
@@ -270,7 +275,8 @@ var _ = Describe("walk_dir_tree", func() {
 					Expect(isDirIgnored(dirName)).To(Equal(expected))
 				},
 				Entry("normal dir", "empty_folder", false),
-				Entry("hidden dir", ".hidden_folder", true),
+				Entry("dot-prefixed album dir", ".5 The Gray Chapter", false),
+				Entry("hidden system dir", ".git", true),
 				Entry("dir starting with ellipsis", "...unhidden_folder", false),
 				Entry("recycle bin", "$Recycle.Bin", true),
 				Entry("snapshot dir", "#snapshot", true),

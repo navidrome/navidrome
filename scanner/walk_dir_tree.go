@@ -233,16 +233,13 @@ var ignoredDirs = []string{
 	"#snapshot",
 	"@Recycle",
 	"@Recently-Snapshot",
+	".git",
 	".streams",
 	"lost+found",
 }
 
 // isDirIgnored returns true if the directory represented by dirEnt should be ignored
 func isDirIgnored(name string) bool {
-	// allows Album folders for albums which eg start with ellipses
-	if strings.HasPrefix(name, ".") && !strings.HasPrefix(name, "..") {
-		return true
-	}
 	if slices.ContainsFunc(ignoredDirs, func(s string) bool { return strings.EqualFold(s, name) }) {
 		return true
 	}
