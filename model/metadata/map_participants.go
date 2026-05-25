@@ -36,10 +36,8 @@ var roleMappings = map[model.Role]roleTags{
 func (md Metadata) mapParticipants() model.Participants {
 	participants := make(model.Participants)
 
-	// Parse track artists. MBIDs use getRoleValues so they're split by the same
-	// separators ('/' or ';') as the canonical names — otherwise a tag like
-	// MUSICBRAINZ_ARTISTID="abc/def" paired with ARTISTS="A/B" would yield 2
-	// names but 1 MBID and the positional alignment would break.
+	// Parse track artists. MBIDs go through getRoleValues to split on the same
+	// separators as the names, keeping positional alignment.
 	trackNames := md.getArtistValues(model.TagTrackArtist, model.TagTrackArtists)
 	if len(trackNames) == 0 {
 		trackNames = []string{consts.UnknownArtist}
@@ -56,14 +54,9 @@ func (md Metadata) mapParticipants() model.Participants {
 	albumMbids := md.getRoleValues(model.TagMusicBrainzAlbumArtistID)
 	albumCredits := md.getArtistValues(model.TagAlbumArtistCredit, model.TagAlbumArtistsCredit)
 
-	// Treat both "no albumartist tag" and "albumartist tag literally set to
-	// the UnknownArtist placeholder" as missing. Preserves behavioral parity
-	// with the prior parseArtists path (replaced in this branch), which
-	// substituted UnknownArtist on its own and then matched either case
-	// downstream. No concrete tagger known to emit the literal '[Unknown
-	// Artist]' string, but the cost of keeping the second clause is one
-	// comparison and it defends against the placeholder round-tripping if
-	// Navidrome's own UnknownArtist value ever ends up back in a tag.
+	// Treat "no albumartist tag" and "albumartist == UnknownArtist placeholder"
+	// as missing, matching the prior parseArtists path and defending against
+	// the placeholder round-tripping back into a tag.
 	albumArtistMissing := len(albumNames) == 0 ||
 		(len(albumNames) == 1 && albumNames[0] == consts.UnknownArtist)
 
@@ -81,10 +74,8 @@ func (md Metadata) mapParticipants() model.Participants {
 	}
 	participants.AddParticipants(model.RoleAlbumArtist, albumArtistParticipants...)
 
-	// Parse all other roles. All parallel lists go through getRoleValues so
-	// they're split with the same separators as the canonical names. Reading
-	// any of these with md.Strings (no splitting) would desync the positional
-	// alignment for tags like COMPOSER="A;B" + COMPOSER_CREDIT="AA;BB".
+	// All parallel lists go through getRoleValues so they split consistently
+	// with names (e.g. COMPOSER="A;B" + COMPOSER_CREDIT="AA;BB" → 2 each).
 	for role, info := range roleMappings {
 		names := md.getRoleValues(info.name)
 		if len(names) > 0 {
@@ -173,9 +164,9 @@ func (md Metadata) syncMissingMbzIDs(participants model.Participants) {
 	}
 }
 
-// buildParticipants builds Artists and wraps each into a Participant with
-// CreditedAs populated. credits is paired positionally; if the lengths don't
-// match, CreditedAs falls back to the canonical name for every entry.
+// buildParticipants wraps each Artist into a Participant with CreditedAs
+// populated. credits pairs positionally with names; a length mismatch falls
+// back to the canonical name for every entry.
 func (md Metadata) buildParticipants(names, sorts, mbids, credits []string) []model.Participant {
 	if len(credits) != 0 && len(credits) != len(names) {
 		credits = nil
@@ -207,7 +198,7 @@ func (md Metadata) buildArtists(names, sorts, mbids []string) []model.Artist {
 		if i < len(mbids) {
 			artist.MbzArtistID = mbids[i]
 		}
-		// Compute ID from the participant fields we just populated so MBID/sort-based specs work.
+		// Assign ID after Sort/MBID are set so MBID/sort-based PID specs resolve.
 		artist.ID = computeArtistPID(
 			model.Participant{Artist: artist},
 			conf.Server.PID.Artist,
