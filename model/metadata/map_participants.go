@@ -57,10 +57,13 @@ func (md Metadata) mapParticipants() model.Participants {
 	albumCredits := md.getArtistValues(model.TagAlbumArtistCredit, model.TagAlbumArtistsCredit)
 
 	// Treat both "no albumartist tag" and "albumartist tag literally set to
-	// the UnknownArtist placeholder" as missing — some rippers emit the
-	// literal '[Unknown Artist]' string, and the original parseArtists path
-	// (replaced in this branch) substituted UnknownArtist on its own so the
-	// downstream check matched either case.
+	// the UnknownArtist placeholder" as missing. Preserves behavioral parity
+	// with the prior parseArtists path (replaced in this branch), which
+	// substituted UnknownArtist on its own and then matched either case
+	// downstream. No concrete tagger known to emit the literal '[Unknown
+	// Artist]' string, but the cost of keeping the second clause is one
+	// comparison and it defends against the placeholder round-tripping if
+	// Navidrome's own UnknownArtist value ever ends up back in a tag.
 	albumArtistMissing := len(albumNames) == 0 ||
 		(len(albumNames) == 1 && albumNames[0] == consts.UnknownArtist)
 
