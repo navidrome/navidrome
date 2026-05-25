@@ -42,7 +42,11 @@ const parseAndReplaceArtists = (
   let lastIndex = 0
 
   albumArtists?.forEach((artist) => {
-    const matchName = artist.creditedAs || artist.name
+    // Match on the canonical name — that's what appears in displayAlbumArtist
+    // (sourced from mf.Artist / mf.AlbumArtist, which are set from the canonical
+    // ARTIST tag at scan time). The ALink itself renders creditedAs || name,
+    // so the displayed link text still reflects the credit.
+    const matchName = artist.name
     const index = displayAlbumArtist.indexOf(matchName, lastIndex)
     if (index !== -1) {
       // Add text before the artist name

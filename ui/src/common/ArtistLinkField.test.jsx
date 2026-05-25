@@ -286,6 +286,38 @@ describe('ArtistLinkField', () => {
       const link = screen.getByRole('link')
       expect(link).not.toHaveAttribute('title')
     })
+
+    it('inline-linkifies when displayArtist holds the canonical name (Picard-default tagging)', () => {
+      // Picard "use standardized artist names" mode: ARTIST tag carries the
+      // canonical name, ARTIST_CREDIT carries the credit. The display string
+      // is the canonical name; parseAndReplaceArtists must match on `name`
+      // (not `creditedAs`) to embed the link inline. The link text itself
+      // still renders the credit via ALink.
+      const record = {
+        artist: 'Planetary Assault Systems',
+        participants: {
+          artist: [
+            {
+              id: 'canon-1',
+              name: 'Planetary Assault Systems',
+              creditedAs: 'PAS',
+            },
+          ],
+        },
+      }
+
+      render(<ArtistLinkField record={record} source="artist" />)
+
+      const link = screen.getByRole('link')
+      // Link text is the credit, tooltip carries canonical
+      expect(link).toHaveTextContent('PAS')
+      expect(link).toHaveAttribute('title', 'Planetary Assault Systems')
+      // The original canonical string should not appear as raw plain text
+      // (it was replaced by the link)
+      expect(
+        screen.queryByText(/^Planetary Assault Systems$/),
+      ).not.toBeInTheDocument()
+    })
   })
 
   describe('when limiting displayed artists', () => {
