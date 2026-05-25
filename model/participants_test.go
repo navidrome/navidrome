@@ -123,32 +123,32 @@ var _ = Describe("Participants", func() {
 			// it isn't silently dropped just because of arrival order.
 			p1 := Participants{
 				RoleArtist: []Participant{
-					{Artist: Artist{ID: "a1", Name: "Aphex Twin"}, CreditedAs: "AFX"},
+					{Artist: Artist{ID: "a1", Name: "Canonical"}, CreditedAs: "Credit One"},
 				},
 			}
 			p2 := Participants{
 				RoleArtist: []Participant{
-					{Artist: Artist{ID: "a1", Name: "Aphex Twin"}, CreditedAs: "Aphex Twin"},
+					{Artist: Artist{ID: "a1", Name: "Canonical"}, CreditedAs: "Credit Two"},
 				},
 			}
 			p1.Merge(p2)
 			Expect(p1[RoleArtist]).To(HaveLen(1))
-			Expect(p1[RoleArtist][0].CreditedAs).To(Equal("Aphex Twin"))
+			Expect(p1[RoleArtist][0].CreditedAs).To(Equal("Credit Two"))
 		})
 
 		It("does not overwrite an existing CreditedAs with an empty one", func() {
 			p1 := Participants{
 				RoleArtist: []Participant{
-					{Artist: Artist{ID: "a1", Name: "Aphex Twin"}, CreditedAs: "AFX"},
+					{Artist: Artist{ID: "a1", Name: "Canonical"}, CreditedAs: "Credit One"},
 				},
 			}
 			p2 := Participants{
 				RoleArtist: []Participant{
-					{Artist: Artist{ID: "a1", Name: "Aphex Twin"}}, // empty CreditedAs
+					{Artist: Artist{ID: "a1", Name: "Canonical"}}, // empty CreditedAs
 				},
 			}
 			p1.Merge(p2)
-			Expect(p1[RoleArtist][0].CreditedAs).To(Equal("AFX"))
+			Expect(p1[RoleArtist][0].CreditedAs).To(Equal("Credit One"))
 		})
 	})
 
