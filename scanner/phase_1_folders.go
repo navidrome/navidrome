@@ -306,6 +306,15 @@ func (p *phaseFolders) loadTagsFromFiles(entry *folderEntry, toImport map[string
 
 			// Build artistIDMap: for each participant on this track, if the previous
 			// spec produces a different ID than the current one, record the mapping.
+			//
+			// The map is keyed by the new artist ID so it stores ONE previous ID per
+			// new ID, even when many old IDs collapse to the same new one (e.g.
+			// switching from "name" to "musicbrainz_artistid|name" where multiple
+			// name-keyed IDs share an MBID). This is intentional: ReassignAnnotation
+			// is idempotent and the other prior IDs orphan their annotations into
+			// the unique-constraint collision case documented in the spec — a
+			// known limitation tracked for a separate follow-up that fixes
+			// ReassignAnnotation merge semantics at the SQL level.
 			if p.prevArtistPIDConf != "" && p.prevArtistPIDConf != conf.Server.PID.Artist {
 				for _, list := range track.Participants {
 					for _, part := range list {
