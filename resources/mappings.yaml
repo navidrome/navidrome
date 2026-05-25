@@ -58,16 +58,12 @@ main:
     aliases: [ tsoc, txxx:composersort, composersort, soco, wm/composersortorder ]
   composercredit:
     aliases: [ composer_credit, composercredit ]
-  composerscredit:
-    aliases: [ composers_credit, composerscredit ]
   lyricist:
     aliases: [ text, lyricist, ----:com.apple.itunes:lyricist, wm/writer ]
   lyricistsort:
     aliases: [ lyricistsort ]
   lyricistcredit:
     aliases: [ lyricist_credit, lyricistcredit ]
-  lyricistscredit:
-    aliases: [ lyricists_credit, lyricistscredit ]
   conductor:
     aliases: [ tpe3, conductor, ----:com.apple.itunes:conductor, wm/conductor ]
   conductorcredit:
@@ -225,8 +221,6 @@ main:
   performer:
     aliases: [performer]
     type: pair
-  performercredit:
-    aliases: [ performer_credit, performercredit ]
   musicbrainz_performerid:
     aliases: [ txxx:musicbrainz performer id, musicbrainz_performerid, musicbrainz_performer_id, ----:com.apple.itunes:musicbrainz performer id, musicbrainz/performer id ]
     type: pair

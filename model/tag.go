@@ -216,11 +216,9 @@ const (
 	TagComposer           TagName = "composer"
 	TagComposerSort       TagName = "composersort"
 	TagComposerCredit     TagName = "composercredit"
-	TagComposersCredit    TagName = "composerscredit"
 	TagLyricist           TagName = "lyricist"
 	TagLyricistSort       TagName = "lyricistsort"
 	TagLyricistCredit     TagName = "lyricistcredit"
-	TagLyricistsCredit    TagName = "lyricistscredit"
 	TagDirector           TagName = "director"
 	TagDirectorCredit     TagName = "directorcredit"
 	TagProducer           TagName = "producer"
@@ -238,7 +236,9 @@ const (
 	TagArranger           TagName = "arranger"
 	TagArrangerCredit     TagName = "arrangercredit"
 	TagPerformer          TagName = "performer"
-	TagPerformerCredit    TagName = "performercredit"
+	// Performer credits are not currently surfaced: performer tags are
+	// `type: pair` ('PERFORMER:instrument') and the matching credit
+	// representation hasn't been designed yet. Tracked separately.
 
 	// ReplayGain
 
