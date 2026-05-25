@@ -460,6 +460,26 @@ var _ = Describe("Participants", func() {
 				})
 			})
 
+			When("the COMPILATION tag is true and ALBUMARTIST is the UnknownArtist placeholder", func() {
+				BeforeEach(func() {
+					// Some rippers emit the literal '[Unknown Artist]' string
+					// when no album artist is set. The fallback must still
+					// route to Various Artists for compilations.
+					mf = toMediaFile(model.RawTags{
+						"COMPILATION": {"1"},
+						"ALBUMARTIST": {consts.UnknownArtist},
+					})
+				})
+
+				It("should substitute Various Artists as the album artist", func() {
+					participants := mf.Participants
+					Expect(participants).To(HaveKeyWithValue(model.RoleAlbumArtist, HaveLen(1)))
+					albumArtist := participants[model.RoleAlbumArtist][0]
+					Expect(albumArtist.Name).To(Equal("Various Artists"))
+					Expect(albumArtist.MbzArtistID).To(Equal(consts.VariousArtistsMbzId))
+				})
+			})
+
 			When("the COMPILATION tag is true and there are ALBUMARTIST tags", func() {
 				BeforeEach(func() {
 					mf = toMediaFile(model.RawTags{

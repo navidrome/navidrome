@@ -53,8 +53,16 @@ func (md Metadata) mapParticipants() model.Participants {
 	albumMbids := md.Strings(model.TagMusicBrainzAlbumArtistID)
 	albumCredits := md.getArtistValues(model.TagAlbumArtistCredit, model.TagAlbumArtistsCredit)
 
+	// Treat both "no albumartist tag" and "albumartist tag literally set to
+	// the UnknownArtist placeholder" as missing — some rippers emit the
+	// literal '[Unknown Artist]' string, and the original parseArtists path
+	// (replaced in this branch) substituted UnknownArtist on its own so the
+	// downstream check matched either case.
+	albumArtistMissing := len(albumNames) == 0 ||
+		(len(albumNames) == 1 && albumNames[0] == consts.UnknownArtist)
+
 	var albumArtistParticipants []model.Participant
-	if len(albumNames) == 0 {
+	if albumArtistMissing {
 		if md.Bool(model.TagCompilation) {
 			albumArtistParticipants = md.buildParticipants(
 				[]string{consts.VariousArtists}, nil,
