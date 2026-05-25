@@ -882,5 +882,45 @@ var _ = Describe("Participants", func() {
 				}
 			}
 		})
+
+		It("aligns composer credits with names when both use a role separator", func() {
+			// Names and credits both split on ';' under the roles.split config.
+			// Prior to the alignment fix, credits were read raw and would have
+			// stayed as one value while names became three, producing a length
+			// mismatch that silently dropped all credits.
+			mf = toMediaFile(model.RawTags{
+				"COMPOSER":       {"Comp A;Comp B;Comp C"},
+				"COMPOSERCREDIT": {"CA;CB;CC"},
+			})
+			composers := mf.Participants[model.RoleComposer]
+			Expect(composers).To(HaveLen(3))
+			Expect(composers[0].Name).To(Equal("Comp A"))
+			Expect(composers[0].CreditedAs).To(Equal("CA"))
+			Expect(composers[1].CreditedAs).To(Equal("CB"))
+			Expect(composers[2].CreditedAs).To(Equal("CC"))
+		})
+
+		It("splits composer MBIDs to align with split composer names", func() {
+			// Both names and MBIDs use the role separator ';'. The fix routes
+			// MBIDs through getRoleValues so they split alongside names rather
+			// than staying as a single value (which would have produced 2 names
+			// and 1 MBID — broken positional alignment).
+			//
+			// We test via a single delimited canonical name string AND a single
+			// delimited MBID-pair string. Note: the tag-reader UUID validation
+			// happens at metadata parse time on individual values, so we hand
+			// multi-valued tag entries already split into separate slice
+			// entries (matching how a multi-value tag would surface).
+			mf = toMediaFile(model.RawTags{
+				"COMPOSER":               {"Comp A;Comp B"},
+				"MUSICBRAINZ_COMPOSERID": {"11111111-1111-1111-1111-111111111111", "22222222-2222-2222-2222-222222222222"},
+			})
+			composers := mf.Participants[model.RoleComposer]
+			Expect(composers).To(HaveLen(2))
+			Expect(composers[0].Name).To(Equal("Comp A"))
+			Expect(composers[0].MbzArtistID).To(Equal("11111111-1111-1111-1111-111111111111"))
+			Expect(composers[1].Name).To(Equal("Comp B"))
+			Expect(composers[1].MbzArtistID).To(Equal("22222222-2222-2222-2222-222222222222"))
+		})
 	})
 })

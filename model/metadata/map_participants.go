@@ -36,13 +36,16 @@ var roleMappings = map[model.Role]roleTags{
 func (md Metadata) mapParticipants() model.Participants {
 	participants := make(model.Participants)
 
-	// Parse track artists
+	// Parse track artists. MBIDs use getRoleValues so they're split by the same
+	// separators ('/' or ';') as the canonical names — otherwise a tag like
+	// MUSICBRAINZ_ARTISTID="abc/def" paired with ARTISTS="A/B" would yield 2
+	// names but 1 MBID and the positional alignment would break.
 	trackNames := md.getArtistValues(model.TagTrackArtist, model.TagTrackArtists)
 	if len(trackNames) == 0 {
 		trackNames = []string{consts.UnknownArtist}
 	}
 	trackSorts := md.getArtistValues(model.TagTrackArtistSort, model.TagTrackArtistsSort)
-	trackMbids := md.Strings(model.TagMusicBrainzArtistID)
+	trackMbids := md.getRoleValues(model.TagMusicBrainzArtistID)
 	trackCredits := md.getArtistValues(model.TagTrackArtistCredit, model.TagTrackArtistsCredit)
 	trackArtistParticipants := md.buildParticipants(trackNames, trackSorts, trackMbids, trackCredits)
 	participants.AddParticipants(model.RoleArtist, trackArtistParticipants...)
@@ -50,7 +53,7 @@ func (md Metadata) mapParticipants() model.Participants {
 	// Parse album artists
 	albumNames := md.getArtistValues(model.TagAlbumArtist, model.TagAlbumArtists)
 	albumSorts := md.getArtistValues(model.TagAlbumArtistSort, model.TagAlbumArtistsSort)
-	albumMbids := md.Strings(model.TagMusicBrainzAlbumArtistID)
+	albumMbids := md.getRoleValues(model.TagMusicBrainzAlbumArtistID)
 	albumCredits := md.getArtistValues(model.TagAlbumArtistCredit, model.TagAlbumArtistsCredit)
 
 	// Treat both "no albumartist tag" and "albumartist tag literally set to
@@ -75,13 +78,16 @@ func (md Metadata) mapParticipants() model.Participants {
 	}
 	participants.AddParticipants(model.RoleAlbumArtist, albumArtistParticipants...)
 
-	// Parse all other roles
+	// Parse all other roles. All parallel lists go through getRoleValues so
+	// they're split with the same separators as the canonical names. Reading
+	// any of these with md.Strings (no splitting) would desync the positional
+	// alignment for tags like COMPOSER="A;B" + COMPOSER_CREDIT="AA;BB".
 	for role, info := range roleMappings {
 		names := md.getRoleValues(info.name)
 		if len(names) > 0 {
-			sorts := md.Strings(info.sort)
-			mbids := md.Strings(info.mbid)
-			credits := md.Strings(info.credit)
+			sorts := md.getRoleValues(info.sort)
+			mbids := md.getRoleValues(info.mbid)
+			credits := md.getRoleValues(info.credit)
 			participants.AddParticipants(role, md.buildParticipants(names, sorts, mbids, credits)...)
 		}
 	}
