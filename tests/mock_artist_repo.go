@@ -20,6 +20,7 @@ type MockArtistRepo struct {
 	Err                     bool
 	Options                 model.QueryOptions
 	ReassignAnnotationCalls map[string]string // prevID -> newID
+	CopyAttributesCalls     map[string]string // fromID -> toID
 }
 
 func (m *MockArtistRepo) SetError(err bool) {
@@ -168,6 +169,19 @@ func (m *MockArtistRepo) ReassignAnnotation(prevID string, newID string) error {
 		m.ReassignAnnotationCalls = make(map[string]string)
 	}
 	m.ReassignAnnotationCalls[prevID] = newID
+	return nil
+}
+
+// CopyAttributes is a no-op in the mock; tests that need to verify call
+// observation can extend this.
+func (m *MockArtistRepo) CopyAttributes(fromID, toID string, columns ...string) error {
+	if m.Err {
+		return errors.New("unexpected error")
+	}
+	if m.CopyAttributesCalls == nil {
+		m.CopyAttributesCalls = make(map[string]string)
+	}
+	m.CopyAttributesCalls[fromID] = toID
 	return nil
 }
 

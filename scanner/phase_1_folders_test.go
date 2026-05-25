@@ -45,5 +45,23 @@ var _ = Describe("phaseFolders", func() {
 			Expect(p.persistArtist(artRepo, &artist, idMap)).To(Succeed())
 			Expect(artRepo.ReassignAnnotationCalls).To(BeEmpty())
 		})
+
+		It("calls CopyAttributes(created_at) when persisting an artist whose ID changed", func() {
+			oldID := "old-id"
+			newID := "new-id"
+			idMap := map[string]string{newID: oldID}
+			artist := model.Artist{ID: newID, Name: "Foo"}
+
+			Expect(p.persistArtist(artRepo, &artist, idMap)).To(Succeed())
+			Expect(artRepo.CopyAttributesCalls).To(HaveKeyWithValue(oldID, newID))
+		})
+
+		It("does not call CopyAttributes when no mapping exists", func() {
+			idMap := map[string]string{}
+			artist := model.Artist{ID: "some-id", Name: "Foo"}
+
+			Expect(p.persistArtist(artRepo, &artist, idMap)).To(Succeed())
+			Expect(artRepo.CopyAttributesCalls).To(BeEmpty())
+		})
 	})
 })

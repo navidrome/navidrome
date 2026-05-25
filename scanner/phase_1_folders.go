@@ -496,6 +496,16 @@ func (p *phaseFolders) persistArtist(repo model.ArtistRepository, a *model.Artis
 		log.Warn(p.ctx, "Scanner: Could not reassign artist annotations", "from", prevID, "to", a.ID, "artist", a.Name, err)
 		p.state.sendWarning(fmt.Sprintf("Could not reassign artist annotations from %s to %s ('%s'): %v", prevID, a.ID, a.Name, err))
 	}
+
+	// Keep created_at field from previous instance of the artist. Without this,
+	// the just-inserted row carries the scan timestamp, breaking "recently
+	// added" semantics on every PID config change.
+	if err := repo.CopyAttributes(prevID, a.ID, "created_at"); err != nil {
+		if !errors.Is(err, model.ErrNotFound) {
+			log.Warn(p.ctx, "Scanner: Could not copy artist fields", "from", prevID, "to", a.ID, "artist", a.Name, err)
+			p.state.sendWarning(fmt.Sprintf("Could not copy artist fields from %s to %s ('%s'): %v", prevID, a.ID, a.Name, err))
+		}
+	}
 	delete(idMap, a.ID)
 	return nil
 }

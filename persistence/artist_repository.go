@@ -224,6 +224,34 @@ func (r *artistRepository) Put(a *model.Artist, colsToUpdate ...string) error {
 	return err
 }
 
+// CopyAttributes copies the named columns from the row identified by fromID
+// to the row identified by toID. Used by the scanner after a PID change to
+// preserve attributes (notably created_at) across artist-ID migrations.
+func (r *artistRepository) CopyAttributes(fromID, toID string, columns ...string) error {
+	var from dbx.NullStringMap
+	err := r.queryOne(Select(columns...).From(r.tableName).Where(Eq{"id": fromID}), &from)
+	if err != nil {
+		return fmt.Errorf("getting artist to copy fields from: %w", err)
+	}
+	to := make(map[string]any)
+	for _, col := range columns {
+		v := from[col]
+		// created_at on the previous row may be zero/poisoned (e.g. legacy
+		// rows or rows where it was never populated). Skip in that case so we
+		// don't propagate a bad value forward on every metadata-driven ID
+		// change. Matches the behavior in album_repository.CopyAttributes.
+		if col == "created_at" && (!v.Valid || v.String == "" || strings.HasPrefix(v.String, "0001-")) {
+			continue
+		}
+		to[col] = v
+	}
+	if len(to) == 0 {
+		return nil
+	}
+	_, err = r.executeSQL(Update(r.tableName).SetMap(to).Where(Eq{"id": toID}))
+	return err
+}
+
 func (r *artistRepository) UpdateExternalInfo(a *model.Artist) error {
 	dba := &dbArtist{Artist: a}
 	_, err := r.put(a.ID, dba,
