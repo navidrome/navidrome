@@ -156,16 +156,25 @@ func (p Participants) Merge(other Participants) {
 }
 
 func (p Participants) add(role Role, participants ...Participant) {
-	seen := make(map[string]struct{}, len(p[role]))
-	for _, artist := range p[role] {
-		seen[artist.ID+artist.SubRole] = struct{}{}
+	seen := make(map[string]int, len(p[role]))
+	for i, artist := range p[role] {
+		seen[artist.ID+artist.SubRole] = i
 	}
 	for _, participant := range participants {
 		key := participant.ID + participant.SubRole
-		if _, ok := seen[key]; !ok {
-			seen[key] = struct{}{}
-			p[role] = append(p[role], participant)
+		if idx, ok := seen[key]; ok {
+			// Same artist/sub-role seen before. The merge (e.g. building
+			// album.Participants from per-track participants) is inherently
+			// lossy when tracks differ on CreditedAs, but silently dropping
+			// the later value can mean the wrong credit ends up on the album.
+			// Prefer the most recently observed non-empty CreditedAs.
+			if participant.CreditedAs != "" {
+				p[role][idx].CreditedAs = participant.CreditedAs
+			}
+			continue
 		}
+		seen[key] = len(p[role])
+		p[role] = append(p[role], participant)
 	}
 }
 

@@ -116,6 +116,40 @@ var _ = Describe("Participants", func() {
 				RoleAlbumArtist: []Participant{_p("3", "AlbumArtist1"), _p("4", "AlbumArtist2"), _p("7", "AlbumArtist3"), _p("8", "AlbumArtist4")},
 			}))
 		})
+
+		It("upgrades CreditedAs from a later occurrence when the dedup key matches", func() {
+			// Same artist (same ID+SubRole) credited differently on two tracks.
+			// The merge is inherently lossy; the later non-empty credit wins so
+			// it isn't silently dropped just because of arrival order.
+			p1 := Participants{
+				RoleArtist: []Participant{
+					{Artist: Artist{ID: "a1", Name: "Aphex Twin"}, CreditedAs: "AFX"},
+				},
+			}
+			p2 := Participants{
+				RoleArtist: []Participant{
+					{Artist: Artist{ID: "a1", Name: "Aphex Twin"}, CreditedAs: "Aphex Twin"},
+				},
+			}
+			p1.Merge(p2)
+			Expect(p1[RoleArtist]).To(HaveLen(1))
+			Expect(p1[RoleArtist][0].CreditedAs).To(Equal("Aphex Twin"))
+		})
+
+		It("does not overwrite an existing CreditedAs with an empty one", func() {
+			p1 := Participants{
+				RoleArtist: []Participant{
+					{Artist: Artist{ID: "a1", Name: "Aphex Twin"}, CreditedAs: "AFX"},
+				},
+			}
+			p2 := Participants{
+				RoleArtist: []Participant{
+					{Artist: Artist{ID: "a1", Name: "Aphex Twin"}}, // empty CreditedAs
+				},
+			}
+			p1.Merge(p2)
+			Expect(p1[RoleArtist][0].CreditedAs).To(Equal("AFX"))
+		})
 	})
 
 	Describe("Hash", func() {
