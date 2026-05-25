@@ -179,10 +179,6 @@ func pidHashChanged(ds model.DataStore) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	// Empty stored value is treated as matching — fresh upgrade should not force a rescan.
-	if pidArtist == "" {
-		pidArtist = conf.Server.PID.Artist
-	}
 	return !strings.EqualFold(pidAlbum, conf.Server.PID.Album) ||
 		!strings.EqualFold(pidTrack, conf.Server.PID.Track) ||
 		!strings.EqualFold(pidArtist, conf.Server.PID.Artist), nil
