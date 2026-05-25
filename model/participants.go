@@ -156,12 +156,15 @@ func (p Participants) Merge(other Participants) {
 }
 
 func (p Participants) add(role Role, participants ...Participant) {
+	// Use a separator that can't appear in either field so e.g.
+	// (ID="12", SubRole="3") doesn't collide with (ID="1", SubRole="23").
+	const sep = "\x00"
 	seen := make(map[string]int, len(p[role]))
 	for i, artist := range p[role] {
-		seen[artist.ID+artist.SubRole] = i
+		seen[artist.ID+sep+artist.SubRole] = i
 	}
 	for _, participant := range participants {
-		key := participant.ID + participant.SubRole
+		key := participant.ID + sep + participant.SubRole
 		if idx, ok := seen[key]; ok {
 			// Same artist/sub-role seen before. The merge (e.g. building
 			// album.Participants from per-track participants) is inherently
