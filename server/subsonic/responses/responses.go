@@ -189,6 +189,7 @@ type OpenSubsonicChild struct {
 	Contributors       Array[Contributor]  `xml:"contributors,omitempty"            json:"contributors"`
 	DisplayComposer    string              `xml:"displayComposer,attr,omitempty"    json:"displayComposer"`
 	ExplicitStatus     string              `xml:"explicitStatus,attr,omitempty"     json:"explicitStatus"`
+	Groupings          Array[string]       `xml:"groupings,omitempty"               json:"groupings"`
 }
 
 type Songs struct {
@@ -250,10 +251,10 @@ type AlbumID3 struct {
 	Artist                string     `xml:"artist,attr,omitempty"              json:"artist,omitempty"`
 	ArtistId              string     `xml:"artistId,attr,omitempty"            json:"artistId,omitempty"`
 	CoverArt              string     `xml:"coverArt,attr,omitempty"            json:"coverArt,omitempty"`
-	SongCount             int32      `xml:"songCount,attr,omitempty"           json:"songCount,omitempty"`
+	SongCount             int32      `xml:"songCount,attr"                     json:"songCount"`
 	Duration              int32      `xml:"duration,attr"                      json:"duration"`
 	PlayCount             int64      `xml:"playCount,attr,omitempty"           json:"playCount,omitempty"`
-	Created               *time.Time `xml:"created,attr,omitempty"             json:"created,omitempty"`
+	Created               time.Time  `xml:"created,attr"                       json:"created"`
 	Starred               *time.Time `xml:"starred,attr,omitempty"             json:"starred,omitempty"`
 	Year                  int32      `xml:"year,attr,omitempty"                json:"year,omitempty"`
 	Genre                 string     `xml:"genre,attr,omitempty"               json:"genre,omitempty"`

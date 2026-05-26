@@ -272,12 +272,11 @@ var _ = Describe("Provider - ArtistImage", func() {
 
 	It("returns cached URL and does not call agent when info is not expired", func() {
 		// Arrange: artist has a cached image URL with recent ExternalInfoUpdatedAt
-		recentTime := time.Now().Add(-1 * time.Minute)
 		cachedArtist := &model.Artist{
 			ID:                    "artist-cached",
 			Name:                  "Cached Artist",
 			LargeImageUrl:         "http://example.com/cached-large.jpg",
-			ExternalInfoUpdatedAt: &recentTime,
+			ExternalInfoUpdatedAt: new(time.Now().Add(-1 * time.Minute)),
 		}
 		mockArtistRepo.On("Get", "artist-cached").Return(cachedArtist, nil).Maybe()
 		expectedURL, _ := url.Parse("http://example.com/cached-large.jpg")
@@ -304,12 +303,11 @@ var _ = Describe("Provider - ArtistImage", func() {
 	It("returns stale URL and enqueues refresh when info is expired", func() {
 		// Arrange
 		conf.Server.DevArtistInfoTimeToLive = 1 * time.Nanosecond
-		expiredTime := time.Now().Add(-1 * time.Hour)
 		staleArtist := &model.Artist{
 			ID:                    "artist-expired",
 			Name:                  "Expired Artist",
 			LargeImageUrl:         "http://example.com/expired-large.jpg",
-			ExternalInfoUpdatedAt: &expiredTime,
+			ExternalInfoUpdatedAt: new(time.Now().Add(-1 * time.Hour)),
 		}
 		mockArtistRepo.On("Get", "artist-expired").Return(staleArtist, nil).Maybe()
 		expectedURL, _ := url.Parse("http://example.com/expired-large.jpg")

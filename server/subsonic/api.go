@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/conf"
@@ -171,12 +172,12 @@ func (api *Router) routes() http.Handler {
 		r.Group(func(r chi.Router) {
 			r.Use(getPlayer(api.players))
 			h(r, "getUser", api.GetUser)
-			h(r, "getUsers", api.GetUsers)
+			h(r.With(adminOnly), "getUsers", api.GetUsers)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(getPlayer(api.players))
 			h(r, "getScanStatus", api.GetScanStatus)
-			h(r, "startScan", api.StartScan)
+			h(r.With(adminOnly), "startScan", api.StartScan)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(getPlayer(api.players))
@@ -195,10 +196,13 @@ func (api *Router) routes() http.Handler {
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(getPlayer(api.players))
-			h(r, "createInternetRadioStation", api.CreateInternetRadio)
-			h(r, "deleteInternetRadioStation", api.DeleteInternetRadio)
 			h(r, "getInternetRadioStations", api.GetInternetRadios)
-			h(r, "updateInternetRadioStation", api.UpdateInternetRadio)
+			r.Group(func(r chi.Router) {
+				r.Use(adminOnly)
+				h(r, "createInternetRadioStation", api.CreateInternetRadio)
+				h(r, "deleteInternetRadioStation", api.DeleteInternetRadio)
+				h(r, "updateInternetRadioStation", api.UpdateInternetRadio)
+			})
 		})
 		if conf.Server.EnableSharing {
 			r.Group(func(r chi.Router) {
@@ -301,6 +305,8 @@ func mapToSubsonicError(err error) subError {
 		err = newError(responses.ErrorDataNotFound, "data not found")
 	case errors.Is(err, model.ErrNotAuthorized):
 		err = newError(responses.ErrorAuthorizationFail)
+	case errors.Is(err, stream.ErrTooManyTranscodes):
+		err = newError(responses.ErrorGeneric, "too many concurrent transcodes, please retry shortly")
 	default:
 		err = newError(responses.ErrorGeneric, fmt.Sprintf("Internal Server Error: %s", err))
 	}
@@ -310,15 +316,31 @@ func mapToSubsonicError(err error) subError {
 }
 
 func sendError(w http.ResponseWriter, r *http.Request, err error) {
+	if errors.Is(err, stream.ErrTooManyTranscodes) {
+		w.Header().Set("Retry-After", strconv.Itoa(stream.RetryAfterSeconds))
+		sendResponseWithStatus(w, r, errorResponse(err), http.StatusTooManyRequests)
+		return
+	}
+	sendResponse(w, r, errorResponse(err))
+}
+
+func errorResponse(err error) *responses.Subsonic {
 	subErr := mapToSubsonicError(err)
 	response := newResponse()
 	response.Status = responses.StatusFailed
 	response.Error = &responses.Error{Code: subErr.code, Message: subErr.Error()}
-
-	sendResponse(w, r, response)
+	return response
 }
 
 func sendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Subsonic) {
+	sendResponseWithStatus(w, r, payload, 0)
+}
+
+// sendResponseWithStatus writes the response body in the format requested by
+// the client. When status is non-zero, WriteHeader is called with that code
+// before the body is written; callers that need to set additional headers
+// (e.g. Retry-After) must set them before calling.
+func sendResponseWithStatus(w http.ResponseWriter, r *http.Request, payload *responses.Subsonic, status int) {
 	p := req.Params(r)
 	f, _ := p.String("f")
 	var response []byte
@@ -353,6 +375,9 @@ func sendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Sub
 		sendError(w, r, err)
 		return
 	}
+	if status != 0 {
+		w.WriteHeader(status)
+	}
 
 	if payload.Status == responses.StatusOK {
 		if log.IsGreaterOrEqualTo(log.LevelTrace) {
@@ -375,6 +400,10 @@ func sendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Sub
 	}
 
 	if _, err := w.Write(response); err != nil { //nolint:gosec
-		log.Error(r, "Error sending response to client", "endpoint", r.URL.Path, "payload", string(response), err)
+		if log.IsGreaterOrEqualTo(log.LevelTrace) {
+			log.Error(r, "Error sending response to client", "endpoint", r.URL.Path, "payload", string(response), err)
+		} else {
+			log.Error(r, "Error sending response to client", "endpoint", r.URL.Path, err)
+		}
 	}
 }

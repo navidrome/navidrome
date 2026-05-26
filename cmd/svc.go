@@ -76,13 +76,13 @@ var svcInstance = sync.OnceValue(func() service.Service {
 	options["Restart"] = "on-failure"
 	options["SuccessExitStatus"] = "1 2 8 SIGKILL"
 	options["UserService"] = false
-	options["LogDirectory"] = conf.Server.DataFolder
+	options["LogDirectory"] = conf.Server.DataFolder.String()
 	options["SystemdScript"] = systemdScript
 	if conf.Server.LogFile != "" {
 		options["LogOutput"] = false
 	} else {
 		options["LogOutput"] = true
-		options["LogDirectory"] = conf.Server.DataFolder
+		options["LogDirectory"] = conf.Server.DataFolder.String()
 	}
 	svcConfig := &service.Config{
 		UserName:    installUser,
@@ -131,11 +131,11 @@ func buildInstallCmd() *cobra.Command {
 		println("Installing service with:")
 		println("  working directory: " + executablePath())
 		println("  music folder:      " + conf.Server.MusicFolder)
-		println("  data folder:       " + conf.Server.DataFolder)
+		println("  data folder:       " + conf.Server.DataFolder.String())
 		if conf.Server.LogFile != "" {
 			println("  log file:          " + conf.Server.LogFile)
 		} else {
-			println("  logs folder:       " + conf.Server.DataFolder)
+			println("  logs folder:       " + conf.Server.DataFolder.String())
 		}
 		if cfgFile != "" {
 			conf.Server.ConfigFile, err = filepath.Abs(cfgFile)

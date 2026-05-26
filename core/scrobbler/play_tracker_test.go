@@ -1133,8 +1133,7 @@ func (f *fakeScrobbler) PlaybackReport(ctx context.Context, info PlaybackSession
 	if f.Error != nil {
 		return f.Error
 	}
-	uid := info.UserId
-	f.userID.Store(&uid)
+	f.userID.Store(new(info.UserId))
 	f.LastPlaybackReport.Store(&info)
 	return nil
 }

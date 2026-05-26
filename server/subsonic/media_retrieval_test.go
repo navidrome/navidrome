@@ -363,7 +363,6 @@ var _ = Describe("MediaRetrievalController", func() {
 			response, err := router.GetLyricsBySongId(r)
 			Expect(err).ToNot(HaveOccurred())
 
-			offset := int64(-100)
 			compareResponses(response.LyricsList, responses.LyricsList{
 				StructuredLyrics: responses.StructuredLyrics{
 					{
@@ -381,7 +380,7 @@ var _ = Describe("MediaRetrievalController", func() {
 								Value: "You know the rules and so do I",
 							},
 						},
-						Offset: &offset,
+						Offset: new(int64(-100)),
 					},
 				},
 			})

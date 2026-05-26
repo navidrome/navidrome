@@ -58,12 +58,10 @@ func (api *Router) CreateShare(r *http.Request) (*responses.Subsonic, error) {
 	}
 
 	description, _ := p.String("description")
-	expires := p.TimeOr("expires", time.Time{})
-
 	repo := api.share.NewRepository(r.Context())
 	share := &model.Share{
 		Description: description,
-		ExpiresAt:   &expires,
+		ExpiresAt:   new(p.TimeOr("expires", time.Time{})),
 		ResourceIDs: strings.Join(ids, ","),
 	}
 
@@ -90,13 +88,11 @@ func (api *Router) UpdateShare(r *http.Request) (*responses.Subsonic, error) {
 	}
 
 	description, _ := p.String("description")
-	expires := p.TimeOr("expires", time.Time{})
-
 	repo := api.share.NewRepository(r.Context())
 	share := &model.Share{
 		ID:          id,
 		Description: description,
-		ExpiresAt:   &expires,
+		ExpiresAt:   new(p.TimeOr("expires", time.Time{})),
 	}
 
 	err = repo.(rest.Persistable).Update(id, share)

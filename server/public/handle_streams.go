@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/core/auth"
-	"github.com/navidrome/navidrome/core/stream"
+	streampkg "github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	. "github.com/navidrome/navidrome/utils/gg"
@@ -48,10 +48,15 @@ func (pub *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stream, err := pub.streamer.NewStream(ctx, mf, stream.Request{
+	stream, err := pub.streamer.NewStream(ctx, mf, streampkg.Request{
 		Format: info.format, BitRate: info.bitrate,
 	})
 	if err != nil {
+		if errors.Is(err, streampkg.ErrTooManyTranscodes) {
+			w.Header().Set("Retry-After", strconv.Itoa(streampkg.RetryAfterSeconds))
+			http.Error(w, "too many concurrent transcodes, please retry shortly", http.StatusTooManyRequests)
+			return
+		}
 		log.Error(ctx, "Error starting shared stream", err)
 		http.Error(w, "invalid request", http.StatusInternalServerError)
 		return
