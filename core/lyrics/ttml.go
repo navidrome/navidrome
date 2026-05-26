@@ -106,6 +106,10 @@ type ttmlParser struct {
 }
 
 func parseTTML(contents []byte) (model.LyricList, error) {
+	return parseTTMLWithDefaultLang(contents, "xxx")
+}
+
+func parseTTMLWithDefaultLang(contents []byte, defaultLang string) (model.LyricList, error) {
 	contents = xmlEncodingRegex.ReplaceAll(contents, []byte(`<?xml$1encoding="UTF-8"$2?>`))
 
 	p := ttmlParser{
@@ -122,7 +126,7 @@ func parseTTML(contents []byte) (model.LyricList, error) {
 		definedAgents:            make(map[string]ttmlDefinedAgent),
 	}
 
-	root := ttmlTimingContext{lang: "xxx"}
+	root := ttmlTimingContext{lang: normalizeTTMLLang(defaultLang)}
 
 	for {
 		token, err := p.decoder.Token()

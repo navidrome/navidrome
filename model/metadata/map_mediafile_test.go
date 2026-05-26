@@ -116,5 +116,50 @@ var _ = Describe("ToMediaFile", func() {
 			sort.Slice(expected, func(i, j int) bool { return expected[i].Lang < expected[j].Lang })
 			Expect(actual).To(Equal(expected))
 		})
+
+		It("should parse embedded TTML lyrics before sanitizing XML tags", func() {
+			mf = toMediaFile(model.RawTags{
+				"LYRICS:ENG": {`<tt xmlns="http://www.w3.org/ns/ttml">
+  <body>
+    <div>
+      <p begin="00:00:01.000" end="00:00:02.500">Embedded TTML line</p>
+    </div>
+  </body>
+</tt>`},
+			})
+			var actual model.LyricList
+			err := json.Unmarshal([]byte(mf.Lyrics), &actual)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(actual).To(Equal(model.LyricList{
+				{
+					Kind:   "main",
+					Lang:   "eng",
+					Line:   []model.Line{{Start: P(int64(1000)), End: P(int64(2500)), Value: "Embedded TTML line"}},
+					Synced: true,
+				},
+			}))
+		})
+
+		It("should parse embedded SRT lyrics with the tag language", func() {
+			mf = toMediaFile(model.RawTags{
+				"LYRICS:POR": {`1
+00:00:18,800 --> 00:00:22,800
+Estamos nas legendas`},
+			})
+			var actual model.LyricList
+			err := json.Unmarshal([]byte(mf.Lyrics), &actual)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(actual).To(Equal(model.LyricList{
+				{
+					Lang: "por",
+					Line: []model.Line{
+						{Start: P(int64(18800)), End: P(int64(22800)), Value: "Estamos nas legendas"},
+					},
+					Synced: true,
+				},
+			}))
+		})
 	})
 })

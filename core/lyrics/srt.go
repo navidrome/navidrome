@@ -13,6 +13,10 @@ import (
 var srtTimeRegex = regexp.MustCompile(`^\s*(\d{1,2}):(\d{2}):(\d{2})[,.](\d{1,3})\s*$`)
 
 func parseSRT(contents []byte) (model.LyricList, error) {
+	return parseSRTWithLanguage(contents, "xxx")
+}
+
+func parseSRTWithLanguage(contents []byte, language string) (model.LyricList, error) {
 	raw := strings.ReplaceAll(string(contents), "\r\n", "\n")
 	raw = strings.ReplaceAll(raw, "\r", "\n")
 
@@ -34,7 +38,7 @@ func parseSRT(contents []byte) (model.LyricList, error) {
 	}
 
 	lyrics := model.NormalizeLyrics(model.Lyrics{
-		Lang:   "xxx",
+		Lang:   normalizeEmbeddedLanguage(language),
 		Line:   lines,
 		Synced: true,
 	})
