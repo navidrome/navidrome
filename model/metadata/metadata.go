@@ -70,6 +70,7 @@ func New(filePath string, info Info) Metadata {
 	return Metadata{
 		filePath:   filePath,
 		fileInfo:   info.FileInfo,
+		rawTags:    lowerTags(info.Tags),
 		tags:       clean(filePath, info.Tags),
 		audioProps: info.AudioProperties,
 		hasPicture: info.HasPicture,
@@ -79,6 +80,7 @@ func New(filePath string, info Info) Metadata {
 type Metadata struct {
 	filePath   string
 	fileInfo   FileInfo
+	rawTags    model.Tags
 	tags       model.Tags
 	audioProps AudioProperties
 	hasPicture bool
@@ -112,6 +114,14 @@ func (md Metadata) Gain(key model.TagName) *float64 {
 }
 func (md Metadata) Pairs(key model.TagName) []Pair {
 	values := md.tags[key]
+	return slice.Map(values, func(v string) Pair { return Pair(v) })
+}
+func (md Metadata) rawPairs(key model.TagName) []Pair {
+	mapping, ok := model.TagMappings()[key]
+	if !ok {
+		return nil
+	}
+	values := filterDuplicatedOrEmptyValues(processPairMapping(key, mapping, md.rawTags))
 	return slice.Map(values, func(v string) Pair { return Pair(v) })
 }
 func (md Metadata) first(key model.TagName) string {

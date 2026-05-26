@@ -130,7 +130,7 @@ func (md Metadata) mapGain(rg, r128 model.TagName) *float64 {
 }
 
 func (md Metadata) mapLyrics() string {
-	rawLyrics := md.Pairs(model.TagLyrics)
+	rawLyrics := md.rawPairs(model.TagLyrics)
 
 	lyricList := make(model.LyricList, 0, len(rawLyrics))
 
