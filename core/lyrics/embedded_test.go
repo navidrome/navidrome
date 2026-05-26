@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils/gg"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -37,8 +36,8 @@ var _ = Describe("ParseEmbedded", func() {
 		Expect(list[0].Synced).To(BeTrue())
 		Expect(list[0].Agents).To(Equal([]model.Agent{{ID: "lead", Role: "main", Name: "Lead Vocal"}}))
 		Expect(list[0].Line).To(HaveLen(1))
-		Expect(list[0].Line[0].Start).To(Equal(gg.P(int64(1000))))
-		Expect(list[0].Line[0].End).To(Equal(gg.P(int64(3000))))
+		Expect(list[0].Line[0].Start).To(Equal(ptr(int64(1000))))
+		Expect(list[0].Line[0].End).To(Equal(ptr(int64(3000))))
 		Expect(list[0].Line[0].Value).To(Equal("Hello world"))
 		Expect(list[0].Line[0].Cue).To(HaveLen(2))
 		Expect(list[0].Line[0].Cue[0].AgentID).To(Equal("lead"))
@@ -106,13 +105,13 @@ Another subtitle line`
 				Lang: "por",
 				Line: []model.Line{
 					{
-						Start: gg.P(int64(18800)),
-						End:   gg.P(int64(22800)),
+						Start: ptr(int64(18800)),
+						End:   ptr(int64(22800)),
 						Value: "We're from subtitles",
 					},
 					{
-						Start: gg.P(int64(22801)),
-						End:   gg.P(int64(26000)),
+						Start: ptr(int64(22801)),
+						End:   ptr(int64(26000)),
 						Value: "Another subtitle line",
 					},
 				},
