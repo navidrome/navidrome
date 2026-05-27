@@ -125,6 +125,18 @@ var _ = Describe("REST Adapter", func() {
 				Expect(err).To(Equal(rest.ErrPermissionDenied))
 			})
 
+			It("denies regular user even when ownerId arrives under a case-variant JSON key", func() {
+				// rest.Put's field-name extraction is case-sensitive, but Go's json
+				// decoder is case-insensitive on struct fields, so {"OwnerId":"x"}
+				// populates entity.OwnerID while cols carries "OwnerId" instead of
+				// "ownerId". The permission gate must still fire.
+				ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+				repo = ps.NewRepository(ctx).(rest.Persistable)
+				pls := &model.Playlist{OwnerID: "other-user"}
+				err := repo.Update("pls-1", pls, "OwnerId")
+				Expect(err).To(Equal(rest.ErrPermissionDenied))
+			})
+
 			It("updates smart playlist rules", func() {
 				mockPlsRepo.Data["smart-1"] = &model.Playlist{
 					ID:      "smart-1",
@@ -274,6 +286,78 @@ var _ = Describe("REST Adapter", func() {
 					Expect(err).ToNot(HaveOccurred())
 					Expect(mockPlsRepo.Last.Comment).To(BeEmpty())
 					Expect(mockPlsRepo.Last.Name).To(Equal("Original Name"))
+				})
+
+				It("updates rules-only on a smart playlist (Feishin-style edit)", func() {
+					mockPlsRepo.Data["smart-partial"] = &model.Playlist{
+						ID:      "smart-partial",
+						Name:    "Smart Original",
+						Comment: "smart comment",
+						OwnerID: "user-1",
+						Public:  true,
+						Rules:   &criteria.Criteria{Expression: criteria.Is{"genre": "Rock"}},
+					}
+					repo = ps.NewRepository(ctx).(rest.Persistable)
+					newRules := &criteria.Criteria{Expression: criteria.Is{"genre": "Jazz"}, Sort: "year DESC"}
+					err := repo.Update("smart-partial", &model.Playlist{Rules: newRules}, "rules")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(mockPlsRepo.Last.Rules).To(Equal(newRules))
+					Expect(mockPlsRepo.Last.Name).To(Equal("Smart Original"))
+					Expect(mockPlsRepo.Last.Comment).To(Equal("smart comment"))
+					Expect(mockPlsRepo.Last.Public).To(BeTrue())
+				})
+
+				It("updates name and rules together (smart-playlist Edit form)", func() {
+					mockPlsRepo.Data["smart-edit"] = &model.Playlist{
+						ID:      "smart-edit",
+						Name:    "Smart Original",
+						Comment: "smart comment",
+						OwnerID: "user-1",
+						Rules:   &criteria.Criteria{Expression: criteria.Is{"genre": "Rock"}},
+					}
+					repo = ps.NewRepository(ctx).(rest.Persistable)
+					newRules := &criteria.Criteria{Expression: criteria.Is{"artist": "Miles Davis"}, Sort: "album"}
+					err := repo.Update("smart-edit",
+						&model.Playlist{Name: "Smart Renamed", Rules: newRules},
+						"name", "rules")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(mockPlsRepo.Last.Name).To(Equal("Smart Renamed"))
+					Expect(mockPlsRepo.Last.Rules).To(Equal(newRules))
+					Expect(mockPlsRepo.Last.Comment).To(Equal("smart comment"))
+				})
+
+				It("does not bump the saved rules on an idempotent rules-only PUT", func() {
+					rules := &criteria.Criteria{Expression: criteria.Is{"genre": "Rock"}}
+					mockPlsRepo.Data["smart-idempotent"] = &model.Playlist{
+						ID:      "smart-idempotent",
+						Name:    "Smart Idempotent",
+						OwnerID: "user-1",
+						Rules:   rules,
+					}
+					repo = ps.NewRepository(ctx).(rest.Persistable)
+					// Same rules sent back — rulesEqual should report no change and
+					// the request should no-op (no Put call).
+					sameRules := &criteria.Criteria{Expression: criteria.Is{"genre": "Rock"}}
+					err := repo.Update("smart-idempotent", &model.Playlist{Rules: sameRules}, "rules")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(mockPlsRepo.Last).To(BeNil()) // no Put happened
+				})
+
+				It("preserves rules when only public is sent (smart playlist + bulk Make Public)", func() {
+					rules := &criteria.Criteria{Expression: criteria.Is{"genre": "Rock"}}
+					mockPlsRepo.Data["smart-public"] = &model.Playlist{
+						ID:      "smart-public",
+						Name:    "Smart Public",
+						OwnerID: "user-1",
+						Public:  false,
+						Rules:   rules,
+					}
+					repo = ps.NewRepository(ctx).(rest.Persistable)
+					err := repo.Update("smart-public", &model.Playlist{Public: true}, "public")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(mockPlsRepo.Last.Public).To(BeTrue())
+					Expect(mockPlsRepo.Last.Rules).To(Equal(rules))
+					Expect(mockPlsRepo.Last.Name).To(Equal("Smart Public"))
 				})
 
 				It("does not treat a missing ownerId as an ownership transfer attempt", func() {

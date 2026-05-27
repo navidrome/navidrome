@@ -105,7 +105,11 @@ func (s *playlists) updatePlaylistEntity(ctx context.Context, id string, entity 
 
 	usr, _ := request.UserFrom(ctx)
 	ownerChanged := sent("ownerId") && entity.OwnerID != "" && entity.OwnerID != current.OwnerID
-	if !usr.IsAdmin && ownerChanged {
+	// Permission check uses the deserialized entity directly (not gated by `sent`)
+	// so a non-admin can't smuggle in an owner change via a case-variant JSON key
+	// like {"OwnerId":"x"} — Go's json decoder is case-insensitive on field match
+	// but rest.Put's field-name extraction is case-sensitive.
+	if !usr.IsAdmin && entity.OwnerID != "" && entity.OwnerID != current.OwnerID {
 		return rest.ErrPermissionDenied
 	}
 
@@ -121,8 +125,9 @@ func (s *playlists) updatePlaylistEntity(ctx context.Context, id string, entity 
 }
 
 // applyContentUpdate handles updates that change at least one of name/comment/
-// owner/rules — the path that goes through updateMetadata and may rewrite the
-// backing M3U file. Pointer args are nil for fields not present in the request.
+// owner/rules. It goes through updateMetadata, which always bumps updatedAt
+// (invalidating cached cover-art URLs). Pointer args are nil for fields not
+// present in the request.
 func (s *playlists) applyContentUpdate(ctx context.Context, current, entity *model.Playlist,
 	sent func(string) bool, nameChanged, commentChanged, ownerChanged, rulesChanged bool,
 ) error {
