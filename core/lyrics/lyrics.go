@@ -83,7 +83,7 @@ func (l *lyricsService) getLyricsFromSource(ctx context.Context, mf *model.Media
 	case strings.EqualFold(pattern, "embedded"):
 		return fromEmbedded(ctx, mf)
 	case strings.HasPrefix(pattern, "."):
-		return fromExternalFile(ctx, mf, strings.ToLower(pattern))
+		return fromExternalFile(ctx, mf, pattern)
 	default:
 		return l.fromPlugin(ctx, mf, pattern)
 	}

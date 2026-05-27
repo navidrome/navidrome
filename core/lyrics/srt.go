@@ -10,7 +10,10 @@ import (
 	"github.com/navidrome/navidrome/utils/str"
 )
 
-var srtTimeRegex = regexp.MustCompile(`^\s*(\d{1,2}):(\d{2}):(\d{2})[,.](\d{1,3})\s*$`)
+var (
+	srtTimeRegex           = regexp.MustCompile(`^\s*(\d{1,2}):(\d{2}):(\d{2})[,.](\d{1,3})\s*$`)
+	srtBlockSeparatorRegex = regexp.MustCompile(`\n\s*\n`)
+)
 
 func parseSRT(contents []byte) (model.LyricList, error) {
 	return parseSRTWithLanguage(contents, "xxx")
@@ -51,7 +54,7 @@ func splitSRTBlocks(raw string) []string {
 		return nil
 	}
 
-	parts := strings.Split(raw, "\n\n")
+	parts := srtBlockSeparatorRegex.Split(raw, -1)
 	blocks := make([]string, 0, len(parts))
 	for _, part := range parts {
 		part = strings.TrimSpace(part)

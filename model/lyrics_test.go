@@ -139,6 +139,15 @@ var _ = Describe("ToLyrics", func() {
 		Expect(line1.Cue[1].End).To(BeNil())
 	})
 
+	It("should not parse malformed Enhanced LRC timing markers", func() {
+		lyrics, err := ToLyrics("xxx", "[00:01.00]<00:01a50>Not a marker")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(lyrics.Synced).To(BeTrue())
+		Expect(lyrics.Line).To(Equal([]Line{
+			{Start: new(int64(1000)), Value: "<00:01a50>Not a marker"},
+		}))
+	})
+
 	It("should ignore Enhanced LRC markers and return plain lines when no markers present", func() {
 		a, b := int64(1000), int64(3000)
 		lyrics, err := ToLyrics("xxx", "[00:01.00]Plain line\n[00:03.00]Another plain line")
@@ -188,5 +197,32 @@ var _ = Describe("ToLyrics", func() {
 			{Start: &t1300, Value: " me ", ByteStart: 7, ByteEnd: 10},
 			{Start: &t1600, Value: "tonight", ByteStart: 11, ByteEnd: 17},
 		}))
+	})
+})
+
+var _ = Describe("NormalizeCueLines", func() {
+	It("should not mutate caller cue slices when filling missing cue end times", func() {
+		start0, start1, nextLineStart := int64(1000), int64(1500), int64(3000)
+		lines := []Line{
+			{
+				Start: &start0,
+				Value: "Some lyrics",
+				Cue: []Cue{
+					{Start: &start0, Value: "Some ", ByteStart: 0, ByteEnd: 4},
+					{Start: &start1, Value: "lyrics", ByteStart: 5, ByteEnd: 10},
+				},
+			},
+			{
+				Start: &nextLineStart,
+				Value: "Next line",
+			},
+		}
+
+		normalized := NormalizeCueLines(lines)
+
+		Expect(normalized[0].Cue[0].End).To(Equal(&start1))
+		Expect(normalized[0].Cue[1].End).To(Equal(&nextLineStart))
+		Expect(lines[0].Cue[0].End).To(BeNil())
+		Expect(lines[0].Cue[1].End).To(BeNil())
 	})
 })

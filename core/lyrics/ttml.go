@@ -816,6 +816,20 @@ func contextHasRole(roles string, role string) bool {
 	return false
 }
 
+func appendTTMLRoles(existing string, roles string) string {
+	for _, role := range strings.Fields(roles) {
+		if contextHasRole(existing, role) {
+			continue
+		}
+		if existing == "" {
+			existing = role
+		} else {
+			existing += " " + role
+		}
+	}
+	return existing
+}
+
 func (p *ttmlParser) addMainLine(lang string, lineKey string, line model.Line) {
 	lang = normalizeTTMLLang(lang)
 	if _, ok := p.mainLinesByLang[lang]; !ok {
@@ -866,11 +880,7 @@ func (p *ttmlParser) childContext(attrs []xml.Attr, parent ttmlTimingContext) tt
 	if role, ok := attrValue(attrs, "role"); ok {
 		role = strings.TrimSpace(role)
 		if role != "" {
-			if ctx.role == "" {
-				ctx.role = role
-			} else if !strings.Contains(ctx.role, role) {
-				ctx.role = ctx.role + " " + role
-			}
+			ctx.role = appendTTMLRoles(ctx.role, role)
 		}
 	}
 

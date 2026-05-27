@@ -145,6 +145,30 @@ var _ = Describe("parseTTML", func() {
 			Expect(line.Cue[2]).To(Equal(model.Cue{Start: ptr(int64(2000)), End: ptr(int64(2500)), Value: "echo", ByteStart: 6, ByteEnd: 9, AgentID: "__nd_bg__|main"}))
 		})
 
+		It("should append role tokens exactly instead of using substring matches", func() {
+			content := []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata">
+  <body xml:lang="eng">
+    <div>
+      <p begin="00:01.000" end="00:03.000" ttm:role="not-x-bg"><span begin="00:01.000" end="00:01.400">Lead</span><span ttm:role="x-bg"><span begin="00:02.000" end="00:02.500">Echo</span></span></p>
+    </div>
+  </body>
+</tt>`)
+
+			list, err := parseTTML(content)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(HaveLen(1))
+			Expect(list[0].Agents).To(Equal([]model.Agent{
+				{ID: "main", Role: "main"},
+				{ID: "__nd_bg__|main", Role: "bg"},
+			}))
+			Expect(list[0].Line).To(HaveLen(1))
+			Expect(list[0].Line[0].Cue).To(HaveLen(2))
+			Expect(list[0].Line[0].Cue[0].AgentID).To(Equal("main"))
+			Expect(list[0].Line[0].Cue[1].AgentID).To(Equal("__nd_bg__|main"))
+		})
+
 		It("should parse named TTML agents into main, voice, and group roles", func() {
 			content := []byte(`<?xml version="1.0" encoding="UTF-8"?>
 <tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata">

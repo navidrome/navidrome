@@ -46,7 +46,7 @@ type Lyrics struct {
 }
 
 // support the standard [mm:ss.mm], as well as [hh:*] and [*.mmm]
-const timeRegexString = `\[([0-9]{1,2}:)?([0-9]{1,2}):([0-9]{1,2})(.[0-9]{1,3})?\]`
+const timeRegexString = `\[([0-9]{1,2}:)?([0-9]{1,2}):([0-9]{1,2})(\.[0-9]{1,3})?\]`
 
 var (
 	// Should either be at the beginning of file, or beginning of line
@@ -55,7 +55,7 @@ var (
 	lrcIdRegex = regexp.MustCompile(`\[(ar|ti|offset|lang):([^]]+)]`)
 
 	// Enhanced LRC: inline word-level timing markers like <00:12.34>
-	enhancedLRCTimeString = `<([0-9]{1,2}:)?([0-9]{1,2}):([0-9]{1,2})(.[0-9]{1,3})?>`
+	enhancedLRCTimeString = `<([0-9]{1,2}:)?([0-9]{1,2}):([0-9]{1,2})(\.[0-9]{1,3})?>`
 	enhancedLRCRegex      = regexp.MustCompile(enhancedLRCTimeString)
 )
 
@@ -378,6 +378,10 @@ func NormalizeCueLines(lines []Line) []Line {
 	copy(normalized, lines)
 
 	for i := range normalized {
+		if len(normalized[i].Cue) > 0 {
+			normalized[i].Cue = slices.Clone(normalized[i].Cue)
+		}
+
 		var fallbackEnd *int64
 		if normalized[i].End != nil {
 			v := *normalized[i].End

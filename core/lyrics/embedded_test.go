@@ -120,6 +120,19 @@ Another subtitle line`
 		}))
 	})
 
+	It("should parse embedded SRT blocks separated by whitespace-only blank lines", func() {
+		content := "1\n00:00:01,000 --> 00:00:02,000\nFirst subtitle\n   \n2\n00:00:03,000 --> 00:00:04,000\nSecond subtitle"
+
+		list, err := ParseEmbedded("eng", content)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(list).To(HaveLen(1))
+		Expect(list[0].Line).To(Equal([]model.Line{
+			{Start: ptr(int64(1000)), End: ptr(int64(2000)), Value: "First subtitle"},
+			{Start: ptr(int64(3000)), End: ptr(int64(4000)), Value: "Second subtitle"},
+		}))
+	})
+
 	It("should keep embedded enhanced LRC cues", func() {
 		content := "[00:01.00]<00:01.00>Lead <00:01.50>words"
 

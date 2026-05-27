@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -190,6 +191,37 @@ var _ = Describe("sources", func() {
 		})
 		Expect(err).To(BeNil())
 		Expect(list).To(Equal(ttmlLyrics))
+	})
+
+	It("preserves configured sidecar suffix casing on case-sensitive filesystems", func() {
+		dir, err := os.MkdirTemp("", "lyrics-case-*")
+		Expect(err).ToNot(HaveOccurred())
+		DeferCleanup(func() {
+			Expect(os.RemoveAll(dir)).To(Succeed())
+		})
+
+		probe := filepath.Join(dir, "CASECHECK")
+		Expect(os.WriteFile(probe, []byte("probe"), 0644)).To(Succeed())
+		_, err = os.Stat(filepath.Join(dir, "casecheck"))
+		if err == nil {
+			Skip("filesystem is case-insensitive")
+		}
+		Expect(os.IsNotExist(err)).To(BeTrue())
+
+		conf.Server.LyricsPriority = ".LRC"
+		Expect(os.WriteFile(filepath.Join(dir, "song.LRC"), []byte("[00:01.00]Upper suffix"), 0644)).To(Succeed())
+
+		svc := lyrics.NewLyrics(nil)
+		list, err := svc.GetLyrics(ctx, &model.MediaFile{
+			LibraryPath: dir,
+			Path:        "song.mp3",
+		})
+
+		Expect(err).To(BeNil())
+		Expect(list).To(HaveLen(1))
+		Expect(list[0].Line).To(Equal([]model.Line{
+			{Start: ptr(int64(1000)), Value: "Upper suffix"},
+		}))
 	})
 
 	Context("Errors", func() {
