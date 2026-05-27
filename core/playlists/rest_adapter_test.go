@@ -218,6 +218,72 @@ var _ = Describe("REST Adapter", func() {
 				err := repo.Update("nonexistent", pls)
 				Expect(err).To(Equal(rest.ErrNotFound))
 			})
+
+			// Regression tests for #5541: partial REST updates (e.g. bulk "Make Public")
+			// must only touch the fields the client actually sent. The cols list from
+			// rest.Put names those fields; fields outside it must be left alone, even
+			// when the deserialized entity has zero values for them.
+			Context("with partial updates (cols)", func() {
+				BeforeEach(func() {
+					ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+					mockPlsRepo.Data["partial"] = &model.Playlist{
+						ID:      "partial",
+						Name:    "Original Name",
+						Comment: "Original comment",
+						OwnerID: "user-1",
+						Public:  false,
+					}
+				})
+
+				It("preserves name and comment when only public is sent (bulk Make Public)", func() {
+					repo = ps.NewRepository(ctx).(rest.Persistable)
+					err := repo.Update("partial", &model.Playlist{Public: true}, "public")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(mockPlsRepo.Last.Name).To(Equal("Original Name"))
+					Expect(mockPlsRepo.Last.Comment).To(Equal("Original comment"))
+					Expect(mockPlsRepo.Last.Public).To(BeTrue())
+				})
+
+				It("preserves name when only sync is sent for a file-backed playlist", func() {
+					mockPlsRepo.Data["file-partial"] = &model.Playlist{
+						ID:      "file-partial",
+						Name:    "Keep Me",
+						OwnerID: "user-1",
+						Path:    "/music/p.m3u",
+						Sync:    true,
+					}
+					repo = ps.NewRepository(ctx).(rest.Persistable)
+					err := repo.Update("file-partial", &model.Playlist{Sync: false}, "sync")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(mockPlsRepo.Last.Name).To(Equal("Keep Me"))
+					Expect(mockPlsRepo.Last.Sync).To(BeFalse())
+				})
+
+				It("renames the playlist when only name is sent", func() {
+					repo = ps.NewRepository(ctx).(rest.Persistable)
+					err := repo.Update("partial", &model.Playlist{Name: "Renamed"}, "name")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(mockPlsRepo.Last.Name).To(Equal("Renamed"))
+					Expect(mockPlsRepo.Last.Comment).To(Equal("Original comment"))
+					Expect(mockPlsRepo.Last.Public).To(BeFalse())
+				})
+
+				It("clears the comment when an empty comment is sent explicitly", func() {
+					repo = ps.NewRepository(ctx).(rest.Persistable)
+					err := repo.Update("partial", &model.Playlist{Comment: ""}, "comment")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(mockPlsRepo.Last.Comment).To(BeEmpty())
+					Expect(mockPlsRepo.Last.Name).To(Equal("Original Name"))
+				})
+
+				It("does not treat a missing ownerId as an ownership transfer attempt", func() {
+					// A non-admin user sending only {public:true} should not be blocked
+					// just because OwnerID is the zero value in the deserialized entity.
+					repo = ps.NewRepository(ctx).(rest.Persistable)
+					err := repo.Update("partial", &model.Playlist{Public: true}, "public")
+					Expect(err).ToNot(HaveOccurred())
+				})
+			})
 		})
 
 		Describe("Delete", func() {

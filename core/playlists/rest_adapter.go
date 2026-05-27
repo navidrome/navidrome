@@ -9,6 +9,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 // --- REST adapter (follows Share/Library pattern) ---
@@ -34,8 +35,8 @@ func (r *playlistRepositoryWrapper) Save(entity any) (string, error) {
 	return r.service.savePlaylist(r.ctx, entity.(*model.Playlist))
 }
 
-func (r *playlistRepositoryWrapper) Update(id string, entity any, _ ...string) error {
-	return r.service.updatePlaylistEntity(r.ctx, id, entity.(*model.Playlist))
+func (r *playlistRepositoryWrapper) Update(id string, entity any, cols ...string) error {
+	return r.service.updatePlaylistEntity(r.ctx, id, entity.(*model.Playlist), cols...)
 }
 
 func (r *playlistRepositoryWrapper) Delete(id string) error {
@@ -79,7 +80,15 @@ func (s *playlists) savePlaylist(ctx context.Context, pls *model.Playlist) (stri
 
 // updatePlaylistEntity updates playlist metadata with permission checks.
 // Used by the REST API wrapper.
-func (s *playlists) updatePlaylistEntity(ctx context.Context, id string, entity *model.Playlist) error {
+//
+// cols names the fields the client actually sent in the JSON body (extracted by
+// rest.Put). When non-empty, fields outside cols are not considered changed and
+// are left untouched — this prevents partial requests like bulk "Make Public"
+// (body: {"public": true}) from wiping fields that just happen to be zero in
+// the deserialized entity (see issue #5541). An empty cols means "treat the
+// entity as a complete record" — preserved for callers that don't use the REST
+// wrapper.
+func (s *playlists) updatePlaylistEntity(ctx context.Context, id string, entity *model.Playlist, cols ...string) error {
 	current, err := s.checkWritable(ctx, id)
 	if err != nil {
 		switch {
@@ -91,41 +100,87 @@ func (s *playlists) updatePlaylistEntity(ctx context.Context, id string, entity 
 			return err
 		}
 	}
+
+	sent := sentFields(cols)
+
 	usr, _ := request.UserFrom(ctx)
-	if !usr.IsAdmin && entity.OwnerID != "" && entity.OwnerID != current.OwnerID {
+	ownerChanged := sent("ownerId") && entity.OwnerID != "" && entity.OwnerID != current.OwnerID
+	if !usr.IsAdmin && ownerChanged {
 		return rest.ErrPermissionDenied
 	}
 
-	contentChanged := entity.Name != current.Name ||
-		entity.Comment != current.Comment ||
-		(entity.OwnerID != "" && entity.OwnerID != current.OwnerID) ||
-		!rulesEqual(current.Rules, entity.Rules)
+	nameChanged := sent("name") && entity.Name != current.Name
+	commentChanged := sent("comment") && entity.Comment != current.Comment
+	rulesChanged := sent("rules") && !rulesEqual(current.Rules, entity.Rules)
 
-	if contentChanged {
-		if entity.OwnerID != "" {
-			current.OwnerID = entity.OwnerID
-		}
+	if nameChanged || commentChanged || ownerChanged || rulesChanged {
+		return s.applyContentUpdate(ctx, current, entity, sent,
+			nameChanged, commentChanged, ownerChanged, rulesChanged)
+	}
+	return s.applyFlagsOnly(ctx, current, entity, sent)
+}
+
+// applyContentUpdate handles updates that change at least one of name/comment/
+// owner/rules — the path that goes through updateMetadata and may rewrite the
+// backing M3U file. Pointer args are nil for fields not present in the request.
+func (s *playlists) applyContentUpdate(ctx context.Context, current, entity *model.Playlist,
+	sent func(string) bool, nameChanged, commentChanged, ownerChanged, rulesChanged bool,
+) error {
+	if ownerChanged {
+		current.OwnerID = entity.OwnerID
+	}
+	if rulesChanged {
 		current.Rules = entity.Rules
-		if current.Path != "" && current.Sync != entity.Sync {
-			current.Sync = entity.Sync
-		}
-		return s.updateMetadata(ctx, s.ds, current, &entity.Name, &entity.Comment, &entity.Public)
 	}
-
-	// Only sync/public changed — skip updatedAt so cover art URLs stay stable
-	var cols []string
-	if current.Path != "" && current.Sync != entity.Sync {
+	if sent("sync") && current.Path != "" && current.Sync != entity.Sync {
 		current.Sync = entity.Sync
-		cols = append(cols, "sync")
 	}
-	if current.Public != entity.Public {
+	var namePtr, commentPtr *string
+	var publicPtr *bool
+	if nameChanged {
+		namePtr = &entity.Name
+	}
+	if commentChanged {
+		commentPtr = &entity.Comment
+	}
+	if sent("public") {
+		publicPtr = &entity.Public
+	}
+	return s.updateMetadata(ctx, s.ds, current, namePtr, commentPtr, publicPtr)
+}
+
+// applyFlagsOnly handles updates that only toggle sync/public — skips
+// updatedAt so cover art URLs stay stable.
+func (s *playlists) applyFlagsOnly(ctx context.Context, current, entity *model.Playlist,
+	sent func(string) bool,
+) error {
+	var updateCols []string
+	if sent("sync") && current.Path != "" && current.Sync != entity.Sync {
+		current.Sync = entity.Sync
+		updateCols = append(updateCols, "sync")
+	}
+	if sent("public") && current.Public != entity.Public {
 		current.Public = entity.Public
-		cols = append(cols, "public")
+		updateCols = append(updateCols, "public")
 	}
-	if len(cols) == 0 {
+	if len(updateCols) == 0 {
 		return nil
 	}
-	return s.ds.Playlist(ctx).Put(current, cols...)
+	return s.ds.Playlist(ctx).Put(current, updateCols...)
+}
+
+// sentFields returns a predicate that reports whether a JSON field was present
+// in the request body. An empty cols list means "treat the entity as a full
+// record" — every field is considered sent.
+func sentFields(cols []string) func(string) bool {
+	if len(cols) == 0 {
+		return func(string) bool { return true }
+	}
+	set := slice.ToMap(cols, func(c string) (string, struct{}) { return c, struct{}{} })
+	return func(field string) bool {
+		_, ok := set[field]
+		return ok
+	}
 }
 
 func rulesEqual(a, b *criteria.Criteria) bool {
