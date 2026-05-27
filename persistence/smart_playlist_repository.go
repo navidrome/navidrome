@@ -92,13 +92,9 @@ func (r *playlistRepository) shouldRefreshSmartPlaylist(pls *model.Playlist, usr
 func (r *playlistRepository) refreshChildPlaylists(pls *model.Playlist, rulesSQL smartPlaylistCriteria) bool {
 	childPlaylistIds := rulesSQL.ChildPlaylistIds()
 
-	if len(childPlaylistIds) == 0 {
-		return true
-	}
-
 	pls.NormalizeChildPaths()
 	childPlaylistPaths := rulesSQL.ChildPlaylistPaths()
-	if len(childPlaylistPaths) == 0 {
+	if len(childPlaylistIds) == 0 && len(childPlaylistPaths) == 0 {
 		return true
 	}
 
