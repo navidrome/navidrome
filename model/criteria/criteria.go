@@ -79,11 +79,14 @@ func (c Criteria) ChildPlaylistPaths() []string {
 		return nil
 	}
 
-	if parent := c.Expression.(interface{ ChildPlaylistPaths() (paths []string) }); parent != nil {
-		return parent.ChildPlaylistPaths()
+	parent, ok := c.Expression.(interface{ ChildPlaylistPaths() []string })
+	if !ok {
+		return nil
 	}
 
-	return nil
+	paths := parent.ChildPlaylistPaths()
+	slices.Sort(paths)
+	return slices.Compact(paths)
 }
 
 func (c Criteria) MarshalJSON() ([]byte, error) {
