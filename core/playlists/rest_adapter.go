@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"strings"
 
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/model"
@@ -126,8 +127,10 @@ func (s *playlists) updatePlaylistEntity(ctx context.Context, id string, entity 
 
 // applyContentUpdate handles updates that change at least one of name/comment/
 // owner/rules. It goes through updateMetadata, which always bumps updatedAt
-// (invalidating cached cover-art URLs). Pointer args are nil for fields not
-// present in the request.
+// (invalidating cached cover-art URLs). namePtr/commentPtr are nil when the
+// field is absent from the request OR present-but-unchanged (so updateMetadata
+// skips them); publicPtr is nil only when public is absent from the request
+// (an idempotent public value is still forwarded).
 func (s *playlists) applyContentUpdate(ctx context.Context, current, entity *model.Playlist,
 	sent func(string) bool, nameChanged, commentChanged, ownerChanged, rulesChanged bool,
 ) error {
@@ -175,15 +178,17 @@ func (s *playlists) applyFlagsOnly(ctx context.Context, current, entity *model.P
 }
 
 // sentFields returns a predicate that reports whether a JSON field was present
-// in the request body. An empty cols list means "treat the entity as a full
-// record" — every field is considered sent.
+// in the request body. Matching is case-insensitive to mirror Go's json
+// decoder, which populates struct fields from case-variant keys like
+// {"Name":"x"} or {"OWNERID":"y"}. An empty cols list means "treat the entity
+// as a full record" — every field is considered sent.
 func sentFields(cols []string) func(string) bool {
 	if len(cols) == 0 {
 		return func(string) bool { return true }
 	}
-	set := slice.ToMap(cols, func(c string) (string, struct{}) { return c, struct{}{} })
+	set := slice.ToMap(cols, func(c string) (string, struct{}) { return strings.ToLower(c), struct{}{} })
 	return func(field string) bool {
-		_, ok := set[field]
+		_, ok := set[strings.ToLower(field)]
 		return ok
 	}
 }

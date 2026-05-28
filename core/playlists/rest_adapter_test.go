@@ -367,6 +367,18 @@ var _ = Describe("REST Adapter", func() {
 					err := repo.Update("partial", &model.Playlist{Public: true}, "public")
 					Expect(err).ToNot(HaveOccurred())
 				})
+
+				It("matches cols case-insensitively (mirrors json decoder behavior)", func() {
+					// Go's json decoder populates struct fields from case-variant keys
+					// like {"Name":"x"}, but rest.Put's field-name extraction is
+					// case-sensitive. sentFields normalizes both sides so a request
+					// with {"Name":"Renamed"} is honored, not silently ignored.
+					repo = ps.NewRepository(ctx).(rest.Persistable)
+					err := repo.Update("partial", &model.Playlist{Name: "Renamed"}, "Name")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(mockPlsRepo.Last.Name).To(Equal("Renamed"))
+					Expect(mockPlsRepo.Last.Comment).To(Equal("Original comment"))
+				})
 			})
 		})
 
