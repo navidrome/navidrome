@@ -125,17 +125,24 @@ var _ = Describe("REST Adapter", func() {
 				Expect(err).To(Equal(rest.ErrPermissionDenied))
 			})
 
-			It("denies regular user even when ownerId arrives under a case-variant JSON key", func() {
-				// rest.Put's field-name extraction is case-sensitive, but Go's json
-				// decoder is case-insensitive on struct fields, so {"OwnerId":"x"}
-				// populates entity.OwnerID while cols carries "OwnerId" instead of
-				// "ownerId". The permission gate must still fire.
-				ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
-				repo = ps.NewRepository(ctx).(rest.Persistable)
-				pls := &model.Playlist{OwnerID: "other-user"}
-				err := repo.Update("pls-1", pls, "OwnerId")
-				Expect(err).To(Equal(rest.ErrPermissionDenied))
-			})
+			DescribeTable("denies regular user from changing ownership under any case-variant JSON key",
+				func(colName string) {
+					// rest.Put's field-name extraction is case-sensitive, but Go's
+					// json decoder is case-insensitive on struct fields, so any
+					// {"OwnerId":"x"} / {"OWNERID":"x"} / {"ownerid":"x"} populates
+					// entity.OwnerID. sentFields normalizes both sides so the
+					// permission gate fires regardless of casing.
+					ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+					repo = ps.NewRepository(ctx).(rest.Persistable)
+					pls := &model.Playlist{OwnerID: "other-user"}
+					err := repo.Update("pls-1", pls, colName)
+					Expect(err).To(Equal(rest.ErrPermissionDenied))
+				},
+				Entry("canonical camelCase", "ownerId"),
+				Entry("PascalCase", "OwnerId"),
+				Entry("all upper", "OWNERID"),
+				Entry("all lower", "ownerid"),
+			)
 
 			It("updates smart playlist rules", func() {
 				mockPlsRepo.Data["smart-1"] = &model.Playlist{

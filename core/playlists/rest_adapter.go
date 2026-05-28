@@ -106,11 +106,7 @@ func (s *playlists) updatePlaylistEntity(ctx context.Context, id string, entity 
 
 	usr, _ := request.UserFrom(ctx)
 	ownerChanged := sent("ownerId") && entity.OwnerID != "" && entity.OwnerID != current.OwnerID
-	// Permission check uses the deserialized entity directly (not gated by `sent`)
-	// so a non-admin can't smuggle in an owner change via a case-variant JSON key
-	// like {"OwnerId":"x"} — Go's json decoder is case-insensitive on field match
-	// but rest.Put's field-name extraction is case-sensitive.
-	if !usr.IsAdmin && entity.OwnerID != "" && entity.OwnerID != current.OwnerID {
+	if !usr.IsAdmin && ownerChanged {
 		return rest.ErrPermissionDenied
 	}
 
