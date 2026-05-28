@@ -2,7 +2,9 @@ package conf_test
 
 import (
 	"os"
+	"sync"
 
+	"github.com/kr/pretty"
 	"github.com/navidrome/navidrome/conf"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -35,9 +37,9 @@ var _ = Describe("Dir", func() {
 			Expect(target).To(BeADirectory())
 		})
 
-		It("returns the same result on subsequent calls (sync.Once)", func() {
+		It("is idempotent on subsequent calls", func() {
 			dir := GinkgoT().TempDir()
-			target := dir + "/once"
+			target := dir + "/idempotent"
 			d := conf.NewDir(target)
 
 			path1, err1 := d.Path()
@@ -45,6 +47,7 @@ var _ = Describe("Dir", func() {
 			Expect(err1).ToNot(HaveOccurred())
 			Expect(err2).ToNot(HaveOccurred())
 			Expect(path1).To(Equal(path2))
+			Expect(target).To(BeADirectory())
 		})
 
 		It("returns an error when directory cannot be created", func() {
@@ -122,6 +125,40 @@ var _ = Describe("Dir", func() {
 			err = d2.UnmarshalText(b)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(d2.String()).To(Equal(d1.String()))
+		})
+	})
+
+	Describe("GoString", func() {
+		// Regression: pretty.Sprintf("%# v", ...) is used by the
+		// configuration dump. It must render Dir as a quoted path via
+		// GoString, not dump the internal struct fields.
+		It("renders Dir as a quoted path under pretty.Sprintf", func() {
+			type host struct {
+				DataFolder conf.Dir
+			}
+			h := host{DataFolder: conf.NewDir("./data")}
+			out := pretty.Sprintf("%# v", h)
+			Expect(out).To(ContainSubstring(`DataFolder: "./data"`))
+			Expect(out).ToNot(ContainSubstring("perm:"))
+			Expect(out).ToNot(ContainSubstring("path:"))
+		})
+
+		It("is safe to copy and use concurrently", func() {
+			// Regression for the Windows "sync: unlock of unlocked mutex"
+			// crash that was caused by copying a Dir embedding sync.Once.
+			// Dir is a plain value type now, but keep the concurrent stress
+			// test to lock in the property.
+			dir := GinkgoT().TempDir()
+			d := conf.NewDir(dir + "/race")
+			var wg sync.WaitGroup
+			for range 10 {
+				wg.Go(func() {
+					copy1 := d
+					_ = pretty.Sprintf("%# v", copy1)
+					_, _ = copy1.Path()
+				})
+			}
+			wg.Wait()
 		})
 	})
 })
