@@ -125,6 +125,25 @@ var _ = Describe("REST Adapter", func() {
 				Expect(err).To(Equal(rest.ErrPermissionDenied))
 			})
 
+			DescribeTable("denies regular user from changing ownership under any case-variant JSON key",
+				func(colName string) {
+					// rest.Put's field-name extraction is case-sensitive, but Go's
+					// json decoder is case-insensitive on struct fields, so any
+					// {"OwnerId":"x"} / {"OWNERID":"x"} / {"ownerid":"x"} populates
+					// entity.OwnerID. sentFields normalizes both sides so the
+					// permission gate fires regardless of casing.
+					ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+					repo = ps.NewRepository(ctx).(rest.Persistable)
+					pls := &model.Playlist{OwnerID: "other-user"}
+					err := repo.Update("pls-1", pls, colName)
+					Expect(err).To(Equal(rest.ErrPermissionDenied))
+				},
+				Entry("canonical camelCase", "ownerId"),
+				Entry("PascalCase", "OwnerId"),
+				Entry("all upper", "OWNERID"),
+				Entry("all lower", "ownerid"),
+			)
+
 			It("updates smart playlist rules", func() {
 				mockPlsRepo.Data["smart-1"] = &model.Playlist{
 					ID:      "smart-1",
@@ -217,6 +236,156 @@ var _ = Describe("REST Adapter", func() {
 				pls := &model.Playlist{Name: "Updated"}
 				err := repo.Update("nonexistent", pls)
 				Expect(err).To(Equal(rest.ErrNotFound))
+			})
+
+			// Regression tests for #5541: partial REST updates (e.g. bulk "Make Public")
+			// must only touch the fields the client actually sent. The cols list from
+			// rest.Put names those fields; fields outside it must be left alone, even
+			// when the deserialized entity has zero values for them.
+			Context("with partial updates (cols)", func() {
+				BeforeEach(func() {
+					ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+					mockPlsRepo.Data["partial"] = &model.Playlist{
+						ID:      "partial",
+						Name:    "Original Name",
+						Comment: "Original comment",
+						OwnerID: "user-1",
+						Public:  false,
+					}
+				})
+
+				It("preserves name and comment when only public is sent (bulk Make Public)", func() {
+					repo = ps.NewRepository(ctx).(rest.Persistable)
+					err := repo.Update("partial", &model.Playlist{Public: true}, "public")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(mockPlsRepo.Last.Name).To(Equal("Original Name"))
+					Expect(mockPlsRepo.Last.Comment).To(Equal("Original comment"))
+					Expect(mockPlsRepo.Last.Public).To(BeTrue())
+				})
+
+				It("preserves name when only sync is sent for a file-backed playlist", func() {
+					mockPlsRepo.Data["file-partial"] = &model.Playlist{
+						ID:      "file-partial",
+						Name:    "Keep Me",
+						OwnerID: "user-1",
+						Path:    "/music/p.m3u",
+						Sync:    true,
+					}
+					repo = ps.NewRepository(ctx).(rest.Persistable)
+					err := repo.Update("file-partial", &model.Playlist{Sync: false}, "sync")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(mockPlsRepo.Last.Name).To(Equal("Keep Me"))
+					Expect(mockPlsRepo.Last.Sync).To(BeFalse())
+				})
+
+				It("renames the playlist when only name is sent", func() {
+					repo = ps.NewRepository(ctx).(rest.Persistable)
+					err := repo.Update("partial", &model.Playlist{Name: "Renamed"}, "name")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(mockPlsRepo.Last.Name).To(Equal("Renamed"))
+					Expect(mockPlsRepo.Last.Comment).To(Equal("Original comment"))
+					Expect(mockPlsRepo.Last.Public).To(BeFalse())
+				})
+
+				It("clears the comment when an empty comment is sent explicitly", func() {
+					repo = ps.NewRepository(ctx).(rest.Persistable)
+					err := repo.Update("partial", &model.Playlist{Comment: ""}, "comment")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(mockPlsRepo.Last.Comment).To(BeEmpty())
+					Expect(mockPlsRepo.Last.Name).To(Equal("Original Name"))
+				})
+
+				It("updates rules-only on a smart playlist (Feishin-style edit)", func() {
+					mockPlsRepo.Data["smart-partial"] = &model.Playlist{
+						ID:      "smart-partial",
+						Name:    "Smart Original",
+						Comment: "smart comment",
+						OwnerID: "user-1",
+						Public:  true,
+						Rules:   &criteria.Criteria{Expression: criteria.Is{"genre": "Rock"}},
+					}
+					repo = ps.NewRepository(ctx).(rest.Persistable)
+					newRules := &criteria.Criteria{Expression: criteria.Is{"genre": "Jazz"}, Sort: "year DESC"}
+					err := repo.Update("smart-partial", &model.Playlist{Rules: newRules}, "rules")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(mockPlsRepo.Last.Rules).To(Equal(newRules))
+					Expect(mockPlsRepo.Last.Name).To(Equal("Smart Original"))
+					Expect(mockPlsRepo.Last.Comment).To(Equal("smart comment"))
+					Expect(mockPlsRepo.Last.Public).To(BeTrue())
+				})
+
+				It("updates name and rules together (smart-playlist Edit form)", func() {
+					mockPlsRepo.Data["smart-edit"] = &model.Playlist{
+						ID:      "smart-edit",
+						Name:    "Smart Original",
+						Comment: "smart comment",
+						OwnerID: "user-1",
+						Rules:   &criteria.Criteria{Expression: criteria.Is{"genre": "Rock"}},
+					}
+					repo = ps.NewRepository(ctx).(rest.Persistable)
+					newRules := &criteria.Criteria{Expression: criteria.Is{"artist": "Miles Davis"}, Sort: "album"}
+					err := repo.Update("smart-edit",
+						&model.Playlist{Name: "Smart Renamed", Rules: newRules},
+						"name", "rules")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(mockPlsRepo.Last.Name).To(Equal("Smart Renamed"))
+					Expect(mockPlsRepo.Last.Rules).To(Equal(newRules))
+					Expect(mockPlsRepo.Last.Comment).To(Equal("smart comment"))
+				})
+
+				It("does not bump the saved rules on an idempotent rules-only PUT", func() {
+					rules := &criteria.Criteria{Expression: criteria.Is{"genre": "Rock"}}
+					mockPlsRepo.Data["smart-idempotent"] = &model.Playlist{
+						ID:      "smart-idempotent",
+						Name:    "Smart Idempotent",
+						OwnerID: "user-1",
+						Rules:   rules,
+					}
+					repo = ps.NewRepository(ctx).(rest.Persistable)
+					// Same rules sent back — rulesEqual should report no change and
+					// the request should no-op (no Put call).
+					sameRules := &criteria.Criteria{Expression: criteria.Is{"genre": "Rock"}}
+					err := repo.Update("smart-idempotent", &model.Playlist{Rules: sameRules}, "rules")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(mockPlsRepo.Last).To(BeNil()) // no Put happened
+				})
+
+				It("preserves rules when only public is sent (smart playlist + bulk Make Public)", func() {
+					rules := &criteria.Criteria{Expression: criteria.Is{"genre": "Rock"}}
+					mockPlsRepo.Data["smart-public"] = &model.Playlist{
+						ID:      "smart-public",
+						Name:    "Smart Public",
+						OwnerID: "user-1",
+						Public:  false,
+						Rules:   rules,
+					}
+					repo = ps.NewRepository(ctx).(rest.Persistable)
+					err := repo.Update("smart-public", &model.Playlist{Public: true}, "public")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(mockPlsRepo.Last.Public).To(BeTrue())
+					Expect(mockPlsRepo.Last.Rules).To(Equal(rules))
+					Expect(mockPlsRepo.Last.Name).To(Equal("Smart Public"))
+				})
+
+				It("does not treat a missing ownerId as an ownership transfer attempt", func() {
+					// A non-admin user sending only {public:true} should not be blocked
+					// just because OwnerID is the zero value in the deserialized entity.
+					repo = ps.NewRepository(ctx).(rest.Persistable)
+					err := repo.Update("partial", &model.Playlist{Public: true}, "public")
+					Expect(err).ToNot(HaveOccurred())
+				})
+
+				It("matches cols case-insensitively (mirrors json decoder behavior)", func() {
+					// Go's json decoder populates struct fields from case-variant keys
+					// like {"Name":"x"}, but rest.Put's field-name extraction is
+					// case-sensitive. sentFields normalizes both sides so a request
+					// with {"Name":"Renamed"} is honored, not silently ignored.
+					repo = ps.NewRepository(ctx).(rest.Persistable)
+					err := repo.Update("partial", &model.Playlist{Name: "Renamed"}, "Name")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(mockPlsRepo.Last.Name).To(Equal("Renamed"))
+					Expect(mockPlsRepo.Last.Comment).To(Equal("Original comment"))
+				})
 			})
 		})
 
