@@ -315,7 +315,7 @@ func (c smartPlaylistCriteria) inList(values map[string]any, negate bool) (squir
 	var condition squirrel.Sqlizer
 	if playlistId, ok := values["id"].(string); ok {
 		condition = squirrel.Eq{"pl.playlist_id": playlistId}
-	} else if playlistPath, ok := values["path"].(string); ok {
+	} else if playlistPath, ok := values["path"].(string); ok && playlistPath != "" {
 		condition = squirrel.Eq{"playlist.path": playlistPath}
 	} else {
 		return nil, errors.New("playlist id or path not given")

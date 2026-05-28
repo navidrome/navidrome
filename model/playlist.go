@@ -118,8 +118,8 @@ func (pls Playlist) UploadedImagePath() string {
 	return UploadedImagePath(consts.EntityPlaylist, pls.UploadedImage)
 }
 
-func (pls Playlist) NormalizeChildPaths() {
-	if pls.Rules.Expression == nil {
+func (pls *Playlist) NormalizeChildPaths() {
+	if pls.Rules == nil || pls.Rules.Expression == nil {
 		return
 	}
 
@@ -127,6 +127,10 @@ func (pls Playlist) NormalizeChildPaths() {
 }
 
 func normalizePlaylistPaths(inputRule any, referencingPlaylistPath string) {
+	if referencingPlaylistPath == "" {
+		return
+	}
+
 	switch rule := inputRule.(type) {
 	case criteria.Any:
 		for _, rules := range rule {
@@ -139,6 +143,10 @@ func normalizePlaylistPaths(inputRule any, referencingPlaylistPath string) {
 	case criteria.InPlaylist:
 		dir := filepath.Dir(referencingPlaylistPath)
 		if path, ok := rule["path"].(string); ok {
+			if path == "" {
+				return
+			}
+
 			if !filepath.IsAbs(path) {
 				rule["path"] = filepath.Clean(filepath.Join(dir, path))
 			}
@@ -146,6 +154,10 @@ func normalizePlaylistPaths(inputRule any, referencingPlaylistPath string) {
 	case criteria.NotInPlaylist:
 		dir := filepath.Dir(referencingPlaylistPath)
 		if path, ok := rule["path"].(string); ok {
+			if path == "" {
+				return
+			}
+
 			if !filepath.IsAbs(path) {
 				rule["path"] = filepath.Clean(filepath.Join(dir, path))
 			}

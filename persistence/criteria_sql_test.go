@@ -157,6 +157,13 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 		Expect(err).To(MatchError(ContainSubstring("invalid boolean value for 'missing' expression")))
 	})
 
+	It("returns an error when inPlaylist has empty path", func() {
+		_, err := newSmartPlaylistCriteria(
+			criteria.Criteria{Expression: criteria.InPlaylist{"path": ""}},
+			withSmartPlaylistOwner(model.User{ID: "owner-id", IsAdmin: false})).Where()
+		Expect(err).To(MatchError(ContainSubstring("playlist id or path not given")))
+	})
+
 	Describe("sort", func() {
 		It("sorts by regular fields", func() {
 			Expect(newSmartPlaylistCriteria(criteria.Criteria{Sort: "title"}).OrderBy()).To(Equal("media_file.title asc"))

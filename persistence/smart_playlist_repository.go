@@ -91,13 +91,12 @@ func (r *playlistRepository) shouldRefreshSmartPlaylist(pls *model.Playlist, usr
 // Returns false if child playlists could not be loaded (DB error), signaling the parent refresh should abort.
 func (r *playlistRepository) refreshChildPlaylists(pls *model.Playlist, rulesSQL smartPlaylistCriteria) bool {
 	childPlaylistIds := rulesSQL.ChildPlaylistIds()
-
-	pls.NormalizeChildPaths()
 	childPlaylistPaths := rulesSQL.ChildPlaylistPaths()
 	if len(childPlaylistIds) == 0 && len(childPlaylistPaths) == 0 {
 		return true
 	}
 
+	pls.NormalizeChildPaths()
 	childPlaylists, err := r.GetAll(model.QueryOptions{Filters: Or{Eq{"playlist.id": childPlaylistIds}, Eq{"playlist.path": childPlaylistPaths}}})
 	if err != nil {
 		log.Error(r.ctx, "Error loading child playlists for smart playlist refresh", "playlist", pls.Name, "id", pls.ID, "childIds", childPlaylistIds, err)
@@ -107,7 +106,9 @@ func (r *playlistRepository) refreshChildPlaylists(pls *model.Playlist, rulesSQL
 	found := make(map[string]struct{}, len(childPlaylists)*2)
 	for i := range childPlaylists {
 		found[childPlaylists[i].ID] = struct{}{}
-		found[childPlaylists[i].Path] = struct{}{}
+		if childPlaylists[i].Path != "" {
+			found[childPlaylists[i].Path] = struct{}{}
+		}
 		r.refreshSmartPlaylist(&childPlaylists[i])
 	}
 	for _, id := range childPlaylistIds {
