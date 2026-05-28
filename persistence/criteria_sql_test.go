@@ -269,6 +269,13 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 		Expect(err).To(MatchError(ContainSubstring("invalid boolean value for 'missing' expression")))
 	})
 
+	It("returns an error when inPlaylist has empty path", func() {
+		_, err := newSmartPlaylistCriteria(
+			criteria.Criteria{Expression: criteria.InPlaylist{"path": ""}},
+			withSmartPlaylistOwner(model.User{ID: "owner-id", IsAdmin: false})).where()
+		Expect(err).To(MatchError(ContainSubstring("playlist id or path not given")))
+	})
+
 	It("returns an error for a range over a tag/role field", func() {
 		_, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: criteria.InTheRange{"rate": []int{1, 5}}}).where()
 		Expect(err).To(MatchError(ContainSubstring("range operator not supported for tag/role field")))
