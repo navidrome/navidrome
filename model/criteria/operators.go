@@ -1,5 +1,7 @@
 package criteria
 
+import "github.com/navidrome/navidrome/log"
+
 // Conjunctions need to implement this interface, to allow Criteria to extract child playlist IDs recursively
 type conjunction interface {
 	ChildPlaylistIds() []string
@@ -193,10 +195,14 @@ func extractPlaylistField(inputRule any, field string) (values []string) {
 	case InPlaylist:
 		if value, ok := rule[field].(string); ok {
 			values = append(values, value)
+		} else {
+			log.Warn("Playlist field not a string", field)
 		}
 	case NotInPlaylist:
 		if value, ok := rule[field].(string); ok {
 			values = append(values, value)
+		} else {
+			log.Warn("Playlist field not a string", field)
 		}
 	}
 	return
