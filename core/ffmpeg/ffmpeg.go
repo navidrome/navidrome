@@ -496,8 +496,8 @@ func createFFmpegCommand(cmd, path string, maxBitRate, offset int) []string {
 				// Pre-input seeking: ffmpeg seeks at the demuxer level (fast)
 				// instead of decoding all frames up to the offset (slow).
 				insertAt := len(args)
-				for i := len(args) - 1; i >= 0; i-- {
-					if args[i] == "-i" {
+				for i, arg := range slices.Backward(args) {
+					if arg == "-i" {
 						insertAt = i
 						break
 					}

@@ -129,6 +129,21 @@ var _ = Describe("Metadata", func() {
 
 				Expect(md.Strings(model.TagGenre)).To(Equal([]string{"Rock", "Pop", "Punk"}))
 			})
+
+			// Regression test for https://github.com/navidrome/navidrome/issues/5065
+			//
+			// MP3s with both an ID3v2 TMOO frame and a TXXX:MOOD frame are surfaced by
+			// TagLib's PropertyMap as a single "mood" key with multiple values. The split
+			// configuration must still apply to each value individually.
+			It("should split values from multiple frames mapping to the same tag", func() {
+				props.Tags = model.RawTags{
+					// Same shape as the bug report: two frames, comma-separated content.
+					"mood": {"Love, Emotional, Ballad", "Love; Emotional; Ballad"},
+				}
+				md = metadata.New(filePath, props)
+
+				Expect(md.Strings(model.TagMood)).To(ConsistOf("Love", "Emotional", "Ballad"))
+			})
 		})
 
 		DescribeTable("Date",

@@ -116,7 +116,7 @@ func BenchmarkConcurrentCacheRead(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				var wg sync.WaitGroup
 				wg.Add(n)
-				for g := 0; g < n; g++ {
+				for range n {
 					go func() {
 						defer wg.Done()
 						s, err := fc.Get(context.Background(), item)
@@ -152,7 +152,7 @@ func BenchmarkConcurrentCacheMiss(b *testing.B) {
 				wg.Add(n)
 				// All goroutines request the SAME key (not yet cached)
 				item := &benchItem{key: fmt.Sprintf("miss-%d", i)}
-				for g := 0; g < n; g++ {
+				for range n {
 					go func() {
 						defer wg.Done()
 						s, err := fc.Get(context.Background(), item)

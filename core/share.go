@@ -98,7 +98,7 @@ func (r *shareRepositoryWrapper) Save(entity any) (string, error) {
 		s.ExpiresAt = new(time.Now().Add(conf.Server.DefaultShareExpiration))
 	}
 
-	firstId := strings.SplitN(s.ResourceIDs, ",", 2)[0]
+	firstId, _, _ := strings.Cut(s.ResourceIDs, ",")
 	v, err := model.GetEntityByID(r.ctx, r.ds, firstId)
 	if err != nil {
 		return "", err
