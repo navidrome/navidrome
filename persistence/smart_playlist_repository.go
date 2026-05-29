@@ -31,17 +31,18 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 		return false
 	}
 
-	rulesSQL := newSmartPlaylistCriteria(*pls.Rules, withSmartPlaylistOwner(*usr))
+	normalisedPls := pls.WithNormalizeChildPaths()
+	rulesSQL := newSmartPlaylistCriteria(*normalisedPls.Rules, withSmartPlaylistOwner(*usr))
 
-	if !r.refreshChildPlaylists(pls, rulesSQL) {
+	if !r.refreshChildPlaylists(&normalisedPls, rulesSQL) {
 		return false
 	}
 
-	if err := r.resolvePercentageLimit(pls, &rulesSQL, usr.ID); err != nil {
+	if err := r.resolvePercentageLimit(&normalisedPls, &rulesSQL, usr.ID); err != nil {
 		return false
 	}
 
-	sq := r.buildSmartPlaylistQuery(pls, rulesSQL, usr.ID)
+	sq := r.buildSmartPlaylistQuery(&normalisedPls, rulesSQL, usr.ID)
 	sq, err := r.addCriteria(sq, rulesSQL)
 	if err != nil {
 		log.Error(r.ctx, "Error building smart playlist criteria", "playlist", pls.Name, "id", pls.ID, err)
@@ -96,7 +97,6 @@ func (r *playlistRepository) refreshChildPlaylists(pls *model.Playlist, rulesSQL
 		return true
 	}
 
-	pls.NormalizeChildPaths()
 	childPlaylists, err := r.GetAll(model.QueryOptions{Filters: Or{Eq{"playlist.id": childPlaylistIds}, Eq{"playlist.path": childPlaylistPaths}}})
 	if err != nil {
 		log.Error(r.ctx, "Error loading child playlists for smart playlist refresh", "playlist", pls.Name, "id", pls.ID, "childIds", childPlaylistIds, err)
