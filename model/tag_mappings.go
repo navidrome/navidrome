@@ -47,8 +47,8 @@ func (c TagConf) SplitTagValue(values []string) []string {
 		tag = c.SplitRx.ReplaceAllString(tag, consts.Zwsp)
 
 		// Split by the zero-width space and trim each substring.
-		parts := strings.Split(tag, consts.Zwsp)
-		for _, part := range parts {
+		parts := strings.SplitSeq(tag, consts.Zwsp)
+		for part := range parts {
 			result = append(result, strings.TrimSpace(part))
 		}
 	}

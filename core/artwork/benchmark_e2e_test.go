@@ -169,7 +169,7 @@ func BenchmarkArtworkGetE2EConcurrent(b *testing.B) {
 				for i := 0; i < b.N; i++ {
 					var wg sync.WaitGroup
 					wg.Add(n)
-					for g := 0; g < n; g++ {
+					for range n {
 						go func() {
 							defer wg.Done()
 							r, _, err := aw.Get(context.Background(), artID, 300, true)
