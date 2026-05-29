@@ -99,6 +99,7 @@ var _ = Describe("Playlist", func() {
 						criteria.InPlaylist{"path": "/test/my-test-path.m3u"},
 						criteria.InPlaylist{"path": "../my-test-path.m3u"},
 						criteria.NotInPlaylist{"path": "/not-test/not-my-test-path.m3u"},
+						criteria.Eq{"artist": "Bob Dealin'"},
 						criteria.Any{
 							criteria.InPlaylist{"path": "../../in-the-test.nsp"},
 							criteria.NotInPlaylist{"path": "./sibling.nsp"},
@@ -113,12 +114,13 @@ var _ = Describe("Playlist", func() {
 				},
 				Path: "/test/nested/my-playlist.nsp"}
 
-			pls.NormalizeChildPaths()
-			Expect(pls.Rules).Should(BeEquivalentTo(&criteria.Criteria{
+			newPls := pls.WithNormalizeChildPaths()
+			Expect(newPls.Rules).Should(BeEquivalentTo(&criteria.Criteria{
 				Expression: criteria.All{
 					criteria.InPlaylist{"path": "/test/my-test-path.m3u"},
 					criteria.InPlaylist{"path": "/test/my-test-path.m3u"},
 					criteria.NotInPlaylist{"path": "/not-test/not-my-test-path.m3u"},
+					criteria.Eq{"artist": "Bob Dealin'"},
 					criteria.Any{
 						criteria.InPlaylist{"path": "/in-the-test.nsp"},
 						criteria.NotInPlaylist{"path": "/test/nested/sibling.nsp"},
@@ -142,8 +144,8 @@ var _ = Describe("Playlist", func() {
 				},
 				Path: ""}
 
-			pls.NormalizeChildPaths()
-			Expect(pls.Rules).Should(BeEquivalentTo(&criteria.Criteria{
+			newPls := pls.WithNormalizeChildPaths()
+			Expect(newPls.Rules).Should(BeEquivalentTo(&criteria.Criteria{
 				Expression: criteria.All{
 					criteria.InPlaylist{"path": "../my-test-path.m3u"},
 				},
