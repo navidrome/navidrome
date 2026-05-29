@@ -13,7 +13,6 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
-	"github.com/navidrome/navidrome/utils/gg"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pocketbase/dbx"
@@ -103,7 +102,7 @@ var (
 	songAntenna       = mf(model.MediaFile{ID: "1004", Title: "Antenna", ArtistID: "2", Artist: "Kraftwerk",
 		AlbumID:     "103",
 		Path:        p("kraft/radio/antenna.mp3"),
-		RGAlbumGain: gg.P(1.0), RGAlbumPeak: gg.P(2.0), RGTrackGain: gg.P(3.0), RGTrackPeak: gg.P(4.0),
+		RGAlbumGain: new(1.0), RGAlbumPeak: new(2.0), RGTrackGain: new(3.0), RGTrackPeak: new(4.0),
 	})
 	songAntennaWithLyrics = mf(model.MediaFile{
 		ID:       "1005",
@@ -162,8 +161,6 @@ func p(path string) string {
 	return filepath.FromSlash(path)
 }
 
-// Initialize test DB
-// TODO Load this data setup from file(s)
 var _ = BeforeSuite(func() {
 	conn := GetDBXBuilder()
 	ctx := log.NewContext(context.TODO())
@@ -187,8 +184,7 @@ var _ = BeforeSuite(func() {
 
 	alr := NewAlbumRepository(ctx, conn).(*albumRepository)
 	for i := range testAlbums {
-		a := testAlbums[i]
-		err := alr.Put(&a)
+		err := alr.Put(new(testAlbums[i]))
 		if err != nil {
 			panic(err)
 		}
@@ -196,8 +192,7 @@ var _ = BeforeSuite(func() {
 
 	arr := NewArtistRepository(ctx, conn)
 	for i := range testArtists {
-		a := testArtists[i]
-		err := arr.Put(&a)
+		err := arr.Put(new(testArtists[i]))
 		if err != nil {
 			panic(err)
 		}
@@ -243,8 +238,7 @@ var _ = BeforeSuite(func() {
 
 	rar := NewRadioRepository(ctx, conn)
 	for i := range testRadios {
-		r := testRadios[i]
-		err := rar.Put(&r)
+		err := rar.Put(new(testRadios[i]))
 		if err != nil {
 			panic(err)
 		}

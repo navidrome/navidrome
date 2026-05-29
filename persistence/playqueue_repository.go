@@ -89,8 +89,7 @@ func (r *playQueueRepository) Retrieve(userId string) (*model.PlayQueue, error) 
 	sel := r.newSelect().Columns("*").Where(Eq{"user_id": userId})
 	var res playQueue
 	err := r.queryOne(sel, &res)
-	q := r.toModel(&res)
-	return &q, err
+	return new(r.toModel(&res)), err
 }
 
 func (r *playQueueRepository) fromModel(q *model.PlayQueue) playQueue {

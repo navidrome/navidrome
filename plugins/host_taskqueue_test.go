@@ -367,8 +367,8 @@ var _ = Describe("TaskQueueService", func() {
 
 			// Enqueue several more tasks — they stay pending since the worker is busy
 			var pendingIDs []string
-			for i := 0; i < 3; i++ {
-				taskID, err := service.Enqueue(ctx, "clear-test", []byte(fmt.Sprintf("task-%d", i)))
+			for i := range 3 {
+				taskID, err := service.Enqueue(ctx, "clear-test", fmt.Appendf(nil, "task-%d", i))
 				Expect(err).ToNot(HaveOccurred())
 				pendingIDs = append(pendingIDs, taskID)
 			}
@@ -674,8 +674,8 @@ var _ = Describe("TaskQueueService", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			// Enqueue 5 tasks
-			for i := 0; i < 5; i++ {
-				_, err := service.Enqueue(ctx, "delay-concurrent", []byte(fmt.Sprintf("task-%d", i)))
+			for i := range 5 {
+				_, err := service.Enqueue(ctx, "delay-concurrent", fmt.Appendf(nil, "task-%d", i))
 				Expect(err).ToNot(HaveOccurred())
 			}
 
@@ -1112,7 +1112,7 @@ var _ = Describe("TaskQueueService Integration", Ordered, func() {
 			// the second will be dequeued but block on the rate limiter (status=running),
 			// the rest will stay pending.
 			var taskIDs []string
-			for i := 0; i < 5; i++ {
+			for range 5 {
 				output, err := callTestTaskQueue(ctx, testTaskQueueInput{
 					Operation: "enqueue",
 					QueueName: "test-cancel",
@@ -1186,11 +1186,11 @@ var _ = Describe("TaskQueueService Integration", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			// Enqueue several tasks
-			for i := 0; i < 4; i++ {
+			for i := range 4 {
 				_, err := callTestTaskQueue(ctx, testTaskQueueInput{
 					Operation: "enqueue",
 					QueueName: "test-clear",
-					Payload:   []byte(fmt.Sprintf("task-%d", i)),
+					Payload:   fmt.Appendf(nil, "task-%d", i),
 				})
 				Expect(err).ToNot(HaveOccurred())
 			}

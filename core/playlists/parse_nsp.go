@@ -59,8 +59,7 @@ func (s *playlists) parseNSP(_ context.Context, pls *model.Playlist, reader io.R
 	}
 	err = json.Unmarshal(input, nsp)
 	if err != nil {
-		var syntaxErr *json.SyntaxError
-		if errors.As(err, &syntaxErr) {
+		if syntaxErr, ok := errors.AsType[*json.SyntaxError](err); ok {
 			line, col := getPositionFromOffset(input, syntaxErr.Offset)
 			return fmt.Errorf("JSON syntax error in SmartPlaylist at line %d, column %d: %w", line, col, err)
 		}

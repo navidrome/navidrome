@@ -66,7 +66,7 @@ func normalizeForFTS(values ...string) string {
 		result = append(result, variant)
 	}
 	for _, v := range values {
-		for _, word := range strings.Fields(v) {
+		for word := range strings.FieldsSeq(v) {
 			transliterated := sanitize.Accents(word)
 			// Concatenated ASCII form: R.E.M. → REM, AC/DC → ACDC, St-Étienne → StEtienne.
 			add(word, fts5PunctStrip.ReplaceAllString(transliterated, ""))
@@ -279,9 +279,9 @@ type ftsSearch struct {
 }
 
 // ToSql returns a single-query fallback for the REST filter path (no two-phase split).
-func (s *ftsSearch) ToSql() (string, []interface{}, error) {
+func (s *ftsSearch) ToSql() (string, []any, error) {
 	sql := s.tableName + ".rowid IN (SELECT rowid FROM " + s.ftsTable + " WHERE " + s.ftsTable + " MATCH ?)"
-	return sql, []interface{}{s.matchExpr}, nil
+	return sql, []any{s.matchExpr}, nil
 }
 
 // execute runs a two-phase FTS5 search:
@@ -373,8 +373,8 @@ func ftsQueryDegraded(original, ftsQuery string) bool {
 	// Check if all effective FTS tokens are very short (≤2 chars).
 	// Short tokens with prefix matching are too broad when special chars were stripped.
 	// For quoted phrases, extract the content and check the tokens inside.
-	tokens := strings.Fields(ftsQuery)
-	for _, t := range tokens {
+	tokens := strings.FieldsSeq(ftsQuery)
+	for t := range tokens {
 		t = strings.TrimSuffix(t, "*")
 		// Skip internal phrase placeholders
 		if strings.HasPrefix(t, "\x00") {
@@ -390,7 +390,7 @@ func ftsQueryDegraded(original, ftsQuery string) bool {
 			// Extract content between quotes
 			inner := strings.Trim(t, `"`)
 			innerAlpha := fts5PunctStrip.ReplaceAllString(inner, " ")
-			for _, it := range strings.Fields(innerAlpha) {
+			for it := range strings.FieldsSeq(innerAlpha) {
 				if len(it) > 2 {
 					return false
 				}
