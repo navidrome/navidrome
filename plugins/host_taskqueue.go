@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"sync"
@@ -540,9 +541,7 @@ func (s *taskQueueServiceImpl) cleanupLoop() {
 func (s *taskQueueServiceImpl) runCleanup() {
 	s.mu.Lock()
 	queues := make(map[string]*queueState, len(s.queues))
-	for k, v := range s.queues {
-		queues[k] = v
-	}
+	maps.Copy(queues, s.queues)
 	s.mu.Unlock()
 
 	now := time.Now().UnixMilli()
