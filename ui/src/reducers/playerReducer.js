@@ -12,6 +12,7 @@ import {
   PLAYER_SYNC_QUEUE,
   PLAYER_SET_MODE,
   PLAYER_REFRESH_QUEUE,
+  PLAYER_REMOVE_FROM_QUEUE,
 } from '../actions'
 import config from '../config'
 
@@ -245,6 +246,13 @@ export const playerReducer = (previousState = initialState, payload) => {
           previousState.savedPlayIndex >= 0 ? previousState.savedPlayIndex : 0,
       }
     }
+    case PLAYER_REMOVE_FROM_QUEUE:
+      return {
+        ...previousState,
+        queue: previousState.queue.filter((item) => item.trackId !== payload.data),
+        clear: true,
+        autoPlay: false,
+      }
     default:
       return previousState
   }

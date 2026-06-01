@@ -358,6 +358,16 @@ func (api *Router) GetSimilarSongs(r *http.Request) (*responses.Subsonic, error)
 		return nil, err
 	}
 
+	if conf.Server.SkipLowRatingInShuffle {
+		filtered := songs[:0]
+		for _, s := range songs {
+			if s.Rating != 1 {
+				filtered = append(filtered, s)
+			}
+		}
+		songs = filtered
+	}
+
 	response := newResponse()
 	response.SimilarSongs = &responses.SimilarSongs{
 		Song: slice.MapWithArg(songs, ctx, childFromMediaFile),

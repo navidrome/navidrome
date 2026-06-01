@@ -108,6 +108,10 @@ func SongsByRandom(genre string, fromYear, toYear int) Options {
 	return addDefaultFilters(options)
 }
 
+func NotDisliked() Sqlizer {
+	return NotEq{"COALESCE(rating, 0)": 1}
+}
+
 func SongsByArtistTitleWithLyricsFirst(artist, title string) Options {
 	return addDefaultFilters(Options{
 		Sort:  "lyrics, updated_at",

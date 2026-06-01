@@ -44,6 +44,17 @@ func (r sqlRepository) withAnnotation(query SelectBuilder, idField string) Selec
 	return query
 }
 
+func notDislikedFilter(_ string, value any) Sqlizer {
+	v, ok := value.(string)
+	if !ok {
+		return nil
+	}
+	if strings.ToLower(v) == "true" {
+		return NotEq{"COALESCE(rating, 0)": 1}
+	}
+	return nil
+}
+
 func annotationBoolFilter(field string) func(string, any) Sqlizer {
 	return func(_ string, value any) Sqlizer {
 		v, ok := value.(string)
