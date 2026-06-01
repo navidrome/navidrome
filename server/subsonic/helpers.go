@@ -494,15 +494,10 @@ func mapExplicitStatus(explicitStatus string) string {
 	return ""
 }
 
-func buildStructuredLyric(mf *model.MediaFile, lyrics model.Lyrics) responses.StructuredLyric {
-	lines := make([]responses.Line, len(lyrics.Line))
-
-	for i, line := range lyrics.Line {
-		lines[i] = responses.Line{
-			Start: line.Start,
-			Value: line.Value,
-		}
-	}
+func buildStructuredLyric(mf *model.MediaFile, lyrics model.Lyrics, enhanced bool) responses.StructuredLyric {
+	// V1 line-level shape: collapse one CueLine per logical moment (lowest
+	// AgentID wins when multiple agents share an Index).
+	lines := buildV1Lines(lyrics.CueLine)
 
 	structured := responses.StructuredLyric{
 		DisplayArtist: lyrics.DisplayArtist,
@@ -511,6 +506,17 @@ func buildStructuredLyric(mf *model.MediaFile, lyrics model.Lyrics) responses.St
 		Line:          lines,
 		Offset:        lyrics.Offset,
 		Synced:        lyrics.Synced,
+	}
+
+	if enhanced {
+		structured.Kind = string(lyrics.Kind)
+		if len(lyrics.Agents) > 0 {
+			structured.Agents = make([]responses.Agent, len(lyrics.Agents))
+			for i, a := range lyrics.Agents {
+				structured.Agents[i] = responses.Agent{ID: a.ID, Name: a.Name, Role: a.Role}
+			}
+		}
+		structured.CueLine = buildV2CueLines(lyrics.CueLine)
 	}
 
 	if structured.DisplayArtist == "" {
@@ -523,11 +529,112 @@ func buildStructuredLyric(mf *model.MediaFile, lyrics model.Lyrics) responses.St
 	return structured
 }
 
-func buildLyricsList(mf *model.MediaFile, lyricsList model.LyricList) *responses.LyricsList {
+// buildV1Lines collapses canonical CueLines into the v1 wire shape. When
+// multiple cuelines share an Index (overlapping vocals), only the first one
+// (lowest agentID) is included to keep v1-only clients deterministic.
+func buildV1Lines(cueLines []model.CueLine) []responses.Line {
+	if len(cueLines) == 0 {
+		return nil
+	}
+	lines := make([]responses.Line, 0, len(cueLines))
+	seenIndex := -1
+	for _, cl := range cueLines {
+		if cl.Index == seenIndex {
+			continue
+		}
+		seenIndex = cl.Index
+		lines = append(lines, responses.Line{
+			Start: cl.Start,
+			Value: cl.Value,
+		})
+	}
+	return lines
+}
+
+// buildV2CueLines emits the v2 cueLine[] structure. Line-only cuelines (no
+// per-word data) are skipped
+func buildV2CueLines(cueLines []model.CueLine) []responses.CueLine {
+	if len(cueLines) == 0 {
+		return nil
+	}
+	out := make([]responses.CueLine, 0, len(cueLines))
+	for _, cl := range cueLines {
+		if len(cl.Cue) == 0 {
+			continue
+		}
+		out = append(out, responses.CueLine{
+			Index:   cl.Index,
+			Start:   cl.Start,
+			End:     cl.End,
+			Value:   cl.Value,
+			AgentID: cl.AgentID,
+			Cue:     buildCue(cl),
+		})
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+// buildCue maps each model.Cue to one responses.Cue with inclusive UTF-8
+// ByteStart/ByteEnd offsets into cl.Value. 
+func buildCue(cl model.CueLine) []responses.Cue {
+	if len(cl.Cue) == 0 {
+		return nil
+	}
+
+	ends := make([]*int64, len(cl.Cue))
+	for i, c := range cl.Cue {
+		ends[i] = c.End
+	}
+	if ends[len(ends)-1] == nil && cl.End != nil {
+		e := *cl.End
+		ends[len(ends)-1] = &e
+	}
+	allHaveEnd := true
+	anyEnd := false
+	for _, e := range ends {
+		if e != nil {
+			anyEnd = true
+		} else {
+			allHaveEnd = false
+		}
+	}
+	if anyEnd && !allHaveEnd {
+		for i := range ends {
+			ends[i] = nil
+		}
+	}
+
+	cues := make([]responses.Cue, len(cl.Cue))
+	var byteCursor int64
+	for i, c := range cl.Cue {
+		valueBytes := int64(len(c.Value))
+		bs := byteCursor
+		be := bs
+		if valueBytes > 0 {
+			be = bs + valueBytes - 1
+			byteCursor = be + 1
+		}
+		bsCopy, beCopy := bs, be
+
+		cues[i] = responses.Cue{
+			Start:     c.Start,
+			End:       ends[i],
+			Value:     c.Value,
+			ByteStart: &bsCopy,
+			ByteEnd:   &beCopy,
+		}
+	}
+	return cues
+}
+
+func buildLyricsList(mf *model.MediaFile, lyricsList model.LyricList, enhanced bool) *responses.LyricsList {
 	lyricList := make(responses.StructuredLyrics, len(lyricsList))
 
 	for i, lyrics := range lyricsList {
-		lyricList[i] = buildStructuredLyric(mf, lyrics)
+		lyricList[i] = buildStructuredLyric(mf, lyrics, enhanced)
 	}
 
 	res := &responses.LyricsList{

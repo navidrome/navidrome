@@ -24,18 +24,23 @@ var _ = Describe("sources", func() {
 	unsynced, _ := model.ToLyrics("xxx", badLyrics)
 	embeddedLyrics := model.LyricList{*unsynced}
 
+	syncStart0 := int64(18800)
+	syncStart1 := int64(22801)
 	syncedLyrics := model.LyricList{
 		model.Lyrics{
 			DisplayArtist: "Rick Astley",
 			DisplayTitle:  "That one song",
 			Lang:          "eng",
-			Line: []model.Line{
+			CueLine: []model.CueLine{
 				{
-					Start: new(int64(18800)),
+					Index: 0,
+					Start: &syncStart0,
+					End:   &syncStart1,
 					Value: "We're no strangers to love",
 				},
 				{
-					Start: new(int64(22801)),
+					Index: 1,
+					Start: &syncStart1,
 					Value: "You know the rules and so do I",
 				},
 			},
@@ -47,11 +52,13 @@ var _ = Describe("sources", func() {
 	unsyncedLyrics := model.LyricList{
 		model.Lyrics{
 			Lang: "xxx",
-			Line: []model.Line{
+			CueLine: []model.CueLine{
 				{
+					Index: 0,
 					Value: "We're no strangers to love",
 				},
 				{
+					Index: 1,
 					Value: "You know the rules and so do I",
 				},
 			},

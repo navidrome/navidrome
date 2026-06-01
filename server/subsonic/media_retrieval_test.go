@@ -316,6 +316,71 @@ var _ = Describe("MediaRetrievalController", func() {
 				},
 			})
 		})
+
+		When("enhanced=true is requested", func() {
+			setLyrics := func(lrc string) {
+				parsed, err := model.ToLyrics("eng", lrc)
+				Expect(err).ToNot(HaveOccurred())
+				lyricsJson, err := json.Marshal(model.LyricList{*parsed})
+				Expect(err).ToNot(HaveOccurred())
+				mockRepo.SetData(model.MediaFiles{{
+					ID:     "1",
+					Artist: "Rick Astley",
+					Title:  "Never Gonna Give You Up",
+					Lyrics: string(lyricsJson),
+				}})
+			}
+
+			It("omits cueLine entirely when all lines are line-only LRC", func() {
+				setLyrics(syncedLyrics)
+
+				response, err := router.GetLyricsBySongId(newGetRequest("id=1", "enhanced=true"))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(response.LyricsList.StructuredLyrics).To(HaveLen(1))
+				Expect(response.LyricsList.StructuredLyrics[0].Line).To(HaveLen(2))
+				Expect(response.LyricsList.StructuredLyrics[0].CueLine).To(BeNil())
+			})
+
+			It("emits cueLine with per-word cue[] and inclusive byte offsets for ELRC word data, skipping line-only lines", func() {
+				setLyrics("[00:18.80]<00:18.80>We're <00:19.20>no <00:19.50>strangers\n[00:22.801]Line without word data")
+
+				response, err := router.GetLyricsBySongId(newGetRequest("id=1", "enhanced=true"))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(response.LyricsList.StructuredLyrics).To(HaveLen(1))
+				structured := response.LyricsList.StructuredLyrics[0]
+
+				Expect(structured.Line).To(HaveLen(2))
+
+				Expect(structured.CueLine).To(HaveLen(1))
+				cl := structured.CueLine[0]
+				Expect(cl.Index).To(Equal(0))
+				Expect(cl.Value).To(Equal("We're no strangers"))
+				Expect(cl.Start).ToNot(BeNil())
+				Expect(*cl.Start).To(Equal(int64(18800)))
+				Expect(cl.End).ToNot(BeNil())
+				Expect(*cl.End).To(Equal(int64(22801)))
+
+				Expect(cl.Cue).To(HaveLen(3))
+
+				Expect(cl.Cue[0].Value).To(Equal("We're "))
+				Expect(*cl.Cue[0].Start).To(Equal(int64(18800)))
+				Expect(*cl.Cue[0].End).To(Equal(int64(19200)))
+				Expect(*cl.Cue[0].ByteStart).To(Equal(int64(0)))
+				Expect(*cl.Cue[0].ByteEnd).To(Equal(int64(5)))
+
+				Expect(cl.Cue[1].Value).To(Equal("no "))
+				Expect(*cl.Cue[1].Start).To(Equal(int64(19200)))
+				Expect(*cl.Cue[1].End).To(Equal(int64(19500)))
+				Expect(*cl.Cue[1].ByteStart).To(Equal(int64(6)))
+				Expect(*cl.Cue[1].ByteEnd).To(Equal(int64(8)))
+
+				Expect(cl.Cue[2].Value).To(Equal("strangers"))
+				Expect(*cl.Cue[2].Start).To(Equal(int64(19500)))
+				Expect(*cl.Cue[2].End).To(Equal(int64(22801)))
+				Expect(*cl.Cue[2].ByteStart).To(Equal(int64(9)))
+				Expect(*cl.Cue[2].ByteEnd).To(Equal(int64(17)))
+			})
+		})
 	})
 })
 

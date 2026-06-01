@@ -66,18 +66,23 @@ var _ = Describe("sources", func() {
 			lyrics, err := fromExternalFile(ctx, &mf, ".lrc")
 
 			Expect(err).To(BeNil())
+			s0 := int64(18800)
+			s1 := int64(22801)
 			Expect(lyrics).To(Equal(model.LyricList{
 				model.Lyrics{
 					DisplayArtist: "Rick Astley",
 					DisplayTitle:  "That one song",
 					Lang:          "eng",
-					Line: []model.Line{
+					CueLine: []model.CueLine{
 						{
-							Start: new(int64(18800)),
+							Index: 0,
+							Start: &s0,
+							End:   &s1,
 							Value: "We're no strangers to love",
 						},
 						{
-							Start: new(int64(22801)),
+							Index: 1,
+							Start: &s1,
 							Value: "You know the rules and so do I",
 						},
 					},
@@ -95,11 +100,13 @@ var _ = Describe("sources", func() {
 			Expect(lyrics).To(Equal(model.LyricList{
 				model.Lyrics{
 					Lang: "xxx",
-					Line: []model.Line{
+					CueLine: []model.CueLine{
 						{
+							Index: 0,
 							Value: "We're no strangers to love",
 						},
 						{
+							Index: 1,
 							Value: "You know the rules and so do I",
 						},
 					},
@@ -120,9 +127,9 @@ var _ = Describe("sources", func() {
 
 			// The critical assertion: even with BOM, synced should be true
 			Expect(lyrics[0].Synced).To(BeTrue(), "Lyrics with BOM marker should be recognized as synced")
-			Expect(lyrics[0].Line).To(HaveLen(1))
-			Expect(lyrics[0].Line[0].Start).To(Equal(new(int64(0))))
-			Expect(lyrics[0].Line[0].Value).To(ContainSubstring("作曲"))
+			Expect(lyrics[0].CueLine).To(HaveLen(1))
+			Expect(lyrics[0].CueLine[0].Start).To(Equal(new(int64(0))))
+			Expect(lyrics[0].CueLine[0].Value).To(ContainSubstring("作曲"))
 		})
 
 		It("should handle UTF-16 LE encoded LRC files", func() {
@@ -135,11 +142,11 @@ var _ = Describe("sources", func() {
 
 			// UTF-16 should be properly converted to UTF-8
 			Expect(lyrics[0].Synced).To(BeTrue(), "UTF-16 encoded lyrics should be recognized as synced")
-			Expect(lyrics[0].Line).To(HaveLen(2))
-			Expect(lyrics[0].Line[0].Start).To(Equal(new(int64(18800))))
-			Expect(lyrics[0].Line[0].Value).To(Equal("We're no strangers to love"))
-			Expect(lyrics[0].Line[1].Start).To(Equal(new(int64(22801))))
-			Expect(lyrics[0].Line[1].Value).To(Equal("You know the rules and so do I"))
+			Expect(lyrics[0].CueLine).To(HaveLen(2))
+			Expect(lyrics[0].CueLine[0].Start).To(Equal(new(int64(18800))))
+			Expect(lyrics[0].CueLine[0].Value).To(Equal("We're no strangers to love"))
+			Expect(lyrics[0].CueLine[1].Start).To(Equal(new(int64(22801))))
+			Expect(lyrics[0].CueLine[1].Value).To(Equal("You know the rules and so do I"))
 		})
 	})
 })

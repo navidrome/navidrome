@@ -113,13 +113,15 @@ var _ = Describe("Extractor", func() {
 
 	Describe("lyrics", func() {
 		makeLyrics := func(code, secondLine string) model.Lyrics {
+			s0 := int64(0)
+			s1 := int64(2500)
 			return model.Lyrics{
 				DisplayArtist: "",
 				DisplayTitle:  "",
 				Lang:          code,
-				Line: []model.Line{
-					{Start: new(int64(0)), Value: "This is"},
-					{Start: new(int64(2500)), Value: secondLine},
+				CueLine: []model.CueLine{
+					{Index: 0, Start: &s0, End: &s1, Value: "This is"},
+					{Index: 1, Start: &s1, Value: secondLine},
 				},
 				Offset: nil,
 				Synced: true,

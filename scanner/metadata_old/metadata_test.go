@@ -20,20 +20,21 @@ var _ = Describe("Tags", func() {
 	var secondTs int64 = 2500
 
 	makeLyrics := func(synced bool, lang, secondLine string) model.Lyrics {
-		lines := []model.Line{
-			{Value: "This is"},
-			{Value: secondLine},
+		cueLines := []model.CueLine{
+			{Index: 0, Value: "This is"},
+			{Index: 1, Value: secondLine},
 		}
 
 		if synced {
-			lines[0].Start = &zero
-			lines[1].Start = &secondTs
+			cueLines[0].Start = &zero
+			cueLines[0].End = &secondTs
+			cueLines[1].Start = &secondTs
 		}
 
 		lyrics := model.Lyrics{
-			Lang:   lang,
-			Line:   lines,
-			Synced: synced,
+			Lang:    lang,
+			CueLine: cueLines,
+			Synced:  synced,
 		}
 
 		return lyrics
@@ -45,7 +46,7 @@ var _ = Describe("Tags", func() {
 			if langDiff != 0 {
 				return langDiff
 			}
-			return cmp.Compare(a.Line[1].Value, b.Line[1].Value)
+			return cmp.Compare(a.CueLine[1].Value, b.CueLine[1].Value)
 		})
 
 		return lines

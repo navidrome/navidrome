@@ -52,8 +52,8 @@ var _ = Describe("LyricsPlugin", Ordered, func() {
 			result, err := provider.GetLyrics(GinkgoT().Context(), track)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(HaveLen(1))
-			Expect(result[0].Line).ToNot(BeEmpty())
-			Expect(result[0].Line[0].Value).To(ContainSubstring("Test Song"))
+			Expect(result[0].CueLine).ToNot(BeEmpty())
+			Expect(result[0].CueLine[0].Value).To(ContainSubstring("Test Song"))
 		})
 
 		It("defaults language to 'xxx' when plugin does not provide one", func() {

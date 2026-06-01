@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -36,7 +37,7 @@ func fromExternalFile(ctx context.Context, mf *model.MediaFile, suffix string) (
 		return nil, err
 	}
 
-	lyrics, err := model.ToLyrics("xxx", string(contents))
+	lyrics, err := parseLyricsByExt(suffix, string(contents))
 	if err != nil {
 		log.Error(ctx, "error parsing lyric external file", "path", externalLyric, err)
 		return nil, err
@@ -48,6 +49,18 @@ func fromExternalFile(ctx context.Context, mf *model.MediaFile, suffix string) (
 	log.Trace(ctx, "retrieved lyrics from external file", "path", externalLyric)
 
 	return model.LyricList{*lyrics}, nil
+}
+
+// parseLyricsByExt dispatches between the YAML Lyricsfile parser and the
+// LRC/plain text parser based on file extension. .yaml and .yml are both
+// recognized as Lyricsfile candidates.
+func parseLyricsByExt(suffix, contents string) (*model.Lyrics, error) {
+	switch strings.ToLower(suffix) {
+	case ".yaml", ".yml":
+		return model.ParseLyricsfile(contents)
+	default:
+		return model.ToLyrics("xxx", contents)
+	}
 }
 
 // fromPlugin attempts to load lyrics from a plugin with the given name.

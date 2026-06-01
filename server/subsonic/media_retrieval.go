@@ -121,8 +121,8 @@ func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {
 	lyricsResponse.Title = title
 
 	var lyricsText strings.Builder
-	for _, line := range structuredLyrics[0].Line {
-		lyricsText.WriteString(line.Value + "\n")
+	for _, cl := range structuredLyrics[0].CueLine {
+		lyricsText.WriteString(cl.Value + "\n")
 	}
 
 	lyricsResponse.Value = lyricsText.String()
@@ -131,10 +131,12 @@ func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {
 }
 
 func (api *Router) GetLyricsBySongId(r *http.Request) (*responses.Subsonic, error) {
-	id, err := req.Params(r).String("id")
+	p := req.Params(r)
+	id, err := p.String("id")
 	if err != nil {
 		return nil, err
 	}
+	enhanced, _ := p.Bool("enhanced")
 
 	mediaFile, err := api.ds.MediaFile(r.Context()).Get(id)
 	if err != nil {
@@ -147,7 +149,7 @@ func (api *Router) GetLyricsBySongId(r *http.Request) (*responses.Subsonic, erro
 	}
 
 	response := newResponse()
-	response.LyricsList = buildLyricsList(mediaFile, structuredLyrics)
+	response.LyricsList = buildLyricsList(mediaFile, structuredLyrics, enhanced)
 
 	return response, nil
 }

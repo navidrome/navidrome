@@ -105,12 +105,14 @@ var _ = Describe("ToMediaFile", func() {
 			err := json.Unmarshal([]byte(mf.Lyrics), &actual)
 			Expect(err).ToNot(HaveOccurred())
 
+			engStart0 := int64(0)
+			engStart1 := int64(2500)
 			expected := model.LyricList{
-				{Lang: "eng", Line: []model.Line{
-					{Value: "This is", Start: new(int64(0))},
-					{Value: "English SYLT", Start: new(int64(2500))},
+				{Lang: "eng", CueLine: []model.CueLine{
+					{Index: 0, Value: "This is", Start: &engStart0, End: &engStart1},
+					{Index: 1, Value: "English SYLT", Start: &engStart1},
 				}, Synced: true},
-				{Lang: "xxx", Line: []model.Line{{Value: "Lyrics"}}, Synced: false},
+				{Lang: "xxx", CueLine: []model.CueLine{{Index: 0, Value: "Lyrics"}}, Synced: false},
 			}
 			sort.Slice(actual, func(i, j int) bool { return actual[i].Lang < actual[j].Lang })
 			sort.Slice(expected, func(i, j int) bool { return expected[i].Lang < expected[j].Lang })
