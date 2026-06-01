@@ -62,7 +62,7 @@ const AlbumActions = ({
 
   const getAllSongsAndDispatch = React.useCallback(
     (action) => {
-      if (ids?.length === record.songCount) {
+      if (ids && ids.length === record.songCount) {
         return dispatch(action(data, ids))
       }
       dataProvider
@@ -76,7 +76,8 @@ const AlbumActions = ({
             (acc, curr) => ({ ...acc, [curr.id]: curr }),
             {},
           )
-          dispatch(action(allData))
+          const allIds = res.data.map((s) => s.id)
+          dispatch(action(allData, allIds))
         })
         .catch(() => {
           notify('ra.page.error', 'warning')
@@ -102,7 +103,7 @@ const AlbumActions = ({
   }, [getAllSongsAndDispatch])
 
   const handleAddToPlaylist = React.useCallback(() => {
-    if (ids?.length === record.songCount) {
+    if (ids && ids.length === record.songCount) {
       const selectedIds = ids.filter((id) => !data[id].missing)
       return dispatch(openAddToPlaylist({ selectedIds }))
     }
