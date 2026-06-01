@@ -76,7 +76,7 @@ export const useRating = (resource, record) => {
                 audio.dispatchEvent(new Event('ended'))
               }
             }
-          } else if (val !== 1 && !inQueue) {
+          } else if (rating === 1 && val !== 1 && !inQueue && queue.length < 500) {
             dispatch(addTracks({ [trackId]: record }))
           }
         }
