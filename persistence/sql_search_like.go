@@ -16,7 +16,7 @@ type likeSearch struct {
 	filter Sqlizer
 }
 
-func (s *likeSearch) ToSql() (string, []interface{}, error) {
+func (s *likeSearch) ToSql() (string, []any, error) {
 	return s.filter.ToSql()
 }
 

@@ -185,7 +185,7 @@ var _ = Describe("ParseCrontab", func() {
 // findSetBit returns the lowest bit position set in v, ignoring the starBit (bit 63).
 func findSetBit(v uint64) int {
 	v &^= 1 << 63 // clear starBit
-	for i := 0; i < 63; i++ {
+	for i := range 63 {
 		if v&(1<<uint(i)) != 0 {
 			return i
 		}
