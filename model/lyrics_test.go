@@ -198,6 +198,35 @@ var _ = Describe("ToLyrics", func() {
 			{Start: &t1600, Value: "tonight", ByteStart: 11, ByteEnd: 17},
 		}))
 	})
+
+	It("should shift inline ELRC word timestamps for each repeated line occurrence", func() {
+		lyrics, err := ToLyrics("xxx", "[00:10.00][00:30.00]<00:10.10>Hello <00:10.50>world")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(lyrics.Line).To(HaveLen(2))
+
+		t10000 := int64(10000)
+		t10100 := int64(10100)
+		t10500 := int64(10500)
+		t30000 := int64(30000)
+		t30100 := int64(30100)
+		t30500 := int64(30500)
+
+		Expect(lyrics.Line[0].Start).To(Equal(&t10000))
+		Expect(lyrics.Line[0].End).To(Equal(&t30000))
+		Expect(lyrics.Line[0].Value).To(Equal("Hello world"))
+		Expect(lyrics.Line[0].Cue).To(Equal([]Cue{
+			{Start: &t10100, End: &t10500, Value: "Hello ", ByteStart: 0, ByteEnd: 5},
+			{Start: &t10500, End: &t30000, Value: "world", ByteStart: 6, ByteEnd: 10},
+		}))
+
+		Expect(lyrics.Line[1].Start).To(Equal(&t30000))
+		Expect(lyrics.Line[1].End).To(Equal(&t30500))
+		Expect(lyrics.Line[1].Value).To(Equal("Hello world"))
+		Expect(lyrics.Line[1].Cue).To(Equal([]Cue{
+			{Start: &t30100, Value: "Hello ", ByteStart: 0, ByteEnd: 5},
+			{Start: &t30500, Value: "world", ByteStart: 6, ByteEnd: 10},
+		}))
+	})
 })
 
 var _ = Describe("NormalizeCueLines", func() {

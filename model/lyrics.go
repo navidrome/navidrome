@@ -129,12 +129,13 @@ func ToLyrics(language, text string) (*Lyrics, error) {
 			}
 
 			if validLine {
+				value, baseCues := parseEnhancedLine(priorLine)
 				for idx := range timestamps {
-					value, cues := parseEnhancedLine(priorLine)
+					startCopy := timestamps[idx]
 					structuredLines = append(structuredLines, Line{
-						Start: &timestamps[idx],
+						Start: &startCopy,
 						Value: value,
-						Cue:   cues,
+						Cue:   shiftELRCCues(baseCues, timestamps[idx]-timestamps[0]),
 					})
 				}
 				timestamps = nil
@@ -179,12 +180,13 @@ func ToLyrics(language, text string) (*Lyrics, error) {
 	}
 
 	if validLine {
+		value, baseCues := parseEnhancedLine(priorLine)
 		for idx := range timestamps {
-			value, cues := parseEnhancedLine(priorLine)
+			startCopy := timestamps[idx]
 			structuredLines = append(structuredLines, Line{
-				Start: &timestamps[idx],
+				Start: &startCopy,
 				Value: value,
-				Cue:   cues,
+				Cue:   shiftELRCCues(baseCues, timestamps[idx]-timestamps[0]),
 			})
 		}
 	}
@@ -311,6 +313,31 @@ func adjustGroup(match []int, groupIdx int) int {
 // returning the plain lyric text.
 func stripEnhancedMarkers(text string) string {
 	return enhancedLRCRegex.ReplaceAllString(text, "")
+}
+
+// shiftELRCCues returns a deep copy of baseCues with each cue's Start/End
+// timestamps shifted by offsetMs. Inline ELRC word markers parse to absolute
+// timestamps anchored at the line's first occurrence, so repeated-line LRC
+// inputs of the form `[t0][t1]...` must shift the cues by (t1-t0) for the
+// second occurrence to point at the correct moment. Returned *int64 pointers
+// are freshly allocated so the input slice is never aliased into the result.
+func shiftELRCCues(baseCues []Cue, offsetMs int64) []Cue {
+	if len(baseCues) == 0 {
+		return nil
+	}
+	out := make([]Cue, len(baseCues))
+	for i, c := range baseCues {
+		out[i] = c
+		if c.Start != nil {
+			s := *c.Start + offsetMs
+			out[i].Start = &s
+		}
+		if c.End != nil {
+			e := *c.End + offsetMs
+			out[i].End = &e
+		}
+	}
+	return out
 }
 
 func parseTime(line string, match []int) (int64, error) {

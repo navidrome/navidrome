@@ -312,5 +312,98 @@ var _ = Describe("sources", func() {
 			Expect(lyrics[0].Line[1].Start).To(Equal(ptr(int64(22801))))
 			Expect(lyrics[0].Line[1].Value).To(Equal("UTF16 line two"))
 		})
+
+		It("should return Lyricsfile YAML lines with inferred end timestamps", func() {
+			mf := model.MediaFile{Path: "tests/fixtures/test.mp3"}
+			lyrics, err := fromExternalFile(ctx, &mf, ".yaml")
+
+			Expect(err).To(BeNil())
+			Expect(lyrics).To(Equal(model.LyricList{
+				model.Lyrics{
+					DisplayArtist: "Test Artist",
+					DisplayTitle:  "Sample Track",
+					Kind:          "main",
+					Lang:          "eng",
+					Line: []model.Line{
+						{Start: ptr(int64(18800)), End: ptr(int64(22801)), Value: "We're no strangers to love"},
+						{Start: ptr(int64(22801)), Value: "You know the rules and so do I"},
+					},
+					Offset: ptr(int64(-100)),
+					Synced: true,
+				},
+			}))
+		})
+
+		It("should return Lyricsfile YAML word cues with inclusive byte offsets", func() {
+			mf := model.MediaFile{Path: "tests/fixtures/test-words.mp3"}
+			lyrics, err := fromExternalFile(ctx, &mf, ".yaml")
+
+			Expect(err).To(BeNil())
+			Expect(lyrics).To(HaveLen(1))
+			Expect(lyrics[0].DisplayArtist).To(Equal("Test Artist"))
+			Expect(lyrics[0].DisplayTitle).To(Equal("Karaoke Test"))
+			Expect(lyrics[0].Kind).To(Equal("main"))
+			Expect(lyrics[0].Lang).To(Equal("eng"))
+			Expect(lyrics[0].Synced).To(BeTrue())
+			Expect(lyrics[0].Agents).To(BeNil())
+			Expect(lyrics[0].Line).To(HaveLen(1))
+
+			line := lyrics[0].Line[0]
+			Expect(line.Start).To(Equal(ptr(int64(1000))))
+			Expect(line.End).To(Equal(ptr(int64(3000))))
+			Expect(line.Value).To(Equal("Hello world"))
+			Expect(line.Cue).To(HaveLen(2))
+
+			Expect(line.Cue[0].Start).To(Equal(ptr(int64(1000))))
+			Expect(line.Cue[0].End).To(Equal(ptr(int64(1500))))
+			Expect(line.Cue[0].Value).To(Equal("Hello "))
+			Expect(line.Cue[0].ByteStart).To(Equal(0))
+			Expect(line.Cue[0].ByteEnd).To(Equal(5))
+			Expect(line.Cue[0].AgentID).To(Equal(""))
+
+			Expect(line.Cue[1].Start).To(Equal(ptr(int64(1500))))
+			Expect(line.Cue[1].End).To(Equal(ptr(int64(3000))))
+			Expect(line.Cue[1].Value).To(Equal("world"))
+			Expect(line.Cue[1].ByteStart).To(Equal(6))
+			Expect(line.Cue[1].ByteEnd).To(Equal(10))
+			Expect(line.Cue[1].AgentID).To(Equal(""))
+		})
+
+		It("should synthesise voice agents for overlapping Lyricsfile YAML lines", func() {
+			mf := model.MediaFile{Path: "tests/fixtures/test-overlapping.mp3"}
+			lyrics, err := fromExternalFile(ctx, &mf, ".yaml")
+
+			Expect(err).To(BeNil())
+			Expect(lyrics).To(HaveLen(1))
+			Expect(lyrics[0].Agents).To(Equal([]model.Agent{
+				{ID: "voice-0", Role: "main"},
+				{ID: "voice-1", Role: "voice"},
+			}))
+			Expect(lyrics[0].Line).To(HaveLen(2))
+
+			Expect(lyrics[0].Line[0].Value).To(Equal("Lead vocal"))
+			Expect(lyrics[0].Line[0].Cue).To(HaveLen(2))
+			Expect(lyrics[0].Line[0].Cue[0].AgentID).To(Equal("voice-0"))
+			Expect(lyrics[0].Line[0].Cue[1].AgentID).To(Equal("voice-0"))
+
+			Expect(lyrics[0].Line[1].Value).To(Equal("echo"))
+			Expect(lyrics[0].Line[1].Cue).To(HaveLen(1))
+			Expect(lyrics[0].Line[1].Cue[0].AgentID).To(Equal("voice-1"))
+		})
+
+		It("should emit empty Line[] with Synced=false for instrumental Lyricsfile YAML", func() {
+			mf := model.MediaFile{Path: "tests/fixtures/test-instrumental.mp3"}
+			lyrics, err := fromExternalFile(ctx, &mf, ".yaml")
+
+			Expect(err).To(BeNil())
+			Expect(lyrics).To(HaveLen(1))
+			Expect(lyrics[0].Kind).To(Equal("main"))
+			Expect(lyrics[0].Lang).To(Equal("eng"))
+			Expect(lyrics[0].DisplayArtist).To(Equal("Composer"))
+			Expect(lyrics[0].DisplayTitle).To(Equal("Solo Piano"))
+			Expect(lyrics[0].Synced).To(BeFalse())
+			Expect(lyrics[0].Line).To(BeEmpty())
+			Expect(lyrics[0].Agents).To(BeNil())
+		})
 	})
 })
