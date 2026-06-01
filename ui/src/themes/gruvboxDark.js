@@ -84,8 +84,6 @@ export default {
       root: {
         color: '#ebdbb2',
       },
-    },
-    Mui: {
       error: {
         color: '#cc241d',
       },
