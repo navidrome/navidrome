@@ -251,7 +251,6 @@ export const playerReducer = (previousState = initialState, payload) => {
         ...previousState,
         queue: previousState.queue.filter((item) => item.trackId !== payload.data),
         clear: true,
-        autoPlay: false,
       }
     default:
       return previousState

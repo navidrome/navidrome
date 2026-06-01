@@ -70,12 +70,6 @@ export const useRating = (resource, record) => {
           const inQueue = queue.some((item) => item.trackId === trackId)
           if (val === 1 && inQueue) {
             dispatch(removeFromQueue(trackId))
-            if (current?.trackId === trackId) {
-              const audio = document.querySelector('audio')
-              if (audio) {
-                audio.dispatchEvent(new Event('ended'))
-              }
-            }
           } else if (rating === 1 && val !== 1 && !inQueue && queue.length < 500) {
             dispatch(addTracks({ [trackId]: record }))
           }

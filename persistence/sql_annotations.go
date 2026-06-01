@@ -50,7 +50,7 @@ func notDislikedFilter(_ string, value any) Sqlizer {
 		return nil
 	}
 	if strings.ToLower(v) == "true" {
-		return NotEq{"COALESCE(rating, 0)": 1}
+		return NotEq{"COALESCE(annotation.rating, 0)": 1}
 	}
 	return nil
 }
