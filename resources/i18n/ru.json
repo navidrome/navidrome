@@ -51,7 +51,28 @@
         "playNext": "Следующий",
         "info": "Информация",
         "showInPlaylist": "Показать в плейлисте",
-        "instantMix": "Быстрый микс"
+        "instantMix": "Быстрый микс",
+
+        "playNowShort": "Сейчас",
+        "playNextShort": "Далее",
+        "addToQueueShort": "Позже",
+        "addToPlaylistShort": "Плейлист",
+        "batchRate": "Оценить",
+        "batchRateShort": "Оценить",
+        "batchRateTitle": "Оценить %{smart_count} трек |||| Оценить %{smart_count} треков",
+        "clearRating": "Убрать оценку",
+        "like": "Нравится",
+        "unlike": "Не нравится"
+        "playNowShort": "Сейчас",
+        "playNextShort": "Далее",
+        "addToQueueShort": "Позже",
+        "addToPlaylistShort": "Плейлист",
+        "batchRate": "Оценить",
+        "batchRateShort": "Оценить",
+        "batchRateTitle": "Оценить %{smart_count} трек |||| Оценить %{smart_count} треков",
+        "clearRating": "Убрать оценку",
+        "like": "Нравится",
+        "unlike": "Не нравится"
       }
     },
     "album": {
@@ -593,7 +614,10 @@
     "remove_all_missing_content": "Вы уверены, что хотите удалить все отсутствующие файлы из базы данных? Это навсегда удалит все упоминания о них, включая количество прослушиваний и рейтинг.",
     "noSimilarSongsFound": "Похожих треков не найдено",
     "noTopSongsFound": "Лучших треков не найдено",
-    "startingInstantMix": "Загрузка быстрого микса..."
+    "startingInstantMix": "Загрузка быстрого микса...",
+
+    "batchRateSuccess": "Оценка успешно применена"
+    "batchRateSuccess": "Оценка успешно применена"
   },
   "menu": {
     "library": "Библиотека",

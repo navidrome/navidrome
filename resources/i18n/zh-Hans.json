@@ -49,7 +49,28 @@
         "download": "下载",
         "playNext": "下一首播放",
         "info": "查看信息",
-        "instantMix": "即兴推荐"
+        "instantMix": "即兴推荐",
+
+        "playNowShort": "立即播放",
+        "playNextShort": "下一首",
+        "addToQueueShort": "稍后播放",
+        "addToPlaylistShort": "歌单",
+        "batchRate": "评分",
+        "batchRateShort": "评分",
+        "batchRateTitle": "为 %{smart_count} 首歌曲评分",
+        "clearRating": "清除评分",
+        "like": "喜欢",
+        "unlike": "取消喜欢"
+        "playNowShort": "立即播放",
+        "playNextShort": "下一首",
+        "addToQueueShort": "稍后播放",
+        "addToPlaylistShort": "歌单",
+        "batchRate": "评分",
+        "batchRateShort": "评分",
+        "batchRateTitle": "为 %{smart_count} 首歌曲评分",
+        "clearRating": "清除评分",
+        "like": "喜欢",
+        "unlike": "取消喜欢"
       }
     },
     "album": {
@@ -569,6 +590,8 @@
     "songsAddedToPlaylist": "已添加 %{smart_count} 首歌到歌单",
     "noSimilarSongsFound": "未找到相似歌曲",
     "startingInstantMix": "即兴推荐加载中...",
+
+    "batchRateSuccess": "评分已成功应用"
     "noTopSongsFound": "未找到热门歌曲",
     "noPlaylistsAvailable": "没有有效的歌单",
     "delete_user_title": "删除用户%{name}",
@@ -599,7 +622,8 @@
     "shareSuccess": "URL 已复制: %{url}",
     "shareFailure": "URL 复制失败: %{url}",
     "downloadDialogTitle": "下载 %{resource} '%{name}' (%{size})",
-    "downloadOriginalFormat": "下载原始格式"
+    "downloadOriginalFormat": "下载原始格式",
+    "batchRateSuccess": "评分已成功应用"
   },
   "menu": {
     "library": "媒体库",

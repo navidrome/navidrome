@@ -46,7 +46,28 @@
         "download": "ダウンロード",
         "playNext": "次に再生",
         "info": "詳細",
-        "showInPlaylist": "含まれるプレイリスト"
+
+        "playNowShort": "今すぐ",
+        "playNextShort": "次へ",
+        "addToQueueShort": "後で",
+        "addToPlaylistShort": "リスト",
+        "batchRate": "評価",
+        "batchRateShort": "評価",
+        "batchRateTitle": "%{smart_count}曲を評価",
+        "clearRating": "評価をクリア",
+        "like": "お気に入り",
+        "unlike": "お気に入り解除"
+        "showInPlaylist": "含まれるプレイリスト",
+        "playNowShort": "今すぐ",
+        "playNextShort": "次へ",
+        "addToQueueShort": "後で",
+        "addToPlaylistShort": "リスト",
+        "batchRate": "評価",
+        "batchRateShort": "評価",
+        "batchRateTitle": "%{smart_count}曲を評価",
+        "clearRating": "評価をクリア",
+        "like": "お気に入り",
+        "unlike": "お気に入り解除"
       }
     },
     "album": {
@@ -511,7 +532,8 @@
     "remove_all_missing_title": "全ての欠落ファイルを削除",
     "remove_all_missing_content": "データベースから欠落ファイルをすべて削除してもよろしいですか？これにより、再生数や評価を含むそれらのファイルへの参照が永久に削除されます。",
     "noSimilarSongsFound": "類似の曲が見つかりませんでした",
-    "noTopSongsFound": "トップソングが見つかりません"
+    "noTopSongsFound": "トップソングが見つかりません",
+    "batchRateSuccess": "評価が正常に適用されました"
   },
   "menu": {
     "library": "ライブラリ",

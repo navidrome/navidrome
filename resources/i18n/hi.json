@@ -46,7 +46,28 @@
         "shuffleAll": "सभी को शफल करें",
         "download": "डाउनलोड",
         "playNext": "अगला चलाएं",
-        "info": "जानकारी प्राप्त करें"
+        "info": "जानकारी प्राप्त करें",
+
+        "playNowShort": "अभी",
+        "playNextShort": "अगला",
+        "addToQueueShort": "बाद में",
+        "addToPlaylistShort": "प्लेलिस्ट",
+        "batchRate": "रेटिंग दें",
+        "batchRateShort": "रेट करें",
+        "batchRateTitle": "रेटिंग दें %{smart_count} गाने को |||| रेटिंग दें %{smart_count} गानों को",
+        "clearRating": "रेटिंग हटाएं",
+        "like": "पसंद करें",
+        "unlike": "नापसंद करें"
+        "playNowShort": "अभी",
+        "playNextShort": "अगला",
+        "addToQueueShort": "बाद में",
+        "addToPlaylistShort": "प्लेलिस्ट",
+        "batchRate": "रेटिंग दें",
+        "batchRateShort": "रेट करें",
+        "batchRateTitle": "रेटिंग दें %{smart_count} गाने को |||| रेटिंग दें %{smart_count} गानों को",
+        "clearRating": "रेटिंग हटाएं",
+        "like": "पसंद करें",
+        "unlike": "नापसंद करें"
       }
     },
     "album": {
@@ -508,7 +529,8 @@
     "shareSuccess": "URL क्लिपबोर्ड में कॉपी किया गया: %{url}",
     "shareFailure": "URL %{url} को क्लिपबोर्ड में कॉपी करने में त्रुटि",
     "downloadDialogTitle": "%{resource} '%{name}' (%{size}) डाउनलोड करें",
-    "downloadOriginalFormat": "मूल प्रारूप में डाउनलोड करें"
+    "downloadOriginalFormat": "मूल प्रारूप में डाउनलोड करें",
+    "batchRateSuccess": "रेटिंग सफलतापूर्वक लागू की गई"
   },
   "menu": {
     "library": "लाइब्रेरी",

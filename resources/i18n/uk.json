@@ -49,7 +49,28 @@
         "playNext": "Наступна",
         "info": "Отримати інформацію",
         "showInPlaylist": "Показати у плейлісті",
-        "instantMix": "Мікс"
+        "instantMix": "Мікс",
+
+        "playNowShort": "Зараз",
+        "playNextShort": "Далі",
+        "addToQueueShort": "Пізніше",
+        "addToPlaylistShort": "Плейлист",
+        "batchRate": "Оцінити",
+        "batchRateShort": "Оцінити",
+        "batchRateTitle": "Оцінити %{smart_count} трек |||| Оцінити %{smart_count} треків",
+        "clearRating": "Прибрати оцінку",
+        "like": "Подобається",
+        "unlike": "Не подобається"
+        "playNowShort": "Зараз",
+        "playNextShort": "Далі",
+        "addToQueueShort": "Пізніше",
+        "addToPlaylistShort": "Плейлист",
+        "batchRate": "Оцінити",
+        "batchRateShort": "Оцінити",
+        "batchRateTitle": "Оцінити %{smart_count} трек |||| Оцінити %{smart_count} треків",
+        "clearRating": "Прибрати оцінку",
+        "like": "Подобається",
+        "unlike": "Не подобається"
       }
     },
     "album": {
@@ -592,12 +613,15 @@
     "noSimilarSongsFound": "Не знайдено схожих треків",
     "noTopSongsFound": "Не знайдено ТОП-треків",
     "startingInstantMix": "Завантаження міксу...",
+
+    "batchRateSuccess": "Оцінку успішно застосовано"
     "uploadCover": "Завантажити обкладинку",
     "removeCover": "Видалити обкладинку",
     "coverUploaded": "Обкладинку оновлено",
     "coverRemoved": "Обкладинка видалена",
     "coverUploadError": "Помилка завантаження обкладинки",
-    "coverRemoveError": "Помилка видалення обкладинки"
+    "coverRemoveError": "Помилка видалення обкладинки",
+    "batchRateSuccess": "Оцінку успішно застосовано"
   },
   "menu": {
     "library": "Бібліотека",

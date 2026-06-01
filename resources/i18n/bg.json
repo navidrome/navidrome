@@ -49,7 +49,28 @@
         "playNext": "Следваща",
         "info": "Информация",
         "showInPlaylist": "Показване в плейлиста",
-        "instantMix": "Незабавен микс"
+        "instantMix": "Незабавен микс",
+
+        "playNowShort": "Сега",
+        "playNextShort": "Следваща",
+        "addToQueueShort": "По-късно",
+        "addToPlaylistShort": "Плейлист",
+        "batchRate": "Оцени",
+        "batchRateShort": "Оцени",
+        "batchRateTitle": "Оцени %{smart_count} песен |||| Оцени %{smart_count} песни",
+        "clearRating": "Изчисти оценката",
+        "like": "Харесай",
+        "unlike": "Премахни харесване"
+        "playNowShort": "Сега",
+        "playNextShort": "Следваща",
+        "addToQueueShort": "По-късно",
+        "addToPlaylistShort": "Плейлист",
+        "batchRate": "Оцени",
+        "batchRateShort": "Оцени",
+        "batchRateTitle": "Оцени %{smart_count} песен |||| Оцени %{smart_count} песни",
+        "clearRating": "Изчисти оценката",
+        "like": "Харесай",
+        "unlike": "Премахни харесване"
       }
     },
     "album": {
@@ -591,7 +612,10 @@
     "remove_all_missing_content": "Сигурни ли сте, че желаете да премахнете всички липсващи файлове от базата данни? Това ще премахне завинаги всички препратки към тях, включително броя на възпроизвежданията и оценките им.",
     "noSimilarSongsFound": "Не са намерени подобни песни",
     "noTopSongsFound": "Няма намерени топ песни",
-    "startingInstantMix": "Зареждане на незабавен микс..."
+    "startingInstantMix": "Зареждане на незабавен микс...",
+
+    "batchRateSuccess": "Оценката е приложена успешно"
+    "batchRateSuccess": "Оценката е приложена успешно"
   },
   "menu": {
     "library": "Библиотека",

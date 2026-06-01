@@ -49,7 +49,28 @@
         "playNext": "Spela nästa",
         "info": "Mer information",
         "showInPlaylist": "Visa i spellista",
-        "instantMix": "Direktmix"
+        "instantMix": "Direktmix",
+
+        "playNowShort": "Nu",
+        "playNextShort": "Nästa",
+        "addToQueueShort": "Senare",
+        "addToPlaylistShort": "Spellista",
+        "batchRate": "Betygsätt",
+        "batchRateShort": "Betyg",
+        "batchRateTitle": "Betygsätt %{smart_count} låt |||| Betygsätt %{smart_count} låtar",
+        "clearRating": "Ta bort betyg",
+        "like": "Gilla",
+        "unlike": "Ogilla"
+        "playNowShort": "Nu",
+        "playNextShort": "Nästa",
+        "addToQueueShort": "Senare",
+        "addToPlaylistShort": "Spellista",
+        "batchRate": "Betygsätt",
+        "batchRateShort": "Betyg",
+        "batchRateTitle": "Betygsätt %{smart_count} låt |||| Betygsätt %{smart_count} låtar",
+        "clearRating": "Ta bort betyg",
+        "like": "Gilla",
+        "unlike": "Ogilla"
       }
     },
     "album": {
@@ -592,12 +613,15 @@
     "noSimilarSongsFound": "Hittade inga liknande låtar",
     "noTopSongsFound": "Hittade inga topplåtar",
     "startingInstantMix": "Laddar direktmix...",
+
+    "batchRateSuccess": "Betyg har tillämpats"
     "uploadCover": "Ladda upp omslagsbild",
     "removeCover": "Ta bort omslagsbild",
     "coverUploaded": "Omslagsbild uppdaterad",
     "coverRemoved": "Omslagsbild borttagen",
     "coverUploadError": "Fel vid uppladdning av omslagsbild",
-    "coverRemoveError": "Fel vid borttagning av omslagsbild"
+    "coverRemoveError": "Fel vid borttagning av omslagsbild",
+    "batchRateSuccess": "Betyg har tillämpats"
   },
   "menu": {
     "library": "Bibliotek",

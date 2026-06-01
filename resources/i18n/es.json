@@ -49,7 +49,28 @@
         "playNext": "Siguiente",
         "info": "Obtener información",
         "showInPlaylist": "Mostrar en la lista de reproducción",
-        "instantMix": "Mezcla instantánea"
+        "instantMix": "Mezcla instantánea",
+
+        "playNowShort": "Ahora",
+        "playNextShort": "Siguiente",
+        "addToQueueShort": "Después",
+        "addToPlaylistShort": "Lista",
+        "batchRate": "Valorar",
+        "batchRateShort": "Valorar",
+        "batchRateTitle": "Valorar %{smart_count} canción |||| Valorar %{smart_count} canciones",
+        "clearRating": "Eliminar valoración",
+        "like": "Me gusta",
+        "unlike": "No me gusta"
+        "playNowShort": "Ahora",
+        "playNextShort": "Siguiente",
+        "addToQueueShort": "Después",
+        "addToPlaylistShort": "Lista",
+        "batchRate": "Valorar",
+        "batchRateShort": "Valorar",
+        "batchRateTitle": "Valorar %{smart_count} canción |||| Valorar %{smart_count} canciones",
+        "clearRating": "Eliminar valoración",
+        "like": "Me gusta",
+        "unlike": "No me gusta"
       }
     },
     "album": {
@@ -592,12 +613,15 @@
     "noSimilarSongsFound": "No se encontraron canciones similares",
     "noTopSongsFound": "No se encontraron canciones destacadas",
     "startingInstantMix": "Cargando la mezcla instantánea...",
+
+    "batchRateSuccess": "Valoración aplicada correctamente"
     "uploadCover": "Subir portada",
     "removeCover": "Eliminar portada",
     "coverUploaded": "Portada actualizada",
     "coverRemoved": "Portada eliminada",
     "coverUploadError": "Error al subir la portada",
-    "coverRemoveError": "Error al eliminar la portada"
+    "coverRemoveError": "Error al eliminar la portada",
+    "batchRateSuccess": "Valoración aplicada correctamente"
   },
   "menu": {
     "library": "Biblioteca",

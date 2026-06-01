@@ -49,7 +49,28 @@
         "playNext": "Jouer ensuite",
         "info": "Plus d'informations",
         "showInPlaylist": "Montrer dans la playlist",
-        "instantMix": "Mix instantanné"
+        "instantMix": "Mix instantanné",
+
+        "playNowShort": "Maintenant",
+        "playNextShort": "Suivant",
+        "addToQueueShort": "Plus tard",
+        "addToPlaylistShort": "Playlist",
+        "batchRate": "Noter",
+        "batchRateShort": "Noter",
+        "batchRateTitle": "Noter %{smart_count} morceau |||| Noter %{smart_count} morceaux",
+        "clearRating": "Supprimer la note",
+        "like": "Aimer",
+        "unlike": "Ne plus aimer"
+        "playNowShort": "Maintenant",
+        "playNextShort": "Suivant",
+        "addToQueueShort": "Plus tard",
+        "addToPlaylistShort": "Playlist",
+        "batchRate": "Noter",
+        "batchRateShort": "Noter",
+        "batchRateTitle": "Noter %{smart_count} morceau |||| Noter %{smart_count} morceaux",
+        "clearRating": "Supprimer la note",
+        "like": "Aimer",
+        "unlike": "Ne plus aimer"
       }
     },
     "album": {
@@ -592,12 +613,15 @@
     "noSimilarSongsFound": "Aucun titre similaire n'a été trouvé",
     "noTopSongsFound": "Aucun meilleur titre n'a été trouvé",
     "startingInstantMix": "Chargement du mix instantané...",
+
+    "batchRateSuccess": "Note appliquée avec succès"
     "uploadCover": "Téléverser la pochette",
     "removeCover": "Supprimer la pochette",
     "coverUploaded": "Pochette mise à jour",
     "coverRemoved": "Pochette supprimée",
     "coverUploadError": "Erreur lors du téléversement de la pochette",
-    "coverRemoveError": "Erreur lors de la suppression de la pochette"
+    "coverRemoveError": "Erreur lors de la suppression de la pochette",
+    "batchRateSuccess": "Note appliquée avec succès"
   },
   "menu": {
     "library": "Bibliothèque",

@@ -48,7 +48,28 @@
         "playNext": "Odtwarzaj Następny",
         "info": "Zdobądź Informacje",
         "showInPlaylist": "Pokaż w Liście Odtwarzania",
-        "instantMix": "Natychmiastowy Miks"
+        "instantMix": "Natychmiastowy Miks",
+
+        "playNowShort": "Teraz",
+        "playNextShort": "Następny",
+        "addToQueueShort": "Później",
+        "addToPlaylistShort": "Playlista",
+        "batchRate": "Oceń",
+        "batchRateShort": "Oceń",
+        "batchRateTitle": "Oceń %{smart_count} utwór |||| Oceń %{smart_count} utworów",
+        "clearRating": "Usuń ocenę",
+        "like": "Lubię to",
+        "unlike": "Nie lubię"
+        "playNowShort": "Teraz",
+        "playNextShort": "Następny",
+        "addToQueueShort": "Później",
+        "addToPlaylistShort": "Playlista",
+        "batchRate": "Oceń",
+        "batchRateShort": "Oceń",
+        "batchRateTitle": "Oceń %{smart_count} utwór |||| Oceń %{smart_count} utworów",
+        "clearRating": "Usuń ocenę",
+        "like": "Lubię to",
+        "unlike": "Nie lubię"
       }
     },
     "album": {
@@ -588,7 +609,10 @@
     "remove_all_missing_content": "Czy chcesz usunąć wszystkie brakujące pliki z bazy danych? Spowoduje to trwałe usunięcie wszelkich odniesień do tych plików, takich jak liczba odtworzeń, czy oceny.",
     "noSimilarSongsFound": "Brak podobnych utworów",
     "noTopSongsFound": "Brak najlepszych utworów",
-    "startingInstantMix": "Ładowanie Natychmiastowego Miksu..."
+    "startingInstantMix": "Ładowanie Natychmiastowego Miksu...",
+
+    "batchRateSuccess": "Ocena została zastosowana"
+    "batchRateSuccess": "Ocena została zastosowana"
   },
   "menu": {
     "library": "Biblioteka",

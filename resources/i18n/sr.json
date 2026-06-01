@@ -51,7 +51,28 @@
         "download": "Преузми",
         "playNext": "Пусти наредно",
         "info": "Прикажи инфо",
-        "instantMix": "Инстант микс"
+        "instantMix": "Инстант микс",
+
+        "playNowShort": "Сада",
+        "playNextShort": "Следећа",
+        "addToQueueShort": "Касније",
+        "addToPlaylistShort": "Плејлиста",
+        "batchRate": "Оцени",
+        "batchRateShort": "Оцени",
+        "batchRateTitle": "Оцени %{smart_count} песму |||| Оцени %{smart_count} песама",
+        "clearRating": "Уклони оцену",
+        "like": "Свиђа ми се",
+        "unlike": "Не свиђа ми се"
+        "playNowShort": "Сада",
+        "playNextShort": "Следећа",
+        "addToQueueShort": "Касније",
+        "addToPlaylistShort": "Плејлиста",
+        "batchRate": "Оцени",
+        "batchRateShort": "Оцени",
+        "batchRateTitle": "Оцени %{smart_count} песму |||| Оцени %{smart_count} песама",
+        "clearRating": "Уклони оцену",
+        "like": "Свиђа ми се",
+        "unlike": "Не свиђа ми се"
       }
     },
     "album": {
@@ -571,6 +592,8 @@
     "songsAddedToPlaylist": "У плејлисту је додата 1 песма |||| У плејлисту је додато %{smart_count} песама",
     "noSimilarSongsFound": "Нису пронађене сличне песме",
     "startingInstantMix": "Учитава се инстант микс…",
+
+    "batchRateSuccess": "Оцена је успешно примењена"
     "noTopSongsFound": "Нису пронађене најбоље песме",
     "noPlaylistsAvailable": "Није доступна ниједна",
     "delete_user_title": "Брисање корисника ’%{name}’",
@@ -601,7 +624,8 @@
     "shareSuccess": "URL је копиран у клипборд: %{url}",
     "shareFailure": "Грешка приликом копирања URL адресе %{url} у клипборд",
     "downloadDialogTitle": "Преузимање %{resource} ’%{name}’ (%{size})",
-    "downloadOriginalFormat": "Преузми у оригиналном формату"
+    "downloadOriginalFormat": "Преузми у оригиналном формату",
+    "batchRateSuccess": "Оцена је успешно примењена"
   },
   "menu": {
     "library": "Библиотека",
