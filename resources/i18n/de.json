@@ -49,7 +49,17 @@
         "playNext": "Als nächstes abspielen",
         "info": "Mehr Informationen",
         "showInPlaylist": "In Wiedergabeliste anzeigen",
-        "instantMix": "Sofort-Mix"
+        "instantMix": "Sofort-Mix",
+        "playNowShort": "Jetzt",
+        "playNextShort": "Nächstes",
+        "addToQueueShort": "Später",
+        "addToPlaylistShort": "Liste",
+        "batchRate": "Bewerten",
+        "batchRateShort": "Bewerten",
+        "batchRateTitle": "%{smart_count} Titel bewerten |||| %{smart_count} Titel bewerten",
+        "clearRating": "Bewertung löschen",
+        "like": "Favorisieren",
+        "unlike": "Nicht mehr favorisieren"
       }
     },
     "album": {
@@ -592,6 +602,7 @@
     "noSimilarSongsFound": "Keine ähnlichen Titel gefunden",
     "noTopSongsFound": "Keine beliebten Titel gefunden",
     "startingInstantMix": "Lade Sofort-Mix...",
+    "batchRateSuccess": "Bewertung erfolgreich angewendet",
     "uploadCover": "Cover hochladen",
     "removeCover": "Cover entfernen",
     "coverUploaded": "Cover aktualisiert",
