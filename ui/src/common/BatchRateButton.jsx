@@ -95,24 +95,25 @@ export const BatchRateButton = ({
 
   const handleApply = async () => {
     setOpen(false)
+    if (!selectedIds || selectedIds.length === 0) {
+      unselectAll(resource)
+      return
+    }
     try {
-      for (const id of selectedIds) {
+      const requests = []
+      selectedIds.forEach((id) => {
         if (rating > 0) {
-          await subsonic.setRating(id, rating)
+          requests.push(subsonic.setRating(id, rating))
+        } else if (rating === -1) {
+          requests.push(subsonic.setRating(id, 0))
         }
         if (starred === true) {
-          await subsonic.star(id)
+          requests.push(subsonic.star(id))
         } else if (starred === false) {
-          await subsonic.unstar(id)
+          requests.push(subsonic.unstar(id))
         }
-      }
-      // Clear rating if "delete" was chosen (rating === -1)
-      if (rating === -1) {
-        for (const id of selectedIds) {
-          await subsonic.setRating(id, 0)
-        }
-      }
-      // Force React-Admin to re-fetch the records, then refresh the view
+      })
+      await Promise.all(requests)
       await dataProvider.getMany(resource, { ids: selectedIds })
       notify('message.batchRateSuccess', { type: 'info' })
       refresh()
