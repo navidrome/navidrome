@@ -141,5 +141,31 @@ var _ = Describe("ToLyrics", func() {
 			// Last cue has no inferred end.
 			Expect(cl.Cue[1].End).To(BeNil())
 		})
+
+		It("shifts cue timestamps for each repeated line occurrence and allocates fresh pointers", func() {
+			lyrics, err := ToLyrics("eng", "[00:10.00][00:30.00]<00:10.10>Hello <00:10.50>world")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(lyrics.CueLine).To(HaveLen(2))
+
+			first := lyrics.CueLine[0]
+			Expect(*first.Start).To(Equal(int64(10000)))
+			Expect(first.Cue).To(HaveLen(2))
+			Expect(*first.Cue[0].Start).To(Equal(int64(10100)))
+			Expect(*first.Cue[1].Start).To(Equal(int64(10500)))
+			Expect(*first.Cue[0].End).To(Equal(int64(10500)))
+			Expect(first.Cue[1].End).To(BeNil())
+
+			second := lyrics.CueLine[1]
+			Expect(*second.Start).To(Equal(int64(30000)))
+			Expect(second.Cue).To(HaveLen(2))
+			Expect(*second.Cue[0].Start).To(Equal(int64(30100)))
+			Expect(*second.Cue[1].Start).To(Equal(int64(30500)))
+			Expect(*second.Cue[0].End).To(Equal(int64(30500)))
+			Expect(second.Cue[1].End).To(BeNil())
+
+			Expect(second.Cue[0].Start).ToNot(BeIdenticalTo(first.Cue[0].Start))
+			Expect(second.Cue[1].Start).ToNot(BeIdenticalTo(first.Cue[1].Start))
+			Expect(second.Cue[0].End).ToNot(BeIdenticalTo(first.Cue[0].End))
+		})
 	})
 })

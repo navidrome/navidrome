@@ -60,11 +60,11 @@ func ParseLyricsfile(text string) (*Lyrics, error) {
 }
 
 type lyricsfileDocument struct {
-	Version  string                  `yaml:"version"`
-	Metadata lyricsfileMetadata      `yaml:"metadata"`
-	Lines    []lyricsfileLineEntry   `yaml:"lines"`
-	Plain    string                  `yaml:"plain"`
-	Extra    map[string]yaml.Node    `yaml:",inline"`
+	Version  string                `yaml:"version"`
+	Metadata lyricsfileMetadata    `yaml:"metadata"`
+	Lines    []lyricsfileLineEntry `yaml:"lines"`
+	Plain    string                `yaml:"plain"`
+	Extra    map[string]yaml.Node  `yaml:",inline"`
 }
 
 type lyricsfileMetadata struct {
@@ -150,13 +150,26 @@ func buildLyricsfileCueLines(entries []lyricsfileLineEntry) ([]CueLine, []Agent)
 		}
 
 		startCopy := entry.StartMs
+		cues := wordsToCues(entry.Words)
+		// Cue.byteStart/byteEnd are positions in cueLine.value per the
+		// OpenSubsonic v2 spec, so when cues are present we reconstruct value
+		// from them rather than trust entry.Text (the Lyricsfile spec only
+		// requires word.text to "approximate" line.text).
+		value := entry.Text
+		if len(cues) > 0 {
+			var sb strings.Builder
+			for _, c := range cues {
+				sb.WriteString(c.Value)
+			}
+			value = sb.String()
+		}
 		cl := CueLine{
 			Index:   currentIndex,
 			Start:   &startCopy,
 			End:     ends[i],
-			Value:   entry.Text,
+			Value:   value,
 			AgentID: fmt.Sprintf("voice-%d", voiceID),
-			Cue:     wordsToCues(entry.Words),
+			Cue:     cues,
 		}
 		cueLines = append(cueLines, cl)
 
@@ -217,4 +230,3 @@ func wordsToCues(words []lyricsfileWordEntry) []Cue {
 	}
 	return cues
 }
-

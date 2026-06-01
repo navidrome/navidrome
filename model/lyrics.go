@@ -228,7 +228,10 @@ func ToLyrics(language, text string) (*Lyrics, error) {
 
 // flushPriorLine emits one CueLine per accumulated timestamp, copying the
 // shared text/cue data into each. The last "Repeated" use-case is preserved
-// (a single text repeats at multiple timestamps).
+// (a single text repeats at multiple timestamps). For repeated lines with
+// ELRC word timings, cues carry absolute timestamps anchored to the first
+// occurrence (timestamps[0]); each subsequent occurrence is shifted by
+// timestamps[idx]-timestamps[0] so its cues point at the correct moment,
 func flushPriorLine(cueLines *[]CueLine, timestamps []int64, text string, cues []Cue) {
 	trimmed := strings.TrimSpace(text)
 	for idx := range timestamps {
@@ -238,11 +241,20 @@ func flushPriorLine(cueLines *[]CueLine, timestamps []int64, text string, cues [
 			Start: &startCopy,
 			Value: trimmed,
 		}
-		// Cues are only meaningful for the first occurrence in a repeat; copy
-		// them onto each cueLine so each independent index has its own cue list.
 		if len(cues) > 0 {
+			offset := timestamps[idx] - timestamps[0]
 			cl.Cue = make([]Cue, len(cues))
-			copy(cl.Cue, cues)
+			for i, c := range cues {
+				cl.Cue[i] = Cue{Value: c.Value}
+				if c.Start != nil {
+					s := *c.Start + offset
+					cl.Cue[i].Start = &s
+				}
+				if c.End != nil {
+					e := *c.End + offset
+					cl.Cue[i].End = &e
+				}
+			}
 		}
 		*cueLines = append(*cueLines, cl)
 	}

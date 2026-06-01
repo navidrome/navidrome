@@ -578,7 +578,7 @@ func buildV2CueLines(cueLines []model.CueLine) []responses.CueLine {
 }
 
 // buildCue maps each model.Cue to one responses.Cue with inclusive UTF-8
-// ByteStart/ByteEnd offsets into cl.Value. 
+// ByteStart/ByteEnd offsets into cl.Value.
 func buildCue(cl model.CueLine) []responses.Cue {
 	if len(cl.Cue) == 0 {
 		return nil
