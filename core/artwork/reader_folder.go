@@ -128,8 +128,11 @@ func (a *folderArtworkReader) loadTiles(ctx context.Context) ([]image.Image, err
 	switch len(tiles) {
 	case 0:
 		return nil, errors.New("could not find any eligible cover")
+	case 1:
+		// If only 1 cover found, createTiledImage will handle it by just encoding tiles[0]
+		return tiles, nil
 	case 2:
-		tiles = append(tiles, tiles[1], tiles[0])
+		tiles = append(tiles, tiles[0], tiles[1])
 	case 3:
 		tiles = append(tiles, tiles[0])
 	}

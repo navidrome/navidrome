@@ -111,6 +111,9 @@
         "name": "Name",
         "subfolders": "Subfolders",
         "songs": "Songs"
+      },
+      "actions": {
+        "showInFolder": "Show in Folder"
       }
     },
     "artist": {
