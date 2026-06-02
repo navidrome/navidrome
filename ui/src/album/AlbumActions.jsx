@@ -21,7 +21,6 @@ import {
   playNext,
   addTracks,
   playTracks,
-  shuffleTracks,
   openAddToPlaylist,
   openDownloadMenu,
   DOWNLOAD_MENU_ALBUM,
@@ -99,29 +98,30 @@ const AlbumActions = ({
   }, [getAllSongsAndDispatch])
 
   const handleShuffle = React.useCallback(() => {
-    getAllSongsAndDispatch(shuffleTracks)
-  }, [getAllSongsAndDispatch])
-
-  const handleAddToPlaylist = React.useCallback(() => {
-    if (ids && ids.length === record.songCount) {
-      const selectedIds = ids.filter((id) => !data[id].missing)
-      return dispatch(openAddToPlaylist({ selectedIds }))
+    const filter = { album_id: record.id }
+    if (config.skipLowRatingInShuffle) {
+      filter.not_disliked = true
     }
     dataProvider
       .getList('song', {
-        pagination: { page: 1, perPage: 0 },
-        sort: { field: 'album', order: 'ASC' },
-        filter: { album_id: record.id },
+        pagination: { page: 1, perPage: 500 },
+        sort: { field: 'random', order: 'ASC' },
+        filter,
       })
       .then((res) => {
-        const selectedIds = res.data
-          .filter((s) => !s.missing)
-          .map((s) => s.id)
-        dispatch(openAddToPlaylist({ selectedIds }))
+        const allData = res.data.reduce(
+          (acc, curr) => ({ ...acc, [curr.id]: curr }),
+          {},
+        )
+        dispatch(playTracks(allData))
       })
       .catch(() => {
         notify('ra.page.error', 'warning')
       })
+  }, [dataProvider, dispatch, record, notify])
+
+  const handleAddToPlaylist = React.useCallback(() => {
+    dispatch(openAddToPlaylist({ albumIds: [record.id] }))
   }, [dataProvider, dispatch, record, data, ids, notify])
 
   const handleShare = React.useCallback(() => {
