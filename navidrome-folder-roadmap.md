@@ -55,3 +55,4 @@ This document outlines the planned enhancements for the Physical Folder Browsing
 *   ✅ Recursive Add to Playlist
 *   ✅ Full Song Toolbar inside Folders
 *   ✅ Folder Context Menus (More Actions)
+*   ✅ Visual Refinement: Hidden empty sections and standard Album-style thumbnails
