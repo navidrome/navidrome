@@ -40,14 +40,21 @@ const Breadcrumbs = ({ breadcrumbs }) => {
       {breadcrumbs.map((b, index) => {
         if (!b || !b.id || !b.name) return null
         const isLast = index === breadcrumbs.length - 1
-        // For libraries (first breadcrumb), we might want to navigate back to the root list if it's the only one,
-        // but let's just keep it simple.
-        return isLast ? (
-          <Typography key={b.id} className={classes.current}>
-            {b.name}
-          </Typography>
-        ) : (
-          <Link key={b.id} to={`/folder/${b.id}`} className={classes.link}>
+        const isLibrary = index === 0
+
+        if (isLast) {
+          return (
+            <Typography key={b.id} className={classes.current}>
+              {b.name}
+            </Typography>
+          )
+        }
+
+        // If it's the library, just go back to the main list
+        const url = isLibrary ? '/folder' : `/folder/${b.id}/show`
+
+        return (
+          <Link key={b.id} to={url} className={classes.link}>
             {b.name}
           </Link>
         )

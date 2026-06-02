@@ -5,6 +5,7 @@ import {
   useTranslate,
   FunctionField,
   useDataProvider,
+  Pagination,
 } from 'react-admin'
 import FolderIcon from '@material-ui/icons/Folder'
 import { makeStyles } from '@material-ui/core'
@@ -65,7 +66,7 @@ const FolderList = (props) => {
       sort={{ field: 'name', order: 'ASC' }}
       filter={{ parent_id: libraryId }}
       actions={<FolderListActions />}
-      pagination={false}
+      pagination={<Pagination rowsPerPageOptions={[100, 250, 500, 1000]} />}
       title={<Title title={translate('menu.folders')} />}
     >
       {folderView.grid ? (

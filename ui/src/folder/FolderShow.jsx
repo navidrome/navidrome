@@ -9,11 +9,15 @@ import {
   FunctionField,
   SimpleShowLayout,
   useTranslate,
+  Pagination,
 } from 'react-admin'
+import { useSelector } from 'react-redux'
 import FolderIcon from '@material-ui/icons/Folder'
 import { makeStyles, Typography, Box } from '@material-ui/core'
 import Breadcrumbs from './Breadcrumbs'
 import FolderSongs from './FolderSongs'
+import FolderListActions from './FolderListActions'
+import FolderGridView from './FolderGridView'
 import { useResourceRefresh, Title, FolderContextMenu } from '../common'
 
 const useStyles = makeStyles({
@@ -42,6 +46,7 @@ const FolderShowLayout = (props) => {
   const { record, loading } = useShowContext(props)
   const classes = useStyles()
   const translate = useTranslate()
+  const folderView = useSelector((state) => state.folderView)
   useResourceRefresh('folder', 'song')
 
   if (loading || !record) return null
@@ -49,6 +54,7 @@ const FolderShowLayout = (props) => {
   return (
     <>
       <RaTitle title={<Title subTitle={record.name} />} />
+      <FolderListActions {...props} />
       <SimpleShowLayout>
         <FolderHeader />
         <Box className={classes.sectionTitle}>
@@ -61,24 +67,30 @@ const FolderShowLayout = (props) => {
           target="parent_id"
           label=""
           sort={{ field: 'name', order: 'ASC' }}
+          perPage={500}
+          pagination={<Pagination rowsPerPageOptions={[100, 250, 500, 1000]} />}
           fullWidth
         >
-          <Datagrid rowClick="show" classes={{ row: classes.row }}>
-            <FunctionField
-              source="name"
-              render={(record) => (
-                <>
-                  <FolderIcon className={classes.icon} />
-                  {record.name}
-                </>
-              )}
-            />
-            <FolderContextMenu
-              source="name"
-              className={classes.contextMenu}
-              showLove={false}
-            />
-          </Datagrid>
+          {folderView.grid ? (
+            <FolderGridView {...props} />
+          ) : (
+            <Datagrid rowClick="show" classes={{ row: classes.row }}>
+              <FunctionField
+                source="name"
+                render={(record) => (
+                  <>
+                    <FolderIcon className={classes.icon} />
+                    {record.name}
+                  </>
+                )}
+              />
+              <FolderContextMenu
+                source="name"
+                className={classes.contextMenu}
+                showLove={false}
+              />
+            </Datagrid>
+          )}
         </ReferenceManyField>
 
         <Box className={classes.sectionTitle}>
@@ -91,8 +103,8 @@ const FolderShowLayout = (props) => {
           target="folder_id"
           label=""
           sort={{ field: 'path', order: 'ASC' }}
-          perPage={0}
-          pagination={null}
+          perPage={500}
+          pagination={<Pagination rowsPerPageOptions={[100, 250, 500, 1000]} />}
           fullWidth
         >
           <FolderSongs folder={record} />
