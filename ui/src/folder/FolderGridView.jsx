@@ -139,7 +139,7 @@ const FolderGridTile = ({ record, basePath }) => {
         <Cover record={record} />
         <GridListTileBar
           className={isDesktop ? classes.tileBar : classes.tileBarMobile}
-          subtitle={
+          title={
             !record.missing && (
               <PlayButton
                 className={classes.folderPlayButton}
@@ -148,6 +148,11 @@ const FolderGridTile = ({ record, basePath }) => {
                 resource="folder"
               />
             )
+          }
+          subtitle={
+            <Typography variant="caption" style={{ color: 'white' }}>
+              {record.totalSongs} {record.totalSongs === 1 ? 'Song' : 'Songs'}
+            </Typography>
           }
           actionIcon={<FolderContextMenu record={record} color={'white'} source="name" />}
         />

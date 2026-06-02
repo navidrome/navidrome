@@ -25,7 +25,7 @@ This document outlines the planned enhancements for the Physical Folder Browsing
 *   **Counts**: Display the number of Subfolders and Songs directly in the Folder list.
 *   **Storage Info**: Show the total physical disk size (e.g., "1.4 GB") of the folder.
 *   **Duration**: Calculate and show the total play time for the entire folder hierarchy.
-*   **Status**: ⏳ Pending
+*   **Status**: ✅ Completed
 
 ### 4. Folder ZIP Downloads
 *   **Bulk Export**: Add a "Download Folder (ZIP)" action to the toolbar and context menus.

@@ -24,6 +24,10 @@ type Folder struct {
 	Name            string    `structs:"name" db:"name" json:"name"`
 	ParentID        string    `structs:"parent_id" db:"parent_id" json:"parentId"`
 	NumAudioFiles   int       `structs:"num_audio_files" db:"num_audio_files" json:"numAudioFiles"`
+	NumSubfolders   int       `structs:"num_subfolders" db:"num_subfolders" json:"numSubfolders"`
+	TotalSongs      int       `structs:"total_songs" db:"total_songs" json:"totalSongs"`
+	TotalDuration   float64   `structs:"total_duration" db:"total_duration" json:"totalDuration"`
+	TotalSize       int64     `structs:"total_size" db:"total_size" json:"totalSize"`
 	NumPlaylists    int       `structs:"num_playlists" db:"num_playlists" json:"numPlaylists"`
 	ImageFiles      []string  `structs:"-" db:"-" json:"imageFiles"`
 	ImagesUpdatedAt time.Time `structs:"images_updated_at" db:"images_updated_at" json:"imagesUpdatedAt"`

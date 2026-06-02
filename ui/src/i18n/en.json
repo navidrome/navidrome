@@ -110,7 +110,11 @@
       "fields": {
         "name": "Name",
         "subfolders": "Subfolders",
-        "songs": "Songs"
+        "songs": "Songs",
+        "numSubfolders": "Folders",
+        "totalSongs": "Songs",
+        "totalDuration": "Time",
+        "totalSize": "Size"
       },
       "actions": {
         "showInFolder": "Show in Folder"

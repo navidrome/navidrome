@@ -104,8 +104,31 @@ func (r *folderRepository) NewInstance() any {
 }
 
 func (r folderRepository) selectFolder(options ...model.QueryOptions) SelectBuilder {
-	sql := r.newSelect(options...).Columns("folder.*", "library.path as library_path", "library.name as library_name").
-		Join("library on library.id = folder.library_id")
+	// Subquery for direct subfolder count
+	numSubfolders := `(SELECT COUNT(*) FROM folder f2 WHERE f2.parent_id = folder.id AND f2.missing = 0)`
+
+	// Subquery base for recursive stats (songs, duration, size)
+	// This JOINs media_file with folders that are children of the current folder
+	recursiveBase := `FROM media_file mf 
+		JOIN folder f2 ON mf.folder_id = f2.id 
+		WHERE f2.library_id = folder.library_id 
+		AND mf.missing = 0 
+		AND (f2.id = folder.id OR f2.path LIKE folder.path || '/%' OR (folder.path = '' AND f2.path != ''))`
+
+	totalSongs := fmt.Sprintf(`(SELECT COUNT(*) %s)`, recursiveBase)
+	totalDuration := fmt.Sprintf(`(SELECT IFNULL(SUM(mf.duration), 0) %s)`, recursiveBase)
+	totalSize := fmt.Sprintf(`(SELECT IFNULL(SUM(mf.size), 0) %s)`, recursiveBase)
+
+	sql := r.newSelect(options...).Columns(
+		"folder.*",
+		"library.path as library_path",
+		"library.name as library_name",
+		numSubfolders+" as num_subfolders",
+		totalSongs+" as total_songs",
+		totalDuration+" as total_duration",
+		totalSize+" as total_size",
+	).Join("library on library.id = folder.library_id")
+
 	return r.applyLibraryFilter(sql)
 }
 
