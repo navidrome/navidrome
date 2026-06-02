@@ -20,7 +20,6 @@ import {
 } from '../common'
 import config from '../config'
 import clsx from 'clsx'
-import FolderIcon from '@material-ui/icons/Folder'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -68,18 +67,6 @@ const useStyles = makeStyles(
     },
     folderContainer: {},
     folderPlayButton: { color: 'white' },
-    placeholderContainer: {
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: theme.palette.type === 'dark' ? '#333' : '#eee',
-        width: '100%',
-        height: '100%',
-    },
-    placeholderIcon: {
-        fontSize: '4rem',
-        color: theme.palette.type === 'dark' ? '#555' : '#ccc',
-    }
   }),
   { name: 'NDFolderGridView' },
 )
@@ -118,22 +105,15 @@ const Cover = withContentRect('bounds')(({
 }) => {
   const classes = useCoverStyles({ height: contentRect.bounds.width })
   const url = subsonic.getCoverArtUrl(record, config.uiCoverArtSize, true)
-  const { imgUrl, loading: imageLoading, error: imageError } = useImageUrl(url)
-  const uiClasses = useStyles()
+  const { imgUrl, loading: imageLoading } = useImageUrl(url)
 
   return (
     <div ref={measureRef} className={classes.coverContainer}>
-        {imgUrl && !imageError ? (
-            <img
-                src={imgUrl}
-                alt={record.name}
-                className={`${classes.cover} ${imageLoading ? classes.coverLoading : ''}`}
-            />
-        ) : (
-            <div className={uiClasses.placeholderContainer}>
-                <FolderIcon className={uiClasses.placeholderIcon} />
-            </div>
-        )}
+        <img
+            src={imgUrl || undefined}
+            alt={record.name}
+            className={`${classes.cover} ${imageLoading ? classes.coverLoading : ''}`}
+        />
     </div>
   )
 })

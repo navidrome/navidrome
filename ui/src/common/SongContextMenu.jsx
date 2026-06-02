@@ -143,6 +143,14 @@ export const SongContextMenu = ({
       action: (record) =>
         dispatch(openDownloadMenu(record, DOWNLOAD_MENU_SONG)),
     },
+    showInFolder: {
+      enabled: record.folderId || record.folder_id,
+      label: translate('resources.folder.actions.showInFolder'),
+      action: (record) => {
+        const folderId = record.folderId || record.folder_id
+        redirect(`/folder/${folderId}/show`)
+      },
+    },
     info: {
       enabled: true,
       label: translate('resources.song.actions.info'),

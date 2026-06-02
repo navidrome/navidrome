@@ -47,7 +47,7 @@ type Album struct {
 	MbzAlbumType         string   `structs:"mbz_album_type" json:"mbzAlbumType,omitempty"`
 	MbzAlbumComment      string   `structs:"mbz_album_comment" json:"mbzAlbumComment,omitempty"`
 	MbzReleaseGroupID    string   `structs:"mbz_release_group_id" json:"mbzReleaseGroupId,omitempty"`
-	FolderIDs            []string `structs:"folder_ids" json:"-" hash:"set"` // All folders that contain media_files for this album
+	FolderIDs            []string `structs:"folder_ids" json:"folderIds,omitempty" hash:"set"` // All folders that contain media_files for this album
 	ExplicitStatus       string   `structs:"explicit_status" json:"explicitStatus"`
 
 	// External metadata fields

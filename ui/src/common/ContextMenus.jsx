@@ -7,7 +7,7 @@ import MenuItem from '@material-ui/core/MenuItem'
 import MoreVertIcon from '@material-ui/icons/MoreVert'
 import { MdQuestionMark } from 'react-icons/md'
 import { makeStyles } from '@material-ui/core/styles'
-import { useDataProvider, useNotify, useTranslate } from 'react-admin'
+import { useDataProvider, useNotify, useTranslate, useRedirect } from 'react-admin'
 import clsx from 'clsx'
 import {
   playNext,
@@ -68,6 +68,7 @@ const ContextMenu = ({
   const dispatch = useDispatch()
   const translate = useTranslate()
   const notify = useNotify()
+  const redirect = useRedirect()
   const [anchorEl, setAnchorEl] = useState(null)
 
   const options = {
@@ -123,6 +124,17 @@ const ContextMenu = ({
               : DOWNLOAD_MENU_ARTIST,
           ),
         )
+      },
+    },
+    showInFolder: {
+      enabled:
+        record.folder_id ||
+        (record.folderIds && record.folderIds.length > 0),
+      needData: false,
+      label: translate('resources.folder.actions.showInFolder'),
+      action: (record) => {
+        const folderId = record.folder_id || record.folderIds[0]
+        redirect(`/folder/${folderId}/show`)
       },
     },
     ...(!hideInfo && {

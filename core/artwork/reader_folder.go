@@ -11,15 +11,17 @@ import (
 	"time"
 
 	. "github.com/Masterminds/squirrel"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
 )
 
 type folderArtworkReader struct {
 	cacheKey
-	a      *artwork
-	folder model.Folder
-	lib    libraryView
+	a        *artwork
+	folder   model.Folder
+	lib      libraryView
+	imgFiles []string
 }
 
 func newFolderArtworkReader(ctx context.Context, artwork *artwork, artID model.ArtworkID) (*folderArtworkReader, error) {
@@ -32,10 +34,18 @@ func newFolderArtworkReader(ctx context.Context, artwork *artwork, artID model.A
 		return nil, err
 	}
 
+	var imgFiles []string
+	rel := strings.TrimPrefix(path.Join(f.Path, f.Name), "/")
+	for _, img := range f.ImageFiles {
+		imgFiles = append(imgFiles, path.Join(rel, img))
+	}
+	slices.SortFunc(imgFiles, compareImageFiles)
+
 	a := &folderArtworkReader{
-		a:      artwork,
-		folder: *f,
-		lib:    lib,
+		a:        artwork,
+		folder:   *f,
+		lib:      lib,
+		imgFiles: imgFiles,
 	}
 	a.cacheKey.artID = artID
 	a.cacheKey.lastUpdate = utils.TimeNewest(f.UpdatedAt, f.CreatedAt)
@@ -51,25 +61,47 @@ func (a *folderArtworkReader) LastUpdated() time.Time {
 }
 
 func (a *folderArtworkReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
-	return selectImageReader(ctx, a.artID,
-		a.fromFolderExternalFile(ctx),
+	return selectImageReader(ctx, a.artID, a.fromFolderSources(ctx)...)
+}
+
+func (a *folderArtworkReader) fromFolderSources(ctx context.Context) []sourceFunc {
+	var ff []sourceFunc
+	priority := strings.ToLower(conf.Server.CoverArtPriority)
+
+	for pattern := range strings.SplitSeq(priority, ",") {
+		pattern = strings.TrimSpace(pattern)
+		switch {
+		case pattern == "embedded":
+			// For folders, "embedded" means try to get art from any file inside
+			ff = append(ff, a.fromInternalMediaFile(ctx))
+		case pattern == "external":
+			// No external provider for folders yet, maybe in the future?
+			continue
+		case len(a.imgFiles) > 0:
+			ff = append(ff, fromExternalFile(ctx, a.lib.FS, a.imgFiles, pattern))
+		}
+	}
+
+	// Always add tiled cover and placeholder as final fallbacks
+	ff = append(ff,
 		a.fromGeneratedTiledCover(ctx),
 		fromAlbumPlaceholder(),
 	)
+
+	return ff
 }
 
-func (a *folderArtworkReader) fromFolderExternalFile(ctx context.Context) sourceFunc {
-	if len(a.folder.ImageFiles) == 0 {
-		return func() (io.ReadCloser, string, error) { return nil, "", nil }
+func (a *folderArtworkReader) fromInternalMediaFile(ctx context.Context) sourceFunc {
+	return func() (io.ReadCloser, string, error) {
+		tracks, err := a.a.ds.MediaFile(ctx).GetAll(model.QueryOptions{
+			Filters: Eq{"folder_id": a.folder.ID, "media_file.missing": false},
+			Max:     1,
+		})
+		if err != nil || len(tracks) == 0 {
+			return nil, "", nil
+		}
+		return fromTag(ctx, a.lib.FS, tracks[0].Path)()
 	}
-	var imgFiles []string
-	rel := strings.TrimPrefix(path.Join(a.folder.Path, a.folder.Name), "/")
-	for _, img := range a.folder.ImageFiles {
-		imgFiles = append(imgFiles, path.Join(rel, img))
-	}
-	slices.SortFunc(imgFiles, compareImageFiles)
-
-	return fromExternalFile(ctx, a.lib.FS, imgFiles, "cover,folder,front")
 }
 
 func (a *folderArtworkReader) fromGeneratedTiledCover(ctx context.Context) sourceFunc {

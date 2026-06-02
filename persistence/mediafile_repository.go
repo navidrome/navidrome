@@ -115,12 +115,10 @@ var mediaFileFilter = sync.OnceValue(func() map[string]filterFunc {
 		"folder_id_recursive": func(_ string, v any) Sqlizer {
 			folderID := fmt.Sprintf("%v", v)
 			// Subquery to find all subfolders (including the folder itself)
-			// We handle the root folder case (empty path) separately if needed, 
-			// but LIKE 'path/%' should work for others.
 			return Expr(`media_file.folder_id IN (
 				SELECT f2.id FROM folder f1
 				JOIN folder f2 ON f2.library_id = f1.library_id 
-				WHERE f1.id = ? AND (f2.path = f1.path OR f2.path LIKE f1.path || '/%')
+				WHERE f1.id = ? AND (f2.path = f1.path OR f1.path = '' OR f2.path LIKE f1.path || '/%')
 			)`, folderID)
 		},
 		"album_id": func(_ string, v any) Sqlizer { return Eq{"media_file.album_id": v} },

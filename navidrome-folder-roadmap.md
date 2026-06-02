@@ -15,7 +15,7 @@ This document outlines the planned enhancements for the Physical Folder Browsing
 ### 2. "Show in Folder" Integration
 *   **Context Action**: Add a "Show in Folder" option to the "More" menu for any Song or Album.
 *   **Navigation**: Clicking the action should jump the user directly to the exact location of that item in the physical folder browser.
-*   **Status**: ⏳ Pending
+*   **Status**: ✅ Completed
 
 ---
 
