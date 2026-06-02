@@ -57,6 +57,26 @@ A share of the revenue helps fund the development of Navidrome at no additional 
  - **Transcoding** on the fly. Can be set per user/player. **Opus encoding is supported**
  - Translated to **various languages**
 
+## Physical Folder Browsing (Experimental)
+
+This version of Navidrome includes a major new feature: **Physical Folder Browsing**. This allows you to navigate your music library exactly as it is organized on your hard drive, bypassing traditional metadata-based views.
+
+### Current Features
+- **Hierarchical Navigation**: Browse through folders and subfolders with functional breadcrumbs.
+- **Recursive Actions**: Play All, Shuffle, or Add to Playlist for an entire folder hierarchy with one click.
+- **Visual Polish**: Support for folder thumbnails (including composite artwork from albums within) and a Grid/List view toggle.
+- **Subsonic Integration**: Compatible with mobile apps that support physical folder browsing.
+
+### Future Roadmap
+We are actively working on enhancing this feature. Planned improvements include:
+- **"Show in Folder"**: Jump directly to a song or album's physical location from anywhere in the app.
+- **Metadata Statistics**: Display folder-level stats (song counts, total duration, disk size).
+- **ZIP Downloads**: Download entire physical folders as a ZIP archive.
+- **Scoped Search**: Search specifically within a folder hierarchy.
+- **Folder Sync**: "Pin" physical folders as automatically updating playlists.
+
+For more details, see [navidrome-folder-roadmap.md](navidrome-folder-roadmap.md).
+
 ## Translations
 
 Navidrome uses [POEditor](https://poeditor.com/) for translations, and we are always looking 
