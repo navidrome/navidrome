@@ -5,6 +5,7 @@ import clsx from 'clsx'
 import { useTranslate, MenuItemLink, getResources } from 'react-admin'
 import ViewListIcon from '@material-ui/icons/ViewList'
 import AlbumIcon from '@material-ui/icons/Album'
+import FolderIcon from '@material-ui/icons/Folder'
 import SubMenu from './SubMenu'
 import { humanize, pluralize } from 'inflection'
 import albumLists from '../album/albumLists'
@@ -125,7 +126,17 @@ const Menu = ({ dense = false }) => {
           renderAlbumMenuItemLink(type, albumLists[type]),
         )}
       </SubMenu>
-      {resources.filter(subItems(undefined)).map(renderResourceMenuItemLink)}
+      <MenuItemLink
+        to="/folder"
+        activeClassName={classes.active}
+        primaryText={translate('menu.folders')}
+        leftIcon={<FolderIcon />}
+        sidebarIsOpen={open}
+        dense={dense}
+      />
+      {resources
+        .filter((r) => r.name !== 'folder' && subItems(undefined)(r))
+        .map(renderResourceMenuItemLink)}
       {config.devSidebarPlaylists && open ? (
         <>
           <Divider />

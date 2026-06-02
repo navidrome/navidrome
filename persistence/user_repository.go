@@ -88,7 +88,7 @@ func (r *userRepository) selectUserWithLibraries(options ...model.QueryOptions) 
 }
 
 func (r *userRepository) CountAll(qo ...model.QueryOptions) (int64, error) {
-	return r.count(Select(), qo...)
+	return r.count(r.newSelect(), qo...)
 }
 
 func (r *userRepository) Get(id string) (*model.User, error) {

@@ -30,7 +30,7 @@ func (r *transcodingRepository) Get(id string) (*model.Transcoding, error) {
 }
 
 func (r *transcodingRepository) CountAll(qo ...model.QueryOptions) (int64, error) {
-	return r.count(Select(), qo...)
+	return r.count(r.newSelect(), qo...)
 }
 
 func (r *transcodingRepository) FindByFormat(format string) (*model.Transcoding, error) {
@@ -49,7 +49,7 @@ func (r *transcodingRepository) Put(t *model.Transcoding) error {
 }
 
 func (r *transcodingRepository) Count(options ...rest.QueryOptions) (int64, error) {
-	return r.count(Select(), r.parseRestOptions(r.ctx, options...))
+	return r.count(r.newSelect(), r.parseRestOptions(r.ctx, options...))
 }
 
 func (r *transcodingRepository) Read(id string) (any, error) {

@@ -85,7 +85,7 @@ func (r *playlistRepository) userFilter() Sqlizer {
 }
 
 func (r *playlistRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	sq := Select().Where(r.userFilter())
+	sq := r.newSelect().Where(r.userFilter())
 	return r.count(sq, options...)
 }
 

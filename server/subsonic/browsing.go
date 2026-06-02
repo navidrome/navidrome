@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"slices"
+	"strconv"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -130,6 +132,25 @@ func (api *Router) GetMusicDirectory(r *http.Request) (*responses.Subsonic, erro
 	id, _ := p.String("id")
 	ctx := r.Context()
 
+	// 1. Try if it's a Library ID (numeric)
+	if libID, err := strconv.Atoi(id); err == nil {
+		lib, err := api.ds.Library(ctx).Get(libID)
+		if err == nil {
+			// Check access
+			accessibleLibraryIds := slice.Map(getUserAccessibleLibraries(ctx), func(lib model.Library) int { return lib.ID })
+			if slices.Contains(accessibleLibraryIds, libID) {
+				dir, err := api.buildLibraryDirectory(ctx, lib)
+				if err != nil {
+					return nil, err
+				}
+				response := newResponse()
+				response.Directory = dir
+				return response, nil
+			}
+		}
+	}
+
+	// 2. Existing logic with Folder support added to GetEntityByID
 	entity, err := model.GetEntityByID(ctx, api.ds, id)
 	if errors.Is(err, model.ErrNotFound) {
 		log.Error(r, "Requested ID not found ", "id", id)
@@ -147,6 +168,8 @@ func (api *Router) GetMusicDirectory(r *http.Request) (*responses.Subsonic, erro
 		dir, err = api.buildArtistDirectory(ctx, v)
 	case *model.Album:
 		dir, err = api.buildAlbumDirectory(ctx, v)
+	case *model.Folder:
+		dir, err = api.buildFolderDirectory(ctx, v)
 	default:
 		log.Error(r, "Requested ID of invalid type", "id", id, "entity", v)
 		return nil, newError(responses.ErrorDataNotFound, "Directory not found")
@@ -160,6 +183,47 @@ func (api *Router) GetMusicDirectory(r *http.Request) (*responses.Subsonic, erro
 	response := newResponse()
 	response.Directory = dir
 	return response, nil
+}
+
+func (api *Router) buildFolderDirectory(ctx context.Context, f *model.Folder) (*responses.Directory, error) {
+	dir := &responses.Directory{}
+	dir.Id = f.ID
+	dir.Name = f.Name
+	dir.Parent = f.ParentID
+	if dir.Parent == "" {
+		dir.Parent = strconv.Itoa(f.LibraryID)
+	}
+
+	subfolders, err := api.ds.Folder(ctx).GetAll(filter.ByParentID(f.ID))
+	if err != nil {
+		return nil, err
+	}
+
+	mfs, err := api.ds.MediaFile(ctx).GetAll(filter.SongsByFolder(f.ID))
+	if err != nil {
+		return nil, err
+	}
+
+	dir.Child = make([]responses.Child, 0, len(subfolders)+len(mfs))
+	dir.Child = append(dir.Child, slice.MapWithArg(subfolders, ctx, childFromFolder)...)
+	dir.Child = append(dir.Child, slice.MapWithArg(mfs, ctx, childFromMediaFile)...)
+
+	return dir, nil
+}
+
+func (api *Router) buildLibraryDirectory(ctx context.Context, lib *model.Library) (*responses.Directory, error) {
+	rootFolder, err := api.ds.Folder(ctx).GetByPath(*lib, ".")
+	if err != nil {
+		return nil, err
+	}
+	dir, err := api.buildFolderDirectory(ctx, rootFolder)
+	if err != nil {
+		return nil, err
+	}
+	dir.Id = strconv.Itoa(lib.ID)
+	dir.Name = lib.Name
+	dir.Parent = "" // Libraries are root
+	return dir, nil
 }
 
 func (api *Router) GetArtist(r *http.Request) (*responses.Subsonic, error) {

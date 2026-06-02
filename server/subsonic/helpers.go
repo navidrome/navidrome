@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -386,6 +387,31 @@ func osChildFromAlbum(ctx context.Context, al model.Album) *responses.OpenSubson
 }
 
 // toItemDate converts a string date in the formats 'YYYY-MM-DD', 'YYYY-MM' or 'YYYY' to an OS ItemDate
+func childFromFolder(ctx context.Context, f model.Folder) responses.Child {
+	child := responses.Child{}
+	child.Id = f.ID
+	child.IsDir = true
+	child.Title = f.Name
+	child.Name = f.Name
+	child.Created = new(f.CreatedAt)
+	child.Parent = f.ParentID
+	if child.Parent == "" {
+		child.Parent = strconv.Itoa(f.LibraryID)
+	}
+	child.OpenSubsonicChild = osChildFromFolder(ctx, f)
+	return child
+}
+
+func osChildFromFolder(ctx context.Context, f model.Folder) *responses.OpenSubsonicChild {
+	player, _ := request.PlayerFrom(ctx)
+	if strings.Contains(conf.Server.Subsonic.LegacyClients, player.Client) {
+		return nil
+	}
+	child := responses.OpenSubsonicChild{}
+	child.MediaType = responses.MediaTypeAlbum // Subsonic often uses Album for directories
+	return &child
+}
+
 func toItemDate(date string) responses.ItemDate {
 	itemDate := responses.ItemDate{}
 	if date == "" {

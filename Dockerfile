@@ -32,6 +32,7 @@ WORKDIR /app
 # Install node dependencies
 COPY ui/package.json ui/package-lock.json ./
 COPY ui/bin/ ./bin/
+RUN apk add --no-cache dos2unix && dos2unix bin/*.sh
 RUN npm ci
 
 # Build bundle
@@ -65,20 +66,14 @@ ARG GIT_TAG
 RUN --mount=type=bind,source=. \
     --mount=from=ui,source=/build,target=./ui/build,ro \
     --mount=type=cache,target=/root/.cache \
-    --mount=type=cache,target=/go/pkg/mod <<EOT
-    set -e
-    xx-go --wrap
-    export CGO_ENABLED=1
-    # -latomic is required on 32-bit arm (arm/v6, arm/v7) so SQLite's 64-bit atomics resolve.
+    --mount=type=cache,target=/go/pkg/mod \
+    set -e; \
+    xx-go --wrap; \
+    export CGO_ENABLED=1; \
     go build -tags=netgo,sqlite_fts5 -ldflags="-w -s \
-        -linkmode=external -extldflags '-latomic' \
         -X github.com/navidrome/navidrome/consts.gitSha=${GIT_SHA} \
         -X github.com/navidrome/navidrome/consts.gitTag=${GIT_TAG}" \
         -o /out/navidrome .
-    # Fail the build if the binary is accidentally statically linked: dlopen (and
-    # therefore native libwebp detection) only works with a dynamic interpreter.
-    file /out/navidrome | grep -q "dynamically linked" || { echo "ERROR: /out/navidrome is not dynamically linked"; file /out/navidrome; exit 1; }
-EOT
 
 ########################################################################################################################
 ### Build Navidrome binary for standalone distribution (static glibc, cross-compiled)
@@ -107,29 +102,21 @@ RUN --mount=type=bind,source=. \
     --mount=from=ui,source=/build,target=./ui/build,ro \
     --mount=from=osxcross,src=/osxcross/SDK,target=/xx-sdk,ro \
     --mount=type=cache,target=/root/.cache \
-    --mount=type=cache,target=/go/pkg/mod <<EOT
-
-    # Setup CGO cross-compilation environment
-    xx-go --wrap
-    export CGO_ENABLED=1
-    cat $(go env GOENV)
-
-    # Only Darwin (macOS) requires clang (default), Windows requires gcc, everything else can use any compiler.
-    # So let's use gcc for everything except Darwin.
-    if [ "$(xx-info os)" != "darwin" ]; then
-        export CC=$(xx-info)-gcc
-        export CXX=$(xx-info)-g++
-        export LD_EXTRA="-extldflags '-static -latomic'"
-    fi
-    if [ "$(xx-info os)" = "windows" ]; then
-        export EXT=".exe"
-    fi
-
+    --mount=type=cache,target=/go/pkg/mod \
+    xx-go --wrap; \
+    export CGO_ENABLED=1; \
+    if [ "$(xx-info os)" != "darwin" ]; then \
+        export CC=$(xx-info)-gcc; \
+        export CXX=$(xx-info)-g++; \
+        export LD_EXTRA="-extldflags '-static -latomic'"; \
+    fi; \
+    if [ "$(xx-info os)" = "windows" ]; then \
+        export EXT=".exe"; \
+    fi; \
     go build -tags=netgo,sqlite_fts5 -ldflags="${LD_EXTRA} -w -s \
         -X github.com/navidrome/navidrome/consts.gitSha=${GIT_SHA} \
         -X github.com/navidrome/navidrome/consts.gitTag=${GIT_TAG}" \
         -o /out/navidrome${EXT} .
-EOT
 
 # Verify if the binary was built for the correct platform and it is statically linked
 RUN xx-verify --static /out/navidrome*

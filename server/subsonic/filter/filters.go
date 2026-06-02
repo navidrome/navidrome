@@ -177,6 +177,20 @@ func ByStarred() Options {
 	return addDefaultFilters(Options{Sort: "starred_at", Order: "desc", Filters: Eq{"starred": true}})
 }
 
+func ByParentID(parentID string) Options {
+	return addDefaultFilters(Options{
+		Filters: Eq{"parent_id": parentID},
+		Sort:    "name",
+	})
+}
+
+func SongsByFolder(folderID string) Options {
+	return addDefaultFilters(Options{
+		Filters: Eq{"folder_id": folderID},
+		Sort:    "path",
+	})
+}
+
 func ArtistsByStarred() Options {
 	return Options{Sort: "starred_at", Order: "desc", Filters: Eq{"starred": true}}
 }

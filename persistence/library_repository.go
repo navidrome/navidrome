@@ -216,7 +216,7 @@ func (r *libraryRepository) RefreshStats(id int) error {
 				}), &foldersRes)
 		},
 		func() error {
-			return r.queryOne(Select("ifnull(sum(num_audio_files + num_playlists + json_array_length(image_files)),0) as count").
+			return r.queryOne(Select("ifnull(sum(num_audio_files + num_playlists + json_array_length(case when json_valid(image_files) then image_files else '[]' end)),0) as count").
 				From("folder").Where(Eq{"library_id": id, "missing": false}), &filesRes)
 		},
 		func() error {

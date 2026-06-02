@@ -9,6 +9,8 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/utils/slice"
+	"github.com/deluan/rest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pocketbase/dbx"
@@ -254,6 +256,48 @@ var _ = Describe("FolderRepository", func() {
 			}
 			Expect(folders).To(HaveLen(1))
 			Expect(folders[0].ID).To(Equal("f1"))
+		})
+	})
+
+	Describe("ResourceRepository", func() {
+		It("should implement Count", func() {
+			count, err := repo.(model.ResourceRepository).Count()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(count).To(BeNumerically(">=", 0))
+		})
+
+		It("should implement Read", func() {
+			folder := model.NewFolder(testLib, "TestRead/Folder")
+			Expect(repo.Put(folder)).To(Succeed())
+
+			res, err := repo.(model.ResourceRepository).Read(folder.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res.(*model.Folder).Name).To(Equal("Folder"))
+			// Verify breadcrumbs are populated
+			Expect(res.(*model.Folder).Breadcrumbs).ToNot(BeEmpty())
+		})
+
+		It("should implement ReadAll with filtering", func() {
+			parent := model.NewFolder(testLib, "TestParent")
+			Expect(repo.Put(parent)).To(Succeed())
+
+			child1 := model.NewFolder(testLib, "TestParent/Child1")
+			child2 := model.NewFolder(testLib, "TestParent/Child2")
+			other := model.NewFolder(testLib, "Other")
+			Expect(repo.Put(child1)).To(Succeed())
+			Expect(repo.Put(child2)).To(Succeed())
+			Expect(repo.Put(other)).To(Succeed())
+
+			// Filter by parent_id
+			options := rest.QueryOptions{
+				Filters: map[string][]string{"parent_id": {parent.ID}},
+			}
+			res, err := repo.(model.ResourceRepository).ReadAll(options)
+			Expect(err).ToNot(HaveOccurred())
+			folders := res.([]model.Folder)
+			Expect(folders).To(HaveLen(2))
+			names := slice.Map(folders, func(f model.Folder) string { return f.Name })
+			Expect(names).To(ContainElements("Child1", "Child2"))
 		})
 	})
 })

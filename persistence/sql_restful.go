@@ -21,31 +21,35 @@ func (r *sqlRepository) parseRestFilters(ctx context.Context, options rest.Query
 	if len(options.Filters) == 0 {
 		return nil
 	}
+	log.Info(ctx, "!!!REST_DEBUG!!! Raw filters received", "filters", options.Filters, "table", r.tableName)
 	filters := And{}
 	for f, v := range options.Filters {
-		// Ignore filters with empty values
-		if v == "" {
-			continue
-		}
 		// Look for a custom filter function
 		f = strings.ToLower(f)
 		if ff, ok := r.filterMappings[f]; ok {
 			if filter := ff(f, v); filter != nil {
+				log.Info(ctx, "!!!REST_DEBUG!!! Applied custom filter", "filter", f, "value", v)
 				filters = append(filters, filter)
 			}
 			continue
 		}
+		// Ignore filters with empty values
+		if v == "" {
+			continue
+		}
 		// Ignore invalid filters (not based on a field or filter function)
 		if r.isFieldWhiteListed != nil && !r.isFieldWhiteListed(f) {
-			log.Warn(ctx, "Ignoring filter not whitelisted", "filter", f, "table", r.tableName)
+			log.Warn(ctx, "!!!REST_DEBUG!!! Ignoring filter not whitelisted", "filter", f, "table", r.tableName)
 			continue
 		}
 		// For fields ending in "id", use an exact match
 		if strings.HasSuffix(f, "id") {
+			log.Info(ctx, "!!!REST_DEBUG!!! Applied ID filter", "filter", f, "value", v)
 			filters = append(filters, eqFilter(f, v))
 			continue
 		}
 		// Default to a "starts with" filter
+		log.Info(ctx, "!!!REST_DEBUG!!! Applied default startsWith filter", "filter", f, "value", v)
 		filters = append(filters, startsWithFilter(f, v))
 	}
 	return filters
@@ -102,7 +106,10 @@ func containsFilter(field string) func(string, any) Sqlizer {
 }
 
 func booleanFilter(field string, value any) Sqlizer {
-	v := strings.ToLower(value.(string))
+	if v, ok := value.(bool); ok {
+		return Eq{field: v}
+	}
+	v := strings.ToLower(fmt.Sprintf("%v", value))
 	return Eq{field: v == "true"}
 }
 

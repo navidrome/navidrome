@@ -94,7 +94,8 @@ func (r *scrobbleBufferRepository) Dequeue(entry *model.ScrobbleEntry) error {
 }
 
 func (r *scrobbleBufferRepository) Length() (int64, error) {
-	return r.count(Select())
+	return r.count(r.newSelect())
 }
+
 
 var _ model.ScrobbleBufferRepository = (*scrobbleBufferRepository)(nil)

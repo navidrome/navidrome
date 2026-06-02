@@ -66,6 +66,7 @@ func (api *Router) routes() http.Handler {
 		r.Use(server.UpdateLastAccessMiddleware(api.ds))
 		api.RX(r, "/user", api.users.NewRepository, true)
 		api.R(r, "/song", model.MediaFile{}, false)
+		api.R(r, "/folder", model.Folder{}, false)
 		api.R(r, "/album", model.Album{}, false)
 		api.addArtistRoute(r)
 		api.R(r, "/genre", model.Genre{}, false)
@@ -106,13 +107,19 @@ func (api *Router) R(r chi.Router, pathPrefix string, model any, persistable boo
 
 func (api *Router) RX(r chi.Router, pathPrefix string, constructor rest.RepositoryConstructor, persistable bool) {
 	r.Route(pathPrefix, func(r chi.Router) {
-		r.Get("/", rest.GetAll(constructor))
+		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+			log.Error(r.Context(), "!!!API_REQUEST!!! GET", "path", r.URL.Path, "query", r.URL.RawQuery)
+			rest.GetAll(constructor)(w, r)
+		})
 		if persistable {
 			r.Post("/", rest.Post(constructor))
 		}
 		r.Route("/{id}", func(r chi.Router) {
 			r.Use(server.URLParamsMiddleware)
-			r.Get("/", rest.Get(constructor))
+			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+				log.Error(r.Context(), "!!!API_REQUEST!!! GET ONE", "path", r.URL.Path)
+				rest.Get(constructor)(w, r)
+			})
 			if persistable {
 				r.Put("/", rest.Put(constructor))
 				r.Delete("/", rest.Delete(constructor))

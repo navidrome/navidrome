@@ -105,6 +105,14 @@
         "topRated": "Top Rated"
       }
     },
+    "folder": {
+      "name": "Folder |||| Folders",
+      "fields": {
+        "name": "Name",
+        "subfolders": "Subfolders",
+        "songs": "Songs"
+      }
+    },
     "artist": {
       "name": "Artist |||| Artists",
       "fields": {
@@ -605,6 +613,7 @@
   },
   "menu": {
     "library": "Library",
+    "folders": "Folders",
     "librarySelector": {
       "allLibraries": "All Libraries (%{count})",
       "multipleLibraries": "%{selected} of %{total} Libraries",

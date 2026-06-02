@@ -386,8 +386,8 @@ func (r sqlRepository) count(countQuery SelectBuilder, options ...model.QueryOpt
 	countQuery = countQuery.
 		RemoveColumns().Columns("count(distinct " + r.tableName + ".id) as count").
 		RemoveOffset().RemoveLimit().
-		OrderBy(r.tableName + ".id"). // To remove any ORDER BY clause that could slow down the query
 		From(r.tableName)
+
 	countQuery = r.applyFilters(countQuery, options...)
 	var res struct{ Count int64 }
 	err := r.queryOne(countQuery, &res)
@@ -462,9 +462,11 @@ func (r sqlRepository) delete(cond Sqlizer) error {
 
 func (r sqlRepository) logSQL(sql string, args dbx.Params, err error, rowsAffected int64, start time.Time) {
 	elapsed := time.Since(start)
-	if err == nil || errors.Is(err, context.Canceled) {
-		log.Trace(r.ctx, "SQL: `"+sql+"`", "args", args, "rowsAffected", rowsAffected, "elapsedTime", elapsed, err)
+	if err != nil && !errors.Is(err, context.Canceled) {
+		log.Error(r.ctx, "SQL failure: `"+sql+"`", "args", args, "rows", rowsAffected, "elapsed", elapsed, "err", err.Error())
 	} else {
-		log.Error(r.ctx, "SQL: `"+sql+"`", "args", args, "rowsAffected", rowsAffected, "elapsedTime", elapsed, err)
+		log.Trace(r.ctx, "SQL success", "table", r.tableName, "rows", rowsAffected, "elapsed", elapsed)
 	}
 }
+
+
