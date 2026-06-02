@@ -26,7 +26,7 @@ type Folder struct {
 	NumAudioFiles   int       `structs:"num_audio_files" db:"num_audio_files" json:"numAudioFiles"`
 	NumPlaylists    int       `structs:"num_playlists" db:"num_playlists" json:"numPlaylists"`
 	ImageFiles      []string  `structs:"-" db:"-" json:"imageFiles"`
-	ImagesUpdatedAt time.Time `structs:"-" db:"-" json:"imagesUpdatedAt"`
+	ImagesUpdatedAt time.Time `structs:"images_updated_at" db:"images_updated_at" json:"imagesUpdatedAt"`
 	Hash            string    `structs:"-" db:"-" json:"hash"`
 	Missing         bool      `structs:"missing" db:"missing" json:"missing"`
 	UpdatedAt       time.Time `structs:"updated_at" db:"updated_at" json:"updatedAt"`
@@ -45,6 +45,10 @@ func (f Folder) AbsolutePath() string {
 
 func (f Folder) String() string {
 	return f.AbsolutePath()
+}
+
+func (f Folder) CoverArtID() ArtworkID {
+	return artworkIDFromFolder(f)
 }
 
 // FolderID generates a unique ID for a folder in a library.

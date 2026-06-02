@@ -8,7 +8,10 @@ import {
 } from 'react-admin'
 import FolderIcon from '@material-ui/icons/Folder'
 import { makeStyles } from '@material-ui/core'
+import { useSelector } from 'react-redux'
 import { Title, FolderContextMenu } from '../common'
+import FolderListActions from './FolderListActions'
+import FolderGridView from './FolderGridView'
 
 const useStyles = makeStyles({
   icon: {
@@ -31,6 +34,7 @@ const FolderList = (props) => {
   const classes = useStyles()
   const translate = useTranslate()
   const dataProvider = useDataProvider()
+  const folderView = useSelector((state) => state.folderView)
   const [libraryId, setLibraryId] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -60,29 +64,33 @@ const FolderList = (props) => {
       perPage={500}
       sort={{ field: 'name', order: 'ASC' }}
       filter={{ parent_id: libraryId }}
-      actions={null}
+      actions={<FolderListActions />}
       pagination={false}
       title={<Title title={translate('menu.folders')} />}
     >
-      <Datagrid rowClick="show" classes={{ row: classes.row }}>
-        <FunctionField
-          source="name"
-          render={(record) => {
-            if (!record || !record.name) return null
-            return (
-              <>
-                <FolderIcon className={classes.icon} />
-                {record.name}
-              </>
-            )
-          }}
-        />
-        <FolderContextMenu
-          source="name"
-          className={classes.contextMenu}
-          showLove={false}
-        />
-      </Datagrid>
+      {folderView.grid ? (
+        <FolderGridView {...props} />
+      ) : (
+        <Datagrid rowClick="show" classes={{ row: classes.row }}>
+          <FunctionField
+            source="name"
+            render={(record) => {
+              if (!record || !record.name) return null
+              return (
+                <>
+                  <FolderIcon className={classes.icon} />
+                  {record.name}
+                </>
+              )
+            }}
+          />
+          <FolderContextMenu
+            source="name"
+            className={classes.contextMenu}
+            showLove={false}
+          />
+        </Datagrid>
+      )}
     </List>
   )
 }

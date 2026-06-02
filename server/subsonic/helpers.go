@@ -393,6 +393,7 @@ func childFromFolder(ctx context.Context, f model.Folder) responses.Child {
 	child.IsDir = true
 	child.Title = f.Name
 	child.Name = f.Name
+	child.CoverArt = f.CoverArtID().String()
 	child.Created = new(f.CreatedAt)
 	child.Parent = f.ParentID
 	if child.Parent == "" {

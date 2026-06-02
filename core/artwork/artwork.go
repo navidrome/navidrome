@@ -103,6 +103,8 @@ func (a *artwork) getArtworkId(ctx context.Context, id string) (model.ArtworkID,
 		log.Trace(ctx, "ID is for a MediaFile", "id", id, "title", e.Title, "album", e.Album)
 	case *model.Playlist:
 		log.Trace(ctx, "ID is for a Playlist", "id", id, "name", e.Name)
+	case *model.Folder:
+		log.Trace(ctx, "ID is for a Folder", "id", id, "name", e.Name)
 	}
 	return artID, nil
 }
@@ -126,6 +128,8 @@ func (a *artwork) getArtworkReader(ctx context.Context, artID model.ArtworkID, s
 			artReader, err = newDiscArtworkReader(ctx, a, artID)
 		case model.KindRadioArtwork:
 			artReader, err = newRadioArtworkReader(ctx, a, artID)
+		case model.KindFolderArtwork:
+			artReader, err = newFolderArtworkReader(ctx, a, artID)
 		default:
 			return nil, ErrUnavailable
 		}

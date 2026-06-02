@@ -26,15 +26,18 @@ type folderRepository struct {
 }
 
 type dbFolder struct {
-	model.Folder `structs:",flatten"`
-	DBImageFiles string `db:"image_files" structs:"image_files"`
-	LibraryPath  string `structs:"-" db:"library_path"`
-	LibraryName  string `structs:"-" db:"library_name"`
+	model.Folder    `structs:",flatten"`
+	DBImageFiles    string    `db:"image_files" structs:"image_files"`
+	ImagesUpdatedAt time.Time `db:"images_updated_at" structs:"images_updated_at"`
+	LibraryPath     string    `structs:"-" db:"library_path"`
+	LibraryName     string    `structs:"-" db:"library_name"`
 }
 
 func (f *dbFolder) PostScan() error {
 	var err error
+	f.Folder.ImagesUpdatedAt = f.ImagesUpdatedAt
 	if f.DBImageFiles != "" {
+
 		if err = json.Unmarshal([]byte(f.DBImageFiles), &f.Folder.ImageFiles); err != nil {
 			return fmt.Errorf("parsing folder image files from db: %w", err)
 		}
@@ -52,6 +55,7 @@ func (f *dbFolder) PostMapArgs(args map[string]any) error {
 		imgFiles = string(b)
 	}
 	args["image_files"] = imgFiles
+	args["images_updated_at"] = f.Folder.ImagesUpdatedAt
 	return nil
 }
 
