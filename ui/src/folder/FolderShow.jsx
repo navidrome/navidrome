@@ -1,26 +1,20 @@
 import React from 'react'
 import {
-  Show,
-  SimpleShowLayout,
   ReferenceManyField,
+  ShowContextProvider,
+  useShowContext,
+  useShowController,
+  Title as RaTitle,
   Datagrid,
-  useRecordContext,
-  useTranslate,
   FunctionField,
+  SimpleShowLayout,
+  useTranslate,
 } from 'react-admin'
-import {
-  SongDatagrid,
-  SongTitleField,
-  ArtistLinkField,
-  DurationField,
-  SongContextMenu,
-} from '../common'
 import FolderIcon from '@material-ui/icons/Folder'
-import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import { makeStyles, Typography, Box } from '@material-ui/core'
 import Breadcrumbs from './Breadcrumbs'
-import FolderActions from './FolderActions'
-import config from '../config'
+import FolderSongs from './FolderSongs'
+import { useResourceRefresh, Title, FolderContextMenu } from '../common'
 
 const useStyles = makeStyles({
   icon: {
@@ -32,19 +26,29 @@ const useStyles = makeStyles({
     marginBottom: '10px',
     fontWeight: 'bold',
   },
-  contextHeader: {
-    marginLeft: '3px',
-    marginTop: '-2px',
-    verticalAlign: 'text-top',
+  row: {
+    '&:hover': {
+      '& $contextMenu': {
+        visibility: 'visible',
+      },
+    },
+  },
+  contextMenu: {
+    visibility: 'hidden',
   },
 })
 
-const FolderShow = (props) => {
+const FolderShowLayout = (props) => {
+  const { record, loading } = useShowContext(props)
   const classes = useStyles()
   const translate = useTranslate()
+  useResourceRefresh('folder', 'song')
+
+  if (loading || !record) return null
 
   return (
-    <Show {...props} actions={null} title={<FolderTitle />}>
+    <>
+      <RaTitle title={<Title subTitle={record.name} />} />
       <SimpleShowLayout>
         <FolderHeader />
         <Box className={classes.sectionTitle}>
@@ -59,7 +63,7 @@ const FolderShow = (props) => {
           sort={{ field: 'name', order: 'ASC' }}
           fullWidth
         >
-          <Datagrid rowClick="show">
+          <Datagrid rowClick="show" classes={{ row: classes.row }}>
             <FunctionField
               source="name"
               render={(record) => (
@@ -68,6 +72,11 @@ const FolderShow = (props) => {
                   {record.name}
                 </>
               )}
+            />
+            <FolderContextMenu
+              source="name"
+              className={classes.contextMenu}
+              showLove={false}
             />
           </Datagrid>
         </ReferenceManyField>
@@ -82,38 +91,28 @@ const FolderShow = (props) => {
           target="folder_id"
           label=""
           sort={{ field: 'path', order: 'ASC' }}
+          perPage={0}
+          pagination={null}
           fullWidth
         >
-          <SongDatagrid resource="song">
-            <SongTitleField source="title" showTrackNumbers={false} />
-            <ArtistLinkField source="artist" sortable={false} />
-            <DurationField source="duration" sortable={false} />
-            <SongContextMenu
-              source={'starred_at'}
-              sortable={false}
-              label={
-                config.enableFavourites && (
-                  <FavoriteBorderIcon
-                    fontSize={'small'}
-                    className={classes.contextHeader}
-                  />
-                )
-              }
-            />
-          </SongDatagrid>
+          <FolderSongs folder={record} />
         </ReferenceManyField>
       </SimpleShowLayout>
-    </Show>
+    </>
   )
 }
 
-const FolderTitle = () => {
-  const record = useRecordContext()
-  return record && record.name ? <span>{record.name}</span> : null
+const FolderShow = (props) => {
+  const controllerProps = useShowController(props)
+  return (
+    <ShowContextProvider value={controllerProps}>
+      <FolderShowLayout {...props} {...controllerProps} />
+    </ShowContextProvider>
+  )
 }
 
 const FolderHeader = () => {
-  const record = useRecordContext()
+  const { record } = useShowContext()
   if (!record || !record.breadcrumbs) return null
   return <Breadcrumbs breadcrumbs={record.breadcrumbs} />
 }

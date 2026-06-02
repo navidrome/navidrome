@@ -8,12 +8,22 @@ import {
 } from 'react-admin'
 import FolderIcon from '@material-ui/icons/Folder'
 import { makeStyles } from '@material-ui/core'
-import { Title } from '../common'
+import { Title, FolderContextMenu } from '../common'
 
 const useStyles = makeStyles({
   icon: {
     verticalAlign: 'middle',
     marginRight: '10px',
+  },
+  row: {
+    '&:hover': {
+      '& $contextMenu': {
+        visibility: 'visible',
+      },
+    },
+  },
+  contextMenu: {
+    visibility: 'hidden',
   },
 })
 
@@ -54,7 +64,7 @@ const FolderList = (props) => {
       pagination={false}
       title={<Title title={translate('menu.folders')} />}
     >
-      <Datagrid rowClick="show">
+      <Datagrid rowClick="show" classes={{ row: classes.row }}>
         <FunctionField
           source="name"
           render={(record) => {
@@ -66,6 +76,11 @@ const FolderList = (props) => {
               </>
             )
           }}
+        />
+        <FolderContextMenu
+          source="name"
+          className={classes.contextMenu}
+          showLove={false}
         />
       </Datagrid>
     </List>

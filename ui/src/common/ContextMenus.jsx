@@ -267,6 +267,23 @@ export const ArtistContextMenu = (props) =>
     />
   ) : null
 
+export const FolderContextMenu = (props) =>
+  props.record ? (
+    <ContextMenu
+      {...props}
+      hideInfo={true}
+      resource={'folder'}
+      songQueryParams={{
+        pagination: { page: 1, perPage: -1 },
+        sort: { field: 'path', order: 'ASC' },
+        filter: {
+          folder_id_recursive: props.record.id,
+          missing: false,
+        },
+      }}
+    />
+  ) : null
+
 ArtistContextMenu.propTypes = {
   record: PropTypes.object,
   color: PropTypes.string,
