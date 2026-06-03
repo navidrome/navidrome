@@ -117,7 +117,11 @@
         "totalSize": "Size"
       },
       "actions": {
-        "showInFolder": "Show in Folder"
+        "showInFolder": "Show in Folder",
+        "pinAsPlaylist": "Pin as Playlist"
+      },
+      "notifications": {
+        "pinnedAsPlaylist": "Folder pinned as playlist! It will be updated on the next scan."
       }
     },
     "artist": {

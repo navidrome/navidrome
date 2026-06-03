@@ -43,7 +43,7 @@ This document outlines the planned enhancements for the Physical Folder Browsing
 ### 6. "Folder as Playlist" Sync
 *   **Dynamic Playlists**: Allow users to "pin" a physical folder as a Navidrome playlist.
 *   **Auto-Update**: Any files added to the physical folder on disk should automatically appear in the virtual playlist.
-*   **Status**: ⏳ Pending
+*   **Status**: ✅ Completed
 
 ---
 

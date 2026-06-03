@@ -134,6 +134,25 @@ const ContextMenu = ({
         redirect(`/folder/${folderId}/show`)
       },
     },
+    pinAsPlaylist: {
+      enabled: resource === 'folder',
+      needData: false,
+      label: translate('resources.folder.actions.pinAsPlaylist'),
+      action: async (record) => {
+        try {
+          await dataProvider.create('playlist', {
+            data: {
+              name: record.name,
+              physicalFolderId: record.id,
+              public: false,
+            },
+          })
+          notify('resources.folder.notifications.pinnedAsPlaylist', 'info')
+        } catch (e) {
+          notify('ra.notification.http_error', 'warning')
+        }
+      },
+    },
     ...(!hideInfo && {
       info: {
         enabled: true,

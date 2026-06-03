@@ -28,8 +28,9 @@ type Playlist struct {
 	UpdatedAt        time.Time      `structs:"updated_at" json:"updatedAt"`
 
 	// SmartPlaylist attributes
-	Rules       *criteria.Criteria `structs:"rules" json:"rules"`
-	EvaluatedAt *time.Time         `structs:"evaluated_at" json:"evaluatedAt"`
+	Rules            *criteria.Criteria `structs:"rules" json:"rules"`
+	EvaluatedAt      *time.Time         `structs:"evaluated_at" json:"evaluatedAt"`
+	PhysicalFolderID string             `structs:"physical_folder_id" json:"physicalFolderId"`
 }
 
 func (pls Playlist) IsSmartPlaylist() bool {
@@ -127,6 +128,7 @@ type PlaylistRepository interface {
 	Get(id string) (*Playlist, error)
 	GetWithTracks(id string, refreshSmartPlaylist, includeMissing bool) (*Playlist, error)
 	GetAll(options ...QueryOptions) (Playlists, error)
+	GetSyncPlaylists() (Playlists, error)
 	FindByPath(path string) (*Playlist, error)
 	Delete(id string) error
 	Tracks(playlistId string, refreshSmartPlaylist bool) PlaylistTrackRepository

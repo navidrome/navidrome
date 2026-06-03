@@ -15,6 +15,7 @@ import CloudDownloadOutlinedIcon from '@material-ui/icons/CloudDownloadOutlined'
 import { RiPlayListAddFill, RiPlayList2Fill } from 'react-icons/ri'
 import PlaylistAddIcon from '@material-ui/icons/PlaylistAdd'
 import ShareIcon from '@material-ui/icons/Share'
+import PushPinIcon from '@material-ui/icons/PushPin'
 import {
   playNext,
   addTracks,
@@ -102,6 +103,23 @@ const FolderActions = ({
     dispatch(openDownloadMenu(record, DOWNLOAD_MENU_FOLDER))
   }, [dispatch, record])
 
+  const handlePinAsPlaylist = React.useCallback(async () => {
+    try {
+      const { ids } = await getRecursiveTracks()
+      await dataProvider.create('playlist', {
+        data: {
+          name: record.name,
+          physicalFolderId: record.id,
+          public: false,
+          tracks: ids.map(id => ({ mediaFileId: id }))
+        },
+      })
+      notify('resources.folder.notifications.pinnedAsPlaylist', 'info')
+    } catch (e) {
+      notify('ra.notification.http_error', 'warning')
+    }
+  }, [getRecursiveTracks, dataProvider, record, notify])
+
   if (!record) return null
 
   return (
@@ -137,6 +155,12 @@ const FolderActions = ({
             label={translate('resources.album.actions.addToPlaylist')}
           >
             <PlaylistAddIcon />
+          </FolderButton>
+          <FolderButton
+            onClick={handlePinAsPlaylist}
+            label={translate('resources.folder.actions.pinAsPlaylist')}
+          >
+            <PushPinIcon />
           </FolderButton>
           {config.enableSharing && (
             <FolderButton

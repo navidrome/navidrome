@@ -117,6 +117,15 @@ func (p *phasePlaylists) processPlaylistsInFolder(folder *model.Folder) (*model.
 
 func (p *phasePlaylists) finalize(err error) error {
 	refreshed := p.refreshed.Load()
+
+	// Sync physical folder-based playlists
+	syncedCount, syncErr := p.pls.SyncPhysicalFolderPlaylists(p.ctx)
+	if syncErr != nil {
+		log.Error(p.ctx, "Scanner: Error syncing physical folder playlists", syncErr)
+	} else if syncedCount > 0 {
+		log.Info(p.ctx, "Scanner: Finished syncing physical folder playlists", "count", syncedCount)
+	}
+
 	logF := log.Info
 	if refreshed == 0 {
 		logF = log.Debug

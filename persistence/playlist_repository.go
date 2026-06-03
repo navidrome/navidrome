@@ -23,6 +23,7 @@ type playlistRepository struct {
 type dbPlaylist struct {
 	model.Playlist `structs:",flatten"`
 	Rules          sql.NullString `structs:"-"`
+	PhysicalFolderID string `db:"physical_folder_id" structs:"physical_folder_id"`
 }
 
 func (p *dbPlaylist) PostScan() error {
@@ -50,8 +51,9 @@ func NewPlaylistRepository(ctx context.Context, db dbx.Builder) model.PlaylistRe
 	r.ctx = ctx
 	r.db = db
 	r.registerModel(&model.Playlist{}, map[string]filterFunc{
-		"q":     playlistFilter,
-		"smart": smartPlaylistFilter,
+		"q":                  playlistFilter,
+		"smart":              smartPlaylistFilter,
+		"physical_folder_id": eqFilter,
 	})
 	r.setSortMappings(map[string]string{
 		"owner_name": "owner_name",
@@ -193,6 +195,23 @@ func (r *playlistRepository) GetPlaylists(mediaFileId string) (model.Playlists, 
 		if errors.Is(err, model.ErrNotFound) {
 			return model.Playlists{}, nil
 		}
+		return nil, err
+	}
+	playlists := make(model.Playlists, len(res))
+	for i, p := range res {
+		playlists[i] = p.Playlist
+	}
+	return playlists, nil
+}
+
+func (r *playlistRepository) GetSyncPlaylists() (model.Playlists, error) {
+	sel := r.selectPlaylist().Where(And{
+		NotEq{"physical_folder_id": ""},
+		NotEq{"physical_folder_id": nil},
+	})
+	var res []dbPlaylist
+	err := r.queryAll(sel, &res)
+	if err != nil {
 		return nil, err
 	}
 	playlists := make(model.Playlists, len(res))
