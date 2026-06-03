@@ -11,15 +11,22 @@ import {
 import { useMediaQuery, makeStyles } from '@material-ui/core'
 import PlayArrowIcon from '@material-ui/icons/PlayArrow'
 import ShuffleIcon from '@material-ui/icons/Shuffle'
+import CloudDownloadOutlinedIcon from '@material-ui/icons/CloudDownloadOutlined'
 import { RiPlayListAddFill, RiPlayList2Fill } from 'react-icons/ri'
 import PlaylistAddIcon from '@material-ui/icons/PlaylistAdd'
+import ShareIcon from '@material-ui/icons/Share'
 import {
   playNext,
   addTracks,
   playTracks,
   shuffleTracks,
   openAddToPlaylist,
+  openDownloadMenu,
+  DOWNLOAD_MENU_FOLDER,
+  openShareMenu,
 } from '../actions'
+import { formatBytes } from '../utils'
+import config from '../config'
 import { ToggleFieldsMenu } from '../common'
 
 const useStyles = makeStyles({
@@ -44,6 +51,7 @@ const FolderActions = ({
   const dataProvider = useDataProvider()
   const notify = useNotify()
   const classes = useStyles()
+  const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const isNotSmall = useMediaQuery((theme) => theme.breakpoints.up('sm'))
 
   const getRecursiveTracks = React.useCallback(() => {
@@ -64,27 +72,35 @@ const FolderActions = ({
   const handlePlay = React.useCallback(async () => {
     const { data, ids } = await getRecursiveTracks()
     dispatch(playTracks(data, ids))
-  }, [dispatch, getRecursiveTracks])
+  }, [getRecursiveTracks, dispatch])
 
   const handlePlayNext = React.useCallback(async () => {
     const { data, ids } = await getRecursiveTracks()
     dispatch(playNext(data, ids))
-  }, [dispatch, getRecursiveTracks])
+  }, [getRecursiveTracks, dispatch])
 
   const handlePlayLater = React.useCallback(async () => {
     const { data, ids } = await getRecursiveTracks()
     dispatch(addTracks(data, ids))
-  }, [dispatch, getRecursiveTracks])
+  }, [getRecursiveTracks, dispatch])
 
   const handleShuffle = React.useCallback(async () => {
     const { data, ids } = await getRecursiveTracks()
     dispatch(shuffleTracks(data, ids))
-  }, [dispatch, getRecursiveTracks])
+  }, [getRecursiveTracks, dispatch])
 
   const handleAddToPlaylist = React.useCallback(async () => {
     const { ids } = await getRecursiveTracks()
     dispatch(openAddToPlaylist({ selectedIds: ids }))
-  }, [dispatch, getRecursiveTracks])
+  }, [getRecursiveTracks, dispatch])
+
+  const handleShare = React.useCallback(() => {
+    dispatch(openShareMenu([record.id], 'folder', record.name))
+  }, [dispatch, record])
+
+  const handleDownload = React.useCallback(() => {
+    dispatch(openDownloadMenu(record, DOWNLOAD_MENU_FOLDER))
+  }, [dispatch, record])
 
   if (!record) return null
 
@@ -122,6 +138,25 @@ const FolderActions = ({
           >
             <PlaylistAddIcon />
           </FolderButton>
+          {config.enableSharing && (
+            <FolderButton
+              onClick={handleShare}
+              label={translate('ra.action.share')}
+            >
+              <ShareIcon />
+            </FolderButton>
+          )}
+          {config.enableDownloads && (
+            <FolderButton
+              onClick={handleDownload}
+              label={
+                translate('ra.action.download') +
+                (isDesktop && record.size ? ` (${formatBytes(record.size)})` : '')
+              }
+            >
+              <CloudDownloadOutlinedIcon />
+            </FolderButton>
+          )}
         </div>
         <div>{isNotSmall && <ToggleFieldsMenu resource="folderSong" />}</div>
       </div>

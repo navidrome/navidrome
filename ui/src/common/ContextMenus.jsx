@@ -19,6 +19,7 @@ import {
   openExtendedInfoDialog,
   DOWNLOAD_MENU_ALBUM,
   DOWNLOAD_MENU_ARTIST,
+  DOWNLOAD_MENU_FOLDER,
   openShareMenu,
 } from '../actions'
 import { LoveButton } from './LoveButton'
@@ -112,18 +113,14 @@ const ContextMenu = ({
       },
     }),
     download: {
-      enabled: config.enableDownloads && record.size,
+      enabled: config.enableDownloads,
       needData: false,
-      label: `${translate('ra.action.download')} (${formatBytes(record.size)})`,
+      label: translate('ra.action.download') + (record.size ? ` (${formatBytes(record.size)})` : ''),
       action: () => {
-        dispatch(
-          openDownloadMenu(
-            record,
-            record.duration !== undefined
-              ? DOWNLOAD_MENU_ALBUM
-              : DOWNLOAD_MENU_ARTIST,
-          ),
-        )
+        let type = DOWNLOAD_MENU_ALBUM
+        if (record.duration === undefined) type = DOWNLOAD_MENU_ARTIST
+        if (resource === 'folder') type = DOWNLOAD_MENU_FOLDER
+        dispatch(openDownloadMenu(record, type))
       },
     },
     showInFolder: {

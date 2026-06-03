@@ -21,6 +21,7 @@ import (
 type Archiver interface {
 	ZipAlbum(ctx context.Context, id string, format string, bitrate int, w io.Writer) error
 	ZipArtist(ctx context.Context, id string, format string, bitrate int, w io.Writer) error
+	ZipFolder(ctx context.Context, id string, format string, bitrate int, w io.Writer) error
 	ZipShare(ctx context.Context, id string, w io.Writer) error
 	ZipPlaylist(ctx context.Context, id string, format string, bitrate int, w io.Writer) error
 }
@@ -41,6 +42,10 @@ func (a *archiver) ZipAlbum(ctx context.Context, id string, format string, bitra
 
 func (a *archiver) ZipArtist(ctx context.Context, id string, format string, bitrate int, out io.Writer) error {
 	return a.zipAlbums(ctx, id, format, bitrate, out, squirrel.Eq{"album_artist_id": id})
+}
+
+func (a *archiver) ZipFolder(ctx context.Context, id string, format string, bitrate int, out io.Writer) error {
+	return a.zipAlbums(ctx, id, format, bitrate, out, squirrel.Eq{"folder_id_recursive": id})
 }
 
 func (a *archiver) zipAlbums(ctx context.Context, id string, format string, bitrate int, out io.Writer, filters squirrel.Sqlizer) error {

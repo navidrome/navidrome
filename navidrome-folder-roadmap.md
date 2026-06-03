@@ -30,7 +30,7 @@ This document outlines the planned enhancements for the Physical Folder Browsing
 ### 4. Folder ZIP Downloads
 *   **Bulk Export**: Add a "Download Folder (ZIP)" action to the toolbar and context menus.
 *   **Implementation**: Leverage Navidrome's existing archiving logic to package folders on-the-fly.
-*   **Status**: ⏳ Pending
+*   **Status**: ✅ Completed
 
 ---
 

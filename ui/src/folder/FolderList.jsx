@@ -6,12 +6,11 @@ import {
   FunctionField,
   useDataProvider,
   Pagination,
-  NumberField,
 } from 'react-admin'
 import FolderIcon from '@material-ui/icons/Folder'
 import { makeStyles } from '@material-ui/core'
 import { useSelector } from 'react-redux'
-import { Title, FolderContextMenu, DurationField, SizeField } from '../common'
+import { Title, FolderContextMenu } from '../common'
 import FolderListActions from './FolderListActions'
 import FolderGridView from './FolderGridView'
 
@@ -86,10 +85,6 @@ const FolderList = (props) => {
               )
             }}
           />
-          <NumberField source="numSubfolders" sortable={false} />
-          <NumberField source="totalSongs" sortable={false} />
-          <DurationField source="totalDuration" sortable={false} />
-          <SizeField source="totalSize" sortable={false} />
           <FolderContextMenu
             source="name"
             className={classes.contextMenu}

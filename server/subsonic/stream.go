@@ -126,6 +126,9 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 	case *model.Artist:
 		setHeaders(v.Name)
 		return nil, handleArchiveErr(ctx, id, api.archiver.ZipArtist(ctx, id, format, maxBitRate, w))
+	case *model.Folder:
+		setHeaders(v.Name)
+		return nil, handleArchiveErr(ctx, id, api.archiver.ZipFolder(ctx, id, format, maxBitRate, w))
 	case *model.Playlist:
 		setHeaders(v.Name)
 		return nil, handleArchiveErr(ctx, id, api.archiver.ZipPlaylist(ctx, id, format, maxBitRate, w))
