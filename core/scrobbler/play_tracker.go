@@ -371,7 +371,10 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 		p.broker.SendBroadcastMessage(ctx, &events.NowPlayingCount{Count: p.playMap.Len()})
 	}
 
-	if !params.IgnoreScrobble && player.ScrobbleEnabled &&
+	// NowPlaying is proxied to external agents even when ignoreScrobble is set:
+	// "ignore the scrobble submission" still means "tell external services what's
+	// currently playing" (mirrors the legacy scrobble endpoint's submission=false).
+	if player.ScrobbleEnabled &&
 		(params.State == StateStarting || params.State == StatePlaying) {
 		if info, err := p.playMap.Get(clientId); err == nil {
 			p.enqueueNowPlaying(ctx, clientId, user.ID, &info.MediaFile, int(params.PositionMs/1000))

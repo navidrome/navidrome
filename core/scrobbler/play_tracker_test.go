@@ -715,14 +715,14 @@ var _ = Describe("PlayTracker", func() {
 				Consistently(func() bool { return fake.GetNowPlayingCalled() }).Should(BeFalse())
 			})
 
-			It("does NOT dispatch when ignoreScrobble=true", func() {
+			It("still dispatches NowPlaying when ignoreScrobble=true", func() {
 				fake.nowPlayingCalled.Store(false)
 				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
 					MediaId: "123", PositionMs: 0, State: "starting", PlaybackRate: 1.0, ClientId: defaultClientId,
 					IgnoreScrobble: true,
 				})
 				Expect(err).ToNot(HaveOccurred())
-				Consistently(func() bool { return fake.GetNowPlayingCalled() }).Should(BeFalse())
+				Eventually(func() bool { return fake.GetNowPlayingCalled() }).Should(BeTrue())
 			})
 
 			It("does NOT dispatch when ScrobbleEnabled=false", func() {
