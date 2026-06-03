@@ -371,9 +371,13 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 		p.broker.SendBroadcastMessage(ctx, &events.NowPlayingCount{Count: p.playMap.Len()})
 	}
 
-	// NowPlaying is proxied to external agents even when ignoreScrobble is set:
-	// "ignore the scrobble submission" still means "tell external services what's
-	// currently playing" (mirrors the legacy scrobble endpoint's submission=false).
+	// NowPlaying gating, by design distinct from scrobble submission:
+	//   - IgnoreScrobble=true   -> still send NowPlaying (suppresses only the
+	//     scrobble submission/play-count above), mirroring the legacy scrobble
+	//     endpoint's submission=false behavior.
+	//   - player.ScrobbleEnabled=false -> never send NowPlaying.
+	// External agents here are the active scrobblers (Last.fm, ListenBrainz, and
+	// scrobbler plugins) returned by getActiveScrobblers; see dispatchNowPlaying.
 	if player.ScrobbleEnabled &&
 		(params.State == StateStarting || params.State == StatePlaying) {
 		if info, err := p.playMap.Get(clientId); err == nil {
