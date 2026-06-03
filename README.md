@@ -65,13 +65,13 @@ This version of Navidrome includes a major new feature: **Physical Folder Browsi
 - **Hierarchical Navigation**: Browse through folders and subfolders with functional breadcrumbs.
 - **Recursive Actions**: Play All, Shuffle, or Add to Playlist for an entire folder hierarchy with one click.
 - **ZIP Downloads**: Download entire physical folders as a ZIP archive directly from the UI.
+- **Scoped Search**: Search for specific tracks or subfolders directly within a physical folder hierarchy.
 - **Visual Polish**: Support for folder thumbnails (including composite artwork), a Grid/List view toggle, and automatic hiding of empty UI sections.
 - **"Show in Folder"**: Jump directly to a song or album's physical location from anywhere in the app.
 - **Subsonic Integration**: Compatible with mobile apps that support physical folder browsing.
 
 ### Future Roadmap
 We are actively working on enhancing this feature. Planned improvements include:
-- **Scoped Search**: Search specifically within a folder hierarchy.
 - **Folder Sync**: "Pin" physical folders as automatically updating playlists.
 
 For more details, see [navidrome-folder-roadmap.md](navidrome-folder-roadmap.md).

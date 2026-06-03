@@ -10,6 +10,11 @@ import {
   SimpleShowLayout,
   useTranslate,
   Pagination,
+  useListContext,
+  NumberField,
+  Filter,
+  SearchInput,
+  ListToolbar,
 } from 'react-admin'
 import { useSelector } from 'react-redux'
 import FolderIcon from '@material-ui/icons/Folder'
@@ -18,7 +23,7 @@ import Breadcrumbs from './Breadcrumbs'
 import FolderSongs from './FolderSongs'
 import FolderListActions from './FolderListActions'
 import FolderGridView from './FolderGridView'
-import { useResourceRefresh, Title, FolderContextMenu } from '../common'
+import { useResourceRefresh, Title, FolderContextMenu, DurationField, SizeField } from '../common'
 
 const useStyles = makeStyles({
   icon: {
@@ -40,13 +45,83 @@ const useStyles = makeStyles({
   contextMenu: {
     visibility: 'hidden',
   },
+  toolbar: {
+    justifyContent: 'flex-start',
+  },
 })
 
-const FolderShowLayout = (props) => {
-  const { record, loading } = useShowContext(props)
+const FolderFilter = (props) => (
+  <Filter {...props} variant={'outlined'}>
+    <SearchInput source="name" alwaysOn />
+  </Filter>
+)
+
+const SubfoldersSection = (props) => {
+  const { total, loaded, loading, filterValues } = useListContext()
   const classes = useStyles()
   const translate = useTranslate()
   const folderView = useSelector((state) => state.folderView)
+
+  if (loaded && total === 0 && !filterValues.name) return null
+
+  return (
+    <>
+      <Box className={classes.sectionTitle}>
+        <Typography variant="h6">
+          {translate('resources.folder.fields.subfolders')}
+        </Typography>
+      </Box>
+      <ListToolbar
+        classes={{ toolbar: classes.toolbar }}
+        filters={<FolderFilter />}
+        actions={null}
+        {...props}
+      />
+      {folderView.grid ? (
+        <FolderGridView {...props} />
+      ) : (
+        <Datagrid rowClick="show" classes={{ row: classes.row }}>
+          <FunctionField
+            source="name"
+            render={(record) => (
+              <>
+                <FolderIcon className={classes.icon} />
+                {record.name}
+              </>
+            )}
+          />
+          <FolderContextMenu
+            source="name"
+            className={classes.contextMenu}
+            showLove={false}
+          />
+        </Datagrid>
+      )}
+    </>
+  )
+}
+
+const SongsSection = ({ record, ...props }) => {
+  const { total, loaded, filterValues } = useListContext()
+  const classes = useStyles()
+  const translate = useTranslate()
+
+  if (loaded && total === 0 && !filterValues.title) return null
+
+  return (
+    <>
+      <Box className={classes.sectionTitle}>
+        <Typography variant="h6">
+          {translate('resources.folder.fields.songs')}
+        </Typography>
+      </Box>
+      <FolderSongs folder={record} {...props} />
+    </>
+  )
+}
+
+const FolderShowLayout = (props) => {
+  const { record, loading } = useShowContext(props)
   useResourceRefresh('folder', 'song')
 
   if (loading || !record) return null
@@ -57,11 +132,7 @@ const FolderShowLayout = (props) => {
       <FolderListActions {...props} />
       <SimpleShowLayout>
         <FolderHeader />
-        <Box className={classes.sectionTitle}>
-          <Typography variant="h6">
-            {translate('resources.folder.fields.subfolders')}
-          </Typography>
-        </Box>
+        
         <ReferenceManyField
           reference="folder"
           target="parent_id"
@@ -71,33 +142,9 @@ const FolderShowLayout = (props) => {
           pagination={<Pagination rowsPerPageOptions={[100, 250, 500, 1000]} />}
           fullWidth
         >
-          {folderView.grid ? (
-            <FolderGridView {...props} />
-          ) : (
-            <Datagrid rowClick="show" classes={{ row: classes.row }}>
-              <FunctionField
-                source="name"
-                render={(record) => (
-                  <>
-                    <FolderIcon className={classes.icon} />
-                    {record.name}
-                  </>
-                )}
-              />
-              <FolderContextMenu
-                source="name"
-                className={classes.contextMenu}
-                showLove={false}
-              />
-            </Datagrid>
-          )}
+          <SubfoldersSection {...props} />
         </ReferenceManyField>
 
-        <Box className={classes.sectionTitle}>
-          <Typography variant="h6">
-            {translate('resources.folder.fields.songs')}
-          </Typography>
-        </Box>
         <ReferenceManyField
           reference="song"
           target="folder_id"
@@ -107,7 +154,7 @@ const FolderShowLayout = (props) => {
           pagination={<Pagination rowsPerPageOptions={[100, 250, 500, 1000]} />}
           fullWidth
         >
-          <FolderSongs folder={record} />
+          <SongsSection record={record} />
         </ReferenceManyField>
       </SimpleShowLayout>
     </>

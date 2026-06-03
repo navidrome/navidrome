@@ -3,6 +3,9 @@ import {
   BulkActionsToolbar,
   useListContext,
   useVersion,
+  Filter,
+  SearchInput,
+  ListToolbar,
 } from 'react-admin'
 import clsx from 'clsx'
 import { useDispatch } from 'react-redux'
@@ -59,8 +62,17 @@ const useStyles = makeStyles(
       marginTop: '-2px',
       verticalAlign: 'text-top',
     },
+    toolbar: {
+      justifyContent: 'flex-start',
+    },
   }),
   { name: 'FolderSongs' },
+)
+
+const SongFilter = (props) => (
+  <Filter {...props} variant={'outlined'}>
+    <SearchInput source="title" alwaysOn />
+  </Filter>
 )
 
 const FolderSongsContent = (props) => {
@@ -98,9 +110,11 @@ const FolderSongsContent = (props) => {
 
   return (
     <>
-      <FolderActions
+      <ListToolbar
+        classes={{ toolbar: classes.toolbar }}
+        filters={<SongFilter />}
+        actions={<FolderActions record={folder} />}
         {...props}
-        record={folder}
       />
       <div className={classes.main}>
         <Card

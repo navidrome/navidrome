@@ -27,15 +27,13 @@ type folderRepository struct {
 
 type dbFolder struct {
 	model.Folder    `structs:",flatten"`
-	DBImageFiles    string    `db:"image_files" structs:"image_files"`
-	ImagesUpdatedAt time.Time `db:"images_updated_at" structs:"images_updated_at"`
-	LibraryPath     string    `structs:"-" db:"library_path"`
-	LibraryName     string    `structs:"-" db:"library_name"`
+	DBImageFiles    string `db:"image_files" structs:"image_files"`
+	LibraryPath     string `structs:"-" db:"library_path"`
+	LibraryName     string `structs:"-" db:"library_name"`
 }
 
 func (f *dbFolder) PostScan() error {
 	var err error
-	f.Folder.ImagesUpdatedAt = f.ImagesUpdatedAt
 	if f.DBImageFiles != "" {
 
 		if err = json.Unmarshal([]byte(f.DBImageFiles), &f.Folder.ImageFiles); err != nil {
@@ -55,7 +53,6 @@ func (f *dbFolder) PostMapArgs(args map[string]any) error {
 		imgFiles = string(b)
 	}
 	args["image_files"] = imgFiles
-	args["images_updated_at"] = f.Folder.ImagesUpdatedAt
 	return nil
 }
 
@@ -72,6 +69,7 @@ func newFolderRepository(ctx context.Context, db dbx.Builder) model.FolderReposi
 	r.tableName = "folder"
 	r.registerModel(&model.Folder{}, map[string]filterFunc{
 		"id":         idFilter("folder"),
+		"name":       func(_ string, v any) Sqlizer { return Like{"folder.name": "%" + fmt.Sprintf("%v", v) + "%"} },
 		"parent_id":  eqFilter,
 		"library_id": libraryIdFilter,
 		"missing":    booleanFilter,
@@ -104,31 +102,8 @@ func (r *folderRepository) NewInstance() any {
 }
 
 func (r folderRepository) selectFolder(options ...model.QueryOptions) SelectBuilder {
-	// Subquery for direct subfolder count
-	numSubfolders := `(SELECT COUNT(*) FROM folder f2 WHERE f2.parent_id = folder.id AND f2.missing = 0)`
-
-	// Subquery base for recursive stats (songs, duration, size)
-	// This JOINs media_file with folders that are children of the current folder
-	recursiveBase := `FROM media_file mf 
-		JOIN folder f2 ON mf.folder_id = f2.id 
-		WHERE f2.library_id = folder.library_id 
-		AND mf.missing = 0 
-		AND (f2.id = folder.id OR f2.path LIKE folder.path || '/%' OR (folder.path = '' AND f2.path != ''))`
-
-	totalSongs := fmt.Sprintf(`(SELECT COUNT(*) %s)`, recursiveBase)
-	totalDuration := fmt.Sprintf(`(SELECT IFNULL(SUM(mf.duration), 0) %s)`, recursiveBase)
-	totalSize := fmt.Sprintf(`(SELECT IFNULL(SUM(mf.size), 0) %s)`, recursiveBase)
-
-	sql := r.newSelect(options...).Columns(
-		"folder.*",
-		"library.path as library_path",
-		"library.name as library_name",
-		numSubfolders+" as num_subfolders",
-		totalSongs+" as total_songs",
-		totalDuration+" as total_duration",
-		totalSize+" as total_size",
-	).Join("library on library.id = folder.library_id")
-
+	sql := r.newSelect(options...).Columns("folder.*", "library.path as library_path", "library.name as library_name").
+		Join("library on library.id = folder.library_id")
 	return r.applyLibraryFilter(sql)
 }
 

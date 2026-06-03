@@ -38,7 +38,7 @@ This document outlines the planned enhancements for the Physical Folder Browsing
 
 ### 5. Scoped Search (Search within Folder)
 *   **Local Filter**: Add a search bar inside the `FolderShow` view that only returns results from that specific folder and its children.
-*   **Status**: ⏳ Pending
+*   **Status**: ✅ Completed
 
 ### 6. "Folder as Playlist" Sync
 *   **Dynamic Playlists**: Allow users to "pin" a physical folder as a Navidrome playlist.
