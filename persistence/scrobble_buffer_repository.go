@@ -50,7 +50,7 @@ func (r *scrobbleBufferRepository) UserIDs(service string) ([]string, error) {
 	return userIds, err
 }
 
-func (r *scrobbleBufferRepository) Enqueue(service, userId, mediaFileId string, playTime time.Time) error {
+func (r *scrobbleBufferRepository) Enqueue(service, userId, mediaFileId string, playTime time.Time, client, source, origin, playbackMode string) error {
 	ins := Insert(r.tableName).SetMap(map[string]any{
 		"id":            id.NewRandom(),
 		"user_id":       userId,
@@ -58,6 +58,10 @@ func (r *scrobbleBufferRepository) Enqueue(service, userId, mediaFileId string, 
 		"media_file_id": mediaFileId,
 		"play_time":     playTime,
 		"enqueue_time":  time.Now(),
+		"client":        client,
+		"source":        source,
+		"origin":        origin,
+		"playback_mode": playbackMode,
 	})
 	_, err := r.executeSQL(ins)
 	return err

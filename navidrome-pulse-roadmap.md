@@ -9,11 +9,11 @@ This document outlines the steps to enhance Navidrome's scrobbling engine and Pl
 ### 1. Database Migration
 *   **Action**: Create a new migration to add attribution columns to the `scrobble` table.
 *   **Fields**: `client` (string), `source` (string), `origin` (string), `playback_mode` (string).
-*   **Status**: ⏳ Pending
+*   **Status**: ✅ Completed
 
 ### 2. Core Model Update
 *   **Action**: Update the internal `Scrobble` struct in `model/scrobble.go` (or relevant location) to include the new attribution fields.
-*   **Status**: ⏳ Pending
+*   **Status**: ✅ Completed
 
 ---
 
@@ -21,11 +21,11 @@ This document outlines the steps to enhance Navidrome's scrobbling engine and Pl
 
 ### 3. Update PDK Interface
 *   **Action**: Modify `plugins/capabilities/scrobbler.go` to include `Source`, `Origin`, and `PlaybackMode` in the `ScrobbleRequest`.
-*   **Status**: ⏳ Pending
+*   **Status**: ✅ Completed
 
 ### 4. Update Plugin Adapter
 *   **Action**: Update `plugins/scrobbler_adapter.go` to extract attribution data from Navidrome's context/models and pass it to the `.wasm` plugin.
-*   **Status**: ⏳ Pending
+*   **Status**: ✅ Completed
 
 ---
 
@@ -33,11 +33,11 @@ This document outlines the steps to enhance Navidrome's scrobbling engine and Pl
 
 ### 5. Subsonic API Update (`scrobble.view`)
 *   **Action**: Update `server/subsonic/media_annotation.go` to accept optional `source`, `origin`, and `playback_mode` parameters.
-*   **Status**: ⏳ Pending
+*   **Status**: ✅ Completed
 
 ### 6. Play Tracker Logic
 *   **Action**: Update `core/scrobbler/play_tracker.go` to capture the `ClientName` (from Subsonic context) and the new optional parameters, ensuring they are saved to the DB and dispatched to plugins.
-*   **Status**: ⏳ Pending
+*   **Status**: ✅ Completed
 
 ---
 

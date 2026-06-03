@@ -13,12 +13,16 @@ type MockScrobbleRepo struct {
 	ctx               context.Context
 }
 
-func (m *MockScrobbleRepo) RecordScrobble(fileID string, submissionTime time.Time) error {
+func (m *MockScrobbleRepo) RecordScrobble(fileID string, submissionTime time.Time, client, source, origin, playbackMode string) error {
 	user, _ := request.UserFrom(m.ctx)
 	m.RecordedScrobbles = append(m.RecordedScrobbles, model.Scrobble{
 		MediaFileID:    fileID,
 		UserID:         user.ID,
 		SubmissionTime: submissionTime,
+		Client:         client,
+		Source:         source,
+		Origin:         origin,
+		PlaybackMode:   playbackMode,
 	})
 	return nil
 }

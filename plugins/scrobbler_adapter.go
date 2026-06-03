@@ -95,10 +95,12 @@ func (s *ScrobblerPlugin) isUserAllowed(userId string) bool {
 // NowPlaying sends a now playing notification to the scrobbler
 func (s *ScrobblerPlugin) NowPlaying(ctx context.Context, userId string, track *model.MediaFile, position int) error {
 	username := getUsernameFromContext(ctx)
+	client, _ := request.ClientFrom(ctx)
 	input := capabilities.NowPlayingRequest{
 		Username: username,
 		Track:    mediaFileToTrackInfo(s.plugin, track),
 		Position: int32(position),
+		Client:   client,
 	}
 
 	err := callPluginFunctionNoOutput(ctx, s.plugin, FuncScrobblerNowPlaying, input)
@@ -109,9 +111,13 @@ func (s *ScrobblerPlugin) NowPlaying(ctx context.Context, userId string, track *
 func (s *ScrobblerPlugin) Scrobble(ctx context.Context, userId string, sc scrobbler.Scrobble) error {
 	username := getUsernameFromContext(ctx)
 	input := capabilities.ScrobbleRequest{
-		Username:  username,
-		Track:     mediaFileToTrackInfo(s.plugin, &sc.MediaFile),
-		Timestamp: sc.TimeStamp.Unix(),
+		Username:     username,
+		Track:        mediaFileToTrackInfo(s.plugin, &sc.MediaFile),
+		Timestamp:    sc.TimeStamp.Unix(),
+		Client:       sc.Client,
+		Source:       sc.Source,
+		Origin:       sc.Origin,
+		PlaybackMode: sc.PlaybackMode,
 	}
 
 	err := callPluginFunctionNoOutput(ctx, s.plugin, FuncScrobblerScrobble, input)

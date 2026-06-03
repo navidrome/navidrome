@@ -10,7 +10,11 @@ import (
 
 type Scrobble struct {
 	model.MediaFile
-	TimeStamp time.Time
+	TimeStamp    time.Time
+	Client       string
+	Source       string
+	Origin       string
+	PlaybackMode string
 }
 
 var (

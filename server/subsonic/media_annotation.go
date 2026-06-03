@@ -167,15 +167,20 @@ func (api *Router) Scrobble(r *http.Request) (*responses.Subsonic, error) {
 	}
 	submission := p.BoolOr("submission", true)
 	position := p.IntOr("position", 0)
+
+	source := p.StringOr("source", "")
+	origin := p.StringOr("origin", "")
+	playbackMode := p.StringOr("playbackMode", "")
+
 	ctx := r.Context()
 
 	if submission {
-		err := api.scrobblerSubmit(ctx, ids, times)
+		err := api.scrobblerSubmit(ctx, ids, times, source, origin, playbackMode)
 		if err != nil {
 			log.Error(ctx, "Error registering scrobbles", "ids", ids, "times", times, err)
 		}
 	} else {
-		err := api.scrobblerNowPlaying(ctx, ids[0], position)
+		err := api.scrobblerNowPlaying(ctx, ids[0], position, source, origin, playbackMode)
 		if err != nil {
 			log.Error(ctx, "Error setting NowPlaying", "id", ids[0], err)
 		}
@@ -184,7 +189,7 @@ func (api *Router) Scrobble(r *http.Request) (*responses.Subsonic, error) {
 	return newResponse(), nil
 }
 
-func (api *Router) scrobblerSubmit(ctx context.Context, ids []string, times []time.Time) error {
+func (api *Router) scrobblerSubmit(ctx context.Context, ids []string, times []time.Time, source, origin, playbackMode string) error {
 	var submissions []scrobbler.Submission
 	log.Debug(ctx, "Scrobbling tracks", "ids", ids, "times", times)
 	for i, id := range ids {
@@ -194,13 +199,19 @@ func (api *Router) scrobblerSubmit(ctx context.Context, ids []string, times []ti
 		} else {
 			t = time.Now()
 		}
-		submissions = append(submissions, scrobbler.Submission{TrackID: id, Timestamp: t})
+		submissions = append(submissions, scrobbler.Submission{
+			TrackID:      id,
+			Timestamp:    t,
+			Source:       source,
+			Origin:       origin,
+			PlaybackMode: playbackMode,
+		})
 	}
 
 	return api.scrobbler.Submit(ctx, submissions)
 }
 
-func (api *Router) scrobblerNowPlaying(ctx context.Context, trackId string, position int) error {
+func (api *Router) scrobblerNowPlaying(ctx context.Context, trackId string, position int, source, origin, playbackMode string) error {
 	mf, err := api.ds.MediaFile(ctx).Get(trackId)
 	if err != nil {
 		return err
@@ -225,6 +236,9 @@ func (api *Router) scrobblerNowPlaying(ctx context.Context, trackId string, posi
 		PlaybackRate: 1.0,
 		ClientId:     clientId,
 		ClientName:   client,
+		Source:       source,
+		Origin:       origin,
+		PlaybackMode: playbackMode,
 	})
 }
 
@@ -260,6 +274,10 @@ func (api *Router) ReportPlayback(r *http.Request) (*responses.Subsonic, error) 
 	}
 	ignoreScrobble := p.BoolOr("ignoreScrobble", false)
 
+	source := p.StringOr("source", "")
+	origin := p.StringOr("origin", "")
+	playbackMode := p.StringOr("playbackMode", "")
+
 	ctx := r.Context()
 	if mediaType != "song" {
 		log.Warn(ctx, "reportPlayback received unsupported mediaType", "mediaType", mediaType, "mediaId", mediaId)
@@ -280,6 +298,9 @@ func (api *Router) ReportPlayback(r *http.Request) (*responses.Subsonic, error) 
 		IgnoreScrobble: ignoreScrobble,
 		ClientId:       clientId,
 		ClientName:     client,
+		Source:         source,
+		Origin:         origin,
+		PlaybackMode:   playbackMode,
 	})
 	if err != nil {
 		log.Error(ctx, "Error in ReportPlayback", "mediaId", mediaId, "state", state, err)

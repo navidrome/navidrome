@@ -71,7 +71,7 @@ func (b *bufferedScrobbler) NowPlaying(ctx context.Context, userId string, track
 }
 
 func (b *bufferedScrobbler) Scrobble(ctx context.Context, userId string, s Scrobble) error {
-	err := b.ds.ScrobbleBuffer(ctx).Enqueue(b.service, userId, s.ID, s.TimeStamp)
+	err := b.ds.ScrobbleBuffer(ctx).Enqueue(b.service, userId, s.ID, s.TimeStamp, s.Client, s.Source, s.Origin, s.PlaybackMode)
 	if err != nil {
 		return err
 	}
@@ -146,8 +146,12 @@ func (b *bufferedScrobbler) processUserQueue(ctx context.Context, userId string)
 		}
 		log.Debug(ctx, "Sending scrobble", "scrobbler", b.service, "track", entry.Title, "artist", entry.Artist)
 		err = s.Scrobble(ctx, entry.UserID, Scrobble{
-			MediaFile: entry.MediaFile,
-			TimeStamp: entry.PlayTime,
+			MediaFile:    entry.MediaFile,
+			TimeStamp:    entry.PlayTime,
+			Client:       entry.Client,
+			Source:       entry.Source,
+			Origin:       entry.Origin,
+			PlaybackMode: entry.PlaybackMode,
 		})
 		if errors.Is(err, ErrRetryLater) {
 			log.Warn(ctx, "Could not send scrobble. Will be retried", "userId", entry.UserID,

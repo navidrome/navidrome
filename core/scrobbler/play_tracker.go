@@ -43,11 +43,17 @@ type PlaybackSession struct {
 	PositionMs   int64
 	PlaybackRate float64
 	LastReport   time.Time
+	Source       string
+	Origin       string
+	PlaybackMode string
 }
 
 type Submission struct {
-	TrackID   string
-	Timestamp time.Time
+	TrackID      string
+	Timestamp    time.Time
+	Source       string
+	Origin       string
+	PlaybackMode string
 }
 
 type ReportPlaybackParams struct {
@@ -58,6 +64,9 @@ type ReportPlaybackParams struct {
 	IgnoreScrobble bool
 	ClientId       string
 	ClientName     string
+	Source         string
+	Origin         string
+	PlaybackMode   string
 }
 
 type nowPlayingEntry struct {
@@ -283,6 +292,9 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 			PositionMs:   params.PositionMs,
 			PlaybackRate: params.PlaybackRate,
 			LastReport:   now,
+			Source:       params.Source,
+			Origin:       params.Origin,
+			PlaybackMode: params.PlaybackMode,
 		}
 		err = p.playMap.AddWithTTL(clientId, info, remainingTTL(mf.Duration, params.PositionMs, params.PlaybackRate))
 		if err != nil {
@@ -298,12 +310,15 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 				return err
 			}
 			info = PlaybackSession{
-				MediaFile:  *mf,
-				Start:      now.Add(-time.Duration(params.PositionMs) * time.Millisecond),
-				UserId:     user.ID,
-				Username:   user.UserName,
-				PlayerId:   clientId,
-				PlayerName: client,
+				MediaFile:    *mf,
+				Start:        now.Add(-time.Duration(params.PositionMs) * time.Millisecond),
+				UserId:       user.ID,
+				Username:     user.UserName,
+				PlayerId:     clientId,
+				PlayerName:   client,
+				Source:       params.Source,
+				Origin:       params.Origin,
+				PlaybackMode: params.PlaybackMode,
 			}
 		}
 		info.State = params.State
@@ -332,11 +347,11 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 			trackDurationMs := int64(mf.Duration * 1000)
 			threshold := min(trackDurationMs*50/100, 240_000)
 			if params.PositionMs >= threshold {
-				err = p.incPlay(ctx, mf, now)
+				err = p.incPlay(ctx, mf, now, params.ClientName, params.Source, params.Origin, params.PlaybackMode)
 				if err != nil {
 					log.Warn(ctx, "Error updating play counts", "id", mf.ID, "track", mf.Title, "user", user.UserName, err)
 				}
-				p.dispatchScrobble(ctx, mf, now)
+				p.dispatchScrobble(ctx, mf, now, params.ClientName, params.Source, params.Origin, params.PlaybackMode)
 			}
 		}
 		stoppedInfo := PlaybackSession{
@@ -348,6 +363,9 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 			PositionMs:   params.PositionMs,
 			PlaybackRate: params.PlaybackRate,
 			LastReport:   now,
+			Source:       params.Source,
+			Origin:       params.Origin,
+			PlaybackMode: params.PlaybackMode,
 		}
 		if info, getErr := p.playMap.Get(clientId); getErr == nil {
 			stoppedInfo.MediaFile = info.MediaFile
@@ -380,26 +398,11 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 
 	return nil
 }
-
-func (p *playTracker) GetNowPlaying(_ context.Context) ([]PlaybackSession, error) {
-	res := p.playMap.Values()
-	slices.SortFunc(res, func(a, b PlaybackSession) int {
-		return b.Start.Compare(a.Start)
-	})
-	for i := range res {
-		if res[i].State == StatePlaying {
-			elapsed := time.Since(res[i].LastReport).Milliseconds()
-			estimated := res[i].PositionMs + int64(float64(elapsed)*res[i].PlaybackRate)
-			trackDurationMs := int64(res[i].MediaFile.Duration * 1000)
-			res[i].PositionMs = min(estimated, trackDurationMs)
-		}
-	}
-	return res, nil
-}
-
+...
 func (p *playTracker) Submit(ctx context.Context, submissions []Submission) error {
 	username, _ := request.UsernameFrom(ctx)
 	player, _ := request.PlayerFrom(ctx)
+	client, _ := request.ClientFrom(ctx)
 	if !player.ScrobbleEnabled {
 		log.Debug(ctx, "External scrobbling disabled for this player", "player", player.Name, "ip", player.IP, "user", username)
 	}
@@ -412,7 +415,7 @@ func (p *playTracker) Submit(ctx context.Context, submissions []Submission) erro
 			log.Error(ctx, "Cannot find track for scrobbling", "id", s.TrackID, "user", username, err)
 			continue
 		}
-		err = p.incPlay(ctx, mf, s.Timestamp)
+		err = p.incPlay(ctx, mf, s.Timestamp, client, s.Source, s.Origin, s.PlaybackMode)
 		if err != nil {
 			log.Error(ctx, "Error updating play counts", "id", mf.ID, "track", mf.Title, "user", username, err)
 		} else {
@@ -420,7 +423,7 @@ func (p *playTracker) Submit(ctx context.Context, submissions []Submission) erro
 			event.With("song", mf.ID).With("album", mf.AlbumID).With("artist", mf.AlbumArtistID)
 			log.Info(ctx, "Scrobbled", "title", mf.Title, "artist", mf.Artist, "user", username, "timestamp", s.Timestamp)
 			if player.ScrobbleEnabled {
-				p.dispatchScrobble(ctx, mf, s.Timestamp)
+				p.dispatchScrobble(ctx, mf, s.Timestamp, client, s.Source, s.Origin, s.PlaybackMode)
 			}
 		}
 	}
@@ -431,7 +434,7 @@ func (p *playTracker) Submit(ctx context.Context, submissions []Submission) erro
 	return nil
 }
 
-func (p *playTracker) incPlay(ctx context.Context, track *model.MediaFile, timestamp time.Time) error {
+func (p *playTracker) incPlay(ctx context.Context, track *model.MediaFile, timestamp time.Time, client, source, origin, playbackMode string) error {
 	return p.ds.WithTx(func(tx model.DataStore) error {
 		err := tx.MediaFile(ctx).IncPlayCount(track.ID, timestamp)
 		if err != nil {
@@ -448,13 +451,13 @@ func (p *playTracker) incPlay(ctx context.Context, track *model.MediaFile, times
 			}
 		}
 		if conf.Server.EnableScrobbleHistory {
-			return tx.Scrobble(ctx).RecordScrobble(track.ID, timestamp)
+			return tx.Scrobble(ctx).RecordScrobble(track.ID, timestamp, client, source, origin, playbackMode)
 		}
 		return nil
 	})
 }
 
-func (p *playTracker) dispatchScrobble(ctx context.Context, t *model.MediaFile, playTime time.Time) {
+func (p *playTracker) dispatchScrobble(ctx context.Context, t *model.MediaFile, playTime time.Time, client, source, origin, playbackMode string) {
 	if t.Artist == consts.UnknownArtist {
 		log.Debug(ctx, "Ignoring external Scrobble for track with unknown artist", "track", t.Title, "artist", t.Artist)
 		return
@@ -462,7 +465,14 @@ func (p *playTracker) dispatchScrobble(ctx context.Context, t *model.MediaFile, 
 
 	allScrobblers := p.getActiveScrobblers()
 	u, _ := request.UserFrom(ctx)
-	scrobble := Scrobble{MediaFile: *t, TimeStamp: playTime}
+	scrobble := Scrobble{
+		MediaFile:    *t,
+		TimeStamp:    playTime,
+		Client:       client,
+		Source:       source,
+		Origin:       origin,
+		PlaybackMode: playbackMode,
+	}
 	for name, s := range allScrobblers {
 		if !s.IsAuthorized(ctx, u.ID) {
 			continue
