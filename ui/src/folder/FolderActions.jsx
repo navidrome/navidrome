@@ -15,7 +15,7 @@ import CloudDownloadOutlinedIcon from '@material-ui/icons/CloudDownloadOutlined'
 import { RiPlayListAddFill, RiPlayList2Fill } from 'react-icons/ri'
 import PlaylistAddIcon from '@material-ui/icons/PlaylistAdd'
 import ShareIcon from '@material-ui/icons/Share'
-import PushPinIcon from '@material-ui/icons/PushPin'
+import LibraryAddIcon from '@material-ui/icons/LibraryAdd'
 import {
   playNext,
   addTracks,
@@ -160,7 +160,7 @@ const FolderActions = ({
             onClick={handlePinAsPlaylist}
             label={translate('resources.folder.actions.pinAsPlaylist')}
           >
-            <PushPinIcon />
+            <LibraryAddIcon />
           </FolderButton>
           {config.enableSharing && (
             <FolderButton
