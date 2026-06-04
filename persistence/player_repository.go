@@ -125,6 +125,10 @@ func (r *playerRepository) NewInstance() any {
 	return &model.Player{}
 }
 
+// isPermitted authorizes creating a new record, based on the owner declared in the request body.
+// This is only safe for inserts: there is no stored row yet, and a non-admin may only create a
+// player they own. Updates must not use this (the body owner is attacker-controlled); they go
+// through updateOwned, which authorizes against the persisted user_id in the WHERE clause.
 func (r *playerRepository) isPermitted(p *model.Player) bool {
 	u := loggedUser(r.ctx)
 	return u.IsAdmin || p.UserId == u.ID
@@ -145,14 +149,10 @@ func (r *playerRepository) Save(entity any) (string, error) {
 func (r *playerRepository) Update(id string, entity any, cols ...string) error {
 	t := entity.(*model.Player)
 	t.ID = id
-	if !r.isPermitted(t) {
-		return rest.ErrPermissionDenied
-	}
-	_, err := r.put(id, t, cols...)
-	if errors.Is(err, model.ErrNotFound) {
-		return rest.ErrNotFound
-	}
-	return err
+	// updateOwned restricts the write to a row owned by the caller (unless admin) and never writes
+	// user_id, so a user cannot target another user's player by id, and no caller (admin included)
+	// can reassign a player's owner via the request body.
+	return r.updateOwned(id, t, cols...)
 }
 
 func (r *playerRepository) Delete(id string) error {
