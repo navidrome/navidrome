@@ -478,6 +478,90 @@ func (r *userRepository) SetUserLibraries(userID string, libraryIDs []int) error
 	return nil
 }
 
+func (r *userRepository) RatingStats() ([]model.UserRatingStats, error) {
+	type row struct {
+		UserID   string `db:"user_id"`
+		UserName string `db:"user_name"`
+		ItemType string `db:"item_type"`
+		Rating   int    `db:"rating"`
+		Count    int    `db:"cnt"`
+	}
+
+	sel := Select(`a.user_id`, `u.user_name`, `a.item_type`, `a.rating`, `count(*) as cnt`).
+		From(`annotation a`).
+		Join(`"user" u ON a.user_id = u.id`).
+		Where(Gt{"a.rating": 0}).
+		GroupBy(`a.user_id`, `a.item_type`, `a.rating`).
+		OrderBy(`u.user_name`, `a.item_type`, `a.rating DESC`)
+
+	var rows []row
+	if err := r.queryAll(sel, &rows); err != nil && err != model.ErrNotFound {
+		return nil, err
+	}
+
+	byUser := map[string]*model.UserRatingStats{}
+	order := []string{}
+	for _, row := range rows {
+		if _, ok := byUser[row.UserID]; !ok {
+			byUser[row.UserID] = &model.UserRatingStats{
+				UserID:   row.UserID,
+				UserName: row.UserName,
+			}
+			order = append(order, row.UserID)
+		}
+		stat := model.RatingStat{Rating: row.Rating, Count: row.Count}
+		switch row.ItemType {
+		case "media_file":
+			byUser[row.UserID].SongStats = append(byUser[row.UserID].SongStats, stat)
+		case "album":
+			byUser[row.UserID].AlbumStats = append(byUser[row.UserID].AlbumStats, stat)
+		}
+	}
+
+	result := make([]model.UserRatingStats, 0, len(order))
+	for _, uid := range order {
+		result = append(result, *byUser[uid])
+	}
+	return result, nil
+}
+
+func (r *userRepository) RatingItems(userID, itemType string, rating int) ([]model.RatedItem, error) {
+	type row struct {
+		ID        string    `db:"id"`
+		Name      string    `db:"name"`
+		Artist    string    `db:"artist"`
+		AlbumID   string    `db:"album_id"`
+		UpdatedAt time.Time `db:"updated_at"`
+	}
+
+	var table, nameCol, artistCol, albumIDCol string
+	switch itemType {
+	case "album":
+		table, nameCol, artistCol, albumIDCol = "album", "album.name", "album.album_artist", "'' as album_id"
+	case "song":
+		table, nameCol, artistCol, albumIDCol = "media_file", "media_file.title", "media_file.artist", "media_file.album_id"
+	default:
+		return nil, nil
+	}
+
+	sel := Select(table+".id", nameCol+" as name", artistCol+" as artist", albumIDCol, table+".updated_at").
+		From("annotation a").
+		Join(table + " ON a.item_id = " + table + ".id").
+		Where(Eq{"a.user_id": userID, "a.item_type": table, "a.rating": rating}).
+		OrderBy("name")
+
+	var rows []row
+	if err := r.queryAll(sel, &rows); err != nil && err != model.ErrNotFound {
+		return nil, err
+	}
+
+	result := make([]model.RatedItem, len(rows))
+	for i, row := range rows {
+		result[i] = model.RatedItem{ID: row.ID, Name: row.Name, Artist: row.Artist, AlbumID: row.AlbumID, UpdatedAt: row.UpdatedAt}
+	}
+	return result, nil
+}
+
 var _ model.UserRepository = (*userRepository)(nil)
 var _ rest.Repository = (*userRepository)(nil)
 var _ rest.Persistable = (*userRepository)(nil)

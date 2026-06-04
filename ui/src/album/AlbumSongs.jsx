@@ -16,6 +16,7 @@ import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import { playTracks } from '../actions'
 import {
   ArtistLinkField,
+  AverageRatingField,
   DateField,
   DurationField,
   QualityInfo,
@@ -143,6 +144,13 @@ const AlbumSongs = (props) => {
           className={classes.ratingField}
         />
       ),
+      averageRating: isDesktop && config.enableStarRating && (
+        <AverageRatingField
+          source="averageRating"
+          label="resources.song.fields.averageRating"
+          sortable={false}
+        />
+      ),
     }
   }, [isDesktop, classes.ratingField])
 
@@ -151,6 +159,7 @@ const AlbumSongs = (props) => {
     columns: toggleableFields,
     omittedColumns: ['title'],
     defaultOff: [
+      'averageRating',
       'composer',
       'channels',
       'bpm',
