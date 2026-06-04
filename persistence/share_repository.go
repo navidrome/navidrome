@@ -53,6 +53,10 @@ func (r *shareRepository) checkOwnership(id string) error {
 	return nil
 }
 
+// TODO: this still uses the legacy checkOwnership SELECT-then-delete pattern (a TOCTOU window),
+// the same shape removed from Update. Once a base-repo deleteOwned exists (built on ownerFilter,
+// mirroring updateOwned), route Delete through it and drop checkOwnership entirely. playerRepository
+// .Delete (which restricts via addRestriction) should adopt the same primitive.
 func (r *shareRepository) Delete(id string) error {
 	if err := r.checkOwnership(id); err != nil {
 		return err

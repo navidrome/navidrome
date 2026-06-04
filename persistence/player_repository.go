@@ -67,11 +67,10 @@ func (r *playerRepository) addRestriction(sql ...Sqlizer) Sqlizer {
 	if len(sql) > 0 {
 		s = append(s, sql[0])
 	}
-	u := loggedUser(r.ctx)
-	if u.IsAdmin {
-		return s
+	if owner := r.ownerFilter(); owner != nil {
+		s = append(s, owner)
 	}
-	return append(s, Eq{"user_id": u.ID})
+	return s
 }
 
 func (r *playerRepository) CountByClient(options ...model.QueryOptions) (map[string]int64, error) {

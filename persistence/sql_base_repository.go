@@ -58,6 +58,16 @@ func loggedUser(ctx context.Context) *model.User {
 	}
 }
 
+// ownerFilter returns the predicate restricting access to rows owned by the logged-in user, for
+// tables with a user_id column. It returns nil for admins and for headless/system contexts (invalid
+// user), meaning "no ownership restriction". Callers should skip the WHERE clause when it is nil.
+func (r sqlRepository) ownerFilter() Sqlizer {
+	if usr := loggedUser(r.ctx); !usr.IsAdmin && usr.ID != invalidUserId {
+		return Eq{"user_id": usr.ID}
+	}
+	return nil
+}
+
 func (r *sqlRepository) registerModel(instance any, filters map[string]filterFunc) {
 	if r.tableName == "" {
 		r.tableName = strings.TrimPrefix(reflect.TypeOf(instance).String(), "*model.")
@@ -402,8 +412,8 @@ func (r sqlRepository) updateOwned(id string, m any, colsToUpdate ...string) err
 	updateValues := filterUpdateValues(values, id, colsToUpdate...)
 	delete(updateValues, "user_id") // ownership is immutable on update
 	update := Update(r.tableName).Where(Eq{"id": id}).SetMap(updateValues)
-	if usr := loggedUser(r.ctx); !usr.IsAdmin && usr.ID != invalidUserId {
-		update = update.Where(Eq{"user_id": usr.ID})
+	if owner := r.ownerFilter(); owner != nil {
+		update = update.Where(owner)
 	}
 	count, err := r.executeSQL(update)
 	if err != nil {
