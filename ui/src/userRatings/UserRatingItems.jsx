@@ -82,7 +82,7 @@ const UserRatingItems = ({ match }) => {
         <Typography variant="subtitle1" color="textSecondary">
           {typeLabel} ·{' '}
           <Rating
-            value={parseInt(rating)}
+            value={parseInt(rating) || 0}
             readOnly
             size="small"
             style={{ verticalAlign: 'middle' }}
