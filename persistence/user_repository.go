@@ -490,7 +490,7 @@ func (r *userRepository) RatingStats() ([]model.UserRatingStats, error) {
 	sel := Select(`a.user_id`, `u.user_name`, `a.item_type`, `a.rating`, `count(*) as cnt`).
 		From(`annotation a`).
 		Join(`"user" u ON a.user_id = u.id`).
-		Where(Gt{"a.rating": 0}).
+		Where(And{Gt{"a.rating": 0}, Eq{"a.item_type": []interface{}{"media_file", "album"}}}).
 		GroupBy(`a.user_id`, `u.user_name`, `a.item_type`, `a.rating`).
 		OrderBy(`u.user_name`, `a.item_type`, `a.rating DESC`)
 
