@@ -37,7 +37,7 @@ func getRatingItems(ds model.DataStore) http.HandlerFunc {
 		ratingStr := r.URL.Query().Get("rating")
 
 		rating, err := strconv.Atoi(ratingStr)
-		if err != nil || userID == "" || (itemType != "album" && itemType != "song") {
+		if err != nil || rating < 1 || rating > 5 || userID == "" || (itemType != "album" && itemType != "song") {
 			http.Error(w, "invalid parameters", http.StatusBadRequest)
 			return
 		}

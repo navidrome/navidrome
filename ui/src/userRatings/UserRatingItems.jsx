@@ -20,7 +20,6 @@ import { Title, useTranslate } from 'react-admin'
 import httpClient from '../dataProvider/httpClient'
 import { REST_URL } from '../consts'
 import subsonic from '../subsonic'
-import config from '../config'
 
 const useStyles = makeStyles((theme) => ({
   root: { padding: theme.spacing(2) },
@@ -63,7 +62,6 @@ const UserRatingItems = ({ match }) => {
   const title = `${userName} · ${typeLabel} · ${rating}★`
 
   const getCoverUrl = (item) => {
-    const prefix = type === 'album' ? 'al-' : 'mf-'
     return subsonic.getCoverArtUrl(
       { id: item.id, albumArtist: type === 'album' ? item.artist : undefined, album: type === 'song' ? item.name : undefined, updatedAt: item.updatedAt },
       40,

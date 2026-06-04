@@ -491,7 +491,7 @@ func (r *userRepository) RatingStats() ([]model.UserRatingStats, error) {
 		From(`annotation a`).
 		Join(`"user" u ON a.user_id = u.id`).
 		Where(Gt{"a.rating": 0}).
-		GroupBy(`a.user_id`, `a.item_type`, `a.rating`).
+		GroupBy(`a.user_id`, `u.user_name`, `a.item_type`, `a.rating`).
 		OrderBy(`u.user_name`, `a.item_type`, `a.rating DESC`)
 
 	var rows []row
@@ -541,7 +541,7 @@ func (r *userRepository) RatingItems(userID, itemType string, rating int) ([]mod
 	case "song":
 		table, nameCol, artistCol, albumIDCol = "media_file", "media_file.title", "media_file.artist", "media_file.album_id"
 	default:
-		return nil, nil
+		return nil, fmt.Errorf("invalid item type: %q", itemType)
 	}
 
 	sel := Select(table+".id", nameCol+" as name", artistCol+" as artist", albumIDCol, table+".updated_at").
