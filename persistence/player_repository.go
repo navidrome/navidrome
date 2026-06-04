@@ -149,9 +149,6 @@ func (r *playerRepository) Save(entity any) (string, error) {
 func (r *playerRepository) Update(id string, entity any, cols ...string) error {
 	t := entity.(*model.Player)
 	t.ID = id
-	// updateOwned restricts the write to a row owned by the caller (unless admin) and never writes
-	// user_id, so a user cannot target another user's player by id, and no caller (admin included)
-	// can reassign a player's owner via the request body.
 	return r.updateOwned(id, t, cols...)
 }
 

@@ -388,8 +388,12 @@ func (r sqlRepository) exists(cond Sqlizer) (bool, error) {
 // ownership predicate is part of the UPDATE's WHERE clause, so a row owned by another user simply
 // does not match and no write happens. Ownership itself is immutable here: user_id is never written,
 // so no caller (admin included) can reassign a row to a different owner via an update. Unlike put,
-// it never falls through to an INSERT, so a non-matching id (missing or not owned) returns
-// rest.ErrNotFound instead of creating a row.
+// it never falls through to an INSERT, so a non-matching id never creates a row.
+//
+// When the update matches no row it classifies the failure: if the row exists but is owned by
+// another user it returns rest.ErrPermissionDenied, otherwise rest.ErrNotFound. The write itself is
+// still atomic; the extra lookup happens only on the failure path (count == 0), where no write
+// occurred, so there is no TOCTOU on the update.
 func (r sqlRepository) updateOwned(id string, m any, colsToUpdate ...string) error {
 	values, err := toSQLArgs(m)
 	if err != nil {
@@ -406,6 +410,15 @@ func (r sqlRepository) updateOwned(id string, m any, colsToUpdate ...string) err
 		return err
 	}
 	if count == 0 {
+		// The update matched no row: either the id is missing, or it exists but is owned by
+		// someone else. Disambiguate to return the more accurate error.
+		exists, err := r.exists(Eq{"id": id})
+		if err != nil {
+			return err
+		}
+		if exists {
+			return rest.ErrPermissionDenied
+		}
 		return rest.ErrNotFound
 	}
 	return nil

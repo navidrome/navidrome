@@ -216,6 +216,27 @@ var _ = Describe("ShareRepository", func() {
 				err := repo.(rest.Persistable).Update("headless-upd-share", &model.Share{Description: "Headless"}, "description")
 				Expect(err).ToNot(HaveOccurred())
 			})
+
+			It("returns not found when updating a nonexistent share", func() {
+				ctx := request.WithUser(log.NewContext(context.TODO()), ownerUser)
+				repo := NewShareRepository(ctx, GetDBXBuilder())
+				err := repo.(rest.Persistable).Update("does-not-exist", &model.Share{Description: "Ghost"}, "description")
+				Expect(err).To(Equal(rest.ErrNotFound))
+			})
+
+			It("does not let an owner reassign their share to another user", func() {
+				insertShare("reassign-share", ownerUser.ID)
+				ctx := request.WithUser(log.NewContext(context.TODO()), ownerUser)
+				repo := NewShareRepository(ctx, GetDBXBuilder())
+				err := repo.(rest.Persistable).Update("reassign-share",
+					&model.Share{UserID: otherUser.ID, Description: "Given away"}, "user_id", "description")
+				Expect(err).ToNot(HaveOccurred())
+
+				// Ownership must not have moved, even though user_id was passed in the body and cols.
+				got, err := repo.(rest.Repository).Read("reassign-share")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(got.(*model.Share).UserID).To(Equal(ownerUser.ID))
+			})
 		})
 	})
 })

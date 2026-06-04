@@ -166,17 +166,14 @@ func sortByIdPosition(mfs model.MediaFiles, ids []string) model.MediaFiles {
 
 func (r *shareRepository) Update(id string, entity any, cols ...string) error {
 	s := entity.(*model.Share)
-	if err := r.checkOwnership(id); err != nil {
-		return err
-	}
 	s.ID = id
 	s.UpdatedAt = time.Now()
 	cols = append(cols, "updated_at")
-	_, err := r.put(id, s, cols...)
-	if errors.Is(err, model.ErrNotFound) {
-		return rest.ErrNotFound
-	}
-	return err
+	// updateOwned restricts the write to a row owned by the caller (unless admin) and never writes
+	// user_id, so a user cannot target another user's share by id, nor reassign ownership via the
+	// request body. It returns ErrPermissionDenied for a row owned by someone else and ErrNotFound
+	// when the id is missing, preserving the previous 403/404 distinction.
+	return r.updateOwned(id, s, cols...)
 }
 
 func (r *shareRepository) Save(entity any) (string, error) {

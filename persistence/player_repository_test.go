@@ -219,8 +219,9 @@ var _ = Describe("PlayerRepository", func() {
 					Expect(err).To(HaveOccurred())
 				} else if !admin && player.Username == adminPlayer1.Username {
 					// A non-admin cannot target another user's player: the ownership-restricted
-					// update matches no row, so it reports not-found rather than touching it.
-					Expect(err).To(Equal(rest.ErrNotFound))
+					// update matches no owned row, so it reports permission-denied rather than
+					// touching it.
+					Expect(err).To(Equal(rest.ErrPermissionDenied))
 					clone.IP = player.IP
 				} else {
 					Expect(err).To(BeNil())
@@ -267,9 +268,9 @@ var _ = Describe("PlayerRepository", func() {
 			}
 
 			// The ownership-restricted update matches no row owned by the attacker, so the write
-			// targets nothing and reports not-found rather than overwriting the victim's row.
+			// targets nothing and reports permission-denied rather than overwriting the victim's row.
 			err := regularRepo.Update(adminPlayer1.ID, &spoofed, "name", "user_id", "max_bit_rate")
-			Expect(err).To(Equal(rest.ErrNotFound))
+			Expect(err).To(Equal(rest.ErrPermissionDenied))
 
 			// The victim's player must remain untouched.
 			stored, err := adminRepo.Get(adminPlayer1.ID)
