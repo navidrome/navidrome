@@ -215,9 +215,12 @@ var _ = Describe("PlayerRepository", func() {
 				clone.MaxBitRate = 10000
 				err := repo.Update(clone.ID, &clone, "ip")
 
-				if clone.UserId == "" {
+				if player.UserId == "" {
 					Expect(err).To(HaveOccurred())
 				} else if !admin && player.Username == adminPlayer1.Username {
+					// A non-admin cannot target another user's player: the ownership-restricted
+					// update matches no owned row, so it reports permission-denied rather than
+					// touching it.
 					Expect(err).To(Equal(rest.ErrPermissionDenied))
 					clone.IP = player.IP
 				} else {
@@ -244,4 +247,86 @@ var _ = Describe("PlayerRepository", func() {
 		Entry("admin context", true, players, adminPlayer1, regularPlayer),
 		Entry("regular context", false, model.Players{regularPlayer}, regularPlayer, adminPlayer1),
 	)
+
+	Describe("Ownership enforcement (cross-tenant write protection)", func() {
+		var regularRepo *playerRepository
+
+		BeforeEach(func() {
+			ctx := log.NewContext(context.TODO())
+			ctx = request.WithUser(ctx, regularUser)
+			regularRepo = NewPlayerRepository(ctx, database).(*playerRepository)
+		})
+
+		It("does not let a regular user hijack another user's player by spoofing userId in the body", func() {
+			// Attacker (regularUser) targets the victim's (adminUser) player by URL id,
+			// but sets userId in the body to their own id to try to pass the permission check.
+			spoofed := model.Player{
+				ID:         adminPlayer1.ID,
+				Name:       "HIJACKED",
+				UserId:     regularUser.ID, // attacker's own id, spoofed in the body
+				MaxBitRate: 1,
+			}
+
+			// The ownership-restricted update matches no row owned by the attacker, so the write
+			// targets nothing and reports permission-denied rather than overwriting the victim's row.
+			err := regularRepo.Update(adminPlayer1.ID, &spoofed, "name", "user_id", "max_bit_rate")
+			Expect(err).To(Equal(rest.ErrPermissionDenied))
+
+			// The victim's player must remain untouched.
+			stored, err := adminRepo.Get(adminPlayer1.ID)
+			Expect(err).To(BeNil())
+			Expect(*stored).To(Equal(adminPlayer1))
+		})
+
+		It("does not let a regular user reassign their own player to another user", func() {
+			// Owner updates their own player but tries to give it away to the admin. The update
+			// succeeds for the other fields, but user_id is never written, so ownership stays put.
+			reassign := regularPlayer
+			reassign.UserId = adminUser.ID
+			reassign.Name = "given-away"
+
+			err := regularRepo.Update(regularPlayer.ID, &reassign, "name", "user_id")
+			Expect(err).To(BeNil())
+
+			// Ownership must not have changed.
+			stored, err := adminRepo.Get(regularPlayer.ID)
+			Expect(err).To(BeNil())
+			Expect(stored.UserId).To(Equal(regularUser.ID))
+		})
+
+		It("does not let an admin reassign a player to another user", func() {
+			// Even an admin cannot change a player's owner via update.
+			reassign := regularPlayer
+			reassign.UserId = adminUser.ID
+			reassign.Name = "admin-renamed"
+
+			err := adminRepo.Update(regularPlayer.ID, &reassign, "name", "user_id")
+			Expect(err).To(BeNil())
+
+			// The name change applies, but ownership must not have moved.
+			stored, err := adminRepo.Get(regularPlayer.ID)
+			Expect(err).To(BeNil())
+			Expect(stored.Name).To(Equal("admin-renamed"))
+			Expect(stored.UserId).To(Equal(regularUser.ID))
+		})
+
+		It("lets the owner update their own player", func() {
+			update := regularPlayer
+			update.Name = "renamed-by-owner"
+
+			err := regularRepo.Update(regularPlayer.ID, &update, "name")
+			Expect(err).To(BeNil())
+
+			stored, err := adminRepo.Get(regularPlayer.ID)
+			Expect(err).To(BeNil())
+			Expect(stored.Name).To(Equal("renamed-by-owner"))
+			Expect(stored.UserId).To(Equal(regularUser.ID))
+		})
+
+		It("returns not found when updating a nonexistent player", func() {
+			ghost := model.Player{ID: "does-not-exist", Name: "ghost", UserId: regularUser.ID}
+			err := regularRepo.Update("does-not-exist", &ghost, "name")
+			Expect(err).To(Equal(rest.ErrNotFound))
+		})
+	})
 })
