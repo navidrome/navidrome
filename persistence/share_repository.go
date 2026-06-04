@@ -172,11 +172,9 @@ func (r *shareRepository) Update(id string, entity any, cols ...string) error {
 	s := entity.(*model.Share)
 	s.ID = id
 	s.UpdatedAt = time.Now()
-	cols = append(cols, "updated_at")
-	// updateOwned restricts the write to a row owned by the caller (unless admin) and never writes
-	// user_id, so a user cannot target another user's share by id, nor reassign ownership via the
-	// request body. It returns ErrPermissionDenied for a row owned by someone else and ErrNotFound
-	// when the id is missing, preserving the previous 403/404 distinction.
+	if len(cols) > 0 {
+		cols = append(cols, "updated_at")
+	}
 	return r.updateOwned(id, s, cols...)
 }
 

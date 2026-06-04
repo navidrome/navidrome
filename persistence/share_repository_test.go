@@ -224,6 +224,23 @@ var _ = Describe("ShareRepository", func() {
 				Expect(err).To(Equal(rest.ErrNotFound))
 			})
 
+			It("updates all columns when no specific columns are given", func() {
+				insertShare("all-cols-share", ownerUser.ID)
+				ctx := request.WithUser(log.NewContext(context.TODO()), ownerUser)
+				repo := NewShareRepository(ctx, GetDBXBuilder())
+				// No cols: the update must write every column, not just updated_at.
+				err := repo.(rest.Persistable).Update("all-cols-share",
+					&model.Share{Description: "All Updated", MaxBitRate: 192, ResourceType: "album", ResourceIDs: "2002"})
+				Expect(err).ToNot(HaveOccurred())
+
+				got, err := repo.(rest.Repository).Read("all-cols-share")
+				Expect(err).ToNot(HaveOccurred())
+				share := got.(*model.Share)
+				Expect(share.Description).To(Equal("All Updated"))
+				Expect(share.MaxBitRate).To(Equal(192))
+				Expect(share.ResourceType).To(Equal("album"))
+			})
+
 			It("does not let an owner reassign their share to another user", func() {
 				insertShare("reassign-share", ownerUser.ID)
 				ctx := request.WithUser(log.NewContext(context.TODO()), ownerUser)
