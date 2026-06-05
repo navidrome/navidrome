@@ -16,7 +16,7 @@ func TestRandom(t *testing.T) {
 var _ = Describe("number package", func() {
 	Describe("Int64N", func() {
 		It("should return a random int64", func() {
-			for i := 0; i < 10000; i++ {
+			for range 10000 {
 				Expect(random.Int64N(100)).To(BeNumerically("<", 100))
 			}
 		})

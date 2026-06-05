@@ -24,6 +24,7 @@ export const SongListActions = ({
   const isNotSmall = useMediaQuery((theme) => theme.breakpoints.up('sm'))
   return (
     <TopToolbar className={className} {...sanitizeListRestProps(rest)}>
+      <ShuffleAllButton filters={filterValues} />
       {filters &&
         cloneElement(filters, {
           resource,
@@ -32,7 +33,6 @@ export const SongListActions = ({
           filterValues,
           context: 'button',
         })}
-      <ShuffleAllButton filters={filterValues} />
       {isNotSmall && <ToggleFieldsMenu resource="song" />}
     </TopToolbar>
   )

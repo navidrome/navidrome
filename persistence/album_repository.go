@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"iter"
 	"maps"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -60,11 +62,14 @@ func (a *dbAlbum) PostScan() error {
 
 func (a *dbAlbum) PostMapArgs(args map[string]any) error {
 	fullText := []string{a.Name, a.SortAlbumName, a.AlbumArtist}
-	fullText = append(fullText, a.Album.Participants.AllNames()...)
+	participantNames := a.Album.Participants.AllNames()
+	fullText = append(fullText, participantNames...)
 	fullText = append(fullText, slices.Collect(maps.Values(a.Album.Discs))...)
 	fullText = append(fullText, a.Album.Tags[model.TagAlbumVersion]...)
 	fullText = append(fullText, a.Album.Tags[model.TagCatalogNumber]...)
 	args["full_text"] = formatFullText(fullText...)
+	args["search_participants"] = strings.Join(participantNames, " ")
+	args["search_normalized"] = normalizeForFTS(a.Name, a.AlbumArtist)
 
 	args["tags"] = marshalTags(a.Album.Tags)
 	args["participants"] = marshalParticipants(a.Album.Participants)
@@ -96,13 +101,15 @@ func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumReposito
 	r.tableName = "album"
 	r.registerModel(&model.Album{}, albumFilters())
 	r.setSortMappings(map[string]string{
-		"name":           "order_album_name, order_album_artist_name",
-		"artist":         "compilation, order_album_artist_name, order_album_name",
-		"album_artist":   "compilation, order_album_artist_name, order_album_name",
+		"name":         "order_album_name, order_album_artist_name",
+		"artist":       "compilation, order_album_artist_name, order_album_name",
+		"album_artist": "compilation, order_album_artist_name, order_album_name",
+		// TODO Rename this to just year (or date)
 		"max_year":       "coalesce(nullif(original_date,''), cast(max_year as text)), release_date, name",
 		"random":         "random",
 		"recently_added": recentlyAddedSort(),
 		"starred_at":     "starred, starred_at",
+		"rated_at":       "rating, rated_at",
 	})
 	return r
 }
@@ -110,39 +117,42 @@ func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumReposito
 var albumFilters = sync.OnceValue(func() map[string]filterFunc {
 	filters := map[string]filterFunc{
 		"id":              idFilter("album"),
-		"name":            fullTextFilter("album"),
+		"name":            fullTextFilter("album", "mbz_album_id", "mbz_release_group_id"),
 		"compilation":     booleanFilter,
 		"artist_id":       artistFilter,
 		"year":            yearFilter,
 		"recently_played": recentlyPlayedFilter,
-		"starred":         booleanFilter,
-		"has_rating":      hasRatingFilter,
+		"starred":         annotationBoolFilter("starred"),
+		"has_rating":      annotationBoolFilter("rating"),
 		"missing":         booleanFilter,
 		"genre_id":        tagIDFilter,
+		"role_total_id":   allRolesFilter,
+		"library_id":      libraryIdFilter,
 	}
 	// Add all album tags as filters
 	for tag := range model.AlbumLevelTags() {
 		filters[string(tag)] = tagIDFilter
 	}
+
+	for role := range model.AllRoles {
+		filters["role_"+role+"_id"] = artistRoleFilter
+	}
+
 	return filters
 })
 
 func recentlyAddedSort() string {
 	if conf.Server.RecentlyAddedByModTime {
-		return "updated_at"
+		return "datetime(album.updated_at)"
 	}
-	return "created_at"
+	return "datetime(album.created_at)"
 }
 
-func recentlyPlayedFilter(string, interface{}) Sqlizer {
+func recentlyPlayedFilter(string, any) Sqlizer {
 	return Gt{"play_count": 0}
 }
 
-func hasRatingFilter(string, interface{}) Sqlizer {
-	return Gt{"rating": 0}
-}
-
-func yearFilter(_ string, value interface{}) Sqlizer {
+func yearFilter(_ string, value any) Sqlizer {
 	return Or{
 		And{
 			Gt{"min_year": 0},
@@ -153,21 +163,32 @@ func yearFilter(_ string, value interface{}) Sqlizer {
 	}
 }
 
-// BFR: Support other roles
-func artistFilter(_ string, value interface{}) Sqlizer {
+func artistFilter(_ string, value any) Sqlizer {
 	return Or{
-		Exists("json_tree(Participants, '$.albumartist')", Eq{"value": value}),
-		Exists("json_tree(Participants, '$.artist')", Eq{"value": value}),
+		Exists("json_tree(participants, '$.albumartist')", Eq{"value": value}),
+		Exists("json_tree(participants, '$.artist')", Eq{"value": value}),
 	}
-	// For any role:
-	//return Like{"Participants": fmt.Sprintf(`%%"%s"%%`, value)}
+}
+
+func artistRoleFilter(name string, value any) Sqlizer {
+	roleName := strings.TrimSuffix(strings.TrimPrefix(name, "role_"), "_id")
+
+	// Check if the role name is valid. If not, return an invalid filter
+	if _, ok := model.AllRoles[roleName]; !ok {
+		return Gt{"": nil}
+	}
+	return Exists(fmt.Sprintf("json_tree(participants, '$.%s')", roleName), Eq{"value": value})
+}
+
+func allRolesFilter(_ string, value any) Sqlizer {
+	return Like{"participants": fmt.Sprintf(`%%"%s"%%`, value)}
 }
 
 func (r *albumRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	sql := r.newSelect()
-	sql = r.withAnnotation(sql, "album.id")
-	// BFR WithParticipants (for filtering by name)?
-	return r.count(sql, options...)
+	query := r.newSelect()
+	query = r.withAnnotation(query, "album.id")
+	query = r.applyLibraryFilter(query)
+	return r.count(query, options...)
 }
 
 func (r *albumRepository) Exists(id string) (bool, error) {
@@ -182,12 +203,11 @@ func (r *albumRepository) Put(al *model.Album) error {
 	}
 	al.ID = id
 	if len(al.Participants) > 0 {
-		err = r.updateParticipants(al.ID, al.Participants)
-		if err != nil {
+		if err = r.updateParticipants(al.ID, al.Participants); err != nil {
 			return err
 		}
 	}
-	return err
+	return nil
 }
 
 // TODO Move external metadata to a separated table
@@ -197,8 +217,10 @@ func (r *albumRepository) UpdateExternalInfo(al *model.Album) error {
 }
 
 func (r *albumRepository) selectAlbum(options ...model.QueryOptions) SelectBuilder {
-	sql := r.newSelect(options...).Columns("album.*")
-	return r.withAnnotation(sql, "album.id")
+	sql := r.newSelect(options...).Columns("album.*", "library.path as library_path", "library.name as library_name").
+		LeftJoin("library on album.library_id = library.id")
+	sql = r.withAnnotation(sql, "album.id")
+	return r.applyLibraryFilter(sql)
 }
 
 func (r *albumRepository) Get(id string) (*model.Album, error) {
@@ -219,7 +241,7 @@ func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, e
 	if err != nil {
 		return nil, err
 	}
-	return res.toModels(), err
+	return res.toModels(), nil
 }
 
 func (r *albumRepository) CopyAttributes(fromID, toID string, columns ...string) error {
@@ -228,9 +250,19 @@ func (r *albumRepository) CopyAttributes(fromID, toID string, columns ...string)
 	if err != nil {
 		return fmt.Errorf("getting album to copy fields from: %w", err)
 	}
-	to := make(map[string]interface{})
+	to := make(map[string]any)
 	for _, col := range columns {
-		to[col] = from[col]
+		v := from[col]
+		// created_at is aggregated from song birth_times and must never be
+		// overwritten with a zero/poisoned value, or it propagates forward on
+		// every metadata-driven album ID change.
+		if col == "created_at" && (!v.Valid || v.String == "" || strings.HasPrefix(v.String, "0001-")) {
+			continue
+		}
+		to[col] = v
+	}
+	if len(to) == 0 {
+		return nil
 	}
 	_, err = r.executeSQL(Update(r.tableName).SetMap(to).Where(Eq{"id": toID}))
 	return err
@@ -272,7 +304,6 @@ func (r *albumRepository) TouchByMissingFolder() (int64, error) {
 // It does not need to load participants, as they are not used by the scanner.
 func (r *albumRepository) GetTouchedAlbums(libID int) (model.AlbumCursor, error) {
 	query := r.selectAlbum().
-		Join("library on library.id = album.library_id").
 		Where(And{
 			Eq{"library.id": libID},
 			ConcatExpr("album.imported_at > library.last_scan_at"),
@@ -281,23 +312,27 @@ func (r *albumRepository) GetTouchedAlbums(libID int) (model.AlbumCursor, error)
 	if err != nil {
 		return nil, err
 	}
+	return wrapAlbumCursor(cursor), nil
+}
+
+func wrapAlbumCursor(cursor iter.Seq2[dbAlbum, error]) model.AlbumCursor {
 	return func(yield func(model.Album, error) bool) {
 		for a, err := range cursor {
 			if a.Album == nil {
-				yield(model.Album{}, fmt.Errorf("unexpected nil album: %v", a))
+				yield(model.Album{}, fmt.Errorf("unexpected nil album (%v): %w", a, err))
 				return
 			}
 			if !yield(*a.Album, err) || err != nil {
 				return
 			}
 		}
-	}, nil
+	}
 }
 
 // RefreshPlayCounts updates the play count and last play date annotations for all albums, based
 // on the media files associated with them.
 func (r *albumRepository) RefreshPlayCounts() (int64, error) {
-	query := rawSQL(`
+	query := Expr(`
 with play_counts as (
     select user_id, album_id, sum(play_count) as total_play_count, max(play_date) as last_play_date
     from media_file
@@ -315,8 +350,12 @@ on conflict (user_id, item_id, item_type) do update
 	return r.executeSQL(query)
 }
 
-func (r *albumRepository) purgeEmpty() error {
+func (r *albumRepository) purgeEmpty(libraryIDs ...int) error {
 	del := Delete(r.tableName).Where("id not in (select distinct(album_id) from media_file)")
+	// If libraryIDs are specified, only purge albums from those libraries
+	if len(libraryIDs) > 0 {
+		del = del.Where(Eq{"library_id": libraryIDs})
+	}
 	c, err := r.executeSQL(del)
 	if err != nil {
 		return fmt.Errorf("purging empty albums: %w", err)
@@ -327,24 +366,34 @@ func (r *albumRepository) purgeEmpty() error {
 	return nil
 }
 
-func (r *albumRepository) Search(q string, offset int, size int, includeMissing bool) (model.Albums, error) {
-	var res dbAlbums
-	err := r.doSearch(r.selectAlbum(), q, offset, size, includeMissing, &res, "name")
-	if err != nil {
-		return nil, err
+var albumSearchConfig = searchConfig{
+	NaturalOrder: "album.rowid",
+	OrderBy:      []string{"name"},
+	MBIDFields:   []string{"mbz_album_id", "mbz_release_group_id"},
+}
+
+func (r *albumRepository) Search(q string, options ...model.QueryOptions) (model.Albums, error) {
+	var opts model.QueryOptions
+	if len(options) > 0 {
+		opts = options[0]
 	}
-	return res.toModels(), err
+	var res dbAlbums
+	err := r.doSearch(r.selectAlbum(options...), q, &res, albumSearchConfig, opts)
+	if err != nil {
+		return nil, fmt.Errorf("searching album %q: %w", q, err)
+	}
+	return res.toModels(), nil
 }
 
 func (r *albumRepository) Count(options ...rest.QueryOptions) (int64, error) {
 	return r.CountAll(r.parseRestOptions(r.ctx, options...))
 }
 
-func (r *albumRepository) Read(id string) (interface{}, error) {
+func (r *albumRepository) Read(id string) (any, error) {
 	return r.Get(id)
 }
 
-func (r *albumRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
+func (r *albumRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
 	return r.GetAll(r.parseRestOptions(r.ctx, options...))
 }
 
@@ -352,7 +401,7 @@ func (r *albumRepository) EntityName() string {
 	return "album"
 }
 
-func (r *albumRepository) NewInstance() interface{} {
+func (r *albumRepository) NewInstance() any {
 	return &model.Album{}
 }
 

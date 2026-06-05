@@ -20,7 +20,10 @@ const defaultConfig = {
   defaultTheme: 'Dark',
   defaultLanguage: '',
   defaultUIVolume: 100,
+  uiSearchDebounceMs: 200,
+  uiCoverArtSize: 600,
   enableUserEditing: true,
+  enableArtworkUpload: true,
   enableSharing: true,
   shareURL: '',
   defaultDownloadableShare: true,
@@ -29,12 +32,17 @@ const defaultConfig = {
   listenBrainzEnabled: true,
   enableExternalServices: true,
   enableCoverAnimation: true,
+  enableNowPlaying: true,
+  playbackReportIntervalMs: 60000,
   devShowArtistPage: true,
+  devUIShowConfig: true,
+  devNewEventStream: false,
   enableReplayGain: true,
   defaultDownsamplingFormat: 'opus',
   publicBaseUrl: '/share',
   separator: '/',
   enableInspect: true,
+  pluginsEnabled: true,
 }
 
 let config

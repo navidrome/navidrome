@@ -1,0 +1,98 @@
+{
+  "name": "Discord Rich Presence (Rust)",
+  "author": "Navidrome Team",
+  "version": "1.0.0",
+  "description": "Discord Rich Presence integration for Navidrome - Rust implementation",
+  "website": "https://github.com/navidrome/navidrome/tree/master/plugins/examples/discord-rich-presence-rs",
+  "permissions": {
+    "users": {
+      "reason": "To process scrobbles on behalf of users"
+    },
+    "http": {
+      "reason": "To communicate with Discord API for gateway discovery and image uploads",
+      "requiredHosts": ["discord.com"]
+    },
+    "websocket": {
+      "reason": "To maintain real-time connection with Discord gateway",
+      "requiredHosts": ["gateway.discord.gg"]
+    },
+    "cache": {
+      "reason": "To store connection state and sequence numbers"
+    },
+    "scheduler": {
+      "reason": "To schedule heartbeat messages and activity clearing"
+    },
+    "artwork": {
+      "reason": "To get track artwork URLs for rich presence display"
+    }
+  },
+  "config": {
+    "schema": {
+      "type": "object",
+      "properties": {
+        "clientid": {
+          "type": "string",
+          "title": "Discord Application Client ID",
+          "description": "The Client ID from your Discord Developer Application. Create one at https://discord.com/developers/applications",
+          "minLength": 17,
+          "maxLength": 20,
+          "pattern": "^[0-9]+$"
+        },
+        "users": {
+          "type": "array",
+          "title": "User Tokens",
+          "description": "Discord tokens for each Navidrome user. WARNING: Store tokens securely!",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "properties": {
+              "username": {
+                "type": "string",
+                "title": "Navidrome Username",
+                "description": "The Navidrome username to associate with this Discord token",
+                "minLength": 1
+              },
+              "token": {
+                "type": "string",
+                "title": "Discord Token",
+                "description": "The user's Discord token (keep this secret!)",
+                "minLength": 1
+              }
+            },
+            "required": ["username", "token"]
+          }
+        }
+      },
+      "required": ["clientid", "users"]
+    },
+    "uiSchema": {
+      "type": "VerticalLayout",
+      "elements": [
+        {
+          "type": "Control",
+          "scope": "#/properties/clientid"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/users",
+          "options": {
+            "elementLabelProp": "username",
+            "detail": {
+              "type": "HorizontalLayout",
+              "elements": [
+                {
+                  "type": "Control",
+                  "scope": "#/properties/username"
+                },
+                {
+                  "type": "Control",
+                  "scope": "#/properties/token"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}

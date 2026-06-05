@@ -7,6 +7,8 @@ export const PLAYER_PLAY_TRACKS = 'PLAYER_PLAY_TRACKS'
 export const PLAYER_CURRENT = 'PLAYER_CURRENT'
 export const PLAYER_SET_VOLUME = 'PLAYER_SET_VOLUME'
 export const PLAYER_SET_MODE = 'PLAYER_SET_MODE'
+export const TRANSCODING_SET_PROFILE = 'TRANSCODING_SET_PROFILE'
+export const PLAYER_REFRESH_QUEUE = 'PLAYER_REFRESH_QUEUE'
 
 export const setTrack = (data) => ({
   type: PLAYER_SET_TRACK,
@@ -14,10 +16,17 @@ export const setTrack = (data) => ({
 })
 
 export const filterSongs = (data, ids) => {
-  if (!ids) {
-    return data
-  }
-  return ids.reduce((acc, id) => ({ ...acc, [id]: data[id] }), {})
+  const filteredData = Object.fromEntries(
+    Object.entries(data).filter(([_, song]) => !song.missing),
+  )
+  return !ids
+    ? filteredData
+    : ids.reduce((acc, id) => {
+        if (filteredData[id]) {
+          return { ...acc, [id]: filteredData[id] }
+        }
+        return acc
+      }, {})
 }
 
 export const addTracks = (data, ids) => {
@@ -94,4 +103,14 @@ export const setVolume = (volume) => ({
 export const setPlayMode = (mode) => ({
   type: PLAYER_SET_MODE,
   data: { mode },
+})
+
+export const setTranscodingProfile = (profile) => ({
+  type: TRANSCODING_SET_PROFILE,
+  data: profile,
+})
+
+export const refreshQueue = (resolvedUrls) => ({
+  type: PLAYER_REFRESH_QUEUE,
+  data: resolvedUrls,
 })

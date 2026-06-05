@@ -15,13 +15,17 @@ import artist from './artist'
 import playlist from './playlist'
 import radio from './radio'
 import share from './share'
+import library from './library'
+import plugin from './plugin'
 import { Player } from './audioplayer'
 import customRoutes from './routes'
 import {
+  libraryReducer,
   themeReducer,
   addToPlaylistDialogReducer,
   expandInfoDialogReducer,
   listenBrainzTokenDialogReducer,
+  saveQueueDialogReducer,
   playerReducer,
   albumViewReducer,
   activityReducer,
@@ -29,6 +33,7 @@ import {
   replayGainReducer,
   downloadMenuDialogReducer,
   shareDialogReducer,
+  transcodingReducer,
 } from './reducers'
 import createAdminStore from './store/createAdminStore'
 import { i18nProvider } from './i18n'
@@ -55,6 +60,7 @@ const adminStore = createAdminStore({
   dataProvider,
   history,
   customReducers: {
+    library: libraryReducer,
     player: playerReducer,
     albumView: albumViewReducer,
     theme: themeReducer,
@@ -62,10 +68,12 @@ const adminStore = createAdminStore({
     downloadMenuDialog: downloadMenuDialogReducer,
     expandInfoDialog: expandInfoDialogReducer,
     listenBrainzTokenDialog: listenBrainzTokenDialogReducer,
+    saveQueueDialog: saveQueueDialogReducer,
     shareDialog: shareDialogReducer,
     activity: activityReducer,
     settings: settingsReducer,
     replayGain: replayGainReducer,
+    transcoding: transcodingReducer,
   },
 })
 
@@ -120,11 +128,24 @@ const Admin = (props) => {
         ) : (
           <Resource name="transcoding" />
         ),
-
+        permissions === 'admin' ? (
+          <Resource
+            name="library"
+            {...library}
+            options={{ subMenu: 'settings' }}
+          />
+        ) : null,
         permissions === 'admin' ? (
           <Resource
             name="missing"
             {...missing}
+            options={{ subMenu: 'settings' }}
+          />
+        ) : null,
+        permissions === 'admin' && config.pluginsEnabled ? (
+          <Resource
+            name="plugin"
+            {...plugin}
             options={{ subMenu: 'settings' }}
           />
         ) : null,
@@ -135,6 +156,7 @@ const Admin = (props) => {
         <Resource name="playlistTrack" />,
         <Resource name="keepalive" />,
         <Resource name="insights" />,
+        <Resource name="config" />,
         <Player />,
       ]}
     </RAAdmin>

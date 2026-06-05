@@ -5,12 +5,12 @@ import "github.com/navidrome/navidrome/model"
 type MockedUserPropsRepo struct {
 	model.UserPropsRepository
 	Error error
-	data  map[string]string
+	Data  map[string]string
 }
 
 func (p *MockedUserPropsRepo) init() {
-	if p.data == nil {
-		p.data = make(map[string]string)
+	if p.Data == nil {
+		p.Data = make(map[string]string)
 	}
 }
 
@@ -19,7 +19,7 @@ func (p *MockedUserPropsRepo) Put(userId, key string, value string) error {
 		return p.Error
 	}
 	p.init()
-	p.data[userId+key] = value
+	p.Data[userId+key] = value
 	return nil
 }
 
@@ -28,7 +28,7 @@ func (p *MockedUserPropsRepo) Get(userId, key string) (string, error) {
 		return "", p.Error
 	}
 	p.init()
-	if v, ok := p.data[userId+key]; ok {
+	if v, ok := p.Data[userId+key]; ok {
 		return v, nil
 	}
 	return "", model.ErrNotFound
@@ -39,8 +39,8 @@ func (p *MockedUserPropsRepo) Delete(userId, key string) error {
 		return p.Error
 	}
 	p.init()
-	if _, ok := p.data[userId+key]; ok {
-		delete(p.data, userId+key)
+	if _, ok := p.Data[userId+key]; ok {
+		delete(p.Data, userId+key)
 		return nil
 	}
 	return model.ErrNotFound

@@ -29,7 +29,7 @@ const SharePlayer = () => {
     return {
       name: s.title,
       musicSrc: shareStreamUrl(s.id),
-      cover: shareCoverUrl(s.id),
+      cover: shareCoverUrl(s.id, true),
       singer: s.artist,
       duration: s.duration,
     }
@@ -53,6 +53,7 @@ const SharePlayer = () => {
     remove: false,
     spaceBar: true,
     volumeFade: { fadeIn: 200, fadeOut: 200 },
+    sortableOptions: { delay: 200, delayOnTouchOnly: true },
   }
   return (
     <ReactJkMusicPlayer

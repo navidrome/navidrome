@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"math"
 	"net/http"
+	"os"
 	"path/filepath"
 	"runtime"
 	"runtime/debug"
@@ -21,6 +22,9 @@ import (
 	"github.com/navidrome/navidrome/core/metrics/insights"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/plugins"
+	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/utils/singleton"
 )
 
@@ -56,9 +60,16 @@ func GetInstance(ds model.DataStore) Insights {
 }
 
 func (c *insightsCollector) Run(ctx context.Context) {
-	ctx = auth.WithAdminUser(ctx, c.ds)
 	for {
-		c.sendInsights(ctx)
+		// Refresh admin context on each iteration to handle cases where
+		// admin user wasn't available on previous runs
+		insightsCtx := auth.WithAdminUser(ctx, c.ds)
+		u, _ := request.UserFrom(insightsCtx)
+		if !u.IsAdmin {
+			log.Trace(insightsCtx, "No admin user available, skipping insights collection")
+		} else {
+			c.sendInsights(insightsCtx)
+		}
 		select {
 		case <-time.After(consts.InsightsUpdateInterval):
 			continue
@@ -97,7 +108,7 @@ func (c *insightsCollector) sendInsights(ctx context.Context) {
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := hc.Do(req)
+	resp, err := hc.Do(req) //nolint:gosec
 	if err != nil {
 		log.Trace(ctx, "Could not send Insights data", err)
 		return
@@ -153,6 +164,13 @@ var staticData = sync.OnceValue(func() insights.Data {
 	data.Build.Settings, data.Build.GoVersion = buildInfo()
 	data.OS.Containerized = consts.InContainer
 
+	// Install info
+	packageFilename := filepath.Join(conf.Server.DataFolder.String(), ".package")
+	packageFileData, err := os.ReadFile(packageFilename)
+	if err == nil {
+		data.OS.Package = string(packageFileData)
+	}
+
 	// OS info
 	data.OS.Type = runtime.GOOS
 	data.OS.Arch = runtime.GOARCH
@@ -161,12 +179,12 @@ var staticData = sync.OnceValue(func() insights.Data {
 
 	// FS info
 	data.FS.Music = getFSInfo(conf.Server.MusicFolder)
-	data.FS.Data = getFSInfo(conf.Server.DataFolder)
-	if conf.Server.CacheFolder != "" {
-		data.FS.Cache = getFSInfo(conf.Server.CacheFolder)
+	data.FS.Data = getFSInfo(conf.Server.DataFolder.String())
+	if conf.Server.CacheFolder.String() != "" {
+		data.FS.Cache = getFSInfo(conf.Server.CacheFolder.String())
 	}
-	if conf.Server.Backup.Path != "" {
-		data.FS.Backup = getFSInfo(conf.Server.Backup.Path)
+	if conf.Server.Backup.Path.String() != "" {
+		data.FS.Backup = getFSInfo(conf.Server.Backup.Path.String())
 	}
 
 	// Config info
@@ -175,29 +193,39 @@ var staticData = sync.OnceValue(func() insights.Data {
 	data.Config.TLSConfigured = conf.Server.TLSCert != "" && conf.Server.TLSKey != ""
 	data.Config.DefaultBackgroundURLSet = conf.Server.UILoginBackgroundURL == consts.DefaultUILoginBackgroundURL
 	data.Config.EnableArtworkPrecache = conf.Server.EnableArtworkPrecache
+	data.Config.EnableArtworkUpload = conf.Server.EnableArtworkUpload
+	data.Config.CoverArtQuality = conf.Server.CoverArtQuality
+	data.Config.EnableWebPEncoding = conf.Server.EnableWebPEncoding
+	data.Config.UICoverArtSize = conf.Server.UICoverArtSize
 	data.Config.EnableCoverAnimation = conf.Server.EnableCoverAnimation
+	data.Config.EnableNowPlaying = conf.Server.EnableNowPlaying
 	data.Config.EnableDownloads = conf.Server.EnableDownloads
 	data.Config.EnableSharing = conf.Server.EnableSharing
 	data.Config.EnableStarRating = conf.Server.EnableStarRating
-	data.Config.EnableLastFM = conf.Server.LastFM.Enabled
+	data.Config.EnableLastFM = conf.Server.LastFM.Enabled && conf.Server.LastFM.ApiKey != "" && conf.Server.LastFM.Secret != ""
 	data.Config.EnableListenBrainz = conf.Server.ListenBrainz.Enabled
+	data.Config.EnableDeezer = conf.Server.Deezer.Enabled
 	data.Config.EnableMediaFileCoverArt = conf.Server.EnableMediaFileCoverArt
-	data.Config.EnableSpotify = conf.Server.Spotify.ID != ""
 	data.Config.EnableJukebox = conf.Server.Jukebox.Enabled
 	data.Config.EnablePrometheus = conf.Server.Prometheus.Enabled
 	data.Config.TranscodingCacheSize = conf.Server.TranscodingCacheSize
 	data.Config.ImageCacheSize = conf.Server.ImageCacheSize
 	data.Config.SessionTimeout = uint64(math.Trunc(conf.Server.SessionTimeout.Seconds()))
-	data.Config.SearchFullString = conf.Server.SearchFullString
+	data.Config.SearchFullString = conf.Server.Search.FullString
+	data.Config.SearchBackend = conf.Server.Search.Backend
 	data.Config.RecentlyAddedByModTime = conf.Server.RecentlyAddedByModTime
 	data.Config.PreferSortTags = conf.Server.PreferSortTags
 	data.Config.BackupSchedule = conf.Server.Backup.Schedule
 	data.Config.BackupCount = conf.Server.Backup.Count
 	data.Config.DevActivityPanel = conf.Server.DevActivityPanel
 	data.Config.ScannerEnabled = conf.Server.Scanner.Enabled
+	data.Config.ScannerExtractor = conf.Server.Scanner.Extractor
 	data.Config.ScanSchedule = conf.Server.Scanner.Schedule
 	data.Config.ScanWatcherWait = uint64(math.Trunc(conf.Server.Scanner.WatcherWait.Seconds()))
 	data.Config.ScanOnStartup = conf.Server.Scanner.ScanOnStartup
+	data.Config.ReverseProxyConfigured = conf.Server.ExtAuth.TrustedSources != ""
+	data.Config.HasCustomPID = conf.Server.PID.Track != consts.DefaultTrackPID || conf.Server.PID.Album != consts.DefaultAlbumPID
+	data.Config.HasCustomTags = len(conf.Server.Tags) > 0
 
 	return data
 })
@@ -232,12 +260,33 @@ func (c *insightsCollector) collect(ctx context.Context) []byte {
 	if err != nil {
 		log.Trace(ctx, "Error reading radios count", err)
 	}
+	data.Library.Libraries, err = c.ds.Library(ctx).CountAll()
+	if err != nil {
+		log.Trace(ctx, "Error reading libraries count", err)
+	}
 	data.Library.ActiveUsers, err = c.ds.User(ctx).CountAll(model.QueryOptions{
 		Filters: squirrel.Gt{"last_access_at": time.Now().Add(-7 * 24 * time.Hour)},
 	})
 	if err != nil {
 		log.Trace(ctx, "Error reading active users count", err)
 	}
+	data.Library.FileSuffixes, err = c.ds.MediaFile(ctx).CountBySuffix()
+	if err != nil {
+		log.Trace(ctx, "Error reading file suffixes count", err)
+	}
+
+	// Check for smart playlists
+	data.Config.HasSmartPlaylists, err = c.hasSmartPlaylists(ctx)
+	if err != nil {
+		log.Trace(ctx, "Error checking for smart playlists", err)
+	}
+
+	// Collect plugins if permitted and enabled
+	if conf.Server.DevEnablePluginsInsights && conf.Server.Plugins.Enabled {
+		data.Plugins = c.collectPlugins(ctx)
+	}
+
+	// Collect active players if permitted
 	if conf.Server.DevEnablePlayerInsights {
 		data.Library.ActivePlayers, err = c.ds.Player(ctx).CountByClient(model.QueryOptions{
 			Filters: squirrel.Gt{"last_seen": time.Now().Add(-7 * 24 * time.Hour)},
@@ -262,4 +311,28 @@ func (c *insightsCollector) collect(ctx context.Context) []byte {
 		return nil
 	}
 	return resp
+}
+
+// hasSmartPlaylists checks if there are any smart playlists (playlists with rules)
+func (c *insightsCollector) hasSmartPlaylists(ctx context.Context) (bool, error) {
+	count, err := c.ds.Playlist(ctx).CountAll(model.QueryOptions{
+		Filters: squirrel.And{squirrel.NotEq{"rules": ""}, squirrel.NotEq{"rules": nil}},
+	})
+	return count > 0, err
+}
+
+// collectPlugins collects information about installed plugins
+func (c *insightsCollector) collectPlugins(_ context.Context) map[string]insights.PluginInfo {
+	// TODO Fix import/inject cycles
+	manager := plugins.GetManager(c.ds, events.GetBroker(), nil)
+	info := manager.GetPluginInfo()
+
+	result := make(map[string]insights.PluginInfo, len(info))
+	for name, p := range info {
+		result[name] = insights.PluginInfo{
+			Name:    p.Name,
+			Version: p.Version,
+		}
+	}
+	return result
 }

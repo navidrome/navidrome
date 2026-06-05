@@ -14,7 +14,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  CROSS_TAGLIB_VERSION: "2.0.2-1"
   IS_RELEASE: ${{ startsWith(github.ref, 'refs/tags/') && 'true' || 'false' }}
 
 jobs:
@@ -25,7 +24,7 @@ jobs:
       git_tag: ${{ steps.git-version.outputs.GIT_TAG }}
       git_sha: ${{ steps.git-version.outputs.GIT_SHA }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           fetch-tags: true
@@ -63,22 +62,21 @@ jobs:
     name: Lint Go code
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - name: Download TagLib
-        uses: ./.github/actions/download-taglib
+      - uses: actions/setup-go@v6
         with:
-          version: ${{ env.CROSS_TAGLIB_VERSION }}
+          go-version-file: go.mod
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v9
         with:
           version: latest
           problem-matchers: true
           args: --timeout 2m
 
       - name: Run go goimports
-        run: go run golang.org/x/tools/cmd/goimports@latest -w `find . -name '*.go' | grep -v '_gen.go$'`
+        run: go run golang.org/x/tools/cmd/goimports@latest -w `find . -name '*.go' | grep -v '_gen.go$' | grep -v '.pb.go$'`
       - run: go mod tidy
       - name: Verify no changes from goimports and go mod tidy
         run: |
@@ -88,25 +86,112 @@ jobs:
             exit 1
           fi
 
+      - name: Run go generate
+        run: go generate ./...
+      - name: Verify no changes from go generate
+        run: |
+          git status --porcelain
+          if [ -n "$(git status --porcelain)" ]; then
+            echo 'Generated code is out of date. Run "make gen" and commit the changes'
+            exit 1
+          fi
+
   go:
     name: Test Go code
     runs-on: ubuntu-latest
     steps:
       - name: Check out code into the Go module directory
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
-      - name: Download TagLib
-        uses: ./.github/actions/download-taglib
+      - uses: actions/setup-go@v6
         with:
-          version: ${{ env.CROSS_TAGLIB_VERSION }}
+          go-version-file: go.mod
 
       - name: Download dependencies
         run: go mod download
 
       - name: Test
+        run: go test -shuffle=on -tags netgo,sqlite_fts5 -race ./... -v
+
+      - name: Test ndpgen
         run: |
-          pkg-config --define-prefix --cflags --libs taglib # for debugging
-          go test -shuffle=on -tags netgo -race -cover ./... -v
+          cd plugins/cmd/ndpgen
+          go test -shuffle=on -v
+          go build -o ndpgen .
+          ./ndpgen --help
+
+  go-windows:
+    name: Test Go code (Windows)
+    runs-on: windows-2022
+    env:
+      FFMPEG_VERSION: "7.1"
+      FFMPEG_REPOSITORY: navidrome/ffmpeg-windows-builds
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          install: mingw-w64-x86_64-gcc
+          update: false
+
+      - name: Add mingw64 to PATH
+        shell: bash
+        run: echo "C:/msys64/mingw64/bin" >> $GITHUB_PATH
+
+      - name: Cache ffmpeg
+        id: ffmpeg-cache
+        uses: actions/cache@v5
+        with:
+          path: C:\ffmpeg
+          key: ffmpeg-${{ env.FFMPEG_VERSION }}-win64
+
+      - name: Download ffmpeg
+        if: steps.ffmpeg-cache.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          $asset = "ffmpeg-n${env:FFMPEG_VERSION}-latest-win64-gpl-${env:FFMPEG_VERSION}"
+          $url = "https://github.com/${env:FFMPEG_REPOSITORY}/releases/download/latest/$asset.zip"
+          Invoke-WebRequest -Uri $url -OutFile ffmpeg.zip
+          Expand-Archive ffmpeg.zip -DestinationPath C:\ffmpeg-extracted
+          New-Item -ItemType Directory -Force -Path C:\ffmpeg\bin | Out-Null
+          Copy-Item "C:\ffmpeg-extracted\$asset\bin\ffmpeg.exe"  C:\ffmpeg\bin
+          Copy-Item "C:\ffmpeg-extracted\$asset\bin\ffprobe.exe" C:\ffmpeg\bin
+
+      - name: Add ffmpeg to PATH
+        shell: bash
+        run: echo "C:/ffmpeg/bin" >> $GITHUB_PATH
+
+      - name: Verify toolchain
+        shell: pwsh
+        run: |
+          go version
+          where.exe gcc
+          gcc --version
+          ffmpeg -version
+          ffprobe -version
+
+      - name: Download dependencies
+        shell: bash
+        run: go mod download
+
+      - name: Test
+        shell: bash
+        env:
+          CGO_ENABLED: "1"
+        run: go test -shuffle=on -tags netgo,sqlite_fts5 ./... -v
+
+      - name: Test ndpgen
+        shell: pwsh
+        run: |
+          cd plugins\cmd\ndpgen
+          go test -shuffle=on -v
+          go build -o ndpgen.exe .
+          .\ndpgen.exe --help
 
   js:
     name: Test JS code
@@ -114,10 +199,10 @@ jobs:
     env:
       NODE_OPTIONS: "--max_old_space_size=4096"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
           cache: "npm"
           cache-dependency-path: "**/package-lock.json"
 
@@ -145,7 +230,7 @@ jobs:
     name: Lint i18n files
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - run: |
           set -e
           for file in resources/i18n/*.json; do
@@ -157,6 +242,8 @@ jobs:
               exit 1
             fi
           done
+      - run: ./.github/workflows/validate-translations.sh -v
+
 
   check-push-enabled:
     name: Check Docker configuration
@@ -170,10 +257,10 @@ jobs:
 
   build:
     name: Build
-    needs: [js, go, go-lint, i18n-lint, git-version, check-push-enabled]
+    needs: [js, go, go-windows, go-lint, i18n-lint, git-version, check-push-enabled]
     strategy:
       matrix:
-        platform: [ linux/amd64, linux/arm64, linux/arm/v5, linux/arm/v6, linux/arm/v7, linux/386, darwin/amd64, darwin/arm64, windows/amd64, windows/386 ]
+        platform: [ linux/amd64, linux/arm64, linux/arm/v5, linux/arm/v6, linux/arm/v7, linux/386, linux/riscv64, darwin/amd64, darwin/arm64, windows/amd64, windows/386 ]
     runs-on: ubuntu-latest
     env:
       IS_LINUX: ${{ startsWith(matrix.platform, 'linux/') && 'true' || 'false' }}
@@ -189,7 +276,7 @@ jobs:
           PLATFORM=$(echo ${{ matrix.platform }} | tr '/' '_')
           echo "PLATFORM=$PLATFORM" >> $GITHUB_ENV
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Prepare Docker Buildx
         uses: ./.github/actions/prepare-docker
@@ -201,7 +288,7 @@ jobs:
           hub_password: ${{ secrets.DOCKER_HUB_PASSWORD }}
 
       - name: Build Binaries
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: Dockerfile
@@ -212,10 +299,9 @@ jobs:
           build-args: |
             GIT_SHA=${{ env.GIT_SHA }}
             GIT_TAG=${{ env.GIT_TAG }}
-            CROSS_TAGLIB_VERSION=${{ env.CROSS_TAGLIB_VERSION }}
 
       - name: Upload Binaries
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: navidrome-${{ env.PLATFORM }}
           path: ./output
@@ -224,7 +310,7 @@ jobs:
       - name: Build and push image by digest
         id: push-image
         if: env.IS_LINUX == 'true' && env.IS_DOCKER_PUSH_CONFIGURED == 'true' && env.IS_ARMV5 == 'false'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: Dockerfile
@@ -233,7 +319,6 @@ jobs:
           build-args: |
             GIT_SHA=${{ env.GIT_SHA }}
             GIT_TAG=${{ env.GIT_TAG }}
-            CROSS_TAGLIB_VERSION=${{ env.CROSS_TAGLIB_VERSION }}
           outputs: |
             type=image,name=${{ steps.docker.outputs.hub_repository }},push-by-digest=true,name-canonical=true,push=${{ steps.docker.outputs.hub_enabled }}
             type=image,name=ghcr.io/${{ github.repository }},push-by-digest=true,name-canonical=true,push=true
@@ -246,7 +331,7 @@ jobs:
           touch "/tmp/digests/${digest#sha256:}"          
 
       - name: Upload digest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: env.IS_LINUX == 'true' && env.IS_DOCKER_PUSH_CONFIGURED == 'true' && env.IS_ARMV5 == 'false'
         with:
           name: digests-${{ env.PLATFORM }}
@@ -254,18 +339,55 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  push-manifest:
-    name: Push Docker manifest
+  push-manifest-ghcr:
+    name: Push to GHCR
+    permissions:
+      contents: read
+      packages: write
     runs-on: ubuntu-latest
     needs: [build, check-push-enabled]
     if: needs.check-push-enabled.outputs.is_enabled == 'true'
     env:
       REGISTRY_IMAGE: ghcr.io/${{ github.repository }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Download digests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
+        with:
+          path: /tmp/digests
+          pattern: digests-*
+          merge-multiple: true
+
+      - name: Prepare Docker Buildx
+        uses: ./.github/actions/prepare-docker
+        id: docker
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create manifest list and push to ghcr.io
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create $(jq -cr '.tags | map(select(startswith("ghcr.io"))) | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)          
+
+      - name: Inspect image in ghcr.io
+        run: |
+          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.docker.outputs.version }}
+
+  push-manifest-dockerhub:
+    name: Push to Docker Hub
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    needs: [build, check-push-enabled]
+    if: needs.check-push-enabled.outputs.is_enabled == 'true' && vars.DOCKER_HUB_REPO != ''
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Download digests
+        uses: actions/download-artifact@v8
         with:
           path: /tmp/digests
           pattern: digests-*
@@ -280,28 +402,27 @@ jobs:
           hub_username: ${{ secrets.DOCKER_HUB_USERNAME }}
           hub_password: ${{ secrets.DOCKER_HUB_PASSWORD }}
 
-      - name: Create manifest list and push to ghcr.io
-        working-directory: /tmp/digests
-        run: |
-          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)          
-
       - name: Create manifest list and push to Docker Hub
-        working-directory: /tmp/digests
-        if: vars.DOCKER_HUB_REPO != ''
-        run: |
-          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ vars.DOCKER_HUB_REPO }}@sha256:%s ' *)          
-
-      - name: Inspect image in ghcr.io
-        run: |
-          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.docker.outputs.version }}
+        uses: nick-fields/retry@v4
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          retry_wait_seconds: 30
+          command: |
+            cd /tmp/digests
+            docker buildx imagetools create $(jq -cr '.tags | map(select(startswith("ghcr.io") | not)) | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+              $(printf 'ghcr.io/${{ github.repository }}@sha256:%s ' *)
 
       - name: Inspect image in Docker Hub
-        if: vars.DOCKER_HUB_REPO != ''
         run: |
           docker buildx imagetools inspect ${{ vars.DOCKER_HUB_REPO }}:${{ steps.docker.outputs.version }}
 
+  cleanup-digests:
+    name: Cleanup digest artifacts
+    runs-on: ubuntu-latest
+    needs: [push-manifest-ghcr, push-manifest-dockerhub]
+    if: always() && needs.push-manifest-ghcr.result == 'success'
+    steps:
       - name: Delete unnecessary digest artifacts
         env:
           GH_TOKEN: ${{ github.token }}
@@ -316,9 +437,9 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: ./binaries
           pattern: navidrome-windows*
@@ -337,7 +458,7 @@ jobs:
           du -h binaries/msi/*.msi
 
       - name: Upload MSI files
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: navidrome-windows-installers
           path: binaries/msi/*.msi
@@ -350,12 +471,12 @@ jobs:
     outputs:
       package_list: ${{ steps.set-package-list.outputs.package_list }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           fetch-tags: true
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: ./binaries
           pattern: navidrome-*
@@ -368,7 +489,7 @@ jobs:
         run: echo 'RELEASE_FLAGS=--skip=publish --snapshot' >> $GITHUB_ENV
 
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6
+        uses: goreleaser/goreleaser-action@v7
         with:
           version: '~> v2'
           args: "release --clean -f release/goreleaser.yml ${{ env.RELEASE_FLAGS }}"
@@ -381,7 +502,7 @@ jobs:
           rm ./dist/*.tar.gz ./dist/*.zip
 
       - name: Upload all-packages artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: packages
           path: dist/navidrome_0*
@@ -404,13 +525,13 @@ jobs:
         item: ${{ fromJson(needs.release.outputs.package_list) }}
     steps:
       - name: Download all-packages artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: packages
           path: ./dist
 
       - name: Upload all-packages artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: navidrome_linux_${{ matrix.item }}
           path: dist/navidrome_0*_linux_${{ matrix.item }}

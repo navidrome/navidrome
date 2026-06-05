@@ -219,4 +219,76 @@ var _ = Describe("Request Helpers", func() {
 			})
 		})
 	})
+
+	Describe("ParamStringPtr", func() {
+		BeforeEach(func() {
+			r = req.Params(httptest.NewRequest("GET", "/ping?a=123", nil))
+		})
+
+		It("returns pointer to string if param exists", func() {
+			ptr := r.StringPtr("a")
+			Expect(ptr).ToNot(BeNil())
+			Expect(*ptr).To(Equal("123"))
+		})
+
+		It("returns nil if param does not exist", func() {
+			ptr := r.StringPtr("xx")
+			Expect(ptr).To(BeNil())
+		})
+
+		It("returns pointer to empty string if param exists but is empty", func() {
+			r = req.Params(httptest.NewRequest("GET", "/ping?a=", nil))
+			ptr := r.StringPtr("a")
+			Expect(ptr).ToNot(BeNil())
+			Expect(*ptr).To(Equal(""))
+		})
+	})
+
+	Describe("Float64Or", func() {
+		It("returns parsed float value", func() {
+			r := req.Params(httptest.NewRequest("GET", "/test?rate=1.5", nil))
+			Expect(r.Float64Or("rate", 1.0)).To(Equal(1.5))
+		})
+
+		It("returns default when param is missing", func() {
+			r := req.Params(httptest.NewRequest("GET", "/test", nil))
+			Expect(r.Float64Or("rate", 1.0)).To(Equal(1.0))
+		})
+
+		It("returns default when param is not a valid float", func() {
+			r := req.Params(httptest.NewRequest("GET", "/test?rate=abc", nil))
+			Expect(r.Float64Or("rate", 1.0)).To(Equal(1.0))
+		})
+	})
+
+	Describe("ParamBoolPtr", func() {
+		Context("value is true", func() {
+			BeforeEach(func() {
+				r = req.Params(httptest.NewRequest("GET", "/ping?b=true", nil))
+			})
+
+			It("returns pointer to true if param is 'true'", func() {
+				ptr := r.BoolPtr("b")
+				Expect(ptr).ToNot(BeNil())
+				Expect(*ptr).To(BeTrue())
+			})
+		})
+
+		Context("value is false", func() {
+			BeforeEach(func() {
+				r = req.Params(httptest.NewRequest("GET", "/ping?b=false", nil))
+			})
+
+			It("returns pointer to false if param is 'false'", func() {
+				ptr := r.BoolPtr("b")
+				Expect(ptr).ToNot(BeNil())
+				Expect(*ptr).To(BeFalse())
+			})
+		})
+
+		It("returns nil if param does not exist", func() {
+			ptr := r.BoolPtr("xx")
+			Expect(ptr).To(BeNil())
+		})
+	})
 })

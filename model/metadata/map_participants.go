@@ -2,7 +2,9 @@ package metadata
 
 import (
 	"cmp"
+	"strings"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/str"
@@ -175,7 +177,11 @@ func (md Metadata) getRoleValues(role model.TagName) []string {
 	if len(values) == 0 {
 		return nil
 	}
-	if conf := model.TagRolesConf(); len(conf.Split) > 0 {
+	conf := model.TagMainMappings()[role]
+	if conf.Split == nil {
+		conf = model.TagRolesConf()
+	}
+	if len(conf.Split) > 0 {
 		values = conf.SplitTagValue(values)
 		return filterDuplicatedOrEmptyValues(values)
 	}
@@ -192,39 +198,39 @@ func (md Metadata) getArtistValues(single, multi model.TagName) []string {
 	if len(vSingle) != 1 {
 		return vSingle
 	}
-	if conf := model.TagArtistsConf(); len(conf.Split) > 0 {
+	conf := model.TagMainMappings()[single]
+	if conf.Split == nil {
+		conf = model.TagArtistsConf()
+	}
+	if len(conf.Split) > 0 {
 		vSingle = conf.SplitTagValue(vSingle)
 		return filterDuplicatedOrEmptyValues(vSingle)
 	}
 	return vSingle
 }
 
-func (md Metadata) getTags(tagNames ...model.TagName) []string {
-	for _, tagName := range tagNames {
-		values := md.Strings(tagName)
-		if len(values) > 0 {
-			return values
-		}
-	}
-	return nil
-}
-func (md Metadata) mapDisplayRole(mf model.MediaFile, role model.Role, tagNames ...model.TagName) string {
-	artistNames := md.getTags(tagNames...)
-	values := []string{
-		"",
-		mf.Participants.First(role).Name,
-		consts.UnknownArtist,
-	}
-	if len(artistNames) == 1 {
-		values[0] = artistNames[0]
-	}
-	return cmp.Or(values...)
+func (md Metadata) mapDisplayName(singularTagName, pluralTagName model.TagName) string {
+	return cmp.Or(
+		strings.Join(md.tags[singularTagName], conf.Server.Scanner.ArtistJoiner),
+		strings.Join(md.tags[pluralTagName], conf.Server.Scanner.ArtistJoiner),
+	)
 }
 
-func (md Metadata) mapDisplayArtist(mf model.MediaFile) string {
-	return md.mapDisplayRole(mf, model.RoleArtist, model.TagTrackArtist, model.TagTrackArtists)
+func (md Metadata) mapDisplayArtist() string {
+	return cmp.Or(
+		md.mapDisplayName(model.TagTrackArtist, model.TagTrackArtists),
+		consts.UnknownArtist,
+	)
 }
 
 func (md Metadata) mapDisplayAlbumArtist(mf model.MediaFile) string {
-	return md.mapDisplayRole(mf, model.RoleAlbumArtist, model.TagAlbumArtist, model.TagAlbumArtists)
+	fallbackName := consts.UnknownArtist
+	if md.Bool(model.TagCompilation) {
+		fallbackName = consts.VariousArtists
+	}
+	return cmp.Or(
+		md.mapDisplayName(model.TagAlbumArtist, model.TagAlbumArtists),
+		mf.Participants.First(model.RoleAlbumArtist).Name,
+		fallbackName,
+	)
 }

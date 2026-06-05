@@ -12,11 +12,11 @@ import (
 )
 
 type Tag struct {
-	ID             string  `json:"id,omitempty"`
-	TagName        TagName `json:"tagName,omitempty"`
-	TagValue       string  `json:"tagValue,omitempty"`
-	AlbumCount     int     `json:"albumCount,omitempty"`
-	MediaFileCount int     `json:"songCount,omitempty"`
+	ID         string  `json:"id,omitempty"`
+	TagName    TagName `json:"tagName,omitempty"`
+	TagValue   string  `json:"tagValue,omitempty"`
+	AlbumCount int     `json:"albumCount,omitempty"`
+	SongCount  int     `json:"songCount,omitempty"`
 }
 
 type TagList []Tag
@@ -144,16 +144,14 @@ func (t Tags) Merge(tags Tags) {
 }
 
 func (t Tags) Add(name TagName, v string) {
-	for _, existing := range t[name] {
-		if existing == v {
-			return
-		}
+	if slices.Contains(t[name], v) {
+		return
 	}
 	t[name] = append(t[name], v)
 }
 
 type TagRepository interface {
-	Add(...Tag) error
+	Add(libraryID int, tags ...Tag) error
 	UpdateCounts() error
 }
 
@@ -191,6 +189,7 @@ const (
 	TagReleaseCountry TagName = "releasecountry"
 	TagMedia          TagName = "media"
 	TagCatalogNumber  TagName = "catalognumber"
+	TagISRC           TagName = "isrc"
 	TagBPM            TagName = "bpm"
 	TagExplicitStatus TagName = "explicitstatus"
 

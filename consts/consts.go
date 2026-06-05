@@ -14,6 +14,9 @@ const (
 	DefaultDbPath                 = "navidrome.db?cache=shared&_busy_timeout=15000&_journal_mode=WAL&_foreign_keys=on&synchronous=normal"
 	InitialSetupFlagKey           = "InitialSetup"
 	FullScanAfterMigrationFlagKey = "FullScanAfterMigration"
+	LastScanErrorKey              = "LastScanError"
+	LastScanTypeKey               = "LastScanType"
+	LastScanStartTimeKey          = "LastScanStartTime"
 
 	UIAuthorizationHeader  = "X-ND-Authorization"
 	UIClientUniqueIDHeader = "X-ND-Client-Unique-Id"
@@ -53,6 +56,8 @@ const (
 
 	ServerReadHeaderTimeout = 3 * time.Second
 
+	DefaultInfoLanguage = "en"
+
 	ArtistInfoTimeToLive      = 24 * time.Hour
 	AlbumInfoTimeToLive       = 7 * 24 * time.Hour
 	UpdateLastAccessFrequency = time.Minute
@@ -60,18 +65,29 @@ const (
 
 	I18nFolder     = "i18n"
 	ScanIgnoreFile = ".ndignore"
+	ArtworkFolder  = "artwork"
 
-	PlaceholderArtistArt = "artist-placeholder.webp"
-	PlaceholderAlbumArt  = "album-placeholder.webp"
-	PlaceholderAvatar    = "logo-192x192.png"
-	UICoverArtSize       = 300
-	DefaultUIVolume      = 100
+	PlaceholderArtistArt            = "artist-placeholder.webp"
+	PlaceholderAlbumArt             = "album-placeholder.webp"
+	PlaceholderAvatar               = "logo-192x192.png"
+	DefaultUIVolume                 = 100
+	DefaultUISearchDebounceMs       = 200
+	DefaultUIPlaybackReportInterval = time.Minute
 
 	DefaultHttpClientTimeOut = 10 * time.Second
+
+	DefaultListenBrainzBaseURL         = "https://api.listenbrainz.org/1/"
+	DefaultListenBrainzArtistAlgorithm = "session_based_days_9000_session_300_contribution_5_threshold_15_limit_50_skip_30"
+	DefaultListenBrainzTrackAlgorithm  = "session_based_days_9000_session_300_contribution_5_threshold_15_limit_50_skip_30"
 
 	DefaultScannerExtractor = "taglib"
 	DefaultWatcherWait      = 5 * time.Second
 	Zwsp                    = string('\u200b')
+)
+
+const (
+	DefaultUICoverArtSize     = 300
+	DefaultMaxImageUploadSize = "10MB"
 )
 
 // Prometheus options
@@ -90,6 +106,13 @@ const (
 
 	DefaultCacheSize            = 100 * 1024 * 1024 // 100MB
 	DefaultCacheCleanUpInterval = 10 * time.Minute
+)
+
+// Entity types
+const (
+	EntityArtist   = "artist"
+	EntityPlaylist = "playlist"
+	EntityRadio    = "radio"
 )
 
 const (
@@ -112,6 +135,12 @@ const (
 	InsightsInitialDelay   = 30 * time.Minute
 )
 
+const (
+	PurgeMissingNever  = "never"
+	PurgeMissingAlways = "always"
+	PurgeMissingFull   = "full"
+)
+
 var (
 	DefaultDownsamplingFormat = "opus"
 	DefaultTranscodings       = []struct {
@@ -124,22 +153,30 @@ var (
 			Name:           "mp3 audio",
 			TargetFormat:   "mp3",
 			DefaultBitRate: 192,
-			Command:        "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -f mp3 -",
+			Command:        "ffmpeg -ss %t -i %s -map 0:a:0 -b:a %bk -v 0 -f mp3 -",
 		},
 		{
 			Name:           "opus audio",
 			TargetFormat:   "opus",
 			DefaultBitRate: 128,
-			Command:        "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a libopus -f opus -",
+			Command:        "ffmpeg -ss %t -i %s -map 0:a:0 -b:a %bk -v 0 -c:a libopus -f opus -",
 		},
 		{
 			Name:           "aac audio",
 			TargetFormat:   "aac",
 			DefaultBitRate: 256,
-			Command:        "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a aac -f adts -",
+			Command:        "ffmpeg -ss %t -i %s -map 0:a:0 -b:a %bk -v 0 -c:a aac -f adts -",
+		},
+		{
+			Name:           "flac audio",
+			TargetFormat:   "flac",
+			DefaultBitRate: 0,
+			Command:        "ffmpeg -ss %t -i %s -map 0:a:0 -v 0 -c:a flac -f flac -",
 		},
 	}
 )
+
+var HTTPUserAgent = "Navidrome" + "/" + Version
 
 var (
 	VariousArtists = "Various Artists"
@@ -151,13 +188,17 @@ var (
 	UnknownArtistID     = id.NewHash(strings.ToLower(UnknownArtist))
 	VariousArtistsMbzId = "89ad4ac3-39f7-470e-963a-56509c546377"
 
-	ServerStart = time.Now()
+	ArtistJoiner = " • "
 )
 
-var InContainer = func() bool {
-	// Check if the /.nddockerenv file exists
-	if _, err := os.Stat("/.nddockerenv"); err == nil {
-		return true
-	}
-	return false
-}()
+var (
+	ServerStart = time.Now()
+
+	InContainer = func() bool {
+		// Check if the /.nddockerenv file exists
+		if _, err := os.Stat("/.nddockerenv"); err == nil {
+			return true
+		}
+		return false
+	}()
+)

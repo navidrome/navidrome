@@ -1,11 +1,11 @@
 FROM --platform=$BUILDPLATFORM ghcr.io/crazy-max/osxcross:14.5-debian AS osxcross
 
 ########################################################################################################################
-### Build xx (orignal image: tonistiigi/xx)
-FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/alpine:3.21 AS xx-build
+### Build xx (original image: tonistiigi/xx)
+FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/alpine:3.20 AS xx-build
 
-# v1.5.0
-ENV XX_VERSION=b4e4c451c778822e6742bfc9d9a91d7c7d885c8a
+# v1.9.0
+ENV XX_VERSION=a5592eab7a57895e8d385394ff12241bc65ecd50
 
 RUN apk add -U --no-cache git
 RUN git clone https://github.com/tonistiigi/xx && \
@@ -25,24 +25,6 @@ FROM scratch AS xx
 COPY --from=xx-build /out/ /usr/bin/
 
 ########################################################################################################################
-### Get TagLib
-FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/alpine:3.21 AS taglib-build
-ARG TARGETPLATFORM
-ARG CROSS_TAGLIB_VERSION=2.0.2-1
-ENV CROSS_TAGLIB_RELEASES_URL=https://github.com/navidrome/cross-taglib/releases/download/v${CROSS_TAGLIB_VERSION}/
-
-RUN <<EOT
-    PLATFORM=$(echo ${TARGETPLATFORM} | tr '/' '-')
-    FILE=taglib-${PLATFORM}.tar.gz
-
-    DOWNLOAD_URL=${CROSS_TAGLIB_RELEASES_URL}${FILE}
-    wget ${DOWNLOAD_URL}
-
-    mkdir /taglib
-    tar -xzf ${FILE} -C /taglib
-EOT
-
-########################################################################################################################
 ### Build Navidrome UI
 FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/node:lts-alpine AS ui
 WORKDIR /app
@@ -60,8 +42,47 @@ FROM scratch AS ui-bundle
 COPY --from=ui /build /build
 
 ########################################################################################################################
-### Build Navidrome binary
-FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/golang:1.23-bookworm AS base
+### Build Navidrome binary for Docker image (dynamic musl, enables native libwebp via dlopen)
+FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/golang:1.26-alpine AS build-alpine
+COPY --from=xx / /
+
+ARG TARGETPLATFORM
+
+RUN apk add --no-cache clang lld file git
+RUN xx-apk add --no-cache gcc musl-dev zlib-dev
+RUN xx-verify --setup
+
+WORKDIR /workspace
+
+RUN --mount=type=bind,source=. \
+    --mount=type=cache,target=/root/.cache \
+    --mount=type=cache,target=/go/pkg/mod \
+    go mod download
+
+ARG GIT_SHA
+ARG GIT_TAG
+
+RUN --mount=type=bind,source=. \
+    --mount=from=ui,source=/build,target=./ui/build,ro \
+    --mount=type=cache,target=/root/.cache \
+    --mount=type=cache,target=/go/pkg/mod <<EOT
+    set -e
+    xx-go --wrap
+    export CGO_ENABLED=1
+    # -latomic is required on 32-bit arm (arm/v6, arm/v7) so SQLite's 64-bit atomics resolve.
+    go build -tags=netgo,sqlite_fts5 -ldflags="-w -s \
+        -linkmode=external -extldflags '-latomic' \
+        -X github.com/navidrome/navidrome/consts.gitSha=${GIT_SHA} \
+        -X github.com/navidrome/navidrome/consts.gitTag=${GIT_TAG}" \
+        -o /out/navidrome .
+    # Fail the build if the binary is accidentally statically linked: dlopen (and
+    # therefore native libwebp detection) only works with a dynamic interpreter.
+    file /out/navidrome | grep -q "dynamically linked" || { echo "ERROR: /out/navidrome is not dynamically linked"; file /out/navidrome; exit 1; }
+EOT
+
+########################################################################################################################
+### Build Navidrome binary for standalone distribution (static glibc, cross-compiled)
+FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/golang:1.26-trixie AS base
 RUN apt-get update && apt-get install -y clang lld
 COPY --from=xx / /
 WORKDIR /workspace
@@ -86,13 +107,11 @@ RUN --mount=type=bind,source=. \
     --mount=from=ui,source=/build,target=./ui/build,ro \
     --mount=from=osxcross,src=/osxcross/SDK,target=/xx-sdk,ro \
     --mount=type=cache,target=/root/.cache \
-    --mount=type=cache,target=/go/pkg/mod \
-    --mount=from=taglib-build,target=/taglib,src=/taglib,ro <<EOT
+    --mount=type=cache,target=/go/pkg/mod <<EOT
 
     # Setup CGO cross-compilation environment
     xx-go --wrap
     export CGO_ENABLED=1
-    export PKG_CONFIG_PATH=/taglib/lib/pkgconfig
     cat $(go env GOENV)
 
     # Only Darwin (macOS) requires clang (default), Windows requires gcc, everything else can use any compiler.
@@ -106,7 +125,7 @@ RUN --mount=type=bind,source=. \
         export EXT=".exe"
     fi
 
-    go build -tags=netgo -ldflags="${LD_EXTRA} -w -s \
+    go build -tags=netgo,sqlite_fts5 -ldflags="${LD_EXTRA} -w -s \
         -X github.com/navidrome/navidrome/consts.gitSha=${GIT_SHA} \
         -X github.com/navidrome/navidrome/consts.gitTag=${GIT_TAG}" \
         -o /out/navidrome${EXT} .
@@ -120,26 +139,32 @@ COPY --from=build /out /
 
 ########################################################################################################################
 ### Build Final Image
-FROM public.ecr.aws/docker/library/alpine:3.21 AS final
+FROM public.ecr.aws/docker/library/alpine:3.20 AS final
 LABEL maintainer="deluan@navidrome.org"
 LABEL org.opencontainers.image.source="https://github.com/navidrome/navidrome"
 
-# Install ffmpeg and mpv
-RUN apk add -U --no-cache ffmpeg mpv sqlite
+# Install runtime dependencies
+# - libwebp + symlinks: enables native WebP encoding via purego/dlopen
+RUN apk add -U --no-cache ffmpeg mpv sqlite libwebp libwebpdemux libwebpmux && \
+    for lib in libwebp libwebpdemux libwebpmux; do \
+        target=$(ls /usr/lib/$lib.so.* 2>/dev/null | head -1) && \
+        [ -n "$target" ] && ln -sf "$target" /usr/lib/$lib.so; \
+    done
 
-# Copy navidrome binary
-COPY --from=build /out/navidrome /app/
+# Copy navidrome binary (musl build for Docker, enables native libwebp)
+COPY --from=build-alpine /out/navidrome /app/
 
 VOLUME ["/data", "/music"]
 ENV ND_MUSICFOLDER=/music
 ENV ND_DATAFOLDER=/data
+ENV ND_CONFIGFILE=/data/navidrome.toml
 ENV ND_PORT=4533
-ENV GODEBUG="asyncpreemptoff=1"
+ENV ND_ENABLEWEBPENCODING=true
 RUN touch /.nddockerenv
 
 EXPOSE ${ND_PORT}
-HEALTHCHECK CMD wget -O- http://localhost:${ND_PORT}/ping || exit 1
 WORKDIR /app
+ENV PATH="/app:${PATH}"
 
 ENTRYPOINT ["/app/navidrome"]
 

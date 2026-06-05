@@ -14,9 +14,11 @@ export default defineConfig({
       strategies: 'injectManifest',
       srcDir: 'src',
       filename: 'sw.js',
+      injectManifest: {
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024, // 3 MiB
+      },
       devOptions: {
         enabled: true,
-        type: 'module',
       },
     }),
   ],
@@ -28,6 +30,10 @@ export default defineConfig({
     },
   },
   base: './',
+  define: {
+    // JSONForms and other libraries use process.env
+    'process.env': JSON.stringify({}),
+  },
   build: {
     outDir: 'build',
     sourcemap: true,

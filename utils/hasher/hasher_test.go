@@ -57,7 +57,7 @@ var _ = Describe("HashFunc", func() {
 	})
 
 	It("does not cause race conditions", func() {
-		for i := 0; i < 1000; i++ {
+		for i := range 1000 {
 			go func() {
 				hashFunc := hasher.HashFunc()
 				sum := hashFunc(strconv.Itoa(i), input)

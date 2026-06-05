@@ -7,12 +7,13 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing/fstest"
 	"unicode/utf8"
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils/chain"
+	"github.com/navidrome/navidrome/utils/run"
 	"github.com/pressly/goose/v3"
 )
 
@@ -24,7 +25,7 @@ func upSupportNewScanner(ctx context.Context, tx *sql.Tx) error {
 	execute := createExecuteFunc(ctx, tx)
 	addColumn := createAddColumnFunc(ctx, tx)
 
-	return chain.RunSequentially(
+	return run.Sequentially(
 		upSupportNewScanner_CreateTableFolder(ctx, execute),
 		upSupportNewScanner_PopulateTableFolder(ctx, tx),
 		upSupportNewScanner_UpdateTableMediaFile(ctx, execute, addColumn),
@@ -143,7 +144,6 @@ join library on media_file.library_id = library.id`, string(os.PathSeparator)))
 		// Then create an in-memory filesystem with all paths
 		var path string
 		var lib model.Library
-		var f *model.Folder
 		fsys := fstest.MapFS{}
 
 		for rows.Next() {
@@ -152,9 +152,9 @@ join library on media_file.library_id = library.id`, string(os.PathSeparator)))
 				return err
 			}
 
-			// BFR Windows!!
+			path = strings.TrimPrefix(path, filepath.Clean(lib.Path))
+			path = strings.TrimPrefix(path, string(os.PathSeparator))
 			path = filepath.Clean(path)
-			path, _ = filepath.Rel("/", path)
 			fsys[path] = &fstest.MapFile{Mode: fs.ModeDir}
 		}
 		if err = rows.Err(); err != nil {
@@ -164,23 +164,30 @@ join library on media_file.library_id = library.id`, string(os.PathSeparator)))
 			return nil
 		}
 
-		// Finally, walk the in-mem filesystem and insert all folders into the DB.
-		stmt, err := tx.PrepareContext(ctx, "insert into folder (id, library_id, path, name, parent_id) values (?, ?, ?, ?, ?)")
+		stmt, err := tx.PrepareContext(ctx,
+			"insert into folder (id, library_id, path, name, parent_id, updated_at) values (?, ?, ?, ?, ?, '0000-00-00 00:00:00')",
+		)
 		if err != nil {
 			return err
 		}
-		root, _ := filepath.Rel("/", lib.Path)
-		err = fs.WalkDir(fsys, root, func(path string, d fs.DirEntry, err error) error {
+
+		// Finally, walk the in-mem filesystem and insert all folders into the DB.
+		err = fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
-				return err
+				// Don't abort the walk, just log the error
+				log.Error("error walking folder to DB", "path", path, err)
+				return nil
 			}
-			if d.IsDir() {
-				path, _ = filepath.Rel(root, path)
-				f = model.NewFolder(lib, path)
-				_, err = stmt.ExecContext(ctx, f.ID, lib.ID, f.Path, f.Name, f.ParentID)
-				if err != nil {
-					log.Error("Error writing folder to DB", "path", path, err)
-				}
+			// Skip entries that are not directories
+			if !d.IsDir() {
+				return nil
+			}
+
+			// Create a folder in the DB
+			f := model.NewFolder(lib, path)
+			_, err = stmt.ExecContext(ctx, f.ID, lib.ID, f.Path, f.Name, f.ParentID)
+			if err != nil {
+				log.Error("error writing folder to DB", "path", path, err)
 			}
 			return err
 		})
@@ -188,9 +195,14 @@ join library on media_file.library_id = library.id`, string(os.PathSeparator)))
 			return fmt.Errorf("error populating folder table: %w", err)
 		}
 
-		libPathLen := utf8.RuneCountInString(lib.Path)
+		// Count the number of characters in the library path
+		libPath := filepath.Clean(lib.Path)
+		libPathLen := utf8.RuneCountInString(libPath)
+
+		// In one go, update all paths in the media_file table, removing the library path prefix
+		// and replacing any backslashes with slashes (the path separator used by the io/fs package)
 		_, err = tx.ExecContext(ctx, fmt.Sprintf(`
-update media_file set path = substr(path,%d);`, libPathLen+2))
+update media_file set path = replace(substr(path, %d), '\', '/');`, libPathLen+2))
 		if err != nil {
 			return fmt.Errorf("error updating media_file path: %w", err)
 		}
@@ -201,7 +213,7 @@ update media_file set path = substr(path,%d);`, libPathLen+2))
 
 func upSupportNewScanner_UpdateTableMediaFile(_ context.Context, execute execStmtFunc, addColumn addColumnFunc) execFunc {
 	return func() error {
-		return chain.RunSequentially(
+		return run.Sequentially(
 			execute(`	
 alter table media_file 
     add column folder_id varchar default '' not null;
@@ -276,7 +288,7 @@ create index if not exists album_mbz_release_group_id
 
 func upSupportNewScanner_UpdateTableArtist(_ context.Context, execute execStmtFunc, addColumn addColumnFunc) execFunc {
 	return func() error {
-		return chain.RunSequentially(
+		return run.Sequentially(
 			execute(`
 alter table artist
 	drop column album_count;

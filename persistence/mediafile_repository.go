@@ -3,12 +3,16 @@ package persistence
 import (
 	"context"
 	"fmt"
+	"iter"
 	"slices"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -25,10 +29,10 @@ type dbMediaFile struct {
 	Tags             string `structs:"-" json:"-"`
 	// These are necessary to map the correct names (rg_*) to the correct fields (RG*)
 	// without using `db` struct tags in the model.MediaFile struct
-	RgAlbumGain float64 `structs:"-" json:"-"`
-	RgAlbumPeak float64 `structs:"-" json:"-"`
-	RgTrackGain float64 `structs:"-" json:"-"`
-	RgTrackPeak float64 `structs:"-" json:"-"`
+	RgAlbumGain *float64 `structs:"-" json:"-"`
+	RgAlbumPeak *float64 `structs:"-" json:"-"`
+	RgTrackGain *float64 `structs:"-" json:"-"`
+	RgTrackPeak *float64 `structs:"-" json:"-"`
 }
 
 func (m *dbMediaFile) PostScan() error {
@@ -54,8 +58,11 @@ func (m *dbMediaFile) PostScan() error {
 func (m *dbMediaFile) PostMapArgs(args map[string]any) error {
 	fullText := []string{m.FullTitle(), m.Album, m.Artist, m.AlbumArtist,
 		m.SortTitle, m.SortAlbumName, m.SortArtistName, m.SortAlbumArtistName, m.DiscSubtitle}
-	fullText = append(fullText, m.MediaFile.Participants.AllNames()...)
+	participantNames := m.MediaFile.Participants.AllNames()
+	fullText = append(fullText, participantNames...)
 	args["full_text"] = formatFullText(fullText...)
+	args["search_participants"] = strings.Join(participantNames, " ")
+	args["search_normalized"] = normalizeForFTS(m.FullTitle(), m.Album, m.Artist, m.AlbumArtist)
 	args["tags"] = marshalTags(m.MediaFile.Tags)
 	args["participants"] = marshalParticipants(m.MediaFile.Participants)
 	return nil
@@ -74,24 +81,30 @@ func NewMediaFileRepository(ctx context.Context, db dbx.Builder) model.MediaFile
 	r.tableName = "media_file"
 	r.registerModel(&model.MediaFile{}, mediaFileFilter())
 	r.setSortMappings(map[string]string{
-		"title":        "order_title",
-		"artist":       "order_artist_name, order_album_name, release_date, disc_number, track_number",
-		"album_artist": "order_album_artist_name, order_album_name, release_date, disc_number, track_number",
-		"album":        "order_album_name, release_date, disc_number, track_number, order_artist_name, title",
-		"random":       "random",
-		"created_at":   "media_file.created_at",
-		"starred_at":   "starred, starred_at",
+		"title":          "order_title",
+		"artist":         "order_artist_name, order_album_name, release_date, disc_number, track_number",
+		"album_artist":   "order_album_artist_name, order_album_name, release_date, disc_number, track_number",
+		"album":          "order_album_name, album_id, disc_number, track_number, order_artist_name, title",
+		"random":         "random",
+		"created_at":     "media_file.created_at",
+		"recently_added": mediaFileRecentlyAddedSort(),
+		"starred_at":     "starred, starred_at",
+		"rated_at":       "rating, rated_at",
 	})
 	return r
 }
 
 var mediaFileFilter = sync.OnceValue(func() map[string]filterFunc {
 	filters := map[string]filterFunc{
-		"id":       idFilter("media_file"),
-		"title":    fullTextFilter("media_file"),
-		"starred":  booleanFilter,
-		"genre_id": tagIDFilter,
-		"missing":  booleanFilter,
+		"id":         idFilter("media_file"),
+		"title":      fullTextFilter("media_file", "mbz_recording_id", "mbz_release_track_id"),
+		"starred":    annotationBoolFilter("starred"),
+		"has_rating": annotationBoolFilter("rating"),
+		"genre_id":   tagIDFilter,
+		"missing":    booleanFilter,
+		"artists_id": artistFilter,
+		"library_id": libraryIdFilter,
+		"path":       startsWithFilter("media_file.path"),
 	}
 	// Add all album tags as filters
 	for tag := range model.TagMappings() {
@@ -102,11 +115,37 @@ var mediaFileFilter = sync.OnceValue(func() map[string]filterFunc {
 	return filters
 })
 
+func mediaFileRecentlyAddedSort() string {
+	if conf.Server.RecentlyAddedByModTime {
+		return "media_file.updated_at"
+	}
+	return "media_file.created_at"
+}
+
 func (r *mediaFileRepository) CountAll(options ...model.QueryOptions) (int64, error) {
 	query := r.newSelect()
 	query = r.withAnnotation(query, "media_file.id")
-	// BFR WithParticipants (for filtering by name)?
+	query = r.applyLibraryFilter(query)
 	return r.count(query, options...)
+}
+
+func (r *mediaFileRepository) CountBySuffix(options ...model.QueryOptions) (map[string]int64, error) {
+	sel := r.newSelect(options...).
+		Columns("lower(suffix) as suffix", "count(*) as count").
+		GroupBy("lower(suffix)")
+	var res []struct {
+		Suffix string
+		Count  int64
+	}
+	err := r.queryAll(sel, &res)
+	if err != nil {
+		return nil, err
+	}
+	counts := make(map[string]int64, len(res))
+	for _, c := range res {
+		counts[c.Suffix] = c.Count
+	}
+	return counts, nil
 }
 
 func (r *mediaFileRepository) Exists(id string) (bool, error) {
@@ -114,7 +153,9 @@ func (r *mediaFileRepository) Exists(id string) (bool, error) {
 }
 
 func (r *mediaFileRepository) Put(m *model.MediaFile) error {
-	m.CreatedAt = time.Now()
+	if m.CreatedAt.IsZero() {
+		m.CreatedAt = time.Now()
+	}
 	id, err := r.putByMatch(Eq{"path": m.Path, "library_id": m.LibraryID}, m.ID, &dbMediaFile{MediaFile: m})
 	if err != nil {
 		return err
@@ -123,11 +164,17 @@ func (r *mediaFileRepository) Put(m *model.MediaFile) error {
 	return r.updateParticipants(m.ID, m.Participants)
 }
 
+func (r *mediaFileRepository) UpdateProbeData(id string, data string) error {
+	_, err := r.executeSQL(Update(r.tableName).Set("probe_data", data).Where(Eq{"id": id}))
+	return err
+}
+
 func (r *mediaFileRepository) selectMediaFile(options ...model.QueryOptions) SelectBuilder {
-	sql := r.newSelect(options...).Columns("media_file.*", "library.path as library_path").
+	sql := r.newSelect(options...).Columns("media_file.*", "library.path as library_path", "library.name as library_name").
 		LeftJoin("library on media_file.library_id = library.id")
 	sql = r.withAnnotation(sql, "media_file.id")
-	return r.withBookmark(sql, "media_file.id")
+	sql = r.withBookmark(sql, "media_file.id")
+	return r.applyLibraryFilter(sql)
 }
 
 func (r *mediaFileRepository) Get(id string) (*model.MediaFile, error) {
@@ -160,36 +207,91 @@ func (r *mediaFileRepository) GetAll(options ...model.QueryOptions) (model.Media
 	return res.toModels(), nil
 }
 
+func (r *mediaFileRepository) GetAllByTags(tag model.TagName, values []string, options ...model.QueryOptions) (model.MediaFiles, error) {
+	placeholders := make([]string, len(values))
+	args := make([]any, len(values))
+	for i, v := range values {
+		placeholders[i] = "?"
+		args[i] = v
+	}
+	tagFilter := Expr(
+		fmt.Sprintf("exists (select 1 from json_tree(media_file.tags, '$.%s') where key='value' and value in (%s))",
+			tag, strings.Join(placeholders, ",")),
+		args...,
+	)
+
+	var opts model.QueryOptions
+	if len(options) > 0 {
+		opts = options[0]
+	}
+	if opts.Filters != nil {
+		opts.Filters = And{tagFilter, opts.Filters}
+	} else {
+		opts.Filters = tagFilter
+	}
+	return r.GetAll(opts)
+}
+
 func (r *mediaFileRepository) GetCursor(options ...model.QueryOptions) (model.MediaFileCursor, error) {
 	sq := r.selectMediaFile(options...)
 	cursor, err := queryWithStableResults[dbMediaFile](r.sqlRepository, sq)
 	if err != nil {
 		return nil, err
 	}
-	return func(yield func(model.MediaFile, error) bool) {
-		for m, err := range cursor {
-			if m.MediaFile == nil {
-				yield(model.MediaFile{}, fmt.Errorf("unexpected nil mediafile: %v", m))
-				return
-			}
-			if !yield(*m.MediaFile, err) || err != nil {
-				return
-			}
-		}
-	}, nil
+	return wrapMediaFileCursor(cursor), nil
 }
 
+// FindByPaths finds media files by their paths.
+// The paths can be library-qualified (format: "libraryID:path") or unqualified ("path").
+// Library-qualified paths search within the specified library, while unqualified paths
+// search across all libraries for backward compatibility.
 func (r *mediaFileRepository) FindByPaths(paths []string) (model.MediaFiles, error) {
-	sel := r.newSelect().Columns("*").Where(Eq{"path collate nocase": paths})
+	query := Or{}
+
+	for _, path := range paths {
+		parts := strings.SplitN(path, ":", 2)
+		if len(parts) == 2 {
+			// Library-qualified path: "libraryID:path"
+			libraryID, err := strconv.Atoi(parts[0])
+			if err != nil {
+				// Invalid format, skip
+				continue
+			}
+			relativePath := parts[1]
+			query = append(query, And{
+				Eq{"path collate nocase": relativePath},
+				Eq{"library_id": libraryID},
+			})
+		} else {
+			// Unqualified path: search across all libraries
+			query = append(query, Eq{"path collate nocase": path})
+		}
+	}
+
+	if len(query) == 0 {
+		return model.MediaFiles{}, nil
+	}
+
+	sel := r.newSelect().Columns("*").Where(query)
 	var res dbMediaFiles
 	if err := r.queryAll(sel, &res); err != nil {
 		return nil, err
 	}
+
 	return res.toModels(), nil
 }
 
 func (r *mediaFileRepository) Delete(id string) error {
 	return r.delete(Eq{"id": id})
+}
+
+func (r *mediaFileRepository) DeleteAllMissing() (int64, error) {
+	user := loggedUser(r.ctx)
+	if !user.IsAdmin {
+		return 0, rest.ErrPermissionDenied
+	}
+	del := Delete(r.tableName).Where(Eq{"missing": true})
+	return r.executeSQL(del)
 }
 
 func (r *mediaFileRepository) DeleteMissing(ids []string) error {
@@ -243,7 +345,7 @@ func (r *mediaFileRepository) MarkMissingByFolder(missing bool, folderIDs ...str
 
 // GetMissingAndMatching returns all mediafiles that are missing and their potential matches (comparing PIDs)
 // that were added/updated after the last scan started. The result is ordered by PID.
-// It does not need to load bookmarks, annotations and participnts, as they are not used by the scanner.
+// It does not need to load bookmarks, annotations and participants, as they are not used by the scanner.
 func (r *mediaFileRepository) GetMissingAndMatching(libId int) (model.MediaFileCursor, error) {
 	subQ := r.newSelect().Columns("pid").
 		Where(And{
@@ -254,7 +356,7 @@ func (r *mediaFileRepository) GetMissingAndMatching(libId int) (model.MediaFileC
 	if err != nil {
 		return nil, err
 	}
-	sel := r.newSelect().Columns("media_file.*", "library.path as library_path").
+	sel := r.newSelect().Columns("media_file.*", "library.path as library_path", "library.name as library_name").
 		LeftJoin("library on media_file.library_id = library.id").
 		Where("pid in ("+subQText+")", subQArgs...).
 		Where(Or{
@@ -266,33 +368,99 @@ func (r *mediaFileRepository) GetMissingAndMatching(libId int) (model.MediaFileC
 	if err != nil {
 		return nil, err
 	}
+	return wrapMediaFileCursor(cursor), nil
+}
+
+func wrapMediaFileCursor(cursor iter.Seq2[dbMediaFile, error]) model.MediaFileCursor {
 	return func(yield func(model.MediaFile, error) bool) {
 		for m, err := range cursor {
+			if m.MediaFile == nil {
+				yield(model.MediaFile{}, fmt.Errorf("unexpected nil mediafile (%v): %w", m, err))
+				return
+			}
 			if !yield(*m.MediaFile, err) || err != nil {
 				return
 			}
 		}
-	}, nil
+	}
 }
 
-func (r *mediaFileRepository) Search(q string, offset int, size int, includeMissing bool) (model.MediaFiles, error) {
-	results := dbMediaFiles{}
-	err := r.doSearch(r.selectMediaFile(), q, offset, size, includeMissing, &results, "title")
+// FindRecentFilesByMBZTrackID finds recently added files by MusicBrainz Track ID in other libraries
+// It uses a lightweight query without annotation/bookmark joins since those are not needed for matching
+func (r *mediaFileRepository) FindRecentFilesByMBZTrackID(missing model.MediaFile, since time.Time) (model.MediaFiles, error) {
+	sel := r.newSelect().Columns("media_file.*", "library.path as library_path", "library.name as library_name").
+		LeftJoin("library on media_file.library_id = library.id").
+		Where(And{
+			NotEq{"media_file.library_id": missing.LibraryID},
+			Eq{"media_file.mbz_release_track_id": missing.MbzReleaseTrackID},
+			NotEq{"media_file.mbz_release_track_id": ""}, // Exclude empty MBZ Track IDs
+			Eq{"media_file.suffix": missing.Suffix},
+			Gt{"media_file.created_at": since},
+			Eq{"media_file.missing": false},
+		}).OrderBy("media_file.created_at DESC")
+
+	var res dbMediaFiles
+	err := r.queryAll(sel, &res)
 	if err != nil {
 		return nil, err
 	}
-	return results.toModels(), err
+	return res.toModels(), nil
+}
+
+// FindRecentFilesByProperties finds recently added files by intrinsic properties in other libraries
+// It uses a lightweight query without annotation/bookmark joins since those are not needed for matching
+func (r *mediaFileRepository) FindRecentFilesByProperties(missing model.MediaFile, since time.Time) (model.MediaFiles, error) {
+	sel := r.newSelect().Columns("media_file.*", "library.path as library_path", "library.name as library_name").
+		LeftJoin("library on media_file.library_id = library.id").
+		Where(And{
+			NotEq{"media_file.library_id": missing.LibraryID},
+			Eq{"media_file.title": missing.Title},
+			Eq{"media_file.size": missing.Size},
+			Eq{"media_file.suffix": missing.Suffix},
+			Eq{"media_file.disc_number": missing.DiscNumber},
+			Eq{"media_file.track_number": missing.TrackNumber},
+			Eq{"media_file.album": missing.Album},
+			Eq{"media_file.mbz_release_track_id": ""}, // Exclude files with MBZ Track ID
+			Gt{"media_file.created_at": since},
+			Eq{"media_file.missing": false},
+		}).OrderBy("media_file.created_at DESC")
+
+	var res dbMediaFiles
+	err := r.queryAll(sel, &res)
+	if err != nil {
+		return nil, err
+	}
+	return res.toModels(), nil
+}
+
+var mediaFileSearchConfig = searchConfig{
+	NaturalOrder: "media_file.rowid",
+	OrderBy:      []string{"title"},
+	MBIDFields:   []string{"mbz_recording_id", "mbz_release_track_id"},
+}
+
+func (r *mediaFileRepository) Search(q string, options ...model.QueryOptions) (model.MediaFiles, error) {
+	var opts model.QueryOptions
+	if len(options) > 0 {
+		opts = options[0]
+	}
+	var res dbMediaFiles
+	err := r.doSearch(r.selectMediaFile(options...), q, &res, mediaFileSearchConfig, opts)
+	if err != nil {
+		return nil, fmt.Errorf("searching media_file %q: %w", q, err)
+	}
+	return res.toModels(), nil
 }
 
 func (r *mediaFileRepository) Count(options ...rest.QueryOptions) (int64, error) {
 	return r.CountAll(r.parseRestOptions(r.ctx, options...))
 }
 
-func (r *mediaFileRepository) Read(id string) (interface{}, error) {
+func (r *mediaFileRepository) Read(id string) (any, error) {
 	return r.Get(id)
 }
 
-func (r *mediaFileRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
+func (r *mediaFileRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
 	return r.GetAll(r.parseRestOptions(r.ctx, options...))
 }
 
@@ -300,7 +468,7 @@ func (r *mediaFileRepository) EntityName() string {
 	return "mediafile"
 }
 
-func (r *mediaFileRepository) NewInstance() interface{} {
+func (r *mediaFileRepository) NewInstance() any {
 	return &model.MediaFile{}
 }
 

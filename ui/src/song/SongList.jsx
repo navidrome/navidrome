@@ -8,6 +8,8 @@ import {
   SearchInput,
   TextField,
   useTranslate,
+  NullableBooleanInput,
+  usePermissions,
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
 import FavoriteIcon from '@material-ui/icons/Favorite'
@@ -18,7 +20,6 @@ import {
   SongContextMenu,
   SongDatagrid,
   SongInfo,
-  QuickFilter,
   SongTitleField,
   SongSimpleList,
   RatingField,
@@ -67,6 +68,8 @@ const useStyles = makeStyles({
 const SongFilter = (props) => {
   const classes = useStyles()
   const translate = useTranslate()
+  const { permissions } = usePermissions()
+  const isAdmin = permissions === 'admin'
   return (
     <Filter {...props} variant={'outlined'}>
       <SearchInput source="title" alwaysOn />
@@ -115,12 +118,12 @@ const SongFilter = (props) => {
         />
       </ReferenceArrayInput>
       {config.enableFavourites && (
-        <QuickFilter
+        <NullableBooleanInput
           source="starred"
           label={<FavoriteIcon fontSize={'small'} />}
-          defaultValue={true}
         />
       )}
+      {isAdmin && <NullableBooleanInput source="missing" />}
     </Filter>
   )
 }
@@ -140,6 +143,7 @@ const SongList = (props) => {
     return {
       album: isDesktop && <AlbumLinkField source="album" sortByOrder={'ASC'} />,
       artist: <ArtistLinkField source="artist" />,
+      composer: <ArtistLinkField source="composer" />,
       albumArtist: <ArtistLinkField source="albumArtist" />,
       trackNumber: isDesktop && <NumberField source="trackNumber" />,
       playCount: isDesktop && (
@@ -168,9 +172,18 @@ const SongList = (props) => {
       ),
       bpm: isDesktop && <NumberField source="bpm" />,
       genre: <TextField source="genre" />,
+      mood: isDesktop && (
+        <FunctionField
+          source="mood"
+          render={(r) => r.tags?.mood?.[0] || ''}
+          sortable={false}
+        />
+      ),
       comment: <TextField source="comment" />,
       path: <PathField source="path" />,
-      createdAt: <DateField source="createdAt" showTime />,
+      createdAt: (
+        <DateField source="createdAt" sortBy="recently_added" showTime />
+      ),
     }
   }, [isDesktop, classes.ratingField])
 
@@ -178,11 +191,13 @@ const SongList = (props) => {
     resource: 'song',
     columns: toggleableFields,
     defaultOff: [
+      'composer',
       'channels',
       'bpm',
       'playDate',
       'albumArtist',
       'genre',
+      'mood',
       'comment',
       'path',
       'createdAt',

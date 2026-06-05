@@ -6,16 +6,15 @@ import {
   usePermissions,
   getResources,
 } from 'react-admin'
+import { MdInfo, MdPerson, MdSupervisorAccount } from 'react-icons/md'
 import { useSelector } from 'react-redux'
 import { makeStyles, MenuItem, ListItemIcon, Divider } from '@material-ui/core'
 import ViewListIcon from '@material-ui/icons/ViewList'
-import InfoIcon from '@material-ui/icons/Info'
-import PersonIcon from '@material-ui/icons/Person'
-import SupervisorAccountIcon from '@material-ui/icons/SupervisorAccount'
 import { Dialogs } from '../dialogs/Dialogs'
 import { AboutDialog } from '../dialogs'
 import PersonalMenu from './PersonalMenu'
 import ActivityPanel from './ActivityPanel'
+import NowPlayingPanel from './NowPlayingPanel'
 import UserMenu from './UserMenu'
 import config from '../config'
 
@@ -51,7 +50,7 @@ const AboutMenuItem = forwardRef(({ onClick, ...rest }, ref) => {
     <>
       <MenuItem ref={ref} onClick={handleOpen} className={classes.root}>
         <ListItemIcon className={classes.icon}>
-          <InfoIcon titleAccess={label} />
+          <MdInfo title={label} size={24} />
         </ListItemIcon>
         {label}
       </MenuItem>
@@ -86,9 +85,9 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
       if (!config.enableUserEditing) {
         return null
       }
-      userResource.icon = PersonIcon
+      userResource.icon = MdPerson
     } else {
-      userResource.icon = SupervisorAccountIcon
+      userResource.icon = MdSupervisorAccount
     }
     return renderSettingsMenuItemLink(
       userResource,
@@ -109,7 +108,9 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
         to={link}
         primaryText={label}
         leftIcon={
-          (resource.icon && createElement(resource.icon)) || <ViewListIcon />
+          (resource.icon && createElement(resource.icon, { size: 24 })) || (
+            <ViewListIcon />
+          )
         }
         onClick={onClick}
         sidebarIsOpen={true}
@@ -119,6 +120,9 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
 
   return (
     <>
+      {config.devActivityPanel &&
+        permissions === 'admin' &&
+        config.enableNowPlaying && <NowPlayingPanel />}
       {config.devActivityPanel && permissions === 'admin' && <ActivityPanel />}
       <UserMenu {...rest}>
         <PersonalMenu sidebarIsOpen={true} onClick={onClick} />

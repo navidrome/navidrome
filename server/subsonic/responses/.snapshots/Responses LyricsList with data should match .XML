@@ -1,4 +1,4 @@
-<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.8.0" type="navidrome" serverVersion="v0.0.0" openSubsonic="true">
+<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.16.1" type="navidrome" serverVersion="v0.55.0" openSubsonic="true">
   <lyricsList>
     <structuredLyrics displayArtist="Rick Astley" displayTitle="Never Gonna Give You Up" lang="eng" offset="100" synced="true">
       <line start="18800">We&#39;re no strangers to love</line>

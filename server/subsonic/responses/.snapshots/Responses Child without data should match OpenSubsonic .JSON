@@ -1,20 +1,21 @@
 {
   "status": "ok",
-  "version": "1.8.0",
+  "version": "1.16.1",
   "type": "navidrome",
-  "serverVersion": "v0.0.0",
+  "serverVersion": "v0.55.0",
   "openSubsonic": true,
   "directory": {
     "child": [
       {
         "id": "1",
         "isDir": false,
-        "isVideo": false,
+        "title": "",
         "bpm": 0,
         "comment": "",
         "sortName": "",
         "mediaType": "",
         "musicBrainzId": "",
+        "isrc": [],
         "genres": [],
         "replayGain": {},
         "channelCount": 0,
@@ -27,7 +28,8 @@
         "displayAlbumArtist": "",
         "contributors": [],
         "displayComposer": "",
-        "explicitStatus": ""
+        "explicitStatus": "",
+        "groupings": []
       }
     ],
     "id": "",

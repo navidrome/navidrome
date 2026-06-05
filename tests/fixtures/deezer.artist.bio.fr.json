@@ -1,0 +1,12 @@
+{
+  "data": {
+    "artist": {
+      "bio": {
+        "full": "Guy-Manuel de Homem Christo et Thomas Bangalter se rencontrent en 1987 au lycée Carnot de Paris. Partageant une même passion pour la musique, les deux amis fondent en 1992 Darlin', un groupe de rock influencé par les Stooges et MC5, dont la production sera taxée par un critique de la presse anglaise de «daft punk» (« punk idiot »). <br />\n<br />\nDécouragés face à l'apathie du milieu rock, ils décident un peu plus tard de se lancer à corps perdus dans le courant Techno alors en pleine explosion. Arrive alors la découverte de la House, des clubs et des raves, dont une en particulier qui déterminera leur avenir : en 1993 est organisé à EuroDisney une rave où notre duo rencontre les dirigeants du label techno écossais Soma."
+      }
+    }
+  },
+  "extensions": {
+    "queryCost": 3
+  }
+}

@@ -1,7 +1,7 @@
 import React from 'react'
 import { Chip, makeStyles } from '@material-ui/core'
 import { useTranslate } from 'react-admin'
-import inflection from 'inflection'
+import { humanize, underscore } from 'inflection'
 
 const useQuickFilterStyles = makeStyles((theme) => ({
   chip: {
@@ -16,11 +16,11 @@ export const QuickFilter = ({ source, resource, label, defaultValue }) => {
   if (typeof lbl === 'string' || lbl instanceof String) {
     if (label) {
       lbl = translate(lbl, {
-        _: inflection.humanize(inflection.underscore(lbl)),
+        _: humanize(underscore(lbl)),
       })
     } else {
       lbl = translate(`resources.${resource}.fields.${source}`, {
-        _: inflection.humanize(inflection.underscore(source)),
+        _: humanize(underscore(source)),
       })
     }
   }

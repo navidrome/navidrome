@@ -14,22 +14,34 @@ export default {
     background: {
       default: '#282828',
     },
+    text: {
+      primary: '#ebdbb2',
+      secondary: '#a89984',
+    },
   },
   overrides: {
     MuiPaper: {
       root: {
         color: '#ebdbb2',
         backgroundColor: '#3c3836',
-        MuiSnackbarContent: {
-          root: {
-            color: '#ebdbb2',
-            backgroundColor: '#cc241d',
-          },
-          message: {
-            color: '#ebdbb2',
-            backgroundColor: '#cc241d',
-          },
-        },
+      },
+    },
+    MuiSnackbarContent: {
+      root: {
+        color: '#3c3836',
+        backgroundColor: '#a89984',
+      },
+      message: {
+        color: '#3c3836',
+        backgroundColor: '#a89984',
+      },
+    },
+    MuiTypography: {
+      root: {
+        color: '#ebdbb2',
+      },
+      colorTextSecondary: {
+        color: '#a89984',
       },
     },
     MuiButton: {
@@ -38,6 +50,24 @@ export default {
       },
       textSecondary: {
         color: '#ebdbb2',
+      },
+    },
+    MuiIconButton: {
+      root: {
+        color: '#ebdbb2',
+      },
+    },
+    MuiListItemIcon: {
+      root: {
+        color: '#ebdbb2',
+      },
+    },
+    MuiListItemText: {
+      primary: {
+        color: '#ebdbb2',
+      },
+      secondary: {
+        color: '#a89984',
       },
     },
     MuiChip: {
@@ -52,11 +82,10 @@ export default {
     },
     MuiFormHelperText: {
       root: {
-        Mui: {
-          error: {
-            color: '#cc241d',
-          },
-        },
+        color: '#ebdbb2',
+      },
+      error: {
+        color: '#cc241d',
       },
     },
     MuiTableHead: {
@@ -92,10 +121,31 @@ export default {
         boxShadow: '3px 3px 5px #3c3836',
       },
     },
+    MuiSwitch: {
+      colorSecondary: {
+        '&$checked': {
+          color: '#458588',
+        },
+        '&$checked + $track': {
+          backgroundColor: '#458588',
+        },
+      },
+    },
     NDMobileArtistDetails: {
       bgContainer: {
         background:
           'linear-gradient(to bottom, rgba(52 52 52 / 72%), rgb(48 48 48))!important',
+      },
+    },
+    NDAlbumGridView: {
+      albumName: {
+        marginTop: '0.5rem',
+        fontWeight: 700,
+        textTransform: 'none',
+        color: '#ebdbb2',
+      },
+      albumSubtitle: {
+        color: '#a89984',
       },
     },
   },

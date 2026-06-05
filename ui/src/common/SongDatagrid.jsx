@@ -1,4 +1,10 @@
-import React, { isValidElement, useMemo, useCallback, forwardRef } from 'react'
+import React, {
+  isValidElement,
+  useMemo,
+  useCallback,
+  useState,
+  forwardRef,
+} from 'react'
 import { useDispatch } from 'react-redux'
 import {
   Datagrid,
@@ -17,7 +23,10 @@ import { makeStyles } from '@material-ui/core/styles'
 import AlbumIcon from '@material-ui/icons/Album'
 import clsx from 'clsx'
 import { useDrag } from 'react-dnd'
+import Lightbox from 'react-image-lightbox'
+import 'react-image-lightbox/style.css'
 import { playTracks } from '../actions'
+import subsonic from '../subsonic'
 import { AlbumContextMenu } from '../common'
 import { DraggableTypes } from '../consts'
 import { formatFullDate } from '../utils'
@@ -28,10 +37,20 @@ const useStyles = makeStyles({
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     verticalAlign: 'middle',
+    display: 'flex',
+    alignItems: 'center',
   },
   discIcon: {
-    verticalAlign: 'text-top',
-    marginRight: '4px',
+    marginRight: '14px',
+  },
+  discCoverArt: {
+    width: '48px',
+    height: '48px',
+    marginRight: '14px',
+    objectFit: 'cover',
+    borderRadius: '4px',
+    flexShrink: 0,
+    cursor: 'pointer',
   },
   row: {
     cursor: 'pointer',
@@ -59,87 +78,94 @@ const useStyles = makeStyles({
   },
 })
 
-const ReleaseRow = forwardRef(
-  ({ record, onClick, colSpan, contextAlwaysVisible }, ref) => {
-    const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
-    const classes = useStyles({ isDesktop })
-    const translate = useTranslate()
-    const handlePlaySubset = (releaseDate) => () => {
-      onClick(releaseDate)
-    }
-
-    let releaseTitle = []
-    if (record.releaseDate) {
-      releaseTitle.push(translate('resources.album.fields.released'))
-      releaseTitle.push(formatFullDate(record.releaseDate))
-      if (record.catalogNum && isDesktop) {
-        releaseTitle.push('· Cat #')
-        releaseTitle.push(record.catalogNum)
-      }
-    }
-
-    return (
-      <TableRow
-        hover
-        ref={ref}
-        onClick={handlePlaySubset(record.releaseDate)}
-        className={classes.row}
-      >
-        <TableCell colSpan={colSpan}>
-          <Typography variant="h6" className={classes.subtitle}>
-            {releaseTitle.join(' ')}
-          </Typography>
-        </TableCell>
-        <TableCell>
-          <AlbumContextMenu
-            record={{ id: record.albumId }}
-            releaseDate={record.releaseDate}
-            showLove={false}
-            className={classes.contextMenu}
-            visible={contextAlwaysVisible}
-          />
-        </TableCell>
-      </TableRow>
-    )
-  },
-)
-
-ReleaseRow.displayName = 'ReleaseRow'
-
 const DiscSubtitleRow = forwardRef(
   ({ record, onClick, colSpan, contextAlwaysVisible }, ref) => {
+    const translate = useTranslate()
     const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
     const classes = useStyles({ isDesktop })
-    const handlePlaySubset = (releaseDate, discNumber) => () => {
-      onClick(releaseDate, discNumber)
+    const [imageError, setImageError] = useState(false)
+    const [isLightboxOpen, setLightboxOpen] = useState(false)
+    const lightboxClosedAt = React.useRef(0)
+    const handlePlaySubset = (discNumber) => () => {
+      // Ignore clicks shortly after the lightbox was closed to prevent
+      // mobile touch events from "falling through" the overlay and
+      // triggering playback.
+      if (Date.now() - lightboxClosedAt.current < 400) {
+        return
+      }
+      onClick(discNumber)
     }
 
-    let subtitle = []
-    if (record.discNumber > 0) {
-      subtitle.push(record.discNumber)
-    }
-    if (record.discSubtitle) {
-      subtitle.push(record.discSubtitle)
-    }
+    const coverArtUrl = subsonic.getDiscCoverArtUrl(
+      record.albumId,
+      record.discNumber,
+      record.updatedAt,
+      96,
+    )
+
+    const fullImageUrl = subsonic.getDiscCoverArtUrl(
+      record.albumId,
+      record.discNumber,
+      record.updatedAt,
+    )
+
+    const handleOpenLightbox = useCallback(
+      (e) => {
+        if (!imageError) {
+          e.stopPropagation()
+          setLightboxOpen(true)
+        }
+      },
+      [imageError],
+    )
+
+    const handleCloseLightbox = useCallback(() => {
+      lightboxClosedAt.current = Date.now()
+      setLightboxOpen(false)
+    }, [])
+
+    const subtitle = record.discSubtitle
+      ? record.discSubtitle
+      : translate('resources.song.fields.disc', {
+          discNumber: record.discNumber,
+        })
 
     return (
       <TableRow
         hover
         ref={ref}
-        onClick={handlePlaySubset(record.releaseDate, record.discNumber)}
+        onClick={handlePlaySubset(record.discNumber)}
         className={classes.row}
       >
         <TableCell colSpan={colSpan}>
           <Typography variant="h6" className={classes.subtitle}>
-            <AlbumIcon className={classes.discIcon} fontSize={'small'} />
-            {subtitle.join(': ')}
+            {!imageError ? (
+              <img
+                src={coverArtUrl}
+                className={classes.discCoverArt}
+                alt=""
+                onClick={handleOpenLightbox}
+                onError={() => setImageError(true)}
+              />
+            ) : (
+              <AlbumIcon className={classes.discIcon} fontSize={'small'} />
+            )}
+            {subtitle}
           </Typography>
+          {isLightboxOpen && !imageError && (
+            <Lightbox
+              imagePadding={50}
+              animationDuration={200}
+              imageTitle={record.album + ' - ' + subtitle}
+              mainSrc={fullImageUrl}
+              onCloseRequest={handleCloseLightbox}
+            />
+          )}
         </TableCell>
         <TableCell>
           <AlbumContextMenu
             record={{ id: record.albumId }}
             discNumber={record.discNumber}
-            releaseDate={record.releaseDate}
             showLove={false}
             className={classes.contextMenu}
             hideShare={true}
@@ -158,7 +184,6 @@ export const SongDatagridRow = ({
   record,
   children,
   firstTracksOfDiscs,
-  firstTracksOfReleases,
   contextAlwaysVisible,
   onClickSubset,
   className,
@@ -176,7 +201,6 @@ export const SongDatagridRow = ({
         discs: [
           {
             albumId: record?.albumId,
-            releaseDate: record?.releaseDate,
             discNumber: record?.discNumber,
           },
         ],
@@ -209,15 +233,6 @@ export const SongDatagridRow = ({
   const childCount = fields.length
   return (
     <>
-      {firstTracksOfReleases.has(record.id) && (
-        <ReleaseRow
-          ref={dragDiscRef}
-          record={record}
-          onClick={onClickSubset}
-          contextAlwaysVisible={contextAlwaysVisible}
-          colSpan={childCount + (rest.expand ? 1 : 0)}
-        />
-      )}
       {firstTracksOfDiscs.has(record.id) && (
         <DiscSubtitleRow
           ref={dragDiscRef}
@@ -244,7 +259,6 @@ SongDatagridRow.propTypes = {
   record: PropTypes.object,
   children: PropTypes.node,
   firstTracksOfDiscs: PropTypes.instanceOf(Set),
-  firstTracksOfReleases: PropTypes.instanceOf(Set),
   contextAlwaysVisible: PropTypes.bool,
   onClickSubset: PropTypes.func,
 }
@@ -256,23 +270,16 @@ SongDatagridRow.defaultProps = {
 const SongDatagridBody = ({
   contextAlwaysVisible,
   showDiscSubtitles,
-  showReleaseDivider,
   ...rest
 }) => {
   const dispatch = useDispatch()
   const { ids, data } = rest
 
   const playSubset = useCallback(
-    (releaseDate, discNumber) => {
+    (discNumber) => {
       let idsToPlay = []
       if (discNumber !== undefined) {
-        idsToPlay = ids.filter(
-          (id) =>
-            data[id].releaseDate === releaseDate &&
-            data[id].discNumber === discNumber,
-        )
-      } else {
-        idsToPlay = ids.filter((id) => data[id].releaseDate === releaseDate)
+        idsToPlay = ids.filter((id) => data[id].discNumber === discNumber)
       }
       dispatch(
         playTracks(
@@ -297,8 +304,7 @@ const SongDatagridBody = ({
           foundSubtitle = foundSubtitle || data[id].discSubtitle
           if (
             acc.length === 0 ||
-            (last && data[id].discNumber !== data[last].discNumber) ||
-            (last && data[id].releaseDate !== data[last].releaseDate)
+            (last && data[id].discNumber !== data[last].discNumber)
           ) {
             acc.push(id)
           }
@@ -311,37 +317,12 @@ const SongDatagridBody = ({
     return set
   }, [ids, data, showDiscSubtitles])
 
-  const firstTracksOfReleases = useMemo(() => {
-    if (!ids) {
-      return new Set()
-    }
-    const set = new Set(
-      ids
-        .filter((i) => data[i])
-        .reduce((acc, id) => {
-          const last = acc && acc[acc.length - 1]
-          if (
-            acc.length === 0 ||
-            (last && data[id].releaseDate !== data[last].releaseDate)
-          ) {
-            acc.push(id)
-          }
-          return acc
-        }, []),
-    )
-    if (!showReleaseDivider || set.size < 2) {
-      set.clear()
-    }
-    return set
-  }, [ids, data, showReleaseDivider])
-
   return (
     <PureDatagridBody
       {...rest}
       row={
         <SongDatagridRow
           firstTracksOfDiscs={firstTracksOfDiscs}
-          firstTracksOfReleases={firstTracksOfReleases}
           contextAlwaysVisible={contextAlwaysVisible}
           onClickSubset={playSubset}
         />
@@ -353,7 +334,6 @@ const SongDatagridBody = ({
 export const SongDatagrid = ({
   contextAlwaysVisible,
   showDiscSubtitles,
-  showReleaseDivider,
   ...rest
 }) => {
   const classes = useStyles()
@@ -366,7 +346,6 @@ export const SongDatagrid = ({
         <SongDatagridBody
           contextAlwaysVisible={contextAlwaysVisible}
           showDiscSubtitles={showDiscSubtitles}
-          showReleaseDivider={showReleaseDivider}
         />
       }
     />
@@ -376,6 +355,5 @@ export const SongDatagrid = ({
 SongDatagrid.propTypes = {
   contextAlwaysVisible: PropTypes.bool,
   showDiscSubtitles: PropTypes.bool,
-  showReleaseDivider: PropTypes.bool,
   classes: PropTypes.object,
 }

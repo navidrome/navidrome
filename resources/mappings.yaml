@@ -1,6 +1,14 @@
 #file: noinspection SpellCheckingInspection
 # Tag mapping adapted from https://picard-docs.musicbrainz.org/downloads/MusicBrainz_Picard_Tag_Map.html
 #
+# NOTE FOR USERS:
+#
+# This file can be used as a reference to understand how Navidrome maps the tags in your music files to its fields.
+# If you want to customize these mappings, please refer to https://www.navidrome.org/docs/usage/customtags/
+#
+#
+# NOTE FOR DEVELOPERS:
+#
 # This file contains the mapping between the tags in your music files and the fields in Navidrome.
 # You can add new tags, change the aliases, or add new split characters to the existing tags.
 # The artists and roles keys are used to define how to split the tag values into multiple values.
@@ -61,7 +69,7 @@ main:
   remixer:
     aliases: [ tpe4, remixer, mixartist, ----:com.apple.itunes:remixer, wm/modifiedby ]
   albumartist:
-    aliases: [ tpe2, albumartist, album artist, aart, wm/albumartist ]
+    aliases: [ tpe2, albumartist, album artist, album_artist, aart, wm/albumartist ]
   albumartistsort:
     aliases: [ tso2, txxx:albumartistsort, albumartistsort, soaa, wm/albumartistsortorder ]
   albumartists:
@@ -73,7 +81,7 @@ main:
   albumsort:
     aliases: [ tsoa, albumsort, soal, wm/albumsortorder ]
   albumversion:
-    aliases: [albumversion, musicbrainz_albumcomment, musicbrainz album comment, version]
+    aliases: [albumversion, musicbrainz_albumcomment, musicbrainz album comment]
     album: true
   genre:
     aliases: [ tcon, genre, ©gen, wm/genre, ignr ]
@@ -96,24 +104,25 @@ main:
     aliases: [ disctotal, totaldiscs ]
     album: true
   discsubtitle:
-    aliases: [ tsst, discsubtitle, ----:com.apple.itunes:discsubtitle, wm/setsubtitle ]
+    aliases: [ tsst, discsubtitle, ----:com.apple.itunes:discsubtitle, setsubtitle, wm/setsubtitle ]
   bpm:
     aliases: [ tbpm, bpm, tmpo, wm/beatsperminute ]
   lyrics:
-    aliases: [ uslt:description, lyrics, ©lyr, wm/lyrics ]
+    # Note, @lyr and wm/lyrics have been removed. Taglib somehow appears to always populate `lyrics:xxx`
+    aliases: [ uslt:description, lyrics, unsyncedlyrics ]
     maxLength: 32768
     type: pair # ex: lyrics:eng, lyrics:xxx
   comment:
     aliases: [ comm:description, comment, ©cmt, description, icmt ]
     maxLength: 4096
   originaldate:
-    aliases: [ tdor, originaldate, ----:com.apple.itunes:originaldate, wm/originalreleasetime, tory, originalyear, ----:com.apple.itunes:originalyear, wm/originalreleaseyear ]
+    aliases: [ tdor, originaldate, ----:com.apple.itunes:originaldate, wm/originalreleasetime, tory, originalyear, ----:com.apple.itunes:originalyear, wm/originalreleaseyear, origyear, ----:com.apple.itunes:origyear ]
     type: date
   recordingdate:
-    aliases: [ tdrc, date, icrd, ©day, wm/year, year ]
+    aliases: [ tdrc, date, recordingdate, icrd, record date ]
     type: date
   releasedate:
-    aliases: [ tdrl, releasedate ]
+    aliases: [ tdrl, releasedate, ©day, wm/year, year ]
     type: date
   catalognumber:
     aliases: [ txxx:catalognumber, catalognumber, ----:com.apple.itunes:catalognumber, wm/catalogno ]

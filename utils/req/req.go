@@ -35,6 +35,23 @@ func (r *Values) String(param string) (string, error) {
 	return v, nil
 }
 
+func (r *Values) StringPtr(param string) *string {
+	var v *string
+	if _, exists := r.URL.Query()[param]; exists {
+		v = new(r.URL.Query().Get(param))
+	}
+	return v
+}
+
+func (r *Values) BoolPtr(param string) *bool {
+	var v *bool
+	if _, exists := r.URL.Query()[param]; exists {
+		s := r.URL.Query().Get(param)
+		v = new(strings.Contains("/true/on/1/", "/"+strings.ToLower(s)+"/"))
+	}
+	return v
+}
+
 func (r *Values) StringOr(param, def string) string {
 	v, _ := r.String(param)
 	if v == "" {
@@ -150,4 +167,16 @@ func (r *Values) BoolOr(param string, def bool) bool {
 		return def
 	}
 	return v
+}
+
+func (r *Values) Float64Or(param string, def float64) float64 {
+	v, err := r.String(param)
+	if err != nil {
+		return def
+	}
+	f, err := strconv.ParseFloat(v, 64)
+	if err != nil {
+		return def
+	}
+	return f
 }

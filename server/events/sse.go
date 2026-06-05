@@ -19,12 +19,14 @@ import (
 type Broker interface {
 	http.Handler
 	SendMessage(ctx context.Context, event Event)
+	SendBroadcastMessage(ctx context.Context, event Event)
 }
 
 const (
 	keepAliveFrequency = 15 * time.Second
-	writeTimeOut       = 5 * time.Second
-	bufferSize         = 1
+	// The timeout must be higher than the keepAliveFrequency, or the lack of activity will cause the channel to close.
+	writeTimeOut = keepAliveFrequency + 5*time.Second
+	bufferSize   = 1
 )
 
 type (
@@ -77,6 +79,11 @@ func GetBroker() Broker {
 	})
 }
 
+func (b *broker) SendBroadcastMessage(ctx context.Context, evt Event) {
+	ctx = broadcastToAll(ctx)
+	b.SendMessage(ctx, evt)
+}
+
 func (b *broker) SendMessage(ctx context.Context, evt Event) {
 	msg := b.prepareMessage(ctx, evt)
 	log.Trace("Broker received new event", "type", msg.event, "data", msg.data)
@@ -98,7 +105,7 @@ func writeEvent(ctx context.Context, w io.Writer, event message, timeout time.Du
 		log.Debug(ctx, "Error setting write timeout", err)
 	}
 
-	_, err := fmt.Fprintf(w, "id: %d\nevent: %s\ndata: %s\n\n", event.id, event.event, event.data)
+	_, err := fmt.Fprintf(w, "id: %d\nevent: %s\ndata: %s\n\n", event.id, event.event, event.data) //nolint:gosec
 	if err != nil {
 		return err
 	}
@@ -279,5 +286,7 @@ func NoopBroker() Broker {
 type noopBroker struct {
 	http.Handler
 }
+
+func (b noopBroker) SendBroadcastMessage(context.Context, Event) {}
 
 func (noopBroker) SendMessage(context.Context, Event) {}

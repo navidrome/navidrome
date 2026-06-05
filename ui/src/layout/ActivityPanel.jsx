@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useDispatch, useSelector } from 'react-redux'
+import { useSelector } from 'react-redux'
 import { useNotify, useTranslate } from 'react-admin'
 import {
   Popover,
@@ -12,21 +12,28 @@ import {
   CardActions,
   Divider,
   Box,
+  Typography,
 } from '@material-ui/core'
 import { FiActivity } from 'react-icons/fi'
-import { BiError } from 'react-icons/bi'
+import { BiError, BiMessageError } from 'react-icons/bi'
 import { VscSync } from 'react-icons/vsc'
 import { GiMagnifyingGlass } from 'react-icons/gi'
 import subsonic from '../subsonic'
-import { scanStatusUpdate } from '../actions'
+import { useInitialScanStatus } from './useInitialScanStatus'
 import { useInterval } from '../common'
-import { formatDuration } from '../utils'
+import { useScanElapsedTime } from './useScanElapsedTime'
+import { formatDuration, formatShortDuration } from '../utils'
 import config from '../config'
 
 const useStyles = makeStyles((theme) => ({
   wrapper: {
     position: 'relative',
-    color: (props) => (props.up ? null : 'orange'),
+    color: (props) =>
+      props.serverDown
+        ? theme.palette.error.main
+        : props.hasWarning
+          ? theme.palette.warning.main
+          : null,
   },
   progress: {
     color: theme.palette.primary.light,
@@ -40,7 +47,16 @@ const useStyles = makeStyles((theme) => ({
     zIndex: 2,
   },
   counterStatus: {
-    minWidth: '15em',
+    minWidth: '20em',
+  },
+  error: {
+    color: theme.palette.error.main,
+  },
+  card: {
+    maxWidth: 'none',
+  },
+  cardContent: {
+    padding: theme.spacing(2, 3),
   },
 }))
 
@@ -59,29 +75,29 @@ const Uptime = () => {
 const ActivityPanel = () => {
   const serverStart = useSelector((state) => state.activity.serverStart)
   const up = serverStart.startTime
-  const classes = useStyles({ up })
+  const scanStatus = useSelector((state) => state.activity.scanStatus)
+  const elapsed = useScanElapsedTime(
+    scanStatus.scanning,
+    scanStatus.elapsedTime,
+  )
+  // Determine icon state: error (server down), warning (scan error), or normal
+  const serverDown = !up
+  const hasWarning = Boolean(scanStatus.error)
+  const classes = useStyles({ serverDown, hasWarning })
   const translate = useTranslate()
   const notify = useNotify()
   const [anchorEl, setAnchorEl] = useState(null)
   const open = Boolean(anchorEl)
-  const dispatch = useDispatch()
-  const scanStatus = useSelector((state) => state.activity.scanStatus)
+  useInitialScanStatus()
 
-  const handleMenuOpen = (event) => setAnchorEl(event.currentTarget)
-  const handleMenuClose = () => setAnchorEl(null)
+  const handleMenuOpen = (event) => {
+    setAnchorEl(event.currentTarget)
+  }
+
+  const handleMenuClose = () => {
+    setAnchorEl(null)
+  }
   const triggerScan = (full) => () => subsonic.startScan({ fullScan: full })
-
-  // Get updated status on component mount
-  useEffect(() => {
-    subsonic
-      .getScanStatus()
-      .then((resp) => resp.json['subsonic-response'])
-      .then((data) => {
-        if (data.status === 'ok') {
-          dispatch(scanStatusUpdate(data.scanStatus))
-        }
-      })
-  }, [dispatch])
 
   useEffect(() => {
     if (serverStart.version && serverStart.version !== config.version) {
@@ -89,11 +105,35 @@ const ActivityPanel = () => {
     }
   }, [serverStart, notify])
 
+  const tooltipTitle = scanStatus.error
+    ? `${translate('activity.status')}: ${scanStatus.error}`
+    : translate('activity.title')
+
+  const lastScanType = (() => {
+    switch (scanStatus.scanType) {
+      case 'full':
+        return translate('activity.fullScan')
+      case 'quick':
+        return translate('activity.quickScan')
+      case 'full-selective':
+      case 'quick-selective':
+        return translate('activity.selectiveScan')
+      default:
+        return ''
+    }
+  })()
+
   return (
     <div className={classes.wrapper}>
-      <Tooltip title={translate('activity.title')}>
+      <Tooltip title={tooltipTitle}>
         <IconButton className={classes.button} onClick={handleMenuOpen}>
-          {up ? <FiActivity size={'20'} /> : <BiError size={'20'} />}
+          {serverDown ? (
+            <BiError data-testid="activity-error-icon" size={'20'} />
+          ) : hasWarning ? (
+            <BiMessageError data-testid="activity-warning-icon" size={'20'} />
+          ) : (
+            <FiActivity data-testid="activity-ok-icon" size={'20'} />
+          )}
         </IconButton>
       </Tooltip>
       {scanStatus.scanning && (
@@ -113,19 +153,23 @@ const ActivityPanel = () => {
         open={open}
         onClose={handleMenuClose}
       >
-        <Card>
-          <CardContent>
+        <Card className={classes.card}>
+          <CardContent className={classes.cardContent}>
             <Box display="flex" className={classes.counterStatus}>
               <Box component="span" flex={2}>
                 {translate('activity.serverUptime')}:
               </Box>
-              <Box component="span" flex={1}>
+              <Box
+                component="span"
+                flex={1}
+                className={!up ? classes.error : null}
+              >
                 {up ? <Uptime /> : translate('activity.serverDown')}
               </Box>
             </Box>
           </CardContent>
           <Divider />
-          <CardContent>
+          <CardContent className={classes.cardContent}>
             <Box display="flex" className={classes.counterStatus}>
               <Box component="span" flex={2}>
                 {translate('activity.totalScanned')}:
@@ -134,6 +178,38 @@ const ActivityPanel = () => {
                 {scanStatus.folderCount || '-'}
               </Box>
             </Box>
+
+            <Box display="flex" className={classes.counterStatus} mt={2}>
+              <Box component="span" flex={2}>
+                {translate('activity.scanType')}:
+              </Box>
+              <Box component="span" flex={1}>
+                {lastScanType}
+              </Box>
+            </Box>
+
+            <Box display="flex" className={classes.counterStatus} mt={2}>
+              <Box component="span" flex={2}>
+                {translate('activity.elapsedTime')}:
+              </Box>
+              <Box component="span" flex={1}>
+                {formatShortDuration(elapsed)}
+              </Box>
+            </Box>
+
+            {scanStatus.error && (
+              <Box
+                display="flex"
+                flexDirection="column"
+                mt={2}
+                className={classes.error}
+              >
+                <Typography variant="subtitle2">
+                  {translate('activity.status')}:
+                </Typography>
+                <Typography variant="body2">{scanStatus.error}</Typography>
+              </Box>
+            )}
           </CardContent>
           <Divider />
           <CardActions>

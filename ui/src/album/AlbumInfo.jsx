@@ -1,6 +1,6 @@
 import Table from '@material-ui/core/Table'
 import TableBody from '@material-ui/core/TableBody'
-import inflection from 'inflection'
+import { humanize, underscore } from 'inflection'
 import TableCell from '@material-ui/core/TableCell'
 import TableContainer from '@material-ui/core/TableContainer'
 import TableRow from '@material-ui/core/TableRow'
@@ -20,6 +20,7 @@ import {
   ArtistLinkField,
   MultiLineTextField,
   ParticipantsInfo,
+  RangeField,
 } from '../common'
 
 const useStyles = makeStyles({
@@ -36,7 +37,8 @@ const AlbumInfo = (props) => {
   const translate = useTranslate()
   const record = useRecordContext(props)
   const data = {
-    album: <TextField source={'name'} />,
+    name: <TextField source={'name'} />,
+    libraryName: <TextField source="libraryName" />,
     albumArtist: (
       <ArtistLinkField source="albumArtist" record={record} limit={Infinity} />
     ),
@@ -47,6 +49,20 @@ const AlbumInfo = (props) => {
         </SingleFieldList>
       </ArrayField>
     ),
+    date:
+      record?.maxYear && record.maxYear === record.minYear ? (
+        <TextField source={'date'} />
+      ) : (
+        <RangeField source={'year'} />
+      ),
+    originalDate:
+      record?.maxOriginalYear &&
+      record.maxOriginalYear === record.minOriginalYear ? (
+        <TextField source={'originalDate'} />
+      ) : (
+        <RangeField source={'originalYear'} />
+      ),
+    releaseDate: <TextField source={'releaseDate'} />,
     recordLabel: (
       <FunctionField
         source={'recordLabel'}
@@ -112,7 +128,7 @@ const AlbumInfo = (props) => {
                   className={classes.tableCell}
                 >
                   {translate(`resources.album.fields.${key}`, {
-                    _: inflection.humanize(inflection.underscore(key)),
+                    _: humanize(underscore(key)),
                   })}
                   :
                 </TableCell>

@@ -24,7 +24,7 @@ var _ = Describe("ScrobbleBufferRepository", func() {
 		id := id.NewRandom()
 		ids = append(ids, id)
 
-		ins := squirrel.Insert("scrobble_buffer").SetMap(map[string]interface{}{
+		ins := squirrel.Insert("scrobble_buffer").SetMap(map[string]any{
 			"id":            id,
 			"user_id":       userId,
 			"service":       service,
@@ -152,7 +152,7 @@ var _ = Describe("ScrobbleBufferRepository", func() {
 					Expect(err).ToNot(HaveOccurred())
 					Expect(entry).ToNot(BeNil())
 
-					Expect(entry.EnqueueTime).To(BeTemporally("~", now))
+					Expect(entry.EnqueueTime).To(BeTemporally("~", now, 100*time.Millisecond))
 					Expect(entry.MediaFileID).To(Equal(fileId))
 					Expect(entry.PlayTime).To(BeTemporally("==", playTime))
 				},

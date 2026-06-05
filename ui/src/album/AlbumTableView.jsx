@@ -6,6 +6,7 @@ import {
   DateField,
   NumberField,
   TextField,
+  FunctionField,
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
@@ -13,6 +14,7 @@ import { makeStyles } from '@material-ui/core/styles'
 import { useDrag } from 'react-dnd'
 import {
   ArtistLinkField,
+  CoverArtAvatar,
   DurationField,
   RangeField,
   SimpleList,
@@ -107,6 +109,13 @@ const AlbumTableView = ({
       year: (
         <RangeField source={'year'} sortBy={'max_year'} sortByOrder={'DESC'} />
       ),
+      mood: isDesktop && (
+        <FunctionField
+          source="mood"
+          render={(r) => r.tags?.mood?.[0] || ''}
+          sortable={false}
+        />
+      ),
       duration: isDesktop && <DurationField source="duration" />,
       size: isDesktop && <SizeField source="size" />,
       rating: config.enableStarRating && (
@@ -124,7 +133,7 @@ const AlbumTableView = ({
   const columns = useSelectedFields({
     resource: 'album',
     columns: toggleableFields,
-    defaultOff: ['createdAt'],
+    defaultOff: ['createdAt', 'size', 'mood'],
   })
 
   return isXsmall ? (
@@ -153,12 +162,18 @@ const AlbumTableView = ({
           &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
         </>
       )}
+      leftIcon={(r) => (
+        <span style={{ marginRight: '8px' }}>
+          <CoverArtAvatar record={r} variant="square" />
+        </span>
+      )}
       linkType={'show'}
       rightIcon={(r) => <AlbumContextMenu record={r} />}
       {...rest}
     />
   ) : (
     <AlbumDatagrid rowClick={'show'} classes={{ row: classes.row }} {...rest}>
+      <CoverArtAvatar source="id" variant="square" />
       <TextField source="name" />
       {columns}
       <AlbumContextMenu

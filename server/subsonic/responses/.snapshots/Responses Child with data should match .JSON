@@ -1,8 +1,8 @@
 {
   "status": "ok",
-  "version": "1.8.0",
+  "version": "1.16.1",
   "type": "navidrome",
-  "serverVersion": "v0.0.0",
+  "serverVersion": "v0.55.0",
   "openSubsonic": true,
   "directory": {
     "child": [
@@ -24,12 +24,15 @@
         "transcodedSuffix": "mp3",
         "duration": 146,
         "bitRate": 320,
-        "isVideo": false,
         "bpm": 127,
         "comment": "a comment",
         "sortName": "sorted title",
         "mediaType": "song",
         "musicBrainzId": "4321",
+        "isrc": [
+          "ISRC-1",
+          "ISRC-2"
+        ],
         "genres": [
           {
             "name": "rock"
@@ -107,7 +110,43 @@
           }
         ],
         "displayComposer": "composer 1 \u0026 composer 2",
-        "explicitStatus": "clean"
+        "explicitStatus": "clean",
+        "groupings": [
+          "Soundtrack",
+          "Live"
+        ]
+      },
+      {
+        "id": "",
+        "isDir": false,
+        "title": "",
+        "bpm": 0,
+        "comment": "",
+        "sortName": "",
+        "mediaType": "",
+        "musicBrainzId": "",
+        "isrc": [],
+        "genres": [],
+        "replayGain": {
+          "trackGain": 0,
+          "albumGain": 0,
+          "trackPeak": 0,
+          "albumPeak": 0,
+          "baseGain": 0,
+          "fallbackGain": 0
+        },
+        "channelCount": 0,
+        "samplingRate": 0,
+        "bitDepth": 0,
+        "moods": [],
+        "artists": [],
+        "displayArtist": "",
+        "albumArtists": [],
+        "displayAlbumArtist": "",
+        "contributors": [],
+        "displayComposer": "",
+        "explicitStatus": "",
+        "groupings": []
       }
     ],
     "id": "1",

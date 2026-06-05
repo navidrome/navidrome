@@ -6,11 +6,17 @@ import CardContent from '@material-ui/core/CardContent'
 import CardMedia from '@material-ui/core/CardMedia'
 import ArtistExternalLinks from './ArtistExternalLink'
 import config from '../config'
-import { LoveButton, RatingField } from '../common'
+import {
+  LoveButton,
+  RatingField,
+  ImageUploadOverlay,
+  useImageLoadingState,
+} from '../common'
 import Lightbox from 'react-image-lightbox'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 import AlbumInfo from '../album/AlbumInfo'
 import subsonic from '../subsonic'
+import { SafeHTML } from '../common/SafeHTML'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -29,6 +35,7 @@ const useStyles = makeStyles(
       float: 'left',
       wordBreak: 'break-word',
       cursor: 'pointer',
+      minHeight: '4.5em',
     },
     content: {
       flex: '1 0 auto',
@@ -38,12 +45,24 @@ const useStyles = makeStyles(
       height: '12rem',
       borderRadius: '6em',
       cursor: 'pointer',
+      backgroundColor: 'transparent',
+      transition: 'opacity 0.3s ease-in-out',
+      objectFit: 'cover',
+    },
+    coverLoading: {
+      opacity: 0.5,
     },
     artistImage: {
       maxHeight: '12rem',
+      minHeight: '12rem',
+      width: '12rem',
+      minWidth: '12rem',
       backgroundColor: 'inherit',
       display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
       boxShadow: 'none',
+      position: 'relative',
     },
     artistDetail: {
       flex: '1',
@@ -72,13 +91,15 @@ const DesktopArtistDetails = ({ artistInfo, record, biography }) => {
   const [expanded, setExpanded] = useState(false)
   const classes = useStyles()
   const title = record.name
-  const [isLightboxOpen, setLightboxOpen] = React.useState(false)
-
-  const handleOpenLightbox = React.useCallback(() => setLightboxOpen(true), [])
-  const handleCloseLightbox = React.useCallback(
-    () => setLightboxOpen(false),
-    [],
-  )
+  const {
+    imageLoading,
+    imageError,
+    isLightboxOpen,
+    handleImageLoad,
+    handleImageError,
+    handleOpenLightbox,
+    handleCloseLightbox,
+  } = useImageLoadingState(record.id)
 
   return (
     <div className={classes.root}>
@@ -86,12 +107,24 @@ const DesktopArtistDetails = ({ artistInfo, record, biography }) => {
         <Card className={classes.artistImage}>
           {artistInfo && (
             <CardMedia
-              className={classes.cover}
-              image={subsonic.getCoverArtUrl(record, 300)}
+              key={record.id}
+              component="img"
+              src={subsonic.getCoverArtUrl(record, config.uiCoverArtSize)}
+              className={`${classes.cover} ${imageLoading ? classes.coverLoading : ''}`}
               onClick={handleOpenLightbox}
+              onLoad={handleImageLoad}
+              onError={handleImageError}
               title={title}
+              style={{
+                cursor: imageError ? 'default' : 'pointer',
+              }}
             />
           )}
+          <ImageUploadOverlay
+            entityType="artist"
+            entityId={record.id}
+            hasUploadedImage={!!record.uploadedImage}
+          />
         </Card>
         <div className={classes.details}>
           <CardContent className={classes.content}>
@@ -130,7 +163,9 @@ const DesktopArtistDetails = ({ artistInfo, record, biography }) => {
                 variant={'body1'}
                 onClick={() => setExpanded(!expanded)}
               >
-                <span dangerouslySetInnerHTML={{ __html: biography }} />
+                <span>
+                  <SafeHTML>{biography}</SafeHTML>
+                </span>
               </Typography>
             </Collapse>
           </CardContent>
@@ -140,7 +175,7 @@ const DesktopArtistDetails = ({ artistInfo, record, biography }) => {
             )}
           </Typography>
         </div>
-        {isLightboxOpen && (
+        {isLightboxOpen && !imageError && (
           <Lightbox
             imagePadding={50}
             animationDuration={200}

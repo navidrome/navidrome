@@ -8,6 +8,8 @@ export const EXTENDED_INFO_OPEN = 'EXTENDED_INFO_OPEN'
 export const EXTENDED_INFO_CLOSE = 'EXTENDED_INFO_CLOSE'
 export const LISTENBRAINZ_TOKEN_OPEN = 'LISTENBRAINZ_TOKEN_OPEN'
 export const LISTENBRAINZ_TOKEN_CLOSE = 'LISTENBRAINZ_TOKEN_CLOSE'
+export const SAVE_QUEUE_OPEN = 'SAVE_QUEUE_OPEN'
+export const SAVE_QUEUE_CLOSE = 'SAVE_QUEUE_CLOSE'
 export const DOWNLOAD_MENU_ALBUM = 'album'
 export const DOWNLOAD_MENU_ARTIST = 'artist'
 export const DOWNLOAD_MENU_PLAY = 'playlist'
@@ -75,4 +77,12 @@ export const openListenBrainzTokenDialog = () => ({
 
 export const closeListenBrainzTokenDialog = () => ({
   type: LISTENBRAINZ_TOKEN_CLOSE,
+})
+
+export const openSaveQueueDialog = () => ({
+  type: SAVE_QUEUE_OPEN,
+})
+
+export const closeSaveQueueDialog = () => ({
+  type: SAVE_QUEUE_CLOSE,
 })

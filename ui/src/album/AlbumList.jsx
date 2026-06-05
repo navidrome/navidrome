@@ -10,6 +10,8 @@ import {
   ReferenceArrayInput,
   ReferenceInput,
   SearchInput,
+  useListContext,
+  usePermissions,
   useRefresh,
   useTranslate,
   useVersion,
@@ -18,7 +20,6 @@ import FavoriteIcon from '@material-ui/icons/Favorite'
 import { withWidth } from '@material-ui/core'
 import {
   List,
-  QuickFilter,
   Title,
   useAlbumsPerPage,
   useResourceRefresh,
@@ -31,7 +32,7 @@ import albumLists, { defaultAlbumList } from './albumLists'
 import config from '../config'
 import AlbumInfo from './AlbumInfo'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
-import inflection from 'inflection'
+import { humanize } from 'inflection'
 import { makeStyles } from '@material-ui/core/styles'
 
 const useStyles = makeStyles({
@@ -41,9 +42,14 @@ const useStyles = makeStyles({
   },
 })
 
+const formatReleaseType = (record) =>
+  record?.tagValue ? humanize(record?.tagValue) : '-- None --'
+
 const AlbumFilter = (props) => {
   const classes = useStyles()
   const translate = useTranslate()
+  const { permissions } = usePermissions()
+  const isAdmin = permissions === 'admin'
   return (
     <Filter {...props} variant={'outlined'}>
       <SearchInput id="search" source="name" alwaysOn />
@@ -139,22 +145,18 @@ const AlbumFilter = (props) => {
       >
         <AutocompleteInput
           emptyText="-- None --"
-          optionText={(record) =>
-            record?.tagValue
-              ? inflection.humanize(record?.tagValue)
-              : '-- None --'
-          }
+          optionText={formatReleaseType}
         />
       </ReferenceInput>
       <NullableBooleanInput source="compilation" />
       <NumberInput source="year" />
       {config.enableFavourites && (
-        <QuickFilter
+        <NullableBooleanInput
           source="starred"
           label={<FavoriteIcon fontSize={'small'} />}
-          defaultValue={true}
         />
       )}
+      {isAdmin && <NullableBooleanInput source="missing" />}
     </Filter>
   )
 }
@@ -169,6 +171,14 @@ const AlbumListTitle = ({ albumListType }) => {
     title = `${title} - ${listTitle}`
   }
   return <Title subTitle={title} args={{ smart_count: 2 }} />
+}
+
+const AlbumListPagination = ({ albumListType, ...rest }) => {
+  const { loading } = useListContext()
+  if (loading && albumListType === 'random') {
+    return null
+  }
+  return <Pagination {...rest} />
 }
 
 const randomStartingSeed = Math.random().toString()
@@ -198,6 +208,7 @@ const AlbumList = (props) => {
       'songCount',
       'playCount',
       'year',
+      'mood',
       'duration',
       'rating',
       'size',
@@ -230,7 +241,12 @@ const AlbumList = (props) => {
         actions={<AlbumListActions />}
         filters={<AlbumFilter />}
         perPage={perPage}
-        pagination={<Pagination rowsPerPageOptions={perPageOptions} />}
+        pagination={
+          <AlbumListPagination
+            rowsPerPageOptions={perPageOptions}
+            albumListType={albumListType}
+          />
+        }
         title={<AlbumListTitle albumListType={albumListType} />}
       >
         {albumView.grid ? (

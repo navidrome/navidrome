@@ -6,9 +6,10 @@ import { useTranslate, MenuItemLink, getResources } from 'react-admin'
 import ViewListIcon from '@material-ui/icons/ViewList'
 import AlbumIcon from '@material-ui/icons/Album'
 import SubMenu from './SubMenu'
-import inflection from 'inflection'
+import { humanize, pluralize } from 'inflection'
 import albumLists from '../album/albumLists'
 import PlaylistsSubMenu from './PlaylistsSubMenu'
+import LibrarySelector from '../common/LibrarySelector'
 import config from '../config'
 
 const useStyles = makeStyles((theme) => ({
@@ -42,7 +43,7 @@ const translatedResourceName = (resource, translate) =>
             smart_count: 2,
             _: resource.options.label,
           })
-        : inflection.humanize(inflection.pluralize(resource.name)),
+        : humanize(pluralize(resource.name)),
   })
 
 const Menu = ({ dense = false }) => {
@@ -111,6 +112,7 @@ const Menu = ({ dense = false }) => {
         [classes.closed]: !open,
       })}
     >
+      {open && <LibrarySelector />}
       <SubMenu
         handleToggle={() => handleToggle('menuAlbumList')}
         isOpen={state.menuAlbumList}

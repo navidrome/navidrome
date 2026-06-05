@@ -88,12 +88,18 @@ describe('AddToPlaylistDialog', () => {
 
     createTestUtils(mockDataProvider)
 
+    // Filter to see sample playlists
     let textBox = screen.getByRole('textbox')
     fireEvent.change(textBox, { target: { value: 'sample' } })
-    fireEvent.keyDown(textBox, { key: 'ArrowDown' })
-    fireEvent.keyDown(textBox, { key: 'Enter' })
-    fireEvent.keyDown(textBox, { key: 'ArrowDown' })
-    fireEvent.keyDown(textBox, { key: 'Enter' })
+
+    // Click on first playlist
+    const firstPlaylist = screen.getByText('sample playlist 1')
+    fireEvent.click(firstPlaylist)
+
+    // Click on second playlist
+    const secondPlaylist = screen.getByText('sample playlist 2')
+    fireEvent.click(secondPlaylist)
+
     await waitFor(() => {
       expect(screen.getByTestId('playlist-add')).not.toBeDisabled()
     })
@@ -133,12 +139,11 @@ describe('AddToPlaylistDialog', () => {
 
     createTestUtils(mockDataProvider)
 
+    // Type a new playlist name and press Enter to create it
     let textBox = screen.getByRole('textbox')
     fireEvent.change(textBox, { target: { value: 'sample' } })
-    fireEvent.keyDown(textBox, { key: 'ArrowDown' })
-    fireEvent.keyDown(textBox, { key: 'ArrowDown' })
-    fireEvent.keyDown(textBox, { key: 'ArrowDown' })
     fireEvent.keyDown(textBox, { key: 'Enter' })
+
     await waitFor(() => {
       expect(screen.getByTestId('playlist-add')).not.toBeDisabled()
     })
@@ -171,14 +176,15 @@ describe('AddToPlaylistDialog', () => {
 
     createTestUtils(mockDataProvider)
 
+    // Create first playlist
     let textBox = screen.getByRole('textbox')
     fireEvent.change(textBox, { target: { value: 'sample' } })
-    fireEvent.keyDown(textBox, { key: 'ArrowDown' })
-    fireEvent.keyDown(textBox, { key: 'ArrowDown' })
-    fireEvent.keyDown(textBox, { key: 'ArrowDown' })
     fireEvent.keyDown(textBox, { key: 'Enter' })
+
+    // Create second playlist
     fireEvent.change(textBox, { target: { value: 'new playlist' } })
     fireEvent.keyDown(textBox, { key: 'Enter' })
+
     await waitFor(() => {
       expect(screen.getByTestId('playlist-add')).not.toBeDisabled()
     })

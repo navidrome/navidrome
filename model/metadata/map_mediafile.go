@@ -1,14 +1,15 @@
 package metadata
 
 import (
+	"cmp"
 	"encoding/json"
 	"maps"
 	"math"
 	"strconv"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/utils/str"
 )
 
@@ -39,11 +40,9 @@ func (md Metadata) ToMediaFile(libID int, folderID string) model.MediaFile {
 	mf.ExplicitStatus = md.mapExplicitStatusTag()
 
 	// Dates
-	origDate := md.Date(model.TagOriginalDate)
+	date, origDate, relDate := md.mapDates()
 	mf.OriginalYear, mf.OriginalDate = origDate.Year(), string(origDate)
-	relDate := md.Date(model.TagReleaseDate)
 	mf.ReleaseYear, mf.ReleaseDate = relDate.Year(), string(relDate)
-	date := md.Date(model.TagRecordingDate)
 	mf.Year, mf.Date = date.Year(), string(date)
 
 	// MBIDs
@@ -51,11 +50,12 @@ func (md Metadata) ToMediaFile(libID int, folderID string) model.MediaFile {
 	mf.MbzReleaseTrackID = md.String(model.TagMusicBrainzTrackID)
 	mf.MbzAlbumID = md.String(model.TagMusicBrainzAlbumID)
 	mf.MbzReleaseGroupID = md.String(model.TagMusicBrainzReleaseGroupID)
+	mf.MbzAlbumType = md.String(model.TagReleaseType)
 
 	// ReplayGain
-	mf.RGAlbumPeak = md.Float(model.TagReplayGainAlbumPeak, 1)
+	mf.RGAlbumPeak = md.NullableFloat(model.TagReplayGainAlbumPeak)
 	mf.RGAlbumGain = md.mapGain(model.TagReplayGainAlbumGain, model.TagR128AlbumGain)
-	mf.RGTrackPeak = md.Float(model.TagReplayGainTrackPeak, 1)
+	mf.RGTrackPeak = md.NullableFloat(model.TagReplayGainTrackPeak)
 	mf.RGTrackGain = md.mapGain(model.TagReplayGainTrackGain, model.TagR128TrackGain)
 
 	// General properties
@@ -65,6 +65,7 @@ func (md Metadata) ToMediaFile(libID int, folderID string) model.MediaFile {
 	mf.SampleRate = md.AudioProperties().SampleRate
 	mf.BitDepth = md.AudioProperties().BitDepth
 	mf.Channels = md.AudioProperties().Channels
+	mf.Codec = md.AudioProperties().Codec
 	mf.Path = md.FilePath()
 	mf.Suffix = md.Suffix()
 	mf.Size = md.Size()
@@ -72,12 +73,12 @@ func (md Metadata) ToMediaFile(libID int, folderID string) model.MediaFile {
 	mf.UpdatedAt = md.ModTime()
 
 	mf.Participants = md.mapParticipants()
-	mf.Artist = md.mapDisplayArtist(mf)
+	mf.Artist = md.mapDisplayArtist()
 	mf.AlbumArtist = md.mapDisplayAlbumArtist(mf)
 
 	// Persistent IDs
 	mf.PID = md.trackPID(mf)
-	mf.AlbumID = md.albumID(mf)
+	mf.AlbumID = md.albumID(mf, conf.Server.PID.Album)
 
 	// BFR These IDs will go away once the UI handle multiple participants.
 	// BFR For Legacy Subsonic compatibility, we will set them in the API handlers
@@ -104,27 +105,27 @@ func (md Metadata) ToMediaFile(libID int, folderID string) model.MediaFile {
 }
 
 func (md Metadata) AlbumID(mf model.MediaFile, pidConf string) string {
-	getPID := createGetPID(id.NewHash)
-	return getPID(mf, md, pidConf)
+	return md.albumID(mf, pidConf)
 }
 
-func (md Metadata) mapGain(rg, r128 model.TagName) float64 {
+func (md Metadata) mapGain(rg, r128 model.TagName) *float64 {
 	v := md.Gain(rg)
-	if v != 0 {
+	if v != nil {
 		return v
 	}
 	r128value := md.String(r128)
 	if r128value != "" {
 		var v, err = strconv.Atoi(r128value)
 		if err != nil {
-			return 0
+			return nil
 		}
 		// Convert Q7.8 to float
-		var value = float64(v) / 256.0
+		value := float64(v) / 256.0
 		// Adding 5 dB to normalize with ReplayGain level
-		return value + 5
+		value += 5
+		return &value
 	}
-	return 0
+	return nil
 }
 
 func (md Metadata) mapLyrics() string {
@@ -163,4 +164,23 @@ func (md Metadata) mapExplicitStatusTag() string {
 	default:
 		return ""
 	}
+}
+
+func (md Metadata) mapDates() (date Date, originalDate Date, releaseDate Date) {
+	// Start with defaults
+	date = md.Date(model.TagRecordingDate)
+	originalDate = md.Date(model.TagOriginalDate)
+	releaseDate = md.Date(model.TagReleaseDate)
+
+	// For some historic reason, taggers have been writing the Release Date of an album to the Date tag,
+	// and leave the Release Date tag empty.
+	legacyMappings := (originalDate != "") &&
+		(releaseDate == "") &&
+		(date >= originalDate)
+	if legacyMappings {
+		return originalDate, originalDate, date
+	}
+	// when there's no Date, first fall back to Original Date, then to Release Date.
+	date = cmp.Or(date, originalDate, releaseDate)
+	return date, originalDate, releaseDate
 }

@@ -1,4 +1,4 @@
-import TransformIcon from '@material-ui/icons/Transform'
+import { MdTransform } from 'react-icons/md'
 import TranscodingList from './TranscodingList'
 import TranscodingEdit from './TranscodingEdit'
 import TranscodingCreate from './TranscodingCreate'
@@ -10,5 +10,5 @@ export default {
   edit: config.enableTranscodingConfig && TranscodingEdit,
   create: config.enableTranscodingConfig && TranscodingCreate,
   show: !config.enableTranscodingConfig && TranscodingShow,
-  icon: TransformIcon,
+  icon: MdTransform,
 }

@@ -1,12 +1,15 @@
 {
   "status": "ok",
-  "version": "1.8.0",
+  "version": "1.16.1",
   "type": "navidrome",
-  "serverVersion": "v0.0.0",
+  "serverVersion": "v0.55.0",
   "openSubsonic": true,
   "album": {
     "id": "",
     "name": "",
+    "songCount": 0,
+    "duration": 0,
+    "created": "0001-01-01T00:00:00Z",
     "userRating": 0,
     "genres": [],
     "musicBrainzId": "",

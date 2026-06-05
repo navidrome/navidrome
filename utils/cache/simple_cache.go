@@ -1,12 +1,14 @@
 package cache
 
 import (
+	"context"
 	"errors"
+	"fmt"
+	"runtime"
 	"sync/atomic"
 	"time"
 
 	"github.com/jellydator/ttlcache/v3"
-	. "github.com/navidrome/navidrome/utils/gg"
 )
 
 type SimpleCache[K comparable, V any] interface {
@@ -14,8 +16,11 @@ type SimpleCache[K comparable, V any] interface {
 	AddWithTTL(key K, value V, ttl time.Duration) error
 	Get(key K) (V, error)
 	GetWithLoader(key K, loader func(key K) (V, time.Duration, error)) (V, error)
+	Remove(key K)
 	Keys() []K
 	Values() []V
+	Len() int
+	OnExpiration(fn func(K, V)) func()
 }
 
 type Options struct {
@@ -38,9 +43,17 @@ func NewSimpleCache[K comparable, V any](options ...Options) SimpleCache[K, V] {
 	}
 
 	c := ttlcache.New[K, V](opts...)
-	return &simpleCache[K, V]{
+	cache := &simpleCache[K, V]{
 		data: c,
 	}
+	go cache.data.Start()
+
+	// Automatic cleanup to prevent goroutine leak when cache is garbage collected
+	runtime.AddCleanup(cache, func(ttlCache *ttlcache.Cache[K, V]) {
+		ttlCache.Stop()
+	}, cache.data)
+
+	return cache
 }
 
 const evictionTimeout = 1 * time.Hour
@@ -64,6 +77,10 @@ func (c *simpleCache[K, V]) AddWithTTL(key K, value V, ttl time.Duration) error 
 	return nil
 }
 
+func (c *simpleCache[K, V]) Remove(key K) {
+	c.data.Delete(key)
+}
+
 func (c *simpleCache[K, V]) Get(key K) (V, error) {
 	item := c.data.Get(key)
 	if item == nil {
@@ -74,10 +91,13 @@ func (c *simpleCache[K, V]) Get(key K) (V, error) {
 }
 
 func (c *simpleCache[K, V]) GetWithLoader(key K, loader func(key K) (V, time.Duration, error)) (V, error) {
+	var err error
 	loaderWrapper := ttlcache.LoaderFunc[K, V](
 		func(t *ttlcache.Cache[K, V], key K) *ttlcache.Item[K, V] {
 			c.evictExpired()
-			value, ttl, err := loader(key)
+			var value V
+			var ttl time.Duration
+			value, ttl, err = loader(key)
 			if err != nil {
 				return nil
 			}
@@ -87,6 +107,9 @@ func (c *simpleCache[K, V]) GetWithLoader(key K, loader func(key K) (V, time.Dur
 	item := c.data.Get(key, ttlcache.WithLoader[K, V](loaderWrapper))
 	if item == nil {
 		var zero V
+		if err != nil {
+			return zero, fmt.Errorf("cache error: loader returned %w", err)
+		}
 		return zero, errors.New("item not found")
 	}
 	return item.Value(), nil
@@ -95,7 +118,7 @@ func (c *simpleCache[K, V]) GetWithLoader(key K, loader func(key K) (V, time.Dur
 func (c *simpleCache[K, V]) evictExpired() {
 	if c.evictionDeadline.Load() == nil || c.evictionDeadline.Load().Before(time.Now()) {
 		c.data.DeleteExpired()
-		c.evictionDeadline.Store(P(time.Now().Add(evictionTimeout)))
+		c.evictionDeadline.Store(new(time.Now().Add(evictionTimeout)))
 	}
 }
 
@@ -119,4 +142,16 @@ func (c *simpleCache[K, V]) Values() []V {
 		return true
 	})
 	return res
+}
+
+func (c *simpleCache[K, V]) Len() int {
+	return c.data.Len()
+}
+
+func (c *simpleCache[K, V]) OnExpiration(fn func(K, V)) func() {
+	return c.data.OnEviction(func(_ context.Context, reason ttlcache.EvictionReason, item *ttlcache.Item[K, V]) {
+		if reason == ttlcache.EvictionReasonExpired {
+			fn(item.Key(), item.Value())
+		}
+	})
 }

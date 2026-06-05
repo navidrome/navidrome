@@ -1,6 +1,7 @@
 package model
 
 import (
+	"cmp"
 	"maps"
 	"regexp"
 	"slices"
@@ -33,29 +34,32 @@ type TagConf struct {
 	SplitRx   *regexp.Regexp `yaml:"-"`
 }
 
-// SplitTagValue splits a tag value by the split separators, but only if it has a single value.
+// SplitTagValue splits tag values by the configured split separators.
+// Each value in the input slice is individually split and trimmed.
 func (c TagConf) SplitTagValue(values []string) []string {
-	// If there's not exactly one value or no separators, return early.
-	if len(values) != 1 || c.SplitRx == nil {
+	if c.SplitRx == nil || len(values) == 0 {
 		return values
 	}
-	tag := values[0]
 
-	// Replace all occurrences of any separator with the zero-width space.
-	tag = c.SplitRx.ReplaceAllString(tag, consts.Zwsp)
+	var result []string
+	for _, tag := range values {
+		// Replace all occurrences of any separator with the zero-width space.
+		tag = c.SplitRx.ReplaceAllString(tag, consts.Zwsp)
 
-	// Split by the zero-width space and trim each substring.
-	parts := strings.Split(tag, consts.Zwsp)
-	for i, part := range parts {
-		parts[i] = strings.TrimSpace(part)
+		// Split by the zero-width space and trim each substring.
+		parts := strings.SplitSeq(tag, consts.Zwsp)
+		for part := range parts {
+			result = append(result, strings.TrimSpace(part))
+		}
 	}
-	return parts
+	return result
 }
 
 type TagType string
 
 const (
-	TagTypeInteger TagType = "integer"
+	TagTypeString  TagType = "string"
+	TagTypeInteger TagType = "int"
 	TagTypeFloat   TagType = "float"
 	TagTypeDate    TagType = "date"
 	TagTypeUUID    TagType = "uuid"
@@ -113,8 +117,9 @@ func collectTags(tagMappings, normalized map[TagName]TagConf) {
 			aliases = append(aliases, strings.ToLower(val))
 		}
 		if v.Split != nil {
-			if v.Type != "" {
-				log.Error("Tag splitting only available for string types", "tag", k, "split", v.Split, "type", v.Type)
+			if v.Type != "" && v.Type != TagTypeString {
+				log.Error("Tag splitting only available for string types", "tag", k, "split", v.Split,
+					"type", string(v.Type))
 				v.Split = nil
 			} else {
 				v.SplitRx = compileSplitRegex(k, v.Split)
@@ -136,7 +141,9 @@ func compileSplitRegex(tagName TagName, split []string) *regexp.Regexp {
 	}
 	// If no valid separators remain, return the original value.
 	if len(escaped) == 0 {
-		log.Warn("No valid separators found in split list", "split", split, "tag", tagName)
+		if len(split) > 0 {
+			log.Warn("No valid separators found in split list", "split", split, "tag", tagName)
+		}
 		return nil
 	}
 
@@ -144,7 +151,7 @@ func compileSplitRegex(tagName TagName, split []string) *regexp.Regexp {
 	pattern := "(?i)(" + strings.Join(escaped, "|") + ")"
 	re, err := regexp.Compile(pattern)
 	if err != nil {
-		log.Error("Error compiling regexp", "pattern", pattern, "tag", tagName, "err", err)
+		log.Warn("Error compiling regexp for split list", "pattern", pattern, "tag", tagName, "split", split, err)
 		return nil
 	}
 	return re
@@ -155,6 +162,17 @@ func tagNames() []string {
 	names := make([]string, 0, len(mappings))
 	for k := range mappings {
 		names = append(names, string(k))
+	}
+	return names
+}
+
+func numericTagNames() []string {
+	mappings := TagMappings()
+	names := make([]string, 0)
+	for k, cfg := range mappings {
+		if cfg.Type == TagTypeInteger || cfg.Type == TagTypeFloat {
+			names = append(names, string(k))
+		}
 	}
 	return names
 }
@@ -173,21 +191,42 @@ func loadTagMappings() {
 		log.Error("No tag mappings found in mappings.yaml, check the format")
 	}
 
+	// Use Scanner.GenreSeparators if specified and Tags.genre is not defined
+	if conf.Server.Scanner.GenreSeparators != "" && len(conf.Server.Tags["genre"].Aliases) == 0 {
+		genreConf := _mappings.Main[TagName("genre")]
+		genreConf.Split = strings.Split(conf.Server.Scanner.GenreSeparators, "")
+		genreConf.SplitRx = compileSplitRegex("genre", genreConf.Split)
+		_mappings.Main[TagName("genre")] = genreConf
+		log.Debug("Loading deprecated list of genre separators", "separators", genreConf.Split)
+	}
+
 	// Overwrite the default mappings with the ones from the config
 	for tag, cfg := range conf.Server.Tags {
-		if len(cfg.Aliases) == 0 {
+		if cfg.Ignore {
 			delete(_mappings.Main, TagName(tag))
 			delete(_mappings.Additional, TagName(tag))
 			continue
 		}
-		c := TagConf{
-			Aliases:   cfg.Aliases,
-			Type:      TagType(cfg.Type),
-			MaxLength: cfg.MaxLength,
-			Split:     cfg.Split,
-			Album:     cfg.Album,
-			SplitRx:   compileSplitRegex(TagName(tag), cfg.Split),
+		oldValue, ok := _mappings.Main[TagName(tag)]
+		if !ok {
+			oldValue = _mappings.Additional[TagName(tag)]
 		}
+		aliases := cfg.Aliases
+		if len(aliases) == 0 {
+			aliases = oldValue.Aliases
+		}
+		split := cfg.Split
+		if split == nil {
+			split = oldValue.Split
+		}
+		c := TagConf{
+			Aliases:   aliases,
+			Split:     split,
+			Type:      cmp.Or(TagType(cfg.Type), oldValue.Type),
+			MaxLength: cmp.Or(cfg.MaxLength, oldValue.MaxLength),
+			Album:     cmp.Or(cfg.Album, oldValue.Album),
+		}
+		c.SplitRx = compileSplitRegex(TagName(tag), c.Split)
 		if _, ok := _mappings.Main[TagName(tag)]; ok {
 			_mappings.Main[TagName(tag)] = c
 		} else {
@@ -204,5 +243,6 @@ func init() {
 		// used in smart playlists
 		criteria.AddRoles(slices.Collect(maps.Keys(AllRoles)))
 		criteria.AddTagNames(tagNames())
+		criteria.AddNumericTags(numericTagNames())
 	})
 }

@@ -1,8 +1,3 @@
-//go:build unix
-
-// TODO Fix snapshot tests in Windows
-// Response Snapshot tests. Only run in Linux and macOS, as they fail in Windows
-// Probably because of EOL char differences
 package responses_test
 
 import (
@@ -11,6 +6,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/server/subsonic/responses"
 	. "github.com/navidrome/navidrome/server/subsonic/responses"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -21,9 +17,9 @@ var _ = Describe("Responses", func() {
 	BeforeEach(func() {
 		response = &Subsonic{
 			Status:        StatusOK,
-			Version:       "1.8.0",
+			Version:       "1.16.1",
 			Type:          consts.AppName,
-			ServerVersion: "v0.0.0",
+			ServerVersion: "v0.55.0",
 			OpenSubsonic:  true,
 		}
 	})
@@ -97,13 +93,11 @@ var _ = Describe("Responses", func() {
 		Context("with data", func() {
 			BeforeEach(func() {
 				artists := make([]Artist, 1)
-				t := time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)
 				artists[0] = Artist{
 					Id:             "111",
 					Name:           "aaa",
-					Starred:        &t,
+					Starred:        new(time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)),
 					UserRating:     3,
-					AlbumCount:     2,
 					ArtistImageUrl: "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
 				}
 				index := make([]Index, 1)
@@ -137,11 +131,10 @@ var _ = Describe("Responses", func() {
 		Context("with data", func() {
 			BeforeEach(func() {
 				artists := make([]ArtistID3, 1)
-				t := time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)
 				artists[0] = ArtistID3{
 					Id:             "111",
 					Name:           "aaa",
-					Starred:        &t,
+					Starred:        new(time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)),
 					UserRating:     3,
 					AlbumCount:     2,
 					ArtistImageUrl: "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
@@ -162,11 +155,10 @@ var _ = Describe("Responses", func() {
 		Context("with OpenSubsonic data", func() {
 			BeforeEach(func() {
 				artists := make([]ArtistID3, 1)
-				t := time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)
 				artists[0] = ArtistID3{
 					Id:             "111",
 					Name:           "aaa",
-					Starred:        &t,
+					Starred:        new(time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)),
 					UserRating:     3,
 					AlbumCount:     2,
 					ArtistImageUrl: "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
@@ -214,20 +206,21 @@ var _ = Describe("Responses", func() {
 		Context("with data", func() {
 			BeforeEach(func() {
 				response.Directory = &Directory{Id: "1", Name: "N"}
-				child := make([]Child, 1)
-				t := time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)
+				child := make([]Child, 2)
 				child[0] = Child{
 					Id: "1", IsDir: true, Title: "title", Album: "album", Artist: "artist", Track: 1,
 					Year: 1985, Genre: "Rock", CoverArt: "1", Size: 8421341, ContentType: "audio/flac",
 					Suffix: "flac", TranscodedContentType: "audio/mpeg", TranscodedSuffix: "mp3",
-					Duration: 146, BitRate: 320, Starred: &t,
+					Duration: 146, BitRate: 320, Starred: new(time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)),
 				}
 				child[0].OpenSubsonicChild = &OpenSubsonicChild{
 					Genres:  []ItemGenre{{Name: "rock"}, {Name: "progressive"}},
 					Comment: "a comment", MediaType: MediaTypeSong, MusicBrainzId: "4321", SortName: "sorted title",
-					BPM: 127, ChannelCount: 2, SamplingRate: 44100, BitDepth: 16,
+					Isrc: []string{"ISRC-1", "ISRC-2"},
+					BPM:  127, ChannelCount: 2, SamplingRate: 44100, BitDepth: 16,
 					Moods:         []string{"happy", "sad"},
-					ReplayGain:    ReplayGain{TrackGain: 1, AlbumGain: 2, TrackPeak: 3, AlbumPeak: 4, BaseGain: 5, FallbackGain: 6},
+					Groupings:     []string{"Soundtrack", "Live"},
+					ReplayGain:    ReplayGain{TrackGain: new(1.0), AlbumGain: new(2.0), TrackPeak: new(3.0), AlbumPeak: new(4.0), BaseGain: new(5.0), FallbackGain: new(6.0)},
 					DisplayArtist: "artist 1 & artist 2",
 					Artists: []ArtistID3Ref{
 						{Id: "1", Name: "artist1"},
@@ -246,6 +239,9 @@ var _ = Describe("Responses", func() {
 						{Role: "composer", Artist: ArtistID3Ref{Id: "4", Name: "composer2"}},
 					},
 					ExplicitStatus: "clean",
+				}
+				child[1].OpenSubsonicChild = &OpenSubsonicChild{
+					ReplayGain: ReplayGain{TrackGain: new(0.0), AlbumGain: new(0.0), TrackPeak: new(0.0), AlbumPeak: new(0.0), BaseGain: new(0.0), FallbackGain: new(0.0)},
 				}
 				response.Directory.Child = child
 			})
@@ -283,7 +279,7 @@ var _ = Describe("Responses", func() {
 		Context("with data", func() {
 			BeforeEach(func() {
 				album := AlbumID3{
-					Id: "1", Name: "album", Artist: "artist", Genre: "rock",
+					Id: "1", Name: "album", Artist: "artist", Duration: 292, Genre: "rock",
 				}
 				album.OpenSubsonicAlbumID3 = &OpenSubsonicAlbumID3{
 					Genres:        []ItemGenre{{Name: "rock"}, {Name: "progressive"}},
@@ -309,12 +305,19 @@ var _ = Describe("Responses", func() {
 					Year: 1985, Genre: "Rock", CoverArt: "1", Size: 8421341, ContentType: "audio/flac",
 					Suffix: "flac", TranscodedContentType: "audio/mpeg", TranscodedSuffix: "mp3",
 					Duration: 146, BitRate: 320, Starred: &t,
+				}, {
+					Id: "2", IsDir: true, Title: "title", Album: "album", Artist: "artist", Track: 1,
+					Year: 1985, Genre: "Rock", CoverArt: "1", Size: 8421341, ContentType: "audio/flac",
+					Suffix: "flac", TranscodedContentType: "audio/mpeg", TranscodedSuffix: "mp3",
+					Duration: 146, BitRate: 320, Starred: &t,
 				}}
 				songs[0].OpenSubsonicChild = &OpenSubsonicChild{
 					Genres:  []ItemGenre{{Name: "rock"}, {Name: "progressive"}},
 					Comment: "a comment", MediaType: MediaTypeSong, MusicBrainzId: "4321", SortName: "sorted song",
+					Isrc:       []string{"ISRC-1"},
 					Moods:      []string{"happy", "sad"},
-					ReplayGain: ReplayGain{TrackGain: 1, AlbumGain: 2, TrackPeak: 3, AlbumPeak: 4, BaseGain: 5, FallbackGain: 6},
+					Groupings:  []string{"Soundtrack", "Live"},
+					ReplayGain: ReplayGain{TrackGain: new(1.0), AlbumGain: new(2.0), TrackPeak: new(3.0), AlbumPeak: new(4.0), BaseGain: new(5.0), FallbackGain: new(6.0)},
 					BPM:        127, ChannelCount: 2, SamplingRate: 44100, BitDepth: 16,
 					DisplayArtist: "artist1 & artist2",
 					Artists: []ArtistID3Ref{
@@ -332,6 +335,9 @@ var _ = Describe("Responses", func() {
 					},
 					DisplayComposer: "composer 1 & composer 2",
 					ExplicitStatus:  "clean",
+				}
+				songs[1].OpenSubsonicChild = &OpenSubsonicChild{
+					ReplayGain: ReplayGain{TrackGain: new(0.0), AlbumGain: new(0.0), TrackPeak: new(0.0), AlbumPeak: new(0.0), BaseGain: new(0.0), FallbackGain: new(0.0)},
 				}
 				response.AlbumWithSongsID3.AlbumID3 = album
 				response.AlbumWithSongsID3.Song = songs
@@ -415,6 +421,7 @@ var _ = Describe("Responses", func() {
 						ItemGenre{Name: "Genre 2"},
 					},
 					Moods:         []string{"mood1", "mood2"},
+					Groupings:     []string{"Soundtrack"},
 					DisplayArtist: "Display artist",
 					Artists: Array[ArtistID3Ref]{
 						ArtistID3Ref{Id: "artist-1", Name: "Artist 1"},
@@ -518,9 +525,9 @@ var _ = Describe("Responses", func() {
 		})
 
 		Context("with data", func() {
-			timestamp, _ := time.Parse(time.RFC3339, "2020-04-11T16:43:00Z04:00")
+			timestamp := time.Date(2023, 2, 20, 14, 45, 0, 0, time.UTC)
 			BeforeEach(func() {
-				pls := make([]Playlist, 2)
+				pls := make([]Playlist, 3)
 				pls[0] = Playlist{
 					Id:        "111",
 					Name:      "aaa",
@@ -532,8 +539,13 @@ var _ = Describe("Responses", func() {
 					CoverArt:  "pl-123123123123",
 					Created:   timestamp,
 					Changed:   timestamp,
+					OpenSubsonicPlaylist: &responses.OpenSubsonicPlaylist{
+						Readonly:   true,
+						ValidUntil: &timestamp,
+					},
 				}
-				pls[1] = Playlist{Id: "222", Name: "bbb"}
+				pls[1] = Playlist{Id: "333", Name: "ccc", OpenSubsonicPlaylist: &responses.OpenSubsonicPlaylist{}}
+				pls[2] = Playlist{Id: "222", Name: "bbb"}
 				response.Playlists.Playlist = pls
 			})
 
@@ -755,11 +767,45 @@ var _ = Describe("Responses", func() {
 				response.PlayQueue.Username = "user1"
 				response.PlayQueue.Current = "111"
 				response.PlayQueue.Position = 243
-				response.PlayQueue.Changed = &time.Time{}
+				response.PlayQueue.Changed = time.Time{}
 				response.PlayQueue.ChangedBy = "a_client"
 				child := make([]Child, 1)
 				child[0] = Child{Id: "1", Title: "title", IsDir: false}
 				response.PlayQueue.Entry = child
+			})
+			It("should match .XML", func() {
+				Expect(xml.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+		})
+	})
+
+	Describe("PlayQueueByIndex", func() {
+		BeforeEach(func() {
+			response.PlayQueueByIndex = &PlayQueueByIndex{}
+		})
+
+		Context("without data", func() {
+			It("should match .XML", func() {
+				Expect(xml.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+		})
+
+		Context("with data", func() {
+			BeforeEach(func() {
+				response.PlayQueueByIndex.Username = "user1"
+				response.PlayQueueByIndex.CurrentIndex = new(0)
+				response.PlayQueueByIndex.Position = 243
+				response.PlayQueueByIndex.Changed = time.Time{}
+				response.PlayQueueByIndex.ChangedBy = "a_client"
+				child := make([]Child, 1)
+				child[0] = Child{Id: "1", Title: "title", IsDir: false}
+				response.PlayQueueByIndex.Entry = child
 			})
 			It("should match .XML", func() {
 				Expect(xml.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
@@ -1052,6 +1098,71 @@ var _ = Describe("Responses", func() {
 				}
 			})
 
+			It("should match .XML", func() {
+				Expect(xml.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+		})
+	})
+
+	Describe("NowPlaying", func() {
+		BeforeEach(func() {
+			response.NowPlaying = &NowPlaying{}
+		})
+
+		Describe("without data", func() {
+			It("should match .XML", func() {
+				Expect(xml.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+		})
+
+		Describe("with data", func() {
+			BeforeEach(func() {
+				response.NowPlaying.Entry = []NowPlayingEntry{{
+					Child:        Child{Id: "1", Title: "Song", IsDir: false},
+					UserName:     "testuser",
+					MinutesAgo:   2,
+					PlayerId:     1,
+					PlayerName:   "TestPlayer",
+					State:        "playing",
+					PositionMs:   120000,
+					PlaybackRate: 1.5,
+				}}
+			})
+			It("should match .XML", func() {
+				Expect(xml.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+		})
+	})
+
+	Describe("SonicMatches", func() {
+		Context("without data", func() {
+			BeforeEach(func() {
+				response.SonicMatches = &Array[SonicMatch]{}
+			})
+			It("should match .XML", func() {
+				Expect(xml.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+		})
+
+		Context("with data", func() {
+			BeforeEach(func() {
+				response.SonicMatches = &Array[SonicMatch]{
+					{Entry: Child{Id: "1", Title: "Bohemian Rhapsody", IsDir: false}, Similarity: 0.95},
+					{Entry: Child{Id: "2", Title: "We Will Rock You", IsDir: false}, Similarity: 0.78},
+				}
+			})
 			It("should match .XML", func() {
 				Expect(xml.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
 			})

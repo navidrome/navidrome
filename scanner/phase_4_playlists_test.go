@@ -9,8 +9,8 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
-	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
+	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
@@ -97,9 +97,9 @@ var _ = Describe("phasePlaylists", func() {
 			_ = os.WriteFile(file1, []byte{}, 0600)
 			_ = os.WriteFile(file2, []byte{}, 0600)
 
-			pls.On("ImportFile", mock.Anything, folder, "playlist1.m3u").
+			pls.On("ImportFromFolder", mock.Anything, folder, "playlist1.m3u").
 				Return(&model.Playlist{}, nil)
-			pls.On("ImportFile", mock.Anything, folder, "playlist2.m3u").
+			pls.On("ImportFromFolder", mock.Anything, folder, "playlist2.m3u").
 				Return(&model.Playlist{}, nil)
 
 			_, err := phase.processPlaylistsInFolder(folder)
@@ -111,6 +111,7 @@ var _ = Describe("phasePlaylists", func() {
 		})
 
 		It("reports an error if there is an error reading files", func() {
+			tests.SkipOnWindows("relies on Unix /etc filesystem")
 			progress := make(chan *ProgressInfo)
 			state.progress = progress
 			folder := &model.Folder{Path: "/invalid/path"}
@@ -130,10 +131,10 @@ var _ = Describe("phasePlaylists", func() {
 
 type mockPlaylists struct {
 	mock.Mock
-	core.Playlists
+	playlists.Playlists
 }
 
-func (p *mockPlaylists) ImportFile(ctx context.Context, folder *model.Folder, filename string) (*model.Playlist, error) {
+func (p *mockPlaylists) ImportFromFolder(ctx context.Context, folder *model.Folder, filename string) (*model.Playlist, error) {
 	args := p.Called(ctx, folder, filename)
 	return args.Get(0).(*model.Playlist), args.Error(1)
 }

@@ -3,6 +3,7 @@ import { useMediaQuery } from '@material-ui/core'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
 import { QualityInfo } from '../common'
+import { decisionService } from '../transcode'
 import useStyle from './styles'
 import { useDrag } from 'react-dnd'
 import { DraggableTypes } from '../consts'
@@ -35,19 +36,25 @@ const AudioTitle = React.memo(({ audioInfo, gainInfo, isMobile }) => {
     rgTrackPeak: song.rgTrackPeak,
   }
 
+  const decision = decisionService.getCachedDecision(audioInfo.trackId)
+  const transcodeProps = decision
+    ? {
+        transcodeStream: decision.transcodeStream || null,
+        isDirectPlay: decision.canDirectPlay,
+      }
+    : {}
+
   const subtitle = song.tags?.['subtitle']
   const title = song.title + (subtitle ? ` (${subtitle})` : '')
 
+  const linkTo = audioInfo.isRadio
+    ? `/radio/${audioInfo.trackId}/show`
+    : song.playlistId
+      ? `/playlist/${song.playlistId}/show`
+      : `/album/${song.albumId}/show`
+
   return (
-    <Link
-      to={
-        audioInfo.isRadio
-          ? `/radio/${audioInfo.trackId}/show`
-          : `/album/${song.albumId}/show`
-      }
-      className={className}
-      ref={dragSongRef}
-    >
+    <Link to={linkTo} className={className} ref={dragSongRef}>
       <span>
         <span className={clsx(classes.songTitle, 'songTitle')}>{title}</span>
         {isDesktop && (
@@ -55,6 +62,7 @@ const AudioTitle = React.memo(({ audioInfo, gainInfo, isMobile }) => {
             record={qi}
             className={classes.qualityInfo}
             {...gainInfo}
+            {...transcodeProps}
           />
         )}
       </span>

@@ -1,0 +1,18 @@
+[package]
+name = "nd-pdk"
+version = "0.1.0"
+edition = "2021"
+description = "Navidrome Plugin Development Kit for Rust"
+authors = ["Navidrome Team"]
+license = "GPL-3.0"
+readme = "../README.md"
+
+[lib]
+crate-type = ["rlib"]
+
+[dependencies]
+nd-pdk-host = { path = "../nd-pdk-host" }
+nd-pdk-capabilities = { path = "../nd-pdk-capabilities" }
+extism-pdk = "1.2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"

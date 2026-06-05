@@ -54,6 +54,9 @@ type FileCache interface {
 
 	// Available checks if the cache is available
 	Available(ctx context.Context) bool
+
+	// Disabled reports if the cache has been permanently disabled
+	Disabled(ctx context.Context) bool
 }
 
 // NewFileCache creates a new FileCache. This function initializes the cache and starts it in the background.
@@ -117,6 +120,13 @@ func (fc *fileCache) Available(_ context.Context) bool {
 	defer fc.mutex.RUnlock()
 
 	return fc.ready.Load() && !fc.disabled
+}
+
+func (fc *fileCache) Disabled(_ context.Context) bool {
+	fc.mutex.RLock()
+	defer fc.mutex.RUnlock()
+
+	return fc.disabled
 }
 
 func (fc *fileCache) invalidate(ctx context.Context, key string) error {
@@ -252,7 +262,7 @@ func newFSCache(name, cacheSize, cacheFolder string, maxItems int) (fscache.Cach
 
 	lru := NewFileHaunter(name, maxItems, size, consts.DefaultCacheCleanUpInterval)
 	h := fscache.NewLRUHaunterStrategy(lru)
-	cacheFolder = filepath.Join(conf.Server.CacheFolder, cacheFolder)
+	cacheFolder = filepath.Join(conf.Server.CacheFolder.MustPath(), cacheFolder)
 
 	var fs *spreadFS
 	log.Info(fmt.Sprintf("Creating %s cache", name), "path", cacheFolder, "maxSize", humanize.Bytes(size))

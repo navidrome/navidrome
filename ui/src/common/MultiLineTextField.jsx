@@ -28,19 +28,7 @@ export const MultiLineTextField = memo(
         component="span"
         {...sanitizeFieldRestProps(rest)}
       >
-        {lines.length === 0 && emptyText
-          ? emptyText
-          : lines.map((line, idx) =>
-              line === '' ? (
-                <br key={md5(line + idx)} />
-              ) : (
-                <div
-                  data-testid={`${source}.${idx}`}
-                  key={md5(line + idx)}
-                  dangerouslySetInnerHTML={{ __html: line }}
-                />
-              ),
-            )}
+        {lines.length === 0 && emptyText ? emptyText : lines}
       </Typography>
     )
   },

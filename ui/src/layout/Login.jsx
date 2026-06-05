@@ -141,6 +141,8 @@ const FormLogin = ({ loading, handleSubmit, validate }) => {
               {config.welcomeMessage && (
                 <div
                   className={classes.welcome}
+                  // Use dangerouslySetInnerHTML to allow admins to configure
+                  // whatever content they want
                   dangerouslySetInnerHTML={{ __html: config.welcomeMessage }}
                 />
               )}

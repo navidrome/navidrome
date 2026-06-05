@@ -6,6 +6,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	. "github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -22,7 +23,7 @@ var _ = Describe("MediaFiles", func() {
 						SortAlbumName: "SortAlbumName", SortArtistName: "SortArtistName", SortAlbumArtistName: "SortAlbumArtistName",
 						OrderAlbumName: "OrderAlbumName", OrderAlbumArtistName: "OrderAlbumArtistName",
 						MbzAlbumArtistID: "MbzAlbumArtistID", MbzAlbumType: "MbzAlbumType", MbzAlbumComment: "MbzAlbumComment",
-						MbzReleaseGroupID: "MbzReleaseGroupID", Compilation: false, CatalogNum: "", Path: "/music1/file1.mp3", FolderID: "Folder1",
+						MbzReleaseGroupID: "MbzReleaseGroupID", Compilation: false, CatalogNum: "", Path: "music1/file1.mp3", FolderID: "Folder1",
 					},
 					{
 						ID: "2", Album: "Album", ArtistID: "ArtistID", Artist: "Artist", AlbumArtistID: "AlbumArtistID", AlbumArtist: "AlbumArtist", AlbumID: "AlbumID",
@@ -30,7 +31,7 @@ var _ = Describe("MediaFiles", func() {
 						OrderAlbumName: "OrderAlbumName", OrderArtistName: "OrderArtistName", OrderAlbumArtistName: "OrderAlbumArtistName",
 						MbzAlbumArtistID: "MbzAlbumArtistID", MbzAlbumType: "MbzAlbumType", MbzAlbumComment: "MbzAlbumComment",
 						MbzReleaseGroupID: "MbzReleaseGroupID",
-						Compilation:       true, CatalogNum: "CatalogNum", HasCoverArt: true, Path: "/music2/file2.mp3", FolderID: "Folder2",
+						Compilation:       true, CatalogNum: "CatalogNum", HasCoverArt: true, Path: "music2/file2.mp3", FolderID: "Folder2",
 					},
 				}
 			})
@@ -51,7 +52,7 @@ var _ = Describe("MediaFiles", func() {
 				Expect(album.MbzReleaseGroupID).To(Equal("MbzReleaseGroupID"))
 				Expect(album.CatalogNum).To(Equal("CatalogNum"))
 				Expect(album.Compilation).To(BeTrue())
-				Expect(album.EmbedArtPath).To(Equal("/music2/file2.mp3"))
+				Expect(album.EmbedArtPath).To(Equal("music2/file2.mp3"))
 				Expect(album.FolderIDs).To(ConsistOf("Folder1", "Folder2"))
 			})
 		})
@@ -117,6 +118,20 @@ var _ = Describe("MediaFiles", func() {
 						mfs = MediaFiles{{Year: 2000}, {Year: 0}, {Year: 1999}}
 						a := mfs.ToAlbum()
 						Expect(a.MinYear).To(Equal(1999))
+					})
+				})
+				Context("CreatedAt aggregation", func() {
+					It("ignores zero BirthTime values when computing the oldest", func() {
+						mfs = MediaFiles{
+							{BirthTime: t("2022-12-19 08:30")},
+							{BirthTime: time.Time{}},
+							{BirthTime: t("2022-12-18 10:00")},
+						}
+						Expect(mfs.ToAlbum().CreatedAt).To(Equal(t("2022-12-18 10:00")))
+					})
+					It("returns zero when all BirthTime values are zero", func() {
+						mfs = MediaFiles{{BirthTime: time.Time{}}, {BirthTime: time.Time{}}}
+						Expect(mfs.ToAlbum().CreatedAt).To(BeZero())
 					})
 				})
 			})
@@ -305,6 +320,171 @@ var _ = Describe("MediaFiles", func() {
 					})
 				})
 			})
+			Context("Album Art", func() {
+				When("we have media files with cover art from multiple discs", func() {
+					BeforeEach(func() {
+						mfs = MediaFiles{
+							{
+								Path:        "Artist/Album/Disc2/01.mp3",
+								HasCoverArt: true,
+								DiscNumber:  2,
+							},
+							{
+								Path:        "Artist/Album/Disc1/01.mp3",
+								HasCoverArt: true,
+								DiscNumber:  1,
+							},
+							{
+								Path:        "Artist/Album/Disc3/01.mp3",
+								HasCoverArt: true,
+								DiscNumber:  3,
+							},
+						}
+					})
+					It("selects the cover art from the lowest disc number", func() {
+						album := mfs.ToAlbum()
+						Expect(album.EmbedArtPath).To(Equal("Artist/Album/Disc1/01.mp3"))
+					})
+				})
+
+				When("we have media files with cover art from the same disc number", func() {
+					BeforeEach(func() {
+						mfs = MediaFiles{
+							{
+								Path:        "Artist/Album/Disc1/02.mp3",
+								HasCoverArt: true,
+								DiscNumber:  1,
+							},
+							{
+								Path:        "Artist/Album/Disc1/01.mp3",
+								HasCoverArt: true,
+								DiscNumber:  1,
+							},
+						}
+					})
+					It("selects the cover art with the lowest path alphabetically", func() {
+						album := mfs.ToAlbum()
+						Expect(album.EmbedArtPath).To(Equal("Artist/Album/Disc1/01.mp3"))
+					})
+				})
+
+				When("we have media files with some missing cover art", func() {
+					BeforeEach(func() {
+						mfs = MediaFiles{
+							{
+								Path:        "Artist/Album/Disc1/01.mp3",
+								HasCoverArt: false,
+								DiscNumber:  1,
+							},
+							{
+								Path:        "Artist/Album/Disc2/01.mp3",
+								HasCoverArt: true,
+								DiscNumber:  2,
+							},
+						}
+					})
+					It("selects the file with cover art even if from a higher disc number", func() {
+						album := mfs.ToAlbum()
+						Expect(album.EmbedArtPath).To(Equal("Artist/Album/Disc2/01.mp3"))
+					})
+				})
+
+				When("we have media files with path names that don't correlate with disc numbers", func() {
+					BeforeEach(func() {
+						mfs = MediaFiles{
+							{
+								Path:        "Artist/Album/file-z.mp3", // Path would be sorted last alphabetically
+								HasCoverArt: true,
+								DiscNumber:  1, // But it has lowest disc number
+							},
+							{
+								Path:        "Artist/Album/file-a.mp3", // Path would be sorted first alphabetically
+								HasCoverArt: true,
+								DiscNumber:  2, // But it has higher disc number
+							},
+							{
+								Path:        "Artist/Album/file-m.mp3",
+								HasCoverArt: true,
+								DiscNumber:  3,
+							},
+						}
+					})
+					It("selects the cover art from the lowest disc number regardless of path", func() {
+						album := mfs.ToAlbum()
+						Expect(album.EmbedArtPath).To(Equal("Artist/Album/file-z.mp3"))
+					})
+				})
+			})
+		})
+	})
+
+	Describe("ToM3U8", func() {
+		It("returns header only for empty MediaFiles", func() {
+			mfs = MediaFiles{}
+			result := mfs.ToM3U8("My Playlist", false)
+			Expect(result).To(Equal("#EXTM3U\n#PLAYLIST:My Playlist\n"))
+		})
+
+		DescribeTable("duration formatting",
+			func(duration float32, expected string) {
+				mfs = MediaFiles{{Title: "Song", Artist: "Artist", Duration: duration, Path: "song.mp3"}}
+				result := mfs.ToM3U8("Test", false)
+				Expect(result).To(ContainSubstring(expected))
+			},
+			Entry("zero duration", float32(0.0), "#EXTINF:0,"),
+			Entry("whole number", float32(120.0), "#EXTINF:120,"),
+			Entry("rounds 0.5 down", float32(180.5), "#EXTINF:180,"),
+			Entry("rounds 0.6 up", float32(240.6), "#EXTINF:241,"),
+		)
+
+		Context("multiple tracks", func() {
+			BeforeEach(func() {
+				mfs = MediaFiles{
+					{Title: "Song One", Artist: "Artist A", Duration: 120, Path: "a/song1.mp3", LibraryPath: "/music"},
+					{Title: "Song Two", Artist: "Artist B", Duration: 241, Path: "b/song2.mp3", LibraryPath: "/music"},
+					{Title: "Song with \"quotes\" & ampersands", Artist: "Artist with Ümläuts", Duration: 90, Path: "special/file.mp3", LibraryPath: "/música"},
+				}
+			})
+
+			DescribeTable("generates correct output",
+				func(absolutePaths bool, expectedContent string) {
+					if absolutePaths {
+						tests.SkipOnWindows("path separator bug (#TBD-path-sep-model)")
+					}
+					result := mfs.ToM3U8("Multi Track", absolutePaths)
+					Expect(result).To(Equal(expectedContent))
+				},
+				Entry("relative paths",
+					false,
+					"#EXTM3U\n#PLAYLIST:Multi Track\n#EXTINF:120,Artist A - Song One\na/song1.mp3\n#EXTINF:241,Artist B - Song Two\nb/song2.mp3\n#EXTINF:90,Artist with Ümläuts - Song with \"quotes\" & ampersands\nspecial/file.mp3\n",
+				),
+				Entry("absolute paths",
+					true,
+					"#EXTM3U\n#PLAYLIST:Multi Track\n#EXTINF:120,Artist A - Song One\n/music/a/song1.mp3\n#EXTINF:241,Artist B - Song Two\n/music/b/song2.mp3\n#EXTINF:90,Artist with Ümläuts - Song with \"quotes\" & ampersands\n/música/special/file.mp3\n",
+				),
+				Entry("special characters",
+					false,
+					"#EXTM3U\n#PLAYLIST:Multi Track\n#EXTINF:120,Artist A - Song One\na/song1.mp3\n#EXTINF:241,Artist B - Song Two\nb/song2.mp3\n#EXTINF:90,Artist with Ümläuts - Song with \"quotes\" & ampersands\nspecial/file.mp3\n",
+				),
+			)
+		})
+
+		Context("path variations", func() {
+			It("handles different path structures", func() {
+				tests.SkipOnWindows("path separator bug (#TBD-path-sep-model)")
+				mfs = MediaFiles{
+					{Title: "Root", Artist: "Artist", Duration: 60, Path: "song.mp3", LibraryPath: "/lib"},
+					{Title: "Nested", Artist: "Artist", Duration: 60, Path: "deep/nested/song.mp3", LibraryPath: "/lib"},
+				}
+
+				relativeResult := mfs.ToM3U8("Test", false)
+				Expect(relativeResult).To(ContainSubstring("song.mp3\n"))
+				Expect(relativeResult).To(ContainSubstring("deep/nested/song.mp3\n"))
+
+				absoluteResult := mfs.ToM3U8("Test", true)
+				Expect(absoluteResult).To(ContainSubstring("/lib/song.mp3\n"))
+				Expect(absoluteResult).To(ContainSubstring("/lib/deep/nested/song.mp3\n"))
+			})
 		})
 	})
 })
@@ -314,20 +494,55 @@ var _ = Describe("MediaFile", func() {
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.EnableMediaFileCoverArt = true
 	})
-	Describe(".CoverArtId()", func() {
+	DescribeTable("FullTitle",
+		func(enabled bool, tags Tags, expected string) {
+			conf.Server.Subsonic.AppendSubtitle = enabled
+			mf := MediaFile{Title: "Song", Tags: tags}
+			Expect(mf.FullTitle()).To(Equal(expected))
+		},
+		Entry("appends subtitle when enabled and tag is present", true, Tags{TagSubtitle: []string{"Live"}}, "Song (Live)"),
+		Entry("returns just title when disabled", false, Tags{TagSubtitle: []string{"Live"}}, "Song"),
+		Entry("returns just title when tag is absent", true, Tags{}, "Song"),
+		Entry("returns just title when tag is an empty slice", true, Tags{TagSubtitle: []string{}}, "Song"),
+	)
+	DescribeTable("FullAlbumName",
+		func(enabled bool, tags Tags, expected string) {
+			conf.Server.Subsonic.AppendAlbumVersion = enabled
+			mf := MediaFile{Album: "Album", Tags: tags}
+			Expect(mf.FullAlbumName()).To(Equal(expected))
+		},
+		Entry("appends version when enabled and tag is present", true, Tags{TagAlbumVersion: []string{"Deluxe Edition"}}, "Album (Deluxe Edition)"),
+		Entry("returns just album name when disabled", false, Tags{TagAlbumVersion: []string{"Deluxe Edition"}}, "Album"),
+		Entry("returns just album name when tag is absent", true, Tags{}, "Album"),
+		Entry("returns just album name when tag is an empty slice", true, Tags{TagAlbumVersion: []string{}}, "Album"),
+	)
+	Describe("CoverArtId", func() {
 		It("returns its own id if it HasCoverArt", func() {
 			mf := MediaFile{ID: "111", AlbumID: "1", HasCoverArt: true}
 			id := mf.CoverArtID()
 			Expect(id.Kind).To(Equal(KindMediaFileArtwork))
 			Expect(id.ID).To(Equal(mf.ID))
 		})
-		It("returns its album id if HasCoverArt is false", func() {
+		It("returns disc art id if HasCoverArt is false and DiscNumber > 0", func() {
+			mf := MediaFile{ID: "111", AlbumID: "1", HasCoverArt: false, DiscNumber: 2}
+			id := mf.CoverArtID()
+			Expect(id.Kind).To(Equal(KindDiscArtwork))
+			Expect(id.ID).To(Equal("1:2"))
+		})
+		It("returns its album id if HasCoverArt is false and DiscNumber is 0", func() {
 			mf := MediaFile{ID: "111", AlbumID: "1", HasCoverArt: false}
 			id := mf.CoverArtID()
 			Expect(id.Kind).To(Equal(KindAlbumArtwork))
 			Expect(id.ID).To(Equal(mf.AlbumID))
 		})
-		It("returns its album id if EnableMediaFileCoverArt is disabled", func() {
+		It("returns disc art id if EnableMediaFileCoverArt is disabled and DiscNumber > 0", func() {
+			conf.Server.EnableMediaFileCoverArt = false
+			mf := MediaFile{ID: "111", AlbumID: "1", HasCoverArt: true, DiscNumber: 3}
+			id := mf.CoverArtID()
+			Expect(id.Kind).To(Equal(KindDiscArtwork))
+			Expect(id.ID).To(Equal("1:3"))
+		})
+		It("returns its album id if EnableMediaFileCoverArt is disabled and DiscNumber is 0", func() {
 			conf.Server.EnableMediaFileCoverArt = false
 			mf := MediaFile{ID: "111", AlbumID: "1", HasCoverArt: true}
 			id := mf.CoverArtID()
@@ -335,6 +550,58 @@ var _ = Describe("MediaFile", func() {
 			Expect(id.ID).To(Equal(mf.AlbumID))
 		})
 	})
+
+	Describe("AudioCodec", func() {
+		It("returns normalized stored codec when available", func() {
+			mf := MediaFile{Codec: "AAC", Suffix: "m4a"}
+			Expect(mf.AudioCodec()).To(Equal("aac"))
+		})
+
+		It("returns stored codec lowercased", func() {
+			mf := MediaFile{Codec: "ALAC", Suffix: "m4a"}
+			Expect(mf.AudioCodec()).To(Equal("alac"))
+		})
+
+		DescribeTable("infers codec from suffix when Codec field is empty",
+			func(suffix string, bitDepth int, expected string) {
+				mf := MediaFile{Suffix: suffix, BitDepth: bitDepth}
+				Expect(mf.AudioCodec()).To(Equal(expected))
+			},
+			Entry("mp3", "mp3", 0, "mp3"),
+			Entry("mpga", "mpga", 0, "mp3"),
+			Entry("mp2", "mp2", 0, "mp2"),
+			Entry("ogg", "ogg", 0, "vorbis"),
+			Entry("oga", "oga", 0, "vorbis"),
+			Entry("opus", "opus", 0, "opus"),
+			Entry("mpc", "mpc", 0, "mpc"),
+			Entry("wma", "wma", 0, "wma"),
+			Entry("flac", "flac", 0, "flac"),
+			Entry("wav", "wav", 0, "pcm"),
+			Entry("aif", "aif", 0, "pcm"),
+			Entry("aiff", "aiff", 0, "pcm"),
+			Entry("aifc", "aifc", 0, "pcm"),
+			Entry("ape", "ape", 0, "ape"),
+			Entry("wv", "wv", 0, "wv"),
+			Entry("wvp", "wvp", 0, "wv"),
+			Entry("tta", "tta", 0, "tta"),
+			Entry("tak", "tak", 0, "tak"),
+			Entry("shn", "shn", 0, "shn"),
+			Entry("dsf", "dsf", 0, "dsd"),
+			Entry("dff", "dff", 0, "dsd"),
+			Entry("m4a with BitDepth=0 (AAC)", "m4a", 0, "aac"),
+			Entry("m4a with BitDepth>0 (ALAC)", "m4a", 16, "alac"),
+			Entry("m4b", "m4b", 0, "aac"),
+			Entry("m4p", "m4p", 0, "aac"),
+			Entry("m4r", "m4r", 0, "aac"),
+			Entry("unknown suffix", "xyz", 0, ""),
+		)
+
+		It("prefers stored codec over suffix inference", func() {
+			mf := MediaFile{Codec: "ALAC", Suffix: "m4a", BitDepth: 0}
+			Expect(mf.AudioCodec()).To(Equal("alac"))
+		})
+	})
+
 })
 
 func t(v string) time.Time {

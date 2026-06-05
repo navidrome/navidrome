@@ -15,4 +15,5 @@ dist
 binaries
 cache
 music
+music.old
 !Dockerfile

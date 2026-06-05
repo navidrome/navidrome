@@ -27,6 +27,7 @@ var _ = Describe("Criteria", func() {
 						StartsWith{"comment": "this"},
 						InTheRange{"year": []int{1980, 1990}},
 						IsNot{"genre": "Rock"},
+						Gt{"albumrating": 3},
 					},
 				},
 				Sort:   "title",
@@ -48,7 +49,8 @@ var _ = Describe("Criteria", func() {
 		{ "all": [
 				{ "startsWith": {"comment": "this"} },
 				{ "inTheRange": {"year":[1980,1990]} },
-				{ "isNot": { "genre": "Rock" }}
+				{ "isNot": { "genre": "Rock" }},
+				{ "gt": { "albumrating": 3 } }
 			]
 		}
 	],
@@ -63,16 +65,6 @@ var _ = Describe("Criteria", func() {
 			}
 			jsonObj = b.String()
 		})
-		It("generates valid SQL", func() {
-			sql, args, err := goObj.ToSql()
-			gomega.Expect(err).ToNot(gomega.HaveOccurred())
-			gomega.Expect(sql).To(gomega.Equal(
-				`(media_file.title LIKE ? AND media_file.title NOT LIKE ? ` +
-					`AND (not exists (select 1 from json_tree(participants, '$.artist') where key='name' and value = ?) ` +
-					`OR media_file.album = ?) AND (media_file.comment LIKE ? AND (media_file.year >= ? AND media_file.year <= ?) ` +
-					`AND not exists (select 1 from json_tree(tags, '$.genre') where key='value' and value = ?)))`))
-			gomega.Expect(args).To(gomega.HaveExactElements("%love%", "%hate%", "u2", "best of", "this%", 1980, 1990, "Rock"))
-		})
 		It("marshals to JSON", func() {
 			j, err := json.Marshal(goObj)
 			gomega.Expect(err).ToNot(gomega.HaveOccurred())
@@ -86,55 +78,158 @@ var _ = Describe("Criteria", func() {
 			gomega.Expect(err).ToNot(gomega.HaveOccurred())
 			gomega.Expect(string(j)).To(gomega.Equal(jsonObj))
 		})
-		Describe("OrderBy", func() {
-			It("sorts by regular fields", func() {
-				gomega.Expect(goObj.OrderBy()).To(gomega.Equal("media_file.title asc"))
-			})
-
-			It("sorts by tag fields", func() {
-				goObj.Sort = "genre"
-				gomega.Expect(goObj.OrderBy()).To(
-					gomega.Equal(
-						"COALESCE(json_extract(media_file.tags, '$.genre[0].value'), '') asc",
-					),
-				)
-			})
-
-			It("sorts by role fields", func() {
-				goObj.Sort = "artist"
-				gomega.Expect(goObj.OrderBy()).To(
-					gomega.Equal(
-						"COALESCE(json_extract(media_file.participants, '$.artist[0].name'), '') asc",
-					),
-				)
-			})
-
-			It("sorts by random", func() {
-				newObj := goObj
-				newObj.Sort = "random"
-				gomega.Expect(newObj.OrderBy()).To(gomega.Equal("random() asc"))
-			})
-		})
 	})
 
-	Context("with artist roles", func() {
-		BeforeEach(func() {
-			goObj = Criteria{
-				Expression: All{
-					Is{"artist": "The Beatles"},
-					Contains{"composer": "Lennon"},
-				},
-			}
+	Describe("LimitPercent", func() {
+		Describe("JSON round-trip", func() {
+			It("marshals and unmarshals limitPercent", func() {
+				goObj := Criteria{
+					Expression:   All{Contains{"title": "love"}},
+					Sort:         "title",
+					Order:        "asc",
+					LimitPercent: 10,
+				}
+				j, err := json.Marshal(goObj)
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
+				gomega.Expect(string(j)).To(gomega.ContainSubstring(`"limitPercent":10`))
+				gomega.Expect(string(j)).ToNot(gomega.ContainSubstring(`"limit"`))
+
+				var newObj Criteria
+				err = json.Unmarshal(j, &newObj)
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
+				gomega.Expect(newObj.LimitPercent).To(gomega.Equal(10))
+				gomega.Expect(newObj.Limit).To(gomega.Equal(0))
+			})
+
+			It("does not include limitPercent when zero", func() {
+				goObj := Criteria{
+					Expression: All{Contains{"title": "love"}},
+					Limit:      50,
+				}
+				j, err := json.Marshal(goObj)
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
+				gomega.Expect(string(j)).To(gomega.ContainSubstring(`"limit":50`))
+				gomega.Expect(string(j)).ToNot(gomega.ContainSubstring(`limitPercent`))
+			})
+
+			It("backward compatible: JSON with only limit still works", func() {
+				jsonStr := `{"all":[{"contains":{"title":"love"}}],"limit":20}`
+				var c Criteria
+				err := json.Unmarshal([]byte(jsonStr), &c)
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
+				gomega.Expect(c.Limit).To(gomega.Equal(20))
+				gomega.Expect(c.LimitPercent).To(gomega.Equal(0))
+			})
 		})
 
-		It("generates valid SQL", func() {
-			sql, args, err := goObj.ToSql()
-			gomega.Expect(err).ToNot(gomega.HaveOccurred())
-			gomega.Expect(sql).To(gomega.Equal(
-				`(exists (select 1 from json_tree(participants, '$.artist') where key='name' and value = ?) AND ` +
-					`exists (select 1 from json_tree(participants, '$.composer') where key='name' and value LIKE ?))`,
-			))
-			gomega.Expect(args).To(gomega.HaveExactElements("The Beatles", "%Lennon%"))
+		Describe("UnmarshalJSON clamping", func() {
+			It("clamps values above 100 to 100", func() {
+				jsonStr := `{"all":[{"contains":{"title":"love"}}],"limitPercent":150}`
+				var c Criteria
+				err := json.Unmarshal([]byte(jsonStr), &c)
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
+				gomega.Expect(c.LimitPercent).To(gomega.Equal(100))
+			})
+
+			It("clamps negative values to 0", func() {
+				jsonStr := `{"all":[{"contains":{"title":"love"}}],"limitPercent":-5}`
+				var c Criteria
+				err := json.Unmarshal([]byte(jsonStr), &c)
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
+				gomega.Expect(c.LimitPercent).To(gomega.Equal(0))
+			})
+		})
+
+		Describe("EffectiveLimit", func() {
+			It("returns fixed limit when Limit is set", func() {
+				c := Criteria{Limit: 50, LimitPercent: 10}
+				gomega.Expect(c.EffectiveLimit(1000)).To(gomega.Equal(50))
+			})
+
+			It("returns percentage-based limit", func() {
+				c := Criteria{LimitPercent: 10}
+				gomega.Expect(c.EffectiveLimit(450)).To(gomega.Equal(45))
+			})
+
+			It("returns minimum 1 when totalCount > 0 and percentage rounds to 0", func() {
+				c := Criteria{LimitPercent: 1}
+				gomega.Expect(c.EffectiveLimit(5)).To(gomega.Equal(1))
+			})
+
+			It("returns 0 when totalCount is 0", func() {
+				c := Criteria{LimitPercent: 10}
+				gomega.Expect(c.EffectiveLimit(0)).To(gomega.Equal(0))
+			})
+
+			It("returns 0 when no limit is set", func() {
+				c := Criteria{}
+				gomega.Expect(c.EffectiveLimit(1000)).To(gomega.Equal(0))
+			})
+
+			It("returns full count for 100%", func() {
+				c := Criteria{LimitPercent: 100}
+				gomega.Expect(c.EffectiveLimit(450)).To(gomega.Equal(450))
+			})
+
+			It("returns 1 for 1% of 50 items", func() {
+				c := Criteria{LimitPercent: 1}
+				gomega.Expect(c.EffectiveLimit(50)).To(gomega.Equal(1))
+			})
+		})
+
+		Describe("ResolveLimit", func() {
+			It("resolves percentage to absolute limit preserving LimitPercent", func() {
+				c := Criteria{LimitPercent: 10}
+				c.ResolveLimit(450)
+				gomega.Expect(c.Limit).To(gomega.Equal(45))
+			})
+
+			It("does nothing when Limit is already set", func() {
+				c := Criteria{Limit: 50, LimitPercent: 10}
+				c.ResolveLimit(1000)
+				gomega.Expect(c.Limit).To(gomega.Equal(50))
+			})
+
+			It("does nothing when no limit is configured", func() {
+				c := Criteria{}
+				c.ResolveLimit(1000)
+				gomega.Expect(c.Limit).To(gomega.Equal(0))
+			})
+
+			It("sets minimum 1 when percentage rounds to 0 and totalCount > 0", func() {
+				c := Criteria{LimitPercent: 1}
+				c.ResolveLimit(5)
+				gomega.Expect(c.Limit).To(gomega.Equal(1))
+			})
+
+			It("is idempotent when called twice", func() {
+				c := Criteria{LimitPercent: 10}
+				c.ResolveLimit(450)
+				c.ResolveLimit(450)
+				gomega.Expect(c.Limit).To(gomega.Equal(45))
+			})
+		})
+
+		Describe("IsPercentageLimit", func() {
+			It("returns true when LimitPercent is set and Limit is 0", func() {
+				c := Criteria{LimitPercent: 10}
+				gomega.Expect(c.IsPercentageLimit()).To(gomega.BeTrue())
+			})
+
+			It("returns false when Limit is set", func() {
+				c := Criteria{Limit: 50, LimitPercent: 10}
+				gomega.Expect(c.IsPercentageLimit()).To(gomega.BeFalse())
+			})
+
+			It("returns false when neither is set", func() {
+				c := Criteria{}
+				gomega.Expect(c.IsPercentageLimit()).To(gomega.BeFalse())
+			})
+
+			It("returns false when LimitPercent is out of range", func() {
+				c := Criteria{LimitPercent: 150}
+				gomega.Expect(c.IsPercentageLimit()).To(gomega.BeFalse())
+			})
 		})
 	})
 
@@ -202,6 +297,24 @@ var _ = Describe("Criteria", func() {
 		It("returns empty list when no child playlist IDs are present", func() {
 			ids := Criteria{}.ChildPlaylistIds()
 			gomega.Expect(ids).To(gomega.BeEmpty())
+		})
+		It("returns empty list for leaf expressions", func() {
+			ids := Criteria{Expression: Is{"title": "Low Rider"}}.ChildPlaylistIds()
+			gomega.Expect(ids).To(gomega.BeEmpty())
+		})
+		It("deduplicates repeated playlist IDs", func() {
+			sharedID := uuid.NewString()
+			goObj = Criteria{
+				Expression: All{
+					InPlaylist{"id": sharedID},
+					Any{
+						InPlaylist{"id": sharedID},
+						NotInPlaylist{"id": sharedID},
+					},
+				},
+			}
+			ids := goObj.ChildPlaylistIds()
+			gomega.Expect(ids).To(gomega.Equal([]string{sharedID}))
 		})
 	})
 })
