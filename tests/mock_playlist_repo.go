@@ -45,7 +45,7 @@ func (m *MockPlaylistRepo) GetWithTracks(id string, _, _ bool) (*model.Playlist,
 	return m.Get(id)
 }
 
-func (m *MockPlaylistRepo) Put(pls *model.Playlist) error {
+func (m *MockPlaylistRepo) Put(pls *model.Playlist, _ ...string) error {
 	if m.Err {
 		return errors.New("error")
 	}

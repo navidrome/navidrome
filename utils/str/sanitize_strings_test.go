@@ -64,6 +64,35 @@ var _ = Describe("Sanitize Strings", func() {
 		})
 	})
 
+	Describe("SanitizeText", func() {
+		It("preserves decoded plaintext", func() {
+			Expect(str.SanitizeText("Tom &amp; Jerry")).To(Equal("Tom & Jerry"))
+			Expect(str.SanitizeText("Tom & Jerry")).To(Equal("Tom & Jerry"))
+		})
+
+		It("keeps entity-encoded html readable", func() {
+			Expect(str.SanitizeText(`&lt;b&gt;ok&lt;/b&gt;`)).To(Equal("<b>ok</b>"))
+		})
+	})
+
+	Describe("SanitizeHTML", func() {
+		It("removes dangerous content from raw html", func() {
+			sanitized := str.SanitizeHTML(`<img src=x onerror=alert(1)><script>alert(2)</script><b>ok</b>`)
+
+			Expect(sanitized).To(ContainSubstring("<b>ok</b>"))
+			Expect(sanitized).ToNot(ContainSubstring("onerror"))
+			Expect(sanitized).ToNot(ContainSubstring("<script"))
+		})
+
+		It("removes dangerous content from entity-encoded html", func() {
+			sanitized := str.SanitizeHTML(`&lt;img src=x onerror=alert(1)&gt;&lt;script&gt;alert(2)&lt;/script&gt;&lt;b&gt;ok&lt;/b&gt;`)
+
+			Expect(sanitized).To(ContainSubstring("<b>ok</b>"))
+			Expect(sanitized).ToNot(ContainSubstring("onerror"))
+			Expect(sanitized).ToNot(ContainSubstring("<script"))
+		})
+	})
+
 	Describe("SanitizeFieldForSortingNoArticle", func() {
 		BeforeEach(func() {
 			conf.Server.IgnoredArticles = "The O"

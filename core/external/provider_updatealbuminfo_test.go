@@ -12,7 +12,6 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
-	"github.com/navidrome/navidrome/utils/gg"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
@@ -90,7 +89,7 @@ var _ = Describe("Provider - UpdateAlbumInfo", func() {
 			ExternalUrl:           "http://cached.com/album",
 			Description:           "Cached Desc",
 			LargeImageUrl:         "http://cached.com/large.jpg",
-			ExternalInfoUpdatedAt: gg.P(now.Add(-conf.Server.DevAlbumInfoTimeToLive / 2)),
+			ExternalInfoUpdatedAt: new(now.Add(-conf.Server.DevAlbumInfoTimeToLive / 2)),
 		}
 		mockAlbumRepo.SetData(model.Albums{*originalAlbum})
 
@@ -113,7 +112,7 @@ var _ = Describe("Provider - UpdateAlbumInfo", func() {
 			ExternalUrl:           "http://expired.com/album",
 			Description:           "Expired Desc",
 			LargeImageUrl:         "http://expired.com/large.jpg",
-			ExternalInfoUpdatedAt: gg.P(expiredTime),
+			ExternalInfoUpdatedAt: new(expiredTime),
 		}
 		mockAlbumRepo.SetData(model.Albums{*originalAlbum})
 

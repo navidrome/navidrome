@@ -10,9 +10,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
@@ -57,6 +59,11 @@ func New() FFmpeg {
 	return &ffmpeg{}
 }
 
+// ErrAnimatedWebPUnsupported is returned by ConvertAnimatedImage when the
+// ffmpeg binary lacks the libwebp_anim encoder. Callers can use errors.Is to
+// detect this specific case and fall back to static resize.
+var ErrAnimatedWebPUnsupported = errors.New("ffmpeg lacks libwebp_anim encoder — install an ffmpeg build with libwebp")
+
 const (
 	extractImageCmd     = "ffmpeg -i %s -map 0:v -map -0:V -vcodec copy -f image2pipe -"
 	probeCmd            = "ffmpeg %s -f ffmetadata"
@@ -86,6 +93,9 @@ func (e *ffmpeg) ConvertAnimatedImage(ctx context.Context, reader io.Reader, max
 	if err != nil {
 		return nil, err
 	}
+	if !animWebP.has(cmdPath, "libwebp_anim") {
+		return nil, ErrAnimatedWebPUnsupported
+	}
 
 	args := []string{cmdPath, "-i", "pipe:0"}
 	if maxSize > 0 {
@@ -96,6 +106,19 @@ func (e *ffmpeg) ConvertAnimatedImage(ctx context.Context, reader io.Reader, max
 		"-quality", strconv.Itoa(quality), "-f", "webp", "-")
 
 	return e.start(ctx, args, reader)
+}
+
+// parseEncodersOutput scans the stdout of `ffmpeg -encoders` for a whole-word
+// match of encoder name. The output has rows like " V....D libwebp_anim  ..."
+// where the name is the 2nd whitespace-separated field.
+func parseEncodersOutput(out []byte, name string) bool {
+	for line := range strings.SplitSeq(string(out), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) >= 2 && fields[1] == name {
+			return true
+		}
+	}
+	return false
 }
 
 func (e *ffmpeg) ExtractImage(ctx context.Context, path string) (io.ReadCloser, error) {
@@ -303,8 +326,7 @@ func (j *ffCmd) start(ctx context.Context) error {
 
 func (j *ffCmd) wait() {
 	if err := j.cmd.Wait(); err != nil {
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
+		if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
 			errMsg := fmt.Sprintf("%s exited with non-zero status code: %d", j.args[0], exitErr.ExitCode())
 			if stderrOutput := strings.TrimSpace(j.stderr.String()); stderrOutput != "" {
 				errMsg += ": " + stderrOutput
@@ -372,12 +394,13 @@ func isDefaultCommand(format, command string) bool {
 // including all transcoding parameters (bitrate, sample rate, channels).
 func buildDynamicArgs(opts TranscodeOptions) []string {
 	cmdPath, _ := ffmpegCmd()
-	args := []string{cmdPath, "-i", opts.FilePath}
+	args := []string{cmdPath}
 
 	if opts.Offset > 0 {
 		args = append(args, "-ss", strconv.Itoa(opts.Offset))
 	}
 
+	args = append(args, "-i", opts.FilePath)
 	args = append(args, "-map", "0:a:0")
 
 	if codec, ok := formatCodecMap[opts.Format]; ok {
@@ -469,11 +492,20 @@ func createFFmpegCommand(cmd, path string, maxBitRate, offset int) []string {
 	var args []string
 	for _, s := range fixCmd(cmd) {
 		if strings.Contains(s, "%s") {
+			if offset > 0 && !strings.Contains(cmd, "%t") {
+				// Pre-input seeking: ffmpeg seeks at the demuxer level (fast)
+				// instead of decoding all frames up to the offset (slow).
+				insertAt := len(args)
+				for i, arg := range slices.Backward(args) {
+					if arg == "-i" {
+						insertAt = i
+						break
+					}
+				}
+				args = slices.Insert(args, insertAt, "-ss", strconv.Itoa(offset))
+			}
 			s = strings.ReplaceAll(s, "%s", path)
 			args = append(args, s)
-			if offset > 0 && !strings.Contains(cmd, "%t") {
-				args = append(args, "-ss", strconv.Itoa(offset))
-			}
 		} else {
 			s = strings.ReplaceAll(s, "%t", strconv.Itoa(offset))
 			s = strings.ReplaceAll(s, "%b", strconv.Itoa(maxBitRate))
@@ -538,6 +570,49 @@ func ffmpegCmd() (string, error) {
 	return ffmpegPath, ffmpegErr
 }
 
+type encoderProbeState uint8
+
+const (
+	encoderProbeUnknown encoderProbeState = iota
+	encoderProbeAvailable
+	encoderProbeUnavailable
+)
+
+type encoderProbe struct {
+	mu    sync.Mutex
+	state encoderProbeState
+}
+
+func (p *encoderProbe) has(cmdPath, encoder string) bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	switch p.state {
+	case encoderProbeAvailable:
+		return true
+	case encoderProbeUnavailable:
+		return false
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, cmdPath, "-hide_banner", "-encoders").Output() // #nosec
+	if err != nil {
+		log.Warn(ctx, "Could not probe ffmpeg encoders; will retry on next animated cover", err)
+		return false
+	}
+
+	if parseEncodersOutput(out, encoder) {
+		p.state = encoderProbeAvailable
+		return true
+	}
+
+	p.state = encoderProbeUnavailable
+	log.Warn(ctx, "ffmpeg has no libwebp_anim encoder; animated covers will be served as static images",
+		"path", cmdPath, "hint", "install ffmpeg built with libwebp (e.g. `brew install ffmpeg@7`)")
+	return false
+}
+
 // These variables are accessible here for tests. Do not use them directly in production code. Use ffmpegCmd() instead.
 var (
 	ffOnce     sync.Once
@@ -545,4 +620,5 @@ var (
 	ffmpegErr  error
 	probeOnce  sync.Once
 	probeAvail bool
+	animWebP   encoderProbe
 )

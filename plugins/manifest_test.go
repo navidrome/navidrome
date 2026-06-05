@@ -140,11 +140,10 @@ var _ = Describe("Manifest", func() {
 		})
 
 		It("returns true when threads feature has a reason", func() {
-			reason := "Required for concurrent processing"
 			m := &Manifest{
 				Experimental: &Experimental{
 					Threads: &ThreadsFeature{
-						Reason: &reason,
+						Reason: new("Required for concurrent processing"),
 					},
 				},
 			}

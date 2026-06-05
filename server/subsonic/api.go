@@ -7,9 +7,10 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strconv"
 
+	"github.com/deluan/rest"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
@@ -19,6 +20,7 @@ import (
 	"github.com/navidrome/navidrome/core/playback"
 	playlistsvc "github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/core/scrobbler"
+	sonicsvc "github.com/navidrome/navidrome/core/sonic"
 	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -52,12 +54,14 @@ type Router struct {
 	metrics           metrics.Metrics
 	lyrics            lyricssvc.Lyrics
 	transcodeDecision stream.TranscodeDecider
+	sonic             *sonicsvc.Sonic
 }
 
 func New(ds model.DataStore, artwork artwork.Artwork, streamer stream.MediaStreamer, archiver core.Archiver,
 	players core.Players, provider external.Provider, scanner model.Scanner, broker events.Broker,
 	playlists playlistsvc.Playlists, scrobbler scrobbler.PlayTracker, share core.Share, playback playback.PlaybackServer,
 	metrics metrics.Metrics, lyrics lyricssvc.Lyrics, transcodeDecision stream.TranscodeDecider,
+	sonic *sonicsvc.Sonic,
 ) *Router {
 	r := &Router{
 		ds:                ds,
@@ -75,6 +79,7 @@ func New(ds model.DataStore, artwork artwork.Artwork, streamer stream.MediaStrea
 		metrics:           metrics,
 		lyrics:            lyrics,
 		transcodeDecision: transcodeDecision,
+		sonic:             sonic,
 	}
 	r.Handler = r.routes()
 	return r
@@ -121,6 +126,8 @@ func (api *Router) routes() http.Handler {
 			h(r, "getTopSongs", api.GetTopSongs)
 			h(r, "getSimilarSongs", api.GetSimilarSongs)
 			h(r, "getSimilarSongs2", api.GetSimilarSongs2)
+			hr(r, "getSonicSimilarTracks", api.GetSonicSimilarTracks)
+			hr(r, "findSonicPath", api.FindSonicPath)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(getPlayer(api.players))
@@ -138,6 +145,7 @@ func (api *Router) routes() http.Handler {
 			h(r, "star", api.Star)
 			h(r, "unstar", api.Unstar)
 			h(r, "scrobble", api.Scrobble)
+			h(r, "reportPlayback", api.ReportPlayback)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(getPlayer(api.players))
@@ -165,12 +173,12 @@ func (api *Router) routes() http.Handler {
 		r.Group(func(r chi.Router) {
 			r.Use(getPlayer(api.players))
 			h(r, "getUser", api.GetUser)
-			h(r, "getUsers", api.GetUsers)
+			h(r.With(adminOnly), "getUsers", api.GetUsers)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(getPlayer(api.players))
 			h(r, "getScanStatus", api.GetScanStatus)
-			h(r, "startScan", api.StartScan)
+			h(r.With(adminOnly), "startScan", api.StartScan)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(getPlayer(api.players))
@@ -183,22 +191,19 @@ func (api *Router) routes() http.Handler {
 			hr(r, "getTranscodeStream", api.GetTranscodeStream)
 		})
 		r.Group(func(r chi.Router) {
-			// configure request throttling
-			if conf.Server.DevArtworkMaxRequests > 0 {
-				log.Debug("Throttling Subsonic getCoverArt endpoint", "maxRequests", conf.Server.DevArtworkMaxRequests,
-					"backlogLimit", conf.Server.DevArtworkThrottleBacklogLimit, "backlogTimeout",
-					conf.Server.DevArtworkThrottleBacklogTimeout)
-				r.Use(middleware.ThrottleBacklog(conf.Server.DevArtworkMaxRequests, conf.Server.DevArtworkThrottleBacklogLimit,
-					conf.Server.DevArtworkThrottleBacklogTimeout))
-			}
+			r.Use(server.ThrottleBacklog(conf.Server.DevArtworkMaxRequests, conf.Server.DevArtworkThrottleBacklogLimit,
+				conf.Server.DevArtworkThrottleBacklogTimeout))
 			hr(r, "getCoverArt", api.GetCoverArt)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(getPlayer(api.players))
-			h(r, "createInternetRadioStation", api.CreateInternetRadio)
-			h(r, "deleteInternetRadioStation", api.DeleteInternetRadio)
 			h(r, "getInternetRadioStations", api.GetInternetRadios)
-			h(r, "updateInternetRadioStation", api.UpdateInternetRadio)
+			r.Group(func(r chi.Router) {
+				r.Use(adminOnly)
+				h(r, "createInternetRadioStation", api.CreateInternetRadio)
+				h(r, "deleteInternetRadioStation", api.DeleteInternetRadio)
+				h(r, "updateInternetRadioStation", api.UpdateInternetRadio)
+			})
 		})
 		if conf.Server.EnableSharing {
 			r.Group(func(r chi.Router) {
@@ -297,10 +302,12 @@ func mapToSubsonicError(err error) subError {
 		err = newError(responses.ErrorMissingParameter, err.Error())
 	case errors.Is(err, req.ErrInvalidParam):
 		err = newError(responses.ErrorGeneric, err.Error())
-	case errors.Is(err, model.ErrNotFound):
+	case errors.Is(err, model.ErrNotFound), errors.Is(err, rest.ErrNotFound):
 		err = newError(responses.ErrorDataNotFound, "data not found")
-	case errors.Is(err, model.ErrNotAuthorized):
+	case errors.Is(err, model.ErrNotAuthorized), errors.Is(err, rest.ErrPermissionDenied):
 		err = newError(responses.ErrorAuthorizationFail)
+	case errors.Is(err, stream.ErrTooManyTranscodes):
+		err = newError(responses.ErrorGeneric, "too many concurrent transcodes, please retry shortly")
 	default:
 		err = newError(responses.ErrorGeneric, fmt.Sprintf("Internal Server Error: %s", err))
 	}
@@ -310,15 +317,31 @@ func mapToSubsonicError(err error) subError {
 }
 
 func sendError(w http.ResponseWriter, r *http.Request, err error) {
+	if errors.Is(err, stream.ErrTooManyTranscodes) {
+		w.Header().Set("Retry-After", strconv.Itoa(stream.RetryAfterSeconds))
+		sendResponseWithStatus(w, r, errorResponse(err), http.StatusTooManyRequests)
+		return
+	}
+	sendResponse(w, r, errorResponse(err))
+}
+
+func errorResponse(err error) *responses.Subsonic {
 	subErr := mapToSubsonicError(err)
 	response := newResponse()
 	response.Status = responses.StatusFailed
 	response.Error = &responses.Error{Code: subErr.code, Message: subErr.Error()}
-
-	sendResponse(w, r, response)
+	return response
 }
 
 func sendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Subsonic) {
+	sendResponseWithStatus(w, r, payload, 0)
+}
+
+// sendResponseWithStatus writes the response body in the format requested by
+// the client. When status is non-zero, WriteHeader is called with that code
+// before the body is written; callers that need to set additional headers
+// (e.g. Retry-After) must set them before calling.
+func sendResponseWithStatus(w http.ResponseWriter, r *http.Request, payload *responses.Subsonic, status int) {
 	p := req.Params(r)
 	f, _ := p.String("f")
 	var response []byte
@@ -353,6 +376,9 @@ func sendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Sub
 		sendError(w, r, err)
 		return
 	}
+	if status != 0 {
+		w.WriteHeader(status)
+	}
 
 	if payload.Status == responses.StatusOK {
 		if log.IsGreaterOrEqualTo(log.LevelTrace) {
@@ -375,6 +401,10 @@ func sendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Sub
 	}
 
 	if _, err := w.Write(response); err != nil { //nolint:gosec
-		log.Error(r, "Error sending response to client", "endpoint", r.URL.Path, "payload", string(response), err)
+		if log.IsGreaterOrEqualTo(log.LevelTrace) {
+			log.Error(r, "Error sending response to client", "endpoint", r.URL.Path, "payload", string(response), err)
+		} else {
+			log.Error(r, "Error sending response to client", "endpoint", r.URL.Path, err)
+		}
 	}
 }

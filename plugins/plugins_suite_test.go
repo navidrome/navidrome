@@ -48,7 +48,7 @@ func TestPlugins(t *testing.T) {
 
 	// Set CacheFolder globally so all tests (including those using
 	// configtest.SetupConfig) inherit it without needing to set it manually.
-	conf.Server.CacheFolder = sharedCacheDir
+	conf.Server.CacheFolder = conf.NewDir(sharedCacheDir)
 
 	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
@@ -126,7 +126,7 @@ func createTestManagerWithPluginsAndMetrics(pluginConfig map[string]map[string]s
 	// Setup config
 	DeferCleanup(configtest.SetupConfig())
 	conf.Server.Plugins.Enabled = true
-	conf.Server.Plugins.Folder = tmpDir
+	conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
 	conf.Server.Plugins.AutoReload = false
 
 	// Setup mock DataStore with pre-enabled plugins

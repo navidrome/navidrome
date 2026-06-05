@@ -8,6 +8,7 @@ import (
 	"unicode/utf8"
 
 	. "github.com/Masterminds/squirrel"
+	"github.com/deluan/sanitize"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
@@ -44,24 +45,33 @@ var fts5Operators = regexp.MustCompile(`(?i)\b(AND|OR|NOT|NEAR)\b`)
 // fts5LeadingStar matches a * at the start of a token. FTS5 only supports * at the end (prefix queries).
 var fts5LeadingStar = regexp.MustCompile(`(^|[\s])\*+`)
 
-// normalizeForFTS takes multiple strings, strips non-letter/non-number characters from each word,
-// and returns a space-separated string of words that changed after stripping (deduplicated).
-// This is used at index time to create concatenated forms: "R.E.M." → "REM", "AC/DC" → "ACDC".
+// normalizeForFTS takes multiple strings and returns a space-separated, deduplicated list of
+// alternative searchable forms for each word: punctuation-stripped (R.E.M. → REM, AC/DC → ACDC)
+// and ASCII-transliterated (Bjørk → Bjork, œuvre → oeuvre). The transliterated form is needed
+// because FTS5's `unicode61 remove_diacritics 2` only handles NFKD-decomposable diacritics —
+// atomic letters like ø/æ/œ/ß survive tokenization, so the query side and index side disagree
+// without an explicit transliterated entry here.
 func normalizeForFTS(values ...string) string {
 	seen := make(map[string]struct{})
 	var result []string
+	add := func(orig, variant string) {
+		if variant == "" || variant == orig {
+			return
+		}
+		lower := strings.ToLower(variant)
+		if _, ok := seen[lower]; ok {
+			return
+		}
+		seen[lower] = struct{}{}
+		result = append(result, variant)
+	}
 	for _, v := range values {
-		for _, word := range strings.Fields(v) {
-			stripped := fts5PunctStrip.ReplaceAllString(word, "")
-			if stripped == "" || stripped == word {
-				continue
-			}
-			lower := strings.ToLower(stripped)
-			if _, ok := seen[lower]; ok {
-				continue
-			}
-			seen[lower] = struct{}{}
-			result = append(result, stripped)
+		for word := range strings.FieldsSeq(v) {
+			transliterated := sanitize.Accents(word)
+			// Concatenated ASCII form: R.E.M. → REM, AC/DC → ACDC, St-Étienne → StEtienne.
+			add(word, fts5PunctStrip.ReplaceAllString(transliterated, ""))
+			// Accent-only transliteration for words without name-punctuation (Bjørk → Bjork).
+			add(word, transliterated)
 		}
 	}
 	return strings.Join(result, " ")
@@ -157,6 +167,13 @@ func buildFTS5Query(userInput string) string {
 		phrases = append(phrases, phrase)
 		result = result[:start] + fmt.Sprintf("\x00PHRASE%d\x00", len(phrases)-1) + result[end+1:]
 	}
+
+	// Transliterate non-ASCII letters in the unquoted portion (ø→o, æ→ae, œ→oe, ß→ss, …)
+	// so the query matches the ASCII variants emitted by normalizeForFTS at index time.
+	// FTS5's own `remove_diacritics 2` only strips NFKD-decomposable marks, so without
+	// this step queries for words containing these letters can miss. Quoted phrases are
+	// left untouched so they continue to match the original text in title/artist columns.
+	result = sanitize.Accents(result)
 
 	// Neutralize FTS5 operators by lowercasing them (FTS5 operators are case-sensitive:
 	// AND, OR, NOT, NEAR are operators, but and, or, not, near are plain tokens)
@@ -262,9 +279,9 @@ type ftsSearch struct {
 }
 
 // ToSql returns a single-query fallback for the REST filter path (no two-phase split).
-func (s *ftsSearch) ToSql() (string, []interface{}, error) {
+func (s *ftsSearch) ToSql() (string, []any, error) {
 	sql := s.tableName + ".rowid IN (SELECT rowid FROM " + s.ftsTable + " WHERE " + s.ftsTable + " MATCH ?)"
-	return sql, []interface{}{s.matchExpr}, nil
+	return sql, []any{s.matchExpr}, nil
 }
 
 // execute runs a two-phase FTS5 search:
@@ -356,8 +373,8 @@ func ftsQueryDegraded(original, ftsQuery string) bool {
 	// Check if all effective FTS tokens are very short (≤2 chars).
 	// Short tokens with prefix matching are too broad when special chars were stripped.
 	// For quoted phrases, extract the content and check the tokens inside.
-	tokens := strings.Fields(ftsQuery)
-	for _, t := range tokens {
+	tokens := strings.FieldsSeq(ftsQuery)
+	for t := range tokens {
 		t = strings.TrimSuffix(t, "*")
 		// Skip internal phrase placeholders
 		if strings.HasPrefix(t, "\x00") {
@@ -373,7 +390,7 @@ func ftsQueryDegraded(original, ftsQuery string) bool {
 			// Extract content between quotes
 			inner := strings.Trim(t, `"`)
 			innerAlpha := fts5PunctStrip.ReplaceAllString(inner, " ")
-			for _, it := range strings.Fields(innerAlpha) {
+			for it := range strings.FieldsSeq(innerAlpha) {
 				if len(it) > 2 {
 					return false
 				}

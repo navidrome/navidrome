@@ -165,7 +165,7 @@ var staticData = sync.OnceValue(func() insights.Data {
 	data.OS.Containerized = consts.InContainer
 
 	// Install info
-	packageFilename := filepath.Join(conf.Server.DataFolder, ".package")
+	packageFilename := filepath.Join(conf.Server.DataFolder.String(), ".package")
 	packageFileData, err := os.ReadFile(packageFilename)
 	if err == nil {
 		data.OS.Package = string(packageFileData)
@@ -179,12 +179,12 @@ var staticData = sync.OnceValue(func() insights.Data {
 
 	// FS info
 	data.FS.Music = getFSInfo(conf.Server.MusicFolder)
-	data.FS.Data = getFSInfo(conf.Server.DataFolder)
-	if conf.Server.CacheFolder != "" {
-		data.FS.Cache = getFSInfo(conf.Server.CacheFolder)
+	data.FS.Data = getFSInfo(conf.Server.DataFolder.String())
+	if conf.Server.CacheFolder.String() != "" {
+		data.FS.Cache = getFSInfo(conf.Server.CacheFolder.String())
 	}
-	if conf.Server.Backup.Path != "" {
-		data.FS.Backup = getFSInfo(conf.Server.Backup.Path)
+	if conf.Server.Backup.Path.String() != "" {
+		data.FS.Backup = getFSInfo(conf.Server.Backup.Path.String())
 	}
 
 	// Config info

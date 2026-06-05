@@ -684,6 +684,26 @@ var _ = Describe("Participants", func() {
 				Expect(composers[2].Name).To(Equal("The Album Artist"))
 			})
 		})
+
+		// Sibling fix to https://github.com/navidrome/navidrome/issues/5065: when
+		// multiple frames map to the same role tag (e.g. TIPL producer entries),
+		// the configured split separator must still apply to each value.
+		When("the tag has multiple values", func() {
+			It("should split each value individually", func() {
+				mf = toMediaFile(model.RawTags{
+					"COMPOSER": {"John Doe/Jane Doe", "Someone Else"},
+				})
+
+				participants := mf.Participants
+				Expect(participants).To(HaveKeyWithValue(model.RoleComposer, HaveLen(3)))
+				composers := participants[model.RoleComposer]
+				Expect(composers).To(ConsistOf(
+					HaveField("Name", "John Doe"),
+					HaveField("Name", "Jane Doe"),
+					HaveField("Name", "Someone Else"),
+				))
+			})
+		})
 	})
 
 	Describe("MBID tags", func() {

@@ -157,4 +157,115 @@ var _ = Describe("Media Annotation Endpoints", Ordered, func() {
 			Expect(resp.Error).ToNot(BeNil())
 		})
 	})
+
+	Describe("ReportPlayback", Ordered, func() {
+		var songID string
+
+		BeforeAll(func() {
+			songs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{Max: 1, Sort: "title"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(songs).ToNot(BeEmpty())
+			songID = songs[0].ID
+		})
+
+		It("returns error when required params are missing", func() {
+			resp := doReq("reportPlayback")
+			Expect(resp.Status).To(Equal(responses.StatusFailed))
+		})
+
+		It("returns error for invalid state", func() {
+			resp := doReq("reportPlayback",
+				"mediaId", songID,
+				"mediaType", "song",
+				"positionMs", "0",
+				"state", "invalid",
+			)
+			Expect(resp.Status).To(Equal(responses.StatusFailed))
+		})
+
+		It("starting report creates a getNowPlaying entry", func() {
+			resp := doReq("reportPlayback",
+				"mediaId", songID,
+				"mediaType", "song",
+				"positionMs", "0",
+				"state", "starting",
+			)
+			Expect(resp.Status).To(Equal(responses.StatusOK))
+
+			np := doReq("getNowPlaying")
+			Expect(np.Status).To(Equal(responses.StatusOK))
+			Expect(np.NowPlaying.Entry).To(HaveLen(1))
+			Expect(np.NowPlaying.Entry[0].Id).To(Equal(songID))
+			Expect(np.NowPlaying.Entry[0].State).To(Equal("starting"))
+		})
+
+		It("playing report updates getNowPlaying state and position", func() {
+			resp := doReq("reportPlayback",
+				"mediaId", songID,
+				"mediaType", "song",
+				"positionMs", "30000",
+				"state", "playing",
+			)
+			Expect(resp.Status).To(Equal(responses.StatusOK))
+
+			np := doReq("getNowPlaying")
+			Expect(np.NowPlaying.Entry).To(HaveLen(1))
+			Expect(np.NowPlaying.Entry[0].State).To(Equal("playing"))
+			Expect(np.NowPlaying.Entry[0].PositionMs).To(BeNumerically(">=", int64(30000)))
+		})
+
+		It("paused report freezes position in getNowPlaying", func() {
+			resp := doReq("reportPlayback",
+				"mediaId", songID,
+				"mediaType", "song",
+				"positionMs", "30000",
+				"state", "paused",
+			)
+			Expect(resp.Status).To(Equal(responses.StatusOK))
+
+			np := doReq("getNowPlaying")
+			Expect(np.NowPlaying.Entry).To(HaveLen(1))
+			Expect(np.NowPlaying.Entry[0].State).To(Equal("paused"))
+			Expect(np.NowPlaying.Entry[0].PositionMs).To(Equal(int64(30000)))
+		})
+
+		It("stopped report removes entry from getNowPlaying", func() {
+			resp := doReq("reportPlayback",
+				"mediaId", songID,
+				"mediaType", "song",
+				"positionMs", "90000",
+				"state", "stopped",
+			)
+			Expect(resp.Status).To(Equal(responses.StatusOK))
+
+			np := doReq("getNowPlaying")
+			Expect(np.NowPlaying.Entry).To(BeEmpty())
+		})
+
+		It("accepts mediaType=podcast without error", func() {
+			resp := doReq("reportPlayback",
+				"mediaId", songID,
+				"mediaType", "podcast",
+				"positionMs", "0",
+				"state", "starting",
+			)
+			Expect(resp.Status).To(Equal(responses.StatusOK))
+		})
+
+		It("accepts optional playbackRate and ignoreScrobble", func() {
+			resp := doReq("reportPlayback",
+				"mediaId", songID,
+				"mediaType", "song",
+				"positionMs", "5000",
+				"state", "playing",
+				"playbackRate", "1.5",
+				"ignoreScrobble", "true",
+			)
+			Expect(resp.Status).To(Equal(responses.StatusOK))
+
+			np := doReq("getNowPlaying")
+			Expect(np.NowPlaying.Entry).To(HaveLen(1))
+			Expect(np.NowPlaying.Entry[0].PlaybackRate).To(Equal(1.5))
+		})
+	})
 })

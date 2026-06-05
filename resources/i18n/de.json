@@ -38,7 +38,9 @@
         "missing": "Fehlend",
         "libraryName": "Bibliothek",
         "composer": "Komponist",
-        "disc": "Disc %{discNumber}"
+        "disc": "Disc %{discNumber}",
+        "albumGain": "Album Gain",
+        "trackGain": "Titel Gain"
       },
       "actions": {
         "addToQueue": "Später abspielen",

@@ -21,6 +21,10 @@ func init() {
 	)
 }
 
+func newLyricsPlugin(p *plugin) *LyricsPlugin {
+	return &LyricsPlugin{name: p.name, plugin: p}
+}
+
 // LyricsPlugin adapts a WASM plugin with the Lyrics capability.
 type LyricsPlugin struct {
 	name   string

@@ -153,7 +153,7 @@ func (e *provider) populateAlbumInfo(ctx context.Context, album auxAlbum) (auxAl
 		return album, err
 	}
 
-	album.ExternalInfoUpdatedAt = P(time.Now())
+	album.ExternalInfoUpdatedAt = new(time.Now())
 	album.ExternalUrl = info.URL
 
 	if info.Description != "" {
@@ -269,7 +269,7 @@ func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (au
 		return artist, ctx.Err()
 	}
 
-	artist.ExternalInfoUpdatedAt = P(time.Now())
+	artist.ExternalInfoUpdatedAt = new(time.Now())
 	err := e.ds.Artist(ctx).UpdateExternalInfo(&artist.Artist)
 	if err != nil {
 		log.Error(ctx, "Error trying to update artist external information", "id", artist.ID, "name", artistName,
@@ -302,7 +302,7 @@ func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (mode
 	}
 
 	if err == nil && len(songs) > 0 {
-		return e.matcher.MatchSongsToLibrary(ctx, songs, count)
+		return e.matcher.MatchSongs(ctx, songs, count)
 	}
 
 	// Fallback to existing similar artists + top songs algorithm
@@ -481,7 +481,7 @@ func (e *provider) getMatchingTopSongs(ctx context.Context, agent agents.ArtistT
 		}
 	}
 
-	mfs, err := e.matcher.MatchSongsToLibrary(ctx, songs, count)
+	mfs, err := e.matcher.MatchSongs(ctx, songs, count)
 	if err != nil {
 		return nil, err
 	}

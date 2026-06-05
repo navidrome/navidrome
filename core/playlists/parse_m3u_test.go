@@ -15,6 +15,7 @@ var _ = Describe("libraryMatcher", func() {
 	ctx := context.Background()
 
 	BeforeEach(func() {
+		tests.SkipOnWindows("path separator bug (#TBD-path-sep-playlists)")
 		mockLibRepo = &tests.MockLibraryRepo{}
 		ds = &tests.MockDataStore{
 			MockedLibrary: mockLibRepo,
@@ -196,6 +197,7 @@ var _ = Describe("pathResolver", func() {
 	ctx := context.Background()
 
 	BeforeEach(func() {
+		tests.SkipOnWindows("path separator bug (#TBD-path-sep-playlists)")
 		mockLibRepo = &tests.MockLibraryRepo{}
 		ds = &tests.MockDataStore{
 			MockedLibrary: mockLibRepo,

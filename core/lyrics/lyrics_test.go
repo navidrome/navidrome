@@ -10,8 +10,8 @@ import (
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/tests"
 	"github.com/navidrome/navidrome/utils"
-	"github.com/navidrome/navidrome/utils/gg"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -31,15 +31,15 @@ var _ = Describe("sources", func() {
 			Lang:          "eng",
 			Line: []model.Line{
 				{
-					Start: gg.P(int64(18800)),
+					Start: new(int64(18800)),
 					Value: "We're no strangers to love",
 				},
 				{
-					Start: gg.P(int64(22801)),
+					Start: new(int64(22801)),
 					Value: "You know the rules and so do I",
 				},
 			},
-			Offset: gg.P(int64(-100)),
+			Offset: new(int64(-100)),
 			Synced: true,
 		},
 	}
@@ -93,6 +93,7 @@ var _ = Describe("sources", func() {
 			var accessForbiddenFile string
 
 			BeforeEach(func() {
+				tests.SkipOnWindows("uses Unix file permission bits")
 				accessForbiddenFile = utils.TempFileName("access_forbidden-", ".mp3")
 
 				f, err := os.OpenFile(accessForbiddenFile, os.O_WRONLY|os.O_CREATE, 0222)

@@ -2,9 +2,7 @@ package configtest
 
 import "github.com/navidrome/navidrome/conf"
 
+// TODO Remove this redirection and call SnapshotConfig directly from tests
 func SetupConfig() func() {
-	oldValues := *conf.Server
-	return func() {
-		conf.Server = &oldValues
-	}
+	return conf.SnapshotConfig()
 }

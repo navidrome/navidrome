@@ -1,0 +1,25 @@
+{
+  "status": "ok",
+  "version": "1.16.1",
+  "type": "navidrome",
+  "serverVersion": "v0.55.0",
+  "openSubsonic": true,
+  "sonicMatch": [
+    {
+      "entry": {
+        "id": "1",
+        "isDir": false,
+        "title": "Bohemian Rhapsody"
+      },
+      "similarity": 0.95
+    },
+    {
+      "entry": {
+        "id": "2",
+        "isDir": false,
+        "title": "We Will Rock You"
+      },
+      "similarity": 0.78
+    }
+  ]
+}

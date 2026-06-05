@@ -2,6 +2,7 @@ package conf
 
 import (
 	"cmp"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/dustin/go-humanize"
 	"github.com/go-viper/encoding/ini"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/kr/pretty"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
@@ -27,9 +29,10 @@ type configOptions struct {
 	Address                         string
 	Port                            int
 	UnixSocketPerm                  string
+	EnforceNonRootUser              bool
 	MusicFolder                     string
-	DataFolder                      string
-	CacheFolder                     string
+	DataFolder                      Dir
+	CacheFolder                     Dir
 	DbPath                          string
 	LogLevel                        string
 	LogFile                         string
@@ -44,7 +47,6 @@ type configOptions struct {
 	UIWelcomeMessage                string
 	MaxSidebarPlaylists             int
 	EnableTranscodingConfig         bool
-	EnableTranscodingCancellation   bool
 	EnableDownloads                 bool
 	EnableExternalServices          bool
 	EnableM3UExternalAlbumArt       bool
@@ -60,8 +62,8 @@ type configOptions struct {
 	SmartPlaylistRefreshDelay       time.Duration
 	AutoTranscodeDownload           bool
 	DefaultDownsamplingFormat       string
-	Search                          searchOptions `json:",omitzero"`
-	SimilarSongsMatchThreshold      int
+	Search                          searchOptions  `json:",omitzero"`
+	Matcher                         matcherOptions `json:",omitzero"`
 	RecentlyAddedByModTime          bool
 	PreferSortTags                  bool
 	IgnoredArticles                 string
@@ -94,6 +96,7 @@ type configOptions struct {
 	EnableReplayGain                bool
 	EnableCoverAnimation            bool
 	EnableNowPlaying                bool
+	UIPlaybackReportInterval        time.Duration
 	GATrackingID                    string
 	EnableLogRedacting              bool
 	AuthRequestLimit                int
@@ -109,6 +112,7 @@ type configOptions struct {
 	PID                             pidOptions          `json:",omitzero"`
 	Inspect                         inspectOptions      `json:",omitzero"`
 	Subsonic                        subsonicOptions     `json:",omitzero"`
+	Transcoding                     transcodingOptions  `json:",omitzero"`
 	LastFM                          lastfmOptions       `json:",omitzero"`
 	Deezer                          deezerOptions       `json:",omitzero"`
 	ListenBrainz                    listenBrainzOptions `json:",omitzero"`
@@ -132,6 +136,7 @@ type configOptions struct {
 	DevArtworkMaxRequests             int
 	DevArtworkThrottleBacklogLimit    int
 	DevArtworkThrottleBacklogTimeout  time.Duration
+	DevArtworkThrottleBuffered        bool
 	DevArtistInfoTimeToLive           time.Duration
 	DevAlbumInfoTimeToLive            time.Duration
 	DevExternalScanner                bool
@@ -158,6 +163,12 @@ type scannerOptions struct {
 	GroupAlbumReleases bool   // Deprecated: Use PID.Album instead
 	FollowSymlinks     bool   // Whether to follow symlinks when scanning directories
 	PurgeMissing       string // Values: "never", "always", "full"
+}
+
+type transcodingOptions struct {
+	MaxConcurrent        int
+	MaxConcurrentPerUser int
+	EnableCancellation   bool
 }
 
 type subsonicOptions struct {
@@ -226,7 +237,7 @@ type jukeboxOptions struct {
 
 type backupOptions struct {
 	Count    int
-	Path     string
+	Path     Dir
 	Schedule string
 }
 
@@ -244,7 +255,7 @@ type inspectOptions struct {
 
 type pluginsOptions struct {
 	Enabled    bool
-	Folder     string
+	Folder     Dir
 	CacheSize  string
 	AutoReload bool
 	LogLevel   string
@@ -261,6 +272,11 @@ type searchOptions struct {
 	FullString bool
 }
 
+type matcherOptions struct {
+	PreferStarred  bool
+	FuzzyThreshold int
+}
+
 // logFatal prints a fatal error message to stderr and exits.
 // Overridden in tests to allow testing fatal paths.
 var logFatal = func(args ...any) {
@@ -268,10 +284,32 @@ var logFatal = func(args ...any) {
 	os.Exit(1)
 }
 
+var getEUID = os.Geteuid
+
+var currentGOOS = func() string {
+	return runtime.GOOS
+}
+
 var (
 	Server = &configOptions{}
 	hooks  []func()
 )
+
+// SnapshotConfig returns a function that restores Server to its current state.
+// Uses JSON round-tripping so Dir fields get fresh sync.Once values.
+func SnapshotConfig() func() {
+	snapshot, err := json.Marshal(Server)
+	if err != nil {
+		panic(fmt.Sprintf("SnapshotConfig: marshal failed: %v", err))
+	}
+	return func() {
+		var restored configOptions
+		if err := json.Unmarshal(snapshot, &restored); err != nil {
+			panic(fmt.Sprintf("SnapshotConfig: unmarshal failed: %v", err))
+		}
+		Server = &restored
+	}
+}
 
 func LoadFromFile(confFile string) {
 	viper.SetConfigFile(confFile)
@@ -291,54 +329,47 @@ func Load(noConfigDump bool) {
 	mapDeprecatedOption("ReverseProxyUserHeader", "ExtAuth.UserHeader")
 	mapDeprecatedOption("HTTPSecurityHeaders.CustomFrameOptionsValue", "HTTPHeaders.FrameOptions")
 	mapDeprecatedOption("CoverJpegQuality", "CoverArtQuality")
+	mapDeprecatedOption("SimilarSongsMatchThreshold", "Matcher.FuzzyThreshold")
+	mapDeprecatedOption("EnableTranscodingCancellation", "Transcoding.EnableCancellation")
 
-	err := viper.Unmarshal(&Server)
+	err := viper.Unmarshal(&Server, viper.DecodeHook(
+		mapstructure.ComposeDecodeHookFunc(
+			mapstructure.TextUnmarshallerHookFunc(),
+			mapstructure.StringToTimeDurationHookFunc(),
+			mapstructure.StringToSliceHookFunc(","),
+		),
+	))
 	if err != nil {
 		logFatal("Error parsing config:", err)
 	}
 
-	err = os.MkdirAll(Server.DataFolder, os.ModePerm)
-	if err != nil {
-		logFatal("Error creating data path:", err)
+	// Validate non-root user early, before any filesystem operations
+	if err := validateEnforceNonRootUser(); err != nil {
+		logFatal(err)
 	}
 
-	if Server.CacheFolder == "" {
-		Server.CacheFolder = filepath.Join(Server.DataFolder, "cache")
-	}
-	err = os.MkdirAll(Server.CacheFolder, os.ModePerm)
-	if err != nil {
-		logFatal("Error creating cache path:", err)
-	}
-
-	err = os.MkdirAll(filepath.Join(Server.DataFolder, consts.ArtworkFolder), os.ModePerm)
-	if err != nil {
-		logFatal("Error creating artwork path:", err)
+	if Server.CacheFolder.String() == "" {
+		Server.CacheFolder = NewDir(filepath.Join(Server.DataFolder.String(), "cache"))
 	}
 
 	if Server.Plugins.Enabled {
-		if Server.Plugins.Folder == "" {
-			Server.Plugins.Folder = filepath.Join(Server.DataFolder, "plugins")
-		}
-		err = os.MkdirAll(Server.Plugins.Folder, 0700)
-		if err != nil {
-			logFatal("Error creating plugins path:", err)
+		if Server.Plugins.Folder.String() == "" {
+			Server.Plugins.Folder = NewDirWithPerm(filepath.Join(Server.DataFolder.String(), "plugins"), 0700)
+		} else {
+			Server.Plugins.Folder = NewDirWithPerm(Server.Plugins.Folder.String(), 0700)
 		}
 	}
 
 	Server.ConfigFile = viper.GetViper().ConfigFileUsed()
 	if Server.DbPath == "" {
-		Server.DbPath = filepath.Join(Server.DataFolder, consts.DefaultDbPath)
-	}
-
-	if Server.Backup.Path != "" {
-		err = os.MkdirAll(Server.Backup.Path, os.ModePerm)
-		if err != nil {
-			logFatal("Error creating backup path:", err)
-		}
+		Server.DbPath = filepath.Join(Server.DataFolder.String(), consts.DefaultDbPath)
 	}
 
 	out := os.Stderr
 	if Server.LogFile != "" {
+		if mkErr := os.MkdirAll(filepath.Dir(Server.LogFile), os.ModePerm); mkErr != nil {
+			logFatal(fmt.Sprintf("Error creating log file directory: %s", mkErr.Error()))
+		}
 		out, err = os.OpenFile(Server.LogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			logFatal(fmt.Sprintf("Error opening log file %s: %s", Server.LogFile, err.Error()))
@@ -424,6 +455,8 @@ func Load(noConfigDump bool) {
 	logDeprecatedOptions("ReverseProxyUserHeader", "ExtAuth.UserHeader")
 	logDeprecatedOptions("HTTPSecurityHeaders.CustomFrameOptionsValue", "HTTPHeaders.FrameOptions")
 	logDeprecatedOptions("CoverJpegQuality", "CoverArtQuality")
+	logDeprecatedOptions("SimilarSongsMatchThreshold", "Matcher.FuzzyThreshold")
+	logDeprecatedOptions("EnableTranscodingCancellation", "Transcoding.EnableCancellation")
 
 	// Removed options
 	logRemovedOptions("Spotify.ID", "Spotify.Secret")
@@ -592,6 +625,18 @@ func validateMaxImageUploadSize() error {
 	return nil
 }
 
+func validateEnforceNonRootUser() error {
+	if !Server.EnforceNonRootUser || currentGOOS() == "windows" {
+		return nil
+	}
+
+	if getEUID() == 0 {
+		return fmt.Errorf("EnforceNonRootUser is enabled but Navidrome is running as root")
+	}
+
+	return nil
+}
+
 func validateScanSchedule() error {
 	if Server.Scanner.Schedule == "0" || Server.Scanner.Schedule == "" {
 		Server.Scanner.Schedule = ""
@@ -603,7 +648,7 @@ func validateScanSchedule() error {
 }
 
 func validateBackupSchedule() error {
-	if Server.Backup.Path == "" || Server.Backup.Schedule == "" || Server.Backup.Count == 0 {
+	if Server.Backup.Path.String() == "" || Server.Backup.Schedule == "" || Server.Backup.Count == 0 {
 		Server.Backup.Schedule = ""
 		return nil
 	}
@@ -691,6 +736,7 @@ func setViperDefaults() {
 	viper.SetDefault("address", "0.0.0.0")
 	viper.SetDefault("port", 4533)
 	viper.SetDefault("unixsocketperm", "0660")
+	viper.SetDefault("enforcenonrootuser", false)
 	viper.SetDefault("sessiontimeout", consts.DefaultSessionTimeout)
 	viper.SetDefault("baseurl", "")
 	viper.SetDefault("tlscert", "")
@@ -699,7 +745,6 @@ func setViperDefaults() {
 	viper.SetDefault("uiwelcomemessage", "")
 	viper.SetDefault("maxsidebarplaylists", consts.DefaultMaxSidebarPlaylists)
 	viper.SetDefault("enabletranscodingconfig", false)
-	viper.SetDefault("enabletranscodingcancellation", false)
 	viper.SetDefault("transcodingcachesize", "100MB")
 	viper.SetDefault("imagecachesize", "100MB")
 	viper.SetDefault("albumplaycountmode", consts.AlbumPlayCountModeAbsolute)
@@ -716,7 +761,8 @@ func setViperDefaults() {
 	viper.SetDefault("defaultdownsamplingformat", consts.DefaultDownsamplingFormat)
 	viper.SetDefault("search.fullstring", false)
 	viper.SetDefault("search.backend", "fts")
-	viper.SetDefault("similarsongsmatchthreshold", 85)
+	viper.SetDefault("matcher.preferstarred", true)
+	viper.SetDefault("matcher.fuzzythreshold", 85)
 	viper.SetDefault("recentlyaddedbymodtime", false)
 	viper.SetDefault("prefersorttags", false)
 	viper.SetDefault("ignoredarticles", "The El La Los Las Le Les Os As O A")
@@ -743,6 +789,7 @@ func setViperDefaults() {
 	viper.SetDefault("enablereplaygain", true)
 	viper.SetDefault("enablecoveranimation", true)
 	viper.SetDefault("enablenowplaying", true)
+	viper.SetDefault("uiplaybackreportinterval", consts.DefaultUIPlaybackReportInterval)
 	viper.SetDefault("enableartworkupload", true)
 	viper.SetDefault("maximageuploadsize", consts.DefaultMaxImageUploadSize)
 	viper.SetDefault("enablesharing", false)
@@ -782,6 +829,9 @@ func setViperDefaults() {
 	viper.SetDefault("subsonic.enableaveragerating", true)
 	viper.SetDefault("subsonic.legacyclients", "DSub")
 	viper.SetDefault("subsonic.minimalclients", "SubMusic")
+	viper.SetDefault("transcoding.maxconcurrent", 0)
+	viper.SetDefault("transcoding.maxconcurrentperuser", 0)
+	viper.SetDefault("transcoding.enablecancellation", false)
 	viper.SetDefault("agents", "deezer,lastfm,listenbrainz")
 	viper.SetDefault("lastfm.enabled", true)
 	viper.SetDefault("lastfm.language", consts.DefaultInfoLanguage)
@@ -826,6 +876,7 @@ func setViperDefaults() {
 	viper.SetDefault("devartworkmaxrequests", max(2, runtime.NumCPU()/2))
 	viper.SetDefault("devartworkthrottlebackloglimit", consts.RequestThrottleBacklogLimit)
 	viper.SetDefault("devartworkthrottlebacklogtimeout", consts.RequestThrottleBacklogTimeout)
+	viper.SetDefault("devartworkthrottlebuffered", true)
 	viper.SetDefault("devartistinfotimetolive", consts.ArtistInfoTimeToLive)
 	viper.SetDefault("devalbuminfotimetolive", consts.AlbumInfoTimeToLive)
 	viper.SetDefault("devexternalscanner", true)
