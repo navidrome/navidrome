@@ -216,6 +216,44 @@ var _ = Describe("ShareRepository", func() {
 				err := repo.(rest.Persistable).Update("headless-upd-share", &model.Share{Description: "Headless"}, "description")
 				Expect(err).ToNot(HaveOccurred())
 			})
+
+			It("returns not found when updating a nonexistent share", func() {
+				ctx := request.WithUser(log.NewContext(context.TODO()), ownerUser)
+				repo := NewShareRepository(ctx, GetDBXBuilder())
+				err := repo.(rest.Persistable).Update("does-not-exist", &model.Share{Description: "Ghost"}, "description")
+				Expect(err).To(Equal(rest.ErrNotFound))
+			})
+
+			It("updates all columns when no specific columns are given", func() {
+				insertShare("all-cols-share", ownerUser.ID)
+				ctx := request.WithUser(log.NewContext(context.TODO()), ownerUser)
+				repo := NewShareRepository(ctx, GetDBXBuilder())
+				// No cols: the update must write every column, not just updated_at.
+				err := repo.(rest.Persistable).Update("all-cols-share",
+					&model.Share{Description: "All Updated", MaxBitRate: 192, ResourceType: "album", ResourceIDs: "2002"})
+				Expect(err).ToNot(HaveOccurred())
+
+				got, err := repo.(rest.Repository).Read("all-cols-share")
+				Expect(err).ToNot(HaveOccurred())
+				share := got.(*model.Share)
+				Expect(share.Description).To(Equal("All Updated"))
+				Expect(share.MaxBitRate).To(Equal(192))
+				Expect(share.ResourceType).To(Equal("album"))
+			})
+
+			It("does not let an owner reassign their share to another user", func() {
+				insertShare("reassign-share", ownerUser.ID)
+				ctx := request.WithUser(log.NewContext(context.TODO()), ownerUser)
+				repo := NewShareRepository(ctx, GetDBXBuilder())
+				err := repo.(rest.Persistable).Update("reassign-share",
+					&model.Share{UserID: otherUser.ID, Description: "Given away"}, "user_id", "description")
+				Expect(err).ToNot(HaveOccurred())
+
+				// Ownership must not have moved, even though user_id was passed in the body and cols.
+				got, err := repo.(rest.Repository).Read("reassign-share")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(got.(*model.Share).UserID).To(Equal(ownerUser.ID))
+			})
 		})
 	})
 })

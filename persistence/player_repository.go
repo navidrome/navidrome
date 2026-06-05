@@ -67,11 +67,10 @@ func (r *playerRepository) addRestriction(sql ...Sqlizer) Sqlizer {
 	if len(sql) > 0 {
 		s = append(s, sql[0])
 	}
-	u := loggedUser(r.ctx)
-	if u.IsAdmin {
-		return s
+	if owner := r.ownerFilter(); owner != nil {
+		s = append(s, owner)
 	}
-	return append(s, Eq{"user_id": u.ID})
+	return s
 }
 
 func (r *playerRepository) CountByClient(options ...model.QueryOptions) (map[string]int64, error) {
@@ -125,6 +124,10 @@ func (r *playerRepository) NewInstance() any {
 	return &model.Player{}
 }
 
+// isPermitted authorizes creating a new record, based on the owner declared in the request body.
+// This is only safe for inserts: there is no stored row yet, and a non-admin may only create a
+// player they own. Updates must not use this (the body owner is attacker-controlled); they go
+// through updateOwned, which authorizes against the persisted user_id in the WHERE clause.
 func (r *playerRepository) isPermitted(p *model.Player) bool {
 	u := loggedUser(r.ctx)
 	return u.IsAdmin || p.UserId == u.ID
@@ -145,14 +148,7 @@ func (r *playerRepository) Save(entity any) (string, error) {
 func (r *playerRepository) Update(id string, entity any, cols ...string) error {
 	t := entity.(*model.Player)
 	t.ID = id
-	if !r.isPermitted(t) {
-		return rest.ErrPermissionDenied
-	}
-	_, err := r.put(id, t, cols...)
-	if errors.Is(err, model.ErrNotFound) {
-		return rest.ErrNotFound
-	}
-	return err
+	return r.updateOwned(id, t, cols...)
 }
 
 func (r *playerRepository) Delete(id string) error {

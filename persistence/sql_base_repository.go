@@ -13,6 +13,7 @@ import (
 	"time"
 
 	. "github.com/Masterminds/squirrel"
+	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -55,6 +56,16 @@ func loggedUser(ctx context.Context) *model.User {
 	} else {
 		return &user
 	}
+}
+
+// ownerFilter returns the predicate restricting access to rows owned by the logged-in user, for
+// tables with a user_id column. It returns nil for admins and for headless/system contexts (invalid
+// user), meaning "no ownership restriction". Callers should skip the WHERE clause when it is nil.
+func (r sqlRepository) ownerFilter() Sqlizer {
+	if usr := loggedUser(r.ctx); !usr.IsAdmin && usr.ID != invalidUserId {
+		return Eq{"user_id": usr.ID}
+	}
+	return nil
 }
 
 func (r *sqlRepository) registerModel(instance any, filters map[string]filterFunc) {
@@ -382,6 +393,47 @@ func (r sqlRepository) exists(cond Sqlizer) (bool, error) {
 	return res.Exist > 0, err
 }
 
+// updateOwned performs an atomic, ownership-restricted update of the row identified by id, for
+// repositories whose table has a user_id column. Non-admins can only update rows they own: the
+// ownership predicate is part of the UPDATE's WHERE clause, so a row owned by another user simply
+// does not match and no write happens. Ownership itself is immutable here: user_id is never written,
+// so no caller (admin included) can reassign a row to a different owner via an update. Unlike put,
+// it never falls through to an INSERT, so a non-matching id never creates a row.
+//
+// When the update matches no row it classifies the failure: if the row exists but is owned by
+// another user it returns rest.ErrPermissionDenied, otherwise rest.ErrNotFound. The write itself is
+// still atomic; the extra lookup happens only on the failure path (count == 0), where no write
+// occurred, so there is no TOCTOU on the update.
+func (r sqlRepository) updateOwned(id string, m any, colsToUpdate ...string) error {
+	values, err := toSQLArgs(m)
+	if err != nil {
+		return fmt.Errorf("error preparing values to write to DB: %w", err)
+	}
+	updateValues := filterUpdateValues(values, id, colsToUpdate...)
+	delete(updateValues, "user_id") // ownership is immutable on update
+	update := Update(r.tableName).Where(Eq{"id": id}).SetMap(updateValues)
+	if owner := r.ownerFilter(); owner != nil {
+		update = update.Where(owner)
+	}
+	count, err := r.executeSQL(update)
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		// The update matched no row: either the id is missing, or it exists but is owned by
+		// someone else. Disambiguate to return the more accurate error.
+		exists, err := r.exists(Eq{"id": id})
+		if err != nil {
+			return err
+		}
+		if exists {
+			return rest.ErrPermissionDenied
+		}
+		return rest.ErrNotFound
+	}
+	return nil
+}
+
 func (r sqlRepository) count(countQuery SelectBuilder, options ...model.QueryOptions) (int64, error) {
 	countQuery = countQuery.
 		RemoveColumns().Columns("count(distinct " + r.tableName + ".id) as count").
@@ -408,6 +460,30 @@ func (r sqlRepository) putByMatch(filter Sqlizer, id string, m any, colsToUpdate
 	return r.put(res.ID, m, colsToUpdate...)
 }
 
+// filterUpdateValues selects, from a marshaled column map, the values to write in an UPDATE on the
+// row identified by id: only the requested colsToUpdate (or all columns when none are specified),
+// dropping columns that must never be overwritten on update (created_at, birth_time).
+func filterUpdateValues(values map[string]any, id string, colsToUpdate ...string) map[string]any {
+	updateValues := map[string]any{}
+
+	// This is a map of the columns that need to be updated, if specified
+	c2upd := slice.ToMap(colsToUpdate, func(s string) (string, struct{}) {
+		return toSnakeCase(s), struct{}{}
+	})
+	for k, v := range values {
+		if _, found := c2upd[k]; len(c2upd) == 0 || found {
+			updateValues[k] = v
+		}
+	}
+
+	updateValues["id"] = id
+	delete(updateValues, "created_at")
+	// To avoid updating the media_file birth_time on each scan. Not the best solution, but it works for now
+	// TODO move to mediafile_repository when each repo has its own upsert method
+	delete(updateValues, "birth_time")
+	return updateValues
+}
+
 func (r sqlRepository) put(id string, m any, colsToUpdate ...string) (newId string, err error) {
 	values, err := toSQLArgs(m)
 	if err != nil {
@@ -415,24 +491,7 @@ func (r sqlRepository) put(id string, m any, colsToUpdate ...string) (newId stri
 	}
 	// If there's an ID, try to update first
 	if id != "" {
-		updateValues := map[string]any{}
-
-		// This is a map of the columns that need to be updated, if specified
-		c2upd := slice.ToMap(colsToUpdate, func(s string) (string, struct{}) {
-			return toSnakeCase(s), struct{}{}
-		})
-		for k, v := range values {
-			if _, found := c2upd[k]; len(c2upd) == 0 || found {
-				updateValues[k] = v
-			}
-		}
-
-		updateValues["id"] = id
-		delete(updateValues, "created_at")
-		// To avoid updating the media_file birth_time on each scan. Not the best solution, but it works for now
-		// TODO move to mediafile_repository when each repo has its own upsert method
-		delete(updateValues, "birth_time")
-		update := Update(r.tableName).Where(Eq{"id": id}).SetMap(updateValues)
+		update := Update(r.tableName).Where(Eq{"id": id}).SetMap(filterUpdateValues(values, id, colsToUpdate...))
 		count, err := r.executeSQL(update)
 		if err != nil {
 			return "", err

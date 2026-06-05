@@ -53,6 +53,10 @@ func (r *shareRepository) checkOwnership(id string) error {
 	return nil
 }
 
+// TODO: this still uses the legacy checkOwnership SELECT-then-delete pattern (a TOCTOU window),
+// the same shape removed from Update. Once a base-repo deleteOwned exists (built on ownerFilter,
+// mirroring updateOwned), route Delete through it and drop checkOwnership entirely. playerRepository
+// .Delete (which restricts via addRestriction) should adopt the same primitive.
 func (r *shareRepository) Delete(id string) error {
 	if err := r.checkOwnership(id); err != nil {
 		return err
@@ -166,17 +170,12 @@ func sortByIdPosition(mfs model.MediaFiles, ids []string) model.MediaFiles {
 
 func (r *shareRepository) Update(id string, entity any, cols ...string) error {
 	s := entity.(*model.Share)
-	if err := r.checkOwnership(id); err != nil {
-		return err
-	}
 	s.ID = id
 	s.UpdatedAt = time.Now()
-	cols = append(cols, "updated_at")
-	_, err := r.put(id, s, cols...)
-	if errors.Is(err, model.ErrNotFound) {
-		return rest.ErrNotFound
+	if len(cols) > 0 {
+		cols = append(cols, "updated_at")
 	}
-	return err
+	return r.updateOwned(id, s, cols...)
 }
 
 func (r *shareRepository) Save(entity any) (string, error) {
