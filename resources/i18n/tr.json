@@ -46,7 +46,28 @@
         "download": "İndir",
         "playNext": "Dinlenenden Sonra Oynat",
         "info": "Bilgiler",
-        "showInPlaylist": "Çalma Listesinde Göster"
+
+        "playNowShort": "Şimdi",
+        "playNextShort": "Sonraki",
+        "addToQueueShort": "Sonra",
+        "addToPlaylistShort": "Çalma listesi",
+        "batchRate": "Derecelendir",
+        "batchRateShort": "Puan ver",
+        "batchRateTitle": "%{smart_count} şarkıyı derecelendir |||| %{smart_count} şarkıyı derecelendir",
+        "clearRating": "Derecelendirmeyi kaldır",
+        "like": "Beğen",
+        "unlike": "Beğenme"
+        "showInPlaylist": "Çalma Listesinde Göster",
+        "playNowShort": "Şimdi",
+        "playNextShort": "Sonraki",
+        "addToQueueShort": "Sonra",
+        "addToPlaylistShort": "Çalma listesi",
+        "batchRate": "Derecelendir",
+        "batchRateShort": "Puan ver",
+        "batchRateTitle": "%{smart_count} şarkıyı derecelendir |||| %{smart_count} şarkıyı derecelendir",
+        "clearRating": "Derecelendirmeyi kaldır",
+        "like": "Beğen",
+        "unlike": "Beğenme"
       }
     },
     "album": {
@@ -511,7 +532,8 @@
     "remove_all_missing_title": "Tüm eksik dosyaları kaldırın",
     "remove_all_missing_content": "Veritabanından tüm eksik dosyaları kaldırmak istediğinizden emin misiniz? Bu, oynatma sayısı ve derecelendirmelerde dahil olmak üzere bunlara ilişkili tüm değerleri kalıcı olarak kaldıracaktır.",
     "noSimilarSongsFound": "Benzer şarkı bulunamadı",
-    "noTopSongsFound": "En iyi şarkı listesi boş"
+    "noTopSongsFound": "En iyi şarkı listesi boş",
+    "batchRateSuccess": "Derecelendirme başarıyla uygulandı"
   },
   "menu": {
     "library": "Kütüphane",

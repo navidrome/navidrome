@@ -49,7 +49,28 @@
         "playNext": "Naslednji",
         "info": "Več informacij",
         "showInPlaylist": "Prikaži na seznamu predvajanja",
-        "instantMix": "Instant Mix"
+        "instantMix": "Instant Mix",
+
+        "playNowShort": "Zdaj",
+        "playNextShort": "Naslednja",
+        "addToQueueShort": "Kasneje",
+        "addToPlaylistShort": "Predvajalnik",
+        "batchRate": "Oceni",
+        "batchRateShort": "Oceni",
+        "batchRateTitle": "Oceni %{smart_count} pesem |||| Oceni %{smart_count} pesmi",
+        "clearRating": "Odstrani oceno",
+        "like": "Všeč mi je",
+        "unlike": "Ni mi všeč"
+        "playNowShort": "Zdaj",
+        "playNextShort": "Naslednja",
+        "addToQueueShort": "Kasneje",
+        "addToPlaylistShort": "Predvajalnik",
+        "batchRate": "Oceni",
+        "batchRateShort": "Oceni",
+        "batchRateTitle": "Oceni %{smart_count} pesem |||| Oceni %{smart_count} pesmi",
+        "clearRating": "Odstrani oceno",
+        "like": "Všeč mi je",
+        "unlike": "Ni mi všeč"
       }
     },
     "album": {
@@ -591,7 +612,10 @@
     "remove_all_missing_content": "Ste prepričani, da želite odstraniti vse manjkajoče datoteke iz baze? Trajno boste odstranili vse reference nanje, vključno s številom predvajanj in ocenami.",
     "noSimilarSongsFound": "Ni najdenih podobnih pesmi",
     "noTopSongsFound": "Ni najdenih najboljših pesmi",
-    "startingInstantMix": "Nalaganje Instant Mix..."
+    "startingInstantMix": "Nalaganje Instant Mix...",
+
+    "batchRateSuccess": "Ocena je bila uspešno uporabljena"
+    "batchRateSuccess": "Ocena je bila uspešno uporabljena"
   },
   "menu": {
     "library": "Knjižnica",

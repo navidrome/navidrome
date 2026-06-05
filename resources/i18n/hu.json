@@ -49,7 +49,28 @@
         "download": "Letöltés",
         "playNext": "Lejátszás következőként",
         "info": "Részletek",
-        "instantMix": "Instant keverés"
+        "instantMix": "Instant keverés",
+
+        "playNowShort": "Most",
+        "playNextShort": "Következő",
+        "addToQueueShort": "Később",
+        "addToPlaylistShort": "Lejátszási lista",
+        "batchRate": "Értékelés",
+        "batchRateShort": "Értékel",
+        "batchRateTitle": "Értékelj %{smart_count} dalt |||| Értékelj %{smart_count} dalt",
+        "clearRating": "Értékelés törlése",
+        "like": "Kedvelés",
+        "unlike": "Kedvelés visszavonása"
+        "playNowShort": "Most",
+        "playNextShort": "Következő",
+        "addToQueueShort": "Később",
+        "addToPlaylistShort": "Lejátszási lista",
+        "batchRate": "Értékelés",
+        "batchRateShort": "Értékel",
+        "batchRateTitle": "Értékelj %{smart_count} dalt |||| Értékelj %{smart_count} dalt",
+        "clearRating": "Értékelés törlése",
+        "like": "Kedvelés",
+        "unlike": "Kedvelés visszavonása"
       }
     },
     "album": {
@@ -352,7 +373,7 @@
         "selectedUsers": "Kiválasztott felhasználók engedélyezése",
         "allLibraries": "Összes könyvtár engedélyezése",
         "selectedLibraries": "Kiválasztott könyvtárak engedélyezése",
-"allowWriteAccess": "Írási hozzáférés engedélyezése"
+        "allowWriteAccess": "Írási hozzáférés engedélyezése"
       },
       "sections": {
         "status": "Státusz",
@@ -397,7 +418,7 @@
         "allLibrariesHelp": "Engedélyezés esetén ez a kiegészítő hozzá fog férni minden jelenlegi és jövőben létrehozott könyvtárhoz.",
         "noLibraries": "Nincs kiválasztott könyvtár",
         "librariesRequired": "Ez a kiegészítő hozzáférést kér könyvtárinformációkhoz. Válaszd ki, melyik könyvtárakat érheti el, vagy az 'Összes könyvtár engedélyezése' opciót.",
-"allowWriteAccessHelp": "Amikor ez engedélyezve van, a kiegészítő módosíthatja a könyvtár mappáit. Alapbeállításon a kiegészítőknek csak olvasási joguk van.",
+        "allowWriteAccessHelp": "Amikor ez engedélyezve van, a kiegészítő módosíthatja a könyvtár mappáit. Alapbeállításon a kiegészítőknek csak olvasási joguk van.",
         "requiredHosts": "Szükséges hostok"
       },
       "placeholders": {
@@ -564,6 +585,8 @@
     "songsAddedToPlaylist": "1 szám hozzáadva a lejátszási listához |||| %{smart_count} szám hozzáadva a lejátszási listához",
     "noSimilarSongsFound": "Nem találhatóak hasonló számok",
     "startingInstantMix": "Instant keverés töltődik...",
+
+    "batchRateSuccess": "Az értékelés sikeresen alkalmazva"
     "noTopSongsFound": "Nincsenek top számok",
     "noPlaylistsAvailable": "Nem áll rendelkezésre",
     "delete_user_title": "Felhasználó törlése '%{name}'",
@@ -594,7 +617,8 @@
     "downloadDialogTitle": "Letöltés %{resource} '%{name}' (%{size})",
     "shareCopyToClipboard": "Másolás vágólapra: Ctrl+C, Enter",
     "remove_missing_title": "Hiányzó fájlok eltávolítása",
-    "remove_missing_content": "Biztos, hogy el akarod távolítani a kiválasztott, hiányó fájlokat az adatbázisból? Ez a művelet véglegesen törölni fog minden hozzájuk kapcsolódó referenciát, beleértve a lejátszások számát és értékeléseket."
+    "remove_missing_content": "Biztos, hogy el akarod távolítani a kiválasztott, hiányó fájlokat az adatbázisból? Ez a művelet véglegesen törölni fog minden hozzájuk kapcsolódó referenciát, beleértve a lejátszások számát és értékeléseket.",
+    "batchRateSuccess": "Az értékelés sikeresen alkalmazva"
   },
   "menu": {
     "library": "Könyvtár",

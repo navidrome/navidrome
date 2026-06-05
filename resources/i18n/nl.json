@@ -49,7 +49,28 @@
         "playNext": "Volgende",
         "info": "Meer info",
         "showInPlaylist": "Toon in afspeellijst",
-        "instantMix": "Instant mix"
+        "instantMix": "Instant mix",
+
+        "playNowShort": "Nu",
+        "playNextShort": "Volgende",
+        "addToQueueShort": "Later",
+        "addToPlaylistShort": "Afspeellijst",
+        "batchRate": "Beoordelen",
+        "batchRateShort": "Beoordeel",
+        "batchRateTitle": "Beoordeel %{smart_count} nummer |||| Beoordeel %{smart_count} nummers",
+        "clearRating": "Beoordeling wissen",
+        "like": "Vind ik leuk",
+        "unlike": "Vind ik niet leuk"
+        "playNowShort": "Nu",
+        "playNextShort": "Volgende",
+        "addToQueueShort": "Later",
+        "addToPlaylistShort": "Afspeellijst",
+        "batchRate": "Beoordelen",
+        "batchRateShort": "Beoordeel",
+        "batchRateTitle": "Beoordeel %{smart_count} nummer |||| Beoordeel %{smart_count} nummers",
+        "clearRating": "Beoordeling wissen",
+        "like": "Vind ik leuk",
+        "unlike": "Vind ik niet leuk"
       }
     },
     "album": {
@@ -592,12 +613,15 @@
     "noSimilarSongsFound": "Geen vergelijkbare nummers gevonden",
     "noTopSongsFound": "Geen beste nummers gevonden",
     "startingInstantMix": "Laden van Instant mix...",
+
+    "batchRateSuccess": "Beoordeling succesvol toegepast"
     "uploadCover": "Albumhoes toevoegen",
     "removeCover": "Verwijder albumhoes",
     "coverUploaded": "Albumhoes bijgewerkt",
     "coverRemoved": "Albumhoes verwijderd",
     "coverUploadError": "Fout bij het toevoegen albumhoes",
-    "coverRemoveError": "Fout bij verwijderen albumhoes"
+    "coverRemoveError": "Fout bij verwijderen albumhoes",
+    "batchRateSuccess": "Beoordeling succesvol toegepast"
   },
   "menu": {
     "library": "Bibliotheek",

@@ -49,7 +49,28 @@
         "playNext": "下一首播放",
         "info": "取得資訊",
         "showInPlaylist": "在播放清單中顯示",
-        "instantMix": "即時混音"
+        "instantMix": "即時混音",
+
+        "playNowShort": "立即播放",
+        "playNextShort": "下一首",
+        "addToQueueShort": "稍後播放",
+        "addToPlaylistShort": "歌單",
+        "batchRate": "評分",
+        "batchRateShort": "評分",
+        "batchRateTitle": "為 %{smart_count} 首歌曲評分",
+        "clearRating": "清除評分",
+        "like": "喜歡",
+        "unlike": "取消喜歡"
+        "playNowShort": "立即播放",
+        "playNextShort": "下一首",
+        "addToQueueShort": "稍後播放",
+        "addToPlaylistShort": "歌單",
+        "batchRate": "評分",
+        "batchRateShort": "評分",
+        "batchRateTitle": "為 %{smart_count} 首歌曲評分",
+        "clearRating": "清除評分",
+        "like": "喜歡",
+        "unlike": "取消喜歡"
       }
     },
     "album": {
@@ -592,12 +613,15 @@
     "noSimilarSongsFound": "找不到相似歌曲",
     "noTopSongsFound": "找不到熱門歌曲",
     "startingInstantMix": "正在載入即時混音...",
+
+    "batchRateSuccess": "評分已成功套用"
     "uploadCover": "上傳封面",
     "removeCover": "移除封面",
     "coverUploaded": "已更新封面圖",
     "coverRemoved": "已移除封面圖",
     "coverUploadError": "上傳封面圖時發生錯誤",
-    "coverRemoveError": "移除封面圖時發生錯誤"
+    "coverRemoveError": "移除封面圖時發生錯誤",
+    "batchRateSuccess": "評分已成功套用"
   },
   "menu": {
     "library": "媒體庫",

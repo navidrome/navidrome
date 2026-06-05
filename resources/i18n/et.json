@@ -51,7 +51,28 @@
         "playNext": "Esita järgmisena",
         "info": "Loo teave",
         "showInPlaylist": "Näita esitusloendis",
-        "instantMix": "Kohene miks"
+        "instantMix": "Kohene miks",
+
+        "playNowShort": "Kohe",
+        "playNextShort": "Järgmine",
+        "addToQueueShort": "Hiljem",
+        "addToPlaylistShort": "Esitusloend",
+        "batchRate": "Hinda",
+        "batchRateShort": "Hinda",
+        "batchRateTitle": "Hinda %{smart_count} laulu |||| Hinda %{smart_count} laulu",
+        "clearRating": "Eemalda hinnang",
+        "like": "Meeldib",
+        "unlike": "Eemalda meeldib"
+        "playNowShort": "Kohe",
+        "playNextShort": "Järgmine",
+        "addToQueueShort": "Hiljem",
+        "addToPlaylistShort": "Esitusloend",
+        "batchRate": "Hinda",
+        "batchRateShort": "Hinda",
+        "batchRateTitle": "Hinda %{smart_count} laulu |||| Hinda %{smart_count} laulu",
+        "clearRating": "Eemalda hinnang",
+        "like": "Meeldib",
+        "unlike": "Eemalda meeldib"
       }
     },
     "album": {
@@ -594,12 +615,15 @@
     "noSimilarSongsFound": "Sarnaseid lugusid ei leidu",
     "noTopSongsFound": "Populaarsemaid lugusid ei leidu",
     "startingInstantMix": "Laadin kohest miksi...",
+
+    "batchRateSuccess": "Hinnang edukalt rakendatud"
     "uploadCover": "Laadi kaanepilt üles",
     "removeCover": "Eemalda kaanepilt",
     "coverUploaded": "Kaanepilt on uuendatud",
     "coverRemoved": "Kaanepilt on eemaldatud",
     "coverUploadError": "Viga kaanepildi üleslaadimisel",
-    "coverRemoveError": "Viga kaanepildi eemaldamisel"
+    "coverRemoveError": "Viga kaanepildi eemaldamisel",
+    "batchRateSuccess": "Hinnang edukalt rakendatud"
   },
   "menu": {
     "library": "Kogumik",

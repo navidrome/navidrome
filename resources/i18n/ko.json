@@ -12,7 +12,7 @@
         "artist": "아티스트",
         "album": "앨범",
         "path": "파일 경로",
-		"libraryName": "라이브러리",
+        "libraryName": "라이브러리",
         "genre": "장르",
         "compilation": "컴필레이션",
         "year": "년",
@@ -45,7 +45,28 @@
         "shuffleAll": "모든 노래 셔플",
         "download": "다운로드",
         "playNext": "다음 재생",
-        "info": "정보 얻기"
+        "info": "정보 얻기",
+
+        "playNowShort": "지금",
+        "playNextShort": "다음",
+        "addToQueueShort": "나중에",
+        "addToPlaylistShort": "재생목록",
+        "batchRate": "평가",
+        "batchRateShort": "평가",
+        "batchRateTitle": "%{smart_count}곡 평가",
+        "clearRating": "평가 지우기",
+        "like": "좋아요",
+        "unlike": "좋아요 취소"
+        "playNowShort": "지금",
+        "playNextShort": "다음",
+        "addToQueueShort": "나중에",
+        "addToPlaylistShort": "재생목록",
+        "batchRate": "평가",
+        "batchRateShort": "평가",
+        "batchRateTitle": "%{smart_count}곡 평가",
+        "clearRating": "평가 지우기",
+        "like": "좋아요",
+        "unlike": "좋아요 취소"
       }
     },
     "album": {
@@ -183,7 +204,7 @@
         "scrobbleEnabled": "외부 서비스에 스크로블 보내기"
       }
     },
-"transcoding": {
+    "transcoding": {
       "name": "트랜스코딩 |||| 트랜스코딩",
       "fields": {
         "name": "이름",
@@ -507,7 +528,8 @@
     "shareSuccess": "URL이 클립보드에 복사되었음: %{url}",
     "shareFailure": "URL %{url}을 클립보드에 복사하는 중 오류가 발생하였음",
     "downloadDialogTitle": "%{resource} '%{name}' (%{size}) 다운로드",
-    "downloadOriginalFormat": "오리지널 형식으로 다운로드"
+    "downloadOriginalFormat": "오리지널 형식으로 다운로드",
+    "batchRateSuccess": "평가가 성공적으로 적용되었습니다"
   },
   "menu": {
     "library": "라이브러리",

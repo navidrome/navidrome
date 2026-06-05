@@ -49,7 +49,28 @@
         "download": "Deskargatu",
         "playNext": "Hurrengoa",
         "info": "Erakutsi informazioa",
-        "instantMix": "Berehalako nahastea"
+        "instantMix": "Berehalako nahastea",
+
+        "playNowShort": "Orain",
+        "playNextShort": "Hurrengoa",
+        "addToQueueShort": "Geroago",
+        "addToPlaylistShort": "Zerrenda",
+        "batchRate": "Baloratu",
+        "batchRateShort": "Baloratu",
+        "batchRateTitle": "Baloratu %{smart_count} abesti |||| Baloratu %{smart_count} abesti",
+        "clearRating": "Kendu balorazioa",
+        "like": "Gustatu",
+        "unlike": "Ez gustatu"
+        "playNowShort": "Orain",
+        "playNextShort": "Hurrengoa",
+        "addToQueueShort": "Geroago",
+        "addToPlaylistShort": "Zerrenda",
+        "batchRate": "Baloratu",
+        "batchRateShort": "Baloratu",
+        "batchRateTitle": "Baloratu %{smart_count} abesti |||| Baloratu %{smart_count} abesti",
+        "clearRating": "Kendu balorazioa",
+        "like": "Gustatu",
+        "unlike": "Ez gustatu"
       }
     },
     "album": {
@@ -569,6 +590,8 @@
     "songsAddedToPlaylist": "Abesti bat zerrendara gehitu da |||| %{smart_count} abesti zerrendara gehitu dira",
     "noSimilarSongsFound": "Ez da antzeko abestirik aurkitu",
     "startingInstantMix": "Berehalako nahastea kargatzen…",
+
+    "batchRateSuccess": "Balorazioa ondo aplikatu da"
     "noTopSongsFound": "Ez da aparteko abestirik aurkitu",
     "noPlaylistsAvailable": "Ez dago zerrendarik erabilgarri",
     "delete_user_title": "Ezabatu '%{name}' erabiltzailea",
@@ -599,7 +622,8 @@
     "shareSuccess": "URLa arbelera kopiatu da: %{url}",
     "shareFailure": "Errorea %{url} URLa arbelera kopiatzean",
     "downloadDialogTitle": "Deskargatu '%{name}' %{resource}, (%{size})",
-    "downloadOriginalFormat": "Deskargatu jatorrizko formatua"    
+    "downloadOriginalFormat": "Deskargatu jatorrizko formatua",
+    "batchRateSuccess": "Balorazioa ondo aplikatu da"
   },
   "menu": {
     "library": "Liburutegia",

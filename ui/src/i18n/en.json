@@ -51,7 +51,17 @@
         "download": "Download",
         "playNext": "Play Next",
         "info": "Get Info",
-        "instantMix": "Instant Mix"
+        "instantMix": "Instant Mix",
+        "playNowShort": "Now",
+        "playNextShort": "Next",
+        "addToQueueShort": "Later",
+        "addToPlaylistShort": "Playlist",
+        "batchRate": "Rate",
+        "batchRateShort": "Rate",
+        "batchRateTitle": "Rate %{smart_count} song |||| Rate %{smart_count} songs",
+        "clearRating": "Clear Rating",
+        "like": "Like",
+        "unlike": "Unlike"
       }
     },
     "album": {
@@ -571,6 +581,7 @@
     "songsAddedToPlaylist": "Added 1 song to playlist |||| Added %{smart_count} songs to playlist",
     "noSimilarSongsFound": "No similar songs found",
     "startingInstantMix": "Loading Instant Mix...",
+    "batchRateSuccess": "Rating applied successfully",
     "noTopSongsFound": "No top songs found",
     "noPlaylistsAvailable": "None available",
     "delete_user_title": "Delete user '%{name}'",

@@ -46,7 +46,28 @@
         "download": "Preuzmi",
         "playNext": "Reprodukcija sljedeće",
         "info": "Više informacija",
-        "showInPlaylist": "Prikaži u playlisti"
+
+        "playNowShort": "Sada",
+        "playNextShort": "Sljedeća",
+        "addToQueueShort": "Kasnije",
+        "addToPlaylistShort": "Playlist",
+        "batchRate": "Ocijeni",
+        "batchRateShort": "Ocijeni",
+        "batchRateTitle": "Ocijeni %{smart_count} pjesmu |||| Ocijeni %{smart_count} pjesama",
+        "clearRating": "Ukloni ocjenu",
+        "like": "Sviđa mi se",
+        "unlike": "Ne sviđa mi se"
+        "showInPlaylist": "Prikaži u playlisti",
+        "playNowShort": "Sada",
+        "playNextShort": "Sljedeća",
+        "addToQueueShort": "Kasnije",
+        "addToPlaylistShort": "Playlist",
+        "batchRate": "Ocijeni",
+        "batchRateShort": "Ocijeni",
+        "batchRateTitle": "Ocijeni %{smart_count} pjesmu |||| Ocijeni %{smart_count} pjesama",
+        "clearRating": "Ukloni ocjenu",
+        "like": "Sviđa mi se",
+        "unlike": "Ne sviđa mi se"
       }
     },
     "album": {
@@ -506,7 +527,8 @@
     "remove_all_missing_title": "Ukloni sve nedostajuće datoteke",
     "remove_all_missing_content": "Da li zaista želiš ukloniti sve nedostajuće datoteke iz baze podataka? Sve reference na datoteke (broj reprodukcija, ocjene) bit će trajno obrisane.",
     "noSimilarSongsFound": "Nema sličnih pjesama",
-    "noTopSongsFound": "Nema popularnih pjesama"
+    "noTopSongsFound": "Nema popularnih pjesama",
+    "batchRateSuccess": "Ocjena uspješno primijenjena"
   },
   "menu": {
     "library": "Biblioteka",

@@ -48,7 +48,28 @@
         "playNext": "Putar Berikutnya",
         "info": "Lihat Info",
         "showInPlaylist": "Tampilkan di Playlist",
-        "instantMix": "Mix Instan"
+        "instantMix": "Mix Instan",
+
+        "playNowShort": "Sekarang",
+        "playNextShort": "Berikutnya",
+        "addToQueueShort": "Nanti",
+        "addToPlaylistShort": "Playlist",
+        "batchRate": "Beri nilai",
+        "batchRateShort": "Nilai",
+        "batchRateTitle": "Nilai %{smart_count} lagu |||| Nilai %{smart_count} lagu",
+        "clearRating": "Hapus penilaian",
+        "like": "Sukai",
+        "unlike": "Batal sukai"
+        "playNowShort": "Sekarang",
+        "playNextShort": "Berikutnya",
+        "addToQueueShort": "Nanti",
+        "addToPlaylistShort": "Playlist",
+        "batchRate": "Beri nilai",
+        "batchRateShort": "Nilai",
+        "batchRateTitle": "Nilai %{smart_count} lagu |||| Nilai %{smart_count} lagu",
+        "clearRating": "Hapus penilaian",
+        "like": "Sukai",
+        "unlike": "Batal sukai"
       }
     },
     "album": {
@@ -588,7 +609,10 @@
     "remove_all_missing_content": "Apa kamu yakin ingin menghapus semua file dari database? Ini akan menghapus permanen dan apapun referensi ke mereka, termasuk hitungan pemutaran dan rating mereka.",
     "noSimilarSongsFound": "Tidak ada lagu yang serupa ditemukan",
     "noTopSongsFound": "Tidak ada lagu teratas ditemukan",
-    "startingInstantMix": "Memuat Mix Instan..."
+    "startingInstantMix": "Memuat Mix Instan...",
+
+    "batchRateSuccess": "Penilaian berhasil diterapkan"
+    "batchRateSuccess": "Penilaian berhasil diterapkan"
   },
   "menu": {
     "library": "Pustaka",

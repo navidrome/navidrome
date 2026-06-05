@@ -5,7 +5,7 @@ import { Button, useTranslate, useUnselectAll } from 'react-admin'
 import PlaylistAddIcon from '@material-ui/icons/PlaylistAdd'
 import { openAddToPlaylist } from '../actions'
 
-export const AddToPlaylistButton = ({ resource, selectedIds, className }) => {
+export const AddToPlaylistButton = ({ resource, selectedIds, className, label }) => {
   const translate = useTranslate()
   const dispatch = useDispatch()
   const unselectAll = useUnselectAll()
@@ -19,13 +19,15 @@ export const AddToPlaylistButton = ({ resource, selectedIds, className }) => {
     )
   }
 
+  const caption = label ? translate(label) : translate('resources.song.actions.addToPlaylist')
+
   return (
     <Button
       aria-controls="simple-menu"
       aria-haspopup="true"
       onClick={handleClick}
       className={className}
-      label={translate('resources.song.actions.addToPlaylist')}
+      label={caption}
     >
       <PlaylistAddIcon />
     </Button>

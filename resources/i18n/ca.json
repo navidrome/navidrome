@@ -49,7 +49,28 @@
         "playNext": "Reprodueix següent",
         "info": "Obtén informació",
         "showInPlaylist": "Mostra a la llista",
-        "instantMix": "Mescla immediata"
+        "instantMix": "Mescla immediata",
+
+        "playNowShort": "Ara",
+        "playNextShort": "Següent",
+        "addToQueueShort": "Després",
+        "addToPlaylistShort": "Llista",
+        "batchRate": "Valorar",
+        "batchRateShort": "Valorar",
+        "batchRateTitle": "Valorar %{smart_count} cançó |||| Valorar %{smart_count} cançons",
+        "clearRating": "Eliminar valoració",
+        "like": "M'agrada",
+        "unlike": "No m'agrada"
+        "playNowShort": "Ara",
+        "playNextShort": "Següent",
+        "addToQueueShort": "Després",
+        "addToPlaylistShort": "Llista",
+        "batchRate": "Valorar",
+        "batchRateShort": "Valorar",
+        "batchRateTitle": "Valorar %{smart_count} cançó |||| Valorar %{smart_count} cançons",
+        "clearRating": "Eliminar valoració",
+        "like": "M'agrada",
+        "unlike": "No m'agrada"
       }
     },
     "album": {
@@ -591,7 +612,10 @@
     "remove_all_missing_content": "Esteu segur que voleu eliminar tots els fitxers desapareguts de la base de dades? Se n'eliminarà permanentment qualsevol referència, inclosos el nombre de reproduccions i les puntuacions.",
     "noSimilarSongsFound": "No s'ha trobat cap cançó similar",
     "noTopSongsFound": "No s'ha trobat cap cançó popular",
-    "startingInstantMix": "S'està carregant la mescla immediata..."
+    "startingInstantMix": "S'està carregant la mescla immediata...",
+
+    "batchRateSuccess": "Valoració aplicada correctament"
+    "batchRateSuccess": "Valoració aplicada correctament"
   },
   "menu": {
     "library": "Biblioteca",

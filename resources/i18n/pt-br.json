@@ -51,7 +51,28 @@
         "playNext": "Toca a seguir",
         "info": "Detalhes",
         "showInPlaylist": "Ir para playlist",
-        "instantMix": "Mix Instantâneo"
+        "instantMix": "Mix Instantâneo",
+
+        "playNowShort": "Agora",
+        "playNextShort": "Próxima",
+        "addToQueueShort": "Depois",
+        "addToPlaylistShort": "Playlist",
+        "batchRate": "Avaliar",
+        "batchRateShort": "Avaliar",
+        "batchRateTitle": "Avaliar %{smart_count} música |||| Avaliar %{smart_count} músicas",
+        "clearRating": "Remover avaliação",
+        "like": "Curtir",
+        "unlike": "Descurtir"
+        "playNowShort": "Agora",
+        "playNextShort": "Próxima",
+        "addToQueueShort": "Depois",
+        "addToPlaylistShort": "Playlist",
+        "batchRate": "Avaliar",
+        "batchRateShort": "Avaliar",
+        "batchRateTitle": "Avaliar %{smart_count} música |||| Avaliar %{smart_count} músicas",
+        "clearRating": "Remover avaliação",
+        "like": "Curtir",
+        "unlike": "Descurtir"
       }
     },
     "album": {
@@ -594,12 +615,15 @@
     "noSimilarSongsFound": "Nenhuma música semelhante encontrada",
     "noTopSongsFound": "Nenhuma música mais tocada encontrada",
     "startingInstantMix": "Carregando Mix Instantâneo...",
+
+    "batchRateSuccess": "Avaliação aplicada com sucesso"
     "uploadCover": "Enviar Capa",
     "removeCover": "Remover Capa",
     "coverUploaded": "Capa atualizada",
     "coverRemoved": "Capa removida",
     "coverUploadError": "Erro ao enviar capa",
-    "coverRemoveError": "Erro ao remover capa"
+    "coverRemoveError": "Erro ao remover capa",
+    "batchRateSuccess": "Avaliação aplicada com sucesso"
   },
   "menu": {
     "library": "Biblioteca",
