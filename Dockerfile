@@ -164,6 +164,7 @@ RUN touch /.nddockerenv
 
 EXPOSE ${ND_PORT}
 WORKDIR /app
+ENV PATH="/app:${PATH}"
 
 ENTRYPOINT ["/app/navidrome"]
 

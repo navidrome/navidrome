@@ -135,12 +135,11 @@ var _ = Describe("ndpPackage", func() {
 	Describe("readManifest", func() {
 		It("should read only the manifest without loading wasm", func() {
 			ndpPath := filepath.Join(tmpDir, "test.ndp")
-			desc := "A test plugin"
 			manifest := &Manifest{
 				Name:        "Test Plugin",
 				Author:      "Test Author",
 				Version:     "1.0.0",
-				Description: &desc,
+				Description: new("A test plugin"),
 			}
 			wasmBytes := make([]byte, 1024*1024) // 1MB of zeros
 

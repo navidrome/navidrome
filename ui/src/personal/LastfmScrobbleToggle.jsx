@@ -13,21 +13,10 @@ import { baseUrl, openInNewTab } from '../utils'
 import { httpClient } from '../dataProvider'
 
 const Progress = (props) => {
-  const { setLinked, setCheckingLink, apiKey } = props
+  const { setLinked, setCheckingLink, openedTab } = props
   const notify = useNotify()
   let linkCheckDelay = 2000
   let linkChecks = 30
-  const openedTab = useRef()
-
-  useEffect(() => {
-    const callbackEndpoint = baseUrl(
-      `/api/lastfm/link/callback?uid=${localStorage.getItem('userId')}`,
-    )
-    const callbackUrl = `${window.location.origin}${callbackEndpoint}`
-    openedTab.current = openInNewTab(
-      `https://www.last.fm/api/auth/?api_key=${apiKey}&cb=${callbackUrl}`,
-    )
-  }, [apiKey])
 
   const endChecking = (success) => {
     linkCheckDelay = null
@@ -76,6 +65,7 @@ export const LastfmScrobbleToggle = (props) => {
   const [linked, setLinked] = useState(null)
   const [checkingLink, setCheckingLink] = useState(false)
   const [apiKey, setApiKey] = useState(false)
+  const openedTab = useRef()
 
   useEffect(() => {
     httpClient('/api/lastfm/link')
@@ -88,9 +78,42 @@ export const LastfmScrobbleToggle = (props) => {
       })
   }, [setLinked, setApiKey])
 
+  const startLink = () => {
+    // Open the tab synchronously so popup blockers attribute it to the click.
+    let tab
+    try {
+      tab = openInNewTab('about:blank')
+    } catch {
+      notify('message.lastfmLinkFailure', 'warning')
+      return
+    }
+    openedTab.current = tab
+    setCheckingLink(true)
+    httpClient('/api/lastfm/link')
+      .then((response) => {
+        const linkToken = response.json.linkToken
+        if (!linkToken) {
+          tab?.close()
+          notify('message.lastfmLinkFailure', 'warning')
+          setCheckingLink(false)
+          return
+        }
+        const callbackEndpoint = baseUrl(
+          `/api/lastfm/link/callback?uid=${encodeURIComponent(linkToken)}`,
+        )
+        const callbackUrl = `${window.location.origin}${callbackEndpoint}`
+        tab.location.href = `https://www.last.fm/api/auth/?api_key=${apiKey}&cb=${callbackUrl}`
+      })
+      .catch(() => {
+        tab?.close()
+        notify('message.lastfmLinkFailure', 'warning')
+        setCheckingLink(false)
+      })
+  }
+
   const toggleScrobble = () => {
     if (!linked) {
-      setCheckingLink(true)
+      startLink()
     } else {
       httpClient('/api/lastfm/link', { method: 'DELETE' })
         .then(() => {
@@ -121,7 +144,7 @@ export const LastfmScrobbleToggle = (props) => {
         <Progress
           setLinked={setLinked}
           setCheckingLink={setCheckingLink}
-          apiKey={apiKey}
+          openedTab={openedTab}
         />
       )}
       {!apiKey && (

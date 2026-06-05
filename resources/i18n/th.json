@@ -38,7 +38,9 @@
         "missing": "หายไป",
         "libraryName": "ห้องสมุด",
         "composer": "ผู้แต่ง",
-        "disc": ""
+        "disc": "พื้นที่ %{discNumber}",
+        "albumGain": "เนื้อหาในอัลบั้ม",
+        "trackGain": "เนื้อหาในเพลง"
       },
       "actions": {
         "addToQueue": "เพิ่มในคิว",
@@ -355,7 +357,7 @@
         "selectedUsers": "ผู้ใช้ถูกเลือก",
         "allLibraries": "อนุญาติห้องสมุดเพลงทั้งหมด",
         "selectedLibraries": "ห้องสมุดเพลงถูกเลือก",
-        "allowWriteAccess": ""
+        "allowWriteAccess": "อนุญาตให้เขียน"
       },
       "sections": {
         "status": "สถานะ",
@@ -401,7 +403,7 @@
         "requiredHosts": "ต้องการ Host",
         "configValidationError": "การตั้งค่าเกิดความผิดพลาด",
         "schemaRenderError": "ไม่สามารถแสดงหน้าจอการตั้งค่า อาจเกิดจากความผิดพลาดจากปลั๊กอิน",
-        "allowWriteAccessHelp": ""
+        "allowWriteAccessHelp": "เมื่อเปิดใช้งาน ปลั๊กอินสามารถแก้ไขไฟล์ในห้องสมุด ปลั๊กอินอยู่ในโหมดอ่านอย่างเดียวเป็นค่าเริ่มต้น"
       },
       "placeholders": {
         "configKey": "คีย์",
@@ -591,7 +593,13 @@
     "remove_all_missing_content": "คุณแน่ใจว่าจะเอารายการไฟล์ที่หายไปออกจากดาต้าเบส นี่จะเป็นการลบข้อมูลอ้างอิงทั้งหมดของไฟล์ออกอย่างถาวร",
     "noSimilarSongsFound": "ไม่มีเพลงคล้ายกัน",
     "noTopSongsFound": "ไม่พบเพลงยอดนิยม",
-    "startingInstantMix": "กำลังโหลดอินสแตนท์ มิก..."
+    "startingInstantMix": "กำลังโหลดอินสแตนท์ มิก...",
+    "uploadCover": "อัพโหลดภาพหน้าปก",
+    "removeCover": "ลบถาพหน้าปก",
+    "coverUploaded": "ภาพหน้าปกถูกอัพเดทแล้ว",
+    "coverRemoved": "ภาพหน้าปกถูกลบแล้ว",
+    "coverUploadError": "อัพโหลดภาพหน้าปกผิดพลาด",
+    "coverRemoveError": "ลบภาพหน้าปกผิดพลาด"
   },
   "menu": {
     "library": "ห้องสมุดเพลง",

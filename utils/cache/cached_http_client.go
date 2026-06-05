@@ -75,8 +75,7 @@ func (c *HTTPClient) serializeReq(req *http.Request) string {
 	}
 	if req.Body != nil {
 		bodyData, _ := io.ReadAll(req.Body)
-		bodyStr := base64.StdEncoding.EncodeToString(bodyData)
-		data.Body = &bodyStr
+		data.Body = new(base64.StdEncoding.EncodeToString(bodyData))
 	}
 	j, _ := json.Marshal(&data)
 	return string(j)

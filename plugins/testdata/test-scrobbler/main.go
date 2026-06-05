@@ -53,6 +53,20 @@ func (t *testScrobbler) Scrobble(input scrobbler.ScrobbleRequest) error {
 	return nil
 }
 
+// PlaybackReport receives a playback state report.
+func (t *testScrobbler) PlaybackReport(input scrobbler.PlaybackReportRequest) error {
+	if err := checkConfigError(); err != nil {
+		return err
+	}
+
+	artistName := ""
+	if len(input.Track.Artists) > 0 {
+		artistName = input.Track.Artists[0].Name
+	}
+	pdk.Log(pdk.LogInfo, "PlaybackReport: "+input.Track.Title+" by "+artistName+" state="+input.State)
+	return nil
+}
+
 // checkConfigError checks if the plugin is configured to return an error.
 // If "error" config is set, it returns the appropriate ScrobblerError.
 // Error types: "not_authorized", "retry_later", "unrecoverable"

@@ -155,6 +155,23 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 	}
 }
 
+func adminOnly(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		loggedUser, ok := request.UserFrom(r.Context())
+		if !ok {
+			sendError(w, r, newError(responses.ErrorGeneric, "Internal error"))
+			return
+		}
+
+		if !loggedUser.IsAdmin {
+			sendError(w, r, newError(responses.ErrorAuthorizationFail))
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 func validateCredentials(user *model.User, pass, token, salt, jwt string) error {
 	valid := false
 
@@ -199,7 +216,7 @@ func getPlayer(players core.Players) func(next http.Handler) http.Handler {
 				}
 				r = r.WithContext(ctx)
 
-				cookie := &http.Cookie{
+				cookie := &http.Cookie{ //nolint:gosec // Secure omitted: Navidrome may run over plain HTTP
 					Name:     playerIDCookieName(userName),
 					Value:    player.ID,
 					MaxAge:   consts.CookieExpiry,
@@ -239,7 +256,9 @@ func playerIDCookieName(userName string) string {
 	return cookieName
 }
 
-const subsonicErrorPointer = "subsonicErrorPointer"
+type contextKey string
+
+const subsonicErrorPointer contextKey = "subsonicErrorPointer"
 
 func recordStats(metrics metrics.Metrics) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {

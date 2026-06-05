@@ -1,7 +1,5 @@
 package criteria
 
-import "time"
-
 // Conjunctions need to implement this interface, to allow Criteria to extract child playlist IDs recursively
 type conjunction interface {
 	ChildPlaylistIds() []string
@@ -142,10 +140,6 @@ func (nitl NotInTheLast) MarshalJSON() ([]byte, error) {
 
 func (nitl NotInTheLast) fields() map[string]any { return nitl }
 
-func startOfPeriod(numDays int64, from time.Time) string {
-	return from.Add(time.Duration(-24*numDays) * time.Hour).Format("2006-01-02")
-}
-
 type InPlaylist map[string]any
 
 func (ipl InPlaylist) MarshalJSON() ([]byte, error) {
@@ -161,6 +155,22 @@ func (nipl NotInPlaylist) MarshalJSON() ([]byte, error) {
 }
 
 func (nipl NotInPlaylist) fields() map[string]any { return nipl }
+
+type IsMissing map[string]any
+
+func (im IsMissing) MarshalJSON() ([]byte, error) {
+	return marshalExpression("isMissing", im)
+}
+
+func (im IsMissing) fields() map[string]any { return im }
+
+type IsPresent map[string]any
+
+func (ip IsPresent) MarshalJSON() ([]byte, error) {
+	return marshalExpression("isPresent", ip)
+}
+
+func (ip IsPresent) fields() map[string]any { return ip }
 
 func extractPlaylistIds(inputRule any) (ids []string) {
 	var id string

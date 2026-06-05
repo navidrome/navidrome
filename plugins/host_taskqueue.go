@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"sync"
@@ -82,7 +83,7 @@ type taskQueueServiceImpl struct {
 
 // newTaskQueueService creates a new taskQueueServiceImpl with its own SQLite database.
 func newTaskQueueService(pluginName string, manager *Manager, maxConcurrency int32) (*taskQueueServiceImpl, error) {
-	dataDir := filepath.Join(conf.Server.DataFolder, "plugins", pluginName)
+	dataDir := filepath.Join(conf.Server.DataFolder.String(), "plugins", pluginName)
 	if err := os.MkdirAll(dataDir, 0700); err != nil {
 		return nil, fmt.Errorf("creating plugin data directory: %w", err)
 	}
@@ -540,9 +541,7 @@ func (s *taskQueueServiceImpl) cleanupLoop() {
 func (s *taskQueueServiceImpl) runCleanup() {
 	s.mu.Lock()
 	queues := make(map[string]*queueState, len(s.queues))
-	for k, v := range s.queues {
-		queues[k] = v
-	}
+	maps.Copy(queues, s.queues)
 	s.mu.Unlock()
 
 	now := time.Now().UnixMilli()

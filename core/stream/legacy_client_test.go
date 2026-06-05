@@ -7,6 +7,7 @@ import (
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -185,6 +186,109 @@ var _ = Describe("ResolveRequest", func() {
 
 		Expect(req.Format).To(Equal("opus"))
 		Expect(req.Offset).To(Equal(30))
+	})
+
+	Context("Server-side player transcoding override", func() {
+		It("forces transcoding when override targets a different format", func() {
+			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100})
+			overrideCtx := request.WithTranscoding(ctx, model.Transcoding{TargetFormat: "mp3", DefaultBitRate: 192})
+			overrideCtx = request.WithPlayer(overrideCtx, model.Player{MaxBitRate: 0})
+
+			decider := svc.(*deciderService)
+			req := decider.ResolveRequest(overrideCtx, mf, "", 0, 0)
+
+			Expect(req.Format).To(Equal("mp3"))
+			Expect(req.BitRate).To(Equal(192))
+		})
+
+		It("allows direct play when source matches forced format and bitrate is within cap", func() {
+			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "mp3", Codec: "MP3", BitRate: 128, Channels: 2, SampleRate: 44100})
+			overrideCtx := request.WithTranscoding(ctx, model.Transcoding{TargetFormat: "mp3", DefaultBitRate: 256})
+
+			decider := svc.(*deciderService)
+			req := decider.ResolveRequest(overrideCtx, mf, "", 0, 0)
+
+			Expect(req.Format).To(Equal("raw"))
+		})
+
+		It("transcodes when source bitrate exceeds the forced cap", func() {
+			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "mp3", Codec: "MP3", BitRate: 320, Channels: 2, SampleRate: 44100})
+			overrideCtx := request.WithTranscoding(ctx, model.Transcoding{TargetFormat: "mp3", DefaultBitRate: 192})
+
+			decider := svc.(*deciderService)
+			req := decider.ResolveRequest(overrideCtx, mf, "", 0, 0)
+
+			Expect(req.Format).To(Equal("mp3"))
+			Expect(req.BitRate).To(Equal(192))
+		})
+
+		It("uses player MaxBitRate over transcoding DefaultBitRate", func() {
+			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100})
+			overrideCtx := request.WithTranscoding(ctx, model.Transcoding{TargetFormat: "mp3", DefaultBitRate: 192})
+			overrideCtx = request.WithPlayer(overrideCtx, model.Player{MaxBitRate: 320})
+
+			decider := svc.(*deciderService)
+			req := decider.ResolveRequest(overrideCtx, mf, "", 0, 0)
+
+			Expect(req.Format).To(Equal("mp3"))
+			Expect(req.BitRate).To(Equal(320))
+		})
+
+		It("applies no bitrate cap when both MaxBitRate and DefaultBitRate are 0", func() {
+			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100})
+			overrideCtx := request.WithTranscoding(ctx, model.Transcoding{TargetFormat: "mp3", DefaultBitRate: 0})
+			overrideCtx = request.WithPlayer(overrideCtx, model.Player{MaxBitRate: 0})
+
+			decider := svc.(*deciderService)
+			req := decider.ResolveRequest(overrideCtx, mf, "", 0, 0)
+
+			Expect(req.Format).To(Equal("mp3"))
+			// With no cap, lossless→lossy uses format default bitrate (160 for mp3 from mock)
+			Expect(req.BitRate).To(Equal(160))
+		})
+
+		It("does not apply override when no transcoding is in context", func() {
+			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100})
+
+			decider := svc.(*deciderService)
+			req := decider.ResolveRequest(ctx, mf, "", 0, 0)
+
+			Expect(req.Format).To(Equal("raw"))
+		})
+	})
+
+	Context("Player MaxBitRate cap", func() {
+		It("applies player MaxBitRate cap when client has no limit", func() {
+			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: 16})
+			playerCtx := request.WithPlayer(ctx, model.Player{MaxBitRate: 320})
+
+			decider := svc.(*deciderService)
+			req := decider.ResolveRequest(playerCtx, mf, "mp3", 0, 0)
+
+			Expect(req.Format).To(Equal("mp3"))
+			Expect(req.BitRate).To(Equal(320))
+		})
+
+		It("uses client limit when it is more restrictive than player MaxBitRate", func() {
+			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: 16})
+			playerCtx := request.WithPlayer(ctx, model.Player{MaxBitRate: 500})
+
+			decider := svc.(*deciderService)
+			req := decider.ResolveRequest(playerCtx, mf, "mp3", 256, 0)
+
+			Expect(req.Format).To(Equal("mp3"))
+			Expect(req.BitRate).To(Equal(256))
+		})
+
+		It("does not cap when player MaxBitRate is 0", func() {
+			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "mp3", Codec: "MP3", BitRate: 320, Channels: 2, SampleRate: 44100})
+			playerCtx := request.WithPlayer(ctx, model.Player{MaxBitRate: 0})
+
+			decider := svc.(*deciderService)
+			req := decider.ResolveRequest(playerCtx, mf, "", 0, 0)
+
+			Expect(req.Format).To(Equal("raw"))
+		})
 	})
 
 	Context("fallback for unknown format", func() {

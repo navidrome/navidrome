@@ -45,8 +45,7 @@ func (api *Router) uploadArtistImage() http.HandlerFunc {
 			return err
 		}
 		ar.UploadedImage = filename
-		now := time.Now()
-		ar.UpdatedAt = &now
+		ar.UpdatedAt = new(time.Now())
 		return api.ds.Artist(ctx).Put(ar, "uploaded_image", "updated_at")
 	})
 }
@@ -65,8 +64,7 @@ func (api *Router) deleteArtistImage() http.HandlerFunc {
 			return err
 		}
 		ar.UploadedImage = ""
-		now := time.Now()
-		ar.UpdatedAt = &now
+		ar.UpdatedAt = new(time.Now())
 		return api.ds.Artist(ctx).Put(ar, "uploaded_image", "updated_at")
 	})
 }

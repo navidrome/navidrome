@@ -49,6 +49,26 @@ type NowPlayingRequest struct {
 	Position int32 `json:"position"`
 }
 
+// PlaybackReportRequest is the request for playback report notifications.
+type PlaybackReportRequest struct {
+	// Username is the username of the user.
+	Username string `json:"username"`
+	// Track is the track being played.
+	Track TrackInfo `json:"track"`
+	// State is the current playback state (starting/playing/paused/stopped/expired).
+	State string `json:"state"`
+	// PositionMs is the current playback position in milliseconds.
+	PositionMs int64 `json:"positionMs"`
+	// PlaybackRate is the playback speed (1.0 = normal).
+	PlaybackRate float64 `json:"playbackRate"`
+	// PlayerId is the unique client identifier.
+	PlayerId string `json:"playerId"`
+	// PlayerName is the human-readable player name.
+	PlayerName string `json:"playerName"`
+	// Timestamp is the Unix timestamp when this report was generated.
+	Timestamp int64 `json:"timestamp"`
+}
+
 // ScrobbleRequest is the request for submitting a scrobble.
 type ScrobbleRequest struct {
 	// Username is the username of the user.
@@ -103,7 +123,7 @@ type TrackInfo struct {
 // ListenBrainz, or custom scrobbling backends.
 //
 // All methods are required - plugins implementing this capability must provide
-// all three functions: IsAuthorized, NowPlaying, and Scrobble.
+// all four functions: IsAuthorized, NowPlaying, Scrobble, and PlaybackReport.
 type Scrobbler interface {
 	// IsAuthorized - IsAuthorized checks if a user is authorized to scrobble to this service.
 	IsAuthorized(IsAuthorizedRequest) (bool, error)
@@ -111,6 +131,8 @@ type Scrobbler interface {
 	NowPlaying(NowPlayingRequest) error
 	// Scrobble - Scrobble submits a completed scrobble to the scrobbling service.
 	Scrobble(ScrobbleRequest) error
+	// PlaybackReport - PlaybackReport sends a playback state report to the scrobbling service.
+	PlaybackReport(PlaybackReportRequest) error
 }
 
 // NotImplementedCode is the standard return code for unimplemented functions.
