@@ -123,9 +123,6 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string, checker *IgnoreC
 			log.Trace(ctx, "Scanner: Ignoring entry", "path", entryPath)
 			continue
 		}
-		if isEntryIgnored(entry.Name()) {
-			continue
-		}
 		if ctx.Err() != nil {
 			return folder, children, ctx.Err()
 		}
@@ -133,6 +130,12 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string, checker *IgnoreC
 		// Skip invalid symlinks
 		if err != nil {
 			log.Warn(ctx, "Scanner: Invalid symlink", "dir", entryPath, err)
+			continue
+		}
+		// Dot-prefixed files are always ignored. Dot-prefixed folders are ignored
+		// only when Scanner.IgnoreDotFolders is enabled (the default), allowing
+		// albums like ".Hack Sign" to be scanned when the option is disabled.
+		if isDotEntry(entry.Name()) && (!isDir || conf.Server.Scanner.IgnoreDotFolders) {
 			continue
 		}
 		if isDir && !isDirIgnored(entry.Name()) && isDirReadable(ctx, job.fs, entryPath) {
@@ -233,22 +236,20 @@ var ignoredDirs = []string{
 	"#snapshot",
 	"@Recycle",
 	"@Recently-Snapshot",
+	".git",
 	".streams",
 	"lost+found",
 }
 
-// isDirIgnored returns true if the directory represented by dirEnt should be ignored
+// isDirIgnored returns true if the directory represented by dirEnt should be ignored.
+// It only checks the explicit ignoredDirs blocklist; dot-prefixed folders are handled
+// separately in the walk loop, gated by the Scanner.IgnoreDotFolders option.
 func isDirIgnored(name string) bool {
-	// allows Album folders for albums which eg start with ellipses
-	if strings.HasPrefix(name, ".") && !strings.HasPrefix(name, "..") {
-		return true
-	}
-	if slices.ContainsFunc(ignoredDirs, func(s string) bool { return strings.EqualFold(s, name) }) {
-		return true
-	}
-	return false
+	return slices.ContainsFunc(ignoredDirs, func(s string) bool { return strings.EqualFold(s, name) })
 }
 
-func isEntryIgnored(name string) bool {
+// isDotEntry returns true if the entry name starts with a dot, excluding the
+// special "." and ".." references.
+func isDotEntry(name string) bool {
 	return strings.HasPrefix(name, ".") && !strings.HasPrefix(name, "..")
 }
