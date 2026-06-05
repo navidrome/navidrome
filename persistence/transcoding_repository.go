@@ -49,27 +49,33 @@ func (r *transcodingRepository) Put(t *model.Transcoding) error {
 }
 
 func (r *transcodingRepository) Count(options ...rest.QueryOptions) (int64, error) {
-	if !loggedUser(r.ctx).IsAdmin {
-		return 0, rest.ErrPermissionDenied
-	}
 	return r.count(Select(), r.parseRestOptions(r.ctx, options...))
 }
 
 func (r *transcodingRepository) Read(id string) (any, error) {
-	if !loggedUser(r.ctx).IsAdmin {
-		return nil, rest.ErrPermissionDenied
+	res, err := r.Get(id)
+	if err != nil {
+		return nil, err
 	}
-	return r.Get(id)
+	if !loggedUser(r.ctx).IsAdmin {
+		res.Command = ""
+	}
+	return res, nil
 }
 
 func (r *transcodingRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
-	if !loggedUser(r.ctx).IsAdmin {
-		return nil, rest.ErrPermissionDenied
-	}
 	sel := r.newSelect(r.parseRestOptions(r.ctx, options...)).Columns("*")
 	res := model.Transcodings{}
 	err := r.queryAll(sel, &res)
-	return res, err
+	if err != nil {
+		return nil, err
+	}
+	if !loggedUser(r.ctx).IsAdmin {
+		for i := range res {
+			res[i].Command = ""
+		}
+	}
+	return res, nil
 }
 
 func (r *transcodingRepository) EntityName() string {

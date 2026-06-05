@@ -70,6 +70,7 @@ func (api *Router) routes() http.Handler {
 		api.addArtistRoute(r)
 		api.R(r, "/genre", model.Genre{}, false)
 		api.R(r, "/player", model.Player{}, true)
+		api.R(r, "/transcoding", model.Transcoding{}, conf.Server.EnableTranscodingConfig)
 		api.addRadioRoute(r)
 		api.R(r, "/tag", model.Tag{}, true)
 		if conf.Server.EnableSharing {
@@ -90,7 +91,6 @@ func (api *Router) routes() http.Handler {
 			api.addUserLibraryRoute(r)
 			api.addPluginRoute(r)
 			api.RX(r, "/library", api.libs.NewRepository, true)
-			api.R(r, "/transcoding", model.Transcoding{}, conf.Server.EnableTranscodingConfig)
 		})
 	})
 
