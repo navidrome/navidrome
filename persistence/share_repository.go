@@ -30,51 +30,18 @@ func NewShareRepository(ctx context.Context, db dbx.Builder) model.ShareReposito
 	return r
 }
 
-// TODO: Ownership checks should be moved to the service layer (core/share.go)
-func (r *shareRepository) checkOwnership(id string) error {
-	usr := loggedUser(r.ctx)
-	if usr.IsAdmin || usr.ID == invalidUserId {
-		return nil
-	}
-	sel := r.newSelect().Columns("user_id").Where(Eq{"id": id})
-	var share struct {
-		UserID string `db:"user_id"`
-	}
-	err := r.queryOne(sel, &share)
-	if err != nil {
-		if errors.Is(err, model.ErrNotFound) {
-			return rest.ErrNotFound
-		}
-		return err
-	}
-	if share.UserID != usr.ID {
-		return rest.ErrPermissionDenied
-	}
-	return nil
-}
-
-// TODO: this still uses the legacy checkOwnership SELECT-then-delete pattern (a TOCTOU window),
-// the same shape removed from Update. Once a base-repo deleteOwned exists (built on ownerFilter,
-// mirroring updateOwned), route Delete through it and drop checkOwnership entirely. playerRepository
-// .Delete (which restricts via addRestriction) should adopt the same primitive.
 func (r *shareRepository) Delete(id string) error {
-	if err := r.checkOwnership(id); err != nil {
-		return err
-	}
-	err := r.delete(Eq{"id": id})
-	if errors.Is(err, model.ErrNotFound) {
-		return rest.ErrNotFound
-	}
-	return err
+	return r.deleteOwned(id)
 }
 
 func (r *shareRepository) selectShare(options ...model.QueryOptions) SelectBuilder {
 	return r.newSelect(options...).Join("user u on u.id = share.user_id").
-		Columns("share.*", "user_name as username")
+		Columns("share.*", "user_name as username").
+		Where(r.addRestriction())
 }
 
 func (r *shareRepository) Exists(id string) (bool, error) {
-	return r.exists(Eq{"id": id})
+	return r.exists(r.addRestriction(And{Eq{"id": id}}))
 }
 
 func (r *shareRepository) Get(id string) (*model.Share, error) {
