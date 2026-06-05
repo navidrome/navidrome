@@ -53,14 +53,29 @@ func (r *transcodingRepository) Count(options ...rest.QueryOptions) (int64, erro
 }
 
 func (r *transcodingRepository) Read(id string) (any, error) {
-	return r.Get(id)
+	res, err := r.Get(id)
+	if err != nil {
+		return nil, err
+	}
+	if !loggedUser(r.ctx).IsAdmin {
+		res.Command = ""
+	}
+	return res, nil
 }
 
 func (r *transcodingRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
 	sel := r.newSelect(r.parseRestOptions(r.ctx, options...)).Columns("*")
 	res := model.Transcodings{}
 	err := r.queryAll(sel, &res)
-	return res, err
+	if err != nil {
+		return nil, err
+	}
+	if !loggedUser(r.ctx).IsAdmin {
+		for i := range res {
+			res[i].Command = ""
+		}
+	}
+	return res, nil
 }
 
 func (r *transcodingRepository) EntityName() string {
