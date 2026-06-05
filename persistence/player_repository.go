@@ -62,17 +62,6 @@ func (r *playerRepository) newRestSelect(options ...model.QueryOptions) SelectBu
 	return s.Where(r.addRestriction())
 }
 
-func (r *playerRepository) addRestriction(sql ...Sqlizer) Sqlizer {
-	s := And{}
-	if len(sql) > 0 {
-		s = append(s, sql[0])
-	}
-	if owner := r.ownerFilter(); owner != nil {
-		s = append(s, owner)
-	}
-	return s
-}
-
 func (r *playerRepository) CountByClient(options ...model.QueryOptions) (map[string]int64, error) {
 	sel := r.newSelect(options...).
 		Columns(
@@ -152,12 +141,7 @@ func (r *playerRepository) Update(id string, entity any, cols ...string) error {
 }
 
 func (r *playerRepository) Delete(id string) error {
-	filter := r.addRestriction(And{Eq{"player.id": id}})
-	err := r.delete(filter)
-	if errors.Is(err, model.ErrNotFound) {
-		return rest.ErrNotFound
-	}
-	return err
+	return r.deleteOwned(id)
 }
 
 var _ model.PlayerRepository = (*playerRepository)(nil)
