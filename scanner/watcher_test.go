@@ -428,6 +428,48 @@ var _ = Describe("Watcher", func() {
 				Expect(w.watcherNotify).To(BeEmpty(), "Expected no scan notification for file in ignored folder")
 			})
 		})
+
+	})
+})
+
+var _ = Describe("isIgnoredPath", func() {
+	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
+	})
+
+	Context("with IgnoreDotFolders enabled (default)", func() {
+		BeforeEach(func() {
+			conf.Server.Scanner.IgnoreDotFolders = true
+		})
+
+		DescribeTable("returns expected result",
+			func(p string, expected bool) {
+				Expect(isIgnoredPath(context.Background(), nil, filepath.FromSlash(p))).To(Equal(expected))
+			},
+			Entry("media file in normal folder", "rock/Album/track.mp3", false),
+			Entry("media file inside a dot-folder", "rock/.Hidden Album/track.mp3", true),
+			Entry("media file inside a blocklisted folder", "rock/.streams/stream.mp3", true),
+			Entry("media file inside .git", "rock/.git/track.mp3", true),
+			Entry("dot-folder itself", "rock/.Hidden Album", true),
+			Entry("normal folder itself", "rock/Album", false),
+			Entry(".DS_Store file", "rock/Album/.DS_Store", true),
+		)
+	})
+
+	Context("with IgnoreDotFolders disabled", func() {
+		BeforeEach(func() {
+			conf.Server.Scanner.IgnoreDotFolders = false
+		})
+
+		DescribeTable("returns expected result",
+			func(p string, expected bool) {
+				Expect(isIgnoredPath(context.Background(), nil, filepath.FromSlash(p))).To(Equal(expected))
+			},
+			Entry("media file inside a dot-folder is allowed", "rock/.Hidden Album/track.mp3", false),
+			Entry("dot-folder itself is allowed", "rock/.Hidden Album", false),
+			Entry("blocklisted folder still ignored", "rock/.streams/stream.mp3", true),
+			Entry(".git still ignored", "rock/.git/config", true),
+		)
 	})
 })
 

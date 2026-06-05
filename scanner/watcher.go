@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -320,7 +321,13 @@ func (w *watcher) shouldIgnoreFolderPath(ctx context.Context, fsys storage.Music
 }
 
 func isIgnoredPath(_ context.Context, _ fs.FS, path string) bool {
-	baseDir, name := filepath.Split(path)
+	_, name := filepath.Split(path)
+	// A change anywhere inside an ignored directory (a dot-folder when
+	// Scanner.IgnoreDotFolders is enabled, or a special system folder) must not
+	// trigger a scan, even for media files: the scan would skip it anyway.
+	if isUnderIgnoredDir(path) {
+		return true
+	}
 	switch {
 	case model.IsAudioFile(path):
 		return false
@@ -331,7 +338,20 @@ func isIgnoredPath(_ context.Context, _ fs.FS, path string) bool {
 	case name == ".DS_Store":
 		return true
 	}
-	// As it can be a deletion and not a change, we cannot reliably know if the path is a file or directory.
-	// But at this point, we can assume it's a directory. If it's a file, it would be ignored anyway
-	return isDirIgnored(baseDir)
+	// As it can be a deletion and not a change, we cannot reliably know if the
+	// path is a file or directory. But at this point, we can assume it's a
+	// directory. If it's a file, it would be ignored anyway.
+	return isIgnoredEntry(name, true)
+}
+
+// isUnderIgnoredDir returns true if any parent directory component of the given
+// path is an ignored directory, reusing the same policy as the scanner walk.
+func isUnderIgnoredDir(path string) bool {
+	dir, _ := filepath.Split(path)
+	for part := range strings.SplitSeq(filepath.ToSlash(dir), "/") {
+		if part != "" && isIgnoredEntry(part, true) {
+			return true
+		}
+	}
+	return false
 }
