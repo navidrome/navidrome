@@ -61,11 +61,28 @@ func loggedUser(ctx context.Context) *model.User {
 // ownerFilter returns the predicate restricting access to rows owned by the logged-in user, for
 // tables with a user_id column. It returns nil for admins and for headless/system contexts (invalid
 // user), meaning "no ownership restriction". Callers should skip the WHERE clause when it is nil.
+//
+// The predicate uses an unqualified user_id, so it only works on queries where that column is
+// unambiguous (no join introducing a second user_id).
 func (r sqlRepository) ownerFilter() Sqlizer {
 	if usr := loggedUser(r.ctx); !usr.IsAdmin && usr.ID != invalidUserId {
 		return Eq{"user_id": usr.ID}
 	}
 	return nil
+}
+
+// addRestriction combines an optional caller predicate with the ownership filter, producing the
+// WHERE clause for owner-scoped reads. For admins and headless contexts ownerFilter() is nil and
+// only the caller's predicate (if any) remains.
+func (r sqlRepository) addRestriction(sql ...Sqlizer) Sqlizer {
+	s := And{}
+	if len(sql) > 0 {
+		s = append(s, sql[0])
+	}
+	if owner := r.ownerFilter(); owner != nil {
+		s = append(s, owner)
+	}
+	return s
 }
 
 func (r *sqlRepository) registerModel(instance any, filters map[string]filterFunc) {
@@ -195,15 +212,6 @@ func (r sqlRepository) applyFilters(sq SelectBuilder, options ...model.QueryOpti
 		sq = sq.Where(options[0].Filters)
 	}
 	return sq
-}
-
-func (r *sqlRepository) withTableName(filter filterFunc) filterFunc {
-	return func(field string, value any) Sqlizer {
-		if r.tableName != "" {
-			field = r.tableName + "." + field
-		}
-		return filter(field, value)
-	}
 }
 
 // libraryIdFilter is a filter function to be added to resources that have a library_id column.
@@ -411,27 +419,45 @@ func (r sqlRepository) updateOwned(id string, m any, colsToUpdate ...string) err
 	}
 	updateValues := filterUpdateValues(values, id, colsToUpdate...)
 	delete(updateValues, "user_id") // ownership is immutable on update
-	update := Update(r.tableName).Where(Eq{"id": id}).SetMap(updateValues)
-	if owner := r.ownerFilter(); owner != nil {
-		update = update.Where(owner)
-	}
+	update := Update(r.tableName).Where(r.addRestriction(Eq{"id": id})).SetMap(updateValues)
 	count, err := r.executeSQL(update)
 	if err != nil {
 		return err
 	}
 	if count == 0 {
-		// The update matched no row: either the id is missing, or it exists but is owned by
-		// someone else. Disambiguate to return the more accurate error.
-		exists, err := r.exists(Eq{"id": id})
-		if err != nil {
-			return err
-		}
-		if exists {
-			return rest.ErrPermissionDenied
-		}
-		return rest.ErrNotFound
+		return r.classifyOwnedWriteMiss(id)
 	}
 	return nil
+}
+
+// deleteOwned performs an atomic, ownership-restricted delete of the row identified by id, for
+// repositories whose table has a user_id column. Non-admins can only delete rows they own: the
+// ownership predicate is part of the DELETE's WHERE clause, so a row owned by another user simply
+// does not match and is left untouched. The failure path mirrors updateOwned (see
+// classifyOwnedWriteMiss), so there is no TOCTOU on the delete.
+func (r sqlRepository) deleteOwned(id string) error {
+	count, err := r.executeSQL(Delete(r.tableName).Where(r.addRestriction(Eq{"id": id})))
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return r.classifyOwnedWriteMiss(id)
+	}
+	return nil
+}
+
+// classifyOwnedWriteMiss explains why an ownership-filtered write (updateOwned/deleteOwned) matched
+// no row: rest.ErrPermissionDenied if the row exists but is owned by another user, otherwise
+// rest.ErrNotFound. It runs only on the failure path (count == 0), where no write occurred.
+func (r sqlRepository) classifyOwnedWriteMiss(id string) error {
+	exists, err := r.exists(Eq{"id": id})
+	if err != nil {
+		return err
+	}
+	if exists {
+		return rest.ErrPermissionDenied
+	}
+	return rest.ErrNotFound
 }
 
 func (r sqlRepository) count(countQuery SelectBuilder, options ...model.QueryOptions) (int64, error) {

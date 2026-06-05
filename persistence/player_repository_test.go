@@ -110,33 +110,43 @@ var _ = Describe("PlayerRepository", func() {
 		})
 
 		Describe("Delete", func() {
-			DescribeTable("item type", func(player model.Player) {
-				err := repo.Delete(player.ID)
+			It("deletes a player owned by the current user", func() {
+				err := repo.Delete(userPlayer.ID)
 				Expect(err).To(BeNil())
-
-				isReal := player.UserId != ""
-				canDelete := admin || player.UserId == userPlayer.UserId
 
 				count, err := repo.Count()
 				Expect(err).To(BeNil())
+				Expect(count).To(Equal(baseCount - 1))
 
-				if isReal && canDelete {
-					Expect(count).To(Equal(baseCount - 1))
-				} else {
-					Expect(count).To(Equal(baseCount))
-				}
+				_, err = repo.Get(userPlayer.ID)
+				Expect(err).To(Equal(model.ErrNotFound))
+			})
 
-				item, err := repo.Get(player.ID)
-				if !isReal || canDelete {
+			It("does not delete another user's player when not admin", func() {
+				err := repo.Delete(otherPlayer.ID)
+
+				if admin {
+					// Admins may delete any player.
+					Expect(err).To(BeNil())
+					Expect(repo.Count()).To(Equal(baseCount - 1))
+					_, err = repo.Get(otherPlayer.ID)
 					Expect(err).To(Equal(model.ErrNotFound))
 				} else {
-					Expect(*item).To(Equal(player))
+					// The ownership-restricted delete matches no owned row, so it reports
+					// permission-denied and leaves the other user's player untouched.
+					Expect(err).To(Equal(rest.ErrPermissionDenied))
+					Expect(repo.Count()).To(Equal(baseCount))
+					item, err := repo.Get(otherPlayer.ID)
+					Expect(err).To(BeNil())
+					Expect(*item).To(Equal(otherPlayer))
 				}
-			},
-				Entry("same user", userPlayer),
-				Entry("other item", otherPlayer),
-				Entry("fake item", model.Player{}),
-			)
+			})
+
+			It("returns not-found for a nonexistent player", func() {
+				err := repo.Delete("i don't exist")
+				Expect(err).To(Equal(rest.ErrNotFound))
+				Expect(repo.Count()).To(Equal(baseCount))
+			})
 		})
 
 		Describe("Read", func() {
