@@ -314,6 +314,37 @@ var _ = Describe("walk_dir_tree", func() {
 			)
 		})
 
+		Describe("isIgnoredEntry", func() {
+			BeforeEach(func() {
+				DeferCleanup(configtest.SetupConfig())
+			})
+
+			DescribeTable("with IgnoreDotFolders enabled (default)",
+				func(name string, isDir, expected bool) {
+					conf.Server.Scanner.IgnoreDotFolders = true
+					Expect(isIgnoredEntry(name, isDir)).To(Equal(expected))
+				},
+				Entry("normal dir", "Album", true, false),
+				Entry("normal file", "track.mp3", false, false),
+				Entry("dot folder", ".Hack Sign Original Soundtrack", true, true),
+				Entry("dot file", ".hidden.mp3", false, true),
+				Entry("blocklisted dir", ".git", true, true),
+				Entry("ellipsis dir", "...unhidden", true, false),
+			)
+
+			DescribeTable("with IgnoreDotFolders disabled",
+				func(name string, isDir, expected bool) {
+					conf.Server.Scanner.IgnoreDotFolders = false
+					Expect(isIgnoredEntry(name, isDir)).To(Equal(expected))
+				},
+				Entry("normal dir", "Album", true, false),
+				Entry("normal file", "track.mp3", false, false),
+				Entry("dot folder is allowed", ".Hack Sign Original Soundtrack", true, false),
+				Entry("dot file is still ignored", ".hidden.mp3", false, true),
+				Entry("blocklisted dir still ignored", ".git", true, true),
+			)
+		})
+
 		Describe("fullReadDir", func() {
 			var (
 				fsys fakeFS

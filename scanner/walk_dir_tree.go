@@ -132,13 +132,10 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string, checker *IgnoreC
 			log.Warn(ctx, "Scanner: Invalid symlink", "dir", entryPath, err)
 			continue
 		}
-		// Dot-prefixed files are always ignored. Dot-prefixed folders are ignored
-		// only when Scanner.IgnoreDotFolders is enabled (the default), allowing
-		// albums like ".Hack Sign" to be scanned when the option is disabled.
-		if isDotEntry(entry.Name()) && (!isDir || conf.Server.Scanner.IgnoreDotFolders) {
+		if isIgnoredEntry(entry.Name(), isDir) {
 			continue
 		}
-		if isDir && !isDirIgnored(entry.Name()) && isDirReadable(ctx, job.fs, entryPath) {
+		if isDir && isDirReadable(ctx, job.fs, entryPath) {
 			children = append(children, entryPath)
 			folder.numSubFolders++
 		} else {
@@ -241,9 +238,21 @@ var ignoredDirs = []string{
 	"lost+found",
 }
 
-// isDirIgnored returns true if the directory represented by dirEnt should be ignored.
-// It only checks the explicit ignoredDirs blocklist; dot-prefixed folders are handled
-// separately in the walk loop, gated by the Scanner.IgnoreDotFolders option.
+// isIgnoredEntry returns true if a directory entry with the given name should be
+// skipped during scanning. It centralizes all name- and type-based ignore policy:
+//   - special system directories in ignoredDirs are always ignored;
+//   - dot-prefixed files are always ignored;
+//   - dot-prefixed folders are ignored unless Scanner.IgnoreDotFolders is disabled,
+//     allowing albums like ".Hack Sign" to be scanned when the option is off.
+func isIgnoredEntry(name string, isDir bool) bool {
+	if isDir && isDirIgnored(name) {
+		return true
+	}
+	return isDotEntry(name) && (!isDir || conf.Server.Scanner.IgnoreDotFolders)
+}
+
+// isDirIgnored returns true if the directory name is in the explicit ignoredDirs
+// blocklist. Used both while walking the tree and by the file watcher.
 func isDirIgnored(name string) bool {
 	return slices.ContainsFunc(ignoredDirs, func(s string) bool { return strings.EqualFold(s, name) })
 }
