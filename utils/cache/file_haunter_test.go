@@ -55,8 +55,10 @@ var _ = Describe("FileHaunter", func() {
 			// the configured limit.
 			Eventually(func(g Gomega) {
 				g.Expect(fsCache.Exists("stream-5")).To(BeFalse(), "stream-5 (empty file) should have been scrubbed")
-				g.Expect(dirSize(cacheDir)).To(BeNumerically("<=", maxSize))
-			}, "5s", "50ms").Should(Succeed())
+				size, err := dirSize(cacheDir)
+				g.Expect(err).ToNot(HaveOccurred())
+				g.Expect(size).To(BeNumerically("<=", maxSize))
+			}).WithTimeout(5 * time.Second).WithPolling(50 * time.Millisecond).Should(Succeed())
 		})
 	})
 
@@ -76,7 +78,7 @@ var _ = Describe("FileHaunter", func() {
 				entries, readErr := os.ReadDir(cacheDir)
 				g.Expect(readErr).ToNot(HaveOccurred())
 				g.Expect(len(entries)).To(BeNumerically("<=", maxItems))
-			}, "5s", "50ms").Should(Succeed())
+			}).WithTimeout(5 * time.Second).WithPolling(50 * time.Millisecond).Should(Succeed())
 		})
 	})
 })
@@ -107,20 +109,23 @@ func createTestFiles(c *fscache.FSCache) error {
 }
 
 // dirSize returns the total size in bytes of all regular files in dir.
-func dirSize(dir string) uint64 {
+func dirSize(dir string) (uint64, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return 0
+		return 0, err
 	}
 	var total uint64
 	for _, e := range entries {
 		info, err := e.Info()
 		if err != nil {
+			return 0, err
+		}
+		if !info.Mode().IsRegular() {
 			continue
 		}
 		total += uint64(info.Size())
 	}
-	return total
+	return total, nil
 }
 
 func createCachedStream(c *fscache.FSCache, name string, contents string) fscache.ReadAtCloser {
