@@ -67,6 +67,42 @@ var _ = Describe("TranscodingRepository", func() {
 	})
 
 	Describe("Regular User", func() {
+		It("fails to read a single transcoding via the REST API", func() {
+			tr := &model.Transcoding{ID: "readreg", Name: "temp", TargetFormat: "test_format", DefaultBitRate: 64, Command: "ffmpeg"}
+			Expect(adminRepo.Put(tr)).To(Succeed())
+
+			_, err := repo.(*transcodingRepository).Read("readreg")
+			Expect(err).To(Equal(rest.ErrPermissionDenied))
+		})
+
+		It("fails to list transcodings via the REST API", func() {
+			_, err := repo.(*transcodingRepository).ReadAll()
+			Expect(err).To(Equal(rest.ErrPermissionDenied))
+		})
+
+		It("fails to count transcodings via the REST API", func() {
+			_, err := repo.(*transcodingRepository).Count()
+			Expect(err).To(Equal(rest.ErrPermissionDenied))
+		})
+
+		It("can still resolve a transcoding for streaming via Get", func() {
+			tr := &model.Transcoding{ID: "streamreg", Name: "temp", TargetFormat: "test_format", DefaultBitRate: 64, Command: "ffmpeg"}
+			Expect(adminRepo.Put(tr)).To(Succeed())
+
+			res, err := repo.Get("streamreg")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res.ID).To(Equal("streamreg"))
+		})
+
+		It("can still resolve a transcoding for streaming via FindByFormat", func() {
+			tr := &model.Transcoding{ID: "fmtreg", Name: "temp", TargetFormat: "test_format", DefaultBitRate: 64, Command: "ffmpeg"}
+			Expect(adminRepo.Put(tr)).To(Succeed())
+
+			res, err := repo.FindByFormat("test_format")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res.ID).To(Equal("fmtreg"))
+		})
+
 		It("fails to create", func() {
 			err := repo.Put(&model.Transcoding{ID: "bad", Name: "bad", TargetFormat: "test_format", DefaultBitRate: 64, Command: "ffmpeg"})
 			Expect(err).To(Equal(rest.ErrPermissionDenied))
