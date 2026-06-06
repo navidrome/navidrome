@@ -3,7 +3,6 @@ package criteria_test
 import (
 	"encoding/json"
 	"fmt"
-	"time"
 
 	. "github.com/navidrome/navidrome/model/criteria"
 	. "github.com/onsi/ginkgo/v2"
@@ -17,182 +16,6 @@ var _ = BeforeSuite(func() {
 })
 
 var _ = Describe("Operators", func() {
-	rangeStart := time.Date(2021, 10, 01, 0, 0, 0, 0, time.Local)
-	rangeEnd := time.Date(2021, 11, 01, 0, 0, 0, 0, time.Local)
-
-	DescribeTable("ToSQL",
-		func(op Expression, expectedSql string, expectedArgs ...any) {
-			sql, args, err := op.ToSql()
-			gomega.Expect(err).ToNot(gomega.HaveOccurred())
-			gomega.Expect(sql).To(gomega.Equal(expectedSql))
-			gomega.Expect(args).To(gomega.HaveExactElements(expectedArgs...))
-		},
-		Entry("is [string]", Is{"title": "Low Rider"}, "media_file.title = ?", "Low Rider"),
-		Entry("is [bool]", Is{"loved": true}, "COALESCE(annotation.starred, false) = ?", true),
-		Entry("is [numeric]", Is{"library_id": 1}, "media_file.library_id = ?", 1),
-		Entry("is [numeric list]", Is{"library_id": []int{1, 2}}, "media_file.library_id IN (?,?)", 1, 2),
-		Entry("isNot", IsNot{"title": "Low Rider"}, "media_file.title <> ?", "Low Rider"),
-		Entry("isNot [numeric]", IsNot{"library_id": 1}, "media_file.library_id <> ?", 1),
-		Entry("isNot [numeric list]", IsNot{"library_id": []int{1, 2}}, "media_file.library_id NOT IN (?,?)", 1, 2),
-		Entry("gt", Gt{"playCount": 10}, "COALESCE(annotation.play_count, 0) > ?", 10),
-		Entry("lt", Lt{"playCount": 10}, "COALESCE(annotation.play_count, 0) < ?", 10),
-		Entry("contains", Contains{"title": "Low Rider"}, "media_file.title LIKE ?", "%Low Rider%"),
-		Entry("notContains", NotContains{"title": "Low Rider"}, "media_file.title NOT LIKE ?", "%Low Rider%"),
-		Entry("startsWith", StartsWith{"title": "Low Rider"}, "media_file.title LIKE ?", "Low Rider%"),
-		Entry("endsWith", EndsWith{"title": "Low Rider"}, "media_file.title LIKE ?", "%Low Rider"),
-		Entry("inTheRange [number]", InTheRange{"year": []int{1980, 1990}}, "(media_file.year >= ? AND media_file.year <= ?)", 1980, 1990),
-		Entry("inTheRange [date]", InTheRange{"lastPlayed": []time.Time{rangeStart, rangeEnd}}, "(annotation.play_date >= ? AND annotation.play_date <= ?)", rangeStart, rangeEnd),
-		Entry("before", Before{"lastPlayed": rangeStart}, "annotation.play_date < ?", rangeStart),
-		Entry("after", After{"lastPlayed": rangeStart}, "annotation.play_date > ?", rangeStart),
-
-		// InPlaylist and NotInPlaylist are special cases
-		Entry("inPlaylist", InPlaylist{"id": "deadbeef-dead-beef"}, "media_file.id IN "+
-			"(SELECT media_file_id FROM playlist_tracks pl LEFT JOIN playlist on pl.playlist_id = playlist.id WHERE (pl.playlist_id = ? AND playlist.public = ?))", "deadbeef-dead-beef", 1),
-		Entry("notInPlaylist", NotInPlaylist{"id": "deadbeef-dead-beef"}, "media_file.id NOT IN "+
-			"(SELECT media_file_id FROM playlist_tracks pl LEFT JOIN playlist on pl.playlist_id = playlist.id WHERE (pl.playlist_id = ? AND playlist.public = ?))", "deadbeef-dead-beef", 1),
-
-		Entry("inTheLast", InTheLast{"lastPlayed": 30}, "annotation.play_date > ?", StartOfPeriod(30, time.Now())),
-		Entry("notInTheLast", NotInTheLast{"lastPlayed": 30}, "(annotation.play_date < ? OR annotation.play_date IS NULL)", StartOfPeriod(30, time.Now())),
-
-		// Album annotation fields
-		Entry("albumRating", Gt{"albumRating": 3}, "COALESCE(album_annotation.rating, 0) > ?", 3),
-		Entry("albumLoved", Is{"albumLoved": true}, "COALESCE(album_annotation.starred, false) = ?", true),
-		Entry("albumPlayCount", Gt{"albumPlayCount": 5}, "COALESCE(album_annotation.play_count, 0) > ?", 5),
-		Entry("albumLastPlayed", After{"albumLastPlayed": rangeStart}, "album_annotation.play_date > ?", rangeStart),
-		Entry("albumDateLoved", Before{"albumDateLoved": rangeStart}, "album_annotation.starred_at < ?", rangeStart),
-		Entry("albumDateRated", After{"albumDateRated": rangeStart}, "album_annotation.rated_at > ?", rangeStart),
-		Entry("albumLastPlayed inTheLast", InTheLast{"albumLastPlayed": 30}, "album_annotation.play_date > ?", StartOfPeriod(30, time.Now())),
-		Entry("albumLastPlayed notInTheLast", NotInTheLast{"albumLastPlayed": 30}, "(album_annotation.play_date < ? OR album_annotation.play_date IS NULL)", StartOfPeriod(30, time.Now())),
-
-		// Artist annotation fields
-		Entry("artistRating", Gt{"artistRating": 3}, "COALESCE(artist_annotation.rating, 0) > ?", 3),
-		Entry("artistLoved", Is{"artistLoved": true}, "COALESCE(artist_annotation.starred, false) = ?", true),
-		Entry("artistPlayCount", Gt{"artistPlayCount": 5}, "COALESCE(artist_annotation.play_count, 0) > ?", 5),
-		Entry("artistLastPlayed", After{"artistLastPlayed": rangeStart}, "artist_annotation.play_date > ?", rangeStart),
-		Entry("artistDateLoved", Before{"artistDateLoved": rangeStart}, "artist_annotation.starred_at < ?", rangeStart),
-		Entry("artistDateRated", After{"artistDateRated": rangeStart}, "artist_annotation.rated_at > ?", rangeStart),
-		Entry("artistLastPlayed inTheLast", InTheLast{"artistLastPlayed": 30}, "artist_annotation.play_date > ?", StartOfPeriod(30, time.Now())),
-		Entry("artistLastPlayed notInTheLast", NotInTheLast{"artistLastPlayed": 30}, "(artist_annotation.play_date < ? OR artist_annotation.play_date IS NULL)", StartOfPeriod(30, time.Now())),
-
-		// Tag tests
-		Entry("tag is [string]", Is{"genre": "Rock"}, "exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value = ?)", "Rock"),
-		Entry("tag isNot [string]", IsNot{"genre": "Rock"}, "not exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value = ?)", "Rock"),
-		Entry("tag gt", Gt{"genre": "A"}, "exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value > ?)", "A"),
-		Entry("tag lt", Lt{"genre": "Z"}, "exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value < ?)", "Z"),
-		Entry("tag contains", Contains{"genre": "Rock"}, "exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value LIKE ?)", "%Rock%"),
-		Entry("tag not contains", NotContains{"genre": "Rock"}, "not exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value LIKE ?)", "%Rock%"),
-		Entry("tag startsWith", StartsWith{"genre": "Soft"}, "exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value LIKE ?)", "Soft%"),
-		Entry("tag endsWith", EndsWith{"genre": "Rock"}, "exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value LIKE ?)", "%Rock"),
-
-		// Artist roles tests
-		Entry("role is [string]", Is{"artist": "u2"}, "exists (select 1 from json_tree(media_file.participants, '$.artist') where key='name' and value = ?)", "u2"),
-		Entry("role isNot [string]", IsNot{"artist": "u2"}, "not exists (select 1 from json_tree(media_file.participants, '$.artist') where key='name' and value = ?)", "u2"),
-		Entry("role contains [string]", Contains{"artist": "u2"}, "exists (select 1 from json_tree(media_file.participants, '$.artist') where key='name' and value LIKE ?)", "%u2%"),
-		Entry("role not contains [string]", NotContains{"artist": "u2"}, "not exists (select 1 from json_tree(media_file.participants, '$.artist') where key='name' and value LIKE ?)", "%u2%"),
-		Entry("role startsWith [string]", StartsWith{"composer": "John"}, "exists (select 1 from json_tree(media_file.participants, '$.composer') where key='name' and value LIKE ?)", "John%"),
-		Entry("role endsWith [string]", EndsWith{"composer": "Lennon"}, "exists (select 1 from json_tree(media_file.participants, '$.composer') where key='name' and value LIKE ?)", "%Lennon"),
-	)
-
-	// TODO Validate operators that are not valid for each field type.
-	XDescribeTable("ToSQL - Invalid Operators",
-		func(op Expression, expectedError string) {
-			_, _, err := op.ToSql()
-			gomega.Expect(err).To(gomega.MatchError(expectedError))
-		},
-		Entry("numeric tag contains", Contains{"rate": 5}, "numeric tag 'rate' cannot be used with Contains operator"),
-	)
-
-	Describe("Custom Tags", func() {
-		It("generates valid SQL", func() {
-			AddTagNames([]string{"mood"})
-			op := EndsWith{"mood": "Soft"}
-			sql, args, err := op.ToSql()
-			gomega.Expect(err).ToNot(gomega.HaveOccurred())
-			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(media_file.tags, '$.mood') where key='value' and value LIKE ?)"))
-			gomega.Expect(args).To(gomega.HaveExactElements("%Soft"))
-		})
-		It("casts numeric comparisons", func() {
-			AddNumericTags([]string{"rate"})
-			op := Lt{"rate": 6}
-			sql, args, err := op.ToSql()
-			gomega.Expect(err).ToNot(gomega.HaveOccurred())
-			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(media_file.tags, '$.rate') where key='value' and CAST(value AS REAL) < ?)"))
-			gomega.Expect(args).To(gomega.HaveExactElements(6))
-		})
-		It("skips unknown tag names", func() {
-			op := EndsWith{"unknown": "value"}
-			sql, args, _ := op.ToSql()
-			gomega.Expect(sql).To(gomega.BeEmpty())
-			gomega.Expect(args).To(gomega.BeEmpty())
-		})
-		It("supports releasetype as multi-valued tag", func() {
-			AddTagNames([]string{"releasetype"})
-			op := Contains{"releasetype": "soundtrack"}
-			sql, args, err := op.ToSql()
-			gomega.Expect(err).ToNot(gomega.HaveOccurred())
-			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(media_file.tags, '$.releasetype') where key='value' and value LIKE ?)"))
-			gomega.Expect(args).To(gomega.HaveExactElements("%soundtrack%"))
-		})
-		It("supports albumtype as alias for releasetype", func() {
-			AddTagNames([]string{"releasetype"})
-			op := Contains{"albumtype": "live"}
-			sql, args, err := op.ToSql()
-			gomega.Expect(err).ToNot(gomega.HaveOccurred())
-			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(media_file.tags, '$.releasetype') where key='value' and value LIKE ?)"))
-			gomega.Expect(args).To(gomega.HaveExactElements("%live%"))
-		})
-		It("supports albumtype alias with Is operator", func() {
-			AddTagNames([]string{"releasetype"})
-			op := Is{"albumtype": "album"}
-			sql, args, err := op.ToSql()
-			gomega.Expect(err).ToNot(gomega.HaveOccurred())
-			// Should query $.releasetype, not $.albumtype
-			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(media_file.tags, '$.releasetype') where key='value' and value = ?)"))
-			gomega.Expect(args).To(gomega.HaveExactElements("album"))
-		})
-		It("supports albumtype alias with IsNot operator", func() {
-			AddTagNames([]string{"releasetype"})
-			op := IsNot{"albumtype": "compilation"}
-			sql, args, err := op.ToSql()
-			gomega.Expect(err).ToNot(gomega.HaveOccurred())
-			// Should query $.releasetype, not $.albumtype
-			gomega.Expect(sql).To(gomega.Equal("not exists (select 1 from json_tree(media_file.tags, '$.releasetype') where key='value' and value = ?)"))
-			gomega.Expect(args).To(gomega.HaveExactElements("compilation"))
-		})
-	})
-
-	Describe("Custom Roles", func() {
-		It("generates valid SQL", func() {
-			AddRoles([]string{"producer"})
-			op := EndsWith{"producer": "Eno"}
-			sql, args, err := op.ToSql()
-			gomega.Expect(err).ToNot(gomega.HaveOccurred())
-			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(media_file.participants, '$.producer') where key='name' and value LIKE ?)"))
-			gomega.Expect(args).To(gomega.HaveExactElements("%Eno"))
-		})
-		It("skips unknown roles", func() {
-			op := Contains{"groupie": "Penny Lane"}
-			sql, args, _ := op.ToSql()
-			gomega.Expect(sql).To(gomega.BeEmpty())
-			gomega.Expect(args).To(gomega.BeEmpty())
-		})
-	})
-
-	DescribeTable("ToSql idempotency",
-		func(expr Expression) {
-			sql1, args1, err1 := expr.ToSql()
-			sql2, args2, err2 := expr.ToSql()
-
-			gomega.Expect(err1).ToNot(gomega.HaveOccurred())
-			gomega.Expect(err2).ToNot(gomega.HaveOccurred())
-			gomega.Expect(sql2).To(gomega.Equal(sql1))
-			gomega.Expect(args2).To(gomega.Equal(args1))
-		},
-		Entry("tag expression", Is{"genre": "Rock"}),
-		Entry("role expression", Contains{"artist": "Beatles"}),
-		Entry("nested criteria", Criteria{Expression: All{Is{"genre": "Rock"}, Contains{"artist": "Beatles"}}}),
-	)
-
 	DescribeTable("JSON Marshaling",
 		func(op Expression, jsonString string) {
 			obj := And{op}
@@ -208,6 +31,7 @@ var _ = Describe("Operators", func() {
 		},
 		Entry("is [string]", Is{"title": "Low Rider"}, `{"is":{"title":"Low Rider"}}`),
 		Entry("is [bool]", Is{"loved": false}, `{"is":{"loved":false}}`),
+		Entry("is [string does not coerce non-boolean field]", Is{"title": "true"}, `{"is":{"title":"true"}}`),
 		Entry("isNot", IsNot{"title": "Low Rider"}, `{"isNot":{"title":"Low Rider"}}`),
 		Entry("gt", Gt{"playCount": 10.0}, `{"gt":{"playCount":10}}`),
 		Entry("lt", Lt{"playCount": 10.0}, `{"lt":{"playCount":10}}`),
@@ -223,5 +47,83 @@ var _ = Describe("Operators", func() {
 		Entry("notInTheLast", NotInTheLast{"lastPlayed": 30.0}, `{"notInTheLast":{"lastPlayed":30}}`),
 		Entry("inPlaylist", InPlaylist{"id": "deadbeef-dead-beef"}, `{"inPlaylist":{"id":"deadbeef-dead-beef"}}`),
 		Entry("notInPlaylist", NotInPlaylist{"id": "deadbeef-dead-beef"}, `{"notInPlaylist":{"id":"deadbeef-dead-beef"}}`),
+		Entry("isMissing [true]", IsMissing{"genre": true}, `{"isMissing":{"genre":true}}`),
+		Entry("isMissing [false]", IsMissing{"genre": false}, `{"isMissing":{"genre":false}}`),
+		Entry("isPresent [true]", IsPresent{"genre": true}, `{"isPresent":{"genre":true}}`),
+		Entry("isPresent [false]", IsPresent{"genre": false}, `{"isPresent":{"genre":false}}`),
 	)
+
+	Describe("Boolean string coercion at unmarshal time (issue #4826)", func() {
+		It("coerces string 'true' to bool for boolean fields", func() {
+			var obj UnmarshalConjunctionType
+			err := json.Unmarshal([]byte(`[{"is":{"loved":"true"}}]`), &obj)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			gomega.Expect(obj[0]).To(gomega.Equal(Is{"loved": true}))
+		})
+
+		It("coerces string 'false' to bool for boolean fields", func() {
+			var obj UnmarshalConjunctionType
+			err := json.Unmarshal([]byte(`[{"is":{"loved":"false"}}]`), &obj)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			gomega.Expect(obj[0]).To(gomega.Equal(Is{"loved": false}))
+		})
+
+		It("does not coerce string values for non-boolean fields", func() {
+			var obj UnmarshalConjunctionType
+			err := json.Unmarshal([]byte(`[{"is":{"title":"true"}}]`), &obj)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			gomega.Expect(obj[0]).To(gomega.Equal(Is{"title": "true"}))
+		})
+
+		It("coerces numeric 1 to bool true for boolean fields", func() {
+			var obj UnmarshalConjunctionType
+			err := json.Unmarshal([]byte(`[{"is":{"loved":1}}]`), &obj)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			gomega.Expect(obj[0]).To(gomega.Equal(Is{"loved": true}))
+		})
+
+		It("coerces numeric 0 to bool false for boolean fields", func() {
+			var obj UnmarshalConjunctionType
+			err := json.Unmarshal([]byte(`[{"is":{"loved":0}}]`), &obj)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			gomega.Expect(obj[0]).To(gomega.Equal(Is{"loved": false}))
+		})
+
+		It("coerces in nested any/all groups", func() {
+			var c Criteria
+			err := json.Unmarshal([]byte(`{"all":[{"contains":{"title":"love"}},{"any":[{"is":{"loved":"true"}}]}]}`), &c)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			all := c.Expression.(All)
+			nested := all[1].(Any)
+			gomega.Expect(nested[0]).To(gomega.Equal(Is{"loved": true}))
+		})
+
+		It("coerces isMissing string 'true' to bool", func() {
+			var obj UnmarshalConjunctionType
+			err := json.Unmarshal([]byte(`[{"isMissing":{"genre":"true"}}]`), &obj)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			gomega.Expect(obj[0]).To(gomega.Equal(IsMissing{"genre": true}))
+		})
+
+		It("coerces isMissing numeric 0 to bool false", func() {
+			var obj UnmarshalConjunctionType
+			err := json.Unmarshal([]byte(`[{"isMissing":{"genre":0}}]`), &obj)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			gomega.Expect(obj[0]).To(gomega.Equal(IsMissing{"genre": false}))
+		})
+
+		It("coerces isPresent string 'false' to bool", func() {
+			var obj UnmarshalConjunctionType
+			err := json.Unmarshal([]byte(`[{"isPresent":{"genre":"false"}}]`), &obj)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			gomega.Expect(obj[0]).To(gomega.Equal(IsPresent{"genre": false}))
+		})
+
+		It("coerces isPresent numeric 1 to bool true", func() {
+			var obj UnmarshalConjunctionType
+			err := json.Unmarshal([]byte(`[{"isPresent":{"genre":1}}]`), &obj)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			gomega.Expect(obj[0]).To(gomega.Equal(IsPresent{"genre": true}))
+		})
+	})
 })

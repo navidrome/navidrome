@@ -116,7 +116,7 @@ main:
     aliases: [ comm:description, comment, ©cmt, description, icmt ]
     maxLength: 4096
   originaldate:
-    aliases: [ tdor, originaldate, ----:com.apple.itunes:originaldate, wm/originalreleasetime, tory, originalyear, ----:com.apple.itunes:originalyear, wm/originalreleaseyear ]
+    aliases: [ tdor, originaldate, ----:com.apple.itunes:originaldate, wm/originalreleasetime, tory, originalyear, ----:com.apple.itunes:originalyear, wm/originalreleaseyear, origyear, ----:com.apple.itunes:origyear ]
     type: date
   recordingdate:
     aliases: [ tdrc, date, recordingdate, icrd, record date ]

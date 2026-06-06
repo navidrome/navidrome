@@ -1,5 +1,6 @@
 import subsonic from '../subsonic'
-import { COVER_ART_SIZE, RADIO_PLACEHOLDER_IMAGE } from '../consts'
+import config from '../config'
+import { RADIO_PLACEHOLDER_IMAGE } from '../consts'
 
 export async function songFromRadio(radio) {
   if (!radio) {
@@ -8,7 +9,7 @@ export async function songFromRadio(radio) {
 
   let cover = RADIO_PLACEHOLDER_IMAGE
   if (radio.uploadedImage) {
-    cover = subsonic.getCoverArtUrl(radio, COVER_ART_SIZE, true)
+    cover = subsonic.getCoverArtUrl(radio, config.uiCoverArtSize, true)
   } else {
     // Try favicon as fallback
     try {

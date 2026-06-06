@@ -28,8 +28,8 @@ var _ = Describe("Playlist Image Endpoints", func() {
 	})
 
 	DescribeTable("uploadPlaylistImage guard",
-		func(enableCoverArtUpload, isAdmin bool, expectedStatus int) {
-			conf.Server.EnableCoverArtUpload = enableCoverArtUpload
+		func(enableArtworkUpload, isAdmin bool, expectedStatus int) {
+			conf.Server.EnableArtworkUpload = enableArtworkUpload
 			handler := uploadPlaylistImage(&mockPlaylistsService{})
 
 			req := httptest.NewRequest("POST", "/playlist/pls-1/image", nil)
@@ -47,8 +47,8 @@ var _ = Describe("Playlist Image Endpoints", func() {
 	)
 
 	DescribeTable("deletePlaylistImage guard",
-		func(enableCoverArtUpload, isAdmin bool, expectedStatus int) {
-			conf.Server.EnableCoverArtUpload = enableCoverArtUpload
+		func(enableArtworkUpload, isAdmin bool, expectedStatus int) {
+			conf.Server.EnableArtworkUpload = enableArtworkUpload
 			handler := deletePlaylistImage(&mockPlaylistsService{})
 
 			req := httptest.NewRequest("DELETE", "/playlist/pls-1/image", nil)

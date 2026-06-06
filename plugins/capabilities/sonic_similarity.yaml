@@ -1,0 +1,92 @@
+version: v1-draft
+exports:
+    nd_get_sonic_similar_tracks:
+        input:
+            $ref: '#/components/schemas/GetSonicSimilarTracksRequest'
+            contentType: application/json
+        output:
+            $ref: '#/components/schemas/SonicSimilarityResponse'
+            contentType: application/json
+    nd_find_sonic_path:
+        input:
+            $ref: '#/components/schemas/FindSonicPathRequest'
+            contentType: application/json
+        output:
+            $ref: '#/components/schemas/SonicSimilarityResponse'
+            contentType: application/json
+components:
+    schemas:
+        FindSonicPathRequest:
+            properties:
+                startSong:
+                    $ref: '#/components/schemas/SongRef'
+                endSong:
+                    $ref: '#/components/schemas/SongRef'
+                count:
+                    type: integer
+                    format: int32
+            required:
+                - startSong
+                - endSong
+                - count
+        GetSonicSimilarTracksRequest:
+            properties:
+                song:
+                    $ref: '#/components/schemas/SongRef'
+                count:
+                    type: integer
+                    format: int32
+            required:
+                - song
+                - count
+        SongRef:
+            description: SongRef is a reference to a song with metadata for matching.
+            properties:
+                id:
+                    type: string
+                    description: ID is the internal Navidrome mediafile ID (if known).
+                name:
+                    type: string
+                    description: Name is the song name.
+                mbid:
+                    type: string
+                    description: MBID is the MusicBrainz ID for the song.
+                isrc:
+                    type: string
+                    description: ISRC is the International Standard Recording Code for the song.
+                artist:
+                    type: string
+                    description: Artist is the artist name.
+                artistMbid:
+                    type: string
+                    description: ArtistMBID is the MusicBrainz artist ID.
+                album:
+                    type: string
+                    description: Album is the album name.
+                albumMbid:
+                    type: string
+                    description: AlbumMBID is the MusicBrainz release ID.
+                duration:
+                    type: number
+                    format: float
+                    description: Duration is the song duration in seconds.
+            required:
+                - name
+        SonicMatch:
+            properties:
+                song:
+                    $ref: '#/components/schemas/SongRef'
+                similarity:
+                    type: number
+                    format: float
+            required:
+                - song
+                - similarity
+        SonicSimilarityResponse:
+            properties:
+                matches:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/SonicMatch'
+            required:
+                - matches

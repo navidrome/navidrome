@@ -56,6 +56,31 @@ var _ = Describe("Public URL Utilities", func() {
 			})
 		})
 
+		When("ShareURL includes a path", func() {
+			BeforeEach(func() {
+				conf.Server.ShareURL = "https://example.com/navi"
+			})
+
+			It("prepends the ShareURL path to the resource", func() {
+				r, _ := http.NewRequest("GET", "http://localhost/test", nil)
+				result := publicurl.PublicURL(r, "/share/img/hash", nil)
+				Expect(result).To(Equal("https://example.com/navi/share/img/hash"))
+			})
+
+			It("prepends the ShareURL path and includes query parameters", func() {
+				r, _ := http.NewRequest("GET", "http://localhost/test", nil)
+				params := url.Values{"size": []string{"600"}}
+				result := publicurl.PublicURL(r, "/share/img/hash", params)
+				Expect(result).To(Equal("https://example.com/navi/share/img/hash?size=600"))
+			})
+
+			It("handles trailing slash in ShareURL path", func() {
+				conf.Server.ShareURL = "https://example.com/navi/"
+				result := publicurl.PublicURL(nil, "/share/img/hash", nil)
+				Expect(result).To(Equal("https://example.com/navi/share/img/hash"))
+			})
+		})
+
 		When("ShareURL is not set", func() {
 			BeforeEach(func() {
 				conf.Server.ShareURL = ""

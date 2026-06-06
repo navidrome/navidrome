@@ -27,7 +27,7 @@ var _ = Describe("Transcode endpoints", func() {
 		mockMFRepo = &tests.MockMediaFileRepo{}
 		ds = &tests.MockDataStore{MockedMediaFile: mockMFRepo}
 		mockTD = &mockTranscodeDecision{}
-		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD)
+		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD, nil)
 		w = httptest.NewRecorder()
 	})
 
@@ -284,7 +284,7 @@ var _ = Describe("Transcode endpoints", func() {
 
 		It("builds correct StreamRequest for direct play", func() {
 			fakeStreamer := &fakeMediaStreamer{}
-			router = New(ds, nil, fakeStreamer, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD)
+			router = New(ds, nil, fakeStreamer, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD, nil)
 			mockMFRepo.SetData(model.MediaFiles{{ID: "song-1"}})
 			mockTD.resolvedReq = stream.Request{}
 
@@ -301,7 +301,7 @@ var _ = Describe("Transcode endpoints", func() {
 
 		It("builds correct StreamRequest for transcoding", func() {
 			fakeStreamer := &fakeMediaStreamer{}
-			router = New(ds, nil, fakeStreamer, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD)
+			router = New(ds, nil, fakeStreamer, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD, nil)
 			mockMFRepo.SetData(model.MediaFiles{{ID: "song-2"}})
 			mockTD.resolvedReq = stream.Request{
 				Format:     "mp3",

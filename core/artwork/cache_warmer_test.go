@@ -12,7 +12,6 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
-	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/cache"
 	. "github.com/onsi/ginkgo/v2"
@@ -182,7 +181,7 @@ var _ = Describe("CacheWarmer", func() {
 
 			Eventually(func() []int {
 				return aw.getCachedSizes()
-			}).Should(ContainElements(consts.UICoverArtSize))
+			}).Should(ContainElements(conf.Server.UICoverArtSize))
 		})
 	})
 })

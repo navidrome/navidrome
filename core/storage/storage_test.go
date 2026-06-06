@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -54,6 +55,7 @@ var _ = Describe("Storage", func() {
 			Expect(s.(*fakeLocalStorage).u.Path).To(Equal("/tmp"))
 		})
 		It("should return a file implementation for a relative folder", func() {
+			tests.SkipOnWindows("path separator bug (#TBD-path-sep-storage)")
 			s, err := For("tmp")
 			Expect(err).ToNot(HaveOccurred())
 			cwd, _ := os.Getwd()

@@ -3,6 +3,7 @@ package core
 import (
 	"archive/zip"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
+	"github.com/navidrome/navidrome/utils/str"
 )
 
 type Archiver interface {
@@ -59,7 +61,15 @@ func (a *archiver) zipAlbums(ctx context.Context, id string, format string, bitr
 			"format", format, "bitrate", bitrate, "isMultiDisc", isMultiDisc, "numTracks", len(album))
 		for _, mf := range album {
 			file := a.albumFilename(mf, format, isMultiDisc)
-			_ = a.addFileToZip(ctx, z, mf, format, bitrate, file)
+			if addErr := a.addFileToZip(ctx, z, mf, format, bitrate, file); errors.Is(addErr, stream.ErrTooManyTranscodes) {
+				// Stop iterating: continuing would just rack up more
+				// rejections from the limiter. Close finalises whatever
+				// tracks were already written; the rejected one is not
+				// present in the archive (addFileToZip aborts before
+				// writing its entry header).
+				_ = z.Close()
+				return addErr
+			}
 		}
 	}
 	err = z.Close()
@@ -87,7 +97,7 @@ func (a *archiver) albumFilename(mf model.MediaFile, format string, isMultiDisc 
 	if isMultiDisc {
 		file = fmt.Sprintf("Disc %02d/%s", mf.DiscNumber, file)
 	}
-	return fmt.Sprintf("%s/%s", sanitizeName(mf.Album), file)
+	return fmt.Sprintf("%s/%s", str.SanitizeFilename(mf.Album), file)
 }
 
 func (a *archiver) ZipShare(ctx context.Context, id string, out io.Writer) error {
@@ -119,14 +129,19 @@ func (a *archiver) zipMediaFiles(ctx context.Context, id, name string, format st
 	zippedMfs := make(model.MediaFiles, len(mfs))
 	for idx, mf := range mfs {
 		file := a.playlistFilename(mf, format, idx)
-		_ = a.addFileToZip(ctx, z, mf, format, bitrate, file)
+		if addErr := a.addFileToZip(ctx, z, mf, format, bitrate, file); errors.Is(addErr, stream.ErrTooManyTranscodes) {
+			// Abort the whole archive: continuing would silently emit
+			// empty zip entries since the headers are already written.
+			_ = z.Close()
+			return addErr
+		}
 		mf.Path = file
 		zippedMfs[idx] = mf
 	}
 
 	// Add M3U file if requested
 	if addM3U && len(zippedMfs) > 0 {
-		plsName := sanitizeName(name)
+		plsName := str.SanitizeFilename(name)
 		w, err := z.CreateHeader(&zip.FileHeader{
 			Name:     plsName + ".m3u",
 			Modified: mfs[0].UpdatedAt,
@@ -156,26 +171,17 @@ func (a *archiver) playlistFilename(mf model.MediaFile, format string, idx int) 
 	if format != "" && format != "raw" {
 		ext = format
 	}
-	return fmt.Sprintf("%02d - %s - %s.%s", idx+1, sanitizeName(mf.Artist), sanitizeName(mf.Title), ext)
-}
-
-func sanitizeName(target string) string {
-	return strings.ReplaceAll(target, "/", "_")
+	return fmt.Sprintf("%02d - %s - %s.%s", idx+1, str.SanitizeFilename(mf.Artist), str.SanitizeFilename(mf.Title), ext)
 }
 
 func (a *archiver) addFileToZip(ctx context.Context, z *zip.Writer, mf model.MediaFile, format string, bitrate int, filename string) error {
 	path := mf.AbsolutePath()
-	w, err := z.CreateHeader(&zip.FileHeader{
-		Name:     filename,
-		Modified: mf.UpdatedAt,
-		Method:   zip.Store,
-	})
-	if err != nil {
-		log.Error(ctx, "Error creating zip entry", "file", path, err)
-		return err
-	}
 
+	// Open the source before writing the zip entry header so a rejection
+	// (limiter, missing file, etc.) does not leave an empty entry in the
+	// archive.
 	var r io.ReadCloser
+	var err error
 	if format != "raw" && format != "" {
 		r, err = a.ms.NewStream(ctx, &mf, stream.Request{Format: format, BitRate: bitrate})
 	} else {
@@ -185,12 +191,21 @@ func (a *archiver) addFileToZip(ctx context.Context, z *zip.Writer, mf model.Med
 		log.Error(ctx, "Error opening file for zipping", "file", path, "format", format, err)
 		return err
 	}
-
 	defer func() {
 		if err := r.Close(); err != nil && log.IsGreaterOrEqualTo(log.LevelDebug) {
 			log.Error(ctx, "Error closing stream", "id", mf.ID, "file", path, err)
 		}
 	}()
+
+	w, err := z.CreateHeader(&zip.FileHeader{
+		Name:     filename,
+		Modified: mf.UpdatedAt,
+		Method:   zip.Store,
+	})
+	if err != nil {
+		log.Error(ctx, "Error creating zip entry", "file", path, err)
+		return err
+	}
 
 	_, err = io.Copy(w, r)
 	if err != nil {

@@ -52,7 +52,7 @@ func setupE2EBenchmark(b *testing.B, cacheSize string) (Artwork, model.ArtworkID
 
 	// Configure cache
 	conf.Server.ImageCacheSize = cacheSize
-	conf.Server.CacheFolder = tmpDir
+	conf.Server.CacheFolder = conf.NewDir(tmpDir)
 	conf.Server.CoverArtQuality = 75
 	conf.Server.CoverArtPriority = "cover.*"
 
@@ -169,7 +169,7 @@ func BenchmarkArtworkGetE2EConcurrent(b *testing.B) {
 				for i := 0; i < b.N; i++ {
 					var wg sync.WaitGroup
 					wg.Add(n)
-					for g := 0; g < n; g++ {
+					for range n {
 						go func() {
 							defer wg.Done()
 							r, _, err := aw.Get(context.Background(), artID, 300, true)

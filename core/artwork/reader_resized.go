@@ -19,6 +19,16 @@ import (
 	xdraw "golang.org/x/image/draw"
 )
 
+func init() {
+	conf.AddHook(func() {
+		if err := webp.Dynamic(); err != nil {
+			log.Debug("Using WASM WebP encoder/decoder", "reason", err)
+		} else {
+			log.Debug("Using native libwebp for WebP encoding/decoding")
+		}
+	})
+}
+
 var bufPool = sync.Pool{
 	New: func() any {
 		return new(bytes.Buffer)
@@ -98,28 +108,26 @@ func (a *resizedArtworkReader) resizeImage(ctx context.Context, reader io.Reader
 		return nil, 0, fmt.Errorf("reading image data: %w", err)
 	}
 
-	// Preserve animation for animated images (skip for square thumbnails)
-	if !a.square {
-		if isAnimatedGIF(data) {
-			if a.a.ffmpeg.IsAvailable() {
-				// Animated GIF: convert to animated WebP via ffmpeg (with optional resize)
-				r, err := a.a.ffmpeg.ConvertAnimatedImage(ctx, bytes.NewReader(data), a.size, conf.Server.CoverArtQuality)
-				if err == nil {
-					return r, 0, nil
-				}
-				log.Warn(ctx, "Could not convert animated GIF, falling back to static", err)
+	// Preserve animation for animated images
+	if isAnimatedGIF(data) {
+		if a.a.ffmpeg.IsAvailable() {
+			// Animated GIF: convert to animated WebP via ffmpeg (with optional resize)
+			r, err := a.a.ffmpeg.ConvertAnimatedImage(ctx, bytes.NewReader(data), a.size, conf.Server.CoverArtQuality)
+			if err == nil {
+				return r, 0, nil
 			}
-		} else if isAnimatedWebP(data) || isAnimatedPNG(data) {
-			// Animated WebP/APNG: return original as-is (ffmpeg can't re-encode these)
-			return bytes.NewReader(data), 0, nil
+			log.Warn(ctx, "Could not convert animated GIF, falling back to static", err)
 		}
+	} else if isAnimatedWebP(data) || isAnimatedPNG(data) {
+		// Animated WebP/APNG: return original as-is (ffmpeg can't re-encode these)
+		return bytes.NewReader(data), 0, nil
 	}
 
 	return resizeStaticImage(data, a.size, a.square)
 }
 
 func resizeStaticImage(data []byte, size int, square bool) (io.Reader, int, error) {
-	original, _, err := image.Decode(bytes.NewReader(data))
+	original, format, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
 		return nil, 0, err
 	}
@@ -159,14 +167,12 @@ func resizeStaticImage(data []byte, size int, square bool) (io.Reader, int, erro
 
 	buf := bufPool.Get().(*bytes.Buffer)
 	buf.Reset()
-	if conf.Server.DevJpegCoverArt {
-		if square {
-			err = png.Encode(buf, dst)
-		} else {
-			err = jpeg.Encode(buf, dst, &jpeg.Options{Quality: conf.Server.CoverArtQuality})
-		}
-	} else {
+	if conf.Server.EnableWebPEncoding {
 		err = webp.Encode(buf, dst, webp.Options{Quality: conf.Server.CoverArtQuality})
+	} else if format == "png" || square {
+		err = png.Encode(buf, dst)
+	} else {
+		err = jpeg.Encode(buf, dst, &jpeg.Options{Quality: conf.Server.CoverArtQuality})
 	}
 	if err != nil {
 		bufPool.Put(buf)

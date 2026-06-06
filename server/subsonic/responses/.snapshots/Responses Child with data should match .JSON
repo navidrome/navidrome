@@ -110,7 +110,11 @@
           }
         ],
         "displayComposer": "composer 1 \u0026 composer 2",
-        "explicitStatus": "clean"
+        "explicitStatus": "clean",
+        "groupings": [
+          "Soundtrack",
+          "Live"
+        ]
       },
       {
         "id": "",
@@ -141,7 +145,8 @@
         "displayAlbumArtist": "",
         "contributors": [],
         "displayComposer": "",
-        "explicitStatus": ""
+        "explicitStatus": "",
+        "groupings": []
       }
     ],
     "id": "1",

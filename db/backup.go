@@ -27,7 +27,7 @@ const backupSuffixLayout = "2006.01.02_15.04.05"
 
 func backupPath(t time.Time) string {
 	return filepath.Join(
-		conf.Server.Backup.Path,
+		conf.Server.Backup.Path.MustPath(),
 		fmt.Sprintf("%s_%s.db", backupPrefix, t.Format(backupSuffixLayout)),
 	)
 }
@@ -81,11 +81,11 @@ func backupOrRestore(ctx context.Context, isBackup bool, path string) error {
 			// Caution: -1 means that sqlite will hold a read lock until the operation finishes
 			// This will lock out other writes that could happen at the same time
 			done, err := backupOp.Step(-1)
-			if !done {
-				return fmt.Errorf("backup not done with step -1")
-			}
 			if err != nil {
 				return fmt.Errorf("error during backup step: %w", err)
+			}
+			if !done {
+				return fmt.Errorf("backup not done with step -1")
 			}
 
 			err = backupOp.Finish()
@@ -117,7 +117,11 @@ func Restore(ctx context.Context, path string) error {
 }
 
 func Prune(ctx context.Context) (int, error) {
-	files, err := os.ReadDir(conf.Server.Backup.Path)
+	backupDir, err := conf.Server.Backup.Path.Path()
+	if err != nil {
+		return 0, fmt.Errorf("backup directory not available: %w", err)
+	}
+	files, err := os.ReadDir(backupDir)
 	if err != nil {
 		return 0, fmt.Errorf("unable to read database backup entries: %w", err)
 	}

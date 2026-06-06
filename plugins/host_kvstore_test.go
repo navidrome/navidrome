@@ -34,11 +34,10 @@ var _ = Describe("KVStoreService", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		DeferCleanup(configtest.SetupConfig())
-		conf.Server.DataFolder = tmpDir
+		conf.Server.DataFolder = conf.NewDir(tmpDir)
 
 		// Create service with 1KB limit for testing
-		maxSize := "1KB"
-		service, err = newKVStoreService(ctx, "test_plugin", &KVStorePermission{MaxSize: &maxSize})
+		service, err = newKVStoreService(ctx, "test_plugin", &KVStorePermission{MaxSize: new("1KB")})
 		Expect(err).ToNot(HaveOccurred())
 	})
 
@@ -253,8 +252,7 @@ var _ = Describe("KVStoreService", func() {
 			// Close and reopen the service (simulating restart)
 			Expect(service.Close()).To(Succeed())
 
-			maxSize := "1KB"
-			service2, err := newKVStoreService(ctx, "test_plugin", &KVStorePermission{MaxSize: &maxSize})
+			service2, err := newKVStoreService(ctx, "test_plugin", &KVStorePermission{MaxSize: new("1KB")})
 			Expect(err).ToNot(HaveOccurred())
 			defer service2.Close()
 
@@ -442,6 +440,35 @@ var _ = Describe("KVStoreService", func() {
 			// Row should be physically deleted
 			Expect(service.db.QueryRow(`SELECT COUNT(*) FROM kvstore`).Scan(&count)).To(Succeed())
 			Expect(count).To(Equal(0))
+		})
+	})
+
+	Describe("Close", func() {
+		It("does not race with cleanupLoop goroutine", func() {
+			// Create a service with a dedicated context so we can verify
+			// that Close() properly waits for the cleanup goroutine.
+			closeCtx, closeCancel := context.WithCancel(ctx)
+			defer closeCancel()
+
+			svc, err := newKVStoreService(closeCtx, "test_close_race", &KVStorePermission{MaxSize: new("1KB")})
+			Expect(err).ToNot(HaveOccurred())
+
+			// Insert an expired key so cleanup has work to do
+			_, err = svc.db.Exec(`
+				INSERT INTO kvstore (key, value, size, expires_at)
+				VALUES ('cleanup_race', 'old', 3, datetime('now', '-1 seconds'))
+			`)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Close should not panic or produce "database is closed" errors.
+			// Before the fix, the cleanup goroutine could race with db.Close().
+			err = svc.Close()
+			Expect(err).ToNot(HaveOccurred())
+
+			// Verify the database is actually closed (further queries should fail)
+			_, err = svc.db.Exec(`SELECT 1`)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("database is closed"))
 		})
 	})
 
@@ -675,9 +702,9 @@ var _ = Describe("KVStoreService Integration", Ordered, func() {
 		// Setup config
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.Plugins.Enabled = true
-		conf.Server.Plugins.Folder = tmpDir
+		conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
 		conf.Server.Plugins.AutoReload = false
-		conf.Server.DataFolder = tmpDir
+		conf.Server.DataFolder = conf.NewDir(tmpDir)
 
 		// Setup mock DataStore with pre-enabled plugin
 		mockPluginRepo := tests.CreateMockPluginRepo()

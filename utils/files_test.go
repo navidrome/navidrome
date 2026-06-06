@@ -192,6 +192,10 @@ var _ = Describe("FileExists", func() {
 			filePath := tempFile.Name()
 			Expect(utils.FileExists(filePath)).To(BeTrue())
 
+			// Close the file before removing it. On Windows, an open handle
+			// holds a file lock and os.Remove fails; closing first makes the
+			// test cross-platform.
+			Expect(tempFile.Close()).To(Succeed())
 			err := os.Remove(filePath)
 			Expect(err).NotTo(HaveOccurred())
 			tempFile = nil // Prevent cleanup attempt

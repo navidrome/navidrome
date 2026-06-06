@@ -75,3 +75,16 @@ func codecMaxSampleRate(codec string) int {
 	}
 	return 0
 }
+
+// codecMaxChannels returns the hard maximum number of audio channels a codec
+// supports. Returns 0 if the codec has no hard limit (or is unknown), in which
+// case the source/profile constraints applied upstream are authoritative.
+func codecMaxChannels(codec string) int {
+	switch strings.ToLower(codec) {
+	case "mp3":
+		return 2
+	case "opus":
+		return 8
+	}
+	return 0
+}

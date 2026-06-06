@@ -57,7 +57,7 @@ func setupTestConfigPlugin(configJSON string) (*Manager, func(context.Context, t
 	// Setup config
 	DeferCleanup(configtest.SetupConfig())
 	conf.Server.Plugins.Enabled = true
-	conf.Server.Plugins.Folder = tmpDir
+	conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
 	conf.Server.Plugins.AutoReload = false
 
 	// Setup mock DataStore
