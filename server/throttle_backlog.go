@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"maps"
 	"net/http"
 	"sync"
 	"time"
@@ -76,9 +77,7 @@ func (t *requestThrottle) handler(next http.Handler) http.Handler {
 			next.ServeHTTP(buf, r)
 		}()
 
-		for k, v := range buf.header {
-			w.Header()[k] = v
-		}
+		maps.Copy(w.Header(), buf.header)
 		if buf.code > 0 {
 			w.WriteHeader(buf.code)
 		}

@@ -2,7 +2,7 @@
   "languageName": "Slovenčina",
   "resources": {
     "song": {
-      "name": "Skladba |||| Skladieb",
+      "name": "Skladba |||| Skladby",
       "fields": {
         "albumArtist": "Interpret albumu",
         "duration": "Dĺžka",
@@ -10,20 +10,14 @@
         "playCount": "Počet prehratí",
         "title": "Názov",
         "artist": "Interpret",
-        "composer": "Skladateľ",
         "album": "Album",
         "path": "Cesta k súboru",
-        "libraryName": "Knižnica",
         "genre": "Žáner",
         "compilation": "Kompilácia",
         "year": "Rok",
         "size": "Veľkosť súboru",
         "updatedAt": "Nahrané",
         "bitRate": "Prenosová rýchlosť",
-        "bitDepth": "Bitová hĺbka",
-        "sampleRate": "Vzorkovacia frekvencia",
-        "channels": "Kanály",
-        "disc": "Disk %{discNumber}",
         "discSubtitle": "Podtitul disku",
         "starred": "Obľúbené",
         "comment": "Komentár",
@@ -31,6 +25,7 @@
         "quality": "Kvalita",
         "bpm": "BPM",
         "playDate": "Naposledy prehraná skladba",
+        "channels": "Kanály",
         "createdAt": "Pridané",
         "grouping": "Zoskupovanie",
         "mood": "Nálada",
@@ -38,17 +33,24 @@
         "tags": "Ďalšie značky",
         "mappedTags": "Mapované značky",
         "rawTags": "Nespracované značky",
-        "missing": "Chýbajúce"
+        "bitDepth": "Bitová hĺbka",
+        "sampleRate": "Vzorkovacia frekvencia",
+        "missing": "Chýbajúce",
+        "libraryName": "Knižnica",
+        "composer": "Skladateľ",
+        "disc": "Disk %{discNumber}",
+        "albumGain": "Zosilnenie albumu",
+        "trackGain": "Zosilnenie stopy"
       },
       "actions": {
         "addToQueue": "Prehrať neskôr",
         "playNow": "Prehrať teraz",
         "addToPlaylist": "Pridať do zoznamu skladieb",
-        "showInPlaylist": "Zobraziť v zozname skladieb",
         "shuffleAll": "Zamiešať všetko",
         "download": "Stiahnuť",
         "playNext": "Prehrať ako ďalšie",
         "info": "Získať informácie",
+        "showInPlaylist": "Zobraziť v zozname skladieb",
         "instantMix": "Okamžitý mix"
       }
     },
@@ -60,38 +62,38 @@
         "duration": "Dĺžka",
         "songCount": "Skladby",
         "playCount": "Počet prehratí",
-        "size": "Veľkosť",
         "name": "Názov",
-        "libraryName": "Knižnica",
         "genre": "Žáner",
         "compilation": "Kompilácia",
         "year": "Rok",
-        "date": "Dátum záznamu",
-        "originalDate": "Pôvodné",
-        "releaseDate": "Vydané",
-        "releases": "Vydanie |||| Vydania",
-        "released": "Vydané",
         "updatedAt": "Aktualizované",
         "comment": "Komentár",
         "rating": "Hodnotenie",
         "createdAt": "Pridané",
+        "size": "Veľkosť",
+        "originalDate": "Pôvodné",
+        "releaseDate": "Vydané",
+        "releases": "Vydanie |||| Vydania",
+        "released": "Vydané",
         "recordLabel": "Štítok",
         "catalogNum": "Katalógové číslo",
         "releaseType": "Typ vydania",
         "grouping": "Zoskupovanie",
         "media": "Médiá",
         "mood": "Nálada",
-        "missing": "Chýbajúce"
+        "date": "Dátum záznamu",
+        "missing": "Chýbajúce",
+        "libraryName": "Knižnica"
       },
       "actions": {
         "playAll": "Prehrať",
         "playNext": "Prehrať ako ďalšie",
         "addToQueue": "Prehrať neskôr",
-        "share": "Zdieľať",
         "shuffle": "Zamiešať",
         "addToPlaylist": "Pridať do zoznamu skladieb",
         "download": "Stiahnuť",
-        "info": "Získať informácie"
+        "info": "Získať informácie",
+        "share": "Zdieľať"
       },
       "lists": {
         "all": "Všetko",
@@ -109,10 +111,10 @@
         "name": "Názov",
         "albumCount": "Počet albumov",
         "songCount": "Počet skladieb",
-        "size": "Veľkosť",
         "playCount": "Prehrania",
         "rating": "Hodnotenie",
         "genre": "Žáner",
+        "size": "Veľkosť",
         "role": "Rola",
         "missing": "Chýbajúci"
       },
@@ -133,9 +135,9 @@
         "maincredit": "Interpret albumu alebo interpret |||| Interpreti albumov alebo interpreti"
       },
       "actions": {
-        "topSongs": "Najpopulárnejšie skladby",
         "shuffle": "Zamiešať",
-        "radio": "Rádio"
+        "radio": "Rádio",
+        "topSongs": "Najpopulárnejšie skladby"
       }
     },
     "user": {
@@ -144,7 +146,6 @@
         "userName": "Používateľské meno",
         "isAdmin": "Správca",
         "lastLoginAt": "Naposledy prihlásený",
-        "lastAccessAt": "Posledný Prístup",
         "updatedAt": "Upravený",
         "name": "Meno",
         "password": "Heslo",
@@ -153,6 +154,7 @@
         "currentPassword": "Súčastné heslo",
         "newPassword": "Nové heslo",
         "token": "Token",
+        "lastAccessAt": "Posledný Prístup",
         "libraries": "Knižnice"
       },
       "helperTexts": {
@@ -164,14 +166,14 @@
         "updated": "Používateľ upravený",
         "deleted": "Používateľ odstránený"
       },
-      "validation": {
-        "librariesRequired": "Pre používateľov bez administrátorských práv musí byť vybratá aspoň jedna knižnica"
-      },
       "message": {
         "listenBrainzToken": "Vložte svoj používateľský ListenBrainz token.",
         "clickHereForToken": "Kliknite sem pre získanie svojho tokenu",
         "selectAllLibraries": "Vybrať všetky knižnice",
         "adminAutoLibraries": "Administrátori majú automaticky prístup ku všetkým knižniciam"
+      },
+      "validation": {
+        "librariesRequired": "Pre používateľov bez administrátorských práv musí byť vybratá aspoň jedna knižnica"
       }
     },
     "player": {
@@ -214,9 +216,9 @@
         "selectPlaylist": "Vybrať zoznam skladieb:",
         "addNewPlaylist": "Vytvoriť \"%{name}\"",
         "export": "Export",
-        "saveQueue": "Uložiť rad do zoznamu skladieb",
         "makePublic": "Zverejniť",
         "makePrivate": "Nastaviť ako súkromné",
+        "saveQueue": "Uložiť rad do zoznamu skladieb",
         "searchOrCreate": "Vyhľadajte zoznamy skladieb alebo napíšte pre vytvorenie nového...",
         "pressEnterToCreate": "Stlačte Enter pre vytvorenie nového zoznamu skladieb",
         "removeFromSelection": "Odstrániť z výberu"
@@ -247,7 +249,6 @@
         "username": "Zdieľané",
         "url": "URL",
         "description": "Popis",
-        "downloadable": "Povoliť sťahovanie?",
         "contents": "Obsah",
         "expiresAt": "Vyprší",
         "lastVisitedAt": "Naposledy navštívené",
@@ -255,19 +256,17 @@
         "format": "Formát",
         "maxBitRate": "Max. Bit Rate",
         "updatedAt": "Nahrané",
-        "createdAt": "Vytvorené"
-      },
-      "notifications": {},
-      "actions": {}
+        "createdAt": "Vytvorené",
+        "downloadable": "Povoliť sťahovanie?"
+      }
     },
     "missing": {
       "name": "Chýbajúci súbor |||| Chýbajúce súbory",
-      "empty": "Žiadne chýbajúce súbory",
       "fields": {
         "path": "Cesta",
         "size": "Veľkosť",
-        "libraryName": "Knižnica",
-        "updatedAt": "Zmizol dňa"
+        "updatedAt": "Zmizol dňa",
+        "libraryName": "Knižnica"
       },
       "actions": {
         "remove": "Odstrániť",
@@ -275,7 +274,8 @@
       },
       "notifications": {
         "removed": "Chýbajúce súbory odstránené"
-      }
+      },
+      "empty": "Žiadne chýbajúce súbory"
     },
     "library": {
       "name": "Knižnica |||| Knižnice",
@@ -305,20 +305,20 @@
       },
       "actions": {
         "scan": "Skenovať knižnicu",
-        "quickScan": "Rýchly sken",
-        "fullScan": "Úplný sken",
         "manageUsers": "Spravovať prístup používateľov",
-        "viewDetails": "Zobraziť detaily"
+        "viewDetails": "Zobraziť detaily",
+        "quickScan": "Rýchly sken",
+        "fullScan": "Úplný sken"
       },
       "notifications": {
         "created": "Knižnica úspešne vytvorená",
         "updated": "Knižnica úspešne aktualizovaná",
         "deleted": "Knižnica úspešne odstránená",
         "scanStarted": "Skenovanie knižnice spustené",
+        "scanCompleted": "Skenovanie knižnice dokončené",
         "quickScanStarted": "Rýchly sken spustený",
         "fullScanStarted": "Úplný sken spustený",
-        "scanError": "Chyba pri spustení skenu. Skontrolujte logy",
-        "scanCompleted": "Skenovanie knižnice dokončené"
+        "scanError": "Chyba pri spustení skenu. Skontrolujte logy"
       },
       "validation": {
         "nameRequired": "Názov knižnice je povinný",
@@ -391,8 +391,6 @@
       },
       "messages": {
         "configHelp": "Nakonfigurujte plugin pomocou párov kľúč-hodnota. Nechajte prázdne, ak plugin nevyžaduje žiadnu konfiguráciu.",
-        "configValidationError": "Overenie konfigurácie zlyhalo:",
-        "schemaRenderError": "Nie je možné zobraziť konfiguračný formulár. Schéma pluginu môže byť neplatná.",
         "clickPermissions": "Kliknite na oprávnenie pre detaily",
         "noConfig": "Žiadna konfigurácia nastavená",
         "allUsersHelp": "Keď je povolené, plugin bude mať prístup ku všetkým používateľom, vrátane tých vytvorených v budúcnosti.",
@@ -402,8 +400,10 @@
         "allLibrariesHelp": "Keď je povolené, plugin bude mať prístup ku všetkým knižniciam, vrátane tých vytvorených v budúcnosti.",
         "noLibraries": "Žiadne knižnice nevybrané",
         "librariesRequired": "Tento plugin vyžaduje prístup k informáciám o knižniciach. Vyberte, ku ktorým knižniciam má plugin prístup, alebo povolte 'Povoliť všetky knižnice'.",
-        "allowWriteAccessHelp": "Keď je povolené, plugin môže upravovať súbory v adresároch knižníc. Predvolene majú pluginy prístup iba na čítanie.",
-        "requiredHosts": "Požadovaní hostitelia"
+        "requiredHosts": "Požadovaní hostitelia",
+        "configValidationError": "Overenie konfigurácie zlyhalo:",
+        "schemaRenderError": "Nie je možné zobraziť konfiguračný formulár. Schéma pluginu môže byť neplatná.",
+        "allowWriteAccessHelp": "Keď je povolené, plugin môže upravovať súbory v adresároch knižníc. Predvolene majú pluginy prístup iba na čítanie."
       },
       "placeholders": {
         "configKey": "kľúč",
@@ -446,7 +446,6 @@
       "add": "Pridať",
       "back": "Ísť späť",
       "bulk_actions": "1 vybraná |||| %{smart_count} vybraných",
-      "bulk_actions_mobile": "1 |||| %{smart_count}",
       "cancel": "Zrušiť",
       "clear_input_value": "Vymazať hodnotu",
       "clone": "Klonovať",
@@ -470,6 +469,7 @@
       "close_menu": "Zavrieť ponuku",
       "unselect": "Zrušiť výber",
       "skip": "Preskočiť",
+      "bulk_actions_mobile": "1 |||| %{smart_count}",
       "share": "Zdieľať",
       "download": "Stiahnuť"
     },
@@ -557,58 +557,52 @@
     }
   },
   "message": {
-    "uploadCover": "Nahrať obrázok obalu",
-    "removeCover": "Odstrániť obrázok obalu",
-    "coverUploaded": "Obrázok obalu albumu aktualizovaný",
-    "coverRemoved": "Obrázok obalu albumu odstránený",
-    "coverUploadError": "Chyba pri nahrávaní obrázku obalu albumu",
-    "coverRemoveError": "Chyba pri odstraňovaní obrázku obalu albumu",
     "note": "POZNÁMKA",
     "transcodingDisabled": "Zmena nastavení transkódovania je vo webovom prostredí vypnutá z bezpečnostných dôvodov. Ak chcete zmeniť (upraviť alebo pridať) možnosti transkódovania, reštartujte server s možnosťou %{config}.",
     "transcodingEnabled": "Navidrome práve beží s možnosťou %{config}, ktorá umožňuje spúšťanie systémových príkazov z nastavení transkódovania pomocou webového rozhrania. Odporúčame ju vypnúť z bezpečnostných dôvodov a používať ju iba pri úprave nastavení transkódovania.",
     "songsAddedToPlaylist": "1 skladba pridaná do zoznamu skladieb |||| %{smart_count} skladieb pridaných do zoznamu skladieb",
-    "noSimilarSongsFound": "Nenašli sa žiadne podobné skladby",
-    "startingInstantMix": "Načítava sa Instant Mix...",
-    "noTopSongsFound": "Nenašli sa žiadne top skladby",
     "noPlaylistsAvailable": "Žiadne nie sú dostupné",
     "delete_user_title": "Odstrániť používateľa '%{name}'",
     "delete_user_content": "Ste si istí, že chcete odstrániť tohto používateľa a všetky jeho dáta (vrátane zoznamov skladieb a nastavení)?",
-    "remove_missing_title": "Odstráňte chýbajúce súbory",
-    "remove_missing_content": "Naozaj chcete odstrániť vybraté chýbajúce súbory z databázy? Týmto sa natrvalo odstránia všetky odkazy na ne vrátane ich počtu prehratí a hodnotení.",
-    "remove_all_missing_title": "Odstráňte všetky chýbajúce súbory",
-    "remove_all_missing_content": "Naozaj chcete z databázy odstrániť všetky chýbajúce súbory? Týmto sa natrvalo odstránia všetky odkazy na ne vrátane ich počtu prehratí a hodnotení.",
     "notifications_blocked": "Zablokovali ste si oznámenia pre túto stránku v nastaveniach vášho prehliadača",
     "notifications_not_available": "Tento prehliadač nepodporuje oznámenia na ploche alebo nepristupujete k Navidrome cez https",
     "lastfmLinkSuccess": "Last.fm úspešne pripojené a scrobbling zapnutý",
     "lastfmLinkFailure": "Last.fm sa nepodarilo pripojiť",
     "lastfmUnlinkSuccess": "Last.fm odpojené a scrobbling vypnutý",
     "lastfmUnlinkFailure": "Last.fm sa nepodarilo odpojiť",
-    "listenBrainzLinkSuccess": "ListenBrainz úspešne pripojený a scrobbling zapnutý ako používateľ: %{user}",
-    "listenBrainzLinkFailure": "ListenBrainz sa nepodarilo pripojiť: %{error}",
-    "listenBrainzUnlinkSuccess": "ListenBrainz odpojený a scrobbling vypnutý",
-    "listenBrainzUnlinkFailure": "ListenBrainz sa nepodarilo odpojiť",
     "openIn": {
       "lastfm": "Otvoriť na Last.fm",
       "musicbrainz": "Otvoriť na MusicBrainz"
     },
     "lastfmLink": "Čítať ďalej...",
+    "listenBrainzLinkSuccess": "ListenBrainz úspešne pripojený a scrobbling zapnutý ako používateľ: %{user}",
+    "listenBrainzLinkFailure": "ListenBrainz sa nepodarilo pripojiť: %{error}",
+    "listenBrainzUnlinkSuccess": "ListenBrainz odpojený a scrobbling vypnutý",
+    "listenBrainzUnlinkFailure": "ListenBrainz sa nepodarilo odpojiť",
+    "downloadOriginalFormat": "Stiahnuť v pôvodnom formáte",
     "shareOriginalFormat": "Zdieľať v pôvodnom formáte",
     "shareDialogTitle": "Zdieľať %{resource} '%{name}'",
     "shareBatchDialogTitle": "Zdieľať 1 %{resource} |||| Zdieľať %{smart_count} %{resource}",
-    "shareCopyToClipboard": "Skopírovať do schránky: Ctrl+C, Enter",
     "shareSuccess": "URL skopírovaná do schránky: %{url}",
     "shareFailure": "Chyba pri kopírovaní URL %{url} do schránky",
     "downloadDialogTitle": "Stiahnuť %{resource} '%{name}' (%{size})",
-    "downloadOriginalFormat": "Stiahnuť v pôvodnom formáte"
+    "shareCopyToClipboard": "Skopírovať do schránky: Ctrl+C, Enter",
+    "remove_missing_title": "Odstráňte chýbajúce súbory",
+    "remove_missing_content": "Naozaj chcete odstrániť vybraté chýbajúce súbory z databázy? Týmto sa natrvalo odstránia všetky odkazy na ne vrátane ich počtu prehratí a hodnotení.",
+    "remove_all_missing_title": "Odstráňte všetky chýbajúce súbory",
+    "remove_all_missing_content": "Naozaj chcete z databázy odstrániť všetky chýbajúce súbory? Týmto sa natrvalo odstránia všetky odkazy na ne vrátane ich počtu prehratí a hodnotení.",
+    "noSimilarSongsFound": "Nenašli sa žiadne podobné skladby",
+    "noTopSongsFound": "Nenašli sa žiadne top skladby",
+    "startingInstantMix": "Načítava sa Instant Mix...",
+    "uploadCover": "Nahrať obrázok obalu",
+    "removeCover": "Odstrániť obrázok obalu",
+    "coverUploaded": "Obrázok obalu albumu aktualizovaný",
+    "coverRemoved": "Obrázok obalu albumu odstránený",
+    "coverUploadError": "Chyba pri nahrávaní obrázku obalu albumu",
+    "coverRemoveError": "Chyba pri odstraňovaní obrázku obalu albumu"
   },
   "menu": {
     "library": "Knižnica",
-    "librarySelector": {
-      "allLibraries": "Všetky knižnice (%{count})",
-      "multipleLibraries": "%{selected} z %{total} knižníc",
-      "selectLibraries": "Vyberte knižnice",
-      "none": "Žiadne"
-    },
     "settings": "Nastavenia",
     "version": "Verzia",
     "theme": "Téma",
@@ -619,7 +613,6 @@
         "language": "Jazyk",
         "defaultView": "Predvolená stránka",
         "desktop_notifications": "Oznámenia na ploche",
-        "lastfmNotConfigured": "Kľúč API Last.fm nie je nakonfigurovaný",
         "lastfmScrobbling": "Scrobblovať na Last.fm",
         "listenBrainzScrobbling": "Scrobblovať na ListenBrainz",
         "replaygain": "Mód ReplayGain",
@@ -628,13 +621,20 @@
           "none": "Vypnuté",
           "album": "Použiť Album Gain",
           "track": "Použiť Track Gain"
-        }
+        },
+        "lastfmNotConfigured": "Kľúč API Last.fm nie je nakonfigurovaný"
       }
     },
     "albumList": "Albumy",
+    "about": "O Navidrome",
     "playlists": "Zoznamy skladieb",
     "sharedPlaylists": "Zdieľané zoznamy skladieb",
-    "about": "O Navidrome"
+    "librarySelector": {
+      "allLibraries": "Všetky knižnice (%{count})",
+      "multipleLibraries": "%{selected} z %{total} knižníc",
+      "selectLibraries": "Vyberte knižnice",
+      "none": "Žiadne"
+    }
   },
   "player": {
     "playListsText": "Rad",
@@ -682,11 +682,11 @@
       "currentValue": "Aktuálna hodnota",
       "configurationFile": "Konfiguračný súbor",
       "exportToml": "Exportovať konfiguráciu (TOML)",
-      "downloadToml": "Stiahnuť konfiguráciu (TOML)",
       "exportSuccess": "Konfigurácia exportovaná do schránky vo formáte TOML",
       "exportFailed": "Nepodarilo sa skopírovať konfiguráciu",
       "devFlagsHeader": "Vývojové príznaky (môžu byť zmenené/odstránené)",
-      "devFlagsComment": "Toto sú experimentálne nastavenia a môžu byť odstránené v budúcich verziách"
+      "devFlagsComment": "Toto sú experimentálne nastavenia a môžu byť odstránené v budúcich verziách",
+      "downloadToml": "Stiahnuť konfiguráciu (TOML)"
     }
   },
   "activity": {
@@ -694,17 +694,12 @@
     "totalScanned": "Naskenované priečinky",
     "quickScan": "Rýchly sken",
     "fullScan": "Úplný sken",
-    "selectiveScan": "Selektívne",
     "serverUptime": "Doba od spustenia",
     "serverDown": "OFFLINE",
     "scanType": "Posledný Sken",
     "status": "Chyba skenovania",
-    "elapsedTime": "Uplynutý čas"
-  },
-  "nowPlaying": {
-    "title": "Práve hrá",
-    "empty": "Nič sa neprehráva",
-    "minutesAgo": "pred %{smart_count} minútou |||| pred %{smart_count} minútami"
+    "elapsedTime": "Uplynutý čas",
+    "selectiveScan": "Selektívne"
   },
   "help": {
     "title": "Klávesové skratky Navidrome",
@@ -714,10 +709,15 @@
       "toggle_play": "Prehrať / Pozastaviť",
       "prev_song": "Predchádzajúca skladba",
       "next_song": "Nasledujúca skladba",
-      "current_song": "Prejsť na aktuálnu skladbu",
       "vol_up": "Zvýšiť hlasitosť",
       "vol_down": "Znížiť hlasitosť",
-      "toggle_love": "Pridať túto skladbu do obľúbených"
+      "toggle_love": "Pridať túto skladbu do obľúbených",
+      "current_song": "Prejsť na aktuálnu skladbu"
     }
+  },
+  "nowPlaying": {
+    "title": "Práve hrá",
+    "empty": "Nič sa neprehráva",
+    "minutesAgo": "pred %{smart_count} minútou |||| pred %{smart_count} minútami"
   }
 }

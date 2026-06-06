@@ -64,11 +64,19 @@ var _ = Describe("MediaStreamer", func() {
 			Expect(s.Duration()).To(Equal(float32(257.0)))
 		})
 		It("rejects transcode requests beyond MaxConcurrent with ErrTooManyTranscodes", func() {
-			// Rebuild the streamer with a tight cap. The first request will hold the
-			// ffmpeg reader open (we don't read/close it), saturating the single slot.
+			// Use an ffmpeg whose Read blocks indefinitely so the cache's
+			// background copy can't drain the source and release the slot —
+			// keeping the single transcode slot pinned for this test.
+			pr, pw := io.Pipe()
+			DeferCleanup(func() { _ = pw.Close() })
+			blockingFFmpeg := tests.NewMockFFmpeg("")
+			blockingFFmpeg.Reader = pr
+
 			conf.Server.Transcoding.MaxConcurrent = 1
 			conf.Server.Transcoding.MaxConcurrentPerUser = 0
-			tightStreamer := stream.NewMediaStreamer(ds, ffmpeg, stream.NewTranscodingCache())
+			tightCache := stream.NewTranscodingCache()
+			Eventually(func() bool { return tightCache.Available(context.TODO()) }).Should(BeTrue())
+			tightStreamer := stream.NewMediaStreamer(ds, blockingFFmpeg, tightCache)
 
 			userCtx := request.WithUsername(ctx, "alice")
 			s1, err := tightStreamer.NewStream(userCtx, mf, stream.Request{Format: "mp3", BitRate: 64})
@@ -83,7 +91,9 @@ var _ = Describe("MediaStreamer", func() {
 		It("releases the slot once the stream is closed", func() {
 			conf.Server.Transcoding.MaxConcurrent = 1
 			conf.Server.Transcoding.MaxConcurrentPerUser = 0
-			tightStreamer := stream.NewMediaStreamer(ds, ffmpeg, stream.NewTranscodingCache())
+			tightCache := stream.NewTranscodingCache()
+			Eventually(func() bool { return tightCache.Available(context.TODO()) }).Should(BeTrue())
+			tightStreamer := stream.NewMediaStreamer(ds, ffmpeg, tightCache)
 
 			userCtx := request.WithUsername(ctx, "alice")
 			s1, err := tightStreamer.NewStream(userCtx, mf, stream.Request{Format: "mp3", BitRate: 64})
@@ -101,7 +111,9 @@ var _ = Describe("MediaStreamer", func() {
 		It("does not consume a slot for raw streams", func() {
 			conf.Server.Transcoding.MaxConcurrent = 1
 			conf.Server.Transcoding.MaxConcurrentPerUser = 0
-			tightStreamer := stream.NewMediaStreamer(ds, ffmpeg, stream.NewTranscodingCache())
+			tightCache := stream.NewTranscodingCache()
+			Eventually(func() bool { return tightCache.Available(context.TODO()) }).Should(BeTrue())
+			tightStreamer := stream.NewMediaStreamer(ds, ffmpeg, tightCache)
 
 			userCtx := request.WithUsername(ctx, "alice")
 			// First, saturate the single transcode slot.

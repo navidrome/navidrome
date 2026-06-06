@@ -521,6 +521,7 @@ var _ = Describe("PlayTracker", func() {
 			})
 
 			It("does NOT scrobble when ignoreScrobble=true even if threshold met", func() {
+				fake.ScrobbleCalled.Store(false)
 				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
 					MediaId: "123", PositionMs: 0, State: "starting", PlaybackRate: 1.0, ClientId: defaultClientId,
 				})
@@ -531,6 +532,7 @@ var _ = Describe("PlayTracker", func() {
 				})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(track.PlayCount).To(Equal(int64(0)))
+				Consistently(func() bool { return fake.ScrobbleCalled.Load() }).Should(BeFalse())
 			})
 
 			It("does NOT scrobble when player ScrobbleEnabled=false even if threshold met", func() {
@@ -715,14 +717,14 @@ var _ = Describe("PlayTracker", func() {
 				Consistently(func() bool { return fake.GetNowPlayingCalled() }).Should(BeFalse())
 			})
 
-			It("does NOT dispatch when ignoreScrobble=true", func() {
+			It("still dispatches NowPlaying when ignoreScrobble=true", func() {
 				fake.nowPlayingCalled.Store(false)
 				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
 					MediaId: "123", PositionMs: 0, State: "starting", PlaybackRate: 1.0, ClientId: defaultClientId,
 					IgnoreScrobble: true,
 				})
 				Expect(err).ToNot(HaveOccurred())
-				Consistently(func() bool { return fake.GetNowPlayingCalled() }).Should(BeFalse())
+				Eventually(func() bool { return fake.GetNowPlayingCalled() }).Should(BeTrue())
 			})
 
 			It("does NOT dispatch when ScrobbleEnabled=false", func() {
