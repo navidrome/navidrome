@@ -201,7 +201,7 @@ var _ = Describe("sources", func() {
 		})
 
 		probe := filepath.Join(dir, "CASECHECK")
-		Expect(os.WriteFile(probe, []byte("probe"), 0644)).To(Succeed())
+		Expect(os.WriteFile(probe, []byte("probe"), 0600)).To(Succeed())
 		_, err = os.Stat(filepath.Join(dir, "casecheck"))
 		if err == nil {
 			Skip("filesystem is case-insensitive")
@@ -209,7 +209,7 @@ var _ = Describe("sources", func() {
 		Expect(os.IsNotExist(err)).To(BeTrue())
 
 		conf.Server.LyricsPriority = ".LRC"
-		Expect(os.WriteFile(filepath.Join(dir, "song.LRC"), []byte("[00:01.00]Upper suffix"), 0644)).To(Succeed())
+		Expect(os.WriteFile(filepath.Join(dir, "song.LRC"), []byte("[00:01.00]Upper suffix"), 0600)).To(Succeed())
 
 		svc := lyrics.NewLyrics(nil)
 		list, err := svc.GetLyrics(ctx, &model.MediaFile{
@@ -231,8 +231,8 @@ var _ = Describe("sources", func() {
 			Expect(os.RemoveAll(dir)).To(Succeed())
 		})
 
-		Expect(os.WriteFile(filepath.Join(dir, "song.yaml"), []byte("title: not lyricsfile\n"), 0644)).To(Succeed())
-		Expect(os.WriteFile(filepath.Join(dir, "song.lrc"), []byte("[00:01.00]Fallback line"), 0644)).To(Succeed())
+		Expect(os.WriteFile(filepath.Join(dir, "song.yaml"), []byte("title: not lyricsfile\n"), 0600)).To(Succeed())
+		Expect(os.WriteFile(filepath.Join(dir, "song.lrc"), []byte("[00:01.00]Fallback line"), 0600)).To(Succeed())
 
 		conf.Server.LyricsPriority = ".yaml,.lrc"
 		svc := lyrics.NewLyrics(nil)
