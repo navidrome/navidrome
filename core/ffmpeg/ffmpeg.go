@@ -326,8 +326,7 @@ func (j *ffCmd) start(ctx context.Context) error {
 
 func (j *ffCmd) wait() {
 	if err := j.cmd.Wait(); err != nil {
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
+		if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
 			errMsg := fmt.Sprintf("%s exited with non-zero status code: %d", j.args[0], exitErr.ExitCode())
 			if stderrOutput := strings.TrimSpace(j.stderr.String()); stderrOutput != "" {
 				errMsg += ": " + stderrOutput
@@ -497,8 +496,8 @@ func createFFmpegCommand(cmd, path string, maxBitRate, offset int) []string {
 				// Pre-input seeking: ffmpeg seeks at the demuxer level (fast)
 				// instead of decoding all frames up to the offset (slow).
 				insertAt := len(args)
-				for i := len(args) - 1; i >= 0; i-- {
-					if args[i] == "-i" {
+				for i, arg := range slices.Backward(args) {
+					if arg == "-i" {
 						insertAt = i
 						break
 					}

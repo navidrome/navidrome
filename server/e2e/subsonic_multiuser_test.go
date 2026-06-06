@@ -60,15 +60,23 @@ var _ = Describe("Multi-User Isolation", Ordered, func() {
 		})
 	})
 
-	Describe("getUsers for regular user", func() {
-		It("returns only the requesting user's info", func() {
-			resp := doReqWithUser(regularUser, "getUsers")
+	Describe("getUsers authorization", func() {
+		It("succeeds for admin user", func() {
+			resp := doReqWithUser(adminUser, "getUsers")
 
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.Users).ToNot(BeNil())
 			Expect(resp.Users.User).To(HaveLen(1))
-			Expect(resp.Users.User[0].Username).To(Equal("regular"))
-			Expect(resp.Users.User[0].AdminRole).To(BeFalse())
+			Expect(resp.Users.User[0].Username).To(Equal(adminUser.UserName))
+			Expect(resp.Users.User[0].AdminRole).To(BeTrue())
+		})
+
+		It("fails for regular user because getUsers is admin-only", func() {
+			resp := doReqWithUser(regularUser, "getUsers")
+
+			Expect(resp.Status).To(Equal(responses.StatusFailed))
+			Expect(resp.Error).ToNot(BeNil())
+			Expect(resp.Error.Code).To(Equal(responses.ErrorAuthorizationFail))
 		})
 	})
 })

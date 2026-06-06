@@ -12,7 +12,6 @@ import (
 	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
-	. "github.com/navidrome/navidrome/utils/gg"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -89,7 +88,7 @@ var _ = Describe("encodeMediafileShare", func() {
 	})
 
 	It("includes the share ID in the token", func() {
-		exp := P(time.Now().Add(time.Hour))
+		exp := new(time.Now().Add(time.Hour))
 		s := model.Share{ID: "shareABC", Format: "mp3", MaxBitRate: 320, ExpiresAt: exp}
 		token := encodeMediafileShare(s, "mf-999")
 		info, err := decodeStreamInfo(token)
@@ -164,8 +163,7 @@ var _ = Describe("handleStream", func() {
 
 	It("returns 410 when share has been set to expired", func() {
 		shareRepo.ID = "share123"
-		expired := time.Now().Add(-time.Hour)
-		shareRepo.Entity = &model.Share{ID: "share123", ExpiresAt: &expired}
+		shareRepo.Entity = &model.Share{ID: "share123", ExpiresAt: new(time.Now().Add(-time.Hour))}
 
 		claims := auth.Claims{ID: "mf-123", ShareID: "share123"}
 		token, _ := auth.CreatePublicToken(claims)

@@ -1,7 +1,7 @@
 package deezer
 
 import (
-	bytes "bytes"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"

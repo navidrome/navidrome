@@ -17,7 +17,6 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/events"
-	. "github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/pl"
 	"golang.org/x/time/rate"
 )
@@ -38,7 +37,7 @@ func New(rootCtx context.Context, ds model.DataStore, cw artwork.CacheWarmer, br
 		devExternalScanner: conf.Server.DevExternalScanner,
 	}
 	if !c.devExternalScanner {
-		c.limiter = P(rate.Sometimes{Interval: conf.Server.DevActivityPanelUpdateRate})
+		c.limiter = new(rate.Sometimes{Interval: conf.Server.DevActivityPanelUpdateRate})
 	}
 	return c
 }

@@ -524,6 +524,34 @@ var _ = Describe("MediaRepository", func() {
 				}
 			})
 		})
+
+		Describe("path", func() {
+			It("matches files whose path starts with the given prefix", func() {
+				res, err := mr.(model.ResourceRepository).ReadAll(rest.QueryOptions{
+					Filters: map[string]any{"path": "test/"},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				files := res.(model.MediaFiles)
+
+				var found bool
+				for _, f := range files {
+					Expect(f.Path).To(HavePrefix("test/"))
+					if f.ID == mfWithoutAnnotation.ID {
+						found = true
+					}
+				}
+				Expect(found).To(BeTrue(), "MediaFile with matching path prefix should be included")
+			})
+
+			It("excludes files whose path does not start with the given prefix", func() {
+				res, err := mr.(model.ResourceRepository).ReadAll(rest.QueryOptions{
+					Filters: map[string]any{"path": "no-such-prefix/"},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				files := res.(model.MediaFiles)
+				Expect(files).To(BeEmpty())
+			})
+		})
 	})
 
 	Describe("Search", func() {

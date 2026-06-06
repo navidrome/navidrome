@@ -9,12 +9,15 @@ import ElectricPurpleTheme from './electricPurple'
 import NordTheme from './nord'
 import GruvboxDarkTheme from './gruvboxDark'
 import CatppuccinMacchiatoTheme from './catppuccinMacchiato'
+import CatppuccinLatteTheme from './catppuccinLatte'
 import DraculaTheme from './dracula'
 import NuclearTheme from './nuclear'
 import NutballTheme from './nutball'
 import AmusicTheme from './amusic'
 import SquiddiesGlassTheme from './SquiddiesGlass'
 import NautilineTheme from './nautiline'
+import MoonbaseAlphaTheme from './moonbaseAlpha'
+import MoonbaseBravoTheme from './moonbaseBravo'
 import TokyoNightLightTheme from './tokyoNightLight'
 import TokyoNightTheme from './tokyoNight'
 
@@ -26,6 +29,7 @@ export default {
   // New themes should be added here, in alphabetic order
   AmusicTheme,
   CatppuccinMacchiatoTheme,
+  CatppuccinLatteTheme,
   DraculaTheme,
   ElectricPurpleTheme,
   ExtraDarkTheme,
@@ -33,6 +37,8 @@ export default {
   GruvboxDarkTheme,
   LigeraTheme,
   MonokaiTheme,
+  MoonbaseAlphaTheme,
+  MoonbaseBravoTheme,
   NautilineTheme,
   NordTheme,
   NuclearTheme,

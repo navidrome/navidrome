@@ -36,6 +36,6 @@ func (f *journalFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	if !ok {
 		priority = 6 // default to info for unknown levels
 	}
-	prefix := []byte(fmt.Sprintf("<%d>", priority))
+	prefix := fmt.Appendf(nil, "<%d>", priority)
 	return append(prefix, formatted...), nil
 }

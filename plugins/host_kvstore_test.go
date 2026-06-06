@@ -37,8 +37,7 @@ var _ = Describe("KVStoreService", func() {
 		conf.Server.DataFolder = conf.NewDir(tmpDir)
 
 		// Create service with 1KB limit for testing
-		maxSize := "1KB"
-		service, err = newKVStoreService(ctx, "test_plugin", &KVStorePermission{MaxSize: &maxSize})
+		service, err = newKVStoreService(ctx, "test_plugin", &KVStorePermission{MaxSize: new("1KB")})
 		Expect(err).ToNot(HaveOccurred())
 	})
 
@@ -253,8 +252,7 @@ var _ = Describe("KVStoreService", func() {
 			// Close and reopen the service (simulating restart)
 			Expect(service.Close()).To(Succeed())
 
-			maxSize := "1KB"
-			service2, err := newKVStoreService(ctx, "test_plugin", &KVStorePermission{MaxSize: &maxSize})
+			service2, err := newKVStoreService(ctx, "test_plugin", &KVStorePermission{MaxSize: new("1KB")})
 			Expect(err).ToNot(HaveOccurred())
 			defer service2.Close()
 
@@ -452,8 +450,7 @@ var _ = Describe("KVStoreService", func() {
 			closeCtx, closeCancel := context.WithCancel(ctx)
 			defer closeCancel()
 
-			maxSize := "1KB"
-			svc, err := newKVStoreService(closeCtx, "test_close_race", &KVStorePermission{MaxSize: &maxSize})
+			svc, err := newKVStoreService(closeCtx, "test_close_race", &KVStorePermission{MaxSize: new("1KB")})
 			Expect(err).ToNot(HaveOccurred())
 
 			// Insert an expired key so cleanup has work to do
