@@ -208,7 +208,7 @@ const SongList = (props) => {
     <>
       <List
         {...props}
-        sort={{ field: 'title', order: 'ASC' }}
+        sort={props.sort || { field: 'title', order: 'ASC' }}
         exporter={false}
         bulkActionButtons={<SongBulkActions />}
         actions={<SongListActions />}

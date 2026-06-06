@@ -5,7 +5,10 @@ import clsx from 'clsx'
 import { useTranslate, MenuItemLink, getResources } from 'react-admin'
 import ViewListIcon from '@material-ui/icons/ViewList'
 import AlbumIcon from '@material-ui/icons/Album'
+import FavoriteIcon from '@material-ui/icons/Favorite'
+import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import SubMenu from './SubMenu'
+import DynamicMenuIcon from './DynamicMenuIcon'
 import { humanize, pluralize } from 'inflection'
 import albumLists from '../album/albumLists'
 import PlaylistsSubMenu from './PlaylistsSubMenu'
@@ -125,6 +128,25 @@ const Menu = ({ dense = false }) => {
           renderAlbumMenuItemLink(type, albumLists[type]),
         )}
       </SubMenu>
+      {config.enableFavourites && (
+        <MenuItemLink
+          key={'/favourites'}
+          to={'/favourites'}
+          activeClassName={classes.active}
+          primaryText={translate('menu.favouriteSongs', {
+            _: 'Favourite Songs',
+          })}
+          leftIcon={
+            <DynamicMenuIcon
+              path={'favourites'}
+              icon={FavoriteBorderIcon}
+              activeIcon={FavoriteIcon}
+            />
+          }
+          sidebarIsOpen={open}
+          dense={dense}
+        />
+      )}
       {resources.filter(subItems(undefined)).map(renderResourceMenuItemLink)}
       {config.devSidebarPlaylists && open ? (
         <>
