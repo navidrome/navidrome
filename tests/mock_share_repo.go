@@ -44,3 +44,16 @@ func (m *MockShareRepo) Exists(id string) (bool, error) {
 	}
 	return id == m.ID, nil
 }
+
+func (m *MockShareRepo) Get(id string) (*model.Share, error) {
+	if m.Error != nil {
+		return nil, m.Error
+	}
+	if id != m.ID {
+		return nil, model.ErrNotFound
+	}
+	if s, ok := m.Entity.(*model.Share); ok {
+		return s, nil
+	}
+	return &model.Share{ID: id}, nil
+}

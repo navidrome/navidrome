@@ -21,6 +21,7 @@ type plugin struct {
 	metrics        PluginMetricsRecorder
 	allowedUserIDs []string // User IDs this plugin can access (from DB configuration)
 	allUsers       bool     // If true, plugin can access all users
+	libraries      libraryAccess
 }
 
 // instance creates a new plugin instance for the given context.
@@ -46,4 +47,31 @@ func (p *plugin) Close() error {
 		}
 	}
 	return errors.Join(errs...)
+}
+
+func (p *plugin) hasLibraryFilesystemAccess(libID int) bool {
+	return p.manifest.HasLibraryFilesystemPermission() && p.libraries.contains(libID)
+}
+
+// libraryAccess captures the set of libraries a plugin is permitted to see,
+// precomputed at load time for O(1) lookup.
+type libraryAccess struct {
+	allLibraries bool
+	libraryIDSet map[int]struct{}
+}
+
+func newLibraryAccess(allowedLibraryIDs []int, allLibraries bool) libraryAccess {
+	set := make(map[int]struct{}, len(allowedLibraryIDs))
+	for _, id := range allowedLibraryIDs {
+		set[id] = struct{}{}
+	}
+	return libraryAccess{allLibraries: allLibraries, libraryIDSet: set}
+}
+
+func (a libraryAccess) contains(libID int) bool {
+	if a.allLibraries {
+		return true
+	}
+	_, ok := a.libraryIDSet[libID]
+	return ok
 }

@@ -1,0 +1,23 @@
+{
+  "status": "ok",
+  "version": "1.16.1",
+  "type": "navidrome",
+  "serverVersion": "v0.55.0",
+  "openSubsonic": true,
+  "nowPlaying": {
+    "entry": [
+      {
+        "id": "1",
+        "isDir": false,
+        "title": "Song",
+        "username": "testuser",
+        "minutesAgo": 2,
+        "playerId": 1,
+        "playerName": "TestPlayer",
+        "state": "playing",
+        "positionMs": 120000,
+        "playbackRate": 1.5
+      }
+    ]
+  }
+}

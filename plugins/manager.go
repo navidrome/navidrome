@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"path/filepath"
 	"runtime"
 	"sync"
@@ -18,6 +17,7 @@ import (
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/core/scrobbler"
+	"github.com/navidrome/navidrome/core/sonic"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/events"
@@ -123,7 +123,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	m.ctx, m.cancel = context.WithCancel(ctx)
 
 	// Initialize wazero compilation cache for better performance
-	cacheDir := filepath.Join(conf.Server.CacheFolder, "plugins")
+	cacheDir := filepath.Join(conf.Server.CacheFolder.MustPath(), "plugins")
 	purgeCacheBySize(ctx, cacheDir, conf.Server.Plugins.CacheSize)
 
 	var err error
@@ -133,17 +133,12 @@ func (m *Manager) Start(ctx context.Context) error {
 		return fmt.Errorf("creating wazero compilation cache: %w", err)
 	}
 
-	folder := conf.Server.Plugins.Folder
-	if folder == "" {
+	if conf.Server.Plugins.Folder.String() == "" {
 		log.Debug(ctx, "No plugins folder configured")
 		return nil
 	}
 
-	// Create plugins folder if it doesn't exist
-	if err := os.MkdirAll(folder, 0755); err != nil {
-		log.Error(ctx, "Failed to create plugins folder", "folder", folder, err)
-		return fmt.Errorf("creating plugins folder: %w", err)
-	}
+	folder := conf.Server.Plugins.Folder.MustPath()
 
 	log.Info(ctx, "Starting plugin manager", "folder", folder)
 
@@ -238,65 +233,32 @@ func (m *Manager) PluginNames(capability string) []string {
 	return names
 }
 
-// LoadMediaAgent loads and returns a media agent plugin by name.
-// Returns false if the plugin is not found or doesn't have the MetadataAgent capability.
 func (m *Manager) LoadMediaAgent(name string) (agents.Interface, bool) {
-	m.mu.RLock()
-	plugin, ok := m.plugins[name]
-	m.mu.RUnlock()
-
-	if !ok || !hasCapability(plugin.capabilities, CapabilityMetadataAgent) {
-		return nil, false
-	}
-
-	// Create a new metadata agent adapter for this plugin
-	return &MetadataAgent{
-		name:   plugin.name,
-		plugin: plugin,
-	}, true
+	return loadPlugin(m, name, CapabilityMetadataAgent, newMetadataAgent)
 }
 
-// LoadScrobbler loads and returns a scrobbler plugin by name.
-// Returns false if the plugin is not found or doesn't have the Scrobbler capability.
 func (m *Manager) LoadScrobbler(name string) (scrobbler.Scrobbler, bool) {
-	m.mu.RLock()
-	plugin, ok := m.plugins[name]
-	m.mu.RUnlock()
-
-	if !ok || !hasCapability(plugin.capabilities, CapabilityScrobbler) {
-		return nil, false
-	}
-
-	// Build user ID map for fast lookups
-	userIDMap := make(map[string]struct{})
-	for _, id := range plugin.allowedUserIDs {
-		userIDMap[id] = struct{}{}
-	}
-
-	// Create a new scrobbler adapter for this plugin with user authorization config
-	return &ScrobblerPlugin{
-		name:           plugin.name,
-		plugin:         plugin,
-		allowedUserIDs: plugin.allowedUserIDs,
-		allUsers:       plugin.allUsers,
-		userIDMap:      userIDMap,
-	}, true
+	return loadPlugin(m, name, CapabilityScrobbler, newScrobblerPlugin)
 }
 
-// LoadLyricsProvider loads and returns a lyrics provider plugin by name.
 func (m *Manager) LoadLyricsProvider(name string) (lyrics.Lyrics, bool) {
+	return loadPlugin(m, name, CapabilityLyrics, newLyricsPlugin)
+}
+
+func (m *Manager) LoadSonicSimilarity(name string) (sonic.Provider, bool) {
+	return loadPlugin(m, name, CapabilitySonicSimilarity, newSonicSimilarityPlugin)
+}
+
+func loadPlugin[T any](m *Manager, name string, cap Capability, newAdapter func(*plugin) T) (T, bool) {
 	m.mu.RLock()
-	plugin, ok := m.plugins[name]
+	p, ok := m.plugins[name]
 	m.mu.RUnlock()
 
-	if !ok || !hasCapability(plugin.capabilities, CapabilityLyrics) {
-		return nil, false
+	var zero T
+	if !ok || !hasCapability(p.capabilities, cap) {
+		return zero, false
 	}
-
-	return &LyricsPlugin{
-		name:   plugin.name,
-		plugin: plugin,
-	}, true
+	return newAdapter(p), true
 }
 
 // PluginInfo contains basic information about a plugin for metrics/insights.
@@ -463,7 +425,7 @@ func (m *Manager) UpdatePluginLibraries(ctx context.Context, id, librariesJSON s
 // This synchronizes the database with the filesystem, discovering new plugins,
 // updating changed ones, and removing deleted ones.
 func (m *Manager) RescanPlugins(ctx context.Context) error {
-	folder := conf.Server.Plugins.Folder
+	folder := conf.Server.Plugins.Folder.String()
 	if folder == "" {
 		return fmt.Errorf("plugins folder not configured")
 	}

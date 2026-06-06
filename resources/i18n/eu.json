@@ -2,7 +2,7 @@
   "languageName": "Euskara",
   "resources": {
     "song": {
-      "name": "Abestia |||| Abesti",
+      "name": "Abestia |||| Abestiak",
       "fields": {
         "albumArtist": "Albumaren artista",
         "duration": "Iraupena",
@@ -22,7 +22,10 @@
         "bitRate": "Bit-tasa",
         "bitDepth": "Bit-sakonera",
         "sampleRate": "Lagin-tasa",
+        "albumGain": "Album-irabazia",
+        "trackGain": "Pista-irabazia",
         "channels": "Kanalak",
+        "disc": "%{discNumber}. diskoa",
         "discSubtitle": "Diskoaren azpititulua",
         "starred": "Gogokoa",
         "comment": "Iruzkina",
@@ -52,7 +55,7 @@
       }
     },
     "album": {
-      "name": "Albuma |||| Album",
+      "name": "Albuma |||| Albumak",
       "fields": {
         "albumArtist": "Albumaren artista",
         "artist": "Artista",
@@ -103,7 +106,7 @@
       }
     },
     "artist": {
-      "name": "Artista |||| Artista",
+      "name": "Artista |||| Artistak",
       "fields": {
         "name": "Izena",
         "albumCount": "Album kopurua",
@@ -116,7 +119,7 @@
         "missing": "Ez da aurkitu"
       },
       "roles": {
-        "albumartist": "Albumeko egilea |||| Albumeko artistak",
+        "albumartist": "Albumeko artista |||| Albumeko artistak",
         "artist": "Artista |||| Artistak",
         "composer": "Konpositorea |||| Konpositoreak",
         "conductor": "Orkestra zuzendaria |||| Orkestra zuzendariak",
@@ -334,7 +337,7 @@
       }
     },
     "plugin": {
-      "name": "Plugina |||| Plugin",
+      "name": "Plugina |||| Pluginak",
       "fields": {
         "id": "IDa",
         "name": "Izena",
@@ -355,7 +358,8 @@
         "allUsers": "Baimendu erabiltzaile guztiak",
         "selectedUsers": "Hautatutako erabiltzaileak",
         "allLibraries": "Baimendu liburutegi guztiak",
-        "selectedLibraries": "Hautatutako liburutegiak"
+        "selectedLibraries": "Hautatutako liburutegiak",
+        "allowWriteAccess": "Eman idazteko baimena"
       },
       "sections": {
         "status": "Egoera",
@@ -400,6 +404,7 @@
         "allLibrariesHelp": "Gaituta dagoenean, pluginak liburutegi guztietara izango du sarbidea, baita etorkizunean sortuko direnetara ere.",
         "noLibraries": "Ez da liburutegirik hautatu",
         "librariesRequired": "Plugin honek liburutegien informaziora sarbidea behar du. Hautatu zein liburutegi atzitu dezakeen pluginak, edo gaitu 'Baimendu liburutegi guztiak'.",
+        "allowWriteAccessHelp": "Gaituta dagoenean, pluginak liburutegien direktorioko fitxategiak moldatu ditzake. Defektuz, pluginek bakarrik irakurtzeko baimena dute.",
         "requiredHosts": "Beharrezko ostatatzaileak"
       },
       "placeholders": {
@@ -489,7 +494,7 @@
     "input": {
       "file": {
         "upload_several": "Jaregin edo hautatu igo nahi dituzun fitxategiak.",
-        "upload_single": "AJaregin edo hautatu igo nahi duzun fitxategia."
+        "upload_single": "Jaregin edo hautatu igo nahi duzun fitxategia."
       },
       "image": {
         "upload_several": "Jaregin edo hautatu igo nahi dituzun irudiak.",
@@ -534,9 +539,9 @@
       "skip_nav": "Joan edukira"
     },
     "notification": {
-      "updated": "Elementu bat eguneratu da |||| %{smart_count} elementu eguneratu dira",
+      "updated": "Elementua eguneratu da |||| %{smart_count} elementu eguneratu dira",
       "created": "Elementua sortu da",
-      "deleted": "Elementu bat ezabatu da |||| %{smart_count} elementu ezabatu dira.",
+      "deleted": "Elementua ezabatu da |||| %{smart_count} elementu ezabatu dira.",
       "bad_item": "Elementu okerra",
       "item_doesnt_exist": "Elementua ez dago",
       "http_error": "Errorea zerbitzariarekin komunikatzerakoan",
@@ -554,6 +559,12 @@
     }
   },
   "message": {
+    "uploadCover": "Igo azala",
+    "removeCover": "Kendu azala",
+    "coverUploaded": "Diskoaren azala eguneratu da",
+    "coverRemoved": "Diskoaren azala kendu da",
+    "coverUploadError": "Errorea diskoaren azala igotzean",
+    "coverRemoveError": "Errorea diskoaren azala kentzean",
     "note": "OHARRA",
     "transcodingDisabled": "Segurtasun arrazoiak direla-eta, transkodeketaren ezarpenak web-interfazearen bidez aldatzea ezgaituta dago. Transkodeketa-aukerak aldatu (editatu edo gehitu) nahi badituzu, berrabiarazi zerbitzaria konfigurazio-aukeraren %{config}-arekin.",
     "transcodingEnabled": "Navidrome %{config}-ekin martxan dago eta, beraz, web-interfazeko transkodeketa-ataletik sistema-komandoak exekuta daitezke. Segurtasun arrazoiak tarteko, ezgaitzea gomendatzen dugu, eta transkodeketa-aukerak konfiguratzen ari zarenean bakarrik gaitzea.",
@@ -579,7 +590,7 @@
     "listenBrainzUnlinkSuccess": "ListenBrainz deskonektatu da eta erabiltzailearen ohiturak hirugarrenen zerbitzuekin partekatzea desaktibatu da",
     "listenBrainzUnlinkFailure": "Ezin izan da ListenBrainz deskonektatu",
     "openIn": {
-      "lastfm": "Ikusi Last.fm-n",
+      "lastfm": "Ikusi Last.fm-en",
       "musicbrainz": "Ikusi MusicBrainz-en"
     },
     "lastfmLink": "Irakurri gehiago…",
@@ -673,6 +684,7 @@
       "currentValue": "Uneko balioa",
       "configurationFile": "Konfigurazio-fitxategia",
       "exportToml": "Esportatu konfigurazioa (TOML)",
+      "downloadToml": "Deskargatu konfigurazioa (TOML)",
       "exportSuccess": "Konfigurazioa arbelera esportatu da TOML formatuan",
       "exportFailed": "Konfigurazioa kopiatzeak huts egin du",
       "devFlagsHeader": "Garapen-adierazleak (aldatu/kendu litezke)",

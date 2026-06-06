@@ -43,8 +43,9 @@ FFMPEG_FILE="ffmpeg-n${FFMPEG_VERSION}-latest-${WIN_ARCH}-gpl-${FFMPEG_VERSION}"
 wget --quiet --output-document="${DOWNLOAD_FOLDER}/ffmpeg.zip" \
   "https://github.com/${FFMPEG_REPOSITORY}/releases/download/latest/${FFMPEG_FILE}.zip"
 rm -rf "${DOWNLOAD_FOLDER}/extracted_ffmpeg"
-unzip -d "${DOWNLOAD_FOLDER}/extracted_ffmpeg" "${DOWNLOAD_FOLDER}/ffmpeg.zip" "*/ffmpeg.exe"
+unzip -d "${DOWNLOAD_FOLDER}/extracted_ffmpeg" "${DOWNLOAD_FOLDER}/ffmpeg.zip" "*/ffmpeg.exe" "*/ffprobe.exe"
 cp "${DOWNLOAD_FOLDER}"/extracted_ffmpeg/${FFMPEG_FILE}/bin/ffmpeg.exe "$MSI_OUTPUT_DIR"
+cp "${DOWNLOAD_FOLDER}"/extracted_ffmpeg/${FFMPEG_FILE}/bin/ffprobe.exe "$MSI_OUTPUT_DIR"
 
 cp "$WORKSPACE"/LICENSE "$WORKSPACE"/README.md "$MSI_OUTPUT_DIR"
 cp "$BINARY" "$MSI_OUTPUT_DIR"

@@ -12,7 +12,6 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
-	. "github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/req"
 	"github.com/navidrome/navidrome/utils/slice"
 )
@@ -159,13 +158,17 @@ func (api *Router) buildPlaylist(ctx context.Context, p model.Playlist) response
 }
 
 func buildOSPlaylist(ctx context.Context, p model.Playlist) *responses.OpenSubsonicPlaylist {
+	player, ok := request.PlayerFrom(ctx)
+	if ok && isClientInList(conf.Server.Subsonic.LegacyClients, player.Client) {
+		return nil
+	}
 	pls := responses.OpenSubsonicPlaylist{}
 
 	if p.IsSmartPlaylist() {
 		pls.Readonly = true
 
 		if p.EvaluatedAt != nil {
-			pls.ValidUntil = P(p.EvaluatedAt.Add(conf.Server.SmartPlaylistRefreshDelay))
+			pls.ValidUntil = new(p.EvaluatedAt.Add(conf.Server.SmartPlaylistRefreshDelay))
 		}
 	} else {
 		user, ok := request.UserFrom(ctx)

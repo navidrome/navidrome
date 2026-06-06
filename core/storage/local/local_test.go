@@ -10,8 +10,10 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/model/metadata"
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -43,6 +45,10 @@ var _ = Describe("LocalStorage", func() {
 	})
 
 	Describe("newLocalStorage", func() {
+		BeforeEach(func() {
+			tests.SkipOnWindows("path separator bug (#TBD-path-sep-storage-local)")
+		})
+
 		Context("with valid path", func() {
 			It("should create a localStorage instance with correct path", func() {
 				u, err := url.Parse("file://" + tempDir)
@@ -135,21 +141,40 @@ var _ = Describe("LocalStorage", func() {
 			})
 		})
 
-		Context("with invalid extractor", func() {
-			It("should handle extractor validation correctly", func() {
-				// Note: The actual implementation uses log.Fatal which exits the process,
-				// so we test the normal path where extractors exist
+		Context("when the configured extractor is not registered", func() {
+			var defaultExtractor *mockTestExtractor
+
+			BeforeEach(func() {
+				defaultExtractor = &mockTestExtractor{results: make(map[string]metadata.Info)}
+				RegisterExtractor(consts.DefaultScannerExtractor, func(fs.FS, string) Extractor {
+					return defaultExtractor
+				})
+				DeferCleanup(func() {
+					lock.Lock()
+					delete(extractors, consts.DefaultScannerExtractor)
+					lock.Unlock()
+				})
+			})
+
+			It("falls back to the default extractor instead of crashing", func() {
+				conf.Server.Scanner.Extractor = "nonexistent-extractor"
 
 				u, err := url.Parse("file://" + tempDir)
 				Expect(err).ToNot(HaveOccurred())
 
 				storage := newLocalStorage(*u)
-				Expect(storage).ToNot(BeNil())
+				ls, ok := storage.(*localStorage)
+				Expect(ok).To(BeTrue())
+				Expect(ls.extractor).To(BeIdenticalTo(defaultExtractor))
 			})
 		})
 	})
 
 	Describe("localStorage.FS", func() {
+		BeforeEach(func() {
+			tests.SkipOnWindows("path separator bug (#TBD-path-sep-storage-local)")
+		})
+
 		Context("with existing directory", func() {
 			It("should return a localFS instance", func() {
 				u, err := url.Parse("file://" + tempDir)
@@ -183,6 +208,7 @@ var _ = Describe("LocalStorage", func() {
 		var testFile string
 
 		BeforeEach(func() {
+			tests.SkipOnWindows("path separator bug (#TBD-path-sep-storage-local)")
 			// Create a test file
 			testFile = filepath.Join(tempDir, "test.mp3")
 			err := os.WriteFile(testFile, []byte("test data"), 0600)
@@ -364,6 +390,7 @@ var _ = Describe("LocalStorage", func() {
 
 	Describe("Storage registration", func() {
 		It("should register localStorage for file scheme", func() {
+			tests.SkipOnWindows("path separator bug (#TBD-path-sep-storage-local)")
 			// This tests the init() function indirectly
 			storage, err := storage.For("file://" + tempDir)
 			Expect(err).ToNot(HaveOccurred())

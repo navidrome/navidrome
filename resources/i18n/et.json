@@ -1,0 +1,723 @@
+{
+  "languageName": "eesti keel",
+  "resources": {
+    "song": {
+      "name": "Laul |||| Laulud",
+      "fields": {
+        "albumArtist": "Albumi esitaja",
+        "duration": "Kestus",
+        "trackNumber": "Nr",
+        "playCount": "Esituskordi",
+        "title": "Pealkiri",
+        "artist": "Esitaja",
+        "album": "Album",
+        "path": "Faili asukoht",
+        "genre": "Žanr",
+        "compilation": "Kogumik",
+        "year": "Aasta",
+        "size": "Faili suurus",
+        "updatedAt": "Uuendatud",
+        "bitRate": "Bitikiirus",
+        "discSubtitle": "Plaadi alapealkiri",
+        "starred": "Märgi lemmikuks",
+        "comment": "Kommentaar",
+        "rating": "Hinnang",
+        "quality": "Kvaliteet",
+        "bpm": "BPM",
+        "playDate": "Viimati esitatud",
+        "channels": "Kanaleid",
+        "createdAt": "Lisamise kuupäev",
+        "grouping": "Rühmitamine",
+        "mood": "Meeleolu",
+        "participants": "Täiendavad osalejad",
+        "tags": "Täiendavad sildid",
+        "mappedTags": "Tuvastatud sildid",
+        "rawTags": "Sildid töötlemata vaates",
+        "bitDepth": "Bitisügavus",
+        "sampleRate": "Diskreetmisagedus",
+        "missing": "Puudub",
+        "libraryName": "Kogumik",
+        "composer": "Helilooja",
+        "disc": "%{discNumber}. plaat",
+        "albumGain": "Albumikohane esitusvaljuse tundlikkus",
+        "trackGain": "Rajakohane esitusvaljuse tundlikkus"
+      },
+      "actions": {
+        "addToQueue": "Esita hiljem",
+        "playNow": "Esita kohe",
+        "addToPlaylist": "Lisa esitusloendisse",
+        "shuffleAll": "Sega kõik",
+        "download": "Laadi alla",
+        "playNext": "Esita järgmisena",
+        "info": "Loo teave",
+        "showInPlaylist": "Näita esitusloendis",
+        "instantMix": "Kohene miks"
+      }
+    },
+    "album": {
+      "name": "Album |||| Albumid",
+      "fields": {
+        "albumArtist": "Albumi esitaja",
+        "artist": "Esitaja",
+        "duration": "Kestus",
+        "songCount": "laulu",
+        "playCount": "Esituskordi",
+        "name": "Nimi",
+        "genre": "Žanr",
+        "compilation": "Kogumik",
+        "year": "Aasta",
+        "updatedAt": "Uuendatud",
+        "comment": "Kommentaar",
+        "rating": "Hinnangud",
+        "createdAt": "Lisamise kuupäev",
+        "size": "Suurus",
+        "originalDate": "Originaal",
+        "releaseDate": "Avaldatud",
+        "releases": "Väljalase ||| Väljalasked",
+        "released": "Avaldatud",
+        "recordLabel": "Plaadifirma",
+        "catalogNum": "Tunnus kataloogides",
+        "releaseType": "Tüüp",
+        "grouping": "Grupeerimine",
+        "media": "Meedium",
+        "mood": "Meeleolu",
+        "date": "Salvestuskuupäev",
+        "missing": "Puudu",
+        "libraryName": "Kogumik"
+      },
+      "actions": {
+        "playAll": "Esita",
+        "playNext": "Esita järgmisena",
+        "addToQueue": "Esita hiljem",
+        "shuffle": "Sega lood",
+        "addToPlaylist": "Lisa esitusloendisse",
+        "download": "Laadi alla",
+        "info": "Albumi teave",
+        "share": "Jaga"
+      },
+      "lists": {
+        "all": "Kõik",
+        "random": "Juhuslik",
+        "recentlyAdded": "Hiljuti lisatud",
+        "recentlyPlayed": "Hiljuti esitatud",
+        "mostPlayed": "Enimesitatud",
+        "starred": "Lemmikud",
+        "topRated": "Kõrgeima hinnanguga"
+      }
+    },
+    "artist": {
+      "name": "Esitaja |||| Esitajad",
+      "fields": {
+        "name": "Nimi",
+        "albumCount": "Albumeid",
+        "songCount": "Lugusid",
+        "playCount": "Esituskordi",
+        "rating": "Hinnang",
+        "genre": "Žanr",
+        "size": "Suurus",
+        "role": "Roll",
+        "missing": "Puudub"
+      },
+      "roles": {
+        "albumartist": "Albumi esitaja ||| Albumi esitajad",
+        "artist": "Esitaja ||| Esitajad",
+        "composer": "Helilooja ||| Heliloojad",
+        "conductor": "Dirigent ||| Dirigendid",
+        "lyricist": "Laulusõnade autor ||| Laulusõnade autorid",
+        "arranger": "Seade autor ||| Seade autorid",
+        "producer": "Produtsent ||| Produtsendid",
+        "director": "Lavastaja ||| Lavastajad",
+        "engineer": "Helirežissöör ||| Helirežissöörid",
+        "mixer": "Miksija ||| Miksijad",
+        "remixer": "Remiksija ||| Remiksijad",
+        "djmixer": "DJ-versiooni remiksija ||| DJ-versiooni remiksijad",
+        "performer": "Esineja ||| Esinejad",
+        "maincredit": "Albumi esitaja või Esitaja ||| Albumi esitajad või Esitajad"
+      },
+      "actions": {
+        "shuffle": "Sega",
+        "radio": "Raadio",
+        "topSongs": "Populaarsed lood"
+      }
+    },
+    "user": {
+      "name": "Kasutaja |||| Kasutajad",
+      "fields": {
+        "userName": "Kasutajanimi",
+        "isAdmin": "On peakasutaja",
+        "lastLoginAt": "Viimane sisselogimine",
+        "updatedAt": "Uuendatud",
+        "name": "Nimi",
+        "password": "Salasõna",
+        "createdAt": "Loodud",
+        "changePassword": "Kas soovid salasõna muuta?",
+        "currentPassword": "Senine salasõna",
+        "newPassword": "Uus salasõna",
+        "token": "Tunnusluba",
+        "lastAccessAt": "Viimasti avatud",
+        "libraries": "Kogumikud"
+      },
+      "helperTexts": {
+        "name": "Sinu nime muudatused on näha järgmisel sisselogimisel",
+        "libraries": "Vali selle kasutaja jaoks konkreetsed kogumikus või jäta vaikimisi väärtuse kasutamiseks tühjaks"
+      },
+      "notifications": {
+        "created": "Kasutaja on lisatud",
+        "updated": "Kasutaja andmed on uuendatud",
+        "deleted": "Kasutaja on kustutatud"
+      },
+      "message": {
+        "listenBrainzToken": "Sisesta oma ListenBrainzi tunnusluba.",
+        "clickHereForToken": "Tunnusloa saamiseks klõpsi siin",
+        "selectAllLibraries": "Vali kõik kogumikud",
+        "adminAutoLibraries": "Peakasutajatel on automaatselt ligipääs kõikidele kogumikele"
+      },
+      "validation": {
+        "librariesRequired": "Vähemalt üks kogumik peab olema valitud muude, kui peakasutajate jaoks"
+      }
+    },
+    "player": {
+      "name": "Meediaesitaja |||| Meediaesitajad",
+      "fields": {
+        "name": "Nimi",
+        "transcodingId": "Teisendamine",
+        "maxBitRate": "Maksimaalne bitikiirus",
+        "client": "Klient",
+        "userName": "Kasutajanimi",
+        "lastSeen": "Viimati nähtud",
+        "reportRealPath": "Teata tegelikust asukohast",
+        "scrobbleEnabled": "Saada kraasimisandmed välistesse teenustesse"
+      }
+    },
+    "transcoding": {
+      "name": "Teisendamine |||| Teisendamised",
+      "fields": {
+        "name": "Nimi",
+        "targetFormat": "Sihtvorming",
+        "defaultBitRate": "Vaikimisi bitikiirus",
+        "command": "Käsk"
+      }
+    },
+    "playlist": {
+      "name": "Esitusloend ||| Esitusloendid",
+      "fields": {
+        "name": "Nimi",
+        "duration": "Kestus",
+        "ownerName": "Omanik",
+        "public": "Avalik",
+        "updatedAt": "Muudetud",
+        "createdAt": "Loodud",
+        "songCount": "Lood",
+        "comment": "Kommentaar",
+        "sync": "Automaatne import",
+        "path": "Impordi siit"
+      },
+      "actions": {
+        "selectPlaylist": "Valo esitusloend:",
+        "addNewPlaylist": "Loo „%{name}\"“",
+        "export": "Ekspordi",
+        "makePublic": "Muuda avalikuks",
+        "makePrivate": "Muuda privaatseks",
+        "saveQueue": "Salvesta esitusjärjekord esitusloendina",
+        "searchOrCreate": "Otsi esitusloendeid või uue loomiseks sisesta nimi...",
+        "pressEnterToCreate": "Uue esitusloendi lisamiseks vajuta sisestusklahvi",
+        "removeFromSelection": "Eemalda valikust"
+      },
+      "message": {
+        "duplicate_song": "Lisa topeltlood",
+        "song_exist": "Tundub, et oled esitusloendisse lisamas topeltkirjeid. Kas tahad nii jätkata või soovid topeltkirjed vahele jätta?",
+        "noPlaylistsFound": "Esitusloendeid ei leidu",
+        "noPlaylists": "Esitusloendeid pole saadaval"
+      }
+    },
+    "radio": {
+      "name": "Raadio ||| Raadiod",
+      "fields": {
+        "name": "Nimi",
+        "streamUrl": "Voogedastuse võrguaadress",
+        "homePageUrl": "Avalehe võrguaadress",
+        "updatedAt": "Uuendatud",
+        "createdAt": "Lisatud"
+      },
+      "actions": {
+        "playNow": "Esita kohe"
+      }
+    },
+    "share": {
+      "name": "Jagamine ||| Jagamised",
+      "fields": {
+        "username": "Seda jagas",
+        "url": "Võrguaadress",
+        "description": "Kirjeldus",
+        "contents": "Sisu",
+        "expiresAt": "Aegub",
+        "lastVisitedAt": "Viimati vaadatud",
+        "visitCount": "Külastusi",
+        "format": "Vorming",
+        "maxBitRate": "Maksimaalne bitikiirus",
+        "updatedAt": "Muudetud",
+        "createdAt": "Lisatud",
+        "downloadable": "Kas lubad allalaadimised?"
+      }
+    },
+    "missing": {
+      "name": "Puuduv fail ||| Puuduvad failid",
+      "fields": {
+        "path": "Asukoht",
+        "size": "Suurus",
+        "updatedAt": "Kadumise aeg",
+        "libraryName": "Kogumik"
+      },
+      "actions": {
+        "remove": "Eemalda",
+        "remove_all": "Eemalda kõik"
+      },
+      "notifications": {
+        "removed": "Puuduv(ad) fail(id) on eemaldatud"
+      },
+      "empty": "Puuduvaid faile pole"
+    },
+    "library": {
+      "name": "Kogumik ||| Kogumikud",
+      "fields": {
+        "name": "Nimi",
+        "path": "Asukoht",
+        "remotePath": "Asukoht kaugseadmes",
+        "lastScanAt": "Viimane skaneerimine",
+        "songCount": "Lood",
+        "albumCount": "Albumid",
+        "artistCount": "Esitajad",
+        "totalSongs": "Lood",
+        "totalAlbums": "Albumid",
+        "totalArtists": "Esitajad",
+        "totalFolders": "Kaustad",
+        "totalFiles": "Failid",
+        "totalMissingFiles": "Puuduvad failid",
+        "totalSize": "Kogumaht",
+        "totalDuration": "Kestus",
+        "defaultNewUsers": "Vaikimisi väärtus uutele kasutajatele",
+        "createdAt": "Lisatud",
+        "updatedAt": "Muudetud"
+      },
+      "sections": {
+        "basic": "Põhiteave",
+        "statistics": "Statistika"
+      },
+      "actions": {
+        "scan": "Skaneeri kogumikku",
+        "manageUsers": "Halda kasutajate õigusi",
+        "viewDetails": "Vaata üksikasju",
+        "quickScan": "Kiirskaneerimine",
+        "fullScan": "Täismahuline skaneerimine"
+      },
+      "notifications": {
+        "created": "Kogumiku loomine õnnestus",
+        "updated": "Kogumiku uuendamine õnnestus",
+        "deleted": "Kogumiku kustutamine õnnestus",
+        "scanStarted": "Kogumiku skaneerimine algas",
+        "scanCompleted": "Kogumiku skaneerimine lõppes",
+        "quickScanStarted": "Kiirskaneerimine algas",
+        "fullScanStarted": "Täismahuline skaneerimine algas",
+        "scanError": "Viga skaneerimise käivitamisel. Lisateavet leiad logidest"
+      },
+      "validation": {
+        "nameRequired": "Pead sisestama kogumiku nime",
+        "pathRequired": "Pead sisestama kogumiku asukoha",
+        "pathNotDirectory": "Kogumiku asukoht peab olema kaust",
+        "pathNotFound": "Kogumiku asukoha kausta ei leidu",
+        "pathNotAccessible": "Kogumiku asukoha kaust pole ligipääsetav",
+        "pathInvalid": "Vigane kogumiku asukoha kaust"
+      },
+      "messages": {
+        "deleteConfirm": "Kas oled kindel, et soovid selle kogumiku kustutada? Samaga eemaldad ka kõik seotud andmed ja kasutajate ligipääsu.",
+        "scanInProgress": "Skaneerimine on pooleli...",
+        "noLibrariesAssigned": "Selle kasutajaga pole veel ühtegi kogumikku seotud"
+      }
+    },
+    "plugin": {
+      "name": "Lisamoodul |||| Lisamoodulid",
+      "fields": {
+        "id": "Tunnus",
+        "name": "Nimi",
+        "description": "Kirjeldus",
+        "version": "Versioon",
+        "author": "Autor",
+        "website": "Veebisait",
+        "permissions": "Õigused",
+        "enabled": "Kasutusel",
+        "status": "Olek",
+        "path": "Asukoht",
+        "lastError": "Viga",
+        "hasError": "Viga",
+        "updatedAt": "Uuendatud",
+        "createdAt": "Paigaldatud",
+        "configKey": "Võti",
+        "configValue": "Väärtus",
+        "allUsers": "Luba kõiki kasutajaid",
+        "selectedUsers": "Valitud kasutajad",
+        "allLibraries": "Luba kõik kogumikud",
+        "selectedLibraries": "Valitud kogumikud",
+        "allowWriteAccess": "Luba kirjutusõigused"
+      },
+      "sections": {
+        "status": "Olek",
+        "info": "Lisamooduli teave",
+        "configuration": "Seadistus",
+        "manifest": "Manifest",
+        "usersPermission": "Kasutajate õigused",
+        "libraryPermission": "Kogumike õigused"
+      },
+      "status": {
+        "enabled": "Kasutusel",
+        "disabled": "Pole kasutusel"
+      },
+      "actions": {
+        "enable": "Võta kasutusele",
+        "disable": "Eemalda kasutuselt",
+        "disabledDueToError": "Enne kasutuselevõtmist paranda viga",
+        "disabledUsersRequired": "Enne kasutuselevõtmist vali kasutajad",
+        "disabledLibrariesRequired": "Enne kasutuselevõtmist vali kogumikud",
+        "addConfig": "Lisa seadistus",
+        "rescan": "Skaneeri uuesti"
+      },
+      "notifications": {
+        "enabled": "Lisamoodul on kasutusel",
+        "disabled": "Lisamoodul pole kasutusel",
+        "updated": "Lisamoodul on uuendatud",
+        "error": "Viga lisamooduli uuendamisel"
+      },
+      "validation": {
+        "invalidJson": "Seadistus peab olema koostatud korrektses JSON-vormingus"
+      },
+      "messages": {
+        "configHelp": "Seadista lisamoodulit võti-väärtus paaride abil. Kui lisamoodul seadistamist ei vaja, siis jäta tühjaks.",
+        "clickPermissions": "Üksikasjade vaatamiseks klõpsa õigust",
+        "noConfig": "Ühtegi seadistust pole määratud",
+        "allUsersHelp": "Kasutuselevõetuna on sellel lisamoodulil ligipääs kõikidele kasutajatele, sealhulgas tulevikus loodavatele.",
+        "noUsers": "Ühtegi kasutajat pole valitud",
+        "permissionReason": "Põhjus",
+        "usersRequired": "See lisamoodul vajab ligipääsu kasutajate teabele. Vali kasutajad, millele ta ligi peaks saama või vali „Kõik kasutajad“.",
+        "allLibrariesHelp": "Kasutuselevõetuna on sellel lisamoodulil ligipääs kõikidele kogumikele, sealhulgas tulevikus loodavatele.",
+        "noLibraries": "Ühtegi kogumikku pole valitud",
+        "librariesRequired": "See lisamoodul vajab ligipääsu kogumiku teabele. Vali kogumikud, millele ta ligi peaks saama või vali „Kõik kogumikud“.",
+        "requiredHosts": "Nõutavad hostid",
+        "configValidationError": "Seadistuse õigsuse kontrollimine ei õnnestunud:",
+        "schemaRenderError": "Seadistuste vormi lugemine ja töötlemine ei õnnestunud. Lisamooduli ülesehitus/skeem võib olla vigane.",
+        "allowWriteAccessHelp": "Kui valik on kasutusel, siis lisamoodul võib muuta vaid faile kogumike kaustades. Vaikimisi on lisamoodulitel vaid lugemisõigus."
+      },
+      "placeholders": {
+        "configKey": "võti",
+        "configValue": "väärtus"
+      }
+    }
+  },
+  "ra": {
+    "auth": {
+      "welcome1": "Aitäh, et paigaldasite Navidrome'i!",
+      "welcome2": "Alustamiseks lisa peakasutaja",
+      "confirmPassword": "Korda salasõna",
+      "buttonCreateAdmin": "Loo admin",
+      "auth_check_error": "Jätkamiseks palun logi sisse",
+      "user_menu": "Profiil",
+      "username": "Kasutajanimi",
+      "password": "Salasõna",
+      "sign_in": "Logi sisse",
+      "sign_in_error": "Tuvastamine ei toiminud, palun proovi uuesti",
+      "logout": "Logi välja",
+      "insightsCollectionNote": "Navidrome kogub anonüümset kasutustusstatistikat, mille alusel on võimalik projekti paremaks muuta. Klõpsides [siin], saad lugeda lisateavet ning soovi korral sellest kogumisest loobuda"
+    },
+    "validation": {
+      "invalidChars": "Palun kasutage ainult tähti ja numbreid",
+      "passwordDoesNotMatch": "Salasõnad ei kattu",
+      "required": "Nõutav",
+      "minLength": "Pikkus peab olema vähemalt %{min} tähemärki",
+      "maxLength": "Pikkus ei tohi olla üle %{max} tähemärgi",
+      "minValue": "Väärtus peab olema vähemalt %{min}",
+      "maxValue": "Väärtus ei tohi olla enam, kui %{max}",
+      "number": "Sisend peab olema number",
+      "email": "Sisend peab korrektne e-posti aadress",
+      "oneOf": "Väärtus peab olema üks järgnevaist: %{options}",
+      "regex": "Väärtus peab vastama kindlale vormingule (regulaaravaldis): %{pattern}",
+      "unique": "Sisend peab olema unikaalne",
+      "url": "Sisend peab olema korrektne võrguaadress"
+    },
+    "action": {
+      "add_filter": "Lisa filter",
+      "add": "Lisa",
+      "back": "Mine tagasi",
+      "bulk_actions": "1 objekt on valitud |||| %{smart_count} objekti on valitud",
+      "cancel": "Katkesta",
+      "clear_input_value": "Eemalda väärtus",
+      "clone": "Klooni",
+      "confirm": "Kinnita",
+      "create": "Loo",
+      "delete": "Kustuta",
+      "edit": "Muuda",
+      "export": "Ekspordi",
+      "list": "Loend",
+      "refresh": "Uuenda andmed",
+      "remove_filter": "Eemalda see filter",
+      "remove": "Eemalda",
+      "save": "Salvesta",
+      "search": "Otsi",
+      "show": "Näita",
+      "sort": "Järjesta",
+      "undo": "Võta tegevus tagasi",
+      "expand": "Laienda",
+      "close": "Sulge",
+      "open_menu": "Ava menüü",
+      "close_menu": "Sulge menüü",
+      "unselect": "Eemalda valik",
+      "skip": "Jäta vahele",
+      "bulk_actions_mobile": "1 |||| %{smart_count}",
+      "share": "Jaga",
+      "download": "Laadi alla"
+    },
+    "boolean": {
+      "true": "Jah",
+      "false": "Ei"
+    },
+    "page": {
+      "create": "Loo %{name}",
+      "dashboard": "Töölaud",
+      "edit": "%{name} #%{id}",
+      "error": "Midagi läks valesti",
+      "list": "%{name}",
+      "loading": "Laadin",
+      "not_found": "Ei leidu",
+      "show": "%{name} #%{id}",
+      "empty": "Nimi on veel puudu - %{name}.",
+      "invite": "Kas sa sooviksid ühe sellise lisada?"
+    },
+    "input": {
+      "file": {
+        "upload_several": "Lohista üleslaadimiseks mõned failid või vali üks failivalijast.",
+        "upload_single": "Lohista üleslaadimiseks fail või vali ta failivalijast."
+      },
+      "image": {
+        "upload_several": "Lohista üleslaadimiseks mõned pildid või vali üks failivalijast.",
+        "upload_single": "Lohista üleslaadimiseks pilt või vali ta failivalijast."
+      },
+      "references": {
+        "all_missing": "Viitenumbrite andmeid ei leidu.",
+        "many_missing": "Vähemalt üks seotud viide ei tundu enam olema saadaval.",
+        "single_missing": "Seotud viide ei tundu enam olema saadaval."
+      },
+      "password": {
+        "toggle_visible": "Peida salasõna",
+        "toggle_hidden": "Näita salasõna"
+      }
+    },
+    "message": {
+      "about": "Teave",
+      "are_you_sure": "Kas oled kindel?",
+      "bulk_delete_content": "Kas sa oled kindel, et soovid kustutada selle objekti -  %{name}? |||| Kas sa oled kindel, et soovid kustutada need %{smart_count} objekti?",
+      "bulk_delete_title": "Kustuta %{name} |||| Kustuta %{name} -  %{smart_count} kirjet",
+      "delete_content": "Kas oled kindel, et soovid selle objekti  kustutada?",
+      "delete_title": "Kustuta %{name} #%{id}",
+      "details": "Üksikasjad",
+      "error": "Tekkis klientrakenduse viga ja päringut polnud võimalik lõpetada.",
+      "invalid_form": "Vormi andmed pole õiged. Palun kontrolli sisestusi",
+      "loading": "Leht on just laadimisel, palun oota hetke",
+      "no": "Ei",
+      "not_found": "Sa kas sisestasid vigase võrguaadressi või klõpsisid vigast linki.",
+      "yes": "Jah",
+      "unsaved_changes": "Mõned sinu muudatused pole salvestatud. Kas sa soovid neist loobuda?"
+    },
+    "navigation": {
+      "no_results": "Tulemusi ei leidu",
+      "no_more_results": "Lehe number %{page} on väljaspool etteantud piire. Proovi eelmist lehte.",
+      "page_out_of_boundaries": "Lehe number %{page} on väljaspool etteantud piire",
+      "page_out_from_end": "Viimasest lehest ei saa edasi minna",
+      "page_out_from_begin": "Esimese lehe ette ei saa minna",
+      "page_range_info": "%{offsetBegin}-%{offsetEnd} - kokku %{total}",
+      "page_rows_per_page": "Kirjeid lehel:",
+      "next": "Edasi",
+      "prev": "Tagasi",
+      "skip_nav": "Mine sisu juurde"
+    },
+    "notification": {
+      "updated": "Objekt on uuendatud |||| %{smart_count} objekti on uuendatud",
+      "created": "Objekt on loodud",
+      "deleted": "Objekt on kustutatud |||| %{smart_count} objekti on kustutatud",
+      "bad_item": "Vigane objekt",
+      "item_doesnt_exist": "Objekti pole olemas",
+      "http_error": "Viga suhtlemisel serveriga",
+      "data_provider_error": "Andmeteenusepakkuja viga. Lisateavet leiad brauseri konsoolist.",
+      "i18n_error": "Vastava keele tõlget ei saa laadida",
+      "canceled": "Tegevus on tühistatud",
+      "logged_out": "Sinu sessioon on lõppenud, palun ühenda uuesti.",
+      "new_version": "Uus versioon on saadaval! Palun laadi see vaade uuesti."
+    },
+    "toggleFieldsMenu": {
+      "columnsToDisplay": "Kuvatavad veerud",
+      "layout": "Paigutus",
+      "grid": "Ruudustik",
+      "table": "Tabel"
+    }
+  },
+  "message": {
+    "note": "MÄRGE",
+    "transcodingDisabled": "Transkodeeringu seadistuse muutmine läbi veebiliidese ei ole turvariskide tõttu saadaval. Kui soovite muuta või lisada transkodeerimisega seotud seadistusi, taaskäivitage server %{config} valikuga.",
+    "transcodingEnabled": "Navidrome käivitati %{config} valikuga, mis lubab läbi veebiliidese transkodeerimisseadistuste jooksutada süsteemikäsklusi. Turvakaalutlustel on soovitatav kasutada seda valikut ainult transkodeerimisseadete muutmiseks.",
+    "songsAddedToPlaylist": "Lisasin ühe loo esitusloendisse |||| Lisasin %{smart_count} lugu esitusloendisse",
+    "noPlaylistsAvailable": "Pole saadaval",
+    "delete_user_title": "Kustuta kasutaja „%{name}“",
+    "delete_user_content": "Kas oled kindel, et soovid selle kasutaja ja kõik tema andmed (sh esitusloendid ja eelistused) kustutada?",
+    "notifications_blocked": "Sa oled selle saidi teavitused veebibrauseri seadistusest keelanud",
+    "notifications_not_available": "See veebibrauser kas ei toeta töölauateavitusi või sa ei kasuta Navidrome'i üle https-protokolli",
+    "lastfmLinkSuccess": "Last.fm-i seos on lisatud ja kraasimine on lülitatud sisse",
+    "lastfmLinkFailure": "Last.fm-i seose lisamine ei õnnestunud",
+    "lastfmUnlinkSuccess": "Last.fm-i seos on eemaldatud ja kraasimine on lülitatud välja",
+    "lastfmUnlinkFailure": "Last.fm-i seose eemaldamine ei õnnestunud",
+    "openIn": {
+      "lastfm": "Ava Last.fm-is",
+      "musicbrainz": "Ava MusicBrainzis"
+    },
+    "lastfmLink": "Lisateave...",
+    "listenBrainzLinkSuccess": "ListenBrainzi seos on lisatud ja kraasimine on lülitatud sisse kasutajana: %{user}",
+    "listenBrainzLinkFailure": "ListenBrainzi seose lisamine ei õnnestunud: %{error}",
+    "listenBrainzUnlinkSuccess": "ListenBrainzi seos on eemaldatud ja kraasimine on lülitatud välja",
+    "listenBrainzUnlinkFailure": "ListenBrainzi seose eemaldamine ei õnnestunud",
+    "downloadOriginalFormat": "Laadi alla algses vormingus",
+    "shareOriginalFormat": "Jaga algses vormingus",
+    "shareDialogTitle": "Jaga - %{resource} „%{name}“",
+    "shareBatchDialogTitle": "Jaga - %{resource} |||| Jaga %{smart_count} kirjet -  %{resource}",
+    "shareSuccess": "Võrguaadress on kopeeritud lõikelauale: %{url}",
+    "shareFailure": "Viga %{url} võrguaadressi kopeerimisel lõikelauale",
+    "downloadDialogTitle": "Laadi alla - %{resource} '%{name}' (%{size})",
+    "shareCopyToClipboard": "Kopeeri lõikelauale: Ctrl+C, sisestusklahv",
+    "remove_missing_title": "Eemalda puuduvad failid",
+    "remove_missing_content": "Kas sa oled kindel, et soovid valitud puuduvate failide andmed andmebaasist eemaldada? Sellega kaovad kõik viited neile, sealhulgas esituskordade ja hinnangute märked.",
+    "remove_all_missing_title": "Eemalda kõik puuduvad failid",
+    "remove_all_missing_content": "Kas sa oled kindel, et soovid kõik puuduvate failide andmed andmebaasist eemaldada? Sellega kaovad kõik viited neile, sealhulgas esituskordade ja hinnangute märked.",
+    "noSimilarSongsFound": "Sarnaseid lugusid ei leidu",
+    "noTopSongsFound": "Populaarsemaid lugusid ei leidu",
+    "startingInstantMix": "Laadin kohest miksi...",
+    "uploadCover": "Laadi kaanepilt üles",
+    "removeCover": "Eemalda kaanepilt",
+    "coverUploaded": "Kaanepilt on uuendatud",
+    "coverRemoved": "Kaanepilt on eemaldatud",
+    "coverUploadError": "Viga kaanepildi üleslaadimisel",
+    "coverRemoveError": "Viga kaanepildi eemaldamisel"
+  },
+  "menu": {
+    "library": "Kogumik",
+    "settings": "Seaded",
+    "version": "Versioon",
+    "theme": "Teema",
+    "personal": {
+      "name": "Isiklik",
+      "options": {
+        "theme": "Teema",
+        "language": "Keel",
+        "defaultView": "Vaikimisi vaade",
+        "desktop_notifications": "Teavitused töölaual",
+        "lastfmScrobbling": "Kraasi Last.fm-i teenusesse",
+        "listenBrainzScrobbling": "Kraasi ListenBrainzi teenusesse",
+        "replaygain": "Esitusvaljuse tundlikkuse režiim",
+        "preAmp": "Esitusvaljuse tundlikkuse eelvõimendus (dB)",
+        "gain": {
+          "none": "Pole kasutusel",
+          "album": "Kasuta albumikohast esitusvaljuse tundlikkust",
+          "track": "Kasuta lookohast esitusvaljuse tundlikkust"
+        },
+        "lastfmNotConfigured": "Last.fm-i API-võti pole seadistatud"
+      }
+    },
+    "albumList": "Albumid",
+    "about": "Rakenduse teave",
+    "playlists": "Esitusloendid",
+    "sharedPlaylists": "Jagatud esitusloendid",
+    "librarySelector": {
+      "allLibraries": "Kõik kogumikud (%{count})",
+      "multipleLibraries": "%{selected} / %{total} kogumikest",
+      "selectLibraries": "Vali kogumikud",
+      "none": "Puudub"
+    }
+  },
+  "player": {
+    "playListsText": "Esitusjärjekord",
+    "openText": "Ava",
+    "closeText": "Sulge",
+    "notContentText": "Muusikat pole",
+    "clickToPlayText": "Klõpsa esitamiseks",
+    "clickToPauseText": "Klõpsa peatamiseks",
+    "nextTrackText": "Järgmine lugu",
+    "previousTrackText": "Eelmine lugu",
+    "reloadText": "Laadi uuesti",
+    "volumeText": "Helivaljus",
+    "toggleLyricText": "Näita/peida laulusõnad",
+    "toggleMiniModeText": "Minimeeri",
+    "destroyText": "Hävita",
+    "downloadText": "Laadi alla",
+    "removeAudioListsText": "Kustuta heliloendid",
+    "clickToDeleteText": "„%{name}“ kustutamiseks klõpsa",
+    "emptyLyricText": "Laulusõnu pole",
+    "playModeText": {
+      "order": "Oma järjekorras",
+      "orderLoop": "Korda",
+      "singleLoop": "Korda üks kord",
+      "shufflePlay": "Sega lood"
+    }
+  },
+  "about": {
+    "links": {
+      "homepage": "Avaleht",
+      "source": "Lähtekood",
+      "featureRequests": "Arendusettepanekud",
+      "lastInsightsCollection": "Viimati kogutud statistika",
+      "insights": {
+        "disabled": "Pole kasutusel",
+        "waiting": "Ootel"
+      }
+    },
+    "tabs": {
+      "about": "Teave",
+      "config": "Seadistus"
+    },
+    "config": {
+      "configName": "Seadistuse nimi",
+      "environmentVariable": "Keskkonnamuutuja",
+      "currentValue": "Praegune väärtus",
+      "configurationFile": "Seadistusfail",
+      "exportToml": "Ekspordi seadistused (TOML-failina)",
+      "exportSuccess": "Seadistused on eksporditud lõikelauale TOML-failina",
+      "exportFailed": "Seadistuse kopeerimine ei õnnestunud",
+      "devFlagsHeader": "Arendusparameetrid (võivad muutuda või sootuks kaduda)",
+      "devFlagsComment": "Need on katselised seadistused, mis võivad tulevastest versioonidest kaduda",
+      "downloadToml": "Laadi seadistused alla (TOML-failina)"
+    }
+  },
+  "activity": {
+    "title": "Tegevus",
+    "totalScanned": "Kokku skaneeritud kaustu",
+    "quickScan": "Kiirskaneerimine",
+    "fullScan": "Täisskaneerimine",
+    "serverUptime": "Serveri katkematu tööaeg",
+    "serverDown": "POLE VÕRGUS",
+    "scanType": "Tüüp",
+    "status": "Skaneerimisviga",
+    "elapsedTime": "Möödunud aeg",
+    "selectiveScan": "Valikuline"
+  },
+  "help": {
+    "title": "Navidrome'i kiirklahvid",
+    "hotkeys": {
+      "show_help": "Näita seda abiteavet",
+      "toggle_menu": "Lülita menüü külgriba sisse/välja",
+      "toggle_play": "Esita / Peata esitus",
+      "prev_song": "Eelmine lugu",
+      "next_song": "Järgmine lugu",
+      "vol_up": "Heli valjemaks",
+      "vol_down": "Heli vaiksemaks",
+      "toggle_love": "Lisa see lugu lemmikute hulka",
+      "current_song": "Mine esitamisel loo juurde"
+    }
+  },
+  "nowPlaying": {
+    "title": "Hetkel esitamisel",
+    "empty": "Mitte midagi pole hetkel esitamisel",
+    "minutesAgo": "%{smart_count} minut tagasi |||| %{smart_count} minutit tagasi"
+  }
+}

@@ -13,8 +13,9 @@ import (
 
 var _ = Describe("stream.view (legacy streaming)", Ordered, func() {
 	var (
-		mp3TrackID  string // Come Together (mp3, 320kbps)
-		flacTrackID string // TC FLAC Standard (flac, 900kbps)
+		mp3TrackID         string // Come Together (mp3, 320kbps)
+		flacTrackID        string // TC FLAC Standard (flac, 900kbps)
+		flacMultichTrackID string // TC FLAC Multichannel (flac, 6ch)
 	)
 
 	BeforeAll(func() {
@@ -30,6 +31,8 @@ var _ = Describe("stream.view (legacy streaming)", Ordered, func() {
 		Expect(mp3TrackID).ToNot(BeEmpty())
 		flacTrackID = byTitle["TC FLAC Standard"]
 		Expect(flacTrackID).ToNot(BeEmpty())
+		flacMultichTrackID = byTitle["TC FLAC Multichannel"]
+		Expect(flacMultichTrackID).ToNot(BeEmpty())
 	})
 
 	Describe("raw / direct play", func() {
@@ -100,6 +103,13 @@ var _ = Describe("stream.view (legacy streaming)", Ordered, func() {
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(streamerSpy.LastRequest.Format).To(Equal("mp3"))
 			Expect(streamerSpy.LastRequest.BitRate).To(Equal(128))
+		})
+
+		It("clamps multichannel FLAC to 2 channels when transcoding to mp3 (#5336)", func() {
+			w := doRawReq("stream", "id", flacMultichTrackID, "format", "mp3", "maxBitRate", "256")
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(streamerSpy.LastRequest.Format).To(Equal("mp3"))
+			Expect(streamerSpy.LastRequest.Channels).To(Equal(2))
 		})
 	})
 

@@ -55,6 +55,7 @@ linters:
       - third_party$
       - builtin$
       - examples$
+      - node_modules
 formatters:
   exclusions:
     generated: lax
@@ -62,3 +63,4 @@ formatters:
       - third_party$
       - builtin$
       - examples$
+      - node_modules

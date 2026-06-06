@@ -11,7 +11,6 @@ import {
   useImageLoadingState,
 } from '../common'
 import Lightbox from 'react-image-lightbox'
-import { COVER_ART_SIZE } from '../consts'
 import subsonic from '../subsonic'
 import { SafeHTML } from '../common/SafeHTML'
 
@@ -113,7 +112,7 @@ const MobileArtistDetails = ({ artistInfo, biography, record }) => {
               <CardMedia
                 key={record.id}
                 component="img"
-                src={subsonic.getCoverArtUrl(record, COVER_ART_SIZE)}
+                src={subsonic.getCoverArtUrl(record, config.uiCoverArtSize)}
                 className={`${classes.cover} ${imageLoading ? classes.coverLoading : ''}`}
                 onClick={handleOpenLightbox}
                 onLoad={handleImageLoad}

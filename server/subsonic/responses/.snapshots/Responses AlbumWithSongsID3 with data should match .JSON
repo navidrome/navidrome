@@ -8,7 +8,9 @@
     "id": "1",
     "name": "album",
     "artist": "artist",
+    "songCount": 0,
     "duration": 292,
+    "created": "0001-01-01T00:00:00Z",
     "genre": "rock",
     "userRating": 4,
     "genres": [
@@ -165,7 +167,11 @@
           }
         ],
         "displayComposer": "composer 1 \u0026 composer 2",
-        "explicitStatus": "clean"
+        "explicitStatus": "clean",
+        "groupings": [
+          "Soundtrack",
+          "Live"
+        ]
       },
       {
         "id": "2",
@@ -210,7 +216,8 @@
         "displayAlbumArtist": "",
         "contributors": [],
         "displayComposer": "",
-        "explicitStatus": ""
+        "explicitStatus": "",
+        "groupings": []
       }
     ]
   }

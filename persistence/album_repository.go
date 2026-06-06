@@ -252,7 +252,17 @@ func (r *albumRepository) CopyAttributes(fromID, toID string, columns ...string)
 	}
 	to := make(map[string]any)
 	for _, col := range columns {
-		to[col] = from[col]
+		v := from[col]
+		// created_at is aggregated from song birth_times and must never be
+		// overwritten with a zero/poisoned value, or it propagates forward on
+		// every metadata-driven album ID change.
+		if col == "created_at" && (!v.Valid || v.String == "" || strings.HasPrefix(v.String, "0001-")) {
+			continue
+		}
+		to[col] = v
+	}
+	if len(to) == 0 {
+		return nil
 	}
 	_, err = r.executeSQL(Update(r.tableName).SetMap(to).Where(Eq{"id": toID}))
 	return err

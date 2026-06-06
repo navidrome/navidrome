@@ -54,17 +54,17 @@ var _ = Describe("resizeImage", func() {
 			Expect(len(output)).To(BeNumerically(">", 0))
 		})
 
-		It("skips animation for square thumbnails even with animated GIF", func() {
+		It("preserves animation for square thumbnails with animated GIF", func() {
 			r.square = true
 			data := createAnimatedGIF(3)
 			result, _, err := r.resizeImage(context.Background(), bytes.NewReader(data))
-			// Should fall through to static resize (not ffmpeg conversion)
-			// The minimal test GIF may or may not resize successfully,
-			// but ffmpeg should NOT have been called for animated conversion
-			_ = result
-			_ = err
-			// Verify by checking the mock wasn't used for animated conversion:
-			// If ffmpeg was called, it would return mock data, not static resize result
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).ToNot(BeNil())
+
+			// Should have been processed by ffmpeg (mock returns input data)
+			output, err := io.ReadAll(result)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(output).To(Equal(data))
 		})
 	})
 
@@ -81,13 +81,17 @@ var _ = Describe("resizeImage", func() {
 			Expect(output).To(Equal(data))
 		})
 
-		It("does not passthrough animated WebP for square thumbnails", func() {
+		It("preserves animated WebP for square thumbnails", func() {
 			r.square = true
 			data := createAnimatedWebPBytes()
-			// Should fall through to static resize, which will fail on fake WebP data
-			_, _, err := r.resizeImage(context.Background(), bytes.NewReader(data))
-			// Static decode will fail on our minimal test WebP bytes (not a real image)
-			Expect(err).To(HaveOccurred())
+			result, _, err := r.resizeImage(context.Background(), bytes.NewReader(data))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).ToNot(BeNil())
+
+			// Should return original data unchanged
+			output, err := io.ReadAll(result)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(output).To(Equal(data))
 		})
 	})
 
@@ -104,15 +108,17 @@ var _ = Describe("resizeImage", func() {
 			Expect(output).To(Equal(data))
 		})
 
-		It("does not passthrough animated PNG for square thumbnails", func() {
+		It("preserves animated PNG for square thumbnails", func() {
 			r.square = true
 			data := createAPNGBytes()
-			// Should fall through to static resize
 			result, _, err := r.resizeImage(context.Background(), bytes.NewReader(data))
-			// Static PNG decode should succeed on our APNG (it's a valid PNG)
-			if err == nil {
-				Expect(result).ToNot(BeNil())
-			}
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).ToNot(BeNil())
+
+			// Should return original data unchanged
+			output, err := io.ReadAll(result)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(output).To(Equal(data))
 		})
 	})
 

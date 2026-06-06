@@ -3,9 +3,11 @@ package ffmpeg
 import (
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
-	sync "sync"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -45,15 +47,15 @@ var _ = Describe("ffmpeg", func() {
 		})
 		Context("when command has time offset param", func() {
 			It("creates a valid command line with offset", func() {
-				args := createFFmpegCommand("ffmpeg -i %s -b:a %bk -ss %t mp3 -", "/music library/file.mp3", 123, 456)
-				Expect(args).To(Equal([]string{"ffmpeg", "-i", "/music library/file.mp3", "-b:a", "123k", "-ss", "456", "mp3", "-"}))
+				args := createFFmpegCommand("ffmpeg -ss %t -i %s -b:a %bk mp3 -", "/music library/file.mp3", 123, 456)
+				Expect(args).To(Equal([]string{"ffmpeg", "-ss", "456", "-i", "/music library/file.mp3", "-b:a", "123k", "mp3", "-"}))
 			})
 
 		})
 		Context("when command does not have time offset param", func() {
-			It("adds time offset after the input file name", func() {
+			It("adds time offset before the input file name", func() {
 				args := createFFmpegCommand("ffmpeg -i %s -b:a %bk mp3 -", "/music library/file.mp3", 123, 456)
-				Expect(args).To(Equal([]string{"ffmpeg", "-i", "/music library/file.mp3", "-ss", "456", "-b:a", "123k", "mp3", "-"}))
+				Expect(args).To(Equal([]string{"ffmpeg", "-ss", "456", "-i", "/music library/file.mp3", "-b:a", "123k", "mp3", "-"}))
 			})
 		})
 	})
@@ -80,16 +82,16 @@ var _ = Describe("ffmpeg", func() {
 
 	Describe("isDefaultCommand", func() {
 		It("returns true for known default mp3 command", func() {
-			Expect(isDefaultCommand("mp3", "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -f mp3 -")).To(BeTrue())
+			Expect(isDefaultCommand("mp3", "ffmpeg -ss %t -i %s -map 0:a:0 -b:a %bk -v 0 -f mp3 -")).To(BeTrue())
 		})
 		It("returns true for known default opus command", func() {
-			Expect(isDefaultCommand("opus", "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a libopus -f opus -")).To(BeTrue())
+			Expect(isDefaultCommand("opus", "ffmpeg -ss %t -i %s -map 0:a:0 -b:a %bk -v 0 -c:a libopus -f opus -")).To(BeTrue())
 		})
 		It("returns true for known default aac command", func() {
-			Expect(isDefaultCommand("aac", "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a aac -f adts -")).To(BeTrue())
+			Expect(isDefaultCommand("aac", "ffmpeg -ss %t -i %s -map 0:a:0 -b:a %bk -v 0 -c:a aac -f adts -")).To(BeTrue())
 		})
 		It("returns true for known default flac command", func() {
-			Expect(isDefaultCommand("flac", "ffmpeg -i %s -ss %t -map 0:a:0 -v 0 -c:a flac -f flac -")).To(BeTrue())
+			Expect(isDefaultCommand("flac", "ffmpeg -ss %t -i %s -map 0:a:0 -v 0 -c:a flac -f flac -")).To(BeTrue())
 		})
 		It("returns false for a custom command", func() {
 			Expect(isDefaultCommand("mp3", "ffmpeg -i %s -b:a %bk -custom-flag -f mp3 -")).To(BeFalse())
@@ -163,8 +165,9 @@ var _ = Describe("ffmpeg", func() {
 				Offset:   30,
 			})
 			Expect(args).To(Equal([]string{
-				"ffmpeg", "-i", "/music/file.mp3",
+				"ffmpeg",
 				"-ss", "30",
+				"-i", "/music/file.mp3",
 				"-map", "0:a:0",
 				"-c:a", "libmp3lame",
 				"-b:a", "192k",
@@ -584,9 +587,12 @@ var _ = Describe("ffmpeg", func() {
 				// Cancel the context
 				cancel()
 
-				// Next read should fail due to cancelled context
-				_, err = stream.Read(buf)
-				Expect(err).To(HaveOccurred())
+				// Subsequent reads should eventually fail due to cancelled context.
+				// There may be buffered data in the pipe, so we drain until an error occurs.
+				Eventually(func() error {
+					_, err = stream.Read(buf)
+					return err
+				}).WithTimeout(5 * time.Second).WithPolling(10 * time.Millisecond).Should(HaveOccurred())
 			})
 
 			It("should handle immediate context cancellation", func() {
@@ -688,6 +694,59 @@ var _ = Describe("ffmpeg", func() {
 				_, err = stream.Read(buf)
 				Expect(err).To(HaveOccurred())
 			})
+		})
+	})
+
+	Describe("parseEncodersOutput", func() {
+		const sample = `Encoders:
+ V..... = Video
+ ------
+ V....D apng                 APNG (Animated Portable Network Graphics) image
+ V....D libwebp_anim         libwebp WebP image (codec webp)
+ V....D libwebp              libwebp WebP image (codec webp)
+ A....D aac                  AAC (Advanced Audio Coding)
+`
+		It("returns true when the encoder is present", func() {
+			Expect(parseEncodersOutput([]byte(sample), "libwebp_anim")).To(BeTrue())
+			Expect(parseEncodersOutput([]byte(sample), "libwebp")).To(BeTrue())
+			Expect(parseEncodersOutput([]byte(sample), "aac")).To(BeTrue())
+		})
+		It("returns false when the encoder is absent", func() {
+			Expect(parseEncodersOutput([]byte(sample), "libwebp_missing")).To(BeFalse())
+			Expect(parseEncodersOutput([]byte(sample), "")).To(BeFalse())
+		})
+		It("does not match partial names", func() {
+			// libwebp is a prefix of libwebp_anim; the parser must treat names as whole-word.
+			stripped := `Encoders:
+ V....D libwebp              libwebp WebP image (codec webp)
+`
+			Expect(parseEncodersOutput([]byte(stripped), "libwebp_anim")).To(BeFalse())
+		})
+		It("handles empty output", func() {
+			Expect(parseEncodersOutput(nil, "libwebp_anim")).To(BeFalse())
+			Expect(parseEncodersOutput([]byte(""), "libwebp_anim")).To(BeFalse())
+		})
+	})
+
+	Describe("ConvertAnimatedImage", func() {
+		// Point ffmpegCmd at a stand-in binary that produces empty `-encoders`
+		// output so hasAnimatedWebPEncoder returns false. /usr/bin/true is
+		// portable across POSIX systems.
+		It("returns ErrAnimatedWebPUnsupported when the binary lacks libwebp_anim", func() {
+			truePath, err := exec.LookPath("true")
+			if err != nil {
+				Skip("true(1) not available")
+			}
+			origPath, origErr := ffmpegPath, ffmpegErr
+			ffmpegPath = truePath
+			ffmpegErr = nil
+			defer func() {
+				ffmpegPath, ffmpegErr = origPath, origErr
+			}()
+
+			ff := &ffmpeg{}
+			_, err = ff.ConvertAnimatedImage(GinkgoT().Context(), strings.NewReader("x"), 100, 75)
+			Expect(err).To(MatchError(ErrAnimatedWebPUnsupported))
 		})
 	})
 })

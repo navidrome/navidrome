@@ -212,6 +212,10 @@ func (l *listenBrainzAgent) GetSimilarSongsByTrack(ctx context.Context, id strin
 	return songs, nil
 }
 
+func (l *listenBrainzAgent) PlaybackReport(context.Context, scrobbler.PlaybackSession) error {
+	return nil
+}
+
 func init() {
 	conf.AddHook(func() {
 		if conf.Server.ListenBrainz.Enabled {

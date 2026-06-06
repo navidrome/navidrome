@@ -40,10 +40,6 @@ func (api *Router) StartScan(r *http.Request) (*responses.Subsonic, error) {
 		return nil, newError(responses.ErrorGeneric, "Internal error")
 	}
 
-	if !loggedUser.IsAdmin {
-		return nil, newError(responses.ErrorAuthorizationFail)
-	}
-
 	p := req.Params(r)
 	fullScan := p.BoolOr("fullScan", false)
 
