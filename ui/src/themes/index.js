@@ -18,6 +18,8 @@ import SquiddiesGlassTheme from './SquiddiesGlass'
 import NautilineTheme from './nautiline'
 import MoonbaseAlphaTheme from './moonbaseAlpha'
 import MoonbaseBravoTheme from './moonbaseBravo'
+import TokyoNightLightTheme from './tokyoNightLight'
+import TokyoNightTheme from './tokyoNight'
 
 export default {
   // Classic default themes
@@ -43,4 +45,6 @@ export default {
   NutballTheme,
   SpotifyTheme,
   SquiddiesGlassTheme,
+  TokyoNightLightTheme,
+  TokyoNightTheme,
 }
