@@ -224,6 +224,30 @@ var _ = Describe("sources", func() {
 		}))
 	})
 
+	It("falls through generic YAML sidecars that are not Lyricsfile documents", func() {
+		dir, err := os.MkdirTemp("", "lyrics-yaml-fallback-*")
+		Expect(err).ToNot(HaveOccurred())
+		DeferCleanup(func() {
+			Expect(os.RemoveAll(dir)).To(Succeed())
+		})
+
+		Expect(os.WriteFile(filepath.Join(dir, "song.yaml"), []byte("title: not lyricsfile\n"), 0644)).To(Succeed())
+		Expect(os.WriteFile(filepath.Join(dir, "song.lrc"), []byte("[00:01.00]Fallback line"), 0644)).To(Succeed())
+
+		conf.Server.LyricsPriority = ".yaml,.lrc"
+		svc := lyrics.NewLyrics(nil)
+		list, err := svc.GetLyrics(ctx, &model.MediaFile{
+			LibraryPath: dir,
+			Path:        "song.mp3",
+		})
+
+		Expect(err).To(BeNil())
+		Expect(list).To(HaveLen(1))
+		Expect(list[0].Line).To(Equal([]model.Line{
+			{Start: ptr(int64(1000)), Value: "Fallback line"},
+		}))
+	})
+
 	Context("Errors", func() {
 		var RegularUserContext = XContext
 		var isRegularUser = os.Getuid() != 0

@@ -11,8 +11,8 @@ import (
 // ParseLyricsfile parses a LRCLIB Lyricsfile YAML document
 // (see https://github.com/tranxuanthang/lrcget/blob/main/LYRICSFILE_CONCEPT.md)
 // into a model.LyricList containing a single main Lyrics entry. Returns
-// (nil, nil) when the input parses as YAML but does not look like a
-// Lyricsfile (no version, no metadata, no lines, no instrumental flag)
+// (nil, nil) when the input parses as YAML but does not declare Lyricsfile
+// version 1.0.
 //
 // When the source contains per-word timing via lines[].words[], each word
 // becomes a model.Cue with inclusive UTF-8 byte offsets into Line.Value, and
@@ -27,7 +27,7 @@ func ParseLyricsfile(text string) (LyricList, error) {
 		return nil, fmt.Errorf("not a valid Lyricsfile YAML: %w", err)
 	}
 
-	if doc.Version == "" && doc.Metadata.isEmpty() && len(doc.Lines) == 0 {
+	if strings.TrimSpace(doc.Version) != lyricsfileVersion {
 		return nil, nil
 	}
 
@@ -42,7 +42,16 @@ func ParseLyricsfile(text string) (LyricList, error) {
 		lyrics.Offset = &off
 	}
 
-	if doc.Metadata.Instrumental || len(doc.Lines) == 0 {
+	if doc.Metadata.Instrumental {
+		return LyricList{NormalizeLyrics(lyrics)}, nil
+	}
+
+	if len(doc.Lines) == 0 {
+		lines := buildPlainLyricsfileLines(doc.Plain)
+		if len(lines) == 0 {
+			return nil, nil
+		}
+		lyrics.Line = lines
 		return LyricList{NormalizeLyrics(lyrics)}, nil
 	}
 
@@ -53,7 +62,10 @@ func ParseLyricsfile(text string) (LyricList, error) {
 	return LyricList{NormalizeLyrics(lyrics)}, nil
 }
 
-const lyricsfileKindMain = "main"
+const (
+	lyricsfileVersion  = "1.0"
+	lyricsfileKindMain = "main"
+)
 
 type lyricsfileDocument struct {
 	Version  string                `yaml:"version"`
@@ -70,11 +82,6 @@ type lyricsfileMetadata struct {
 	OffsetMs     int64  `yaml:"offset_ms"`
 	Language     string `yaml:"language"`
 	Instrumental bool   `yaml:"instrumental"`
-}
-
-func (m lyricsfileMetadata) isEmpty() bool {
-	return m.Title == "" && m.Artist == "" && m.Album == "" &&
-		m.DurationMs == 0 && m.OffsetMs == 0 && m.Language == "" && !m.Instrumental
 }
 
 type lyricsfileLineEntry struct {
@@ -101,17 +108,17 @@ func buildLyricsfileLines(entries []lyricsfileLineEntry) ([]Line, []Agent) {
 		return nil, nil
 	}
 
-	// Resolved end timestamps per entry: explicit end_ms if present, otherwise
-	// the next entry's start. The last entry's end stays nil.
+	// Resolved end timestamps per entry: explicit end_ms, final word end_ms,
+	// then the next entry's start. The last entry's end stays nil when no
+	// explicit or word-level end is available.
 	ends := make([]*int64, len(entries))
 	for i := range entries {
-		if entries[i].EndMs != nil {
-			v := *entries[i].EndMs
-			ends[i] = &v
-		} else if i+1 < len(entries) {
+		var nextStart *int64
+		if i+1 < len(entries) {
 			v := entries[i+1].StartMs
-			ends[i] = &v
+			nextStart = &v
 		}
+		ends[i] = lyricsfileLineEnd(entries[i], nextStart)
 	}
 
 	active := map[int]int64{}
@@ -184,6 +191,39 @@ func buildLyricsfileLines(entries []lyricsfileLineEntry) ([]Line, []Agent) {
 		})
 	}
 	return lines, agents
+}
+
+func lyricsfileLineEnd(entry lyricsfileLineEntry, nextStart *int64) *int64 {
+	if entry.EndMs != nil {
+		v := *entry.EndMs
+		return &v
+	}
+	if len(entry.Words) > 0 {
+		lastWord := entry.Words[len(entry.Words)-1]
+		if lastWord.EndMs != nil {
+			v := *lastWord.EndMs
+			return &v
+		}
+	}
+	if nextStart != nil {
+		v := *nextStart
+		return &v
+	}
+	return nil
+}
+
+func buildPlainLyricsfileLines(plain string) []Line {
+	plain = str.SanitizeText(plain)
+	rawLines := strings.Split(plain, "\n")
+	lines := make([]Line, 0, len(rawLines))
+	for _, raw := range rawLines {
+		value := strings.TrimSpace(raw)
+		if value == "" {
+			continue
+		}
+		lines = append(lines, Line{Value: value})
+	}
+	return lines
 }
 
 // wordsToLineCues converts a Lyricsfile line entry's words[] into model.Cue

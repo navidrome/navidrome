@@ -13,6 +13,18 @@ var _ = Describe("ParseLyricsfile", func() {
 		Expect(lyrics).To(BeNil())
 	})
 
+	It("returns nil,nil for Lyricsfile-shaped YAML without the version marker", func() {
+		input := `metadata:
+  title: 'Looks close'
+lines:
+  - text: "But should not be claimed"
+    start_ms: 1000
+`
+		lyrics, err := ParseLyricsfile(input)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(lyrics).To(BeNil())
+	})
+
 	It("returns an error for invalid YAML", func() {
 		_, err := ParseLyricsfile("not: valid: yaml: [")
 		Expect(err).To(HaveOccurred())
@@ -56,6 +68,37 @@ lines:
 		Expect(l.Line[1].End).To(BeNil())
 		Expect(l.Line[1].Value).To(Equal("You know the rules and so do I"))
 		Expect(l.Line[1].Cue).To(BeNil())
+	})
+
+	It("parses plain-only Lyricsfile lyrics as unsynced lines", func() {
+		input := `version: '1.0'
+metadata:
+  title: 'Plain Track'
+  artist: 'Plain Artist'
+  language: 'en'
+lines: []
+plain: |
+  [Verse 1]
+  First line
+
+  Second line
+`
+		lyrics, err := ParseLyricsfile(input)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(lyrics).To(HaveLen(1))
+
+		l := lyrics[0]
+		Expect(l.Kind).To(Equal("main"))
+		Expect(l.Lang).To(Equal("en"))
+		Expect(l.DisplayArtist).To(Equal("Plain Artist"))
+		Expect(l.DisplayTitle).To(Equal("Plain Track"))
+		Expect(l.Synced).To(BeFalse())
+		Expect(l.Agents).To(BeNil())
+		Expect(l.Line).To(Equal([]Line{
+			{Value: "[Verse 1]"},
+			{Value: "First line"},
+			{Value: "Second line"},
+		}))
 	})
 
 	It("produces word cues with inclusive UTF-8 byte offsets for monophonic word data", func() {
@@ -104,6 +147,44 @@ lines:
 		Expect(line.Cue[1].ByteStart).To(Equal(6))
 		Expect(line.Cue[1].ByteEnd).To(Equal(10))
 		Expect(line.Cue[1].AgentID).To(Equal(""))
+	})
+
+	It("prefers final word end_ms over next line start when inferring line end", func() {
+		input := `version: '1.0'
+metadata:
+  title: 'Overlap From Words'
+lines:
+  - text: "Long vocal"
+    start_ms: 1000
+    words:
+      - text: "Long "
+        start_ms: 1000
+        end_ms: 2000
+      - text: "vocal"
+        start_ms: 2000
+        end_ms: 4000
+  - text: "echo"
+    start_ms: 3000
+    end_ms: 3500
+    words:
+      - text: "echo"
+        start_ms: 3000
+        end_ms: 3500
+`
+		lyrics, err := ParseLyricsfile(input)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(lyrics).To(HaveLen(1))
+
+		l := lyrics[0]
+		Expect(l.Agents).To(Equal([]Agent{
+			{ID: "voice-0", Role: "main"},
+			{ID: "voice-1", Role: "voice"},
+		}))
+		Expect(l.Line).To(HaveLen(2))
+		Expect(l.Line[0].End).ToNot(BeNil())
+		Expect(*l.Line[0].End).To(Equal(int64(4000)))
+		Expect(l.Line[0].Cue[1].End).To(Equal(l.Line[0].End))
+		Expect(l.Line[1].Cue[0].AgentID).To(Equal("voice-1"))
 	})
 
 	It("synthesises voice agents for overlapping lines and attributes per-cue", func() {
