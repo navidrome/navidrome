@@ -345,6 +345,20 @@ var _ = Describe("walk_dir_tree", func() {
 			)
 		})
 
+		Describe("isDotEntry", func() {
+			DescribeTable("returns expected result",
+				func(name string, expected bool) {
+					Expect(isDotEntry(name)).To(Equal(expected))
+				},
+				Entry("dot folder", ".Hidden", true),
+				Entry("dot file", ".hidden.mp3", true),
+				Entry("current dir", ".", false),
+				Entry("parent dir", "..", false),
+				Entry("ellipsis", "...unhidden", false),
+				Entry("normal name", "Album", false),
+			)
+		})
+
 		Describe("fullReadDir", func() {
 			var (
 				fsys fakeFS

@@ -329,12 +329,10 @@ func isIgnoredPath(_ context.Context, _ fs.FS, path string) bool {
 		return true
 	}
 	switch {
-	case model.IsAudioFile(path):
-		return false
-	case model.IsValidPlaylist(path):
-		return false
-	case model.IsImageFile(path):
-		return false
+	case model.IsAudioFile(path), model.IsValidPlaylist(path), model.IsImageFile(path):
+		// A media file is normally not ignored, but a dot-prefixed one (e.g.
+		// ".hidden.mp3") is always skipped by the scanner, so don't scan for it.
+		return isDotEntry(name)
 	case name == ".DS_Store":
 		return true
 	}

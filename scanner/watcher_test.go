@@ -447,6 +447,7 @@ var _ = Describe("isIgnoredPath", func() {
 				Expect(isIgnoredPath(context.Background(), nil, filepath.FromSlash(p))).To(Equal(expected))
 			},
 			Entry("media file in normal folder", "rock/Album/track.mp3", false),
+			Entry("dot-prefixed media file", "rock/Album/.hidden.mp3", true),
 			Entry("media file inside a dot-folder", "rock/.Hidden Album/track.mp3", true),
 			Entry("media file inside a blocklisted folder", "rock/.streams/stream.mp3", true),
 			Entry("media file inside .git", "rock/.git/track.mp3", true),
@@ -466,6 +467,7 @@ var _ = Describe("isIgnoredPath", func() {
 				Expect(isIgnoredPath(context.Background(), nil, filepath.FromSlash(p))).To(Equal(expected))
 			},
 			Entry("media file inside a dot-folder is allowed", "rock/.Hidden Album/track.mp3", false),
+			Entry("dot-prefixed media file is still ignored", "rock/Album/.hidden.mp3", true),
 			Entry("dot-folder itself is allowed", "rock/.Hidden Album", false),
 			Entry("blocklisted folder still ignored", "rock/.streams/stream.mp3", true),
 			Entry(".git still ignored", "rock/.git/config", true),

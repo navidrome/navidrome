@@ -260,5 +260,5 @@ func isDirIgnored(name string) bool {
 // isDotEntry returns true if the entry name starts with a dot, excluding the
 // special "." and ".." references.
 func isDotEntry(name string) bool {
-	return strings.HasPrefix(name, ".") && !strings.HasPrefix(name, "..")
+	return name != "." && strings.HasPrefix(name, ".") && !strings.HasPrefix(name, "..")
 }
