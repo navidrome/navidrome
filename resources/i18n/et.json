@@ -154,12 +154,12 @@
         "currentPassword": "Senine salasõna",
         "newPassword": "Uus salasõna",
         "token": "Tunnusluba",
-        "lastAccessAt": "Viimasti avatud",
+        "lastAccessAt": "Viimati avatud",
         "libraries": "Kogumikud"
       },
       "helperTexts": {
         "name": "Sinu nime muudatused on näha järgmisel sisselogimisel",
-        "libraries": "Vali selle kasutaja jaoks konkreetsed kogumikus või jäta vaikimisi väärtuse kasutamiseks tühjaks"
+        "libraries": "Vali selle kasutaja jaoks konkreetsed kogumikud või jäta vaikimisi väärtuse kasutamiseks tühjaks"
       },
       "notifications": {
         "created": "Kasutaja on lisatud",
@@ -413,10 +413,10 @@
   },
   "ra": {
     "auth": {
-      "welcome1": "Aitäh, et paigaldasite Navidrome'i!",
+      "welcome1": "Aitäh, et paigaldasid Navidrome'i!",
       "welcome2": "Alustamiseks lisa peakasutaja",
       "confirmPassword": "Korda salasõna",
-      "buttonCreateAdmin": "Loo admin",
+      "buttonCreateAdmin": "Lisa peakasutaja",
       "auth_check_error": "Jätkamiseks palun logi sisse",
       "user_menu": "Profiil",
       "username": "Kasutajanimi",
@@ -427,7 +427,7 @@
       "insightsCollectionNote": "Navidrome kogub anonüümset kasutustusstatistikat, mille alusel on võimalik projekti paremaks muuta. Klõpsides [siin], saad lugeda lisateavet ning soovi korral sellest kogumisest loobuda"
     },
     "validation": {
-      "invalidChars": "Palun kasutage ainult tähti ja numbreid",
+      "invalidChars": "Palun kasuta ainult tähti ja numbreid",
       "passwordDoesNotMatch": "Salasõnad ei kattu",
       "required": "Nõutav",
       "minLength": "Pikkus peab olema vähemalt %{min} tähemärki",
@@ -558,8 +558,8 @@
   },
   "message": {
     "note": "MÄRGE",
-    "transcodingDisabled": "Transkodeeringu seadistuse muutmine läbi veebiliidese ei ole turvariskide tõttu saadaval. Kui soovite muuta või lisada transkodeerimisega seotud seadistusi, taaskäivitage server %{config} valikuga.",
-    "transcodingEnabled": "Navidrome käivitati %{config} valikuga, mis lubab läbi veebiliidese transkodeerimisseadistuste jooksutada süsteemikäsklusi. Turvakaalutlustel on soovitatav kasutada seda valikut ainult transkodeerimisseadete muutmiseks.",
+    "transcodingDisabled": "Teisendusseadistuste muutmine läbi veebiliidese ei ole turvariskide tõttu saadaval. Kui soovid muuta või lisada teisendamisega seotud seadistusi, taaskäivita server %{config} valikuga.",
+    "transcodingEnabled": "Navidrome käivitati %{config} valikuga, mis lubab läbi veebiliidese teisendusseadistuste käivitada süsteemikäsklusi. Turvakaalutlustel on soovitatav kasutada seda valikut ainult teisendusvalikute muutmiseks.",
     "songsAddedToPlaylist": "Lisasin ühe loo esitusloendisse |||| Lisasin %{smart_count} lugu esitusloendisse",
     "noPlaylistsAvailable": "Pole saadaval",
     "delete_user_title": "Kustuta kasutaja „%{name}“",
@@ -603,13 +603,13 @@
   },
   "menu": {
     "library": "Kogumik",
-    "settings": "Seaded",
+    "settings": "Seadistused",
     "version": "Versioon",
-    "theme": "Teema",
+    "theme": "Kujundus",
     "personal": {
       "name": "Isiklik",
       "options": {
-        "theme": "Teema",
+        "theme": "Kujundus",
         "language": "Keel",
         "defaultView": "Vaikimisi vaade",
         "desktop_notifications": "Teavitused töölaual",
