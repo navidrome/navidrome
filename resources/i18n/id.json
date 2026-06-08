@@ -37,7 +37,10 @@
         "sampleRate": "Sample rate",
         "missing": "Hilang",
         "libraryName": "Pustaka",
-        "composer": "Komposer"
+        "composer": "Komposer",
+        "disc": "Disk %{discNumber}",
+        "albumGain": "Album gain",
+        "trackGain": "Trek gain"
       },
       "actions": {
         "addToQueue": "Tambah ke antrean",
@@ -353,7 +356,8 @@
         "allUsers": "Izinkan semua pengguna",
         "selectedUsers": "Pengguna yang dipilih",
         "allLibraries": "Izinkan semua pustaka",
-        "selectedLibraries": "Pustaka dipilih"
+        "selectedLibraries": "Pustaka dipilih",
+        "allowWriteAccess": "Izinkan akses tulis"
       },
       "sections": {
         "status": "Status",
@@ -398,7 +402,8 @@
         "librariesRequired": "Plugin ini membutuhkan akses ke informasi pustaka. Pilih beberapa pustaka yang bisa diakses, atau aktifkan 'Izinkan semua pustaka'.",
         "requiredHosts": "Hosts diperlukan",
         "configValidationError": "Validasi konfigurasi gagal:",
-        "schemaRenderError": "Tidak dapat menampilkan form konfigurasi. Skema plugin mungkin tidak valid."
+        "schemaRenderError": "Tidak dapat menampilkan form konfigurasi. Skema plugin mungkin tidak valid.",
+        "allowWriteAccessHelp": "Ketika diaktifkan, plugin dapat mengubah file di direktori pustaka. Bawaannya, plugin hanya memiliki akses read-only"
       },
       "placeholders": {
         "configKey": "key",
@@ -588,7 +593,13 @@
     "remove_all_missing_content": "Apa kamu yakin ingin menghapus semua file dari database? Ini akan menghapus permanen dan apapun referensi ke mereka, termasuk hitungan pemutaran dan rating mereka.",
     "noSimilarSongsFound": "Tidak ada lagu yang serupa ditemukan",
     "noTopSongsFound": "Tidak ada lagu teratas ditemukan",
-    "startingInstantMix": "Memuat Mix Instan..."
+    "startingInstantMix": "Memuat Mix Instan...",
+    "uploadCover": "Unggah Sampul",
+    "removeCover": "Hapus Sampul",
+    "coverUploaded": "Sampul diperbarui",
+    "coverRemoved": "Sampul dihapus",
+    "coverUploadError": "Kesalahan mengunggah sampul",
+    "coverRemoveError": "Kesalahan menghapus sampul"
   },
   "menu": {
     "library": "Pustaka",
@@ -674,7 +685,8 @@
       "exportSuccess": "Konfigurasi sudah diekspor ke papan klip dalam bentuk format TOML",
       "exportFailed": "Gagal menyalin konfigurasi",
       "devFlagsHeader": "Flag Pengembangan (subyek untuk perubahan/pemindahan)",
-      "devFlagsComment": "Ini adalan pengaturan eksperimen dan mungkin akan dihapus di versi mendatang"
+      "devFlagsComment": "Ini adalan pengaturan eksperimen dan mungkin akan dihapus di versi mendatang",
+      "downloadToml": "Unduh Konfigurasi (TOML)"
     }
   },
   "activity": {
