@@ -51,6 +51,7 @@ func serveIndex(ds model.DataStore, fs fs.FS, shareInfo *model.Share) http.Handl
 			"enableDownloads":           conf.Server.EnableDownloads,
 			"enableFavourites":          conf.Server.EnableFavourites,
 			"enableStarRating":          conf.Server.EnableStarRating,
+			"skipLowRatingInShuffle":      conf.Server.SkipLowRatingInShuffle,
 			"defaultTheme":              conf.Server.DefaultTheme,
 			"defaultLanguage":           conf.Server.DefaultLanguage,
 			"defaultUIVolume":           conf.Server.DefaultUIVolume,

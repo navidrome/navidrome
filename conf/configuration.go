@@ -81,6 +81,7 @@ type configOptions struct {
 	EnableGravatar                  bool
 	EnableFavourites                bool
 	EnableStarRating                bool
+	SkipLowRatingInShuffle            bool
 	EnableUserEditing               bool
 	EnableArtworkUpload             bool
 	MaxImageUploadSize              string
@@ -780,6 +781,7 @@ func setViperDefaults() {
 	viper.SetDefault("enablegravatar", false)
 	viper.SetDefault("enablefavourites", true)
 	viper.SetDefault("enablestarrating", true)
+	viper.SetDefault("skiplowratinginshuffle", false)
 	viper.SetDefault("enableuserediting", true)
 	viper.SetDefault("defaulttheme", "Dark")
 	viper.SetDefault("defaultlanguage", "")

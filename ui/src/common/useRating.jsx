@@ -1,11 +1,17 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useDataProvider, useNotify } from 'react-admin'
+import { useDispatch, useSelector } from 'react-redux'
 import subsonic from '../subsonic'
+import { removeFromQueue, addTracks } from '../actions'
+import config from '../config'
 
 export const useRating = (resource, record) => {
   const [loading, setLoading] = useState(false)
   const notify = useNotify()
   const dataProvider = useDataProvider()
+  const dispatch = useDispatch()
+  const queue = useSelector((state) => state.player?.queue)
+  const current = useSelector((state) => state.player?.current)
   const mountedRef = useRef(false)
   const rating = record.rating
 
@@ -56,9 +62,20 @@ export const useRating = (resource, record) => {
 
   const rate = (val, id) => {
     setLoading(true)
+    const trackId = record.mediaFileId || record.id
     subsonic
       .setRating(id, val)
-      .then(refreshRating)
+      .then(() => {
+        if (config.skipLowRatingInShuffle && queue?.length > 0 && !record.playlistId) {
+          const inQueue = queue.some((item) => item.trackId === trackId)
+          if (val === 1 && inQueue) {
+            dispatch(removeFromQueue(trackId))
+          } else if (rating === 1 && val !== 1 && !inQueue && queue.length < 500) {
+            dispatch(addTracks({ [trackId]: record }))
+          }
+        }
+        refreshRating()
+      })
       .catch((e) => {
         // eslint-disable-next-line no-console
         console.log('Error setting star rating: ', e)
