@@ -50,13 +50,14 @@ func createPhaseFolders(ctx context.Context, state *scanState, ds model.DataStor
 }
 
 type scanJob struct {
-	lib           model.Library
-	fs            storage.MusicFS
-	cw            artwork.CacheWarmer
-	lastUpdates   map[string]model.FolderUpdateInfo // Holds last update info for all (DB) folders in this library
-	targetFolders []string                          // Specific folders to scan (including all descendants)
-	lock          sync.Mutex
-	numFolders    atomic.Int64
+	lib              model.Library
+	fs               storage.MusicFS
+	cw               artwork.CacheWarmer
+	lastUpdates      map[string]model.FolderUpdateInfo // Holds last update info for all (DB) folders in this library
+	targetFolders    []string                          // Specific folders to scan (including all descendants)
+	lock             sync.Mutex
+	numFolders       atomic.Int64
+	visitedRealPaths map[string]struct{} // Real paths visited, used to detect symlink cycles
 }
 
 func newScanJob(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, lib model.Library, fullScan bool, targetFolders []string) (*scanJob, error) {
@@ -83,11 +84,12 @@ func newScanJob(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer,
 	lib.FullScanInProgress = lib.FullScanInProgress || fullScan
 
 	return &scanJob{
-		lib:           lib,
-		fs:            fsys,
-		cw:            cw,
-		lastUpdates:   lastUpdates,
-		targetFolders: targetFolders,
+		lib:              lib,
+		fs:               fsys,
+		cw:               cw,
+		lastUpdates:      lastUpdates,
+		targetFolders:    targetFolders,
+		visitedRealPaths: make(map[string]struct{}),
 	}, nil
 }
 
