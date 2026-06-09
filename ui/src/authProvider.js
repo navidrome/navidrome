@@ -66,6 +66,10 @@ const authProvider = {
 
   logout: () => {
     removeItems()
+    if (config.extAuthLogoutURL) {
+      window.location.href = config.extAuthLogoutURL
+      return Promise.resolve(false)
+    }
     return Promise.resolve()
   },
 

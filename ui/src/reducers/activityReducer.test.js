@@ -1,5 +1,10 @@
 import { activityReducer } from './activityReducer'
-import { EVENT_SCAN_STATUS, EVENT_SERVER_START } from '../actions'
+import {
+  EVENT_SCAN_STATUS,
+  EVENT_SERVER_START,
+  EVENT_NOW_PLAYING_COUNT,
+  EVENT_STREAM_RECONNECTED,
+} from '../actions'
 import config from '../config'
 
 describe('activityReducer', () => {
@@ -12,6 +17,9 @@ describe('activityReducer', () => {
       elapsedTime: 0,
     },
     serverStart: { version: config.version },
+    nowPlayingCount: 0,
+    nowPlayingLastUpdate: 0,
+    streamReconnected: 0,
   }
 
   it('returns the initial state when no action is specified', () => {
@@ -115,5 +123,43 @@ describe('activityReducer', () => {
       version: '1.0.0',
       startTime: Date.parse('2023-01-01T00:00:00Z'),
     })
+  })
+
+  it('handles EVENT_NOW_PLAYING_COUNT', () => {
+    const action = {
+      type: EVENT_NOW_PLAYING_COUNT,
+      data: { count: 5 },
+    }
+    const newState = activityReducer(initialState, action)
+    expect(newState.nowPlayingCount).toEqual(5)
+  })
+
+  it('handles EVENT_NOW_PLAYING_COUNT with nowPlayingLastUpdate', () => {
+    const action = {
+      type: EVENT_NOW_PLAYING_COUNT,
+      data: { count: 3 },
+    }
+    const beforeTimestamp = Date.now()
+    const newState = activityReducer(initialState, action)
+    const afterTimestamp = Date.now()
+
+    expect(newState.nowPlayingCount).toEqual(3)
+    expect(newState.nowPlayingLastUpdate).toBeGreaterThanOrEqual(
+      beforeTimestamp,
+    )
+    expect(newState.nowPlayingLastUpdate).toBeLessThanOrEqual(afterTimestamp)
+  })
+
+  it('handles EVENT_STREAM_RECONNECTED', () => {
+    const action = {
+      type: EVENT_STREAM_RECONNECTED,
+      data: {},
+    }
+    const beforeTimestamp = Date.now()
+    const newState = activityReducer(initialState, action)
+    const afterTimestamp = Date.now()
+
+    expect(newState.streamReconnected).toBeGreaterThanOrEqual(beforeTimestamp)
+    expect(newState.streamReconnected).toBeLessThanOrEqual(afterTimestamp)
   })
 })

@@ -62,18 +62,6 @@ func (r *playerRepository) newRestSelect(options ...model.QueryOptions) SelectBu
 	return s.Where(r.addRestriction())
 }
 
-func (r *playerRepository) addRestriction(sql ...Sqlizer) Sqlizer {
-	s := And{}
-	if len(sql) > 0 {
-		s = append(s, sql[0])
-	}
-	u := loggedUser(r.ctx)
-	if u.IsAdmin {
-		return s
-	}
-	return append(s, Eq{"user_id": u.ID})
-}
-
 func (r *playerRepository) CountByClient(options ...model.QueryOptions) (map[string]int64, error) {
 	sel := r.newSelect(options...).
 		Columns(
@@ -103,14 +91,14 @@ func (r *playerRepository) Count(options ...rest.QueryOptions) (int64, error) {
 	return r.CountAll(r.parseRestOptions(r.ctx, options...))
 }
 
-func (r *playerRepository) Read(id string) (interface{}, error) {
+func (r *playerRepository) Read(id string) (any, error) {
 	sel := r.newRestSelect().Where(Eq{"player.id": id})
 	var res model.Player
 	err := r.queryOne(sel, &res)
 	return &res, err
 }
 
-func (r *playerRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
+func (r *playerRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
 	sel := r.newRestSelect(r.parseRestOptions(r.ctx, options...))
 	res := model.Players{}
 	err := r.queryAll(sel, &res)
@@ -121,16 +109,20 @@ func (r *playerRepository) EntityName() string {
 	return "player"
 }
 
-func (r *playerRepository) NewInstance() interface{} {
+func (r *playerRepository) NewInstance() any {
 	return &model.Player{}
 }
 
+// isPermitted authorizes creating a new record, based on the owner declared in the request body.
+// This is only safe for inserts: there is no stored row yet, and a non-admin may only create a
+// player they own. Updates must not use this (the body owner is attacker-controlled); they go
+// through updateOwned, which authorizes against the persisted user_id in the WHERE clause.
 func (r *playerRepository) isPermitted(p *model.Player) bool {
 	u := loggedUser(r.ctx)
 	return u.IsAdmin || p.UserId == u.ID
 }
 
-func (r *playerRepository) Save(entity interface{}) (string, error) {
+func (r *playerRepository) Save(entity any) (string, error) {
 	t := entity.(*model.Player)
 	if !r.isPermitted(t) {
 		return "", rest.ErrPermissionDenied
@@ -142,26 +134,14 @@ func (r *playerRepository) Save(entity interface{}) (string, error) {
 	return id, err
 }
 
-func (r *playerRepository) Update(id string, entity interface{}, cols ...string) error {
+func (r *playerRepository) Update(id string, entity any, cols ...string) error {
 	t := entity.(*model.Player)
 	t.ID = id
-	if !r.isPermitted(t) {
-		return rest.ErrPermissionDenied
-	}
-	_, err := r.put(id, t, cols...)
-	if errors.Is(err, model.ErrNotFound) {
-		return rest.ErrNotFound
-	}
-	return err
+	return r.updateOwned(id, t, cols...)
 }
 
 func (r *playerRepository) Delete(id string) error {
-	filter := r.addRestriction(And{Eq{"player.id": id}})
-	err := r.delete(filter)
-	if errors.Is(err, model.ErrNotFound) {
-		return rest.ErrNotFound
-	}
-	return err
+	return r.deleteOwned(id)
 }
 
 var _ model.PlayerRepository = (*playerRepository)(nil)

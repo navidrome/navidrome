@@ -35,6 +35,7 @@ type AudioProperties struct {
 	BitDepth   int
 	SampleRate int
 	Channels   int
+	Codec      string
 }
 
 type Date string
@@ -103,9 +104,11 @@ func (md Metadata) NumAndTotal(key model.TagName) (int, int) { return md.tuple(k
 func (md Metadata) Float(key model.TagName, def ...float64) float64 {
 	return float(md.first(key), def...)
 }
-func (md Metadata) Gain(key model.TagName) float64 {
+func (md Metadata) NullableFloat(key model.TagName) *float64 { return nullableFloat(md.first(key)) }
+
+func (md Metadata) Gain(key model.TagName) *float64 {
 	v := strings.TrimSpace(strings.Replace(md.first(key), "dB", "", 1))
-	return float(v)
+	return nullableFloat(v)
 }
 func (md Metadata) Pairs(key model.TagName) []Pair {
 	values := md.tags[key]
@@ -119,14 +122,22 @@ func (md Metadata) first(key model.TagName) string {
 }
 
 func float(value string, def ...float64) float64 {
+	v := nullableFloat(value)
+	if v != nil {
+		return *v
+	}
+	if len(def) > 0 {
+		return def[0]
+	}
+	return 0
+}
+
+func nullableFloat(value string) *float64 {
 	v, err := strconv.ParseFloat(value, 64)
 	if err != nil || v == math.Inf(-1) || math.IsInf(v, 1) || math.IsNaN(v) {
-		if len(def) > 0 {
-			return def[0]
-		}
-		return 0
+		return nil
 	}
-	return v
+	return &v
 }
 
 // Used for tracks and discs
@@ -235,10 +246,22 @@ func processPairMapping(name model.TagName, mapping model.TagConf, lowered model
 		}
 	}
 
+	// always parse id3 pairs. For lyrics, Taglib appears to always provide lyrics:xxx
+	// Prefer that over format-specific tags
+	id3Base := parseID3Pairs(name, lowered)
+
 	if len(aliasValues) > 0 {
-		return parseVorbisPairs(aliasValues)
+		// For lyrics, don't use parseVorbisPairs as parentheses in lyrics content
+		// should not be interpreted as language keys (e.g. "(intro)" is not a language)
+		if name == model.TagLyrics {
+			for _, v := range aliasValues {
+				id3Base = append(id3Base, NewPair("xxx", v))
+			}
+		} else {
+			id3Base = append(id3Base, parseVorbisPairs(aliasValues)...)
+		}
 	}
-	return parseID3Pairs(name, lowered)
+	return id3Base
 }
 
 func parseID3Pairs(name model.TagName, lowered model.Tags) []string {
@@ -246,8 +269,8 @@ func parseID3Pairs(name model.TagName, lowered model.Tags) []string {
 	prefix := string(name) + ":"
 	for tagKey, tagValues := range lowered {
 		keyStr := string(tagKey)
-		if strings.HasPrefix(keyStr, prefix) {
-			keyPart := strings.TrimPrefix(keyStr, prefix)
+		if after, ok := strings.CutPrefix(keyStr, prefix); ok {
+			keyPart := after
 			if keyPart == string(name) {
 				keyPart = ""
 			}

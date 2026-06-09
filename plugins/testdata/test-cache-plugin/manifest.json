@@ -1,0 +1,11 @@
+{
+  "name": "Test Cache Plugin",
+  "author": "Navidrome Test",
+  "version": "1.0.0",
+  "description": "A test cache plugin for integration testing",
+  "permissions": {
+    "cache": {
+      "reason": "For testing cache operations"
+    }
+  }
+}

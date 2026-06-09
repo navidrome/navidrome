@@ -1,5 +1,8 @@
 musicFolder = "/toml/music"
 uiWelcomeMessage = "Welcome toml"
+ReverseProxyUserHeader = "X-Auth-User"
+
+Tags.artist.Split = ';'
 
 [Tags.custom]
 aliases = ["toml", "test"]

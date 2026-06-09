@@ -1,10 +1,13 @@
 package model
 
 import (
+	"fmt"
 	"iter"
 	"math"
 	"sync"
 	"time"
+
+	"github.com/navidrome/navidrome/conf"
 
 	"github.com/gohugoio/hashstructure"
 )
@@ -14,6 +17,8 @@ type Album struct {
 
 	ID            string `structs:"id" json:"id"`
 	LibraryID     int    `structs:"library_id" json:"libraryId"`
+	LibraryPath   string `structs:"-" json:"libraryPath" hash:"ignore"`
+	LibraryName   string `structs:"-" json:"libraryName" hash:"ignore"`
 	Name          string `structs:"name" json:"name"`
 	EmbedArtPath  string `structs:"embed_art_path" json:"-"`
 	AlbumArtistID string `structs:"album_artist_id" json:"albumArtistId"` // Deprecated, use Participants
@@ -66,6 +71,13 @@ type Album struct {
 
 func (a Album) CoverArtID() ArtworkID {
 	return artworkIDFromAlbum(a)
+}
+
+func (a Album) FullName() string {
+	if conf.Server.Subsonic.AppendAlbumVersion && len(a.Tags[TagAlbumVersion]) > 0 {
+		return fmt.Sprintf("%s (%s)", a.Name, a.Tags[TagAlbumVersion][0])
+	}
+	return a.Name
 }
 
 // Equals compares two Album structs, ignoring calculated fields

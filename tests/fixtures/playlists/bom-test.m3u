@@ -1,0 +1,6 @@
+﻿#EXTM3U
+# NOTE: This file intentionally contains a UTF-8 BOM (Byte Order Mark) at the beginning
+# (bytes 0xEF 0xBB 0xBF) to test BOM handling in playlist parsing.
+#PLAYLIST:Test Playlist
+#EXTINF:123,Test Artist - Test Song
+test.mp3

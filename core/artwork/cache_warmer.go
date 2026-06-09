@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -24,7 +23,7 @@ type CacheWarmer interface {
 
 // NewCacheWarmer creates a new CacheWarmer instance. The CacheWarmer will pre-cache Artwork images in the background
 // to speed up the response time when the image is requested by the UI. The cache is pre-populated with the original
-// image size, as well as the size defined in the UICoverArtSize constant.
+// image size, as well as the size defined by the UICoverArtSize config option.
 func NewCacheWarmer(artwork Artwork, cache cache.FileCache) CacheWarmer {
 	// If image cache is disabled, return a NOOP implementation
 	if conf.Server.ImageCacheSize == "0" || !conf.Server.EnableArtworkPrecache {
@@ -38,10 +37,11 @@ func NewCacheWarmer(artwork Artwork, cache cache.FileCache) CacheWarmer {
 	}
 
 	a := &cacheWarmer{
-		artwork:    artwork,
-		cache:      cache,
-		buffer:     make(map[model.ArtworkID]struct{}),
-		wakeSignal: make(chan struct{}, 1),
+		artwork:      artwork,
+		cache:        cache,
+		buffer:       make(map[model.ArtworkID]struct{}),
+		wakeSignal:   make(chan struct{}, 1),
+		coverArtSize: conf.Server.UICoverArtSize,
 	}
 
 	// Create a context with a fake admin user, to be able to pre-cache Playlist CoverArts
@@ -51,11 +51,12 @@ func NewCacheWarmer(artwork Artwork, cache cache.FileCache) CacheWarmer {
 }
 
 type cacheWarmer struct {
-	artwork    Artwork
-	buffer     map[model.ArtworkID]struct{}
-	mutex      sync.Mutex
-	cache      cache.FileCache
-	wakeSignal chan struct{}
+	artwork      Artwork
+	buffer       map[model.ArtworkID]struct{}
+	mutex        sync.Mutex
+	cache        cache.FileCache
+	wakeSignal   chan struct{}
+	coverArtSize int
 }
 
 func (a *cacheWarmer) PreCache(artID model.ArtworkID) {
@@ -96,8 +97,11 @@ func (a *cacheWarmer) run(ctx context.Context) {
 
 		// If cache not available, keep waiting
 		if !a.cache.Available(ctx) {
-			if len(a.buffer) > 0 {
-				log.Trace(ctx, "Cache not available, buffering precache request", "bufferLen", len(a.buffer))
+			a.mutex.Lock()
+			bufferLen := len(a.buffer)
+			a.mutex.Unlock()
+			if bufferLen > 0 {
+				log.Trace(ctx, "Cache not available, buffering precache request", "bufferLen", bufferLen)
 			}
 			continue
 		}
@@ -129,7 +133,7 @@ func (a *cacheWarmer) waitSignal(ctx context.Context, timeout time.Duration) {
 func (a *cacheWarmer) processBatch(ctx context.Context, batch []model.ArtworkID) {
 	log.Trace(ctx, "PreCaching a new batch of artwork", "batchSize", len(batch))
 	input := pl.FromSlice(ctx, batch)
-	errs := pl.Sink(ctx, 2, input, a.doCacheImage)
+	errs := pl.Sink(ctx, 4, input, a.doCacheImage)
 	for err := range errs {
 		log.Debug(ctx, "Error warming cache", err)
 	}
@@ -139,16 +143,14 @@ func (a *cacheWarmer) doCacheImage(ctx context.Context, id model.ArtworkID) erro
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	r, _, err := a.artwork.Get(ctx, id, consts.UICoverArtSize, true)
+	size := a.coverArtSize
+	r, _, err := a.artwork.Get(ctx, id, size, true)
 	if err != nil {
-		return fmt.Errorf("caching id='%s': %w", id, err)
+		return fmt.Errorf("caching id='%s', size=%d: %w", id, size, err)
 	}
-	defer r.Close()
 	_, err = io.Copy(io.Discard, r)
-	if err != nil {
-		return err
-	}
-	return nil
+	r.Close()
+	return err
 }
 
 func NoopCacheWarmer() CacheWarmer {

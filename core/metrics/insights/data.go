@@ -16,6 +16,7 @@ type Data struct {
 		Containerized bool   `json:"containerized"`
 		Arch          string `json:"arch"`
 		NumCPU        int    `json:"numCPU"`
+		Package       string `json:"package,omitempty"`
 	} `json:"os"`
 	Mem struct {
 		Alloc      uint64 `json:"alloc"`
@@ -36,14 +37,17 @@ type Data struct {
 		Playlists     int64            `json:"playlists"`
 		Shares        int64            `json:"shares"`
 		Radios        int64            `json:"radios"`
+		Libraries     int64            `json:"libraries"`
 		ActiveUsers   int64            `json:"activeUsers"`
 		ActivePlayers map[string]int64 `json:"activePlayers,omitempty"`
+		FileSuffixes  map[string]int64 `json:"fileSuffixes,omitempty"`
 	} `json:"library"`
 	Config struct {
 		LogLevel                string `json:"logLevel,omitempty"`
 		LogFileConfigured       bool   `json:"logFileConfigured,omitempty"`
 		TLSConfigured           bool   `json:"tlsConfigured,omitempty"`
 		ScannerEnabled          bool   `json:"scannerEnabled,omitempty"`
+		ScannerExtractor        string `json:"scannerExtractor,omitempty"`
 		ScanSchedule            string `json:"scanSchedule,omitempty"`
 		ScanWatcherWait         uint64 `json:"scanWatcherWait,omitempty"`
 		ScanOnStartup           bool   `json:"scanOnStartup,omitempty"`
@@ -55,20 +59,36 @@ type Data struct {
 		EnableStarRating        bool   `json:"enableStarRating,omitempty"`
 		EnableLastFM            bool   `json:"enableLastFM,omitempty"`
 		EnableListenBrainz      bool   `json:"enableListenBrainz,omitempty"`
+		EnableDeezer            bool   `json:"enableDeezer,omitempty"`
 		EnableMediaFileCoverArt bool   `json:"enableMediaFileCoverArt,omitempty"`
-		EnableSpotify           bool   `json:"enableSpotify,omitempty"`
 		EnableJukebox           bool   `json:"enableJukebox,omitempty"`
 		EnablePrometheus        bool   `json:"enablePrometheus,omitempty"`
+		EnableArtworkUpload     bool   `json:"enableArtworkUpload,omitempty"`
+		CoverArtQuality         int    `json:"coverArtQuality,omitempty"`
+		EnableWebPEncoding      bool   `json:"enableWebPEncoding,omitempty"`
+		UICoverArtSize          int    `json:"uiCoverArtSize,omitempty"`
 		EnableCoverAnimation    bool   `json:"enableCoverAnimation,omitempty"`
+		EnableNowPlaying        bool   `json:"enableNowPlaying,omitempty"`
 		SessionTimeout          uint64 `json:"sessionTimeout,omitempty"`
 		SearchFullString        bool   `json:"searchFullString,omitempty"`
+		SearchBackend           string `json:"searchBackend,omitempty"`
 		RecentlyAddedByModTime  bool   `json:"recentlyAddedByModTime,omitempty"`
 		PreferSortTags          bool   `json:"preferSortTags,omitempty"`
 		BackupSchedule          string `json:"backupSchedule,omitempty"`
 		BackupCount             int    `json:"backupCount,omitempty"`
 		DevActivityPanel        bool   `json:"devActivityPanel,omitempty"`
 		DefaultBackgroundURLSet bool   `json:"defaultBackgroundURL,omitempty"`
+		HasSmartPlaylists       bool   `json:"hasSmartPlaylists,omitempty"`
+		ReverseProxyConfigured  bool   `json:"reverseProxyConfigured,omitempty"`
+		HasCustomPID            bool   `json:"hasCustomPID,omitempty"`
+		HasCustomTags           bool   `json:"hasCustomTags,omitempty"`
 	} `json:"config"`
+	Plugins map[string]PluginInfo `json:"plugins,omitempty"`
+}
+
+type PluginInfo struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
 }
 
 type FSInfo struct {

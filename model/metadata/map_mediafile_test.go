@@ -8,7 +8,6 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/metadata"
 	"github.com/navidrome/navidrome/tests"
-	. "github.com/navidrome/navidrome/utils/gg"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -75,6 +74,23 @@ var _ = Describe("ToMediaFile", func() {
 			Expect(mf.OriginalYear).To(Equal(1966))
 			Expect(mf.ReleaseYear).To(Equal(2014))
 		})
+		DescribeTable("legacyReleaseDate (TaggedLikePicard old behavior)",
+			func(recordingDate, originalDate, releaseDate, expected string) {
+				mf := toMediaFile(model.RawTags{
+					"DATE":         {recordingDate},
+					"ORIGINALDATE": {originalDate},
+					"RELEASEDATE":  {releaseDate},
+				})
+
+				Expect(mf.ReleaseDate).To(Equal(expected))
+			},
+			Entry("regular mapping", "2020-05-15", "2019-02-10", "2021-01-01", "2021-01-01"),
+			Entry("legacy mapping", "2020-05-15", "2019-02-10", "", "2020-05-15"),
+			Entry("legacy mapping, originalYear < year", "2018-05-15", "2019-02-10", "2021-01-01", "2021-01-01"),
+			Entry("legacy mapping, originalYear empty", "2020-05-15", "", "2021-01-01", "2021-01-01"),
+			Entry("legacy mapping, releaseYear", "2020-05-15", "2019-02-10", "2021-01-01", "2021-01-01"),
+			Entry("legacy mapping, same dates", "2020-05-15", "2020-05-15", "", "2020-05-15"),
+		)
 	})
 
 	Describe("Lyrics", func() {
@@ -91,8 +107,8 @@ var _ = Describe("ToMediaFile", func() {
 
 			expected := model.LyricList{
 				{Lang: "eng", Line: []model.Line{
-					{Value: "This is", Start: P(int64(0))},
-					{Value: "English SYLT", Start: P(int64(2500))},
+					{Value: "This is", Start: new(int64(0))},
+					{Value: "English SYLT", Start: new(int64(2500))},
 				}, Synced: true},
 				{Lang: "xxx", Line: []model.Line{{Value: "Lyrics"}}, Synced: false},
 			}

@@ -42,6 +42,12 @@ const useCurrentTheme = () => {
         document.head.removeChild(style)
       }
     }
+
+    // Set body background color to match theme (fixes white background on pull-to-refresh)
+    const isDark = theme.palette?.type === 'dark'
+    const bgColor =
+      theme.palette?.background?.default || (isDark ? '#303030' : '#fafafa')
+    document.body.style.backgroundColor = bgColor
   }, [theme])
 
   return theme

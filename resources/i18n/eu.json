@@ -10,8 +10,10 @@
         "playCount": "Erreprodukzioak",
         "title": "Titulua",
         "artist": "Artista",
+        "composer": "Konpositorea",
         "album": "Albuma",
         "path": "Fitxategiaren bidea",
+        "libraryName": "Liburutegia",
         "genre": "Generoa",
         "compilation": "Konpilazioa",
         "year": "Urtea",
@@ -20,30 +22,36 @@
         "bitRate": "Bit-tasa",
         "bitDepth": "Bit-sakonera",
         "sampleRate": "Lagin-tasa",
+        "albumGain": "Album-irabazia",
+        "trackGain": "Pista-irabazia",
         "channels": "Kanalak",
+        "disc": "%{discNumber}. diskoa",
         "discSubtitle": "Diskoaren azpititulua",
         "starred": "Gogokoa",
         "comment": "Iruzkina",
         "rating": "Balorazioa",
         "quality": "Kalitatea",
         "bpm": "BPM",
-        "playDate": "Azkenekoz erreproduzitua:",
+        "playDate": "Azken erreprodukzioa:",
         "createdAt": "Gehitu zen data:",
         "grouping": "Multzokatzea",
         "mood": "Aldartea",
         "participants": "Partaide gehiago",
-        "tags": "Traola gehiago",
-        "mappedTags": "Esleitutako traolak",
-        "rawTags": "Traola gordinak"
+        "tags": "Etiketa gehiago",
+        "mappedTags": "Esleitutako etiketak",
+        "rawTags": "Etiketa gordinak",
+        "missing": "Ez da aurkitu"
       },
       "actions": {
         "addToQueue": "Erreproduzitu ondoren",
         "playNow": "Erreproduzitu orain",
         "addToPlaylist": "Gehitu erreprodukzio-zerrendara",
+        "showInPlaylist": "Erakutsi erreprodukzio-zerrendan",
         "shuffleAll": "Erreprodukzio aleatorioa",
         "download": "Deskargatu",
         "playNext": "Hurrengoa",
-        "info": "Lortu informazioa"
+        "info": "Erakutsi informazioa",
+        "instantMix": "Berehalako nahastea"
       }
     },
     "album": {
@@ -56,13 +64,14 @@
         "playCount": "Erreprodukzioak",
         "size": "Fitxategiaren tamaina",
         "name": "Izena",
+        "libraryName": "Liburutegia",
         "genre": "Generoa",
         "compilation": "Konpilazioa",
         "year": "Urtea",
         "date": "Recording Date",
         "originalDate": "Jatorrizkoa",
-        "releaseDate": "Argitaratze-data:",
-        "releases": "Argitaratzea |||| Argitaratzeak",
+        "releaseDate": "Argitaratze-data",
+        "releases": "Argitaratzea |||| Argitaratze",
         "released": "Argitaratua",
         "updatedAt": "Aktualizatze-data:",
         "comment": "Iruzkina",
@@ -73,21 +82,22 @@
         "releaseType": "Mota",
         "grouping": "Multzokatzea",
         "media": "Multimedia",
-        "mood": "Aldartea"
+        "mood": "Aldartea",
+        "missing": "Ez da aurkitu"
       },
       "actions": {
         "playAll": "Erreproduzitu",
-        "playNext": "Erreproduzitu segidan",
+        "playNext": "Erreproduzitu orain",
         "addToQueue": "Erreproduzitu amaieran",
         "shuffle": "Aletorioa",
         "addToPlaylist": "Gehitu zerrendara",
         "download": "Deskargatu",
-        "info": "Lortu informazioa",
+        "info": "Erakutsi informazioa",
         "share": "Partekatu"
       },
       "lists": {
         "all": "Guztiak",
-        "random": "Aleatorioki",
+        "random": "Aleatorioa",
         "recentlyAdded": "Berriki gehitutakoak",
         "recentlyPlayed": "Berriki entzundakoak",
         "mostPlayed": "Gehien entzundakoak",
@@ -105,10 +115,11 @@
         "playCount": "Erreprodukzio kopurua",
         "rating": "Balorazioa",
         "genre": "Generoa",
-        "role": "Rola"
+        "role": "Rola",
+        "missing": "Ez da aurkitu"
       },
       "roles": {
-        "albumartist": "Albumeko egilea |||| Albumeko artistak",
+        "albumartist": "Albumeko artista |||| Albumeko artistak",
         "artist": "Artista |||| Artistak",
         "composer": "Konpositorea |||| Konpositoreak",
         "conductor": "Orkestra zuzendaria |||| Orkestra zuzendariak",
@@ -120,7 +131,13 @@
         "mixer": "Nahaslea |||| Nahasleak",
         "remixer": "Remixerra |||| Remixerrak",
         "djmixer": "DJ nahaslea |||| DJ nahasleak",
-        "performer": "Interpretatzailea |||| Interpretatzaileak"
+        "performer": "Interpretatzailea |||| Interpretatzaileak",
+        "maincredit": "Albumeko egilea edo egilea |||| Albumeko egileak edo egileak"
+      },
+      "actions": {
+        "topSongs": "Abesti apartak",
+        "shuffle": "Aleatorioki",
+        "radio": "Irratia"
       }
     },
     "user": {
@@ -137,19 +154,26 @@
         "currentPassword": "Uneko pasahitza",
         "newPassword": "Pasahitz berria",
         "token": "Tokena",
-        "lastAccessAt": "Azken sarbidea"
+        "lastAccessAt": "Azken sarbidea",
+        "libraries": "Liburutegiak"
       },
       "helperTexts": {
-        "name": "Aldaketak saioa hasten duzun hurrengoan islatuko dira"
+        "name": "Aldaketak saioa hasten duzun hurrengoan islatuko dira",
+        "libraries": "Hautatu erabiltzaile honentzat liburutegi jakinak, edo utzi hutsik defektuzko liburutegiak erabiltzeko"
       },
       "notifications": {
         "created": "Erabiltzailea sortu da",
         "updated": "Erabiltzailea eguneratu da",
         "deleted": "Erabiltzailea ezabatu da"
       },
+      "validation": {
+        "librariesRequired": "Gutxienez liburutegi bat hautatu behar da administratzaile ez diren erabiltzaileentzat"
+      },
       "message": {
         "listenBrainzToken": "Idatzi zure ListenBrainz erabiltzailearen tokena",
-        "clickHereForToken": "Egin klik hemen tokena lortzeko"
+        "clickHereForToken": "Egin klik hemen tokena lortzeko",
+        "selectAllLibraries": "Hautatu liburutegi guztiak",
+        "adminAutoLibraries": "Administratzaileek automatikoki dute liburutegi guztietara sarbidea"
       }
     },
     "player": {
@@ -192,12 +216,18 @@
         "selectPlaylist": "Hautatu zerrenda:",
         "addNewPlaylist": "Sortu \"%{name}\"",
         "export": "Esportatu",
+        "saveQueue": "Gorde ilaran daudek erreprodukzio-zerrendan",
         "makePublic": "Egin publikoa",
-        "makePrivate": "Egin pribatua"
+        "makePrivate": "Egin pribatua",
+        "searchOrCreate": "Bilatu erreprodukzio-zerrenda edo idatzi berria sortzeko…",
+        "pressEnterToCreate": "Sakatu Enter erreprodukzio-zerrenda berria sortzeko",
+        "removeFromSelection": "Kendu hautaketatik"
       },
       "message": {
         "duplicate_song": "Hautatutako abesti batzuk lehendik ere daude zerrendan",
-        "song_exist": "Bikoiztutakoak gehitzen ari dira erreprodukzio-zerrendara. Ziur gehitu nahi dituzula?"
+        "song_exist": "Bikoiztutakoak gehitzen ari dira erreprodukzio-zerrendara. Ziur gehitu nahi dituzula?",
+        "noPlaylistsFound": "Ez da erreprodukzio-zerrenda aurkitu",
+        "noPlaylists": "Ez dago erreprodukzio-zerrendarik eskuragarri"
       }
     },
     "radio": {
@@ -233,19 +263,153 @@
       "actions": {}
     },
     "missing": {
-      "name": "Fitxategia falta da|||| Fitxategiak falta dira",
+      "name": "Aurkitu ez den fitxategia |||| Aurkitu ez diren fitxategiak",
       "empty": "Ez da fitxategirik falta",
       "fields": {
         "path": "Bidea",
         "size": "Tamaina",
+        "libraryName": "Liburutegia",
         "updatedAt": "Desagertze-data:"
       },
       "actions": {
         "remove": "Kendu",
-        "remove_all": "Kendu guztia"
+        "remove_all": "Kendu guztiak"
       },
       "notifications": {
-        "removed": "Faltan zeuden fitxategiak kendu dira"
+        "removed": "Aurkitzen ez ziren fitxategiak kendu dira"
+      }
+    },
+    "library": {
+      "name": "Liburutegia |||| Liburutegiak",
+      "fields": {
+        "name": "Izena",
+        "path": "Fitxategiaren bidea",
+        "remotePath": "Urruneko bidea",
+        "lastScanAt": "Azken araketa",
+        "songCount": "Abestiak",
+        "albumCount": "Albumak",
+        "artistCount": "Artistak",
+        "totalSongs": "Abestiak",
+        "totalAlbums": "Albumak",
+        "totalArtists": "Artistak",
+        "totalFolders": "Karpetak",
+        "totalFiles": "Fitxategiak",
+        "totalMissingFiles": "Fitxategiak faltan",
+        "totalSize": "Tamaina guztira",
+        "totalDuration": "Iraupena",
+        "defaultNewUsers": "Defektuz erabiltzaile berrientzat",
+        "createdAt": "Sortze-data",
+        "updatedAt": "Eguneratze-data"
+      },
+      "sections": {
+        "basic": "Oinarrizko informazioa",
+        "statistics": "Estatistikak"
+      },
+      "actions": {
+        "scan": "Arakatu liburutegia",
+        "quickScan": "Araketa bizkorra",
+        "fullScan": "Araketa sakona",
+        "manageUsers": "Kudeatu erabiltzaileen sarbidea",
+        "viewDetails": "Ikusi xehetasunak"
+      },
+      "notifications": {
+        "created": "Liburutegia ondo sortu da",
+        "updated": "Liburutegia ondo eguneratu da",
+        "deleted": "Liburutegia ondo ezabatu da",
+        "scanStarted": "Liburutegiaren araketa hasi da",
+        "quickScanStarted": "Araketa bizkorra hasi da",
+        "fullScanStarted": "Araketa sakona hasi da",
+        "scanError": "Errorea araketa abiaraztean. Aztertu erregistroak",
+        "scanCompleted": "Liburutegiaren araketa amaitu da"
+      },
+      "validation": {
+        "nameRequired": "Liburutegiaren izena beharrezkoa da",
+        "pathRequired": "Liburutegiaren bidea beharrezkoa da",
+        "pathNotDirectory": "Liburutegiaren bidea direktorio bat izan behar da",
+        "pathNotFound": "Ez da liburutegiaren bidea aurkitu",
+        "pathNotAccessible": "Liburutegiaren bidea ez dago eskuragai",
+        "pathInvalid": "Liburutegiaren bidea ez da baliozkoa"
+      },
+      "messages": {
+        "deleteConfirm": "Ziur liburutegia ezabatu nahi duzula? Erlazionatutako datu guztiak eta erabiltzaileen sarbidea kenduko ditu.",
+        "scanInProgress": "Araketa abian da…",
+        "noLibrariesAssigned": "Ez da liburutegirik egokitu erabiltzaile honentzat"
+      }
+    },
+    "plugin": {
+      "name": "Plugina |||| Pluginak",
+      "fields": {
+        "id": "IDa",
+        "name": "Izena",
+        "description": "Deskribapena",
+        "version": "Bertsioa",
+        "author": "Autorea",
+        "website": "Webgunea",
+        "permissions": "Baimenak",
+        "enabled": "Gaituta",
+        "status": "Egoera",
+        "path": "Bidea",
+        "lastError": "Errorea",
+        "hasError": "Errorea",
+        "updatedAt": "Eguneratuta",
+        "createdAt": "Instalatuta",
+        "configKey": "Gakoa",
+        "configValue": "Balioa",
+        "allUsers": "Baimendu erabiltzaile guztiak",
+        "selectedUsers": "Hautatutako erabiltzaileak",
+        "allLibraries": "Baimendu liburutegi guztiak",
+        "selectedLibraries": "Hautatutako liburutegiak",
+        "allowWriteAccess": "Eman idazteko baimena"
+      },
+      "sections": {
+        "status": "Egoera",
+        "info": "Pluginaren informazioa",
+        "configuration": "Konfigurazioa",
+        "manifest": "Manifestua",
+        "usersPermission": "Erabiltzaileen baimenak",
+        "libraryPermission": "Liburutegien baimenak"
+      },
+      "status": {
+        "enabled": "Gaituta",
+        "disabled": "Ezgaituta"
+      },
+      "actions": {
+        "enable": "Gaitu",
+        "disable": "Ezgaitu",
+        "disabledDueToError": "Konpondu errorea gaitu baino lehen",
+        "disabledUsersRequired": "Hautatu erabiltzaileak gaitu baino lehen",
+        "disabledLibrariesRequired": "Hautatu liburutegiak gaitu baino lehen",
+        "addConfig": "Gehitu konfigurazioa",
+        "rescan": "Arakatu berriro"
+      },
+      "notifications": {
+        "enabled": "Plugina gaituta",
+        "disabled": "Plugina ezgaituta",
+        "updated": "Plugina eguneratuta",
+        "error": "Errorea plugina eguneratzean"
+      },
+      "validation": {
+        "invalidJson": "Konfigurazioa baliozko JSON-a izan behar da"
+      },
+      "messages": {
+        "configHelp": "Konfiguratu plugina gako-balio bikoteak erabiliz. Utzi hutsik pluginak konfiguraziorik behar ez badu.",
+        "configValidationError": "Huts egin du konfigurazioaren balidazioak:",
+        "schemaRenderError": "Ezin izan da konfigurazioaren formularioa bihurtu. Litekeena da pluginaren eskema baliozkoa ez izatea.",
+        "clickPermissions": "Sakatu baimen batean xehetasunetarako",
+        "noConfig": "Ez da konfiguraziorik ezarri",
+        "allUsersHelp": "Gaituta dagoenean, pluginak erabiltzaile guztiak atzitu ditzazke, baita etorkizunean sortuko direnak ere.",
+        "noUsers": "Ez da erabiltzailerik hautatu",
+        "permissionReason": "Arrazoia",
+        "usersRequired": "Plugin honek erabiltzaileen informaziora sarbidea behar du. Hautatu zein erabiltzaile atzitu dezakeen pluginak, edo gaitu 'Baimendu erabiltzaile guztiak'.",
+        "allLibrariesHelp": "Gaituta dagoenean, pluginak liburutegi guztietara izango du sarbidea, baita etorkizunean sortuko direnetara ere.",
+        "noLibraries": "Ez da liburutegirik hautatu",
+        "librariesRequired": "Plugin honek liburutegien informaziora sarbidea behar du. Hautatu zein liburutegi atzitu dezakeen pluginak, edo gaitu 'Baimendu liburutegi guztiak'.",
+        "allowWriteAccessHelp": "Gaituta dagoenean, pluginak liburutegien direktorioko fitxategiak moldatu ditzake. Defektuz, pluginek bakarrik irakurtzeko baimena dute.",
+        "requiredHosts": "Beharrezko ostatatzaileak"
+      },
+      "placeholders": {
+        "configKey": "gakoa",
+        "configValue": "balioa"
       }
     }
   },
@@ -330,7 +494,7 @@
     "input": {
       "file": {
         "upload_several": "Jaregin edo hautatu igo nahi dituzun fitxategiak.",
-        "upload_single": "AJaregin edo hautatu igo nahi duzun fitxategia."
+        "upload_single": "Jaregin edo hautatu igo nahi duzun fitxategia."
       },
       "image": {
         "upload_several": "Jaregin edo hautatu igo nahi dituzun irudiak.",
@@ -375,13 +539,13 @@
       "skip_nav": "Joan edukira"
     },
     "notification": {
-      "updated": "Elementu bat eguneratu da |||| %{smart_count} elementu eguneratu dira",
+      "updated": "Elementua eguneratu da |||| %{smart_count} elementu eguneratu dira",
       "created": "Elementua sortu da",
-      "deleted": "Elementu bat ezabatu da |||| %{smart_count} elementu ezabatu dira.",
+      "deleted": "Elementua ezabatu da |||| %{smart_count} elementu ezabatu dira.",
       "bad_item": "Elementu okerra",
       "item_doesnt_exist": "Elementua ez dago",
       "http_error": "Errorea zerbitzariarekin komunikatzerakoan",
-      "data_provider_error": "Errorea datuen hornitzailean. Berrikusi kontsola xehetasun gehiagorako.",
+      "data_provider_error": "Errorea datuen hornitzailean. Aztertu kontsola xehetasun gehiagorako.",
       "i18n_error": "Ezin izan dira zehaztutako hizkuntzaren itzulpenak kargatu",
       "canceled": "Ekintza bertan behera utzi da",
       "logged_out": "Saioa amaitu da, konektatu berriro.",
@@ -395,10 +559,19 @@
     }
   },
   "message": {
+    "uploadCover": "Igo azala",
+    "removeCover": "Kendu azala",
+    "coverUploaded": "Diskoaren azala eguneratu da",
+    "coverRemoved": "Diskoaren azala kendu da",
+    "coverUploadError": "Errorea diskoaren azala igotzean",
+    "coverRemoveError": "Errorea diskoaren azala kentzean",
     "note": "OHARRA",
     "transcodingDisabled": "Segurtasun arrazoiak direla-eta, transkodeketaren ezarpenak web-interfazearen bidez aldatzea ezgaituta dago. Transkodeketa-aukerak aldatu (editatu edo gehitu) nahi badituzu, berrabiarazi zerbitzaria konfigurazio-aukeraren %{config}-arekin.",
     "transcodingEnabled": "Navidrome %{config}-ekin martxan dago eta, beraz, web-interfazeko transkodeketa-ataletik sistema-komandoak exekuta daitezke. Segurtasun arrazoiak tarteko, ezgaitzea gomendatzen dugu, eta transkodeketa-aukerak konfiguratzen ari zarenean bakarrik gaitzea.",
     "songsAddedToPlaylist": "Abesti bat zerrendara gehitu da |||| %{smart_count} abesti zerrendara gehitu dira",
+    "noSimilarSongsFound": "Ez da antzeko abestirik aurkitu",
+    "startingInstantMix": "Berehalako nahastea kargatzen…",
+    "noTopSongsFound": "Ez da aparteko abestirik aurkitu",
     "noPlaylistsAvailable": "Ez dago zerrendarik erabilgarri",
     "delete_user_title": "Ezabatu '%{name}' erabiltzailea",
     "delete_user_content": "Ziur zaide erabiltzaile hau eta bere datu guztiak (zerrendak eta hobespenak barne) ezabatu nahi dituzula?",
@@ -417,7 +590,7 @@
     "listenBrainzUnlinkSuccess": "ListenBrainz deskonektatu da eta erabiltzailearen ohiturak hirugarrenen zerbitzuekin partekatzea desaktibatu da",
     "listenBrainzUnlinkFailure": "Ezin izan da ListenBrainz deskonektatu",
     "openIn": {
-      "lastfm": "Ikusi Last.fm-n",
+      "lastfm": "Ikusi Last.fm-en",
       "musicbrainz": "Ikusi MusicBrainz-en"
     },
     "lastfmLink": "Irakurri gehiago…",
@@ -432,6 +605,12 @@
   },
   "menu": {
     "library": "Liburutegia",
+    "librarySelector": {
+      "allLibraries": "Liburutegi guztiak (%{count})",
+      "multipleLibraries": "%{total} liburutegitik %{selected} hautatuta",
+      "selectLibraries": "Hautatu liburutegiak",
+      "none": "Bat ere ez"
+    },
     "settings": "Ezarpenak",
     "version": "Bertsioa",
     "theme": "Itxura",
@@ -480,8 +659,8 @@
     "playModeText": {
       "order": "Ordenean",
       "orderLoop": "Errepikatu",
-      "singleLoop": "Errepikatu bakarra",
-      "shufflePlay": "Aleatorioa"
+      "singleLoop": "Errepikatu abesti hau",
+      "shufflePlay": "Aleatorioki"
     }
   },
   "about": {
@@ -494,18 +673,40 @@
         "disabled": "Ezgaituta",
         "waiting": "Zain"
       }
+    },
+    "tabs": {
+      "about": "Honi buruz",
+      "config": "Konfigurazioa"
+    },
+    "config": {
+      "configName": "Konfigurazioaren izena",
+      "environmentVariable": "Ingurune-aldagaia",
+      "currentValue": "Uneko balioa",
+      "configurationFile": "Konfigurazio-fitxategia",
+      "exportToml": "Esportatu konfigurazioa (TOML)",
+      "downloadToml": "Deskargatu konfigurazioa (TOML)",
+      "exportSuccess": "Konfigurazioa arbelera esportatu da TOML formatuan",
+      "exportFailed": "Konfigurazioa kopiatzeak huts egin du",
+      "devFlagsHeader": "Garapen-adierazleak (aldatu/kendu litezke)",
+      "devFlagsComment": "Ezarpen esperimentalak dira eta litekeena da etorkizunean desagertzea"
     }
   },
   "activity": {
     "title": "Ekintzak",
     "totalScanned": "Arakatutako karpeta guztiak",
-    "quickScan": "Arakatze azkarra",
+    "quickScan": "Arakatze bizkorra",
     "fullScan": "Arakatze sakona",
+    "selectiveScan": "Arakatze selektiboa",
     "serverUptime": "Zerbitzariak piztuta daraman denbora",
     "serverDown": "LINEAZ KANPO",
     "scanType": "Mota",
     "status": "Errorea arakatzean",
     "elapsedTime": "Igarotako denbora"
+  },
+  "nowPlaying": {
+    "title": "Une honetan erreproduzitzen",
+    "empty": "Ez dago erreproduzitzeko ezer",
+    "minutesAgo": "Duela minutu %{smart_count} |||| Duela %{smart_count} minutu"
   },
   "help": {
     "title": "Navidromeren laster-teklak",

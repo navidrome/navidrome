@@ -3,6 +3,7 @@ package subsonic
 import (
 	"context"
 	"fmt"
+	"math"
 	"net/http"
 	"time"
 
@@ -165,6 +166,7 @@ func (api *Router) Scrobble(r *http.Request) (*responses.Subsonic, error) {
 		return nil, newError(responses.ErrorGeneric, "Wrong number of timestamps: %d, should be %d", len(times), len(ids))
 	}
 	submission := p.BoolOr("submission", true)
+	position := p.IntOr("position", 0)
 	ctx := r.Context()
 
 	if submission {
@@ -173,7 +175,7 @@ func (api *Router) Scrobble(r *http.Request) (*responses.Subsonic, error) {
 			log.Error(ctx, "Error registering scrobbles", "ids", ids, "times", times, err)
 		}
 	} else {
-		err := api.scrobblerNowPlaying(ctx, ids[0])
+		err := api.scrobblerNowPlaying(ctx, ids[0], position)
 		if err != nil {
 			log.Error(ctx, "Error setting NowPlaying", "id", ids[0], err)
 		}
@@ -198,7 +200,7 @@ func (api *Router) scrobblerSubmit(ctx context.Context, ids []string, times []ti
 	return api.scrobbler.Submit(ctx, submissions)
 }
 
-func (api *Router) scrobblerNowPlaying(ctx context.Context, trackId string) error {
+func (api *Router) scrobblerNowPlaying(ctx context.Context, trackId string, position int) error {
 	mf, err := api.ds.MediaFile(ctx).Get(trackId)
 	if err != nil {
 		return err
@@ -215,7 +217,74 @@ func (api *Router) scrobblerNowPlaying(ctx context.Context, trackId string) erro
 		clientId = player.ID
 	}
 
-	log.Info(ctx, "Now Playing", "title", mf.Title, "artist", mf.Artist, "user", username, "player", player.Name)
-	err = api.scrobbler.NowPlaying(ctx, clientId, client, trackId)
-	return err
+	log.Info(ctx, "Now Playing", "title", mf.Title, "artist", mf.Artist, "user", username, "player", player.Name, "position", position)
+	return api.scrobbler.ReportPlayback(ctx, scrobbler.ReportPlaybackParams{
+		MediaId:      trackId,
+		PositionMs:   int64(position) * 1000,
+		State:        scrobbler.StatePlaying,
+		PlaybackRate: 1.0,
+		ClientId:     clientId,
+		ClientName:   client,
+	})
+}
+
+func (api *Router) ReportPlayback(r *http.Request) (*responses.Subsonic, error) {
+	p := req.Params(r)
+	mediaId, err := p.String("mediaId")
+	if err != nil {
+		return nil, err
+	}
+	mediaType, err := p.String("mediaType")
+	if err != nil {
+		return nil, err
+	}
+	positionMs, err := p.Int64("positionMs")
+	if err != nil {
+		return nil, err
+	}
+	if positionMs < 0 {
+		return nil, newError(responses.ErrorGeneric, "positionMs must be non-negative")
+	}
+	state, err := p.String("state")
+	if err != nil {
+		return nil, err
+	}
+
+	if !scrobbler.ValidStates[state] {
+		return nil, newError(responses.ErrorGeneric, "Invalid state: %s", state)
+	}
+
+	playbackRate := p.Float64Or("playbackRate", 1.0)
+	if math.IsNaN(playbackRate) || math.IsInf(playbackRate, 0) || playbackRate <= 0 {
+		return nil, newError(responses.ErrorGeneric, "playbackRate must be a finite positive number")
+	}
+	ignoreScrobble := p.BoolOr("ignoreScrobble", false)
+
+	ctx := r.Context()
+	if mediaType != "song" {
+		log.Warn(ctx, "reportPlayback received unsupported mediaType", "mediaType", mediaType, "mediaId", mediaId)
+	}
+
+	player, _ := request.PlayerFrom(ctx)
+	client, _ := request.ClientFrom(ctx)
+	clientId, ok := request.ClientUniqueIdFrom(ctx)
+	if !ok {
+		clientId = player.ID
+	}
+
+	err = api.scrobbler.ReportPlayback(ctx, scrobbler.ReportPlaybackParams{
+		MediaId:        mediaId,
+		PositionMs:     positionMs,
+		State:          state,
+		PlaybackRate:   playbackRate,
+		IgnoreScrobble: ignoreScrobble,
+		ClientId:       clientId,
+		ClientName:     client,
+	})
+	if err != nil {
+		log.Error(ctx, "Error in ReportPlayback", "mediaId", mediaId, "state", state, err)
+		return nil, err
+	}
+
+	return newResponse(), nil
 }

@@ -1,0 +1,6 @@
+{
+  "name": "Partial Metadata Agent",
+  "author": "Navidrome Test",
+  "version": "1.0.0",
+  "description": "A test plugin that only implements some metadata methods"
+}

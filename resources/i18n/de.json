@@ -2,7 +2,7 @@
   "languageName": "Deutsch",
   "resources": {
     "song": {
-      "name": "Song |||| Songs",
+      "name": "Titel |||| Titel",
       "fields": {
         "albumArtist": "Albuminterpret",
         "duration": "Dauer",
@@ -18,7 +18,7 @@
         "size": "Dateigröße",
         "updatedAt": "Hochgeladen am",
         "bitRate": "Bitrate",
-        "discSubtitle": "CD Untertitel",
+        "discSubtitle": "Disc Untertitel",
         "starred": "Favorit",
         "comment": "Kommentar",
         "rating": "Bewertung",
@@ -32,16 +32,26 @@
         "participants": "Weitere Beteiligte",
         "tags": "Weitere Tags",
         "mappedTags": "Gemappte Tags",
-        "rawTags": "Tag Rohdaten"
+        "rawTags": "Tag Rohdaten",
+        "bitDepth": "Bittiefe",
+        "sampleRate": "Samplerate",
+        "missing": "Fehlend",
+        "libraryName": "Bibliothek",
+        "composer": "Komponist",
+        "disc": "Disc %{discNumber}",
+        "albumGain": "Album Gain",
+        "trackGain": "Titel Gain"
       },
       "actions": {
         "addToQueue": "Später abspielen",
         "playNow": "Jetzt abspielen",
-        "addToPlaylist": "Zur Playlist hinzufügen",
+        "addToPlaylist": "Zu einer Wiedergabeliste hinzufügen",
         "shuffleAll": "Zufallswiedergabe",
         "download": "Herunterladen",
         "playNext": "Als nächstes abspielen",
-        "info": "Mehr Informationen"
+        "info": "Mehr Informationen",
+        "showInPlaylist": "In Wiedergabeliste anzeigen",
+        "instantMix": "Sofort-Mix"
       }
     },
     "album": {
@@ -70,14 +80,17 @@
         "releaseType": "Typ",
         "grouping": "Gruppierung",
         "media": "Medium",
-        "mood": "Stimmung"
+        "mood": "Stimmung",
+        "date": "Aufnahmedatum",
+        "missing": "Fehlend",
+        "libraryName": "Bibliothek"
       },
       "actions": {
         "playAll": "Abspielen",
         "playNext": "Als nächstes abspielen",
         "addToQueue": "Später abspielen",
         "shuffle": "Zufallswiedergabe",
-        "addToPlaylist": "Zur Playlist hinzufügen",
+        "addToPlaylist": "Zu einer Wiedergabeliste hinzufügen",
         "download": "Herunterladen",
         "info": "Mehr Informationen",
         "share": "Freigabe erstellen"
@@ -102,7 +115,8 @@
         "rating": "Bewertung",
         "genre": "Genre",
         "size": "Größe",
-        "role": "Rolle"
+        "role": "Rolle",
+        "missing": "Fehlend"
       },
       "roles": {
         "albumartist": "Albuminterpret |||| Albuminterpreten",
@@ -117,7 +131,13 @@
         "mixer": "Mixer |||| Mixer",
         "remixer": "Remixer |||| Remixer",
         "djmixer": "DJ Mixer |||| DJ Mixer",
-        "performer": "ausübender Künstler |||| ausübende Künstler"
+        "performer": "ausübender Künstler |||| ausübende Künstler",
+        "maincredit": "Albuminterpret oder Interpret |||| Albuminterpreten oder Interpreten"
+      },
+      "actions": {
+        "shuffle": "Zufallswiedergabe",
+        "radio": "Radio",
+        "topSongs": "Beliebteste Titel"
       }
     },
     "user": {
@@ -134,10 +154,12 @@
         "currentPassword": "Aktuelles Passwort",
         "newPassword": "Neues Passwort",
         "token": "Token",
-        "lastAccessAt": "Letzter Zugriff am"
+        "lastAccessAt": "Letzter Zugriff am",
+        "libraries": "Bibliotheken"
       },
       "helperTexts": {
-        "name": "Die Änderung wird erst nach dem nächsten Login gültig"
+        "name": "Die Änderung wird erst nach dem nächsten Login gültig",
+        "libraries": "Wähle spezifische Bibliotheken für diesen Benutzer, oder leer lassen für Standard Bibliotheken"
       },
       "notifications": {
         "created": "Benutzer erstellt",
@@ -146,7 +168,12 @@
       },
       "message": {
         "listenBrainzToken": "Gib deinen ListenBrainz Benutzer Token ein",
-        "clickHereForToken": "Hier klicken um deinen Token abzurufen"
+        "clickHereForToken": "Hier klicken um deinen Token abzurufen",
+        "selectAllLibraries": "Wähle alle Bibliotheken",
+        "adminAutoLibraries": "Administrator-Benutzer haben automatisch Zugriff auf alle Bibliotheken"
+      },
+      "validation": {
+        "librariesRequired": "Mindestens eine Bibliothek muss für nicht-administrator Benutzer ausgewählt sein"
       }
     },
     "player": {
@@ -172,7 +199,7 @@
       }
     },
     "playlist": {
-      "name": "Playlist |||| Playlists",
+      "name": "Wiedergabeliste |||| Wiedergabelisten",
       "fields": {
         "name": "Name",
         "duration": "Dauer",
@@ -186,15 +213,21 @@
         "path": "Importieren aus"
       },
       "actions": {
-        "selectPlaylist": "Titel zur Playlist hinzufügen",
+        "selectPlaylist": "Wiedergabeliste auswählen:",
         "addNewPlaylist": "\"%{name}\" erstellen",
         "export": "Exportieren",
         "makePublic": "Öffentlich machen",
-        "makePrivate": "Privat stellen"
+        "makePrivate": "Privat stellen",
+        "saveQueue": "Warteschlange in Wiedergabeliste speichern",
+        "searchOrCreate": "Wiedergabeliste suchen oder neue erstellen...",
+        "pressEnterToCreate": "Enter drücken um neue Wiedergabeliste zu erstellen",
+        "removeFromSelection": "Von Auswahl entfernen"
       },
       "message": {
         "duplicate_song": "Duplikate hinzufügen",
-        "song_exist": "Manche Titel sind bereits in der Playlist. Möchtest du sie trotzdem hinzufügen oder überspringen?"
+        "song_exist": "Manche Titel sind bereits in der Playlist. Möchtest du sie trotzdem hinzufügen oder überspringen?",
+        "noPlaylistsFound": "Keine Wiedergabeliste gefunden",
+        "noPlaylists": "Keine Wiedergabelisten vorhanden"
       }
     },
     "radio": {
@@ -232,13 +265,149 @@
       "fields": {
         "path": "Pfad",
         "size": "Größe",
-        "updatedAt": "Fehlt seit"
+        "updatedAt": "Fehlt seit",
+        "libraryName": "Bibliothek"
       },
       "actions": {
-        "remove": "Entfernen"
+        "remove": "Entfernen",
+        "remove_all": "alle entfernen"
       },
       "notifications": {
         "removed": "Fehlende Datei(en) entfernt"
+      },
+      "empty": "keine fehlenden Dateien"
+    },
+    "library": {
+      "name": "Bibliothek |||| Bibliotheken",
+      "fields": {
+        "name": "Name",
+        "path": "Pfad",
+        "remotePath": "Remote Pfad",
+        "lastScanAt": "Letzter Scan",
+        "songCount": "Lieder",
+        "albumCount": "Alben",
+        "artistCount": "Interpreten",
+        "totalSongs": "Lieder",
+        "totalAlbums": "Alben",
+        "totalArtists": "Interpreten",
+        "totalFolders": "Ordner",
+        "totalFiles": "Dateien",
+        "totalMissingFiles": "Fehlende Dateien",
+        "totalSize": "Größe",
+        "totalDuration": "Dauer",
+        "defaultNewUsers": "Standard für neue Benutzer",
+        "createdAt": "Erstellt",
+        "updatedAt": "Geändert"
+      },
+      "sections": {
+        "basic": "Basis Informationen",
+        "statistics": "Statistik"
+      },
+      "actions": {
+        "scan": "Bibliothek scannen",
+        "manageUsers": "Zugriff verwalten",
+        "viewDetails": "Details ansehen",
+        "quickScan": "Schneller Scan",
+        "fullScan": "Kompletter Scan"
+      },
+      "notifications": {
+        "created": "Bibliothek erfolgreich erstellt",
+        "updated": "Bibliothek erfolgreich geändert",
+        "deleted": "Bibliothek erfolgreich gelöscht",
+        "scanStarted": "Bibliothek Scan gestartet",
+        "scanCompleted": "Bibliothek Scan vollständig",
+        "quickScanStarted": "Schneller Scan gestartet",
+        "fullScanStarted": "Kompletter Scan gestartet",
+        "scanError": "Fehler beim Starten des Scans. Logs prüfen"
+      },
+      "validation": {
+        "nameRequired": "Bibliotheksname ist Pflichtfeld",
+        "pathRequired": "Bibliothekspfad ist Pflichtfeld",
+        "pathNotDirectory": "Bibliothekspfad muss ein Ordner sein",
+        "pathNotFound": "Bibliothekspfad nicht gefunden",
+        "pathNotAccessible": "Bibliothekspfad nicht zugänglich",
+        "pathInvalid": "Bibliothekspfad ungültig"
+      },
+      "messages": {
+        "deleteConfirm": "Möchtest du diese Bibliothek wirklich löschen? Zugriffsrechte und Daten werden entfernt. ",
+        "scanInProgress": "Bibliothek Scan läuft...",
+        "noLibrariesAssigned": "Keine Bibliotheken zugeordnet"
+      }
+    },
+    "plugin": {
+      "name": "Plugin |||| Plugins",
+      "fields": {
+        "id": "ID",
+        "name": "Name",
+        "description": "Beschreibung",
+        "version": "Version",
+        "author": "Autor",
+        "website": "Website",
+        "permissions": "Berechtigungen",
+        "enabled": "Aktiv",
+        "status": "Status",
+        "path": "Pfad",
+        "lastError": "Fehler",
+        "hasError": "Fehler",
+        "updatedAt": "Aktualisiert am",
+        "createdAt": "Installiert",
+        "configKey": "Schlüssel",
+        "configValue": "Wert",
+        "allUsers": "Alle Benutzer",
+        "selectedUsers": "Ausgewählte Benutzer",
+        "allLibraries": "Alle Bibliotheken",
+        "selectedLibraries": "Ausgewählte Bibliotheken",
+        "allowWriteAccess": "Schreibzugriff erlauben"
+      },
+      "sections": {
+        "status": "Status",
+        "info": "Plugin Information",
+        "configuration": "Konfiguration",
+        "manifest": "Manifest",
+        "usersPermission": "Benutzer Zugriff",
+        "libraryPermission": "Bibliotheken Zugriff"
+      },
+      "status": {
+        "enabled": "Aktiv",
+        "disabled": "Inaktiv"
+      },
+      "actions": {
+        "enable": "Aktivieren",
+        "disable": "Deaktivieren",
+        "disabledDueToError": "Fehler beheben um Plugin zu aktivieren",
+        "disabledUsersRequired": "Wähle Benutzer Zugriff um Plugin zu aktivieren",
+        "disabledLibrariesRequired": "Wähle Bibliotheken Zugriff um Plugin zu aktivieren",
+        "addConfig": "Konfiguration hinzufügen",
+        "rescan": "Scan"
+      },
+      "notifications": {
+        "enabled": "Plugin aktiv",
+        "disabled": "Plugin inaktiv",
+        "updated": "Plugin aktualisiert",
+        "error": "Fehler beim aktualisieren des Plugins"
+      },
+      "validation": {
+        "invalidJson": "Konfiguration muss valides JSON sein"
+      },
+      "messages": {
+        "configHelp": "Plugin mit Schlüssel-Werte Paaren konfigurieren. Leer lassen wenn das Plugin keine Konfiguration benötigt.",
+        "clickPermissions": "Berechtigung anklicken für mehr Details",
+        "noConfig": "Keine Konfiguration gesetzt",
+        "allUsersHelp": "Wenn aktiviert, erhält das Plugin Zugriff auf alle Benutzer, inklusive solcher, die in Zukunft erstellt werden.",
+        "noUsers": "Keine Benutzer ausgewählt",
+        "permissionReason": "Begründung",
+        "usersRequired": "Dieses Plugin benötigt Zugriff auf Benutzerinformationen. Wähle aus, auf welche Nutzer das Plugin zugreifen darf oder wähle 'Alle Benutzer'.",
+        "allLibrariesHelp": "Wenn aktiviert, erhält das Plugin Zugriff auf alle Bibliotheken, inklusive solcher, die in Zukunft erstellt werden.",
+        "noLibraries": "Keine Bibliotheken ausgewählt",
+        "librariesRequired": "Dieses Plugin benötigt Zugriff auf Bibliotheken. Wähle aus, auf welche Bibliotheken das Plugin zugreifen darf oder wähle 'Alle Bibliotheken'.",
+        "requiredHosts": "Benötigte Hosts",
+        "configValidationError": "Validierung der Konfiguration fehlgeschlagen:",
+        "schemaRenderError": "Rendern der Konfiguration fehlgeschlagen. Das Schema das Plugins ist eventuell nicht korrekt.",
+        "allowWriteAccessHelp": "Wenn aktiviert, kann das Plugin Dateien in den Bibliotheken verändern. Als Standard haben Plugins nur Lesezugriff."
+      },
+      "placeholders": {
+        "configKey": "Schlüssel",
+        "configValue": "Wert"
       }
     }
   },
@@ -391,10 +560,10 @@
     "note": "HINWEIS",
     "transcodingDisabled": "Die Änderung der Transcodierungskonfiguration über die Web-UI ist aus Sicherheitsgründen deaktiviert. Wenn du die Transcodierungsoptionen ändern (bearbeiten oder hinzufügen) möchtest, starte den Server mit der Konfigurationsoption %{config} neu.",
     "transcodingEnabled": "Navidrome läuft derzeit mit %{config}, wodurch es möglich ist, Systembefehle aus den Transkodierungseinstellungen über die Webschnittstelle auszuführen. Wir empfehlen, es aus Sicherheitsgründen zu deaktivieren und nur bei der Konfiguration von Transkodierungsoptionen zu aktivieren.",
-    "songsAddedToPlaylist": "Einen Titel zur Playlist hinzugefügt |||| %{smart_count} Titel zur Playlist hinzugefügt",
-    "noPlaylistsAvailable": "Keine Playlist verfügbar",
+    "songsAddedToPlaylist": "Einen Titel zur Wiedergabeliste hinzugefügt |||| %{smart_count} Titel zur Wiedergabeliste hinzugefügt",
+    "noPlaylistsAvailable": "Keine Wiedergabeliste verfügbar",
     "delete_user_title": "Benutzer '%{name}' löschen",
-    "delete_user_content": "Möchtest du diesen Benutzer und alle seine Daten (einschließlich Playlisten und Einstellungen) wirklich löschen?",
+    "delete_user_content": "Möchtest du diesen Benutzer und alle seine Daten (einschließlich Wiedergabelisten und Einstellungen) wirklich löschen?",
     "notifications_blocked": "Sie haben Benachrichtigungen für diese Seite in den Einstellungen Ihres Browsers blockiert",
     "notifications_not_available": "Dieser Browser unterstützt keine Desktop-Benachrichtigungen",
     "lastfmLinkSuccess": "Last.fm Verbindung hergestellt und scrobbling aktiviert",
@@ -419,7 +588,18 @@
     "downloadDialogTitle": "Download %{resource} '%{name}' (%{size})",
     "shareCopyToClipboard": "In Zwischenablage kopieren: Ctrl+C, Enter",
     "remove_missing_title": "Fehlende Dateien entfernen",
-    "remove_missing_content": "Möchtest du die ausgewählten Fehlenden Dateien wirklich aus der Datenbank entfernen? Alle Referenzen zu den Dateien wie Anzahl Wiedergaben und Bewertungen werden permanent gelöscht."
+    "remove_missing_content": "Möchtest du die ausgewählten Fehlenden Dateien wirklich aus der Datenbank entfernen? Alle Referenzen zu den Dateien wie Anzahl Wiedergaben und Bewertungen werden permanent gelöscht.",
+    "remove_all_missing_title": "Alle fehlenden Dateien entfernen",
+    "remove_all_missing_content": "Möchtest du wirklich alle Fehlenden Dateien aus der Datenbank entfernen? Alle Referenzen zu den Dateien wie Anzahl Wiedergaben und Bewertungen werden permanent gelöscht.",
+    "noSimilarSongsFound": "Keine ähnlichen Titel gefunden",
+    "noTopSongsFound": "Keine beliebten Titel gefunden",
+    "startingInstantMix": "Lade Sofort-Mix...",
+    "uploadCover": "Cover hochladen",
+    "removeCover": "Cover entfernen",
+    "coverUploaded": "Cover aktualisiert",
+    "coverRemoved": "Cover entfernt",
+    "coverUploadError": "Fehler beim Hochladen des Covers",
+    "coverRemoveError": "Fehler beim Entfernen des Covers"
   },
   "menu": {
     "library": "Bibliothek",
@@ -447,11 +627,17 @@
     },
     "albumList": "Alben",
     "about": "Über",
-    "playlists": "Playlisten",
-    "sharedPlaylists": "Geteilte Playlisten"
+    "playlists": "Wiedergabelisten",
+    "sharedPlaylists": "Geteilte Wiedergabelisten",
+    "librarySelector": {
+      "allLibraries": "Alle Bibliotheken (%{count})",
+      "multipleLibraries": "%{selected} von %{total} Bibliotheken",
+      "selectLibraries": "Bibliotheken auswählen",
+      "none": "Keine"
+    }
   },
   "player": {
-    "playListsText": "Wiedergabeliste abspielen",
+    "playListsText": "Warteschlange abspielen",
     "openText": "Öffnen",
     "closeText": "Schließen",
     "notContentText": "Keine Musik",
@@ -485,6 +671,22 @@
         "disabled": "Deaktiviert",
         "waiting": "Warten"
       }
+    },
+    "tabs": {
+      "about": "Über",
+      "config": "Konfiguration"
+    },
+    "config": {
+      "configName": "Einstellung",
+      "environmentVariable": "Umbegungsvariable",
+      "currentValue": "Wert",
+      "configurationFile": "Konfigurationsdatei",
+      "exportToml": "Konfiguration exportieren (TOML)",
+      "exportSuccess": "Konfiguration im TOML Format in die Zwischenablage kopiert",
+      "exportFailed": "Fehler beim Kopieren der Konfiguration",
+      "devFlagsHeader": "Entwicklungseinstellungen (können sich ändern)",
+      "devFlagsComment": "Experimentelle Einstellungen, die eventuell in Zukunft entfernt oder geändert werden",
+      "downloadToml": "Konfiguration Herunterladen (TOML)"
     }
   },
   "activity": {
@@ -493,7 +695,11 @@
     "quickScan": "Schneller Scan",
     "fullScan": "Kompletter Scan",
     "serverUptime": "Server-Betriebszeit",
-    "serverDown": "OFFLINE"
+    "serverDown": "OFFLINE",
+    "scanType": "Typ",
+    "status": "Scan Fehler",
+    "elapsedTime": "Laufzeit",
+    "selectiveScan": "Selektiver Scan"
   },
   "help": {
     "title": "Navidrome Hotkeys",
@@ -508,5 +714,10 @@
       "toggle_love": "Titel zu Favoriten hinzufügen",
       "current_song": "Aktuellen Titel Anzeigen"
     }
+  },
+  "nowPlaying": {
+    "title": "Aktuelle Wiedergabe",
+    "empty": "Keine Wiedergabe",
+    "minutesAgo": "Vor %{smart_count} Minute |||| Vor %{smart_count} Minuten"
   }
 }

@@ -7,12 +7,13 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
-	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	. "github.com/navidrome/navidrome/utils/gg"
+	"github.com/navidrome/navidrome/utils/nanoid"
 	"github.com/navidrome/navidrome/utils/slice"
+	"github.com/navidrome/navidrome/utils/str"
 )
 
 type Share interface {
@@ -40,7 +41,7 @@ func (s *shareService) Load(ctx context.Context, id string) (*model.Share, error
 	if !expiresAt.IsZero() && expiresAt.Before(time.Now()) {
 		return nil, model.ErrExpired
 	}
-	share.LastVisitedAt = P(time.Now())
+	share.LastVisitedAt = new(time.Now())
 	share.VisitCount++
 
 	err = repo.(rest.Persistable).Update(id, share, "last_visited_at", "visit_count")
@@ -72,7 +73,7 @@ type shareRepositoryWrapper struct {
 
 func (r *shareRepositoryWrapper) newId() (string, error) {
 	for {
-		id, err := gonanoid.Generate("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz", 10)
+		id, err := nanoid.Generate("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz", 10)
 		if err != nil {
 			return "", err
 		}
@@ -86,7 +87,7 @@ func (r *shareRepositoryWrapper) newId() (string, error) {
 	}
 }
 
-func (r *shareRepositoryWrapper) Save(entity interface{}) (string, error) {
+func (r *shareRepositoryWrapper) Save(entity any) (string, error) {
 	s := entity.(*model.Share)
 	id, err := r.newId()
 	if err != nil {
@@ -94,10 +95,10 @@ func (r *shareRepositoryWrapper) Save(entity interface{}) (string, error) {
 	}
 	s.ID = id
 	if V(s.ExpiresAt).IsZero() {
-		s.ExpiresAt = P(time.Now().Add(conf.Server.DefaultShareExpiration))
+		s.ExpiresAt = new(time.Now().Add(conf.Server.DefaultShareExpiration))
 	}
 
-	firstId := strings.SplitN(s.ResourceIDs, ",", 2)[0]
+	firstId, _, _ := strings.Cut(s.ResourceIDs, ",")
 	v, err := model.GetEntityByID(r.ctx, r.ds, firstId)
 	if err != nil {
 		return "", err
@@ -119,15 +120,14 @@ func (r *shareRepositoryWrapper) Save(entity interface{}) (string, error) {
 		log.Error(r.ctx, "Invalid Resource ID", "id", firstId)
 		return "", model.ErrNotFound
 	}
-	if len(s.Contents) > 30 {
-		s.Contents = s.Contents[:26] + "..."
-	}
+
+	s.Contents = str.TruncateRunes(s.Contents, 30, "...")
 
 	id, err = r.Persistable.Save(s)
 	return id, err
 }
 
-func (r *shareRepositoryWrapper) Update(id string, entity interface{}, _ ...string) error {
+func (r *shareRepositoryWrapper) Update(id string, entity any, _ ...string) error {
 	cols := []string{"description", "downloadable"}
 
 	// TODO Better handling of Share expiration
@@ -149,7 +149,7 @@ func (r *shareRepositoryWrapper) contentsLabelFromArtist(shareID string, ids str
 
 func (r *shareRepositoryWrapper) contentsLabelFromAlbums(shareID string, ids string) string {
 	idList := strings.Split(ids, ",")
-	all, err := r.ds.Album(r.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"id": idList}})
+	all, err := r.ds.Album(r.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album.id": idList}})
 	if err != nil {
 		log.Error(r.ctx, "Error retrieving album names for share", "share", shareID, err)
 		return ""

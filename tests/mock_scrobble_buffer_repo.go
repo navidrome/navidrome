@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"sync"
 	"time"
 
 	"github.com/navidrome/navidrome/model"
@@ -9,6 +10,7 @@ import (
 type MockedScrobbleBufferRepo struct {
 	Error error
 	Data  model.ScrobbleEntries
+	mu    sync.RWMutex
 }
 
 func CreateMockedScrobbleBufferRepo() *MockedScrobbleBufferRepo {
@@ -19,6 +21,8 @@ func (m *MockedScrobbleBufferRepo) UserIDs(service string) ([]string, error) {
 	if m.Error != nil {
 		return nil, m.Error
 	}
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	userIds := make(map[string]struct{})
 	for _, e := range m.Data {
 		if e.Service == service {
@@ -36,6 +40,8 @@ func (m *MockedScrobbleBufferRepo) Enqueue(service, userId, mediaFileId string, 
 	if m.Error != nil {
 		return m.Error
 	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.Data = append(m.Data, model.ScrobbleEntry{
 		MediaFile:   model.MediaFile{ID: mediaFileId},
 		Service:     service,
@@ -50,6 +56,8 @@ func (m *MockedScrobbleBufferRepo) Next(service, userId string) (*model.Scrobble
 	if m.Error != nil {
 		return nil, m.Error
 	}
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	for _, e := range m.Data {
 		if e.Service == service && e.UserID == userId {
 			return &e, nil
@@ -62,6 +70,8 @@ func (m *MockedScrobbleBufferRepo) Dequeue(entry *model.ScrobbleEntry) error {
 	if m.Error != nil {
 		return m.Error
 	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	newData := model.ScrobbleEntries{}
 	for _, e := range m.Data {
 		if e.Service == entry.Service && e.UserID == entry.UserID && e.PlayTime == entry.PlayTime && e.MediaFile.ID == entry.MediaFile.ID {
@@ -77,5 +87,7 @@ func (m *MockedScrobbleBufferRepo) Length() (int64, error) {
 	if m.Error != nil {
 		return 0, m.Error
 	}
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	return int64(len(m.Data)), nil
 }

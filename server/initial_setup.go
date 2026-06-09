@@ -68,13 +68,16 @@ func createInitialAdminUser(ds model.DataStore, initialPassword string) error {
 func checkFFmpegInstallation() {
 	f := ffmpeg.New()
 	_, err := f.CmdPath()
-	if err == nil {
+	if err != nil {
+		log.Warn("Unable to find ffmpeg. Transcoding will fail if used", err)
+		if conf.Server.Scanner.Extractor == "ffmpeg" {
+			log.Warn("ffmpeg cannot be used for metadata extraction. Falling back to taglib")
+			conf.Server.Scanner.Extractor = "taglib"
+		}
 		return
 	}
-	log.Warn("Unable to find ffmpeg. Transcoding will fail if used", err)
-	if conf.Server.Scanner.Extractor == "ffmpeg" {
-		log.Warn("ffmpeg cannot be used for metadata extraction. Falling back to taglib")
-		conf.Server.Scanner.Extractor = "taglib"
+	if !f.IsProbeAvailable() {
+		log.Warn("Unable to find ffprobe. Transcoding decisions will be limited")
 	}
 }
 
@@ -90,12 +93,6 @@ func checkExternalCredentials() {
 			log.Info("ListenBrainz integration is DISABLED")
 		} else {
 			log.Debug("ListenBrainz integration is ENABLED", "ListenBrainz.BaseURL", conf.Server.ListenBrainz.BaseURL)
-		}
-
-		if conf.Server.Spotify.ID == "" || conf.Server.Spotify.Secret == "" {
-			log.Info("Spotify integration is not enabled: missing ID/Secret")
-		} else {
-			log.Debug("Spotify integration is ENABLED")
 		}
 	}
 }

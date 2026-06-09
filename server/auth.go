@@ -68,8 +68,8 @@ func doLogin(ds model.DataStore, username string, password string, w http.Respon
 	_ = rest.RespondWithJSON(w, http.StatusOK, payload)
 }
 
-func buildAuthPayload(user *model.User) map[string]interface{} {
-	payload := map[string]interface{}{
+func buildAuthPayload(user *model.User) map[string]any {
+	payload := map[string]any{
 		"id":       user.ID,
 		"name":     user.Name,
 		"username": user.UserName,
@@ -135,7 +135,6 @@ func createAdmin(ds model.DataStore) func(w http.ResponseWriter, r *http.Request
 
 func createAdminUser(ctx context.Context, ds model.DataStore, username, password string) error {
 	log.Warn(ctx, "Creating initial user", "user", username)
-	now := time.Now()
 	caser := cases.Title(language.Und)
 	initialUser := model.User{
 		ID:          id.NewRandom(),
@@ -144,7 +143,7 @@ func createAdminUser(ctx context.Context, ds model.DataStore, username, password
 		Email:       "",
 		NewPassword: password,
 		IsAdmin:     true,
-		LastLoginAt: &now,
+		LastLoginAt: new(time.Now()),
 	}
 	err := ds.User(ctx).Put(&initialUser)
 	if err != nil {
@@ -171,7 +170,7 @@ func validateLogin(userRepo model.UserRepository, userName, password string) (*m
 	return u, nil
 }
 
-func jwtVerifier(next http.Handler) http.Handler {
+func JWTVerifier(next http.Handler) http.Handler {
 	return jwtauth.Verify(auth.TokenAuth, tokenFromHeader, jwtauth.TokenFromCookie, jwtauth.TokenFromQuery)(next)
 }
 
@@ -185,32 +184,45 @@ func tokenFromHeader(r *http.Request) string {
 }
 
 func UsernameFromToken(r *http.Request) string {
-	token, claims, err := jwtauth.FromContext(r.Context())
-	if err != nil || claims["sub"] == nil || token == nil {
+	token, _, err := jwtauth.FromContext(r.Context())
+	if err != nil || token == nil {
 		return ""
 	}
-	log.Trace(r, "Found username in JWT token", "username", token.Subject())
-	return token.Subject()
+	sub, _ := token.Subject()
+	if sub == "" {
+		return ""
+	}
+	log.Trace(r, "Found username in JWT token", "username", sub)
+	return sub
 }
 
-func UsernameFromReverseProxyHeader(r *http.Request) string {
-	if conf.Server.ReverseProxyWhitelist == "" {
+func UsernameFromExtAuthHeader(r *http.Request) string {
+	if conf.Server.ExtAuth.TrustedSources == "" {
 		return ""
 	}
 	reverseProxyIp, ok := request.ReverseProxyIpFrom(r.Context())
 	if !ok {
-		log.Error("ReverseProxyWhitelist enabled but no proxy IP found in request context. Please report this error.")
+		log.Error("ExtAuth enabled but no proxy IP found in request context. Please report this error.")
 		return ""
 	}
-	if !validateIPAgainstList(reverseProxyIp, conf.Server.ReverseProxyWhitelist) {
-		log.Warn(r.Context(), "IP is not whitelisted for reverse proxy login", "proxy-ip", reverseProxyIp, "client-ip", r.RemoteAddr)
+	if !validateIPAgainstList(reverseProxyIp, conf.Server.ExtAuth.TrustedSources) {
+		log.Warn(r.Context(), "IP is not whitelisted for external authentication", "proxy-ip", reverseProxyIp, "client-ip", r.RemoteAddr)
 		return ""
 	}
-	username := r.Header.Get(conf.Server.ReverseProxyUserHeader)
+	username := r.Header.Get(conf.Server.ExtAuth.UserHeader)
 	if username == "" {
 		return ""
 	}
-	log.Trace(r, "Found username in ReverseProxyUserHeader", "username", username)
+	log.Trace(r, "Found username in ExtAuth.UserHeader", "username", username)
+	return username
+}
+
+func InternalAuth(r *http.Request) string {
+	username, ok := request.InternalAuthFrom(r.Context())
+	if !ok {
+		return ""
+	}
+	log.Trace(r, "Found username in InternalAuth", "username", username)
 	return username
 }
 
@@ -247,7 +259,7 @@ func authenticateRequest(ds model.DataStore, r *http.Request, findUsernameFns ..
 func Authenticator(ds model.DataStore) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx, err := authenticateRequest(ds, r, UsernameFromConfig, UsernameFromToken, UsernameFromReverseProxyHeader)
+			ctx, err := authenticateRequest(ds, r, UsernameFromConfig, UsernameFromToken, UsernameFromExtAuthHeader)
 			if err != nil {
 				_ = rest.RespondWithError(w, http.StatusUnauthorized, "Not authenticated")
 				return
@@ -279,10 +291,10 @@ func JWTRefresher(next http.Handler) http.Handler {
 	})
 }
 
-func handleLoginFromHeaders(ds model.DataStore, r *http.Request) map[string]interface{} {
+func handleLoginFromHeaders(ds model.DataStore, r *http.Request) map[string]any {
 	username := UsernameFromConfig(r)
 	if username == "" {
-		username = UsernameFromReverseProxyHeader(r)
+		username = UsernameFromExtAuthHeader(r)
 		if username == "" {
 			return nil
 		}

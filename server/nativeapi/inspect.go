@@ -9,7 +9,6 @@ import (
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/req"
 )
 
@@ -29,11 +28,6 @@ func doInspect(ctx context.Context, ds model.DataStore, id string) (*core.Inspec
 func inspect(ds model.DataStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-
-		user, _ := request.UserFrom(ctx)
-		if !user.IsAdmin {
-			http.Error(w, "Inspect is only available to admin users", http.StatusUnauthorized)
-		}
 
 		p := req.Params(r)
 		id, err := p.String("id")
@@ -66,7 +60,7 @@ func inspect(ds model.DataStore) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 
-		if _, err := w.Write(response); err != nil {
+		if _, err := w.Write(response); err != nil { //nolint:gosec
 			log.Error(ctx, "Error sending response to client", err)
 		}
 	}

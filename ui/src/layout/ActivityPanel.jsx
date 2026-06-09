@@ -15,7 +15,7 @@ import {
   Typography,
 } from '@material-ui/core'
 import { FiActivity } from 'react-icons/fi'
-import { BiError } from 'react-icons/bi'
+import { BiError, BiMessageError } from 'react-icons/bi'
 import { VscSync } from 'react-icons/vsc'
 import { GiMagnifyingGlass } from 'react-icons/gi'
 import subsonic from '../subsonic'
@@ -28,7 +28,12 @@ import config from '../config'
 const useStyles = makeStyles((theme) => ({
   wrapper: {
     position: 'relative',
-    color: (props) => (props.up ? null : 'orange'),
+    color: (props) =>
+      props.serverDown
+        ? theme.palette.error.main
+        : props.hasWarning
+          ? theme.palette.warning.main
+          : null,
   },
   progress: {
     color: theme.palette.primary.light,
@@ -75,15 +80,23 @@ const ActivityPanel = () => {
     scanStatus.scanning,
     scanStatus.elapsedTime,
   )
-  const classes = useStyles({ up: up && !scanStatus.error })
+  // Determine icon state: error (server down), warning (scan error), or normal
+  const serverDown = !up
+  const hasWarning = Boolean(scanStatus.error)
+  const classes = useStyles({ serverDown, hasWarning })
   const translate = useTranslate()
   const notify = useNotify()
   const [anchorEl, setAnchorEl] = useState(null)
   const open = Boolean(anchorEl)
   useInitialScanStatus()
 
-  const handleMenuOpen = (event) => setAnchorEl(event.currentTarget)
-  const handleMenuClose = () => setAnchorEl(null)
+  const handleMenuOpen = (event) => {
+    setAnchorEl(event.currentTarget)
+  }
+
+  const handleMenuClose = () => {
+    setAnchorEl(null)
+  }
   const triggerScan = (full) => () => subsonic.startScan({ fullScan: full })
 
   useEffect(() => {
@@ -102,6 +115,9 @@ const ActivityPanel = () => {
         return translate('activity.fullScan')
       case 'quick':
         return translate('activity.quickScan')
+      case 'full-selective':
+      case 'quick-selective':
+        return translate('activity.selectiveScan')
       default:
         return ''
     }
@@ -111,10 +127,12 @@ const ActivityPanel = () => {
     <div className={classes.wrapper}>
       <Tooltip title={tooltipTitle}>
         <IconButton className={classes.button} onClick={handleMenuOpen}>
-          {!up || scanStatus.error ? (
-            <BiError size={'20'} />
+          {serverDown ? (
+            <BiError data-testid="activity-error-icon" size={'20'} />
+          ) : hasWarning ? (
+            <BiMessageError data-testid="activity-warning-icon" size={'20'} />
           ) : (
-            <FiActivity size={'20'} />
+            <FiActivity data-testid="activity-ok-icon" size={'20'} />
           )}
         </IconButton>
       </Tooltip>
@@ -141,7 +159,11 @@ const ActivityPanel = () => {
               <Box component="span" flex={2}>
                 {translate('activity.serverUptime')}:
               </Box>
-              <Box component="span" flex={1}>
+              <Box
+                component="span"
+                flex={1}
+                className={!up ? classes.error : null}
+              >
                 {up ? <Uptime /> : translate('activity.serverDown')}
               </Box>
             </Box>

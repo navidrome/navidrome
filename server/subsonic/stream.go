@@ -2,52 +2,20 @@ package subsonic
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/req"
 )
-
-func (api *Router) serveStream(ctx context.Context, w http.ResponseWriter, r *http.Request, stream *core.Stream, id string) {
-	if stream.Seekable() {
-		http.ServeContent(w, r, stream.Name(), stream.ModTime(), stream)
-	} else {
-		// If the stream doesn't provide a size (i.e. is not seekable), we can't support ranges/content-length
-		w.Header().Set("Accept-Ranges", "none")
-		w.Header().Set("Content-Type", stream.ContentType())
-
-		estimateContentLength := req.Params(r).BoolOr("estimateContentLength", false)
-
-		// if Client requests the estimated content-length, send it
-		if estimateContentLength {
-			length := strconv.Itoa(stream.EstimatedContentLength())
-			log.Trace(ctx, "Estimated content-length", "contentLength", length)
-			w.Header().Set("Content-Length", length)
-		}
-
-		if r.Method == http.MethodHead {
-			go func() { _, _ = io.Copy(io.Discard, stream) }()
-		} else {
-			c, err := io.Copy(w, stream)
-			if log.IsGreaterOrEqualTo(log.LevelDebug) {
-				if err != nil {
-					log.Error(ctx, "Error sending transcoded file", "id", id, err)
-				} else {
-					log.Trace(ctx, "Success sending transcode file", "id", id, "size", c)
-				}
-			}
-		}
-	}
-}
 
 func (api *Router) Stream(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
@@ -60,7 +28,13 @@ func (api *Router) Stream(w http.ResponseWriter, r *http.Request) (*responses.Su
 	format, _ := p.String("format")
 	timeOffset := p.IntOr("timeOffset", 0)
 
-	stream, err := api.streamer.NewStream(ctx, id, format, maxBitRate, timeOffset)
+	mf, err := api.ds.MediaFile(ctx).Get(id)
+	if err != nil {
+		return nil, err
+	}
+
+	streamReq := api.transcodeDecision.ResolveRequest(ctx, mf, format, maxBitRate, timeOffset)
+	stream, err := api.streamer.NewStream(ctx, mf, streamReq)
 	if err != nil {
 		return nil, err
 	}
@@ -75,9 +49,8 @@ func (api *Router) Stream(w http.ResponseWriter, r *http.Request) (*responses.Su
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("X-Content-Duration", strconv.FormatFloat(float64(stream.Duration()), 'G', -1, 32))
 
-	api.serveStream(ctx, w, r, stream, id)
-
-	return nil, nil
+	_, err = stream.Serve(ctx, w, r)
+	return nil, err
 }
 
 func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
@@ -129,7 +102,8 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 
 	switch v := entity.(type) {
 	case *model.MediaFile:
-		stream, err := api.streamer.NewStream(ctx, id, format, maxBitRate, 0)
+		streamReq := api.transcodeDecision.ResolveRequest(ctx, v, format, maxBitRate, 0)
+		stream, err := api.streamer.NewStream(ctx, v, streamReq)
 		if err != nil {
 			return nil, err
 		}
@@ -144,20 +118,32 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 		disposition := fmt.Sprintf("attachment; filename=\"%s\"", stream.Name())
 		w.Header().Set("Content-Disposition", disposition)
 
-		api.serveStream(ctx, w, r, stream, id)
-		return nil, nil
+		_, err = stream.Serve(ctx, w, r)
+		return nil, err
 	case *model.Album:
 		setHeaders(v.Name)
-		err = api.archiver.ZipAlbum(ctx, id, format, maxBitRate, w)
+		return nil, handleArchiveErr(ctx, id, api.archiver.ZipAlbum(ctx, id, format, maxBitRate, w))
 	case *model.Artist:
 		setHeaders(v.Name)
-		err = api.archiver.ZipArtist(ctx, id, format, maxBitRate, w)
+		return nil, handleArchiveErr(ctx, id, api.archiver.ZipArtist(ctx, id, format, maxBitRate, w))
 	case *model.Playlist:
 		setHeaders(v.Name)
-		err = api.archiver.ZipPlaylist(ctx, id, format, maxBitRate, w)
+		return nil, handleArchiveErr(ctx, id, api.archiver.ZipPlaylist(ctx, id, format, maxBitRate, w))
 	default:
-		err = model.ErrNotFound
+		return nil, model.ErrNotFound
 	}
+}
 
-	return nil, err
+// handleArchiveErr swallows ErrTooManyTranscodes from archive downloads so the
+// outer error handler does not try to write a 429 onto a response whose status
+// and Content-Disposition have already been flushed. The archive ends up with
+// the tracks that were written before the rejection (the rejected track and
+// any following ones are omitted); the server-side log is the unambiguous
+// signal operators can act on.
+func handleArchiveErr(ctx context.Context, id string, err error) error {
+	if errors.Is(err, stream.ErrTooManyTranscodes) {
+		log.Warn(ctx, "Archive download finalized early: transcode cap reached", "id", id, err)
+		return nil
+	}
+	return err
 }

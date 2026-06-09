@@ -8,6 +8,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
+	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/req"
@@ -62,34 +63,32 @@ func (r *missingRepository) EntityName() string {
 	return "missing_files"
 }
 
-func deleteMissingFiles(ds model.DataStore, w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	p := req.Params(r)
-	ids, _ := p.Strings("id")
-	err := ds.WithTx(func(tx model.DataStore) error {
+func deleteMissingFiles(maintenance core.Maintenance) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		p := req.Params(r)
+		ids, _ := p.Strings("id")
+
+		var err error
 		if len(ids) == 0 {
-			_, err := tx.MediaFile(ctx).DeleteAllMissing()
-			return err
+			err = maintenance.DeleteAllMissingFiles(ctx)
+		} else {
+			err = maintenance.DeleteMissingFiles(ctx, ids)
 		}
-		return tx.MediaFile(ctx).DeleteMissing(ids)
-	})
-	if len(ids) == 1 && errors.Is(err, model.ErrNotFound) {
-		log.Warn(ctx, "Missing file not found", "id", ids[0])
-		http.Error(w, "not found", http.StatusNotFound)
-		return
+
+		if len(ids) == 1 && errors.Is(err, model.ErrNotFound) {
+			log.Warn(ctx, "Missing file not found", "id", ids[0])
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		if err != nil {
+			http.Error(w, "failed to delete missing files", http.StatusInternalServerError)
+			return
+		}
+
+		writeDeleteManyResponse(w, r, ids)
 	}
-	if err != nil {
-		log.Error(ctx, "Error deleting missing tracks from DB", "ids", ids, err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	err = ds.GC(ctx)
-	if err != nil {
-		log.Error(ctx, "Error running GC after deleting missing tracks", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	writeDeleteManyResponse(w, r, ids)
 }
 
 var _ model.ResourceRepository = &missingRepository{}

@@ -2,6 +2,7 @@ import React, { useCallback } from 'react'
 import PropTypes from 'prop-types'
 import Rating from '@material-ui/lab/Rating'
 import { makeStyles } from '@material-ui/core/styles'
+import { isDateSet } from '../utils/validations'
 import StarBorderIcon from '@material-ui/icons/StarBorder'
 import clsx from 'clsx'
 import { useRating } from './useRating'
@@ -38,15 +39,23 @@ export const RatingField = ({
 
   const handleRating = useCallback(
     (e, val) => {
-      rate(val ?? 0, e.target.name)
+      const targetId = record.mediaFileId || record.id
+      rate(val ?? 0, targetId)
     },
-    [rate],
+    [rate, record.mediaFileId, record.id],
   )
 
   return (
-    <span onClick={(e) => stopPropagation(e)}>
+    <span
+      onClick={(e) => stopPropagation(e)}
+      title={
+        isDateSet(record.ratedAt)
+          ? new Date(record.ratedAt).toLocaleString()
+          : undefined
+      }
+    >
       <Rating
-        name={record.id}
+        name={record.mediaFileId || record.id}
         className={clsx(
           className,
           classes.rating,

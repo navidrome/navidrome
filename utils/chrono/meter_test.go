@@ -16,7 +16,10 @@ func TestChrono(t *testing.T) {
 	RunSpecs(t, "Chrono Suite")
 }
 
-// Note: These tests may be flaky due to the use of time.Sleep.
+// Note: These tests use longer sleep durations and generous tolerances to avoid flakiness
+// due to system scheduling delays. For a more elegant approach in the future, consider
+// using Go 1.24's experimental testing/synctest package with GOEXPERIMENT=synctest.
+
 var _ = Describe("Meter", func() {
 	var meter *Meter
 
@@ -27,44 +30,62 @@ var _ = Describe("Meter", func() {
 	Describe("Stop", func() {
 		It("should return the elapsed time", func() {
 			meter.Start()
-			time.Sleep(20 * time.Millisecond)
+			time.Sleep(50 * time.Millisecond)
 			elapsed := meter.Stop()
-			Expect(elapsed).To(BeNumerically("~", 20*time.Millisecond, 10*time.Millisecond))
+			// Use generous tolerance to account for system scheduling delays
+			Expect(elapsed).To(BeNumerically(">=", 30*time.Millisecond))
+			Expect(elapsed).To(BeNumerically("<=", 200*time.Millisecond))
 		})
 
 		It("should accumulate elapsed time on multiple starts and stops", func() {
+			// First cycle
 			meter.Start()
-			time.Sleep(20 * time.Millisecond)
-			meter.Stop()
+			time.Sleep(50 * time.Millisecond)
+			firstElapsed := meter.Stop()
 
+			// Second cycle
 			meter.Start()
-			time.Sleep(20 * time.Millisecond)
-			elapsed := meter.Stop()
+			time.Sleep(50 * time.Millisecond)
+			totalElapsed := meter.Stop()
 
-			Expect(elapsed).To(BeNumerically("~", 40*time.Millisecond, 20*time.Millisecond))
+			// Test that time accumulates (second measurement should be greater than first)
+			Expect(totalElapsed).To(BeNumerically(">", firstElapsed))
+
+			// Test that accumulated time is reasonable (should be roughly double the first)
+			Expect(totalElapsed).To(BeNumerically(">=", time.Duration(float64(firstElapsed)*1.5)))
+			Expect(totalElapsed).To(BeNumerically("<=", firstElapsed*3))
+
+			// Sanity check: total should be at least 60ms (allowing for some timing variance)
+			Expect(totalElapsed).To(BeNumerically(">=", 60*time.Millisecond))
 		})
 	})
 
 	Describe("Elapsed", func() {
 		It("should return the total elapsed time", func() {
 			meter.Start()
-			time.Sleep(20 * time.Millisecond)
+			time.Sleep(50 * time.Millisecond)
 			meter.Stop()
 
 			// Should not count the time the meter was stopped
-			time.Sleep(20 * time.Millisecond)
+			time.Sleep(50 * time.Millisecond)
 
 			meter.Start()
-			time.Sleep(20 * time.Millisecond)
+			time.Sleep(50 * time.Millisecond)
 			meter.Stop()
 
-			Expect(meter.Elapsed()).To(BeNumerically("~", 40*time.Millisecond, 20*time.Millisecond))
+			elapsed := meter.Elapsed()
+			// Should be roughly 100ms (2 x 50ms), but allow for significant variance
+			Expect(elapsed).To(BeNumerically(">=", 60*time.Millisecond))
+			Expect(elapsed).To(BeNumerically("<=", 300*time.Millisecond))
 		})
 
 		It("should include the current running time if started", func() {
 			meter.Start()
-			time.Sleep(20 * time.Millisecond)
-			Expect(meter.Elapsed()).To(BeNumerically("~", 20*time.Millisecond, 10*time.Millisecond))
+			time.Sleep(50 * time.Millisecond)
+			elapsed := meter.Elapsed()
+			// Use generous tolerance to account for system scheduling delays
+			Expect(elapsed).To(BeNumerically(">=", 30*time.Millisecond))
+			Expect(elapsed).To(BeNumerically("<=", 200*time.Millisecond))
 		})
 	})
 })

@@ -18,7 +18,6 @@
         "size": "Tamanho",
         "updatedAt": "Últ. Atualização",
         "bitRate": "Bitrate",
-        "bitDepth": "Profundidade de bits",
         "discSubtitle": "Sub-título do disco",
         "starred": "Favorita",
         "comment": "Comentário",
@@ -34,7 +33,14 @@
         "tags": "Outras Tags",
         "mappedTags": "Tags mapeadas",
         "rawTags": "Tags originais",
-        "missing": "Ausente"
+        "bitDepth": "Profundidade de bits",
+        "sampleRate": "Taxa de amostragem",
+        "albumGain": "Ganho do álbum",
+        "trackGain": "Ganho da faixa",
+        "missing": "Ausente",
+        "libraryName": "Biblioteca",
+        "composer": "Compositor",
+        "disc": "Disco %{discNumber}"
       },
       "actions": {
         "addToQueue": "Adicionar à fila",
@@ -43,7 +49,9 @@
         "shuffleAll": "Aleatório",
         "download": "Baixar",
         "playNext": "Toca a seguir",
-        "info": "Detalhes"
+        "info": "Detalhes",
+        "showInPlaylist": "Ir para playlist",
+        "instantMix": "Mix Instantâneo"
       }
     },
     "album": {
@@ -58,7 +66,6 @@
         "genre": "Gênero",
         "compilation": "Coletânea",
         "year": "Ano",
-        "date": "Data de Lançamento",
         "updatedAt": "Últ. Atualização",
         "comment": "Comentário",
         "rating": "Classificação",
@@ -74,7 +81,9 @@
         "grouping": "Agrupamento",
         "media": "Mídia",
         "mood": "Mood",
-        "missing": "Ausente"
+        "date": "Data de Lançamento",
+        "missing": "Ausente",
+        "libraryName": "Biblioteca"
       },
       "actions": {
         "playAll": "Tocar",
@@ -122,7 +131,13 @@
         "mixer": "Mixador |||| Mixadores",
         "remixer": "Remixador |||| Remixadores",
         "djmixer": "DJ Mixer |||| DJ Mixers",
-        "performer": "Músico |||| Músicos"
+        "performer": "Músico |||| Músicos",
+        "maincredit": "Artista do Álbum ou Artista |||| Artistas do Álbum ou Artistas"
+      },
+      "actions": {
+        "shuffle": "Aleatório",
+        "radio": "Rádio",
+        "topSongs": "Mais tocadas"
       }
     },
     "user": {
@@ -139,10 +154,12 @@
         "currentPassword": "Senha Atual",
         "newPassword": "Nova Senha",
         "token": "Token",
-        "lastAccessAt": "Últ. Acesso"
+        "lastAccessAt": "Últ. Acesso",
+        "libraries": "Bibliotecas"
       },
       "helperTexts": {
-        "name": "Alterações no seu nome só serão refletidas no próximo login"
+        "name": "Alterações no seu nome só serão refletidas no próximo login",
+        "libraries": "Selecione bibliotecas específicas para este usuário, ou deixe vazio para usar bibliotecas padrão"
       },
       "notifications": {
         "created": "Novo usuário criado",
@@ -151,7 +168,12 @@
       },
       "message": {
         "listenBrainzToken": "Entre seu token do ListenBrainz",
-        "clickHereForToken": "Clique aqui para obter seu token"
+        "clickHereForToken": "Clique aqui para obter seu token",
+        "selectAllLibraries": "Selecionar todas as bibliotecas",
+        "adminAutoLibraries": "Usuários administradores têm acesso automático a todas as bibliotecas"
+      },
+      "validation": {
+        "librariesRequired": "Pelo menos uma biblioteca deve ser selecionada para usuários não-administradores"
       }
     },
     "player": {
@@ -194,13 +216,18 @@
         "selectPlaylist": "Selecione a playlist:",
         "addNewPlaylist": "Criar \"%{name}\"",
         "export": "Exportar",
-        "saveQueue": "Salvar fila em nova Playlist",
         "makePublic": "Pública",
-        "makePrivate": "Pessoal"
+        "makePrivate": "Pessoal",
+        "saveQueue": "Salvar fila em nova Playlist",
+        "searchOrCreate": "Buscar playlists ou criar nova...",
+        "pressEnterToCreate": "Pressione Enter para criar nova playlist",
+        "removeFromSelection": "Remover da seleção"
       },
       "message": {
         "duplicate_song": "Adicionar músicas duplicadas",
-        "song_exist": "Algumas destas músicas já existem na playlist. Você quer adicionar as duplicadas ou ignorá-las?"
+        "song_exist": "Algumas destas músicas já existem na playlist. Você quer adicionar as duplicadas ou ignorá-las?",
+        "noPlaylistsFound": "Nenhuma playlist encontrada",
+        "noPlaylists": "Nenhuma playlist disponível"
       }
     },
     "radio": {
@@ -235,11 +262,11 @@
     },
     "missing": {
       "name": "Arquivo ausente |||| Arquivos ausentes",
-      "empty": "Nenhum arquivo ausente",
       "fields": {
         "path": "Caminho",
         "size": "Tamanho",
-        "updatedAt": "Desaparecido em"
+        "updatedAt": "Desaparecido em",
+        "libraryName": "Biblioteca"
       },
       "actions": {
         "remove": "Remover",
@@ -247,6 +274,140 @@
       },
       "notifications": {
         "removed": "Arquivo(s) ausente(s) removido(s)"
+      },
+      "empty": "Nenhum arquivo ausente"
+    },
+    "library": {
+      "name": "Biblioteca |||| Bibliotecas",
+      "fields": {
+        "name": "Nome",
+        "path": "Caminho",
+        "remotePath": "Caminho Remoto",
+        "lastScanAt": "Último Scan",
+        "songCount": "Músicas",
+        "albumCount": "Álbuns",
+        "artistCount": "Artistas",
+        "totalSongs": "Músicas",
+        "totalAlbums": "Álbuns",
+        "totalArtists": "Artistas",
+        "totalFolders": "Pastas",
+        "totalFiles": "Arquivos",
+        "totalMissingFiles": "Arquivos Ausentes",
+        "totalSize": "Tamanho Total",
+        "totalDuration": "Duração",
+        "defaultNewUsers": "Padrão para Novos Usuários",
+        "createdAt": "Data de Criação",
+        "updatedAt": "Últ. Atualização"
+      },
+      "sections": {
+        "basic": "Informações Básicas",
+        "statistics": "Estatísticas"
+      },
+      "actions": {
+        "scan": "Scanear Biblioteca",
+        "manageUsers": "Gerenciar Acesso do Usuário",
+        "viewDetails": "Ver Detalhes",
+        "quickScan": "Scan Rápido",
+        "fullScan": "Scan Completo"
+      },
+      "notifications": {
+        "created": "Biblioteca criada com sucesso",
+        "updated": "Biblioteca atualizada com sucesso",
+        "deleted": "Biblioteca excluída com sucesso",
+        "scanStarted": "Scan da biblioteca iniciada",
+        "scanCompleted": "Scan da biblioteca concluída",
+        "quickScanStarted": "Scan rápido iniciado",
+        "fullScanStarted": "Scan completo iniciado",
+        "scanError": "Erro ao iniciar o scan. Verifique os logs"
+      },
+      "validation": {
+        "nameRequired": "Nome da biblioteca é obrigatório",
+        "pathRequired": "Caminho da biblioteca é obrigatório",
+        "pathNotDirectory": "Caminho da biblioteca deve ser um diretório",
+        "pathNotFound": "Caminho da biblioteca não encontrado",
+        "pathNotAccessible": "Caminho da biblioteca não está acessível",
+        "pathInvalid": "Caminho da biblioteca inválido"
+      },
+      "messages": {
+        "deleteConfirm": "Tem certeza que deseja excluir esta biblioteca? Isso removerá todos os dados associados.",
+        "scanInProgress": "Scan em progresso...",
+        "noLibrariesAssigned": "Nenhuma biblioteca atribuída a este usuário"
+      }
+    },
+    "plugin": {
+      "name": "Plugin |||| Plugins",
+      "fields": {
+        "id": "ID",
+        "name": "Nome",
+        "description": "Descrição",
+        "version": "Versão",
+        "author": "Autor",
+        "website": "Website",
+        "permissions": "Permissões",
+        "enabled": "Habilitado",
+        "status": "Status",
+        "path": "Caminho",
+        "lastError": "Erro",
+        "hasError": "Erro",
+        "updatedAt": "Atualizado",
+        "createdAt": "Instalado",
+        "configKey": "Chave",
+        "configValue": "Valor",
+        "allUsers": "Permitir todos os usuários",
+        "selectedUsers": "Usuários selecionados",
+        "allLibraries": "Permitir todas as bibliotecas",
+        "selectedLibraries": "Bibliotecas selecionadas",
+        "allowWriteAccess": "Permitir acesso de escrita"
+      },
+      "sections": {
+        "status": "Status",
+        "info": "Informações do Plugin",
+        "configuration": "Configuração",
+        "manifest": "Manifesto",
+        "usersPermission": "Permissão de Usuários",
+        "libraryPermission": "Permissão de Bibliotecas"
+      },
+      "status": {
+        "enabled": "Habilitado",
+        "disabled": "Desabilitado"
+      },
+      "actions": {
+        "enable": "Habilitar",
+        "disable": "Desabilitar",
+        "disabledDueToError": "Corrija o erro antes de habilitar",
+        "disabledUsersRequired": "Selecione usuários antes de habilitar",
+        "disabledLibrariesRequired": "Selecione bibliotecas antes de habilitar",
+        "addConfig": "Adicionar configuração",
+        "rescan": "Rescanear"
+      },
+      "notifications": {
+        "enabled": "Plugin habilitado",
+        "disabled": "Plugin desabilitado",
+        "updated": "Plugin atualizado",
+        "error": "Erro ao atualizar plugin"
+      },
+      "validation": {
+        "invalidJson": "A configuração deve ser um JSON válido"
+      },
+      "messages": {
+        "configHelp": "Configure o plugin usando pares chave-valor. Deixe vazio se o plugin não precisa de configuração.",
+        "clickPermissions": "Clique em uma permissão para ver detalhes",
+        "noConfig": "Nenhuma configuração definida",
+        "allUsersHelp": "Quando habilitado, o plugin terá acesso a todos os usuários, incluindo os criados no futuro.",
+        "noUsers": "Nenhum usuário selecionado",
+        "permissionReason": "Motivo",
+        "usersRequired": "Este plugin requer acesso a informações de usuário. Selecione quais usuários o plugin pode acessar, ou habilite 'Permitir todos os usuários'.",
+        "allLibrariesHelp": "Quando habilitado, o plugin terá acesso a todas as bibliotecas, incluindo as criadas no futuro.",
+        "noLibraries": "Nenhuma biblioteca selecionada",
+        "librariesRequired": "Este plugin requer acesso a informações de bibliotecas. Selecione quais bibliotecas o plugin pode acessar, ou habilite 'Permitir todas as bibliotecas'.",
+        "requiredHosts": "Hosts necessários",
+        "configValidationError": "Falha na validação da configuração:",
+        "schemaRenderError": "Não foi possível renderizar o formulário de configuração. O schema do plugin pode estar inválido.",
+        "allowWriteAccessHelp": "Quando habilitado, o plugin pode modificar arquivos nos diretórios das bibliotecas. Por padrão, plugins têm acesso somente leitura."
+      },
+      "placeholders": {
+        "configKey": "chave",
+        "configValue": "valor"
       }
     }
   },
@@ -429,7 +590,16 @@
     "remove_missing_title": "Remover arquivos ausentes",
     "remove_missing_content": "Você tem certeza que deseja remover os arquivos selecionados do banco de dados? Isso removerá permanentemente qualquer referência a eles, incluindo suas contagens de reprodução e classificações.",
     "remove_all_missing_title": "Remover todos os arquivos ausentes",
-    "remove_all_missing_content": "Você tem certeza que deseja remover todos os arquivos ausentes do banco de dados? Isso removerá permanentemente qualquer referência a eles, incluindo suas contagens de reprodução e classificações."
+    "remove_all_missing_content": "Você tem certeza que deseja remover todos os arquivos ausentes do banco de dados? Isso removerá permanentemente qualquer referência a eles, incluindo suas contagens de reprodução e classificações.",
+    "noSimilarSongsFound": "Nenhuma música semelhante encontrada",
+    "noTopSongsFound": "Nenhuma música mais tocada encontrada",
+    "startingInstantMix": "Carregando Mix Instantâneo...",
+    "uploadCover": "Enviar Capa",
+    "removeCover": "Remover Capa",
+    "coverUploaded": "Capa atualizada",
+    "coverRemoved": "Capa removida",
+    "coverUploadError": "Erro ao enviar capa",
+    "coverRemoveError": "Erro ao remover capa"
   },
   "menu": {
     "library": "Biblioteca",
@@ -458,7 +628,13 @@
     "albumList": "Álbuns",
     "about": "Info",
     "playlists": "Playlists",
-    "sharedPlaylists": "Compartilhadas"
+    "sharedPlaylists": "Compartilhadas",
+    "librarySelector": {
+      "allLibraries": "Todas as Bibliotecas (%{count})",
+      "multipleLibraries": "%{selected} de %{total} Bibliotecas",
+      "selectLibraries": "Selecionar Bibliotecas",
+      "none": "Nenhuma"
+    }
   },
   "player": {
     "playListsText": "Fila de Execução",
@@ -495,18 +671,35 @@
         "disabled": "Desligado",
         "waiting": "Aguardando"
       }
+    },
+    "tabs": {
+      "about": "Sobre",
+      "config": "Configuração"
+    },
+    "config": {
+      "configName": "Nome da Configuração",
+      "environmentVariable": "Variável de Ambiente",
+      "currentValue": "Valor Atual",
+      "configurationFile": "Arquivo de Configuração",
+      "exportToml": "Exportar Configuração (TOML)",
+      "exportSuccess": "Configuração exportada para o clipboard em formato TOML",
+      "exportFailed": "Falha ao copiar configuração",
+      "devFlagsHeader": "Flags de Desenvolvimento (sujeitas a mudança/remoção)",
+      "devFlagsComment": "Estas são configurações experimentais e podem ser removidas em versões futuras",
+      "downloadToml": "Baixar configuração (TOML)"
     }
   },
   "activity": {
     "title": "Atividade",
-    "totalScanned": "Total de pastas analisadas",
-    "quickScan": "Scan rápido",
-    "fullScan": "Scan completo",
+    "totalScanned": "Total de pastas scaneadas",
+    "quickScan": "Rápido",
+    "fullScan": "Completo",
     "serverUptime": "Uptime do servidor",
     "serverDown": "DESCONECTADO",
-    "scanType": "Tipo",
+    "scanType": "Último Scan",
     "status": "Erro",
-    "elapsedTime": "Duração"
+    "elapsedTime": "Duração",
+    "selectiveScan": "Seletivo"
   },
   "help": {
     "title": "Teclas de atalho",
@@ -521,5 +714,10 @@
       "toggle_love": "Marcar/desmarcar favorita",
       "current_song": "Vai para música atual"
     }
+  },
+  "nowPlaying": {
+    "title": "Tocando agora",
+    "empty": "Nada tocando",
+    "minutesAgo": "%{smart_count} minuto atrás |||| %{smart_count} minutos atrás"
   }
 }

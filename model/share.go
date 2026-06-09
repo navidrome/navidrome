@@ -2,7 +2,6 @@ package model
 
 import (
 	"cmp"
-	"fmt"
 	"strings"
 	"time"
 
@@ -23,8 +22,8 @@ type Share struct {
 	Format        string     `structs:"format" json:"format,omitempty"`
 	MaxBitRate    int        `structs:"max_bit_rate" json:"maxBitRate,omitempty"`
 	VisitCount    int        `structs:"visit_count" json:"visitCount,omitempty"`
-	CreatedAt     time.Time  `structs:"created_at" json:"createdAt,omitempty"`
-	UpdatedAt     time.Time  `structs:"updated_at" json:"updatedAt,omitempty"`
+	CreatedAt     time.Time  `structs:"created_at" json:"createdAt"`
+	UpdatedAt     time.Time  `structs:"updated_at" json:"updatedAt"`
 	Tracks        MediaFiles `structs:"-" json:"tracks,omitempty"`
 	Albums        Albums     `structs:"-" json:"albums,omitempty"`
 	URL           string     `structs:"-" json:"-"`
@@ -50,17 +49,9 @@ func (s Share) CoverArtID() ArtworkID {
 
 type Shares []Share
 
-// ToM3U8 exports the playlist to the Extended M3U8 format, as specified in
-// https://docs.fileformat.com/audio/m3u/#extended-m3u
+// ToM3U8 exports the share to the Extended M3U8 format.
 func (s Share) ToM3U8() string {
-	buf := strings.Builder{}
-	buf.WriteString("#EXTM3U\n")
-	buf.WriteString(fmt.Sprintf("#PLAYLIST:%s\n", cmp.Or(s.Description, s.ID)))
-	for _, t := range s.Tracks {
-		buf.WriteString(fmt.Sprintf("#EXTINF:%.f,%s - %s\n", t.Duration, t.Artist, t.Title))
-		buf.WriteString(t.Path + "\n")
-	}
-	return buf.String()
+	return s.Tracks.ToM3U8(cmp.Or(s.Description, s.ID), false)
 }
 
 type ShareRepository interface {

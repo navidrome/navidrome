@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -80,6 +81,7 @@ var _ = Describe("CacheWarmer", func() {
 		})
 
 		It("adds multiple items to buffer", func() {
+			fc.SetReady(false) // Make cache unavailable so items stay in buffer
 			cw := NewCacheWarmer(aw, fc).(*cacheWarmer)
 			cw.PreCache(model.MustParseArtworkID("al-1"))
 			cw.PreCache(model.MustParseArtworkID("al-2"))
@@ -89,6 +91,7 @@ var _ = Describe("CacheWarmer", func() {
 		})
 
 		It("deduplicates items in buffer", func() {
+			fc.SetReady(false) // Make cache unavailable so items stay in buffer
 			cw := NewCacheWarmer(aw, fc).(*cacheWarmer)
 			cw.PreCache(model.MustParseArtworkID("al-1"))
 			cw.PreCache(model.MustParseArtworkID("al-1"))
@@ -141,7 +144,7 @@ var _ = Describe("CacheWarmer", func() {
 
 		It("processes items in batches", func() {
 			cw := NewCacheWarmer(aw, fc).(*cacheWarmer)
-			for i := 0; i < 5; i++ {
+			for i := range 5 {
 				cw.PreCache(model.MustParseArtworkID(fmt.Sprintf("al-%d", i)))
 			}
 
@@ -171,18 +174,40 @@ var _ = Describe("CacheWarmer", func() {
 				return len(cw.buffer)
 			}).Should(Equal(0))
 		})
+
+		It("pre-caches UICoverArtSize", func() {
+			cw := NewCacheWarmer(aw, fc).(*cacheWarmer)
+			cw.PreCache(model.MustParseArtworkID("al-1"))
+
+			Eventually(func() []int {
+				return aw.getCachedSizes()
+			}).Should(ContainElements(conf.Server.UICoverArtSize))
+		})
 	})
 })
 
 type mockArtwork struct {
-	err error
+	err         error
+	mu          sync.Mutex
+	cachedSizes []int
 }
 
 func (m *mockArtwork) Get(ctx context.Context, artID model.ArtworkID, size int, square bool) (io.ReadCloser, time.Time, error) {
 	if m.err != nil {
 		return nil, time.Time{}, m.err
 	}
+	m.mu.Lock()
+	m.cachedSizes = append(m.cachedSizes, size)
+	m.mu.Unlock()
 	return io.NopCloser(strings.NewReader("test")), time.Now(), nil
+}
+
+func (m *mockArtwork) getCachedSizes() []int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	result := make([]int, len(m.cachedSizes))
+	copy(result, m.cachedSizes)
+	return result
 }
 
 func (m *mockArtwork) GetOrPlaceholder(ctx context.Context, id string, size int, square bool) (io.ReadCloser, time.Time, error) {
@@ -213,4 +238,8 @@ func (f *mockFileCache) Disabled(ctx context.Context) bool {
 func (f *mockFileCache) SetDisabled(v bool) {
 	f.disabled.Store(v)
 	f.ready.Store(true)
+}
+
+func (f *mockFileCache) SetReady(v bool) {
+	f.ready.Store(v)
 }

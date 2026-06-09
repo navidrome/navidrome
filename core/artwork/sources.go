@@ -5,9 +5,9 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"net/url"
-	"os"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -15,13 +15,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dhowden/tag"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/resources"
+	"go.senan.xyz/taglib"
 )
 
 func selectImageReader(ctx context.Context, artID model.ArtworkID, extractFuncs ...sourceFunc) (io.ReadCloser, string, error) {
@@ -53,7 +53,7 @@ func (f sourceFunc) String() string {
 	return name
 }
 
-func fromExternalFile(ctx context.Context, files []string, pattern string) sourceFunc {
+func fromExternalFile(ctx context.Context, libFS fs.FS, files []string, pattern string) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
 		for _, file := range files {
 			_, name := filepath.Split(file)
@@ -65,12 +65,12 @@ func fromExternalFile(ctx context.Context, files []string, pattern string) sourc
 			if !match {
 				continue
 			}
-			f, err := os.Open(file)
+			f, err := libFS.Open(file)
 			if err != nil {
 				log.Warn(ctx, "Could not open cover art file", "file", file, err)
 				continue
 			}
-			return f, file, err
+			return f, file, nil
 		}
 		return nil, "", fmt.Errorf("pattern '%s' not matched by files %v", pattern, files)
 	}
@@ -83,51 +83,66 @@ var picTypeRegexes = []*regexp.Regexp{
 	regexp.MustCompile(`(?i).*cover.*`),
 }
 
-func fromTag(ctx context.Context, path string) sourceFunc {
+func fromTag(ctx context.Context, libFS fs.FS, relPath string) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
-		if path == "" {
+		if relPath == "" {
 			return nil, "", nil
 		}
-		f, err := os.Open(path)
+		f, err := libFS.Open(relPath)
 		if err != nil {
 			return nil, "", err
 		}
+		rs, ok := f.(io.ReadSeeker)
+		if !ok {
+			f.Close()
+			return nil, "", fmt.Errorf("FS file %s is not seekable; cannot read tags", relPath)
+		}
+		tf, err := taglib.OpenStream(rs,
+			taglib.WithReadStyle(taglib.ReadStyleFast),
+			taglib.WithFilename(relPath),
+		)
+		if err != nil {
+			f.Close()
+			return nil, "", err
+		}
+		// Close in LIFO order: tf first (it holds rs internally), then f.
 		defer f.Close()
+		defer tf.Close()
 
-		m, err := tag.ReadFrom(f)
-		if err != nil {
-			return nil, "", err
-		}
-
-		types := m.PictureTypes()
-		if len(types) == 0 {
-			return nil, "", fmt.Errorf("no embedded image found in %s", path)
+		images := tf.Properties().Images
+		if len(images) == 0 {
+			return nil, "", fmt.Errorf("no embedded image found in %s", relPath)
 		}
 
-		var picture *tag.Picture
-		for _, regex := range picTypeRegexes {
-			for _, t := range types {
-				if regex.MatchString(t) {
-					log.Trace(ctx, "Found embedded image", "type", t, "path", path)
-					picture = m.Pictures(t)
-					break
-				}
-			}
-			if picture != nil {
-				break
-			}
+		imageIndex := findBestImageIndex(ctx, images, relPath)
+		data, err := tf.Image(imageIndex)
+		if err != nil || len(data) == 0 {
+			return nil, "", fmt.Errorf("could not load embedded image from %s", relPath)
 		}
-		if picture == nil {
-			log.Trace(ctx, "Could not find a front image. Getting the first one", "type", types[0], "path", path)
-			picture = m.Picture()
-		}
-		if picture == nil {
-			return nil, "", fmt.Errorf("could not load embedded image from %s", path)
-		}
-		return io.NopCloser(bytes.NewReader(picture.Data)), path, nil
+		return io.NopCloser(bytes.NewReader(data)), relPath, nil
 	}
 }
 
+func findBestImageIndex(ctx context.Context, images []taglib.ImageDesc, path string) int {
+	for _, regex := range picTypeRegexes {
+		for i, img := range images {
+			if regex.MatchString(img.Type) {
+				log.Trace(ctx, "Found embedded image", "type", img.Type, "path", path)
+				return i
+			}
+		}
+	}
+	log.Trace(ctx, "Could not find a front image. Getting the first one", "type", images[0].Type, "path", path)
+	return 0
+}
+
+// fromFFmpegTag is intentionally absolute-path-based. ffmpeg is a subprocess
+// and cannot read from arbitrary fs.FS implementations; piping via stdin is a
+// non-trivial refactor with stream/seek implications.
+//
+// TODO(artwork-musicfs): when the storage backing the library is not local
+// (e.g. a future S3 backend, or FakeFS in tests), short-circuit this source
+// func to return (nil, "", nil) so callers fall through cleanly.
 func fromFFmpegTag(ctx context.Context, ffmpeg ffmpeg.FFmpeg, path string) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
 		if path == "" {
@@ -137,8 +152,23 @@ func fromFFmpegTag(ctx context.Context, ffmpeg ffmpeg.FFmpeg, path string) sourc
 		if err != nil {
 			return nil, "", err
 		}
-		return r, path, nil
+		// Validate that the stream actually contains image data by reading the first byte.
+		// ffmpeg.ExtractImage returns a pipe reader that may fail asynchronously if the
+		// file has no video/image stream (e.g., an MP3 without embedded art).
+		buf := make([]byte, 1)
+		n, err := r.Read(buf)
+		if n == 0 || err != nil {
+			r.Close()
+			return nil, "", fmt.Errorf("ffmpeg produced no image data for %s: %w", path, err)
+		}
+		return readCloser{Reader: io.MultiReader(bytes.NewReader(buf[:n]), r), Closer: r}, path, nil
 	}
+}
+
+// readCloser combines a Reader and a Closer into an io.ReadCloser.
+type readCloser struct {
+	io.Reader
+	io.Closer
 }
 
 func fromAlbum(ctx context.Context, a *artwork, id model.ArtworkID) sourceFunc {
@@ -182,13 +212,14 @@ func fromAlbumExternalSource(ctx context.Context, al model.Album, provider exter
 func fromURL(ctx context.Context, imageUrl *url.URL) (io.ReadCloser, string, error) {
 	hc := http.Client{Timeout: 5 * time.Second}
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, imageUrl.String(), nil)
-	resp, err := hc.Do(req)
+	req.Header.Set("User-Agent", consts.HTTPUserAgent)
+	resp, err := hc.Do(req) //nolint:gosec
 	if err != nil {
 		return nil, "", err
 	}
 	if resp.StatusCode != http.StatusOK {
 		resp.Body.Close()
-		return nil, "", fmt.Errorf("error retrieveing artwork from %s: %s", imageUrl, resp.Status)
+		return nil, "", fmt.Errorf("error retrieving artwork from %s: %s", imageUrl, resp.Status)
 	}
 	return resp.Body, imageUrl.String(), nil
 }

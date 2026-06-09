@@ -8,10 +8,10 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/external"
+	"github.com/navidrome/navidrome/core/matcher"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
-	"github.com/navidrome/navidrome/utils/gg"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
@@ -34,7 +34,7 @@ var _ = Describe("Provider - UpdateAlbumInfo", func() {
 		ctx = GinkgoT().Context()
 		ds = new(tests.MockDataStore)
 		ag = new(mockAgents)
-		p = external.NewProvider(ds, ag)
+		p = external.NewProvider(ds, ag, matcher.New(ds))
 		mockAlbumRepo = ds.Album(ctx).(*tests.MockAlbumRepo)
 		conf.Server.DevAlbumInfoTimeToLive = 1 * time.Hour
 	})
@@ -59,13 +59,13 @@ var _ = Describe("Provider - UpdateAlbumInfo", func() {
 		expectedInfo := &agents.AlbumInfo{
 			URL:         "http://example.com/album",
 			Description: "Album Description",
-			Images: []agents.ExternalImage{
-				{URL: "http://example.com/large.jpg", Size: 300},
-				{URL: "http://example.com/medium.jpg", Size: 200},
-				{URL: "http://example.com/small.jpg", Size: 100},
-			},
 		}
 		ag.On("GetAlbumInfo", ctx, "Test Album", "Test Artist", "mbid-album").Return(expectedInfo, nil)
+		ag.On("GetAlbumImages", ctx, "Test Album", "Test Artist", "mbid-album").Return([]agents.ExternalImage{
+			{URL: "http://example.com/large.jpg", Size: 300},
+			{URL: "http://example.com/medium.jpg", Size: 200},
+			{URL: "http://example.com/small.jpg", Size: 100},
+		}, nil)
 
 		updatedAlbum, err := p.UpdateAlbumInfo(ctx, "al-existing")
 
@@ -74,9 +74,6 @@ var _ = Describe("Provider - UpdateAlbumInfo", func() {
 		Expect(updatedAlbum.ID).To(Equal("al-existing"))
 		Expect(updatedAlbum.ExternalUrl).To(Equal("http://example.com/album"))
 		Expect(updatedAlbum.Description).To(Equal("Album Description"))
-		Expect(updatedAlbum.LargeImageUrl).To(Equal("http://example.com/large.jpg"))
-		Expect(updatedAlbum.MediumImageUrl).To(Equal("http://example.com/medium.jpg"))
-		Expect(updatedAlbum.SmallImageUrl).To(Equal("http://example.com/small.jpg"))
 		Expect(updatedAlbum.ExternalInfoUpdatedAt).NotTo(BeNil())
 		Expect(*updatedAlbum.ExternalInfoUpdatedAt).To(BeTemporally("~", time.Now(), time.Second))
 
@@ -92,7 +89,7 @@ var _ = Describe("Provider - UpdateAlbumInfo", func() {
 			ExternalUrl:           "http://cached.com/album",
 			Description:           "Cached Desc",
 			LargeImageUrl:         "http://cached.com/large.jpg",
-			ExternalInfoUpdatedAt: gg.P(now.Add(-conf.Server.DevAlbumInfoTimeToLive / 2)),
+			ExternalInfoUpdatedAt: new(now.Add(-conf.Server.DevAlbumInfoTimeToLive / 2)),
 		}
 		mockAlbumRepo.SetData(model.Albums{*originalAlbum})
 
@@ -115,7 +112,7 @@ var _ = Describe("Provider - UpdateAlbumInfo", func() {
 			ExternalUrl:           "http://expired.com/album",
 			Description:           "Expired Desc",
 			LargeImageUrl:         "http://expired.com/large.jpg",
-			ExternalInfoUpdatedAt: gg.P(expiredTime),
+			ExternalInfoUpdatedAt: new(expiredTime),
 		}
 		mockAlbumRepo.SetData(model.Albums{*originalAlbum})
 

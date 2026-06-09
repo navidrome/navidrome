@@ -98,8 +98,13 @@ const renderInput = ({
 }) => (
   <TextField
     error={!!(touched && error)}
+    inputProps={{
+      // mobile keyboards: suppress capitalization and correction for login related fields
+      autocapitalize: 'none',
+      autocorrect: 'off',
+      ...inputProps,
+    }}
     helperText={touched && error}
-    {...inputProps}
     {...props}
     fullWidth
   />
@@ -133,6 +138,8 @@ const FormLogin = ({ loading, handleSubmit, validate }) => {
               {config.welcomeMessage && (
                 <div
                   className={classes.welcome}
+                  // Use dangerouslySetInnerHTML to allow admins to configure
+                  // whatever content they want
                   dangerouslySetInnerHTML={{ __html: config.welcomeMessage }}
                 />
               )}

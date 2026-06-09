@@ -32,8 +32,8 @@ var _ = Describe("phaseRefreshAlbums", func() {
 			{ID: 1, Name: "Library 1"},
 			{ID: 2, Name: "Library 2"},
 		}
-		state = &scanState{}
-		phase = createPhaseRefreshAlbums(ctx, state, ds, libs)
+		state = &scanState{libraries: libs}
+		phase = createPhaseRefreshAlbums(ctx, state, ds)
 	})
 
 	Describe("description", func() {

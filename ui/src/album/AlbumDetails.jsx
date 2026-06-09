@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Card,
   CardContent,
@@ -18,6 +18,7 @@ import {
   useTranslate,
 } from 'react-admin'
 import Lightbox from 'react-image-lightbox'
+import config from '../config'
 import 'react-image-lightbox/style.css'
 import subsonic from '../subsonic'
 import {
@@ -29,10 +30,11 @@ import {
   RatingField,
   SizeField,
   useAlbumsPerPage,
+  useImageLoadingState,
 } from '../common'
-import config from '../config'
 import { formatFullDate, intersperse } from '../utils'
 import AlbumExternalLinks from './AlbumExternalLinks'
+import { SafeHTML } from '../common/SafeHTML'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -72,6 +74,10 @@ const useStyles = makeStyles(
         width: '15em',
         minWidth: '15em',
       },
+      backgroundColor: 'transparent',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     cover: {
       objectFit: 'contain',
@@ -79,6 +85,11 @@ const useStyles = makeStyles(
       display: 'block',
       width: '100%',
       height: '100%',
+      backgroundColor: 'transparent',
+      transition: 'opacity 0.3s ease-in-out',
+    },
+    coverLoading: {
+      opacity: 0.5,
     },
     loveButton: {
       top: theme.spacing(-0.2),
@@ -210,14 +221,21 @@ const AlbumDetails = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('lg'))
   const classes = useStyles()
-  const [isLightboxOpen, setLightboxOpen] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [albumInfo, setAlbumInfo] = useState()
+  const {
+    imageLoading,
+    imageError,
+    isLightboxOpen,
+    handleImageLoad,
+    handleImageError,
+    handleOpenLightbox,
+    handleCloseLightbox,
+  } = useImageLoadingState(record.id)
 
-  let notes =
-    albumInfo?.notes?.replace(new RegExp('<.*>', 'g'), '') || record.notes
+  let notes = albumInfo?.notes || record.notes
 
-  if (notes !== undefined) {
+  if (notes) {
     notes += '..'
   }
 
@@ -236,23 +254,27 @@ const AlbumDetails = (props) => {
       })
   }, [record])
 
-  const imageUrl = subsonic.getCoverArtUrl(record, 300)
+  const imageUrl = subsonic.getCoverArtUrl(record, config.uiCoverArtSize)
   const fullImageUrl = subsonic.getCoverArtUrl(record)
 
-  const handleOpenLightbox = useCallback(() => setLightboxOpen(true), [])
-  const handleCloseLightbox = useCallback(() => setLightboxOpen(false), [])
   return (
     <Card className={classes.root}>
       <div className={classes.cardContents}>
         <div className={classes.coverParent}>
           <CardMedia
+            key={record.id}
             component={'img'}
             src={imageUrl}
             width="400"
             height="400"
-            className={classes.cover}
+            className={`${classes.cover} ${imageLoading ? classes.coverLoading : ''}`}
             onClick={handleOpenLightbox}
+            onLoad={handleImageLoad}
+            onError={handleImageError}
             title={record.name}
+            style={{
+              cursor: imageError ? 'default' : 'pointer',
+            }}
           />
         </div>
         <div className={classes.details}>
@@ -301,7 +323,7 @@ const AlbumDetails = (props) => {
                 )}
               </Typography>
             )}
-            {isDesktop && (
+            {isDesktop && notes && (
               <Collapse
                 collapsedHeight={'2.75em'}
                 in={expanded}
@@ -312,7 +334,9 @@ const AlbumDetails = (props) => {
                   variant={'body1'}
                   onClick={() => setExpanded(!expanded)}
                 >
-                  <span dangerouslySetInnerHTML={{ __html: notes }} />
+                  <span>
+                    <SafeHTML>{notes}</SafeHTML>
+                  </span>
                 </Typography>
               </Collapse>
             )}
@@ -325,19 +349,21 @@ const AlbumDetails = (props) => {
       {!isDesktop && record['comment'] && (
         <CollapsibleComment record={record} />
       )}
-      {!isDesktop && (
+      {!isDesktop && notes && (
         <div className={classes.notes}>
           <Collapse collapsedHeight={'1.5em'} in={expanded} timeout={'auto'}>
             <Typography
               variant={'body1'}
               onClick={() => setExpanded(!expanded)}
             >
-              <span dangerouslySetInnerHTML={{ __html: notes }} />
+              <span>
+                <SafeHTML>{notes}</SafeHTML>
+              </span>
             </Typography>
           </Collapse>
         </div>
       )}
-      {isLightboxOpen && (
+      {isLightboxOpen && !imageError && (
         <Lightbox
           imagePadding={50}
           animationDuration={200}

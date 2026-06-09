@@ -31,20 +31,17 @@ func NewShareRepository(ctx context.Context, db dbx.Builder) model.ShareReposito
 }
 
 func (r *shareRepository) Delete(id string) error {
-	err := r.delete(Eq{"id": id})
-	if errors.Is(err, model.ErrNotFound) {
-		return rest.ErrNotFound
-	}
-	return err
+	return r.deleteOwned(id)
 }
 
 func (r *shareRepository) selectShare(options ...model.QueryOptions) SelectBuilder {
 	return r.newSelect(options...).Join("user u on u.id = share.user_id").
-		Columns("share.*", "user_name as username")
+		Columns("share.*", "user_name as username").
+		Where(r.addRestriction())
 }
 
 func (r *shareRepository) Exists(id string) (bool, error) {
-	return r.exists(Eq{"id": id})
+	return r.exists(r.addRestriction(And{Eq{"id": id}}))
 }
 
 func (r *shareRepository) Get(id string) (*model.Share, error) {
@@ -95,7 +92,7 @@ func (r *shareRepository) loadMedia(share *model.Share) error {
 		return err
 	case "album":
 		albumRepo := NewAlbumRepository(r.ctx, r.db)
-		share.Albums, err = albumRepo.GetAll(model.QueryOptions{Filters: noMissing(Eq{"id": ids})})
+		share.Albums, err = albumRepo.GetAll(model.QueryOptions{Filters: noMissing(Eq{"album.id": ids})})
 		if err != nil {
 			return err
 		}
@@ -138,20 +135,17 @@ func sortByIdPosition(mfs model.MediaFiles, ids []string) model.MediaFiles {
 	return sorted
 }
 
-func (r *shareRepository) Update(id string, entity interface{}, cols ...string) error {
+func (r *shareRepository) Update(id string, entity any, cols ...string) error {
 	s := entity.(*model.Share)
-	// TODO Validate record
 	s.ID = id
 	s.UpdatedAt = time.Now()
-	cols = append(cols, "updated_at")
-	_, err := r.put(id, s, cols...)
-	if errors.Is(err, model.ErrNotFound) {
-		return rest.ErrNotFound
+	if len(cols) > 0 {
+		cols = append(cols, "updated_at")
 	}
-	return err
+	return r.updateOwned(id, s, cols...)
 }
 
-func (r *shareRepository) Save(entity interface{}) (string, error) {
+func (r *shareRepository) Save(entity any) (string, error) {
 	s := entity.(*model.Share)
 	// TODO Validate record
 	u := loggedUser(r.ctx)
@@ -179,18 +173,18 @@ func (r *shareRepository) EntityName() string {
 	return "share"
 }
 
-func (r *shareRepository) NewInstance() interface{} {
+func (r *shareRepository) NewInstance() any {
 	return &model.Share{}
 }
 
-func (r *shareRepository) Read(id string) (interface{}, error) {
+func (r *shareRepository) Read(id string) (any, error) {
 	sel := r.selectShare().Where(Eq{"share.id": id})
 	var res model.Share
 	err := r.queryOne(sel, &res)
 	return &res, err
 }
 
-func (r *shareRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
+func (r *shareRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
 	sq := r.selectShare(r.parseRestOptions(r.ctx, options...))
 	res := model.Shares{}
 	err := r.queryAll(sq, &res)

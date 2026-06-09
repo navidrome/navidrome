@@ -4,10 +4,10 @@
 		"dockerfile": "Dockerfile",
 		"args": {
 			// Update the VARIANT arg to pick a version of Go: 1, 1.15, 1.14
-			"VARIANT": "1.24",
+			"VARIANT": "1.26",
 			// Options
 			"INSTALL_NODE": "true",
-			"NODE_VERSION": "v20"
+			"NODE_VERSION": "v24"
 		}
 	},
 	"workspaceMount": "",
@@ -54,8 +54,6 @@
 		4533,
 		4633
 	],
-	// Use 'postCreateCommand' to run commands after the container is created.
-	// "postCreateCommand": "make setup-dev",
 	// Comment out connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
 	"remoteUser": "vscode",
 	"remoteEnv": {

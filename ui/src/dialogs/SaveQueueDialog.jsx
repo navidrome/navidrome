@@ -57,7 +57,10 @@ export const SaveQueueDialog = () => {
         return res
       })
       .then((res) => {
-        notify('ra.notification.created', 'info', { smart_count: 1 })
+        notify('ra.notification.created', {
+          type: 'info',
+          messageArgs: { smart_count: 1 },
+        })
         dispatch(closeSaveQueueDialog())
         refresh()
         history.push(`/playlist/${res.data.id}/show`)

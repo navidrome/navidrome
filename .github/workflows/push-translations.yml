@@ -1,0 +1,32 @@
+name: POEditor export
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'resources/i18n/*.json'
+
+jobs:
+  push-translations:
+    runs-on: ubuntu-latest
+    if: ${{ github.repository_owner == 'navidrome' }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
+
+      - name: Detect changed translation files
+        id: changed
+        run: |
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD -- 'resources/i18n/*.json' | tr '\n' ' ')
+          echo "files=$CHANGED_FILES" >> $GITHUB_OUTPUT
+          echo "Changed translation files: $CHANGED_FILES"
+
+      - name: Push translations to POEditor
+        if: ${{ steps.changed.outputs.files != '' }}
+        env:
+          POEDITOR_APIKEY: ${{ secrets.POEDITOR_APIKEY }}
+          POEDITOR_PROJECTID: ${{ secrets.POEDITOR_PROJECTID }}
+        run: |
+          .github/workflows/push-translations.sh ${{ steps.changed.outputs.files }}

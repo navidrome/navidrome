@@ -1,0 +1,11 @@
+{
+  "name": "Test Users Plugin",
+  "author": "Navidrome Test",
+  "version": "1.0.0",
+  "description": "A test users plugin for integration testing",
+  "permissions": {
+    "users": {
+      "reason": "For testing user metadata access"
+    }
+  }
+}

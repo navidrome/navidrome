@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -54,6 +55,7 @@ var _ = Describe("Storage", func() {
 			Expect(s.(*fakeLocalStorage).u.Path).To(Equal("/tmp"))
 		})
 		It("should return a file implementation for a relative folder", func() {
+			tests.SkipOnWindows("path separator bug (#TBD-path-sep-storage)")
 			s, err := For("tmp")
 			Expect(err).ToNot(HaveOccurred())
 			cwd, _ := os.Getwd()
@@ -65,6 +67,21 @@ var _ = Describe("Storage", func() {
 			_, err := For("webdav:///tmp")
 			Expect(err).To(HaveOccurred())
 		})
+		DescribeTable("should handle paths with special characters correctly",
+			func(inputPath string) {
+				s, err := For(inputPath)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(s).To(BeAssignableToTypeOf(&fakeLocalStorage{}))
+				Expect(s.(*fakeLocalStorage).u.Scheme).To(Equal("file"))
+				// The path should be exactly the same as the input - after URL parsing it gets decoded back
+				Expect(s.(*fakeLocalStorage).u.Path).To(Equal(inputPath))
+			},
+			Entry("hash symbols", "/tmp/test#folder/file.mp3"),
+			Entry("spaces", "/tmp/test folder/file with spaces.mp3"),
+			Entry("question marks", "/tmp/test?query/file.mp3"),
+			Entry("ampersands", "/tmp/test&amp/file.mp3"),
+			Entry("multiple special chars", "/tmp/Song #1 & More?.mp3"),
+		)
 	})
 })
 

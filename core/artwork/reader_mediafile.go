@@ -15,6 +15,7 @@ type mediafileArtworkReader struct {
 	a         *artwork
 	mediafile model.MediaFile
 	album     model.Album
+	lib       libraryView
 }
 
 func newMediafileArtworkReader(ctx context.Context, artwork *artwork, artID model.ArtworkID) (*mediafileArtworkReader, error) {
@@ -26,16 +27,27 @@ func newMediafileArtworkReader(ctx context.Context, artwork *artwork, artID mode
 	if err != nil {
 		return nil, err
 	}
+	_, _, imagesUpdatedAt, err := loadAlbumFoldersPaths(ctx, artwork.ds, *al)
+	if err != nil {
+		return nil, err
+	}
+	lib, err := loadLibraryView(ctx, artwork.ds, mf.LibraryID)
+	if err != nil {
+		return nil, err
+	}
 	a := &mediafileArtworkReader{
 		a:         artwork,
 		mediafile: *mf,
 		album:     *al,
+		lib:       lib,
 	}
 	a.cacheKey.artID = artID
-	if al.UpdatedAt.After(mf.UpdatedAt) {
+	a.cacheKey.lastUpdate = mf.UpdatedAt
+	if al.UpdatedAt.After(a.cacheKey.lastUpdate) {
 		a.cacheKey.lastUpdate = al.UpdatedAt
-	} else {
-		a.cacheKey.lastUpdate = mf.UpdatedAt
+	}
+	if imagesUpdatedAt != nil && imagesUpdatedAt.After(a.cacheKey.lastUpdate) {
+		a.cacheKey.lastUpdate = *imagesUpdatedAt
 	}
 	return a, nil
 }
@@ -54,12 +66,17 @@ func (a *mediafileArtworkReader) LastUpdated() time.Time {
 func (a *mediafileArtworkReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
 	var ff []sourceFunc
 	if a.mediafile.CoverArtID().Kind == model.KindMediaFileArtwork {
-		path := a.mediafile.AbsolutePath()
 		ff = []sourceFunc{
-			fromTag(ctx, path),
-			fromFFmpegTag(ctx, a.a.ffmpeg, path),
+			fromTag(ctx, a.lib.FS, a.mediafile.Path),
+			fromFFmpegTag(ctx, a.a.ffmpeg, a.lib.Abs(a.mediafile.Path)),
 		}
 	}
-	ff = append(ff, fromAlbum(ctx, a.a, a.mediafile.AlbumCoverArtID()))
+	// For multi-disc albums, fall back to disc artwork first; for single-disc albums,
+	// skip disc resolution (it would just fall through to album art anyway).
+	if len(a.album.Discs) > 1 {
+		ff = append(ff, fromAlbum(ctx, a.a, a.mediafile.DiscCoverArtID()))
+	} else {
+		ff = append(ff, fromAlbum(ctx, a.a, a.mediafile.AlbumCoverArtID()))
+	}
 	return selectImageReader(ctx, a.artID, ff...)
 }

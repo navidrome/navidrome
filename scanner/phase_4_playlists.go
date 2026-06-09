@@ -10,8 +10,8 @@ import (
 
 	ppl "github.com/google/go-pipeline/pkg/pipeline"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
+	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -21,12 +21,12 @@ type phasePlaylists struct {
 	ctx       context.Context
 	scanState *scanState
 	ds        model.DataStore
-	pls       core.Playlists
+	pls       playlists.Playlists
 	cw        artwork.CacheWarmer
 	refreshed atomic.Uint32
 }
 
-func createPhasePlaylists(ctx context.Context, scanState *scanState, ds model.DataStore, pls core.Playlists, cw artwork.CacheWarmer) *phasePlaylists {
+func createPhasePlaylists(ctx context.Context, scanState *scanState, ds model.DataStore, pls playlists.Playlists, cw artwork.CacheWarmer) *phasePlaylists {
 	return &phasePlaylists{
 		ctx:       ctx,
 		scanState: scanState,
@@ -50,7 +50,7 @@ func (p *phasePlaylists) produce(put func(entry *model.Folder)) error {
 		return nil
 	}
 	u, _ := request.UserFrom(p.ctx)
-	if !u.IsAdmin {
+	if !u.IsAdmin || u.ID == "" {
 		log.Warn(p.ctx, "Playlists will not be imported, as there are no admin users yet, "+
 			"Please create an admin user first, and then update the playlists for them to be imported")
 		return nil
@@ -100,7 +100,7 @@ func (p *phasePlaylists) processPlaylistsInFolder(folder *model.Folder) (*model.
 			continue
 		}
 		// BFR: Check if playlist needs to be refreshed (timestamp, sync flag, etc)
-		pls, err := p.pls.ImportFile(p.ctx, folder, f.Name())
+		pls, err := p.pls.ImportFromFolder(p.ctx, folder, f.Name())
 		if err != nil {
 			continue
 		}

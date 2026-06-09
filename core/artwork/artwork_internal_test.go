@@ -9,7 +9,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"time"
 
+	_ "github.com/gen2brain/webp"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
@@ -25,7 +27,7 @@ var _ = Describe("Artwork", func() {
 	var ffmpeg *tests.MockFFmpeg
 	var folderRepo *fakeFolderRepo
 	ctx := log.NewContext(context.TODO())
-	var alOnlyEmbed, alEmbedNotFound, alOnlyExternal, alExternalNotFound, alMultipleCovers model.Album
+	var alOnlyEmbed, alEmbedNotFound, alOnlyExternal, alExternalNotFound, alMultipleCovers, alSingleDisc model.Album
 	var arMultipleCovers model.Artist
 	var mfWithEmbed, mfAnotherWithEmbed, mfWithoutEmbed, mfCorruptedCover model.MediaFile
 
@@ -35,14 +37,20 @@ var _ = Describe("Artwork", func() {
 		conf.Server.CoverArtPriority = "folder.*, cover.*, embedded , front.*"
 
 		folderRepo = &fakeFolderRepo{}
+		libRepo := &tests.MockLibraryRepo{}
+		repoRoot, _ := os.Getwd()
+		libRepo.SetData(model.Libraries{{ID: 0, Path: testFileLibPath(repoRoot)}})
 		ds = &tests.MockDataStore{
 			MockedTranscoding: &tests.MockTranscodingRepo{},
 			MockedFolder:      folderRepo,
+			MockedLibrary:     libRepo,
 		}
+		// Paths use forward slashes because the scanner stores fs.FS-relative paths in the DB.
 		alOnlyEmbed = model.Album{ID: "222", Name: "Only embed", EmbedArtPath: "tests/fixtures/artist/an-album/test.mp3", FolderIDs: []string{"f1"}}
 		alEmbedNotFound = model.Album{ID: "333", Name: "Embed not found", EmbedArtPath: "tests/fixtures/NON_EXISTENT.mp3", FolderIDs: []string{"f1"}}
-		alOnlyExternal = model.Album{ID: "444", Name: "Only external", FolderIDs: []string{"f1"}}
+		alOnlyExternal = model.Album{ID: "444", Name: "Only external", FolderIDs: []string{"f1"}, Discs: model.Discs{1: "", 2: ""}}
 		alExternalNotFound = model.Album{ID: "555", Name: "External not found", FolderIDs: []string{"f2"}}
+		alSingleDisc = model.Album{ID: "888", Name: "Single disc", FolderIDs: []string{"f1"}, Discs: model.Discs{1: ""}}
 		arMultipleCovers = model.Artist{ID: "777", Name: "All options"}
 		alMultipleCovers = model.Album{
 			ID:            "666",
@@ -142,13 +150,61 @@ var _ = Describe("Artwork", func() {
 				Entry(nil, " embedded , front.* , cover.*,folder.*", "tests/fixtures/artist/an-album/test.mp3"),
 			)
 		})
+		Context("LastUpdated", func() {
+			// Regression test for #5377: LastUpdated feeds the HTTP Last-Modified header.
+			// It must return max(album.UpdatedAt, ImagesUpdatedAt) so browsers revalidate
+			// cached cover art when only the image file changes.
+			now := time.Now().Truncate(time.Second)
+			DescribeTable("returns the max of album.UpdatedAt and ImagesUpdatedAt",
+				func(albumUpdatedAt, imagesUpdatedAt, expected time.Time) {
+					album := model.Album{ID: "al1", UpdatedAt: albumUpdatedAt}
+					folderRepo.result = []model.Folder{{ImagesUpdatedAt: imagesUpdatedAt}}
+					ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{album})
+
+					ar, err := newAlbumArtworkReader(ctx, aw, album.CoverArtID(), nil)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(ar.LastUpdated()).To(Equal(expected))
+				},
+				Entry("album newer than images", now, now.Add(-1*time.Hour), now),
+				Entry("images newer than album", now.Add(-24*time.Hour), now.Add(-1*time.Hour), now.Add(-1*time.Hour)),
+				Entry("equal timestamps", now, now, now),
+			)
+		})
+	})
+	Describe("discArtworkReader", func() {
+		Context("LastUpdated", func() {
+			// Regression test for #5377: same bug as albumArtworkReader — disc covers
+			// must also revalidate when the image file changes, not only when media files do.
+			now := time.Now().Truncate(time.Second)
+			DescribeTable("returns the max of album.UpdatedAt and ImagesUpdatedAt",
+				func(albumUpdatedAt, imagesUpdatedAt, expected time.Time) {
+					album := model.Album{ID: "al1", UpdatedAt: albumUpdatedAt}
+					folderRepo.result = []model.Folder{{ImagesUpdatedAt: imagesUpdatedAt}}
+					ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{album})
+					ds.MediaFile(ctx).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+						{ID: "mf1", AlbumID: "al1", DiscNumber: 1, Path: "tests/fixtures/test.mp3"},
+					})
+
+					artID := model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID("al1", 1), nil)
+					dr, err := newDiscArtworkReader(ctx, aw, artID)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(dr.LastUpdated()).To(Equal(expected))
+				},
+				Entry("album newer than images", now, now.Add(-1*time.Hour), now),
+				Entry("images newer than album", now.Add(-24*time.Hour), now.Add(-1*time.Hour), now.Add(-1*time.Hour)),
+				Entry("equal timestamps", now, now, now),
+			)
+		})
 	})
 	Describe("artistArtworkReader", func() {
 		Context("Multiple covers", func() {
 			BeforeEach(func() {
+				repoRoot, err := os.Getwd()
+				Expect(err).ToNot(HaveOccurred())
 				folderRepo.result = []model.Folder{{
-					Path:       "tests/fixtures/artist/an-album",
-					ImageFiles: []string{"artist.png"},
+					LibraryPath: testFileLibPath(repoRoot),
+					Path:        "tests/fixtures/artist/an-album",
+					ImageFiles:  []string{"artist.png"},
 				}}
 				ds.Artist(ctx).(*tests.MockArtistRepo).SetData(model.Artists{
 					arMultipleCovers,
@@ -167,7 +223,7 @@ var _ = Describe("Artwork", func() {
 					Expect(err).ToNot(HaveOccurred())
 					_, path, err := aw.Reader(ctx)
 					Expect(err).ToNot(HaveOccurred())
-					Expect(path).To(Equal(expected))
+					Expect(filepath.ToSlash(path)).To(HaveSuffix(expected))
 				},
 				Entry(nil, " folder.* , artist.*,album/artist.*", "tests/fixtures/artist/artist.jpg"),
 				Entry(nil, "album/artist.*, folder.*,artist.*", "tests/fixtures/artist/an-album/artist.png"),
@@ -190,6 +246,7 @@ var _ = Describe("Artwork", func() {
 				ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{
 					alOnlyEmbed,
 					alOnlyExternal,
+					alSingleDisc,
 				})
 				ds.MediaFile(ctx).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 					mfWithEmbed,
@@ -233,8 +290,137 @@ var _ = Describe("Artwork", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(path).To(Equal("al-444_0"))
 			})
+			It("falls back to disc cover art when media file has a disc number on a multi-disc album", func() {
+				mfWithDisc := model.MediaFile{ID: "46", Path: "tests/fixtures/test.ogg", AlbumID: "444", DiscNumber: 2}
+				Expect(ds.MediaFile(ctx).(*tests.MockMediaFileRepo).Put(&mfWithDisc)).To(Succeed())
+
+				aw, err := newMediafileArtworkReader(ctx, aw, model.MustParseArtworkID("mf-"+mfWithDisc.ID))
+				Expect(err).ToNot(HaveOccurred())
+				_, path, err := aw.Reader(ctx)
+				Expect(err).ToNot(HaveOccurred())
+				// Should fall back to disc art, which itself falls back to album art
+				Expect(path).To(Equal("dc-444:2_0"))
+			})
+			It("falls back to album cover art for single-disc albums even with a disc number", func() {
+				mfOnSingleDisc := model.MediaFile{ID: "47", Path: "tests/fixtures/test.ogg", AlbumID: "888", DiscNumber: 1}
+				Expect(ds.MediaFile(ctx).(*tests.MockMediaFileRepo).Put(&mfOnSingleDisc)).To(Succeed())
+
+				aw, err := newMediafileArtworkReader(ctx, aw, model.MustParseArtworkID("mf-"+mfOnSingleDisc.ID))
+				Expect(err).ToNot(HaveOccurred())
+				_, path, err := aw.Reader(ctx)
+				Expect(err).ToNot(HaveOccurred())
+				// Single-disc album should skip disc art and go straight to album art
+				Expect(path).To(Equal("al-888_0"))
+			})
 		})
 	})
+	Describe("playlistArtworkReader", func() {
+		Describe("findPlaylistSidecarPath", func() {
+			It("discovers sidecar image next to playlist file", func() {
+				tmpDir := GinkgoT().TempDir()
+				plsPath := filepath.Join(tmpDir, "MyPlaylist.m3u")
+				imgPath := filepath.Join(tmpDir, "MyPlaylist.jpg")
+				Expect(os.WriteFile(plsPath, []byte("#EXTM3U\n"), 0600)).To(Succeed())
+				Expect(os.WriteFile(imgPath, []byte("fake image"), 0600)).To(Succeed())
+
+				result := findPlaylistSidecarPath(GinkgoT().Context(), plsPath)
+				Expect(result).To(Equal(imgPath))
+			})
+
+			It("returns empty string when no sidecar image exists", func() {
+				tmpDir := GinkgoT().TempDir()
+				plsPath := filepath.Join(tmpDir, "MyPlaylist.m3u")
+				Expect(os.WriteFile(plsPath, []byte("#EXTM3U\n"), 0600)).To(Succeed())
+
+				result := findPlaylistSidecarPath(GinkgoT().Context(), plsPath)
+				Expect(result).To(BeEmpty())
+			})
+
+			It("returns empty string when playlist has no path", func() {
+				result := findPlaylistSidecarPath(GinkgoT().Context(), "")
+				Expect(result).To(BeEmpty())
+			})
+
+			It("finds sidecar with different case base name", func() {
+				tmpDir := GinkgoT().TempDir()
+				plsPath := filepath.Join(tmpDir, "myplaylist.m3u")
+				imgPath := filepath.Join(tmpDir, "MyPlaylist.jpg")
+				Expect(os.WriteFile(plsPath, []byte("#EXTM3U\n"), 0600)).To(Succeed())
+				Expect(os.WriteFile(imgPath, []byte("fake image"), 0600)).To(Succeed())
+
+				result := findPlaylistSidecarPath(GinkgoT().Context(), plsPath)
+				Expect(result).To(Equal(imgPath))
+			})
+		})
+
+		Describe("fromPlaylistExternalImage", func() {
+			It("opens local path from ExternalImageURL", func() {
+				tmpDir := GinkgoT().TempDir()
+				imgPath := filepath.Join(tmpDir, "cover.jpg")
+				Expect(os.WriteFile(imgPath, []byte("external image data"), 0600)).To(Succeed())
+
+				reader := &playlistArtworkReader{
+					pl: model.Playlist{ExternalImageURL: imgPath},
+				}
+				r, path, err := reader.fromPlaylistExternalImage(ctx)()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(r).ToNot(BeNil())
+				Expect(path).To(Equal(imgPath))
+				data, _ := io.ReadAll(r)
+				Expect(string(data)).To(Equal("external image data"))
+				r.Close()
+			})
+
+			It("returns nil when ExternalImageURL is empty", func() {
+				reader := &playlistArtworkReader{
+					pl: model.Playlist{ExternalImageURL: ""},
+				}
+				r, path, err := reader.fromPlaylistExternalImage(ctx)()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(r).To(BeNil())
+				Expect(path).To(BeEmpty())
+			})
+
+			It("returns error when local file does not exist", func() {
+				reader := &playlistArtworkReader{
+					pl: model.Playlist{ExternalImageURL: "/non/existent/path/cover.jpg"},
+				}
+				r, _, err := reader.fromPlaylistExternalImage(ctx)()
+				Expect(err).To(HaveOccurred())
+				Expect(r).To(BeNil())
+			})
+
+			It("skips HTTP URL when EnableM3UExternalAlbumArt is false", func() {
+				conf.Server.EnableM3UExternalAlbumArt = false
+
+				reader := &playlistArtworkReader{
+					pl: model.Playlist{ExternalImageURL: "https://example.com/cover.jpg"},
+				}
+				r, path, err := reader.fromPlaylistExternalImage(ctx)()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(r).To(BeNil())
+				Expect(path).To(BeEmpty())
+			})
+
+			It("still opens local path when EnableM3UExternalAlbumArt is false", func() {
+				conf.Server.EnableM3UExternalAlbumArt = false
+
+				tmpDir := GinkgoT().TempDir()
+				imgPath := filepath.Join(tmpDir, "cover.jpg")
+				Expect(os.WriteFile(imgPath, []byte("local image"), 0600)).To(Succeed())
+
+				reader := &playlistArtworkReader{
+					pl: model.Playlist{ExternalImageURL: imgPath},
+				}
+				r, path, err := reader.fromPlaylistExternalImage(ctx)()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(r).ToNot(BeNil())
+				Expect(path).To(Equal(imgPath))
+				r.Close()
+			})
+		})
+	})
+
 	Describe("resizedArtworkReader", func() {
 		BeforeEach(func() {
 			folderRepo.result = []model.Folder{{
@@ -246,7 +432,7 @@ var _ = Describe("Artwork", func() {
 			})
 		})
 		When("Square is false", func() {
-			It("returns a PNG if original image is a PNG", func() {
+			It("returns PNG if original image is a PNG", func() {
 				conf.Server.CoverArtPriority = "front.png"
 				r, _, err := aw.Get(context.Background(), alMultipleCovers.CoverArtID(), 15, false)
 				Expect(err).ToNot(HaveOccurred())
@@ -257,7 +443,7 @@ var _ = Describe("Artwork", func() {
 				Expect(img.Bounds().Size().X).To(Equal(15))
 				Expect(img.Bounds().Size().Y).To(Equal(15))
 			})
-			It("returns a JPEG if original image is not a PNG", func() {
+			It("returns JPEG if original image is not a PNG", func() {
 				conf.Server.CoverArtPriority = "cover.jpg"
 				r, _, err := aw.Get(context.Background(), alMultipleCovers.CoverArtID(), 200, false)
 				Expect(err).ToNot(HaveOccurred())
@@ -273,15 +459,18 @@ var _ = Describe("Artwork", func() {
 			var alCover model.Album
 
 			DescribeTable("resize",
-				func(format string, landscape bool, size int) {
-					coverFileName := "cover." + format
-					dirName := createImage(format, landscape, size)
+				func(srcFormat string, expectedFormat string, landscape bool, size int) {
+					coverFileName := "cover." + srcFormat
+					dirName := createImage(srcFormat, landscape, size)
 					alCover = model.Album{
 						ID:        "444",
 						Name:      "Only external",
 						FolderIDs: []string{"tmp"},
 					}
-					folderRepo.result = []model.Folder{{Path: dirName, ImageFiles: []string{coverFileName}}}
+					folderRepo.result = []model.Folder{{ImageFiles: []string{coverFileName}}}
+					rootLibRepo := &tests.MockLibraryRepo{}
+					rootLibRepo.SetData(model.Libraries{{ID: 0, Path: testFileLibPath(dirName)}})
+					ds.(*tests.MockDataStore).MockedLibrary = rootLibRepo
 					ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{
 						alCover,
 					})
@@ -292,15 +481,126 @@ var _ = Describe("Artwork", func() {
 
 					img, format, err := image.Decode(r)
 					Expect(err).ToNot(HaveOccurred())
-					Expect(format).To(Equal("png"))
+					Expect(format).To(Equal(expectedFormat))
 					Expect(img.Bounds().Size().X).To(Equal(size))
 					Expect(img.Bounds().Size().Y).To(Equal(size))
 				},
-				Entry("portrait png image", "png", false, 200),
-				Entry("landscape png image", "png", true, 200),
-				Entry("portrait jpg image", "jpg", false, 200),
-				Entry("landscape jpg image", "jpg", true, 200),
+				Entry("portrait png image", "png", "png", false, 200),
+				Entry("landscape png image", "png", "png", true, 200),
+				Entry("portrait jpg image", "jpg", "png", false, 200),
+				Entry("landscape jpg image", "jpg", "png", true, 200),
 			)
+		})
+		When("EnableWebPEncoding is true and square is false", func() {
+			BeforeEach(func() {
+				conf.Server.EnableWebPEncoding = true
+			})
+			It("returns WebP even if original image is a PNG", func() {
+				conf.Server.CoverArtPriority = "front.png"
+				r, _, err := aw.Get(context.Background(), alMultipleCovers.CoverArtID(), 15, false)
+				Expect(err).ToNot(HaveOccurred())
+
+				img, format, err := image.Decode(r)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(format).To(Equal("webp"))
+				Expect(img.Bounds().Size().X).To(Equal(15))
+				Expect(img.Bounds().Size().Y).To(Equal(15))
+			})
+			It("returns WebP if original image is not a PNG", func() {
+				conf.Server.CoverArtPriority = "cover.jpg"
+				r, _, err := aw.Get(context.Background(), alMultipleCovers.CoverArtID(), 200, false)
+				Expect(err).ToNot(HaveOccurred())
+
+				img, format, err := image.Decode(r)
+				Expect(format).To(Equal("webp"))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(img.Bounds().Size().X).To(Equal(200))
+				Expect(img.Bounds().Size().Y).To(Equal(200))
+			})
+		})
+		When("EnableWebPEncoding is false and square is false", func() {
+			BeforeEach(func() {
+				conf.Server.EnableWebPEncoding = false
+			})
+			It("returns PNG if original image is a PNG", func() {
+				conf.Server.CoverArtPriority = "front.png"
+				r, _, err := aw.Get(context.Background(), alMultipleCovers.CoverArtID(), 15, false)
+				Expect(err).ToNot(HaveOccurred())
+
+				img, format, err := image.Decode(r)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(format).To(Equal("png"))
+				Expect(img.Bounds().Size().X).To(Equal(15))
+				Expect(img.Bounds().Size().Y).To(Equal(15))
+			})
+			It("returns JPEG if original image is a JPG", func() {
+				conf.Server.CoverArtPriority = "cover.jpg"
+				r, _, err := aw.Get(context.Background(), alMultipleCovers.CoverArtID(), 200, false)
+				Expect(err).ToNot(HaveOccurred())
+
+				img, format, err := image.Decode(r)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(format).To(Equal("jpeg"))
+				Expect(img.Bounds().Size().X).To(Equal(200))
+				Expect(img.Bounds().Size().Y).To(Equal(200))
+			})
+		})
+		When("EnableWebPEncoding is false and square is true", func() {
+			var alCover model.Album
+
+			BeforeEach(func() {
+				conf.Server.EnableWebPEncoding = false
+			})
+			It("returns PNG for square mode", func() {
+				dirName := createImage("png", false, 200)
+				alCover = model.Album{
+					ID:        "444",
+					Name:      "Only external",
+					FolderIDs: []string{"tmp"},
+				}
+				folderRepo.result = []model.Folder{{ImageFiles: []string{"cover.png"}}}
+				rootLibRepo := &tests.MockLibraryRepo{}
+				rootLibRepo.SetData(model.Libraries{{ID: 0, Path: testFileLibPath(dirName)}})
+				ds.(*tests.MockDataStore).MockedLibrary = rootLibRepo
+				ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{alCover})
+
+				conf.Server.CoverArtPriority = "cover.png"
+				r, _, err := aw.Get(context.Background(), alCover.CoverArtID(), 200, true)
+				Expect(err).ToNot(HaveOccurred())
+
+				img, format, err := image.Decode(r)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(format).To(Equal("png"))
+				Expect(img.Bounds().Size().X).To(Equal(200))
+				Expect(img.Bounds().Size().Y).To(Equal(200))
+			})
+		})
+		When("Requested size is larger than original", func() {
+			It("clamps size to original dimensions", func() {
+				conf.Server.CoverArtPriority = "front.png"
+				// front.png is 16x16, requesting 99999 should return at original size
+				r, _, err := aw.Get(context.Background(), alMultipleCovers.CoverArtID(), 99999, false)
+				Expect(err).ToNot(HaveOccurred())
+
+				img, _, err := image.Decode(r)
+				Expect(err).ToNot(HaveOccurred())
+				// Should be clamped to original size (16), not 99999
+				Expect(img.Bounds().Size().X).To(Equal(16))
+				Expect(img.Bounds().Size().Y).To(Equal(16))
+			})
+
+			It("clamps square size to original dimensions", func() {
+				conf.Server.CoverArtPriority = "front.png"
+				// front.png is 16x16, requesting 99999 with square should return 16x16 square
+				r, _, err := aw.Get(context.Background(), alMultipleCovers.CoverArtID(), 99999, true)
+				Expect(err).ToNot(HaveOccurred())
+
+				img, _, err := image.Decode(r)
+				Expect(err).ToNot(HaveOccurred())
+				// Should be clamped to original size (16), not 99999
+				Expect(img.Bounds().Size().X).To(Equal(16))
+				Expect(img.Bounds().Size().Y).To(Equal(16))
+			})
 		})
 	})
 })

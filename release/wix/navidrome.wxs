@@ -67,7 +67,17 @@
 						<File Id='ffmpeg.exe' Name='ffmpeg.exe' DiskId='1' Source='ffmpeg.exe' KeyPath='yes' />
 					</Component>
 
+					<Component Id='FFProbeExecutable' Guid='f8a3b2c1-5d4e-4f6a-9b8c-7e2d1a0f3c5b' Win64="$(var.Win64)">
+						<File Id='ffprobe.exe' Name='ffprobe.exe' DiskId='1' Source='ffprobe.exe' KeyPath='yes' />
+					</Component>
+
 				</Directory>
+			</Directory>
+
+			<Directory Id="ND_DATAFOLDER" name="[ND_DATAFOLDER]">
+				<Component Id='PackageFile' Guid='9eec0697-803c-4629-858f-20dc376c960b' Win64="$(var.Win64)">
+					<File Id='package' Name='.package' DiskId='1' Source='.package' KeyPath='no' />
+				</Component>
 			</Directory>
 		</Directory>
 
@@ -81,6 +91,8 @@
 			<ComponentRef Id='Configuration'/>
 			<ComponentRef Id='MainExecutable' />
 			<ComponentRef Id='FFMpegExecutable' />
+			<ComponentRef Id='FFProbeExecutable' />
+			<ComponentRef Id='PackageFile' />
 		</Feature>
 	</Product>
 </Wix>

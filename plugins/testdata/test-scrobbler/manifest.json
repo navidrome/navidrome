@@ -1,0 +1,11 @@
+{
+  "name": "Test Scrobbler",
+  "author": "Navidrome Test",
+  "version": "1.0.0",
+  "description": "A test scrobbler plugin for integration testing",
+  "permissions": {
+    "users": {
+      "reason": "Receive scrobble events for users assigned to this plugin"
+    }
+  }
+}

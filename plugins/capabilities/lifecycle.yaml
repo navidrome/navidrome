@@ -1,0 +1,7 @@
+version: v1-draft
+exports:
+    nd_on_init:
+        description: |-
+            OnInit is called after a plugin is fully loaded with all services registered.
+            Plugins can use this function to perform one-time initialization tasks.
+            Errors are logged but will not prevent the plugin from being loaded.

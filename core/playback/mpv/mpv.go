@@ -12,9 +12,13 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/utils/shellquote"
 )
 
 func start(ctx context.Context, args []string) (Executor, error) {
+	if len(args) == 0 {
+		return Executor{}, fmt.Errorf("no command arguments provided")
+	}
 	log.Debug("Executing mpv command", "cmd", args)
 	j := Executor{args: args}
 	j.PipeReader, j.out = io.Pipe()
@@ -58,8 +62,7 @@ func (j *Executor) start(ctx context.Context) error {
 
 func (j *Executor) wait() {
 	if err := j.cmd.Wait(); err != nil {
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
+		if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
 			_ = j.out.CloseWithError(fmt.Errorf("%s exited with non-zero status code: %d", j.args[0], exitErr.ExitCode()))
 		} else {
 			_ = j.out.CloseWithError(fmt.Errorf("waiting %s cmd: %w", j.args[0], err))
@@ -71,28 +74,32 @@ func (j *Executor) wait() {
 
 // Path will always be an absolute path
 func createMPVCommand(deviceName string, filename string, socketName string) []string {
-	split := strings.Split(fixCmd(conf.Server.MPVCmdTemplate), " ")
-	for i, s := range split {
-		s = strings.ReplaceAll(s, "%d", deviceName)
-		s = strings.ReplaceAll(s, "%f", filename)
-		s = strings.ReplaceAll(s, "%s", socketName)
-		split[i] = s
+	// Parse the template structure using shell parsing to handle quoted arguments
+	templateArgs, err := shellquote.Split(conf.Server.MPVCmdTemplate)
+	if err != nil {
+		log.Error("Failed to parse MPV command template", "template", conf.Server.MPVCmdTemplate, err)
+		return nil
 	}
-	return split
-}
 
-func fixCmd(cmd string) string {
-	split := strings.Split(cmd, " ")
-	var result []string
-	cmdPath, _ := mpvCommand()
-	for _, s := range split {
-		if s == "mpv" || s == "mpv.exe" {
-			result = append(result, cmdPath)
-		} else {
-			result = append(result, s)
+	// Replace placeholders in each parsed argument to preserve spaces in substituted values
+	for i, arg := range templateArgs {
+		arg = strings.ReplaceAll(arg, "%d", deviceName)
+		arg = strings.ReplaceAll(arg, "%f", filename)
+		arg = strings.ReplaceAll(arg, "%s", socketName)
+		templateArgs[i] = arg
+	}
+
+	// Replace mpv executable references with the configured path
+	if len(templateArgs) > 0 {
+		cmdPath, err := mpvCommand()
+		if err == nil {
+			if templateArgs[0] == "mpv" || templateArgs[0] == "mpv.exe" {
+				templateArgs[0] = cmdPath
+			}
 		}
 	}
-	return strings.Join(result, " ")
+
+	return templateArgs
 }
 
 // This is a 1:1 copy of the stuff in ffmpeg.go, need to be unified.

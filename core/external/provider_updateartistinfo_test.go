@@ -9,10 +9,10 @@ import (
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/external"
+	"github.com/navidrome/navidrome/core/matcher"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
-	"github.com/navidrome/navidrome/utils/gg"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
@@ -37,7 +37,7 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 		ctx = GinkgoT().Context()
 		ds = new(tests.MockDataStore)
 		ag = new(mockAgents)
-		p = external.NewProvider(ds, ag)
+		p = external.NewProvider(ds, ag, matcher.New(ds))
 		mockArtistRepo = ds.Artist(ctx).(*tests.MockArtistRepo)
 	})
 
@@ -104,6 +104,29 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 		ag.AssertExpectations(GinkgoT())
 	})
 
+	It("preserves decoded plain text in biography storage", func() {
+		originalArtist := &model.Artist{
+			ID:   "ar-encoded-bio",
+			Name: "Encoded Bio Artist",
+		}
+		mockArtistRepo.SetData(model.Artists{*originalArtist})
+
+		expectedMBID := "mbid-encoded-bio"
+		expectedBio := "R&amp;B"
+
+		ag.On("GetArtistMBID", ctx, "ar-encoded-bio", "Encoded Bio Artist").Return(expectedMBID, nil).Once()
+		ag.On("GetArtistImages", ctx, "ar-encoded-bio", "Encoded Bio Artist", expectedMBID).Return(nil, nil).Maybe()
+		ag.On("GetArtistBiography", ctx, "ar-encoded-bio", "Encoded Bio Artist", expectedMBID).Return(expectedBio, nil).Once()
+		ag.On("GetArtistURL", ctx, "ar-encoded-bio", "Encoded Bio Artist", expectedMBID).Return("", nil).Maybe()
+		ag.On("GetSimilarArtists", ctx, "ar-encoded-bio", "Encoded Bio Artist", expectedMBID, 100).Return(nil, nil).Maybe()
+
+		updatedArtist, err := p.UpdateArtistInfo(ctx, "ar-encoded-bio", 10, false)
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(updatedArtist).NotTo(BeNil())
+		Expect(updatedArtist.Biography).To(Equal("R&B"))
+	})
+
 	It("returns cached info when artist exists and info is not expired", func() {
 		now := time.Now()
 		originalArtist := &model.Artist{
@@ -113,7 +136,7 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 			ExternalUrl:           "http://cached.url",
 			Biography:             "Cached Bio",
 			LargeImageUrl:         "http://cached_large.jpg",
-			ExternalInfoUpdatedAt: gg.P(now.Add(-conf.Server.DevArtistInfoTimeToLive / 2)),
+			ExternalInfoUpdatedAt: new(now.Add(-conf.Server.DevArtistInfoTimeToLive / 2)),
 			SimilarArtists: model.Artists{
 				{ID: "ar-similar-present", Name: "Similar Present"},
 				{ID: "ar-similar-absent", Name: "Similar Absent"},
@@ -150,7 +173,7 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 		originalArtist := &model.Artist{
 			ID:                    "ar-expired",
 			Name:                  "Expired Artist",
-			ExternalInfoUpdatedAt: gg.P(expiredTime),
+			ExternalInfoUpdatedAt: new(expiredTime),
 			SimilarArtists: model.Artists{
 				{ID: "ar-exp-similar", Name: "Expired Similar"},
 			},
@@ -181,7 +204,7 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 		originalArtist := &model.Artist{
 			ID:                    "ar-similar-test",
 			Name:                  "Similar Test Artist",
-			ExternalInfoUpdatedAt: gg.P(now.Add(-conf.Server.DevArtistInfoTimeToLive / 2)),
+			ExternalInfoUpdatedAt: new(now.Add(-conf.Server.DevArtistInfoTimeToLive / 2)),
 			SimilarArtists: model.Artists{
 				{ID: "ar-sim-present", Name: "Similar Present"},
 				{ID: "", Name: "Similar Absent Raw"},
@@ -225,5 +248,89 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 		Expect(updatedArtist).NotTo(BeNil())
 		Expect(updatedArtist.ID).To(Equal("ar-agent-fail"))
 		ag.AssertExpectations(GinkgoT())
+	})
+
+	It("matches similar artists by ID first when agent provides IDs", func() {
+		originalArtist := &model.Artist{
+			ID:   "ar-id-match",
+			Name: "ID Match Artist",
+		}
+		similarByID := model.Artist{ID: "ar-similar-by-id", Name: "Similar By ID", MbzArtistID: "mbid-similar"}
+		mockArtistRepo.SetData(model.Artists{*originalArtist, similarByID})
+
+		// Agent returns similar artist with ID (highest priority matching)
+		rawSimilar := []agents.Artist{
+			{ID: "ar-similar-by-id", Name: "Different Name", MBID: "different-mbid"},
+		}
+
+		ag.On("GetArtistMBID", ctx, "ar-id-match", "ID Match Artist").Return("", nil).Once()
+		ag.On("GetArtistImages", ctx, "ar-id-match", "ID Match Artist", mock.Anything).Return(nil, nil).Maybe()
+		ag.On("GetArtistBiography", ctx, "ar-id-match", "ID Match Artist", mock.Anything).Return("", nil).Maybe()
+		ag.On("GetArtistURL", ctx, "ar-id-match", "ID Match Artist", mock.Anything).Return("", nil).Maybe()
+		ag.On("GetSimilarArtists", ctx, "ar-id-match", "ID Match Artist", mock.Anything, 100).Return(rawSimilar, nil).Once()
+
+		updatedArtist, err := p.UpdateArtistInfo(ctx, "ar-id-match", 10, false)
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(updatedArtist.SimilarArtists).To(HaveLen(1))
+		// Should match by ID, not by name or MBID
+		Expect(updatedArtist.SimilarArtists[0].ID).To(Equal("ar-similar-by-id"))
+		Expect(updatedArtist.SimilarArtists[0].Name).To(Equal("Similar By ID"))
+	})
+
+	It("matches similar artists by MBID when ID is empty", func() {
+		originalArtist := &model.Artist{
+			ID:   "ar-mbid-match",
+			Name: "MBID Match Artist",
+		}
+		similarByMBID := model.Artist{ID: "ar-similar-by-mbid", Name: "Similar By MBID", MbzArtistID: "mbid-similar"}
+		mockArtistRepo.SetData(model.Artists{*originalArtist, similarByMBID})
+
+		// Agent returns similar artist with only MBID (no ID)
+		rawSimilar := []agents.Artist{
+			{Name: "Different Name", MBID: "mbid-similar"},
+		}
+
+		ag.On("GetArtistMBID", ctx, "ar-mbid-match", "MBID Match Artist").Return("", nil).Once()
+		ag.On("GetArtistImages", ctx, "ar-mbid-match", "MBID Match Artist", mock.Anything).Return(nil, nil).Maybe()
+		ag.On("GetArtistBiography", ctx, "ar-mbid-match", "MBID Match Artist", mock.Anything).Return("", nil).Maybe()
+		ag.On("GetArtistURL", ctx, "ar-mbid-match", "MBID Match Artist", mock.Anything).Return("", nil).Maybe()
+		ag.On("GetSimilarArtists", ctx, "ar-mbid-match", "MBID Match Artist", mock.Anything, 100).Return(rawSimilar, nil).Once()
+
+		updatedArtist, err := p.UpdateArtistInfo(ctx, "ar-mbid-match", 10, false)
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(updatedArtist.SimilarArtists).To(HaveLen(1))
+		// Should match by MBID since ID was empty
+		Expect(updatedArtist.SimilarArtists[0].ID).To(Equal("ar-similar-by-mbid"))
+		Expect(updatedArtist.SimilarArtists[0].Name).To(Equal("Similar By MBID"))
+	})
+
+	It("falls back to name matching when ID and MBID don't match", func() {
+		originalArtist := &model.Artist{
+			ID:   "ar-name-match",
+			Name: "Name Match Artist",
+		}
+		similarByName := model.Artist{ID: "ar-similar-by-name", Name: "Similar By Name"}
+		mockArtistRepo.SetData(model.Artists{*originalArtist, similarByName})
+
+		// Agent returns similar artist with non-matching ID and MBID
+		rawSimilar := []agents.Artist{
+			{ID: "non-existent-id", Name: "Similar By Name", MBID: "non-existent-mbid"},
+		}
+
+		ag.On("GetArtistMBID", ctx, "ar-name-match", "Name Match Artist").Return("", nil).Once()
+		ag.On("GetArtistImages", ctx, "ar-name-match", "Name Match Artist", mock.Anything).Return(nil, nil).Maybe()
+		ag.On("GetArtistBiography", ctx, "ar-name-match", "Name Match Artist", mock.Anything).Return("", nil).Maybe()
+		ag.On("GetArtistURL", ctx, "ar-name-match", "Name Match Artist", mock.Anything).Return("", nil).Maybe()
+		ag.On("GetSimilarArtists", ctx, "ar-name-match", "Name Match Artist", mock.Anything, 100).Return(rawSimilar, nil).Once()
+
+		updatedArtist, err := p.UpdateArtistInfo(ctx, "ar-name-match", 10, false)
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(updatedArtist.SimilarArtists).To(HaveLen(1))
+		// Should fall back to name matching since ID and MBID didn't match
+		Expect(updatedArtist.SimilarArtists[0].ID).To(Equal("ar-similar-by-name"))
+		Expect(updatedArtist.SimilarArtists[0].Name).To(Equal("Similar By Name"))
 	})
 })

@@ -4,6 +4,8 @@ import (
 	"maps"
 	"slices"
 	"time"
+
+	"github.com/navidrome/navidrome/consts"
 )
 
 type Artist struct {
@@ -34,6 +36,8 @@ type Artist struct {
 
 	Missing bool `structs:"missing" json:"missing"`
 
+	UploadedImage string `structs:"uploaded_image" json:"uploadedImage,omitempty"`
+
 	CreatedAt *time.Time `structs:"created_at" json:"createdAt,omitempty"`
 	UpdatedAt *time.Time `structs:"updated_at" json:"updatedAt,omitempty"`
 }
@@ -58,6 +62,10 @@ func (a Artist) CoverArtID() ArtworkID {
 	return artworkIDFromArtist(a)
 }
 
+func (a Artist) UploadedImagePath() string {
+	return UploadedImagePath(consts.EntityArtist, a.UploadedImage)
+}
+
 // Roles returns the roles this artist has participated in., based on the Stats field
 func (a Artist) Roles() []Role {
 	return slices.Collect(maps.Keys(a.Stats))
@@ -78,11 +86,11 @@ type ArtistRepository interface {
 	UpdateExternalInfo(a *Artist) error
 	Get(id string) (*Artist, error)
 	GetAll(options ...QueryOptions) (Artists, error)
-	GetIndex(includeMissing bool, roles ...Role) (ArtistIndexes, error)
+	GetIndex(includeMissing bool, libraryIds []int, roles ...Role) (ArtistIndexes, error)
 
 	// The following methods are used exclusively by the scanner:
 	RefreshPlayCounts() (int64, error)
-	RefreshStats() (int64, error)
+	RefreshStats(allArtists bool) (int64, error)
 
 	AnnotatedRepository
 	SearchableRepository[Artists]

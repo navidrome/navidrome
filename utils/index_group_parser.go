@@ -23,8 +23,8 @@ var indexGroupsRx = regexp.MustCompile(`(.+)\((.+)\)`)
 
 func ParseIndexGroups(spec string) IndexGroups {
 	parsed := make(IndexGroups)
-	split := strings.Split(spec, " ")
-	for _, g := range split {
+	split := strings.SplitSeq(spec, " ")
+	for g := range split {
 		sub := indexGroupsRx.FindStringSubmatch(g)
 		if len(sub) > 0 {
 			for _, c := range sub[2] {

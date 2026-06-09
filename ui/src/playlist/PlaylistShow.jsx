@@ -5,6 +5,7 @@ import {
   useShowContext,
   useShowController,
   Pagination,
+  Title as RaTitle,
 } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
 import PlaylistDetails from './PlaylistDetails'
@@ -31,6 +32,7 @@ const PlaylistShowLayout = (props) => {
 
   return (
     <>
+      {record && <RaTitle title={<Title subTitle={record.name} />} />}
       {record && <PlaylistDetails {...context} />}
       {record && (
         <ReferenceManyField

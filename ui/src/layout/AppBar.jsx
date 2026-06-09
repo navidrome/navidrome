@@ -14,6 +14,7 @@ import { Dialogs } from '../dialogs/Dialogs'
 import { AboutDialog } from '../dialogs'
 import PersonalMenu from './PersonalMenu'
 import ActivityPanel from './ActivityPanel'
+import NowPlayingPanel from './NowPlayingPanel'
 import UserMenu from './UserMenu'
 import config from '../config'
 
@@ -49,7 +50,7 @@ const AboutMenuItem = forwardRef(({ onClick, ...rest }, ref) => {
     <>
       <MenuItem ref={ref} onClick={handleOpen} className={classes.root}>
         <ListItemIcon className={classes.icon}>
-          <MdInfo titleAccess={label} size={24} />
+          <MdInfo title={label} size={24} />
         </ListItemIcon>
         {label}
       </MenuItem>
@@ -119,6 +120,9 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
 
   return (
     <>
+      {config.devActivityPanel &&
+        permissions === 'admin' &&
+        config.enableNowPlaying && <NowPlayingPanel />}
       {config.devActivityPanel && permissions === 'admin' && <ActivityPanel />}
       <UserMenu {...rest}>
         <PersonalMenu sidebarIsOpen={true} onClick={onClick} />

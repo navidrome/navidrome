@@ -13,15 +13,16 @@ type Interface interface {
 	AgentName() string
 }
 
+// AlbumInfo contains album metadata (no images)
 type AlbumInfo struct {
 	Name        string
 	MBID        string
 	Description string
 	URL         string
-	Images      []ExternalImage
 }
 
 type Artist struct {
+	ID   string
 	Name string
 	MBID string
 }
@@ -32,17 +33,29 @@ type ExternalImage struct {
 }
 
 type Song struct {
-	Name string
-	MBID string
+	ID         string
+	Name       string
+	MBID       string
+	ISRC       string
+	Artist     string
+	ArtistMBID string
+	Album      string
+	AlbumMBID  string
+	Duration   uint32 // Duration in milliseconds, 0 means unknown
 }
 
 var (
 	ErrNotFound = errors.New("not found")
 )
 
-// TODO Break up this interface in more specific methods, like artists
+// AlbumInfoRetriever provides album info (no images)
 type AlbumInfoRetriever interface {
 	GetAlbumInfo(ctx context.Context, name, artist, mbid string) (*AlbumInfo, error)
+}
+
+// AlbumImageRetriever provides album images
+type AlbumImageRetriever interface {
+	GetAlbumImages(ctx context.Context, name, artist, mbid string) ([]ExternalImage, error)
 }
 
 type ArtistMBIDRetriever interface {
@@ -67,6 +80,41 @@ type ArtistImageRetriever interface {
 
 type ArtistTopSongsRetriever interface {
 	GetArtistTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]Song, error)
+}
+
+// SimilarSongsByTrackRetriever provides similar songs based on a specific track
+type SimilarSongsByTrackRetriever interface {
+	// GetSimilarSongsByTrack returns songs similar to the given track.
+	// Parameters:
+	//   - id: local mediafile ID
+	//   - name: track title
+	//   - artist: artist name
+	//   - mbid: MusicBrainz recording ID (may be empty)
+	//   - count: maximum number of results
+	GetSimilarSongsByTrack(ctx context.Context, id, name, artist, mbid string, count int) ([]Song, error)
+}
+
+// SimilarSongsByAlbumRetriever provides similar songs based on an album
+type SimilarSongsByAlbumRetriever interface {
+	// GetSimilarSongsByAlbum returns songs similar to tracks on the given album.
+	// Parameters:
+	//   - id: local album ID
+	//   - name: album name
+	//   - artist: album artist name
+	//   - mbid: MusicBrainz release ID (may be empty)
+	//   - count: maximum number of results
+	GetSimilarSongsByAlbum(ctx context.Context, id, name, artist, mbid string, count int) ([]Song, error)
+}
+
+// SimilarSongsByArtistRetriever provides similar songs based on an artist
+type SimilarSongsByArtistRetriever interface {
+	// GetSimilarSongsByArtist returns songs similar to the artist's catalog.
+	// Parameters:
+	//   - id: local artist ID
+	//   - name: artist name
+	//   - mbid: MusicBrainz artist ID (may be empty)
+	//   - count: maximum number of results
+	GetSimilarSongsByArtist(ctx context.Context, id, name, mbid string, count int) ([]Song, error)
 }
 
 var Map map[string]Constructor

@@ -58,34 +58,20 @@ func (r *radioRepository) GetAll(options ...model.QueryOptions) (model.Radios, e
 	return res, err
 }
 
-func (r *radioRepository) Put(radio *model.Radio) error {
+func (r *radioRepository) Put(radio *model.Radio, colsToUpdate ...string) error {
 	if !r.isPermitted() {
 		return rest.ErrPermissionDenied
 	}
 
-	var values map[string]interface{}
-
 	radio.UpdatedAt = time.Now()
-
 	if radio.ID == "" {
 		radio.CreatedAt = time.Now()
 		radio.ID = id.NewRandom()
-		values, _ = toSQLArgs(*radio)
-	} else {
-		values, _ = toSQLArgs(*radio)
-		update := Update(r.tableName).Where(Eq{"id": radio.ID}).SetMap(values)
-		count, err := r.executeSQL(update)
-
-		if err != nil {
-			return err
-		} else if count > 0 {
-			return nil
-		}
 	}
-
-	values["created_at"] = time.Now()
-	insert := Insert(r.tableName).SetMap(values)
-	_, err := r.executeSQL(insert)
+	if len(colsToUpdate) > 0 {
+		colsToUpdate = append(colsToUpdate, "UpdatedAt")
+	}
+	_, err := r.put(radio.ID, radio, colsToUpdate...)
 	return err
 }
 
@@ -97,19 +83,19 @@ func (r *radioRepository) EntityName() string {
 	return "radio"
 }
 
-func (r *radioRepository) NewInstance() interface{} {
+func (r *radioRepository) NewInstance() any {
 	return &model.Radio{}
 }
 
-func (r *radioRepository) Read(id string) (interface{}, error) {
+func (r *radioRepository) Read(id string) (any, error) {
 	return r.Get(id)
 }
 
-func (r *radioRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
+func (r *radioRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
 	return r.GetAll(r.parseRestOptions(r.ctx, options...))
 }
 
-func (r *radioRepository) Save(entity interface{}) (string, error) {
+func (r *radioRepository) Save(entity any) (string, error) {
 	t := entity.(*model.Radio)
 	if !r.isPermitted() {
 		return "", rest.ErrPermissionDenied
@@ -121,7 +107,7 @@ func (r *radioRepository) Save(entity interface{}) (string, error) {
 	return t.ID, err
 }
 
-func (r *radioRepository) Update(id string, entity interface{}, cols ...string) error {
+func (r *radioRepository) Update(id string, entity any, cols ...string) error {
 	t := entity.(*model.Radio)
 	t.ID = id
 	if !r.isPermitted() {

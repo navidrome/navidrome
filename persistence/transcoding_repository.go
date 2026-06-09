@@ -41,7 +41,7 @@ func (r *transcodingRepository) FindByFormat(format string) (*model.Transcoding,
 }
 
 func (r *transcodingRepository) Put(t *model.Transcoding) error {
-	if !isAdmin(r.ctx) {
+	if !loggedUser(r.ctx).IsAdmin {
 		return rest.ErrPermissionDenied
 	}
 	_, err := r.put(t.ID, t)
@@ -52,27 +52,42 @@ func (r *transcodingRepository) Count(options ...rest.QueryOptions) (int64, erro
 	return r.count(Select(), r.parseRestOptions(r.ctx, options...))
 }
 
-func (r *transcodingRepository) Read(id string) (interface{}, error) {
-	return r.Get(id)
+func (r *transcodingRepository) Read(id string) (any, error) {
+	res, err := r.Get(id)
+	if err != nil {
+		return nil, err
+	}
+	if !loggedUser(r.ctx).IsAdmin {
+		res.Command = ""
+	}
+	return res, nil
 }
 
-func (r *transcodingRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
+func (r *transcodingRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
 	sel := r.newSelect(r.parseRestOptions(r.ctx, options...)).Columns("*")
 	res := model.Transcodings{}
 	err := r.queryAll(sel, &res)
-	return res, err
+	if err != nil {
+		return nil, err
+	}
+	if !loggedUser(r.ctx).IsAdmin {
+		for i := range res {
+			res[i].Command = ""
+		}
+	}
+	return res, nil
 }
 
 func (r *transcodingRepository) EntityName() string {
 	return "transcoding"
 }
 
-func (r *transcodingRepository) NewInstance() interface{} {
+func (r *transcodingRepository) NewInstance() any {
 	return &model.Transcoding{}
 }
 
-func (r *transcodingRepository) Save(entity interface{}) (string, error) {
-	if !isAdmin(r.ctx) {
+func (r *transcodingRepository) Save(entity any) (string, error) {
+	if !loggedUser(r.ctx).IsAdmin {
 		return "", rest.ErrPermissionDenied
 	}
 	t := entity.(*model.Transcoding)
@@ -83,8 +98,8 @@ func (r *transcodingRepository) Save(entity interface{}) (string, error) {
 	return id, err
 }
 
-func (r *transcodingRepository) Update(id string, entity interface{}, cols ...string) error {
-	if !isAdmin(r.ctx) {
+func (r *transcodingRepository) Update(id string, entity any, cols ...string) error {
+	if !loggedUser(r.ctx).IsAdmin {
 		return rest.ErrPermissionDenied
 	}
 	t := entity.(*model.Transcoding)
@@ -97,7 +112,7 @@ func (r *transcodingRepository) Update(id string, entity interface{}, cols ...st
 }
 
 func (r *transcodingRepository) Delete(id string) error {
-	if !isAdmin(r.ctx) {
+	if !loggedUser(r.ctx).IsAdmin {
 		return rest.ErrPermissionDenied
 	}
 	err := r.delete(Eq{"id": id})

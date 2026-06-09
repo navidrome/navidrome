@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
-	"github.com/navidrome/navidrome/utils/slice"
 
 	"github.com/navidrome/navidrome/conf"
 	. "github.com/onsi/ginkgo/v2"
@@ -20,6 +20,7 @@ var _ = Describe("Agents", func() {
 	var ds model.DataStore
 	var mfRepo *tests.MockMediaFileRepo
 	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
 		ctx, cancel = context.WithCancel(context.Background())
 		mfRepo = tests.CreateMockMediaFileRepo()
 		ds = &tests.MockDataStore{MockedMediaFile: mfRepo}
@@ -29,7 +30,7 @@ var _ = Describe("Agents", func() {
 		var ag *Agents
 		BeforeEach(func() {
 			conf.Server.Agents = ""
-			ag = createAgents(ds)
+			ag = createAgents(ds, nil)
 		})
 
 		It("calls the placeholder GetArtistImages", func() {
@@ -49,12 +50,18 @@ var _ = Describe("Agents", func() {
 			Register("disabled", func(model.DataStore) Interface { return nil })
 			Register("empty", func(model.DataStore) Interface { return &emptyAgent{} })
 			conf.Server.Agents = "empty,fake,disabled"
-			ag = createAgents(ds)
+			ag = createAgents(ds, nil)
 			Expect(ag.AgentName()).To(Equal("agents"))
 		})
 
 		It("does not register disabled agents", func() {
-			ags := slice.Map(ag.agents, func(a Interface) string { return a.AgentName() })
+			var ags []string
+			for _, enabledAgent := range ag.getEnabledAgentNames() {
+				agent := ag.getAgent(enabledAgent)
+				if agent != nil {
+					ags = append(ags, agent.AgentName())
+				}
+			}
 			// local agent is always appended to the end of the agents list
 			Expect(ags).To(HaveExactElements("empty", "fake", "local"))
 			Expect(ags).ToNot(ContainElement("disabled"))
@@ -173,6 +180,42 @@ var _ = Describe("Agents", func() {
 				Expect(err).To(MatchError(ErrNotFound))
 				Expect(mock.Args).To(BeEmpty())
 			})
+
+			Context("with multiple image agents", func() {
+				var first *testImageAgent
+				var second *testImageAgent
+
+				BeforeEach(func() {
+					first = &testImageAgent{Name: "imgFail", Err: errors.New("fail")}
+					second = &testImageAgent{Name: "imgOk", Images: []ExternalImage{{URL: "ok", Size: 1}}}
+					Register("imgFail", func(model.DataStore) Interface { return first })
+					Register("imgOk", func(model.DataStore) Interface { return second })
+				})
+
+				It("falls back to the next agent on error", func() {
+					conf.Server.Agents = "imgFail,imgOk"
+					ag = createAgents(ds, nil)
+
+					images, err := ag.GetArtistImages(ctx, "id", "artist", "mbid")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(images).To(Equal([]ExternalImage{{URL: "ok", Size: 1}}))
+					Expect(first.Args).To(HaveExactElements("id", "artist", "mbid"))
+					Expect(second.Args).To(HaveExactElements("id", "artist", "mbid"))
+				})
+
+				It("falls back if the first agent returns no images", func() {
+					first.Err = nil
+					first.Images = []ExternalImage{}
+					conf.Server.Agents = "imgFail,imgOk"
+					ag = createAgents(ds, nil)
+
+					images, err := ag.GetArtistImages(ctx, "id", "artist", "mbid")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(images).To(Equal([]ExternalImage{{URL: "ok", Size: 1}}))
+					Expect(first.Args).To(HaveExactElements("id", "artist", "mbid"))
+					Expect(second.Args).To(HaveExactElements("id", "artist", "mbid"))
+				})
+			})
 		})
 
 		Describe("GetSimilarArtists", func() {
@@ -199,6 +242,7 @@ var _ = Describe("Agents", func() {
 
 		Describe("GetArtistTopSongs", func() {
 			It("returns on first match", func() {
+				conf.Server.DevExternalArtistFetchMultiplier = 1
 				Expect(ag.GetArtistTopSongs(ctx, "123", "test", "mb123", 2)).To(Equal([]Song{{
 					Name: "A Song",
 					MBID: "mbid444",
@@ -206,6 +250,7 @@ var _ = Describe("Agents", func() {
 				Expect(mock.Args).To(HaveExactElements("123", "test", "mb123", 2))
 			})
 			It("skips the agent if it returns an error", func() {
+				conf.Server.DevExternalArtistFetchMultiplier = 1
 				mock.Err = errors.New("error")
 				_, err := ag.GetArtistTopSongs(ctx, "123", "test", "mb123", 2)
 				Expect(err).To(MatchError(ErrNotFound))
@@ -217,6 +262,14 @@ var _ = Describe("Agents", func() {
 				Expect(err).To(MatchError(ErrNotFound))
 				Expect(mock.Args).To(BeEmpty())
 			})
+			It("fetches with multiplier", func() {
+				conf.Server.DevExternalArtistFetchMultiplier = 2
+				Expect(ag.GetArtistTopSongs(ctx, "123", "test", "mb123", 2)).To(Equal([]Song{{
+					Name: "A Song",
+					MBID: "mbid444",
+				}}))
+				Expect(mock.Args).To(HaveExactElements("123", "test", "mb123", 4))
+			})
 		})
 
 		Describe("GetAlbumInfo", func() {
@@ -226,18 +279,6 @@ var _ = Describe("Agents", func() {
 					MBID:        "mbid444",
 					Description: "A Description",
 					URL:         "External URL",
-					Images: []ExternalImage{
-						{
-							Size: 174,
-							URL:  "https://lastfm.freetls.fastly.net/i/u/174s/00000000000000000000000000000000.png",
-						}, {
-							Size: 64,
-							URL:  "https://lastfm.freetls.fastly.net/i/u/64s/00000000000000000000000000000000.png",
-						}, {
-							Size: 34,
-							URL:  "https://lastfm.freetls.fastly.net/i/u/34s/00000000000000000000000000000000.png",
-						},
-					},
 				}))
 				Expect(mock.Args).To(HaveExactElements("album", "artist", "mbid"))
 			})
@@ -254,11 +295,77 @@ var _ = Describe("Agents", func() {
 				Expect(mock.Args).To(BeEmpty())
 			})
 		})
+
+		Describe("GetSimilarSongsByTrack", func() {
+			It("returns on first match", func() {
+				Expect(ag.GetSimilarSongsByTrack(ctx, "123", "test song", "test artist", "mb123", 2)).To(Equal([]Song{{
+					Name: "Similar Song",
+					MBID: "mbid555",
+				}}))
+				Expect(mock.Args).To(HaveExactElements("123", "test song", "test artist", "mb123", 2))
+			})
+			It("skips the agent if it returns an error", func() {
+				mock.Err = errors.New("error")
+				_, err := ag.GetSimilarSongsByTrack(ctx, "123", "test song", "test artist", "mb123", 2)
+				Expect(err).To(MatchError(ErrNotFound))
+				Expect(mock.Args).To(HaveExactElements("123", "test song", "test artist", "mb123", 2))
+			})
+			It("interrupts if the context is canceled", func() {
+				cancel()
+				_, err := ag.GetSimilarSongsByTrack(ctx, "123", "test song", "test artist", "mb123", 2)
+				Expect(err).To(MatchError(ErrNotFound))
+				Expect(mock.Args).To(BeEmpty())
+			})
+		})
+
+		Describe("GetSimilarSongsByAlbum", func() {
+			It("returns on first match", func() {
+				Expect(ag.GetSimilarSongsByAlbum(ctx, "123", "test album", "test artist", "mb123", 2)).To(Equal([]Song{{
+					Name: "Album Similar Song",
+					MBID: "mbid666",
+				}}))
+				Expect(mock.Args).To(HaveExactElements("123", "test album", "test artist", "mb123", 2))
+			})
+			It("skips the agent if it returns an error", func() {
+				mock.Err = errors.New("error")
+				_, err := ag.GetSimilarSongsByAlbum(ctx, "123", "test album", "test artist", "mb123", 2)
+				Expect(err).To(MatchError(ErrNotFound))
+				Expect(mock.Args).To(HaveExactElements("123", "test album", "test artist", "mb123", 2))
+			})
+			It("interrupts if the context is canceled", func() {
+				cancel()
+				_, err := ag.GetSimilarSongsByAlbum(ctx, "123", "test album", "test artist", "mb123", 2)
+				Expect(err).To(MatchError(ErrNotFound))
+				Expect(mock.Args).To(BeEmpty())
+			})
+		})
+
+		Describe("GetSimilarSongsByArtist", func() {
+			It("returns on first match", func() {
+				Expect(ag.GetSimilarSongsByArtist(ctx, "123", "test artist", "mb123", 2)).To(Equal([]Song{{
+					Name: "Artist Similar Song",
+					MBID: "mbid777",
+				}}))
+				Expect(mock.Args).To(HaveExactElements("123", "test artist", "mb123", 2))
+			})
+			It("skips the agent if it returns an error", func() {
+				mock.Err = errors.New("error")
+				_, err := ag.GetSimilarSongsByArtist(ctx, "123", "test artist", "mb123", 2)
+				Expect(err).To(MatchError(ErrNotFound))
+				Expect(mock.Args).To(HaveExactElements("123", "test artist", "mb123", 2))
+			})
+			It("interrupts if the context is canceled", func() {
+				cancel()
+				_, err := ag.GetSimilarSongsByArtist(ctx, "123", "test artist", "mb123", 2)
+				Expect(err).To(MatchError(ErrNotFound))
+				Expect(mock.Args).To(BeEmpty())
+			})
+		})
 	})
 })
 
 type mockAgent struct {
-	Args []interface{}
+	Args []any
 	Err  error
 }
 
@@ -267,7 +374,7 @@ func (a *mockAgent) AgentName() string {
 }
 
 func (a *mockAgent) GetArtistMBID(_ context.Context, id string, name string) (string, error) {
-	a.Args = []interface{}{id, name}
+	a.Args = []any{id, name}
 	if a.Err != nil {
 		return "", a.Err
 	}
@@ -275,7 +382,7 @@ func (a *mockAgent) GetArtistMBID(_ context.Context, id string, name string) (st
 }
 
 func (a *mockAgent) GetArtistURL(_ context.Context, id, name, mbid string) (string, error) {
-	a.Args = []interface{}{id, name, mbid}
+	a.Args = []any{id, name, mbid}
 	if a.Err != nil {
 		return "", a.Err
 	}
@@ -283,7 +390,7 @@ func (a *mockAgent) GetArtistURL(_ context.Context, id, name, mbid string) (stri
 }
 
 func (a *mockAgent) GetArtistBiography(_ context.Context, id, name, mbid string) (string, error) {
-	a.Args = []interface{}{id, name, mbid}
+	a.Args = []any{id, name, mbid}
 	if a.Err != nil {
 		return "", a.Err
 	}
@@ -291,7 +398,7 @@ func (a *mockAgent) GetArtistBiography(_ context.Context, id, name, mbid string)
 }
 
 func (a *mockAgent) GetArtistImages(_ context.Context, id, name, mbid string) ([]ExternalImage, error) {
-	a.Args = []interface{}{id, name, mbid}
+	a.Args = []any{id, name, mbid}
 	if a.Err != nil {
 		return nil, a.Err
 	}
@@ -302,7 +409,7 @@ func (a *mockAgent) GetArtistImages(_ context.Context, id, name, mbid string) ([
 }
 
 func (a *mockAgent) GetSimilarArtists(_ context.Context, id, name, mbid string, limit int) ([]Artist, error) {
-	a.Args = []interface{}{id, name, mbid, limit}
+	a.Args = []any{id, name, mbid, limit}
 	if a.Err != nil {
 		return nil, a.Err
 	}
@@ -313,7 +420,7 @@ func (a *mockAgent) GetSimilarArtists(_ context.Context, id, name, mbid string, 
 }
 
 func (a *mockAgent) GetArtistTopSongs(_ context.Context, id, artistName, mbid string, count int) ([]Song, error) {
-	a.Args = []interface{}{id, artistName, mbid, count}
+	a.Args = []any{id, artistName, mbid, count}
 	if a.Err != nil {
 		return nil, a.Err
 	}
@@ -324,7 +431,7 @@ func (a *mockAgent) GetArtistTopSongs(_ context.Context, id, artistName, mbid st
 }
 
 func (a *mockAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid string) (*AlbumInfo, error) {
-	a.Args = []interface{}{name, artist, mbid}
+	a.Args = []any{name, artist, mbid}
 	if a.Err != nil {
 		return nil, a.Err
 	}
@@ -333,19 +440,40 @@ func (a *mockAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid string)
 		MBID:        "mbid444",
 		Description: "A Description",
 		URL:         "External URL",
-		Images: []ExternalImage{
-			{
-				Size: 174,
-				URL:  "https://lastfm.freetls.fastly.net/i/u/174s/00000000000000000000000000000000.png",
-			}, {
-				Size: 64,
-				URL:  "https://lastfm.freetls.fastly.net/i/u/64s/00000000000000000000000000000000.png",
-			}, {
-				Size: 34,
-				URL:  "https://lastfm.freetls.fastly.net/i/u/34s/00000000000000000000000000000000.png",
-			},
-		},
 	}, nil
+}
+
+func (a *mockAgent) GetSimilarSongsByTrack(_ context.Context, id, name, artist, mbid string, count int) ([]Song, error) {
+	a.Args = []any{id, name, artist, mbid, count}
+	if a.Err != nil {
+		return nil, a.Err
+	}
+	return []Song{{
+		Name: "Similar Song",
+		MBID: "mbid555",
+	}}, nil
+}
+
+func (a *mockAgent) GetSimilarSongsByAlbum(_ context.Context, id, name, artist, mbid string, count int) ([]Song, error) {
+	a.Args = []any{id, name, artist, mbid, count}
+	if a.Err != nil {
+		return nil, a.Err
+	}
+	return []Song{{
+		Name: "Album Similar Song",
+		MBID: "mbid666",
+	}}, nil
+}
+
+func (a *mockAgent) GetSimilarSongsByArtist(_ context.Context, id, name, mbid string, count int) ([]Song, error) {
+	a.Args = []any{id, name, mbid, count}
+	if a.Err != nil {
+		return nil, a.Err
+	}
+	return []Song{{
+		Name: "Artist Similar Song",
+		MBID: "mbid777",
+	}}, nil
 }
 
 type emptyAgent struct {
@@ -354,4 +482,18 @@ type emptyAgent struct {
 
 func (e *emptyAgent) AgentName() string {
 	return "empty"
+}
+
+type testImageAgent struct {
+	Name   string
+	Images []ExternalImage
+	Err    error
+	Args   []any
+}
+
+func (t *testImageAgent) AgentName() string { return t.Name }
+
+func (t *testImageAgent) GetArtistImages(_ context.Context, id, name, mbid string) ([]ExternalImage, error) {
+	t.Args = []any{id, name, mbid}
+	return t.Images, t.Err
 }

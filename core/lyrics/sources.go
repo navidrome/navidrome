@@ -8,6 +8,7 @@ import (
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/ioutils"
 )
 
 func fromEmbedded(ctx context.Context, mf *model.MediaFile) (model.LyricList, error) {
@@ -27,8 +28,7 @@ func fromExternalFile(ctx context.Context, mf *model.MediaFile, suffix string) (
 
 	externalLyric := basePath[0:len(basePath)-len(ext)] + suffix
 
-	contents, err := os.ReadFile(externalLyric)
-
+	contents, err := ioutils.UTF8ReadFile(externalLyric)
 	if errors.Is(err, os.ErrNotExist) {
 		log.Trace(ctx, "no lyrics found at path", "path", externalLyric)
 		return nil, nil
@@ -48,4 +48,28 @@ func fromExternalFile(ctx context.Context, mf *model.MediaFile, suffix string) (
 	log.Trace(ctx, "retrieved lyrics from external file", "path", externalLyric)
 
 	return model.LyricList{*lyrics}, nil
+}
+
+// fromPlugin attempts to load lyrics from a plugin with the given name.
+func (l *lyricsService) fromPlugin(ctx context.Context, mf *model.MediaFile, pluginName string) (model.LyricList, error) {
+	if l.pluginLoader == nil {
+		log.Debug(ctx, "Invalid lyric source", "source", pluginName)
+		return nil, nil
+	}
+
+	provider, ok := l.pluginLoader.LoadLyricsProvider(pluginName)
+	if !ok {
+		log.Warn(ctx, "Lyrics plugin not found", "plugin", pluginName)
+		return nil, nil
+	}
+
+	lyricsList, err := provider.GetLyrics(ctx, mf)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(lyricsList) > 0 {
+		log.Trace(ctx, "Retrieved lyrics from plugin", "plugin", pluginName, "count", len(lyricsList))
+	}
+	return lyricsList, nil
 }

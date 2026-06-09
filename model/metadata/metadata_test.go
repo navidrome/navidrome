@@ -129,6 +129,21 @@ var _ = Describe("Metadata", func() {
 
 				Expect(md.Strings(model.TagGenre)).To(Equal([]string{"Rock", "Pop", "Punk"}))
 			})
+
+			// Regression test for https://github.com/navidrome/navidrome/issues/5065
+			//
+			// MP3s with both an ID3v2 TMOO frame and a TXXX:MOOD frame are surfaced by
+			// TagLib's PropertyMap as a single "mood" key with multiple values. The split
+			// configuration must still apply to each value individually.
+			It("should split values from multiple frames mapping to the same tag", func() {
+				props.Tags = model.RawTags{
+					// Same shape as the bug report: two frames, comma-separated content.
+					"mood": {"Love, Emotional, Ballad", "Love; Emotional; Ballad"},
+				}
+				md = metadata.New(filePath, props)
+
+				Expect(md.Strings(model.TagMood)).To(ConsistOf("Love", "Emotional", "Ballad"))
+			})
 		})
 
 		DescribeTable("Date",
@@ -245,6 +260,18 @@ var _ = Describe("Metadata", func() {
 					metadata.NewPair("eng", "Lyrics"),
 				))
 			})
+
+			It("should preserve lyrics starting with parentheses from alias tags", func() {
+				props.Tags = model.RawTags{
+					"LYRICS": {"(line one)\nline two\nline three"},
+				}
+				md = metadata.New(filePath, props)
+
+				Expect(md.All()).To(HaveKey(model.TagLyrics))
+				Expect(md.Strings(model.TagLyrics)).To(ContainElements(
+					metadata.NewPair("xxx", "(line one)\nline two\nline three"),
+				))
+			})
 		})
 
 		Describe("ReplayGain", func() {
@@ -257,38 +284,39 @@ var _ = Describe("Metadata", func() {
 			}
 
 			DescribeTable("Gain",
-				func(tagValue string, expected float64) {
+				func(tagValue string, expected *float64) {
 					mf := createMF("replaygain_track_gain", tagValue)
 					Expect(mf.RGTrackGain).To(Equal(expected))
 				},
-				Entry("0", "0", 0.0),
-				Entry("1.2dB", "1.2dB", 1.2),
-				Entry("Infinity", "Infinity", 0.0),
-				Entry("Invalid value", "INVALID VALUE", 0.0),
-				Entry("NaN", "NaN", 0.0),
+				Entry("0", "0", new(0.0)),
+				Entry("1.2dB", "1.2dB", new(1.2)),
+				Entry("Infinity", "Infinity", nil),
+				Entry("Invalid value", "INVALID VALUE", nil),
+				Entry("NaN", "NaN", nil),
 			)
 			DescribeTable("Peak",
-				func(tagValue string, expected float64) {
+				func(tagValue string, expected *float64) {
 					mf := createMF("replaygain_track_peak", tagValue)
 					Expect(mf.RGTrackPeak).To(Equal(expected))
 				},
-				Entry("0", "0", 0.0),
-				Entry("0.5", "0.5", 0.5),
-				Entry("Invalid dB suffix", "0.7dB", 1.0),
-				Entry("Infinity", "Infinity", 1.0),
-				Entry("Invalid value", "INVALID VALUE", 1.0),
-				Entry("NaN", "NaN", 1.0),
+				Entry("0", "0", new(0.0)),
+				Entry("1.0", "1.0", new(1.0)),
+				Entry("0.5", "0.5", new(0.5)),
+				Entry("Invalid dB suffix", "0.7dB", nil),
+				Entry("Infinity", "Infinity", nil),
+				Entry("Invalid value", "INVALID VALUE", nil),
+				Entry("NaN", "NaN", nil),
 			)
 			DescribeTable("getR128GainValue",
-				func(tagValue string, expected float64) {
+				func(tagValue string, expected *float64) {
 					mf := createMF("r128_track_gain", tagValue)
 					Expect(mf.RGTrackGain).To(Equal(expected))
 
 				},
-				Entry("0", "0", 5.0),
-				Entry("-3776", "-3776", -9.75),
-				Entry("Infinity", "Infinity", 0.0),
-				Entry("Invalid value", "INVALID VALUE", 0.0),
+				Entry("0", "0", new(5.0)),
+				Entry("-3776", "-3776", new(-9.75)),
+				Entry("Infinity", "Infinity", nil),
+				Entry("Invalid value", "INVALID VALUE", nil),
 			)
 		})
 
