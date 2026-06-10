@@ -157,12 +157,12 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 
 	It("returns an error when isMissing is used with a regular field", func() {
 		_, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: criteria.IsMissing{"year": true}}).Where()
-		Expect(err).To(MatchError(ContainSubstring("isMissing/isPresent operator is only supported for tag, role, and nullable fields")))
+		Expect(err).To(MatchError(ContainSubstring("isMissing/isPresent operator is not supported for field")))
 	})
 
 	It("returns an error when isPresent is used with a regular field", func() {
 		_, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: criteria.IsPresent{"title": true}}).Where()
-		Expect(err).To(MatchError(ContainSubstring("isMissing/isPresent operator is only supported for tag, role, and nullable fields")))
+		Expect(err).To(MatchError(ContainSubstring("isMissing/isPresent operator is not supported for field")))
 	})
 
 	It("returns an error when isMissing has a non-boolean value", func() {

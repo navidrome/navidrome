@@ -63,7 +63,8 @@ var _ = Describe("fields", func() {
 		})
 
 		It("resolves replaygain_* tag names as aliases to nullable column fields", func() {
-			// Even after the tag name is registered from mappings.yaml, the static alias wins.
+			// AddTagNames skips names already in the field map, so the startup tag registration
+			// (from mappings.yaml) must not convert the pre-registered alias into a tag field.
 			AddTagNames([]string{"replaygain_album_gain"})
 
 			field, ok := LookupField("replaygain_album_gain")

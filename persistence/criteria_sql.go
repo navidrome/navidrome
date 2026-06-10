@@ -219,7 +219,7 @@ func missingExpr(values map[string]any, checkAbsence bool) (squirrel.Sqlizer, er
 		return nil, fmt.Errorf("invalid field in criteria: %s", field)
 	}
 	if !info.IsTag && !info.IsRole && !info.Nullable {
-		return nil, fmt.Errorf("isMissing/isPresent operator is only supported for tag, role, and nullable fields, got: %s", field)
+		return nil, fmt.Errorf("isMissing/isPresent operator is not supported for field: %s", field)
 	}
 
 	b, ok := value.(bool)

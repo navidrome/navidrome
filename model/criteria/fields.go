@@ -11,7 +11,7 @@ type FieldInfo struct {
 	Boolean  bool
 	Nullable bool // If set, this column field can be NULL, so isMissing/isPresent are supported on it
 
-	tagAlias string // If set, a tag name from mappings.yml that resolves to this field
+	tagAlias string // If set, a tag name from mappings.yaml that resolves to this field
 	name     string // Canonical name, populated by LookupField from the map key
 }
 
@@ -137,7 +137,7 @@ func AddRoles(roles []string) {
 	}
 }
 
-// AddTagNames adds tag names to the field map. This is used to add all tags mapped in the `mappings.yml`
+// AddTagNames adds tag names to the field map. This is used to add all tags mapped in the `mappings.yaml`
 // configuration file.
 func AddTagNames(tagNames []string) {
 	for _, tagName := range tagNames {
