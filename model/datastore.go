@@ -37,6 +37,7 @@ type DataStore interface {
 	Property(ctx context.Context) PropertyRepository
 	User(ctx context.Context) UserRepository
 	UserProps(ctx context.Context) UserPropsRepository
+	AppPassword(ctx context.Context) AppPasswordRepository
 	ScrobbleBuffer(ctx context.Context) ScrobbleBufferRepository
 	Scrobble(ctx context.Context) ScrobbleRepository
 	Plugin(ctx context.Context) PluginRepository

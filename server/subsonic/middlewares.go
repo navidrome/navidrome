@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"crypto/md5"
+	"crypto/subtle"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -138,6 +139,9 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 					log.Error(ctx, "API: Error authenticating username", "auth", "subsonic", "username", username, "remoteAddr", r.RemoteAddr, err)
 				default:
 					err = validateCredentials(usr, pass, token, salt, jwt)
+					if err != nil && jwt == "" {
+						err = validateAppPasswordCredentials(ctx, ds, usr, pass, token, salt)
+					}
 					if err != nil {
 						log.Warn(ctx, "API: Invalid login", "auth", "subsonic", "username", username, "remoteAddr", r.RemoteAddr, err)
 					}
@@ -155,21 +159,55 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 	}
 }
 
-func adminOnly(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		loggedUser, ok := request.UserFrom(r.Context())
-		if !ok {
-			sendError(w, r, newError(responses.ErrorGeneric, "Internal error"))
-			return
-		}
+// validateAppPasswordCredentials is the Subsonic-side fallback for users who
+// authenticate with a per-application secondary password instead of their
+// primary one. It only kicks in when the request is NOT presenting a JWT
+// (those are exclusively for Navidrome-issued tokens).
+//
+// Both p= (plaintext / "enc:" hex-encoded) and t=/s= (md5(secret+salt)) auth
+// shapes are supported. Comparisons use crypto/subtle to avoid leaking
+// whether a username has any active app passwords through timing side
+// channels.
+//
+// On success, last_used_at is bumped asynchronously using a context that
+// outlives the HTTP request — the user-facing response has already been
+// committed by the time the UPDATE returns.
+func validateAppPasswordCredentials(ctx context.Context, ds model.DataStore, user *model.User, pass, token, salt string) error {
+	aps, err := ds.AppPassword(ctx).GetActiveForUser(ctx, user.ID)
+	if err != nil {
+		log.Error(ctx, "Failed to load app passwords during auth", "userId", user.ID, err)
+		return model.ErrInvalidAuth
+	}
+	if len(aps) == 0 {
+		return model.ErrInvalidAuth
+	}
 
-		if !loggedUser.IsAdmin {
-			sendError(w, r, newError(responses.ErrorAuthorizationFail))
-			return
+	if strings.HasPrefix(pass, "enc:") {
+		if dec, err := hex.DecodeString(pass[4:]); err == nil {
+			pass = string(dec)
 		}
+	}
 
-		next.ServeHTTP(w, r)
-	})
+	for _, ap := range aps {
+		if ap.Secret == "" {
+			continue
+		}
+		var matches bool
+		switch {
+		case pass != "":
+			matches = subtle.ConstantTimeCompare([]byte(pass), []byte(ap.Secret)) == 1
+		case token != "":
+			t := fmt.Sprintf("%x", md5.Sum([]byte(ap.Secret+salt)))
+			matches = subtle.ConstantTimeCompare([]byte(t), []byte(token)) == 1
+		}
+		if matches {
+			asyncCtx := context.WithoutCancel(ctx)
+			id := ap.ID
+			go func() { _ = ds.AppPassword(asyncCtx).UpdateLastUsedAt(asyncCtx, id) }()
+			return nil
+		}
+	}
+	return model.ErrInvalidAuth
 }
 
 func validateCredentials(user *model.User, pass, token, salt, jwt string) error {
