@@ -627,7 +627,6 @@ const NautilineTheme = {
       root: {
         [`@media (max-width: ${breakpoints.xs}px)`]: {
           padding: '0.7em',
-          width: '100%',
           minWidth: 'unset',
         },
       },
