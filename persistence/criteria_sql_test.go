@@ -14,7 +14,7 @@ import (
 var _ = Describe("Smart playlist criteria SQL", func() {
 	BeforeEach(func() {
 		criteria.AddRoles([]string{"artist", "composer", "producer"})
-		criteria.AddTagNames([]string{"genre", "mood", "releasetype", "recordingdate"})
+		criteria.AddTagNames([]string{"genre", "mood", "releasetype", "recordingdate", "replaygain_album_gain"})
 		criteria.AddNumericTags([]string{"rate"})
 	})
 
@@ -85,6 +85,20 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 			"exists (select 1 from media_file_artists mfa where mfa.media_file_id = media_file.id and mfa.role = ?)", "composer"),
 		Entry("isPresent role [false]", criteria.IsPresent{"composer": false},
 			"not exists (select 1 from media_file_artists mfa where mfa.media_file_id = media_file.id and mfa.role = ?)", "composer"),
+		// isMissing/isPresent — nullable column fields (ReplayGain)
+		Entry("isMissing rgAlbumGain [true]", criteria.IsMissing{"rgAlbumGain": true},
+			"media_file.rg_album_gain IS NULL"),
+		Entry("isMissing rgAlbumGain [false]", criteria.IsMissing{"rgAlbumGain": false},
+			"media_file.rg_album_gain IS NOT NULL"),
+		Entry("isPresent rgTrackPeak [true]", criteria.IsPresent{"rgTrackPeak": true},
+			"media_file.rg_track_peak IS NOT NULL"),
+		Entry("isPresent rgTrackPeak [false]", criteria.IsPresent{"rgTrackPeak": false},
+			"media_file.rg_track_peak IS NULL"),
+		// isMissing — replaygain_* tag-name alias resolves to the nullable column (issue #5584)
+		Entry("isMissing replaygain_album_gain alias [true]", criteria.IsMissing{"replaygain_album_gain": true},
+			"media_file.rg_album_gain IS NULL"),
+		Entry("isPresent replaygain_album_gain alias [true]", criteria.IsPresent{"replaygain_album_gain": true},
+			"media_file.rg_album_gain IS NOT NULL"),
 	)
 
 	Describe("playlist permissions", func() {
@@ -143,12 +157,12 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 
 	It("returns an error when isMissing is used with a regular field", func() {
 		_, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: criteria.IsMissing{"year": true}}).Where()
-		Expect(err).To(MatchError(ContainSubstring("isMissing/isPresent operator is only supported for tag and role fields")))
+		Expect(err).To(MatchError(ContainSubstring("isMissing/isPresent operator is only supported for tag, role, and nullable fields")))
 	})
 
 	It("returns an error when isPresent is used with a regular field", func() {
 		_, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: criteria.IsPresent{"title": true}}).Where()
-		Expect(err).To(MatchError(ContainSubstring("isMissing/isPresent operator is only supported for tag and role fields")))
+		Expect(err).To(MatchError(ContainSubstring("isMissing/isPresent operator is only supported for tag, role, and nullable fields")))
 	})
 
 	It("returns an error when isMissing has a non-boolean value", func() {

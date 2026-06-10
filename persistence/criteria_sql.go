@@ -218,8 +218,8 @@ func missingExpr(values map[string]any, checkAbsence bool) (squirrel.Sqlizer, er
 		}
 		return nil, fmt.Errorf("invalid field in criteria: %s", field)
 	}
-	if !info.IsTag && !info.IsRole {
-		return nil, fmt.Errorf("isMissing/isPresent operator is only supported for tag and role fields, got: %s", field)
+	if !info.IsTag && !info.IsRole && !info.Nullable {
+		return nil, fmt.Errorf("isMissing/isPresent operator is only supported for tag, role, and nullable fields, got: %s", field)
 	}
 
 	b, ok := value.(bool)
@@ -227,6 +227,20 @@ func missingExpr(values map[string]any, checkAbsence bool) (squirrel.Sqlizer, er
 		return nil, fmt.Errorf("invalid boolean value for 'missing' expression: %s: %v", field, value)
 	}
 	negate := checkAbsence == b
+
+	// Nullable column fields (e.g. ReplayGain) are stored in dedicated columns, not in the tags
+	// JSON, so "missing" maps to a NULL check on the column rather than a json_tree lookup.
+	if info.Nullable && !info.IsTag && !info.IsRole {
+		col, ok := fieldExpr(info.Name())
+		if !ok || col == "" {
+			return nil, fmt.Errorf("invalid field in criteria: %s", field)
+		}
+		if negate {
+			return squirrel.Eq{col: nil}, nil
+		}
+		return squirrel.NotEq{col: nil}, nil
+	}
+
 	return jsonExpr(info, nil, negate), nil
 }
 
