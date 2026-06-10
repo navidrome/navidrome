@@ -46,7 +46,7 @@ func (r *sqlRepository) parseRestFilters(ctx context.Context, options rest.Query
 			continue
 		}
 		// Default to a "starts with" filter
-		filters = append(filters, startsWithFilter(f, v))
+		filters = append(filters, Like{f: fmt.Sprintf("%s%%", v)})
 	}
 	return filters
 }
@@ -91,8 +91,10 @@ func eqFilter(field string, value any) Sqlizer {
 	return Eq{field: value}
 }
 
-func startsWithFilter(field string, value any) Sqlizer {
-	return Like{field: fmt.Sprintf("%s%%", value)}
+func startsWithFilter(field string) func(string, any) Sqlizer {
+	return func(_ string, value any) Sqlizer {
+		return Like{field: fmt.Sprintf("%s%%", value)}
+	}
 }
 
 func containsFilter(field string) func(string, any) Sqlizer {

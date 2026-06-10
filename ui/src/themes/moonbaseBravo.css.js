@@ -1,62 +1,63 @@
 const stylesheet = `
 
 .react-jinke-music-player-main svg:active, .react-jinke-music-player-main svg:hover {
-    color: #458588
+    color: #d4a039
 }
 
 .react-jinke-music-player-main .music-player-panel .panel-content .rc-slider-handle, .react-jinke-music-player-main .music-player-panel .panel-content .rc-slider-track {
-    background-color: #ebdbb2
+    background-color: #d4a039;
+    border-color: #b8862e
 }
 
 .react-jinke-music-player-main ::-webkit-scrollbar-thumb {
-    background-color: #458588;
+    background-color: #d4a039;
 }
 
 .react-jinke-music-player-main .music-player-panel .panel-content .rc-slider-handle:active {
-    box-shadow: 0 0 2px #458588
+    box-shadow: 0 0 2px #d4a039
 }
 
 .react-jinke-music-player-main .audio-item.playing svg {
-    color: #458588
+    color: #d4a039
 }
 
 .react-jinke-music-player-main .audio-item.playing .player-singer {
-    color: #458588 !important
+    color: #d4a039 !important
+}
+
+.react-jinke-music-player-main .rc-slider-rail {
+    background-color: #2a2a27 !important
 }
 
 .react-jinke-music-player-main .lyric-btn {
-    color: #ebdbb2 !important
+    color: #e5ddd3 !important
+}
+
+.react-jinke-music-player-main .music-player-panel {
+    color: #e5ddd3 !important
 }
 
 .react-jinke-music-player-main .lyric-btn-active svg {
-    color: #458588 !important
+    color: #d4a039 !important
 }
 
 .music-player-lyric {
-    color: #458588 !important
+    color: #d4a039 !important
 }
 
 .audio-lists-panel-content .audio-item.playing, .audio-lists-panel-content .audio-item.playing svg {
-    color: #458588
+    color: #d4a039
 }
-.audio-lists-panel-content .audio-item:active .group:not([class=".player-delete"]) svg, .audio-lists-panel-content .audio-item:hover .group:not([class=".player-delete"]) svg {
-    color: #458588
+.audio-lists-panel-content .audio-item:active .group:not(.player-delete) svg, .audio-lists-panel-content .audio-item:hover .group:not(.player-delete) svg {
+    color: #d4a039
 }
 
 .progress-bar-content .audio-title a {
-    color: #ebdbb2
+    color: #e5ddd3
 }
 
 .MuiCheckbox-colorSecondary.Mui-checked {
-    color: #458588 !important
-}
-.react-jinke-music-player-main .music-player-panel svg {
-    color: #ebdbb2;
-    fill: #ebdbb2;
-}
-.react-jinke-music-player-main .music-player-panel button {
-    color: #ebdbb2;
+    color: #d4a039 !important
 }
 `
-
 export default stylesheet

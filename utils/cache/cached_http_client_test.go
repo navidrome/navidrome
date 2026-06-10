@@ -20,6 +20,8 @@ var _ = Describe("HTTPClient", func() {
 		var header string
 
 		BeforeEach(func() {
+			requestsReceived = 0
+			header = ""
 			ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				requestsReceived++
 				header = r.Header.Get("head")

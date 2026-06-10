@@ -92,7 +92,7 @@ func SongsByAlbum(albumId string) Options {
 
 func SongsByRandom(genre string, fromYear, toYear int) Options {
 	options := Options{
-		Sort: "random",
+		Sort: "random()",
 	}
 	ff := And{}
 	if genre != "" {
