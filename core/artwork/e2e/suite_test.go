@@ -2,6 +2,7 @@ package artworke2e_test
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"testing"
 
@@ -103,4 +104,17 @@ func firstAlbum() model.Album {
 	Expect(err).ToNot(HaveOccurred())
 	Expect(albums).To(HaveLen(1), "expected exactly one album, got %d", len(albums))
 	return albums[0]
+}
+
+func albumByName(name string) model.Album {
+	GinkgoHelper()
+	albums, err := ds.Album(ctx).GetAll(model.QueryOptions{})
+	Expect(err).ToNot(HaveOccurred())
+	for _, al := range albums {
+		if al.Name == name {
+			return al
+		}
+	}
+	Fail(fmt.Sprintf("album %q not found among %d albums", name, len(albums)))
+	return model.Album{}
 }
