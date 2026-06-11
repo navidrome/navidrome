@@ -7,6 +7,7 @@ import (
 	"iter"
 	"maps"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -186,6 +187,35 @@ func (r folderRepository) queryFolderUpdateInfo(where And) (map[string]model.Fol
 		m[f.ID] = model.FolderUpdateInfo{UpdatedAt: f.UpdatedAt, Hash: f.Hash}
 	}
 	return m, nil
+}
+
+// HasAudioOutsideFolders reports whether any folder in parent's subtree
+// (including parent itself) contains audio files and is not one of the given
+// folder IDs. LIKE wildcards in the parent path are escaped, so it is always
+// matched as a literal prefix.
+func (r folderRepository) HasAudioOutsideFolders(parent model.Folder, excludeFolderIDs []string) (bool, error) {
+	if parent.NumAudioFiles > 0 {
+		return true, nil
+	}
+	parentPath := strings.TrimPrefix(path.Join(parent.Path, parent.Name), "/")
+	query := r.newSelect().Columns("count(*)").Where(And{
+		Eq{"library_id": parent.LibraryID, "missing": false},
+		Gt{"num_audio_files": 0},
+		NotEq{"id": excludeFolderIDs},
+		Or{
+			// Direct children have path = parentPath; deeper descendants match the prefix
+			Eq{"path": parentPath},
+			Expr(`path LIKE ? ESCAPE '\'`, escapeLikePrefix(parentPath)+"/%"),
+		},
+	})
+	count, err := r.count(query)
+	return count > 0, err
+}
+
+// escapeLikePrefix escapes SQL LIKE wildcards so a string can be used as a
+// literal prefix in a LIKE pattern (with ESCAPE '\').
+func escapeLikePrefix(s string) string {
+	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)
 }
 
 func (r folderRepository) Put(f *model.Folder) error {

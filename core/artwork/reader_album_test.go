@@ -360,36 +360,7 @@ var _ = Describe("Album Artwork Reader", func() {
 				ImagesUpdatedAt: expectedAt,
 				ImageFiles:      []string{"folder.jpg"},
 			}
-			repo.otherAudioResult = []model.Folder{{ID: "otherAlbumFolder"}}
-
-			_, imgFiles, _, err := loadAlbumFoldersPaths(ctx, ds, album)
-
-			Expect(err).ToNot(HaveOccurred())
-			Expect(imgFiles).To(BeEmpty())
-		})
-
-		It("does not include parent images when the parent itself contains audio files", func() {
-			// Audio directly in the parent cannot belong to this album (the
-			// parent is not one of the album's folders), so it is artist-like
-			repo.result = []model.Folder{
-				{
-					ID:              "folder1",
-					Path:            "Artist",
-					Name:            "Album",
-					ParentID:        "artistFolder",
-					ImagesUpdatedAt: now,
-					ImageFiles:      []string{},
-				},
-			}
-			repo.parentResult = &model.Folder{
-				ID:              "artistFolder",
-				Path:            ".",
-				Name:            "Artist",
-				ParentID:        "libraryRoot",
-				NumAudioFiles:   3,
-				ImagesUpdatedAt: expectedAt,
-				ImageFiles:      []string{"folder.jpg"},
-			}
+			repo.hasOtherAudio = true
 
 			_, imgFiles, _, err := loadAlbumFoldersPaths(ctx, ds, album)
 
