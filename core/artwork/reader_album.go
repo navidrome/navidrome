@@ -123,6 +123,8 @@ func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, albums ...mo
 	// when tracks are in disc subfolders like "Artist/Album/CD1/" and "Artist/Album/CD2/").
 	// For single-folder albums, the parent is only included when the folder has no
 	// images of its own (indicating a disc subfolder needing parent artwork).
+	// In both cases the parent must look like an album root, not an artist-level
+	// folder, so artist images are never served as album art.
 	if commonParentID := commonParentFolder(folders, folderIDSet); commonParentID != "" {
 		if len(folders) >= 2 || !anyFolderHasImages(folders) {
 			parentFolder, err := ds.Folder(ctx).Get(commonParentID)
@@ -132,7 +134,13 @@ func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, albums ...mo
 				return nil, nil, nil, err
 			}
 			if parentFolder != nil && parentFolder.ParentID != "" {
-				folders = append(folders, *parentFolder)
+				isAlbumRoot, err := isAlbumRootFolder(ctx, ds, *parentFolder, folderIDs)
+				if err != nil {
+					return nil, nil, nil, err
+				}
+				if isAlbumRoot {
+					folders = append(folders, *parentFolder)
+				}
 			}
 		}
 	}
@@ -157,6 +165,39 @@ func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, albums ...mo
 	slices.SortFunc(imgFiles, compareImageFiles)
 
 	return paths, imgFiles, &updatedAt, nil
+}
+
+// isAlbumRootFolder reports whether parent is the album's own root folder, as
+// opposed to an artist-level folder. A parent qualifies only when no audio
+// belonging to other albums lives in it or anywhere beneath it: an artist
+// folder contains other albums' tracks, while an album root above disc
+// subfolders contains only this album's.
+func isAlbumRootFolder(ctx context.Context, ds model.DataStore, parent model.Folder, albumFolderIDs []string) (bool, error) {
+	if parent.NumAudioFiles > 0 {
+		return false, nil
+	}
+	parentRel := strings.TrimPrefix(path.Join(parent.Path, parent.Name), "/")
+	otherAudio, err := ds.Folder(ctx).GetAll(model.QueryOptions{
+		Max: 1,
+		Filters: squirrel.And{
+			squirrel.Eq{"folder.library_id": parent.LibraryID, "missing": false},
+			squirrel.Gt{"folder.num_audio_files": 0},
+			squirrel.NotEq{"folder.id": albumFolderIDs},
+			squirrel.Or{
+				squirrel.Eq{"folder.path": parentRel},
+				squirrel.Expr(`folder.path LIKE ? ESCAPE '\'`, escapeLike(parentRel)+"/%"),
+			},
+		},
+	})
+	if err != nil {
+		return false, err
+	}
+	return len(otherAudio) == 0, nil
+}
+
+// escapeLike escapes SQL LIKE wildcards so a path can be used as a literal prefix.
+func escapeLike(s string) string {
+	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)
 }
 
 func anyFolderHasImages(folders []model.Folder) bool {

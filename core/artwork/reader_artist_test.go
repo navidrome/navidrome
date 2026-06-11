@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -702,9 +703,19 @@ type fakeFolderRepo struct {
 	getErr       error
 	getCallCount int
 	err          error
+	// otherAudioResult is returned for the isAlbumRootFolder subtree query
+	// (recognized by its num_audio_files filter). Empty means the parent
+	// qualifies as an album root.
+	otherAudioResult []model.Folder
+	otherAudioErr    error
 }
 
-func (f *fakeFolderRepo) GetAll(...model.QueryOptions) ([]model.Folder, error) {
+func (f *fakeFolderRepo) GetAll(opts ...model.QueryOptions) ([]model.Folder, error) {
+	if len(opts) > 0 && opts[0].Filters != nil {
+		if sql, _, err := opts[0].Filters.ToSql(); err == nil && strings.Contains(sql, "num_audio_files") {
+			return f.otherAudioResult, f.otherAudioErr
+		}
+	}
 	return f.result, f.err
 }
 
