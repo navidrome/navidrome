@@ -371,4 +371,61 @@ var _ = Describe("Smart Playlists", func() {
 			Expect(results).To(ConsistOf("Black Dog", "All Along the Watchtower"))
 		})
 	})
+
+	// ReplayGain values are stored in nullable media_file columns (not in the tags JSON), so
+	// isMissing/isPresent translate to IS [NOT] NULL checks on those columns (issue #5584).
+	Describe("isMissing/isPresent on ReplayGain fields", func() {
+		It("isMissing finds tracks without album gain", func() {
+			results := evaluateRule(`{"all":[{"isMissing":{"rgalbumgain":true}}]}`)
+			Expect(results).To(ConsistOf("Stairway To Heaven", "Black Dog", "So What",
+				"Bohemian Rhapsody", "All Along the Watchtower", "We Are the Champions"))
+		})
+
+		It("isMissing false finds tracks with album gain", func() {
+			results := evaluateRule(`{"all":[{"isMissing":{"rgalbumgain":false}}]}`)
+			Expect(results).To(ConsistOf("Come Together", "Something"))
+		})
+
+		It("isPresent finds tracks with album gain", func() {
+			results := evaluateRule(`{"all":[{"isPresent":{"rgalbumgain":true}}]}`)
+			Expect(results).To(ConsistOf("Come Together", "Something"))
+		})
+
+		It("isPresent finds tracks with album peak", func() {
+			results := evaluateRule(`{"all":[{"isPresent":{"rgalbumpeak":true}}]}`)
+			Expect(results).To(ConsistOf("Come Together", "Something"))
+		})
+
+		It("isMissing distinguishes track gain from album gain", func() {
+			results := evaluateRule(`{"all":[{"isMissing":{"rgtrackgain":true}}]}`)
+			Expect(results).To(ConsistOf("Black Dog", "So What", "Bohemian Rhapsody",
+				"All Along the Watchtower", "We Are the Champions"))
+		})
+
+		It("isPresent finds tracks with track gain", func() {
+			results := evaluateRule(`{"all":[{"isPresent":{"rgtrackgain":true}}]}`)
+			Expect(results).To(ConsistOf("Come Together", "Something", "Stairway To Heaven"))
+		})
+
+		It("resolves the replaygain_album_gain alias to the rgalbumgain column", func() {
+			results := evaluateRule(`{"all":[{"isMissing":{"replaygain_album_gain":true}}]}`)
+			Expect(results).To(ConsistOf("Stairway To Heaven", "Black Dog", "So What",
+				"Bohemian Rhapsody", "All Along the Watchtower", "We Are the Champions"))
+		})
+
+		It("resolves the replaygain_track_gain alias to the rgtrackgain column", func() {
+			results := evaluateRule(`{"all":[{"isPresent":{"replaygain_track_gain":true}}]}`)
+			Expect(results).To(ConsistOf("Come Together", "Something", "Stairway To Heaven"))
+		})
+
+		It("supports numeric comparisons through the replaygain_* alias", func() {
+			results := evaluateRule(`{"all":[{"gt":{"replaygain_track_gain":-7.5}}]}`)
+			Expect(results).To(ConsistOf("Come Together", "Something"))
+		})
+
+		It("combines isMissing on ReplayGain with other operators", func() {
+			results := evaluateRule(`{"all":[{"isMissing":{"rgalbumgain":true}},{"is":{"genre":"Blues"}}]}`)
+			Expect(results).To(ConsistOf("Black Dog", "All Along the Watchtower"))
+		})
+	})
 })

@@ -53,5 +53,27 @@ var _ = Describe("fields", func() {
 			gomega.Expect(field.IsRole).To(gomega.BeTrue())
 		})
 
+		It("marks ReplayGain column fields as nullable", func() {
+			field, ok := LookupField("rgAlbumGain")
+
+			gomega.Expect(ok).To(gomega.BeTrue())
+			gomega.Expect(field.Name()).To(gomega.Equal("rgalbumgain"))
+			gomega.Expect(field.Nullable).To(gomega.BeTrue())
+			gomega.Expect(field.IsTag).To(gomega.BeFalse())
+		})
+
+		It("resolves replaygain_* tag names as aliases to nullable column fields", func() {
+			// AddTagNames skips names already in the field map, so the startup tag registration
+			// (from mappings.yaml) must not convert the pre-registered alias into a tag field.
+			AddTagNames([]string{"replaygain_album_gain"})
+
+			field, ok := LookupField("replaygain_album_gain")
+
+			gomega.Expect(ok).To(gomega.BeTrue())
+			gomega.Expect(field.Name()).To(gomega.Equal("rgalbumgain"))
+			gomega.Expect(field.Nullable).To(gomega.BeTrue())
+			gomega.Expect(field.IsTag).To(gomega.BeFalse())
+		})
+
 	})
 })

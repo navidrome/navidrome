@@ -4,13 +4,14 @@ import "strings"
 
 // FieldInfo contains semantic metadata about a criteria field.
 type FieldInfo struct {
-	Alias   string // If set, this field is a backward-compat alias for another canonical name
-	IsTag   bool
-	IsRole  bool
-	Numeric bool
-	Boolean bool
+	Alias    string // If set, this field is a backward-compat alias for another canonical name
+	IsTag    bool
+	IsRole   bool
+	Numeric  bool
+	Boolean  bool
+	Nullable bool // If set, this column field can be NULL, so isMissing/isPresent are supported on it
 
-	tagAlias string // If set, a tag name from mappings.yml that resolves to this field
+	tagAlias string // If set, a tag name from mappings.yaml that resolves to this field
 	name     string // Canonical name, populated by LookupField from the map key
 }
 
@@ -80,14 +81,22 @@ var fieldMap = map[string]FieldInfo{
 	"mbz_recording_id":     {},
 	"mbz_release_track_id": {},
 	"mbz_release_group_id": {},
-	"rgalbumgain":          {Numeric: true},
-	"rgalbumpeak":          {Numeric: true},
-	"rgtrackgain":          {Numeric: true},
-	"rgtrackpeak":          {Numeric: true},
+	"rgalbumgain":          {Numeric: true, Nullable: true},
+	"rgalbumpeak":          {Numeric: true, Nullable: true},
+	"rgtrackgain":          {Numeric: true, Nullable: true},
+	"rgtrackpeak":          {Numeric: true, Nullable: true},
 	"library_id":           {Numeric: true},
 
 	// Backward compatibility: albumtype is an alias for the releasetype tag.
 	"albumtype": {Alias: "releasetype", IsTag: true},
+
+	// Backward compatibility: the replaygain_* tag names (as written in metadata and in the
+	// PR #5256 example) are aliases for the canonical rg* column fields. Without these, the tag
+	// names would be registered as empty tags from mappings.yaml and isMissing would always match.
+	"replaygain_album_gain": {Alias: "rgalbumgain", Numeric: true, Nullable: true},
+	"replaygain_album_peak": {Alias: "rgalbumpeak", Numeric: true, Nullable: true},
+	"replaygain_track_gain": {Alias: "rgtrackgain", Numeric: true, Nullable: true},
+	"replaygain_track_peak": {Alias: "rgtrackpeak", Numeric: true, Nullable: true},
 
 	// Pseudo-field for random sorting
 	"random": {},
@@ -128,7 +137,7 @@ func AddRoles(roles []string) {
 	}
 }
 
-// AddTagNames adds tag names to the field map. This is used to add all tags mapped in the `mappings.yml`
+// AddTagNames adds tag names to the field map. This is used to add all tags mapped in the `mappings.yaml`
 // configuration file.
 func AddTagNames(tagNames []string) {
 	for _, tagName := range tagNames {
