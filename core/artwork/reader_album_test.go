@@ -396,4 +396,75 @@ var _ = Describe("Album Artwork Reader", func() {
 			Expect(repo.getCallCount).To(Equal(1))
 		})
 	})
+
+	Describe("imageTypeFromName", func() {
+		DescribeTable("infers the official MusicBrainz CAA image type from a filename",
+			func(name, expected string) {
+				Expect(imageTypeFromName(name)).To(Equal(expected))
+			},
+			Entry("cover.jpg", "cover.jpg", "Front"),
+			Entry("front.png", "front.png", "Front"),
+			Entry("folder.jpg", "folder.jpg", "Front"),
+			Entry("Front Cover.jpg", "Front Cover.jpg", "Front"),
+			Entry("numeric front cover.1.jpg", "cover.1.jpg", "Front"),
+			Entry("back.jpg", "back.jpg", "Back"),
+			Entry("Back Cover.jpg", "Back Cover.jpg", "Back"),
+			Entry("booklet.jpg", "booklet.jpg", "Booklet"),
+			Entry("booklet-01.jpg", "booklet-01.jpg", "Booklet"),
+			Entry("leaflet.png", "leaflet.png", "Booklet"),
+			Entry("disc.png", "disc.png", "Medium"),
+			Entry("cd1.jpg", "cd1.jpg", "Medium"),
+			Entry("discart.png", "discart.png", "Medium"),
+			Entry("medium.jpg", "medium.jpg", "Medium"),
+			Entry("tray.jpg", "tray.jpg", "Tray"),
+			Entry("obi.jpg", "obi.jpg", "Obi"),
+			Entry("spine.jpg", "spine.jpg", "Spine"),
+			Entry("sticker.png", "sticker.png", "Sticker"),
+			Entry("matrix.jpg", "matrix.jpg", "Matrix/Runout"),
+			Entry("case-insensitive BACK.JPG", "BACK.JPG", "Back"),
+			Entry("unrecognized toto.jpg", "toto.jpg", ""),
+			Entry("unrecognized scan001.jpg", "scan001.jpg", ""),
+		)
+	})
+
+	Describe("resolveCoverFile", func() {
+		const prio = "cover.*, folder.*, front.*, embedded, external"
+		DescribeTable("returns the external file the primary cover resolves to",
+			func(files []string, expected string) {
+				Expect(resolveCoverFile(files, prio)).To(Equal(expected))
+			},
+			Entry("cover wins over folder/back", []string{"a/back.jpg", "a/cover.jpg", "a/folder.jpg"}, "a/cover.jpg"),
+			Entry("folder when no cover", []string{"a/folder.jpg", "a/back.jpg"}, "a/folder.jpg"),
+			Entry("front when no cover/folder", []string{"a/front.png", "a/back.jpg"}, "a/front.png"),
+			Entry("empty when only non-priority files", []string{"a/art.jpg", "a/back.jpg"}, ""),
+			Entry("empty when no files", []string{}, ""),
+		)
+	})
+
+	Describe("recognizedAlbumImages", func() {
+		It("filters unrecognized names and orders by official type", func() {
+			imgFiles := []string{
+				"Album/toto.jpg",
+				"Album/spine.jpg",
+				"Album/back.jpg",
+				"Album/disc.png",
+				"Album/cover.jpg",
+				"Album/booklet.jpg",
+			}
+			images := recognizedAlbumImages(imgFiles)
+
+			Expect(images).To(HaveLen(5)) // toto.jpg excluded
+			types := make([]string, len(images))
+			for i, img := range images {
+				types[i] = img.Type
+			}
+			Expect(types).To(Equal([]string{"Front", "Back", "Booklet", "Medium", "Spine"}))
+			Expect(images[0].Path).To(Equal("Album/cover.jpg"))
+			Expect(images[0].Name).To(Equal("cover.jpg"))
+		})
+
+		It("returns nil when no image is recognized", func() {
+			Expect(recognizedAlbumImages([]string{"Album/toto.jpg", "Album/random.png"})).To(BeEmpty())
+		})
+	})
 })

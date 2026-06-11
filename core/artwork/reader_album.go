@@ -24,16 +24,21 @@ import (
 
 type albumArtworkReader struct {
 	cacheKey
-	a         *artwork
-	provider  external.Provider
-	album     model.Album
-	updatedAt *time.Time
-	imgFiles  []string // library-relative, forward-slash, no leading slash
-	lib       libraryView
+	a          *artwork
+	provider   external.Provider
+	album      model.Album
+	updatedAt  *time.Time
+	imgFiles   []string // library-relative, forward-slash, no leading slash
+	lib        libraryView
+	imageIndex int // -1 = use cover-art priority; >=0 = serve the Nth recognized image
 }
 
 func newAlbumArtworkReader(ctx context.Context, artwork *artwork, artID model.ArtworkID, provider external.Provider) (*albumArtworkReader, error) {
-	al, err := artwork.ds.Album(ctx).Get(artID.ID)
+	albumID, imageIndex, err := model.ParseAlbumArtworkID(artID.ID)
+	if err != nil {
+		return nil, err
+	}
+	al, err := artwork.ds.Album(ctx).Get(albumID)
 	if err != nil {
 		return nil, err
 	}
@@ -41,17 +46,21 @@ func newAlbumArtworkReader(ctx context.Context, artwork *artwork, artID model.Ar
 	if err != nil {
 		return nil, err
 	}
+	if imageIndex >= 0 && imageIndex >= len(recognizedAlbumImages(imgFiles)) {
+		return nil, model.ErrNotFound
+	}
 	lib, err := loadLibraryView(ctx, artwork.ds, al.LibraryID)
 	if err != nil {
 		return nil, err
 	}
 	a := &albumArtworkReader{
-		a:         artwork,
-		provider:  provider,
-		album:     *al,
-		updatedAt: imagesUpdateAt,
-		imgFiles:  imgFiles,
-		lib:       lib,
+		a:          artwork,
+		provider:   provider,
+		album:      *al,
+		updatedAt:  imagesUpdateAt,
+		imgFiles:   imgFiles,
+		lib:        lib,
+		imageIndex: imageIndex,
 	}
 	a.cacheKey.artID = artID
 	a.cacheKey.lastUpdate = utils.TimeNewest(al.UpdatedAt, al.ImportedAt)
@@ -79,8 +88,27 @@ func (a *albumArtworkReader) LastUpdated() time.Time {
 }
 
 func (a *albumArtworkReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
+	if a.imageIndex >= 0 {
+		return selectImageReader(ctx, a.artID, a.fromImageIndex(ctx, a.imageIndex))
+	}
 	var ff = a.fromCoverArtPriority(ctx, a.a.ffmpeg, conf.Server.CoverArtPriority)
 	return selectImageReader(ctx, a.artID, ff...)
+}
+
+// fromImageIndex serves the Nth recognized external image (bypassing priority).
+func (a *albumArtworkReader) fromImageIndex(ctx context.Context, index int) sourceFunc {
+	return func() (io.ReadCloser, string, error) {
+		images := recognizedAlbumImages(a.imgFiles)
+		if index < 0 || index >= len(images) {
+			return nil, "", fmt.Errorf("album image index %d out of range (%d images): %w", index, len(images), model.ErrNotFound)
+		}
+		file := images[index].Path
+		f, err := a.lib.FS.Open(file)
+		if err != nil {
+			return nil, "", err
+		}
+		return f, file, nil
+	}
 }
 
 func (a *albumArtworkReader) fromCoverArtPriority(ctx context.Context, ffmpeg ffmpeg.FFmpeg, priority string) []sourceFunc {
@@ -184,6 +212,118 @@ func commonParentFolder(folders []model.Folder, folderIDSet map[string]bool) str
 		}
 	}
 	return parentID
+}
+
+// albumImage is a recognized external image file with its inferred type.
+type albumImage struct {
+	Path string // library-relative, forward-slash
+	Name string // base filename
+	Type string // official MusicBrainz CAA type (Front, Back, Booklet, Medium, ...)
+}
+
+// albumImageTypes maps filename stems to the official MusicBrainz CAA type
+// (https://musicbrainz.org/doc/Cover_Art/Types). Slice order is the gallery
+// display order; non-Front types match before Front so "back cover" → Back.
+var albumImageTypes = []struct {
+	Type  string
+	stems []string
+}{
+	{"Front", []string{"front", "cover", "folder", "album", "albumart", "art"}},
+	{"Back", []string{"back"}},
+	{"Booklet", []string{"booklet", "leaflet", "inlay", "inside"}},
+	{"Medium", []string{"medium", "media", "disc", "discart", "disque", "cd", "cdart"}},
+	{"Tray", []string{"tray"}},
+	{"Obi", []string{"obi"}},
+	{"Spine", []string{"spine"}},
+	{"Track", []string{"track"}},
+	{"Liner", []string{"liner"}},
+	{"Sticker", []string{"sticker"}},
+	{"Poster", []string{"poster"}},
+	{"Matrix/Runout", []string{"matrix", "runout"}},
+	{"Top", []string{"top"}},
+	{"Bottom", []string{"bottom"}},
+	{"Panel", []string{"panel", "gatefold"}},
+	{"Watermark", []string{"watermark"}},
+	{"Raw/Unedited", []string{"raw", "unedited"}},
+	{"Other", []string{"other"}},
+}
+
+// imageTypeRank maps each type to its display order, derived from albumImageTypes.
+var imageTypeRank = func() map[string]int {
+	m := make(map[string]int, len(albumImageTypes))
+	for i, t := range albumImageTypes {
+		m[t.Type] = i
+	}
+	return m
+}()
+
+// imageTypeFromName infers the CAA type from a filename (numeric suffixes
+// tolerated); returns "" for unrecognized names.
+func imageTypeFromName(name string) string {
+	stem := strings.ToLower(strings.TrimSuffix(name, path.Ext(name)))
+	fields := strings.FieldsFunc(stem, func(r rune) bool {
+		return r == ' ' || r == '.' || r == '-' || r == '_'
+	})
+	for i, f := range fields {
+		fields[i] = strings.TrimRight(f, "0123456789")
+	}
+	matches := func(stems []string) bool {
+		for _, f := range fields {
+			if slices.Contains(stems, f) {
+				return true
+			}
+		}
+		return false
+	}
+	// A specific (non-Front) type wins over a generic front token.
+	for _, t := range albumImageTypes {
+		if t.Type == "Front" {
+			continue
+		}
+		if matches(t.stems) {
+			return t.Type
+		}
+	}
+	if matches(albumImageTypes[0].stems) { // Front
+		return "Front"
+	}
+	return ""
+}
+
+// resolveCoverFile returns the external file the primary cover (al-<id>) resolves
+// to, or "" if it comes from a non-file source. Lets AlbumImages skip that file.
+func resolveCoverFile(imgFiles []string, priority string) string {
+	for pattern := range strings.SplitSeq(strings.ToLower(priority), ",") {
+		pattern = strings.TrimSpace(pattern)
+		if pattern == "" || pattern == "embedded" || pattern == "external" {
+			continue
+		}
+		for _, f := range imgFiles {
+			if ok, _ := path.Match(pattern, strings.ToLower(path.Base(f))); ok {
+				return f
+			}
+		}
+	}
+	return ""
+}
+
+// recognizedAlbumImages returns the album's recognized-type images, ordered by
+// type then filename. Single source of truth for the indexed fetch and listing.
+func recognizedAlbumImages(imgFiles []string) []albumImage {
+	var images []albumImage
+	for _, f := range imgFiles {
+		name := path.Base(f)
+		if t := imageTypeFromName(name); t != "" {
+			images = append(images, albumImage{Path: f, Name: name, Type: t})
+		}
+	}
+	slices.SortStableFunc(images, func(a, b albumImage) int {
+		return cmp.Or(
+			cmp.Compare(imageTypeRank[a.Type], imageTypeRank[b.Type]),
+			compareImageFiles(a.Path, b.Path),
+		)
+	})
+	return images
 }
 
 // compareImageFiles sorts image paths by: base filename (natural order),

@@ -61,6 +61,34 @@ var _ = Describe("ArtworkID", func() {
 		)
 	})
 
+	Describe("ParseAlbumArtworkID", func() {
+		DescribeTable("parses album artwork IDs with optional image index",
+			func(id string, expectedAlbum string, expectedIndex int, expectErr bool) {
+				albumID, index, err := model.ParseAlbumArtworkID(id)
+				if expectErr {
+					Expect(err).To(HaveOccurred())
+				} else {
+					Expect(err).ToNot(HaveOccurred())
+					Expect(albumID).To(Equal(expectedAlbum))
+					Expect(index).To(Equal(expectedIndex))
+				}
+			},
+			Entry("no index", "albumid123", "albumid123", -1, false),
+			Entry("index 0", "albumid123:0", "albumid123", 0, false),
+			Entry("index 3", "albumid123:3", "albumid123", 3, false),
+			Entry("large index", "abc:10", "abc", 10, false),
+			Entry("non-numeric index", "abc:foo", "", 0, true),
+			Entry("negative index", "abc:-1", "", 0, true),
+			Entry("empty index", "abc:", "", 0, true),
+		)
+		It("round-trips through AlbumImageArtworkID", func() {
+			albumID, index, err := model.ParseAlbumArtworkID(model.AlbumImageArtworkID("abc", 2))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(albumID).To(Equal("abc"))
+			Expect(index).To(Equal(2))
+		})
+	})
+
 	Describe("ParseArtworkID()", func() {
 		It("parses album artwork ids", func() {
 			id, err := model.ParseArtworkID("al-1234")
