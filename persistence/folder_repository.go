@@ -198,7 +198,7 @@ func (r folderRepository) HasAudioOutsideFolders(parent model.Folder, excludeFol
 		return true, nil
 	}
 	parentPath := strings.TrimPrefix(path.Join(parent.Path, parent.Name), "/")
-	query := r.newSelect().Columns("count(*)").Where(And{
+	return r.exists(And{
 		Eq{"library_id": parent.LibraryID, "missing": false},
 		Gt{"num_audio_files": 0},
 		NotEq{"id": excludeFolderIDs},
@@ -208,8 +208,6 @@ func (r folderRepository) HasAudioOutsideFolders(parent model.Folder, excludeFol
 			Expr(`path LIKE ? ESCAPE '\'`, escapeLikePrefix(parentPath)+"/%"),
 		},
 	})
-	count, err := r.count(query)
-	return count > 0, err
 }
 
 // escapeLikePrefix escapes SQL LIKE wildcards so a string can be used as a
