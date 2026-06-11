@@ -172,6 +172,37 @@ describe('getDiscCoverArtUrl', () => {
   })
 })
 
+describe('getImageCoverArtUrl', () => {
+  beforeEach(() => {
+    const localStorageMock = {
+      getItem: vi.fn((key) => {
+        const values = {
+          username: 'testuser',
+          'subsonic-token': 'testtoken',
+          'subsonic-salt': 'testsalt',
+        }
+        return values[key] || null
+      }),
+    }
+    Object.defineProperty(window, 'localStorage', { value: localStorageMock })
+  })
+
+  it('builds a getCoverArt URL from a fully-formed indexed coverArt id', () => {
+    const url = subsonic.getImageCoverArtUrl('al-album-123:1_0', 300)
+
+    expect(url).toContain('getCoverArt')
+    expect(url).toContain('id=al-album-123%3A1_0')
+    expect(url).toContain('size=300')
+  })
+
+  it('omits size when not provided', () => {
+    const url = subsonic.getImageCoverArtUrl('al-album-123_0')
+
+    expect(url).toContain('id=al-album-123_0')
+    expect(url).not.toContain('size=')
+  })
+})
+
 describe('getAvatarUrl', () => {
   beforeEach(() => {
     // Mock localStorage values required by subsonic

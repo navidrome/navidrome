@@ -220,6 +220,11 @@ const wrapperDataProvider = {
       data: json,
     }))
   },
+  getAlbumImages: (albumId) => {
+    return httpClient(`${REST_URL}/album/${albumId}/images`).then(
+      ({ json }) => ({ data: json }),
+    )
+  },
 }
 
 export default wrapperDataProvider

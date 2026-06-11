@@ -14,6 +14,7 @@ import {
   ChipField,
   Link,
   SingleFieldList,
+  useDataProvider,
   useRecordContext,
   useTranslate,
 } from 'react-admin'
@@ -216,6 +217,9 @@ export const Details = (props) => {
   return <>{intersperse(details, ' · ')}</>
 }
 
+// Bounded lightbox size: avoids transferring/caching multi-MB originals.
+const GALLERY_IMAGE_SIZE = 1920
+
 const AlbumDetails = (props) => {
   const record = useRecordContext(props)
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
@@ -232,6 +236,10 @@ const AlbumDetails = (props) => {
     handleOpenLightbox,
     handleCloseLightbox,
   } = useImageLoadingState(record.id)
+
+  const dataProvider = useDataProvider()
+  const [images, setImages] = useState([])
+  const [photoIndex, setPhotoIndex] = useState(0)
 
   let notes = albumInfo?.notes || record.notes
 
@@ -255,7 +263,30 @@ const AlbumDetails = (props) => {
   }, [record])
 
   const imageUrl = subsonic.getCoverArtUrl(record, config.uiCoverArtSize)
-  const fullImageUrl = subsonic.getCoverArtUrl(record)
+  const fullImageUrl = subsonic.getCoverArtUrl(record, GALLERY_IMAGE_SIZE)
+
+  const galleryCount = images.length || 1
+  const imageSrcFor = (i) =>
+    images.length
+      ? subsonic.getImageCoverArtUrl(images[i].coverArt, GALLERY_IMAGE_SIZE)
+      : fullImageUrl
+
+  const openGallery = () => {
+    if (imageError) return
+    dataProvider
+      .getAlbumImages(record.id)
+      .then(({ data }) => setImages(Array.isArray(data) ? data : []))
+      .catch(() => setImages([]))
+      .finally(() => {
+        setPhotoIndex(0)
+        handleOpenLightbox()
+      })
+  }
+
+  const closeGallery = () => {
+    handleCloseLightbox()
+    setPhotoIndex(0)
+  }
 
   return (
     <Card className={classes.root}>
@@ -268,7 +299,7 @@ const AlbumDetails = (props) => {
             width="400"
             height="400"
             className={`${classes.cover} ${imageLoading ? classes.coverLoading : ''}`}
-            onClick={handleOpenLightbox}
+            onClick={openGallery}
             onLoad={handleImageLoad}
             onError={handleImageError}
             title={record.name}
@@ -367,9 +398,27 @@ const AlbumDetails = (props) => {
         <Lightbox
           imagePadding={50}
           animationDuration={200}
-          imageTitle={record.name}
-          mainSrc={fullImageUrl}
-          onCloseRequest={handleCloseLightbox}
+          imageTitle={
+            images[photoIndex]?.type
+              ? `${record.name} — ${images[photoIndex].type}`
+              : record.name
+          }
+          mainSrc={imageSrcFor(photoIndex)}
+          nextSrc={
+            galleryCount > 1
+              ? imageSrcFor((photoIndex + 1) % galleryCount)
+              : undefined
+          }
+          prevSrc={
+            galleryCount > 1
+              ? imageSrcFor((photoIndex + galleryCount - 1) % galleryCount)
+              : undefined
+          }
+          onMoveNextRequest={() => setPhotoIndex((p) => (p + 1) % galleryCount)}
+          onMovePrevRequest={() =>
+            setPhotoIndex((p) => (p + galleryCount - 1) % galleryCount)
+          }
+          onCloseRequest={closeGallery}
         />
       )}
     </Card>
