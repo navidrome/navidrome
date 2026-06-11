@@ -273,14 +273,13 @@ const AlbumDetails = (props) => {
 
   const openGallery = () => {
     if (imageError) return
+    setImages([])
+    setPhotoIndex(0)
+    handleOpenLightbox()
     dataProvider
       .getAlbumImages(record.id)
       .then(({ data }) => setImages(Array.isArray(data) ? data : []))
       .catch(() => setImages([]))
-      .finally(() => {
-        setPhotoIndex(0)
-        handleOpenLightbox()
-      })
   }
 
   const closeGallery = () => {
