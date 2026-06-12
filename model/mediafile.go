@@ -55,7 +55,7 @@ type MediaFile struct {
 	Duration             float32  `structs:"duration" json:"duration"`
 	BitRate              int      `structs:"bit_rate" json:"bitRate"`
 	SampleRate           int      `structs:"sample_rate" json:"sampleRate"`
-	BitDepth             *int     `structs:"bit_depth" json:"bitDepth"`
+	BitDepth             *int     `structs:"bit_depth" json:"bitDepth,omitempty"`
 	Channels             int      `structs:"channels" json:"channels"`
 	Codec                string   `structs:"codec" json:"codec"`
 	ProbeData            string   `structs:"probe_data" json:"-" hash:"ignore"`
