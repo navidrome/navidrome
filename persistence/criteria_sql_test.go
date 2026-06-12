@@ -113,6 +113,19 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 			"(media_file.lyrics IS NULL OR media_file.lyrics = ? OR media_file.lyrics = ?)", "", "[]"),
 		Entry("isPresent lyrics [true]", criteria.IsPresent{"lyrics": true},
 			"(media_file.lyrics IS NOT NULL AND media_file.lyrics <> ? AND media_file.lyrics <> ?)", "", "[]"),
+		Entry("isMissing lyrics [false]", criteria.IsMissing{"lyrics": false},
+			"(media_file.lyrics IS NOT NULL AND media_file.lyrics <> ? AND media_file.lyrics <> ?)", "", "[]"),
+		Entry("isPresent lyrics [false]", criteria.IsPresent{"lyrics": false},
+			"(media_file.lyrics IS NULL OR media_file.lyrics = ? OR media_file.lyrics = ?)", "", "[]"),
+		// isMissing/isPresent — nullable numeric columns (BPM, BitDepth)
+		Entry("isMissing bpm [true]", criteria.IsMissing{"bpm": true},
+			"media_file.bpm IS NULL"),
+		Entry("isPresent bpm [true]", criteria.IsPresent{"bpm": true},
+			"media_file.bpm IS NOT NULL"),
+		Entry("isMissing bitdepth [true]", criteria.IsMissing{"bitdepth": true},
+			"media_file.bit_depth IS NULL"),
+		Entry("isPresent bitdepth [false]", criteria.IsPresent{"bitdepth": false},
+			"media_file.bit_depth IS NULL"),
 	)
 
 	Describe("playlist permissions", func() {
