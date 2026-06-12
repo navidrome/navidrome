@@ -28,9 +28,10 @@ func (j smartPlaylistJoinType) has(other smartPlaylistJoinType) bool {
 }
 
 type smartPlaylistField struct {
-	expr     string
-	order    string
-	joinType smartPlaylistJoinType
+	expr        string
+	order       string
+	joinType    smartPlaylistJoinType
+	emptyValues []string // additional values that encode "missing" for string columns (e.g. '[]' for lyrics)
 }
 
 type smartPlaylistCriteria struct {
@@ -72,7 +73,7 @@ var smartPlaylistFields = map[string]smartPlaylistField{
 	"datemodified":         {expr: "media_file.updated_at"},
 	"discsubtitle":         {expr: "media_file.disc_subtitle"},
 	"comment":              {expr: "media_file.comment"},
-	"lyrics":               {expr: "media_file.lyrics"},
+	"lyrics":               {expr: "media_file.lyrics", emptyValues: []string{"[]"}},
 	"sorttitle":            {expr: "media_file.sort_title"},
 	"sortalbum":            {expr: "media_file.sort_album_name"},
 	"sortartist":           {expr: "media_file.sort_artist_name"},
@@ -228,17 +229,35 @@ func missingExpr(values map[string]any, checkAbsence bool) (squirrel.Sqlizer, er
 	}
 	negate := checkAbsence == b
 
-	// Nullable column fields (e.g. ReplayGain) are stored in dedicated columns, not in the tags
-	// JSON, so "missing" maps to a NULL check on the column rather than a json_tree lookup.
+	// Nullable column fields are stored in dedicated columns, not in the tags JSON, so "missing"
+	// maps to a column check rather than a json_tree lookup. Numeric/boolean columns (e.g.
+	// ReplayGain) encode absence as NULL; string columns (e.g. mbz_* IDs) encode it as NULL or
+	// empty string, plus any field-specific empty encodings (e.g. '[]' for lyrics).
 	if info.Nullable && !info.IsTag && !info.IsRole {
-		col, ok := fieldExpr(info.Name())
-		if !ok || col == "" {
+		f, ok := smartPlaylistFields[info.Name()]
+		if !ok || f.expr == "" {
 			return nil, fmt.Errorf("invalid field in criteria: %s", field)
 		}
-		if negate {
-			return squirrel.Eq{col: nil}, nil
+		col := f.expr
+		if info.Numeric || info.Boolean {
+			if negate {
+				return squirrel.Eq{col: nil}, nil
+			}
+			return squirrel.NotEq{col: nil}, nil
 		}
-		return squirrel.NotEq{col: nil}, nil
+		empties := append([]string{""}, f.emptyValues...)
+		if negate {
+			cond := squirrel.Or{squirrel.Eq{col: nil}}
+			for _, e := range empties {
+				cond = append(cond, squirrel.Eq{col: e})
+			}
+			return cond, nil
+		}
+		cond := squirrel.And{squirrel.NotEq{col: nil}}
+		for _, e := range empties {
+			cond = append(cond, squirrel.NotEq{col: e})
+		}
+		return cond, nil
 	}
 
 	return jsonExpr(info, nil, negate), nil

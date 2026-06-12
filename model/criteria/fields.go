@@ -4,12 +4,14 @@ import "strings"
 
 // FieldInfo contains semantic metadata about a criteria field.
 type FieldInfo struct {
-	Alias    string // If set, this field is a backward-compat alias for another canonical name
-	IsTag    bool
-	IsRole   bool
-	Numeric  bool
-	Boolean  bool
-	Nullable bool // If set, this column field can be NULL, so isMissing/isPresent are supported on it
+	Alias   string // If set, this field is a backward-compat alias for another canonical name
+	IsTag   bool
+	IsRole  bool
+	Numeric bool
+	Boolean bool
+	// Nullable: isMissing/isPresent are supported on this column field. For numeric/boolean
+	// fields, missing means NULL; for string fields it means NULL or empty string.
+	Nullable bool
 
 	tagAlias string // If set, a tag name from mappings.yaml that resolves to this field
 	name     string // Canonical name, populated by LookupField from the map key
@@ -40,7 +42,7 @@ var fieldMap = map[string]FieldInfo{
 	"datemodified":         {},
 	"discsubtitle":         {},
 	"comment":              {},
-	"lyrics":               {},
+	"lyrics":               {Nullable: true},
 	"sorttitle":            {},
 	"sortalbum":            {},
 	"sortartist":           {},
@@ -75,12 +77,12 @@ var fieldMap = map[string]FieldInfo{
 	"artistlastplayed":     {},
 	"artistdateloved":      {},
 	"artistdaterated":      {},
-	"mbz_album_id":         {},
-	"mbz_album_artist_id":  {},
-	"mbz_artist_id":        {},
-	"mbz_recording_id":     {},
-	"mbz_release_track_id": {},
-	"mbz_release_group_id": {},
+	"mbz_album_id":         {Nullable: true},
+	"mbz_album_artist_id":  {Nullable: true},
+	"mbz_artist_id":        {Nullable: true},
+	"mbz_recording_id":     {Nullable: true},
+	"mbz_release_track_id": {Nullable: true},
+	"mbz_release_group_id": {Nullable: true},
 	"rgalbumgain":          {Numeric: true, Nullable: true},
 	"rgalbumpeak":          {Numeric: true, Nullable: true},
 	"rgtrackgain":          {Numeric: true, Nullable: true},

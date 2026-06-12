@@ -99,6 +99,20 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 			"media_file.rg_album_gain IS NULL"),
 		Entry("isPresent replaygain_album_gain alias [true]", criteria.IsPresent{"replaygain_album_gain": true},
 			"media_file.rg_album_gain IS NOT NULL"),
+		// isMissing/isPresent — string column fields (empty string means missing)
+		Entry("isMissing mbz_recording_id [true]", criteria.IsMissing{"mbz_recording_id": true},
+			"(media_file.mbz_recording_id IS NULL OR media_file.mbz_recording_id = ?)", ""),
+		Entry("isMissing mbz_recording_id [false]", criteria.IsMissing{"mbz_recording_id": false},
+			"(media_file.mbz_recording_id IS NOT NULL AND media_file.mbz_recording_id <> ?)", ""),
+		Entry("isPresent mbz_album_id [true]", criteria.IsPresent{"mbz_album_id": true},
+			"(media_file.mbz_album_id IS NOT NULL AND media_file.mbz_album_id <> ?)", ""),
+		Entry("isPresent mbz_album_id [false]", criteria.IsPresent{"mbz_album_id": false},
+			"(media_file.mbz_album_id IS NULL OR media_file.mbz_album_id = ?)", ""),
+		// lyrics: absence is encoded as '' or '[]' (empty serialized LyricList)
+		Entry("isMissing lyrics [true]", criteria.IsMissing{"lyrics": true},
+			"(media_file.lyrics IS NULL OR media_file.lyrics = ? OR media_file.lyrics = ?)", "", "[]"),
+		Entry("isPresent lyrics [true]", criteria.IsPresent{"lyrics": true},
+			"(media_file.lyrics IS NOT NULL AND media_file.lyrics <> ? AND media_file.lyrics <> ?)", "", "[]"),
 	)
 
 	Describe("playlist permissions", func() {
