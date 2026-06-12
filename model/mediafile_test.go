@@ -605,15 +605,14 @@ var _ = Describe("MediaFile", func() {
 })
 
 var _ = Describe("MediaFile.Hash", func() {
-	// Guards the upgrade guarantee: converting int fields to pointers must not change hashes,
+	// Guards the upgrade guarantee: converting BPM/BitDepth from int to *int must not change hashes,
 	// or every file would be spuriously re-imported on the next scan.
-	// Before this change: BPM/BitDepth were int, so zero value was int(0) — ignored by IgnoreZeroValue.
-	// After this change:  BPM/BitDepth are *int, so zero value is nil — also ignored by IgnoreZeroValue.
-	// Therefore nil *int hashes identically to the old int(0) default.
-	It("treats nil pointer fields the same as the previous int zero value (upgrade safety)", func() {
-		base := MediaFile{Title: "Song"}
-		nilPtr := MediaFile{Title: "Song", BPM: nil, BitDepth: nil}
-		Expect(base.Equals(nilPtr)).To(BeTrue())
+	// Golden hashes were captured at 46221d516 when those fields were plain ints.
+	It("keeps hashes identical to the pre-pointer-conversion values", func() {
+		// Golden hashes computed at 46221d516, when BPM/BitDepth were plain ints — pinning
+		// them guarantees the pointer conversion cannot trigger a full-library re-import.
+		Expect(MediaFile{Title: "Song"}.Hash()).To(Equal("1d856ced42cb96db39e354a4bac9a622"))
+		Expect(MediaFile{Title: "Song", BPM: new(120), BitDepth: new(16)}.Hash()).To(Equal("b2b0b1d1dd7fd767093588e4af3a0689"))
 	})
 	It("changes the hash when a pointer field has a value", func() {
 		base := MediaFile{Title: "Song"}
