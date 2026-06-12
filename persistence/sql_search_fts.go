@@ -321,21 +321,8 @@ func (s *ftsSearch) execute(r sqlRepository, sq SelectBuilder, dest any, cfg sea
 		rowidQuery = rowidQuery.Where(options.Filters)
 	}
 
-	rowidSQL, rowidArgs, err := rowidQuery.ToSql()
-	if err != nil {
-		return fmt.Errorf("building FTS rowid query: %w", err)
-	}
-
-	// Phase 2: strip LIMIT/OFFSET from sq (Phase 1 handled pagination),
-	// join on the ranked rowid set to hydrate with full columns.
-	sq = sq.RemoveLimit().RemoveOffset()
-	rankedSubquery := fmt.Sprintf(
-		"(SELECT rowid as _rid, row_number() OVER () AS _rn FROM (%s)) AS _ranked",
-		rowidSQL,
-	)
-	sq = sq.Join(rankedSubquery+" ON "+s.tableName+".rowid = _ranked._rid", rowidArgs...)
-	sq = sq.OrderBy("_ranked._rn")
-	return r.queryAll(sq, dest)
+	// Phase 2: full SELECT joined on the ranked rowid set to hydrate with all columns.
+	return r.hydrateRowidPage(sq, rowidQuery, dest)
 }
 
 // qualifyOrderBy prepends tableName to a simple column name. Returns empty string for

@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"fmt"
 	"strings"
 
 	. "github.com/Masterminds/squirrel"
@@ -57,8 +58,7 @@ func (r sqlRepository) doSearch(sq SelectBuilder, q string, results any, cfg sea
 
 	// Empty query (OpenSubsonic `search3?query=""`) — return all in natural order.
 	if q == "" || q == `""` {
-		sq = sq.OrderBy(cfg.NaturalOrder)
-		return r.queryAll(sq, results, options)
+		return r.executeNaturalSearch(sq, results, cfg, options)
 	}
 
 	// MBID search: if query is a valid UUID, search by MBID fields instead
@@ -80,6 +80,52 @@ func (r sqlRepository) doSearch(sq SelectBuilder, q string, results any, cfg sea
 	}
 
 	return strategy.execute(r, sq, results, cfg, options)
+}
+
+// executeNaturalSearch returns all non-missing rows in natural order, for the empty-query
+// case (`search3?query=""`), which clients like Symfonium use to paginate over the whole
+// library when syncing. It runs in two phases, like ftsSearch.execute:
+//   - Phase 1: rowid-only query on the main table (no JOINs), so SQLite can paginate via a
+//     covering index. With the JOINs of the full SELECT, large offsets degrade to O(offset)
+//     join probes — multi-second responses on 100k+ libraries (the whole table is walked).
+//   - Phase 2: full SELECT with all JOINs, scoped to Phase 1's rowid page.
+func (r sqlRepository) executeNaturalSearch(sq SelectBuilder, results any, cfg searchConfig, options model.QueryOptions) error {
+	rowidQuery := Select(r.tableName + ".rowid").
+		From(r.tableName).
+		Where(Eq{r.tableName + ".missing": false}).
+		OrderBy(cfg.NaturalOrder)
+	if options.Max > 0 {
+		rowidQuery = rowidQuery.Limit(uint64(options.Max))
+	}
+	if options.Offset > 0 {
+		rowidQuery = rowidQuery.Offset(uint64(options.Offset))
+	}
+	if cfg.LibraryFilter != nil {
+		rowidQuery = cfg.LibraryFilter(rowidQuery)
+	} else {
+		rowidQuery = r.applyLibraryFilter(rowidQuery)
+	}
+	if options.Filters != nil {
+		rowidQuery = rowidQuery.Where(options.Filters)
+	}
+	return r.hydrateRowidPage(sq, rowidQuery, results)
+}
+
+// hydrateRowidPage joins sq to the ordered rowid set produced by rowidQuery, preserving its
+// ordering. rowidQuery must handle pagination itself; sq's LIMIT/OFFSET are stripped.
+func (r sqlRepository) hydrateRowidPage(sq SelectBuilder, rowidQuery SelectBuilder, results any) error {
+	rowidSQL, rowidArgs, err := rowidQuery.ToSql()
+	if err != nil {
+		return fmt.Errorf("building rowid query: %w", err)
+	}
+	sq = sq.RemoveLimit().RemoveOffset()
+	rankedSubquery := fmt.Sprintf(
+		"(SELECT rowid as _rid, row_number() OVER () AS _rn FROM (%s)) AS _ranked",
+		rowidSQL,
+	)
+	sq = sq.Join(rankedSubquery+" ON "+r.tableName+".rowid = _ranked._rid", rowidArgs...)
+	sq = sq.OrderBy("_ranked._rn")
+	return r.queryAll(sq, results)
 }
 
 func mbidExpr(tableName, mbid string, mbidFields ...string) Sqlizer {
