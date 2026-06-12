@@ -40,6 +40,14 @@ func (m *dbMediaFile) PostScan() error {
 	m.RGTrackPeak = m.RgTrackPeak
 	m.RGAlbumGain = m.RgAlbumGain
 	m.RGAlbumPeak = m.RgAlbumPeak
+	// Coerce zero-valued pointer fields back to nil until the NOT NULL constraint
+	// is dropped by the DB migration in a later task.
+	if m.BPM != nil && *m.BPM == 0 {
+		m.BPM = nil
+	}
+	if m.BitDepth != nil && *m.BitDepth == 0 {
+		m.BitDepth = nil
+	}
 	var err error
 	m.MediaFile.Participants, err = unmarshalParticipants(m.Participants)
 	if err != nil {
@@ -65,6 +73,14 @@ func (m *dbMediaFile) PostMapArgs(args map[string]any) error {
 	args["search_normalized"] = normalizeForFTS(m.FullTitle(), m.Album, m.Artist, m.AlbumArtist)
 	args["tags"] = marshalTags(m.MediaFile.Tags)
 	args["participants"] = marshalParticipants(m.MediaFile.Participants)
+	// Coerce nullable pointer fields to 0 until the NOT NULL constraint is dropped
+	// by the DB migration in a later task.
+	if bpm, ok := args["bpm"].(*int); ok && bpm == nil {
+		args["bpm"] = 0
+	}
+	if bd, ok := args["bit_depth"].(*int); ok && bd == nil {
+		args["bit_depth"] = 0
+	}
 	return nil
 }
 

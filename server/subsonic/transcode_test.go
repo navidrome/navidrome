@@ -205,7 +205,7 @@ var _ = Describe("Transcode endpoints", func() {
 
 		It("includes transcode stream when transcoding", func() {
 			mockMFRepo.SetData(model.MediaFiles{
-				{ID: "song-2", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 96000, BitDepth: 24},
+				{ID: "song-2", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 96000, BitDepth: new(24)},
 			})
 			mockTD.decision = &stream.TranscodeDecision{
 				MediaID:          "song-2",

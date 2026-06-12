@@ -564,7 +564,7 @@ var _ = Describe("MediaFile", func() {
 
 		DescribeTable("infers codec from suffix when Codec field is empty",
 			func(suffix string, bitDepth int, expected string) {
-				mf := MediaFile{Suffix: suffix, BitDepth: bitDepth}
+				mf := MediaFile{Suffix: suffix, BitDepth: new(bitDepth)}
 				Expect(mf.AudioCodec()).To(Equal(expected))
 			},
 			Entry("mp3", "mp3", 0, "mp3"),
@@ -597,11 +597,29 @@ var _ = Describe("MediaFile", func() {
 		)
 
 		It("prefers stored codec over suffix inference", func() {
-			mf := MediaFile{Codec: "ALAC", Suffix: "m4a", BitDepth: 0}
+			mf := MediaFile{Codec: "ALAC", Suffix: "m4a"}
 			Expect(mf.AudioCodec()).To(Equal("alac"))
 		})
 	})
 
+})
+
+var _ = Describe("MediaFile.Hash", func() {
+	// Guards the upgrade guarantee: converting int fields to pointers must not change hashes,
+	// or every file would be spuriously re-imported on the next scan.
+	// Before this change: BPM/BitDepth were int, so zero value was int(0) — ignored by IgnoreZeroValue.
+	// After this change:  BPM/BitDepth are *int, so zero value is nil — also ignored by IgnoreZeroValue.
+	// Therefore nil *int hashes identically to the old int(0) default.
+	It("treats nil pointer fields the same as the previous int zero value (upgrade safety)", func() {
+		base := MediaFile{Title: "Song"}
+		nilPtr := MediaFile{Title: "Song", BPM: nil, BitDepth: nil}
+		Expect(base.Equals(nilPtr)).To(BeTrue())
+	})
+	It("changes the hash when a pointer field has a value", func() {
+		base := MediaFile{Title: "Song"}
+		Expect(base.Equals(MediaFile{Title: "Song", BPM: new(120)})).To(BeFalse())
+		Expect(base.Equals(MediaFile{Title: "Song", BitDepth: new(24)})).To(BeFalse())
+	})
 })
 
 func t(v string) time.Time {

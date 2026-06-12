@@ -18,6 +18,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
+	"github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/number"
 	"github.com/navidrome/navidrome/utils/req"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -250,7 +251,7 @@ func osChildFromMediaFile(ctx context.Context, mf model.MediaFile) *responses.Op
 	}
 	child.Comment = mf.Comment
 	child.SortName = sortName(mf.SortTitle, mf.OrderTitle)
-	child.BPM = int32(mf.BPM)
+	child.BPM = int32(gg.V(mf.BPM))
 	child.MediaType = responses.MediaTypeSong
 	child.MusicBrainzId = mf.MbzRecordingID
 	child.Isrc = mf.Tags.Values(model.TagISRC)
@@ -262,7 +263,7 @@ func osChildFromMediaFile(ctx context.Context, mf model.MediaFile) *responses.Op
 	}
 	child.ChannelCount = int32(mf.Channels)
 	child.SamplingRate = int32(mf.SampleRate)
-	child.BitDepth = int32(mf.BitDepth)
+	child.BitDepth = int32(gg.V(mf.BitDepth))
 	child.Genres = toItemGenres(mf.Genres)
 	child.Moods = mf.Tags.Values(model.TagMood)
 	child.Groupings = mf.Tags.Values(model.TagGrouping)
