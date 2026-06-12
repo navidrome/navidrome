@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"time"
 )
 
@@ -80,6 +81,6 @@ type UserRepository interface {
 	GetUserLibraries(userID string) (Libraries, error)
 	SetUserLibraries(userID string, libraryIDs []int) error
 
-	RatingStats() ([]UserRatingStats, error)
-	RatingItems(userID, itemType string, rating int) ([]RatedItem, error)
+	RatingStats(ctx context.Context) ([]UserRatingStats, error)
+	RatingItems(ctx context.Context, userID, itemType string, rating int) ([]RatedItem, error)
 }

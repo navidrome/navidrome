@@ -95,6 +95,7 @@ const ALL_RATINGS = [5, 4, 3, 2, 1]
 const RatingTable = ({ stats, label, userId, userName, type }) => {
   const classes = useStyles()
   const history = useHistory()
+  const translate = useTranslate()
 
   const countMap = {}
   let total = 0
@@ -112,7 +113,7 @@ const RatingTable = ({ stats, label, userId, userName, type }) => {
         <span className={classes.totalLabel}>{total}</span>
       </Typography>
       {total === 0 ? (
-        <Typography className={classes.emptyMsg}>No ratings yet</Typography>
+        <Typography className={classes.emptyMsg}>{translate('userRatings.noRatingsYet')}</Typography>
       ) : (
         <table className={classes.table}>
           <tbody>
@@ -238,7 +239,7 @@ const UserRatings = () => {
       {loading && <CircularProgress />}
       {error && <Typography color="error">{error}</Typography>}
       {data && data.length === 0 && (
-        <Typography color="textSecondary">No ratings yet.</Typography>
+        <Typography color="textSecondary">{translate('userRatings.noRatingsYet')}</Typography>
       )}
       {data &&
         data.map((user) => <UserRatingCard key={user.userId} user={user} />)}

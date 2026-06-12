@@ -725,5 +725,10 @@
       "vol_down": "Volume Down",
       "toggle_love": "Add this track to favourites"
     }
+  },
+  "userRatings": {
+    "noRatingsYet": "No ratings yet",
+    "noItemsFound": "No items found",
+    "avgRating": "Avg. Rating: %{avg}"
   }
 }

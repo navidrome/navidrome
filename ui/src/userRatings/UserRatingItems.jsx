@@ -82,7 +82,7 @@ const UserRatingItems = ({ match }) => {
         <Typography variant="subtitle1" color="textSecondary">
           {typeLabel} ·{' '}
           <Rating
-            value={parseInt(rating) || 0}
+            value={parseInt(rating, 10) || 0}
             readOnly
             size="small"
             style={{ verticalAlign: 'middle' }}
@@ -96,7 +96,7 @@ const UserRatingItems = ({ match }) => {
           {loading && <CircularProgress />}
           {error && <Typography color="error">{error}</Typography>}
           {items && items.length === 0 && (
-            <Typography color="textSecondary">No items found.</Typography>
+            <Typography color="textSecondary">{translate('userRatings.noItemsFound')}</Typography>
           )}
           {items && items.length > 0 && (
             <List disablePadding>

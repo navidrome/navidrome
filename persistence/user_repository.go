@@ -478,7 +478,7 @@ func (r *userRepository) SetUserLibraries(userID string, libraryIDs []int) error
 	return nil
 }
 
-func (r *userRepository) RatingStats() ([]model.UserRatingStats, error) {
+func (r *userRepository) RatingStats(ctx context.Context) ([]model.UserRatingStats, error) {
 	type row struct {
 		UserID   string `db:"user_id"`
 		UserName string `db:"user_name"`
@@ -525,7 +525,7 @@ func (r *userRepository) RatingStats() ([]model.UserRatingStats, error) {
 	return result, nil
 }
 
-func (r *userRepository) RatingItems(userID, itemType string, rating int) ([]model.RatedItem, error) {
+func (r *userRepository) RatingItems(ctx context.Context, userID, itemType string, rating int) ([]model.RatedItem, error) {
 	type row struct {
 		ID        string    `db:"id"`
 		Name      string    `db:"name"`

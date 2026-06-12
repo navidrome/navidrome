@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"strings"
@@ -136,14 +137,14 @@ func (u *MockedUserRepo) SetUserLibraries(userID string, libraryIDs []int) error
 	return nil
 }
 
-func (u *MockedUserRepo) RatingStats() ([]model.UserRatingStats, error) {
+func (u *MockedUserRepo) RatingStats(ctx context.Context) ([]model.UserRatingStats, error) {
 	if u.Error != nil {
 		return nil, u.Error
 	}
 	return u.RatingStatsData, nil
 }
 
-func (u *MockedUserRepo) RatingItems(userID, itemType string, rating int) ([]model.RatedItem, error) {
+func (u *MockedUserRepo) RatingItems(ctx context.Context, userID, itemType string, rating int) ([]model.RatedItem, error) {
 	if u.Error != nil {
 		return nil, u.Error
 	}

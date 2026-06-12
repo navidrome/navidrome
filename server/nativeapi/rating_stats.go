@@ -19,7 +19,7 @@ func (api *Router) addRatingStatsRoute(r chi.Router) {
 func getRatingStats(ds model.DataStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currentUser, _ := request.UserFrom(r.Context())
-		stats, err := ds.User(r.Context()).RatingStats()
+		stats, err := ds.User(r.Context()).RatingStats(r.Context())
 		if err != nil {
 			log.Error(r.Context(), "Error getting rating stats", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -60,7 +60,7 @@ func getRatingItems(ds model.DataStore) http.HandlerFunc {
 			return
 		}
 
-		items, err := ds.User(r.Context()).RatingItems(userID, itemType, rating)
+		items, err := ds.User(r.Context()).RatingItems(r.Context(), userID, itemType, rating)
 		if err != nil {
 			log.Error(r.Context(), "Error getting rating items", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
