@@ -540,13 +540,28 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
 	return totalRowsAffected, nil
 }
 
+// applyLibraryFilterToSearchQuery is applyLibraryFilterToArtistQuery with the join order
+// pinned via CROSS JOIN (SQLite's explicit join-order override): the search Phase 1 paginates
+// rowids by artist.id, and when the planner drives from library_artist it must sort every
+// junction row on every page (temp b-tree over the whole table). Keeping artist as the outer
+// table streams rows in artist.id order from its primary key index, so LIMIT/OFFSET
+// short-circuits. Search-only: other artist queries keep the planner's freedom.
+func (r *artistRepository) applyLibraryFilterToSearchQuery(query SelectBuilder) SelectBuilder {
+	user := loggedUser(r.ctx)
+	query = query.CrossJoin("library_artist on library_artist.artist_id = artist.id")
+	if user.ID != invalidUserId && !user.IsAdmin {
+		query = query.Join("user_library on user_library.library_id = library_artist.library_id AND user_library.user_id = ?", user.ID)
+	}
+	return query
+}
+
 func (r *artistRepository) searchCfg() searchConfig {
 	return searchConfig{
 		// Natural order for artists is more performant by ID, due to GROUP BY clause in selectArtist
 		NaturalOrder:  "artist.id",
 		OrderBy:       []string{"sum(json_extract(stats, '$.total.m')) desc", "name"},
 		MBIDFields:    []string{"mbz_artist_id"},
-		LibraryFilter: r.applyLibraryFilterToArtistQuery,
+		LibraryFilter: r.applyLibraryFilterToSearchQuery,
 	}
 }
 
