@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -595,6 +596,28 @@ var _ = Describe("ArtistRepository", func() {
 			})
 
 			Context("Empty Query (sync pagination)", func() {
+				It("does not duplicate artists that belong to multiple libraries", func() {
+					// An artist in two libraries has two library_artist rows; pagination
+					// must still enumerate it exactly once, at a stable offset.
+					Expect(lr.AddArtist(lib2.ID, artistBeatles.ID)).To(Succeed())
+
+					all, err := repo.Search("", model.QueryOptions{Max: 1000})
+					Expect(err).ToNot(HaveOccurred())
+
+					seen := map[string]bool{}
+					var paged model.Artists
+					for offset := range len(all) {
+						page, err := repo.Search("", model.QueryOptions{Max: 1, Offset: offset})
+						Expect(err).ToNot(HaveOccurred())
+						for _, a := range page {
+							Expect(seen[a.ID]).To(BeFalse(), fmt.Sprintf("artist %s returned twice", a.ID))
+							seen[a.ID] = true
+						}
+						paged = append(paged, page...)
+					}
+					Expect(paged).To(HaveLen(len(all)))
+				})
+
 				It("paginates all artists in natural order without overlaps or gaps", func() {
 					all, err := repo.Search("", model.QueryOptions{Max: 1000})
 					Expect(err).ToNot(HaveOccurred())
