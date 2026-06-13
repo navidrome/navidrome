@@ -289,6 +289,10 @@ func (n noopArtwork) GetOrPlaceholder(_ context.Context, _ string, _ int, _ bool
 	return io.NopCloser(io.LimitReader(nil, 0)), time.Time{}, nil
 }
 
+func (n noopArtwork) AlbumImages(context.Context, string) ([]artwork.AlbumImageInfo, error) {
+	return nil, model.ErrNotFound
+}
+
 // spyStreamer captures the Request passed to NewStream for test assertions,
 // then returns a minimal fake Stream so the handler completes without error.
 type spyStreamer struct {

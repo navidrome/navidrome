@@ -214,6 +214,10 @@ func (m *mockArtwork) GetOrPlaceholder(ctx context.Context, id string, size int,
 	return m.Get(ctx, model.ArtworkID{}, size, square)
 }
 
+func (m *mockArtwork) AlbumImages(context.Context, string) ([]AlbumImageInfo, error) {
+	return nil, nil
+}
+
 type mockFileCache struct {
 	disabled atomic.Bool
 	ready    atomic.Bool

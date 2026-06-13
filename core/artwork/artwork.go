@@ -7,6 +7,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/ffmpeg"
@@ -22,6 +23,16 @@ var ErrUnavailable = errors.New("artwork unavailable")
 type Artwork interface {
 	Get(ctx context.Context, artID model.ArtworkID, size int, square bool) (io.ReadCloser, time.Time, error)
 	GetOrPlaceholder(ctx context.Context, id string, size int, square bool) (io.ReadCloser, time.Time, error)
+	// AlbumImages lists the album's images: primary cover first, then recognized
+	// scans (back, booklet, ...). Each CoverArt is a getCoverArt id.
+	AlbumImages(ctx context.Context, albumID string) ([]AlbumImageInfo, error)
+}
+
+// AlbumImageInfo describes one album image for the native API gallery.
+type AlbumImageInfo struct {
+	CoverArt string `json:"coverArt"`
+	Type     string `json:"type"`
+	Name     string `json:"name,omitempty"`
 }
 
 func NewArtwork(ds model.DataStore, cache cache.FileCache, ffmpeg ffmpeg.FFmpeg, provider external.Provider) Artwork {
@@ -71,6 +82,38 @@ func (a *artwork) Get(ctx context.Context, artID model.ArtworkID, size int, squa
 		return nil, time.Time{}, err
 	}
 	return r, artReader.LastUpdated(), nil
+}
+
+func (a *artwork) AlbumImages(ctx context.Context, albumID string) ([]AlbumImageInfo, error) {
+	al, err := a.ds.Album(ctx).Get(albumID)
+	if err != nil {
+		return nil, err
+	}
+	_, imgFiles, _, err := loadAlbumFoldersPaths(ctx, a.ds, *al)
+	if err != nil {
+		return nil, err
+	}
+	images := recognizedAlbumImages(imgFiles)
+	coverFile := resolveCoverFile(imgFiles, conf.Server.CoverArtPriority)
+
+	// Slide 0 is the primary cover (al-<id>), same as the thumbnail; works even
+	// when the cover is embedded and has no external file.
+	result := []AlbumImageInfo{{
+		CoverArt: model.NewArtworkID(model.KindAlbumArtwork, albumID, &al.UpdatedAt).String(),
+		Type:     "Front",
+	}}
+	for i, img := range images {
+		if img.Path == coverFile {
+			continue // already shown as slide 0
+		}
+		id := model.NewArtworkID(model.KindAlbumArtwork, model.AlbumImageArtworkID(albumID, i), &al.UpdatedAt)
+		result = append(result, AlbumImageInfo{
+			CoverArt: id.String(),
+			Type:     img.Type,
+			Name:     img.Name,
+		})
+	}
+	return result, nil
 }
 
 type coverArtGetter interface {

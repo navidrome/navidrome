@@ -99,6 +99,28 @@ func DiscArtworkID(albumID string, discNumber int) string {
 	return fmt.Sprintf("%s:%d", albumID, discNumber)
 }
 
+// AlbumImageArtworkID builds the album-image ID portion "<albumID>:<index>" (mirrors DiscArtworkID).
+func AlbumImageArtworkID(albumID string, index int) string {
+	return fmt.Sprintf("%s:%d", albumID, index)
+}
+
+// ParseAlbumArtworkID splits "<albumID>" or "<albumID>:<index>" into the album ID
+// and image index (-1 when no index, i.e. use cover-art priority).
+func ParseAlbumArtworkID(id string) (albumID string, index int, err error) {
+	albumID, idxStr, found := strings.Cut(id, ":")
+	if !found {
+		return id, -1, nil
+	}
+	index, err = strconv.Atoi(idxStr)
+	if err != nil {
+		return "", 0, fmt.Errorf("invalid image index in artwork id %q: %w", id, err)
+	}
+	if index < 0 {
+		return "", 0, fmt.Errorf("invalid image index in artwork id %q", id)
+	}
+	return albumID, index, nil
+}
+
 func ParseDiscArtworkID(id string) (albumID string, discNumber int, err error) {
 	parts := strings.SplitN(id, ":", 2)
 	if len(parts) != 2 || parts[1] == "" {
