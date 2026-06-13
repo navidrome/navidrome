@@ -92,17 +92,10 @@ func paramsFromToken(token jwt.Token) (*params, error) {
 	return &p, nil
 }
 
-// getIntClaim extracts an int claim from a JWT token, handling the case where
-// the value may be stored as int64 or float64 (common in JSON-based JWT libraries).
+// getIntClaim extracts a numeric claim from a JWT token. Numeric claims in a
+// parsed token are always deserialized as float64, regardless of the type used
+// when encoding.
 func getIntClaim(token jwt.Token, key string) int {
-	var v int
-	if err := token.Get(key, &v); err == nil {
-		return v
-	}
-	var v64 int64
-	if err := token.Get(key, &v64); err == nil {
-		return int(v64)
-	}
 	var f float64
 	if err := token.Get(key, &f); err == nil {
 		return int(f)

@@ -70,11 +70,13 @@ var (
 
 func buildTestFS() {
 	abbeyRoad := template(_t{
-		"albumartist": "The Beatles",
-		"artist":      "The Beatles",
-		"album":       "Abbey Road",
-		"year":        1969,
-		"genre":       "Rock;Blues",
+		"albumartist":           "The Beatles",
+		"artist":                "The Beatles",
+		"album":                 "Abbey Road",
+		"year":                  1969,
+		"genre":                 "Rock;Blues",
+		"replaygain_album_gain": "-6.5 dB",
+		"replaygain_album_peak": "0.98",
 	})
 	ledZepIV := template(_t{
 		"albumartist": "Led Zeppelin",
@@ -116,12 +118,16 @@ func buildTestFS() {
 	fs := storagetest.FakeFS{}
 	fs.SetFiles(fstest.MapFS{
 		"Rock/The Beatles/Abbey Road/01 - Come Together.mp3": abbeyRoad(track(1, "Come Together",
-			_t{"genre": "Rock;Blues", "composer": "Lennon/McCartney", "bpm": 120, "grouping": "Beatles Tracks"})),
+			_t{"genre": "Rock;Blues", "composer": "Lennon/McCartney", "bpm": 120, "grouping": "Beatles Tracks",
+				"replaygain_track_gain": "-7.1 dB", "replaygain_track_peak": "0.95"})),
 		"Rock/The Beatles/Abbey Road/02 - Something.mp3": abbeyRoad(track(2, "Something",
-			_t{"genre": "Rock", "composer": "Harrison", "bpm": 100, "grouping": "Beatles Tracks"})),
+			_t{"genre": "Rock", "composer": "Harrison", "bpm": 100, "grouping": "Beatles Tracks",
+				"replaygain_track_gain": "-6.0 dB", "replaygain_track_peak": "0.92"})),
+		// Stairway To Heaven has track gain but no album gain, to distinguish the two fields
 		"Rock/Led Zeppelin/IV/01 - Stairway To Heaven.flac": ledZepIV(track(1, "Stairway To Heaven",
 			_t{"genre": "Rock;Folk", "composer": "Page/Plant", "bpm": 82, "suffix": "flac",
-				"bitrate": 900, "samplerate": 44100, "bitdepth": 16})),
+				"bitrate": 900, "samplerate": 44100, "bitdepth": 16,
+				"replaygain_track_gain": "-8.25 dB", "replaygain_track_peak": "0.99"})),
 		"Rock/Led Zeppelin/IV/02 - Black Dog.flac": ledZepIV(track(2, "Black Dog",
 			_t{"genre": "Rock;Blues", "composer": "Page/Plant/Jones", "bpm": 150, "suffix": "flac",
 				"bitrate": 900, "samplerate": 44100, "bitdepth": 16})),

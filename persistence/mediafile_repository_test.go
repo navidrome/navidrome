@@ -524,6 +524,34 @@ var _ = Describe("MediaRepository", func() {
 				}
 			})
 		})
+
+		Describe("path", func() {
+			It("matches files whose path starts with the given prefix", func() {
+				res, err := mr.(model.ResourceRepository).ReadAll(rest.QueryOptions{
+					Filters: map[string]any{"path": "test/"},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				files := res.(model.MediaFiles)
+
+				var found bool
+				for _, f := range files {
+					Expect(f.Path).To(HavePrefix("test/"))
+					if f.ID == mfWithoutAnnotation.ID {
+						found = true
+					}
+				}
+				Expect(found).To(BeTrue(), "MediaFile with matching path prefix should be included")
+			})
+
+			It("excludes files whose path does not start with the given prefix", func() {
+				res, err := mr.(model.ResourceRepository).ReadAll(rest.QueryOptions{
+					Filters: map[string]any{"path": "no-such-prefix/"},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				files := res.(model.MediaFiles)
+				Expect(files).To(BeEmpty())
+			})
+		})
 	})
 
 	Describe("Search", func() {
@@ -622,6 +650,49 @@ var _ = Describe("MediaRepository", func() {
 
 				// Clean up
 				_, _ = raw.executeSQL(squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": missingMediaFile.ID}))
+			})
+		})
+
+		Context("empty query (natural order pagination)", func() {
+			It("returns all non-missing files in natural order", func() {
+				results, err := mr.Search("", model.QueryOptions{Max: 1000})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(results).ToNot(BeEmpty())
+				for _, result := range results {
+					Expect(result.Missing).To(BeFalse())
+				}
+			})
+
+			It(`treats quoted empty query ("") the same as empty`, func() {
+				all, err := mr.Search("", model.QueryOptions{Max: 1000})
+				Expect(err).ToNot(HaveOccurred())
+				quoted, err := mr.Search(`""`, model.QueryOptions{Max: 1000})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(quoted).To(HaveLen(len(all)))
+			})
+
+			It("paginates without overlaps or gaps", func() {
+				all, err := mr.Search("", model.QueryOptions{Max: 1000})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(len(all)).To(BeNumerically(">", 3))
+
+				var paged model.MediaFiles
+				pageSize := 3
+				for offset := 0; offset < len(all); offset += pageSize {
+					page, err := mr.Search("", model.QueryOptions{Max: pageSize, Offset: offset})
+					Expect(err).ToNot(HaveOccurred())
+					paged = append(paged, page...)
+				}
+				Expect(paged).To(HaveLen(len(all)))
+				for i := range all {
+					Expect(paged[i].ID).To(Equal(all[i].ID), fmt.Sprintf("row %d differs", i))
+				}
+			})
+
+			It("returns empty page when offset is beyond the total", func() {
+				results, err := mr.Search("", model.QueryOptions{Max: 10, Offset: 100000})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(results).To(BeEmpty())
 			})
 		})
 	})

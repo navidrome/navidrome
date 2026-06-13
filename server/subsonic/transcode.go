@@ -370,6 +370,7 @@ func (api *Router) GetTranscodeStream(w http.ResponseWriter, r *http.Request) (*
 	if err != nil {
 		switch {
 		case errors.Is(err, stream.ErrTokenInvalid), errors.Is(err, stream.ErrTokenStale):
+			log.Warn(ctx, "Invalid or stale transcode token", "mediaID", mediaID, err)
 			http.Error(w, "Gone", http.StatusGone)
 		default:
 			log.Error(ctx, "Error validating transcode params", err)
