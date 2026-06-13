@@ -52,6 +52,9 @@
         "playNext": "Play Next",
         "info": "Get Info",
         "instantMix": "Instant Mix"
+      },
+      "notifications": {
+        "updated": "Song updated"
       }
     },
     "album": {
