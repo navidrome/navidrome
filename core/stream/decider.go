@@ -12,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/utils/gg"
 )
 
 const fallbackBitrate = 256 // kbps
@@ -142,7 +143,7 @@ func buildSourceStream(mf *model.MediaFile, probe *ffmpeg.AudioProbeResult) Deta
 		sd.Codec = mf.AudioCodec()
 		sd.Bitrate = mf.BitRate
 		sd.SampleRate = mf.SampleRate
-		sd.BitDepth = mf.BitDepth
+		sd.BitDepth = gg.V(mf.BitDepth)
 		sd.Channels = mf.Channels
 	}
 	sd.IsLossless = isLosslessFormat(sd.Codec)
