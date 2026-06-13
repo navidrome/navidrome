@@ -22,6 +22,7 @@ import { useDrag } from 'react-dnd'
 import clsx from 'clsx'
 import {
   ArtistContextMenu,
+  AverageRatingField,
   CoverArtAvatar,
   List,
   useGetHandleArtistClick,
@@ -157,6 +158,9 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
           className={classes.ratingField}
         />
       ),
+      averageRating: config.enableStarRating && (
+        <AverageRatingField source="averageRating" sortByOrder={'DESC'} />
+      ),
     }),
     [classes.ratingField],
   )
@@ -164,6 +168,7 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
   const columns = useSelectedFields({
     resource: 'artist',
     columns: toggleableFields,
+    defaultOff: ['averageRating'],
   })
 
   return isXsmall ? (
