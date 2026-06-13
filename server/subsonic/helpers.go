@@ -271,7 +271,7 @@ func osChildFromMediaFile(ctx context.Context, mf model.MediaFile) *responses.Op
 	child.DisplayAlbumArtist = mf.AlbumArtist
 	child.AlbumArtists = artistRefs(mf.Participants[model.RoleAlbumArtist])
 	var contributors []responses.Contributor
-	child.DisplayComposer = mf.Participants[model.RoleComposer].Join(consts.ArtistJoiner)
+	child.DisplayComposer = mf.Participants[model.RoleComposer].JoinCredited(consts.ArtistJoiner)
 	for role, participants := range mf.Participants {
 		if role == model.RoleArtist || role == model.RoleAlbumArtist {
 			continue
@@ -282,7 +282,7 @@ func osChildFromMediaFile(ctx context.Context, mf model.MediaFile) *responses.Op
 				SubRole: participant.SubRole,
 				Artist: responses.ArtistID3Ref{
 					Id:   participant.ID,
-					Name: participant.Name,
+					Name: participant.DisplayName(),
 				},
 			})
 		}
@@ -296,7 +296,7 @@ func artistRefs(participants model.ParticipantList) []responses.ArtistID3Ref {
 	return slice.Map(participants, func(p model.Participant) responses.ArtistID3Ref {
 		return responses.ArtistID3Ref{
 			Id:   p.ID,
-			Name: p.Name,
+			Name: p.DisplayName(),
 		}
 	})
 }

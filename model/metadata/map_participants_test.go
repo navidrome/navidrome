@@ -460,6 +460,26 @@ var _ = Describe("Participants", func() {
 				})
 			})
 
+			When("the COMPILATION tag is true and ALBUMARTIST is the UnknownArtist placeholder", func() {
+				BeforeEach(func() {
+					// Some rippers emit the literal '[Unknown Artist]' string
+					// when no album artist is set. The fallback must still
+					// route to Various Artists for compilations.
+					mf = toMediaFile(model.RawTags{
+						"COMPILATION": {"1"},
+						"ALBUMARTIST": {consts.UnknownArtist},
+					})
+				})
+
+				It("should substitute Various Artists as the album artist", func() {
+					participants := mf.Participants
+					Expect(participants).To(HaveKeyWithValue(model.RoleAlbumArtist, HaveLen(1)))
+					albumArtist := participants[model.RoleAlbumArtist][0]
+					Expect(albumArtist.Name).To(Equal("Various Artists"))
+					Expect(albumArtist.MbzArtistID).To(Equal(consts.VariousArtistsMbzId))
+				})
+			})
+
 			When("the COMPILATION tag is true and there are ALBUMARTIST tags", func() {
 				BeforeEach(func() {
 					mf = toMediaFile(model.RawTags{
@@ -800,6 +820,107 @@ var _ = Describe("Participants", func() {
 				Expect(roles[1].Name).To(Equal("b"))
 				Expect(roles[1].MbzArtistID).To(Equal(""))
 			}
+		})
+	})
+
+	Describe("CreditedAs population", func() {
+		It("uses the canonical name as CreditedAs when no credit tag is present", func() {
+			mf = toMediaFile(model.RawTags{
+				"ARTISTS": {"Some Artist"},
+			})
+			artists := mf.Participants[model.RoleArtist]
+			Expect(artists).To(HaveLen(1))
+			Expect(artists[0].Name).To(Equal("Some Artist"))
+			Expect(artists[0].CreditedAs).To(Equal("Some Artist"))
+		})
+
+		It("uses the credit tag value when present, paired positionally", func() {
+			mf = toMediaFile(model.RawTags{
+				"ARTISTS":       {"Planetary Assault Systems", "Other"},
+				"ARTISTSCREDIT": {"PAS", "Other"},
+			})
+			artists := mf.Participants[model.RoleArtist]
+			Expect(artists).To(HaveLen(2))
+			Expect(artists[0].Name).To(Equal("Planetary Assault Systems"))
+			Expect(artists[0].CreditedAs).To(Equal("PAS"))
+			Expect(artists[1].Name).To(Equal("Other"))
+			Expect(artists[1].CreditedAs).To(Equal("Other"))
+		})
+
+		It("falls back to canonical name when credit list length differs from name list", func() {
+			mf = toMediaFile(model.RawTags{
+				"ARTISTS":       {"A", "B", "C"},
+				"ARTISTSCREDIT": {"only one"}, // mismatch
+			})
+			artists := mf.Participants[model.RoleArtist]
+			Expect(artists).To(HaveLen(3))
+			for _, a := range artists {
+				Expect(a.CreditedAs).To(Equal(a.Name))
+			}
+		})
+
+		It("populates CreditedAs for non-artist roles (composer)", func() {
+			mf = toMediaFile(model.RawTags{
+				"COMPOSER":       {"Real Composer"},
+				"COMPOSERCREDIT": {"R. Composer"},
+			})
+			composers := mf.Participants[model.RoleComposer]
+			Expect(composers).To(HaveLen(1))
+			Expect(composers[0].CreditedAs).To(Equal("R. Composer"))
+		})
+
+		It("always populates CreditedAs (never empty)", func() {
+			mf = toMediaFile(model.RawTags{
+				"ARTIST":           {"Track Artist"},
+				"ALBUMARTIST":      {"Album Artist"},
+				"COMPOSER":         {"A Composer"},
+				"PERFORMER:GUITAR": {"A Guitarist"},
+			})
+			for role, list := range mf.Participants {
+				for _, p := range list {
+					Expect(p.CreditedAs).NotTo(BeEmpty(), "role: %s, participant: %+v", role, p)
+				}
+			}
+		})
+
+		It("aligns composer credits with names when both use a role separator", func() {
+			// Names and credits both split on ';' under the roles.split config.
+			// Prior to the alignment fix, credits were read raw and would have
+			// stayed as one value while names became three, producing a length
+			// mismatch that silently dropped all credits.
+			mf = toMediaFile(model.RawTags{
+				"COMPOSER":       {"Comp A;Comp B;Comp C"},
+				"COMPOSERCREDIT": {"CA;CB;CC"},
+			})
+			composers := mf.Participants[model.RoleComposer]
+			Expect(composers).To(HaveLen(3))
+			Expect(composers[0].Name).To(Equal("Comp A"))
+			Expect(composers[0].CreditedAs).To(Equal("CA"))
+			Expect(composers[1].CreditedAs).To(Equal("CB"))
+			Expect(composers[2].CreditedAs).To(Equal("CC"))
+		})
+
+		It("splits composer MBIDs to align with split composer names", func() {
+			// Both names and MBIDs use the role separator ';'. The fix routes
+			// MBIDs through getRoleValues so they split alongside names rather
+			// than staying as a single value (which would have produced 2 names
+			// and 1 MBID — broken positional alignment).
+			//
+			// We test via a single delimited canonical name string AND a single
+			// delimited MBID-pair string. Note: the tag-reader UUID validation
+			// happens at metadata parse time on individual values, so we hand
+			// multi-valued tag entries already split into separate slice
+			// entries (matching how a multi-value tag would surface).
+			mf = toMediaFile(model.RawTags{
+				"COMPOSER":               {"Comp A;Comp B"},
+				"MUSICBRAINZ_COMPOSERID": {"11111111-1111-1111-1111-111111111111", "22222222-2222-2222-2222-222222222222"},
+			})
+			composers := mf.Participants[model.RoleComposer]
+			Expect(composers).To(HaveLen(2))
+			Expect(composers[0].Name).To(Equal("Comp A"))
+			Expect(composers[0].MbzArtistID).To(Equal("11111111-1111-1111-1111-111111111111"))
+			Expect(composers[1].Name).To(Equal("Comp B"))
+			Expect(composers[1].MbzArtistID).To(Equal("22222222-2222-2222-2222-222222222222"))
 		})
 	})
 })

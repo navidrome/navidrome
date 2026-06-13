@@ -242,8 +242,9 @@ type backupOptions struct {
 }
 
 type pidOptions struct {
-	Track string
-	Album string
+	Track  string
+	Album  string
+	Artist string
 }
 
 type inspectOptions struct {
@@ -439,6 +440,7 @@ func Load(noConfigDump bool) {
 	// Make sure we don't have empty PIDs
 	Server.PID.Album = cmp.Or(Server.PID.Album, consts.DefaultAlbumPID)
 	Server.PID.Track = cmp.Or(Server.PID.Track, consts.DefaultTrackPID)
+	Server.PID.Artist = cmp.Or(Server.PID.Artist, consts.DefaultArtistPID)
 
 	// Parse LastFM.Language into Languages slice (comma-separated, with fallback to DefaultInfoLanguage)
 	Server.LastFM.Languages = parseLanguages(Server.LastFM.Language)
@@ -851,6 +853,7 @@ func setViperDefaults() {
 	viper.SetDefault("backup.count", 0)
 	viper.SetDefault("pid.track", consts.DefaultTrackPID)
 	viper.SetDefault("pid.album", consts.DefaultAlbumPID)
+	viper.SetDefault("pid.artist", consts.DefaultArtistPID)
 	viper.SetDefault("inspect.enabled", true)
 	viper.SetDefault("inspect.maxrequests", 1)
 	viper.SetDefault("inspect.backloglimit", consts.RequestThrottleBacklogLimit)

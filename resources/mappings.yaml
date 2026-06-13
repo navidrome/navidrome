@@ -38,8 +38,14 @@ main:
     aliases: [ txxx:artists, artists, ----:com.apple.itunes:artists, wm/artists ]
   artistssort:
     aliases: [ artistssort ]
+  artistcredit:
+    aliases: [ artist_credit, artistcredit ]
+  artistscredit:
+    aliases: [ artists_credit, artistscredit ]
   arranger:
     aliases: [ tipl:arranger, ipls:arranger, arranger ]
+  arrangercredit:
+    aliases: [ arranger_credit, arrangercredit ]
   composer:
     aliases: [ tcom, composer, ©wrt, wm/composer, imus,
       writer, txxx:writer, iwri,
@@ -50,24 +56,42 @@ main:
   #  aliases: [ WRITER, TXXX:Writer, IWRI ]
   composersort:
     aliases: [ tsoc, txxx:composersort, composersort, soco, wm/composersortorder ]
+  composercredit:
+    aliases: [ composer_credit, composercredit ]
   lyricist:
     aliases: [ text, lyricist, ----:com.apple.itunes:lyricist, wm/writer ]
   lyricistsort:
     aliases: [ lyricistsort ]
+  lyricistcredit:
+    aliases: [ lyricist_credit, lyricistcredit ]
   conductor:
     aliases: [ tpe3, conductor, ----:com.apple.itunes:conductor, wm/conductor ]
+  conductorcredit:
+    aliases: [ conductor_credit, conductorcredit ]
   director:
     aliases: [ txxx:director, director, ©dir, wm/director ]
+  directorcredit:
+    aliases: [ director_credit, directorcredit ]
   djmixer:
     aliases: [ tipl:dj-mix, ipls:dj-mix, djmixer, ----:com.apple.itunes:djmixer, wm/djmixer ]
+  djmixercredit:
+    aliases: [ djmixer_credit, djmixercredit ]
   mixer:
     aliases: [ tipl:mix, ipls:mix, mixer, ----:com.apple.itunes:mixer, wm/mixer ]
+  mixercredit:
+    aliases: [ mixer_credit, mixercredit ]
   engineer:
     aliases: [ tipl:engineer, ipls:engineer, engineer, ----:com.apple.itunes:engineer, wm/engineer, ieng ]
+  engineercredit:
+    aliases: [ engineer_credit, engineercredit ]
   producer:
     aliases: [ tipl:producer, ipls:producer, producer, ----:com.apple.itunes:producer, wm/producer, ipro ]
+  producercredit:
+    aliases: [ producer_credit, producercredit ]
   remixer:
     aliases: [ tpe4, remixer, mixartist, ----:com.apple.itunes:remixer, wm/modifiedby ]
+  remixercredit:
+    aliases: [ remixer_credit, remixercredit ]
   albumartist:
     aliases: [ tpe2, albumartist, album artist, album_artist, aart, wm/albumartist ]
   albumartistsort:
@@ -76,6 +100,10 @@ main:
     aliases: [ txxx:album artists, albumartists ]
   albumartistssort:
     aliases: [ albumartistssort ]
+  albumartistcredit:
+    aliases: [ albumartist_credit, albumartistcredit ]
+  albumartistscredit:
+    aliases: [ albumartists_credit, albumartistscredit ]
   album:
     aliases: [ talb, album, ©alb, wm/albumtitle, iprd ]
   albumsort:

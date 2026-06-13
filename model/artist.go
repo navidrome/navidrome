@@ -89,6 +89,7 @@ type ArtistRepository interface {
 	GetIndex(includeMissing bool, libraryIds []int, roles ...Role) (ArtistIndexes, error)
 
 	// The following methods are used exclusively by the scanner:
+	CopyAttributes(fromID, toID string, columns ...string) error
 	RefreshPlayCounts() (int64, error)
 	RefreshStats(allArtists bool) (int64, error)
 

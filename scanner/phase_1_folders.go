@@ -123,11 +123,12 @@ func (j *scanJob) createFolderEntry(path string) *folderEntry {
 // The phaseFolders struct implements the phase interface, providing methods to produce
 // folder entries, process folders, persist changes to the database, and log the results.
 type phaseFolders struct {
-	jobs             []*scanJob
-	ds               model.DataStore
-	ctx              context.Context
-	state            *scanState
-	prevAlbumPIDConf string
+	jobs              []*scanJob
+	ds                model.DataStore
+	ctx               context.Context
+	state             *scanState
+	prevAlbumPIDConf  string
+	prevArtistPIDConf string
 }
 
 func (p *phaseFolders) description() string {
@@ -140,6 +141,10 @@ func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
 		p.prevAlbumPIDConf, err = p.ds.Property(p.ctx).DefaultGet(consts.PIDAlbumKey, "")
 		if err != nil {
 			return fmt.Errorf("getting album PID conf: %w", err)
+		}
+		p.prevArtistPIDConf, err = p.ds.Property(p.ctx).DefaultGet(consts.PIDArtistKey, "")
+		if err != nil {
+			return fmt.Errorf("getting artist PID conf: %w", err)
 		}
 
 		// TODO Parallelize multiple job when we have multiple libraries
@@ -298,6 +303,30 @@ func (p *phaseFolders) loadTagsFromFiles(entry *folderEntry, toImport map[string
 			if prevAlbumID != track.AlbumID && !ok {
 				entry.albumIDMap[track.AlbumID] = prevAlbumID
 			}
+
+			// Build artistIDMap: for each participant on this track, if the previous
+			// spec produces a different ID than the current one, record the mapping.
+			//
+			// The map is keyed by the new artist ID so it stores ONE previous ID per
+			// new ID, even when many old IDs collapse to the same new one (e.g.
+			// switching from "name" to "musicbrainz_artistid|name" where multiple
+			// name-keyed IDs share an MBID). This is intentional: ReassignAnnotation
+			// is idempotent and the other prior IDs orphan their annotations into
+			// the unique-constraint collision case documented in the spec — a
+			// known limitation tracked for a separate follow-up that fixes
+			// ReassignAnnotation merge semantics at the SQL level.
+			if p.prevArtistPIDConf != "" && p.prevArtistPIDConf != conf.Server.PID.Artist {
+				for _, list := range track.Participants {
+					for _, part := range list {
+						prevID := metadata.ComputeArtistPID(part, p.prevArtistPIDConf)
+						if prevID != part.ID {
+							if _, already := entry.artistIDMap[part.ID]; !already {
+								entry.artistIDMap[part.ID] = prevID
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 	entry.tracks = tracks
@@ -359,9 +388,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 
 		// Save all new/modified artists to DB. Their information will be incomplete, but they will be refreshed later
 		for i := range entry.artists {
-			err = artistRepo.Put(&entry.artists[i], "name",
-				"mbz_artist_id", "sort_artist_name", "order_artist_name", "full_text", "updated_at")
-			if err != nil {
+			if err = p.persistArtist(artistRepo, &entry.artists[i], entry.artistIDMap); err != nil {
 				log.Error(p.ctx, "Scanner: Error persisting artist to DB", "folder", entry.path, "artist", entry.artists[i].Name, err)
 				return err
 			}
@@ -458,6 +485,36 @@ func (p *phaseFolders) persistAlbum(repo model.AlbumRepository, a *model.Album, 
 		}
 	}
 	// Don't keep track of this mapping anymore
+	delete(idMap, a.ID)
+	return nil
+}
+
+// persistArtist persists the given artist and reassigns annotations from the
+// previous artist ID (if recorded in idMap). Mirrors persistAlbum.
+func (p *phaseFolders) persistArtist(repo model.ArtistRepository, a *model.Artist, idMap map[string]string) error {
+	if err := repo.Put(a, "name", "mbz_artist_id", "sort_artist_name",
+		"order_artist_name", "full_text", "updated_at"); err != nil {
+		return fmt.Errorf("persisting artist %s: %w", a.ID, err)
+	}
+	prevID := idMap[a.ID]
+	if prevID == "" {
+		return nil
+	}
+	log.Trace(p.ctx, "Reassigning artist annotations", "from", prevID, "to", a.ID, "artist", a.Name)
+	if err := repo.ReassignAnnotation(prevID, a.ID); err != nil {
+		log.Warn(p.ctx, "Scanner: Could not reassign artist annotations", "from", prevID, "to", a.ID, "artist", a.Name, err)
+		p.state.sendWarning(fmt.Sprintf("Could not reassign artist annotations from %s to %s ('%s'): %v", prevID, a.ID, a.Name, err))
+	}
+
+	// Keep created_at field from previous instance of the artist. Without this,
+	// the just-inserted row carries the scan timestamp, breaking "recently
+	// added" semantics on every PID config change.
+	if err := repo.CopyAttributes(prevID, a.ID, "created_at"); err != nil {
+		if !errors.Is(err, model.ErrNotFound) {
+			log.Warn(p.ctx, "Scanner: Could not copy artist fields", "from", prevID, "to", a.ID, "artist", a.Name, err)
+			p.state.sendWarning(fmt.Sprintf("Could not copy artist fields from %s to %s ('%s'): %v", prevID, a.ID, a.Name, err))
+		}
+	}
 	delete(idMap, a.ID)
 	return nil
 }

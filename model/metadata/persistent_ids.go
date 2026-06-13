@@ -87,10 +87,62 @@ func (md Metadata) albumID(mf model.MediaFile, pidConf string) string {
 	return computePID(mf, md, pidConf, true, id.NewHash)
 }
 
-// BFR Must be configurable?
-func (md Metadata) artistID(name string) string {
-	mf := model.MediaFile{AlbumArtist: name}
-	return computePID(mf, md, "albumartistid", false, id.NewHash)
+// computeArtistPID computes a persistent ID for a single participant using the
+// given spec. The spec grammar is the same pipe/comma form used by Album/Track
+// PIDs. Attributes recognised:
+//   - name                 → hash(clear(lower(participant.Name))) — the inner
+//     hash matches the historical 'albumartistid' path
+//     so the default spec "name" produces byte-identical
+//     IDs to the previous hardcoded artistID().
+//   - musicbrainz_artistid → participant.MbzArtistID (opaque identifier — no
+//     normalization).
+//   - sort_name            → participant.SortArtistName (raw — sort forms are
+//     already canonicalized by taggers, and folding case
+//     could collapse legitimately distinct sort variants).
+//
+// Unlike album/track PIDs, no library prefix is applied: artists are shared
+// across libraries by design.
+func computeArtistPID(p model.Participant, spec string, hash hashFunc) string {
+	pid := ""
+	fields := strings.SplitSeq(spec, "|")
+	for field := range fields {
+		attributes := strings.Split(field, ",")
+		values := make([]string, len(attributes))
+		hasValue := false
+		for i, attr := range attributes {
+			v := getArtistPIDAttr(p, attr, hash)
+			if v != "" {
+				hasValue = true
+			}
+			values[i] = v
+		}
+		if hasValue {
+			pid += strings.Join(values, "\\")
+			break
+		}
+	}
+	return hash(pid)
+}
+
+// ComputeArtistPID is the exported entry point for callers outside this package
+// (e.g. the scanner) that need to compute an artist PID under a specific spec.
+func ComputeArtistPID(p model.Participant, spec string) string {
+	return computeArtistPID(p, spec, id.NewHash)
+}
+
+func getArtistPIDAttr(p model.Participant, attr string, hash hashFunc) string {
+	switch strings.TrimSpace(strings.ToLower(attr)) {
+	case "name":
+		if p.Name == "" {
+			return ""
+		}
+		return hash(str.Clear(strings.ToLower(p.Name)))
+	case "musicbrainz_artistid":
+		return p.MbzArtistID
+	case "sort_name":
+		return p.SortArtistName
+	}
+	return ""
 }
 
 func (md Metadata) mapTrackTitle() string {

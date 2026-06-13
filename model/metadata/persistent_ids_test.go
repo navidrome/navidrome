@@ -5,7 +5,9 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -289,5 +291,109 @@ var _ = Describe("getPID", func() {
 				})
 			})
 		})
+	})
+})
+
+var _ = Describe("computeArtistPID", func() {
+	var p model.Participant
+	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
+		p = model.Participant{Artist: model.Artist{Name: "The Beatles"}}
+	})
+
+	Context("default spec 'name'", func() {
+		BeforeEach(func() { conf.Server.PID.Artist = consts.DefaultArtistPID })
+
+		It("produces the same ID as the legacy artistID(name) hardcoded function", func() {
+			// Legacy formula: hash(hash(clear(lower(name))))
+			// It came from artistID(name) routing through computePID(spec="albumartistid"),
+			// which inside getPIDAttr returns hash(clear(lower(mf.AlbumArtist))), then
+			// computePID hashes that again.
+			mfWithAlbumArtist := model.MediaFile{AlbumArtist: p.Name}
+			legacyMD := Metadata{}
+			legacyID := computePID(mfWithAlbumArtist, legacyMD, "albumartistid", false, id.NewHash)
+
+			newID := computeArtistPID(p, conf.Server.PID.Artist, id.NewHash)
+			Expect(newID).To(Equal(legacyID))
+		})
+
+		It("normalizes name (clear(lower(...))) before hashing", func() {
+			// Different casing / punctuation must collapse to the same ID.
+			p2 := model.Participant{Artist: model.Artist{Name: "the beatles"}}
+			Expect(computeArtistPID(p, conf.Server.PID.Artist, id.NewHash)).
+				To(Equal(computeArtistPID(p2, conf.Server.PID.Artist, id.NewHash)))
+		})
+	})
+
+	Context("spec 'musicbrainz_artistid|name'", func() {
+		BeforeEach(func() { conf.Server.PID.Artist = "musicbrainz_artistid|name" })
+
+		It("uses MBID when present", func() {
+			p.MbzArtistID = "mbid-1"
+			withMBID := computeArtistPID(p, conf.Server.PID.Artist, id.NewHash)
+
+			p2 := model.Participant{Artist: model.Artist{Name: "Different", MbzArtistID: "mbid-1"}}
+			withMBIDOtherName := computeArtistPID(p2, conf.Server.PID.Artist, id.NewHash)
+
+			Expect(withMBID).To(Equal(withMBIDOtherName))
+		})
+
+		It("falls back to normalized name when MBID is missing", func() {
+			withoutMBID := computeArtistPID(p, conf.Server.PID.Artist, id.NewHash)
+			byName := computeArtistPID(p, "name", id.NewHash)
+			Expect(withoutMBID).To(Equal(byName))
+		})
+	})
+
+	Context("composite spec 'musicbrainz_artistid|sort_name,name'", func() {
+		BeforeEach(func() { conf.Server.PID.Artist = "musicbrainz_artistid|sort_name,name" })
+
+		It("hashes sort+name composite when MBID is absent", func() {
+			p.SortArtistName = "Beatles, The"
+			withSort := computeArtistPID(p, conf.Server.PID.Artist, id.NewHash)
+
+			p2 := p
+			p2.SortArtistName = "Different Sort"
+			withDifferentSort := computeArtistPID(p2, conf.Server.PID.Artist, id.NewHash)
+
+			Expect(withSort).NotTo(Equal(withDifferentSort))
+		})
+	})
+
+	Context("spec 'sort_name|name' with empty sort_name", func() {
+		BeforeEach(func() { conf.Server.PID.Artist = "sort_name|name" })
+
+		It("falls through to name when SortArtistName is empty", func() {
+			// sort_name is empty → first pipe alternative produces no value →
+			// engine falls through to name.
+			fallback := computeArtistPID(p, conf.Server.PID.Artist, id.NewHash)
+			byName := computeArtistPID(p, "name", id.NewHash)
+			Expect(fallback).To(Equal(byName))
+		})
+	})
+
+	Context("empty inputs", func() {
+		BeforeEach(func() { conf.Server.PID.Artist = "musicbrainz_artistid|name" })
+
+		It("does not panic on empty participant", func() {
+			empty := model.Participant{Artist: model.Artist{Name: ""}}
+			Expect(func() { computeArtistPID(empty, conf.Server.PID.Artist, id.NewHash) }).
+				NotTo(Panic())
+		})
+	})
+
+	It("buildArtists produces the same Artist.ID as the legacy artistID() under default PID.Artist", func() {
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.PID.Artist = consts.DefaultArtistPID
+
+		name := "Some Artist"
+		md := Metadata{}
+		artists := md.buildArtists([]string{name}, nil, nil)
+
+		// Legacy result computed independently via the old "albumartistid" path:
+		legacyMF := model.MediaFile{AlbumArtist: name}
+		expected := computePID(legacyMF, Metadata{}, "albumartistid", false, id.NewHash)
+		Expect(artists).To(HaveLen(1))
+		Expect(artists[0].ID).To(Equal(expected))
 	})
 })

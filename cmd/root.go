@@ -175,7 +175,13 @@ func pidHashChanged(ds model.DataStore) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return !strings.EqualFold(pidAlbum, conf.Server.PID.Album) || !strings.EqualFold(pidTrack, conf.Server.PID.Track), nil
+	pidArtist, err := ds.Property(context.Background()).DefaultGet(consts.PIDArtistKey, "")
+	if err != nil {
+		return false, err
+	}
+	return !strings.EqualFold(pidAlbum, conf.Server.PID.Album) ||
+		!strings.EqualFold(pidTrack, conf.Server.PID.Track) ||
+		!strings.EqualFold(pidArtist, conf.Server.PID.Artist), nil
 }
 
 // runInitialScan runs an initial scan of the music library if needed.

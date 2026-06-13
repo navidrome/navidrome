@@ -77,7 +77,12 @@ func RoleFromString(role string) Role {
 
 type Participant struct {
 	Artist
-	SubRole string `json:"subRole,omitempty"`
+	SubRole    string `json:"subRole,omitempty"`
+	CreditedAs string `json:"creditedAs,omitempty"`
+}
+
+func (p Participant) DisplayName() string {
+	return cmp.Or(p.CreditedAs, p.Name)
 }
 
 type ParticipantList []Participant
@@ -88,6 +93,18 @@ func (p ParticipantList) Join(sep string) string {
 			return p.Name + " (" + p.SubRole + ")"
 		}
 		return p.Name
+	}), sep)
+}
+
+// JoinCredited joins the credited names of the participants with sep.
+// Falls back to Name when CreditedAs is empty.
+func (p ParticipantList) JoinCredited(sep string) string {
+	return strings.Join(slice.Map(p, func(part Participant) string {
+		n := part.DisplayName()
+		if part.SubRole != "" {
+			return n + " (" + part.SubRole + ")"
+		}
+		return n
 	}), sep)
 }
 
@@ -106,6 +123,12 @@ func (p Participants) AddWithSubRole(role Role, subRole string, artists ...Artis
 	participants := slice.Map(artists, func(artist Artist) Participant {
 		return Participant{Artist: artist, SubRole: subRole}
 	})
+	p.add(role, participants...)
+}
+
+// AddParticipants adds Participants directly (preserving CreditedAs and SubRole),
+// ignoring duplicates.
+func (p Participants) AddParticipants(role Role, participants ...Participant) {
 	p.add(role, participants...)
 }
 
@@ -133,16 +156,28 @@ func (p Participants) Merge(other Participants) {
 }
 
 func (p Participants) add(role Role, participants ...Participant) {
-	seen := make(map[string]struct{}, len(p[role]))
-	for _, artist := range p[role] {
-		seen[artist.ID+artist.SubRole] = struct{}{}
+	// Use a separator that can't appear in either field so e.g.
+	// (ID="12", SubRole="3") doesn't collide with (ID="1", SubRole="23").
+	const sep = "\x00"
+	seen := make(map[string]int, len(p[role]))
+	for i, artist := range p[role] {
+		seen[artist.ID+sep+artist.SubRole] = i
 	}
 	for _, participant := range participants {
-		key := participant.ID + participant.SubRole
-		if _, ok := seen[key]; !ok {
-			seen[key] = struct{}{}
-			p[role] = append(p[role], participant)
+		key := participant.ID + sep + participant.SubRole
+		if idx, ok := seen[key]; ok {
+			// Same artist/sub-role seen before. The merge (e.g. building
+			// album.Participants from per-track participants) is inherently
+			// lossy when tracks differ on CreditedAs, but silently dropping
+			// the later value can mean the wrong credit ends up on the album.
+			// Prefer the most recently observed non-empty CreditedAs.
+			if participant.CreditedAs != "" {
+				p[role][idx].CreditedAs = participant.CreditedAs
+			}
+			continue
 		}
+		seen[key] = len(p[role])
+		p[role] = append(p[role], participant)
 	}
 }
 
