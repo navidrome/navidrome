@@ -138,7 +138,7 @@ var _ = Describe("ResolveRequest", func() {
 	})
 
 	It("transcodes to requested format", func() {
-		mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: 16})
+		mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: new(16)})
 
 		decider := svc.(*deciderService)
 		req := decider.ResolveRequest(ctx, mf, "opus", 0, 0)
@@ -147,7 +147,7 @@ var _ = Describe("ResolveRequest", func() {
 	})
 
 	It("transcodes to requested format with bitrate limit", func() {
-		mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: 16})
+		mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: new(16)})
 
 		decider := svc.(*deciderService)
 		req := decider.ResolveRequest(ctx, mf, "mp3", 128, 0)
@@ -169,7 +169,7 @@ var _ = Describe("ResolveRequest", func() {
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.DefaultDownsamplingFormat = "opus"
 
-		mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: 16})
+		mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: new(16)})
 
 		decider := svc.(*deciderService)
 		req := decider.ResolveRequest(ctx, mf, "", 128, 0)
@@ -179,7 +179,7 @@ var _ = Describe("ResolveRequest", func() {
 	})
 
 	It("passes offset through", func() {
-		mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: 16})
+		mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: new(16)})
 
 		decider := svc.(*deciderService)
 		req := decider.ResolveRequest(ctx, mf, "opus", 128, 30)
@@ -259,7 +259,7 @@ var _ = Describe("ResolveRequest", func() {
 
 	Context("Player MaxBitRate cap", func() {
 		It("applies player MaxBitRate cap when client has no limit", func() {
-			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: 16})
+			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: new(16)})
 			playerCtx := request.WithPlayer(ctx, model.Player{MaxBitRate: 320})
 
 			decider := svc.(*deciderService)
@@ -270,7 +270,7 @@ var _ = Describe("ResolveRequest", func() {
 		})
 
 		It("uses client limit when it is more restrictive than player MaxBitRate", func() {
-			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: 16})
+			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: new(16)})
 			playerCtx := request.WithPlayer(ctx, model.Player{MaxBitRate: 500})
 
 			decider := svc.(*deciderService)
@@ -332,7 +332,7 @@ var _ = Describe("ResolveRequest", func() {
 			DeferCleanup(configtest.SetupConfig())
 			conf.Server.DefaultDownsamplingFormat = "opus"
 
-			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: 16})
+			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: new(16)})
 
 			decider := svc.(*deciderService)
 			req := decider.ResolveRequest(ctx, mf, "xyz", 128, 0)

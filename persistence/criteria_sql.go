@@ -28,9 +28,10 @@ func (j smartPlaylistJoinType) has(other smartPlaylistJoinType) bool {
 }
 
 type smartPlaylistField struct {
-	expr     string
-	order    string
-	joinType smartPlaylistJoinType
+	expr        string
+	order       string
+	joinType    smartPlaylistJoinType
+	emptyValues []string // additional values that encode "missing" for string columns (e.g. '[]' for lyrics)
 }
 
 type smartPlaylistCriteria struct {
@@ -72,7 +73,7 @@ var smartPlaylistFields = map[string]smartPlaylistField{
 	"datemodified":         {expr: "media_file.updated_at"},
 	"discsubtitle":         {expr: "media_file.disc_subtitle"},
 	"comment":              {expr: "media_file.comment"},
-	"lyrics":               {expr: "media_file.lyrics"},
+	"lyrics":               {expr: "media_file.lyrics", emptyValues: []string{"[]"}},
 	"sorttitle":            {expr: "media_file.sort_title"},
 	"sortalbum":            {expr: "media_file.sort_album_name"},
 	"sortartist":           {expr: "media_file.sort_artist_name"},
@@ -218,30 +219,44 @@ func missingExpr(values map[string]any, checkAbsence bool) (squirrel.Sqlizer, er
 		}
 		return nil, fmt.Errorf("invalid field in criteria: %s", field)
 	}
-	if !info.IsTag && !info.IsRole && !info.Nullable {
-		return nil, fmt.Errorf("isMissing/isPresent operator is not supported for field: %s", field)
-	}
-
 	b, ok := value.(bool)
 	if !ok {
 		return nil, fmt.Errorf("invalid boolean value for 'missing' expression: %s: %v", field, value)
 	}
 	negate := checkAbsence == b
 
-	// Nullable column fields (e.g. ReplayGain) are stored in dedicated columns, not in the tags
-	// JSON, so "missing" maps to a NULL check on the column rather than a json_tree lookup.
-	if info.Nullable && !info.IsTag && !info.IsRole {
-		col, ok := fieldExpr(info.Name())
-		if !ok || col == "" {
+	switch {
+	case info.IsTag || info.IsRole:
+		return jsonExpr(info, nil, negate), nil
+	case info.Nullable:
+		// Nullable column fields are stored in dedicated columns, not in the tags JSON, so
+		// "missing" maps to a column check rather than a json_tree lookup. Numeric/boolean
+		// columns (e.g. ReplayGain, BPM) encode absence as NULL only; string columns (e.g.
+		// mbz_* IDs, lyrics) additionally treat empty string — and any field-specific empty
+		// encodings (e.g. '[]' for lyrics) — as missing. The unified flow below handles both:
+		// numeric/boolean fields simply have no empties, so the loops are no-ops.
+		f, ok := smartPlaylistFields[info.Name()]
+		if !ok || f.expr == "" {
 			return nil, fmt.Errorf("invalid field in criteria: %s", field)
 		}
-		if negate {
-			return squirrel.Eq{col: nil}, nil
+		col := f.expr
+		var empties []string
+		if !info.Numeric && !info.Boolean {
+			empties = append([]string{""}, f.emptyValues...)
 		}
-		return squirrel.NotEq{col: nil}, nil
+		missing := squirrel.Or{squirrel.Eq{col: nil}}
+		present := squirrel.And{squirrel.NotEq{col: nil}}
+		for _, e := range empties {
+			missing = append(missing, squirrel.Eq{col: e})
+			present = append(present, squirrel.NotEq{col: e})
+		}
+		if negate {
+			return missing, nil
+		}
+		return present, nil
+	default:
+		return nil, fmt.Errorf("isMissing/isPresent operator is not supported for field: %s", field)
 	}
-
-	return jsonExpr(info, nil, negate), nil
 }
 
 func mapExpr(values map[string]any, makeCond func(map[string]any) squirrel.Sqlizer, negateJSON bool) (squirrel.Sqlizer, error) {

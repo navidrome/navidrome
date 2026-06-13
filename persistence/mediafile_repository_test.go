@@ -824,4 +824,49 @@ var _ = Describe("MediaRepository", func() {
 			Expect(mediafiles[0].ID).To(Equal("mf1"))
 		})
 	})
+
+	Describe("BPM and BitDepth nullable round-trip", func() {
+		It("stores nil BPM and BitDepth as NULL and retrieves them as nil", func() {
+			newID := id.NewRandom()
+			mf := model.MediaFile{LibraryID: 1, ID: newID, Path: "test/bpm-nil.mp3"}
+			Expect(mr.Put(&mf)).To(Succeed())
+
+			retrieved, err := mr.Get(newID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(retrieved.BPM).To(BeNil())
+			Expect(retrieved.BitDepth).To(BeNil())
+
+			// Also verify via raw SQL that the columns are truly NULL (not 0)
+			db := GetDBXBuilder()
+			var row struct {
+				BPM      *int `db:"bpm"`
+				BitDepth *int `db:"bit_depth"`
+			}
+			err = db.NewQuery("SELECT bpm, bit_depth FROM media_file WHERE id={:id}").
+				Bind(dbx.Params{"id": newID}).
+				One(&row)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(row.BPM).To(BeNil(), "bpm should be stored as NULL in the database")
+			Expect(row.BitDepth).To(BeNil(), "bit_depth should be stored as NULL in the database")
+
+			_ = mr.Delete(newID)
+		})
+
+		It("stores non-nil BPM and BitDepth and retrieves correct values", func() {
+			newID := id.NewRandom()
+			bpm := 120
+			bitDepth := 24
+			mf := model.MediaFile{LibraryID: 1, ID: newID, Path: "test/bpm-set.mp3", BPM: &bpm, BitDepth: &bitDepth}
+			Expect(mr.Put(&mf)).To(Succeed())
+
+			retrieved, err := mr.Get(newID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(retrieved.BPM).ToNot(BeNil())
+			Expect(*retrieved.BPM).To(Equal(120))
+			Expect(retrieved.BitDepth).ToNot(BeNil())
+			Expect(*retrieved.BitDepth).To(Equal(24))
+
+			_ = mr.Delete(newID)
+		})
+	})
 })
