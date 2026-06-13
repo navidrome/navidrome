@@ -137,7 +137,7 @@ func (u *MockedUserRepo) SetUserLibraries(userID string, libraryIDs []int) error
 	return nil
 }
 
-func (u *MockedUserRepo) RatingStats(ctx context.Context) ([]model.UserRatingStats, error) {
+func (u *MockedUserRepo) RatingStats(ctx context.Context, userID string) ([]model.UserRatingStats, error) {
 	if u.Error != nil {
 		return nil, u.Error
 	}

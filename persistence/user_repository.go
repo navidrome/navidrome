@@ -478,7 +478,7 @@ func (r *userRepository) SetUserLibraries(userID string, libraryIDs []int) error
 	return nil
 }
 
-func (r *userRepository) RatingStats(ctx context.Context) ([]model.UserRatingStats, error) {
+func (r *userRepository) RatingStats(ctx context.Context, userID string) ([]model.UserRatingStats, error) {
 	type row struct {
 		UserID   string `db:"user_id"`
 		UserName string `db:"user_name"`
@@ -487,10 +487,14 @@ func (r *userRepository) RatingStats(ctx context.Context) ([]model.UserRatingSta
 		Count    int    `db:"cnt"`
 	}
 
+	where := And{Gt{"a.rating": 0}, Eq{"a.item_type": []interface{}{"media_file", "album"}}}
+	if userID != "" {
+		where = append(where, Eq{"a.user_id": userID})
+	}
 	sel := Select(`a.user_id`, `u.user_name`, `a.item_type`, `a.rating`, `count(*) as cnt`).
 		From(`annotation a`).
 		Join(`"user" u ON a.user_id = u.id`).
-		Where(And{Gt{"a.rating": 0}, Eq{"a.item_type": []interface{}{"media_file", "album"}}}).
+		Where(where).
 		GroupBy(`a.user_id`, `u.user_name`, `a.item_type`, `a.rating`).
 		OrderBy(`u.user_name`, `a.item_type`, `a.rating DESC`)
 

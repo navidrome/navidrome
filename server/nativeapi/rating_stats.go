@@ -19,21 +19,15 @@ func (api *Router) addRatingStatsRoute(r chi.Router) {
 func getRatingStats(ds model.DataStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currentUser, _ := request.UserFrom(r.Context())
-		stats, err := ds.User(r.Context()).RatingStats(r.Context())
+		filterUserID := ""
+		if !currentUser.IsAdmin {
+			filterUserID = currentUser.ID
+		}
+		stats, err := ds.User(r.Context()).RatingStats(r.Context(), filterUserID)
 		if err != nil {
 			log.Error(r.Context(), "Error getting rating stats", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
-		}
-		if !currentUser.IsAdmin {
-			filtered := make([]model.UserRatingStats, 0, 1)
-			for _, s := range stats {
-				if s.UserID == currentUser.ID {
-					filtered = append(filtered, s)
-					break
-				}
-			}
-			stats = filtered
 		}
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(stats); err != nil {
@@ -50,13 +44,21 @@ func getRatingItems(ds model.DataStore) http.HandlerFunc {
 		ratingStr := r.URL.Query().Get("rating")
 
 		rating, err := strconv.Atoi(ratingStr)
-		if err != nil || rating < 1 || rating > 5 || userID == "" || (itemType != "album" && itemType != "song") {
-			http.Error(w, "invalid parameters", http.StatusBadRequest)
+		if err != nil || rating < 1 || rating > 5 {
+			http.Error(w, "rating must be between 1 and 5", http.StatusBadRequest)
+			return
+		}
+		if userID == "" {
+			http.Error(w, "userId is required", http.StatusBadRequest)
+			return
+		}
+		if itemType != "album" && itemType != "song" {
+			http.Error(w, "type must be 'album' or 'song'", http.StatusBadRequest)
 			return
 		}
 
 		if !currentUser.IsAdmin && currentUser.ID != userID {
-			http.Error(w, "forbidden", http.StatusForbidden)
+			http.Error(w, "non-admin users can only query their own ratings", http.StatusForbidden)
 			return
 		}
 

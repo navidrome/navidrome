@@ -17,7 +17,7 @@ export const AverageRatingField = ({ className, size, record = {}, ...rest }) =>
   const classes = useStyles()
   const translate = useTranslate()
 
-  const avg = record.averageRating || 0
+  const avg = Number(record.averageRating) || 0
   if (avg <= 0) return null
 
   return (

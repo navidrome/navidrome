@@ -62,10 +62,8 @@ const UserRatingItems = ({ match }) => {
   const title = `${userName} · ${typeLabel} · ${rating}★`
 
   const getCoverUrl = (item) => {
-    return subsonic.getCoverArtUrl(
-      { id: item.id, albumArtist: type === 'album' ? item.artist : undefined, album: type === 'song' ? item.name : undefined, updatedAt: item.updatedAt },
-      40,
-    )
+    const coverArtId = type === 'album' ? item.id : item.albumId
+    return subsonic.getCoverArtUrl({ id: coverArtId, updatedAt: item.updatedAt }, 40)
   }
 
   return (

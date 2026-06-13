@@ -131,7 +131,12 @@ const RatingTable = ({ stats, label, userId, userName, type }) => {
                   onClick={() => count > 0 && history.push(linkTo)}
                   tabIndex={count > 0 ? 0 : undefined}
                   role={count > 0 ? 'button' : undefined}
-                  onKeyDown={count > 0 ? (e) => (e.key === 'Enter' || e.key === ' ') && history.push(linkTo) : undefined}
+                  onKeyDown={count > 0 ? (e) => {
+                    if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+                      e.preventDefault()
+                      history.push(linkTo)
+                    }
+                  } : undefined}
                 >
                   <td className={classes.ratingCell}>{r}.0</td>
                   <td className={classes.countCell}>{count}</td>
