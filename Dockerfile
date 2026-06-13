@@ -69,8 +69,16 @@ RUN --mount=type=bind,source=. \
     set -e
     xx-go --wrap
     export CGO_ENABLED=1
+    # Native libwebp (gen2brain/webp) uses ebitengine/purego reverse callbacks,
+    # which purego does not support on 32-bit ARM and crash with a SIGSEGV
+    # (issue #5597). Build those arches with the "nodynamic" tag so gen2brain/webp
+    # is WASM-only and never links the purego path. arm64 keeps native libwebp.
+    BUILD_TAGS=netgo,sqlite_fts5
+    if [ "$(xx-info arch)" = "arm" ]; then
+        BUILD_TAGS=${BUILD_TAGS},nodynamic
+    fi
     # -latomic is required on 32-bit arm (arm/v6, arm/v7) so SQLite's 64-bit atomics resolve.
-    go build -tags=netgo,sqlite_fts5 -ldflags="-w -s \
+    go build -tags=${BUILD_TAGS} -ldflags="-w -s \
         -linkmode=external -extldflags '-latomic' \
         -X github.com/navidrome/navidrome/consts.gitSha=${GIT_SHA} \
         -X github.com/navidrome/navidrome/consts.gitTag=${GIT_TAG}" \
