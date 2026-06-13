@@ -123,9 +123,6 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string, checker *IgnoreC
 			log.Trace(ctx, "Scanner: Ignoring entry", "path", entryPath)
 			continue
 		}
-		if isEntryIgnored(entry.Name()) {
-			continue
-		}
 		if ctx.Err() != nil {
 			return folder, children, ctx.Err()
 		}
@@ -135,7 +132,10 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string, checker *IgnoreC
 			log.Warn(ctx, "Scanner: Invalid symlink", "dir", entryPath, err)
 			continue
 		}
-		if isDir && !isDirIgnored(entry.Name()) && isDirReadable(ctx, job.fs, entryPath) {
+		if isIgnoredEntry(entry.Name(), isDir) {
+			continue
+		}
+		if isDir && isDirReadable(ctx, job.fs, entryPath) {
 			children = append(children, entryPath)
 			folder.numSubFolders++
 		} else {
@@ -233,22 +233,32 @@ var ignoredDirs = []string{
 	"#snapshot",
 	"@Recycle",
 	"@Recently-Snapshot",
+	".git",
 	".streams",
 	"lost+found",
 }
 
-// isDirIgnored returns true if the directory represented by dirEnt should be ignored
-func isDirIgnored(name string) bool {
-	// allows Album folders for albums which eg start with ellipses
-	if strings.HasPrefix(name, ".") && !strings.HasPrefix(name, "..") {
+// isIgnoredEntry returns true if a directory entry with the given name should be
+// skipped during scanning. It centralizes all name- and type-based ignore policy:
+//   - special system directories in ignoredDirs are always ignored;
+//   - dot-prefixed files are always ignored;
+//   - dot-prefixed folders are ignored unless Scanner.IgnoreDotFolders is disabled,
+//     allowing albums like ".Hack Sign" to be scanned when the option is off.
+func isIgnoredEntry(name string, isDir bool) bool {
+	if isDir && isDirIgnored(name) {
 		return true
 	}
-	if slices.ContainsFunc(ignoredDirs, func(s string) bool { return strings.EqualFold(s, name) }) {
-		return true
-	}
-	return false
+	return isDotEntry(name) && (!isDir || conf.Server.Scanner.IgnoreDotFolders)
 }
 
-func isEntryIgnored(name string) bool {
-	return strings.HasPrefix(name, ".") && !strings.HasPrefix(name, "..")
+// isDirIgnored returns true if the directory name is in the explicit ignoredDirs
+// blocklist. Used both while walking the tree and by the file watcher.
+func isDirIgnored(name string) bool {
+	return slices.ContainsFunc(ignoredDirs, func(s string) bool { return strings.EqualFold(s, name) })
+}
+
+// isDotEntry returns true if the entry name starts with a dot, excluding the
+// special "." and ".." references.
+func isDotEntry(name string) bool {
+	return name != "." && strings.HasPrefix(name, ".") && !strings.HasPrefix(name, "..")
 }
