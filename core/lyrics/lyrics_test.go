@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -44,6 +45,71 @@ var _ = Describe("sources", func() {
 		},
 	}
 
+	elrcLyrics := model.LyricList{
+		model.Lyrics{
+			DisplayArtist: "ELRC Artist",
+			DisplayTitle:  "ELRC Song",
+			Lang:          "eng",
+			Line: []model.Line{
+				{
+					Start: ptr(int64(1000)),
+					End:   ptr(int64(3000)),
+					Value: "Lead words",
+					Cue: []model.Cue{
+						{
+							Start:     ptr(int64(1000)),
+							End:       ptr(int64(1500)),
+							Value:     "Lead ",
+							ByteStart: 0,
+							ByteEnd:   4,
+						},
+						{
+							Start:     ptr(int64(1500)),
+							End:       ptr(int64(3000)),
+							Value:     "words",
+							ByteStart: 5,
+							ByteEnd:   9,
+						},
+					},
+				},
+				{
+					Start: ptr(int64(3000)),
+					Value: "Fallback line",
+				},
+			},
+			Synced: true,
+		},
+	}
+
+	ttmlLyrics := model.LyricList{
+		model.Lyrics{
+			Kind: "main",
+			Lang: "eng",
+			Line: []model.Line{
+				{
+					Start: ptr(int64(18800)),
+					Value: "We're no strangers to love",
+				},
+				{
+					Start: ptr(int64(22800)),
+					Value: "You know the rules and so do I",
+				},
+			},
+			Synced: true,
+		},
+		model.Lyrics{
+			Kind: "main",
+			Lang: "por",
+			Line: []model.Line{
+				{
+					Start: ptr(int64(18800)),
+					Value: "Nao somos estranhos ao amor",
+				},
+			},
+			Synced: true,
+		},
+	}
+
 	unsyncedLyrics := model.LyricList{
 		model.Lyrics{
 			Lang: "xxx",
@@ -56,6 +122,25 @@ var _ = Describe("sources", func() {
 				},
 			},
 			Synced: false,
+		},
+	}
+
+	srtLyrics := model.LyricList{
+		model.Lyrics{
+			Lang: "xxx",
+			Line: []model.Line{
+				{
+					Start: ptr(int64(18800)),
+					End:   ptr(int64(22800)),
+					Value: "We're from subtitles",
+				},
+				{
+					Start: ptr(int64(22801)),
+					End:   ptr(int64(26000)),
+					Value: "Another subtitle line",
+				},
+			},
+			Synced: true,
 		},
 	}
 
@@ -80,7 +165,88 @@ var _ = Describe("sources", func() {
 	},
 		Entry("embedded > lrc > txt", "embedded,.lrc,.txt", embeddedLyrics),
 		Entry("lrc > embedded > txt", ".lrc,embedded,.txt", syncedLyrics),
-		Entry("txt > lrc > embedded", ".txt,.lrc,embedded", unsyncedLyrics))
+		Entry("elrc > lrc > embedded", ".elrc,.lrc,embedded", elrcLyrics),
+		Entry("srt > txt > embedded", ".srt,.txt,embedded", srtLyrics),
+		Entry("txt > lrc > embedded", ".txt,.lrc,embedded", unsyncedLyrics),
+		Entry("ttml > elrc > lrc > srt > embedded", ".ttml,.elrc,.lrc,.srt,embedded", ttmlLyrics))
+
+	It("resolves source priority across duplicate media files", func() {
+		conf.Server.LyricsPriority = ".ttml,embedded"
+		embeddedJSON, err := json.Marshal(embeddedLyrics)
+		Expect(err).To(BeNil())
+
+		svc := lyrics.NewLyrics(nil)
+		batchSvc, ok := svc.(lyrics.BatchLyrics)
+		Expect(ok).To(BeTrue())
+
+		list, err := batchSvc.GetLyricsForMediaFiles(ctx, []model.MediaFile{
+			{
+				Lyrics: string(embeddedJSON),
+				Path:   "tests/fixtures/01 Invisible (RED) Edit Version.mp3",
+			},
+			{
+				Lyrics: "[]",
+				Path:   "tests/fixtures/test.mp3",
+			},
+		})
+		Expect(err).To(BeNil())
+		Expect(list).To(Equal(ttmlLyrics))
+	})
+
+	It("preserves configured sidecar suffix casing on case-sensitive filesystems", func() {
+		dir, err := os.MkdirTemp("", "lyrics-case-*")
+		Expect(err).ToNot(HaveOccurred())
+		DeferCleanup(func() {
+			Expect(os.RemoveAll(dir)).To(Succeed())
+		})
+
+		probe := filepath.Join(dir, "CASECHECK")
+		Expect(os.WriteFile(probe, []byte("probe"), 0600)).To(Succeed())
+		_, err = os.Stat(filepath.Join(dir, "casecheck"))
+		if err == nil {
+			Skip("filesystem is case-insensitive")
+		}
+		Expect(os.IsNotExist(err)).To(BeTrue())
+
+		conf.Server.LyricsPriority = ".LRC"
+		Expect(os.WriteFile(filepath.Join(dir, "song.LRC"), []byte("[00:01.00]Upper suffix"), 0600)).To(Succeed())
+
+		svc := lyrics.NewLyrics(nil)
+		list, err := svc.GetLyrics(ctx, &model.MediaFile{
+			LibraryPath: dir,
+			Path:        "song.mp3",
+		})
+
+		Expect(err).To(BeNil())
+		Expect(list).To(HaveLen(1))
+		Expect(list[0].Line).To(Equal([]model.Line{
+			{Start: ptr(int64(1000)), Value: "Upper suffix"},
+		}))
+	})
+
+	It("falls through generic YAML sidecars that are not Lyricsfile documents", func() {
+		dir, err := os.MkdirTemp("", "lyrics-yaml-fallback-*")
+		Expect(err).ToNot(HaveOccurred())
+		DeferCleanup(func() {
+			Expect(os.RemoveAll(dir)).To(Succeed())
+		})
+
+		Expect(os.WriteFile(filepath.Join(dir, "song.yaml"), []byte("title: not lyricsfile\n"), 0600)).To(Succeed())
+		Expect(os.WriteFile(filepath.Join(dir, "song.lrc"), []byte("[00:01.00]Fallback line"), 0600)).To(Succeed())
+
+		conf.Server.LyricsPriority = ".yaml,.lrc"
+		svc := lyrics.NewLyrics(nil)
+		list, err := svc.GetLyrics(ctx, &model.MediaFile{
+			LibraryPath: dir,
+			Path:        "song.mp3",
+		})
+
+		Expect(err).To(BeNil())
+		Expect(list).To(HaveLen(1))
+		Expect(list[0].Line).To(Equal([]model.Line{
+			{Start: ptr(int64(1000)), Value: "Fallback line"},
+		}))
+	})
 
 	Context("Errors", func() {
 		var RegularUserContext = XContext

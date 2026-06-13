@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/navidrome/navidrome/conf"
+	lyricssvc "github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/str"
@@ -135,7 +136,7 @@ func (md Metadata) mapGain(rg, r128 model.TagName) *float64 {
 }
 
 func (md Metadata) mapLyrics() string {
-	rawLyrics := md.Pairs(model.TagLyrics)
+	rawLyrics := md.rawPairs(model.TagLyrics)
 
 	lyricList := make(model.LyricList, 0, len(rawLyrics))
 
@@ -143,13 +144,15 @@ func (md Metadata) mapLyrics() string {
 		lang := raw.Key()
 		text := raw.Value()
 
-		lyrics, err := model.ToLyrics(lang, text)
+		lyrics, err := lyricssvc.ParseEmbedded(lang, text)
 		if err != nil {
 			log.Warn("Unexpected failure occurred when parsing lyrics", "file", md.filePath, err)
 			continue
 		}
-		if !lyrics.IsEmpty() {
-			lyricList = append(lyricList, *lyrics)
+		for _, lyric := range lyrics {
+			if !lyric.IsEmpty() {
+				lyricList = append(lyricList, lyric)
+			}
 		}
 	}
 

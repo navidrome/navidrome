@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"sort"
+	"strings"
 
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/metadata"
@@ -115,6 +116,87 @@ var _ = Describe("ToMediaFile", func() {
 			sort.Slice(actual, func(i, j int) bool { return actual[i].Lang < actual[j].Lang })
 			sort.Slice(expected, func(i, j int) bool { return expected[i].Lang < expected[j].Lang })
 			Expect(actual).To(Equal(expected))
+		})
+
+		It("should parse embedded TTML lyrics before sanitizing XML tags", func() {
+			mf = toMediaFile(model.RawTags{
+				"LYRICS:ENG": {`<tt xmlns="http://www.w3.org/ns/ttml">
+  <body>
+    <div>
+      <p begin="00:00:01.000" end="00:00:02.500">Embedded TTML line</p>
+    </div>
+  </body>
+</tt>`},
+			})
+			var actual model.LyricList
+			err := json.Unmarshal([]byte(mf.Lyrics), &actual)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(actual).To(Equal(model.LyricList{
+				{
+					Kind:   "main",
+					Lang:   "eng",
+					Line:   []model.Line{{Start: ptr(int64(1000)), End: ptr(int64(2500)), Value: "Embedded TTML line"}},
+					Synced: true,
+				},
+			}))
+		})
+
+		It("should parse embedded TTML lyrics longer than the metadata tag max length", func() {
+			padding := strings.Repeat(`<text for="unused">padding</text>`, 1400)
+			content := `<tt xmlns="http://www.w3.org/ns/ttml" xmlns:itunes="http://music.apple.com/lyric-ttml-internal" xml:lang="en">
+  <head>
+    <metadata>
+      <iTunesMetadata xmlns="http://music.apple.com/lyric-ttml-internal">
+        <translations>
+          <translation xml:lang="en-US">` + padding + `</translation>
+        </translations>
+      </iTunesMetadata>
+    </metadata>
+  </head>
+  <body>
+    <div>
+      <p begin="00:00:01.000" end="00:00:02.500" itunes:key="L1">Long embedded TTML line</p>
+    </div>
+  </body>
+</tt>`
+
+			Expect(len(content)).To(BeNumerically(">", 32768))
+
+			mf = toMediaFile(model.RawTags{
+				"LYRICS:ENG": {content},
+			})
+			var actual model.LyricList
+			err := json.Unmarshal([]byte(mf.Lyrics), &actual)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(actual).To(HaveLen(1))
+			Expect(actual[0].Kind).To(Equal("main"))
+			Expect(actual[0].Lang).To(Equal("en"))
+			Expect(actual[0].Line).To(Equal([]model.Line{
+				{Start: ptr(int64(1000)), End: ptr(int64(2500)), Value: "Long embedded TTML line"},
+			}))
+		})
+
+		It("should parse embedded SRT lyrics with the tag language", func() {
+			mf = toMediaFile(model.RawTags{
+				"LYRICS:POR": {`1
+00:00:18,800 --> 00:00:22,800
+Estamos nas legendas`},
+			})
+			var actual model.LyricList
+			err := json.Unmarshal([]byte(mf.Lyrics), &actual)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(actual).To(Equal(model.LyricList{
+				{
+					Lang: "por",
+					Line: []model.Line{
+						{Start: ptr(int64(18800)), End: ptr(int64(22800)), Value: "Estamos nas legendas"},
+					},
+					Synced: true,
+				},
+			}))
 		})
 	})
 
