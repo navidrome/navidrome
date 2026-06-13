@@ -153,18 +153,20 @@ var _ = Describe("resizeImage", func() {
 })
 
 var _ = Describe("shouldUseDynamicWebP", func() {
-	// On 32-bit ARM (GOARCH=arm), the gen2brain/webp dynamic path uses
-	// ebitengine/purego reverse callbacks, which are unsupported on that
-	// architecture and crash the process with a SIGSEGV (see issue #5597).
-	// The dynamic path must never be selected there.
-	It("returns false on 32-bit ARM", func() {
+	// On 32-bit architectures (GOARCH=arm and 386), the gen2brain/webp dynamic
+	// path uses ebitengine/purego reverse callbacks, which purego does not
+	// support there (callback impl is built with !386 && !arm) and which crash
+	// the process with a SIGSEGV (see issue #5597). The dynamic path must never
+	// be selected on those architectures.
+	It("returns false on 32-bit ARM and x86", func() {
 		Expect(shouldUseDynamicWebP("arm")).To(BeFalse())
+		Expect(shouldUseDynamicWebP("386")).To(BeFalse())
 	})
 
 	It("returns true on architectures where purego callbacks work", func() {
 		Expect(shouldUseDynamicWebP("amd64")).To(BeTrue())
 		Expect(shouldUseDynamicWebP("arm64")).To(BeTrue())
-		Expect(shouldUseDynamicWebP("386")).To(BeTrue())
+		Expect(shouldUseDynamicWebP("riscv64")).To(BeTrue())
 	})
 })
 

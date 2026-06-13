@@ -23,7 +23,7 @@ import (
 func init() {
 	conf.AddHook(func() {
 		if !shouldUseDynamicWebP(runtime.GOARCH) {
-			log.Debug("Using WASM WebP encoder/decoder", "reason", "native libwebp via purego is unsupported on 32-bit ARM")
+			log.Debug("Using WASM WebP encoder/decoder", "reason", "native libwebp via purego is unsupported on 32-bit ARM/x86")
 			return
 		}
 		if err := webp.Dynamic(); err != nil {
@@ -36,9 +36,9 @@ func init() {
 
 // shouldUseDynamicWebP reports whether the native libwebp path is safe on the
 // given GOARCH. The dynamic path uses purego callbacks, which are unsupported
-// on 32-bit ARM and crash the process (issue #5597), so force WASM there.
+// on 32-bit ARM and x86 and crash the process (issue #5597), so force WASM there.
 func shouldUseDynamicWebP(goarch string) bool {
-	return goarch != "arm"
+	return goarch != "arm" && goarch != "386"
 }
 
 var bufPool = sync.Pool{
