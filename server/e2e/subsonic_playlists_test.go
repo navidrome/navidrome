@@ -681,6 +681,8 @@ var _ = Describe("Playlist Endpoints", Ordered, func() {
 			Entry("bitdepth", "bitdepth"),
 			Entry("lyrics", "lyrics"),
 			Entry("mbz_recording_id", "mbz_recording_id"),
+			Entry("album", "album"),
+			Entry("comment", "comment"),
 		)
 	})
 })
