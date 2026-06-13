@@ -219,48 +219,44 @@ func missingExpr(values map[string]any, checkAbsence bool) (squirrel.Sqlizer, er
 		}
 		return nil, fmt.Errorf("invalid field in criteria: %s", field)
 	}
-	if !info.IsTag && !info.IsRole && !info.Nullable {
-		return nil, fmt.Errorf("isMissing/isPresent operator is not supported for field: %s", field)
-	}
-
 	b, ok := value.(bool)
 	if !ok {
 		return nil, fmt.Errorf("invalid boolean value for 'missing' expression: %s: %v", field, value)
 	}
 	negate := checkAbsence == b
 
-	// Nullable column fields are stored in dedicated columns, not in the tags JSON, so "missing"
-	// maps to a column check rather than a json_tree lookup. Numeric/boolean columns (e.g.
-	// ReplayGain) encode absence as NULL; string columns (e.g. mbz_* IDs) encode it as NULL or
-	// empty string, plus any field-specific empty encodings (e.g. '[]' for lyrics).
-	if info.Nullable && !info.IsTag && !info.IsRole {
+	switch {
+	case info.IsTag || info.IsRole:
+		return jsonExpr(info, nil, negate), nil
+	case info.Nullable:
+		// Nullable column fields are stored in dedicated columns, not in the tags JSON, so
+		// "missing" maps to a column check rather than a json_tree lookup. Numeric/boolean
+		// columns (e.g. ReplayGain, BPM) encode absence as NULL only; string columns (e.g.
+		// mbz_* IDs, lyrics) additionally treat empty string — and any field-specific empty
+		// encodings (e.g. '[]' for lyrics) — as missing. The unified flow below handles both:
+		// numeric/boolean fields simply have no empties, so the loops are no-ops.
 		f, ok := smartPlaylistFields[info.Name()]
 		if !ok || f.expr == "" {
 			return nil, fmt.Errorf("invalid field in criteria: %s", field)
 		}
 		col := f.expr
-		if info.Numeric || info.Boolean {
-			if negate {
-				return squirrel.Eq{col: nil}, nil
-			}
-			return squirrel.NotEq{col: nil}, nil
+		var empties []string
+		if !info.Numeric && !info.Boolean {
+			empties = append([]string{""}, f.emptyValues...)
 		}
-		empties := append([]string{""}, f.emptyValues...)
-		if negate {
-			cond := squirrel.Or{squirrel.Eq{col: nil}}
-			for _, e := range empties {
-				cond = append(cond, squirrel.Eq{col: e})
-			}
-			return cond, nil
-		}
-		cond := squirrel.And{squirrel.NotEq{col: nil}}
+		missing := squirrel.Or{squirrel.Eq{col: nil}}
+		present := squirrel.And{squirrel.NotEq{col: nil}}
 		for _, e := range empties {
-			cond = append(cond, squirrel.NotEq{col: e})
+			missing = append(missing, squirrel.Eq{col: e})
+			present = append(present, squirrel.NotEq{col: e})
 		}
-		return cond, nil
+		if negate {
+			return missing, nil
+		}
+		return present, nil
+	default:
+		return nil, fmt.Errorf("isMissing/isPresent operator is not supported for field: %s", field)
 	}
-
-	return jsonExpr(info, nil, negate), nil
 }
 
 func mapExpr(values map[string]any, makeCond func(map[string]any) squirrel.Sqlizer, negateJSON bool) (squirrel.Sqlizer, error) {
