@@ -109,6 +109,26 @@ var _ = Describe("phasePlaylists", func() {
 			Expect(v).To(Equal("1"))
 		})
 
+		It("returns an error (not a silent defer) on a datastore failure resolving the admin", func() {
+			userRepo.Error = errors.New("db is locked")
+
+			err := phase.produce(func(folder *model.Folder) {})
+
+			Expect(err).To(MatchError(ContainSubstring("finding admin user")))
+			// Must NOT have set the pending flag on a real error.
+			_, getErr := propRepo.Get(consts.PlaylistsImportPendingFlagKey)
+			Expect(getErr).To(HaveOccurred())
+		})
+
+		It("returns an error when the pending flag cannot be persisted", func() {
+			userRepo.Data = map[string]*model.User{} // no admin -> defer path
+			propRepo.Error = errors.New("property table unavailable")
+
+			err := phase.produce(func(folder *model.Folder) {})
+
+			Expect(err).To(MatchError(ContainSubstring("recording pending playlist import")))
+		})
+
 		It("imports all playlist folders when the pending flag is set", func() {
 			Expect(propRepo.Put(consts.PlaylistsImportPendingFlagKey, "1")).To(Succeed())
 			folderRepo.SetAllData(map[*model.Folder]error{
