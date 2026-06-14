@@ -250,6 +250,18 @@ func (r folderRepository) GetTouchedWithPlaylists() (model.FolderCursor, error) 
 	return wrapFolderCursor(cursor), nil
 }
 
+func (r folderRepository) GetAllWithPlaylists() (model.FolderCursor, error) {
+	query := r.selectFolder().Where(And{
+		Eq{"missing": false},
+		Gt{"num_playlists": 0},
+	})
+	cursor, err := queryWithStableResults[dbFolder](r.sqlRepository, query)
+	if err != nil {
+		return nil, err
+	}
+	return wrapFolderCursor(cursor), nil
+}
+
 func wrapFolderCursor(cursor iter.Seq2[dbFolder, error]) model.FolderCursor {
 	return func(yield func(model.Folder, error) bool) {
 		for f, err := range cursor {

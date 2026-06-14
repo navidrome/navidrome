@@ -10,6 +10,7 @@ import (
 
 	ppl "github.com/google/go-pipeline/pkg/pipeline"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/log"
@@ -18,12 +19,13 @@ import (
 )
 
 type phasePlaylists struct {
-	ctx       context.Context
-	scanState *scanState
-	ds        model.DataStore
-	pls       playlists.Playlists
-	cw        artwork.CacheWarmer
-	refreshed atomic.Uint32
+	ctx           context.Context
+	scanState     *scanState
+	ds            model.DataStore
+	pls           playlists.Playlists
+	cw            artwork.CacheWarmer
+	refreshed     atomic.Uint32
+	pendingImport bool
 }
 
 func createPhasePlaylists(ctx context.Context, scanState *scanState, ds model.DataStore, pls playlists.Playlists, cw artwork.CacheWarmer) *phasePlaylists {
@@ -49,22 +51,37 @@ func (p *phasePlaylists) produce(put func(entry *model.Folder)) error {
 		log.Info(p.ctx, "Playlists will not be imported, AutoImportPlaylists is set to false")
 		return nil
 	}
-	u, _ := request.UserFrom(p.ctx)
-	if !u.IsAdmin || u.ID == "" {
-		log.Warn(p.ctx, "Playlists will not be imported, as there are no admin users yet, "+
-			"Please create an admin user first, and then update the playlists for them to be imported")
+
+	// Resolve the admin at phase time (the producer runs late in the scan), so an
+	// admin created while the scan was in progress is picked up. Assigned once,
+	// before any put() below, so the channel send synchronizes it with the stages.
+	admin, err := p.ds.User(p.ctx).FindFirstAdmin()
+	if err != nil || admin == nil || admin.ID == "" {
+		_ = p.ds.Property(p.ctx).Put(consts.PlaylistsImportPendingFlagKey, "1")
+		log.Warn(p.ctx, "Playlists will not be imported, as there are no admin users yet. "+
+			"They will be imported automatically once an admin user is created.")
 		return nil
+	}
+	p.ctx = request.WithUser(p.ctx, *admin)
+
+	// When recovering a deferred import, scan all playlist folders, not just touched ones.
+	p.pendingImport = p.importPending()
+	folderRepo := p.ds.Folder(p.ctx)
+	var cursor model.FolderCursor
+	if p.pendingImport {
+		cursor, err = folderRepo.GetAllWithPlaylists()
+	} else {
+		cursor, err = folderRepo.GetTouchedWithPlaylists()
+	}
+	if err != nil {
+		return fmt.Errorf("loading folders with playlists: %w", err)
 	}
 
 	count := 0
-	cursor, err := p.ds.Folder(p.ctx).GetTouchedWithPlaylists()
-	if err != nil {
-		return fmt.Errorf("loading touched folders: %w", err)
-	}
-	log.Debug(p.ctx, "Scanner: Checking playlists that may need refresh")
+	log.Debug(p.ctx, "Scanner: Checking playlists that may need refresh", "pendingImport", p.pendingImport)
 	for folder, err := range cursor {
 		if err != nil {
-			return fmt.Errorf("loading touched folder: %w", err)
+			return fmt.Errorf("loading folder with playlists: %w", err)
 		}
 		count++
 		put(&folder)
@@ -76,6 +93,11 @@ func (p *phasePlaylists) produce(put func(entry *model.Folder)) error {
 	}
 
 	return nil
+}
+
+func (p *phasePlaylists) importPending() bool {
+	v, _ := p.ds.Property(p.ctx).DefaultGet(consts.PlaylistsImportPendingFlagKey, "0")
+	return v == "1"
 }
 
 func (p *phasePlaylists) stages() []ppl.Stage[*model.Folder] {
@@ -122,6 +144,11 @@ func (p *phasePlaylists) finalize(err error) error {
 		logF = log.Debug
 	} else {
 		p.scanState.changesDetected.Store(true)
+	}
+	if p.pendingImport && err == nil {
+		if derr := p.ds.Property(p.ctx).Delete(consts.PlaylistsImportPendingFlagKey); derr != nil {
+			log.Warn(p.ctx, "Scanner: Could not clear pending playlist-import flag", derr)
+		}
 	}
 	logF(p.ctx, "Scanner: Finished refreshing playlists", "refreshed", refreshed, err)
 	return err
