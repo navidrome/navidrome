@@ -31,13 +31,14 @@ import (
 type Server struct {
 	router   chi.Router
 	ds       model.DataStore
+	scanner  model.Scanner
 	appRoot  string
 	broker   events.Broker
 	insights metrics.Insights
 }
 
-func New(ds model.DataStore, broker events.Broker, insights metrics.Insights) *Server {
-	s := &Server{ds: ds, broker: broker, insights: insights}
+func New(ds model.DataStore, scanner model.Scanner, broker events.Broker, insights metrics.Insights) *Server {
+	s := &Server{ds: ds, scanner: scanner, broker: broker, insights: insights}
 	initialSetup(ds)
 	auth.Init(s.ds)
 	s.initRoutes()
@@ -216,7 +217,7 @@ func (s *Server) mountAuthenticationRoutes() chi.Router {
 
 			r.Post("/login", login(s.ds))
 		}
-		r.Post("/createAdmin", createAdmin(s.ds))
+		r.Post("/createAdmin", createAdmin(s.ds, s.scanner))
 	})
 }
 

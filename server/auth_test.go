@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -24,7 +25,7 @@ import (
 
 var _ = Describe("Auth", func() {
 	Describe("User login", func() {
-		var ds model.DataStore
+		var ds *tests.MockDataStore
 		var req *http.Request
 		var resp *httptest.ResponseRecorder
 
@@ -35,11 +36,18 @@ var _ = Describe("Auth", func() {
 
 		Describe("createAdmin", func() {
 			var createdAt time.Time
+			var mockScanner *tests.MockScanner
+			var folderRepo *tests.MockFolderRepo
 			BeforeEach(func() {
+				mockScanner = &tests.MockScanner{}
+				// Provide a folder repo: the default MockDataStore.Folder() returns
+				// an embedded nil interface, so TouchAllWithPlaylists() would panic.
+				folderRepo = &tests.MockFolderRepo{}
+				ds.MockedFolder = folderRepo
 				req = httptest.NewRequest("POST", "/createAdmin", strings.NewReader(`{"username":"johndoe", "password":"secret"}`))
 				resp = httptest.NewRecorder()
 				createdAt = time.Now()
-				createAdmin(ds)(resp, req)
+				createAdmin(ds, mockScanner)(resp, req)
 			})
 
 			It("creates an admin user with the specified password", func() {
@@ -60,6 +68,49 @@ var _ = Describe("Auth", func() {
 				Expect(parsed["name"]).To(Equal("Johndoe"))
 				Expect(parsed["id"]).ToNot(BeEmpty())
 				Expect(parsed["token"]).ToNot(BeEmpty())
+			})
+
+			It("touches playlist folders and triggers a background scan to import playlists", func() {
+				Expect(folderRepo.TouchAllCalled).To(BeTrue())
+				Eventually(mockScanner.GetScanAllCallCount).Should(Equal(1))
+				calls := mockScanner.GetScanAllCalls()
+				Expect(calls).To(HaveLen(1))
+				Expect(calls[0].FullScan).To(BeFalse())
+			})
+		})
+
+		Describe("createAdmin when touching folders fails", func() {
+			It("still creates the admin and does not start a scan", func() {
+				// Fresh datastore so CountAll() == 0 and creation is allowed.
+				folderRepo := &tests.MockFolderRepo{TouchAllErr: errors.New("boom")}
+				freshDS := &tests.MockDataStore{MockedFolder: folderRepo}
+				auth.Init(freshDS)
+				mockScanner := &tests.MockScanner{}
+				req = httptest.NewRequest("POST", "/createAdmin", strings.NewReader(`{"username":"janedoe", "password":"secret"}`))
+				resp = httptest.NewRecorder()
+				createAdmin(freshDS, mockScanner)(resp, req)
+
+				Expect(resp.Code).To(Equal(http.StatusOK))
+				u, err := freshDS.User(context.Background()).FindByUsername("janedoe")
+				Expect(err).To(BeNil())
+				Expect(u.IsAdmin).To(BeTrue())
+				// Touch failed, so the scan must not be started.
+				Consistently(mockScanner.GetScanAllCallCount).Should(Equal(0))
+			})
+		})
+
+		Describe("createAdmin with no scanner", func() {
+			It("still creates the admin and returns OK when scanner is nil", func() {
+				// Fresh datastore so CountAll() == 0 and creation is allowed.
+				freshDS := &tests.MockDataStore{MockedFolder: &tests.MockFolderRepo{}}
+				auth.Init(freshDS)
+				req = httptest.NewRequest("POST", "/createAdmin", strings.NewReader(`{"username":"janedoe", "password":"secret"}`))
+				resp = httptest.NewRecorder()
+				createAdmin(freshDS, nil)(resp, req)
+				Expect(resp.Code).To(Equal(http.StatusOK))
+				u, err := freshDS.User(context.Background()).FindByUsername("janedoe")
+				Expect(err).To(BeNil())
+				Expect(u.IsAdmin).To(BeTrue())
 			})
 		})
 

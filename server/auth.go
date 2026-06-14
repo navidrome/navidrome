@@ -107,7 +107,7 @@ func getCredentialsFromBody(r *http.Request) (username string, password string, 
 	return username, password, nil
 }
 
-func createAdmin(ds model.DataStore) func(w http.ResponseWriter, r *http.Request) {
+func createAdmin(ds model.DataStore, scanner model.Scanner) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		username, password, err := getCredentialsFromBody(r)
 		if err != nil {
@@ -129,8 +129,37 @@ func createAdmin(ds model.DataStore) func(w http.ResponseWriter, r *http.Request
 			_ = rest.RespondWithError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
+		// The first scan may have run before any admin existed, so playlists were
+		// skipped. Touch playlist folders and trigger a background scan so they
+		// get imported now. Failures here must not block admin creation.
+		triggerPlaylistImportScan(r.Context(), ds, scanner)
 		doLogin(ds, username, password, w, r)
 	}
+}
+
+// triggerPlaylistImportScan marks playlist folders as touched and starts a
+// background quick scan so previously-skipped playlists are imported. It runs on
+// a detached context so it survives the HTTP response, and logs (never returns)
+// errors.
+func triggerPlaylistImportScan(ctx context.Context, ds model.DataStore, scanner model.Scanner) {
+	if err := ds.Folder(ctx).TouchAllWithPlaylists(); err != nil {
+		log.Error(ctx, "Could not touch playlist folders after admin creation", err)
+		return
+	}
+	if scanner == nil {
+		return
+	}
+	scanCtx := context.WithoutCancel(ctx)
+	go func() {
+		start := time.Now()
+		warnings, err := scanner.ScanAll(scanCtx, false)
+		if err != nil {
+			log.Error(scanCtx, "Playlist-import scan after admin creation failed", err)
+			return
+		}
+		log.Info(scanCtx, "Playlist-import scan after admin creation completed",
+			"warnings", len(warnings), "elapsed", time.Since(start))
+	}()
 }
 
 func createAdminUser(ctx context.Context, ds model.DataStore, username, password string) error {

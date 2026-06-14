@@ -51,12 +51,24 @@ func CreateDataStore() model.DataStore {
 	return dataStore
 }
 
-func CreateServer() *server.Server {
+func CreateServer(ctx context.Context) *server.Server {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
+	fileCache := artwork.GetImageCache()
+	fFmpeg := ffmpeg.New()
 	broker := events.GetBroker()
+	metricsMetrics := metrics.GetPrometheusInstance(dataStore)
+	manager := plugins.GetManager(dataStore, broker, metricsMetrics)
+	agentsAgents := agents.GetAgents(dataStore, manager)
+	matcherMatcher := matcher.New(dataStore)
+	provider := external.NewProvider(dataStore, agentsAgents, matcherMatcher)
+	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, provider)
+	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
+	imageUploadService := core.NewImageUploadService()
+	playlistsPlaylists := playlists.NewPlaylists(dataStore, imageUploadService)
+	modelScanner := scanner.New(ctx, dataStore, cacheWarmer, broker, playlistsPlaylists, metricsMetrics)
 	insights := metrics.GetInstance(dataStore)
-	serverServer := server.New(dataStore, broker, insights)
+	serverServer := server.New(dataStore, modelScanner, broker, insights)
 	return serverServer
 }
 

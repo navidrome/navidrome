@@ -149,7 +149,7 @@ var _ = Describe("TLS support", func() {
 
 				// Create server with mock dependencies
 				ds := &tests.MockDataStore{}
-				server := New(ds, nil, nil)
+				server := New(ds, nil, nil, nil)
 
 				// Load the test certificate to create a trusted CA pool
 				certFile := filepath.Join(testDataDir, "test_cert.pem")

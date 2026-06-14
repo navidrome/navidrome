@@ -61,7 +61,7 @@ func CreateDataStore() model.DataStore {
 	))
 }
 
-func CreateServer() *server.Server {
+func CreateServer(ctx context.Context) *server.Server {
 	panic(wire.Build(
 		allProviders,
 	))
