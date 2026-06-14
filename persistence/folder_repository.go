@@ -250,6 +250,22 @@ func (r folderRepository) GetTouchedWithPlaylists() (model.FolderCursor, error) 
 	return wrapFolderCursor(cursor), nil
 }
 
+// GetAllWithPlaylists returns every non-missing folder that contains playlists,
+// without the updated_at/last_scan_at gate used by GetTouchedWithPlaylists. It is
+// used to recover playlists that were skipped on a previous scan (e.g. because no
+// admin user existed yet).
+func (r folderRepository) GetAllWithPlaylists() (model.FolderCursor, error) {
+	query := r.selectFolder().Where(And{
+		Eq{"missing": false},
+		Gt{"num_playlists": 0},
+	})
+	cursor, err := queryWithStableResults[dbFolder](r.sqlRepository, query)
+	if err != nil {
+		return nil, err
+	}
+	return wrapFolderCursor(cursor), nil
+}
+
 func wrapFolderCursor(cursor iter.Seq2[dbFolder, error]) model.FolderCursor {
 	return func(yield func(model.Folder, error) bool) {
 		for f, err := range cursor {
