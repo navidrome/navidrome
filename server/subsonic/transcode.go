@@ -283,13 +283,7 @@ func (api *Router) GetTranscodeDecision(w http.ResponseWriter, r *http.Request) 
 	// limits (issue #5583). Both fields are capped because the client sends
 	// them independently here; capping only MaxAudioBitrate would let an
 	// independent MaxTranscodingAudioBitrate slip through computeBitrate.
-	if player, ok := request.PlayerFrom(ctx); ok && player.MaxBitRate > 0 {
-		if clientInfo.MaxAudioBitrate == 0 || player.MaxBitRate < clientInfo.MaxAudioBitrate {
-			clientInfo.MaxAudioBitrate = player.MaxBitRate
-		}
-		if clientInfo.MaxTranscodingAudioBitrate == 0 || player.MaxBitRate < clientInfo.MaxTranscodingAudioBitrate {
-			clientInfo.MaxTranscodingAudioBitrate = player.MaxBitRate
-		}
+	if player, ok := request.PlayerFrom(ctx); ok && clientInfo.CapBitrate(player.MaxBitRate) {
 		log.Debug(ctx, "Applied player MaxBitRate cap to transcode decision",
 			"playerMaxBitRate", player.MaxBitRate, "client", clientInfo.Name)
 	}

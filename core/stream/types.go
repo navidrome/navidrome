@@ -40,6 +40,25 @@ type ClientInfo struct {
 	CodecProfiles              []CodecProfile
 }
 
+// CapBitrate lowers the client's declared audio bitrate limits to maxKbps,
+// never raising them. A zero limit means "unlimited" and is set to maxKbps.
+// Returns true if anything changed. No-op when maxKbps <= 0.
+func (ci *ClientInfo) CapBitrate(maxKbps int) bool {
+	if maxKbps <= 0 {
+		return false
+	}
+	changed := false
+	if ci.MaxAudioBitrate == 0 || maxKbps < ci.MaxAudioBitrate {
+		ci.MaxAudioBitrate = maxKbps
+		changed = true
+	}
+	if ci.MaxTranscodingAudioBitrate == 0 || maxKbps < ci.MaxTranscodingAudioBitrate {
+		ci.MaxTranscodingAudioBitrate = maxKbps
+		changed = true
+	}
+	return changed
+}
+
 // DirectPlayProfile describes a format the client can play directly
 type DirectPlayProfile struct {
 	Containers       []string
