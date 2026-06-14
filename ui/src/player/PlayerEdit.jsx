@@ -8,6 +8,7 @@ import {
   SelectInput,
   ReferenceInput,
   useTranslate,
+  useRecordContext,
 } from 'react-admin'
 import { Title } from '../common'
 import config from '../config'
@@ -19,17 +20,31 @@ const PlayerTitle = ({ record }) => {
   return <Title subTitle={`${resourceName} ${record ? record.name : ''}`} />
 }
 
+export const TranscodingInput = (props) => {
+  const translate = useTranslate()
+  const record = useRecordContext(props)
+  const isWebPlayer = record?.client === 'NavidromeUI'
+  return (
+    <ReferenceInput
+      source="transcodingId"
+      reference="transcoding"
+      sort={{ field: 'name', order: 'ASC' }}
+      helperText={
+        isWebPlayer
+          ? translate('resources.player.helperTexts.transcodingId')
+          : undefined
+      }
+    >
+      <SelectInput source="name" resettable />
+    </ReferenceInput>
+  )
+}
+
 const PlayerEdit = (props) => (
   <Edit title={<PlayerTitle />} {...props}>
     <SimpleForm variant={'outlined'}>
       <TextInput source="name" validate={[required()]} />
-      <ReferenceInput
-        source="transcodingId"
-        reference="transcoding"
-        sort={{ field: 'name', order: 'ASC' }}
-      >
-        <SelectInput source="name" resettable />
-      </ReferenceInput>
+      <TranscodingInput />
       <SelectInput source="maxBitRate" resettable choices={BITRATE_CHOICES} />
       <BooleanInput source="reportRealPath" fullWidth />
       {(config.lastFMEnabled || config.listenBrainzEnabled) && (
