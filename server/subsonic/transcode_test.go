@@ -9,6 +9,7 @@ import (
 
 	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -233,6 +234,76 @@ var _ = Describe("Transcode endpoints", func() {
 			Expect(resp.TranscodeDecision.TranscodeReasons).To(ConsistOf("container not supported"))
 			Expect(resp.TranscodeDecision.TranscodeStream).ToNot(BeNil())
 			Expect(resp.TranscodeDecision.TranscodeStream.Container).To(Equal("mp3"))
+		})
+
+		Describe("player MaxBitRate cap", func() {
+			withPlayer := func(r *http.Request, maxBitRate int) *http.Request {
+				ctx := request.WithPlayer(r.Context(), model.Player{Client: "NavidromeUI", MaxBitRate: maxBitRate})
+				return r.WithContext(ctx)
+			}
+
+			BeforeEach(func() {
+				mockMFRepo.SetData(model.MediaFiles{
+					{ID: "song-1", Suffix: "flac", Codec: "FLAC", BitRate: 900, Channels: 2, SampleRate: 44100},
+				})
+				mockTD.decision = &stream.TranscodeDecision{MediaID: "song-1", CanDirectPlay: true}
+				mockTD.token = "token"
+			})
+
+			It("caps client MaxAudioBitrate at the player MaxBitRate when client declares none", func() {
+				body := `{"directPlayProfiles":[{"containers":["flac"],"protocols":["http"]}]}`
+				r := withPlayer(newJSONPostRequest("mediaId=song-1&mediaType=song", body), 320)
+
+				_, err := router.GetTranscodeDecision(w, r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mockTD.capturedClient).ToNot(BeNil())
+				Expect(mockTD.capturedClient.MaxAudioBitrate).To(Equal(320))
+				Expect(mockTD.capturedClient.MaxTranscodingAudioBitrate).To(Equal(320))
+			})
+
+			It("does not raise a lower client-declared limit", func() {
+				// Client declares 192 kbps (192000 bps); player cap is 320 — client wins.
+				body := `{"maxAudioBitrate":192000,"directPlayProfiles":[{"containers":["flac"],"protocols":["http"]}]}`
+				r := withPlayer(newJSONPostRequest("mediaId=song-1&mediaType=song", body), 320)
+
+				_, err := router.GetTranscodeDecision(w, r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mockTD.capturedClient.MaxAudioBitrate).To(Equal(192))
+			})
+
+			It("lowers a higher client-declared limit to the player cap", func() {
+				// Client declares 320 kbps (320000 bps); player cap is 192 — player wins.
+				body := `{"maxAudioBitrate":320000,"directPlayProfiles":[{"containers":["flac"],"protocols":["http"]}]}`
+				r := withPlayer(newJSONPostRequest("mediaId=song-1&mediaType=song", body), 192)
+
+				_, err := router.GetTranscodeDecision(w, r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mockTD.capturedClient.MaxAudioBitrate).To(Equal(192))
+				Expect(mockTD.capturedClient.MaxTranscodingAudioBitrate).To(Equal(192))
+			})
+
+			It("does nothing when no player is in context", func() {
+				body := `{"maxAudioBitrate":320000,"directPlayProfiles":[{"containers":["flac"],"protocols":["http"]}]}`
+				r := newJSONPostRequest("mediaId=song-1&mediaType=song", body)
+
+				_, err := router.GetTranscodeDecision(w, r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mockTD.capturedClient.MaxAudioBitrate).To(Equal(320))
+			})
+
+			It("does nothing when player MaxBitRate is 0", func() {
+				body := `{"maxAudioBitrate":320000,"directPlayProfiles":[{"containers":["flac"],"protocols":["http"]}]}`
+				r := withPlayer(newJSONPostRequest("mediaId=song-1&mediaType=song", body), 0)
+
+				_, err := router.GetTranscodeDecision(w, r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mockTD.capturedClient.MaxAudioBitrate).To(Equal(320))
+			})
 		})
 	})
 
