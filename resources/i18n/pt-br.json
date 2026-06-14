@@ -4,7 +4,7 @@
     "song": {
       "name": "Música |||| Músicas",
       "fields": {
-        "albumArtist": "Artista",
+        "albumArtist": "Artista do Álbum",
         "duration": "Duração",
         "trackNumber": "#",
         "playCount": "Execuções",
@@ -57,7 +57,7 @@
     "album": {
       "name": "Álbum |||| Álbuns",
       "fields": {
-        "albumArtist": "Artista",
+        "albumArtist": "Artista do Álbum",
         "artist": "Artista",
         "duration": "Duração",
         "songCount": "Músicas",
