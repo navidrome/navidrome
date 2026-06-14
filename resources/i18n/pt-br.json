@@ -187,9 +187,6 @@
         "lastSeen": "Últ. acesso",
         "reportRealPath": "Use paths reais",
         "scrobbleEnabled": "Enviar scrobbles para serviços externos"
-      },
-      "helperTexts": {
-        "transcodingId": "O player web ignora o formato de conversão e aplica apenas o limite de Bitrate máx."
       }
     },
     "transcoding": {

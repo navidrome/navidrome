@@ -187,9 +187,6 @@
         "lastSeen": "Last Seen At",
         "reportRealPath": "Report Real Path",
         "scrobbleEnabled": "Send Scrobbles to external services"
-      },
-      "helperTexts": {
-        "transcodingId": "The web player ignores the transcoding format and only enforces the Max. Bit Rate limit."
       }
     },
     "transcoding": {
