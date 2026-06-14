@@ -317,4 +317,48 @@ var _ = Describe("FolderRepository", func() {
 			Expect(folders[0].ID).To(Equal("f1"))
 		})
 	})
+
+	Describe("TouchAllWithPlaylists", func() {
+		It("bumps updated_at only for non-missing folders with playlists", func() {
+			withPls := model.NewFolder(testLib, "TestTouch/WithPls")
+			withPls.NumPlaylists = 2
+			noPls := model.NewFolder(testLib, "TestTouch/NoPls")
+			noPls.NumPlaylists = 0
+			missingWithPls := model.NewFolder(testLib, "TestTouch/MissingWithPls")
+			missingWithPls.NumPlaylists = 1
+			missingWithPls.Missing = true
+
+			Expect(repo.Put(withPls)).To(Succeed())
+			Expect(repo.Put(noPls)).To(Succeed())
+			Expect(repo.Put(missingWithPls)).To(Succeed())
+
+			// Force a known-old updated_at so the touch is detectable.
+			old := "2000-01-01 00:00:00"
+			for _, id := range []string{withPls.ID, noPls.ID, missingWithPls.ID} {
+				_, err := conn.NewQuery(
+					"UPDATE folder SET updated_at = {:t} WHERE id = {:id}").
+					Bind(dbx.Params{"t": old, "id": id}).Execute()
+				Expect(err).ToNot(HaveOccurred())
+			}
+
+			Expect(repo.TouchAllWithPlaylists()).To(Succeed())
+
+			// Read the raw updated_at string straight from the DB. The sqlite
+			// driver in this project is opened without parseTime, so a freshly
+			// written time.Now() value scans back as a zero time.Time. Compare
+			// the stored ISO-8601 strings lexicographically instead (they sort
+			// chronologically).
+			rawUpdatedAt := func(id string) string {
+				var v string
+				err := conn.NewQuery("SELECT updated_at FROM folder WHERE id={:id}").
+					Bind(dbx.Params{"id": id}).Row(&v)
+				Expect(err).ToNot(HaveOccurred())
+				return v
+			}
+			const cutoff = "2001-01-01"
+			Expect(rawUpdatedAt(withPls.ID) > cutoff).To(BeTrue())        // touched
+			Expect(rawUpdatedAt(noPls.ID) < cutoff).To(BeTrue())          // untouched
+			Expect(rawUpdatedAt(missingWithPls.ID) < cutoff).To(BeTrue()) // untouched (missing)
+		})
+	})
 })

@@ -237,6 +237,23 @@ func (r folderRepository) MarkMissing(missing bool, ids ...string) error {
 	return nil
 }
 
+func (r folderRepository) TouchAllWithPlaylists() error {
+	sq := Update(r.tableName).
+		Set("updated_at", time.Now()).
+		Where(And{
+			Gt{"num_playlists": 0},
+			Eq{"missing": false},
+		})
+	c, err := r.executeSQL(sq)
+	if err != nil {
+		return fmt.Errorf("touching folders with playlists: %w", err)
+	}
+	if c > 0 {
+		log.Debug(r.ctx, "Touched folders with playlists for re-import", "count", c)
+	}
+	return nil
+}
+
 func (r folderRepository) GetTouchedWithPlaylists() (model.FolderCursor, error) {
 	query := r.selectFolder().Where(And{
 		Eq{"missing": false},
