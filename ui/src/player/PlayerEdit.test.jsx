@@ -9,6 +9,9 @@ vi.mock('react-admin', async () => {
   return {
     ...actual,
     useRecordContext: vi.fn(),
+    // Mock useTranslate to return the key verbatim so assertions don't depend
+    // on ra-core's out-of-provider translation behavior.
+    useTranslate: () => (key) => key,
     // Render the inputs as simple stand-ins so we can read their props.
     ReferenceInput: ({ children, variant }) => (
       <div data-testid="reference-input" data-variant={variant || ''}>
