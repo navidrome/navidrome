@@ -57,10 +57,10 @@ func (p *phasePlaylists) produce(put func(entry *model.Folder)) error {
 	// admin created while the scan was in progress is picked up. Assigned once,
 	// before any put() below, so the channel send synchronizes it with the stages.
 	admin, err := p.ds.User(p.ctx).FindFirstAdmin()
-	noAdmin := errors.Is(err, model.ErrNotFound) || admin == nil || admin.ID == ""
 	if err != nil && !errors.Is(err, model.ErrNotFound) {
 		return fmt.Errorf("finding admin user: %w", err)
 	}
+	noAdmin := admin == nil || admin.ID == ""
 	if noAdmin {
 		return p.deferImport()
 	}
