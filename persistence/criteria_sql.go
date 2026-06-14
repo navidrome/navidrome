@@ -460,11 +460,8 @@ func mergeJsonConds(or squirrel.Or) squirrel.Sqlizer {
 	return or
 }
 
-// mergeNegatedJsonConds is the AND-group counterpart to mergeJsonConds. By De Morgan,
-// "NOT EXISTS(role=X) AND NOT EXISTS(role=Y)" is equivalent to "NOT EXISTS(role=X OR
-// role=Y)", so multiple negated conditions for the same field can be ORed inside a single
-// negated subquery. This gives the same dramatic speedup for smart playlists with many
-// negated patterns (e.g. 100+ "isNot artist" rules).
+// mergeNegatedJsonConds is the AND-group counterpart to mergeJsonConds, merging negated
+// conditions. By De Morgan, "NOT EXISTS(X) AND NOT EXISTS(Y)" == "NOT EXISTS(X OR Y)".
 func mergeNegatedJsonConds(and squirrel.And) squirrel.Sqlizer {
 	if merged, ok := mergeSameFieldConds(and, true); ok {
 		return squirrel.And(merged)
@@ -472,13 +469,9 @@ func mergeNegatedJsonConds(and squirrel.And) squirrel.Sqlizer {
 	return and
 }
 
-// mergeSameFieldConds is the shared core for both merge directions. It groups roleCond and
-// tagCond entries that share a field and the requested polarity, then replaces each group of
-// 2+ with batched roleCondGroup/tagCondGroup subqueries (the conditions ORed inside). The
-// polarity duality is the only difference between the OR and AND cases: an OR group merges
-// positive conditions into a single EXISTS, while an AND group merges negated ones into a
-// single NOT EXISTS. Returns the rewritten conditions and whether any merge happened; when
-// nothing merged the caller keeps the original slice untouched.
+// mergeSameFieldConds groups roleCond/tagCond entries that share a field and the requested
+// polarity, replacing each group of 2+ with batched roleCondGroup/tagCondGroup subqueries.
+// Returns the rewritten conditions and whether any merge happened.
 func mergeSameFieldConds(conds []squirrel.Sqlizer, negated bool) ([]squirrel.Sqlizer, bool) {
 	type condEntry struct {
 		index int
@@ -553,10 +546,8 @@ func mergeSameFieldConds(conds []squirrel.Sqlizer, negated bool) ([]squirrel.Sql
 	return append(result, additions...), true
 }
 
-// roleCondGroup represents multiple role conditions for the same role, merged into
-// a single EXISTS subquery for performance. When not is true the subquery is negated,
-// collapsing several "NOT EXISTS(role=X)" conditions ANDed together into a single
-// "NOT EXISTS(role=X OR role=Y ...)" via De Morgan.
+// roleCondGroup represents multiple role conditions for the same role, merged into a single
+// (optionally negated) EXISTS subquery for performance.
 type roleCondGroup struct {
 	role  string
 	conds []squirrel.Sqlizer
@@ -581,9 +572,8 @@ func (g roleCondGroup) ToSql() (string, []any, error) {
 	return cond, allArgs, nil
 }
 
-// tagCondGroup represents multiple tag conditions for the same tag, merged into
-// a single EXISTS subquery for performance. When not is true the subquery is negated
-// (see roleCondGroup).
+// tagCondGroup represents multiple tag conditions for the same tag, merged into a single
+// (optionally negated) EXISTS subquery for performance.
 type tagCondGroup struct {
 	tag     string
 	numeric bool
