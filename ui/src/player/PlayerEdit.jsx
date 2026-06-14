@@ -25,10 +25,6 @@ export const TranscodingInput = (props) => {
   const record = useRecordContext(props)
   const isWebPlayer = record?.client === 'NavidromeUI'
   return (
-    // Spread props so the variant/margin SimpleForm injects into its direct
-    // children still reaches the input now that it lives behind this wrapper.
-    // helperText must be on the SelectInput child, not the ReferenceInput
-    // wrapper — ReferenceInput does not forward it to the input.
     <ReferenceInput
       {...props}
       source="transcodingId"
