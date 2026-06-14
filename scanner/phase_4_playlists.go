@@ -72,12 +72,11 @@ func (p *phasePlaylists) produce(put func(entry *model.Folder)) error {
 		return fmt.Errorf("checking pending playlist import: %w", err)
 	}
 	p.pendingImport = pending
-	folderRepo := p.ds.Folder(p.ctx)
 	var cursor model.FolderCursor
 	if p.pendingImport {
-		cursor, err = folderRepo.GetAllWithPlaylists()
+		cursor, err = p.ds.Folder(p.ctx).GetAllWithPlaylists()
 	} else {
-		cursor, err = folderRepo.GetTouchedWithPlaylists()
+		cursor, err = p.ds.Folder(p.ctx).GetTouchedWithPlaylists()
 	}
 	if err != nil {
 		return fmt.Errorf("loading folders with playlists: %w", err)
