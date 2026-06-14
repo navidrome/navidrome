@@ -56,4 +56,78 @@ var _ = Describe("ClientInfo", func() {
 			Expect(ci.MaxTranscodingAudioBitrate).To(Equal(192))
 		})
 	})
+
+	Describe("ForceFormat", func() {
+		It("restricts to the forced format and clears direct play when supported", func() {
+			ci := &ClientInfo{
+				DirectPlayProfiles: []DirectPlayProfile{{Containers: []string{"flac"}, AudioCodecs: []string{"flac"}}},
+				TranscodingProfiles: []Profile{
+					{Container: "flac", AudioCodec: "flac", Protocol: ProtocolHTTP},
+					{Container: "ogg", AudioCodec: "opus", Protocol: ProtocolHTTP},
+					{Container: "mp3", AudioCodec: "mp3", Protocol: ProtocolHTTP},
+				},
+			}
+			ok := ci.ForceFormat("opus")
+			Expect(ok).To(BeTrue())
+			Expect(ci.TranscodingProfiles).To(HaveLen(1))
+			Expect(ci.TranscodingProfiles[0].AudioCodec).To(Equal("opus"))
+			Expect(ci.DirectPlayProfiles).To(BeEmpty())
+		})
+
+		It("matches a container-only forced format (mp3)", func() {
+			ci := &ClientInfo{
+				TranscodingProfiles: []Profile{
+					{Container: "ogg", AudioCodec: "opus", Protocol: ProtocolHTTP},
+					{Container: "mp3", AudioCodec: "mp3", Protocol: ProtocolHTTP},
+				},
+			}
+			ok := ci.ForceFormat("mp3")
+			Expect(ok).To(BeTrue())
+			Expect(ci.TranscodingProfiles).To(HaveLen(1))
+			Expect(ci.TranscodingProfiles[0].Container).To(Equal("mp3"))
+		})
+
+		It("matches the forced format against codec aliases (oga/opus)", func() {
+			ci := &ClientInfo{
+				TranscodingProfiles: []Profile{
+					{Container: "ogg", AudioCodec: "opus", Protocol: ProtocolHTTP},
+					{Container: "mp3", AudioCodec: "mp3", Protocol: ProtocolHTTP},
+				},
+			}
+			// Legacy DBs may store the Opus transcoding as target_format "oga".
+			ok := ci.ForceFormat("oga")
+			Expect(ok).To(BeTrue())
+			Expect(ci.TranscodingProfiles).To(HaveLen(1))
+			Expect(ci.TranscodingProfiles[0].AudioCodec).To(Equal("opus"))
+		})
+
+		It("is a no-op when the forced format is not supported by the client", func() {
+			original := []Profile{{Container: "mp3", AudioCodec: "mp3", Protocol: ProtocolHTTP}}
+			ci := &ClientInfo{
+				DirectPlayProfiles:  []DirectPlayProfile{{Containers: []string{"flac"}}},
+				TranscodingProfiles: original,
+			}
+			ok := ci.ForceFormat("opus")
+			Expect(ok).To(BeFalse())
+			Expect(ci.TranscodingProfiles).To(Equal(original))
+			Expect(ci.DirectPlayProfiles).To(HaveLen(1))
+		})
+
+		It("is a no-op for an empty target format", func() {
+			ci := &ClientInfo{TranscodingProfiles: []Profile{{Container: "mp3", AudioCodec: "mp3"}}}
+			Expect(ci.ForceFormat("")).To(BeFalse())
+		})
+
+		It("keeps all matching profiles when multiple resolve to the forced format", func() {
+			first := Profile{Container: "ogg", AudioCodec: "opus", Protocol: ProtocolHTTP}
+			second := Profile{Container: "ogg", AudioCodec: "opus", Protocol: ProtocolHTTP, MaxAudioChannels: 2}
+			other := Profile{Container: "mp3", AudioCodec: "mp3", Protocol: ProtocolHTTP}
+			ci := &ClientInfo{TranscodingProfiles: []Profile{first, other, second}}
+
+			ok := ci.ForceFormat("opus")
+
+			Expect(ok).To(BeTrue())
+			Expect(ci.TranscodingProfiles).To(ConsistOf(first, second))
+		})
+	})
 })
