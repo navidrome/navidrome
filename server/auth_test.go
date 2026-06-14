@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
@@ -25,7 +24,7 @@ import (
 
 var _ = Describe("Auth", func() {
 	Describe("User login", func() {
-		var ds *tests.MockDataStore
+		var ds model.DataStore
 		var req *http.Request
 		var resp *httptest.ResponseRecorder
 
@@ -36,22 +35,11 @@ var _ = Describe("Auth", func() {
 
 		Describe("createAdmin", func() {
 			var createdAt time.Time
-			var mockScanner *tests.MockScanner
-			var folderRepo *tests.MockFolderRepo
 			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
-				conf.Server.AutoImportPlaylists = true
-				conf.Server.Scanner.Enabled = true
-				mockScanner = &tests.MockScanner{}
-				// Provide a folder repo: the default MockDataStore.Folder() returns
-				// an embedded nil interface, so TouchAllWithPlaylists() would panic.
-				// TouchAllCount > 0 so the playlist-import scan is triggered.
-				folderRepo = &tests.MockFolderRepo{TouchAllCount: 1}
-				ds.MockedFolder = folderRepo
 				req = httptest.NewRequest("POST", "/createAdmin", strings.NewReader(`{"username":"johndoe", "password":"secret"}`))
 				resp = httptest.NewRecorder()
 				createdAt = time.Now()
-				createAdmin(ds, mockScanner)(resp, req)
+				createAdmin(ds)(resp, req)
 			})
 
 			It("creates an admin user with the specified password", func() {
@@ -72,91 +60,6 @@ var _ = Describe("Auth", func() {
 				Expect(parsed["name"]).To(Equal("Johndoe"))
 				Expect(parsed["id"]).ToNot(BeEmpty())
 				Expect(parsed["token"]).ToNot(BeEmpty())
-			})
-
-			It("touches playlist folders and triggers a background scan to import playlists", func() {
-				Eventually(folderRepo.TouchAllCallCount).Should(Equal(1))
-				Eventually(mockScanner.GetScanAllCallCount).Should(Equal(1))
-				calls := mockScanner.GetScanAllCalls()
-				Expect(calls).To(HaveLen(1))
-				Expect(calls[0].FullScan).To(BeFalse())
-			})
-		})
-
-		Describe("createAdmin playlist re-import", func() {
-			var mockScanner *tests.MockScanner
-			var folderRepo *tests.MockFolderRepo
-			var freshDS *tests.MockDataStore
-
-			newAdmin := func() {
-				req = httptest.NewRequest("POST", "/createAdmin", strings.NewReader(`{"username":"janedoe", "password":"secret"}`))
-				resp = httptest.NewRecorder()
-				createAdmin(freshDS, mockScanner)(resp, req)
-				Expect(resp.Code).To(Equal(http.StatusOK))
-				u, err := freshDS.User(context.Background()).FindByUsername("janedoe")
-				Expect(err).To(BeNil())
-				Expect(u.IsAdmin).To(BeTrue())
-			}
-
-			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
-				conf.Server.AutoImportPlaylists = true
-				conf.Server.Scanner.Enabled = true
-				mockScanner = &tests.MockScanner{}
-				folderRepo = &tests.MockFolderRepo{TouchAllCount: 1}
-				// Fresh datastore so CountAll() == 0 and creation is allowed.
-				freshDS = &tests.MockDataStore{MockedFolder: folderRepo}
-				auth.Init(freshDS)
-			})
-
-			It("does not start a scan when no playlist folders were touched", func() {
-				folderRepo.TouchAllCount = 0
-				newAdmin()
-				Eventually(folderRepo.TouchAllCallCount).Should(Equal(1))
-				Consistently(mockScanner.GetScanAllCallCount).Should(Equal(0))
-			})
-
-			It("does not start a scan when AutoImportPlaylists is disabled", func() {
-				conf.Server.AutoImportPlaylists = false
-				newAdmin()
-				Consistently(mockScanner.GetScanAllCallCount).Should(Equal(0))
-				Expect(folderRepo.TouchAllCallCount()).To(Equal(0))
-			})
-
-			It("does not start a scan when the scanner is disabled", func() {
-				conf.Server.Scanner.Enabled = false
-				newAdmin()
-				Consistently(mockScanner.GetScanAllCallCount).Should(Equal(0))
-				Expect(folderRepo.TouchAllCallCount()).To(Equal(0))
-			})
-
-			It("retries when a scan is already in progress and re-touches each time", func() {
-				// Shorten the retry wait so the test runs quickly.
-				prev := playlistImportScanRetryWait
-				playlistImportScanRetryWait = 10 * time.Millisecond
-				DeferCleanup(func() { playlistImportScanRetryWait = prev })
-
-				// First two ScanAll attempts report a scan already running, third succeeds.
-				mockScanner.SetScanAllErrors(model.ErrAlreadyScanning, model.ErrAlreadyScanning, nil)
-				newAdmin()
-				// Should eventually succeed after retries; re-touched once per attempt.
-				Eventually(mockScanner.GetScanAllCallCount).Should(Equal(3))
-				Eventually(folderRepo.TouchAllCallCount).Should(Equal(3))
-			})
-		})
-
-		Describe("createAdmin with no scanner", func() {
-			It("still creates the admin and returns OK when scanner is nil", func() {
-				// Fresh datastore so CountAll() == 0 and creation is allowed.
-				freshDS := &tests.MockDataStore{MockedFolder: &tests.MockFolderRepo{}}
-				auth.Init(freshDS)
-				req = httptest.NewRequest("POST", "/createAdmin", strings.NewReader(`{"username":"janedoe", "password":"secret"}`))
-				resp = httptest.NewRecorder()
-				createAdmin(freshDS, nil)(resp, req)
-				Expect(resp.Code).To(Equal(http.StatusOK))
-				u, err := freshDS.User(context.Background()).FindByUsername("janedoe")
-				Expect(err).To(BeNil())
-				Expect(u.IsAdmin).To(BeTrue())
 			})
 		})
 

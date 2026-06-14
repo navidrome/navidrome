@@ -2,18 +2,11 @@ package model
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
 )
-
-// ErrAlreadyScanning is returned when a scan is requested while another scan is
-// already in progress. It is defined here (not in the scanner package) so that
-// packages depending only on the model interfaces can match it with errors.Is
-// without importing the scanner package.
-var ErrAlreadyScanning = errors.New("already scanning")
 
 // ScanTarget represents a specific folder within a library to be scanned.
 // NOTE: This struct is used as a map key, so it should only contain comparable types.

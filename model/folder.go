@@ -93,8 +93,4 @@ type FolderRepository interface {
 	Put(*Folder) error
 	MarkMissing(missing bool, ids ...string) error
 	GetTouchedWithPlaylists() (FolderCursor, error)
-	// TouchAllWithPlaylists bumps updated_at on all non-missing folders that
-	// contain playlists, so they re-qualify for playlist import on the next scan.
-	// It returns the number of folders touched.
-	TouchAllWithPlaylists() (int64, error)
 }

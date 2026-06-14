@@ -21,9 +21,9 @@ import (
 	"golang.org/x/time/rate"
 )
 
-// ErrAlreadyScanning is an alias for model.ErrAlreadyScanning, kept for backward
-// compatibility within the scanner package.
-var ErrAlreadyScanning = model.ErrAlreadyScanning
+var (
+	ErrAlreadyScanning = errors.New("already scanning")
+)
 
 func New(rootCtx context.Context, ds model.DataStore, cw artwork.CacheWarmer, broker events.Broker,
 	pls playlists.Playlists, m metrics.Metrics) model.Scanner {

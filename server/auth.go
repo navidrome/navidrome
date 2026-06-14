@@ -107,7 +107,7 @@ func getCredentialsFromBody(r *http.Request) (username string, password string, 
 	return username, password, nil
 }
 
-func createAdmin(ds model.DataStore, scanner model.Scanner) func(w http.ResponseWriter, r *http.Request) {
+func createAdmin(ds model.DataStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		username, password, err := getCredentialsFromBody(r)
 		if err != nil {
@@ -129,71 +129,8 @@ func createAdmin(ds model.DataStore, scanner model.Scanner) func(w http.Response
 			_ = rest.RespondWithError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
-		// The first scan may have run before any admin existed, so playlists were
-		// skipped. Touch playlist folders and trigger a background scan so they
-		// get imported now. Failures here must not block admin creation.
-		triggerPlaylistImportScan(r.Context(), ds, scanner)
 		doLogin(ds, username, password, w, r)
 	}
-}
-
-// playlistImportScanRetries bounds how many times the post-admin-creation scan
-// is retried while a startup scan is still running.
-const playlistImportScanRetries = 30
-
-// playlistImportScanRetryWait is the delay between retries. It is a var so tests
-// can shorten it.
-var playlistImportScanRetryWait = 2 * time.Second
-
-// triggerPlaylistImportScan re-imports playlists that were skipped because the
-// first scan ran before any admin user existed. It touches all folders that
-// contain playlists (so they re-qualify for import) and runs a background quick
-// scan. If a scan is already in progress (e.g. the startup scan on a fresh
-// install), it waits for it to finish and retries, re-touching each time so the
-// folders' updated_at lands after the in-flight scan's completion timestamp.
-//
-// It runs in a detached goroutine so it survives the HTTP response, and only
-// logs errors so admin creation is never blocked.
-func triggerPlaylistImportScan(ctx context.Context, ds model.DataStore, scanner model.Scanner) {
-	if scanner == nil || !conf.Server.AutoImportPlaylists || !conf.Server.Scanner.Enabled {
-		return
-	}
-	scanCtx := context.WithoutCancel(ctx)
-	go func() {
-		for attempt := range playlistImportScanRetries {
-			count, err := ds.Folder(scanCtx).TouchAllWithPlaylists()
-			if err != nil {
-				log.Error(scanCtx, "Could not touch playlist folders after admin creation", err)
-				return
-			}
-			if count == 0 {
-				// No playlists on disk: nothing to import.
-				return
-			}
-			start := time.Now()
-			warnings, err := scanner.ScanAll(scanCtx, false)
-			if err == nil {
-				log.Info(scanCtx, "Playlist-import scan after admin creation completed",
-					"warnings", len(warnings), "elapsed", time.Since(start))
-				return
-			}
-			if !errors.Is(err, model.ErrAlreadyScanning) {
-				log.Error(scanCtx, "Playlist-import scan after admin creation failed", err)
-				return
-			}
-			// A scan (likely the startup scan) is still running. Wait and retry so
-			// the re-touch lands after it finishes.
-			log.Debug(scanCtx, "Playlist-import scan deferred: a scan is already in progress, will retry",
-				"attempt", attempt+1)
-			select {
-			case <-scanCtx.Done():
-				return
-			case <-time.After(playlistImportScanRetryWait):
-			}
-		}
-		log.Warn(scanCtx, "Gave up triggering playlist-import scan after admin creation; "+
-			"playlists will be imported on the next scan")
-	}()
 }
 
 func createAdminUser(ctx context.Context, ds model.DataStore, username, password string) error {
