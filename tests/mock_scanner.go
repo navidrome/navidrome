@@ -15,6 +15,7 @@ type MockScanner struct {
 	scanningStatus   bool
 	statusResponse   *model.ScannerStatus
 	scanStatusFunc   func(fullScan bool, targets []model.ScanTarget) *model.ScannerStatus
+	scanAllErrs      []error // errors returned by successive ScanAll calls; once exhausted, returns success
 }
 
 type ScanAllCall struct {
@@ -39,6 +40,15 @@ func (m *MockScanner) ScanAll(_ context.Context, fullScan bool) ([]string, error
 
 	m.scanAllCalls = append(m.scanAllCalls, ScanAllCall{FullScan: fullScan})
 
+	// If errors were queued, return the next one without simulating a scan.
+	if len(m.scanAllErrs) > 0 {
+		err := m.scanAllErrs[0]
+		m.scanAllErrs = m.scanAllErrs[1:]
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// Simulate the scanner updating its status when the scan starts
 	if m.scanStatusFunc != nil {
 		m.statusResponse = m.scanStatusFunc(fullScan, nil)
@@ -47,6 +57,14 @@ func (m *MockScanner) ScanAll(_ context.Context, fullScan bool) ([]string, error
 	}
 
 	return nil, nil
+}
+
+// SetScanAllErrors queues errors to be returned by successive ScanAll calls.
+// Each call consumes one entry; once exhausted, ScanAll returns success.
+func (m *MockScanner) SetScanAllErrors(errs ...error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.scanAllErrs = errs
 }
 
 func (m *MockScanner) ScanFolders(_ context.Context, fullScan bool, targets []model.ScanTarget) ([]string, error) {

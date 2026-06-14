@@ -341,7 +341,9 @@ var _ = Describe("FolderRepository", func() {
 				Expect(err).ToNot(HaveOccurred())
 			}
 
-			Expect(repo.TouchAllWithPlaylists()).To(Succeed())
+			count, err := repo.TouchAllWithPlaylists()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(count).To(Equal(int64(1))) // only the non-missing folder with playlists
 
 			// Read the raw updated_at string straight from the DB. The sqlite
 			// driver in this project is opened without parseTime, so a freshly

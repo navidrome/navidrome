@@ -137,28 +137,62 @@ func createAdmin(ds model.DataStore, scanner model.Scanner) func(w http.Response
 	}
 }
 
-// triggerPlaylistImportScan marks playlist folders as touched and starts a
-// background quick scan so previously-skipped playlists are imported. It runs on
-// a detached context so it survives the HTTP response, and logs (never returns)
-// errors.
+// playlistImportScanRetries bounds how many times the post-admin-creation scan
+// is retried while a startup scan is still running.
+const playlistImportScanRetries = 30
+
+// playlistImportScanRetryWait is the delay between retries. It is a var so tests
+// can shorten it.
+var playlistImportScanRetryWait = 2 * time.Second
+
+// triggerPlaylistImportScan re-imports playlists that were skipped because the
+// first scan ran before any admin user existed. It touches all folders that
+// contain playlists (so they re-qualify for import) and runs a background quick
+// scan. If a scan is already in progress (e.g. the startup scan on a fresh
+// install), it waits for it to finish and retries, re-touching each time so the
+// folders' updated_at lands after the in-flight scan's completion timestamp.
+//
+// It runs in a detached goroutine so it survives the HTTP response, and only
+// logs errors so admin creation is never blocked.
 func triggerPlaylistImportScan(ctx context.Context, ds model.DataStore, scanner model.Scanner) {
-	if err := ds.Folder(ctx).TouchAllWithPlaylists(); err != nil {
-		log.Error(ctx, "Could not touch playlist folders after admin creation", err)
-		return
-	}
-	if scanner == nil {
+	if scanner == nil || !conf.Server.AutoImportPlaylists || !conf.Server.Scanner.Enabled {
 		return
 	}
 	scanCtx := context.WithoutCancel(ctx)
 	go func() {
-		start := time.Now()
-		warnings, err := scanner.ScanAll(scanCtx, false)
-		if err != nil {
-			log.Error(scanCtx, "Playlist-import scan after admin creation failed", err)
-			return
+		for attempt := range playlistImportScanRetries {
+			count, err := ds.Folder(scanCtx).TouchAllWithPlaylists()
+			if err != nil {
+				log.Error(scanCtx, "Could not touch playlist folders after admin creation", err)
+				return
+			}
+			if count == 0 {
+				// No playlists on disk: nothing to import.
+				return
+			}
+			start := time.Now()
+			warnings, err := scanner.ScanAll(scanCtx, false)
+			if err == nil {
+				log.Info(scanCtx, "Playlist-import scan after admin creation completed",
+					"warnings", len(warnings), "elapsed", time.Since(start))
+				return
+			}
+			if !errors.Is(err, model.ErrAlreadyScanning) {
+				log.Error(scanCtx, "Playlist-import scan after admin creation failed", err)
+				return
+			}
+			// A scan (likely the startup scan) is still running. Wait and retry so
+			// the re-touch lands after it finishes.
+			log.Debug(scanCtx, "Playlist-import scan deferred: a scan is already in progress, will retry",
+				"attempt", attempt+1)
+			select {
+			case <-scanCtx.Done():
+				return
+			case <-time.After(playlistImportScanRetryWait):
+			}
 		}
-		log.Info(scanCtx, "Playlist-import scan after admin creation completed",
-			"warnings", len(warnings), "elapsed", time.Since(start))
+		log.Warn(scanCtx, "Gave up triggering playlist-import scan after admin creation; "+
+			"playlists will be imported on the next scan")
 	}()
 }
 

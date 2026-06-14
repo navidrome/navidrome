@@ -147,7 +147,8 @@ var _ = Describe("TLS support", func() {
 			It("accepts HTTPS connections", func() {
 				DeferCleanup(configtest.SetupConfig())
 
-				// Create server with mock dependencies
+				// Create server with mock dependencies. Args after ds are
+				// scanner, broker, insights — all unused by this test, so nil.
 				ds := &tests.MockDataStore{}
 				server := New(ds, nil, nil, nil)
 

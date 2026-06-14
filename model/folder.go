@@ -95,5 +95,6 @@ type FolderRepository interface {
 	GetTouchedWithPlaylists() (FolderCursor, error)
 	// TouchAllWithPlaylists bumps updated_at on all non-missing folders that
 	// contain playlists, so they re-qualify for playlist import on the next scan.
-	TouchAllWithPlaylists() error
+	// It returns the number of folders touched.
+	TouchAllWithPlaylists() (int64, error)
 }
