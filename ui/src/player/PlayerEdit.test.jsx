@@ -10,12 +10,14 @@ vi.mock('react-admin', async () => {
     ...actual,
     useRecordContext: vi.fn(),
     // Render the inputs as simple stand-ins so we can read their props.
-    ReferenceInput: ({ children, helperText }) => (
-      <div data-testid="reference-input" data-helpertext={helperText || ''}>
+    ReferenceInput: ({ children, variant }) => (
+      <div data-testid="reference-input" data-variant={variant || ''}>
         {children}
       </div>
     ),
-    SelectInput: () => <div data-testid="select-input" />,
+    SelectInput: ({ helperText }) => (
+      <div data-testid="select-input" data-helpertext={helperText || ''} />
+    ),
   }
 })
 
@@ -28,7 +30,7 @@ describe('<TranscodingInput />', () => {
   it('shows helper text for the NavidromeUI player', () => {
     useRecordContext.mockReturnValue({ client: 'NavidromeUI' })
     render(<TranscodingInput />)
-    expect(screen.getByTestId('reference-input').dataset.helpertext).toBe(
+    expect(screen.getByTestId('select-input').dataset.helpertext).toBe(
       'resources.player.helperTexts.transcodingId',
     )
   })
@@ -36,6 +38,14 @@ describe('<TranscodingInput />', () => {
   it('shows no helper text for other clients', () => {
     useRecordContext.mockReturnValue({ client: 'DSub' })
     render(<TranscodingInput />)
-    expect(screen.getByTestId('reference-input').dataset.helpertext).toBe('')
+    expect(screen.getByTestId('select-input').dataset.helpertext).toBe('')
+  })
+
+  it('forwards the form variant injected by SimpleForm to the input', () => {
+    useRecordContext.mockReturnValue({ client: 'DSub' })
+    render(<TranscodingInput variant="outlined" />)
+    expect(screen.getByTestId('reference-input').dataset.variant).toBe(
+      'outlined',
+    )
   })
 })
