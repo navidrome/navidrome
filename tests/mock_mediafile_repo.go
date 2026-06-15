@@ -98,6 +98,17 @@ func (m *MockMediaFileRepo) GetAll(qo ...model.QueryOptions) (model.MediaFiles, 
 	return result, nil
 }
 
+func (m *MockMediaFileRepo) GetRandom(qo ...model.QueryOptions) (model.MediaFiles, error) {
+	res, err := m.GetAll(qo...)
+	if err != nil {
+		return nil, err
+	}
+	if len(qo) > 0 && qo[0].Max > 0 && len(res) > qo[0].Max {
+		res = res[:qo[0].Max]
+	}
+	return res, nil
+}
+
 func (m *MockMediaFileRepo) Put(mf *model.MediaFile) error {
 	if m.Err {
 		return errors.New("error")
