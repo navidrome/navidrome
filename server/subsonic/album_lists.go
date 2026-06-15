@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Masterminds/squirrel"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -242,6 +244,13 @@ func (api *Router) GetRandomSongs(r *http.Request) (*responses.Subsonic, error) 
 	}
 	opts := filter.SongsByRandom(genre, fromYear, toYear)
 	opts = filter.ApplyLibraryFilter(opts, musicFolderIds)
+	if conf.Server.SkipLowRatingInShuffle {
+		if opts.Filters != nil {
+			opts.Filters = squirrel.And{opts.Filters, filter.NotDisliked()}
+		} else {
+			opts.Filters = filter.NotDisliked()
+		}
+	}
 
 	songs, err := api.getSongs(r.Context(), 0, size, opts)
 	if err != nil {
