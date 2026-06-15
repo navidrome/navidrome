@@ -240,10 +240,11 @@ func (api *Router) GetRandomSongs(r *http.Request) (*responses.Subsonic, error) 
 	if err != nil {
 		return nil, err
 	}
-	opts := filter.SongsByRandom(genre, fromYear, toYear)
+	opts := filter.SongsByGenreAndYearRange(genre, fromYear, toYear)
 	opts = filter.ApplyLibraryFilter(opts, musicFolderIds)
+	opts.Max = size
 
-	songs, err := api.getSongs(r.Context(), 0, size, opts)
+	songs, err := api.ds.MediaFile(r.Context()).GetRandom(opts)
 	if err != nil {
 		log.Error(r, "Error retrieving random songs", err)
 		return nil, err
