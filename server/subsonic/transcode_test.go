@@ -305,6 +305,73 @@ var _ = Describe("Transcode endpoints", func() {
 				Expect(mockTD.capturedClient.MaxAudioBitrate).To(Equal(320))
 			})
 		})
+
+		Describe("player forced format", func() {
+			withForcedFormat := func(r *http.Request, format string, maxBitRate int) *http.Request {
+				ctx := r.Context()
+				ctx = request.WithTranscoding(ctx, model.Transcoding{TargetFormat: format})
+				if maxBitRate > 0 {
+					ctx = request.WithPlayer(ctx, model.Player{Client: "NavidromeUI", MaxBitRate: maxBitRate})
+				}
+				return r.WithContext(ctx)
+			}
+
+			BeforeEach(func() {
+				mockMFRepo.SetData(model.MediaFiles{
+					{ID: "song-1", Suffix: "flac", Codec: "FLAC", BitRate: 900, Channels: 2, SampleRate: 44100},
+				})
+				mockTD.decision = &stream.TranscodeDecision{MediaID: "song-1", CanTranscode: true}
+				mockTD.token = "token"
+			})
+
+			It("forces a supported format and clears direct play", func() {
+				body := `{"directPlayProfiles":[{"containers":["flac"],"audioCodecs":["flac"],"protocols":["http"]}],
+					"transcodingProfiles":[{"container":"ogg","audioCodec":"opus","protocol":"http"},
+						{"container":"mp3","audioCodec":"mp3","protocol":"http"}]}`
+				r := withForcedFormat(newJSONPostRequest("mediaId=song-1&mediaType=song", body), "opus", 0)
+
+				_, err := router.GetTranscodeDecision(w, r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mockTD.capturedClient.TranscodingProfiles).To(HaveLen(1))
+				Expect(mockTD.capturedClient.TranscodingProfiles[0].AudioCodec).To(Equal("opus"))
+				Expect(mockTD.capturedClient.DirectPlayProfiles).To(BeEmpty())
+			})
+
+			It("falls back to negotiation when the forced format is unsupported", func() {
+				// Forced format is opus, but the client only declares mp3 and flac.
+				// Should fall back to negotiating among the client's own profiles.
+				body := `{"directPlayProfiles":[{"containers":["flac"],"audioCodecs":["flac"],"protocols":["http"]}],
+					"transcodingProfiles":[
+						{"container":"flac","audioCodec":"flac","protocol":"http"},
+						{"container":"mp3","audioCodec":"mp3","protocol":"http"}]}`
+				r := withForcedFormat(newJSONPostRequest("mediaId=song-1&mediaType=song", body), "opus", 0)
+
+				_, err := router.GetTranscodeDecision(w, r)
+
+				Expect(err).ToNot(HaveOccurred())
+				// Profiles left intact for normal negotiation (forced format not applied).
+				Expect(mockTD.capturedClient.TranscodingProfiles).To(HaveLen(2))
+				Expect(mockTD.capturedClient.DirectPlayProfiles).ToNot(BeEmpty())
+			})
+
+			It("applies the maxBitRate cap on top of the forced format", func() {
+				// Client supports opus + mp3; forced format opus must be selected,
+				// and the maxBitRate cap applied on top.
+				body := `{"transcodingProfiles":[
+					{"container":"ogg","audioCodec":"opus","protocol":"http"},
+					{"container":"mp3","audioCodec":"mp3","protocol":"http"}]}`
+				r := withForcedFormat(newJSONPostRequest("mediaId=song-1&mediaType=song", body), "opus", 128)
+
+				_, err := router.GetTranscodeDecision(w, r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mockTD.capturedClient.TranscodingProfiles).To(HaveLen(1))
+				Expect(mockTD.capturedClient.TranscodingProfiles[0].AudioCodec).To(Equal("opus"))
+				Expect(mockTD.capturedClient.MaxAudioBitrate).To(Equal(128))
+				Expect(mockTD.capturedClient.MaxTranscodingAudioBitrate).To(Equal(128))
+			})
+		})
 	})
 
 	Describe("GetTranscodeStream", func() {
