@@ -172,7 +172,7 @@ func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
 				// Check if folder is outdated
 				if folder.isOutdated() {
 					if !p.state.fullScan {
-						if folder.hasNoFiles() && folder.isNew() {
+						if folder.hasNoFiles() && folder.isNew() && folder.numSubFolders == 0 {
 							log.Trace(p.ctx, "Scanner: Skipping new folder with no files", "folder", folder.path, "lib", job.lib.Name)
 							continue
 						}
