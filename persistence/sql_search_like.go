@@ -71,6 +71,10 @@ func legacySearchExpr(tableName string, s string) Sqlizer {
 // likeSearchColumns defines the core columns to search with LIKE queries.
 // These are the primary user-visible fields for each entity type.
 // Used as a fallback when FTS5 cannot handle the query (e.g., CJK text, punctuation-only input).
+//
+// Each column needs a matching COLLATE NOCASE index (migration
+// add_like_search_covering_indexes) so these LIKE scans hit a narrow covering index
+// instead of the full table. The "likeSearchColumns covering indexes" test enforces this.
 var likeSearchColumns = map[string][]string{
 	"media_file": {"title", "album", "artist", "album_artist"},
 	"album":      {"name", "album_artist"},
