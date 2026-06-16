@@ -51,7 +51,6 @@ func Db() *sql.DB {
 			_, err = db.Exec("PRAGMA optimize=0x10002")
 			if err != nil {
 				log.Error("Error applying PRAGMA optimize", err)
-				return nil
 			}
 		}
 		return db

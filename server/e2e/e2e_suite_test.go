@@ -133,7 +133,7 @@ func buildTestFS() storagetest.FakeFS {
 		// Note: "musicbrainz_trackid" is an alias for the musicbrainz_recordingid tag (populates MbzRecordingID),
 		//       "musicbrainz_releasetrackid" is an alias for the musicbrainz_trackid tag (populates MbzReleaseTrackID).
 		"Rock/The Beatles/Abbey Road/01 - Come Together.mp3": abbeyRoad(track(1, "Come Together",
-			_t{"musicbrainz_releasetrackid": mbidComeTogether, "musicbrainz_trackid": mbidComeTogetherRec})),
+			_t{"musicbrainz_releasetrackid": mbidComeTogether, "musicbrainz_trackid": mbidComeTogetherRec, "bpm": 120})),
 		"Rock/The Beatles/Abbey Road/02 - Something.mp3": abbeyRoad(track(2, "Something",
 			_t{"musicbrainz_releasetrackid": mbidSomething, "musicbrainz_trackid": mbidSomethingRec})),
 		// Rock / The Beatles / Help! (no MBIDs)

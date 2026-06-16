@@ -14,7 +14,7 @@ import (
 var _ = Describe("Smart playlist criteria SQL", func() {
 	BeforeEach(func() {
 		criteria.AddRoles([]string{"artist", "composer", "producer"})
-		criteria.AddTagNames([]string{"genre", "mood", "releasetype", "recordingdate"})
+		criteria.AddTagNames([]string{"genre", "mood", "releasetype", "recordingdate", "replaygain_album_gain"})
 		criteria.AddNumericTags([]string{"rate"})
 	})
 
@@ -85,6 +85,70 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 			"exists (select 1 from media_file_artists mfa where mfa.media_file_id = media_file.id and mfa.role = ?)", "composer"),
 		Entry("isPresent role [false]", criteria.IsPresent{"composer": false},
 			"not exists (select 1 from media_file_artists mfa where mfa.media_file_id = media_file.id and mfa.role = ?)", "composer"),
+		// isMissing/isPresent — nullable column fields (ReplayGain)
+		Entry("isMissing rgAlbumGain [true]", criteria.IsMissing{"rgAlbumGain": true},
+			"(media_file.rg_album_gain IS NULL)"),
+		Entry("isMissing rgAlbumGain [false]", criteria.IsMissing{"rgAlbumGain": false},
+			"(media_file.rg_album_gain IS NOT NULL)"),
+		Entry("isPresent rgTrackPeak [true]", criteria.IsPresent{"rgTrackPeak": true},
+			"(media_file.rg_track_peak IS NOT NULL)"),
+		Entry("isPresent rgTrackPeak [false]", criteria.IsPresent{"rgTrackPeak": false},
+			"(media_file.rg_track_peak IS NULL)"),
+		// isMissing — replaygain_* tag-name alias resolves to the nullable column (issue #5584)
+		Entry("isMissing replaygain_album_gain alias [true]", criteria.IsMissing{"replaygain_album_gain": true},
+			"(media_file.rg_album_gain IS NULL)"),
+		Entry("isPresent replaygain_album_gain alias [true]", criteria.IsPresent{"replaygain_album_gain": true},
+			"(media_file.rg_album_gain IS NOT NULL)"),
+		// isMissing/isPresent — string column fields (empty string means missing)
+		Entry("isMissing mbz_recording_id [true]", criteria.IsMissing{"mbz_recording_id": true},
+			"(media_file.mbz_recording_id IS NULL OR media_file.mbz_recording_id = ?)", ""),
+		Entry("isMissing mbz_recording_id [false]", criteria.IsMissing{"mbz_recording_id": false},
+			"(media_file.mbz_recording_id IS NOT NULL AND media_file.mbz_recording_id <> ?)", ""),
+		Entry("isPresent mbz_album_id [true]", criteria.IsPresent{"mbz_album_id": true},
+			"(media_file.mbz_album_id IS NOT NULL AND media_file.mbz_album_id <> ?)", ""),
+		Entry("isPresent mbz_album_id [false]", criteria.IsPresent{"mbz_album_id": false},
+			"(media_file.mbz_album_id IS NULL OR media_file.mbz_album_id = ?)", ""),
+		// lyrics: absence is encoded as '' or '[]' (empty serialized LyricList)
+		Entry("isMissing lyrics [true]", criteria.IsMissing{"lyrics": true},
+			"(media_file.lyrics IS NULL OR media_file.lyrics = ? OR media_file.lyrics = ?)", "", "[]"),
+		Entry("isPresent lyrics [true]", criteria.IsPresent{"lyrics": true},
+			"(media_file.lyrics IS NOT NULL AND media_file.lyrics <> ? AND media_file.lyrics <> ?)", "", "[]"),
+		Entry("isMissing lyrics [false]", criteria.IsMissing{"lyrics": false},
+			"(media_file.lyrics IS NOT NULL AND media_file.lyrics <> ? AND media_file.lyrics <> ?)", "", "[]"),
+		Entry("isPresent lyrics [false]", criteria.IsPresent{"lyrics": false},
+			"(media_file.lyrics IS NULL OR media_file.lyrics = ? OR media_file.lyrics = ?)", "", "[]"),
+		// isMissing/isPresent — nullable numeric columns (BPM, BitDepth)
+		Entry("isMissing bpm [true]", criteria.IsMissing{"bpm": true},
+			"(media_file.bpm IS NULL)"),
+		Entry("isPresent bpm [true]", criteria.IsPresent{"bpm": true},
+			"(media_file.bpm IS NOT NULL)"),
+		Entry("isMissing bitdepth [true]", criteria.IsMissing{"bitdepth": true},
+			"(media_file.bit_depth IS NULL)"),
+		Entry("isPresent bitdepth [false]", criteria.IsPresent{"bitdepth": false},
+			"(media_file.bit_depth IS NULL)"),
+		// isMissing/isPresent — more string column fields (empty string means missing)
+		Entry("isMissing album [true]", criteria.IsMissing{"album": true},
+			"(media_file.album IS NULL OR media_file.album = ?)", ""),
+		Entry("isMissing comment [true]", criteria.IsMissing{"comment": true},
+			"(media_file.comment IS NULL OR media_file.comment = ?)", ""),
+		Entry("isMissing catalognumber [true]", criteria.IsMissing{"catalognumber": true},
+			"(media_file.catalog_num IS NULL OR media_file.catalog_num = ?)", ""),
+		Entry("isMissing discsubtitle [true]", criteria.IsMissing{"discsubtitle": true},
+			"(media_file.disc_subtitle IS NULL OR media_file.disc_subtitle = ?)", ""),
+		Entry("isMissing albumcomment [true]", criteria.IsMissing{"albumcomment": true},
+			"(media_file.mbz_album_comment IS NULL OR media_file.mbz_album_comment = ?)", ""),
+		Entry("isMissing sorttitle [true]", criteria.IsMissing{"sorttitle": true},
+			"(media_file.sort_title IS NULL OR media_file.sort_title = ?)", ""),
+		Entry("isMissing sortalbum [true]", criteria.IsMissing{"sortalbum": true},
+			"(media_file.sort_album_name IS NULL OR media_file.sort_album_name = ?)", ""),
+		Entry("isMissing sortartist [true]", criteria.IsMissing{"sortartist": true},
+			"(media_file.sort_artist_name IS NULL OR media_file.sort_artist_name = ?)", ""),
+		Entry("isMissing sortalbumartist [true]", criteria.IsMissing{"sortalbumartist": true},
+			"(media_file.sort_album_artist_name IS NULL OR media_file.sort_album_artist_name = ?)", ""),
+		Entry("isMissing explicitstatus [true]", criteria.IsMissing{"explicitstatus": true},
+			"(media_file.explicit_status IS NULL OR media_file.explicit_status = ?)", ""),
+		Entry("isPresent comment [true]", criteria.IsPresent{"comment": true},
+			"(media_file.comment IS NOT NULL AND media_file.comment <> ?)", ""),
 	)
 
 	Describe("playlist permissions", func() {
@@ -143,12 +207,12 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 
 	It("returns an error when isMissing is used with a regular field", func() {
 		_, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: criteria.IsMissing{"year": true}}).Where()
-		Expect(err).To(MatchError(ContainSubstring("isMissing/isPresent operator is only supported for tag and role fields")))
+		Expect(err).To(MatchError(ContainSubstring("isMissing/isPresent operator is not supported for field")))
 	})
 
 	It("returns an error when isPresent is used with a regular field", func() {
 		_, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: criteria.IsPresent{"title": true}}).Where()
-		Expect(err).To(MatchError(ContainSubstring("isMissing/isPresent operator is only supported for tag and role fields")))
+		Expect(err).To(MatchError(ContainSubstring("isMissing/isPresent operator is not supported for field")))
 	})
 
 	It("returns an error when isMissing has a non-boolean value", func() {
@@ -343,6 +407,97 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 			Expect(sql).To(ContainSubstring("artist.name LIKE ? OR artist.name LIKE ?"))
 			Expect(sql).To(ContainSubstring("value LIKE ? OR value LIKE ?"))
 			Expect(args).To(HaveLen(2 + 2 + 1)) // 2 tag patterns + 2 role patterns + 1 role name
+		})
+
+		It("merges negated role conditions in an AND group into a single NOT EXISTS", func() {
+			expr := criteria.All{
+				criteria.IsNot{"artist": "Beatles"},
+				criteria.IsNot{"artist": "Kraftwerk"},
+			}
+			sqlizer, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: expr}).Where()
+			Expect(err).ToNot(HaveOccurred())
+
+			sql, args, err := sqlizer.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			// A single NOT EXISTS with both names ORed inside (De Morgan)
+			Expect(strings.Count(sql, "not exists")).To(Equal(1))
+			Expect(sql).To(ContainSubstring("artist.name = ? OR artist.name = ?"))
+			Expect(args).To(HaveExactElements("artist", "Beatles", "Kraftwerk"))
+		})
+
+		It("merges negated notContains role conditions in an AND group", func() {
+			expr := criteria.All{
+				criteria.NotContains{"artist": "Beatles"},
+				criteria.NotContains{"artist": "Kraftwerk"},
+			}
+			sqlizer, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: expr}).Where()
+			Expect(err).ToNot(HaveOccurred())
+
+			sql, args, err := sqlizer.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(strings.Count(sql, "not exists")).To(Equal(1))
+			Expect(sql).To(ContainSubstring("artist.name LIKE ? OR artist.name LIKE ?"))
+			Expect(args).To(HaveExactElements("artist", "%Beatles%", "%Kraftwerk%"))
+		})
+
+		It("merges negated tag conditions in an AND group into a single NOT EXISTS", func() {
+			expr := criteria.All{
+				criteria.NotContains{"genre": "Rock"},
+				criteria.NotContains{"genre": "Metal"},
+			}
+			sqlizer, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: expr}).Where()
+			Expect(err).ToNot(HaveOccurred())
+
+			sql, args, err := sqlizer.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(strings.Count(sql, "not exists")).To(Equal(1))
+			Expect(sql).To(ContainSubstring("value LIKE ? OR value LIKE ?"))
+			Expect(args).To(HaveExactElements("%Rock%", "%Metal%"))
+		})
+
+		It("does not merge a single negated condition with a positive one of the same role in AND", func() {
+			// AND of mixed polarity must not be collapsed: NOT EXISTS(a) AND EXISTS(b)
+			// is not equivalent to any single merged subquery.
+			expr := criteria.All{
+				criteria.Contains{"artist": "Beatles"},
+				criteria.IsNot{"artist": "Kraftwerk"},
+			}
+			sqlizer, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: expr}).Where()
+			Expect(err).ToNot(HaveOccurred())
+
+			sql, _, err := sqlizer.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			// One positive EXISTS and one negated NOT EXISTS, kept separate
+			Expect(strings.Count(sql, "not exists")).To(Equal(1))
+			Expect(strings.Count(sql, "exists")).To(Equal(2)) // "not exists" contains "exists"
+		})
+
+		It("does not merge negated conditions of different roles in AND", func() {
+			expr := criteria.All{
+				criteria.IsNot{"artist": "Beatles"},
+				criteria.IsNot{"composer": "Lennon"},
+			}
+			sqlizer, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: expr}).Where()
+			Expect(err).ToNot(HaveOccurred())
+
+			sql, _, err := sqlizer.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(strings.Count(sql, "not exists")).To(Equal(2))
+		})
+
+		It("batches large negated AND groups to avoid SQLite expression tree depth limit", func() {
+			allExprs := make(criteria.All, jsonCondBatchSize+1)
+			for i := range allExprs {
+				allExprs[i] = criteria.IsNot{"artist": fmt.Sprintf("Artist%d", i)}
+			}
+			sqlizer, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: allExprs}).Where()
+			Expect(err).ToNot(HaveOccurred())
+
+			sql, args, err := sqlizer.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			// Two NOT EXISTS subqueries (one batch of jsonCondBatchSize, one of 1)
+			Expect(strings.Count(sql, "not exists")).To(Equal(2))
+			Expect(args).To(HaveLen(2 + jsonCondBatchSize + 1))
 		})
 	})
 

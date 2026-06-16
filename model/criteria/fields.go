@@ -9,8 +9,11 @@ type FieldInfo struct {
 	IsRole  bool
 	Numeric bool
 	Boolean bool
+	// Nullable: isMissing/isPresent are supported on this column field. For numeric/boolean
+	// fields, missing means NULL; for string fields it means NULL or empty string.
+	Nullable bool
 
-	tagAlias string // If set, a tag name from mappings.yml that resolves to this field
+	tagAlias string // If set, a tag name from mappings.yaml that resolves to this field
 	name     string // Canonical name, populated by LookupField from the map key
 }
 
@@ -21,7 +24,7 @@ func (f FieldInfo) Name() string {
 
 var fieldMap = map[string]FieldInfo{
 	"title":                {},
-	"album":                {},
+	"album":                {Nullable: true},
 	"hascoverart":          {Boolean: true},
 	"tracknumber":          {},
 	"discnumber":           {},
@@ -34,26 +37,26 @@ var fieldMap = map[string]FieldInfo{
 	"size":                 {},
 	"compilation":          {Boolean: true},
 	"missing":              {Boolean: true},
-	"explicitstatus":       {},
+	"explicitstatus":       {Nullable: true},
 	"dateadded":            {},
 	"datemodified":         {},
-	"discsubtitle":         {},
-	"comment":              {},
-	"lyrics":               {},
-	"sorttitle":            {},
-	"sortalbum":            {},
-	"sortartist":           {},
-	"sortalbumartist":      {},
-	"albumcomment":         {},
-	"catalognumber":        {},
+	"discsubtitle":         {Nullable: true},
+	"comment":              {Nullable: true},
+	"lyrics":               {Nullable: true},
+	"sorttitle":            {Nullable: true},
+	"sortalbum":            {Nullable: true},
+	"sortartist":           {Nullable: true},
+	"sortalbumartist":      {Nullable: true},
+	"albumcomment":         {Nullable: true},
+	"catalognumber":        {Nullable: true},
 	"filepath":             {},
 	"filetype":             {},
 	"codec":                {},
 	"duration":             {},
 	"bitrate":              {},
-	"bitdepth":             {},
+	"bitdepth":             {Numeric: true, Nullable: true},
 	"samplerate":           {},
-	"bpm":                  {},
+	"bpm":                  {Numeric: true, Nullable: true},
 	"channels":             {},
 	"loved":                {Boolean: true},
 	"dateloved":            {},
@@ -74,20 +77,28 @@ var fieldMap = map[string]FieldInfo{
 	"artistlastplayed":     {},
 	"artistdateloved":      {},
 	"artistdaterated":      {},
-	"mbz_album_id":         {},
-	"mbz_album_artist_id":  {},
-	"mbz_artist_id":        {},
-	"mbz_recording_id":     {},
-	"mbz_release_track_id": {},
-	"mbz_release_group_id": {},
-	"rgalbumgain":          {Numeric: true},
-	"rgalbumpeak":          {Numeric: true},
-	"rgtrackgain":          {Numeric: true},
-	"rgtrackpeak":          {Numeric: true},
+	"mbz_album_id":         {Nullable: true},
+	"mbz_album_artist_id":  {Nullable: true},
+	"mbz_artist_id":        {Nullable: true},
+	"mbz_recording_id":     {Nullable: true},
+	"mbz_release_track_id": {Nullable: true},
+	"mbz_release_group_id": {Nullable: true},
+	"rgalbumgain":          {Numeric: true, Nullable: true},
+	"rgalbumpeak":          {Numeric: true, Nullable: true},
+	"rgtrackgain":          {Numeric: true, Nullable: true},
+	"rgtrackpeak":          {Numeric: true, Nullable: true},
 	"library_id":           {Numeric: true},
 
 	// Backward compatibility: albumtype is an alias for the releasetype tag.
 	"albumtype": {Alias: "releasetype", IsTag: true},
+
+	// Backward compatibility: the replaygain_* tag names (as written in metadata and in the
+	// PR #5256 example) are aliases for the canonical rg* column fields. Without these, the tag
+	// names would be registered as empty tags from mappings.yaml and isMissing would always match.
+	"replaygain_album_gain": {Alias: "rgalbumgain", Numeric: true, Nullable: true},
+	"replaygain_album_peak": {Alias: "rgalbumpeak", Numeric: true, Nullable: true},
+	"replaygain_track_gain": {Alias: "rgtrackgain", Numeric: true, Nullable: true},
+	"replaygain_track_peak": {Alias: "rgtrackpeak", Numeric: true, Nullable: true},
 
 	// Pseudo-field for random sorting
 	"random": {},
@@ -128,7 +139,7 @@ func AddRoles(roles []string) {
 	}
 }
 
-// AddTagNames adds tag names to the field map. This is used to add all tags mapped in the `mappings.yml`
+// AddTagNames adds tag names to the field map. This is used to add all tags mapped in the `mappings.yaml`
 // configuration file.
 func AddTagNames(tagNames []string) {
 	for _, tagName := range tagNames {

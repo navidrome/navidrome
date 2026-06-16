@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -590,6 +591,66 @@ var _ = Describe("ArtistRepository", func() {
 					// Clean up
 					if raw, ok := repo.(*artistRepository); ok {
 						_, _ = raw.executeSQL(squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": inaccessibleArtist.ID}))
+					}
+				})
+			})
+
+			Context("Empty Query (sync pagination)", func() {
+				It("does not duplicate artists that belong to multiple libraries", func() {
+					// An artist in two libraries has two library_artist rows; pagination
+					// must still enumerate it exactly once, at a stable offset.
+					Expect(lr.AddArtist(lib2.ID, artistBeatles.ID)).To(Succeed())
+
+					all, err := repo.Search("", model.QueryOptions{Max: 1000})
+					Expect(err).ToNot(HaveOccurred())
+
+					seen := map[string]bool{}
+					var paged model.Artists
+					for offset := range len(all) {
+						page, err := repo.Search("", model.QueryOptions{Max: 1, Offset: offset})
+						Expect(err).ToNot(HaveOccurred())
+						for _, a := range page {
+							Expect(seen[a.ID]).To(BeFalse(), fmt.Sprintf("artist %s returned twice", a.ID))
+							seen[a.ID] = true
+						}
+						paged = append(paged, page...)
+					}
+					Expect(paged).To(HaveLen(len(all)))
+				})
+
+				It("paginates all artists in natural order without overlaps or gaps", func() {
+					all, err := repo.Search("", model.QueryOptions{Max: 1000})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(len(all)).To(BeNumerically(">", 1))
+
+					var paged model.Artists
+					pageSize := 2
+					for offset := 0; offset < len(all); offset += pageSize {
+						page, err := repo.Search("", model.QueryOptions{Max: pageSize, Offset: offset})
+						Expect(err).ToNot(HaveOccurred())
+						paged = append(paged, page...)
+					}
+					Expect(paged).To(HaveLen(len(all)))
+					for i := range all {
+						Expect(paged[i].ID).To(Equal(all[i].ID))
+					}
+				})
+
+				It("respects library filtering for restricted users", func() {
+					// Create an artist only in library 2 (not accessible to restricted user)
+					lib2Artist := model.Artist{ID: "empty-query-lib2-artist", Name: "Empty Query Lib2 Artist"}
+					Expect(repo.Put(&lib2Artist)).To(Succeed())
+					Expect(lr.AddArtist(lib2.ID, lib2Artist.ID)).To(Succeed())
+
+					results, err := restrictedRepo.Search("", model.QueryOptions{Max: 1000})
+					Expect(err).ToNot(HaveOccurred())
+					for _, a := range results {
+						Expect(a.ID).ToNot(Equal(lib2Artist.ID), "Empty query search should respect library filtering")
+					}
+
+					// Clean up
+					if raw, ok := repo.(*artistRepository); ok {
+						_, _ = raw.executeSQL(squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": lib2Artist.ID}))
 					}
 				})
 			})
