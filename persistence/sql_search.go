@@ -21,12 +21,10 @@ type searchConfig struct {
 	NaturalOrder string   // ORDER BY for empty-query results (e.g. "album.rowid")
 	OrderBy      []string // ORDER BY for text search results (e.g. ["name"])
 	MBIDFields   []string // columns to match when query is a UUID
-	// LibraryFilter overrides the default applyLibraryFilter for the rowid Phase 1 of two-phase
-	// searches, for entities whose library access goes through a junction table (e.g. artist →
-	// library_artist). CONTRACT: it MUST be join-free (a WHERE predicate such as EXISTS), never a
-	// JOIN. executeTwoPhase no longer applies DISTINCT, so a fan-out JOIN here would repeat rowids
-	// and corrupt offset-based pagination — this is a correctness requirement, not just a perf one.
-	// See [ArtistLibraryFilter] for the reference implementation.
+	// LibraryFilter overrides the default applyLibraryFilter for the rowid Phase 1, for entities
+	// whose library access goes through a junction table (e.g. artist → library_artist). It MUST be
+	// join-free (a WHERE predicate, never a JOIN): Phase 1 has no DISTINCT, so a fan-out JOIN would
+	// repeat rowids and corrupt offset pagination. See [ArtistLibraryFilter].
 	LibraryFilter func(sq SelectBuilder) SelectBuilder
 }
 

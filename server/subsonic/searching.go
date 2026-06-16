@@ -75,8 +75,8 @@ func (api *Router) searchAll(ctx context.Context, sp *searchParams, musicFolderI
 	if len(musicFolderIds) > 0 {
 		songOpts.Filters = Eq{"library_id": musicFolderIds}
 		albumOpts.Filters = Eq{"library_id": musicFolderIds}
-		// The artist repository already scopes to the user's accessible libraries; only add a
-		// narrowing filter when the request targets a strict subset of them (see narrowsArtistLibraries).
+		// The artist repository already scopes to the user's libraries; only narrow further for a
+		// strict subset of them.
 		if narrowsArtistLibraries(ctx, musicFolderIds) {
 			artistOpts.Filters = persistence.ArtistLibraryFilter(musicFolderIds)
 		}
@@ -98,11 +98,8 @@ func (api *Router) searchAll(ctx context.Context, sp *searchParams, musicFolderI
 }
 
 // narrowsArtistLibraries reports whether requested is a strict subset of the user's accessible
-// libraries — the only case where the subsonic layer must narrow further than the repository's
-// own access filter. Skipping the extra EXISTS otherwise preserves the admin fast-path.
-// requested is always ⊆ accessible (validated by selectedMusicFolderIds), so it narrows iff some
-// accessible library is absent from it. Compared as a set membership, not by length, because
-// requested may contain duplicate IDs (musicFolderId is not deduplicated).
+// libraries (requested is always ⊆ accessible, validated by selectedMusicFolderIds). Compared as a
+// set, not by length: musicFolderId is not deduplicated, so duplicates could mask a true subset.
 func narrowsArtistLibraries(ctx context.Context, requested []int) bool {
 	requestedSet := make(map[int]struct{}, len(requested))
 	for _, id := range requested {

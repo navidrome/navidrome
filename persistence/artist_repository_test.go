@@ -655,11 +655,8 @@ var _ = Describe("ArtistRepository", func() {
 				})
 
 				It("paginates a restricted user's visible artists without gaps", func() {
-					// An artist only in lib2 must not occupy a pagination slot for the restricted
-					// user: if Phase 1 paginated the unfiltered set and Phase 2 dropped this row,
-					// the page would be short and deep offsets would skip visible artists.
-					// ID "25" sorts (by artist.id) between the base fixtures "2" and "3", so it
-					// lands inside the restricted user's visible range and triggers the gap.
+					// ID "25" sorts between base fixtures "2" and "3", so this lib2-only artist lands
+					// inside the restricted user's visible range — exercising the no-gap guarantee.
 					lib2Artist := model.Artist{ID: "25", Name: "Restricted Lib2 Artist"}
 					Expect(repo.Put(&lib2Artist)).To(Succeed())
 					Expect(lr.AddArtist(lib2.ID, lib2Artist.ID)).To(Succeed())
@@ -1028,8 +1025,8 @@ var _ = Describe("ArtistRepository", func() {
 		})
 
 		It("marks artists missing when the empty-stats cleanup drops their last library_artist row", func() {
-			// An artist with a library_artist row but no content: RefreshStats leaves its stats '{}'
-			// and the cleanup deletes the row, which would orphan a non-missing artist.
+			// A library_artist row with stats '{}' (no content) gets deleted by the cleanup,
+			// which would orphan this non-missing artist.
 			emptyArtist := model.Artist{ID: "refresh-empty", Name: "No Content Artist"}
 			Expect(repo.Put(&emptyArtist)).To(Succeed())
 			_, err := repo.executeSQL(squirrel.Insert("library_artist").
@@ -1045,7 +1042,6 @@ var _ = Describe("ArtistRepository", func() {
 			_, err = repo.RefreshStats(true)
 			Expect(err).ToNot(HaveOccurred())
 
-			// Its only library_artist row was cleaned up → it must be marked missing, not orphaned.
 			Expect(missing(emptyArtist.ID)).To(BeTrue())
 			var orphanIDs []string
 			Expect(repo.queryAllSlice(squirrel.Select("id").From("artist").

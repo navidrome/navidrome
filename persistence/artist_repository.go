@@ -534,12 +534,8 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
 		log.Warn(r.ctx, "Failed to cleanup empty library_artist entries", "error", err)
 	} else if cleanupRows > 0 {
 		log.Debug(r.ctx, "Cleaned up empty library_artist entries", "rowsDeleted", cleanupRows)
-		// The cleanup above can drop an artist's last library_artist row, leaving it non-missing
-		// but with no library — an orphan that the artist search fast-path would surface in Phase 1
-		// only to drop in Phase 2's inner join (see applyLibraryFilterToSearchQuery). Mark such
-		// artists missing now so the shared `missing = false` filter excludes them. Only runs when
-		// the cleanup actually removed rows (the only way a new orphan can appear), so steady-state
-		// scans pay nothing.
+		// The cleanup can drop an artist's last library_artist row; mark such artists missing so
+		// they aren't left as orphans (see applyLibraryFilterToSearchQuery).
 		if _, err := r.executeSQL(Expr(
 			"update artist set missing = true where missing = false " +
 				"and not exists (select 1 from library_artist where library_artist.artist_id = artist.id)")); err != nil {
@@ -551,13 +547,13 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
 	return totalRowsAffected, nil
 }
 
-// applyLibraryFilterToSearchQuery scopes the search Phase 1 to the logged-in user's libraries
-// via the join-free [ArtistLibraryFilter]. Admin and headless processes get no filter (fast-path):
-// they walk artist's primary key in order, untouched. Orphan artists (a non-missing row with no
-// library_artist row) would be dropped by Phase 2's inner join and shorten the page, but they are
-// kept from occurring at the source: both [artistRepository.RefreshStats] (after its empty-stats
-// cleanup) and [libraryRepository.Delete] (after the cascading delete) mark newly-orphaned artists
-// missing, so the shared `missing = false` filter already excludes them.
+// applyLibraryFilterToSearchQuery scopes the search Phase 1 to the logged-in user's libraries via
+// the join-free [ArtistLibraryFilter]. Admin and headless processes get no filter (fast-path).
+//
+// The fast-path relies on orphan artists (non-missing, but with no library_artist row) not
+// existing: Phase 2 inner-joins library_artist, so an orphan would be paginated in Phase 1 then
+// dropped, shortening the page. [artistRepository.RefreshStats] and [libraryRepository.Delete] mark
+// such artists missing at the source, so the shared `missing = false` filter excludes them.
 func (r *artistRepository) applyLibraryFilterToSearchQuery(query SelectBuilder) SelectBuilder {
 	user := loggedUser(r.ctx)
 	if user.ID == invalidUserId || user.IsAdmin {

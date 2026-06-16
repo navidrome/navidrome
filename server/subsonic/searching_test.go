@@ -57,10 +57,9 @@ var _ = Describe("Search", func() {
 				Expect(resp).ToNot(BeNil())
 				Expect(resp.SearchResult2).ToNot(BeNil())
 
-				// Album and song filters scope by the library_id column directly.
 				assertQueryOptions(mockAlbumRepo.Options.Filters, "library_id IN (?)", 1)
 				assertQueryOptions(mockMediaFileRepo.Options.Filters, "library_id IN (?)", 1)
-				// Artists scope through the library_artist junction via a join-free EXISTS subquery.
+				// Artists scope through the library_artist junction, so a join-free EXISTS is used.
 				assertQueryOptions(mockArtistRepo.Options.Filters,
 					"EXISTS (SELECT 1 FROM library_artist", 1)
 			})
@@ -84,8 +83,7 @@ var _ = Describe("Search", func() {
 				Expect(resp).ToNot(BeNil())
 				Expect(resp.SearchResult2).ToNot(BeNil())
 
-				// Album/song still get the resolved library filter, but the artist repository's own
-				// access filter suffices — no redundant subsonic-layer EXISTS (keeps the fast-path).
+				// Artist filter is left to the repository when the request spans all the user's libs.
 				assertQueryOptions(mockAlbumRepo.Options.Filters, "library_id IN (?,?,?)", 1, 2, 3)
 				assertQueryOptions(mockMediaFileRepo.Options.Filters, "library_id IN (?,?,?)", 1, 2, 3)
 				Expect(mockArtistRepo.Options.Filters).To(BeNil())
@@ -170,10 +168,9 @@ var _ = Describe("Search", func() {
 				Expect(resp).ToNot(BeNil())
 				Expect(resp.SearchResult3).ToNot(BeNil())
 
-				// Album and song filters scope by the library_id column directly.
 				assertQueryOptions(mockAlbumRepo.Options.Filters, "library_id IN (?)", 1)
 				assertQueryOptions(mockMediaFileRepo.Options.Filters, "library_id IN (?)", 1)
-				// Artists scope through the library_artist junction via a join-free EXISTS subquery.
+				// Artists scope through the library_artist junction, so a join-free EXISTS is used.
 				assertQueryOptions(mockArtistRepo.Options.Filters,
 					"EXISTS (SELECT 1 FROM library_artist", 1)
 			})
@@ -197,8 +194,7 @@ var _ = Describe("Search", func() {
 				Expect(resp).ToNot(BeNil())
 				Expect(resp.SearchResult3).ToNot(BeNil())
 
-				// Album/song still get the resolved library filter, but the artist repository's own
-				// access filter suffices — no redundant subsonic-layer EXISTS (keeps the fast-path).
+				// Artist filter is left to the repository when the request spans all the user's libs.
 				assertQueryOptions(mockAlbumRepo.Options.Filters, "library_id IN (?,?,?)", 1, 2, 3)
 				assertQueryOptions(mockMediaFileRepo.Options.Filters, "library_id IN (?,?,?)", 1, 2, 3)
 				Expect(mockArtistRepo.Options.Filters).To(BeNil())

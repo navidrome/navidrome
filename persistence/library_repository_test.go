@@ -230,7 +230,6 @@ var _ = Describe("LibraryRepository", func() {
 			lib := model.Library{Name: "Doomed Library", Path: "/doomed"}
 			Expect(adminRepo.Put(&lib)).To(Succeed())
 
-			// orphanArtist is only in the doomed library; sharedArtist is also in library 1.
 			orphanArtist := model.Artist{ID: "delete-orphan", Name: "Orphan To Be"}
 			sharedArtist := model.Artist{ID: "delete-shared", Name: "Shared Artist"}
 			Expect(artistRepo.Put(&orphanArtist)).To(Succeed())
@@ -249,8 +248,6 @@ var _ = Describe("LibraryRepository", func() {
 
 			Expect(adminRepo.Delete(lib.ID)).To(Succeed())
 
-			// The orphan lost its only library_artist row → marked missing; the shared artist
-			// still belongs to library 1 → untouched.
 			Expect(artistMissing(orphanArtist.ID)).To(BeTrue(), "orphaned artist should be marked missing")
 			Expect(artistMissing(sharedArtist.ID)).To(BeFalse(), "artist still in another library must stay visible")
 		})
