@@ -13,7 +13,6 @@ import (
 	"github.com/navidrome/navidrome/core/publicurl"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/req"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -75,11 +74,7 @@ func (api *Router) searchAll(ctx context.Context, sp *searchParams, musicFolderI
 	if len(musicFolderIds) > 0 {
 		songOpts.Filters = Eq{"library_id": musicFolderIds}
 		albumOpts.Filters = Eq{"library_id": musicFolderIds}
-		// The artist repository already scopes to the user's libraries; only narrow further for a
-		// strict subset of them.
-		if narrowsArtistLibraries(ctx, musicFolderIds) {
-			artistOpts.Filters = persistence.ArtistLibraryFilter(musicFolderIds)
-		}
+		artistOpts.Filters = Eq{"library_id": musicFolderIds}
 	}
 
 	// Run searches in parallel
@@ -95,22 +90,6 @@ func (api *Router) searchAll(ctx context.Context, sp *searchParams, musicFolderI
 		log.Warn(ctx, "Search was interrupted", "query", sp.query, "elapsedTime", time.Since(start), err)
 	}
 	return mediaFiles, albums, artists
-}
-
-// narrowsArtistLibraries reports whether requested is a strict subset of the user's accessible
-// libraries (requested is always ⊆ accessible, validated by selectedMusicFolderIds). Compared as a
-// set, not by length: musicFolderId is not deduplicated, so duplicates could mask a true subset.
-func narrowsArtistLibraries(ctx context.Context, requested []int) bool {
-	requestedSet := make(map[int]struct{}, len(requested))
-	for _, id := range requested {
-		requestedSet[id] = struct{}{}
-	}
-	for _, lib := range getUserAccessibleLibraries(ctx) {
-		if _, ok := requestedSet[lib.ID]; !ok {
-			return true
-		}
-	}
-	return false
 }
 
 func (api *Router) Search2(r *http.Request) (*responses.Subsonic, error) {

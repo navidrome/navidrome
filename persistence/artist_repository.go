@@ -597,12 +597,48 @@ func (r *artistRepository) Search(q string, options ...model.QueryOptions) (mode
 	if len(options) > 0 {
 		opts = options[0]
 	}
+	// Callers scope artists to libraries with the same Eq{"library_id": ids} filter used for albums
+	// and songs. Artists reach libraries through the library_artist junction, so translate it to a
+	// join-free predicate that the rowid Phase 1 can paginate (see [ArtistLibraryFilter]).
+	opts.Filters = r.scopeSearchToLibraries(opts.Filters)
 	var res dbArtists
 	err := r.doSearch(r.selectArtist(options...), q, &res, r.searchCfg(), opts)
 	if err != nil {
 		return nil, fmt.Errorf("searching artist %q: %w", q, err)
 	}
 	return res.toModels(), nil
+}
+
+// scopeSearchToLibraries replaces an incoming Eq{"library_id": ids} filter with the join-free
+// [ArtistLibraryFilter]. It returns nil (no extra filter) when the requested libraries already
+// cover every library the user can access — applyLibraryFilterToSearchQuery's own scoping then
+// suffices, keeping the common case on the unfiltered fast-path.
+func (r *artistRepository) scopeSearchToLibraries(filter Sqlizer) Sqlizer {
+	eq, ok := filter.(Eq)
+	if !ok {
+		return filter
+	}
+	requested, ok := eq["library_id"].([]int)
+	if !ok {
+		return filter
+	}
+	user := loggedUser(r.ctx)
+	if user.IsAdmin || user.ID == invalidUserId {
+		return nil
+	}
+	// Narrow only for a strict subset of the user's libraries; if the request covers all of them
+	// the repository's own filter already does the job. Compared as set membership (not by length)
+	// because the requested IDs may contain duplicates.
+	requestedSet := make(map[int]struct{}, len(requested))
+	for _, id := range requested {
+		requestedSet[id] = struct{}{}
+	}
+	for _, lib := range user.Libraries {
+		if _, ok := requestedSet[lib.ID]; !ok {
+			return ArtistLibraryFilter(requested)
+		}
+	}
+	return nil
 }
 
 func (r *artistRepository) Count(options ...rest.QueryOptions) (int64, error) {

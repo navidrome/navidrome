@@ -39,7 +39,9 @@ var _ = Describe("Search", func() {
 		}
 
 		Describe("Search2", func() {
-			It("narrows artists with a join-free EXISTS when musicFolderId is a strict subset", func() {
+			It("scopes all entity types to the requested libraries", func() {
+				// The subsonic layer passes the same library_id filter to all three repos; the
+				// artist repository translates it to the join-free library_artist predicate itself.
 				r := newGetRequest("query=test", "musicFolderId=1")
 				ctx := request.WithUser(r.Context(), model.User{
 					ID:       "user1",
@@ -59,13 +61,11 @@ var _ = Describe("Search", func() {
 
 				assertQueryOptions(mockAlbumRepo.Options.Filters, "library_id IN (?)", 1)
 				assertQueryOptions(mockMediaFileRepo.Options.Filters, "library_id IN (?)", 1)
-				// Artists scope through the library_artist junction, so a join-free EXISTS is used.
-				assertQueryOptions(mockArtistRepo.Options.Filters,
-					"EXISTS (SELECT 1 FROM library_artist", 1)
+				assertQueryOptions(mockArtistRepo.Options.Filters, "library_id IN (?)", 1)
 			})
 
-			It("skips the artist narrowing filter when the request covers all of the user's libraries", func() {
-				r := newGetRequest("query=test") // no musicFolderId → resolves to all accessible
+			It("applies no library filter when musicFolderId is not provided", func() {
+				r := newGetRequest("query=test") // no musicFolderId → all accessible libraries
 				ctx := request.WithUser(r.Context(), model.User{
 					ID:       "user1",
 					UserName: "testuser",
@@ -83,34 +83,9 @@ var _ = Describe("Search", func() {
 				Expect(resp).ToNot(BeNil())
 				Expect(resp.SearchResult2).ToNot(BeNil())
 
-				// Artist filter is left to the repository when the request spans all the user's libs.
 				assertQueryOptions(mockAlbumRepo.Options.Filters, "library_id IN (?,?,?)", 1, 2, 3)
 				assertQueryOptions(mockMediaFileRepo.Options.Filters, "library_id IN (?,?,?)", 1, 2, 3)
-				Expect(mockArtistRepo.Options.Filters).To(BeNil())
-			})
-
-			It("narrows artists when duplicate musicFolderId IDs still form a strict subset", func() {
-				// Duplicates inflate the requested count (musicFolderId is not deduplicated):
-				// {1,1,2} has 3 entries but is still a strict subset of the 3 libraries, so the
-				// narrowing filter must apply (a length-based check would wrongly skip it).
-				r := newGetRequest("query=test", "musicFolderId=1", "musicFolderId=1", "musicFolderId=2")
-				ctx := request.WithUser(r.Context(), model.User{
-					ID:       "user1",
-					UserName: "testuser",
-					Libraries: []model.Library{
-						{ID: 1, Name: "Library 1"},
-						{ID: 2, Name: "Library 2"},
-						{ID: 3, Name: "Library 3"},
-					},
-				})
-				r = r.WithContext(ctx)
-
-				resp, err := router.Search2(r)
-
-				Expect(err).ToNot(HaveOccurred())
-				Expect(resp).ToNot(BeNil())
-				assertQueryOptions(mockArtistRepo.Options.Filters,
-					"EXISTS (SELECT 1 FROM library_artist", 1, 2)
+				assertQueryOptions(mockArtistRepo.Options.Filters, "library_id IN (?,?,?)", 1, 2, 3)
 			})
 
 			It("should return empty results when user has no accessible libraries", func() {
@@ -150,7 +125,7 @@ var _ = Describe("Search", func() {
 		})
 
 		Describe("Search3", func() {
-			It("narrows artists with a join-free EXISTS when musicFolderId is a strict subset", func() {
+			It("scopes all entity types to the requested libraries", func() {
 				r := newGetRequest("query=test", "musicFolderId=1")
 				ctx := request.WithUser(r.Context(), model.User{
 					ID:       "user1",
@@ -170,13 +145,11 @@ var _ = Describe("Search", func() {
 
 				assertQueryOptions(mockAlbumRepo.Options.Filters, "library_id IN (?)", 1)
 				assertQueryOptions(mockMediaFileRepo.Options.Filters, "library_id IN (?)", 1)
-				// Artists scope through the library_artist junction, so a join-free EXISTS is used.
-				assertQueryOptions(mockArtistRepo.Options.Filters,
-					"EXISTS (SELECT 1 FROM library_artist", 1)
+				assertQueryOptions(mockArtistRepo.Options.Filters, "library_id IN (?)", 1)
 			})
 
-			It("skips the artist narrowing filter when the request covers all of the user's libraries", func() {
-				r := newGetRequest("query=test") // no musicFolderId → resolves to all accessible
+			It("applies no library filter when musicFolderId is not provided", func() {
+				r := newGetRequest("query=test") // no musicFolderId → all accessible libraries
 				ctx := request.WithUser(r.Context(), model.User{
 					ID:       "user1",
 					UserName: "testuser",
@@ -194,10 +167,9 @@ var _ = Describe("Search", func() {
 				Expect(resp).ToNot(BeNil())
 				Expect(resp.SearchResult3).ToNot(BeNil())
 
-				// Artist filter is left to the repository when the request spans all the user's libs.
 				assertQueryOptions(mockAlbumRepo.Options.Filters, "library_id IN (?,?,?)", 1, 2, 3)
 				assertQueryOptions(mockMediaFileRepo.Options.Filters, "library_id IN (?,?,?)", 1, 2, 3)
-				Expect(mockArtistRepo.Options.Filters).To(BeNil())
+				assertQueryOptions(mockArtistRepo.Options.Filters, "library_id IN (?,?,?)", 1, 2, 3)
 			})
 
 			It("should return empty results when user has no accessible libraries", func() {

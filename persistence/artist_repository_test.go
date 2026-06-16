@@ -111,6 +111,47 @@ var _ = Describe("ArtistRepository", func() {
 			})
 		})
 
+		Describe("scopeSearchToLibraries", func() {
+			// Builds an artist repo whose context carries the given user, then translates an
+			// incoming library_id search filter the way Search() does.
+			scope := func(user model.User, filter squirrel.Sqlizer) squirrel.Sqlizer {
+				ctx := request.WithUser(GinkgoT().Context(), user)
+				r := NewArtistRepository(ctx, GetDBXBuilder()).(*artistRepository)
+				return r.scopeSearchToLibraries(filter)
+			}
+			subsetUser := model.User{ID: "u", Libraries: model.Libraries{{ID: 1}, {ID: 2}, {ID: 3}}}
+
+			It("translates a strict subset to a join-free EXISTS over library_artist", func() {
+				got := scope(subsetUser, squirrel.Eq{"library_id": []int{1, 2}})
+				sql, args, err := got.ToSql()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(sql).To(ContainSubstring("EXISTS (SELECT 1 FROM library_artist"))
+				Expect(args).To(ContainElements(1, 2))
+			})
+
+			It("treats duplicate IDs as a set so a real subset still narrows", func() {
+				// {1,1,2} has 3 entries but is a strict subset of the user's 3 libraries.
+				got := scope(subsetUser, squirrel.Eq{"library_id": []int{1, 1, 2}})
+				Expect(got).ToNot(BeNil())
+				sql, _, _ := got.ToSql()
+				Expect(sql).To(ContainSubstring("EXISTS (SELECT 1 FROM library_artist"))
+			})
+
+			It("drops the filter when the request covers all the user's libraries", func() {
+				Expect(scope(subsetUser, squirrel.Eq{"library_id": []int{1, 2, 3}})).To(BeNil())
+			})
+
+			It("drops the filter for admins (repository scoping suffices)", func() {
+				admin := model.User{ID: "a", IsAdmin: true, Libraries: model.Libraries{{ID: 1}}}
+				Expect(scope(admin, squirrel.Eq{"library_id": []int{1}})).To(BeNil())
+			})
+
+			It("passes through a non-library_id filter unchanged", func() {
+				other := squirrel.Eq{"name": "x"}
+				Expect(scope(subsetUser, other)).To(Equal(other))
+			})
+		})
+
 		Describe("dbArtist mapping", func() {
 			var (
 				artist *model.Artist
