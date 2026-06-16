@@ -1049,6 +1049,24 @@ var _ = Describe("ArtistRepository", func() {
 				Where("id not in (select artist_id from library_artist)"), &orphanIDs)).To(Succeed())
 			Expect(orphanIDs).ToNot(ContainElement(emptyArtist.ID))
 		})
+
+		It("heals a pre-existing orphan (no library_artist row) on a full refresh", func() {
+			// A legacy orphan left by an older version: non-missing, with no library_artist row at
+			// all. The cleanup deletes nothing for it, so a full refresh (allArtists) must still
+			// reconcile it.
+			legacyOrphan := model.Artist{ID: "refresh-legacy-orphan", Name: "Legacy Orphan"}
+			Expect(repo.Put(&legacyOrphan)).To(Succeed())
+			DeferCleanup(func() {
+				_ = repo.delete(squirrel.Eq{"id": legacyOrphan.ID})
+			})
+
+			Expect(missing(legacyOrphan.ID)).To(BeFalse())
+
+			_, err := repo.RefreshStats(true)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(missing(legacyOrphan.ID)).To(BeTrue())
+		})
 	})
 })
 

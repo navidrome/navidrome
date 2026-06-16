@@ -532,14 +532,20 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
 	cleanupRows, err := r.executeSQL(cleanupSQL)
 	if err != nil {
 		log.Warn(r.ctx, "Failed to cleanup empty library_artist entries", "error", err)
-	} else if cleanupRows > 0 {
-		log.Debug(r.ctx, "Cleaned up empty library_artist entries", "rowsDeleted", cleanupRows)
+	} else {
+		if cleanupRows > 0 {
+			log.Debug(r.ctx, "Cleaned up empty library_artist entries", "rowsDeleted", cleanupRows)
+		}
 		// The cleanup can drop an artist's last library_artist row; mark such artists missing so
-		// they aren't left as orphans (see applyLibraryFilterToSearchQuery).
-		if _, err := r.executeSQL(Expr(
-			"update artist set missing = true where missing = false " +
-				"and not exists (select 1 from library_artist where library_artist.artist_id = artist.id)")); err != nil {
-			log.Warn(r.ctx, "Failed to mark orphaned artists missing after library_artist cleanup", "error", err)
+		// they aren't left as orphans (see applyLibraryFilterToSearchQuery). Run when the cleanup
+		// removed rows (the only way a new orphan can appear) or on a full refresh, so a full scan
+		// also heals pre-existing orphans left by older versions.
+		if cleanupRows > 0 || allArtists {
+			if _, err := r.executeSQL(Expr(
+				"update artist set missing = true where missing = false " +
+					"and not exists (select 1 from library_artist where library_artist.artist_id = artist.id)")); err != nil {
+				log.Warn(r.ctx, "Failed to mark orphaned artists missing after library_artist cleanup", "error", err)
+			}
 		}
 	}
 
