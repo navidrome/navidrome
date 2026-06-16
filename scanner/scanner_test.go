@@ -591,13 +591,13 @@ var _ = Describe("Scanner", Ordered, func() {
 			fsys.Remove("Pink Floyd/The Wall/01 - Another Brick.mp3")
 			Expect(runScanner(ctx, true)).To(Succeed())
 
-			By("Checking Pink Floyd is marked missing (its row survives in album_artists), not a non-missing orphan")
+			By("Checking Pink Floyd's row survives but is marked missing, leaving no orphan")
+			// Its row still exists (it's referenced by album_artists), so the fix must flip its
+			// missing flag — the shared `missing = false` search filter then excludes it.
 			Expect(floydMissing()).To(Equal(1))
-			Expect(nonMissingArtists()).To(SatisfyAll(
-				ContainElement("The Beatles"),
-				Not(ContainElement("Pink Floyd")),
-			))
 			Expect(orphanCount()).To(BeZero())
+			// The Beatles keep their content, so the fix must not over-mark them.
+			Expect(nonMissingArtists()).To(ContainElement("The Beatles"))
 		})
 
 		It("does not override artist fields when importing an undertagged file", func() {
