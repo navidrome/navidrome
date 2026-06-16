@@ -592,8 +592,9 @@ var _ = Describe("Scanner", Ordered, func() {
 			Expect(runScanner(ctx, true)).To(Succeed())
 
 			By("Checking Pink Floyd's row survives but is marked missing, leaving no orphan")
-			// Its row still exists (it's referenced by album_artists), so the fix must flip its
-			// missing flag — the shared `missing = false` search filter then excludes it.
+			// Note: GetAll can't observe this — selectArtist inner-joins library_artist, so an
+			// orphaned artist (no junction row) is excluded from results whether or not it is
+			// marked missing. We must read the artist row directly to assert the missing flag.
 			Expect(floydMissing()).To(Equal(1))
 			Expect(orphanCount()).To(BeZero())
 			// The Beatles keep their content, so the fix must not over-mark them.
