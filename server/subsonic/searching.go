@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
-	"slices"
 	"strings"
 	"time"
 
@@ -105,8 +104,12 @@ func (api *Router) searchAll(ctx context.Context, sp *searchParams, musicFolderI
 // accessible library is absent from it. Compared as a set membership, not by length, because
 // requested may contain duplicate IDs (musicFolderId is not deduplicated).
 func narrowsArtistLibraries(ctx context.Context, requested []int) bool {
+	requestedSet := make(map[int]struct{}, len(requested))
+	for _, id := range requested {
+		requestedSet[id] = struct{}{}
+	}
 	for _, lib := range getUserAccessibleLibraries(ctx) {
-		if !slices.Contains(requested, lib.ID) {
+		if _, ok := requestedSet[lib.ID]; !ok {
 			return true
 		}
 	}

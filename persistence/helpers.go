@@ -61,17 +61,26 @@ func Exists(subTable string, cond squirrel.Sqlizer) existsCond {
 	return existsCond{subTable: subTable, cond: cond, not: false}
 }
 
-// ArtistLibraryFilter restricts artists to the given libraries via EXISTS over the library_artist
-// junction. It is join-free on purpose: the search Phase 1 paginates rowids ordered by artist.id,
-// and a CROSS JOIN would fan out rowids (forcing a DISTINCT temp b-tree that makes deep offsets
-// O(offset)). EXISTS keeps artist as the ordered driver, so LIMIT/OFFSET short-circuits — O(page).
-// The subquery constrains both library_artist columns (artist_id = and library_id IN), so it
-// resolves as a covering index seek on the existing (library_id, artist_id) UNIQUE autoindex.
+// ArtistLibraryFilter restricts artists to the given libraries via a correlated EXISTS over the
+// library_artist junction. It is join-free on purpose: the search Phase 1 paginates rowids ordered
+// by artist.id, and a CROSS JOIN would fan out rowids (forcing a DISTINCT temp b-tree that makes
+// deep offsets O(offset)). EXISTS keeps artist as the ordered scan driver, so LIMIT/OFFSET
+// short-circuits — O(page).
+//
+// The inner LIMIT 1 is load-bearing: without it SQLite may flatten the correlated EXISTS into a
+// join that fans out — an artist in N of the libraries then yields N rowids, duplicating/skipping
+// paginated rows. A subquery with a LIMIT cannot be flattened, so the LIMIT 1 forces the semi-join
+// (boolean) evaluation while staying an index seek on the (library_id, artist_id) UNIQUE autoindex.
 func ArtistLibraryFilter(libraryIDs []int) squirrel.Sqlizer {
-	return Exists("library_artist", squirrel.And{
-		squirrel.Expr("library_artist.artist_id = artist.id"),
-		squirrel.Eq{"library_artist.library_id": libraryIDs},
-	})
+	if len(libraryIDs) == 0 {
+		return squirrel.Eq{"1": 2} // match nothing, without a degenerate `IN ()` subquery
+	}
+	sub, args, _ := squirrel.Select("1").From("library_artist").
+		Where(squirrel.And{
+			squirrel.Expr("library_artist.artist_id = artist.id"),
+			squirrel.Eq{"library_artist.library_id": libraryIDs},
+		}).Limit(1).ToSql()
+	return squirrel.Expr("EXISTS ("+sub+")", args...)
 }
 
 func NotExists(subTable string, cond squirrel.Sqlizer) existsCond {

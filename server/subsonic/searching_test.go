@@ -60,9 +60,9 @@ var _ = Describe("Search", func() {
 				// Album and song filters scope by the library_id column directly.
 				assertQueryOptions(mockAlbumRepo.Options.Filters, "library_id IN (?)", 1)
 				assertQueryOptions(mockMediaFileRepo.Options.Filters, "library_id IN (?)", 1)
-				// Artists scope through the library_artist junction, so a join-free EXISTS is used.
+				// Artists scope through the library_artist junction via a join-free EXISTS subquery.
 				assertQueryOptions(mockArtistRepo.Options.Filters,
-					"exists (select 1 from library_artist", 1)
+					"EXISTS (SELECT 1 FROM library_artist", 1)
 			})
 
 			It("skips the artist narrowing filter when the request covers all of the user's libraries", func() {
@@ -112,7 +112,7 @@ var _ = Describe("Search", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(resp).ToNot(BeNil())
 				assertQueryOptions(mockArtistRepo.Options.Filters,
-					"exists (select 1 from library_artist", 1, 2)
+					"EXISTS (SELECT 1 FROM library_artist", 1, 2)
 			})
 
 			It("should return empty results when user has no accessible libraries", func() {
@@ -173,9 +173,9 @@ var _ = Describe("Search", func() {
 				// Album and song filters scope by the library_id column directly.
 				assertQueryOptions(mockAlbumRepo.Options.Filters, "library_id IN (?)", 1)
 				assertQueryOptions(mockMediaFileRepo.Options.Filters, "library_id IN (?)", 1)
-				// Artists scope through the library_artist junction, so a join-free EXISTS is used.
+				// Artists scope through the library_artist junction via a join-free EXISTS subquery.
 				assertQueryOptions(mockArtistRepo.Options.Filters,
-					"exists (select 1 from library_artist", 1)
+					"EXISTS (SELECT 1 FROM library_artist", 1)
 			})
 
 			It("skips the artist narrowing filter when the request covers all of the user's libraries", func() {
