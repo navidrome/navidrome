@@ -2,6 +2,7 @@ package scanner_test
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"path/filepath"
 	"testing/fstest"
@@ -565,17 +566,37 @@ var _ = Describe("Scanner", Ordered, func() {
 						"AND id NOT IN (SELECT artist_id FROM library_artist)").Scan(&n)).To(Succeed())
 				return n
 			}
+			// Raw artist state, bypassing the repository's library filter (a missing/orphaned artist
+			// won't show up through it). Returns -1 if the artist row no longer exists.
+			floydMissing := func() int {
+				var m bool
+				err := db.Db().QueryRowContext(ctx,
+					"SELECT missing FROM artist WHERE name = 'Pink Floyd'").Scan(&m)
+				if errors.Is(err, sql.ErrNoRows) {
+					return -1
+				}
+				Expect(err).ToNot(HaveOccurred())
+				if m {
+					return 1
+				}
+				return 0
+			}
 
 			By("Confirming Pink Floyd is visible after the import, with no orphan")
 			Expect(nonMissingArtists()).To(ContainElement("Pink Floyd"))
+			Expect(floydMissing()).To(Equal(0))
 			Expect(orphanCount()).To(BeZero())
 
 			By("Removing all of Pink Floyd's files and rescanning")
 			fsys.Remove("Pink Floyd/The Wall/01 - Another Brick.mp3")
 			Expect(runScanner(ctx, true)).To(Succeed())
 
-			By("Checking no non-missing orphan remains, with The Beatles still visible")
-			Expect(nonMissingArtists()).To(ContainElement("The Beatles"))
+			By("Checking Pink Floyd is marked missing (its row survives in album_artists), not a non-missing orphan")
+			Expect(floydMissing()).To(Equal(1))
+			Expect(nonMissingArtists()).To(SatisfyAll(
+				ContainElement("The Beatles"),
+				Not(ContainElement("Pink Floyd")),
+			))
 			Expect(orphanCount()).To(BeZero())
 		})
 
