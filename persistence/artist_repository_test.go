@@ -141,9 +141,24 @@ var _ = Describe("ArtistRepository", func() {
 				Expect(scope(subsetUser, squirrel.Eq{"library_id": []int{1, 2, 3}})).To(BeNil())
 			})
 
-			It("drops the filter for admins (repository scoping suffices)", func() {
-				admin := model.User{ID: "a", IsAdmin: true, Libraries: model.Libraries{{ID: 1}}}
-				Expect(scope(admin, squirrel.Eq{"library_id": []int{1}})).To(BeNil())
+			It("drops the filter for an admin requesting all existing libraries", func() {
+				// Admins see every library, so the visible set is the whole library table — derive
+				// it from the DB rather than assuming a count.
+				var allLibs []int
+				Expect(NewLibraryRepository(GinkgoT().Context(), GetDBXBuilder()).(*libraryRepository).
+					queryAllSlice(squirrel.Select("id").From("library"), &allLibs)).To(Succeed())
+				admin := model.User{ID: "a", IsAdmin: true}
+				Expect(scope(admin, squirrel.Eq{"library_id": allLibs})).To(BeNil())
+			})
+
+			It("narrows for an admin explicitly requesting a subset via musicFolderId", func() {
+				// An admin scoping to a single, non-existent-as-the-whole-set library must still be
+				// narrowed (regression: search3?musicFolderId=lib2 was leaking lib1 content).
+				admin := model.User{ID: "a", IsAdmin: true}
+				got := scope(admin, squirrel.Eq{"library_id": []int{-1}})
+				Expect(got).ToNot(BeNil())
+				sql, _, _ := got.ToSql()
+				Expect(sql).To(ContainSubstring("EXISTS (SELECT 1 FROM library_artist"))
 			})
 
 			It("passes through a non-library_id filter unchanged", func() {

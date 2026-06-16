@@ -611,10 +611,12 @@ func (r *artistRepository) Search(q string, options ...model.QueryOptions) (mode
 	}
 	// Callers scope artists to libraries with the same Eq{"library_id": ids} filter used for albums
 	// and songs. Artists reach libraries through the library_artist junction, so translate it to a
-	// join-free predicate that the rowid Phase 1 can paginate (see [ArtistLibraryFilter]).
+	// join-free predicate that the rowid Phase 1 can paginate (see [ArtistLibraryFilter]). The
+	// translated opts must reach both phases — selectArtist (Phase 2) would otherwise re-apply the
+	// raw library_id filter against the wrong columns.
 	opts.Filters = r.scopeSearchToLibraries(opts.Filters)
 	var res dbArtists
-	err := r.doSearch(r.selectArtist(options...), q, &res, r.searchCfg(), opts)
+	err := r.doSearch(r.selectArtist(opts), q, &res, r.searchCfg(), opts)
 	if err != nil {
 		return nil, fmt.Errorf("searching artist %q: %w", q, err)
 	}
@@ -622,9 +624,10 @@ func (r *artistRepository) Search(q string, options ...model.QueryOptions) (mode
 }
 
 // scopeSearchToLibraries replaces an incoming Eq{"library_id": ids} filter with the join-free
-// [ArtistLibraryFilter]. It returns nil (no extra filter) when the requested libraries already
-// cover every library the user can access — applyLibraryFilterToSearchQuery's own scoping then
-// suffices, keeping the common case on the unfiltered fast-path.
+// [ArtistLibraryFilter]. It returns nil (no extra filter) only when the request already covers
+// every library the search would return anyway — applyLibraryFilterToSearchQuery's own scoping
+// then suffices, keeping the common case on the unfiltered fast-path. Otherwise (a strict subset,
+// including an admin explicitly narrowing via musicFolderId) it returns the narrowing filter.
 func (r *artistRepository) scopeSearchToLibraries(filter Sqlizer) Sqlizer {
 	eq, ok := filter.(Eq)
 	if !ok {
@@ -634,23 +637,35 @@ func (r *artistRepository) scopeSearchToLibraries(filter Sqlizer) Sqlizer {
 	if !ok {
 		return filter
 	}
-	user := loggedUser(r.ctx)
-	if user.IsAdmin || user.ID == invalidUserId {
-		return nil
+	// The visible set is every library for admin/headless, else the user's granted libraries.
+	visible, err := r.visibleLibraryIDs()
+	if err != nil {
+		return ArtistLibraryFilter(requested) // fail safe: narrow rather than over-expose
 	}
-	// Narrow only for a strict subset of the user's libraries; if the request covers all of them
-	// the repository's own filter already does the job. Compared as set membership (not by length)
-	// because the requested IDs may contain duplicates.
+	// Drop the filter only if the request covers the whole visible set. Compared as set membership
+	// (not by length) because the requested IDs may contain duplicates.
 	requestedSet := make(map[int]struct{}, len(requested))
 	for _, id := range requested {
 		requestedSet[id] = struct{}{}
 	}
-	for _, lib := range user.Libraries {
-		if _, ok := requestedSet[lib.ID]; !ok {
+	for _, id := range visible {
+		if _, ok := requestedSet[id]; !ok {
 			return ArtistLibraryFilter(requested)
 		}
 	}
 	return nil
+}
+
+// visibleLibraryIDs returns the libraries the current user can see: all libraries for admin and
+// headless processes, otherwise the user's granted libraries.
+func (r *artistRepository) visibleLibraryIDs() ([]int, error) {
+	user := loggedUser(r.ctx)
+	if user.IsAdmin || user.ID == invalidUserId {
+		var ids []int
+		err := r.queryAllSlice(Select("id").From("library"), &ids)
+		return ids, err
+	}
+	return slice.Map(user.Libraries, func(lib model.Library) int { return lib.ID }), nil
 }
 
 func (r *artistRepository) Count(options ...rest.QueryOptions) (int64, error) {
