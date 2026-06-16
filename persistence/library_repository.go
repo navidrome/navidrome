@@ -261,6 +261,18 @@ func (r *libraryRepository) Delete(id int) error {
 		return err
 	}
 
+	// Deleting a library cascades away its library_artist rows. An artist that was only in this
+	// library now has no library_artist row but is still missing=false, which would make it an
+	// orphan: the artist search fast-path (admin/headless) walks artist unfiltered, so the orphan
+	// would take a pagination slot and then vanish in Phase 2's inner join (see
+	// applyLibraryFilterToSearchQuery). Mark such artists missing here so the shared
+	// `missing = false` filter excludes them immediately, rather than waiting for the next scan.
+	if _, err := r.executeSQL(Expr(
+		"update artist set missing = true where missing = false " +
+			"and id not in (select artist_id from library_artist)")); err != nil {
+		return fmt.Errorf("marking orphaned artists missing after deleting library %d: %w", id, err)
+	}
+
 	// Clear cache entry for this library only if DB operation was successful
 	libLock.Lock()
 	defer libLock.Unlock()

@@ -1011,6 +1011,49 @@ var _ = Describe("ArtistRepository", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})
+
+	Describe("RefreshStats", func() {
+		var repo *artistRepository
+
+		missing := func(id string) bool {
+			var vals []bool
+			Expect(repo.queryAllSlice(squirrel.Select("missing").From("artist").Where(squirrel.Eq{"id": id}), &vals)).To(Succeed())
+			Expect(vals).To(HaveLen(1))
+			return vals[0]
+		}
+
+		BeforeEach(func() {
+			ctx := request.WithUser(GinkgoT().Context(), adminUser)
+			repo = NewArtistRepository(ctx, GetDBXBuilder()).(*artistRepository)
+		})
+
+		It("marks artists missing when the empty-stats cleanup drops their last library_artist row", func() {
+			// An artist with a library_artist row but no content: RefreshStats leaves its stats '{}'
+			// and the cleanup deletes the row, which would orphan a non-missing artist.
+			emptyArtist := model.Artist{ID: "refresh-empty", Name: "No Content Artist"}
+			Expect(repo.Put(&emptyArtist)).To(Succeed())
+			_, err := repo.executeSQL(squirrel.Insert("library_artist").
+				SetMap(map[string]any{"library_id": 1, "artist_id": emptyArtist.ID, "stats": "{}"}))
+			Expect(err).ToNot(HaveOccurred())
+			DeferCleanup(func() {
+				_, _ = repo.executeSQL(squirrel.Delete("library_artist").Where(squirrel.Eq{"artist_id": emptyArtist.ID}))
+				_ = repo.delete(squirrel.Eq{"id": emptyArtist.ID})
+			})
+
+			Expect(missing(emptyArtist.ID)).To(BeFalse())
+
+			_, err = repo.RefreshStats(true)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Its only library_artist row was cleaned up → it must be marked missing, not orphaned.
+			Expect(missing(emptyArtist.ID)).To(BeTrue())
+			var orphanIDs []string
+			Expect(repo.queryAllSlice(squirrel.Select("id").From("artist").
+				Where("missing = false").
+				Where("id not in (select artist_id from library_artist)"), &orphanIDs)).To(Succeed())
+			Expect(orphanIDs).ToNot(ContainElement(emptyArtist.ID))
+		})
+	})
 })
 
 // Helper function to create an artist with proper library association.

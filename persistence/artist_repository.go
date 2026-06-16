@@ -527,13 +527,24 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
 		totalRowsAffected += rowsAffected
 	}
 
-	// // Remove library_artist entries for artists that no longer have any content in any library
+	// Remove library_artist entries for artists that no longer have any content in a library.
 	cleanupSQL := Delete("library_artist").Where("stats = '{}'")
 	cleanupRows, err := r.executeSQL(cleanupSQL)
 	if err != nil {
 		log.Warn(r.ctx, "Failed to cleanup empty library_artist entries", "error", err)
 	} else if cleanupRows > 0 {
 		log.Debug(r.ctx, "Cleaned up empty library_artist entries", "rowsDeleted", cleanupRows)
+		// The cleanup above can drop an artist's last library_artist row, leaving it non-missing
+		// but with no library — an orphan that the artist search fast-path would surface in Phase 1
+		// only to drop in Phase 2's inner join (see applyLibraryFilterToSearchQuery). Mark such
+		// artists missing now so the shared `missing = false` filter excludes them. Only runs when
+		// the cleanup actually removed rows (the only way a new orphan can appear), so steady-state
+		// scans pay nothing.
+		if _, err := r.executeSQL(Expr(
+			"update artist set missing = true where missing = false " +
+				"and not exists (select 1 from library_artist where library_artist.artist_id = artist.id)")); err != nil {
+			log.Warn(r.ctx, "Failed to mark orphaned artists missing after library_artist cleanup", "error", err)
+		}
 	}
 
 	log.Debug(r.ctx, "RefreshStats: Successfully updated stats.", "totalArtistsProcessed", len(allTouchedArtistIDs), "totalDBRowsAffected", totalRowsAffected)
@@ -541,7 +552,12 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
 }
 
 // applyLibraryFilterToSearchQuery scopes the search Phase 1 to the logged-in user's libraries
-// via the join-free [ArtistLibraryFilter]. Admin and headless processes get no filter (fast-path).
+// via the join-free [ArtistLibraryFilter]. Admin and headless processes get no filter (fast-path):
+// they walk artist's primary key in order, untouched. Orphan artists (a non-missing row with no
+// library_artist row) would be dropped by Phase 2's inner join and shorten the page, but they are
+// kept from occurring at the source: both [artistRepository.RefreshStats] (after its empty-stats
+// cleanup) and [libraryRepository.Delete] (after the cascading delete) mark newly-orphaned artists
+// missing, so the shared `missing = false` filter already excludes them.
 func (r *artistRepository) applyLibraryFilterToSearchQuery(query SelectBuilder) SelectBuilder {
 	user := loggedUser(r.ctx)
 	if user.ID == invalidUserId || user.IsAdmin {
