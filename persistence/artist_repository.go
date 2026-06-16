@@ -531,7 +531,7 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
 	cleanupSQL := Delete("library_artist").Where("stats = '{}'")
 	cleanupRows, err := r.executeSQL(cleanupSQL)
 	if err != nil {
-		log.Warn(r.ctx, "Failed to cleanup empty library_artist entries", "error", err)
+		log.Warn(r.ctx, "Failed to cleanup empty library_artist entries", err)
 	} else {
 		if cleanupRows > 0 {
 			log.Debug(r.ctx, "Cleaned up empty library_artist entries", "rowsDeleted", cleanupRows)
@@ -544,7 +544,7 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
 			if _, err := r.executeSQL(Expr(
 				"update artist set missing = true where missing = false " +
 					"and not exists (select 1 from library_artist where library_artist.artist_id = artist.id)")); err != nil {
-				log.Warn(r.ctx, "Failed to mark orphaned artists missing after library_artist cleanup", "error", err)
+				log.Warn(r.ctx, "Failed to mark orphaned artists missing after library_artist cleanup", err)
 			}
 		}
 	}
