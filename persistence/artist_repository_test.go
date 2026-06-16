@@ -111,37 +111,46 @@ var _ = Describe("ArtistRepository", func() {
 			})
 		})
 
-		Describe("scopeSearchToLibraries", func() {
-			// Builds an artist repo whose context carries the given user, then translates an
-			// incoming library_id search filter the way Search() does.
-			scope := func(user model.User, filter squirrel.Sqlizer) squirrel.Sqlizer {
+		Describe("searchScope", func() {
+			// Resolves the library IDs a search must be restricted to (nil = fast-path / no filter),
+			// the way Search() does, for a repo whose context carries the given user.
+			scope := func(user model.User, filter squirrel.Sqlizer) []int {
 				ctx := request.WithUser(GinkgoT().Context(), user)
 				r := NewArtistRepository(ctx, GetDBXBuilder()).(*artistRepository)
-				return r.scopeSearchToLibraries(filter)
+				return r.searchScope(filter)
 			}
 			subsetUser := model.User{ID: "u", Libraries: model.Libraries{{ID: 1}, {ID: 2}, {ID: 3}}}
 
-			It("translates a strict subset to a join-free EXISTS over library_artist", func() {
-				got := scope(subsetUser, squirrel.Eq{"library_id": []int{1, 2}})
-				sql, args, err := got.ToSql()
-				Expect(err).ToNot(HaveOccurred())
-				Expect(sql).To(ContainSubstring("EXISTS (SELECT 1 FROM library_artist"))
-				Expect(args).To(ContainElements(1, 2))
+			It("scopes to a strict subset of the user's libraries", func() {
+				Expect(scope(subsetUser, squirrel.Eq{"library_id": []int{1, 2}})).To(Equal([]int{1, 2}))
 			})
 
 			It("treats duplicate IDs as a set so a real subset still narrows", func() {
 				// {1,1,2} has 3 entries but is a strict subset of the user's 3 libraries.
-				got := scope(subsetUser, squirrel.Eq{"library_id": []int{1, 1, 2}})
-				Expect(got).ToNot(BeNil())
-				sql, _, _ := got.ToSql()
-				Expect(sql).To(ContainSubstring("EXISTS (SELECT 1 FROM library_artist"))
+				Expect(scope(subsetUser, squirrel.Eq{"library_id": []int{1, 1, 2}})).To(Equal([]int{1, 1, 2}))
 			})
 
-			It("drops the filter when the request covers all the user's libraries", func() {
+			It("returns nil (fast-path) when the request covers all the user's libraries", func() {
 				Expect(scope(subsetUser, squirrel.Eq{"library_id": []int{1, 2, 3}})).To(BeNil())
 			})
 
-			It("drops the filter for an admin requesting all existing libraries", func() {
+			It("scopes to the user's libraries when no library filter is given", func() {
+				// A restricted user (strictly fewer libs than exist) with no musicFolderId is still
+				// confined to their granted libs. Build the user with total-1 libraries derived from
+				// the real DB total, so the "sees all" fast-path can't kick in regardless of count.
+				total, err := NewLibraryRepository(GinkgoT().Context(), GetDBXBuilder()).CountAll()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(total).To(BeNumerically(">", 0))
+				libs := make(model.Libraries, 0, total-1)
+				for i := int64(1); i < total; i++ { // total-1 distinct libraries → a strict subset
+					libs = append(libs, model.Library{ID: int(i)})
+				}
+				restricted := model.User{ID: "r", Libraries: libs}
+				got := scope(restricted, nil)
+				Expect(got).To(HaveLen(int(total) - 1))
+			})
+
+			It("returns nil (fast-path) for an admin requesting all existing libraries", func() {
 				// Admins see every library, so the visible set is the whole library table — derive
 				// it from the DB rather than assuming a count.
 				var allLibs []int
@@ -149,21 +158,21 @@ var _ = Describe("ArtistRepository", func() {
 					queryAllSlice(squirrel.Select("id").From("library"), &allLibs)).To(Succeed())
 				admin := model.User{ID: "a", IsAdmin: true}
 				Expect(scope(admin, squirrel.Eq{"library_id": allLibs})).To(BeNil())
+				Expect(scope(admin, nil)).To(BeNil())
 			})
 
 			It("narrows for an admin explicitly requesting a subset via musicFolderId", func() {
 				// An admin scoping to a single, non-existent-as-the-whole-set library must still be
 				// narrowed (regression: search3?musicFolderId=lib2 was leaking lib1 content).
 				admin := model.User{ID: "a", IsAdmin: true}
-				got := scope(admin, squirrel.Eq{"library_id": []int{-1}})
-				Expect(got).ToNot(BeNil())
-				sql, _, _ := got.ToSql()
-				Expect(sql).To(ContainSubstring("EXISTS (SELECT 1 FROM library_artist"))
+				Expect(scope(admin, squirrel.Eq{"library_id": []int{-1}})).To(Equal([]int{-1}))
 			})
 
-			It("passes through a non-library_id filter unchanged", func() {
-				other := squirrel.Eq{"name": "x"}
-				Expect(scope(subsetUser, other)).To(Equal(other))
+			It("returns nil for a non-library_id filter (no library scoping requested)", func() {
+				// Such a filter carries no library intent; for this fully-granted-style user the
+				// search needs no extra library restriction.
+				allUser := model.User{ID: "u2", IsAdmin: true}
+				Expect(scope(allUser, squirrel.Eq{"name": "x"})).To(BeNil())
 			})
 		})
 
@@ -1002,21 +1011,21 @@ var _ = Describe("ArtistRepository", func() {
 			})
 
 			It("detects all-library access regardless of result equivalence", func() {
-				// userHasAllLibraries drives the search fast-path: true when the user's library
-				// count reaches the total, false otherwise. Derive the total from the DB so the
+				// userSeesAllLibraries drives the search fast-path for a non-admin: true when the
+				// visible-library count reaches the DB total. Derive the total from the DB so the
 				// assertion doesn't depend on how many libraries other specs left behind.
-				raw := restrictedRepo.(*artistRepository)
+				raw := restrictedRepo.(*artistRepository) // context carries a non-admin user
 				total, err := NewLibraryRepository(GinkgoT().Context(), GetDBXBuilder()).CountAll()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(total).To(BeNumerically(">", 0))
 
-				allLibs := make(model.Libraries, total)
+				allLibs := make([]int, total)
 				for i := range allLibs {
-					allLibs[i] = model.Library{ID: i + 1}
+					allLibs[i] = i + 1
 				}
-				Expect(raw.userHasAllLibraries(&model.User{Libraries: allLibs})).To(BeTrue())
-				Expect(raw.userHasAllLibraries(&model.User{Libraries: allLibs[:total-1]})).To(BeFalse())
-				Expect(raw.userHasAllLibraries(&model.User{Libraries: model.Libraries{}})).To(BeFalse())
+				Expect(raw.userSeesAllLibraries(allLibs)).To(BeTrue())
+				Expect(raw.userSeesAllLibraries(allLibs[:total-1])).To(BeFalse())
+				Expect(raw.userSeesAllLibraries([]int{})).To(BeFalse())
 			})
 		})
 	})

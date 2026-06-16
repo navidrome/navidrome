@@ -355,9 +355,8 @@ func (r *artistRepository) purgeEmpty() error {
 
 // markOrphansMissing marks as missing any non-missing artist that has no library_artist row. Such
 // orphans would be paginated by the search fast-path's Phase 1 and then dropped by Phase 2's inner
-// join (see applyLibraryFilterToSearchQuery); flagging them keeps the shared `missing = false`
-// filter correct. Called wherever a library_artist row can be removed (RefreshStats cleanup,
-// library deletion cascade).
+// join (see searchScope); flagging them keeps the shared `missing = false` filter correct. Called
+// wherever a library_artist row can be removed (RefreshStats cleanup, library deletion cascade).
 func (r *artistRepository) markOrphansMissing() error {
 	_, err := r.executeSQL(Expr(
 		"update artist set missing = true where missing = false " +
@@ -565,42 +564,25 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
 	return totalRowsAffected, nil
 }
 
-// applyLibraryFilterToSearchQuery scopes the search Phase 1 to the logged-in user's libraries via
-// the join-free [ArtistLibraryFilter]. Headless, admin, and any user who can access every library
-// get no filter (fast-path): for them the filter would match every non-missing artist anyway, so
-// it is pure O(offset) overhead — skipping it keeps Phase 1 a plain ordered walk over artist.id.
-//
-// The fast-path relies on orphan artists (non-missing, but with no library_artist row) not
-// existing: Phase 2 inner-joins library_artist, so an orphan would be paginated in Phase 1 then
-// dropped, shortening the page. [artistRepository.RefreshStats] and [libraryRepository.Delete] mark
-// such artists missing at the source, so the shared `missing = false` filter excludes them.
-func (r *artistRepository) applyLibraryFilterToSearchQuery(query SelectBuilder) SelectBuilder {
-	user := loggedUser(r.ctx)
-	if user.ID == invalidUserId || user.IsAdmin || r.userHasAllLibraries(user) {
-		return query
-	}
-	libraryIDs := slice.Map(user.Libraries, func(lib model.Library) int { return lib.ID })
-	return query.Where(ArtistLibraryFilter(libraryIDs))
-}
-
-// userHasAllLibraries reports whether the user can access every library, in which case the search
-// library filter is redundant. On any error reading the total it returns false, falling back to the
-// (correct, just slower) filtered path.
-func (r *artistRepository) userHasAllLibraries(user *model.User) bool {
-	total, err := NewLibraryRepository(r.ctx, r.db).CountAll()
-	if err != nil || total == 0 {
-		return false
-	}
-	return int64(len(user.Libraries)) >= total
-}
-
-func (r *artistRepository) searchCfg() searchConfig {
+// searchCfg builds the per-search config. scope is the set of library IDs the rowid Phase 1 must
+// restrict artists to, or nil to skip the filter (fast-path). See [artistRepository.searchScope].
+func (r *artistRepository) searchCfg(scope []int) searchConfig {
 	return searchConfig{
 		// Natural order for artists is more performant by ID, due to GROUP BY clause in selectArtist
-		NaturalOrder:  "artist.id",
-		OrderBy:       []string{"sum(json_extract(stats, '$.total.m')) desc", "name"},
-		MBIDFields:    []string{"mbz_artist_id"},
-		LibraryFilter: r.applyLibraryFilterToSearchQuery,
+		NaturalOrder: "artist.id",
+		OrderBy:      []string{"sum(json_extract(stats, '$.total.m')) desc", "name"},
+		MBIDFields:   []string{"mbz_artist_id"},
+		// scope==nil → no filter (Phase 1 stays a plain ordered walk over artist.id). Otherwise a
+		// join-free [ArtistLibraryFilter]: a JOIN would fan out rowids and break offset pagination.
+		// The fast-path relies on orphan artists (non-missing, no library_artist row) not existing —
+		// [artistRepository.RefreshStats] and [libraryRepository.Delete] mark them missing so the
+		// shared `missing = false` filter excludes them.
+		LibraryFilter: func(query SelectBuilder) SelectBuilder {
+			if scope == nil {
+				return query
+			}
+			return query.Where(ArtistLibraryFilter(scope))
+		},
 	}
 }
 
@@ -609,51 +591,76 @@ func (r *artistRepository) Search(q string, options ...model.QueryOptions) (mode
 	if len(options) > 0 {
 		opts = options[0]
 	}
-	// Callers scope artists to libraries with the same Eq{"library_id": ids} filter used for albums
-	// and songs. Artists reach libraries through the library_artist junction, so translate it to a
-	// join-free predicate that the rowid Phase 1 can paginate (see [ArtistLibraryFilter]). The
-	// translated opts must reach both phases — selectArtist (Phase 2) would otherwise re-apply the
-	// raw library_id filter against the wrong columns.
-	opts.Filters = r.scopeSearchToLibraries(opts.Filters)
+	// Resolve the library scope once: callers pass the same Eq{"library_id": ids} filter used for
+	// albums and songs, but artists reach libraries through the library_artist junction, so it can't
+	// be applied as a column filter. Pull it out of opts.Filters and realize it as a join-free
+	// Phase-1 predicate (searchCfg) instead.
+	scope := r.searchScope(opts.Filters)
+	opts.Filters = nil
 	var res dbArtists
-	err := r.doSearch(r.selectArtist(opts), q, &res, r.searchCfg(), opts)
+	err := r.doSearch(r.selectArtist(opts), q, &res, r.searchCfg(scope), opts)
 	if err != nil {
 		return nil, fmt.Errorf("searching artist %q: %w", q, err)
 	}
 	return res.toModels(), nil
 }
 
-// scopeSearchToLibraries replaces an incoming Eq{"library_id": ids} filter with the join-free
-// [ArtistLibraryFilter]. It returns nil (no extra filter) only when the request already covers
-// every library the search would return anyway — applyLibraryFilterToSearchQuery's own scoping
-// then suffices, keeping the common case on the unfiltered fast-path. Otherwise (a strict subset,
-// including an admin explicitly narrowing via musicFolderId) it returns the narrowing filter.
-func (r *artistRepository) scopeSearchToLibraries(filter Sqlizer) Sqlizer {
-	eq, ok := filter.(Eq)
-	if !ok {
-		return filter
-	}
-	requested, ok := eq["library_id"].([]int)
-	if !ok {
-		return filter
-	}
-	// The visible set is every library for admin/headless, else the user's granted libraries.
+// searchScope returns the library IDs the search must be restricted to, or nil to skip the filter
+// (the user can see everything the search would return anyway, so the filter would be a pure
+// O(offset) overhead). It intersects the optional requested set (an Eq{"library_id": []int} filter,
+// always ⊆ the visible set) with what the user can see: every library for admin/headless, else the
+// user's granted libraries. A request covering the whole visible set, or no request at all for a
+// see-everything user, yields nil.
+func (r *artistRepository) searchScope(filter Sqlizer) []int {
 	visible, err := r.visibleLibraryIDs()
 	if err != nil {
-		return ArtistLibraryFilter(requested) // fail safe: narrow rather than over-expose
+		return r.requestedLibraryIDs(filter) // fail safe: narrow to the request rather than widen
 	}
-	// Drop the filter only if the request covers the whole visible set. Compared as set membership
-	// (not by length) because the requested IDs may contain duplicates.
+	requested := r.requestedLibraryIDs(filter)
+	if requested == nil {
+		// No explicit request: scope to the visible set, unless the user sees everything.
+		if r.userSeesAllLibraries(visible) {
+			return nil
+		}
+		return visible
+	}
+	// Explicit request: narrow only when it's a strict subset of the visible set (set membership,
+	// not length — the requested IDs may contain duplicates).
 	requestedSet := make(map[int]struct{}, len(requested))
 	for _, id := range requested {
 		requestedSet[id] = struct{}{}
 	}
 	for _, id := range visible {
 		if _, ok := requestedSet[id]; !ok {
-			return ArtistLibraryFilter(requested)
+			return requested
 		}
 	}
 	return nil
+}
+
+// requestedLibraryIDs extracts the []int from an Eq{"library_id": ids} filter, or nil if filter is
+// not that shape.
+func (r *artistRepository) requestedLibraryIDs(filter Sqlizer) []int {
+	eq, ok := filter.(Eq)
+	if !ok {
+		return nil
+	}
+	ids, _ := eq["library_id"].([]int)
+	return ids
+}
+
+// userSeesAllLibraries reports whether the visible set already covers every library, so a search
+// needs no library filter at all.
+func (r *artistRepository) userSeesAllLibraries(visible []int) bool {
+	user := loggedUser(r.ctx)
+	if user.IsAdmin || user.ID == invalidUserId {
+		return true // visible is the whole library table
+	}
+	total, err := NewLibraryRepository(r.ctx, r.db).CountAll()
+	if err != nil || total == 0 {
+		return false
+	}
+	return int64(len(visible)) >= total
 }
 
 // visibleLibraryIDs returns the libraries the current user can see: all libraries for admin and
