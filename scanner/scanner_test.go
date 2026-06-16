@@ -567,24 +567,24 @@ var _ = Describe("Scanner", Ordered, func() {
 				return n
 			}
 			// Raw artist state, bypassing the repository's library filter (a missing/orphaned artist
-			// won't show up through it). Returns -1 if the artist row no longer exists.
-			floydMissing := func() int {
+			// won't show up through it). Returns a descriptive string for clear test failures.
+			floydState := func() string {
 				var m bool
 				err := db.Db().QueryRowContext(ctx,
 					"SELECT missing FROM artist WHERE name = 'Pink Floyd'").Scan(&m)
 				if errors.Is(err, sql.ErrNoRows) {
-					return -1
+					return "NOT_FOUND"
 				}
 				Expect(err).ToNot(HaveOccurred())
 				if m {
-					return 1
+					return "MISSING"
 				}
-				return 0
+				return "PRESENT"
 			}
 
 			By("Confirming Pink Floyd is visible after the import, with no orphan")
 			Expect(nonMissingArtists()).To(ContainElement("Pink Floyd"))
-			Expect(floydMissing()).To(Equal(0))
+			Expect(floydState()).To(Equal("PRESENT"))
 			Expect(orphanCount()).To(BeZero())
 
 			By("Removing all of Pink Floyd's files and rescanning")
@@ -595,7 +595,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			// Note: GetAll can't observe this — selectArtist inner-joins library_artist, so an
 			// orphaned artist (no junction row) is excluded from results whether or not it is
 			// marked missing. We must read the artist row directly to assert the missing flag.
-			Expect(floydMissing()).To(Equal(1))
+			Expect(floydState()).To(Equal("MISSING"))
 			Expect(orphanCount()).To(BeZero())
 			// The Beatles keep their content, so the fix must not over-mark them.
 			Expect(nonMissingArtists()).To(ContainElement("The Beatles"))
