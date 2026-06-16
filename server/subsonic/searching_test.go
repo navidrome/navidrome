@@ -39,12 +39,15 @@ var _ = Describe("Search", func() {
 		}
 
 		Describe("Search2", func() {
-			It("should accept musicFolderId parameter", func() {
+			It("narrows artists with a join-free EXISTS when musicFolderId is a strict subset", func() {
 				r := newGetRequest("query=test", "musicFolderId=1")
 				ctx := request.WithUser(r.Context(), model.User{
-					ID:        "user1",
-					UserName:  "testuser",
-					Libraries: []model.Library{{ID: 1, Name: "Library 1"}},
+					ID:       "user1",
+					UserName: "testuser",
+					Libraries: []model.Library{
+						{ID: 1, Name: "Library 1"},
+						{ID: 2, Name: "Library 2"},
+					},
 				})
 				r = r.WithContext(ctx)
 
@@ -54,14 +57,16 @@ var _ = Describe("Search", func() {
 				Expect(resp).ToNot(BeNil())
 				Expect(resp.SearchResult2).ToNot(BeNil())
 
-				// Verify that library filter was applied to all repositories
+				// Album and song filters scope by the library_id column directly.
 				assertQueryOptions(mockAlbumRepo.Options.Filters, "library_id IN (?)", 1)
-				assertQueryOptions(mockArtistRepo.Options.Filters, "library_id IN (?)", 1)
 				assertQueryOptions(mockMediaFileRepo.Options.Filters, "library_id IN (?)", 1)
+				// Artists scope through the library_artist junction, so a join-free EXISTS is used.
+				assertQueryOptions(mockArtistRepo.Options.Filters,
+					"exists (select 1 from library_artist", 1)
 			})
 
-			It("should return results from all accessible libraries when musicFolderId is not provided", func() {
-				r := newGetRequest("query=test")
+			It("skips the artist narrowing filter when the request covers all of the user's libraries", func() {
+				r := newGetRequest("query=test") // no musicFolderId → resolves to all accessible
 				ctx := request.WithUser(r.Context(), model.User{
 					ID:       "user1",
 					UserName: "testuser",
@@ -79,10 +84,11 @@ var _ = Describe("Search", func() {
 				Expect(resp).ToNot(BeNil())
 				Expect(resp.SearchResult2).ToNot(BeNil())
 
-				// Verify that library filter was applied to all repositories with all accessible libraries
+				// Album/song still get the resolved library filter, but the artist repository's own
+				// access filter suffices — no redundant subsonic-layer EXISTS (keeps the fast-path).
 				assertQueryOptions(mockAlbumRepo.Options.Filters, "library_id IN (?,?,?)", 1, 2, 3)
-				assertQueryOptions(mockArtistRepo.Options.Filters, "library_id IN (?,?,?)", 1, 2, 3)
 				assertQueryOptions(mockMediaFileRepo.Options.Filters, "library_id IN (?,?,?)", 1, 2, 3)
+				Expect(mockArtistRepo.Options.Filters).To(BeNil())
 			})
 
 			It("should return empty results when user has no accessible libraries", func() {
@@ -122,12 +128,15 @@ var _ = Describe("Search", func() {
 		})
 
 		Describe("Search3", func() {
-			It("should accept musicFolderId parameter", func() {
+			It("narrows artists with a join-free EXISTS when musicFolderId is a strict subset", func() {
 				r := newGetRequest("query=test", "musicFolderId=1")
 				ctx := request.WithUser(r.Context(), model.User{
-					ID:        "user1",
-					UserName:  "testuser",
-					Libraries: []model.Library{{ID: 1, Name: "Library 1"}},
+					ID:       "user1",
+					UserName: "testuser",
+					Libraries: []model.Library{
+						{ID: 1, Name: "Library 1"},
+						{ID: 2, Name: "Library 2"},
+					},
 				})
 				r = r.WithContext(ctx)
 
@@ -137,14 +146,16 @@ var _ = Describe("Search", func() {
 				Expect(resp).ToNot(BeNil())
 				Expect(resp.SearchResult3).ToNot(BeNil())
 
-				// Verify that library filter was applied to all repositories
+				// Album and song filters scope by the library_id column directly.
 				assertQueryOptions(mockAlbumRepo.Options.Filters, "library_id IN (?)", 1)
-				assertQueryOptions(mockArtistRepo.Options.Filters, "library_id IN (?)", 1)
 				assertQueryOptions(mockMediaFileRepo.Options.Filters, "library_id IN (?)", 1)
+				// Artists scope through the library_artist junction, so a join-free EXISTS is used.
+				assertQueryOptions(mockArtistRepo.Options.Filters,
+					"exists (select 1 from library_artist", 1)
 			})
 
-			It("should return results from all accessible libraries when musicFolderId is not provided", func() {
-				r := newGetRequest("query=test")
+			It("skips the artist narrowing filter when the request covers all of the user's libraries", func() {
+				r := newGetRequest("query=test") // no musicFolderId → resolves to all accessible
 				ctx := request.WithUser(r.Context(), model.User{
 					ID:       "user1",
 					UserName: "testuser",
@@ -162,10 +173,11 @@ var _ = Describe("Search", func() {
 				Expect(resp).ToNot(BeNil())
 				Expect(resp.SearchResult3).ToNot(BeNil())
 
-				// Verify that library filter was applied to all repositories with all accessible libraries
+				// Album/song still get the resolved library filter, but the artist repository's own
+				// access filter suffices — no redundant subsonic-layer EXISTS (keeps the fast-path).
 				assertQueryOptions(mockAlbumRepo.Options.Filters, "library_id IN (?,?,?)", 1, 2, 3)
-				assertQueryOptions(mockArtistRepo.Options.Filters, "library_id IN (?,?,?)", 1, 2, 3)
 				assertQueryOptions(mockMediaFileRepo.Options.Filters, "library_id IN (?,?,?)", 1, 2, 3)
+				Expect(mockArtistRepo.Options.Filters).To(BeNil())
 			})
 
 			It("should return empty results when user has no accessible libraries", func() {

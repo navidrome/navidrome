@@ -61,6 +61,16 @@ func Exists(subTable string, cond squirrel.Sqlizer) existsCond {
 	return existsCond{subTable: subTable, cond: cond, not: false}
 }
 
+// ArtistLibraryFilter builds a join-free predicate restricting artists to the given libraries,
+// via EXISTS over the library_artist junction. Used as the search Phase 1 library filter so the
+// rowid scan stays ordered by artist.id (no CROSS JOIN + DISTINCT), keeping deep offsets O(page).
+func ArtistLibraryFilter(libraryIDs []int) squirrel.Sqlizer {
+	return Exists("library_artist", squirrel.And{
+		squirrel.Expr("library_artist.artist_id = artist.id"),
+		squirrel.Eq{"library_artist.library_id": libraryIDs},
+	})
+}
+
 func NotExists(subTable string, cond squirrel.Sqlizer) existsCond {
 	return existsCond{subTable: subTable, cond: cond, not: true}
 }

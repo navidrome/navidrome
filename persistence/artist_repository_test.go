@@ -653,6 +653,41 @@ var _ = Describe("ArtistRepository", func() {
 						_, _ = raw.executeSQL(squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": lib2Artist.ID}))
 					}
 				})
+
+				It("paginates a restricted user's visible artists without gaps", func() {
+					// An artist only in lib2 must not occupy a pagination slot for the restricted
+					// user: if Phase 1 paginated the unfiltered set and Phase 2 dropped this row,
+					// the page would be short and deep offsets would skip visible artists.
+					// ID "25" sorts (by artist.id) between the base fixtures "2" and "3", so it
+					// lands inside the restricted user's visible range and triggers the gap.
+					lib2Artist := model.Artist{ID: "25", Name: "Restricted Lib2 Artist"}
+					Expect(repo.Put(&lib2Artist)).To(Succeed())
+					Expect(lr.AddArtist(lib2.ID, lib2Artist.ID)).To(Succeed())
+					DeferCleanup(func() {
+						if raw, ok := repo.(*artistRepository); ok {
+							_, _ = raw.executeSQL(squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": lib2Artist.ID}))
+						}
+					})
+
+					all, err := restrictedRepo.Search("", model.QueryOptions{Max: 1000})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(len(all)).To(BeNumerically(">", 1))
+					for _, a := range all {
+						Expect(a.ID).ToNot(Equal(lib2Artist.ID))
+					}
+
+					var paged model.Artists
+					for offset := range len(all) {
+						page, err := restrictedRepo.Search("", model.QueryOptions{Max: 1, Offset: offset})
+						Expect(err).ToNot(HaveOccurred())
+						Expect(page).To(HaveLen(1), fmt.Sprintf("page at offset %d should be full", offset))
+						paged = append(paged, page...)
+					}
+					Expect(paged).To(HaveLen(len(all)))
+					for i := range all {
+						Expect(paged[i].ID).To(Equal(all[i].ID))
+					}
+				})
 			})
 
 			Context("Headless Processes (No User Context)", func() {

@@ -540,19 +540,23 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
 	return totalRowsAffected, nil
 }
 
-// applyLibraryFilterToSearchQuery is applyLibraryFilterToArtistQuery with the join order
-// pinned via CROSS JOIN (SQLite's explicit join-order override): the search Phase 1 paginates
-// rowids by artist.id, and when the planner drives from library_artist it must sort every
-// junction row on every page (temp b-tree over the whole table). Keeping artist as the outer
-// table streams rows in artist.id order from its primary key index, so LIMIT/OFFSET
-// short-circuits. Search-only: other artist queries keep the planner's freedom.
+// applyLibraryFilterToSearchQuery scopes the search Phase 1 (rowid pagination, ordered by
+// artist.id) to the libraries the logged-in user can access, without breaking the ordered scan
+// that lets LIMIT/OFFSET short-circuit. Non-admin users get a join-free EXISTS predicate keyed on
+// artist.id (covering index on library_artist(artist_id, library_id)): EXISTS keeps artist as the
+// ordered driver and never fans out rowids, so no DISTINCT temp b-tree is needed.
+//
+// This replaces an earlier CROSS JOIN + DISTINCT, whose temp b-tree made deep offsets O(offset):
+// ~200ms at offset 299k on 300k artists vs ~30ms here.
 func (r *artistRepository) applyLibraryFilterToSearchQuery(query SelectBuilder) SelectBuilder {
 	user := loggedUser(r.ctx)
-	query = query.CrossJoin("library_artist on library_artist.artist_id = artist.id")
-	if user.ID != invalidUserId && !user.IsAdmin {
-		query = query.Join("user_library on user_library.library_id = library_artist.library_id AND user_library.user_id = ?", user.ID)
+	// Admin and headless (invalidUserId) processes see every artist — no filter, so the scan
+	// stays a plain ordered walk over artist's primary key.
+	if user.ID == invalidUserId || user.IsAdmin {
+		return query
 	}
-	return query
+	libraryIDs := slice.Map(user.Libraries, func(lib model.Library) int { return lib.ID })
+	return query.Where(ArtistLibraryFilter(libraryIDs))
 }
 
 func (r *artistRepository) searchCfg() searchConfig {
