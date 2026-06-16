@@ -353,6 +353,21 @@ func (r *artistRepository) purgeEmpty() error {
 	return nil
 }
 
+// markOrphansMissing marks as missing any non-missing artist that has no library_artist row. Such
+// orphans would be paginated by the search fast-path's Phase 1 and then dropped by Phase 2's inner
+// join (see applyLibraryFilterToSearchQuery); flagging them keeps the shared `missing = false`
+// filter correct. Called wherever a library_artist row can be removed (RefreshStats cleanup,
+// library deletion cascade).
+func (r *artistRepository) markOrphansMissing() error {
+	_, err := r.executeSQL(Expr(
+		"update artist set missing = true where missing = false " +
+			"and not exists (select 1 from library_artist where library_artist.artist_id = artist.id)"))
+	if err != nil {
+		return fmt.Errorf("marking orphaned artists missing: %w", err)
+	}
+	return nil
+}
+
 // markMissing marks artists as missing if all their albums are missing.
 func (r *artistRepository) markMissing() error {
 	q := Expr(`
@@ -536,14 +551,11 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
 		if cleanupRows > 0 {
 			log.Debug(r.ctx, "Cleaned up empty library_artist entries", "rowsDeleted", cleanupRows)
 		}
-		// The cleanup can drop an artist's last library_artist row; mark such artists missing so
-		// they aren't left as orphans (see applyLibraryFilterToSearchQuery). Run when the cleanup
-		// removed rows (the only way a new orphan can appear) or on a full refresh, so a full scan
-		// also heals pre-existing orphans left by older versions.
+		// The cleanup can drop an artist's last library_artist row, orphaning it. Reconcile when the
+		// cleanup removed rows (the only way a new orphan can appear) or on a full refresh, so a
+		// full scan also heals pre-existing orphans left by older versions.
 		if cleanupRows > 0 || allArtists {
-			if _, err := r.executeSQL(Expr(
-				"update artist set missing = true where missing = false " +
-					"and not exists (select 1 from library_artist where library_artist.artist_id = artist.id)")); err != nil {
+			if err := r.markOrphansMissing(); err != nil {
 				log.Warn(r.ctx, "Failed to mark orphaned artists missing after library_artist cleanup", err)
 			}
 		}

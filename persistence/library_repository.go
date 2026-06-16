@@ -261,11 +261,9 @@ func (r *libraryRepository) Delete(id int) error {
 		return err
 	}
 
-	// The cascade above can drop an artist's last library_artist row; mark such artists missing so
-	// they aren't left as orphans (see artistRepository.applyLibraryFilterToSearchQuery).
-	if _, err := r.executeSQL(Expr(
-		"update artist set missing = true where missing = false " +
-			"and id not in (select artist_id from library_artist)")); err != nil {
+	// The cascade above can drop an artist's last library_artist row, orphaning it. Reconcile via
+	// the canonical helper (see artistRepository.markOrphansMissing).
+	if err := NewArtistRepository(r.ctx, r.db).(*artistRepository).markOrphansMissing(); err != nil {
 		return fmt.Errorf("marking orphaned artists missing after deleting library %d: %w", id, err)
 	}
 
