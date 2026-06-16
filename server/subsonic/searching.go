@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"slices"
 	"strings"
 	"time"
 
@@ -75,11 +76,8 @@ func (api *Router) searchAll(ctx context.Context, sp *searchParams, musicFolderI
 	if len(musicFolderIds) > 0 {
 		songOpts.Filters = Eq{"library_id": musicFolderIds}
 		albumOpts.Filters = Eq{"library_id": musicFolderIds}
-		// The artist repository already scopes the search to the user's accessible libraries (see
-		// applyLibraryFilterToSearchQuery), and admins get no filter at all (the fast-path). Only
-		// add a narrowing filter when the request targets a strict subset of the user's libraries
-		// — applying it unconditionally would defeat the admin fast-path. It's a join-free EXISTS
-		// so Phase 1 stays a plain ordered scan over artist.id (deep offsets stay O(page)).
+		// The artist repository already scopes to the user's accessible libraries; only add a
+		// narrowing filter when the request targets a strict subset of them (see narrowsArtistLibraries).
 		if narrowsArtistLibraries(ctx, musicFolderIds) {
 			artistOpts.Filters = persistence.ArtistLibraryFilter(musicFolderIds)
 		}
@@ -101,13 +99,18 @@ func (api *Router) searchAll(ctx context.Context, sp *searchParams, musicFolderI
 }
 
 // narrowsArtistLibraries reports whether requested is a strict subset of the user's accessible
-// libraries. Only then is a narrowing artist filter needed on top of the repository's own access
-// filter; when the request covers all of the user's libraries the repository filter alone is
-// correct, and skipping the extra EXISTS keeps the common case (incl. the admin fast-path) a plain
-// ordered scan. requested is always ⊆ accessible (validated by selectedMusicFolderIds).
+// libraries — the only case where the subsonic layer must narrow further than the repository's
+// own access filter. Skipping the extra EXISTS otherwise preserves the admin fast-path.
+// requested is always ⊆ accessible (validated by selectedMusicFolderIds), so it narrows iff some
+// accessible library is absent from it. Compared as a set membership, not by length, because
+// requested may contain duplicate IDs (musicFolderId is not deduplicated).
 func narrowsArtistLibraries(ctx context.Context, requested []int) bool {
-	accessible := getUserAccessibleLibraries(ctx)
-	return len(requested) < len(accessible)
+	for _, lib := range getUserAccessibleLibraries(ctx) {
+		if !slices.Contains(requested, lib.ID) {
+			return true
+		}
+	}
+	return false
 }
 
 func (api *Router) Search2(r *http.Request) (*responses.Subsonic, error) {

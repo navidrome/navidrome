@@ -540,18 +540,10 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
 	return totalRowsAffected, nil
 }
 
-// applyLibraryFilterToSearchQuery scopes the search Phase 1 (rowid pagination, ordered by
-// artist.id) to the libraries the logged-in user can access, without breaking the ordered scan
-// that lets LIMIT/OFFSET short-circuit. Non-admin users get a join-free EXISTS predicate keyed on
-// artist.id (covering index on library_artist(artist_id, library_id)): EXISTS keeps artist as the
-// ordered driver and never fans out rowids, so no DISTINCT temp b-tree is needed.
-//
-// This replaces an earlier CROSS JOIN + DISTINCT, whose temp b-tree made deep offsets O(offset):
-// ~200ms at offset 299k on 300k artists vs ~30ms here.
+// applyLibraryFilterToSearchQuery scopes the search Phase 1 to the logged-in user's libraries
+// via the join-free [ArtistLibraryFilter]. Admin and headless processes get no filter (fast-path).
 func (r *artistRepository) applyLibraryFilterToSearchQuery(query SelectBuilder) SelectBuilder {
 	user := loggedUser(r.ctx)
-	// Admin and headless (invalidUserId) processes see every artist — no filter, so the scan
-	// stays a plain ordered walk over artist's primary key.
 	if user.ID == invalidUserId || user.IsAdmin {
 		return query
 	}

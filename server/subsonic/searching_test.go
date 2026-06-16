@@ -91,6 +91,30 @@ var _ = Describe("Search", func() {
 				Expect(mockArtistRepo.Options.Filters).To(BeNil())
 			})
 
+			It("narrows artists when duplicate musicFolderId IDs still form a strict subset", func() {
+				// Duplicates inflate the requested count (musicFolderId is not deduplicated):
+				// {1,1,2} has 3 entries but is still a strict subset of the 3 libraries, so the
+				// narrowing filter must apply (a length-based check would wrongly skip it).
+				r := newGetRequest("query=test", "musicFolderId=1", "musicFolderId=1", "musicFolderId=2")
+				ctx := request.WithUser(r.Context(), model.User{
+					ID:       "user1",
+					UserName: "testuser",
+					Libraries: []model.Library{
+						{ID: 1, Name: "Library 1"},
+						{ID: 2, Name: "Library 2"},
+						{ID: 3, Name: "Library 3"},
+					},
+				})
+				r = r.WithContext(ctx)
+
+				resp, err := router.Search2(r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(resp).ToNot(BeNil())
+				assertQueryOptions(mockArtistRepo.Options.Filters,
+					"exists (select 1 from library_artist", 1, 2)
+			})
+
 			It("should return empty results when user has no accessible libraries", func() {
 				r := newGetRequest("query=test")
 				ctx := request.WithUser(r.Context(), model.User{
