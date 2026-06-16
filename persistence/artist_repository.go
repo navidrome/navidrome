@@ -554,7 +554,9 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
 }
 
 // applyLibraryFilterToSearchQuery scopes the search Phase 1 to the logged-in user's libraries via
-// the join-free [ArtistLibraryFilter]. Admin and headless processes get no filter (fast-path).
+// the join-free [ArtistLibraryFilter]. Headless, admin, and any user who can access every library
+// get no filter (fast-path): for them the filter would match every non-missing artist anyway, so
+// it is pure O(offset) overhead — skipping it keeps Phase 1 a plain ordered walk over artist.id.
 //
 // The fast-path relies on orphan artists (non-missing, but with no library_artist row) not
 // existing: Phase 2 inner-joins library_artist, so an orphan would be paginated in Phase 1 then
@@ -562,11 +564,22 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
 // such artists missing at the source, so the shared `missing = false` filter excludes them.
 func (r *artistRepository) applyLibraryFilterToSearchQuery(query SelectBuilder) SelectBuilder {
 	user := loggedUser(r.ctx)
-	if user.ID == invalidUserId || user.IsAdmin {
+	if user.ID == invalidUserId || user.IsAdmin || r.userHasAllLibraries(user) {
 		return query
 	}
 	libraryIDs := slice.Map(user.Libraries, func(lib model.Library) int { return lib.ID })
 	return query.Where(ArtistLibraryFilter(libraryIDs))
+}
+
+// userHasAllLibraries reports whether the user can access every library, in which case the search
+// library filter is redundant. On any error reading the total it returns false, falling back to the
+// (correct, just slower) filtered path.
+func (r *artistRepository) userHasAllLibraries(user *model.User) bool {
+	total, err := NewLibraryRepository(r.ctx, r.db).CountAll()
+	if err != nil || total == 0 {
+		return false
+	}
+	return int64(len(user.Libraries)) >= total
 }
 
 func (r *artistRepository) searchCfg() searchConfig {

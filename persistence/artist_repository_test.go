@@ -923,6 +923,45 @@ var _ = Describe("ArtistRepository", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(idx).To(HaveLen(0))
 			})
+
+			It("takes the unfiltered fast-path when the user can access every library", func() {
+				// The fixture DB has a single library and the user was granted it, so it has access
+				// to all libraries: search results must match what an admin sees.
+				adminRepo := NewArtistRepository(request.WithUser(GinkgoT().Context(), adminUser), GetDBXBuilder())
+				adminAll, err := adminRepo.Search("", model.QueryOptions{Max: 1000})
+				Expect(err).ToNot(HaveOccurred())
+
+				userAll, err := restrictedRepo.Search("", model.QueryOptions{Max: 1000})
+				Expect(err).ToNot(HaveOccurred())
+
+				ids := func(artists model.Artists) []string {
+					out := make([]string, len(artists))
+					for i, a := range artists {
+						out[i] = a.ID
+					}
+					return out
+				}
+				Expect(ids(userAll)).To(Equal(ids(adminAll)))
+				Expect(userAll).ToNot(BeEmpty())
+			})
+
+			It("detects all-library access regardless of result equivalence", func() {
+				// userHasAllLibraries drives the search fast-path: true when the user's library
+				// count reaches the total, false otherwise. Derive the total from the DB so the
+				// assertion doesn't depend on how many libraries other specs left behind.
+				raw := restrictedRepo.(*artistRepository)
+				total, err := NewLibraryRepository(GinkgoT().Context(), GetDBXBuilder()).CountAll()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(total).To(BeNumerically(">", 0))
+
+				allLibs := make(model.Libraries, total)
+				for i := range allLibs {
+					allLibs[i] = model.Library{ID: i + 1}
+				}
+				Expect(raw.userHasAllLibraries(&model.User{Libraries: allLibs})).To(BeTrue())
+				Expect(raw.userHasAllLibraries(&model.User{Libraries: allLibs[:total-1]})).To(BeFalse())
+				Expect(raw.userHasAllLibraries(&model.User{Libraries: model.Libraries{}})).To(BeFalse())
+			})
 		})
 	})
 
