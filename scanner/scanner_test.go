@@ -531,6 +531,54 @@ var _ = Describe("Scanner", Ordered, func() {
 			})).To(Equal(int64(2)))
 		})
 
+		It("leaves no non-missing orphan artist after purging an artist's only content", func() {
+			// The orphan this guards against arises when an artist's last library_artist row is
+			// removed while the artist row survives. That happens with PurgeMissing enabled: once
+			// all of an artist's files are gone, purgeMissing hard-deletes them, cascading away
+			// their media_file_artists rows; RefreshStats then recomputes that artist's stats to
+			// '{}' and the cleanup drops its library_artist row. Without the fix the artist would
+			// stay missing=false with no library_artist row — surfaced by the search fast-path in
+			// Phase 1, then dropped by Phase 2's inner join.
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.Scanner.PurgeMissing = consts.PurgeMissingAlways
+
+			By("Starting from a library where Pink Floyd has its own single album")
+			floyd := template(_t{"artist": "Pink Floyd", "album": "The Wall", "year": 1979})
+			fsys = createFS(fstest.MapFS{
+				"The Beatles/Help!/01 - Help!.mp3":            help(track(1, "Help!")),
+				"The Beatles/Help!/02 - The Night Before.mp3": help(track(2, "The Night Before")),
+				"The Beatles/Revolver/01 - Taxman.mp3":        revolver(track(1, "Taxman")),
+				"The Beatles/Revolver/02 - Eleanor Rigby.mp3": revolver(track(2, "Eleanor Rigby")),
+				"Pink Floyd/The Wall/01 - Another Brick.mp3":  floyd(track(1, "Another Brick in the Wall")),
+			})
+			Expect(runScanner(ctx, true)).To(Succeed())
+
+			nonMissingArtists := func() []string {
+				aa, err := ds.Artist(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"missing": false}})
+				Expect(err).ToNot(HaveOccurred())
+				return slice.Map(aa, func(a model.Artist) string { return a.Name })
+			}
+			orphanCount := func() int64 {
+				var n int64
+				Expect(db.Db().QueryRowContext(ctx,
+					"SELECT count(*) FROM artist WHERE missing = false "+
+						"AND id NOT IN (SELECT artist_id FROM library_artist)").Scan(&n)).To(Succeed())
+				return n
+			}
+
+			By("Confirming Pink Floyd is visible after the import, with no orphan")
+			Expect(nonMissingArtists()).To(ContainElement("Pink Floyd"))
+			Expect(orphanCount()).To(BeZero())
+
+			By("Removing all of Pink Floyd's files and rescanning")
+			fsys.Remove("Pink Floyd/The Wall/01 - Another Brick.mp3")
+			Expect(runScanner(ctx, true)).To(Succeed())
+
+			By("Checking no non-missing orphan remains, with The Beatles still visible")
+			Expect(nonMissingArtists()).To(ContainElement("The Beatles"))
+			Expect(orphanCount()).To(BeZero())
+		})
+
 		It("does not override artist fields when importing an undertagged file", func() {
 			By("Making sure artist in the DB contains MBID and sort name")
 			aa, err := ds.Artist(ctx).GetAll(model.QueryOptions{
