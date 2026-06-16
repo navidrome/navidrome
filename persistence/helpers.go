@@ -65,7 +65,8 @@ func Exists(subTable string, cond squirrel.Sqlizer) existsCond {
 // junction. It is join-free on purpose: the search Phase 1 paginates rowids ordered by artist.id,
 // and a CROSS JOIN would fan out rowids (forcing a DISTINCT temp b-tree that makes deep offsets
 // O(offset)). EXISTS keeps artist as the ordered driver, so LIMIT/OFFSET short-circuits — O(page).
-// Seeks the covering index on library_artist(artist_id, library_id).
+// The subquery constrains both library_artist columns (artist_id = and library_id IN), so it
+// resolves as a covering index seek on the existing (library_id, artist_id) UNIQUE autoindex.
 func ArtistLibraryFilter(libraryIDs []int) squirrel.Sqlizer {
 	return Exists("library_artist", squirrel.And{
 		squirrel.Expr("library_artist.artist_id = artist.id"),
