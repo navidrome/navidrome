@@ -593,10 +593,14 @@ func (r *artistRepository) Search(q string, options ...model.QueryOptions) (mode
 	}
 	// Resolve the library scope once: callers pass the same Eq{"library_id": ids} filter used for
 	// albums and songs, but artists reach libraries through the library_artist junction, so it can't
-	// be applied as a column filter. Pull it out of opts.Filters and realize it as a join-free
-	// Phase-1 predicate (searchCfg) instead.
+	// be applied as a column filter (artist has no library_id column). Consume any library_id filter
+	// and realize it as a join-free Phase-1 predicate (searchCfg) instead; leave other filters for
+	// doSearch to apply (they must reference artist columns — library_id is the only shape callers
+	// use today).
 	scope := r.searchScope(opts.Filters)
-	opts.Filters = nil
+	if isLibraryIDFilter(opts.Filters) {
+		opts.Filters = nil
+	}
 	var res dbArtists
 	err := r.doSearch(r.selectArtist(opts), q, &res, r.searchCfg(scope), opts)
 	if err != nil {
@@ -647,6 +651,18 @@ func (r *artistRepository) requestedLibraryIDs(filter Sqlizer) []int {
 	}
 	ids, _ := eq["library_id"].([]int)
 	return ids
+}
+
+// isLibraryIDFilter reports whether the filter is an Eq carrying a library_id key. Such a filter is
+// consumed by Search (translated into a join-free scope) so it never reaches the bare artist table,
+// which has no library_id column — even if its value is malformed.
+func isLibraryIDFilter(filter Sqlizer) bool {
+	eq, ok := filter.(Eq)
+	if !ok {
+		return false
+	}
+	_, ok = eq["library_id"]
+	return ok
 }
 
 // userSeesAllLibraries reports whether the visible set already covers every library, so a search

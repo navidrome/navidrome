@@ -174,6 +174,15 @@ var _ = Describe("ArtistRepository", func() {
 				allUser := model.User{ID: "u2", IsAdmin: true}
 				Expect(scope(allUser, squirrel.Eq{"name": "x"})).To(BeNil())
 			})
+
+			It("falls back to the visible scope for a malformed library_id value (no crash)", func() {
+				// A library_id filter whose value isn't []int is still recognized as a library
+				// filter (so Search consumes it and it never reaches the bare artist table), and
+				// searchScope falls back to exactly the no-filter behavior rather than crashing.
+				malformed := squirrel.Eq{"library_id": "not-a-slice"}
+				Expect(isLibraryIDFilter(malformed)).To(BeTrue())
+				Expect(scope(subsetUser, malformed)).To(Equal(scope(subsetUser, nil)))
+			})
 		})
 
 		Describe("dbArtist mapping", func() {
