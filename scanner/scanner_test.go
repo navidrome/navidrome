@@ -533,13 +533,10 @@ var _ = Describe("Scanner", Ordered, func() {
 		})
 
 		It("leaves no non-missing orphan artist after purging an artist's only content", func() {
-			// The orphan this guards against arises when an artist's last library_artist row is
-			// removed while the artist row survives. That happens with PurgeMissing enabled: once
-			// all of an artist's files are gone, purgeMissing hard-deletes them, cascading away
-			// their media_file_artists rows; RefreshStats then recomputes that artist's stats to
-			// '{}' and the cleanup drops its library_artist row. Without the fix the artist would
-			// stay missing=false with no library_artist row — surfaced by the search fast-path in
-			// Phase 1, then dropped by Phase 2's inner join.
+			// Guards the orphan case: with PurgeMissing on, removing an artist's last file hard-deletes
+			// its media_file_artists rows, RefreshStats recomputes its stats to '{}', and the cleanup
+			// drops its last library_artist row — leaving the artist row alive but orphaned. RefreshStats
+			// must then mark it missing (see markOrphansMissing).
 			DeferCleanup(configtest.SetupConfig())
 			conf.Server.Scanner.PurgeMissing = consts.PurgeMissingAlways
 
@@ -566,8 +563,8 @@ var _ = Describe("Scanner", Ordered, func() {
 						"AND id NOT IN (SELECT artist_id FROM library_artist)").Scan(&n)).To(Succeed())
 				return n
 			}
-			// Raw artist state, bypassing the repository's library filter (a missing/orphaned artist
-			// won't show up through it). Returns a descriptive string for clear test failures.
+			// Read the artist row directly: selectArtist inner-joins library_artist, so an orphan never
+			// surfaces through the repository. Returns a descriptive string for clear test failures.
 			floydState := func() string {
 				var m bool
 				err := db.Db().QueryRowContext(ctx,
@@ -592,9 +589,6 @@ var _ = Describe("Scanner", Ordered, func() {
 			Expect(runScanner(ctx, true)).To(Succeed())
 
 			By("Checking Pink Floyd's row survives but is marked missing, leaving no orphan")
-			// Note: GetAll can't observe this — selectArtist inner-joins library_artist, so an
-			// orphaned artist (no junction row) is excluded from results whether or not it is
-			// marked missing. We must read the artist row directly to assert the missing flag.
 			Expect(floydState()).To(Equal("MISSING"))
 			Expect(orphanCount()).To(BeZero())
 			// The Beatles keep their content, so the fix must not over-mark them.

@@ -261,8 +261,7 @@ func (r *libraryRepository) Delete(id int) error {
 		return err
 	}
 
-	// The cascade above can drop an artist's last library_artist row, orphaning it. Reconcile via
-	// the canonical helper (see artistRepository.markOrphansMissing).
+	// The cascade above can drop an artist's last library_artist row; reconcile any such orphans.
 	if err := NewArtistRepository(r.ctx, r.db).(*artistRepository).markOrphansMissing(); err != nil {
 		return fmt.Errorf("marking orphaned artists missing after deleting library %d: %w", id, err)
 	}
