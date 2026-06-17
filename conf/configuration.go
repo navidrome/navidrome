@@ -83,6 +83,7 @@ type configOptions struct {
 	EnableStarRating                bool
 	EnableUserEditing               bool
 	EnableArtworkUpload             bool
+	EnableTagEditing                bool
 	MaxImageUploadSize              string
 	EnableSharing                   bool
 	ShareURL                        string
@@ -781,6 +782,7 @@ func setViperDefaults() {
 	viper.SetDefault("enablefavourites", true)
 	viper.SetDefault("enablestarrating", true)
 	viper.SetDefault("enableuserediting", true)
+	viper.SetDefault("enabletagediting", false)
 	viper.SetDefault("defaulttheme", "Dark")
 	viper.SetDefault("defaultlanguage", "")
 	viper.SetDefault("defaultuivolume", consts.DefaultUIVolume)
