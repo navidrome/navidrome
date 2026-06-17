@@ -81,6 +81,20 @@ var _ = Describe("Slice Utils", func() {
 		})
 	})
 
+	Describe("ToSet", func() {
+		It("returns empty set for an empty input", func() {
+			Expect(slice.ToSet([]int{})).To(BeEmpty())
+		})
+
+		It("builds a set with one key per distinct element", func() {
+			result := slice.ToSet([]int{1, 2, 2, 3, 3, 3})
+			Expect(result).To(HaveLen(3))
+			Expect(result).To(HaveKey(1))
+			Expect(result).To(HaveKey(2))
+			Expect(result).To(HaveKey(3))
+		})
+	})
+
 	Describe("CompactByFrequency", func() {
 		It("returns empty slice for an empty input", func() {
 			Expect(slice.CompactByFrequency([]int{})).To(BeEmpty())

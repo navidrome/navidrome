@@ -616,16 +616,11 @@ func (r *artistRepository) searchScope(filter Sqlizer) []int {
 		}
 		return visible
 	}
-	// Narrow only when the request is a strict subset of the visible set. Compare by membership, not
-	// length: the requested IDs may contain duplicates.
-	requestedSet := make(map[int]struct{}, len(requested))
-	for _, id := range requested {
-		requestedSet[id] = struct{}{}
-	}
-	for _, id := range visible {
-		if _, ok := requestedSet[id]; !ok {
-			return requested
-		}
+	// Narrow unless the request already covers everything the user can see. Compare by membership,
+	// not length: the requested IDs may contain duplicates.
+	requestedSet := slice.ToSet(requested)
+	if slices.ContainsFunc(visible, func(id int) bool { _, ok := requestedSet[id]; return !ok }) {
+		return requested
 	}
 	return nil
 }
