@@ -581,6 +581,23 @@ func (r *artistRepository) searchCfg(scope []int) searchConfig {
 	}
 }
 
+// artistLibraryFilter restricts artists to the given libraries via a correlated EXISTS over the
+// library_artist junction, staying join-free so it can scope the join-free search Phase 1 (a JOIN
+// would fan out rowids and corrupt offset pagination). The inner LIMIT 1 is load-bearing: it stops
+// SQLite from flattening the EXISTS back into a fan-out join, while still using the
+// (library_id, artist_id) UNIQUE autoindex.
+func artistLibraryFilter(libraryIDs []int) Sqlizer {
+	if len(libraryIDs) == 0 {
+		return Eq{"1": 2} // match nothing, without a degenerate `IN ()` subquery
+	}
+	sub, args, _ := Select("1").From("library_artist").
+		Where(And{
+			Expr("library_artist.artist_id = artist.id"),
+			Eq{"library_artist.library_id": libraryIDs},
+		}).Limit(1).ToSql()
+	return Expr("EXISTS ("+sub+")", args...)
+}
+
 func (r *artistRepository) Search(q string, options ...model.QueryOptions) (model.Artists, error) {
 	var opts model.QueryOptions
 	if len(options) > 0 {

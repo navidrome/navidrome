@@ -61,23 +61,6 @@ func Exists(subTable string, cond squirrel.Sqlizer) existsCond {
 	return existsCond{subTable: subTable, cond: cond, not: false}
 }
 
-// artistLibraryFilter restricts artists to the given libraries via a correlated EXISTS over the
-// library_artist junction, staying join-free so it can scope the join-free search Phase 1 (a JOIN
-// would fan out rowids and corrupt offset pagination). The inner LIMIT 1 is load-bearing: it stops
-// SQLite from flattening the EXISTS back into a fan-out join, while still using the
-// (library_id, artist_id) UNIQUE autoindex.
-func artistLibraryFilter(libraryIDs []int) squirrel.Sqlizer {
-	if len(libraryIDs) == 0 {
-		return squirrel.Eq{"1": 2} // match nothing, without a degenerate `IN ()` subquery
-	}
-	sub, args, _ := squirrel.Select("1").From("library_artist").
-		Where(squirrel.And{
-			squirrel.Expr("library_artist.artist_id = artist.id"),
-			squirrel.Eq{"library_artist.library_id": libraryIDs},
-		}).Limit(1).ToSql()
-	return squirrel.Expr("EXISTS ("+sub+")", args...)
-}
-
 func NotExists(subTable string, cond squirrel.Sqlizer) existsCond {
 	return existsCond{subTable: subTable, cond: cond, not: true}
 }
