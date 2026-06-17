@@ -6,6 +6,7 @@ import {
   usePermissions,
   useTranslate,
   useDataProvider,
+  useRefresh,
 } from 'react-admin'
 import { IconButton, Menu, MenuItem } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
@@ -23,6 +24,7 @@ import {
   openShareMenu,
 } from '../actions'
 import { LoveButton } from './LoveButton'
+import EditTagsDialog from './EditTagsDialog'
 import config from '../config'
 import { playSimilar } from './playbackActions.js'
 import { formatBytes } from '../utils'
@@ -68,7 +70,9 @@ export const SongContextMenu = ({
   const [playlistAnchorEl, setPlaylistAnchorEl] = useState(null)
   const [playlists, setPlaylists] = useState([])
   const [playlistsLoaded, setPlaylistsLoaded] = useState(false)
+  const [editTagsOpen, setEditTagsOpen] = useState(false)
   const { permissions } = usePermissions()
+  const refresh = useRefresh()
   const redirect = useRedirect()
 
   const options = {
@@ -142,6 +146,11 @@ export const SongContextMenu = ({
       label: `${translate('ra.action.download')} (${formatBytes(record.size)})`,
       action: (record) =>
         dispatch(openDownloadMenu(record, DOWNLOAD_MENU_SONG)),
+    },
+    editTags: {
+      enabled: permissions === 'admin' && !record.missing,
+      label: translate('resources.song.actions.editTags'),
+      action: () => setEditTagsOpen(true),
     },
     info: {
       enabled: true,
@@ -295,6 +304,13 @@ export const SongContextMenu = ({
           </MenuItem>
         ))}
       </Menu>
+      <EditTagsDialog
+        open={editTagsOpen}
+        record={record}
+        onClose={() => {
+          setEditTagsOpen(false)
+        }}
+      />
     </span>
   )
 }

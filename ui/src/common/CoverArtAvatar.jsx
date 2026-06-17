@@ -22,6 +22,7 @@ const useStyles = makeStyles({
 export const CoverArtAvatar = ({
   record: recordProp,
   variant = 'circular',
+  className,
 }) => {
   const classes = useStyles()
   const recordContext = useRecordContext()
@@ -37,6 +38,7 @@ export const CoverArtAvatar = ({
       src={imgUrl || undefined}
       variant={variant}
       className={clsx(
+        className,
         classes.avatar,
         square && classes.square,
         !imgUrl && classes.avatarEmpty,

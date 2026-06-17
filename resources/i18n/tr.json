@@ -46,7 +46,8 @@
         "download": "İndir",
         "playNext": "Dinlenenden Sonra Oynat",
         "info": "Bilgiler",
-        "showInPlaylist": "Çalma Listesinde Göster"
+        "showInPlaylist": "Çalma Listesinde Göster",
+        "editTags": "Etiketleri düzenle"
       }
     },
     "album": {

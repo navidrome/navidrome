@@ -46,7 +46,8 @@
         "download": "Preuzmi",
         "playNext": "Reprodukcija sljedeće",
         "info": "Više informacija",
-        "showInPlaylist": "Prikaži u playlisti"
+        "showInPlaylist": "Prikaži u playlisti",
+        "editTags": "Uredi oznake"
       }
     },
     "album": {

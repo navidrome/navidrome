@@ -45,7 +45,8 @@
         "shuffleAll": "모든 노래 셔플",
         "download": "다운로드",
         "playNext": "다음 재생",
-        "info": "정보 얻기"
+        "info": "정보 얻기",
+        "editTags": "태그 편집"
       }
     },
     "album": {

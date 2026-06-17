@@ -220,6 +220,15 @@ const wrapperDataProvider = {
       data: json,
     }))
   },
+  editSongTags: (songId, tags) => {
+    if (!songId) {
+      return Promise.reject(new Error('Song ID is required'))
+    }
+    return httpClient(`${REST_URL}/song/${songId}/tag`, {
+      method: 'POST',
+      body: JSON.stringify(tags),
+    }).then(({ json }) => ({ data: json }))
+  },
 }
 
 export default wrapperDataProvider

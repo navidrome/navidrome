@@ -46,7 +46,8 @@
         "download": "ダウンロード",
         "playNext": "次に再生",
         "info": "詳細",
-        "showInPlaylist": "含まれるプレイリスト"
+        "showInPlaylist": "含まれるプレイリスト",
+        "editTags": "タグを編集"
       }
     },
     "album": {
