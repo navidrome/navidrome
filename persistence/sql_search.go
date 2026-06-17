@@ -21,10 +21,9 @@ type searchConfig struct {
 	NaturalOrder string   // ORDER BY for empty-query results (e.g. "album.rowid")
 	OrderBy      []string // ORDER BY for text search results (e.g. ["name"])
 	MBIDFields   []string // columns to match when query is a UUID
-	// LibraryFilter overrides the default applyLibraryFilter for the rowid Phase 1 of
-	// two-phase searches (FTS and empty-query). Needed when library access goes through a
-	// junction table (e.g. artist → library_artist), whose JOIN can fan out rowids for
-	// entities in multiple libraries — Phase 1 dedups whenever this is set.
+	// LibraryFilter overrides the default applyLibraryFilter for the rowid Phase 1, for entities whose
+	// library access goes through a junction table (e.g. artist → library_artist). It MUST be join-free
+	// (Phase 1 has no DISTINCT, so a fan-out JOIN would corrupt offset pagination). See [artistLibraryFilter].
 	LibraryFilter func(sq SelectBuilder) SelectBuilder
 }
 
@@ -102,10 +101,7 @@ func (r sqlRepository) executeTwoPhase(sq SelectBuilder, results any, rowidCore 
 		rowidQuery = rowidQuery.Offset(uint64(options.Offset))
 	}
 	if cfg.LibraryFilter != nil {
-		// Junction-table library filters can repeat rowids for entities in multiple
-		// libraries, which would corrupt offset-based pagination — dedup before paginating.
-		// (DISTINCT, not GROUP BY: bm25() can't be evaluated in a grouped query.)
-		rowidQuery = cfg.LibraryFilter(rowidQuery).Distinct()
+		rowidQuery = cfg.LibraryFilter(rowidQuery)
 	} else {
 		rowidQuery = r.applyLibraryFilter(rowidQuery)
 	}
