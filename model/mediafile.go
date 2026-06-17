@@ -16,6 +16,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
@@ -54,7 +55,7 @@ type MediaFile struct {
 	Duration             float32  `structs:"duration" json:"duration"`
 	BitRate              int      `structs:"bit_rate" json:"bitRate"`
 	SampleRate           int      `structs:"sample_rate" json:"sampleRate"`
-	BitDepth             int      `structs:"bit_depth" json:"bitDepth"`
+	BitDepth             *int     `structs:"bit_depth" json:"bitDepth,omitempty"`
 	Channels             int      `structs:"channels" json:"channels"`
 	Codec                string   `structs:"codec" json:"codec"`
 	ProbeData            string   `structs:"probe_data" json:"-" hash:"ignore"`
@@ -71,7 +72,7 @@ type MediaFile struct {
 	Compilation          bool     `structs:"compilation" json:"compilation"`
 	Comment              string   `structs:"comment" json:"comment,omitempty"`
 	Lyrics               string   `structs:"lyrics" json:"lyrics"`
-	BPM                  int      `structs:"bpm" json:"bpm,omitempty"`
+	BPM                  *int     `structs:"bpm" json:"bpm,omitempty"`
 	ExplicitStatus       string   `structs:"explicit_status" json:"explicitStatus"`
 	CatalogNum           string   `structs:"catalog_num" json:"catalogNum,omitempty"`
 	MbzRecordingID       string   `structs:"mbz_recording_id" json:"mbzRecordingID,omitempty"`
@@ -225,7 +226,7 @@ func (mf MediaFile) inferCodecFromSuffix() string {
 		return "dsd"
 	case "m4a":
 		// AAC if BitDepth==0, ALAC if BitDepth>0
-		if mf.BitDepth > 0 {
+		if gg.V(mf.BitDepth) > 0 {
 			return "alac"
 		}
 		return "aac"
@@ -438,6 +439,9 @@ type MediaFileRepository interface {
 	Get(id string) (*MediaFile, error)
 	GetWithParticipants(id string) (*MediaFile, error)
 	GetAll(options ...QueryOptions) (MediaFiles, error)
+	// GetRandom returns up to options.Max media files in random order, applying the same
+	// filters as GetAll. Sort/Order are ignored.
+	GetRandom(options ...QueryOptions) (MediaFiles, error)
 	GetAllByTags(tag TagName, values []string, options ...QueryOptions) (MediaFiles, error)
 	GetCursor(options ...QueryOptions) (MediaFileCursor, error)
 	Delete(id string) error

@@ -90,10 +90,8 @@ func SongsByAlbum(albumId string) Options {
 	})
 }
 
-func SongsByRandom(genre string, fromYear, toYear int) Options {
-	options := Options{
-		Sort: "random()",
-	}
+func SongsByGenreAndYearRange(genre string, fromYear, toYear int) Options {
+	options := Options{}
 	ff := And{}
 	if genre != "" {
 		ff = append(ff, filterByGenre(genre))

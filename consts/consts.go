@@ -14,6 +14,9 @@ const (
 	DefaultDbPath                 = "navidrome.db?cache=shared&_busy_timeout=15000&_journal_mode=WAL&_foreign_keys=on&synchronous=normal"
 	InitialSetupFlagKey           = "InitialSetup"
 	FullScanAfterMigrationFlagKey = "FullScanAfterMigration"
+	// PlaylistsImportPendingFlagKey marks that playlist import was deferred because
+	// no admin user existed yet; the next scan with an admin imports them.
+	PlaylistsImportPendingFlagKey = "PlaylistsImportPending"
 	LastScanErrorKey              = "LastScanError"
 	LastScanTypeKey               = "LastScanType"
 	LastScanStartTimeKey          = "LastScanStartTime"

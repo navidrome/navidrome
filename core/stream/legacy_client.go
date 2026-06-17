@@ -12,7 +12,7 @@ import (
 
 // buildLegacyClientInfo translates legacy Subsonic stream/download parameters
 // into a ClientInfo for use with MakeDecision.
-func buildLegacyClientInfo(mf *model.MediaFile, reqFormat string, reqBitRate int) *ClientInfo {
+func buildLegacyClientInfo(mf *model.MediaFile, reqFormat string, reqBitRate int, playerMaxBitRate int) *ClientInfo {
 	ci := &ClientInfo{Name: "legacy"}
 
 	// Determine target format for transcoding
@@ -21,6 +21,10 @@ func buildLegacyClientInfo(mf *model.MediaFile, reqFormat string, reqBitRate int
 	case reqFormat != "":
 		targetFormat = reqFormat
 	case reqBitRate > 0 && reqBitRate < mf.BitRate && conf.Server.DefaultDownsamplingFormat != "":
+		targetFormat = conf.Server.DefaultDownsamplingFormat
+	case playerMaxBitRate > 0 && playerMaxBitRate < mf.BitRate && conf.Server.DefaultDownsamplingFormat != "":
+		// Server-side player MaxBitRate alone forces downsampling, even when the
+		// client sent no format/bitrate params (issue #5583, legacy /stream path).
 		targetFormat = conf.Server.DefaultDownsamplingFormat
 	}
 
@@ -63,15 +67,19 @@ func (s *deciderService) ResolveRequest(ctx context.Context, mf *model.MediaFile
 		return req
 	}
 
-	clientInfo := buildLegacyClientInfo(mf, reqFormat, reqBitRate)
+	playerMaxBitRate := 0
+	if player, ok := request.PlayerFrom(ctx); ok {
+		playerMaxBitRate = player.MaxBitRate
+	}
+
+	clientInfo := buildLegacyClientInfo(mf, reqFormat, reqBitRate, playerMaxBitRate)
 
 	// Apply server-side player transcoding override before making the decision
 	if trc, ok := request.TranscodingFrom(ctx); ok && trc.TargetFormat != "" {
 		clientInfo = applyServerOverride(ctx, clientInfo, &trc)
-	} else if player, ok := request.PlayerFrom(ctx); ok && player.MaxBitRate > 0 {
-		if clientInfo.MaxAudioBitrate == 0 || player.MaxBitRate < clientInfo.MaxAudioBitrate {
-			modified := *clientInfo
-			modified.MaxAudioBitrate = player.MaxBitRate
+	} else if player, ok := request.PlayerFrom(ctx); ok {
+		modified := *clientInfo
+		if modified.CapBitrate(player.MaxBitRate) {
 			clientInfo = &modified
 			log.Debug(ctx, "Applied player MaxBitRate cap", "playerMaxBitRate", player.MaxBitRate, "client", clientInfo.Name)
 		}
