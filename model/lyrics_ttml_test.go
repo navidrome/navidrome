@@ -1,12 +1,11 @@
-package lyrics
+package model
 
 import (
-	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("parseTTML", func() {
+var _ = Describe("ParseTTML", func() {
 	Describe("Multi-language and timing", func() {
 		It("should parse multiple language divs with inherited offsets and frame/tick timing", func() {
 			content := []byte(`<?xml version="1.0" encoding="UTF-8"?>
@@ -22,7 +21,7 @@ var _ = Describe("parseTTML", func() {
   </body>
 </tt>`)
 
-			list, err := parseTTML(content)
+			list, err := ParseTTML(content)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(HaveLen(2))
 
@@ -55,7 +54,7 @@ var _ = Describe("parseTTML", func() {
   </body>
 </tt>`)
 
-			list, err := parseTTML(content)
+			list, err := ParseTTML(content)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(HaveLen(1))
 			Expect(list[0].Line).To(HaveLen(1))
@@ -76,7 +75,7 @@ var _ = Describe("parseTTML", func() {
   </body>
 </tt>`)
 
-			list, err := parseTTML(content)
+			list, err := ParseTTML(content)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(HaveLen(1))
 			Expect(list[0].Lang).To(Equal("eng"))
@@ -100,7 +99,7 @@ var _ = Describe("parseTTML", func() {
   </body>
 </tt>`)
 
-			list, err := parseTTML(content)
+			list, err := ParseTTML(content)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(HaveLen(1))
 			Expect(list[0].Line).To(HaveLen(2))
@@ -125,10 +124,10 @@ var _ = Describe("parseTTML", func() {
   </body>
 </tt>`)
 
-			list, err := parseTTML(content)
+			list, err := ParseTTML(content)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(HaveLen(1))
-			Expect(list[0].Agents).To(Equal([]model.Agent{
+			Expect(list[0].Agents).To(Equal([]Agent{
 				{ID: "main", Role: "main"},
 				{ID: "__nd_bg__|main", Role: "bg"},
 			}))
@@ -140,9 +139,9 @@ var _ = Describe("parseTTML", func() {
 			Expect(line.End).To(Equal(ptr(int64(3000))))
 			Expect(line.Cue).To(HaveLen(3))
 
-			Expect(line.Cue[0]).To(Equal(model.Cue{Start: ptr(int64(1000)), End: ptr(int64(1400)), Value: "He", ByteStart: 0, ByteEnd: 1, AgentID: "main"}))
-			Expect(line.Cue[1]).To(Equal(model.Cue{Start: ptr(int64(1400)), End: ptr(int64(1800)), Value: "llo", ByteStart: 2, ByteEnd: 4, AgentID: "main"}))
-			Expect(line.Cue[2]).To(Equal(model.Cue{Start: ptr(int64(2000)), End: ptr(int64(2500)), Value: "echo", ByteStart: 6, ByteEnd: 9, AgentID: "__nd_bg__|main"}))
+			Expect(line.Cue[0]).To(Equal(Cue{Start: ptr(int64(1000)), End: ptr(int64(1400)), Value: "He", ByteStart: 0, ByteEnd: 1, AgentID: "main"}))
+			Expect(line.Cue[1]).To(Equal(Cue{Start: ptr(int64(1400)), End: ptr(int64(1800)), Value: "llo", ByteStart: 2, ByteEnd: 4, AgentID: "main"}))
+			Expect(line.Cue[2]).To(Equal(Cue{Start: ptr(int64(2000)), End: ptr(int64(2500)), Value: "echo", ByteStart: 6, ByteEnd: 9, AgentID: "__nd_bg__|main"}))
 		})
 
 		It("should append role tokens exactly instead of using substring matches", func() {
@@ -155,11 +154,11 @@ var _ = Describe("parseTTML", func() {
   </body>
 </tt>`)
 
-			list, err := parseTTML(content)
+			list, err := ParseTTML(content)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(HaveLen(1))
-			Expect(list[0].Agents).To(Equal([]model.Agent{
+			Expect(list[0].Agents).To(Equal([]Agent{
 				{ID: "main", Role: "main"},
 				{ID: "__nd_bg__|main", Role: "bg"},
 			}))
@@ -188,10 +187,10 @@ var _ = Describe("parseTTML", func() {
   </body>
 </tt>`)
 
-			list, err := parseTTML(content)
+			list, err := ParseTTML(content)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(HaveLen(1))
-			Expect(list[0].Agents).To(Equal([]model.Agent{
+			Expect(list[0].Agents).To(Equal([]Agent{
 				{ID: "v1", Role: "main", Name: "Chris Martin"},
 				{ID: "v2", Role: "voice", Name: "Jin"},
 				{ID: "v1000", Role: "group", Name: "All"},
@@ -223,10 +222,10 @@ var _ = Describe("parseTTML", func() {
   </body>
 </tt>`)
 
-			list, err := parseTTML(content)
+			list, err := ParseTTML(content)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(HaveLen(1))
-			Expect(list[0].Agents).To(Equal([]model.Agent{
+			Expect(list[0].Agents).To(Equal([]Agent{
 				{ID: "lead", Role: "main", Name: "Lead"},
 				{ID: "__nd_bg__|lead", Role: "bg", Name: "Lead"},
 				{ID: "lead__bg", Role: "voice", Name: "Existing Background Id"},
@@ -257,10 +256,10 @@ var _ = Describe("parseTTML", func() {
   </body>
 </tt>`)
 
-			list, err := parseTTML(content)
+			list, err := ParseTTML(content)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(HaveLen(1))
-			Expect(list[0].Agents).To(Equal([]model.Agent{
+			Expect(list[0].Agents).To(Equal([]Agent{
 				{ID: "guest", Role: "main", Name: "Guest Vocal"},
 			}))
 			Expect(list[0].Line).To(HaveLen(1))
@@ -284,7 +283,7 @@ var _ = Describe("parseTTML", func() {
   </body>
 </tt>`)
 
-			list, err := parseTTML(content)
+			list, err := ParseTTML(content)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(HaveLen(1))
 			Expect(list[0].Line).To(HaveLen(1))
@@ -294,8 +293,8 @@ var _ = Describe("parseTTML", func() {
 			Expect(line.Value).To(Equal("go\ngo"))
 			Expect(line.End).To(Equal(ptr(int64(45570))))
 			Expect(line.Cue).To(HaveLen(2))
-			Expect(line.Cue[0]).To(Equal(model.Cue{Start: ptr(int64(43444)), End: ptr(int64(43716)), Value: "go", ByteStart: 0, ByteEnd: 1}))
-			Expect(line.Cue[1]).To(Equal(model.Cue{Start: ptr(int64(43716)), End: ptr(int64(43887)), Value: "go", ByteStart: 3, ByteEnd: 4}))
+			Expect(line.Cue[0]).To(Equal(Cue{Start: ptr(int64(43444)), End: ptr(int64(43716)), Value: "go", ByteStart: 0, ByteEnd: 1}))
+			Expect(line.Cue[1]).To(Equal(Cue{Start: ptr(int64(43716)), End: ptr(int64(43887)), Value: "go", ByteStart: 3, ByteEnd: 4}))
 		})
 	})
 
@@ -310,7 +309,7 @@ var _ = Describe("parseTTML", func() {
   </body>
 </tt>`)
 
-			list, err := parseTTML(content)
+			list, err := ParseTTML(content)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(HaveLen(1))
 			Expect(list[0].Lang).To(Equal("xxx"))
@@ -350,7 +349,7 @@ var _ = Describe("parseTTML", func() {
   </body>
 </tt>`)
 
-			list, err := parseTTML(content)
+			list, err := ParseTTML(content)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(HaveLen(3))
 
@@ -378,8 +377,8 @@ var _ = Describe("parseTTML", func() {
 			Expect(pronunciation.Line[0].Value).To(Equal("konni"))
 			Expect(pronunciation.Line[0].End).To(Equal(ptr(int64(2600))))
 			Expect(pronunciation.Line[0].Cue).To(HaveLen(2))
-			Expect(pronunciation.Line[0].Cue[0]).To(Equal(model.Cue{Start: ptr(int64(2000)), End: ptr(int64(2300)), Value: "ko", ByteStart: 0, ByteEnd: 1}))
-			Expect(pronunciation.Line[0].Cue[1]).To(Equal(model.Cue{Start: ptr(int64(2300)), End: ptr(int64(2600)), Value: "nni", ByteStart: 2, ByteEnd: 4}))
+			Expect(pronunciation.Line[0].Cue[0]).To(Equal(Cue{Start: ptr(int64(2000)), End: ptr(int64(2300)), Value: "ko", ByteStart: 0, ByteEnd: 1}))
+			Expect(pronunciation.Line[0].Cue[1]).To(Equal(Cue{Start: ptr(int64(2300)), End: ptr(int64(2600)), Value: "nni", ByteStart: 2, ByteEnd: 4}))
 		})
 	})
 
@@ -405,10 +404,10 @@ var _ = Describe("parseTTML", func() {
   </body>
 </tt>`)
 
-			list, err := parseTTML(content)
+			list, err := ParseTTML(content)
 			Expect(err).ToNot(HaveOccurred())
 
-			var pronunciation *model.Lyrics
+			var pronunciation *Lyrics
 			for i := range list {
 				if list[i].Kind == "pronunciation" {
 					pronunciation = &list[i]
@@ -422,9 +421,9 @@ var _ = Describe("parseTTML", func() {
 			Expect(line.Start).To(Equal(ptr(int64(2747))))
 			Expect(line.Value).To(Equal("I woke up"))
 			Expect(line.Cue).To(HaveLen(3))
-			Expect(line.Cue[0]).To(Equal(model.Cue{Start: ptr(int64(2747)), End: ptr(int64(3018)), Value: "I", ByteStart: 0, ByteEnd: 0}))
-			Expect(line.Cue[1]).To(Equal(model.Cue{Start: ptr(int64(3018)), End: ptr(int64(3179)), Value: "woke", ByteStart: 2, ByteEnd: 5}))
-			Expect(line.Cue[2]).To(Equal(model.Cue{Start: ptr(int64(3179)), End: ptr(int64(3582)), Value: "up", ByteStart: 7, ByteEnd: 8}))
+			Expect(line.Cue[0]).To(Equal(Cue{Start: ptr(int64(2747)), End: ptr(int64(3018)), Value: "I", ByteStart: 0, ByteEnd: 0}))
+			Expect(line.Cue[1]).To(Equal(Cue{Start: ptr(int64(3018)), End: ptr(int64(3179)), Value: "woke", ByteStart: 2, ByteEnd: 5}))
+			Expect(line.Cue[2]).To(Equal(Cue{Start: ptr(int64(3179)), End: ptr(int64(3582)), Value: "up", ByteStart: 7, ByteEnd: 8}))
 		})
 	})
 })

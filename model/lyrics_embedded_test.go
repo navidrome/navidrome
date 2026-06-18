@@ -1,9 +1,8 @@
-package lyrics
+package model
 
 import (
 	"strings"
 
-	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -34,7 +33,7 @@ var _ = Describe("ParseEmbedded", func() {
 		Expect(list[0].Kind).To(Equal("main"))
 		Expect(list[0].Lang).To(Equal("eng"))
 		Expect(list[0].Synced).To(BeTrue())
-		Expect(list[0].Agents).To(Equal([]model.Agent{{ID: "lead", Role: "main", Name: "Lead Vocal"}}))
+		Expect(list[0].Agents).To(Equal([]Agent{{ID: "lead", Role: "main", Name: "Lead Vocal"}}))
 		Expect(list[0].Line).To(HaveLen(1))
 		Expect(list[0].Line[0].Start).To(Equal(ptr(int64(1000))))
 		Expect(list[0].Line[0].End).To(Equal(ptr(int64(3000))))
@@ -100,10 +99,10 @@ Another subtitle line`
 		list, err := ParseEmbedded("POR", content)
 
 		Expect(err).ToNot(HaveOccurred())
-		Expect(list).To(Equal(model.LyricList{
+		Expect(list).To(Equal(LyricList{
 			{
 				Lang: "por",
-				Line: []model.Line{
+				Line: []Line{
 					{
 						Start: ptr(int64(18800)),
 						End:   ptr(int64(22800)),
@@ -127,7 +126,7 @@ Another subtitle line`
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(list).To(HaveLen(1))
-		Expect(list[0].Line).To(Equal([]model.Line{
+		Expect(list[0].Line).To(Equal([]Line{
 			{Start: ptr(int64(1000)), End: ptr(int64(2000)), Value: "First subtitle"},
 			{Start: ptr(int64(3000)), End: ptr(int64(4000)), Value: "Second subtitle"},
 		}))

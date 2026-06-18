@@ -1,4 +1,4 @@
-package lyrics
+package model
 
 import (
 	"bytes"
@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/str"
 )
 
@@ -15,16 +14,16 @@ var (
 	srtBlockSeparatorRegex = regexp.MustCompile(`\n\s*\n`)
 )
 
-func parseSRT(contents []byte) (model.LyricList, error) {
+func ParseSRT(contents []byte) (LyricList, error) {
 	return parseSRTWithLanguage(contents, "xxx")
 }
 
-func parseSRTWithLanguage(contents []byte, language string) (model.LyricList, error) {
+func parseSRTWithLanguage(contents []byte, language string) (LyricList, error) {
 	raw := strings.ReplaceAll(string(contents), "\r\n", "\n")
 	raw = strings.ReplaceAll(raw, "\r", "\n")
 
 	blocks := splitSRTBlocks(raw)
-	lines := make([]model.Line, 0, len(blocks))
+	lines := make([]Line, 0, len(blocks))
 
 	for _, block := range blocks {
 		line, ok, err := parseSRTBlock(block)
@@ -40,12 +39,12 @@ func parseSRTWithLanguage(contents []byte, language string) (model.LyricList, er
 		return nil, nil
 	}
 
-	lyrics := model.NormalizeLyrics(model.Lyrics{
+	lyrics := NormalizeLyrics(Lyrics{
 		Lang:   normalizeEmbeddedLanguage(language),
 		Line:   lines,
 		Synced: true,
 	})
-	return model.LyricList{lyrics}, nil
+	return LyricList{lyrics}, nil
 }
 
 func splitSRTBlocks(raw string) []string {
@@ -65,10 +64,10 @@ func splitSRTBlocks(raw string) []string {
 	return blocks
 }
 
-func parseSRTBlock(block string) (model.Line, bool, error) {
+func parseSRTBlock(block string) (Line, bool, error) {
 	scanner := bytes.Split([]byte(block), []byte("\n"))
 	if len(scanner) == 0 {
-		return model.Line{}, false, nil
+		return Line{}, false, nil
 	}
 
 	lines := make([]string, 0, len(scanner))
@@ -77,7 +76,7 @@ func parseSRTBlock(block string) (model.Line, bool, error) {
 	}
 
 	if len(lines) == 0 {
-		return model.Line{}, false, nil
+		return Line{}, false, nil
 	}
 
 	startIdx := 0
@@ -85,21 +84,21 @@ func parseSRTBlock(block string) (model.Line, bool, error) {
 		startIdx = 1
 	}
 	if startIdx >= len(lines) {
-		return model.Line{}, false, nil
+		return Line{}, false, nil
 	}
 
 	timing := strings.Split(lines[startIdx], "-->")
 	if len(timing) != 2 {
-		return model.Line{}, false, nil
+		return Line{}, false, nil
 	}
 
 	startMs, err := parseSRTTime(timing[0])
 	if err != nil {
-		return model.Line{}, false, err
+		return Line{}, false, err
 	}
 	endMs, err := parseSRTTime(timing[1])
 	if err != nil {
-		return model.Line{}, false, err
+		return Line{}, false, err
 	}
 
 	textLines := make([]string, 0, len(lines)-startIdx-1)
@@ -112,10 +111,10 @@ func parseSRTBlock(block string) (model.Line, bool, error) {
 
 	value := str.SanitizeText(strings.Join(textLines, "\n"))
 	if value == "" {
-		return model.Line{}, false, nil
+		return Line{}, false, nil
 	}
 
-	return model.Line{
+	return Line{
 		Start: &startMs,
 		End:   &endMs,
 		Value: value,

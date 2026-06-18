@@ -1,17 +1,16 @@
-package lyrics
+package model
 
 import (
 	"encoding/xml"
 	"strings"
 
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model"
 )
 
 // ParseEmbedded parses lyrics read from media-file metadata tags. It detects rich
 // payloads before falling back to the generic LRC/plain-text parser, because
 // text sanitization would otherwise strip TTML XML markup.
-func ParseEmbedded(language, text string) (model.LyricList, error) {
+func ParseEmbedded(language, text string) (LyricList, error) {
 	text = strings.TrimPrefix(text, "\ufeff")
 
 	if isTTMLDocument(text) {
@@ -32,14 +31,14 @@ func ParseEmbedded(language, text string) (model.LyricList, error) {
 		log.Warn("Error parsing embedded SRT lyrics, falling back to plain lyrics", "error", err)
 	}
 
-	lyric, err := model.ToLyrics(language, text)
+	lyric, err := ToLyrics(language, text)
 	if err != nil {
 		return nil, err
 	}
 	if lyric == nil || lyric.IsEmpty() {
 		return nil, nil
 	}
-	return model.LyricList{*lyric}, nil
+	return LyricList{*lyric}, nil
 }
 
 func isTTMLDocument(text string) bool {

@@ -8,7 +8,6 @@ import (
 	"strconv"
 
 	"github.com/navidrome/navidrome/conf"
-	lyricssvc "github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/str"
@@ -144,7 +143,7 @@ func (md Metadata) mapLyrics() string {
 		lang := raw.Key()
 		text := raw.Value()
 
-		lyrics, err := lyricssvc.ParseEmbedded(lang, text)
+		lyrics, err := model.ParseEmbedded(lang, text)
 		if err != nil {
 			log.Warn("Unexpected failure occurred when parsing lyrics", "file", md.filePath, err)
 			continue
