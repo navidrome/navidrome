@@ -13,8 +13,8 @@ func init() {
 	goose.AddMigrationContext(Up20201213124814, Down20201213124814)
 }
 
-func Up20201213124814(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func Up20201213124814(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 alter table album
 	add all_artist_ids varchar;
 
@@ -25,11 +25,11 @@ create index if not exists album_all_artist_ids
 		return err
 	}
 
-	return updateAlbums20201213124814(tx)
+	return updateAlbums20201213124814(ctx, tx)
 }
 
-func updateAlbums20201213124814(tx *sql.Tx) error {
-	rows, err := tx.Query(`
+func updateAlbums20201213124814(ctx context.Context, tx *sql.Tx) error {
+	rows, err := tx.QueryContext(ctx, `
 select a.id, a.name, a.artist_id, a.album_artist_id, group_concat(mf.artist_id, ' ') 
        from album a left join media_file mf on a.id = mf.album_id group by a.id
    `)
@@ -59,6 +59,6 @@ select a.id, a.name, a.artist_id, a.album_artist_id, group_concat(mf.artist_id, 
 	return rows.Err()
 }
 
-func Down20201213124814(_ context.Context, tx *sql.Tx) error {
+func Down20201213124814(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

@@ -11,8 +11,8 @@ func init() {
 	goose.AddMigrationContext(Up20200423204116, Down20200423204116)
 }
 
-func Up20200423204116(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func Up20200423204116(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 alter table artist
 	add order_artist_name varchar(255) collate nocase;
 alter table artist
@@ -57,10 +57,10 @@ create index if not exists media_file_order_artist_name
 	if err != nil {
 		return err
 	}
-	notice(tx, "A full rescan will be performed to change the search behaviour")
-	return forceFullRescan(tx)
+	notice(ctx, tx, "A full rescan will be performed to change the search behaviour")
+	return forceFullRescan(ctx, tx)
 }
 
-func Down20200423204116(_ context.Context, tx *sql.Tx) error {
+func Down20200423204116(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

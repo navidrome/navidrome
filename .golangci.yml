@@ -13,6 +13,7 @@ linters:
     - dogsled
     - durationcheck
     - errorlint
+    - forbidigo
     - gocritic
     - gocyclo
     - goprintffuncname
@@ -36,6 +37,14 @@ linters:
         - G401
         - G505
         - G115
+    forbidigo:
+      forbid:
+        - pattern: 'tx\.Exec$'
+          msg: "use tx.ExecContext(ctx, ...) in migrations to propagate context"
+        - pattern: 'tx\.Query$'
+          msg: "use tx.QueryContext(ctx, ...) in migrations to propagate context"
+        - pattern: 'tx\.QueryRow$'
+          msg: "use tx.QueryRowContext(ctx, ...) in migrations to propagate context"
     govet:
       enable:
         - nilness
@@ -45,6 +54,9 @@ linters:
           - gosec
         path: _test\.go
         text: "G703"
+      - path-except: 'db/migrations/'
+        linters:
+          - forbidigo
     generated: lax
     presets:
       - comments

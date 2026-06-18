@@ -11,8 +11,8 @@ func init() {
 	goose.AddMigrationContext(upDropPlayerNameUniqueConstraint, downDropPlayerNameUniqueConstraint)
 }
 
-func upDropPlayerNameUniqueConstraint(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func upDropPlayerNameUniqueConstraint(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 create table player_dg_tmp
 (
 	id varchar(255) not null
@@ -43,6 +43,6 @@ create index if not exists player_name
 	return err
 }
 
-func downDropPlayerNameUniqueConstraint(_ context.Context, tx *sql.Tx) error {
+func downDropPlayerNameUniqueConstraint(_ context.Context, _ *sql.Tx) error {
 	return nil
 }
