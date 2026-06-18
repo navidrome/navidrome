@@ -257,8 +257,11 @@ func isDirIgnored(name string) bool {
 	return slices.ContainsFunc(ignoredDirs, func(s string) bool { return strings.EqualFold(s, name) })
 }
 
-// isDotEntry returns true if the entry name starts with a dot, excluding the
-// special "." and ".." references.
+// isDotEntry returns true only for names with exactly one leading dot (the
+// convention for hidden entries), e.g. ".hidden". Names with two or more leading
+// dots are not considered hidden: "." and ".." are the special self/parent
+// references, and anything like "..foo" or "...Album" is a regular name (album
+// folders sometimes start with ellipses), so all of these return false.
 func isDotEntry(name string) bool {
 	return name != "." && strings.HasPrefix(name, ".") && !strings.HasPrefix(name, "..")
 }

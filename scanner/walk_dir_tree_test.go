@@ -354,6 +354,7 @@ var _ = Describe("walk_dir_tree", func() {
 				Entry("dot file", ".hidden.mp3", true),
 				Entry("current dir", ".", false),
 				Entry("parent dir", "..", false),
+				Entry("two leading dots", "..foo", false),
 				Entry("ellipsis", "...unhidden", false),
 				Entry("normal name", "Album", false),
 			)
