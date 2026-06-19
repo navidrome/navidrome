@@ -50,6 +50,10 @@ func upAlterLyricColumn(ctx context.Context, tx *sql.Tx) error {
 		if err != nil {
 			return err
 		}
+		if parsed == nil {
+			// Preserve the column invariant: empty lyrics serialize to [], never null
+			parsed = model.LyricList{}
+		}
 
 		text, err := json.Marshal(parsed)
 		if err != nil {
