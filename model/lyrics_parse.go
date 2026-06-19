@@ -14,10 +14,6 @@ import (
 // do not carry their own.
 type lyricParser func(lang string, contents []byte) (LyricList, error)
 
-func parseLyricsfileBytes(_ string, contents []byte) (LyricList, error) {
-	return parseLyricsfile(string(contents))
-}
-
 // lyricFormats is the structured formats in content-sniff probe order; each
 // row's suffixes drive sidecar dispatch. LRC/plain is the unlisted fallback floor.
 var lyricFormats = []struct {
@@ -26,7 +22,7 @@ var lyricFormats = []struct {
 }{
 	{[]string{".ttml"}, parseTTMLWithDefaultLang},
 	{[]string{".srt"}, parseSRTWithLanguage},
-	{[]string{".yaml", ".yml"}, parseLyricsfileBytes},
+	{[]string{".yaml", ".yml"}, parseLyricsfile},
 }
 
 // ParseLyrics is the single entry point for parsing lyrics. A known suffix routes

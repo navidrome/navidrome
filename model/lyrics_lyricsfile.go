@@ -1,6 +1,7 @@
 package model
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 
@@ -19,9 +20,9 @@ import (
 // overlapping lines are attributed to synthetic voice agents via lowest-free
 // voice ID assignment so the OpenSubsonic v2 enhanced response can split
 // parallel vocals.
-func parseLyricsfile(text string) (LyricList, error) {
+func parseLyricsfile(_ string, contents []byte) (LyricList, error) {
 	var doc lyricsfileDocument
-	dec := yaml.NewDecoder(strings.NewReader(text))
+	dec := yaml.NewDecoder(bytes.NewReader(contents))
 	dec.KnownFields(false)
 	if err := dec.Decode(&doc); err != nil {
 		return nil, fmt.Errorf("not a valid Lyricsfile YAML: %w", err)
