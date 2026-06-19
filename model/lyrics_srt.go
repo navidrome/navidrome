@@ -14,7 +14,7 @@ var (
 	srtBlockSeparatorRegex = regexp.MustCompile(`\n\s*\n`)
 )
 
-func ParseSRT(contents []byte) (LyricList, error) {
+func parseSRT(contents []byte) (LyricList, error) {
 	return parseSRTWithLanguage(contents, "xxx")
 }
 

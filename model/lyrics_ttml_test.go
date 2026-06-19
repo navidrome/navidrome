@@ -5,7 +5,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("ParseTTML", func() {
+var _ = Describe("parseTTML", func() {
 	Describe("Multi-language and timing", func() {
 		It("should parse multiple language divs with inherited offsets and frame/tick timing", func() {
 			content := []byte(`<?xml version="1.0" encoding="UTF-8"?>
@@ -21,7 +21,7 @@ var _ = Describe("ParseTTML", func() {
   </body>
 </tt>`)
 
-			list, err := ParseTTML(content)
+			list, err := parseTTML(content)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(HaveLen(2))
 
@@ -54,7 +54,7 @@ var _ = Describe("ParseTTML", func() {
   </body>
 </tt>`)
 
-			list, err := ParseTTML(content)
+			list, err := parseTTML(content)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(HaveLen(1))
 			Expect(list[0].Line).To(HaveLen(1))
@@ -75,7 +75,7 @@ var _ = Describe("ParseTTML", func() {
   </body>
 </tt>`)
 
-			list, err := ParseTTML(content)
+			list, err := parseTTML(content)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(HaveLen(1))
 			Expect(list[0].Lang).To(Equal("eng"))
@@ -99,7 +99,7 @@ var _ = Describe("ParseTTML", func() {
   </body>
 </tt>`)
 
-			list, err := ParseTTML(content)
+			list, err := parseTTML(content)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(HaveLen(1))
 			Expect(list[0].Line).To(HaveLen(2))
@@ -124,7 +124,7 @@ var _ = Describe("ParseTTML", func() {
   </body>
 </tt>`)
 
-			list, err := ParseTTML(content)
+			list, err := parseTTML(content)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(HaveLen(1))
 			Expect(list[0].Agents).To(Equal([]Agent{
@@ -154,7 +154,7 @@ var _ = Describe("ParseTTML", func() {
   </body>
 </tt>`)
 
-			list, err := ParseTTML(content)
+			list, err := parseTTML(content)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(HaveLen(1))
@@ -187,7 +187,7 @@ var _ = Describe("ParseTTML", func() {
   </body>
 </tt>`)
 
-			list, err := ParseTTML(content)
+			list, err := parseTTML(content)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(HaveLen(1))
 			Expect(list[0].Agents).To(Equal([]Agent{
@@ -222,7 +222,7 @@ var _ = Describe("ParseTTML", func() {
   </body>
 </tt>`)
 
-			list, err := ParseTTML(content)
+			list, err := parseTTML(content)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(HaveLen(1))
 			Expect(list[0].Agents).To(Equal([]Agent{
@@ -256,7 +256,7 @@ var _ = Describe("ParseTTML", func() {
   </body>
 </tt>`)
 
-			list, err := ParseTTML(content)
+			list, err := parseTTML(content)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(HaveLen(1))
 			Expect(list[0].Agents).To(Equal([]Agent{
@@ -283,7 +283,7 @@ var _ = Describe("ParseTTML", func() {
   </body>
 </tt>`)
 
-			list, err := ParseTTML(content)
+			list, err := parseTTML(content)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(HaveLen(1))
 			Expect(list[0].Line).To(HaveLen(1))
@@ -309,7 +309,7 @@ var _ = Describe("ParseTTML", func() {
   </body>
 </tt>`)
 
-			list, err := ParseTTML(content)
+			list, err := parseTTML(content)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(HaveLen(1))
 			Expect(list[0].Lang).To(Equal("xxx"))
@@ -349,7 +349,7 @@ var _ = Describe("ParseTTML", func() {
   </body>
 </tt>`)
 
-			list, err := ParseTTML(content)
+			list, err := parseTTML(content)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(HaveLen(3))
 
@@ -404,7 +404,7 @@ var _ = Describe("ParseTTML", func() {
   </body>
 </tt>`)
 
-			list, err := ParseTTML(content)
+			list, err := parseTTML(content)
 			Expect(err).ToNot(HaveOccurred())
 
 			var pronunciation *Lyrics

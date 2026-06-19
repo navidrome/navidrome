@@ -32,8 +32,7 @@ type LyricsPlugin struct {
 }
 
 // GetLyrics calls the plugin to fetch lyrics, then content-sniffs each response
-// via model.ParseEmbedded (TTML/SRT/YAML/LRC/plain). A later task retargets this
-// to ParseLyrics once that function is introduced.
+// via model.ParseLyrics (TTML/SRT/YAML/LRC/plain).
 func (l *LyricsPlugin) GetLyrics(ctx context.Context, mf *model.MediaFile) (model.LyricList, error) {
 	req := capabilities.GetLyricsRequest{
 		Track: mediaFileToTrackInfo(l.plugin, mf),
@@ -51,7 +50,7 @@ func (l *LyricsPlugin) GetLyrics(ctx context.Context, mf *model.MediaFile) (mode
 		if lang == "" {
 			lang = "xxx"
 		}
-		parsed, err := model.ParseEmbedded(lang, lt.Text)
+		parsed, err := model.ParseLyrics("", lang, []byte(lt.Text))
 		if err != nil {
 			log.Warn(ctx, "Error parsing plugin lyrics", "plugin", l.name, err)
 			continue

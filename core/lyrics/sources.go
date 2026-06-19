@@ -52,7 +52,7 @@ func fromExternalFile(ctx context.Context, mf *model.MediaFile, suffix string) (
 		return nil, err
 	}
 
-	list, err := model.ParseLyricsFile(suffix, contents)
+	list, err := model.ParseLyrics(suffix, "xxx", contents)
 	if err != nil {
 		log.Error(ctx, "error parsing external lyric file", "path", sidecarRelPath, err)
 		return nil, err

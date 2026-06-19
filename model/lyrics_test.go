@@ -1,14 +1,13 @@
-package model_test
+package model
 
 import (
-	. "github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("ToLyrics", func() {
+var _ = Describe("parseLRC", func() {
 	It("should parse tags with spaces", func() {
-		lyrics, err := ToLyrics("xxx", "[lang:  eng  ]\n[offset: 1551 ]\n[ti: A title ]\n[ar: An artist ]\n[00:00.00]Hi there")
+		lyrics, err := parseLRC("xxx", "[lang:  eng  ]\n[offset: 1551 ]\n[ti: A title ]\n[ar: An artist ]\n[00:00.00]Hi there")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(lyrics.Lang).To(Equal("eng"))
 		Expect(lyrics.Synced).To(BeTrue())
@@ -18,13 +17,13 @@ var _ = Describe("ToLyrics", func() {
 	})
 
 	It("Should ignore bad offset", func() {
-		lyrics, err := ToLyrics("xxx", "[offset: NotANumber ]\n[00:00.00]Hi there")
+		lyrics, err := parseLRC("xxx", "[offset: NotANumber ]\n[00:00.00]Hi there")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(lyrics.Offset).To(BeNil())
 	})
 
 	It("should accept lines with no text and weird times", func() {
-		lyrics, err := ToLyrics("xxx", "[00:00.00]Hi there\n\n\n[00:10.040]\n[00:40]Test\n[01:00:00]late")
+		lyrics, err := parseLRC("xxx", "[00:00.00]Hi there\n\n\n[00:10.040]\n[00:40]Test\n[01:00:00]late")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(lyrics.Synced).To(BeTrue())
 		Expect(lyrics.Line).To(Equal([]Line{
@@ -36,7 +35,7 @@ var _ = Describe("ToLyrics", func() {
 	})
 
 	It("Should support multiple timestamps per line", func() {
-		lyrics, err := ToLyrics("xxx", "[00:00.00]  [00:10.00]Repeated\n[13:00][51:00:00.00]")
+		lyrics, err := parseLRC("xxx", "[00:00.00]  [00:10.00]Repeated\n[13:00][51:00:00.00]")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(lyrics.Synced).To(BeTrue())
 		Expect(lyrics.Line).To(Equal([]Line{
@@ -48,7 +47,7 @@ var _ = Describe("ToLyrics", func() {
 	})
 
 	It("Should support parsing multiline string", func() {
-		lyrics, err := ToLyrics("xxx", "[00:00.00]This is\na multiline  \n\n  [:0] string\n[10:00.001]This is\nalso one")
+		lyrics, err := parseLRC("xxx", "[00:00.00]This is\na multiline  \n\n  [:0] string\n[10:00.001]This is\nalso one")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(lyrics.Synced).To(BeTrue())
 		Expect(lyrics.Line).To(Equal([]Line{
@@ -58,7 +57,7 @@ var _ = Describe("ToLyrics", func() {
 	})
 
 	It("Does not match timestamp in middle of line", func() {
-		lyrics, err := ToLyrics("xxx", "This could [00:00:00] be a synced file")
+		lyrics, err := parseLRC("xxx", "This could [00:00:00] be a synced file")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(lyrics.Synced).To(BeFalse())
 		Expect(lyrics.Line).To(Equal([]Line{
@@ -67,7 +66,7 @@ var _ = Describe("ToLyrics", func() {
 	})
 
 	It("Allows timestamp in middle of line if also at beginning", func() {
-		lyrics, err := ToLyrics("xxx", "  [00:00] This is [00:00:00] be a synced file\n		[00:01]Line 2")
+		lyrics, err := parseLRC("xxx", "  [00:00] This is [00:00:00] be a synced file\n		[00:01]Line 2")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(lyrics.Synced).To(BeTrue())
 		Expect(lyrics.Line).To(Equal([]Line{
@@ -77,7 +76,7 @@ var _ = Describe("ToLyrics", func() {
 	})
 
 	It("Ignores lines in synchronized lyric prior to first timestamp", func() {
-		lyrics, err := ToLyrics("xxx", "This is some prelude\nThat doesn't\nmatter\n[00:00]Text")
+		lyrics, err := parseLRC("xxx", "This is some prelude\nThat doesn't\nmatter\n[00:00]Text")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(lyrics.Synced).To(BeTrue())
 		Expect(lyrics.Line).To(Equal([]Line{
@@ -86,7 +85,7 @@ var _ = Describe("ToLyrics", func() {
 	})
 
 	It("Handles all possible ms cases", func() {
-		lyrics, err := ToLyrics("xxx", "[00:00.001]a\n[00:00.01]b\n[00:00.1]c")
+		lyrics, err := parseLRC("xxx", "[00:00.001]a\n[00:00.01]b\n[00:00.1]c")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(lyrics.Synced).To(BeTrue())
 		Expect(lyrics.Line).To(Equal([]Line{
@@ -97,7 +96,7 @@ var _ = Describe("ToLyrics", func() {
 	})
 
 	It("Properly sorts repeated lyrics out of order", func() {
-		lyrics, err := ToLyrics("xxx", "[00:00.00]  [13:00]Repeated\n[00:10.00][51:00:00.00]Test\n[00:40.00]Not repeated")
+		lyrics, err := parseLRC("xxx", "[00:00.00]  [13:00]Repeated\n[00:10.00][51:00:00.00]Test\n[00:40.00]Not repeated")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(lyrics.Synced).To(BeTrue())
 		Expect(lyrics.Line).To(Equal([]Line{
@@ -110,7 +109,7 @@ var _ = Describe("ToLyrics", func() {
 	})
 
 	It("should parse Enhanced LRC with word-level timing", func() {
-		lyrics, err := ToLyrics("xxx", "[00:01.00]<00:01.00>Some <00:01.50>lyrics <00:02.00>here\n[00:03.00]<00:03.00>More <00:03.50>words")
+		lyrics, err := parseLRC("xxx", "[00:01.00]<00:01.00>Some <00:01.50>lyrics <00:02.00>here\n[00:03.00]<00:03.00>More <00:03.50>words")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(lyrics.Synced).To(BeTrue())
 		Expect(lyrics.Line).To(HaveLen(2))
@@ -140,7 +139,7 @@ var _ = Describe("ToLyrics", func() {
 	})
 
 	It("should not parse malformed Enhanced LRC timing markers", func() {
-		lyrics, err := ToLyrics("xxx", "[00:01.00]<00:01a50>Not a marker")
+		lyrics, err := parseLRC("xxx", "[00:01.00]<00:01a50>Not a marker")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(lyrics.Synced).To(BeTrue())
 		Expect(lyrics.Line).To(Equal([]Line{
@@ -149,7 +148,7 @@ var _ = Describe("ToLyrics", func() {
 	})
 
 	It("should handle mixed Enhanced and plain LRC lines", func() {
-		lyrics, err := ToLyrics("xxx", "[00:01.00]<00:01.00>Some <00:01.50>lyrics\n[00:03.00]Plain line\n[00:05.00]<00:05.00>More <00:05.50>words")
+		lyrics, err := parseLRC("xxx", "[00:01.00]<00:01.00>Some <00:01.50>lyrics\n[00:03.00]Plain line\n[00:05.00]<00:05.00>More <00:05.50>words")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(lyrics.Line).To(HaveLen(3))
 
@@ -174,7 +173,7 @@ var _ = Describe("ToLyrics", func() {
 	})
 
 	It("should preserve byte offsets for Enhanced LRC cues", func() {
-		lyrics, err := ToLyrics("xxx", "[00:00.00]<00:00.00>Oh <00:00.90>love<00:01.30> me <00:01.60>tonight")
+		lyrics, err := parseLRC("xxx", "[00:00.00]<00:00.00>Oh <00:00.90>love<00:01.30> me <00:01.60>tonight")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(lyrics.Line).To(HaveLen(1))
 
@@ -190,7 +189,7 @@ var _ = Describe("ToLyrics", func() {
 	})
 
 	It("should shift inline ELRC word timestamps for each repeated line occurrence", func() {
-		lyrics, err := ToLyrics("xxx", "[00:10.00][00:30.00]<00:10.10>Hello <00:10.50>world")
+		lyrics, err := parseLRC("xxx", "[00:10.00][00:30.00]<00:10.10>Hello <00:10.50>world")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(lyrics.Line).To(HaveLen(2))
 

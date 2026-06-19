@@ -1,15 +1,14 @@
-package model_test
+package model
 
 import (
-	. "github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("ParseLyricsfile", func() {
+var _ = Describe("parseLyricsfile", func() {
 	DescribeTable("returns nil,nil for YAML without the Lyricsfile version marker",
 		func(input string) {
-			lyrics, err := ParseLyricsfile(input)
+			lyrics, err := parseLyricsfile(input)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(lyrics).To(BeNil())
 		},
@@ -23,7 +22,7 @@ lines:
 	)
 
 	It("returns an error for invalid YAML", func() {
-		_, err := ParseLyricsfile("not: valid: yaml: [")
+		_, err := parseLyricsfile("not: valid: yaml: [")
 		Expect(err).To(HaveOccurred())
 	})
 
@@ -40,7 +39,7 @@ lines:
   - text: "You know the rules and so do I"
     start_ms: 22801
 `
-		lyrics, err := ParseLyricsfile(input)
+		lyrics, err := parseLyricsfile(input)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(lyrics).To(HaveLen(1))
 
@@ -80,7 +79,7 @@ plain: |
 
   Second line
 `
-		lyrics, err := ParseLyricsfile(input)
+		lyrics, err := parseLyricsfile(input)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(lyrics).To(HaveLen(1))
 
@@ -116,7 +115,7 @@ lines:
         start_ms: 1500
         end_ms: 3000
 `
-		lyrics, err := ParseLyricsfile(input)
+		lyrics, err := parseLyricsfile(input)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(lyrics).To(HaveLen(1))
 
@@ -168,7 +167,7 @@ lines:
         start_ms: 3000
         end_ms: 3500
 `
-		lyrics, err := ParseLyricsfile(input)
+		lyrics, err := parseLyricsfile(input)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(lyrics).To(HaveLen(1))
 
@@ -207,7 +206,7 @@ lines:
         start_ms: 2000
         end_ms: 3000
 `
-		lyrics, err := ParseLyricsfile(input)
+		lyrics, err := parseLyricsfile(input)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(lyrics).To(HaveLen(1))
 
@@ -246,7 +245,7 @@ metadata:
   language: 'eng'
   instrumental: true
 `
-		lyrics, err := ParseLyricsfile(input)
+		lyrics, err := parseLyricsfile(input)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(lyrics).To(HaveLen(1))
 
@@ -270,7 +269,7 @@ lines:
     start_ms: 2000
     end_ms: 3000
 `
-		lyrics, err := ParseLyricsfile(input)
+		lyrics, err := parseLyricsfile(input)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(lyrics).To(HaveLen(1))
 

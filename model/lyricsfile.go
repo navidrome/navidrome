@@ -8,7 +8,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// ParseLyricsfile parses a LRCLIB Lyricsfile YAML document
+// parseLyricsfile parses a LRCLIB Lyricsfile YAML document
 // (see https://github.com/tranxuanthang/lrcget/blob/main/LYRICSFILE_CONCEPT.md)
 // into a model.LyricList containing a single main Lyrics entry. Returns
 // (nil, nil) when the input parses as YAML but does not declare Lyricsfile
@@ -19,7 +19,7 @@ import (
 // overlapping lines are attributed to synthetic voice agents via lowest-free
 // voice ID assignment so the OpenSubsonic v2 enhanced response can split
 // parallel vocals.
-func ParseLyricsfile(text string) (LyricList, error) {
+func parseLyricsfile(text string) (LyricList, error) {
 	var doc lyricsfileDocument
 	dec := yaml.NewDecoder(strings.NewReader(text))
 	dec.KnownFields(false)

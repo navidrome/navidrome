@@ -102,7 +102,7 @@ type ttmlParser struct {
 	metadataSeq int
 }
 
-func ParseTTML(contents []byte) (LyricList, error) {
+func parseTTML(contents []byte) (LyricList, error) {
 	return parseTTMLWithDefaultLang(contents, "xxx")
 }
 

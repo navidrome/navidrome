@@ -26,10 +26,12 @@ var _ = Describe("sources", func() {
 			const syncedLyrics = "[00:18.80]We're no strangers to love\n[00:22.801]You know the rules and so do I"
 			const unsyncedLyrics = "We're no strangers to love\nYou know the rules and so do I"
 
-			synced, _ := model.ToLyrics("eng", syncedLyrics)
-			unsynced, _ := model.ToLyrics("xxx", unsyncedLyrics)
+			syncedList, _ := model.ParseLyrics(".lrc", "eng", []byte(syncedLyrics))
+			unsyncedList, _ := model.ParseLyrics(".lrc", "xxx", []byte(unsyncedLyrics))
+			synced, _ := syncedList.Main()
+			unsynced, _ := unsyncedList.Main()
 
-			expectedList := model.LyricList{*synced, *unsynced}
+			expectedList := model.LyricList{synced, unsynced}
 			lyricsJson, err := json.Marshal(expectedList)
 
 			Expect(err).ToNot(HaveOccurred())
@@ -74,7 +76,7 @@ var _ = Describe("sources", func() {
 			Expect(lyrics).To(HaveLen(0))
 		})
 
-		// fromExternalFile delegates format parsing to model.ParseLyricsFile; the
+		// fromExternalFile delegates format parsing to model.ParseLyrics; the
 		// per-format parser output is covered exhaustively in the model package.
 		// Here we only verify each suffix is read from the library FS and routed.
 		DescribeTable("should read the sidecar file and route its suffix to a parser",

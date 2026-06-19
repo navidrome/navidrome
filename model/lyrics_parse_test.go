@@ -7,7 +7,48 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("ParseEmbedded", func() {
+var _ = Describe("ParseLyrics", func() {
+	DescribeTable("known suffix routes to the matching parser",
+		func(suffix, contents string, wantSynced bool, wantFirst string) {
+			list, err := ParseLyrics(suffix, "eng", []byte(contents))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(HaveLen(1))
+			Expect(list[0].Synced).To(Equal(wantSynced))
+			Expect(list[0].Line[0].Value).To(Equal(wantFirst))
+		},
+		Entry(".lrc", ".lrc", "[00:01.00]lrc line", true, "lrc line"),
+		Entry(".txt plain", ".txt", "plain line", false, "plain line"),
+		Entry(".srt", ".srt", "1\n00:00:01,000 --> 00:00:02,000\nsrt line\n", true, "srt line"),
+		Entry(".ttml", ".ttml", `<tt xmlns="http://www.w3.org/ns/ttml"><body><div><p begin="00:00.000" end="00:01.000">ttml line</p></div></body></tt>`, true, "ttml line"),
+		Entry(".yaml", ".yaml", "version: \"1.0\"\nmetadata:\n  language: eng\nlines:\n  - text: yaml line\n    start_ms: 1000\n", true, "yaml line"),
+	)
+
+	It("empty suffix content-sniffs (TTML)", func() {
+		ttml := `<tt xmlns="http://www.w3.org/ns/ttml"><body><div><p begin="00:00.000" end="00:01.000">auto ttml</p></div></body></tt>`
+		list, err := ParseLyrics("", "eng", []byte(ttml))
+		Expect(err).ToNot(HaveOccurred())
+		Expect(list).To(HaveLen(1))
+		Expect(list[0].Line[0].Value).To(Equal("auto ttml"))
+	})
+
+	It("empty suffix content-sniffs (YAML)", func() {
+		yaml := "version: \"1.0\"\nmetadata:\n  language: eng\nlines:\n  - text: auto yaml\n    start_ms: 1000\n"
+		list, err := ParseLyrics("auto", "eng", []byte(yaml))
+		Expect(err).ToNot(HaveOccurred())
+		Expect(list).To(HaveLen(1))
+		Expect(list[0].Line[0].Value).To(Equal("auto yaml"))
+	})
+
+	It("falls back to plain text when a known suffix fails to parse structurally", func() {
+		list, err := ParseLyrics(".srt", "eng", []byte("not actually an srt file"))
+		Expect(err).ToNot(HaveOccurred())
+		Expect(list).To(HaveLen(1))
+		Expect(list[0].Synced).To(BeFalse())
+		Expect(list[0].Line[0].Value).To(Equal("not actually an srt file"))
+	})
+})
+
+var _ = Describe("ParseLyrics content-sniffing", func() {
 	It("should parse embedded TTML with the tag language as the default", func() {
 		content := `<tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata">
   <head>
@@ -26,9 +67,9 @@ var _ = Describe("ParseEmbedded", func() {
   </body>
 </tt>`
 
-		list, err := ParseEmbedded("ENG", content)
+		list, err := ParseLyrics("", "ENG", []byte(content))
 
-		// ParseEmbedded's job is to detect TTML and apply the tag language as the
+		// ParseLyrics's job is to detect TTML and apply the tag language as the
 		// default; the parser's cue/agent details are covered in lyrics_ttml_test.go.
 		Expect(err).ToNot(HaveOccurred())
 		Expect(list).To(HaveLen(1))
@@ -63,7 +104,7 @@ var _ = Describe("ParseEmbedded", func() {
   </body>
 </tt>`
 
-		list, err := ParseEmbedded("eng", content)
+		list, err := ParseLyrics("", "eng", []byte(content))
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(list).To(HaveLen(3))
@@ -88,7 +129,7 @@ We're from subtitles
 00:00:22,801 --> 00:00:26,000
 Another subtitle line`
 
-		list, err := ParseEmbedded("POR", content)
+		list, err := ParseLyrics("", "POR", []byte(content))
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(list).To(Equal(LyricList{
@@ -114,7 +155,7 @@ Another subtitle line`
 	It("should parse embedded SRT blocks separated by whitespace-only blank lines", func() {
 		content := "1\n00:00:01,000 --> 00:00:02,000\nFirst subtitle\n   \n2\n00:00:03,000 --> 00:00:04,000\nSecond subtitle"
 
-		list, err := ParseEmbedded("eng", content)
+		list, err := ParseLyrics("", "eng", []byte(content))
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(list).To(HaveLen(1))
@@ -127,7 +168,7 @@ Another subtitle line`
 	It("should keep embedded enhanced LRC cues", func() {
 		content := "[00:01.00]<00:01.00>Lead <00:01.50>words"
 
-		list, err := ParseEmbedded("eng", content)
+		list, err := ParseLyrics("", "eng", []byte(content))
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(list).To(HaveLen(1))
@@ -144,7 +185,7 @@ Another subtitle line`
   </body>
 </tt>`
 
-		list, err := ParseEmbedded("eng", content)
+		list, err := ParseLyrics("", "eng", []byte(content))
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(list).To(HaveLen(1))
@@ -161,7 +202,7 @@ Another subtitle line`
 	It("detects a Lyricsfile YAML payload via content-sniffing", func() {
 		yaml := "version: \"1.0\"\nmetadata:\n  title: Song\n  language: eng\nlines:\n  - text: sniffed yaml line\n    start_ms: 1000\n"
 
-		list, err := ParseEmbedded("eng", yaml)
+		list, err := ParseLyrics("", "eng", []byte(yaml))
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(list).To(HaveLen(1))
