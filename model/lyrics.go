@@ -467,39 +467,56 @@ func normalizeCueLine(line Line, fallbackEnd *int64) Line {
 	if len(line.Cue) == 0 {
 		return line
 	}
-
-	for i := range line.Cue {
-		if line.Cue[i].End != nil {
-			continue
-		}
-
-		if i+1 < len(line.Cue) && line.Cue[i+1].Start != nil {
-			v := *line.Cue[i+1].Start
-			line.Cue[i].End = &v
-			continue
-		}
-
-		if fallbackEnd != nil {
-			v := *fallbackEnd
-			line.Cue[i].End = &v
-		}
-	}
-
-	for i := range line.Cue {
-		if line.Cue[i].End == nil {
-			line.Cue = clearCueEnds(line.Cue)
-			return NormalizeLineTiming(line)
-		}
-	}
-
+	line.Cue = NormalizeCueEnds(line.Cue, fallbackEnd)
 	return NormalizeLineTiming(line)
 }
 
-func clearCueEnds(cues []Cue) []Cue {
-	normalized := make([]Cue, len(cues))
-	copy(normalized, cues)
-	for i := range normalized {
-		normalized[i].End = nil
+// NormalizeCueEnds resolves missing cue end times within a single ordered cue
+// group: each end is filled from the next cue's start, then from fallbackEnd,
+// and is clamped so it never precedes the cue's own start nor overruns the next
+// cue. End times are all-or-none — if any cue still lacks an end afterwards, all
+// ends in the group are cleared. The input slice is never mutated.
+func NormalizeCueEnds(cues []Cue, fallbackEnd *int64) []Cue {
+	if len(cues) == 0 {
+		return cues
 	}
-	return normalized
+
+	out := slices.Clone(cues)
+	for i := range out {
+		end := out[i].End
+		if end == nil {
+			if i+1 < len(out) && out[i+1].Start != nil {
+				end = out[i+1].Start
+			} else {
+				end = fallbackEnd
+			}
+		}
+		if end != nil && i+1 < len(out) && out[i+1].Start != nil && *end > *out[i+1].Start {
+			end = out[i+1].Start
+		}
+		if end != nil && out[i].Start != nil && *end < *out[i].Start {
+			end = out[i].Start
+		}
+		out[i].End = ptrOrNil(end)
+	}
+
+	for i := range out {
+		if out[i].End == nil {
+			for j := range out {
+				out[j].End = nil
+			}
+			break
+		}
+	}
+	return out
+}
+
+// ptrOrNil returns a fresh copy of *v so callers never alias another cue's
+// Start/End pointer into the result.
+func ptrOrNil(v *int64) *int64 {
+	if v == nil {
+		return nil
+	}
+	c := *v
+	return &c
 }

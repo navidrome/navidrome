@@ -606,20 +606,18 @@ func buildLyricCues(cues []model.Cue, lineEnd *int64) []responses.LyricCue {
 		return nil
 	}
 
-	hasAnyEnd := false
-	for i := range cues {
-		if cues[i].End != nil {
-			hasAnyEnd = true
-			break
-		}
+	// Only resolve end times when at least one cue carries one; otherwise the
+	// group is start-only and must stay that way.
+	hasAnyEnd := slices.ContainsFunc(cues, func(c model.Cue) bool { return c.End != nil })
+	if hasAnyEnd {
+		cues = model.NormalizeCueEnds(cues, lineEnd)
 	}
 
-	normalized := make([]responses.LyricCue, 0, len(cues))
+	out := make([]responses.LyricCue, 0, len(cues))
 	for i := range cues {
 		if cues[i].Start == nil {
 			continue
 		}
-
 		cue := responses.LyricCue{
 			Start:     *cues[i].Start,
 			Value:     cues[i].Value,
@@ -627,41 +625,11 @@ func buildLyricCues(cues []model.Cue, lineEnd *int64) []responses.LyricCue {
 			ByteEnd:   cues[i].ByteEnd,
 		}
 		if hasAnyEnd {
-			end := cues[i].End
-			if end == nil {
-				if i+1 < len(cues) && cues[i+1].Start != nil {
-					v := *cues[i+1].Start
-					end = &v
-				} else if lineEnd != nil {
-					v := *lineEnd
-					end = &v
-				}
-			}
-			if end != nil && i+1 < len(cues) && cues[i+1].Start != nil && *end > *cues[i+1].Start {
-				v := *cues[i+1].Start
-				end = &v
-			}
-			if end != nil && *end < cue.Start {
-				v := cue.Start
-				end = &v
-			}
-			cue.End = end
+			cue.End = cues[i].End
 		}
-		normalized = append(normalized, cue)
+		out = append(out, cue)
 	}
-
-	if hasAnyEnd {
-		for i := range normalized {
-			if normalized[i].End == nil {
-				for j := range normalized {
-					normalized[j].End = nil
-				}
-				break
-			}
-		}
-	}
-
-	return normalized
+	return out
 }
 
 func buildLyricsList(mf *model.MediaFile, lyricsList model.LyricList, enhanced bool) *responses.LyricsList {
