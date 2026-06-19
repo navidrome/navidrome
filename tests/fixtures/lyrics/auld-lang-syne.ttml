@@ -2,7 +2,7 @@
 <tt xmlns="http://www.w3.org/ns/ttml" xml:lang="eng">
   <body>
     <div>
-      <p begin="00:00:00.000" end="00:00:04.500">Should auld acquaintance be forgot,</p>
+      <p begin="00:00:00.000" end="00:00:04.500"><span begin="00:00:00.000" end="00:00:00.900">Should </span><span begin="00:00:00.900" end="00:00:01.800">auld </span><span begin="00:00:01.800" end="00:00:02.700">acquaintance </span><span begin="00:00:02.700" end="00:00:03.600">be </span><span begin="00:00:03.600" end="00:00:04.500">forgot,</span></p>
       <p begin="00:00:04.500" end="00:00:09.000">And never brought to mind?</p>
       <p begin="00:00:09.000" end="00:00:13.500">Should auld acquaintance be forgot,</p>
       <p begin="00:00:13.500" end="00:00:18.000">And auld lang syne?</p>

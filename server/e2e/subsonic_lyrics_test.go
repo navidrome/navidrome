@@ -62,43 +62,35 @@ var _ = Describe("Lyrics endpoints", func() {
 	})
 
 	// songLyrics extension v2: getLyricsBySongId?enhanced=true opts in to
-	// word/syllable-level timing (cueLine) and the kind classification. Formats
-	// that carry word-level timing (ELRC, Lyricsfile YAML) surface cueLine; all
-	// formats gain kind="main" for a single untyped lyric layer.
+	// word/syllable-level timing (cueLine) and the kind classification. Every
+	// format gains kind="main" for a single untyped lyric layer; only formats
+	// that carry word-level timing (ELRC, TTML word spans, Lyricsfile YAML)
+	// surface a cueLine. Line-level formats (LRC, SRT, plain) still yield none.
 	Describe("getLyricsBySongId v2 (enhanced)", func() {
-		It("exposes word-level cueLine for an enhanced-LRC source", func() {
-			resp := doReq("getLyricsBySongId", "id", songID("Embedded Enhanced LRC"), "enhanced", "true")
-			Expect(resp.Status).To(Equal("ok"))
-			got := firstLyric(resp.LyricsList)
+		DescribeTable("returns enhanced lyrics, with cueLine only for word-level sources",
+			func(title string, wantCueLine bool) {
+				resp := doReq("getLyricsBySongId", "id", songID(title), "enhanced", "true")
+				Expect(resp.Status).To(Equal("ok"))
+				got := firstLyric(resp.LyricsList)
 
-			Expect(got.Kind).To(Equal("main"))
-			Expect(got.CueLine).ToNot(BeEmpty())
-			// The first line "Should auld acquaintance be forgot," has one cue per word.
-			Expect(got.CueLine[0].Cue).To(HaveLen(5))
-			Expect(got.CueLine[0].Cue[0].Value).To(Equal("Should "))
-		})
-
-		It("exposes word-level cueLine for a Lyricsfile YAML sidecar", func() {
-			resp := doReq("getLyricsBySongId", "id", songID("Sidecar YAML"), "enhanced", "true")
-			Expect(resp.Status).To(Equal("ok"))
-			got := firstLyric(resp.LyricsList)
-
-			Expect(got.Kind).To(Equal("main"))
-			Expect(got.CueLine).ToNot(BeEmpty())
-			Expect(got.CueLine[0].Cue).ToNot(BeEmpty())
-			Expect(got.CueLine[0].Cue[0].Value).To(Equal("Should "))
-		})
-
-		It("emits kind but no cueLine for a line-level (SRT) source", func() {
-			resp := doReq("getLyricsBySongId", "id", songID("Sidecar SRT"), "enhanced", "true")
-			Expect(resp.Status).To(Equal("ok"))
-			got := firstLyric(resp.LyricsList)
-
-			// SRT has no word-level timing, so even enhanced yields no cueLine.
-			Expect(got.Kind).To(Equal("main"))
-			Expect(got.CueLine).To(BeEmpty())
-			Expect(got.Line).ToNot(BeEmpty())
-		})
+				Expect(got.Kind).To(Equal("main"))
+				if wantCueLine {
+					Expect(got.CueLine).ToNot(BeEmpty())
+					// The first line has one cue per word: "Should auld acquaintance be forgot,".
+					Expect(got.CueLine[0].Cue).To(HaveLen(5))
+					Expect(got.CueLine[0].Cue[0].Value).To(Equal("Should "))
+				} else {
+					Expect(got.CueLine).To(BeEmpty())
+					Expect(got.Line).ToNot(BeEmpty())
+				}
+			},
+			Entry("embedded enhanced LRC (word-level)", "Embedded Enhanced LRC", true),
+			Entry("embedded TTML (word-level spans)", "Embedded TTML", true),
+			Entry("YAML sidecar (word-level)", "Sidecar YAML", true),
+			Entry("embedded plain text (no timing)", "Embedded Plain", false),
+			Entry("LRC sidecar (line-level)", "Sidecar LRC", false),
+			Entry("SRT sidecar (line-level)", "Sidecar SRT", false),
+		)
 	})
 
 	// getLyrics is the original Subsonic (pre-OpenSubsonic) endpoint. It looks up
