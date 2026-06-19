@@ -106,6 +106,19 @@ func parseTTML(contents []byte) (LyricList, error) {
 	return parseTTMLWithDefaultLang("xxx", contents)
 }
 
+func isTTMLDocument(text string) bool {
+	decoder := xml.NewDecoder(strings.NewReader(strings.TrimSpace(text)))
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			return false
+		}
+		if start, ok := token.(xml.StartElement); ok {
+			return strings.EqualFold(start.Name.Local, "tt")
+		}
+	}
+}
+
 func parseTTMLWithDefaultLang(defaultLang string, contents []byte) (LyricList, error) {
 	contents = xmlEncodingRegex.ReplaceAll(contents, []byte(`<?xml$1encoding="UTF-8"$2?>`))
 

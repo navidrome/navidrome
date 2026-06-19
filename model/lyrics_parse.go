@@ -1,7 +1,7 @@
 package model
 
 import (
-	"encoding/xml"
+	"bytes"
 	"fmt"
 	"slices"
 	"strings"
@@ -38,7 +38,7 @@ func ParseLyrics(suffix, lang string, contents []byte) (LyricList, error) {
 
 	// Sniffing tries every format in order; a known suffix selects just its own.
 	// Unmatched suffixes leave no candidates, so parseFirstMatch falls to plain.
-	var candidates []lyricParser
+	candidates := make([]lyricParser, 0, len(lyricFormats))
 	for _, f := range lyricFormats {
 		if sniff || slices.Contains(f.suffixes, strings.ToLower(suffix)) {
 			candidates = append(candidates, f.parse)
@@ -72,18 +72,5 @@ func plainLRC(lang string, contents []byte) (LyricList, error) {
 }
 
 func stripBOM(contents []byte) []byte {
-	return []byte(strings.TrimPrefix(string(contents), "\ufeff"))
-}
-
-func isTTMLDocument(text string) bool {
-	decoder := xml.NewDecoder(strings.NewReader(strings.TrimSpace(text)))
-	for {
-		token, err := decoder.Token()
-		if err != nil {
-			return false
-		}
-		if start, ok := token.(xml.StartElement); ok {
-			return strings.EqualFold(start.Name.Local, "tt")
-		}
-	}
+	return bytes.TrimPrefix(contents, []byte("\ufeff"))
 }
