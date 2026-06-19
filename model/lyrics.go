@@ -55,15 +55,6 @@ const (
 	LyricKindPronunciation = "pronunciation"
 )
 
-// LyricKindOrMain returns kind, defaulting to LyricKindMain when empty. A blank
-// kind means an untyped (single-track) lyric, which the contract treats as main.
-func LyricKindOrMain(kind string) string {
-	if strings.TrimSpace(kind) == "" {
-		return LyricKindMain
-	}
-	return kind
-}
-
 // support the standard [mm:ss.mm], as well as [hh:*] and [*.mmm]
 const timeRegexString = `\[([0-9]{1,2}:)?([0-9]{1,2}):([0-9]{1,2})(\.[0-9]{1,3})?\]`
 
@@ -80,6 +71,22 @@ var (
 
 func (l Lyrics) IsEmpty() bool {
 	return len(l.Line) == 0
+}
+
+// IsMainKind reports whether the lyric is the main track. A blank kind is an
+// untyped (single-track) lyric, which the contract treats as main.
+func (l Lyrics) IsMainKind() bool {
+	return l.EffectiveKind() == LyricKindMain
+}
+
+// EffectiveKind returns the lyric kind, defaulting to LyricKindMain when blank.
+// A blank kind means an untyped (single-track) lyric, which the contract treats
+// as main.
+func (l Lyrics) EffectiveKind() string {
+	if strings.TrimSpace(l.Kind) == "" {
+		return LyricKindMain
+	}
+	return l.Kind
 }
 
 func ToLyrics(language, text string) (*Lyrics, error) {
@@ -433,6 +440,22 @@ func parseTime(line string, match []int) (int64, error) {
 }
 
 type LyricList []Lyrics
+
+// Main returns the main-kind lyric, falling back to the first entry so untyped
+// lyrics still resolve. The bool is false only when the list is empty. It is
+// used to surface a single lyric through the plain-text legacy getLyrics
+// endpoint, which has no notion of translation/pronunciation tracks.
+func (ll LyricList) Main() (Lyrics, bool) {
+	if len(ll) == 0 {
+		return Lyrics{}, false
+	}
+	for _, l := range ll {
+		if l.IsMainKind() {
+			return l, true
+		}
+	}
+	return ll[0], true
+}
 
 func NormalizeLyrics(lyrics Lyrics) Lyrics {
 	lyrics.Line = NormalizeCueLines(lyrics.Line)

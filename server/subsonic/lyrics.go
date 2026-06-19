@@ -19,7 +19,7 @@ func buildLyricsList(mf *model.MediaFile, lyricsList model.LyricList, enhanced b
 		// Without enhanced, only return main-kind entries (a blank kind is main).
 		filtered = nil
 		for _, l := range lyricsList {
-			if model.LyricKindOrMain(l.Kind) == model.LyricKindMain {
+			if l.IsMainKind() {
 				filtered = append(filtered, l)
 			}
 		}
@@ -30,21 +30,6 @@ func buildLyricsList(mf *model.MediaFile, lyricsList model.LyricList, enhanced b
 		lyricList[i] = buildStructuredLyric(mf, lyrics, enhanced)
 	}
 	return &responses.LyricsList{StructuredLyrics: lyricList}
-}
-
-// mainKindLyric returns the main-kind lyric to surface through the plain-text
-// legacy getLyrics endpoint, which has no notion of translation/pronunciation
-// tracks. It falls back to the first entry so untyped lyrics still resolve.
-func mainKindLyric(lyricsList model.LyricList) (model.Lyrics, bool) {
-	if len(lyricsList) == 0 {
-		return model.Lyrics{}, false
-	}
-	for _, l := range lyricsList {
-		if model.LyricKindOrMain(l.Kind) == model.LyricKindMain {
-			return l, true
-		}
-	}
-	return lyricsList[0], true
 }
 
 func buildStructuredLyric(mf *model.MediaFile, lyrics model.Lyrics, enhanced bool) responses.StructuredLyric {
@@ -70,7 +55,7 @@ func buildStructuredLyric(mf *model.MediaFile, lyrics model.Lyrics, enhanced boo
 	}
 
 	if enhanced {
-		structured.Kind = model.LyricKindOrMain(lyrics.Kind)
+		structured.Kind = lyrics.EffectiveKind()
 		if len(cueLines) > 0 && len(agents.response) > 0 {
 			structured.Agents = agents.response
 		}

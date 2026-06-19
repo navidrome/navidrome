@@ -119,7 +119,7 @@ func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {
 		return nil, err
 	}
 
-	mainLyric, ok := mainKindLyric(structuredLyrics)
+	mainLyric, ok := structuredLyrics.Main()
 	if !ok {
 		return response, nil
 	}
