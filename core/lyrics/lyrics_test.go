@@ -17,7 +17,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("sources", func() {
+var _ = Describe("Lyrics", func() {
 	var mf model.MediaFile
 	var ctx context.Context
 
@@ -153,7 +153,7 @@ var _ = Describe("sources", func() {
 			Lyrics: string(lyricsJson),
 			Path:   "tests/fixtures/test.mp3",
 		}
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
 	})
 
 	DescribeTable("Lyrics Priority", func(priority string, expected model.LyricList) {
@@ -356,50 +356,48 @@ var _ = Describe("sources", func() {
 			Expect(list).To(Equal(embeddedLyrics)) // falls through to embedded
 		})
 	})
-})
 
-var _ = Describe("GetLyricsByArtistTitle", func() {
-	var svc lyrics.Lyrics
-	var repo *tests.MockMediaFileRepo
-	var ds *tests.MockDataStore
-	var ctx context.Context
+	var _ = Describe("GetLyricsByArtistTitle", func() {
+		var svc lyrics.Lyrics
+		var repo *tests.MockMediaFileRepo
+		var ds *tests.MockDataStore
 
-	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.LyricsPriority = "embedded"
-		repo = &tests.MockMediaFileRepo{}
-		ds = &tests.MockDataStore{MockedMediaFile: repo}
-		svc = lyrics.NewLyrics(ds, nil)
-		ctx = context.Background()
-	})
-
-	It("bounds the query to a duplicate window", func() {
-		repo.SetData(model.MediaFiles{})
-		_, err := svc.GetLyricsByArtistTitle(ctx, "Rick Astley", "Never Gonna Give You Up")
-		Expect(err).ToNot(HaveOccurred())
-		Expect(repo.Options.Max).To(Equal(10))
-	})
-
-	It("returns nil when no media file matches", func() {
-		repo.SetData(model.MediaFiles{})
-		list, err := svc.GetLyricsByArtistTitle(ctx, "Nobody", "No Song")
-		Expect(err).ToNot(HaveOccurred())
-		Expect(list).To(BeNil())
-	})
-
-	It("resolves lyrics from the matched media files", func() {
-		embedded, err := model.ToLyrics("eng", "Embedded lyrics line")
-		Expect(err).ToNot(HaveOccurred())
-		embeddedJSON, err := json.Marshal(model.LyricList{*embedded})
-		Expect(err).ToNot(HaveOccurred())
-		repo.SetData(model.MediaFiles{
-			{ID: "1", Title: "Never Gonna Give You Up", Lyrics: string(embeddedJSON)},
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.LyricsPriority = "embedded"
+			repo = &tests.MockMediaFileRepo{}
+			ds = &tests.MockDataStore{MockedMediaFile: repo}
+			svc = lyrics.NewLyrics(ds, nil)
 		})
 
-		list, err := svc.GetLyricsByArtistTitle(ctx, "Rick Astley", "Never Gonna Give You Up")
-		Expect(err).ToNot(HaveOccurred())
-		Expect(list).To(HaveLen(1))
-		Expect(list[0].Line[0].Value).To(Equal("Embedded lyrics line"))
+		It("bounds the query to a duplicate window", func() {
+			repo.SetData(model.MediaFiles{})
+			_, err := svc.GetLyricsByArtistTitle(ctx, "Rick Astley", "Never Gonna Give You Up")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(repo.Options.Max).To(Equal(10))
+		})
+
+		It("returns nil when no media file matches", func() {
+			repo.SetData(model.MediaFiles{})
+			list, err := svc.GetLyricsByArtistTitle(ctx, "Nobody", "No Song")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(BeNil())
+		})
+
+		It("resolves lyrics from the matched media files", func() {
+			embedded, err := model.ToLyrics("eng", "Embedded lyrics line")
+			Expect(err).ToNot(HaveOccurred())
+			embeddedJSON, err := json.Marshal(model.LyricList{*embedded})
+			Expect(err).ToNot(HaveOccurred())
+			repo.SetData(model.MediaFiles{
+				{ID: "1", Title: "Never Gonna Give You Up", Lyrics: string(embeddedJSON)},
+			})
+
+			list, err := svc.GetLyricsByArtistTitle(ctx, "Rick Astley", "Never Gonna Give You Up")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(HaveLen(1))
+			Expect(list[0].Line[0].Value).To(Equal("Embedded lyrics line"))
+		})
 	})
 })
 
