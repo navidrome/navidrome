@@ -100,40 +100,40 @@ var _ = Describe("sources", func() {
 			Expect(lyrics[0].Line).To(HaveLen(3))
 
 			// Line 1: has inline markers → Cue array populated
-			Expect(lyrics[0].Line[0].Start).To(Equal(ptr(int64(1000))))
-			Expect(lyrics[0].Line[0].End).To(Equal(ptr(int64(3000))))
+			Expect(lyrics[0].Line[0].Start).To(Equal(new(int64(1000))))
+			Expect(lyrics[0].Line[0].End).To(Equal(new(int64(3000))))
 			Expect(lyrics[0].Line[0].Value).To(Equal("Some lyrics here"))
 			Expect(lyrics[0].Line[0].Cue).To(HaveLen(3))
 			Expect(*lyrics[0].Line[0].Cue[0].Start).To(Equal(int64(1000)))
 			Expect(lyrics[0].Line[0].Cue[0].Value).To(Equal("Some "))
-			Expect(lyrics[0].Line[0].Cue[0].End).To(Equal(ptr(int64(1500))))
+			Expect(lyrics[0].Line[0].Cue[0].End).To(Equal(new(int64(1500))))
 			Expect(lyrics[0].Line[0].Cue[0].ByteStart).To(Equal(0))
 			Expect(lyrics[0].Line[0].Cue[0].ByteEnd).To(Equal(4))
 			Expect(*lyrics[0].Line[0].Cue[1].Start).To(Equal(int64(1500)))
 			Expect(lyrics[0].Line[0].Cue[1].Value).To(Equal("lyrics "))
-			Expect(lyrics[0].Line[0].Cue[1].End).To(Equal(ptr(int64(2000))))
+			Expect(lyrics[0].Line[0].Cue[1].End).To(Equal(new(int64(2000))))
 			Expect(lyrics[0].Line[0].Cue[1].ByteStart).To(Equal(5))
 			Expect(lyrics[0].Line[0].Cue[1].ByteEnd).To(Equal(11))
 			Expect(*lyrics[0].Line[0].Cue[2].Start).To(Equal(int64(2000)))
 			Expect(lyrics[0].Line[0].Cue[2].Value).To(Equal("here"))
-			Expect(lyrics[0].Line[0].Cue[2].End).To(Equal(ptr(int64(3000))))
+			Expect(lyrics[0].Line[0].Cue[2].End).To(Equal(new(int64(3000))))
 			Expect(lyrics[0].Line[0].Cue[2].ByteStart).To(Equal(12))
 			Expect(lyrics[0].Line[0].Cue[2].ByteEnd).To(Equal(15))
 
 			// Line 2: has inline markers
-			Expect(lyrics[0].Line[1].Start).To(Equal(ptr(int64(3000))))
-			Expect(lyrics[0].Line[1].End).To(Equal(ptr(int64(5000))))
+			Expect(lyrics[0].Line[1].Start).To(Equal(new(int64(3000))))
+			Expect(lyrics[0].Line[1].End).To(Equal(new(int64(5000))))
 			Expect(lyrics[0].Line[1].Value).To(Equal("More words"))
 			Expect(lyrics[0].Line[1].Cue).To(HaveLen(2))
-			Expect(lyrics[0].Line[1].Cue[0].End).To(Equal(ptr(int64(3500))))
-			Expect(lyrics[0].Line[1].Cue[1].End).To(Equal(ptr(int64(5000))))
+			Expect(lyrics[0].Line[1].Cue[0].End).To(Equal(new(int64(3500))))
+			Expect(lyrics[0].Line[1].Cue[1].End).To(Equal(new(int64(5000))))
 			Expect(lyrics[0].Line[1].Cue[0].ByteStart).To(Equal(0))
 			Expect(lyrics[0].Line[1].Cue[0].ByteEnd).To(Equal(4))
 			Expect(lyrics[0].Line[1].Cue[1].ByteStart).To(Equal(5))
 			Expect(lyrics[0].Line[1].Cue[1].ByteEnd).To(Equal(9))
 
 			// Line 3: plain line, no cues
-			Expect(lyrics[0].Line[2].Start).To(Equal(ptr(int64(5000))))
+			Expect(lyrics[0].Line[2].Start).To(Equal(new(int64(5000))))
 			Expect(lyrics[0].Line[2].Value).To(Equal("Plain line without inline markers"))
 			Expect(lyrics[0].Line[2].Cue).To(BeNil())
 		})
@@ -150,22 +150,22 @@ var _ = Describe("sources", func() {
 			Expect(lyrics[0].Synced).To(BeTrue())
 			Expect(lyrics[0].Line).To(HaveLen(2))
 
-			Expect(lyrics[0].Line[0].Start).To(Equal(ptr(int64(1000))))
-			Expect(lyrics[0].Line[0].End).To(Equal(ptr(int64(3000))))
+			Expect(lyrics[0].Line[0].Start).To(Equal(new(int64(1000))))
+			Expect(lyrics[0].Line[0].End).To(Equal(new(int64(3000))))
 			Expect(lyrics[0].Line[0].Value).To(Equal("Lead words"))
 			Expect(lyrics[0].Line[0].Cue).To(HaveLen(2))
 			Expect(*lyrics[0].Line[0].Cue[0].Start).To(Equal(int64(1000)))
 			Expect(lyrics[0].Line[0].Cue[0].Value).To(Equal("Lead "))
-			Expect(lyrics[0].Line[0].Cue[0].End).To(Equal(ptr(int64(1500))))
+			Expect(lyrics[0].Line[0].Cue[0].End).To(Equal(new(int64(1500))))
 			Expect(lyrics[0].Line[0].Cue[0].ByteStart).To(Equal(0))
 			Expect(lyrics[0].Line[0].Cue[0].ByteEnd).To(Equal(4))
 			Expect(*lyrics[0].Line[0].Cue[1].Start).To(Equal(int64(1500)))
 			Expect(lyrics[0].Line[0].Cue[1].Value).To(Equal("words"))
-			Expect(lyrics[0].Line[0].Cue[1].End).To(Equal(ptr(int64(3000))))
+			Expect(lyrics[0].Line[0].Cue[1].End).To(Equal(new(int64(3000))))
 			Expect(lyrics[0].Line[0].Cue[1].ByteStart).To(Equal(5))
 			Expect(lyrics[0].Line[0].Cue[1].ByteEnd).To(Equal(9))
 
-			Expect(lyrics[0].Line[1].Start).To(Equal(ptr(int64(3000))))
+			Expect(lyrics[0].Line[1].Start).To(Equal(new(int64(3000))))
 			Expect(lyrics[0].Line[1].Value).To(Equal("Fallback line"))
 			Expect(lyrics[0].Line[1].Cue).To(BeNil())
 		})
@@ -201,13 +201,13 @@ var _ = Describe("sources", func() {
 					Lang: "xxx",
 					Line: []model.Line{
 						{
-							Start: ptr(int64(18800)),
-							End:   ptr(int64(22800)),
+							Start: new(int64(18800)),
+							End:   new(int64(22800)),
 							Value: "We're from subtitles",
 						},
 						{
-							Start: ptr(int64(22801)),
-							End:   ptr(int64(26000)),
+							Start: new(int64(22801)),
+							End:   new(int64(26000)),
 							Value: "Another subtitle line",
 						},
 					},
@@ -227,11 +227,11 @@ var _ = Describe("sources", func() {
 					Lang: "eng",
 					Line: []model.Line{
 						{
-							Start: ptr(int64(18800)),
+							Start: new(int64(18800)),
 							Value: "We're no strangers to love",
 						},
 						{
-							Start: ptr(int64(22800)),
+							Start: new(int64(22800)),
 							Value: "You know the rules and so do I",
 						},
 					},
@@ -242,7 +242,7 @@ var _ = Describe("sources", func() {
 					Lang: "por",
 					Line: []model.Line{
 						{
-							Start: ptr(int64(18800)),
+							Start: new(int64(18800)),
 							Value: "Nao somos estranhos ao amor",
 						},
 					},
@@ -294,7 +294,7 @@ var _ = Describe("sources", func() {
 			Expect(lyrics[0].Kind).To(Equal("main"))
 			Expect(lyrics[0].Synced).To(BeTrue())
 			Expect(lyrics[0].Line).To(HaveLen(1))
-			Expect(lyrics[0].Line[0].Start).To(Equal(ptr(int64(0))))
+			Expect(lyrics[0].Line[0].Start).To(Equal(new(int64(0))))
 			Expect(lyrics[0].Line[0].Value).To(Equal("BOM test line"))
 		})
 
@@ -307,9 +307,9 @@ var _ = Describe("sources", func() {
 			Expect(lyrics[0].Kind).To(Equal("main"))
 			Expect(lyrics[0].Synced).To(BeTrue())
 			Expect(lyrics[0].Line).To(HaveLen(2))
-			Expect(lyrics[0].Line[0].Start).To(Equal(ptr(int64(18800))))
+			Expect(lyrics[0].Line[0].Start).To(Equal(new(int64(18800))))
 			Expect(lyrics[0].Line[0].Value).To(Equal("UTF16 line one"))
-			Expect(lyrics[0].Line[1].Start).To(Equal(ptr(int64(22801))))
+			Expect(lyrics[0].Line[1].Start).To(Equal(new(int64(22801))))
 			Expect(lyrics[0].Line[1].Value).To(Equal("UTF16 line two"))
 		})
 
@@ -325,10 +325,10 @@ var _ = Describe("sources", func() {
 					Kind:          "main",
 					Lang:          "eng",
 					Line: []model.Line{
-						{Start: ptr(int64(18800)), End: ptr(int64(22801)), Value: "We're no strangers to love"},
-						{Start: ptr(int64(22801)), Value: "You know the rules and so do I"},
+						{Start: new(int64(18800)), End: new(int64(22801)), Value: "We're no strangers to love"},
+						{Start: new(int64(22801)), Value: "You know the rules and so do I"},
 					},
-					Offset: ptr(int64(-100)),
+					Offset: new(int64(-100)),
 					Synced: true,
 				},
 			}))
@@ -349,20 +349,20 @@ var _ = Describe("sources", func() {
 			Expect(lyrics[0].Line).To(HaveLen(1))
 
 			line := lyrics[0].Line[0]
-			Expect(line.Start).To(Equal(ptr(int64(1000))))
-			Expect(line.End).To(Equal(ptr(int64(3000))))
+			Expect(line.Start).To(Equal(new(int64(1000))))
+			Expect(line.End).To(Equal(new(int64(3000))))
 			Expect(line.Value).To(Equal("Hello world"))
 			Expect(line.Cue).To(HaveLen(2))
 
-			Expect(line.Cue[0].Start).To(Equal(ptr(int64(1000))))
-			Expect(line.Cue[0].End).To(Equal(ptr(int64(1500))))
+			Expect(line.Cue[0].Start).To(Equal(new(int64(1000))))
+			Expect(line.Cue[0].End).To(Equal(new(int64(1500))))
 			Expect(line.Cue[0].Value).To(Equal("Hello "))
 			Expect(line.Cue[0].ByteStart).To(Equal(0))
 			Expect(line.Cue[0].ByteEnd).To(Equal(5))
 			Expect(line.Cue[0].AgentID).To(Equal(""))
 
-			Expect(line.Cue[1].Start).To(Equal(ptr(int64(1500))))
-			Expect(line.Cue[1].End).To(Equal(ptr(int64(3000))))
+			Expect(line.Cue[1].Start).To(Equal(new(int64(1500))))
+			Expect(line.Cue[1].End).To(Equal(new(int64(3000))))
 			Expect(line.Cue[1].Value).To(Equal("world"))
 			Expect(line.Cue[1].ByteStart).To(Equal(6))
 			Expect(line.Cue[1].ByteEnd).To(Equal(10))

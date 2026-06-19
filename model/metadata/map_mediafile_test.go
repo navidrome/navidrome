@@ -136,7 +136,7 @@ var _ = Describe("ToMediaFile", func() {
 				{
 					Kind:   "main",
 					Lang:   "eng",
-					Line:   []model.Line{{Start: ptr(int64(1000)), End: ptr(int64(2500)), Value: "Embedded TTML line"}},
+					Line:   []model.Line{{Start: new(int64(1000)), End: new(int64(2500)), Value: "Embedded TTML line"}},
 					Synced: true,
 				},
 			}))
@@ -174,7 +174,7 @@ var _ = Describe("ToMediaFile", func() {
 			Expect(actual[0].Kind).To(Equal("main"))
 			Expect(actual[0].Lang).To(Equal("en"))
 			Expect(actual[0].Line).To(Equal([]model.Line{
-				{Start: ptr(int64(1000)), End: ptr(int64(2500)), Value: "Long embedded TTML line"},
+				{Start: new(int64(1000)), End: new(int64(2500)), Value: "Long embedded TTML line"},
 			}))
 		})
 
@@ -192,7 +192,7 @@ Estamos nas legendas`},
 				{
 					Lang: "por",
 					Line: []model.Line{
-						{Start: ptr(int64(18800)), End: ptr(int64(22800)), Value: "Estamos nas legendas"},
+						{Start: new(int64(18800)), End: new(int64(22800)), Value: "Estamos nas legendas"},
 					},
 					Synced: true,
 				},
