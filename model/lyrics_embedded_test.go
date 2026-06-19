@@ -157,4 +157,16 @@ Another subtitle line`
 		}
 		Expect(strings.Join(values, "\n")).To(ContainSubstring("Broken"))
 	})
+
+	It("detects a Lyricsfile YAML payload via content-sniffing", func() {
+		yaml := "version: \"1.0\"\nmetadata:\n  title: Song\n  language: eng\nlines:\n  - text: sniffed yaml line\n    start_ms: 1000\n"
+
+		list, err := ParseEmbedded("eng", yaml)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(list).To(HaveLen(1))
+		Expect(list[0].Synced).To(BeTrue())
+		Expect(list[0].Line).To(HaveLen(1))
+		Expect(list[0].Line[0].Value).To(Equal("sniffed yaml line"))
+	})
 })

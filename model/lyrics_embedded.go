@@ -31,6 +31,10 @@ func ParseEmbedded(language, text string) (LyricList, error) {
 		log.Warn("Error parsing embedded SRT lyrics, falling back to plain lyrics", "error", err)
 	}
 
+	if lyricsList, err := ParseLyricsfile(text); err == nil && len(lyricsList) > 0 {
+		return lyricsList, nil
+	}
+
 	lyric, err := ToLyrics(language, text)
 	if err != nil {
 		return nil, err
