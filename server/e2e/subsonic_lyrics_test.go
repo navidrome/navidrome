@@ -50,12 +50,33 @@ var _ = Describe("Lyrics endpoints", func() {
 	})
 
 	Describe("getLyrics (legacy artist/title)", func() {
-		It("returns the main lyric as plain text for an embedded match", func() {
-			resp := doReq("getLyrics", "artist", "Lyric Tester", "title", "Embedded Plain")
-			Expect(resp.Status).To(Equal("ok"))
-			Expect(resp.Lyrics).ToNot(BeNil())
-			Expect(resp.Lyrics.Value).To(ContainSubstring("plain embedded line one"))
-			Expect(resp.Lyrics.Value).To(ContainSubstring("plain embedded line two"))
-		})
+		// The legacy endpoint flattens the main lyric to plain text: it emits each
+		// line's Value joined by newlines, dropping all timing/markup. This is the
+		// v1 contract — synced structured formats (LRC/TTML/SRT/YAML) all "fall
+		// back" to LRC-style plain text here.
+		DescribeTable("returns the main lyric as plain text across formats and sources",
+			func(title string, wantLines []string) {
+				resp := doReq("getLyrics", "artist", "Lyric Tester", "title", title)
+				Expect(resp.Status).To(Equal("ok"))
+				Expect(resp.Lyrics).ToNot(BeNil())
+				Expect(resp.Lyrics.Artist).To(Equal("Lyric Tester"))
+				Expect(resp.Lyrics.Title).To(Equal(title))
+				for _, line := range wantLines {
+					Expect(resp.Lyrics.Value).To(ContainSubstring(line))
+				}
+				// v1 fallback: no timing markup leaks into the plain-text value,
+				// regardless of the source format (LRC brackets, SRT arrows, XML
+				// tags). The structured content is reduced to LRC-style plain text.
+				Expect(resp.Lyrics.Value).ToNot(ContainSubstring("["))
+				Expect(resp.Lyrics.Value).ToNot(ContainSubstring("-->"))
+				Expect(resp.Lyrics.Value).ToNot(ContainSubstring("<"))
+			},
+			Entry("embedded synced LRC", "Embedded Synced LRC", []string{"embedded lrc line one", "embedded lrc line two"}),
+			Entry("embedded plain text", "Embedded Plain", []string{"plain embedded line one", "plain embedded line two"}),
+			Entry("embedded TTML", "Embedded TTML", []string{"embedded ttml line"}),
+			Entry("LRC sidecar", "Sidecar LRC", []string{"sidecar lrc line"}),
+			Entry("SRT sidecar", "Sidecar SRT", []string{"sidecar srt line"}),
+			Entry("YAML sidecar", "Sidecar YAML", []string{"sidecar yaml line"}),
+		)
 	})
 })
