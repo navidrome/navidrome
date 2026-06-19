@@ -7,23 +7,20 @@ import (
 )
 
 var _ = Describe("ParseLyricsfile", func() {
-	It("returns nil,nil for YAML that does not look like a Lyricsfile", func() {
-		lyrics, err := ParseLyricsfile("hello: world\n")
-		Expect(err).ToNot(HaveOccurred())
-		Expect(lyrics).To(BeNil())
-	})
-
-	It("returns nil,nil for Lyricsfile-shaped YAML without the version marker", func() {
-		input := `metadata:
+	DescribeTable("returns nil,nil for YAML without the Lyricsfile version marker",
+		func(input string) {
+			lyrics, err := ParseLyricsfile(input)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(lyrics).To(BeNil())
+		},
+		Entry("arbitrary YAML", "hello: world\n"),
+		Entry("Lyricsfile-shaped but unversioned", `metadata:
   title: 'Looks close'
 lines:
   - text: "But should not be claimed"
     start_ms: 1000
-`
-		lyrics, err := ParseLyricsfile(input)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(lyrics).To(BeNil())
-	})
+`),
+	)
 
 	It("returns an error for invalid YAML", func() {
 		_, err := ParseLyricsfile("not: valid: yaml: [")

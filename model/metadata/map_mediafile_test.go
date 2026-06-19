@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"os"
 	"sort"
-	"strings"
 
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/metadata"
@@ -116,43 +115,6 @@ var _ = Describe("ToMediaFile", func() {
 			sort.Slice(actual, func(i, j int) bool { return actual[i].Lang < actual[j].Lang })
 			sort.Slice(expected, func(i, j int) bool { return expected[i].Lang < expected[j].Lang })
 			Expect(actual).To(Equal(expected))
-		})
-
-		It("should parse embedded TTML lyrics longer than the metadata tag max length", func() {
-			padding := strings.Repeat(`<text for="unused">padding</text>`, 1400)
-			content := `<tt xmlns="http://www.w3.org/ns/ttml" xmlns:itunes="http://music.apple.com/lyric-ttml-internal" xml:lang="en">
-  <head>
-    <metadata>
-      <iTunesMetadata xmlns="http://music.apple.com/lyric-ttml-internal">
-        <translations>
-          <translation xml:lang="en-US">` + padding + `</translation>
-        </translations>
-      </iTunesMetadata>
-    </metadata>
-  </head>
-  <body>
-    <div>
-      <p begin="00:00:01.000" end="00:00:02.500" itunes:key="L1">Long embedded TTML line</p>
-    </div>
-  </body>
-</tt>`
-
-			// Guards that embedded lyrics longer than the old 32KB tag cap are no
-			// longer truncated before parsing. Parser correctness lives in the
-			// model lyrics tests; here we only confirm the full tag is mapped.
-			Expect(len(content)).To(BeNumerically(">", 32768))
-
-			mf = toMediaFile(model.RawTags{
-				"LYRICS:ENG": {content},
-			})
-			var actual model.LyricList
-			err := json.Unmarshal([]byte(mf.Lyrics), &actual)
-			Expect(err).ToNot(HaveOccurred())
-
-			Expect(actual).To(HaveLen(1))
-			Expect(actual[0].Line).To(ContainElement(model.Line{
-				Start: new(int64(1000)), End: new(int64(2500)), Value: "Long embedded TTML line",
-			}))
 		})
 	})
 

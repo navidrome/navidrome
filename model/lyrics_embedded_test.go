@@ -28,22 +28,14 @@ var _ = Describe("ParseEmbedded", func() {
 
 		list, err := ParseEmbedded("ENG", content)
 
+		// ParseEmbedded's job is to detect TTML and apply the tag language as the
+		// default; the parser's cue/agent details are covered in lyrics_ttml_test.go.
 		Expect(err).ToNot(HaveOccurred())
 		Expect(list).To(HaveLen(1))
 		Expect(list[0].Kind).To(Equal("main"))
 		Expect(list[0].Lang).To(Equal("eng"))
 		Expect(list[0].Synced).To(BeTrue())
-		Expect(list[0].Agents).To(Equal([]Agent{{ID: "lead", Role: "main", Name: "Lead Vocal"}}))
-		Expect(list[0].Line).To(HaveLen(1))
-		Expect(list[0].Line[0].Start).To(Equal(new(int64(1000))))
-		Expect(list[0].Line[0].End).To(Equal(new(int64(3000))))
 		Expect(list[0].Line[0].Value).To(Equal("Hello world"))
-		Expect(list[0].Line[0].Cue).To(HaveLen(2))
-		Expect(list[0].Line[0].Cue[0].AgentID).To(Equal("lead"))
-		Expect(list[0].Line[0].Cue[0].ByteStart).To(Equal(0))
-		Expect(list[0].Line[0].Cue[0].ByteEnd).To(Equal(5))
-		Expect(list[0].Line[0].Cue[1].ByteStart).To(Equal(6))
-		Expect(list[0].Line[0].Cue[1].ByteEnd).To(Equal(10))
 	})
 
 	It("should preserve embedded TTML translation and pronunciation tracks", func() {

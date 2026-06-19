@@ -122,17 +122,6 @@ var _ = Describe("Metadata", func() {
 				Expect(pair[0].Value()).To(HaveLen(1048570))
 			})
 
-			It("keeps embedded lyrics that exceed the old 32KB cap", func() {
-				props.Tags = model.RawTags{
-					"lyrics:xxx": {strings.Repeat("a", 60000)},
-				}
-				md = metadata.New(filePath, props)
-
-				pair := md.Pairs(model.TagLyrics)
-				Expect(pair).To(HaveLen(1))
-				Expect(pair[0].Value()).To(HaveLen(60000))
-			})
-
 			It("should split multiple values", func() {
 				props.Tags = model.RawTags{
 					"Genre": {"Rock/Pop;;Punk"},

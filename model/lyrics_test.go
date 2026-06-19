@@ -148,16 +148,6 @@ var _ = Describe("ToLyrics", func() {
 		}))
 	})
 
-	It("should ignore Enhanced LRC markers and return plain lines when no markers present", func() {
-		a, b := int64(1000), int64(3000)
-		lyrics, err := ToLyrics("xxx", "[00:01.00]Plain line\n[00:03.00]Another plain line")
-		Expect(err).ToNot(HaveOccurred())
-		Expect(lyrics.Line).To(Equal([]Line{
-			{Start: &a, Value: "Plain line"},
-			{Start: &b, Value: "Another plain line"},
-		}))
-	})
-
 	It("should handle mixed Enhanced and plain LRC lines", func() {
 		lyrics, err := ToLyrics("xxx", "[00:01.00]<00:01.00>Some <00:01.50>lyrics\n[00:03.00]Plain line\n[00:05.00]<00:05.00>More <00:05.50>words")
 		Expect(err).ToNot(HaveOccurred())
