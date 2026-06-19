@@ -20,8 +20,8 @@ var _ = Describe("Lyrics endpoints", func() {
 		return resp.SearchResult3.Song[0].Id
 	}
 
-	// main extracts the first StructuredLyric from a LyricsList response.
-	main := func(list *responses.LyricsList) responses.StructuredLyric {
+	// firstLyric extracts the first StructuredLyric from a LyricsList response.
+	firstLyric := func(list *responses.LyricsList) responses.StructuredLyric {
 		Expect(list).ToNot(BeNil())
 		Expect(list.StructuredLyrics).ToNot(BeEmpty())
 		return list.StructuredLyrics[0]
@@ -29,31 +29,35 @@ var _ = Describe("Lyrics endpoints", func() {
 
 	Describe("getLyricsBySongId (v2 structured)", func() {
 		DescribeTable("returns structured lyrics for embedded formats",
-			func(title string, wantSynced bool, wantFirstLine string) {
+			func(title string, wantSynced bool, wantFirstLine, wantLang string) {
 				resp := doReq("getLyricsBySongId", "id", songID(title))
 				Expect(resp.Status).To(Equal("ok"))
-				got := main(resp.LyricsList)
+				got := firstLyric(resp.LyricsList)
 				Expect(got.Synced).To(Equal(wantSynced))
+				Expect(got.Lang).To(Equal(wantLang))
 				Expect(got.Line).ToNot(BeEmpty())
 				Expect(got.Line[0].Value).To(Equal(wantFirstLine))
 			},
-			Entry("synced LRC", "Embedded Synced LRC", true, "embedded lrc line one"),
-			Entry("plain text", "Embedded Plain", false, "plain embedded line one"),
-			Entry("TTML", "Embedded TTML", true, "embedded ttml line"),
+			// "xxx" is the ISO 639-2 code for "no language specified"
+			Entry("synced LRC", "Embedded Synced LRC", true, "embedded lrc line one", "xxx"),
+			Entry("plain text", "Embedded Plain", false, "plain embedded line one", "xxx"),
+			Entry("TTML", "Embedded TTML", true, "embedded ttml line", "xxx"),
 		)
 
 		DescribeTable("returns structured lyrics for sidecar formats",
-			func(title string, wantSynced bool, wantFirstLine string) {
+			func(title string, wantSynced bool, wantFirstLine, wantLang string) {
 				resp := doReq("getLyricsBySongId", "id", songID(title))
 				Expect(resp.Status).To(Equal("ok"))
-				got := main(resp.LyricsList)
+				got := firstLyric(resp.LyricsList)
 				Expect(got.Synced).To(Equal(wantSynced))
+				Expect(got.Lang).To(Equal(wantLang))
 				Expect(got.Line).ToNot(BeEmpty())
 				Expect(got.Line[0].Value).To(Equal(wantFirstLine))
 			},
-			Entry("LRC sidecar", "Sidecar LRC", true, "sidecar lrc line"),
-			Entry("SRT sidecar", "Sidecar SRT", true, "sidecar srt line"),
-			Entry("YAML sidecar", "Sidecar YAML", true, "sidecar yaml line"),
+			Entry("LRC sidecar", "Sidecar LRC", true, "sidecar lrc line", "xxx"),
+			Entry("SRT sidecar", "Sidecar SRT", true, "sidecar srt line", "xxx"),
+			// YAML sidecar fixture sets "language: eng"; verify Navidrome passes it through unchanged.
+			Entry("YAML sidecar", "Sidecar YAML", true, "sidecar yaml line", "eng"),
 		)
 	})
 
