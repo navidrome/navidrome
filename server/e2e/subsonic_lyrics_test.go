@@ -28,7 +28,7 @@ var _ = Describe("Lyrics endpoints", func() {
 	}
 
 	Describe("getLyricsBySongId (v2 structured)", func() {
-		DescribeTable("returns structured lyrics for embedded formats",
+		DescribeTable("returns structured lyrics",
 			func(title string, wantSynced bool, wantFirstLine, wantLang string) {
 				resp := doReq("getLyricsBySongId", "id", songID(title))
 				Expect(resp.Status).To(Equal("ok"))
@@ -39,21 +39,9 @@ var _ = Describe("Lyrics endpoints", func() {
 				Expect(got.Line[0].Value).To(Equal(wantFirstLine))
 			},
 			// "xxx" is the ISO 639-2 code for "no language specified"
-			Entry("synced LRC", "Embedded Synced LRC", true, "embedded lrc line one", "xxx"),
-			Entry("plain text", "Embedded Plain", false, "plain embedded line one", "xxx"),
-			Entry("TTML", "Embedded TTML", true, "embedded ttml line", "xxx"),
-		)
-
-		DescribeTable("returns structured lyrics for sidecar formats",
-			func(title string, wantSynced bool, wantFirstLine, wantLang string) {
-				resp := doReq("getLyricsBySongId", "id", songID(title))
-				Expect(resp.Status).To(Equal("ok"))
-				got := firstLyric(resp.LyricsList)
-				Expect(got.Synced).To(Equal(wantSynced))
-				Expect(got.Lang).To(Equal(wantLang))
-				Expect(got.Line).ToNot(BeEmpty())
-				Expect(got.Line[0].Value).To(Equal(wantFirstLine))
-			},
+			Entry("synced LRC embedded", "Embedded Synced LRC", true, "embedded lrc line one", "xxx"),
+			Entry("plain text embedded", "Embedded Plain", false, "plain embedded line one", "xxx"),
+			Entry("TTML embedded", "Embedded TTML", true, "embedded ttml line", "xxx"),
 			Entry("LRC sidecar", "Sidecar LRC", true, "sidecar lrc line", "xxx"),
 			Entry("SRT sidecar", "Sidecar SRT", true, "sidecar srt line", "xxx"),
 			// YAML sidecar fixture sets "language: eng"; verify Navidrome passes it through unchanged.
