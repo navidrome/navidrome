@@ -21,6 +21,24 @@ func (t *testLyrics) GetLyrics(input lyrics.GetLyricsRequest) (lyrics.GetLyricsR
 		return lyrics.GetLyricsResponse{}, fmt.Errorf("%s", errMsg)
 	}
 
+	// Return a minimal TTML document to exercise content-sniffing for rich formats.
+	format, hasFormat := pdk.GetConfig("format")
+	if hasFormat && format == "ttml" {
+		const ttml = `<?xml version="1.0" encoding="UTF-8"?>
+<tt xmlns="http://www.w3.org/ns/ttml">
+  <body xml:lang="eng">
+    <div>
+      <p begin="00:00.000" end="00:01.000">plugin ttml line</p>
+    </div>
+  </body>
+</tt>`
+		return lyrics.GetLyricsResponse{
+			Lyrics: []lyrics.LyricsText{
+				{Lang: "eng", Text: ttml},
+			},
+		}, nil
+	}
+
 	// Check if we should omit language (to test default language handling)
 	noLang, hasNoLang := pdk.GetConfig("no_lang")
 	lang := "eng"

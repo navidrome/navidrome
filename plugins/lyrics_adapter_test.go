@@ -83,6 +83,25 @@ var _ = Describe("LyricsPlugin", Ordered, func() {
 			_, err := p.GetLyrics(GinkgoT().Context(), track)
 			Expect(err).To(HaveOccurred())
 		})
+
+		It("content-sniffs TTML returned by the plugin", func() {
+			manager, _ := createTestManagerWithPlugins(map[string]map[string]string{
+				"test-lyrics": {"format": "ttml"},
+			}, "test-lyrics"+PackageExtension)
+
+			p, ok := manager.LoadLyricsProvider("test-lyrics")
+			Expect(ok).To(BeTrue())
+
+			track := &model.MediaFile{ID: "track-1", Title: "Test Song", Artist: "Test Artist"}
+			result, err := p.GetLyrics(GinkgoT().Context(), track)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(HaveLen(1))
+			// Verify the result is parsed as TTML (synced, with the exact cue text),
+			// not mangled as plain text with raw XML markup.
+			Expect(result[0].Synced).To(BeTrue())
+			Expect(result[0].Line).To(HaveLen(1))
+			Expect(result[0].Line[0].Value).To(Equal("plugin ttml line"))
+		})
 	})
 
 	Describe("PluginNames", func() {
