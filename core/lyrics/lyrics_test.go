@@ -22,8 +22,9 @@ var _ = Describe("Lyrics", func() {
 	var ctx context.Context
 
 	const badLyrics = "This is a set of lyrics\nThat is not good"
-	unsynced, _ := model.ToLyrics("xxx", badLyrics)
-	embeddedLyrics := model.LyricList{*unsynced}
+	unsyncedList, _ := model.ParseLyrics(".lrc", "xxx", []byte(badLyrics))
+	unsynced, _ := unsyncedList.Main()
+	embeddedLyrics := model.LyricList{unsynced}
 
 	syncedLyrics := model.LyricList{
 		model.Lyrics{
@@ -224,7 +225,7 @@ var _ = Describe("Lyrics", func() {
 		}))
 	})
 
-	It("falls through generic YAML sidecars that are not Lyricsfile documents", func() {
+	It("returns a non-Lyricsfile YAML sidecar as plain text, shadowing lower-priority sources", func() {
 		dir, err := os.MkdirTemp("", "lyrics-yaml-fallback-*")
 		Expect(err).ToNot(HaveOccurred())
 		DeferCleanup(func() {
@@ -241,10 +242,14 @@ var _ = Describe("Lyrics", func() {
 			Path:        "song.mp3",
 		})
 
+		// ParseLyrics falls back to plain text for any suffix when the content
+		// doesn't match the structured format, so the .yaml hit is non-empty and
+		// shadows the lower-priority .lrc entirely.
 		Expect(err).To(BeNil())
 		Expect(list).To(HaveLen(1))
+		Expect(list[0].Synced).To(BeFalse())
 		Expect(list[0].Line).To(Equal([]model.Line{
-			{Start: new(int64(1000)), Value: "Fallback line"},
+			{Value: "title: not lyricsfile"},
 		}))
 	})
 
@@ -385,9 +390,10 @@ var _ = Describe("Lyrics", func() {
 		})
 
 		It("resolves lyrics from the matched media files", func() {
-			embedded, err := model.ToLyrics("eng", "Embedded lyrics line")
+			embeddedList, err := model.ParseLyrics(".lrc", "eng", []byte("Embedded lyrics line"))
 			Expect(err).ToNot(HaveOccurred())
-			embeddedJSON, err := json.Marshal(model.LyricList{*embedded})
+			embedded, _ := embeddedList.Main()
+			embeddedJSON, err := json.Marshal(model.LyricList{embedded})
 			Expect(err).ToNot(HaveOccurred())
 			repo.SetData(model.MediaFiles{
 				{ID: "1", Title: "Never Gonna Give You Up", Lyrics: string(embeddedJSON)},

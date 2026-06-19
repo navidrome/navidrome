@@ -1,6 +1,7 @@
 package model
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 
@@ -8,7 +9,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// ParseLyricsfile parses a LRCLIB Lyricsfile YAML document
+// parseLyricsfile parses a LRCLIB Lyricsfile YAML document
 // (see https://github.com/tranxuanthang/lrcget/blob/main/LYRICSFILE_CONCEPT.md)
 // into a model.LyricList containing a single main Lyrics entry. Returns
 // (nil, nil) when the input parses as YAML but does not declare Lyricsfile
@@ -19,9 +20,9 @@ import (
 // overlapping lines are attributed to synthetic voice agents via lowest-free
 // voice ID assignment so the OpenSubsonic v2 enhanced response can split
 // parallel vocals.
-func ParseLyricsfile(text string) (LyricList, error) {
+func parseLyricsfile(lang string, contents []byte) (LyricList, error) {
 	var doc lyricsfileDocument
-	dec := yaml.NewDecoder(strings.NewReader(text))
+	dec := yaml.NewDecoder(bytes.NewReader(contents))
 	dec.KnownFields(false)
 	if err := dec.Decode(&doc); err != nil {
 		return nil, fmt.Errorf("not a valid Lyricsfile YAML: %w", err)
@@ -31,10 +32,16 @@ func ParseLyricsfile(text string) (LyricList, error) {
 		return nil, nil
 	}
 
+	// Fall back to the caller's language when the document omits its own, matching
+	// the SRT/TTML parsers; normalizeLyricLang yields "xxx" only if both are empty.
+	docLang := doc.Metadata.Language
+	if strings.TrimSpace(docLang) == "" {
+		docLang = lang
+	}
 	lyrics := Lyrics{
 		DisplayArtist: str.SanitizeText(doc.Metadata.Artist),
 		DisplayTitle:  str.SanitizeText(doc.Metadata.Title),
-		Lang:          normalizeLyricLang(doc.Metadata.Language),
+		Lang:          normalizeLyricLang(docLang),
 		Kind:          LyricKindMain,
 	}
 	if doc.Metadata.OffsetMs != 0 {
@@ -43,7 +50,7 @@ func ParseLyricsfile(text string) (LyricList, error) {
 	}
 
 	if doc.Metadata.Instrumental {
-		return LyricList{NormalizeLyrics(lyrics)}, nil
+		return LyricList{normalizeLyrics(lyrics)}, nil
 	}
 
 	if len(doc.Lines) == 0 {
@@ -52,14 +59,14 @@ func ParseLyricsfile(text string) (LyricList, error) {
 			return nil, nil
 		}
 		lyrics.Line = lines
-		return LyricList{NormalizeLyrics(lyrics)}, nil
+		return LyricList{normalizeLyrics(lyrics)}, nil
 	}
 
 	lines, agents := buildLyricsfileLines(doc.Lines)
 	lyrics.Line = lines
 	lyrics.Agents = agents
 	lyrics.Synced = true
-	return LyricList{NormalizeLyrics(lyrics)}, nil
+	return LyricList{normalizeLyrics(lyrics)}, nil
 }
 
 const lyricsfileVersion = "1.0"

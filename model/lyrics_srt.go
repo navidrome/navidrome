@@ -1,7 +1,6 @@
 package model
 
 import (
-	"bytes"
 	"regexp"
 	"strconv"
 	"strings"
@@ -14,11 +13,7 @@ var (
 	srtBlockSeparatorRegex = regexp.MustCompile(`\n\s*\n`)
 )
 
-func ParseSRT(contents []byte) (LyricList, error) {
-	return parseSRTWithLanguage(contents, "xxx")
-}
-
-func parseSRTWithLanguage(contents []byte, language string) (LyricList, error) {
+func parseSRT(language string, contents []byte) (LyricList, error) {
 	raw := strings.ReplaceAll(string(contents), "\r\n", "\n")
 	raw = strings.ReplaceAll(raw, "\r", "\n")
 
@@ -39,7 +34,7 @@ func parseSRTWithLanguage(contents []byte, language string) (LyricList, error) {
 		return nil, nil
 	}
 
-	lyrics := NormalizeLyrics(Lyrics{
+	lyrics := normalizeLyrics(Lyrics{
 		Lang:   normalizeLyricLang(language),
 		Line:   lines,
 		Synced: true,
@@ -65,14 +60,10 @@ func splitSRTBlocks(raw string) []string {
 }
 
 func parseSRTBlock(block string) (Line, bool, error) {
-	scanner := bytes.Split([]byte(block), []byte("\n"))
-	if len(scanner) == 0 {
-		return Line{}, false, nil
-	}
-
-	lines := make([]string, 0, len(scanner))
-	for _, line := range scanner {
-		lines = append(lines, strings.TrimSpace(string(line)))
+	rawLines := strings.Split(block, "\n")
+	lines := make([]string, 0, len(rawLines))
+	for _, line := range rawLines {
+		lines = append(lines, strings.TrimSpace(line))
 	}
 
 	if len(lines) == 0 {

@@ -102,12 +102,28 @@ type ttmlParser struct {
 	metadataSeq int
 }
 
-func ParseTTML(contents []byte) (LyricList, error) {
-	return parseTTMLWithDefaultLang(contents, "xxx")
+func isTTMLDocument(contents []byte) bool {
+	decoder := xml.NewDecoder(bytes.NewReader(bytes.TrimSpace(contents)))
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			return false
+		}
+		if start, ok := token.(xml.StartElement); ok {
+			return strings.EqualFold(start.Name.Local, "tt")
+		}
+	}
 }
 
-func parseTTMLWithDefaultLang(contents []byte, defaultLang string) (LyricList, error) {
+func parseTTML(defaultLang string, contents []byte) (LyricList, error) {
 	contents = xmlEncodingRegex.ReplaceAll(contents, []byte(`<?xml$1encoding="UTF-8"$2?>`))
+
+	// Skip non-TTML content so sniffing doesn't run the full TTML parse on plain
+	// text — isTTMLDocument does a cheap decode that stops at the first element.
+	// Checked after the encoding fixup so UTF-16-declared documents are recognized.
+	if !isTTMLDocument(contents) {
+		return nil, nil
+	}
 
 	p := ttmlParser{
 		decoder: xml.NewDecoder(bytes.NewReader(contents)),
@@ -184,7 +200,7 @@ func (p *ttmlParser) parseElement(start xml.StartElement, parent ttmlTimingConte
 		if len(tokens) > 0 {
 			parsedLine.Cue = tokens
 		}
-		parsedLine = NormalizeLineTiming(parsedLine)
+		parsedLine = normalizeLineTiming(parsedLine)
 
 		lineKey, _ := attrValue(start.Attr, "key")
 		p.addMainLine(ctx.lang, lineKey, parsedLine)
@@ -327,7 +343,7 @@ func (p *ttmlParser) parseMetadataText(start xml.StartElement, parent ttmlTiming
 	if len(tokens) > 0 {
 		line.Cue = tokens
 	}
-	line = NormalizeLineTiming(line)
+	line = normalizeLineTiming(line)
 
 	if line.Value == "" && len(line.Cue) == 0 {
 		return ttmlMetadataEntry{}, false, nil
@@ -615,7 +631,7 @@ func (p *ttmlParser) buildMetadataLyrics(kind string, langOrder []string, entrie
 				endMs := *ref.line.End
 				line.End = &endMs
 			}
-			line = NormalizeLineTiming(line)
+			line = normalizeLineTiming(line)
 
 			if line.Value == "" && len(line.Cue) == 0 {
 				continue
@@ -657,7 +673,7 @@ func (p *ttmlParser) buildMetadataLyrics(kind string, langOrder []string, entrie
 
 func (p *ttmlParser) finalizeLyrics(lyrics Lyrics) Lyrics {
 	lyrics.Line, lyrics.Agents = p.resolveAgents(lyrics.Line)
-	return NormalizeLyrics(lyrics)
+	return normalizeLyrics(lyrics)
 }
 
 func (p *ttmlParser) resolveAgents(lines []Line) ([]Line, []Agent) {

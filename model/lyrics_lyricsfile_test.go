@@ -1,15 +1,14 @@
-package model_test
+package model
 
 import (
-	. "github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("ParseLyricsfile", func() {
+var _ = Describe("parseLyricsfile", func() {
 	DescribeTable("returns nil,nil for YAML without the Lyricsfile version marker",
 		func(input string) {
-			lyrics, err := ParseLyricsfile(input)
+			lyrics, err := parseLyricsfile("", []byte(input))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(lyrics).To(BeNil())
 		},
@@ -23,7 +22,7 @@ lines:
 	)
 
 	It("returns an error for invalid YAML", func() {
-		_, err := ParseLyricsfile("not: valid: yaml: [")
+		_, err := parseLyricsfile("", []byte("not: valid: yaml: ["))
 		Expect(err).To(HaveOccurred())
 	})
 
@@ -40,7 +39,7 @@ lines:
   - text: "You know the rules and so do I"
     start_ms: 22801
 `
-		lyrics, err := ParseLyricsfile(input)
+		lyrics, err := parseLyricsfile("", []byte(input))
 		Expect(err).ToNot(HaveOccurred())
 		Expect(lyrics).To(HaveLen(1))
 
@@ -67,6 +66,24 @@ lines:
 		Expect(l.Line[1].Cue).To(BeNil())
 	})
 
+	DescribeTable("resolves the lyric language",
+		func(metaLanguage, callerLang, want string) {
+			input := "version: '1.0'\nmetadata:\n  title: 'T'\n"
+			if metaLanguage != "" {
+				input += "  language: '" + metaLanguage + "'\n"
+			}
+			input += "lines:\n  - text: \"line\"\n    start_ms: 0\n"
+
+			lyrics, err := parseLyricsfile(callerLang, []byte(input))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(lyrics).To(HaveLen(1))
+			Expect(lyrics[0].Lang).To(Equal(want))
+		},
+		Entry("prefers the document's own language", "eng", "deu", "eng"),
+		Entry("falls back to the caller language when metadata omits it", "", "deu", "deu"),
+		Entry("uses xxx when neither is provided", "", "", "xxx"),
+	)
+
 	It("parses plain-only Lyricsfile lyrics as unsynced lines", func() {
 		input := `version: '1.0'
 metadata:
@@ -80,7 +97,7 @@ plain: |
 
   Second line
 `
-		lyrics, err := ParseLyricsfile(input)
+		lyrics, err := parseLyricsfile("", []byte(input))
 		Expect(err).ToNot(HaveOccurred())
 		Expect(lyrics).To(HaveLen(1))
 
@@ -116,7 +133,7 @@ lines:
         start_ms: 1500
         end_ms: 3000
 `
-		lyrics, err := ParseLyricsfile(input)
+		lyrics, err := parseLyricsfile("", []byte(input))
 		Expect(err).ToNot(HaveOccurred())
 		Expect(lyrics).To(HaveLen(1))
 
@@ -168,7 +185,7 @@ lines:
         start_ms: 3000
         end_ms: 3500
 `
-		lyrics, err := ParseLyricsfile(input)
+		lyrics, err := parseLyricsfile("", []byte(input))
 		Expect(err).ToNot(HaveOccurred())
 		Expect(lyrics).To(HaveLen(1))
 
@@ -207,7 +224,7 @@ lines:
         start_ms: 2000
         end_ms: 3000
 `
-		lyrics, err := ParseLyricsfile(input)
+		lyrics, err := parseLyricsfile("", []byte(input))
 		Expect(err).ToNot(HaveOccurred())
 		Expect(lyrics).To(HaveLen(1))
 
@@ -246,7 +263,7 @@ metadata:
   language: 'eng'
   instrumental: true
 `
-		lyrics, err := ParseLyricsfile(input)
+		lyrics, err := parseLyricsfile("", []byte(input))
 		Expect(err).ToNot(HaveOccurred())
 		Expect(lyrics).To(HaveLen(1))
 
@@ -270,7 +287,7 @@ lines:
     start_ms: 2000
     end_ms: 3000
 `
-		lyrics, err := ParseLyricsfile(input)
+		lyrics, err := parseLyricsfile("", []byte(input))
 		Expect(err).ToNot(HaveOccurred())
 		Expect(lyrics).To(HaveLen(1))
 

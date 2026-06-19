@@ -3,9 +3,12 @@ package lyrics
 import (
 	"context"
 	"errors"
-	"os"
+	"fmt"
+	"io"
+	"io/fs"
 	"path"
 
+	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/ioutils"
@@ -23,31 +26,44 @@ func fromEmbedded(ctx context.Context, mf *model.MediaFile) (model.LyricList, er
 }
 
 func fromExternalFile(ctx context.Context, mf *model.MediaFile, suffix string) (model.LyricList, error) {
-	basePath := mf.AbsolutePath()
-	ext := path.Ext(basePath)
+	ext := path.Ext(mf.Path)
+	sidecarRelPath := mf.Path[0:len(mf.Path)-len(ext)] + suffix
 
-	externalLyric := basePath[0:len(basePath)-len(ext)] + suffix
+	store, err := storage.For(mf.LibraryPath)
+	if err != nil {
+		return nil, fmt.Errorf("getting storage for library: %w", err)
+	}
+	fsys, err := store.FS()
+	if err != nil {
+		return nil, fmt.Errorf("opening library filesystem: %w", err)
+	}
 
-	contents, err := ioutils.UTF8ReadFile(externalLyric)
-	if errors.Is(err, os.ErrNotExist) {
-		log.Trace(ctx, "no lyrics found at path", "path", externalLyric)
+	f, err := fsys.Open(sidecarRelPath)
+	if errors.Is(err, fs.ErrNotExist) {
+		log.Trace(ctx, "no lyrics found at path", "path", sidecarRelPath)
 		return nil, nil
 	} else if err != nil {
 		return nil, err
 	}
+	defer f.Close()
 
-	list, err := model.ParseLyricsFile(suffix, contents)
+	contents, err := io.ReadAll(ioutils.UTF8Reader(f))
 	if err != nil {
-		log.Error(ctx, "error parsing external lyric file", "path", externalLyric, err)
+		return nil, err
+	}
+
+	list, err := model.ParseLyrics(suffix, "xxx", contents)
+	if err != nil {
+		log.Error(ctx, "error parsing external lyric file", "path", sidecarRelPath, err)
 		return nil, err
 	}
 
 	if len(list) == 0 {
-		log.Trace(ctx, "empty lyrics from external file", "path", externalLyric)
+		log.Trace(ctx, "empty lyrics from external file", "path", sidecarRelPath)
 		return nil, nil
 	}
 
-	log.Trace(ctx, "retrieved lyrics from external file", "path", externalLyric)
+	log.Trace(ctx, "retrieved lyrics from external file", "path", sidecarRelPath)
 	return list, nil
 }
 
