@@ -30,13 +30,14 @@ var lyricFormats = []struct {
 // a structured parser that does not match falls back to the LRC/plain-text floor.
 func ParseLyrics(suffix, lang string, contents []byte) (LyricList, error) {
 	contents = stripBOM(contents)
-	sniff := suffix == "" || strings.EqualFold(suffix, "auto")
+	suffix = strings.ToLower(suffix)
+	sniff := suffix == "" || suffix == "auto"
 
 	// Sniffing tries every format in order; a known suffix selects just its own.
 	// Unmatched suffixes leave no candidates, so parseFirstMatch falls to plain.
 	candidates := make([]lyricParser, 0, len(lyricFormats))
 	for _, f := range lyricFormats {
-		if sniff || slices.Contains(f.suffixes, strings.ToLower(suffix)) {
+		if sniff || slices.Contains(f.suffixes, suffix) {
 			candidates = append(candidates, f.parse)
 		}
 	}

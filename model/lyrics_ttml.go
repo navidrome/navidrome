@@ -102,8 +102,8 @@ type ttmlParser struct {
 	metadataSeq int
 }
 
-func isTTMLDocument(text string) bool {
-	decoder := xml.NewDecoder(strings.NewReader(strings.TrimSpace(text)))
+func isTTMLDocument(contents []byte) bool {
+	decoder := xml.NewDecoder(bytes.NewReader(bytes.TrimSpace(contents)))
 	for {
 		token, err := decoder.Token()
 		if err != nil {
@@ -120,7 +120,7 @@ func parseTTMLWithDefaultLang(defaultLang string, contents []byte) (LyricList, e
 
 	// Skip non-TTML content so sniffing doesn't run the XML decoder on plain text.
 	// Checked after the encoding fixup so UTF-16-declared documents are recognized.
-	if !isTTMLDocument(string(contents)) {
+	if !isTTMLDocument(contents) {
 		return nil, nil
 	}
 
