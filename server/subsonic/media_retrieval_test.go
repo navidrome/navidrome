@@ -149,6 +149,26 @@ var _ = Describe("MediaRetrievalController", func() {
 			Expect(response.Lyrics.Title).To(Equal("Never Gonna Give You Up"))
 			Expect(response.Lyrics.Value).To(Equal("We're no strangers to love\nYou know the rules and so do I\n"))
 		})
+		It("should surface the main-kind track when translation tracks are present", func() {
+			r := newGetRequest("artist=Rick+Astley", "title=Never+Gonna+Give+You+Up")
+			start := int64(0)
+			lyricsJSON, err := json.Marshal(model.LyricList{
+				{Kind: model.LyricKindTranslation, Lang: "por", Line: []model.Line{{Start: &start, Value: "Nunca vou te decepcionar"}}},
+				{Kind: model.LyricKindMain, Lang: "eng", Line: []model.Line{{Start: &start, Value: "Never gonna let you down"}}},
+			})
+			Expect(err).ToNot(HaveOccurred())
+			mockRepo.SetData(model.MediaFiles{
+				{
+					ID:     "1",
+					Artist: "Rick Astley",
+					Title:  "Never Gonna Give You Up",
+					Lyrics: string(lyricsJSON),
+				},
+			})
+			response, err := router.GetLyrics(r)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(response.Lyrics.Value).To(Equal("Never gonna let you down\n"))
+		})
 		It("should return empty subsonic response if the record corresponding to the given artist & title is not found", func() {
 			r := newGetRequest("artist=Dheeraj", "title=Rinkiya+Ke+Papa")
 			mockRepo.SetData(model.MediaFiles{})

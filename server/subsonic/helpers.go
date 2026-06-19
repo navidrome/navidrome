@@ -628,6 +628,21 @@ func buildLyricCues(cues []model.Cue, lineEnd *int64) []responses.LyricCue {
 	return out
 }
 
+// mainKindLyric returns the main-kind lyric to surface through the plain-text
+// legacy getLyrics endpoint, which has no notion of translation/pronunciation
+// tracks. It falls back to the first entry so untyped lyrics still resolve.
+func mainKindLyric(lyricsList model.LyricList) (model.Lyrics, bool) {
+	if len(lyricsList) == 0 {
+		return model.Lyrics{}, false
+	}
+	for _, l := range lyricsList {
+		if model.LyricKindOrMain(l.Kind) == model.LyricKindMain {
+			return l, true
+		}
+	}
+	return lyricsList[0], true
+}
+
 func buildLyricsList(mf *model.MediaFile, lyricsList model.LyricList, enhanced bool) *responses.LyricsList {
 	var filtered model.LyricList
 	if enhanced {

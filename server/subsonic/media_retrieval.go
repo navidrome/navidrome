@@ -119,7 +119,8 @@ func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {
 		return nil, err
 	}
 
-	if len(structuredLyrics) == 0 {
+	mainLyric, ok := mainKindLyric(structuredLyrics)
+	if !ok {
 		return response, nil
 	}
 
@@ -127,7 +128,7 @@ func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {
 	lyricsResponse.Title = title
 
 	var lyricsText strings.Builder
-	for _, line := range structuredLyrics[0].Line {
+	for _, line := range mainLyric.Line {
 		lyricsText.WriteString(line.Value + "\n")
 	}
 	lyricsResponse.Value = lyricsText.String()
