@@ -16,3 +16,13 @@ func If[T any](cond bool, v1, v2 T) T {
 	}
 	return v2
 }
+
+// Clone returns a pointer to a fresh copy of *p, or nil if p is nil. Use it to
+// avoid aliasing the pointed-to value when a separate *T is needed.
+func Clone[T any](p *T) *T {
+	if p == nil {
+		return nil
+	}
+	v := *p
+	return &v
+}

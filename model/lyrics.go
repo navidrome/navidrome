@@ -10,6 +10,7 @@ import (
 	"unicode"
 
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/str"
 )
 
@@ -542,7 +543,7 @@ func NormalizeCueEnds(cues []Cue, fallbackEnd *int64) []Cue {
 		if end != nil && out[i].Start != nil && *end < *out[i].Start {
 			end = out[i].Start
 		}
-		out[i].End = ptrOrNil(end)
+		out[i].End = gg.Clone(end)
 	}
 
 	for i := range out {
@@ -554,14 +555,4 @@ func NormalizeCueEnds(cues []Cue, fallbackEnd *int64) []Cue {
 		}
 	}
 	return out
-}
-
-// ptrOrNil returns a fresh copy of *v so callers never alias another cue's
-// Start/End pointer into the result.
-func ptrOrNil(v *int64) *int64 {
-	if v == nil {
-		return nil
-	}
-	c := *v
-	return &c
 }

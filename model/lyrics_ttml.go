@@ -13,6 +13,7 @@ import (
 	"unicode"
 
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/str"
 )
 
@@ -487,7 +488,7 @@ func splitTTMLPiecesByNewline(pieces []ttmlPiece) [][]ttmlPiece {
 			if start < i {
 				lines[len(lines)-1] = append(lines[len(lines)-1], ttmlPiece{
 					raw: raw[start:i],
-					cue: cloneTTMLCue(piece.cue),
+					cue: gg.Clone(piece.cue),
 				})
 			}
 			lines = append(lines, []ttmlPiece{})
@@ -496,7 +497,7 @@ func splitTTMLPiecesByNewline(pieces []ttmlPiece) [][]ttmlPiece {
 		if start < len(raw) {
 			lines[len(lines)-1] = append(lines[len(lines)-1], ttmlPiece{
 				raw: raw[start:],
-				cue: cloneTTMLCue(piece.cue),
+				cue: gg.Clone(piece.cue),
 			})
 		}
 	}
@@ -560,15 +561,6 @@ func ttmlPiecesContainCue(pieces []ttmlPiece) bool {
 		}
 	}
 	return false
-}
-
-func cloneTTMLCue(cue *Cue) *Cue {
-	if cue == nil {
-		return nil
-	}
-
-	cloned := *cue
-	return &cloned
 }
 
 func (p *ttmlParser) toLyricList() LyricList {
@@ -979,9 +971,9 @@ func (p *ttmlParser) updateTimingParams(attrs []xml.Attr) {
 		}
 	}
 
-	p.params.frameRate = positiveOrDefault(frameRate, defaultTTMLFrameRate)
-	p.params.subFrameRate = positiveOrDefault(subFrameRate, defaultTTMLSubFrameRate)
-	p.params.tickRate = positiveOrDefault(tickRate, defaultTTMLTickRate)
+	p.params.frameRate = gg.If(frameRate > 0, frameRate, defaultTTMLFrameRate)
+	p.params.subFrameRate = gg.If(subFrameRate > 0, subFrameRate, defaultTTMLSubFrameRate)
+	p.params.tickRate = gg.If(tickRate > 0, tickRate, defaultTTMLTickRate)
 }
 
 func parseTTMLDurationExpression(expr string, params ttmlTimingParams) (int64, bool) {
@@ -1261,11 +1253,4 @@ func linesAreSynced(lines []Line) bool {
 		}
 	}
 	return false
-}
-
-func positiveOrDefault(v float64, fallback float64) float64 {
-	if v <= 0 {
-		return fallback
-	}
-	return v
 }
