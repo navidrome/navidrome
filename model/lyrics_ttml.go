@@ -109,6 +109,14 @@ func parseTTML(contents []byte) (LyricList, error) {
 func parseTTMLWithDefaultLang(defaultLang string, contents []byte) (LyricList, error) {
 	contents = xmlEncodingRegex.ReplaceAll(contents, []byte(`<?xml$1encoding="UTF-8"$2?>`))
 
+	// Self-skip non-TTML content (returns nil, nil) so content-sniffing does not
+	// run the XML decoder on plain text or LRC. Checked after the encoding fixup
+	// above so a UTF-16-declared document is still recognized. Content that is a
+	// <tt> document but malformed still parses below and surfaces its error.
+	if !isTTMLDocument(string(contents)) {
+		return nil, nil
+	}
+
 	p := ttmlParser{
 		decoder: xml.NewDecoder(bytes.NewReader(contents)),
 		params: ttmlTimingParams{
