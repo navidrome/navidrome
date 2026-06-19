@@ -212,6 +212,28 @@ describe('SharePlayer', () => {
       expect(createdLinks[0]).not.toBeInTheDocument()
     })
 
+    it('fallback to share id if description is empty', () => {
+      configModule.shareInfo.description = ''
+
+      render(
+        <TestContext>
+          <SharePlayer />
+        </TestContext>,
+      )
+
+      capturedCustomDownloader({ src: '/share/s/track-1' })
+
+      fireEvent.click(
+        screen.getByText('resources.share.actions.download.allTracks'),
+      )
+
+      expect(createdLinks).toHaveLength(1)
+      expect(createdLinks[0].href).toContain('/share/d/share-1')
+      expect(createdLinks[0].download).toBe('share-1.zip')
+      expect(createdLinks[0].click).toHaveBeenCalled()
+      expect(createdLinks[0]).not.toBeInTheDocument()
+    })
+
     it('closes the dialog after clicking "All Tracks"', async () => {
       render(
         <TestContext>

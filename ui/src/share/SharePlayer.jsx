@@ -103,7 +103,7 @@ const SharePlayer = () => {
       />
       <Dialog
         id="share-download-menu"
-        open={downloadInfo}
+        open={!!downloadInfo}
         onClose={handleClose}
         aria-labelledby="share-download-title"
       >
@@ -126,9 +126,12 @@ const SharePlayer = () => {
             startIcon={<QueueMusicIcon />}
             disabled={!shareInfo}
             onClick={() => {
+              let url = shareDownloadUrl(shareInfo?.id)
               downloadFile(
                 shareDownloadUrl(shareInfo?.id),
-                shareInfo?.description + '.zip',
+                shareInfo?.description && shareInfo.description.trim() !== ''
+                  ? shareInfo.description + '.zip'
+                  : shareInfo?.id + '.zip',
               )
               setDownloadInfo(null)
             }}
