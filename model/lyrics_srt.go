@@ -40,7 +40,7 @@ func parseSRTWithLanguage(contents []byte, language string) (LyricList, error) {
 	}
 
 	lyrics := NormalizeLyrics(Lyrics{
-		Lang:   normalizeEmbeddedLanguage(language),
+		Lang:   normalizeLyricLang(language),
 		Line:   lines,
 		Synced: true,
 	})

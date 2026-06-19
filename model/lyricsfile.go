@@ -34,7 +34,7 @@ func ParseLyricsfile(text string) (LyricList, error) {
 	lyrics := Lyrics{
 		DisplayArtist: str.SanitizeText(doc.Metadata.Artist),
 		DisplayTitle:  str.SanitizeText(doc.Metadata.Title),
-		Lang:          normalizeLyricsfileLang(doc.Metadata.Language),
+		Lang:          normalizeLyricLang(doc.Metadata.Language),
 		Kind:          LyricKindMain,
 	}
 	if doc.Metadata.OffsetMs != 0 {
@@ -273,12 +273,4 @@ func wordsToLineCues(entry lyricsfileLineEntry, agentID string) ([]Cue, string) 
 		}
 	}
 	return cues, lineValue
-}
-
-func normalizeLyricsfileLang(language string) string {
-	language = strings.ToLower(strings.TrimSpace(language))
-	if language == "" {
-		return "xxx"
-	}
-	return language
 }

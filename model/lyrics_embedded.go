@@ -53,11 +53,3 @@ func isTTMLDocument(text string) bool {
 		}
 	}
 }
-
-func normalizeEmbeddedLanguage(language string) string {
-	language = strings.ToLower(strings.TrimSpace(language))
-	if language == "" {
-		return "xxx"
-	}
-	return language
-}

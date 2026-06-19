@@ -2,6 +2,7 @@ package model
 
 import (
 	"cmp"
+	"fmt"
 	"regexp"
 	"slices"
 	"strconv"
@@ -225,6 +226,33 @@ func ToLyrics(language, text string) (*Lyrics, error) {
 		Synced:        synced,
 	}
 	return &lyrics, nil
+}
+
+// ParseLyricsFile parses a sidecar lyrics file, dispatching on its extension to
+// the matching format parser. Unknown extensions fall back to the generic
+// LRC/plain-text parser. It is the single owner of the suffix→parser mapping,
+// mirroring [ParseEmbedded] for tag-embedded lyrics.
+func ParseLyricsFile(suffix string, contents []byte) (LyricList, error) {
+	var list LyricList
+	var err error
+	switch {
+	case strings.EqualFold(suffix, ".ttml"):
+		list, err = ParseTTML(contents)
+	case strings.EqualFold(suffix, ".srt"):
+		list, err = ParseSRT(contents)
+	case strings.EqualFold(suffix, ".yaml"), strings.EqualFold(suffix, ".yml"):
+		list, err = ParseLyricsfile(string(contents))
+	default:
+		var lyric *Lyrics
+		lyric, err = ToLyrics("xxx", string(contents))
+		if lyric != nil {
+			list = LyricList{*lyric}
+		}
+	}
+	if err != nil {
+		return nil, fmt.Errorf("parsing %s lyrics: %w", strings.TrimPrefix(suffix, "."), err)
+	}
+	return list, nil
 }
 
 // parseEnhancedLine extracts word-level timing cues from Enhanced LRC inline markers
