@@ -9,20 +9,23 @@ import (
 	"github.com/navidrome/navidrome/model"
 )
 
-// Lyrics can fetch lyrics for a media file.
-type Lyrics interface {
+// Provider fetches lyrics for a single media file. It is the contract
+// implemented by individual lyrics sources, such as plugins.
+type Provider interface {
 	GetLyrics(ctx context.Context, mf *model.MediaFile) (model.LyricList, error)
 }
 
-// BatchLyrics can resolve lyrics across multiple candidate media files while
-// still honoring the configured source priority globally.
-type BatchLyrics interface {
+// Lyrics resolves lyrics for media files, honoring the configured source
+// priority. GetLyricsForMediaFiles preserves that priority across a set of
+// duplicate candidates instead of only consulting the first match.
+type Lyrics interface {
+	Provider
 	GetLyricsForMediaFiles(ctx context.Context, mediaFiles []model.MediaFile) (model.LyricList, error)
 }
 
 // PluginLoader discovers and loads lyrics provider plugins.
 type PluginLoader interface {
-	LoadLyricsProvider(name string) (Lyrics, bool)
+	LoadLyricsProvider(name string) (Provider, bool)
 }
 
 type lyricsService struct {

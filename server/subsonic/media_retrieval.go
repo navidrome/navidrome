@@ -10,7 +10,6 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
-	lyricssvc "github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/resources"
@@ -102,7 +101,7 @@ func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {
 	lyricsResponse := responses.Lyrics{}
 	response.Lyrics = &lyricsResponse
 	opts := filter.SongsByArtistTitleWithLyricsFirst(artist, title)
-	// Search a bounded duplicate window so source-priority fallback can still
+	// Search a bounded duplicate window so source-priority resolution can still
 	// reach older matches without turning legacy getLyrics into an unbounded scan.
 	opts.Max = maxLegacyLyricsCandidates
 	mediaFiles, err := api.ds.MediaFile(r.Context()).GetAll(opts)
@@ -115,22 +114,9 @@ func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {
 		return response, nil
 	}
 
-	var structuredLyrics model.LyricList
-	if batchLyrics, ok := api.lyrics.(lyricssvc.BatchLyrics); ok {
-		structuredLyrics, err = batchLyrics.GetLyricsForMediaFiles(r.Context(), mediaFiles)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		for i := range mediaFiles {
-			structuredLyrics, err = api.lyrics.GetLyrics(r.Context(), &mediaFiles[i])
-			if err != nil {
-				return nil, err
-			}
-			if len(structuredLyrics) > 0 {
-				break
-			}
-		}
+	structuredLyrics, err := api.lyrics.GetLyricsForMediaFiles(r.Context(), mediaFiles)
+	if err != nil {
+		return nil, err
 	}
 
 	if len(structuredLyrics) == 0 {

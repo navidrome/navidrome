@@ -176,10 +176,8 @@ var _ = Describe("sources", func() {
 		Expect(err).To(BeNil())
 
 		svc := lyrics.NewLyrics(nil)
-		batchSvc, ok := svc.(lyrics.BatchLyrics)
-		Expect(ok).To(BeTrue())
 
-		list, err := batchSvc.GetLyricsForMediaFiles(ctx, []model.MediaFile{
+		list, err := svc.GetLyricsForMediaFiles(ctx, []model.MediaFile{
 			{
 				Lyrics: string(embeddedJSON),
 				Path:   "tests/fixtures/01 Invisible (RED) Edit Version.mp3",
@@ -372,7 +370,7 @@ func (m *mockPluginLoader) PluginNames(_ string) []string {
 	return []string{"test-lyrics-plugin"}
 }
 
-func (m *mockPluginLoader) LoadLyricsProvider(name string) (lyrics.Lyrics, bool) {
+func (m *mockPluginLoader) LoadLyricsProvider(name string) (lyrics.Provider, bool) {
 	if m.notFound {
 		return nil, false
 	}
