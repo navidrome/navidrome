@@ -3,6 +3,7 @@ package model
 import (
 	"encoding/xml"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/navidrome/navidrome/log"
@@ -28,22 +29,22 @@ func parseTTMLIfDocument(lang string, contents []byte) (LyricList, error) {
 	return parseTTMLWithDefaultLang(lang, contents)
 }
 
-// bySuffix maps a sidecar file extension to its parser. LRC and unknown
-// extensions are absent: they fall straight to the plain-text floor. The suffix
-// already declares the format, so TTML parses unconditionally here (a malformed
-// .ttml surfaces its error and then the plain-text fallback).
-var bySuffix = map[string]lyricParser{
-	".ttml": parseTTMLWithDefaultLang,
-	".srt":  parseSRTWithLanguage,
-	".yaml": parseLyricsfileBytes,
-	".yml":  parseLyricsfileBytes,
+// registry is the single source of truth for the structured formats. Slice
+// order is the content-sniff probe order (TTML → SRT → YAML), and each row's
+// suffixes drive sidecar dispatch. byContent is used when sniffing — it gates a
+// format so, e.g., TTML only runs the XML decoder on something that looks like a
+// document; bySuffix parses unconditionally because the file extension already
+// declares the format. LRC/plain is not listed: it is the fallback floor for
+// both paths.
+var registry = []struct {
+	suffixes  []string
+	bySuffix  lyricParser
+	byContent lyricParser
+}{
+	{[]string{".ttml"}, parseTTMLWithDefaultLang, parseTTMLIfDocument},
+	{[]string{".srt"}, parseSRTWithLanguage, parseSRTWithLanguage},
+	{[]string{".yaml", ".yml"}, parseLyricsfileBytes, parseLyricsfileBytes},
 }
-
-// sniffOrder is the content-sniff candidate order for tag-embedded lyrics and
-// plugin responses (no suffix to dispatch on): TTML → SRT → YAML → LRC/plain.
-// TTML is gated on looking like a document so plain/LRC text is not run through
-// the XML decoder.
-var sniffOrder = []lyricParser{parseTTMLIfDocument, parseSRTWithLanguage, parseLyricsfileBytes}
 
 // ParseLyrics is the single entry point for parsing lyrics. A known suffix
 // (.ttml/.srt/.yaml/.yml/.lrc) routes to that format's parser; an empty or
@@ -52,10 +53,16 @@ var sniffOrder = []lyricParser{parseTTMLIfDocument, parseSRTWithLanguage, parseL
 // format.
 func ParseLyrics(suffix, lang string, contents []byte) (LyricList, error) {
 	if suffix == "" || strings.EqualFold(suffix, "auto") {
-		return parseFirstMatch(lang, stripBOM(contents), sniffOrder...)
+		candidates := make([]lyricParser, len(registry))
+		for i, r := range registry {
+			candidates[i] = r.byContent
+		}
+		return parseFirstMatch(lang, stripBOM(contents), candidates...)
 	}
-	if parse, ok := bySuffix[strings.ToLower(suffix)]; ok {
-		return parseFirstMatch(lang, contents, parse)
+	for _, r := range registry {
+		if slices.ContainsFunc(r.suffixes, func(s string) bool { return strings.EqualFold(s, suffix) }) {
+			return parseFirstMatch(lang, contents, r.bySuffix)
+		}
 	}
 	return plainLRC(lang, contents) // .lrc and any unknown suffix
 }
