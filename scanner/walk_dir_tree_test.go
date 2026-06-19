@@ -45,6 +45,10 @@ var _ = Describe("walk_dir_tree", func() {
 						"root/d/f3.mp3":          {},
 						"root/e/original/f1.mp3": {},
 						"root/e/symlink":         {Mode: fs.ModeSymlink, Data: []byte("original")},
+						"root/f/realsong.mp3":    {Data: []byte("AUDIO")},
+						"root/f/legit.mp3":       {Mode: fs.ModeSymlink, Data: []byte("realsong.mp3")},
+						"root/f/secret":          {Data: []byte("TOPSECRET")},
+						"root/f/evil.mp3":        {Mode: fs.ModeSymlink, Data: []byte("secret")},
 					},
 				}
 				job = &scanJob{
@@ -96,12 +100,18 @@ var _ = Describe("walk_dir_tree", func() {
 					// Symlink specific checks
 					if followSymlinks {
 						Expect(folders["root/e/symlink"].audioFiles).To(HaveLen(1))
+						Expect(folders["root/f"].audioFiles).To(HaveKey("legit.mp3"))
+						Expect(folders["root/f"].audioFiles).To(HaveKey("realsong.mp3"))
+						Expect(folders["root/f"].audioFiles).ToNot(HaveKey("evil.mp3"))
 					} else {
 						Expect(folders).ToNot(HaveKey("root/e/symlink"))
+						Expect(folders["root/f"].audioFiles).To(HaveKey("realsong.mp3"))
+						Expect(folders["root/f"].audioFiles).ToNot(HaveKey("legit.mp3"))
+						Expect(folders["root/f"].audioFiles).ToNot(HaveKey("evil.mp3"))
 					}
 				},
-				Entry("with symlinks enabled", true, 7),
-				Entry("with symlinks disabled", false, 6),
+				Entry("with symlinks enabled", true, 8),
+				Entry("with symlinks disabled", false, 7),
 			)
 		})
 
@@ -264,6 +274,176 @@ var _ = Describe("walk_dir_tree", func() {
 			})
 		})
 
+		Describe("resolveEntryName", func() {
+			var fsys fs.FS
+			BeforeEach(func() {
+				DeferCleanup(configtest.SetupConfig())
+				fsys = fstest.MapFS{
+					"dir/real.mp3":   {Data: []byte("AUDIO")},
+					"dir/mid.mp3":    {Mode: fs.ModeSymlink, Data: []byte("real.mp3")},
+					"dir/chain.mp3":  {Mode: fs.ModeSymlink, Data: []byte("mid.mp3")},
+					"dir/audio.mp3":  {Mode: fs.ModeSymlink, Data: []byte("real.mp3")},
+					"dir/evil.mp3":   {Mode: fs.ModeSymlink, Data: []byte("../outside/passwd")},
+					"dir/loop1.mp3":  {Mode: fs.ModeSymlink, Data: []byte("loop2.mp3")},
+					"dir/loop2.mp3":  {Mode: fs.ModeSymlink, Data: []byte("loop1.mp3")},
+					"dir/dangle.mp3": {Mode: fs.ModeSymlink, Data: []byte("missing.mp3")},
+				}
+			})
+
+			resolve := func(name string) (string, bool) {
+				entries, err := fs.ReadDir(fsys, "dir")
+				Expect(err).ToNot(HaveOccurred())
+				for _, e := range entries {
+					if e.Name() == name {
+						return resolveEntryName(GinkgoT().Context(), fsys, "dir", e)
+					}
+				}
+				Fail("entry not found: " + name)
+				return "", false
+			}
+
+			Context("with symlinks enabled", func() {
+				BeforeEach(func() { conf.Server.Scanner.FollowSymlinks = true })
+
+				It("returns the entry name for a plain file", func() {
+					name, ok := resolve("real.mp3")
+					Expect(ok).To(BeTrue())
+					Expect(name).To(Equal("real.mp3"))
+				})
+				It("resolves a direct symlink to its audio target name", func() {
+					name, ok := resolve("audio.mp3")
+					Expect(ok).To(BeTrue())
+					Expect(name).To(Equal("real.mp3"))
+				})
+				It("resolves a symlink CHAIN to the final target name", func() {
+					name, ok := resolve("chain.mp3")
+					Expect(ok).To(BeTrue())
+					Expect(name).To(Equal("real.mp3"))
+				})
+				It("resolves a symlink to a non-audio target name (so caller can reject it)", func() {
+					name, ok := resolve("evil.mp3")
+					Expect(ok).To(BeTrue())
+					Expect(name).To(Equal("passwd"))
+				})
+				It("rejects a symlink loop", func() {
+					_, ok := resolve("loop1.mp3")
+					Expect(ok).To(BeFalse())
+				})
+			})
+
+			Context("with symlinks disabled", func() {
+				BeforeEach(func() { conf.Server.Scanner.FollowSymlinks = false })
+
+				It("returns the entry name for a plain file", func() {
+					name, ok := resolve("real.mp3")
+					Expect(ok).To(BeTrue())
+					Expect(name).To(Equal("real.mp3"))
+				})
+				It("skips any file symlink", func() {
+					_, ok := resolve("audio.mp3")
+					Expect(ok).To(BeFalse())
+				})
+			})
+		})
+
+		Describe("symlink chain (real fs)", func() {
+			BeforeEach(func() {
+				tests.SkipOnWindows("symlink semantics")
+				DeferCleanup(configtest.SetupConfig())
+			})
+
+			classify := func(fsys fs.FS, dirPath, name string) (string, bool) {
+				entries, err := fs.ReadDir(fsys, dirPath)
+				Expect(err).ToNot(HaveOccurred())
+				for _, e := range entries {
+					if e.Name() == name {
+						return resolveEntryName(GinkgoT().Context(), fsys, dirPath, e)
+					}
+				}
+				Fail("entry not found: " + name)
+				return "", false
+			}
+
+			Context("committed 3-level fixtures", func() {
+				// tests.Init chdirs to the repo root, so the committed fixtures are at "tests/fixtures".
+				var fsys fs.FS
+				BeforeEach(func() {
+					conf.Server.Scanner.FollowSymlinks = true
+					wd, err := os.Getwd()
+					Expect(err).ToNot(HaveOccurred())
+					fsys = os.DirFS(wd)
+				})
+
+				It("keeps a 3-level chain that resolves to real audio", func() {
+					name, ok := classify(fsys, "tests/fixtures/symlink_chain", "level3.mp3")
+					Expect(ok).To(BeTrue())
+					Expect(name).To(Equal("test.mp3"))
+					Expect(model.IsAudioFile(name)).To(BeTrue())
+				})
+
+				It("rejects a 3-level chain that resolves to a non-audio file", func() {
+					name, ok := classify(fsys, "tests/fixtures/symlink_chain", "evil3.mp3")
+					Expect(ok).To(BeTrue())
+					Expect(name).To(Equal("index.html"))
+					Expect(model.IsAudioFile(name)).To(BeFalse())
+				})
+
+				It("skips the chain entirely when FollowSymlinks is disabled", func() {
+					conf.Server.Scanner.FollowSymlinks = false
+					_, ok := classify(fsys, "tests/fixtures/symlink_chain", "level3.mp3")
+					Expect(ok).To(BeFalse())
+					_, ok = classify(fsys, "tests/fixtures/symlink_chain", "evil3.mp3")
+					Expect(ok).To(BeFalse())
+				})
+			})
+
+			Context("out-of-tree escape (temp dir)", func() {
+				var root string
+				BeforeEach(func() {
+					conf.Server.Scanner.FollowSymlinks = true
+					root = GinkgoT().TempDir()
+					outside := GinkgoT().TempDir()
+					Expect(os.WriteFile(filepath.Join(outside, "passwd"), []byte("TOPSECRET"), 0600)).To(Succeed())
+					Expect(os.WriteFile(filepath.Join(outside, "real.flac"), []byte("AUDIO"), 0600)).To(Succeed())
+					Expect(os.WriteFile(filepath.Join(root, "song.mp3"), []byte("AUDIO"), 0600)).To(Succeed())
+					// evil.mp3 escapes to a non-audio target; legit.flac is a valid out-of-tree audio symlink.
+					Expect(os.Symlink(filepath.Join(outside, "passwd"), filepath.Join(root, "evil.mp3"))).To(Succeed())
+					Expect(os.Symlink(filepath.Join(outside, "real.flac"), filepath.Join(root, "legit.flac"))).To(Succeed())
+				})
+
+				It("rejects the absolute-path escape but keeps legit out-of-tree audio", func() {
+					fsys := os.DirFS(root)
+
+					name, ok := classify(fsys, ".", "song.mp3")
+					Expect(ok).To(BeTrue())
+					Expect(model.IsAudioFile(name)).To(BeTrue())
+
+					name, ok = classify(fsys, ".", "legit.flac")
+					Expect(ok).To(BeTrue())
+					Expect(model.IsAudioFile(name)).To(BeTrue())
+
+					name, ok = classify(fsys, ".", "evil.mp3")
+					Expect(ok).To(BeTrue())
+					Expect(model.IsAudioFile(name)).To(BeFalse())
+				})
+
+				It("skips all file symlinks when FollowSymlinks is disabled", func() {
+					conf.Server.Scanner.FollowSymlinks = false
+					fsys := os.DirFS(root)
+					entries, err := fs.ReadDir(fsys, ".")
+					Expect(err).ToNot(HaveOccurred())
+					for _, e := range entries {
+						_, ok := resolveEntryName(GinkgoT().Context(), fsys, ".", e)
+						if e.Type()&fs.ModeSymlink != 0 {
+							Expect(ok).To(BeFalse(), e.Name())
+						} else {
+							Expect(ok).To(BeTrue(), e.Name())
+						}
+					}
+				})
+			})
+		})
+
 		Describe("isDirIgnored", func() {
 			DescribeTable("returns expected result",
 				func(dirName string, expected bool) {
@@ -413,4 +593,31 @@ func (m *mockMusicFS) ReadDir(name string) ([]fs.DirEntry, error) {
 		return dirFile.ReadDir(-1)
 	}
 	return nil, fmt.Errorf("not a directory")
+}
+
+// ReadLink returns the target of the named symbolic link (implements fs.ReadLinkFS).
+func (m *mockMusicFS) ReadLink(name string) (string, error) {
+	mapFS := m.FS.(fstest.MapFS)
+	entry, ok := mapFS[name]
+	if !ok {
+		return "", &fs.PathError{Op: "readlink", Path: name, Err: fs.ErrNotExist}
+	}
+	if entry.Mode&fs.ModeSymlink == 0 {
+		return "", &fs.PathError{Op: "readlink", Path: name, Err: fmt.Errorf("not a symlink")}
+	}
+	return string(entry.Data), nil
+}
+
+// Lstat returns FileInfo for the named file without following symlinks (implements fs.ReadLinkFS).
+func (m *mockMusicFS) Lstat(name string) (fs.FileInfo, error) {
+	mapFS := m.FS.(fstest.MapFS)
+	if _, ok := mapFS[name]; !ok {
+		return nil, &fs.PathError{Op: "lstat", Path: name, Err: fs.ErrNotExist}
+	}
+	f, err := m.FS.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	return f.Stat()
 }

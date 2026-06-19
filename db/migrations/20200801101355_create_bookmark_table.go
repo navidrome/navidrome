@@ -11,8 +11,8 @@ func init() {
 	goose.AddMigrationContext(upCreateBookmarkTable, downCreateBookmarkTable)
 }
 
-func upCreateBookmarkTable(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func upCreateBookmarkTable(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 create table bookmark
 (
     user_id    varchar(255) not null
@@ -49,6 +49,6 @@ alter table playqueue_dg_tmp rename to playqueue;
 	return err
 }
 
-func downCreateBookmarkTable(_ context.Context, tx *sql.Tx) error {
+func downCreateBookmarkTable(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

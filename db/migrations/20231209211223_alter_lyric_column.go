@@ -29,7 +29,7 @@ func upAlterLyricColumn(ctx context.Context, tx *sql.Tx) error {
 		return err
 	}
 
-	rows, err := tx.Query(`select id, lyrics_old FROM media_file WHERE lyrics_old <> '';`)
+	rows, err := tx.QueryContext(ctx, `select id, lyrics_old FROM media_file WHERE lyrics_old <> '';`)
 	if err != nil {
 		return err
 	}
@@ -72,7 +72,7 @@ func upAlterLyricColumn(ctx context.Context, tx *sql.Tx) error {
 		return err
 	}
 
-	notice(tx, "A full rescan should be performed to pick up additional lyrics (existing lyrics have been preserved)")
+	notice(ctx, tx, "A full rescan should be performed to pick up additional lyrics (existing lyrics have been preserved)")
 	return nil
 }
 

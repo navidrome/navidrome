@@ -11,8 +11,8 @@ func init() {
 	goose.AddMigrationContext(upAddRelRecYear, downAddRelRecYear)
 }
 
-func upAddRelRecYear(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func upAddRelRecYear(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 alter table media_file
     add date varchar(255) default '' not null;
 alter table media_file
@@ -41,10 +41,10 @@ alter table album
 		return err
 	}
 
-	notice(tx, "A full rescan needs to be performed to import more tags")
-	return forceFullRescan(tx)
+	notice(ctx, tx, "A full rescan needs to be performed to import more tags")
+	return forceFullRescan(ctx, tx)
 }
 
-func downAddRelRecYear(_ context.Context, tx *sql.Tx) error {
+func downAddRelRecYear(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

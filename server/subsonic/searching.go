@@ -74,7 +74,7 @@ func (api *Router) searchAll(ctx context.Context, sp *searchParams, musicFolderI
 	if len(musicFolderIds) > 0 {
 		songOpts.Filters = Eq{"library_id": musicFolderIds}
 		albumOpts.Filters = Eq{"library_id": musicFolderIds}
-		artistOpts.Filters = Eq{"library_artist.library_id": musicFolderIds}
+		artistOpts.Filters = Eq{"library_id": musicFolderIds}
 	}
 
 	// Run searches in parallel
