@@ -143,13 +143,15 @@ func (md Metadata) mapLyrics() string {
 		lang := raw.Key()
 		text := raw.Value()
 
-		lyrics, err := model.ToLyrics(lang, text)
+		lyrics, err := model.ParseEmbedded(lang, text)
 		if err != nil {
 			log.Warn("Unexpected failure occurred when parsing lyrics", "file", md.filePath, err)
 			continue
 		}
-		if !lyrics.IsEmpty() {
-			lyricList = append(lyricList, *lyrics)
+		for _, lyric := range lyrics {
+			if !lyric.IsEmpty() {
+				lyricList = append(lyricList, lyric)
+			}
 		}
 	}
 

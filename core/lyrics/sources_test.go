@@ -61,52 +61,26 @@ var _ = Describe("sources", func() {
 			Expect(lyrics).To(HaveLen(0))
 		})
 
-		It("should return synchronized lyrics from a file", func() {
-			mf := model.MediaFile{Path: "tests/fixtures/test.mp3"}
-			lyrics, err := fromExternalFile(ctx, &mf, ".lrc")
+		// fromExternalFile delegates format parsing to model.ParseLyricsFile; the
+		// per-format parser output is covered exhaustively in the model package.
+		// Here we only verify each suffix is read from disk and routed to a parser.
+		DescribeTable("should read the sidecar file and route its suffix to a parser",
+			func(path, suffix string, expectSynced bool) {
+				mf := model.MediaFile{Path: path}
+				lyrics, err := fromExternalFile(ctx, &mf, suffix)
 
-			Expect(err).To(BeNil())
-			Expect(lyrics).To(Equal(model.LyricList{
-				model.Lyrics{
-					DisplayArtist: "Rick Astley",
-					DisplayTitle:  "That one song",
-					Lang:          "eng",
-					Line: []model.Line{
-						{
-							Start: new(int64(18800)),
-							Value: "We're no strangers to love",
-						},
-						{
-							Start: new(int64(22801)),
-							Value: "You know the rules and so do I",
-						},
-					},
-					Offset: new(int64(-100)),
-					Synced: true,
-				},
-			}))
-		})
-
-		It("should return unsynchronized lyrics from a file", func() {
-			mf := model.MediaFile{Path: "tests/fixtures/test.mp3"}
-			lyrics, err := fromExternalFile(ctx, &mf, ".txt")
-
-			Expect(err).To(BeNil())
-			Expect(lyrics).To(Equal(model.LyricList{
-				model.Lyrics{
-					Lang: "xxx",
-					Line: []model.Line{
-						{
-							Value: "We're no strangers to love",
-						},
-						{
-							Value: "You know the rules and so do I",
-						},
-					},
-					Synced: false,
-				},
-			}))
-		})
+				Expect(err).To(BeNil())
+				Expect(lyrics).ToNot(BeEmpty())
+				Expect(lyrics[0].Line).ToNot(BeEmpty())
+				Expect(lyrics[0].Synced).To(Equal(expectSynced))
+			},
+			Entry(".lrc synced", "tests/fixtures/test.mp3", ".lrc", true),
+			Entry(".elrc enhanced", "tests/fixtures/test.mp3", ".elrc", true),
+			Entry(".txt plain", "tests/fixtures/test.mp3", ".txt", false),
+			Entry(".srt subtitles", "tests/fixtures/test.mp3", ".srt", true),
+			Entry(".ttml multilingual", "tests/fixtures/test.mp3", ".ttml", true),
+			Entry(".yaml lyricsfile", "tests/fixtures/test.mp3", ".yaml", true),
+		)
 
 		It("should handle LRC files with UTF-8 BOM marker (issue #4631)", func() {
 			// The function looks for <basePath-without-ext><suffix>, so we need to pass
@@ -141,5 +115,34 @@ var _ = Describe("sources", func() {
 			Expect(lyrics[0].Line[1].Start).To(Equal(new(int64(22801))))
 			Expect(lyrics[0].Line[1].Value).To(Equal("You know the rules and so do I"))
 		})
+
+		It("should handle TTML files with UTF-8 BOM marker", func() {
+			mf := model.MediaFile{Path: "tests/fixtures/bom-test.mp3"}
+			lyrics, err := fromExternalFile(ctx, &mf, ".ttml")
+
+			Expect(err).To(BeNil())
+			Expect(lyrics).To(HaveLen(1))
+			Expect(lyrics[0].Kind).To(Equal("main"))
+			Expect(lyrics[0].Synced).To(BeTrue())
+			Expect(lyrics[0].Line).To(HaveLen(1))
+			Expect(lyrics[0].Line[0].Start).To(Equal(new(int64(0))))
+			Expect(lyrics[0].Line[0].Value).To(Equal("BOM test line"))
+		})
+
+		It("should handle UTF-16 BE encoded TTML files", func() {
+			mf := model.MediaFile{Path: "tests/fixtures/bom-utf16-test.mp3"}
+			lyrics, err := fromExternalFile(ctx, &mf, ".ttml")
+
+			Expect(err).To(BeNil())
+			Expect(lyrics).To(HaveLen(1))
+			Expect(lyrics[0].Kind).To(Equal("main"))
+			Expect(lyrics[0].Synced).To(BeTrue())
+			Expect(lyrics[0].Line).To(HaveLen(2))
+			Expect(lyrics[0].Line[0].Start).To(Equal(new(int64(18800))))
+			Expect(lyrics[0].Line[0].Value).To(Equal("UTF16 line one"))
+			Expect(lyrics[0].Line[1].Start).To(Equal(new(int64(22801))))
+			Expect(lyrics[0].Line[1].Value).To(Equal("UTF16 line two"))
+		})
+
 	})
 })

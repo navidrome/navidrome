@@ -108,4 +108,203 @@ var _ = Describe("ToLyrics", func() {
 			{Start: new(int64(1000 * 60 * 60 * 51)), Value: "Test"},
 		}))
 	})
+
+	It("should parse Enhanced LRC with word-level timing", func() {
+		lyrics, err := ToLyrics("xxx", "[00:01.00]<00:01.00>Some <00:01.50>lyrics <00:02.00>here\n[00:03.00]<00:03.00>More <00:03.50>words")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(lyrics.Synced).To(BeTrue())
+		Expect(lyrics.Line).To(HaveLen(2))
+
+		t1000, t1500, t2000, t3000, t3500 := int64(1000), int64(1500), int64(2000), int64(3000), int64(3500)
+
+		line0 := lyrics.Line[0]
+		Expect(line0.Start).To(Equal(&t1000))
+		Expect(line0.End).To(Equal(&t3000))
+		Expect(line0.Value).To(Equal("Some lyrics here"))
+		Expect(line0.Cue).To(Equal([]Cue{
+			{Start: &t1000, End: &t1500, Value: "Some ", ByteStart: 0, ByteEnd: 4},
+			{Start: &t1500, End: &t2000, Value: "lyrics ", ByteStart: 5, ByteEnd: 11},
+			{Start: &t2000, End: &t3000, Value: "here", ByteStart: 12, ByteEnd: 15},
+		}))
+
+		line1 := lyrics.Line[1]
+		Expect(line1.Start).To(Equal(&t3000))
+		Expect(line1.End).To(Equal(&t3500))
+		Expect(line1.Value).To(Equal("More words"))
+		Expect(line1.Cue).To(Equal([]Cue{
+			{Start: &t3000, Value: "More ", ByteStart: 0, ByteEnd: 4},
+			{Start: &t3500, Value: "words", ByteStart: 5, ByteEnd: 9},
+		}))
+
+		Expect(line1.Cue[1].End).To(BeNil())
+	})
+
+	It("should not parse malformed Enhanced LRC timing markers", func() {
+		lyrics, err := ToLyrics("xxx", "[00:01.00]<00:01a50>Not a marker")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(lyrics.Synced).To(BeTrue())
+		Expect(lyrics.Line).To(Equal([]Line{
+			{Start: new(int64(1000)), Value: "<00:01a50>Not a marker"},
+		}))
+	})
+
+	It("should handle mixed Enhanced and plain LRC lines", func() {
+		lyrics, err := ToLyrics("xxx", "[00:01.00]<00:01.00>Some <00:01.50>lyrics\n[00:03.00]Plain line\n[00:05.00]<00:05.00>More <00:05.50>words")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(lyrics.Line).To(HaveLen(3))
+
+		t1000, t1500, t5000, t5500 := int64(1000), int64(1500), int64(5000), int64(5500)
+		t3000 := int64(3000)
+
+		Expect(lyrics.Line[0].Cue).To(Equal([]Cue{
+			{Start: &t1000, End: &t1500, Value: "Some ", ByteStart: 0, ByteEnd: 4},
+			{Start: &t1500, End: &t3000, Value: "lyrics", ByteStart: 5, ByteEnd: 10},
+		}))
+		Expect(lyrics.Line[0].Value).To(Equal("Some lyrics"))
+		Expect(lyrics.Line[0].End).To(Equal(&t3000))
+
+		Expect(lyrics.Line[1].Cue).To(BeNil())
+		Expect(lyrics.Line[1].Value).To(Equal("Plain line"))
+
+		Expect(lyrics.Line[2].Cue).To(Equal([]Cue{
+			{Start: &t5000, Value: "More ", ByteStart: 0, ByteEnd: 4},
+			{Start: &t5500, Value: "words", ByteStart: 5, ByteEnd: 9},
+		}))
+		Expect(lyrics.Line[2].Value).To(Equal("More words"))
+	})
+
+	It("should preserve byte offsets for Enhanced LRC cues", func() {
+		lyrics, err := ToLyrics("xxx", "[00:00.00]<00:00.00>Oh <00:00.90>love<00:01.30> me <00:01.60>tonight")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(lyrics.Line).To(HaveLen(1))
+
+		t0, t900, t1300, t1600 := int64(0), int64(900), int64(1300), int64(1600)
+		line := lyrics.Line[0]
+		Expect(line.Value).To(Equal("Oh love me tonight"))
+		Expect(line.Cue).To(Equal([]Cue{
+			{Start: &t0, Value: "Oh ", ByteStart: 0, ByteEnd: 2},
+			{Start: &t900, Value: "love", ByteStart: 3, ByteEnd: 6},
+			{Start: &t1300, Value: " me ", ByteStart: 7, ByteEnd: 10},
+			{Start: &t1600, Value: "tonight", ByteStart: 11, ByteEnd: 17},
+		}))
+	})
+
+	It("should shift inline ELRC word timestamps for each repeated line occurrence", func() {
+		lyrics, err := ToLyrics("xxx", "[00:10.00][00:30.00]<00:10.10>Hello <00:10.50>world")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(lyrics.Line).To(HaveLen(2))
+
+		t10000 := int64(10000)
+		t10100 := int64(10100)
+		t10500 := int64(10500)
+		t30000 := int64(30000)
+		t30100 := int64(30100)
+		t30500 := int64(30500)
+
+		Expect(lyrics.Line[0].Start).To(Equal(&t10000))
+		Expect(lyrics.Line[0].End).To(Equal(&t30000))
+		Expect(lyrics.Line[0].Value).To(Equal("Hello world"))
+		Expect(lyrics.Line[0].Cue).To(Equal([]Cue{
+			{Start: &t10100, End: &t10500, Value: "Hello ", ByteStart: 0, ByteEnd: 5},
+			{Start: &t10500, End: &t30000, Value: "world", ByteStart: 6, ByteEnd: 10},
+		}))
+
+		Expect(lyrics.Line[1].Start).To(Equal(&t30000))
+		Expect(lyrics.Line[1].End).To(Equal(&t30500))
+		Expect(lyrics.Line[1].Value).To(Equal("Hello world"))
+		Expect(lyrics.Line[1].Cue).To(Equal([]Cue{
+			{Start: &t30100, Value: "Hello ", ByteStart: 0, ByteEnd: 5},
+			{Start: &t30500, Value: "world", ByteStart: 6, ByteEnd: 10},
+		}))
+	})
+})
+
+var _ = Describe("NormalizeCueLines", func() {
+	It("should not mutate caller cue slices when filling missing cue end times", func() {
+		start0, start1, nextLineStart := int64(1000), int64(1500), int64(3000)
+		lines := []Line{
+			{
+				Start: &start0,
+				Value: "Some lyrics",
+				Cue: []Cue{
+					{Start: &start0, Value: "Some ", ByteStart: 0, ByteEnd: 4},
+					{Start: &start1, Value: "lyrics", ByteStart: 5, ByteEnd: 10},
+				},
+			},
+			{
+				Start: &nextLineStart,
+				Value: "Next line",
+			},
+		}
+
+		normalized := NormalizeCueLines(lines)
+
+		Expect(normalized[0].Cue[0].End).To(Equal(&start1))
+		Expect(normalized[0].Cue[1].End).To(Equal(&nextLineStart))
+		Expect(lines[0].Cue[0].End).To(BeNil())
+		Expect(lines[0].Cue[1].End).To(BeNil())
+	})
+})
+
+var _ = Describe("Lyrics.EffectiveKind", func() {
+	It("defaults a blank kind to main", func() {
+		Expect(Lyrics{}.EffectiveKind()).To(Equal(LyricKindMain))
+		Expect(Lyrics{Kind: "  "}.EffectiveKind()).To(Equal(LyricKindMain))
+	})
+
+	It("returns the kind as-is when set", func() {
+		Expect(Lyrics{Kind: LyricKindTranslation}.EffectiveKind()).To(Equal(LyricKindTranslation))
+	})
+})
+
+var _ = Describe("Lyrics.IsMainKind", func() {
+	It("is true for a blank (untyped) kind", func() {
+		Expect(Lyrics{}.IsMainKind()).To(BeTrue())
+	})
+
+	It("is true for the main kind", func() {
+		Expect(Lyrics{Kind: LyricKindMain}.IsMainKind()).To(BeTrue())
+	})
+
+	It("is false for translation and pronunciation kinds", func() {
+		Expect(Lyrics{Kind: LyricKindTranslation}.IsMainKind()).To(BeFalse())
+		Expect(Lyrics{Kind: LyricKindPronunciation}.IsMainKind()).To(BeFalse())
+	})
+})
+
+var _ = Describe("LyricList.Main", func() {
+	It("returns false when the list is empty", func() {
+		_, ok := LyricList{}.Main()
+		Expect(ok).To(BeFalse())
+	})
+
+	It("returns the main-kind entry when present", func() {
+		list := LyricList{
+			{Kind: LyricKindTranslation, Lang: "en"},
+			{Kind: LyricKindMain, Lang: "xxx"},
+		}
+		main, ok := list.Main()
+		Expect(ok).To(BeTrue())
+		Expect(main.Kind).To(Equal(LyricKindMain))
+	})
+
+	It("falls back to the first entry when no main kind exists", func() {
+		list := LyricList{
+			{Kind: LyricKindTranslation, Lang: "en"},
+			{Kind: LyricKindPronunciation, Lang: "ja"},
+		}
+		main, ok := list.Main()
+		Expect(ok).To(BeTrue())
+		Expect(main.Lang).To(Equal("en"))
+	})
+
+	It("treats a blank kind as main", func() {
+		list := LyricList{
+			{Kind: LyricKindTranslation, Lang: "en"},
+			{Lang: "xxx"},
+		}
+		main, ok := list.Main()
+		Expect(ok).To(BeTrue())
+		Expect(main.Lang).To(Equal("xxx"))
+	})
 })

@@ -36,18 +36,19 @@ func fromExternalFile(ctx context.Context, mf *model.MediaFile, suffix string) (
 		return nil, err
 	}
 
-	lyrics, err := model.ToLyrics("xxx", string(contents))
+	list, err := model.ParseLyricsFile(suffix, contents)
 	if err != nil {
-		log.Error(ctx, "error parsing lyric external file", "path", externalLyric, err)
+		log.Error(ctx, "error parsing external lyric file", "path", externalLyric, err)
 		return nil, err
-	} else if lyrics == nil {
+	}
+
+	if len(list) == 0 {
 		log.Trace(ctx, "empty lyrics from external file", "path", externalLyric)
 		return nil, nil
 	}
 
 	log.Trace(ctx, "retrieved lyrics from external file", "path", externalLyric)
-
-	return model.LyricList{*lyrics}, nil
+	return list, nil
 }
 
 // fromPlugin attempts to load lyrics from a plugin with the given name.
