@@ -39,12 +39,16 @@ var lyricFormats = []struct {
 // structured parser that does not match falls back to the LRC/plain-text floor —
 // never to another structured format.
 func ParseLyrics(suffix, lang string, contents []byte) (LyricList, error) {
+	// Strip a leading BOM once here so every parser sees clean bytes, regardless
+	// of which caller (file read, embedded tag, plugin, DB string) supplied them.
+	contents = stripBOM(contents)
+
 	if suffix == "" || strings.EqualFold(suffix, "auto") {
 		candidates := make([]lyricParser, len(lyricFormats))
 		for i, f := range lyricFormats {
 			candidates[i] = f.parse
 		}
-		return parseFirstMatch(lang, stripBOM(contents), candidates...)
+		return parseFirstMatch(lang, contents, candidates...)
 	}
 	for _, f := range lyricFormats {
 		if slices.ContainsFunc(f.suffixes, func(s string) bool { return strings.EqualFold(s, suffix) }) {
