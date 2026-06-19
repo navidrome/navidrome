@@ -199,7 +199,7 @@ func (p *ttmlParser) parseElement(start xml.StartElement, parent ttmlTimingConte
 		if len(tokens) > 0 {
 			parsedLine.Cue = tokens
 		}
-		parsedLine = NormalizeLineTiming(parsedLine)
+		parsedLine = normalizeLineTiming(parsedLine)
 
 		lineKey, _ := attrValue(start.Attr, "key")
 		p.addMainLine(ctx.lang, lineKey, parsedLine)
@@ -342,7 +342,7 @@ func (p *ttmlParser) parseMetadataText(start xml.StartElement, parent ttmlTiming
 	if len(tokens) > 0 {
 		line.Cue = tokens
 	}
-	line = NormalizeLineTiming(line)
+	line = normalizeLineTiming(line)
 
 	if line.Value == "" && len(line.Cue) == 0 {
 		return ttmlMetadataEntry{}, false, nil
@@ -630,7 +630,7 @@ func (p *ttmlParser) buildMetadataLyrics(kind string, langOrder []string, entrie
 				endMs := *ref.line.End
 				line.End = &endMs
 			}
-			line = NormalizeLineTiming(line)
+			line = normalizeLineTiming(line)
 
 			if line.Value == "" && len(line.Cue) == 0 {
 				continue
@@ -672,7 +672,7 @@ func (p *ttmlParser) buildMetadataLyrics(kind string, langOrder []string, entrie
 
 func (p *ttmlParser) finalizeLyrics(lyrics Lyrics) Lyrics {
 	lyrics.Line, lyrics.Agents = p.resolveAgents(lyrics.Line)
-	return NormalizeLyrics(lyrics)
+	return normalizeLyrics(lyrics)
 }
 
 func (p *ttmlParser) resolveAgents(lines []Line) ([]Line, []Agent) {

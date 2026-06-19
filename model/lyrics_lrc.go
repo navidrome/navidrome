@@ -84,7 +84,7 @@ func parseLRC(language, text string) (*Lyrics, error) {
 
 			// The second condition is for when there is a timestamp in the middle of
 			// a line (after any text)
-			if times == nil || times[0][0] != 0 {
+			if len(times) == 0 || times[0][0] != 0 {
 				if validLine {
 					priorLine += "\n" + line
 				}
@@ -166,7 +166,7 @@ func parseLRC(language, text string) (*Lyrics, error) {
 		DisplayArtist: artist,
 		DisplayTitle:  title,
 		Lang:          language,
-		Line:          NormalizeCueLines(structuredLines),
+		Line:          normalizeCueLines(structuredLines),
 		Offset:        offset,
 		Synced:        synced,
 	}

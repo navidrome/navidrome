@@ -44,7 +44,7 @@ func parseLyricsfile(_ string, contents []byte) (LyricList, error) {
 	}
 
 	if doc.Metadata.Instrumental {
-		return LyricList{NormalizeLyrics(lyrics)}, nil
+		return LyricList{normalizeLyrics(lyrics)}, nil
 	}
 
 	if len(doc.Lines) == 0 {
@@ -53,14 +53,14 @@ func parseLyricsfile(_ string, contents []byte) (LyricList, error) {
 			return nil, nil
 		}
 		lyrics.Line = lines
-		return LyricList{NormalizeLyrics(lyrics)}, nil
+		return LyricList{normalizeLyrics(lyrics)}, nil
 	}
 
 	lines, agents := buildLyricsfileLines(doc.Lines)
 	lyrics.Line = lines
 	lyrics.Agents = agents
 	lyrics.Synced = true
-	return LyricList{NormalizeLyrics(lyrics)}, nil
+	return LyricList{normalizeLyrics(lyrics)}, nil
 }
 
 const lyricsfileVersion = "1.0"
