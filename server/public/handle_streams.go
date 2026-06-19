@@ -3,6 +3,7 @@ package public
 import (
 	"errors"
 	"fmt"
+	"mime"
 	"net/http"
 	"strconv"
 	"strings"
@@ -76,7 +77,9 @@ func (pub *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Content-Duration", strconv.FormatFloat(float64(stream.Duration()), 'G', -1, 32))
 
 	if conf.Server.EnableDownloads && p.BoolOr("download", false) {
-		w.Header().Set("Content-Disposition", "attachment; filename=\""+downloadFilename(mf, info.format)+"\"")
+		w.Header().Set("Content-Disposition", mime.FormatMediaType(
+			"attachment", map[string]string{"filename": downloadFilename(mf, info.format)},
+		))
 	}
 
 	n, err := stream.Serve(ctx, w, r)
