@@ -90,11 +90,26 @@ var _ = Describe("Song Endpoints", func() {
 				CreatedAt: time.Now(),
 				UpdatedAt: time.Now(),
 			},
+			{
+				ID:        "song-3",
+				Title:     "Test Song 3",
+				Artist:    "Test Artist 3",
+				Album:     "Test Album 3",
+				AlbumID:   "album-3",
+				ArtistID:  "artist-3",
+				Duration:  67.0,
+				BitRate:   128,
+				Path:      "/music/song3.mp3",
+				Suffix:    "mp3",
+				Size:      3670067,
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+			},
 		}
 		mfRepo.SetData(testSongs)
 
 		// Create the native API router and wrap it with the JWTVerifier middleware
-		nativeRouter := New(ds, nil, nil, nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil, nil, nil)
+		nativeRouter := New(ds, nil, nil, nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil, nil, tests.NewMockMusicFileManager(mfRepo))
 		router = server.JWTVerifier(nativeRouter)
 		w = httptest.NewRecorder()
 	})
@@ -137,11 +152,13 @@ var _ = Describe("Song Endpoints", func() {
 				err := json.Unmarshal(w.Body.Bytes(), &response)
 				Expect(err).ToNot(HaveOccurred())
 
-				Expect(response).To(HaveLen(2))
+				Expect(response).To(HaveLen(3))
 				Expect(response[0].ID).To(Equal("song-1"))
 				Expect(response[0].Title).To(Equal("Test Song 1"))
 				Expect(response[1].ID).To(Equal("song-2"))
 				Expect(response[1].Title).To(Equal("Test Song 2"))
+				Expect(response[2].ID).To(Equal("song-3"))
+				Expect(response[2].Title).To(Equal("Test Song 3"))
 			})
 
 			It("handles repository errors gracefully", func() {
@@ -208,7 +225,7 @@ var _ = Describe("Song Endpoints", func() {
 		})
 	})
 
-	Describe("Song endpoints are read-only", func() {
+	Describe("Song endpoints are read-only", func() { //the fork allow read and write
 		Context("POST /song", func() {
 			It("should not be available (songs are not persistable)", func() {
 				newSong := model.MediaFile{
@@ -247,12 +264,51 @@ var _ = Describe("Song Endpoints", func() {
 		})
 
 		Context("DELETE /song/{id}", func() {
-			It("should not be available (songs are not persistable)", func() {
-				req := createAuthenticatedRequest("DELETE", "/song/song-1", nil)
+			It("should return forbidden (403)", func() {
+				targetSongID := "song-3"
+
+				req := createAuthenticatedRequest("DELETE", "/song/"+targetSongID, nil)
 				router.ServeHTTP(w, req)
 
-				// Should return 405 Method Not Allowed or 404 Not Found
-				Expect(w.Code).To(Equal(http.StatusMethodNotAllowed))
+				Expect(w.Code).To(Equal(http.StatusForbidden))
+
+				track, err := mfRepo.Get(targetSongID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(track).ToNot(BeNil())
+			})
+		})
+
+		Context("DELETE /song/{id}", func() {
+			It("should delete the music file and return success", func() {
+				recorder := httptest.NewRecorder()
+
+				adminUser := model.User{
+					ID:          "admin-delete-user",
+					UserName:    "admindelete",
+					Name:        "Admin Delete User",
+					IsAdmin:     true,
+					NewPassword: "password",
+				}
+				err := userRepo.Put(&adminUser)
+				Expect(err).ToNot(HaveOccurred())
+
+				token, err := auth.CreateToken(&adminUser)
+				Expect(err).ToNot(HaveOccurred())
+
+				targetSongID := "song-3"
+
+				req := createUnauthenticatedRequest("DELETE", "/song/"+targetSongID, nil)
+				req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+token)
+				router.ServeHTTP(recorder, req)
+
+				Expect(recorder.Code).To(Equal(http.StatusNoContent))
+
+				deletedTrack, err := mfRepo.Get(targetSongID)
+				Expect(err).To(HaveOccurred())
+
+				if deletedTrack != nil {
+					Expect(deletedTrack).To(BeNil())
+				}
 			})
 		})
 	})
@@ -284,7 +340,7 @@ var _ = Describe("Song Endpoints", func() {
 				err := json.Unmarshal(w.Body.Bytes(), &response)
 				Expect(err).ToNot(HaveOccurred())
 
-				Expect(response).To(HaveLen(2))
+				Expect(response).To(HaveLen(3))
 			})
 
 			It("handles filter parameters", func() {

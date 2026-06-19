@@ -152,6 +152,23 @@ export const SongContextMenu = ({
       label: translate('resources.song.actions.editTags'),
       action: () => setEditTagsOpen(true),
     },
+    delete: {
+      enabled: permissions === 'admin' && !record.missing,
+      label: translate('ra.action.delete'),
+      action: (record) => {
+        if (window.confirm(translate('ra.message.delete_content'))) {
+          dataProvider
+            .delete(resource, { id: record.id, previousData: record })
+            .then(() => {
+              notify('ra.notification.deleted', { smart_count: 1 })
+              refresh()
+            })
+            .catch((error) => {
+              notify(error.message, { type: 'warning' })
+            })
+        }
+      },
+    },
     info: {
       enabled: true,
       label: translate('resources.song.actions.info'),
@@ -276,7 +293,11 @@ export const SongContextMenu = ({
                 }
                 disabled={showInPlaylistDisabled}
                 style={
-                  showInPlaylistDisabled ? { pointerEvents: 'auto' } : undefined
+                  key === 'delete'
+                    ? { color: '#d32f2f' }
+                    : showInPlaylistDisabled
+                      ? { pointerEvents: 'auto' }
+                      : undefined
                 }
               >
                 {options[key].label}

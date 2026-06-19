@@ -18,8 +18,8 @@ import (
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/core/matcher"
-	"github.com/navidrome/navidrome/core/metadatamanager"
 	"github.com/navidrome/navidrome/core/metrics"
+	"github.com/navidrome/navidrome/core/musicfilemanager"
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/core/scrobbler"
@@ -83,9 +83,9 @@ func CreateNativeAPIRouter(ctx context.Context) *nativeapi.Router {
 	library := core.NewLibrary(dataStore, modelScanner, watcher, broker, manager)
 	user := core.NewUser(dataStore, manager)
 	maintenance := core.NewMaintenance(dataStore)
-	songRepository := metadatamanager.NewRepository(dataStore, library, modelScanner)
-	metadataService := metadatamanager.NewService(songRepository)
-	router := nativeapi.New(dataStore, share, playlistsPlaylists, insights, library, user, maintenance, manager, imageUploadService, metadataService)
+	songRepository := musicfilemanager.NewRepository(dataStore, library, modelScanner)
+	musicFileService := musicfilemanager.NewService(songRepository)
+	router := nativeapi.New(dataStore, share, playlistsPlaylists, insights, library, user, maintenance, manager, imageUploadService, musicFileService)
 	return router
 }
 
@@ -224,7 +224,7 @@ func getPluginManager() *plugins.Manager {
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(core.Set, artwork.Set, server.New, subsonic.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, metadatamanager.NewRepository, metadatamanager.NewService, listenbrainz.NewRouter, events.GetBroker, scanner.New, scanner.GetWatcher, metrics.GetPrometheusInstance, db.Db, plugins.GetManager, sonic.New, wire.Bind(new(agents.PluginLoader), new(*plugins.Manager)), wire.Bind(new(scrobbler.PluginLoader), new(*plugins.Manager)), wire.Bind(new(lyrics.PluginLoader), new(*plugins.Manager)), wire.Bind(new(sonic.PluginLoader), new(*plugins.Manager)), wire.Bind(new(nativeapi.PluginManager), new(*plugins.Manager)), wire.Bind(new(core.PluginUnloader), new(*plugins.Manager)), wire.Bind(new(plugins.PluginMetricsRecorder), new(metrics.Metrics)), wire.Bind(new(core.Watcher), new(scanner.Watcher)))
+var allProviders = wire.NewSet(core.Set, artwork.Set, server.New, subsonic.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, musicfilemanager.NewRepository, musicfilemanager.NewService, listenbrainz.NewRouter, events.GetBroker, scanner.New, scanner.GetWatcher, metrics.GetPrometheusInstance, db.Db, plugins.GetManager, sonic.New, wire.Bind(new(agents.PluginLoader), new(*plugins.Manager)), wire.Bind(new(scrobbler.PluginLoader), new(*plugins.Manager)), wire.Bind(new(lyrics.PluginLoader), new(*plugins.Manager)), wire.Bind(new(sonic.PluginLoader), new(*plugins.Manager)), wire.Bind(new(nativeapi.PluginManager), new(*plugins.Manager)), wire.Bind(new(core.PluginUnloader), new(*plugins.Manager)), wire.Bind(new(plugins.PluginMetricsRecorder), new(metrics.Metrics)), wire.Bind(new(core.Watcher), new(scanner.Watcher)))
 
 func GetPluginManager(ctx context.Context) *plugins.Manager {
 	manager := getPluginManager()

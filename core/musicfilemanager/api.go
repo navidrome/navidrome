@@ -1,4 +1,4 @@
-package metadatamanager
+package musicfilemanager
 
 import (
 	"encoding/json"
@@ -8,16 +8,17 @@ import (
 )
 
 type Handler struct {
-	service MetadataService
+	service MusicFileService
 }
 
-func NewHandler(s MetadataService) *Handler {
+func NewHandler(s MusicFileService) *Handler {
 	return &Handler{service: s}
 }
 
 func (h *Handler) BindRoutes(r chi.Router) {
 	r.Post("/song/{id}/tag", h.UpdateSong)
 	r.Post("/song/{id}/artwork", h.UpdateArtwork)
+	r.Delete("/song/{id}", h.DeleteSong)
 }
 
 func (h *Handler) UpdateSong(w http.ResponseWriter, r *http.Request) {
@@ -34,6 +35,21 @@ func (h *Handler) UpdateSong(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.service.UpdateTags(r.Context(), songID, tags); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) DeleteSong(w http.ResponseWriter, r *http.Request) {
+	songID := chi.URLParam(r, "id")
+	if songID == "" {
+		http.Error(w, "Missing song identifier", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.service.DeleteSong(r.Context(), songID); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

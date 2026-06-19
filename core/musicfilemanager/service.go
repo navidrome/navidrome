@@ -1,4 +1,4 @@
-package metadatamanager
+package musicfilemanager
 
 import (
 	"context"
@@ -15,18 +15,20 @@ import (
 type SongRepository interface {
 	GetSongPath(ctx context.Context, songID string) (string, error)
 	RefreshSong(ctx context.Context, songID string) error
+	DeleteSong(ctx context.Context, songID string) error
 }
 
-type MetadataService interface {
+type MusicFileService interface {
 	UpdateTags(ctx context.Context, songID string, tags map[string]string) error
 	UpdateArtwork(ctx context.Context, songID string, data io.Reader, mimeType string) error
+	DeleteSong(ctx context.Context, songID string) error
 }
 
 type mp3Service struct {
 	repo SongRepository
 }
 
-func NewService(repo SongRepository) MetadataService {
+func NewService(repo SongRepository) MusicFileService {
 	return &mp3Service{repo: repo}
 }
 
@@ -145,4 +147,23 @@ func (s *mp3Service) UpdateArtwork(ctx context.Context, songID string, data io.R
 	}
 
 	return s.repo.RefreshSong(ctx, songID)
+}
+
+func (s *mp3Service) DeleteSong(ctx context.Context, songID string) error {
+	path, err := s.repo.GetSongPath(ctx, songID)
+	if err != nil {
+		return fmt.Errorf("could not retrieve song path: %w", err)
+	}
+
+	cleanPath := filepath.Clean(path)
+	log.Info(ctx, "Deleting music file from disk", "path", cleanPath, "songID", songID)
+
+	if err := os.Remove(cleanPath); err != nil {
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("failed to delete file from disk: %w", err)
+		}
+		log.Warn(ctx, "File was already missing from disk", "path", cleanPath)
+	}
+
+	return s.repo.DeleteSong(ctx, songID)
 }

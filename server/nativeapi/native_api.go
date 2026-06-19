@@ -13,8 +13,8 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
-	"github.com/navidrome/navidrome/core/metadatamanager"
 	"github.com/navidrome/navidrome/core/metrics"
+	"github.com/navidrome/navidrome/core/musicfilemanager"
 	playlistsvc "github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -46,11 +46,11 @@ type Router struct {
 	maintenance   core.Maintenance
 	pluginManager PluginManager
 	imgUpload     core.ImageUploadService
-	metadata      metadatamanager.MetadataService
+	musicManager  musicfilemanager.MusicFileService
 }
 
-func New(ds model.DataStore, share core.Share, playlists playlistsvc.Playlists, insights metrics.Insights, libraryService core.Library, userService core.User, maintenance core.Maintenance, pluginManager PluginManager, imgUpload core.ImageUploadService, metadata metadatamanager.MetadataService) *Router {
-	r := &Router{ds: ds, share: share, playlists: playlists, insights: insights, libs: libraryService, users: userService, maintenance: maintenance, pluginManager: pluginManager, imgUpload: imgUpload, metadata: metadata}
+func New(ds model.DataStore, share core.Share, playlists playlistsvc.Playlists, insights metrics.Insights, libraryService core.Library, userService core.User, maintenance core.Maintenance, pluginManager PluginManager, imgUpload core.ImageUploadService, musicManager musicfilemanager.MusicFileService) *Router {
+	r := &Router{ds: ds, share: share, playlists: playlists, insights: insights, libs: libraryService, users: userService, maintenance: maintenance, pluginManager: pluginManager, imgUpload: imgUpload, musicManager: musicManager}
 	r.Handler = r.routes()
 	return r
 }
@@ -92,7 +92,7 @@ func (api *Router) routes() http.Handler {
 			api.addConfigRoute(r)
 			api.addUserLibraryRoute(r)
 			api.addPluginRoute(r)
-			api.addMetadataRoute(r)
+			api.addMusicManagerRoute(r)
 			api.RX(r, "/library", api.libs.NewRepository, true)
 		})
 	})
@@ -178,8 +178,8 @@ func (api *Router) addPlaylistTrackRoute(r chi.Router) {
 	})
 }
 
-func (api *Router) addMetadataRoute(r chi.Router) {
-	handler := metadatamanager.NewHandler(api.metadata)
+func (api *Router) addMusicManagerRoute(r chi.Router) {
+	handler := musicfilemanager.NewHandler(api.musicManager)
 	handler.BindRoutes(r)
 }
 

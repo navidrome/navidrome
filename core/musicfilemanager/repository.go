@@ -1,4 +1,4 @@
-package metadatamanager
+package musicfilemanager
 
 import (
 	"context"
@@ -30,6 +30,11 @@ func (r *navidromeRepo) GetSongPath(ctx context.Context, songID string) (string,
 }
 
 func (r *navidromeRepo) RefreshSong(ctx context.Context, songID string) error {
+	_, err := r.scanner.ScanAll(ctx, false)
+	return err
+}
+
+func (r *navidromeRepo) DeleteSong(ctx context.Context, songID string) error {
 	_, err := r.scanner.ScanAll(ctx, false)
 	return err
 }

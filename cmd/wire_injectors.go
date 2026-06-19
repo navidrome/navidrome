@@ -12,8 +12,8 @@ import (
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/lyrics"
-	"github.com/navidrome/navidrome/core/metadatamanager"
 	"github.com/navidrome/navidrome/core/metrics"
+	"github.com/navidrome/navidrome/core/musicfilemanager"
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/core/sonic"
@@ -38,8 +38,8 @@ var allProviders = wire.NewSet(
 	public.New,
 	persistence.New,
 	lastfm.NewRouter,
-	metadatamanager.NewRepository,
-	metadatamanager.NewService,
+	musicfilemanager.NewRepository,
+	musicfilemanager.NewService,
 	listenbrainz.NewRouter,
 	events.GetBroker,
 	scanner.New,
