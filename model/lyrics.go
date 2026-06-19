@@ -2,6 +2,7 @@ package model
 
 import (
 	"cmp"
+	"encoding/json"
 	"regexp"
 	"slices"
 	"strconv"
@@ -412,6 +413,16 @@ func parseTime(line string, match []int) (int64, error) {
 }
 
 type LyricList []Lyrics
+
+// MarshalJSON owns the lyrics column invariant: an empty or nil list serializes
+// to [], never null. This keeps every writer consistent without each one having
+// to pre-initialize or nil-guard the slice.
+func (ll LyricList) MarshalJSON() ([]byte, error) {
+	if len(ll) == 0 {
+		return []byte("[]"), nil
+	}
+	return json.Marshal([]Lyrics(ll))
+}
 
 // Main returns the main-kind lyric, falling back to the first entry so untyped
 // lyrics still resolve. The bool is false only when the list is empty. It is

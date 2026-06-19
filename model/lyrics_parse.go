@@ -8,47 +8,71 @@ import (
 	"github.com/navidrome/navidrome/log"
 )
 
-// ParseLyrics is the single entry point for parsing lyrics. When suffix names a
-// known format (.ttml/.srt/.yaml/.yml/.lrc) it routes to that parser, falling
-// back to plain text on failure. When suffix is empty or "auto" it content-sniffs
-// (TTML → SRT → YAML/Lyricsfile → LRC/plain) — used for tag-embedded lyrics and
-// plugin responses.
-func ParseLyrics(suffix, lang string, contents []byte) (LyricList, error) {
-	switch {
-	case suffix == "" || strings.EqualFold(suffix, "auto"):
-		return sniffLyrics(lang, contents)
-	case strings.EqualFold(suffix, ".ttml"):
-		return parseWithPlainFallback(lang, contents, parseTTMLKnown(lang))
-	case strings.EqualFold(suffix, ".srt"):
-		return parseWithPlainFallback(lang, contents, parseSRTKnown(lang))
-	case strings.EqualFold(suffix, ".yaml"), strings.EqualFold(suffix, ".yml"):
-		return parseWithPlainFallback(lang, contents, func(c []byte) (LyricList, error) {
-			return parseLyricsfile(string(c))
-		})
-	default: // .lrc and any unknown suffix: LRC/plain is the floor
-		return plainLRC(lang, contents)
-	}
+// lyricParser parses a single lyrics format. It returns an empty list (not an
+// error) when the input is well-formed but not its format, so candidates can be
+// tried in order. The lang argument is the default language for formats that do
+// not carry their own.
+type lyricParser func(lang string, contents []byte) (LyricList, error)
+
+func parseLyricsfileBytes(_ string, contents []byte) (LyricList, error) {
+	return parseLyricsfile(string(contents))
 }
 
-// parseWithPlainFallback runs a known-format parser; on error or empty result it
-// falls back to the LRC/plain floor (never another structured format).
-func parseWithPlainFallback(lang string, contents []byte, parse func([]byte) (LyricList, error)) (LyricList, error) {
-	list, err := parse(contents)
-	if err == nil && len(list) > 0 {
-		return list, nil
+// parseTTMLIfDocument parses TTML only when the content actually looks like a
+// TTML document, so content-sniffing plain text or LRC does not run the XML
+// decoder (and never logs a spurious parse warning for non-TTML input).
+func parseTTMLIfDocument(lang string, contents []byte) (LyricList, error) {
+	if !isTTMLDocument(string(contents)) {
+		return nil, nil
 	}
-	if err != nil {
-		log.Warn("Error parsing lyrics by suffix, falling back to plain text", "error", err)
+	return parseTTMLWithDefaultLang(lang, contents)
+}
+
+// bySuffix maps a sidecar file extension to its parser. LRC and unknown
+// extensions are absent: they fall straight to the plain-text floor. The suffix
+// already declares the format, so TTML parses unconditionally here (a malformed
+// .ttml surfaces its error and then the plain-text fallback).
+var bySuffix = map[string]lyricParser{
+	".ttml": parseTTMLWithDefaultLang,
+	".srt":  parseSRTWithLanguage,
+	".yaml": parseLyricsfileBytes,
+	".yml":  parseLyricsfileBytes,
+}
+
+// sniffOrder is the content-sniff candidate order for tag-embedded lyrics and
+// plugin responses (no suffix to dispatch on): TTML → SRT → YAML → LRC/plain.
+// TTML is gated on looking like a document so plain/LRC text is not run through
+// the XML decoder.
+var sniffOrder = []lyricParser{parseTTMLIfDocument, parseSRTWithLanguage, parseLyricsfileBytes}
+
+// ParseLyrics is the single entry point for parsing lyrics. A known suffix
+// (.ttml/.srt/.yaml/.yml/.lrc) routes to that format's parser; an empty or
+// "auto" suffix content-sniffs. In both modes a structured parser that does not
+// match falls back to the LRC/plain-text floor — never to another structured
+// format.
+func ParseLyrics(suffix, lang string, contents []byte) (LyricList, error) {
+	if suffix == "" || strings.EqualFold(suffix, "auto") {
+		return parseFirstMatch(lang, stripBOM(contents), sniffOrder...)
+	}
+	if parse, ok := bySuffix[strings.ToLower(suffix)]; ok {
+		return parseFirstMatch(lang, contents, parse)
+	}
+	return plainLRC(lang, contents) // .lrc and any unknown suffix
+}
+
+// parseFirstMatch tries each candidate in order, returning the first non-empty
+// result. When every candidate misses, it falls to the LRC/plain-text floor.
+func parseFirstMatch(lang string, contents []byte, candidates ...lyricParser) (LyricList, error) {
+	for _, parse := range candidates {
+		list, err := parse(lang, contents)
+		if err == nil && len(list) > 0 {
+			return list, nil
+		}
+		if err != nil {
+			log.Warn("Error parsing lyrics, falling back to plain text", "error", err)
+		}
 	}
 	return plainLRC(lang, contents)
-}
-
-func parseTTMLKnown(lang string) func([]byte) (LyricList, error) {
-	return func(c []byte) (LyricList, error) { return parseTTMLWithDefaultLang(c, lang) }
-}
-
-func parseSRTKnown(lang string) func([]byte) (LyricList, error) {
-	return func(c []byte) (LyricList, error) { return parseSRTWithLanguage(c, lang) }
 }
 
 func plainLRC(lang string, contents []byte) (LyricList, error) {
@@ -62,33 +86,8 @@ func plainLRC(lang string, contents []byte) (LyricList, error) {
 	return LyricList{*lyric}, nil
 }
 
-// sniffLyrics detects the format from content. Order: TTML → SRT → YAML → LRC/plain.
-func sniffLyrics(lang string, contents []byte) (LyricList, error) {
-	text := strings.TrimPrefix(string(contents), "\ufeff")
-
-	if isTTMLDocument(text) {
-		list, err := parseTTMLWithDefaultLang([]byte(text), lang)
-		if err == nil && len(list) > 0 {
-			return list, nil
-		}
-		if err != nil {
-			log.Warn("Error parsing embedded TTML lyrics, falling back to plain lyrics", "error", err)
-		}
-	}
-
-	list, err := parseSRTWithLanguage([]byte(text), lang)
-	if err == nil && len(list) > 0 {
-		return list, nil
-	}
-	if err != nil && strings.Contains(text, "-->") {
-		log.Warn("Error parsing embedded SRT lyrics, falling back to plain lyrics", "error", err)
-	}
-
-	if yamlList, yErr := parseLyricsfile(text); yErr == nil && len(yamlList) > 0 {
-		return yamlList, nil
-	}
-
-	return plainLRC(lang, []byte(text))
+func stripBOM(contents []byte) []byte {
+	return []byte(strings.TrimPrefix(string(contents), "\ufeff"))
 }
 
 func isTTMLDocument(text string) bool {

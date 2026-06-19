@@ -103,10 +103,10 @@ type ttmlParser struct {
 }
 
 func parseTTML(contents []byte) (LyricList, error) {
-	return parseTTMLWithDefaultLang(contents, "xxx")
+	return parseTTMLWithDefaultLang("xxx", contents)
 }
 
-func parseTTMLWithDefaultLang(contents []byte, defaultLang string) (LyricList, error) {
+func parseTTMLWithDefaultLang(defaultLang string, contents []byte) (LyricList, error) {
 	contents = xmlEncodingRegex.ReplaceAll(contents, []byte(`<?xml$1encoding="UTF-8"$2?>`))
 
 	p := ttmlParser{
