@@ -4,10 +4,17 @@ import (
 	"context"
 	"strings"
 
+	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
 )
+
+// maxLegacyLyricsCandidates bounds the duplicate window scanned by the legacy
+// artist/title lookup, so source-priority resolution can still reach older
+// matches without turning it into an unbounded table scan.
+const maxLegacyLyricsCandidates = 10
 
 // Provider fetches lyrics for a single media file. It is the contract
 // implemented by individual lyrics sources, such as plugins.
@@ -16,11 +23,10 @@ type Provider interface {
 }
 
 // Lyrics resolves lyrics for media files, honoring the configured source
-// priority. GetLyricsForMediaFiles preserves that priority across a set of
-// duplicate candidates instead of only consulting the first match.
+// priority.
 type Lyrics interface {
 	Provider
-	GetLyricsForMediaFiles(ctx context.Context, mediaFiles []model.MediaFile) (model.LyricList, error)
+	GetLyricsByArtistTitle(ctx context.Context, artist, title string) (model.LyricList, error)
 }
 
 // PluginLoader discovers and loads lyrics provider plugins.
@@ -29,13 +35,14 @@ type PluginLoader interface {
 }
 
 type lyricsService struct {
+	ds           model.DataStore
 	pluginLoader PluginLoader
 }
 
 // NewLyrics creates a new lyrics service. pluginLoader may be nil if no plugin
 // system is available.
-func NewLyrics(pluginLoader PluginLoader) Lyrics {
-	return &lyricsService{pluginLoader: pluginLoader}
+func NewLyrics(ds model.DataStore, pluginLoader PluginLoader) Lyrics {
+	return &lyricsService{ds: ds, pluginLoader: pluginLoader}
 }
 
 // GetLyrics returns lyrics for the given media file, trying sources in the
@@ -44,14 +51,39 @@ func (l *lyricsService) GetLyrics(ctx context.Context, mf *model.MediaFile) (mod
 	return l.getLyricsForCandidates(ctx, []*model.MediaFile{mf})
 }
 
-// GetLyricsForMediaFiles resolves lyrics across duplicate media files while
-// preserving the configured source priority across the full candidate set.
-func (l *lyricsService) GetLyricsForMediaFiles(ctx context.Context, mediaFiles []model.MediaFile) (model.LyricList, error) {
+// GetLyricsByArtistTitle resolves lyrics for the legacy artist/title lookup,
+// scanning a bounded window of duplicate matches so source priority still wins
+// across them.
+func (l *lyricsService) GetLyricsByArtistTitle(ctx context.Context, artist, title string) (model.LyricList, error) {
+	opts := songsByArtistTitleWithLyricsFirst(artist, title)
+	opts.Max = maxLegacyLyricsCandidates
+	mediaFiles, err := l.ds.MediaFile(ctx).GetAll(opts)
+	if err != nil {
+		return nil, err
+	}
+	if len(mediaFiles) == 0 {
+		return nil, nil
+	}
 	candidates := make([]*model.MediaFile, 0, len(mediaFiles))
 	for i := range mediaFiles {
 		candidates = append(candidates, &mediaFiles[i])
 	}
 	return l.getLyricsForCandidates(ctx, candidates)
+}
+
+func songsByArtistTitleWithLyricsFirst(artist, title string) model.QueryOptions {
+	return model.QueryOptions{
+		Sort:  "lyrics, updated_at",
+		Order: "desc",
+		Filters: And{
+			Eq{"missing": false},
+			Eq{"title": title},
+			Or{
+				persistence.Exists("json_tree(participants, '$.albumartist')", Eq{"value": artist}),
+				persistence.Exists("json_tree(participants, '$.artist')", Eq{"value": artist}),
+			},
+		},
+	}
 }
 
 func (l *lyricsService) getLyricsForCandidates(ctx context.Context, mediaFiles []*model.MediaFile) (model.LyricList, error) {

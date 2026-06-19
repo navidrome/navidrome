@@ -34,7 +34,7 @@ var _ = Describe("MediaRetrievalController", func() {
 			MockedMediaFile: mockRepo,
 		}
 		artwork = &fakeArtwork{data: "image data"}
-		router = New(ds, artwork, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, lyrics.NewLyrics(nil), nil, nil)
+		router = New(ds, artwork, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, lyrics.NewLyrics(ds, nil), nil, nil)
 		w = httptest.NewRecorder()
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.LyricsPriority = "embedded,.lrc"
@@ -233,7 +233,8 @@ var _ = Describe("MediaRetrievalController", func() {
 			Expect(response.Lyrics.Artist).To(Equal("Rick Astley"))
 			Expect(response.Lyrics.Title).To(Equal("Never Gonna Give You Up"))
 			Expect(response.Lyrics.Value).To(Equal("We're no strangers to love\nYou know the rules and so do I\n"))
-			Expect(mockRepo.Options.Max).To(Equal(maxLegacyLyricsCandidates))
+			// The lyrics service bounds the legacy lookup to a duplicate window.
+			Expect(mockRepo.Options.Max).To(Equal(10))
 		})
 	})
 

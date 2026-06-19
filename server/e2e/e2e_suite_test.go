@@ -501,7 +501,7 @@ func setupTestDB() {
 		core.NewShare(ds),
 		playback.PlaybackServer(nil),
 		metrics.NewNoopInstance(),
-		lyrics.NewLyrics(nil),
+		lyrics.NewLyrics(nil, nil),
 		decider,
 		nil,
 	)

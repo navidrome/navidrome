@@ -13,13 +13,10 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/resources"
-	"github.com/navidrome/navidrome/server/subsonic/filter"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/gravatar"
 	"github.com/navidrome/navidrome/utils/req"
 )
-
-const maxLegacyLyricsCandidates = 10
 
 func (api *Router) GetAvatar(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	if !conf.Server.EnableGravatar {
@@ -100,21 +97,7 @@ func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {
 	response := newResponse()
 	lyricsResponse := responses.Lyrics{}
 	response.Lyrics = &lyricsResponse
-	opts := filter.SongsByArtistTitleWithLyricsFirst(artist, title)
-	// Search a bounded duplicate window so source-priority resolution can still
-	// reach older matches without turning legacy getLyrics into an unbounded scan.
-	opts.Max = maxLegacyLyricsCandidates
-	mediaFiles, err := api.ds.MediaFile(r.Context()).GetAll(opts)
-
-	if err != nil {
-		return nil, err
-	}
-
-	if len(mediaFiles) == 0 {
-		return response, nil
-	}
-
-	structuredLyrics, err := api.lyrics.GetLyricsForMediaFiles(r.Context(), mediaFiles)
+	structuredLyrics, err := api.lyrics.GetLyricsByArtistTitle(r.Context(), artist, title)
 	if err != nil {
 		return nil, err
 	}
