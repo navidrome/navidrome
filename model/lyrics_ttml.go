@@ -118,7 +118,8 @@ func isTTMLDocument(contents []byte) bool {
 func parseTTMLWithDefaultLang(defaultLang string, contents []byte) (LyricList, error) {
 	contents = xmlEncodingRegex.ReplaceAll(contents, []byte(`<?xml$1encoding="UTF-8"$2?>`))
 
-	// Skip non-TTML content so sniffing doesn't run the XML decoder on plain text.
+	// Skip non-TTML content so sniffing doesn't run the full TTML parse on plain
+	// text — isTTMLDocument does a cheap decode that stops at the first element.
 	// Checked after the encoding fixup so UTF-16-declared documents are recognized.
 	if !isTTMLDocument(contents) {
 		return nil, nil

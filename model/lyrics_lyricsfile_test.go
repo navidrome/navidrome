@@ -66,6 +66,24 @@ lines:
 		Expect(l.Line[1].Cue).To(BeNil())
 	})
 
+	DescribeTable("resolves the lyric language",
+		func(metaLanguage, callerLang, want string) {
+			input := "version: '1.0'\nmetadata:\n  title: 'T'\n"
+			if metaLanguage != "" {
+				input += "  language: '" + metaLanguage + "'\n"
+			}
+			input += "lines:\n  - text: \"line\"\n    start_ms: 0\n"
+
+			lyrics, err := parseLyricsfile(callerLang, []byte(input))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(lyrics).To(HaveLen(1))
+			Expect(lyrics[0].Lang).To(Equal(want))
+		},
+		Entry("prefers the document's own language", "eng", "deu", "eng"),
+		Entry("falls back to the caller language when metadata omits it", "", "deu", "deu"),
+		Entry("uses xxx when neither is provided", "", "", "xxx"),
+	)
+
 	It("parses plain-only Lyricsfile lyrics as unsynced lines", func() {
 		input := `version: '1.0'
 metadata:

@@ -20,7 +20,7 @@ import (
 // overlapping lines are attributed to synthetic voice agents via lowest-free
 // voice ID assignment so the OpenSubsonic v2 enhanced response can split
 // parallel vocals.
-func parseLyricsfile(_ string, contents []byte) (LyricList, error) {
+func parseLyricsfile(lang string, contents []byte) (LyricList, error) {
 	var doc lyricsfileDocument
 	dec := yaml.NewDecoder(bytes.NewReader(contents))
 	dec.KnownFields(false)
@@ -32,10 +32,16 @@ func parseLyricsfile(_ string, contents []byte) (LyricList, error) {
 		return nil, nil
 	}
 
+	// Fall back to the caller's language when the document omits its own, matching
+	// the SRT/TTML parsers; normalizeLyricLang yields "xxx" only if both are empty.
+	docLang := doc.Metadata.Language
+	if strings.TrimSpace(docLang) == "" {
+		docLang = lang
+	}
 	lyrics := Lyrics{
 		DisplayArtist: str.SanitizeText(doc.Metadata.Artist),
 		DisplayTitle:  str.SanitizeText(doc.Metadata.Title),
-		Lang:          normalizeLyricLang(doc.Metadata.Language),
+		Lang:          normalizeLyricLang(docLang),
 		Kind:          LyricKindMain,
 	}
 	if doc.Metadata.OffsetMs != 0 {
