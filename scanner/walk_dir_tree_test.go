@@ -49,6 +49,10 @@ var _ = Describe("walk_dir_tree", func() {
 						"root/f/legit.mp3":       {Mode: fs.ModeSymlink, Data: []byte("realsong.mp3")},
 						"root/f/secret":          {Data: []byte("TOPSECRET")},
 						"root/f/evil.mp3":        {Mode: fs.ModeSymlink, Data: []byte("secret")},
+						"root/g/.Hack Sign Original Soundtrack/track.mp3": {},
+						"root/h/.hidden.mp3":                              {},
+						"root/i/.git/config":                              {},
+						"root/i/.streams/stream.mp3":                      {},
 					},
 				}
 				job = &scanJob{
@@ -97,6 +101,14 @@ var _ = Describe("walk_dir_tree", func() {
 					Expect(folders["root/c"].imageFiles).To(BeEmpty())
 					Expect(folders).ToNot(HaveKey("root/d"))
 
+					// By default (Scanner.IgnoreDotFolders == true), dot-prefixed
+					// folders are skipped, dot-prefixed files are not indexed, and
+					// the special ignoredDirs (.git, .streams) are never traversed.
+					Expect(folders).ToNot(HaveKey("root/g/.Hack Sign Original Soundtrack"))
+					Expect(folders["root/h"].audioFiles).To(BeEmpty())
+					Expect(folders).ToNot(HaveKey("root/i/.git"))
+					Expect(folders).ToNot(HaveKey("root/i/.streams"))
+
 					// Symlink specific checks
 					if followSymlinks {
 						Expect(folders["root/e/symlink"].audioFiles).To(HaveLen(1))
@@ -110,8 +122,31 @@ var _ = Describe("walk_dir_tree", func() {
 						Expect(folders["root/f"].audioFiles).ToNot(HaveKey("evil.mp3"))
 					}
 				},
-				Entry("with symlinks enabled", true, 8),
-				Entry("with symlinks disabled", false, 7),
+				Entry("with symlinks enabled", true, 11),
+				Entry("with symlinks disabled", false, 10),
+			)
+
+			DescribeTable("dot-prefixed folders with IgnoreDotFolders disabled",
+				func(followSymlinks bool) {
+					conf.Server.Scanner.FollowSymlinks = followSymlinks
+					conf.Server.Scanner.IgnoreDotFolders = false
+					folders := getFolders()
+
+					// Dot-prefixed album folders are now traversed and indexed
+					Expect(folders["root/g/.Hack Sign Original Soundtrack"].audioFiles).To(SatisfyAll(
+						HaveLen(1),
+						HaveKey("track.mp3"),
+					))
+
+					// Dot-prefixed files are still ignored, even with the flag off
+					Expect(folders["root/h"].audioFiles).To(BeEmpty())
+
+					// Special ignoredDirs remain blocked regardless of the flag
+					Expect(folders).ToNot(HaveKey("root/i/.git"))
+					Expect(folders).ToNot(HaveKey("root/i/.streams"))
+				},
+				Entry("with symlinks enabled", true),
+				Entry("with symlinks disabled", false),
 			)
 		})
 
@@ -450,10 +485,58 @@ var _ = Describe("walk_dir_tree", func() {
 					Expect(isDirIgnored(dirName)).To(Equal(expected))
 				},
 				Entry("normal dir", "empty_folder", false),
-				Entry("hidden dir", ".hidden_folder", true),
+				Entry("dot-prefixed album dir", ".Hack Sign Original Soundtrack", false),
+				Entry("git dir", ".git", true),
+				Entry("streams dir", ".streams", true),
 				Entry("dir starting with ellipsis", "...unhidden_folder", false),
 				Entry("recycle bin", "$Recycle.Bin", true),
 				Entry("snapshot dir", "#snapshot", true),
+			)
+		})
+
+		Describe("isIgnoredEntry", func() {
+			BeforeEach(func() {
+				DeferCleanup(configtest.SetupConfig())
+			})
+
+			DescribeTable("with IgnoreDotFolders enabled (default)",
+				func(name string, isDir, expected bool) {
+					conf.Server.Scanner.IgnoreDotFolders = true
+					Expect(isIgnoredEntry(name, isDir)).To(Equal(expected))
+				},
+				Entry("normal dir", "Album", true, false),
+				Entry("normal file", "track.mp3", false, false),
+				Entry("dot folder", ".Hack Sign Original Soundtrack", true, true),
+				Entry("dot file", ".hidden.mp3", false, true),
+				Entry("blocklisted dir", ".git", true, true),
+				Entry("ellipsis dir", "...unhidden", true, false),
+			)
+
+			DescribeTable("with IgnoreDotFolders disabled",
+				func(name string, isDir, expected bool) {
+					conf.Server.Scanner.IgnoreDotFolders = false
+					Expect(isIgnoredEntry(name, isDir)).To(Equal(expected))
+				},
+				Entry("normal dir", "Album", true, false),
+				Entry("normal file", "track.mp3", false, false),
+				Entry("dot folder is allowed", ".Hack Sign Original Soundtrack", true, false),
+				Entry("dot file is still ignored", ".hidden.mp3", false, true),
+				Entry("blocklisted dir still ignored", ".git", true, true),
+			)
+		})
+
+		Describe("isDotEntry", func() {
+			DescribeTable("returns expected result",
+				func(name string, expected bool) {
+					Expect(isDotEntry(name)).To(Equal(expected))
+				},
+				Entry("dot folder", ".Hidden", true),
+				Entry("dot file", ".hidden.mp3", true),
+				Entry("current dir", ".", false),
+				Entry("parent dir", "..", false),
+				Entry("two leading dots", "..foo", false),
+				Entry("ellipsis", "...unhidden", false),
+				Entry("normal name", "Album", false),
 			)
 		})
 
