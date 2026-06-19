@@ -20,8 +20,9 @@ func TestLyrics(t *testing.T) {
 	RunSpecs(t, "Lyrics Suite")
 }
 
-// Register a no-op extractor so that storage.For("file://...") works in tests.
-// The lyrics package only needs FS() for sidecar reads; ReadTags is never called.
+// core/storage/local calls log.Fatal if the default scanner extractor is unregistered
+// when constructing any localStorage. Register a no-op so storage.For("file://...") works
+// in tests without importing the real extractor.
 var _ = BeforeSuite(func() {
 	local.RegisterExtractor(consts.DefaultScannerExtractor, func(fs.FS, string) local.Extractor {
 		return &noopExtractor{}

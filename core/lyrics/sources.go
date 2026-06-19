@@ -9,7 +9,6 @@ import (
 	"path"
 
 	"github.com/navidrome/navidrome/core/storage"
-	_ "github.com/navidrome/navidrome/core/storage/local"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/ioutils"

@@ -74,7 +74,7 @@ var _ = Describe("sources", func() {
 			Expect(lyrics).To(HaveLen(0))
 		})
 
-		// fromExternalFile delegates format parsing to model.ParseLyrics; the
+		// fromExternalFile delegates format parsing to model.ParseLyricsFile; the
 		// per-format parser output is covered exhaustively in the model package.
 		// Here we only verify each suffix is read from the library FS and routed.
 		DescribeTable("should read the sidecar file and route its suffix to a parser",
