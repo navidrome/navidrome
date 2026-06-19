@@ -105,7 +105,7 @@ var _ = Describe("Metadata", func() {
 				props.Tags = model.RawTags{
 					"Title":      {strings.Repeat("a", 2048)},
 					"Comment":    {strings.Repeat("a", 8192)},
-					"lyrics:xxx": {strings.Repeat("a", 60000)},
+					"lyrics:xxx": {strings.Repeat("a", 2_000_000)},
 				}
 				md = metadata.New(filePath, props)
 
@@ -116,9 +116,21 @@ var _ = Describe("Metadata", func() {
 				Expect(pair).To(HaveLen(1))
 				Expect(pair[0].Key()).To(Equal("xxx"))
 
+				// Lyrics keep a much larger cap so word-timed karaoke survives.
 				// Note: a total of 6 characters are lost from maxLength from
-				// the key portion and separator
-				Expect(pair[0].Value()).To(HaveLen(32762))
+				// the key portion and separator.
+				Expect(pair[0].Value()).To(HaveLen(1048570))
+			})
+
+			It("keeps embedded lyrics that exceed the old 32KB cap", func() {
+				props.Tags = model.RawTags{
+					"lyrics:xxx": {strings.Repeat("a", 60000)},
+				}
+				md = metadata.New(filePath, props)
+
+				pair := md.Pairs(model.TagLyrics)
+				Expect(pair).To(HaveLen(1))
+				Expect(pair[0].Value()).To(HaveLen(60000))
 			})
 
 			It("should split multiple values", func() {
