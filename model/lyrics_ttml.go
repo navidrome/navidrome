@@ -102,10 +102,6 @@ type ttmlParser struct {
 	metadataSeq int
 }
 
-func parseTTML(contents []byte) (LyricList, error) {
-	return parseTTMLWithDefaultLang("xxx", contents)
-}
-
 func isTTMLDocument(text string) bool {
 	decoder := xml.NewDecoder(strings.NewReader(strings.TrimSpace(text)))
 	for {

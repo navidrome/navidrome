@@ -5,6 +5,11 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+// parseSRT parses with the default placeholder language, for test ergonomics.
+func parseSRT(contents []byte) (LyricList, error) {
+	return parseSRTWithLanguage("xxx", contents)
+}
+
 var _ = Describe("parseSRT", func() {
 	It("parses SRT blocks with the default language", func() {
 		content := []byte("1\n00:00:01,000 --> 00:00:02,000\nFirst subtitle\n\n2\n00:00:03,000 --> 00:00:04,000\nSecond subtitle")

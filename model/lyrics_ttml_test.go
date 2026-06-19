@@ -5,6 +5,11 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+// parseTTML parses with the default placeholder language, for test ergonomics.
+func parseTTML(contents []byte) (LyricList, error) {
+	return parseTTMLWithDefaultLang("xxx", contents)
+}
+
 var _ = Describe("parseTTML", func() {
 	Describe("Multi-language and timing", func() {
 		It("should parse multiple language divs with inherited offsets and frame/tick timing", func() {

@@ -14,10 +14,6 @@ var (
 	srtBlockSeparatorRegex = regexp.MustCompile(`\n\s*\n`)
 )
 
-func parseSRT(contents []byte) (LyricList, error) {
-	return parseSRTWithLanguage("xxx", contents)
-}
-
 func parseSRTWithLanguage(language string, contents []byte) (LyricList, error) {
 	raw := strings.ReplaceAll(string(contents), "\r\n", "\n")
 	raw = strings.ReplaceAll(raw, "\r", "\n")
