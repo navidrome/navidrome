@@ -70,17 +70,19 @@ const (
 	mbidSomethingRec      = "44444444-4444-4444-a444-444444444444" // mbz_recording_id
 )
 
-// Lyric fixture payloads used in buildTestFS.
-const embeddedTTML = `<tt xmlns="http://www.w3.org/ns/ttml"><body><div><p begin="00:00.000" end="00:01.000">embedded ttml line</p></div></body></tt>`
+// lyricFixture reads a public-domain lyric fixture (the same files the parser
+// benchmarks use) so the e2e fixtures stay in sync with real-world content,
+// including the word-level timing carried by the .elrc and .yaml variants.
+func lyricFixture(name string) string {
+	// tests.Init chdirs to the project root, so reference fixtures from there.
+	data, err := os.ReadFile(filepath.Join("tests", "fixtures", "lyrics", name))
+	Expect(err).ToNot(HaveOccurred(), "reading lyric fixture %q", name)
+	return string(data)
+}
 
-const sidecarLyricsfileYAML = `version: "1.0"
-metadata:
-  title: Sidecar YAML
-  language: eng
-lines:
-  - text: sidecar yaml line
-    start_ms: 6000
-`
+// firstFixtureLine is the opening lyric line shared by every auld-lang-syne
+// fixture; tests assert against it regardless of source format.
+const firstFixtureLine = "Should auld acquaintance be forgot,"
 
 // Shared test state
 var (
@@ -192,24 +194,30 @@ func buildTestFS() storagetest.FakeFS {
 			"bitrate": 4500, "samplerate": 48000, "bitdepth": 24, "channels": 6, "duration": int64(180),
 		}),
 
-		// Lyrics fixtures (isolated under Lyrics/ to keep other suite counts stable)
-		// Embedded — lyrics delivered via the "lyrics" tag, parsed at scan time
-		"Lyrics/Embedded/01 - Embedded Synced LRC.mp3": lyricsAlbum(track(1, "Embedded Synced LRC",
-			_t{"lyrics": "[00:01.00]embedded lrc line one\n[00:02.00]embedded lrc line two"})),
+		// Lyrics fixtures (isolated under Lyrics/ to keep other suite counts stable).
+		// Content comes from tests/fixtures/lyrics (the same public-domain files the
+		// parser benchmarks use); the .elrc and .yaml variants carry word-level
+		// timing, which drives the v1 (line-level) vs v2 (enhanced/word-level) tests.
+		//
+		// Embedded — lyrics delivered via the "lyrics" tag, parsed at scan time.
+		// "Enhanced LRC" embeds ELRC (word-level) content; the title is kept generic
+		// since ELRC is still valid LRC.
+		"Lyrics/Embedded/01 - Embedded Enhanced LRC.mp3": lyricsAlbum(track(1, "Embedded Enhanced LRC",
+			_t{"lyrics": lyricFixture("auld-lang-syne.elrc")})),
 		"Lyrics/Embedded/02 - Embedded Plain.mp3": lyricsAlbum(track(2, "Embedded Plain",
-			_t{"lyrics": "plain embedded line one\nplain embedded line two"})),
+			_t{"lyrics": lyricFixture("auld-lang-syne.txt")})),
 		"Lyrics/Embedded/03 - Embedded TTML.mp3": lyricsAlbum(track(3, "Embedded TTML",
-			_t{"lyrics": embeddedTTML})),
+			_t{"lyrics": lyricFixture("auld-lang-syne.ttml")})),
 
 		// Sidecar — raw lyric text files read from the library FS at request time via fromExternalFile.
 		// The scanner skips non-audio extensions (.lrc, .srt, .yaml), so placing them as raw MapFile
 		// entries is safe: they are visible to the fake FS but invisible to the scanner.
 		"Lyrics/Sidecar/01 - Sidecar LRC.mp3":   lyricsAlbum(track(1, "Sidecar LRC")),
-		"Lyrics/Sidecar/01 - Sidecar LRC.lrc":   &fstest.MapFile{Data: []byte("[00:03.00]sidecar lrc line"), ModTime: time.Now()},
+		"Lyrics/Sidecar/01 - Sidecar LRC.lrc":   &fstest.MapFile{Data: []byte(lyricFixture("auld-lang-syne.lrc")), ModTime: time.Now()},
 		"Lyrics/Sidecar/02 - Sidecar SRT.mp3":   lyricsAlbum(track(2, "Sidecar SRT")),
-		"Lyrics/Sidecar/02 - Sidecar SRT.srt":   &fstest.MapFile{Data: []byte("1\n00:00:04,000 --> 00:00:05,000\nsidecar srt line\n"), ModTime: time.Now()},
+		"Lyrics/Sidecar/02 - Sidecar SRT.srt":   &fstest.MapFile{Data: []byte(lyricFixture("auld-lang-syne.srt")), ModTime: time.Now()},
 		"Lyrics/Sidecar/03 - Sidecar YAML.mp3":  lyricsAlbum(track(3, "Sidecar YAML")),
-		"Lyrics/Sidecar/03 - Sidecar YAML.yaml": &fstest.MapFile{Data: []byte(sidecarLyricsfileYAML), ModTime: time.Now()},
+		"Lyrics/Sidecar/03 - Sidecar YAML.yaml": &fstest.MapFile{Data: []byte(lyricFixture("auld-lang-syne.yaml")), ModTime: time.Now()},
 
 		// _empty folder (directory with no audio)
 		"_empty/.keep": &fstest.MapFile{Data: []byte{}, ModTime: time.Now()},

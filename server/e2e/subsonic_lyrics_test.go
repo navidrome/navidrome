@@ -27,56 +27,106 @@ var _ = Describe("Lyrics endpoints", func() {
 		return list.StructuredLyrics[0]
 	}
 
-	Describe("getLyricsBySongId (v2 structured)", func() {
-		DescribeTable("returns structured lyrics",
-			func(title string, wantSynced bool, wantFirstLine, wantLang string) {
+	// songLyrics extension v1: getLyricsBySongId without the enhanced parameter
+	// returns line-level structured lyrics (line[], lang, synced) and must NOT
+	// emit any v2/enhanced fields — no cueLine, kind, or agents — even for
+	// formats that carry word-level timing (ELRC, Lyricsfile YAML).
+	Describe("getLyricsBySongId v1 (line-level, not enhanced)", func() {
+		DescribeTable("returns line-level lyrics without enhanced fields",
+			func(title string, wantSynced bool, wantLang string) {
 				resp := doReq("getLyricsBySongId", "id", songID(title))
 				Expect(resp.Status).To(Equal("ok"))
 				got := firstLyric(resp.LyricsList)
+
 				Expect(got.Synced).To(Equal(wantSynced))
 				Expect(got.Lang).To(Equal(wantLang))
 				Expect(got.Line).ToNot(BeEmpty())
-				Expect(got.Line[0].Value).To(Equal(wantFirstLine))
+				Expect(got.Line[0].Value).To(Equal(firstFixtureLine))
+
+				// v1 must not expose any enhanced (v2) data.
+				Expect(got.CueLine).To(BeEmpty())
+				Expect(got.Kind).To(BeEmpty())
+				Expect(got.Agents).To(BeEmpty())
 			},
-			// "xxx" is the ISO 639-2 code for "no language specified"
-			Entry("synced LRC embedded", "Embedded Synced LRC", true, "embedded lrc line one", "xxx"),
-			Entry("plain text embedded", "Embedded Plain", false, "plain embedded line one", "xxx"),
-			Entry("TTML embedded", "Embedded TTML", true, "embedded ttml line", "xxx"),
-			Entry("LRC sidecar", "Sidecar LRC", true, "sidecar lrc line", "xxx"),
-			Entry("SRT sidecar", "Sidecar SRT", true, "sidecar srt line", "xxx"),
-			// YAML sidecar fixture sets "language: eng"; verify Navidrome passes it through unchanged.
-			Entry("YAML sidecar", "Sidecar YAML", true, "sidecar yaml line", "eng"),
+			// "xxx" is the ISO 639-2 code for "no language specified"; the .lrc/.elrc
+			// fixtures declare [lang:eng], the .ttml declares xml:lang, the .yaml sets
+			// language: eng, while .srt carries no language and the embedded plain
+			// text has none — so each format exercises a different language path.
+			Entry("embedded enhanced LRC (word-level)", "Embedded Enhanced LRC", true, "eng"),
+			Entry("embedded plain text", "Embedded Plain", false, "xxx"),
+			Entry("embedded TTML", "Embedded TTML", true, "eng"),
+			Entry("LRC sidecar", "Sidecar LRC", true, "eng"),
+			Entry("SRT sidecar", "Sidecar SRT", true, "xxx"),
+			Entry("YAML sidecar (word-level)", "Sidecar YAML", true, "eng"),
 		)
 	})
 
+	// songLyrics extension v2: getLyricsBySongId?enhanced=true opts in to
+	// word/syllable-level timing (cueLine) and the kind classification. Formats
+	// that carry word-level timing (ELRC, Lyricsfile YAML) surface cueLine; all
+	// formats gain kind="main" for a single untyped lyric layer.
+	Describe("getLyricsBySongId v2 (enhanced)", func() {
+		It("exposes word-level cueLine for an enhanced-LRC source", func() {
+			resp := doReq("getLyricsBySongId", "id", songID("Embedded Enhanced LRC"), "enhanced", "true")
+			Expect(resp.Status).To(Equal("ok"))
+			got := firstLyric(resp.LyricsList)
+
+			Expect(got.Kind).To(Equal("main"))
+			Expect(got.CueLine).ToNot(BeEmpty())
+			// The first line "Should auld acquaintance be forgot," has one cue per word.
+			Expect(got.CueLine[0].Cue).To(HaveLen(5))
+			Expect(got.CueLine[0].Cue[0].Value).To(Equal("Should "))
+		})
+
+		It("exposes word-level cueLine for a Lyricsfile YAML sidecar", func() {
+			resp := doReq("getLyricsBySongId", "id", songID("Sidecar YAML"), "enhanced", "true")
+			Expect(resp.Status).To(Equal("ok"))
+			got := firstLyric(resp.LyricsList)
+
+			Expect(got.Kind).To(Equal("main"))
+			Expect(got.CueLine).ToNot(BeEmpty())
+			Expect(got.CueLine[0].Cue).ToNot(BeEmpty())
+			Expect(got.CueLine[0].Cue[0].Value).To(Equal("Should "))
+		})
+
+		It("emits kind but no cueLine for a line-level (SRT) source", func() {
+			resp := doReq("getLyricsBySongId", "id", songID("Sidecar SRT"), "enhanced", "true")
+			Expect(resp.Status).To(Equal("ok"))
+			got := firstLyric(resp.LyricsList)
+
+			// SRT has no word-level timing, so even enhanced yields no cueLine.
+			Expect(got.Kind).To(Equal("main"))
+			Expect(got.CueLine).To(BeEmpty())
+			Expect(got.Line).ToNot(BeEmpty())
+		})
+	})
+
+	// getLyrics is the original Subsonic (pre-OpenSubsonic) endpoint. It looks up
+	// by artist/title and returns the main lyric flattened to plain text — every
+	// line's Value joined by newlines, with all timing/markup dropped. Synced and
+	// word-level formats (ELRC/TTML/SRT/YAML) all degrade to plain text here.
 	Describe("getLyrics (legacy artist/title)", func() {
-		// The legacy endpoint flattens the main lyric to plain text: it emits each
-		// line's Value joined by newlines, dropping all timing/markup. This is the
-		// v1 contract — synced structured formats (LRC/TTML/SRT/YAML) all "fall
-		// back" to LRC-style plain text here.
 		DescribeTable("returns the main lyric as plain text across formats and sources",
-			func(title string, wantLines []string) {
+			func(title string) {
 				resp := doReq("getLyrics", "artist", "Lyric Tester", "title", title)
 				Expect(resp.Status).To(Equal("ok"))
 				Expect(resp.Lyrics).ToNot(BeNil())
 				Expect(resp.Lyrics.Artist).To(Equal("Lyric Tester"))
 				Expect(resp.Lyrics.Title).To(Equal(title))
-				for _, line := range wantLines {
-					Expect(resp.Lyrics.Value).To(ContainSubstring(line))
-				}
-				// v1 fallback: no timing markup leaks into the plain-text value,
-				// regardless of the source format (LRC brackets, SRT arrows, XML
-				// tags). The structured content is reduced to LRC-style plain text.
+				Expect(resp.Lyrics.Value).To(ContainSubstring(firstFixtureLine))
+
+				// No timing markup leaks into the plain-text value, regardless of the
+				// source format: no LRC brackets/word markers, SRT arrows, or XML tags.
 				Expect(resp.Lyrics.Value).ToNot(ContainSubstring("["))
 				Expect(resp.Lyrics.Value).ToNot(ContainSubstring("-->"))
 				Expect(resp.Lyrics.Value).ToNot(ContainSubstring("<"))
 			},
-			Entry("embedded synced LRC", "Embedded Synced LRC", []string{"embedded lrc line one", "embedded lrc line two"}),
-			Entry("embedded plain text", "Embedded Plain", []string{"plain embedded line one", "plain embedded line two"}),
-			Entry("embedded TTML", "Embedded TTML", []string{"embedded ttml line"}),
-			Entry("LRC sidecar", "Sidecar LRC", []string{"sidecar lrc line"}),
-			Entry("SRT sidecar", "Sidecar SRT", []string{"sidecar srt line"}),
-			Entry("YAML sidecar", "Sidecar YAML", []string{"sidecar yaml line"}),
+			Entry("embedded enhanced LRC", "Embedded Enhanced LRC"),
+			Entry("embedded plain text", "Embedded Plain"),
+			Entry("embedded TTML", "Embedded TTML"),
+			Entry("LRC sidecar", "Sidecar LRC"),
+			Entry("SRT sidecar", "Sidecar SRT"),
+			Entry("YAML sidecar", "Sidecar YAML"),
 		)
 	})
 })
