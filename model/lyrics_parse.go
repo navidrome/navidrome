@@ -9,21 +9,17 @@ import (
 	"github.com/navidrome/navidrome/log"
 )
 
-// lyricParser parses a single lyrics format. It returns an empty list (not an
-// error) when the input is well-formed but not its format, so candidates can be
-// tried in order. The lang argument is the default language for formats that do
-// not carry their own.
+// lyricParser returns an empty list (not an error) when the input is not its
+// format, so parsers can be tried in order. lang is the default for formats that
+// do not carry their own.
 type lyricParser func(lang string, contents []byte) (LyricList, error)
 
 func parseLyricsfileBytes(_ string, contents []byte) (LyricList, error) {
 	return parseLyricsfile(string(contents))
 }
 
-// lyricFormats lists the structured formats. Each parser is self-skipping: it
-// returns an empty list (not an error) when the content is not its format, so it
-// is safe to try in order. Slice order is the content-sniff probe order
-// (TTML → SRT → YAML); each row's suffixes drive sidecar dispatch. LRC/plain is
-// not listed — it is the fallback floor for both paths.
+// lyricFormats is the structured formats in content-sniff probe order; each
+// row's suffixes drive sidecar dispatch. LRC/plain is the unlisted fallback floor.
 var lyricFormats = []struct {
 	suffixes []string
 	parse    lyricParser
@@ -33,14 +29,10 @@ var lyricFormats = []struct {
 	{[]string{".yaml", ".yml"}, parseLyricsfileBytes},
 }
 
-// ParseLyrics is the single entry point for parsing lyrics. A known suffix
-// (.ttml/.srt/.yaml/.yml/.lrc) routes to that format's parser; an empty or
-// "auto" suffix content-sniffs by trying each format in order. In both modes a
-// structured parser that does not match falls back to the LRC/plain-text floor —
-// never to another structured format.
+// ParseLyrics is the single entry point for parsing lyrics. A known suffix routes
+// to that format's parser; an empty or "auto" suffix content-sniffs. Either way,
+// a structured parser that does not match falls back to the LRC/plain-text floor.
 func ParseLyrics(suffix, lang string, contents []byte) (LyricList, error) {
-	// Strip a leading BOM once here so every parser sees clean bytes, regardless
-	// of which caller (file read, embedded tag, plugin, DB string) supplied them.
 	contents = stripBOM(contents)
 
 	if suffix == "" || strings.EqualFold(suffix, "auto") {
@@ -55,11 +47,9 @@ func ParseLyrics(suffix, lang string, contents []byte) (LyricList, error) {
 			return parseFirstMatch(lang, contents, f.parse)
 		}
 	}
-	return plainLRC(lang, contents) // .lrc and any unknown suffix
+	return plainLRC(lang, contents)
 }
 
-// parseFirstMatch tries each candidate in order, returning the first non-empty
-// result. When every candidate misses, it falls to the LRC/plain-text floor.
 func parseFirstMatch(lang string, contents []byte, candidates ...lyricParser) (LyricList, error) {
 	for _, parse := range candidates {
 		list, err := parse(lang, contents)

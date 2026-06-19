@@ -20,8 +20,7 @@ func (t *testLyrics) GetLyrics(input lyrics.GetLyricsRequest) (lyrics.GetLyricsR
 		return lyrics.GetLyricsResponse{}, fmt.Errorf("%s", errMsg)
 	}
 
-	// Config-selected formats let integration tests prove the adapter's content-sniffing
-	// detects each format; plain-text parsing would silently mangle the rich ones.
+	// Config-selected format lets tests exercise the adapter's content-sniffing per format.
 	format, hasFormat := pdk.GetConfig("format")
 	if hasFormat {
 		var text string

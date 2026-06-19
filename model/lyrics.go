@@ -414,9 +414,7 @@ func parseTime(line string, match []int) (int64, error) {
 
 type LyricList []Lyrics
 
-// MarshalJSON owns the lyrics column invariant: an empty or nil list serializes
-// to [], never null. This keeps every writer consistent without each one having
-// to pre-initialize or nil-guard the slice.
+// MarshalJSON keeps the lyrics column invariant: empty/nil serializes to [], never null.
 func (ll LyricList) MarshalJSON() ([]byte, error) {
 	if len(ll) == 0 {
 		return []byte("[]"), nil
