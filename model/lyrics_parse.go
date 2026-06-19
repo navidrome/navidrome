@@ -20,8 +20,8 @@ var lyricFormats = []struct {
 	suffixes []string
 	parse    lyricParser
 }{
-	{[]string{".ttml"}, parseTTMLWithDefaultLang},
-	{[]string{".srt"}, parseSRTWithLanguage},
+	{[]string{".ttml"}, parseTTML},
+	{[]string{".srt"}, parseSRT},
 	{[]string{".yaml", ".yml"}, parseLyricsfile},
 }
 

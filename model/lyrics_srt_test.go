@@ -7,7 +7,7 @@ import (
 
 // parseSRT parses with the default placeholder language, for test ergonomics.
 func parseSRT(contents []byte) (LyricList, error) {
-	return parseSRTWithLanguage("xxx", contents)
+	return parseSRT("xxx", contents)
 }
 
 var _ = Describe("parseSRT", func() {

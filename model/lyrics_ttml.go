@@ -115,7 +115,7 @@ func isTTMLDocument(contents []byte) bool {
 	}
 }
 
-func parseTTMLWithDefaultLang(defaultLang string, contents []byte) (LyricList, error) {
+func parseTTML(defaultLang string, contents []byte) (LyricList, error) {
 	contents = xmlEncodingRegex.ReplaceAll(contents, []byte(`<?xml$1encoding="UTF-8"$2?>`))
 
 	// Skip non-TTML content so sniffing doesn't run the full TTML parse on plain

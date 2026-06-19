@@ -7,7 +7,7 @@ import (
 
 // parseTTML parses with the default placeholder language, for test ergonomics.
 func parseTTML(contents []byte) (LyricList, error) {
-	return parseTTMLWithDefaultLang("xxx", contents)
+	return parseTTML("xxx", contents)
 }
 
 var _ = Describe("parseTTML", func() {
