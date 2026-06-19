@@ -11,14 +11,14 @@ func init() {
 	goose.AddMigrationContext(Up20201128100726, Down20201128100726)
 }
 
-func Up20201128100726(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func Up20201128100726(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 alter table player
 	add report_real_path bool default FALSE not null;
 `)
 	return err
 }
 
-func Down20201128100726(_ context.Context, tx *sql.Tx) error {
+func Down20201128100726(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

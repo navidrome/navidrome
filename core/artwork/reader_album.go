@@ -113,28 +113,12 @@ func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, albums ...mo
 		return nil, nil, nil, err
 	}
 
-	folderIDSet := make(map[string]bool, len(folderIDs))
-	for _, id := range folderIDs {
-		folderIDSet[id] = true
+	parent, err := albumRootParent(ctx, ds, folders, folderIDs)
+	if err != nil {
+		return nil, nil, nil, err
 	}
-
-	// Check if all folders share a common parent that is not already included.
-	// This finds cover art in the album root folder (e.g., "Artist/Album/cover.jpg"
-	// when tracks are in disc subfolders like "Artist/Album/CD1/" and "Artist/Album/CD2/").
-	// For single-folder albums, the parent is only included when the folder has no
-	// images of its own (indicating a disc subfolder needing parent artwork).
-	if commonParentID := commonParentFolder(folders, folderIDSet); commonParentID != "" {
-		if len(folders) >= 2 || !anyFolderHasImages(folders) {
-			parentFolder, err := ds.Folder(ctx).Get(commonParentID)
-			if errors.Is(err, model.ErrNotFound) {
-				log.Warn(ctx, "Parent folder not found for album cover art lookup", "parentID", commonParentID)
-			} else if err != nil {
-				return nil, nil, nil, err
-			}
-			if parentFolder != nil && parentFolder.ParentID != "" {
-				folders = append(folders, *parentFolder)
-			}
-		}
+	if parent != nil {
+		folders = append(folders, *parent)
 	}
 
 	var paths []string
@@ -157,6 +141,50 @@ func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, albums ...mo
 	slices.SortFunc(imgFiles, compareImageFiles)
 
 	return paths, imgFiles, &updatedAt, nil
+}
+
+// albumRootParent returns the common parent of the album's folders when it
+// qualifies as the album's root folder (e.g. "Artist/Album" above disc
+// subfolders), or nil when there is no such parent. This finds cover art in
+// the album root folder when tracks live in disc subfolders, like
+// "Artist/Album/cover.jpg" with tracks in "Artist/Album/CD1/" and
+// "Artist/Album/CD2/". The parent must look like an album root, not an
+// artist-level folder — it qualifies only when it holds no audio belonging to
+// other albums — so artist images are never served as album art.
+func albumRootParent(ctx context.Context, ds model.DataStore, folders []model.Folder, folderIDs []string) (*model.Folder, error) {
+	folderIDSet := make(map[string]bool, len(folderIDs))
+	for _, id := range folderIDs {
+		folderIDSet[id] = true
+	}
+	commonParentID := commonParentFolder(folders, folderIDSet)
+	if commonParentID == "" {
+		return nil, nil
+	}
+	// Single-folder albums only use the parent when the folder has no images
+	// of its own (indicating a disc subfolder needing parent artwork).
+	if len(folders) < 2 && anyFolderHasImages(folders) {
+		return nil, nil
+	}
+	parent, err := ds.Folder(ctx).Get(commonParentID)
+	if errors.Is(err, model.ErrNotFound) {
+		log.Warn(ctx, "Parent folder not found for album cover art lookup", "parentID", commonParentID)
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if parent.ParentID == "" {
+		// The library root can never be an album root
+		return nil, nil
+	}
+	hasOtherAudio, err := ds.Folder(ctx).HasAudioOutsideFolders(*parent, folderIDs)
+	if err != nil {
+		return nil, err
+	}
+	if hasOtherAudio {
+		return nil, nil
+	}
+	return parent, nil
 }
 
 func anyFolderHasImages(folders []model.Folder) bool {

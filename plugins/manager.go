@@ -241,7 +241,7 @@ func (m *Manager) LoadScrobbler(name string) (scrobbler.Scrobbler, bool) {
 	return loadPlugin(m, name, CapabilityScrobbler, newScrobblerPlugin)
 }
 
-func (m *Manager) LoadLyricsProvider(name string) (lyrics.Lyrics, bool) {
+func (m *Manager) LoadLyricsProvider(name string) (lyrics.Provider, bool) {
 	return loadPlugin(m, name, CapabilityLyrics, newLyricsPlugin)
 }
 

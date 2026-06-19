@@ -339,6 +339,61 @@ var _ = Describe("Album Artwork Reader", func() {
 			Expect(repo.getCallCount).To(Equal(1))
 		})
 
+		It("does not include parent images when other albums' audio lives under the parent", func() {
+			// Simulates: Artist/folder.jpg with Artist/Album (no images) and
+			// another album's tracks elsewhere under the artist folder
+			repo.result = []model.Folder{
+				{
+					ID:              "folder1",
+					Path:            "Artist",
+					Name:            "Album",
+					ParentID:        "artistFolder",
+					ImagesUpdatedAt: now,
+					ImageFiles:      []string{},
+				},
+			}
+			repo.parentResult = &model.Folder{
+				ID:              "artistFolder",
+				Path:            ".",
+				Name:            "Artist",
+				ParentID:        "libraryRoot",
+				ImagesUpdatedAt: expectedAt,
+				ImageFiles:      []string{"folder.jpg"},
+			}
+			repo.hasOtherAudio = true
+
+			_, imgFiles, _, err := loadAlbumFoldersPaths(ctx, ds, album)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(imgFiles).To(BeEmpty())
+		})
+
+		It("propagates errors from the album-root check", func() {
+			repo.result = []model.Folder{
+				{
+					ID:              "folder1",
+					Path:            "Artist/Album",
+					Name:            "disc1",
+					ParentID:        "albumFolder",
+					ImagesUpdatedAt: now,
+					ImageFiles:      []string{},
+				},
+			}
+			repo.parentResult = &model.Folder{
+				ID:              "albumFolder",
+				Path:            "Artist",
+				Name:            "Album",
+				ParentID:        "artistFolder",
+				ImagesUpdatedAt: expectedAt,
+				ImageFiles:      []string{"cover.jpg"},
+			}
+			repo.otherAudioErr = errors.New("db connection failed")
+
+			_, _, _, err := loadAlbumFoldersPaths(ctx, ds, album)
+
+			Expect(err).To(MatchError("db connection failed"))
+		})
+
 		It("propagates non-ErrNotFound errors from parent folder lookup", func() {
 			repo.result = []model.Folder{
 				{

@@ -61,6 +61,6 @@ create index annotation_starred_at
 	return err
 }
 
-func downRemoveAnnotationId(ctx context.Context, tx *sql.Tx) error {
+func downRemoveAnnotationId(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -104,6 +105,102 @@ var _ = Describe("MediaRepository", func() {
 			Expect(item.Title).To(Equal("Antenna"))
 			Expect(item.Participants[model.RoleArtist][0].Name).To(Equal("Kraftwerk"))
 		}
+	})
+
+	Describe("GetRandom", func() {
+		It("returns the requested number of distinct, fully-hydrated media files", func() {
+			results, err := mr.GetRandom(model.QueryOptions{Max: 5})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(HaveLen(5))
+
+			// Each returned row must match its GetAll counterpart exactly — proves Phase 2
+			// hydrates full rows (not bare rowids) — and ids must be distinct.
+			byID := map[string]model.MediaFile{}
+			all, err := mr.GetAll()
+			Expect(err).ToNot(HaveOccurred())
+			for _, mf := range all {
+				byID[mf.ID] = mf
+			}
+			seen := map[string]bool{}
+			for _, mf := range results {
+				expected, ok := byID[mf.ID]
+				Expect(ok).To(BeTrue(), "returned id must be a real media file")
+				Expect(mf.Title).To(Equal(expected.Title), "row must be fully hydrated")
+				Expect(seen[mf.ID]).To(BeFalse(), "no duplicate rows")
+				seen[mf.ID] = true
+			}
+		})
+
+		It("returns all matching files when Max exceeds the total", func() {
+			results, err := mr.GetRandom(model.QueryOptions{Max: 1000})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(HaveLen(13))
+		})
+
+		It("honors filters", func() {
+			results, err := mr.GetRandom(model.QueryOptions{
+				Max:     10,
+				Filters: squirrel.Eq{"media_file.title": "Antenna"},
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).ToNot(BeEmpty())
+			for _, mf := range results {
+				Expect(mf.Title).To(Equal("Antenna"))
+			}
+		})
+
+		It("returns varying results across calls", func() {
+			// Retry a few times: two random draws of 5 from 13 rows differ with near-certainty.
+			first, err := mr.GetRandom(model.QueryOptions{Max: 5})
+			Expect(err).ToNot(HaveOccurred())
+			firstIDs := func() []string {
+				ids := make([]string, len(first))
+				for i, mf := range first {
+					ids[i] = mf.ID
+				}
+				return ids
+			}()
+			differed := false
+			for range 10 {
+				next, err := mr.GetRandom(model.QueryOptions{Max: 5})
+				Expect(err).ToNot(HaveOccurred())
+				nextIDs := make([]string, len(next))
+				for i, mf := range next {
+					nextIDs[i] = mf.ID
+				}
+				if !reflect.DeepEqual(firstIDs, nextIDs) {
+					differed = true
+					break
+				}
+			}
+			Expect(differed).To(BeTrue(), "GetRandom should not return an identical set every call")
+		})
+
+		It("randomizes order even when Max exceeds the total", func() {
+			// Same set of rows every time (all 13), but the order must still be shuffled —
+			// guards against Phase 2's `rowid IN (...)` returning rows in rowid order.
+			first, err := mr.GetRandom(model.QueryOptions{Max: 100})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(first).To(HaveLen(13))
+			firstIDs := make([]string, len(first))
+			for i, mf := range first {
+				firstIDs[i] = mf.ID
+			}
+			differed := false
+			for range 10 {
+				next, err := mr.GetRandom(model.QueryOptions{Max: 100})
+				Expect(err).ToNot(HaveOccurred())
+				nextIDs := make([]string, len(next))
+				for i, mf := range next {
+					nextIDs[i] = mf.ID
+				}
+				if !reflect.DeepEqual(firstIDs, nextIDs) {
+					differed = true
+					break
+				}
+			}
+			Expect(differed).To(BeTrue(), "order must vary even when returning all rows")
+		})
 	})
 
 	Describe("Put CreatedAt behavior (#5050)", func() {
@@ -652,6 +749,49 @@ var _ = Describe("MediaRepository", func() {
 				_, _ = raw.executeSQL(squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": missingMediaFile.ID}))
 			})
 		})
+
+		Context("empty query (natural order pagination)", func() {
+			It("returns all non-missing files in natural order", func() {
+				results, err := mr.Search("", model.QueryOptions{Max: 1000})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(results).ToNot(BeEmpty())
+				for _, result := range results {
+					Expect(result.Missing).To(BeFalse())
+				}
+			})
+
+			It(`treats quoted empty query ("") the same as empty`, func() {
+				all, err := mr.Search("", model.QueryOptions{Max: 1000})
+				Expect(err).ToNot(HaveOccurred())
+				quoted, err := mr.Search(`""`, model.QueryOptions{Max: 1000})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(quoted).To(HaveLen(len(all)))
+			})
+
+			It("paginates without overlaps or gaps", func() {
+				all, err := mr.Search("", model.QueryOptions{Max: 1000})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(len(all)).To(BeNumerically(">", 3))
+
+				var paged model.MediaFiles
+				pageSize := 3
+				for offset := 0; offset < len(all); offset += pageSize {
+					page, err := mr.Search("", model.QueryOptions{Max: pageSize, Offset: offset})
+					Expect(err).ToNot(HaveOccurred())
+					paged = append(paged, page...)
+				}
+				Expect(paged).To(HaveLen(len(all)))
+				for i := range all {
+					Expect(paged[i].ID).To(Equal(all[i].ID), fmt.Sprintf("row %d differs", i))
+				}
+			})
+
+			It("returns empty page when offset is beyond the total", func() {
+				results, err := mr.Search("", model.QueryOptions{Max: 10, Offset: 100000})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(results).To(BeEmpty())
+			})
+		})
 	})
 
 	Describe("FindByPaths", func() {
@@ -779,6 +919,51 @@ var _ = Describe("MediaRepository", func() {
 			}
 			Expect(mediafiles).To(HaveLen(1))
 			Expect(mediafiles[0].ID).To(Equal("mf1"))
+		})
+	})
+
+	Describe("BPM and BitDepth nullable round-trip", func() {
+		It("stores nil BPM and BitDepth as NULL and retrieves them as nil", func() {
+			newID := id.NewRandom()
+			mf := model.MediaFile{LibraryID: 1, ID: newID, Path: "test/bpm-nil.mp3"}
+			Expect(mr.Put(&mf)).To(Succeed())
+
+			retrieved, err := mr.Get(newID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(retrieved.BPM).To(BeNil())
+			Expect(retrieved.BitDepth).To(BeNil())
+
+			// Also verify via raw SQL that the columns are truly NULL (not 0)
+			db := GetDBXBuilder()
+			var row struct {
+				BPM      *int `db:"bpm"`
+				BitDepth *int `db:"bit_depth"`
+			}
+			err = db.NewQuery("SELECT bpm, bit_depth FROM media_file WHERE id={:id}").
+				Bind(dbx.Params{"id": newID}).
+				One(&row)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(row.BPM).To(BeNil(), "bpm should be stored as NULL in the database")
+			Expect(row.BitDepth).To(BeNil(), "bit_depth should be stored as NULL in the database")
+
+			_ = mr.Delete(newID)
+		})
+
+		It("stores non-nil BPM and BitDepth and retrieves correct values", func() {
+			newID := id.NewRandom()
+			bpm := 120
+			bitDepth := 24
+			mf := model.MediaFile{LibraryID: 1, ID: newID, Path: "test/bpm-set.mp3", BPM: &bpm, BitDepth: &bitDepth}
+			Expect(mr.Put(&mf)).To(Succeed())
+
+			retrieved, err := mr.Get(newID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(retrieved.BPM).ToNot(BeNil())
+			Expect(*retrieved.BPM).To(Equal(120))
+			Expect(retrieved.BitDepth).ToNot(BeNil())
+			Expect(*retrieved.BitDepth).To(Equal(24))
+
+			_ = mr.Delete(newID)
 		})
 	})
 })

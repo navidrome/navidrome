@@ -207,6 +207,40 @@ func (r *mediaFileRepository) GetAll(options ...model.QueryOptions) (model.Media
 	return res.toModels(), nil
 }
 
+// GetRandom uses two passes so the random sort runs over a narrow rowid index instead of the
+// wide media_file row: pick random rowids first, then hydrate only those.
+func (r *mediaFileRepository) GetRandom(options ...model.QueryOptions) (model.MediaFiles, error) {
+	var opt model.QueryOptions
+	if len(options) > 0 {
+		opt = options[0]
+	}
+
+	rowidQuery := Select("media_file.rowid").From(r.tableName)
+	rowidQuery = r.applyFilters(rowidQuery, model.QueryOptions{Filters: opt.Filters})
+	rowidQuery = r.applyLibraryFilter(rowidQuery)
+	rowidQuery = rowidQuery.OrderBy("random()")
+	if opt.Max > 0 {
+		rowidQuery = rowidQuery.Limit(uint64(opt.Max))
+	}
+
+	var rowids []int64
+	if err := r.queryAllSlice(rowidQuery, &rowids); err != nil {
+		return nil, err
+	}
+	if len(rowids) == 0 {
+		return model.MediaFiles{}, nil
+	}
+
+	// Re-shuffle in Phase 2: `WHERE rowid IN (...)` returns rows in ascending rowid order, not
+	// the random order from Phase 1. Sorting only the (<=Max) hydrated rows is negligible.
+	sq := r.selectMediaFile().Where(Eq{"media_file.rowid": rowids}).OrderBy("random()")
+	var res dbMediaFiles
+	if err := r.queryAll(sq, &res); err != nil {
+		return nil, err
+	}
+	return res.toModels(), nil
+}
+
 func (r *mediaFileRepository) GetAllByTags(tag model.TagName, values []string, options ...model.QueryOptions) (model.MediaFiles, error) {
 	placeholders := make([]string, len(values))
 	args := make([]any, len(values))

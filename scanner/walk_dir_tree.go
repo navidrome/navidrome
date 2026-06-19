@@ -147,12 +147,16 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string, checker *IgnoreC
 			if fileInfo.ModTime().After(folder.modTime) {
 				folder.modTime = fileInfo.ModTime()
 			}
+			name, ok := resolveEntryName(ctx, job.fs, dirPath, entry)
+			if !ok {
+				continue
+			}
 			switch {
-			case model.IsAudioFile(entry.Name()):
+			case model.IsAudioFile(name):
 				folder.audioFiles[entry.Name()] = entry
-			case model.IsValidPlaylist(entry.Name()):
+			case model.IsValidPlaylist(name):
 				folder.numPlaylists++
-			case model.IsImageFile(entry.Name()):
+			case model.IsImageFile(name):
 				folder.imageFiles[entry.Name()] = entry
 				folder.imagesUpdatedAt = utils.TimeNewest(folder.imagesUpdatedAt, fileInfo.ModTime(), folder.modTime)
 			}
@@ -211,6 +215,45 @@ func isDirOrSymlinkToDir(fsys fs.FS, baseDir string, dirEnt fs.DirEntry) (bool, 
 		return false, err
 	}
 	return fileInfo.IsDir(), nil
+}
+
+const maxSymlinkHops = 40
+
+// resolveEntryName returns the name to classify the entry by, and whether to
+// consider it at all. Symlinks are resolved to their final target so the caller
+// classifies by the target's extension, not the link's name. Returns ok=false
+// when symlinks are disabled or the target can't be resolved.
+func resolveEntryName(ctx context.Context, fsys fs.FS, dirPath string, entry fs.DirEntry) (string, bool) {
+	if entry.Type()&fs.ModeSymlink == 0 {
+		return entry.Name(), true
+	}
+	linkPath := path.Join(dirPath, entry.Name())
+	if !conf.Server.Scanner.FollowSymlinks {
+		log.Trace(ctx, "Scanner: Skipping symlink, following is disabled", "path", linkPath)
+		return "", false
+	}
+	cur := linkPath
+	for hop := 0; hop < maxSymlinkHops; hop++ {
+		target, err := fs.ReadLink(fsys, cur)
+		if err != nil {
+			if hop == 0 {
+				log.Trace(ctx, "Scanner: Skipping symlink, cannot resolve target", "path", linkPath, err)
+				return "", false
+			}
+			resolved := path.Base(cur)
+			log.Trace(ctx, "Scanner: Resolved symlink", "path", linkPath, "target", cur, "name", resolved)
+			return resolved, true
+		}
+		if path.IsAbs(target) {
+			// Absolute targets are not valid fs.FS paths, so the next ReadLink fails and
+			// resolution stops here, leaving cur as the target to classify by name.
+			cur = target
+		} else {
+			cur = path.Join(path.Dir(cur), target)
+		}
+	}
+	log.Trace(ctx, "Scanner: Skipping symlink, too many hops (possible loop)", "path", linkPath)
+	return "", false
 }
 
 // isDirReadable returns true if the directory represented by dirEnt is readable

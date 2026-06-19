@@ -11,8 +11,8 @@ func init() {
 	goose.AddMigrationContext(upCreatePlayQueuesTable, downCreatePlayQueuesTable)
 }
 
-func upCreatePlayQueuesTable(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func upCreatePlayQueuesTable(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 create table playqueue
 (
     id         varchar(255) not null primary key,
@@ -32,6 +32,6 @@ create table playqueue
 	return err
 }
 
-func downCreatePlayQueuesTable(_ context.Context, tx *sql.Tx) error {
+func downCreatePlayQueuesTable(_ context.Context, _ *sql.Tx) error {
 	return nil
 }
