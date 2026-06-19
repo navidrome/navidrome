@@ -35,7 +35,7 @@ func ParseLyricsfile(text string) (LyricList, error) {
 		DisplayArtist: str.SanitizeText(doc.Metadata.Artist),
 		DisplayTitle:  str.SanitizeText(doc.Metadata.Title),
 		Lang:          normalizeLyricsfileLang(doc.Metadata.Language),
-		Kind:          lyricsfileKindMain,
+		Kind:          LyricKindMain,
 	}
 	if doc.Metadata.OffsetMs != 0 {
 		off := doc.Metadata.OffsetMs
@@ -62,10 +62,7 @@ func ParseLyricsfile(text string) (LyricList, error) {
 	return LyricList{NormalizeLyrics(lyrics)}, nil
 }
 
-const (
-	lyricsfileVersion  = "1.0"
-	lyricsfileKindMain = "main"
-)
+const lyricsfileVersion = "1.0"
 
 type lyricsfileDocument struct {
 	Version  string                `yaml:"version"`

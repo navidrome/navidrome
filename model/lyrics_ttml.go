@@ -21,10 +21,7 @@ const (
 	defaultTTMLSubFrameRate = 1.0
 	defaultTTMLTickRate     = 1.0
 
-	ttmlLyricKindMain          = "main"
-	ttmlLyricKindTranslation   = "translation"
-	ttmlLyricKindPronunciation = "pronunciation"
-	ttmlBackgroundAgentPrefix  = "__nd_bg__|"
+	ttmlBackgroundAgentPrefix = "__nd_bg__|"
 )
 
 var offsetTimeRegex = regexp.MustCompile(`^([0-9]+(?:\.[0-9]+)?)(h|m|s|ms|f|t)$`)
@@ -157,9 +154,9 @@ func (p *ttmlParser) parseElement(start xml.StartElement, parent ttmlTimingConte
 
 	switch local {
 	case "translation":
-		return p.parseMetadataTrack(start, parent, ttmlLyricKindTranslation)
+		return p.parseMetadataTrack(start, parent, LyricKindTranslation)
 	case "transliteration":
-		return p.parseMetadataTrack(start, parent, ttmlLyricKindPronunciation)
+		return p.parseMetadataTrack(start, parent, LyricKindPronunciation)
 	case "agent":
 		return p.parseAgentDefinition(start)
 	}
@@ -582,15 +579,15 @@ func (p *ttmlParser) toLyricList() LyricList {
 			continue
 		}
 		res = append(res, p.finalizeLyrics(Lyrics{
-			Kind:   ttmlLyricKindMain,
+			Kind:   LyricKindMain,
 			Lang:   lang,
 			Line:   lines,
 			Synced: linesAreSynced(lines),
 		}))
 	}
 
-	res = append(res, p.buildMetadataLyrics(ttmlLyricKindTranslation, p.translationLangOrder, p.translationEntriesByLg)...)
-	res = append(res, p.buildMetadataLyrics(ttmlLyricKindPronunciation, p.pronunciationLangOrder, p.pronunciationEntriesByLg)...)
+	res = append(res, p.buildMetadataLyrics(LyricKindTranslation, p.translationLangOrder, p.translationEntriesByLg)...)
+	res = append(res, p.buildMetadataLyrics(LyricKindPronunciation, p.pronunciationLangOrder, p.pronunciationEntriesByLg)...)
 	return res
 }
 
@@ -854,12 +851,12 @@ func (p *ttmlParser) addMetadataEntry(kind string, lang string, entry ttmlMetada
 	p.metadataSeq++
 
 	switch kind {
-	case ttmlLyricKindTranslation:
+	case LyricKindTranslation:
 		if _, ok := p.translationEntriesByLg[lang]; !ok {
 			p.translationLangOrder = append(p.translationLangOrder, lang)
 		}
 		p.translationEntriesByLg[lang] = append(p.translationEntriesByLg[lang], entry)
-	case ttmlLyricKindPronunciation:
+	case LyricKindPronunciation:
 		if _, ok := p.pronunciationEntriesByLg[lang]; !ok {
 			p.pronunciationLangOrder = append(p.pronunciationLangOrder, lang)
 		}

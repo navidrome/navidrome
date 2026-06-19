@@ -45,6 +45,23 @@ type Lyrics struct {
 	Synced        bool    `structs:"synced"                  json:"synced"`
 }
 
+// Lyric kinds, as defined by the OpenSubsonic songLyrics v2 contract. These are
+// the canonical wire values; keep them in sync with the spec.
+const (
+	LyricKindMain          = "main"
+	LyricKindTranslation   = "translation"
+	LyricKindPronunciation = "pronunciation"
+)
+
+// LyricKindOrMain returns kind, defaulting to LyricKindMain when empty. A blank
+// kind means an untyped (single-track) lyric, which the contract treats as main.
+func LyricKindOrMain(kind string) string {
+	if strings.TrimSpace(kind) == "" {
+		return LyricKindMain
+	}
+	return kind
+}
+
 // support the standard [mm:ss.mm], as well as [hh:*] and [*.mmm]
 const timeRegexString = `\[([0-9]{1,2}:)?([0-9]{1,2}):([0-9]{1,2})(\.[0-9]{1,3})?\]`
 

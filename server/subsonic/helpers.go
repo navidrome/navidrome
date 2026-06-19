@@ -581,11 +581,7 @@ func buildStructuredLyric(mf *model.MediaFile, lyrics model.Lyrics, enhanced boo
 	}
 
 	if enhanced {
-		kind := strings.TrimSpace(lyrics.Kind)
-		if kind == "" {
-			kind = "main"
-		}
-		structured.Kind = kind
+		structured.Kind = model.LyricKindOrMain(lyrics.Kind)
 		if len(cueLines) > 0 && len(responseAgents) > 0 {
 			structured.Agents = responseAgents
 		}
@@ -637,10 +633,9 @@ func buildLyricsList(mf *model.MediaFile, lyricsList model.LyricList, enhanced b
 	if enhanced {
 		filtered = lyricsList
 	} else {
-		// Without enhanced, only return "main" kind entries
+		// Without enhanced, only return main-kind entries (a blank kind is main).
 		for _, l := range lyricsList {
-			kind := strings.TrimSpace(l.Kind)
-			if kind == "" || kind == "main" {
+			if model.LyricKindOrMain(l.Kind) == model.LyricKindMain {
 				filtered = append(filtered, l)
 			}
 		}
