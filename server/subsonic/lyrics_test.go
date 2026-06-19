@@ -2,6 +2,7 @@ package subsonic
 
 import (
 	"encoding/json"
+	"path/filepath"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -202,13 +203,16 @@ var _ = Describe("GetLyricsBySongId", func() {
 		conf.Server.LyricsPriority = ".ttml,embedded"
 		r := newGetRequest("id=1")
 
+		fixturesDir, err := filepath.Abs("tests/fixtures")
+		Expect(err).ToNot(HaveOccurred())
 		mockRepo.SetData(model.MediaFiles{
 			{
-				ID:     "1",
-				Path:   "tests/fixtures/test.mp3",
-				Artist: "Rick Astley",
-				Title:  "Never Gonna Give You Up",
-				Lyrics: "[]",
+				ID:          "1",
+				LibraryPath: fixturesDir,
+				Path:        "test.mp3",
+				Artist:      "Rick Astley",
+				Title:       "Never Gonna Give You Up",
+				Lyrics:      "[]",
 			},
 		})
 
@@ -255,13 +259,16 @@ var _ = Describe("GetLyricsBySongId", func() {
 		conf.Server.LyricsPriority = ".ttml,embedded"
 		r := newGetRequest("id=1&enhanced=true")
 
+		fixturesDir, err := filepath.Abs("tests/fixtures")
+		Expect(err).ToNot(HaveOccurred())
 		mockRepo.SetData(model.MediaFiles{
 			{
-				ID:     "1",
-				Path:   "tests/fixtures/test-metadata.mp3",
-				Artist: "Rick Astley",
-				Title:  "Never Gonna Give You Up",
-				Lyrics: "[]",
+				ID:          "1",
+				LibraryPath: fixturesDir,
+				Path:        "test-metadata.mp3",
+				Artist:      "Rick Astley",
+				Title:       "Never Gonna Give You Up",
+				Lyrics:      "[]",
 			},
 		})
 

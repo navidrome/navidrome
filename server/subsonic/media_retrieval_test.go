@@ -8,6 +8,7 @@ import (
 	"errors"
 	"io"
 	"net/http/httptest"
+	"path/filepath"
 	"slices"
 	"time"
 
@@ -164,12 +165,15 @@ var _ = Describe("MediaRetrievalController", func() {
 		})
 		It("should return lyric file when finding mediafile with no embedded lyrics but present on filesystem", func() {
 			r := newGetRequest("artist=Rick+Astley", "title=Never+Gonna+Give+You+Up")
+			fixturesDir, err := filepath.Abs("tests/fixtures")
+			Expect(err).ToNot(HaveOccurred())
 			mockRepo.SetData(model.MediaFiles{
 				{
-					Path:   "tests/fixtures/test.mp3",
-					ID:     "1",
-					Artist: "Rick Astley",
-					Title:  "Never Gonna Give You Up",
+					LibraryPath: fixturesDir,
+					Path:        "test.mp3",
+					ID:          "1",
+					Artist:      "Rick Astley",
+					Title:       "Never Gonna Give You Up",
 				},
 			})
 			response, err := router.GetLyrics(r)
