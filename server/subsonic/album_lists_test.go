@@ -591,6 +591,35 @@ var _ = Describe("Album Lists", func() {
 			Expect(resp.NowPlaying.Entry[1].Title).To(Equal("Track 2"))
 		})
 
+		It("should filter entries by the musicFolderId parameter when provided", func() {
+			mockPlayTracker.NowPlayingData = []scrobbler.PlaybackSession{
+				{
+					MediaFile:  model.MediaFile{ID: "1", Title: "Track 1", LibraryID: 1},
+					Start:      time.Now(),
+					Username:   "user1",
+					PlayerId:   "player1",
+					PlayerName: "Player 1",
+				},
+				{
+					MediaFile:  model.MediaFile{ID: "2", Title: "Track 2", LibraryID: 2},
+					Start:      time.Now(),
+					Username:   "user2",
+					PlayerId:   "player2",
+					PlayerName: "Player 2",
+				},
+			}
+			router := New(ds, nil, nil, nil, nil, nil, nil, nil, nil, mockPlayTracker, nil, nil, nil, nil, nil, nil)
+			ctx := request.WithUser(context.Background(), user)
+			r := newGetRequest("musicFolderId=1")
+			r = r.WithContext(ctx)
+
+			resp, err := router.GetNowPlaying(r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.NowPlaying.Entry).To(HaveLen(1))
+			Expect(resp.NowPlaying.Entry[0].Title).To(Equal("Track 1"))
+		})
+
 		Context("when NowPlaying.AdminOnly is enabled", func() {
 			BeforeEach(func() {
 				DeferCleanup(configtest.SetupConfig())

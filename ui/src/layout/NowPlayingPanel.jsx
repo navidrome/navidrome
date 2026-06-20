@@ -21,6 +21,7 @@ import {
 import { FaRegCirclePlay, FaPause } from 'react-icons/fa6'
 import subsonic from '../subsonic'
 import { useInterval } from '../common'
+import { useSelectedLibraries } from '../common/useLibrarySelection'
 import { nowPlayingCountSync } from '../actions'
 import { formatDuration } from '../utils'
 import config from '../config'
@@ -370,6 +371,9 @@ const NowPlayingPanel = () => {
   const serverUp = useSelector(
     (state) => !!state.activity.serverStart.startTime,
   )
+  // Limit results to libraries the user can access (explicit picker selection,
+  // or all accessible libraries when nothing is narrowed).
+  const libraryIds = useSelectedLibraries()
   const translate = useTranslate()
   const notify = useNotify()
   const theme = useTheme()
@@ -406,7 +410,7 @@ const NowPlayingPanel = () => {
   const doFetchRef = useRef()
   doFetchRef.current = () =>
     subsonic
-      .getNowPlaying()
+      .getNowPlaying(libraryIds)
       .then((resp) => resp.json['subsonic-response'])
       .then((data) => {
         if (data.status === 'ok') {

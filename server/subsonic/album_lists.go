@@ -3,6 +3,7 @@ package subsonic
 import (
 	"context"
 	"net/http"
+	"slices"
 	"strconv"
 	"time"
 
@@ -216,6 +217,19 @@ func (api *Router) GetNowPlaying(r *http.Request) (*responses.Subsonic, error) {
 	if err != nil {
 		log.Error(r, "Error retrieving now playing list", err)
 		return nil, err
+	}
+
+	// Optionally restrict to specific libraries via the standard Subsonic musicFolderId param.
+	// When absent, all entries are returned, per the getNowPlaying spec.
+	requestedFolderIds, _ := req.Params(r).Ints("musicFolderId")
+	if len(requestedFolderIds) > 0 {
+		folderIds, ferr := selectedMusicFolderIds(r, false)
+		if ferr != nil {
+			return nil, ferr
+		}
+		npInfo = slice.Filter(npInfo, func(np scrobbler.PlaybackSession) bool {
+			return slices.Contains(folderIds, np.MediaFile.LibraryID)
+		})
 	}
 
 	var i int32
