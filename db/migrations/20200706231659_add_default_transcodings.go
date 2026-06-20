@@ -13,8 +13,8 @@ func init() {
 	goose.AddMigrationContext(upAddDefaultTranscodings, downAddDefaultTranscodings)
 }
 
-func upAddDefaultTranscodings(_ context.Context, tx *sql.Tx) error {
-	row := tx.QueryRow("SELECT COUNT(*) FROM transcoding")
+func upAddDefaultTranscodings(ctx context.Context, tx *sql.Tx) error {
+	row := tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM transcoding")
 	var count int
 	err := row.Scan(&count)
 	if err != nil {
@@ -38,6 +38,6 @@ func upAddDefaultTranscodings(_ context.Context, tx *sql.Tx) error {
 	return nil
 }
 
-func downAddDefaultTranscodings(_ context.Context, tx *sql.Tx) error {
+func downAddDefaultTranscodings(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

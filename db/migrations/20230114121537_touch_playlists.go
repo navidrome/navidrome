@@ -11,11 +11,11 @@ func init() {
 	goose.AddMigrationContext(upTouchPlaylists, downTouchPlaylists)
 }
 
-func upTouchPlaylists(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`update playlist set updated_at = datetime('now');`)
+func upTouchPlaylists(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `update playlist set updated_at = datetime('now');`)
 	return err
 }
 
-func downTouchPlaylists(_ context.Context, tx *sql.Tx) error {
+func downTouchPlaylists(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

@@ -11,8 +11,8 @@ func init() {
 	goose.AddMigrationContext(upDropEmailUniqueConstraint, downDropEmailUniqueConstraint)
 }
 
-func upDropEmailUniqueConstraint(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func upDropEmailUniqueConstraint(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 create table user_dg_tmp
 (
 	id varchar(255) not null
@@ -38,6 +38,6 @@ alter table user_dg_tmp rename to user;
 	return err
 }
 
-func downDropEmailUniqueConstraint(_ context.Context, tx *sql.Tx) error {
+func downDropEmailUniqueConstraint(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

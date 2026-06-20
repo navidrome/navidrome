@@ -11,6 +11,7 @@ import (
 	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/req"
 )
@@ -277,6 +278,28 @@ func (api *Router) GetTranscodeDecision(w http.ResponseWriter, r *http.Request) 
 		}
 		return stream.IsAACCodec(p.Container)
 	})
+
+	// Honor the player's forced transcoding format, falling back to normal
+	// negotiation when the client can't play it (issue #5583).
+	if trc, ok := request.TranscodingFrom(ctx); ok && trc.TargetFormat != "" {
+		if !clientInfo.ForceFormat(trc.TargetFormat) {
+			clientName := clientInfo.Name
+			if player, ok := request.PlayerFrom(ctx); ok && player.Client != "" {
+				clientName = player.Client
+			}
+			log.Debug(ctx, "Player forced format not supported by client; falling back to negotiation",
+				"forcedFormat", trc.TargetFormat, "client", clientName)
+		}
+	}
+
+	// Apply the player's MaxBitRate as a ceiling on the client's declared
+	// limits (issue #5583). Both fields are capped because the client sends
+	// them independently here; capping only MaxAudioBitrate would let an
+	// independent MaxTranscodingAudioBitrate slip through computeBitrate.
+	if player, ok := request.PlayerFrom(ctx); ok && clientInfo.CapBitrate(player.MaxBitRate) {
+		log.Debug(ctx, "Applied player MaxBitRate cap to transcode decision",
+			"playerMaxBitRate", player.MaxBitRate, "client", clientInfo.Name)
+	}
 
 	// Get media file
 	mf, err := api.ds.MediaFile(ctx).Get(mediaID)

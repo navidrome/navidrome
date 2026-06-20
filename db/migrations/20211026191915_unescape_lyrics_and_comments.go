@@ -13,8 +13,8 @@ func init() {
 	goose.AddMigrationContext(upUnescapeLyricsAndComments, downUnescapeLyricsAndComments)
 }
 
-func upUnescapeLyricsAndComments(_ context.Context, tx *sql.Tx) error {
-	rows, err := tx.Query(`select id, comment, lyrics, title from media_file`)
+func upUnescapeLyricsAndComments(ctx context.Context, tx *sql.Tx) error {
+	rows, err := tx.QueryContext(ctx, `select id, comment, lyrics, title from media_file`)
 	if err != nil {
 		return err
 	}
@@ -43,6 +43,6 @@ func upUnescapeLyricsAndComments(_ context.Context, tx *sql.Tx) error {
 	return rows.Err()
 }
 
-func downUnescapeLyricsAndComments(_ context.Context, tx *sql.Tx) error {
+func downUnescapeLyricsAndComments(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

@@ -403,6 +403,14 @@ func buildDynamicArgs(opts TranscodeOptions) []string {
 	args = append(args, "-i", opts.FilePath)
 	args = append(args, "-map", "0:a:0")
 
+	// Preserve source tags. -map_metadata 0 copies format-level tags (MP3/FLAC);
+	// -map_metadata 0:s:a:0 copies tags from the first audio stream (OPUS/OGG).
+	// Both are needed because the two source families store tags at different
+	// levels. Targeting the audio stream explicitly (s:a:0 rather than s:0) avoids
+	// pulling metadata from an embedded cover-art/video stream at index 0. Note:
+	// adts (AAC) output cannot hold tags, so these are a no-op there.
+	args = append(args, "-map_metadata", "0", "-map_metadata", "0:s:a:0")
+
 	if codec, ok := formatCodecMap[opts.Format]; ok {
 		args = append(args, "-c:a", codec)
 	}

@@ -253,7 +253,11 @@ func (r *libraryRepositoryWrapper) Delete(id string) error {
 		return r.mapError(err)
 	}
 
-	err = r.LibraryRepository.Delete(libID)
+	// Run the deletion in a transaction so the cascade delete and the orphaned-artist
+	// reconciliation it triggers (see libraryRepository.Delete) commit atomically.
+	err = r.ds.WithTx(func(tx model.DataStore) error {
+		return tx.Library(r.ctx).Delete(libID)
+	}, "delete library")
 	if err != nil {
 		return r.mapError(err)
 	}

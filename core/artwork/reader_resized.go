@@ -21,6 +21,12 @@ import (
 
 func init() {
 	conf.AddHook(func() {
+		// gen2brain/webp selects native (purego/libwebp) vs WASM in its own
+		// package init() and exposes the result only via webp.Dynamic(); there is
+		// no runtime way to switch back. On 32-bit ARM/x86 the purego callback path
+		// crashes (issue #5597), so those builds must be compiled with the
+		// "nodynamic" tag (see Dockerfile), which makes webp.Dynamic() report an
+		// error here and forces the safe WASM path.
 		if err := webp.Dynamic(); err != nil {
 			log.Debug("Using WASM WebP encoder/decoder", "reason", err)
 		} else {

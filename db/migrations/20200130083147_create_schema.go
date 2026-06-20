@@ -12,9 +12,9 @@ func init() {
 	goose.AddMigrationContext(Up20200130083147, Down20200130083147)
 }
 
-func Up20200130083147(_ context.Context, tx *sql.Tx) error {
+func Up20200130083147(ctx context.Context, tx *sql.Tx) error {
 	log.Info("Creating DB Schema")
-	_, err := tx.Exec(`
+	_, err := tx.ExecContext(ctx, `
 create table if not exists album
 (
 	id varchar(255) not null
@@ -179,6 +179,6 @@ create table if not exists user
 	return err
 }
 
-func Down20200130083147(_ context.Context, tx *sql.Tx) error {
+func Down20200130083147(_ context.Context, _ *sql.Tx) error {
 	return nil
 }
