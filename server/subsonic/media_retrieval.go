@@ -13,7 +13,6 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/resources"
-	"github.com/navidrome/navidrome/server/subsonic/filter"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/gravatar"
 	"github.com/navidrome/navidrome/utils/req"
@@ -98,22 +97,13 @@ func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {
 	response := newResponse()
 	lyricsResponse := responses.Lyrics{}
 	response.Lyrics = &lyricsResponse
-	mediaFiles, err := api.ds.MediaFile(r.Context()).GetAll(filter.SongsByArtistTitleWithLyricsFirst(artist, title))
-
+	structuredLyrics, err := api.lyrics.GetLyricsByArtistTitle(r.Context(), artist, title)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(mediaFiles) == 0 {
-		return response, nil
-	}
-
-	structuredLyrics, err := api.lyrics.GetLyrics(r.Context(), &mediaFiles[0])
-	if err != nil {
-		return nil, err
-	}
-
-	if len(structuredLyrics) == 0 {
+	mainLyric, ok := structuredLyrics.Main()
+	if !ok {
 		return response, nil
 	}
 
@@ -121,10 +111,9 @@ func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {
 	lyricsResponse.Title = title
 
 	var lyricsText strings.Builder
-	for _, line := range structuredLyrics[0].Line {
+	for _, line := range mainLyric.Line {
 		lyricsText.WriteString(line.Value + "\n")
 	}
-
 	lyricsResponse.Value = lyricsText.String()
 
 	return response, nil
@@ -146,8 +135,10 @@ func (api *Router) GetLyricsBySongId(r *http.Request) (*responses.Subsonic, erro
 		return nil, err
 	}
 
+	enhanced, _ := req.Params(r).Bool("enhanced")
+
 	response := newResponse()
-	response.LyricsList = buildLyricsList(mediaFile, structuredLyrics)
+	response.LyricsList = buildLyricsList(mediaFile, structuredLyrics, enhanced)
 
 	return response, nil
 }

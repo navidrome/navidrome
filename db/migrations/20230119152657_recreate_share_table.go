@@ -11,8 +11,8 @@ func init() {
 	goose.AddMigrationContext(upAddMissingShareInfo, downAddMissingShareInfo)
 }
 
-func upAddMissingShareInfo(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func upAddMissingShareInfo(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 drop table if exists share;
 create table share
 (
@@ -37,6 +37,6 @@ create table share
 	return err
 }
 
-func downAddMissingShareInfo(_ context.Context, tx *sql.Tx) error {
+func downAddMissingShareInfo(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

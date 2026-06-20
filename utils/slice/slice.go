@@ -42,6 +42,16 @@ func ToMap[T any, K comparable, V any](s []T, transformFunc func(T) (K, V)) map[
 	return m
 }
 
+// ToSet builds a set (a map keyed by the slice's elements) for O(1) membership tests. Duplicate
+// elements collapse to a single key.
+func ToSet[T comparable](s []T) map[T]struct{} {
+	m := make(map[T]struct{}, len(s))
+	for _, item := range s {
+		m[item] = struct{}{}
+	}
+	return m
+}
+
 func CompactByFrequency[T comparable](list []T) []T {
 	counters := make(map[T]int)
 	for _, item := range list {

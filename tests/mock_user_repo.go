@@ -57,6 +57,18 @@ func (u *MockedUserRepo) FindByUsernameWithPassword(username string) (*model.Use
 	return u.FindByUsername(username)
 }
 
+func (u *MockedUserRepo) FindFirstAdmin() (*model.User, error) {
+	if u.Error != nil {
+		return nil, u.Error
+	}
+	for _, usr := range u.Data {
+		if usr.IsAdmin {
+			return usr, nil
+		}
+	}
+	return nil, model.ErrNotFound
+}
+
 func (u *MockedUserRepo) Get(id string) (*model.User, error) {
 	if u.Error != nil {
 		return nil, u.Error

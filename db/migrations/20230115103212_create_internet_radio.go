@@ -11,8 +11,8 @@ func init() {
 	goose.AddMigrationContext(upCreateInternetRadio, downCreateInternetRadio)
 }
 
-func upCreateInternetRadio(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func upCreateInternetRadio(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 create table if not exists radio
 (
     id            varchar(255) not null primary key,
@@ -26,6 +26,6 @@ create table if not exists radio
 	return err
 }
 
-func downCreateInternetRadio(_ context.Context, tx *sql.Tx) error {
+func downCreateInternetRadio(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

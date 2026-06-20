@@ -4,12 +4,14 @@ import "strings"
 
 // FieldInfo contains semantic metadata about a criteria field.
 type FieldInfo struct {
-	Alias    string // If set, this field is a backward-compat alias for another canonical name
-	IsTag    bool
-	IsRole   bool
-	Numeric  bool
-	Boolean  bool
-	Nullable bool // If set, this column field can be NULL, so isMissing/isPresent are supported on it
+	Alias   string // If set, this field is a backward-compat alias for another canonical name
+	IsTag   bool
+	IsRole  bool
+	Numeric bool
+	Boolean bool
+	// Nullable: isMissing/isPresent are supported on this column field. For numeric/boolean
+	// fields, missing means NULL; for string fields it means NULL or empty string.
+	Nullable bool
 
 	tagAlias string // If set, a tag name from mappings.yaml that resolves to this field
 	name     string // Canonical name, populated by LookupField from the map key
@@ -22,7 +24,7 @@ func (f FieldInfo) Name() string {
 
 var fieldMap = map[string]FieldInfo{
 	"title":                {},
-	"album":                {},
+	"album":                {Nullable: true},
 	"hascoverart":          {Boolean: true},
 	"tracknumber":          {},
 	"discnumber":           {},
@@ -35,26 +37,26 @@ var fieldMap = map[string]FieldInfo{
 	"size":                 {},
 	"compilation":          {Boolean: true},
 	"missing":              {Boolean: true},
-	"explicitstatus":       {},
+	"explicitstatus":       {Nullable: true},
 	"dateadded":            {},
 	"datemodified":         {},
-	"discsubtitle":         {},
-	"comment":              {},
-	"lyrics":               {},
-	"sorttitle":            {},
-	"sortalbum":            {},
-	"sortartist":           {},
-	"sortalbumartist":      {},
-	"albumcomment":         {},
-	"catalognumber":        {},
+	"discsubtitle":         {Nullable: true},
+	"comment":              {Nullable: true},
+	"lyrics":               {Nullable: true},
+	"sorttitle":            {Nullable: true},
+	"sortalbum":            {Nullable: true},
+	"sortartist":           {Nullable: true},
+	"sortalbumartist":      {Nullable: true},
+	"albumcomment":         {Nullable: true},
+	"catalognumber":        {Nullable: true},
 	"filepath":             {},
 	"filetype":             {},
 	"codec":                {},
 	"duration":             {},
 	"bitrate":              {},
-	"bitdepth":             {},
+	"bitdepth":             {Numeric: true, Nullable: true},
 	"samplerate":           {},
-	"bpm":                  {},
+	"bpm":                  {Numeric: true, Nullable: true},
 	"channels":             {},
 	"loved":                {Boolean: true},
 	"dateloved":            {},
@@ -75,12 +77,12 @@ var fieldMap = map[string]FieldInfo{
 	"artistlastplayed":     {},
 	"artistdateloved":      {},
 	"artistdaterated":      {},
-	"mbz_album_id":         {},
-	"mbz_album_artist_id":  {},
-	"mbz_artist_id":        {},
-	"mbz_recording_id":     {},
-	"mbz_release_track_id": {},
-	"mbz_release_group_id": {},
+	"mbz_album_id":         {Nullable: true},
+	"mbz_album_artist_id":  {Nullable: true},
+	"mbz_artist_id":        {Nullable: true},
+	"mbz_recording_id":     {Nullable: true},
+	"mbz_release_track_id": {Nullable: true},
+	"mbz_release_group_id": {Nullable: true},
 	"rgalbumgain":          {Numeric: true, Nullable: true},
 	"rgalbumpeak":          {Numeric: true, Nullable: true},
 	"rgtrackgain":          {Numeric: true, Nullable: true},
