@@ -246,43 +246,40 @@ func (s matchScore) betterThan(other matchScore) bool {
 // when the same track is scored against multiple queries. The `mf` field is a pointer to avoid
 // copying the large MediaFile struct into each entry of the sanitized slice.
 type sanitizedTrack struct {
-	mf     *model.MediaFile
-	title  string
-	artist string
-	album  string
+	mf         *model.MediaFile
+	title      string
+	artist     string
+	album      string
+	artistMBID string // resolved from the artist table; mf.MbzArtistID is not populated on the bulk path
 }
 
-func newSanitizedTrack(mf *model.MediaFile) sanitizedTrack {
+func newSanitizedTrack(mf *model.MediaFile, artistMBID string) sanitizedTrack {
 	return sanitizedTrack{
-		mf:     mf,
-		title:  str.SanitizeFieldForSorting(mf.Title),
-		artist: str.SanitizeFieldForSortingNoArticle(mf.Artist),
-		album:  str.SanitizeFieldForSorting(mf.Album),
+		mf:         mf,
+		title:      str.SanitizeFieldForSorting(mf.Title),
+		artist:     str.SanitizeFieldForSortingNoArticle(mf.Artist),
+		album:      str.SanitizeFieldForSorting(mf.Album),
+		artistMBID: artistMBID,
 	}
 }
 
 // computeSpecificityLevel determines how well query metadata matches a track (0-5).
-// The track's title, artist, and album fields must be pre-sanitized.
-//
-// TODO: the artist-MBID levels (5, 4, 2) read the deprecated MediaFile.MbzArtistID
-// column, which is not populated — the artist MBID lives in the artist table and is
-// only hydrated by GetWithParticipants, not the bulk GetAll path used here. As a
-// result those levels never fire. To make them work, hydrate the artist participant
-// (or denormalize mbz_artist_id onto media_file) so t.mf carries the artist MBID.
+// The track's title, artist, and album fields must be pre-sanitized, and artistMBID
+// must hold the resolved artist MBID.
 func computeSpecificityLevel(q songQuery, t sanitizedTrack, albumThreshold float64) int {
 	if q.artistMBID != "" && q.albumMBID != "" &&
-		t.mf.MbzArtistID == q.artistMBID && t.mf.MbzAlbumID == q.albumMBID {
+		t.artistMBID == q.artistMBID && t.mf.MbzAlbumID == q.albumMBID {
 		return 5
 	}
 	if q.artistMBID != "" && q.album != "" &&
-		t.mf.MbzArtistID == q.artistMBID && similarityRatio(t.album, q.album) >= albumThreshold {
+		t.artistMBID == q.artistMBID && similarityRatio(t.album, q.album) >= albumThreshold {
 		return 4
 	}
 	if q.artist != "" && q.album != "" &&
 		t.artist == q.artist && similarityRatio(t.album, q.album) >= albumThreshold {
 		return 3
 	}
-	if q.artistMBID != "" && t.mf.MbzArtistID == q.artistMBID {
+	if q.artistMBID != "" && t.artistMBID == q.artistMBID {
 		return 2
 	}
 	if q.artist != "" && t.artist == q.artist {
@@ -353,7 +350,7 @@ func (m *Matcher) matchByTitle(ctx context.Context, songs []agents.Song, result 
 		if key == "" {
 			key = str.SanitizeFieldForSortingNoArticle(tracks[i].Artist)
 		}
-		tracksByArtist[key] = append(tracksByArtist[key], newSanitizedTrack(&tracks[i]))
+		tracksByArtist[key] = append(tracksByArtist[key], newSanitizedTrack(&tracks[i], ""))
 	}
 
 	threshold := float64(conf.Server.Matcher.FuzzyThreshold) / 100.0
