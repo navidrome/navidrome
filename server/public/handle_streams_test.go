@@ -131,17 +131,24 @@ var _ = Describe("handleStream", func() {
 		return w
 	}
 
-	It("passes all validation and reaches the streamer for a valid token", func() {
+	// shareOwnedBy wires a "share123" share owned by the given user, and a single
+	// media file. It is used by the owner-access tests below.
+	shareOwnedBy := func(owner model.User, mf model.MediaFile) {
 		shareRepo.ID = "share123"
-		shareRepo.Entity = &model.Share{ID: "share123", UserID: "owner1"}
-
+		shareRepo.Entity = &model.Share{ID: "share123", UserID: owner.ID}
 		userRepo := tests.CreateMockUserRepo()
-		Expect(userRepo.Put(&model.User{ID: "owner1", UserName: "owner1", IsAdmin: true})).To(Succeed())
+		Expect(userRepo.Put(&owner)).To(Succeed())
 		ds.MockedUser = userRepo
-
 		mfRepo := tests.CreateMockMediaFileRepo()
-		mfRepo.SetData(model.MediaFiles{{ID: "mf-123", Title: "Test Song"}})
+		mfRepo.SetData(model.MediaFiles{mf})
 		ds.MockedMediaFile = mfRepo
+	}
+
+	It("passes all validation and reaches the streamer for a valid token", func() {
+		shareOwnedBy(
+			model.User{ID: "owner1", UserName: "owner1", IsAdmin: true},
+			model.MediaFile{ID: "mf-123", Title: "Test Song"},
+		)
 
 		claims := auth.Claims{ID: "mf-123", Format: "mp3", BitRate: 192, ShareID: "share123"}
 		token, _ := auth.CreateExpiringPublicToken(time.Now().Add(time.Hour), claims)
@@ -153,16 +160,10 @@ var _ = Describe("handleStream", func() {
 	})
 
 	It("returns 404 when the track is outside the share owner's libraries", func() {
-		shareRepo.ID = "share123"
-		shareRepo.Entity = &model.Share{ID: "share123", UserID: "owner1"}
-
-		userRepo := tests.CreateMockUserRepo()
-		Expect(userRepo.Put(&model.User{ID: "owner1", UserName: "owner1", Libraries: model.Libraries{{ID: 1}}})).To(Succeed())
-		ds.MockedUser = userRepo
-
-		mfRepo := tests.CreateMockMediaFileRepo()
-		mfRepo.SetData(model.MediaFiles{{ID: "mf-restricted", Title: "Other Lib Track", LibraryID: 2}})
-		ds.MockedMediaFile = mfRepo
+		shareOwnedBy(
+			model.User{ID: "owner1", UserName: "owner1", Libraries: model.Libraries{{ID: 1}}},
+			model.MediaFile{ID: "mf-restricted", Title: "Other Lib Track", LibraryID: 2},
+		)
 
 		claims := auth.Claims{ID: "mf-restricted", ShareID: "share123"}
 		token, _ := auth.CreateExpiringPublicToken(time.Now().Add(time.Hour), claims)
@@ -173,16 +174,10 @@ var _ = Describe("handleStream", func() {
 	})
 
 	It("streams a track inside the share owner's libraries", func() {
-		shareRepo.ID = "share123"
-		shareRepo.Entity = &model.Share{ID: "share123", UserID: "owner1"}
-
-		userRepo := tests.CreateMockUserRepo()
-		Expect(userRepo.Put(&model.User{ID: "owner1", UserName: "owner1", Libraries: model.Libraries{{ID: 1}}})).To(Succeed())
-		ds.MockedUser = userRepo
-
-		mfRepo := tests.CreateMockMediaFileRepo()
-		mfRepo.SetData(model.MediaFiles{{ID: "mf-ok", Title: "OK", LibraryID: 1}})
-		ds.MockedMediaFile = mfRepo
+		shareOwnedBy(
+			model.User{ID: "owner1", UserName: "owner1", Libraries: model.Libraries{{ID: 1}}},
+			model.MediaFile{ID: "mf-ok", Title: "OK", LibraryID: 1},
+		)
 
 		claims := auth.Claims{ID: "mf-ok", Format: "mp3", ShareID: "share123"}
 		token, _ := auth.CreateExpiringPublicToken(time.Now().Add(time.Hour), claims)

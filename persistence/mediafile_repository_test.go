@@ -909,8 +909,7 @@ var _ = Describe("MediaRepository", func() {
 
 			AfterEach(func() {
 				adminCtx := request.WithUser(GinkgoT().Context(), adminUser)
-				adminMr := NewMediaFileRepository(adminCtx, GetDBXBuilder()).(*mediaFileRepository)
-				_, _ = adminMr.executeSQL(squirrel.Delete("media_file").Where(squirrel.Eq{"id": "otherlib-track"}))
+				_ = NewMediaFileRepository(adminCtx, GetDBXBuilder()).Delete("otherlib-track")
 				lr := NewLibraryRepository(adminCtx, GetDBXBuilder()).(*libraryRepository)
 				_ = lr.delete(squirrel.Eq{"id": otherLib.ID})
 			})

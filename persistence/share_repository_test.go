@@ -193,12 +193,9 @@ var _ = Describe("ShareRepository", func() {
 			share, err := adminRepo.Get("share-scope")
 			Expect(err).ToNot(HaveOccurred())
 
-			ids := make([]string, 0, len(share.Tracks))
-			for _, t := range share.Tracks {
-				ids = append(ids, t.ID)
-			}
-			Expect(ids).To(ContainElement("share-ok"))
-			Expect(ids).ToNot(ContainElement("share-other"), "a track outside the owner's libraries must not appear in the share")
+			Expect(share.Tracks).To(ContainElement(HaveField("ID", "share-ok")))
+			Expect(share.Tracks).ToNot(ContainElement(HaveField("ID", "share-other")),
+				"a track outside the owner's libraries must not appear in the share")
 		})
 	})
 
