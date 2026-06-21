@@ -198,6 +198,34 @@ var _ = Describe("ShareRepository", func() {
 			Expect(share.Tracks).ToNot(ContainElement(HaveField("ID", "share-other")),
 				"a track outside the owner's libraries must not appear in the share")
 		})
+
+		It("returns no tracks when the playlist is not visible to the owner", func() {
+			// A private playlist owned by someone else: the share owner can no longer
+			// see it, so Tracks() returns nil. The share must render with no tracks
+			// instead of panicking.
+			privatePlsID := "private-pls"
+			adminCtx := request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
+			pr := NewPlaylistRepository(adminCtx, GetDBXBuilder())
+			privatePls := &model.Playlist{ID: privatePlsID, Name: "Private", OwnerID: adminUser.ID, Public: false}
+			privatePls.AddMediaFiles(model.MediaFiles{{ID: "share-ok"}})
+			Expect(pr.Put(privatePls)).To(Succeed())
+			DeferCleanup(func() { _ = pr.Delete(privatePlsID) })
+
+			_, err := GetDBXBuilder().NewQuery(`
+				INSERT INTO share (id, user_id, description, resource_type, resource_ids, created_at, updated_at)
+				VALUES ({:id}, {:user}, {:desc}, {:type}, {:ids}, {:created}, {:updated})
+			`).Bind(map[string]any{
+				"id": "share-private", "user": owner.ID, "desc": "Private share",
+				"type": "playlist", "ids": privatePlsID, "created": time.Now(), "updated": time.Now(),
+			}).Execute()
+			Expect(err).ToNot(HaveOccurred())
+			DeferCleanup(func() { _, _ = GetDBXBuilder().NewQuery(`DELETE FROM share WHERE id = 'share-private'`).Execute() })
+
+			adminRepo := NewShareRepository(adminCtx, GetDBXBuilder())
+			share, err := adminRepo.Get("share-private")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(share.Tracks).To(BeEmpty())
+		})
 	})
 
 	Describe("Ownership Checks", func() {

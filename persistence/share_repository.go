@@ -110,7 +110,14 @@ func (r *shareRepository) loadMedia(share *model.Share) error {
 		}
 		ctx := request.WithUser(r.ctx, *owner)
 		plsRepo := NewPlaylistRepository(ctx, r.db)
-		tracks, err := plsRepo.Tracks(ids[0], true).GetAll(model.QueryOptions{Sort: "id", Filters: noMissing(Eq{})})
+		// Tracks returns nil when the playlist is no longer visible to the owner
+		// (e.g. it was made private after the share was created); leave the share
+		// with no tracks rather than exposing it.
+		trackRepo := plsRepo.Tracks(ids[0], true)
+		if trackRepo == nil {
+			return nil
+		}
+		tracks, err := trackRepo.GetAll(model.QueryOptions{Sort: "id", Filters: noMissing(Eq{})})
 		if err != nil {
 			return err
 		}
