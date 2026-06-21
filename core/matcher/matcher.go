@@ -352,10 +352,7 @@ func computeSpecificityLevel(q songQuery, t sanitizedTrack, albumThreshold float
 	if q.artist != "" && t.artist == q.artist {
 		return 1
 	}
-	if t.title == q.title {
-		return 0
-	}
-	return -1
+	return 0
 }
 
 // indexedQuery pairs a normalized songQuery with the index of the input song
