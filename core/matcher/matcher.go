@@ -331,9 +331,8 @@ func (m *Matcher) matchByTitle(ctx context.Context, songs []agents.Song, result 
 	return nil
 }
 
-// groupQueriesByArtist builds the per-artist (sanitized name) buckets of title queries,
-// skipping songs already matched by a higher-priority loader and those without an artist
-// (title matching needs an artist to scope the library query).
+// groupQueriesByArtist buckets the still-unmatched title queries by sanitized artist name.
+// Songs without an artist are skipped: title matching needs one to scope the library query.
 func groupQueriesByArtist(songs []agents.Song, result map[int]model.MediaFile) map[string][]indexedQuery {
 	byArtist := map[string][]indexedQuery{}
 	for i, s := range songs {
@@ -409,8 +408,8 @@ func (m *Matcher) resolveArtists(ctx context.Context, byArtist map[string][]inde
 	return res, nil
 }
 
-// own records that the named query owns the given artist ID. byQuery is always initialized by
-// resolveArtists, and a name that is not a query simply gets its own (unused) entry.
+// own records that the named query owns the given artist ID. A name that is not a query simply
+// gets its own (unused) entry.
 func (r resolvedArtists) own(name, artistID string) {
 	if r.byQuery[name] == nil {
 		r.byQuery[name] = map[string]struct{}{}
@@ -418,13 +417,9 @@ func (r resolvedArtists) own(name, artistID string) {
 	r.byQuery[name][artistID] = struct{}{}
 }
 
-// bucketTracks maps each query name to the tracks credited to one of its resolved artists.
-// A track is bucketed at most once per query even if it credits several of that query's
-// artists, preventing duplicate scoring of the same track.
-//
-// It reads each track's Participants[RoleArtist] IDs, which the bulk GetAll path populates from
-// the inline participants JSON. That cache carries artist IDs (enough to route here) but not the
-// artist MBID — the MBID comes from r.mbid, resolved against the artist table by resolveArtists.
+// bucketTracks groups tracks by query name, at most once per query even when a track credits
+// several of that query's artists, so the same track is not scored twice. The participants JSON
+// on each track carries artist IDs but not their MBID, so the MBID comes from r.mbid instead.
 func (r resolvedArtists) bucketTracks(tracks []model.MediaFile) map[string][]sanitizedTrack {
 	// Invert byQuery once so each participant maps straight to the queries that own it, instead of
 	// scanning every query per participant.
@@ -458,16 +453,13 @@ func (r resolvedArtists) bucketTracks(tracks []model.MediaFile) map[string][]san
 	return byQuery
 }
 
-// fetchTracksCreditedTo fetches every non-missing track credited as the main artist
-// (role='artist', not albumartist — that avoids tribute/compilation false positives) to any of
-// the given artist IDs. The non-correlated id IN (subquery) lets SQLite materialize the
-// matching media_file ids once from the media_file_artists(artist_id) covering index and probe
-// by primary key, which is far cheaper than a correlated EXISTS that re-runs per media_file row.
-//
-// The raw squirrel.Expr keeps schema knowledge (the media_file_artists table) in this layer on
-// purpose: the non-correlated IN-subquery form is not expressible via the repository's existing
-// role filters, which use the slower correlated EXISTS. A dedicated repository method would be
-// the cleaner home if this is reused.
+// fetchTracksCreditedTo fetches every non-missing track credited to any of the given artists as
+// the main artist (role='artist', not albumartist — that avoids tribute/compilation false
+// positives). The non-correlated id IN (subquery) materializes the matching ids once from the
+// media_file_artists(artist_id) covering index, far cheaper than a correlated EXISTS that re-runs
+// per row. That form isn't expressible via the repository's role filters, so the raw squirrel.Expr
+// keeps the media_file_artists schema knowledge here; a dedicated repository method would be the
+// cleaner home if this is reused.
 func (m *Matcher) fetchTracksCreditedTo(ctx context.Context, artistIDs []string) (model.MediaFiles, error) {
 	if len(artistIDs) == 0 {
 		return nil, nil
