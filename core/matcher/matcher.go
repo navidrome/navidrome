@@ -385,17 +385,20 @@ func (m *Matcher) matchByTitle(ctx context.Context, songs []agents.Song, result 
 
 	// Phase 2: fetch every track credited (role='artist') to a resolved artist, in one
 	// query. role='artist' (not albumartist) avoids tribute/compilation false positives.
+	// Use a non-correlated id IN (subquery): SQLite materializes the matching media_file
+	// ids once from the media_file_artists(artist_id) covering index, then probes by PK —
+	// dramatically cheaper than a correlated EXISTS that re-runs per media_file row.
 	placeholders := strings.Repeat("?,", len(allArtistIDs))
 	placeholders = placeholders[:len(placeholders)-1]
-	existsArgs := make([]any, len(allArtistIDs))
+	artistArgs := make([]any, len(allArtistIDs))
 	for i, id := range allArtistIDs {
-		existsArgs[i] = id
+		artistArgs[i] = id
 	}
 	tracks, err := m.ds.MediaFile(ctx).GetAll(model.QueryOptions{
 		Filters: squirrel.And{
 			squirrel.Expr(
-				"EXISTS (SELECT 1 FROM media_file_artists mfa WHERE mfa.media_file_id = media_file.id "+
-					"AND mfa.role = 'artist' AND mfa.artist_id IN ("+placeholders+"))", existsArgs...),
+				"media_file.id IN (SELECT media_file_id FROM media_file_artists "+
+					"WHERE role = 'artist' AND artist_id IN ("+placeholders+"))", artistArgs...),
 			squirrel.Eq{"missing": false},
 		},
 		Sort: "starred desc, rating desc, year asc, compilation asc",
