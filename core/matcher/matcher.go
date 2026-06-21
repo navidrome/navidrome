@@ -243,9 +243,8 @@ func (s matchScore) betterThan(other matchScore) bool {
 }
 
 // sanitizedTrack holds pre-sanitized fields for a media file, avoiding redundant sanitization
-// when the same track is scored against multiple queries in the inner loop. The `mf` field
-// is a pointer to avoid copying the large MediaFile struct into each entry of the per-artist
-// sanitized slice.
+// when the same track is scored against multiple queries. The `mf` field is a pointer to avoid
+// copying the large MediaFile struct into each entry of the sanitized slice.
 type sanitizedTrack struct {
 	mf     *model.MediaFile
 	title  string
@@ -264,6 +263,12 @@ func newSanitizedTrack(mf *model.MediaFile) sanitizedTrack {
 
 // computeSpecificityLevel determines how well query metadata matches a track (0-5).
 // The track's title, artist, and album fields must be pre-sanitized.
+//
+// TODO: the artist-MBID levels (5, 4, 2) read the deprecated MediaFile.MbzArtistID
+// column, which is not populated — the artist MBID lives in the artist table and is
+// only hydrated by GetWithParticipants, not the bulk GetAll path used here. As a
+// result those levels never fire. To make them work, hydrate the artist participant
+// (or denormalize mbz_artist_id onto media_file) so t.mf carries the artist MBID.
 func computeSpecificityLevel(q songQuery, t sanitizedTrack, albumThreshold float64) int {
 	if q.artistMBID != "" && q.albumMBID != "" &&
 		t.mf.MbzArtistID == q.artistMBID && t.mf.MbzAlbumID == q.albumMBID {
@@ -319,10 +324,8 @@ func (m *Matcher) matchByTitle(ctx context.Context, songs []agents.Song, result 
 		return nil
 	}
 
-	// Fetch all candidate tracks for every artist in the batch with a single query
-	// (order_artist_name IN (...)) instead of one query per artist. On a large
-	// library a batch of songs spans dozens of artists, and the per-query overhead
-	// dominates, so collapsing the round-trips is the main cost saver here.
+	// One batched query (order_artist_name IN ...) instead of one per artist: on a
+	// large library the per-query overhead dominates, so this is the main cost saver.
 	artists := make([]string, 0, len(byArtist))
 	for artist := range byArtist {
 		artists = append(artists, artist)
@@ -338,11 +341,12 @@ func (m *Matcher) matchByTitle(ctx context.Context, songs []agents.Song, result 
 		return err
 	}
 
-	// Group by order_artist_name — the exact field the query filtered on, which
-	// matches how byArtist is keyed (a track's display Artist may differ from its
-	// sort/album artist, so re-deriving from tracks[i].Artist would misbucket).
-	// Fall back to sanitizing Artist when order_artist_name is unset (the same
-	// normalization the query artist uses).
+	// Key on order_artist_name — the exact field the query filtered on, which matches
+	// how byArtist is keyed. A track's display Artist can differ (collaborations,
+	// "feat." credits), so re-deriving from Artist would misbucket. This reads the
+	// deprecated MediaFile.OrderArtistName column because the bulk GetAll path does
+	// not hydrate participant detail (only {id, name}), so the participant's order
+	// name is empty here; the column is the only populated source.
 	tracksByArtist := make(map[string][]sanitizedTrack, len(byArtist))
 	for i := range tracks {
 		key := tracks[i].OrderArtistName

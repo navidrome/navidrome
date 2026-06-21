@@ -268,6 +268,26 @@ var _ = Describe("Matcher", func() {
 			})
 		})
 
+		Context("artist grouping", func() {
+			It("groups title-phase tracks by order_artist_name, not display Artist", func() {
+				songs := []agents.Song{
+					{Name: "Song A", Artist: "Daft Punk"},
+				}
+				// Display Artist differs from the query artist; only OrderArtistName
+				// matches, so grouping must key on it (a "feat." credit, collaboration, etc.).
+				track := model.MediaFile{
+					ID: "oan-track", Title: "Song A",
+					Artist: "Daft Punk feat. Pharrell", OrderArtistName: "daft punk",
+				}
+				allowTitlePhase(model.MediaFiles{track})
+
+				result, err := m.MatchSongs(ctx, songs, 5)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result).To(HaveLen(1))
+				Expect(result[0].ID).To(Equal("oan-track"))
+			})
+		})
+
 		// These tests register their own order_artist_name expectation per-test (to inject
 		// an error), so they use allowIdentifierPhases — NOT allowOtherPhases, which would
 		// add a .Maybe() title-phase catch-all that masks the injected error.
