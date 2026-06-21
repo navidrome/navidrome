@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"math/rand"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -14,6 +16,40 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
+
+// seedLargeDatabaseForBackup creates a side table with enough rows to force
+// the sqlite3_backup_step page count past backupStepPageCount. With the
+// default 4KiB page size and ~50 bytes per row, ~1000+ rows span more than
+// one chunk in the new chunked backup loop. Using a dedicated table avoids
+// relying on mediafile / annotation schemas that change across migrations.
+func seedLargeDatabaseForBackup() {
+	conn, err := Db().Conn(context.Background())
+	Expect(err).ToNot(HaveOccurred())
+	defer conn.Close()
+
+	_, err = conn.ExecContext(context.Background(),
+		"CREATE TABLE IF NOT EXISTS backup_chunk_test (id INTEGER PRIMARY KEY, payload TEXT NOT NULL)")
+	if err != nil {
+		return
+	}
+	_, err = conn.ExecContext(context.Background(), "DELETE FROM backup_chunk_test")
+	if err != nil {
+		return
+	}
+
+	stmt, err := conn.PrepareContext(context.Background(),
+		"INSERT INTO backup_chunk_test (payload) VALUES (?)")
+	if err != nil {
+		return
+	}
+	defer stmt.Close()
+
+	// 2000 rows × ~80 bytes of payload → comfortably spans multiple pages.
+	payload := strings.Repeat("x", 80)
+	for i := 0; i < 2000; i++ {
+		_, _ = stmt.ExecContext(context.Background(), payload)
+	}
+}
 
 func shortTime(year int, month time.Month, day, hour, minute int) time.Time {
 	return time.Date(year, month, day, hour, minute, 0, 0, time.UTC)
@@ -145,6 +181,41 @@ var _ = Describe("database backups", func() {
 			err = Restore(ctx, path)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(IsSchemaEmpty(ctx, Db())).To(BeFalse())
+		})
+
+		It("surfaces the underlying sqlite error when a step fails", func() {
+			// Pre-create the backup file and chmod it read-only so the
+			// sql.Open at the destination succeeds (the file exists) but the
+			// first sqlite3_backup_step write attempt fails. The previous
+			// implementation collapsed this into the unhelpful message
+			// "backup not done with step -1"; the chunked loop now includes
+			// the underlying error and remaining page count (issue #5305).
+			tempFolder, err := os.MkdirTemp("", "navidrome_backup_unwritable")
+			Expect(err).ToNot(HaveOccurred())
+			DeferCleanup(func() { _ = os.RemoveAll(tempFolder) })
+
+			readOnlyPath := filepath.Join(tempFolder, "readonly.db")
+			Expect(os.WriteFile(readOnlyPath, []byte{}, 0o644)).To(Succeed())
+			Expect(os.Chmod(readOnlyPath, 0o444)).To(Succeed())
+			DeferCleanup(func() { _ = os.Chmod(readOnlyPath, 0o644) })
+
+			err = BackupTo(ctx, readOnlyPath)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("error during backup step"))
+		})
+
+		It("completes a backup that requires multiple Step chunks", func() {
+			// Seed enough data that the default SQLite page size forces more than
+			// one Step(backupStepPageCount) iteration, proving the chunked loop
+			// terminates cleanly when the source is large enough to span chunks.
+			seedLargeDatabaseForBackup()
+
+			path, err := Backup(ctx)
+			Expect(err).ToNot(HaveOccurred())
+
+			backup, err := sql.Open(Driver, path)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(IsSchemaEmpty(ctx, backup)).To(BeFalse())
 		})
 	})
 })

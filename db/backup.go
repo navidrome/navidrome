@@ -32,6 +32,13 @@ func backupPath(t time.Time) string {
 	)
 }
 
+// backupStepPageCount is the number of database pages copied per Step call.
+// Bounded so that the read lock on the source database is released between
+// chunks, allowing concurrent writes. Smaller values reduce lock-hold time on
+// slow destination filesystems (NFS, CIFS, network drives) at the cost of more
+// syscalls. See https://www.sqlite.org/c3ref/backup_finish.html and issue #5305.
+const backupStepPageCount = 100
+
 func backupOrRestore(ctx context.Context, isBackup bool, path string) error {
 	// heavily inspired by https://codingrabbits.dev/posts/go_and_sqlite_backup_and_maybe_restore/
 	existingConn, err := Db().Conn(ctx)
@@ -78,18 +85,27 @@ func backupOrRestore(ctx context.Context, isBackup bool, path string) error {
 			}
 			defer backupOp.Close()
 
-			// Caution: -1 means that sqlite will hold a read lock until the operation finishes
-			// This will lock out other writes that could happen at the same time
-			done, err := backupOp.Step(-1)
-			if err != nil {
-				return fmt.Errorf("error during backup step: %w", err)
-			}
-			if !done {
-				return fmt.Errorf("backup not done with step -1")
+			// Iterate in bounded chunks rather than calling Step(-1). Step(-1)
+			// holds the source's read lock for the entire transfer, which
+			// starves concurrent writers and can fail outright on filesystems
+			// with weak locking semantics (network drives, CIFS, FUSE mounts —
+			// see issue #5305). Bounded steps release the lock between calls
+			// and surface transient SQLITE_BUSY/SQLITE_LOCKED to the caller.
+			for {
+				if err := ctx.Err(); err != nil {
+					return fmt.Errorf("backup canceled: %w", err)
+				}
+
+				done, err := backupOp.Step(backupStepPageCount)
+				if err != nil {
+					return fmt.Errorf("error during backup step (remaining=%d pages): %w", backupOp.Remaining(), err)
+				}
+				if done {
+					break
+				}
 			}
 
-			err = backupOp.Finish()
-			if err != nil {
+			if err := backupOp.Finish(); err != nil {
 				return fmt.Errorf("error finishing backup: %w", err)
 			}
 
@@ -109,6 +125,14 @@ func Backup(ctx context.Context) (string, error) {
 	}
 
 	return destPath, nil
+}
+
+// BackupTo is like Backup but writes to an explicit path. Used by callers that
+// need to direct the backup to a specific location (e.g. a network share) and
+// by tests that need to exercise failure paths on the destination.
+func BackupTo(ctx context.Context, path string) error {
+	log.Debug(ctx, "Creating backup", "path", path)
+	return backupOrRestore(ctx, true, path)
 }
 
 func Restore(ctx context.Context, path string) error {
