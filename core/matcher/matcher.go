@@ -12,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/navidrome/navidrome/utils/str"
 	"github.com/xrash/smetrics"
 )
@@ -359,16 +360,16 @@ func groupQueriesByArtist(songs []agents.Song, result map[int]model.MediaFile) m
 // Everything routes by stable artist ID, never by name, so MBID-resolved artists whose order
 // name differs from the query name are not misrouted.
 type resolvedArtists struct {
-	byQuery map[string]map[string]bool // sanitized query name -> set of resolved artist IDs
-	mbid    map[string]string          // artist ID -> its MBID (the real one, from the artist table)
-	allIDs  []string                   // every resolved artist ID, for the phase-2 filter
+	byQuery map[string]map[string]struct{} // sanitized query name -> set of resolved artist IDs
+	mbid    map[string]string              // artist ID -> its MBID (the real one, from the artist table)
+	allIDs  []string                       // every resolved artist ID, for the phase-2 filter
 }
 
 // resolveArtists runs phase 1: it resolves the queries' artists against the artist table (by
 // sort name or agent-provided MBID) and records, for each query, which artist IDs it owns.
 func (m *Matcher) resolveArtists(ctx context.Context, byArtist map[string][]indexedQuery) (resolvedArtists, error) {
 	names := make([]string, 0, len(byArtist))
-	mbidToQuery := map[string]string{} // agent ArtistMBID -> query name that supplied it
+	mbidToQuery := make(map[string]string, len(byArtist)) // agent ArtistMBID -> query name that supplied it
 	for name, queries := range byArtist {
 		names = append(names, name)
 		for _, iq := range queries {
@@ -388,7 +389,7 @@ func (m *Matcher) resolveArtists(ctx context.Context, byArtist map[string][]inde
 	}
 
 	res := resolvedArtists{
-		byQuery: map[string]map[string]bool{},
+		byQuery: make(map[string]map[string]struct{}, len(byArtist)),
 		mbid:    make(map[string]string, len(artists)),
 		allIDs:  make([]string, 0, len(artists)),
 	}
@@ -405,42 +406,43 @@ func (m *Matcher) resolveArtists(ctx context.Context, byArtist map[string][]inde
 	return res, nil
 }
 
-// own records that the named query owns the given artist ID (no-op if the name is not a query).
+// own records that the named query owns the given artist ID. byQuery is always initialized by
+// resolveArtists, and a name that is not a query simply gets its own (unused) entry.
 func (r resolvedArtists) own(name, artistID string) {
-	if r.byQuery == nil {
-		return
-	}
 	if r.byQuery[name] == nil {
-		r.byQuery[name] = map[string]bool{}
+		r.byQuery[name] = map[string]struct{}{}
 	}
-	r.byQuery[name][artistID] = true
+	r.byQuery[name][artistID] = struct{}{}
 }
 
 // bucketTracks maps each query name to the tracks credited to one of its resolved artists.
 // A track is bucketed at most once per query even if it credits several of that query's
 // artists, preventing duplicate scoring of the same track.
+//
+// It reads each track's Participants[RoleArtist] IDs, which the bulk GetAll path populates from
+// the inline participants JSON. That cache carries artist IDs (enough to route here) but not the
+// artist MBID — the MBID comes from r.mbid, resolved against the artist table in phase 1.
 func (r resolvedArtists) bucketTracks(tracks []model.MediaFile) map[string][]sanitizedTrack {
-	byQuery := map[string][]sanitizedTrack{}
-	added := map[string]map[string]bool{} // query name -> set of track IDs already bucketed
+	byQuery := make(map[string][]sanitizedTrack, len(r.byQuery))
+	added := make(map[string]map[string]struct{}, len(r.byQuery)) // query name -> set of track IDs already bucketed
 	for i := range tracks {
 		for _, p := range tracks[i].Participants[model.RoleArtist] {
 			mbid, isResolved := r.mbid[p.ID]
 			if !isResolved {
 				continue
 			}
-			st := newSanitizedTrack(&tracks[i], mbid)
 			for name, ids := range r.byQuery {
-				if !ids[p.ID] {
+				if _, owns := ids[p.ID]; !owns {
 					continue
 				}
 				if added[name] == nil {
-					added[name] = map[string]bool{}
+					added[name] = map[string]struct{}{}
 				}
-				if added[name][tracks[i].ID] {
+				if _, dup := added[name][tracks[i].ID]; dup {
 					continue
 				}
-				added[name][tracks[i].ID] = true
-				byQuery[name] = append(byQuery[name], st)
+				added[name][tracks[i].ID] = struct{}{}
+				byQuery[name] = append(byQuery[name], newSanitizedTrack(&tracks[i], mbid))
 			}
 		}
 	}
@@ -452,11 +454,13 @@ func (r resolvedArtists) bucketTracks(tracks []model.MediaFile) map[string][]san
 // any of the given artist IDs. The non-correlated id IN (subquery) lets SQLite materialize the
 // matching media_file ids once from the media_file_artists(artist_id) covering index and probe
 // by primary key, which is far cheaper than a correlated EXISTS that re-runs per media_file row.
+//
+// The raw squirrel.Expr keeps schema knowledge (the media_file_artists table) in this layer on
+// purpose: the non-correlated IN-subquery form is not expressible via the repository's existing
+// role filters, which use the slower correlated EXISTS. A dedicated repository method would be
+// the cleaner home if this is reused.
 func (m *Matcher) fetchTracksCreditedTo(ctx context.Context, artistIDs []string) (model.MediaFiles, error) {
-	args := make([]any, len(artistIDs))
-	for i, id := range artistIDs {
-		args[i] = id
-	}
+	args := slice.Map(artistIDs, func(id string) any { return id })
 	return m.ds.MediaFile(ctx).GetAll(model.QueryOptions{
 		Filters: squirrel.And{
 			squirrel.Expr(

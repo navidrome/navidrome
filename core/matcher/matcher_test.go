@@ -167,11 +167,7 @@ var _ = Describe("Matcher", func() {
 				}
 				titleMatch := model.MediaFile{
 					ID: "track-title", Title: "Enjoy the Silence", Artist: "Depeche Mode",
-					Participants: model.Participants{
-						model.RoleArtist: model.ParticipantList{
-							{Artist: model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}},
-						},
-					},
+					Participants: artistParticipants(model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}),
 				}
 				allowTitlePhase(model.MediaFiles{titleMatch})
 				result, err := m.MatchSongs(ctx, songs, 5)
@@ -187,11 +183,7 @@ var _ = Describe("Matcher", func() {
 				}
 				fuzzyMatch := model.MediaFile{
 					ID: "track-fuzzy", Title: "Bohemian Rhapsody (Live)", Artist: "Queen",
-					Participants: model.Participants{
-						model.RoleArtist: model.ParticipantList{
-							{Artist: model.Artist{ID: "queen", Name: "Queen", OrderArtistName: "queen"}},
-						},
-					},
+					Participants: artistParticipants(model.Artist{ID: "queen", Name: "Queen", OrderArtistName: "queen"}),
 				}
 				allowTitlePhase(model.MediaFiles{fuzzyMatch})
 				result, err := m.MatchSongs(ctx, songs, 5)
@@ -207,11 +199,7 @@ var _ = Describe("Matcher", func() {
 				}
 				differentTracks := model.MediaFiles{
 					{ID: "different", Title: "Tomorrow Never Knows", Artist: "The Beatles",
-						Participants: model.Participants{
-							model.RoleArtist: model.ParticipantList{
-								{Artist: model.Artist{ID: "beatles", Name: "The Beatles", OrderArtistName: "beatles"}},
-							},
-						},
+						Participants: artistParticipants(model.Artist{ID: "beatles", Name: "The Beatles", OrderArtistName: "beatles"}),
 					},
 				}
 				allowTitlePhase(differentTracks)
@@ -230,11 +218,7 @@ var _ = Describe("Matcher", func() {
 				}
 				libraryTrack := model.MediaFile{
 					ID: "br-live", Title: "Bohemian Rhapsody (Live)", Artist: "Queen",
-					Participants: model.Participants{
-						model.RoleArtist: model.ParticipantList{
-							{Artist: model.Artist{ID: "queen", Name: "Queen", OrderArtistName: "queen"}},
-						},
-					},
+					Participants: artistParticipants(model.Artist{ID: "queen", Name: "Queen", OrderArtistName: "queen"}),
 				}
 				allowTitlePhase(model.MediaFiles{libraryTrack})
 				result, err := m.MatchSongs(ctx, songs, 5)
@@ -251,11 +235,7 @@ var _ = Describe("Matcher", func() {
 				}
 				libraryTrack := model.MediaFile{
 					ID: "br", Title: "Bohemian Rhapsody", Artist: "Queen", Album: "A Night at the Opera",
-					Participants: model.Participants{
-						model.RoleArtist: model.ParticipantList{
-							{Artist: model.Artist{ID: "queen", Name: "Queen", OrderArtistName: "queen"}},
-						},
-					},
+					Participants: artistParticipants(model.Artist{ID: "queen", Name: "Queen", OrderArtistName: "queen"}),
 				}
 				allowTitlePhase(model.MediaFiles{libraryTrack})
 				result, err := m.MatchSongs(ctx, songs, 5)
@@ -297,25 +277,13 @@ var _ = Describe("Matcher", func() {
 				}
 				tracks := model.MediaFiles{
 					{ID: "a", Title: "Song A", Artist: "Artist",
-						Participants: model.Participants{
-							model.RoleArtist: model.ParticipantList{
-								{Artist: model.Artist{ID: "art", Name: "Artist", OrderArtistName: "artist"}},
-							},
-						},
+						Participants: artistParticipants(model.Artist{ID: "art", Name: "Artist", OrderArtistName: "artist"}),
 					},
 					{ID: "b", Title: "Song B", Artist: "Artist",
-						Participants: model.Participants{
-							model.RoleArtist: model.ParticipantList{
-								{Artist: model.Artist{ID: "art", Name: "Artist", OrderArtistName: "artist"}},
-							},
-						},
+						Participants: artistParticipants(model.Artist{ID: "art", Name: "Artist", OrderArtistName: "artist"}),
 					},
 					{ID: "c", Title: "Song C", Artist: "Artist",
-						Participants: model.Participants{
-							model.RoleArtist: model.ParticipantList{
-								{Artist: model.Artist{ID: "art", Name: "Artist", OrderArtistName: "artist"}},
-							},
-						},
+						Participants: artistParticipants(model.Artist{ID: "art", Name: "Artist", OrderArtistName: "artist"}),
 					},
 				}
 				allowTitlePhase(tracks)
@@ -343,12 +311,10 @@ var _ = Describe("Matcher", func() {
 				track := model.MediaFile{
 					ID: "oan-track", Title: "Song A",
 					Artist: "Daft Punk feat. Pharrell",
-					Participants: model.Participants{
-						model.RoleArtist: model.ParticipantList{
-							{Artist: model.Artist{ID: "dp", Name: "Daft Punk", OrderArtistName: "daft punk"}},
-							{Artist: model.Artist{ID: "ph", Name: "Pharrell", OrderArtistName: "pharrell"}},
-						},
-					},
+					Participants: artistParticipants(
+						model.Artist{ID: "dp", Name: "Daft Punk", OrderArtistName: "daft punk"},
+						model.Artist{ID: "ph", Name: "Pharrell", OrderArtistName: "pharrell"},
+					),
 				}
 				allowTitlePhase(model.MediaFiles{track})
 
@@ -366,12 +332,10 @@ var _ = Describe("Matcher", func() {
 				// credited artist participant. Searching INXS must match it.
 				track := model.MediaFile{
 					ID: "collab", Title: "Crazy", Artist: "Par-T-One vs. INXS",
-					Participants: model.Participants{
-						model.RoleArtist: model.ParticipantList{
-							{Artist: model.Artist{ID: "a-partone", Name: "Par-T-One", OrderArtistName: "par-t-one"}},
-							{Artist: model.Artist{ID: "a-inxs", Name: "INXS", OrderArtistName: "inxs"}},
-						},
-					},
+					Participants: artistParticipants(
+						model.Artist{ID: "a-partone", Name: "Par-T-One", OrderArtistName: "par-t-one"},
+						model.Artist{ID: "a-inxs", Name: "INXS", OrderArtistName: "inxs"},
+					),
 				}
 				allowTitlePhase(model.MediaFiles{track})
 
@@ -419,11 +383,7 @@ var _ = Describe("Matcher", func() {
 				}
 				track := model.MediaFile{
 					ID: "by-mbid", Title: "Song A", Artist: "Correct Artist",
-					Participants: model.Participants{
-						model.RoleArtist: model.ParticipantList{
-							{Artist: model.Artist{ID: "a9", Name: "Correct Artist", OrderArtistName: "correct artist", MbzArtistID: "mbid-9"}},
-						},
-					},
+					Participants: artistParticipants(model.Artist{ID: "a9", Name: "Correct Artist", OrderArtistName: "correct artist", MbzArtistID: "mbid-9"}),
 				}
 				// Phase 1 returns the artist matched by mbz_artist_id; its order name
 				// ("correct artist") differs from the query name ("typo artist"), so
@@ -543,20 +503,12 @@ var _ = Describe("Matcher", func() {
 			correctMatch := model.MediaFile{
 				ID: "correct-match", Title: "Similar Song", Artist: "Depeche Mode", Album: "Violator",
 				MbzArtistID: "artist-mbid-123", MbzAlbumID: "album-mbid-456",
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode", MbzArtistID: "artist-mbid-123"}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode", MbzArtistID: "artist-mbid-123"}),
 			}
 			wrongMatch := model.MediaFile{
 				ID: "wrong-match", Title: "Similar Song", Artist: "Depeche Mode", Album: "Some Other Album",
 				MbzArtistID: "artist-mbid-123", MbzAlbumID: "different-album-mbid",
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode", MbzArtistID: "artist-mbid-123"}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode", MbzArtistID: "artist-mbid-123"}),
 			}
 			songs := []agents.Song{
 				{Name: "Similar Song", Artist: "Depeche Mode", ArtistMBID: "artist-mbid-123", Album: "Violator", AlbumMBID: "album-mbid-456"},
@@ -574,19 +526,11 @@ var _ = Describe("Matcher", func() {
 		It("matches by title + artist name + album name when MBIDs unavailable", func() {
 			correctMatch := model.MediaFile{
 				ID: "correct-match", Title: "Similar Song", Artist: "depeche mode", Album: "violator",
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}),
 			}
 			wrongMatch := model.MediaFile{
 				ID: "wrong-match", Title: "Similar Song", Artist: "Other Artist", Album: "Other Album",
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "oa", Name: "Other Artist", OrderArtistName: "other artist"}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "oa", Name: "Other Artist", OrderArtistName: "other artist"}),
 			}
 			songs := []agents.Song{
 				{Name: "Similar Song", Artist: "Depeche Mode", Album: "Violator"},
@@ -604,19 +548,11 @@ var _ = Describe("Matcher", func() {
 		It("matches by title + artist only when album info unavailable", func() {
 			correctMatch := model.MediaFile{
 				ID: "correct-match", Title: "Similar Song", Artist: "depeche mode", Album: "Some Album",
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}),
 			}
 			wrongMatch := model.MediaFile{
 				ID: "wrong-match", Title: "Similar Song", Artist: "Other Artist", Album: "Other Album",
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "oa", Name: "Other Artist", OrderArtistName: "other artist"}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "oa", Name: "Other Artist", OrderArtistName: "other artist"}),
 			}
 			songs := []agents.Song{
 				{Name: "Similar Song", Artist: "Depeche Mode"},
@@ -646,25 +582,13 @@ var _ = Describe("Matcher", func() {
 
 		It("returns distinct matches for each artist's version (covers scenario)", func() {
 			cover1 := model.MediaFile{ID: "cover-1", Title: "Yesterday", Artist: "The Beatles", Album: "Help!",
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "beatles", Name: "The Beatles", OrderArtistName: "beatles"}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "beatles", Name: "The Beatles", OrderArtistName: "beatles"}),
 			}
 			cover2 := model.MediaFile{ID: "cover-2", Title: "Yesterday", Artist: "Ray Charles", Album: "Greatest Hits",
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "ray-charles", Name: "Ray Charles", OrderArtistName: "ray charles"}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "ray-charles", Name: "Ray Charles", OrderArtistName: "ray charles"}),
 			}
 			cover3 := model.MediaFile{ID: "cover-3", Title: "Yesterday", Artist: "Frank Sinatra", Album: "My Way",
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "sinatra", Name: "Frank Sinatra", OrderArtistName: "frank sinatra"}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "sinatra", Name: "Frank Sinatra", OrderArtistName: "frank sinatra"}),
 			}
 
 			songs := []agents.Song{
@@ -687,28 +611,16 @@ var _ = Describe("Matcher", func() {
 			preciseMatch := model.MediaFile{
 				ID: "precise", Title: "Song A", Artist: "Artist One", Album: "Album One",
 				MbzArtistID: "mbid-1", MbzAlbumID: "album-mbid-1",
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "a1", Name: "Artist One", OrderArtistName: "artist one", MbzArtistID: "mbid-1"}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "a1", Name: "Artist One", OrderArtistName: "artist one", MbzArtistID: "mbid-1"}),
 			}
 			lessAccurateMatch := model.MediaFile{
 				ID: "less-accurate", Title: "Song A", Artist: "Artist One", Album: "Compilation",
-				MbzArtistID: "mbid-1",
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "a1", Name: "Artist One", OrderArtistName: "artist one", MbzArtistID: "mbid-1"}},
-					},
-				},
+				MbzArtistID:  "mbid-1",
+				Participants: artistParticipants(model.Artist{ID: "a1", Name: "Artist One", OrderArtistName: "artist one", MbzArtistID: "mbid-1"}),
 			}
 			artistTwoMatch := model.MediaFile{
 				ID: "artist-two", Title: "Song B", Artist: "Artist Two",
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "a2", Name: "Artist Two", OrderArtistName: "artist two"}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "a2", Name: "Artist Two", OrderArtistName: "artist two"}),
 			}
 
 			songs := []agents.Song{
@@ -736,19 +648,11 @@ var _ = Describe("Matcher", func() {
 			// chance — verifiable by RED-proof: see task-2-report.md.
 			precise := model.MediaFile{
 				ID: "precise", Title: "Song A", Artist: "Artist One", Album: "Album One", MbzAlbumID: "album-mbid-1",
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "a1", Name: "Artist One", OrderArtistName: "artist one", MbzArtistID: "mbid-1"}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "a1", Name: "Artist One", OrderArtistName: "artist one", MbzArtistID: "mbid-1"}),
 			}
 			other := model.MediaFile{
 				ID: "other", Title: "Song A", Artist: "Artist One", Album: "Album One", MbzAlbumID: "wrong-album-mbid",
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "a1b", Name: "Artist One", OrderArtistName: "artist one", MbzArtistID: ""}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "a1b", Name: "Artist One", OrderArtistName: "artist one", MbzArtistID: ""}),
 			}
 			// Phase 1 resolves both a1 (by name+mbid) and a1b (by name).
 			allowTitlePhase(model.MediaFiles{other, precise})
@@ -770,11 +674,7 @@ var _ = Describe("Matcher", func() {
 				}
 				artistTracks := model.MediaFiles{
 					{ID: "remastered", Title: "Paranoid Android - Remastered", Artist: "Radiohead",
-						Participants: model.Participants{
-							model.RoleArtist: model.ParticipantList{
-								{Artist: model.Artist{ID: "rh", Name: "Radiohead", OrderArtistName: "radiohead"}},
-							},
-						},
+						Participants: artistParticipants(model.Artist{ID: "rh", Name: "Radiohead", OrderArtistName: "radiohead"}),
 					},
 				}
 
@@ -795,11 +695,7 @@ var _ = Describe("Matcher", func() {
 				}
 				artistTracks := model.MediaFiles{
 					{ID: "live", Title: "Bohemian Rhapsody (Live)", Artist: "Queen",
-						Participants: model.Participants{
-							model.RoleArtist: model.ParticipantList{
-								{Artist: model.Artist{ID: "queen", Name: "Queen", OrderArtistName: "queen"}},
-							},
-						},
+						Participants: artistParticipants(model.Artist{ID: "queen", Name: "Queen", OrderArtistName: "queen"}),
 					},
 				}
 
@@ -822,11 +718,7 @@ var _ = Describe("Matcher", func() {
 				}
 				artistTracks := model.MediaFiles{
 					{ID: "remastered", Title: "Paranoid Android - Remastered", Artist: "Radiohead",
-						Participants: model.Participants{
-							model.RoleArtist: model.ParticipantList{
-								{Artist: model.Artist{ID: "rh", Name: "Radiohead", OrderArtistName: "radiohead"}},
-							},
-						},
+						Participants: artistParticipants(model.Artist{ID: "rh", Name: "Radiohead", OrderArtistName: "radiohead"}),
 					},
 				}
 
@@ -848,11 +740,7 @@ var _ = Describe("Matcher", func() {
 				}
 				artistTracks := model.MediaFiles{
 					{ID: "extended", Title: "Song (Extended Mix)", Artist: "Artist",
-						Participants: model.Participants{
-							model.RoleArtist: model.ParticipantList{
-								{Artist: model.Artist{ID: "art", Name: "Artist", OrderArtistName: "artist"}},
-							},
-						},
+						Participants: artistParticipants(model.Artist{ID: "art", Name: "Artist", OrderArtistName: "artist"}),
 					},
 				}
 
@@ -879,19 +767,11 @@ var _ = Describe("Matcher", func() {
 			}
 			correctMatch := model.MediaFile{
 				ID: "correct", Title: "Bohemian Rhapsody", Artist: "Queen", Album: "A Night at the Opera (2011 Remaster)",
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "queen", Name: "Queen", OrderArtistName: "queen"}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "queen", Name: "Queen", OrderArtistName: "queen"}),
 			}
 			wrongMatch := model.MediaFile{
 				ID: "wrong", Title: "Bohemian Rhapsody", Artist: "Queen", Album: "Greatest Hits",
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "queen", Name: "Queen", OrderArtistName: "queen"}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "queen", Name: "Queen", OrderArtistName: "queen"}),
 			}
 
 			allowTitlePhase(model.MediaFiles{wrongMatch, correctMatch})
@@ -909,19 +789,11 @@ var _ = Describe("Matcher", func() {
 			}
 			correctMatch := model.MediaFile{
 				ID: "correct", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator (Deluxe Edition)",
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}),
 			}
 			wrongMatch := model.MediaFile{
 				ID: "wrong", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "101",
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}),
 			}
 
 			allowTitlePhase(model.MediaFiles{wrongMatch, correctMatch})
@@ -939,19 +811,11 @@ var _ = Describe("Matcher", func() {
 			}
 			exactMatch := model.MediaFile{
 				ID: "exact", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator",
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}),
 			}
 			fuzzyMatch := model.MediaFile{
 				ID: "fuzzy", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator (Deluxe Edition)",
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}),
 			}
 
 			allowTitlePhase(model.MediaFiles{fuzzyMatch, exactMatch})
@@ -970,20 +834,12 @@ var _ = Describe("Matcher", func() {
 			}
 			albumMatch := model.MediaFile{
 				ID: "album-match", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator",
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}),
 			}
 			starredTrack := model.MediaFile{
 				ID: "starred", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Singles",
-				Annotations: model.Annotations{Starred: true},
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}},
-					},
-				},
+				Annotations:  model.Annotations{Starred: true},
+				Participants: artistParticipants(model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}),
 			}
 
 			allowTitlePhase(model.MediaFiles{albumMatch, starredTrack})
@@ -1002,20 +858,12 @@ var _ = Describe("Matcher", func() {
 			}
 			albumMatch := model.MediaFile{
 				ID: "album-match", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator",
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}),
 			}
 			ratedTrack := model.MediaFile{
 				ID: "rated", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Singles",
-				Annotations: model.Annotations{Rating: 4},
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}},
-					},
-				},
+				Annotations:  model.Annotations{Rating: 4},
+				Participants: artistParticipants(model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}),
 			}
 
 			allowTitlePhase(model.MediaFiles{albumMatch, ratedTrack})
@@ -1039,19 +887,11 @@ var _ = Describe("Matcher", func() {
 			}
 			correctMatch := model.MediaFile{
 				ID: "correct", Title: "Similar Song", Artist: "Test Artist", Duration: 180.0,
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "ta", Name: "Test Artist", OrderArtistName: "test artist"}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "ta", Name: "Test Artist", OrderArtistName: "test artist"}),
 			}
 			wrongDuration := model.MediaFile{
 				ID: "wrong", Title: "Similar Song", Artist: "Test Artist", Duration: 240.0,
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "ta", Name: "Test Artist", OrderArtistName: "test artist"}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "ta", Name: "Test Artist", OrderArtistName: "test artist"}),
 			}
 
 			allowTitlePhase(model.MediaFiles{wrongDuration, correctMatch})
@@ -1069,11 +909,7 @@ var _ = Describe("Matcher", func() {
 			}
 			closeDuration := model.MediaFile{
 				ID: "close-duration", Title: "Similar Song", Artist: "Test Artist", Duration: 182.5,
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "ta", Name: "Test Artist", OrderArtistName: "test artist"}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "ta", Name: "Test Artist", OrderArtistName: "test artist"}),
 			}
 
 			allowTitlePhase(model.MediaFiles{closeDuration})
@@ -1091,19 +927,11 @@ var _ = Describe("Matcher", func() {
 			}
 			closeDuration := model.MediaFile{
 				ID: "close", Title: "Similar Song", Artist: "Test Artist", Duration: 181.0,
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "ta", Name: "Test Artist", OrderArtistName: "test artist"}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "ta", Name: "Test Artist", OrderArtistName: "test artist"}),
 			}
 			farDuration := model.MediaFile{
 				ID: "far", Title: "Similar Song", Artist: "Test Artist", Duration: 190.0,
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "ta", Name: "Test Artist", OrderArtistName: "test artist"}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "ta", Name: "Test Artist", OrderArtistName: "test artist"}),
 			}
 
 			allowTitlePhase(model.MediaFiles{farDuration, closeDuration})
@@ -1121,11 +949,7 @@ var _ = Describe("Matcher", func() {
 			}
 			differentDuration := model.MediaFile{
 				ID: "different", Title: "Similar Song", Artist: "Test Artist", Duration: 300.0,
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "ta", Name: "Test Artist", OrderArtistName: "test artist"}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "ta", Name: "Test Artist", OrderArtistName: "test artist"}),
 			}
 
 			allowTitlePhase(model.MediaFiles{differentDuration})
@@ -1143,19 +967,11 @@ var _ = Describe("Matcher", func() {
 			}
 			differentTitle := model.MediaFile{
 				ID: "wrong-title", Title: "Different Song", Artist: "Test Artist", Duration: 180.0,
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "ta", Name: "Test Artist", OrderArtistName: "test artist"}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "ta", Name: "Test Artist", OrderArtistName: "test artist"}),
 			}
 			correctTitle := model.MediaFile{
 				ID: "correct-title", Title: "Similar Song", Artist: "Test Artist", Duration: 300.0,
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "ta", Name: "Test Artist", OrderArtistName: "test artist"}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "ta", Name: "Test Artist", OrderArtistName: "test artist"}),
 			}
 
 			allowTitlePhase(model.MediaFiles{differentTitle, correctTitle})
@@ -1173,11 +989,7 @@ var _ = Describe("Matcher", func() {
 			}
 			anyTrack := model.MediaFile{
 				ID: "any", Title: "Similar Song", Artist: "Test Artist", Duration: 999.0,
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "ta", Name: "Test Artist", OrderArtistName: "test artist"}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "ta", Name: "Test Artist", OrderArtistName: "test artist"}),
 			}
 
 			allowTitlePhase(model.MediaFiles{anyTrack})
@@ -1195,11 +1007,7 @@ var _ = Describe("Matcher", func() {
 			}
 			shortTrack := model.MediaFile{
 				ID: "short", Title: "Short Song", Artist: "Test Artist", Duration: 31.0,
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "ta", Name: "Test Artist", OrderArtistName: "test artist"}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "ta", Name: "Test Artist", OrderArtistName: "test artist"}),
 			}
 
 			allowTitlePhase(model.MediaFiles{shortTrack})
@@ -1218,19 +1026,11 @@ var _ = Describe("Matcher", func() {
 			}
 			shortTrack := model.MediaFile{
 				ID: "short", Title: "Same Song", Artist: "Same Artist", Duration: 180.0,
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "sa", Name: "Same Artist", OrderArtistName: "same artist"}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "sa", Name: "Same Artist", OrderArtistName: "same artist"}),
 			}
 			longTrack := model.MediaFile{
 				ID: "long", Title: "Same Song", Artist: "Same Artist", Duration: 240.0,
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "sa", Name: "Same Artist", OrderArtistName: "same artist"}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "sa", Name: "Same Artist", OrderArtistName: "same artist"}),
 			}
 
 			allowTitlePhase(model.MediaFiles{shortTrack, longTrack})
@@ -1258,11 +1058,7 @@ var _ = Describe("Matcher", func() {
 			}
 			libraryTrack := model.MediaFile{
 				ID: "yesterday", Title: "Yesterday", Artist: "The Beatles", Album: "Help!",
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "beatles", Name: "The Beatles", OrderArtistName: "beatles"}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "beatles", Name: "The Beatles", OrderArtistName: "beatles"}),
 			}
 
 			allowTitlePhase(model.MediaFiles{libraryTrack})
@@ -1282,25 +1078,13 @@ var _ = Describe("Matcher", func() {
 				{Name: "Song C", Artist: "Artist"},
 			}
 			trackA := model.MediaFile{ID: "track-a", Title: "Song A", Artist: "Artist",
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "art", Name: "Artist", OrderArtistName: "artist"}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "art", Name: "Artist", OrderArtistName: "artist"}),
 			}
 			trackB := model.MediaFile{ID: "track-b", Title: "Song B", Artist: "Artist",
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "art", Name: "Artist", OrderArtistName: "artist"}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "art", Name: "Artist", OrderArtistName: "artist"}),
 			}
 			trackC := model.MediaFile{ID: "track-c", Title: "Song C", Artist: "Artist",
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "art", Name: "Artist", OrderArtistName: "artist"}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "art", Name: "Artist", OrderArtistName: "artist"}),
 			}
 
 			allowTitlePhase(model.MediaFiles{trackA, trackB, trackC})
@@ -1322,18 +1106,10 @@ var _ = Describe("Matcher", func() {
 				{Name: "Song B (Remix)", Artist: "Artist"},
 			}
 			trackA := model.MediaFile{ID: "track-a", Title: "Song A", Artist: "Artist",
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "art", Name: "Artist", OrderArtistName: "artist"}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "art", Name: "Artist", OrderArtistName: "artist"}),
 			}
 			trackB := model.MediaFile{ID: "track-b", Title: "Song B", Artist: "Artist",
-				Participants: model.Participants{
-					model.RoleArtist: model.ParticipantList{
-						{Artist: model.Artist{ID: "art", Name: "Artist", OrderArtistName: "artist"}},
-					},
-				},
+				Participants: artistParticipants(model.Artist{ID: "art", Name: "Artist", OrderArtistName: "artist"}),
 			}
 
 			allowTitlePhase(model.MediaFiles{trackA, trackB})
@@ -1424,6 +1200,15 @@ func matchFieldInEq(fieldName string) func(opt model.QueryOptions) bool {
 		_, hasField := eq[fieldName]
 		return hasField
 	}
+}
+
+// artistParticipants builds a Participants map crediting the given artists under RoleArtist.
+func artistParticipants(artists ...model.Artist) model.Participants {
+	list := make(model.ParticipantList, len(artists))
+	for i, a := range artists {
+		list[i] = model.Participant{Artist: a}
+	}
+	return model.Participants{model.RoleArtist: list}
 }
 
 // matchTitlePhase2 matches the phase-2 media_file query, identified by its
