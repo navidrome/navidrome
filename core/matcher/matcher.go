@@ -409,7 +409,7 @@ func isPreferredTrack(mf *model.MediaFile) bool {
 // 1:1 positional behavior for identical duplicate inputs).
 func orderAndDedup(songs []agents.Song, matches map[int]model.MediaFile, count int) model.MediaFiles {
 	mfs := make(model.MediaFiles, 0, len(songs))
-	addedBy := make(map[string]agents.Song, len(songs))
+	addedBy := make(map[string]int, len(songs))
 
 	for i, s := range songs {
 		if len(mfs) == count {
@@ -419,12 +419,12 @@ func orderAndDedup(songs []agents.Song, matches map[int]model.MediaFile, count i
 		if !found {
 			continue
 		}
-		if prevSong, alreadyAdded := addedBy[mf.ID]; alreadyAdded {
-			if s != prevSong {
+		if prevIdx, alreadyAdded := addedBy[mf.ID]; alreadyAdded {
+			if s != songs[prevIdx] {
 				continue
 			}
 		} else {
-			addedBy[mf.ID] = s
+			addedBy[mf.ID] = i
 		}
 		mfs = append(mfs, mf)
 	}

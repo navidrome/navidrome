@@ -954,14 +954,17 @@ func matchFieldInAnd(fieldName string) func(opt model.QueryOptions) bool {
 func matchArtistName(artist string) func(opt model.QueryOptions) bool {
 	return func(opt model.QueryOptions) bool {
 		and, ok := opt.Filters.(squirrel.And)
-		if !ok || len(and) < 2 {
+		if !ok {
 			return false
 		}
-		eq, hasEq := and[0].(squirrel.Eq)
-		if !hasEq {
-			return false
+		for _, filter := range and {
+			if eq, ok := filter.(squirrel.Eq); ok {
+				if val, has := eq["order_artist_name"]; has {
+					return val == artist
+				}
+			}
 		}
-		return eq["order_artist_name"] == artist
+		return false
 	}
 }
 
