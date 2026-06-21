@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"strings"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
@@ -321,15 +322,80 @@ func (m *Matcher) matchByTitle(ctx context.Context, songs []agents.Song, result 
 		return nil
 	}
 
-	// One batched query (order_artist_name IN ...) instead of one per artist: on a
-	// large library the per-query overhead dominates, so this is the main cost saver.
-	artists := make([]string, 0, len(byArtist))
+	// Collect distinct sanitized artist names and any agent-provided artist MBIDs.
+	names := make([]string, 0, len(byArtist))
 	for artist := range byArtist {
-		artists = append(artists, artist)
+		names = append(names, artist)
+	}
+	var artistMBIDs []string
+	for _, queries := range byArtist {
+		for _, iq := range queries {
+			if iq.query.artistMBID != "" {
+				artistMBIDs = append(artistMBIDs, iq.query.artistMBID)
+			}
+		}
+	}
+
+	// Phase 1: resolve agent artists to artist-table rows (by sort name or MBID),
+	// so we can match on stable artist IDs and recover the real artist MBID (which
+	// is not denormalized onto media_file).
+	artistFilter := squirrel.Or{squirrel.Eq{"order_artist_name": names}}
+	if len(artistMBIDs) > 0 {
+		artistFilter = append(artistFilter, squirrel.Eq{"mbz_artist_id": artistMBIDs})
+	}
+	artists, err := m.ds.Artist(ctx).GetAll(model.QueryOptions{Filters: artistFilter})
+	if err != nil {
+		return err
+	}
+	if len(artists) == 0 {
+		return nil
+	}
+
+	// Each query (keyed by sanitized name) owns a set of resolved artist IDs: an
+	// artist row belongs to a query if its order_artist_name equals the query name
+	// OR its mbz_artist_id equals the query's agent ArtistMBID. Routing by ID (not
+	// name) keeps MBID-resolved artists whose order name differs from the query name
+	// from being misrouted.
+	queryArtistIDs := map[string]map[string]bool{} // sanitizedName -> set of artist IDs
+	artistIDToMBID := map[string]string{}
+	resolved := map[string]bool{}
+	allArtistIDs := make([]string, 0, len(artists))
+	for _, a := range artists {
+		artistIDToMBID[a.ID] = a.MbzArtistID
+		resolved[a.ID] = true
+		allArtistIDs = append(allArtistIDs, a.ID)
+		for name, queries := range byArtist {
+			owns := a.OrderArtistName == name
+			if !owns {
+				for _, iq := range queries {
+					if iq.query.artistMBID != "" && a.MbzArtistID == iq.query.artistMBID {
+						owns = true
+						break
+					}
+				}
+			}
+			if owns {
+				if queryArtistIDs[name] == nil {
+					queryArtistIDs[name] = map[string]bool{}
+				}
+				queryArtistIDs[name][a.ID] = true
+			}
+		}
+	}
+
+	// Phase 2: fetch every track credited (role='artist') to a resolved artist, in one
+	// query. role='artist' (not albumartist) avoids tribute/compilation false positives.
+	placeholders := strings.Repeat("?,", len(allArtistIDs))
+	placeholders = placeholders[:len(placeholders)-1]
+	existsArgs := make([]any, len(allArtistIDs))
+	for i, id := range allArtistIDs {
+		existsArgs[i] = id
 	}
 	tracks, err := m.ds.MediaFile(ctx).GetAll(model.QueryOptions{
 		Filters: squirrel.And{
-			squirrel.Eq{"order_artist_name": artists},
+			squirrel.Expr(
+				"EXISTS (SELECT 1 FROM media_file_artists mfa WHERE mfa.media_file_id = media_file.id "+
+					"AND mfa.role = 'artist' AND mfa.artist_id IN ("+placeholders+"))", existsArgs...),
 			squirrel.Eq{"missing": false},
 		},
 		Sort: "starred desc, rating desc, year asc, compilation asc",
@@ -338,24 +404,27 @@ func (m *Matcher) matchByTitle(ctx context.Context, songs []agents.Song, result 
 		return err
 	}
 
-	// Key on order_artist_name — the exact field the query filtered on, which matches
-	// how byArtist is keyed. A track's display Artist can differ (collaborations,
-	// "feat." credits), so re-deriving from Artist would misbucket. This reads the
-	// deprecated MediaFile.OrderArtistName column because the bulk GetAll path does
-	// not hydrate participant detail (only {id, name}), so the participant's order
-	// name is empty here; the column is the only populated source.
-	tracksByArtist := make(map[string][]sanitizedTrack, len(byArtist))
+	// Back-map by artist ID: for each track, for each RoleArtist participant that is a
+	// resolved artist, stamp the resolved MBID and append the track to every query
+	// bucket whose resolved-ID set contains that artist.
+	tracksByQuery := map[string][]sanitizedTrack{}
 	for i := range tracks {
-		key := tracks[i].OrderArtistName
-		if key == "" {
-			key = str.SanitizeFieldForSortingNoArticle(tracks[i].Artist)
+		for _, p := range tracks[i].Participants[model.RoleArtist] {
+			if !resolved[p.ID] {
+				continue
+			}
+			st := newSanitizedTrack(&tracks[i], artistIDToMBID[p.ID])
+			for name, ids := range queryArtistIDs {
+				if ids[p.ID] {
+					tracksByQuery[name] = append(tracksByQuery[name], st)
+				}
+			}
 		}
-		tracksByArtist[key] = append(tracksByArtist[key], newSanitizedTrack(&tracks[i], ""))
 	}
 
 	threshold := float64(conf.Server.Matcher.FuzzyThreshold) / 100.0
 	for artist, queries := range byArtist {
-		sanitized := tracksByArtist[artist]
+		sanitized := tracksByQuery[artist]
 		// Each song is matched independently by index, so two songs with the same
 		// (title, artist) but different durations can resolve to different tracks.
 		for _, iq := range queries {
