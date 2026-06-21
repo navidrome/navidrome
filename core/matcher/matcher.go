@@ -46,11 +46,11 @@ func New(ds model.DataStore) *Matcher {
 // # Fuzzy Matching Details
 //
 // For title+artist matching, the algorithm uses Jaro-Winkler similarity (threshold configurable
-// via Matcher.FuzzyThreshold, default 85%). Matches are ranked by:
+// via conf.Server.Matcher.FuzzyThreshold, default 85%). Matches are ranked by:
 //
 //  1. Title similarity (Jaro-Winkler score, 0.0-1.0)
 //  2. Duration proximity (closer duration = higher score, 1.0 if unknown)
-//  3. Preferred track flag (enabled by Matcher.PreferStarred; prioritized when the track is
+//  3. Preferred track flag (enabled by conf.Server.Matcher.PreferStarred; prioritized when the track is
 //     starred or has rating >= 4)
 //  4. Specificity level (0-5, based on metadata precision):
 //     - Level 5: Title + Artist MBID + Album MBID (most specific)
