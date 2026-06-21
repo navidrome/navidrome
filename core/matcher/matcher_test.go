@@ -1435,11 +1435,9 @@ func matchTitlePhase2() func(opt model.QueryOptions) bool {
 			return false
 		}
 		for _, f := range and {
-			if expr, ok := f.(squirrel.Sqlizer); ok {
-				sql, _, err := expr.ToSql()
-				if err == nil && strings.Contains(sql, "media_file_artists") {
-					return true
-				}
+			sql, _, err := f.ToSql()
+			if err == nil && strings.Contains(sql, "media_file_artists") {
+				return true
 			}
 		}
 		return false

@@ -404,23 +404,7 @@ func (m *Matcher) matchByTitle(ctx context.Context, songs []agents.Song, result 
 		return err
 	}
 
-	// Back-map by artist ID: for each track, for each RoleArtist participant that is a
-	// resolved artist, stamp the resolved MBID and append the track to every query
-	// bucket whose resolved-ID set contains that artist.
-	tracksByQuery := map[string][]sanitizedTrack{}
-	for i := range tracks {
-		for _, p := range tracks[i].Participants[model.RoleArtist] {
-			if !resolved[p.ID] {
-				continue
-			}
-			st := newSanitizedTrack(&tracks[i], artistIDToMBID[p.ID])
-			for name, ids := range queryArtistIDs {
-				if ids[p.ID] {
-					tracksByQuery[name] = append(tracksByQuery[name], st)
-				}
-			}
-		}
-	}
+	tracksByQuery := buildTracksByQuery(tracks, resolved, artistIDToMBID, queryArtistIDs)
 
 	threshold := float64(conf.Server.Matcher.FuzzyThreshold) / 100.0
 	for artist, queries := range byArtist {
@@ -434,6 +418,41 @@ func (m *Matcher) matchByTitle(ctx context.Context, songs []agents.Song, result 
 		}
 	}
 	return nil
+}
+
+// buildTracksByQuery maps each sanitized artist name to the set of tracks credited to a resolved
+// artist in that query's bucket. A track is appended at most once per query bucket even if it
+// credits multiple resolved artists in that bucket, preventing duplicate scoring of the same track.
+func buildTracksByQuery(
+	tracks []model.MediaFile,
+	resolved map[string]bool,
+	artistIDToMBID map[string]string,
+	queryArtistIDs map[string]map[string]bool,
+) map[string][]sanitizedTrack {
+	tracksByQuery := map[string][]sanitizedTrack{}
+	addedToQuery := map[string]map[string]bool{} // name -> set of track IDs already appended
+	for i := range tracks {
+		for _, p := range tracks[i].Participants[model.RoleArtist] {
+			if !resolved[p.ID] {
+				continue
+			}
+			st := newSanitizedTrack(&tracks[i], artistIDToMBID[p.ID])
+			for name, ids := range queryArtistIDs {
+				if !ids[p.ID] {
+					continue
+				}
+				if addedToQuery[name] == nil {
+					addedToQuery[name] = map[string]bool{}
+				}
+				if addedToQuery[name][tracks[i].ID] {
+					continue // same track already appended for this bucket; skip to avoid duplicate scoring
+				}
+				addedToQuery[name][tracks[i].ID] = true
+				tracksByQuery[name] = append(tracksByQuery[name], st)
+			}
+		}
+	}
+	return tracksByQuery
 }
 
 // durationProximity returns a score from 0.0 to 1.0 indicating how close the track's duration
