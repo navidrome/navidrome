@@ -398,6 +398,27 @@ var _ = Describe("Matcher", func() {
 				Expect(result).To(HaveLen(1))
 				Expect(result[0].ID).To(Equal("by-mbid"))
 			})
+
+			It("resolves both queries when two share one ArtistMBID under different names", func() {
+				// Two agent results for the same MusicBrainz artist but spelled differently
+				// (an alias). Both must match the artist's track via the shared MBID.
+				songs := []agents.Song{
+					{Name: "Song A", Artist: "Alias One", ArtistMBID: "mbid-shared"},
+					{Name: "Song B", Artist: "Alias Two", ArtistMBID: "mbid-shared"},
+				}
+				artist := model.Artist{ID: "a-shared", Name: "Canonical", OrderArtistName: "canonical", MbzArtistID: "mbid-shared"}
+				trackA := model.MediaFile{ID: "ta", Title: "Song A", Artist: "Canonical", Participants: artistParticipants(artist)}
+				trackB := model.MediaFile{ID: "tb", Title: "Song B", Artist: "Canonical", Participants: artistParticipants(artist)}
+				artistRepo.On("GetAll", mock.Anything).
+					Return(model.Artists{{ID: "a-shared", Name: "Canonical", OrderArtistName: "canonical", MbzArtistID: "mbid-shared"}}, nil).Maybe()
+				mediaFileRepo.On("GetAll", mock.MatchedBy(matchTracksByArtistQuery())).
+					Return(model.MediaFiles{trackA, trackB}, nil).Maybe()
+
+				result, err := m.MatchSongs(ctx, songs, 5)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result).To(HaveLen(2))
+				Expect([]string{result[0].ID, result[1].ID}).To(ConsistOf("ta", "tb"))
+			})
 		})
 
 		// These tests register their own track-fetch expectations per-test (to inject
@@ -1165,7 +1186,11 @@ func newMockArtistRepo() *mockArtistRepo {
 }
 
 func (m *mockArtistRepo) GetAll(options ...model.QueryOptions) (model.Artists, error) {
-	args := m.Called(options)
+	argsSlice := make([]any, len(options))
+	for i, v := range options {
+		argsSlice[i] = v
+	}
+	args := m.Called(argsSlice...)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

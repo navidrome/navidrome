@@ -369,19 +369,19 @@ type resolvedArtists struct {
 // agent-provided MBID) and records, for each query, which artist IDs it owns.
 func (m *Matcher) resolveArtists(ctx context.Context, byArtist map[string][]indexedQuery) (resolvedArtists, error) {
 	names := make([]string, 0, len(byArtist))
-	mbidToQuery := make(map[string]string, len(byArtist)) // agent ArtistMBID -> query name that supplied it
+	mbidToQueries := make(map[string][]string, len(byArtist)) // agent ArtistMBID -> query names that supplied it
 	for name, queries := range byArtist {
 		names = append(names, name)
 		for _, iq := range queries {
 			if iq.query.artistMBID != "" {
-				mbidToQuery[iq.query.artistMBID] = name
+				mbidToQueries[iq.query.artistMBID] = append(mbidToQueries[iq.query.artistMBID], name)
 			}
 		}
 	}
 
 	filter := squirrel.Or{squirrel.Eq{"order_artist_name": names}}
-	if len(mbidToQuery) > 0 {
-		filter = append(filter, squirrel.Eq{"mbz_artist_id": slices.Collect(maps.Keys(mbidToQuery))})
+	if len(mbidToQueries) > 0 {
+		filter = append(filter, squirrel.Eq{"mbz_artist_id": slices.Collect(maps.Keys(mbidToQueries))})
 	}
 	artists, err := m.ds.Artist(ctx).GetAll(model.QueryOptions{Filters: filter})
 	if err != nil {
@@ -396,11 +396,14 @@ func (m *Matcher) resolveArtists(ctx context.Context, byArtist map[string][]inde
 	for _, a := range artists {
 		res.mbid[a.ID] = a.MbzArtistID
 		res.allIDs = append(res.allIDs, a.ID)
-		// An artist belongs to a query if its order name matches the query name, or if its
-		// MBID matches the MBID that query supplied. Both are direct map lookups.
+		// An artist belongs to a query if its order name matches the query name, or if its MBID
+		// matches one a query supplied. The same MBID can come from several queries (agent aliases),
+		// so every one of them owns the artist.
 		res.own(a.OrderArtistName, a.ID)
-		if name, ok := mbidToQuery[a.MbzArtistID]; ok && a.MbzArtistID != "" {
-			res.own(name, a.ID)
+		if a.MbzArtistID != "" {
+			for _, name := range mbidToQueries[a.MbzArtistID] {
+				res.own(name, a.ID)
+			}
 		}
 	}
 	return res, nil
@@ -423,6 +426,15 @@ func (r resolvedArtists) own(name, artistID string) {
 // the inline participants JSON. That cache carries artist IDs (enough to route here) but not the
 // artist MBID — the MBID comes from r.mbid, resolved against the artist table by resolveArtists.
 func (r resolvedArtists) bucketTracks(tracks []model.MediaFile) map[string][]sanitizedTrack {
+	// Invert byQuery once so each participant maps straight to the queries that own it, instead of
+	// scanning every query per participant.
+	queriesByArtist := make(map[string][]string)
+	for name, ids := range r.byQuery {
+		for id := range ids {
+			queriesByArtist[id] = append(queriesByArtist[id], name)
+		}
+	}
+
 	byQuery := make(map[string][]sanitizedTrack, len(r.byQuery))
 	added := make(map[string]map[string]struct{}, len(r.byQuery)) // query name -> set of track IDs already bucketed
 	for i := range tracks {
@@ -431,10 +443,7 @@ func (r resolvedArtists) bucketTracks(tracks []model.MediaFile) map[string][]san
 			if !isResolved {
 				continue
 			}
-			for name, ids := range r.byQuery {
-				if _, owns := ids[p.ID]; !owns {
-					continue
-				}
+			for _, name := range queriesByArtist[p.ID] {
 				if added[name] == nil {
 					added[name] = map[string]struct{}{}
 				}
@@ -460,6 +469,9 @@ func (r resolvedArtists) bucketTracks(tracks []model.MediaFile) map[string][]san
 // role filters, which use the slower correlated EXISTS. A dedicated repository method would be
 // the cleaner home if this is reused.
 func (m *Matcher) fetchTracksCreditedTo(ctx context.Context, artistIDs []string) (model.MediaFiles, error) {
+	if len(artistIDs) == 0 {
+		return nil, nil
+	}
 	args := slice.Map(artistIDs, func(id string) any { return id })
 	return m.ds.MediaFile(ctx).GetAll(model.QueryOptions{
 		Filters: squirrel.And{
