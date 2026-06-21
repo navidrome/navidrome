@@ -58,7 +58,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 			It("calls GetSimilarSongsByTrack and returns matched songs", func() {
 				track := model.MediaFile{ID: "track-1", Title: "Just Can't Get Enough", Artist: "Depeche Mode", MbzRecordingID: "track-mbid"}
 
-				// Depeche Mode artist row used by matcher phase-1 and phase-2 back-mapping.
+				// Depeche Mode artist row used by matcher artist resolution and track-fetch back-mapping.
 				dmArtist := model.Artist{ID: "dm-1", Name: "Depeche Mode", OrderArtistName: "depeche mode", MbzArtistID: "artist-mbid"}
 				dmParticipant := model.Participant{Artist: dmArtist}
 				matchedSong := model.MediaFile{
@@ -76,7 +76,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 						{Name: "Dreaming of Me", MBID: "", Artist: "Depeche Mode", ArtistMBID: "artist-mbid"},
 					}, nil).Once()
 
-				// Matcher phase-1: resolve Depeche Mode in the artist table.
+				// Matcher artist resolution: resolve Depeche Mode in the artist table.
 				artistRepo.On("GetAll", mock.Anything).Return(model.Artists{dmArtist}, nil).Maybe()
 
 				// ID phase: no IDs → squirrel.And with media_file.id; won't be called but guard it.
@@ -99,7 +99,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 					return hasMBID
 				})).Return(model.MediaFiles{}, nil).Maybe()
 
-				// Matcher phase-2: EXISTS query returns the matched song with participants.
+				// Matcher track-fetch: subquery returns the matched song with participants.
 				mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
 					and, ok := opt.Filters.(squirrel.And)
 					if !ok {

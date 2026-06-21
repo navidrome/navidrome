@@ -356,17 +356,17 @@ func groupQueriesByArtist(songs []agents.Song, result map[int]model.MediaFile) m
 	return byArtist
 }
 
-// resolvedArtists holds the result of phase 1: agent artists resolved to artist-table rows.
-// Everything routes by stable artist ID, never by name, so MBID-resolved artists whose order
-// name differs from the query name are not misrouted.
+// resolvedArtists holds the agent artists resolved to artist-table rows. Everything routes by
+// stable artist ID, never by name, so MBID-resolved artists whose order name differs from the
+// query name are not misrouted.
 type resolvedArtists struct {
 	byQuery map[string]map[string]struct{} // sanitized query name -> set of resolved artist IDs
 	mbid    map[string]string              // artist ID -> its MBID (the real one, from the artist table)
-	allIDs  []string                       // every resolved artist ID, for the phase-2 filter
+	allIDs  []string                       // every resolved artist ID, for the track lookup
 }
 
-// resolveArtists runs phase 1: it resolves the queries' artists against the artist table (by
-// sort name or agent-provided MBID) and records, for each query, which artist IDs it owns.
+// resolveArtists resolves the queries' artists against the artist table (by sort name or
+// agent-provided MBID) and records, for each query, which artist IDs it owns.
 func (m *Matcher) resolveArtists(ctx context.Context, byArtist map[string][]indexedQuery) (resolvedArtists, error) {
 	names := make([]string, 0, len(byArtist))
 	mbidToQuery := make(map[string]string, len(byArtist)) // agent ArtistMBID -> query name that supplied it
@@ -421,7 +421,7 @@ func (r resolvedArtists) own(name, artistID string) {
 //
 // It reads each track's Participants[RoleArtist] IDs, which the bulk GetAll path populates from
 // the inline participants JSON. That cache carries artist IDs (enough to route here) but not the
-// artist MBID — the MBID comes from r.mbid, resolved against the artist table in phase 1.
+// artist MBID — the MBID comes from r.mbid, resolved against the artist table by resolveArtists.
 func (r resolvedArtists) bucketTracks(tracks []model.MediaFile) map[string][]sanitizedTrack {
 	byQuery := make(map[string][]sanitizedTrack, len(r.byQuery))
 	added := make(map[string]map[string]struct{}, len(r.byQuery)) // query name -> set of track IDs already bucketed
@@ -449,9 +449,9 @@ func (r resolvedArtists) bucketTracks(tracks []model.MediaFile) map[string][]san
 	return byQuery
 }
 
-// fetchTracksCreditedTo runs phase 2: it fetches every non-missing track credited as the main
-// artist (role='artist', not albumartist — that avoids tribute/compilation false positives) to
-// any of the given artist IDs. The non-correlated id IN (subquery) lets SQLite materialize the
+// fetchTracksCreditedTo fetches every non-missing track credited as the main artist
+// (role='artist', not albumartist — that avoids tribute/compilation false positives) to any of
+// the given artist IDs. The non-correlated id IN (subquery) lets SQLite materialize the
 // matching media_file ids once from the media_file_artists(artist_id) covering index and probe
 // by primary key, which is far cheaper than a correlated EXISTS that re-runs per media_file row.
 //

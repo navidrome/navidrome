@@ -74,16 +74,16 @@ var _ = Describe("Matcher", func() {
 	allowOtherPhases := func() {
 		allowIdentifierPhases()
 		artistRepo.On("GetAll", mock.Anything).Return(model.Artists{}, nil).Maybe()
-		mediaFileRepo.On("GetAll", mock.MatchedBy(matchTitlePhase2())).
+		mediaFileRepo.On("GetAll", mock.MatchedBy(matchTracksByArtistQuery())).
 			Return(model.MediaFiles{}, nil).Maybe()
 	}
 
-	// allowTitlePhase wires the two-phase title matching from a list of library tracks.
-	// Each track must carry Participants[RoleArtist] with the artist IDs that credit it;
-	// the helper derives the artist rows (id, order_artist_name, mbz_artist_id) returned
-	// by phase 1 from those participants, and returns the tracks from phase 2.
+	// allowTitlePhase wires title matching from a list of library tracks. Each track must carry
+	// Participants[RoleArtist] with the artist IDs that credit it; the helper derives the artist
+	// rows the artist resolution returns from those participants, then returns the tracks from
+	// the track-fetch query.
 	allowTitlePhase := func(tracks model.MediaFiles) {
-		// Phase 1: artist resolve. Build artist rows from the tracks' participants.
+		// Artist resolution: build artist rows from the tracks' participants.
 		seen := map[string]model.Artist{}
 		for _, t := range tracks {
 			for _, p := range t.Participants[model.RoleArtist] {
@@ -97,8 +97,8 @@ var _ = Describe("Matcher", func() {
 			artists = append(artists, a)
 		}
 		artistRepo.On("GetAll", mock.Anything).Return(artists, nil).Maybe()
-		// Phase 2: track fetch (EXISTS on media_file_artists).
-		mediaFileRepo.On("GetAll", mock.MatchedBy(matchTitlePhase2())).
+		// Track fetch (media_file_artists subquery).
+		mediaFileRepo.On("GetAll", mock.MatchedBy(matchTracksByArtistQuery())).
 			Return(tracks, nil).Maybe()
 	}
 
@@ -362,14 +362,14 @@ var _ = Describe("Matcher", func() {
 						},
 					},
 				}
-				// Phase 1 resolves "808 state" only if some artist row matches; here the
-				// album-artist participant exists but is NOT role='artist', so phase 2's
+				// Artist resolution returns "808 state" only if some artist row matches; here the
+				// album-artist participant exists but is NOT role='artist', so the track-fetch query's
 				// EXISTS (role='artist') would not return the track in production. The mock
 				// returns it anyway; back-mapping must drop it because no role='artist'
 				// participant is a resolved artist for the query "808 state".
 				artistRepo.On("GetAll", mock.Anything).
 					Return(model.Artists{{ID: "a-808", Name: "808 State", OrderArtistName: "808 state"}}, nil).Maybe()
-				mediaFileRepo.On("GetAll", mock.MatchedBy(matchTitlePhase2())).
+				mediaFileRepo.On("GetAll", mock.MatchedBy(matchTracksByArtistQuery())).
 					Return(model.MediaFiles{track}, nil).Maybe()
 
 				result, err := m.MatchSongs(ctx, songs, 5)
@@ -385,12 +385,12 @@ var _ = Describe("Matcher", func() {
 					ID: "by-mbid", Title: "Song A", Artist: "Correct Artist",
 					Participants: artistParticipants(model.Artist{ID: "a9", Name: "Correct Artist", OrderArtistName: "correct artist", MbzArtistID: "mbid-9"}),
 				}
-				// Phase 1 returns the artist matched by mbz_artist_id; its order name
+				// Artist resolution returns the artist matched by mbz_artist_id; its order name
 				// ("correct artist") differs from the query name ("typo artist"), so
 				// resolution must come from the MBID branch.
 				artistRepo.On("GetAll", mock.Anything).
 					Return(model.Artists{{ID: "a9", Name: "Correct Artist", OrderArtistName: "correct artist", MbzArtistID: "mbid-9"}}, nil).Maybe()
-				mediaFileRepo.On("GetAll", mock.MatchedBy(matchTitlePhase2())).
+				mediaFileRepo.On("GetAll", mock.MatchedBy(matchTracksByArtistQuery())).
 					Return(model.MediaFiles{track}, nil).Maybe()
 
 				result, err := m.MatchSongs(ctx, songs, 5)
@@ -400,7 +400,7 @@ var _ = Describe("Matcher", func() {
 			})
 		})
 
-		// These tests register their own phase-2 expectations per-test (to inject
+		// These tests register their own track-fetch expectations per-test (to inject
 		// an error), so they use allowIdentifierPhases — NOT allowOtherPhases, which would
 		// add a .Maybe() title-phase catch-all that masks the injected error.
 		Context("title phase DB errors", func() {
@@ -414,7 +414,7 @@ var _ = Describe("Matcher", func() {
 					{ID: "a1", Name: "Artist One", OrderArtistName: "artist one"},
 					{ID: "a2", Name: "Artist Two", OrderArtistName: "artist two"},
 				}, nil)
-				mediaFileRepo.On("GetAll", mock.MatchedBy(matchTitlePhase2())).
+				mediaFileRepo.On("GetAll", mock.MatchedBy(matchTracksByArtistQuery())).
 					Return(nil, errors.New("db down"))
 
 				_, err := m.MatchSongs(ctx, songs, 5)
@@ -436,7 +436,7 @@ var _ = Describe("Matcher", func() {
 				artistRepo.On("GetAll", mock.Anything).Return(model.Artists{
 					{ID: "fa", Name: "Fuzzy Artist", OrderArtistName: "fuzzy artist"},
 				}, nil)
-				mediaFileRepo.On("GetAll", mock.MatchedBy(matchTitlePhase2())).
+				mediaFileRepo.On("GetAll", mock.MatchedBy(matchTracksByArtistQuery())).
 					Return(nil, errors.New("db down"))
 
 				result, err := m.MatchSongs(ctx, songs, 5)
@@ -654,7 +654,7 @@ var _ = Describe("Matcher", func() {
 				ID: "other", Title: "Song A", Artist: "Artist One", Album: "Album One", MbzAlbumID: "wrong-album-mbid",
 				Participants: artistParticipants(model.Artist{ID: "a1b", Name: "Artist One", OrderArtistName: "artist one", MbzArtistID: ""}),
 			}
-			// Phase 1 resolves both a1 (by name+mbid) and a1b (by name).
+			// Artist resolution returns both a1 (by name+mbid) and a1b (by name).
 			allowTitlePhase(model.MediaFiles{other, precise})
 
 			result, err := m.MatchSongs(ctx, songs, 5)
@@ -1211,9 +1211,9 @@ func artistParticipants(artists ...model.Artist) model.Participants {
 	return model.Participants{model.RoleArtist: list}
 }
 
-// matchTitlePhase2 matches the phase-2 media_file query, identified by its
+// matchTracksByArtistQuery matches the title phase's track-fetch query, identified by its
 // squirrel.And containing a squirrel.Expr whose SQL references media_file_artists.
-func matchTitlePhase2() func(opt model.QueryOptions) bool {
+func matchTracksByArtistQuery() func(opt model.QueryOptions) bool {
 	return func(opt model.QueryOptions) bool {
 		and, ok := opt.Filters.(squirrel.And)
 		if !ok {
