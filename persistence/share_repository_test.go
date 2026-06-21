@@ -184,6 +184,7 @@ var _ = Describe("ShareRepository", func() {
 			_, _ = mr.executeSQL(squirrel.Delete("media_file").Where(squirrel.Eq{"id": []string{"share-other", "share-ok"}}))
 			lr := NewLibraryRepository(adminCtx, b).(*libraryRepository)
 			_ = lr.delete(squirrel.Eq{"id": otherLib.ID})
+			_ = NewUserRepository(adminCtx, b).Delete(owner.ID)
 		})
 
 		It("excludes tracks the owner cannot access from the shared playlist", func() {

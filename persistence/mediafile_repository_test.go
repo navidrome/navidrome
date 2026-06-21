@@ -912,6 +912,7 @@ var _ = Describe("MediaRepository", func() {
 				_ = NewMediaFileRepository(adminCtx, GetDBXBuilder()).Delete("otherlib-track")
 				lr := NewLibraryRepository(adminCtx, GetDBXBuilder()).(*libraryRepository)
 				_ = lr.delete(squirrel.Eq{"id": otherLib.ID})
+				_ = NewUserRepository(adminCtx, GetDBXBuilder()).Delete(restrictedUser.ID)
 			})
 
 			It("does not resolve paths in libraries the user cannot access", func() {

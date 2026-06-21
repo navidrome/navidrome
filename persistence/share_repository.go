@@ -105,6 +105,9 @@ func (r *shareRepository) loadMedia(share *model.Share) error {
 		if err != nil {
 			return fmt.Errorf("loading share owner %q: %w", share.UserID, err)
 		}
+		if owner == nil {
+			return fmt.Errorf("share owner %q not found", share.UserID)
+		}
 		ctx := request.WithUser(r.ctx, *owner)
 		plsRepo := NewPlaylistRepository(ctx, r.db)
 		tracks, err := plsRepo.Tracks(ids[0], true).GetAll(model.QueryOptions{Sort: "id", Filters: noMissing(Eq{})})
