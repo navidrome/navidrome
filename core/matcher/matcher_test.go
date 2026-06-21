@@ -261,6 +261,52 @@ var _ = Describe("Matcher", func() {
 				Expect(result).To(BeEmpty())
 			})
 		})
+
+		Context("title phase DB errors", func() {
+			// allowIdentifierPhases installs .Maybe() catch-alls for the ID/MBID/ISRC
+			// phases only, leaving the order_artist_name expectations to each test so
+			// the title-phase error behavior can be exercised deterministically.
+			allowIdentifierPhases := func() {
+				mediaFileRepo.On("GetAll", mock.MatchedBy(matchFieldInAnd("media_file.id"))).
+					Return(model.MediaFiles{}, nil).Maybe()
+				mediaFileRepo.On("GetAll", mock.MatchedBy(matchFieldInAnd("mbz_recording_id"))).
+					Return(model.MediaFiles{}, nil).Maybe()
+				mediaFileRepo.On("GetAll", mock.MatchedBy(matchFieldInEq("missing"))).
+					Return(model.MediaFiles{}, nil).Maybe()
+			}
+
+			It("returns an error when every artist lookup fails", func() {
+				songs := []agents.Song{
+					{Name: "Song A", Artist: "Artist One"},
+					{Name: "Song B", Artist: "Artist Two"},
+				}
+				allowIdentifierPhases()
+				mediaFileRepo.On("GetAll", mock.MatchedBy(matchFieldInAnd("order_artist_name"))).
+					Return(nil, errors.New("db down"))
+
+				_, err := m.MatchSongs(ctx, songs, 5)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("db down"))
+			})
+
+			It("returns partial results when only some artist lookups fail", func() {
+				songs := []agents.Song{
+					{Name: "Song A", Artist: "Good Artist"},
+					{Name: "Song B", Artist: "Bad Artist"},
+				}
+				goodTrack := model.MediaFile{ID: "good", Title: "Song A", Artist: "Good Artist"}
+				allowIdentifierPhases()
+				mediaFileRepo.On("GetAll", mock.MatchedBy(matchArtistName("good artist"))).
+					Return(model.MediaFiles{goodTrack}, nil)
+				mediaFileRepo.On("GetAll", mock.MatchedBy(matchArtistName("bad artist"))).
+					Return(nil, errors.New("db hiccup"))
+
+				result, err := m.MatchSongs(ctx, songs, 5)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result).To(HaveLen(1))
+				Expect(result[0].ID).To(Equal("good"))
+			})
+		})
 	})
 
 	Describe("MatchSongsIndexed", func() {
@@ -902,6 +948,23 @@ func matchFieldInAnd(fieldName string) func(opt model.QueryOptions) bool {
 		}
 		_, hasField := eq[fieldName]
 		return hasField
+	}
+}
+
+// matchArtistName returns a matcher that checks whether the title-phase query
+// filters on a specific sanitized order_artist_name value, so a test can return
+// different results for different artists in the same matchByTitle run.
+func matchArtistName(artist string) func(opt model.QueryOptions) bool {
+	return func(opt model.QueryOptions) bool {
+		and, ok := opt.Filters.(squirrel.And)
+		if !ok || len(and) < 2 {
+			return false
+		}
+		eq, hasEq := and[0].(squirrel.Eq)
+		if !hasEq {
+			return false
+		}
+		return eq["order_artist_name"] == artist
 	}
 }
 

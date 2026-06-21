@@ -390,6 +390,8 @@ func (m *Matcher) matchByTitle(ctx context.Context, songs []agents.Song, result 
 	}
 
 	threshold := float64(conf.Server.Matcher.FuzzyThreshold) / 100.0
+	var failed int
+	var lastErr error
 	for artist, queries := range byArtist {
 		tracks, err := m.ds.MediaFile(ctx).GetAll(model.QueryOptions{
 			Filters: squirrel.And{
@@ -401,6 +403,8 @@ func (m *Matcher) matchByTitle(ctx context.Context, songs []agents.Song, result 
 		if err != nil {
 			// Best-effort: one artist's lookup failing must not sink matches for the others.
 			log.Warn(ctx, "matchByTitle: artist lookup failed, skipping", "artist", artist, err)
+			failed++
+			lastErr = err
 			continue
 		}
 		sanitized := make([]sanitizedTrack, len(tracks))
@@ -414,6 +418,12 @@ func (m *Matcher) matchByTitle(ctx context.Context, songs []agents.Song, result 
 				result[iq.index] = mf
 			}
 		}
+	}
+
+	// If every artist query failed, this is a systemic DB problem rather than a
+	// best-effort miss, so surface it instead of silently returning no matches.
+	if failed == len(byArtist) {
+		return fmt.Errorf("all %d artist lookups failed, last error: %w", failed, lastErr)
 	}
 	return nil
 }
