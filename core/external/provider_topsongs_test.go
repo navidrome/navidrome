@@ -205,8 +205,8 @@ var _ = Describe("Provider - TopSongs", func() {
 
 		// Since there are no MBIDs, loadTracksByMBID should not make any database call
 		// loadTracksByTitle should make a database call for title matching
-		song1 := model.MediaFile{ID: "song-1", Title: "Song One", ArtistID: "artist-1", MbzRecordingID: "", OrderTitle: "song one"}
-		song2 := model.MediaFile{ID: "song-2", Title: "Song Two", ArtistID: "artist-1", MbzRecordingID: "", OrderTitle: "song two"}
+		song1 := model.MediaFile{ID: "song-1", Title: "Song One", Artist: "Artist One", OrderArtistName: "artist one", ArtistID: "artist-1", MbzRecordingID: "", OrderTitle: "song one"}
+		song2 := model.MediaFile{ID: "song-2", Title: "Song Two", Artist: "Artist One", OrderArtistName: "artist one", ArtistID: "artist-1", MbzRecordingID: "", OrderTitle: "song two"}
 		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{song1, song2}, nil).Once()
 
 		songs, err := p.TopSongs(ctx, "Artist One", 2)
@@ -237,7 +237,7 @@ var _ = Describe("Provider - TopSongs", func() {
 		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{song1}, nil).Once()
 
 		// Mock the title fallback query (finds song2 by title)
-		song2 := model.MediaFile{ID: "song-2", Title: "Song Two", ArtistID: "artist-1", MbzRecordingID: "", OrderTitle: "song two"}
+		song2 := model.MediaFile{ID: "song-2", Title: "Song Two", Artist: "Artist One", OrderArtistName: "artist one", ArtistID: "artist-1", MbzRecordingID: "", OrderTitle: "song two"}
 		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{song2}, nil).Once()
 
 		songs, err := p.TopSongs(ctx, "Artist One", 2)
