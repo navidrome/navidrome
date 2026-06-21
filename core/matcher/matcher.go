@@ -8,6 +8,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/str"
 	"github.com/xrash/smetrics"
@@ -398,6 +399,8 @@ func (m *Matcher) matchByTitle(ctx context.Context, songs []agents.Song, result 
 			Sort: "starred desc, rating desc, year asc, compilation asc",
 		})
 		if err != nil {
+			// Best-effort: one artist's lookup failing must not sink matches for the others.
+			log.Warn(ctx, "matchByTitle: artist lookup failed, skipping", "artist", artist, err)
 			continue
 		}
 		sanitized := make([]sanitizedTrack, len(tracks))
