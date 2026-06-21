@@ -53,24 +53,30 @@ var _ = Describe("Matcher", func() {
 			Return(matches, nil).Once()
 	}
 
-	// allowOtherPhases installs .Maybe() catch-alls so phases that short-circuit (return
-	// early without hitting the DB) don't cause test failures for unexpected calls. Call
-	// this after expect*Phase for the phases the test actually wants to verify.
-	allowOtherPhases := func() {
+	// allowIdentifierPhases installs .Maybe() catch-alls for the ID/MBID/ISRC phases so
+	// tests that only care about the title phase don't fail on those unexpected calls.
+	allowIdentifierPhases := func() {
 		mediaFileRepo.On("GetAll", mock.MatchedBy(matchFieldInAnd("media_file.id"))).
 			Return(model.MediaFiles{}, nil).Maybe()
 		mediaFileRepo.On("GetAll", mock.MatchedBy(matchFieldInAnd("mbz_recording_id"))).
 			Return(model.MediaFiles{}, nil).Maybe()
 		mediaFileRepo.On("GetAll", mock.MatchedBy(matchFieldInEq("missing"))).
 			Return(model.MediaFiles{}, nil).Maybe()
+	}
+
+	// allowOtherPhases installs .Maybe() catch-alls so phases that short-circuit (return
+	// early without hitting the DB) don't cause test failures for unexpected calls. Call
+	// this after expect*Phase for the phases the test actually wants to verify.
+	allowOtherPhases := func() {
+		allowIdentifierPhases()
 		mediaFileRepo.On("GetAll", mock.MatchedBy(matchFieldInAnd("order_artist_name"))).
 			Return(model.MediaFiles{}, nil).Maybe()
 	}
 
-	// setupTitleOnlyExpectations is a convenience for fuzzy-match tests that only exercise
-	// the title+artist phase. The title phase uses .Maybe() because it may short-circuit
-	// when no songs have an artist.
-	setupTitleOnlyExpectations := func(artistTracks model.MediaFiles) {
+	// allowTitlePhase is a convenience for fuzzy-match tests that only exercise the
+	// title+artist phase. It uses .Maybe() because the phase may short-circuit when no
+	// songs have an artist.
+	allowTitlePhase := func(artistTracks model.MediaFiles) {
 		mediaFileRepo.On("GetAll", mock.MatchedBy(matchFieldInAnd("order_artist_name"))).
 			Return(artistTracks, nil).Maybe()
 	}
@@ -141,7 +147,7 @@ var _ = Describe("Matcher", func() {
 				titleMatch := model.MediaFile{
 					ID: "track-title", Title: "Enjoy the Silence", Artist: "Depeche Mode",
 				}
-				setupTitleOnlyExpectations(model.MediaFiles{titleMatch})
+				allowTitlePhase(model.MediaFiles{titleMatch})
 				result, err := m.MatchSongs(ctx, songs, 5)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result).To(HaveLen(1))
@@ -156,7 +162,7 @@ var _ = Describe("Matcher", func() {
 				fuzzyMatch := model.MediaFile{
 					ID: "track-fuzzy", Title: "Bohemian Rhapsody (Live)", Artist: "Queen",
 				}
-				setupTitleOnlyExpectations(model.MediaFiles{fuzzyMatch})
+				allowTitlePhase(model.MediaFiles{fuzzyMatch})
 				result, err := m.MatchSongs(ctx, songs, 5)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result).To(HaveLen(1))
@@ -171,7 +177,7 @@ var _ = Describe("Matcher", func() {
 				differentTracks := model.MediaFiles{
 					{ID: "different", Title: "Tomorrow Never Knows", Artist: "The Beatles"},
 				}
-				setupTitleOnlyExpectations(differentTracks)
+				allowTitlePhase(differentTracks)
 				result, err := m.MatchSongs(ctx, songs, 5)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result).To(BeEmpty())
@@ -188,7 +194,7 @@ var _ = Describe("Matcher", func() {
 				libraryTrack := model.MediaFile{
 					ID: "br-live", Title: "Bohemian Rhapsody (Live)", Artist: "Queen",
 				}
-				setupTitleOnlyExpectations(model.MediaFiles{libraryTrack})
+				allowTitlePhase(model.MediaFiles{libraryTrack})
 				result, err := m.MatchSongs(ctx, songs, 5)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result).To(HaveLen(1))
@@ -204,7 +210,7 @@ var _ = Describe("Matcher", func() {
 				libraryTrack := model.MediaFile{
 					ID: "br", Title: "Bohemian Rhapsody", Artist: "Queen", Album: "A Night at the Opera",
 				}
-				setupTitleOnlyExpectations(model.MediaFiles{libraryTrack})
+				allowTitlePhase(model.MediaFiles{libraryTrack})
 				result, err := m.MatchSongs(ctx, songs, 5)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result).To(HaveLen(2))
@@ -247,7 +253,7 @@ var _ = Describe("Matcher", func() {
 					{ID: "b", Title: "Song B", Artist: "Artist"},
 					{ID: "c", Title: "Song C", Artist: "Artist"},
 				}
-				setupTitleOnlyExpectations(tracks)
+				allowTitlePhase(tracks)
 				result, err := m.MatchSongs(ctx, songs, 2)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result).To(HaveLen(2))
@@ -259,6 +265,65 @@ var _ = Describe("Matcher", func() {
 				result, err := m.MatchSongs(ctx, []agents.Song{}, 5)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result).To(BeEmpty())
+			})
+		})
+
+		Context("artist grouping", func() {
+			It("groups title-phase tracks by order_artist_name, not display Artist", func() {
+				songs := []agents.Song{
+					{Name: "Song A", Artist: "Daft Punk"},
+				}
+				// Display Artist differs from the query artist; only OrderArtistName
+				// matches, so grouping must key on it (a "feat." credit, collaboration, etc.).
+				track := model.MediaFile{
+					ID: "oan-track", Title: "Song A",
+					Artist: "Daft Punk feat. Pharrell", OrderArtistName: "daft punk",
+				}
+				allowTitlePhase(model.MediaFiles{track})
+
+				result, err := m.MatchSongs(ctx, songs, 5)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result).To(HaveLen(1))
+				Expect(result[0].ID).To(Equal("oan-track"))
+			})
+		})
+
+		// These tests register their own order_artist_name expectation per-test (to inject
+		// an error), so they use allowIdentifierPhases — NOT allowOtherPhases, which would
+		// add a .Maybe() title-phase catch-all that masks the injected error.
+		Context("title phase DB errors", func() {
+			It("returns an error when the title query fails and nothing else matched", func() {
+				songs := []agents.Song{
+					{Name: "Song A", Artist: "Artist One"},
+					{Name: "Song B", Artist: "Artist Two"},
+				}
+				allowIdentifierPhases()
+				mediaFileRepo.On("GetAll", mock.MatchedBy(matchFieldInAnd("order_artist_name"))).
+					Return(nil, errors.New("db down"))
+
+				_, err := m.MatchSongs(ctx, songs, 5)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("db down"))
+			})
+
+			It("keeps exact-phase matches when the title query fails", func() {
+				songs := []agents.Song{
+					{ID: "track-1", Name: "Exact Song", Artist: "Exact Artist"},
+					{Name: "Fuzzy Song", Artist: "Fuzzy Artist"},
+				}
+				idMatch := model.MediaFile{ID: "track-1", Title: "Exact Song", Artist: "Exact Artist"}
+				expectIDPhase(model.MediaFiles{idMatch})
+				mediaFileRepo.On("GetAll", mock.MatchedBy(matchFieldInAnd("mbz_recording_id"))).
+					Return(model.MediaFiles{}, nil).Maybe()
+				mediaFileRepo.On("GetAll", mock.MatchedBy(matchFieldInEq("missing"))).
+					Return(model.MediaFiles{}, nil).Maybe()
+				mediaFileRepo.On("GetAll", mock.MatchedBy(matchFieldInAnd("order_artist_name"))).
+					Return(nil, errors.New("db down"))
+
+				result, err := m.MatchSongs(ctx, songs, 5)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result).To(HaveLen(1))
+				Expect(result[0].ID).To(Equal("track-1"))
 			})
 		})
 	})
@@ -328,7 +393,7 @@ var _ = Describe("Matcher", func() {
 				{Name: "Similar Song", Artist: "Depeche Mode", ArtistMBID: "artist-mbid-123", Album: "Violator", AlbumMBID: "album-mbid-456"},
 			}
 
-			setupTitleOnlyExpectations(model.MediaFiles{wrongMatch, correctMatch})
+			allowTitlePhase(model.MediaFiles{wrongMatch, correctMatch})
 
 			result, err := m.MatchSongs(ctx, songs, 5)
 
@@ -348,7 +413,7 @@ var _ = Describe("Matcher", func() {
 				{Name: "Similar Song", Artist: "Depeche Mode", Album: "Violator"},
 			}
 
-			setupTitleOnlyExpectations(model.MediaFiles{wrongMatch, correctMatch})
+			allowTitlePhase(model.MediaFiles{wrongMatch, correctMatch})
 
 			result, err := m.MatchSongs(ctx, songs, 5)
 
@@ -368,7 +433,7 @@ var _ = Describe("Matcher", func() {
 				{Name: "Similar Song", Artist: "Depeche Mode"},
 			}
 
-			setupTitleOnlyExpectations(model.MediaFiles{wrongMatch, correctMatch})
+			allowTitlePhase(model.MediaFiles{wrongMatch, correctMatch})
 
 			result, err := m.MatchSongs(ctx, songs, 5)
 
@@ -382,7 +447,7 @@ var _ = Describe("Matcher", func() {
 				{Name: "Similar Song"},
 			}
 
-			setupTitleOnlyExpectations(model.MediaFiles{})
+			allowTitlePhase(model.MediaFiles{})
 
 			result, err := m.MatchSongs(ctx, songs, 5)
 
@@ -401,7 +466,7 @@ var _ = Describe("Matcher", func() {
 				{Name: "Yesterday", Artist: "Frank Sinatra", Album: "My Way"},
 			}
 
-			setupTitleOnlyExpectations(model.MediaFiles{cover1, cover2, cover3})
+			allowTitlePhase(model.MediaFiles{cover1, cover2, cover3})
 
 			result, err := m.MatchSongs(ctx, songs, 5)
 
@@ -429,7 +494,7 @@ var _ = Describe("Matcher", func() {
 				{Name: "Song B", Artist: "Artist Two"},
 			}
 
-			setupTitleOnlyExpectations(model.MediaFiles{lessAccurateMatch, preciseMatch, artistTwoMatch})
+			allowTitlePhase(model.MediaFiles{lessAccurateMatch, preciseMatch, artistTwoMatch})
 
 			result, err := m.MatchSongs(ctx, songs, 5)
 
@@ -452,7 +517,7 @@ var _ = Describe("Matcher", func() {
 					{ID: "remastered", Title: "Paranoid Android - Remastered", Artist: "Radiohead"},
 				}
 
-				setupTitleOnlyExpectations(artistTracks)
+				allowTitlePhase(artistTracks)
 
 				result, err := m.MatchSongs(ctx, songs, 5)
 
@@ -471,7 +536,7 @@ var _ = Describe("Matcher", func() {
 					{ID: "live", Title: "Bohemian Rhapsody (Live)", Artist: "Queen"},
 				}
 
-				setupTitleOnlyExpectations(artistTracks)
+				allowTitlePhase(artistTracks)
 
 				result, err := m.MatchSongs(ctx, songs, 5)
 
@@ -492,7 +557,7 @@ var _ = Describe("Matcher", func() {
 					{ID: "remastered", Title: "Paranoid Android - Remastered", Artist: "Radiohead"},
 				}
 
-				setupTitleOnlyExpectations(artistTracks)
+				allowTitlePhase(artistTracks)
 
 				result, err := m.MatchSongs(ctx, songs, 5)
 
@@ -512,7 +577,7 @@ var _ = Describe("Matcher", func() {
 					{ID: "extended", Title: "Song (Extended Mix)", Artist: "Artist"},
 				}
 
-				setupTitleOnlyExpectations(artistTracks)
+				allowTitlePhase(artistTracks)
 
 				result, err := m.MatchSongs(ctx, songs, 5)
 
@@ -540,7 +605,7 @@ var _ = Describe("Matcher", func() {
 				ID: "wrong", Title: "Bohemian Rhapsody", Artist: "Queen", Album: "Greatest Hits",
 			}
 
-			setupTitleOnlyExpectations(model.MediaFiles{wrongMatch, correctMatch})
+			allowTitlePhase(model.MediaFiles{wrongMatch, correctMatch})
 
 			result, err := m.MatchSongs(ctx, songs, 5)
 
@@ -560,7 +625,7 @@ var _ = Describe("Matcher", func() {
 				ID: "wrong", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "101",
 			}
 
-			setupTitleOnlyExpectations(model.MediaFiles{wrongMatch, correctMatch})
+			allowTitlePhase(model.MediaFiles{wrongMatch, correctMatch})
 
 			result, err := m.MatchSongs(ctx, songs, 5)
 
@@ -580,7 +645,7 @@ var _ = Describe("Matcher", func() {
 				ID: "fuzzy", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator (Deluxe Edition)",
 			}
 
-			setupTitleOnlyExpectations(model.MediaFiles{fuzzyMatch, exactMatch})
+			allowTitlePhase(model.MediaFiles{fuzzyMatch, exactMatch})
 
 			result, err := m.MatchSongs(ctx, songs, 5)
 
@@ -601,7 +666,7 @@ var _ = Describe("Matcher", func() {
 				ID: "starred", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Singles", Annotations: model.Annotations{Starred: true},
 			}
 
-			setupTitleOnlyExpectations(model.MediaFiles{albumMatch, starredTrack})
+			allowTitlePhase(model.MediaFiles{albumMatch, starredTrack})
 
 			result, err := m.MatchSongs(ctx, songs, 5)
 
@@ -622,7 +687,7 @@ var _ = Describe("Matcher", func() {
 				ID: "rated", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Singles", Annotations: model.Annotations{Rating: 4},
 			}
 
-			setupTitleOnlyExpectations(model.MediaFiles{albumMatch, ratedTrack})
+			allowTitlePhase(model.MediaFiles{albumMatch, ratedTrack})
 
 			result, err := m.MatchSongs(ctx, songs, 5)
 
@@ -648,7 +713,7 @@ var _ = Describe("Matcher", func() {
 				ID: "wrong", Title: "Similar Song", Artist: "Test Artist", Duration: 240.0,
 			}
 
-			setupTitleOnlyExpectations(model.MediaFiles{wrongDuration, correctMatch})
+			allowTitlePhase(model.MediaFiles{wrongDuration, correctMatch})
 
 			result, err := m.MatchSongs(ctx, songs, 5)
 
@@ -665,7 +730,7 @@ var _ = Describe("Matcher", func() {
 				ID: "close-duration", Title: "Similar Song", Artist: "Test Artist", Duration: 182.5,
 			}
 
-			setupTitleOnlyExpectations(model.MediaFiles{closeDuration})
+			allowTitlePhase(model.MediaFiles{closeDuration})
 
 			result, err := m.MatchSongs(ctx, songs, 5)
 
@@ -685,7 +750,7 @@ var _ = Describe("Matcher", func() {
 				ID: "far", Title: "Similar Song", Artist: "Test Artist", Duration: 190.0,
 			}
 
-			setupTitleOnlyExpectations(model.MediaFiles{farDuration, closeDuration})
+			allowTitlePhase(model.MediaFiles{farDuration, closeDuration})
 
 			result, err := m.MatchSongs(ctx, songs, 5)
 
@@ -702,7 +767,7 @@ var _ = Describe("Matcher", func() {
 				ID: "different", Title: "Similar Song", Artist: "Test Artist", Duration: 300.0,
 			}
 
-			setupTitleOnlyExpectations(model.MediaFiles{differentDuration})
+			allowTitlePhase(model.MediaFiles{differentDuration})
 
 			result, err := m.MatchSongs(ctx, songs, 5)
 
@@ -722,7 +787,7 @@ var _ = Describe("Matcher", func() {
 				ID: "correct-title", Title: "Similar Song", Artist: "Test Artist", Duration: 300.0,
 			}
 
-			setupTitleOnlyExpectations(model.MediaFiles{differentTitle, correctTitle})
+			allowTitlePhase(model.MediaFiles{differentTitle, correctTitle})
 
 			result, err := m.MatchSongs(ctx, songs, 5)
 
@@ -739,7 +804,7 @@ var _ = Describe("Matcher", func() {
 				ID: "any", Title: "Similar Song", Artist: "Test Artist", Duration: 999.0,
 			}
 
-			setupTitleOnlyExpectations(model.MediaFiles{anyTrack})
+			allowTitlePhase(model.MediaFiles{anyTrack})
 
 			result, err := m.MatchSongs(ctx, songs, 5)
 
@@ -756,13 +821,35 @@ var _ = Describe("Matcher", func() {
 				ID: "short", Title: "Short Song", Artist: "Test Artist", Duration: 31.0,
 			}
 
-			setupTitleOnlyExpectations(model.MediaFiles{shortTrack})
+			allowTitlePhase(model.MediaFiles{shortTrack})
 
 			result, err := m.MatchSongs(ctx, songs, 5)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(HaveLen(1))
 			Expect(result[0].ID).To(Equal("short"))
+		})
+
+		It("matches same title+artist songs to their own closest-duration track", func() {
+			songs := []agents.Song{
+				{Name: "Same Song", Artist: "Same Artist", Duration: 180000},
+				{Name: "Same Song", Artist: "Same Artist", Duration: 240000},
+			}
+			shortTrack := model.MediaFile{
+				ID: "short", Title: "Same Song", Artist: "Same Artist", Duration: 180.0,
+			}
+			longTrack := model.MediaFile{
+				ID: "long", Title: "Same Song", Artist: "Same Artist", Duration: 240.0,
+			}
+
+			allowTitlePhase(model.MediaFiles{shortTrack, longTrack})
+
+			result, err := m.MatchSongs(ctx, songs, 5)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(HaveLen(2))
+			Expect(result[0].ID).To(Equal("short"))
+			Expect(result[1].ID).To(Equal("long"))
 		})
 	})
 
@@ -782,7 +869,7 @@ var _ = Describe("Matcher", func() {
 				ID: "yesterday", Title: "Yesterday", Artist: "The Beatles", Album: "Help!",
 			}
 
-			setupTitleOnlyExpectations(model.MediaFiles{libraryTrack})
+			allowTitlePhase(model.MediaFiles{libraryTrack})
 
 			result, err := m.MatchSongs(ctx, songs, 5)
 
@@ -802,7 +889,7 @@ var _ = Describe("Matcher", func() {
 			trackB := model.MediaFile{ID: "track-b", Title: "Song B", Artist: "Artist"}
 			trackC := model.MediaFile{ID: "track-c", Title: "Song C", Artist: "Artist"}
 
-			setupTitleOnlyExpectations(model.MediaFiles{trackA, trackB, trackC})
+			allowTitlePhase(model.MediaFiles{trackA, trackB, trackC})
 
 			result, err := m.MatchSongs(ctx, songs, 5)
 
@@ -823,7 +910,7 @@ var _ = Describe("Matcher", func() {
 			trackA := model.MediaFile{ID: "track-a", Title: "Song A", Artist: "Artist"}
 			trackB := model.MediaFile{ID: "track-b", Title: "Song B", Artist: "Artist"}
 
-			setupTitleOnlyExpectations(model.MediaFiles{trackA, trackB})
+			allowTitlePhase(model.MediaFiles{trackA, trackB})
 
 			result, err := m.MatchSongs(ctx, songs, 2)
 
