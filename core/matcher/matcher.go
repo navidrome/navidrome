@@ -24,90 +24,14 @@ func New(ds model.DataStore) *Matcher {
 	return &Matcher{ds: ds}
 }
 
-// MatchSongs matches agent song results to local library tracks using a multi-phase
-// matching algorithm that prioritizes accuracy over recall.
+// MatchSongs matches agent songs to library tracks and returns up to count
+// tracks in the input's order. See the package documentation for the matching
+// algorithm.
 //
-// # Algorithm Overview
-//
-// The algorithm matches songs from external agents (Last.fm, Deezer, etc.) to tracks in the
-// local music library using four matching strategies in priority order:
-//
-//  1. Direct ID match: Songs with an ID field are matched directly to MediaFiles by ID
-//  2. MusicBrainz Recording ID (MBID) match: Songs with MBID are matched to tracks with
-//     matching mbz_recording_id
-//  3. ISRC match: Songs with ISRC are matched to tracks with matching ISRC tag
-//  4. Title+Artist fuzzy match: Remaining songs are matched using fuzzy string comparison
-//     with metadata specificity scoring
-//
-// # Matching Priority
-//
-// When selecting the final result, matches are prioritized in order: ID > MBID > ISRC > Title+Artist.
-// This ensures that more reliable identifiers take precedence over fuzzy text matching.
-//
-// # Fuzzy Matching Details
-//
-// For title+artist matching, the algorithm uses Jaro-Winkler similarity (threshold configurable
-// via conf.Server.Matcher.FuzzyThreshold, default 85%). Matches are ranked by:
-//
-//  1. Title similarity (Jaro-Winkler score, 0.0-1.0)
-//  2. Duration proximity (closer duration = higher score, 1.0 if unknown)
-//  3. Preferred track flag (enabled by conf.Server.Matcher.PreferStarred; prioritized when the track is
-//     starred or has rating >= 4)
-//  4. Specificity level (0-5, based on metadata precision):
-//     - Level 5: Title + Artist MBID + Album MBID (most specific)
-//     - Level 4: Title + Artist MBID + Album name (fuzzy)
-//     - Level 3: Title + Artist name + Album name (fuzzy)
-//     - Level 2: Title + Artist MBID
-//     - Level 1: Title + Artist name
-//     - Level 0: Title only
-//  5. Album similarity (Jaro-Winkler, as final tiebreaker)
-//
-// # Examples
-//
-// Example 1 - MBID Priority:
-//
-//	Agent returns: {Name: "Paranoid Android", MBID: "abc-123", Artist: "Radiohead"}
-//	Library has: [
-//	  {ID: "t1", Title: "Paranoid Android", MbzRecordingID: "abc-123"},
-//	  {ID: "t2", Title: "Paranoid Android", Artist: "Radiohead"},
-//	]
-//	Result: t1 (MBID match takes priority over title+artist)
-//
-// Example 2 - ISRC Priority:
-//
-//	Agent returns: {Name: "Paranoid Android", ISRC: "GBAYE0000351", Artist: "Radiohead"}
-//	Library has: [
-//	  {ID: "t1", Title: "Paranoid Android", Tags: {isrc: ["GBAYE0000351"]}},
-//	  {ID: "t2", Title: "Paranoid Android", Artist: "Radiohead"},
-//	]
-//	Result: t1 (ISRC match takes priority over title+artist)
-//
-// Example 3 - Specificity Ranking:
-//
-//	Agent returns: {Name: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator"}
-//	Library has: [
-//	  {ID: "t1", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "101"},           // Level 1
-//	  {ID: "t2", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator"},      // Level 3
-//	]
-//	Result: t2 (Level 3 beats Level 1 due to album match)
-//
-// Example 4 - Fuzzy Title Matching:
-//
-//	Agent returns: {Name: "Bohemian Rhapsody", Artist: "Queen"}
-//	Library has: {ID: "t1", Title: "Bohemian Rhapsody - Remastered", Artist: "Queen"}
-//	With threshold=85%: Match succeeds (similarity ~0.87)
-//	With threshold=100%: No match (not exact)
-//
-// # Parameters
-//
-//   - ctx: Context for database operations
-//   - songs: Slice of agent.Song results from external providers
-//   - count: Maximum number of matches to return
-//
-// # Returns
-//
-// Returns up to 'count' MediaFiles from the library that best match the input songs,
-// preserving the original order from the agent. Songs that cannot be matched are skipped.
+// Each library track appears at most once, unless the same input song is
+// repeated: identical input songs intentionally yield repeated output tracks,
+// while distinct songs that resolve to the same track are deduplicated. Songs
+// that cannot be matched are skipped.
 func (m *Matcher) MatchSongs(ctx context.Context, songs []agents.Song, count int) (model.MediaFiles, error) {
 	if len(songs) == 0 {
 		return nil, nil
@@ -119,9 +43,11 @@ func (m *Matcher) MatchSongs(ctx context.Context, songs []agents.Song, count int
 	return orderAndDedup(songs, matches, count), nil
 }
 
-// MatchSongsIndexed matches agent song results to local library tracks and returns a map
-// from input song index to matched MediaFile. Songs that cannot be matched are omitted from the map.
-// This preserves original indices, allowing callers to correlate results back to the input slice.
+// MatchSongsIndexed matches agent songs to library tracks and returns a map from
+// input-song index to matched track, letting callers correlate results back to
+// the input slice. Unmatched songs are omitted from the map. Unlike MatchSongs,
+// results are not deduplicated. See the package documentation for the matching
+// algorithm.
 func (m *Matcher) MatchSongsIndexed(ctx context.Context, songs []agents.Song) (map[int]model.MediaFile, error) {
 	if len(songs) == 0 {
 		return nil, nil
