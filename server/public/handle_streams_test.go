@@ -133,6 +133,12 @@ var _ = Describe("handleStream", func() {
 
 	It("passes all validation and reaches the streamer for a valid token", func() {
 		shareRepo.ID = "share123"
+		shareRepo.Entity = &model.Share{ID: "share123", UserID: "owner1"}
+
+		userRepo := tests.CreateMockUserRepo()
+		Expect(userRepo.Put(&model.User{ID: "owner1", UserName: "owner1", IsAdmin: true})).To(Succeed())
+		ds.MockedUser = userRepo
+
 		mfRepo := tests.CreateMockMediaFileRepo()
 		mfRepo.SetData(model.MediaFiles{{ID: "mf-123", Title: "Test Song"}})
 		ds.MockedMediaFile = mfRepo
@@ -144,6 +150,45 @@ var _ = Describe("handleStream", func() {
 		Expect(streamer.called).To(BeTrue())
 		Expect(streamer.req.Format).To(Equal("mp3"))
 		Expect(streamer.req.BitRate).To(Equal(192))
+	})
+
+	It("returns 404 when the track is outside the share owner's libraries", func() {
+		shareRepo.ID = "share123"
+		shareRepo.Entity = &model.Share{ID: "share123", UserID: "owner1"}
+
+		userRepo := tests.CreateMockUserRepo()
+		Expect(userRepo.Put(&model.User{ID: "owner1", UserName: "owner1", Libraries: model.Libraries{{ID: 1}}})).To(Succeed())
+		ds.MockedUser = userRepo
+
+		mfRepo := tests.CreateMockMediaFileRepo()
+		mfRepo.SetData(model.MediaFiles{{ID: "mf-restricted", Title: "Other Lib Track", LibraryID: 2}})
+		ds.MockedMediaFile = mfRepo
+
+		claims := auth.Claims{ID: "mf-restricted", ShareID: "share123"}
+		token, _ := auth.CreateExpiringPublicToken(time.Now().Add(time.Hour), claims)
+		w := makeRequest(token)
+
+		Expect(w.Code).To(Equal(http.StatusNotFound))
+		Expect(streamer.called).To(BeFalse())
+	})
+
+	It("streams a track inside the share owner's libraries", func() {
+		shareRepo.ID = "share123"
+		shareRepo.Entity = &model.Share{ID: "share123", UserID: "owner1"}
+
+		userRepo := tests.CreateMockUserRepo()
+		Expect(userRepo.Put(&model.User{ID: "owner1", UserName: "owner1", Libraries: model.Libraries{{ID: 1}}})).To(Succeed())
+		ds.MockedUser = userRepo
+
+		mfRepo := tests.CreateMockMediaFileRepo()
+		mfRepo.SetData(model.MediaFiles{{ID: "mf-ok", Title: "OK", LibraryID: 1}})
+		ds.MockedMediaFile = mfRepo
+
+		claims := auth.Claims{ID: "mf-ok", Format: "mp3", ShareID: "share123"}
+		token, _ := auth.CreateExpiringPublicToken(time.Now().Add(time.Hour), claims)
+		makeRequest(token)
+
+		Expect(streamer.called).To(BeTrue())
 	})
 
 	It("returns 400 for an expired token", func() {
