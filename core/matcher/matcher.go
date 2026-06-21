@@ -171,9 +171,7 @@ func (m *Matcher) matchByID(ctx context.Context, songs []agents.Song, result map
 	}
 	byID := make(map[string]model.MediaFile, len(res))
 	for _, mf := range res {
-		if _, ok := byID[mf.ID]; !ok {
-			byID[mf.ID] = mf
-		}
+		byID[mf.ID] = mf // media_file.id is unique, so no dedup needed
 	}
 	for i, s := range songs {
 		if s.ID == "" {
@@ -254,7 +252,7 @@ func (m *Matcher) matchByISRC(ctx context.Context, songs []agents.Song, result m
 	if err != nil {
 		return err
 	}
-	byISRC := map[string]model.MediaFile{}
+	byISRC := make(map[string]model.MediaFile, len(res))
 	for _, mf := range res {
 		for _, isrc := range mf.Tags.Values(model.TagISRC) {
 			if _, ok := byISRC[isrc]; !ok {
@@ -373,7 +371,7 @@ func (m *Matcher) matchByTitle(ctx context.Context, songs []agents.Song, result 
 		}
 		artist := str.SanitizeFieldForSortingNoArticle(s.Artist)
 		if artist == "" {
-			continue
+			continue // title matching needs an artist to scope the library query
 		}
 		q := songQuery{
 			title:      str.SanitizeFieldForSorting(s.Name),
