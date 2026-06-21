@@ -3,6 +3,7 @@ package matcher_test
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
@@ -19,6 +20,7 @@ import (
 var _ = Describe("Matcher", func() {
 	var ds model.DataStore
 	var mediaFileRepo *mockMediaFileRepo
+	var artistRepo *mockArtistRepo
 	var ctx context.Context
 	var m *matcher.Matcher
 
@@ -26,11 +28,13 @@ var _ = Describe("Matcher", func() {
 		ctx = GinkgoT().Context()
 		DeferCleanup(configtest.SetupConfig())
 		mediaFileRepo = newMockMediaFileRepo()
+		artistRepo = newMockArtistRepo()
 		DeferCleanup(func() {
 			mediaFileRepo.AssertExpectations(GinkgoT())
 		})
 		ds = &tests.MockDataStore{
 			MockedMediaFile: mediaFileRepo,
+			MockedArtist:    artistRepo,
 		}
 		m = matcher.New(ds)
 	})
@@ -69,16 +73,33 @@ var _ = Describe("Matcher", func() {
 	// this after expect*Phase for the phases the test actually wants to verify.
 	allowOtherPhases := func() {
 		allowIdentifierPhases()
-		mediaFileRepo.On("GetAll", mock.MatchedBy(matchFieldInAnd("order_artist_name"))).
+		artistRepo.On("GetAll", mock.Anything).Return(model.Artists{}, nil).Maybe()
+		mediaFileRepo.On("GetAll", mock.MatchedBy(matchTracksByArtistQuery())).
 			Return(model.MediaFiles{}, nil).Maybe()
 	}
 
-	// allowTitlePhase is a convenience for fuzzy-match tests that only exercise the
-	// title+artist phase. It uses .Maybe() because the phase may short-circuit when no
-	// songs have an artist.
-	allowTitlePhase := func(artistTracks model.MediaFiles) {
-		mediaFileRepo.On("GetAll", mock.MatchedBy(matchFieldInAnd("order_artist_name"))).
-			Return(artistTracks, nil).Maybe()
+	// allowTitlePhase wires title matching from a list of library tracks. Each track must carry
+	// Participants[RoleArtist] with the artist IDs that credit it; the helper derives the artist
+	// rows the artist resolution returns from those participants, then returns the tracks from
+	// the track-fetch query.
+	allowTitlePhase := func(tracks model.MediaFiles) {
+		// Artist resolution: build artist rows from the tracks' participants.
+		seen := map[string]model.Artist{}
+		for _, t := range tracks {
+			for _, p := range t.Participants[model.RoleArtist] {
+				if _, ok := seen[p.ID]; !ok {
+					seen[p.ID] = p.Artist
+				}
+			}
+		}
+		artists := make(model.Artists, 0, len(seen))
+		for _, a := range seen {
+			artists = append(artists, a)
+		}
+		artistRepo.On("GetAll", mock.Anything).Return(artists, nil).Maybe()
+		// Track fetch (media_file_artists subquery).
+		mediaFileRepo.On("GetAll", mock.MatchedBy(matchTracksByArtistQuery())).
+			Return(tracks, nil).Maybe()
 	}
 
 	Describe("MatchSongs", func() {
@@ -146,6 +167,7 @@ var _ = Describe("Matcher", func() {
 				}
 				titleMatch := model.MediaFile{
 					ID: "track-title", Title: "Enjoy the Silence", Artist: "Depeche Mode",
+					Participants: artistParticipants(model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}),
 				}
 				allowTitlePhase(model.MediaFiles{titleMatch})
 				result, err := m.MatchSongs(ctx, songs, 5)
@@ -161,6 +183,7 @@ var _ = Describe("Matcher", func() {
 				}
 				fuzzyMatch := model.MediaFile{
 					ID: "track-fuzzy", Title: "Bohemian Rhapsody (Live)", Artist: "Queen",
+					Participants: artistParticipants(model.Artist{ID: "queen", Name: "Queen", OrderArtistName: "queen"}),
 				}
 				allowTitlePhase(model.MediaFiles{fuzzyMatch})
 				result, err := m.MatchSongs(ctx, songs, 5)
@@ -175,7 +198,9 @@ var _ = Describe("Matcher", func() {
 					{Name: "Yesterday", Artist: "The Beatles"},
 				}
 				differentTracks := model.MediaFiles{
-					{ID: "different", Title: "Tomorrow Never Knows", Artist: "The Beatles"},
+					{ID: "different", Title: "Tomorrow Never Knows", Artist: "The Beatles",
+						Participants: artistParticipants(model.Artist{ID: "beatles", Name: "The Beatles", OrderArtistName: "beatles"}),
+					},
 				}
 				allowTitlePhase(differentTracks)
 				result, err := m.MatchSongs(ctx, songs, 5)
@@ -193,6 +218,7 @@ var _ = Describe("Matcher", func() {
 				}
 				libraryTrack := model.MediaFile{
 					ID: "br-live", Title: "Bohemian Rhapsody (Live)", Artist: "Queen",
+					Participants: artistParticipants(model.Artist{ID: "queen", Name: "Queen", OrderArtistName: "queen"}),
 				}
 				allowTitlePhase(model.MediaFiles{libraryTrack})
 				result, err := m.MatchSongs(ctx, songs, 5)
@@ -209,6 +235,7 @@ var _ = Describe("Matcher", func() {
 				}
 				libraryTrack := model.MediaFile{
 					ID: "br", Title: "Bohemian Rhapsody", Artist: "Queen", Album: "A Night at the Opera",
+					Participants: artistParticipants(model.Artist{ID: "queen", Name: "Queen", OrderArtistName: "queen"}),
 				}
 				allowTitlePhase(model.MediaFiles{libraryTrack})
 				result, err := m.MatchSongs(ctx, songs, 5)
@@ -249,9 +276,15 @@ var _ = Describe("Matcher", func() {
 					{Name: "Song C", Artist: "Artist"},
 				}
 				tracks := model.MediaFiles{
-					{ID: "a", Title: "Song A", Artist: "Artist"},
-					{ID: "b", Title: "Song B", Artist: "Artist"},
-					{ID: "c", Title: "Song C", Artist: "Artist"},
+					{ID: "a", Title: "Song A", Artist: "Artist",
+						Participants: artistParticipants(model.Artist{ID: "art", Name: "Artist", OrderArtistName: "artist"}),
+					},
+					{ID: "b", Title: "Song B", Artist: "Artist",
+						Participants: artistParticipants(model.Artist{ID: "art", Name: "Artist", OrderArtistName: "artist"}),
+					},
+					{ID: "c", Title: "Song C", Artist: "Artist",
+						Participants: artistParticipants(model.Artist{ID: "art", Name: "Artist", OrderArtistName: "artist"}),
+					},
 				}
 				allowTitlePhase(tracks)
 				result, err := m.MatchSongs(ctx, songs, 2)
@@ -269,15 +302,19 @@ var _ = Describe("Matcher", func() {
 		})
 
 		Context("artist grouping", func() {
-			It("groups title-phase tracks by order_artist_name, not display Artist", func() {
+			It("groups title-phase tracks by participant artist ID, not display Artist", func() {
 				songs := []agents.Song{
 					{Name: "Song A", Artist: "Daft Punk"},
 				}
-				// Display Artist differs from the query artist; only OrderArtistName
-				// matches, so grouping must key on it (a "feat." credit, collaboration, etc.).
+				// Display Artist differs from the query artist; only the participant
+				// with order_artist_name "daft punk" routes to this query bucket.
 				track := model.MediaFile{
 					ID: "oan-track", Title: "Song A",
-					Artist: "Daft Punk feat. Pharrell", OrderArtistName: "daft punk",
+					Artist: "Daft Punk feat. Pharrell",
+					Participants: artistParticipants(
+						model.Artist{ID: "dp", Name: "Daft Punk", OrderArtistName: "daft punk"},
+						model.Artist{ID: "ph", Name: "Pharrell", OrderArtistName: "pharrell"},
+					),
 				}
 				allowTitlePhase(model.MediaFiles{track})
 
@@ -286,9 +323,105 @@ var _ = Describe("Matcher", func() {
 				Expect(result).To(HaveLen(1))
 				Expect(result[0].ID).To(Equal("oan-track"))
 			})
+
+			It("matches a track that credits the searched artist as a collaborator", func() {
+				songs := []agents.Song{
+					{Name: "Crazy", Artist: "INXS"},
+				}
+				// "Par-T-One vs. INXS" — display Artist is the collaboration, but INXS is a
+				// credited artist participant. Searching INXS must match it.
+				track := model.MediaFile{
+					ID: "collab", Title: "Crazy", Artist: "Par-T-One vs. INXS",
+					Participants: artistParticipants(
+						model.Artist{ID: "a-partone", Name: "Par-T-One", OrderArtistName: "par-t-one"},
+						model.Artist{ID: "a-inxs", Name: "INXS", OrderArtistName: "inxs"},
+					),
+				}
+				allowTitlePhase(model.MediaFiles{track})
+
+				result, err := m.MatchSongs(ctx, songs, 5)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result).To(HaveLen(1))
+				Expect(result[0].ID).To(Equal("collab"))
+			})
+
+			It("does not match a track where the searched artist is only the album artist", func() {
+				songs := []agents.Song{
+					{Name: "Qmart", Artist: "808 State"},
+				}
+				// Track performed by Björk on an "808 State" compilation: 808 State is the
+				// albumartist, Björk is the performer. Searching 808 State must NOT match it.
+				track := model.MediaFile{
+					ID: "comp", Title: "Qmart", Artist: "Björk",
+					Participants: model.Participants{
+						model.RoleArtist: model.ParticipantList{
+							{Artist: model.Artist{ID: "a-bjork", Name: "Björk", OrderArtistName: "bjork"}},
+						},
+						model.RoleAlbumArtist: model.ParticipantList{
+							{Artist: model.Artist{ID: "a-808", Name: "808 State", OrderArtistName: "808 state"}},
+						},
+					},
+				}
+				// Artist resolution returns "808 state" only if some artist row matches; here the
+				// album-artist participant exists but is NOT role='artist', so the track-fetch query's
+				// EXISTS (role='artist') would not return the track in production. The mock
+				// returns it anyway; back-mapping must drop it because no role='artist'
+				// participant is a resolved artist for the query "808 state".
+				artistRepo.On("GetAll", mock.Anything).
+					Return(model.Artists{{ID: "a-808", Name: "808 State", OrderArtistName: "808 state"}}, nil).Maybe()
+				mediaFileRepo.On("GetAll", mock.MatchedBy(matchTracksByArtistQuery())).
+					Return(model.MediaFiles{track}, nil).Maybe()
+
+				result, err := m.MatchSongs(ctx, songs, 5)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result).To(BeEmpty())
+			})
+
+			It("resolves the artist by ArtistMBID when the name differs", func() {
+				songs := []agents.Song{
+					{Name: "Song A", Artist: "Typo Artist", ArtistMBID: "mbid-9"},
+				}
+				track := model.MediaFile{
+					ID: "by-mbid", Title: "Song A", Artist: "Correct Artist",
+					Participants: artistParticipants(model.Artist{ID: "a9", Name: "Correct Artist", OrderArtistName: "correct artist", MbzArtistID: "mbid-9"}),
+				}
+				// Artist resolution returns the artist matched by mbz_artist_id; its order name
+				// ("correct artist") differs from the query name ("typo artist"), so
+				// resolution must come from the MBID branch.
+				artistRepo.On("GetAll", mock.Anything).
+					Return(model.Artists{{ID: "a9", Name: "Correct Artist", OrderArtistName: "correct artist", MbzArtistID: "mbid-9"}}, nil).Maybe()
+				mediaFileRepo.On("GetAll", mock.MatchedBy(matchTracksByArtistQuery())).
+					Return(model.MediaFiles{track}, nil).Maybe()
+
+				result, err := m.MatchSongs(ctx, songs, 5)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result).To(HaveLen(1))
+				Expect(result[0].ID).To(Equal("by-mbid"))
+			})
+
+			It("resolves both queries when two share one ArtistMBID under different names", func() {
+				// Two agent results for the same MusicBrainz artist but spelled differently
+				// (an alias). Both must match the artist's track via the shared MBID.
+				songs := []agents.Song{
+					{Name: "Song A", Artist: "Alias One", ArtistMBID: "mbid-shared"},
+					{Name: "Song B", Artist: "Alias Two", ArtistMBID: "mbid-shared"},
+				}
+				artist := model.Artist{ID: "a-shared", Name: "Canonical", OrderArtistName: "canonical", MbzArtistID: "mbid-shared"}
+				trackA := model.MediaFile{ID: "ta", Title: "Song A", Artist: "Canonical", Participants: artistParticipants(artist)}
+				trackB := model.MediaFile{ID: "tb", Title: "Song B", Artist: "Canonical", Participants: artistParticipants(artist)}
+				artistRepo.On("GetAll", mock.Anything).
+					Return(model.Artists{{ID: "a-shared", Name: "Canonical", OrderArtistName: "canonical", MbzArtistID: "mbid-shared"}}, nil).Maybe()
+				mediaFileRepo.On("GetAll", mock.MatchedBy(matchTracksByArtistQuery())).
+					Return(model.MediaFiles{trackA, trackB}, nil).Maybe()
+
+				result, err := m.MatchSongs(ctx, songs, 5)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result).To(HaveLen(2))
+				Expect([]string{result[0].ID, result[1].ID}).To(ConsistOf("ta", "tb"))
+			})
 		})
 
-		// These tests register their own order_artist_name expectation per-test (to inject
+		// These tests register their own track-fetch expectations per-test (to inject
 		// an error), so they use allowIdentifierPhases — NOT allowOtherPhases, which would
 		// add a .Maybe() title-phase catch-all that masks the injected error.
 		Context("title phase DB errors", func() {
@@ -298,7 +431,11 @@ var _ = Describe("Matcher", func() {
 					{Name: "Song B", Artist: "Artist Two"},
 				}
 				allowIdentifierPhases()
-				mediaFileRepo.On("GetAll", mock.MatchedBy(matchFieldInAnd("order_artist_name"))).
+				artistRepo.On("GetAll", mock.Anything).Return(model.Artists{
+					{ID: "a1", Name: "Artist One", OrderArtistName: "artist one"},
+					{ID: "a2", Name: "Artist Two", OrderArtistName: "artist two"},
+				}, nil)
+				mediaFileRepo.On("GetAll", mock.MatchedBy(matchTracksByArtistQuery())).
 					Return(nil, errors.New("db down"))
 
 				_, err := m.MatchSongs(ctx, songs, 5)
@@ -317,7 +454,10 @@ var _ = Describe("Matcher", func() {
 					Return(model.MediaFiles{}, nil).Maybe()
 				mediaFileRepo.On("GetAll", mock.MatchedBy(matchFieldInEq("missing"))).
 					Return(model.MediaFiles{}, nil).Maybe()
-				mediaFileRepo.On("GetAll", mock.MatchedBy(matchFieldInAnd("order_artist_name"))).
+				artistRepo.On("GetAll", mock.Anything).Return(model.Artists{
+					{ID: "fa", Name: "Fuzzy Artist", OrderArtistName: "fuzzy artist"},
+				}, nil)
+				mediaFileRepo.On("GetAll", mock.MatchedBy(matchTracksByArtistQuery())).
 					Return(nil, errors.New("db down"))
 
 				result, err := m.MatchSongs(ctx, songs, 5)
@@ -384,10 +524,12 @@ var _ = Describe("Matcher", func() {
 			correctMatch := model.MediaFile{
 				ID: "correct-match", Title: "Similar Song", Artist: "Depeche Mode", Album: "Violator",
 				MbzArtistID: "artist-mbid-123", MbzAlbumID: "album-mbid-456",
+				Participants: artistParticipants(model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode", MbzArtistID: "artist-mbid-123"}),
 			}
 			wrongMatch := model.MediaFile{
 				ID: "wrong-match", Title: "Similar Song", Artist: "Depeche Mode", Album: "Some Other Album",
 				MbzArtistID: "artist-mbid-123", MbzAlbumID: "different-album-mbid",
+				Participants: artistParticipants(model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode", MbzArtistID: "artist-mbid-123"}),
 			}
 			songs := []agents.Song{
 				{Name: "Similar Song", Artist: "Depeche Mode", ArtistMBID: "artist-mbid-123", Album: "Violator", AlbumMBID: "album-mbid-456"},
@@ -405,9 +547,11 @@ var _ = Describe("Matcher", func() {
 		It("matches by title + artist name + album name when MBIDs unavailable", func() {
 			correctMatch := model.MediaFile{
 				ID: "correct-match", Title: "Similar Song", Artist: "depeche mode", Album: "violator",
+				Participants: artistParticipants(model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}),
 			}
 			wrongMatch := model.MediaFile{
 				ID: "wrong-match", Title: "Similar Song", Artist: "Other Artist", Album: "Other Album",
+				Participants: artistParticipants(model.Artist{ID: "oa", Name: "Other Artist", OrderArtistName: "other artist"}),
 			}
 			songs := []agents.Song{
 				{Name: "Similar Song", Artist: "Depeche Mode", Album: "Violator"},
@@ -425,9 +569,11 @@ var _ = Describe("Matcher", func() {
 		It("matches by title + artist only when album info unavailable", func() {
 			correctMatch := model.MediaFile{
 				ID: "correct-match", Title: "Similar Song", Artist: "depeche mode", Album: "Some Album",
+				Participants: artistParticipants(model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}),
 			}
 			wrongMatch := model.MediaFile{
 				ID: "wrong-match", Title: "Similar Song", Artist: "Other Artist", Album: "Other Album",
+				Participants: artistParticipants(model.Artist{ID: "oa", Name: "Other Artist", OrderArtistName: "other artist"}),
 			}
 			songs := []agents.Song{
 				{Name: "Similar Song", Artist: "Depeche Mode"},
@@ -456,9 +602,15 @@ var _ = Describe("Matcher", func() {
 		})
 
 		It("returns distinct matches for each artist's version (covers scenario)", func() {
-			cover1 := model.MediaFile{ID: "cover-1", Title: "Yesterday", Artist: "The Beatles", Album: "Help!"}
-			cover2 := model.MediaFile{ID: "cover-2", Title: "Yesterday", Artist: "Ray Charles", Album: "Greatest Hits"}
-			cover3 := model.MediaFile{ID: "cover-3", Title: "Yesterday", Artist: "Frank Sinatra", Album: "My Way"}
+			cover1 := model.MediaFile{ID: "cover-1", Title: "Yesterday", Artist: "The Beatles", Album: "Help!",
+				Participants: artistParticipants(model.Artist{ID: "beatles", Name: "The Beatles", OrderArtistName: "beatles"}),
+			}
+			cover2 := model.MediaFile{ID: "cover-2", Title: "Yesterday", Artist: "Ray Charles", Album: "Greatest Hits",
+				Participants: artistParticipants(model.Artist{ID: "ray-charles", Name: "Ray Charles", OrderArtistName: "ray charles"}),
+			}
+			cover3 := model.MediaFile{ID: "cover-3", Title: "Yesterday", Artist: "Frank Sinatra", Album: "My Way",
+				Participants: artistParticipants(model.Artist{ID: "sinatra", Name: "Frank Sinatra", OrderArtistName: "frank sinatra"}),
+			}
 
 			songs := []agents.Song{
 				{Name: "Yesterday", Artist: "The Beatles", Album: "Help!"},
@@ -480,13 +632,16 @@ var _ = Describe("Matcher", func() {
 			preciseMatch := model.MediaFile{
 				ID: "precise", Title: "Song A", Artist: "Artist One", Album: "Album One",
 				MbzArtistID: "mbid-1", MbzAlbumID: "album-mbid-1",
+				Participants: artistParticipants(model.Artist{ID: "a1", Name: "Artist One", OrderArtistName: "artist one", MbzArtistID: "mbid-1"}),
 			}
 			lessAccurateMatch := model.MediaFile{
 				ID: "less-accurate", Title: "Song A", Artist: "Artist One", Album: "Compilation",
-				MbzArtistID: "mbid-1",
+				MbzArtistID:  "mbid-1",
+				Participants: artistParticipants(model.Artist{ID: "a1", Name: "Artist One", OrderArtistName: "artist one", MbzArtistID: "mbid-1"}),
 			}
 			artistTwoMatch := model.MediaFile{
 				ID: "artist-two", Title: "Song B", Artist: "Artist Two",
+				Participants: artistParticipants(model.Artist{ID: "a2", Name: "Artist Two", OrderArtistName: "artist two"}),
 			}
 
 			songs := []agents.Song{
@@ -503,6 +658,31 @@ var _ = Describe("Matcher", func() {
 			Expect(result[0].ID).To(Equal("precise"))
 			Expect(result[1].ID).To(Equal("artist-two"))
 		})
+
+		It("uses the resolved artist MBID for specificity (level 5)", func() {
+			songs := []agents.Song{
+				{Name: "Song A", Artist: "Artist One", ArtistMBID: "mbid-1", Album: "Album One", AlbumMBID: "album-mbid-1"},
+			}
+			// Two tracks with the same title and album; only the one whose resolved artist
+			// carries mbid-1 (and whose album MBID matches) wins via Level 5. Without the
+			// resolved MBID, both tracks tie at Level 3 (name+album) and the first wins by
+			// chance — verifiable by RED-proof: see task-2-report.md.
+			precise := model.MediaFile{
+				ID: "precise", Title: "Song A", Artist: "Artist One", Album: "Album One", MbzAlbumID: "album-mbid-1",
+				Participants: artistParticipants(model.Artist{ID: "a1", Name: "Artist One", OrderArtistName: "artist one", MbzArtistID: "mbid-1"}),
+			}
+			other := model.MediaFile{
+				ID: "other", Title: "Song A", Artist: "Artist One", Album: "Album One", MbzAlbumID: "wrong-album-mbid",
+				Participants: artistParticipants(model.Artist{ID: "a1b", Name: "Artist One", OrderArtistName: "artist one", MbzArtistID: ""}),
+			}
+			// Artist resolution returns both a1 (by name+mbid) and a1b (by name).
+			allowTitlePhase(model.MediaFiles{other, precise})
+
+			result, err := m.MatchSongs(ctx, songs, 5)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(HaveLen(1))
+			Expect(result[0].ID).To(Equal("precise"))
+		})
 	})
 
 	Describe("fuzzy matching thresholds", func() {
@@ -514,7 +694,9 @@ var _ = Describe("Matcher", func() {
 					{Name: "Paranoid Android", Artist: "Radiohead"},
 				}
 				artistTracks := model.MediaFiles{
-					{ID: "remastered", Title: "Paranoid Android - Remastered", Artist: "Radiohead"},
+					{ID: "remastered", Title: "Paranoid Android - Remastered", Artist: "Radiohead",
+						Participants: artistParticipants(model.Artist{ID: "rh", Name: "Radiohead", OrderArtistName: "radiohead"}),
+					},
 				}
 
 				allowTitlePhase(artistTracks)
@@ -533,7 +715,9 @@ var _ = Describe("Matcher", func() {
 					{Name: "Bohemian Rhapsody", Artist: "Queen"},
 				}
 				artistTracks := model.MediaFiles{
-					{ID: "live", Title: "Bohemian Rhapsody (Live)", Artist: "Queen"},
+					{ID: "live", Title: "Bohemian Rhapsody (Live)", Artist: "Queen",
+						Participants: artistParticipants(model.Artist{ID: "queen", Name: "Queen", OrderArtistName: "queen"}),
+					},
 				}
 
 				allowTitlePhase(artistTracks)
@@ -554,7 +738,9 @@ var _ = Describe("Matcher", func() {
 					{Name: "Paranoid Android", Artist: "Radiohead"},
 				}
 				artistTracks := model.MediaFiles{
-					{ID: "remastered", Title: "Paranoid Android - Remastered", Artist: "Radiohead"},
+					{ID: "remastered", Title: "Paranoid Android - Remastered", Artist: "Radiohead",
+						Participants: artistParticipants(model.Artist{ID: "rh", Name: "Radiohead", OrderArtistName: "radiohead"}),
+					},
 				}
 
 				allowTitlePhase(artistTracks)
@@ -574,7 +760,9 @@ var _ = Describe("Matcher", func() {
 					{Name: "Song", Artist: "Artist"},
 				}
 				artistTracks := model.MediaFiles{
-					{ID: "extended", Title: "Song (Extended Mix)", Artist: "Artist"},
+					{ID: "extended", Title: "Song (Extended Mix)", Artist: "Artist",
+						Participants: artistParticipants(model.Artist{ID: "art", Name: "Artist", OrderArtistName: "artist"}),
+					},
 				}
 
 				allowTitlePhase(artistTracks)
@@ -600,9 +788,11 @@ var _ = Describe("Matcher", func() {
 			}
 			correctMatch := model.MediaFile{
 				ID: "correct", Title: "Bohemian Rhapsody", Artist: "Queen", Album: "A Night at the Opera (2011 Remaster)",
+				Participants: artistParticipants(model.Artist{ID: "queen", Name: "Queen", OrderArtistName: "queen"}),
 			}
 			wrongMatch := model.MediaFile{
 				ID: "wrong", Title: "Bohemian Rhapsody", Artist: "Queen", Album: "Greatest Hits",
+				Participants: artistParticipants(model.Artist{ID: "queen", Name: "Queen", OrderArtistName: "queen"}),
 			}
 
 			allowTitlePhase(model.MediaFiles{wrongMatch, correctMatch})
@@ -620,9 +810,11 @@ var _ = Describe("Matcher", func() {
 			}
 			correctMatch := model.MediaFile{
 				ID: "correct", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator (Deluxe Edition)",
+				Participants: artistParticipants(model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}),
 			}
 			wrongMatch := model.MediaFile{
 				ID: "wrong", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "101",
+				Participants: artistParticipants(model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}),
 			}
 
 			allowTitlePhase(model.MediaFiles{wrongMatch, correctMatch})
@@ -640,9 +832,11 @@ var _ = Describe("Matcher", func() {
 			}
 			exactMatch := model.MediaFile{
 				ID: "exact", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator",
+				Participants: artistParticipants(model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}),
 			}
 			fuzzyMatch := model.MediaFile{
 				ID: "fuzzy", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator (Deluxe Edition)",
+				Participants: artistParticipants(model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}),
 			}
 
 			allowTitlePhase(model.MediaFiles{fuzzyMatch, exactMatch})
@@ -661,9 +855,12 @@ var _ = Describe("Matcher", func() {
 			}
 			albumMatch := model.MediaFile{
 				ID: "album-match", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator",
+				Participants: artistParticipants(model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}),
 			}
 			starredTrack := model.MediaFile{
-				ID: "starred", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Singles", Annotations: model.Annotations{Starred: true},
+				ID: "starred", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Singles",
+				Annotations:  model.Annotations{Starred: true},
+				Participants: artistParticipants(model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}),
 			}
 
 			allowTitlePhase(model.MediaFiles{albumMatch, starredTrack})
@@ -682,9 +879,12 @@ var _ = Describe("Matcher", func() {
 			}
 			albumMatch := model.MediaFile{
 				ID: "album-match", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator",
+				Participants: artistParticipants(model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}),
 			}
 			ratedTrack := model.MediaFile{
-				ID: "rated", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Singles", Annotations: model.Annotations{Rating: 4},
+				ID: "rated", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Singles",
+				Annotations:  model.Annotations{Rating: 4},
+				Participants: artistParticipants(model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}),
 			}
 
 			allowTitlePhase(model.MediaFiles{albumMatch, ratedTrack})
@@ -708,9 +908,11 @@ var _ = Describe("Matcher", func() {
 			}
 			correctMatch := model.MediaFile{
 				ID: "correct", Title: "Similar Song", Artist: "Test Artist", Duration: 180.0,
+				Participants: artistParticipants(model.Artist{ID: "ta", Name: "Test Artist", OrderArtistName: "test artist"}),
 			}
 			wrongDuration := model.MediaFile{
 				ID: "wrong", Title: "Similar Song", Artist: "Test Artist", Duration: 240.0,
+				Participants: artistParticipants(model.Artist{ID: "ta", Name: "Test Artist", OrderArtistName: "test artist"}),
 			}
 
 			allowTitlePhase(model.MediaFiles{wrongDuration, correctMatch})
@@ -728,6 +930,7 @@ var _ = Describe("Matcher", func() {
 			}
 			closeDuration := model.MediaFile{
 				ID: "close-duration", Title: "Similar Song", Artist: "Test Artist", Duration: 182.5,
+				Participants: artistParticipants(model.Artist{ID: "ta", Name: "Test Artist", OrderArtistName: "test artist"}),
 			}
 
 			allowTitlePhase(model.MediaFiles{closeDuration})
@@ -745,9 +948,11 @@ var _ = Describe("Matcher", func() {
 			}
 			closeDuration := model.MediaFile{
 				ID: "close", Title: "Similar Song", Artist: "Test Artist", Duration: 181.0,
+				Participants: artistParticipants(model.Artist{ID: "ta", Name: "Test Artist", OrderArtistName: "test artist"}),
 			}
 			farDuration := model.MediaFile{
 				ID: "far", Title: "Similar Song", Artist: "Test Artist", Duration: 190.0,
+				Participants: artistParticipants(model.Artist{ID: "ta", Name: "Test Artist", OrderArtistName: "test artist"}),
 			}
 
 			allowTitlePhase(model.MediaFiles{farDuration, closeDuration})
@@ -765,6 +970,7 @@ var _ = Describe("Matcher", func() {
 			}
 			differentDuration := model.MediaFile{
 				ID: "different", Title: "Similar Song", Artist: "Test Artist", Duration: 300.0,
+				Participants: artistParticipants(model.Artist{ID: "ta", Name: "Test Artist", OrderArtistName: "test artist"}),
 			}
 
 			allowTitlePhase(model.MediaFiles{differentDuration})
@@ -782,9 +988,11 @@ var _ = Describe("Matcher", func() {
 			}
 			differentTitle := model.MediaFile{
 				ID: "wrong-title", Title: "Different Song", Artist: "Test Artist", Duration: 180.0,
+				Participants: artistParticipants(model.Artist{ID: "ta", Name: "Test Artist", OrderArtistName: "test artist"}),
 			}
 			correctTitle := model.MediaFile{
 				ID: "correct-title", Title: "Similar Song", Artist: "Test Artist", Duration: 300.0,
+				Participants: artistParticipants(model.Artist{ID: "ta", Name: "Test Artist", OrderArtistName: "test artist"}),
 			}
 
 			allowTitlePhase(model.MediaFiles{differentTitle, correctTitle})
@@ -802,6 +1010,7 @@ var _ = Describe("Matcher", func() {
 			}
 			anyTrack := model.MediaFile{
 				ID: "any", Title: "Similar Song", Artist: "Test Artist", Duration: 999.0,
+				Participants: artistParticipants(model.Artist{ID: "ta", Name: "Test Artist", OrderArtistName: "test artist"}),
 			}
 
 			allowTitlePhase(model.MediaFiles{anyTrack})
@@ -819,6 +1028,7 @@ var _ = Describe("Matcher", func() {
 			}
 			shortTrack := model.MediaFile{
 				ID: "short", Title: "Short Song", Artist: "Test Artist", Duration: 31.0,
+				Participants: artistParticipants(model.Artist{ID: "ta", Name: "Test Artist", OrderArtistName: "test artist"}),
 			}
 
 			allowTitlePhase(model.MediaFiles{shortTrack})
@@ -837,9 +1047,11 @@ var _ = Describe("Matcher", func() {
 			}
 			shortTrack := model.MediaFile{
 				ID: "short", Title: "Same Song", Artist: "Same Artist", Duration: 180.0,
+				Participants: artistParticipants(model.Artist{ID: "sa", Name: "Same Artist", OrderArtistName: "same artist"}),
 			}
 			longTrack := model.MediaFile{
 				ID: "long", Title: "Same Song", Artist: "Same Artist", Duration: 240.0,
+				Participants: artistParticipants(model.Artist{ID: "sa", Name: "Same Artist", OrderArtistName: "same artist"}),
 			}
 
 			allowTitlePhase(model.MediaFiles{shortTrack, longTrack})
@@ -867,6 +1079,7 @@ var _ = Describe("Matcher", func() {
 			}
 			libraryTrack := model.MediaFile{
 				ID: "yesterday", Title: "Yesterday", Artist: "The Beatles", Album: "Help!",
+				Participants: artistParticipants(model.Artist{ID: "beatles", Name: "The Beatles", OrderArtistName: "beatles"}),
 			}
 
 			allowTitlePhase(model.MediaFiles{libraryTrack})
@@ -885,9 +1098,15 @@ var _ = Describe("Matcher", func() {
 				{Name: "Song B", Artist: "Artist"},
 				{Name: "Song C", Artist: "Artist"},
 			}
-			trackA := model.MediaFile{ID: "track-a", Title: "Song A", Artist: "Artist"}
-			trackB := model.MediaFile{ID: "track-b", Title: "Song B", Artist: "Artist"}
-			trackC := model.MediaFile{ID: "track-c", Title: "Song C", Artist: "Artist"}
+			trackA := model.MediaFile{ID: "track-a", Title: "Song A", Artist: "Artist",
+				Participants: artistParticipants(model.Artist{ID: "art", Name: "Artist", OrderArtistName: "artist"}),
+			}
+			trackB := model.MediaFile{ID: "track-b", Title: "Song B", Artist: "Artist",
+				Participants: artistParticipants(model.Artist{ID: "art", Name: "Artist", OrderArtistName: "artist"}),
+			}
+			trackC := model.MediaFile{ID: "track-c", Title: "Song C", Artist: "Artist",
+				Participants: artistParticipants(model.Artist{ID: "art", Name: "Artist", OrderArtistName: "artist"}),
+			}
 
 			allowTitlePhase(model.MediaFiles{trackA, trackB, trackC})
 
@@ -907,8 +1126,12 @@ var _ = Describe("Matcher", func() {
 				{Name: "Song B", Artist: "Artist"},
 				{Name: "Song B (Remix)", Artist: "Artist"},
 			}
-			trackA := model.MediaFile{ID: "track-a", Title: "Song A", Artist: "Artist"}
-			trackB := model.MediaFile{ID: "track-b", Title: "Song B", Artist: "Artist"}
+			trackA := model.MediaFile{ID: "track-a", Title: "Song A", Artist: "Artist",
+				Participants: artistParticipants(model.Artist{ID: "art", Name: "Artist", OrderArtistName: "artist"}),
+			}
+			trackB := model.MediaFile{ID: "track-b", Title: "Song B", Artist: "Artist",
+				Participants: artistParticipants(model.Artist{ID: "art", Name: "Artist", OrderArtistName: "artist"}),
+			}
 
 			allowTitlePhase(model.MediaFiles{trackA, trackB})
 
@@ -953,6 +1176,27 @@ func (m *mockMediaFileRepo) SetError(hasError bool) {
 	}
 }
 
+type mockArtistRepo struct {
+	mock.Mock
+	model.ArtistRepository
+}
+
+func newMockArtistRepo() *mockArtistRepo {
+	return &mockArtistRepo{}
+}
+
+func (m *mockArtistRepo) GetAll(options ...model.QueryOptions) (model.Artists, error) {
+	argsSlice := make([]any, len(options))
+	for i, v := range options {
+		argsSlice[i] = v
+	}
+	args := m.Called(argsSlice...)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(model.Artists), args.Error(1)
+}
+
 // matchFieldInAnd returns a matcher that checks whether QueryOptions.Filters is a
 // squirrel.And whose first element is a squirrel.Eq containing the given field name.
 func matchFieldInAnd(fieldName string) func(opt model.QueryOptions) bool {
@@ -980,5 +1224,32 @@ func matchFieldInEq(fieldName string) func(opt model.QueryOptions) bool {
 		}
 		_, hasField := eq[fieldName]
 		return hasField
+	}
+}
+
+// artistParticipants builds a Participants map crediting the given artists under RoleArtist.
+func artistParticipants(artists ...model.Artist) model.Participants {
+	list := make(model.ParticipantList, len(artists))
+	for i, a := range artists {
+		list[i] = model.Participant{Artist: a}
+	}
+	return model.Participants{model.RoleArtist: list}
+}
+
+// matchTracksByArtistQuery matches the title phase's track-fetch query, identified by its
+// squirrel.And containing a squirrel.Expr whose SQL references media_file_artists.
+func matchTracksByArtistQuery() func(opt model.QueryOptions) bool {
+	return func(opt model.QueryOptions) bool {
+		and, ok := opt.Filters.(squirrel.And)
+		if !ok {
+			return false
+		}
+		for _, f := range and {
+			sql, _, err := f.ToSql()
+			if err == nil && strings.Contains(sql, "media_file_artists") {
+				return true
+			}
+		}
+		return false
 	}
 }

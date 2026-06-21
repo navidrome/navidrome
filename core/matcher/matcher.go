@@ -3,13 +3,16 @@ package matcher
 import (
 	"context"
 	"fmt"
+	"maps"
 	"math"
+	"slices"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/navidrome/navidrome/utils/str"
 	"github.com/xrash/smetrics"
 )
@@ -246,43 +249,40 @@ func (s matchScore) betterThan(other matchScore) bool {
 // when the same track is scored against multiple queries. The `mf` field is a pointer to avoid
 // copying the large MediaFile struct into each entry of the sanitized slice.
 type sanitizedTrack struct {
-	mf     *model.MediaFile
-	title  string
-	artist string
-	album  string
+	mf         *model.MediaFile
+	title      string
+	artist     string
+	album      string
+	artistMBID string // resolved from the artist table; mf.MbzArtistID is not populated on the bulk path
 }
 
-func newSanitizedTrack(mf *model.MediaFile) sanitizedTrack {
+func newSanitizedTrack(mf *model.MediaFile, artistMBID string) sanitizedTrack {
 	return sanitizedTrack{
-		mf:     mf,
-		title:  str.SanitizeFieldForSorting(mf.Title),
-		artist: str.SanitizeFieldForSortingNoArticle(mf.Artist),
-		album:  str.SanitizeFieldForSorting(mf.Album),
+		mf:         mf,
+		title:      str.SanitizeFieldForSorting(mf.Title),
+		artist:     str.SanitizeFieldForSortingNoArticle(mf.Artist),
+		album:      str.SanitizeFieldForSorting(mf.Album),
+		artistMBID: artistMBID,
 	}
 }
 
 // computeSpecificityLevel determines how well query metadata matches a track (0-5).
-// The track's title, artist, and album fields must be pre-sanitized.
-//
-// TODO: the artist-MBID levels (5, 4, 2) read the deprecated MediaFile.MbzArtistID
-// column, which is not populated — the artist MBID lives in the artist table and is
-// only hydrated by GetWithParticipants, not the bulk GetAll path used here. As a
-// result those levels never fire. To make them work, hydrate the artist participant
-// (or denormalize mbz_artist_id onto media_file) so t.mf carries the artist MBID.
+// The track's title, artist, and album fields must be pre-sanitized, and artistMBID
+// must hold the resolved artist MBID.
 func computeSpecificityLevel(q songQuery, t sanitizedTrack, albumThreshold float64) int {
 	if q.artistMBID != "" && q.albumMBID != "" &&
-		t.mf.MbzArtistID == q.artistMBID && t.mf.MbzAlbumID == q.albumMBID {
+		t.artistMBID == q.artistMBID && t.mf.MbzAlbumID == q.albumMBID {
 		return 5
 	}
 	if q.artistMBID != "" && q.album != "" &&
-		t.mf.MbzArtistID == q.artistMBID && similarityRatio(t.album, q.album) >= albumThreshold {
+		t.artistMBID == q.artistMBID && similarityRatio(t.album, q.album) >= albumThreshold {
 		return 4
 	}
 	if q.artist != "" && q.album != "" &&
 		t.artist == q.artist && similarityRatio(t.album, q.album) >= albumThreshold {
 		return 3
 	}
-	if q.artistMBID != "" && t.mf.MbzArtistID == q.artistMBID {
+	if q.artistMBID != "" && t.artistMBID == q.artistMBID {
 		return 2
 	}
 	if q.artist != "" && t.artist == q.artist {
@@ -301,64 +301,25 @@ type indexedQuery struct {
 // matchByTitle fills result with fuzzy title+artist matches, skipping songs
 // already matched by a higher-priority loader.
 func (m *Matcher) matchByTitle(ctx context.Context, songs []agents.Song, result map[int]model.MediaFile) error {
-	byArtist := map[string][]indexedQuery{}
-	for i, s := range songs {
-		if _, done := result[i]; done {
-			continue
-		}
-		artist := str.SanitizeFieldForSortingNoArticle(s.Artist)
-		if artist == "" {
-			continue // title matching needs an artist to scope the library query
-		}
-		q := songQuery{
-			title:      str.SanitizeFieldForSorting(s.Name),
-			artist:     artist,
-			artistMBID: s.ArtistMBID,
-			album:      str.SanitizeFieldForSorting(s.Album),
-			albumMBID:  s.AlbumMBID,
-			durationMs: s.Duration,
-		}
-		byArtist[artist] = append(byArtist[artist], indexedQuery{index: i, query: q})
-	}
+	byArtist := groupQueriesByArtist(songs, result)
 	if len(byArtist) == 0 {
 		return nil
 	}
 
-	// One batched query (order_artist_name IN ...) instead of one per artist: on a
-	// large library the per-query overhead dominates, so this is the main cost saver.
-	artists := make([]string, 0, len(byArtist))
-	for artist := range byArtist {
-		artists = append(artists, artist)
+	resolved, err := m.resolveArtists(ctx, byArtist)
+	if err != nil || len(resolved.allIDs) == 0 {
+		return err
 	}
-	tracks, err := m.ds.MediaFile(ctx).GetAll(model.QueryOptions{
-		Filters: squirrel.And{
-			squirrel.Eq{"order_artist_name": artists},
-			squirrel.Eq{"missing": false},
-		},
-		Sort: "starred desc, rating desc, year asc, compilation asc",
-	})
+
+	tracks, err := m.fetchTracksCreditedTo(ctx, resolved.allIDs)
 	if err != nil {
 		return err
 	}
 
-	// Key on order_artist_name — the exact field the query filtered on, which matches
-	// how byArtist is keyed. A track's display Artist can differ (collaborations,
-	// "feat." credits), so re-deriving from Artist would misbucket. This reads the
-	// deprecated MediaFile.OrderArtistName column because the bulk GetAll path does
-	// not hydrate participant detail (only {id, name}), so the participant's order
-	// name is empty here; the column is the only populated source.
-	tracksByArtist := make(map[string][]sanitizedTrack, len(byArtist))
-	for i := range tracks {
-		key := tracks[i].OrderArtistName
-		if key == "" {
-			key = str.SanitizeFieldForSortingNoArticle(tracks[i].Artist)
-		}
-		tracksByArtist[key] = append(tracksByArtist[key], newSanitizedTrack(&tracks[i]))
-	}
-
+	tracksByQuery := resolved.bucketTracks(tracks)
 	threshold := float64(conf.Server.Matcher.FuzzyThreshold) / 100.0
 	for artist, queries := range byArtist {
-		sanitized := tracksByArtist[artist]
+		sanitized := tracksByQuery[artist]
 		// Each song is matched independently by index, so two songs with the same
 		// (title, artist) but different durations can resolve to different tracks.
 		for _, iq := range queries {
@@ -368,6 +329,151 @@ func (m *Matcher) matchByTitle(ctx context.Context, songs []agents.Song, result 
 		}
 	}
 	return nil
+}
+
+// groupQueriesByArtist buckets the still-unmatched title queries by sanitized artist name.
+// Songs without an artist are skipped: title matching needs one to scope the library query.
+func groupQueriesByArtist(songs []agents.Song, result map[int]model.MediaFile) map[string][]indexedQuery {
+	byArtist := map[string][]indexedQuery{}
+	for i, s := range songs {
+		if _, done := result[i]; done {
+			continue
+		}
+		artist := str.SanitizeFieldForSortingNoArticle(s.Artist)
+		if artist == "" {
+			continue
+		}
+		byArtist[artist] = append(byArtist[artist], indexedQuery{index: i, query: songQuery{
+			title:      str.SanitizeFieldForSorting(s.Name),
+			artist:     artist,
+			artistMBID: s.ArtistMBID,
+			album:      str.SanitizeFieldForSorting(s.Album),
+			albumMBID:  s.AlbumMBID,
+			durationMs: s.Duration,
+		}})
+	}
+	return byArtist
+}
+
+// resolvedArtists holds the agent artists resolved to artist-table rows. Everything routes by
+// stable artist ID, never by name, so MBID-resolved artists whose order name differs from the
+// query name are not misrouted.
+type resolvedArtists struct {
+	byQuery map[string]map[string]struct{} // sanitized query name -> set of resolved artist IDs
+	mbid    map[string]string              // artist ID -> its MBID (the real one, from the artist table)
+	allIDs  []string                       // every resolved artist ID, for the track lookup
+}
+
+// resolveArtists resolves the queries' artists against the artist table (by sort name or
+// agent-provided MBID) and records, for each query, which artist IDs it owns.
+func (m *Matcher) resolveArtists(ctx context.Context, byArtist map[string][]indexedQuery) (resolvedArtists, error) {
+	names := make([]string, 0, len(byArtist))
+	mbidToQueries := make(map[string][]string, len(byArtist)) // agent ArtistMBID -> query names that supplied it
+	for name, queries := range byArtist {
+		names = append(names, name)
+		for _, iq := range queries {
+			if iq.query.artistMBID != "" {
+				mbidToQueries[iq.query.artistMBID] = append(mbidToQueries[iq.query.artistMBID], name)
+			}
+		}
+	}
+
+	filter := squirrel.Or{squirrel.Eq{"order_artist_name": names}}
+	if len(mbidToQueries) > 0 {
+		filter = append(filter, squirrel.Eq{"mbz_artist_id": slices.Collect(maps.Keys(mbidToQueries))})
+	}
+	artists, err := m.ds.Artist(ctx).GetAll(model.QueryOptions{Filters: filter})
+	if err != nil {
+		return resolvedArtists{}, err
+	}
+
+	res := resolvedArtists{
+		byQuery: make(map[string]map[string]struct{}, len(byArtist)),
+		mbid:    make(map[string]string, len(artists)),
+		allIDs:  make([]string, 0, len(artists)),
+	}
+	for _, a := range artists {
+		res.mbid[a.ID] = a.MbzArtistID
+		res.allIDs = append(res.allIDs, a.ID)
+		// An artist belongs to a query if its order name matches the query name, or if its MBID
+		// matches one a query supplied. The same MBID can come from several queries (agent aliases),
+		// so every one of them owns the artist.
+		res.own(a.OrderArtistName, a.ID)
+		if a.MbzArtistID != "" {
+			for _, name := range mbidToQueries[a.MbzArtistID] {
+				res.own(name, a.ID)
+			}
+		}
+	}
+	return res, nil
+}
+
+// own records that the named query owns the given artist ID. A name that is not a query simply
+// gets its own (unused) entry.
+func (r resolvedArtists) own(name, artistID string) {
+	if r.byQuery[name] == nil {
+		r.byQuery[name] = map[string]struct{}{}
+	}
+	r.byQuery[name][artistID] = struct{}{}
+}
+
+// bucketTracks groups tracks by query name, at most once per query even when a track credits
+// several of that query's artists, so the same track is not scored twice. The participants JSON
+// on each track carries artist IDs but not their MBID, so the MBID comes from r.mbid instead.
+func (r resolvedArtists) bucketTracks(tracks []model.MediaFile) map[string][]sanitizedTrack {
+	// Invert byQuery once so each participant maps straight to the queries that own it, instead of
+	// scanning every query per participant.
+	queriesByArtist := make(map[string][]string)
+	for name, ids := range r.byQuery {
+		for id := range ids {
+			queriesByArtist[id] = append(queriesByArtist[id], name)
+		}
+	}
+
+	byQuery := make(map[string][]sanitizedTrack, len(r.byQuery))
+	added := make(map[string]map[string]struct{}, len(r.byQuery)) // query name -> set of track IDs already bucketed
+	for i := range tracks {
+		for _, p := range tracks[i].Participants[model.RoleArtist] {
+			mbid, isResolved := r.mbid[p.ID]
+			if !isResolved {
+				continue
+			}
+			for _, name := range queriesByArtist[p.ID] {
+				if added[name] == nil {
+					added[name] = map[string]struct{}{}
+				}
+				if _, dup := added[name][tracks[i].ID]; dup {
+					continue
+				}
+				added[name][tracks[i].ID] = struct{}{}
+				byQuery[name] = append(byQuery[name], newSanitizedTrack(&tracks[i], mbid))
+			}
+		}
+	}
+	return byQuery
+}
+
+// fetchTracksCreditedTo fetches every non-missing track credited to any of the given artists as
+// the main artist (role='artist', not albumartist — that avoids tribute/compilation false
+// positives). The non-correlated id IN (subquery) materializes the matching ids once from the
+// media_file_artists(artist_id) covering index, far cheaper than a correlated EXISTS that re-runs
+// per row. That form isn't expressible via the repository's role filters, so the raw squirrel.Expr
+// keeps the media_file_artists schema knowledge here; a dedicated repository method would be the
+// cleaner home if this is reused.
+func (m *Matcher) fetchTracksCreditedTo(ctx context.Context, artistIDs []string) (model.MediaFiles, error) {
+	if len(artistIDs) == 0 {
+		return nil, nil
+	}
+	args := slice.Map(artistIDs, func(id string) any { return id })
+	return m.ds.MediaFile(ctx).GetAll(model.QueryOptions{
+		Filters: squirrel.And{
+			squirrel.Expr(
+				"media_file.id IN (SELECT media_file_id FROM media_file_artists "+
+					"WHERE role = 'artist' AND artist_id IN ("+squirrel.Placeholders(len(artistIDs))+"))", args...),
+			squirrel.Eq{"missing": false},
+		},
+		Sort: "starred desc, rating desc, year asc, compilation asc",
+	})
 }
 
 // durationProximity returns a score from 0.0 to 1.0 indicating how close the track's duration
