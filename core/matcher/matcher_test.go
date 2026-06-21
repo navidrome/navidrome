@@ -764,6 +764,28 @@ var _ = Describe("Matcher", func() {
 			Expect(result).To(HaveLen(1))
 			Expect(result[0].ID).To(Equal("short"))
 		})
+
+		It("matches same title+artist songs to their own closest-duration track", func() {
+			songs := []agents.Song{
+				{Name: "Same Song", Artist: "Same Artist", Duration: 180000},
+				{Name: "Same Song", Artist: "Same Artist", Duration: 240000},
+			}
+			shortTrack := model.MediaFile{
+				ID: "short", Title: "Same Song", Artist: "Same Artist", Duration: 180.0,
+			}
+			longTrack := model.MediaFile{
+				ID: "long", Title: "Same Song", Artist: "Same Artist", Duration: 240.0,
+			}
+
+			setupTitleOnlyExpectations(model.MediaFiles{shortTrack, longTrack})
+
+			result, err := m.MatchSongs(ctx, songs, 5)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(HaveLen(2))
+			Expect(result[0].ID).To(Equal("short"))
+			Expect(result[1].ID).To(Equal("long"))
+		})
 	})
 
 	Describe("deduplication edge cases", func() {

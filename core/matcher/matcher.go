@@ -407,6 +407,8 @@ func (m *Matcher) matchByTitle(ctx context.Context, songs []agents.Song, result 
 		for i := range tracks {
 			sanitized[i] = newSanitizedTrack(&tracks[i])
 		}
+		// Each song is matched independently by index, so two songs with the same
+		// (title, artist) but different durations can resolve to different tracks.
 		for _, iq := range queries {
 			if mf, found := m.findBestMatch(iq.query, sanitized, threshold); found {
 				result[iq.index] = mf
