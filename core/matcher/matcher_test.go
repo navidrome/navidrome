@@ -303,6 +303,26 @@ var _ = Describe("Matcher", func() {
 				Expect(result).To(HaveLen(1))
 				Expect(result[0].ID).To(Equal("good"))
 			})
+
+			It("keeps exact-phase matches when every artist lookup fails", func() {
+				songs := []agents.Song{
+					{ID: "track-1", Name: "Exact Song", Artist: "Exact Artist"},
+					{Name: "Fuzzy Song", Artist: "Fuzzy Artist"},
+				}
+				idMatch := model.MediaFile{ID: "track-1", Title: "Exact Song", Artist: "Exact Artist"}
+				expectIDPhase(model.MediaFiles{idMatch})
+				mediaFileRepo.On("GetAll", mock.MatchedBy(matchFieldInAnd("mbz_recording_id"))).
+					Return(model.MediaFiles{}, nil).Maybe()
+				mediaFileRepo.On("GetAll", mock.MatchedBy(matchFieldInEq("missing"))).
+					Return(model.MediaFiles{}, nil).Maybe()
+				mediaFileRepo.On("GetAll", mock.MatchedBy(matchFieldInAnd("order_artist_name"))).
+					Return(nil, errors.New("db down"))
+
+				result, err := m.MatchSongs(ctx, songs, 5)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result).To(HaveLen(1))
+				Expect(result[0].ID).To(Equal("track-1"))
+			})
 		})
 	})
 

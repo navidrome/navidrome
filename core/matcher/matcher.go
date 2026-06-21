@@ -69,8 +69,14 @@ func (m *Matcher) resolveMatches(ctx context.Context, songs []agents.Song) (map[
 	if err := m.matchByISRC(ctx, songs, result); err != nil {
 		return nil, fmt.Errorf("failed to match tracks by ISRC: %w", err)
 	}
+	// The title phase is best-effort: a DB failure there must not discard the exact
+	// matches already found by the higher-priority phases. Only surface it as fatal
+	// when nothing matched at all.
 	if err := m.matchByTitle(ctx, songs, result); err != nil {
-		return nil, fmt.Errorf("failed to match tracks by title: %w", err)
+		if len(result) == 0 {
+			return nil, fmt.Errorf("failed to match tracks by title: %w", err)
+		}
+		log.Warn(ctx, "Title matching failed; returning matches from exact phases only", err)
 	}
 	return result, nil
 }

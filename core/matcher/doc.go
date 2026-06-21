@@ -53,6 +53,11 @@
 //	Level 1: Title + Artist name
 //	Level 0: Title only
 //
+// The title phase always requires an agent artist to scope the library query, so
+// Level 0 does not mean "no artist": it applies when a candidate matches on title
+// but its own artist differs from the query's (e.g. a cover or a featured-artist
+// credit), leaving the title as the only shared field.
+//
 // Each input song is scored independently, so two songs with the same title and
 // artist but different durations can resolve to different library tracks (each
 // matches the track closest to its own duration).
