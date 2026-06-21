@@ -55,9 +55,7 @@ func (pub *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// A shared stream should only serve tracks the share owner can access.
-	// Respond 404 (rather than 403) so the response doesn't reveal whether
-	// the id exists.
+	// 404 rather than 403 so the response doesn't reveal whether the id exists.
 	if shareOwner != nil && !shareOwner.HasLibraryAccess(mf.LibraryID) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return

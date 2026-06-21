@@ -131,8 +131,6 @@ var _ = Describe("handleStream", func() {
 		return w
 	}
 
-	// shareOwnedBy wires a "share123" share owned by the given user, and a single
-	// media file. It is used by the owner-access tests below.
 	shareOwnedBy := func(owner model.User, mf model.MediaFile) {
 		shareRepo.ID = "share123"
 		shareRepo.Entity = &model.Share{ID: "share123", UserID: owner.ID}
