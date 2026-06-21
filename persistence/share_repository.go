@@ -100,16 +100,20 @@ func (r *shareRepository) loadMedia(share *model.Share) error {
 		share.Tracks, err = mfRepo.GetAll(model.QueryOptions{Filters: noMissing(Eq{"album_id": ids}), Sort: "album"})
 		return err
 	case "playlist":
-		// Create a context with a fake admin user, to be able to access all playlists
-		ctx := request.WithUser(r.ctx, model.User{IsAdmin: true})
+		// Load the playlist's tracks as the share owner so per-library access
+		// control applies — a shared playlist should only contain tracks the
+		// owner can access.
+		owner, err := NewUserRepository(r.ctx, r.db).Get(share.UserID)
+		if err != nil {
+			return fmt.Errorf("loading share owner %q: %w", share.UserID, err)
+		}
+		ctx := request.WithUser(r.ctx, *owner)
 		plsRepo := NewPlaylistRepository(ctx, r.db)
 		tracks, err := plsRepo.Tracks(ids[0], true).GetAll(model.QueryOptions{Sort: "id", Filters: noMissing(Eq{})})
 		if err != nil {
 			return err
 		}
-		if len(tracks) >= 0 {
-			share.Tracks = tracks.MediaFiles()
-		}
+		share.Tracks = tracks.MediaFiles()
 		return nil
 	case "media_file":
 		mfRepo := NewMediaFileRepository(r.ctx, r.db)
