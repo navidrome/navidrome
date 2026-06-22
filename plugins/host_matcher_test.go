@@ -25,6 +25,12 @@ var _ = Describe("MatcherService", Ordered, func() {
 		DeferCleanup(configtest.SetupConfig())
 	})
 
+	// newConverter returns the service as its concrete type so converter unit
+	// tests can call toTrack directly with a chosen filesystem-permission flag.
+	newConverter := func(hasFilesystemPerm bool) *matcherServiceImpl {
+		return newMatcherService(nil, hasFilesystemPerm).(*matcherServiceImpl)
+	}
+
 	Describe("toTrack", func() {
 		It("projects a MediaFile into a public Track", func() {
 			bitDepth := 24
@@ -74,11 +80,12 @@ var _ = Describe("MatcherService", Ordered, func() {
 				ID: "ar-1", Name: "My Artist", SortArtistName: "artist, my", MbzArtistID: "mbz-ar-1",
 			})
 
-			track := toTrack(mf)
+			track := newConverter(true).toTrack(mf)
 
 			Expect(track.ID).To(Equal("mf-1"))
 			Expect(track.LibraryID).To(Equal(int32(3)))
 			Expect(track.LibraryName).To(Equal("Main"))
+			Expect(track.Path).To(Equal("/music/song.flac"))
 			Expect(track.Title).To(Equal("My Song"))
 			Expect(track.Duration).To(Equal(210.5))
 			Expect(track.BitDepth).To(HaveValue(Equal(int32(24))))
@@ -101,7 +108,7 @@ var _ = Describe("MatcherService", Ordered, func() {
 
 		It("leaves nil-able numeric fields nil when absent", func() {
 			mf := &model.MediaFile{ID: "mf-2", Title: "No Optionals"}
-			track := toTrack(mf)
+			track := newConverter(true).toTrack(mf)
 			Expect(track.BitDepth).To(BeNil())
 			Expect(track.BPM).To(BeNil())
 			Expect(track.RGAlbumGain).To(BeNil())
@@ -113,9 +120,15 @@ var _ = Describe("MatcherService", Ordered, func() {
 		It("preserves a real 0 ReplayGain value as non-nil", func() {
 			zero := 0.0
 			mf := &model.MediaFile{ID: "mf-3", Title: "Zero RG", RGTrackGain: &zero}
-			track := toTrack(mf)
+			track := newConverter(true).toTrack(mf)
 			Expect(track.RGTrackGain).To(HaveValue(Equal(0.0)))
 			Expect(track.RGAlbumGain).To(BeNil())
+		})
+
+		It("exposes Path only when the plugin has filesystem permission", func() {
+			mf := &model.MediaFile{ID: "mf-4", Title: "With Path", Path: "/music/x.flac"}
+			Expect(newConverter(true).toTrack(mf).Path).To(Equal("/music/x.flac"))
+			Expect(newConverter(false).toTrack(mf).Path).To(BeEmpty())
 		})
 	})
 
@@ -128,7 +141,7 @@ var _ = Describe("MatcherService", Ordered, func() {
 			})
 			ds := &tests.MockDataStore{MockedMediaFile: mediaFileRepo}
 
-			svc := newMatcherService(ds)
+			svc := newMatcherService(ds, false)
 			results, err := svc.MatchSongs(GinkgoT().Context(), []host.MatchSong{
 				{ID: "mf-100", Name: "Hit", Artist: "Band"},
 				{ID: "missing-id", Name: "Ghost", Artist: "Nobody"},
@@ -143,7 +156,7 @@ var _ = Describe("MatcherService", Ordered, func() {
 
 		It("returns an empty slice for empty input", func() {
 			ds := &tests.MockDataStore{MockedMediaFile: tests.CreateMockMediaFileRepo()}
-			svc := newMatcherService(ds)
+			svc := newMatcherService(ds, false)
 			results, err := svc.MatchSongs(GinkgoT().Context(), nil)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(results).To(BeEmpty())

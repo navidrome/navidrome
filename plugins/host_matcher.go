@@ -12,11 +12,12 @@ import (
 )
 
 type matcherServiceImpl struct {
-	ds model.DataStore
+	ds                model.DataStore
+	hasFilesystemPerm bool
 }
 
-func newMatcherService(ds model.DataStore) host.MatcherService {
-	return &matcherServiceImpl{ds: ds}
+func newMatcherService(ds model.DataStore, hasFilesystemPerm bool) host.MatcherService {
+	return &matcherServiceImpl{ds: ds, hasFilesystemPerm: hasFilesystemPerm}
 }
 
 func (s *matcherServiceImpl) MatchSongs(ctx context.Context, songs []host.MatchSong) ([]*host.Track, error) {
@@ -44,18 +45,19 @@ func (s *matcherServiceImpl) MatchSongs(ctx context.Context, songs []host.MatchS
 		return nil, err
 	}
 	for i, mf := range matched {
-		results[i] = toTrack(&mf)
+		results[i] = s.toTrack(&mf)
 	}
 	return results, nil
 }
 
-// toTrack projects an internal MediaFile into the public Track DTO.
-func toTrack(mf *model.MediaFile) *host.Track {
+// toTrack projects an internal MediaFile into the public Track DTO. The file
+// Path is only exposed when the plugin holds library filesystem permission,
+// matching how the Library host service gates path access.
+func (s *matcherServiceImpl) toTrack(mf *model.MediaFile) *host.Track {
 	t := &host.Track{
 		ID:                mf.ID,
 		LibraryID:         int32(mf.LibraryID),
 		LibraryName:       mf.LibraryName,
-		Path:              mf.Path,
 		Missing:           mf.Missing,
 		Title:             mf.Title,
 		Album:             mf.Album,
@@ -101,6 +103,9 @@ func toTrack(mf *model.MediaFile) *host.Track {
 		BirthTime:         unixOrZero(mf.BirthTime),
 		CreatedAt:         unixOrZero(mf.CreatedAt),
 		UpdatedAt:         unixOrZero(mf.UpdatedAt),
+	}
+	if s.hasFilesystemPerm {
+		t.Path = mf.Path
 	}
 	if len(mf.Genres) > 0 {
 		t.Genres = slice.Map(mf.Genres, func(g model.Genre) string { return g.Name })
