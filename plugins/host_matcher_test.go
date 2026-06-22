@@ -4,8 +4,15 @@ package plugins
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/plugins/host"
@@ -131,5 +138,108 @@ var _ = Describe("MatcherService", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(results).To(BeEmpty())
 		})
+	})
+})
+
+var _ = Describe("MatcherService Integration", Ordered, func() {
+	var (
+		manager *Manager
+		tmpDir  string
+	)
+
+	BeforeAll(func() {
+		var err error
+		tmpDir, err = os.MkdirTemp("", "matcher-integration-test-*")
+		Expect(err).ToNot(HaveOccurred())
+
+		srcPath := filepath.Join(testdataDir, "test-matcher"+PackageExtension)
+		destPath := filepath.Join(tmpDir, "test-matcher"+PackageExtension)
+		data, err := os.ReadFile(srcPath)
+		Expect(err).ToNot(HaveOccurred())
+		err = os.WriteFile(destPath, data, 0600)
+		Expect(err).ToNot(HaveOccurred())
+
+		hash := sha256.Sum256(data)
+		hashHex := hex.EncodeToString(hash[:])
+
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.Plugins.Enabled = true
+		conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
+		conf.Server.Plugins.AutoReload = false
+
+		mockPluginRepo := tests.CreateMockPluginRepo()
+		mockPluginRepo.Permitted = true
+		mockPluginRepo.SetData(model.Plugins{{
+			ID:      "test-matcher",
+			Path:    destPath,
+			SHA256:  hashHex,
+			Enabled: true,
+		}})
+
+		mediaFileRepo := tests.CreateMockMediaFileRepo()
+		mediaFileRepo.SetData(model.MediaFiles{
+			{ID: "mf-hit", Title: "Hit", Artist: "Band"},
+		})
+
+		dataStore := &tests.MockDataStore{
+			MockedPlugin:    mockPluginRepo,
+			MockedMediaFile: mediaFileRepo,
+		}
+
+		manager = &Manager{
+			plugins:        make(map[string]*plugin),
+			ds:             dataStore,
+			subsonicRouter: http.NotFoundHandler(),
+		}
+		Expect(manager.Start(GinkgoT().Context())).To(Succeed())
+
+		DeferCleanup(func() {
+			_ = manager.Stop()
+			_ = os.RemoveAll(tmpDir)
+		})
+	})
+
+	It("loads the plugin with the matcher permission", func() {
+		manager.mu.RLock()
+		p, ok := manager.plugins["test-matcher"]
+		manager.mu.RUnlock()
+		Expect(ok).To(BeTrue())
+		Expect(p.manifest.Permissions).ToNot(BeNil())
+		Expect(p.manifest.Permissions.Matcher).ToNot(BeNil())
+	})
+
+	It("matches songs through the host boundary, preserving order and nils", func() {
+		ctx := GinkgoT().Context()
+		manager.mu.RLock()
+		p := manager.plugins["test-matcher"]
+		manager.mu.RUnlock()
+
+		instance, err := p.instance(ctx)
+		Expect(err).ToNot(HaveOccurred())
+		defer instance.Close(ctx)
+
+		type tIn struct {
+			Songs []host.MatchSong `json:"songs"`
+		}
+		type tOut struct {
+			MatchedIDs []string `json:"matched_ids"`
+			Error      *string  `json:"error,omitempty"`
+		}
+
+		inputBytes, err := json.Marshal(tIn{Songs: []host.MatchSong{
+			{ID: "mf-hit", Name: "Hit", Artist: "Band"},
+			{ID: "nope", Name: "Ghost", Artist: "Nobody"},
+		}})
+		Expect(err).ToNot(HaveOccurred())
+
+		_, outputBytes, err := instance.Call("nd_test_matcher", inputBytes)
+		Expect(err).ToNot(HaveOccurred())
+
+		var output tOut
+		Expect(json.Unmarshal(outputBytes, &output)).To(Succeed())
+		Expect(output.Error).To(BeNil())
+		Expect(output.MatchedIDs).To(HaveLen(2))
+		Expect(output.MatchedIDs[0]).To(Equal("mf-hit"))
+		Expect(output.MatchedIDs[1]).To(BeEmpty())
 	})
 })
