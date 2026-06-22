@@ -32,7 +32,7 @@ require (
 	github.com/google/wire v0.7.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/jellydator/ttlcache/v3 v3.4.0
+	github.com/jellydator/ttlcache/v3 v3.4.1
 	github.com/kardianos/service v1.2.4
 	github.com/kr/pretty v0.3.1
 	github.com/lestrrat-go/jwx/v3 v3.1.1
