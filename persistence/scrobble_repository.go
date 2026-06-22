@@ -43,12 +43,18 @@ func (e *dbMostPlayedEntry) PostScan() error {
 }
 
 func (r *scrobbleRepository) GetMostPlayed(offset, count int) ([]model.MostPlayedEntry, error) {
+	if offset < 0 {
+		offset = 0
+	}
+	if count <= 0 {
+		count = 50
+	}
 	userID := loggedUser(r.ctx).ID
 	sq := Select("m.*", "count(*) as play_count").
 		From(r.tableName+" s").
 		LeftJoin("media_file m ON m.id = s.media_file_id").
 		Where(Eq{"s.user_id": userID}).
-		GroupBy("s.media_file_id").
+		GroupBy("m.id").
 		OrderBy("play_count DESC").
 		Offset(uint64(offset)).
 		Limit(uint64(count))
@@ -60,16 +66,13 @@ func (r *scrobbleRepository) GetMostPlayed(offset, count int) ([]model.MostPlaye
 
 	entries := make([]model.MostPlayedEntry, 0, len(rows))
 	for i := range rows {
-		entry := model.MostPlayedEntry{
+		if rows[i].MediaFile == nil {
+			continue
+		}
+		entries = append(entries, model.MostPlayedEntry{
 			MediaFile: *rows[i].MediaFile,
 			PlayCount: rows[i].PlayCount,
-		}
-		var err error
-		entry.Participants, err = r.getParticipants(rows[i].MediaFile)
-		if err != nil {
-			return nil, err
-		}
-		entries = append(entries, entry)
+		})
 	}
 	return entries, nil
 }
