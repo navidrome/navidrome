@@ -32,3 +32,46 @@ func (r *scrobbleRepository) RecordScrobble(mediaFileID string, submissionTime t
 	_, err := r.executeSQL(insert)
 	return err
 }
+
+type dbMostPlayedEntry struct {
+	dbMediaFile
+	PlayCount int `structs:"-"`
+}
+
+func (e *dbMostPlayedEntry) PostScan() error {
+	return e.dbMediaFile.PostScan()
+}
+
+func (r *scrobbleRepository) GetMostPlayed(offset, count int) ([]model.MostPlayedEntry, error) {
+	userID := loggedUser(r.ctx).ID
+	sq := Select("m.*", "count(*) as play_count").
+		From(r.tableName+" s").
+		LeftJoin("media_file m ON m.id = s.media_file_id").
+		Where(Eq{"s.user_id": userID}).
+		GroupBy("s.media_file_id").
+		OrderBy("play_count DESC").
+		Offset(uint64(offset)).
+		Limit(uint64(count))
+
+	var rows []dbMostPlayedEntry
+	if err := r.queryAll(sq, &rows); err != nil {
+		return nil, err
+	}
+
+	entries := make([]model.MostPlayedEntry, 0, len(rows))
+	for i := range rows {
+		entry := model.MostPlayedEntry{
+			MediaFile: *rows[i].MediaFile,
+			PlayCount: rows[i].PlayCount,
+		}
+		var err error
+		entry.Participants, err = r.getParticipants(rows[i].MediaFile)
+		if err != nil {
+			return nil, err
+		}
+		entries = append(entries, entry)
+	}
+	return entries, nil
+}
+
+var _ model.ScrobbleRepository = (*scrobbleRepository)(nil)
