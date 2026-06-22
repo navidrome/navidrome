@@ -43,6 +43,12 @@ func (h *dbHistoryEntry) PostScan() error {
 }
 
 func (r *scrobbleRepository) GetHistory(offset, count int) ([]model.HistoryEntry, error) {
+	if offset < 0 {
+		offset = 0
+	}
+	if count <= 0 {
+		count = 50
+	}
 	userID := loggedUser(r.ctx).ID
 	sq := Select("m.*", "s.submission_time").
 		From(r.tableName+" s").
@@ -59,16 +65,13 @@ func (r *scrobbleRepository) GetHistory(offset, count int) ([]model.HistoryEntry
 
 	entries := make([]model.HistoryEntry, 0, len(rows))
 	for i := range rows {
-		entry := model.HistoryEntry{
+		if rows[i].MediaFile == nil {
+			continue
+		}
+		entries = append(entries, model.HistoryEntry{
 			MediaFile: *rows[i].MediaFile,
 			PlayedAt:  time.Unix(rows[i].SubmissionTime, 0),
-		}
-		var err error
-		entry.Participants, err = r.getParticipants(rows[i].MediaFile)
-		if err != nil {
-			return nil, err
-		}
-		entries = append(entries, entry)
+		})
 	}
 	return entries, nil
 }
