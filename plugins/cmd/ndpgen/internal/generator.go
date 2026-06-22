@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"embed"
 	"fmt"
+	"slices"
 	"strings"
 	"text/template"
 )
@@ -839,5 +840,31 @@ func GeneratePDKTypesStub(symbols *PDKSymbols) ([]byte, error) {
 		return nil, fmt.Errorf("executing template: %w", err)
 	}
 
+	return buf.Bytes(), nil
+}
+
+// GenerateSharedTypesGo generates the shared `types` package (plain data structs).
+func GenerateSharedTypesGo(structs []StructDef, pkgName string) ([]byte, error) {
+	tmplContent, err := templatesFS.ReadFile("templates/types.go.tmpl")
+	if err != nil {
+		return nil, fmt.Errorf("reading types template: %w", err)
+	}
+	tmpl, err := template.New("types").Funcs(template.FuncMap{
+		"formatDoc": formatDoc,
+		"indent":    indentText,
+	}).Parse(string(tmplContent))
+	if err != nil {
+		return nil, fmt.Errorf("parsing template: %w", err)
+	}
+	sorted := append([]StructDef(nil), structs...)
+	slices.SortFunc(sorted, func(a, b StructDef) int { return strings.Compare(a.Name, b.Name) })
+	data := struct {
+		Package string
+		Structs []StructDef
+	}{Package: pkgName, Structs: sorted}
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return nil, fmt.Errorf("executing template: %w", err)
+	}
 	return buf.Bytes(), nil
 }

@@ -1040,6 +1040,25 @@ type OnInitOutput struct {
 	})
 })
 
+var _ = Describe("Shared Types Generation", func() {
+	It("emits a flat Go types package with no imports", func() {
+		structs := []StructDef{
+			{Name: "ArtistRef", Doc: "ArtistRef references an artist.", Fields: []FieldDef{
+				{Name: "ID", Type: "string", JSONTag: "id", OmitEmpty: true},
+				{Name: "Name", Type: "string", JSONTag: "name"},
+			}},
+		}
+		code, err := GenerateSharedTypesGo(structs, "types")
+		Expect(err).NotTo(HaveOccurred())
+		out := string(code)
+		Expect(out).To(ContainSubstring("package types"))
+		Expect(out).To(ContainSubstring("type ArtistRef struct {"))
+		Expect(out).To(ContainSubstring("ID string `json:\"id,omitempty\"`"))
+		Expect(out).To(ContainSubstring("Name string `json:\"name\"`"))
+		Expect(out).NotTo(ContainSubstring("import"))
+	})
+})
+
 var _ = Describe("Rust Generation", func() {
 	Describe("skipSerializingFunc", func() {
 		It("should return Option::is_none for pointer types", func() {

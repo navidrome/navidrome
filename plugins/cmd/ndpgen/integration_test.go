@@ -272,6 +272,26 @@ type ServiceB interface {
 				"config_service.go.txt", "config_client_expected.go.txt", "config_client_expected.rs"),
 		)
 
+		It("generates the shared Go types package with -shared-types", func() {
+			typesSrc := `package types
+
+// ArtistRef references an artist.
+type ArtistRef struct {
+	ID   string ` + "`json:\"id,omitempty\"`" + `
+	Name string ` + "`json:\"name\"`" + `
+}
+`
+			Expect(os.WriteFile(filepath.Join(testDir, "types.go"), []byte(typesSrc), 0600)).To(Succeed())
+			cmd := exec.Command(ndpgenBin, "-shared-types", "-input", testDir, "-output", outputDir, "-go")
+			out, err := cmd.CombinedOutput()
+			Expect(err).ToNot(HaveOccurred(), "Command failed: %s", out)
+
+			content, err := os.ReadFile(filepath.Join(outputDir, "go", "types", "types.go"))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(content)).To(ContainSubstring("package types"))
+			Expect(string(content)).To(ContainSubstring("type ArtistRef struct {"))
+		})
+
 		It("generates compilable client code for comprehensive service", func() {
 			serviceCode := readTestdata("comprehensive_service.go.txt")
 

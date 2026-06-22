@@ -61,6 +61,7 @@ type config struct {
 	capabilityOnly   bool
 	schemasOnly      bool // Generate XTP schemas from capabilities (output goes to inputDir)
 	pdkOnly          bool // Generate PDK abstraction layer wrapper
+	sharedTypes      bool // Generate the shared types package
 	generateGoClient bool
 	generateRsClient bool
 	verbose          bool
@@ -76,6 +77,14 @@ func main() {
 
 	if cfg.schemasOnly {
 		if err := runSchemaGeneration(cfg); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
+	if cfg.sharedTypes {
+		if err := runSharedTypesGeneration(cfg); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
@@ -152,6 +161,57 @@ func runSchemaGeneration(cfg *config) error {
 	}
 
 	return generateSchemas(cfg, capabilities)
+}
+
+// writeGenerated creates dir (if needed) and writes content to name inside it.
+// In dry-run mode it prints the content instead.
+func writeGenerated(dir, name string, content []byte, dryRun, verbose bool) error {
+	path := filepath.Join(dir, name)
+	if dryRun {
+		fmt.Printf("=== %s ===\n%s\n", path, content)
+		return nil
+	}
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("creating output directory %s: %w", dir, err)
+	}
+	if err := os.WriteFile(path, content, 0600); err != nil {
+		return fmt.Errorf("writing %s: %w", path, err)
+	}
+	if verbose {
+		fmt.Printf("Generated: %s\n", path)
+	}
+	return nil
+}
+
+// runSharedTypesGeneration handles shared types package generation.
+func runSharedTypesGeneration(cfg *config) error {
+	structs, err := internal.LoadSharedTypes(cfg.inputDir)
+	if err != nil {
+		return err
+	}
+	if len(structs) == 0 {
+		return nil
+	}
+	list := make([]internal.StructDef, 0, len(structs))
+	for _, s := range structs {
+		list = append(list, s)
+	}
+	if cfg.generateGoClient {
+		code, err := internal.GenerateSharedTypesGo(list, "types")
+		if err != nil {
+			return fmt.Errorf("generating Go types: %w", err)
+		}
+		formatted, err := format.Source(code)
+		if err != nil {
+			return fmt.Errorf("formatting Go types: %w\n%s", err, code)
+		}
+		dir := filepath.Join(cfg.outputDir, "go", "types")
+		if err := writeGenerated(dir, "types.go", formatted, cfg.dryRun, cfg.verbose); err != nil {
+			return err
+		}
+	}
+	// Rust output added in a later task
+	return nil
 }
 
 // runPDKGeneration handles PDK abstraction layer code generation.
@@ -312,6 +372,7 @@ func parseConfig() (*config, error) {
 		capabilityOnly = flag.Bool("capability-only", false, "Generate only capability export wrappers")
 		schemasOnly    = flag.Bool("schemas", false, "Generate XTP YAML schemas from capabilities (output to input directory)")
 		pdkOnly        = flag.Bool("extism-pdk", false, "Generate PDK abstraction layer by parsing extism/go-pdk")
+		sharedTypes    = flag.Bool("shared-types", false, "Generate the shared types package")
 		goClient       = flag.Bool("go", false, "Generate Go client wrappers")
 		rsClient       = flag.Bool("rust", false, "Generate Rust client wrappers")
 		verbose        = flag.Bool("v", false, "Verbose output")
@@ -336,6 +397,9 @@ func parseConfig() (*config, error) {
 	if *pdkOnly {
 		modeCount++
 	}
+	if *sharedTypes {
+		modeCount++
+	}
 
 	// Default to host-only if no mode is specified
 	if modeCount == 0 {
@@ -344,7 +408,7 @@ func parseConfig() (*config, error) {
 
 	// Cannot specify multiple modes
 	if modeCount > 1 {
-		return nil, fmt.Errorf("cannot specify multiple modes (-host-only, -host-wrappers, -capability-only, -schemas, -pdk)")
+		return nil, fmt.Errorf("cannot specify multiple modes (-host-only, -host-wrappers, -capability-only, -schemas, -pdk, -shared-types)")
 	}
 
 	if *outputDir == "" {
@@ -389,6 +453,7 @@ func parseConfig() (*config, error) {
 		capabilityOnly:   *capabilityOnly,
 		schemasOnly:      *schemasOnly,
 		pdkOnly:          *pdkOnly,
+		sharedTypes:      *sharedTypes,
 		generateGoClient: *goClient || !anyLangFlag,
 		generateRsClient: *rsClient,
 		verbose:          *verbose,
