@@ -120,6 +120,18 @@ var hostServices = []hostServiceEntry{
 		},
 	},
 	{
+		name:          "Matcher",
+		hasPermission: func(p *Permissions) bool { return p != nil && p.Matcher != nil },
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
+			if ctx.manager.ds == nil {
+				log.Warn("Plugin requires Matcher but DataStore not available", "plugin", ctx.pluginName)
+				return nil, nil
+			}
+			service := newMatcherService(ctx.manager.ds)
+			return host.RegisterMatcherHostFunctions(service), nil
+		},
+	},
+	{
 		name:          "HTTP",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Http != nil },
 		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
