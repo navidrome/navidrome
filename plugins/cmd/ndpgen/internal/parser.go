@@ -40,22 +40,38 @@ func ParseDirectoryWithShared(dir string, shared map[string]StructDef) ([]Servic
 		return nil, fmt.Errorf("reading directory: %w", err)
 	}
 
-	var services []Service
 	fset := token.NewFileSet()
 
+	// First pass: collect all type aliases from every file in the package so that
+	// an alias declared in one file is visible when resolving types in a sibling file.
+	var goFiles []string
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") {
 			continue
 		}
-		// Skip generated files and test files
 		if strings.HasSuffix(entry.Name(), "_gen.go") || strings.HasSuffix(entry.Name(), "_test.go") {
 			continue
 		}
+		goFiles = append(goFiles, filepath.Join(dir, entry.Name()))
+	}
 
-		path := filepath.Join(dir, entry.Name())
-		parsed, err := parseServiceFile(fset, path, shared)
+	pkgAliasMap := make(map[string]TypeAlias)
+	for _, path := range goFiles {
+		f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
 		if err != nil {
-			return nil, fmt.Errorf("parsing %s: %w", entry.Name(), err)
+			return nil, fmt.Errorf("parsing %s for types: %w", filepath.Base(path), err)
+		}
+		for _, a := range parseTypeAliases(f) {
+			pkgAliasMap[a.Name] = a
+		}
+	}
+
+	// Second pass: parse services using the package-level alias map.
+	var services []Service
+	for _, path := range goFiles {
+		parsed, err := parseServiceFile(fset, path, pkgAliasMap, shared)
+		if err != nil {
+			return nil, fmt.Errorf("parsing %s: %w", filepath.Base(path), err)
 		}
 		services = append(services, parsed...)
 	}
@@ -389,23 +405,18 @@ func parseExport(name string, funcType *ast.FuncType, annotation map[string]stri
 }
 
 // parseServiceFile parses a single Go source file and extracts host services.
-func parseServiceFile(fset *token.FileSet, path string, shared map[string]StructDef) ([]Service, error) {
+// pkgAliasMap is the package-wide alias map built from all files in the package.
+func parseServiceFile(fset *token.FileSet, path string, pkgAliasMap map[string]TypeAlias, shared map[string]StructDef) ([]Service, error) {
 	f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
 	if err != nil {
 		return nil, err
 	}
 
-	// First pass: collect all struct definitions in the file
+	// Collect all struct definitions in the file.
 	allStructs := parseStructs(f)
 	structMap := make(map[string]StructDef)
 	for _, s := range allStructs {
 		structMap[s.Name] = s
-	}
-
-	// Collect type aliases for shared-alias resolution
-	aliasMap := make(map[string]TypeAlias)
-	for _, a := range parseTypeAliases(f) {
-		aliasMap[a.Name] = a
 	}
 
 	var services []Service
@@ -476,7 +487,7 @@ func parseServiceFile(fset *token.FileSet, path string, shared map[string]Struct
 			}
 
 			// Resolve shared-type aliases against the registry
-			service.SharedAliases = resolveSharedAliases(referencedTypes, aliasMap, shared)
+			service.SharedAliases = resolveSharedAliases(referencedTypes, pkgAliasMap, shared)
 
 			// Attach referenced structs to the service (sorted for stable output)
 			for _, typeName := range slices.Sorted(maps.Keys(referencedTypes)) {

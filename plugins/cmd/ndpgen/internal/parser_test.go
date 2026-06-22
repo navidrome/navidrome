@@ -212,6 +212,52 @@ type RegularInterface interface {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(services).To(BeEmpty())
 		})
+
+		It("resolves shared-type aliases declared in a sibling file (package-wide alias map)", func() {
+			// File A: declares the shared-type alias in the same package
+			fileA := `package host
+
+import "github.com/navidrome/navidrome/plugins/types"
+
+// Deprecated: use types.Track.
+type Track = types.Track
+`
+			// File B: declares the host service that references Track from file A
+			fileB := `package host
+
+import "context"
+
+//nd:hostservice name=Matcher permission=matcher
+type MatcherService interface {
+	//nd:hostfunc
+	MatchSongs(ctx context.Context, query string) (results []Track, err error)
+}
+`
+			Expect(os.WriteFile(filepath.Join(tmpDir, "aliases.go"), []byte(fileA), 0600)).To(Succeed())
+			Expect(os.WriteFile(filepath.Join(tmpDir, "matcher.go"), []byte(fileB), 0600)).To(Succeed())
+
+			shared := map[string]StructDef{
+				"Track": {
+					Name: "Track",
+					Fields: []FieldDef{
+						{Name: "Title", Type: "string", JSONTag: "title"},
+						{Name: "Artist", Type: "string", JSONTag: "artist"},
+					},
+				},
+			}
+
+			services, err := ParseDirectoryWithShared(tmpDir, shared)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(services).To(HaveLen(1))
+
+			byName := map[string]SharedAlias{}
+			for _, a := range services[0].SharedAliases {
+				byName[a.Name] = a
+			}
+			// Track alias is in a sibling file — must be resolved package-wide
+			Expect(byName).To(HaveKey("Track"))
+			Expect(byName["Track"].Target).To(Equal("types.Track"))
+		})
 	})
 
 	Describe("parseKeyValuePairs", func() {
@@ -604,6 +650,7 @@ type Scrobbler interface {
 			}
 			Expect(byName["TrackInfo"].Target).To(Equal("types.TrackInfo"))
 			Expect(byName["TrackInfo"].Def.Fields).To(HaveLen(2)) // for schema inlining
+			Expect(byName["ArtistRef"].Target).To(Equal("types.ArtistRef"))
 		})
 	})
 
