@@ -700,6 +700,27 @@ var _ = Describe("XTP Schema Generation", func() {
 		})
 	})
 
+	Describe("GenerateSchema with shared aliases", func() {
+		It("inlines shared-alias shapes as schema components", func() {
+			cap := Capability{
+				Name: "scrobbler", Interface: "Scrobbler", Required: true,
+				Methods: []Export{{Name: "NowPlaying", ExportName: "nd_scrobbler_now_playing",
+					Input: Param{Name: "input", Type: "NowPlayingRequest"}}},
+				Structs: []StructDef{{Name: "NowPlayingRequest", Fields: []FieldDef{
+					{Name: "Track", Type: "TrackInfo", JSONTag: "track"}}}},
+				SharedAliases: []SharedAlias{{
+					Name: "TrackInfo", Target: "types.TrackInfo",
+					Def: StructDef{Name: "TrackInfo", Fields: []FieldDef{
+						{Name: "Title", Type: "string", JSONTag: "title"}}},
+				}},
+			}
+			out, err := GenerateSchema(cap)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(out)).To(ContainSubstring("TrackInfo:"))
+			Expect(string(out)).To(ContainSubstring("title:"))
+		})
+	})
+
 	Describe("GenerateSchema enum filtering", func() {
 		It("should only include enums that are actually used by exports", func() {
 			capability := Capability{

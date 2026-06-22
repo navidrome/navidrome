@@ -119,8 +119,15 @@ func buildSchemas(cap Capability) yaml.Node {
 		knownTypes[alias.Name] = true
 	}
 
+	// Register shared-alias names as known types and stash their struct shapes.
+	sharedDefs := map[string]StructDef{}
+	for _, a := range cap.SharedAliases {
+		knownTypes[a.Name] = true
+		sharedDefs[a.Name] = a.Def
+	}
+
 	// Collect types that are actually used by exports
-	usedTypes := collectUsedTypes(cap, knownTypes)
+	usedTypes := collectUsedTypes(cap, knownTypes, sharedDefs)
 
 	// Sort structs by name for consistent output
 	structNames := make([]string, 0, len(cap.Structs))
@@ -136,6 +143,18 @@ func buildSchemas(cap Capability) yaml.Node {
 	for _, name := range structNames {
 		st := structMap[name]
 		addToMap(&schemas, name, buildObjectSchema(st, knownTypes))
+	}
+
+	// Emit components for used shared aliases (sorted for deterministic output).
+	sharedNames := make([]string, 0, len(sharedDefs))
+	for name, def := range sharedDefs {
+		if usedTypes[name] && len(def.Fields) > 0 {
+			sharedNames = append(sharedNames, name)
+		}
+	}
+	sort.Strings(sharedNames)
+	for _, name := range sharedNames {
+		addToMap(&schemas, name, buildObjectSchema(sharedDefs[name], knownTypes))
 	}
 
 	// Build enum types from type aliases (only if used by exports)
@@ -157,18 +176,18 @@ func buildSchemas(cap Capability) yaml.Node {
 }
 
 // collectUsedTypes returns a set of type names that are reachable from exports.
-func collectUsedTypes(cap Capability, knownTypes map[string]bool) map[string]bool {
+func collectUsedTypes(cap Capability, knownTypes map[string]bool, sharedDefs map[string]StructDef) map[string]bool {
 	used := make(map[string]bool)
 
 	// Start with types directly referenced by exports
 	for _, export := range cap.Methods {
 		if export.Input.Type != "" {
-			addTypeAndDeps(strings.TrimPrefix(export.Input.Type, "*"), cap, knownTypes, used)
+			addTypeAndDeps(strings.TrimPrefix(export.Input.Type, "*"), cap, knownTypes, sharedDefs, used)
 		}
 		if export.Output.Type != "" {
 			outputType := strings.TrimPrefix(export.Output.Type, "*")
 			if !isPrimitiveGoType(outputType) {
-				addTypeAndDeps(outputType, cap, knownTypes, used)
+				addTypeAndDeps(outputType, cap, knownTypes, sharedDefs, used)
 			}
 		}
 	}
@@ -177,23 +196,34 @@ func collectUsedTypes(cap Capability, knownTypes map[string]bool) map[string]boo
 }
 
 // addTypeAndDeps adds a type and all its dependencies to the used set.
-func addTypeAndDeps(typeName string, cap Capability, knownTypes map[string]bool, used map[string]bool) {
+func addTypeAndDeps(typeName string, cap Capability, knownTypes map[string]bool, sharedDefs map[string]StructDef, used map[string]bool) {
 	if used[typeName] || !knownTypes[typeName] {
 		return
 	}
 	used[typeName] = true
 
-	// Find the struct and add its field types
+	// Walk fields of capability-local structs.
 	for _, st := range cap.Structs {
 		if st.Name == typeName {
 			for _, field := range st.Fields {
 				fieldType := strings.TrimPrefix(field.Type, "*")
 				fieldType = strings.TrimPrefix(fieldType, "[]")
 				if knownTypes[fieldType] {
-					addTypeAndDeps(fieldType, cap, knownTypes, used)
+					addTypeAndDeps(fieldType, cap, knownTypes, sharedDefs, used)
 				}
 			}
 			return
+		}
+	}
+
+	// Walk fields of shared-alias structs so their nested refs are also marked used.
+	if def, ok := sharedDefs[typeName]; ok {
+		for _, field := range def.Fields {
+			fieldType := strings.TrimPrefix(field.Type, "*")
+			fieldType = strings.TrimPrefix(fieldType, "[]")
+			if knownTypes[fieldType] {
+				addTypeAndDeps(fieldType, cap, knownTypes, sharedDefs, used)
+			}
 		}
 	}
 }
