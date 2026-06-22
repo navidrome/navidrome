@@ -4,7 +4,7 @@ This directory contains the Go interface definitions for Navidrome plugin capabi
 
 1. **Go PDK packages** (`pdk/go/*/`) - Type-safe wrappers for Go plugin developers
 2. **Rust PDK crates** (`pdk/rust/*/`) - Type-safe wrappers for Rust plugin developers
-3. **XTP YAML schemas** (`*.yaml`) - Schema files for other [Extism plugin languages](https://extism.org/docs/concepts/pdk/) (TypeScript, Python, C#, Zig, C++, ...)
+3. **XTP YAML schemas** (`*.yaml`) - Schema files for other [Extism plugin languages](https://extism.org/docs/concepts/pdk/) (TypeScript, C#, Zig, C++, ...)
 
 ## For Go Plugin Developers
 
@@ -16,7 +16,7 @@ Rust developers should use the generated PDK crate in `plugins/pdk/rust/nd-pdk`.
 
 ## For Non-Go Plugin Developers
 
-If you're developing plugins in other languages (TypeScript, Rust, Python, C#, Zig, C++), you can use the XTP CLI to generate type-safe bindings from the YAML schema files in this directory.
+If you're developing plugins in other languages (TypeScript, Rust, C#, Zig, C++), you can use the XTP CLI to generate type-safe bindings from the YAML schema files in this directory.
 
 ### Prerequisites
 
@@ -42,10 +42,6 @@ xtp plugin init --schema-file plugins/capabilities/metadata_agent.yaml \
 # Rust
 xtp plugin init --schema-file plugins/capabilities/scrobbler.yaml \
     --template rust --path my-plugin
-
-# Python
-xtp plugin init --schema-file plugins/capabilities/lifecycle.yaml \
-    --template python --path my-plugin
 
 # C#
 xtp plugin init --schema-file plugins/capabilities/scheduler_callback.yaml \

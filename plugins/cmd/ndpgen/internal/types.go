@@ -427,24 +427,6 @@ func toJSONName(name string) string {
 	return string(result)
 }
 
-// ToPythonType converts a Go type to its Python equivalent.
-func ToPythonType(goType string) string {
-	switch goType {
-	case "string":
-		return "str"
-	case "int", "int32", "int64":
-		return "int"
-	case "float32", "float64":
-		return "float"
-	case "bool":
-		return "bool"
-	case "[]byte":
-		return "bytes"
-	default:
-		return "Any"
-	}
-}
-
 // ToSnakeCase converts a PascalCase or camelCase string to snake_case.
 // It handles consecutive uppercase letters correctly (e.g., "ScheduleID" -> "schedule_id").
 func ToSnakeCase(s string) string {
@@ -467,31 +449,6 @@ func ToSnakeCase(s string) string {
 		result.WriteRune(r)
 	}
 	return strings.ToLower(result.String())
-}
-
-// PythonFunctionName returns the Python function name for a method.
-func (m Method) PythonFunctionName(servicePrefix string) string {
-	return ToSnakeCase(servicePrefix + m.Name)
-}
-
-// PythonResultTypeName returns the Python dataclass name for multi-value returns.
-func (m Method) PythonResultTypeName(serviceName string) string {
-	return serviceName + m.Name + "Result"
-}
-
-// NeedsResultClass returns true if the method needs a dataclass for returns.
-func (m Method) NeedsResultClass() bool {
-	return len(m.Returns) > 1
-}
-
-// PythonType returns the Python type for this parameter.
-func (p Param) PythonType() string {
-	return ToPythonType(p.Type)
-}
-
-// PythonName returns the snake_case Python name for this parameter.
-func (p Param) PythonName() string {
-	return ToSnakeCase(p.Name)
 }
 
 // ToRustType converts a Go type to its Rust equivalent.

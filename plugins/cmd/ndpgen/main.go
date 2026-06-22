@@ -19,7 +19,7 @@
 //
 // Output directories:
 //   - Host wrappers:   $input/<servicename>_gen.go (server-side, used by Navidrome)
-//   - Host functions:  $output/go/host/, $output/python/host/, $output/rust/host/
+//   - Host functions:  $output/go/host/, $output/rust/host/
 //   - Capabilities:    $output/go/<capability>/ (e.g., $output/go/metadata/)
 //   - Schemas:         $input/<capability>.yaml (co-located with Go sources)
 //
@@ -32,8 +32,7 @@
 //	-host-only       Generate PDK client wrappers for calling host functions
 //	-capability-only Generate only capability export wrappers
 //	-schemas         Generate XTP YAML schemas from capabilities
-//	-go              Generate Go client wrappers (default: true when not using -python/-rust)
-//	-python          Generate Python client wrappers (default: false)
+//	-go              Generate Go client wrappers (default: true when not using -rust)
 //	-rust            Generate Rust client wrappers (default: false)
 //	-v               Verbose output
 //	-dry-run         Preview generated code without writing files
@@ -55,7 +54,6 @@ type config struct {
 	inputDir         string
 	outputDir        string // Base output directory (e.g., plugins/pdk)
 	goOutputDir      string // Go output: $outputDir/go/host (for host-only)
-	pythonOutputDir  string // Python output: $outputDir/python/host
 	rustOutputDir    string // Rust output: $outputDir/rust/host
 	pkgName          string
 	hostOnly         bool
@@ -64,7 +62,6 @@ type config struct {
 	schemasOnly      bool // Generate XTP schemas from capabilities (output goes to inputDir)
 	pdkOnly          bool // Generate PDK abstraction layer wrapper
 	generateGoClient bool
-	generatePyClient bool
 	generateRsClient bool
 	verbose          bool
 	dryRun           bool
@@ -316,7 +313,6 @@ func parseConfig() (*config, error) {
 		schemasOnly    = flag.Bool("schemas", false, "Generate XTP YAML schemas from capabilities (output to input directory)")
 		pdkOnly        = flag.Bool("extism-pdk", false, "Generate PDK abstraction layer by parsing extism/go-pdk")
 		goClient       = flag.Bool("go", false, "Generate Go client wrappers")
-		pyClient       = flag.Bool("python", false, "Generate Python client wrappers")
 		rsClient       = flag.Bool("rust", false, "Generate Rust client wrappers")
 		verbose        = flag.Bool("v", false, "Verbose output")
 		dryRun         = flag.Bool("dry-run", false, "Preview generated code without writing files")
@@ -374,21 +370,18 @@ func parseConfig() (*config, error) {
 
 	// Set output directories for each language
 	// Go host wrappers: $output/go/host/
-	// Python host wrappers: $output/python/host/
 	// Rust host wrappers: $output/rust/nd-pdk-host/ (renamed crate)
 	absGoOutput := filepath.Join(absOutput, "go", "host")
-	absPythonOutput := filepath.Join(absOutput, "python", "host")
 	absRustOutput := filepath.Join(absOutput, "rust", "nd-pdk-host")
 
 	// Determine what to generate
 	// Default: generate Go clients if no language flag is specified
-	anyLangFlag := *goClient || *pyClient || *rsClient
+	anyLangFlag := *goClient || *rsClient
 
 	return &config{
 		inputDir:         absInput,
 		outputDir:        absOutput,
 		goOutputDir:      absGoOutput,
-		pythonOutputDir:  absPythonOutput,
 		rustOutputDir:    absRustOutput,
 		pkgName:          *pkgName,
 		hostOnly:         *hostOnly,
@@ -397,7 +390,6 @@ func parseConfig() (*config, error) {
 		schemasOnly:      *schemasOnly,
 		pdkOnly:          *pdkOnly,
 		generateGoClient: *goClient || !anyLangFlag,
-		generatePyClient: *pyClient,
 		generateRsClient: *rsClient,
 		verbose:          *verbose,
 		dryRun:           *dryRun,
@@ -412,16 +404,12 @@ func parseServices(cfg *config) ([]internal.Service, error) {
 		if cfg.generateGoClient {
 			fmt.Printf("Go output directory: %s\n", cfg.goOutputDir)
 		}
-		if cfg.generatePyClient {
-			fmt.Printf("Python output directory: %s\n", cfg.pythonOutputDir)
-		}
 		if cfg.generateRsClient {
 			fmt.Printf("Rust output directory: %s\n", cfg.rustOutputDir)
 		}
 		fmt.Printf("Package name: %s\n", cfg.pkgName)
 		fmt.Printf("Host-only mode: %v\n", cfg.hostOnly)
 		fmt.Printf("Generate Go client code: %v\n", cfg.generateGoClient)
-		fmt.Printf("Generate Python client code: %v\n", cfg.generatePyClient)
 		fmt.Printf("Generate Rust client code: %v\n", cfg.generateRsClient)
 	}
 
@@ -619,11 +607,6 @@ func generateAllCode(cfg *config, services []internal.Service) error {
 				return fmt.Errorf("generating Go client code for %s: %w", svc.Name, err)
 			}
 		}
-		if cfg.generatePyClient {
-			if err := generatePythonClientCode(svc, cfg.pythonOutputDir, cfg.dryRun, cfg.verbose); err != nil {
-				return fmt.Errorf("generating Python client code for %s: %w", svc.Name, err)
-			}
-		}
 		if cfg.generateRsClient {
 			if err := generateRustClientCode(svc, cfg.rustOutputDir, cfg.dryRun, cfg.verbose); err != nil {
 				return fmt.Errorf("generating Rust client code for %s: %w", svc.Name, err)
@@ -753,36 +736,6 @@ func generateGoClientStubCode(svc internal.Service, outputDir, pkgName string, d
 
 	if verbose {
 		fmt.Printf("Generated Go client stub: %s\n", stubFile)
-	}
-	return nil
-}
-
-// generatePythonClientCode generates Python client-side code for a service.
-func generatePythonClientCode(svc internal.Service, outputDir string, dryRun, verbose bool) error {
-	code, err := internal.GenerateClientPython(svc)
-	if err != nil {
-		return fmt.Errorf("generating code: %w", err)
-	}
-
-	// Python code goes directly in the output directory
-	clientFile := filepath.Join(outputDir, "nd_host_"+strings.ToLower(svc.Name)+".py")
-
-	if dryRun {
-		fmt.Printf("=== %s ===\n%s\n", clientFile, code)
-		return nil
-	}
-
-	// Create output directory if needed
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
-		return fmt.Errorf("creating python client directory: %w", err)
-	}
-
-	if err := os.WriteFile(clientFile, code, 0600); err != nil {
-		return fmt.Errorf("writing file: %w", err)
-	}
-
-	if verbose {
-		fmt.Printf("Generated Python client code: %s\n", clientFile)
 	}
 	return nil
 }
