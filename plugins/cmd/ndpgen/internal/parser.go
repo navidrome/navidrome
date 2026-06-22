@@ -49,36 +49,55 @@ func collectGoFiles(dir string) ([]string, error) {
 	return goFiles, nil
 }
 
+// parsedGoFile pairs a parsed AST with its source path for error reporting.
+type parsedGoFile struct {
+	path string
+	file *ast.File
+}
+
+// parseGoFiles parses every eligible Go file in dir once, so callers can run
+// multiple passes over the ASTs without re-reading and re-parsing each file.
+func parseGoFiles(dir string) ([]parsedGoFile, error) {
+	goFiles, err := collectGoFiles(dir)
+	if err != nil {
+		return nil, err
+	}
+	fset := token.NewFileSet()
+	parsed := make([]parsedGoFile, len(goFiles))
+	for i, path := range goFiles {
+		f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
+		if err != nil {
+			return nil, fmt.Errorf("parsing %s: %w", filepath.Base(path), err)
+		}
+		parsed[i] = parsedGoFile{path: path, file: f}
+	}
+	return parsed, nil
+}
+
 // ParseDirectory parses all Go source files in a directory and extracts host services.
 // It uses a two-pass approach: first collecting all struct definitions from the whole
 // package, then parsing each file's services with the shared struct map available so
 // that a host-service interface can reference types defined in a sibling file.
 func ParseDirectory(dir string) ([]Service, error) {
-	goFiles, err := collectGoFiles(dir)
+	files, err := parseGoFiles(dir)
 	if err != nil {
 		return nil, err
 	}
 
-	fset := token.NewFileSet()
-
 	// First pass.
 	sharedStructMap := make(map[string]StructDef)
-	for _, path := range goFiles {
-		f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
-		if err != nil {
-			return nil, fmt.Errorf("parsing %s for types: %w", filepath.Base(path), err)
-		}
-		for _, s := range parseStructs(f) {
+	for _, gf := range files {
+		for _, s := range parseStructs(gf.file) {
 			sharedStructMap[s.Name] = s
 		}
 	}
 
 	// Second pass.
 	var services []Service
-	for _, path := range goFiles {
-		parsed, err := parseServiceFile(fset, path, sharedStructMap)
+	for _, gf := range files {
+		parsed, err := parseServiceFile(gf.file, sharedStructMap)
 		if err != nil {
-			return nil, fmt.Errorf("parsing %s: %w", filepath.Base(path), err)
+			return nil, fmt.Errorf("parsing %s: %w", filepath.Base(gf.path), err)
 		}
 		services = append(services, parsed...)
 	}
@@ -88,38 +107,32 @@ func ParseDirectory(dir string) ([]Service, error) {
 
 // ParseCapabilities parses all Go source files in a directory and extracts capabilities.
 func ParseCapabilities(dir string) ([]Capability, error) {
-	goFiles, err := collectGoFiles(dir)
+	files, err := parseGoFiles(dir)
 	if err != nil {
 		return nil, err
 	}
-
-	fset := token.NewFileSet()
 
 	// First pass: collect all structs and type aliases from all files in the package
 	sharedStructMap := make(map[string]StructDef)
 	sharedAliasMap := make(map[string]TypeAlias)
 	var allConstGroups []ConstGroup
 
-	for _, path := range goFiles {
-		f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
-		if err != nil {
-			return nil, fmt.Errorf("parsing %s for types: %w", filepath.Base(path), err)
-		}
-		for _, s := range parseStructs(f) {
+	for _, gf := range files {
+		for _, s := range parseStructs(gf.file) {
 			sharedStructMap[s.Name] = s
 		}
-		for _, a := range parseTypeAliases(f) {
+		for _, a := range parseTypeAliases(gf.file) {
 			sharedAliasMap[a.Name] = a
 		}
-		allConstGroups = append(allConstGroups, parseConstGroups(f)...)
+		allConstGroups = append(allConstGroups, parseConstGroups(gf.file)...)
 	}
 
 	// Second pass: parse capabilities using the shared type maps
 	var capabilities []Capability
-	for _, path := range goFiles {
-		parsed, err := parseCapabilityFile(fset, path, sharedStructMap, sharedAliasMap, allConstGroups)
+	for _, gf := range files {
+		parsed, err := parseCapabilityFile(gf.file, gf.path, sharedStructMap, sharedAliasMap, allConstGroups)
 		if err != nil {
-			return nil, fmt.Errorf("parsing %s: %w", filepath.Base(path), err)
+			return nil, fmt.Errorf("parsing %s: %w", filepath.Base(gf.path), err)
 		}
 		capabilities = append(capabilities, parsed...)
 	}
@@ -127,13 +140,9 @@ func ParseCapabilities(dir string) ([]Capability, error) {
 	return capabilities, nil
 }
 
-// parseCapabilityFile parses a single Go source file and extracts capabilities.
-func parseCapabilityFile(fset *token.FileSet, path string, structMap map[string]StructDef, aliasMap map[string]TypeAlias, allConstGroups []ConstGroup) ([]Capability, error) {
-	f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
-	if err != nil {
-		return nil, err
-	}
-
+// parseCapabilityFile extracts capabilities from an already-parsed Go source file.
+// path is the file's source path, used to derive the capability's source-file name.
+func parseCapabilityFile(f *ast.File, path string, structMap map[string]StructDef, aliasMap map[string]TypeAlias, allConstGroups []ConstGroup) ([]Capability, error) {
 	var capabilities []Capability
 
 	for _, decl := range f.Decls {
@@ -316,14 +325,10 @@ func parseExport(name string, funcType *ast.FuncType, annotation map[string]stri
 	return export, nil
 }
 
-// parseServiceFile parses a single Go source file and extracts host services.
+// parseServiceFile extracts host services from an already-parsed Go source file.
 // structMap is a package-wide map of struct definitions so that interfaces can
 // reference types defined in other files of the same package.
-func parseServiceFile(fset *token.FileSet, path string, structMap map[string]StructDef) ([]Service, error) {
-	f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
-	if err != nil {
-		return nil, err
-	}
+func parseServiceFile(f *ast.File, structMap map[string]StructDef) ([]Service, error) {
 
 	var services []Service
 

@@ -33,9 +33,9 @@ type MatchSong struct {
 	MBID       string `json:"mbid"`
 	ISRC       string `json:"isrc"`
 	Artist     string `json:"artist"`
-	ArtistMBID string `json:"artistMBID"`
+	ArtistMBID string `json:"artistMbid"`
 	Album      string `json:"album"`
-	AlbumMBID  string `json:"albumMBID"`
+	AlbumMBID  string `json:"albumMbid"`
 	DurationMs uint32 `json:"durationMs"`
 }
 
@@ -114,8 +114,8 @@ type matcherMatchSongsResponse struct {
 
 // MatcherMatchSongs calls the matcher_matchsongs host function.
 // MatchSongs resolves each input song to its best-matching library track.
-// It returns one entry per input song, in the same order as the input;
-// results[i] is nil when input song i had no match.
+// It returns one entry per input song, in the same order as the input; the
+// entry for an input song that had no match is empty (absent).
 func MatcherMatchSongs(songs []MatchSong) ([]*Track, error) {
 	// Marshal request to JSON
 	req := matcherMatchSongsRequest{

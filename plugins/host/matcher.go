@@ -10,9 +10,9 @@ type MatchSong struct {
 	MBID       string `json:"mbid,omitempty"`
 	ISRC       string `json:"isrc,omitempty"`
 	Artist     string `json:"artist,omitempty"`
-	ArtistMBID string `json:"artistMBID,omitempty"`
+	ArtistMBID string `json:"artistMbid,omitempty"`
 	Album      string `json:"album,omitempty"`
-	AlbumMBID  string `json:"albumMBID,omitempty"`
+	AlbumMBID  string `json:"albumMbid,omitempty"`
 	DurationMs uint32 `json:"durationMs,omitempty"`
 }
 
@@ -22,8 +22,8 @@ type MatchSong struct {
 //nd:hostservice name=Matcher permission=matcher
 type MatcherService interface {
 	// MatchSongs resolves each input song to its best-matching library track.
-	// It returns one entry per input song, in the same order as the input;
-	// results[i] is nil when input song i had no match.
+	// It returns one entry per input song, in the same order as the input; the
+	// entry for an input song that had no match is empty (absent).
 	//nd:hostfunc
 	MatchSongs(ctx context.Context, songs []MatchSong) (results []*Track, err error)
 }
