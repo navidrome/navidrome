@@ -27,19 +27,13 @@ var (
 	keyValuePattern = regexp.MustCompile(`(\w+)=(\S+)`)
 )
 
-// ParseDirectory parses all Go source files in a directory and extracts host services.
-// It uses a two-pass approach: first collecting all struct definitions from the whole
-// package, then parsing each file's services with the shared struct map available so
-// that a host-service interface can reference types defined in a sibling file.
-func ParseDirectory(dir string) ([]Service, error) {
+// collectGoFiles returns the paths of the Go source files in dir that are eligible
+// for parsing, skipping generated files, test files, and doc.go.
+func collectGoFiles(dir string) ([]string, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, fmt.Errorf("reading directory: %w", err)
 	}
-
-	fset := token.NewFileSet()
-
-	// Collect eligible file paths (skip generated, test, and doc.go files).
 	var goFiles []string
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") {
@@ -52,6 +46,20 @@ func ParseDirectory(dir string) ([]Service, error) {
 		}
 		goFiles = append(goFiles, filepath.Join(dir, entry.Name()))
 	}
+	return goFiles, nil
+}
+
+// ParseDirectory parses all Go source files in a directory and extracts host services.
+// It uses a two-pass approach: first collecting all struct definitions from the whole
+// package, then parsing each file's services with the shared struct map available so
+// that a host-service interface can reference types defined in a sibling file.
+func ParseDirectory(dir string) ([]Service, error) {
+	goFiles, err := collectGoFiles(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	fset := token.NewFileSet()
 
 	// First pass: collect all structs from every file in the package.
 	sharedStructMap := make(map[string]StructDef)
@@ -80,9 +88,9 @@ func ParseDirectory(dir string) ([]Service, error) {
 
 // ParseCapabilities parses all Go source files in a directory and extracts capabilities.
 func ParseCapabilities(dir string) ([]Capability, error) {
-	entries, err := os.ReadDir(dir)
+	goFiles, err := collectGoFiles(dir)
 	if err != nil {
-		return nil, fmt.Errorf("reading directory: %w", err)
+		return nil, err
 	}
 
 	fset := token.NewFileSet()
@@ -91,20 +99,6 @@ func ParseCapabilities(dir string) ([]Capability, error) {
 	sharedStructMap := make(map[string]StructDef)
 	sharedAliasMap := make(map[string]TypeAlias)
 	var allConstGroups []ConstGroup
-
-	var goFiles []string
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") {
-			continue
-		}
-		// Skip generated files, test files, and doc.go
-		if strings.HasSuffix(entry.Name(), "_gen.go") ||
-			strings.HasSuffix(entry.Name(), "_test.go") ||
-			entry.Name() == "doc.go" {
-			continue
-		}
-		goFiles = append(goFiles, filepath.Join(dir, entry.Name()))
-	}
 
 	for _, path := range goFiles {
 		f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)

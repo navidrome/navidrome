@@ -8,6 +8,7 @@ import (
 	"github.com/navidrome/navidrome/core/matcher"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/plugins/host"
+	"github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
@@ -79,9 +80,11 @@ func toTrack(mf *model.MediaFile) *host.Track {
 		Duration:          float64(mf.Duration),
 		BitRate:           int32(mf.BitRate),
 		SampleRate:        int32(mf.SampleRate),
+		BitDepth:          int32(gg.V(mf.BitDepth)),
 		Channels:          int32(mf.Channels),
 		Codec:             mf.Codec,
 		Comment:           mf.Comment,
+		BPM:               int32(gg.V(mf.BPM)),
 		ExplicitStatus:    mf.ExplicitStatus,
 		CatalogNum:        mf.CatalogNum,
 		Compilation:       mf.Compilation,
@@ -92,30 +95,16 @@ func toTrack(mf *model.MediaFile) *host.Track {
 		MbzReleaseGroupID: mf.MbzReleaseGroupID,
 		MbzAlbumType:      mf.MbzAlbumType,
 		MbzAlbumComment:   mf.MbzAlbumComment,
+		RGAlbumGain:       gg.V(mf.RGAlbumGain),
+		RGAlbumPeak:       gg.V(mf.RGAlbumPeak),
+		RGTrackGain:       gg.V(mf.RGTrackGain),
+		RGTrackPeak:       gg.V(mf.RGTrackPeak),
 		BirthTime:         unixOrZero(mf.BirthTime),
 		CreatedAt:         unixOrZero(mf.CreatedAt),
 		UpdatedAt:         unixOrZero(mf.UpdatedAt),
 	}
-	if mf.BitDepth != nil {
-		t.BitDepth = int32(*mf.BitDepth)
-	}
-	if mf.BPM != nil {
-		t.BPM = int32(*mf.BPM)
-	}
-	if mf.RGAlbumGain != nil {
-		t.RGAlbumGain = *mf.RGAlbumGain
-	}
-	if mf.RGAlbumPeak != nil {
-		t.RGAlbumPeak = *mf.RGAlbumPeak
-	}
-	if mf.RGTrackGain != nil {
-		t.RGTrackGain = *mf.RGTrackGain
-	}
-	if mf.RGTrackPeak != nil {
-		t.RGTrackPeak = *mf.RGTrackPeak
-	}
-	for _, g := range mf.Genres {
-		t.Genres = append(t.Genres, g.Name)
+	if len(mf.Genres) > 0 {
+		t.Genres = slice.Map(mf.Genres, func(g model.Genre) string { return g.Name })
 	}
 	if len(mf.Tags) > 0 {
 		t.Tags = make(map[string][]string, len(mf.Tags))
@@ -126,17 +115,15 @@ func toTrack(mf *model.MediaFile) *host.Track {
 	if len(mf.Participants) > 0 {
 		t.Participants = make(map[string][]host.Artist, len(mf.Participants))
 		for role, participants := range mf.Participants {
-			artists := make([]host.Artist, 0, len(participants))
-			for _, p := range participants {
-				artists = append(artists, host.Artist{
+			t.Participants[role.String()] = slice.Map(participants, func(p model.Participant) host.Artist {
+				return host.Artist{
 					ID:          p.ID,
 					Name:        p.Name,
 					SortName:    p.SortArtistName,
 					MbzArtistID: p.MbzArtistID,
 					SubRole:     p.SubRole,
-				})
-			}
-			t.Participants[role.String()] = artists
+				}
+			})
 		}
 	}
 	return t
