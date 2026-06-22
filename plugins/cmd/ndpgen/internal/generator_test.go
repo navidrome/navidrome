@@ -1301,6 +1301,25 @@ var _ = Describe("Rust Generation", func() {
 			Expect(codeStr).NotTo(ContainSubstring("Option<"))
 		})
 
+		It("emits a deprecated Rust type alias for shared types", func() {
+			cap := Capability{
+				Name: "scrobbler", Interface: "Scrobbler", Required: true,
+				Methods: []Export{{Name: "NowPlaying", ExportName: "nd_scrobbler_now_playing",
+					Input: Param{Name: "input", Type: "NowPlayingRequest"}}},
+				Structs: []StructDef{{Name: "NowPlayingRequest", Fields: []FieldDef{
+					{Name: "Track", Type: "TrackInfo", JSONTag: "track"}}}},
+				SharedAliases: []SharedAlias{{
+					Name: "TrackInfo", Target: "types.TrackInfo",
+					Doc: "Deprecated: use types.TrackInfo.",
+				}},
+			}
+			code, err := GenerateCapabilityRust(cap)
+			Expect(err).NotTo(HaveOccurred())
+			out := string(code)
+			Expect(out).To(ContainSubstring(`#[deprecated`))
+			Expect(out).To(ContainSubstring("pub type TrackInfo = nd_pdk_types::TrackInfo;"))
+		})
+
 		It("should include all float types correctly", func() {
 			cap := Capability{
 				Name:       "test",

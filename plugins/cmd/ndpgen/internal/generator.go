@@ -422,7 +422,10 @@ func rustCapabilityFuncMap(cap Capability) template.FuncMap {
 		"agentName":           capabilityAgentName,
 		"providerInterface":   func(e Export) string { return e.ProviderInterfaceName() },
 		"registerMacroName":   func(name string) string { return registerMacroName(cap.Name, name) },
-		"snakeCase":           ToSnakeCase,
+		"rustSharedTarget": func(target string) string {
+			return "nd_pdk_types::" + strings.TrimPrefix(target, "types.")
+		},
+		"snakeCase": ToSnakeCase,
 		"indent": func(spaces int, s string) string {
 			indent := strings.Repeat(" ", spaces)
 			lines := strings.Split(s, "\n")
