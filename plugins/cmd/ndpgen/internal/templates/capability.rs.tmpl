@@ -27,7 +27,7 @@ fn is_zero_f64(value: &f64) -> bool { *value == 0.0 }
 {{- /* Generate deprecated aliases to the shared types crate */ -}}
 {{- range .Capability.SharedAliases}}
 
-#[deprecated(note = "use {{.Name}}")]
+#[deprecated(note = "use {{rustSharedTarget .Target}}")]
 pub type {{.Name}} = {{rustSharedTarget .Target}};
 {{- end}}
 

@@ -19,10 +19,10 @@ fn is_zero_f32(value: &f32) -> bool { *value == 0.0 }
 #[allow(dead_code)]
 fn is_zero_f64(value: &f64) -> bool { *value == 0.0 }
 
-#[deprecated(note = "use ArtistRef")]
+#[deprecated(note = "use nd_pdk_types::ArtistRef")]
 pub type ArtistRef = nd_pdk_types::ArtistRef;
 
-#[deprecated(note = "use SongRef")]
+#[deprecated(note = "use nd_pdk_types::SongRef")]
 pub type SongRef = nd_pdk_types::SongRef;
 /// AlbumImagesResponse is the response for GetAlbumImages.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

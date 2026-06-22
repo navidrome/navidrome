@@ -598,6 +598,9 @@ type Scrobbler interface {
 			Expect(byName["ArtistRef"].IsAlias).To(BeTrue())
 			Expect(byName["ArtistRef"].Type).To(Equal("types.ArtistRef"))
 			Expect(byName["ArtistRef"].IsDeprecated()).To(BeTrue())
+
+			Expect(byName).To(HaveKey("ScrobblerError"))
+			Expect(byName["ScrobblerError"].IsAlias).To(BeFalse())
 		})
 	})
 

@@ -1316,7 +1316,7 @@ var _ = Describe("Rust Generation", func() {
 			code, err := GenerateCapabilityRust(cap)
 			Expect(err).NotTo(HaveOccurred())
 			out := string(code)
-			Expect(out).To(ContainSubstring(`#[deprecated`))
+			Expect(out).To(ContainSubstring(`#[deprecated(note = "use nd_pdk_types::TrackInfo")]`))
 			Expect(out).To(ContainSubstring("pub type TrackInfo = nd_pdk_types::TrackInfo;"))
 		})
 
