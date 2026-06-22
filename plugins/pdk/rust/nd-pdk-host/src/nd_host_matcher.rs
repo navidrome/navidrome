@@ -6,6 +6,20 @@
 use extism_pdk::*;
 use serde::{Deserialize, Serialize};
 
+/// Artist is a trimmed, public projection of an artist that participated in a track.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Artist {
+    pub id: String,
+    pub name: String,
+    #[serde(default)]
+    pub sort_name: String,
+    #[serde(default)]
+    pub mbz_artist_id: String,
+    #[serde(default)]
+    pub sub_role: String,
+}
+
 /// MatchSong is a song to resolve against the local library. It mirrors the
 /// internal agents.Song. DurationMs is in milliseconds; 0 means unknown.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -30,6 +44,97 @@ pub struct MatchSong {
     pub duration_ms: u32,
 }
 
+/// Track is a stable, public projection of a library media file for plugin consumption.
+/// It is a sane subset of the internal model.MediaFile, intended for reuse across host
+/// services and capabilities. Timestamps are Unix epoch seconds.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Track {
+    pub id: String,
+    pub library_id: i32,
+    #[serde(default)]
+    pub library_name: String,
+    #[serde(default)]
+    pub path: String,
+    pub missing: bool,
+    pub title: String,
+    pub album: String,
+    pub artist: String,
+    #[serde(default)]
+    pub album_artist: String,
+    #[serde(default)]
+    pub album_id: String,
+    #[serde(default)]
+    pub sort_title: String,
+    #[serde(default)]
+    pub sort_album_name: String,
+    #[serde(default)]
+    pub sort_artist_name: String,
+    pub track_number: i32,
+    pub disc_number: i32,
+    #[serde(default)]
+    pub disc_subtitle: String,
+    pub year: i32,
+    #[serde(default)]
+    pub date: String,
+    pub original_year: i32,
+    #[serde(default)]
+    pub original_date: String,
+    pub release_year: i32,
+    #[serde(default)]
+    pub release_date: String,
+    pub size: i64,
+    #[serde(default)]
+    pub suffix: String,
+    pub duration: f64,
+    pub bit_rate: i32,
+    pub sample_rate: i32,
+    #[serde(default)]
+    pub bit_depth: i32,
+    pub channels: i32,
+    #[serde(default)]
+    pub codec: String,
+    #[serde(default)]
+    pub genres: Vec<String>,
+    #[serde(default)]
+    pub comment: String,
+    #[serde(default)]
+    pub bpm: i32,
+    #[serde(default)]
+    pub explicit_status: String,
+    #[serde(default)]
+    pub catalog_num: String,
+    pub compilation: bool,
+    pub has_cover_art: bool,
+    #[serde(default)]
+    pub mbz_recording_id: String,
+    #[serde(default)]
+    pub mbz_release_track_id: String,
+    #[serde(default)]
+    pub mbz_album_id: String,
+    #[serde(default)]
+    pub mbz_release_group_id: String,
+    #[serde(default)]
+    pub mbz_album_type: String,
+    #[serde(default)]
+    pub mbz_album_comment: String,
+    #[serde(default)]
+    pub rg_album_gain: f64,
+    #[serde(default)]
+    pub rg_album_peak: f64,
+    #[serde(default)]
+    pub rg_track_gain: f64,
+    #[serde(default)]
+    pub rg_track_peak: f64,
+    pub birth_time: i64,
+    pub created_at: i64,
+    pub updated_at: i64,
+    #[serde(default)]
+    pub tags: std::collections::HashMap<String, Vec<String>>,
+    #[serde(default)]
+    pub participants: std::collections::HashMap<String, Vec<Artist>>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct MatcherMatchSongsRequest {
@@ -40,7 +145,7 @@ struct MatcherMatchSongsRequest {
 #[serde(rename_all = "camelCase")]
 struct MatcherMatchSongsResponse {
     #[serde(default)]
-    results: Vec<Option<serde_json::Value>>,
+    results: Vec<Option<Track>>,
     #[serde(default)]
     error: Option<String>,
 }
@@ -62,7 +167,7 @@ extern "ExtismHost" {
 ///
 /// # Errors
 /// Returns an error if the host function call fails.
-pub fn match_songs(songs: Vec<MatchSong>) -> Result<Vec<Option<serde_json::Value>>, Error> {
+pub fn match_songs(songs: Vec<MatchSong>) -> Result<Vec<Option<Track>>, Error> {
     let response = unsafe {
         matcher_matchsongs(Json(MatcherMatchSongsRequest {
             songs: songs,

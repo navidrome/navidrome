@@ -212,6 +212,64 @@ type RegularInterface interface {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(services).To(BeEmpty())
 		})
+
+		It("should resolve structs defined in a sibling file of the same package", func() {
+			// types.go defines Track and Artist — no host service here
+			typesSrc := `package host
+
+// Artist is a track participant.
+type Artist struct {
+	// ID is the artist identifier.
+	ID   string ` + "`json:\"id\"`" + `
+	// Name is the artist name.
+	Name string ` + "`json:\"name\"`" + `
+}
+
+// Track is a media file projection.
+type Track struct {
+	// ID is the track identifier.
+	ID   string ` + "`json:\"id\"`" + `
+	// Title is the track title.
+	Title string ` + "`json:\"title\"`" + `
+	// Participants maps role to artists (transitive dependency test).
+	Participants map[string][]Artist ` + "`json:\"participants\"`" + `
+}
+`
+			// service.go defines the host service that references Track from types.go
+			serviceSrc := `package host
+
+import "context"
+
+// MatcherService matches tracks.
+//nd:hostservice name=Matcher permission=matcher
+type MatcherService interface {
+	// MatchTrack finds a matching track.
+	//nd:hostfunc
+	MatchTrack(ctx context.Context, t Track) (matched bool, err error)
+}
+`
+			err := os.WriteFile(filepath.Join(tmpDir, "types.go"), []byte(typesSrc), 0600)
+			Expect(err).NotTo(HaveOccurred())
+			err = os.WriteFile(filepath.Join(tmpDir, "service.go"), []byte(serviceSrc), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			services, err := ParseDirectory(tmpDir)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(services).To(HaveLen(1))
+
+			svc := services[0]
+			Expect(svc.Name).To(Equal("Matcher"))
+			Expect(svc.Methods).To(HaveLen(1))
+			Expect(svc.Methods[0].Name).To(Equal("MatchTrack"))
+
+			// Track must be resolved from the sibling file, not just the service file.
+			// Artist must also be transitively resolved (Track.Participants references it).
+			structNames := make([]string, len(svc.Structs))
+			for i, s := range svc.Structs {
+				structNames[i] = s.Name
+			}
+			Expect(structNames).To(ConsistOf("Track", "Artist"))
+		})
 	})
 
 	Describe("parseKeyValuePairs", func() {

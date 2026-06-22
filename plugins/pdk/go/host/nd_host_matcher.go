@@ -14,6 +14,16 @@ import (
 	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
 )
 
+// Artist represents the Artist data structure.
+// Artist is a trimmed, public projection of an artist that participated in a track.
+type Artist struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	SortName    string `json:"sortName"`
+	MbzArtistID string `json:"mbzArtistId"`
+	SubRole     string `json:"subRole"`
+}
+
 // MatchSong represents the MatchSong data structure.
 // MatchSong is a song to resolve against the local library. It mirrors the
 // internal agents.Song. DurationMs is in milliseconds; 0 means unknown.
@@ -27,6 +37,65 @@ type MatchSong struct {
 	Album      string `json:"album"`
 	AlbumMBID  string `json:"albumMBID"`
 	DurationMs uint32 `json:"durationMs"`
+}
+
+// Track represents the Track data structure.
+// Track is a stable, public projection of a library media file for plugin consumption.
+// It is a sane subset of the internal model.MediaFile, intended for reuse across host
+// services and capabilities. Timestamps are Unix epoch seconds.
+type Track struct {
+	ID                string              `json:"id"`
+	LibraryID         int32               `json:"libraryId"`
+	LibraryName       string              `json:"libraryName"`
+	Path              string              `json:"path"`
+	Missing           bool                `json:"missing"`
+	Title             string              `json:"title"`
+	Album             string              `json:"album"`
+	Artist            string              `json:"artist"`
+	AlbumArtist       string              `json:"albumArtist"`
+	AlbumID           string              `json:"albumId"`
+	SortTitle         string              `json:"sortTitle"`
+	SortAlbumName     string              `json:"sortAlbumName"`
+	SortArtistName    string              `json:"sortArtistName"`
+	TrackNumber       int32               `json:"trackNumber"`
+	DiscNumber        int32               `json:"discNumber"`
+	DiscSubtitle      string              `json:"discSubtitle"`
+	Year              int32               `json:"year"`
+	Date              string              `json:"date"`
+	OriginalYear      int32               `json:"originalYear"`
+	OriginalDate      string              `json:"originalDate"`
+	ReleaseYear       int32               `json:"releaseYear"`
+	ReleaseDate       string              `json:"releaseDate"`
+	Size              int64               `json:"size"`
+	Suffix            string              `json:"suffix"`
+	Duration          float64             `json:"duration"`
+	BitRate           int32               `json:"bitRate"`
+	SampleRate        int32               `json:"sampleRate"`
+	BitDepth          int32               `json:"bitDepth"`
+	Channels          int32               `json:"channels"`
+	Codec             string              `json:"codec"`
+	Genres            []string            `json:"genres"`
+	Comment           string              `json:"comment"`
+	BPM               int32               `json:"bpm"`
+	ExplicitStatus    string              `json:"explicitStatus"`
+	CatalogNum        string              `json:"catalogNum"`
+	Compilation       bool                `json:"compilation"`
+	HasCoverArt       bool                `json:"hasCoverArt"`
+	MbzRecordingID    string              `json:"mbzRecordingId"`
+	MbzReleaseTrackID string              `json:"mbzReleaseTrackId"`
+	MbzAlbumID        string              `json:"mbzAlbumId"`
+	MbzReleaseGroupID string              `json:"mbzReleaseGroupId"`
+	MbzAlbumType      string              `json:"mbzAlbumType"`
+	MbzAlbumComment   string              `json:"mbzAlbumComment"`
+	RGAlbumGain       float64             `json:"rgAlbumGain"`
+	RGAlbumPeak       float64             `json:"rgAlbumPeak"`
+	RGTrackGain       float64             `json:"rgTrackGain"`
+	RGTrackPeak       float64             `json:"rgTrackPeak"`
+	BirthTime         int64               `json:"birthTime"`
+	CreatedAt         int64               `json:"createdAt"`
+	UpdatedAt         int64               `json:"updatedAt"`
+	Tags              map[string][]string `json:"tags"`
+	Participants      map[string][]Artist `json:"participants"`
 }
 
 // matcher_matchsongs is the host function provided by Navidrome.
