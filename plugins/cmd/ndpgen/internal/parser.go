@@ -469,9 +469,10 @@ func parseTypeAliases(f *ast.File) []TypeAlias {
 
 			docText, _ := getDocComment(genDecl, typeSpec)
 			aliases = append(aliases, TypeAlias{
-				Name: typeSpec.Name.Name,
-				Type: typeToString(typeSpec.Type),
-				Doc:  cleanDoc(docText),
+				Name:    typeSpec.Name.Name,
+				Type:    typeToString(typeSpec.Type),
+				Doc:     cleanDoc(docText),
+				IsAlias: typeSpec.Assign.IsValid(),
 			})
 		}
 	}

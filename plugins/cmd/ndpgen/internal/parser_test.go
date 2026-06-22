@@ -520,6 +520,39 @@ type Output struct {
 			Expect(capabilities[0].Methods).To(HaveLen(1))
 			Expect(capabilities[0].Methods[0].Name).To(Equal("ExportedMethod"))
 		})
+
+		It("distinguishes Go type aliases from defined types", func() {
+			src := `package capabilities
+
+import "github.com/navidrome/navidrome/plugins/types"
+
+// Deprecated: use types.ArtistRef.
+type ArtistRef = types.ArtistRef
+
+// ScrobblerError is a sentinel error string.
+type ScrobblerError string
+
+//nd:capability name=scrobbler required=true
+type Scrobbler interface {
+	//nd:export name=nd_scrobbler_check
+	Check(ArtistRef) (bool, error)
+}
+`
+			Expect(os.WriteFile(filepath.Join(tmpDir, "scrobbler.go"), []byte(src), 0600)).To(Succeed())
+
+			caps, err := ParseCapabilities(tmpDir)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(caps).To(HaveLen(1))
+
+			byName := map[string]TypeAlias{}
+			for _, a := range caps[0].TypeAliases {
+				byName[a.Name] = a
+			}
+			Expect(byName).To(HaveKey("ArtistRef"))
+			Expect(byName["ArtistRef"].IsAlias).To(BeTrue())
+			Expect(byName["ArtistRef"].Type).To(Equal("types.ArtistRef"))
+			Expect(byName["ArtistRef"].IsDeprecated()).To(BeTrue())
+		})
 	})
 
 	Describe("Export helpers", func() {

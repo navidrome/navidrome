@@ -28,11 +28,29 @@ type Capability struct {
 	SourceFile  string       // Base name of source file without extension (e.g., "websocket_callback")
 }
 
-// TypeAlias represents a type alias definition (e.g., type ScrobblerErrorType string).
+// TypeAlias represents a type declaration (e.g. type ScrobblerErrorType string)
+// or a Go type alias (e.g. type TrackInfo = types.Track).
 type TypeAlias struct {
-	Name string // Type name
-	Type string // Underlying type
-	Doc  string // Documentation comment
+	Name    string // Type name
+	Type    string // Underlying type (or alias target, e.g. "types.Track")
+	Doc     string // Documentation comment
+	IsAlias bool   // true for `type X = Y` (alias); false for `type X Y` (defined type)
+}
+
+// IsDeprecated reports whether the alias carries a `Deprecated:` doc line.
+func (t TypeAlias) IsDeprecated() bool {
+	for _, line := range strings.Split(t.Doc, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "Deprecated:") {
+			return true
+		}
+	}
+	return false
+}
+
+// IsSharedAlias reports whether this alias targets the shared types package
+// (e.g. `type TrackInfo = types.TrackInfo`).
+func (t TypeAlias) IsSharedAlias() bool {
+	return t.IsAlias && strings.HasPrefix(t.Type, "types.")
 }
 
 // ConstGroup represents a group of const definitions.
