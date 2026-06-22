@@ -153,7 +153,6 @@ func resizeStaticImage(data []byte, size int, square bool) (io.Reader, int, erro
 	if err != nil {
 		return nil, 0, err
 	}
-	original = toFastScaleType(original)
 
 	bounds := original.Bounds()
 	originalSize := max(bounds.Max.X, bounds.Max.Y)
@@ -186,6 +185,7 @@ func resizeStaticImage(data []byte, size int, square bool) (io.Reader, int, erro
 		dst = image.NewNRGBA(image.Rect(0, 0, dstW, dstH))
 		dstRect = dst.Bounds()
 	}
+	original = toFastScaleType(original)
 	xdraw.CatmullRom.Scale(dst, dstRect, original, bounds, draw.Src, nil)
 
 	buf := bufPool.Get().(*bytes.Buffer)
