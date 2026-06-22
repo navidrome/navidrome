@@ -18,28 +18,17 @@ fn is_zero_u64(value: &u64) -> bool { *value == 0 }
 fn is_zero_f32(value: &f32) -> bool { *value == 0.0 }
 #[allow(dead_code)]
 fn is_zero_f64(value: &f64) -> bool { *value == 0.0 }
-/// ArtistRef is a reference to an artist with name and optional MBID.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ArtistRef {
-    /// ID is the internal Navidrome artist ID (if known).
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub id: String,
-    /// Name is the artist name.
-    #[serde(default)]
-    pub name: String,
-    /// MBID is the MusicBrainz ID for the artist.
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub mbid: String,
-}
+
+#[deprecated(note = "use SongRef")]
+pub type SongRef = nd_pdk_types::SongRef;
 /// FindSonicPathRequest represents the FindSonicPathRequest data structure.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FindSonicPathRequest {
     #[serde(default)]
-    pub start_song: SongRef,
+    pub start_song: serde_json::Value,
     #[serde(default)]
-    pub end_song: SongRef,
+    pub end_song: serde_json::Value,
     #[serde(default)]
     pub count: i32,
 }
@@ -48,51 +37,16 @@ pub struct FindSonicPathRequest {
 #[serde(rename_all = "camelCase")]
 pub struct GetSonicSimilarTracksRequest {
     #[serde(default)]
-    pub song: SongRef,
+    pub song: serde_json::Value,
     #[serde(default)]
     pub count: i32,
-}
-/// SongRef is a reference to a song with metadata for matching.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SongRef {
-    /// ID is the internal Navidrome mediafile ID (if known).
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub id: String,
-    /// Name is the song name.
-    #[serde(default)]
-    pub name: String,
-    /// MBID is the MusicBrainz ID for the song.
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub mbid: String,
-    /// ISRC is the International Standard Recording Code for the song.
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub isrc: String,
-    /// Artist is the artist name.
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub artist: String,
-    /// ArtistMBID is the MusicBrainz artist ID.
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub artist_mbid: String,
-    /// Artists is the full artist list; when set, takes precedence over Artist/ArtistMBID for matching.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub artists: Vec<ArtistRef>,
-    /// Album is the album name.
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub album: String,
-    /// AlbumMBID is the MusicBrainz release ID.
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub album_mbid: String,
-    /// Duration is the song duration in seconds.
-    #[serde(default, skip_serializing_if = "is_zero_f32")]
-    pub duration: f32,
 }
 /// SonicMatch represents the SonicMatch data structure.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SonicMatch {
     #[serde(default)]
-    pub song: SongRef,
+    pub song: serde_json::Value,
     #[serde(default)]
     pub similarity: f64,
 }

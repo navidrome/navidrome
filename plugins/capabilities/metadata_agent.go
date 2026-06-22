@@ -1,5 +1,7 @@
 package capabilities
 
+import "github.com/navidrome/navidrome/plugins/types"
+
 // MetadataAgent provides artist and album metadata retrieval.
 // This capability allows plugins to provide external metadata for artists and albums,
 // such as biographies, images, similar artists, and top songs.
@@ -134,29 +136,8 @@ type TopSongsRequest struct {
 	Count int32 `json:"count"`
 }
 
-// SongRef is a reference to a song with metadata for matching.
-type SongRef struct {
-	// ID is the internal Navidrome mediafile ID (if known).
-	ID string `json:"id,omitempty"`
-	// Name is the song name.
-	Name string `json:"name"`
-	// MBID is the MusicBrainz ID for the song.
-	MBID string `json:"mbid,omitempty"`
-	// ISRC is the International Standard Recording Code for the song.
-	ISRC string `json:"isrc,omitempty"`
-	// Artist is the artist name.
-	Artist string `json:"artist,omitempty"`
-	// ArtistMBID is the MusicBrainz artist ID.
-	ArtistMBID string `json:"artistMbid,omitempty"`
-	// Artists is the full artist list; when set, takes precedence over Artist/ArtistMBID for matching.
-	Artists []ArtistRef `json:"artists,omitempty"`
-	// Album is the album name.
-	Album string `json:"album,omitempty"`
-	// AlbumMBID is the MusicBrainz release ID.
-	AlbumMBID string `json:"albumMbid,omitempty"`
-	// Duration is the song duration in seconds.
-	Duration float32 `json:"duration,omitempty"`
-}
+// Deprecated: use types.SongRef.
+type SongRef = types.SongRef
 
 // TopSongsResponse is the response for GetArtistTopSongs.
 type TopSongsResponse struct {

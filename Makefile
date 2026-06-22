@@ -113,10 +113,11 @@ wire: check_go_env ##@Development Update Dependency Injection
 
 gen: check_go_env ##@Development Run go generate for code generation
 	go generate ./...
-	cd plugins/cmd/ndpgen && go run . -host-wrappers -input=../../host -package=host
-	cd plugins/cmd/ndpgen && go run . -input=../../host -output=../../pdk -go -rust
-	cd plugins/cmd/ndpgen && go run . -capability-only -input=../../capabilities -output=../../pdk -go -rust
-	cd plugins/cmd/ndpgen && go run . -schemas -input=../../capabilities
+	cd plugins/cmd/ndpgen && go run . -shared-types -input=../../types -output=../../pdk -go -rust
+	cd plugins/cmd/ndpgen && go run . -host-wrappers -input=../../host -package=host -shared=../../types
+	cd plugins/cmd/ndpgen && go run . -input=../../host -output=../../pdk -go -rust -shared=../../types
+	cd plugins/cmd/ndpgen && go run . -capability-only -input=../../capabilities -output=../../pdk -go -rust -shared=../../types
+	cd plugins/cmd/ndpgen && go run . -schemas -input=../../capabilities -shared=../../types
 	go mod tidy -C plugins/pdk/go
 .PHONY: gen
 

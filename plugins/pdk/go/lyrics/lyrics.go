@@ -9,17 +9,14 @@ package lyrics
 
 import (
 	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
+	"github.com/navidrome/navidrome/plugins/pdk/go/types"
 )
 
-// ArtistRef is a reference to an artist with name and optional MBID.
-type ArtistRef struct {
-	// ID is the internal Navidrome artist ID (if known).
-	ID string `json:"id,omitempty"`
-	// Name is the artist name.
-	Name string `json:"name"`
-	// MBID is the MusicBrainz ID for the artist.
-	MBID string `json:"mbid,omitempty"`
-}
+// Deprecated: use types.ArtistRef.
+type ArtistRef = types.ArtistRef
+
+// Deprecated: use types.TrackInfo.
+type TrackInfo = types.TrackInfo
 
 // GetLyricsRequest contains the track information for lyrics lookup.
 type GetLyricsRequest struct {
@@ -36,44 +33,6 @@ type GetLyricsResponse struct {
 type LyricsText struct {
 	Lang string `json:"lang,omitempty"`
 	Text string `json:"text"`
-}
-
-// TrackInfo contains track metadata.
-type TrackInfo struct {
-	// ID is the internal Navidrome track ID.
-	ID string `json:"id"`
-	// Title is the track title.
-	Title string `json:"title"`
-	// Album is the album name.
-	Album string `json:"album"`
-	// Artist is the formatted artist name for display (e.g., "Artist1 • Artist2").
-	Artist string `json:"artist"`
-	// AlbumArtist is the formatted album artist name for display.
-	AlbumArtist string `json:"albumArtist"`
-	// Artists is the list of track artists.
-	Artists []ArtistRef `json:"artists"`
-	// AlbumArtists is the list of album artists.
-	AlbumArtists []ArtistRef `json:"albumArtists"`
-	// Duration is the track duration in seconds.
-	Duration float32 `json:"duration"`
-	// TrackNumber is the track number on the album.
-	TrackNumber int32 `json:"trackNumber"`
-	// DiscNumber is the disc number.
-	DiscNumber int32 `json:"discNumber"`
-	// MBZRecordingID is the MusicBrainz recording ID.
-	MBZRecordingID string `json:"mbzRecordingId,omitempty"`
-	// MBZAlbumID is the MusicBrainz album/release ID.
-	MBZAlbumID string `json:"mbzAlbumId,omitempty"`
-	// MBZReleaseGroupID is the MusicBrainz release group ID.
-	MBZReleaseGroupID string `json:"mbzReleaseGroupId,omitempty"`
-	// MBZReleaseTrackID is the MusicBrainz release track ID.
-	MBZReleaseTrackID string `json:"mbzReleaseTrackId,omitempty"`
-	// LibraryID is the ID of the library the track belongs to.
-	// Only included if the plugin has library permission with filesystem access for the track's library.
-	LibraryID int32 `json:"libraryId,omitempty"`
-	// Path is the full path to the track file, relative to the library root.
-	// Only included if the plugin has library permission with filesystem access for the track's library.
-	Path string `json:"path,omitempty"`
 }
 
 // Lyrics requires all methods to be implemented.

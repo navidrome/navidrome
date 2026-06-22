@@ -18,6 +18,12 @@ fn is_zero_u64(value: &u64) -> bool { *value == 0 }
 fn is_zero_f32(value: &f32) -> bool { *value == 0.0 }
 #[allow(dead_code)]
 fn is_zero_f64(value: &f64) -> bool { *value == 0.0 }
+
+#[deprecated(note = "use ArtistRef")]
+pub type ArtistRef = nd_pdk_types::ArtistRef;
+
+#[deprecated(note = "use TrackInfo")]
+pub type TrackInfo = nd_pdk_types::TrackInfo;
 /// ScrobblerError represents an error type for scrobbling operations.
 pub type ScrobblerError = &'static str;
 /// ScrobblerErrorNotAuthorized indicates the user is not authorized.
@@ -26,20 +32,6 @@ pub const SCROBBLER_ERROR_NOT_AUTHORIZED: ScrobblerError = "scrobbler(not_author
 pub const SCROBBLER_ERROR_RETRY_LATER: ScrobblerError = "scrobbler(retry_later)";
 /// ScrobblerErrorUnrecoverable indicates an unrecoverable error.
 pub const SCROBBLER_ERROR_UNRECOVERABLE: ScrobblerError = "scrobbler(unrecoverable)";
-/// ArtistRef is a reference to an artist with name and optional MBID.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ArtistRef {
-    /// ID is the internal Navidrome artist ID (if known).
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub id: String,
-    /// Name is the artist name.
-    #[serde(default)]
-    pub name: String,
-    /// MBID is the MusicBrainz ID for the artist.
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub mbid: String,
-}
 /// IsAuthorizedRequest is the request for authorization check.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -57,7 +49,7 @@ pub struct NowPlayingRequest {
     pub username: String,
     /// Track is the track currently playing.
     #[serde(default)]
-    pub track: TrackInfo,
+    pub track: serde_json::Value,
     /// Position is the current playback position in seconds.
     #[serde(default)]
     pub position: i32,
@@ -71,7 +63,7 @@ pub struct PlaybackReportRequest {
     pub username: String,
     /// Track is the track being played.
     #[serde(default)]
-    pub track: TrackInfo,
+    pub track: serde_json::Value,
     /// State is the current playback state (starting/playing/paused/stopped/expired).
     #[serde(default)]
     pub state: String,
@@ -100,65 +92,10 @@ pub struct ScrobbleRequest {
     pub username: String,
     /// Track is the track that was played.
     #[serde(default)]
-    pub track: TrackInfo,
+    pub track: serde_json::Value,
     /// Timestamp is the Unix timestamp when the track started playing.
     #[serde(default)]
     pub timestamp: i64,
-}
-/// TrackInfo contains track metadata.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TrackInfo {
-    /// ID is the internal Navidrome track ID.
-    #[serde(default)]
-    pub id: String,
-    /// Title is the track title.
-    #[serde(default)]
-    pub title: String,
-    /// Album is the album name.
-    #[serde(default)]
-    pub album: String,
-    /// Artist is the formatted artist name for display (e.g., "Artist1 • Artist2").
-    #[serde(default)]
-    pub artist: String,
-    /// AlbumArtist is the formatted album artist name for display.
-    #[serde(default)]
-    pub album_artist: String,
-    /// Artists is the list of track artists.
-    #[serde(default)]
-    pub artists: Vec<ArtistRef>,
-    /// AlbumArtists is the list of album artists.
-    #[serde(default)]
-    pub album_artists: Vec<ArtistRef>,
-    /// Duration is the track duration in seconds.
-    #[serde(default)]
-    pub duration: f32,
-    /// TrackNumber is the track number on the album.
-    #[serde(default)]
-    pub track_number: i32,
-    /// DiscNumber is the disc number.
-    #[serde(default)]
-    pub disc_number: i32,
-    /// MBZRecordingID is the MusicBrainz recording ID.
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub mbz_recording_id: String,
-    /// MBZAlbumID is the MusicBrainz album/release ID.
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub mbz_album_id: String,
-    /// MBZReleaseGroupID is the MusicBrainz release group ID.
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub mbz_release_group_id: String,
-    /// MBZReleaseTrackID is the MusicBrainz release track ID.
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub mbz_release_track_id: String,
-    /// LibraryID is the ID of the library the track belongs to.
-    /// Only included if the plugin has library permission with filesystem access for the track's library.
-    #[serde(default, skip_serializing_if = "is_zero_i32")]
-    pub library_id: i32,
-    /// Path is the full path to the track file, relative to the library root.
-    /// Only included if the plugin has library permission with filesystem access for the track's library.
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub path: String,
 }
 
 /// Error represents an error from a capability method.

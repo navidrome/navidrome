@@ -53,6 +53,24 @@ components:
             required:
                 - song
                 - count
+        SonicMatch:
+            properties:
+                song:
+                    $ref: '#/components/schemas/SongRef'
+                similarity:
+                    type: number
+                    format: float
+            required:
+                - song
+                - similarity
+        SonicSimilarityResponse:
+            properties:
+                matches:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/SonicMatch'
+            required:
+                - matches
         SongRef:
             description: SongRef is a reference to a song with metadata for matching.
             properties:
@@ -91,21 +109,3 @@ components:
                     description: Duration is the song duration in seconds.
             required:
                 - name
-        SonicMatch:
-            properties:
-                song:
-                    $ref: '#/components/schemas/SongRef'
-                similarity:
-                    type: number
-                    format: float
-            required:
-                - song
-                - similarity
-        SonicSimilarityResponse:
-            properties:
-                matches:
-                    type: array
-                    items:
-                        $ref: '#/components/schemas/SonicMatch'
-            required:
-                - matches

@@ -8,7 +8,9 @@
 
 package host
 
-import "github.com/stretchr/testify/mock"
+import (
+	"github.com/stretchr/testify/mock"
+)
 
 // HTTPRequest represents the HTTPRequest data structure.
 // HTTPRequest represents an outbound HTTP request from a plugin.

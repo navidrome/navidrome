@@ -173,20 +173,6 @@ components:
                     description: MBID is the MusicBrainz ID for the artist.
             required:
                 - mbid
-        ArtistRef:
-            description: ArtistRef is a reference to an artist with name and optional MBID.
-            properties:
-                id:
-                    type: string
-                    description: ID is the internal Navidrome artist ID (if known).
-                name:
-                    type: string
-                    description: Name is the artist name.
-                mbid:
-                    type: string
-                    description: MBID is the MusicBrainz ID for the artist.
-            required:
-                - name
         ArtistRequest:
             description: ArtistRequest is the common request for artist-related functions.
             properties:
@@ -331,6 +317,50 @@ components:
                         $ref: '#/components/schemas/SongRef'
             required:
                 - songs
+        TopSongsRequest:
+            description: TopSongsRequest is the request for GetArtistTopSongs.
+            properties:
+                id:
+                    type: string
+                    description: ID is the internal Navidrome artist ID.
+                name:
+                    type: string
+                    description: Name is the artist name.
+                mbid:
+                    type: string
+                    description: MBID is the MusicBrainz ID for the artist (if known).
+                count:
+                    type: integer
+                    format: int32
+                    description: Count is the maximum number of top songs to return.
+            required:
+                - id
+                - name
+                - count
+        TopSongsResponse:
+            description: TopSongsResponse is the response for GetArtistTopSongs.
+            properties:
+                songs:
+                    type: array
+                    description: Songs is the list of top songs.
+                    items:
+                        $ref: '#/components/schemas/SongRef'
+            required:
+                - songs
+        ArtistRef:
+            description: ArtistRef is a reference to an artist with name and optional MBID.
+            properties:
+                id:
+                    type: string
+                    description: ID is the internal Navidrome artist ID (if known).
+                name:
+                    type: string
+                    description: Name is the artist name.
+                mbid:
+                    type: string
+                    description: MBID is the MusicBrainz ID for the artist.
+            required:
+                - name
         SongRef:
             description: SongRef is a reference to a song with metadata for matching.
             properties:
@@ -369,33 +399,3 @@ components:
                     description: Duration is the song duration in seconds.
             required:
                 - name
-        TopSongsRequest:
-            description: TopSongsRequest is the request for GetArtistTopSongs.
-            properties:
-                id:
-                    type: string
-                    description: ID is the internal Navidrome artist ID.
-                name:
-                    type: string
-                    description: Name is the artist name.
-                mbid:
-                    type: string
-                    description: MBID is the MusicBrainz ID for the artist (if known).
-                count:
-                    type: integer
-                    format: int32
-                    description: Count is the maximum number of top songs to return.
-            required:
-                - id
-                - name
-                - count
-        TopSongsResponse:
-            description: TopSongsResponse is the response for GetArtistTopSongs.
-            properties:
-                songs:
-                    type: array
-                    description: Songs is the list of top songs.
-                    items:
-                        $ref: '#/components/schemas/SongRef'
-            required:
-                - songs

@@ -59,9 +59,10 @@ type config struct {
 	hostOnly         bool
 	hostWrappers     bool // Generate host wrappers (used by Navidrome server)
 	capabilityOnly   bool
-	schemasOnly      bool // Generate XTP schemas from capabilities (output goes to inputDir)
-	pdkOnly          bool // Generate PDK abstraction layer wrapper
-	sharedTypes      bool // Generate the shared types package
+	schemasOnly      bool   // Generate XTP schemas from capabilities (output goes to inputDir)
+	pdkOnly          bool   // Generate PDK abstraction layer wrapper
+	sharedTypes      bool   // Generate the shared types package
+	sharedDir        string // Directory of shared types to load as a registry
 	generateGoClient bool
 	generateRsClient bool
 	verbose          bool
@@ -388,6 +389,7 @@ func parseConfig() (*config, error) {
 		schemasOnly    = flag.Bool("schemas", false, "Generate XTP YAML schemas from capabilities (output to input directory)")
 		pdkOnly        = flag.Bool("extism-pdk", false, "Generate PDK abstraction layer by parsing extism/go-pdk")
 		sharedTypes    = flag.Bool("shared-types", false, "Generate the shared types package")
+		shared         = flag.String("shared", "", "Directory of shared types to load as a registry")
 		goClient       = flag.Bool("go", false, "Generate Go client wrappers")
 		rsClient       = flag.Bool("rust", false, "Generate Rust client wrappers")
 		verbose        = flag.Bool("v", false, "Verbose output")
@@ -447,6 +449,14 @@ func parseConfig() (*config, error) {
 		return nil, fmt.Errorf("resolving output path: %w", err)
 	}
 
+	absShared := ""
+	if *shared != "" {
+		absShared, err = filepath.Abs(*shared)
+		if err != nil {
+			return nil, fmt.Errorf("resolving shared path: %w", err)
+		}
+	}
+
 	// Set output directories for each language
 	// Go host wrappers: $output/go/host/
 	// Rust host wrappers: $output/rust/nd-pdk-host/ (renamed crate)
@@ -469,6 +479,7 @@ func parseConfig() (*config, error) {
 		schemasOnly:      *schemasOnly,
 		pdkOnly:          *pdkOnly,
 		sharedTypes:      *sharedTypes,
+		sharedDir:        absShared,
 		generateGoClient: *goClient || !anyLangFlag,
 		generateRsClient: *rsClient,
 		verbose:          *verbose,
@@ -493,7 +504,12 @@ func parseServices(cfg *config) ([]internal.Service, error) {
 		fmt.Printf("Generate Rust client code: %v\n", cfg.generateRsClient)
 	}
 
-	services, err := internal.ParseDirectory(cfg.inputDir)
+	shared, err := internal.LoadSharedTypes(cfg.sharedDir)
+	if err != nil {
+		return nil, fmt.Errorf("loading shared types: %w", err)
+	}
+
+	services, err := internal.ParseDirectoryWithShared(cfg.inputDir, shared)
 	if err != nil {
 		return nil, fmt.Errorf("parsing source files: %w", err)
 	}
@@ -523,7 +539,12 @@ func parseCapabilities(cfg *config) ([]internal.Capability, error) {
 		fmt.Printf("Capability-only mode: %v\n", cfg.capabilityOnly)
 	}
 
-	capabilities, err := internal.ParseCapabilities(cfg.inputDir)
+	shared, err := internal.LoadSharedTypes(cfg.sharedDir)
+	if err != nil {
+		return nil, fmt.Errorf("loading shared types: %w", err)
+	}
+
+	capabilities, err := internal.ParseCapabilitiesWithShared(cfg.inputDir, shared)
 	if err != nil {
 		return nil, fmt.Errorf("parsing capability files: %w", err)
 	}

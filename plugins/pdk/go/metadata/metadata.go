@@ -9,7 +9,14 @@ package metadata
 
 import (
 	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
+	"github.com/navidrome/navidrome/plugins/pdk/go/types"
 )
+
+// Deprecated: use types.ArtistRef.
+type ArtistRef = types.ArtistRef
+
+// Deprecated: use types.SongRef.
+type SongRef = types.SongRef
 
 // AlbumImagesResponse is the response for GetAlbumImages.
 type AlbumImagesResponse struct {
@@ -63,16 +70,6 @@ type ArtistMBIDRequest struct {
 type ArtistMBIDResponse struct {
 	// MBID is the MusicBrainz ID for the artist.
 	MBID string `json:"mbid"`
-}
-
-// ArtistRef is a reference to an artist with name and optional MBID.
-type ArtistRef struct {
-	// ID is the internal Navidrome artist ID (if known).
-	ID string `json:"id,omitempty"`
-	// Name is the artist name.
-	Name string `json:"name"`
-	// MBID is the MusicBrainz ID for the artist.
-	MBID string `json:"mbid,omitempty"`
 }
 
 // ArtistRequest is the common request for artist-related functions.
@@ -161,30 +158,6 @@ type SimilarSongsByTrackRequest struct {
 type SimilarSongsResponse struct {
 	// Songs is the list of similar songs.
 	Songs []SongRef `json:"songs"`
-}
-
-// SongRef is a reference to a song with metadata for matching.
-type SongRef struct {
-	// ID is the internal Navidrome mediafile ID (if known).
-	ID string `json:"id,omitempty"`
-	// Name is the song name.
-	Name string `json:"name"`
-	// MBID is the MusicBrainz ID for the song.
-	MBID string `json:"mbid,omitempty"`
-	// ISRC is the International Standard Recording Code for the song.
-	ISRC string `json:"isrc,omitempty"`
-	// Artist is the artist name.
-	Artist string `json:"artist,omitempty"`
-	// ArtistMBID is the MusicBrainz artist ID.
-	ArtistMBID string `json:"artistMbid,omitempty"`
-	// Artists is the full artist list; when set, takes precedence over Artist/ArtistMBID for matching.
-	Artists []ArtistRef `json:"artists,omitempty"`
-	// Album is the album name.
-	Album string `json:"album,omitempty"`
-	// AlbumMBID is the MusicBrainz release ID.
-	AlbumMBID string `json:"albumMbid,omitempty"`
-	// Duration is the song duration in seconds.
-	Duration float32 `json:"duration,omitempty"`
 }
 
 // TopSongsRequest is the request for GetArtistTopSongs.

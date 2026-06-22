@@ -252,6 +252,13 @@ func parseCapabilityFile(fset *token.FileSet, path string, structMap map[string]
 			// Resolve shared-type aliases against the registry
 			capability.SharedAliases = resolveSharedAliases(referencedTypes, aliasMap, shared)
 
+			// Build a set of names already covered by SharedAliases so we don't
+			// emit them again in TypeAliases (which would cause a redeclaration).
+			sharedAliasNames := make(map[string]bool, len(capability.SharedAliases))
+			for _, sa := range capability.SharedAliases {
+				sharedAliasNames[sa.Name] = true
+			}
+
 			// Sort type names for stable output order
 			sortedTypeNames := slices.Sorted(maps.Keys(referencedTypes))
 
@@ -262,8 +269,11 @@ func parseCapabilityFile(fset *token.FileSet, path string, structMap map[string]
 				}
 			}
 
-			// Attach referenced type aliases
+			// Attach referenced type aliases (skip those already in SharedAliases)
 			for _, typeName := range sortedTypeNames {
+				if sharedAliasNames[typeName] {
+					continue
+				}
 				if a, exists := aliasMap[typeName]; exists {
 					capability.TypeAliases = append(capability.TypeAliases, a)
 				}
@@ -273,6 +283,9 @@ func parseCapabilityFile(fset *token.FileSet, path string, structMap map[string]
 			// This supports error types that are not directly referenced in method signatures
 			interfaceName := typeSpec.Name.Name
 			for _, typeName := range slices.Sorted(maps.Keys(aliasMap)) {
+				if sharedAliasNames[typeName] {
+					continue
+				}
 				a := aliasMap[typeName]
 				if strings.HasPrefix(typeName, interfaceName) && !referencedTypes[typeName] {
 					capability.TypeAliases = append(capability.TypeAliases, a)

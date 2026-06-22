@@ -25,20 +25,6 @@ exports:
             contentType: application/json
 components:
     schemas:
-        ArtistRef:
-            description: ArtistRef is a reference to an artist with name and optional MBID.
-            properties:
-                id:
-                    type: string
-                    description: ID is the internal Navidrome artist ID (if known).
-                name:
-                    type: string
-                    description: Name is the artist name.
-                mbid:
-                    type: string
-                    description: MBID is the MusicBrainz ID for the artist.
-            required:
-                - name
         IsAuthorizedRequest:
             description: IsAuthorizedRequest is the request for authorization check.
             properties:
@@ -120,6 +106,20 @@ components:
                 - username
                 - track
                 - timestamp
+        ArtistRef:
+            description: ArtistRef is a reference to an artist with name and optional MBID.
+            properties:
+                id:
+                    type: string
+                    description: ID is the internal Navidrome artist ID (if known).
+                name:
+                    type: string
+                    description: Name is the artist name.
+                mbid:
+                    type: string
+                    description: MBID is the MusicBrainz ID for the artist.
+            required:
+                - name
         TrackInfo:
             description: TrackInfo contains track metadata.
             properties:
