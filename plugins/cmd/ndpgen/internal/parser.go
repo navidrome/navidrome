@@ -61,7 +61,7 @@ func ParseDirectory(dir string) ([]Service, error) {
 
 	fset := token.NewFileSet()
 
-	// First pass: collect all structs from every file in the package.
+	// First pass.
 	sharedStructMap := make(map[string]StructDef)
 	for _, path := range goFiles {
 		f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
@@ -73,7 +73,7 @@ func ParseDirectory(dir string) ([]Service, error) {
 		}
 	}
 
-	// Second pass: parse each file's services using the shared struct map.
+	// Second pass.
 	var services []Service
 	for _, path := range goFiles {
 		parsed, err := parseServiceFile(fset, path, sharedStructMap)
