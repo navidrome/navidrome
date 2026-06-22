@@ -339,15 +339,49 @@ func isIgnoredPath(_ context.Context, _ fs.FS, path string) bool {
 	// As it can be a deletion and not a change, we cannot reliably know if the
 	// path is a file or directory. But at this point, we can assume it's a
 	// directory. If it's a file, it would be ignored anyway.
-	return isIgnoredEntry(name, true)
+	if isIgnoredEntry(name, true) {
+		return true
+	}
+	// Root-only ignores (e.g. the filesystem-root lost+found) only apply when
+	// the entry sits directly under the library root. Nested matches with
+	// the same name (e.g. "Artist/lost+found") are legitimate albums.
+	return isRootOnlyDirInParent(filepath.ToSlash(path))
 }
 
 // isUnderIgnoredDir returns true if any parent directory component of the given
-// path is an ignored directory, reusing the same policy as the scanner walk.
+// path is an always-ignored directory, reusing the same policy as the scanner
+// walk. Root-only ignores are excluded here and handled separately by
+// isRootOnlyDirInParent, since they should NOT propagate to nested paths.
 func isUnderIgnoredDir(path string) bool {
 	dir, _ := filepath.Split(path)
 	for part := range strings.SplitSeq(filepath.ToSlash(dir), "/") {
-		if part != "" && isIgnoredEntry(part, true) {
+		if part != "" && (isDirIgnored(part) || isDotIgnoredDir(part)) {
+			return true
+		}
+	}
+	return false
+}
+
+// isDotIgnoredDir mirrors the scanner's "dot-folder when IgnoreDotFolders is
+// enabled" rule for use in the watcher's parent check. It is split out of
+// isIgnoredEntry so the watcher can reuse it without duplicating the
+// conf.Server.Scanner.IgnoreDotFolders gate.
+func isDotIgnoredDir(name string) bool {
+	return isDotEntry(name) && conf.Server.Scanner.IgnoreDotFolders
+}
+
+// isRootOnlyDirInParent returns true when the given path's first directory
+// component (i.e. its top-level parent under the library root) matches one of
+// the rootOnlyIgnoredDirs entries. Watcher paths are already relative to the
+// library root, so a path like "lost+found/track.mp3" matches, but
+// "Artist/lost+found/track.mp3" does not (its top-level parent is "Artist").
+func isRootOnlyDirInParent(p string) bool {
+	top, _, _ := strings.Cut(p, "/")
+	if top == "" || top == "." {
+		return false
+	}
+	for _, rootOnly := range rootOnlyIgnoredDirs {
+		if strings.EqualFold(top, rootOnly) {
 			return true
 		}
 	}

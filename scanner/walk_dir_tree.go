@@ -49,8 +49,10 @@ func walkDirTree(ctx context.Context, job *scanJob, targetFolders ...string) (<-
 				continue
 			}
 
-			// Recursively walk this folder and all its children
-			err = walkFolder(ctx, job, folderPath, checker, results)
+			// Recursively walk this folder and all its children. folderPath is the
+			// walk's root, which loadDir uses to decide whether a root-only ignore
+			// (e.g. lost+found) should apply — see isRootOnlyDirIgnored.
+			err = walkFolder(ctx, job, folderPath, folderPath, checker, results)
 			if err != nil {
 				log.Error(ctx, "Scanner: Error walking target folder", "path", folderPath, err)
 				continue
@@ -61,18 +63,18 @@ func walkDirTree(ctx context.Context, job *scanJob, targetFolders ...string) (<-
 	return results, nil
 }
 
-func walkFolder(ctx context.Context, job *scanJob, currentFolder string, checker *IgnoreChecker, results chan<- *folderEntry) error {
+func walkFolder(ctx context.Context, job *scanJob, currentFolder string, walkRoot string, checker *IgnoreChecker, results chan<- *folderEntry) error {
 	// Push patterns for this folder onto the stack
 	_ = checker.Push(ctx, currentFolder)
 	defer checker.Pop() // Pop patterns when leaving this folder
 
-	folder, children, err := loadDir(ctx, job, currentFolder, checker)
+	folder, children, err := loadDir(ctx, job, currentFolder, walkRoot, checker)
 	if err != nil {
 		log.Warn(ctx, "Scanner: Error loading dir. Skipping", "path", currentFolder, err)
 		return nil
 	}
 	for _, c := range children {
-		err := walkFolder(ctx, job, c, checker, results)
+		err := walkFolder(ctx, job, c, walkRoot, checker, results)
 		if err != nil {
 			return err
 		}
@@ -90,7 +92,7 @@ func walkFolder(ctx context.Context, job *scanJob, currentFolder string, checker
 	return nil
 }
 
-func loadDir(ctx context.Context, job *scanJob, dirPath string, checker *IgnoreChecker) (folder *folderEntry, children []string, err error) {
+func loadDir(ctx context.Context, job *scanJob, dirPath string, walkRoot string, checker *IgnoreChecker) (folder *folderEntry, children []string, err error) {
 	// Check if directory exists before creating the folder entry
 	// This is important to avoid removing the folder from lastUpdates if it doesn't exist
 	dirInfo, err := fs.Stat(job.fs, dirPath)
@@ -133,6 +135,10 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string, checker *IgnoreC
 			continue
 		}
 		if isIgnoredEntry(entry.Name(), isDir) {
+			continue
+		}
+		if isDir && isRootOnlyDirIgnored(entry.Name(), dirPath, walkRoot) {
+			log.Trace(ctx, "Scanner: Ignoring root-only directory", "path", entryPath)
 			continue
 		}
 		if isDir && isDirReadable(ctx, job.fs, entryPath) {
@@ -270,20 +276,33 @@ func isDirReadable(ctx context.Context, fsys fs.FS, dirPath string) bool {
 	return true
 }
 
-// List of special directories to ignore
-var ignoredDirs = []string{
+// List of special directories to ignore at any depth. These are directories
+// that should never be scanned regardless of where they appear in the tree,
+// because they hold VCS/tooling metadata or OS-managed snapshots that have
+// no relation to music files.
+var alwaysIgnoredDirs = []string{
 	"$RECYCLE.BIN",
 	"#snapshot",
 	"@Recycle",
 	"@Recently-Snapshot",
 	".git",
 	".streams",
+}
+
+// List of directories that should only be ignored when they appear at the
+// top of the library tree, not when nested deeper. `lost+found` is created by
+// fsck on ext2/3/4 filesystems at the root of the mount and is normally empty,
+// but a user may legitimately have an album folder named "lost+found" inside
+// an artist's directory (see issue #5592).
+var rootOnlyIgnoredDirs = []string{
 	"lost+found",
 }
 
 // isIgnoredEntry returns true if a directory entry with the given name should be
 // skipped during scanning. It centralizes all name- and type-based ignore policy:
-//   - special system directories in ignoredDirs are always ignored;
+//   - alwaysIgnoredDirs (system/tooling dirs like .git) are always ignored;
+//   - rootOnlyIgnoredDirs (filesystem-root dirs like lost+found) are ignored
+//     only when the entry is at the top level of the library (parent == root);
 //   - dot-prefixed files are always ignored;
 //   - dot-prefixed folders are ignored unless Scanner.IgnoreDotFolders is disabled,
 //     allowing albums like ".Hack Sign" to be scanned when the option is off.
@@ -294,10 +313,28 @@ func isIgnoredEntry(name string, isDir bool) bool {
 	return isDotEntry(name) && (!isDir || conf.Server.Scanner.IgnoreDotFolders)
 }
 
-// isDirIgnored returns true if the directory name is in the explicit ignoredDirs
-// blocklist. Used both while walking the tree and by the file watcher.
+// isDirIgnored returns true if the directory name is in the explicit
+// alwaysIgnoredDirs blocklist. Used both while walking the tree and by the
+// file watcher. Root-only ignores are handled separately by isRootOnlyDirIgnored.
 func isDirIgnored(name string) bool {
-	return slices.ContainsFunc(ignoredDirs, func(s string) bool { return strings.EqualFold(s, name) })
+	return slices.ContainsFunc(alwaysIgnoredDirs, func(s string) bool { return strings.EqualFold(s, name) })
+}
+
+// isRootOnlyDirIgnored returns true if the entry is a directory whose name
+// matches one of the rootOnlyIgnoredDirs entries AND whose parent path equals
+// the library root. This prevents false positives on legitimately-named
+// nested albums like "Jonathan Coulton/lost+found" (issue #5592) while still
+// skipping the actual filesystem-root lost+found directory.
+func isRootOnlyDirIgnored(name, parentPath, libraryRoot string) bool {
+	if !slices.ContainsFunc(rootOnlyIgnoredDirs, func(s string) bool { return strings.EqualFold(s, name) }) {
+		return false
+	}
+	pp := path.Clean(parentPath)
+	root := path.Clean(libraryRoot)
+	if pp == "" || root == "" {
+		return false
+	}
+	return pp == root
 }
 
 // isDotEntry returns true only for names with exactly one leading dot (the

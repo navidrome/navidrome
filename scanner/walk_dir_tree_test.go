@@ -26,6 +26,57 @@ var _ = Describe("walk_dir_tree", func() {
 			ctx  context.Context
 		)
 
+		Context("with a nested 'lost+found' album (issue #5592)", func() {
+			BeforeEach(func() {
+				DeferCleanup(configtest.SetupConfig())
+				ctx = GinkgoT().Context()
+				fsys = &mockMusicFS{
+					FS: fstest.MapFS{
+						// Real filesystem-root lost+found, fsck-created:
+						// should be skipped (root-only ignore applies).
+						"root/lost+found/stray.m4a": {},
+						// Legitimate album folder named "lost+found" inside
+						// an artist's directory: must NOT be skipped.
+						// This is the exact scenario from issue #5592.
+						"root/Jonathan Coulton/lost+found/01 - track.mp3": {},
+						"root/Jonathan Coulton/lost+found/cover.jpg":      {},
+					},
+				}
+				job = &scanJob{
+					fs:  fsys,
+					lib: model.Library{Path: "/music"},
+				}
+			})
+
+			It("scans the nested lost+found album but skips the filesystem-root one", func() {
+				// Pass "root" as the target folder so walkDirTree treats it as
+				// the library root — same as production, where targetFolders
+				// is initialized from lib.Path. With the no-arg default ("."),
+				// the walker would descend into "root" as a child, which would
+				// put lost+found at a non-root depth relative to walkRoot.
+				results, err := walkDirTree(ctx, job, "root")
+				Expect(err).ToNot(HaveOccurred())
+				folders := map[string]*folderEntry{}
+				g := errgroup.Group{}
+				g.Go(func() error {
+					for folder := range results {
+						folders[folder.path] = folder
+					}
+					return nil
+				})
+				_ = g.Wait()
+
+				// Nested album must be present with both audio and images.
+				Expect(folders).To(HaveKey("root/Jonathan Coulton/lost+found"))
+				lf := folders["root/Jonathan Coulton/lost+found"]
+				Expect(lf.audioFiles).To(HaveKey("01 - track.mp3"))
+				Expect(lf.imageFiles).To(HaveKey("cover.jpg"))
+
+				// Filesystem-root lost+found must NOT appear as a folder.
+				Expect(folders).ToNot(HaveKey("root/lost+found"))
+			})
+		})
+
 		Context("full library", func() {
 			BeforeEach(func() {
 				DeferCleanup(configtest.SetupConfig())
@@ -482,6 +533,8 @@ var _ = Describe("walk_dir_tree", func() {
 		Describe("isDirIgnored", func() {
 			DescribeTable("returns expected result",
 				func(dirName string, expected bool) {
+					// isDirIgnored covers always-ignored system/tooling dirs only.
+					// root-only ignores (lost+found) are handled by isRootOnlyDirIgnored.
 					Expect(isDirIgnored(dirName)).To(Equal(expected))
 				},
 				Entry("normal dir", "empty_folder", false),
@@ -491,6 +544,37 @@ var _ = Describe("walk_dir_tree", func() {
 				Entry("dir starting with ellipsis", "...unhidden_folder", false),
 				Entry("recycle bin", "$Recycle.Bin", true),
 				Entry("snapshot dir", "#snapshot", true),
+				Entry("lost+found is NOT in always-ignored", "lost+found", false),
+			)
+		})
+
+		Describe("isRootOnlyDirIgnored", func() {
+			// Mirrors the bug in issue #5592: "lost+found" is the standard
+			// fsck-created directory at the root of ext2/3/4 filesystems and
+			// should be skipped when it appears directly under the library
+			// root, but a user may legitimately have an album folder named
+			// "lost+found" inside an artist's directory (e.g.
+			// "Jonathan Coulton/lost+found") which must NOT be skipped.
+			DescribeTable("returns expected result",
+				func(name, parent, root string, expected bool) {
+					Expect(isRootOnlyDirIgnored(name, parent, root)).To(Equal(expected))
+				},
+				Entry("lost+found at library root is ignored",
+					"lost+found", "/music", "/music", true),
+				Entry("lost+found nested inside an artist is NOT ignored",
+					"lost+found", "/music/Jonathan Coulton", "/music", false),
+				Entry("lost+found nested two levels deep is NOT ignored",
+					"lost+found", "/music/Jonathan Coulton/2020", "/music", false),
+				Entry("case-insensitive match at library root",
+					"LOST+FOUND", "/music", "/music", true),
+				Entry("non-root-only dir is never root-only-ignored",
+					".git", "/music", "/music", false),
+				Entry("relative root is honored",
+					"lost+found", "music", "music", true),
+				Entry("parent does not match root",
+					"lost+found", "/other", "/music", false),
+				Entry("empty root disables the rule (safe fallback)",
+					"lost+found", "/music", "", false),
 			)
 		})
 
