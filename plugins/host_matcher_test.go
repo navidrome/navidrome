@@ -3,7 +3,6 @@
 package plugins
 
 import (
-	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -82,9 +81,9 @@ var _ = Describe("MatcherService", Ordered, func() {
 			Expect(track.LibraryName).To(Equal("Main"))
 			Expect(track.Title).To(Equal("My Song"))
 			Expect(track.Duration).To(Equal(210.5))
-			Expect(track.BitDepth).To(Equal(int32(24)))
-			Expect(track.BPM).To(Equal(int32(128)))
-			Expect(track.RGTrackGain).To(Equal(-7.5))
+			Expect(track.BitDepth).To(HaveValue(Equal(int32(24))))
+			Expect(track.BPM).To(HaveValue(Equal(int32(128))))
+			Expect(track.RGTrackGain).To(HaveValue(Equal(-7.5)))
 			Expect(track.Compilation).To(BeTrue())
 			Expect(track.MbzRecordingID).To(Equal("rec-1"))
 			Expect(track.Genres).To(Equal([]string{"Rock", "Pop"}))
@@ -100,12 +99,23 @@ var _ = Describe("MatcherService", Ordered, func() {
 			Expect(track.Participants["artist"][0].MbzArtistID).To(Equal("mbz-ar-1"))
 		})
 
-		It("omits nil-able numeric fields when absent", func() {
+		It("leaves nil-able numeric fields nil when absent", func() {
 			mf := &model.MediaFile{ID: "mf-2", Title: "No Optionals"}
 			track := toTrack(mf)
-			Expect(track.BitDepth).To(Equal(int32(0)))
-			Expect(track.BPM).To(Equal(int32(0)))
-			Expect(track.RGTrackGain).To(Equal(float64(0)))
+			Expect(track.BitDepth).To(BeNil())
+			Expect(track.BPM).To(BeNil())
+			Expect(track.RGAlbumGain).To(BeNil())
+			Expect(track.RGAlbumPeak).To(BeNil())
+			Expect(track.RGTrackGain).To(BeNil())
+			Expect(track.RGTrackPeak).To(BeNil())
+		})
+
+		It("preserves a real 0 ReplayGain value as non-nil", func() {
+			zero := 0.0
+			mf := &model.MediaFile{ID: "mf-3", Title: "Zero RG", RGTrackGain: &zero}
+			track := toTrack(mf)
+			Expect(track.RGTrackGain).To(HaveValue(Equal(0.0)))
+			Expect(track.RGAlbumGain).To(BeNil())
 		})
 	})
 
@@ -119,7 +129,7 @@ var _ = Describe("MatcherService", Ordered, func() {
 			ds := &tests.MockDataStore{MockedMediaFile: mediaFileRepo}
 
 			svc := newMatcherService(ds)
-			results, err := svc.MatchSongs(context.Background(), []host.MatchSong{
+			results, err := svc.MatchSongs(GinkgoT().Context(), []host.MatchSong{
 				{ID: "mf-100", Name: "Hit", Artist: "Band"},
 				{ID: "missing-id", Name: "Ghost", Artist: "Nobody"},
 			})
@@ -134,7 +144,7 @@ var _ = Describe("MatcherService", Ordered, func() {
 		It("returns an empty slice for empty input", func() {
 			ds := &tests.MockDataStore{MockedMediaFile: tests.CreateMockMediaFileRepo()}
 			svc := newMatcherService(ds)
-			results, err := svc.MatchSongs(context.Background(), nil)
+			results, err := svc.MatchSongs(GinkgoT().Context(), nil)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(results).To(BeEmpty())
 		})

@@ -47,14 +47,14 @@ type Track struct {
 	Duration   float64 `json:"duration"`
 	BitRate    int32   `json:"bitRate"`
 	SampleRate int32   `json:"sampleRate"`
-	BitDepth   int32   `json:"bitDepth,omitempty"`
+	BitDepth   *int32  `json:"bitDepth,omitempty"`
 	Channels   int32   `json:"channels"`
 	Codec      string  `json:"codec,omitempty"`
 
 	// Descriptive
 	Genres         []string `json:"genres,omitempty"`
 	Comment        string   `json:"comment,omitempty"`
-	BPM            int32    `json:"bpm,omitempty"`
+	BPM            *int32   `json:"bpm,omitempty"`
 	ExplicitStatus string   `json:"explicitStatus,omitempty"`
 	CatalogNum     string   `json:"catalogNum,omitempty"`
 	Compilation    bool     `json:"compilation"`
@@ -68,11 +68,12 @@ type Track struct {
 	MbzAlbumType      string `json:"mbzAlbumType,omitempty"`
 	MbzAlbumComment   string `json:"mbzAlbumComment,omitempty"`
 
-	// ReplayGain (nil-able in the model; omitted here when absent)
-	RGAlbumGain float64 `json:"rgAlbumGain,omitempty"`
-	RGAlbumPeak float64 `json:"rgAlbumPeak,omitempty"`
-	RGTrackGain float64 `json:"rgTrackGain,omitempty"`
-	RGTrackPeak float64 `json:"rgTrackPeak,omitempty"`
+	// ReplayGain — nil means no data; 0 is a valid measured value, so these
+	// must stay pointers to distinguish "absent" from "0".
+	RGAlbumGain *float64 `json:"rgAlbumGain,omitempty"`
+	RGAlbumPeak *float64 `json:"rgAlbumPeak,omitempty"`
+	RGTrackGain *float64 `json:"rgTrackGain,omitempty"`
+	RGTrackPeak *float64 `json:"rgTrackPeak,omitempty"`
 
 	// Timestamps (Unix epoch seconds)
 	BirthTime int64 `json:"birthTime"`

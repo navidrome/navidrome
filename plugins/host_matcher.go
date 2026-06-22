@@ -8,7 +8,6 @@ import (
 	"github.com/navidrome/navidrome/core/matcher"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/plugins/host"
-	"github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
@@ -80,11 +79,11 @@ func toTrack(mf *model.MediaFile) *host.Track {
 		Duration:          float64(mf.Duration),
 		BitRate:           int32(mf.BitRate),
 		SampleRate:        int32(mf.SampleRate),
-		BitDepth:          int32(gg.V(mf.BitDepth)),
+		BitDepth:          ptrInt32(mf.BitDepth),
 		Channels:          int32(mf.Channels),
 		Codec:             mf.Codec,
 		Comment:           mf.Comment,
-		BPM:               int32(gg.V(mf.BPM)),
+		BPM:               ptrInt32(mf.BPM),
 		ExplicitStatus:    mf.ExplicitStatus,
 		CatalogNum:        mf.CatalogNum,
 		Compilation:       mf.Compilation,
@@ -95,10 +94,10 @@ func toTrack(mf *model.MediaFile) *host.Track {
 		MbzReleaseGroupID: mf.MbzReleaseGroupID,
 		MbzAlbumType:      mf.MbzAlbumType,
 		MbzAlbumComment:   mf.MbzAlbumComment,
-		RGAlbumGain:       gg.V(mf.RGAlbumGain),
-		RGAlbumPeak:       gg.V(mf.RGAlbumPeak),
-		RGTrackGain:       gg.V(mf.RGTrackGain),
-		RGTrackPeak:       gg.V(mf.RGTrackPeak),
+		RGAlbumGain:       mf.RGAlbumGain,
+		RGAlbumPeak:       mf.RGAlbumPeak,
+		RGTrackGain:       mf.RGTrackGain,
+		RGTrackPeak:       mf.RGTrackPeak,
 		BirthTime:         unixOrZero(mf.BirthTime),
 		CreatedAt:         unixOrZero(mf.CreatedAt),
 		UpdatedAt:         unixOrZero(mf.UpdatedAt),
@@ -134,6 +133,16 @@ func unixOrZero(t time.Time) int64 {
 		return 0
 	}
 	return t.Unix()
+}
+
+// ptrInt32 maps a nullable *int from the model to a nullable *int32 for the DTO,
+// preserving nil so plugins can tell "no value" from a real 0.
+func ptrInt32(p *int) *int32 {
+	if p == nil {
+		return nil
+	}
+	v := int32(*p)
+	return &v
 }
 
 var _ host.MatcherService = (*matcherServiceImpl)(nil)

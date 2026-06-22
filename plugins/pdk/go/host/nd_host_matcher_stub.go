@@ -67,12 +67,12 @@ type Track struct {
 	Duration          float64             `json:"duration"`
 	BitRate           int32               `json:"bitRate"`
 	SampleRate        int32               `json:"sampleRate"`
-	BitDepth          int32               `json:"bitDepth"`
+	BitDepth          *int32              `json:"bitDepth"`
 	Channels          int32               `json:"channels"`
 	Codec             string              `json:"codec"`
 	Genres            []string            `json:"genres"`
 	Comment           string              `json:"comment"`
-	BPM               int32               `json:"bpm"`
+	BPM               *int32              `json:"bpm"`
 	ExplicitStatus    string              `json:"explicitStatus"`
 	CatalogNum        string              `json:"catalogNum"`
 	Compilation       bool                `json:"compilation"`
@@ -83,10 +83,10 @@ type Track struct {
 	MbzReleaseGroupID string              `json:"mbzReleaseGroupId"`
 	MbzAlbumType      string              `json:"mbzAlbumType"`
 	MbzAlbumComment   string              `json:"mbzAlbumComment"`
-	RGAlbumGain       float64             `json:"rgAlbumGain"`
-	RGAlbumPeak       float64             `json:"rgAlbumPeak"`
-	RGTrackGain       float64             `json:"rgTrackGain"`
-	RGTrackPeak       float64             `json:"rgTrackPeak"`
+	RGAlbumGain       *float64            `json:"rgAlbumGain"`
+	RGAlbumPeak       *float64            `json:"rgAlbumPeak"`
+	RGTrackGain       *float64            `json:"rgTrackGain"`
+	RGTrackPeak       *float64            `json:"rgTrackPeak"`
 	BirthTime         int64               `json:"birthTime"`
 	CreatedAt         int64               `json:"createdAt"`
 	UpdatedAt         int64               `json:"updatedAt"`

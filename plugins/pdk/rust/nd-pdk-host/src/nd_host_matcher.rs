@@ -90,7 +90,7 @@ pub struct Track {
     pub bit_rate: i32,
     pub sample_rate: i32,
     #[serde(default)]
-    pub bit_depth: i32,
+    pub bit_depth: Option<i32>,
     pub channels: i32,
     #[serde(default)]
     pub codec: String,
@@ -99,7 +99,7 @@ pub struct Track {
     #[serde(default)]
     pub comment: String,
     #[serde(default)]
-    pub bpm: i32,
+    pub bpm: Option<i32>,
     #[serde(default)]
     pub explicit_status: String,
     #[serde(default)]
@@ -119,13 +119,13 @@ pub struct Track {
     #[serde(default)]
     pub mbz_album_comment: String,
     #[serde(default)]
-    pub rg_album_gain: f64,
+    pub rg_album_gain: Option<f64>,
     #[serde(default)]
-    pub rg_album_peak: f64,
+    pub rg_album_peak: Option<f64>,
     #[serde(default)]
-    pub rg_track_gain: f64,
+    pub rg_track_gain: Option<f64>,
     #[serde(default)]
-    pub rg_track_peak: f64,
+    pub rg_track_peak: Option<f64>,
     pub birth_time: i64,
     pub created_at: i64,
     pub updated_at: i64,
