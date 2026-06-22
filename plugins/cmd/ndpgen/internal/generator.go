@@ -843,6 +843,56 @@ func GeneratePDKTypesStub(symbols *PDKSymbols) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// GenerateSharedTypesRust generates the nd-pdk-types crate root (lib.rs).
+func GenerateSharedTypesRust(structs []StructDef) ([]byte, error) {
+	tmplContent, err := templatesFS.ReadFile("templates/types.rs.tmpl")
+	if err != nil {
+		return nil, fmt.Errorf("reading types rust template: %w", err)
+	}
+	sorted := append([]StructDef(nil), structs...)
+	slices.SortFunc(sorted, func(a, b StructDef) int { return strings.Compare(a.Name, b.Name) })
+	known := map[string]bool{}
+	for _, s := range sorted {
+		known[s.Name] = true
+	}
+	hasHashMapFlag := false
+	for _, s := range sorted {
+		for _, f := range s.Fields {
+			if strings.HasPrefix(f.Type, "map[") {
+				hasHashMapFlag = true
+			}
+		}
+	}
+	tmpl, err := template.New("types_rs").Funcs(template.FuncMap{
+		"rustDocComment":      RustDocComment,
+		"rustFieldName":       func(n string) string { return ToSnakeCase(n) },
+		"fieldRustType":       func(f FieldDef) string { return f.RustType(known) },
+		"skipSerializingFunc": skipSerializingFunc,
+		"indent": func(spaces int, s string) string {
+			ind := strings.Repeat(" ", spaces)
+			lines := strings.Split(s, "\n")
+			for i, line := range lines {
+				if line != "" {
+					lines[i] = ind + line
+				}
+			}
+			return strings.Join(lines, "\n")
+		},
+	}).Parse(string(tmplContent))
+	if err != nil {
+		return nil, fmt.Errorf("parsing template: %w", err)
+	}
+	data := struct {
+		Structs    []StructDef
+		HasHashMap bool
+	}{Structs: sorted, HasHashMap: hasHashMapFlag}
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return nil, fmt.Errorf("executing template: %w", err)
+	}
+	return buf.Bytes(), nil
+}
+
 // GenerateSharedTypesGo generates the shared `types` package (plain data structs).
 func GenerateSharedTypesGo(structs []StructDef, pkgName string) ([]byte, error) {
 	tmplContent, err := templatesFS.ReadFile("templates/types.go.tmpl")

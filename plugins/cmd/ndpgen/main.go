@@ -210,8 +210,23 @@ func runSharedTypesGeneration(cfg *config) error {
 			return err
 		}
 	}
-	// Rust output added in a later task
+	if cfg.generateRsClient {
+		if err := generateSharedTypesRust(list, cfg); err != nil {
+			return err
+		}
+	}
 	return nil
+}
+
+// generateSharedTypesRust writes the nd-pdk-types crate root to
+// <outputDir>/rust/nd-pdk-types/src/lib.rs.
+func generateSharedTypesRust(structs []internal.StructDef, cfg *config) error {
+	code, err := internal.GenerateSharedTypesRust(structs)
+	if err != nil {
+		return fmt.Errorf("generating Rust types: %w", err)
+	}
+	dir := filepath.Join(cfg.outputDir, "rust", "nd-pdk-types", "src")
+	return writeGenerated(dir, "lib.rs", code, cfg.dryRun, cfg.verbose)
 }
 
 // runPDKGeneration handles PDK abstraction layer code generation.

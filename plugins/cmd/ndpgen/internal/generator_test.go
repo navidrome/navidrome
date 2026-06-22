@@ -1041,6 +1041,22 @@ type OnInitOutput struct {
 })
 
 var _ = Describe("Shared Types Generation", func() {
+	It("emits a Rust types crate root with serde derives", func() {
+		structs := []StructDef{
+			{Name: "ArtistRef", Doc: "ArtistRef references an artist.", Fields: []FieldDef{
+				{Name: "ID", Type: "string", JSONTag: "id", OmitEmpty: true},
+				{Name: "Name", Type: "string", JSONTag: "name"},
+			}},
+		}
+		code, err := GenerateSharedTypesRust(structs)
+		Expect(err).NotTo(HaveOccurred())
+		out := string(code)
+		Expect(out).To(ContainSubstring("use serde::{Deserialize, Serialize};"))
+		Expect(out).To(ContainSubstring("pub struct ArtistRef {"))
+		Expect(out).To(ContainSubstring(`#[serde(rename_all = "camelCase")]`))
+		Expect(out).To(ContainSubstring("pub name: String,"))
+	})
+
 	It("emits a flat Go types package with no imports", func() {
 		structs := []StructDef{
 			{Name: "ArtistRef", Doc: "ArtistRef references an artist.", Fields: []FieldDef{
