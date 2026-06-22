@@ -138,7 +138,7 @@ func (mf MediaFile) AlbumCoverArtID() ArtworkID {
 }
 
 func (mf MediaFile) StructuredLyrics() (LyricList, error) {
-	lyrics := LyricList{}
+	var lyrics LyricList
 	err := json.Unmarshal([]byte(mf.Lyrics), &lyrics)
 	if err != nil {
 		return nil, err
@@ -439,6 +439,9 @@ type MediaFileRepository interface {
 	Get(id string) (*MediaFile, error)
 	GetWithParticipants(id string) (*MediaFile, error)
 	GetAll(options ...QueryOptions) (MediaFiles, error)
+	// GetRandom returns up to options.Max media files in random order, applying the same
+	// filters as GetAll. Sort/Order are ignored.
+	GetRandom(options ...QueryOptions) (MediaFiles, error)
 	GetAllByTags(tag TagName, values []string, options ...QueryOptions) (MediaFiles, error)
 	GetCursor(options ...QueryOptions) (MediaFileCursor, error)
 	Delete(id string) error

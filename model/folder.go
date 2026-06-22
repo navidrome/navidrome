@@ -93,4 +93,7 @@ type FolderRepository interface {
 	Put(*Folder) error
 	MarkMissing(missing bool, ids ...string) error
 	GetTouchedWithPlaylists() (FolderCursor, error)
+	// GetAllWithPlaylists returns all non-missing folders with playlists, ignoring
+	// the scan-timestamp gate used by GetTouchedWithPlaylists.
+	GetAllWithPlaylists() (FolderCursor, error)
 }

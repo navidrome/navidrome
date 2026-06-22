@@ -408,6 +408,97 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 			Expect(sql).To(ContainSubstring("value LIKE ? OR value LIKE ?"))
 			Expect(args).To(HaveLen(2 + 2 + 1)) // 2 tag patterns + 2 role patterns + 1 role name
 		})
+
+		It("merges negated role conditions in an AND group into a single NOT EXISTS", func() {
+			expr := criteria.All{
+				criteria.IsNot{"artist": "Beatles"},
+				criteria.IsNot{"artist": "Kraftwerk"},
+			}
+			sqlizer, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: expr}).Where()
+			Expect(err).ToNot(HaveOccurred())
+
+			sql, args, err := sqlizer.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			// A single NOT EXISTS with both names ORed inside (De Morgan)
+			Expect(strings.Count(sql, "not exists")).To(Equal(1))
+			Expect(sql).To(ContainSubstring("artist.name = ? OR artist.name = ?"))
+			Expect(args).To(HaveExactElements("artist", "Beatles", "Kraftwerk"))
+		})
+
+		It("merges negated notContains role conditions in an AND group", func() {
+			expr := criteria.All{
+				criteria.NotContains{"artist": "Beatles"},
+				criteria.NotContains{"artist": "Kraftwerk"},
+			}
+			sqlizer, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: expr}).Where()
+			Expect(err).ToNot(HaveOccurred())
+
+			sql, args, err := sqlizer.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(strings.Count(sql, "not exists")).To(Equal(1))
+			Expect(sql).To(ContainSubstring("artist.name LIKE ? OR artist.name LIKE ?"))
+			Expect(args).To(HaveExactElements("artist", "%Beatles%", "%Kraftwerk%"))
+		})
+
+		It("merges negated tag conditions in an AND group into a single NOT EXISTS", func() {
+			expr := criteria.All{
+				criteria.NotContains{"genre": "Rock"},
+				criteria.NotContains{"genre": "Metal"},
+			}
+			sqlizer, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: expr}).Where()
+			Expect(err).ToNot(HaveOccurred())
+
+			sql, args, err := sqlizer.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(strings.Count(sql, "not exists")).To(Equal(1))
+			Expect(sql).To(ContainSubstring("value LIKE ? OR value LIKE ?"))
+			Expect(args).To(HaveExactElements("%Rock%", "%Metal%"))
+		})
+
+		It("does not merge a single negated condition with a positive one of the same role in AND", func() {
+			// AND of mixed polarity must not be collapsed: NOT EXISTS(a) AND EXISTS(b)
+			// is not equivalent to any single merged subquery.
+			expr := criteria.All{
+				criteria.Contains{"artist": "Beatles"},
+				criteria.IsNot{"artist": "Kraftwerk"},
+			}
+			sqlizer, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: expr}).Where()
+			Expect(err).ToNot(HaveOccurred())
+
+			sql, _, err := sqlizer.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			// One positive EXISTS and one negated NOT EXISTS, kept separate
+			Expect(strings.Count(sql, "not exists")).To(Equal(1))
+			Expect(strings.Count(sql, "exists")).To(Equal(2)) // "not exists" contains "exists"
+		})
+
+		It("does not merge negated conditions of different roles in AND", func() {
+			expr := criteria.All{
+				criteria.IsNot{"artist": "Beatles"},
+				criteria.IsNot{"composer": "Lennon"},
+			}
+			sqlizer, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: expr}).Where()
+			Expect(err).ToNot(HaveOccurred())
+
+			sql, _, err := sqlizer.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(strings.Count(sql, "not exists")).To(Equal(2))
+		})
+
+		It("batches large negated AND groups to avoid SQLite expression tree depth limit", func() {
+			allExprs := make(criteria.All, jsonCondBatchSize+1)
+			for i := range allExprs {
+				allExprs[i] = criteria.IsNot{"artist": fmt.Sprintf("Artist%d", i)}
+			}
+			sqlizer, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: allExprs}).Where()
+			Expect(err).ToNot(HaveOccurred())
+
+			sql, args, err := sqlizer.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			// Two NOT EXISTS subqueries (one batch of jsonCondBatchSize, one of 1)
+			Expect(strings.Count(sql, "not exists")).To(Equal(2))
+			Expect(args).To(HaveLen(2 + jsonCondBatchSize + 1))
+		})
 	})
 
 	Describe("joins", func() {

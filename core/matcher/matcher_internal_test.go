@@ -1,6 +1,7 @@
 package matcher
 
 import (
+	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -49,5 +50,18 @@ var _ = Describe("similarityRatio", func() {
 		ratio1 := similarityRatio("hello world", "hello")
 		ratio2 := similarityRatio("hello", "hello world")
 		Expect(ratio1).To(Equal(ratio2))
+	})
+})
+
+var _ = Describe("matcher internals", func() {
+	It("computeSpecificityLevel uses sanitizedTrack.artistMBID for artist-MBID levels", func() {
+		q := songQuery{
+			title:      "song",
+			artistMBID: "artist-mbid-1",
+			albumMBID:  "album-mbid-1",
+		}
+		mf := model.MediaFile{Title: "Song", MbzAlbumID: "album-mbid-1"} // note: mf.MbzArtistID intentionally empty
+		t := newSanitizedTrack(&mf, "artist-mbid-1")                     // resolved MBID supplied here
+		Expect(computeSpecificityLevel(q, t, 0.85)).To(Equal(5))
 	})
 })

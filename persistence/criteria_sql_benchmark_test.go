@@ -60,6 +60,61 @@ func BenchmarkSmartPlaylistRole(b *testing.B) {
 	})
 }
 
+// BenchmarkSmartPlaylistNegatedRole compares performance for smart playlists with many
+// negated role conditions ANDed together (e.g. 500 "isNot artist" rules, issue #5511)
+// between the current implementation (merged NOT EXISTS via criteria pipeline) and the
+// old baseline (one separate NOT EXISTS subquery per pattern).
+func BenchmarkSmartPlaylistNegatedRole(b *testing.B) {
+	configtest.SetupConfig()
+	tmpDir := b.TempDir()
+	conf.Server.DbPath = filepath.Join(tmpDir, "bench-smartpl-neg.db")
+	cleanup := db.Init(context.Background())
+	defer cleanup()
+	log.SetLevel(log.LevelFatal)
+
+	conn := dbx.NewFromDB(db.Db(), db.Dialect)
+	ctx := log.NewContext(context.Background())
+	user := model.User{ID: "bench-user", UserName: "bench", Name: "Bench User", IsAdmin: true}
+	ctx = request.WithUser(ctx, user)
+
+	setupBenchData(b, ctx, conn, user)
+	criteria.AddRoles([]string{"artist"})
+
+	// Build the criteria expression: 500 "isNot artist" patterns in an AND group
+	allExprs := make(criteria.All, benchNumPatterns)
+	for i := range benchNumPatterns {
+		allExprs[i] = criteria.IsNot{"artist": fmt.Sprintf("Artist %04d", i)}
+	}
+	expr := criteria.Criteria{Expression: allExprs, Sort: "title", Limit: 500}
+
+	b.Run("Current", func(b *testing.B) {
+		benchmarkCriteriaPipeline(b, ctx, expr)
+	})
+	b.Run("Baseline_UnmergedNotExists", func(b *testing.B) {
+		benchmarkUnmergedNegatedJSONTree(b, ctx)
+	})
+}
+
+// benchmarkUnmergedNegatedJSONTree builds the old-style query with N separate negated
+// json_tree EXISTS subqueries ANDed together (the pre-optimization baseline).
+func benchmarkUnmergedNegatedJSONTree(b *testing.B, ctx context.Context) {
+	b.Helper()
+
+	var sb strings.Builder
+	sb.WriteString("SELECT media_file.id FROM media_file WHERE (")
+	args := make([]any, 0, benchNumPatterns)
+	for i := range benchNumPatterns {
+		if i > 0 {
+			sb.WriteString(" AND ")
+		}
+		sb.WriteString("not exists (select 1 from json_tree(media_file.participants, '$.artist') where key='name' and value = ?)")
+		args = append(args, fmt.Sprintf("Artist %04d", i))
+	}
+	sb.WriteString(") ORDER BY media_file.title LIMIT 500")
+
+	runBenchQuery(b, ctx, sb.String(), args)
+}
+
 // benchmarkCriteriaPipeline runs the criteria through the actual production code path:
 // newSmartPlaylistCriteria → Where() → ToSql(), then executes the resulting query.
 func benchmarkCriteriaPipeline(b *testing.B, ctx context.Context, expr criteria.Criteria) {

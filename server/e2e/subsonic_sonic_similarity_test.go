@@ -47,7 +47,7 @@ func buildSonicRouter(provider sonic.Provider) *subsonic.Router {
 		core.NewShare(ds),
 		playback.PlaybackServer(nil),
 		metrics.NewNoopInstance(),
-		lyrics.NewLyrics(nil),
+		lyrics.NewLyrics(ds, nil),
 		decider,
 		sonicSvc,
 	)

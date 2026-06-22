@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -104,6 +105,102 @@ var _ = Describe("MediaRepository", func() {
 			Expect(item.Title).To(Equal("Antenna"))
 			Expect(item.Participants[model.RoleArtist][0].Name).To(Equal("Kraftwerk"))
 		}
+	})
+
+	Describe("GetRandom", func() {
+		It("returns the requested number of distinct, fully-hydrated media files", func() {
+			results, err := mr.GetRandom(model.QueryOptions{Max: 5})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(HaveLen(5))
+
+			// Each returned row must match its GetAll counterpart exactly — proves Phase 2
+			// hydrates full rows (not bare rowids) — and ids must be distinct.
+			byID := map[string]model.MediaFile{}
+			all, err := mr.GetAll()
+			Expect(err).ToNot(HaveOccurred())
+			for _, mf := range all {
+				byID[mf.ID] = mf
+			}
+			seen := map[string]bool{}
+			for _, mf := range results {
+				expected, ok := byID[mf.ID]
+				Expect(ok).To(BeTrue(), "returned id must be a real media file")
+				Expect(mf.Title).To(Equal(expected.Title), "row must be fully hydrated")
+				Expect(seen[mf.ID]).To(BeFalse(), "no duplicate rows")
+				seen[mf.ID] = true
+			}
+		})
+
+		It("returns all matching files when Max exceeds the total", func() {
+			results, err := mr.GetRandom(model.QueryOptions{Max: 1000})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(HaveLen(13))
+		})
+
+		It("honors filters", func() {
+			results, err := mr.GetRandom(model.QueryOptions{
+				Max:     10,
+				Filters: squirrel.Eq{"media_file.title": "Antenna"},
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).ToNot(BeEmpty())
+			for _, mf := range results {
+				Expect(mf.Title).To(Equal("Antenna"))
+			}
+		})
+
+		It("returns varying results across calls", func() {
+			// Retry a few times: two random draws of 5 from 13 rows differ with near-certainty.
+			first, err := mr.GetRandom(model.QueryOptions{Max: 5})
+			Expect(err).ToNot(HaveOccurred())
+			firstIDs := func() []string {
+				ids := make([]string, len(first))
+				for i, mf := range first {
+					ids[i] = mf.ID
+				}
+				return ids
+			}()
+			differed := false
+			for range 10 {
+				next, err := mr.GetRandom(model.QueryOptions{Max: 5})
+				Expect(err).ToNot(HaveOccurred())
+				nextIDs := make([]string, len(next))
+				for i, mf := range next {
+					nextIDs[i] = mf.ID
+				}
+				if !reflect.DeepEqual(firstIDs, nextIDs) {
+					differed = true
+					break
+				}
+			}
+			Expect(differed).To(BeTrue(), "GetRandom should not return an identical set every call")
+		})
+
+		It("randomizes order even when Max exceeds the total", func() {
+			// Same set of rows every time (all 13), but the order must still be shuffled —
+			// guards against Phase 2's `rowid IN (...)` returning rows in rowid order.
+			first, err := mr.GetRandom(model.QueryOptions{Max: 100})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(first).To(HaveLen(13))
+			firstIDs := make([]string, len(first))
+			for i, mf := range first {
+				firstIDs[i] = mf.ID
+			}
+			differed := false
+			for range 10 {
+				next, err := mr.GetRandom(model.QueryOptions{Max: 100})
+				Expect(err).ToNot(HaveOccurred())
+				nextIDs := make([]string, len(next))
+				for i, mf := range next {
+					nextIDs[i] = mf.ID
+				}
+				if !reflect.DeepEqual(firstIDs, nextIDs) {
+					differed = true
+					break
+				}
+			}
+			Expect(differed).To(BeTrue(), "order must vary even when returning all rows")
+		})
 	})
 
 	Describe("Put CreatedAt behavior (#5050)", func() {

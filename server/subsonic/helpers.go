@@ -495,48 +495,6 @@ func mapExplicitStatus(explicitStatus string) string {
 	return ""
 }
 
-func buildStructuredLyric(mf *model.MediaFile, lyrics model.Lyrics) responses.StructuredLyric {
-	lines := make([]responses.Line, len(lyrics.Line))
-
-	for i, line := range lyrics.Line {
-		lines[i] = responses.Line{
-			Start: line.Start,
-			Value: line.Value,
-		}
-	}
-
-	structured := responses.StructuredLyric{
-		DisplayArtist: lyrics.DisplayArtist,
-		DisplayTitle:  lyrics.DisplayTitle,
-		Lang:          lyrics.Lang,
-		Line:          lines,
-		Offset:        lyrics.Offset,
-		Synced:        lyrics.Synced,
-	}
-
-	if structured.DisplayArtist == "" {
-		structured.DisplayArtist = mf.Artist
-	}
-	if structured.DisplayTitle == "" {
-		structured.DisplayTitle = mf.Title
-	}
-
-	return structured
-}
-
-func buildLyricsList(mf *model.MediaFile, lyricsList model.LyricList) *responses.LyricsList {
-	lyricList := make(responses.StructuredLyrics, len(lyricsList))
-
-	for i, lyrics := range lyricsList {
-		lyricList[i] = buildStructuredLyric(mf, lyrics)
-	}
-
-	res := &responses.LyricsList{
-		StructuredLyrics: lyricList,
-	}
-	return res
-}
-
 // getUserAccessibleLibraries returns the list of libraries the current user has access to.
 func getUserAccessibleLibraries(ctx context.Context) []model.Library {
 	user := getUser(ctx)

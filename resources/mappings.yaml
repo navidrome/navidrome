@@ -110,7 +110,9 @@ main:
   lyrics:
     # Note, @lyr and wm/lyrics have been removed. Taglib somehow appears to always populate `lyrics:xxx`
     aliases: [ uslt:description, lyrics, unsyncedlyrics ]
-    maxLength: 32768
+    # Generous cap to fit word-timed TTML/Enhanced-LRC karaoke for a full song,
+    # while still bounding against pathological tags.
+    maxLength: 1048576
     type: pair # ex: lyrics:eng, lyrics:xxx
   comment:
     aliases: [ comm:description, comment, ©cmt, description, icmt ]
