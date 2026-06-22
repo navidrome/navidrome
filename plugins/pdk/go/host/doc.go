@@ -41,6 +41,7 @@ The following host services are available:
   - HTTP: provides outbound HTTP request capabilities for plugins.
   - KVStore: provides persistent key-value storage for plugins.
   - Library: provides access to music library metadata for plugins.
+  - Matcher: resolves externally-obtained songs to local library tracks,
   - Scheduler: provides task scheduling capabilities for plugins.
   - SubsonicAPI: provides access to Navidrome's Subsonic API from plugins.
   - Task: provides persistent task queues for plugins.
