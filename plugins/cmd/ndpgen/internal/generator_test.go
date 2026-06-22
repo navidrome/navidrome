@@ -939,6 +939,33 @@ type TestService interface {
 			Expect(codeStr).To(ContainSubstring("ScrobblerErrorRetry ScrobblerErrorType ="))
 			Expect(codeStr).To(ContainSubstring(`"retry"`))
 		})
+
+		It("emits a deprecated alias and types import for a shared-aliased capability", func() {
+			cap := Capability{
+				Name:      "scrobbler",
+				Interface: "Scrobbler",
+				Required:  true,
+				Methods: []Export{{
+					Name: "NowPlaying", ExportName: "nd_scrobbler_now_playing",
+					Input: Param{Name: "input", Type: "NowPlayingRequest"},
+				}},
+				Structs: []StructDef{{Name: "NowPlayingRequest", Fields: []FieldDef{
+					{Name: "Track", Type: "TrackInfo", JSONTag: "track"},
+				}}},
+				SharedAliases: []SharedAlias{{
+					Name: "TrackInfo", Target: "types.TrackInfo",
+					Doc: "Deprecated: use types.TrackInfo.",
+					Def: StructDef{Name: "TrackInfo", Fields: []FieldDef{{Name: "Title", Type: "string", JSONTag: "title"}}},
+				}},
+			}
+			code, err := GenerateCapabilityGo(cap, "scrobbler")
+			Expect(err).NotTo(HaveOccurred())
+			out := string(code)
+			Expect(out).To(ContainSubstring(`"github.com/navidrome/navidrome/plugins/pdk/go/types"`))
+			Expect(out).To(ContainSubstring("// Deprecated: use types.TrackInfo."))
+			Expect(out).To(ContainSubstring("type TrackInfo = types.TrackInfo"))
+			Expect(out).NotTo(ContainSubstring("type TrackInfo struct"))
+		})
 	})
 
 	Describe("GenerateCapabilityGoStub", func() {
