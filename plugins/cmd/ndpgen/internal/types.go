@@ -7,25 +7,27 @@ import (
 
 // Service represents a parsed host service interface.
 type Service struct {
-	Name       string      // Service name from annotation (e.g., "SubsonicAPI")
-	Permission string      // Manifest permission key (e.g., "subsonicapi")
-	Interface  string      // Go interface name (e.g., "SubsonicAPIService")
-	Methods    []Method    // Methods marked with //nd:hostfunc
-	Doc        string      // Documentation comment for the service
-	Structs    []StructDef // Structs used by this service
+	Name          string        // Service name from annotation (e.g., "SubsonicAPI")
+	Permission    string        // Manifest permission key (e.g., "subsonicapi")
+	Interface     string        // Go interface name (e.g., "SubsonicAPIService")
+	Methods       []Method      // Methods marked with //nd:hostfunc
+	Doc           string        // Documentation comment for the service
+	Structs       []StructDef   // Structs used by this service
+	SharedAliases []SharedAlias // Aliases to types in the shared `types` package
 }
 
 // Capability represents a parsed capability interface for plugin exports.
 type Capability struct {
-	Name        string       // Package name from annotation (e.g., "metadata")
-	Interface   string       // Go interface name (e.g., "MetadataAgent")
-	Required    bool         // If true, all methods must be implemented
-	Methods     []Export     // Methods marked with //nd:export
-	Doc         string       // Documentation comment for the capability
-	Structs     []StructDef  // Structs used by this capability
-	TypeAliases []TypeAlias  // Type aliases used by this capability
-	Consts      []ConstGroup // Const groups used by this capability
-	SourceFile  string       // Base name of source file without extension (e.g., "websocket_callback")
+	Name          string        // Package name from annotation (e.g., "metadata")
+	Interface     string        // Go interface name (e.g., "MetadataAgent")
+	Required      bool          // If true, all methods must be implemented
+	Methods       []Export      // Methods marked with //nd:export
+	Doc           string        // Documentation comment for the capability
+	Structs       []StructDef   // Structs used by this capability
+	TypeAliases   []TypeAlias   // Type aliases used by this capability
+	Consts        []ConstGroup  // Const groups used by this capability
+	SourceFile    string        // Base name of source file without extension (e.g., "websocket_callback")
+	SharedAliases []SharedAlias // Aliases to types in the shared `types` package
 }
 
 // TypeAlias represents a type declaration (e.g. type ScrobblerErrorType string)
@@ -65,6 +67,22 @@ type ConstDef struct {
 	Value string // Const value
 	Doc   string // Documentation comment
 }
+
+// SharedAlias is a deprecated alias from a capability/host package to a type in
+// the shared `types` package (e.g. type TrackInfo = types.TrackInfo). Def is the
+// resolved shared struct, kept for XTP schema inlining.
+type SharedAlias struct {
+	Name   string    // local name, e.g. "TrackInfo"
+	Target string    // alias target, e.g. "types.TrackInfo"
+	Doc    string    // doc comment (carries the Deprecated: line)
+	Def    StructDef // resolved shared struct shape
+}
+
+// ImportsSharedTypes reports whether this capability references the shared types package.
+func (c Capability) ImportsSharedTypes() bool { return len(c.SharedAliases) > 0 }
+
+// ImportsSharedTypes reports whether this service references the shared types package.
+func (s Service) ImportsSharedTypes() bool { return len(s.SharedAliases) > 0 }
 
 // KnownStructs returns a map of struct names defined in this capability.
 func (c Capability) KnownStructs() map[string]bool {

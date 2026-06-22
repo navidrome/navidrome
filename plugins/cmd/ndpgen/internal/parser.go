@@ -29,6 +29,12 @@ var (
 
 // ParseDirectory parses all Go source files in a directory and extracts host services.
 func ParseDirectory(dir string) ([]Service, error) {
+	return ParseDirectoryWithShared(dir, nil)
+}
+
+// ParseDirectoryWithShared parses all Go source files in a directory, resolving any
+// type aliases that reference the shared `types` package against the provided registry.
+func ParseDirectoryWithShared(dir string, shared map[string]StructDef) ([]Service, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, fmt.Errorf("reading directory: %w", err)
@@ -47,7 +53,7 @@ func ParseDirectory(dir string) ([]Service, error) {
 		}
 
 		path := filepath.Join(dir, entry.Name())
-		parsed, err := parseFile(fset, path)
+		parsed, err := parseServiceFile(fset, path, shared)
 		if err != nil {
 			return nil, fmt.Errorf("parsing %s: %w", entry.Name(), err)
 		}
@@ -59,6 +65,12 @@ func ParseDirectory(dir string) ([]Service, error) {
 
 // ParseCapabilities parses all Go source files in a directory and extracts capabilities.
 func ParseCapabilities(dir string) ([]Capability, error) {
+	return ParseCapabilitiesWithShared(dir, nil)
+}
+
+// ParseCapabilitiesWithShared parses all Go source files in a directory, resolving any
+// type aliases that reference the shared `types` package against the provided registry.
+func ParseCapabilitiesWithShared(dir string, shared map[string]StructDef) ([]Capability, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, fmt.Errorf("reading directory: %w", err)
@@ -67,8 +79,8 @@ func ParseCapabilities(dir string) ([]Capability, error) {
 	fset := token.NewFileSet()
 
 	// First pass: collect all structs and type aliases from all files in the package
-	sharedStructMap := make(map[string]StructDef)
-	sharedAliasMap := make(map[string]TypeAlias)
+	pkgStructMap := make(map[string]StructDef)
+	pkgAliasMap := make(map[string]TypeAlias)
 	var allConstGroups []ConstGroup
 
 	var goFiles []string
@@ -91,18 +103,18 @@ func ParseCapabilities(dir string) ([]Capability, error) {
 			return nil, fmt.Errorf("parsing %s for types: %w", filepath.Base(path), err)
 		}
 		for _, s := range parseStructs(f) {
-			sharedStructMap[s.Name] = s
+			pkgStructMap[s.Name] = s
 		}
 		for _, a := range parseTypeAliases(f) {
-			sharedAliasMap[a.Name] = a
+			pkgAliasMap[a.Name] = a
 		}
 		allConstGroups = append(allConstGroups, parseConstGroups(f)...)
 	}
 
-	// Second pass: parse capabilities using the shared type maps
+	// Second pass: parse capabilities using the package-level type maps
 	var capabilities []Capability
 	for _, path := range goFiles {
-		parsed, err := parseCapabilityFile(fset, path, sharedStructMap, sharedAliasMap, allConstGroups)
+		parsed, err := parseCapabilityFile(fset, path, pkgStructMap, pkgAliasMap, allConstGroups, shared)
 		if err != nil {
 			return nil, fmt.Errorf("parsing %s: %w", filepath.Base(path), err)
 		}
@@ -112,8 +124,39 @@ func ParseCapabilities(dir string) ([]Capability, error) {
 	return capabilities, nil
 }
 
+// LoadSharedTypes parses every struct defined in dir (the shared `types` source
+// package) and returns them keyed by name. dir == "" yields an empty map.
+func LoadSharedTypes(dir string) (map[string]StructDef, error) {
+	result := map[string]StructDef{}
+	if dir == "" {
+		return result, nil
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, fmt.Errorf("reading shared types directory: %w", err)
+	}
+	fset := token.NewFileSet()
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") {
+			continue
+		}
+		if strings.HasSuffix(entry.Name(), "_gen.go") || strings.HasSuffix(entry.Name(), "_test.go") {
+			continue
+		}
+		path := filepath.Join(dir, entry.Name())
+		f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
+		if err != nil {
+			return nil, fmt.Errorf("parsing %s: %w", entry.Name(), err)
+		}
+		for _, s := range parseStructs(f) {
+			result[s.Name] = s
+		}
+	}
+	return result, nil
+}
+
 // parseCapabilityFile parses a single Go source file and extracts capabilities.
-func parseCapabilityFile(fset *token.FileSet, path string, structMap map[string]StructDef, aliasMap map[string]TypeAlias, allConstGroups []ConstGroup) ([]Capability, error) {
+func parseCapabilityFile(fset *token.FileSet, path string, structMap map[string]StructDef, aliasMap map[string]TypeAlias, allConstGroups []ConstGroup, shared map[string]StructDef) ([]Capability, error) {
 	f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
 	if err != nil {
 		return nil, err
@@ -190,6 +233,9 @@ func parseCapabilityFile(fset *token.FileSet, path string, structMap map[string]
 			// Recursively collect all struct dependencies
 			collectAllStructDependencies(referencedTypes, structMap)
 
+			// Resolve shared-type aliases against the registry
+			capability.SharedAliases = resolveSharedAliases(referencedTypes, aliasMap, shared)
+
 			// Sort type names for stable output order
 			sortedTypeNames := slices.Sorted(maps.Keys(referencedTypes))
 
@@ -235,6 +281,47 @@ func parseCapabilityFile(fset *token.FileSet, path string, structMap map[string]
 	}
 
 	return capabilities, nil
+}
+
+// resolveSharedAliases attaches SharedAlias entries for any referenced type that
+// is a Go alias to the shared `types` package, transitively following the shared
+// struct's own field references so nested shared types are aliased too.
+func resolveSharedAliases(referenced map[string]bool, aliasMap map[string]TypeAlias, shared map[string]StructDef) []SharedAlias {
+	if len(shared) == 0 {
+		return nil
+	}
+	out := map[string]SharedAlias{}
+	queue := []string{}
+	for name := range referenced {
+		queue = append(queue, name)
+	}
+	for len(queue) > 0 {
+		name := queue[0]
+		queue = queue[1:]
+		if _, done := out[name]; done {
+			continue
+		}
+		a, ok := aliasMap[name]
+		if !ok || !a.IsSharedAlias() {
+			continue
+		}
+		short := strings.TrimPrefix(a.Type, "types.")
+		def := shared[short]
+		out[name] = SharedAlias{Name: a.Name, Target: a.Type, Doc: a.Doc, Def: def}
+		for _, f := range def.Fields {
+			more := map[string]bool{}
+			collectReferencedTypes(f.Type, more)
+			for t := range more {
+				queue = append(queue, t)
+			}
+		}
+	}
+	result := make([]SharedAlias, 0, len(out))
+	for _, v := range out {
+		result = append(result, v)
+	}
+	slices.SortFunc(result, func(a, b SharedAlias) int { return strings.Compare(a.Name, b.Name) })
+	return result
 }
 
 // collectAllStructDependencies recursively collects all struct types referenced by other structs.
@@ -301,8 +388,8 @@ func parseExport(name string, funcType *ast.FuncType, annotation map[string]stri
 	return export, nil
 }
 
-// parseFile parses a single Go source file and extracts host services.
-func parseFile(fset *token.FileSet, path string) ([]Service, error) {
+// parseServiceFile parses a single Go source file and extracts host services.
+func parseServiceFile(fset *token.FileSet, path string, shared map[string]StructDef) ([]Service, error) {
 	f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
 	if err != nil {
 		return nil, err
@@ -313,6 +400,12 @@ func parseFile(fset *token.FileSet, path string) ([]Service, error) {
 	structMap := make(map[string]StructDef)
 	for _, s := range allStructs {
 		structMap[s.Name] = s
+	}
+
+	// Collect type aliases for shared-alias resolution
+	aliasMap := make(map[string]TypeAlias)
+	for _, a := range parseTypeAliases(f) {
+		aliasMap[a.Name] = a
 	}
 
 	var services []Service
@@ -381,6 +474,9 @@ func parseFile(fset *token.FileSet, path string) ([]Service, error) {
 					collectReferencedTypes(r.Type, referencedTypes)
 				}
 			}
+
+			// Resolve shared-type aliases against the registry
+			service.SharedAliases = resolveSharedAliases(referencedTypes, aliasMap, shared)
 
 			// Attach referenced structs to the service (sorted for stable output)
 			for _, typeName := range slices.Sorted(maps.Keys(referencedTypes)) {

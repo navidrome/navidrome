@@ -555,6 +555,58 @@ type Scrobbler interface {
 		})
 	})
 
+	Describe("ParseCapabilitiesWithShared", func() {
+		It("resolves shared-type aliases against the registry", func() {
+			shared := map[string]StructDef{
+				"ArtistRef": {Name: "ArtistRef", Fields: []FieldDef{{Name: "Name", Type: "string", JSONTag: "name"}}},
+				"TrackInfo": {Name: "TrackInfo", Fields: []FieldDef{
+					{Name: "Title", Type: "string", JSONTag: "title"},
+					{Name: "Artists", Type: "[]ArtistRef", JSONTag: "artists"},
+				}},
+			}
+			src := `package capabilities
+
+import "github.com/navidrome/navidrome/plugins/types"
+
+// Deprecated: use types.TrackInfo.
+type TrackInfo = types.TrackInfo
+
+// Deprecated: use types.ArtistRef.
+type ArtistRef = types.ArtistRef
+
+// NowPlayingRequest carries a track.
+type NowPlayingRequest struct {
+	Track TrackInfo ` + "`json:\"track\"`" + `
+}
+
+//nd:capability name=scrobbler required=true
+type Scrobbler interface {
+	//nd:export name=nd_scrobbler_now_playing
+	NowPlaying(NowPlayingRequest) error
+}
+`
+			Expect(os.WriteFile(filepath.Join(tmpDir, "scrobbler.go"), []byte(src), 0600)).To(Succeed())
+
+			caps, err := ParseCapabilitiesWithShared(tmpDir, shared)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(caps).To(HaveLen(1))
+
+			names := []string{}
+			for _, a := range caps[0].SharedAliases {
+				names = append(names, a.Name)
+			}
+			// TrackInfo is referenced directly; ArtistRef is pulled in transitively via TrackInfo.Artists.
+			Expect(names).To(ContainElements("TrackInfo", "ArtistRef"))
+
+			byName := map[string]SharedAlias{}
+			for _, a := range caps[0].SharedAliases {
+				byName[a.Name] = a
+			}
+			Expect(byName["TrackInfo"].Target).To(Equal("types.TrackInfo"))
+			Expect(byName["TrackInfo"].Def.Fields).To(HaveLen(2)) // for schema inlining
+		})
+	})
+
 	Describe("Export helpers", func() {
 		It("should generate correct provider interface name", func() {
 			e := Export{Name: "GetArtistBiography"}
