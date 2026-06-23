@@ -42,6 +42,20 @@ var _ = Describe("serveIndex", func() {
 		Expect(config).To(BeAssignableToTypeOf(map[string]any{}))
 	})
 
+	It("disables HTTP caching of the rendered HTML", func() {
+		// The template embeds per-request state (auth identity, runtime toggles)
+		// via __APP_CONFIG__, so a cached copy would surface a stale user name
+		// after an ExtAuth session change (see issue #5388).
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs, nil)(w, r)
+
+		Expect(w.Code).To(Equal(200))
+		Expect(w.Header().Get("Cache-Control")).To(Equal("no-store"))
+		Expect(w.Header().Get("Content-Type")).To(HavePrefix("text/html"))
+	})
+
 	It("sets firstTime = true when User table is empty", func() {
 		mockUser.empty = true
 		r := httptest.NewRequest("GET", "/index.html", nil)

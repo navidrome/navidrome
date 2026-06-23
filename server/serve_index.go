@@ -106,7 +106,15 @@ func serveIndex(ds model.DataStore, fs fs.FS, shareInfo *model.Share) http.Handl
 		}
 		addShareData(r, data, shareInfo)
 
-		w.Header().Set("Content-Type", "text/html")
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		// Disable HTTP caching of the rendered HTML. The template embeds per-request
+		// state (the __APP_CONFIG__ payload, including auth identity and runtime
+		// config such as the lastfm/listenbrainz enable flags) so a cached copy can
+		// show stale user data (e.g. a name updated via the Users page or ExtAuth
+		// session) and stale runtime toggles even after a logout/login cycle. The
+		// bundle inside the page is content-hashed by Vite, so the only thing we
+		// save by caching index.html is the template render itself.
+		w.Header().Set("Cache-Control", "no-store")
 		err = t.Execute(w, data)
 		if err != nil {
 			log.Error(r, "Could not execute `index.html` template", err)

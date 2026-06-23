@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import UserEdit from './UserEdit'
 import { describe, it, expect, vi } from 'vitest'
 
@@ -28,6 +29,12 @@ const adminUser = {
 }
 
 // Mock React-Admin completely with simpler implementations
+const mocks = vi.hoisted(() => {
+  const mutate = vi.fn()
+  return { mutate }
+})
+const mutateMock = mocks.mutate
+
 vi.mock('react-admin', () => ({
   Edit: ({ children, title }) => (
     <div data-testid="edit-component">
@@ -35,8 +42,19 @@ vi.mock('react-admin', () => ({
       {children}
     </div>
   ),
-  SimpleForm: ({ children }) => (
-    <form data-testid="simple-form">{children}</form>
+  SimpleForm: ({ children, save }) => (
+    <form
+      data-testid="simple-form"
+      onSubmit={(e) => {
+        e.preventDefault()
+        save({ name: 'Renamed' })
+      }}
+    >
+      {children}
+      <button data-testid="save-button" type="submit">
+        Save
+      </button>
+    </form>
   ),
   TextInput: ({ source }) => <input data-testid={`text-input-${source}`} />,
   BooleanInput: ({ source }) => (
@@ -54,7 +72,7 @@ vi.mock('react-admin', () => ({
   Typography: ({ children }) => <p>{children}</p>,
   required: () => () => null,
   email: () => () => null,
-  useMutation: () => [vi.fn()],
+  useMutation: () => [mutateMock],
   useNotify: () => vi.fn(),
   useRedirect: () => vi.fn(),
   useRefresh: () => vi.fn(),
@@ -126,5 +144,27 @@ describe('<UserEdit />', () => {
     // But should still render name and email
     expect(screen.getByTestId('text-input-name')).toBeInTheDocument()
     expect(screen.getByTestId('text-input-email')).toBeInTheDocument()
+  })
+
+  it('refreshes localStorage.name when the user edits their own name', async () => {
+    // Issue #5388: in ExtAuth setups the rendered index.html is served by the
+    // server (so the user menu's fullName from localStorage stays stale until
+    // either the page reloads or localStorage is updated in place). The save
+    // handler must sync localStorage so the AppBar menu reflects the change
+    // immediately without a reload.
+    mutateMock.mockResolvedValueOnce({ data: { name: 'Renamed' } })
+
+    // Make the component believe it's editing the same user that's logged in.
+    localStorage.setItem('userId', 'user1')
+    localStorage.setItem('name', 'Test User')
+
+    render(<UserEdit id="user1" permissions="user" />)
+    const user = userEvent.setup()
+    await user.click(screen.getByTestId('save-button'))
+    // Allow the async save callback to flush.
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(mutateMock).toHaveBeenCalled()
+    expect(localStorage.getItem('name')).toBe('Renamed')
   })
 })

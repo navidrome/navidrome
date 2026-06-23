@@ -91,6 +91,21 @@ const UserEdit = (props) => {
           },
           { returnPromise: true },
         )
+        // When the user edits their own profile, keep the cached identity used
+        // by the AppBar user menu (fullName / avatar) in sync with the server
+        // response. Without this, the header would keep showing the old name
+        // until the next full page reload -- and reverse-proxy auth setups
+        // already cache the rendered HTML, so a logout/login cycle wouldn't
+        // pick up the change either (see issue #5388).
+        if (isMyself) {
+          if (values.name) {
+            localStorage.setItem('name', values.name)
+          }
+          if (values.email !== undefined) {
+            // Email is not part of the cached identity today, but keep the
+            // hook symmetric in case future fields land in getIdentity().
+          }
+        }
         notify('resources.user.notifications.updated', 'info', {
           smart_count: 1,
         })
@@ -101,7 +116,7 @@ const UserEdit = (props) => {
         }
       }
     },
-    [mutate, notify, permissions, redirect, refresh],
+    [mutate, notify, permissions, redirect, refresh, isMyself],
   )
 
   // Custom validation function
