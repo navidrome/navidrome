@@ -306,7 +306,7 @@ func (r *mediaFileRepository) FindByPaths(paths []string) (model.MediaFiles, err
 		return model.MediaFiles{}, nil
 	}
 
-	sel := r.newSelect().Columns("*").Where(query)
+	sel := r.applyLibraryFilter(r.newSelect().Columns("*").Where(query))
 	var res dbMediaFiles
 	if err := r.queryAll(sel, &res); err != nil {
 		return nil, err

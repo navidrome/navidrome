@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
@@ -129,6 +130,101 @@ var _ = Describe("ShareRepository", func() {
 			Expect(share.ID).To(Equal(shareID))
 			// Albums array should be empty since we used non-existent album ID
 			Expect(share.Albums).To(BeEmpty())
+		})
+	})
+
+	Describe("Playlist share library scoping", func() {
+		var otherLib model.Library
+		var owner model.User
+		var plsID string
+
+		BeforeEach(func() {
+			adminCtx := request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
+
+			// A second library the owner has no access to, plus a track in it
+			lr := NewLibraryRepository(adminCtx, GetDBXBuilder())
+			otherLib = model.Library{ID: 0, Name: "Share Other Library", Path: "/share/other/lib"}
+			Expect(lr.Put(&otherLib)).To(Succeed())
+			mr := NewMediaFileRepository(adminCtx, GetDBXBuilder())
+			Expect(mr.Put(&model.MediaFile{ID: "share-other", LibraryID: otherLib.ID, Path: "s/other.mp3", Title: "ShareOther"})).To(Succeed())
+			Expect(mr.Put(&model.MediaFile{ID: "share-ok", LibraryID: 1, Path: "s/ok.mp3", Title: "ShareOK"})).To(Succeed())
+
+			// Non-admin owner with access to library 1 only
+			owner = createUserWithLibraries("share-owner", []int{1})
+			ur := NewUserRepository(adminCtx, GetDBXBuilder())
+			Expect(ur.Put(&owner)).To(Succeed())
+			Expect(ur.SetUserLibraries(owner.ID, []int{1})).To(Succeed())
+
+			// Owner-owned playlist containing tracks from both libraries
+			plsID = "share-scope-pls"
+			ownerCtx := request.WithUser(log.NewContext(GinkgoT().Context()), owner)
+			pr := NewPlaylistRepository(ownerCtx, GetDBXBuilder())
+			pls := &model.Playlist{ID: plsID, Name: "Scope Test", OwnerID: owner.ID}
+			pls.AddMediaFiles(model.MediaFiles{{ID: "share-ok"}, {ID: "share-other"}})
+			Expect(pr.Put(pls)).To(Succeed())
+
+			// Share row owned by the non-admin owner
+			_, err := GetDBXBuilder().NewQuery(`
+				INSERT INTO share (id, user_id, description, resource_type, resource_ids, created_at, updated_at)
+				VALUES ({:id}, {:user}, {:desc}, {:type}, {:ids}, {:created}, {:updated})
+			`).Bind(map[string]any{
+				"id": "share-scope", "user": owner.ID, "desc": "Scope test share",
+				"type": "playlist", "ids": plsID, "created": time.Now(), "updated": time.Now(),
+			}).Execute()
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		AfterEach(func() {
+			adminCtx := request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
+			b := GetDBXBuilder()
+			_, _ = b.NewQuery(`DELETE FROM share WHERE id = 'share-scope'`).Execute()
+			pr := NewPlaylistRepository(adminCtx, b)
+			_ = pr.Delete(plsID)
+			mr := NewMediaFileRepository(adminCtx, b).(*mediaFileRepository)
+			_, _ = mr.executeSQL(squirrel.Delete("media_file").Where(squirrel.Eq{"id": []string{"share-other", "share-ok"}}))
+			lr := NewLibraryRepository(adminCtx, b).(*libraryRepository)
+			_ = lr.delete(squirrel.Eq{"id": otherLib.ID})
+			_ = NewUserRepository(adminCtx, b).Delete(owner.ID)
+		})
+
+		It("excludes tracks the owner cannot access from the shared playlist", func() {
+			// Read the share as admin (mimics the public-share render path, which uses
+			// the share repository's own context). loadMedia must scope to the owner.
+			adminRepo := NewShareRepository(request.WithUser(log.NewContext(GinkgoT().Context()), adminUser), GetDBXBuilder())
+			share, err := adminRepo.Get("share-scope")
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(share.Tracks).To(ContainElement(HaveField("ID", "share-ok")))
+			Expect(share.Tracks).ToNot(ContainElement(HaveField("ID", "share-other")),
+				"a track outside the owner's libraries must not appear in the share")
+		})
+
+		It("returns no tracks when the playlist is not visible to the owner", func() {
+			// A private playlist owned by someone else: the share owner can no longer
+			// see it, so Tracks() returns nil. The share must render with no tracks
+			// instead of panicking.
+			privatePlsID := "private-pls"
+			adminCtx := request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
+			pr := NewPlaylistRepository(adminCtx, GetDBXBuilder())
+			privatePls := &model.Playlist{ID: privatePlsID, Name: "Private", OwnerID: adminUser.ID, Public: false}
+			privatePls.AddMediaFiles(model.MediaFiles{{ID: "share-ok"}})
+			Expect(pr.Put(privatePls)).To(Succeed())
+			DeferCleanup(func() { _ = pr.Delete(privatePlsID) })
+
+			_, err := GetDBXBuilder().NewQuery(`
+				INSERT INTO share (id, user_id, description, resource_type, resource_ids, created_at, updated_at)
+				VALUES ({:id}, {:user}, {:desc}, {:type}, {:ids}, {:created}, {:updated})
+			`).Bind(map[string]any{
+				"id": "share-private", "user": owner.ID, "desc": "Private share",
+				"type": "playlist", "ids": privatePlsID, "created": time.Now(), "updated": time.Now(),
+			}).Execute()
+			Expect(err).ToNot(HaveOccurred())
+			DeferCleanup(func() { _, _ = GetDBXBuilder().NewQuery(`DELETE FROM share WHERE id = 'share-private'`).Execute() })
+
+			adminRepo := NewShareRepository(adminCtx, GetDBXBuilder())
+			share, err := adminRepo.Get("share-private")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(share.Tracks).To(BeEmpty())
 		})
 	})
 
