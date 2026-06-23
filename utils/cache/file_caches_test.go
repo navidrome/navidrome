@@ -154,6 +154,57 @@ var _ = Describe("File Caches", func() {
 				})
 			})
 		})
+
+		Context("crash leftover (issue #5636)", func() {
+			It("does not serve a partial file left on disk as a complete HIT", func() {
+				// First init: empties + writes the migration sentinel.
+				fc1 := callNewFileCache("test", "10MB", "test", 0, func(ctx context.Context, arg Item) (io.Reader, error) {
+					return strings.NewReader("UNUSED"), nil
+				})
+				_ = fc1
+
+				// Plant a partial file (no marker), simulating a killed process.
+				sfs, err := NewSpreadFS(filepath.Join(conf.Server.CacheFolder.String(), "test"), 0755)
+				Expect(err).To(BeNil())
+				partialPath := sfs.KeyMapper((&testArg{"track"}).Key())
+				Expect(os.MkdirAll(filepath.Dir(partialPath), 0755)).To(Succeed())
+				Expect(os.WriteFile(partialPath, []byte("PARTIAL"), 0600)).To(Succeed())
+
+				// "Restart": a fresh cache over the same folder (sentinel present → strict).
+				getReaderCalled := false
+				fc2 := callNewFileCache("test", "10MB", "test", 0, func(ctx context.Context, arg Item) (io.Reader, error) {
+					getReaderCalled = true
+					return strings.NewReader("FULL-TRANSCODE"), nil
+				})
+
+				s, err := fc2.Get(context.Background(), &testArg{"track"})
+				Expect(err).To(BeNil())
+				data, _ := io.ReadAll(s)
+				_ = s.Close()
+
+				Expect(getReaderCalled).To(BeTrue()) // re-transcoded, not served stale
+				Expect(string(data)).To(Equal("FULL-TRANSCODE"))
+			})
+		})
+
+		Context("live error path still invalidates", func() {
+			It("leaves no data file and no marker after a mid-stream reader error", func() {
+				fc := callNewFileCache("test", "10MB", "test", 0, func(ctx context.Context, arg Item) (io.Reader, error) {
+					return errFakeReader{errors.New("boom")}, nil
+				})
+				s, err := fc.Get(context.Background(), &testArg{"err"})
+				Expect(err).To(BeNil())
+				_, _ = io.Copy(io.Discard, s)
+				_ = s.Close()
+
+				dataPath := fcSpreadFS(fc).KeyMapper((&testArg{"err"}).Key())
+				Eventually(func() bool {
+					_, e1 := os.Stat(dataPath)
+					_, e2 := os.Stat(dataPath + ".complete")
+					return os.IsNotExist(e1) && os.IsNotExist(e2)
+				}).Should(BeTrue())
+			})
+		})
 	})
 })
 
