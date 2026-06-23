@@ -27,6 +27,27 @@ var (
 	keyValuePattern = regexp.MustCompile(`(\w+)=(\S+)`)
 )
 
+// goSourceFiles returns the Go source file paths in dir, excluding generated,
+// test, and doc files.
+func goSourceFiles(dir string) ([]string, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, fmt.Errorf("reading directory: %w", err)
+	}
+	var paths []string
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() || !strings.HasSuffix(name, ".go") {
+			continue
+		}
+		if strings.HasSuffix(name, "_gen.go") || strings.HasSuffix(name, "_test.go") || name == "doc.go" {
+			continue
+		}
+		paths = append(paths, filepath.Join(dir, name))
+	}
+	return paths, nil
+}
+
 // ParseDirectory parses all Go source files in a directory and extracts host services.
 func ParseDirectory(dir string) ([]Service, error) {
 	return ParseDirectoryWithShared(dir, nil)
@@ -35,26 +56,15 @@ func ParseDirectory(dir string) ([]Service, error) {
 // ParseDirectoryWithShared parses all Go source files in a directory, resolving any
 // type aliases that reference the shared `types` package against the provided registry.
 func ParseDirectoryWithShared(dir string, shared map[string]StructDef) ([]Service, error) {
-	entries, err := os.ReadDir(dir)
+	goFiles, err := goSourceFiles(dir)
 	if err != nil {
-		return nil, fmt.Errorf("reading directory: %w", err)
+		return nil, err
 	}
 
 	fset := token.NewFileSet()
 
 	// First pass: collect all type aliases from every file in the package so that
 	// an alias declared in one file is visible when resolving types in a sibling file.
-	var goFiles []string
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") {
-			continue
-		}
-		if strings.HasSuffix(entry.Name(), "_gen.go") || strings.HasSuffix(entry.Name(), "_test.go") {
-			continue
-		}
-		goFiles = append(goFiles, filepath.Join(dir, entry.Name()))
-	}
-
 	pkgAliasMap := make(map[string]TypeAlias)
 	for _, path := range goFiles {
 		f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
@@ -87,9 +97,9 @@ func ParseCapabilities(dir string) ([]Capability, error) {
 // ParseCapabilitiesWithShared parses all Go source files in a directory, resolving any
 // type aliases that reference the shared `types` package against the provided registry.
 func ParseCapabilitiesWithShared(dir string, shared map[string]StructDef) ([]Capability, error) {
-	entries, err := os.ReadDir(dir)
+	goFiles, err := goSourceFiles(dir)
 	if err != nil {
-		return nil, fmt.Errorf("reading directory: %w", err)
+		return nil, err
 	}
 
 	fset := token.NewFileSet()
@@ -98,20 +108,6 @@ func ParseCapabilitiesWithShared(dir string, shared map[string]StructDef) ([]Cap
 	pkgStructMap := make(map[string]StructDef)
 	pkgAliasMap := make(map[string]TypeAlias)
 	var allConstGroups []ConstGroup
-
-	var goFiles []string
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") {
-			continue
-		}
-		// Skip generated files, test files, and doc.go
-		if strings.HasSuffix(entry.Name(), "_gen.go") ||
-			strings.HasSuffix(entry.Name(), "_test.go") ||
-			entry.Name() == "doc.go" {
-			continue
-		}
-		goFiles = append(goFiles, filepath.Join(dir, entry.Name()))
-	}
 
 	for _, path := range goFiles {
 		f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
@@ -147,22 +143,15 @@ func LoadSharedTypes(dir string) (map[string]StructDef, error) {
 	if dir == "" {
 		return result, nil
 	}
-	entries, err := os.ReadDir(dir)
+	paths, err := goSourceFiles(dir)
 	if err != nil {
 		return nil, fmt.Errorf("reading shared types directory: %w", err)
 	}
 	fset := token.NewFileSet()
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") {
-			continue
-		}
-		if strings.HasSuffix(entry.Name(), "_gen.go") || strings.HasSuffix(entry.Name(), "_test.go") {
-			continue
-		}
-		path := filepath.Join(dir, entry.Name())
+	for _, path := range paths {
 		f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
 		if err != nil {
-			return nil, fmt.Errorf("parsing %s: %w", entry.Name(), err)
+			return nil, fmt.Errorf("parsing %s: %w", filepath.Base(path), err)
 		}
 		for _, s := range parseStructs(f) {
 			result[s.Name] = s
@@ -320,10 +309,13 @@ func resolveSharedAliases(referenced map[string]bool, aliasMap map[string]TypeAl
 		return nil
 	}
 	out := map[string]SharedAlias{}
-	queue := []string{}
+	var queue []string
 	for name := range referenced {
-		queue = append(queue, name)
+		if a, ok := aliasMap[name]; ok && a.IsSharedAlias() {
+			queue = append(queue, name)
+		}
 	}
+	more := map[string]bool{}
 	for len(queue) > 0 {
 		name := queue[0]
 		queue = queue[1:]
@@ -338,17 +330,14 @@ func resolveSharedAliases(referenced map[string]bool, aliasMap map[string]TypeAl
 		def := shared[short]
 		out[name] = SharedAlias{Name: a.Name, Target: a.Type, Doc: a.Doc, Def: def}
 		for _, f := range def.Fields {
-			more := map[string]bool{}
+			clear(more)
 			collectReferencedTypes(f.Type, more)
 			for t := range more {
 				queue = append(queue, t)
 			}
 		}
 	}
-	result := make([]SharedAlias, 0, len(out))
-	for _, v := range out {
-		result = append(result, v)
-	}
+	result := slices.Collect(maps.Values(out))
 	slices.SortFunc(result, func(a, b SharedAlias) int { return strings.Compare(a.Name, b.Name) })
 	return result
 }

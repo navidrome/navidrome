@@ -42,8 +42,10 @@ import (
 	"flag"
 	"fmt"
 	"go/format"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/navidrome/navidrome/plugins/cmd/ndpgen/internal"
@@ -193,10 +195,7 @@ func runSharedTypesGeneration(cfg *config) error {
 	if len(structs) == 0 {
 		return nil
 	}
-	list := make([]internal.StructDef, 0, len(structs))
-	for _, s := range structs {
-		list = append(list, s)
-	}
+	list := slices.Collect(maps.Values(structs))
 	if cfg.generateGoClient {
 		code, err := internal.GenerateSharedTypesGo(list, "types")
 		if err != nil {

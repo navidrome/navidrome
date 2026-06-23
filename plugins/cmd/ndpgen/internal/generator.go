@@ -336,6 +336,18 @@ func indentText(n int, s string) string {
 	return strings.Join(lines, "\n")
 }
 
+// indentSpaces adds n spaces to each non-empty line of text.
+func indentSpaces(spaces int, s string) string {
+	ind := strings.Repeat(" ", spaces)
+	lines := strings.Split(s, "\n")
+	for i, line := range lines {
+		if line != "" {
+			lines[i] = ind + line
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
 // capabilityAgentName returns the interface name for a capability.
 // Uses the Go interface name stripped of common suffixes.
 func capabilityAgentName(cap Capability) string {
@@ -426,16 +438,7 @@ func rustCapabilityFuncMap(cap Capability) template.FuncMap {
 			return "nd_pdk_types::" + strings.TrimPrefix(target, "types.")
 		},
 		"snakeCase": ToSnakeCase,
-		"indent": func(spaces int, s string) string {
-			indent := strings.Repeat(" ", spaces)
-			lines := strings.Split(s, "\n")
-			for i, line := range lines {
-				if line != "" {
-					lines[i] = indent + line
-				}
-			}
-			return strings.Join(lines, "\n")
-		},
+		"indent":    indentSpaces,
 	}
 }
 
@@ -552,9 +555,9 @@ func skipSerializingFunc(goType string) string {
 	}
 }
 
-// hasHashMap returns true if any struct in the capability uses HashMap.
-func hasHashMap(cap Capability) bool {
-	for _, st := range cap.Structs {
+// anyFieldUsesHashMap returns true if any field in the given structs uses a map type.
+func anyFieldUsesHashMap(structs []StructDef) bool {
+	for _, st := range structs {
 		for _, f := range st.Fields {
 			if strings.HasPrefix(f.Type, "map[") {
 				return true
@@ -562,6 +565,18 @@ func hasHashMap(cap Capability) bool {
 		}
 	}
 	return false
+}
+
+// hasHashMap returns true if any struct in the capability uses HashMap.
+func hasHashMap(cap Capability) bool {
+	return anyFieldUsesHashMap(cap.Structs)
+}
+
+// sortedStructs returns a sorted copy of structs, ordered by name.
+func sortedStructs(structs []StructDef) []StructDef {
+	sorted := append([]StructDef(nil), structs...)
+	slices.SortFunc(sorted, func(a, b StructDef) int { return strings.Compare(a.Name, b.Name) })
+	return sorted
 }
 
 // registerMacroName returns the macro name for registering an optional method.
@@ -852,35 +867,17 @@ func GenerateSharedTypesRust(structs []StructDef) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("reading types rust template: %w", err)
 	}
-	sorted := append([]StructDef(nil), structs...)
-	slices.SortFunc(sorted, func(a, b StructDef) int { return strings.Compare(a.Name, b.Name) })
+	sorted := sortedStructs(structs)
 	known := map[string]bool{}
 	for _, s := range sorted {
 		known[s.Name] = true
-	}
-	hasHashMapFlag := false
-	for _, s := range sorted {
-		for _, f := range s.Fields {
-			if strings.HasPrefix(f.Type, "map[") {
-				hasHashMapFlag = true
-			}
-		}
 	}
 	tmpl, err := template.New("types_rs").Funcs(template.FuncMap{
 		"rustDocComment":      RustDocComment,
 		"rustFieldName":       func(n string) string { return ToSnakeCase(n) },
 		"fieldRustType":       func(f FieldDef) string { return f.RustType(known) },
 		"skipSerializingFunc": skipSerializingFunc,
-		"indent": func(spaces int, s string) string {
-			ind := strings.Repeat(" ", spaces)
-			lines := strings.Split(s, "\n")
-			for i, line := range lines {
-				if line != "" {
-					lines[i] = ind + line
-				}
-			}
-			return strings.Join(lines, "\n")
-		},
+		"indent":              indentSpaces,
 	}).Parse(string(tmplContent))
 	if err != nil {
 		return nil, fmt.Errorf("parsing template: %w", err)
@@ -888,7 +885,7 @@ func GenerateSharedTypesRust(structs []StructDef) ([]byte, error) {
 	data := struct {
 		Structs    []StructDef
 		HasHashMap bool
-	}{Structs: sorted, HasHashMap: hasHashMapFlag}
+	}{Structs: sorted, HasHashMap: anyFieldUsesHashMap(sorted)}
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, data); err != nil {
 		return nil, fmt.Errorf("executing template: %w", err)
@@ -909,12 +906,10 @@ func GenerateSharedTypesGo(structs []StructDef, pkgName string) ([]byte, error) 
 	if err != nil {
 		return nil, fmt.Errorf("parsing template: %w", err)
 	}
-	sorted := append([]StructDef(nil), structs...)
-	slices.SortFunc(sorted, func(a, b StructDef) int { return strings.Compare(a.Name, b.Name) })
 	data := struct {
 		Package string
 		Structs []StructDef
-	}{Package: pkgName, Structs: sorted}
+	}{Package: pkgName, Structs: sortedStructs(structs)}
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, data); err != nil {
 		return nil, fmt.Errorf("executing template: %w", err)
