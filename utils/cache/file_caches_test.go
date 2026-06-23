@@ -120,6 +120,42 @@ var _ = Describe("File Caches", func() {
 			}).Should(BeTrue())
 		})
 
+		It("serves a concurrent reader from an in-progress write and marks complete once", func() {
+			pr, pw := io.Pipe()
+			fc := callNewFileCache("test", "10MB", "test", 0, func(ctx context.Context, arg Item) (io.Reader, error) {
+				return pr, nil // a slow, still-being-produced stream
+			})
+
+			// First Get → MISS, starts the write goroutine consuming pr.
+			s1, err := fc.Get(context.Background(), &testArg{"live"})
+			Expect(err).To(BeNil())
+
+			// Feed some bytes, then a second client attaches mid-stream.
+			go func() {
+				_, _ = pw.Write([]byte("hello "))
+				_, _ = pw.Write([]byte("world"))
+				_ = pw.Close()
+			}()
+
+			got1, _ := io.ReadAll(s1)
+			_ = s1.Close()
+			Expect(string(got1)).To(Equal("hello world"))
+
+			// After completion, a marker exists and a later Get is a HIT with full data.
+			dataPath := fcSpreadFS(fc).KeyMapper((&testArg{"live"}).Key())
+			Eventually(func() bool {
+				_, e := os.Stat(dataPath + ".complete")
+				return e == nil
+			}).Should(BeTrue())
+
+			s2, err := fc.Get(context.Background(), &testArg{"live"})
+			Expect(err).To(BeNil())
+			got2, _ := io.ReadAll(s2)
+			_ = s2.Close()
+			Expect(s2.Cached).To(BeTrue())
+			Expect(string(got2)).To(Equal("hello world"))
+		})
+
 		Context("reader errors", func() {
 			When("creating a reader fails", func() {
 				It("does not cache", func() {
