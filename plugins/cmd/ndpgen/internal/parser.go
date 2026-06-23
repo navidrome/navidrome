@@ -97,7 +97,7 @@ func ParseDirectoryWithShared(dir string, shared map[string]StructDef) ([]Servic
 	// Second pass: parse services using the package-level alias map.
 	var services []Service
 	for _, pf := range parsed {
-		svcList, err := parseServiceFile(pf.path, pf.file, pkgAliasMap, shared)
+		svcList, err := parseServiceFile(pf.file, pkgAliasMap, shared)
 		if err != nil {
 			return nil, fmt.Errorf("parsing %s: %w", filepath.Base(pf.path), err)
 		}
@@ -424,7 +424,7 @@ func parseExport(name string, funcType *ast.FuncType, annotation map[string]stri
 
 // parseServiceFile parses a single Go source file and extracts host services.
 // pkgAliasMap is the package-wide alias map built from all files in the package.
-func parseServiceFile(path string, f *ast.File, pkgAliasMap map[string]TypeAlias, shared map[string]StructDef) ([]Service, error) {
+func parseServiceFile(f *ast.File, pkgAliasMap map[string]TypeAlias, shared map[string]StructDef) ([]Service, error) {
 	// Collect all struct definitions in the file.
 	allStructs := parseStructs(f)
 	structMap := make(map[string]StructDef)
