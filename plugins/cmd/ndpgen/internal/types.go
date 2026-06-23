@@ -84,11 +84,15 @@ func (c Capability) ImportsSharedTypes() bool { return len(c.SharedAliases) > 0 
 // ImportsSharedTypes reports whether this service references the shared types package.
 func (s Service) ImportsSharedTypes() bool { return len(s.SharedAliases) > 0 }
 
-// KnownStructs returns a map of struct names defined in this capability.
+// KnownStructs returns a map of struct names defined in this capability,
+// including shared-alias names so Rust field-type resolution finds them.
 func (c Capability) KnownStructs() map[string]bool {
 	result := make(map[string]bool)
 	for _, st := range c.Structs {
 		result[st.Name] = true
+	}
+	for _, sa := range c.SharedAliases {
+		result[sa.Name] = true
 	}
 	return result
 }
@@ -190,11 +194,15 @@ func (s Service) ExportPrefix() string {
 	return strings.ToLower(s.Name)
 }
 
-// KnownStructs returns a map of struct names defined in this service.
+// KnownStructs returns a map of struct names defined in this service,
+// including shared-alias names so Rust field-type resolution finds them.
 func (s Service) KnownStructs() map[string]bool {
 	result := make(map[string]bool)
 	for _, st := range s.Structs {
 		result[st.Name] = true
+	}
+	for _, sa := range s.SharedAliases {
+		result[sa.Name] = true
 	}
 	return result
 }

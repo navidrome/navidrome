@@ -29,7 +29,7 @@ pub type TrackInfo = nd_pdk_types::TrackInfo;
 #[serde(rename_all = "camelCase")]
 pub struct GetLyricsRequest {
     #[serde(default)]
-    pub track: serde_json::Value,
+    pub track: TrackInfo,
 }
 /// GetLyricsResponse contains the lyrics returned by the plugin.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

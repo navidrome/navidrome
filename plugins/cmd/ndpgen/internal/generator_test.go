@@ -1320,6 +1320,29 @@ var _ = Describe("Rust Generation", func() {
 			Expect(out).To(ContainSubstring("pub type TrackInfo = nd_pdk_types::TrackInfo;"))
 		})
 
+		It("keeps struct-field type when the type name is a shared alias (regression: was serde_json::Value)", func() {
+			// Wrapper has a field whose type is only in SharedAliases, not Structs.
+			// KnownStructs() must include shared-alias names so the Rust field
+			// renders as `pub track: TrackInfo` and not `pub track: serde_json::Value`.
+			cap := Capability{
+				Name: "test", Interface: "TestAgent", Required: true,
+				Methods: []Export{{Name: "Submit", ExportName: "nd_test_submit",
+					Input: Param{Name: "req", Type: "Wrapper"}}},
+				Structs: []StructDef{{Name: "Wrapper", Fields: []FieldDef{
+					{Name: "Track", Type: "TrackInfo", JSONTag: "track"}}}},
+				SharedAliases: []SharedAlias{{
+					Name: "TrackInfo", Target: "types.TrackInfo",
+					Doc: "Deprecated: use types.TrackInfo.",
+				}},
+			}
+			code, err := GenerateCapabilityRust(cap)
+			Expect(err).NotTo(HaveOccurred())
+			out := string(code)
+			// Field must resolve to the named type, not the JSON fallback.
+			Expect(out).To(ContainSubstring("pub track: TrackInfo"))
+			Expect(out).NotTo(ContainSubstring("pub track: serde_json::Value"))
+		})
+
 		It("should include all float types correctly", func() {
 			cap := Capability{
 				Name:       "test",
