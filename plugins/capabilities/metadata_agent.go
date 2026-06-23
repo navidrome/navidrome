@@ -104,10 +104,13 @@ type SimilarArtistsRequest struct {
 	Limit int32 `json:"limit"`
 }
 
+// Deprecated: use types.ArtistRef.
+type ArtistRef = types.ArtistRef
+
 // SimilarArtistsResponse is the response for GetSimilarArtists.
 type SimilarArtistsResponse struct {
 	// Artists is the list of similar artists.
-	Artists []ArtistRef `json:"artists"`
+	Artists []types.ArtistRef `json:"artists"`
 }
 
 // ImageInfo represents an image with URL and size.
@@ -142,7 +145,7 @@ type SongRef = types.SongRef
 // TopSongsResponse is the response for GetArtistTopSongs.
 type TopSongsResponse struct {
 	// Songs is the list of top songs.
-	Songs []SongRef `json:"songs"`
+	Songs []types.SongRef `json:"songs"`
 }
 
 // AlbumRequest is the common request for album-related functions.
@@ -216,5 +219,5 @@ type SimilarSongsByArtistRequest struct {
 // SimilarSongsResponse is the response for GetSimilarSongsBy* functions.
 type SimilarSongsResponse struct {
 	// Songs is the list of similar songs.
-	Songs []SongRef `json:"songs"`
+	Songs []types.SongRef `json:"songs"`
 }

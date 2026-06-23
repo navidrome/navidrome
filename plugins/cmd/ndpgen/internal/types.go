@@ -50,7 +50,7 @@ func (t TypeAlias) IsDeprecated() bool {
 }
 
 // IsSharedAlias reports whether this alias targets the shared types package
-// (e.g. `type TrackInfo = types.TrackInfo`).
+// (e.g. `type TrackInfo = types.Track`).
 func (t TypeAlias) IsSharedAlias() bool {
 	return t.IsAlias && strings.HasPrefix(t.Type, "types.")
 }
@@ -69,11 +69,11 @@ type ConstDef struct {
 }
 
 // SharedAlias is a deprecated alias from a capability/host package to a type in
-// the shared `types` package (e.g. type TrackInfo = types.TrackInfo). Def is the
+// the shared `types` package (e.g. type TrackInfo = types.Track). Def is the
 // resolved shared struct, kept for XTP schema inlining.
 type SharedAlias struct {
 	Name   string    // local name, e.g. "TrackInfo"
-	Target string    // alias target, e.g. "types.TrackInfo"
+	Target string    // alias target, e.g. "types.Track"
 	Doc    string    // doc comment (carries the Deprecated: line)
 	Def    StructDef // resolved shared struct shape
 }
@@ -669,6 +669,11 @@ func toRustType(goType string, knownStructs map[string]bool, shared map[string]s
 	case "interface{}", "any":
 		return "serde_json::Value"
 	default:
+		// Qualified reference to the shared types crate (e.g. types.Track ->
+		// nd_pdk_types::Track).
+		if rest, ok := strings.CutPrefix(goType, "types."); ok {
+			return "nd_pdk_types::" + rest
+		}
 		// Resolve shared-alias names to their canonical nd_pdk_types:: path.
 		if shared != nil {
 			if t, ok := shared[goType]; ok {

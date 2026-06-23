@@ -81,7 +81,7 @@ func buildExport(export Export) xtpExport {
 	e := xtpExport{Description: cleanDocForYAML(export.Doc)}
 	if export.Input.Type != "" {
 		e.Input = &xtpIOParam{
-			Ref:         "#/components/schemas/" + strings.TrimPrefix(export.Input.Type, "*"),
+			Ref:         "#/components/schemas/" + fieldBaseType(export.Input.Type),
 			ContentType: "application/json",
 		}
 	}
@@ -95,7 +95,7 @@ func buildExport(export Export) xtpExport {
 			}
 		} else {
 			e.Output = &xtpIOParam{
-				Ref:         "#/components/schemas/" + outputType,
+				Ref:         "#/components/schemas/" + fieldBaseType(outputType),
 				ContentType: "application/json",
 			}
 		}
@@ -119,11 +119,13 @@ func buildSchemas(cap Capability) yaml.Node {
 		knownTypes[alias.Name] = true
 	}
 
-	// Register shared-alias names as known types and stash their struct shapes.
+	// Register shared types under their canonical name (e.g. types.Track -> Track)
+	// and stash their struct shapes for inlining.
 	sharedDefs := map[string]StructDef{}
 	for _, a := range cap.SharedAliases {
-		knownTypes[a.Name] = true
-		sharedDefs[a.Name] = a.Def
+		canonical := strings.TrimPrefix(a.Target, "types.")
+		knownTypes[canonical] = true
+		sharedDefs[canonical] = a.Def
 	}
 
 	// Collect types that are actually used by exports
@@ -197,6 +199,7 @@ func collectUsedTypes(cap Capability, knownTypes map[string]bool, sharedDefs map
 
 // addTypeAndDeps adds a type and all its dependencies to the used set.
 func addTypeAndDeps(typeName string, cap Capability, knownTypes map[string]bool, sharedDefs map[string]StructDef, used map[string]bool) {
+	typeName = strings.TrimPrefix(typeName, "types.")
 	if used[typeName] || !knownTypes[typeName] {
 		return
 	}
@@ -206,26 +209,30 @@ func addTypeAndDeps(typeName string, cap Capability, knownTypes map[string]bool,
 	for _, st := range cap.Structs {
 		if st.Name == typeName {
 			for _, field := range st.Fields {
-				fieldType := strings.TrimPrefix(field.Type, "*")
-				fieldType = strings.TrimPrefix(fieldType, "[]")
-				if knownTypes[fieldType] {
-					addTypeAndDeps(fieldType, cap, knownTypes, sharedDefs, used)
+				if base := fieldBaseType(field.Type); knownTypes[base] {
+					addTypeAndDeps(base, cap, knownTypes, sharedDefs, used)
 				}
 			}
 			return
 		}
 	}
 
-	// Walk fields of shared-alias structs so their nested refs are also marked used.
+	// Walk fields of shared structs so their nested refs are also marked used.
 	if def, ok := sharedDefs[typeName]; ok {
 		for _, field := range def.Fields {
-			fieldType := strings.TrimPrefix(field.Type, "*")
-			fieldType = strings.TrimPrefix(fieldType, "[]")
-			if knownTypes[fieldType] {
-				addTypeAndDeps(fieldType, cap, knownTypes, sharedDefs, used)
+			if base := fieldBaseType(field.Type); knownTypes[base] {
+				addTypeAndDeps(base, cap, knownTypes, sharedDefs, used)
 			}
 		}
 	}
+}
+
+// fieldBaseType reduces a field type to the base named type used for schema
+// lookups: it strips a leading pointer/slice and any shared `types.` selector.
+func fieldBaseType(goType string) string {
+	goType = strings.TrimPrefix(goType, "*")
+	goType = strings.TrimPrefix(goType, "[]")
+	return strings.TrimPrefix(goType, "types.")
 }
 
 func buildObjectSchema(st StructDef, knownTypes map[string]bool) xtpObjectSchema {
@@ -270,9 +277,10 @@ func buildProperty(field FieldDef, knownTypes map[string]bool) xtpProperty {
 		Nullable:    isPointer,
 	}
 
-	// Handle reference types (use $ref instead of type)
-	if isKnownType(goType, knownTypes) && !strings.HasPrefix(goType, "[]") {
-		prop.Ref = "#/components/schemas/" + goType
+	// Handle reference types (use $ref instead of type). Qualified shared
+	// references (types.X) are referenced by their canonical name.
+	if refType := strings.TrimPrefix(goType, "types."); isKnownType(refType, knownTypes) && !strings.HasPrefix(goType, "[]") {
+		prop.Ref = "#/components/schemas/" + refType
 		return prop
 	}
 
@@ -284,7 +292,7 @@ func buildProperty(field FieldDef, knownTypes map[string]bool) xtpProperty {
 
 	// Handle slice types
 	if strings.HasPrefix(goType, "[]") {
-		elemType := goType[2:]
+		elemType := strings.TrimPrefix(goType[2:], "types.")
 		prop.Type = "array"
 		prop.Items = &xtpProperty{}
 		if isKnownType(elemType, knownTypes) {

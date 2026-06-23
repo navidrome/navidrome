@@ -719,6 +719,30 @@ var _ = Describe("XTP Schema Generation", func() {
 			Expect(string(out)).To(ContainSubstring("TrackInfo:"))
 			Expect(string(out)).To(ContainSubstring("title:"))
 		})
+
+		It("names the shared component by its canonical type for qualified types.X fields", func() {
+			cap := Capability{
+				Name: "scrobbler", Interface: "Scrobbler", Required: true,
+				Methods: []Export{{Name: "NowPlaying", ExportName: "nd_scrobbler_now_playing",
+					Input: Param{Name: "input", Type: "NowPlayingRequest"}}},
+				Structs: []StructDef{{Name: "NowPlayingRequest", Fields: []FieldDef{
+					{Name: "Track", Type: "types.Track", JSONTag: "track"}}}},
+				SharedAliases: []SharedAlias{{
+					Name: "TrackInfo", Target: "types.Track",
+					Def: StructDef{Name: "Track", Fields: []FieldDef{
+						{Name: "Title", Type: "string", JSONTag: "title"}}},
+				}},
+			}
+			out, err := GenerateSchema(cap)
+			Expect(err).NotTo(HaveOccurred())
+			s := string(out)
+			// Component is named by the canonical type (Track), not the deprecated alias.
+			Expect(s).To(ContainSubstring("Track:"))
+			Expect(s).NotTo(ContainSubstring("TrackInfo:"))
+			// The field $ref points at the canonical component.
+			Expect(s).To(ContainSubstring("$ref: '#/components/schemas/Track'"))
+			Expect(s).To(ContainSubstring("title:"))
+		})
 	})
 
 	Describe("GenerateSchema enum filtering", func() {

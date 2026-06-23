@@ -17,7 +17,10 @@ fn is_zero_u64(value: &u64) -> bool { *value == 0 }
 fn is_zero_f32(value: &f32) -> bool { *value == 0.0 }
 #[allow(dead_code)]
 fn is_zero_f64(value: &f64) -> bool { *value == 0.0 }
-/// ArtistRef is a reference to an artist with name and optional MBID.
+/// ArtistRef is the minimal information a plugin returns for Navidrome to match an
+/// artist against the library. It is a reference, not a full artist entity: it
+/// carries only matching keys (name and optional internal/MusicBrainz IDs), never
+/// descriptive data such as biographies or images.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ArtistRef {
@@ -31,7 +34,11 @@ pub struct ArtistRef {
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub mbid: String,
 }
-/// SongRef is a reference to a song with metadata for matching.
+/// SongRef is the minimal information exchanged between a plugin and Navidrome to
+/// match a song. It is used both as input (a song Navidrome already has) and as
+/// output (a song a plugin suggests, which may not be in the library yet). Unlike
+/// Track, it is an abstract recording reference carrying only matching keys (IDs,
+/// ISRC, and title/artist/album/duration) that Navidrome resolves to a library track.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SongRef {
@@ -53,6 +60,9 @@ pub struct SongRef {
     /// ArtistMBID is the MusicBrainz artist ID.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub artist_mbid: String,
+    /// Artists is the full artist list; when set, takes precedence over Artist/ArtistMBID for matching.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub artists: Vec<ArtistRef>,
     /// Album is the album name.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub album: String,
@@ -63,10 +73,13 @@ pub struct SongRef {
     #[serde(default, skip_serializing_if = "is_zero_f32")]
     pub duration: f32,
 }
-/// TrackInfo contains track metadata.
+/// Track is the plugin-facing representation of a track in the user's library
+/// (Navidrome's model.MediaFile). Navidrome populates it with full metadata and
+/// passes it to plugins (for example, when scrobbling). Unlike SongRef, it is a
+/// concrete track that already exists in the library.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct TrackInfo {
+pub struct Track {
     /// ID is the internal Navidrome track ID.
     #[serde(default)]
     pub id: String,

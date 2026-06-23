@@ -12,26 +12,29 @@ import (
 	"github.com/navidrome/navidrome/plugins/pdk/go/types"
 )
 
+// Deprecated: use types.ArtistRef.
+type ArtistRef = types.ArtistRef
+
 // Deprecated: use types.SongRef.
 type SongRef = types.SongRef
 
 // FindSonicPathRequest represents the FindSonicPathRequest data structure.
 type FindSonicPathRequest struct {
-	StartSong SongRef `json:"startSong"`
-	EndSong   SongRef `json:"endSong"`
-	Count     int32   `json:"count"`
+	StartSong types.SongRef `json:"startSong"`
+	EndSong   types.SongRef `json:"endSong"`
+	Count     int32         `json:"count"`
 }
 
 // GetSonicSimilarTracksRequest represents the GetSonicSimilarTracksRequest data structure.
 type GetSonicSimilarTracksRequest struct {
-	Song  SongRef `json:"song"`
-	Count int32   `json:"count"`
+	Song  types.SongRef `json:"song"`
+	Count int32         `json:"count"`
 }
 
 // SonicMatch represents the SonicMatch data structure.
 type SonicMatch struct {
-	Song       SongRef `json:"song"`
-	Similarity float64 `json:"similarity"`
+	Song       types.SongRef `json:"song"`
+	Similarity float64       `json:"similarity"`
 }
 
 // SonicSimilarityResponse represents the SonicSimilarityResponse data structure.

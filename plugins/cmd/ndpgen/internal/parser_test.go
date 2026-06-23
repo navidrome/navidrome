@@ -710,6 +710,64 @@ type Scrobbler interface {
 			Expect(byName["TrackInfo"].Def.Fields).To(HaveLen(2)) // for schema inlining
 			Expect(byName["ArtistRef"].Target).To(Equal("types.ArtistRef"))
 		})
+
+		It("resolves shared types from qualified types.X references with a renamed alias", func() {
+			shared := map[string]StructDef{
+				"ArtistRef": {Name: "ArtistRef", Fields: []FieldDef{{Name: "Name", Type: "string", JSONTag: "name"}}},
+				"Track": {Name: "Track", Fields: []FieldDef{
+					{Name: "Title", Type: "string", JSONTag: "title"},
+					{Name: "Artists", Type: "[]ArtistRef", JSONTag: "artists"},
+				}},
+			}
+			src := `package capabilities
+
+import "github.com/navidrome/navidrome/plugins/types"
+
+// Deprecated: use types.Track.
+type TrackInfo = types.Track
+
+// Deprecated: use types.ArtistRef.
+type ArtistRef = types.ArtistRef
+
+// NowPlayingRequest carries a track.
+type NowPlayingRequest struct {
+	Track types.Track ` + "`json:\"track\"`" + `
+}
+
+//nd:capability name=scrobbler required=true
+type Scrobbler interface {
+	//nd:export name=nd_scrobbler_now_playing
+	NowPlaying(NowPlayingRequest) error
+}
+`
+			Expect(os.WriteFile(filepath.Join(tmpDir, "scrobbler.go"), []byte(src), 0600)).To(Succeed())
+
+			caps, err := ParseCapabilitiesWithShared(tmpDir, shared)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(caps).To(HaveLen(1))
+
+			byName := map[string]SharedAlias{}
+			for _, a := range caps[0].SharedAliases {
+				byName[a.Name] = a
+			}
+			// The deprecated alias keeps its name (TrackInfo) but now targets types.Track.
+			// ArtistRef is pulled in transitively via Track.Artists.
+			Expect(byName).To(HaveKey("TrackInfo"))
+			Expect(byName).To(HaveKey("ArtistRef"))
+			Expect(byName["TrackInfo"].Target).To(Equal("types.Track"))
+			Expect(byName["TrackInfo"].Def.Fields).To(HaveLen(2)) // for schema inlining
+			Expect(byName["ArtistRef"].Target).To(Equal("types.ArtistRef"))
+
+			// The capability struct field keeps the canonical qualified reference.
+			var nowPlaying StructDef
+			for _, st := range caps[0].Structs {
+				if st.Name == "NowPlayingRequest" {
+					nowPlaying = st
+				}
+			}
+			Expect(nowPlaying.Fields).To(HaveLen(1))
+			Expect(nowPlaying.Fields[0].Type).To(Equal("types.Track"))
+		})
 	})
 
 	Describe("Export helpers", func() {

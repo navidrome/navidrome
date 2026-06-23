@@ -15,12 +15,12 @@ import (
 // Deprecated: use types.ArtistRef.
 type ArtistRef = types.ArtistRef
 
-// Deprecated: use types.TrackInfo.
-type TrackInfo = types.TrackInfo
+// Deprecated: use types.Track.
+type TrackInfo = types.Track
 
 // GetLyricsRequest contains the track information for lyrics lookup.
 type GetLyricsRequest struct {
-	Track TrackInfo `json:"track"`
+	Track types.Track `json:"track"`
 }
 
 // GetLyricsResponse contains the lyrics returned by the plugin.

@@ -98,7 +98,7 @@ func (s *ScrobblerPlugin) NowPlaying(ctx context.Context, userId string, track *
 	username := getUsernameFromContext(ctx)
 	input := capabilities.NowPlayingRequest{
 		Username: username,
-		Track:    mediaFileToTrackInfo(s.plugin, track),
+		Track:    mediaFileToTrack(s.plugin, track),
 		Position: int32(position),
 	}
 
@@ -111,7 +111,7 @@ func (s *ScrobblerPlugin) Scrobble(ctx context.Context, userId string, sc scrobb
 	username := getUsernameFromContext(ctx)
 	input := capabilities.ScrobbleRequest{
 		Username:  username,
-		Track:     mediaFileToTrackInfo(s.plugin, &sc.MediaFile),
+		Track:     mediaFileToTrack(s.plugin, &sc.MediaFile),
 		Timestamp: sc.TimeStamp.Unix(),
 	}
 
@@ -127,11 +127,11 @@ func getUsernameFromContext(ctx context.Context) string {
 	return ""
 }
 
-// mediaFileToTrackInfo converts a model.MediaFile to types.TrackInfo.
+// mediaFileToTrack converts a model.MediaFile to types.Track.
 // Path is populated only when the plugin is allowed filesystem access to the
 // track's library.
-func mediaFileToTrackInfo(p *plugin, mf *model.MediaFile) types.TrackInfo {
-	ti := types.TrackInfo{
+func mediaFileToTrack(p *plugin, mf *model.MediaFile) types.Track {
+	ti := types.Track{
 		ID:                mf.ID,
 		Title:             mf.Title,
 		Album:             mf.Album,
@@ -190,7 +190,7 @@ func mapScrobblerError(err error) error {
 func (s *ScrobblerPlugin) PlaybackReport(ctx context.Context, info scrobbler.PlaybackSession) error {
 	input := capabilities.PlaybackReportRequest{
 		Username:     info.Username,
-		Track:        mediaFileToTrackInfo(s.plugin, &info.MediaFile),
+		Track:        mediaFileToTrack(s.plugin, &info.MediaFile),
 		State:        info.State,
 		PositionMs:   info.PositionMs,
 		PlaybackRate: info.PlaybackRate,

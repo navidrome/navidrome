@@ -313,49 +313,102 @@ func parseCapabilityFile(path string, f *ast.File, structMap map[string]StructDe
 	return capabilities, nil
 }
 
-// resolveSharedAliases attaches SharedAlias entries for any referenced type that
-// is a Go alias to the shared `types` package, transitively following the shared
-// struct's own field references so nested shared types are aliased too.
-// Returns an error if an alias pointing at `types.*` cannot be found in the shared registry.
+// resolveSharedAliases determines which shared `types` package structs a host
+// service or capability uses and returns the deprecated re-export aliases to emit
+// for them.
+//
+// A shared type counts as used when a field references it by qualified name
+// (e.g. types.Track) or via a declared alias used by bare name (e.g. a field of
+// type TrackInfo where `type TrackInfo = types.Track`). The shared struct's own
+// fields are followed transitively so nested shared types are picked up too. For
+// every used canonical type, each declared `type X = types.Canonical` alias is
+// emitted as a SharedAlias so the generated PDK keeps re-exporting it for
+// backwards compatibility.
+//
+// Returns an error if a referenced shared type cannot be found in the shared registry.
 func resolveSharedAliases(referenced map[string]bool, aliasMap map[string]TypeAlias, shared map[string]StructDef) ([]SharedAlias, error) {
-	out := map[string]SharedAlias{}
-	var queue []string
-	for name := range referenced {
-		if a, ok := aliasMap[name]; ok && a.IsSharedAlias() {
-			queue = append(queue, name)
+	// Index declared shared aliases by the canonical type they target, e.g.
+	// "Track" -> [TrackInfo]. A canonical type may have more than one alias.
+	aliasesByCanonical := map[string][]TypeAlias{}
+	for _, a := range aliasMap {
+		if a.IsSharedAlias() {
+			canonical := strings.TrimPrefix(a.Type, "types.")
+			aliasesByCanonical[canonical] = append(aliasesByCanonical[canonical], a)
 		}
 	}
-	more := map[string]bool{}
+
+	// Walk the referenced types, following nested shared references inside the
+	// shared structs, to find the set of canonical shared types used.
+	used := map[string]bool{}
+	var queue []string
+	for name := range referenced {
+		if c, ok := seedSharedCanonical(name, aliasMap); ok {
+			queue = append(queue, c)
+		}
+	}
 	for len(queue) > 0 {
-		name := queue[0]
+		canonical := queue[0]
 		queue = queue[1:]
-		if _, done := out[name]; done {
+		if used[canonical] {
 			continue
 		}
-		a, ok := aliasMap[name]
-		if !ok || !a.IsSharedAlias() {
-			continue
-		}
-		short := strings.TrimPrefix(a.Type, "types.")
-		def, ok := shared[short]
+		def, ok := shared[canonical]
 		if !ok {
 			return nil, fmt.Errorf(
-				"shared-type alias %q (= %s) could not be resolved: pass -shared=<dir> pointing at the shared types package, and ensure %s is defined there",
-				a.Name, a.Type, a.Type,
+				"shared type %q could not be resolved: pass -shared=<dir> pointing at the shared types package, and ensure %s is defined there",
+				canonical, "types."+canonical,
 			)
 		}
-		out[name] = SharedAlias{Name: a.Name, Target: a.Type, Doc: a.Doc, Def: def}
+		used[canonical] = true
 		for _, f := range def.Fields {
-			clear(more)
-			collectReferencedTypes(f.Type, more)
-			for t := range more {
-				queue = append(queue, t)
+			fieldRefs := map[string]bool{}
+			collectReferencedTypes(f.Type, fieldRefs)
+			for t := range fieldRefs {
+				if c, ok := nestedSharedCanonical(t, shared); ok {
+					queue = append(queue, c)
+				}
 			}
 		}
 	}
-	result := slices.Collect(maps.Values(out))
-	slices.SortFunc(result, func(a, b SharedAlias) int { return strings.Compare(a.Name, b.Name) })
-	return result, nil
+
+	var out []SharedAlias
+	for canonical := range used {
+		for _, a := range aliasesByCanonical[canonical] {
+			out = append(out, SharedAlias{Name: a.Name, Target: a.Type, Doc: a.Doc, Def: shared[canonical]})
+		}
+	}
+	slices.SortFunc(out, func(a, b SharedAlias) int { return strings.Compare(a.Name, b.Name) })
+	return out, nil
+}
+
+// seedSharedCanonical maps a type token referenced by a capability/service field
+// to the canonical shared type it denotes. It recognizes qualified references
+// (types.X -> X) and declared shared aliases used by bare name (X where
+// `type X = types.Y` -> Y). A bare name that is not a declared shared alias is
+// not treated as shared, so a local struct sharing a name with a shared type is
+// never misclassified.
+func seedSharedCanonical(name string, aliasMap map[string]TypeAlias) (string, bool) {
+	if rest, ok := strings.CutPrefix(name, "types."); ok {
+		return rest, true
+	}
+	if a, ok := aliasMap[name]; ok && a.IsSharedAlias() {
+		return strings.TrimPrefix(a.Type, "types."), true
+	}
+	return "", false
+}
+
+// nestedSharedCanonical maps a type token found inside a shared struct's own
+// fields to a canonical shared type. Within the shared package, types reference
+// each other by bare name (e.g. Track.Artists is []ArtistRef), so any bare name
+// present in the shared registry counts.
+func nestedSharedCanonical(name string, shared map[string]StructDef) (string, bool) {
+	if rest, ok := strings.CutPrefix(name, "types."); ok {
+		return rest, true
+	}
+	if _, ok := shared[name]; ok {
+		return name, true
+	}
+	return "", false
 }
 
 // collectAllStructDependencies recursively collects all struct types referenced by other structs.
@@ -762,6 +815,14 @@ func collectReferencedTypes(goType string, refs map[string]bool) {
 		valueType := rest[keyEnd+1:]
 		collectReferencedTypes(keyType, refs)
 		collectReferencedTypes(valueType, refs)
+		return
+	}
+
+	// Qualified reference to the shared `types` package (e.g. types.Track).
+	// These start with a lowercase package selector, so they must be collected
+	// before the uppercase check below would skip them.
+	if strings.HasPrefix(goType, "types.") {
+		refs[goType] = true
 		return
 	}
 

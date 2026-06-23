@@ -22,14 +22,14 @@ fn is_zero_f64(value: &f64) -> bool { *value == 0.0 }
 #[deprecated(note = "use nd_pdk::types::ArtistRef")]
 pub type ArtistRef = nd_pdk_types::ArtistRef;
 
-#[deprecated(note = "use nd_pdk::types::TrackInfo")]
-pub type TrackInfo = nd_pdk_types::TrackInfo;
+#[deprecated(note = "use nd_pdk::types::Track")]
+pub type TrackInfo = nd_pdk_types::Track;
 /// GetLyricsRequest contains the track information for lyrics lookup.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GetLyricsRequest {
     #[serde(default)]
-    pub track: nd_pdk_types::TrackInfo,
+    pub track: nd_pdk_types::Track,
 }
 /// GetLyricsResponse contains the lyrics returned by the plugin.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

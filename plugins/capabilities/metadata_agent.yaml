@@ -348,7 +348,11 @@ components:
             required:
                 - songs
         ArtistRef:
-            description: ArtistRef is a reference to an artist with name and optional MBID.
+            description: |-
+                ArtistRef is the minimal information a plugin returns for Navidrome to match an
+                artist against the library. It is a reference, not a full artist entity: it
+                carries only matching keys (name and optional internal/MusicBrainz IDs), never
+                descriptive data such as biographies or images.
             properties:
                 id:
                     type: string
@@ -362,7 +366,12 @@ components:
             required:
                 - name
         SongRef:
-            description: SongRef is a reference to a song with metadata for matching.
+            description: |-
+                SongRef is the minimal information exchanged between a plugin and Navidrome to
+                match a song. It is used both as input (a song Navidrome already has) and as
+                output (a song a plugin suggests, which may not be in the library yet). Unlike
+                Track, it is an abstract recording reference carrying only matching keys (IDs,
+                ISRC, and title/artist/album/duration) that Navidrome resolves to a library track.
             properties:
                 id:
                     type: string

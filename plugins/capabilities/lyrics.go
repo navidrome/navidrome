@@ -1,5 +1,7 @@
 package capabilities
 
+import "github.com/navidrome/navidrome/plugins/types"
+
 // Lyrics provides lyrics for a given track from external sources.
 //
 //nd:capability name=lyrics required=true
@@ -10,7 +12,7 @@ type Lyrics interface {
 
 // GetLyricsRequest contains the track information for lyrics lookup.
 type GetLyricsRequest struct {
-	Track TrackInfo `json:"track"`
+	Track types.Track `json:"track"`
 }
 
 // GetLyricsResponse contains the lyrics returned by the plugin.

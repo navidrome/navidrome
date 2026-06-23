@@ -1346,6 +1346,30 @@ var _ = Describe("Rust Generation", func() {
 			Expect(out).NotTo(ContainSubstring("pub track: TrackInfo,"))
 		})
 
+		It("renders a qualified types.X field as nd_pdk_types::X and keeps the renamed re-export", func() {
+			// The capability references the shared type by its canonical qualified
+			// name (types.Track) while the deprecated alias keeps the old name.
+			cap := Capability{
+				Name: "test", Interface: "TestAgent", Required: true,
+				Methods: []Export{{Name: "Submit", ExportName: "nd_test_submit",
+					Input: Param{Name: "req", Type: "Wrapper"}}},
+				Structs: []StructDef{{Name: "Wrapper", Fields: []FieldDef{
+					{Name: "Track", Type: "types.Track", JSONTag: "track"}}}},
+				SharedAliases: []SharedAlias{{
+					Name: "TrackInfo", Target: "types.Track",
+					Doc: "Deprecated: use types.Track.",
+				}},
+			}
+			code, err := GenerateCapabilityRust(cap)
+			Expect(err).NotTo(HaveOccurred())
+			out := string(code)
+			// Field uses the canonical qualified path (resolved from the types. prefix).
+			Expect(out).To(ContainSubstring("pub track: nd_pdk_types::Track,"))
+			// The deprecated alias is still re-exported under its kept name.
+			Expect(out).To(ContainSubstring("pub type TrackInfo = nd_pdk_types::Track;"))
+			Expect(out).NotTo(ContainSubstring("pub track: serde_json::Value"))
+		})
+
 		It("should include all float types correctly", func() {
 			cap := Capability{
 				Name:       "test",

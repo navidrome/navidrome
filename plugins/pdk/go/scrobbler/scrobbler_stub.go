@@ -13,8 +13,8 @@ import "github.com/navidrome/navidrome/plugins/pdk/go/types"
 // Deprecated: use types.ArtistRef.
 type ArtistRef = types.ArtistRef
 
-// Deprecated: use types.TrackInfo.
-type TrackInfo = types.TrackInfo
+// Deprecated: use types.Track.
+type TrackInfo = types.Track
 
 // ScrobblerError represents an error type for scrobbling operations.
 type ScrobblerError string
@@ -42,7 +42,7 @@ type NowPlayingRequest struct {
 	// Username is the username of the user.
 	Username string `json:"username"`
 	// Track is the track currently playing.
-	Track TrackInfo `json:"track"`
+	Track types.Track `json:"track"`
 	// Position is the current playback position in seconds.
 	Position int32 `json:"position"`
 }
@@ -52,7 +52,7 @@ type PlaybackReportRequest struct {
 	// Username is the username of the user.
 	Username string `json:"username"`
 	// Track is the track being played.
-	Track TrackInfo `json:"track"`
+	Track types.Track `json:"track"`
 	// State is the current playback state (starting/playing/paused/stopped/expired).
 	State string `json:"state"`
 	// PositionMs is the current playback position in milliseconds.
@@ -72,7 +72,7 @@ type ScrobbleRequest struct {
 	// Username is the username of the user.
 	Username string `json:"username"`
 	// Track is the track that was played.
-	Track TrackInfo `json:"track"`
+	Track types.Track `json:"track"`
 	// Timestamp is the Unix timestamp when the track started playing.
 	Timestamp int64 `json:"timestamp"`
 }

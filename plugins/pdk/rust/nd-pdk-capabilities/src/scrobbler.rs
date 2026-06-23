@@ -22,8 +22,8 @@ fn is_zero_f64(value: &f64) -> bool { *value == 0.0 }
 #[deprecated(note = "use nd_pdk::types::ArtistRef")]
 pub type ArtistRef = nd_pdk_types::ArtistRef;
 
-#[deprecated(note = "use nd_pdk::types::TrackInfo")]
-pub type TrackInfo = nd_pdk_types::TrackInfo;
+#[deprecated(note = "use nd_pdk::types::Track")]
+pub type TrackInfo = nd_pdk_types::Track;
 /// ScrobblerError represents an error type for scrobbling operations.
 pub type ScrobblerError = &'static str;
 /// ScrobblerErrorNotAuthorized indicates the user is not authorized.
@@ -49,7 +49,7 @@ pub struct NowPlayingRequest {
     pub username: String,
     /// Track is the track currently playing.
     #[serde(default)]
-    pub track: nd_pdk_types::TrackInfo,
+    pub track: nd_pdk_types::Track,
     /// Position is the current playback position in seconds.
     #[serde(default)]
     pub position: i32,
@@ -63,7 +63,7 @@ pub struct PlaybackReportRequest {
     pub username: String,
     /// Track is the track being played.
     #[serde(default)]
-    pub track: nd_pdk_types::TrackInfo,
+    pub track: nd_pdk_types::Track,
     /// State is the current playback state (starting/playing/paused/stopped/expired).
     #[serde(default)]
     pub state: String,
@@ -92,7 +92,7 @@ pub struct ScrobbleRequest {
     pub username: String,
     /// Track is the track that was played.
     #[serde(default)]
-    pub track: nd_pdk_types::TrackInfo,
+    pub track: nd_pdk_types::Track,
     /// Timestamp is the Unix timestamp when the track started playing.
     #[serde(default)]
     pub timestamp: i64,
