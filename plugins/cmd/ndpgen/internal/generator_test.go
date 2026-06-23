@@ -1316,7 +1316,9 @@ var _ = Describe("Rust Generation", func() {
 			code, err := GenerateCapabilityRust(cap)
 			Expect(err).NotTo(HaveOccurred())
 			out := string(code)
-			Expect(out).To(ContainSubstring(`#[deprecated(note = "use nd_pdk_types::TrackInfo")]`))
+			// Note points authors at the umbrella path (nd-pdk re-exports nd_pdk_types as `types`);
+			// the alias target stays the real crate path so it resolves inside nd-pdk-capabilities.
+			Expect(out).To(ContainSubstring(`#[deprecated(note = "use nd_pdk::types::TrackInfo")]`))
 			Expect(out).To(ContainSubstring("pub type TrackInfo = nd_pdk_types::TrackInfo;"))
 		})
 

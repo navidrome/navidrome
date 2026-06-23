@@ -19,10 +19,10 @@ fn is_zero_f32(value: &f32) -> bool { *value == 0.0 }
 #[allow(dead_code)]
 fn is_zero_f64(value: &f64) -> bool { *value == 0.0 }
 
-#[deprecated(note = "use nd_pdk_types::ArtistRef")]
+#[deprecated(note = "use nd_pdk::types::ArtistRef")]
 pub type ArtistRef = nd_pdk_types::ArtistRef;
 
-#[deprecated(note = "use nd_pdk_types::TrackInfo")]
+#[deprecated(note = "use nd_pdk::types::TrackInfo")]
 pub type TrackInfo = nd_pdk_types::TrackInfo;
 /// GetLyricsRequest contains the track information for lyrics lookup.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

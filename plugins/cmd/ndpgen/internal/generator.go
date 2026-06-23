@@ -445,6 +445,12 @@ func rustCapabilityFuncMap(cap Capability) template.FuncMap {
 		"rustSharedTarget": func(target string) string {
 			return "nd_pdk_types::" + strings.TrimPrefix(target, "types.")
 		},
+		// rustSharedNote is the human-facing path for deprecation notes: plugin
+		// authors depend on the nd-pdk umbrella crate, which re-exports nd_pdk_types
+		// as `types`, so they reference these via nd_pdk::types::X.
+		"rustSharedNote": func(target string) string {
+			return "nd_pdk::types::" + strings.TrimPrefix(target, "types.")
+		},
 		"snakeCase": ToSnakeCase,
 		"indent":    indentSpaces,
 	}
