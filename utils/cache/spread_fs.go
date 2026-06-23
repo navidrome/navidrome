@@ -14,6 +14,8 @@ import (
 	"github.com/navidrome/navidrome/log"
 )
 
+const completeMarkerSuffix = ".complete"
+
 type spreadFS struct {
 	root string
 	mode os.FileMode
@@ -79,7 +81,25 @@ func (sfs *spreadFS) Open(name string) (stream.File, error) {
 	return os.Open(name)
 }
 
+func (sfs *spreadFS) markerPath(dataPath string) string {
+	return dataPath + completeMarkerSuffix
+}
+
+// MarkComplete records that the data file at dataPath was written in full.
+// Only files with a marker are adopted on the next Reload; this is what
+// distinguishes a complete cache entry from a partial one left by a crash.
+func (sfs *spreadFS) MarkComplete(dataPath string) error {
+	f, err := os.OpenFile(sfs.markerPath(dataPath), os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		return err
+	}
+	return f.Close()
+}
+
 func (sfs *spreadFS) Remove(name string) error {
+	if err := os.Remove(sfs.markerPath(name)); err != nil && !os.IsNotExist(err) {
+		log.Warn("Error removing cache completion marker", "file", name, err)
+	}
 	return os.Remove(name)
 }
 

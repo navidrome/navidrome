@@ -39,6 +39,34 @@ var _ = Describe("Spread FS", func() {
 		})
 	})
 
+	Describe("MarkComplete / Remove markers", func() {
+		It("creates a .complete marker for a data file", func() {
+			data := fs.KeyMapper("song1")
+			f, err := fs.Create(data)
+			Expect(err).To(BeNil())
+			_, _ = f.Write([]byte("ok"))
+			_ = f.Close()
+
+			Expect(fs.MarkComplete(data)).To(Succeed())
+			_, statErr := os.Stat(data + ".complete")
+			Expect(statErr).To(BeNil())
+		})
+
+		It("removes the sibling marker when the data file is removed", func() {
+			data := fs.KeyMapper("song2")
+			f, _ := fs.Create(data)
+			_, _ = f.Write([]byte("ok"))
+			_ = f.Close()
+			Expect(fs.MarkComplete(data)).To(Succeed())
+
+			Expect(fs.Remove(data)).To(Succeed())
+			_, dataErr := os.Stat(data)
+			Expect(os.IsNotExist(dataErr)).To(BeTrue())
+			_, markErr := os.Stat(data + ".complete")
+			Expect(os.IsNotExist(markErr)).To(BeTrue())
+		})
+	})
+
 	Describe("Reload", func() {
 		var files []string
 
