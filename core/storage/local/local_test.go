@@ -133,7 +133,9 @@ var _ = Describe("LocalStorage", func() {
 				localStorage, ok := storage.(*localStorage)
 				Expect(ok).To(BeTrue())
 
-				Expect(localStorage.u.Path).To(Equal("C:/music"))
+				// newLocalStorage re-joins the drive letter (u.Host) with u.Path via
+				// filepath.Join, which yields an OS-native (backslash) path on Windows.
+				Expect(localStorage.u.Path).To(Equal(filepath.Join("C:", "/music")))
 			})
 		})
 
