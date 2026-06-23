@@ -9,6 +9,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/plugins/capabilities"
+	"github.com/navidrome/navidrome/plugins/types"
 )
 
 // CapabilityScrobbler indicates the plugin can receive scrobble events.
@@ -126,11 +127,11 @@ func getUsernameFromContext(ctx context.Context) string {
 	return ""
 }
 
-// mediaFileToTrackInfo converts a model.MediaFile to capabilities.TrackInfo.
+// mediaFileToTrackInfo converts a model.MediaFile to types.TrackInfo.
 // Path is populated only when the plugin is allowed filesystem access to the
 // track's library.
-func mediaFileToTrackInfo(p *plugin, mf *model.MediaFile) capabilities.TrackInfo {
-	ti := capabilities.TrackInfo{
+func mediaFileToTrackInfo(p *plugin, mf *model.MediaFile) types.TrackInfo {
+	ti := types.TrackInfo{
 		ID:                mf.ID,
 		Title:             mf.Title,
 		Album:             mf.Album,
@@ -154,10 +155,10 @@ func mediaFileToTrackInfo(p *plugin, mf *model.MediaFile) capabilities.TrackInfo
 }
 
 // participantsToArtistRefs converts a ParticipantList to a slice of ArtistRef
-func participantsToArtistRefs(participants model.ParticipantList) []capabilities.ArtistRef {
-	refs := make([]capabilities.ArtistRef, len(participants))
+func participantsToArtistRefs(participants model.ParticipantList) []types.ArtistRef {
+	refs := make([]types.ArtistRef, len(participants))
 	for i, p := range participants {
-		refs[i] = capabilities.ArtistRef{
+		refs[i] = types.ArtistRef{
 			ID:   p.ID,
 			Name: p.Name,
 			MBID: p.MbzArtistID,
