@@ -27,6 +27,29 @@ var (
 	keyValuePattern = regexp.MustCompile(`(\w+)=(\S+)`)
 )
 
+// parsedGoFile pairs a source path with its already-parsed AST.
+type parsedGoFile struct {
+	path string
+	file *ast.File
+}
+
+// parseGoFiles returns the eligible Go source files in dir, each parsed once.
+func parseGoFiles(dir string, fset *token.FileSet) ([]parsedGoFile, error) {
+	paths, err := goSourceFiles(dir)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]parsedGoFile, 0, len(paths))
+	for _, p := range paths {
+		f, err := parser.ParseFile(fset, p, nil, parser.ParseComments)
+		if err != nil {
+			return nil, fmt.Errorf("parsing %s: %w", filepath.Base(p), err)
+		}
+		out = append(out, parsedGoFile{path: p, file: f})
+	}
+	return out, nil
+}
+
 // goSourceFiles returns the Go source file paths in dir, excluding generated,
 // test, and doc files.
 func goSourceFiles(dir string) ([]string, error) {
@@ -56,34 +79,29 @@ func ParseDirectory(dir string) ([]Service, error) {
 // ParseDirectoryWithShared parses all Go source files in a directory, resolving any
 // type aliases that reference the shared `types` package against the provided registry.
 func ParseDirectoryWithShared(dir string, shared map[string]StructDef) ([]Service, error) {
-	goFiles, err := goSourceFiles(dir)
+	fset := token.NewFileSet()
+	parsed, err := parseGoFiles(dir, fset)
 	if err != nil {
 		return nil, err
 	}
 
-	fset := token.NewFileSet()
-
-	// First pass: collect all type aliases from every file in the package so that
-	// an alias declared in one file is visible when resolving types in a sibling file.
+	// First pass: collect all type aliases from every file so that an alias
+	// declared in one file is visible when resolving types in a sibling file.
 	pkgAliasMap := make(map[string]TypeAlias)
-	for _, path := range goFiles {
-		f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
-		if err != nil {
-			return nil, fmt.Errorf("parsing %s for types: %w", filepath.Base(path), err)
-		}
-		for _, a := range parseTypeAliases(f) {
+	for _, pf := range parsed {
+		for _, a := range parseTypeAliases(pf.file) {
 			pkgAliasMap[a.Name] = a
 		}
 	}
 
 	// Second pass: parse services using the package-level alias map.
 	var services []Service
-	for _, path := range goFiles {
-		parsed, err := parseServiceFile(fset, path, pkgAliasMap, shared)
+	for _, pf := range parsed {
+		svcList, err := parseServiceFile(pf.path, pf.file, pkgAliasMap, shared)
 		if err != nil {
-			return nil, fmt.Errorf("parsing %s: %w", filepath.Base(path), err)
+			return nil, fmt.Errorf("parsing %s: %w", filepath.Base(pf.path), err)
 		}
-		services = append(services, parsed...)
+		services = append(services, svcList...)
 	}
 
 	return services, nil
@@ -97,40 +115,35 @@ func ParseCapabilities(dir string) ([]Capability, error) {
 // ParseCapabilitiesWithShared parses all Go source files in a directory, resolving any
 // type aliases that reference the shared `types` package against the provided registry.
 func ParseCapabilitiesWithShared(dir string, shared map[string]StructDef) ([]Capability, error) {
-	goFiles, err := goSourceFiles(dir)
+	fset := token.NewFileSet()
+	parsed, err := parseGoFiles(dir, fset)
 	if err != nil {
 		return nil, err
 	}
 
-	fset := token.NewFileSet()
-
-	// First pass: collect all structs and type aliases from all files in the package
+	// First pass: collect all structs, type aliases, and const groups.
 	pkgStructMap := make(map[string]StructDef)
 	pkgAliasMap := make(map[string]TypeAlias)
 	var allConstGroups []ConstGroup
 
-	for _, path := range goFiles {
-		f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
-		if err != nil {
-			return nil, fmt.Errorf("parsing %s for types: %w", filepath.Base(path), err)
-		}
-		for _, s := range parseStructs(f) {
+	for _, pf := range parsed {
+		for _, s := range parseStructs(pf.file) {
 			pkgStructMap[s.Name] = s
 		}
-		for _, a := range parseTypeAliases(f) {
+		for _, a := range parseTypeAliases(pf.file) {
 			pkgAliasMap[a.Name] = a
 		}
-		allConstGroups = append(allConstGroups, parseConstGroups(f)...)
+		allConstGroups = append(allConstGroups, parseConstGroups(pf.file)...)
 	}
 
-	// Second pass: parse capabilities using the package-level type maps
+	// Second pass: parse capabilities using the package-level type maps.
 	var capabilities []Capability
-	for _, path := range goFiles {
-		parsed, err := parseCapabilityFile(fset, path, pkgStructMap, pkgAliasMap, allConstGroups, shared)
+	for _, pf := range parsed {
+		capList, err := parseCapabilityFile(pf.path, pf.file, pkgStructMap, pkgAliasMap, allConstGroups, shared)
 		if err != nil {
-			return nil, fmt.Errorf("parsing %s: %w", filepath.Base(path), err)
+			return nil, fmt.Errorf("parsing %s: %w", filepath.Base(pf.path), err)
 		}
-		capabilities = append(capabilities, parsed...)
+		capabilities = append(capabilities, capList...)
 	}
 
 	return capabilities, nil
@@ -161,12 +174,7 @@ func LoadSharedTypes(dir string) (map[string]StructDef, error) {
 }
 
 // parseCapabilityFile parses a single Go source file and extracts capabilities.
-func parseCapabilityFile(fset *token.FileSet, path string, structMap map[string]StructDef, aliasMap map[string]TypeAlias, allConstGroups []ConstGroup, shared map[string]StructDef) ([]Capability, error) {
-	f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
-	if err != nil {
-		return nil, err
-	}
-
+func parseCapabilityFile(path string, f *ast.File, structMap map[string]StructDef, aliasMap map[string]TypeAlias, allConstGroups []ConstGroup, shared map[string]StructDef) ([]Capability, error) {
 	var capabilities []Capability
 
 	for _, decl := range f.Decls {
@@ -416,12 +424,7 @@ func parseExport(name string, funcType *ast.FuncType, annotation map[string]stri
 
 // parseServiceFile parses a single Go source file and extracts host services.
 // pkgAliasMap is the package-wide alias map built from all files in the package.
-func parseServiceFile(fset *token.FileSet, path string, pkgAliasMap map[string]TypeAlias, shared map[string]StructDef) ([]Service, error) {
-	f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
-	if err != nil {
-		return nil, err
-	}
-
+func parseServiceFile(path string, f *ast.File, pkgAliasMap map[string]TypeAlias, shared map[string]StructDef) ([]Service, error) {
 	// Collect all struct definitions in the file.
 	allStructs := parseStructs(f)
 	structMap := make(map[string]StructDef)
