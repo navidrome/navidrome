@@ -424,7 +424,7 @@ func parseConfig() (*config, error) {
 
 	// Cannot specify multiple modes
 	if modeCount > 1 {
-		return nil, fmt.Errorf("cannot specify multiple modes (-host-only, -host-wrappers, -capability-only, -schemas, -pdk, -shared-types)")
+		return nil, fmt.Errorf("cannot specify multiple modes (-host-only, -host-wrappers, -capability-only, -schemas, -extism-pdk, -shared-types)")
 	}
 
 	if *outputDir == "" {
