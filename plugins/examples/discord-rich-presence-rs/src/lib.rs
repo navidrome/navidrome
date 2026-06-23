@@ -18,7 +18,7 @@
 use extism_pdk::*;
 use nd_pdk::host::{artwork, config, scheduler};
 use nd_pdk::scrobbler::{
-    Error as ScrobblerError, IsAuthorizedRequest, NowPlayingRequest,
+    Error as ScrobblerError, IsAuthorizedRequest, NowPlayingRequest, PlaybackReportRequest,
     ScrobbleRequest, Scrobbler, SCROBBLER_ERROR_NOT_AUTHORIZED, SCROBBLER_ERROR_RETRY_LATER,
 };
 use nd_pdk::scheduler::{
@@ -205,6 +205,11 @@ impl Scrobbler for DiscordPlugin {
 
     fn scrobble(&self, _req: ScrobbleRequest) -> Result<(), ScrobblerError> {
         // Discord Rich Presence doesn't need scrobble events - success
+        Ok(())
+    }
+
+    fn playback_report(&self, _req: PlaybackReportRequest) -> Result<(), ScrobblerError> {
+        // Discord Rich Presence doesn't need playback reports - success
         Ok(())
     }
 }
