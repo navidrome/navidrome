@@ -15,6 +15,7 @@ import (
 )
 
 const completeMarkerSuffix = ".complete"
+const sentinelName = ".complete-migrated"
 
 type spreadFS struct {
 	root string
@@ -42,6 +43,12 @@ func NewSpreadFS(dir string, mode os.FileMode) (*spreadFS, error) {
 }
 
 func (sfs *spreadFS) Reload(f func(key string, name string)) error {
+	sentinel := filepath.Join(sfs.root, sentinelName)
+	migrating := false
+	if _, err := os.Stat(sentinel); os.IsNotExist(err) {
+		migrating = true
+	}
+
 	count := 0
 	err := filepath.WalkDir(sfs.root, func(absoluteFilePath string, de fs.DirEntry, err error) error {
 		if err != nil {
@@ -52,16 +59,49 @@ func (sfs *spreadFS) Reload(f func(key string, name string)) error {
 			return nil //nolint:nilerr
 		}
 
+		// Skip marker files; also clean orphan markers (data file gone).
+		if strings.HasSuffix(path, completeMarkerSuffix) {
+			dataPath := strings.TrimSuffix(absoluteFilePath, completeMarkerSuffix)
+			if _, statErr := os.Stat(dataPath); os.IsNotExist(statErr) {
+				_ = os.Remove(absoluteFilePath) //nolint:gosec
+			}
+			return nil
+		}
+
 		// Skip if name is not in the format XX/XX/XXXXXXXXXXXX
 		parts := strings.Split(path, string(os.PathSeparator))
 		if len(parts) != 3 || len(parts[0]) != 2 || len(parts[1]) != 2 || len(parts[2]) != 40 {
 			return nil
 		}
 
+		_, markerErr := os.Stat(sfs.markerPath(absoluteFilePath))
+		marked := markerErr == nil
+
+		if !marked {
+			if migrating {
+				// First run after upgrade: trust existing files and mark them,
+				// so they survive subsequent strict reloads.
+				if mErr := sfs.MarkComplete(absoluteFilePath); mErr != nil {
+					log.Warn("Error grandfathering cache file", "file", absoluteFilePath, mErr)
+				}
+			} else {
+				// Steady state: an unmarked file is a crash partial. Discard it.
+				log.Debug("Removing incomplete cache file", "file", absoluteFilePath)
+				_ = os.Remove(absoluteFilePath) //nolint:gosec
+				return nil
+			}
+		}
+
 		f(absoluteFilePath, absoluteFilePath)
 		count++
 		return nil
 	})
+
+	if migrating {
+		if sErr := os.WriteFile(sentinel, nil, 0600); sErr != nil {
+			log.Warn("Error writing cache migration sentinel", "file", sentinel, sErr)
+		}
+	}
 	if err == nil {
 		log.Debug("Loaded cache", "dir", sfs.root, "numItems", count)
 	}
