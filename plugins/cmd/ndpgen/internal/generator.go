@@ -181,7 +181,7 @@ func rustFuncMap(svc Service) template.FuncMap {
 	knownStructs := svc.KnownStructs()
 	shared := make(map[string]string)
 	for _, a := range svc.SharedAliases {
-		shared[a.Name] = "nd_pdk_types::" + strings.TrimPrefix(a.Target, "types.")
+		shared[a.Name] = "nd_pdk_types::" + strings.TrimPrefix(a.Target, sharedTypesPrefix)
 	}
 	return template.FuncMap{
 		"lower":          strings.ToLower,
@@ -425,7 +425,7 @@ func rustCapabilityFuncMap(cap Capability) template.FuncMap {
 	knownStructs := cap.KnownStructs()
 	shared := make(map[string]string)
 	for _, a := range cap.SharedAliases {
-		shared[a.Name] = "nd_pdk_types::" + strings.TrimPrefix(a.Target, "types.")
+		shared[a.Name] = "nd_pdk_types::" + strings.TrimPrefix(a.Target, sharedTypesPrefix)
 	}
 	return template.FuncMap{
 		"rustDocComment":      RustDocComment,
@@ -443,13 +443,13 @@ func rustCapabilityFuncMap(cap Capability) template.FuncMap {
 		"providerInterface":   func(e Export) string { return e.ProviderInterfaceName() },
 		"registerMacroName":   func(name string) string { return registerMacroName(cap.Name, name) },
 		"rustSharedTarget": func(target string) string {
-			return "nd_pdk_types::" + strings.TrimPrefix(target, "types.")
+			return "nd_pdk_types::" + strings.TrimPrefix(target, sharedTypesPrefix)
 		},
 		// rustSharedNote is the human-facing path for deprecation notes: plugin
 		// authors depend on the nd-pdk umbrella crate, which re-exports nd_pdk_types
 		// as `types`, so they reference these via nd_pdk::types::X.
 		"rustSharedNote": func(target string) string {
-			return "nd_pdk::types::" + strings.TrimPrefix(target, "types.")
+			return "nd_pdk::types::" + strings.TrimPrefix(target, sharedTypesPrefix)
 		},
 		"snakeCase": ToSnakeCase,
 		"indent":    indentSpaces,

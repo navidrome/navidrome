@@ -332,7 +332,7 @@ func resolveSharedAliases(referenced map[string]bool, aliasMap map[string]TypeAl
 	aliasesByCanonical := map[string][]TypeAlias{}
 	for _, a := range aliasMap {
 		if a.IsSharedAlias() {
-			canonical := strings.TrimPrefix(a.Type, "types.")
+			canonical := strings.TrimPrefix(a.Type, sharedTypesPrefix)
 			aliasesByCanonical[canonical] = append(aliasesByCanonical[canonical], a)
 		}
 	}
@@ -346,6 +346,7 @@ func resolveSharedAliases(referenced map[string]bool, aliasMap map[string]TypeAl
 			queue = append(queue, c)
 		}
 	}
+	fieldRefs := map[string]bool{}
 	for len(queue) > 0 {
 		canonical := queue[0]
 		queue = queue[1:]
@@ -356,12 +357,12 @@ func resolveSharedAliases(referenced map[string]bool, aliasMap map[string]TypeAl
 		if !ok {
 			return nil, fmt.Errorf(
 				"shared type %q could not be resolved: pass -shared=<dir> pointing at the shared types package, and ensure %s is defined there",
-				canonical, "types."+canonical,
+				canonical, sharedTypesPrefix+canonical,
 			)
 		}
 		used[canonical] = true
 		for _, f := range def.Fields {
-			fieldRefs := map[string]bool{}
+			clear(fieldRefs)
 			collectReferencedTypes(f.Type, fieldRefs)
 			for t := range fieldRefs {
 				if c, ok := nestedSharedCanonical(t, shared); ok {
@@ -388,11 +389,11 @@ func resolveSharedAliases(referenced map[string]bool, aliasMap map[string]TypeAl
 // not treated as shared, so a local struct sharing a name with a shared type is
 // never misclassified.
 func seedSharedCanonical(name string, aliasMap map[string]TypeAlias) (string, bool) {
-	if rest, ok := strings.CutPrefix(name, "types."); ok {
+	if rest, ok := strings.CutPrefix(name, sharedTypesPrefix); ok {
 		return rest, true
 	}
 	if a, ok := aliasMap[name]; ok && a.IsSharedAlias() {
-		return strings.TrimPrefix(a.Type, "types."), true
+		return strings.TrimPrefix(a.Type, sharedTypesPrefix), true
 	}
 	return "", false
 }
@@ -402,7 +403,7 @@ func seedSharedCanonical(name string, aliasMap map[string]TypeAlias) (string, bo
 // each other by bare name (e.g. Track.Artists is []ArtistRef), so any bare name
 // present in the shared registry counts.
 func nestedSharedCanonical(name string, shared map[string]StructDef) (string, bool) {
-	if rest, ok := strings.CutPrefix(name, "types."); ok {
+	if rest, ok := strings.CutPrefix(name, sharedTypesPrefix); ok {
 		return rest, true
 	}
 	if _, ok := shared[name]; ok {
@@ -821,7 +822,7 @@ func collectReferencedTypes(goType string, refs map[string]bool) {
 	// Qualified reference to the shared `types` package (e.g. types.Track).
 	// These start with a lowercase package selector, so they must be collected
 	// before the uppercase check below would skip them.
-	if strings.HasPrefix(goType, "types.") {
+	if strings.HasPrefix(goType, sharedTypesPrefix) {
 		refs[goType] = true
 		return
 	}

@@ -5,6 +5,10 @@ import (
 	"unicode"
 )
 
+// sharedTypesPrefix is the package selector a capability or host-service source
+// uses to reference the shared types package (e.g. types.Track).
+const sharedTypesPrefix = "types."
+
 // Service represents a parsed host service interface.
 type Service struct {
 	Name          string        // Service name from annotation (e.g., "SubsonicAPI")
@@ -52,7 +56,7 @@ func (t TypeAlias) IsDeprecated() bool {
 // IsSharedAlias reports whether this alias targets the shared types package
 // (e.g. `type TrackInfo = types.Track`).
 func (t TypeAlias) IsSharedAlias() bool {
-	return t.IsAlias && strings.HasPrefix(t.Type, "types.")
+	return t.IsAlias && strings.HasPrefix(t.Type, sharedTypesPrefix)
 }
 
 // ConstGroup represents a group of const definitions.
@@ -671,7 +675,7 @@ func toRustType(goType string, knownStructs map[string]bool, shared map[string]s
 	default:
 		// Qualified reference to the shared types crate (e.g. types.Track ->
 		// nd_pdk_types::Track).
-		if rest, ok := strings.CutPrefix(goType, "types."); ok {
+		if rest, ok := strings.CutPrefix(goType, sharedTypesPrefix); ok {
 			return "nd_pdk_types::" + rest
 		}
 		// Resolve shared-alias names to their canonical nd_pdk_types:: path.
