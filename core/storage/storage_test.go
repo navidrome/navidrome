@@ -83,6 +83,31 @@ var _ = Describe("Storage", func() {
 			Entry("multiple special chars", "/tmp/Song #1 & More?.mp3"),
 		)
 	})
+
+	Describe("LocalPathToURL", func() {
+		It("builds a file:// URL from an absolute path", func() {
+			u, err := LocalPathToURL("/tmp/music")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(u.Scheme).To(Equal("file"))
+			Expect(u.Path).To(Equal("/tmp/music"))
+		})
+
+		It("escapes special characters and decodes them back in Path", func() {
+			u, err := LocalPathToURL("/tmp/Song #1 & More?.mp3")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(u.Path).To(Equal("/tmp/Song #1 & More?.mp3"))
+		})
+
+		It("produces the same url.URL that For uses for a bare path", func() {
+			registry = map[string]constructor{}
+			Register("file", func(url url.URL) Storage { return &fakeLocalStorage{u: url} })
+			s, err := For("/tmp/music")
+			Expect(err).ToNot(HaveOccurred())
+			direct, err := LocalPathToURL("/tmp/music")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(s.(*fakeLocalStorage).u).To(Equal(direct))
+		})
+	})
 })
 
 type fakeLocalStorage struct {
