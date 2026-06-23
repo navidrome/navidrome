@@ -605,9 +605,18 @@ func (f FieldDef) NeedsDefault() bool {
 // ToRustTypeWithStructs converts a Go type to its Rust equivalent,
 // using known struct names instead of serde_json::Value.
 func ToRustTypeWithStructs(goType string, knownStructs map[string]bool) string {
+	return toRustType(goType, knownStructs, nil)
+}
+
+// ToRustTypeWithShared resolves shared-alias names to their canonical nd_pdk_types::X path.
+func ToRustTypeWithShared(goType string, knownStructs map[string]bool, shared map[string]string) string {
+	return toRustType(goType, knownStructs, shared)
+}
+
+func toRustType(goType string, knownStructs map[string]bool, shared map[string]string) string {
 	// Handle pointer types
 	if strings.HasPrefix(goType, "*") {
-		inner := ToRustTypeWithStructs(goType[1:], knownStructs)
+		inner := toRustType(goType[1:], knownStructs, shared)
 		return "Option<" + inner + ">"
 	}
 	// Handle slice types
@@ -615,7 +624,7 @@ func ToRustTypeWithStructs(goType string, knownStructs map[string]bool) string {
 		if goType == "[]byte" {
 			return "Vec<u8>"
 		}
-		inner := ToRustTypeWithStructs(goType[2:], knownStructs)
+		inner := toRustType(goType[2:], knownStructs, shared)
 		return "Vec<" + inner + ">"
 	}
 	// Handle map types
@@ -637,7 +646,7 @@ func ToRustTypeWithStructs(goType string, knownStructs map[string]bool) string {
 		}
 		keyType := rest[:keyEnd]
 		valueType := rest[keyEnd+1:]
-		return "std::collections::HashMap<" + ToRustTypeWithStructs(keyType, knownStructs) + ", " + ToRustTypeWithStructs(valueType, knownStructs) + ">"
+		return "std::collections::HashMap<" + toRustType(keyType, knownStructs, shared) + ", " + toRustType(valueType, knownStructs, shared) + ">"
 	}
 
 	switch goType {
@@ -660,6 +669,12 @@ func ToRustTypeWithStructs(goType string, knownStructs map[string]bool) string {
 	case "interface{}", "any":
 		return "serde_json::Value"
 	default:
+		// Resolve shared-alias names to their canonical nd_pdk_types:: path.
+		if shared != nil {
+			if t, ok := shared[goType]; ok {
+				return t
+			}
+		}
 		// Check if this is a known struct type
 		if knownStructs != nil && knownStructs[goType] {
 			return goType

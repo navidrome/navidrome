@@ -154,7 +154,7 @@ pub struct SimilarArtistsRequest {
 pub struct SimilarArtistsResponse {
     /// Artists is the list of similar artists.
     #[serde(default)]
-    pub artists: Vec<ArtistRef>,
+    pub artists: Vec<nd_pdk_types::ArtistRef>,
 }
 /// SimilarSongsByAlbumRequest is the request for GetSimilarSongsByAlbum.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -219,7 +219,7 @@ pub struct SimilarSongsByTrackRequest {
 pub struct SimilarSongsResponse {
     /// Songs is the list of similar songs.
     #[serde(default)]
-    pub songs: Vec<SongRef>,
+    pub songs: Vec<nd_pdk_types::SongRef>,
 }
 /// TopSongsRequest is the request for GetArtistTopSongs.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -244,7 +244,7 @@ pub struct TopSongsRequest {
 pub struct TopSongsResponse {
     /// Songs is the list of top songs.
     #[serde(default)]
-    pub songs: Vec<SongRef>,
+    pub songs: Vec<nd_pdk_types::SongRef>,
 }
 
 /// Error represents an error from a capability method.

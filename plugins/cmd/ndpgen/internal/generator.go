@@ -179,6 +179,10 @@ func formatDoc(doc string) string {
 // rustFuncMap returns the template functions for Rust client code generation.
 func rustFuncMap(svc Service) template.FuncMap {
 	knownStructs := svc.KnownStructs()
+	shared := make(map[string]string)
+	for _, a := range svc.SharedAliases {
+		shared[a.Name] = "nd_pdk_types::" + strings.TrimPrefix(a.Target, "types.")
+	}
 	return template.FuncMap{
 		"lower":          strings.ToLower,
 		"exportName":     func(m Method) string { return m.FunctionName(svc.ExportPrefix()) },
@@ -188,7 +192,7 @@ func rustFuncMap(svc Service) template.FuncMap {
 		"rustDocComment": RustDocComment,
 		"rustType":       func(p Param) string { return p.RustTypeWithStructs(knownStructs) },
 		"rustParamType":  func(p Param) string { return p.RustParamTypeWithStructs(knownStructs) },
-		"fieldRustType":  func(f FieldDef) string { return f.RustType(knownStructs) },
+		"fieldRustType":  func(f FieldDef) string { return ToRustTypeWithShared(f.Type, knownStructs, shared) },
 	}
 }
 
@@ -419,6 +423,10 @@ func GenerateCapabilityGoStub(cap Capability, pkgName string) ([]byte, error) {
 // rustCapabilityFuncMap returns template functions for Rust capability code generation.
 func rustCapabilityFuncMap(cap Capability) template.FuncMap {
 	knownStructs := cap.KnownStructs()
+	shared := make(map[string]string)
+	for _, a := range cap.SharedAliases {
+		shared[a.Name] = "nd_pdk_types::" + strings.TrimPrefix(a.Target, "types.")
+	}
 	return template.FuncMap{
 		"rustDocComment":      RustDocComment,
 		"rustTypeAlias":       rustTypeAlias,
@@ -426,7 +434,7 @@ func rustCapabilityFuncMap(cap Capability) template.FuncMap {
 		"rustConstName":       rustConstName,
 		"rustFieldName":       func(name string) string { return ToSnakeCase(name) },
 		"rustMethodName":      func(name string) string { return ToSnakeCase(name) },
-		"fieldRustType":       func(f FieldDef) string { return f.RustType(knownStructs) },
+		"fieldRustType":       func(f FieldDef) string { return ToRustTypeWithShared(f.Type, knownStructs, shared) },
 		"rustOutputType":      rustOutputType,
 		"isPrimitiveRust":     isPrimitiveRustType,
 		"skipSerializingFunc": skipSerializingFunc,

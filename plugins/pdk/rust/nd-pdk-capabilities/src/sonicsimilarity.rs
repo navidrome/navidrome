@@ -26,9 +26,9 @@ pub type SongRef = nd_pdk_types::SongRef;
 #[serde(rename_all = "camelCase")]
 pub struct FindSonicPathRequest {
     #[serde(default)]
-    pub start_song: SongRef,
+    pub start_song: nd_pdk_types::SongRef,
     #[serde(default)]
-    pub end_song: SongRef,
+    pub end_song: nd_pdk_types::SongRef,
     #[serde(default)]
     pub count: i32,
 }
@@ -37,7 +37,7 @@ pub struct FindSonicPathRequest {
 #[serde(rename_all = "camelCase")]
 pub struct GetSonicSimilarTracksRequest {
     #[serde(default)]
-    pub song: SongRef,
+    pub song: nd_pdk_types::SongRef,
     #[serde(default)]
     pub count: i32,
 }
@@ -46,7 +46,7 @@ pub struct GetSonicSimilarTracksRequest {
 #[serde(rename_all = "camelCase")]
 pub struct SonicMatch {
     #[serde(default)]
-    pub song: SongRef,
+    pub song: nd_pdk_types::SongRef,
     #[serde(default)]
     pub similarity: f64,
 }

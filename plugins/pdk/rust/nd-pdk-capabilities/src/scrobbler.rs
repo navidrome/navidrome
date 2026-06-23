@@ -49,7 +49,7 @@ pub struct NowPlayingRequest {
     pub username: String,
     /// Track is the track currently playing.
     #[serde(default)]
-    pub track: TrackInfo,
+    pub track: nd_pdk_types::TrackInfo,
     /// Position is the current playback position in seconds.
     #[serde(default)]
     pub position: i32,
@@ -63,7 +63,7 @@ pub struct PlaybackReportRequest {
     pub username: String,
     /// Track is the track being played.
     #[serde(default)]
-    pub track: TrackInfo,
+    pub track: nd_pdk_types::TrackInfo,
     /// State is the current playback state (starting/playing/paused/stopped/expired).
     #[serde(default)]
     pub state: String,
@@ -92,7 +92,7 @@ pub struct ScrobbleRequest {
     pub username: String,
     /// Track is the track that was played.
     #[serde(default)]
-    pub track: TrackInfo,
+    pub track: nd_pdk_types::TrackInfo,
     /// Timestamp is the Unix timestamp when the track started playing.
     #[serde(default)]
     pub timestamp: i64,
