@@ -239,7 +239,11 @@ func parseCapabilityFile(fset *token.FileSet, path string, structMap map[string]
 			collectAllStructDependencies(referencedTypes, structMap)
 
 			// Resolve shared-type aliases against the registry
-			capability.SharedAliases = resolveSharedAliases(referencedTypes, aliasMap, shared)
+			sharedAliases, err := resolveSharedAliases(referencedTypes, aliasMap, shared)
+			if err != nil {
+				return nil, err
+			}
+			capability.SharedAliases = sharedAliases
 
 			// Build a set of names already covered by SharedAliases so we don't
 			// emit them again in TypeAliases (which would cause a redeclaration).
@@ -304,10 +308,8 @@ func parseCapabilityFile(fset *token.FileSet, path string, structMap map[string]
 // resolveSharedAliases attaches SharedAlias entries for any referenced type that
 // is a Go alias to the shared `types` package, transitively following the shared
 // struct's own field references so nested shared types are aliased too.
-func resolveSharedAliases(referenced map[string]bool, aliasMap map[string]TypeAlias, shared map[string]StructDef) []SharedAlias {
-	if len(shared) == 0 {
-		return nil
-	}
+// Returns an error if an alias pointing at `types.*` cannot be found in the shared registry.
+func resolveSharedAliases(referenced map[string]bool, aliasMap map[string]TypeAlias, shared map[string]StructDef) ([]SharedAlias, error) {
 	out := map[string]SharedAlias{}
 	var queue []string
 	for name := range referenced {
@@ -327,7 +329,13 @@ func resolveSharedAliases(referenced map[string]bool, aliasMap map[string]TypeAl
 			continue
 		}
 		short := strings.TrimPrefix(a.Type, "types.")
-		def := shared[short]
+		def, ok := shared[short]
+		if !ok {
+			return nil, fmt.Errorf(
+				"shared-type alias %q (= %s) could not be resolved: pass -shared=<dir> pointing at the shared types package, and ensure %s is defined there",
+				a.Name, a.Type, a.Type,
+			)
+		}
 		out[name] = SharedAlias{Name: a.Name, Target: a.Type, Doc: a.Doc, Def: def}
 		for _, f := range def.Fields {
 			clear(more)
@@ -339,7 +347,7 @@ func resolveSharedAliases(referenced map[string]bool, aliasMap map[string]TypeAl
 	}
 	result := slices.Collect(maps.Values(out))
 	slices.SortFunc(result, func(a, b SharedAlias) int { return strings.Compare(a.Name, b.Name) })
-	return result
+	return result, nil
 }
 
 // collectAllStructDependencies recursively collects all struct types referenced by other structs.
@@ -489,7 +497,11 @@ func parseServiceFile(fset *token.FileSet, path string, pkgAliasMap map[string]T
 			}
 
 			// Resolve shared-type aliases against the registry
-			service.SharedAliases = resolveSharedAliases(referencedTypes, pkgAliasMap, shared)
+			sharedAliases, err := resolveSharedAliases(referencedTypes, pkgAliasMap, shared)
+			if err != nil {
+				return nil, err
+			}
+			service.SharedAliases = sharedAliases
 
 			// Attach referenced structs to the service (sorted for stable output)
 			for _, typeName := range slices.Sorted(maps.Keys(referencedTypes)) {

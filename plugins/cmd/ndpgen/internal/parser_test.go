@@ -213,6 +213,32 @@ type RegularInterface interface {
 			Expect(services).To(BeEmpty())
 		})
 
+		It("returns an error when a shared-type alias cannot be resolved (no registry)", func() {
+			fileA := `package host
+
+import "github.com/navidrome/navidrome/plugins/types"
+
+type TrackInfo = types.TrackInfo
+`
+			fileB := `package host
+
+import "context"
+
+//nd:hostservice name=Matcher permission=matcher
+type MatcherService interface {
+	//nd:hostfunc
+	Match(ctx context.Context, t TrackInfo) (bool, error)
+}
+`
+			Expect(os.WriteFile(filepath.Join(tmpDir, "aliases.go"), []byte(fileA), 0600)).To(Succeed())
+			Expect(os.WriteFile(filepath.Join(tmpDir, "matcher.go"), []byte(fileB), 0600)).To(Succeed())
+
+			_, err := ParseDirectoryWithShared(tmpDir, nil)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("TrackInfo"))
+			Expect(err.Error()).To(ContainSubstring("-shared"))
+		})
+
 		It("resolves shared-type aliases declared in a sibling file (package-wide alias map)", func() {
 			// File A: declares the shared-type alias in the same package
 			fileA := `package host
@@ -586,25 +612,54 @@ type Scrobbler interface {
 `
 			Expect(os.WriteFile(filepath.Join(tmpDir, "scrobbler.go"), []byte(src), 0600)).To(Succeed())
 
-			caps, err := ParseCapabilities(tmpDir)
+			shared := map[string]StructDef{
+				"ArtistRef": {Name: "ArtistRef", Fields: []FieldDef{{Name: "Name", Type: "string", JSONTag: "name"}}},
+			}
+			caps, err := ParseCapabilitiesWithShared(tmpDir, shared)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(caps).To(HaveLen(1))
 
-			byName := map[string]TypeAlias{}
-			for _, a := range caps[0].TypeAliases {
-				byName[a.Name] = a
+			// ArtistRef is a shared-type alias (types.*): it lands in SharedAliases, not TypeAliases.
+			sharedByName := map[string]SharedAlias{}
+			for _, a := range caps[0].SharedAliases {
+				sharedByName[a.Name] = a
 			}
-			Expect(byName).To(HaveKey("ArtistRef"))
-			Expect(byName["ArtistRef"].IsAlias).To(BeTrue())
-			Expect(byName["ArtistRef"].Type).To(Equal("types.ArtistRef"))
-			Expect(byName["ArtistRef"].IsDeprecated()).To(BeTrue())
+			Expect(sharedByName).To(HaveKey("ArtistRef"))
+			Expect(sharedByName["ArtistRef"].Target).To(Equal("types.ArtistRef"))
 
-			Expect(byName).To(HaveKey("ScrobblerError"))
-			Expect(byName["ScrobblerError"].IsAlias).To(BeFalse())
+			// ScrobblerError is a plain defined type: it stays in TypeAliases.
+			typeByName := map[string]TypeAlias{}
+			for _, a := range caps[0].TypeAliases {
+				typeByName[a.Name] = a
+			}
+			Expect(typeByName).To(HaveKey("ScrobblerError"))
+			Expect(typeByName["ScrobblerError"].IsAlias).To(BeFalse())
 		})
 	})
 
 	Describe("ParseCapabilitiesWithShared", func() {
+		It("returns an error when a shared-type alias cannot be resolved (no registry)", func() {
+			src := `package capabilities
+
+import "github.com/navidrome/navidrome/plugins/types"
+
+// TrackInfo is an alias for the shared type.
+type TrackInfo = types.TrackInfo
+
+//nd:capability name=nowplaying required=true
+type NowPlaying interface {
+	//nd:export name=nd_now_playing
+	NowPlaying(TrackInfo) error
+}
+`
+			Expect(os.WriteFile(filepath.Join(tmpDir, "nowplaying.go"), []byte(src), 0600)).To(Succeed())
+
+			_, err := ParseCapabilitiesWithShared(tmpDir, nil)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("TrackInfo"))
+			Expect(err.Error()).To(ContainSubstring("-shared"))
+		})
+
 		It("resolves shared-type aliases against the registry", func() {
 			shared := map[string]StructDef{
 				"ArtistRef": {Name: "ArtistRef", Fields: []FieldDef{{Name: "Name", Type: "string", JSONTag: "name"}}},
