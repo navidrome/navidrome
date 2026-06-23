@@ -4,6 +4,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/navidrome/navidrome/tests"
@@ -106,6 +107,18 @@ var _ = Describe("Storage", func() {
 			direct, err := LocalPathToURL("/tmp/music")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(s.(*fakeLocalStorage).u).To(Equal(direct))
+		})
+
+		// On Windows, library paths are drive-lettered (e.g. C:\Music). This
+		// exercises the real conversion to confirm a drive-letter path yields a
+		// usable file:// URL on the actual platform (no-op on Unix).
+		It("handles a Windows drive-letter path", func() {
+			if runtime.GOOS != "windows" {
+				Skip("Windows-specific path handling")
+			}
+			u, err := LocalPathToURL(`C:\Music`)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(u.Scheme).To(Equal("file"))
 		})
 	})
 })
