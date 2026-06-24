@@ -123,37 +123,54 @@ var _ = Describe("File Caches", func() {
 		It("serves a concurrent reader from an in-progress write and marks complete once", func() {
 			pr, pw := io.Pipe()
 			fc := callNewFileCache("test", "10MB", "test", 0, func(ctx context.Context, arg Item) (io.Reader, error) {
-				return pr, nil // a slow, still-being-produced stream
+				return pr, nil // slow, still-being-produced stream
 			})
 
-			// First Get → MISS, starts the write goroutine consuming pr.
+			// First Get → MISS; the cache starts copying pr into the entry in a goroutine.
 			s1, err := fc.Get(context.Background(), &testArg{"live"})
 			Expect(err).To(BeNil())
 
-			// Feed some bytes, then a second client attaches mid-stream.
-			go func() {
-				_, _ = pw.Write([]byte("hello "))
-				_, _ = pw.Write([]byte("world"))
-				_ = pw.Close()
-			}()
+			// Write the first chunk so the entry exists with in-flight bytes,
+			// but leave the pipe open so the second reader can attach mid-stream.
+			// io.Pipe writes block until the cache goroutine reads them, giving us
+			// a deterministic happens-before: the entry is live before we call Get again.
+			_, err = pw.Write([]byte("hello "))
+			Expect(err).To(BeNil())
 
-			got1, _ := io.ReadAll(s1)
+			// Second Get while the pipe is still open → attaches to the in-progress entry.
+			s2, err := fc.Get(context.Background(), &testArg{"live"})
+			Expect(err).To(BeNil())
+
+			// Drain both readers concurrently; they race against the producer below.
+			ch1 := make(chan []byte, 1)
+			ch2 := make(chan []byte, 1)
+			go func() { b, _ := io.ReadAll(s1); ch1 <- b }()
+			go func() { b, _ := io.ReadAll(s2); ch2 <- b }()
+
+			// Deliver the rest of the stream and close; both draining goroutines must see it.
+			_, err = pw.Write([]byte("world"))
+			Expect(err).To(BeNil())
+			Expect(pw.Close()).To(Succeed())
+
+			Expect(string(<-ch1)).To(Equal("hello world"))
+			Expect(string(<-ch2)).To(Equal("hello world"))
 			_ = s1.Close()
-			Expect(string(got1)).To(Equal("hello world"))
+			_ = s2.Close()
 
-			// After completion, a marker exists and a later Get is a HIT with full data.
+			// Exactly one completion marker must appear.
 			dataPath := fcSpreadFS(fc).KeyMapper((&testArg{"live"}).Key())
 			Eventually(func() bool {
 				_, e := os.Stat(dataPath + ".complete")
 				return e == nil
 			}).Should(BeTrue())
 
-			s2, err := fc.Get(context.Background(), &testArg{"live"})
+			// Steady-state HIT: full data, Cached flag set.
+			s3, err := fc.Get(context.Background(), &testArg{"live"})
 			Expect(err).To(BeNil())
-			got2, _ := io.ReadAll(s2)
-			_ = s2.Close()
-			Expect(s2.Cached).To(BeTrue())
-			Expect(string(got2)).To(Equal("hello world"))
+			got3, _ := io.ReadAll(s3)
+			_ = s3.Close()
+			Expect(s3.Cached).To(BeTrue())
+			Expect(string(got3)).To(Equal("hello world"))
 		})
 
 		Context("reader errors", func() {
