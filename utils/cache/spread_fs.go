@@ -63,7 +63,7 @@ func (sfs *spreadFS) Reload(f func(key string, name string)) error {
 		if strings.HasSuffix(path, completeMarkerSuffix) {
 			dataPath := strings.TrimSuffix(absoluteFilePath, completeMarkerSuffix)
 			if _, statErr := os.Stat(dataPath); os.IsNotExist(statErr) {
-				_ = os.Remove(absoluteFilePath) //nolint:gosec
+				_ = os.Remove(absoluteFilePath) //nolint:gosec // best-effort cleanup; re-swept on next Reload
 			}
 			return nil
 		}
@@ -87,7 +87,7 @@ func (sfs *spreadFS) Reload(f func(key string, name string)) error {
 			} else {
 				// Steady state: an unmarked file is a crash partial. Discard it.
 				log.Debug("Removing incomplete cache file", "file", absoluteFilePath)
-				_ = os.Remove(absoluteFilePath) //nolint:gosec
+				_ = os.Remove(absoluteFilePath) //nolint:gosec // best-effort cleanup; re-swept on next Reload
 				return nil
 			}
 		}
