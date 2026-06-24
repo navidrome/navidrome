@@ -754,7 +754,7 @@ func bareNullInclusion(defaultVal any, cmp comparator, value any) (wrapNull, ok 
 		if cmp != cmpEq && cmp != cmpNe {
 			return false, false
 		}
-		v, okV := toBool(value)
+		v, okV := criteria.ToBool(value)
 		if !okV {
 			// Non-scalar or unparseable value (e.g. a list): keep COALESCE, mirroring the numeric path.
 			return false, false
@@ -804,22 +804,6 @@ func toFloat(v any) (float64, bool) {
 		return f, err == nil
 	default:
 		return 0, false
-	}
-}
-
-// toBool coerces a scalar criteria value to bool. Boolean criteria fields are normalized to a real
-// bool at unmarshal (see model/criteria normalizeBoolValue); the string fallback (via
-// strconv.ParseBool) only matters for criteria built directly in Go. ok=false for non-scalar or
-// unparseable values keeps the caller on the COALESCE form.
-func toBool(v any) (bool, bool) {
-	switch b := v.(type) {
-	case bool:
-		return b, true
-	case string:
-		v, err := strconv.ParseBool(b)
-		return v, err == nil
-	default:
-		return false, false
 	}
 }
 
