@@ -749,14 +749,17 @@ func annotationCond(f smartPlaylistField, cmp comparator, value any) squirrel.Sq
 // which case the caller keeps the COALESCE form. When ok=true, wrapNull is true iff the default
 // value itself satisfies the predicate (so missing rows would match and must be preserved).
 func bareNullInclusion(defaultVal any, cmp comparator, value any) (wrapNull, ok bool) {
-	if _, isBool := defaultVal.(bool); isBool {
+	if b, isBool := defaultVal.(bool); isBool {
 		// Bool columns only have an exact bare form for equality; ordering operators have no clean
 		// index form, so fall back to COALESCE.
 		if cmp != cmpEq && cmp != cmpNe {
 			return false, false
 		}
-		b := defaultVal.(bool)
-		v := toBool(value)
+		v, okV := toBool(value)
+		if !okV {
+			// Non-scalar or unparseable value (e.g. a list): keep COALESCE, mirroring the numeric path.
+			return false, false
+		}
 		if cmp == cmpNe {
 			return b != v, true
 		}
@@ -796,11 +799,16 @@ func toFloat(v any) (float64, bool) {
 	return f, err == nil
 }
 
-// toBool coerces a criteria value to bool, accepting the same string forms as strconv.ParseBool
-// (true/false, 1/0, t/f, ...). It mirrors the normalization the criteria layer applies at unmarshal.
-func toBool(v any) bool {
-	b, _ := cast.ToBoolE(v)
-	return b
+// toBool coerces a scalar criteria value to bool, accepting the same string forms as
+// strconv.ParseBool (true/false, 1/0, t/f, ...). It reports ok=false for non-scalar (slice) or
+// unparseable values so the caller falls back to the COALESCE form. nil is rejected explicitly
+// because cast treats it as false.
+func toBool(v any) (bool, bool) {
+	if v == nil {
+		return false, false
+	}
+	b, err := cast.ToBoolE(v)
+	return b, err == nil
 }
 
 // sqlLiteral renders an annotation field's COALESCE default as a SQL literal for ORDER BY.

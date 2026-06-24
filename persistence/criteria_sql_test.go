@@ -90,6 +90,10 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 		// comparators keep the COALESCE form so the missing-row default is honored exactly.
 		Entry("gt bool keeps coalesce", criteria.Gt{"loved": false},
 			"COALESCE(annotation.starred, false) > ?", false),
+		// A list value on a bool field is non-scalar, so it keeps the COALESCE form too (same as the
+		// numeric list case) — otherwise a NULL column would diverge from the original.
+		Entry("is bool list keeps coalesce", criteria.Is{"loved": []any{true}},
+			"COALESCE(annotation.starred, false) IN (?)", true),
 		Entry("tag is", criteria.Is{"genre": "Rock"}, "exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value = ?)", "Rock"),
 		Entry("tag is not", criteria.IsNot{"genre": "Rock"}, "not exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value = ?)", "Rock"),
 		Entry("tag contains", criteria.Contains{"genre": "Rock"}, "exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value LIKE ?)", "%Rock%"),
@@ -257,6 +261,11 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 	It("returns an error when isMissing has a non-boolean value", func() {
 		_, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: criteria.IsMissing{"genre": "hello"}}).Where()
 		Expect(err).To(MatchError(ContainSubstring("invalid boolean value for 'missing' expression")))
+	})
+
+	It("returns an error for a range over a tag/role field", func() {
+		_, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: criteria.InTheRange{"rate": []int{1, 5}}}).Where()
+		Expect(err).To(MatchError(ContainSubstring("range operator not supported for tag/role field")))
 	})
 
 	Describe("sort", func() {
