@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"slices"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -333,14 +332,10 @@ func buildMovements(tags model.Tags) []responses.Movement {
 	for i, name := range names {
 		m := responses.Movement{Name: name}
 		if i < len(numbers) {
-			if n, err := strconv.ParseInt(numbers[i], 10, 32); err == nil {
-				m.Number = int32(n)
-			}
+			m.Number = number.ParseInt[int32](numbers[i])
 		}
 		if i < len(counts) {
-			if c, err := strconv.ParseInt(counts[i], 10, 32); err == nil {
-				m.Count = int32(c)
-			}
+			m.Count = number.ParseInt[int32](counts[i])
 		}
 		movements = append(movements, m)
 	}
