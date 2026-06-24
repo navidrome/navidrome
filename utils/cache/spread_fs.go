@@ -15,7 +15,7 @@ import (
 )
 
 const completeMarkerSuffix = ".complete"
-const sentinelName = ".complete-migrated"
+const sentinelName = ".nd-migrated"
 
 type spreadFS struct {
 	root string

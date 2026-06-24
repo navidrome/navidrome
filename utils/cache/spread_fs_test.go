@@ -92,13 +92,13 @@ var _ = Describe("Spread FS", func() {
 			Expect(actual).To(ContainElements("aaaaa", "bbbbb", "ccccc"))
 			Expect(actual).To(HaveLen(3))
 
-			_, sentinelErr := os.Stat(filepath.Join(rootDir, ".complete-migrated"))
+			_, sentinelErr := os.Stat(filepath.Join(rootDir, ".nd-migrated"))
 			Expect(sentinelErr).To(BeNil())
 		})
 
 		It("after migration, adopts only marked files and deletes unmarked partials", func() {
 			// Pretend migration already happened.
-			Expect(os.WriteFile(filepath.Join(rootDir, ".complete-migrated"), nil, 0600)).To(Succeed())
+			Expect(os.WriteFile(filepath.Join(rootDir, ".nd-migrated"), nil, 0600)).To(Succeed())
 
 			good := makeData("good")
 			Expect(fs.MarkComplete(good)).To(Succeed())
@@ -114,7 +114,7 @@ var _ = Describe("Spread FS", func() {
 		})
 
 		It("ignores and cleans orphan markers", func() {
-			Expect(os.WriteFile(filepath.Join(rootDir, ".complete-migrated"), nil, 0600)).To(Succeed())
+			Expect(os.WriteFile(filepath.Join(rootDir, ".nd-migrated"), nil, 0600)).To(Succeed())
 			orphan := fs.KeyMapper("orphan") + ".complete"
 			Expect(os.MkdirAll(filepath.Dir(orphan), 0755)).To(Succeed())
 			Expect(os.WriteFile(orphan, nil, 0600)).To(Succeed())
