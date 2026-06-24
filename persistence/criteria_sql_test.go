@@ -74,6 +74,10 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 			"((annotation.play_count >= ? OR annotation.play_count IS NULL) AND (annotation.play_count <= ? OR annotation.play_count IS NULL))", -1, 5),
 		Entry("in range above default", criteria.InTheRange{"playCount": []int{1, 5}},
 			"(annotation.play_count >= ? AND (annotation.play_count <= ? OR annotation.play_count IS NULL))", 1, 5),
+		// A list value can't drive the index and a default-inclusive list has per-element NULL
+		// semantics, so the COALESCE form is kept to stay equivalent to the original.
+		Entry("is list keeps coalesce", criteria.Is{"playCount": []int{0, 3}},
+			"COALESCE(annotation.play_count, 0) IN (?,?)", 0, 3),
 		Entry("tag is", criteria.Is{"genre": "Rock"}, "exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value = ?)", "Rock"),
 		Entry("tag is not", criteria.IsNot{"genre": "Rock"}, "not exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value = ?)", "Rock"),
 		Entry("tag contains", criteria.Contains{"genre": "Rock"}, "exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value LIKE ?)", "%Rock%"),
