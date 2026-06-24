@@ -257,6 +257,26 @@ var _ = Describe("File Caches", func() {
 					return os.IsNotExist(e1) && os.IsNotExist(e2)
 				}).Should(BeTrue())
 			})
+
+			It("does not write a completion marker when the write fails after partial bytes", func() {
+				// Mimics a transcode that produces real output and then dies:
+				// the bytes land on disk, but the entry must NOT be marked complete.
+				fc := callNewFileCache("test", "10MB", "test", 0, func(ctx context.Context, arg Item) (io.Reader, error) {
+					return &partialThenErrReader{data: []byte("PARTIAL-OUTPUT"), err: errors.New("transcoder died")}, nil
+				})
+				s, err := fc.Get(context.Background(), &testArg{"partial"})
+				Expect(err).To(BeNil())
+				_, _ = io.Copy(io.Discard, s)
+				_ = s.Close()
+
+				dataPath := fcSpreadFS(fc).KeyMapper((&testArg{"partial"}).Key())
+				// The marker must never appear for a failed write. Give the async
+				// writer time to finish, then assert the marker stays absent.
+				Consistently(func() bool {
+					_, e := os.Stat(dataPath + ".complete")
+					return os.IsNotExist(e)
+				}).Should(BeTrue())
+			})
 		})
 	})
 })
@@ -268,6 +288,22 @@ func (t *testArg) Key() string { return t.s }
 type errFakeReader struct{ err error }
 
 func (e errFakeReader) Read([]byte) (int, error) { return 0, e.err }
+
+// partialThenErrReader emits data once, then fails — mimicking a transcoder
+// that produces some output and then dies mid-stream.
+type partialThenErrReader struct {
+	data []byte
+	err  error
+	done bool
+}
+
+func (r *partialThenErrReader) Read(p []byte) (int, error) {
+	if r.done {
+		return 0, r.err
+	}
+	r.done = true
+	return copy(p, r.data), nil
+}
 
 func fcSpreadFS(fc *fileCache) *spreadFS {
 	return fc.fs
