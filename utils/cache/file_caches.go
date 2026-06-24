@@ -257,7 +257,7 @@ func (fc *fileCache) markComplete(ctx context.Context, key string) {
 	if fc.fs == nil {
 		return
 	}
-	if err := fc.fs.MarkComplete(fc.fs.KeyMapper(key)); err != nil {
+	if err := fc.fs.MarkComplete(key); err != nil {
 		log.Warn(ctx, "Error writing cache completion marker", "cache", fc.name, "key", key, err)
 	}
 }

@@ -132,11 +132,13 @@ func (sfs *spreadFS) markerPath(dataPath string) string {
 	return dataPath + completeMarkerSuffix
 }
 
-// MarkComplete records that the data file at dataPath was written in full.
+// MarkComplete records that the cache entry for key was written in full.
 // Only files with a marker are adopted on the next Reload; this is what
 // distinguishes a complete cache entry from a partial one left by a crash.
-func (sfs *spreadFS) MarkComplete(dataPath string) error {
-	f, err := os.OpenFile(sfs.markerPath(dataPath), os.O_CREATE|os.O_WRONLY, 0600)
+// key may be an original cache key or an already-mapped data path; KeyMapper
+// is idempotent for the latter (see KeyMapper).
+func (sfs *spreadFS) MarkComplete(key string) error {
+	f, err := os.OpenFile(sfs.markerPath(sfs.KeyMapper(key)), os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
 	}
