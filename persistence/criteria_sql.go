@@ -653,10 +653,13 @@ func annotationField(name string) (smartPlaylistField, bool) {
 	return f, true
 }
 
-// coalesceExpr renders COALESCE(col, default) for an annotation field with a coalesce default. Used
-// where index-friendliness does not apply (ORDER BY, list comparisons) and the original
-// missing-row-as-default semantics must be kept.
-func coalesceExpr(f smartPlaylistField) string {
+// coalesced returns the field expression wrapped in COALESCE(col, default) when it has a coalesce
+// default, and the bare expression otherwise. Used where index-friendliness does not apply (ORDER
+// BY, list comparisons) and the original missing-row-as-default semantics must be kept.
+func (f smartPlaylistField) coalesced() string {
+	if f.coalesceDefault == nil {
+		return f.expr
+	}
 	return fmt.Sprintf("COALESCE(%s, %s)", f.expr, sqlLiteral(*f.coalesceDefault))
 }
 
@@ -673,7 +676,7 @@ func comparisonExpr(values map[string]any, cmp comparator) (squirrel.Sqlizer, er
 			// A list value (e.g. IN (...)) can't drive the index and its NULL semantics differ
 			// per element, so keep the COALESCE form to stay equivalent to the original.
 			if reflect.TypeOf(value) != nil && reflect.TypeOf(value).Kind() == reflect.Slice {
-				return squirrelCmp(cmp, map[string]any{coalesceExpr(f): value}), nil
+				return squirrelCmp(cmp, map[string]any{f.coalesced(): value}), nil
 			}
 			return annotationCond(f.expr, *f.coalesceDefault, cmp, value), nil
 		}
@@ -863,12 +866,9 @@ func sortExpr(sortField string) (string, bool) {
 		if !ok || field.expr == "" {
 			return "", false
 		}
-		mapped = field.expr
 		// Sorting keeps the COALESCE default so missing-annotation rows sort as that default
 		// (filtering drops COALESCE for index use, but ORDER BY has no index to preserve here).
-		if field.coalesceDefault != nil {
-			mapped = coalesceExpr(field)
-		}
+		mapped = field.coalesced()
 	}
 	if info.Numeric {
 		mapped = fmt.Sprintf("CAST(%s AS REAL)", mapped)
