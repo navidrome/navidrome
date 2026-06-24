@@ -291,9 +291,6 @@ func likeCond(col, pattern string, negate bool) squirrel.Sqlizer {
 }
 
 func rangeExpr(values map[string]any) (squirrel.Sqlizer, error) {
-	if len(values) != 1 {
-		return nil, fmt.Errorf("range criteria must contain exactly one field, got %d", len(values))
-	}
 	field, value, info, ok := singleField(values)
 	if !ok {
 		return nil, fmt.Errorf("invalid field in criteria: %s", field)
@@ -631,17 +628,18 @@ func sqlFields(values map[string]any) (map[string]any, error) {
 		if info.IsTag || info.IsRole {
 			return nil, fmt.Errorf("tag and role criteria must contain exactly one field: %s", field)
 		}
-		f, ok := smartPlaylistFields[info.Name()]
-		if !ok || f.expr == "" {
+		sqlField, ok := fieldExpr(info.Name())
+		if !ok || sqlField == "" {
 			return nil, fmt.Errorf("invalid field in criteria: %s", field)
 		}
-		// Use the coalesced form for annotation fields: this path handles the multi-field fallback
-		// (where the index-friendly single-field optimization in comparisonExpr/likeExpr does not
-		// apply), so it must keep the original missing-row-as-default semantics. coalesced() is the
-		// bare column for non-annotation fields, so this is a no-op for them.
-		fields[f.coalesced()] = value
+		fields[sqlField] = value
 	}
 	return fields, nil
+}
+
+func fieldExpr(name string) (string, bool) {
+	field, ok := smartPlaylistFields[strings.ToLower(name)]
+	return field.expr, ok
 }
 
 // comparator is one of the scalar SQL comparison operators used by smart playlist criteria.
