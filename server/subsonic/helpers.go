@@ -333,12 +333,12 @@ func buildMovements(tags model.Tags) []responses.Movement {
 	for i, name := range names {
 		m := responses.Movement{Name: name}
 		if i < len(numbers) {
-			if n, err := strconv.Atoi(numbers[i]); err == nil {
+			if n, err := strconv.ParseInt(numbers[i], 10, 32); err == nil {
 				m.Number = int32(n)
 			}
 		}
 		if i < len(counts) {
-			if c, err := strconv.Atoi(counts[i]); err == nil {
+			if c, err := strconv.ParseInt(counts[i], 10, 32); err == nil {
 				m.Count = int32(c)
 			}
 		}

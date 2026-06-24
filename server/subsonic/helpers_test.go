@@ -2,6 +2,7 @@ package subsonic
 
 import (
 	"context"
+	"encoding/json"
 	"net/http/httptest"
 	"time"
 
@@ -382,6 +383,19 @@ var _ = Describe("helpers", func() {
 				Expect(osChild).ToNot(BeNil())
 				Expect(osChild.Works).To(BeNil())
 				Expect(osChild.Movements).To(BeNil())
+			})
+
+			It("serializes works and movements to spec-compliant JSON", func() {
+				mf.Tags = model.Tags{
+					model.TagWork:           {"Symphony No. 5"},
+					model.TagMovementName:   {"I. Allegro"},
+					model.TagMovementNumber: {"1"},
+				}
+				osChild := osChildFromMediaFile(ctx, mf)
+				data, err := json.Marshal(osChild)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(string(data)).To(ContainSubstring(`"works":[{"name":"Symphony No. 5"}]`))
+				Expect(string(data)).To(ContainSubstring(`"movements":[{"name":"I. Allegro","number":1}]`))
 			})
 		})
 
