@@ -17,6 +17,7 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/gg"
+	"github.com/navidrome/navidrome/utils/number"
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
@@ -149,6 +150,55 @@ func (mf MediaFile) StructuredLyrics() (LyricList, error) {
 // String is mainly used for debugging
 func (mf MediaFile) String() string {
 	return mf.Path
+}
+
+type Work struct {
+	Name      string
+	MbzWorkID string
+}
+
+type Movement struct {
+	Name   string
+	Number int32
+	Count  int32
+}
+
+func (mf MediaFile) Works() []Work {
+	names := mf.Tags.Values(TagWork)
+	if len(names) == 0 {
+		return nil
+	}
+	ids := mf.Tags.Values(TagMusicBrainzWorkID)
+	works := make([]Work, 0, len(names))
+	for i, name := range names {
+		w := Work{Name: name}
+		if i < len(ids) {
+			w.MbzWorkID = ids[i]
+		}
+		works = append(works, w)
+	}
+	return works
+}
+
+func (mf MediaFile) Movements() []Movement {
+	names := mf.Tags.Values(TagMovementName)
+	if len(names) == 0 {
+		return nil
+	}
+	numbers := mf.Tags.Values(TagMovementNumber)
+	counts := mf.Tags.Values(TagMovementTotal)
+	movements := make([]Movement, 0, len(names))
+	for i, name := range names {
+		m := Movement{Name: name}
+		if i < len(numbers) {
+			m.Number = number.ParseInt[int32](numbers[i])
+		}
+		if i < len(counts) {
+			m.Count = number.ParseInt[int32](counts[i])
+		}
+		movements = append(movements, m)
+	}
+	return movements
 }
 
 // Hash returns a hash of the MediaFile based on its tags and audio properties

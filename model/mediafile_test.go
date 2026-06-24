@@ -604,6 +604,69 @@ var _ = Describe("MediaFile", func() {
 
 })
 
+var _ = Describe("MediaFile.Works", func() {
+	It("returns nil when there are no work tags", func() {
+		mf := MediaFile{}
+		Expect(mf.Works()).To(BeNil())
+	})
+
+	It("pairs a work name with its MbzWorkID", func() {
+		mf := MediaFile{Tags: Tags{
+			TagWork:              {"Symphony No. 5"},
+			TagMusicBrainzWorkID: {"abc-123"},
+		}}
+		Expect(mf.Works()).To(Equal([]Work{
+			{Name: "Symphony No. 5", MbzWorkID: "abc-123"},
+		}))
+	})
+
+	It("leaves MbzWorkID empty when no id is present", func() {
+		mf := MediaFile{Tags: Tags{TagWork: {"Symphony No. 5"}}}
+		Expect(mf.Works()).To(Equal([]Work{
+			{Name: "Symphony No. 5"},
+		}))
+	})
+
+	It("pairs by index and ignores extra ids", func() {
+		mf := MediaFile{Tags: Tags{
+			TagWork:              {"Work A", "Work B"},
+			TagMusicBrainzWorkID: {"id-a"},
+		}}
+		Expect(mf.Works()).To(Equal([]Work{
+			{Name: "Work A", MbzWorkID: "id-a"},
+			{Name: "Work B"},
+		}))
+	})
+})
+
+var _ = Describe("MediaFile.Movements", func() {
+	It("returns nil when there are no movement tags", func() {
+		mf := MediaFile{}
+		Expect(mf.Movements()).To(BeNil())
+	})
+
+	It("builds a movement with name, number and count", func() {
+		mf := MediaFile{Tags: Tags{
+			TagMovementName:   {"I. Allegro"},
+			TagMovementNumber: {"1"},
+			TagMovementTotal:  {"4"},
+		}}
+		Expect(mf.Movements()).To(Equal([]Movement{
+			{Name: "I. Allegro", Number: 1, Count: 4},
+		}))
+	})
+
+	It("non-numeric number/count yields 0", func() {
+		mf := MediaFile{Tags: Tags{
+			TagMovementName:   {"I. Allegro"},
+			TagMovementNumber: {"not-a-number"},
+		}}
+		Expect(mf.Movements()).To(Equal([]Movement{
+			{Name: "I. Allegro"},
+		}))
+	})
+})
+
 var _ = Describe("MediaFile.Hash", func() {
 	// Guards the upgrade guarantee: converting BPM/BitDepth from int to *int must not change hashes,
 	// or every file would be spuriously re-imported on the next scan.

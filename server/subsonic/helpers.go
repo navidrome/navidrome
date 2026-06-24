@@ -290,6 +290,12 @@ func osChildFromMediaFile(ctx context.Context, mf model.MediaFile) *responses.Op
 	}
 	child.Contributors = contributors
 	child.ExplicitStatus = mapExplicitStatus(mf.ExplicitStatus)
+	child.Works = slice.Map(mf.Works(), func(w model.Work) responses.Work {
+		return responses.Work{Name: w.Name, MusicBrainzId: w.MbzWorkID}
+	})
+	child.Movements = slice.Map(mf.Movements(), func(m model.Movement) responses.Movement {
+		return responses.Movement{Name: m.Name, Number: m.Number, Count: m.Count}
+	})
 	return &child
 }
 

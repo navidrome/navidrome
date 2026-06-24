@@ -2,6 +2,7 @@ package subsonic
 
 import (
 	"context"
+	"encoding/json"
 	"net/http/httptest"
 	"time"
 
@@ -357,6 +358,52 @@ var _ = Describe("helpers", func() {
 				osChild := osChildFromMediaFile(ctx, mf)
 				Expect(osChild).ToNot(BeNil())
 				Expect(osChild.Comment).To(Equal("Test Comment"))
+			})
+
+			It("populates works and movements from tags", func() {
+				mf.Tags = model.Tags{
+					model.TagWork:              {"Symphony No. 5"},
+					model.TagMusicBrainzWorkID: {"abc-123"},
+					model.TagMovementName:      {"I. Allegro"},
+					model.TagMovementNumber:    {"1"},
+					model.TagMovementTotal:     {"4"},
+				}
+				osChild := osChildFromMediaFile(ctx, mf)
+				Expect(osChild).ToNot(BeNil())
+				Expect(osChild.Works).To(Equal(responses.Array[responses.Work]{
+					{Name: "Symphony No. 5", MusicBrainzId: "abc-123"},
+				}))
+				Expect(osChild.Movements).To(Equal(responses.Array[responses.Movement]{
+					{Name: "I. Allegro", Number: 1, Count: 4},
+				}))
+			})
+
+			It("returns empty works and movements when no classical tags are present", func() {
+				osChild := osChildFromMediaFile(ctx, mf)
+				Expect(osChild).ToNot(BeNil())
+				Expect(osChild.Works).To(BeEmpty())
+				Expect(osChild.Movements).To(BeEmpty())
+			})
+
+			It("serializes works and movements to spec-compliant JSON", func() {
+				mf.Tags = model.Tags{
+					model.TagWork:           {"Symphony No. 5"},
+					model.TagMovementName:   {"I. Allegro"},
+					model.TagMovementNumber: {"1"},
+				}
+				osChild := osChildFromMediaFile(ctx, mf)
+				data, err := json.Marshal(osChild)
+				Expect(err).ToNot(HaveOccurred())
+
+				var got map[string]any
+				Expect(json.Unmarshal(data, &got)).To(Succeed())
+				// Required name present; optional musicBrainzId/count omitted (omitempty); number present.
+				Expect(got).To(HaveKeyWithValue("works", []any{
+					map[string]any{"name": "Symphony No. 5"},
+				}))
+				Expect(got).To(HaveKeyWithValue("movements", []any{
+					map[string]any{"name": "I. Allegro", "number": float64(1)},
+				}))
 			})
 		})
 
