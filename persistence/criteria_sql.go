@@ -34,16 +34,12 @@ type smartPlaylistField struct {
 	emptyValues []string // additional values that encode "missing" for string columns (e.g. '[]' for lyrics)
 
 	// coalesceDefault, when non-nil, marks a nullable annotation column (e.g. annotation.play_count)
-	// whose absence is treated as the pointed-to value (0 for numeric, false for bool). Comparisons
-	// against such a column normally need COALESCE(col, default) so missing annotation rows behave as
-	// the default — but COALESCE prevents SQLite from using the column's index, so annotationCond
-	// avoids it where possible. A pointer (not a value + bool flag) is used because the zero value
-	// (0/false) is itself a valid default.
-	coalesceDefault *any
+	// whose absence is treated as this value (0 for numeric, false for bool). Comparisons against such
+	// a column normally need COALESCE(col, default) so missing annotation rows behave as the default —
+	// but COALESCE prevents SQLite from using the column's index, so annotationCond avoids it where
+	// possible. The boxed values 0/false are non-nil interfaces, so nil cleanly means "no default".
+	coalesceDefault any
 }
-
-// coalesce boxes an annotation column's default value for use in the smartPlaylistFields map.
-func coalesce(v any) *any { return &v }
 
 type smartPlaylistCriteria struct {
 	criteria.Criteria
@@ -100,22 +96,22 @@ var smartPlaylistFields = map[string]smartPlaylistField{
 	"samplerate":           {expr: "media_file.sample_rate"},
 	"bpm":                  {expr: "media_file.bpm"},
 	"channels":             {expr: "media_file.channels"},
-	"loved":                {expr: "annotation.starred", coalesceDefault: coalesce(false)},
+	"loved":                {expr: "annotation.starred", coalesceDefault: false},
 	"dateloved":            {expr: "annotation.starred_at"},
 	"lastplayed":           {expr: "annotation.play_date"},
 	"daterated":            {expr: "annotation.rated_at"},
-	"playcount":            {expr: "annotation.play_count", coalesceDefault: coalesce(0)},
-	"rating":               {expr: "annotation.rating", coalesceDefault: coalesce(0)},
+	"playcount":            {expr: "annotation.play_count", coalesceDefault: 0},
+	"rating":               {expr: "annotation.rating", coalesceDefault: 0},
 	"averagerating":        {expr: "media_file.average_rating"},
-	"albumrating":          {expr: "album_annotation.rating", coalesceDefault: coalesce(0), joinType: smartPlaylistJoinAlbumAnnotation},
-	"albumloved":           {expr: "album_annotation.starred", coalesceDefault: coalesce(false), joinType: smartPlaylistJoinAlbumAnnotation},
-	"albumplaycount":       {expr: "album_annotation.play_count", coalesceDefault: coalesce(0), joinType: smartPlaylistJoinAlbumAnnotation},
+	"albumrating":          {expr: "album_annotation.rating", coalesceDefault: 0, joinType: smartPlaylistJoinAlbumAnnotation},
+	"albumloved":           {expr: "album_annotation.starred", coalesceDefault: false, joinType: smartPlaylistJoinAlbumAnnotation},
+	"albumplaycount":       {expr: "album_annotation.play_count", coalesceDefault: 0, joinType: smartPlaylistJoinAlbumAnnotation},
 	"albumlastplayed":      {expr: "album_annotation.play_date", joinType: smartPlaylistJoinAlbumAnnotation},
 	"albumdateloved":       {expr: "album_annotation.starred_at", joinType: smartPlaylistJoinAlbumAnnotation},
 	"albumdaterated":       {expr: "album_annotation.rated_at", joinType: smartPlaylistJoinAlbumAnnotation},
-	"artistrating":         {expr: "artist_annotation.rating", coalesceDefault: coalesce(0), joinType: smartPlaylistJoinArtistAnnotation},
-	"artistloved":          {expr: "artist_annotation.starred", coalesceDefault: coalesce(false), joinType: smartPlaylistJoinArtistAnnotation},
-	"artistplaycount":      {expr: "artist_annotation.play_count", coalesceDefault: coalesce(0), joinType: smartPlaylistJoinArtistAnnotation},
+	"artistrating":         {expr: "artist_annotation.rating", coalesceDefault: 0, joinType: smartPlaylistJoinArtistAnnotation},
+	"artistloved":          {expr: "artist_annotation.starred", coalesceDefault: false, joinType: smartPlaylistJoinArtistAnnotation},
+	"artistplaycount":      {expr: "artist_annotation.play_count", coalesceDefault: 0, joinType: smartPlaylistJoinArtistAnnotation},
 	"artistlastplayed":     {expr: "artist_annotation.play_date", joinType: smartPlaylistJoinArtistAnnotation},
 	"artistdateloved":      {expr: "artist_annotation.starred_at", joinType: smartPlaylistJoinArtistAnnotation},
 	"artistdaterated":      {expr: "artist_annotation.rated_at", joinType: smartPlaylistJoinArtistAnnotation},
@@ -295,6 +291,9 @@ func likeCond(col, pattern string, negate bool) squirrel.Sqlizer {
 }
 
 func rangeExpr(values map[string]any) (squirrel.Sqlizer, error) {
+	if len(values) != 1 {
+		return nil, fmt.Errorf("range criteria must contain exactly one field, got %d", len(values))
+	}
 	field, value, info, ok := singleField(values)
 	if !ok {
 		return nil, fmt.Errorf("invalid field in criteria: %s", field)
@@ -306,7 +305,7 @@ func rangeExpr(values map[string]any) (squirrel.Sqlizer, error) {
 	}
 	s := reflect.ValueOf(value)
 	if s.Kind() != reflect.Slice || s.Len() != 2 {
-		return nil, fmt.Errorf("invalid range for 'in' operator: %s", value)
+		return nil, fmt.Errorf("range criteria for %q must be a [min, max] pair, got: %v", field, value)
 	}
 	low, err := comparisonExpr(map[string]any{field: s.Index(0).Interface()}, cmpGe)
 	if err != nil {
@@ -632,18 +631,17 @@ func sqlFields(values map[string]any) (map[string]any, error) {
 		if info.IsTag || info.IsRole {
 			return nil, fmt.Errorf("tag and role criteria must contain exactly one field: %s", field)
 		}
-		sqlField, ok := fieldExpr(info.Name())
-		if !ok || sqlField == "" {
+		f, ok := smartPlaylistFields[info.Name()]
+		if !ok || f.expr == "" {
 			return nil, fmt.Errorf("invalid field in criteria: %s", field)
 		}
-		fields[sqlField] = value
+		// Use the coalesced form for annotation fields: this path handles the multi-field fallback
+		// (where the index-friendly single-field optimization in comparisonExpr/likeExpr does not
+		// apply), so it must keep the original missing-row-as-default semantics. coalesced() is the
+		// bare column for non-annotation fields, so this is a no-op for them.
+		fields[f.coalesced()] = value
 	}
 	return fields, nil
-}
-
-func fieldExpr(name string) (string, bool) {
-	field, ok := smartPlaylistFields[strings.ToLower(name)]
-	return field.expr, ok
 }
 
 // comparator is one of the scalar SQL comparison operators used by smart playlist criteria.
@@ -676,7 +674,7 @@ func (f smartPlaylistField) coalesced() string {
 	if f.coalesceDefault == nil {
 		return f.expr
 	}
-	return fmt.Sprintf("COALESCE(%s, %s)", f.expr, sqlLiteral(*f.coalesceDefault))
+	return fmt.Sprintf("COALESCE(%s, %s)", f.expr, sqlLiteral(f.coalesceDefault))
 }
 
 // comparisonExpr builds the SQL condition for a scalar comparison operator. For annotation columns
@@ -722,7 +720,7 @@ func squirrelCmp(cmp comparator, fields map[string]any) squirrel.Sqlizer {
 // index-friendly bare `col <cmp> ?`, adding `OR col IS NULL` only when the default would match;
 // otherwise it falls back to the COALESCE form, which can't use the index but is always equivalent.
 func annotationCond(f smartPlaylistField, cmp comparator, value any) squirrel.Sqlizer {
-	wrapNull, ok := bareNullInclusion(*f.coalesceDefault, cmp, value)
+	wrapNull, ok := bareNullInclusion(f.coalesceDefault, cmp, value)
 	if !ok {
 		return squirrelCmp(cmp, map[string]any{f.coalesced(): value})
 	}

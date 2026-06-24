@@ -268,6 +268,31 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 		Expect(err).To(MatchError(ContainSubstring("range operator not supported for tag/role field")))
 	})
 
+	It("returns a clear error for a multi-field range", func() {
+		_, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: criteria.InTheRange{"playCount": []int{1, 5}, "year": []int{2000, 2010}}}).Where()
+		Expect(err).To(MatchError(ContainSubstring("range criteria must contain exactly one field")))
+	})
+
+	// In a multi-field map the single-field index-friendly path does not apply, so annotation fields
+	// must still fall back to the COALESCE form to keep missing-row-as-default semantics (the bare
+	// column would silently drop never-annotated rows).
+	It("keeps COALESCE for annotation fields in a multi-field map", func() {
+		sqlizer, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: criteria.Is{"playCount": 0, "year": 2000}}).Where()
+		Expect(err).ToNot(HaveOccurred())
+		sql, _, err := sqlizer.ToSql()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(sql).To(ContainSubstring("COALESCE(annotation.play_count, 0) = ?"))
+		Expect(sql).To(ContainSubstring("media_file.year = ?"))
+	})
+
+	It("keeps COALESCE for annotation LIKE in a multi-field map", func() {
+		sqlizer, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: criteria.Contains{"playCount": 0, "title": "x"}}).Where()
+		Expect(err).ToNot(HaveOccurred())
+		sql, _, err := sqlizer.ToSql()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(sql).To(ContainSubstring("COALESCE(annotation.play_count, 0) LIKE ?"))
+	})
+
 	Describe("sort", func() {
 		It("sorts by regular fields", func() {
 			Expect(newSmartPlaylistCriteria(criteria.Criteria{Sort: "title"}).OrderBy()).To(Equal("media_file.title asc"))
