@@ -378,7 +378,7 @@ var _ = Describe("helpers", func() {
 				}))
 			})
 
-			It("omits works and movements when no classical tags are present", func() {
+			It("returns empty works and movements when no classical tags are present", func() {
 				osChild := osChildFromMediaFile(ctx, mf)
 				Expect(osChild).ToNot(BeNil())
 				Expect(osChild.Works).To(BeEmpty())
@@ -394,8 +394,16 @@ var _ = Describe("helpers", func() {
 				osChild := osChildFromMediaFile(ctx, mf)
 				data, err := json.Marshal(osChild)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(string(data)).To(ContainSubstring(`"works":[{"name":"Symphony No. 5"}]`))
-				Expect(string(data)).To(ContainSubstring(`"movements":[{"name":"I. Allegro","number":1}]`))
+
+				var got map[string]any
+				Expect(json.Unmarshal(data, &got)).To(Succeed())
+				// Required name present; optional musicBrainzId/count omitted (omitempty); number present.
+				Expect(got).To(HaveKeyWithValue("works", []any{
+					map[string]any{"name": "Symphony No. 5"},
+				}))
+				Expect(got).To(HaveKeyWithValue("movements", []any{
+					map[string]any{"name": "I. Allegro", "number": float64(1)},
+				}))
 			})
 		})
 
