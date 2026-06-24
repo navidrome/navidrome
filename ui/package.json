@@ -52,7 +52,7 @@
     "redux": "^4.2.1",
     "redux-saga": "^1.4.2",
     "uuid": "^13.0.0",
-    "workbox-cli": "^7.3.0"
+    "workbox-cli": "^7.4.1"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.3",
