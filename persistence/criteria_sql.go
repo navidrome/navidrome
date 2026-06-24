@@ -35,11 +35,10 @@ type smartPlaylistField struct {
 
 	// coalesceDefault, when non-nil, marks a nullable annotation column (e.g. annotation.play_count)
 	// whose absence is treated as the pointed-to value (0 for numeric, false for bool). Comparisons
-	// against such a column normally need COALESCE(col, default) so that missing annotation rows
-	// behave as the default. COALESCE, however, prevents SQLite from using the column's index.
-	// annotationCond keeps the index usable by dropping COALESCE whenever the compared value cannot
-	// match the default, and falling back to an explicit `OR col IS NULL` otherwise. A pointer (not a
-	// bare value + bool flag) is used because the zero value (0/false) is itself a valid default.
+	// against such a column normally need COALESCE(col, default) so missing annotation rows behave as
+	// the default — but COALESCE prevents SQLite from using the column's index, so annotationCond
+	// avoids it where possible. A pointer (not a value + bool flag) is used because the zero value
+	// (0/false) is itself a valid default.
 	coalesceDefault *any
 }
 
@@ -718,15 +717,10 @@ func squirrelCmp(cmp comparator, fields map[string]any) squirrel.Sqlizer {
 	}
 }
 
-// annotationCond builds a comparison against a nullable annotation column.
-//
-// The column has no row (NULL) for items the user never annotated; semantically those behave as the
-// field's default. The naive form COALESCE(col, default) <cmp> ? is correct but defeats the column
-// index. When the comparison can be reasoned about exactly (a scalar value and a comparator with a
-// clear ordering — see bareNullInclusion), we emit the index-friendly bare `col <cmp> ?` and append
-// `OR col IS NULL` only when the default itself satisfies the predicate. Otherwise (list values,
-// LIKE patterns, bool ordering, unparseable values) we fall back to the COALESCE form, which can't
-// use the index but is always exactly equivalent to the original.
+// annotationCond builds a comparison against a nullable annotation column (see smartPlaylistField
+// for why). When bareNullInclusion can reason about the comparison exactly it emits the
+// index-friendly bare `col <cmp> ?`, adding `OR col IS NULL` only when the default would match;
+// otherwise it falls back to the COALESCE form, which can't use the index but is always equivalent.
 func annotationCond(f smartPlaylistField, cmp comparator, value any) squirrel.Sqlizer {
 	wrapNull, ok := bareNullInclusion(*f.coalesceDefault, cmp, value)
 	if !ok {
@@ -756,7 +750,6 @@ func bareNullInclusion(defaultVal any, cmp comparator, value any) (wrapNull, ok 
 		}
 		v, okV := criteria.ToBool(value)
 		if !okV {
-			// Non-scalar or unparseable value (e.g. a list): keep COALESCE, mirroring the numeric path.
 			return false, false
 		}
 		if cmp == cmpNe {
@@ -807,14 +800,9 @@ func toFloat(v any) (float64, bool) {
 	}
 }
 
-// sqlLiteral renders an annotation field's COALESCE default as a SQL literal for ORDER BY.
+// sqlLiteral renders an annotation field's COALESCE default (0 or false) as a SQL literal for ORDER
+// BY. %v renders both bool and numeric defaults correctly (false/true, 0).
 func sqlLiteral(v any) string {
-	if b, ok := v.(bool); ok {
-		if b {
-			return "true"
-		}
-		return "false"
-	}
 	return fmt.Sprintf("%v", v)
 }
 
