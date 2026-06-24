@@ -43,14 +43,50 @@ func NewSpreadFS(dir string, mode os.FileMode) (*spreadFS, error) {
 }
 
 func (sfs *spreadFS) Reload(f func(key string, name string)) error {
-	sentinel := filepath.Join(sfs.root, sentinelName)
-	migrating := false
-	if _, err := os.Stat(sentinel); os.IsNotExist(err) {
-		migrating = true
-	}
+	sfs.grandfatherExistingFiles()
 
 	count := 0
-	err := filepath.WalkDir(sfs.root, func(absoluteFilePath string, de fs.DirEntry, err error) error {
+	err := sfs.walkDataFiles(func(absoluteFilePath string) {
+		if _, err := os.Stat(sfs.markerPath(absoluteFilePath)); err != nil {
+			// No completion marker: this is a partial left by a crash. Discard it.
+			log.Debug("Removing incomplete cache file", "file", absoluteFilePath)
+			_ = os.Remove(absoluteFilePath) //nolint:gosec // best-effort cleanup; re-swept on next Reload
+			return
+		}
+		f(absoluteFilePath, absoluteFilePath)
+		count++
+	})
+	if err == nil {
+		log.Debug("Loaded cache", "dir", sfs.root, "numItems", count)
+	}
+	return err
+}
+
+// grandfatherExistingFiles runs once per cache dir (gated by a sentinel file):
+// it marks every pre-existing data file as complete so an upgrade to the
+// completion-marker scheme doesn't discard a user's whole cache as "partial".
+// After the sentinel exists, Reload trusts only files written by MarkComplete.
+func (sfs *spreadFS) grandfatherExistingFiles() {
+	sentinel := filepath.Join(sfs.root, sentinelName)
+	if _, err := os.Stat(sentinel); err == nil {
+		return
+	}
+	_ = sfs.walkDataFiles(func(absoluteFilePath string) {
+		if _, err := os.Stat(sfs.markerPath(absoluteFilePath)); err != nil {
+			if mErr := sfs.MarkComplete(absoluteFilePath); mErr != nil {
+				log.Warn("Error grandfathering cache file", "file", absoluteFilePath, mErr)
+			}
+		}
+	})
+	if sErr := os.WriteFile(sentinel, nil, 0600); sErr != nil {
+		log.Warn("Error writing cache migration sentinel", "file", sentinel, sErr)
+	}
+}
+
+// walkDataFiles visits every cache data file (named XX/XX/<40-hex>), skipping
+// completion markers and opportunistically cleaning up orphaned ones.
+func (sfs *spreadFS) walkDataFiles(visit func(absoluteFilePath string)) error {
+	return filepath.WalkDir(sfs.root, func(absoluteFilePath string, _ fs.DirEntry, err error) error {
 		if err != nil {
 			log.Error("Error loading cache", "dir", sfs.root, err)
 		}
@@ -74,38 +110,9 @@ func (sfs *spreadFS) Reload(f func(key string, name string)) error {
 			return nil
 		}
 
-		_, markerErr := os.Stat(sfs.markerPath(absoluteFilePath))
-		marked := markerErr == nil
-
-		if !marked {
-			if migrating {
-				// First run after upgrade: trust existing files and mark them,
-				// so they survive subsequent strict reloads.
-				if mErr := sfs.MarkComplete(absoluteFilePath); mErr != nil {
-					log.Warn("Error grandfathering cache file", "file", absoluteFilePath, mErr)
-				}
-			} else {
-				// Steady state: an unmarked file is a crash partial. Discard it.
-				log.Debug("Removing incomplete cache file", "file", absoluteFilePath)
-				_ = os.Remove(absoluteFilePath) //nolint:gosec // best-effort cleanup; re-swept on next Reload
-				return nil
-			}
-		}
-
-		f(absoluteFilePath, absoluteFilePath)
-		count++
+		visit(absoluteFilePath)
 		return nil
 	})
-
-	if migrating {
-		if sErr := os.WriteFile(sentinel, nil, 0600); sErr != nil {
-			log.Warn("Error writing cache migration sentinel", "file", sentinel, sErr)
-		}
-	}
-	if err == nil {
-		log.Debug("Loaded cache", "dir", sfs.root, "numItems", count)
-	}
-	return err
 }
 
 func (sfs *spreadFS) Create(name string) (stream.File, error) {
