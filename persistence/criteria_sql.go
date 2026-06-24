@@ -13,7 +13,6 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
-	"github.com/spf13/cast"
 )
 
 type smartPlaylistJoinType int
@@ -788,27 +787,40 @@ func bareNullInclusion(defaultVal any, cmp comparator, value any) (wrapNull, ok 
 	return false, false
 }
 
-// toFloat coerces a scalar criteria value to float64, reporting ok=false for non-scalar (slice) or
-// unparseable values so the caller falls back to the COALESCE form. nil is rejected explicitly
-// because cast treats it as 0.
+// toFloat coerces a scalar criteria value to float64. Criteria values come from JSON (float64,
+// string) or are built in Go (int, float64), so only those types are handled; anything else —
+// including a slice or an unparseable string — reports ok=false so the caller keeps the COALESCE
+// form instead of an index-friendly bare comparison.
 func toFloat(v any) (float64, bool) {
-	if v == nil {
+	switch n := v.(type) {
+	case float64:
+		return n, true
+	case int:
+		return float64(n), true
+	case int64:
+		return float64(n), true
+	case string:
+		f, err := strconv.ParseFloat(n, 64)
+		return f, err == nil
+	default:
 		return 0, false
 	}
-	f, err := cast.ToFloat64E(v)
-	return f, err == nil
 }
 
-// toBool coerces a scalar criteria value to bool, accepting the same string forms as
-// strconv.ParseBool (true/false, 1/0, t/f, ...). It reports ok=false for non-scalar (slice) or
-// unparseable values so the caller falls back to the COALESCE form. nil is rejected explicitly
-// because cast treats it as false.
+// toBool coerces a scalar criteria value to bool. Boolean criteria fields are normalized to a real
+// bool at unmarshal (see model/criteria normalizeBoolValue); the string fallback (via
+// strconv.ParseBool) only matters for criteria built directly in Go. ok=false for non-scalar or
+// unparseable values keeps the caller on the COALESCE form.
 func toBool(v any) (bool, bool) {
-	if v == nil {
+	switch b := v.(type) {
+	case bool:
+		return b, true
+	case string:
+		v, err := strconv.ParseBool(b)
+		return v, err == nil
+	default:
 		return false, false
 	}
-	b, err := cast.ToBoolE(v)
-	return b, err == nil
 }
 
 // sqlLiteral renders an annotation field's COALESCE default as a SQL literal for ORDER BY.
