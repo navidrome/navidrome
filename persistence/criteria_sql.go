@@ -13,6 +13,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
+	"github.com/spf13/cast"
 )
 
 type smartPlaylistJoinType int
@@ -258,8 +259,16 @@ func missingExpr(values map[string]any, checkAbsence bool) (squirrel.Sqlizer, er
 }
 
 func likeExpr(values map[string]any, pattern string, negate bool) (squirrel.Sqlizer, error) {
-	if _, value, info, ok := singleField(values); ok && (info.IsTag || info.IsRole) {
-		return jsonExpr(info, squirrel.Like{"value": fmt.Sprintf(pattern, value)}, negate), nil
+	if _, value, info, ok := singleField(values); ok {
+		if info.IsTag || info.IsRole {
+			return jsonExpr(info, squirrel.Like{"value": fmt.Sprintf(pattern, value)}, negate), nil
+		}
+		// LIKE can't use the column index, so annotation fields keep the COALESCE form: a NULL
+		// column never matches LIKE, which would silently drop missing-annotation rows the original
+		// COALESCE form included.
+		if f, isAnnotation := annotationField(info); isAnnotation {
+			return likeCond(f.coalesced(), fmt.Sprintf(pattern, value), negate), nil
+		}
 	}
 	fields, err := sqlFields(values)
 	if err != nil {
@@ -279,10 +288,23 @@ func likeExpr(values map[string]any, pattern string, negate bool) (squirrel.Sqli
 	return lk, nil
 }
 
+// likeCond builds a (NOT) LIKE condition over a single column expression.
+func likeCond(col, pattern string, negate bool) squirrel.Sqlizer {
+	if negate {
+		return squirrel.NotLike{col: pattern}
+	}
+	return squirrel.Like{col: pattern}
+}
+
 func rangeExpr(values map[string]any) (squirrel.Sqlizer, error) {
-	field, value, _, ok := singleField(values)
+	field, value, info, ok := singleField(values)
 	if !ok {
 		return nil, fmt.Errorf("invalid field in criteria: %s", field)
+	}
+	if info.IsTag || info.IsRole {
+		// Tags/roles are multi-valued JSON, so splitting a range into two independent EXISTS
+		// subqueries would let different values satisfy each bound. Ranges are unsupported there.
+		return nil, fmt.Errorf("range operator not supported for tag/role field: %s", field)
 	}
 	s := reflect.ValueOf(value)
 	if s.Kind() != reflect.Slice || s.Len() != 2 {
@@ -638,14 +660,10 @@ const (
 	cmpLe comparator = "<="
 )
 
-// annotationField returns the field definition for a criteria field name if it is a nullable
+// annotationField returns the field definition for a resolved criteria field if it is a nullable
 // annotation column with a COALESCE default (e.g. playcount, rating, loved). Date annotation
 // columns (lastplayed, dateloved, ...) have no default and return ok=false.
-func annotationField(name string) (smartPlaylistField, bool) {
-	info, ok := criteria.LookupField(name)
-	if !ok {
-		return smartPlaylistField{}, false
-	}
+func annotationField(info criteria.FieldInfo) (smartPlaylistField, bool) {
 	f, ok := smartPlaylistFields[info.Name()]
 	if !ok || f.coalesceDefault == nil {
 		return smartPlaylistField{}, false
@@ -668,17 +686,12 @@ func (f smartPlaylistField) coalesced() string {
 // fields route through jsonExpr; all other fields fall back to the squirrel comparison keyed by the
 // column expression.
 func comparisonExpr(values map[string]any, cmp comparator) (squirrel.Sqlizer, error) {
-	if field, value, info, ok := singleField(values); ok {
+	if _, value, info, ok := singleField(values); ok {
 		if info.IsTag || info.IsRole {
 			return jsonExpr(info, squirrelCmp(cmp, map[string]any{"value": value}), false), nil
 		}
-		if f, isAnnotation := annotationField(field); isAnnotation {
-			// A list value (e.g. IN (...)) can't drive the index and its NULL semantics differ
-			// per element, so keep the COALESCE form to stay equivalent to the original.
-			if reflect.TypeOf(value) != nil && reflect.TypeOf(value).Kind() == reflect.Slice {
-				return squirrelCmp(cmp, map[string]any{f.coalesced(): value}), nil
-			}
-			return annotationCond(f.expr, *f.coalesceDefault, cmp, value), nil
+		if f, isAnnotation := annotationField(info); isAnnotation {
+			return annotationCond(f, cmp, value), nil
 		}
 	}
 	fields, err := sqlFields(values)
@@ -706,86 +719,88 @@ func squirrelCmp(cmp comparator, fields map[string]any) squirrel.Sqlizer {
 	}
 }
 
-// annotationCond builds an index-friendly comparison against a nullable annotation column.
+// annotationCond builds a comparison against a nullable annotation column.
 //
-// The column has no row (NULL) for items the user never annotated; semantically those behave as
-// defaultVal. The naive form COALESCE(col, default) <cmp> ? is correct but defeats the column
-// index. Instead we emit the bare `col <cmp> ?` and, only when the default value itself satisfies
-// the predicate (so missing rows must be included), append `OR col IS NULL`. When the default does
-// not satisfy the predicate, the bare form is already exact because NULL comparisons yield false.
-func annotationCond(col string, defaultVal any, cmp comparator, value any) squirrel.Sqlizer {
-	base := squirrelCmp(cmp, map[string]any{col: value})
-	if !defaultSatisfies(cmp, defaultVal, value) {
+// The column has no row (NULL) for items the user never annotated; semantically those behave as the
+// field's default. The naive form COALESCE(col, default) <cmp> ? is correct but defeats the column
+// index. When the comparison can be reasoned about exactly (a scalar value and a comparator with a
+// clear ordering — see bareNullInclusion), we emit the index-friendly bare `col <cmp> ?` and append
+// `OR col IS NULL` only when the default itself satisfies the predicate. Otherwise (list values,
+// LIKE patterns, bool ordering, unparseable values) we fall back to the COALESCE form, which can't
+// use the index but is always exactly equivalent to the original.
+func annotationCond(f smartPlaylistField, cmp comparator, value any) squirrel.Sqlizer {
+	wrapNull, ok := bareNullInclusion(*f.coalesceDefault, cmp, value)
+	if !ok {
+		return squirrelCmp(cmp, map[string]any{f.coalesced(): value})
+	}
+	base := squirrelCmp(cmp, map[string]any{f.expr: value})
+	if !wrapNull {
 		return base
 	}
 	// The default satisfies the predicate, so missing rows (NULL) must be included. All comparators
 	// (including <>) evaluate to false against NULL, so an explicit IS NULL restores them.
-	return squirrel.Or{base, squirrel.Eq{col: nil}}
+	return squirrel.Or{base, squirrel.Eq{f.expr: nil}}
 }
 
-// defaultSatisfies reports whether defaultVal <cmp> value holds, i.e. whether a missing annotation
-// row (which behaves as defaultVal) would match the predicate and therefore must be preserved with
-// an explicit NULL check. Non-numeric defaults (bool) only support equality comparators.
-func defaultSatisfies(cmp comparator, defaultVal, value any) bool {
-	if b, ok := defaultVal.(bool); ok {
-		// Bool annotation fields (loved) only support equality operators. Treat anything else as
-		// equality-like rather than silently applying numeric ordering to a boolean.
+// bareNullInclusion decides whether the index-friendly bare form is safe for this comparison and,
+// if so, whether missing (NULL) rows must be re-included via `OR col IS NULL`. It returns ok=false
+// when the bare form can't be proven equivalent to COALESCE(col, default) <cmp> ? — i.e. the value
+// isn't a scalar the comparator can order exactly (lists, bool ordering, unparseable values) — in
+// which case the caller keeps the COALESCE form. When ok=true, wrapNull is true iff the default
+// value itself satisfies the predicate (so missing rows would match and must be preserved).
+func bareNullInclusion(defaultVal any, cmp comparator, value any) (wrapNull, ok bool) {
+	if _, isBool := defaultVal.(bool); isBool {
+		// Bool columns only have an exact bare form for equality; ordering operators have no clean
+		// index form, so fall back to COALESCE.
+		if cmp != cmpEq && cmp != cmpNe {
+			return false, false
+		}
+		b := defaultVal.(bool)
 		v := toBool(value)
 		if cmp == cmpNe {
-			return b != v
+			return b != v, true
 		}
-		return b == v
+		return b == v, true
 	}
 	d, okD := toFloat(defaultVal)
 	v, okV := toFloat(value)
 	if !okD || !okV {
-		// Unknown value type: be conservative and preserve NULL rows.
-		return true
+		// Non-scalar or unparseable value: no exact bare form, keep COALESCE.
+		return false, false
 	}
 	switch cmp {
 	case cmpEq:
-		return d == v
+		return d == v, true
 	case cmpNe:
-		return d != v
+		return d != v, true
 	case cmpGt:
-		return d > v
+		return d > v, true
 	case cmpGe:
-		return d >= v
+		return d >= v, true
 	case cmpLt:
-		return d < v
+		return d < v, true
 	case cmpLe:
-		return d <= v
+		return d <= v, true
 	}
-	return true
+	return false, false
 }
 
+// toFloat coerces a scalar criteria value to float64, reporting ok=false for non-scalar (slice) or
+// unparseable values so the caller falls back to the COALESCE form. nil is rejected explicitly
+// because cast treats it as 0.
 func toFloat(v any) (float64, bool) {
-	switch n := v.(type) {
-	case int:
-		return float64(n), true
-	case int64:
-		return float64(n), true
-	case float64:
-		return n, true
-	case float32:
-		return float64(n), true
-	case string:
-		f, err := strconv.ParseFloat(n, 64)
-		return f, err == nil
-	default:
+	if v == nil {
 		return 0, false
 	}
+	f, err := cast.ToFloat64E(v)
+	return f, err == nil
 }
 
+// toBool coerces a criteria value to bool, accepting the same string forms as strconv.ParseBool
+// (true/false, 1/0, t/f, ...). It mirrors the normalization the criteria layer applies at unmarshal.
 func toBool(v any) bool {
-	switch b := v.(type) {
-	case bool:
-		return b
-	case string:
-		return strings.EqualFold(b, "true")
-	default:
-		return false
-	}
+	b, _ := cast.ToBoolE(v)
+	return b
 }
 
 // sqlLiteral renders an annotation field's COALESCE default as a SQL literal for ORDER BY.

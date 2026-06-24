@@ -78,6 +78,18 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 		// semantics, so the COALESCE form is kept to stay equivalent to the original.
 		Entry("is list keeps coalesce", criteria.Is{"playCount": []int{0, 3}},
 			"COALESCE(annotation.play_count, 0) IN (?,?)", 0, 3),
+		// LIKE operators can't use the column index, so annotation fields keep the COALESCE form to
+		// match missing-annotation rows exactly as before (a NULL column never matches LIKE).
+		Entry("contains annotation keeps coalesce", criteria.Contains{"playCount": 0},
+			"COALESCE(annotation.play_count, 0) LIKE ?", "%0%"),
+		Entry("starts with annotation keeps coalesce", criteria.StartsWith{"rating": 5},
+			"COALESCE(annotation.rating, 0) LIKE ?", "5%"),
+		Entry("not contains annotation keeps coalesce", criteria.NotContains{"playCount": 0},
+			"COALESCE(annotation.play_count, 0) NOT LIKE ?", "%0%"),
+		// Bool annotation fields only have a clean index-friendly form for equality; ordering
+		// comparators keep the COALESCE form so the missing-row default is honored exactly.
+		Entry("gt bool keeps coalesce", criteria.Gt{"loved": false},
+			"COALESCE(annotation.starred, false) > ?", false),
 		Entry("tag is", criteria.Is{"genre": "Rock"}, "exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value = ?)", "Rock"),
 		Entry("tag is not", criteria.IsNot{"genre": "Rock"}, "not exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value = ?)", "Rock"),
 		Entry("tag contains", criteria.Contains{"genre": "Rock"}, "exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value LIKE ?)", "%Rock%"),
