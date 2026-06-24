@@ -358,6 +358,31 @@ var _ = Describe("helpers", func() {
 				Expect(osChild).ToNot(BeNil())
 				Expect(osChild.Comment).To(Equal("Test Comment"))
 			})
+
+			It("populates works and movements from tags", func() {
+				mf.Tags = model.Tags{
+					model.TagWork:              {"Symphony No. 5"},
+					model.TagMusicBrainzWorkID: {"abc-123"},
+					model.TagMovementName:      {"I. Allegro"},
+					model.TagMovementNumber:    {"1"},
+					model.TagMovementTotal:     {"4"},
+				}
+				osChild := osChildFromMediaFile(ctx, mf)
+				Expect(osChild).ToNot(BeNil())
+				Expect(osChild.Works).To(Equal(responses.Array[responses.Work]{
+					{Name: "Symphony No. 5", MusicBrainzId: "abc-123"},
+				}))
+				Expect(osChild.Movements).To(Equal(responses.Array[responses.Movement]{
+					{Name: "I. Allegro", Number: 1, Count: 4},
+				}))
+			})
+
+			It("omits works and movements when no classical tags are present", func() {
+				osChild := osChildFromMediaFile(ctx, mf)
+				Expect(osChild).ToNot(BeNil())
+				Expect(osChild.Works).To(BeNil())
+				Expect(osChild.Movements).To(BeNil())
+			})
 		})
 
 		Context("when legacy clients list is empty", func() {
@@ -378,6 +403,67 @@ var _ = Describe("helpers", func() {
 				osChild := osChildFromMediaFile(ctx, mf)
 				Expect(osChild).ToNot(BeNil())
 			})
+		})
+	})
+
+	Describe("buildWorks", func() {
+		It("returns nil when there are no work tags", func() {
+			Expect(buildWorks(model.Tags{})).To(BeNil())
+		})
+
+		It("pairs a work name with its MusicBrainz id", func() {
+			tags := model.Tags{
+				model.TagWork:              {"Symphony No. 5"},
+				model.TagMusicBrainzWorkID: {"abc-123"},
+			}
+			Expect(buildWorks(tags)).To(Equal([]responses.Work{
+				{Name: "Symphony No. 5", MusicBrainzId: "abc-123"},
+			}))
+		})
+
+		It("leaves MusicBrainzId empty when no id is present", func() {
+			tags := model.Tags{model.TagWork: {"Symphony No. 5"}}
+			Expect(buildWorks(tags)).To(Equal([]responses.Work{
+				{Name: "Symphony No. 5"},
+			}))
+		})
+
+		It("pairs by index and ignores extra ids", func() {
+			tags := model.Tags{
+				model.TagWork:              {"Work A", "Work B"},
+				model.TagMusicBrainzWorkID: {"id-a"},
+			}
+			Expect(buildWorks(tags)).To(Equal([]responses.Work{
+				{Name: "Work A", MusicBrainzId: "id-a"},
+				{Name: "Work B"},
+			}))
+		})
+	})
+
+	Describe("buildMovements", func() {
+		It("returns nil when there are no movement tags", func() {
+			Expect(buildMovements(model.Tags{})).To(BeNil())
+		})
+
+		It("builds a movement with name, number and count", func() {
+			tags := model.Tags{
+				model.TagMovementName:   {"I. Allegro"},
+				model.TagMovementNumber: {"1"},
+				model.TagMovementTotal:  {"4"},
+			}
+			Expect(buildMovements(tags)).To(Equal([]responses.Movement{
+				{Name: "I. Allegro", Number: 1, Count: 4},
+			}))
+		})
+
+		It("omits number and count when non-numeric", func() {
+			tags := model.Tags{
+				model.TagMovementName:   {"I. Allegro"},
+				model.TagMovementNumber: {"not-a-number"},
+			}
+			Expect(buildMovements(tags)).To(Equal([]responses.Movement{
+				{Name: "I. Allegro"},
+			}))
 		})
 	})
 

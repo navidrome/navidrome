@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -290,6 +291,8 @@ func osChildFromMediaFile(ctx context.Context, mf model.MediaFile) *responses.Op
 	}
 	child.Contributors = contributors
 	child.ExplicitStatus = mapExplicitStatus(mf.ExplicitStatus)
+	child.Works = buildWorks(mf.Tags)
+	child.Movements = buildMovements(mf.Tags)
 	return &child
 }
 
@@ -300,6 +303,48 @@ func artistRefs(participants model.ParticipantList) []responses.ArtistID3Ref {
 			Name: p.Name,
 		}
 	})
+}
+
+func buildWorks(tags model.Tags) []responses.Work {
+	names := tags.Values(model.TagWork)
+	if len(names) == 0 {
+		return nil
+	}
+	ids := tags.Values(model.TagMusicBrainzWorkID)
+	works := make([]responses.Work, 0, len(names))
+	for i, name := range names {
+		w := responses.Work{Name: name}
+		if i < len(ids) {
+			w.MusicBrainzId = ids[i]
+		}
+		works = append(works, w)
+	}
+	return works
+}
+
+func buildMovements(tags model.Tags) []responses.Movement {
+	names := tags.Values(model.TagMovementName)
+	if len(names) == 0 {
+		return nil
+	}
+	numbers := tags.Values(model.TagMovementNumber)
+	counts := tags.Values(model.TagMovementTotal)
+	movements := make([]responses.Movement, 0, len(names))
+	for i, name := range names {
+		m := responses.Movement{Name: name}
+		if i < len(numbers) {
+			if n, err := strconv.Atoi(numbers[i]); err == nil {
+				m.Number = int32(n)
+			}
+		}
+		if i < len(counts) {
+			if c, err := strconv.Atoi(counts[i]); err == nil {
+				m.Count = int32(c)
+			}
+		}
+		movements = append(movements, m)
+	}
+	return movements
 }
 
 func fakePath(mf model.MediaFile) string {
