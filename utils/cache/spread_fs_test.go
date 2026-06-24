@@ -77,7 +77,7 @@ var _ = Describe("Spread FS", func() {
 			return file
 		}
 
-		It("grandfathers all existing files on first run and writes the sentinel", func() {
+		It("migrates all existing files on first run and writes the sentinel", func() {
 			for _, c := range []string{"aaaaa", "bbbbb", "ccccc"} {
 				makeData(c) // no markers, simulating a pre-upgrade cache
 			}
