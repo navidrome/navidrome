@@ -54,7 +54,8 @@ var _ = Describe("Spread FS", func() {
 
 		It("removes the sibling marker when the data file is removed", func() {
 			data := fs.KeyMapper("song2")
-			f, _ := fs.Create(data)
+			f, err := fs.Create(data)
+			Expect(err).To(BeNil())
 			_, _ = f.Write([]byte("ok"))
 			_ = f.Close()
 			Expect(fs.MarkComplete(data)).To(Succeed())
