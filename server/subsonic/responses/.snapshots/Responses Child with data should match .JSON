@@ -115,8 +115,22 @@
           "Soundtrack",
           "Live"
         ],
-        "works": [],
-        "movements": []
+        "works": [
+          {
+            "name": "Symphony No. 5",
+            "musicBrainzId": "mbz-work-1"
+          },
+          {
+            "name": "Encore"
+          }
+        ],
+        "movements": [
+          {
+            "name": "I. Allegro",
+            "number": 1,
+            "count": 4
+          }
+        ]
       },
       {
         "id": "",

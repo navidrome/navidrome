@@ -239,6 +239,13 @@ var _ = Describe("Responses", func() {
 						{Role: "composer", Artist: ArtistID3Ref{Id: "4", Name: "composer2"}},
 					},
 					ExplicitStatus: "clean",
+					Works: []Work{
+						{Name: "Symphony No. 5", MusicBrainzId: "mbz-work-1"},
+						{Name: "Encore"},
+					},
+					Movements: []Movement{
+						{Name: "I. Allegro", Number: 1, Count: 4},
+					},
 				}
 				child[1].OpenSubsonicChild = &OpenSubsonicChild{
 					ReplayGain: ReplayGain{TrackGain: new(0.0), AlbumGain: new(0.0), TrackPeak: new(0.0), AlbumPeak: new(0.0), BaseGain: new(0.0), FallbackGain: new(0.0)},
