@@ -290,8 +290,12 @@ func osChildFromMediaFile(ctx context.Context, mf model.MediaFile) *responses.Op
 	}
 	child.Contributors = contributors
 	child.ExplicitStatus = mapExplicitStatus(mf.ExplicitStatus)
-	child.Works = buildWorks(mf.Tags)
-	child.Movements = buildMovements(mf.Tags)
+	child.Works = slice.Map(mf.Works(), func(w model.Work) responses.Work {
+		return responses.Work{Name: w.Name, MusicBrainzId: w.MbzWorkID}
+	})
+	child.Movements = slice.Map(mf.Movements(), func(m model.Movement) responses.Movement {
+		return responses.Movement{Name: m.Name, Number: m.Number, Count: m.Count}
+	})
 	return &child
 }
 
@@ -302,44 +306,6 @@ func artistRefs(participants model.ParticipantList) []responses.ArtistID3Ref {
 			Name: p.Name,
 		}
 	})
-}
-
-func buildWorks(tags model.Tags) []responses.Work {
-	names := tags.Values(model.TagWork)
-	if len(names) == 0 {
-		return nil
-	}
-	ids := tags.Values(model.TagMusicBrainzWorkID)
-	works := make([]responses.Work, 0, len(names))
-	for i, name := range names {
-		w := responses.Work{Name: name}
-		if i < len(ids) {
-			w.MusicBrainzId = ids[i]
-		}
-		works = append(works, w)
-	}
-	return works
-}
-
-func buildMovements(tags model.Tags) []responses.Movement {
-	names := tags.Values(model.TagMovementName)
-	if len(names) == 0 {
-		return nil
-	}
-	numbers := tags.Values(model.TagMovementNumber)
-	counts := tags.Values(model.TagMovementTotal)
-	movements := make([]responses.Movement, 0, len(names))
-	for i, name := range names {
-		m := responses.Movement{Name: name}
-		if i < len(numbers) {
-			m.Number = number.ParseInt[int32](numbers[i])
-		}
-		if i < len(counts) {
-			m.Count = number.ParseInt[int32](counts[i])
-		}
-		movements = append(movements, m)
-	}
-	return movements
 }
 
 func fakePath(mf model.MediaFile) string {
