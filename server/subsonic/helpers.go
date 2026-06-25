@@ -217,7 +217,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 		child.Path = fakePath(mf)
 	}
 	child.DiscNumber = int32(mf.DiscNumber)
-	child.CreatedAt = new(mf.CreatedAt)
+	child.Created = new(mf.CreatedAt)
 	child.AlbumId = mf.AlbumID
 	child.ArtistId = mf.ArtistID
 	child.Type = "music"
