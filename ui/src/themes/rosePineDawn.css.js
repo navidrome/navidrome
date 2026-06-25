@@ -48,7 +48,7 @@ const stylesheet = `
   }
 
   .react-jinke-music-player-main .music-player-panel .panel-content .rc-slider-handle {
-    border: hidden;
+    border: none;
     box-shadow:
       rgba(70, 66, 97, 0.12) 0px 4px 6px,
       rgba(70, 66, 97, 0.08) 0px 5px 7px;
@@ -100,11 +100,6 @@ const stylesheet = `
 
   .audio-lists-panel-content .audio-item:nth-child(2n+1) {
     background-color: rgba(0, 0, 0, 0);
-  }
-
-  .audio-lists-panel-content .audio-item:active,
-  .audio-lists-panel-content .audio-item:hover {
-    background-color: rgba(70, 66, 97, 0.08);
   }
 
   .audio-lists-panel-header {
