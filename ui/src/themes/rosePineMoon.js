@@ -50,10 +50,8 @@ export default {
     },
     MuiFormHelperText: {
       root: {
-        Mui: {
-          error: {
-            color: '#eb6f92',
-          },
+        '&$error': {
+          color: '#eb6f92',
         },
       },
     },
@@ -93,7 +91,7 @@ export default {
     NDMobileArtistDetails: {
       bgContainer: {
         background:
-          'linear-gradient(to bottom, rgba(35 33 54 / 72%), rgb(35 33 54))!important',
+          'linear-gradient(to bottom, rgba(35, 33, 54, 0.72), rgb(35, 33, 54))!important',
       },
     },
   },

@@ -149,8 +149,8 @@ const stylesheet = `
     color: #d7827e;
   }
 
-  .audio-lists-panel-content .audio-item:active .group:not([class=".player-delete"]) svg,
-  .audio-lists-panel-content .audio-item:hover .group:not([class=".player-delete"]) svg {
+  .audio-lists-panel-content .audio-item:active .group:not(.player-delete) svg,
+  .audio-lists-panel-content .audio-item:hover .group:not(.player-delete) svg {
     color: #d7827e;
   }
 
