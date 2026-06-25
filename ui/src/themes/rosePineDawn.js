@@ -13,6 +13,7 @@ export default {
     type: 'light',
     background: {
       default: '#faf4ed',
+      paper: '#fffaf3',
     },
   },
   overrides: {
@@ -28,6 +29,11 @@ export default {
       },
       textSecondary: {
         color: '#464261',
+      },
+    },
+    MuiIconButton: {
+      colorSecondary: {
+        color: '#9893a5',
       },
     },
     MuiChip: {
