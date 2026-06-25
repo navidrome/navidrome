@@ -28,17 +28,11 @@ func (j smartPlaylistJoinType) has(other smartPlaylistJoinType) bool {
 }
 
 type smartPlaylistField struct {
-	expr        string
-	order       string
-	joinType    smartPlaylistJoinType
-	emptyValues []string // additional values that encode "missing" for string columns (e.g. '[]' for lyrics)
-
-	// coalesceDefault, when non-nil, marks a nullable annotation column (e.g. annotation.play_count)
-	// whose absence is treated as this value (0 for numeric, false for bool). Comparisons against such
-	// a column normally need COALESCE(col, default) so missing annotation rows behave as the default —
-	// but COALESCE prevents SQLite from using the column's index, so annotationCond avoids it where
-	// possible. The boxed values 0/false are non-nil interfaces, so nil cleanly means "no default".
-	coalesceDefault any
+	expr            string
+	order           string
+	joinType        smartPlaylistJoinType
+	emptyValues     []string // additional values that encode "missing" for string columns (e.g. '[]' for lyrics)
+	coalesceDefault any      // missing-row default for a nullable annotation column; nil = none. See annotationCond.
 }
 
 type smartPlaylistCriteria struct {
