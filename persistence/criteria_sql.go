@@ -282,7 +282,6 @@ func likeExpr(values map[string]any, pattern string, negate bool) (squirrel.Sqli
 	return lk, nil
 }
 
-// likeCond builds a (NOT) LIKE condition over a single column expression.
 func likeCond(col, pattern string, negate bool) squirrel.Sqlizer {
 	if negate {
 		return squirrel.NotLike{col: pattern}
@@ -659,9 +658,9 @@ var (
 	cmpLe = comparator{build: func(f map[string]any) squirrel.Sqlizer { return squirrel.LtOrEq(f) }, satisfy: func(a, b float64) bool { return a <= b }, ordering: true}
 )
 
-// annotationField returns the field definition for a resolved criteria field if it is a nullable
-// annotation column with a COALESCE default (e.g. playcount, rating, loved). Date annotation
-// columns (lastplayed, dateloved, ...) have no default and return ok=false.
+// annotationField returns the field definition only for nullable annotation columns that have a
+// COALESCE default (playcount, rating, loved). Date annotation columns (lastplayed, dateloved, ...)
+// have no default and return ok=false.
 func annotationField(info criteria.FieldInfo) (smartPlaylistField, bool) {
 	f, ok := smartPlaylistFields[info.Name()]
 	if !ok || f.coalesceDefault == nil {
@@ -670,9 +669,9 @@ func annotationField(info criteria.FieldInfo) (smartPlaylistField, bool) {
 	return f, true
 }
 
-// coalesced returns the field expression wrapped in COALESCE(col, default) when it has a coalesce
-// default, and the bare expression otherwise. Used where index-friendliness does not apply (ORDER
-// BY, list comparisons) and the original missing-row-as-default semantics must be kept.
+// coalesced wraps the field in COALESCE(col, default) (bare expression if it has no default). Used
+// where index-friendliness does not apply (ORDER BY, list comparisons) and the missing-row-as-default
+// semantics must be kept.
 func (f smartPlaylistField) coalesced() string {
 	if f.coalesceDefault == nil {
 		return f.expr
@@ -680,10 +679,6 @@ func (f smartPlaylistField) coalesced() string {
 	return fmt.Sprintf("COALESCE(%s, %s)", f.expr, sqlLiteral(f.coalesceDefault))
 }
 
-// comparisonExpr builds the SQL condition for a scalar comparison operator. For annotation columns
-// with a COALESCE default it produces an index-friendly expression via annotationCond; tag/role
-// fields route through jsonExpr; all other fields fall back to the squirrel comparison keyed by the
-// column expression.
 func comparisonExpr(values map[string]any, cmp comparator) (squirrel.Sqlizer, error) {
 	if _, value, info, ok := singleField(values); ok {
 		if info.IsTag || info.IsRole {

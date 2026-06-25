@@ -97,9 +97,8 @@ func normalizeBoolFields(m map[string]any) {
 }
 
 // ToBool coerces a criteria value to a bool, accepting the forms criteria values take: a real bool,
-// a string parseable by strconv.ParseBool (true/false, 1/0, t/f, ...), or a JSON number that is
-// exactly 0 or 1. It returns ok=false for any other value (other numbers, slices, nil, unparseable
-// strings) so callers can decide how to handle a non-boolean value.
+// a strconv.ParseBool-parseable string, or a JSON number that is exactly 0 or 1. Any other value
+// (other numbers, slices, nil, unparseable strings) returns ok=false so callers can handle it.
 func ToBool(v any) (bool, bool) {
 	switch val := v.(type) {
 	case bool:
@@ -118,8 +117,7 @@ func ToBool(v any) (bool, bool) {
 	return false, false
 }
 
-// normalizeBoolValue converts a value to a bool when it cleanly represents one, leaving it unchanged
-// otherwise (so non-boolean values flow through to their own validation).
+// normalizeBoolValue leaves non-boolean values unchanged so they flow through to their own validation.
 func normalizeBoolValue(v any) any {
 	if b, ok := ToBool(v); ok {
 		return b
