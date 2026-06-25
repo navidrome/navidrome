@@ -13,6 +13,9 @@ import CatppuccinLatteTheme from './catppuccinLatte'
 import DraculaTheme from './dracula'
 import NuclearTheme from './nuclear'
 import NutballTheme from './nutball'
+import RosePineTheme from './rosePine'
+import RosePineDawnTheme from './rosePineDawn'
+import RosePineMoonTheme from './rosePineMoon'
 import AmusicTheme from './amusic'
 import SquiddiesGlassTheme from './SquiddiesGlass'
 import NautilineTheme from './nautiline'
@@ -43,6 +46,9 @@ export default {
   NordTheme,
   NuclearTheme,
   NutballTheme,
+  RosePineTheme,
+  RosePineDawnTheme,
+  RosePineMoonTheme,
   SpotifyTheme,
   SquiddiesGlassTheme,
   TokyoNightLightTheme,
