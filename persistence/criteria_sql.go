@@ -642,16 +642,21 @@ func fieldExpr(name string) (string, bool) {
 	return field.expr, ok
 }
 
-// comparator is one of the scalar SQL comparison operators used by smart playlist criteria.
-type comparator string
+// comparator is a scalar SQL comparison operator used by smart playlist criteria.
+type comparator struct {
+	build   func(map[string]any) squirrel.Sqlizer
+	satisfy func(a, b float64) bool // the operator as a predicate, to reason about a column's COALESCE default
+	// ordering is false only for = and <>, the only operators with a clean bare form over bool columns.
+	ordering bool
+}
 
-const (
-	cmpEq comparator = "="
-	cmpNe comparator = "<>"
-	cmpGt comparator = ">"
-	cmpGe comparator = ">="
-	cmpLt comparator = "<"
-	cmpLe comparator = "<="
+var (
+	cmpEq = comparator{build: func(f map[string]any) squirrel.Sqlizer { return squirrel.Eq(f) }, satisfy: func(a, b float64) bool { return a == b }}
+	cmpNe = comparator{build: func(f map[string]any) squirrel.Sqlizer { return squirrel.NotEq(f) }, satisfy: func(a, b float64) bool { return a != b }}
+	cmpGt = comparator{build: func(f map[string]any) squirrel.Sqlizer { return squirrel.Gt(f) }, satisfy: func(a, b float64) bool { return a > b }, ordering: true}
+	cmpGe = comparator{build: func(f map[string]any) squirrel.Sqlizer { return squirrel.GtOrEq(f) }, satisfy: func(a, b float64) bool { return a >= b }, ordering: true}
+	cmpLt = comparator{build: func(f map[string]any) squirrel.Sqlizer { return squirrel.Lt(f) }, satisfy: func(a, b float64) bool { return a < b }, ordering: true}
+	cmpLe = comparator{build: func(f map[string]any) squirrel.Sqlizer { return squirrel.LtOrEq(f) }, satisfy: func(a, b float64) bool { return a <= b }, ordering: true}
 )
 
 // annotationField returns the field definition for a resolved criteria field if it is a nullable
@@ -682,7 +687,7 @@ func (f smartPlaylistField) coalesced() string {
 func comparisonExpr(values map[string]any, cmp comparator) (squirrel.Sqlizer, error) {
 	if _, value, info, ok := singleField(values); ok {
 		if info.IsTag || info.IsRole {
-			return jsonExpr(info, squirrelCmp(cmp, map[string]any{"value": value}), false), nil
+			return jsonExpr(info, cmp.build(map[string]any{"value": value}), false), nil
 		}
 		if f, isAnnotation := annotationField(info); isAnnotation {
 			return annotationCond(f, cmp, value), nil
@@ -692,25 +697,7 @@ func comparisonExpr(values map[string]any, cmp comparator) (squirrel.Sqlizer, er
 	if err != nil {
 		return nil, err
 	}
-	return squirrelCmp(cmp, fields), nil
-}
-
-// squirrelCmp maps a comparator to the corresponding squirrel condition over a field/value map.
-func squirrelCmp(cmp comparator, fields map[string]any) squirrel.Sqlizer {
-	switch cmp {
-	case cmpNe:
-		return squirrel.NotEq(fields)
-	case cmpGt:
-		return squirrel.Gt(fields)
-	case cmpGe:
-		return squirrel.GtOrEq(fields)
-	case cmpLt:
-		return squirrel.Lt(fields)
-	case cmpLe:
-		return squirrel.LtOrEq(fields)
-	default:
-		return squirrel.Eq(fields)
-	}
+	return cmp.build(fields), nil
 }
 
 // annotationCond builds a comparison against a nullable annotation column (see smartPlaylistField
@@ -720,9 +707,9 @@ func squirrelCmp(cmp comparator, fields map[string]any) squirrel.Sqlizer {
 func annotationCond(f smartPlaylistField, cmp comparator, value any) squirrel.Sqlizer {
 	wrapNull, ok := bareNullInclusion(f.coalesceDefault, cmp, value)
 	if !ok {
-		return squirrelCmp(cmp, map[string]any{f.coalesced(): value})
+		return cmp.build(map[string]any{f.coalesced(): value})
 	}
-	base := squirrelCmp(cmp, map[string]any{f.expr: value})
+	base := cmp.build(map[string]any{f.expr: value})
 	if !wrapNull {
 		return base
 	}
@@ -739,19 +726,16 @@ func annotationCond(f smartPlaylistField, cmp comparator, value any) squirrel.Sq
 // value itself satisfies the predicate (so missing rows would match and must be preserved).
 func bareNullInclusion(defaultVal any, cmp comparator, value any) (wrapNull, ok bool) {
 	if b, isBool := defaultVal.(bool); isBool {
-		// Bool columns only have an exact bare form for equality; ordering operators have no clean
-		// index form, so fall back to COALESCE.
-		if cmp != cmpEq && cmp != cmpNe {
+		// Bool columns have an exact bare form only for equality; ordering operators fall back to
+		// COALESCE. Mapping both bools to 0/1 lets cmp.satisfy reuse the numeric eq/ne predicate.
+		if cmp.ordering {
 			return false, false
 		}
 		v, okV := criteria.ToBool(value)
 		if !okV {
 			return false, false
 		}
-		if cmp == cmpNe {
-			return b != v, true
-		}
-		return b == v, true
+		return cmp.satisfy(boolToFloat(b), boolToFloat(v)), true
 	}
 	d, okD := toFloat(defaultVal)
 	v, okV := toFloat(value)
@@ -759,21 +743,14 @@ func bareNullInclusion(defaultVal any, cmp comparator, value any) (wrapNull, ok 
 		// Non-scalar or unparseable value: no exact bare form, keep COALESCE.
 		return false, false
 	}
-	switch cmp {
-	case cmpEq:
-		return d == v, true
-	case cmpNe:
-		return d != v, true
-	case cmpGt:
-		return d > v, true
-	case cmpGe:
-		return d >= v, true
-	case cmpLt:
-		return d < v, true
-	case cmpLe:
-		return d <= v, true
+	return cmp.satisfy(d, v), true
+}
+
+func boolToFloat(b bool) float64 {
+	if b {
+		return 1
 	}
-	return false, false
+	return 0
 }
 
 // toFloat coerces a scalar criteria value to float64. Criteria values come from JSON (float64,
