@@ -471,18 +471,19 @@ func (e *provider) getMatchingTopSongs(ctx context.Context, agent agents.ArtistT
 		return nil, fmt.Errorf("failed to get top songs for artist %s: %w", artistName, err)
 	}
 
-	// Enrich songs with artist info: for top songs we know the queried artist, so backfill the
-	// primary credit's name/MBID when the agent left them empty (preserving known identity signals).
+	// Enrich top songs with the queried artist. A song with no artists, or whose first credit the
+	// agent left unnamed, is attributed to the queried artist. A first credit that already names an
+	// artist is left as-is: it may be a different (e.g. featured) artist, so stamping the queried
+	// MBID onto it would create a false name+MBID pairing.
 	for i := range songs {
-		if len(songs[i].Artists) == 0 {
+		switch {
+		case len(songs[i].Artists) == 0:
 			songs[i].Artists = []agents.Artist{{Name: artistName, MBID: artist.MbzArtistID}}
-			continue
-		}
-		if songs[i].Artists[0].Name == "" {
+		case songs[i].Artists[0].Name == "":
 			songs[i].Artists[0].Name = artistName
-		}
-		if songs[i].Artists[0].MBID == "" {
-			songs[i].Artists[0].MBID = artist.MbzArtistID
+			if songs[i].Artists[0].MBID == "" {
+				songs[i].Artists[0].MBID = artist.MbzArtistID
+			}
 		}
 	}
 
