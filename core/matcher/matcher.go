@@ -265,37 +265,44 @@ type sanitizedTrack struct {
 	title       string
 	artist      string
 	album       string
-	artistMBIDs map[string]struct{} // MBIDs of all the query's owned artists this track credits (artist table; mf.MbzArtistID is not populated on the bulk path)
+	artistIDs   map[string]struct{} // query's owned artist IDs this track credits; an ID match is the strongest identity signal
+	artistMBIDs map[string]struct{} // MBIDs of those artists (artist table; mf.MbzArtistID is not populated on the bulk path)
 }
 
-func newSanitizedTrack(mf *model.MediaFile, artistMBIDs map[string]struct{}) sanitizedTrack {
+func newSanitizedTrack(mf *model.MediaFile, artistIDs, artistMBIDs map[string]struct{}) sanitizedTrack {
 	return sanitizedTrack{
 		mf:          mf,
 		title:       str.SanitizeFieldForSorting(mf.Title),
 		artist:      str.SanitizeFieldForSortingNoArticle(mf.Artist),
 		album:       str.SanitizeFieldForSorting(mf.Album),
+		artistIDs:   artistIDs,
 		artistMBIDs: artistMBIDs,
 	}
 }
 
 // computeSpecificityLevel determines how well query metadata matches a track (0-5), taking the best
-// level achievable across any of the query's artists. Fields must be pre-sanitized; t.artistMBIDs is
-// the set of resolved artist MBIDs credited by this track.
+// level achievable across any of the query's artists. Fields must be pre-sanitized.
+//
+// A query artist counts as an identity match when the track credits its resolved Navidrome ID (the
+// strongest signal, our own primary key) or its MBID; that identity then unlocks the album tiers.
+// Name matching is the lowest fallback for an artist with no identity match (e.g. a cover credited
+// to a different artist by the same name).
 func computeSpecificityLevel(q songQuery, t sanitizedTrack, albumThreshold float64) int {
 	best := 0
 	albumOK := q.album != "" && similarityRatio(t.album, q.album) >= albumThreshold
 	for _, a := range q.artists {
-		_, membership := t.artistMBIDs[a.mbid]
-		mbidMatch := membership && a.mbid != "" // guard: empty query MBID must never match
+		_, idMember := t.artistIDs[a.id]
+		_, mbidMember := t.artistMBIDs[a.mbid]
+		identity := (a.id != "" && idMember) || (a.mbid != "" && mbidMember)
 		level := 0
 		switch {
-		case mbidMatch && q.albumMBID != "" && t.mf.MbzAlbumID == q.albumMBID:
+		case identity && q.albumMBID != "" && t.mf.MbzAlbumID == q.albumMBID:
 			level = 5
-		case mbidMatch && q.album != "" && albumOK:
+		case identity && q.album != "" && albumOK:
 			level = 4
 		case a.name != "" && q.album != "" && t.artist == a.name && albumOK:
 			level = 3
-		case mbidMatch:
+		case identity:
 			level = 2
 		case a.name != "" && t.artist == a.name:
 			level = 1
@@ -471,10 +478,11 @@ type scoredTrack struct {
 	overlap int
 }
 
-// queryAccum tallies, for one track against one query, the overlap count and the credited artists'
-// MBIDs.
+// queryAccum tallies, for one track against one query, the overlap count, the credited artists'
+// owned IDs, and their MBIDs.
 type queryAccum struct {
 	overlap int
+	ids     map[string]struct{}
 	mbids   map[string]struct{}
 }
 
@@ -503,10 +511,11 @@ func (r resolvedArtists) bucketTracks(tracks []model.MediaFile) map[int][]scored
 			for _, idx := range owners {
 				a := acc[idx]
 				if a == nil {
-					a = &queryAccum{mbids: map[string]struct{}{}}
+					a = &queryAccum{ids: map[string]struct{}{}, mbids: map[string]struct{}{}}
 					acc[idx] = a
 				}
 				a.overlap++
+				a.ids[p.ID] = struct{}{}
 				if mbid != "" {
 					a.mbids[mbid] = struct{}{}
 				}
@@ -514,7 +523,7 @@ func (r resolvedArtists) bucketTracks(tracks []model.MediaFile) map[int][]scored
 		}
 		for idx, a := range acc {
 			byQuery[idx] = append(byQuery[idx], scoredTrack{
-				sanitizedTrack: newSanitizedTrack(&tracks[i], a.mbids),
+				sanitizedTrack: newSanitizedTrack(&tracks[i], a.ids, a.mbids),
 				overlap:        a.overlap,
 			})
 		}

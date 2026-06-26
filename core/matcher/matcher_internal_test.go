@@ -63,7 +63,7 @@ var _ = Describe("matcher internals", func() {
 			albumMBID: "album-mbid-1",
 		}
 		mf := model.MediaFile{Title: "Song", MbzAlbumID: "album-mbid-1"} // note: mf.MbzArtistID intentionally empty
-		t := newSanitizedTrack(&mf, map[string]struct{}{"artist-mbid-1": {}})
+		t := newSanitizedTrack(&mf, nil, map[string]struct{}{"artist-mbid-1": {}})
 		Expect(computeSpecificityLevel(q, t, 0.85)).To(Equal(5))
 	})
 
@@ -78,7 +78,7 @@ var _ = Describe("matcher internals", func() {
 			},
 		}
 		mf := model.MediaFile{Title: "Song", Artist: "Depeche Mode", Album: "Violator"}
-		t := newSanitizedTrack(&mf, nil)
+		t := newSanitizedTrack(&mf, nil, nil)
 		Expect(computeSpecificityLevel(q, t, 0.85)).To(Equal(3))
 	})
 
@@ -102,6 +102,28 @@ var _ = Describe("matcher internals", func() {
 		// Either artist's MBID matching yields level 2 (MBID, no album match). The point: it is
 		// reached via mbz-future too, which the old code would have dropped.
 		Expect(computeSpecificityLevel(q, t, 0.85)).To(Equal(2))
+	})
+
+	It("treats an ID-only artist (no name/MBID) as an identity match, unlocking album tiers", func() {
+		// A plugin that supplies only a Navidrome artist ID: name and mbid are empty. The ID is the
+		// strongest identity signal, so the track's album still elevates specificity above 0.
+		q := songQuery{
+			title:     "song",
+			artists:   []queryArtist{{id: "artist-1"}},
+			album:     "violator",
+			albumMBID: "album-mbid-1",
+		}
+		// Track credits the owned artist ID; no MBID anywhere (untagged library / ID-only plugin).
+		mf := model.MediaFile{Title: "Song", Album: "Violator", MbzAlbumID: "album-mbid-1"}
+		t := newSanitizedTrack(&mf, map[string]struct{}{"artist-1": {}}, nil)
+		// Album MBID matches → level 5 via the ID identity, where the old code scored 0.
+		Expect(computeSpecificityLevel(q, t, 0.85)).To(Equal(5))
+
+		// Same artist, album name matches but no album MBID → level 4 via the ID identity.
+		q.albumMBID = ""
+		mf2 := model.MediaFile{Title: "Song", Album: "Violator"}
+		t2 := newSanitizedTrack(&mf2, map[string]struct{}{"artist-1": {}}, nil)
+		Expect(computeSpecificityLevel(q, t2, 0.85)).To(Equal(4))
 	})
 })
 
