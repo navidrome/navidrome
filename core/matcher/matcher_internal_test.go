@@ -1,6 +1,7 @@
 package matcher
 
 import (
+	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -50,6 +51,27 @@ var _ = Describe("similarityRatio", func() {
 		ratio1 := similarityRatio("hello world", "hello")
 		ratio2 := similarityRatio("hello", "hello world")
 		Expect(ratio1).To(Equal(ratio2))
+	})
+})
+
+var _ = Describe("sameSong", func() {
+	base := agents.Song{ID: "1", Name: "S", Artist: "A", Artists: []agents.Artist{{ID: "x", Name: "A"}}}
+	It("true for identical songs incl Artists", func() {
+		Expect(sameSong(base, base)).To(BeTrue())
+	})
+	It("false when Artists differ", func() {
+		other := base
+		other.Artists = []agents.Artist{{ID: "y", Name: "B"}}
+		Expect(sameSong(base, other)).To(BeFalse())
+	})
+	It("false when a scalar differs", func() {
+		other := base
+		other.Name = "T"
+		Expect(sameSong(base, other)).To(BeFalse())
+	})
+	It("true when both have empty Artists and equal scalars", func() {
+		a := agents.Song{ID: "1", Name: "S", Artist: "A"}
+		Expect(sameSong(a, a)).To(BeTrue())
 	})
 })
 

@@ -39,9 +39,23 @@ type Song struct {
 	ISRC       string
 	Artist     string
 	ArtistMBID string
+	Artists    []Artist // optional full artist list; ArtistList normalizes against Artist/ArtistMBID
 	Album      string
 	AlbumMBID  string
 	Duration   uint32 // Duration in milliseconds, 0 means unknown
+}
+
+// ArtistList returns the song's full artist set, normalizing the single-artist and multi-artist
+// representations. It returns Artists when non-empty, otherwise a one-element list from
+// Artist/ArtistMBID (ID empty), otherwise an empty list. Exported because the matcher package consumes it.
+func (s Song) ArtistList() []Artist {
+	if len(s.Artists) > 0 {
+		return s.Artists
+	}
+	if s.Artist != "" {
+		return []Artist{{Name: s.Artist, MBID: s.ArtistMBID}}
+	}
+	return nil
 }
 
 var (
