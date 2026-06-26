@@ -34,16 +34,14 @@ type ExternalImage struct {
 }
 
 type Song struct {
-	ID         string
-	Name       string
-	MBID       string
-	ISRC       string
-	Artist     string
-	ArtistMBID string
-	Artists    []Artist // optional full artist list; ArtistList normalizes against Artist/ArtistMBID
-	Album      string
-	AlbumMBID  string
-	Duration   uint32 // Duration in milliseconds, 0 means unknown
+	ID        string
+	Name      string
+	MBID      string
+	ISRC      string
+	Artists   []Artist
+	Album     string
+	AlbumMBID string
+	Duration  uint32 // Duration in milliseconds, 0 means unknown
 }
 
 // Equals reports strict whole-value equality, used to dedup identical input songs. It hashes
@@ -52,17 +50,6 @@ func (s Song) Equals(other Song) bool {
 	h1, _ := hashstructure.Hash(s, nil)
 	h2, _ := hashstructure.Hash(other, nil)
 	return h1 == h2
-}
-
-// ArtistList normalizes the single/multi-artist representations so callers never branch on len(Artists).
-func (s Song) ArtistList() []Artist {
-	if len(s.Artists) > 0 {
-		return s.Artists
-	}
-	if s.Artist != "" {
-		return []Artist{{Name: s.Artist, MBID: s.ArtistMBID}}
-	}
-	return nil
 }
 
 var (

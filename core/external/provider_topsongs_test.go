@@ -76,6 +76,63 @@ var _ = Describe("Provider - TopSongs", func() {
 		mediaFileRepo.AssertExpectations(GinkgoT())
 	})
 
+	It("backfills name and MBID onto an unnamed primary credit (the queried artist) and matches", func() {
+		artist1 := model.Artist{ID: "artist-1", Name: "Artist One", MbzArtistID: "mbid-artist-1"}
+		artistRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.Artists{artist1}, nil)
+
+		// Agent leaves the first credit unnamed (e.g. an MBID-less collaborator slot). That blank
+		// credit IS the queried artist, so enrichment fills both name and MBID; the song then matches
+		// the queried artist's track via the backfilled identity.
+		agentSongs := []agents.Song{
+			{Name: "Song One", Artists: []agents.Artist{{}}},
+		}
+		ag.On("GetArtistTopSongs", ctx, "artist-1", "Artist One", "mbid-artist-1", 1).Return(agentSongs, nil).Once()
+
+		track := model.MediaFile{
+			ID: "song-1", Title: "Song One", ArtistID: "artist-1",
+			Participants: model.Participants{model.RoleArtist: model.ParticipantList{
+				{Artist: model.Artist{ID: "artist-1", Name: "Artist One", OrderArtistName: "artist one", MbzArtistID: "mbid-artist-1"}},
+			}},
+		}
+		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{track}, nil)
+
+		songs, err := p.TopSongs(ctx, "Artist One", 1)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(songs).To(HaveLen(1))
+		Expect(songs[0].ID).To(Equal("song-1"))
+	})
+
+	It("does not stamp the queried MBID onto an already-named different first credit", func() {
+		// The queried artist (One) appears only as a featured collaborator; the displayed first credit
+		// is a DIFFERENT artist (Two) returned without an MBID. Enrichment must NOT assign One's MBID
+		// to Two — only Two's name match (which fails here) or One's own credit may resolve the track.
+		artist1 := model.Artist{ID: "artist-1", Name: "Artist One", MbzArtistID: "mbid-artist-1"}
+		artistRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.Artists{artist1}, nil)
+
+		agentSongs := []agents.Song{
+			{Name: "Collab Song", Artists: []agents.Artist{{Name: "Artist Two"}}},
+		}
+		ag.On("GetArtistTopSongs", ctx, "artist-1", "Artist One", "mbid-artist-1", 1).Return(agentSongs, nil).Once()
+
+		// Library track is credited to Artist One (the queried artist) under a same title. If the
+		// queried MBID were wrongly stamped onto the "Artist Two" credit, that mismatched name+MBID
+		// could mis-resolve. With the guard, "Artist Two" stays MBID-less and does not match One's track.
+		track := model.MediaFile{
+			ID: "one-track", Title: "Collab Song", ArtistID: "artist-1",
+			Participants: model.Participants{model.RoleArtist: model.ParticipantList{
+				{Artist: model.Artist{ID: "artist-1", Name: "Artist One", OrderArtistName: "artist one", MbzArtistID: "mbid-artist-1"}},
+			}},
+		}
+		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{track}, nil)
+
+		songs, err := p.TopSongs(ctx, "Artist One", 1)
+
+		Expect(err).ToNot(HaveOccurred())
+		// "Artist Two" (named, MBID-less, not in the library) does not resolve to One's track.
+		Expect(songs).To(BeEmpty())
+	})
+
 	It("returns nil for an unknown artist", func() {
 		// Mock artist not found
 		artistRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.Artists{}, nil).Once()

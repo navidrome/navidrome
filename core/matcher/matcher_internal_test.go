@@ -143,7 +143,7 @@ var _ = Describe("groupQueries", func() {
 
 	It("strips leading articles from artist names", func() {
 		songs := []agents.Song{
-			{Name: "Song A", Artist: "The Drake"},
+			{Name: "Song A", Artists: []agents.Artist{{Name: "The Drake"}}},
 		}
 		queries := groupQueries(songs, map[int]model.MediaFile{})
 		Expect(queries).To(HaveLen(1))
@@ -162,32 +162,35 @@ var _ = Describe("groupQueries", func() {
 		Expect(queries[0].query.artists[0].name).To(Equal(""))
 	})
 
-	It("drops an artist with empty id and empty name but keeps usable ones", func() {
+	It("keeps an artist that carries only an MBID (empty id and name)", func() {
+		// ListenBrainz collaborators arrive as MBID-only when the API supplies a combined display
+		// name; the MBID is a usable identity signal and must not be dropped.
 		songs := []agents.Song{
-			{Name: "Song A", Artists: []agents.Artist{{Name: ""}, {Name: "Future"}}},
+			{Name: "Song A", Artists: []agents.Artist{{MBID: "mbz-future"}}},
 		}
 		queries := groupQueries(songs, map[int]model.MediaFile{})
 		Expect(queries).To(HaveLen(1))
 		Expect(queries[0].query.artists).To(HaveLen(1))
-		Expect(queries[0].query.artists[0].name).To(Equal("future"))
+		Expect(queries[0].query.artists[0].id).To(Equal(""))
+		Expect(queries[0].query.artists[0].name).To(Equal(""))
+		Expect(queries[0].query.artists[0].mbid).To(Equal("mbz-future"))
 	})
 
-	It("falls back to the single Artist field via ArtistList", func() {
+	It("drops a fully-empty artist (no id, name, or mbid) but keeps usable ones", func() {
 		songs := []agents.Song{
-			{Name: "Song A", Artist: "Future", ArtistMBID: "mbid-1"},
+			{Name: "Song A", Artists: []agents.Artist{{}, {Name: "Future"}}},
 		}
 		queries := groupQueries(songs, map[int]model.MediaFile{})
 		Expect(queries).To(HaveLen(1))
 		Expect(queries[0].query.artists).To(HaveLen(1))
 		Expect(queries[0].query.artists[0].name).To(Equal("future"))
-		Expect(queries[0].query.artists[0].mbid).To(Equal("mbid-1"))
 	})
 
 	It("skips already-matched songs and songs with no usable artist", func() {
 		songs := []agents.Song{
-			{Name: "Already Matched", Artist: "Drake"},
+			{Name: "Already Matched", Artists: []agents.Artist{{Name: "Drake"}}},
 			{Name: "No Artist"},
-			{Name: "Song C", Artist: "Future"},
+			{Name: "Song C", Artists: []agents.Artist{{Name: "Future"}}},
 		}
 		queries := groupQueries(songs, map[int]model.MediaFile{0: {ID: "done"}})
 		Expect(queries).To(HaveLen(1))
