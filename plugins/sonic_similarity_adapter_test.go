@@ -124,4 +124,9 @@ var _ = Describe("mediaFileToSongRef multi-artist", func() {
 			{ID: "ar-future", Name: "Future", MBID: "m-future"},
 		}))
 	})
+	It("leaves Artists nil when the track has no role=artist participants", func() {
+		mf := &model.MediaFile{ID: "x", Title: "Solo", Artist: "Drake"}
+		ref := mediaFileToSongRef(mf)
+		Expect(ref.Artists).To(BeNil())
+	})
 })

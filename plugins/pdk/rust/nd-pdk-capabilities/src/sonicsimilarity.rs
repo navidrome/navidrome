@@ -18,6 +18,20 @@ fn is_zero_u64(value: &u64) -> bool { *value == 0 }
 fn is_zero_f32(value: &f32) -> bool { *value == 0.0 }
 #[allow(dead_code)]
 fn is_zero_f64(value: &f64) -> bool { *value == 0.0 }
+/// ArtistRef is a reference to an artist with name and optional MBID.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ArtistRef {
+    /// ID is the internal Navidrome artist ID (if known).
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub id: String,
+    /// Name is the artist name.
+    #[serde(default)]
+    pub name: String,
+    /// MBID is the MusicBrainz ID for the artist.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub mbid: String,
+}
 /// FindSonicPathRequest represents the FindSonicPathRequest data structure.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -60,6 +74,9 @@ pub struct SongRef {
     /// ArtistMBID is the MusicBrainz artist ID.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub artist_mbid: String,
+    /// Artists is the full artist list; when set, takes precedence over Artist/ArtistMBID for matching.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub artists: Vec<ArtistRef>,
     /// Album is the album name.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub album: String,

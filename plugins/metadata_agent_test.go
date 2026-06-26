@@ -343,4 +343,11 @@ var _ = Describe("songRefToAgentSong multi-artist", func() {
 			{Name: "Future", MBID: "m-future"},
 		}))
 	})
+	It("leaves Artists nil and keeps the single Artist when no Artists provided", func() {
+		ref := capabilities.SongRef{Name: "Solo", Artist: "Drake", ArtistMBID: "m-drake"}
+		got := songRefToAgentSong(ref)
+		Expect(got.Artists).To(BeNil())
+		Expect(got.Artist).To(Equal("Drake"))
+		Expect(got.ArtistMBID).To(Equal("m-drake"))
+	})
 })

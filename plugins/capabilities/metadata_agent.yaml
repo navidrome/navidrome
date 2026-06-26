@@ -352,6 +352,11 @@ components:
                 artistMbid:
                     type: string
                     description: ArtistMBID is the MusicBrainz artist ID.
+                artists:
+                    type: array
+                    description: Artists is the full artist list; when set, takes precedence over Artist/ArtistMBID for matching.
+                    items:
+                        $ref: '#/components/schemas/ArtistRef'
                 album:
                     type: string
                     description: Album is the album name.

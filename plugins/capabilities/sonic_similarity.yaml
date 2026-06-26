@@ -16,6 +16,20 @@ exports:
             contentType: application/json
 components:
     schemas:
+        ArtistRef:
+            description: ArtistRef is a reference to an artist with name and optional MBID.
+            properties:
+                id:
+                    type: string
+                    description: ID is the internal Navidrome artist ID (if known).
+                name:
+                    type: string
+                    description: Name is the artist name.
+                mbid:
+                    type: string
+                    description: MBID is the MusicBrainz ID for the artist.
+            required:
+                - name
         FindSonicPathRequest:
             properties:
                 startSong:
@@ -60,6 +74,11 @@ components:
                 artistMbid:
                     type: string
                     description: ArtistMBID is the MusicBrainz artist ID.
+                artists:
+                    type: array
+                    description: Artists is the full artist list; when set, takes precedence over Artist/ArtistMBID for matching.
+                    items:
+                        $ref: '#/components/schemas/ArtistRef'
                 album:
                     type: string
                     description: Album is the album name.

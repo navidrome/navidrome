@@ -8,6 +8,16 @@
 
 package sonicsimilarity
 
+// ArtistRef is a reference to an artist with name and optional MBID.
+type ArtistRef struct {
+	// ID is the internal Navidrome artist ID (if known).
+	ID string `json:"id,omitempty"`
+	// Name is the artist name.
+	Name string `json:"name"`
+	// MBID is the MusicBrainz ID for the artist.
+	MBID string `json:"mbid,omitempty"`
+}
+
 // FindSonicPathRequest represents the FindSonicPathRequest data structure.
 type FindSonicPathRequest struct {
 	StartSong SongRef `json:"startSong"`
@@ -35,6 +45,8 @@ type SongRef struct {
 	Artist string `json:"artist,omitempty"`
 	// ArtistMBID is the MusicBrainz artist ID.
 	ArtistMBID string `json:"artistMbid,omitempty"`
+	// Artists is the full artist list; when set, takes precedence over Artist/ArtistMBID for matching.
+	Artists []ArtistRef `json:"artists,omitempty"`
 	// Album is the album name.
 	Album string `json:"album,omitempty"`
 	// AlbumMBID is the MusicBrainz release ID.
