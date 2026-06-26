@@ -148,6 +148,8 @@ type SongRef struct {
 	Artist string `json:"artist,omitempty"`
 	// ArtistMBID is the MusicBrainz artist ID.
 	ArtistMBID string `json:"artistMbid,omitempty"`
+	// Artists is the full artist list; when set, takes precedence over Artist/ArtistMBID for matching.
+	Artists []ArtistRef `json:"artists,omitempty"`
 	// Album is the album name.
 	Album string `json:"album,omitempty"`
 	// AlbumMBID is the MusicBrainz release ID.

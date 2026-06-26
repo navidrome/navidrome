@@ -72,6 +72,9 @@ func mediaFileToSongRef(mf *model.MediaFile) capabilities.SongRef {
 		AlbumMBID:  mf.MbzAlbumID,
 		Duration:   mf.Duration,
 	}
+	for _, p := range mf.Participants[model.RoleArtist] {
+		ref.Artists = append(ref.Artists, capabilities.ArtistRef{ID: p.ID, Name: p.Name, MBID: p.MbzArtistID})
+	}
 	if isrcs := mf.Tags.Values(model.TagISRC); len(isrcs) > 0 {
 		ref.ISRC = isrcs[0]
 	}
