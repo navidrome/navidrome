@@ -159,6 +159,9 @@ func (l *listenBrainzAgent) GetArtistTopSongs(ctx context.Context, id, artistNam
 // become MBID-only collaborators — still valid identity signals for the matcher.
 func topSongArtists(name string, mbids []string) []agents.Artist {
 	if len(mbids) == 0 {
+		if name == "" {
+			return nil
+		}
 		return []agents.Artist{{Name: name}}
 	}
 	artists := make([]agents.Artist, len(mbids))

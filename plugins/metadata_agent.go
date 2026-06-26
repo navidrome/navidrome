@@ -238,7 +238,7 @@ func songRefToAgentSong(s capabilities.SongRef) agents.Song {
 		for i, a := range s.Artists {
 			artists[i] = agents.Artist{ID: a.ID, Name: a.Name, MBID: a.MBID}
 		}
-	case s.Artist != "":
+	case s.Artist != "" || s.ArtistMBID != "":
 		artists = []agents.Artist{{Name: s.Artist, MBID: s.ArtistMBID}}
 	}
 	return agents.Song{

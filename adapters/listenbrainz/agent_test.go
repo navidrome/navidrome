@@ -306,6 +306,15 @@ var _ = Describe("listenBrainzAgent", func() {
 				{MBID: "mbid-future"},
 			}))
 		})
+
+		It("leaves Artists nil when the top song carries no name or MBIDs", func() {
+			body := `[{"recording_name": "Anon", "recording_mbid": "rec-1", "artist_name": "", "artist_mbids": []}]`
+			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(body)), StatusCode: 200}
+			data, err := agent.GetArtistTopSongs(ctx, "", "", "x", 1)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(data).To(HaveLen(1))
+			Expect(data[0].Artists).To(BeNil())
+		})
 	})
 
 	Describe("GetSimilarArtists", func() {

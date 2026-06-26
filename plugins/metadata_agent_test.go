@@ -349,7 +349,12 @@ var _ = Describe("songRefToAgentSong multi-artist", func() {
 		got := songRefToAgentSong(ref)
 		Expect(got.Artists).To(Equal([]agents.Artist{{Name: "Drake", MBID: "m-drake"}}))
 	})
-	It("leaves Artists nil when neither Artists nor the single Artist are provided", func() {
+	It("folds an MBID-only single artist (empty name) so the MBID is not dropped", func() {
+		ref := capabilities.SongRef{Name: "Solo", ArtistMBID: "m-drake"}
+		got := songRefToAgentSong(ref)
+		Expect(got.Artists).To(Equal([]agents.Artist{{MBID: "m-drake"}}))
+	})
+	It("leaves Artists nil when neither Artists nor the single Artist/ArtistMBID are provided", func() {
 		got := songRefToAgentSong(capabilities.SongRef{Name: "Anon"})
 		Expect(got.Artists).To(BeNil())
 	})

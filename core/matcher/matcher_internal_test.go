@@ -162,9 +162,23 @@ var _ = Describe("groupQueries", func() {
 		Expect(queries[0].query.artists[0].name).To(Equal(""))
 	})
 
-	It("drops an artist with empty id and empty name but keeps usable ones", func() {
+	It("keeps an artist that carries only an MBID (empty id and name)", func() {
+		// ListenBrainz collaborators arrive as MBID-only when the API supplies a combined display
+		// name; the MBID is a usable identity signal and must not be dropped.
 		songs := []agents.Song{
-			{Name: "Song A", Artists: []agents.Artist{{Name: ""}, {Name: "Future"}}},
+			{Name: "Song A", Artists: []agents.Artist{{MBID: "mbz-future"}}},
+		}
+		queries := groupQueries(songs, map[int]model.MediaFile{})
+		Expect(queries).To(HaveLen(1))
+		Expect(queries[0].query.artists).To(HaveLen(1))
+		Expect(queries[0].query.artists[0].id).To(Equal(""))
+		Expect(queries[0].query.artists[0].name).To(Equal(""))
+		Expect(queries[0].query.artists[0].mbid).To(Equal("mbz-future"))
+	})
+
+	It("drops a fully-empty artist (no id, name, or mbid) but keeps usable ones", func() {
+		songs := []agents.Song{
+			{Name: "Song A", Artists: []agents.Artist{{}, {Name: "Future"}}},
 		}
 		queries := groupQueries(songs, map[int]model.MediaFile{})
 		Expect(queries).To(HaveLen(1))

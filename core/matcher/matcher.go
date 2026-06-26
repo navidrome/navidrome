@@ -362,7 +362,7 @@ func groupQueries(songs []agents.Song, result map[int]model.MediaFile) []indexed
 		var artists []queryArtist
 		for _, a := range s.Artists {
 			name := str.SanitizeFieldForSortingNoArticle(a.Name)
-			if a.ID == "" && name == "" {
+			if a.ID == "" && name == "" && a.MBID == "" {
 				continue
 			}
 			artists = append(artists, queryArtist{id: a.ID, name: name, mbid: a.MBID})
