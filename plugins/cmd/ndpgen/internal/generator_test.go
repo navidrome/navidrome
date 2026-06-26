@@ -1289,12 +1289,16 @@ type OnInitOutput struct {
 
 var _ = Describe("Rust Generation", func() {
 	Describe("skipSerializingFunc", func() {
-		It("should return Option::is_none for pointer, slice, and map types", func() {
+		It("should return Option::is_none for pointer types", func() {
 			Expect(skipSerializingFunc("*string")).To(Equal("Option::is_none"))
 			Expect(skipSerializingFunc("*MyStruct")).To(Equal("Option::is_none"))
-			Expect(skipSerializingFunc("[]string")).To(Equal("Option::is_none"))
-			Expect(skipSerializingFunc("[]int32")).To(Equal("Option::is_none"))
-			Expect(skipSerializingFunc("map[string]int")).To(Equal("Option::is_none"))
+		})
+
+		It("should return the matching emptiness predicate for slice and map types", func() {
+			// The predicate must match the rendered Rust type: []T -> Vec<T>, map[K]V -> HashMap<K,V>.
+			Expect(skipSerializingFunc("[]string")).To(Equal("Vec::is_empty"))
+			Expect(skipSerializingFunc("[]int32")).To(Equal("Vec::is_empty"))
+			Expect(skipSerializingFunc("map[string]int")).To(Equal("HashMap::is_empty"))
 		})
 
 		It("should return String::is_empty for string type", func() {
