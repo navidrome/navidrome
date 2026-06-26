@@ -209,9 +209,8 @@ func (m *Matcher) matchByISRC(ctx context.Context, songs []agents.Song, result m
 	return nil
 }
 
-// queryArtist is one of a song's artists. id is the Navidrome artist ID when the source supplied
-// one (matched directly, skipping resolution); name is sanitized (article-stripped); mbid is the
-// agent-provided MusicBrainz artist ID.
+// queryArtist is one of a song's artists. A non-empty id is matched directly, skipping name/MBID
+// resolution; name is pre-sanitized (article-stripped).
 type queryArtist struct {
 	id   string
 	name string
@@ -458,7 +457,6 @@ func (m *Matcher) resolveArtists(ctx context.Context, queries []indexedQuery) (r
 	return res, nil
 }
 
-// addToSet inserts v into the inner set at key k, initialising the inner map on first use.
 func addToSet(m map[int]map[string]struct{}, k int, v string) {
 	if m[k] == nil {
 		m[k] = map[string]struct{}{}
@@ -466,15 +464,15 @@ func addToSet(m map[int]map[string]struct{}, k int, v string) {
 	m[k][v] = struct{}{}
 }
 
-// scoredTrack is a candidate track for a specific query, carrying how many of that query's distinct
-// resolved artist IDs the track credits (overlap). Higher overlap ranks higher.
+// scoredTrack is a candidate track for a query; overlap is how many of the query's distinct
+// artist IDs the track credits.
 type scoredTrack struct {
 	sanitizedTrack
 	overlap int
 }
 
-// queryAccum accumulates, for one track against one query, how many of the query's owned artists
-// the track credits (overlap) and the MBIDs of those artists (for specificity scoring).
+// queryAccum tallies, for one track against one query, the overlap count and the credited artists'
+// MBIDs.
 type queryAccum struct {
 	overlap int
 	mbids   map[string]struct{}

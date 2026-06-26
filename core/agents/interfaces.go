@@ -46,10 +46,8 @@ type Song struct {
 	Duration   uint32 // Duration in milliseconds, 0 means unknown
 }
 
-// Equals reports whether two Songs are exactly equal across all fields. Unlike the hash-based,
-// calculated-field-ignoring Equals on model types, this is strict whole-value equality: it is the
-// matcher's "is this the same input song?" test, used for result dedup. Song is not comparable
-// with == because it carries an Artists slice, hence the structural hash.
+// Equals reports strict whole-value equality, used to dedup identical input songs. It hashes
+// rather than comparing with ==, which the Artists slice makes illegal.
 func (s Song) Equals(other Song) bool {
 	h1, _ := hashstructure.Hash(s, nil)
 	h2, _ := hashstructure.Hash(other, nil)
