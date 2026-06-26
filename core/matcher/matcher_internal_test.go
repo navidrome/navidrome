@@ -143,7 +143,7 @@ var _ = Describe("groupQueries", func() {
 
 	It("strips leading articles from artist names", func() {
 		songs := []agents.Song{
-			{Name: "Song A", Artist: "The Drake"},
+			{Name: "Song A", Artists: []agents.Artist{{Name: "The Drake"}}},
 		}
 		queries := groupQueries(songs, map[int]model.MediaFile{})
 		Expect(queries).To(HaveLen(1))
@@ -172,22 +172,11 @@ var _ = Describe("groupQueries", func() {
 		Expect(queries[0].query.artists[0].name).To(Equal("future"))
 	})
 
-	It("falls back to the single Artist field via ArtistList", func() {
-		songs := []agents.Song{
-			{Name: "Song A", Artist: "Future", ArtistMBID: "mbid-1"},
-		}
-		queries := groupQueries(songs, map[int]model.MediaFile{})
-		Expect(queries).To(HaveLen(1))
-		Expect(queries[0].query.artists).To(HaveLen(1))
-		Expect(queries[0].query.artists[0].name).To(Equal("future"))
-		Expect(queries[0].query.artists[0].mbid).To(Equal("mbid-1"))
-	})
-
 	It("skips already-matched songs and songs with no usable artist", func() {
 		songs := []agents.Song{
-			{Name: "Already Matched", Artist: "Drake"},
+			{Name: "Already Matched", Artists: []agents.Artist{{Name: "Drake"}}},
 			{Name: "No Artist"},
-			{Name: "Song C", Artist: "Future"},
+			{Name: "Song C", Artists: []agents.Artist{{Name: "Future"}}},
 		}
 		queries := groupQueries(songs, map[int]model.MediaFile{0: {ID: "done"}})
 		Expect(queries).To(HaveLen(1))

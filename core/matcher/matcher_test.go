@@ -107,7 +107,7 @@ var _ = Describe("Matcher", func() {
 			It("matches songs with an ID field to MediaFiles by ID", func() {
 				conf.Server.Matcher.FuzzyThreshold = 100
 				songs := []agents.Song{
-					{ID: "track-1", Name: "Some Song", Artist: "Some Artist"},
+					{ID: "track-1", Name: "Some Song", Artists: []agents.Artist{{Name: "Some Artist"}}},
 				}
 				idMatch := model.MediaFile{
 					ID: "track-1", Title: "Some Song", Artist: "Some Artist",
@@ -125,7 +125,7 @@ var _ = Describe("Matcher", func() {
 			It("matches songs with MBID to tracks with matching mbz_recording_id", func() {
 				conf.Server.Matcher.FuzzyThreshold = 100
 				songs := []agents.Song{
-					{Name: "Paranoid Android", MBID: "abc-123", Artist: "Radiohead"},
+					{Name: "Paranoid Android", MBID: "abc-123", Artists: []agents.Artist{{Name: "Radiohead"}}},
 				}
 				mbidMatch := model.MediaFile{
 					ID: "track-mbid", Title: "Paranoid Android", Artist: "Radiohead",
@@ -144,7 +144,7 @@ var _ = Describe("Matcher", func() {
 			It("matches songs with ISRC to tracks with matching ISRC tag", func() {
 				conf.Server.Matcher.FuzzyThreshold = 100
 				songs := []agents.Song{
-					{Name: "Paranoid Android", ISRC: "GBAYE0000351", Artist: "Radiohead"},
+					{Name: "Paranoid Android", ISRC: "GBAYE0000351", Artists: []agents.Artist{{Name: "Radiohead"}}},
 				}
 				isrcMatch := model.MediaFile{
 					ID: "track-isrc", Title: "Paranoid Android", Artist: "Radiohead",
@@ -163,7 +163,7 @@ var _ = Describe("Matcher", func() {
 			It("matches songs by title and artist name", func() {
 				conf.Server.Matcher.FuzzyThreshold = 100
 				songs := []agents.Song{
-					{Name: "Enjoy the Silence", Artist: "Depeche Mode"},
+					{Name: "Enjoy the Silence", Artists: []agents.Artist{{Name: "Depeche Mode"}}},
 				}
 				titleMatch := model.MediaFile{
 					ID: "track-title", Title: "Enjoy the Silence", Artist: "Depeche Mode",
@@ -179,7 +179,7 @@ var _ = Describe("Matcher", func() {
 			It("matches songs with fuzzy title similarity", func() {
 				conf.Server.Matcher.FuzzyThreshold = 85
 				songs := []agents.Song{
-					{Name: "Bohemian Rhapsody", Artist: "Queen"},
+					{Name: "Bohemian Rhapsody", Artists: []agents.Artist{{Name: "Queen"}}},
 				}
 				fuzzyMatch := model.MediaFile{
 					ID: "track-fuzzy", Title: "Bohemian Rhapsody (Live)", Artist: "Queen",
@@ -195,7 +195,7 @@ var _ = Describe("Matcher", func() {
 			It("does not match completely different titles", func() {
 				conf.Server.Matcher.FuzzyThreshold = 85
 				songs := []agents.Song{
-					{Name: "Yesterday", Artist: "The Beatles"},
+					{Name: "Yesterday", Artists: []agents.Artist{{Name: "The Beatles"}}},
 				}
 				differentTracks := model.MediaFiles{
 					{ID: "different", Title: "Tomorrow Never Knows", Artist: "The Beatles",
@@ -213,8 +213,8 @@ var _ = Describe("Matcher", func() {
 			It("removes duplicates when different input songs match the same library track", func() {
 				conf.Server.Matcher.FuzzyThreshold = 85
 				songs := []agents.Song{
-					{Name: "Bohemian Rhapsody (Live)", Artist: "Queen"},
-					{Name: "Bohemian Rhapsody (Original Mix)", Artist: "Queen"},
+					{Name: "Bohemian Rhapsody (Live)", Artists: []agents.Artist{{Name: "Queen"}}},
+					{Name: "Bohemian Rhapsody (Original Mix)", Artists: []agents.Artist{{Name: "Queen"}}},
 				}
 				libraryTrack := model.MediaFile{
 					ID: "br-live", Title: "Bohemian Rhapsody (Live)", Artist: "Queen",
@@ -230,8 +230,8 @@ var _ = Describe("Matcher", func() {
 			It("preserves duplicates when identical input songs match the same library track", func() {
 				conf.Server.Matcher.FuzzyThreshold = 85
 				songs := []agents.Song{
-					{Name: "Bohemian Rhapsody", Artist: "Queen", Album: "A Night at the Opera"},
-					{Name: "Bohemian Rhapsody", Artist: "Queen", Album: "A Night at the Opera"},
+					{Name: "Bohemian Rhapsody", Artists: []agents.Artist{{Name: "Queen"}}, Album: "A Night at the Opera"},
+					{Name: "Bohemian Rhapsody", Artists: []agents.Artist{{Name: "Queen"}}, Album: "A Night at the Opera"},
 				}
 				libraryTrack := model.MediaFile{
 					ID: "br", Title: "Bohemian Rhapsody", Artist: "Queen", Album: "A Night at the Opera",
@@ -253,7 +253,7 @@ var _ = Describe("Matcher", func() {
 				// and short-circuit the MBID phase entirely, so no MBID fetch should
 				// occur even though an mbz_recording_id exists in the input.
 				songs := []agents.Song{
-					{ID: "track-id", Name: "Song", MBID: "mbid-1", Artist: "Artist"},
+					{ID: "track-id", Name: "Song", MBID: "mbid-1", Artists: []agents.Artist{{Name: "Artist"}}},
 				}
 				idMatch := model.MediaFile{
 					ID: "track-id", Title: "Song", Artist: "Artist",
@@ -271,9 +271,9 @@ var _ = Describe("Matcher", func() {
 			It("returns at most 'count' results", func() {
 				conf.Server.Matcher.FuzzyThreshold = 100
 				songs := []agents.Song{
-					{Name: "Song A", Artist: "Artist"},
-					{Name: "Song B", Artist: "Artist"},
-					{Name: "Song C", Artist: "Artist"},
+					{Name: "Song A", Artists: []agents.Artist{{Name: "Artist"}}},
+					{Name: "Song B", Artists: []agents.Artist{{Name: "Artist"}}},
+					{Name: "Song C", Artists: []agents.Artist{{Name: "Artist"}}},
 				}
 				tracks := model.MediaFiles{
 					{ID: "a", Title: "Song A", Artist: "Artist",
@@ -304,7 +304,7 @@ var _ = Describe("Matcher", func() {
 		Context("artist grouping", func() {
 			It("groups title-phase tracks by participant artist ID, not display Artist", func() {
 				songs := []agents.Song{
-					{Name: "Song A", Artist: "Daft Punk"},
+					{Name: "Song A", Artists: []agents.Artist{{Name: "Daft Punk"}}},
 				}
 				// Display Artist differs from the query artist; only the participant
 				// with order_artist_name "daft punk" routes to this query bucket.
@@ -326,7 +326,7 @@ var _ = Describe("Matcher", func() {
 
 			It("matches a track that credits the searched artist as a collaborator", func() {
 				songs := []agents.Song{
-					{Name: "Crazy", Artist: "INXS"},
+					{Name: "Crazy", Artists: []agents.Artist{{Name: "INXS"}}},
 				}
 				// "Par-T-One vs. INXS" — display Artist is the collaboration, but INXS is a
 				// credited artist participant. Searching INXS must match it.
@@ -347,7 +347,7 @@ var _ = Describe("Matcher", func() {
 
 			It("does not match a track where the searched artist is only the album artist", func() {
 				songs := []agents.Song{
-					{Name: "Qmart", Artist: "808 State"},
+					{Name: "Qmart", Artists: []agents.Artist{{Name: "808 State"}}},
 				}
 				// Track performed by Björk on an "808 State" compilation: 808 State is the
 				// albumartist, Björk is the performer. Searching 808 State must NOT match it.
@@ -379,7 +379,7 @@ var _ = Describe("Matcher", func() {
 
 			It("resolves the artist by ArtistMBID when the name differs", func() {
 				songs := []agents.Song{
-					{Name: "Song A", Artist: "Typo Artist", ArtistMBID: "mbid-9"},
+					{Name: "Song A", Artists: []agents.Artist{{Name: "Typo Artist", MBID: "mbid-9"}}},
 				}
 				track := model.MediaFile{
 					ID: "by-mbid", Title: "Song A", Artist: "Correct Artist",
@@ -403,8 +403,8 @@ var _ = Describe("Matcher", func() {
 				// Two agent results for the same MusicBrainz artist but spelled differently
 				// (an alias). Both must match the artist's track via the shared MBID.
 				songs := []agents.Song{
-					{Name: "Song A", Artist: "Alias One", ArtistMBID: "mbid-shared"},
-					{Name: "Song B", Artist: "Alias Two", ArtistMBID: "mbid-shared"},
+					{Name: "Song A", Artists: []agents.Artist{{Name: "Alias One", MBID: "mbid-shared"}}},
+					{Name: "Song B", Artists: []agents.Artist{{Name: "Alias Two", MBID: "mbid-shared"}}},
 				}
 				artist := model.Artist{ID: "a-shared", Name: "Canonical", OrderArtistName: "canonical", MbzArtistID: "mbid-shared"}
 				trackA := model.MediaFile{ID: "ta", Title: "Song A", Artist: "Canonical", Participants: artistParticipants(artist)}
@@ -427,8 +427,8 @@ var _ = Describe("Matcher", func() {
 		Context("title phase DB errors", func() {
 			It("returns an error when the title query fails and nothing else matched", func() {
 				songs := []agents.Song{
-					{Name: "Song A", Artist: "Artist One"},
-					{Name: "Song B", Artist: "Artist Two"},
+					{Name: "Song A", Artists: []agents.Artist{{Name: "Artist One"}}},
+					{Name: "Song B", Artists: []agents.Artist{{Name: "Artist Two"}}},
 				}
 				allowIdentifierPhases()
 				artistRepo.On("GetAll", mock.Anything).Return(model.Artists{
@@ -445,8 +445,8 @@ var _ = Describe("Matcher", func() {
 
 			It("keeps exact-phase matches when the title query fails", func() {
 				songs := []agents.Song{
-					{ID: "track-1", Name: "Exact Song", Artist: "Exact Artist"},
-					{Name: "Fuzzy Song", Artist: "Fuzzy Artist"},
+					{ID: "track-1", Name: "Exact Song", Artists: []agents.Artist{{Name: "Exact Artist"}}},
+					{Name: "Fuzzy Song", Artists: []agents.Artist{{Name: "Fuzzy Artist"}}},
 				}
 				idMatch := model.MediaFile{ID: "track-1", Title: "Exact Song", Artist: "Exact Artist"}
 				expectIDPhase(model.MediaFiles{idMatch})
@@ -500,7 +500,7 @@ var _ = Describe("Matcher", func() {
 			It("matches a single-artist song against a track crediting several artists", func() {
 				conf.Server.Matcher.FuzzyThreshold = 85
 				songs := []agents.Song{
-					{Name: "Life Is Good", Artist: "Future"},
+					{Name: "Life Is Good", Artists: []agents.Artist{{Name: "Future"}}},
 				}
 				track := model.MediaFile{
 					ID: "multi", Title: "Life Is Good", Artist: "Future feat. Drake",
@@ -568,9 +568,9 @@ var _ = Describe("Matcher", func() {
 	Describe("MatchSongsIndexed", func() {
 		It("returns index-keyed map of matched songs", func() {
 			songs := []agents.Song{
-				{ID: "track-1", Name: "Song One", Artist: "Artist A"},
-				{ID: "track-2", Name: "Song Two", Artist: "Artist B"},
-				{ID: "track-3", Name: "Song Three", Artist: "Artist C"},
+				{ID: "track-1", Name: "Song One", Artists: []agents.Artist{{Name: "Artist A"}}},
+				{ID: "track-2", Name: "Song Two", Artists: []agents.Artist{{Name: "Artist B"}}},
+				{ID: "track-3", Name: "Song Three", Artists: []agents.Artist{{Name: "Artist C"}}},
 			}
 			mf1 := model.MediaFile{ID: "track-1", Title: "Song One", Artist: "Artist A"}
 			mf2 := model.MediaFile{ID: "track-2", Title: "Song Two", Artist: "Artist B"}
@@ -589,8 +589,8 @@ var _ = Describe("Matcher", func() {
 
 		It("preserves original indices when some songs don't match", func() {
 			songs := []agents.Song{
-				{Name: "Unknown Song", Artist: "Unknown Artist"},
-				{ID: "track-1", Name: "Known Song", Artist: "Known Artist"},
+				{Name: "Unknown Song", Artists: []agents.Artist{{Name: "Unknown Artist"}}},
+				{ID: "track-1", Name: "Known Song", Artists: []agents.Artist{{Name: "Known Artist"}}},
 			}
 			mf1 := model.MediaFile{ID: "track-1", Title: "Known Song", Artist: "Known Artist"}
 
@@ -629,7 +629,7 @@ var _ = Describe("Matcher", func() {
 				Participants: artistParticipants(model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode", MbzArtistID: "artist-mbid-123"}),
 			}
 			songs := []agents.Song{
-				{Name: "Similar Song", Artist: "Depeche Mode", ArtistMBID: "artist-mbid-123", Album: "Violator", AlbumMBID: "album-mbid-456"},
+				{Name: "Similar Song", Artists: []agents.Artist{{Name: "Depeche Mode", MBID: "artist-mbid-123"}}, Album: "Violator", AlbumMBID: "album-mbid-456"},
 			}
 
 			allowTitlePhase(model.MediaFiles{wrongMatch, correctMatch})
@@ -651,7 +651,7 @@ var _ = Describe("Matcher", func() {
 				Participants: artistParticipants(model.Artist{ID: "oa", Name: "Other Artist", OrderArtistName: "other artist"}),
 			}
 			songs := []agents.Song{
-				{Name: "Similar Song", Artist: "Depeche Mode", Album: "Violator"},
+				{Name: "Similar Song", Artists: []agents.Artist{{Name: "Depeche Mode"}}, Album: "Violator"},
 			}
 
 			allowTitlePhase(model.MediaFiles{wrongMatch, correctMatch})
@@ -673,7 +673,7 @@ var _ = Describe("Matcher", func() {
 				Participants: artistParticipants(model.Artist{ID: "oa", Name: "Other Artist", OrderArtistName: "other artist"}),
 			}
 			songs := []agents.Song{
-				{Name: "Similar Song", Artist: "Depeche Mode"},
+				{Name: "Similar Song", Artists: []agents.Artist{{Name: "Depeche Mode"}}},
 			}
 
 			allowTitlePhase(model.MediaFiles{wrongMatch, correctMatch})
@@ -710,9 +710,9 @@ var _ = Describe("Matcher", func() {
 			}
 
 			songs := []agents.Song{
-				{Name: "Yesterday", Artist: "The Beatles", Album: "Help!"},
-				{Name: "Yesterday", Artist: "Ray Charles", Album: "Greatest Hits"},
-				{Name: "Yesterday", Artist: "Frank Sinatra", Album: "My Way"},
+				{Name: "Yesterday", Artists: []agents.Artist{{Name: "The Beatles"}}, Album: "Help!"},
+				{Name: "Yesterday", Artists: []agents.Artist{{Name: "Ray Charles"}}, Album: "Greatest Hits"},
+				{Name: "Yesterday", Artists: []agents.Artist{{Name: "Frank Sinatra"}}, Album: "My Way"},
 			}
 
 			allowTitlePhase(model.MediaFiles{cover1, cover2, cover3})
@@ -742,8 +742,8 @@ var _ = Describe("Matcher", func() {
 			}
 
 			songs := []agents.Song{
-				{Name: "Song A", Artist: "Artist One", ArtistMBID: "mbid-1", Album: "Album One", AlbumMBID: "album-mbid-1"},
-				{Name: "Song B", Artist: "Artist Two"},
+				{Name: "Song A", Artists: []agents.Artist{{Name: "Artist One", MBID: "mbid-1"}}, Album: "Album One", AlbumMBID: "album-mbid-1"},
+				{Name: "Song B", Artists: []agents.Artist{{Name: "Artist Two"}}},
 			}
 
 			allowTitlePhase(model.MediaFiles{lessAccurateMatch, preciseMatch, artistTwoMatch})
@@ -758,7 +758,7 @@ var _ = Describe("Matcher", func() {
 
 		It("uses the resolved artist MBID for specificity (level 5)", func() {
 			songs := []agents.Song{
-				{Name: "Song A", Artist: "Artist One", ArtistMBID: "mbid-1", Album: "Album One", AlbumMBID: "album-mbid-1"},
+				{Name: "Song A", Artists: []agents.Artist{{Name: "Artist One", MBID: "mbid-1"}}, Album: "Album One", AlbumMBID: "album-mbid-1"},
 			}
 			// Two tracks with the same title and album; only the one whose resolved artist
 			// carries mbid-1 (and whose album MBID matches) wins via Level 5. Without the
@@ -788,7 +788,7 @@ var _ = Describe("Matcher", func() {
 				conf.Server.Matcher.FuzzyThreshold = 85
 
 				songs := []agents.Song{
-					{Name: "Paranoid Android", Artist: "Radiohead"},
+					{Name: "Paranoid Android", Artists: []agents.Artist{{Name: "Radiohead"}}},
 				}
 				artistTracks := model.MediaFiles{
 					{ID: "remastered", Title: "Paranoid Android - Remastered", Artist: "Radiohead",
@@ -809,7 +809,7 @@ var _ = Describe("Matcher", func() {
 				conf.Server.Matcher.FuzzyThreshold = 85
 
 				songs := []agents.Song{
-					{Name: "Bohemian Rhapsody", Artist: "Queen"},
+					{Name: "Bohemian Rhapsody", Artists: []agents.Artist{{Name: "Queen"}}},
 				}
 				artistTracks := model.MediaFiles{
 					{ID: "live", Title: "Bohemian Rhapsody (Live)", Artist: "Queen",
@@ -832,7 +832,7 @@ var _ = Describe("Matcher", func() {
 				conf.Server.Matcher.FuzzyThreshold = 100
 
 				songs := []agents.Song{
-					{Name: "Paranoid Android", Artist: "Radiohead"},
+					{Name: "Paranoid Android", Artists: []agents.Artist{{Name: "Radiohead"}}},
 				}
 				artistTracks := model.MediaFiles{
 					{ID: "remastered", Title: "Paranoid Android - Remastered", Artist: "Radiohead",
@@ -854,7 +854,7 @@ var _ = Describe("Matcher", func() {
 				conf.Server.Matcher.FuzzyThreshold = 75
 
 				songs := []agents.Song{
-					{Name: "Song", Artist: "Artist"},
+					{Name: "Song", Artists: []agents.Artist{{Name: "Artist"}}},
 				}
 				artistTracks := model.MediaFiles{
 					{ID: "extended", Title: "Song (Extended Mix)", Artist: "Artist",
@@ -881,7 +881,7 @@ var _ = Describe("Matcher", func() {
 
 		It("matches album with (Remaster) suffix", func() {
 			songs := []agents.Song{
-				{Name: "Bohemian Rhapsody", Artist: "Queen", Album: "A Night at the Opera"},
+				{Name: "Bohemian Rhapsody", Artists: []agents.Artist{{Name: "Queen"}}, Album: "A Night at the Opera"},
 			}
 			correctMatch := model.MediaFile{
 				ID: "correct", Title: "Bohemian Rhapsody", Artist: "Queen", Album: "A Night at the Opera (2011 Remaster)",
@@ -903,7 +903,7 @@ var _ = Describe("Matcher", func() {
 
 		It("matches album with (Deluxe Edition) suffix", func() {
 			songs := []agents.Song{
-				{Name: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator"},
+				{Name: "Enjoy the Silence", Artists: []agents.Artist{{Name: "Depeche Mode"}}, Album: "Violator"},
 			}
 			correctMatch := model.MediaFile{
 				ID: "correct", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator (Deluxe Edition)",
@@ -925,7 +925,7 @@ var _ = Describe("Matcher", func() {
 
 		It("prefers exact album match over fuzzy album match", func() {
 			songs := []agents.Song{
-				{Name: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator"},
+				{Name: "Enjoy the Silence", Artists: []agents.Artist{{Name: "Depeche Mode"}}, Album: "Violator"},
 			}
 			exactMatch := model.MediaFile{
 				ID: "exact", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator",
@@ -948,7 +948,7 @@ var _ = Describe("Matcher", func() {
 		It("prefers a more specific match over a starred track when PreferStarred is enabled", func() {
 			conf.Server.Matcher.PreferStarred = true
 			songs := []agents.Song{
-				{Name: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator"},
+				{Name: "Enjoy the Silence", Artists: []agents.Artist{{Name: "Depeche Mode"}}, Album: "Violator"},
 			}
 			albumMatch := model.MediaFile{
 				ID: "album-match", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator",
@@ -969,7 +969,7 @@ var _ = Describe("Matcher", func() {
 		It("prefers a more specific match over a 4-star track when PreferStarred is enabled", func() {
 			conf.Server.Matcher.PreferStarred = true
 			songs := []agents.Song{
-				{Name: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator"},
+				{Name: "Enjoy the Silence", Artists: []agents.Artist{{Name: "Depeche Mode"}}, Album: "Violator"},
 			}
 			albumMatch := model.MediaFile{
 				ID: "album-match", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator",
@@ -990,7 +990,7 @@ var _ = Describe("Matcher", func() {
 		It("prefers a starred track when specificity and overlap are equal", func() {
 			conf.Server.Matcher.PreferStarred = true
 			songs := []agents.Song{
-				{Name: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator"},
+				{Name: "Enjoy the Silence", Artists: []agents.Artist{{Name: "Depeche Mode"}}, Album: "Violator"},
 			}
 			// Both credit the same single artist and the same album → equal specificity AND equal overlap.
 			plain := model.MediaFile{
@@ -1017,7 +1017,7 @@ var _ = Describe("Matcher", func() {
 
 		It("prefers tracks with matching duration", func() {
 			songs := []agents.Song{
-				{Name: "Similar Song", Artist: "Test Artist", Duration: 180000},
+				{Name: "Similar Song", Artists: []agents.Artist{{Name: "Test Artist"}}, Duration: 180000},
 			}
 			correctMatch := model.MediaFile{
 				ID: "correct", Title: "Similar Song", Artist: "Test Artist", Duration: 180.0,
@@ -1039,7 +1039,7 @@ var _ = Describe("Matcher", func() {
 
 		It("matches tracks with close duration", func() {
 			songs := []agents.Song{
-				{Name: "Similar Song", Artist: "Test Artist", Duration: 180000},
+				{Name: "Similar Song", Artists: []agents.Artist{{Name: "Test Artist"}}, Duration: 180000},
 			}
 			closeDuration := model.MediaFile{
 				ID: "close-duration", Title: "Similar Song", Artist: "Test Artist", Duration: 182.5,
@@ -1057,7 +1057,7 @@ var _ = Describe("Matcher", func() {
 
 		It("prefers closer duration over farther duration", func() {
 			songs := []agents.Song{
-				{Name: "Similar Song", Artist: "Test Artist", Duration: 180000},
+				{Name: "Similar Song", Artists: []agents.Artist{{Name: "Test Artist"}}, Duration: 180000},
 			}
 			closeDuration := model.MediaFile{
 				ID: "close", Title: "Similar Song", Artist: "Test Artist", Duration: 181.0,
@@ -1079,7 +1079,7 @@ var _ = Describe("Matcher", func() {
 
 		It("still matches when no tracks have matching duration", func() {
 			songs := []agents.Song{
-				{Name: "Similar Song", Artist: "Test Artist", Duration: 180000},
+				{Name: "Similar Song", Artists: []agents.Artist{{Name: "Test Artist"}}, Duration: 180000},
 			}
 			differentDuration := model.MediaFile{
 				ID: "different", Title: "Similar Song", Artist: "Test Artist", Duration: 300.0,
@@ -1097,7 +1097,7 @@ var _ = Describe("Matcher", func() {
 
 		It("prefers title match over duration match when titles differ", func() {
 			songs := []agents.Song{
-				{Name: "Similar Song", Artist: "Test Artist", Duration: 180000},
+				{Name: "Similar Song", Artists: []agents.Artist{{Name: "Test Artist"}}, Duration: 180000},
 			}
 			differentTitle := model.MediaFile{
 				ID: "wrong-title", Title: "Different Song", Artist: "Test Artist", Duration: 180.0,
@@ -1119,7 +1119,7 @@ var _ = Describe("Matcher", func() {
 
 		It("matches without duration filtering when agent duration is 0", func() {
 			songs := []agents.Song{
-				{Name: "Similar Song", Artist: "Test Artist", Duration: 0},
+				{Name: "Similar Song", Artists: []agents.Artist{{Name: "Test Artist"}}, Duration: 0},
 			}
 			anyTrack := model.MediaFile{
 				ID: "any", Title: "Similar Song", Artist: "Test Artist", Duration: 999.0,
@@ -1137,7 +1137,7 @@ var _ = Describe("Matcher", func() {
 
 		It("handles very short songs with close duration", func() {
 			songs := []agents.Song{
-				{Name: "Short Song", Artist: "Test Artist", Duration: 30000},
+				{Name: "Short Song", Artists: []agents.Artist{{Name: "Test Artist"}}, Duration: 30000},
 			}
 			shortTrack := model.MediaFile{
 				ID: "short", Title: "Short Song", Artist: "Test Artist", Duration: 31.0,
@@ -1155,8 +1155,8 @@ var _ = Describe("Matcher", func() {
 
 		It("matches same title+artist songs to their own closest-duration track", func() {
 			songs := []agents.Song{
-				{Name: "Same Song", Artist: "Same Artist", Duration: 180000},
-				{Name: "Same Song", Artist: "Same Artist", Duration: 240000},
+				{Name: "Same Song", Artists: []agents.Artist{{Name: "Same Artist"}}, Duration: 180000},
+				{Name: "Same Song", Artists: []agents.Artist{{Name: "Same Artist"}}, Duration: 240000},
 			}
 			shortTrack := model.MediaFile{
 				ID: "short", Title: "Same Song", Artist: "Same Artist", Duration: 180.0,
@@ -1185,10 +1185,10 @@ var _ = Describe("Matcher", func() {
 
 		It("handles mixed scenario with both identical and different input songs", func() {
 			songs := []agents.Song{
-				{Name: "Yesterday", Artist: "The Beatles", Album: "Help!"},
-				{Name: "Yesterday (Remastered)", Artist: "The Beatles", Album: "1"},
-				{Name: "Yesterday", Artist: "The Beatles", Album: "Help!"},
-				{Name: "Yesterday (Anthology)", Artist: "The Beatles", Album: "Anthology"},
+				{Name: "Yesterday", Artists: []agents.Artist{{Name: "The Beatles"}}, Album: "Help!"},
+				{Name: "Yesterday (Remastered)", Artists: []agents.Artist{{Name: "The Beatles"}}, Album: "1"},
+				{Name: "Yesterday", Artists: []agents.Artist{{Name: "The Beatles"}}, Album: "Help!"},
+				{Name: "Yesterday (Anthology)", Artists: []agents.Artist{{Name: "The Beatles"}}, Album: "Anthology"},
 			}
 			libraryTrack := model.MediaFile{
 				ID: "yesterday", Title: "Yesterday", Artist: "The Beatles", Album: "Help!",
@@ -1207,9 +1207,9 @@ var _ = Describe("Matcher", func() {
 
 		It("does not deduplicate songs that match different library tracks", func() {
 			songs := []agents.Song{
-				{Name: "Song A", Artist: "Artist"},
-				{Name: "Song B", Artist: "Artist"},
-				{Name: "Song C", Artist: "Artist"},
+				{Name: "Song A", Artists: []agents.Artist{{Name: "Artist"}}},
+				{Name: "Song B", Artists: []agents.Artist{{Name: "Artist"}}},
+				{Name: "Song C", Artists: []agents.Artist{{Name: "Artist"}}},
 			}
 			trackA := model.MediaFile{ID: "track-a", Title: "Song A", Artist: "Artist",
 				Participants: artistParticipants(model.Artist{ID: "art", Name: "Artist", OrderArtistName: "artist"}),
@@ -1234,10 +1234,10 @@ var _ = Describe("Matcher", func() {
 
 		It("respects count limit after deduplication", func() {
 			songs := []agents.Song{
-				{Name: "Song A", Artist: "Artist"},
-				{Name: "Song A (Live)", Artist: "Artist"},
-				{Name: "Song B", Artist: "Artist"},
-				{Name: "Song B (Remix)", Artist: "Artist"},
+				{Name: "Song A", Artists: []agents.Artist{{Name: "Artist"}}},
+				{Name: "Song A (Live)", Artists: []agents.Artist{{Name: "Artist"}}},
+				{Name: "Song B", Artists: []agents.Artist{{Name: "Artist"}}},
+				{Name: "Song B (Remix)", Artists: []agents.Artist{{Name: "Artist"}}},
 			}
 			trackA := model.MediaFile{ID: "track-a", Title: "Song A", Artist: "Artist",
 				Participants: artistParticipants(model.Artist{ID: "art", Name: "Artist", OrderArtistName: "artist"}),
