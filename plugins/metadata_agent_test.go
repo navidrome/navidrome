@@ -119,7 +119,8 @@ var _ = Describe("MetadataAgent", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(songs).To(HaveLen(3))
 			Expect(songs[0].Name).To(Equal("Similar to Yesterday #1"))
-			Expect(songs[0].Artist).To(Equal("The Beatles"))
+			Expect(songs[0].Artists).To(HaveLen(1))
+			Expect(songs[0].Artists[0].Name).To(Equal("The Beatles"))
 		})
 	})
 
@@ -343,11 +344,13 @@ var _ = Describe("songRefToAgentSong multi-artist", func() {
 			{Name: "Future", MBID: "m-future"},
 		}))
 	})
-	It("leaves Artists nil and keeps the single Artist when no Artists provided", func() {
+	It("folds the single Artist/ArtistMBID into a one-element Artists when no Artists provided", func() {
 		ref := capabilities.SongRef{Name: "Solo", Artist: "Drake", ArtistMBID: "m-drake"}
 		got := songRefToAgentSong(ref)
+		Expect(got.Artists).To(Equal([]agents.Artist{{Name: "Drake", MBID: "m-drake"}}))
+	})
+	It("leaves Artists nil when neither Artists nor the single Artist are provided", func() {
+		got := songRefToAgentSong(capabilities.SongRef{Name: "Anon"})
 		Expect(got.Artists).To(BeNil())
-		Expect(got.Artist).To(Equal("Drake"))
-		Expect(got.ArtistMBID).To(Equal("m-drake"))
 	})
 })
