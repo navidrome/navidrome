@@ -535,6 +535,33 @@ var _ = Describe("Matcher", func() {
 				Expect(result).To(HaveLen(1))
 				Expect(result[0].ID).To(Equal("by-id"))
 			})
+
+			It("prefers a higher artist-overlap track over a starred lower-overlap track", func() {
+				conf.Server.Matcher.PreferStarred = true
+				conf.Server.Matcher.FuzzyThreshold = 85
+				songs := []agents.Song{
+					{Name: "Collab Hit", Artists: []agents.Artist{{Name: "Drake"}, {Name: "Future"}}},
+				}
+				// Shares only Drake (overlap 1) but starred.
+				starredOne := model.MediaFile{
+					ID: "starred-one", Title: "Collab Hit",
+					Annotations:  model.Annotations{Starred: true},
+					Participants: artistParticipants(model.Artist{ID: "id-drake", Name: "Drake", OrderArtistName: "drake"}),
+				}
+				// Shares both (overlap 2), not starred.
+				shareTwo := model.MediaFile{
+					ID: "share-two", Title: "Collab Hit",
+					Participants: artistParticipants(
+						model.Artist{ID: "id-drake", Name: "Drake", OrderArtistName: "drake"},
+						model.Artist{ID: "id-future", Name: "Future", OrderArtistName: "future"},
+					),
+				}
+				allowTitlePhase(model.MediaFiles{starredOne, shareTwo})
+				result, err := m.MatchSongs(ctx, songs, 5)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result).To(HaveLen(1))
+				Expect(result[0].ID).To(Equal("share-two")) // overlap outranks the starred flag
+			})
 		})
 	})
 
@@ -918,7 +945,7 @@ var _ = Describe("Matcher", func() {
 			Expect(result[0].ID).To(Equal("exact"))
 		})
 
-		It("prefers starred songs over better album match when enabled", func() {
+		It("prefers a more specific match over a starred track when PreferStarred is enabled", func() {
 			conf.Server.Matcher.PreferStarred = true
 			songs := []agents.Song{
 				{Name: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator"},
@@ -932,17 +959,14 @@ var _ = Describe("Matcher", func() {
 				Annotations:  model.Annotations{Starred: true},
 				Participants: artistParticipants(model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}),
 			}
-
 			allowTitlePhase(model.MediaFiles{albumMatch, starredTrack})
-
 			result, err := m.MatchSongs(ctx, songs, 5)
-
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(HaveLen(1))
-			Expect(result[0].ID).To(Equal("starred"))
+			Expect(result[0].ID).To(Equal("album-match")) // specificity now outranks the starred flag
 		})
 
-		It("prefers 4-star songs over better album match when enabled", func() {
+		It("prefers a more specific match over a 4-star track when PreferStarred is enabled", func() {
 			conf.Server.Matcher.PreferStarred = true
 			songs := []agents.Song{
 				{Name: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator"},
@@ -956,14 +980,33 @@ var _ = Describe("Matcher", func() {
 				Annotations:  model.Annotations{Rating: 4},
 				Participants: artistParticipants(model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}),
 			}
-
 			allowTitlePhase(model.MediaFiles{albumMatch, ratedTrack})
-
 			result, err := m.MatchSongs(ctx, songs, 5)
-
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(HaveLen(1))
-			Expect(result[0].ID).To(Equal("rated"))
+			Expect(result[0].ID).To(Equal("album-match")) // specificity now outranks the 4-star rating
+		})
+
+		It("prefers a starred track when specificity and overlap are equal", func() {
+			conf.Server.Matcher.PreferStarred = true
+			songs := []agents.Song{
+				{Name: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator"},
+			}
+			// Both credit the same single artist and the same album → equal specificity AND equal overlap.
+			plain := model.MediaFile{
+				ID: "plain", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator",
+				Participants: artistParticipants(model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}),
+			}
+			starred := model.MediaFile{
+				ID: "starred", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator",
+				Annotations:  model.Annotations{Starred: true},
+				Participants: artistParticipants(model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}),
+			}
+			allowTitlePhase(model.MediaFiles{plain, starred})
+			result, err := m.MatchSongs(ctx, songs, 5)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(HaveLen(1))
+			Expect(result[0].ID).To(Equal("starred")) // preferred still wins the tie
 		})
 	})
 

@@ -238,6 +238,7 @@ type matchScore struct {
 }
 
 // betterThan returns true if this score beats another.
+// Identity signals (specificity, overlap) outrank the taste signal (preferred).
 func (s matchScore) betterThan(other matchScore) bool {
 	if s.titleSimilarity != other.titleSimilarity {
 		return s.titleSimilarity > other.titleSimilarity
@@ -245,14 +246,14 @@ func (s matchScore) betterThan(other matchScore) bool {
 	if s.durationProximity != other.durationProximity {
 		return s.durationProximity > other.durationProximity
 	}
-	if s.preferredMatch != other.preferredMatch {
-		return s.preferredMatch
-	}
 	if s.specificityLevel != other.specificityLevel {
 		return s.specificityLevel > other.specificityLevel
 	}
 	if s.artistOverlap != other.artistOverlap {
 		return s.artistOverlap > other.artistOverlap
+	}
+	if s.preferredMatch != other.preferredMatch {
+		return s.preferredMatch
 	}
 	return s.albumSimilarity > other.albumSimilarity
 }

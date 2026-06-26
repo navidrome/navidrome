@@ -39,11 +39,12 @@
 //  1. Title similarity (Jaro-Winkler score, 0.0–1.0)
 //  2. Duration proximity (closer duration scores higher; 1.0 when the agent
 //     reports no duration)
-//  3. Preferred-track flag (enabled by conf.Server.Matcher.PreferStarred;
-//     prioritizes tracks that are starred or rated >= 4)
-//  4. Specificity level (0–5, based on metadata precision; higher is better)
-//  5. Artist overlap (how many of the song's artists the track credits; more
+//  3. Specificity level (0–5, based on metadata precision; higher is better)
+//  4. Artist overlap (how many of the song's artists the track credits; more
 //     shared artists is better)
+//  5. Preferred-track flag (enabled by conf.Server.Matcher.PreferStarred;
+//     prioritizes tracks that are starred or rated >= 4, but only among
+//     candidates of equal specificity and overlap)
 //  6. Album similarity (Jaro-Winkler, as the final tiebreaker)
 //
 // The specificity levels, from most to least specific, are:
@@ -106,12 +107,13 @@
 //	Result: studio for the first song, live for the second
 //
 // Preferred track — when conf.Server.Matcher.PreferStarred is enabled, a
-// starred (or rating >= 4) track is preferred even over a more specific match,
-// because the preferred flag outranks specificity:
+// starred (or rating >= 4) track is preferred, but only when specificity and
+// artist overlap are equal. A more specific match always wins regardless of the
+// preferred flag:
 //
 //	Agent returns: {Name: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator"}
 //	Library has:
 //	  {ID: "exact",   Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator"}            // Level 3
 //	  {ID: "starred", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Singles", Starred: true} // Level 1, starred
-//	Result: starred (the preferred flag outranks the better album match)
+//	Result: exact (specificity outranks the starred flag; preferred only breaks ties of equal identity)
 package matcher
