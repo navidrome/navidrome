@@ -393,36 +393,44 @@ func (m *Matcher) resolveArtists(ctx context.Context, queries []indexedQuery) (r
 	}
 	allIDs := map[string]struct{}{} // de-dupe across fast-path + resolved
 
-	nameSet := map[string]struct{}{}
-	mbidSet := map[string]struct{}{}
-	nameToQueries := map[string][]int{}
-	mbidToQueries := map[string][]int{}
+	// One pending entry per non-ID artist (carrying the query that owns it). ID-bearing artists
+	// take the fast-path and are owned directly.
+	type pendingArtist struct {
+		name, mbid string
+		query      int
+	}
+	var pending []pendingArtist
 	for _, iq := range queries {
 		for _, a := range iq.query.artists {
 			if a.id != "" {
-				res.own(iq.index, a.id) // ID fast-path: own directly
+				addToSet(res.byQuery, iq.index, a.id) // ID fast-path: own directly
 				allIDs[a.id] = struct{}{}
 				continue
 			}
-			if a.name != "" {
-				nameSet[a.name] = struct{}{}
-				nameToQueries[a.name] = append(nameToQueries[a.name], iq.index)
-			}
-			if a.mbid != "" {
-				mbidSet[a.mbid] = struct{}{}
-				mbidToQueries[a.mbid] = append(mbidToQueries[a.mbid], iq.index)
-			}
+			pending = append(pending, pendingArtist{name: a.name, mbid: a.mbid, query: iq.index})
+		}
+	}
+	// query indices that supplied each order name / each MBID (skip the empty key — an artist may
+	// have only one of name/mbid).
+	nameToQueries := map[string][]int{}
+	mbidToQueries := map[string][]int{}
+	for _, p := range pending {
+		if p.name != "" {
+			nameToQueries[p.name] = append(nameToQueries[p.name], p.query)
+		}
+		if p.mbid != "" {
+			mbidToQueries[p.mbid] = append(mbidToQueries[p.mbid], p.query)
 		}
 	}
 
 	// Query the artist table for name/MBID artists AND for the fast-path IDs (so their MBIDs are
 	// available for specificity scoring).
 	var filter squirrel.Or
-	if len(nameSet) > 0 {
-		filter = append(filter, squirrel.Eq{"order_artist_name": slices.Collect(maps.Keys(nameSet))})
+	if len(nameToQueries) > 0 {
+		filter = append(filter, squirrel.Eq{"order_artist_name": slices.Collect(maps.Keys(nameToQueries))})
 	}
-	if len(mbidSet) > 0 {
-		filter = append(filter, squirrel.Eq{"mbz_artist_id": slices.Collect(maps.Keys(mbidSet))})
+	if len(mbidToQueries) > 0 {
+		filter = append(filter, squirrel.Eq{"mbz_artist_id": slices.Collect(maps.Keys(mbidToQueries))})
 	}
 	if len(allIDs) > 0 {
 		filter = append(filter, squirrel.Eq{"id": slices.Collect(maps.Keys(allIDs))})
@@ -436,11 +444,11 @@ func (m *Matcher) resolveArtists(ctx context.Context, queries []indexedQuery) (r
 			res.mbid[a.ID] = a.MbzArtistID
 			allIDs[a.ID] = struct{}{}
 			for _, idx := range nameToQueries[a.OrderArtistName] {
-				res.own(idx, a.ID)
+				addToSet(res.byQuery, idx, a.ID)
 			}
 			if a.MbzArtistID != "" {
 				for _, idx := range mbidToQueries[a.MbzArtistID] {
-					res.own(idx, a.ID)
+					addToSet(res.byQuery, idx, a.ID)
 				}
 			}
 		}
@@ -450,11 +458,12 @@ func (m *Matcher) resolveArtists(ctx context.Context, queries []indexedQuery) (r
 	return res, nil
 }
 
-func (r resolvedArtists) own(index int, artistID string) {
-	if r.byQuery[index] == nil {
-		r.byQuery[index] = map[string]struct{}{}
+// addToSet inserts v into the inner set at key k, initialising the inner map on first use.
+func addToSet(m map[int]map[string]struct{}, k int, v string) {
+	if m[k] == nil {
+		m[k] = map[string]struct{}{}
 	}
-	r.byQuery[index][artistID] = struct{}{}
+	m[k][v] = struct{}{}
 }
 
 // scoredTrack is a candidate track for a specific query, carrying how many of that query's distinct
@@ -462,6 +471,13 @@ func (r resolvedArtists) own(index int, artistID string) {
 type scoredTrack struct {
 	sanitizedTrack
 	overlap int
+}
+
+// queryAccum accumulates, for one track against one query, how many of the query's owned artists
+// the track credits (overlap) and the MBIDs of those artists (for specificity scoring).
+type queryAccum struct {
+	overlap int
+	mbids   map[string]struct{}
 }
 
 func (r resolvedArtists) bucketTracks(tracks []model.MediaFile) map[int][]scoredTrack {
@@ -474,32 +490,34 @@ func (r resolvedArtists) bucketTracks(tracks []model.MediaFile) map[int][]scored
 
 	byQuery := make(map[int][]scoredTrack, len(r.byQuery))
 	for i := range tracks {
-		overlapByQuery := map[int]int{}
-		mbidsByQuery := map[int]map[string]struct{}{}
+		acc := map[int]*queryAccum{}
 		credited := map[string]struct{}{}
 		for _, p := range tracks[i].Participants[model.RoleArtist] {
 			if _, dup := credited[p.ID]; dup {
 				continue
 			}
-			if _, owned := queriesByArtist[p.ID]; !owned {
+			owners, owned := queriesByArtist[p.ID]
+			if !owned {
 				continue
 			}
 			credited[p.ID] = struct{}{}
 			mbid := r.mbid[p.ID] // "" if not in the artist-table result
-			for _, idx := range queriesByArtist[p.ID] {
-				overlapByQuery[idx]++
+			for _, idx := range owners {
+				a := acc[idx]
+				if a == nil {
+					a = &queryAccum{mbids: map[string]struct{}{}}
+					acc[idx] = a
+				}
+				a.overlap++
 				if mbid != "" {
-					if mbidsByQuery[idx] == nil {
-						mbidsByQuery[idx] = map[string]struct{}{}
-					}
-					mbidsByQuery[idx][mbid] = struct{}{}
+					a.mbids[mbid] = struct{}{}
 				}
 			}
 		}
-		for idx, overlap := range overlapByQuery {
+		for idx, a := range acc {
 			byQuery[idx] = append(byQuery[idx], scoredTrack{
-				sanitizedTrack: newSanitizedTrack(&tracks[i], mbidsByQuery[idx]),
-				overlap:        overlap,
+				sanitizedTrack: newSanitizedTrack(&tracks[i], a.mbids),
+				overlap:        a.overlap,
 			})
 		}
 	}
