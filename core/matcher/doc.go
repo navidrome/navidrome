@@ -49,12 +49,17 @@
 //
 // The specificity levels, from most to least specific, are:
 //
-//	Level 5: Title + Artist MBID + Album MBID
-//	Level 4: Title + Artist MBID + Album name (fuzzy)
+//	Level 5: Title + Artist identity + Album MBID
+//	Level 4: Title + Artist identity + Album name (fuzzy)
 //	Level 3: Title + Artist name + Album name (fuzzy)
-//	Level 2: Title + Artist MBID
+//	Level 2: Title + Artist identity
 //	Level 1: Title + Artist name
 //	Level 0: Title only
+//
+// "Artist identity" is a match on the artist's Navidrome ID (the strongest signal,
+// when a source supplies one) or its MBID. A plain name match is the weaker fallback
+// used for an artist with no identity match (e.g. a cover credited to a different
+// artist of the same name).
 //
 // The title phase always requires an agent artist to scope the library query, so
 // Level 0 does not mean "no artist": it applies when a candidate matches on title
