@@ -5,6 +5,27 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+var _ = Describe("Song.Equals", func() {
+	base := Song{ID: "1", Name: "S", Artist: "A", Artists: []Artist{{ID: "x", Name: "A"}}}
+	It("true for identical songs incl Artists", func() {
+		Expect(base.Equals(base)).To(BeTrue())
+	})
+	It("false when Artists differ", func() {
+		other := base
+		other.Artists = []Artist{{ID: "y", Name: "B"}}
+		Expect(base.Equals(other)).To(BeFalse())
+	})
+	It("false when a scalar differs", func() {
+		other := base
+		other.Name = "T"
+		Expect(base.Equals(other)).To(BeFalse())
+	})
+	It("true when both have empty Artists and equal scalars", func() {
+		a := Song{ID: "1", Name: "S", Artist: "A"}
+		Expect(a.Equals(a)).To(BeTrue())
+	})
+})
+
 var _ = Describe("Song.ArtistList", func() {
 	It("returns the Artists slice when present", func() {
 		s := Song{Artist: "Primary", ArtistMBID: "mbid-primary", Artists: []Artist{

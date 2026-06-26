@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/gohugoio/hashstructure"
 	"github.com/navidrome/navidrome/model"
 )
 
@@ -45,9 +46,17 @@ type Song struct {
 	Duration   uint32 // Duration in milliseconds, 0 means unknown
 }
 
-// ArtistList returns the song's full artist set, normalizing the single-artist and multi-artist
-// representations. It returns Artists when non-empty, otherwise a one-element list from
-// Artist/ArtistMBID (ID empty), otherwise an empty list. Exported because the matcher package consumes it.
+// Equals reports whether two Songs are exactly equal across all fields. Unlike the hash-based,
+// calculated-field-ignoring Equals on model types, this is strict whole-value equality: it is the
+// matcher's "is this the same input song?" test, used for result dedup. Song is not comparable
+// with == because it carries an Artists slice, hence the structural hash.
+func (s Song) Equals(other Song) bool {
+	h1, _ := hashstructure.Hash(s, nil)
+	h2, _ := hashstructure.Hash(other, nil)
+	return h1 == h2
+}
+
+// ArtistList normalizes the single/multi-artist representations so callers never branch on len(Artists).
 func (s Song) ArtistList() []Artist {
 	if len(s.Artists) > 0 {
 		return s.Artists

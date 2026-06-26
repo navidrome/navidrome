@@ -527,17 +527,6 @@ func isPreferredTrack(mf *model.MediaFile) bool {
 	return mf.Starred || mf.Rating >= 4
 }
 
-// sameSong reports whether two agent songs are identical inputs. Song is not comparable with ==
-// because it carries an Artists slice, so the scalar fields and the slice are compared explicitly.
-func sameSong(a, b agents.Song) bool {
-	if a.ID != b.ID || a.Name != b.Name || a.MBID != b.MBID || a.ISRC != b.ISRC ||
-		a.Artist != b.Artist || a.ArtistMBID != b.ArtistMBID ||
-		a.Album != b.Album || a.AlbumMBID != b.AlbumMBID || a.Duration != b.Duration {
-		return false
-	}
-	return slices.Equal(a.Artists, b.Artists)
-}
-
 // orderAndDedup builds the final ordered result from the per-index matches,
 // applying the count limit and deduplication. A library track is added at most
 // once unless the same input song appears more than once (callers rely on that
@@ -555,7 +544,7 @@ func orderAndDedup(songs []agents.Song, matches map[int]model.MediaFile, count i
 			continue
 		}
 		if prevIdx, alreadyAdded := addedBy[mf.ID]; alreadyAdded {
-			if !sameSong(s, songs[prevIdx]) {
+			if !s.Equals(songs[prevIdx]) {
 				continue
 			}
 		} else {
