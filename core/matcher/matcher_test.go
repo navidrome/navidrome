@@ -466,6 +466,76 @@ var _ = Describe("Matcher", func() {
 				Expect(result[0].ID).To(Equal("track-1"))
 			})
 		})
+
+		Context("multiple artists", func() {
+			It("prefers the track that shares more of the song's artists", func() {
+				conf.Server.Matcher.FuzzyThreshold = 85
+				songs := []agents.Song{
+					{Name: "Life Is Good", Artists: []agents.Artist{{Name: "Drake"}, {Name: "Future"}}},
+				}
+				// Both candidates have display Artist "Drake", so they tie at specificity level 1
+				// (name match). The deciding factor is artistOverlap: "both" credits Drake AND
+				// Future (overlap 2), "one" credits only Drake (overlap 1).
+				bothArtists := model.MediaFile{
+					ID: "both", Title: "Life Is Good", Artist: "Drake",
+					Participants: artistParticipants(
+						model.Artist{ID: "drake", Name: "Drake", OrderArtistName: "drake"},
+						model.Artist{ID: "future", Name: "Future", OrderArtistName: "future"},
+					),
+				}
+				oneArtist := model.MediaFile{
+					ID: "one", Title: "Life Is Good", Artist: "Drake",
+					Participants: artistParticipants(
+						model.Artist{ID: "drake", Name: "Drake", OrderArtistName: "drake"},
+					),
+				}
+				allowTitlePhase(model.MediaFiles{oneArtist, bothArtists})
+
+				result, err := m.MatchSongs(ctx, songs, 5)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result).To(HaveLen(1))
+				Expect(result[0].ID).To(Equal("both"))
+			})
+
+			It("matches a single-artist song against a track crediting several artists", func() {
+				conf.Server.Matcher.FuzzyThreshold = 85
+				songs := []agents.Song{
+					{Name: "Life Is Good", Artist: "Future"},
+				}
+				track := model.MediaFile{
+					ID: "multi", Title: "Life Is Good", Artist: "Future feat. Drake",
+					Participants: artistParticipants(
+						model.Artist{ID: "future", Name: "Future", OrderArtistName: "future"},
+						model.Artist{ID: "drake", Name: "Drake", OrderArtistName: "drake"},
+					),
+				}
+				allowTitlePhase(model.MediaFiles{track})
+
+				result, err := m.MatchSongs(ctx, songs, 5)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result).To(HaveLen(1))
+				Expect(result[0].ID).To(Equal("multi"))
+			})
+
+			It("matches by a directly-supplied Navidrome artist ID (fast-path)", func() {
+				conf.Server.Matcher.FuzzyThreshold = 85
+				songs := []agents.Song{
+					{Name: "Song A", Artists: []agents.Artist{{ID: "ar-x"}}},
+				}
+				track := model.MediaFile{
+					ID: "by-id", Title: "Song A", Artist: "Some Artist",
+					Participants: artistParticipants(
+						model.Artist{ID: "ar-x", Name: "Some Artist", OrderArtistName: "some artist"},
+					),
+				}
+				allowTitlePhase(model.MediaFiles{track})
+
+				result, err := m.MatchSongs(ctx, songs, 5)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result).To(HaveLen(1))
+				Expect(result[0].ID).To(Equal("by-id"))
+			})
+		})
 	})
 
 	Describe("MatchSongsIndexed", func() {

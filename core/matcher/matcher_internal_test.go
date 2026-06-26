@@ -1,7 +1,9 @@
 package matcher
 
 import (
+	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -56,12 +58,154 @@ var _ = Describe("similarityRatio", func() {
 var _ = Describe("matcher internals", func() {
 	It("computeSpecificityLevel uses sanitizedTrack.artistMBID for artist-MBID levels", func() {
 		q := songQuery{
-			title:      "song",
-			artistMBID: "artist-mbid-1",
-			albumMBID:  "album-mbid-1",
+			title:     "song",
+			artists:   []queryArtist{{mbid: "artist-mbid-1"}},
+			albumMBID: "album-mbid-1",
 		}
 		mf := model.MediaFile{Title: "Song", MbzAlbumID: "album-mbid-1"} // note: mf.MbzArtistID intentionally empty
 		t := newSanitizedTrack(&mf, "artist-mbid-1")                     // resolved MBID supplied here
 		Expect(computeSpecificityLevel(q, t, 0.85)).To(Equal(5))
 	})
+
+	It("computeSpecificityLevel maximizes the level over all query artists", func() {
+		// First artist does not match; second matches by name with a matching album → level 3.
+		q := songQuery{
+			title: "song",
+			album: "violator",
+			artists: []queryArtist{
+				{name: "no match"},
+				{name: "depeche mode"},
+			},
+		}
+		mf := model.MediaFile{Title: "Song", Artist: "Depeche Mode", Album: "Violator"}
+		t := newSanitizedTrack(&mf, "")
+		Expect(computeSpecificityLevel(q, t, 0.85)).To(Equal(3))
+	})
 })
+
+var _ = Describe("groupQueries", func() {
+	It("builds one query per unmatched song carrying all artists", func() {
+		songs := []agents.Song{
+			{Name: "Song A", Artists: []agents.Artist{{Name: "Drake"}, {Name: "Future"}}},
+		}
+		queries := groupQueries(songs, map[int]model.MediaFile{})
+		Expect(queries).To(HaveLen(1))
+		Expect(queries[0].index).To(Equal(0))
+		Expect(queries[0].query.title).To(Equal("song a"))
+		Expect(queries[0].query.artists).To(HaveLen(2))
+		Expect(queries[0].query.artists[0].name).To(Equal("drake"))
+		Expect(queries[0].query.artists[1].name).To(Equal("future"))
+	})
+
+	It("strips leading articles from artist names", func() {
+		songs := []agents.Song{
+			{Name: "Song A", Artist: "The Drake"},
+		}
+		queries := groupQueries(songs, map[int]model.MediaFile{})
+		Expect(queries).To(HaveLen(1))
+		Expect(queries[0].query.artists).To(HaveLen(1))
+		Expect(queries[0].query.artists[0].name).To(Equal("drake"))
+	})
+
+	It("keeps an artist that carries only an ID (empty name)", func() {
+		songs := []agents.Song{
+			{Name: "Song A", Artists: []agents.Artist{{ID: "ar-x"}}},
+		}
+		queries := groupQueries(songs, map[int]model.MediaFile{})
+		Expect(queries).To(HaveLen(1))
+		Expect(queries[0].query.artists).To(HaveLen(1))
+		Expect(queries[0].query.artists[0].id).To(Equal("ar-x"))
+		Expect(queries[0].query.artists[0].name).To(Equal(""))
+	})
+
+	It("drops an artist with empty id and empty name but keeps usable ones", func() {
+		songs := []agents.Song{
+			{Name: "Song A", Artists: []agents.Artist{{Name: ""}, {Name: "Future"}}},
+		}
+		queries := groupQueries(songs, map[int]model.MediaFile{})
+		Expect(queries).To(HaveLen(1))
+		Expect(queries[0].query.artists).To(HaveLen(1))
+		Expect(queries[0].query.artists[0].name).To(Equal("future"))
+	})
+
+	It("falls back to the single Artist field via ArtistList", func() {
+		songs := []agents.Song{
+			{Name: "Song A", Artist: "Future", ArtistMBID: "mbid-1"},
+		}
+		queries := groupQueries(songs, map[int]model.MediaFile{})
+		Expect(queries).To(HaveLen(1))
+		Expect(queries[0].query.artists).To(HaveLen(1))
+		Expect(queries[0].query.artists[0].name).To(Equal("future"))
+		Expect(queries[0].query.artists[0].mbid).To(Equal("mbid-1"))
+	})
+
+	It("skips already-matched songs and songs with no usable artist", func() {
+		songs := []agents.Song{
+			{Name: "Already Matched", Artist: "Drake"},
+			{Name: "No Artist"},
+			{Name: "Song C", Artist: "Future"},
+		}
+		queries := groupQueries(songs, map[int]model.MediaFile{0: {ID: "done"}})
+		Expect(queries).To(HaveLen(1))
+		Expect(queries[0].index).To(Equal(2))
+		Expect(queries[0].query.artists[0].name).To(Equal("future"))
+	})
+})
+
+var _ = Describe("bucketTracks", func() {
+	It("scores tracks by how many of the query's artists they credit (overlap)", func() {
+		r := resolvedArtists{
+			byQuery: map[int]map[string]struct{}{
+				0: {"ar-1": {}, "ar-2": {}},
+			},
+			mbid: map[string]string{},
+		}
+		trackA := model.MediaFile{ID: "a", Title: "A",
+			Participants: artistParticipants(
+				model.Artist{ID: "ar-1", OrderArtistName: "one"},
+				model.Artist{ID: "ar-2", OrderArtistName: "two"},
+			),
+		}
+		trackB := model.MediaFile{ID: "b", Title: "B",
+			Participants: artistParticipants(model.Artist{ID: "ar-1", OrderArtistName: "one"}),
+		}
+		byQuery := r.bucketTracks(model.MediaFiles{trackA, trackB})
+		Expect(byQuery[0]).To(HaveLen(2))
+		overlaps := map[string]int{}
+		for _, st := range byQuery[0] {
+			overlaps[st.mf.ID] = st.overlap
+		}
+		Expect(overlaps["a"]).To(Equal(2))
+		Expect(overlaps["b"]).To(Equal(1))
+	})
+})
+
+var _ = Describe("resolveArtists ID fast-path", func() {
+	It("owns an artist supplied by ID without a name match", func() {
+		ctx := GinkgoT().Context()
+		artistRepo := tests.CreateMockArtistRepo()
+		artistRepo.SetData(model.Artists{
+			{ID: "ar-x", Name: "Some Artist", OrderArtistName: "some artist", MbzArtistID: "mbz-x"},
+		})
+		ds := &tests.MockDataStore{MockedArtist: artistRepo}
+		m := New(ds)
+
+		queries := []indexedQuery{
+			{index: 0, query: songQuery{title: "song", artists: []queryArtist{{id: "ar-x"}}}},
+		}
+		res, err := m.resolveArtists(ctx, queries)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(res.byQuery[0]).To(HaveKey("ar-x"))
+		Expect(res.allIDs).To(ContainElement("ar-x"))
+		Expect(res.mbid["ar-x"]).To(Equal("mbz-x"))
+	})
+})
+
+// artistParticipants builds a Participants map crediting the given artists under RoleArtist.
+func artistParticipants(artists ...model.Artist) model.Participants {
+	list := make(model.ParticipantList, len(artists))
+	for i, a := range artists {
+		list[i] = model.Participant{Artist: a}
+	}
+	return model.Participants{model.RoleArtist: list}
+}

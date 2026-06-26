@@ -42,7 +42,9 @@
 //  3. Preferred-track flag (enabled by conf.Server.Matcher.PreferStarred;
 //     prioritizes tracks that are starred or rated >= 4)
 //  4. Specificity level (0–5, based on metadata precision; higher is better)
-//  5. Album similarity (Jaro-Winkler, as the final tiebreaker)
+//  5. Artist overlap (how many of the song's artists the track credits; more
+//     shared artists is better)
+//  6. Album similarity (Jaro-Winkler, as the final tiebreaker)
 //
 // The specificity levels, from most to least specific, are:
 //
@@ -57,6 +59,13 @@
 // Level 0 does not mean "no artist": it applies when a candidate matches on title
 // but its own artist differs from the query's (e.g. a cover or a featured-artist
 // credit), leaving the title as the only shared field.
+//
+// A song may carry several artists, and the title phase scopes candidate tracks by
+// ANY of them: a track credited to at least one shared artist is considered. When a
+// source supplies a Navidrome artist ID, that artist is matched directly, skipping
+// name/MBID resolution. Among equally specific candidates, the one sharing more of
+// the song's artists wins, so a track crediting every collaborator outranks one
+// crediting only a single artist.
 //
 // Each input song is scored independently, so two songs with the same title and
 // artist but different durations can resolve to different library tracks (each
