@@ -568,9 +568,16 @@ func rustConstName(name string) string {
 }
 
 // skipSerializingFunc returns the appropriate skip_serializing_if function name.
+// The check must match the rendered Rust type: pointers become Option<T>, slices Vec<T>,
+// and maps HashMap<K,V>, each with a different emptiness predicate.
 func skipSerializingFunc(goType string) string {
-	if strings.HasPrefix(goType, "*") || strings.HasPrefix(goType, "[]") || strings.HasPrefix(goType, "map[") {
+	switch {
+	case strings.HasPrefix(goType, "*"):
 		return "Option::is_none"
+	case strings.HasPrefix(goType, "[]"):
+		return "Vec::is_empty"
+	case strings.HasPrefix(goType, "map["):
+		return "HashMap::is_empty"
 	}
 	switch goType {
 	case "string":

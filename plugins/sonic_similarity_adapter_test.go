@@ -5,6 +5,7 @@ package plugins
 import (
 	"github.com/navidrome/navidrome/core/sonic"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/plugins/capabilities"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -106,5 +107,26 @@ var _ = Describe("SonicSimilarityPlugin error handling", Ordered, func() {
 		_, err := errorProvider.FindSonicPath(GinkgoT().Context(), startMf, endMf, 3)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("simulated plugin error"))
+	})
+})
+
+var _ = Describe("mediaFileToSongRef multi-artist", func() {
+	It("fills Artists (with IDs) from role=artist participants", func() {
+		mf := &model.MediaFile{ID: "x", Title: "Collab", Participants: model.Participants{
+			model.RoleArtist: model.ParticipantList{
+				{Artist: model.Artist{ID: "ar-drake", Name: "Drake", MbzArtistID: "m-drake"}},
+				{Artist: model.Artist{ID: "ar-future", Name: "Future", MbzArtistID: "m-future"}},
+			},
+		}}
+		ref := mediaFileToSongRef(mf)
+		Expect(ref.Artists).To(Equal([]capabilities.ArtistRef{
+			{ID: "ar-drake", Name: "Drake", MBID: "m-drake"},
+			{ID: "ar-future", Name: "Future", MBID: "m-future"},
+		}))
+	})
+	It("leaves Artists nil when the track has no role=artist participants", func() {
+		mf := &model.MediaFile{ID: "x", Title: "Solo", Artist: "Drake"}
+		ref := mediaFileToSongRef(mf)
+		Expect(ref.Artists).To(BeNil())
 	})
 })

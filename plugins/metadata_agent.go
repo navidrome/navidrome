@@ -229,6 +229,13 @@ func (a *MetadataAgent) GetSimilarSongsByArtist(ctx context.Context, id, name, m
 
 // songRefToAgentSong converts a single SongRef to agents.Song
 func songRefToAgentSong(s capabilities.SongRef) agents.Song {
+	var artists []agents.Artist
+	if len(s.Artists) > 0 {
+		artists = make([]agents.Artist, len(s.Artists))
+		for i, a := range s.Artists {
+			artists[i] = agents.Artist{ID: a.ID, Name: a.Name, MBID: a.MBID}
+		}
+	}
 	return agents.Song{
 		ID:         s.ID,
 		Name:       s.Name,
@@ -236,6 +243,7 @@ func songRefToAgentSong(s capabilities.SongRef) agents.Song {
 		ISRC:       s.ISRC,
 		Artist:     s.Artist,
 		ArtistMBID: s.ArtistMBID,
+		Artists:    artists,
 		Album:      s.Album,
 		AlbumMBID:  s.AlbumMBID,
 		Duration:   uint32(s.Duration * 1000),

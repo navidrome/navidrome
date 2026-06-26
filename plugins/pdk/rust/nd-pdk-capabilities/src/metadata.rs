@@ -251,6 +251,9 @@ pub struct SongRef {
     /// ArtistMBID is the MusicBrainz artist ID.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub artist_mbid: String,
+    /// Artists is the full artist list; when set, takes precedence over Artist/ArtistMBID for matching.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub artists: Vec<ArtistRef>,
     /// Album is the album name.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub album: String,
