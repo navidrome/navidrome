@@ -473,11 +473,8 @@ func (e *provider) getMatchingTopSongs(ctx context.Context, agent agents.ArtistT
 
 	// Enrich songs with artist info if not already present (for top songs, we know the artist)
 	for i := range songs {
-		if songs[i].Artist == "" {
-			songs[i].Artist = artistName
-		}
-		if songs[i].ArtistMBID == "" {
-			songs[i].ArtistMBID = artist.MbzArtistID
+		if len(songs[i].Artists) == 0 {
+			songs[i].Artists = []agents.Artist{{Name: artistName, MBID: artist.MbzArtistID}}
 		}
 	}
 
