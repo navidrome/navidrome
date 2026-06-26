@@ -8,6 +8,8 @@ import {
   TextField,
   Grid,
   Typography,
+  FormControlLabel,
+  Checkbox,
   DialogContentText,
   makeStyles,
 } from '@material-ui/core'
@@ -55,14 +57,16 @@ const EditTagsDialog = ({ record, open, onClose }) => {
     trackNumber: record.trackNumber ? record.trackNumber.toString() : '',
     disc: record.disc ? record.disc.toString() : '',
     bpm: record.bpm ? record.bpm.toString() : '',
+    compilation: record.compilation ? '1' : '0',
     comment: record.comment || '',
   })
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
   const handleChange = (e) => {
-    const { name, value } = e.target
-    setValues((prev) => ({ ...prev, [name]: value }))
+    const { name, value, type, checked } = e.target
+    const val = type === 'checkbox' ? (checked ? '1' : '0') : value
+    setValues((prev) => ({ ...prev, [name]: val }))
   }
 
   const handleDeleteArtwork = () => {
@@ -222,7 +226,9 @@ const EditTagsDialog = ({ record, open, onClose }) => {
                 name="disc"
                 value={values.disc}
                 onChange={handleChange}
-                label="Disc #"
+                label={translate('resources.song.fields.disc', {
+                  discNumber: '#',
+                })}
                 fullWidth
                 variant="outlined"
               />
@@ -235,6 +241,19 @@ const EditTagsDialog = ({ record, open, onClose }) => {
                 label={translate('resources.song.fields.bpm')}
                 fullWidth
                 variant="outlined"
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    name="compilation"
+                    checked={values.compilation === '1'}
+                    onChange={handleChange}
+                    color="primary"
+                  />
+                }
+                label={translate('resources.song.fields.compilation')}
               />
             </Grid>
             <Grid item xs={12}>

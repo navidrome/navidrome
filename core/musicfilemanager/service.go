@@ -89,6 +89,12 @@ func (s *mp3Service) UpdateTags(ctx context.Context, songID string, tags map[str
 			tag.AddTextFrame("TRCK", id3v2.EncodingUTF8, value)
 		case "disc":
 			tag.AddTextFrame("TPOS", id3v2.EncodingUTF8, value)
+		case "compilation":
+			if value == "1" {
+				tag.AddTextFrame("TCMP", id3v2.EncodingUTF8, "1")
+			} else {
+				tag.DeleteFrames("TCMP")
+			}
 		default:
 			log.Warn(ctx, "Tag not supported for MP3 metadata. Ignoring.", "tag", key)
 		}
