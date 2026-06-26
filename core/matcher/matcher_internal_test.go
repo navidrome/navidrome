@@ -56,14 +56,14 @@ var _ = Describe("similarityRatio", func() {
 })
 
 var _ = Describe("matcher internals", func() {
-	It("computeSpecificityLevel uses sanitizedTrack.artistMBID for artist-MBID levels", func() {
+	It("computeSpecificityLevel uses sanitizedTrack.artistMBIDs for artist-MBID levels", func() {
 		q := songQuery{
 			title:     "song",
 			artists:   []queryArtist{{mbid: "artist-mbid-1"}},
 			albumMBID: "album-mbid-1",
 		}
 		mf := model.MediaFile{Title: "Song", MbzAlbumID: "album-mbid-1"} // note: mf.MbzArtistID intentionally empty
-		t := newSanitizedTrack(&mf, "artist-mbid-1")                     // resolved MBID supplied here
+		t := newSanitizedTrack(&mf, map[string]struct{}{"artist-mbid-1": {}})
 		Expect(computeSpecificityLevel(q, t, 0.85)).To(Equal(5))
 	})
 
@@ -78,8 +78,30 @@ var _ = Describe("matcher internals", func() {
 			},
 		}
 		mf := model.MediaFile{Title: "Song", Artist: "Depeche Mode", Album: "Violator"}
-		t := newSanitizedTrack(&mf, "")
+		t := newSanitizedTrack(&mf, nil)
 		Expect(computeSpecificityLevel(q, t, 0.85)).To(Equal(3))
+	})
+
+	It("scores MBID specificity for any credited artist, not just the last", func() {
+		q := songQuery{
+			title: "song",
+			artists: []queryArtist{
+				{name: "drake", mbid: "mbz-drake"},
+				{name: "future", mbid: "mbz-future"},
+			},
+			album: "wrong album", // force album mismatch so only MBID-level (2) is reachable, not 3+
+		}
+		// Track credits BOTH MBIDs; with the old last-wins string this would only match one.
+		t := sanitizedTrack{
+			mf:          &model.MediaFile{},
+			title:       "song",
+			artist:      "drake",
+			album:       "some other album",
+			artistMBIDs: map[string]struct{}{"mbz-drake": {}, "mbz-future": {}},
+		}
+		// Either artist's MBID matching yields level 2 (MBID, no album match). The point: it is
+		// reached via mbz-future too, which the old code would have dropped.
+		Expect(computeSpecificityLevel(q, t, 0.85)).To(Equal(2))
 	})
 })
 

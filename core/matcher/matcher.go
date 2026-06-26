@@ -262,39 +262,41 @@ func (s matchScore) betterThan(other matchScore) bool {
 // when the same track is scored against multiple queries. The `mf` field is a pointer to avoid
 // copying the large MediaFile struct into each entry of the sanitized slice.
 type sanitizedTrack struct {
-	mf         *model.MediaFile
-	title      string
-	artist     string
-	album      string
-	artistMBID string // resolved from the artist table; mf.MbzArtistID is not populated on the bulk path
+	mf          *model.MediaFile
+	title       string
+	artist      string
+	album       string
+	artistMBIDs map[string]struct{} // MBIDs of all the query's owned artists this track credits (artist table; mf.MbzArtistID is not populated on the bulk path)
 }
 
-func newSanitizedTrack(mf *model.MediaFile, artistMBID string) sanitizedTrack {
+func newSanitizedTrack(mf *model.MediaFile, artistMBIDs map[string]struct{}) sanitizedTrack {
 	return sanitizedTrack{
-		mf:         mf,
-		title:      str.SanitizeFieldForSorting(mf.Title),
-		artist:     str.SanitizeFieldForSortingNoArticle(mf.Artist),
-		album:      str.SanitizeFieldForSorting(mf.Album),
-		artistMBID: artistMBID,
+		mf:          mf,
+		title:       str.SanitizeFieldForSorting(mf.Title),
+		artist:      str.SanitizeFieldForSortingNoArticle(mf.Artist),
+		album:       str.SanitizeFieldForSorting(mf.Album),
+		artistMBIDs: artistMBIDs,
 	}
 }
 
 // computeSpecificityLevel determines how well query metadata matches a track (0-5), taking the best
-// level achievable across any of the query's artists. Fields must be pre-sanitized; t.artistMBID is
-// the resolved artist MBID.
+// level achievable across any of the query's artists. Fields must be pre-sanitized; t.artistMBIDs is
+// the set of resolved artist MBIDs credited by this track.
 func computeSpecificityLevel(q songQuery, t sanitizedTrack, albumThreshold float64) int {
 	best := 0
 	albumOK := q.album != "" && similarityRatio(t.album, q.album) >= albumThreshold
 	for _, a := range q.artists {
+		_, membership := t.artistMBIDs[a.mbid]
+		mbidMatch := membership && a.mbid != "" // guard: empty query MBID must never match
 		level := 0
 		switch {
-		case a.mbid != "" && q.albumMBID != "" && t.artistMBID == a.mbid && t.mf.MbzAlbumID == q.albumMBID:
+		case mbidMatch && q.albumMBID != "" && t.mf.MbzAlbumID == q.albumMBID:
 			level = 5
-		case a.mbid != "" && q.album != "" && t.artistMBID == a.mbid && albumOK:
+		case mbidMatch && q.album != "" && albumOK:
 			level = 4
 		case a.name != "" && q.album != "" && t.artist == a.name && albumOK:
 			level = 3
-		case a.mbid != "" && t.artistMBID == a.mbid:
+		case mbidMatch:
 			level = 2
 		case a.name != "" && t.artist == a.name:
 			level = 1
@@ -473,7 +475,7 @@ func (r resolvedArtists) bucketTracks(tracks []model.MediaFile) map[int][]scored
 	byQuery := make(map[int][]scoredTrack, len(r.byQuery))
 	for i := range tracks {
 		overlapByQuery := map[int]int{}
-		mbidByQuery := map[int]string{}
+		mbidsByQuery := map[int]map[string]struct{}{}
 		credited := map[string]struct{}{}
 		for _, p := range tracks[i].Participants[model.RoleArtist] {
 			if _, dup := credited[p.ID]; dup {
@@ -487,13 +489,16 @@ func (r resolvedArtists) bucketTracks(tracks []model.MediaFile) map[int][]scored
 			for _, idx := range queriesByArtist[p.ID] {
 				overlapByQuery[idx]++
 				if mbid != "" {
-					mbidByQuery[idx] = mbid
+					if mbidsByQuery[idx] == nil {
+						mbidsByQuery[idx] = map[string]struct{}{}
+					}
+					mbidsByQuery[idx][mbid] = struct{}{}
 				}
 			}
 		}
 		for idx, overlap := range overlapByQuery {
 			byQuery[idx] = append(byQuery[idx], scoredTrack{
-				sanitizedTrack: newSanitizedTrack(&tracks[i], mbidByQuery[idx]),
+				sanitizedTrack: newSanitizedTrack(&tracks[i], mbidsByQuery[idx]),
 				overlap:        overlap,
 			})
 		}
