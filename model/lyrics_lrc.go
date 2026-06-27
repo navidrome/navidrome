@@ -219,8 +219,7 @@ func parseEnhancedLine(text string) (string, []Cue) {
 		word := text[textStart:textEnd]
 		if word == "" {
 			if i == len(matches)-1 {
-				end := timeMs
-				trailingEnd = &end
+				trailingEnd = &timeMs
 			}
 			continue
 		}
