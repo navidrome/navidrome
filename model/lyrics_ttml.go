@@ -552,12 +552,14 @@ func finalizeTTMLLogicalLine(line []ttmlPiece) (string, []Cue) {
 	return trimmed, cues
 }
 
-// normalizeTTMLPieceRaw implements TTML's default whitespace handling. Per
-// TTML2 §8.2.10, xml:space="default" (the root default, §8.1.1) applies
-// linefeed-treatment="treat-as-space" and white-space-collapse="true": linefeeds
-// and other whitespace runs collapse to a single space. Hard line breaks come
-// only from <br/> (§8.1.7), tracked separately via ttmlPiece.isBreak, so
-// pretty-printed indentation between elements does not inject spurious newlines.
+// normalizeTTMLPieceRaw collapses whitespace following TTML's default mode
+// (xml:space="default", the root default per TTML2 §8.1.1): per §8.2.10 that
+// means linefeed-treatment="treat-as-space" and white-space-collapse="true", so
+// linefeeds and other whitespace runs collapse to a single space. Collapsing is
+// applied unconditionally; xml:space="preserve" is not supported (no lyric
+// source in practice relies on it). Hard line breaks come only from <br/>
+// (§8.1.7), tracked separately via ttmlPiece.isBreak, so pretty-printed
+// indentation between elements does not inject spurious newlines.
 func normalizeTTMLPieceRaw(raw string) string {
 	raw = str.SanitizeText(raw)
 	return collapseTTMLWhitespace(raw)
@@ -568,7 +570,10 @@ func collapseTTMLWhitespace(raw string) string {
 	b.Grow(len(raw))
 	prevSpace := false
 	for _, r := range raw {
-		if unicode.IsSpace(r) {
+		// Only the XML S production (space, tab, CR, LF) is collapsible whitespace.
+		// Other Unicode spaces (e.g. NBSP, U+3000) are content characters, not
+		// whitespace, so they pass through unchanged.
+		if r == ' ' || r == '\t' || r == '\n' || r == '\r' {
 			if !prevSpace {
 				b.WriteByte(' ')
 				prevSpace = true

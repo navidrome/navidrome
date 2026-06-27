@@ -322,6 +322,31 @@ var _ = Describe("parseTTML", func() {
 			Expect(list[0].Line).To(HaveLen(1))
 			Expect(list[0].Line[0].Value).To(Equal("first\nsecond"))
 		})
+
+		It("should only collapse XML whitespace, leaving other Unicode spaces intact", func() {
+			// Whitespace collapsing only touches the XML S characters
+			// (space/tab/CR/LF). Other Unicode spaces like U+3000 are left as-is:
+			// the U+3000 inside a span survives, while the pretty-print newline
+			// between spans still collapses to a single space.
+			content := []byte("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+				"<tt xmlns=\"http://www.w3.org/ns/ttml\">\n" +
+				"  <body xml:lang=\"jpn\">\n" +
+				"    <div>\n" +
+				"      <p begin=\"00:01.000\" end=\"00:03.000\">\n" +
+				"        <span begin=\"00:01.000\" end=\"00:01.400\">あ　い</span>\n" +
+				"        <span begin=\"00:02.000\" end=\"00:02.500\">う</span>\n" +
+				"      </p>\n" +
+				"    </div>\n" +
+				"  </body>\n" +
+				"</tt>")
+
+			list, err := parseTTML("xxx", content)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(HaveLen(1))
+			Expect(list[0].Line).To(HaveLen(1))
+			Expect(list[0].Line[0].Value).To(Equal("あ　い う"))
+			Expect(list[0].Line[0].Cue[0].Value).To(Equal("あ　い"))
+		})
 	})
 
 	Describe("Interleaved background cue timing", func() {
