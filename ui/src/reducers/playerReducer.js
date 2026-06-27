@@ -173,6 +173,24 @@ const reduceSyncQueue = (state, { data: { audioInfo, audioLists } }) => {
   const hasPendingSwitch =
     state.playIndex != null &&
     (state.clear || state.playIndex !== state.savedPlayIndex)
+
+  // The music player can emit a SYNC_QUEUE carrying its previous (old) queue
+  // while it loads the new one. Adopting that stale list would point playIndex
+  // at a track the user never chose, causing a transient jump to a "random"
+  // song before the correct queue settles. Detect a stale sync by checking that
+  // the synced list actually contains the pending track (state.queue[playIndex]);
+  // if not, ignore it: keep our intended queue and the pending switch so the
+  // next, correct sync is adopted normally.
+  if (hasPendingSwitch) {
+    const pendingTrack = state.queue[state.playIndex]
+    const syncHasPendingTrack =
+      pendingTrack != null &&
+      audioLists.some((item) => item.trackId === pendingTrack.trackId)
+    if (!syncHasPendingTrack) {
+      return state
+    }
+  }
+
   return {
     ...state,
     queue: audioLists,
