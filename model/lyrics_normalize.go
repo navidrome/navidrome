@@ -85,8 +85,45 @@ func normalizeCueLine(line Line, fallbackEnd *int64) Line {
 	if len(line.Cue) == 0 {
 		return line
 	}
-	line.Cue = NormalizeCueEnds(line.Cue, fallbackEnd)
+	line.Cue = normalizeCueEndsByAgent(line.Cue, fallbackEnd)
 	return normalizeLineTiming(line)
+}
+
+// normalizeCueEndsByAgent resolves cue end times independently per agent so that
+// background (or other parallel) layers, whose cues interleave with the main
+// timeline but are stored together in document order, do not clamp each other's
+// ends. Each agent group is normalized in its own document order; results are
+// reassembled into the original cue positions.
+func normalizeCueEndsByAgent(cues []Cue, fallbackEnd *int64) []Cue {
+	groups := make(map[string][]int)
+	order := make([]string, 0, 2)
+	for i := range cues {
+		id := cues[i].AgentID
+		if _, ok := groups[id]; !ok {
+			order = append(order, id)
+		}
+		groups[id] = append(groups[id], i)
+	}
+
+	// Single agent: the document order already matches the timeline, so the
+	// straightforward normalization applies without regrouping.
+	if len(order) <= 1 {
+		return NormalizeCueEnds(cues, fallbackEnd)
+	}
+
+	out := slices.Clone(cues)
+	for _, id := range order {
+		idxs := groups[id]
+		group := make([]Cue, len(idxs))
+		for gi, pos := range idxs {
+			group[gi] = cues[pos]
+		}
+		group = NormalizeCueEnds(group, fallbackEnd)
+		for gi, pos := range idxs {
+			out[pos] = group[gi]
+		}
+	}
+	return out
 }
 
 // NormalizeCueEnds resolves missing cue end times within a single ordered cue
