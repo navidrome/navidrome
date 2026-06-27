@@ -35,7 +35,7 @@ type LyricsPlugin struct {
 // via model.ParseLyrics (TTML/SRT/YAML/LRC/plain).
 func (l *LyricsPlugin) GetLyrics(ctx context.Context, mf *model.MediaFile) (model.LyricList, error) {
 	req := capabilities.GetLyricsRequest{
-		Track: mediaFileToTrack(l.plugin, mf),
+		Track: mediaFileToTrackInfo(l.plugin, mf),
 	}
 	resp, err := callPluginFunction[capabilities.GetLyricsRequest, capabilities.GetLyricsResponse](
 		ctx, l.plugin, FuncLyricsGetLyrics, req,

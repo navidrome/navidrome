@@ -13,7 +13,7 @@ components:
             description: GetLyricsRequest contains the track information for lyrics lookup.
             properties:
                 track:
-                    $ref: '#/components/schemas/Track'
+                    $ref: '#/components/schemas/TrackInfo'
             required:
                 - track
         GetLyricsResponse:
@@ -36,30 +36,8 @@ components:
                     type: string
             required:
                 - text
-        ArtistRef:
-            description: |-
-                ArtistRef is the minimal information a plugin returns for Navidrome to match an
-                artist against the library. It is a reference, not a full artist entity: it
-                carries only matching keys (name and optional internal/MusicBrainz IDs), never
-                descriptive data such as biographies or images.
-            properties:
-                id:
-                    type: string
-                    description: ID is the internal Navidrome artist ID (if known).
-                name:
-                    type: string
-                    description: Name is the artist name.
-                mbid:
-                    type: string
-                    description: MBID is the MusicBrainz ID for the artist.
-            required:
-                - name
-        Track:
-            description: |-
-                Track is the plugin-facing representation of a track in the user's library
-                (Navidrome's model.MediaFile). Navidrome populates it with full metadata and
-                passes it to plugins (for example, when scrobbling). Unlike SongRef, it is a
-                concrete track that already exists in the library.
+        TrackInfo:
+            description: TrackInfo contains track metadata.
             properties:
                 id:
                     type: string
@@ -132,3 +110,21 @@ components:
                 - duration
                 - trackNumber
                 - discNumber
+        ArtistRef:
+            description: |-
+                ArtistRef is the minimal information a plugin returns for Navidrome to match an
+                artist against the library. It is a reference, not a full artist entity: it
+                carries only matching keys (name and optional internal/MusicBrainz IDs), never
+                descriptive data such as biographies or images.
+            properties:
+                id:
+                    type: string
+                    description: ID is the internal Navidrome artist ID (if known).
+                name:
+                    type: string
+                    description: Name is the artist name.
+                mbid:
+                    type: string
+                    description: MBID is the MusicBrainz ID for the artist.
+            required:
+                - name
