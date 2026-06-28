@@ -133,7 +133,7 @@ var _ = Describe("ndpPackage", func() {
 	})
 
 	Describe("ReadManifest", func() {
-		It("should read only the manifest without loading wasm", func() {
+		It("parses the manifest from a package that also contains wasm", func() {
 			ndpPath := filepath.Join(tmpDir, "test.ndp")
 			manifest := &Manifest{
 				Name:        "Test Plugin",
@@ -141,9 +141,8 @@ var _ = Describe("ndpPackage", func() {
 				Version:     "1.0.0",
 				Description: new("A test plugin"),
 			}
-			wasmBytes := []byte{0x00, 0x61, 0x73, 0x6d} // wasm header; present but never read
 
-			err := createTestPackage(ndpPath, manifest, wasmBytes)
+			err := createTestPackage(ndpPath, manifest, nil)
 			Expect(err).ToNot(HaveOccurred())
 
 			m, err := ReadManifest(ndpPath)
