@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"sort"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -147,97 +146,68 @@ func isPackagePath(arg string) bool {
 }
 
 func formatPluginInfo(p *model.Plugin, format string) (string, error) {
-	if format == "json" {
+	switch format {
+	case "json":
 		b, err := json.MarshalIndent(p, "", "  ")
 		if err != nil {
 			return "", err
 		}
 		return string(b), nil
+	case "text":
+	default:
+		return "", fmt.Errorf("invalid output format %q (supported: text, json)", format)
 	}
 	name, version := manifestSummary(*p)
 	var sb strings.Builder
-	fmt.Fprintf(&sb, "ID:          %s\n", p.ID)
-	fmt.Fprintf(&sb, "Name:        %s\n", name)
-	fmt.Fprintf(&sb, "Version:     %s\n", version)
-	fmt.Fprintf(&sb, "Enabled:     %t\n", p.Enabled)
-	fmt.Fprintf(&sb, "Path:        %s\n", p.Path)
-	fmt.Fprintf(&sb, "SHA256:      %s\n", p.SHA256)
-	fmt.Fprintf(&sb, "All users:   %t\n", p.AllUsers)
-	fmt.Fprintf(&sb, "All libs:    %t\n", p.AllLibraries)
-	fmt.Fprintf(&sb, "Write access:%t\n", p.AllowWriteAccess)
+	fmt.Fprintf(&sb, "ID:           %s\n", p.ID)
+	fmt.Fprintf(&sb, "Name:         %s\n", name)
+	fmt.Fprintf(&sb, "Version:      %s\n", version)
+	fmt.Fprintf(&sb, "Enabled:      %t\n", p.Enabled)
+	fmt.Fprintf(&sb, "Path:         %s\n", p.Path)
+	fmt.Fprintf(&sb, "SHA256:       %s\n", p.SHA256)
+	fmt.Fprintf(&sb, "All users:    %t\n", p.AllUsers)
+	fmt.Fprintf(&sb, "All libs:     %t\n", p.AllLibraries)
+	fmt.Fprintf(&sb, "Write access: %t\n", p.AllowWriteAccess)
 	if p.Users != "" {
-		fmt.Fprintf(&sb, "Users:       %s\n", p.Users)
+		fmt.Fprintf(&sb, "Users:        %s\n", p.Users)
 	}
 	if p.Libraries != "" {
-		fmt.Fprintf(&sb, "Libraries:   %s\n", p.Libraries)
+		fmt.Fprintf(&sb, "Libraries:    %s\n", p.Libraries)
 	}
 	if m, err := plugins.ParseManifest([]byte(p.Manifest)); err == nil {
-		if perms := declaredPermissions(m.Permissions); len(perms) > 0 {
-			fmt.Fprintf(&sb, "Permissions: %s\n", strings.Join(perms, ", "))
+		if perms := m.Permissions.DeclaredNames(); len(perms) > 0 {
+			fmt.Fprintf(&sb, "Permissions:  %s\n", strings.Join(perms, ", "))
 		}
 	}
 	if !p.CreatedAt.IsZero() {
-		fmt.Fprintf(&sb, "Created:     %s\n", p.CreatedAt.Format(time.RFC3339))
+		fmt.Fprintf(&sb, "Created:      %s\n", p.CreatedAt.Format(time.RFC3339))
 	}
 	if !p.UpdatedAt.IsZero() {
-		fmt.Fprintf(&sb, "Updated:     %s\n", p.UpdatedAt.Format(time.RFC3339))
+		fmt.Fprintf(&sb, "Updated:      %s\n", p.UpdatedAt.Format(time.RFC3339))
 	}
 	if p.Config != "" {
-		fmt.Fprintf(&sb, "Config:      %s\n", p.Config)
+		fmt.Fprintf(&sb, "Config:       %s\n", p.Config)
 	}
 	if p.LastError != "" {
-		fmt.Fprintf(&sb, "Last error:  %s\n", p.LastError)
+		fmt.Fprintf(&sb, "Last error:   %s\n", p.LastError)
 	}
 	return sb.String(), nil
 }
 
-// declaredPermissions returns a sorted list of permission names declared in the manifest.
-func declaredPermissions(p *plugins.Permissions) []string {
-	if p == nil {
-		return nil
-	}
-	var names []string
-	if p.Artwork != nil {
-		names = append(names, "artwork")
-	}
-	if p.Cache != nil {
-		names = append(names, "cache")
-	}
-	if p.Http != nil {
-		names = append(names, "http")
-	}
-	if p.Kvstore != nil {
-		names = append(names, "kvstore")
-	}
-	if p.Library != nil {
-		names = append(names, "library")
-	}
-	if p.Scheduler != nil {
-		names = append(names, "scheduler")
-	}
-	if p.Subsonicapi != nil {
-		names = append(names, "subsonicapi")
-	}
-	if p.Taskqueue != nil {
-		names = append(names, "taskqueue")
-	}
-	if p.Users != nil {
-		names = append(names, "users")
-	}
-	if p.Websocket != nil {
-		names = append(names, "websocket")
-	}
-	sort.Strings(names)
-	return names
-}
-
-func formatManifestInfo(m *plugins.Manifest, format string) (string, error) {
-	if format == "json" {
-		b, err := json.MarshalIndent(m, "", "  ")
+func formatManifestInfo(m *plugins.Manifest, sha256, format string) (string, error) {
+	switch format {
+	case "json":
+		b, err := json.MarshalIndent(struct {
+			*plugins.Manifest
+			SHA256 string `json:"sha256"`
+		}{m, sha256}, "", "  ")
 		if err != nil {
 			return "", err
 		}
 		return string(b), nil
+	case "text":
+	default:
+		return "", fmt.Errorf("invalid output format %q (supported: text, json)", format)
 	}
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "Name:    %s\n", m.Name)
@@ -249,9 +219,10 @@ func formatManifestInfo(m *plugins.Manifest, format string) (string, error) {
 	if m.Website != nil {
 		fmt.Fprintf(&sb, "Website: %s\n", *m.Website)
 	}
-	if perms := declaredPermissions(m.Permissions); len(perms) > 0 {
+	if perms := m.Permissions.DeclaredNames(); len(perms) > 0 {
 		fmt.Fprintf(&sb, "Permissions: %s\n", strings.Join(perms, ", "))
 	}
+	fmt.Fprintf(&sb, "SHA256:  %s\n", sha256)
 	return sb.String(), nil
 }
 
@@ -261,16 +232,15 @@ func runPluginInfo(ctx context.Context, arg string) {
 		if err != nil {
 			log.Fatal(ctx, "Failed to read package", "path", arg, err)
 		}
-		out, err := formatManifestInfo(m, pluginInfoFormat)
+		sha, err := plugins.ComputeFileSHA256(arg)
+		if err != nil {
+			log.Fatal(ctx, "Failed to hash package", "path", arg, err)
+		}
+		out, err := formatManifestInfo(m, sha, pluginInfoFormat)
 		if err != nil {
 			log.Fatal(ctx, "Failed to format output", err)
 		}
 		fmt.Print(out)
-		if pluginInfoFormat == "text" {
-			if sha, err := plugins.ComputeFileSHA256(arg); err == nil {
-				fmt.Printf("SHA256:  %s\n", sha)
-			}
-		}
 		return
 	}
 	requirePluginsEnabled(ctx)
@@ -372,7 +342,8 @@ func runPluginList(ctx context.Context) {
 	fmt.Print(out)
 }
 
-// requirePluginsEnabled aborts the command if the plugin system is disabled.
+// requirePluginsEnabled gates DB/manager-backed commands; off-disk .ndp
+// inspection deliberately skips this so it works without a configured server.
 func requirePluginsEnabled(ctx context.Context) {
 	if !conf.Server.Plugins.Enabled {
 		log.Fatal(ctx, "Plugin system is disabled (set Plugins.Enabled to use this command)")
@@ -402,23 +373,27 @@ var pluginEditCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		requirePluginsEnabled(cmd.Context())
-		_, ctx := getAdminContext(cmd.Context())
+		ds, ctx := getAdminContext(cmd.Context())
+		cur, err := ds.Plugin(ctx).Get(args[0])
+		if err != nil {
+			log.Fatal(ctx, "Plugin not found", "id", args[0], err)
+		}
 		mgr := GetPluginManager(ctx)
-		opts := buildEditOptionsFromFlags(cmd)
-		if err := applyPluginEdit(ctx, mgr, args[0], opts); err != nil {
+		opts := buildEditOptionsFromFlags(ctx, cmd)
+		if err := applyPluginEdit(ctx, mgr, cur, opts); err != nil {
 			log.Fatal(ctx, "Failed to edit plugin", "id", args[0], err)
 		}
 	},
 }
 
-func buildEditOptionsFromFlags(cmd *cobra.Command) pluginEditOptions {
+func buildEditOptionsFromFlags(ctx context.Context, cmd *cobra.Command) pluginEditOptions {
 	var opts pluginEditOptions
 	switch {
 	case cmd.Flags().Changed("config"):
 		c := editConfig
 		opts.config = &c
 	case cmd.Flags().Changed("config-file"):
-		c := readConfigFile(editConfigFile)
+		c := readConfigFile(ctx, editConfigFile)
 		opts.config = &c
 	}
 	if cmd.Flags().Changed("users") {
@@ -426,25 +401,27 @@ func buildEditOptionsFromFlags(cmd *cobra.Command) pluginEditOptions {
 		opts.users = &u
 	}
 	if cmd.Flags().Changed("all-users") {
-		opts.allUsers = &editAllUsers
+		v := editAllUsers
+		opts.allUsers = &v
 	}
 	if cmd.Flags().Changed("libraries") {
 		l := editLibraries
 		opts.libraries = &l
 	}
 	if cmd.Flags().Changed("all-libraries") {
-		opts.allLibraries = &editAllLibs
+		v := editAllLibs
+		opts.allLibraries = &v
 	}
 	if cmd.Flags().Changed("write-access") || cmd.Flags().Changed("no-write-access") {
-		// write-access is part of the library-permission group, so setting only
-		// --no-write-access still triggers UpdatePluginLibraries (clearing unspecified library access).
+		// write-access is part of the library-permission group, so it is updated
+		// alongside the (preserved) library list rather than on its own.
 		wa := editWriteAccess && !editNoWrite
 		opts.writeAccess = &wa
 	}
 	return opts
 }
 
-func readConfigFile(path string) string {
+func readConfigFile(ctx context.Context, path string) string {
 	var data []byte
 	var err error
 	if path == "-" {
@@ -453,16 +430,21 @@ func readConfigFile(path string) string {
 		data, err = os.ReadFile(path)
 	}
 	if err != nil {
-		log.Fatal("Failed to read config file", "path", path, err)
+		log.Fatal(ctx, "Failed to read config file", "path", path, err)
 	}
 	return string(data)
 }
 
-func applyPluginEdit(ctx context.Context, mgr pluginManager, id string, opts pluginEditOptions) error {
+// applyPluginEdit applies the requested changes on top of the plugin's current
+// state. Like the native API, it reads the existing users/libraries before
+// updating so that flipping one flag (e.g. --write-access) does not wipe
+// unspecified fields, and rejects non-JSON users/libraries values.
+func applyPluginEdit(ctx context.Context, mgr pluginManager, cur *model.Plugin, opts pluginEditOptions) error {
 	if opts.config == nil && opts.users == nil && opts.allUsers == nil &&
 		opts.libraries == nil && opts.allLibraries == nil && opts.writeAccess == nil {
 		return fmt.Errorf("nothing to update: provide at least one of --config/--users/--libraries/--write-access")
 	}
+	id := cur.ID
 	if opts.config != nil {
 		if err := mgr.ValidatePluginConfig(ctx, id, *opts.config); err != nil {
 			return fmt.Errorf("invalid config: %w", err)
@@ -472,22 +454,34 @@ func applyPluginEdit(ctx context.Context, mgr pluginManager, id string, opts plu
 		}
 	}
 	if opts.users != nil || opts.allUsers != nil {
-		users := ""
+		users, allUsers := cur.Users, cur.AllUsers
 		if opts.users != nil {
+			if *opts.users != "" && !json.Valid([]byte(*opts.users)) {
+				return fmt.Errorf("invalid JSON in --users")
+			}
 			users = *opts.users
 		}
-		allUsers := opts.allUsers != nil && *opts.allUsers
+		if opts.allUsers != nil {
+			allUsers = *opts.allUsers
+		}
 		if err := mgr.UpdatePluginUsers(ctx, id, users, allUsers); err != nil {
 			return err
 		}
 	}
 	if opts.libraries != nil || opts.allLibraries != nil || opts.writeAccess != nil {
-		libs := ""
+		libs, allLibs, writeAccess := cur.Libraries, cur.AllLibraries, cur.AllowWriteAccess
 		if opts.libraries != nil {
+			if *opts.libraries != "" && !json.Valid([]byte(*opts.libraries)) {
+				return fmt.Errorf("invalid JSON in --libraries")
+			}
 			libs = *opts.libraries
 		}
-		allLibs := opts.allLibraries != nil && *opts.allLibraries
-		writeAccess := opts.writeAccess != nil && *opts.writeAccess
+		if opts.allLibraries != nil {
+			allLibs = *opts.allLibraries
+		}
+		if opts.writeAccess != nil {
+			writeAccess = *opts.writeAccess
+		}
 		if err := mgr.UpdatePluginLibraries(ctx, id, libs, allLibs, writeAccess); err != nil {
 			return err
 		}

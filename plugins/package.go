@@ -113,17 +113,10 @@ func ComputeFileSHA256(path string) (string, error) {
 	return computeFileSHA256(path)
 }
 
-// ValidatePackage reads a .ndp package's manifest and runs cross-field
-// validation. It returns the parsed manifest on success.
+// ValidatePackage reads a .ndp package's manifest, which includes JSON-schema
+// and cross-field validation (readManifest -> ParseManifest -> Manifest.Validate).
 func ValidatePackage(path string) (*Manifest, error) {
-	m, err := readManifest(path)
-	if err != nil {
-		return nil, err
-	}
-	if err := m.Validate(); err != nil {
-		return nil, err
-	}
-	return m, nil
+	return readManifest(path)
 }
 
 // readZipFile reads the contents of a file from a zip archive.

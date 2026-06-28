@@ -464,3 +464,27 @@ var _ = Describe("Manifest", func() {
 		})
 	})
 })
+
+var _ = Describe("Permissions.DeclaredNames", func() {
+	It("returns nil for a nil receiver", func() {
+		var p *Permissions
+		Expect(p.DeclaredNames()).To(BeEmpty())
+	})
+
+	It("returns declared names sorted", func() {
+		p := &Permissions{
+			Subsonicapi: &SubsonicAPIPermission{},
+			Users:       &UsersPermission{},
+		}
+		Expect(p.DeclaredNames()).To(Equal([]string{"subsonicapi", "users"}))
+	})
+
+	It("returns all declared names sorted regardless of field order", func() {
+		p := &Permissions{
+			Http:    &HTTPPermission{},
+			Artwork: &ArtworkPermission{},
+			Cache:   &CachePermission{},
+		}
+		Expect(p.DeclaredNames()).To(Equal([]string{"artwork", "cache", "http"}))
+	})
+})

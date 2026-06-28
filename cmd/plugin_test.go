@@ -83,10 +83,15 @@ var _ = Describe("enable/disable plugin", func() {
 })
 
 var _ = Describe("applyPluginEdit", func() {
+	var cur *model.Plugin
+	BeforeEach(func() {
+		cur = &model.Plugin{ID: "alpha", Users: `["bob"]`, Libraries: `[1,2]`, AllowWriteAccess: true}
+	})
+
 	It("validates then updates config when config is provided", func() {
 		mgr := &tests.MockPluginManager{}
 		cfg := `{"key":"val"}`
-		err := applyPluginEdit(context.Background(), mgr, "alpha", pluginEditOptions{config: &cfg})
+		err := applyPluginEdit(context.Background(), mgr, cur, pluginEditOptions{config: &cfg})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(mgr.ValidatePluginConfigCalls).To(HaveLen(1))
 		Expect(mgr.ValidatePluginConfigCalls[0].ConfigJSON).To(Equal(cfg))
@@ -97,7 +102,7 @@ var _ = Describe("applyPluginEdit", func() {
 	It("updates users with allUsers flag", func() {
 		mgr := &tests.MockPluginManager{}
 		all := true
-		err := applyPluginEdit(context.Background(), mgr, "alpha",
+		err := applyPluginEdit(context.Background(), mgr, cur,
 			pluginEditOptions{allUsers: &all})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(mgr.UpdatePluginUsersCalls).To(HaveLen(1))
@@ -108,7 +113,7 @@ var _ = Describe("applyPluginEdit", func() {
 		mgr := &tests.MockPluginManager{}
 		all := true
 		wr := true
-		err := applyPluginEdit(context.Background(), mgr, "alpha",
+		err := applyPluginEdit(context.Background(), mgr, cur,
 			pluginEditOptions{allLibraries: &all, writeAccess: &wr})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(mgr.UpdatePluginLibrariesCalls).To(HaveLen(1))
@@ -116,16 +121,42 @@ var _ = Describe("applyPluginEdit", func() {
 		Expect(mgr.UpdatePluginLibrariesCalls[0].AllowWriteAccess).To(BeTrue())
 	})
 
+	It("preserves existing fields when only the write-access flag changes", func() {
+		mgr := &tests.MockPluginManager{}
+		no := false
+		err := applyPluginEdit(context.Background(), mgr, cur, pluginEditOptions{writeAccess: &no})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(mgr.UpdatePluginLibrariesCalls).To(HaveLen(1))
+		Expect(mgr.UpdatePluginLibrariesCalls[0].LibrariesJSON).To(Equal(`[1,2]`)) // not wiped
+		Expect(mgr.UpdatePluginLibrariesCalls[0].AllowWriteAccess).To(BeFalse())
+	})
+
+	It("preserves existing users when only the all-users flag changes", func() {
+		mgr := &tests.MockPluginManager{}
+		all := true
+		err := applyPluginEdit(context.Background(), mgr, cur, pluginEditOptions{allUsers: &all})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(mgr.UpdatePluginUsersCalls[0].UsersJSON).To(Equal(`["bob"]`)) // not wiped
+	})
+
+	It("rejects a non-JSON users value", func() {
+		mgr := &tests.MockPluginManager{}
+		users := "alice,bob"
+		err := applyPluginEdit(context.Background(), mgr, cur, pluginEditOptions{users: &users})
+		Expect(err).To(HaveOccurred())
+		Expect(mgr.UpdatePluginUsersCalls).To(BeEmpty())
+	})
+
 	It("does nothing and errors when no fields are set", func() {
 		mgr := &tests.MockPluginManager{}
-		err := applyPluginEdit(context.Background(), mgr, "alpha", pluginEditOptions{})
+		err := applyPluginEdit(context.Background(), mgr, cur, pluginEditOptions{})
 		Expect(err).To(HaveOccurred())
 	})
 
 	It("aborts the config update when validation fails", func() {
 		mgr := &tests.MockPluginManager{ValidateError: errors.New("bad config")}
 		cfg := `{"key":"val"}`
-		err := applyPluginEdit(context.Background(), mgr, "alpha", pluginEditOptions{config: &cfg})
+		err := applyPluginEdit(context.Background(), mgr, cur, pluginEditOptions{config: &cfg})
 		Expect(err).To(HaveOccurred())
 		Expect(mgr.ValidatePluginConfigCalls).To(HaveLen(1))
 		Expect(mgr.UpdatePluginConfigCalls).To(BeEmpty())
@@ -166,7 +197,7 @@ var _ = Describe("formatPluginInfo", func() {
 var _ = Describe("formatManifestInfo", func() {
 	It("renders text with name, version, author", func() {
 		m := &plugins.Manifest{Name: "My Plugin", Version: "2.0.0", Author: "me"}
-		out, err := formatManifestInfo(m, "text")
+		out, err := formatManifestInfo(m, "abc123", "text")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(out).To(ContainSubstring("My Plugin"))
 		Expect(out).To(ContainSubstring("2.0.0"))
@@ -175,7 +206,7 @@ var _ = Describe("formatManifestInfo", func() {
 
 	It("omits Description and Website when nil", func() {
 		m := &plugins.Manifest{Name: "X", Version: "1.0.0", Author: "a"}
-		out, err := formatManifestInfo(m, "text")
+		out, err := formatManifestInfo(m, "abc123", "text")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(out).ToNot(ContainSubstring("Description:"))
 		Expect(out).ToNot(ContainSubstring("Website:"))
@@ -185,7 +216,7 @@ var _ = Describe("formatManifestInfo", func() {
 		desc := "a cool plugin"
 		site := "https://example.com"
 		m := &plugins.Manifest{Name: "X", Version: "1.0.0", Author: "a", Description: &desc, Website: &site}
-		out, err := formatManifestInfo(m, "text")
+		out, err := formatManifestInfo(m, "abc123", "text")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(out).To(ContainSubstring("a cool plugin"))
 		Expect(out).To(ContainSubstring("https://example.com"))
@@ -193,34 +224,9 @@ var _ = Describe("formatManifestInfo", func() {
 
 	It("renders valid json", func() {
 		m := &plugins.Manifest{Name: "X", Version: "1.0.0", Author: "a"}
-		out, err := formatManifestInfo(m, "json")
+		out, err := formatManifestInfo(m, "abc123", "json")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(out).To(ContainSubstring("\"name\""))
-	})
-})
-
-var _ = Describe("declaredPermissions", func() {
-	It("returns nil for nil permissions", func() {
-		Expect(declaredPermissions(nil)).To(BeEmpty())
-	})
-
-	It("returns sorted names for set permissions", func() {
-		p := &plugins.Permissions{
-			Subsonicapi: &plugins.SubsonicAPIPermission{},
-			Users:       &plugins.UsersPermission{},
-		}
-		got := declaredPermissions(p)
-		Expect(got).To(Equal([]string{"subsonicapi", "users"}))
-	})
-
-	It("returns all declared names sorted", func() {
-		p := &plugins.Permissions{
-			Http:    &plugins.HTTPPermission{},
-			Artwork: &plugins.ArtworkPermission{},
-			Cache:   &plugins.CachePermission{},
-		}
-		got := declaredPermissions(p)
-		Expect(got).To(Equal([]string{"artwork", "cache", "http"}))
 	})
 })
 
@@ -275,7 +281,7 @@ var _ = Describe("formatManifestInfo enriched text", func() {
 	It("includes Permissions when declared", func() {
 		p := &plugins.Permissions{Http: &plugins.HTTPPermission{}}
 		m := &plugins.Manifest{Name: "P", Version: "1.0.0", Author: "a", Permissions: p}
-		out, err := formatManifestInfo(m, "text")
+		out, err := formatManifestInfo(m, "abc123", "text")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(out).To(ContainSubstring("http"))
 		Expect(out).To(ContainSubstring("Permissions:"))
@@ -283,7 +289,7 @@ var _ = Describe("formatManifestInfo enriched text", func() {
 
 	It("omits Permissions line when no permissions declared", func() {
 		m := &plugins.Manifest{Name: "P", Version: "1.0.0", Author: "a"}
-		out, err := formatManifestInfo(m, "text")
+		out, err := formatManifestInfo(m, "abc123", "text")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(out).ToNot(ContainSubstring("Permissions:"))
 	})
@@ -291,7 +297,7 @@ var _ = Describe("formatManifestInfo enriched text", func() {
 	It("does not alter json output", func() {
 		p := &plugins.Permissions{Http: &plugins.HTTPPermission{}}
 		m := &plugins.Manifest{Name: "P", Version: "1.0.0", Author: "a", Permissions: p}
-		out, err := formatManifestInfo(m, "json")
+		out, err := formatManifestInfo(m, "abc123", "json")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(out).To(ContainSubstring(`"name"`))
 	})

@@ -3,9 +3,38 @@ package plugins
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
+
+// DeclaredNames returns the sorted names of the permissions declared in the
+// manifest. It is nil-safe (returns nil for a nil receiver) and co-located with
+// the generated Permissions type so it stays in sync as new permissions appear.
+func (p *Permissions) DeclaredNames() []string {
+	if p == nil {
+		return nil
+	}
+	var names []string
+	for name, declared := range map[string]bool{
+		"artwork":     p.Artwork != nil,
+		"cache":       p.Cache != nil,
+		"http":        p.Http != nil,
+		"kvstore":     p.Kvstore != nil,
+		"library":     p.Library != nil,
+		"scheduler":   p.Scheduler != nil,
+		"subsonicapi": p.Subsonicapi != nil,
+		"taskqueue":   p.Taskqueue != nil,
+		"users":       p.Users != nil,
+		"websocket":   p.Websocket != nil,
+	} {
+		if declared {
+			names = append(names, name)
+		}
+	}
+	sort.Strings(names)
+	return names
+}
 
 //go:generate go tool go-jsonschema -p plugins --struct-name-from-title -o manifest_gen.go manifest-schema.json
 
