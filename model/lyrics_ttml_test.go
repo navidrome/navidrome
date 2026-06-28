@@ -135,7 +135,7 @@ var _ = Describe("parseTTML", func() {
 
 			line := list[0].Line[0]
 			Expect(line.Start).To(Equal(new(int64(1000))))
-			Expect(line.Value).To(Equal("Hello\necho"))
+			Expect(line.Value).To(Equal("Hello echo"))
 			Expect(line.End).To(Equal(new(int64(3000))))
 			Expect(line.Cue).To(HaveLen(3))
 
@@ -269,6 +269,128 @@ var _ = Describe("parseTTML", func() {
 		})
 	})
 
+	Describe("Whitespace handling", func() {
+		It("should collapse pretty-print indentation between spans into single spaces, not line breaks", func() {
+			content := []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata">
+  <body xml:lang="eng">
+    <div>
+      <p begin="1:22.889" end="1:26.859" ttm:agent="v2">
+        <span begin="1:22.889" end="1:23.127">It</span>
+        <span begin="1:23.374" end="1:23.938">in,</span>
+        <span ttm:role="x-bg">
+          <span begin="1:23.881" end="1:24.243">(When you</span>
+          <span begin="1:26.232" end="1:26.859">slide)</span>
+        </span>
+      </p>
+    </div>
+  </body>
+</tt>`)
+
+			list, err := parseTTML("xxx", content)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(HaveLen(1))
+			Expect(list[0].Line).To(HaveLen(1))
+
+			line := list[0].Line[0]
+			Expect(line.Value).To(Equal("It in, (When you slide)"))
+			Expect(line.Value).ToNot(ContainSubstring("\n"))
+			Expect(line.Cue).To(HaveLen(4))
+			Expect(line.Cue[0]).To(Equal(Cue{Start: new(int64(82889)), End: new(int64(83127)), Value: "It", ByteStart: 0, ByteEnd: 1, AgentID: "v2"}))
+			Expect(line.Cue[1]).To(Equal(Cue{Start: new(int64(83374)), End: new(int64(83938)), Value: "in,", ByteStart: 3, ByteEnd: 5, AgentID: "v2"}))
+			Expect(line.Cue[2]).To(Equal(Cue{Start: new(int64(83881)), End: new(int64(84243)), Value: "(When you", ByteStart: 7, ByteEnd: 15, AgentID: "__nd_bg__|v2"}))
+			Expect(line.Cue[3]).To(Equal(Cue{Start: new(int64(86232)), End: new(int64(86859)), Value: "slide)", ByteStart: 17, ByteEnd: 22, AgentID: "__nd_bg__|v2"}))
+		})
+
+		It("should preserve explicit <br/> as a line break", func() {
+			content := []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata">
+  <body xml:lang="eng">
+    <div>
+      <p begin="00:01.000" end="00:03.000">
+        <span begin="00:01.000" end="00:01.400">first</span>
+        <br/>
+        <span begin="00:02.000" end="00:02.500">second</span>
+      </p>
+    </div>
+  </body>
+</tt>`)
+
+			list, err := parseTTML("xxx", content)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(HaveLen(1))
+			Expect(list[0].Line).To(HaveLen(1))
+			Expect(list[0].Line[0].Value).To(Equal("first\nsecond"))
+		})
+
+		It("should only collapse XML whitespace, leaving other Unicode spaces intact", func() {
+			// Whitespace collapsing only touches the XML S characters
+			// (space/tab/CR/LF). Other Unicode spaces like U+3000 are left as-is:
+			// the U+3000 inside a span survives, while the pretty-print newline
+			// between spans still collapses to a single space.
+			content := []byte("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+				"<tt xmlns=\"http://www.w3.org/ns/ttml\">\n" +
+				"  <body xml:lang=\"jpn\">\n" +
+				"    <div>\n" +
+				"      <p begin=\"00:01.000\" end=\"00:03.000\">\n" +
+				"        <span begin=\"00:01.000\" end=\"00:01.400\">あ　い</span>\n" +
+				"        <span begin=\"00:02.000\" end=\"00:02.500\">う</span>\n" +
+				"      </p>\n" +
+				"    </div>\n" +
+				"  </body>\n" +
+				"</tt>")
+
+			list, err := parseTTML("xxx", content)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(HaveLen(1))
+			Expect(list[0].Line).To(HaveLen(1))
+			Expect(list[0].Line[0].Value).To(Equal("あ　い う"))
+			Expect(list[0].Line[0].Cue[0].Value).To(Equal("あ　い"))
+		})
+	})
+
+	Describe("Interleaved background cue timing", func() {
+		It("should not corrupt a main cue's end time when a background cue is earlier in time", func() {
+			// Background spans (x-bg) appear after the main spans in document order
+			// but their timings interleave with the main timeline. End-time
+			// normalization must be per agent so the last main cue keeps its real
+			// end instead of collapsing to its own start.
+			content := []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata">
+  <body xml:lang="eng">
+    <div>
+      <p begin="1:22.889" end="1:26.859" ttm:agent="v2"><span begin="1:25.593" end="1:25.934">real</span> <span begin="1:25.934" end="1:26.751">slow</span> <span ttm:role="x-bg"><span begin="1:23.881" end="1:24.243">(When you</span> <span begin="1:26.232" end="1:26.859">slide)</span></span></p>
+    </div>
+  </body>
+</tt>`)
+
+			list, err := parseTTML("xxx", content)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(HaveLen(1))
+			Expect(list[0].Line).To(HaveLen(1))
+
+			line := list[0].Line[0]
+			Expect(line.Cue).To(HaveLen(4))
+
+			cuesByAgent := map[string][]Cue{}
+			for _, c := range line.Cue {
+				cuesByAgent[c.AgentID] = append(cuesByAgent[c.AgentID], c)
+			}
+
+			mainCues := cuesByAgent["v2"]
+			Expect(mainCues).To(HaveLen(2))
+			Expect(*mainCues[0].End).To(Equal(int64(85934))) // "real"
+			// "slow" must keep its real end (86751), not collapse to its start.
+			Expect(*mainCues[1].Start).To(Equal(int64(85934)))
+			Expect(*mainCues[1].End).To(Equal(int64(86751)))
+
+			bgCues := cuesByAgent["__nd_bg__|v2"]
+			Expect(bgCues).To(HaveLen(2))
+			Expect(*bgCues[0].End).To(Equal(int64(84243))) // "(When you"
+			Expect(*bgCues[1].End).To(Equal(int64(86859))) // "slide)"
+		})
+	})
+
 	Describe("Ambiguous decimal timing", func() {
 		It("should prefer absolute timing when values fall inside parent window", func() {
 			content := []byte(`<?xml version="1.0" encoding="UTF-8"?>
@@ -290,7 +412,7 @@ var _ = Describe("parseTTML", func() {
 
 			line := list[0].Line[0]
 			Expect(line.Start).To(Equal(new(int64(43444))))
-			Expect(line.Value).To(Equal("go\ngo"))
+			Expect(line.Value).To(Equal("go go"))
 			Expect(line.End).To(Equal(new(int64(45570))))
 			Expect(line.Cue).To(HaveLen(2))
 			Expect(line.Cue[0]).To(Equal(Cue{Start: new(int64(43444)), End: new(int64(43716)), Value: "go", ByteStart: 0, ByteEnd: 1}))

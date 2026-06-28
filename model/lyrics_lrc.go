@@ -189,6 +189,7 @@ func parseEnhancedLine(text string) (string, []Cue) {
 
 	segments := make([]segment, 0, len(matches))
 	var rawValue strings.Builder
+	var trailingEnd *int64
 	for i, match := range matches {
 		timeMs, err := parseTime(
 			// Rewrite <...> as [...] so parseTime can handle it with the same logic
@@ -217,6 +218,9 @@ func parseEnhancedLine(text string) (string, []Cue) {
 
 		word := text[textStart:textEnd]
 		if word == "" {
+			if i == len(matches)-1 {
+				trailingEnd = &timeMs
+			}
 			continue
 		}
 
@@ -256,6 +260,10 @@ func parseEnhancedLine(text string) (string, []Cue) {
 			ByteStart: byteStart - leftTrimBytes,
 			ByteEnd:   byteEnd - leftTrimBytes - 1,
 		})
+	}
+
+	if trailingEnd != nil && len(cues) > 0 {
+		cues[len(cues)-1].End = trailingEnd
 	}
 
 	return strings.TrimSpace(finalRaw), cues

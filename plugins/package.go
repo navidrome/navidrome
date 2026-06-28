@@ -72,9 +72,10 @@ func openPackage(ndpPath string) (*ndpPackage, error) {
 	}, nil
 }
 
-// readManifest reads only the manifest from an .ndp file without loading the wasm bytes.
-// This is useful for quick plugin discovery.
-func readManifest(ndpPath string) (*Manifest, error) {
+// ReadManifest reads and validates the manifest from a .ndp file without loading
+// the wasm bytes (it runs ParseManifest, so JSON-schema and cross-field
+// validation are applied). Useful for quick plugin discovery and validation.
+func ReadManifest(ndpPath string) (*Manifest, error) {
 	// Open the zip archive
 	zr, err := zip.OpenReader(ndpPath)
 	if err != nil {

@@ -158,7 +158,7 @@ func (m *Manager) processPluginEvent(pluginName string) {
 	switch action {
 	case actionUpdate:
 		// File changed - check SHA256 first, then extract manifest if needed
-		sha256Hash, err := computeFileSHA256(ndpPath)
+		sha256Hash, err := ComputeFileSHA256(ndpPath)
 		if err != nil {
 			log.Error(m.ctx, "Failed to compute SHA256 for changed plugin", "plugin", pluginName, err)
 			return
