@@ -184,3 +184,12 @@ var _ = Describe("formatManifestInfo", func() {
 		Expect(out).To(ContainSubstring("\"name\""))
 	})
 })
+
+var _ = Describe("rescanPlugins", func() {
+	It("calls RescanPlugins on the manager", func() {
+		mgr := &tests.MockPluginManager{}
+		err := rescanPlugins(context.Background(), mgr)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(mgr.RescanPluginsCalls).To(Equal(1))
+	})
+})

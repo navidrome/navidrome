@@ -66,6 +66,7 @@ func init() {
 	pluginInfoCmd.Flags().StringVarP(&pluginOutputFormat, "format", "f", "text", "output format [supported values: text, json]")
 	pluginRoot.AddCommand(pluginInfoCmd)
 	pluginRoot.AddCommand(pluginValidateCmd)
+	pluginRoot.AddCommand(pluginRescanCmd)
 }
 
 var (
@@ -414,4 +415,21 @@ func applyPluginEdit(ctx context.Context, mgr pluginManager, id string, opts plu
 		}
 	}
 	return nil
+}
+
+var pluginRescanCmd = &cobra.Command{
+	Use:   "rescan",
+	Short: "Re-discover plugins in the plugins folder",
+	Run: func(cmd *cobra.Command, args []string) {
+		requirePluginsEnabled(cmd.Context())
+		_, ctx := getAdminContext(cmd.Context())
+		mgr := GetPluginManager(ctx)
+		if err := rescanPlugins(ctx, mgr); err != nil {
+			log.Fatal(ctx, "Failed to rescan plugins", err)
+		}
+	},
+}
+
+func rescanPlugins(ctx context.Context, mgr pluginManager) error {
+	return mgr.RescanPlugins(ctx)
 }
