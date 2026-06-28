@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 
 	"github.com/navidrome/navidrome/model"
@@ -102,5 +103,14 @@ var _ = Describe("applyPluginEdit", func() {
 		mgr := &tests.MockPluginManager{}
 		err := applyPluginEdit(context.Background(), mgr, "alpha", pluginEditOptions{})
 		Expect(err).To(HaveOccurred())
+	})
+
+	It("aborts the config update when validation fails", func() {
+		mgr := &tests.MockPluginManager{ValidateError: errors.New("bad config")}
+		cfg := `{"key":"val"}`
+		err := applyPluginEdit(context.Background(), mgr, "alpha", pluginEditOptions{config: &cfg})
+		Expect(err).To(HaveOccurred())
+		Expect(mgr.ValidatePluginConfigCalls).To(HaveLen(1))
+		Expect(mgr.UpdatePluginConfigCalls).To(BeEmpty())
 	})
 })
