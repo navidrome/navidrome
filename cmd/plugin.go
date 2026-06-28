@@ -30,7 +30,10 @@ type pluginManager interface {
 	RescanPlugins(ctx context.Context) error
 }
 
-var pluginOutputFormat string
+var (
+	pluginListFormat string
+	pluginInfoFormat string
+)
 
 var (
 	editConfig      string
@@ -46,7 +49,7 @@ var (
 func init() {
 	rootCmd.AddCommand(pluginRoot)
 
-	pluginListCmd.Flags().StringVarP(&pluginOutputFormat, "format", "f", "table", "output format [supported values: table, csv, json]")
+	pluginListCmd.Flags().StringVarP(&pluginListFormat, "format", "f", "table", "output format [supported values: table, csv, json]")
 	pluginRoot.AddCommand(pluginListCmd)
 	pluginRoot.AddCommand(pluginEnableCmd)
 	pluginRoot.AddCommand(pluginDisableCmd)
@@ -65,7 +68,7 @@ func init() {
 	pluginEditCmd.MarkFlagsMutuallyExclusive("write-access", "no-write-access")
 	pluginRoot.AddCommand(pluginEditCmd)
 
-	pluginInfoCmd.Flags().StringVarP(&pluginOutputFormat, "format", "f", "text", "output format [supported values: text, json]")
+	pluginInfoCmd.Flags().StringVarP(&pluginInfoFormat, "format", "f", "text", "output format [supported values: text, json]")
 	pluginRoot.AddCommand(pluginInfoCmd)
 	pluginRoot.AddCommand(pluginValidateCmd)
 	pluginRoot.AddCommand(pluginRescanCmd)
@@ -258,12 +261,12 @@ func runPluginInfo(ctx context.Context, arg string) {
 		if err != nil {
 			log.Fatal(ctx, "Failed to read package", "path", arg, err)
 		}
-		out, err := formatManifestInfo(m, pluginOutputFormat)
+		out, err := formatManifestInfo(m, pluginInfoFormat)
 		if err != nil {
 			log.Fatal(ctx, "Failed to format output", err)
 		}
 		fmt.Print(out)
-		if pluginOutputFormat == "text" {
+		if pluginInfoFormat == "text" {
 			if sha, err := plugins.ComputeFileSHA256(arg); err == nil {
 				fmt.Printf("SHA256:  %s\n", sha)
 			}
@@ -276,7 +279,7 @@ func runPluginInfo(ctx context.Context, arg string) {
 	if err != nil {
 		log.Fatal(ctx, "Plugin not found", "id", arg, err)
 	}
-	out, err := formatPluginInfo(p, pluginOutputFormat)
+	out, err := formatPluginInfo(p, pluginInfoFormat)
 	if err != nil {
 		log.Fatal(ctx, "Failed to format output", err)
 	}
@@ -362,7 +365,7 @@ func runPluginList(ctx context.Context) {
 	if err != nil {
 		log.Fatal(ctx, "Failed to list plugins", err)
 	}
-	out, err := formatPluginList(list, pluginOutputFormat)
+	out, err := formatPluginList(list, pluginListFormat)
 	if err != nil {
 		log.Fatal(ctx, "Failed to format output", err)
 	}

@@ -21,6 +21,19 @@ var samplePlugins = model.Plugins{
 	{ID: "beta", Manifest: `{"name":"Beta","version":"2.1.0","author":"me"}`, Enabled: false, LastError: "boom"},
 }
 
+var _ = Describe("plugin command format flags", func() {
+	// Regression: list and info must not share a format variable. Binding the
+	// same var on both commands makes the last init() registration clobber the
+	// other's default, breaking `plugin list` with no -f flag.
+	It("defaults `list -f` to table", func() {
+		Expect(pluginListCmd.Flags().Lookup("format").DefValue).To(Equal("table"))
+	})
+
+	It("defaults `info -f` to text", func() {
+		Expect(pluginInfoCmd.Flags().Lookup("format").DefValue).To(Equal("text"))
+	})
+})
+
 var _ = Describe("formatPluginList", func() {
 	It("renders csv with a header and one row per plugin", func() {
 		out, err := formatPluginList(samplePlugins, "csv")
