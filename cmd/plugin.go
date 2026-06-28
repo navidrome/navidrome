@@ -173,8 +173,12 @@ func formatPluginInfo(p *model.Plugin, format string) (string, error) {
 			fmt.Fprintf(&sb, "Permissions: %s\n", strings.Join(perms, ", "))
 		}
 	}
-	fmt.Fprintf(&sb, "Created:     %s\n", p.CreatedAt.Format(time.RFC3339))
-	fmt.Fprintf(&sb, "Updated:     %s\n", p.UpdatedAt.Format(time.RFC3339))
+	if !p.CreatedAt.IsZero() {
+		fmt.Fprintf(&sb, "Created:     %s\n", p.CreatedAt.Format(time.RFC3339))
+	}
+	if !p.UpdatedAt.IsZero() {
+		fmt.Fprintf(&sb, "Updated:     %s\n", p.UpdatedAt.Format(time.RFC3339))
+	}
 	if p.Config != "" {
 		fmt.Fprintf(&sb, "Config:      %s\n", p.Config)
 	}
