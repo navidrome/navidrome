@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/plugins"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -145,5 +146,41 @@ var _ = Describe("formatPluginInfo", func() {
 		out, err := formatPluginInfo(p, "json")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(out).To(ContainSubstring("alpha"))
+	})
+})
+
+var _ = Describe("formatManifestInfo", func() {
+	It("renders text with name, version, author", func() {
+		m := &plugins.Manifest{Name: "My Plugin", Version: "2.0.0", Author: "me"}
+		out, err := formatManifestInfo(m, "text")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(out).To(ContainSubstring("My Plugin"))
+		Expect(out).To(ContainSubstring("2.0.0"))
+		Expect(out).To(ContainSubstring("me"))
+	})
+
+	It("omits Description and Website when nil", func() {
+		m := &plugins.Manifest{Name: "X", Version: "1.0.0", Author: "a"}
+		out, err := formatManifestInfo(m, "text")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(out).ToNot(ContainSubstring("Description:"))
+		Expect(out).ToNot(ContainSubstring("Website:"))
+	})
+
+	It("includes Description and Website when set", func() {
+		desc := "a cool plugin"
+		site := "https://example.com"
+		m := &plugins.Manifest{Name: "X", Version: "1.0.0", Author: "a", Description: &desc, Website: &site}
+		out, err := formatManifestInfo(m, "text")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(out).To(ContainSubstring("a cool plugin"))
+		Expect(out).To(ContainSubstring("https://example.com"))
+	})
+
+	It("renders valid json", func() {
+		m := &plugins.Manifest{Name: "X", Version: "1.0.0", Author: "a"}
+		out, err := formatManifestInfo(m, "json")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(out).To(ContainSubstring("\"name\""))
 	})
 })
