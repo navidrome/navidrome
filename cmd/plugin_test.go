@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/navidrome/navidrome/model"
@@ -112,5 +114,36 @@ var _ = Describe("applyPluginEdit", func() {
 		Expect(err).To(HaveOccurred())
 		Expect(mgr.ValidatePluginConfigCalls).To(HaveLen(1))
 		Expect(mgr.UpdatePluginConfigCalls).To(BeEmpty())
+	})
+})
+
+var _ = Describe("isPackagePath", func() {
+	It("is true for an existing .ndp file", func() {
+		dir := GinkgoT().TempDir()
+		p := filepath.Join(dir, "x.ndp")
+		Expect(os.WriteFile(p, []byte("x"), 0600)).To(Succeed())
+		Expect(isPackagePath(p)).To(BeTrue())
+	})
+	It("is false for a bare id", func() {
+		Expect(isPackagePath("my-plugin")).To(BeFalse())
+	})
+	It("is false for a .ndp path that does not exist", func() {
+		Expect(isPackagePath("/nope/x.ndp")).To(BeFalse())
+	})
+})
+
+var _ = Describe("formatPluginInfo", func() {
+	It("renders installed plugin details as text", func() {
+		p := &model.Plugin{ID: "alpha", Manifest: `{"name":"Alpha","version":"1.0.0","author":"me"}`, Enabled: true}
+		out, err := formatPluginInfo(p, "text")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(out).To(ContainSubstring("alpha"))
+		Expect(out).To(ContainSubstring("Alpha"))
+	})
+	It("renders json", func() {
+		p := &model.Plugin{ID: "alpha", Manifest: `{}`}
+		out, err := formatPluginInfo(p, "json")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(out).To(ContainSubstring("alpha"))
 	})
 })

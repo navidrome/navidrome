@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/plugins"
 	"github.com/spf13/cobra"
 )
 
@@ -61,6 +62,10 @@ func init() {
 	pluginEditCmd.Flags().BoolVar(&editNoWrite, "no-write-access", false, "deny the plugin write access to libraries")
 	pluginEditCmd.MarkFlagsMutuallyExclusive("write-access", "no-write-access")
 	pluginRoot.AddCommand(pluginEditCmd)
+
+	pluginInfoCmd.Flags().StringVarP(&pluginOutputFormat, "format", "f", "text", "output format [supported values: text, json]")
+	pluginRoot.AddCommand(pluginInfoCmd)
+	pluginRoot.AddCommand(pluginValidateCmd)
 }
 
 var (
@@ -106,6 +111,129 @@ var (
 		},
 	}
 )
+
+var (
+	pluginInfoCmd = &cobra.Command{
+		Use:   "info <id|file.ndp>",
+		Short: "Show details for an installed plugin or a .ndp package",
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			runPluginInfo(cmd.Context(), args[0])
+		},
+	}
+
+	pluginValidateCmd = &cobra.Command{
+		Use:   "validate <id|file.ndp>",
+		Short: "Validate an installed plugin or a .ndp package manifest",
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			runPluginValidate(cmd.Context(), args[0])
+		},
+	}
+)
+
+func isPackagePath(arg string) bool {
+	if !strings.HasSuffix(arg, plugins.PackageExtension) {
+		return false
+	}
+	info, err := os.Stat(arg)
+	return err == nil && !info.IsDir()
+}
+
+func formatPluginInfo(p *model.Plugin, format string) (string, error) {
+	if format == "json" {
+		b, err := json.MarshalIndent(p, "", "  ")
+		if err != nil {
+			return "", err
+		}
+		return string(b), nil
+	}
+	name, version := manifestSummary(*p)
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "ID:          %s\n", p.ID)
+	fmt.Fprintf(&sb, "Name:        %s\n", name)
+	fmt.Fprintf(&sb, "Version:     %s\n", version)
+	fmt.Fprintf(&sb, "Enabled:     %t\n", p.Enabled)
+	fmt.Fprintf(&sb, "Path:        %s\n", p.Path)
+	fmt.Fprintf(&sb, "SHA256:      %s\n", p.SHA256)
+	fmt.Fprintf(&sb, "All users:   %t\n", p.AllUsers)
+	fmt.Fprintf(&sb, "All libs:    %t\n", p.AllLibraries)
+	fmt.Fprintf(&sb, "Write access:%t\n", p.AllowWriteAccess)
+	if p.Config != "" {
+		fmt.Fprintf(&sb, "Config:      %s\n", p.Config)
+	}
+	if p.LastError != "" {
+		fmt.Fprintf(&sb, "Last error:  %s\n", p.LastError)
+	}
+	return sb.String(), nil
+}
+
+func formatManifestInfo(m *plugins.Manifest, format string) (string, error) {
+	if format == "json" {
+		b, err := json.MarshalIndent(m, "", "  ")
+		if err != nil {
+			return "", err
+		}
+		return string(b), nil
+	}
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "Name:    %s\n", m.Name)
+	fmt.Fprintf(&sb, "Version: %s\n", m.Version)
+	fmt.Fprintf(&sb, "Author:  %s\n", m.Author)
+	if m.Description != nil {
+		fmt.Fprintf(&sb, "Description: %s\n", *m.Description)
+	}
+	if m.Website != nil {
+		fmt.Fprintf(&sb, "Website: %s\n", *m.Website)
+	}
+	return sb.String(), nil
+}
+
+func runPluginInfo(ctx context.Context, arg string) {
+	if isPackagePath(arg) {
+		m, err := plugins.ReadPackageManifest(arg)
+		if err != nil {
+			log.Fatal(ctx, "Failed to read package", "path", arg, err)
+		}
+		out, err := formatManifestInfo(m, pluginOutputFormat)
+		if err != nil {
+			log.Fatal(ctx, "Failed to format output", err)
+		}
+		fmt.Print(out)
+		return
+	}
+	requirePluginsEnabled(ctx)
+	ds, ctx := getAdminContext(ctx)
+	p, err := ds.Plugin(ctx).Get(arg)
+	if err != nil {
+		log.Fatal(ctx, "Plugin not found", "id", arg, err)
+	}
+	out, err := formatPluginInfo(p, pluginOutputFormat)
+	if err != nil {
+		log.Fatal(ctx, "Failed to format output", err)
+	}
+	fmt.Print(out)
+}
+
+func runPluginValidate(ctx context.Context, arg string) {
+	if isPackagePath(arg) {
+		if _, err := plugins.ValidatePackage(arg); err != nil {
+			log.Fatal(ctx, "Validation failed", "path", arg, err)
+		}
+		fmt.Printf("%s: OK\n", arg)
+		return
+	}
+	requirePluginsEnabled(ctx)
+	ds, ctx := getAdminContext(ctx)
+	p, err := ds.Plugin(ctx).Get(arg)
+	if err != nil {
+		log.Fatal(ctx, "Plugin not found", "id", arg, err)
+	}
+	if _, err := plugins.ParseManifest([]byte(p.Manifest)); err != nil {
+		log.Fatal(ctx, "Validation failed", "id", arg, err)
+	}
+	fmt.Printf("%s: OK\n", arg)
+}
 
 // manifestSummary extracts the display name and version from a stored manifest JSON, falling
 // back to the plugin ID when the manifest can't be parsed.
