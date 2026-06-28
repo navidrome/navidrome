@@ -1,10 +1,12 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -43,5 +45,21 @@ var _ = Describe("formatPluginList", func() {
 	It("errors on an unknown format", func() {
 		_, err := formatPluginList(samplePlugins, "yaml")
 		Expect(err).To(HaveOccurred())
+	})
+})
+
+var _ = Describe("enable/disable plugin", func() {
+	It("calls EnablePlugin on the manager", func() {
+		mgr := &tests.MockPluginManager{}
+		err := enablePlugin(context.Background(), mgr, "alpha")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(mgr.EnablePluginCalls).To(Equal([]string{"alpha"}))
+	})
+
+	It("calls DisablePlugin on the manager", func() {
+		mgr := &tests.MockPluginManager{}
+		err := disablePlugin(context.Background(), mgr, "beta")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(mgr.DisablePluginCalls).To(Equal([]string{"beta"}))
 	})
 })

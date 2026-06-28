@@ -14,6 +14,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// pluginManager is the subset of *plugins.Manager the CLI needs.
+type pluginManager interface {
+	EnablePlugin(ctx context.Context, id string) error
+	DisablePlugin(ctx context.Context, id string) error
+	ValidatePluginConfig(ctx context.Context, id, configJSON string) error
+	UpdatePluginConfig(ctx context.Context, id, configJSON string) error
+	UpdatePluginUsers(ctx context.Context, id, usersJSON string, allUsers bool) error
+	UpdatePluginLibraries(ctx context.Context, id, librariesJSON string, allLibraries, allowWriteAccess bool) error
+	RescanPlugins(ctx context.Context) error
+}
+
 var pluginOutputFormat string
 
 func init() {
@@ -21,6 +32,8 @@ func init() {
 
 	pluginListCmd.Flags().StringVarP(&pluginOutputFormat, "format", "f", "table", "output format [supported values: table, csv, json]")
 	pluginRoot.AddCommand(pluginListCmd)
+	pluginRoot.AddCommand(pluginEnableCmd)
+	pluginRoot.AddCommand(pluginDisableCmd)
 }
 
 var (
@@ -35,6 +48,34 @@ var (
 		Short: "List installed plugins",
 		Run: func(cmd *cobra.Command, args []string) {
 			runPluginList(cmd.Context())
+		},
+	}
+
+	pluginEnableCmd = &cobra.Command{
+		Use:   "enable <id>",
+		Short: "Enable a plugin",
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			requirePluginsEnabled(cmd.Context())
+			_, ctx := getAdminContext(cmd.Context())
+			mgr := GetPluginManager(ctx)
+			if err := enablePlugin(ctx, mgr, args[0]); err != nil {
+				log.Fatal(ctx, "Failed to enable plugin", "id", args[0], err)
+			}
+		},
+	}
+
+	pluginDisableCmd = &cobra.Command{
+		Use:   "disable <id>",
+		Short: "Disable a plugin",
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			requirePluginsEnabled(cmd.Context())
+			_, ctx := getAdminContext(cmd.Context())
+			mgr := GetPluginManager(ctx)
+			if err := disablePlugin(ctx, mgr, args[0]); err != nil {
+				log.Fatal(ctx, "Failed to disable plugin", "id", args[0], err)
+			}
 		},
 	}
 )
@@ -104,4 +145,12 @@ func requirePluginsEnabled(ctx context.Context) {
 	if !conf.Server.Plugins.Enabled {
 		log.Fatal(ctx, "Plugin system is disabled (set Plugins.Enabled to use this command)")
 	}
+}
+
+func enablePlugin(ctx context.Context, mgr pluginManager, id string) error {
+	return mgr.EnablePlugin(ctx, id)
+}
+
+func disablePlugin(ctx context.Context, mgr pluginManager, id string) error {
+	return mgr.DisablePlugin(ctx, id)
 }
