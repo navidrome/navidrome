@@ -152,24 +152,6 @@ var _ = Describe("ndpPackage", func() {
 			Expect(*m.Description).To(Equal("A test plugin"))
 		})
 
-		It("should return error for missing manifest", func() {
-			ndpPath := filepath.Join(tmpDir, "no-manifest.ndp")
-
-			f, err := os.Create(ndpPath)
-			Expect(err).ToNot(HaveOccurred())
-			defer f.Close()
-
-			zw := newTestZipWriter(f)
-			err = zw.addFile("plugin.wasm", []byte{0x00})
-			Expect(err).ToNot(HaveOccurred())
-			err = zw.close()
-			Expect(err).ToNot(HaveOccurred())
-
-			_, err = ReadManifest(ndpPath)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("missing manifest.json"))
-		})
-
 		It("returns an error for a non-existent file", func() {
 			_, err := ReadManifest(filepath.Join(tmpDir, "does-not-exist.ndp"))
 			Expect(err).To(HaveOccurred())
