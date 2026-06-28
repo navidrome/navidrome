@@ -36,9 +36,9 @@ func marshalManifest(m *Manifest) string {
 	return string(b)
 }
 
-// computeFileSHA256 computes the SHA-256 hash of a file without loading it into memory.
+// ComputeFileSHA256 computes the SHA-256 hash of a file without loading it into memory.
 // This is used for quick change detection before full plugin compilation.
-func computeFileSHA256(path string) (string, error) {
+func ComputeFileSHA256(path string) (string, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return "", err
@@ -165,7 +165,7 @@ func (m *Manager) syncPlugins(ctx context.Context, folder string) error {
 		dbPlugin, exists := pluginsInDB[name]
 
 		// Compute SHA256 first (lightweight operation) to check if plugin changed
-		sha256Hash, err := computeFileSHA256(path)
+		sha256Hash, err := ComputeFileSHA256(path)
 		if err != nil {
 			log.Error(ctx, "Failed to compute SHA256 for plugin", "plugin", name, "path", path, err)
 			continue

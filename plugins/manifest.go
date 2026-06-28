@@ -3,9 +3,36 @@ package plugins
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
+	"sort"
+	"strings"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
+
+// DeclaredNames returns the sorted names of the non-nil permission fields. It
+// reflects over the generated json tags so new permission types are picked up
+// automatically rather than via a hand-maintained list.
+func (p *Permissions) DeclaredNames() []string {
+	if p == nil {
+		return nil
+	}
+	var names []string
+	v := reflect.ValueOf(*p)
+	t := v.Type()
+	for i := 0; i < t.NumField(); i++ {
+		f := v.Field(i)
+		if f.Kind() != reflect.Pointer || f.IsNil() {
+			continue
+		}
+		tag := t.Field(i).Tag.Get("json")
+		if name, _, _ := strings.Cut(tag, ","); name != "" && name != "-" {
+			names = append(names, name)
+		}
+	}
+	sort.Strings(names)
+	return names
+}
 
 //go:generate go tool go-jsonschema -p plugins --struct-name-from-title -o manifest_gen.go manifest-schema.json
 
