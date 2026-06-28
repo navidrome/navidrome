@@ -177,6 +177,26 @@ var _ = Describe("applyPluginEdit", func() {
 		Expect(mgr.UpdatePluginLibrariesCalls).To(BeEmpty())
 	})
 
+	It("clears allUsers when an explicit users list is set", func() {
+		mgr := &tests.MockPluginManager{}
+		cur.AllUsers = true
+		users := "alice"
+		err := applyPluginEdit(context.Background(), mgr, cur, pluginEditOptions{users: &users})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(mgr.UpdatePluginUsersCalls[0].UsersJSON).To(Equal(`["alice"]`))
+		Expect(mgr.UpdatePluginUsersCalls[0].AllUsers).To(BeFalse())
+	})
+
+	It("clears allLibraries when an explicit libraries list is set", func() {
+		mgr := &tests.MockPluginManager{}
+		cur.AllLibraries = true
+		libs := "1"
+		err := applyPluginEdit(context.Background(), mgr, cur, pluginEditOptions{libraries: &libs})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(mgr.UpdatePluginLibrariesCalls[0].LibrariesJSON).To(Equal(`[1]`))
+		Expect(mgr.UpdatePluginLibrariesCalls[0].AllLibraries).To(BeFalse())
+	})
+
 	It("does nothing and errors when no fields are set", func() {
 		mgr := &tests.MockPluginManager{}
 		err := applyPluginEdit(context.Background(), mgr, cur, pluginEditOptions{})

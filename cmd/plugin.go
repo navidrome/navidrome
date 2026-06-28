@@ -460,6 +460,7 @@ func applyPluginEdit(ctx context.Context, mgr pluginManager, cur *model.Plugin, 
 				return err
 			}
 			users = parsed
+			allUsers = false // an explicit list means "restrict to these users"
 		}
 		if opts.allUsers != nil {
 			allUsers = *opts.allUsers
@@ -476,6 +477,7 @@ func applyPluginEdit(ctx context.Context, mgr pluginManager, cur *model.Plugin, 
 				return err
 			}
 			libs = parsed
+			allLibs = false // an explicit list means "restrict to these libraries"
 		}
 		if opts.allLibraries != nil {
 			allLibs = *opts.allLibraries
