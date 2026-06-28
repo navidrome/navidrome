@@ -17,14 +17,15 @@ import (
 
 func newFolderEntry(job *scanJob, id, path string, updTime time.Time, hash string) *folderEntry {
 	f := &folderEntry{
-		id:         id,
-		job:        job,
-		path:       path,
-		audioFiles: make(map[string]fs.DirEntry),
-		imageFiles: make(map[string]fs.DirEntry),
-		albumIDMap: make(map[string]string),
-		updTime:    updTime,
-		prevHash:   hash,
+		id:          id,
+		job:         job,
+		path:        path,
+		audioFiles:  make(map[string]fs.DirEntry),
+		imageFiles:  make(map[string]fs.DirEntry),
+		albumIDMap:  make(map[string]string),
+		artistIDMap: make(map[string]string),
+		updTime:     updTime,
+		prevHash:    hash,
 	}
 	return f
 }
@@ -46,6 +47,7 @@ type folderEntry struct {
 	albums          model.Albums
 	albumIDMap      map[string]string
 	artists         model.Artists
+	artistIDMap     map[string]string
 	tags            model.TagList
 	missingTracks   []*model.MediaFile
 }

@@ -16,9 +16,11 @@ func CreateMockArtistRepo() *MockArtistRepo {
 
 type MockArtistRepo struct {
 	model.ArtistRepository
-	Data    map[string]*model.Artist
-	Err     bool
-	Options model.QueryOptions
+	Data                    map[string]*model.Artist
+	Err                     bool
+	Options                 model.QueryOptions
+	ReassignAnnotationCalls map[string]string // prevID -> newID
+	CopyAttributesCalls     map[string]string // fromID -> toID
 }
 
 func (m *MockArtistRepo) SetError(err bool) {
@@ -155,6 +157,32 @@ func (m *MockArtistRepo) Search(q string, options ...model.QueryOptions) (model.
 	// Simple mock implementation - just return all artists for testing
 	allArtists, err := m.GetAll()
 	return allArtists, err
+}
+
+// ReassignAnnotation reassigns annotations from one artist to another
+func (m *MockArtistRepo) ReassignAnnotation(prevID string, newID string) error {
+	if m.Err {
+		return errors.New("unexpected error")
+	}
+	// Mock implementation - track the reassignment calls
+	if m.ReassignAnnotationCalls == nil {
+		m.ReassignAnnotationCalls = make(map[string]string)
+	}
+	m.ReassignAnnotationCalls[prevID] = newID
+	return nil
+}
+
+// CopyAttributes is a no-op in the mock; tests that need to verify call
+// observation can extend this.
+func (m *MockArtistRepo) CopyAttributes(fromID, toID string, columns ...string) error {
+	if m.Err {
+		return errors.New("unexpected error")
+	}
+	if m.CopyAttributesCalls == nil {
+		m.CopyAttributesCalls = make(map[string]string)
+	}
+	m.CopyAttributesCalls[fromID] = toID
+	return nil
 }
 
 var _ model.ArtistRepository = (*MockArtistRepo)(nil)

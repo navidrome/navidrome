@@ -318,6 +318,45 @@ var _ = Describe("helpers", func() {
 				Expect(child.Title).To(Equal(""))
 			})
 		})
+
+		It("returns CreditedAs as the contributor name when present, with canonical artist ID", func() {
+			mf := model.MediaFile{
+				ID: "song-1",
+				Participants: model.Participants{
+					model.RoleArtist: model.ParticipantList{
+						{Artist: model.Artist{ID: "canon-1", Name: "Planetary Assault Systems"}, CreditedAs: "PAS"},
+					},
+					model.RoleComposer: model.ParticipantList{
+						{Artist: model.Artist{ID: "canon-2", Name: "Real Composer"}, CreditedAs: "R. Composer"},
+					},
+				},
+			}
+			child := childFromMediaFile(context.Background(), mf)
+			Expect(child.OpenSubsonicChild).NotTo(BeNil())
+			Expect(child.OpenSubsonicChild.Artists).To(HaveLen(1))
+			Expect(child.OpenSubsonicChild.Artists[0].Id).To(Equal("canon-1"))
+			Expect(child.OpenSubsonicChild.Artists[0].Name).To(Equal("PAS"))
+
+			Expect(child.OpenSubsonicChild.Contributors).To(HaveLen(1))
+			Expect(child.OpenSubsonicChild.Contributors[0].Artist.Id).To(Equal("canon-2"))
+			Expect(child.OpenSubsonicChild.Contributors[0].Artist.Name).To(Equal("R. Composer"))
+
+			Expect(child.OpenSubsonicChild.DisplayComposer).To(Equal("R. Composer"))
+		})
+
+		It("falls back to canonical Name when CreditedAs is empty (legacy participant rows)", func() {
+			mf := model.MediaFile{
+				ID: "song-2",
+				Participants: model.Participants{
+					model.RoleArtist: model.ParticipantList{
+						{Artist: model.Artist{ID: "canon-3", Name: "Some Artist"}}, // no CreditedAs
+					},
+				},
+			}
+			child := childFromMediaFile(context.Background(), mf)
+			Expect(child.OpenSubsonicChild).NotTo(BeNil())
+			Expect(child.OpenSubsonicChild.Artists[0].Name).To(Equal("Some Artist"))
+		})
 	})
 
 	Describe("osChildFromMediaFile", func() {

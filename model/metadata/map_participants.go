@@ -7,64 +7,82 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/utils/str"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
 
 type roleTags struct {
-	name model.TagName
-	sort model.TagName
-	mbid model.TagName
+	name   model.TagName
+	sort   model.TagName
+	mbid   model.TagName
+	credit model.TagName
 }
 
 var roleMappings = map[model.Role]roleTags{
-	model.RoleComposer:  {name: model.TagComposer, sort: model.TagComposerSort, mbid: model.TagMusicBrainzComposerID},
-	model.RoleLyricist:  {name: model.TagLyricist, sort: model.TagLyricistSort, mbid: model.TagMusicBrainzLyricistID},
-	model.RoleConductor: {name: model.TagConductor, mbid: model.TagMusicBrainzConductorID},
-	model.RoleArranger:  {name: model.TagArranger, mbid: model.TagMusicBrainzArrangerID},
-	model.RoleDirector:  {name: model.TagDirector, mbid: model.TagMusicBrainzDirectorID},
-	model.RoleProducer:  {name: model.TagProducer, mbid: model.TagMusicBrainzProducerID},
-	model.RoleEngineer:  {name: model.TagEngineer, mbid: model.TagMusicBrainzEngineerID},
-	model.RoleMixer:     {name: model.TagMixer, mbid: model.TagMusicBrainzMixerID},
-	model.RoleRemixer:   {name: model.TagRemixer, mbid: model.TagMusicBrainzRemixerID},
-	model.RoleDJMixer:   {name: model.TagDJMixer, mbid: model.TagMusicBrainzDJMixerID},
+	model.RoleComposer:  {name: model.TagComposer, sort: model.TagComposerSort, mbid: model.TagMusicBrainzComposerID, credit: model.TagComposerCredit},
+	model.RoleLyricist:  {name: model.TagLyricist, sort: model.TagLyricistSort, mbid: model.TagMusicBrainzLyricistID, credit: model.TagLyricistCredit},
+	model.RoleConductor: {name: model.TagConductor, mbid: model.TagMusicBrainzConductorID, credit: model.TagConductorCredit},
+	model.RoleArranger:  {name: model.TagArranger, mbid: model.TagMusicBrainzArrangerID, credit: model.TagArrangerCredit},
+	model.RoleDirector:  {name: model.TagDirector, mbid: model.TagMusicBrainzDirectorID, credit: model.TagDirectorCredit},
+	model.RoleProducer:  {name: model.TagProducer, mbid: model.TagMusicBrainzProducerID, credit: model.TagProducerCredit},
+	model.RoleEngineer:  {name: model.TagEngineer, mbid: model.TagMusicBrainzEngineerID, credit: model.TagEngineerCredit},
+	model.RoleMixer:     {name: model.TagMixer, mbid: model.TagMusicBrainzMixerID, credit: model.TagMixerCredit},
+	model.RoleRemixer:   {name: model.TagRemixer, mbid: model.TagMusicBrainzRemixerID, credit: model.TagRemixerCredit},
+	model.RoleDJMixer:   {name: model.TagDJMixer, mbid: model.TagMusicBrainzDJMixerID, credit: model.TagDJMixerCredit},
 }
 
 func (md Metadata) mapParticipants() model.Participants {
 	participants := make(model.Participants)
 
-	// Parse track artists
-	artists := md.parseArtists(
-		model.TagTrackArtist, model.TagTrackArtists,
-		model.TagTrackArtistSort, model.TagTrackArtistsSort,
-		model.TagMusicBrainzArtistID,
-	)
-	participants.Add(model.RoleArtist, artists...)
+	// Parse track artists. MBIDs go through getRoleValues to split on the same
+	// separators as the names, keeping positional alignment.
+	trackNames := md.getArtistValues(model.TagTrackArtist, model.TagTrackArtists)
+	if len(trackNames) == 0 {
+		trackNames = []string{consts.UnknownArtist}
+	}
+	trackSorts := md.getArtistValues(model.TagTrackArtistSort, model.TagTrackArtistsSort)
+	trackMbids := md.getRoleValues(model.TagMusicBrainzArtistID)
+	trackCredits := md.getArtistValues(model.TagTrackArtistCredit, model.TagTrackArtistsCredit)
+	trackArtistParticipants := md.buildParticipants(trackNames, trackSorts, trackMbids, trackCredits)
+	participants.AddParticipants(model.RoleArtist, trackArtistParticipants...)
 
 	// Parse album artists
-	albumArtists := md.parseArtists(
-		model.TagAlbumArtist, model.TagAlbumArtists,
-		model.TagAlbumArtistSort, model.TagAlbumArtistsSort,
-		model.TagMusicBrainzAlbumArtistID,
-	)
-	if len(albumArtists) == 1 && albumArtists[0].Name == consts.UnknownArtist {
-		if md.Bool(model.TagCompilation) {
-			albumArtists = md.buildArtists([]string{consts.VariousArtists}, nil, []string{consts.VariousArtistsMbzId})
-		} else {
-			albumArtists = artists
-		}
-	}
-	participants.Add(model.RoleAlbumArtist, albumArtists...)
+	albumNames := md.getArtistValues(model.TagAlbumArtist, model.TagAlbumArtists)
+	albumSorts := md.getArtistValues(model.TagAlbumArtistSort, model.TagAlbumArtistsSort)
+	albumMbids := md.getRoleValues(model.TagMusicBrainzAlbumArtistID)
+	albumCredits := md.getArtistValues(model.TagAlbumArtistCredit, model.TagAlbumArtistsCredit)
 
-	// Parse all other roles
+	// Treat "no albumartist tag" and "albumartist == UnknownArtist placeholder"
+	// as missing, matching the prior parseArtists path and defending against
+	// the placeholder round-tripping back into a tag.
+	albumArtistMissing := len(albumNames) == 0 ||
+		(len(albumNames) == 1 && albumNames[0] == consts.UnknownArtist)
+
+	var albumArtistParticipants []model.Participant
+	if albumArtistMissing {
+		if md.Bool(model.TagCompilation) {
+			albumArtistParticipants = md.buildParticipants(
+				[]string{consts.VariousArtists}, nil,
+				[]string{consts.VariousArtistsMbzId}, nil)
+		} else {
+			albumArtistParticipants = trackArtistParticipants
+		}
+	} else {
+		albumArtistParticipants = md.buildParticipants(albumNames, albumSorts, albumMbids, albumCredits)
+	}
+	participants.AddParticipants(model.RoleAlbumArtist, albumArtistParticipants...)
+
+	// All parallel lists go through getRoleValues so they split consistently
+	// with names (e.g. COMPOSER="A;B" + COMPOSER_CREDIT="AA;BB" → 2 each).
 	for role, info := range roleMappings {
 		names := md.getRoleValues(info.name)
 		if len(names) > 0 {
-			sorts := md.Strings(info.sort)
-			mbids := md.Strings(info.mbid)
-			artists := md.buildArtists(names, sorts, mbids)
-			participants.Add(role, artists...)
+			sorts := md.getRoleValues(info.sort)
+			mbids := md.getRoleValues(info.mbid)
+			credits := md.getRoleValues(info.credit)
+			participants.AddParticipants(role, md.buildParticipants(names, sorts, mbids, credits)...)
 		}
 	}
 
@@ -100,12 +118,20 @@ func (md Metadata) processPerformers(participants model.Participants, rolesMbzId
 		subRole := titleCaser.String(performer.Key())
 
 		artist := model.Artist{
-			ID:              md.artistID(name),
 			Name:            name,
 			OrderArtistName: str.SanitizeFieldForSortingNoArticle(name),
 			MbzArtistID:     md.getPerformerMbid(subRole, rolesMbzIdMap, roleIdx),
 		}
-		participants.AddWithSubRole(model.RolePerformer, subRole, artist)
+		artist.ID = computeArtistPID(
+			model.Participant{Artist: artist},
+			conf.Server.PID.Artist,
+			id.NewHash,
+		)
+		participants.AddParticipants(model.RolePerformer, model.Participant{
+			Artist:     artist,
+			SubRole:    subRole,
+			CreditedAs: name,
+		})
 	}
 }
 
@@ -138,25 +164,31 @@ func (md Metadata) syncMissingMbzIDs(participants model.Participants) {
 	}
 }
 
-func (md Metadata) parseArtists(
-	name model.TagName, names model.TagName, sort model.TagName,
-	sorts model.TagName, mbid model.TagName,
-) []model.Artist {
-	nameValues := md.getArtistValues(name, names)
-	sortValues := md.getArtistValues(sort, sorts)
-	mbids := md.Strings(mbid)
-	if len(nameValues) == 0 {
-		nameValues = []string{consts.UnknownArtist}
+// buildParticipants wraps each Artist into a Participant with CreditedAs
+// populated. credits pairs positionally with names; a length mismatch falls
+// back to the canonical name for every entry.
+func (md Metadata) buildParticipants(names, sorts, mbids, credits []string) []model.Participant {
+	if len(credits) != 0 && len(credits) != len(names) {
+		credits = nil
 	}
-	return md.buildArtists(nameValues, sortValues, mbids)
+	artists := md.buildArtists(names, sorts, mbids)
+	out := make([]model.Participant, len(artists))
+	for i, a := range artists {
+		p := model.Participant{Artist: a}
+		if i < len(credits) && credits[i] != "" {
+			p.CreditedAs = credits[i]
+		} else {
+			p.CreditedAs = a.Name
+		}
+		out[i] = p
+	}
+	return out
 }
 
 func (md Metadata) buildArtists(names, sorts, mbids []string) []model.Artist {
 	var artists []model.Artist
 	for i, name := range names {
-		id := md.artistID(name)
 		artist := model.Artist{
-			ID:              id,
 			Name:            name,
 			OrderArtistName: str.SanitizeFieldForSortingNoArticle(name),
 		}
@@ -166,6 +198,12 @@ func (md Metadata) buildArtists(names, sorts, mbids []string) []model.Artist {
 		if i < len(mbids) {
 			artist.MbzArtistID = mbids[i]
 		}
+		// Assign ID after Sort/MBID are set so MBID/sort-based PID specs resolve.
+		artist.ID = computeArtistPID(
+			model.Participant{Artist: artist},
+			conf.Server.PID.Artist,
+			id.NewHash,
+		)
 		artists = append(artists, artist)
 	}
 	return artists
