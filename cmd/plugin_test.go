@@ -63,3 +63,44 @@ var _ = Describe("enable/disable plugin", func() {
 		Expect(mgr.DisablePluginCalls).To(Equal([]string{"beta"}))
 	})
 })
+
+var _ = Describe("applyPluginEdit", func() {
+	It("validates then updates config when config is provided", func() {
+		mgr := &tests.MockPluginManager{}
+		cfg := `{"key":"val"}`
+		err := applyPluginEdit(context.Background(), mgr, "alpha", pluginEditOptions{config: &cfg})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(mgr.ValidatePluginConfigCalls).To(HaveLen(1))
+		Expect(mgr.ValidatePluginConfigCalls[0].ConfigJSON).To(Equal(cfg))
+		Expect(mgr.UpdatePluginConfigCalls).To(HaveLen(1))
+		Expect(mgr.UpdatePluginConfigCalls[0].ConfigJSON).To(Equal(cfg))
+	})
+
+	It("updates users with allUsers flag", func() {
+		mgr := &tests.MockPluginManager{}
+		all := true
+		err := applyPluginEdit(context.Background(), mgr, "alpha",
+			pluginEditOptions{allUsers: &all})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(mgr.UpdatePluginUsersCalls).To(HaveLen(1))
+		Expect(mgr.UpdatePluginUsersCalls[0].AllUsers).To(BeTrue())
+	})
+
+	It("updates libraries with allLibraries and write access", func() {
+		mgr := &tests.MockPluginManager{}
+		all := true
+		wr := true
+		err := applyPluginEdit(context.Background(), mgr, "alpha",
+			pluginEditOptions{allLibraries: &all, writeAccess: &wr})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(mgr.UpdatePluginLibrariesCalls).To(HaveLen(1))
+		Expect(mgr.UpdatePluginLibrariesCalls[0].AllLibraries).To(BeTrue())
+		Expect(mgr.UpdatePluginLibrariesCalls[0].AllowWriteAccess).To(BeTrue())
+	})
+
+	It("does nothing and errors when no fields are set", func() {
+		mgr := &tests.MockPluginManager{}
+		err := applyPluginEdit(context.Background(), mgr, "alpha", pluginEditOptions{})
+		Expect(err).To(HaveOccurred())
+	})
+})

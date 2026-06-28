@@ -5,6 +5,8 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 	"text/tabwriter"
 
@@ -27,6 +29,17 @@ type pluginManager interface {
 
 var pluginOutputFormat string
 
+var (
+	editConfig      string
+	editConfigFile  string
+	editUsers       string
+	editAllUsers    bool
+	editLibraries   string
+	editAllLibs     bool
+	editWriteAccess bool
+	editNoWrite     bool
+)
+
 func init() {
 	rootCmd.AddCommand(pluginRoot)
 
@@ -34,6 +47,20 @@ func init() {
 	pluginRoot.AddCommand(pluginListCmd)
 	pluginRoot.AddCommand(pluginEnableCmd)
 	pluginRoot.AddCommand(pluginDisableCmd)
+
+	pluginEditCmd.Flags().StringVar(&editConfig, "config", "", "plugin config as JSON")
+	pluginEditCmd.Flags().StringVar(&editConfigFile, "config-file", "", "read plugin config JSON from a file ('-' for stdin)")
+	pluginEditCmd.MarkFlagsMutuallyExclusive("config", "config-file")
+	pluginEditCmd.Flags().StringVar(&editUsers, "users", "", "comma-separated usernames the plugin may access")
+	pluginEditCmd.Flags().BoolVar(&editAllUsers, "all-users", false, "grant the plugin access to all users")
+	pluginEditCmd.MarkFlagsMutuallyExclusive("users", "all-users")
+	pluginEditCmd.Flags().StringVar(&editLibraries, "libraries", "", "comma-separated library IDs the plugin may access")
+	pluginEditCmd.Flags().BoolVar(&editAllLibs, "all-libraries", false, "grant the plugin access to all libraries")
+	pluginEditCmd.MarkFlagsMutuallyExclusive("libraries", "all-libraries")
+	pluginEditCmd.Flags().BoolVar(&editWriteAccess, "write-access", false, "allow the plugin write access to libraries")
+	pluginEditCmd.Flags().BoolVar(&editNoWrite, "no-write-access", false, "deny the plugin write access to libraries")
+	pluginEditCmd.MarkFlagsMutuallyExclusive("write-access", "no-write-access")
+	pluginRoot.AddCommand(pluginEditCmd)
 }
 
 var (
@@ -153,4 +180,110 @@ func enablePlugin(ctx context.Context, mgr pluginManager, id string) error {
 
 func disablePlugin(ctx context.Context, mgr pluginManager, id string) error {
 	return mgr.DisablePlugin(ctx, id)
+}
+
+type pluginEditOptions struct {
+	config       *string // nil = leave unchanged
+	users        *string
+	allUsers     *bool
+	libraries    *string
+	allLibraries *bool
+	writeAccess  *bool
+}
+
+var pluginEditCmd = &cobra.Command{
+	Use:   "edit <id>",
+	Short: "Update a plugin's config and/or permissions",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		requirePluginsEnabled(cmd.Context())
+		_, ctx := getAdminContext(cmd.Context())
+		mgr := GetPluginManager(ctx)
+		opts := buildEditOptionsFromFlags(cmd)
+		if err := applyPluginEdit(ctx, mgr, args[0], opts); err != nil {
+			log.Fatal(ctx, "Failed to edit plugin", "id", args[0], err)
+		}
+	},
+}
+
+func buildEditOptionsFromFlags(cmd *cobra.Command) pluginEditOptions {
+	var opts pluginEditOptions
+	switch {
+	case cmd.Flags().Changed("config"):
+		c := editConfig
+		opts.config = &c
+	case cmd.Flags().Changed("config-file"):
+		c := readConfigFile(editConfigFile)
+		opts.config = &c
+	}
+	if cmd.Flags().Changed("users") {
+		u := editUsers
+		opts.users = &u
+	}
+	if cmd.Flags().Changed("all-users") {
+		opts.allUsers = &editAllUsers
+	}
+	if cmd.Flags().Changed("libraries") {
+		l := editLibraries
+		opts.libraries = &l
+	}
+	if cmd.Flags().Changed("all-libraries") {
+		opts.allLibraries = &editAllLibs
+	}
+	if cmd.Flags().Changed("write-access") || cmd.Flags().Changed("no-write-access") {
+		wa := editWriteAccess && !editNoWrite
+		opts.writeAccess = &wa
+	}
+	return opts
+}
+
+func readConfigFile(path string) string {
+	var data []byte
+	var err error
+	if path == "-" {
+		data, err = io.ReadAll(os.Stdin)
+	} else {
+		data, err = os.ReadFile(path)
+	}
+	if err != nil {
+		log.Fatal("Failed to read config file", "path", path, err)
+	}
+	return string(data)
+}
+
+func applyPluginEdit(ctx context.Context, mgr pluginManager, id string, opts pluginEditOptions) error {
+	if opts.config == nil && opts.users == nil && opts.allUsers == nil &&
+		opts.libraries == nil && opts.allLibraries == nil && opts.writeAccess == nil {
+		return fmt.Errorf("nothing to update: provide at least one of --config/--users/--libraries/--write-access")
+	}
+	if opts.config != nil {
+		if err := mgr.ValidatePluginConfig(ctx, id, *opts.config); err != nil {
+			return fmt.Errorf("invalid config: %w", err)
+		}
+		if err := mgr.UpdatePluginConfig(ctx, id, *opts.config); err != nil {
+			return err
+		}
+	}
+	if opts.users != nil || opts.allUsers != nil {
+		users := ""
+		if opts.users != nil {
+			users = *opts.users
+		}
+		allUsers := opts.allUsers != nil && *opts.allUsers
+		if err := mgr.UpdatePluginUsers(ctx, id, users, allUsers); err != nil {
+			return err
+		}
+	}
+	if opts.libraries != nil || opts.allLibraries != nil || opts.writeAccess != nil {
+		libs := ""
+		if opts.libraries != nil {
+			libs = *opts.libraries
+		}
+		allLibs := opts.allLibraries != nil && *opts.allLibraries
+		writeAccess := opts.writeAccess != nil && *opts.writeAccess
+		if err := mgr.UpdatePluginLibraries(ctx, id, libs, allLibs, writeAccess); err != nil {
+			return err
+		}
+	}
+	return nil
 }
