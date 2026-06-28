@@ -141,7 +141,7 @@ var _ = Describe("ndpPackage", func() {
 				Version:     "1.0.0",
 				Description: new("A test plugin"),
 			}
-			wasmBytes := make([]byte, 1024*1024) // 1MB of zeros
+			wasmBytes := []byte{0x00, 0x61, 0x73, 0x6d} // wasm header; present but never read
 
 			err := createTestPackage(ndpPath, manifest, wasmBytes)
 			Expect(err).ToNot(HaveOccurred())
@@ -177,17 +177,26 @@ var _ = Describe("ndpPackage", func() {
 
 		It("fails for a package with a schema-invalid manifest", func() {
 			ndp := filepath.Join(tmpDir, "bad.ndp")
-			writeNDP(ndp, `{"name":"","version":"","author":""}`)
-			_, err := ReadManifest(ndp)
+			// empty required fields violate the manifest JSON schema
+			err := createTestPackage(ndp, &Manifest{}, nil)
+			Expect(err).ToNot(HaveOccurred())
+			_, err = ReadManifest(ndp)
 			Expect(err).To(HaveOccurred())
 		})
 
 		It("enforces cross-field validation", func() {
 			ndp := filepath.Join(tmpDir, "crossfield.ndp")
 			// subsonicapi permission without users: violates cross-field rule
-			writeNDP(ndp, `{"name":"X","version":"1.0.0","author":"me","permissions":{"subsonicapi":{}}}`)
+			manifest := &Manifest{
+				Name:        "X",
+				Author:      "me",
+				Version:     "1.0.0",
+				Permissions: &Permissions{Subsonicapi: &SubsonicAPIPermission{}},
+			}
+			err := createTestPackage(ndp, manifest, nil)
+			Expect(err).ToNot(HaveOccurred())
 
-			_, err := ReadManifest(ndp)
+			_, err = ReadManifest(ndp)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("subsonicapi"))
 			Expect(err.Error()).To(ContainSubstring("users"))
@@ -265,17 +274,4 @@ func createTestPackage(ndpPath string, manifest *Manifest, wasmBytes []byte) err
 	}
 
 	return nil
-}
-
-// writeNDP writes a minimal .ndp (zip) containing only manifest.json.
-func writeNDP(path, manifestJSON string) {
-	f, err := os.Create(path)
-	Expect(err).ToNot(HaveOccurred())
-	defer f.Close()
-	zw := zip.NewWriter(f)
-	w, err := zw.Create("manifest.json")
-	Expect(err).ToNot(HaveOccurred())
-	_, err = w.Write([]byte(manifestJSON))
-	Expect(err).ToNot(HaveOccurred())
-	Expect(zw.Close()).To(Succeed())
 }
