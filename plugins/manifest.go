@@ -3,32 +3,32 @@ package plugins
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"sort"
+	"strings"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
 // DeclaredNames returns the sorted names of the permissions declared in the
-// manifest. It is nil-safe (returns nil for a nil receiver) and co-located with
-// the generated Permissions type so it stays in sync as new permissions appear.
+// manifest. The names are derived by reflecting over the Permissions struct's
+// json tags, which are generated from manifest-schema.json — so new permission
+// types are picked up automatically without editing this function. A permission
+// is "declared" when its (pointer) field is non-nil. Nil-safe.
 func (p *Permissions) DeclaredNames() []string {
 	if p == nil {
 		return nil
 	}
 	var names []string
-	for name, declared := range map[string]bool{
-		"artwork":     p.Artwork != nil,
-		"cache":       p.Cache != nil,
-		"http":        p.Http != nil,
-		"kvstore":     p.Kvstore != nil,
-		"library":     p.Library != nil,
-		"scheduler":   p.Scheduler != nil,
-		"subsonicapi": p.Subsonicapi != nil,
-		"taskqueue":   p.Taskqueue != nil,
-		"users":       p.Users != nil,
-		"websocket":   p.Websocket != nil,
-	} {
-		if declared {
+	v := reflect.ValueOf(*p)
+	t := v.Type()
+	for i := 0; i < t.NumField(); i++ {
+		f := v.Field(i)
+		if f.Kind() != reflect.Pointer || f.IsNil() {
+			continue
+		}
+		tag := t.Field(i).Tag.Get("json")
+		if name, _, _ := strings.Cut(tag, ","); name != "" && name != "-" {
 			names = append(names, name)
 		}
 	}

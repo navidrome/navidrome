@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -139,12 +137,44 @@ var _ = Describe("applyPluginEdit", func() {
 		Expect(mgr.UpdatePluginUsersCalls[0].UsersJSON).To(Equal(`["bob"]`)) // not wiped
 	})
 
-	It("rejects a non-JSON users value", func() {
+	It("parses a comma-separated users value into a JSON array", func() {
 		mgr := &tests.MockPluginManager{}
-		users := "alice,bob"
+		users := "alice, bob"
+		err := applyPluginEdit(context.Background(), mgr, cur, pluginEditOptions{users: &users})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(mgr.UpdatePluginUsersCalls[0].UsersJSON).To(Equal(`["alice","bob"]`))
+	})
+
+	It("passes a JSON-array users value through unchanged", func() {
+		mgr := &tests.MockPluginManager{}
+		users := `["alice","bob"]`
+		err := applyPluginEdit(context.Background(), mgr, cur, pluginEditOptions{users: &users})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(mgr.UpdatePluginUsersCalls[0].UsersJSON).To(Equal(`["alice","bob"]`))
+	})
+
+	It("rejects a malformed JSON-array users value", func() {
+		mgr := &tests.MockPluginManager{}
+		users := `["alice"`
 		err := applyPluginEdit(context.Background(), mgr, cur, pluginEditOptions{users: &users})
 		Expect(err).To(HaveOccurred())
 		Expect(mgr.UpdatePluginUsersCalls).To(BeEmpty())
+	})
+
+	It("parses a comma-separated libraries value into a JSON array of ints", func() {
+		mgr := &tests.MockPluginManager{}
+		libs := "1, 2"
+		err := applyPluginEdit(context.Background(), mgr, cur, pluginEditOptions{libraries: &libs})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(mgr.UpdatePluginLibrariesCalls[0].LibrariesJSON).To(Equal(`[1,2]`))
+	})
+
+	It("rejects a non-integer library ID", func() {
+		mgr := &tests.MockPluginManager{}
+		libs := "1,abc"
+		err := applyPluginEdit(context.Background(), mgr, cur, pluginEditOptions{libraries: &libs})
+		Expect(err).To(HaveOccurred())
+		Expect(mgr.UpdatePluginLibrariesCalls).To(BeEmpty())
 	})
 
 	It("does nothing and errors when no fields are set", func() {
@@ -164,17 +194,14 @@ var _ = Describe("applyPluginEdit", func() {
 })
 
 var _ = Describe("isPackagePath", func() {
-	It("is true for an existing .ndp file", func() {
-		dir := GinkgoT().TempDir()
-		p := filepath.Join(dir, "x.ndp")
-		Expect(os.WriteFile(p, []byte("x"), 0600)).To(Succeed())
-		Expect(isPackagePath(p)).To(BeTrue())
+	It("is true for any .ndp path", func() {
+		Expect(isPackagePath("/some/dir/x.ndp")).To(BeTrue())
 	})
-	It("is false for a bare id", func() {
+	It("is true for a non-existent .ndp path (so ReadManifest reports the error)", func() {
+		Expect(isPackagePath("/nope/x.ndp")).To(BeTrue())
+	})
+	It("is false for a bare plugin id", func() {
 		Expect(isPackagePath("my-plugin")).To(BeFalse())
-	})
-	It("is false for a .ndp path that does not exist", func() {
-		Expect(isPackagePath("/nope/x.ndp")).To(BeFalse())
 	})
 })
 

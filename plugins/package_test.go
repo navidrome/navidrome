@@ -156,6 +156,20 @@ var _ = Describe("ndpPackage", func() {
 			Expect(err).To(HaveOccurred())
 		})
 
+		It("returns a specific error for a package missing manifest.json", func() {
+			ndpPath := filepath.Join(tmpDir, "no-manifest.ndp")
+			f, err := os.Create(ndpPath)
+			Expect(err).ToNot(HaveOccurred())
+			defer f.Close()
+			zw := newTestZipWriter(f)
+			Expect(zw.addFile("plugin.wasm", []byte{0x00})).To(Succeed())
+			Expect(zw.close()).To(Succeed())
+
+			_, err = ReadManifest(ndpPath)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("missing manifest.json"))
+		})
+
 		It("fails for a package with a schema-invalid manifest", func() {
 			ndp := filepath.Join(tmpDir, "bad.ndp")
 			// empty required fields violate the manifest JSON schema

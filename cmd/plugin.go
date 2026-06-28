@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -56,10 +57,10 @@ func init() {
 	pluginEditCmd.Flags().StringVar(&editConfig, "config", "", "plugin config as JSON")
 	pluginEditCmd.Flags().StringVar(&editConfigFile, "config-file", "", "read plugin config JSON from a file ('-' for stdin)")
 	pluginEditCmd.MarkFlagsMutuallyExclusive("config", "config-file")
-	pluginEditCmd.Flags().StringVar(&editUsers, "users", "", "comma-separated usernames the plugin may access")
+	pluginEditCmd.Flags().StringVar(&editUsers, "users", "", `usernames the plugin may access: comma-separated (alice,bob) or a JSON array (["alice","bob"])`)
 	pluginEditCmd.Flags().BoolVar(&editAllUsers, "all-users", false, "grant the plugin access to all users")
 	pluginEditCmd.MarkFlagsMutuallyExclusive("users", "all-users")
-	pluginEditCmd.Flags().StringVar(&editLibraries, "libraries", "", "comma-separated library IDs the plugin may access")
+	pluginEditCmd.Flags().StringVar(&editLibraries, "libraries", "", `library IDs the plugin may access: comma-separated (1,2) or a JSON array ([1,2])`)
 	pluginEditCmd.Flags().BoolVar(&editAllLibs, "all-libraries", false, "grant the plugin access to all libraries")
 	pluginEditCmd.MarkFlagsMutuallyExclusive("libraries", "all-libraries")
 	pluginEditCmd.Flags().BoolVar(&editWriteAccess, "write-access", false, "allow the plugin write access to libraries")
@@ -137,12 +138,13 @@ var (
 	}
 )
 
+// isPackagePath reports whether arg refers to an .ndp package file (as opposed
+// to an installed plugin ID). It only checks the extension: a missing file still
+// routes to the off-disk path so ReadManifest can report a precise "no such
+// file" error instead of a misleading "Plugin not found". Plugin IDs are
+// filenames with the .ndp suffix stripped, so an ID can never collide here.
 func isPackagePath(arg string) bool {
-	if !strings.HasSuffix(arg, plugins.PackageExtension) {
-		return false
-	}
-	info, err := os.Stat(arg)
-	return err == nil && !info.IsDir()
+	return strings.HasSuffix(arg, plugins.PackageExtension)
 }
 
 func formatPluginInfo(p *model.Plugin, format string) (string, error) {
@@ -456,10 +458,11 @@ func applyPluginEdit(ctx context.Context, mgr pluginManager, cur *model.Plugin, 
 	if opts.users != nil || opts.allUsers != nil {
 		users, allUsers := cur.Users, cur.AllUsers
 		if opts.users != nil {
-			if *opts.users != "" && !json.Valid([]byte(*opts.users)) {
-				return fmt.Errorf("invalid JSON in --users")
+			parsed, err := usersToJSON(*opts.users)
+			if err != nil {
+				return err
 			}
-			users = *opts.users
+			users = parsed
 		}
 		if opts.allUsers != nil {
 			allUsers = *opts.allUsers
@@ -471,10 +474,11 @@ func applyPluginEdit(ctx context.Context, mgr pluginManager, cur *model.Plugin, 
 	if opts.libraries != nil || opts.allLibraries != nil || opts.writeAccess != nil {
 		libs, allLibs, writeAccess := cur.Libraries, cur.AllLibraries, cur.AllowWriteAccess
 		if opts.libraries != nil {
-			if *opts.libraries != "" && !json.Valid([]byte(*opts.libraries)) {
-				return fmt.Errorf("invalid JSON in --libraries")
+			parsed, err := librariesToJSON(*opts.libraries)
+			if err != nil {
+				return err
 			}
-			libs = *opts.libraries
+			libs = parsed
 		}
 		if opts.allLibraries != nil {
 			allLibs = *opts.allLibraries
@@ -487,6 +491,56 @@ func applyPluginEdit(ctx context.Context, mgr pluginManager, cur *model.Plugin, 
 		}
 	}
 	return nil
+}
+
+// usersToJSON normalizes a --users value to the JSON-array form the manager
+// stores. A value starting with '[' is treated as JSON (validated as-is);
+// anything else is parsed as a comma-separated list. Empty input yields "[]".
+func usersToJSON(value string) (string, error) {
+	if strings.TrimSpace(value) == "" {
+		return "[]", nil
+	}
+	if strings.HasPrefix(strings.TrimSpace(value), "[") {
+		if !json.Valid([]byte(value)) {
+			return "", fmt.Errorf("invalid JSON in --users")
+		}
+		return value, nil
+	}
+	var names []string
+	for _, u := range strings.Split(value, ",") {
+		if u = strings.TrimSpace(u); u != "" {
+			names = append(names, u)
+		}
+	}
+	b, _ := json.Marshal(names)
+	return string(b), nil
+}
+
+// librariesToJSON normalizes a --libraries value to the JSON-array form the
+// manager stores. A value starting with '[' is treated as JSON; anything else
+// is parsed as a comma-separated list of integer IDs. Empty input yields "[]".
+func librariesToJSON(value string) (string, error) {
+	if strings.TrimSpace(value) == "" {
+		return "[]", nil
+	}
+	if strings.HasPrefix(strings.TrimSpace(value), "[") {
+		if !json.Valid([]byte(value)) {
+			return "", fmt.Errorf("invalid JSON in --libraries")
+		}
+		return value, nil
+	}
+	ids := []int{}
+	for _, l := range strings.Split(value, ",") {
+		if l = strings.TrimSpace(l); l != "" {
+			id, err := strconv.Atoi(l)
+			if err != nil {
+				return "", fmt.Errorf("invalid library ID %q: must be an integer", l)
+			}
+			ids = append(ids, id)
+		}
+	}
+	b, _ := json.Marshal(ids)
+	return string(b), nil
 }
 
 var pluginRescanCmd = &cobra.Command{
