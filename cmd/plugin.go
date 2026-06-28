@@ -14,17 +14,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// pluginManager is the subset of *plugins.Manager the CLI needs.
-type pluginManager interface {
-	EnablePlugin(ctx context.Context, id string) error
-	DisablePlugin(ctx context.Context, id string) error
-	ValidatePluginConfig(ctx context.Context, id, configJSON string) error
-	UpdatePluginConfig(ctx context.Context, id, configJSON string) error
-	UpdatePluginUsers(ctx context.Context, id, usersJSON string, allUsers bool) error
-	UpdatePluginLibraries(ctx context.Context, id, librariesJSON string, allLibraries, allowWriteAccess bool) error
-	RescanPlugins(ctx context.Context) error
-}
-
 var pluginOutputFormat string
 
 func init() {
