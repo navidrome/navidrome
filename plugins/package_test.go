@@ -221,6 +221,18 @@ var _ = Describe("ndpPackage", func() {
 			_, err := ValidatePackage(ndp)
 			Expect(err).To(HaveOccurred())
 		})
+
+		It("enforces cross-field validation in ValidatePackage", func() {
+			dir := GinkgoT().TempDir()
+			ndp := filepath.Join(dir, "crossfield.ndp")
+			// subsonicapi permission without users: violates cross-field rule
+			writeNDP(ndp, `{"name":"X","version":"1.0.0","author":"me","permissions":{"subsonicapi":{}}}`)
+
+			_, err := ValidatePackage(ndp)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("subsonicapi"))
+			Expect(err.Error()).To(ContainSubstring("users"))
+		})
 	})
 })
 
