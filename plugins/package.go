@@ -72,9 +72,10 @@ func openPackage(ndpPath string) (*ndpPackage, error) {
 	}, nil
 }
 
-// readManifest reads only the manifest from an .ndp file without loading the wasm bytes.
-// This is useful for quick plugin discovery.
-func readManifest(ndpPath string) (*Manifest, error) {
+// ReadManifest reads and validates the manifest from a .ndp file without loading
+// the wasm bytes (it runs ParseManifest, so JSON-schema and cross-field
+// validation are applied). Useful for quick plugin discovery and validation.
+func ReadManifest(ndpPath string) (*Manifest, error) {
 	// Open the zip archive
 	zr, err := zip.OpenReader(ndpPath)
 	if err != nil {
@@ -99,24 +100,6 @@ func readManifest(ndpPath string) (*Manifest, error) {
 	}
 
 	return nil, errors.New("package missing manifest.json")
-}
-
-// ReadPackageManifest reads and parses the manifest from a .ndp package file,
-// without loading the wasm module.
-func ReadPackageManifest(path string) (*Manifest, error) {
-	return readManifest(path)
-}
-
-// ComputeFileSHA256 returns the hex SHA-256 of a file (e.g. a .ndp package),
-// without loading it into memory.
-func ComputeFileSHA256(path string) (string, error) {
-	return computeFileSHA256(path)
-}
-
-// ValidatePackage reads a .ndp package's manifest, which includes JSON-schema
-// and cross-field validation (readManifest -> ParseManifest -> Manifest.Validate).
-func ValidatePackage(path string) (*Manifest, error) {
-	return readManifest(path)
 }
 
 // readZipFile reads the contents of a file from a zip archive.

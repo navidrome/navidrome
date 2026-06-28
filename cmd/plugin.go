@@ -228,7 +228,7 @@ func formatManifestInfo(m *plugins.Manifest, sha256, format string) (string, err
 
 func runPluginInfo(ctx context.Context, arg string) {
 	if isPackagePath(arg) {
-		m, err := plugins.ReadPackageManifest(arg)
+		m, err := plugins.ReadManifest(arg)
 		if err != nil {
 			log.Fatal(ctx, "Failed to read package", "path", arg, err)
 		}
@@ -258,7 +258,7 @@ func runPluginInfo(ctx context.Context, arg string) {
 
 func runPluginValidate(ctx context.Context, arg string) {
 	if isPackagePath(arg) {
-		if _, err := plugins.ValidatePackage(arg); err != nil {
+		if _, err := plugins.ReadManifest(arg); err != nil {
 			log.Fatal(ctx, "Validation failed", "path", arg, err)
 		}
 		fmt.Printf("%s: OK\n", arg)

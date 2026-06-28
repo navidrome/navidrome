@@ -132,7 +132,7 @@ var _ = Describe("ndpPackage", func() {
 		})
 	})
 
-	Describe("readManifest", func() {
+	Describe("ReadManifest", func() {
 		It("should read only the manifest without loading wasm", func() {
 			ndpPath := filepath.Join(tmpDir, "test.ndp")
 			manifest := &Manifest{
@@ -146,7 +146,7 @@ var _ = Describe("ndpPackage", func() {
 			err := createTestPackage(ndpPath, manifest, wasmBytes)
 			Expect(err).ToNot(HaveOccurred())
 
-			m, err := readManifest(ndpPath)
+			m, err := ReadManifest(ndpPath)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(m.Name).To(Equal("Test Plugin"))
 			Expect(*m.Description).To(Equal("A test plugin"))
@@ -165,7 +165,7 @@ var _ = Describe("ndpPackage", func() {
 			err = zw.close()
 			Expect(err).ToNot(HaveOccurred())
 
-			_, err = readManifest(ndpPath)
+			_, err = ReadManifest(ndpPath)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("missing manifest.json"))
 		})
@@ -184,10 +184,10 @@ var _ = Describe("ndpPackage", func() {
 			err := createTestPackage(ndpPath, manifest, wasmBytes)
 			Expect(err).ToNot(HaveOccurred())
 
-			hash1, err := computeFileSHA256(ndpPath)
+			hash1, err := ComputeFileSHA256(ndpPath)
 			Expect(err).ToNot(HaveOccurred())
 
-			hash2, err := computeFileSHA256(ndpPath)
+			hash2, err := ComputeFileSHA256(ndpPath)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(hash1).To(Equal(hash2))
@@ -213,40 +213,34 @@ var _ = Describe("ndpPackage", func() {
 		})
 	})
 
-	Describe("ReadPackageManifest / ValidatePackage", func() {
+	Describe("ReadManifest validation", func() {
 		It("reads the manifest from a valid .ndp file", func() {
-			m, err := ReadPackageManifest(filepath.Join(testdataDir, "test-config.ndp"))
+			m, err := ReadManifest(filepath.Join(testdataDir, "test-config.ndp"))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(m.Name).ToNot(BeEmpty())
 			Expect(m.Version).ToNot(BeEmpty())
 		})
 
 		It("returns an error for a non-existent file", func() {
-			_, err := ReadPackageManifest(filepath.Join(testdataDir, "does-not-exist.ndp"))
+			_, err := ReadManifest(filepath.Join(testdataDir, "does-not-exist.ndp"))
 			Expect(err).To(HaveOccurred())
 		})
 
-		It("validates a valid package", func() {
-			m, err := ValidatePackage(filepath.Join(testdataDir, "test-config.ndp"))
-			Expect(err).ToNot(HaveOccurred())
-			Expect(m).ToNot(BeNil())
-		})
-
-		It("fails validation for a package with an invalid manifest", func() {
+		It("fails for a package with an invalid manifest", func() {
 			dir := GinkgoT().TempDir()
 			ndp := filepath.Join(dir, "bad.ndp")
 			writeNDP(ndp, `{"name":"","version":"","author":""}`)
-			_, err := ValidatePackage(ndp)
+			_, err := ReadManifest(ndp)
 			Expect(err).To(HaveOccurred())
 		})
 
-		It("enforces cross-field validation in ValidatePackage", func() {
+		It("enforces cross-field validation", func() {
 			dir := GinkgoT().TempDir()
 			ndp := filepath.Join(dir, "crossfield.ndp")
 			// subsonicapi permission without users: violates cross-field rule
 			writeNDP(ndp, `{"name":"X","version":"1.0.0","author":"me","permissions":{"subsonicapi":{}}}`)
 
-			_, err := ValidatePackage(ndp)
+			_, err := ReadManifest(ndp)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("subsonicapi"))
 			Expect(err.Error()).To(ContainSubstring("users"))
