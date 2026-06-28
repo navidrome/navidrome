@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
@@ -160,6 +162,19 @@ func formatPluginInfo(p *model.Plugin, format string) (string, error) {
 	fmt.Fprintf(&sb, "All users:   %t\n", p.AllUsers)
 	fmt.Fprintf(&sb, "All libs:    %t\n", p.AllLibraries)
 	fmt.Fprintf(&sb, "Write access:%t\n", p.AllowWriteAccess)
+	if p.Users != "" {
+		fmt.Fprintf(&sb, "Users:       %s\n", p.Users)
+	}
+	if p.Libraries != "" {
+		fmt.Fprintf(&sb, "Libraries:   %s\n", p.Libraries)
+	}
+	if m, err := plugins.ParseManifest([]byte(p.Manifest)); err == nil {
+		if perms := declaredPermissions(m.Permissions); len(perms) > 0 {
+			fmt.Fprintf(&sb, "Permissions: %s\n", strings.Join(perms, ", "))
+		}
+	}
+	fmt.Fprintf(&sb, "Created:     %s\n", p.CreatedAt.Format(time.RFC3339))
+	fmt.Fprintf(&sb, "Updated:     %s\n", p.UpdatedAt.Format(time.RFC3339))
 	if p.Config != "" {
 		fmt.Fprintf(&sb, "Config:      %s\n", p.Config)
 	}
@@ -167,6 +182,46 @@ func formatPluginInfo(p *model.Plugin, format string) (string, error) {
 		fmt.Fprintf(&sb, "Last error:  %s\n", p.LastError)
 	}
 	return sb.String(), nil
+}
+
+// declaredPermissions returns a sorted list of permission names declared in the manifest.
+func declaredPermissions(p *plugins.Permissions) []string {
+	if p == nil {
+		return nil
+	}
+	var names []string
+	if p.Artwork != nil {
+		names = append(names, "artwork")
+	}
+	if p.Cache != nil {
+		names = append(names, "cache")
+	}
+	if p.Http != nil {
+		names = append(names, "http")
+	}
+	if p.Kvstore != nil {
+		names = append(names, "kvstore")
+	}
+	if p.Library != nil {
+		names = append(names, "library")
+	}
+	if p.Scheduler != nil {
+		names = append(names, "scheduler")
+	}
+	if p.Subsonicapi != nil {
+		names = append(names, "subsonicapi")
+	}
+	if p.Taskqueue != nil {
+		names = append(names, "taskqueue")
+	}
+	if p.Users != nil {
+		names = append(names, "users")
+	}
+	if p.Websocket != nil {
+		names = append(names, "websocket")
+	}
+	sort.Strings(names)
+	return names
 }
 
 func formatManifestInfo(m *plugins.Manifest, format string) (string, error) {
@@ -187,6 +242,9 @@ func formatManifestInfo(m *plugins.Manifest, format string) (string, error) {
 	if m.Website != nil {
 		fmt.Fprintf(&sb, "Website: %s\n", *m.Website)
 	}
+	if perms := declaredPermissions(m.Permissions); len(perms) > 0 {
+		fmt.Fprintf(&sb, "Permissions: %s\n", strings.Join(perms, ", "))
+	}
 	return sb.String(), nil
 }
 
@@ -201,6 +259,11 @@ func runPluginInfo(ctx context.Context, arg string) {
 			log.Fatal(ctx, "Failed to format output", err)
 		}
 		fmt.Print(out)
+		if pluginOutputFormat == "text" {
+			if sha, err := plugins.ComputeFileSHA256(arg); err == nil {
+				fmt.Printf("SHA256:  %s\n", sha)
+			}
+		}
 		return
 	}
 	requirePluginsEnabled(ctx)
@@ -232,6 +295,12 @@ func runPluginValidate(ctx context.Context, arg string) {
 	}
 	if _, err := plugins.ParseManifest([]byte(p.Manifest)); err != nil {
 		log.Fatal(ctx, "Validation failed", "id", arg, err)
+	}
+	if p.Config != "" {
+		mgr := GetPluginManager(ctx)
+		if err := mgr.ValidatePluginConfig(ctx, arg, p.Config); err != nil {
+			log.Fatal(ctx, "Config validation failed", "id", arg, err)
+		}
 	}
 	fmt.Printf("%s: OK\n", arg)
 }
@@ -360,6 +429,8 @@ func buildEditOptionsFromFlags(cmd *cobra.Command) pluginEditOptions {
 		opts.allLibraries = &editAllLibs
 	}
 	if cmd.Flags().Changed("write-access") || cmd.Flags().Changed("no-write-access") {
+		// write-access is part of the library-permission group, so setting only
+		// --no-write-access still triggers UpdatePluginLibraries (clearing unspecified library access).
 		wa := editWriteAccess && !editNoWrite
 		opts.writeAccess = &wa
 	}

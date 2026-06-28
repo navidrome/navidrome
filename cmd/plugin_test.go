@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/plugins"
@@ -182,6 +183,104 @@ var _ = Describe("formatManifestInfo", func() {
 		out, err := formatManifestInfo(m, "json")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(out).To(ContainSubstring("\"name\""))
+	})
+})
+
+var _ = Describe("declaredPermissions", func() {
+	It("returns nil for nil permissions", func() {
+		Expect(declaredPermissions(nil)).To(BeEmpty())
+	})
+
+	It("returns sorted names for set permissions", func() {
+		p := &plugins.Permissions{
+			Subsonicapi: &plugins.SubsonicAPIPermission{},
+			Users:       &plugins.UsersPermission{},
+		}
+		got := declaredPermissions(p)
+		Expect(got).To(Equal([]string{"subsonicapi", "users"}))
+	})
+
+	It("returns all declared names sorted", func() {
+		p := &plugins.Permissions{
+			Http:    &plugins.HTTPPermission{},
+			Artwork: &plugins.ArtworkPermission{},
+			Cache:   &plugins.CachePermission{},
+		}
+		got := declaredPermissions(p)
+		Expect(got).To(Equal([]string{"artwork", "cache", "http"}))
+	})
+})
+
+var _ = Describe("formatPluginInfo enriched text", func() {
+	var fixedTime time.Time
+
+	BeforeEach(func() {
+		fixedTime = time.Date(2025, 1, 15, 12, 0, 0, 0, time.UTC)
+	})
+
+	It("includes Users, Libraries, Permissions, Created, Updated in text output", func() {
+		p := &model.Plugin{
+			ID:        "myplugin",
+			Manifest:  `{"name":"My Plugin","version":"1.0.0","author":"me","permissions":{"users":{},"subsonicapi":{}}}`,
+			Enabled:   true,
+			Users:     "alice,bob",
+			Libraries: "1,2",
+			CreatedAt: fixedTime,
+			UpdatedAt: fixedTime.Add(time.Hour),
+		}
+		out, err := formatPluginInfo(p, "text")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(out).To(ContainSubstring("alice,bob"))
+		Expect(out).To(ContainSubstring("1,2"))
+		Expect(out).To(ContainSubstring("subsonicapi"))
+		Expect(out).To(ContainSubstring("users"))
+		Expect(out).To(ContainSubstring("2025-01-15T12:00:00Z"))
+	})
+
+	It("omits Users and Libraries lines when empty", func() {
+		p := &model.Plugin{
+			ID:        "myplugin",
+			Manifest:  `{"name":"X","version":"1.0.0","author":"me"}`,
+			CreatedAt: fixedTime,
+			UpdatedAt: fixedTime,
+		}
+		out, err := formatPluginInfo(p, "text")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(out).ToNot(ContainSubstring("Users:"))
+		Expect(out).ToNot(ContainSubstring("Libraries:"))
+	})
+
+	It("does not alter json output", func() {
+		p := &model.Plugin{ID: "x", Manifest: `{}`, Users: "alice"}
+		out, err := formatPluginInfo(p, "json")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(out).To(ContainSubstring(`"x"`))
+	})
+})
+
+var _ = Describe("formatManifestInfo enriched text", func() {
+	It("includes Permissions when declared", func() {
+		p := &plugins.Permissions{Http: &plugins.HTTPPermission{}}
+		m := &plugins.Manifest{Name: "P", Version: "1.0.0", Author: "a", Permissions: p}
+		out, err := formatManifestInfo(m, "text")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(out).To(ContainSubstring("http"))
+		Expect(out).To(ContainSubstring("Permissions:"))
+	})
+
+	It("omits Permissions line when no permissions declared", func() {
+		m := &plugins.Manifest{Name: "P", Version: "1.0.0", Author: "a"}
+		out, err := formatManifestInfo(m, "text")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(out).ToNot(ContainSubstring("Permissions:"))
+	})
+
+	It("does not alter json output", func() {
+		p := &plugins.Permissions{Http: &plugins.HTTPPermission{}}
+		m := &plugins.Manifest{Name: "P", Version: "1.0.0", Author: "a", Permissions: p}
+		out, err := formatManifestInfo(m, "json")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(out).To(ContainSubstring(`"name"`))
 	})
 })
 

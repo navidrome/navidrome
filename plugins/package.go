@@ -107,6 +107,12 @@ func ReadPackageManifest(path string) (*Manifest, error) {
 	return readManifest(path)
 }
 
+// ComputeFileSHA256 returns the hex SHA-256 of a file (e.g. a .ndp package),
+// without loading it into memory.
+func ComputeFileSHA256(path string) (string, error) {
+	return computeFileSHA256(path)
+}
+
 // ValidatePackage reads a .ndp package's manifest and runs cross-field
 // validation. It returns the parsed manifest on success.
 func ValidatePackage(path string) (*Manifest, error) {

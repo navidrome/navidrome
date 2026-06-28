@@ -195,6 +195,24 @@ var _ = Describe("ndpPackage", func() {
 		})
 	})
 
+	Describe("ComputeFileSHA256", func() {
+		It("returns a 64-char lowercase hex string for an existing file", func() {
+			ndpPath := filepath.Join(tmpDir, "sha-test.ndp")
+			err := createTestPackage(ndpPath, &Manifest{Name: "S", Author: "a", Version: "1.0.0"}, []byte{0x00, 0x61, 0x73, 0x6d})
+			Expect(err).ToNot(HaveOccurred())
+
+			sha, err := ComputeFileSHA256(ndpPath)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(sha).To(HaveLen(64))
+			Expect(sha).To(MatchRegexp(`^[0-9a-f]{64}$`))
+		})
+
+		It("returns an error for a non-existent path", func() {
+			_, err := ComputeFileSHA256(filepath.Join(tmpDir, "does-not-exist.ndp"))
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
 	Describe("ReadPackageManifest / ValidatePackage", func() {
 		It("reads the manifest from a valid .ndp file", func() {
 			m, err := ReadPackageManifest(filepath.Join(testdataDir, "test-config.ndp"))
