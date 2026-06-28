@@ -101,6 +101,25 @@ func readManifest(ndpPath string) (*Manifest, error) {
 	return nil, errors.New("package missing manifest.json")
 }
 
+// ReadPackageManifest reads and parses the manifest from a .ndp package file,
+// without loading the wasm module.
+func ReadPackageManifest(path string) (*Manifest, error) {
+	return readManifest(path)
+}
+
+// ValidatePackage reads a .ndp package's manifest and runs cross-field
+// validation. It returns the parsed manifest on success.
+func ValidatePackage(path string) (*Manifest, error) {
+	m, err := readManifest(path)
+	if err != nil {
+		return nil, err
+	}
+	if err := m.Validate(); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // readZipFile reads the contents of a file from a zip archive.
 func readZipFile(f *zip.File) ([]byte, error) {
 	rc, err := f.Open()

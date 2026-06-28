@@ -194,6 +194,34 @@ var _ = Describe("ndpPackage", func() {
 			Expect(hash1).To(HaveLen(64)) // SHA-256 produces 64 hex characters
 		})
 	})
+
+	Describe("ReadPackageManifest / ValidatePackage", func() {
+		It("reads the manifest from a valid .ndp file", func() {
+			m, err := ReadPackageManifest(filepath.Join(testdataDir, "test-config.ndp"))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(m.Name).ToNot(BeEmpty())
+			Expect(m.Version).ToNot(BeEmpty())
+		})
+
+		It("returns an error for a non-existent file", func() {
+			_, err := ReadPackageManifest(filepath.Join(testdataDir, "does-not-exist.ndp"))
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("validates a valid package", func() {
+			m, err := ValidatePackage(filepath.Join(testdataDir, "test-config.ndp"))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(m).ToNot(BeNil())
+		})
+
+		It("fails validation for a package with an invalid manifest", func() {
+			dir := GinkgoT().TempDir()
+			ndp := filepath.Join(dir, "bad.ndp")
+			writeNDP(ndp, `{"name":"","version":"","author":""}`)
+			_, err := ValidatePackage(ndp)
+			Expect(err).To(HaveOccurred())
+		})
+	})
 })
 
 // testZipHelper is a helper for creating test zip files with specific contents
@@ -266,4 +294,17 @@ func createTestPackage(ndpPath string, manifest *Manifest, wasmBytes []byte) err
 	}
 
 	return nil
+}
+
+// writeNDP writes a minimal .ndp (zip) containing only manifest.json.
+func writeNDP(path, manifestJSON string) {
+	f, err := os.Create(path)
+	Expect(err).ToNot(HaveOccurred())
+	defer f.Close()
+	zw := zip.NewWriter(f)
+	w, err := zw.Create("manifest.json")
+	Expect(err).ToNot(HaveOccurred())
+	_, err = w.Write([]byte(manifestJSON))
+	Expect(err).ToNot(HaveOccurred())
+	Expect(zw.Close()).To(Succeed())
 }
