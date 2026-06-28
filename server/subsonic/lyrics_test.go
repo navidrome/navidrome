@@ -465,6 +465,75 @@ var _ = Describe("GetLyricsBySongId", func() {
 		})
 	})
 
+	It("should preserve shared edge text when remapping agent cue lines", func() {
+		lineStart := int64(1000)
+		lineEnd := int64(2000)
+		cueStart := int64(1200)
+		cueEnd := int64(1800)
+
+		cueLines := buildCueLines(model.Line{
+			Start: &lineStart,
+			End:   &lineEnd,
+			Value: "(Hello)",
+			Cue: []model.Cue{
+				{
+					Start:     &cueStart,
+					End:       &cueEnd,
+					Value:     "Hello",
+					ByteStart: 1,
+					ByteEnd:   5,
+					AgentID:   "lead",
+				},
+				{
+					Start:     &cueStart,
+					End:       &cueEnd,
+					Value:     "Hello",
+					ByteStart: 1,
+					ByteEnd:   5,
+					AgentID:   "__nd_bg__|lead",
+				},
+			},
+		}, 0, newLyricAgents([]model.Agent{
+			{ID: "lead", Role: "main"},
+			{ID: "__nd_bg__|lead", Role: "bg"},
+		}))
+
+		Expect(cueLines).To(Equal([]responses.CueLine{
+			{
+				Index:   0,
+				Start:   &lineStart,
+				End:     &lineEnd,
+				Value:   "(Hello)",
+				AgentID: "lead",
+				Cue: []responses.LyricCue{
+					{
+						Start:     cueStart,
+						End:       &cueEnd,
+						Value:     "Hello",
+						ByteStart: 1,
+						ByteEnd:   5,
+					},
+				},
+			},
+			{
+				Index:   0,
+				Start:   &lineStart,
+				End:     &lineEnd,
+				Value:   "(Hello)",
+				AgentID: "__nd_bg__|lead",
+				Cue: []responses.LyricCue{
+					{
+						Start:     cueStart,
+						End:       &cueEnd,
+						Value:     "Hello",
+						ByteStart: 1,
+						ByteEnd:   5,
+					},
+				},
+			},
+		}))
+	})
+
 	It("should remap cue offsets for interleaved agent cue lines", func() {
 		r := newGetRequest("id=1&enhanced=true")
 

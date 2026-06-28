@@ -161,6 +161,11 @@ func buildAgentCueLineValue(lineValue string, cues, allCues []model.Cue, agentID
 
 	remapped := slices.Clone(cues)
 	var value strings.Builder
+	leadingGap := cueLineGap(lineValue, 0, remapped[0].ByteStart, allCues, agentID)
+	if strings.TrimSpace(leadingGap) != "" {
+		value.WriteString(leadingGap)
+	}
+
 	previousEnd := -1
 	for i := range remapped {
 		originalStart := remapped[i].ByteStart
@@ -173,6 +178,11 @@ func buildAgentCueLineValue(lineValue string, cues, allCues []model.Cue, agentID
 		value.WriteString(remapped[i].Value)
 		remapped[i].ByteEnd = value.Len() - 1
 		previousEnd = originalEnd
+	}
+
+	trailingGap := cueLineGap(lineValue, previousEnd+1, len(lineValue), allCues, agentID)
+	if strings.TrimSpace(trailingGap) != "" {
+		value.WriteString(trailingGap)
 	}
 	return value.String(), remapped
 }
