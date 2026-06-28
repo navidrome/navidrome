@@ -10,11 +10,9 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
-// DeclaredNames returns the sorted names of the permissions declared in the
-// manifest. The names are derived by reflecting over the Permissions struct's
-// json tags, which are generated from manifest-schema.json — so new permission
-// types are picked up automatically without editing this function. A permission
-// is "declared" when its (pointer) field is non-nil. Nil-safe.
+// DeclaredNames returns the sorted names of the non-nil permission fields. It
+// reflects over the generated json tags so new permission types are picked up
+// automatically rather than via a hand-maintained list.
 func (p *Permissions) DeclaredNames() []string {
 	if p == nil {
 		return nil

@@ -138,11 +138,8 @@ var (
 	}
 )
 
-// isPackagePath reports whether arg refers to an .ndp package file (as opposed
-// to an installed plugin ID). It only checks the extension: a missing file still
-// routes to the off-disk path so ReadManifest can report a precise "no such
-// file" error instead of a misleading "Plugin not found". Plugin IDs are
-// filenames with the .ndp suffix stripped, so an ID can never collide here.
+// isPackagePath checks only the extension (not existence) so a mistyped path
+// still routes to ReadManifest, which reports a precise "no such file" error.
 func isPackagePath(arg string) bool {
 	return strings.HasSuffix(arg, plugins.PackageExtension)
 }
@@ -493,9 +490,8 @@ func applyPluginEdit(ctx context.Context, mgr pluginManager, cur *model.Plugin, 
 	return nil
 }
 
-// usersToJSON normalizes a --users value to the JSON-array form the manager
-// stores. A value starting with '[' is treated as JSON (validated as-is);
-// anything else is parsed as a comma-separated list. Empty input yields "[]".
+// usersToJSON accepts either a JSON array (starts with '[') or a comma-separated
+// list and returns the JSON-array form the manager stores.
 func usersToJSON(value string) (string, error) {
 	if strings.TrimSpace(value) == "" {
 		return "[]", nil
@@ -516,9 +512,8 @@ func usersToJSON(value string) (string, error) {
 	return string(b), nil
 }
 
-// librariesToJSON normalizes a --libraries value to the JSON-array form the
-// manager stores. A value starting with '[' is treated as JSON; anything else
-// is parsed as a comma-separated list of integer IDs. Empty input yields "[]".
+// librariesToJSON accepts either a JSON array (starts with '[') or a
+// comma-separated list of integer IDs and returns the JSON-array form stored.
 func librariesToJSON(value string) (string, error) {
 	if strings.TrimSpace(value) == "" {
 		return "[]", nil
