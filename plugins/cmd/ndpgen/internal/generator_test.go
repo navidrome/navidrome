@@ -1121,6 +1121,20 @@ var _ = Describe("Shared Types Generation", func() {
 		Expect(out).To(ContainSubstring("Name string `json:\"name\"`"))
 		Expect(out).NotTo(ContainSubstring("import"))
 	})
+
+	It("emits base64 serde for Vec<u8> fields in the Rust types crate", func() {
+		structs := []StructDef{
+			{Name: "Payload", Doc: "Payload carries raw bytes.", Fields: []FieldDef{
+				{Name: "Data", Type: "[]byte", JSONTag: "data"},
+			}},
+		}
+		code, err := GenerateSharedTypesRust(structs)
+		Expect(err).NotTo(HaveOccurred())
+		out := string(code)
+		Expect(out).To(ContainSubstring("mod base64_bytes"))
+		Expect(out).To(ContainSubstring("use base64::Engine as _"))
+		Expect(out).To(ContainSubstring(`#[serde(with = "base64_bytes")]`))
+	})
 })
 
 var _ = Describe("Rust Generation", func() {

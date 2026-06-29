@@ -581,6 +581,20 @@ func anyFieldUsesHashMap(structs []StructDef) bool {
 	return false
 }
 
+// anyFieldIsByteSlice reports whether any field across the given structs is a
+// []byte, which Go's JSON encoder serializes as a base64 string. The Rust
+// shared-types crate must match that with a base64_bytes serde override.
+func anyFieldIsByteSlice(structs []StructDef) bool {
+	for _, st := range structs {
+		for _, f := range st.Fields {
+			if f.IsByteSlice() {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // hasHashMap returns true if any struct in the capability uses HashMap.
 func hasHashMap(cap Capability) bool {
 	return anyFieldUsesHashMap(cap.Structs)
@@ -896,10 +910,21 @@ func GenerateSharedTypesRust(structs []StructDef) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parsing template: %w", err)
 	}
+
+	partialContent, err := templatesFS.ReadFile("templates/base64_bytes.rs.tmpl")
+	if err != nil {
+		return nil, fmt.Errorf("reading base64_bytes partial: %w", err)
+	}
+	tmpl, err = tmpl.Parse(string(partialContent))
+	if err != nil {
+		return nil, fmt.Errorf("parsing base64_bytes partial: %w", err)
+	}
+
 	data := struct {
-		Structs    []StructDef
-		HasHashMap bool
-	}{Structs: sorted, HasHashMap: anyFieldUsesHashMap(sorted)}
+		Structs       []StructDef
+		HasHashMap    bool
+		HasByteFields bool
+	}{Structs: sorted, HasHashMap: anyFieldUsesHashMap(sorted), HasByteFields: anyFieldIsByteSlice(sorted)}
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, data); err != nil {
 		return nil, fmt.Errorf("executing template: %w", err)
