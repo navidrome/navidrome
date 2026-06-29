@@ -85,15 +85,38 @@ type SharedAlias struct {
 
 // ImportsSharedTypes reports whether this capability references the shared types package.
 // A reference can come from a deprecated re-export alias (e.g. type SongRef = types.SongRef)
-// or directly from a struct field using the canonical form (e.g. types.SongRef), so the
-// generated Go import must be emitted even when no alias is declared.
+// or directly from the canonical form (e.g. types.SongRef) in a struct field or a method
+// signature, so the generated Go import must be emitted even when no alias is declared.
 func (c Capability) ImportsSharedTypes() bool {
-	return len(c.SharedAliases) > 0 || structsReferenceSharedTypes(c.Structs)
+	if len(c.SharedAliases) > 0 || structsReferenceSharedTypes(c.Structs) {
+		return true
+	}
+	for _, m := range c.Methods {
+		if typeReferencesSharedTypes(m.Input.Type) || typeReferencesSharedTypes(m.Output.Type) {
+			return true
+		}
+	}
+	return false
 }
 
 // ImportsSharedTypes reports whether this service references the shared types package.
 func (s Service) ImportsSharedTypes() bool {
-	return len(s.SharedAliases) > 0 || structsReferenceSharedTypes(s.Structs)
+	if len(s.SharedAliases) > 0 || structsReferenceSharedTypes(s.Structs) {
+		return true
+	}
+	for _, m := range s.Methods {
+		for _, p := range m.Params {
+			if typeReferencesSharedTypes(p.Type) {
+				return true
+			}
+		}
+		for _, r := range m.Returns {
+			if typeReferencesSharedTypes(r.Type) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // structsReferenceSharedTypes reports whether any field across the given structs
@@ -102,13 +125,23 @@ func (s Service) ImportsSharedTypes() bool {
 func structsReferenceSharedTypes(structs []StructDef) bool {
 	for _, st := range structs {
 		for _, f := range st.Fields {
-			refs := map[string]bool{}
-			collectReferencedTypes(f.Type, refs)
-			for t := range refs {
-				if strings.HasPrefix(t, sharedTypesPrefix) {
-					return true
-				}
+			if typeReferencesSharedTypes(f.Type) {
+				return true
 			}
+		}
+	}
+	return false
+}
+
+// typeReferencesSharedTypes reports whether a Go type expression refers to the
+// shared types package by its qualified name, accounting for pointer, slice, and
+// map wrappers (e.g. types.SongRef, []types.SongRef, map[string]types.SongRef).
+func typeReferencesSharedTypes(goType string) bool {
+	refs := map[string]bool{}
+	collectReferencedTypes(goType, refs)
+	for t := range refs {
+		if strings.HasPrefix(t, sharedTypesPrefix) {
+			return true
 		}
 	}
 	return false

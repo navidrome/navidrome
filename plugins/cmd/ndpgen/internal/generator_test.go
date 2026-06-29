@@ -987,6 +987,25 @@ type TestService interface {
 			Expect(out).To(ContainSubstring(`"github.com/navidrome/navidrome/plugins/pdk/go/types"`))
 			Expect(out).To(ContainSubstring("types.SongRef"))
 		})
+
+		It("emits the types import for a direct types.X method input/output", func() {
+			cap := Capability{
+				Name:      "demo",
+				Interface: "Demo",
+				Required:  true,
+				Methods: []Export{{
+					Name: "Lookup", ExportName: "nd_demo_lookup",
+					Input:  Param{Name: "input", Type: "types.SongRef"},
+					Output: Param{Name: "output", Type: "types.SongRef"},
+				}},
+				// No structs, no aliases: the method signature references the shared type directly.
+			}
+			code, err := GenerateCapabilityGo(cap, "demo")
+			Expect(err).NotTo(HaveOccurred())
+			out := string(code)
+			Expect(out).To(ContainSubstring(`"github.com/navidrome/navidrome/plugins/pdk/go/types"`))
+			Expect(out).To(ContainSubstring("types.SongRef"))
+		})
 	})
 
 	Describe("GenerateCapabilityGoStub", func() {
