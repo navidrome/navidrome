@@ -83,10 +83,35 @@ type SharedAlias struct {
 }
 
 // ImportsSharedTypes reports whether this capability references the shared types package.
-func (c Capability) ImportsSharedTypes() bool { return len(c.SharedAliases) > 0 }
+// A reference can come from a deprecated re-export alias (e.g. type SongRef = types.SongRef)
+// or directly from a struct field using the canonical form (e.g. types.SongRef), so the
+// generated Go import must be emitted even when no alias is declared.
+func (c Capability) ImportsSharedTypes() bool {
+	return len(c.SharedAliases) > 0 || structsReferenceSharedTypes(c.Structs)
+}
 
 // ImportsSharedTypes reports whether this service references the shared types package.
-func (s Service) ImportsSharedTypes() bool { return len(s.SharedAliases) > 0 }
+func (s Service) ImportsSharedTypes() bool {
+	return len(s.SharedAliases) > 0 || structsReferenceSharedTypes(s.Structs)
+}
+
+// structsReferenceSharedTypes reports whether any field across the given structs
+// refers to the shared types package by its qualified name (e.g. types.SongRef,
+// []types.SongRef, map[string]types.SongRef).
+func structsReferenceSharedTypes(structs []StructDef) bool {
+	for _, st := range structs {
+		for _, f := range st.Fields {
+			refs := map[string]bool{}
+			collectReferencedTypes(f.Type, refs)
+			for t := range refs {
+				if strings.HasPrefix(t, sharedTypesPrefix) {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
 
 // KnownStructs returns a map of struct names defined in this capability,
 // including shared-alias names so Rust field-type resolution finds them.

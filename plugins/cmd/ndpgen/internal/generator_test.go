@@ -966,6 +966,27 @@ type TestService interface {
 			Expect(out).To(ContainSubstring("type TrackInfo = types.TrackInfo"))
 			Expect(out).NotTo(ContainSubstring("type TrackInfo struct"))
 		})
+
+		It("emits the types import for a direct types.X field with no deprecated alias", func() {
+			cap := Capability{
+				Name:      "scrobbler",
+				Interface: "Scrobbler",
+				Required:  true,
+				Methods: []Export{{
+					Name: "NowPlaying", ExportName: "nd_scrobbler_now_playing",
+					Input: Param{Name: "input", Type: "NowPlayingRequest"},
+				}},
+				Structs: []StructDef{{Name: "NowPlayingRequest", Fields: []FieldDef{
+					{Name: "Song", Type: "types.SongRef", JSONTag: "song"},
+				}}},
+				// No SharedAliases: the field references the canonical type directly.
+			}
+			code, err := GenerateCapabilityGo(cap, "scrobbler")
+			Expect(err).NotTo(HaveOccurred())
+			out := string(code)
+			Expect(out).To(ContainSubstring(`"github.com/navidrome/navidrome/plugins/pdk/go/types"`))
+			Expect(out).To(ContainSubstring("types.SongRef"))
+		})
 	})
 
 	Describe("GenerateCapabilityGoStub", func() {
