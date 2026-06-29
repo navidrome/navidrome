@@ -143,9 +143,9 @@ var albumFilters = sync.OnceValue(func() map[string]filterFunc {
 
 func recentlyAddedSort() string {
 	if conf.Server.RecentlyAddedByModTime {
-		return "datetime(album.updated_at)"
+		return "album.updated_at, album.id"
 	}
-	return "datetime(album.created_at)"
+	return "album.created_at, album.id"
 }
 
 func recentlyPlayedFilter(string, any) Sqlizer {

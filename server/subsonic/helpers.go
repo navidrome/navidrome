@@ -217,7 +217,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 		child.Path = fakePath(mf)
 	}
 	child.DiscNumber = int32(mf.DiscNumber)
-	child.Created = new(mf.BirthTime)
+	child.Created = new(mediaFileCreatedAt(mf))
 	child.AlbumId = mf.AlbumID
 	child.ArtistId = mf.ArtistID
 	child.Type = "music"
@@ -326,18 +326,36 @@ func sanitizeSlashes(target string) string {
 	return strings.ReplaceAll(target, "/", "_")
 }
 
-// albumCreatedAt returns a best-effort timestamp for the album's `created`
-// field, which is required by the OpenSubsonic spec but may be zero on legacy
-// DB rows. Falls back to UpdatedAt → ImportedAt; can still return zero if all
-// three are unset.
+// albumCreatedAt mirrors the column used by recentlyAddedSort so clients can
+// reproduce the "recently added" order locally: UpdatedAt when
+// RecentlyAddedByModTime is set, CreatedAt otherwise. The other timestamps are
+// fallbacks for legacy rows; returns zero only when all three are unset.
 func albumCreatedAt(al model.Album) time.Time {
-	if !al.CreatedAt.IsZero() {
-		return al.CreatedAt
+	candidates := []time.Time{al.CreatedAt, al.UpdatedAt, al.ImportedAt}
+	if conf.Server.RecentlyAddedByModTime {
+		candidates = []time.Time{al.UpdatedAt, al.CreatedAt, al.ImportedAt}
 	}
-	if !al.UpdatedAt.IsZero() {
-		return al.UpdatedAt
+	for _, t := range candidates {
+		if !t.IsZero() {
+			return t
+		}
 	}
-	return al.ImportedAt
+	return time.Time{}
+}
+
+// mediaFileCreatedAt is the song counterpart of albumCreatedAt, tracking
+// mediaFileRecentlyAddedSort; BirthTime is the legacy fallback.
+func mediaFileCreatedAt(mf model.MediaFile) time.Time {
+	candidates := []time.Time{mf.CreatedAt, mf.UpdatedAt, mf.BirthTime}
+	if conf.Server.RecentlyAddedByModTime {
+		candidates = []time.Time{mf.UpdatedAt, mf.CreatedAt, mf.BirthTime}
+	}
+	for _, t := range candidates {
+		if !t.IsZero() {
+			return t
+		}
+	}
+	return time.Time{}
 }
 
 func childFromAlbum(ctx context.Context, al model.Album) responses.Child {
