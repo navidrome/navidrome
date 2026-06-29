@@ -60,16 +60,18 @@ type (
 func GenerateSchema(cap Capability) ([]byte, error) {
 	schema := xtpSchema{Version: "v1-draft"}
 
+	aliasToCanonical := buildAliasToCanonical(cap)
+
 	// Build exports as ordered map
 	if len(cap.Methods) > 0 {
 		schema.Exports = yaml.Node{Kind: yaml.MappingNode}
 		for _, export := range cap.Methods {
-			addToMap(&schema.Exports, export.ExportName, buildExport(export))
+			addToMap(&schema.Exports, export.ExportName, buildExport(export, aliasToCanonical))
 		}
 	}
 
 	// Build components/schemas
-	schemas := buildSchemas(cap)
+	schemas := buildSchemas(cap, aliasToCanonical)
 	if len(schemas.Content) > 0 {
 		schema.Components = &xtpComponents{Schemas: schemas}
 	}
@@ -77,11 +79,22 @@ func GenerateSchema(cap Capability) ([]byte, error) {
 	return yaml.Marshal(schema)
 }
 
-func buildExport(export Export) xtpExport {
+// buildAliasToCanonical maps each deprecated shared-alias name to the canonical
+// shared type it targets (e.g. TrackInfo -> Track). Schema components are emitted
+// under the canonical name, so every $ref site must resolve through this map.
+func buildAliasToCanonical(cap Capability) map[string]string {
+	m := map[string]string{}
+	for _, a := range cap.SharedAliases {
+		m[a.Name] = strings.TrimPrefix(a.Target, sharedTypesPrefix)
+	}
+	return m
+}
+
+func buildExport(export Export, aliasToCanonical map[string]string) xtpExport {
 	e := xtpExport{Description: cleanDocForYAML(export.Doc)}
 	if export.Input.Type != "" {
 		e.Input = &xtpIOParam{
-			Ref:         "#/components/schemas/" + fieldBaseType(export.Input.Type),
+			Ref:         "#/components/schemas/" + canonicalRefName(fieldBaseType(export.Input.Type), aliasToCanonical),
 			ContentType: "application/json",
 		}
 	}
@@ -95,7 +108,7 @@ func buildExport(export Export) xtpExport {
 			}
 		} else {
 			e.Output = &xtpIOParam{
-				Ref:         "#/components/schemas/" + fieldBaseType(outputType),
+				Ref:         "#/components/schemas/" + canonicalRefName(fieldBaseType(outputType), aliasToCanonical),
 				ContentType: "application/json",
 			}
 		}
@@ -112,7 +125,7 @@ func isPrimitiveGoType(goType string) bool {
 	return false
 }
 
-func buildSchemas(cap Capability) yaml.Node {
+func buildSchemas(cap Capability, aliasToCanonical map[string]string) yaml.Node {
 	schemas := yaml.Node{Kind: yaml.MappingNode}
 	knownTypes := cap.KnownStructs()
 	for _, alias := range cap.TypeAliases {
@@ -128,16 +141,10 @@ func buildSchemas(cap Capability) yaml.Node {
 		knownTypes[def.Name] = true
 		sharedDefs[def.Name] = def
 	}
-	// aliasToCanonical maps a deprecated alias name to the canonical shared type it
-	// targets (e.g. TrackInfo -> Track). Components are emitted under the canonical
-	// name, so $ref sites for alias-typed fields must resolve through this map to
-	// avoid dangling references.
-	aliasToCanonical := map[string]string{}
 	for _, a := range cap.SharedAliases {
 		canonical := strings.TrimPrefix(a.Target, sharedTypesPrefix)
 		knownTypes[canonical] = true
 		sharedDefs[canonical] = a.Def
-		aliasToCanonical[a.Name] = canonical
 	}
 
 	// Collect types that are actually used by exports
