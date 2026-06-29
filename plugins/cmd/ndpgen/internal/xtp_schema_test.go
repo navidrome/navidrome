@@ -744,6 +744,30 @@ var _ = Describe("XTP Schema Generation", func() {
 			Expect(s).To(ContainSubstring("title:"))
 		})
 
+		It("points an alias-named field at the canonical component for a renamed alias", func() {
+			cap := Capability{
+				Name: "demo", Interface: "Demo", Required: true,
+				Methods: []Export{{Name: "Play", ExportName: "nd_demo_play",
+					Input: Param{Name: "input", Type: "PlayRequest"}}},
+				Structs: []StructDef{{Name: "PlayRequest", Fields: []FieldDef{
+					// Field is typed with the deprecated alias name, not the canonical types.Track.
+					{Name: "Track", Type: "TrackInfo", JSONTag: "track"}}}},
+				SharedAliases: []SharedAlias{{
+					Name: "TrackInfo", Target: "types.Track",
+					Def: StructDef{Name: "Track", Fields: []FieldDef{
+						{Name: "Title", Type: "string", JSONTag: "title"}}},
+				}},
+			}
+			out, err := GenerateSchema(cap)
+			Expect(err).NotTo(HaveOccurred())
+			s := string(out)
+			// The component is emitted under the canonical name, and the field $ref must
+			// point at it — not at a non-existent TrackInfo component (dangling reference).
+			Expect(s).To(ContainSubstring("Track:"))
+			Expect(s).To(ContainSubstring("$ref: '#/components/schemas/Track'"))
+			Expect(s).NotTo(ContainSubstring("$ref: '#/components/schemas/TrackInfo'"))
+		})
+
 		It("inlines a directly-referenced shared type that has no deprecated alias", func() {
 			cap := Capability{
 				Name: "scrobbler", Interface: "Scrobbler", Required: true,
