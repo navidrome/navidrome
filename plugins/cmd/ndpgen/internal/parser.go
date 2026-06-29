@@ -247,11 +247,12 @@ func parseCapabilityFile(path string, f *ast.File, structMap map[string]StructDe
 			collectAllStructDependencies(referencedTypes, structMap)
 
 			// Resolve shared-type aliases against the registry
-			sharedAliases, err := resolveSharedAliases(referencedTypes, aliasMap, shared)
+			sharedAliases, sharedTypes, err := resolveSharedAliases(referencedTypes, aliasMap, shared)
 			if err != nil {
 				return nil, err
 			}
 			capability.SharedAliases = sharedAliases
+			capability.SharedTypes = sharedTypes
 
 			// Build a set of names already covered by SharedAliases so we don't
 			// emit them again in TypeAliases (which would cause a redeclaration).
@@ -325,8 +326,11 @@ func parseCapabilityFile(path string, f *ast.File, structMap map[string]StructDe
 // emitted as a SharedAlias so the generated PDK keeps re-exporting it for
 // backwards compatibility.
 //
+// It returns the deprecated re-export aliases to emit and the resolved shapes of
+// every used shared type (alias or not, for schema inlining).
+//
 // Returns an error if a referenced shared type cannot be found in the shared registry.
-func resolveSharedAliases(referenced map[string]bool, aliasMap map[string]TypeAlias, shared map[string]StructDef) ([]SharedAlias, error) {
+func resolveSharedAliases(referenced map[string]bool, aliasMap map[string]TypeAlias, shared map[string]StructDef) ([]SharedAlias, []StructDef, error) {
 	// Index declared shared aliases by the canonical type they target, e.g.
 	// "Track" -> [TrackInfo]. A canonical type may have more than one alias.
 	aliasesByCanonical := map[string][]TypeAlias{}
@@ -355,7 +359,7 @@ func resolveSharedAliases(referenced map[string]bool, aliasMap map[string]TypeAl
 		}
 		def, ok := shared[canonical]
 		if !ok {
-			return nil, fmt.Errorf(
+			return nil, nil, fmt.Errorf(
 				"shared type %q could not be resolved: pass -shared=<dir> pointing at the shared types package, and ensure %s is defined there",
 				canonical, sharedTypesPrefix+canonical,
 			)
@@ -373,13 +377,16 @@ func resolveSharedAliases(referenced map[string]bool, aliasMap map[string]TypeAl
 	}
 
 	var out []SharedAlias
+	var usedDefs []StructDef
 	for canonical := range used {
+		usedDefs = append(usedDefs, shared[canonical])
 		for _, a := range aliasesByCanonical[canonical] {
 			out = append(out, SharedAlias{Name: a.Name, Target: a.Type, Doc: a.Doc, Def: shared[canonical]})
 		}
 	}
 	slices.SortFunc(out, func(a, b SharedAlias) int { return strings.Compare(a.Name, b.Name) })
-	return out, nil
+	slices.SortFunc(usedDefs, func(a, b StructDef) int { return strings.Compare(a.Name, b.Name) })
+	return out, usedDefs, nil
 }
 
 // seedSharedCanonical maps a type token referenced by a capability/service field
@@ -553,8 +560,10 @@ func parseServiceFile(f *ast.File, pkgAliasMap map[string]TypeAlias, shared map[
 				}
 			}
 
-			// Resolve shared-type aliases against the registry
-			sharedAliases, err := resolveSharedAliases(referencedTypes, pkgAliasMap, shared)
+			// Resolve shared-type aliases against the registry. Host-service schemas
+			// are not generated (the -schemas pass is capability-only), so the resolved
+			// shared shapes are not needed here.
+			sharedAliases, _, err := resolveSharedAliases(referencedTypes, pkgAliasMap, shared)
 			if err != nil {
 				return nil, err
 			}

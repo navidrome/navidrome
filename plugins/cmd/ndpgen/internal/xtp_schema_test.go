@@ -743,6 +743,25 @@ var _ = Describe("XTP Schema Generation", func() {
 			Expect(s).To(ContainSubstring("$ref: '#/components/schemas/Track'"))
 			Expect(s).To(ContainSubstring("title:"))
 		})
+
+		It("inlines a directly-referenced shared type that has no deprecated alias", func() {
+			cap := Capability{
+				Name: "scrobbler", Interface: "Scrobbler", Required: true,
+				Methods: []Export{{Name: "NowPlaying", ExportName: "nd_scrobbler_now_playing",
+					Input: Param{Name: "input", Type: "NowPlayingRequest"}}},
+				Structs: []StructDef{{Name: "NowPlayingRequest", Fields: []FieldDef{
+					{Name: "Song", Type: "types.SongRef", JSONTag: "song"}}}},
+				// No SharedAliases: the field references the canonical type directly.
+				SharedTypes: []StructDef{{Name: "SongRef", Fields: []FieldDef{
+					{Name: "Name", Type: "string", JSONTag: "name"}}}},
+			}
+			out, err := GenerateSchema(cap)
+			Expect(err).NotTo(HaveOccurred())
+			s := string(out)
+			Expect(s).To(ContainSubstring("SongRef:"))
+			Expect(s).To(ContainSubstring("$ref: '#/components/schemas/SongRef'"))
+			Expect(s).To(ContainSubstring("name:"))
+		})
 	})
 
 	Describe("GenerateSchema enum filtering", func() {

@@ -32,6 +32,7 @@ type Capability struct {
 	Consts        []ConstGroup  // Const groups used by this capability
 	SourceFile    string        // Base name of source file without extension (e.g., "websocket_callback")
 	SharedAliases []SharedAlias // Aliases to types in the shared `types` package
+	SharedTypes   []StructDef   // Resolved shapes of every used shared type, keyed by canonical name (for schema inlining, alias or not)
 }
 
 // TypeAlias represents a type declaration (e.g. type ScrobblerErrorType string)

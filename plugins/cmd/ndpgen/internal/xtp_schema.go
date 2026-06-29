@@ -120,8 +120,14 @@ func buildSchemas(cap Capability) yaml.Node {
 	}
 
 	// Register shared types under their canonical name (e.g. types.Track -> Track)
-	// and stash their struct shapes for inlining.
+	// and stash their struct shapes for inlining. SharedTypes covers every used
+	// shared type, including ones referenced directly as types.X with no declared
+	// deprecated alias; SharedAliases is folded in for completeness.
 	sharedDefs := map[string]StructDef{}
+	for _, def := range cap.SharedTypes {
+		knownTypes[def.Name] = true
+		sharedDefs[def.Name] = def
+	}
 	for _, a := range cap.SharedAliases {
 		canonical := strings.TrimPrefix(a.Target, sharedTypesPrefix)
 		knownTypes[canonical] = true
