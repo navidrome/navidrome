@@ -217,7 +217,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 		child.Path = fakePath(mf)
 	}
 	child.DiscNumber = int32(mf.DiscNumber)
-	child.Created = new(mf.BirthTime)
+	child.Created = new(mediaFileCreatedAt(mf))
 	child.AlbumId = mf.AlbumID
 	child.ArtistId = mf.ArtistID
 	child.Type = "music"
@@ -334,6 +334,21 @@ func albumCreatedAt(al model.Album) time.Time {
 	candidates := []time.Time{al.CreatedAt, al.UpdatedAt, al.ImportedAt}
 	if conf.Server.RecentlyAddedByModTime {
 		candidates = []time.Time{al.UpdatedAt, al.CreatedAt, al.ImportedAt}
+	}
+	for _, t := range candidates {
+		if !t.IsZero() {
+			return t
+		}
+	}
+	return time.Time{}
+}
+
+// mediaFileCreatedAt is the song counterpart of albumCreatedAt, tracking
+// mediaFileRecentlyAddedSort; BirthTime is the legacy fallback.
+func mediaFileCreatedAt(mf model.MediaFile) time.Time {
+	candidates := []time.Time{mf.CreatedAt, mf.UpdatedAt, mf.BirthTime}
+	if conf.Server.RecentlyAddedByModTime {
+		candidates = []time.Time{mf.UpdatedAt, mf.CreatedAt, mf.BirthTime}
 	}
 	for _, t := range candidates {
 		if !t.IsZero() {
