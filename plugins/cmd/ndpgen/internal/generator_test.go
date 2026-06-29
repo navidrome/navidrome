@@ -1355,6 +1355,23 @@ var _ = Describe("Rust Generation", func() {
 			Expect(codeStr).NotTo(ContainSubstring("Option<"))
 		})
 
+		It("translates a shared type used directly as a method input/output", func() {
+			cap := Capability{
+				Name: "demo", Interface: "Demo", Required: true,
+				Methods: []Export{{Name: "Echo", ExportName: "nd_demo_echo",
+					Input:  Param{Name: "input", Type: "types.SongRef"},
+					Output: Param{Name: "output", Type: "types.SongRef"}}},
+				// No structs, no aliases: the method signature references the shared type directly.
+			}
+			code, err := GenerateCapabilityRust(cap)
+			Expect(err).NotTo(HaveOccurred())
+			out := string(code)
+			// The shared type must resolve to the canonical crate path, not pass through
+			// as the invalid Go selector `types.SongRef`.
+			Expect(out).To(ContainSubstring("nd_pdk_types::SongRef"))
+			Expect(out).NotTo(ContainSubstring("types.SongRef"))
+		})
+
 		It("emits a deprecated Rust type alias for shared types", func() {
 			cap := Capability{
 				Name: "scrobbler", Interface: "Scrobbler", Required: true,

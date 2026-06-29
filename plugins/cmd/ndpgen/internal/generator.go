@@ -435,8 +435,8 @@ func rustCapabilityFuncMap(cap Capability) template.FuncMap {
 		"rustFieldName":       func(name string) string { return ToSnakeCase(name) },
 		"rustMethodName":      func(name string) string { return ToSnakeCase(name) },
 		"fieldRustType":       func(f FieldDef) string { return ToRustTypeWithShared(f.Type, knownStructs, shared) },
-		"rustOutputType":      rustOutputType,
-		"isPrimitiveRust":     isPrimitiveRustType,
+		"rustOutputType":      func(goType string) string { return rustTraitType(goType, shared) },
+		"rustMethodType":      func(goType string) string { return rustMethodType(goType, cap.Name, shared) },
 		"skipSerializingFunc": skipSerializingFunc,
 		"hasHashMap":          hasHashMap,
 		"agentName":           capabilityAgentName,
@@ -494,6 +494,43 @@ func rustConstType(goType string) string {
 // TODO: Pointer to primitive types (e.g., *string, *int32) are not handled correctly.
 // Currently "*string" returns "string" instead of "String". This would generate invalid
 // Rust code. No current capability uses this pattern, but it should be fixed if needed.
+// rustMethodType returns the fully-qualified Rust type for a capability method
+// input/output. Primitives map to their Rust name; a shared type (types.X or a
+// declared alias name) resolves to its nd_pdk_types::X crate path; any other
+// named type is a capability-local struct, qualified as $crate::<package>::X.
+// This is used instead of hand-assembling "$crate::<pkg>::" + rustOutputType in
+// the template, which produced invalid paths like "$crate::demo::types.SongRef"
+// for shared types used directly in a signature.
+func rustMethodType(goType, pkg string, shared map[string]string) string {
+	goType = strings.TrimPrefix(goType, "*")
+	if isPrimitiveRustType(goType) {
+		return rustOutputType(goType)
+	}
+	if rest, ok := strings.CutPrefix(goType, sharedTypesPrefix); ok {
+		return "nd_pdk_types::" + rest
+	}
+	if t, ok := shared[goType]; ok {
+		return t
+	}
+	return "$crate::" + ToSnakeCase(pkg) + "::" + goType
+}
+
+// rustTraitType returns the Rust type for a capability trait method signature.
+// The trait lives in the capability module alongside its local structs, so those
+// stay bare; shared types must still resolve to their nd_pdk_types::X crate path
+// (a shared type used directly in a signature would otherwise pass through as the
+// invalid Go selector "types.SongRef").
+func rustTraitType(goType string, shared map[string]string) string {
+	stripped := strings.TrimPrefix(goType, "*")
+	if rest, ok := strings.CutPrefix(stripped, sharedTypesPrefix); ok {
+		return "nd_pdk_types::" + rest
+	}
+	if t, ok := shared[stripped]; ok {
+		return t
+	}
+	return rustOutputType(goType)
+}
+
 func rustOutputType(goType string) string {
 	// Strip pointer prefix - capability outputs use Result<T, Error> for optionality
 	if strings.HasPrefix(goType, "*") {
