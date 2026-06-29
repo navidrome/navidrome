@@ -495,22 +495,25 @@ func rustConstType(goType string) string {
 // Currently "*string" returns "string" instead of "String". This would generate invalid
 // Rust code. No current capability uses this pattern, but it should be fixed if needed.
 // rustMethodType returns the fully-qualified Rust type for a capability method
-// input/output. Primitives map to their Rust name; a shared type (types.X or a
-// declared alias name) resolves to its nd_pdk_types::X crate path; any other
-// named type is a capability-local struct, qualified as $crate::<package>::X.
-// This is used instead of hand-assembling "$crate::<pkg>::" + rustOutputType in
-// the template, which produced invalid paths like "$crate::demo::types.SongRef"
-// for shared types used directly in a signature.
+// input/output as referenced inside the generated export macro. The macro expands
+// in the downstream plugin crate, which depends on the umbrella nd-pdk crate and
+// not on nd-pdk-types directly, so shared types must be reached through $crate
+// (the defining nd-pdk-capabilities crate, which re-exports nd_pdk_types as
+// `types`) rather than by naming the transitive crate. Primitives map to their
+// Rust name; any other named type is a capability-local struct, qualified as
+// $crate::<package>::X. This is used instead of hand-assembling
+// "$crate::<pkg>::" + rustOutputType, which produced invalid paths like
+// "$crate::demo::types.SongRef" for shared types used directly in a signature.
 func rustMethodType(goType, pkg string, shared map[string]string) string {
 	goType = strings.TrimPrefix(goType, "*")
 	if isPrimitiveRustType(goType) {
 		return rustOutputType(goType)
 	}
 	if rest, ok := strings.CutPrefix(goType, sharedTypesPrefix); ok {
-		return "nd_pdk_types::" + rest
+		return "$crate::types::" + rest
 	}
 	if t, ok := shared[goType]; ok {
-		return t
+		return "$crate::types::" + strings.TrimPrefix(t, "nd_pdk_types::")
 	}
 	return "$crate::" + ToSnakeCase(pkg) + "::" + goType
 }
@@ -699,6 +702,11 @@ func GenerateCapabilityRustLib(capabilities []Capability) ([]byte, error) {
 	buf.WriteString("//!\n")
 	buf.WriteString("//! This crate provides type definitions, traits, and registration macros\n")
 	buf.WriteString("//! for implementing Navidrome plugin capabilities in Rust.\n\n")
+
+	// Re-export the shared types so generated registration macros can reference them
+	// via $crate::types::X. The macro expands in the downstream plugin crate, which
+	// depends on the umbrella nd-pdk crate and not on nd-pdk-types directly.
+	buf.WriteString("pub use nd_pdk_types as types;\n\n")
 
 	// Module declarations
 	for _, cap := range capabilities {

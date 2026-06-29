@@ -1372,6 +1372,23 @@ var _ = Describe("Rust Generation", func() {
 			Expect(out).NotTo(ContainSubstring("types.SongRef"))
 		})
 
+		It("routes shared macro types through $crate so umbrella-crate plugins resolve them", func() {
+			cap := Capability{
+				Name: "demo", Interface: "Demo", Required: true,
+				Methods: []Export{{Name: "Echo", ExportName: "nd_demo_echo",
+					Input:  Param{Name: "input", Type: "types.SongRef"},
+					Output: Param{Name: "output", Type: "types.SongRef"}}},
+			}
+			code, err := GenerateCapabilityRust(cap)
+			Expect(err).NotTo(HaveOccurred())
+			out := string(code)
+			// Inside the export macro (expanded in the downstream plugin crate, which depends
+			// on the umbrella nd-pdk only), the shared type must be reachable via $crate, not
+			// by naming the transitive nd_pdk_types crate directly.
+			Expect(out).To(ContainSubstring("extism_pdk::Json<$crate::types::SongRef>"))
+			Expect(out).NotTo(ContainSubstring("extism_pdk::Json<nd_pdk_types::SongRef>"))
+		})
+
 		It("emits a deprecated Rust type alias for shared types", func() {
 			cap := Capability{
 				Name: "scrobbler", Interface: "Scrobbler", Required: true,
