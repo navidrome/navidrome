@@ -112,49 +112,66 @@ var _ = Describe("AlbumRepository", func() {
 	})
 
 	Describe("recently_added sort", func() {
-		It("sorts correctly regardless of timestamp format (T-format vs space-format)", func() {
-			// Both timestamps share the same date prefix "2024-01-15" so the T vs space
-			// character at position 10 determines sort order in raw string comparison.
-			// Without normalization, 'T' (ASCII 84) > ' ' (ASCII 32) makes the older
-			// T-format timestamp sort AFTER the newer space-format one.
+		AfterEach(func() {
+			_, _ = albumRepo.executeSQL(squirrel.Delete("album").
+				Where(squirrel.Like{"id": "ra-%"}))
+		})
 
-			// Older album: morning of Jan 15, stored in T-format
-			olderAlbum := &model.Album{LibraryID: 1, ID: "ts-older", Name: "Older Album"}
-			Expect(albumRepo.Put(olderAlbum)).To(Succeed())
+		// Sub-second precision must survive, and ties must break deterministically
+		// so the order is independent of any filter (issue #5673).
+		indexOf := func(albums model.Albums, id string) int {
+			for i, a := range albums {
+				if a.ID == id {
+					return i
+				}
+			}
+			return -1
+		}
+
+		It("orders by sub-second precision, not truncated to the second", func() {
+			// Same second, different nanoseconds: datetime() would tie these.
+			earlier := &model.Album{LibraryID: 1, ID: "ra-earlier", Name: "Earlier"}
+			later := &model.Album{LibraryID: 1, ID: "ra-later", Name: "Later"}
+			Expect(albumRepo.Put(earlier)).To(Succeed())
+			Expect(albumRepo.Put(later)).To(Succeed())
 			_, err := albumRepo.executeSQL(squirrel.Update("album").
-				Set("created_at", "2024-01-15T08:00:00Z").
-				Where(squirrel.Eq{"id": "ts-older"}))
+				Set("created_at", "2024-01-15 10:00:00.100000000+00:00").
+				Where(squirrel.Eq{"id": "ra-earlier"}))
 			Expect(err).ToNot(HaveOccurred())
-
-			// Newer album: evening of Jan 15, stored in space-format
-			newerAlbum := &model.Album{LibraryID: 1, ID: "ts-newer", Name: "Newer Album"}
-			Expect(albumRepo.Put(newerAlbum)).To(Succeed())
 			_, err = albumRepo.executeSQL(squirrel.Update("album").
-				Set("created_at", "2024-01-15 20:00:00+00:00").
-				Where(squirrel.Eq{"id": "ts-newer"}))
+				Set("created_at", "2024-01-15 10:00:00.900000000+00:00").
+				Where(squirrel.Eq{"id": "ra-later"}))
 			Expect(err).ToNot(HaveOccurred())
 
 			albums, err := albumRepo.GetAll(model.QueryOptions{Sort: "recently_added", Order: "desc"})
 			Expect(err).ToNot(HaveOccurred())
+			Expect(indexOf(albums, "ra-later")).To(BeNumerically("<", indexOf(albums, "ra-earlier")),
+				".900 should sort before .100 in desc order")
+		})
 
-			// Find positions of our test albums
-			olderIdx, newerIdx := -1, -1
-			for i, a := range albums {
-				switch a.ID {
-				case "ts-older":
-					olderIdx = i
-				case "ts-newer":
-					newerIdx = i
-				}
+		It("breaks ties deterministically and consistently across filters", func() {
+			// All sharing one created_at: the relative order of any subset must
+			// match the unfiltered order (the inversion mechanism in #5673).
+			ids := []string{"ra-t1", "ra-t2", "ra-t3", "ra-t4"}
+			for _, aid := range ids {
+				Expect(albumRepo.Put(&model.Album{LibraryID: 1, ID: aid, Name: aid})).To(Succeed())
 			}
-			Expect(olderIdx).To(BeNumerically(">=", 0), "older album not found in results")
-			Expect(newerIdx).To(BeNumerically(">=", 0), "newer album not found in results")
-			// Newer album (evening, space-format) should come before older album (morning, T-format) in desc order
-			Expect(newerIdx).To(BeNumerically("<", olderIdx),
-				"Newer album (20:00 space-format) should sort before older album (08:00 T-format) in desc order")
+			_, err := albumRepo.executeSQL(squirrel.Update("album").
+				Set("created_at", "2024-02-20 12:00:00+00:00").
+				Where(squirrel.Eq{"id": ids}))
+			Expect(err).ToNot(HaveOccurred())
 
-			// Clean up
-			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": []string{"ts-older", "ts-newer"}}))
+			all, err := albumRepo.GetAll(model.QueryOptions{Sort: "recently_added", Order: "desc"})
+			Expect(err).ToNot(HaveOccurred())
+
+			subset, err := albumRepo.GetAll(model.QueryOptions{
+				Sort: "recently_added", Order: "desc",
+				Filters: squirrel.Eq{"album.id": []string{"ra-t1", "ra-t3"}}})
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(indexOf(all, "ra-t1") < indexOf(all, "ra-t3")).
+				To(Equal(indexOf(subset, "ra-t1") < indexOf(subset, "ra-t3")),
+					"tied albums must keep the same relative order with and without a filter")
 		})
 	})
 
