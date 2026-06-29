@@ -6,7 +6,9 @@ import (
 	"embed"
 	"fmt"
 	"runtime"
+	"strings"
 
+	"github.com/maruel/natural"
 	"github.com/mattn/go-sqlite3"
 	"github.com/navidrome/navidrome/conf"
 	_ "github.com/navidrome/navidrome/db/migrations"
@@ -31,7 +33,12 @@ func Db() *sql.DB {
 	return singleton.GetInstance(func() *sql.DB {
 		sql.Register(Driver, &sqlite3.SQLiteDriver{
 			ConnectHook: func(conn *sqlite3.SQLiteConn) error {
-				return conn.RegisterFunc("SEEDEDRAND", hasher.HashFunc(), false)
+				if err := conn.RegisterFunc("SEEDEDRAND", hasher.HashFunc(), false); err != nil {
+					return err
+				}
+				return conn.RegisterCollation("NATURALSORT", func(a, b string) int {
+					return natural.Compare(strings.ToLower(a), strings.ToLower(b))
+				})
 			},
 		})
 		Path = conf.Server.DbPath
