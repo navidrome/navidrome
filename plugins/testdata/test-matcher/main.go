@@ -10,13 +10,16 @@ import (
 
 // TestMatcherInput is the input for the nd_test_matcher callback.
 type TestMatcherInput struct {
-	Songs []types.SongRef `json:"songs"`
+	Songs    []types.SongRef `json:"songs"`
+	Username string          `json:"username,omitempty"`
 }
 
 // TestMatcherOutput is the output from the nd_test_matcher callback.
-// MatchedIDs is aligned to the input: an empty string at index i means no match.
+// MatchedIDs and Starred are aligned to the input: an empty string at index i
+// means no match; Starred[i] reflects the matched track's starred flag.
 type TestMatcherOutput struct {
 	MatchedIDs []string `json:"matched_ids"`
+	Starred    []bool   `json:"starred"`
 	Error      *string  `json:"error,omitempty"`
 }
 
@@ -31,7 +34,7 @@ func ndTestMatcher() int32 {
 		return 0
 	}
 
-	results, err := host.MatcherMatchSongs(input.Songs)
+	results, err := host.MatcherMatchSongs(input.Songs, host.MatchOptions{Username: input.Username})
 	if err != nil {
 		errStr := err.Error()
 		pdk.OutputJSON(TestMatcherOutput{Error: &errStr})
@@ -39,12 +42,14 @@ func ndTestMatcher() int32 {
 	}
 
 	ids := make([]string, len(results))
+	starred := make([]bool, len(results))
 	for i, t := range results {
 		if t != nil {
 			ids[i] = t.ID
+			starred[i] = t.Starred
 		}
 	}
-	pdk.OutputJSON(TestMatcherOutput{MatchedIDs: ids})
+	pdk.OutputJSON(TestMatcherOutput{MatchedIDs: ids, Starred: starred})
 	return 0
 }
 

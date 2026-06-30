@@ -6,10 +6,19 @@
 use extism_pdk::*;
 use serde::{Deserialize, Serialize};
 
+/// MatchOptions carries optional parameters for a match request.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MatchOptions {
+    #[serde(default)]
+    pub username: String,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct MatcherMatchSongsRequest {
     songs: Vec<nd_pdk_types::SongRef>,
+    opts: MatchOptions,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -28,20 +37,23 @@ extern "ExtismHost" {
 
 /// MatchSongs resolves each input song to its best-matching library track.
 /// It returns one entry per input song, in the same order as the input; the
-/// entry for an input song that had no match is empty (absent).
+/// entry for an input song that had no match is empty (absent). Results are
+/// limited to the libraries the plugin (and the scoped user, if any) can access.
 ///
 /// # Arguments
 /// * `songs` - Vec<nd_pdk_types::SongRef> parameter.
+/// * `opts` - MatchOptions parameter.
 ///
 /// # Returns
 /// The results value.
 ///
 /// # Errors
 /// Returns an error if the host function call fails.
-pub fn match_songs(songs: Vec<nd_pdk_types::SongRef>) -> Result<Vec<Option<nd_pdk_types::Track>>, Error> {
+pub fn match_songs(songs: Vec<nd_pdk_types::SongRef>, opts: MatchOptions) -> Result<Vec<Option<nd_pdk_types::Track>>, Error> {
     let response = unsafe {
         matcher_matchsongs(Json(MatcherMatchSongsRequest {
             songs: songs,
+            opts: opts,
         }))?
     };
 

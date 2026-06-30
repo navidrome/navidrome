@@ -13,6 +13,12 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// MatchOptions represents the MatchOptions data structure.
+// MatchOptions carries optional parameters for a match request.
+type MatchOptions struct {
+	Username string `json:"username"`
+}
+
 // mockMatcherService is the mock implementation for testing.
 type mockMatcherService struct {
 	mock.Mock
@@ -23,15 +29,16 @@ type mockMatcherService struct {
 var MatcherMock = &mockMatcherService{}
 
 // MatchSongs is the mock method for MatcherMatchSongs.
-func (m *mockMatcherService) MatchSongs(songs []types.SongRef) ([]*types.Track, error) {
-	args := m.Called(songs)
+func (m *mockMatcherService) MatchSongs(songs []types.SongRef, opts MatchOptions) ([]*types.Track, error) {
+	args := m.Called(songs, opts)
 	return args.Get(0).([]*types.Track), args.Error(1)
 }
 
 // MatcherMatchSongs delegates to the mock instance.
 // MatchSongs resolves each input song to its best-matching library track.
 // It returns one entry per input song, in the same order as the input; the
-// entry for an input song that had no match is empty (absent).
-func MatcherMatchSongs(songs []types.SongRef) ([]*types.Track, error) {
-	return MatcherMock.MatchSongs(songs)
+// entry for an input song that had no match is empty (absent). Results are
+// limited to the libraries the plugin (and the scoped user, if any) can access.
+func MatcherMatchSongs(songs []types.SongRef, opts MatchOptions) ([]*types.Track, error) {
+	return MatcherMock.MatchSongs(songs, opts)
 }

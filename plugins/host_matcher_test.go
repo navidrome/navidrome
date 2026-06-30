@@ -14,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/plugins/host"
 	"github.com/navidrome/navidrome/plugins/types"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -28,7 +29,7 @@ var _ = Describe("MatcherService", Ordered, func() {
 	// newConverter returns the service as its concrete type so converter unit
 	// tests can call toTrack directly with a chosen filesystem-permission flag.
 	newConverter := func(hasFilesystemPerm bool) *matcherServiceImpl {
-		return newMatcherService(nil, hasFilesystemPerm).(*matcherServiceImpl)
+		return newMatcherService(nil, hasFilesystemPerm, nil, true, newLibraryAccess(nil, true)).(*matcherServiceImpl)
 	}
 
 	Describe("toTrack", func() {
@@ -80,7 +81,7 @@ var _ = Describe("MatcherService", Ordered, func() {
 				ID: "ar-1", Name: "My Artist", SortArtistName: "artist, my", MbzArtistID: "mbz-ar-1",
 			})
 
-			track := newConverter(true).toTrack(mf)
+			track := newConverter(true).toTrack(mf, false)
 
 			Expect(track.ID).To(Equal("mf-1"))
 			Expect(track.LibraryID).To(Equal(int32(3)))
@@ -108,7 +109,7 @@ var _ = Describe("MatcherService", Ordered, func() {
 
 		It("leaves nil-able numeric fields nil when absent", func() {
 			mf := &model.MediaFile{ID: "mf-2", Title: "No Optionals"}
-			track := newConverter(true).toTrack(mf)
+			track := newConverter(true).toTrack(mf, false)
 			Expect(track.BitDepth).To(BeNil())
 			Expect(track.BPM).To(BeNil())
 			Expect(track.RGAlbumGain).To(BeNil())
@@ -120,19 +121,24 @@ var _ = Describe("MatcherService", Ordered, func() {
 		It("preserves a real 0 ReplayGain value as non-nil", func() {
 			zero := 0.0
 			mf := &model.MediaFile{ID: "mf-3", Title: "Zero RG", RGTrackGain: &zero}
-			track := newConverter(true).toTrack(mf)
+			track := newConverter(true).toTrack(mf, false)
 			Expect(track.RGTrackGain).To(HaveValue(Equal(0.0)))
 			Expect(track.RGAlbumGain).To(BeNil())
 		})
 
 		It("exposes Path only when the plugin has filesystem permission", func() {
 			mf := &model.MediaFile{ID: "mf-4", Title: "With Path", Path: "/music/x.flac"}
-			Expect(newConverter(true).toTrack(mf).Path).To(Equal("/music/x.flac"))
-			Expect(newConverter(false).toTrack(mf).Path).To(BeEmpty())
+			Expect(newConverter(true).toTrack(mf, false).Path).To(Equal("/music/x.flac"))
+			Expect(newConverter(false).toTrack(mf, false).Path).To(BeEmpty())
 		})
 	})
 
 	Describe("MatchSongs", func() {
+		// allowAll returns a service permitted to match as any user across all libraries.
+		allowAll := func(ds model.DataStore) host.MatcherService {
+			return newMatcherService(ds, false, nil, true, newLibraryAccess(nil, true))
+		}
+
 		It("returns one entry per input song in order, with nil for no-match", func() {
 			mediaFileRepo := tests.CreateMockMediaFileRepo()
 			// First (ID) phase returns the match for input song 0 only.
@@ -141,11 +147,10 @@ var _ = Describe("MatcherService", Ordered, func() {
 			})
 			ds := &tests.MockDataStore{MockedMediaFile: mediaFileRepo}
 
-			svc := newMatcherService(ds, false)
-			results, err := svc.MatchSongs(GinkgoT().Context(), []types.SongRef{
+			results, err := allowAll(ds).MatchSongs(GinkgoT().Context(), []types.SongRef{
 				{ID: "mf-100", Name: "Hit", Artist: "Band"},
 				{ID: "missing-id", Name: "Ghost", Artist: "Nobody"},
-			})
+			}, host.MatchOptions{})
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(results).To(HaveLen(2))
@@ -156,10 +161,101 @@ var _ = Describe("MatcherService", Ordered, func() {
 
 		It("returns an empty slice for empty input", func() {
 			ds := &tests.MockDataStore{MockedMediaFile: tests.CreateMockMediaFileRepo()}
-			svc := newMatcherService(ds, false)
-			results, err := svc.MatchSongs(GinkgoT().Context(), nil)
+			results, err := allowAll(ds).MatchSongs(GinkgoT().Context(), nil, host.MatchOptions{})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(results).To(BeEmpty())
+		})
+
+		Context("with a scoped user", func() {
+			var ds *tests.MockDataStore
+			var userRepo *tests.MockedUserRepo
+
+			BeforeEach(func() {
+				mediaFileRepo := tests.CreateMockMediaFileRepo()
+				mf := model.MediaFile{ID: "mf-1", Title: "Hit", Artist: "Band", LibraryID: 1}
+				mf.Starred = true
+				mf.Rating = 5
+				mediaFileRepo.SetData(model.MediaFiles{mf})
+
+				userRepo = tests.CreateMockUserRepo()
+				Expect(userRepo.Put(&model.User{ID: "u-alice", UserName: "alice"})).To(Succeed())
+
+				ds = &tests.MockDataStore{MockedMediaFile: mediaFileRepo, MockedUser: userRepo}
+			})
+
+			input := []types.SongRef{{ID: "mf-1", Name: "Hit", Artist: "Band"}}
+
+			It("does not expose annotations when no username is given", func() {
+				svc := newMatcherService(ds, false, nil, true, newLibraryAccess(nil, true))
+				results, err := svc.MatchSongs(GinkgoT().Context(), input, host.MatchOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(results[0]).ToNot(BeNil())
+				Expect(results[0].Starred).To(BeFalse())
+				Expect(results[0].Rating).To(BeZero())
+			})
+
+			It("exposes the user's annotations when an allowed username is given", func() {
+				svc := newMatcherService(ds, false, []string{"u-alice"}, false, newLibraryAccess(nil, true))
+				results, err := svc.MatchSongs(GinkgoT().Context(), input, host.MatchOptions{Username: "alice"})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(results[0]).ToNot(BeNil())
+				Expect(results[0].Starred).To(BeTrue())
+				Expect(results[0].Rating).To(Equal(int32(5)))
+			})
+
+			It("allows any username when allUsers is set", func() {
+				svc := newMatcherService(ds, false, nil, true, newLibraryAccess(nil, true))
+				results, err := svc.MatchSongs(GinkgoT().Context(), input, host.MatchOptions{Username: "alice"})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(results[0].Starred).To(BeTrue())
+			})
+
+			It("returns an error for an unknown username", func() {
+				svc := newMatcherService(ds, false, nil, true, newLibraryAccess(nil, true))
+				_, err := svc.MatchSongs(GinkgoT().Context(), input, host.MatchOptions{Username: "ghost"})
+				Expect(err).To(MatchError(ContainSubstring("not found")))
+			})
+
+			It("returns an error for a username the plugin is not allowed to use", func() {
+				svc := newMatcherService(ds, false, []string{"u-bob"}, false, newLibraryAccess(nil, true))
+				_, err := svc.MatchSongs(GinkgoT().Context(), input, host.MatchOptions{Username: "alice"})
+				Expect(err).To(MatchError(ContainSubstring("not allowed")))
+			})
+		})
+
+		Context("with plugin library access", func() {
+			var ds *tests.MockDataStore
+
+			BeforeEach(func() {
+				mediaFileRepo := tests.CreateMockMediaFileRepo()
+				mediaFileRepo.SetData(model.MediaFiles{
+					{ID: "mf-lib1", Title: "A", Artist: "Band", LibraryID: 1},
+					{ID: "mf-lib2", Title: "B", Artist: "Band", LibraryID: 2},
+				})
+				ds = &tests.MockDataStore{MockedMediaFile: mediaFileRepo}
+			})
+
+			input := []types.SongRef{
+				{ID: "mf-lib1", Name: "A", Artist: "Band"},
+				{ID: "mf-lib2", Name: "B", Artist: "Band"},
+			}
+
+			It("drops matches from libraries the plugin cannot access", func() {
+				svc := newMatcherService(ds, false, nil, false, newLibraryAccess([]int{1}, false))
+				results, err := svc.MatchSongs(GinkgoT().Context(), input, host.MatchOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(results[0]).ToNot(BeNil())
+				Expect(results[0].ID).To(Equal("mf-lib1"))
+				Expect(results[1]).To(BeNil()) // library 2 not permitted
+			})
+
+			It("keeps all matches when allLibraries is set", func() {
+				svc := newMatcherService(ds, false, nil, false, newLibraryAccess(nil, true))
+				results, err := svc.MatchSongs(GinkgoT().Context(), input, host.MatchOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(results[0]).ToNot(BeNil())
+				Expect(results[1]).ToNot(BeNil())
+			})
 		})
 	})
 
@@ -212,20 +308,26 @@ var _ = Describe("MatcherService Integration", Ordered, func() {
 		mockPluginRepo := tests.CreateMockPluginRepo()
 		mockPluginRepo.Permitted = true
 		mockPluginRepo.SetData(model.Plugins{{
-			ID:      "test-matcher",
-			Path:    destPath,
-			SHA256:  hashHex,
-			Enabled: true,
+			ID:           "test-matcher",
+			Path:         destPath,
+			SHA256:       hashHex,
+			Enabled:      true,
+			AllUsers:     true,
+			AllLibraries: true,
 		}})
 
 		mediaFileRepo := tests.CreateMockMediaFileRepo()
-		mediaFileRepo.SetData(model.MediaFiles{
-			{ID: "mf-hit", Title: "Hit", Artist: "Band"},
-		})
+		hit := model.MediaFile{ID: "mf-hit", Title: "Hit", Artist: "Band"}
+		hit.Starred = true
+		mediaFileRepo.SetData(model.MediaFiles{hit})
+
+		userRepo := tests.CreateMockUserRepo()
+		Expect(userRepo.Put(&model.User{ID: "u-alice", UserName: "alice"})).To(Succeed())
 
 		dataStore := &tests.MockDataStore{
 			MockedPlugin:    mockPluginRepo,
 			MockedMediaFile: mediaFileRepo,
+			MockedUser:      userRepo,
 		}
 
 		manager = &Manager{
@@ -261,27 +363,41 @@ var _ = Describe("MatcherService Integration", Ordered, func() {
 		defer instance.Close(ctx)
 
 		type tIn struct {
-			Songs []types.SongRef `json:"songs"`
+			Songs    []types.SongRef `json:"songs"`
+			Username string          `json:"username,omitempty"`
 		}
 		type tOut struct {
 			MatchedIDs []string `json:"matched_ids"`
+			Starred    []bool   `json:"starred"`
 			Error      *string  `json:"error,omitempty"`
 		}
 
-		inputBytes, err := json.Marshal(tIn{Songs: []types.SongRef{
+		call := func(in tIn) tOut {
+			inputBytes, err := json.Marshal(in)
+			Expect(err).ToNot(HaveOccurred())
+			_, outputBytes, err := instance.Call("nd_test_matcher", inputBytes)
+			Expect(err).ToNot(HaveOccurred())
+			var out tOut
+			Expect(json.Unmarshal(outputBytes, &out)).To(Succeed())
+			Expect(out.Error).To(BeNil())
+			return out
+		}
+
+		songs := []types.SongRef{
 			{ID: "mf-hit", Name: "Hit", Artist: "Band"},
 			{ID: "nope", Name: "Ghost", Artist: "Nobody"},
-		}})
-		Expect(err).ToNot(HaveOccurred())
+		}
 
-		_, outputBytes, err := instance.Call("nd_test_matcher", inputBytes)
-		Expect(err).ToNot(HaveOccurred())
+		By("matching without a user, preserving order and nils")
+		out := call(tIn{Songs: songs})
+		Expect(out.MatchedIDs).To(HaveLen(2))
+		Expect(out.MatchedIDs[0]).To(Equal("mf-hit"))
+		Expect(out.MatchedIDs[1]).To(BeEmpty())
+		Expect(out.Starred[0]).To(BeFalse()) // no user scope → no annotations
 
-		var output tOut
-		Expect(json.Unmarshal(outputBytes, &output)).To(Succeed())
-		Expect(output.Error).To(BeNil())
-		Expect(output.MatchedIDs).To(HaveLen(2))
-		Expect(output.MatchedIDs[0]).To(Equal("mf-hit"))
-		Expect(output.MatchedIDs[1]).To(BeEmpty())
+		By("matching as a user, exposing that user's annotations across the boundary")
+		scoped := call(tIn{Songs: songs, Username: "alice"})
+		Expect(scoped.MatchedIDs[0]).To(Equal("mf-hit"))
+		Expect(scoped.Starred[0]).To(BeTrue())
 	})
 })

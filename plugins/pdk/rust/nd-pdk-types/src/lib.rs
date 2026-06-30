@@ -209,6 +209,19 @@ pub struct Track {
     pub created_at: i64,
     #[serde(default)]
     pub updated_at: i64,
+    /// Per-user annotations. Populated only when the match was run for a specific
+    /// user (see MatchOptions.Username); otherwise these stay at their zero values.
+    /// Timestamps are Unix epoch seconds; a nil pointer means "no value".
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub starred: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub starred_at: Option<i64>,
+    #[serde(default, skip_serializing_if = "is_zero_i32")]
+    pub rating: i32,
+    #[serde(default, skip_serializing_if = "is_zero_i64")]
+    pub play_count: i64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub play_date: Option<i64>,
     /// Composite
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub tags: std::collections::HashMap<String, Vec<String>>,

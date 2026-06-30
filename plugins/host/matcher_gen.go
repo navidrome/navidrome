@@ -14,6 +14,7 @@ import (
 // MatcherMatchSongsRequest is the request type for Matcher.MatchSongs.
 type MatcherMatchSongsRequest struct {
 	Songs []types.SongRef `json:"songs"`
+	Opts  MatchOptions    `json:"opts"`
 }
 
 // MatcherMatchSongsResponse is the response type for Matcher.MatchSongs.
@@ -47,7 +48,7 @@ func newMatcherMatchSongsHostFunction(service MatcherService) extism.HostFunctio
 			}
 
 			// Call the service method
-			results, svcErr := service.MatchSongs(ctx, req.Songs)
+			results, svcErr := service.MatchSongs(ctx, req.Songs, req.Opts)
 			if svcErr != nil {
 				matcherWriteError(p, stack, svcErr)
 				return

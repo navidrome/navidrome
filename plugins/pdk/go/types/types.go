@@ -127,6 +127,14 @@ type Track struct {
 	BirthTime int64 `json:"birthTime"`
 	CreatedAt int64 `json:"createdAt"`
 	UpdatedAt int64 `json:"updatedAt"`
+	// Per-user annotations. Populated only when the match was run for a specific
+	// user (see MatchOptions.Username); otherwise these stay at their zero values.
+	// Timestamps are Unix epoch seconds; a nil pointer means "no value".
+	Starred   bool   `json:"starred,omitempty"`
+	StarredAt *int64 `json:"starredAt,omitempty"`
+	Rating    int32  `json:"rating,omitempty"`
+	PlayCount int64  `json:"playCount,omitempty"`
+	PlayDate  *int64 `json:"playDate,omitempty"`
 	// Composite
 	Tags         map[string][]string    `json:"tags,omitempty"`
 	Participants map[string][]ArtistRef `json:"participants,omitempty"`

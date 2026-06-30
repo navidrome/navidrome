@@ -124,7 +124,11 @@ var hostServices = []hostServiceEntry{
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Matcher != nil },
 		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
 			hasFilesystemPerm := ctx.permissions.Library != nil && ctx.permissions.Library.Filesystem
-			service := newMatcherService(ctx.manager.ds, hasFilesystemPerm)
+			service := newMatcherService(
+				ctx.manager.ds, hasFilesystemPerm,
+				ctx.allowedUsers, ctx.allUsers,
+				newLibraryAccess(ctx.allowedLibraries, ctx.allLibraries),
+			)
 			return host.RegisterMatcherHostFunctions(service), nil
 		},
 	},

@@ -16,6 +16,12 @@ import (
 	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
 )
 
+// MatchOptions represents the MatchOptions data structure.
+// MatchOptions carries optional parameters for a match request.
+type MatchOptions struct {
+	Username string `json:"username"`
+}
+
 // matcher_matchsongs is the host function provided by Navidrome.
 //
 //go:wasmimport extism:host/user matcher_matchsongs
@@ -23,6 +29,7 @@ func matcher_matchsongs(uint64) uint64
 
 type matcherMatchSongsRequest struct {
 	Songs []types.SongRef `json:"songs"`
+	Opts  MatchOptions    `json:"opts"`
 }
 
 type matcherMatchSongsResponse struct {
@@ -33,11 +40,13 @@ type matcherMatchSongsResponse struct {
 // MatcherMatchSongs calls the matcher_matchsongs host function.
 // MatchSongs resolves each input song to its best-matching library track.
 // It returns one entry per input song, in the same order as the input; the
-// entry for an input song that had no match is empty (absent).
-func MatcherMatchSongs(songs []types.SongRef) ([]*types.Track, error) {
+// entry for an input song that had no match is empty (absent). Results are
+// limited to the libraries the plugin (and the scoped user, if any) can access.
+func MatcherMatchSongs(songs []types.SongRef, opts MatchOptions) ([]*types.Track, error) {
 	// Marshal request to JSON
 	req := matcherMatchSongsRequest{
 		Songs: songs,
+		Opts:  opts,
 	}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
