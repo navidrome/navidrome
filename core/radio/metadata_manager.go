@@ -108,7 +108,7 @@ func (m *MetadataManager) Start(ctx context.Context, sessionID string, station S
 
 	reader := m.readers[station.StreamURL]
 	if reader == nil {
-		readerCtx, cancel := context.WithCancel(ctx)
+		readerCtx, cancel := context.WithCancel(context.WithoutCancel(ctx))
 		reader = &activeReader{
 			streamURL: station.StreamURL,
 			ctx:       readerCtx,

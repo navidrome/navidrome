@@ -14,10 +14,15 @@ import (
 type eventCtxKey string
 
 const broadcastToAllKey eventCtxKey = "broadcastToAll"
+const sendToSameUserKey eventCtxKey = "sendToSameUser"
 
 // broadcastToAll is a context key that can be used to broadcast an event to all clients
 func broadcastToAll(ctx context.Context) context.Context {
 	return context.WithValue(ctx, broadcastToAllKey, true)
+}
+
+func sendToSameUser(ctx context.Context) context.Context {
+	return context.WithValue(ctx, sendToSameUserKey, true)
 }
 
 type Event interface {
@@ -82,7 +87,7 @@ func NewRadioMetadataPublisher(broker Broker) coreradio.TitlePublisher {
 		if broker == nil {
 			return
 		}
-		broker.SendMessage(ctx, &RadioNowPlaying{
+		broker.SendMessage(sendToSameUser(ctx), &RadioNowPlaying{
 			RadioID:   update.RadioID,
 			Title:     update.Title,
 			UpdatedAt: update.UpdatedAt,

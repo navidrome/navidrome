@@ -38,6 +38,18 @@ var _ = Describe("Broker", func() {
 				m := message{senderCtx: ctx}
 				Expect(b.shouldSend(m, c)).To(BeFalse())
 			})
+			It("sends same-user message for same username and same clientUniqueId", func() {
+				ctx = request.WithClientUniqueId(ctx, "1111")
+				ctx = request.WithUsername(ctx, "janedoe")
+				m := message{senderCtx: sendToSameUser(ctx)}
+				Expect(b.shouldSend(m, c)).To(BeTrue())
+			})
+			It("does not send same-user message for a different username", func() {
+				ctx = request.WithClientUniqueId(ctx, "1111")
+				ctx = request.WithUsername(ctx, "johndoe")
+				m := message{senderCtx: sendToSameUser(ctx)}
+				Expect(b.shouldSend(m, c)).To(BeFalse())
+			})
 			It("does not send message for different username", func() {
 				ctx = request.WithClientUniqueId(ctx, "3333")
 				ctx = request.WithUsername(ctx, "johndoe")

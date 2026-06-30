@@ -11,6 +11,8 @@ import (
 )
 
 var _ = Describe("MetadataManager", func() {
+	type contextKey string
+
 	var (
 		reader    *fakeStreamReader
 		publisher *fakePublisher
@@ -37,6 +39,27 @@ var _ = Describe("MetadataManager", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Eventually(reader.StartCount).Should(Equal(1))
 		Expect(reader.URLs()).To(Equal([]string{"https://stream.example.test/radio"}))
+	})
+
+	It("keeps a reader alive after the start request context is cancelled", func() {
+		ctx, cancel := context.WithCancel(context.WithValue(context.Background(), contextKey("user"), "janedoe"))
+		Expect(manager.Start(ctx, "session-1", Station{ID: "rd-1", StreamURL: "https://stream.example.test/radio"})).To(Succeed())
+		Eventually(reader.StartCount).Should(Equal(1))
+
+		cancel()
+
+		Consistently(reader.CancelCount).Should(Equal(0))
+		reader.Emit("Live Artist - Live Track")
+		Eventually(func() any {
+			contexts := publisher.Contexts()
+			if len(contexts) == 0 {
+				return nil
+			}
+			return contexts[0].Value(contextKey("user"))
+		}).Should(Equal("janedoe"))
+
+		manager.Stop("session-1")
+		Eventually(reader.CancelCount).Should(Equal(1))
 	})
 
 	It("shares one reader for sessions using the same stream URL", func() {
@@ -212,20 +235,28 @@ func (r *fakeStreamReader) URLs() []string {
 type fakePublisher struct {
 	mu      sync.Mutex
 	updates []TitleUpdate
+	ctxs    []context.Context
 }
 
 func newFakePublisher() *fakePublisher {
 	return &fakePublisher{}
 }
 
-func (p *fakePublisher) Publish(_ context.Context, update TitleUpdate) {
+func (p *fakePublisher) Publish(ctx context.Context, update TitleUpdate) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.updates = append(p.updates, update)
+	p.ctxs = append(p.ctxs, ctx)
 }
 
 func (p *fakePublisher) Updates() []TitleUpdate {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	return append([]TitleUpdate(nil), p.updates...)
+}
+
+func (p *fakePublisher) Contexts() []context.Context {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return append([]context.Context(nil), p.ctxs...)
 }
