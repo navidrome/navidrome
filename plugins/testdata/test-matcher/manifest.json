@@ -6,6 +6,9 @@
   "permissions": {
     "matcher": {
       "reason": "For testing matcher operations"
+    },
+    "library": {
+      "reason": "Matching returns library tracks"
     }
   }
 }

@@ -59,6 +59,15 @@ func (m *Manifest) Validate() error {
 		}
 	}
 
+	// Matcher permission requires library permission: matching returns library
+	// content, so the plugin must be granted a library scope (which only the
+	// 'library' permission exposes for configuration).
+	if m.Permissions != nil && m.Permissions.Matcher != nil {
+		if m.Permissions.Library == nil {
+			return fmt.Errorf("'matcher' permission requires 'library' permission to be declared")
+		}
+	}
+
 	// Validate config schema if present
 	if m.Config != nil && m.Config.Schema != nil {
 		if err := validateConfigSchema(m.Config.Schema); err != nil {

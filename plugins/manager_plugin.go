@@ -122,6 +122,11 @@ func (a userAccess) resolve(ctx context.Context, ds model.DataStore, username st
 		}
 		return nil, fmt.Errorf("looking up user %q: %w", username, err)
 	}
+	if usr == nil {
+		// Defensive: a conforming repository returns ErrNotFound, but guard against
+		// a (nil, nil) result rather than dereferencing a nil user below.
+		return nil, fmt.Errorf("user %q not found", username)
+	}
 	if !a.allows(usr.ID) {
 		return nil, fmt.Errorf("plugin is not allowed to act as user %q", username)
 	}
