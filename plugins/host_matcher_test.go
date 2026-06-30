@@ -239,6 +239,20 @@ var _ = Describe("MatcherService", Ordered, func() {
 				_, err := svc.MatchSongs(GinkgoT().Context(), input, host.MatchOptions{Username: "alice"})
 				Expect(err).To(MatchError(ContainSubstring("not allowed")))
 			})
+
+			It("rejects a username with the same error whether it exists, when the plugin has no user scope", func() {
+				// A plugin with no user scope (the only state a matcher-only plugin can
+				// be in) must not leak whether a username exists via the error text.
+				svc := newMatcherService(ds, false, newUserAccess(nil, false), newLibraryAccess(nil, true))
+
+				_, errExisting := svc.MatchSongs(GinkgoT().Context(), input, host.MatchOptions{Username: "alice"})
+				_, errMissing := svc.MatchSongs(GinkgoT().Context(), input, host.MatchOptions{Username: "ghost"})
+
+				Expect(errExisting).To(HaveOccurred())
+				Expect(errExisting.Error()).To(Equal(errMissing.Error()))
+				Expect(errExisting.Error()).ToNot(ContainSubstring("not found"))
+				Expect(errExisting.Error()).To(ContainSubstring("not authorized to scope by user"))
+			})
 		})
 
 		Context("with plugin library access", func() {
