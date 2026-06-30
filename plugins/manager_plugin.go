@@ -78,10 +78,7 @@ func (a libraryAccess) contains(libID int) bool {
 	return ok
 }
 
-// configured reports whether the plugin has any library scope at all: either all
-// libraries, or at least one specific library. A service that returns library
-// content should reject a request when this is false rather than silently
-// returning nothing.
+// configured reports whether the plugin has any library scope (all, or specific).
 func (a libraryAccess) configured() bool {
 	return a.allLibraries || len(a.libraryIDSet) > 0
 }
@@ -110,10 +107,8 @@ func (a userAccess) allows(userID string) bool {
 	return ok
 }
 
-// resolve looks up a user by username and authorizes it against this access set.
-// It distinguishes a genuinely absent user from a backend failure (the latter is
-// surfaced wrapped, not masked as "not found"), and rejects a real user the
-// plugin is not permitted to act as.
+// resolve looks up a user by username and authorizes it against this access set,
+// distinguishing an absent user from a backend failure.
 func (a userAccess) resolve(ctx context.Context, ds model.DataStore, username string) (*model.User, error) {
 	usr, err := ds.User(ctx).FindByUsername(username)
 	if err != nil {
@@ -122,9 +117,7 @@ func (a userAccess) resolve(ctx context.Context, ds model.DataStore, username st
 		}
 		return nil, fmt.Errorf("looking up user %q: %w", username, err)
 	}
-	if usr == nil {
-		// Defensive: a conforming repository returns ErrNotFound, but guard against
-		// a (nil, nil) result rather than dereferencing a nil user below.
+	if usr == nil { // defensive: a conforming repo returns ErrNotFound, not (nil, nil)
 		return nil, fmt.Errorf("user %q not found", username)
 	}
 	if !a.allows(usr.ID) {

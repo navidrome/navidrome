@@ -35,16 +35,13 @@ func (s *matcherServiceImpl) MatchSongs(ctx context.Context, songs []types.SongR
 		return results, nil
 	}
 
-	// A matcher returns library content, so the plugin must be scoped to at least
-	// one library (or all). Reject up front when nothing is configured, mirroring
-	// how the SubsonicAPI service requires a user scope, rather than silently
-	// matching nothing.
+	// Fail closed when the plugin has no library scope, rather than matching nothing.
 	if !s.libs.configured() {
 		return nil, fmt.Errorf("matcher: no libraries configured for this plugin")
 	}
 
-	// Scope the match to a user when requested: their annotations are loaded and
-	// their library access applies. Without a username the match runs unscoped.
+	// A username scopes the match to that user: their annotations load and their
+	// library access applies.
 	scoped := opts.Username != ""
 	if scoped {
 		usr, err := s.users.resolve(ctx, s.ds, opts.Username)
@@ -61,8 +58,7 @@ func (s *matcherServiceImpl) MatchSongs(ctx context.Context, songs []types.SongR
 		return nil, err
 	}
 	for i, mf := range matched {
-		// Enforce the plugin's library access: never return a track it may not see,
-		// leaving that index unmatched (nil).
+		// Drop tracks outside the plugin's library scope, leaving that index unmatched.
 		if !s.libs.contains(mf.LibraryID) {
 			continue
 		}
@@ -71,10 +67,8 @@ func (s *matcherServiceImpl) MatchSongs(ctx context.Context, songs []types.SongR
 	return results, nil
 }
 
-// toTrack projects an internal MediaFile into the public Track DTO. The file
-// Path is only exposed when the plugin holds library filesystem permission,
-// matching how the Library host service gates path access. Per-user annotations
-// are only exposed when the match was scoped to a user.
+// toTrack projects a MediaFile into the public Track DTO. Path needs filesystem
+// permission; per-user annotations are only set for a scoped match.
 func (s *matcherServiceImpl) toTrack(mf *model.MediaFile, scoped bool) *types.Track {
 	t := &types.Track{
 		ID:                mf.ID,
@@ -122,7 +116,7 @@ func (s *matcherServiceImpl) toTrack(mf *model.MediaFile, scoped bool) *types.Tr
 		RGAlbumPeak:       mf.RGAlbumPeak,
 		RGTrackGain:       mf.RGTrackGain,
 		RGTrackPeak:       mf.RGTrackPeak,
-		AverageRating:     mf.AverageRating, // aggregate, not user-scoped — always set
+		AverageRating:     mf.AverageRating, // aggregate, not user-scoped
 		BirthTime:         unixOrZero(mf.BirthTime),
 		CreatedAt:         unixOrZero(mf.CreatedAt),
 		UpdatedAt:         unixOrZero(mf.UpdatedAt),
@@ -170,25 +164,20 @@ func unixOrZero(t time.Time) int64 {
 	return t.Unix()
 }
 
-// unixPtr maps a nullable *time.Time to a nullable Unix-epoch-seconds pointer,
-// returning nil for a nil or zero time so plugins can tell "no value" apart from
-// the epoch.
+// unixPtr maps a nullable time to Unix seconds, keeping nil distinct from the epoch.
 func unixPtr(t *time.Time) *int64 {
 	if t == nil || t.IsZero() {
 		return nil
 	}
-	v := t.Unix()
-	return &v
+	return new(t.Unix())
 }
 
-// ptrInt32 maps a nullable *int from the model to a nullable *int32 for the DTO,
-// preserving nil so plugins can tell "no value" from a real 0.
+// ptrInt32 narrows a nullable *int to *int32, keeping nil distinct from a real 0.
 func ptrInt32(p *int) *int32 {
 	if p == nil {
 		return nil
 	}
-	v := int32(*p)
-	return &v
+	return new(int32(*p))
 }
 
 var _ host.MatcherService = (*matcherServiceImpl)(nil)

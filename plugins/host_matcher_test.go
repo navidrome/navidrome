@@ -138,13 +138,10 @@ var _ = Describe("MatcherService", Ordered, func() {
 	})
 
 	Describe("MatchSongs", func() {
-		// NOTE: these tests use tests.MockMediaFileRepo, whose GetAll ignores the
-		// QueryOptions filters and the context user — it returns each stored
-		// MediaFile (with its embedded annotations) verbatim. They therefore cover
-		// the adapter's own logic: the scoped-flag gating of annotations in toTrack,
-		// the user-access gate, and the plugin-library post-filter. They do NOT
-		// exercise the per-user annotation join or applyLibraryFilter, which are the
-		// SQL layer's responsibility and are covered by the persistence tests.
+		// The mock MediaFileRepo returns stored files (with annotations) verbatim,
+		// ignoring QueryOptions and the context user. These tests therefore cover the
+		// adapter's gating/access logic, not the SQL per-user join (a persistence-layer
+		// concern).
 
 		// allowAll returns a service permitted to match as any user across all
 		// libraries.
@@ -279,9 +276,6 @@ var _ = Describe("MatcherService", Ordered, func() {
 			})
 
 			It("errors when the plugin has no library scope configured", func() {
-				// No allLibraries and no specific libraries: the plugin returns library
-				// content but was never granted any, so reject rather than silently
-				// matching nothing (mirrors SubsonicAPI requiring a user scope).
 				svc := newMatcherService(ds, false, newUserAccess(nil, true), newLibraryAccess(nil, false))
 				_, err := svc.MatchSongs(GinkgoT().Context(), input, host.MatchOptions{})
 				Expect(err).To(MatchError(ContainSubstring("no libraries configured")))
@@ -337,8 +331,7 @@ var _ = Describe("MatcherService Integration", Ordered, func() {
 
 		mockPluginRepo := tests.CreateMockPluginRepo()
 		mockPluginRepo.Permitted = true
-		// A matcher returns library content, so the plugin must be granted a library
-		// scope; AllLibraries lets it match across every library.
+		// AllLibraries: the matcher requires a library scope.
 		mockPluginRepo.SetData(model.Plugins{{
 			ID:           "test-matcher",
 			Path:         destPath,

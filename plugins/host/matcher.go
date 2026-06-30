@@ -8,9 +8,8 @@ import (
 
 // MatchOptions carries optional parameters for a match request.
 type MatchOptions struct {
-	// Username, when non-empty, runs the match as that user: their favourites and
-	// ratings inform tiebreaking, and the returned tracks carry that user's
-	// annotations. Matching is case-insensitive. An empty username disables both.
+	// Username runs the match as that user (case-insensitive): their favourites and
+	// ratings inform tiebreaking, and the returned tracks carry their annotations.
 	Username string `json:"username,omitempty"`
 }
 
