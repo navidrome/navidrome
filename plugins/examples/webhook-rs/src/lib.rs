@@ -14,7 +14,7 @@
 
 use extism_pdk::{config, error, http, info, warn, HttpRequest};
 use nd_pdk::scrobbler::{
-    Error, IsAuthorizedRequest, NowPlayingRequest, ScrobbleRequest,
+    Error, IsAuthorizedRequest, NowPlayingRequest, PlaybackReportRequest, ScrobbleRequest,
     Scrobbler,
 };
 
@@ -41,6 +41,15 @@ impl Scrobbler for WebhookPlugin {
         info!(
             "Now playing (ignored): {} - {} for user {}",
             req.track.artist, req.track.title, req.username
+        );
+        Ok(())
+    }
+
+    /// Handles playback state reports. This plugin ignores them (webhooks only on scrobble).
+    fn playback_report(&self, req: PlaybackReportRequest) -> Result<(), Error> {
+        info!(
+            "Playback report (ignored): {} - {} for user {} (state: {})",
+            req.track.artist, req.track.title, req.username, req.state
         );
         Ok(())
     }

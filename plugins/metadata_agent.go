@@ -6,6 +6,7 @@ import (
 
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/plugins/capabilities"
+	"github.com/navidrome/navidrome/plugins/types"
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
@@ -230,7 +231,7 @@ func (a *MetadataAgent) GetSimilarSongsByArtist(ctx context.Context, id, name, m
 // songRefToAgentSong converts a single SongRef to agents.Song. SongRef keeps the single
 // Artist/ArtistMBID fields as part of the plugin wire contract; when a plugin sends those instead
 // of the artists array, they are folded into a one-element Artists list here.
-func songRefToAgentSong(s capabilities.SongRef) agents.Song {
+func songRefToAgentSong(s types.SongRef) agents.Song {
 	var artists []agents.Artist
 	switch {
 	case len(s.Artists) > 0:
@@ -254,7 +255,7 @@ func songRefToAgentSong(s capabilities.SongRef) agents.Song {
 }
 
 // songRefsToAgentSongs converts a slice of SongRef to agents.Song
-func songRefsToAgentSongs(refs []capabilities.SongRef) []agents.Song {
+func songRefsToAgentSongs(refs []types.SongRef) []agents.Song {
 	return slice.Map(refs, songRefToAgentSong)
 }
 

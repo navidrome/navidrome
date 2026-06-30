@@ -8,15 +8,10 @@
 
 package lyrics
 
-// ArtistRef is a reference to an artist with name and optional MBID.
-type ArtistRef struct {
-	// ID is the internal Navidrome artist ID (if known).
-	ID string `json:"id,omitempty"`
-	// Name is the artist name.
-	Name string `json:"name"`
-	// MBID is the MusicBrainz ID for the artist.
-	MBID string `json:"mbid,omitempty"`
-}
+import "github.com/navidrome/navidrome/plugins/pdk/go/types"
+
+// Deprecated: use types.ArtistRef.
+type ArtistRef = types.ArtistRef
 
 // GetLyricsRequest contains the track information for lyrics lookup.
 type GetLyricsRequest struct {
@@ -48,9 +43,9 @@ type TrackInfo struct {
 	// AlbumArtist is the formatted album artist name for display.
 	AlbumArtist string `json:"albumArtist"`
 	// Artists is the list of track artists.
-	Artists []ArtistRef `json:"artists"`
+	Artists []types.ArtistRef `json:"artists"`
 	// AlbumArtists is the list of album artists.
-	AlbumArtists []ArtistRef `json:"albumArtists"`
+	AlbumArtists []types.ArtistRef `json:"albumArtists"`
 	// Duration is the track duration in seconds.
 	Duration float32 `json:"duration"`
 	// TrackNumber is the track number on the album.

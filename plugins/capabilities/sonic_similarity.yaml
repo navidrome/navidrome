@@ -16,20 +16,6 @@ exports:
             contentType: application/json
 components:
     schemas:
-        ArtistRef:
-            description: ArtistRef is a reference to an artist with name and optional MBID.
-            properties:
-                id:
-                    type: string
-                    description: ID is the internal Navidrome artist ID (if known).
-                name:
-                    type: string
-                    description: Name is the artist name.
-                mbid:
-                    type: string
-                    description: MBID is the MusicBrainz ID for the artist.
-            required:
-                - name
         FindSonicPathRequest:
             properties:
                 startSong:
@@ -53,8 +39,49 @@ components:
             required:
                 - song
                 - count
+        SonicMatch:
+            properties:
+                song:
+                    $ref: '#/components/schemas/SongRef'
+                similarity:
+                    type: number
+                    format: float
+            required:
+                - song
+                - similarity
+        SonicSimilarityResponse:
+            properties:
+                matches:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/SonicMatch'
+            required:
+                - matches
+        ArtistRef:
+            description: |-
+                ArtistRef is the minimal information a plugin returns for Navidrome to match an
+                artist against the library. It is a reference, not a full artist entity: it
+                carries only matching keys (name and optional internal/MusicBrainz IDs), never
+                descriptive data such as biographies or images.
+            properties:
+                id:
+                    type: string
+                    description: ID is the internal Navidrome artist ID (if known).
+                name:
+                    type: string
+                    description: Name is the artist name.
+                mbid:
+                    type: string
+                    description: MBID is the MusicBrainz ID for the artist.
+            required:
+                - name
         SongRef:
-            description: SongRef is a reference to a song with metadata for matching.
+            description: |-
+                SongRef is the minimal information exchanged between a plugin and Navidrome to
+                match a song. It is used both as input (a song Navidrome already has) and as
+                output (a song a plugin suggests, which may not be in the library yet). Unlike
+                Track, it is an abstract recording reference carrying only matching keys (IDs,
+                ISRC, and title/artist/album/duration) that Navidrome resolves to a library track.
             properties:
                 id:
                     type: string
@@ -91,21 +118,3 @@ components:
                     description: Duration is the song duration in seconds.
             required:
                 - name
-        SonicMatch:
-            properties:
-                song:
-                    $ref: '#/components/schemas/SongRef'
-                similarity:
-                    type: number
-                    format: float
-            required:
-                - song
-                - similarity
-        SonicSimilarityResponse:
-            properties:
-                matches:
-                    type: array
-                    items:
-                        $ref: '#/components/schemas/SonicMatch'
-            required:
-                - matches

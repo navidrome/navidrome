@@ -6,6 +6,7 @@ import (
 	"github.com/navidrome/navidrome/core/sonic"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/plugins/capabilities"
+	"github.com/navidrome/navidrome/plugins/types"
 )
 
 const CapabilitySonicSimilarity Capability = "SonicSimilarity"
@@ -61,8 +62,8 @@ func (a *SonicSimilarityPlugin) FindSonicPath(ctx context.Context, startMf, endM
 	return sonicMatchesToSimilarResults(resp.Matches), nil
 }
 
-func mediaFileToSongRef(mf *model.MediaFile) capabilities.SongRef {
-	ref := capabilities.SongRef{
+func mediaFileToSongRef(mf *model.MediaFile) types.SongRef {
+	ref := types.SongRef{
 		ID:         mf.ID,
 		Name:       mf.Title,
 		MBID:       mf.MbzRecordingID,
