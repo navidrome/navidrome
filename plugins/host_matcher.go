@@ -27,19 +27,7 @@ func (s *matcherServiceImpl) MatchSongs(ctx context.Context, songs []types.SongR
 		return results, nil
 	}
 
-	agentSongs := slice.Map(songs, func(s types.SongRef) agents.Song {
-		song := agents.Song{
-			ID:        s.ID,
-			Name:      s.Name,
-			MBID:      s.MBID,
-			ISRC:      s.ISRC,
-			Album:     s.Album,
-			AlbumMBID: s.AlbumMBID,
-			Duration:  s.DurationInMs(), // agents.Song.Duration is ms; DurationInMs prefers DurationMs over the deprecated seconds field
-		}
-		song.Artists = agentArtists(s)
-		return song
-	})
+	agentSongs := slice.Map(songs, toAgentSong)
 
 	matched, err := matcher.New(s.ds).MatchSongsIndexed(ctx, agentSongs)
 	if err != nil {
@@ -132,6 +120,22 @@ func (s *matcherServiceImpl) toTrack(mf *model.MediaFile) *types.Track {
 		}
 	}
 	return t
+}
+
+// toAgentSong converts a plugin-facing SongRef into the internal agents.Song the
+// matcher consumes. Duration is normalized to milliseconds via DurationInMs, and
+// artists are resolved via agentArtists.
+func toAgentSong(s types.SongRef) agents.Song {
+	return agents.Song{
+		ID:        s.ID,
+		Name:      s.Name,
+		MBID:      s.MBID,
+		ISRC:      s.ISRC,
+		Album:     s.Album,
+		AlbumMBID: s.AlbumMBID,
+		Duration:  s.DurationInMs(), // agents.Song.Duration is ms; DurationInMs prefers DurationMs over the deprecated seconds field
+		Artists:   agentArtists(s),
+	}
 }
 
 // agentArtists maps a SongRef's artist information to agents.Artist. The richer
