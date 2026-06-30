@@ -626,6 +626,13 @@ func (p Param) RustTypeWithStructs(knownStructs map[string]bool) string {
 	return ToRustTypeWithStructs(p.Type, knownStructs)
 }
 
+// RustTypeWithShared returns the Rust type, resolving shared-alias names to their
+// canonical nd_pdk_types::X crate path (e.g. a return of []Track where
+// type Track = types.Track renders as Vec<nd_pdk_types::Track>).
+func (p Param) RustTypeWithShared(knownStructs map[string]bool, shared map[string]string) string {
+	return ToRustTypeWithShared(p.Type, knownStructs, shared)
+}
+
 // RustParamType returns the Rust type for this parameter when used as a function argument.
 func (p Param) RustParamType() string {
 	return RustParamType(p.Type)
@@ -637,6 +644,15 @@ func (p Param) RustParamTypeWithStructs(knownStructs map[string]bool) string {
 		return "&str"
 	}
 	return ToRustTypeWithStructs(p.Type, knownStructs)
+}
+
+// RustParamTypeWithShared returns the Rust param type, resolving shared-alias
+// names to their canonical nd_pdk_types::X crate path.
+func (p Param) RustParamTypeWithShared(knownStructs map[string]bool, shared map[string]string) string {
+	if p.Type == "string" {
+		return "&str"
+	}
+	return ToRustTypeWithShared(p.Type, knownStructs, shared)
 }
 
 // RustName returns the snake_case Rust name for this parameter.

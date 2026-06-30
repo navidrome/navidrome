@@ -1609,6 +1609,36 @@ var _ = Describe("Rust Generation", func() {
 			Expect(codeStr).To(ContainSubstring(`#[serde(with = "base64_bytes")]`))
 		})
 
+		It("resolves a shared alias used in a method param/return to its canonical crate path", func() {
+			svc := Service{
+				Name:       "Matcher",
+				Permission: "matcher",
+				Interface:  "MatcherService",
+				Methods: []Method{
+					{
+						Name:     "MatchSongs",
+						HasError: true,
+						Params:   []Param{NewParam("query", "string")},
+						// Return uses the deprecated alias name directly.
+						Returns: []Param{NewParam("matches", "[]Track")},
+					},
+				},
+				SharedAliases: []SharedAlias{{
+					Name: "Track", Target: "types.Track",
+					Def: StructDef{Name: "Track", Fields: []FieldDef{
+						{Name: "Title", Type: "string", JSONTag: "title"}}},
+				}},
+			}
+
+			code, err := GenerateClientRust(svc)
+			Expect(err).NotTo(HaveOccurred())
+			out := string(code)
+			// The alias must resolve to the shared crate type; a bare `Track` is undefined
+			// in nd-pdk-host and would not compile.
+			Expect(out).To(ContainSubstring("nd_pdk_types::Track"))
+			Expect(out).NotTo(ContainSubstring("Vec<Track>"))
+		})
+
 		It("should not generate base64 module when no byte fields", func() {
 			svc := Service{
 				Name:       "Test",

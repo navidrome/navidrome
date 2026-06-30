@@ -190,8 +190,8 @@ func rustFuncMap(svc Service) template.FuncMap {
 		"responseType":   func(m Method) string { return m.ResponseTypeName(svc.Name) },
 		"rustFunc":       func(m Method) string { return m.RustFunctionName(svc.ExportPrefix()) },
 		"rustDocComment": RustDocComment,
-		"rustType":       func(p Param) string { return p.RustTypeWithStructs(knownStructs) },
-		"rustParamType":  func(p Param) string { return p.RustParamTypeWithStructs(knownStructs) },
+		"rustType":       func(p Param) string { return p.RustTypeWithShared(knownStructs, shared) },
+		"rustParamType":  func(p Param) string { return p.RustParamTypeWithShared(knownStructs, shared) },
 		"fieldRustType":  func(f FieldDef) string { return ToRustTypeWithShared(f.Type, knownStructs, shared) },
 	}
 }
