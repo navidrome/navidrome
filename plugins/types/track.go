@@ -75,6 +75,11 @@ type Track struct {
 	CreatedAt int64 `json:"createdAt"`
 	UpdatedAt int64 `json:"updatedAt"`
 
+	// AverageRating is the track's mean rating across all users (an aggregate stored
+	// on the track itself, not a per-user annotation). It is always available,
+	// regardless of whether the match was scoped to a user.
+	AverageRating float64 `json:"averageRating,omitempty"`
+
 	// Per-user annotations. Populated only when the match was run for a specific
 	// user (see MatchOptions.Username); otherwise these stay at their zero values.
 	// Timestamps are Unix epoch seconds; a nil pointer means "no value".

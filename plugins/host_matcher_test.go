@@ -77,6 +77,7 @@ var _ = Describe("MatcherService", Ordered, func() {
 				Genres:         model.Genres{{Name: "Rock"}, {Name: "Pop"}},
 				Tags:           model.Tags{model.TagName("isrc"): []string{"US-XXX-00"}},
 			}
+			mf.AverageRating = 4.2
 			mf.Participants = model.Participants{}
 			mf.Participants.Add(model.RoleArtist, model.Artist{
 				ID: "ar-1", Name: "My Artist", SortArtistName: "artist, my", MbzArtistID: "mbz-ar-1",
@@ -106,6 +107,8 @@ var _ = Describe("MatcherService", Ordered, func() {
 			Expect(track.Participants["artist"][0].Name).To(Equal("My Artist"))
 			Expect(track.Participants["artist"][0].SortName).To(Equal("artist, my"))
 			Expect(track.Participants["artist"][0].MBID).To(Equal("mbz-ar-1"))
+			// AverageRating is an aggregate, exposed even though the match is unscoped.
+			Expect(track.AverageRating).To(Equal(4.2))
 		})
 
 		It("leaves nil-able numeric fields nil when absent", func() {

@@ -122,6 +122,7 @@ func (s *matcherServiceImpl) toTrack(mf *model.MediaFile, scoped bool) *types.Tr
 		RGAlbumPeak:       mf.RGAlbumPeak,
 		RGTrackGain:       mf.RGTrackGain,
 		RGTrackPeak:       mf.RGTrackPeak,
+		AverageRating:     mf.AverageRating, // aggregate, not user-scoped — always set
 		BirthTime:         unixOrZero(mf.BirthTime),
 		CreatedAt:         unixOrZero(mf.CreatedAt),
 		UpdatedAt:         unixOrZero(mf.UpdatedAt),

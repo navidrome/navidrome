@@ -209,6 +209,11 @@ pub struct Track {
     pub created_at: i64,
     #[serde(default)]
     pub updated_at: i64,
+    /// AverageRating is the track's mean rating across all users (an aggregate stored
+    /// on the track itself, not a per-user annotation). It is always available,
+    /// regardless of whether the match was scoped to a user.
+    #[serde(default, skip_serializing_if = "is_zero_f64")]
+    pub average_rating: f64,
     /// Per-user annotations. Populated only when the match was run for a specific
     /// user (see MatchOptions.Username); otherwise these stay at their zero values.
     /// Timestamps are Unix epoch seconds; a nil pointer means "no value".
