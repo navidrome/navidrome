@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 	"unicode"
+
+	coreradio "github.com/navidrome/navidrome/core/radio"
 )
 
 type eventCtxKey string
@@ -66,6 +68,26 @@ type RefreshResource struct {
 type NowPlayingCount struct {
 	baseEvent
 	Count int `json:"count"`
+}
+
+type RadioNowPlaying struct {
+	baseEvent
+	RadioID   string    `json:"radioId"`
+	Title     string    `json:"title"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+func NewRadioMetadataPublisher(broker Broker) coreradio.TitlePublisher {
+	return func(ctx context.Context, update coreradio.TitleUpdate) {
+		if broker == nil {
+			return
+		}
+		broker.SendMessage(ctx, &RadioNowPlaying{
+			RadioID:   update.RadioID,
+			Title:     update.Title,
+			UpdatedAt: update.UpdatedAt,
+		})
+	}
 }
 
 func (rr *RefreshResource) With(resource string, ids ...string) *RefreshResource {

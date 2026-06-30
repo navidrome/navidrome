@@ -1,6 +1,11 @@
 package events
 
 import (
+	"context"
+	"net/http"
+	"time"
+
+	coreradio "github.com/navidrome/navidrome/core/radio"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -18,6 +23,41 @@ var _ = Describe("Events", func() {
 			Expect(data).To(Equal(`{"Test":"some data"}`))
 			name := testEvent.Name(&testEvent)
 			Expect(name).To(Equal("testEvent"))
+		})
+	})
+
+	Describe("RadioNowPlaying", func() {
+		It("serialises with a stable event name and payload", func() {
+			updatedAt := time.Date(2026, time.June, 30, 12, 34, 56, 0, time.UTC)
+			event := &RadioNowPlaying{
+				RadioID:   "rd-1",
+				Title:     "Artist - Title",
+				UpdatedAt: updatedAt,
+			}
+
+			Expect(event.Name(event)).To(Equal("radioNowPlaying"))
+			Expect(event.Data(event)).To(Equal(`{"radioId":"rd-1","title":"Artist - Title","updatedAt":"2026-06-30T12:34:56Z"}`))
+		})
+
+		It("publishes metadata updates through the broker", func() {
+			ctx := context.Background()
+			updatedAt := time.Date(2026, time.June, 30, 12, 34, 56, 0, time.UTC)
+			broker := &capturingBroker{}
+
+			publish := NewRadioMetadataPublisher(broker)
+			publish(ctx, coreradio.TitleUpdate{
+				RadioID:   "rd-1",
+				Title:     "Artist - Title",
+				UpdatedAt: updatedAt,
+			})
+
+			Expect(broker.ctx).To(Equal(ctx))
+			Expect(broker.broadcast).To(BeNil())
+			Expect(broker.event).To(Equal(&RadioNowPlaying{
+				RadioID:   "rd-1",
+				Title:     "Artist - Title",
+				UpdatedAt: updatedAt,
+			}))
 		})
 	})
 
@@ -44,3 +84,20 @@ var _ = Describe("Events", func() {
 		})
 	})
 })
+
+type capturingBroker struct {
+	ctx       context.Context
+	event     Event
+	broadcast Event
+}
+
+func (b *capturingBroker) ServeHTTP(http.ResponseWriter, *http.Request) {}
+
+func (b *capturingBroker) SendMessage(ctx context.Context, event Event) {
+	b.ctx = ctx
+	b.event = event
+}
+
+func (b *capturingBroker) SendBroadcastMessage(_ context.Context, event Event) {
+	b.broadcast = event
+}
