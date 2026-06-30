@@ -164,12 +164,12 @@ func (m *Manager) extractManifest(ndpPath string) (*PluginMetadata, error) {
 		return nil, fmt.Errorf("manager is stopped")
 	}
 
-	manifest, err := readManifest(ndpPath)
+	manifest, err := ReadManifest(ndpPath)
 	if err != nil {
 		return nil, err
 	}
 
-	sha256Hash, err := computeFileSHA256(ndpPath)
+	sha256Hash, err := ComputeFileSHA256(ndpPath)
 	if err != nil {
 		return nil, fmt.Errorf("computing hash: %w", err)
 	}

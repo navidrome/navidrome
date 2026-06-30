@@ -309,11 +309,11 @@ var _ = Describe("lastfmAgent", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.track.getsimilar.json")
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
 			Expect(agent.GetSimilarSongsByTrack(ctx, "123", "Just Can't Get Enough", "Depeche Mode", "", 5)).To(Equal([]agents.Song{
-				{Name: "Dreaming of Me", MBID: "027b553e-7c74-3ed4-a95e-1d4fea51f174", Artist: "Depeche Mode", ArtistMBID: "8538e728-ca0b-4321-b7e5-cff6565dd4c0"},
-				{Name: "Everything Counts", MBID: "5a5a3ca4-bdb8-4641-a674-9b54b9b319a6", Artist: "Depeche Mode", ArtistMBID: "8538e728-ca0b-4321-b7e5-cff6565dd4c0"},
-				{Name: "Don't You Want Me", MBID: "", Artist: "The Human League", ArtistMBID: "7adaabfb-acfb-47bc-8c7c-59471c2f0db8"},
-				{Name: "Tainted Love", MBID: "", Artist: "Soft Cell", ArtistMBID: "7fb50287-029d-47cc-825a-235ca28024b2"},
-				{Name: "Blue Monday", MBID: "727e84c6-1b56-31dd-a958-a5f46305cec0", Artist: "New Order", ArtistMBID: "f1106b17-dcbb-45f6-b938-199ccfab50cc"},
+				{Name: "Dreaming of Me", MBID: "027b553e-7c74-3ed4-a95e-1d4fea51f174", Artists: []agents.Artist{{Name: "Depeche Mode", MBID: "8538e728-ca0b-4321-b7e5-cff6565dd4c0"}}},
+				{Name: "Everything Counts", MBID: "5a5a3ca4-bdb8-4641-a674-9b54b9b319a6", Artists: []agents.Artist{{Name: "Depeche Mode", MBID: "8538e728-ca0b-4321-b7e5-cff6565dd4c0"}}},
+				{Name: "Don't You Want Me", MBID: "", Artists: []agents.Artist{{Name: "The Human League", MBID: "7adaabfb-acfb-47bc-8c7c-59471c2f0db8"}}},
+				{Name: "Tainted Love", MBID: "", Artists: []agents.Artist{{Name: "Soft Cell", MBID: "7fb50287-029d-47cc-825a-235ca28024b2"}}},
+				{Name: "Blue Monday", MBID: "727e84c6-1b56-31dd-a958-a5f46305cec0", Artists: []agents.Artist{{Name: "New Order", MBID: "f1106b17-dcbb-45f6-b938-199ccfab50cc"}}},
 			}))
 			Expect(httpClient.RequestCount).To(Equal(1))
 			Expect(httpClient.SavedRequest.URL.Query().Get("track")).To(Equal("Just Can't Get Enough"))

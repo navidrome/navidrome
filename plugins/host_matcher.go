@@ -27,17 +27,19 @@ func (s *matcherServiceImpl) MatchSongs(ctx context.Context, songs []host.MatchS
 	}
 
 	agentSongs := slice.Map(songs, func(s host.MatchSong) agents.Song {
-		return agents.Song{
-			ID:         s.ID,
-			Name:       s.Name,
-			MBID:       s.MBID,
-			ISRC:       s.ISRC,
-			Artist:     s.Artist,
-			ArtistMBID: s.ArtistMBID,
-			Album:      s.Album,
-			AlbumMBID:  s.AlbumMBID,
-			Duration:   s.DurationMs, // agents.Song.Duration is ms, same unit as host.MatchSong.DurationMs
+		song := agents.Song{
+			ID:        s.ID,
+			Name:      s.Name,
+			MBID:      s.MBID,
+			ISRC:      s.ISRC,
+			Album:     s.Album,
+			AlbumMBID: s.AlbumMBID,
+			Duration:  s.DurationMs, // agents.Song.Duration is ms, same unit as host.MatchSong.DurationMs
 		}
+		if s.Artist != "" || s.ArtistMBID != "" {
+			song.Artists = []agents.Artist{{Name: s.Artist, MBID: s.ArtistMBID}}
+		}
+		return song
 	})
 
 	matched, err := matcher.New(s.ds).MatchSongsIndexed(ctx, agentSongs)

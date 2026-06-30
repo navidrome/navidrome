@@ -114,6 +114,22 @@
         "groupings": [
           "Soundtrack",
           "Live"
+        ],
+        "works": [
+          {
+            "name": "Symphony No. 5",
+            "musicBrainzId": "mbz-work-1"
+          },
+          {
+            "name": "Encore"
+          }
+        ],
+        "movements": [
+          {
+            "name": "I. Allegro",
+            "number": 1,
+            "count": 4
+          }
         ]
       },
       {
@@ -146,7 +162,9 @@
         "contributors": [],
         "displayComposer": "",
         "explicitStatus": "",
-        "groupings": []
+        "groupings": [],
+        "works": [],
+        "movements": []
       }
     ],
     "id": "1",

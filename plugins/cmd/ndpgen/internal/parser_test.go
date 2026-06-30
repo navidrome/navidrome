@@ -270,6 +270,78 @@ type MatcherService interface {
 			}
 			Expect(structNames).To(ConsistOf("Track", "Artist"))
 		})
+
+		It("returns an error when a shared-type alias cannot be resolved (no registry)", func() {
+			fileA := `package host
+
+import "github.com/navidrome/navidrome/plugins/types"
+
+type TrackInfo = types.TrackInfo
+`
+			fileB := `package host
+
+import "context"
+
+//nd:hostservice name=Matcher permission=matcher
+type MatcherService interface {
+	//nd:hostfunc
+	Match(ctx context.Context, t TrackInfo) (bool, error)
+}
+`
+			Expect(os.WriteFile(filepath.Join(tmpDir, "aliases.go"), []byte(fileA), 0600)).To(Succeed())
+			Expect(os.WriteFile(filepath.Join(tmpDir, "matcher.go"), []byte(fileB), 0600)).To(Succeed())
+
+			_, err := ParseDirectoryWithShared(tmpDir, nil)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("TrackInfo"))
+			Expect(err.Error()).To(ContainSubstring("-shared"))
+		})
+
+		It("resolves shared-type aliases declared in a sibling file (package-wide alias map)", func() {
+			// File A: declares the shared-type alias in the same package
+			fileA := `package host
+
+import "github.com/navidrome/navidrome/plugins/types"
+
+// Deprecated: use types.Track.
+type Track = types.Track
+`
+			// File B: declares the host service that references Track from file A
+			fileB := `package host
+
+import "context"
+
+//nd:hostservice name=Matcher permission=matcher
+type MatcherService interface {
+	//nd:hostfunc
+	MatchSongs(ctx context.Context, query string) (results []Track, err error)
+}
+`
+			Expect(os.WriteFile(filepath.Join(tmpDir, "aliases.go"), []byte(fileA), 0600)).To(Succeed())
+			Expect(os.WriteFile(filepath.Join(tmpDir, "matcher.go"), []byte(fileB), 0600)).To(Succeed())
+
+			shared := map[string]StructDef{
+				"Track": {
+					Name: "Track",
+					Fields: []FieldDef{
+						{Name: "Title", Type: "string", JSONTag: "title"},
+						{Name: "Artist", Type: "string", JSONTag: "artist"},
+					},
+				},
+			}
+
+			services, err := ParseDirectoryWithShared(tmpDir, shared)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(services).To(HaveLen(1))
+
+			byName := map[string]SharedAlias{}
+			for _, a := range services[0].SharedAliases {
+				byName[a.Name] = a
+			}
+			// Track alias is in a sibling file — must be resolved package-wide
+			Expect(byName).To(HaveKey("Track"))
+			Expect(byName["Track"].Target).To(Equal("types.Track"))
+		})
 	})
 
 	Describe("parseKeyValuePairs", func() {
@@ -577,6 +649,182 @@ type Output struct {
 			// Only the exported method should be captured
 			Expect(capabilities[0].Methods).To(HaveLen(1))
 			Expect(capabilities[0].Methods[0].Name).To(Equal("ExportedMethod"))
+		})
+
+		It("distinguishes Go type aliases from defined types", func() {
+			src := `package capabilities
+
+import "github.com/navidrome/navidrome/plugins/types"
+
+// Deprecated: use types.ArtistRef.
+type ArtistRef = types.ArtistRef
+
+// ScrobblerError is a sentinel error string.
+type ScrobblerError string
+
+//nd:capability name=scrobbler required=true
+type Scrobbler interface {
+	//nd:export name=nd_scrobbler_check
+	Check(ArtistRef) (bool, error)
+}
+`
+			Expect(os.WriteFile(filepath.Join(tmpDir, "scrobbler.go"), []byte(src), 0600)).To(Succeed())
+
+			shared := map[string]StructDef{
+				"ArtistRef": {Name: "ArtistRef", Fields: []FieldDef{{Name: "Name", Type: "string", JSONTag: "name"}}},
+			}
+			caps, err := ParseCapabilitiesWithShared(tmpDir, shared)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(caps).To(HaveLen(1))
+
+			// ArtistRef is a shared-type alias (types.*): it lands in SharedAliases, not TypeAliases.
+			sharedByName := map[string]SharedAlias{}
+			for _, a := range caps[0].SharedAliases {
+				sharedByName[a.Name] = a
+			}
+			Expect(sharedByName).To(HaveKey("ArtistRef"))
+			Expect(sharedByName["ArtistRef"].Target).To(Equal("types.ArtistRef"))
+
+			// ScrobblerError is a plain defined type: it stays in TypeAliases.
+			typeByName := map[string]TypeAlias{}
+			for _, a := range caps[0].TypeAliases {
+				typeByName[a.Name] = a
+			}
+			Expect(typeByName).To(HaveKey("ScrobblerError"))
+			Expect(typeByName["ScrobblerError"].IsAlias).To(BeFalse())
+		})
+	})
+
+	Describe("ParseCapabilitiesWithShared", func() {
+		It("returns an error when a shared-type alias cannot be resolved (no registry)", func() {
+			src := `package capabilities
+
+import "github.com/navidrome/navidrome/plugins/types"
+
+// TrackInfo is an alias for the shared type.
+type TrackInfo = types.TrackInfo
+
+//nd:capability name=nowplaying required=true
+type NowPlaying interface {
+	//nd:export name=nd_now_playing
+	NowPlaying(TrackInfo) error
+}
+`
+			Expect(os.WriteFile(filepath.Join(tmpDir, "nowplaying.go"), []byte(src), 0600)).To(Succeed())
+
+			_, err := ParseCapabilitiesWithShared(tmpDir, nil)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("TrackInfo"))
+			Expect(err.Error()).To(ContainSubstring("-shared"))
+		})
+
+		It("resolves shared-type aliases against the registry", func() {
+			shared := map[string]StructDef{
+				"ArtistRef": {Name: "ArtistRef", Fields: []FieldDef{{Name: "Name", Type: "string", JSONTag: "name"}}},
+				"TrackInfo": {Name: "TrackInfo", Fields: []FieldDef{
+					{Name: "Title", Type: "string", JSONTag: "title"},
+					{Name: "Artists", Type: "[]ArtistRef", JSONTag: "artists"},
+				}},
+			}
+			src := `package capabilities
+
+import "github.com/navidrome/navidrome/plugins/types"
+
+// Deprecated: use types.TrackInfo.
+type TrackInfo = types.TrackInfo
+
+// Deprecated: use types.ArtistRef.
+type ArtistRef = types.ArtistRef
+
+// NowPlayingRequest carries a track.
+type NowPlayingRequest struct {
+	Track TrackInfo ` + "`json:\"track\"`" + `
+}
+
+//nd:capability name=scrobbler required=true
+type Scrobbler interface {
+	//nd:export name=nd_scrobbler_now_playing
+	NowPlaying(NowPlayingRequest) error
+}
+`
+			Expect(os.WriteFile(filepath.Join(tmpDir, "scrobbler.go"), []byte(src), 0600)).To(Succeed())
+
+			caps, err := ParseCapabilitiesWithShared(tmpDir, shared)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(caps).To(HaveLen(1))
+
+			names := []string{}
+			for _, a := range caps[0].SharedAliases {
+				names = append(names, a.Name)
+			}
+			// TrackInfo is referenced directly; ArtistRef is pulled in transitively via TrackInfo.Artists.
+			Expect(names).To(ContainElements("TrackInfo", "ArtistRef"))
+
+			byName := map[string]SharedAlias{}
+			for _, a := range caps[0].SharedAliases {
+				byName[a.Name] = a
+			}
+			Expect(byName["TrackInfo"].Target).To(Equal("types.TrackInfo"))
+			Expect(byName["TrackInfo"].Def.Fields).To(HaveLen(2)) // for schema inlining
+			Expect(byName["ArtistRef"].Target).To(Equal("types.ArtistRef"))
+		})
+
+		It("resolves shared types from qualified types.X references with a renamed alias", func() {
+			shared := map[string]StructDef{
+				"ArtistRef": {Name: "ArtistRef", Fields: []FieldDef{{Name: "Name", Type: "string", JSONTag: "name"}}},
+				"Track": {Name: "Track", Fields: []FieldDef{
+					{Name: "Title", Type: "string", JSONTag: "title"},
+					{Name: "Artists", Type: "[]ArtistRef", JSONTag: "artists"},
+				}},
+			}
+			src := `package capabilities
+
+import "github.com/navidrome/navidrome/plugins/types"
+
+// Deprecated: use types.Track.
+type TrackInfo = types.Track
+
+// Deprecated: use types.ArtistRef.
+type ArtistRef = types.ArtistRef
+
+// NowPlayingRequest carries a track.
+type NowPlayingRequest struct {
+	Track types.Track ` + "`json:\"track\"`" + `
+}
+
+//nd:capability name=scrobbler required=true
+type Scrobbler interface {
+	//nd:export name=nd_scrobbler_now_playing
+	NowPlaying(NowPlayingRequest) error
+}
+`
+			Expect(os.WriteFile(filepath.Join(tmpDir, "scrobbler.go"), []byte(src), 0600)).To(Succeed())
+
+			caps, err := ParseCapabilitiesWithShared(tmpDir, shared)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(caps).To(HaveLen(1))
+
+			byName := map[string]SharedAlias{}
+			for _, a := range caps[0].SharedAliases {
+				byName[a.Name] = a
+			}
+			// The deprecated alias keeps its name (TrackInfo) but now targets types.Track.
+			// ArtistRef is pulled in transitively via Track.Artists.
+			Expect(byName).To(HaveKey("TrackInfo"))
+			Expect(byName).To(HaveKey("ArtistRef"))
+			Expect(byName["TrackInfo"].Target).To(Equal("types.Track"))
+			Expect(byName["TrackInfo"].Def.Fields).To(HaveLen(2)) // for schema inlining
+			Expect(byName["ArtistRef"].Target).To(Equal("types.ArtistRef"))
+
+			// The capability struct field keeps the canonical qualified reference.
+			var nowPlaying StructDef
+			for _, st := range caps[0].Structs {
+				if st.Name == "NowPlayingRequest" {
+					nowPlaying = st
+				}
+			}
+			Expect(nowPlaying.Fields).To(HaveLen(1))
+			Expect(nowPlaying.Fields[0].Type).To(Equal("types.Track"))
 		})
 	})
 

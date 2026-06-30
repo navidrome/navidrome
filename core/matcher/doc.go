@@ -39,24 +39,39 @@
 //  1. Title similarity (Jaro-Winkler score, 0.0–1.0)
 //  2. Duration proximity (closer duration scores higher; 1.0 when the agent
 //     reports no duration)
-//  3. Preferred-track flag (enabled by conf.Server.Matcher.PreferStarred;
-//     prioritizes tracks that are starred or rated >= 4)
-//  4. Specificity level (0–5, based on metadata precision; higher is better)
-//  5. Album similarity (Jaro-Winkler, as the final tiebreaker)
+//  3. Specificity level (0–5, based on metadata precision; higher is better)
+//  4. Artist overlap (how many of the song's artists the track credits; more
+//     shared artists is better)
+//  5. Preferred-track flag (enabled by conf.Server.Matcher.PreferStarred;
+//     prioritizes tracks that are starred or rated >= 4, but only among
+//     candidates of equal specificity and overlap)
+//  6. Album similarity (Jaro-Winkler, as the final tiebreaker)
 //
 // The specificity levels, from most to least specific, are:
 //
-//	Level 5: Title + Artist MBID + Album MBID
-//	Level 4: Title + Artist MBID + Album name (fuzzy)
+//	Level 5: Title + Artist identity + Album MBID
+//	Level 4: Title + Artist identity + Album name (fuzzy)
 //	Level 3: Title + Artist name + Album name (fuzzy)
-//	Level 2: Title + Artist MBID
+//	Level 2: Title + Artist identity
 //	Level 1: Title + Artist name
 //	Level 0: Title only
+//
+// "Artist identity" is a match on the artist's Navidrome ID (the strongest signal,
+// when a source supplies one) or its MBID. A plain name match is the weaker fallback
+// used for an artist with no identity match (e.g. a cover credited to a different
+// artist of the same name).
 //
 // The title phase always requires an agent artist to scope the library query, so
 // Level 0 does not mean "no artist": it applies when a candidate matches on title
 // but its own artist differs from the query's (e.g. a cover or a featured-artist
 // credit), leaving the title as the only shared field.
+//
+// A song may carry several artists, and the title phase scopes candidate tracks by
+// ANY of them: a track credited to at least one shared artist is considered. When a
+// source supplies a Navidrome artist ID, that artist is matched directly, skipping
+// name/MBID resolution. Among equally specific candidates, the one sharing more of
+// the song's artists wins, so a track crediting every collaborator outranks one
+// crediting only a single artist.
 //
 // Each input song is scored independently, so two songs with the same title and
 // artist but different durations can resolve to different library tracks (each
@@ -97,12 +112,13 @@
 //	Result: studio for the first song, live for the second
 //
 // Preferred track — when conf.Server.Matcher.PreferStarred is enabled, a
-// starred (or rating >= 4) track is preferred even over a more specific match,
-// because the preferred flag outranks specificity:
+// starred (or rating >= 4) track is preferred, but only when specificity and
+// artist overlap are equal. A more specific match always wins regardless of the
+// preferred flag:
 //
 //	Agent returns: {Name: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator"}
 //	Library has:
 //	  {ID: "exact",   Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator"}            // Level 3
 //	  {ID: "starred", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Singles", Starred: true} // Level 1, starred
-//	Result: starred (the preferred flag outranks the better album match)
+//	Result: exact (specificity outranks the starred flag; preferred only breaks ties of equal identity)
 package matcher

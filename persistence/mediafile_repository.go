@@ -117,9 +117,9 @@ var mediaFileFilter = sync.OnceValue(func() map[string]filterFunc {
 
 func mediaFileRecentlyAddedSort() string {
 	if conf.Server.RecentlyAddedByModTime {
-		return "media_file.updated_at"
+		return "media_file.updated_at, media_file.id"
 	}
-	return "media_file.created_at"
+	return "media_file.created_at, media_file.id"
 }
 
 func (r *mediaFileRepository) CountAll(options ...model.QueryOptions) (int64, error) {
@@ -306,7 +306,7 @@ func (r *mediaFileRepository) FindByPaths(paths []string) (model.MediaFiles, err
 		return model.MediaFiles{}, nil
 	}
 
-	sel := r.newSelect().Columns("*").Where(query)
+	sel := r.applyLibraryFilter(r.newSelect().Columns("*").Where(query))
 	var res dbMediaFiles
 	if err := r.queryAll(sel, &res); err != nil {
 		return nil, err

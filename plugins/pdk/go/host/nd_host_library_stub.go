@@ -8,7 +8,9 @@
 
 package host
 
-import "github.com/stretchr/testify/mock"
+import (
+	"github.com/stretchr/testify/mock"
+)
 
 // Library represents the Library data structure.
 // Library represents a music library with metadata.

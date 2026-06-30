@@ -19,7 +19,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/extism/go-sdk v1.7.1
 	github.com/fatih/structs v1.1.0
-	github.com/gen2brain/webp v0.6.0
+	github.com/gen2brain/webp v0.6.3
 	github.com/go-chi/chi/v5 v5.3.0
 	github.com/go-chi/cors v1.2.2
 	github.com/go-chi/httprate v0.15.0
@@ -40,8 +40,8 @@ require (
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/mileusna/useragent v1.3.5
 	github.com/onsi/ginkgo/v2 v2.32.0
-	github.com/onsi/gomega v1.42.0
-	github.com/pelletier/go-toml/v2 v2.4.1
+	github.com/onsi/gomega v1.42.1
+	github.com/pelletier/go-toml/v2 v2.4.2
 	github.com/pmezard/go-difflib v1.0.0
 	github.com/pocketbase/dbx v1.12.0
 	github.com/pressly/goose/v3 v3.27.1
@@ -135,8 +135,8 @@ require (
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/crypto v0.53.0 // indirect
 	golang.org/x/mod v0.37.0 // indirect
-	golang.org/x/telemetry v0.0.0-20260610154732-fb80ec83bdd9 // indirect
-	golang.org/x/tools v0.46.0 // indirect
+	golang.org/x/telemetry v0.0.0-20260625142307-59b4966ccb57 // indirect
+	golang.org/x/tools v0.47.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/ini.v1 v1.67.3 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect

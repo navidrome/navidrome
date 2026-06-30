@@ -8,7 +8,9 @@
 
 package host
 
-import "github.com/stretchr/testify/mock"
+import (
+	"github.com/stretchr/testify/mock"
+)
 
 // mockConfigService is the mock implementation for testing.
 type mockConfigService struct {

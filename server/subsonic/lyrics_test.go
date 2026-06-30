@@ -431,7 +431,7 @@ var _ = Describe("GetLyricsBySongId", func() {
 							Index:   0,
 							Start:   &lineStart,
 							End:     &lineEnd,
-							Value:   "Hello echo",
+							Value:   "Hello",
 							AgentID: "lead",
 							Cue: []responses.LyricCue{
 								{
@@ -447,15 +447,229 @@ var _ = Describe("GetLyricsBySongId", func() {
 							Index:   0,
 							Start:   &lineStart,
 							End:     &lineEnd,
-							Value:   "Hello echo",
+							Value:   "echo",
 							AgentID: "__nd_bg__|lead",
 							Cue: []responses.LyricCue{
 								{
 									Start:     tokenStartB,
 									End:       &tokenEndB,
-									ByteStart: 6,
-									ByteEnd:   9,
+									ByteStart: 0,
+									ByteEnd:   3,
 									Value:     "echo",
+								},
+							},
+						},
+					},
+				},
+			},
+		})
+	})
+
+	It("should preserve shared edge text when remapping agent cue lines", func() {
+		lineStart := int64(1000)
+		lineEnd := int64(2000)
+		cueStart := int64(1200)
+		cueEnd := int64(1800)
+
+		cueLines := buildCueLines(model.Line{
+			Start: &lineStart,
+			End:   &lineEnd,
+			Value: "(Hello)",
+			Cue: []model.Cue{
+				{
+					Start:     &cueStart,
+					End:       &cueEnd,
+					Value:     "Hello",
+					ByteStart: 1,
+					ByteEnd:   5,
+					AgentID:   "lead",
+				},
+				{
+					Start:     &cueStart,
+					End:       &cueEnd,
+					Value:     "Hello",
+					ByteStart: 1,
+					ByteEnd:   5,
+					AgentID:   "__nd_bg__|lead",
+				},
+			},
+		}, 0, newLyricAgents([]model.Agent{
+			{ID: "lead", Role: "main"},
+			{ID: "__nd_bg__|lead", Role: "bg"},
+		}))
+
+		Expect(cueLines).To(Equal([]responses.CueLine{
+			{
+				Index:   0,
+				Start:   &lineStart,
+				End:     &lineEnd,
+				Value:   "(Hello)",
+				AgentID: "lead",
+				Cue: []responses.LyricCue{
+					{
+						Start:     cueStart,
+						End:       &cueEnd,
+						Value:     "Hello",
+						ByteStart: 1,
+						ByteEnd:   5,
+					},
+				},
+			},
+			{
+				Index:   0,
+				Start:   &lineStart,
+				End:     &lineEnd,
+				Value:   "(Hello)",
+				AgentID: "__nd_bg__|lead",
+				Cue: []responses.LyricCue{
+					{
+						Start:     cueStart,
+						End:       &cueEnd,
+						Value:     "Hello",
+						ByteStart: 1,
+						ByteEnd:   5,
+					},
+				},
+			},
+		}))
+	})
+
+	It("should remap cue offsets for interleaved agent cue lines", func() {
+		r := newGetRequest("id=1&enhanced=true")
+
+		lineStart := int64(82889)
+		lineEnd := int64(86859)
+		realStart := int64(85593)
+		realEnd := int64(85934)
+		slowStart := int64(85934)
+		slowEnd := int64(86751)
+		bgStartA := int64(83881)
+		bgEndA := int64(84243)
+		bgStartB := int64(86232)
+		bgEndB := int64(86859)
+		lyricsJSON, err := json.Marshal(model.LyricList{
+			{
+				Lang:   "eng",
+				Agents: []model.Agent{{ID: "v2", Role: "main"}, {ID: "__nd_bg__|v2", Role: "bg"}},
+				Synced: true,
+				Line: []model.Line{
+					{
+						Start: &lineStart,
+						End:   &lineEnd,
+						Value: "real slow (When you slide)",
+						Cue: []model.Cue{
+							{
+								Start:     &realStart,
+								End:       &realEnd,
+								Value:     "real",
+								ByteStart: 0,
+								ByteEnd:   3,
+								AgentID:   "v2",
+							},
+							{
+								Start:     &slowStart,
+								End:       &slowEnd,
+								Value:     "slow",
+								ByteStart: 5,
+								ByteEnd:   8,
+								AgentID:   "v2",
+							},
+							{
+								Start:     &bgStartA,
+								End:       &bgEndA,
+								Value:     "(When you",
+								ByteStart: 10,
+								ByteEnd:   18,
+								AgentID:   "__nd_bg__|v2",
+							},
+							{
+								Start:     &bgStartB,
+								End:       &bgEndB,
+								Value:     "slide)",
+								ByteStart: 20,
+								ByteEnd:   25,
+								AgentID:   "__nd_bg__|v2",
+							},
+						},
+					},
+				},
+			},
+		})
+		Expect(err).ToNot(HaveOccurred())
+
+		mockRepo.SetData(model.MediaFiles{
+			{
+				ID:     "1",
+				Artist: "Rick Astley",
+				Title:  "Never Gonna Give You Up",
+				Lyrics: string(lyricsJSON),
+			},
+		})
+
+		response, err := router.GetLyricsBySongId(r)
+		Expect(err).ToNot(HaveOccurred())
+		compareResponses(response.LyricsList, responses.LyricsList{
+			StructuredLyrics: responses.StructuredLyrics{
+				{
+					DisplayArtist: "Rick Astley",
+					DisplayTitle:  "Never Gonna Give You Up",
+					Kind:          "main",
+					Lang:          "eng",
+					Synced:        true,
+					Agents: []responses.Agent{
+						{ID: "v2", Role: "main"},
+						{ID: "__nd_bg__|v2", Role: "bg"},
+					},
+					Line: []responses.Line{
+						{
+							Start: &lineStart,
+							Value: "real slow (When you slide)",
+						},
+					},
+					CueLine: []responses.CueLine{
+						{
+							Index:   0,
+							Start:   &lineStart,
+							End:     &lineEnd,
+							Value:   "real slow",
+							AgentID: "v2",
+							Cue: []responses.LyricCue{
+								{
+									Start:     realStart,
+									End:       &realEnd,
+									ByteStart: 0,
+									ByteEnd:   3,
+									Value:     "real",
+								},
+								{
+									Start:     slowStart,
+									End:       &slowEnd,
+									ByteStart: 5,
+									ByteEnd:   8,
+									Value:     "slow",
+								},
+							},
+						},
+						{
+							Index:   0,
+							Start:   &lineStart,
+							End:     &lineEnd,
+							Value:   "(When you slide)",
+							AgentID: "__nd_bg__|v2",
+							Cue: []responses.LyricCue{
+								{
+									Start:     bgStartA,
+									End:       &bgEndA,
+									ByteStart: 0,
+									ByteEnd:   8,
+									Value:     "(When you",
+								},
+								{
+									Start:     bgStartB,
+									End:       &bgEndB,
+									ByteStart: 10,
+									ByteEnd:   15,
+									Value:     "slide)",
 								},
 							},
 						},

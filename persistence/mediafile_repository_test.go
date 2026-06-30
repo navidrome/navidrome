@@ -576,6 +576,34 @@ var _ = Describe("MediaRepository", func() {
 				})
 			})
 
+			It("breaks ties deterministically when files share the same created_at", func() {
+				conf.Server.RecentlyAddedByModTime = false
+				ctx := log.NewContext(GinkgoT().Context())
+				ctx = request.WithUser(ctx, model.User{ID: "userid"})
+				repo := NewMediaFileRepository(ctx, GetDBXBuilder())
+
+				ids := []string{testMediaFiles[0].ID, testMediaFiles[1].ID, testMediaFiles[2].ID}
+				sameTime := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
+				_, err := GetDBXBuilder().Update("media_file",
+					dbx.Params{"created_at": sameTime},
+					dbx.In("id", ids[0], ids[1], ids[2])).Execute()
+				Expect(err).ToNot(HaveOccurred())
+
+				order := func() []string {
+					res, err := repo.GetAll(model.QueryOptions{
+						Sort: "recently_added", Order: "desc",
+						Filters: squirrel.Eq{"media_file.id": ids}})
+					Expect(err).ToNot(HaveOccurred())
+					out := make([]string, len(res))
+					for i, mf := range res {
+						out[i] = mf.ID
+					}
+					return out
+				}
+				// Stable across repeated queries (no query-plan-dependent reordering).
+				Expect(order()).To(Equal(order()))
+			})
+
 		})
 	})
 
@@ -879,6 +907,58 @@ var _ = Describe("MediaRepository", func() {
 			results, err = mr.FindByPaths([]string{"2:artist/Album/track.mp3"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(results).To(BeEmpty())
+		})
+
+		Context("when the user has restricted library access", func() {
+			var otherLib model.Library
+			var restrictedUser model.User
+
+			BeforeEach(func() {
+				adminCtx := request.WithUser(GinkgoT().Context(), adminUser)
+				lr := NewLibraryRepository(adminCtx, GetDBXBuilder())
+
+				// A second library the restricted user has no access to
+				otherLib = model.Library{ID: 0, Name: "Other Library", Path: "/other/lib"}
+				Expect(lr.Put(&otherLib)).To(Succeed())
+
+				// A track that lives only in the other library (created as admin)
+				adminMr := NewMediaFileRepository(adminCtx, GetDBXBuilder())
+				Expect(adminMr.Put(&model.MediaFile{
+					ID: "otherlib-track", LibraryID: otherLib.ID,
+					Path: "hidden/test.mp3", Title: "Hidden",
+				})).To(Succeed())
+
+				// Non-admin user with access to library 1 ONLY
+				restrictedUser = createUserWithLibraries("restricted-finder", []int{1})
+				ur := NewUserRepository(adminCtx, GetDBXBuilder())
+				Expect(ur.Put(&restrictedUser)).To(Succeed())
+				Expect(ur.SetUserLibraries(restrictedUser.ID, []int{1})).To(Succeed())
+			})
+
+			AfterEach(func() {
+				adminCtx := request.WithUser(GinkgoT().Context(), adminUser)
+				_ = NewMediaFileRepository(adminCtx, GetDBXBuilder()).Delete("otherlib-track")
+				lr := NewLibraryRepository(adminCtx, GetDBXBuilder()).(*libraryRepository)
+				_ = lr.delete(squirrel.Eq{"id": otherLib.ID})
+				_ = NewUserRepository(adminCtx, GetDBXBuilder()).Delete(restrictedUser.ID)
+			})
+
+			It("does not resolve paths in libraries the user cannot access", func() {
+				userMr := NewMediaFileRepository(request.WithUser(GinkgoT().Context(), restrictedUser), GetDBXBuilder())
+				qualified := fmt.Sprintf("%d:hidden/test.mp3", otherLib.ID)
+				results, err := userMr.FindByPaths([]string{qualified})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(results).To(BeEmpty(), "a track outside the user's libraries must not be resolvable")
+			})
+
+			It("still resolves the path for an admin", func() {
+				adminMr := NewMediaFileRepository(request.WithUser(GinkgoT().Context(), adminUser), GetDBXBuilder())
+				qualified := fmt.Sprintf("%d:hidden/test.mp3", otherLib.ID)
+				results, err := adminMr.FindByPaths([]string{qualified})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(results).To(HaveLen(1))
+				Expect(results[0].ID).To(Equal("otherlib-track"))
+			})
 		})
 	})
 

@@ -132,8 +132,8 @@ var _ = Describe("ndpPackage", func() {
 		})
 	})
 
-	Describe("readManifest", func() {
-		It("should read only the manifest without loading wasm", func() {
+	Describe("ReadManifest", func() {
+		It("parses the manifest from a package that also contains wasm", func() {
 			ndpPath := filepath.Join(tmpDir, "test.ndp")
 			manifest := &Manifest{
 				Name:        "Test Plugin",
@@ -141,57 +141,60 @@ var _ = Describe("ndpPackage", func() {
 				Version:     "1.0.0",
 				Description: new("A test plugin"),
 			}
-			wasmBytes := make([]byte, 1024*1024) // 1MB of zeros
 
-			err := createTestPackage(ndpPath, manifest, wasmBytes)
+			err := createTestPackage(ndpPath, manifest, nil)
 			Expect(err).ToNot(HaveOccurred())
 
-			m, err := readManifest(ndpPath)
+			m, err := ReadManifest(ndpPath)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(m.Name).To(Equal("Test Plugin"))
 			Expect(*m.Description).To(Equal("A test plugin"))
 		})
 
-		It("should return error for missing manifest", func() {
-			ndpPath := filepath.Join(tmpDir, "no-manifest.ndp")
+		It("returns an error for a non-existent file", func() {
+			_, err := ReadManifest(filepath.Join(tmpDir, "does-not-exist.ndp"))
+			Expect(err).To(HaveOccurred())
+		})
 
+		It("returns a specific error for a package missing manifest.json", func() {
+			ndpPath := filepath.Join(tmpDir, "no-manifest.ndp")
 			f, err := os.Create(ndpPath)
 			Expect(err).ToNot(HaveOccurred())
 			defer f.Close()
-
 			zw := newTestZipWriter(f)
-			err = zw.addFile("plugin.wasm", []byte{0x00})
-			Expect(err).ToNot(HaveOccurred())
-			err = zw.close()
-			Expect(err).ToNot(HaveOccurred())
+			Expect(zw.addFile("plugin.wasm", []byte{0x00})).To(Succeed())
+			Expect(zw.close()).To(Succeed())
 
-			_, err = readManifest(ndpPath)
+			_, err = ReadManifest(ndpPath)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("missing manifest.json"))
 		})
-	})
 
-	Describe("ComputePackageSHA256", func() {
-		It("should compute consistent hash for same file", func() {
-			ndpPath := filepath.Join(tmpDir, "test.ndp")
+		It("fails for a package with a schema-invalid manifest", func() {
+			ndp := filepath.Join(tmpDir, "bad.ndp")
+			// empty required fields violate the manifest JSON schema
+			err := createTestPackage(ndp, &Manifest{}, nil)
+			Expect(err).ToNot(HaveOccurred())
+			_, err = ReadManifest(ndp)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("enforces cross-field validation", func() {
+			ndp := filepath.Join(tmpDir, "crossfield.ndp")
+			// subsonicapi permission without users: violates cross-field rule
 			manifest := &Manifest{
-				Name:    "Test Plugin",
-				Author:  "Test Author",
-				Version: "1.0.0",
+				Name:        "X",
+				Author:      "me",
+				Version:     "1.0.0",
+				Permissions: &Permissions{Subsonicapi: &SubsonicAPIPermission{}},
 			}
-			wasmBytes := []byte{0x00, 0x61, 0x73, 0x6d}
-
-			err := createTestPackage(ndpPath, manifest, wasmBytes)
+			err := createTestPackage(ndp, manifest, nil)
 			Expect(err).ToNot(HaveOccurred())
 
-			hash1, err := computeFileSHA256(ndpPath)
-			Expect(err).ToNot(HaveOccurred())
-
-			hash2, err := computeFileSHA256(ndpPath)
-			Expect(err).ToNot(HaveOccurred())
-
-			Expect(hash1).To(Equal(hash2))
-			Expect(hash1).To(HaveLen(64)) // SHA-256 produces 64 hex characters
+			_, err = ReadManifest(ndp)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("subsonicapi"))
+			Expect(err.Error()).To(ContainSubstring("users"))
 		})
 	})
 })

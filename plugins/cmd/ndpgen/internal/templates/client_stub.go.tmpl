@@ -8,7 +8,21 @@
 
 package {{.Package}}
 
-import "github.com/stretchr/testify/mock"
+import (
+{{- if .Service.ImportsSharedTypes}}
+	"github.com/navidrome/navidrome/plugins/pdk/go/types"
+{{- end}}
+	"github.com/stretchr/testify/mock"
+)
+
+{{- /* Generate deprecated shared-type aliases */ -}}
+{{- range .Service.SharedAliases}}
+
+{{- if .Doc}}
+{{formatDoc .Doc}}
+{{- end}}
+type {{.Name}} = {{.Target}}
+{{- end}}
 
 {{- /* Generate struct definitions (same as main file, needed for type references in function signatures) */ -}}
 {{- range .Service.Structs}}

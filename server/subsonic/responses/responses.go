@@ -190,6 +190,8 @@ type OpenSubsonicChild struct {
 	DisplayComposer    string              `xml:"displayComposer,attr,omitempty"    json:"displayComposer"`
 	ExplicitStatus     string              `xml:"explicitStatus,attr,omitempty"     json:"explicitStatus"`
 	Groupings          Array[string]       `xml:"groupings,omitempty"               json:"groupings"`
+	Works              Array[Work]         `xml:"works,omitempty"                   json:"works"`
+	Movements          Array[Movement]     `xml:"movements,omitempty"               json:"movements"`
 }
 
 type Songs struct {
@@ -596,6 +598,17 @@ type OpenSubsonicExtensions []OpenSubsonicExtension
 
 type ItemGenre struct {
 	Name string `xml:"name,attr" json:"name"`
+}
+
+type Work struct {
+	Name          string `xml:"name,attr"                    json:"name"`
+	MusicBrainzId string `xml:"musicBrainzId,attr,omitempty" json:"musicBrainzId,omitempty"`
+}
+
+type Movement struct {
+	Name   string `xml:"name,attr"             json:"name"`
+	Number int32  `xml:"number,attr,omitempty" json:"number,omitempty"`
+	Count  int32  `xml:"count,attr,omitempty"  json:"count,omitempty"`
 }
 
 type ReplayGain struct {

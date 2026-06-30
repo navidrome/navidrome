@@ -114,12 +114,17 @@ func buildCueLines(line model.Line, index int32, agents lyricAgents) []responses
 
 	cueLines := make([]responses.CueLine, 0, len(agentOrder))
 	for _, agentID := range agentOrder {
+		value := line.Value
+		cues := cuesByAgent[agentID]
+		if len(agentOrder) > 1 {
+			value, cues = buildAgentCueLineValue(line.Value, cues, line.Cue, agentID)
+		}
 		cueLine := responses.CueLine{
 			Index: index,
 			Start: line.Start,
 			End:   line.End,
-			Value: line.Value,
-			Cue:   buildLyricCues(cuesByAgent[agentID], line.End),
+			Value: value,
+			Cue:   buildLyricCues(cues, line.End),
 		}
 		if agentID != "" {
 			cueLine.AgentID = agentID
@@ -147,6 +152,85 @@ func (a lyricAgents) less(left, right string, origI, origJ int) bool {
 		return leftOK
 	}
 	return origI < origJ
+}
+
+func buildAgentCueLineValue(lineValue string, cues, allCues []model.Cue, agentID string) (string, []model.Cue) {
+	if len(cues) == 0 {
+		return "", nil
+	}
+
+	remapped := slices.Clone(cues)
+	var value strings.Builder
+	leadingGap := cueLineGap(lineValue, 0, remapped[0].ByteStart, allCues, agentID)
+	if strings.TrimSpace(leadingGap) != "" {
+		value.WriteString(leadingGap)
+	}
+
+	previousEnd := -1
+	for i := range remapped {
+		originalStart := remapped[i].ByteStart
+		originalEnd := remapped[i].ByteEnd
+		if i > 0 {
+			value.WriteString(cueLineGap(lineValue, previousEnd+1, originalStart, allCues, agentID))
+		}
+
+		remapped[i].ByteStart = value.Len()
+		value.WriteString(remapped[i].Value)
+		remapped[i].ByteEnd = value.Len() - 1
+		previousEnd = originalEnd
+	}
+
+	trailingGap := cueLineGap(lineValue, previousEnd+1, len(lineValue), allCues, agentID)
+	if strings.TrimSpace(trailingGap) != "" {
+		value.WriteString(trailingGap)
+	}
+	return value.String(), remapped
+}
+
+type byteRange struct {
+	start int
+	end   int
+}
+
+func cueLineGap(source string, start, end int, allCues []model.Cue, agentID string) string {
+	start = max(start, 0)
+	end = min(end, len(source))
+	if start >= end {
+		return ""
+	}
+
+	excluded := make([]byteRange, 0, 1)
+	for _, cue := range allCues {
+		if strings.TrimSpace(cue.AgentID) == agentID {
+			continue
+		}
+		cueStart := max(cue.ByteStart, start)
+		cueEnd := min(cue.ByteEnd+1, end)
+		if cueStart < cueEnd {
+			excluded = append(excluded, byteRange{start: cueStart, end: cueEnd})
+		}
+	}
+
+	if len(excluded) == 0 {
+		return source[start:end]
+	}
+
+	sort.SliceStable(excluded, func(i, j int) bool {
+		return excluded[i].start < excluded[j].start
+	})
+
+	var gap strings.Builder
+	cursor := start
+	for _, r := range excluded {
+		if r.start > cursor {
+			gap.WriteString(source[cursor:r.start])
+		}
+		cursor = max(cursor, r.end)
+	}
+	if cursor < end {
+		gap.WriteString(source[cursor:end])
+	}
+	return gap.String()
 }
 
 func buildLyricCues(cues []model.Cue, lineEnd *int64) []responses.LyricCue {

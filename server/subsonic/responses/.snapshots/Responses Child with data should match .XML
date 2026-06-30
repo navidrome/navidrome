@@ -26,6 +26,9 @@
       </contributors>
       <groupings>Soundtrack</groupings>
       <groupings>Live</groupings>
+      <works name="Symphony No. 5" musicBrainzId="mbz-work-1"></works>
+      <works name="Encore"></works>
+      <movements name="I. Allegro" number="1" count="4"></movements>
     </child>
     <child id="" isDir="false" title="">
       <replayGain trackGain="0" albumGain="0" trackPeak="0" albumPeak="0" baseGain="0" fallbackGain="0"></replayGain>

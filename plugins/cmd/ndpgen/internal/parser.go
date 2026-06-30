@@ -27,79 +27,86 @@ var (
 	keyValuePattern = regexp.MustCompile(`(\w+)=(\S+)`)
 )
 
-// collectGoFiles returns the paths of the Go source files in dir that are eligible
-// for parsing, skipping generated files, test files, and doc.go.
-func collectGoFiles(dir string) ([]string, error) {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return nil, fmt.Errorf("reading directory: %w", err)
-	}
-	var goFiles []string
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") {
-			continue
-		}
-		if strings.HasSuffix(entry.Name(), "_gen.go") ||
-			strings.HasSuffix(entry.Name(), "_test.go") ||
-			entry.Name() == "doc.go" {
-			continue
-		}
-		goFiles = append(goFiles, filepath.Join(dir, entry.Name()))
-	}
-	return goFiles, nil
-}
-
-// parsedGoFile pairs a parsed AST with its source path for error reporting.
+// parsedGoFile pairs a source path with its already-parsed AST.
 type parsedGoFile struct {
 	path string
 	file *ast.File
 }
 
-// parseGoFiles parses every eligible Go file in dir once, so callers can run
-// multiple passes over the ASTs without re-reading and re-parsing each file.
-func parseGoFiles(dir string) ([]parsedGoFile, error) {
-	goFiles, err := collectGoFiles(dir)
+// parseGoFiles returns the eligible Go source files in dir, each parsed once.
+func parseGoFiles(dir string, fset *token.FileSet) ([]parsedGoFile, error) {
+	paths, err := goSourceFiles(dir)
 	if err != nil {
 		return nil, err
 	}
-	fset := token.NewFileSet()
-	parsed := make([]parsedGoFile, len(goFiles))
-	for i, path := range goFiles {
-		f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
+	out := make([]parsedGoFile, 0, len(paths))
+	for _, p := range paths {
+		f, err := parser.ParseFile(fset, p, nil, parser.ParseComments)
 		if err != nil {
-			return nil, fmt.Errorf("parsing %s: %w", filepath.Base(path), err)
+			return nil, fmt.Errorf("parsing %s: %w", filepath.Base(p), err)
 		}
-		parsed[i] = parsedGoFile{path: path, file: f}
+		out = append(out, parsedGoFile{path: p, file: f})
 	}
-	return parsed, nil
+	return out, nil
+}
+
+// goSourceFiles returns the Go source file paths in dir, excluding generated,
+// test, and doc files.
+func goSourceFiles(dir string) ([]string, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, fmt.Errorf("reading directory: %w", err)
+	}
+	var paths []string
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() || !strings.HasSuffix(name, ".go") {
+			continue
+		}
+		if strings.HasSuffix(name, "_gen.go") || strings.HasSuffix(name, "_test.go") || name == "doc.go" {
+			continue
+		}
+		paths = append(paths, filepath.Join(dir, name))
+	}
+	return paths, nil
 }
 
 // ParseDirectory parses all Go source files in a directory and extracts host services.
-// It uses a two-pass approach: first collecting all struct definitions from the whole
-// package, then parsing each file's services with the shared struct map available so
-// that a host-service interface can reference types defined in a sibling file.
 func ParseDirectory(dir string) ([]Service, error) {
-	files, err := parseGoFiles(dir)
+	return ParseDirectoryWithShared(dir, nil)
+}
+
+// ParseDirectoryWithShared parses all Go source files in a directory, resolving any
+// type aliases that reference the shared `types` package against the provided registry.
+func ParseDirectoryWithShared(dir string, shared map[string]StructDef) ([]Service, error) {
+	fset := token.NewFileSet()
+	parsed, err := parseGoFiles(dir, fset)
 	if err != nil {
 		return nil, err
 	}
 
-	// First pass.
-	sharedStructMap := make(map[string]StructDef)
-	for _, gf := range files {
-		for _, s := range parseStructs(gf.file) {
-			sharedStructMap[s.Name] = s
+	// First pass: collect all struct definitions and type aliases from every file
+	// so that a struct or alias declared in one file is visible when resolving
+	// types in a sibling file.
+	pkgStructMap := make(map[string]StructDef)
+	pkgAliasMap := make(map[string]TypeAlias)
+	for _, pf := range parsed {
+		for _, s := range parseStructs(pf.file) {
+			pkgStructMap[s.Name] = s
+		}
+		for _, a := range parseTypeAliases(pf.file) {
+			pkgAliasMap[a.Name] = a
 		}
 	}
 
-	// Second pass.
+	// Second pass: parse services using the package-level maps.
 	var services []Service
-	for _, gf := range files {
-		parsed, err := parseServiceFile(gf.file, sharedStructMap)
+	for _, pf := range parsed {
+		svcList, err := parseServiceFile(pf.file, pkgStructMap, pkgAliasMap, shared)
 		if err != nil {
-			return nil, fmt.Errorf("parsing %s: %w", filepath.Base(gf.path), err)
+			return nil, fmt.Errorf("parsing %s: %w", filepath.Base(pf.path), err)
 		}
-		services = append(services, parsed...)
+		services = append(services, svcList...)
 	}
 
 	return services, nil
@@ -107,42 +114,72 @@ func ParseDirectory(dir string) ([]Service, error) {
 
 // ParseCapabilities parses all Go source files in a directory and extracts capabilities.
 func ParseCapabilities(dir string) ([]Capability, error) {
-	files, err := parseGoFiles(dir)
+	return ParseCapabilitiesWithShared(dir, nil)
+}
+
+// ParseCapabilitiesWithShared parses all Go source files in a directory, resolving any
+// type aliases that reference the shared `types` package against the provided registry.
+func ParseCapabilitiesWithShared(dir string, shared map[string]StructDef) ([]Capability, error) {
+	fset := token.NewFileSet()
+	parsed, err := parseGoFiles(dir, fset)
 	if err != nil {
 		return nil, err
 	}
 
-	// First pass: collect all structs and type aliases from all files in the package
-	sharedStructMap := make(map[string]StructDef)
-	sharedAliasMap := make(map[string]TypeAlias)
+	// First pass: collect all structs, type aliases, and const groups.
+	pkgStructMap := make(map[string]StructDef)
+	pkgAliasMap := make(map[string]TypeAlias)
 	var allConstGroups []ConstGroup
 
-	for _, gf := range files {
-		for _, s := range parseStructs(gf.file) {
-			sharedStructMap[s.Name] = s
+	for _, pf := range parsed {
+		for _, s := range parseStructs(pf.file) {
+			pkgStructMap[s.Name] = s
 		}
-		for _, a := range parseTypeAliases(gf.file) {
-			sharedAliasMap[a.Name] = a
+		for _, a := range parseTypeAliases(pf.file) {
+			pkgAliasMap[a.Name] = a
 		}
-		allConstGroups = append(allConstGroups, parseConstGroups(gf.file)...)
+		allConstGroups = append(allConstGroups, parseConstGroups(pf.file)...)
 	}
 
-	// Second pass: parse capabilities using the shared type maps
+	// Second pass: parse capabilities using the package-level type maps.
 	var capabilities []Capability
-	for _, gf := range files {
-		parsed, err := parseCapabilityFile(gf.file, gf.path, sharedStructMap, sharedAliasMap, allConstGroups)
+	for _, pf := range parsed {
+		capList, err := parseCapabilityFile(pf.path, pf.file, pkgStructMap, pkgAliasMap, allConstGroups, shared)
 		if err != nil {
-			return nil, fmt.Errorf("parsing %s: %w", filepath.Base(gf.path), err)
+			return nil, fmt.Errorf("parsing %s: %w", filepath.Base(pf.path), err)
 		}
-		capabilities = append(capabilities, parsed...)
+		capabilities = append(capabilities, capList...)
 	}
 
 	return capabilities, nil
 }
 
-// parseCapabilityFile extracts capabilities from an already-parsed Go source file.
-// path is the file's source path, used to derive the capability's source-file name.
-func parseCapabilityFile(f *ast.File, path string, structMap map[string]StructDef, aliasMap map[string]TypeAlias, allConstGroups []ConstGroup) ([]Capability, error) {
+// LoadSharedTypes parses every struct defined in dir (the shared `types` source
+// package) and returns them keyed by name. dir == "" yields an empty map.
+func LoadSharedTypes(dir string) (map[string]StructDef, error) {
+	result := map[string]StructDef{}
+	if dir == "" {
+		return result, nil
+	}
+	paths, err := goSourceFiles(dir)
+	if err != nil {
+		return nil, fmt.Errorf("reading shared types directory: %w", err)
+	}
+	fset := token.NewFileSet()
+	for _, path := range paths {
+		f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
+		if err != nil {
+			return nil, fmt.Errorf("parsing %s: %w", filepath.Base(path), err)
+		}
+		for _, s := range parseStructs(f) {
+			result[s.Name] = s
+		}
+	}
+	return result, nil
+}
+
+// parseCapabilityFile parses a single Go source file and extracts capabilities.
+func parseCapabilityFile(path string, f *ast.File, structMap map[string]StructDef, aliasMap map[string]TypeAlias, allConstGroups []ConstGroup, shared map[string]StructDef) ([]Capability, error) {
 	var capabilities []Capability
 
 	for _, decl := range f.Decls {
@@ -214,6 +251,21 @@ func parseCapabilityFile(f *ast.File, path string, structMap map[string]StructDe
 			// Recursively collect all struct dependencies
 			collectAllStructDependencies(referencedTypes, structMap)
 
+			// Resolve shared-type aliases against the registry
+			sharedAliases, sharedTypes, err := resolveSharedAliases(referencedTypes, aliasMap, shared)
+			if err != nil {
+				return nil, err
+			}
+			capability.SharedAliases = sharedAliases
+			capability.SharedTypes = sharedTypes
+
+			// Build a set of names already covered by SharedAliases so we don't
+			// emit them again in TypeAliases (which would cause a redeclaration).
+			sharedAliasNames := make(map[string]bool, len(capability.SharedAliases))
+			for _, sa := range capability.SharedAliases {
+				sharedAliasNames[sa.Name] = true
+			}
+
 			// Sort type names for stable output order
 			sortedTypeNames := slices.Sorted(maps.Keys(referencedTypes))
 
@@ -224,8 +276,11 @@ func parseCapabilityFile(f *ast.File, path string, structMap map[string]StructDe
 				}
 			}
 
-			// Attach referenced type aliases
+			// Attach referenced type aliases (skip those already in SharedAliases)
 			for _, typeName := range sortedTypeNames {
+				if sharedAliasNames[typeName] {
+					continue
+				}
 				if a, exists := aliasMap[typeName]; exists {
 					capability.TypeAliases = append(capability.TypeAliases, a)
 				}
@@ -235,6 +290,9 @@ func parseCapabilityFile(f *ast.File, path string, structMap map[string]StructDe
 			// This supports error types that are not directly referenced in method signatures
 			interfaceName := typeSpec.Name.Name
 			for _, typeName := range slices.Sorted(maps.Keys(aliasMap)) {
+				if sharedAliasNames[typeName] {
+					continue
+				}
 				a := aliasMap[typeName]
 				if strings.HasPrefix(typeName, interfaceName) && !referencedTypes[typeName] {
 					capability.TypeAliases = append(capability.TypeAliases, a)
@@ -259,6 +317,111 @@ func parseCapabilityFile(f *ast.File, path string, structMap map[string]StructDe
 	}
 
 	return capabilities, nil
+}
+
+// resolveSharedAliases determines which shared `types` package structs a host
+// service or capability uses and returns the deprecated re-export aliases to emit
+// for them.
+//
+// A shared type counts as used when a field references it by qualified name
+// (e.g. types.Track) or via a declared alias used by bare name (e.g. a field of
+// type TrackInfo where `type TrackInfo = types.Track`). The shared struct's own
+// fields are followed transitively so nested shared types are picked up too. For
+// every used canonical type, each declared `type X = types.Canonical` alias is
+// emitted as a SharedAlias so the generated PDK keeps re-exporting it for
+// backwards compatibility.
+//
+// It returns the deprecated re-export aliases to emit and the resolved shapes of
+// every used shared type (alias or not, for schema inlining).
+//
+// Returns an error if a referenced shared type cannot be found in the shared registry.
+func resolveSharedAliases(referenced map[string]bool, aliasMap map[string]TypeAlias, shared map[string]StructDef) ([]SharedAlias, []StructDef, error) {
+	// Index declared shared aliases by the canonical type they target, e.g.
+	// "Track" -> [TrackInfo]. A canonical type may have more than one alias.
+	aliasesByCanonical := map[string][]TypeAlias{}
+	for _, a := range aliasMap {
+		if a.IsSharedAlias() {
+			canonical := strings.TrimPrefix(a.Type, sharedTypesPrefix)
+			aliasesByCanonical[canonical] = append(aliasesByCanonical[canonical], a)
+		}
+	}
+
+	// Walk the referenced types, following nested shared references inside the
+	// shared structs, to find the set of canonical shared types used.
+	used := map[string]bool{}
+	var queue []string
+	for name := range referenced {
+		if c, ok := seedSharedCanonical(name, aliasMap); ok {
+			queue = append(queue, c)
+		}
+	}
+	fieldRefs := map[string]bool{}
+	for len(queue) > 0 {
+		canonical := queue[0]
+		queue = queue[1:]
+		if used[canonical] {
+			continue
+		}
+		def, ok := shared[canonical]
+		if !ok {
+			return nil, nil, fmt.Errorf(
+				"shared type %q could not be resolved: pass -shared=<dir> pointing at the shared types package, and ensure %s is defined there",
+				canonical, sharedTypesPrefix+canonical,
+			)
+		}
+		used[canonical] = true
+		for _, f := range def.Fields {
+			clear(fieldRefs)
+			collectReferencedTypes(f.Type, fieldRefs)
+			for t := range fieldRefs {
+				if c, ok := nestedSharedCanonical(t, shared); ok {
+					queue = append(queue, c)
+				}
+			}
+		}
+	}
+
+	var out []SharedAlias
+	var usedDefs []StructDef
+	for canonical := range used {
+		usedDefs = append(usedDefs, shared[canonical])
+		for _, a := range aliasesByCanonical[canonical] {
+			out = append(out, SharedAlias{Name: a.Name, Target: a.Type, Doc: a.Doc, Def: shared[canonical]})
+		}
+	}
+	slices.SortFunc(out, func(a, b SharedAlias) int { return strings.Compare(a.Name, b.Name) })
+	slices.SortFunc(usedDefs, func(a, b StructDef) int { return strings.Compare(a.Name, b.Name) })
+	return out, usedDefs, nil
+}
+
+// seedSharedCanonical maps a type token referenced by a capability/service field
+// to the canonical shared type it denotes. It recognizes qualified references
+// (types.X -> X) and declared shared aliases used by bare name (X where
+// `type X = types.Y` -> Y). A bare name that is not a declared shared alias is
+// not treated as shared, so a local struct sharing a name with a shared type is
+// never misclassified.
+func seedSharedCanonical(name string, aliasMap map[string]TypeAlias) (string, bool) {
+	if rest, ok := strings.CutPrefix(name, sharedTypesPrefix); ok {
+		return rest, true
+	}
+	if a, ok := aliasMap[name]; ok && a.IsSharedAlias() {
+		return strings.TrimPrefix(a.Type, sharedTypesPrefix), true
+	}
+	return "", false
+}
+
+// nestedSharedCanonical maps a type token found inside a shared struct's own
+// fields to a canonical shared type. Within the shared package, types reference
+// each other by bare name (e.g. Track.Artists is []ArtistRef), so any bare name
+// present in the shared registry counts.
+func nestedSharedCanonical(name string, shared map[string]StructDef) (string, bool) {
+	if rest, ok := strings.CutPrefix(name, sharedTypesPrefix); ok {
+		return rest, true
+	}
+	if _, ok := shared[name]; ok {
+		return name, true
+	}
+	return "", false
 }
 
 // collectAllStructDependencies recursively collects all struct types referenced by other structs.
@@ -325,11 +488,11 @@ func parseExport(name string, funcType *ast.FuncType, annotation map[string]stri
 	return export, nil
 }
 
-// parseServiceFile extracts host services from an already-parsed Go source file.
-// structMap is a package-wide map of struct definitions so that interfaces can
-// reference types defined in other files of the same package.
-func parseServiceFile(f *ast.File, structMap map[string]StructDef) ([]Service, error) {
-
+// parseServiceFile parses a single Go source file and extracts host services.
+// pkgStructMap and pkgAliasMap are the package-wide struct and alias maps built
+// from all files in the package, so a host-service interface can reference types
+// defined in a sibling file.
+func parseServiceFile(f *ast.File, pkgStructMap map[string]StructDef, pkgAliasMap map[string]TypeAlias, shared map[string]StructDef) ([]Service, error) {
 	var services []Service
 
 	for _, decl := range f.Decls {
@@ -397,12 +560,22 @@ func parseServiceFile(f *ast.File, structMap map[string]StructDef) ([]Service, e
 				}
 			}
 
-			// Recursively collect all struct dependencies
-			collectAllStructDependencies(referencedTypes, structMap)
+			// Resolve shared-type aliases against the registry. Host-service schemas
+			// are not generated (the -schemas pass is capability-only), so the resolved
+			// shared shapes are not needed here.
+			sharedAliases, _, err := resolveSharedAliases(referencedTypes, pkgAliasMap, shared)
+			if err != nil {
+				return nil, err
+			}
+			service.SharedAliases = sharedAliases
+
+			// Recursively collect all struct dependencies so types referenced only
+			// transitively (e.g. a field type of a referenced struct) are attached.
+			collectAllStructDependencies(referencedTypes, pkgStructMap)
 
 			// Attach referenced structs to the service (sorted for stable output)
 			for _, typeName := range slices.Sorted(maps.Keys(referencedTypes)) {
-				if s, exists := structMap[typeName]; exists {
+				if s, exists := pkgStructMap[typeName]; exists {
 					service.Structs = append(service.Structs, s)
 				}
 			}
@@ -487,9 +660,10 @@ func parseTypeAliases(f *ast.File) []TypeAlias {
 
 			docText, _ := getDocComment(genDecl, typeSpec)
 			aliases = append(aliases, TypeAlias{
-				Name: typeSpec.Name.Name,
-				Type: typeToString(typeSpec.Type),
-				Doc:  cleanDoc(docText),
+				Name:    typeSpec.Name.Name,
+				Type:    typeToString(typeSpec.Type),
+				Doc:     cleanDoc(docText),
+				IsAlias: typeSpec.Assign.IsValid(),
 			})
 		}
 	}
@@ -655,6 +829,14 @@ func collectReferencedTypes(goType string, refs map[string]bool) {
 		valueType := rest[keyEnd+1:]
 		collectReferencedTypes(keyType, refs)
 		collectReferencedTypes(valueType, refs)
+		return
+	}
+
+	// Qualified reference to the shared `types` package (e.g. types.Track).
+	// These start with a lowercase package selector, so they must be collected
+	// before the uppercase check below would skip them.
+	if strings.HasPrefix(goType, sharedTypesPrefix) {
+		refs[goType] = true
 		return
 	}
 

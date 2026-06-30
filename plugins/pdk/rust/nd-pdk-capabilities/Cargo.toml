@@ -11,6 +11,7 @@ path = "src/lib.rs"
 crate-type = ["rlib"]
 
 [dependencies]
+nd-pdk-types = { path = "../nd-pdk-types" }
 base64 = "0.22"
 extism-pdk = "1.2"
 serde = { version = "1.0", features = ["derive"] }

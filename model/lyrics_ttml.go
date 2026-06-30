@@ -77,8 +77,9 @@ type ttmlDefinedAgent struct {
 }
 
 type ttmlPiece struct {
-	raw string
-	cue *Cue
+	raw     string
+	cue     *Cue
+	isBreak bool
 }
 
 type ttmlParser struct {
@@ -382,7 +383,7 @@ func (p *ttmlParser) parseParagraph(parent ttmlTimingContext) (string, []Cue, er
 func (p *ttmlParser) parseInlineElement(start xml.StartElement, parent ttmlTimingContext) ([]ttmlPiece, error) {
 	local := strings.ToLower(start.Name.Local)
 	if local == "br" {
-		return []ttmlPiece{{raw: "\n"}}, nil
+		return []ttmlPiece{{isBreak: true}}, nil
 	}
 
 	ctx := p.childContext(start.Attr, parent)
@@ -442,7 +443,7 @@ func (p *ttmlParser) parseInlineElement(start xml.StartElement, parent ttmlTimin
 }
 
 func buildTTMLLineFromPieces(pieces []ttmlPiece) (string, []Cue) {
-	finalized := finalizeTTMLLines(splitTTMLPiecesByNewline(pieces))
+	finalized := finalizeTTMLLines(splitTTMLPiecesByBreak(pieces))
 	for len(finalized) > 0 && finalized[0].text == "" && len(finalized[0].cues) == 0 {
 		finalized = finalized[1:]
 	}
@@ -488,34 +489,30 @@ func finalizeTTMLLines(lines [][]ttmlPiece) []ttmlFinalLine {
 	return finalized
 }
 
-func splitTTMLPiecesByNewline(pieces []ttmlPiece) [][]ttmlPiece {
+func splitTTMLPiecesByBreak(pieces []ttmlPiece) [][]ttmlPiece {
 	lines := [][]ttmlPiece{{}}
+	prevEndedWithSpace := true // leading whitespace on a fresh line is dropped
 	for _, piece := range pieces {
-		raw := normalizeTTMLPieceRaw(piece.raw)
-		if raw == "" {
+		if piece.isBreak {
+			lines = append(lines, []ttmlPiece{})
+			prevEndedWithSpace = true
 			continue
 		}
 
-		start := 0
-		for i := 0; i < len(raw); i++ {
-			if raw[i] != '\n' {
-				continue
-			}
-			if start < i {
-				lines[len(lines)-1] = append(lines[len(lines)-1], ttmlPiece{
-					raw: raw[start:i],
-					cue: gg.Clone(piece.cue),
-				})
-			}
-			lines = append(lines, []ttmlPiece{})
-			start = i + 1
+		raw := normalizeTTMLPieceRaw(piece.raw)
+		// Collapse whitespace across piece boundaries: a piece's leading space is
+		// redundant when the text emitted so far already ends with one.
+		if prevEndedWithSpace {
+			raw = strings.TrimPrefix(raw, " ")
 		}
-		if start < len(raw) {
-			lines[len(lines)-1] = append(lines[len(lines)-1], ttmlPiece{
-				raw: raw[start:],
-				cue: gg.Clone(piece.cue),
-			})
+		if raw == "" {
+			continue
 		}
+		lines[len(lines)-1] = append(lines[len(lines)-1], ttmlPiece{
+			raw: raw,
+			cue: gg.Clone(piece.cue),
+		})
+		prevEndedWithSpace = strings.HasSuffix(raw, " ")
 	}
 	return lines
 }
@@ -555,11 +552,38 @@ func finalizeTTMLLogicalLine(line []ttmlPiece) (string, []Cue) {
 	return trimmed, cues
 }
 
+// normalizeTTMLPieceRaw collapses whitespace following TTML's default mode
+// (xml:space="default", the root default per TTML2 §8.1.1): per §8.2.10 that
+// means linefeed-treatment="treat-as-space" and white-space-collapse="true", so
+// linefeeds and other whitespace runs collapse to a single space. Collapsing is
+// applied unconditionally; xml:space="preserve" is not supported (no lyric
+// source in practice relies on it). Hard line breaks come only from <br/>
+// (§8.1.7), tracked separately via ttmlPiece.isBreak, so pretty-printed
+// indentation between elements does not inject spurious newlines.
 func normalizeTTMLPieceRaw(raw string) string {
 	raw = str.SanitizeText(raw)
-	raw = strings.ReplaceAll(raw, "\r\n", "\n")
-	raw = strings.ReplaceAll(raw, "\r", "\n")
-	return raw
+	return collapseTTMLWhitespace(raw)
+}
+
+func collapseTTMLWhitespace(raw string) string {
+	var b strings.Builder
+	b.Grow(len(raw))
+	prevSpace := false
+	for _, r := range raw {
+		// Only the XML S production (space, tab, CR, LF) is collapsible whitespace.
+		// Other Unicode spaces (e.g. NBSP, U+3000) are content characters, not
+		// whitespace, so they pass through unchanged.
+		if r == ' ' || r == '\t' || r == '\n' || r == '\r' {
+			if !prevSpace {
+				b.WriteByte(' ')
+				prevSpace = true
+			}
+			continue
+		}
+		b.WriteRune(r)
+		prevSpace = false
+	}
+	return b.String()
 }
 
 func concatTTMLPieceRaw(pieces []ttmlPiece) string {

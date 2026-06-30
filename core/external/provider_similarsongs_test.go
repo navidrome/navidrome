@@ -73,7 +73,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 
 				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "track-1", "Just Can't Get Enough", "Depeche Mode", "track-mbid", 5).
 					Return([]agents.Song{
-						{Name: "Dreaming of Me", MBID: "", Artist: "Depeche Mode", ArtistMBID: "artist-mbid"},
+						{Name: "Dreaming of Me", MBID: "", Artists: []agents.Artist{{Name: "Depeche Mode", MBID: "artist-mbid"}}},
 					}, nil).Once()
 
 				// Matcher artist resolution: resolve Depeche Mode in the artist table.
@@ -177,7 +177,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 
 				agentsCombined.On("GetSimilarSongsByAlbum", mock.Anything, "album-1", "Speak & Spell", "Depeche Mode", "album-mbid", 5).
 					Return([]agents.Song{
-						{Name: "New Life", MBID: "song-mbid", Artist: "Depeche Mode"},
+						{Name: "New Life", MBID: "song-mbid", Artists: []agents.Artist{{Name: "Depeche Mode"}}},
 					}, nil).Once()
 
 				// Mock loadTracksByID - no ID matches
@@ -254,7 +254,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 				artistRepo.On("Get", "artist-1").Return(&artist, nil).Once()
 				agentsCombined.On("GetSimilarSongsByArtist", mock.Anything, "artist-1", "Depeche Mode", "artist-mbid", 5).
 					Return([]agents.Song{
-						{Name: "Enjoy the Silence", MBID: "song-mbid", Artist: "Depeche Mode"},
+						{Name: "Enjoy the Silence", MBID: "song-mbid", Artists: []agents.Artist{{Name: "Depeche Mode"}}},
 					}, nil).Once()
 
 				// Mock loadTracksByID - no ID matches
