@@ -1,17 +1,12 @@
-package host
-
-// Artist is a trimmed, public projection of an artist that participated in a track.
-type Artist struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	SortName    string `json:"sortName,omitempty"`
-	MbzArtistID string `json:"mbzArtistId,omitempty"`
-	SubRole     string `json:"subRole,omitempty"`
-}
+package types
 
 // Track is a stable, public projection of a library media file for plugin consumption.
 // It is a sane subset of the internal model.MediaFile, intended for reuse across host
 // services and capabilities. Timestamps are Unix epoch seconds.
+//
+// Unlike SongRef, which is an abstract recording reference carrying only matching keys,
+// Track is a concrete library entity: it identifies a specific media file that exists
+// (or once existed) in the library and exposes its full descriptive metadata.
 type Track struct {
 	// Identity & location
 	ID          string `json:"id"`
@@ -81,6 +76,6 @@ type Track struct {
 	UpdatedAt int64 `json:"updatedAt"`
 
 	// Composite
-	Tags         map[string][]string `json:"tags,omitempty"`
-	Participants map[string][]Artist `json:"participants,omitempty"`
+	Tags         map[string][]string    `json:"tags,omitempty"`
+	Participants map[string][]ArtistRef `json:"participants,omitempty"`
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/navidrome/navidrome/core/matcher"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/plugins/host"
+	"github.com/navidrome/navidrome/plugins/types"
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
@@ -20,13 +21,13 @@ func newMatcherService(ds model.DataStore, hasFilesystemPerm bool) host.MatcherS
 	return &matcherServiceImpl{ds: ds, hasFilesystemPerm: hasFilesystemPerm}
 }
 
-func (s *matcherServiceImpl) MatchSongs(ctx context.Context, songs []host.MatchSong) ([]*host.Track, error) {
-	results := make([]*host.Track, len(songs))
+func (s *matcherServiceImpl) MatchSongs(ctx context.Context, songs []types.SongRef) ([]*types.Track, error) {
+	results := make([]*types.Track, len(songs))
 	if len(songs) == 0 {
 		return results, nil
 	}
 
-	agentSongs := slice.Map(songs, func(s host.MatchSong) agents.Song {
+	agentSongs := slice.Map(songs, func(s types.SongRef) agents.Song {
 		song := agents.Song{
 			ID:        s.ID,
 			Name:      s.Name,
@@ -34,11 +35,9 @@ func (s *matcherServiceImpl) MatchSongs(ctx context.Context, songs []host.MatchS
 			ISRC:      s.ISRC,
 			Album:     s.Album,
 			AlbumMBID: s.AlbumMBID,
-			Duration:  s.DurationMs, // agents.Song.Duration is ms, same unit as host.MatchSong.DurationMs
+			Duration:  s.DurationInMs(), // agents.Song.Duration is ms; DurationInMs prefers DurationMs over the deprecated seconds field
 		}
-		if s.Artist != "" || s.ArtistMBID != "" {
-			song.Artists = []agents.Artist{{Name: s.Artist, MBID: s.ArtistMBID}}
-		}
+		song.Artists = agentArtists(s)
 		return song
 	})
 
@@ -55,8 +54,8 @@ func (s *matcherServiceImpl) MatchSongs(ctx context.Context, songs []host.MatchS
 // toTrack projects an internal MediaFile into the public Track DTO. The file
 // Path is only exposed when the plugin holds library filesystem permission,
 // matching how the Library host service gates path access.
-func (s *matcherServiceImpl) toTrack(mf *model.MediaFile) *host.Track {
-	t := &host.Track{
+func (s *matcherServiceImpl) toTrack(mf *model.MediaFile) *types.Track {
+	t := &types.Track{
 		ID:                mf.ID,
 		LibraryID:         int32(mf.LibraryID),
 		LibraryName:       mf.LibraryName,
@@ -119,20 +118,36 @@ func (s *matcherServiceImpl) toTrack(mf *model.MediaFile) *host.Track {
 		}
 	}
 	if len(mf.Participants) > 0 {
-		t.Participants = make(map[string][]host.Artist, len(mf.Participants))
+		t.Participants = make(map[string][]types.ArtistRef, len(mf.Participants))
 		for role, participants := range mf.Participants {
-			t.Participants[role.String()] = slice.Map(participants, func(p model.Participant) host.Artist {
-				return host.Artist{
-					ID:          p.ID,
-					Name:        p.Name,
-					SortName:    p.SortArtistName,
-					MbzArtistID: p.MbzArtistID,
-					SubRole:     p.SubRole,
+			t.Participants[role.String()] = slice.Map(participants, func(p model.Participant) types.ArtistRef {
+				return types.ArtistRef{
+					ID:       p.ID,
+					Name:     p.Name,
+					MBID:     p.MbzArtistID,
+					SortName: p.SortArtistName,
+					SubRole:  p.SubRole,
 				}
 			})
 		}
 	}
 	return t
+}
+
+// agentArtists maps a SongRef's artist information to agents.Artist. The richer
+// Artists list takes precedence (per types.SongRef); otherwise the scalar
+// Artist/ArtistMBID pair is used as a single-element list. Returns nil when no
+// artist information is present.
+func agentArtists(s types.SongRef) []agents.Artist {
+	if len(s.Artists) > 0 {
+		return slice.Map(s.Artists, func(a types.ArtistRef) agents.Artist {
+			return agents.Artist{ID: a.ID, Name: a.Name, MBID: a.MBID}
+		})
+	}
+	if s.Artist != "" || s.ArtistMBID != "" {
+		return []agents.Artist{{Name: s.Artist, MBID: s.ArtistMBID}}
+	}
+	return nil
 }
 
 func unixOrZero(t time.Time) int64 {

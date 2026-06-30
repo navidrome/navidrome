@@ -7,17 +7,19 @@ import (
 	"encoding/json"
 
 	extism "github.com/extism/go-sdk"
+
+	"github.com/navidrome/navidrome/plugins/types"
 )
 
 // MatcherMatchSongsRequest is the request type for Matcher.MatchSongs.
 type MatcherMatchSongsRequest struct {
-	Songs []MatchSong `json:"songs"`
+	Songs []types.SongRef `json:"songs"`
 }
 
 // MatcherMatchSongsResponse is the response type for Matcher.MatchSongs.
 type MatcherMatchSongsResponse struct {
-	Results []*Track `json:"results,omitempty"`
-	Error   string   `json:"error,omitempty"`
+	Results []*types.Track `json:"results,omitempty"`
+	Error   string         `json:"error,omitempty"`
 }
 
 // RegisterMatcherHostFunctions registers Matcher service host functions.

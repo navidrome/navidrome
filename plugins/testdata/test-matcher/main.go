@@ -5,11 +5,12 @@ package main
 import (
 	"github.com/navidrome/navidrome/plugins/pdk/go/host"
 	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
+	"github.com/navidrome/navidrome/plugins/pdk/go/types"
 )
 
 // TestMatcherInput is the input for the nd_test_matcher callback.
 type TestMatcherInput struct {
-	Songs []host.MatchSong `json:"songs"`
+	Songs []types.SongRef `json:"songs"`
 }
 
 // TestMatcherOutput is the output from the nd_test_matcher callback.

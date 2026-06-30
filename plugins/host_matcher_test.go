@@ -14,7 +14,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/plugins/host"
+	"github.com/navidrome/navidrome/plugins/types"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -103,7 +103,7 @@ var _ = Describe("MatcherService", Ordered, func() {
 			Expect(track.Participants["artist"][0].ID).To(Equal("ar-1"))
 			Expect(track.Participants["artist"][0].Name).To(Equal("My Artist"))
 			Expect(track.Participants["artist"][0].SortName).To(Equal("artist, my"))
-			Expect(track.Participants["artist"][0].MbzArtistID).To(Equal("mbz-ar-1"))
+			Expect(track.Participants["artist"][0].MBID).To(Equal("mbz-ar-1"))
 		})
 
 		It("leaves nil-able numeric fields nil when absent", func() {
@@ -142,7 +142,7 @@ var _ = Describe("MatcherService", Ordered, func() {
 			ds := &tests.MockDataStore{MockedMediaFile: mediaFileRepo}
 
 			svc := newMatcherService(ds, false)
-			results, err := svc.MatchSongs(GinkgoT().Context(), []host.MatchSong{
+			results, err := svc.MatchSongs(GinkgoT().Context(), []types.SongRef{
 				{ID: "mf-100", Name: "Hit", Artist: "Band"},
 				{ID: "missing-id", Name: "Ghost", Artist: "Nobody"},
 			})
@@ -242,14 +242,14 @@ var _ = Describe("MatcherService Integration", Ordered, func() {
 		defer instance.Close(ctx)
 
 		type tIn struct {
-			Songs []host.MatchSong `json:"songs"`
+			Songs []types.SongRef `json:"songs"`
 		}
 		type tOut struct {
 			MatchedIDs []string `json:"matched_ids"`
 			Error      *string  `json:"error,omitempty"`
 		}
 
-		inputBytes, err := json.Marshal(tIn{Songs: []host.MatchSong{
+		inputBytes, err := json.Marshal(tIn{Songs: []types.SongRef{
 			{ID: "mf-hit", Name: "Hit", Artist: "Band"},
 			{ID: "nope", Name: "Ghost", Artist: "Nobody"},
 		}})
