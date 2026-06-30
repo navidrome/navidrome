@@ -40,8 +40,10 @@ func (s *matcherServiceImpl) MatchSongs(ctx context.Context, songs []types.SongR
 		return nil, fmt.Errorf("matcher: no libraries configured for this plugin")
 	}
 
-	// A username scopes the match to that user: their annotations load and their
-	// library access applies.
+	// Set the user context explicitly so the match never inherits the request user
+	// of whatever invoked the plugin: a username scopes to that user (loading their
+	// annotations and library access), and an unscoped match runs as admin so only
+	// the plugin's own library scope constrains the results.
 	scoped := opts.Username != ""
 	if scoped {
 		usr, err := s.users.resolve(ctx, s.ds, opts.Username)
@@ -49,6 +51,8 @@ func (s *matcherServiceImpl) MatchSongs(ctx context.Context, songs []types.SongR
 			return nil, fmt.Errorf("matcher: %w", err)
 		}
 		ctx = request.WithUser(ctx, *usr)
+	} else {
+		ctx = adminContext(ctx)
 	}
 
 	agentSongs := slice.Map(songs, songRefToAgentSong)

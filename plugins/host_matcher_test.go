@@ -3,6 +3,7 @@
 package plugins
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -15,6 +16,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/plugins/host"
 	"github.com/navidrome/navidrome/plugins/types"
 	"github.com/navidrome/navidrome/tests"
@@ -253,6 +255,35 @@ var _ = Describe("MatcherService", Ordered, func() {
 				Expect(errExisting.Error()).ToNot(ContainSubstring("not found"))
 				Expect(errExisting.Error()).To(ContainSubstring("not authorized to scope by user"))
 			})
+
+			It("does not inherit the caller's request user for an unscoped match", func() {
+				// The plugin may be invoked while handling another user's request; an
+				// unscoped match must run as admin, not as that inherited user.
+				capturing := &ctxCapturingDataStore{MockDataStore: ds}
+				svc := newMatcherService(capturing, false, newUserAccess(nil, true), newLibraryAccess(nil, true))
+
+				callerCtx := request.WithUser(GinkgoT().Context(), model.User{ID: "u-caller", UserName: "caller"})
+				_, err := svc.MatchSongs(callerCtx, input, host.MatchOptions{})
+				Expect(err).ToNot(HaveOccurred())
+
+				usr, ok := request.UserFrom(capturing.lastMediaFileCtx)
+				Expect(ok).To(BeTrue())
+				Expect(usr.IsAdmin).To(BeTrue())
+				Expect(usr.ID).ToNot(Equal("u-caller"))
+			})
+
+			It("uses the requested user, overriding an inherited caller user", func() {
+				capturing := &ctxCapturingDataStore{MockDataStore: ds}
+				svc := newMatcherService(capturing, false, newUserAccess(nil, true), newLibraryAccess(nil, true))
+
+				callerCtx := request.WithUser(GinkgoT().Context(), model.User{ID: "u-caller", UserName: "caller"})
+				_, err := svc.MatchSongs(callerCtx, input, host.MatchOptions{Username: "alice"})
+				Expect(err).ToNot(HaveOccurred())
+
+				usr, ok := request.UserFrom(capturing.lastMediaFileCtx)
+				Expect(ok).To(BeTrue())
+				Expect(usr.ID).To(Equal("u-alice"))
+			})
 		})
 
 		Context("with plugin library access", func() {
@@ -440,3 +471,15 @@ var _ = Describe("MatcherService Integration", Ordered, func() {
 		Expect(scoped.Starred[0]).To(BeTrue())
 	})
 })
+
+// ctxCapturingDataStore records the context passed to MediaFile so tests can assert
+// which user the matcher resolved before querying the library.
+type ctxCapturingDataStore struct {
+	*tests.MockDataStore
+	lastMediaFileCtx context.Context
+}
+
+func (d *ctxCapturingDataStore) MediaFile(ctx context.Context) model.MediaFileRepository {
+	d.lastMediaFileCtx = ctx
+	return d.MockDataStore.MediaFile(ctx)
+}
