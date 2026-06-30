@@ -13,7 +13,6 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
-	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/plugins/types"
 	"github.com/navidrome/navidrome/tests"
@@ -164,40 +163,22 @@ var _ = Describe("MatcherService", Ordered, func() {
 		})
 	})
 
-	Describe("toAgentSong", func() {
+	// Artist precedence for songRefToAgentSong is covered in metadata_agent_test.go;
+	// here we cover the duration normalization the matcher path relies on.
+	Describe("songRefToAgentSong duration", func() {
 		It("prefers DurationMs over the deprecated seconds field", func() {
-			song := toAgentSong(types.SongRef{DurationMs: 247333, Duration: 99})
+			song := songRefToAgentSong(types.SongRef{DurationMs: 247333, Duration: 99})
 			Expect(song.Duration).To(Equal(uint32(247333)))
 		})
 
 		It("falls back to the seconds field when DurationMs is zero", func() {
-			song := toAgentSong(types.SongRef{Duration: 210.5})
+			song := songRefToAgentSong(types.SongRef{Duration: 210.5})
 			Expect(song.Duration).To(Equal(uint32(210500)))
 		})
 
-		It("prefers the Artists list over the scalar Artist/ArtistMBID", func() {
-			song := toAgentSong(types.SongRef{
-				Artist:     "Scalar Name",
-				ArtistMBID: "scalar-mbid",
-				Artists: []types.ArtistRef{
-					{ID: "a1", Name: "First", MBID: "mbid-1"},
-					{ID: "a2", Name: "Second", MBID: "mbid-2"},
-				},
-			})
-			Expect(song.Artists).To(Equal([]agents.Artist{
-				{ID: "a1", Name: "First", MBID: "mbid-1"},
-				{ID: "a2", Name: "Second", MBID: "mbid-2"},
-			}))
-		})
-
-		It("uses the scalar Artist/ArtistMBID as a single-element list when Artists is empty", func() {
-			song := toAgentSong(types.SongRef{Artist: "Solo", ArtistMBID: "solo-mbid"})
-			Expect(song.Artists).To(Equal([]agents.Artist{{Name: "Solo", MBID: "solo-mbid"}}))
-		})
-
-		It("leaves Artists nil when no artist information is present", func() {
-			song := toAgentSong(types.SongRef{Name: "Instrumental"})
-			Expect(song.Artists).To(BeNil())
+		It("clamps a negative seconds duration to zero instead of overflowing", func() {
+			song := songRefToAgentSong(types.SongRef{Duration: -1})
+			Expect(song.Duration).To(BeZero())
 		})
 	})
 })

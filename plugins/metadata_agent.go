@@ -250,7 +250,7 @@ func songRefToAgentSong(s types.SongRef) agents.Song {
 		Artists:   artists,
 		Album:     s.Album,
 		AlbumMBID: s.AlbumMBID,
-		Duration:  uint32(s.Duration * 1000),
+		Duration:  s.DurationInMs(),
 	}
 }
 

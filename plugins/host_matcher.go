@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/matcher"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/plugins/host"
@@ -27,7 +26,7 @@ func (s *matcherServiceImpl) MatchSongs(ctx context.Context, songs []types.SongR
 		return results, nil
 	}
 
-	agentSongs := slice.Map(songs, toAgentSong)
+	agentSongs := slice.Map(songs, songRefToAgentSong)
 
 	matched, err := matcher.New(s.ds).MatchSongsIndexed(ctx, agentSongs)
 	if err != nil {
@@ -120,38 +119,6 @@ func (s *matcherServiceImpl) toTrack(mf *model.MediaFile) *types.Track {
 		}
 	}
 	return t
-}
-
-// toAgentSong converts a plugin-facing SongRef into the internal agents.Song the
-// matcher consumes. Duration is normalized to milliseconds via DurationInMs, and
-// artists are resolved via agentArtists.
-func toAgentSong(s types.SongRef) agents.Song {
-	return agents.Song{
-		ID:        s.ID,
-		Name:      s.Name,
-		MBID:      s.MBID,
-		ISRC:      s.ISRC,
-		Album:     s.Album,
-		AlbumMBID: s.AlbumMBID,
-		Duration:  s.DurationInMs(), // agents.Song.Duration is ms; DurationInMs prefers DurationMs over the deprecated seconds field
-		Artists:   agentArtists(s),
-	}
-}
-
-// agentArtists maps a SongRef's artist information to agents.Artist. The richer
-// Artists list takes precedence (per types.SongRef); otherwise the scalar
-// Artist/ArtistMBID pair is used as a single-element list. Returns nil when no
-// artist information is present.
-func agentArtists(s types.SongRef) []agents.Artist {
-	if len(s.Artists) > 0 {
-		return slice.Map(s.Artists, func(a types.ArtistRef) agents.Artist {
-			return agents.Artist{ID: a.ID, Name: a.Name, MBID: a.MBID}
-		})
-	}
-	if s.Artist != "" || s.ArtistMBID != "" {
-		return []agents.Artist{{Name: s.Artist, MBID: s.ArtistMBID}}
-	}
-	return nil
 }
 
 func unixOrZero(t time.Time) int64 {

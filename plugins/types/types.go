@@ -56,19 +56,27 @@ type SongRef struct {
 
 // DurationInMs returns the song duration in milliseconds, preferring the
 // millisecond-precision DurationMs and falling back to the deprecated
-// seconds-based Duration. It returns 0 when neither is set.
+// seconds-based Duration. It returns 0 when neither is set, and clamps a
+// negative seconds value to 0 to avoid an unsigned-conversion wraparound.
 func (s SongRef) DurationInMs() uint32 {
 	if s.DurationMs != 0 {
 		return s.DurationMs
 	}
+	if s.Duration < 0 {
+		return 0
+	}
 	return uint32(s.Duration * 1000)
 }
 
-// SetDurationMs sets the song duration from a millisecond value, populating both
-// DurationMs and the deprecated seconds-based Duration so that plugins reading
-// either field see a consistent value. Use this when building a SongRef to send
-// to a plugin.
-func (s *SongRef) SetDurationMs(ms uint32) {
-	s.DurationMs = ms
-	s.Duration = float32(ms) / 1000
+// SetDuration sets the song duration from a value in seconds, populating both the
+// millisecond-precision DurationMs and the deprecated seconds-based Duration so
+// that plugins reading either field see a consistent value. Use this when
+// building a SongRef to send to a plugin.
+func (s *SongRef) SetDuration(seconds float32) {
+	s.Duration = seconds
+	if seconds < 0 {
+		s.DurationMs = 0
+		return
+	}
+	s.DurationMs = uint32(seconds * 1000)
 }
