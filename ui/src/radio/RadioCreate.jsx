@@ -7,6 +7,7 @@ import {
 } from 'react-admin'
 import { Title } from '../common'
 import { urlValidate } from '../utils/validations'
+import RadioBrowserSearch from './RadioBrowserSearch'
 
 const RadioTitle = () => {
   const translate = useTranslate()
@@ -23,6 +24,7 @@ const RadioCreate = (props) => {
   return (
     <Create title={<RadioTitle />} {...props}>
       <SimpleForm redirect="list" variant={'outlined'}>
+        <RadioBrowserSearch />
         <TextInput source="name" validate={[required()]} />
         <TextInput
           type="url"
