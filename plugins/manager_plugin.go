@@ -4,9 +4,11 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"fmt"
 	"io"
 
 	extism "github.com/extism/go-sdk"
+	"github.com/navidrome/navidrome/model"
 	"github.com/tetratelabs/wazero"
 )
 
@@ -74,4 +76,46 @@ func (a libraryAccess) contains(libID int) bool {
 	}
 	_, ok := a.libraryIDSet[libID]
 	return ok
+}
+
+// userAccess captures the set of users a plugin is permitted to act as,
+// precomputed at load time for O(1) lookup.
+type userAccess struct {
+	allUsers  bool
+	userIDSet map[string]struct{}
+}
+
+func newUserAccess(allowedUserIDs []string, allUsers bool) userAccess {
+	set := make(map[string]struct{}, len(allowedUserIDs))
+	for _, id := range allowedUserIDs {
+		set[id] = struct{}{}
+	}
+	return userAccess{allUsers: allUsers, userIDSet: set}
+}
+
+// allows reports whether the plugin may act as the given user ID.
+func (a userAccess) allows(userID string) bool {
+	if a.allUsers {
+		return true
+	}
+	_, ok := a.userIDSet[userID]
+	return ok
+}
+
+// resolve looks up a user by username and authorizes it against this access set.
+// It distinguishes a genuinely absent user from a backend failure (the latter is
+// surfaced wrapped, not masked as "not found"), and rejects a real user the
+// plugin is not permitted to act as.
+func (a userAccess) resolve(ctx context.Context, ds model.DataStore, username string) (*model.User, error) {
+	usr, err := ds.User(ctx).FindByUsername(username)
+	if err != nil {
+		if errors.Is(err, model.ErrNotFound) {
+			return nil, fmt.Errorf("user %q not found", username)
+		}
+		return nil, fmt.Errorf("looking up user %q: %w", username, err)
+	}
+	if !a.allows(usr.ID) {
+		return nil, fmt.Errorf("plugin is not allowed to act as user %q", username)
+	}
+	return usr, nil
 }

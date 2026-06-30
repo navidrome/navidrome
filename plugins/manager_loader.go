@@ -124,9 +124,13 @@ var hostServices = []hostServiceEntry{
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Matcher != nil },
 		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
 			hasFilesystemPerm := ctx.permissions.Library != nil && ctx.permissions.Library.Filesystem
+			// A library scope is only meaningful when the plugin declared the Library
+			// permission; a matcher-only plugin has no library config to honor.
+			restrictLibraries := ctx.permissions.Library != nil
 			service := newMatcherService(
 				ctx.manager.ds, hasFilesystemPerm,
-				ctx.allowedUsers, ctx.allUsers,
+				newUserAccess(ctx.allowedUsers, ctx.allUsers),
+				restrictLibraries,
 				newLibraryAccess(ctx.allowedLibraries, ctx.allLibraries),
 			)
 			return host.RegisterMatcherHostFunctions(service), nil
