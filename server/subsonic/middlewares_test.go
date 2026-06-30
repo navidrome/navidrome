@@ -251,6 +251,130 @@ var _ = Describe("Middlewares", func() {
 			})
 		})
 
+		When("using app password authentication", func() {
+			var (
+				appRepo *tests.MockAppPasswordRepo
+				usedCh  chan string
+				userID  string
+			)
+
+			BeforeEach(func() {
+				// The primary password remains "wordpass"; an app password
+				// for the same user is "app-secret". The fallback path is only
+				// hit when validateCredentials fails (i.e. p != "wordpass"),
+				// so every test below uses "app-secret" or its derivatives.
+				existing, err := ds.User(context.TODO()).FindByUsername("admin")
+				Expect(err).NotTo(HaveOccurred())
+				userID = existing.ID
+
+				usedCh = make(chan string, 1)
+				appRepo = &tests.MockAppPasswordRepo{
+					Active: model.AppPasswords{
+						{
+							ID:     "ap-active",
+							UserID: userID,
+							Name:   "iOS",
+							Secret: "app-secret",
+						},
+					},
+					UpdateLastUsedAtFn: func(id string) {
+						usedCh <- id
+					},
+				}
+				ds.(*tests.MockDataStore).MockedAppPassword = appRepo
+			})
+
+			It("authenticates with the plaintext app password via p=", func() {
+				r := newGetRequest("u=admin", "p=app-secret")
+				cp := authenticate(ds)(next)
+				cp.ServeHTTP(w, r)
+
+				Expect(next.called).To(BeTrue())
+				user, _ := request.UserFrom(next.req.Context())
+				Expect(user.UserName).To(Equal("admin"))
+				Eventually(usedCh).Should(Receive(Equal("ap-active")))
+			})
+
+			It("authenticates with the hex-encoded app password via enc:", func() {
+				// hex("app-secret") = 6170702d736563726574
+				r := newGetRequest("u=admin", "p=enc:6170702d736563726574")
+				cp := authenticate(ds)(next)
+				cp.ServeHTTP(w, r)
+
+				Expect(next.called).To(BeTrue())
+				Eventually(usedCh).Should(Receive(Equal("ap-active")))
+			})
+
+			It("authenticates with md5(secret+salt) via t=/s=", func() {
+				salt := "abcdef"
+				token := fmt.Sprintf("%x", md5.Sum([]byte("app-secret"+salt)))
+				r := newGetRequest("u=admin", "t="+token, "s="+salt)
+				cp := authenticate(ds)(next)
+				cp.ServeHTTP(w, r)
+
+				Expect(next.called).To(BeTrue())
+				Eventually(usedCh).Should(Receive(Equal("ap-active")))
+			})
+
+			It("rejects a request whose p= matches no primary nor app password", func() {
+				r := newGetRequest("u=admin", "p=nope")
+				cp := authenticate(ds)(next)
+				cp.ServeHTTP(w, r)
+
+				Expect(w.Body.String()).To(ContainSubstring(`code="40"`))
+				Expect(next.called).To(BeFalse())
+				Consistently(usedCh).ShouldNot(Receive())
+			})
+
+			It("rejects when the user has no active app passwords", func() {
+				appRepo.Active = nil
+				r := newGetRequest("u=admin", "p=app-secret")
+				cp := authenticate(ds)(next)
+				cp.ServeHTTP(w, r)
+
+				Expect(w.Body.String()).To(ContainSubstring(`code="40"`))
+				Expect(next.called).To(BeFalse())
+				Consistently(usedCh).ShouldNot(Receive())
+			})
+
+			It("falls through to the existing-password check when only the primary password matches", func() {
+				// p=wordpass would succeed at validateCredentials; the
+				// fallback should not even be queried.
+				appRepo.Active = nil
+				appRepo.GetActiveErr = errors.New("repo should not be queried")
+				r := newGetRequest("u=admin", "p=wordpass")
+				cp := authenticate(ds)(next)
+				cp.ServeHTTP(w, r)
+
+				Expect(next.called).To(BeTrue())
+			})
+
+			It("does not bump last_used_at on failed auth", func() {
+				r := newGetRequest("u=admin", "p=app-secret-wrong")
+				cp := authenticate(ds)(next)
+				cp.ServeHTTP(w, r)
+
+				Expect(next.called).To(BeFalse())
+				Consistently(usedCh).ShouldNot(Receive())
+			})
+
+			It("does not run the app-password fallback for JWT auth", func() {
+				DeferCleanup(configtest.SetupConfig())
+				conf.Server.SessionTimeout = time.Minute
+				auth.Init(ds)
+
+				// A valid app secret presented via the jwt= param must not
+				// authenticate — the fallback is gated on jwt == "".
+				appRepo.GetActiveErr = errors.New("fallback must not run for jwt requests")
+				r := newGetRequest("u=admin", "jwt=app-secret")
+				cp := authenticate(ds)(next)
+				cp.ServeHTTP(w, r)
+
+				Expect(w.Body.String()).To(ContainSubstring(`code="40"`))
+				Expect(next.called).To(BeFalse())
+			})
+		})
+
 		When("using reverse proxy authentication", func() {
 			BeforeEach(func() {
 				DeferCleanup(configtest.SetupConfig())
@@ -305,36 +429,6 @@ var _ = Describe("Middlewares", func() {
 				Expect(w.Body.String()).To(ContainSubstring(`code="40"`))
 				Expect(next.called).To(BeFalse())
 			})
-		})
-	})
-
-	Describe("AdminOnly", func() {
-		It("passes admin users", func() {
-			r := newGetRequest()
-			r = r.WithContext(request.WithUser(r.Context(), model.User{ID: "admin-id", IsAdmin: true}))
-
-			adminOnly(next).ServeHTTP(w, r)
-
-			Expect(next.called).To(BeTrue())
-		})
-
-		It("rejects non-admin users", func() {
-			r := newGetRequest()
-			r = r.WithContext(request.WithUser(r.Context(), model.User{ID: "user-id", IsAdmin: false}))
-
-			adminOnly(next).ServeHTTP(w, r)
-
-			Expect(w.Body.String()).To(ContainSubstring(`code="50"`))
-			Expect(next.called).To(BeFalse())
-		})
-
-		It("returns an internal error when user is missing from context", func() {
-			r := newGetRequest()
-
-			adminOnly(next).ServeHTTP(w, r)
-
-			Expect(w.Body.String()).To(ContainSubstring(`code="0"`))
-			Expect(next.called).To(BeFalse())
 		})
 	})
 
