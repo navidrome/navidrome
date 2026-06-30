@@ -17,20 +17,14 @@ type matcherServiceImpl struct {
 	ds                model.DataStore
 	hasFilesystemPerm bool
 	users             userAccess
-	// restrictLibraries is true when the plugin declared the Library permission and
-	// therefore carries a meaningful library scope. A matcher-only plugin (no Library
-	// permission) has no library config to honor, so its results are not narrowed by
-	// libs — matching the convention that library scope is tied to Library permission.
-	restrictLibraries bool
 	libs              libraryAccess
 }
 
-func newMatcherService(ds model.DataStore, hasFilesystemPerm bool, users userAccess, restrictLibraries bool, libs libraryAccess) host.MatcherService {
+func newMatcherService(ds model.DataStore, hasFilesystemPerm bool, users userAccess, libs libraryAccess) host.MatcherService {
 	return &matcherServiceImpl{
 		ds:                ds,
 		hasFilesystemPerm: hasFilesystemPerm,
 		users:             users,
-		restrictLibraries: restrictLibraries,
 		libs:              libs,
 	}
 }
@@ -39,6 +33,14 @@ func (s *matcherServiceImpl) MatchSongs(ctx context.Context, songs []types.SongR
 	results := make([]*types.Track, len(songs))
 	if len(songs) == 0 {
 		return results, nil
+	}
+
+	// A matcher returns library content, so the plugin must be scoped to at least
+	// one library (or all). Reject up front when nothing is configured, mirroring
+	// how the SubsonicAPI service requires a user scope, rather than silently
+	// matching nothing.
+	if !s.libs.configured() {
+		return nil, fmt.Errorf("matcher: no libraries configured for this plugin")
 	}
 
 	// Scope the match to a user when requested: their annotations are loaded and
@@ -59,10 +61,9 @@ func (s *matcherServiceImpl) MatchSongs(ctx context.Context, songs []types.SongR
 		return nil, err
 	}
 	for i, mf := range matched {
-		// Enforce the plugin's library access (only when the plugin opted into a
-		// library scope): never return a track it may not see, leaving that index
-		// unmatched (nil).
-		if s.restrictLibraries && !s.libs.contains(mf.LibraryID) {
+		// Enforce the plugin's library access: never return a track it may not see,
+		// leaving that index unmatched (nil).
+		if !s.libs.contains(mf.LibraryID) {
 			continue
 		}
 		results[i] = s.toTrack(&mf, scoped)

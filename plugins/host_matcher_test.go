@@ -30,7 +30,7 @@ var _ = Describe("MatcherService", Ordered, func() {
 	// newConverter returns the service as its concrete type so converter unit
 	// tests can call toTrack directly with a chosen filesystem-permission flag.
 	newConverter := func(hasFilesystemPerm bool) *matcherServiceImpl {
-		return newMatcherService(nil, hasFilesystemPerm, newUserAccess(nil, true), false, newLibraryAccess(nil, true)).(*matcherServiceImpl)
+		return newMatcherService(nil, hasFilesystemPerm, newUserAccess(nil, true), newLibraryAccess(nil, true)).(*matcherServiceImpl)
 	}
 
 	Describe("toTrack", func() {
@@ -143,10 +143,10 @@ var _ = Describe("MatcherService", Ordered, func() {
 		// exercise the per-user annotation join or applyLibraryFilter, which are the
 		// SQL layer's responsibility and are covered by the persistence tests.
 
-		// allowAll returns a matcher-only service (no library restriction) permitted
-		// to match as any user.
+		// allowAll returns a service permitted to match as any user across all
+		// libraries.
 		allowAll := func(ds model.DataStore) host.MatcherService {
-			return newMatcherService(ds, false, newUserAccess(nil, true), false, libraryAccess{})
+			return newMatcherService(ds, false, newUserAccess(nil, true), newLibraryAccess(nil, true))
 		}
 
 		It("returns one entry per input song in order, with nil for no-match", func() {
@@ -196,7 +196,7 @@ var _ = Describe("MatcherService", Ordered, func() {
 			input := []types.SongRef{{ID: "mf-1", Name: "Hit", Artist: "Band"}}
 
 			It("does not expose annotations when no username is given", func() {
-				svc := newMatcherService(ds, false, newUserAccess(nil, true), false, libraryAccess{})
+				svc := newMatcherService(ds, false, newUserAccess(nil, true), newLibraryAccess(nil, true))
 				results, err := svc.MatchSongs(GinkgoT().Context(), input, host.MatchOptions{})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results[0]).ToNot(BeNil())
@@ -205,7 +205,7 @@ var _ = Describe("MatcherService", Ordered, func() {
 			})
 
 			It("exposes the user's annotations when an allowed username is given", func() {
-				svc := newMatcherService(ds, false, newUserAccess([]string{"u-alice"}, false), false, libraryAccess{})
+				svc := newMatcherService(ds, false, newUserAccess([]string{"u-alice"}, false), newLibraryAccess(nil, true))
 				results, err := svc.MatchSongs(GinkgoT().Context(), input, host.MatchOptions{Username: "alice"})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results[0]).ToNot(BeNil())
@@ -214,28 +214,28 @@ var _ = Describe("MatcherService", Ordered, func() {
 			})
 
 			It("allows any username when allUsers is set", func() {
-				svc := newMatcherService(ds, false, newUserAccess(nil, true), false, libraryAccess{})
+				svc := newMatcherService(ds, false, newUserAccess(nil, true), newLibraryAccess(nil, true))
 				results, err := svc.MatchSongs(GinkgoT().Context(), input, host.MatchOptions{Username: "alice"})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results[0].Starred).To(BeTrue())
 			})
 
 			It("returns an error for an unknown username", func() {
-				svc := newMatcherService(ds, false, newUserAccess(nil, true), false, libraryAccess{})
+				svc := newMatcherService(ds, false, newUserAccess(nil, true), newLibraryAccess(nil, true))
 				_, err := svc.MatchSongs(GinkgoT().Context(), input, host.MatchOptions{Username: "ghost"})
 				Expect(err).To(MatchError(ContainSubstring("not found")))
 			})
 
 			It("surfaces a backend error rather than masking it as not-found", func() {
 				userRepo.Error = errors.New("db is locked")
-				svc := newMatcherService(ds, false, newUserAccess(nil, true), false, libraryAccess{})
+				svc := newMatcherService(ds, false, newUserAccess(nil, true), newLibraryAccess(nil, true))
 				_, err := svc.MatchSongs(GinkgoT().Context(), input, host.MatchOptions{Username: "alice"})
 				Expect(err).To(MatchError(ContainSubstring("db is locked")))
 				Expect(err.Error()).ToNot(ContainSubstring("not found"))
 			})
 
 			It("returns an error for a username the plugin is not allowed to use", func() {
-				svc := newMatcherService(ds, false, newUserAccess([]string{"u-bob"}, false), false, libraryAccess{})
+				svc := newMatcherService(ds, false, newUserAccess([]string{"u-bob"}, false), newLibraryAccess(nil, true))
 				_, err := svc.MatchSongs(GinkgoT().Context(), input, host.MatchOptions{Username: "alice"})
 				Expect(err).To(MatchError(ContainSubstring("not allowed")))
 			})
@@ -259,8 +259,7 @@ var _ = Describe("MatcherService", Ordered, func() {
 			}
 
 			It("drops matches from libraries the plugin cannot access", func() {
-				// restrictLibraries=true: the plugin declared the Library permission.
-				svc := newMatcherService(ds, false, newUserAccess(nil, true), true, newLibraryAccess([]int{1}, false))
+				svc := newMatcherService(ds, false, newUserAccess(nil, true), newLibraryAccess([]int{1}, false))
 				results, err := svc.MatchSongs(GinkgoT().Context(), input, host.MatchOptions{})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results[0]).ToNot(BeNil())
@@ -269,21 +268,20 @@ var _ = Describe("MatcherService", Ordered, func() {
 			})
 
 			It("keeps all matches when allLibraries is set", func() {
-				svc := newMatcherService(ds, false, newUserAccess(nil, true), true, newLibraryAccess(nil, true))
+				svc := newMatcherService(ds, false, newUserAccess(nil, true), newLibraryAccess(nil, true))
 				results, err := svc.MatchSongs(GinkgoT().Context(), input, host.MatchOptions{})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results[0]).ToNot(BeNil())
 				Expect(results[1]).ToNot(BeNil())
 			})
 
-			It("does not restrict by library for a matcher-only plugin (no Library permission)", func() {
-				// restrictLibraries=false with an empty libraryAccess must NOT drop
-				// everything; a matcher-only plugin has no library scope to honor.
-				svc := newMatcherService(ds, false, newUserAccess(nil, true), false, libraryAccess{})
-				results, err := svc.MatchSongs(GinkgoT().Context(), input, host.MatchOptions{})
-				Expect(err).ToNot(HaveOccurred())
-				Expect(results[0]).ToNot(BeNil())
-				Expect(results[1]).ToNot(BeNil())
+			It("errors when the plugin has no library scope configured", func() {
+				// No allLibraries and no specific libraries: the plugin returns library
+				// content but was never granted any, so reject rather than silently
+				// matching nothing (mirrors SubsonicAPI requiring a user scope).
+				svc := newMatcherService(ds, false, newUserAccess(nil, true), newLibraryAccess(nil, false))
+				_, err := svc.MatchSongs(GinkgoT().Context(), input, host.MatchOptions{})
+				Expect(err).To(MatchError(ContainSubstring("no libraries configured")))
 			})
 		})
 	})
@@ -336,14 +334,15 @@ var _ = Describe("MatcherService Integration", Ordered, func() {
 
 		mockPluginRepo := tests.CreateMockPluginRepo()
 		mockPluginRepo.Permitted = true
-		// The plugin declares only the matcher permission (no Library permission), so
-		// it is not library-scoped and matches across all libraries without a grant.
+		// A matcher returns library content, so the plugin must be granted a library
+		// scope; AllLibraries lets it match across every library.
 		mockPluginRepo.SetData(model.Plugins{{
-			ID:       "test-matcher",
-			Path:     destPath,
-			SHA256:   hashHex,
-			Enabled:  true,
-			AllUsers: true,
+			ID:           "test-matcher",
+			Path:         destPath,
+			SHA256:       hashHex,
+			Enabled:      true,
+			AllUsers:     true,
+			AllLibraries: true,
 		}})
 
 		mediaFileRepo := tests.CreateMockMediaFileRepo()

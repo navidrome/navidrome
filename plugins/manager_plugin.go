@@ -78,6 +78,14 @@ func (a libraryAccess) contains(libID int) bool {
 	return ok
 }
 
+// configured reports whether the plugin has any library scope at all: either all
+// libraries, or at least one specific library. A service that returns library
+// content should reject a request when this is false rather than silently
+// returning nothing.
+func (a libraryAccess) configured() bool {
+	return a.allLibraries || len(a.libraryIDSet) > 0
+}
+
 // userAccess captures the set of users a plugin is permitted to act as,
 // precomputed at load time for O(1) lookup.
 type userAccess struct {
