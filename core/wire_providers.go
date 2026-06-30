@@ -10,6 +10,7 @@ import (
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/core/playlists"
+	"github.com/navidrome/navidrome/core/radio"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/core/stream"
 )
@@ -36,4 +37,5 @@ var Set = wire.NewSet(
 	playback.GetInstance,
 	metrics.GetInstance,
 	lyrics.NewLyrics,
+	radio.NewMetadataManagerService,
 )

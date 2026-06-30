@@ -31,7 +31,7 @@ var _ = Describe("Library API", func() {
 		conf.Server.EnableSharing = false
 		ds = &tests.MockDataStore{}
 		auth.Init(ds)
-		nativeRouter := New(ds, nil, nil, nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil, nil)
+		nativeRouter := New(ds, nil, nil, nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil, nil, nil)
 		router = server.JWTVerifier(nativeRouter)
 
 		// Create test users
