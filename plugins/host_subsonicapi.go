@@ -33,12 +33,12 @@ type subsonicAPIServiceImpl struct {
 }
 
 // newSubsonicAPIService creates a new SubsonicAPIService for a plugin.
-func newSubsonicAPIService(pluginID string, router SubsonicRouter, ds model.DataStore, allowedUserIDs []string, allUsers bool) host.SubsonicAPIService {
+func newSubsonicAPIService(pluginID string, router SubsonicRouter, ds model.DataStore, users userAccess) host.SubsonicAPIService {
 	return &subsonicAPIServiceImpl{
 		pluginID: pluginID,
 		router:   router,
 		ds:       ds,
-		users:    newUserAccess(allowedUserIDs, allUsers),
+		users:    users,
 	}
 }
 
