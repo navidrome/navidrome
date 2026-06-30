@@ -12,6 +12,7 @@ import {
   PLAYER_SYNC_QUEUE,
   PLAYER_SET_MODE,
   PLAYER_REFRESH_QUEUE,
+  EVENT_RADIO_NOW_PLAYING,
 } from '../actions'
 import config from '../config'
 
@@ -208,6 +209,55 @@ const reduceMode = (state, { data: { mode } }) => {
   }
 }
 
+const activeQueueItem = (state) => {
+  if (state.current?.isRadio) {
+    return state.current
+  }
+  const index = state.playIndex ?? state.savedPlayIndex
+  return state.queue[index]
+}
+
+const applyRadioTitle = (item, title) => {
+  if (!item) {
+    return item
+  }
+  const song = { ...(item.song || {}) }
+  if (title) {
+    return {
+      ...item,
+      radioTitle: title,
+      song: { ...song, radioTitle: title },
+    }
+  }
+  delete song.radioTitle
+  const next = { ...item, song }
+  delete next.radioTitle
+  return next
+}
+
+const reduceRadioNowPlaying = (state, { data }) => {
+  const radioId = data?.radioId
+  const active = activeQueueItem(state)
+  if (!radioId || !active?.isRadio || active.trackId !== radioId) {
+    return state
+  }
+
+  const title = (data.title || '').trim()
+  const matchesActive = (item) =>
+    active.uuid ? item.uuid === active.uuid : item.trackId === radioId
+
+  return {
+    ...state,
+    queue: state.queue.map((item) =>
+      matchesActive(item) ? applyRadioTitle(item, title) : item,
+    ),
+    current:
+      state.current?.isRadio && state.current.trackId === radioId
+        ? applyRadioTitle(state.current, title)
+        : state.current,
+  }
+}
+
 export const playerReducer = (previousState = initialState, payload) => {
   const { type } = payload
   switch (type) {
@@ -229,6 +279,8 @@ export const playerReducer = (previousState = initialState, payload) => {
       return reduceCurrent(previousState, payload)
     case PLAYER_SET_MODE:
       return reduceMode(previousState, payload)
+    case EVENT_RADIO_NOW_PLAYING:
+      return reduceRadioNowPlaying(previousState, payload)
     case PLAYER_REFRESH_QUEUE: {
       const resolvedUrls = payload.data || {}
       return {

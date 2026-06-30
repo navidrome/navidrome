@@ -34,6 +34,18 @@ import { keyMap } from '../hotkeys'
 import keyHandlers from './keyHandlers'
 import { calculateGain } from '../utils/calculateReplayGain'
 import { detectBrowserProfile, decisionService } from '../transcode'
+import { httpClient } from '../dataProvider'
+import { REST_URL } from '../consts'
+
+const radioNowPlayingURL = (radioId) =>
+  `${REST_URL}/radio/${encodeURIComponent(radioId)}/nowplaying`
+
+const requestRadioNowPlaying = (radioId, method) => {
+  if (!radioId) {
+    return Promise.resolve()
+  }
+  return httpClient(radioNowPlayingURL(radioId), { method }).catch(() => {})
+}
 
 const Player = () => {
   const theme = useCurrentTheme()
@@ -46,6 +58,7 @@ const Player = () => {
   const [heartbeatTrackId, setHeartbeatTrackId] = useState(null)
   const lastPositionMsRef = useRef(0)
   const currentTrackIdRef = useRef(null)
+  const currentRadioIdRef = useRef(null)
   const stoppedRef = useRef(false)
   const [audioInstance, setAudioInstance] = useState(null)
   const isDesktop = useMediaQuery('(min-width:810px)')
@@ -62,6 +75,30 @@ const Player = () => {
   playerStateRef.current = playerState
 
   currentTrackIdRef.current = currentTrackId
+
+  const stopRadioNowPlaying = useCallback(
+    (radioId = currentRadioIdRef.current) => {
+      if (!radioId) {
+        return
+      }
+      requestRadioNowPlaying(radioId, 'DELETE')
+      if (currentRadioIdRef.current === radioId) {
+        currentRadioIdRef.current = null
+      }
+    },
+    [],
+  )
+
+  const startRadioNowPlaying = useCallback((radioId) => {
+    if (!radioId || currentRadioIdRef.current === radioId) {
+      return
+    }
+    if (currentRadioIdRef.current) {
+      requestRadioNowPlaying(currentRadioIdRef.current, 'DELETE')
+    }
+    currentRadioIdRef.current = radioId
+    requestRadioNowPlaying(radioId, 'POST')
+  }, [])
 
   useInterval(
     () => {
@@ -180,6 +217,10 @@ const Player = () => {
     }
 
     const handlePageHide = () => {
+      if (playerState.current?.isRadio) {
+        stopRadioNowPlaying(playerState.current.trackId)
+        return
+      }
       if (currentTrackIdRef.current && !playerState.current?.isRadio) {
         stoppedRef.current = true
         try {
@@ -200,7 +241,7 @@ const Player = () => {
       window.removeEventListener('beforeunload', handleBeforeUnload)
       window.removeEventListener('pagehide', handlePageHide)
     }
-  }, [playerState, audioInstance])
+  }, [playerState, audioInstance, stopRadioNowPlaying])
 
   const defaultOptions = useMemo(
     () => ({
@@ -285,6 +326,15 @@ const Player = () => {
       }
 
       dispatch(currentPlaying(info))
+      if (info.isRadio) {
+        startRadioNowPlaying(info.trackId)
+        setHeartbeatTrackId(null)
+        setCurrentTrackId(null)
+        return
+      }
+      if (currentRadioIdRef.current) {
+        stopRadioNowPlaying()
+      }
       if (info.duration) {
         const song = info.song
         document.title = `${song.title} - ${song.artist} - Navidrome`
@@ -320,10 +370,20 @@ const Player = () => {
         }
       }
     },
-    [context, dispatch, showNotifications, currentTrackId],
+    [
+      context,
+      dispatch,
+      showNotifications,
+      currentTrackId,
+      startRadioNowPlaying,
+      stopRadioNowPlaying,
+    ],
   )
 
   const onAudioPlayTrackChange = useCallback(() => {
+    if (currentRadioIdRef.current) {
+      stopRadioNowPlaying()
+    }
     if (currentTrackId) {
       subsonic.reportPlayback(
         currentTrackId,
@@ -333,11 +393,16 @@ const Player = () => {
     }
     setHeartbeatTrackId(null)
     setCurrentTrackId(null)
-  }, [currentTrackId])
+  }, [currentTrackId, stopRadioNowPlaying])
 
   const onAudioPause = useCallback(
     (info) => {
       dispatch(currentPlaying(info))
+      if (info.isRadio) {
+        stopRadioNowPlaying(info.trackId)
+        setHeartbeatTrackId(null)
+        return
+      }
       if (!info.isRadio && currentTrackId) {
         const posMs = Math.floor(info.currentTime * 1000)
         lastPositionMsRef.current = posMs
@@ -345,11 +410,14 @@ const Player = () => {
       }
       setHeartbeatTrackId(null)
     },
-    [dispatch, currentTrackId],
+    [dispatch, currentTrackId, stopRadioNowPlaying],
   )
 
   const onAudioEnded = useCallback(
     (currentPlayId, audioLists, info) => {
+      if (info.isRadio) {
+        stopRadioNowPlaying(info.trackId)
+      }
       if (currentTrackId && !info.isRadio) {
         const posMs = Math.floor((info.duration || 0) * 1000)
         subsonic.reportPlayback(currentTrackId, posMs, 'stopped')
@@ -362,7 +430,7 @@ const Player = () => {
         // eslint-disable-next-line no-console
         .catch((e) => console.log('Keepalive error:', e))
     },
-    [dispatch, dataProvider, currentTrackId],
+    [dispatch, dataProvider, currentTrackId, stopRadioNowPlaying],
   )
 
   const onCoverClick = useCallback((mode, audioLists, audioInfo) => {
@@ -395,6 +463,9 @@ const Player = () => {
 
   const onBeforeDestroy = useCallback(() => {
     return new Promise((resolve, reject) => {
+      if (currentRadioIdRef.current) {
+        stopRadioNowPlaying()
+      }
       if (currentTrackId && !playerStateRef.current?.current?.isRadio) {
         subsonic.reportPlayback(
           currentTrackId,
@@ -407,7 +478,7 @@ const Player = () => {
       dispatch(clearQueue())
       reject()
     })
-  }, [dispatch, currentTrackId])
+  }, [dispatch, currentTrackId, stopRadioNowPlaying])
 
   if (!visible) {
     document.title = 'Navidrome'

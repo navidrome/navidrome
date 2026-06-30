@@ -4,6 +4,7 @@ import {
   PLAYER_SYNC_QUEUE,
   PLAYER_CURRENT,
   PLAYER_REFRESH_QUEUE,
+  EVENT_RADIO_NOW_PLAYING,
 } from '../actions'
 
 describe('playerReducer', () => {
@@ -222,6 +223,105 @@ describe('playerReducer', () => {
       const action = { type: PLAYER_REFRESH_QUEUE, data: {} }
       const result = playerReducer(state, action)
       expect(result.playIndex).toBe(0)
+    })
+  })
+
+  describe('radioNowPlaying event', () => {
+    const radioItem = {
+      trackId: 'rd-1',
+      uuid: 'radio-uuid',
+      name: 'Test Station',
+      musicSrc: 'https://stream.example.test/radio',
+      isRadio: true,
+      song: {
+        id: 'rd-1',
+        title: 'Test Station',
+        artist: 'Test Station',
+        album: 'https://stream.example.test/radio',
+        streamUrl: 'https://stream.example.test/radio',
+      },
+    }
+
+    it('updates the active radio with live title metadata', () => {
+      const state = {
+        queue: [radioItem],
+        current: radioItem,
+        savedPlayIndex: 0,
+        clear: false,
+        volume: 1,
+      }
+      const result = playerReducer(state, {
+        type: EVENT_RADIO_NOW_PLAYING,
+        data: {
+          radioId: 'rd-1',
+          title: 'Artist - Title',
+          updatedAt: '2026-06-30T12:34:56Z',
+        },
+      })
+
+      expect(result.current.radioTitle).toBe('Artist - Title')
+      expect(result.current.song.radioTitle).toBe('Artist - Title')
+      expect(result.current.name).toBe('Test Station')
+      expect(result.current.song.title).toBe('Test Station')
+      expect(result.current.musicSrc).toBe('https://stream.example.test/radio')
+      expect(result.queue[0].radioTitle).toBe('Artist - Title')
+    })
+
+    it('ignores events for non-active radios', () => {
+      const state = {
+        queue: [radioItem],
+        current: radioItem,
+        savedPlayIndex: 0,
+        clear: false,
+        volume: 1,
+      }
+      const result = playerReducer(state, {
+        type: EVENT_RADIO_NOW_PLAYING,
+        data: { radioId: 'rd-2', title: 'Other Station - Title' },
+      })
+
+      expect(result).toBe(state)
+    })
+
+    it('clears live title metadata when the title is empty', () => {
+      const liveRadio = {
+        ...radioItem,
+        radioTitle: 'Old Title',
+        song: { ...radioItem.song, radioTitle: 'Old Title' },
+      }
+      const state = {
+        queue: [liveRadio],
+        current: liveRadio,
+        savedPlayIndex: 0,
+        clear: false,
+        volume: 1,
+      }
+      const result = playerReducer(state, {
+        type: EVENT_RADIO_NOW_PLAYING,
+        data: { radioId: 'rd-1', title: '' },
+      })
+
+      expect(result.current.radioTitle).toBeUndefined()
+      expect(result.current.song.radioTitle).toBeUndefined()
+      expect(result.current.song.title).toBe('Test Station')
+      expect(result.current.musicSrc).toBe('https://stream.example.test/radio')
+    })
+
+    it('updates the queued active radio before current is set', () => {
+      const state = {
+        queue: [radioItem],
+        current: {},
+        savedPlayIndex: 0,
+        clear: false,
+        volume: 1,
+      }
+      const result = playerReducer(state, {
+        type: EVENT_RADIO_NOW_PLAYING,
+        data: { radioId: 'rd-1', title: 'Artist - Title' },
+      })
+
+      expect(result.current).toEqual({})
+      expect(result.queue[0].radioTitle).toBe('Artist - Title')
     })
   })
 })

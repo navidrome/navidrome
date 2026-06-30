@@ -55,4 +55,24 @@ describe('<AudioTitle />', () => {
     const link = screen.getByRole('link')
     expect(link.getAttribute('href')).toBe('/album/album-1/show')
   })
+
+  it('shows live radio title without changing the station link', () => {
+    const audioInfo = {
+      trackId: 'rd-1',
+      isRadio: true,
+      radioTitle: 'Artist - Title',
+      song: {
+        id: 'rd-1',
+        title: 'Test Station',
+        artist: 'Test Station',
+        album: 'https://stream.example.test/radio',
+      },
+    }
+    render(<AudioTitle audioInfo={audioInfo} gainInfo={{}} isMobile={false} />)
+
+    expect(screen.getByText('Artist - Title')).toBeInTheDocument()
+    expect(screen.getByRole('link').getAttribute('href')).toBe(
+      '/radio/rd-1/show',
+    )
+  })
 })

@@ -3,6 +3,7 @@ export const EVENT_SERVER_START = 'serverStart'
 export const EVENT_REFRESH_RESOURCE = 'refreshResource'
 export const EVENT_NOW_PLAYING_COUNT = 'nowPlayingCount'
 export const EVENT_NOW_PLAYING_COUNT_SYNC = 'nowPlayingCountSync'
+export const EVENT_RADIO_NOW_PLAYING = 'radioNowPlaying'
 export const EVENT_STREAM_RECONNECTED = 'streamReconnected'
 
 export const processEvent = (type, data) => ({
