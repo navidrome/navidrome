@@ -26,8 +26,8 @@ var _ = Describe("sources", func() {
 			const syncedLyrics = "[00:18.80]We're no strangers to love\n[00:22.801]You know the rules and so do I"
 			const unsyncedLyrics = "We're no strangers to love\nYou know the rules and so do I"
 
-			syncedList, _ := model.ParseLyrics(".lrc", "eng", []byte(syncedLyrics))
-			unsyncedList, _ := model.ParseLyrics(".lrc", "xxx", []byte(unsyncedLyrics))
+			syncedList, _ := model.ParseLyrics(context.Background(), "", ".lrc", "eng", []byte(syncedLyrics))
+			unsyncedList, _ := model.ParseLyrics(context.Background(), "", ".lrc", "xxx", []byte(unsyncedLyrics))
 			synced, _ := syncedList.Main()
 			unsynced, _ := unsyncedList.Main()
 

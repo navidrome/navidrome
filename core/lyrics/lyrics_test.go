@@ -22,7 +22,7 @@ var _ = Describe("Lyrics", func() {
 	var ctx context.Context
 
 	const badLyrics = "This is a set of lyrics\nThat is not good"
-	unsyncedList, _ := model.ParseLyrics(".lrc", "xxx", []byte(badLyrics))
+	unsyncedList, _ := model.ParseLyrics(context.Background(), "", ".lrc", "xxx", []byte(badLyrics))
 	unsynced, _ := unsyncedList.Main()
 	embeddedLyrics := model.LyricList{unsynced}
 
@@ -390,7 +390,7 @@ var _ = Describe("Lyrics", func() {
 		})
 
 		It("resolves lyrics from the matched media files", func() {
-			embeddedList, err := model.ParseLyrics(".lrc", "eng", []byte("Embedded lyrics line"))
+			embeddedList, err := model.ParseLyrics(context.Background(), "", ".lrc", "eng", []byte("Embedded lyrics line"))
 			Expect(err).ToNot(HaveOccurred())
 			embedded, _ := embeddedList.Main()
 			embeddedJSON, err := json.Marshal(model.LyricList{embedded})
