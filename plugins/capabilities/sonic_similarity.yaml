@@ -106,10 +106,16 @@ components:
                     description: ISRC is the International Standard Recording Code for the song.
                 artist:
                     type: string
-                    description: Artist is the artist name.
+                    description: |-
+                        Artist is the artist name.
+
+                        Deprecated: use Artists.
                 artistMbid:
                     type: string
-                    description: ArtistMBID is the MusicBrainz artist ID.
+                    description: |-
+                        ArtistMBID is the MusicBrainz artist ID.
+
+                        Deprecated: use Artists.
                 artists:
                     type: array
                     description: Artists is the full artist list; when set, takes precedence over Artist/ArtistMBID for matching.

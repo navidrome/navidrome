@@ -64,9 +64,13 @@ pub struct SongRef {
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub isrc: String,
     /// Artist is the artist name.
+    /// 
+    /// Deprecated: use Artists.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub artist: String,
     /// ArtistMBID is the MusicBrainz artist ID.
+    /// 
+    /// Deprecated: use Artists.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub artist_mbid: String,
     /// Artists is the full artist list; when set, takes precedence over Artist/ArtistMBID for matching.

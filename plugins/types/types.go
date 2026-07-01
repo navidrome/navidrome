@@ -34,8 +34,12 @@ type SongRef struct {
 	// ISRC is the International Standard Recording Code for the song.
 	ISRC string `json:"isrc,omitempty"`
 	// Artist is the artist name.
+	//
+	// Deprecated: use Artists.
 	Artist string `json:"artist,omitempty"`
 	// ArtistMBID is the MusicBrainz artist ID.
+	//
+	// Deprecated: use Artists.
 	ArtistMBID string `json:"artistMbid,omitempty"`
 	// Artists is the full artist list; when set, takes precedence over Artist/ArtistMBID for matching.
 	Artists []ArtistRef `json:"artists,omitempty"`
