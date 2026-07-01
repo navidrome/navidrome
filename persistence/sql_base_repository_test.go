@@ -226,12 +226,12 @@ var _ = Describe("sqlRepository", func() {
 
 	Describe("applyLibraryFilter", func() {
 		var sq squirrel.SelectBuilder
+		var savedDB = r.db
 
 		BeforeEach(func() {
 			sq = squirrel.Select("*").From("test_table")
-			// The all-libraries fast path needs a real DB to count the library table.
-			// The suite seeds library 1; add library 2 so a user granted only one of them
-			// is a genuine strict subset. Clean it up afterwards to keep the suite's count.
+			// Add library 2 so a user granted only library 1 is a genuine strict subset.
+			savedDB = r.db
 			r.db = GetDBXBuilder()
 			_, err := r.db.NewQuery("INSERT OR IGNORE INTO library (id, name, path) VALUES (2, 'Lib 2', '/lib2')").Execute()
 			Expect(err).ToNot(HaveOccurred())
@@ -240,6 +240,7 @@ var _ = Describe("sqlRepository", func() {
 		AfterEach(func() {
 			_, err := r.db.NewQuery("DELETE FROM library WHERE id = 2").Execute()
 			Expect(err).ToNot(HaveOccurred())
+			r.db = savedDB
 		})
 
 		Context("Admin User", func() {
@@ -249,15 +250,15 @@ var _ = Describe("sqlRepository", func() {
 
 			It("should not apply library filter for admin users", func() {
 				result := r.applyLibraryFilter(sq)
-				sql, _, _ := result.ToSql()
+				sql, _, err := result.ToSql()
+				Expect(err).ToNot(HaveOccurred())
 				Expect(sql).To(Equal("SELECT * FROM test_table"))
 			})
 		})
 
 		Context("Regular User with a subset of libraries", func() {
 			BeforeEach(func() {
-				// Granted library 1 only, while the DB has libraries 1 and 2, so this is a
-				// strict subset and the filter must still be applied.
+				// Strict subset: granted lib 1, DB has libs 1 and 2, so the filter must apply.
 				r.ctx = request.WithUser(context.Background(), model.User{
 					ID: "user123", IsAdmin: false, Libraries: model.Libraries{{ID: 1}},
 				})
@@ -265,14 +266,16 @@ var _ = Describe("sqlRepository", func() {
 
 			It("should apply library filter for regular users", func() {
 				result := r.applyLibraryFilter(sq)
-				sql, args, _ := result.ToSql()
+				sql, args, err := result.ToSql()
+				Expect(err).ToNot(HaveOccurred())
 				Expect(sql).To(ContainSubstring("IN (SELECT ul.library_id FROM user_library ul WHERE ul.user_id = ?)"))
 				Expect(args).To(ContainElement("user123"))
 			})
 
 			It("should use custom table name when provided", func() {
 				result := r.applyLibraryFilter(sq, "custom_table")
-				sql, args, _ := result.ToSql()
+				sql, args, err := result.ToSql()
+				Expect(err).ToNot(HaveOccurred())
 				Expect(sql).To(ContainSubstring("custom_table.library_id IN"))
 				Expect(args).To(ContainElement("user123"))
 			})
@@ -285,14 +288,15 @@ var _ = Describe("sqlRepository", func() {
 
 			It("should apply the library filter (never skip on empty)", func() {
 				result := r.applyLibraryFilter(sq)
-				sql, _, _ := result.ToSql()
+				sql, _, err := result.ToSql()
+				Expect(err).ToNot(HaveOccurred())
 				Expect(sql).To(ContainSubstring("IN (SELECT ul.library_id FROM user_library ul WHERE ul.user_id = ?)"))
 			})
 		})
 
 		Context("Regular User who can see all libraries", func() {
 			BeforeEach(func() {
-				// Granted every library in the DB (1 and 2), so the filter would exclude nothing.
+				// Granted every library in the DB, so the filter would exclude nothing.
 				r.ctx = request.WithUser(context.Background(), model.User{
 					ID: "alllibs", IsAdmin: false, Libraries: model.Libraries{{ID: 1}, {ID: 2}},
 				})
@@ -300,13 +304,15 @@ var _ = Describe("sqlRepository", func() {
 
 			It("should not apply the library filter (subquery would filter nothing)", func() {
 				result := r.applyLibraryFilter(sq)
-				sql, _, _ := result.ToSql()
+				sql, _, err := result.ToSql()
+				Expect(err).ToNot(HaveOccurred())
 				Expect(sql).To(Equal("SELECT * FROM test_table"))
 			})
 
 			It("should not apply the filter even with a custom table name", func() {
 				result := r.applyLibraryFilter(sq, "custom_table")
-				sql, _, _ := result.ToSql()
+				sql, _, err := result.ToSql()
+				Expect(err).ToNot(HaveOccurred())
 				Expect(sql).To(Equal("SELECT * FROM test_table"))
 			})
 		})
@@ -318,13 +324,15 @@ var _ = Describe("sqlRepository", func() {
 
 			It("should not apply library filter for headless processes", func() {
 				result := r.applyLibraryFilter(sq)
-				sql, _, _ := result.ToSql()
+				sql, _, err := result.ToSql()
+				Expect(err).ToNot(HaveOccurred())
 				Expect(sql).To(Equal("SELECT * FROM test_table"))
 			})
 
 			It("should not apply library filter even with custom table name", func() {
 				result := r.applyLibraryFilter(sq, "custom_table")
-				sql, _, _ := result.ToSql()
+				sql, _, err := result.ToSql()
+				Expect(err).ToNot(HaveOccurred())
 				Expect(sql).To(Equal("SELECT * FROM test_table"))
 			})
 		})

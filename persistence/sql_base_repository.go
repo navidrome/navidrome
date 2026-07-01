@@ -257,7 +257,7 @@ func (r sqlRepository) userSeesAllLibraries(visible []int) bool {
 	if err != nil || total == 0 {
 		return false
 	}
-	return int64(len(visible)) >= total
+	return int64(len(visible)) == total
 }
 
 // visibleLibraryIDs returns the libraries the current user can see: all libraries for admin and
