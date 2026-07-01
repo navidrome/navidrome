@@ -84,6 +84,9 @@ var _ = Describe("MatcherService", Ordered, func() {
 			mf.Participants.Add(model.RoleArtist, model.Artist{
 				ID: "ar-1", Name: "My Artist", SortArtistName: "artist, my", MbzArtistID: "mbz-ar-1",
 			})
+			mf.Participants.AddWithSubRole(model.RolePerformer, "violin", model.Artist{
+				ID: "ar-2", Name: "A Fiddler",
+			})
 
 			track := newConverter(true).toTrack(mf, false)
 
@@ -103,12 +106,14 @@ var _ = Describe("MatcherService", Ordered, func() {
 			Expect(track.UpdatedAt).To(Equal(int64(1700000500)))
 			Expect(track.BirthTime).To(Equal(int64(1699999000)))
 			Expect(track.Tags).To(HaveKeyWithValue("isrc", []string{"US-XXX-00"}))
-			Expect(track.Participants).To(HaveKey("artist"))
-			Expect(track.Participants["artist"]).To(HaveLen(1))
-			Expect(track.Participants["artist"][0].ID).To(Equal("ar-1"))
-			Expect(track.Participants["artist"][0].Name).To(Equal("My Artist"))
-			Expect(track.Participants["artist"][0].SortName).To(Equal("artist, my"))
-			Expect(track.Participants["artist"][0].MBID).To(Equal("mbz-ar-1"))
+			// Flat, role-tagged, role-sorted.
+			Expect(track.Participants).To(HaveLen(2))
+			Expect(track.Participants[0]).To(Equal(types.ArtistRef{
+				ID: "ar-1", Name: "My Artist", SortName: "artist, my", MBID: "mbz-ar-1", Role: "artist",
+			}))
+			Expect(track.Participants[1]).To(Equal(types.ArtistRef{
+				ID: "ar-2", Name: "A Fiddler", Role: "performer", SubRole: "violin",
+			}))
 			// AverageRating is an aggregate, exposed even though the match is unscoped.
 			Expect(track.AverageRating).To(Equal(4.2))
 		})

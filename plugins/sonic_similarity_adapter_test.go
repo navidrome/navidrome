@@ -122,8 +122,8 @@ var _ = Describe("mediaFileToSongRef multi-artist", func() {
 		}}
 		ref := mediaFileToSongRef(mf)
 		Expect(ref.Artists).To(Equal([]capabilities.ArtistRef{
-			{ID: "ar-drake", Name: "Drake", MBID: "m-drake"},
-			{ID: "ar-future", Name: "Future", MBID: "m-future"},
+			{ID: "ar-drake", Name: "Drake", MBID: "m-drake", Role: "artist"},
+			{ID: "ar-future", Name: "Future", MBID: "m-future", Role: "artist"},
 		}))
 	})
 	It("leaves Artists nil when the track has no role=artist participants", func() {

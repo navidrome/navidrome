@@ -1,8 +1,11 @@
 package plugins
 
 import (
+	"cmp"
 	"context"
 	"fmt"
+	"maps"
+	"slices"
 	"time"
 
 	"github.com/navidrome/navidrome/core/matcher"
@@ -138,17 +141,21 @@ func (s *matcherServiceImpl) toTrack(mf *model.MediaFile, scoped bool) *types.Tr
 		}
 	}
 	if len(mf.Participants) > 0 {
-		t.Participants = make(map[string][]types.ArtistRef, len(mf.Participants))
-		for role, participants := range mf.Participants {
-			t.Participants[role.String()] = slice.Map(participants, func(p model.Participant) types.ArtistRef {
-				return types.ArtistRef{
+		// Flatten the role→artists map into a role-tagged list, in stable role order.
+		roles := slices.SortedFunc(maps.Keys(mf.Participants), func(a, b model.Role) int {
+			return cmp.Compare(a.String(), b.String())
+		})
+		for _, role := range roles {
+			for _, p := range mf.Participants[role] {
+				t.Participants = append(t.Participants, types.ArtistRef{
 					ID:       p.ID,
 					Name:     p.Name,
 					MBID:     p.MbzArtistID,
 					SortName: p.SortArtistName,
+					Role:     role.String(),
 					SubRole:  p.SubRole,
-				}
-			})
+				})
+			}
 		}
 	}
 	if scoped {

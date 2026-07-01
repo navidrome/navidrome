@@ -38,8 +38,10 @@ pub struct ArtistRef {
     /// SortName is the artist name used for sorting (if known).
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub sort_name: String,
-    /// SubRole is the artist's specific role within a participation (e.g. "remixer",
-    /// "composer"); empty for a plain artist credit.
+    /// Role is the participation category (e.g. "artist", "composer", "performer").
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub role: String,
+    /// SubRole is a specialization within Role (e.g. the instrument for a performer).
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub sub_role: String,
 }
@@ -231,6 +233,7 @@ pub struct Track {
     /// Composite
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub tags: std::collections::HashMap<String, Vec<String>>,
-    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
-    pub participants: std::collections::HashMap<String, Vec<ArtistRef>>,
+    /// Participants lists the track's artists across all roles, each tagged with its Role.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub participants: Vec<ArtistRef>,
 }

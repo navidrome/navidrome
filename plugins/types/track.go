@@ -87,6 +87,7 @@ type Track struct {
 	PlayDate  *int64 `json:"playDate,omitempty"`
 
 	// Composite
-	Tags         map[string][]string    `json:"tags,omitempty"`
-	Participants map[string][]ArtistRef `json:"participants,omitempty"`
+	Tags map[string][]string `json:"tags,omitempty"`
+	// Participants lists the track's artists across all roles, each tagged with its Role.
+	Participants []ArtistRef `json:"participants,omitempty"`
 }

@@ -14,8 +14,9 @@ type ArtistRef struct {
 	MBID string `json:"mbid,omitempty"`
 	// SortName is the artist name used for sorting (if known).
 	SortName string `json:"sortName,omitempty"`
-	// SubRole is the artist's specific role within a participation (e.g. "remixer",
-	// "composer"); empty for a plain artist credit.
+	// Role is the participation category (e.g. "artist", "composer", "performer").
+	Role string `json:"role,omitempty"`
+	// SubRole is a specialization within Role (e.g. the instrument for a performer).
 	SubRole string `json:"subRole,omitempty"`
 }
 

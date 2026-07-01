@@ -367,11 +367,12 @@ components:
                 sortName:
                     type: string
                     description: SortName is the artist name used for sorting (if known).
+                role:
+                    type: string
+                    description: Role is the participation category (e.g. "artist", "composer", "performer").
                 subRole:
                     type: string
-                    description: |-
-                        SubRole is the artist's specific role within a participation (e.g. "remixer",
-                        "composer"); empty for a plain artist credit.
+                    description: SubRole is a specialization within Role (e.g. the instrument for a performer).
             required:
                 - name
         SongRef:

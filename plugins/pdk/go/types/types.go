@@ -20,8 +20,9 @@ type ArtistRef struct {
 	MBID string `json:"mbid,omitempty"`
 	// SortName is the artist name used for sorting (if known).
 	SortName string `json:"sortName,omitempty"`
-	// SubRole is the artist's specific role within a participation (e.g. "remixer",
-	// "composer"); empty for a plain artist credit.
+	// Role is the participation category (e.g. "artist", "composer", "performer").
+	Role string `json:"role,omitempty"`
+	// SubRole is a specialization within Role (e.g. the instrument for a performer).
 	SubRole string `json:"subRole,omitempty"`
 }
 
@@ -141,6 +142,7 @@ type Track struct {
 	PlayCount int64  `json:"playCount,omitempty"`
 	PlayDate  *int64 `json:"playDate,omitempty"`
 	// Composite
-	Tags         map[string][]string    `json:"tags,omitempty"`
-	Participants map[string][]ArtistRef `json:"participants,omitempty"`
+	Tags map[string][]string `json:"tags,omitempty"`
+	// Participants lists the track's artists across all roles, each tagged with its Role.
+	Participants []ArtistRef `json:"participants,omitempty"`
 }
