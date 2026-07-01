@@ -668,32 +668,6 @@ func isLibraryIDFilter(filter Sqlizer) bool {
 	return ok
 }
 
-// userSeesAllLibraries reports whether the visible set already covers every library, so a search
-// needs no library filter at all.
-func (r *artistRepository) userSeesAllLibraries(visible []int) bool {
-	user := loggedUser(r.ctx)
-	if user.IsAdmin || user.ID == invalidUserId {
-		return true // visible is the whole library table
-	}
-	total, err := NewLibraryRepository(r.ctx, r.db).CountAll()
-	if err != nil || total == 0 {
-		return false
-	}
-	return int64(len(visible)) >= total
-}
-
-// visibleLibraryIDs returns the libraries the current user can see: all libraries for admin and
-// headless processes, otherwise the user's granted libraries.
-func (r *artistRepository) visibleLibraryIDs() ([]int, error) {
-	user := loggedUser(r.ctx)
-	if user.IsAdmin || user.ID == invalidUserId {
-		var ids []int
-		err := r.queryAllSlice(Select("id").From("library"), &ids)
-		return ids, err
-	}
-	return slice.Map(user.Libraries, func(lib model.Library) int { return lib.ID }), nil
-}
-
 func (r *artistRepository) Count(options ...rest.QueryOptions) (int64, error) {
 	return r.CountAll(r.parseRestOptions(r.ctx, options...))
 }
