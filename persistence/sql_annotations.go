@@ -4,16 +4,60 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"regexp"
+	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
+	"github.com/fatih/structs"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 )
 
 const annotationTable = "annotation"
+
+// annotationColumns are the columns withAnnotation's LEFT JOIN contributes, derived from
+// model.Annotations so the set tracks schema changes. average_rating is excluded: it lives on the
+// base table, not the annotation join.
+var annotationColumns = sync.OnceValue(func() map[string]struct{} {
+	cols := map[string]struct{}{}
+	for name := range structs.Map(model.Annotations{}) {
+		if name == "average_rating" {
+			continue
+		}
+		cols[name] = struct{}{}
+	}
+	return cols
+})
+
+// annotationColumnRE matches any annotation column as a whole word. The word boundaries keep the
+// base-table column average_rating from matching the annotation column rating (Go's \b treats '_'
+// as a word char). It is case-insensitive because SQLite column names are, so a raw filter using
+// e.g. "RATING" must still be detected.
+var annotationColumnRE = sync.OnceValue(func() *regexp.Regexp {
+	cols := make([]string, 0, len(annotationColumns()))
+	for col := range annotationColumns() {
+		cols = append(cols, regexp.QuoteMeta(col))
+	}
+	sort.Strings(cols) // map iteration is random; sort for a stable pattern
+	return regexp.MustCompile(`(?i)\b(?:` + strings.Join(cols, "|") + `)\b`)
+})
+
+// filtersNeedAnnotation reports whether the rendered query references an annotation column, i.e.
+// whether the annotation LEFT JOIN must be kept. Scanning the rendered SQL catches every filter
+// path. The placeholder column is needed because squirrel won't render a column-less SELECT; on a
+// render error, keep the join to be safe.
+func filtersNeedAnnotation(query SelectBuilder) bool {
+	sql, _, err := query.Columns("1").ToSql()
+	if err != nil {
+		return true
+	}
+	return annotationColumnRE().MatchString(sql)
+}
 
 func (r sqlRepository) withAnnotation(query SelectBuilder, idField string) SelectBuilder {
 	userID := loggedUser(r.ctx).ID

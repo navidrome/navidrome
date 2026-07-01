@@ -201,7 +201,11 @@ func (r *artistRepository) selectArtist(options ...model.QueryOptions) SelectBui
 func (r *artistRepository) CountAll(options ...model.QueryOptions) (int64, error) {
 	query := r.newSelect()
 	query = r.applyLibraryFilterToArtistQuery(query)
-	query = r.withAnnotation(query, "artist.id")
+	// Only the annotation join is gated; the library_artist join above (and its count(distinct))
+	// must stay, since an artist can span multiple libraries.
+	if filtersNeedAnnotation(r.applyFilters(query, options...)) {
+		query = r.withAnnotation(query, "artist.id")
+	}
 	return r.count(query, options...)
 }
 

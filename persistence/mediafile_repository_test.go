@@ -45,6 +45,37 @@ var _ = Describe("MediaRepository", func() {
 		Expect(mr.CountAll()).To(Equal(int64(13)))
 	})
 
+	Describe("CountAll annotation-join gating", func() {
+		var adminRepo model.MediaFileRepository
+
+		BeforeEach(func() {
+			adminCtx := request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid", IsAdmin: true})
+			adminRepo = NewMediaFileRepository(adminCtx, GetDBXBuilder())
+		})
+
+		It("counts starred songs when an annotation filter is present", func() {
+			// Come Together (id 1002) is starred for the admin user in the seed data
+			count, err := adminRepo.CountAll(model.QueryOptions{
+				Filters: annotationBoolFilter("starred")("starred", "true"),
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(count).To(Equal(int64(1)))
+		})
+
+		It("counts with starred=false without a 'no such column' error (join kept)", func() {
+			count, err := adminRepo.CountAll(model.QueryOptions{
+				Filters: annotationBoolFilter("starred")("starred", "false"),
+			})
+			Expect(err).ToNot(HaveOccurred())
+			// All songs except the one starred one
+			Expect(count).To(Equal(int64(12)))
+		})
+
+		It("counts unfiltered with the join dropped", func() {
+			Expect(adminRepo.CountAll()).To(Equal(int64(13)))
+		})
+	})
+
 	Describe("CountBySuffix", func() {
 		var mp3File, flacFile1, flacFile2, flacUpperFile model.MediaFile
 
