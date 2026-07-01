@@ -64,6 +64,10 @@ func (s *matcherServiceImpl) MatchSongs(ctx context.Context, songs []types.SongR
 	if err != nil {
 		return nil, err
 	}
+	// The plugin's library scope is a second, independent authorization on top of the context
+	// user's own access, so it's applied here rather than in-query: the unscoped path runs as
+	// admin (which applyLibraryFilter skips), and folding s.libs into the context user would
+	// conflate the two scopes instead of intersecting them.
 	for i, mf := range matched {
 		// Drop tracks outside the plugin's library scope, leaving that index unmatched.
 		if !s.libs.contains(mf.LibraryID) {
