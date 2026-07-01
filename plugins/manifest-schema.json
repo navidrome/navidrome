@@ -113,6 +113,9 @@
         },
         "taskqueue": {
           "$ref": "#/$defs/TaskQueuePermission"
+        },
+        "matcher": {
+          "$ref": "#/$defs/MatcherPermission"
         }
       }
     },
@@ -252,6 +255,17 @@
         "reason": {
           "type": "string",
           "description": "Explanation for why users access is needed"
+        }
+      }
+    },
+    "MatcherPermission": {
+      "type": "object",
+      "description": "Matcher service permissions for resolving external songs to local library tracks",
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Explanation for why matcher access is needed"
         }
       }
     }

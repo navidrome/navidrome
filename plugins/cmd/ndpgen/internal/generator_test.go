@@ -287,6 +287,42 @@ var _ = Describe("Generator", func() {
 			Expect(codeStr).To(ContainSubstring(`"encoding/json"`))
 			Expect(codeStr).To(ContainSubstring(`extism "github.com/extism/go-sdk"`))
 		})
+
+		It("imports the shared types package when a method references types directly", func() {
+			svc := Service{
+				Name:      "Matcher",
+				Interface: "MatcherService",
+				Methods: []Method{
+					{
+						Name:     "MatchSongs",
+						HasError: true,
+						Params:   []Param{NewParam("songs", "[]types.SongRef")},
+						Returns:  []Param{NewParam("results", "[]*types.Track")},
+					},
+				},
+			}
+
+			code, err := GenerateHost(svc, "host")
+			Expect(err).NotTo(HaveOccurred())
+
+			codeStr := string(code)
+			Expect(codeStr).To(ContainSubstring(`"github.com/navidrome/navidrome/plugins/types"`))
+			Expect(codeStr).To(ContainSubstring("Songs []types.SongRef"))
+		})
+
+		It("does not import the shared types package when no method references types", func() {
+			svc := Service{
+				Name:      "Test",
+				Interface: "TestService",
+				Methods: []Method{
+					{Name: "Method", Params: []Param{NewParam("count", "int32")}},
+				},
+			}
+
+			code, err := GenerateHost(svc, "host")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(code)).NotTo(ContainSubstring(`"github.com/navidrome/navidrome/plugins/types"`))
+		})
 	})
 
 	Describe("toJSONName", func() {

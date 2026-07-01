@@ -59,6 +59,14 @@ func (m *Manifest) Validate() error {
 		}
 	}
 
+	// Matcher returns library content, so it requires the library permission (which
+	// is what exposes a library scope for configuration).
+	if m.Permissions != nil && m.Permissions.Matcher != nil {
+		if m.Permissions.Library == nil {
+			return fmt.Errorf("'matcher' permission requires 'library' permission to be declared")
+		}
+	}
+
 	// Validate config schema if present
 	if m.Config != nil && m.Config.Schema != nil {
 		if err := validateConfigSchema(m.Config.Schema); err != nil {

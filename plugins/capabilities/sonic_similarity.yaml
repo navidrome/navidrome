@@ -61,7 +61,8 @@ components:
             description: |-
                 ArtistRef is the minimal information a plugin returns for Navidrome to match an
                 artist against the library. It is a reference, not a full artist entity: it
-                carries only matching keys (name and optional internal/MusicBrainz IDs), never
+                carries only matching keys (name and optional internal/MusicBrainz IDs) plus a
+                few projection fields used when describing a track's participants, never
                 descriptive data such as biographies or images.
             properties:
                 id:
@@ -73,6 +74,15 @@ components:
                 mbid:
                     type: string
                     description: MBID is the MusicBrainz ID for the artist.
+                sortName:
+                    type: string
+                    description: SortName is the artist name used for sorting (if known).
+                role:
+                    type: string
+                    description: Role is the participation category (e.g. "artist", "composer", "performer").
+                subRole:
+                    type: string
+                    description: SubRole is a specialization within Role (e.g. the instrument for a performer).
             required:
                 - name
         SongRef:
@@ -97,10 +107,16 @@ components:
                     description: ISRC is the International Standard Recording Code for the song.
                 artist:
                     type: string
-                    description: Artist is the artist name.
+                    description: |-
+                        Artist is the artist name.
+
+                        Deprecated: use Artists.
                 artistMbid:
                     type: string
-                    description: ArtistMBID is the MusicBrainz artist ID.
+                    description: |-
+                        ArtistMBID is the MusicBrainz artist ID.
+
+                        Deprecated: use Artists.
                 artists:
                     type: array
                     description: Artists is the full artist list; when set, takes precedence over Artist/ArtistMBID for matching.
@@ -115,6 +131,17 @@ components:
                 duration:
                     type: number
                     format: float
-                    description: Duration is the song duration in seconds.
+                    description: |-
+                        Duration is the song duration in seconds.
+
+                        Deprecated: use DurationMs, which carries millisecond precision. When
+                        DurationMs is non-zero it takes precedence; Duration is kept only for
+                        backwards compatibility with plugins that still send seconds.
+                durationMs:
+                    type: integer
+                    format: int64
+                    description: |-
+                        DurationMs is the song duration in milliseconds. It supersedes Duration
+                        when non-zero.
             required:
                 - name

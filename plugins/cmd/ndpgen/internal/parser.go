@@ -85,19 +85,24 @@ func ParseDirectoryWithShared(dir string, shared map[string]StructDef) ([]Servic
 		return nil, err
 	}
 
-	// First pass: collect all type aliases from every file so that an alias
-	// declared in one file is visible when resolving types in a sibling file.
+	// First pass: collect all struct definitions and type aliases from every file
+	// so that a struct or alias declared in one file is visible when resolving
+	// types in a sibling file.
+	pkgStructMap := make(map[string]StructDef)
 	pkgAliasMap := make(map[string]TypeAlias)
 	for _, pf := range parsed {
+		for _, s := range parseStructs(pf.file) {
+			pkgStructMap[s.Name] = s
+		}
 		for _, a := range parseTypeAliases(pf.file) {
 			pkgAliasMap[a.Name] = a
 		}
 	}
 
-	// Second pass: parse services using the package-level alias map.
+	// Second pass: parse services using the package-level maps.
 	var services []Service
 	for _, pf := range parsed {
-		svcList, err := parseServiceFile(pf.file, pkgAliasMap, shared)
+		svcList, err := parseServiceFile(pf.file, pkgStructMap, pkgAliasMap, shared)
 		if err != nil {
 			return nil, fmt.Errorf("parsing %s: %w", filepath.Base(pf.path), err)
 		}
@@ -484,15 +489,10 @@ func parseExport(name string, funcType *ast.FuncType, annotation map[string]stri
 }
 
 // parseServiceFile parses a single Go source file and extracts host services.
-// pkgAliasMap is the package-wide alias map built from all files in the package.
-func parseServiceFile(f *ast.File, pkgAliasMap map[string]TypeAlias, shared map[string]StructDef) ([]Service, error) {
-	// Collect all struct definitions in the file.
-	allStructs := parseStructs(f)
-	structMap := make(map[string]StructDef)
-	for _, s := range allStructs {
-		structMap[s.Name] = s
-	}
-
+// pkgStructMap and pkgAliasMap are the package-wide struct and alias maps built
+// from all files in the package, so a host-service interface can reference types
+// defined in a sibling file.
+func parseServiceFile(f *ast.File, pkgStructMap map[string]StructDef, pkgAliasMap map[string]TypeAlias, shared map[string]StructDef) ([]Service, error) {
 	var services []Service
 
 	for _, decl := range f.Decls {
@@ -569,9 +569,13 @@ func parseServiceFile(f *ast.File, pkgAliasMap map[string]TypeAlias, shared map[
 			}
 			service.SharedAliases = sharedAliases
 
+			// Recursively collect all struct dependencies so types referenced only
+			// transitively (e.g. a field type of a referenced struct) are attached.
+			collectAllStructDependencies(referencedTypes, pkgStructMap)
+
 			// Attach referenced structs to the service (sorted for stable output)
 			for _, typeName := range slices.Sorted(maps.Keys(referencedTypes)) {
-				if s, exists := structMap[typeName]; exists {
+				if s, exists := pkgStructMap[typeName]; exists {
 					service.Structs = append(service.Structs, s)
 				}
 			}
