@@ -296,9 +296,18 @@ var _ = Describe("sqlRepository", func() {
 
 		Context("Regular User who can see all libraries", func() {
 			BeforeEach(func() {
-				// Granted every library in the DB, so the filter would exclude nothing.
+				// Grant every library that currently exists in the (shared) DB, so the filter
+				// would exclude nothing. Querying the real IDs keeps this correct even if other
+				// specs left extra libraries behind, which happens under Ginkgo's randomized order.
+				var ids []int
+				err := r.db.NewQuery("SELECT id FROM library ORDER BY id").Column(&ids)
+				Expect(err).ToNot(HaveOccurred())
+				libs := make(model.Libraries, 0, len(ids))
+				for _, id := range ids {
+					libs = append(libs, model.Library{ID: id})
+				}
 				r.ctx = request.WithUser(context.Background(), model.User{
-					ID: "alllibs", IsAdmin: false, Libraries: model.Libraries{{ID: 1}, {ID: 2}},
+					ID: "alllibs", IsAdmin: false, Libraries: libs,
 				})
 			})
 
