@@ -193,6 +193,16 @@ var _ = Describe("Annotation Filters", func() {
 				Where(squirrel.Expr("COALESCE(rating, 0) > 0"))
 			Expect(filtersNeedAnnotation(q)).To(BeTrue())
 		})
+
+		It("is true for uppercase/mixed-case annotation columns (SQLite is case-insensitive)", func() {
+			q := squirrel.Select("count(1)").From("media_file").Where(squirrel.Expr("RATING > 0"))
+			Expect(filtersNeedAnnotation(q)).To(BeTrue())
+		})
+
+		It("is false for uppercase average_rating (still excluded case-insensitively)", func() {
+			q := squirrel.Select("count(1)").From("media_file").Where(squirrel.Expr("AVERAGE_RATING > 3"))
+			Expect(filtersNeedAnnotation(q)).To(BeFalse())
+		})
 	})
 
 	Describe("CountAll annotation-join gating", func() {
@@ -217,12 +227,13 @@ var _ = Describe("Annotation Filters", func() {
 				_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": starredAlbum.ID}))
 			}()
 
+			// Exactly two albums are starred for this user: the one created above and
+			// albumRadioactivity (id 103) from the seed data.
 			count, err := albumRepo.CountAll(model.QueryOptions{
 				Filters: annotationBoolFilter("starred")("starred", "true"),
 			})
 			Expect(err).ToNot(HaveOccurred())
-			Expect(count).To(BeNumerically(">=", int64(1)))
-			Expect(count).To(BeNumerically("<", total(albumRepo)))
+			Expect(count).To(Equal(int64(2)))
 		})
 
 		It("counts via a raw annotation filter without a 'no such column' error", func() {
@@ -234,9 +245,3 @@ var _ = Describe("Annotation Filters", func() {
 		})
 	})
 })
-
-func total(r *albumRepository) int64 {
-	c, err := r.CountAll()
-	Expect(err).ToNot(HaveOccurred())
-	return c
-}

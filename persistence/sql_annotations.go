@@ -36,14 +36,15 @@ var annotationColumns = sync.OnceValue(func() map[string]struct{} {
 
 // annotationColumnRE matches any annotation column as a whole word. The word boundaries keep the
 // base-table column average_rating from matching the annotation column rating (Go's \b treats '_'
-// as a word char).
+// as a word char). It is case-insensitive because SQLite column names are, so a raw filter using
+// e.g. "RATING" must still be detected.
 var annotationColumnRE = sync.OnceValue(func() *regexp.Regexp {
 	cols := make([]string, 0, len(annotationColumns()))
 	for col := range annotationColumns() {
 		cols = append(cols, regexp.QuoteMeta(col))
 	}
 	sort.Strings(cols) // map iteration is random; sort for a stable pattern
-	return regexp.MustCompile(`\b(?:` + strings.Join(cols, "|") + `)\b`)
+	return regexp.MustCompile(`(?i)\b(?:` + strings.Join(cols, "|") + `)\b`)
 })
 
 // filtersNeedAnnotation reports whether the rendered query references an annotation column, i.e.
