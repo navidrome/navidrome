@@ -4,6 +4,8 @@ import (
 	"os"
 
 	"github.com/google/uuid"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/metadata"
@@ -800,6 +802,50 @@ var _ = Describe("Participants", func() {
 				Expect(roles[1].Name).To(Equal("b"))
 				Expect(roles[1].MbzArtistID).To(Equal(""))
 			}
+		})
+	})
+
+	Describe("Artist split exceptions", func() {
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+		})
+
+		It("does not split a whitelisted artist name on the default separators", func() {
+			// " feat. " is a default artists separator (mappings.yaml)
+			conf.Server.Scanner.ArtistSplitExceptions = []string{"Someone feat. Else"}
+			mf = toMediaFile(model.RawTags{
+				"ARTIST": {"Artist Name feat. Someone feat. Else"},
+			})
+
+			artists := mf.Participants[model.RoleArtist]
+			Expect(artists).To(HaveLen(2))
+			Expect(artists[0].Name).To(Equal("Artist Name"))
+			Expect(artists[1].Name).To(Equal("Someone feat. Else"))
+		})
+
+		It("does not split a whitelisted name in role tags", func() {
+			// "/" is a default roles separator (mappings.yaml)
+			conf.Server.Scanner.ArtistSplitExceptions = []string{"AC/DC"}
+			mf = toMediaFile(model.RawTags{
+				"COMPOSER": {"AC/DC/John Doe"},
+			})
+
+			composers := mf.Participants[model.RoleComposer]
+			Expect(composers).To(HaveLen(2))
+			Expect(composers[0].Name).To(Equal("AC/DC"))
+			Expect(composers[1].Name).To(Equal("John Doe"))
+		})
+
+		It("splits normally when the exception does not match", func() {
+			conf.Server.Scanner.ArtistSplitExceptions = []string{"Iron and Wine"}
+			mf = toMediaFile(model.RawTags{
+				"ARTIST": {"Artist Name feat. Someone Else"},
+			})
+
+			artists := mf.Participants[model.RoleArtist]
+			Expect(artists).To(HaveLen(2))
+			Expect(artists[0].Name).To(Equal("Artist Name"))
+			Expect(artists[1].Name).To(Equal("Someone Else"))
 		})
 	})
 })

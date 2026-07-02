@@ -182,6 +182,7 @@ func (md Metadata) getRoleValues(role model.TagName) []string {
 		conf = model.TagRolesConf()
 	}
 	if len(conf.Split) > 0 {
+		conf.ExceptionsRx = model.ArtistSplitExceptionsRx()
 		values = conf.SplitTagValue(values)
 		return filterDuplicatedOrEmptyValues(values)
 	}
@@ -203,6 +204,7 @@ func (md Metadata) getArtistValues(single, multi model.TagName) []string {
 		conf = model.TagArtistsConf()
 	}
 	if len(conf.Split) > 0 {
+		conf.ExceptionsRx = model.ArtistSplitExceptionsRx()
 		vSingle = conf.SplitTagValue(vSingle)
 		return filterDuplicatedOrEmptyValues(vSingle)
 	}
