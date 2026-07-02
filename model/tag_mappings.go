@@ -7,6 +7,8 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
@@ -25,12 +27,13 @@ type mappingsConf struct {
 type tagMappings map[TagName]TagConf
 
 type TagConf struct {
-	Aliases   []string       `yaml:"aliases"`
-	Type      TagType        `yaml:"type"`
-	MaxLength int            `yaml:"maxLength"`
-	Split     []string       `yaml:"split"`
-	Album     bool           `yaml:"album"`
-	SplitRx   *regexp.Regexp `yaml:"-"`
+	Aliases      []string       `yaml:"aliases"`
+	Type         TagType        `yaml:"type"`
+	MaxLength    int            `yaml:"maxLength"`
+	Split        []string       `yaml:"split"`
+	Album        bool           `yaml:"album"`
+	SplitRx      *regexp.Regexp `yaml:"-"`
+	ExceptionsRx *regexp.Regexp `yaml:"-"`
 }
 
 // SplitTagValue splits tag values by the configured split separators.
@@ -48,13 +51,82 @@ func (c TagConf) SplitTagValue(values []string) []string {
 }
 
 func (c TagConf) splitValue(tag string) []string {
+	protected := protectedSpans(tag, c.ExceptionsRx)
 	var parts []string
 	start := 0
 	for _, sep := range c.SplitRx.FindAllStringIndex(tag, -1) {
+		if overlapsAny(sep, protected) {
+			continue
+		}
 		parts = append(parts, strings.TrimSpace(tag[start:sep[0]]))
 		start = sep[1]
 	}
 	return append(parts, strings.TrimSpace(tag[start:]))
+}
+
+// protectedSpans returns the spans of rx matches that sit on word boundaries.
+// Boundaries are checked here, rune-aware, because RE2's \b is ASCII-only and
+// would silently never match names starting/ending with accented letters.
+func protectedSpans(tag string, rx *regexp.Regexp) [][]int {
+	if rx == nil {
+		return nil
+	}
+	var spans [][]int
+	for _, span := range rx.FindAllStringIndex(tag, -1) {
+		if isWordBounded(tag, span[0], span[1]) {
+			spans = append(spans, span)
+		}
+	}
+	return spans
+}
+
+func isWordBounded(s string, start, end int) bool {
+	isWord := func(r rune) bool { return unicode.IsLetter(r) || unicode.IsDigit(r) }
+	before, _ := utf8.DecodeLastRuneInString(s[:start])
+	after, _ := utf8.DecodeRuneInString(s[end:])
+	return !isWord(before) && !isWord(after)
+}
+
+func overlapsAny(span []int, spans [][]int) bool {
+	for _, s := range spans {
+		if span[0] < s[1] && s[0] < span[1] {
+			return true
+		}
+	}
+	return false
+}
+
+// compileExceptionsRegex builds a case-insensitive regex matching any of the
+// given literal names, or nil if there are none.
+func compileExceptionsRegex(exceptions []string) *regexp.Regexp {
+	var names []string
+	for _, e := range exceptions {
+		if e = strings.TrimSpace(e); e != "" {
+			names = append(names, e)
+		}
+	}
+	if len(names) == 0 {
+		return nil
+	}
+	// Longest-first: Go regex alternation is leftmost-first, so with overlapping
+	// entries (e.g. "Iron and Wine Duo" vs "Iron and Wine") the longer name must
+	// come first to win. Ties broken lexicographically for determinism.
+	slices.SortFunc(names, func(a, b string) int {
+		if c := cmp.Compare(len(b), len(a)); c != 0 {
+			return c
+		}
+		return cmp.Compare(a, b)
+	})
+	escaped := make([]string, len(names))
+	for i, name := range names {
+		escaped[i] = regexp.QuoteMeta(name)
+	}
+	rx, err := regexp.Compile("(?i)(" + strings.Join(escaped, "|") + ")")
+	if err != nil {
+		log.Warn("Error compiling split exceptions regexp", "exceptions", exceptions, err)
+		return nil
+	}
+	return rx
 }
 
 type TagType string
