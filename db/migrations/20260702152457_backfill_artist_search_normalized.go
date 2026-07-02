@@ -13,12 +13,10 @@ func init() {
 	goose.AddMigrationContext(upBackfillArtistSearchNormalized, downBackfillArtistSearchNormalized)
 }
 
-// The FTS5 migration back-filled artist.search_normalized with a SQL punctuation-strip
-// approximation, which cannot transliterate atomic letters (Ø, æ, ß, ...) and leaves the
-// column empty for names without punctuation. Since the scanner did not rewrite the column
-// either, artists like "GØGGS" or "MØ" migrated from a pre-FTS5 database were unfindable by
-// ASCII searches. Recompute the precise value in Go; the artist_fts update trigger re-indexes
-// every row whose value changes.
+// The FTS5 migration back-filled artist.search_normalized with a SQL approximation that
+// cannot transliterate atomic letters (Ø, æ, ß, ...), and the scanner never rewrote the
+// column, leaving artists like "GØGGS" unfindable by ASCII searches. Recompute it in Go;
+// the artist_fts update trigger re-indexes every row that changes.
 func upBackfillArtistSearchNormalized(ctx context.Context, tx *sql.Tx) error {
 	notice(ctx, tx, "Rebuilding artist search index data. This may take a moment on large libraries.")
 

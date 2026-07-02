@@ -103,9 +103,8 @@ func (a *dbArtist) PostMapArgs(m map[string]any) error {
 	}
 	similarArtists, _ := json.Marshal(sa)
 	m["similar_artists"] = string(similarArtists)
-	// Derived columns are dropped by Put calls that pass an explicit column list; when adding
-	// one here, also add it to the scanner's artist Put in phase_1_folders.go or it will never
-	// be updated on rescans (see the search_normalized backfill migration for what that costs).
+	// When adding a derived column here, also add it to the scanner's artist Put column list
+	// in phase_1_folders.go, or rescans will never update it (how search_normalized went stale).
 	m["full_text"] = formatFullText(a.Name, a.SortArtistName)
 	m["search_normalized"] = str.NormalizeForFTS(a.Name)
 

@@ -208,8 +208,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			Expect(runScanner(ctx, true)).To(Succeed())
 			Expect(searchNormalized()).To(Equal("GOGGS"))
 
-			// Simulate the state left by the FTS5 migration back-fill, which cannot
-			// transliterate atomic letters (Ø) in SQL and relies on a rescan to fix it
+			// Simulate the stale value left by the FTS5 migration's SQL back-fill
 			_, err := db.Db().ExecContext(ctx, "UPDATE artist SET search_normalized = '' WHERE name = 'GØGGS'")
 			Expect(err).ToNot(HaveOccurred())
 

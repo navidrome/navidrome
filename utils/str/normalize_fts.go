@@ -7,9 +7,9 @@ import (
 	"github.com/deluan/sanitize"
 )
 
-// FTSPunctStrip strips everything except letters and numbers (no whitespace, wildcards, or quotes).
-// It is the single punctuation-strip contract shared by index-time normalization (NormalizeForFTS)
-// and query-time processing in the persistence package — both sides must produce matching tokens.
+// FTSPunctStrip strips everything except letters and numbers. Index-time normalization
+// (NormalizeForFTS) and query-time processing in persistence share it so both sides
+// produce matching tokens.
 var FTSPunctStrip = regexp.MustCompile(`[^\p{L}\p{N}]`)
 
 // NormalizeForFTS takes multiple strings and returns a space-separated, deduplicated list of
