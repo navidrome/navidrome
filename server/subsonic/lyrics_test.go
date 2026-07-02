@@ -100,8 +100,8 @@ var _ = Describe("GetLyricsBySongId", func() {
 
 	It("should return mixed lyrics", func() {
 		r := newGetRequest("id=1")
-		syncedList, _ := model.ParseLyrics(".lrc", "eng", []byte(syncedLyrics))
-		unsyncedList, _ := model.ParseLyrics(".lrc", "xxx", []byte(unsyncedLyrics))
+		syncedList, _ := model.ParseLyrics(GinkgoT().Context(), ".lrc", "eng", []byte(syncedLyrics))
+		unsyncedList, _ := model.ParseLyrics(GinkgoT().Context(), ".lrc", "xxx", []byte(unsyncedLyrics))
 		synced, _ := syncedList.Main()
 		unsynced, _ := unsyncedList.Main()
 		lyricsJson, err := json.Marshal(model.LyricList{
@@ -158,7 +158,7 @@ var _ = Describe("GetLyricsBySongId", func() {
 
 	It("should parse lrc metadata", func() {
 		r := newGetRequest("id=1")
-		syncedList, _ := model.ParseLyrics(".lrc", "eng", []byte(metadata+"\n"+syncedLyrics))
+		syncedList, _ := model.ParseLyrics(GinkgoT().Context(), ".lrc", "eng", []byte(metadata+"\n"+syncedLyrics))
 		synced, _ := syncedList.Main()
 		lyricsJson, err := json.Marshal(model.LyricList{
 			synced,

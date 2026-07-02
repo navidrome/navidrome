@@ -24,7 +24,7 @@ func benchmarkParse(b *testing.B, suffix, fixture string) {
 	b.ReportAllocs()
 	b.SetBytes(int64(len(contents)))
 	for b.Loop() {
-		if _, err := ParseLyrics(suffix, "eng", contents); err != nil {
+		if _, err := ParseLyrics(b.Context(), suffix, "eng", contents); err != nil {
 			b.Fatal(err)
 		}
 	}
