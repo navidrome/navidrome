@@ -170,8 +170,10 @@ func buildFTS5Query(userInput string) (string, bool) {
 	}
 
 	// Use explicit AND between tokens — FTS5's implicit AND (space-separated)
-	// doesn't work correctly with parenthesized OR groups.
-	prefixQuery := strings.Join(prefixTokens, " AND ")
+	// doesn't work correctly with parenthesized OR groups. The prefix form is
+	// space-joined instead: it only feeds ftsQueryDegraded, which would count a
+	// literal "AND" as a long token and never flag all-short-token queries.
+	prefixQuery := strings.Join(prefixTokens, " ")
 	result = strings.Join(wrappedTokens, " AND ")
 
 	for i, phrase := range phrases {
