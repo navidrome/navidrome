@@ -7,9 +7,9 @@ import (
 	"github.com/deluan/sanitize"
 )
 
-// FTSPunctStrip strips everything except letters and numbers. Index-time normalization
-// (NormalizeForFTS) and query-time processing in persistence share it so both sides
-// produce matching tokens.
+// FTSPunctStrip matches any character that is not a letter or number. Index-time
+// normalization (NormalizeForFTS) and query-time processing in persistence share it
+// so both sides produce matching tokens.
 var FTSPunctStrip = regexp.MustCompile(`[^\p{L}\p{N}]`)
 
 // NormalizeForFTS takes multiple strings and returns a space-separated, deduplicated list of
