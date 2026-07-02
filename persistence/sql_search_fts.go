@@ -11,6 +11,7 @@ import (
 	"github.com/deluan/sanitize"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/str"
 )
 
 // containsCJK returns true if the string contains any CJK (Chinese/Japanese/Korean) characters.
@@ -35,47 +36,11 @@ func containsCJK(s string) bool {
 // as unbalanced string delimiters.
 var fts5SpecialChars = regexp.MustCompile(`[^\p{L}\p{N}\s*"\x00]`)
 
-// fts5PunctStrip strips everything except letters and numbers (no whitespace, wildcards, or quotes).
-// Used for normalizing words at index time to create concatenated forms (e.g., "R.E.M." → "REM").
-var fts5PunctStrip = regexp.MustCompile(`[^\p{L}\p{N}]`)
-
 // fts5Operators matches FTS5 boolean operators as whole words (case-insensitive).
 var fts5Operators = regexp.MustCompile(`(?i)\b(AND|OR|NOT|NEAR)\b`)
 
 // fts5LeadingStar matches a * at the start of a token. FTS5 only supports * at the end (prefix queries).
 var fts5LeadingStar = regexp.MustCompile(`(^|[\s])\*+`)
-
-// normalizeForFTS takes multiple strings and returns a space-separated, deduplicated list of
-// alternative searchable forms for each word: punctuation-stripped (R.E.M. → REM, AC/DC → ACDC)
-// and ASCII-transliterated (Bjørk → Bjork, œuvre → oeuvre). The transliterated form is needed
-// because FTS5's `unicode61 remove_diacritics 2` only handles NFKD-decomposable diacritics —
-// atomic letters like ø/æ/œ/ß survive tokenization, so the query side and index side disagree
-// without an explicit transliterated entry here.
-func normalizeForFTS(values ...string) string {
-	seen := make(map[string]struct{})
-	var result []string
-	add := func(orig, variant string) {
-		if variant == "" || variant == orig {
-			return
-		}
-		lower := strings.ToLower(variant)
-		if _, ok := seen[lower]; ok {
-			return
-		}
-		seen[lower] = struct{}{}
-		result = append(result, variant)
-	}
-	for _, v := range values {
-		for word := range strings.FieldsSeq(v) {
-			transliterated := sanitize.Accents(word)
-			// Concatenated ASCII form: R.E.M. → REM, AC/DC → ACDC, St-Étienne → StEtienne.
-			add(word, fts5PunctStrip.ReplaceAllString(transliterated, ""))
-			// Accent-only transliteration for words without name-punctuation (Bjørk → Bjork).
-			add(word, transliterated)
-		}
-	}
-	return strings.Join(result, " ")
-}
 
 // isSingleUnicodeLetter returns true if token is exactly one Unicode letter.
 func isSingleUnicodeLetter(token string) bool {
@@ -100,7 +65,7 @@ func processPunctuatedWords(input string, phrases []string) (string, []string) {
 			result = append(result, w)
 			continue
 		}
-		concat := fts5PunctStrip.ReplaceAllString(w, "")
+		concat := str.FTSPunctStrip.ReplaceAllString(w, "")
 		if concat == "" || concat == w {
 			result = append(result, w)
 			continue
@@ -329,7 +294,7 @@ func ftsQueryDegraded(original, ftsQuery string) bool {
 	// Strip quotes from original for comparison — we want the raw content
 	stripped := strings.ReplaceAll(original, `"`, "")
 	// Extract the alphanumeric content from the original query
-	alphaNum := fts5PunctStrip.ReplaceAllString(stripped, "")
+	alphaNum := str.FTSPunctStrip.ReplaceAllString(stripped, "")
 	// If the original is entirely alphanumeric, nothing was stripped — not degraded
 	if len(alphaNum) == len(stripped) {
 		return false
@@ -353,7 +318,7 @@ func ftsQueryDegraded(original, ftsQuery string) bool {
 		if strings.HasPrefix(t, `"`) {
 			// Extract content between quotes
 			inner := strings.Trim(t, `"`)
-			innerAlpha := fts5PunctStrip.ReplaceAllString(inner, " ")
+			innerAlpha := str.FTSPunctStrip.ReplaceAllString(inner, " ")
 			for it := range strings.FieldsSeq(innerAlpha) {
 				if len(it) > 2 {
 					return false
