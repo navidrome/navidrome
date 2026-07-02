@@ -105,6 +105,7 @@ func isDottedAbbreviation(w string, subTokens []string) bool {
 }
 
 // buildFTS5Query preprocesses user input into a safe FTS5 MATCH expression.
+// Plain tokens are emitted as (token OR token*) so bm25 ranks exact-token hits above prefix-only matches.
 // It preserves quoted phrases and * prefix wildcards, neutralizes FTS5 operators
 // (by lowercasing them, since FTS5 operators are case-sensitive) and strips
 // special characters to prevent query injection.
