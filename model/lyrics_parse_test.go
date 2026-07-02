@@ -1,7 +1,6 @@
 package model
 
 import (
-	"context"
 	"strings"
 
 	"github.com/navidrome/navidrome/log"
@@ -14,7 +13,7 @@ import (
 var _ = Describe("ParseLyrics", func() {
 	DescribeTable("known suffix routes to the matching parser",
 		func(suffix, contents string, wantSynced bool, wantFirst string) {
-			list, err := ParseLyrics(context.Background(), "", suffix, "eng", []byte(contents))
+			list, err := ParseLyrics(GinkgoT().Context(), "", suffix, "eng", []byte(contents))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(HaveLen(1))
 			Expect(list[0].Synced).To(Equal(wantSynced))
@@ -29,7 +28,7 @@ var _ = Describe("ParseLyrics", func() {
 
 	It("empty suffix content-sniffs (TTML)", func() {
 		ttml := `<tt xmlns="http://www.w3.org/ns/ttml"><body><div><p begin="00:00.000" end="00:01.000">auto ttml</p></div></body></tt>`
-		list, err := ParseLyrics(context.Background(), "", "", "eng", []byte(ttml))
+		list, err := ParseLyrics(GinkgoT().Context(), "", "", "eng", []byte(ttml))
 		Expect(err).ToNot(HaveOccurred())
 		Expect(list).To(HaveLen(1))
 		Expect(list[0].Line[0].Value).To(Equal("auto ttml"))
@@ -37,14 +36,14 @@ var _ = Describe("ParseLyrics", func() {
 
 	It("empty suffix content-sniffs (YAML)", func() {
 		yaml := "version: \"1.0\"\nmetadata:\n  language: eng\nlines:\n  - text: auto yaml\n    start_ms: 1000\n"
-		list, err := ParseLyrics(context.Background(), "", "auto", "eng", []byte(yaml))
+		list, err := ParseLyrics(GinkgoT().Context(), "", "auto", "eng", []byte(yaml))
 		Expect(err).ToNot(HaveOccurred())
 		Expect(list).To(HaveLen(1))
 		Expect(list[0].Line[0].Value).To(Equal("auto yaml"))
 	})
 
 	It("falls back to plain text when a known suffix fails to parse structurally", func() {
-		list, err := ParseLyrics(context.Background(), "", ".srt", "eng", []byte("not actually an srt file"))
+		list, err := ParseLyrics(GinkgoT().Context(), "", ".srt", "eng", []byte("not actually an srt file"))
 		Expect(err).ToNot(HaveOccurred())
 		Expect(list).To(HaveLen(1))
 		Expect(list[0].Synced).To(BeFalse())
@@ -73,7 +72,7 @@ var _ = Describe("ParseLyrics", func() {
 		// YAML/SRT/TTML probes on its way to the plain-text fallback. A probe miss
 		// during sniffing is expected control flow, not a warning.
 		It("does not warn when a sniff probe fails and falls back to plain text", func() {
-			list, err := ParseLyrics(context.Background(), "/music/song.mp3", "", "eng",
+			list, err := ParseLyrics(GinkgoT().Context(), "/music/song.mp3", "", "eng",
 				[]byte("Just a plain\nlyric line\n"))
 
 			Expect(err).ToNot(HaveOccurred())
@@ -88,7 +87,7 @@ var _ = Describe("ParseLyrics", func() {
 		// A specific suffix means the user declared the format, so a structural
 		// failure is worth surfacing loudly — and it must name the file.
 		It("warns and names the file when a requested suffix fails to parse", func() {
-			list, err := ParseLyrics(context.Background(), "/music/song.yaml", ".yaml", "eng",
+			list, err := ParseLyrics(GinkgoT().Context(), "/music/song.yaml", ".yaml", "eng",
 				[]byte("not: [valid, yaml\n"))
 
 			Expect(err).ToNot(HaveOccurred())
@@ -120,7 +119,7 @@ var _ = Describe("ParseLyrics content-sniffing", func() {
   </body>
 </tt>`
 
-		list, err := ParseLyrics(context.Background(), "", "", "ENG", []byte(content))
+		list, err := ParseLyrics(GinkgoT().Context(), "", "", "ENG", []byte(content))
 
 		// ParseLyrics's job is to detect TTML and apply the tag language as the
 		// default; the parser's cue/agent details are covered in lyrics_ttml_test.go.
@@ -157,7 +156,7 @@ var _ = Describe("ParseLyrics content-sniffing", func() {
   </body>
 </tt>`
 
-		list, err := ParseLyrics(context.Background(), "", "", "eng", []byte(content))
+		list, err := ParseLyrics(GinkgoT().Context(), "", "", "eng", []byte(content))
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(list).To(HaveLen(3))
@@ -182,7 +181,7 @@ We're from subtitles
 00:00:22,801 --> 00:00:26,000
 Another subtitle line`
 
-		list, err := ParseLyrics(context.Background(), "", "", "POR", []byte(content))
+		list, err := ParseLyrics(GinkgoT().Context(), "", "", "POR", []byte(content))
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(list).To(Equal(LyricList{
@@ -208,7 +207,7 @@ Another subtitle line`
 	It("should parse embedded SRT blocks separated by whitespace-only blank lines", func() {
 		content := "1\n00:00:01,000 --> 00:00:02,000\nFirst subtitle\n   \n2\n00:00:03,000 --> 00:00:04,000\nSecond subtitle"
 
-		list, err := ParseLyrics(context.Background(), "", "", "eng", []byte(content))
+		list, err := ParseLyrics(GinkgoT().Context(), "", "", "eng", []byte(content))
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(list).To(HaveLen(1))
@@ -221,7 +220,7 @@ Another subtitle line`
 	It("should keep embedded enhanced LRC cues", func() {
 		content := "[00:01.00]<00:01.00>Lead <00:01.50>words"
 
-		list, err := ParseLyrics(context.Background(), "", "", "eng", []byte(content))
+		list, err := ParseLyrics(GinkgoT().Context(), "", "", "eng", []byte(content))
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(list).To(HaveLen(1))
@@ -238,7 +237,7 @@ Another subtitle line`
   </body>
 </tt>`
 
-		list, err := ParseLyrics(context.Background(), "", "", "eng", []byte(content))
+		list, err := ParseLyrics(GinkgoT().Context(), "", "", "eng", []byte(content))
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(list).To(HaveLen(1))
@@ -255,7 +254,7 @@ Another subtitle line`
 	It("detects a Lyricsfile YAML payload via content-sniffing", func() {
 		yaml := "version: \"1.0\"\nmetadata:\n  title: Song\n  language: eng\nlines:\n  - text: sniffed yaml line\n    start_ms: 1000\n"
 
-		list, err := ParseLyrics(context.Background(), "", "", "eng", []byte(yaml))
+		list, err := ParseLyrics(GinkgoT().Context(), "", "", "eng", []byte(yaml))
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(list).To(HaveLen(1))
