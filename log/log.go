@@ -193,48 +193,36 @@ func IsGreaterOrEqualTo(level Level) bool {
 }
 
 func Fatal(args ...any) {
-	Log(LevelFatal, args...)
+	log(LevelFatal, args...)
 	os.Exit(1)
 }
 
 func Error(args ...any) {
-	Log(LevelError, args...)
+	log(LevelError, args...)
 }
 
 func Warn(args ...any) {
-	Log(LevelWarn, args...)
+	log(LevelWarn, args...)
 }
 
 func Info(args ...any) {
-	Log(LevelInfo, args...)
+	log(LevelInfo, args...)
 }
 
 func Debug(args ...any) {
-	Log(LevelDebug, args...)
+	log(LevelDebug, args...)
 }
 
 func Trace(args ...any) {
-	Log(LevelTrace, args...)
+	log(LevelTrace, args...)
 }
 
 func Log(level Level, args ...any) {
-	_, file, _, ok := runtime.Caller(1)
-	if !ok {
-		return
-	}
+	log(level, args...)
+}
 
-	file = strings.TrimPrefix(file, rootPath)
-	var skips int
-
-	// Log can either be called directly, log.Log(level, ...),  or indirectly, log.Trace(...)
-	// If it's called directly, the stack will be shorter by one
-	if file != "log/log.go" {
-		skips = 2
-	} else {
-		skips = 3
-	}
-
-	if !shouldLog(level, skips) {
+func log(level Level, args ...any) {
+	if !shouldLog(level, 3) {
 		return
 	}
 
