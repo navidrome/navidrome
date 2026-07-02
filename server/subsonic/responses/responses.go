@@ -63,6 +63,7 @@ type Subsonic struct {
 	PlayQueueByIndex       *PlayQueueByIndex       `xml:"playQueueByIndex,omitempty" json:"playQueueByIndex,omitempty"`
 	TranscodeDecision      *TranscodeDecision      `xml:"transcodeDecision,omitempty"       json:"transcodeDecision,omitempty"`
 	SonicMatches           *Array[SonicMatch]      `xml:"sonicMatch,omitempty"              json:"sonicMatch,omitempty"`
+	SongHistory            *SongHistory            `xml:"songHistory,omitempty"             json:"songHistory,omitempty"`
 }
 
 const (
@@ -372,6 +373,15 @@ type NowPlayingEntry struct {
 
 type NowPlaying struct {
 	Entry []NowPlayingEntry `xml:"entry"                          json:"entry,omitempty"`
+}
+
+type SongHistoryEntry struct {
+	Child
+	PlayedAt int64 `xml:"playedAt,attr" json:"playedAt"`
+}
+
+type SongHistory struct {
+	Song []SongHistoryEntry `xml:"song,omitempty" json:"song,omitempty"`
 }
 
 type User struct {
