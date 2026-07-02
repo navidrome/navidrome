@@ -441,7 +441,12 @@ var _ = Describe("FTS5 Integration Search", func() {
 
 	Describe("Exact-match ranking", func() {
 		BeforeEach(func() {
-			lr := NewLibraryRepository(log.NewContext(context.TODO()), GetDBXBuilder())
+			// Registered before the inserts so a mid-loop failure cannot leak corpus rows.
+			DeferCleanup(func() {
+				// library_artist rows are removed by the artist_id ON DELETE CASCADE FK.
+				_, err := GetDBXBuilder().NewQuery("DELETE FROM artist WHERE id LIKE 'fts-rank-%'").Execute()
+				Expect(err).ToNot(HaveOccurred())
+			})
 			// Corpus has no competing exact-word names ("Mo X"): exact-vs-exact order depends
 			// on corpus statistics; the guaranteed property is exact > prefix.
 			for _, a := range []model.Artist{
@@ -449,14 +454,8 @@ var _ = Describe("FTS5 Integration Search", func() {
 				{ID: "fts-rank-2", Name: "Modest Mouse", OrderArtistName: "modest mouse"},
 				{ID: "fts-rank-3", Name: "Morrissey", OrderArtistName: "morrissey"},
 			} {
-				Expect(arr.Put(&a)).To(Succeed())
-				Expect(lr.AddArtist(1, a.ID)).To(Succeed())
+				Expect(createArtistWithLibrary(arr, &a, 1)).To(Succeed())
 			}
-			DeferCleanup(func() {
-				// library_artist rows are removed by the artist_id ON DELETE CASCADE FK.
-				_, err := GetDBXBuilder().NewQuery("DELETE FROM artist WHERE id LIKE 'fts-rank-%'").Execute()
-				Expect(err).ToNot(HaveOccurred())
-			})
 		})
 
 		It("ranks the exact transliterated match first for 'MO'", func() {
