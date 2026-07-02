@@ -153,17 +153,18 @@ type configOptions struct {
 }
 
 type scannerOptions struct {
-	Enabled            bool
-	Schedule           string
-	WatcherWait        time.Duration
-	ScanOnStartup      bool
-	Extractor          string
-	ArtistJoiner       string
-	GenreSeparators    string // Deprecated: Use Tags.genre.Split instead
-	GroupAlbumReleases bool   // Deprecated: Use PID.Album instead
-	FollowSymlinks     bool   // Whether to follow symlinks when scanning directories
-	IgnoreDotFolders   bool   // Whether to ignore folders whose name starts with a dot when scanning
-	PurgeMissing       string // Values: "never", "always", "full"
+	Enabled               bool
+	Schedule              string
+	WatcherWait           time.Duration
+	ScanOnStartup         bool
+	Extractor             string
+	ArtistJoiner          string
+	ArtistSplitExceptions []string // Artist names never split by tag separators
+	GenreSeparators       string   // Deprecated: Use Tags.genre.Split instead
+	GroupAlbumReleases    bool     // Deprecated: Use PID.Album instead
+	FollowSymlinks        bool     // Whether to follow symlinks when scanning directories
+	IgnoreDotFolders      bool     // Whether to ignore folders whose name starts with a dot when scanning
+	PurgeMissing          string   // Values: "never", "always", "full"
 }
 
 type transcodingOptions struct {
@@ -819,6 +820,7 @@ func setViperDefaults() {
 	viper.SetDefault("scanner.watcherwait", consts.DefaultWatcherWait)
 	viper.SetDefault("scanner.scanonstartup", true)
 	viper.SetDefault("scanner.artistjoiner", consts.ArtistJoiner)
+	viper.SetDefault("scanner.artistsplitexceptions", []string{})
 	viper.SetDefault("scanner.genreseparators", "")
 	viper.SetDefault("scanner.groupalbumreleases", false)
 	viper.SetDefault("scanner.followsymlinks", true)

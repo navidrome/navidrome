@@ -7,9 +7,11 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/resources"
@@ -26,12 +28,13 @@ type mappingsConf struct {
 type tagMappings map[TagName]TagConf
 
 type TagConf struct {
-	Aliases   []string       `yaml:"aliases"`
-	Type      TagType        `yaml:"type"`
-	MaxLength int            `yaml:"maxLength"`
-	Split     []string       `yaml:"split"`
-	Album     bool           `yaml:"album"`
-	SplitRx   *regexp.Regexp `yaml:"-"`
+	Aliases      []string       `yaml:"aliases"`
+	Type         TagType        `yaml:"type"`
+	MaxLength    int            `yaml:"maxLength"`
+	Split        []string       `yaml:"split"`
+	Album        bool           `yaml:"album"`
+	SplitRx      *regexp.Regexp `yaml:"-"`
+	ExceptionsRx *regexp.Regexp `yaml:"-"`
 }
 
 // SplitTagValue splits tag values by the configured split separators.
@@ -43,16 +46,137 @@ func (c TagConf) SplitTagValue(values []string) []string {
 
 	var result []string
 	for _, tag := range values {
-		// Replace all occurrences of any separator with the zero-width space.
-		tag = c.SplitRx.ReplaceAllString(tag, consts.Zwsp)
-
-		// Split by the zero-width space and trim each substring.
-		parts := strings.SplitSeq(tag, consts.Zwsp)
-		for part := range parts {
-			result = append(result, strings.TrimSpace(part))
-		}
+		result = append(result, c.splitValue(tag)...)
 	}
 	return result
+}
+
+func (c TagConf) splitValue(tag string) []string {
+	protected := protectedSpans(tag, c.ExceptionsRx)
+	var parts []string
+	start := 0
+	for _, sep := range c.SplitRx.FindAllStringIndex(tag, -1) {
+		if overlapsAny(sep, protected) {
+			continue
+		}
+		parts = append(parts, strings.TrimSpace(tag[start:sep[0]]))
+		start = sep[1]
+	}
+	return append(parts, strings.TrimSpace(tag[start:]))
+}
+
+// protectedSpans returns the spans of rx matches that sit on word boundaries.
+// Boundaries are checked here, rune-aware, because RE2's \b is ASCII-only and
+// would silently never match names starting/ending with accented letters.
+func protectedSpans(tag string, rx *regexp.Regexp) [][]int {
+	if rx == nil {
+		return nil
+	}
+	var spans [][]int
+	for _, span := range rx.FindAllStringIndex(tag, -1) {
+		if isWordBounded(tag, span[0], span[1]) {
+			spans = append(spans, span)
+		}
+	}
+	return spans
+}
+
+func isWordBounded(s string, start, end int) bool {
+	isWord := func(r rune) bool { return unicode.IsLetter(r) || unicode.IsDigit(r) }
+	before, _ := utf8.DecodeLastRuneInString(s[:start])
+	after, _ := utf8.DecodeRuneInString(s[end:])
+	return !isWord(before) && !isWord(after)
+}
+
+func overlapsAny(span []int, spans [][]int) bool {
+	for _, s := range spans {
+		if span[0] < s[1] && s[0] < span[1] {
+			return true
+		}
+	}
+	return false
+}
+
+// compileExceptionsRegex builds a case-insensitive regex matching any of the
+// given literal names, or nil if there are none.
+func compileExceptionsRegex(exceptions []string) *regexp.Regexp {
+	var names []string
+	for _, e := range exceptions {
+		if e = strings.TrimSpace(e); e != "" {
+			names = append(names, e)
+		}
+	}
+	if len(names) == 0 {
+		return nil
+	}
+	// Longest-first: Go regex alternation is leftmost-first, so with overlapping
+	// entries (e.g. "Iron and Wine Duo" vs "Iron and Wine") the longer name must
+	// come first to win. Ties broken lexicographically for determinism.
+	slices.SortFunc(names, func(a, b string) int {
+		if c := cmp.Compare(len(b), len(a)); c != 0 {
+			return c
+		}
+		return cmp.Compare(a, b)
+	})
+	escaped := make([]string, len(names))
+	for i, name := range names {
+		escaped[i] = regexp.QuoteMeta(name)
+	}
+	rx, err := regexp.Compile("(?i)(" + strings.Join(escaped, "|") + ")")
+	if err != nil {
+		log.Warn("Error compiling split exceptions regexp", "exceptions", exceptions, err)
+		return nil
+	}
+	return rx
+}
+
+type artistSplitExceptionsCache struct {
+	names []string
+	rx    *regexp.Regexp
+}
+
+var artistSplitExceptions atomic.Pointer[artistSplitExceptionsCache]
+
+// artistSplitExceptionsRx returns the regex for Scanner.ArtistSplitExceptions,
+// or nil if none are configured. Compiled lazily (config hooks only run once
+// per process, before tests can override the option) and cached until the
+// configured list changes. Lock-free on the cache-hit path, as this is called
+// per tag mapping per scanned file, across concurrent scanner goroutines.
+func artistSplitExceptionsRx() *regexp.Regexp {
+	names := conf.Server.Scanner.ArtistSplitExceptions
+	if c := artistSplitExceptions.Load(); c != nil && slices.Equal(c.names, names) {
+		return c.rx
+	}
+	c := &artistSplitExceptionsCache{names: slices.Clone(names), rx: compileExceptionsRegex(names)}
+	artistSplitExceptions.Store(c)
+	return c.rx
+}
+
+// participantTagNames are the tags that hold artist names (or their sort
+// values), where split exceptions apply.
+var participantTagNames = sync.OnceValue(func() map[TagName]struct{} {
+	names := []TagName{
+		TagTrackArtist, TagTrackArtists, TagTrackArtistSort, TagTrackArtistsSort,
+		TagAlbumArtist, TagAlbumArtists, TagAlbumArtistSort, TagAlbumArtistsSort,
+	}
+	set := make(map[TagName]struct{}, len(names)+2*len(AllRoles))
+	for _, n := range names {
+		set[n] = struct{}{}
+	}
+	for role := range AllRoles {
+		set[TagName(role)] = struct{}{}
+		set[TagName(role+"sort")] = struct{}{}
+	}
+	return set
+})
+
+// WithParticipantExceptions returns the conf with the global artist split
+// exceptions attached when name is a participant (artist/role) tag.
+func (c TagConf) WithParticipantExceptions(name TagName) TagConf {
+	if _, ok := participantTagNames()[name]; ok {
+		c.ExceptionsRx = artistSplitExceptionsRx()
+	}
+	return c
 }
 
 type TagType string
