@@ -218,9 +218,26 @@ func Trace(args ...any) {
 }
 
 func Log(level Level, args ...any) {
-	if !shouldLog(level, 3) {
+	_, file, _, ok := runtime.Caller(1)
+	if !ok {
 		return
 	}
+
+	file = strings.TrimPrefix(file, rootPath)
+	var skips int
+
+	// Log can either be called directly, log.Log(level, ...),  or indirectly, log.Trace(...)
+	// If it's called directly, the stack will be shorter by one
+	if file != "log/log.go" {
+		skips = 2
+	} else {
+		skips = 3
+	}
+
+	if !shouldLog(level, skips) {
+		return
+	}
+
 	logger, msg := parseArgs(args)
 	logger.Log(logrus.Level(level), msg)
 }

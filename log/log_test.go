@@ -140,12 +140,18 @@ var _ = Describe("Logger", func() {
 			Debug("message 1")
 			Expect(hook.LastEntry()).To(BeNil())
 
+			Log(LevelDebug, "message 1.5")
+			Expect(hook.LastEntry()).To(BeNil())
+
 			SetLogLevels(map[string]string{
 				"log/log_test": "debug",
 			})
 
 			Debug("message 2")
 			Expect(hook.LastEntry().Message).To(Equal("message 2"))
+
+			Log(LevelDebug, "message 2.5")
+			Expect(hook.LastEntry().Message).To(Equal("message 2.5"))
 		})
 	})
 
