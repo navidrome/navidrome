@@ -565,6 +565,23 @@ var _ = Describe("Participants", func() {
 					matchPerformer("Tim Carmon", "tim carmon", "Hammond Organ"),
 				))
 			})
+
+			It("should split multiple names in a single value", func() {
+				mf = toMediaFile(model.RawTags{
+					"PERFORMER:GUITAR": {"Eric Clapton/B.B. King"},
+					"PERFORMER:BASS":   {"Nathan East"},
+				})
+
+				participants := mf.Participants
+				Expect(participants).To(HaveKeyWithValue(model.RolePerformer, HaveLen(3)))
+
+				p := participants[model.RolePerformer]
+				Expect(p).To(ContainElements(
+					matchPerformer("Eric Clapton", "eric clapton", "Guitar"),
+					matchPerformer("B.B. King", "b.b. king", "Guitar"),
+					matchPerformer("Nathan East", "nathan east", "Bass"),
+				))
+			})
 		})
 
 		When("MUSICBRAINZ_PERFORMERID tag is set", func() {
@@ -846,6 +863,18 @@ var _ = Describe("Participants", func() {
 			Expect(artists).To(HaveLen(2))
 			Expect(artists[0].Name).To(Equal("Artist Name"))
 			Expect(artists[1].Name).To(Equal("Someone Else"))
+		})
+
+		It("does not split a whitelisted name in performer tags", func() {
+			conf.Server.Scanner.ArtistSplitExceptions = []string{"AC/DC"}
+			mf = toMediaFile(model.RawTags{
+				"PERFORMER:GUITAR": {"AC/DC/Brian Johnson"},
+			})
+
+			performers := mf.Participants[model.RolePerformer]
+			Expect(performers).To(HaveLen(2))
+			Expect(performers[0].Name).To(Equal("AC/DC"))
+			Expect(performers[1].Name).To(Equal("Brian Johnson"))
 		})
 	})
 })

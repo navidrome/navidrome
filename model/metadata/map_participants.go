@@ -94,18 +94,24 @@ func (md Metadata) processPerformers(participants model.Participants, rolesMbzId
 		roleIdx[role] = 0
 	}
 
+	conf := model.TagRolesConf()
+	conf.ExceptionsRx = model.ArtistSplitExceptionsRx()
 	titleCaser := cases.Title(language.Und)
 	for _, performer := range md.Pairs(model.TagPerformer) {
-		name := performer.Value()
 		subRole := titleCaser.String(performer.Key())
-
-		artist := model.Artist{
-			ID:              md.artistID(name),
-			Name:            name,
-			OrderArtistName: str.SanitizeFieldForSortingNoArticle(name),
-			MbzArtistID:     md.getPerformerMbid(subRole, rolesMbzIdMap, roleIdx),
+		names := []string{performer.Value()}
+		if len(conf.Split) > 0 {
+			names = filterDuplicatedOrEmptyValues(conf.SplitTagValue(names))
 		}
-		participants.AddWithSubRole(model.RolePerformer, subRole, artist)
+		for _, name := range names {
+			artist := model.Artist{
+				ID:              md.artistID(name),
+				Name:            name,
+				OrderArtistName: str.SanitizeFieldForSortingNoArticle(name),
+				MbzArtistID:     md.getPerformerMbid(subRole, rolesMbzIdMap, roleIdx),
+			}
+			participants.AddWithSubRole(model.RolePerformer, subRole, artist)
+		}
 	}
 }
 
