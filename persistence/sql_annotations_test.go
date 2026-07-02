@@ -150,4 +150,98 @@ var _ = Describe("Annotation Filters", func() {
 		}
 		Expect(found).To(BeTrue(), "Item without annotation should be included when filter is ignored")
 	})
+
+	Describe("annotationColumns", func() {
+		It("derives the annotation join columns from model.Annotations, excluding average_rating", func() {
+			cols := annotationColumns()
+			Expect(cols).To(HaveKey("starred"))
+			Expect(cols).To(HaveKey("starred_at"))
+			Expect(cols).To(HaveKey("rating"))
+			Expect(cols).To(HaveKey("rated_at"))
+			Expect(cols).To(HaveKey("play_count"))
+			Expect(cols).To(HaveKey("play_date"))
+			Expect(cols).To(HaveLen(6), "expected exactly the 6 annotation-join columns")
+			Expect(cols).ToNot(HaveKey("average_rating"), "average_rating lives on the base table, not the annotation join")
+		})
+	})
+
+	Describe("filtersNeedAnnotation", func() {
+		It("is true when the query references an annotation column", func() {
+			q := squirrel.Select("count(1)").From("media_file").Where(squirrel.Eq{"starred": true})
+			Expect(filtersNeedAnnotation(q)).To(BeTrue())
+		})
+
+		It("is true for a raw expression referencing an annotation column", func() {
+			q := squirrel.Select("count(1)").From("media_file").Where(squirrel.Expr("rating > 0"))
+			Expect(filtersNeedAnnotation(q)).To(BeTrue())
+		})
+
+		It("is false for a query that references no annotation column", func() {
+			q := squirrel.Select("count(1)").From("media_file").Where(squirrel.Eq{"missing": false})
+			Expect(filtersNeedAnnotation(q)).To(BeFalse())
+		})
+
+		It("is false for a filter on average_rating (base-table column, not the annotation rating)", func() {
+			// Regression: average_rating must not match the annotation column "rating".
+			q := squirrel.Select("count(1)").From("media_file").Where(squirrel.Gt{"average_rating": 3})
+			Expect(filtersNeedAnnotation(q)).To(BeFalse())
+		})
+
+		It("is true when both average_rating and a real annotation column are referenced", func() {
+			q := squirrel.Select("count(1)").From("media_file").
+				Where(squirrel.Gt{"average_rating": 3}).
+				Where(squirrel.Expr("COALESCE(rating, 0) > 0"))
+			Expect(filtersNeedAnnotation(q)).To(BeTrue())
+		})
+
+		It("is true for uppercase/mixed-case annotation columns (SQLite is case-insensitive)", func() {
+			q := squirrel.Select("count(1)").From("media_file").Where(squirrel.Expr("RATING > 0"))
+			Expect(filtersNeedAnnotation(q)).To(BeTrue())
+		})
+
+		It("is false for uppercase average_rating (still excluded case-insensitively)", func() {
+			q := squirrel.Select("count(1)").From("media_file").Where(squirrel.Expr("AVERAGE_RATING > 3"))
+			Expect(filtersNeedAnnotation(q)).To(BeFalse())
+		})
+	})
+
+	Describe("CountAll annotation-join gating", func() {
+		It("counts all items unfiltered (join dropped)", func() {
+			total, err := albumRepo.CountAll()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(total).To(BeNumerically(">=", int64(1)))
+
+			filtered, err := albumRepo.CountAll(model.QueryOptions{
+				Filters: squirrel.Eq{"album.id": albumWithoutAnnotation.ID},
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(filtered).To(Equal(int64(1)))
+		})
+
+		It("counts starred items correctly (named annotation filter keeps the join)", func() {
+			starredAlbum := model.Album{ID: "counted-starred-album", Name: "Counted Starred", LibraryID: 1}
+			Expect(albumRepo.Put(&starredAlbum)).To(Succeed())
+			Expect(albumRepo.SetStar(true, starredAlbum.ID)).To(Succeed())
+			defer func() {
+				_, _ = albumRepo.executeSQL(squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": starredAlbum.ID}))
+				_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": starredAlbum.ID}))
+			}()
+
+			// Exactly two albums are starred for this user: the one created above and
+			// albumRadioactivity (id 103) from the seed data.
+			count, err := albumRepo.CountAll(model.QueryOptions{
+				Filters: annotationBoolFilter("starred")("starred", "true"),
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(count).To(Equal(int64(2)))
+		})
+
+		It("counts via a raw annotation filter without a 'no such column' error", func() {
+			count, err := albumRepo.CountAll(model.QueryOptions{
+				Filters: squirrel.Expr("COALESCE(rating, 0) > 0"),
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(count).To(BeNumerically(">=", int64(0)))
+		})
+	})
 })

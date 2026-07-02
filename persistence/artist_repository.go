@@ -201,7 +201,11 @@ func (r *artistRepository) selectArtist(options ...model.QueryOptions) SelectBui
 func (r *artistRepository) CountAll(options ...model.QueryOptions) (int64, error) {
 	query := r.newSelect()
 	query = r.applyLibraryFilterToArtistQuery(query)
-	query = r.withAnnotation(query, "artist.id")
+	// Only the annotation join is gated; the library_artist join above (and its count(distinct))
+	// must stay, since an artist can span multiple libraries.
+	if filtersNeedAnnotation(r.applyFilters(query, options...)) {
+		query = r.withAnnotation(query, "artist.id")
+	}
 	return r.count(query, options...)
 }
 
@@ -662,32 +666,6 @@ func isLibraryIDFilter(filter Sqlizer) bool {
 	}
 	_, ok = eq["library_id"]
 	return ok
-}
-
-// userSeesAllLibraries reports whether the visible set already covers every library, so a search
-// needs no library filter at all.
-func (r *artistRepository) userSeesAllLibraries(visible []int) bool {
-	user := loggedUser(r.ctx)
-	if user.IsAdmin || user.ID == invalidUserId {
-		return true // visible is the whole library table
-	}
-	total, err := NewLibraryRepository(r.ctx, r.db).CountAll()
-	if err != nil || total == 0 {
-		return false
-	}
-	return int64(len(visible)) >= total
-}
-
-// visibleLibraryIDs returns the libraries the current user can see: all libraries for admin and
-// headless processes, otherwise the user's granted libraries.
-func (r *artistRepository) visibleLibraryIDs() ([]int, error) {
-	user := loggedUser(r.ctx)
-	if user.IsAdmin || user.ID == invalidUserId {
-		var ids []int
-		err := r.queryAllSlice(Select("id").From("library"), &ids)
-		return ids, err
-	}
-	return slice.Map(user.Libraries, func(lib model.Library) int { return lib.ID }), nil
 }
 
 func (r *artistRepository) Count(options ...rest.QueryOptions) (int64, error) {

@@ -3,6 +3,7 @@ package external_test
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/core/agents"
@@ -56,7 +57,14 @@ var _ = Describe("Provider - SimilarSongs", func() {
 		Context("when ID is a MediaFile (track)", func() {
 			It("calls GetSimilarSongsByTrack and returns matched songs", func() {
 				track := model.MediaFile{ID: "track-1", Title: "Just Can't Get Enough", Artist: "Depeche Mode", MbzRecordingID: "track-mbid"}
-				matchedSong := model.MediaFile{ID: "matched-1", Title: "Dreaming of Me", Artist: "Depeche Mode"}
+
+				// Depeche Mode artist row used by matcher artist resolution and track-fetch back-mapping.
+				dmArtist := model.Artist{ID: "dm-1", Name: "Depeche Mode", OrderArtistName: "depeche mode", MbzArtistID: "artist-mbid"}
+				dmParticipant := model.Participant{Artist: dmArtist}
+				matchedSong := model.MediaFile{
+					ID: "matched-1", Title: "Dreaming of Me", Artist: "Depeche Mode",
+					Participants: model.Participants{model.RoleArtist: model.ParticipantList{dmParticipant}},
+				}
 
 				// GetEntityByID tries Artist, Album, Playlist, then MediaFile
 				artistRepo.On("Get", "track-1").Return(nil, model.ErrNotFound).Once()
@@ -65,16 +73,19 @@ var _ = Describe("Provider - SimilarSongs", func() {
 
 				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "track-1", "Just Can't Get Enough", "Depeche Mode", "track-mbid", 5).
 					Return([]agents.Song{
-						{Name: "Dreaming of Me", MBID: "", Artist: "Depeche Mode", ArtistMBID: "artist-mbid"},
+						{Name: "Dreaming of Me", MBID: "", Artists: []agents.Artist{{Name: "Depeche Mode", MBID: "artist-mbid"}}},
 					}, nil).Once()
 
-				// Mock loadTracksByID - no ID matches
+				// Matcher artist resolution: resolve Depeche Mode in the artist table.
+				artistRepo.On("GetAll", mock.Anything).Return(model.Artists{dmArtist}, nil).Maybe()
+
+				// ID phase: no IDs → squirrel.And with media_file.id; won't be called but guard it.
 				mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
 					_, ok := opt.Filters.(squirrel.Eq)
 					return ok
-				})).Return(model.MediaFiles{}, nil).Once()
+				})).Return(model.MediaFiles{}, nil).Maybe()
 
-				// Mock loadTracksByMBID - no MBID matches (empty MBID means this won't be called)
+				// MBID phase: won't fire (empty MBID).
 				mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
 					and, ok := opt.Filters.(squirrel.And)
 					if !ok || len(and) < 1 {
@@ -88,18 +99,19 @@ var _ = Describe("Provider - SimilarSongs", func() {
 					return hasMBID
 				})).Return(model.MediaFiles{}, nil).Maybe()
 
-				// Mock loadTracksByTitleAndArtist - queries by artist name
+				// Matcher track-fetch: subquery returns the matched song with participants.
 				mediaFileRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
 					and, ok := opt.Filters.(squirrel.And)
-					if !ok || len(and) < 2 {
+					if !ok {
 						return false
 					}
-					eq, hasEq := and[0].(squirrel.Eq)
-					if !hasEq {
-						return false
+					for _, f := range and {
+						sql, _, err := f.ToSql()
+						if err == nil && strings.Contains(sql, "media_file_artists") {
+							return true
+						}
 					}
-					_, hasArtist := eq["order_artist_name"]
-					return hasArtist
+					return false
 				})).Return(model.MediaFiles{matchedSong}, nil).Maybe()
 
 				songs, err := provider.SimilarSongs(ctx, "track-1", 5)
@@ -165,7 +177,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 
 				agentsCombined.On("GetSimilarSongsByAlbum", mock.Anything, "album-1", "Speak & Spell", "Depeche Mode", "album-mbid", 5).
 					Return([]agents.Song{
-						{Name: "New Life", MBID: "song-mbid", Artist: "Depeche Mode"},
+						{Name: "New Life", MBID: "song-mbid", Artists: []agents.Artist{{Name: "Depeche Mode"}}},
 					}, nil).Once()
 
 				// Mock loadTracksByID - no ID matches
@@ -242,7 +254,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 				artistRepo.On("Get", "artist-1").Return(&artist, nil).Once()
 				agentsCombined.On("GetSimilarSongsByArtist", mock.Anything, "artist-1", "Depeche Mode", "artist-mbid", 5).
 					Return([]agents.Song{
-						{Name: "Enjoy the Silence", MBID: "song-mbid", Artist: "Depeche Mode"},
+						{Name: "Enjoy the Silence", MBID: "song-mbid", Artists: []agents.Artist{{Name: "Depeche Mode"}}},
 					}, nil).Once()
 
 				// Mock loadTracksByID - no ID matches

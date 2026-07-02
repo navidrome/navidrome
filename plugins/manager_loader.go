@@ -52,7 +52,7 @@ var hostServices = []hostServiceEntry{
 		name:          "SubsonicAPI",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Subsonicapi != nil },
 		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
-			service := newSubsonicAPIService(ctx.pluginName, ctx.manager.subsonicRouter, ctx.manager.ds, ctx.allowedUsers, ctx.allUsers)
+			service := newSubsonicAPIService(ctx.pluginName, ctx.manager.subsonicRouter, ctx.manager.ds, newUserAccess(ctx.allowedUsers, ctx.allUsers))
 			return host.RegisterSubsonicAPIHostFunctions(service), nil
 		},
 	},
@@ -120,6 +120,19 @@ var hostServices = []hostServiceEntry{
 		},
 	},
 	{
+		name:          "Matcher",
+		hasPermission: func(p *Permissions) bool { return p != nil && p.Matcher != nil },
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
+			hasFilesystemPerm := ctx.permissions.Library != nil && ctx.permissions.Library.Filesystem
+			service := newMatcherService(
+				ctx.manager.ds, hasFilesystemPerm,
+				newUserAccess(ctx.allowedUsers, ctx.allUsers),
+				newLibraryAccess(ctx.allowedLibraries, ctx.allLibraries),
+			)
+			return host.RegisterMatcherHostFunctions(service), nil
+		},
+	},
+	{
 		name:          "HTTP",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Http != nil },
 		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
@@ -155,12 +168,12 @@ func (m *Manager) extractManifest(ndpPath string) (*PluginMetadata, error) {
 		return nil, fmt.Errorf("manager is stopped")
 	}
 
-	manifest, err := readManifest(ndpPath)
+	manifest, err := ReadManifest(ndpPath)
 	if err != nil {
 		return nil, err
 	}
 
-	sha256Hash, err := computeFileSHA256(ndpPath)
+	sha256Hash, err := ComputeFileSHA256(ndpPath)
 	if err != nil {
 		return nil, fmt.Errorf("computing hash: %w", err)
 	}

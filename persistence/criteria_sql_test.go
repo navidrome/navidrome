@@ -30,16 +30,16 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 		},
 		Entry("all group",
 			criteria.All{criteria.Contains{"title": "love"}, criteria.Gt{"rating": 3}},
-			"(media_file.title LIKE ? AND COALESCE(annotation.rating, 0) > ?)", "%love%", 3),
+			"(media_file.title LIKE ? AND annotation.rating > ?)", "%love%", 3),
 		Entry("any group",
 			criteria.Any{criteria.Is{"title": "Low Rider"}, criteria.Is{"album": "Best Of"}},
 			"(media_file.title = ? OR media_file.album = ?)", "Low Rider", "Best Of"),
 		Entry("is string", criteria.Is{"title": "Low Rider"}, "media_file.title = ?", "Low Rider"),
-		Entry("is bool", criteria.Is{"loved": true}, "COALESCE(annotation.starred, false) = ?", true),
+		Entry("is bool", criteria.Is{"loved": true}, "annotation.starred = ?", true),
 		Entry("is numeric list", criteria.Is{"library_id": []int{1, 2}}, "media_file.library_id IN (?,?)", 1, 2),
 		Entry("is not", criteria.IsNot{"title": "Low Rider"}, "media_file.title <> ?", "Low Rider"),
-		Entry("gt", criteria.Gt{"playCount": 10}, "COALESCE(annotation.play_count, 0) > ?", 10),
-		Entry("lt", criteria.Lt{"playCount": 10}, "COALESCE(annotation.play_count, 0) < ?", 10),
+		Entry("gt", criteria.Gt{"playCount": 10}, "annotation.play_count > ?", 10),
+		Entry("lt", criteria.Lt{"playCount": 10}, "(annotation.play_count < ? OR annotation.play_count IS NULL)", 10),
 		Entry("contains", criteria.Contains{"title": "Low Rider"}, "media_file.title LIKE ?", "%Low Rider%"),
 		Entry("not contains", criteria.NotContains{"title": "Low Rider"}, "media_file.title NOT LIKE ?", "%Low Rider%"),
 		Entry("starts with", criteria.StartsWith{"title": "Low Rider"}, "media_file.title LIKE ?", "Low Rider%"),
@@ -50,8 +50,51 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 		Entry("in playlist [path]", criteria.InPlaylist{"path": "lacuslacus.nsp"}, "media_file.id IN (SELECT media_file_id FROM playlist_tracks pl LEFT JOIN playlist on pl.playlist_id = playlist.id WHERE (playlist.path = ? AND playlist.public = ?))", "lacuslacus.nsp", 1),
 		Entry("in playlist [id]", criteria.InPlaylist{"id": "deadbeef-dead-beef"}, "media_file.id IN (SELECT media_file_id FROM playlist_tracks pl LEFT JOIN playlist on pl.playlist_id = playlist.id WHERE (pl.playlist_id = ? AND playlist.public = ?))", "deadbeef-dead-beef", 1),
 		Entry("not in playlist", criteria.NotInPlaylist{"id": "deadbeef-dead-beef"}, "media_file.id NOT IN (SELECT media_file_id FROM playlist_tracks pl LEFT JOIN playlist on pl.playlist_id = playlist.id WHERE (pl.playlist_id = ? AND playlist.public = ?))", "deadbeef-dead-beef", 1),
-		Entry("album annotation", criteria.Gt{"albumRating": 3}, "COALESCE(album_annotation.rating, 0) > ?", 3),
-		Entry("artist annotation", criteria.Is{"artistLoved": true}, "COALESCE(artist_annotation.starred, false) = ?", true),
+		Entry("album annotation", criteria.Gt{"albumRating": 3}, "album_annotation.rating > ?", 3),
+		Entry("artist annotation", criteria.Is{"artistLoved": true}, "artist_annotation.starred = ?", true),
+		// Annotation fields use a COALESCE default (0 for numeric, false for bool) so that tracks
+		// with no annotation row behave as that default. To keep the annotation index usable, the
+		// COALESCE is dropped when the compared value cannot match the default (the missing-row
+		// case is then naturally excluded); otherwise an explicit `OR col IS NULL` preserves it.
+		Entry("is safe (value != default)", criteria.Is{"playCount": 3}, "annotation.play_count = ?", 3),
+		Entry("is unsafe (value == default)", criteria.Is{"playCount": 0},
+			"(annotation.play_count = ? OR annotation.play_count IS NULL)", 0),
+		Entry("is bool false (value == default)", criteria.Is{"loved": false},
+			"(annotation.starred = ? OR annotation.starred IS NULL)", false),
+		Entry("gt safe (value >= default)", criteria.Gt{"playCount": 0}, "annotation.play_count > ?", 0),
+		Entry("gt unsafe (value < default)", criteria.Gt{"playCount": -1},
+			"(annotation.play_count > ? OR annotation.play_count IS NULL)", -1),
+		Entry("lt safe (value <= default)", criteria.Lt{"playCount": 0}, "annotation.play_count < ?", 0),
+		Entry("lt unsafe (value > default)", criteria.Lt{"playCount": 5},
+			"(annotation.play_count < ? OR annotation.play_count IS NULL)", 5),
+		Entry("isNot annotation keeps null match", criteria.IsNot{"playCount": 3},
+			"(annotation.play_count <> ? OR annotation.play_count IS NULL)", 3),
+		Entry("isNot annotation value == default", criteria.IsNot{"playCount": 0},
+			"annotation.play_count <> ?", 0),
+		Entry("in range spanning default", criteria.InTheRange{"playCount": []int{-1, 5}},
+			"((annotation.play_count >= ? OR annotation.play_count IS NULL) AND (annotation.play_count <= ? OR annotation.play_count IS NULL))", -1, 5),
+		Entry("in range above default", criteria.InTheRange{"playCount": []int{1, 5}},
+			"(annotation.play_count >= ? AND (annotation.play_count <= ? OR annotation.play_count IS NULL))", 1, 5),
+		// A list value can't drive the index and a default-inclusive list has per-element NULL
+		// semantics, so the COALESCE form is kept to stay equivalent to the original.
+		Entry("is list keeps coalesce", criteria.Is{"playCount": []int{0, 3}},
+			"COALESCE(annotation.play_count, 0) IN (?,?)", 0, 3),
+		// LIKE operators can't use the column index, so annotation fields keep the COALESCE form to
+		// match missing-annotation rows exactly as before (a NULL column never matches LIKE).
+		Entry("contains annotation keeps coalesce", criteria.Contains{"playCount": 0},
+			"COALESCE(annotation.play_count, 0) LIKE ?", "%0%"),
+		Entry("starts with annotation keeps coalesce", criteria.StartsWith{"rating": 5},
+			"COALESCE(annotation.rating, 0) LIKE ?", "5%"),
+		Entry("not contains annotation keeps coalesce", criteria.NotContains{"playCount": 0},
+			"COALESCE(annotation.play_count, 0) NOT LIKE ?", "%0%"),
+		// Bool annotation fields only have a clean index-friendly form for equality; ordering
+		// comparators keep the COALESCE form so the missing-row default is honored exactly.
+		Entry("gt bool keeps coalesce", criteria.Gt{"loved": false},
+			"COALESCE(annotation.starred, false) > ?", false),
+		// A list value on a bool field is non-scalar, so it keeps the COALESCE form too (same as the
+		// numeric list case) — otherwise a NULL column would diverge from the original.
+		Entry("is bool list keeps coalesce", criteria.Is{"loved": []any{true}},
+			"COALESCE(annotation.starred, false) IN (?)", true),
 		Entry("tag is", criteria.Is{"genre": "Rock"}, "exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value = ?)", "Rock"),
 		Entry("tag is not", criteria.IsNot{"genre": "Rock"}, "not exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value = ?)", "Rock"),
 		Entry("tag contains", criteria.Contains{"genre": "Rock"}, "exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value LIKE ?)", "%Rock%"),
@@ -226,6 +269,16 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 			criteria.Criteria{Expression: criteria.InPlaylist{"path": ""}},
 			withSmartPlaylistOwner(model.User{ID: "owner-id", IsAdmin: false})).Where()
 		Expect(err).To(MatchError(ContainSubstring("playlist id or path not given")))
+	})
+
+	It("returns an error for a range over a tag/role field", func() {
+		_, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: criteria.InTheRange{"rate": []int{1, 5}}}).Where()
+		Expect(err).To(MatchError(ContainSubstring("range operator not supported for tag/role field")))
+	})
+
+	It("returns a clear error for a malformed range value", func() {
+		_, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: criteria.InTheRange{"playCount": []int{1, 2, 3}}}).Where()
+		Expect(err).To(MatchError(ContainSubstring("must be a [min, max] pair")))
 	})
 
 	Describe("sort", func() {

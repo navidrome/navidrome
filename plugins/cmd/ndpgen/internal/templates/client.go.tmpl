@@ -12,9 +12,22 @@ import (
 {{- if .Service.HasErrors}}
 	"errors"
 {{- end}}
+{{- if .Service.ImportsSharedTypes}}
+
+	"github.com/navidrome/navidrome/plugins/pdk/go/types"
+{{- end}}
 
 	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
 )
+
+{{- /* Generate deprecated shared-type aliases */ -}}
+{{- range .Service.SharedAliases}}
+
+{{- if .Doc}}
+{{formatDoc .Doc}}
+{{- end}}
+type {{.Name}} = {{.Target}}
+{{- end}}
 
 {{- /* Generate struct definitions */ -}}
 {{- range .Service.Structs}}

@@ -5,34 +5,59 @@ import (
 	"unicode"
 )
 
+// sharedTypesPrefix is the package selector a capability or host-service source
+// uses to reference the shared types package (e.g. types.Track).
+const sharedTypesPrefix = "types."
+
 // Service represents a parsed host service interface.
 type Service struct {
-	Name       string      // Service name from annotation (e.g., "SubsonicAPI")
-	Permission string      // Manifest permission key (e.g., "subsonicapi")
-	Interface  string      // Go interface name (e.g., "SubsonicAPIService")
-	Methods    []Method    // Methods marked with //nd:hostfunc
-	Doc        string      // Documentation comment for the service
-	Structs    []StructDef // Structs used by this service
+	Name          string        // Service name from annotation (e.g., "SubsonicAPI")
+	Permission    string        // Manifest permission key (e.g., "subsonicapi")
+	Interface     string        // Go interface name (e.g., "SubsonicAPIService")
+	Methods       []Method      // Methods marked with //nd:hostfunc
+	Doc           string        // Documentation comment for the service
+	Structs       []StructDef   // Structs used by this service
+	SharedAliases []SharedAlias // Aliases to types in the shared `types` package
 }
 
 // Capability represents a parsed capability interface for plugin exports.
 type Capability struct {
-	Name        string       // Package name from annotation (e.g., "metadata")
-	Interface   string       // Go interface name (e.g., "MetadataAgent")
-	Required    bool         // If true, all methods must be implemented
-	Methods     []Export     // Methods marked with //nd:export
-	Doc         string       // Documentation comment for the capability
-	Structs     []StructDef  // Structs used by this capability
-	TypeAliases []TypeAlias  // Type aliases used by this capability
-	Consts      []ConstGroup // Const groups used by this capability
-	SourceFile  string       // Base name of source file without extension (e.g., "websocket_callback")
+	Name          string        // Package name from annotation (e.g., "metadata")
+	Interface     string        // Go interface name (e.g., "MetadataAgent")
+	Required      bool          // If true, all methods must be implemented
+	Methods       []Export      // Methods marked with //nd:export
+	Doc           string        // Documentation comment for the capability
+	Structs       []StructDef   // Structs used by this capability
+	TypeAliases   []TypeAlias   // Type aliases used by this capability
+	Consts        []ConstGroup  // Const groups used by this capability
+	SourceFile    string        // Base name of source file without extension (e.g., "websocket_callback")
+	SharedAliases []SharedAlias // Aliases to types in the shared `types` package
+	SharedTypes   []StructDef   // Resolved shapes of every used shared type, keyed by canonical name (for schema inlining, alias or not)
 }
 
-// TypeAlias represents a type alias definition (e.g., type ScrobblerErrorType string).
+// TypeAlias represents a type declaration (e.g. type ScrobblerErrorType string)
+// or a Go type alias (e.g. type TrackInfo = types.Track).
 type TypeAlias struct {
-	Name string // Type name
-	Type string // Underlying type
-	Doc  string // Documentation comment
+	Name    string // Type name
+	Type    string // Underlying type (or alias target, e.g. "types.Track")
+	Doc     string // Documentation comment
+	IsAlias bool   // true for `type X = Y` (alias); false for `type X Y` (defined type)
+}
+
+// IsDeprecated reports whether the alias carries a `Deprecated:` doc line.
+func (t TypeAlias) IsDeprecated() bool {
+	for _, line := range strings.Split(t.Doc, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "Deprecated:") {
+			return true
+		}
+	}
+	return false
+}
+
+// IsSharedAlias reports whether this alias targets the shared types package
+// (e.g. `type TrackInfo = types.Track`).
+func (t TypeAlias) IsSharedAlias() bool {
+	return t.IsAlias && strings.HasPrefix(t.Type, sharedTypesPrefix)
 }
 
 // ConstGroup represents a group of const definitions.
@@ -48,11 +73,89 @@ type ConstDef struct {
 	Doc   string // Documentation comment
 }
 
-// KnownStructs returns a map of struct names defined in this capability.
+// SharedAlias is a deprecated alias from a capability/host package to a type in
+// the shared `types` package (e.g. type TrackInfo = types.Track). Def is the
+// resolved shared struct, kept for XTP schema inlining.
+type SharedAlias struct {
+	Name   string    // local name, e.g. "TrackInfo"
+	Target string    // alias target, e.g. "types.Track"
+	Doc    string    // doc comment (carries the Deprecated: line)
+	Def    StructDef // resolved shared struct shape
+}
+
+// ImportsSharedTypes reports whether this capability references the shared types package.
+// A reference can come from a deprecated re-export alias (e.g. type SongRef = types.SongRef)
+// or directly from the canonical form (e.g. types.SongRef) in a struct field or a method
+// signature, so the generated Go import must be emitted even when no alias is declared.
+func (c Capability) ImportsSharedTypes() bool {
+	if len(c.SharedAliases) > 0 || structsReferenceSharedTypes(c.Structs) {
+		return true
+	}
+	for _, m := range c.Methods {
+		if typeReferencesSharedTypes(m.Input.Type) || typeReferencesSharedTypes(m.Output.Type) {
+			return true
+		}
+	}
+	return false
+}
+
+// ImportsSharedTypes reports whether this service references the shared types package.
+func (s Service) ImportsSharedTypes() bool {
+	if len(s.SharedAliases) > 0 || structsReferenceSharedTypes(s.Structs) {
+		return true
+	}
+	for _, m := range s.Methods {
+		for _, p := range m.Params {
+			if typeReferencesSharedTypes(p.Type) {
+				return true
+			}
+		}
+		for _, r := range m.Returns {
+			if typeReferencesSharedTypes(r.Type) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// structsReferenceSharedTypes reports whether any field across the given structs
+// refers to the shared types package by its qualified name (e.g. types.SongRef,
+// []types.SongRef, map[string]types.SongRef).
+func structsReferenceSharedTypes(structs []StructDef) bool {
+	for _, st := range structs {
+		for _, f := range st.Fields {
+			if typeReferencesSharedTypes(f.Type) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// typeReferencesSharedTypes reports whether a Go type expression refers to the
+// shared types package by its qualified name, accounting for pointer, slice, and
+// map wrappers (e.g. types.SongRef, []types.SongRef, map[string]types.SongRef).
+func typeReferencesSharedTypes(goType string) bool {
+	refs := map[string]bool{}
+	collectReferencedTypes(goType, refs)
+	for t := range refs {
+		if strings.HasPrefix(t, sharedTypesPrefix) {
+			return true
+		}
+	}
+	return false
+}
+
+// KnownStructs returns a map of struct names defined in this capability,
+// including shared-alias names so Rust field-type resolution finds them.
 func (c Capability) KnownStructs() map[string]bool {
 	result := make(map[string]bool)
 	for _, st := range c.Structs {
 		result[st.Name] = true
+	}
+	for _, sa := range c.SharedAliases {
+		result[sa.Name] = true
 	}
 	return result
 }
@@ -154,11 +257,15 @@ func (s Service) ExportPrefix() string {
 	return strings.ToLower(s.Name)
 }
 
-// KnownStructs returns a map of struct names defined in this service.
+// KnownStructs returns a map of struct names defined in this service,
+// including shared-alias names so Rust field-type resolution finds them.
 func (s Service) KnownStructs() map[string]bool {
 	result := make(map[string]bool)
 	for _, st := range s.Structs {
 		result[st.Name] = true
+	}
+	for _, sa := range s.SharedAliases {
+		result[sa.Name] = true
 	}
 	return result
 }
@@ -427,24 +534,6 @@ func toJSONName(name string) string {
 	return string(result)
 }
 
-// ToPythonType converts a Go type to its Python equivalent.
-func ToPythonType(goType string) string {
-	switch goType {
-	case "string":
-		return "str"
-	case "int", "int32", "int64":
-		return "int"
-	case "float32", "float64":
-		return "float"
-	case "bool":
-		return "bool"
-	case "[]byte":
-		return "bytes"
-	default:
-		return "Any"
-	}
-}
-
 // ToSnakeCase converts a PascalCase or camelCase string to snake_case.
 // It handles consecutive uppercase letters correctly (e.g., "ScheduleID" -> "schedule_id").
 func ToSnakeCase(s string) string {
@@ -467,31 +556,6 @@ func ToSnakeCase(s string) string {
 		result.WriteRune(r)
 	}
 	return strings.ToLower(result.String())
-}
-
-// PythonFunctionName returns the Python function name for a method.
-func (m Method) PythonFunctionName(servicePrefix string) string {
-	return ToSnakeCase(servicePrefix + m.Name)
-}
-
-// PythonResultTypeName returns the Python dataclass name for multi-value returns.
-func (m Method) PythonResultTypeName(serviceName string) string {
-	return serviceName + m.Name + "Result"
-}
-
-// NeedsResultClass returns true if the method needs a dataclass for returns.
-func (m Method) NeedsResultClass() bool {
-	return len(m.Returns) > 1
-}
-
-// PythonType returns the Python type for this parameter.
-func (p Param) PythonType() string {
-	return ToPythonType(p.Type)
-}
-
-// PythonName returns the snake_case Python name for this parameter.
-func (p Param) PythonName() string {
-	return ToSnakeCase(p.Name)
 }
 
 // ToRustType converts a Go type to its Rust equivalent.
@@ -562,6 +626,13 @@ func (p Param) RustTypeWithStructs(knownStructs map[string]bool) string {
 	return ToRustTypeWithStructs(p.Type, knownStructs)
 }
 
+// RustTypeWithShared returns the Rust type, resolving shared-alias names to their
+// canonical nd_pdk_types::X crate path (e.g. a return of []Track where
+// type Track = types.Track renders as Vec<nd_pdk_types::Track>).
+func (p Param) RustTypeWithShared(knownStructs map[string]bool, shared map[string]string) string {
+	return ToRustTypeWithShared(p.Type, knownStructs, shared)
+}
+
 // RustParamType returns the Rust type for this parameter when used as a function argument.
 func (p Param) RustParamType() string {
 	return RustParamType(p.Type)
@@ -573,6 +644,15 @@ func (p Param) RustParamTypeWithStructs(knownStructs map[string]bool) string {
 		return "&str"
 	}
 	return ToRustTypeWithStructs(p.Type, knownStructs)
+}
+
+// RustParamTypeWithShared returns the Rust param type, resolving shared-alias
+// names to their canonical nd_pdk_types::X crate path.
+func (p Param) RustParamTypeWithShared(knownStructs map[string]bool, shared map[string]string) string {
+	if p.Type == "string" {
+		return "&str"
+	}
+	return ToRustTypeWithShared(p.Type, knownStructs, shared)
 }
 
 // RustName returns the snake_case Rust name for this parameter.
@@ -604,9 +684,18 @@ func (f FieldDef) NeedsDefault() bool {
 // ToRustTypeWithStructs converts a Go type to its Rust equivalent,
 // using known struct names instead of serde_json::Value.
 func ToRustTypeWithStructs(goType string, knownStructs map[string]bool) string {
+	return toRustType(goType, knownStructs, nil)
+}
+
+// ToRustTypeWithShared resolves shared-alias names to their canonical nd_pdk_types::X path.
+func ToRustTypeWithShared(goType string, knownStructs map[string]bool, shared map[string]string) string {
+	return toRustType(goType, knownStructs, shared)
+}
+
+func toRustType(goType string, knownStructs map[string]bool, shared map[string]string) string {
 	// Handle pointer types
 	if strings.HasPrefix(goType, "*") {
-		inner := ToRustTypeWithStructs(goType[1:], knownStructs)
+		inner := toRustType(goType[1:], knownStructs, shared)
 		return "Option<" + inner + ">"
 	}
 	// Handle slice types
@@ -614,7 +703,7 @@ func ToRustTypeWithStructs(goType string, knownStructs map[string]bool) string {
 		if goType == "[]byte" {
 			return "Vec<u8>"
 		}
-		inner := ToRustTypeWithStructs(goType[2:], knownStructs)
+		inner := toRustType(goType[2:], knownStructs, shared)
 		return "Vec<" + inner + ">"
 	}
 	// Handle map types
@@ -636,7 +725,7 @@ func ToRustTypeWithStructs(goType string, knownStructs map[string]bool) string {
 		}
 		keyType := rest[:keyEnd]
 		valueType := rest[keyEnd+1:]
-		return "std::collections::HashMap<" + ToRustTypeWithStructs(keyType, knownStructs) + ", " + ToRustTypeWithStructs(valueType, knownStructs) + ">"
+		return "std::collections::HashMap<" + toRustType(keyType, knownStructs, shared) + ", " + toRustType(valueType, knownStructs, shared) + ">"
 	}
 
 	switch goType {
@@ -659,6 +748,17 @@ func ToRustTypeWithStructs(goType string, knownStructs map[string]bool) string {
 	case "interface{}", "any":
 		return "serde_json::Value"
 	default:
+		// Qualified reference to the shared types crate (e.g. types.Track ->
+		// nd_pdk_types::Track).
+		if rest, ok := strings.CutPrefix(goType, sharedTypesPrefix); ok {
+			return "nd_pdk_types::" + rest
+		}
+		// Resolve shared-alias names to their canonical nd_pdk_types:: path.
+		if shared != nil {
+			if t, ok := shared[goType]; ok {
+				return t
+			}
+		}
 		// Check if this is a known struct type
 		if knownStructs != nil && knownStructs[goType] {
 			return goType

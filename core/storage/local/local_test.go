@@ -13,7 +13,6 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/model/metadata"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -45,16 +44,13 @@ var _ = Describe("LocalStorage", func() {
 	})
 
 	Describe("newLocalStorage", func() {
-		BeforeEach(func() {
-			tests.SkipOnWindows("path separator bug (#TBD-path-sep-storage-local)")
-		})
 
 		Context("with valid path", func() {
 			It("should create a localStorage instance with correct path", func() {
-				u, err := url.Parse("file://" + tempDir)
+				u, err := storage.LocalPathToURL(tempDir)
 				Expect(err).ToNot(HaveOccurred())
 
-				storage := newLocalStorage(*u)
+				storage := newLocalStorage(u)
 				localStorage := storage.(*localStorage)
 
 				Expect(localStorage.u.Scheme).To(Equal("file"))
@@ -94,10 +90,10 @@ var _ = Describe("LocalStorage", func() {
 				err = os.Symlink(realDir, linkDir)
 				Expect(err).ToNot(HaveOccurred())
 
-				u, err := url.Parse("file://" + linkDir)
+				u, err := storage.LocalPathToURL(linkDir)
 				Expect(err).ToNot(HaveOccurred())
 
-				storage := newLocalStorage(*u)
+				storage := newLocalStorage(u)
 				localStorage, ok := storage.(*localStorage)
 				Expect(ok).To(BeTrue())
 
@@ -110,10 +106,10 @@ var _ = Describe("LocalStorage", func() {
 				// Use a non-existent path to trigger symlink resolution failure
 				nonExistentPath := filepath.Join(tempDir, "non-existent")
 
-				u, err := url.Parse("file://" + nonExistentPath)
+				u, err := storage.LocalPathToURL(nonExistentPath)
 				Expect(err).ToNot(HaveOccurred())
 
-				storage := newLocalStorage(*u)
+				storage := newLocalStorage(u)
 				localStorage, ok := storage.(*localStorage)
 				Expect(ok).To(BeTrue())
 
@@ -137,7 +133,9 @@ var _ = Describe("LocalStorage", func() {
 				localStorage, ok := storage.(*localStorage)
 				Expect(ok).To(BeTrue())
 
-				Expect(localStorage.u.Path).To(Equal("C:/music"))
+				// newLocalStorage re-joins the drive letter (u.Host) with u.Path via
+				// filepath.Join, which yields an OS-native (backslash) path on Windows.
+				Expect(localStorage.u.Path).To(Equal(filepath.Join("C:", "/music")))
 			})
 		})
 
@@ -159,10 +157,10 @@ var _ = Describe("LocalStorage", func() {
 			It("falls back to the default extractor instead of crashing", func() {
 				conf.Server.Scanner.Extractor = "nonexistent-extractor"
 
-				u, err := url.Parse("file://" + tempDir)
+				u, err := storage.LocalPathToURL(tempDir)
 				Expect(err).ToNot(HaveOccurred())
 
-				storage := newLocalStorage(*u)
+				storage := newLocalStorage(u)
 				ls, ok := storage.(*localStorage)
 				Expect(ok).To(BeTrue())
 				Expect(ls.extractor).To(BeIdenticalTo(defaultExtractor))
@@ -171,16 +169,13 @@ var _ = Describe("LocalStorage", func() {
 	})
 
 	Describe("localStorage.FS", func() {
-		BeforeEach(func() {
-			tests.SkipOnWindows("path separator bug (#TBD-path-sep-storage-local)")
-		})
 
 		Context("with existing directory", func() {
 			It("should return a localFS instance", func() {
-				u, err := url.Parse("file://" + tempDir)
+				u, err := storage.LocalPathToURL(tempDir)
 				Expect(err).ToNot(HaveOccurred())
 
-				storage := newLocalStorage(*u)
+				storage := newLocalStorage(u)
 				musicFS, err := storage.FS()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(musicFS).ToNot(BeNil())
@@ -193,10 +188,10 @@ var _ = Describe("LocalStorage", func() {
 		Context("with non-existent directory", func() {
 			It("should return an error", func() {
 				nonExistentPath := filepath.Join(tempDir, "non-existent")
-				u, err := url.Parse("file://" + nonExistentPath)
+				u, err := storage.LocalPathToURL(nonExistentPath)
 				Expect(err).ToNot(HaveOccurred())
 
-				storage := newLocalStorage(*u)
+				storage := newLocalStorage(u)
 				_, err = storage.FS()
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring(nonExistentPath))
@@ -208,7 +203,6 @@ var _ = Describe("LocalStorage", func() {
 		var testFile string
 
 		BeforeEach(func() {
-			tests.SkipOnWindows("path separator bug (#TBD-path-sep-storage-local)")
 			// Create a test file
 			testFile = filepath.Join(tempDir, "test.mp3")
 			err := os.WriteFile(testFile, []byte("test data"), 0600)
@@ -235,9 +229,9 @@ var _ = Describe("LocalStorage", func() {
 
 				testExtractor.results["test.mp3"] = expectedInfo
 
-				u, err := url.Parse("file://" + tempDir)
+				u, err := storage.LocalPathToURL(tempDir)
 				Expect(err).ToNot(HaveOccurred())
-				storage := newLocalStorage(*u)
+				storage := newLocalStorage(u)
 				musicFS, err := storage.FS()
 				Expect(err).ToNot(HaveOccurred())
 
@@ -259,9 +253,9 @@ var _ = Describe("LocalStorage", func() {
 
 				testExtractor.results["test.mp3"] = incompleteInfo
 
-				u, err := url.Parse("file://" + tempDir)
+				u, err := storage.LocalPathToURL(tempDir)
 				Expect(err).ToNot(HaveOccurred())
-				storage := newLocalStorage(*u)
+				storage := newLocalStorage(u)
 				musicFS, err := storage.FS()
 				Expect(err).ToNot(HaveOccurred())
 
@@ -288,9 +282,9 @@ var _ = Describe("LocalStorage", func() {
 
 				testExtractor.results["non-existent.mp3"] = incompleteInfo
 
-				u, err := url.Parse("file://" + tempDir)
+				u, err := storage.LocalPathToURL(tempDir)
 				Expect(err).ToNot(HaveOccurred())
-				storage := newLocalStorage(*u)
+				storage := newLocalStorage(u)
 				musicFS, err := storage.FS()
 				Expect(err).ToNot(HaveOccurred())
 
@@ -303,9 +297,9 @@ var _ = Describe("LocalStorage", func() {
 			It("should return the extractor error", func() {
 				testExtractor.err = &extractorError{message: "extractor failed"}
 
-				u, err := url.Parse("file://" + tempDir)
+				u, err := storage.LocalPathToURL(tempDir)
 				Expect(err).ToNot(HaveOccurred())
-				storage := newLocalStorage(*u)
+				storage := newLocalStorage(u)
 				musicFS, err := storage.FS()
 				Expect(err).ToNot(HaveOccurred())
 
@@ -334,9 +328,9 @@ var _ = Describe("LocalStorage", func() {
 				testExtractor.results["test.mp3"] = info1
 				testExtractor.results["test2.mp3"] = info2
 
-				u, err := url.Parse("file://" + tempDir)
+				u, err := storage.LocalPathToURL(tempDir)
 				Expect(err).ToNot(HaveOccurred())
-				storage := newLocalStorage(*u)
+				storage := newLocalStorage(u)
 				musicFS, err := storage.FS()
 				Expect(err).ToNot(HaveOccurred())
 
@@ -390,9 +384,8 @@ var _ = Describe("LocalStorage", func() {
 
 	Describe("Storage registration", func() {
 		It("should register localStorage for file scheme", func() {
-			tests.SkipOnWindows("path separator bug (#TBD-path-sep-storage-local)")
 			// This tests the init() function indirectly
-			storage, err := storage.For("file://" + tempDir)
+			storage, err := storage.For(tempDir)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(storage).To(BeAssignableToTypeOf(&localStorage{}))
 		})

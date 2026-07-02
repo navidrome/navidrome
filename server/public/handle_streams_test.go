@@ -131,11 +131,22 @@ var _ = Describe("handleStream", func() {
 		return w
 	}
 
-	It("passes all validation and reaches the streamer for a valid token", func() {
+	shareOwnedBy := func(owner model.User, mf model.MediaFile) {
 		shareRepo.ID = "share123"
+		shareRepo.Entity = &model.Share{ID: "share123", UserID: owner.ID}
+		userRepo := tests.CreateMockUserRepo()
+		Expect(userRepo.Put(&owner)).To(Succeed())
+		ds.MockedUser = userRepo
 		mfRepo := tests.CreateMockMediaFileRepo()
-		mfRepo.SetData(model.MediaFiles{{ID: "mf-123", Title: "Test Song"}})
+		mfRepo.SetData(model.MediaFiles{mf})
 		ds.MockedMediaFile = mfRepo
+	}
+
+	It("passes all validation and reaches the streamer for a valid token", func() {
+		shareOwnedBy(
+			model.User{ID: "owner1", UserName: "owner1", IsAdmin: true},
+			model.MediaFile{ID: "mf-123", Title: "Test Song"},
+		)
 
 		claims := auth.Claims{ID: "mf-123", Format: "mp3", BitRate: 192, ShareID: "share123"}
 		token, _ := auth.CreateExpiringPublicToken(time.Now().Add(time.Hour), claims)
@@ -144,6 +155,33 @@ var _ = Describe("handleStream", func() {
 		Expect(streamer.called).To(BeTrue())
 		Expect(streamer.req.Format).To(Equal("mp3"))
 		Expect(streamer.req.BitRate).To(Equal(192))
+	})
+
+	It("returns 404 when the track is outside the share owner's libraries", func() {
+		shareOwnedBy(
+			model.User{ID: "owner1", UserName: "owner1", Libraries: model.Libraries{{ID: 1}}},
+			model.MediaFile{ID: "mf-restricted", Title: "Other Lib Track", LibraryID: 2},
+		)
+
+		claims := auth.Claims{ID: "mf-restricted", ShareID: "share123"}
+		token, _ := auth.CreateExpiringPublicToken(time.Now().Add(time.Hour), claims)
+		w := makeRequest(token)
+
+		Expect(w.Code).To(Equal(http.StatusNotFound))
+		Expect(streamer.called).To(BeFalse())
+	})
+
+	It("streams a track inside the share owner's libraries", func() {
+		shareOwnedBy(
+			model.User{ID: "owner1", UserName: "owner1", Libraries: model.Libraries{{ID: 1}}},
+			model.MediaFile{ID: "mf-ok", Title: "OK", LibraryID: 1},
+		)
+
+		claims := auth.Claims{ID: "mf-ok", Format: "mp3", ShareID: "share123"}
+		token, _ := auth.CreateExpiringPublicToken(time.Now().Add(time.Hour), claims)
+		makeRequest(token)
+
+		Expect(streamer.called).To(BeTrue())
 	})
 
 	It("returns 400 for an expired token", func() {

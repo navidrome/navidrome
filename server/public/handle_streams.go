@@ -25,6 +25,7 @@ func (pub *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var shareOwner *model.User
 	if info.shareID != "" {
 		share, err := pub.ds.Share(ctx).Get(info.shareID)
 		if err != nil {
@@ -33,6 +34,12 @@ func (pub *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 		}
 		if expiresAt := V(share.ExpiresAt); !expiresAt.IsZero() && expiresAt.Before(time.Now()) {
 			checkShareError(ctx, w, model.ErrExpired, info.shareID)
+			return
+		}
+		shareOwner, err = pub.ds.User(ctx).Get(share.UserID)
+		if err != nil {
+			log.Error(ctx, "Error retrieving share owner for shared stream", "share", info.shareID, "owner", share.UserID, err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
 	}
@@ -45,6 +52,12 @@ func (pub *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 			log.Error(ctx, "Error retrieving media file for shared stream", "id", info.id, err)
 			http.Error(w, "internal error", http.StatusInternalServerError)
 		}
+		return
+	}
+
+	// 404 rather than 403 so the response doesn't reveal whether the id exists.
+	if shareOwner != nil && !shareOwner.HasLibraryAccess(mf.LibraryID) {
+		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
 

@@ -46,4 +46,25 @@ var _ = Describe("GG", func() {
 			Expect(gg.If(false, 1.1, 2.2)).To(Equal(2.2))
 		})
 	})
+
+	Describe("Clone", func() {
+		It("returns a pointer to a copy of the value", func() {
+			original := 123
+			cloned := gg.Clone(&original)
+			Expect(cloned).To(HaveValue(Equal(123)))
+			Expect(cloned).NotTo(BeIdenticalTo(&original))
+		})
+
+		It("does not alias the original value", func() {
+			original := 123
+			cloned := gg.Clone(&original)
+			original = 456
+			Expect(*cloned).To(Equal(123))
+		})
+
+		It("returns nil when the input is nil", func() {
+			var v *int
+			Expect(gg.Clone(v)).To(BeNil())
+		})
+	})
 })

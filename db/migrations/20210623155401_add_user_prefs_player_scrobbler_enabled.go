@@ -11,16 +11,16 @@ func init() {
 	goose.AddMigrationContext(upAddUserPrefsPlayerScrobblerEnabled, downAddUserPrefsPlayerScrobblerEnabled)
 }
 
-func upAddUserPrefsPlayerScrobblerEnabled(_ context.Context, tx *sql.Tx) error {
-	err := upAddUserPrefs(tx)
+func upAddUserPrefsPlayerScrobblerEnabled(ctx context.Context, tx *sql.Tx) error {
+	err := upAddUserPrefs(ctx, tx)
 	if err != nil {
 		return err
 	}
-	return upPlayerScrobblerEnabled(tx)
+	return upPlayerScrobblerEnabled(ctx, tx)
 }
 
-func upAddUserPrefs(tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func upAddUserPrefs(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 create table user_props
 (
     user_id varchar not null,
@@ -33,13 +33,13 @@ create table user_props
 	return err
 }
 
-func upPlayerScrobblerEnabled(tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func upPlayerScrobblerEnabled(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 alter table player add scrobble_enabled bool default true;
 `)
 	return err
 }
 
-func downAddUserPrefsPlayerScrobblerEnabled(_ context.Context, tx *sql.Tx) error {
+func downAddUserPrefsPlayerScrobblerEnabled(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

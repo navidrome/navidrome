@@ -1,0 +1,6 @@
+version: '1.0'
+metadata:
+  title: 'Solo Piano'
+  artist: 'Composer'
+  language: 'eng'
+  instrumental: true

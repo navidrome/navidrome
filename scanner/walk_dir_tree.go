@@ -123,9 +123,6 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string, checker *IgnoreC
 			log.Trace(ctx, "Scanner: Ignoring entry", "path", entryPath)
 			continue
 		}
-		if isEntryIgnored(entry.Name()) {
-			continue
-		}
 		if ctx.Err() != nil {
 			return folder, children, ctx.Err()
 		}
@@ -135,7 +132,10 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string, checker *IgnoreC
 			log.Warn(ctx, "Scanner: Invalid symlink", "dir", entryPath, err)
 			continue
 		}
-		if isDir && !isDirIgnored(entry.Name()) && isDirReadable(ctx, job.fs, entryPath) {
+		if isIgnoredEntry(entry.Name(), isDir) {
+			continue
+		}
+		if isDir && isDirReadable(ctx, job.fs, entryPath) {
 			children = append(children, entryPath)
 			folder.numSubFolders++
 		} else {
@@ -147,12 +147,16 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string, checker *IgnoreC
 			if fileInfo.ModTime().After(folder.modTime) {
 				folder.modTime = fileInfo.ModTime()
 			}
+			name, ok := resolveEntryName(ctx, job.fs, dirPath, entry)
+			if !ok {
+				continue
+			}
 			switch {
-			case model.IsAudioFile(entry.Name()):
+			case model.IsAudioFile(name):
 				folder.audioFiles[entry.Name()] = entry
-			case model.IsValidPlaylist(entry.Name()):
+			case model.IsValidPlaylist(name):
 				folder.numPlaylists++
-			case model.IsImageFile(entry.Name()):
+			case model.IsImageFile(name):
 				folder.imageFiles[entry.Name()] = entry
 				folder.imagesUpdatedAt = utils.TimeNewest(folder.imagesUpdatedAt, fileInfo.ModTime(), folder.modTime)
 			}
@@ -213,6 +217,45 @@ func isDirOrSymlinkToDir(fsys fs.FS, baseDir string, dirEnt fs.DirEntry) (bool, 
 	return fileInfo.IsDir(), nil
 }
 
+const maxSymlinkHops = 40
+
+// resolveEntryName returns the name to classify the entry by, and whether to
+// consider it at all. Symlinks are resolved to their final target so the caller
+// classifies by the target's extension, not the link's name. Returns ok=false
+// when symlinks are disabled or the target can't be resolved.
+func resolveEntryName(ctx context.Context, fsys fs.FS, dirPath string, entry fs.DirEntry) (string, bool) {
+	if entry.Type()&fs.ModeSymlink == 0 {
+		return entry.Name(), true
+	}
+	linkPath := path.Join(dirPath, entry.Name())
+	if !conf.Server.Scanner.FollowSymlinks {
+		log.Trace(ctx, "Scanner: Skipping symlink, following is disabled", "path", linkPath)
+		return "", false
+	}
+	cur := linkPath
+	for hop := 0; hop < maxSymlinkHops; hop++ {
+		target, err := fs.ReadLink(fsys, cur)
+		if err != nil {
+			if hop == 0 {
+				log.Trace(ctx, "Scanner: Skipping symlink, cannot resolve target", "path", linkPath, err)
+				return "", false
+			}
+			resolved := path.Base(cur)
+			log.Trace(ctx, "Scanner: Resolved symlink", "path", linkPath, "target", cur, "name", resolved)
+			return resolved, true
+		}
+		if path.IsAbs(target) {
+			// Absolute targets are not valid fs.FS paths, so the next ReadLink fails and
+			// resolution stops here, leaving cur as the target to classify by name.
+			cur = target
+		} else {
+			cur = path.Join(path.Dir(cur), target)
+		}
+	}
+	log.Trace(ctx, "Scanner: Skipping symlink, too many hops (possible loop)", "path", linkPath)
+	return "", false
+}
+
 // isDirReadable returns true if the directory represented by dirEnt is readable
 func isDirReadable(ctx context.Context, fsys fs.FS, dirPath string) bool {
 	dir, err := fsys.Open(dirPath)
@@ -233,22 +276,35 @@ var ignoredDirs = []string{
 	"#snapshot",
 	"@Recycle",
 	"@Recently-Snapshot",
+	".git",
 	".streams",
 	"lost+found",
 }
 
-// isDirIgnored returns true if the directory represented by dirEnt should be ignored
-func isDirIgnored(name string) bool {
-	// allows Album folders for albums which eg start with ellipses
-	if strings.HasPrefix(name, ".") && !strings.HasPrefix(name, "..") {
+// isIgnoredEntry returns true if a directory entry with the given name should be
+// skipped during scanning. It centralizes all name- and type-based ignore policy:
+//   - special system directories in ignoredDirs are always ignored;
+//   - dot-prefixed files are always ignored;
+//   - dot-prefixed folders are ignored unless Scanner.IgnoreDotFolders is disabled,
+//     allowing albums like ".Hack Sign" to be scanned when the option is off.
+func isIgnoredEntry(name string, isDir bool) bool {
+	if isDir && isDirIgnored(name) {
 		return true
 	}
-	if slices.ContainsFunc(ignoredDirs, func(s string) bool { return strings.EqualFold(s, name) }) {
-		return true
-	}
-	return false
+	return isDotEntry(name) && (!isDir || conf.Server.Scanner.IgnoreDotFolders)
 }
 
-func isEntryIgnored(name string) bool {
-	return strings.HasPrefix(name, ".") && !strings.HasPrefix(name, "..")
+// isDirIgnored returns true if the directory name is in the explicit ignoredDirs
+// blocklist. Used both while walking the tree and by the file watcher.
+func isDirIgnored(name string) bool {
+	return slices.ContainsFunc(ignoredDirs, func(s string) bool { return strings.EqualFold(s, name) })
+}
+
+// isDotEntry returns true only for names with exactly one leading dot (the
+// convention for hidden entries), e.g. ".hidden". Names with two or more leading
+// dots are not considered hidden: "." and ".." are the special self/parent
+// references, and anything like "..foo" or "...Album" is a regular name (album
+// folders sometimes start with ellipses), so all of these return false.
+func isDotEntry(name string) bool {
+	return name != "." && strings.HasPrefix(name, ".") && !strings.HasPrefix(name, "..")
 }

@@ -19,7 +19,7 @@ alter table media_file
 create index if not exists media_file_sample_rate
 	on media_file (sample_rate);
 `)
-	notice(tx, "A full rescan should be performed to pick up additional tags")
+	notice(ctx, tx, "A full rescan should be performed to pick up additional tags")
 	return err
 }
 

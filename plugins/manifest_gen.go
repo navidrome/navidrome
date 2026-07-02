@@ -158,6 +158,12 @@ func (j *Manifest) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+// Matcher service permissions for resolving external songs to local library tracks
+type MatcherPermission struct {
+	// Explanation for why matcher access is needed
+	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
+}
+
 // Permissions required by the plugin
 type Permissions struct {
 	// Artwork corresponds to the JSON schema field "artwork".
@@ -174,6 +180,9 @@ type Permissions struct {
 
 	// Library corresponds to the JSON schema field "library".
 	Library *LibraryPermission `json:"library,omitempty" yaml:"library,omitempty" mapstructure:"library,omitempty"`
+
+	// Matcher corresponds to the JSON schema field "matcher".
+	Matcher *MatcherPermission `json:"matcher,omitempty" yaml:"matcher,omitempty" mapstructure:"matcher,omitempty"`
 
 	// Scheduler corresponds to the JSON schema field "scheduler".
 	Scheduler *SchedulerPermission `json:"scheduler,omitempty" yaml:"scheduler,omitempty" mapstructure:"scheduler,omitempty"`
