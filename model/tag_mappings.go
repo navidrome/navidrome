@@ -129,6 +129,28 @@ func compileExceptionsRegex(exceptions []string) *regexp.Regexp {
 	return rx
 }
 
+var artistSplitExceptions struct {
+	sync.Mutex
+	key string
+	rx  *regexp.Regexp
+}
+
+// ArtistSplitExceptionsRx returns the regex for Scanner.ArtistSplitExceptions,
+// or nil if none are configured. Compiled lazily (config hooks only run once
+// per process, before tests can override the option) and cached until the
+// configured list changes.
+func ArtistSplitExceptionsRx() *regexp.Regexp {
+	c := &artistSplitExceptions
+	c.Lock()
+	defer c.Unlock()
+	key := strings.Join(conf.Server.Scanner.ArtistSplitExceptions, "\x00")
+	if c.key != key {
+		c.key = key
+		c.rx = compileExceptionsRegex(conf.Server.Scanner.ArtistSplitExceptions)
+	}
+	return c.rx
+}
+
 type TagType string
 
 const (
