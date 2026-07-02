@@ -151,6 +151,33 @@ func ArtistSplitExceptionsRx() *regexp.Regexp {
 	return c.rx
 }
 
+// participantTagNames are the tags that hold artist names (or their sort
+// values), where split exceptions apply.
+var participantTagNames = sync.OnceValue(func() map[TagName]struct{} {
+	names := []TagName{
+		TagTrackArtist, TagTrackArtists, TagTrackArtistSort, TagTrackArtistsSort,
+		TagAlbumArtist, TagAlbumArtists, TagAlbumArtistSort, TagAlbumArtistsSort,
+	}
+	set := make(map[TagName]struct{}, len(names)+2*len(AllRoles))
+	for _, n := range names {
+		set[n] = struct{}{}
+	}
+	for role := range AllRoles {
+		set[TagName(role)] = struct{}{}
+		set[TagName(role+"sort")] = struct{}{}
+	}
+	return set
+})
+
+// WithParticipantExceptions returns the conf with the global artist split
+// exceptions attached when name is a participant (artist/role) tag.
+func (c TagConf) WithParticipantExceptions(name TagName) TagConf {
+	if _, ok := participantTagNames()[name]; ok {
+		c.ExceptionsRx = ArtistSplitExceptionsRx()
+	}
+	return c
+}
+
 type TagType string
 
 const (

@@ -172,4 +172,23 @@ var _ = Describe("TagConf", func() {
 			Expect(second.MatchString("AC/DC")).To(BeTrue())
 		})
 	})
+
+	Describe("WithParticipantExceptions", func() {
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.Scanner.ArtistSplitExceptions = []string{"Iron and Wine"}
+		})
+
+		It("attaches the exceptions regex to participant tags", func() {
+			for _, tag := range []TagName{"artist", "albumartist", "artists", "artistsort", "composer", "lyricist", "composersort"} {
+				Expect(TagConf{}.WithParticipantExceptions(tag).ExceptionsRx).ToNot(BeNil(), string(tag))
+			}
+		})
+
+		It("does not attach the exceptions regex to non-participant tags", func() {
+			for _, tag := range []TagName{"genre", "mood", "title", "releasetype"} {
+				Expect(TagConf{}.WithParticipantExceptions(tag).ExceptionsRx).To(BeNil(), string(tag))
+			}
+		})
+	})
 })
