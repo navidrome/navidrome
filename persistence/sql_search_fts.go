@@ -11,6 +11,7 @@ import (
 	"github.com/deluan/sanitize"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/str"
 )
 
 // containsCJK returns true if the string contains any CJK (Chinese/Japanese/Korean) characters.
@@ -34,10 +35,6 @@ func containsCJK(s string) bool {
 // tokenizer treats it as token separators, and characters like ' can cause FTS5 parse errors
 // as unbalanced string delimiters.
 var fts5SpecialChars = regexp.MustCompile(`[^\p{L}\p{N}\s*"\x00]`)
-
-// fts5PunctStrip strips everything except letters and numbers (no whitespace, wildcards, or quotes).
-// Used for normalizing words at index time to create concatenated forms (e.g., "R.E.M." → "REM").
-var fts5PunctStrip = regexp.MustCompile(`[^\p{L}\p{N}]`)
 
 // fts5Operators matches FTS5 boolean operators as whole words (case-insensitive).
 var fts5Operators = regexp.MustCompile(`(?i)\b(AND|OR|NOT|NEAR)\b`)
@@ -68,7 +65,7 @@ func processPunctuatedWords(input string, phrases []string) (string, []string) {
 			result = append(result, w)
 			continue
 		}
-		concat := fts5PunctStrip.ReplaceAllString(w, "")
+		concat := str.FTSPunctStrip.ReplaceAllString(w, "")
 		if concat == "" || concat == w {
 			result = append(result, w)
 			continue
@@ -297,7 +294,7 @@ func ftsQueryDegraded(original, ftsQuery string) bool {
 	// Strip quotes from original for comparison — we want the raw content
 	stripped := strings.ReplaceAll(original, `"`, "")
 	// Extract the alphanumeric content from the original query
-	alphaNum := fts5PunctStrip.ReplaceAllString(stripped, "")
+	alphaNum := str.FTSPunctStrip.ReplaceAllString(stripped, "")
 	// If the original is entirely alphanumeric, nothing was stripped — not degraded
 	if len(alphaNum) == len(stripped) {
 		return false
@@ -321,7 +318,7 @@ func ftsQueryDegraded(original, ftsQuery string) bool {
 		if strings.HasPrefix(t, `"`) {
 			// Extract content between quotes
 			inner := strings.Trim(t, `"`)
-			innerAlpha := fts5PunctStrip.ReplaceAllString(inner, " ")
+			innerAlpha := str.FTSPunctStrip.ReplaceAllString(inner, " ")
 			for it := range strings.FieldsSeq(innerAlpha) {
 				if len(it) > 2 {
 					return false

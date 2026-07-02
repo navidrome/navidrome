@@ -7,8 +7,10 @@ import (
 	"github.com/deluan/sanitize"
 )
 
-// ftsPunctStrip strips everything except letters and numbers (no whitespace, wildcards, or quotes).
-var ftsPunctStrip = regexp.MustCompile(`[^\p{L}\p{N}]`)
+// FTSPunctStrip strips everything except letters and numbers (no whitespace, wildcards, or quotes).
+// It is the single punctuation-strip contract shared by index-time normalization (NormalizeForFTS)
+// and query-time processing in the persistence package — both sides must produce matching tokens.
+var FTSPunctStrip = regexp.MustCompile(`[^\p{L}\p{N}]`)
 
 // NormalizeForFTS takes multiple strings and returns a space-separated, deduplicated list of
 // alternative searchable forms for each word: punctuation-stripped (R.E.M. → REM, AC/DC → ACDC)
@@ -34,7 +36,7 @@ func NormalizeForFTS(values ...string) string {
 		for word := range strings.FieldsSeq(v) {
 			transliterated := sanitize.Accents(word)
 			// Concatenated ASCII form: R.E.M. → REM, AC/DC → ACDC, St-Étienne → StEtienne.
-			add(word, ftsPunctStrip.ReplaceAllString(transliterated, ""))
+			add(word, FTSPunctStrip.ReplaceAllString(transliterated, ""))
 			// Accent-only transliteration for words without name-punctuation (Bjørk → Bjork).
 			add(word, transliterated)
 		}
