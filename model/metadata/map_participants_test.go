@@ -582,6 +582,20 @@ var _ = Describe("Participants", func() {
 					matchPerformer("Nathan East", "nathan east", "Bass"),
 				))
 			})
+
+			It("should assign MBIDs in order to names split from a single value", func() {
+				mf = toMediaFile(model.RawTags{
+					"PERFORMER:GUITAR":               {"Eric Clapton/B.B. King"},
+					"MUSICBRAINZ_PERFORMERID:GUITAR": {mbid1, mbid2},
+				})
+
+				p := mf.Participants[model.RolePerformer]
+				Expect(p).To(HaveLen(2))
+				Expect(p[0].Name).To(Equal("Eric Clapton"))
+				Expect(p[0].MbzArtistID).To(Equal(mbid1))
+				Expect(p[1].Name).To(Equal("B.B. King"))
+				Expect(p[1].MbzArtistID).To(Equal(mbid2))
+			})
 		})
 
 		When("MUSICBRAINZ_PERFORMERID tag is set", func() {
