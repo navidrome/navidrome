@@ -20,6 +20,8 @@ func init() {
 // ASCII searches. Recompute the precise value in Go; the artist_fts update trigger re-indexes
 // every row whose value changes.
 func upBackfillArtistSearchNormalized(ctx context.Context, tx *sql.Tx) error {
+	notice(ctx, tx, "Rebuilding artist search index data. This may take a moment on large libraries.")
+
 	rows, err := tx.QueryContext(ctx, "SELECT id, name, search_normalized FROM artist")
 	if err != nil {
 		return fmt.Errorf("querying artists: %w", err)
