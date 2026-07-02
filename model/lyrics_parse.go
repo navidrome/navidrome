@@ -59,9 +59,9 @@ func parseFirstMatch(ctx context.Context, sniff bool, lang string, contents []by
 			// control flow, so keep it at trace. A failure under an explicit suffix
 			// means the declared format is malformed and deserves a warning.
 			if sniff {
-				log.Trace(ctx, "Lyrics probe did not match, trying next format", "error", err)
+				log.Trace(ctx, "Lyrics probe did not match, trying next format", err)
 			} else {
-				log.Warn(ctx, "Error parsing lyrics, falling back to plain text", "error", err)
+				log.Warn(ctx, "Error parsing lyrics, falling back to plain text", err)
 			}
 		}
 	}
