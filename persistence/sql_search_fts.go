@@ -221,7 +221,10 @@ var ftsColumnDefs = map[string][]ftsColumn{
 	"artist": {
 		{"name", 10.0},
 		{"sort_artist_name", 1.0},
-		{"search_normalized", 1.0},
+		// Same weight as name: for artists this column is purely the name in
+		// alternate spelling (unlike media_file/album, where it mixes
+		// title/album/artist variants and full weight would distort ranking).
+		{"search_normalized", 10.0},
 	},
 }
 

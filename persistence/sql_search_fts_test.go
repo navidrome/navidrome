@@ -156,7 +156,7 @@ var _ = Describe("ftsColumnDefs helpers", func() {
 
 		It("returns weight CSV for artist", func() {
 			Expect(ftsBM25Weights).To(HaveKeyWithValue("artist",
-				"10.0, 1.0, 1.0",
+				"10.0, 1.0, 10.0",
 			))
 		})
 
