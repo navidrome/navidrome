@@ -8,6 +8,12 @@ type Scrobble struct {
 	SubmissionTime time.Time
 }
 
+type MostPlayedEntry struct {
+	MediaFile
+	PlayCount int `json:"playCount"`
+}
+
 type ScrobbleRepository interface {
 	RecordScrobble(mediaFileID string, submissionTime time.Time) error
+	GetMostPlayed(offset, count int) ([]MostPlayedEntry, error)
 }

@@ -22,3 +22,7 @@ func (m *MockScrobbleRepo) RecordScrobble(fileID string, submissionTime time.Tim
 	})
 	return nil
 }
+
+func (m *MockScrobbleRepo) GetMostPlayed(offset, count int) ([]model.MostPlayedEntry, error) {
+	return nil, nil
+}

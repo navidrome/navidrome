@@ -228,6 +228,30 @@ func (api *Router) GetNowPlaying(r *http.Request) (*responses.Subsonic, error) {
 	return response, nil
 }
 
+func (api *Router) GetMostPlayedSongs(r *http.Request) (*responses.Subsonic, error) {
+	p := req.Params(r)
+	count := min(p.IntOr("count", 50), 500)
+	offset := p.IntOr("offset", 0)
+
+	ctx := r.Context()
+	entries, err := api.ds.Scrobble(ctx).GetMostPlayed(offset, count)
+	if err != nil {
+		log.Error(r, "Error retrieving most played songs", err)
+		return nil, err
+	}
+
+	response := newResponse()
+	response.MostPlayed = &responses.MostPlayed{
+		Song: slice.Map(entries, func(e model.MostPlayedEntry) responses.MostPlayedEntry {
+			return responses.MostPlayedEntry{
+				Child:     childFromMediaFile(ctx, e.MediaFile),
+				PlayCount: e.PlayCount,
+			}
+		}),
+	}
+	return response, nil
+}
+
 func (api *Router) GetRandomSongs(r *http.Request) (*responses.Subsonic, error) {
 	p := req.Params(r)
 	size := min(p.IntOr("size", 10), 500)
