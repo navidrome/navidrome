@@ -105,13 +105,15 @@ func isDottedAbbreviation(w string, subTokens []string) bool {
 }
 
 // buildFTS5Query preprocesses user input into a safe FTS5 MATCH expression.
+// Plain tokens are emitted as (token OR token*) so bm25 ranks exact-token hits above prefix-only matches.
 // It preserves quoted phrases and * prefix wildcards, neutralizes FTS5 operators
 // (by lowercasing them, since FTS5 operators are case-sensitive) and strips
 // special characters to prevent query injection.
-func buildFTS5Query(userInput string) string {
+// The second return reports whether tokenization degraded the query (see ftsQueryDegraded).
+func buildFTS5Query(userInput string) (string, bool) {
 	q := strings.TrimSpace(userInput)
 	if q == "" || q == `""` {
-		return ""
+		return "", false
 	}
 
 	var phrases []string
@@ -151,25 +153,38 @@ func buildFTS5Query(userInput string) string {
 	result = fts5LeadingStar.ReplaceAllString(result, "$1")
 	tokens := strings.Fields(result)
 
-	// Append * to plain tokens for prefix matching (e.g., "love" → "love*").
-	// Skip tokens that are already wildcarded or are quoted phrase placeholders.
+	// Two forms per token: a plain prefix form (love*) used only to evaluate query
+	// degradation, and the final (love OR love*) form. The OR adds no matches
+	// (exact ⊂ prefix) but gives bm25 a high-IDF exact-term hit, ranking rows that
+	// contain the literal word above prefix-only matches. Placeholders and
+	// user-supplied wildcards pass through untouched in both forms.
+	prefixTokens := make([]string, len(tokens))
+	wrappedTokens := make([]string, len(tokens))
 	for i, t := range tokens {
 		if strings.HasPrefix(t, "\x00") || strings.HasSuffix(t, "*") {
+			prefixTokens[i], wrappedTokens[i] = t, t
 			continue
 		}
-		tokens[i] = t + "*"
+		prefixTokens[i] = t + "*"
+		wrappedTokens[i] = "(" + t + " OR " + t + "*)"
 	}
 
 	// Use explicit AND between tokens — FTS5's implicit AND (space-separated)
-	// doesn't work correctly with parenthesized OR groups from processPunctuatedWords.
-	result = strings.Join(tokens, " AND ")
+	// doesn't work correctly with parenthesized OR groups. The prefix form is
+	// space-joined instead: it only feeds ftsQueryDegraded, which would count a
+	// literal "AND" as a long token and never flag all-short-token queries.
+	prefixQuery := strings.Join(prefixTokens, " ")
+	result = strings.Join(wrappedTokens, " AND ")
 
 	for i, phrase := range phrases {
 		placeholder := fmt.Sprintf("\x00PHRASE%d\x00", i)
+		prefixQuery = strings.ReplaceAll(prefixQuery, placeholder, phrase)
 		result = strings.ReplaceAll(result, placeholder, phrase)
 	}
 
-	return result
+	// Degradation is evaluated on the prefix form: ftsQueryDegraded treats
+	// leading-( tokens as punctuated-word groups and would never flag wrapped ones.
+	return result, ftsQueryDegraded(userInput, prefixQuery)
 }
 
 // ftsColumn pairs an FTS5 column name with its BM25 relevance weight.
@@ -209,7 +224,10 @@ var ftsColumnDefs = map[string][]ftsColumn{
 	"artist": {
 		{"name", 10.0},
 		{"sort_artist_name", 1.0},
-		{"search_normalized", 1.0},
+		// Same weight as name: for artists this column is purely the name in
+		// alternate spelling (unlike media_file/album, where it mixes
+		// title/album/artist variants and full weight would distort ranking).
+		{"search_normalized", 10.0},
 	},
 }
 
@@ -338,8 +356,8 @@ func ftsQueryDegraded(original, ftsQuery string) bool {
 // tokenization stripped significant content from the query (e.g., "1+" → "1*").
 // Returns nil when the query produces no searchable tokens at all.
 func newFTSSearch(tableName, query string) searchStrategy {
-	q := buildFTS5Query(query)
-	if q == "" || ftsQueryDegraded(query, q) {
+	q, degraded := buildFTS5Query(query)
+	if q == "" || degraded {
 		// Fallback: try LIKE search with the raw query
 		cleaned := strings.TrimSpace(strings.ReplaceAll(query, `"`, ""))
 		if cleaned != "" {
