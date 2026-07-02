@@ -22,6 +22,7 @@ import {
   SongInfo,
   SongTitleField,
   SongSimpleList,
+  AverageRatingField,
   RatingField,
   useResourceRefresh,
   ArtistLinkField,
@@ -170,6 +171,9 @@ const SongList = (props) => {
           className={classes.ratingField}
         />
       ),
+      averageRating: config.enableStarRating && (
+        <AverageRatingField source="averageRating" sortByOrder={'DESC'} />
+      ),
       bpm: isDesktop && <NumberField source="bpm" />,
       genre: <TextField source="genre" />,
       mood: isDesktop && (
@@ -196,6 +200,7 @@ const SongList = (props) => {
       'bpm',
       'playDate',
       'albumArtist',
+      'averageRating',
       'genre',
       'mood',
       'comment',
