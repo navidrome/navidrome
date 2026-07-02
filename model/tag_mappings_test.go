@@ -144,30 +144,30 @@ var _ = Describe("TagConf", func() {
 		})
 	})
 
-	Describe("ArtistSplitExceptionsRx", func() {
+	Describe("artistSplitExceptionsRx", func() {
 		BeforeEach(func() {
 			DeferCleanup(configtest.SetupConfig())
 		})
 
 		It("returns nil when no exceptions are configured", func() {
 			conf.Server.Scanner.ArtistSplitExceptions = nil
-			Expect(ArtistSplitExceptionsRx()).To(BeNil())
+			Expect(artistSplitExceptionsRx()).To(BeNil())
 		})
 
 		It("compiles the configured exceptions", func() {
 			conf.Server.Scanner.ArtistSplitExceptions = []string{"Iron and Wine"}
-			rx := ArtistSplitExceptionsRx()
+			rx := artistSplitExceptionsRx()
 			Expect(rx).ToNot(BeNil())
 			Expect(rx.MatchString("iron and wine")).To(BeTrue())
 		})
 
 		It("caches the compiled regex until the configuration changes", func() {
 			conf.Server.Scanner.ArtistSplitExceptions = []string{"Iron and Wine"}
-			first := ArtistSplitExceptionsRx()
-			Expect(ArtistSplitExceptionsRx()).To(BeIdenticalTo(first))
+			first := artistSplitExceptionsRx()
+			Expect(artistSplitExceptionsRx()).To(BeIdenticalTo(first))
 
 			conf.Server.Scanner.ArtistSplitExceptions = []string{"AC/DC"}
-			second := ArtistSplitExceptionsRx()
+			second := artistSplitExceptionsRx()
 			Expect(second).ToNot(BeIdenticalTo(first))
 			Expect(second.MatchString("AC/DC")).To(BeTrue())
 		})

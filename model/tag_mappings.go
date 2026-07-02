@@ -137,12 +137,12 @@ type artistSplitExceptionsCache struct {
 
 var artistSplitExceptions atomic.Pointer[artistSplitExceptionsCache]
 
-// ArtistSplitExceptionsRx returns the regex for Scanner.ArtistSplitExceptions,
+// artistSplitExceptionsRx returns the regex for Scanner.ArtistSplitExceptions,
 // or nil if none are configured. Compiled lazily (config hooks only run once
 // per process, before tests can override the option) and cached until the
 // configured list changes. Lock-free on the cache-hit path, as this is called
 // per tag mapping per scanned file, across concurrent scanner goroutines.
-func ArtistSplitExceptionsRx() *regexp.Regexp {
+func artistSplitExceptionsRx() *regexp.Regexp {
 	names := conf.Server.Scanner.ArtistSplitExceptions
 	if c := artistSplitExceptions.Load(); c != nil && slices.Equal(c.names, names) {
 		return c.rx
@@ -174,7 +174,7 @@ var participantTagNames = sync.OnceValue(func() map[TagName]struct{} {
 // exceptions attached when name is a participant (artist/role) tag.
 func (c TagConf) WithParticipantExceptions(name TagName) TagConf {
 	if _, ok := participantTagNames()[name]; ok {
-		c.ExceptionsRx = ArtistSplitExceptionsRx()
+		c.ExceptionsRx = artistSplitExceptionsRx()
 	}
 	return c
 }
