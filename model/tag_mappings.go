@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"unicode"
 	"unicode/utf8"
 
@@ -129,25 +130,25 @@ func compileExceptionsRegex(exceptions []string) *regexp.Regexp {
 	return rx
 }
 
-var artistSplitExceptions struct {
-	sync.Mutex
-	key string
-	rx  *regexp.Regexp
+type artistSplitExceptionsCache struct {
+	names []string
+	rx    *regexp.Regexp
 }
+
+var artistSplitExceptions atomic.Pointer[artistSplitExceptionsCache]
 
 // ArtistSplitExceptionsRx returns the regex for Scanner.ArtistSplitExceptions,
 // or nil if none are configured. Compiled lazily (config hooks only run once
 // per process, before tests can override the option) and cached until the
-// configured list changes.
+// configured list changes. Lock-free on the cache-hit path, as this is called
+// per tag mapping per scanned file, across concurrent scanner goroutines.
 func ArtistSplitExceptionsRx() *regexp.Regexp {
-	c := &artistSplitExceptions
-	c.Lock()
-	defer c.Unlock()
-	key := strings.Join(conf.Server.Scanner.ArtistSplitExceptions, "\x00")
-	if c.key != key {
-		c.key = key
-		c.rx = compileExceptionsRegex(conf.Server.Scanner.ArtistSplitExceptions)
+	names := conf.Server.Scanner.ArtistSplitExceptions
+	if c := artistSplitExceptions.Load(); c != nil && slices.Equal(c.names, names) {
+		return c.rx
 	}
+	c := &artistSplitExceptionsCache{names: slices.Clone(names), rx: compileExceptionsRegex(names)}
+	artistSplitExceptions.Store(c)
 	return c.rx
 }
 
