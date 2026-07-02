@@ -190,11 +190,12 @@ var _ = Describe("MediaAnnotationController", func() {
 type fakePlayTracker struct {
 	Submissions      []scrobbler.Submission
 	ReportedPlayback []scrobbler.ReportPlaybackParams
+	NowPlayingData   []scrobbler.PlaybackSession
 	Error            error
 }
 
 func (f *fakePlayTracker) GetNowPlaying(_ context.Context) ([]scrobbler.PlaybackSession, error) {
-	return nil, f.Error
+	return f.NowPlayingData, f.Error
 }
 
 func (f *fakePlayTracker) Submit(_ context.Context, submissions []scrobbler.Submission) error {

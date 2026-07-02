@@ -118,11 +118,13 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
     )
   }
 
+  const canViewNowPlaying =
+    config.enableNowPlaying &&
+    (!config.nowPlayingAdminOnly || permissions === 'admin')
+
   return (
     <>
-      {config.devActivityPanel &&
-        permissions === 'admin' &&
-        config.enableNowPlaying && <NowPlayingPanel />}
+      {config.devActivityPanel && canViewNowPlaying && <NowPlayingPanel />}
       {config.devActivityPanel && permissions === 'admin' && <ActivityPanel />}
       <UserMenu {...rest}>
         <PersonalMenu sidebarIsOpen={true} onClick={onClick} />
