@@ -30,9 +30,9 @@ var lyricFormats = []struct {
 // to that format's parser; an empty or "auto" suffix content-sniffs. Either way,
 // a structured parser that does not match falls back to the LRC/plain-text floor.
 //
-// path identifies the source (a media file or sidecar) for log attribution and may
-// be empty when no path is available.
-func ParseLyrics(ctx context.Context, path, suffix, lang string, contents []byte) (LyricList, error) {
+// Parse failures are logged through ctx; callers that know the source should
+// attach it for attribution, e.g. log.NewContext(ctx, "file", path).
+func ParseLyrics(ctx context.Context, suffix, lang string, contents []byte) (LyricList, error) {
 	contents = stripBOM(contents)
 	suffix = strings.ToLower(suffix)
 	sniff := suffix == "" || suffix == "auto"
@@ -45,10 +45,10 @@ func ParseLyrics(ctx context.Context, path, suffix, lang string, contents []byte
 			candidates = append(candidates, f.parse)
 		}
 	}
-	return parseFirstMatch(ctx, path, sniff, lang, contents, candidates...)
+	return parseFirstMatch(ctx, sniff, lang, contents, candidates...)
 }
 
-func parseFirstMatch(ctx context.Context, path string, sniff bool, lang string, contents []byte, candidates ...lyricParser) (LyricList, error) {
+func parseFirstMatch(ctx context.Context, sniff bool, lang string, contents []byte, candidates ...lyricParser) (LyricList, error) {
 	for _, parse := range candidates {
 		list, err := parse(lang, contents)
 		if err == nil && len(list) > 0 {
@@ -59,9 +59,9 @@ func parseFirstMatch(ctx context.Context, path string, sniff bool, lang string, 
 			// control flow, so keep it at trace. A failure under an explicit suffix
 			// means the declared format is malformed and deserves a warning.
 			if sniff {
-				log.Trace(ctx, "Lyrics probe did not match, trying next format", "file", path, "error", err)
+				log.Trace(ctx, "Lyrics probe did not match, trying next format", "error", err)
 			} else {
-				log.Warn(ctx, "Error parsing lyrics, falling back to plain text", "file", path, "error", err)
+				log.Warn(ctx, "Error parsing lyrics, falling back to plain text", "error", err)
 			}
 		}
 	}

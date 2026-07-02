@@ -395,7 +395,7 @@ var _ = Describe("Lyrics", func() {
 		})
 
 		It("resolves lyrics from the matched media files", func() {
-			embeddedList, err := model.ParseLyrics(ctx, "", ".lrc", "eng", []byte("Embedded lyrics line"))
+			embeddedList, err := model.ParseLyrics(ctx, ".lrc", "eng", []byte("Embedded lyrics line"))
 			Expect(err).ToNot(HaveOccurred())
 			embedded, _ := embeddedList.Main()
 			embeddedJSON, err := json.Marshal(model.LyricList{embedded})

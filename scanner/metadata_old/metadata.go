@@ -206,7 +206,7 @@ func (t Tags) Lyrics() string {
 	basicLyrics := t.getAllTagValues("lyrics", "unsynced_lyrics", "unsynced lyrics", "unsyncedlyrics")
 
 	for _, value := range basicLyrics {
-		parsed, err := model.ParseLyrics(context.Background(), t.filePath, ".lrc", "xxx", []byte(value))
+		parsed, err := model.ParseLyrics(context.Background(), ".lrc", "xxx", []byte(value))
 		if err != nil {
 			log.Warn("Unexpected failure occurred when parsing lyrics", "file", t.filePath, "error", err)
 			continue
@@ -225,7 +225,7 @@ func (t Tags) Lyrics() string {
 			}
 
 			for _, text := range value {
-				parsed, err := model.ParseLyrics(context.Background(), t.filePath, ".lrc", language, []byte(text))
+				parsed, err := model.ParseLyrics(context.Background(), ".lrc", language, []byte(text))
 				if err != nil {
 					log.Warn("Unexpected failure occurred when parsing lyrics", "file", t.filePath, "error", err)
 					continue

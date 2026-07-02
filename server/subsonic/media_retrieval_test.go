@@ -113,7 +113,7 @@ var _ = Describe("MediaRetrievalController", func() {
 	Describe("GetLyrics", func() {
 		It("should return data for given artist & title", func() {
 			r := newGetRequest("artist=Rick+Astley", "title=Never+Gonna+Give+You+Up")
-			lyricsList, _ := model.ParseLyrics(GinkgoT().Context(), "", ".lrc", "eng", []byte("[00:18.80]We're no strangers to love\n[00:22.80]You know the rules and so do I"))
+			lyricsList, _ := model.ParseLyrics(GinkgoT().Context(), ".lrc", "eng", []byte("[00:18.80]We're no strangers to love\n[00:22.80]You know the rules and so do I"))
 			lyrics, _ := lyricsList.Main()
 			lyricsJson, err := json.Marshal(model.LyricList{
 				lyrics,

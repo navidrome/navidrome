@@ -144,7 +144,7 @@ func (md Metadata) mapLyrics() string {
 		lang := raw.Key()
 		text := raw.Value()
 
-		lyrics, err := model.ParseLyrics(context.Background(), md.filePath, "", lang, []byte(text))
+		lyrics, err := model.ParseLyrics(log.NewContext(context.Background(), "file", md.filePath), "", lang, []byte(text))
 		if err != nil {
 			log.Warn("Unexpected failure occurred when parsing lyrics", "file", md.filePath, err)
 			continue
