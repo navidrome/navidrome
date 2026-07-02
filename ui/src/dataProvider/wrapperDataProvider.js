@@ -137,8 +137,9 @@ const updateUser = async (params) => {
     data: userData,
   })
 
-  // Then handle library associations for non-admin users
-  if (!userData.isAdmin && libraryIds !== undefined) {
+  // Then handle library associations for non-admin users. Only admins can call
+  // this endpoint; for self-edits the server manages library assignments
+  if (isAdmin() && !userData.isAdmin && libraryIds !== undefined) {
     await handleUserLibraryAssociation(userId, libraryIds)
   }
 
