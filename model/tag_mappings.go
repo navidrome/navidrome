@@ -9,7 +9,6 @@ import (
 	"sync"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/resources"
@@ -43,16 +42,19 @@ func (c TagConf) SplitTagValue(values []string) []string {
 
 	var result []string
 	for _, tag := range values {
-		// Replace all occurrences of any separator with the zero-width space.
-		tag = c.SplitRx.ReplaceAllString(tag, consts.Zwsp)
-
-		// Split by the zero-width space and trim each substring.
-		parts := strings.SplitSeq(tag, consts.Zwsp)
-		for part := range parts {
-			result = append(result, strings.TrimSpace(part))
-		}
+		result = append(result, c.splitValue(tag)...)
 	}
 	return result
+}
+
+func (c TagConf) splitValue(tag string) []string {
+	var parts []string
+	start := 0
+	for _, sep := range c.SplitRx.FindAllStringIndex(tag, -1) {
+		parts = append(parts, strings.TrimSpace(tag[start:sep[0]]))
+		start = sep[1]
+	}
+	return append(parts, strings.TrimSpace(tag[start:]))
 }
 
 type TagType string
