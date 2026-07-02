@@ -438,4 +438,39 @@ var _ = Describe("FTS5 Integration Search", func() {
 			Expect(results).ToNot(BeEmpty(), "Max=0 should mean no limit, not LIMIT 0")
 		})
 	})
+
+	Describe("Exact-match ranking", func() {
+		BeforeEach(func() {
+			lr := NewLibraryRepository(log.NewContext(context.TODO()), GetDBXBuilder())
+			// Corpus has no competing exact-word names ("Mo X"): exact-vs-exact order depends
+			// on corpus statistics; the guaranteed property is exact > prefix.
+			for _, a := range []model.Artist{
+				{ID: "fts-rank-1", Name: "MØ", OrderArtistName: "mø"},
+				{ID: "fts-rank-2", Name: "Modest Mouse", OrderArtistName: "modest mouse"},
+				{ID: "fts-rank-3", Name: "Morrissey", OrderArtistName: "morrissey"},
+			} {
+				Expect(arr.Put(&a)).To(Succeed())
+				Expect(lr.AddArtist(1, a.ID)).To(Succeed())
+			}
+			DeferCleanup(func() {
+				// library_artist rows are removed by the artist_id ON DELETE CASCADE FK.
+				_, err := GetDBXBuilder().NewQuery("DELETE FROM artist WHERE id LIKE 'fts-rank-%'").Execute()
+				Expect(err).ToNot(HaveOccurred())
+			})
+		})
+
+		It("ranks the exact transliterated match first for 'MO'", func() {
+			results, err := arr.Search("MO", model.QueryOptions{Max: 10})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(HaveLen(3))
+			Expect(results[0].Name).To(Equal("MØ"), "exact match via search_normalized must outrank prefix matches")
+		})
+
+		It("ranks the exact match first for the accented query 'MØ'", func() {
+			results, err := arr.Search("MØ", model.QueryOptions{Max: 10})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).ToNot(BeEmpty())
+			Expect(results[0].Name).To(Equal("MØ"))
+		})
+	})
 })
