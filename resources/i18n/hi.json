@@ -255,7 +255,13 @@
         "createdAt": "बनाया गया"
       },
       "notifications": {},
-      "actions": {}
+      "actions": {
+        "download": {
+          "title": "डाउनलोड",
+          "currentTrack": "वर्तमान ट्रैक",
+          "allTracks": "सभी ट्रैक"
+        }
+      }
     },
     "missing": {
       "name": "गुम फ़ाइल |||| गुम फ़ाइलें",
