@@ -96,7 +96,7 @@ const UserEdit = (props) => {
         })
         permissions === 'admin' ? redirect('/user') : refresh()
       } catch (error) {
-        if (error.body?.errors) {
+        if (error?.body?.errors) {
           return error.body.errors
         }
         notify('ra.page.error', 'warning')

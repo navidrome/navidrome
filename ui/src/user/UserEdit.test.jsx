@@ -181,5 +181,15 @@ describe('<UserEdit />', () => {
       expect(hooks.notify).toHaveBeenCalledWith('ra.page.error', 'warning')
       expect(hooks.redirect).not.toHaveBeenCalled()
     })
+
+    it('notifies an error when the update rejects with a non-object error', async () => {
+      hooks.mutate.mockRejectedValue(undefined)
+      render(<UserEdit id="user1" permissions="admin" />)
+
+      await hooks.save({ id: 'user1' })
+
+      expect(hooks.notify).toHaveBeenCalledWith('ra.page.error', 'warning')
+      expect(hooks.redirect).not.toHaveBeenCalled()
+    })
   })
 })
