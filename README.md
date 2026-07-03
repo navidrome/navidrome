@@ -41,9 +41,7 @@ A share of the revenue helps fund the development of Navidrome at no additional 
 
 [![PikaPods](https://www.pikapods.com/static/run-button.svg)](https://www.pikapods.com/pods?run=navidrome)
 
-### Other Platforms
-
-[![Deploy with Zenith](https://cdn.zenith.hosting/buttons/deploy-with-zenith.svg)](https://zenith.hosting/host/navidrome?ref=gh)
+[![Deploy with Zenith](https://cdn.zenith.hosting/buttons/deploy-with-zenith.svg)](https://zenith.hosting/host/navidrome?ref=navidrome)
 
 ## Features
  
