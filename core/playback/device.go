@@ -32,7 +32,7 @@ type playbackDevice struct {
 	DeviceName           string
 	PlaybackQueue        *Queue
 	Gain                 float32
-	PlaybackDone         chan bool
+	PlaybackDone         chan *mpv.MpvTrack
 	ActiveTrack          Track
 	startTrackSwitcher   sync.Once
 }
@@ -46,7 +46,9 @@ type DeviceStatus struct {
 
 const DefaultGain float32 = 1.0
 
-// getStatusLocked must be called with pd.mutex held.
+// getStatusLocked must be called with pd.mutex held. It performs blocking IPC
+// calls to mpv (Position/IsPlaying) while holding the lock; prefer getStatus
+// for read-only call sites that don't already need the lock for anything else.
 func (pd *playbackDevice) getStatusLocked() DeviceStatus {
 	pos := 0
 	if pd.ActiveTrack != nil {
@@ -56,6 +58,30 @@ func (pd *playbackDevice) getStatusLocked() DeviceStatus {
 		CurrentIndex: pd.PlaybackQueue.Index,
 		Playing:      pd.isPlayingLocked(),
 		Gain:         pd.Gain,
+		Position:     pos,
+	}
+}
+
+// getStatus snapshots device state under the lock, then performs the blocking
+// mpv IPC calls (Position/IsPlaying) after releasing it, so it doesn't block
+// other concurrent operations on the device.
+func (pd *playbackDevice) getStatus() DeviceStatus {
+	pd.mutex.Lock()
+	track := pd.ActiveTrack
+	index := pd.PlaybackQueue.Index
+	gain := pd.Gain
+	pd.mutex.Unlock()
+
+	pos := 0
+	playing := false
+	if track != nil {
+		pos = track.Position()
+		playing = track.IsPlaying()
+	}
+	return DeviceStatus{
+		CurrentIndex: index,
+		Playing:      playing,
+		Gain:         gain,
 		Position:     pos,
 	}
 }
@@ -72,7 +98,7 @@ func NewPlaybackDevice(ctx context.Context, playbackServer PlaybackServer, name 
 		DeviceName:           deviceName,
 		Gain:                 DefaultGain,
 		PlaybackQueue:        NewQueue(),
-		PlaybackDone:         make(chan bool),
+		PlaybackDone:         make(chan *mpv.MpvTrack),
 	}
 }
 
@@ -83,26 +109,31 @@ func (pd *playbackDevice) String() string {
 func (pd *playbackDevice) Get(ctx context.Context) (model.MediaFiles, DeviceStatus, error) {
 	log.Debug(ctx, "Processing Get action", "device", pd)
 	pd.mutex.Lock()
-	defer pd.mutex.Unlock()
-	return pd.PlaybackQueue.Get(), pd.getStatusLocked(), nil
+	items := pd.PlaybackQueue.Get()
+	pd.mutex.Unlock()
+	return items, pd.getStatus(), nil
 }
 
 func (pd *playbackDevice) Status(ctx context.Context) (DeviceStatus, error) {
 	log.Debug(ctx, fmt.Sprintf("processing Status action on: %s, queue: %s", pd, pd.PlaybackQueue))
-	pd.mutex.Lock()
-	defer pd.mutex.Unlock()
-	return pd.getStatusLocked(), nil
+	return pd.getStatus(), nil
 }
 
 // Set is similar to a clear followed by a add, but will not change the currently playing track.
 func (pd *playbackDevice) Set(ctx context.Context, ids []string) (DeviceStatus, error) {
 	log.Debug(ctx, "Processing Set action", "ids", ids, "device", pd)
 
-	pd.mutex.Lock()
-	defer pd.mutex.Unlock()
+	items, err := pd.fetchMediaFiles(ctx, ids)
+	if err != nil {
+		return DeviceStatus{}, err
+	}
 
+	pd.mutex.Lock()
 	pd.clearLocked()
-	return pd.addLocked(ctx, ids)
+	pd.PlaybackQueue.Add(items)
+	pd.mutex.Unlock()
+
+	return pd.getStatus(), nil
 }
 
 func (pd *playbackDevice) Start(ctx context.Context) (DeviceStatus, error) {
@@ -198,29 +229,35 @@ func (pd *playbackDevice) Skip(ctx context.Context, index int, offset int) (Devi
 
 func (pd *playbackDevice) Add(ctx context.Context, ids []string) (DeviceStatus, error) {
 	log.Debug(ctx, "Processing Add action", "ids", ids, "device", pd)
-	pd.mutex.Lock()
-	defer pd.mutex.Unlock()
-	return pd.addLocked(ctx, ids)
-}
-
-func (pd *playbackDevice) addLocked(ctx context.Context, ids []string) (DeviceStatus, error) {
 	if len(ids) < 1 {
-		return pd.getStatusLocked(), nil
+		return pd.getStatus(), nil
 	}
 
-	items := model.MediaFiles{}
+	items, err := pd.fetchMediaFiles(ctx, ids)
+	if err != nil {
+		return DeviceStatus{}, err
+	}
 
+	pd.mutex.Lock()
+	pd.PlaybackQueue.Add(items)
+	pd.mutex.Unlock()
+
+	return pd.getStatus(), nil
+}
+
+// fetchMediaFiles resolves media file IDs to model.MediaFiles. It performs
+// database queries and must not be called while pd.mutex is held.
+func (pd *playbackDevice) fetchMediaFiles(ctx context.Context, ids []string) (model.MediaFiles, error) {
+	items := model.MediaFiles{}
 	for _, id := range ids {
 		mf, err := pd.ParentPlaybackServer.GetMediaFile(id)
 		if err != nil {
-			return DeviceStatus{}, err
+			return nil, err
 		}
 		log.Debug(ctx, "Found mediafile: "+mf.Path)
 		items = append(items, *mf)
 	}
-	pd.PlaybackQueue.Add(items)
-
-	return pd.getStatusLocked(), nil
+	return items, nil
 }
 
 func (pd *playbackDevice) Clear(ctx context.Context) (DeviceStatus, error) {
@@ -296,13 +333,18 @@ func (pd *playbackDevice) trackSwitcherGoroutine() {
 	log.Debug("Started trackSwitcher goroutine", "device", pd)
 	for {
 		select {
-		case <-pd.PlaybackDone:
+		case finishedTrack := <-pd.PlaybackDone:
 			log.Debug("Track switching detected")
 			pd.mutex.Lock()
-			if pd.ActiveTrack != nil {
-				pd.ActiveTrack.Close()
-				pd.ActiveTrack = nil
+			if pd.ActiveTrack != finishedTrack {
+				// The active track was already replaced (e.g. by Skip/Clear/Set)
+				// since this finish signal was sent. Ignore the stale signal.
+				log.Debug("Ignoring stale track-finished signal")
+				pd.mutex.Unlock()
+				continue
 			}
+			pd.ActiveTrack.Close()
+			pd.ActiveTrack = nil
 
 			if !pd.PlaybackQueue.IsAtLastElement() {
 				pd.PlaybackQueue.IncreaseIndex()
