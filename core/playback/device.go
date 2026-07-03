@@ -23,7 +23,7 @@ type Track interface {
 }
 
 type playbackDevice struct {
-	mutex                sync.Mutex
+	mutex                sync.RWMutex
 	serviceCtx           context.Context
 	ParentPlaybackServer PlaybackServer
 	Default              bool
@@ -62,26 +62,25 @@ func (pd *playbackDevice) getStatusLocked() DeviceStatus {
 	}
 }
 
-// getStatus snapshots device state under the lock, then performs the blocking
-// mpv IPC calls (Position/IsPlaying) after releasing it, so it doesn't block
-// other concurrent operations on the device.
+// getStatus takes a read lock for the whole call, including the blocking mpv
+// IPC calls (Position/IsPlaying). This lets concurrent Status/Get requests
+// run in parallel with each other, while still preventing a concurrent
+// mutation (Skip/Clear/Set/track-switch) from closing ActiveTrack out from
+// under the IPC calls.
 func (pd *playbackDevice) getStatus() DeviceStatus {
-	pd.mutex.Lock()
-	track := pd.ActiveTrack
-	index := pd.PlaybackQueue.Index
-	gain := pd.Gain
-	pd.mutex.Unlock()
+	pd.mutex.RLock()
+	defer pd.mutex.RUnlock()
 
 	pos := 0
 	playing := false
-	if track != nil {
-		pos = track.Position()
-		playing = track.IsPlaying()
+	if pd.ActiveTrack != nil {
+		pos = pd.ActiveTrack.Position()
+		playing = pd.ActiveTrack.IsPlaying()
 	}
 	return DeviceStatus{
-		CurrentIndex: index,
+		CurrentIndex: pd.PlaybackQueue.Index,
 		Playing:      playing,
-		Gain:         gain,
+		Gain:         pd.Gain,
 		Position:     pos,
 	}
 }
@@ -108,9 +107,9 @@ func (pd *playbackDevice) String() string {
 
 func (pd *playbackDevice) Get(ctx context.Context) (model.MediaFiles, DeviceStatus, error) {
 	log.Debug(ctx, "Processing Get action", "device", pd)
-	pd.mutex.Lock()
+	pd.mutex.RLock()
 	items := pd.PlaybackQueue.Get()
-	pd.mutex.Unlock()
+	pd.mutex.RUnlock()
 	return items, pd.getStatus(), nil
 }
 
