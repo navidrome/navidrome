@@ -36,8 +36,8 @@ import (
 // served by a table index (random, annotation-join columns, JSON expressions):
 // declaring one requires writing down the reason, making the trade-off visible in
 // review. The checks run with the default config: PreferSortTags=true rewrites
-// mappings to coalesce expressions that only have single-column expression
-// indexes, and is out of scope here.
+// mappings to coalesce expressions with no matching indexes (used by ~0.1% of
+// installations, per insights), and is out of scope here.
 var _ = Describe("Sort index coverage", func() {
 	conn := db.Db()
 

@@ -21,6 +21,14 @@ drop index if exists media_file_order_artist_name;
 drop index if exists media_file_birth_time;
 drop index if exists media_file_artist;
 drop index if exists media_file_album_artist;
+
+-- These expression indexes are only usable when PreferSortTags is enabled, a
+-- config used by ~0.1% of installations (per insights), yet they are maintained
+-- on every write of every install. Dropping them means those installs fall back
+-- to a full sort; everyone else saves the space and the scanner write overhead.
+drop index if exists media_file_sort_title;
+drop index if exists media_file_sort_artist_name;
+drop index if exists media_file_sort_album_name;
 -- +goose StatementEnd
 
 -- +goose Down
@@ -39,4 +47,10 @@ create index if not exists media_file_artist
 	on media_file(artist);
 create index if not exists media_file_album_artist
 	on media_file(album_artist);
+create index if not exists media_file_sort_title
+	on media_file (coalesce(nullif(sort_title,''),order_title) collate NOCASE);
+create index if not exists media_file_sort_artist_name
+	on media_file (coalesce(nullif(sort_artist_name,''),order_artist_name) collate NOCASE);
+create index if not exists media_file_sort_album_name
+	on media_file (coalesce(nullif(sort_album_name,''),order_album_name) collate NOCASE);
 -- +goose StatementEnd
