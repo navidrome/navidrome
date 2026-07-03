@@ -91,6 +91,16 @@ func NewMediaFileRepository(ctx context.Context, db dbx.Builder) model.MediaFile
 		"recently_added": mediaFileRecentlyAddedSort(),
 		"starred_at":     "starred, starred_at",
 		"rated_at":       "rating, rated_at",
+		"year":           "year",
+		"genre":          "genre",
+		"duration":       "duration",
+		"channels":       "channels",
+		"bpm":            "bpm",
+		"path":           "path",
+		"comment":        "comment",
+		"play_count":     "play_count",
+		"play_date":      "play_date",
+		"rating":         "rating",
 	})
 	return r
 }
