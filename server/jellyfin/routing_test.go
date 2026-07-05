@@ -11,9 +11,10 @@ import (
 )
 
 // Real Jellyfin servers route path segments case-insensitively, but chi's default matching is
-// case-sensitive. These tests prove requests using non-canonical casing are still routed
-// correctly, both when the router is used directly and when mounted under a parent (as it is in
-// production via server.MountRouter), while case-sensitive id segments are left untouched.
+// case-sensitive. Jellyfin wires up server.CaseInsensitivePaths (see server/case_insensitive_routes.go
+// for the unit-level tests of that helper) to work around this. These tests are an end-to-end proof
+// that requests using non-canonical casing are still routed correctly, both when the router is used
+// directly and when mounted under a parent (as it is in production via server.MountRouter).
 var _ = Describe("Case-insensitive routing", func() {
 	var api *Router
 
@@ -51,19 +52,5 @@ var _ = Describe("Case-insensitive routing", func() {
 		r := httptest.NewRequest("GET", "/jellyfin/system/info/public", nil)
 		parent.ServeHTTP(w, r)
 		Expect(w.Code).To(Equal(http.StatusOK))
-	})
-
-	It("preserves a case-sensitive id segment while correcting literal casing, using the real route table", func() {
-		got := normalizeCase("/audio/cjsFeXbNOaaSjASu3DM93g/stream", api.canon)
-		Expect(got).To(Equal("/Audio/cjsFeXbNOaaSjASu3DM93g/stream"))
-	})
-
-	It("leaves an unrecognized (id) segment untouched while correcting known literals (synthetic canon)", func() {
-		canon := map[string]string{
-			"audio":  "Audio",
-			"stream": "stream",
-		}
-		got := normalizeCase("/audio/XyZ123NotARoute/STREAM", canon)
-		Expect(got).To(Equal("/Audio/XyZ123NotARoute/stream"))
 	})
 })
