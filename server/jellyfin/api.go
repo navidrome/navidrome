@@ -47,6 +47,12 @@ func (api *Router) routes() http.Handler {
 	r.Get("/System/Ping", api.ping)
 	r.Post("/System/Ping", api.ping)
 	r.Get("/QuickConnect/Enabled", api.quickConnectEnabled)
+	r.Post("/Users/AuthenticateByName", api.authenticateByName)
+
+	r.Group(func(r chi.Router) {
+		r.Use(api.authenticate)
+		// authenticated endpoints are registered by later tasks
+	})
 
 	return r
 }
