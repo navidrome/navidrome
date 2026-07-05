@@ -3,6 +3,7 @@ package jellyfin
 import (
 	"encoding/json"
 	"net/http"
+	"sync"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/core"
@@ -23,6 +24,8 @@ type Router struct {
 	players          core.Players
 	scrobbler        scrobbler.PlayTracker
 	playlists        playlists.Playlists
+	serverIDOnce     sync.Once
+	serverIDVal      string
 }
 
 func New(ds model.DataStore, artwork artwork.Artwork, streamer stream.MediaStreamer,

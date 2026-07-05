@@ -22,18 +22,25 @@ func (api *Router) serverName() string {
 // the same way core/metrics/insights.go derives its InsightsID. Jellyfin clients cache
 // ServerId across sessions, so a per-process value would break re-authentication.
 // api.ds is nil only in unit tests that construct Router{} directly; New() always sets it.
+//
+// Resolution happens once per Router (sync.Once), so concurrent first-boot requests can't
+// each generate and persist a different UUID before the row settles.
 func (api *Router) serverID(ctx context.Context) string {
-	if api.ds == nil {
-		return uuid.NewString()
-	}
-	id, err := api.ds.Property(ctx).Get(consts.JellyfinServerIDKey)
-	if err != nil {
-		id = uuid.NewString()
-		if err := api.ds.Property(ctx).Put(consts.JellyfinServerIDKey, id); err != nil {
-			log.Error(ctx, "Jellyfin API: could not persist server id", err)
+	api.serverIDOnce.Do(func() {
+		if api.ds == nil {
+			api.serverIDVal = uuid.NewString()
+			return
 		}
-	}
-	return id
+		id, err := api.ds.Property(ctx).Get(consts.JellyfinServerIDKey)
+		if err != nil {
+			id = uuid.NewString()
+			if err := api.ds.Property(ctx).Put(consts.JellyfinServerIDKey, id); err != nil {
+				log.Error(ctx, "Jellyfin API: could not persist server id", err)
+			}
+		}
+		api.serverIDVal = id
+	})
+	return api.serverIDVal
 }
 
 func (api *Router) publicInfo(ctx context.Context) dto.PublicSystemInfo {
