@@ -27,6 +27,7 @@ func startSignaller(ctx context.Context) func() error {
 	return func() error {
 		var sigChan = make(chan os.Signal, 1)
 		signal.Notify(sigChan, triggerScanSignal, syscall.SIGHUP)
+		defer signal.Stop(sigChan)
 
 		for {
 			select {

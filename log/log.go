@@ -166,18 +166,17 @@ func SetOutputFile(path string) error {
 	if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
 		return fmt.Errorf("creating log file directory: %w", err)
 	}
+	outputFileMu.Lock()
+	defer outputFileMu.Unlock()
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}
 	SetOutput(f)
-	outputFileMu.Lock()
-	prev := outputFile
-	outputFile = f
-	outputFileMu.Unlock()
-	if prev != nil {
-		_ = prev.Close()
+	if outputFile != nil {
+		_ = outputFile.Close()
 	}
+	outputFile = f
 	return nil
 }
 
