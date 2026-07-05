@@ -8,8 +8,6 @@ import (
 
 func TicksFromSeconds(sec float32) int64 { return int64(float64(sec) * 1e7) }
 
-func intPtr(v int) *int { return &v }
-
 func UserData(a model.Annotations, itemID string) *UserItemDataDto {
 	d := &UserItemDataDto{
 		PlayCount:  int(a.PlayCount),
@@ -48,13 +46,13 @@ func SongToBaseItem(mf model.MediaFile) BaseItemDto {
 		UserData:          UserData(mf.Annotations, mf.ID),
 	}
 	if mf.Year > 0 {
-		item.ProductionYear = intPtr(mf.Year)
+		item.ProductionYear = new(mf.Year)
 	}
 	if mf.TrackNumber > 0 {
-		item.IndexNumber = intPtr(mf.TrackNumber)
+		item.IndexNumber = new(mf.TrackNumber)
 	}
 	if mf.DiscNumber > 0 {
-		item.ParentIndexNumber = intPtr(mf.DiscNumber)
+		item.ParentIndexNumber = new(mf.DiscNumber)
 	}
 	if len(mf.Genres) > 0 {
 		for _, g := range mf.Genres {
@@ -79,8 +77,8 @@ func AlbumToBaseItem(al model.Album) BaseItemDto {
 		ParentId:          al.AlbumArtistID,
 		AlbumArtist:       al.AlbumArtist,
 		Album:             al.Name,
-		ChildCount:        intPtr(al.SongCount),
-		SongCount:         intPtr(al.SongCount),
+		ChildCount:        new(al.SongCount),
+		SongCount:         new(al.SongCount),
 		RunTimeTicks:      TicksFromSeconds(al.Duration),
 		ImageTags:         map[string]string{"Primary": al.ID},
 		BackdropImageTags: []string{},
@@ -91,7 +89,7 @@ func AlbumToBaseItem(al model.Album) BaseItemDto {
 		item.ArtistItems = item.AlbumArtists
 	}
 	if al.MaxYear > 0 {
-		item.ProductionYear = intPtr(al.MaxYear)
+		item.ProductionYear = new(al.MaxYear)
 	}
 	if len(al.Genres) > 0 {
 		for _, g := range al.Genres {
@@ -107,8 +105,8 @@ func ArtistToBaseItem(ar model.Artist) BaseItemDto {
 		Id:                ar.ID,
 		Type:              "MusicArtist",
 		IsFolder:          true,
-		AlbumCount:        intPtr(ar.AlbumCount),
-		SongCount:         intPtr(ar.SongCount),
+		AlbumCount:        new(ar.AlbumCount),
+		SongCount:         new(ar.SongCount),
 		ImageTags:         map[string]string{"Primary": ar.ID},
 		BackdropImageTags: []string{},
 		UserData:          UserData(ar.Annotations, ar.ID),
