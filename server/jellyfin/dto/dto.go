@@ -77,6 +77,7 @@ type QueryResult struct {
 type UserDto struct {
 	Name                      string `json:"Name"`
 	ServerId                  string `json:"ServerId,omitempty"`
+	ServerName                string `json:"ServerName,omitempty"`
 	Id                        string `json:"Id"`
 	HasPassword               bool   `json:"HasPassword"`
 	HasConfiguredPassword     bool   `json:"HasConfiguredPassword"`

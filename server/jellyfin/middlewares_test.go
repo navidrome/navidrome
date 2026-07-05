@@ -1,6 +1,7 @@
 package jellyfin
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 
@@ -18,7 +19,7 @@ var _ = Describe("authenticate middleware", func() {
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{}
 		auth.Init(ds)
-		ur := ds.User(nil).(*tests.MockedUserRepo)
+		ur := ds.User(context.Background()).(*tests.MockedUserRepo)
 		Expect(ur.Put(&model.User{ID: "u1", UserName: "alice", NewPassword: "secret"})).To(Succeed())
 		api = &Router{ds: ds}
 	})
@@ -47,6 +48,32 @@ var _ = Describe("authenticate middleware", func() {
 		next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("GET", "/Items", nil)
+		api.authenticate(next).ServeHTTP(w, r)
+		Expect(w.Code).To(Equal(http.StatusUnauthorized))
+	})
+
+	It("rejects a garbage token with 401 and does not call next", func() {
+		nextCalled := false
+		next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			nextCalled = true
+			w.WriteHeader(http.StatusOK)
+		})
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "/Items", nil)
+		r.Header.Set("X-Emby-Token", "not-a-jwt")
+		api.authenticate(next).ServeHTTP(w, r)
+		Expect(w.Code).To(Equal(http.StatusUnauthorized))
+		Expect(nextCalled).To(BeFalse())
+	})
+
+	It("rejects a valid token whose subject user does not exist with 401", func() {
+		next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
+		t, err := auth.CreateToken(&model.User{ID: "x", UserName: "ghost"})
+		Expect(err).ToNot(HaveOccurred())
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "/Items", nil)
+		r.Header.Set("X-Emby-Token", t)
 		api.authenticate(next).ServeHTTP(w, r)
 		Expect(w.Code).To(Equal(http.StatusUnauthorized))
 	})

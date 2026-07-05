@@ -1,6 +1,7 @@
 package jellyfin
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -20,7 +21,7 @@ var _ = Describe("AuthenticateByName", func() {
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{}
 		auth.Init(ds)
-		ur := ds.User(nil).(*tests.MockedUserRepo)
+		ur := ds.User(context.Background()).(*tests.MockedUserRepo)
 		Expect(ur.Put(&model.User{ID: "u1", UserName: "alice", NewPassword: "secret"})).To(Succeed())
 		api = &Router{ds: ds}
 	})
@@ -45,6 +46,17 @@ var _ = Describe("AuthenticateByName", func() {
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("POST", "/Users/AuthenticateByName",
 			strings.NewReader(`{"Username":"alice","Pw":"wrong"}`))
+		api.authenticateByName(w, r)
+		Expect(w.Code).To(Equal(http.StatusUnauthorized))
+	})
+
+	It("rejects an empty password even for a user with an empty stored password with 401", func() {
+		ur := ds.User(context.Background()).(*tests.MockedUserRepo)
+		Expect(ur.Put(&model.User{ID: "e", UserName: "empty", NewPassword: ""})).To(Succeed())
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("POST", "/Users/AuthenticateByName",
+			strings.NewReader(`{"Username":"empty","Pw":""}`))
 		api.authenticateByName(w, r)
 		Expect(w.Code).To(Equal(http.StatusUnauthorized))
 	})

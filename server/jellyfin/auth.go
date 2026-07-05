@@ -25,7 +25,7 @@ func (api *Router) authenticateByName(w http.ResponseWriter, r *http.Request) {
 
 	// Navidrome stores recoverable passwords; this mirrors Subsonic's validateCredentials plaintext path.
 	usr, err := api.ds.User(ctx).FindByUsernameWithPassword(body.Username)
-	if err != nil || usr.Password != body.Pw {
+	if body.Pw == "" || err != nil || usr.Password != body.Pw {
 		log.Warn(ctx, "Jellyfin API: invalid login", "username", body.Username, "remoteAddr", r.RemoteAddr)
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -49,6 +49,7 @@ func userToDto(u *model.User, serverName string) *dto.UserDto {
 	return &dto.UserDto{
 		Name:                  u.UserName,
 		Id:                    u.ID,
+		ServerName:            serverName,
 		HasPassword:           true,
 		HasConfiguredPassword: true,
 	}
