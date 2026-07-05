@@ -27,7 +27,7 @@ func (api *Router) createPlaylist(w http.ResponseWriter, r *http.Request) {
 	}
 	id, err := api.playlists.Create(r.Context(), "", body.Name, body.Ids)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		api.internalError(w, r, err)
 		return
 	}
 	api.ok(w, r, map[string]string{"Id": id})

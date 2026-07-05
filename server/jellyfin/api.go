@@ -101,6 +101,11 @@ func (api *Router) routes() http.Handler {
 		r.Post("/Sessions/Capabilities/Full", api.postCapabilities)
 	})
 
+	// Logged at Debug (not Warn/Error) because a real client probing for optional/legacy
+	// endpoints is expected traffic, not a problem; this just surfaces what's missing.
+	r.NotFound(api.notFound)
+	r.MethodNotAllowed(api.notFound)
+
 	return r
 }
 
@@ -110,4 +115,21 @@ func (api *Router) ok(w http.ResponseWriter, r *http.Request, payload any) {
 	if err := json.NewEncoder(w).Encode(payload); err != nil {
 		log.Error(r.Context(), "Jellyfin API: error encoding response", err)
 	}
+}
+
+// notFound handles both unmatched routes and unsupported methods on known routes, so any
+// endpoint a real client needs that we haven't implemented shows up in the logs instead of
+// silently confusing the client with chi's default plain-text 404/405.
+func (api *Router) notFound(w http.ResponseWriter, r *http.Request) {
+	log.Debug(r.Context(), "Jellyfin API: unhandled route", "method", r.Method, "path", r.URL.Path)
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(http.StatusNotFound)
+	_, _ = w.Write([]byte(`{}`))
+}
+
+// internalError logs the real error server-side and writes a generic 500 response, so ffmpeg
+// output, file paths or other internal detail in err never reaches the client.
+func (api *Router) internalError(w http.ResponseWriter, r *http.Request, err error) {
+	log.Error(r.Context(), "Jellyfin API: internal error", "method", r.Method, "path", r.URL.Path, err)
+	http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 }

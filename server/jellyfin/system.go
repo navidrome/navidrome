@@ -63,8 +63,12 @@ func (api *Router) getPublicSystemInfo(w http.ResponseWriter, r *http.Request) {
 	api.ok(w, r, api.publicInfo(r.Context()))
 }
 
+// ping answers /System/Ping with a bare plain-text server name, not a JSON-quoted string:
+// Jellyfin's own server does this, and clients parse the raw body.
 func (api *Router) ping(w http.ResponseWriter, r *http.Request) {
-	api.ok(w, r, api.serverName())
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(api.serverName()))
 }
 
 func (api *Router) quickConnectEnabled(w http.ResponseWriter, r *http.Request) {

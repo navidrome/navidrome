@@ -36,15 +36,18 @@ var _ = Describe("System", func() {
 		Expect(info.ServerName).To(HavePrefix("Navidrome"))
 	})
 
-	It("responds to ping with the server name", func() {
+	It("responds to ping with the server name as plain text", func() {
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.Jellyfin.ServerName = ""
+
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("GET", "/System/Ping", nil)
 		api.ping(w, r)
 
 		Expect(w.Code).To(Equal(http.StatusOK))
-		var name string
-		Expect(json.Unmarshal(w.Body.Bytes(), &name)).To(Succeed())
-		Expect(name).ToNot(BeEmpty())
+		Expect(w.Header().Get("Content-Type")).To(ContainSubstring("text/plain"))
+		// Plain text, not a JSON-quoted string: Jellyfin clients expect the bare server name.
+		Expect(w.Body.String()).To(HavePrefix("Navidrome"))
 	})
 
 	It("reports quick connect as disabled", func() {

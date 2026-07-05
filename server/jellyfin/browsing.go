@@ -20,7 +20,7 @@ func (api *Router) getArtists(w http.ResponseWriter, r *http.Request) {
 
 	res, err := api.listArtists(ctx, opts, scopeIDs, p.StringOr("SearchTerm", ""), false)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		api.internalError(w, r, err)
 		return
 	}
 	api.ok(w, r, res)
@@ -34,7 +34,7 @@ func (api *Router) getGenres(w http.ResponseWriter, r *http.Request) {
 	opts := model.QueryOptions{Offset: p.IntOr("StartIndex", 0), Max: p.IntOr("Limit", 0)}
 	res, err := api.listGenres(ctx, opts)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		api.internalError(w, r, err)
 		return
 	}
 	api.ok(w, r, res)

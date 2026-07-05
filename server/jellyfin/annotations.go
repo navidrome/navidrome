@@ -49,7 +49,7 @@ func (api *Router) setFavorite(w http.ResponseWriter, r *http.Request, starred b
 		return
 	}
 	if err := repo.SetStar(starred, id); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		api.internalError(w, r, err)
 		return
 	}
 	api.ok(w, r, &dto.UserItemDataDto{IsFavorite: starred, Key: id, ItemId: id})
@@ -67,7 +67,7 @@ func (api *Router) setItemRating(w http.ResponseWriter, r *http.Request, rating 
 		return
 	}
 	if err := repo.SetRating(rating, id); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		api.internalError(w, r, err)
 		return
 	}
 	d := &dto.UserItemDataDto{Key: id, ItemId: id}
@@ -79,8 +79,9 @@ func (api *Router) setItemRating(w http.ResponseWriter, r *http.Request, rating 
 }
 
 func (api *Router) setRating(w http.ResponseWriter, r *http.Request) {
-	rating := req.Params(r).IntOr("Rating", 0) / 2 // Jellyfin 0-10 -> Navidrome 0-5
-	api.setItemRating(w, r, rating)
+	jfRating := req.Params(r).IntOr("Rating", 0)
+	jfRating = min(max(jfRating, 0), 10) // clamp: a client sending e.g. Rating=100 must not write an out-of-domain Navidrome rating
+	api.setItemRating(w, r, jfRating/2)  // Jellyfin 0-10 -> Navidrome 0-5
 }
 
 func (api *Router) removeRating(w http.ResponseWriter, r *http.Request) {

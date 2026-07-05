@@ -84,7 +84,7 @@ func (api *Router) streamAudio(w http.ResponseWriter, r *http.Request) {
 	streamReq := api.transcodeDecider.ResolveRequest(ctx, mf, format, bitRate, 0)
 	s, err := api.streamer.NewStream(ctx, mf, streamReq)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		api.internalError(w, r, err)
 		return
 	}
 	defer s.Close()

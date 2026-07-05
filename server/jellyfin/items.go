@@ -23,7 +23,7 @@ var notMissing = squirrel.Eq{"missing": false}
 func (api *Router) getItems(w http.ResponseWriter, r *http.Request) {
 	res, err := api.queryItems(r.Context(), r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		api.internalError(w, r, err)
 		return
 	}
 	api.ok(w, r, res)
@@ -204,7 +204,7 @@ func (api *Router) getLatest(w http.ResponseWriter, r *http.Request) {
 	opts = filter.ApplyLibraryFilter(opts, accessibleLibraryIDs(ctx))
 	albums, err := api.ds.Album(ctx).GetAll(opts)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		api.internalError(w, r, err)
 		return
 	}
 	api.ok(w, r, slice.Map(albums, dto.AlbumToBaseItem)) // /Latest returns a bare array
