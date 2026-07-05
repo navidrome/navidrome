@@ -49,10 +49,12 @@ func (t *MpvTrack) getWithTimeout(property string) (interface{}, error) {
 		val, err := t.Conn.Get(property)
 		ch <- result{val, err}
 	}()
+	timer := time.NewTimer(ipcTimeout)
+	defer timer.Stop()
 	select {
 	case res := <-ch:
 		return res.val, res.err
-	case <-time.After(ipcTimeout):
+	case <-timer.C:
 		return nil, errIPCTimeout
 	}
 }
@@ -62,10 +64,12 @@ func (t *MpvTrack) setWithTimeout(property string, value interface{}) error {
 	go func() {
 		ch <- t.Conn.Set(property, value)
 	}()
+	timer := time.NewTimer(ipcTimeout)
+	defer timer.Stop()
 	select {
 	case err := <-ch:
 		return err
-	case <-time.After(ipcTimeout):
+	case <-timer.C:
 		return errIPCTimeout
 	}
 }
@@ -80,10 +84,12 @@ func (t *MpvTrack) callWithTimeout(args ...interface{}) (interface{}, error) {
 		val, err := t.Conn.Call(args...)
 		ch <- result{val, err}
 	}()
+	timer := time.NewTimer(ipcTimeout)
+	defer timer.Stop()
 	select {
 	case res := <-ch:
 		return res.val, res.err
-	case <-time.After(ipcTimeout):
+	case <-timer.C:
 		return nil, errIPCTimeout
 	}
 }
