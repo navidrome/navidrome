@@ -2,11 +2,13 @@ package jellyfin
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
 
@@ -17,12 +19,17 @@ func (api *Router) getItemImage(w http.ResponseWriter, r *http.Request) {
 
 	artID := api.resolveArtworkID(ctx, itemId)
 	reader, _, err := api.artwork.GetOrPlaceholder(ctx, artID, size, false)
-	if err != nil {
+	switch {
+	case errors.Is(err, context.Canceled):
+		return
+	case err != nil:
+		log.Warn(ctx, "Error retrieving artwork", "id", itemId, err)
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
 	defer reader.Close()
-	w.Header().Set("Content-Type", "image/jpeg")
+	// Content-Type is left unset so net/http sniffs it from the first bytes written
+	// (placeholders are WebP; unresized covers can be PNG/WebP/etc, not always JPEG).
 	_, _ = io.Copy(w, reader)
 }
 
