@@ -37,9 +37,13 @@ type UserItemDataDto struct {
 }
 
 type BaseItemDto struct {
-	Name                 string            `json:"Name"`
-	ServerId             string            `json:"ServerId,omitempty"`
-	Id                   string            `json:"Id"`
+	Name     string `json:"Name"`
+	ServerId string `json:"ServerId,omitempty"`
+	Id       string `json:"Id"`
+	// PlaylistItemId identifies this entry within a playlist listing (GET /Playlists/{id}/Items).
+	// It's only set there, and is distinct from Id so a song appearing more than once in the same
+	// playlist can be removed by occurrence (DELETE .../Items?EntryIds=...) rather than by song id.
+	PlaylistItemId       string            `json:"PlaylistItemId,omitempty"`
 	Type                 string            `json:"Type"`
 	IsFolder             bool              `json:"IsFolder"`
 	MediaType            string            `json:"MediaType,omitempty"`

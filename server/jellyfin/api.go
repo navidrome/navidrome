@@ -78,6 +78,11 @@ func (api *Router) routes() http.Handler {
 		r.Get("/Genres", api.getGenres)
 		r.Get("/MusicGenres", api.getGenres)
 
+		r.Post("/Playlists", api.createPlaylist)
+		r.Get("/Playlists/{playlistId}/Items", api.getPlaylistItems)
+		r.Post("/Playlists/{playlistId}/Items", api.addToPlaylist)
+		r.Delete("/Playlists/{playlistId}/Items", api.removeFromPlaylist)
+
 		r.Get("/Audio/{itemId}/stream", api.streamAudio)
 		r.Get("/Audio/{itemId}/stream.{container}", api.streamAudio)
 		r.Get("/Audio/{itemId}/universal", api.streamAudio)
