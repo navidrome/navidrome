@@ -856,7 +856,7 @@ func setViperDefaults() {
 	viper.SetDefault("listenbrainz.artistalgorithm", consts.DefaultListenBrainzArtistAlgorithm)
 	viper.SetDefault("listenbrainz.trackalgorithm", consts.DefaultListenBrainzTrackAlgorithm)
 	viper.SetDefault("jellyfin.enabled", false)
-	viper.SetDefault("jellyfin.servername", consts.AppName)
+	viper.SetDefault("jellyfin.servername", "Navidrome")
 	viper.SetDefault("enablescrobblehistory", true)
 	viper.SetDefault("httpheaders.frameoptions", "DENY")
 	viper.SetDefault("backup.path", "")
