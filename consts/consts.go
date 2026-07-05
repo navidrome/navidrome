@@ -44,6 +44,7 @@ const (
 	URLPathSubsonicAPI  = "/rest"
 	URLPathPublic       = "/share"
 	URLPathPublicImages = URLPathPublic + "/img"
+	URLPathJellyfinAPI  = "/jellyfin"
 
 	// DefaultUILoginBackgroundURL uses Navidrome curated background images collection,
 	// available at https://unsplash.com/collections/20072696/navidrome

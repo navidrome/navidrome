@@ -116,6 +116,7 @@ type configOptions struct {
 	LastFM                          lastfmOptions       `json:",omitzero"`
 	Deezer                          deezerOptions       `json:",omitzero"`
 	ListenBrainz                    listenBrainzOptions `json:",omitzero"`
+	Jellyfin                        jellyfinOptions     `json:",omitzero"`
 	EnableScrobbleHistory           bool
 	Tags                            map[string]TagConf `json:",omitempty"`
 	Agents                          string
@@ -216,6 +217,11 @@ type listenBrainzOptions struct {
 	BaseURL         string
 	ArtistAlgorithm string
 	TrackAlgorithm  string
+}
+
+type jellyfinOptions struct {
+	Enabled    bool
+	ServerName string
 }
 
 type httpHeaderOptions struct {
@@ -577,6 +583,7 @@ func disableExternalServices() {
 	Server.LastFM.Enabled = false
 	Server.Deezer.Enabled = false
 	Server.ListenBrainz.Enabled = false
+	Server.Jellyfin.Enabled = false
 	Server.Agents = ""
 	if Server.UILoginBackgroundURL == consts.DefaultUILoginBackgroundURL {
 		Server.UILoginBackgroundURL = consts.DefaultUILoginBackgroundURLOffline
@@ -848,6 +855,8 @@ func setViperDefaults() {
 	viper.SetDefault("listenbrainz.baseurl", consts.DefaultListenBrainzBaseURL)
 	viper.SetDefault("listenbrainz.artistalgorithm", consts.DefaultListenBrainzArtistAlgorithm)
 	viper.SetDefault("listenbrainz.trackalgorithm", consts.DefaultListenBrainzTrackAlgorithm)
+	viper.SetDefault("jellyfin.enabled", false)
+	viper.SetDefault("jellyfin.servername", consts.AppName)
 	viper.SetDefault("enablescrobblehistory", true)
 	viper.SetDefault("httpheaders.frameoptions", "DENY")
 	viper.SetDefault("backup.path", "")
