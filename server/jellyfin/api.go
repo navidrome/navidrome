@@ -68,6 +68,11 @@ func (api *Router) routes() http.Handler {
 		r.Get("/Users/{userId}/Items/{itemId}", api.getItem)
 		r.Get("/Users/{userId}/Items/Latest", api.getLatest)
 
+		r.Post("/Users/{userId}/FavoriteItems/{itemId}", api.markFavorite)
+		r.Delete("/Users/{userId}/FavoriteItems/{itemId}", api.unmarkFavorite)
+		r.Post("/Users/{userId}/Items/{itemId}/Rating", api.setRating)
+		r.Delete("/Users/{userId}/Items/{itemId}/Rating", api.removeRating)
+
 		r.Get("/Artists", api.getArtists)
 		r.Get("/Artists/AlbumArtists", api.getArtists)
 		r.Get("/Genres", api.getGenres)
