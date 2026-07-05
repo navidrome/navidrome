@@ -50,8 +50,8 @@ func (api *Router) routes() http.Handler {
 	r.Post("/Users/AuthenticateByName", api.authenticateByName)
 	r.Get("/Users/Public", api.getPublicUsers)
 
-	// Images are intentionally public and not library-scoped: artwork isn't sensitive media
-	// content, and clients (e.g. Finamp) load it via <img> tags with only ?api_key= in the URL.
+	// Images are intentionally fully public and do not require authentication: artwork isn't
+	// sensitive media content, and this matches Jellyfin's lenient image handling.
 	r.Get("/Items/{itemId}/Images/{type}", api.getItemImage)
 	r.Get("/Items/{itemId}/Images/{type}/{index}", api.getItemImage)
 
