@@ -1,6 +1,8 @@
 package dto
 
 import (
+	"time"
+
 	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -26,6 +28,29 @@ var _ = Describe("mappers", func() {
 		Expect(item.UserData.IsFavorite).To(BeTrue())
 		Expect(item.UserData.PlayCount).To(Equal(2))
 		Expect(item.UserData.Played).To(BeTrue())
+	})
+
+	It("omits IndexNumber and ParentIndexNumber when track/disc numbers are untagged", func() {
+		mf := model.MediaFile{
+			ID: "song-2", Title: "Song", Album: "Alb", AlbumID: "alb-1",
+			Artist: "Art", AlbumArtist: "AA", TrackNumber: 0, DiscNumber: 0,
+			Duration: 60,
+		}
+		item := SongToBaseItem(mf)
+		Expect(item.IndexNumber).To(BeNil())
+		Expect(item.ParentIndexNumber).To(BeNil())
+	})
+
+	It("maps PlayDate to UserData.LastPlayedDate", func() {
+		playDate := time.Date(2023, 5, 17, 12, 30, 0, 0, time.UTC)
+		mf := model.MediaFile{
+			ID: "song-3", Title: "Song", Album: "Alb", AlbumID: "alb-1",
+			Artist: "Art", AlbumArtist: "AA", Duration: 60,
+		}
+		mf.PlayDate = &playDate
+		item := SongToBaseItem(mf)
+		Expect(item.UserData.LastPlayedDate).NotTo(BeNil())
+		Expect(*item.UserData.LastPlayedDate).To(Equal(playDate.Format(time.RFC3339)))
 	})
 
 	It("maps an album to a MusicAlbum folder item", func() {

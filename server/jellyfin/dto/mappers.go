@@ -1,6 +1,10 @@
 package dto
 
-import "github.com/navidrome/navidrome/model"
+import (
+	"time"
+
+	"github.com/navidrome/navidrome/model"
+)
 
 func TicksFromSeconds(sec float32) int64 { return int64(float64(sec) * 1e7) }
 
@@ -18,6 +22,10 @@ func UserData(a model.Annotations, itemID string) *UserItemDataDto {
 		r := float64(a.Rating) * 2 // Navidrome 0-5 -> Jellyfin 0-10
 		d.Rating = &r
 	}
+	if a.PlayDate != nil {
+		s := a.PlayDate.UTC().Format(time.RFC3339)
+		d.LastPlayedDate = &s
+	}
 	return d
 }
 
@@ -34,8 +42,6 @@ func SongToBaseItem(mf model.MediaFile) BaseItemDto {
 		AlbumArtist:       mf.AlbumArtist,
 		Artists:           []string{mf.Artist},
 		RunTimeTicks:      TicksFromSeconds(mf.Duration),
-		IndexNumber:       intPtr(mf.TrackNumber),
-		ParentIndexNumber: intPtr(mf.DiscNumber),
 		Container:         mf.Suffix,
 		CanDownload:       true,
 		BackdropImageTags: []string{},
@@ -43,6 +49,12 @@ func SongToBaseItem(mf model.MediaFile) BaseItemDto {
 	}
 	if mf.Year > 0 {
 		item.ProductionYear = intPtr(mf.Year)
+	}
+	if mf.TrackNumber > 0 {
+		item.IndexNumber = intPtr(mf.TrackNumber)
+	}
+	if mf.DiscNumber > 0 {
+		item.ParentIndexNumber = intPtr(mf.DiscNumber)
 	}
 	if len(mf.Genres) > 0 {
 		for _, g := range mf.Genres {
