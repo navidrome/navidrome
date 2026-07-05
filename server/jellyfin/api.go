@@ -83,6 +83,17 @@ func (api *Router) routes() http.Handler {
 		r.Get("/Audio/{itemId}/universal", api.streamAudio)
 		r.Get("/Items/{itemId}/PlaybackInfo", api.getPlaybackInfo)
 		r.Post("/Items/{itemId}/PlaybackInfo", api.getPlaybackInfo)
+
+		// Playback reports carry only the caller's own play data (see reportPlaybackStart
+		// doc comment), so no library-access gate is needed here.
+		r.Group(func(r chi.Router) {
+			r.Use(api.withPlayer)
+			r.Post("/Sessions/Playing", api.reportPlaybackStart)
+			r.Post("/Sessions/Playing/Progress", api.reportPlaybackProgress)
+			r.Post("/Sessions/Playing/Stopped", api.reportPlaybackStopped)
+		})
+		r.Post("/Sessions/Capabilities", api.postCapabilities)
+		r.Post("/Sessions/Capabilities/Full", api.postCapabilities)
 	})
 
 	return r

@@ -1,6 +1,7 @@
 package jellyfin
 
 import (
+	"net"
 	"net/http"
 	"regexp"
 
@@ -74,5 +75,28 @@ func (api *Router) authenticate(next http.Handler) http.Handler {
 		}
 		ctx = request.WithUser(ctx, *usr)
 		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+// withPlayer resolves/registers a model.Player for the calling device and injects
+// it into the context, mirroring the Subsonic API's getPlayer middleware. Unlike
+// Subsonic (which has no stable client-supplied device id and falls back to a
+// cookie), Jellyfin clients always send a DeviceId in the auth header, so it's
+// used directly as the player id: playback reports from the same install
+// consistently resolve to the same player/scrobbling session.
+func (api *Router) withPlayer(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		a := parseEmbyAuth(r)
+		ip, _, _ := net.SplitHostPort(r.RemoteAddr)
+		player, _, err := api.players.Register(ctx, a.DeviceId, a.Client, a.Device, ip)
+		if err != nil {
+			// Fail open: log and proceed without a player in context, same as Subsonic's
+			// getPlayer. Playback reporting handlers degrade gracefully when no player is set.
+			log.Warn(ctx, "Jellyfin API: could not register player", "client", a.Client, "device", a.Device, err)
+			next.ServeHTTP(w, r)
+			return
+		}
+		next.ServeHTTP(w, r.WithContext(request.WithPlayer(ctx, *player)))
 	})
 }
