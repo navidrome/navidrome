@@ -50,6 +50,11 @@ func (api *Router) routes() http.Handler {
 	r.Post("/Users/AuthenticateByName", api.authenticateByName)
 	r.Get("/Users/Public", api.getPublicUsers)
 
+	// Images are intentionally public and not library-scoped: artwork isn't sensitive media
+	// content, and clients (e.g. Finamp) load it via <img> tags with only ?api_key= in the URL.
+	r.Get("/Items/{itemId}/Images/{type}", api.getItemImage)
+	r.Get("/Items/{itemId}/Images/{type}/{index}", api.getItemImage)
+
 	r.Group(func(r chi.Router) {
 		r.Use(api.authenticate)
 		r.Get("/UserViews", api.getUserViews)
