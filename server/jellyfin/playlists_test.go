@@ -159,6 +159,16 @@ var _ = Describe("Playlists", func() {
 			api.addToPlaylist(w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
 		})
+
+		It("passes no ids (not a spurious empty string) when the Ids param is absent", func() {
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("POST", "/Playlists/pl1/Items", nil).WithContext(context.Background())
+			r = withChiURLParam(r, "playlistId", "pl1")
+			api.addToPlaylist(w, r)
+			Expect(w.Code).To(Equal(http.StatusNoContent))
+			Expect(fp.addPlaylistID).To(Equal("pl1"))
+			Expect(fp.addIds).To(BeEmpty())
+		})
 	})
 
 	Describe("removeFromPlaylist", func() {
@@ -179,6 +189,16 @@ var _ = Describe("Playlists", func() {
 			r = withChiURLParam(r, "playlistId", "pl1")
 			api.removeFromPlaylist(w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
+
+		It("passes no ids (not a spurious empty string) when the EntryIds param is absent", func() {
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("DELETE", "/Playlists/pl1/Items", nil).WithContext(context.Background())
+			r = withChiURLParam(r, "playlistId", "pl1")
+			api.removeFromPlaylist(w, r)
+			Expect(w.Code).To(Equal(http.StatusNoContent))
+			Expect(fp.removePlaylistID).To(Equal("pl1"))
+			Expect(fp.removeIds).To(BeEmpty())
 		})
 	})
 })
