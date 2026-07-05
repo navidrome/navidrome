@@ -26,8 +26,12 @@ func withChiURLParam(r *http.Request, key, value string) *http.Request {
 var _ = Describe("Items", func() {
 	var api *Router
 	var ds *tests.MockDataStore
+	// alice has access to library 1 only; used by tests that don't care about scoping.
 	ctxUser := func() context.Context {
-		return request.WithUser(context.Background(), model.User{ID: "u1", UserName: "alice"})
+		return request.WithUser(context.Background(), model.User{ID: "u1", UserName: "alice", Libraries: model.Libraries{{ID: 1, Name: "Music"}}})
+	}
+	ctxUserWithLibraries := func(libs model.Libraries) context.Context {
+		return request.WithUser(context.Background(), model.User{ID: "u1", UserName: "alice", Libraries: libs})
 	}
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{}
@@ -130,11 +134,88 @@ var _ = Describe("Items", func() {
 			Expect(albumRepo.Options.Offset).To(Equal(5))
 			Expect(albumRepo.Options.Max).To(Equal(10))
 		})
+
+		Describe("library scoping", func() {
+			It("scopes a MusicAlbum listing (no ParentId) to the user's accessible libraries", func() {
+				albumRepo := ds.Album(nil).(*tests.MockAlbumRepo)
+				albumRepo.SetData(model.Albums{{ID: "a1", Name: "One"}})
+				w := httptest.NewRecorder()
+				libs := model.Libraries{{ID: 1}, {ID: 2}}
+				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum", nil).WithContext(ctxUserWithLibraries(libs))
+				api.getItems(w, r)
+				Expect(w.Code).To(Equal(http.StatusOK))
+				sql, args, err := albumRepo.Options.Filters.ToSql()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(sql).To(ContainSubstring("library_id"))
+				Expect(args).To(ContainElements(1, 2))
+			})
+
+			It("scopes a Audio listing (no ParentId) to the user's accessible libraries", func() {
+				mfRepo := ds.MediaFile(nil).(*tests.MockMediaFileRepo)
+				mfRepo.SetData(model.MediaFiles{{ID: "s1", Title: "Song"}})
+				w := httptest.NewRecorder()
+				libs := model.Libraries{{ID: 1}, {ID: 2}}
+				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio", nil).WithContext(ctxUserWithLibraries(libs))
+				api.getItems(w, r)
+				Expect(w.Code).To(Equal(http.StatusOK))
+				sql, args, err := mfRepo.Options.Filters.ToSql()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(sql).To(ContainSubstring("library_id"))
+				Expect(args).To(ContainElements(1, 2))
+			})
+
+			It("scopes a MusicArtist listing to the user's accessible libraries", func() {
+				artistRepo := ds.Artist(nil).(*tests.MockArtistRepo)
+				artistRepo.SetData(model.Artists{{ID: "ar1", Name: "Artist"}})
+				w := httptest.NewRecorder()
+				libs := model.Libraries{{ID: 1}, {ID: 2}}
+				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicArtist", nil).WithContext(ctxUserWithLibraries(libs))
+				api.getItems(w, r)
+				Expect(w.Code).To(Equal(http.StatusOK))
+				sql, args, err := artistRepo.Options.Filters.ToSql()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(sql).To(ContainSubstring("library_artist.library_id"))
+				Expect(args).To(ContainElements(1, 2))
+			})
+
+			It("treats a numeric ParentId matching an accessible library as a library scope, not an artist id", func() {
+				albumRepo := ds.Album(nil).(*tests.MockAlbumRepo)
+				albumRepo.SetData(model.Albums{{ID: "a1", Name: "One"}})
+				w := httptest.NewRecorder()
+				libs := model.Libraries{{ID: 1}, {ID: 2}}
+				r := httptest.NewRequest("GET", "/Items?ParentId=2&IncludeItemTypes=MusicAlbum", nil).WithContext(ctxUserWithLibraries(libs))
+				api.getItems(w, r)
+				Expect(w.Code).To(Equal(http.StatusOK))
+				sql, args, err := albumRepo.Options.Filters.ToSql()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(sql).NotTo(ContainSubstring("json_tree")) // not treated as an artist-parent filter
+				Expect(sql).To(ContainSubstring("library_id"))
+				Expect(args).To(ContainElement(2))
+			})
+
+			It("does not let ParentId=<inaccessible library id> scope results to that library", func() {
+				albumRepo := ds.Album(nil).(*tests.MockAlbumRepo)
+				albumRepo.SetData(model.Albums{{ID: "a1", Name: "One"}})
+				w := httptest.NewRecorder()
+				libs := model.Libraries{{ID: 1}} // no access to library 99
+				r := httptest.NewRequest("GET", "/Items?ParentId=99&IncludeItemTypes=MusicAlbum", nil).WithContext(ctxUserWithLibraries(libs))
+				api.getItems(w, r)
+				Expect(w.Code).To(Equal(http.StatusOK))
+				sql, args, err := albumRepo.Options.Filters.ToSql()
+				Expect(err).NotTo(HaveOccurred())
+				// Falls back to treating "99" as an (empty-matching) artist-parent id...
+				Expect(sql).To(ContainSubstring("json_tree"))
+				// ...while still scoping to the user's own accessible libraries.
+				Expect(sql).To(ContainSubstring("library_id"))
+				Expect(args).To(ContainElement(1))
+				Expect(args).NotTo(ContainElement(99))
+			})
+		})
 	})
 
 	Describe("getItem", func() {
 		It("returns an album by id", func() {
-			ds.Album(nil).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1", Name: "One"}})
+			ds.Album(nil).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1", Name: "One", LibraryID: 1}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("GET", "/Items/a1", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", "a1")
@@ -153,11 +234,29 @@ var _ = Describe("Items", func() {
 			api.getItem(w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
 		})
+
+		It("returns 404 for an album in a library the user can't access", func() {
+			ds.Album(nil).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1", Name: "One", LibraryID: 2}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items/a1", nil).WithContext(ctxUser()) // only has access to library 1
+			r = withChiURLParam(r, "itemId", "a1")
+			api.getItem(w, r)
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
+
+		It("returns 404 for a song in a library the user can't access", func() {
+			ds.MediaFile(nil).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: "s1", Title: "Song", LibraryID: 2}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items/s1", nil).WithContext(ctxUser()) // only has access to library 1
+			r = withChiURLParam(r, "itemId", "s1")
+			api.getItem(w, r)
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
 	})
 
 	Describe("getLatest", func() {
 		It("returns a bare array of the newest albums", func() {
-			ds.Album(nil).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1", Name: "One"}})
+			ds.Album(nil).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1", Name: "One", LibraryID: 1}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("GET", "/Users/u1/Items/Latest", nil).WithContext(ctxUser())
 			api.getLatest(w, r)
@@ -166,6 +265,20 @@ var _ = Describe("Items", func() {
 			Expect(json.Unmarshal(w.Body.Bytes(), &items)).To(Succeed())
 			Expect(items).To(HaveLen(1))
 			Expect(items[0].Id).To(Equal("a1"))
+		})
+
+		It("scopes to the user's accessible libraries", func() {
+			albumRepo := ds.Album(nil).(*tests.MockAlbumRepo)
+			albumRepo.SetData(model.Albums{{ID: "a1", Name: "One", LibraryID: 1}})
+			w := httptest.NewRecorder()
+			libs := model.Libraries{{ID: 1}, {ID: 2}}
+			r := httptest.NewRequest("GET", "/Users/u1/Items/Latest", nil).WithContext(ctxUserWithLibraries(libs))
+			api.getLatest(w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			sql, args, err := albumRepo.Options.Filters.ToSql()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(sql).To(ContainSubstring("library_id"))
+			Expect(args).To(ContainElements(1, 2))
 		})
 	})
 })

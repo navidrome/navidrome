@@ -3,11 +3,13 @@ package jellyfin
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/filter"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	"github.com/navidrome/navidrome/utils/req"
@@ -40,15 +42,30 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (dto.QueryRe
 	opts := model.QueryOptions{Offset: p.IntOr("StartIndex", 0), Max: p.IntOr("Limit", 0)}
 	applySort(&opts, itemType, p.StringOr("SortBy", ""), p.StringOr("SortOrder", ""))
 
+	// ParentId is ambiguous: it can be a library id (browsing a UserView) or an entity id (an
+	// artist for MusicAlbum queries, an album for Audio queries). It's only treated as a library
+	// when the user actually has access to it; otherwise it falls through as an entity id, which
+	// safely matches nothing rather than leaking another library's content.
+	scopeIDs := accessibleLibraryIDs(ctx)
+	entityParent := parentId
+	if parentId != "" {
+		if libID, err := strconv.Atoi(parentId); err == nil {
+			if u, _ := request.UserFrom(ctx); u.HasLibraryAccess(libID) {
+				scopeIDs = []int{libID}
+				entityParent = ""
+			}
+		}
+	}
+
 	switch itemType {
 	case "Audio":
-		return api.listSongs(ctx, opts, parentId, search, favOnly)
+		return api.listSongs(ctx, opts, entityParent, scopeIDs, search, favOnly)
 	case "MusicArtist":
-		return api.listArtists(ctx, opts, search, favOnly)
+		return api.listArtists(ctx, opts, scopeIDs, search, favOnly)
 	case "MusicGenre":
 		return api.listGenres(ctx, opts)
 	default: // MusicAlbum
-		return api.listAlbums(ctx, opts, parentId, search, favOnly)
+		return api.listAlbums(ctx, opts, entityParent, scopeIDs, search, favOnly)
 	}
 }
 
@@ -68,10 +85,10 @@ func firstType(types string) string {
 	return "MusicAlbum"
 }
 
-func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, parentId, search string, fav bool) (dto.QueryResult, error) {
+func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, parentId string, scopeIDs []int, search string, fav bool) (dto.QueryResult, error) {
 	repo := api.ds.Album(ctx)
 	filters := squirrel.And{}
-	if parentId != "" && parentId != musicViewID {
+	if parentId != "" {
 		filters = append(filters, filter.AlbumsByArtistID(parentId).Filters)
 	} else {
 		filters = append(filters, notMissing)
@@ -80,6 +97,7 @@ func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, pare
 		filters = append(filters, filter.ByStarred().Filters)
 	}
 	opts.Filters = filters
+	opts = filter.ApplyLibraryFilter(opts, scopeIDs)
 
 	var albums model.Albums
 	var err error
@@ -95,10 +113,10 @@ func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, pare
 	return result(slice.Map(albums, dto.AlbumToBaseItem), int(total), opts.Offset), nil
 }
 
-func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, parentId, search string, fav bool) (dto.QueryResult, error) {
+func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, parentId string, scopeIDs []int, search string, fav bool) (dto.QueryResult, error) {
 	repo := api.ds.MediaFile(ctx)
 	filters := squirrel.And{}
-	if parentId != "" && parentId != musicViewID {
+	if parentId != "" {
 		filters = append(filters, filter.SongsByAlbum(parentId).Filters)
 	} else {
 		filters = append(filters, notMissing)
@@ -107,6 +125,7 @@ func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, paren
 		filters = append(filters, filter.ByStarred().Filters)
 	}
 	opts.Filters = filters
+	opts = filter.ApplyLibraryFilter(opts, scopeIDs)
 
 	var mfs model.MediaFiles
 	var err error
@@ -122,13 +141,14 @@ func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, paren
 	return result(slice.Map(mfs, dto.SongToBaseItem), int(total), opts.Offset), nil
 }
 
-func (api *Router) listArtists(ctx context.Context, opts model.QueryOptions, search string, fav bool) (dto.QueryResult, error) {
+func (api *Router) listArtists(ctx context.Context, opts model.QueryOptions, scopeIDs []int, search string, fav bool) (dto.QueryResult, error) {
 	repo := api.ds.Artist(ctx)
 	if fav {
 		opts.Filters = filter.ArtistsByStarred().Filters
 	} else {
 		opts.Filters = notMissing
 	}
+	opts = filter.ApplyArtistLibraryFilter(opts, scopeIDs)
 
 	var artists model.Artists
 	var err error
@@ -144,6 +164,8 @@ func (api *Router) listArtists(ctx context.Context, opts model.QueryOptions, sea
 	return result(slice.Map(artists, dto.ArtistToBaseItem), int(total), opts.Offset), nil
 }
 
+// listGenres is intentionally unscoped: genres are global tags derived from track metadata,
+// not entities that belong to a single library.
 func (api *Router) listGenres(ctx context.Context, opts model.QueryOptions) (dto.QueryResult, error) {
 	genres, err := api.ds.Genre(ctx).GetAll(opts)
 	if err != nil {
@@ -152,18 +174,33 @@ func (api *Router) listGenres(ctx context.Context, opts model.QueryOptions) (dto
 	return result(slice.Map(genres, dto.GenreToBaseItem), len(genres), opts.Offset), nil
 }
 
+// getItem fetches a single entity by id, trying album, artist and song in turn. For albums
+// and songs (which each belong to exactly one library) it 404s if the current user lacks
+// access to that library, so an id can't be used to probe content outside the user's libraries.
 func (api *Router) getItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := chi.URLParam(r, "itemId")
+	u, _ := request.UserFrom(ctx)
 	if al, err := api.ds.Album(ctx).Get(id); err == nil {
+		if !u.HasLibraryAccess(al.LibraryID) {
+			http.Error(w, "Not Found", http.StatusNotFound)
+			return
+		}
 		api.ok(w, r, dto.AlbumToBaseItem(*al))
 		return
 	}
 	if ar, err := api.ds.Artist(ctx).Get(id); err == nil {
+		// TODO: an artist can have content in multiple libraries (via library_artist), so
+		// there's no single LibraryID to check here; access control for artists relies on
+		// list-time scoping (listArtists) and the persistence layer's defense-in-depth.
 		api.ok(w, r, dto.ArtistToBaseItem(*ar))
 		return
 	}
 	if mf, err := api.ds.MediaFile(ctx).Get(id); err == nil {
+		if !u.HasLibraryAccess(mf.LibraryID) {
+			http.Error(w, "Not Found", http.StatusNotFound)
+			return
+		}
 		api.ok(w, r, dto.SongToBaseItem(*mf))
 		return
 	}
@@ -174,6 +211,7 @@ func (api *Router) getLatest(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	opts := filter.AlbumsByNewest()
 	opts.Max = req.Params(r).IntOr("Limit", 20)
+	opts = filter.ApplyLibraryFilter(opts, accessibleLibraryIDs(ctx))
 	albums, err := api.ds.Album(ctx).GetAll(opts)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

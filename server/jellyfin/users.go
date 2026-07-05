@@ -2,23 +2,29 @@ package jellyfin
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 )
 
-const musicViewID = "music"
-
+// getUserViews returns one CollectionFolder view per library the current user can access,
+// so Jellyfin clients browse each library as its own top-level view (instead of a single
+// aggregate "music" view spanning every library).
 func (api *Router) getUserViews(w http.ResponseWriter, r *http.Request) {
-	view := dto.BaseItemDto{
-		Name:              api.serverName(),
-		Id:                musicViewID,
-		Type:              "CollectionFolder",
-		CollectionType:    "music",
-		IsFolder:          true,
-		BackdropImageTags: []string{},
+	u, _ := request.UserFrom(r.Context())
+	views := make([]dto.BaseItemDto, 0, len(u.Libraries))
+	for _, lib := range u.Libraries {
+		views = append(views, dto.BaseItemDto{
+			Id:                strconv.Itoa(lib.ID),
+			Name:              lib.Name,
+			Type:              "CollectionFolder",
+			CollectionType:    "music",
+			IsFolder:          true,
+			BackdropImageTags: []string{},
+		})
 	}
-	api.ok(w, r, dto.QueryResult{Items: []dto.BaseItemDto{view}, TotalRecordCount: 1, StartIndex: 0})
+	api.ok(w, r, dto.QueryResult{Items: views, TotalRecordCount: len(views), StartIndex: 0})
 }
 
 func (api *Router) getCurrentUser(w http.ResponseWriter, r *http.Request) {
