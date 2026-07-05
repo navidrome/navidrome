@@ -491,7 +491,7 @@ jobs:
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v7
         with:
-          version: '~> v2'
+          version: '2.16.0'
           args: "release --clean -f release/goreleaser.yml ${{ env.RELEASE_FLAGS }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
