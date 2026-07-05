@@ -27,4 +27,26 @@ var _ = Describe("System", func() {
 		Expect(info.Version).ToNot(BeEmpty())
 		Expect(info.ProductName).To(Equal("Jellyfin Server"))
 	})
+
+	It("responds to ping with the server name", func() {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "/System/Ping", nil)
+		api.ping(w, r)
+
+		Expect(w.Code).To(Equal(http.StatusOK))
+		var name string
+		Expect(json.Unmarshal(w.Body.Bytes(), &name)).To(Succeed())
+		Expect(name).ToNot(BeEmpty())
+	})
+
+	It("reports quick connect as disabled", func() {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "/QuickConnect/Enabled", nil)
+		api.quickConnectEnabled(w, r)
+
+		Expect(w.Code).To(Equal(http.StatusOK))
+		var enabled bool
+		Expect(json.Unmarshal(w.Body.Bytes(), &enabled)).To(Succeed())
+		Expect(enabled).To(BeFalse())
+	})
 })
