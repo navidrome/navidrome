@@ -62,6 +62,11 @@ func (api *Router) routes() http.Handler {
 		r.Get("/Items/{itemId}", api.getItem)
 		r.Get("/Users/{userId}/Items/{itemId}", api.getItem)
 		r.Get("/Users/{userId}/Items/Latest", api.getLatest)
+
+		r.Get("/Artists", api.getArtists)
+		r.Get("/Artists/AlbumArtists", api.getArtists)
+		r.Get("/Genres", api.getGenres)
+		r.Get("/MusicGenres", api.getGenres)
 	})
 
 	return r
