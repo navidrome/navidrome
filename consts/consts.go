@@ -46,6 +46,10 @@ const (
 	URLPathPublicImages = URLPathPublic + "/img"
 	URLPathJellyfinAPI  = "/jellyfin"
 
+	// JellyfinServerIDKey is the Property key for the stable, persisted server Id reported by the
+	// Jellyfin API. Jellyfin clients cache this value, so it must survive process restarts.
+	JellyfinServerIDKey = "JellyfinServerID"
+
 	// DefaultUILoginBackgroundURL uses Navidrome curated background images collection,
 	// available at https://unsplash.com/collections/20072696/navidrome
 	DefaultUILoginBackgroundURL = "/backgrounds"
