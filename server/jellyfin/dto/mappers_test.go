@@ -45,4 +45,13 @@ var _ = Describe("mappers", func() {
 		Expect(item.IsFolder).To(BeTrue())
 		Expect(*item.AlbumCount).To(Equal(2))
 	})
+
+	It("maps a genre to a MusicGenre folder item", func() {
+		g := model.Genre{ID: "genre-1", Name: "Rock"}
+		item := GenreToBaseItem(g)
+		Expect(item.Type).To(Equal("MusicGenre"))
+		Expect(item.IsFolder).To(BeTrue())
+		Expect(item.Id).To(Equal("genre-1"))
+		Expect(item.Name).To(Equal("Rock"))
+	})
 })
