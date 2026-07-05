@@ -28,8 +28,9 @@ func (api *Router) getUserViews(w http.ResponseWriter, r *http.Request) {
 }
 
 func (api *Router) getCurrentUser(w http.ResponseWriter, r *http.Request) {
-	u, _ := request.UserFrom(r.Context())
-	api.ok(w, r, userToDto(&u, api.serverName()))
+	ctx := r.Context()
+	u, _ := request.UserFrom(ctx)
+	api.ok(w, r, userToDto(&u, api.serverName(), api.serverID(ctx)))
 }
 
 func (api *Router) getPublicUsers(w http.ResponseWriter, r *http.Request) {

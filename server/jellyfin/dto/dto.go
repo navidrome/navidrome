@@ -79,14 +79,85 @@ type QueryResult struct {
 }
 
 type UserDto struct {
-	Name                      string `json:"Name"`
-	ServerId                  string `json:"ServerId,omitempty"`
-	ServerName                string `json:"ServerName,omitempty"`
-	Id                        string `json:"Id"`
-	HasPassword               bool   `json:"HasPassword"`
-	HasConfiguredPassword     bool   `json:"HasConfiguredPassword"`
-	HasConfiguredEasyPassword bool   `json:"HasConfiguredEasyPassword"`
-	PrimaryImageTag           string `json:"PrimaryImageTag,omitempty"`
+	Name                      string             `json:"Name"`
+	ServerId                  string             `json:"ServerId,omitempty"`
+	ServerName                string             `json:"ServerName,omitempty"`
+	Id                        string             `json:"Id"`
+	HasPassword               bool               `json:"HasPassword"`
+	HasConfiguredPassword     bool               `json:"HasConfiguredPassword"`
+	HasConfiguredEasyPassword bool               `json:"HasConfiguredEasyPassword"`
+	PrimaryImageTag           string             `json:"PrimaryImageTag,omitempty"`
+	Policy                    *UserPolicy        `json:"Policy,omitempty"`
+	Configuration             *UserConfiguration `json:"Configuration,omitempty"`
+}
+
+// UserPolicy mirrors real Jellyfin's User.Policy object. Finamp (and presumably other
+// up-to-date clients) reads it right after login and crashes if it's absent, so every
+// field below must be present even though Navidrome has no concept of most of them.
+type UserPolicy struct {
+	IsAdministrator                  bool     `json:"IsAdministrator"`
+	IsHidden                         bool     `json:"IsHidden"`
+	EnableCollectionManagement       bool     `json:"EnableCollectionManagement"`
+	EnableSubtitleManagement         bool     `json:"EnableSubtitleManagement"`
+	EnableLyricManagement            bool     `json:"EnableLyricManagement"`
+	IsDisabled                       bool     `json:"IsDisabled"`
+	BlockedTags                      []string `json:"BlockedTags"`
+	AllowedTags                      []string `json:"AllowedTags"`
+	EnableUserPreferenceAccess       bool     `json:"EnableUserPreferenceAccess"`
+	AccessSchedules                  []string `json:"AccessSchedules"`
+	BlockUnratedItems                []string `json:"BlockUnratedItems"`
+	EnableRemoteControlOfOtherUsers  bool     `json:"EnableRemoteControlOfOtherUsers"`
+	EnableSharedDeviceControl        bool     `json:"EnableSharedDeviceControl"`
+	EnableRemoteAccess               bool     `json:"EnableRemoteAccess"`
+	EnableLiveTvManagement           bool     `json:"EnableLiveTvManagement"`
+	EnableLiveTvAccess               bool     `json:"EnableLiveTvAccess"`
+	EnableMediaPlayback              bool     `json:"EnableMediaPlayback"`
+	EnableAudioPlaybackTranscoding   bool     `json:"EnableAudioPlaybackTranscoding"`
+	EnableVideoPlaybackTranscoding   bool     `json:"EnableVideoPlaybackTranscoding"`
+	EnablePlaybackRemuxing           bool     `json:"EnablePlaybackRemuxing"`
+	ForceRemoteSourceTranscoding     bool     `json:"ForceRemoteSourceTranscoding"`
+	EnableContentDeletion            bool     `json:"EnableContentDeletion"`
+	EnableContentDeletionFromFolders []string `json:"EnableContentDeletionFromFolders"`
+	EnableContentDownloading         bool     `json:"EnableContentDownloading"`
+	EnableSyncTranscoding            bool     `json:"EnableSyncTranscoding"`
+	EnableMediaConversion            bool     `json:"EnableMediaConversion"`
+	EnabledDevices                   []string `json:"EnabledDevices"`
+	EnableAllDevices                 bool     `json:"EnableAllDevices"`
+	EnabledChannels                  []string `json:"EnabledChannels"`
+	EnableAllChannels                bool     `json:"EnableAllChannels"`
+	EnabledFolders                   []string `json:"EnabledFolders"`
+	EnableAllFolders                 bool     `json:"EnableAllFolders"`
+	InvalidLoginAttemptCount         int      `json:"InvalidLoginAttemptCount"`
+	LoginAttemptsBeforeLockout       int      `json:"LoginAttemptsBeforeLockout"`
+	MaxActiveSessions                int      `json:"MaxActiveSessions"`
+	EnablePublicSharing              bool     `json:"EnablePublicSharing"`
+	BlockedMediaFolders              []string `json:"BlockedMediaFolders"`
+	BlockedChannels                  []string `json:"BlockedChannels"`
+	RemoteClientBitrateLimit         int      `json:"RemoteClientBitrateLimit"`
+	AuthenticationProviderId         string   `json:"AuthenticationProviderId"`
+	PasswordResetProviderId          string   `json:"PasswordResetProviderId"`
+	SyncPlayAccess                   string   `json:"SyncPlayAccess"`
+}
+
+// UserConfiguration mirrors real Jellyfin's User.Configuration object. Like UserPolicy,
+// clients expect it to always be present, even though most of these settings (subtitles,
+// TV episode tracking) don't apply to Navidrome's audio-only library.
+type UserConfiguration struct {
+	PlayDefaultAudioTrack      bool     `json:"PlayDefaultAudioTrack"`
+	SubtitleLanguagePreference string   `json:"SubtitleLanguagePreference"`
+	DisplayMissingEpisodes     bool     `json:"DisplayMissingEpisodes"`
+	GroupedFolders             []string `json:"GroupedFolders"`
+	SubtitleMode               string   `json:"SubtitleMode"`
+	DisplayCollectionsView     bool     `json:"DisplayCollectionsView"`
+	EnableLocalPassword        bool     `json:"EnableLocalPassword"`
+	OrderedViews               []string `json:"OrderedViews"`
+	LatestItemsExcludes        []string `json:"LatestItemsExcludes"`
+	MyMediaExcludes            []string `json:"MyMediaExcludes"`
+	HidePlayedInLatest         bool     `json:"HidePlayedInLatest"`
+	RememberAudioSelections    bool     `json:"RememberAudioSelections"`
+	RememberSubtitleSelections bool     `json:"RememberSubtitleSelections"`
+	EnableNextEpisodeAutoPlay  bool     `json:"EnableNextEpisodeAutoPlay"`
+	CastReceiverId             string   `json:"CastReceiverId"`
 }
 
 type SessionInfo struct {

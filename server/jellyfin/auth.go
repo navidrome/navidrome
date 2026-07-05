@@ -37,20 +37,95 @@ func (api *Router) authenticateByName(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// SessionInfo is omitted (not just empty): real Jellyfin returns a large object here, and
+	// ours would be a partial {Id, UserId} that a strict client could fail to parse. Finamp's
+	// login doesn't require it (its AuthenticationResult.sessionInfo is nullable).
 	api.ok(w, r, dto.AuthenticationResult{
-		User:        userToDto(usr, api.serverName()),
+		User:        userToDto(usr, api.serverName(), api.serverID(ctx)),
 		AccessToken: token,
-		ServerId:    api.publicInfo(ctx).Id,
-		SessionInfo: &dto.SessionInfo{Id: parseEmbyAuth(r).DeviceId, UserId: usr.ID},
+		ServerId:    api.serverID(ctx),
 	})
 }
 
-func userToDto(u *model.User, serverName string) *dto.UserDto {
+// userToDto builds the User object real Jellyfin clients expect. Policy and Configuration
+// are always populated on real Jellyfin servers; Finamp reads them right after login and
+// null-crashes if they're absent, so we fill them with Navidrome-appropriate defaults.
+func userToDto(u *model.User, serverName, serverID string) *dto.UserDto {
 	return &dto.UserDto{
 		Name:                  u.UserName,
 		Id:                    u.ID,
+		ServerId:              serverID,
 		ServerName:            serverName,
 		HasPassword:           true,
 		HasConfiguredPassword: true,
+		Policy:                userPolicy(u),
+		Configuration:         userConfiguration(),
+	}
+}
+
+func userPolicy(u *model.User) *dto.UserPolicy {
+	return &dto.UserPolicy{
+		IsAdministrator:                  u.IsAdmin,
+		IsHidden:                         false,
+		EnableCollectionManagement:       false,
+		EnableSubtitleManagement:         false,
+		EnableLyricManagement:            false,
+		IsDisabled:                       false,
+		BlockedTags:                      []string{},
+		AllowedTags:                      []string{},
+		EnableUserPreferenceAccess:       true,
+		AccessSchedules:                  []string{},
+		BlockUnratedItems:                []string{},
+		EnableRemoteControlOfOtherUsers:  false,
+		EnableSharedDeviceControl:        false,
+		EnableRemoteAccess:               true,
+		EnableLiveTvManagement:           false,
+		EnableLiveTvAccess:               false,
+		EnableMediaPlayback:              true,
+		EnableAudioPlaybackTranscoding:   true,
+		EnableVideoPlaybackTranscoding:   true,
+		EnablePlaybackRemuxing:           true,
+		ForceRemoteSourceTranscoding:     false,
+		EnableContentDeletion:            false,
+		EnableContentDeletionFromFolders: []string{},
+		EnableContentDownloading:         true,
+		EnableSyncTranscoding:            true,
+		EnableMediaConversion:            true,
+		EnabledDevices:                   []string{},
+		EnableAllDevices:                 true,
+		EnabledChannels:                  []string{},
+		EnableAllChannels:                false,
+		EnabledFolders:                   []string{},
+		EnableAllFolders:                 true,
+		InvalidLoginAttemptCount:         0,
+		LoginAttemptsBeforeLockout:       -1,
+		MaxActiveSessions:                0,
+		EnablePublicSharing:              true,
+		BlockedMediaFolders:              []string{},
+		BlockedChannels:                  []string{},
+		RemoteClientBitrateLimit:         0,
+		AuthenticationProviderId:         "",
+		PasswordResetProviderId:          "",
+		SyncPlayAccess:                   "CreateAndJoinGroups",
+	}
+}
+
+func userConfiguration() *dto.UserConfiguration {
+	return &dto.UserConfiguration{
+		PlayDefaultAudioTrack:      true,
+		SubtitleLanguagePreference: "",
+		DisplayMissingEpisodes:     false,
+		GroupedFolders:             []string{},
+		SubtitleMode:               "Default",
+		DisplayCollectionsView:     false,
+		EnableLocalPassword:        false,
+		OrderedViews:               []string{},
+		LatestItemsExcludes:        []string{},
+		MyMediaExcludes:            []string{},
+		HidePlayedInLatest:         true,
+		RememberAudioSelections:    true,
+		RememberSubtitleSelections: true,
+		EnableNextEpisodeAutoPlay:  true,
+		CastReceiverId:             "",
 	}
 }

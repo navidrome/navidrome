@@ -71,5 +71,8 @@ var _ = Describe("Users", func() {
 		var u dto.UserDto
 		Expect(json.Unmarshal(w.Body.Bytes(), &u)).To(Succeed())
 		Expect(u.Name).To(Equal("alice"))
+		Expect(u.Policy).ToNot(BeNil())
+		Expect(u.Policy.IsAdministrator).To(BeFalse())
+		Expect(u.Configuration).ToNot(BeNil())
 	})
 })
