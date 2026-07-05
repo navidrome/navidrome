@@ -40,7 +40,7 @@ jobs:
       - name: Determine git current SHA and latest tag
         id: git-version
         run: |
-          GIT_TAG=$(git describe --tags --abbrev=0)
+          GIT_TAG=$(git describe --tags --abbrev=0 2>/dev/null || true)
           if [ -n "$GIT_TAG" ]; then
             if [[ "$GITHUB_REF" != refs/tags/* ]]; then
               GIT_TAG=${GIT_TAG}-SNAPSHOT
