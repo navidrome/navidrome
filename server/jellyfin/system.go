@@ -2,6 +2,7 @@ package jellyfin
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -11,11 +12,16 @@ import (
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 )
 
+// jellyfinVersion is the Jellyfin API version we advertise in the handshake. Clients parse
+// Version as a Jellyfin release and feature-gate on it, so it must stay a real Jellyfin
+// version rather than Navidrome's own.
+const jellyfinVersion = "10.8.13"
+
 func (api *Router) serverName() string {
 	if conf.Server.Jellyfin.ServerName != "" {
 		return conf.Server.Jellyfin.ServerName
 	}
-	return consts.AppName
+	return fmt.Sprintf("Navidrome %s", consts.Version)
 }
 
 // serverID returns a stable Id that survives restarts, get-or-created in the Property table
@@ -46,7 +52,7 @@ func (api *Router) serverID(ctx context.Context) string {
 func (api *Router) publicInfo(ctx context.Context) dto.PublicSystemInfo {
 	return dto.PublicSystemInfo{
 		ServerName:             api.serverName(),
-		Version:                consts.Version,
+		Version:                jellyfinVersion,
 		ProductName:            "Jellyfin Server",
 		Id:                     api.serverID(ctx),
 		StartupWizardCompleted: true,

@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -17,6 +19,9 @@ var _ = Describe("System", func() {
 	BeforeEach(func() { api = &Router{} })
 
 	It("returns public system info without auth", func() {
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.Jellyfin.ServerName = ""
+
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("GET", "/System/Info/Public", nil)
 		api.getPublicSystemInfo(w, r)
@@ -26,8 +31,9 @@ var _ = Describe("System", func() {
 		var info dto.PublicSystemInfo
 		Expect(json.Unmarshal(w.Body.Bytes(), &info)).To(Succeed())
 		Expect(info.Id).ToNot(BeEmpty())
-		Expect(info.Version).ToNot(BeEmpty())
+		Expect(info.Version).To(Equal(jellyfinVersion))
 		Expect(info.ProductName).To(Equal("Jellyfin Server"))
+		Expect(info.ServerName).To(HavePrefix("Navidrome"))
 	})
 
 	It("responds to ping with the server name", func() {
