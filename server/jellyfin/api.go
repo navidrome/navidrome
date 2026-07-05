@@ -56,6 +56,12 @@ func (api *Router) routes() http.Handler {
 		r.Get("/Users/{userId}/Views", api.getUserViews)
 		r.Get("/Users/Me", api.getCurrentUser)
 		r.Get("/Users/{userId}", api.getCurrentUser)
+
+		r.Get("/Items", api.getItems)
+		r.Get("/Users/{userId}/Items", api.getItems)
+		r.Get("/Items/{itemId}", api.getItem)
+		r.Get("/Users/{userId}/Items/{itemId}", api.getItem)
+		r.Get("/Users/{userId}/Items/Latest", api.getLatest)
 	})
 
 	return r
