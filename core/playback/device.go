@@ -37,10 +37,12 @@ type playbackDevice struct {
 	ActiveTrack          Track
 	startTrackSwitcher   sync.Once
 	playTracker          scrobbler.PlayTracker
+	scrobbleMu           sync.RWMutex
 	// scrobbleCtx holds the most recently seen request context (merged onto
 	// serviceCtx so it survives past the originating HTTP request), used to
 	// report playback state from the async trackSwitcherGoroutine, which has
-	// no request of its own.
+	// no request of its own. Written from request-handling goroutines, read
+	// from trackSwitcherGoroutine, so access is guarded by scrobbleMu.
 	scrobbleCtx context.Context
 }
 
@@ -274,8 +276,18 @@ func (pd *playbackDevice) isPlaying() bool {
 // request has completed.
 func (pd *playbackDevice) rememberScrobbleCtx(ctx context.Context) context.Context {
 	merged := request.AddValues(pd.serviceCtx, ctx)
+	pd.scrobbleMu.Lock()
 	pd.scrobbleCtx = merged
+	pd.scrobbleMu.Unlock()
 	return merged
+}
+
+// getScrobbleCtx returns the most recently remembered scrobble context,
+// safe to call concurrently with rememberScrobbleCtx.
+func (pd *playbackDevice) getScrobbleCtx() context.Context {
+	pd.scrobbleMu.RLock()
+	defer pd.scrobbleMu.RUnlock()
+	return pd.scrobbleCtx
 }
 
 // reportActiveTrackStarted reports to the scrobbler that the currently active
@@ -338,6 +350,15 @@ func (pd *playbackDevice) reportPlayback(ctx context.Context, mf model.MediaFile
 	if !ok {
 		clientId = player.ID
 	}
+	// Fall back to device-scoped identifiers so an empty clientId (e.g. no
+	// jukebox request has run yet) can't collide with another player's
+	// session key in the scrobbler's playMap cache.
+	if clientId == "" {
+		clientId = "jukebox-" + pd.Name
+	}
+	if client == "" {
+		client = "Jukebox"
+	}
 	err := pd.playTracker.ReportPlayback(ctx, scrobbler.ReportPlaybackParams{
 		MediaId:      mf.ID,
 		PositionMs:   positionMs,
@@ -358,7 +379,7 @@ func (pd *playbackDevice) trackSwitcherGoroutine() {
 		case <-pd.PlaybackDone:
 			log.Debug("Track switching detected")
 			if pd.ActiveTrack != nil {
-				pd.reportActiveTrackFinished(pd.scrobbleCtx)
+				pd.reportActiveTrackFinished(pd.getScrobbleCtx())
 				pd.ActiveTrack.Close()
 				pd.ActiveTrack = nil
 			}
@@ -372,7 +393,7 @@ func (pd *playbackDevice) trackSwitcherGoroutine() {
 				}
 				if pd.ActiveTrack != nil {
 					pd.ActiveTrack.Unpause()
-					pd.reportActiveTrackStarted(pd.scrobbleCtx)
+					pd.reportActiveTrackStarted(pd.getScrobbleCtx())
 				}
 			} else {
 				log.Debug("There is no song left in the playlist. Finish.")
