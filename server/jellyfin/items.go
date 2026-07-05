@@ -3,7 +3,6 @@ package jellyfin
 import (
 	"context"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/Masterminds/squirrel"
@@ -42,19 +41,10 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (dto.QueryRe
 	opts := model.QueryOptions{Offset: p.IntOr("StartIndex", 0), Max: p.IntOr("Limit", 0)}
 	applySort(&opts, itemType, p.StringOr("SortBy", ""), p.StringOr("SortOrder", ""))
 
-	// ParentId is ambiguous: it can be a library id (browsing a UserView) or an entity id (an
-	// artist for MusicAlbum queries, an album for Audio queries). It's only treated as a library
-	// when the user actually has access to it; otherwise it falls through as an entity id, which
-	// safely matches nothing rather than leaking another library's content.
-	scopeIDs := accessibleLibraryIDs(ctx)
+	scopeIDs, isLibraryParent := resolveLibraryScope(ctx, parentId)
 	entityParent := parentId
-	if parentId != "" {
-		if libID, err := strconv.Atoi(parentId); err == nil {
-			if u, _ := request.UserFrom(ctx); u.HasLibraryAccess(libID) {
-				scopeIDs = []int{libID}
-				entityParent = ""
-			}
-		}
+	if isLibraryParent {
+		entityParent = ""
 	}
 
 	switch itemType {

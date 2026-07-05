@@ -2,10 +2,8 @@ package jellyfin
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/req"
 )
 
@@ -18,14 +16,7 @@ func (api *Router) getArtists(w http.ResponseWriter, r *http.Request) {
 	opts := model.QueryOptions{Offset: p.IntOr("StartIndex", 0), Max: p.IntOr("Limit", 0)}
 	applySort(&opts, "MusicArtist", p.StringOr("SortBy", ""), p.StringOr("SortOrder", ""))
 
-	scopeIDs := accessibleLibraryIDs(ctx)
-	if parentId := p.StringOr("ParentId", ""); parentId != "" {
-		if libID, err := strconv.Atoi(parentId); err == nil {
-			if u, _ := request.UserFrom(ctx); u.HasLibraryAccess(libID) {
-				scopeIDs = []int{libID}
-			}
-		}
-	}
+	scopeIDs, _ := resolveLibraryScope(ctx, p.StringOr("ParentId", ""))
 
 	res, err := api.listArtists(ctx, opts, scopeIDs, p.StringOr("SearchTerm", ""), false)
 	if err != nil {

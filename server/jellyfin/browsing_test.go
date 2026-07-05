@@ -21,6 +21,11 @@ var _ = Describe("Browsing", func() {
 		return request.WithUser(context.Background(), model.User{ID: "u1", UserName: "alice", Libraries: libs})
 	}
 
+	// admin has no explicit Libraries; access is granted via the IsAdmin bypass, not membership.
+	ctxAdmin := func() context.Context {
+		return request.WithUser(context.Background(), model.User{ID: "admin", IsAdmin: true, Libraries: nil})
+	}
+
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{}
 		api = &Router{ds: ds}
@@ -115,6 +120,23 @@ var _ = Describe("Browsing", func() {
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(artistRepo.Options.Offset).To(Equal(5))
 			Expect(artistRepo.Options.Max).To(Equal(10))
+		})
+
+		It("does not restrict results for an admin user", func() {
+			artistRepo := ds.Artist(context.Background()).(*tests.MockArtistRepo)
+			artistRepo.SetData(model.Artists{{ID: "ar1", Name: "Artist"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Artists", nil).WithContext(ctxAdmin())
+			api.getArtists(w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			// accessibleLibraryIDs is empty for an admin (Libraries is nil), so
+			// ApplyArtistLibraryFilter([]) is a no-op: no library_id restriction is added.
+			if artistRepo.Options.Filters == nil {
+				return
+			}
+			sql, _, err := artistRepo.Options.Filters.ToSql()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(sql).NotTo(ContainSubstring("library_artist.library_id"))
 		})
 	})
 
