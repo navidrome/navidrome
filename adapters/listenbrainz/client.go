@@ -208,7 +208,7 @@ func (c *client) makeGenericRequest(ctx context.Context, method string, endpoint
 		return nil, err
 	}
 
-	// On a 200 code, there is no code. Decode using using error message if it exists
+	// On a 200 code, there is no code. Decode using error message if it exists
 	if resp.StatusCode != 200 {
 		defer resp.Body.Close()
 		decoder := json.NewDecoder(resp.Body)
