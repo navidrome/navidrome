@@ -3,6 +3,7 @@ package jellyfin
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/go-chi/chi/v5"
@@ -26,6 +27,10 @@ type Router struct {
 	playlists        playlists.Playlists
 	serverIDOnce     sync.Once
 	serverIDVal      string
+	// canon maps each lower-cased literal route segment to the case it was registered with
+	// (e.g. "audio" -> "Audio"). Populated by routes(); exposed here mainly so tests can
+	// verify normalizeCase against the real, registered route table.
+	canon map[string]string
 }
 
 func New(ds model.DataStore, artwork artwork.Artwork, streamer stream.MediaStreamer,
@@ -40,22 +45,22 @@ func New(ds model.DataStore, artwork artwork.Artwork, streamer stream.MediaStrea
 }
 
 func (api *Router) routes() http.Handler {
-	r := chi.NewRouter()
+	inner := chi.NewRouter()
 
 	// Public (no auth): handshake + login.
-	r.Get("/System/Info/Public", api.getPublicSystemInfo)
-	r.Get("/System/Ping", api.ping)
-	r.Post("/System/Ping", api.ping)
-	r.Get("/QuickConnect/Enabled", api.quickConnectEnabled)
-	r.Post("/Users/AuthenticateByName", api.authenticateByName)
-	r.Get("/Users/Public", api.getPublicUsers)
+	inner.Get("/System/Info/Public", api.getPublicSystemInfo)
+	inner.Get("/System/Ping", api.ping)
+	inner.Post("/System/Ping", api.ping)
+	inner.Get("/QuickConnect/Enabled", api.quickConnectEnabled)
+	inner.Post("/Users/AuthenticateByName", api.authenticateByName)
+	inner.Get("/Users/Public", api.getPublicUsers)
 
 	// Images are intentionally fully public and do not require authentication: artwork isn't
 	// sensitive media content, and this matches Jellyfin's lenient image handling.
-	r.Get("/Items/{itemId}/Images/{type}", api.getItemImage)
-	r.Get("/Items/{itemId}/Images/{type}/{index}", api.getItemImage)
+	inner.Get("/Items/{itemId}/Images/{type}", api.getItemImage)
+	inner.Get("/Items/{itemId}/Images/{type}/{index}", api.getItemImage)
 
-	r.Group(func(r chi.Router) {
+	inner.Group(func(r chi.Router) {
 		r.Use(api.authenticate)
 		r.Get("/UserViews", api.getUserViews)
 		r.Get("/Users/{userId}/Views", api.getUserViews)
@@ -103,10 +108,57 @@ func (api *Router) routes() http.Handler {
 
 	// Logged at Debug (not Warn/Error) because a real client probing for optional/legacy
 	// endpoints is expected traffic, not a problem; this just surfaces what's missing.
-	r.NotFound(api.notFound)
-	r.MethodNotAllowed(api.notFound)
+	inner.NotFound(api.notFound)
+	inner.MethodNotAllowed(api.notFound)
 
-	return r
+	api.canon = canonicalRouteSegments(inner)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		normalizeRequestPath(r, api.canon)
+		inner.ServeHTTP(w, r)
+	})
+}
+
+// canonicalRouteSegments walks every registered route and records, for each literal (non-param)
+// "/"-separated segment, the case it was registered with, keyed by its lower-cased form (e.g.
+// "audio" -> "Audio"). Chi param placeholders (e.g. "{itemId}") are skipped so id segments are
+// never treated as literals.
+func canonicalRouteSegments(router chi.Router) map[string]string {
+	canon := map[string]string{}
+	_ = chi.Walk(router, func(_, route string, _ http.Handler, _ ...func(http.Handler) http.Handler) error {
+		for _, seg := range strings.Split(route, "/") {
+			if seg == "" || strings.Contains(seg, "{") {
+				continue
+			}
+			canon[strings.ToLower(seg)] = seg
+		}
+		return nil
+	})
+	return canon
+}
+
+// normalizeRequestPath rewrites literal path segments to the case routes were registered with,
+// since real Jellyfin clients route case-insensitively while chi does not. It must run before
+// chi's matching. When this router is mounted under a parent (as it is in production via
+// server.MountRouter), chi has already stripped the mount prefix and matches against
+// RouteContext.RoutePath rather than r.URL.Path, so that's what must be normalized here.
+func normalizeRequestPath(r *http.Request, canon map[string]string) {
+	if rctx := chi.RouteContext(r.Context()); rctx != nil && rctx.RoutePath != "" {
+		rctx.RoutePath = normalizeCase(rctx.RoutePath, canon)
+		return
+	}
+	r.URL.Path = normalizeCase(r.URL.Path, canon)
+}
+
+// normalizeCase rewrites each "/"-separated literal segment of path to the case it was
+// registered with in canon. Segments with no match (e.g. case-sensitive ids) are left untouched.
+func normalizeCase(path string, canon map[string]string) string {
+	segs := strings.Split(path, "/")
+	for i, seg := range segs {
+		if canonical, ok := canon[strings.ToLower(seg)]; ok {
+			segs[i] = canonical
+		}
+	}
+	return strings.Join(segs, "/")
 }
 
 // ok writes payload as JSON.
