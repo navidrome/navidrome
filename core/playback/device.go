@@ -7,8 +7,10 @@ import (
 	"sync"
 
 	"github.com/navidrome/navidrome/core/playback/mpv"
+	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 )
 
 type Track interface {
@@ -34,6 +36,12 @@ type playbackDevice struct {
 	PlaybackDone         chan bool
 	ActiveTrack          Track
 	startTrackSwitcher   sync.Once
+	playTracker          scrobbler.PlayTracker
+	// scrobbleCtx holds the most recently seen request context (merged onto
+	// serviceCtx so it survives past the originating HTTP request), used to
+	// report playback state from the async trackSwitcherGoroutine, which has
+	// no request of its own.
+	scrobbleCtx context.Context
 }
 
 type DeviceStatus struct {
@@ -61,7 +69,7 @@ func (pd *playbackDevice) getStatus() DeviceStatus {
 // NewPlaybackDevice creates a new playback device which implements all the basic Jukebox mode commands defined here:
 // http://www.subsonic.org/pages/api.jsp#jukeboxControl
 // Starts the trackSwitcher goroutine for the device.
-func NewPlaybackDevice(ctx context.Context, playbackServer PlaybackServer, name string, deviceName string) *playbackDevice {
+func NewPlaybackDevice(ctx context.Context, playbackServer PlaybackServer, name string, deviceName string, playTracker scrobbler.PlayTracker) *playbackDevice {
 	return &playbackDevice{
 		serviceCtx:           ctx,
 		ParentPlaybackServer: playbackServer,
@@ -71,6 +79,8 @@ func NewPlaybackDevice(ctx context.Context, playbackServer PlaybackServer, name 
 		Gain:                 DefaultGain,
 		PlaybackQueue:        NewQueue(),
 		PlaybackDone:         make(chan bool),
+		playTracker:          playTracker,
+		scrobbleCtx:          ctx,
 	}
 }
 
@@ -102,6 +112,7 @@ func (pd *playbackDevice) Set(ctx context.Context, ids []string) (DeviceStatus, 
 
 func (pd *playbackDevice) Start(ctx context.Context) (DeviceStatus, error) {
 	log.Debug(ctx, "Processing Start action", "device", pd)
+	ctx = pd.rememberScrobbleCtx(ctx)
 
 	pd.startTrackSwitcher.Do(func() {
 		log.Info(ctx, "Starting trackSwitcher goroutine")
@@ -124,6 +135,7 @@ func (pd *playbackDevice) Start(ctx context.Context) (DeviceStatus, error) {
 				return pd.getStatus(), err
 			}
 			pd.ActiveTrack.Unpause()
+			pd.reportActiveTrackStarted(ctx)
 		}
 	}
 
@@ -140,6 +152,7 @@ func (pd *playbackDevice) Stop(ctx context.Context) (DeviceStatus, error) {
 
 func (pd *playbackDevice) Skip(ctx context.Context, index int, offset int) (DeviceStatus, error) {
 	log.Debug(ctx, "Processing Skip action", "index", index, "offset", offset, "device", pd)
+	ctx = pd.rememberScrobbleCtx(ctx)
 
 	wasPlaying := pd.isPlaying()
 
@@ -148,6 +161,7 @@ func (pd *playbackDevice) Skip(ctx context.Context, index int, offset int) (Devi
 	}
 
 	if index != pd.PlaybackQueue.Index && pd.ActiveTrack != nil {
+		pd.reportActiveTrackStopped(ctx)
 		pd.ActiveTrack.Close()
 		pd.ActiveTrack = nil
 	}
@@ -157,6 +171,7 @@ func (pd *playbackDevice) Skip(ctx context.Context, index int, offset int) (Devi
 		if err != nil {
 			return pd.getStatus(), err
 		}
+		pd.reportActiveTrackStarted(ctx)
 	}
 
 	err := pd.ActiveTrack.SetPosition(offset)
@@ -200,6 +215,7 @@ func (pd *playbackDevice) Add(ctx context.Context, ids []string) (DeviceStatus, 
 func (pd *playbackDevice) Clear(ctx context.Context) (DeviceStatus, error) {
 	log.Debug(ctx, "Processing Clear action", "device", pd)
 	if pd.ActiveTrack != nil {
+		pd.reportActiveTrackStopped(pd.rememberScrobbleCtx(ctx))
 		pd.ActiveTrack.Pause()
 		pd.ActiveTrack.Close()
 		pd.ActiveTrack = nil
@@ -251,6 +267,90 @@ func (pd *playbackDevice) isPlaying() bool {
 	return pd.ActiveTrack != nil && pd.ActiveTrack.IsPlaying()
 }
 
+// rememberScrobbleCtx merges request-scoped values (user, player, client)
+// from ctx onto the device's long-lived service context, and remembers the
+// result. This lets the async trackSwitcherGoroutine - which has no HTTP
+// request of its own - still report playback state once the originating
+// request has completed.
+func (pd *playbackDevice) rememberScrobbleCtx(ctx context.Context) context.Context {
+	merged := request.AddValues(pd.serviceCtx, ctx)
+	pd.scrobbleCtx = merged
+	return merged
+}
+
+// reportActiveTrackStarted reports to the scrobbler that the currently active
+// track started playing. Must be called after switchActiveTrackByIndex.
+func (pd *playbackDevice) reportActiveTrackStarted(ctx context.Context) {
+	if pd.ActiveTrack == nil {
+		return
+	}
+	mf := pd.PlaybackQueue.Current()
+	if mf == nil {
+		return
+	}
+	pd.reportPlayback(ctx, *mf, scrobbler.StateStarting, 0)
+}
+
+// reportActiveTrackStopped reports to the scrobbler that the currently active
+// track stopped at its current (live) position. Must be called before
+// ActiveTrack is closed/replaced and before PlaybackQueue's index is advanced.
+func (pd *playbackDevice) reportActiveTrackStopped(ctx context.Context) {
+	if pd.ActiveTrack == nil {
+		return
+	}
+	mf := pd.PlaybackQueue.Current()
+	if mf == nil {
+		return
+	}
+	pd.reportPlayback(ctx, *mf, scrobbler.StateStopped, int64(pd.ActiveTrack.Position())*1000)
+}
+
+// reportActiveTrackFinished reports a track that played through to its
+// natural end (mpv reached end-of-stream). By the time this fires, mpv has
+// already exited, so a live position can't be queried; the full track
+// duration is reported instead. Must be called before ActiveTrack is closed
+// and before PlaybackQueue's index is advanced.
+func (pd *playbackDevice) reportActiveTrackFinished(ctx context.Context) {
+	if pd.ActiveTrack == nil {
+		return
+	}
+	mf := pd.PlaybackQueue.Current()
+	if mf == nil {
+		return
+	}
+	pd.reportPlayback(ctx, *mf, scrobbler.StateStopped, int64(mf.Duration*1000))
+}
+
+// reportPlayback forwards a jukebox playback state transition to the
+// scrobbler, the same way client-driven playback does via the reportPlayback
+// Subsonic endpoint. Jukebox playback happens entirely server-side, so
+// without this no play count or scrobble is ever recorded for it (#5693).
+func (pd *playbackDevice) reportPlayback(ctx context.Context, mf model.MediaFile, state string, positionMs int64) {
+	if pd.playTracker == nil {
+		return
+	}
+	if ctx == nil {
+		ctx = pd.serviceCtx
+	}
+	player, _ := request.PlayerFrom(ctx)
+	client, _ := request.ClientFrom(ctx)
+	clientId, ok := request.ClientUniqueIdFrom(ctx)
+	if !ok {
+		clientId = player.ID
+	}
+	err := pd.playTracker.ReportPlayback(ctx, scrobbler.ReportPlaybackParams{
+		MediaId:      mf.ID,
+		PositionMs:   positionMs,
+		State:        state,
+		PlaybackRate: 1.0,
+		ClientId:     clientId,
+		ClientName:   client,
+	})
+	if err != nil {
+		log.Warn(ctx, "Error reporting jukebox playback", "mediaId", mf.ID, "state", state, err)
+	}
+}
+
 func (pd *playbackDevice) trackSwitcherGoroutine() {
 	log.Debug("Started trackSwitcher goroutine", "device", pd)
 	for {
@@ -258,6 +358,7 @@ func (pd *playbackDevice) trackSwitcherGoroutine() {
 		case <-pd.PlaybackDone:
 			log.Debug("Track switching detected")
 			if pd.ActiveTrack != nil {
+				pd.reportActiveTrackFinished(pd.scrobbleCtx)
 				pd.ActiveTrack.Close()
 				pd.ActiveTrack = nil
 			}
@@ -271,6 +372,7 @@ func (pd *playbackDevice) trackSwitcherGoroutine() {
 				}
 				if pd.ActiveTrack != nil {
 					pd.ActiveTrack.Unpause()
+					pd.reportActiveTrackStarted(pd.scrobbleCtx)
 				}
 			} else {
 				log.Debug("There is no song left in the playlist. Finish.")

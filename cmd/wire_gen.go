@@ -108,7 +108,7 @@ func CreateSubsonicAPIRouter(ctx context.Context) *subsonic.Router {
 	playlistsPlaylists := playlists.NewPlaylists(dataStore, imageUploadService)
 	modelScanner := scanner.New(ctx, dataStore, cacheWarmer, broker, playlistsPlaylists, metricsMetrics)
 	playTracker := scrobbler.GetPlayTracker(dataStore, broker, manager)
-	playbackServer := playback.GetInstance(dataStore)
+	playbackServer := playback.GetInstance(dataStore, playTracker)
 	lyricsLyrics := lyrics.NewLyrics(dataStore, manager)
 	transcodeDecider := stream.NewTranscodeDecider(dataStore, fFmpeg)
 	sonicSonic := sonic.New(dataStore, manager, matcherMatcher)
@@ -206,7 +206,11 @@ func CreateScanWatcher(ctx context.Context) scanner.Watcher {
 func GetPlaybackServer() playback.PlaybackServer {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
-	playbackServer := playback.GetInstance(dataStore)
+	broker := events.GetBroker()
+	metricsMetrics := metrics.GetPrometheusInstance(dataStore)
+	manager := plugins.GetManager(dataStore, broker, metricsMetrics)
+	playTracker := scrobbler.GetPlayTracker(dataStore, broker, manager)
+	playbackServer := playback.GetInstance(dataStore, playTracker)
 	return playbackServer
 }
 
