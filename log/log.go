@@ -8,6 +8,7 @@ import (
 	"iter"
 	"net/http"
 	"os"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
@@ -143,6 +144,41 @@ func SetOutput(w io.Writer) {
 	loggerMu.Lock()
 	defer loggerMu.Unlock()
 	defaultLogger.SetOutput(w)
+}
+
+// Output returns the current writer used by the default logger.
+func Output() io.Writer {
+	loggerMu.RLock()
+	defer loggerMu.RUnlock()
+	return defaultLogger.Out
+}
+
+var (
+	outputFileMu sync.Mutex
+	outputFile   *os.File
+)
+
+// SetOutputFile opens (or creates) the given file in append mode and sets it as the log
+// output, closing the previously opened log file, if any. Calling it again with the same
+// path reopens the file, allowing external log rotation tools to signal the process
+// (e.g. with SIGHUP) after rotating the log file.
+func SetOutputFile(path string) error {
+	if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
+		return fmt.Errorf("creating log file directory: %w", err)
+	}
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	SetOutput(f)
+	outputFileMu.Lock()
+	prev := outputFile
+	outputFile = f
+	outputFileMu.Unlock()
+	if prev != nil {
+		_ = prev.Close()
+	}
+	return nil
 }
 
 // EnableJournalFormat wraps the current logger formatter with syslog
