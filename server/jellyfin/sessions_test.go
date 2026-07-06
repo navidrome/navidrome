@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
-	"time"
 
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/scrobbler"
@@ -117,8 +116,7 @@ var _ = Describe("Sessions", func() {
 	})
 
 	Describe("reportPlaybackStopped", func() {
-		It("reports the stopped state and submits a scrobble", func() {
-			before := time.Now().Add(-time.Second)
+		It("reports the stopped state and lets the scrobbler apply its play threshold", func() {
 			w := httptest.NewRecorder()
 			r := authed(httptest.NewRequest("POST", "/Sessions/Playing/Stopped", strings.NewReader(`{"ItemId":"s1","PositionTicks":600000000}`)))
 
@@ -130,13 +128,10 @@ var _ = Describe("Sessions", func() {
 			Expect(pt.reported[0].MediaId).To(Equal("s1"))
 			Expect(pt.reported[0].State).To(Equal(scrobbler.StateStopped))
 			Expect(pt.reported[0].PositionMs).To(Equal(int64(60000)))
-			// IgnoreScrobble must be set: Submit below is the sole play-count/scrobble trigger,
-			// otherwise ReportPlayback's own threshold logic would double-count the play.
-			Expect(pt.reported[0].IgnoreScrobble).To(BeTrue())
-
-			Expect(pt.submitted).To(HaveLen(1))
-			Expect(pt.submitted[0].TrackID).To(Equal("s1"))
-			Expect(pt.submitted[0].Timestamp).To(BeTemporally(">", before))
+			// IgnoreScrobble stays false so ReportPlayback's own StateStopped threshold decides
+			// whether the play counts; we no longer force a Submit that would bypass it.
+			Expect(pt.reported[0].IgnoreScrobble).To(BeFalse())
+			Expect(pt.submitted).To(BeEmpty())
 		})
 	})
 

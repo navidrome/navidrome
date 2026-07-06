@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"time"
 
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
@@ -90,29 +89,27 @@ func (api *Router) reportPlaybackProgress(w http.ResponseWriter, r *http.Request
 
 // reportPlaybackStopped handles POST /Sessions/Playing/Stopped, sent once when
 // playback of an item ends.
+//
+// Unlike Subsonic — where the client decides a play "counts" and only then calls
+// scrobble?submission=true — Jellyfin clients (Finamp) send a Stopped report on *every* stop,
+// including an immediate track switch. So the play threshold has to be applied server-side: we let
+// ReportPlayback's own StateStopped logic decide (play counts + external scrobble only when the
+// reported position passes 50% of the track, capped at 4 minutes). Force-submitting here instead
+// would mark even a one-second skip as played.
 func (api *Router) reportPlaybackStopped(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	body := decodeReport(r)
 	clientId, clientName := clientIdentity(ctx)
 
-	// IgnoreScrobble: Submit below is the sole source of the play-count increment
-	// and external scrobble for this stop event. Without it, ReportPlayback's own
-	// threshold-based scrobble logic would double-count the same play.
 	err := api.scrobbler.ReportPlayback(ctx, scrobbler.ReportPlaybackParams{
-		MediaId:        body.ItemId,
-		PositionMs:     body.PositionTicks / 10_000,
-		State:          scrobbler.StateStopped,
-		IgnoreScrobble: true,
-		ClientId:       clientId,
-		ClientName:     clientName,
+		MediaId:    body.ItemId,
+		PositionMs: body.PositionTicks / 10_000,
+		State:      scrobbler.StateStopped,
+		ClientId:   clientId,
+		ClientName: clientName,
 	})
 	if err != nil {
 		log.Warn(ctx, "Jellyfin API: report playback stopped failed", "id", body.ItemId, err)
-	}
-
-	err = api.scrobbler.Submit(ctx, []scrobbler.Submission{{TrackID: body.ItemId, Timestamp: time.Now()}})
-	if err != nil {
-		log.Warn(ctx, "Jellyfin API: scrobble failed", "id", body.ItemId, err)
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
