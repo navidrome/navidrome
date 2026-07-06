@@ -47,6 +47,25 @@ func trackToBaseItem(t model.PlaylistTrack) dto.BaseItemDto {
 	return item
 }
 
+// getPlaylist returns a playlist's public-visibility flag and item ids. Finamp calls this before
+// opening a playlist's edit screen to read OpenAccess. Visibility is enforced by GetWithTracks
+// (public or owned by the current user); any error maps to 404 so private playlists can't be probed.
+func (api *Router) getPlaylist(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id := dto.DecodeID(chi.URLParam(r, "playlistId"))
+	pls, err := api.playlists.GetWithTracks(ctx, id)
+	if err != nil {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+	itemIds := slice.Map(pls.Tracks, func(t model.PlaylistTrack) string { return dto.EncodeID(t.MediaFileID) })
+	api.ok(w, r, dto.PlaylistInfo{
+		OpenAccess: pls.Public,
+		Shares:     []dto.PlaylistUserPermissions{},
+		ItemIds:    itemIds,
+	})
+}
+
 // getPlaylistItems relies on core/playlists.GetWithTracks to enforce playlist visibility
 // (public or owned by the current user); any error — not found or not visible — is reported as
 // a generic 404 so a playlist id can't be used to probe for the existence of private playlists.

@@ -181,6 +181,38 @@ var _ = Describe("Playlists", func() {
 		})
 	})
 
+	Describe("getPlaylist", func() {
+		It("returns OpenAccess from Public and item ids (encoded media file ids, not entry ids)", func() {
+			fp.getPls = &model.Playlist{
+				ID:     "pl1",
+				Public: true,
+				Tracks: model.PlaylistTracks{
+					{ID: "1", MediaFileID: "s1", PlaylistID: "pl1", MediaFile: model.MediaFile{ID: "s1"}},
+					{ID: "2", MediaFileID: "s2", PlaylistID: "pl1", MediaFile: model.MediaFile{ID: "s2"}},
+				},
+			}
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Playlists/pl1", nil).WithContext(context.Background())
+			r = withChiURLParam(r, "playlistId", "pl1")
+			api.getPlaylist(w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.PlaylistInfo
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.OpenAccess).To(BeTrue())
+			Expect(res.Shares).To(BeEmpty())
+			Expect(res.ItemIds).To(Equal([]string{dto.EncodeID("s1"), dto.EncodeID("s2")}))
+		})
+
+		It("returns 404 for a non-owned or absent playlist", func() {
+			fp.getErr = model.ErrNotFound
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Playlists/missing", nil).WithContext(context.Background())
+			r = withChiURLParam(r, "playlistId", "missing")
+			api.getPlaylist(w, r)
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
+	})
+
 	Describe("addToPlaylist", func() {
 		It("adds tracks by song id from the lowercase ids param real Jellyfin clients send", func() {
 			w := httptest.NewRecorder()

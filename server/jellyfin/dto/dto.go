@@ -83,6 +83,15 @@ type PlaylistUserPermissions struct {
 	CanEdit bool   `json:"CanEdit"`
 }
 
+// PlaylistInfo is the response shape for GET /Playlists/{id}. Finamp reads OpenAccess to show a
+// playlist's public-visibility toggle; ItemIds are the playlist's media item ids (matching real
+// Jellyfin, which returns item ids here — not playlist-entry ids).
+type PlaylistInfo struct {
+	OpenAccess bool                      `json:"OpenAccess"`
+	Shares     []PlaylistUserPermissions `json:"Shares"`
+	ItemIds    []string                  `json:"ItemIds"`
+}
+
 type QueryResult struct {
 	Items            []BaseItemDto `json:"Items"`
 	TotalRecordCount int           `json:"TotalRecordCount"`

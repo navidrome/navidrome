@@ -80,6 +80,7 @@ func (api *Router) routes() http.Handler {
 		r.Get("/MusicGenres", api.getGenres)
 
 		r.Post("/Playlists", api.createPlaylist)
+		r.Get("/Playlists/{playlistId}", api.getPlaylist)
 		r.Get("/Playlists/{playlistId}/Items", api.getPlaylistItems)
 		r.Post("/Playlists/{playlistId}/Items", api.addToPlaylist)
 		r.Delete("/Playlists/{playlistId}/Items", api.removeFromPlaylist)
