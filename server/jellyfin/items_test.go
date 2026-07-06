@@ -169,6 +169,20 @@ var _ = Describe("Items", func() {
 			Expect(res.StartIndex).To(Equal(1))
 		})
 
+		It("caps each per-type query at StartIndex+Limit instead of fetching everything", func() {
+			mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
+			mfRepo.SetData(model.MediaFiles{{ID: "s1", Title: "Song"}, {ID: "s2", Title: "Song2"}})
+			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
+			albumRepo.SetData(model.Albums{{ID: "a1", Name: "One"}, {ID: "a2", Name: "Two"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio,MusicAlbum&StartIndex=1&Limit=2", nil).WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			// The merged window is [1, 3): each type needs at most its first 3 rows, not the table.
+			Expect(mfRepo.Options.Max).To(Equal(3))
+			Expect(albumRepo.Options.Max).To(Equal(3))
+		})
+
 		It("applies a starred filter when Filters=IsFavorite", func() {
 			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: "a1", Name: "One"}})

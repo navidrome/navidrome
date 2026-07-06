@@ -118,6 +118,13 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (dto.QueryRe
 	total := 0
 	for _, itemType := range types {
 		var opts model.QueryOptions
+		// The merged pagination window is [offset, offset+limit); in the worst case it's served
+		// entirely by one type, so each per-type query needs at most its first offset+limit rows.
+		// Without this cap every type would materialize its whole table just to be sliced below.
+		// Totals are unaffected: they come from CountAll, not from the fetched rows.
+		if limit > 0 {
+			opts.Max = offset + limit
+		}
 		applySort(&opts, itemType, sortBy, sortOrder)
 		res, err := api.queryItemsOfType(ctx, itemType, opts, entityParent, artistId, contributingOnly, scopeIDs, search, favOnly)
 		if err != nil {
