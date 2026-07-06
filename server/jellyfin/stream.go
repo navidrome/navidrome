@@ -40,18 +40,7 @@ func (api *Router) getPlaybackInfo(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	src := dto.MediaSourceInfo{
-		Id:                   mf.ID,
-		Protocol:             "Http",
-		Container:            mf.Suffix,
-		Size:                 mf.Size,
-		Name:                 mf.Title,
-		Type:                 "Default",
-		RunTimeTicks:         dto.TicksFromSeconds(mf.Duration),
-		SupportsDirectPlay:   true,
-		SupportsDirectStream: true,
-		SupportsTranscoding:  true,
-	}
+	src := dto.MediaSourceFromMediaFile(*mf)
 	api.ok(w, r, dto.PlaybackInfoResponse{MediaSources: []dto.MediaSourceInfo{src}, PlaySessionId: mf.ID})
 }
 

@@ -52,6 +52,7 @@ var _ = Describe("Stream", func() {
 			Expect(res.MediaSources).To(HaveLen(1))
 			Expect(res.MediaSources[0].Id).To(Equal("s1"))
 			Expect(res.MediaSources[0].Container).To(Equal("mp3"))
+			Expect(res.MediaSources[0].Size).To(Equal(int64(1000)))
 			Expect(res.PlaySessionId).ToNot(BeEmpty())
 		})
 

@@ -188,6 +188,7 @@ type MediaSourceInfo struct {
 	Name                 string `json:"Name,omitempty"`
 	IsRemote             bool   `json:"IsRemote"`
 	RunTimeTicks         int64  `json:"RunTimeTicks,omitempty"`
+	Bitrate              int    `json:"Bitrate,omitempty"`
 	SupportsTranscoding  bool   `json:"SupportsTranscoding"`
 	SupportsDirectStream bool   `json:"SupportsDirectStream"`
 	SupportsDirectPlay   bool   `json:"SupportsDirectPlay"`

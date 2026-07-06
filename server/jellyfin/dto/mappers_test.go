@@ -13,7 +13,7 @@ var _ = Describe("mappers", func() {
 		mf := model.MediaFile{
 			ID: "song-1", Title: "Song", Album: "Alb", AlbumID: "alb-1",
 			Artist: "Art", AlbumArtist: "AA", TrackNumber: 3, DiscNumber: 1,
-			Year: 1999, Duration: 60,
+			Year: 1999, Duration: 60, Size: 2_500_000,
 		}
 		mf.PlayCount = 2
 		mf.Starred = true
@@ -28,6 +28,20 @@ var _ = Describe("mappers", func() {
 		Expect(item.UserData.IsFavorite).To(BeTrue())
 		Expect(item.UserData.PlayCount).To(Equal(2))
 		Expect(item.UserData.Played).To(BeTrue())
+		Expect(item.MediaSources).To(HaveLen(1))
+		Expect(item.MediaSources[0].Size).To(Equal(int64(2_500_000)))
+	})
+
+	It("builds a MediaSourceInfo from a media file", func() {
+		mf := model.MediaFile{ID: "s1", Size: 5242880, Suffix: "mp3", BitRate: 320, Duration: 100}
+		src := MediaSourceFromMediaFile(mf)
+		Expect(src.Id).To(Equal("s1"))
+		Expect(src.Size).To(Equal(int64(5242880)))
+		Expect(src.Container).To(Equal("mp3"))
+		Expect(src.Bitrate).To(Equal(320_000))
+		Expect(src.RunTimeTicks).To(Equal(int64(1_000_000_000)))
+		Expect(src.Protocol).To(Equal("Http"))
+		Expect(src.SupportsDirectPlay).To(BeTrue())
 	})
 
 	It("omits IndexNumber and ParentIndexNumber when track/disc numbers are untagged", func() {

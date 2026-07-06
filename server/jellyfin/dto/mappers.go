@@ -8,6 +8,27 @@ import (
 
 func TicksFromSeconds(sec float32) int64 { return int64(float64(sec) * 1e7) }
 
+// MediaSourceFromMediaFile builds the MediaSourceInfo describing direct playback of mf's
+// source file. Shared by SongToBaseItem and getPlaybackInfo so clients see the same Size and
+// Bitrate whether they read it from a browse response or from /PlaybackInfo -- Finamp's
+// download dialog reads MediaSources[0].Size from the former.
+func MediaSourceFromMediaFile(mf model.MediaFile) MediaSourceInfo {
+	return MediaSourceInfo{
+		Id:                   mf.ID,
+		Protocol:             "Http",
+		Container:            mf.Suffix,
+		Size:                 mf.Size,
+		Name:                 mf.Title,
+		Type:                 "Default",
+		RunTimeTicks:         TicksFromSeconds(mf.Duration),
+		Bitrate:              mf.BitRate * 1000, // Navidrome stores kbps; Jellyfin's Bitrate is bps.
+		SupportsDirectPlay:   true,
+		SupportsDirectStream: true,
+		SupportsTranscoding:  true,
+		IsRemote:             false,
+	}
+}
+
 func UserData(a model.Annotations, itemID string) *UserItemDataDto {
 	d := &UserItemDataDto{
 		PlayCount:  int(a.PlayCount),
@@ -44,6 +65,7 @@ func SongToBaseItem(mf model.MediaFile) BaseItemDto {
 		CanDownload:       true,
 		BackdropImageTags: []string{},
 		UserData:          UserData(mf.Annotations, mf.ID),
+		MediaSources:      []MediaSourceInfo{MediaSourceFromMediaFile(mf)},
 	}
 	if mf.Year > 0 {
 		item.ProductionYear = new(mf.Year)
