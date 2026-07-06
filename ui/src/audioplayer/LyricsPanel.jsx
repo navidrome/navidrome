@@ -28,6 +28,7 @@ import {
   KARAOKE_SCROLL_PRE_ROLL_MS,
   KARAOKE_SCROLLBAR_VISIBLE_MS,
   clamp,
+  lerp,
 } from './lyricsKaraokeConstants'
 import { colorWithAlpha } from './lyricsKaraokeStyles'
 import {
@@ -111,6 +112,11 @@ const useStyles = makeStyles((theme) => ({
   lineGroup: {
     width: '100%',
     borderRadius: theme.shape.borderRadius,
+    transformOrigin: 'left center',
+    transition: `transform ${KARAOKE_ANIMATION_MS}ms ${KARAOKE_EASING}`,
+    '@media (prefers-reduced-motion: reduce)': {
+      transition: 'none',
+    },
   },
   line: {
     display: 'inline-block',
@@ -121,8 +127,7 @@ const useStyles = makeStyles((theme) => ({
     overflowWrap: 'anywhere',
     whiteSpace: 'pre-wrap',
     letterSpacing: 0,
-    transformOrigin: 'left center',
-    transition: `opacity ${KARAOKE_ANIMATION_MS}ms ${KARAOKE_EASING}, color ${KARAOKE_ANIMATION_MS}ms ${KARAOKE_EASING}, transform ${KARAOKE_ANIMATION_MS}ms ${KARAOKE_EASING}`,
+    transition: `opacity ${KARAOKE_ANIMATION_MS}ms ${KARAOKE_EASING}, color ${KARAOKE_ANIMATION_MS}ms ${KARAOKE_EASING}`,
     '@media (prefers-reduced-motion: reduce)': {
       transition: 'none',
     },
@@ -139,8 +144,7 @@ const useStyles = makeStyles((theme) => ({
     overflowWrap: 'anywhere',
     whiteSpace: 'pre-wrap',
     letterSpacing: 0,
-    transformOrigin: 'left center',
-    transition: `opacity ${KARAOKE_ANIMATION_MS}ms ${KARAOKE_EASING}, color ${KARAOKE_ANIMATION_MS}ms ${KARAOKE_EASING}, transform ${KARAOKE_ANIMATION_MS}ms ${KARAOKE_EASING}`,
+    transition: `opacity ${KARAOKE_ANIMATION_MS}ms ${KARAOKE_EASING}, color ${KARAOKE_ANIMATION_MS}ms ${KARAOKE_EASING}`,
     '@media (prefers-reduced-motion: reduce)': {
       transition: 'none',
     },
@@ -314,9 +318,9 @@ const LyricsPanel = ({
               phase: 'idle',
               isActive: false,
               isRelease: false,
-              isIncoming: false,
               isAnimating: false,
               highlightAlphaScale: 0,
+              lineFocusScale: 0,
             },
       ),
     [hasTimedMainLines, mainLines, playbackMs],
@@ -574,6 +578,29 @@ const LyricsPanel = ({
     )
   }
 
+  const getLayerActiveAlpha = (layer) => {
+    if (layer === 'main') return 0.98
+    if (layer === 'translation') return 0.72
+    return 0.78
+  }
+
+  const getLayerIdleAlpha = (layer) => {
+    if (layer === 'main') return 0.46
+    if (layer === 'translation') return 0.34
+    return 0.38
+  }
+
+  const getIdleOpacity = (delta) => {
+    if (delta > 1) return Math.max(0.54, 0.74 - clamp(delta, 1, 6) * 0.035)
+    if (delta < -1) {
+      return Math.max(0.5, 0.68 - clamp(Math.abs(delta), 1, 6) * 0.035)
+    }
+    return delta < 0 ? 0.68 : 0.74
+  }
+
+  const getLineFocusScale = (idx) =>
+    clamp(lineLifecycleStates[idx]?.lineFocusScale ?? 0, 0, 1)
+
   const getLineStyle = (idx, layer) => {
     const sourceColor = colors[layer]
     if (!hasTimedMainLines) {
@@ -586,38 +613,30 @@ const LyricsPanel = ({
     const referenceIndex =
       lineStyleReferenceIndex >= 0 ? lineStyleReferenceIndex : idx
     const delta = idx - referenceIndex
-    const lifecycle = lineLifecycleStates[idx] || {}
-    const isActive = Boolean(lifecycle.isActive)
-    const isRelease = Boolean(lifecycle.isRelease)
-    const isIncoming = Boolean(lifecycle.isIncoming)
-    const colorAlpha =
-      layer === 'main' ? 0.98 : layer === 'translation' ? 0.86 : 0.9
-    let opacity = isActive
-      ? 1
-      : isIncoming
-        ? 0.86
-        : isRelease
-          ? 0.84
-          : delta < 0
-            ? 0.72
-            : 0.78
-
-    if (delta > 1) opacity = Math.max(0.62, 0.78 - clamp(delta, 1, 6) * 0.03)
-    if (delta < -1) {
-      opacity = Math.max(0.62, 0.72 - clamp(Math.abs(delta), 1, 6) * 0.03)
-    }
-    const transform = isActive
-      ? 'scale(1) translateY(0px)'
-      : isIncoming
-        ? 'scale(0.995) translateY(1px)'
-        : isRelease
-          ? 'scale(0.992) translateY(1px)'
-          : 'scale(0.985) translateY(2px)'
+    const focusScale = getLineFocusScale(idx)
+    const opacity = lerp(getIdleOpacity(delta), 1, focusScale)
+    const colorAlpha = lerp(
+      getLayerIdleAlpha(layer),
+      getLayerActiveAlpha(layer),
+      focusScale,
+    )
 
     return {
       opacity,
       color: colorWithAlpha(sourceColor, colorAlpha),
-      transform,
+    }
+  }
+
+  const getLineGroupStyle = (idx) => {
+    if (!hasTimedMainLines) return undefined
+
+    const focusScale = getLineFocusScale(idx)
+    const scale = lerp(0.992, 1, focusScale)
+    const translateY = lerp(1.5, 0, focusScale)
+    return {
+      transform: `scale(${scale.toFixed(3)}) translateY(${translateY.toFixed(
+        2,
+      )}px)`,
     }
   }
 
@@ -691,7 +710,10 @@ const LyricsPanel = ({
                   idx === scrollTargetIndex ? 'true' : 'false'
                 }
                 data-testid="lyrics-line-group"
-                style={{ cursor: canSeekLine ? 'pointer' : undefined }}
+                style={{
+                  ...getLineGroupStyle(idx),
+                  cursor: canSeekLine ? 'pointer' : undefined,
+                }}
                 role={canSeekLine ? 'button' : undefined}
                 tabIndex={canSeekLine ? 0 : undefined}
                 onClick={() => seekToLine(line)}

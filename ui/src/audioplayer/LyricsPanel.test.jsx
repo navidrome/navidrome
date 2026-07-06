@@ -19,6 +19,8 @@ const renderPanel = (props) =>
     </ThemeProvider>,
   )
 
+const getRgbaAlpha = (value) => Number(value.match(/,\s*([\d.]+)\)$/)?.[1])
+
 const mainLyric = {
   synced: true,
   line: [{ start: 0, end: 1000, value: 'Main line' }],
@@ -295,14 +297,84 @@ describe('<LyricsPanel />', () => {
       },
       showPronunciation: false,
       showTranslation: true,
+      audioInstance: {
+        currentTime: 0.25,
+        paused: true,
+      },
     })
 
     expect(screen.getByText('Main line')).toHaveStyle({
       color: 'rgba(17, 17, 17, 0.98)',
     })
     expect(screen.getByText('translation line')).toHaveStyle({
-      color: 'rgba(119, 136, 153, 0.86)',
+      color: 'rgba(119, 136, 153, 0.72)',
     })
+  })
+
+  it('eases translation emphasis without moving the translation row independently', () => {
+    const lyric = {
+      synced: true,
+      line: [
+        { start: 0, end: 1000, value: 'first line' },
+        { start: 1000, end: 2000, value: 'second line' },
+      ],
+    }
+    const translationLyric = {
+      synced: true,
+      line: [
+        { start: 0, end: 1000, value: 'first translation' },
+        { start: 1000, end: 2000, value: 'second translation' },
+      ],
+    }
+
+    const { rerender } = renderPanel({
+      mainLyric: lyric,
+      translationLyric,
+      showTranslation: true,
+      audioInstance: {
+        currentTime: 1.02,
+        paused: true,
+      },
+    })
+
+    const earlyTranslation = screen
+      .getByText('second translation')
+      .closest('.MuiTypography-root')
+    const earlyGroup = earlyTranslation.closest(
+      '[data-testid="lyrics-line-group"]',
+    )
+    const earlyAlpha = getRgbaAlpha(earlyTranslation.style.color)
+    expect(earlyAlpha).toBeGreaterThan(0.34)
+    expect(earlyAlpha).toBeLessThan(0.72)
+    expect(earlyTranslation.style.transform).toBe('')
+    expect(earlyGroup.style.transform).not.toBe(
+      'scale(1.000) translateY(0.00px)',
+    )
+
+    rerender(
+      <ThemeProvider theme={theme}>
+        <LyricsPanel
+          visible
+          mainLyric={lyric}
+          translationLyric={translationLyric}
+          showTranslation
+          audioInstance={{
+            currentTime: 1.25,
+            paused: true,
+          }}
+        />
+      </ThemeProvider>,
+    )
+
+    const settledTranslation = screen
+      .getByText('second translation')
+      .closest('.MuiTypography-root')
+    const settledGroup = settledTranslation.closest(
+      '[data-testid="lyrics-line-group"]',
+    )
+    expect(getRgbaAlpha(settledTranslation.style.color)).toBe(0.72)
+    expect(settledTranslation.style.transform).toBe('')
+    expect(settledGroup.style.transform).toBe('scale(1.000) translateY(0.00px)')
   })
 
   it('highlights stacked pronunciation tokens from the current Material UI theme', () => {
@@ -542,6 +614,10 @@ describe('<LyricsPanel />', () => {
           { start: 1000, end: 2000, value: 'Later line' },
         ],
       },
+      audioInstance: {
+        currentTime: 0.25,
+        paused: true,
+      },
     })
 
     const activeGroup = screen
@@ -549,8 +625,9 @@ describe('<LyricsPanel />', () => {
       .closest('[data-testid="lyrics-line-group"]')
     expect(activeGroup).toHaveAttribute('data-active', 'true')
     expect(activeGroup).toHaveAttribute('aria-current', 'true')
-    expect(window.getComputedStyle(activeGroup).transform).toBe('')
+    expect(activeGroup.style.transform).toBe('scale(1.000) translateY(0.00px)')
     expect(screen.getByText('Current line').style.fontSize).toBe('')
+    expect(screen.getByText('Current line').style.transform).toBe('')
     expect(screen.getByText('Later line').style.fontSize).toBe('')
     expect(screen.getByText('Current line').style.textShadow).toBe('')
     expect(screen.getByText('Later line').style.textShadow).toBe('')
@@ -648,6 +725,14 @@ describe('<LyricsPanel />', () => {
     })
     expect(groups[0]).toHaveAttribute('data-active', 'false')
     expect(groups[1]).toHaveAttribute('data-active', 'false')
+    const upcomingLineBefore = screen
+      .getByText('Upcoming line')
+      .closest('.MuiTypography-root')
+    const upcomingStyleBefore = {
+      opacity: upcomingLineBefore.style.opacity,
+      color: upcomingLineBefore.style.color,
+      groupTransform: groups[1].style.transform,
+    }
 
     rerender(
       <ThemeProvider theme={theme}>
@@ -664,14 +749,15 @@ describe('<LyricsPanel />', () => {
 
     expect(groups[1]).toHaveAttribute('data-scroll-target', 'true')
     expect(groups[1]).toHaveAttribute('data-active', 'false')
-    expect(groups[1]).toHaveAttribute('data-lifecycle', 'incoming')
+    expect(groups[1]).toHaveAttribute('data-lifecycle', 'idle')
     expect(groups[1]).toHaveAttribute('data-highlight-active', 'false')
     expect(
       screen.getByText('Upcoming line').closest('.MuiTypography-root'),
     ).toHaveStyle({
-      opacity: '0.86',
-      color: 'rgba(17, 17, 17, 0.98)',
+      opacity: upcomingStyleBefore.opacity,
+      color: upcomingStyleBefore.color,
     })
+    expect(groups[1].style.transform).toBe(upcomingStyleBefore.groupTransform)
   })
 
   it('crossfades very short tokens instead of drawing a hard wipe', () => {

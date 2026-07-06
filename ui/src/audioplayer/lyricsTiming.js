@@ -1,6 +1,6 @@
 import { resolveKaraokeTokenWindow } from './lyrics'
 import {
-  KARAOKE_LINE_INCOMING_MS,
+  KARAOKE_LINE_ENTER_MS,
   KARAOKE_LINE_RELEASE_MS,
   KARAOKE_SCROLL_PRE_ROLL_MS,
   clamp,
@@ -62,9 +62,9 @@ export const getLineLifecycleState = (line, nextLineStart, currentTimeMs) => {
       phase: 'idle',
       isActive: false,
       isRelease: false,
-      isIncoming: false,
       isAnimating: false,
       highlightAlphaScale: 0,
+      lineFocusScale: 0,
     }
   }
 
@@ -72,30 +72,26 @@ export const getLineLifecycleState = (line, nextLineStart, currentTimeMs) => {
   const isActive = current >= start && (!hasKnownEnd || current < end)
   const isRelease =
     hasKnownEnd && current >= end && current < end + KARAOKE_LINE_RELEASE_MS
-  const isIncoming =
-    current >= start - KARAOKE_LINE_INCOMING_MS && current < start
+  const enterProgress = isActive
+    ? clamp((current - start) / KARAOKE_LINE_ENTER_MS, 0, 1)
+    : 0
   const releaseProgress =
     isRelease && hasKnownEnd
       ? clamp((current - end) / KARAOKE_LINE_RELEASE_MS, 0, 1)
       : 0
+  const lineFocusScale = isRelease
+    ? 1 - easeInOut(releaseProgress)
+    : isActive
+      ? easeInOut(enterProgress)
+      : 0
 
   return {
-    phase: isActive
-      ? 'active'
-      : isRelease
-        ? 'release'
-        : isIncoming
-          ? 'incoming'
-          : 'idle',
+    phase: isActive ? 'active' : isRelease ? 'release' : 'idle',
     isActive,
     isRelease,
-    isIncoming,
     isAnimating: isActive || isRelease,
-    highlightAlphaScale: isRelease
-      ? 1 - easeInOut(releaseProgress)
-      : isActive
-        ? 1
-        : 0,
+    highlightAlphaScale: lineFocusScale,
+    lineFocusScale,
   }
 }
 
