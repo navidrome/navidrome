@@ -132,6 +132,50 @@ var _ = Describe("Stream", func() {
 			Expect(w.Code).To(Equal(http.StatusInternalServerError))
 		})
 	})
+
+	Describe("streamFile", func() {
+		It("invokes the decider with a raw/direct-play request and the streamer for an accessible track", func() {
+			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+				{ID: "s1", Title: "Song", Suffix: "mp3", LibraryID: 1},
+			})
+			streamer.content = "audio-bytes"
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items/s1/File", nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", "s1")
+			api.streamFile(w, r)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(decider.invoked).To(BeTrue())
+			Expect(decider.req.Format).To(Equal("raw"))
+			Expect(streamer.invoked).To(BeTrue())
+			Expect(w.Body.String()).To(Equal("audio-bytes"))
+		})
+
+		It("returns 404 for a track in a library the user can't access, without invoking the streamer or decider", func() {
+			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+				{ID: "s1", Title: "Song", Suffix: "mp3", LibraryID: 2},
+			})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items/s1/File", nil).WithContext(ctxUser()) // only has access to library 1
+			r = withChiURLParam(r, "itemId", "s1")
+			api.streamFile(w, r)
+
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+			Expect(decider.invoked).To(BeFalse())
+			Expect(streamer.invoked).To(BeFalse())
+		})
+
+		It("returns 404 when the id doesn't match any media file, without invoking the streamer or decider", func() {
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items/missing/File", nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", "missing")
+			api.streamFile(w, r)
+
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+			Expect(decider.invoked).To(BeFalse())
+			Expect(streamer.invoked).To(BeFalse())
+		})
+	})
 })
 
 // fakeTranscodeDecider is a local test double for stream.TranscodeDecider: it records whether

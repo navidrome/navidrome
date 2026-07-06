@@ -78,3 +78,15 @@ var _ = Describe("authenticate middleware", func() {
 		Expect(w.Code).To(Equal(http.StatusUnauthorized))
 	})
 })
+
+var _ = Describe("tokenFromRequest", func() {
+	It("accepts the lowercase api_key query param", func() {
+		r := httptest.NewRequest("GET", "/Items/s1/File?api_key=tok123", nil)
+		Expect(tokenFromRequest(r)).To(Equal("tok123"))
+	})
+
+	It("accepts the PascalCase ApiKey query param, as sent by Finamp/just_audio", func() {
+		r := httptest.NewRequest("GET", "/Items/s1/File?ApiKey=tok123", nil)
+		Expect(tokenFromRequest(r)).To(Equal("tok123"))
+	})
+})

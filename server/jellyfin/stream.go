@@ -92,3 +92,25 @@ func (api *Router) streamAudio(w http.ResponseWriter, r *http.Request) {
 		log.Error(ctx, "Jellyfin API: error streaming", "id", mf.ID, err)
 	}
 }
+
+// streamFile serves /Items/{itemId}/File and /Items/{itemId}/Download, Jellyfin's direct-file
+// endpoints. Real Jellyfin returns the original media file unmodified here; some clients (e.g.
+// Finamp's just_audio engine) fetch playback audio from this URL instead of /Audio/{id}/stream,
+// so it must always resolve to direct play ("raw"), never a forced transcode.
+func (api *Router) streamFile(w http.ResponseWriter, r *http.Request) {
+	mf, ok := api.mediaFileForRequest(w, r)
+	if !ok {
+		return
+	}
+	ctx := r.Context()
+	streamReq := api.transcodeDecider.ResolveRequest(ctx, mf, "raw", 0, 0)
+	s, err := api.streamer.NewStream(ctx, mf, streamReq)
+	if err != nil {
+		api.internalError(w, r, err)
+		return
+	}
+	defer s.Close()
+	if _, err := s.Serve(ctx, w, r); err != nil {
+		log.Error(ctx, "Jellyfin API: error streaming", "id", mf.ID, err)
+	}
+}

@@ -51,7 +51,11 @@ func tokenFromRequest(r *http.Request) string {
 	if t := parseEmbyAuth(r).Token; t != "" {
 		return t
 	}
-	return r.URL.Query().Get("api_key")
+	if t := r.URL.Query().Get("api_key"); t != "" {
+		return t
+	}
+	// Finamp's just_audio engine fetches direct-file URLs with ?ApiKey= (PascalCase).
+	return r.URL.Query().Get("ApiKey")
 }
 
 func (api *Router) authenticate(next http.Handler) http.Handler {

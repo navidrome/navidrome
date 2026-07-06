@@ -89,6 +89,11 @@ func (api *Router) routes() http.Handler {
 		r.Get("/Audio/{itemId}/universal", api.streamAudio)
 		r.Get("/Items/{itemId}/PlaybackInfo", api.getPlaybackInfo)
 		r.Post("/Items/{itemId}/PlaybackInfo", api.getPlaybackInfo)
+		// Direct-file endpoints: some clients (e.g. Finamp's just_audio) fetch playback audio
+		// here instead of /Audio/{id}/stream after PlaybackInfo; /Download reuses the same
+		// direct-play handler since Jellyfin serves the same original file for both.
+		r.Get("/Items/{itemId}/File", api.streamFile)
+		r.Get("/Items/{itemId}/Download", api.streamFile)
 
 		// Playback reports carry only the caller's own play data (see reportPlaybackStart
 		// doc comment), so no library-access gate is needed here.
