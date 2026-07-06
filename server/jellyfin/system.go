@@ -2,6 +2,7 @@ package jellyfin
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"path"
@@ -10,6 +11,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 )
@@ -31,23 +33,34 @@ func (api *Router) serverName() string {
 // ServerId across sessions, so a per-process value would break re-authentication.
 // api.ds is nil only in unit tests that construct Router{} directly; New() always sets it.
 //
-// Resolution happens once per Router (sync.Once), so concurrent first-boot requests can't
-// each generate and persist a different UUID before the row settles.
+// The mutex serializes first-boot resolution (concurrent requests can't each persist a
+// different UUID) while still allowing retries: only a successful read — or a successfully
+// persisted new id — is cached. A transient failure (busy DB, canceled request context) must
+// neither rotate the stored id nor pin a value for the process lifetime, so it yields a
+// temporary id and the next request tries again.
 func (api *Router) serverID(ctx context.Context) string {
-	api.serverIDOnce.Do(func() {
-		if api.ds == nil {
-			api.serverIDVal = uuid.NewString()
-			return
+	api.serverIDMu.Lock()
+	defer api.serverIDMu.Unlock()
+	if api.serverIDVal != "" {
+		return api.serverIDVal
+	}
+	if api.ds == nil {
+		api.serverIDVal = uuid.NewString()
+		return api.serverIDVal
+	}
+	id, err := api.ds.Property(ctx).Get(consts.JellyfinServerIDKey)
+	switch {
+	case errors.Is(err, model.ErrNotFound):
+		id = uuid.NewString()
+		if err := api.ds.Property(ctx).Put(consts.JellyfinServerIDKey, id); err != nil {
+			log.Error(ctx, "Jellyfin API: could not persist server id", err)
+			return id
 		}
-		id, err := api.ds.Property(ctx).Get(consts.JellyfinServerIDKey)
-		if err != nil {
-			id = uuid.NewString()
-			if err := api.ds.Property(ctx).Put(consts.JellyfinServerIDKey, id); err != nil {
-				log.Error(ctx, "Jellyfin API: could not persist server id", err)
-			}
-		}
-		api.serverIDVal = id
-	})
+	case err != nil:
+		log.Error(ctx, "Jellyfin API: could not read server id", err)
+		return uuid.NewString()
+	}
+	api.serverIDVal = id
 	return api.serverIDVal
 }
 

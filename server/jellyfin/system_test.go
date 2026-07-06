@@ -3,11 +3,13 @@ package jellyfin
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -99,6 +101,24 @@ var _ = Describe("System", func() {
 			id := r.serverID(ctx)
 			Expect(r.serverID(ctx)).To(Equal(id))
 			Expect(r.serverID(ctx)).To(Equal(id))
+		})
+
+		It("does not overwrite or pin over a stored id when the property read fails transiently", func() {
+			Expect(ds.Property(ctx).Put(consts.JellyfinServerIDKey, "stable-id")).To(Succeed())
+
+			r := &Router{ds: ds}
+			props := ds.Property(ctx).(*tests.MockedPropertyRepo)
+			props.Error = errors.New("database is locked")
+			degraded := r.serverID(ctx)
+			Expect(degraded).ToNot(BeEmpty())
+			Expect(degraded).ToNot(Equal("stable-id")) // temporary value, not the (unreadable) stored one
+			props.Error = nil
+
+			// Once the DB recovers, the stored id is intact and served again.
+			Expect(r.serverID(ctx)).To(Equal("stable-id"))
+			stored, err := ds.Property(ctx).Get(consts.JellyfinServerIDKey)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(stored).To(Equal("stable-id"))
 		})
 	})
 })

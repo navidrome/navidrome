@@ -27,7 +27,7 @@ type Router struct {
 	scrobbler        scrobbler.PlayTracker
 	playlists        playlists.Playlists
 	provider         external.Provider
-	serverIDOnce     sync.Once
+	serverIDMu       sync.Mutex
 	serverIDVal      string
 }
 
