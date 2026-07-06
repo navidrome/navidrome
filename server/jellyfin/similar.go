@@ -3,14 +3,41 @@ package jellyfin
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	"github.com/navidrome/navidrome/utils/req"
 	"github.com/navidrome/navidrome/utils/slice"
 )
+
+// similarQuickWait bounds how long a Similar request waits on the external metadata provider
+// (Last.fm etc.). A cached artist resolves well within it and returns immediately; a cold lookup
+// exceeds it, so we return an empty result now and let the lookup finish caching in the background,
+// making a later load instant. Without this, clients (Jellify request Similar for many items at
+// once) stall the whole screen on a synchronous Last.fm round-trip per item.
+const similarQuickWait = 500 * time.Millisecond
+
+// awaitSimilar runs fetch on a background context — so a cold external lookup completes and caches
+// even after this request returns — and returns its result if ready within similarQuickWait,
+// otherwise an empty result. The background context carries the caller's user (external info is
+// user-agnostic, but repositories still expect a user in context) but not the request's
+// cancellation, so navigating away doesn't abort the cache warm-up.
+func awaitSimilar(ctx context.Context, fetch func(context.Context) dto.QueryResult) dto.QueryResult {
+	u, _ := request.UserFrom(ctx)
+	bgCtx := request.WithUser(context.Background(), u)
+	resCh := make(chan dto.QueryResult, 1)
+	go func() { resCh <- fetch(bgCtx) }()
+	select {
+	case res := <-resCh:
+		return res
+	case <-time.After(similarQuickWait):
+		return result(nil, 0, 0)
+	}
+}
 
 // getSimilarArtists answers GET /Artists/{itemId}/Similar with artists related to the given artist,
 // sourced from the same external.Provider (Last.fm etc.) that powers Subsonic's getArtistInfo2.
@@ -20,7 +47,9 @@ import (
 func (api *Router) getSimilarArtists(w http.ResponseWriter, r *http.Request) {
 	id := dto.DecodeID(chi.URLParam(r, "itemId"))
 	limit := req.Params(r).IntOr("limit", 20)
-	api.ok(w, r, api.similarArtists(r.Context(), id, limit))
+	api.ok(w, r, awaitSimilar(r.Context(), func(ctx context.Context) dto.QueryResult {
+		return api.similarArtists(ctx, id, limit)
+	}))
 }
 
 // getSimilarItems answers GET /Items/{itemId}/Similar with items of the same kind as the target:
@@ -37,14 +66,16 @@ func (api *Router) getSimilarItems(w http.ResponseWriter, r *http.Request) {
 		api.ok(w, r, result(nil, 0, 0))
 		return
 	}
-	switch entity.(type) {
-	case *model.Artist:
-		api.ok(w, r, api.similarArtists(ctx, id, limit))
-	case *model.Album:
-		api.ok(w, r, api.similarAlbums(ctx, id, limit))
-	default: // *model.MediaFile
-		api.ok(w, r, api.similarSongs(ctx, id, limit))
-	}
+	api.ok(w, r, awaitSimilar(ctx, func(ctx context.Context) dto.QueryResult {
+		switch entity.(type) {
+		case *model.Artist:
+			return api.similarArtists(ctx, id, limit)
+		case *model.Album:
+			return api.similarAlbums(ctx, id, limit)
+		default: // *model.MediaFile
+			return api.similarSongs(ctx, id, limit)
+		}
+	}))
 }
 
 func (api *Router) similarArtists(ctx context.Context, id string, limit int) dto.QueryResult {
