@@ -129,17 +129,6 @@ func buildTestFS() storagetest.FakeFS {
 	})
 }
 
-// createUser creates a user assigned to the test library and returns it fully loaded.
-func createUser(id, username, name string, isAdmin bool) model.User {
-	user := model.User{ID: id, UserName: username, Name: name, IsAdmin: isAdmin, NewPassword: "password"}
-	Expect(ds.User(ctx).Put(&user)).To(Succeed())
-	Expect(ds.User(ctx).SetUserLibraries(user.ID, []int{lib.ID})).To(Succeed())
-	loaded, err := ds.User(ctx).FindByUsername(user.UserName)
-	Expect(err).ToNot(HaveOccurred())
-	user.Libraries = loaded.Libraries
-	return user
-}
-
 // --- Request helpers ---
 
 // jReq performs a full HTTP round-trip as the given user (token auth) and returns the recorder.
@@ -214,13 +203,18 @@ func queryResult(w *httptest.ResponseRecorder) dto.QueryResult {
 // createPlaylist creates a playlist as admin (encodedIds are the Jellyfin-encoded item ids a
 // client would send) and returns its decoded Navidrome id.
 func createPlaylist(name string, encodedIds []string) string {
+	return createPlaylistAs(adminUser, name, encodedIds...)
+}
+
+// createPlaylistAs creates a playlist owned by the given user and returns its decoded id.
+func createPlaylistAs(user model.User, name string, encodedIds ...string) string {
 	if encodedIds == nil {
 		encodedIds = []string{}
 	}
 	body, err := json.Marshal(map[string]any{"Name": name, "Ids": encodedIds})
 	Expect(err).ToNot(HaveOccurred())
 	var res map[string]string
-	parseInto(post("/Playlists", string(body)), &res)
+	parseInto(postAs(user, "/Playlists", string(body)), &res)
 	Expect(res["Id"]).ToNot(BeEmpty())
 	return dto.DecodeID(res["Id"])
 }
