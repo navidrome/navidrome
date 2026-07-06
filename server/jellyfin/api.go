@@ -100,6 +100,10 @@ func (api *Router) routes() http.Handler {
 		})
 		r.Post("/Sessions/Capabilities", api.postCapabilities)
 		r.Post("/Sessions/Capabilities/Full", api.postCapabilities)
+
+		// Real-time clients (e.g. Finamp) open this right after login; without it they
+		// 404-loop-reconnect instead of settling into a working session.
+		r.Get("/socket", api.handleSocket)
 	})
 
 	// Logged at Debug (not Warn/Error) because a real client probing for optional/legacy
