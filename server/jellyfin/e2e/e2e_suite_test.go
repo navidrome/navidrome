@@ -185,6 +185,19 @@ func postAs(u model.User, path, body string) *httptest.ResponseRecorder {
 func del(path string) *httptest.ResponseRecorder                 { return jReq(adminUser, "DELETE", path, "") }
 func delAs(u model.User, path string) *httptest.ResponseRecorder { return jReq(u, "DELETE", path, "") }
 
+// upload performs an authenticated POST with a custom Content-Type and raw body (image upload).
+func upload(user model.User, path, contentType string, body []byte) *httptest.ResponseRecorder {
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("POST", path, bytes.NewReader(body))
+	token, err := auth.CreateToken(&user)
+	Expect(err).ToNot(HaveOccurred())
+	r.Header.Set("X-Emby-Token", token)
+	r.Header.Set("X-Emby-Authorization", `MediaBrowser Client="e2e", Device="test", DeviceId="e2e-device", Version="1.0"`)
+	r.Header.Set("Content-Type", contentType)
+	router.ServeHTTP(w, r)
+	return w
+}
+
 // parseInto asserts a 200 and unmarshals the JSON body into target.
 func parseInto(w *httptest.ResponseRecorder, target any) {
 	Expect(w.Code).To(Equal(http.StatusOK), "body: %s", w.Body.String())
@@ -196,6 +209,20 @@ func queryResult(w *httptest.ResponseRecorder) dto.QueryResult {
 	var q dto.QueryResult
 	parseInto(w, &q)
 	return q
+}
+
+// createPlaylist creates a playlist as admin (encodedIds are the Jellyfin-encoded item ids a
+// client would send) and returns its decoded Navidrome id.
+func createPlaylist(name string, encodedIds []string) string {
+	if encodedIds == nil {
+		encodedIds = []string{}
+	}
+	body, err := json.Marshal(map[string]any{"Name": name, "Ids": encodedIds})
+	Expect(err).ToNot(HaveOccurred())
+	var res map[string]string
+	parseInto(post("/Playlists", string(body)), &res)
+	Expect(res["Id"]).ToNot(BeEmpty())
+	return dto.DecodeID(res["Id"])
 }
 
 // --- Seeded-id lookup helpers (return Navidrome ids; wrap with enc() for URLs) ---

@@ -1,0 +1,50 @@
+package e2e
+
+import (
+	"net/http"
+
+	"github.com/navidrome/navidrome/model/request"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+)
+
+// The image endpoint is public and resolves artwork under an elevated (admin) context. The suite
+// wires a spyArtwork that captures the resolved ArtworkID and the context, so these tests assert
+// resolution and elevation without needing real image processing.
+var _ = Describe("Item images", func() {
+	BeforeEach(func() { setupTestDB() })
+
+	It("resolves an album's Primary image", func() {
+		id := albumID("Abbey Road")
+		w := get("/Items/" + enc(id) + "/Images/Primary")
+		Expect(w.Code).To(Equal(http.StatusOK))
+		Expect(w.Body.String()).To(Equal("IMG"))
+		Expect(artworkSpy.lastID).To(ContainSubstring(id))
+	})
+
+	It("resolves an artist's Primary image", func() {
+		id := artistID("Miles Davis")
+		Expect(get("/Items/" + enc(id) + "/Images/Primary").Code).To(Equal(http.StatusOK))
+		Expect(artworkSpy.lastID).To(ContainSubstring(id))
+	})
+
+	It("resolves a private playlist's cover under an elevated admin context", func() {
+		// Regression: the public image route carries no user, so a private playlist would fail its
+		// visibility filter without the elevated-context resolution.
+		plID := createPlaylist("Private Mix", nil)
+		w := get("/Items/" + enc(plID) + "/Images/Primary")
+		Expect(w.Code).To(Equal(http.StatusOK))
+		Expect(artworkSpy.lastID).To(ContainSubstring(plID))
+
+		u, ok := request.UserFrom(artworkSpy.lastCtx)
+		Expect(ok).To(BeTrue())
+		Expect(u.IsAdmin).To(BeTrue())
+	})
+
+	It("serves images without authentication (public route)", func() {
+		id := albumID("IV")
+		w := rawReq("GET", "/Items/"+enc(id)+"/Images/Primary", "")
+		Expect(w.Code).To(Equal(http.StatusOK))
+		Expect(w.Body.String()).To(Equal("IMG"))
+	})
+})
