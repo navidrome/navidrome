@@ -2,7 +2,10 @@ package jellyfin
 
 import (
 	"net/http"
+	"strings"
 
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 )
@@ -24,6 +27,38 @@ func (api *Router) getCurrentUser(w http.ResponseWriter, r *http.Request) {
 	api.ok(w, r, userToDto(&u, api.serverName(), api.serverID(ctx)))
 }
 
+// getPublicUsers advertises the users named in Jellyfin.ExposedPublicUsers so a client can render a
+// login user-picker. This route is unauthenticated, so only the admin-configured allowlist is
+// exposed (never the full user table), and each entry is a minimal DTO — no Policy/Configuration,
+// which would leak admin status to anyone. An empty config exposes no users.
 func (api *Router) getPublicUsers(w http.ResponseWriter, r *http.Request) {
-	api.ok(w, r, []dto.UserDto{}) // manual login only
+	ctx := r.Context()
+	serverID := api.serverID(ctx)
+	seen := make(map[string]bool)
+	users := []dto.UserDto{}
+	for name := range strings.SplitSeq(conf.Server.Jellyfin.ExposedPublicUsers, ",") {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		key := strings.ToLower(name)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		usr, err := api.ds.User(ctx).FindByUsername(name)
+		if err != nil {
+			log.Warn(ctx, "Jellyfin API: configured public user not found", "username", name, err)
+			continue
+		}
+		users = append(users, dto.UserDto{
+			// Jellyfin's Name is the login handle the client sends back as Username, so it must be
+			// UserName (not the display Name), matching userToDto on the login path.
+			Name:        usr.UserName,
+			Id:          usr.ID,
+			ServerId:    serverID,
+			HasPassword: true,
+		})
+	}
+	api.ok(w, r, users)
 }

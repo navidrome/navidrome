@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -62,12 +64,28 @@ var _ = Describe("Authentication", func() {
 	})
 
 	Describe("GET /Users/Public", func() {
-		It("returns an empty list (manual login only)", func() {
+		publicUsers := func() []dto.UserDto {
 			w := rawReq("GET", "/Users/Public", "")
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var users []dto.UserDto
 			parseInto(w, &users)
-			Expect(users).To(BeEmpty())
+			return users
+		}
+
+		It("returns an empty list when no users are exposed", func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.Jellyfin.ExposedPublicUsers = ""
+			Expect(publicUsers()).To(BeEmpty())
+		})
+
+		It("lists the configured users to an unauthenticated caller, without policy", func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.Jellyfin.ExposedPublicUsers = "regular"
+			users := publicUsers()
+			Expect(users).To(HaveLen(1))
+			Expect(users[0].Name).To(Equal("regular"))
+			Expect(users[0].Id).To(Equal("regular-1"))
+			Expect(users[0].Policy).To(BeNil()) // must not leak admin status pre-login
 		})
 	})
 

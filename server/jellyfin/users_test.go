@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
@@ -74,5 +76,55 @@ var _ = Describe("Users", func() {
 		Expect(u.Policy).ToNot(BeNil())
 		Expect(u.Policy.IsAdministrator).To(BeFalse())
 		Expect(u.Configuration).ToNot(BeNil())
+	})
+
+	Describe("getPublicUsers", func() {
+		var ur *tests.MockedUserRepo
+		publicUsers := func() []dto.UserDto {
+			w := httptest.NewRecorder()
+			api.getPublicUsers(w, httptest.NewRequest("GET", "/Users/Public", nil))
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var users []dto.UserDto
+			Expect(json.Unmarshal(w.Body.Bytes(), &users)).To(Succeed())
+			return users
+		}
+
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+			ur = api.ds.User(context.Background()).(*tests.MockedUserRepo)
+			Expect(ur.Put(&model.User{ID: "u1", UserName: "alice"})).To(Succeed())
+			Expect(ur.Put(&model.User{ID: "u2", UserName: "bob"})).To(Succeed())
+		})
+
+		It("returns an empty list when the config is unset", func() {
+			conf.Server.Jellyfin.ExposedPublicUsers = ""
+			Expect(publicUsers()).To(BeEmpty())
+		})
+
+		It("lists the configured users in order, without leaking policy", func() {
+			conf.Server.Jellyfin.ExposedPublicUsers = "bob, alice"
+			users := publicUsers()
+			Expect(users).To(HaveLen(2))
+			Expect(users[0].Name).To(Equal("bob"))
+			Expect(users[0].Id).To(Equal("u2"))
+			Expect(users[1].Name).To(Equal("alice"))
+			// The public list must not expose Policy/Configuration to unauthenticated callers.
+			Expect(users[0].Policy).To(BeNil())
+			Expect(users[0].Configuration).To(BeNil())
+		})
+
+		It("skips a configured username that does not exist", func() {
+			conf.Server.Jellyfin.ExposedPublicUsers = "alice,ghost"
+			users := publicUsers()
+			Expect(users).To(HaveLen(1))
+			Expect(users[0].Name).To(Equal("alice"))
+		})
+
+		It("matches usernames case-insensitively and de-duplicates", func() {
+			conf.Server.Jellyfin.ExposedPublicUsers = "ALICE, alice"
+			users := publicUsers()
+			Expect(users).To(HaveLen(1))
+			Expect(users[0].Name).To(Equal("alice"))
+		})
 	})
 })

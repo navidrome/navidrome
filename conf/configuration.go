@@ -222,6 +222,9 @@ type listenBrainzOptions struct {
 type jellyfinOptions struct {
 	Enabled    bool
 	ServerName string
+	// ExposedPublicUsers is a comma-separated list of usernames to advertise on the unauthenticated
+	// GET /Users/Public, so Jellyfin clients can show a login user-picker. Empty exposes no users.
+	ExposedPublicUsers string
 }
 
 type httpHeaderOptions struct {

@@ -19,6 +19,8 @@ The Jellyfin API is disabled by default. Enable it via `navidrome.toml`:
 Enabled = true
 # Optional: override the server name reported to clients (defaults to "Navidrome <version>")
 ServerName = "My Music Server"
+# Optional: usernames to show in the client login user-picker (default: none). See "Public user list".
+ExposedPublicUsers = "alice, bob"
 ```
 
 or via environment variables:
@@ -26,6 +28,7 @@ or via environment variables:
 ```bash
 ND_JELLYFIN_ENABLED=true
 ND_JELLYFIN_SERVERNAME="My Music Server"
+ND_JELLYFIN_EXPOSEDPUBLICUSERS="alice,bob"
 ```
 
 Once enabled, the API is mounted at:
@@ -49,6 +52,22 @@ query param — all forms are accepted, matching what different clients do).
 `POST /Users/AuthenticateByName` is rate-limited per IP with the same limiter as the native
 `/auth/login` (`AuthRequestLimit`/`AuthWindowLength`), since it's an unauthenticated brute-force
 surface.
+
+### Public user list (login picker)
+
+`GET /Users/Public` lets a client render a login user-picker (tap a user, then just type the
+password) instead of a blank username field. It's **unauthenticated**, so by default it exposes
+**no** users. Set `Jellyfin.ExposedPublicUsers` to a comma-separated list of usernames to advertise:
+
+```toml
+[Jellyfin]
+ExposedPublicUsers = "alice, bob"
+```
+
+Only the named users are listed (never the full user table), resolved live per request; a configured
+name that doesn't exist is skipped and logged at `Warn`. Each entry is a minimal DTO (`Name`, `Id`)
+with no `Policy`/`Configuration`, so admin status isn't leaked to unauthenticated callers, and no
+avatar (`PrimaryImageTag` omitted — Navidrome has no per-user profile images).
 
 ## Players and sessions
 
