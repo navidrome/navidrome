@@ -166,5 +166,8 @@ var _ = Describe("mappers", func() {
 		Expect(item.MediaType).To(Equal("Audio"))
 		Expect(*item.ChildCount).To(Equal(7))
 		Expect(item.RunTimeTicks).To(Equal(int64(1_200_000_000)))
+		Expect(item.ImageTags["Primary"]).To(Equal("pl-1"))
+		Expect(item.ImageBlurHashes["Primary"]).To(HaveKey("pl-1"))
+		Expect(item.ImageBlurHashes["Primary"]["pl-1"]).To(HaveLen(6))
 	})
 })

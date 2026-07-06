@@ -191,6 +191,8 @@ func PlaylistToBaseItem(p model.Playlist) BaseItemDto {
 		MediaType:         "Audio",
 		ChildCount:        new(p.SongCount),
 		RunTimeTicks:      TicksFromSeconds(p.Duration),
+		ImageTags:         map[string]string{"Primary": p.ID},
+		ImageBlurHashes:   map[string]map[string]string{"Primary": {p.ID: blurHash(p.ID)}},
 		BackdropImageTags: []string{},
 	}
 }

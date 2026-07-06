@@ -13,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -21,12 +22,14 @@ import (
 
 type fakeArtwork struct {
 	artwork.Artwork
-	recvId string
-	data   []byte
+	recvId  string
+	recvCtx context.Context
+	data    []byte
 }
 
 func (f *fakeArtwork) GetOrPlaceholder(ctx context.Context, id string, size int, square bool) (io.ReadCloser, time.Time, error) {
 	f.recvId = id
+	f.recvCtx = ctx
 	data := f.data
 	if data == nil {
 		data = []byte("IMG")
@@ -85,6 +88,24 @@ var _ = Describe("Images", func() {
 
 		Expect(w.Code).To(Equal(http.StatusOK))
 		Expect(fa.recvId).To(ContainSubstring("pl1"))
+	})
+
+	// This endpoint is public (no user in the request), so artwork must be resolved under an
+	// elevated context; otherwise a private playlist's cover fails its visibility filter and
+	// silently falls back to the placeholder.
+	It("resolves artwork under an elevated admin context", func() {
+		ds := &tests.MockDataStore{}
+		ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1", Name: "One"}})
+		fa := &fakeArtwork{}
+		api := &Router{ds: ds, artwork: fa}
+
+		w, r := newImageRequest(dto.EncodeID("a1"))
+		api.getItemImage(w, r)
+
+		Expect(w.Code).To(Equal(http.StatusOK))
+		u, ok := request.UserFrom(fa.recvCtx)
+		Expect(ok).To(BeTrue())
+		Expect(u.IsAdmin).To(BeTrue())
 	})
 })
 
