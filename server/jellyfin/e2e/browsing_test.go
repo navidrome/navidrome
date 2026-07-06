@@ -271,5 +271,11 @@ var _ = Describe("Browsing", func() {
 			q := queryResult(get("/Genres"))
 			Expect(names(q.Items)).To(ConsistOf("Rock", "Jazz", "Pop"))
 		})
+
+		It("pages genres with StartIndex/Limit and still reports the full total", func() {
+			q := queryResult(get("/Genres?StartIndex=1&Limit=1"))
+			Expect(q.Items).To(HaveLen(1))
+			Expect(q.TotalRecordCount).To(Equal(3))
+		})
 	})
 })

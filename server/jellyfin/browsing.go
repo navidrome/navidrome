@@ -43,7 +43,7 @@ func (api *Router) listArtistsByRole(w http.ResponseWriter, r *http.Request, rol
 func (api *Router) getGenres(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	p := req.Params(r)
-	opts := model.QueryOptions{Offset: p.IntOr("StartIndex", 0), Max: p.IntOr("Limit", 0)}
+	opts := model.QueryOptions{Offset: p.IntOr("startindex", 0), Max: p.IntOr("limit", 0)}
 	res, err := api.listGenres(ctx, opts)
 	if err != nil {
 		api.internalError(w, r, err)

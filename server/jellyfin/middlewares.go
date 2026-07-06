@@ -27,7 +27,9 @@ func normalizeQueryKeys(next http.Handler) http.Handler {
 		changed := false
 		for k, vs := range q {
 			lk := strings.ToLower(k)
-			folded[lk] = vs
+			// Append rather than assign: two casings of the same key must merge (url.Values
+			// semantics), not have one nondeterministically overwrite the other.
+			folded[lk] = append(folded[lk], vs...)
 			if lk != k {
 				changed = true
 			}

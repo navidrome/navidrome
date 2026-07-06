@@ -115,4 +115,11 @@ var _ = Describe("normalizeQueryKeys", func() {
 	It("passes already-lowercase keys through unchanged", func() {
 		Expect(keyFor("container=mp3", "container")).To(Equal("mp3"))
 	})
+
+	It("merges values when two keys fold to the same name instead of dropping one", func() {
+		r := httptest.NewRequest("GET", "/Items?Ids=aaa&ids=bbb", nil)
+		var got []string
+		invoke(func(_ http.ResponseWriter, r *http.Request) { got = r.URL.Query()["ids"] }, httptest.NewRecorder(), r)
+		Expect(got).To(ConsistOf("aaa", "bbb"))
+	})
 })

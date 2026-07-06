@@ -307,13 +307,15 @@ func (api *Router) listArtists(ctx context.Context, opts model.QueryOptions, sco
 }
 
 // listGenres is intentionally unscoped: genres are global tags derived from track metadata,
-// not entities that belong to a single library.
+// not entities that belong to a single library. Paging happens in memory: GenreRepository has no
+// CountAll, genre lists are small, and this way TotalRecordCount is the real total, not the page.
 func (api *Router) listGenres(ctx context.Context, opts model.QueryOptions) (dto.QueryResult, error) {
-	genres, err := api.ds.Genre(ctx).GetAll(opts)
+	genres, err := api.ds.Genre(ctx).GetAll(model.QueryOptions{Sort: opts.Sort, Order: opts.Order})
 	if err != nil {
 		return dto.QueryResult{}, err
 	}
-	return result(slice.Map(genres, dto.GenreToBaseItem), len(genres), opts.Offset), nil
+	items := slice.Map(genres, dto.GenreToBaseItem)
+	return result(paginate(items, opts.Offset, opts.Max), len(items), opts.Offset), nil
 }
 
 // listPlaylists lists playlists visible to the current user. Unlike albums/songs/artists,
