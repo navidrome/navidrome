@@ -90,6 +90,18 @@ func SongsByAlbum(albumId string) Options {
 	})
 }
 
+// SongsByArtistID matches media files where the artist participates as either album artist or track
+// artist, in album order. Mirrors AlbumsByArtistID but at the media_file level.
+func SongsByArtistID(artistId string) Options {
+	return addDefaultFilters(Options{
+		Sort: "album",
+		Filters: Or{
+			persistence.Exists("json_tree(participants, '$.albumartist')", Eq{"value": artistId}),
+			persistence.Exists("json_tree(participants, '$.artist')", Eq{"value": artistId}),
+		},
+	})
+}
+
 func SongsByGenreAndYearRange(genre string, fromYear, toYear int) Options {
 	options := Options{}
 	ff := And{}

@@ -13,7 +13,9 @@ import (
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/server/filter"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -76,6 +78,9 @@ func (f *fakePlaylists) GetWithTracks(_ context.Context, _ string) (*model.Playl
 	if f.getErr != nil {
 		return nil, f.getErr
 	}
+	if f.getPls == nil {
+		return nil, model.ErrNotFound // mirror the real repo: never (nil, nil)
+	}
 	return f.getPls, nil
 }
 
@@ -111,7 +116,7 @@ var _ = Describe("Playlists", func() {
 
 	BeforeEach(func() {
 		fp = &fakePlaylists{}
-		api = &Router{playlists: fp}
+		api = &Router{ds: &tests.MockDataStore{}, playlists: fp}
 	})
 
 	Describe("createPlaylist", func() {
@@ -178,6 +183,57 @@ var _ = Describe("Playlists", func() {
 			r = withChiURLParam(r, "playlistId", "missing")
 			api.getPlaylistItems(w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
+	})
+
+	Describe("container id expansion", func() {
+		var ds *tests.MockDataStore
+		var ctx context.Context
+
+		BeforeEach(func() {
+			ctx = context.Background()
+			ds = &tests.MockDataStore{}
+			api = &Router{ds: ds, playlists: fp}
+		})
+
+		createWith := func(id string) {
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("POST", "/Playlists", strings.NewReader(`{"Name":"Mix","Ids":["`+id+`"]}`)).
+				WithContext(ctx)
+			api.createPlaylist(w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+		}
+
+		It("passes a bare song id through unchanged", func() {
+			ds.MediaFile(ctx).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: "s1"}})
+			createWith("s1")
+			Expect(fp.createdIds).To(Equal([]string{"s1"}))
+		})
+
+		It("expands an album id into its songs, filtered by album", func() {
+			ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al1"}})
+			ds.MediaFile(ctx).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+				{ID: "s1", AlbumID: "al1"}, {ID: "s2", AlbumID: "al1"},
+			})
+			createWith("al1")
+			Expect(fp.createdIds).To(Equal([]string{"s1", "s2"}))
+			Expect(ds.MediaFile(ctx).(*tests.MockMediaFileRepo).Options.Filters).To(Equal(filter.SongsByAlbum("al1").Filters))
+		})
+
+		It("expands an artist id into its songs", func() {
+			ds.Artist(ctx).(*tests.MockArtistRepo).SetData(model.Artists{{ID: "ar1"}})
+			ds.MediaFile(ctx).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: "s1"}, {ID: "s2"}})
+			createWith("ar1")
+			Expect(fp.createdIds).To(Equal([]string{"s1", "s2"}))
+			Expect(ds.MediaFile(ctx).(*tests.MockMediaFileRepo).Options.Filters).To(Equal(filter.SongsByArtistID("ar1").Filters))
+		})
+
+		It("expands a playlist id into its tracks' media file ids", func() {
+			fp.getPls = &model.Playlist{ID: "pl9", Tracks: model.PlaylistTracks{
+				{ID: "1", MediaFileID: "s3"}, {ID: "2", MediaFileID: "s4"},
+			}}
+			createWith("pl9")
+			Expect(fp.createdIds).To(Equal([]string{"s3", "s4"}))
 		})
 	})
 

@@ -1,13 +1,16 @@
 package jellyfin
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/server/filter"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	"github.com/navidrome/navidrome/utils/slice"
 )
@@ -26,7 +29,7 @@ func (api *Router) createPlaylist(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
-	ids := slice.Map(body.Ids, dto.DecodeID)
+	ids := api.expandContainerIDs(r.Context(), slice.Map(body.Ids, dto.DecodeID))
 	id, err := api.playlists.Create(r.Context(), "", body.Name, ids)
 	if err != nil {
 		api.internalError(w, r, err)
@@ -99,12 +102,45 @@ func queryParam(r *http.Request, lower, pascal string) string {
 	return r.URL.Query().Get(pascal)
 }
 
-// addToPlaylist appends songs by their own id (core/playlists.AddTracks treats ids as media file
-// ids). Ownership/editability is enforced by AddTracks itself; any error maps to 404.
+// expandContainerIDs turns the ids a Jellyfin client sends when building a playlist into the
+// underlying media file ids. Clients populate the id list with containers — albums, artists,
+// playlists — not just songs, and expect the server to expand each into its tracks, in order.
+// core/playlists only understands media file ids, so an unexpanded album id would silently add
+// nothing. A bare song id (or any id matching no container) passes through unchanged.
+func (api *Router) expandContainerIDs(ctx context.Context, ids []string) []string {
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if _, err := api.ds.MediaFile(ctx).Get(id); err == nil {
+			out = append(out, id) // already a song
+		} else if _, err := api.ds.Album(ctx).Get(id); err == nil {
+			out = append(out, api.songIDs(ctx, filter.SongsByAlbum(id))...)
+		} else if _, err := api.ds.Artist(ctx).Get(id); err == nil {
+			out = append(out, api.songIDs(ctx, filter.SongsByArtistID(id))...)
+		} else if pl, err := api.playlists.GetWithTracks(ctx, id); err == nil {
+			out = append(out, slice.Map(pl.Tracks, func(t model.PlaylistTrack) string { return t.MediaFileID })...)
+		} else {
+			out = append(out, id) // unknown id — pass through unchanged
+		}
+	}
+	return out
+}
+
+func (api *Router) songIDs(ctx context.Context, opts model.QueryOptions) []string {
+	mfs, err := api.ds.MediaFile(ctx).GetAll(opts)
+	if err != nil {
+		log.Error(ctx, "Jellyfin: error expanding container to tracks", err)
+		return nil
+	}
+	return slice.Map(mfs, func(mf model.MediaFile) string { return mf.ID })
+}
+
+// addToPlaylist appends items by id, expanding album/artist/playlist containers into their tracks
+// (see expandContainerIDs). Ownership/editability is enforced by AddTracks itself; any error maps
+// to 404.
 func (api *Router) addToPlaylist(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := dto.DecodeID(chi.URLParam(r, "playlistId"))
-	ids := slice.Map(splitIds(queryParam(r, "ids", "Ids")), dto.DecodeID)
+	ids := api.expandContainerIDs(ctx, slice.Map(splitIds(queryParam(r, "ids", "Ids")), dto.DecodeID))
 	if _, err := api.playlists.AddTracks(ctx, id, ids); err != nil {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
