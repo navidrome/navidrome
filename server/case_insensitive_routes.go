@@ -7,11 +7,10 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// CaseInsensitivePaths wraps r with a handler that normalizes each request path's literal
-// segments to the case they were registered with, then delegates to r. This is needed because
-// some clients (e.g. real Jellyfin clients) route case-insensitively while chi's default matching
-// is case-sensitive. Chi param placeholders (e.g. "{itemId}") are never treated as literals, so
-// id segments always pass through untouched.
+// CaseInsensitivePaths normalizes each request path's literal segments to the case they were
+// registered with before delegating to r, since Jellyfin clients route case-insensitively but
+// chi matches case-sensitively. Param placeholders (e.g. "{itemId}") aren't literals, so id
+// segments pass through untouched.
 func CaseInsensitivePaths(r chi.Router) http.Handler {
 	canon := canonicalRouteSegments(r)
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {

@@ -23,10 +23,9 @@ func pow83(n int) int {
 	return result
 }
 
-// blurHash returns a valid 6-char blurhash encoding a solid color deterministically derived
-// from seed. We can't afford to compute real blurhashes from cover art, but Finamp only needs a
-// well-formed, per-image-tag-stable value: it uses this as a de-dup key for image downloads and
-// a blur placeholder, so a solid color unique to the tag satisfies both without decoding images.
+// blurHash returns a valid 6-char blurhash for a solid color derived from seed. Finamp only needs a
+// well-formed, per-tag-stable value (it uses this as a download de-dup key and blur placeholder), so
+// a solid color unique to the tag satisfies both without decoding cover art.
 func blurHash(seed string) string {
 	h := fnv.New32a()
 	_, _ = h.Write([]byte(seed))

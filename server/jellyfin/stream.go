@@ -12,11 +12,9 @@ import (
 	"github.com/navidrome/navidrome/utils/req"
 )
 
-// mediaFileForRequest resolves the {itemId} path param to a MediaFile and verifies the
-// current user has access to its library, writing a 404 response (never 403, to avoid an
-// existence oracle) and returning ok=false if either check fails. Shared by getPlaybackInfo
-// and streamAudio so a guessed id can't be used to probe -- or stream -- another library's
-// content, mirroring the same gate applied to getItem in items.go.
+// mediaFileForRequest resolves {itemId} to a MediaFile and verifies the user has access to its
+// library, writing 404 (never 403, to avoid an existence oracle) and returning ok=false otherwise.
+// Shared by getPlaybackInfo and streamAudio so a guessed id can't probe or stream another library.
 func (api *Router) mediaFileForRequest(w http.ResponseWriter, r *http.Request) (*model.MediaFile, bool) {
 	ctx := r.Context()
 	id := dto.DecodeID(chi.URLParam(r, "itemId"))
@@ -33,21 +31,18 @@ func (api *Router) mediaFileForRequest(w http.ResponseWriter, r *http.Request) (
 	return mf, true
 }
 
-// getPlaybackInfo answers POST/GET /Items/{itemId}/PlaybackInfo with a single MediaSource
-// describing direct playback of the source file. Actual format negotiation happens at stream
-// time in streamAudio, mirroring how the Subsonic API defers that decision to /stream.
+// getPlaybackInfo answers /Items/{itemId}/PlaybackInfo with a single MediaSource for direct
+// playback. Format negotiation happens later in streamAudio (like Subsonic defers it to /stream).
 func (api *Router) getPlaybackInfo(w http.ResponseWriter, r *http.Request) {
 	mf, ok := api.mediaFileForRequest(w, r)
 	if !ok {
 		return
 	}
 	src := dto.MediaSourceFromMediaFile(*mf)
-	// Advertise a stream URL with the caller's token embedded, as real Jellyfin does. Jellify's
-	// native player (react-native-nitro-player) fetches MediaSources[0].TranscodingUrl verbatim and
-	// does NOT forward an auth header, so without a self-authenticating URL here its stream 401s.
-	// Direct-play clients (Finamp builds its own /Items/{id}/File?ApiKey URL) ignore this field, so
-	// SupportsDirectPlay is left true for them. The path is relative to the client's server base URL
-	// (which already includes the /jellyfin mount), matching how Jellify concatenates basePath+URL.
+	// Embed the caller's token in the stream URL: Jellify's native player fetches TranscodingUrl
+	// verbatim without an auth header, so a non-self-authenticating URL would 401. Direct-play clients
+	// (Finamp) build their own /File?ApiKey URL and ignore this. The path is relative to the client's
+	// server base URL (which includes the /jellyfin mount).
 	if token := tokenFromRequest(r); token != "" {
 		src.TranscodingSubProtocol = "http"
 		src.TranscodingUrl = "/Audio/" + src.Id + "/universal?static=true&api_key=" + url.QueryEscape(token)
@@ -67,8 +62,7 @@ func (api *Router) streamAudio(w http.ResponseWriter, r *http.Request) {
 
 	format := p.StringOr("container", "")
 	if format == "" {
-		// The /stream.{container} route form carries the format as a path segment,
-		// not a query param.
+		// The /stream.{container} route form carries the format as a path segment, not a query param.
 		format = chi.URLParam(r, "container")
 	}
 	if p.BoolOr("static", false) {
@@ -93,10 +87,9 @@ func (api *Router) streamAudio(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// streamFile serves /Items/{itemId}/File and /Items/{itemId}/Download, Jellyfin's direct-file
-// endpoints. Real Jellyfin returns the original media file unmodified here; some clients (e.g.
-// Finamp's just_audio engine) fetch playback audio from this URL instead of /Audio/{id}/stream,
-// so it must always resolve to direct play ("raw"), never a forced transcode.
+// streamFile serves /Items/{itemId}/File and /Download, Jellyfin's direct-file endpoints. Some
+// clients (Finamp's just_audio engine) fetch playback audio here instead of /Audio/{id}/stream, so
+// it must always resolve to direct play ("raw"), never a forced transcode.
 func (api *Router) streamFile(w http.ResponseWriter, r *http.Request) {
 	mf, ok := api.mediaFileForRequest(w, r)
 	if !ok {

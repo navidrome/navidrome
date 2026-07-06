@@ -19,9 +19,8 @@ type playbackReport struct {
 	IsPaused      bool   `json:"IsPaused"`
 }
 
-// decodeReport reads the playback report body. ItemId falls back to a query
-// param, as some clients send it there instead of (or in addition to) the JSON body.
-// ItemId is decoded here since it flows straight into scrobbler lookups by raw media file id.
+// decodeReport reads the playback report body. ItemId falls back to a query param (some clients send
+// it there) and is decoded here since it flows straight into scrobbler lookups by media file id.
 func decodeReport(r *http.Request) playbackReport {
 	var body playbackReport
 	_ = json.NewDecoder(r.Body).Decode(&body)
@@ -39,12 +38,10 @@ func clientIdentity(ctx context.Context) (id, name string) {
 	return player.ID, player.Client
 }
 
-// reportPlaybackStart handles POST /Sessions/Playing, sent once when a client
-// starts playing an item.
+// reportPlaybackStart handles POST /Sessions/Playing, sent once when a client starts an item.
 //
-// Access control: these Sessions endpoints report the caller's own playback
-// history and are never used to look up or expose content, so unlike browse/stream
-// endpoints they are intentionally not library-access-gated.
+// These Sessions endpoints report only the caller's own playback and never expose content, so unlike
+// browse/stream they are intentionally not library-access-gated.
 func (api *Router) reportPlaybackStart(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	body := decodeReport(r)
@@ -87,15 +84,11 @@ func (api *Router) reportPlaybackProgress(w http.ResponseWriter, r *http.Request
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// reportPlaybackStopped handles POST /Sessions/Playing/Stopped, sent once when
-// playback of an item ends.
+// reportPlaybackStopped handles POST /Sessions/Playing/Stopped, sent once when playback ends.
 //
-// Unlike Subsonic — where the client decides a play "counts" and only then calls
-// scrobble?submission=true — Jellyfin clients (Finamp) send a Stopped report on *every* stop,
-// including an immediate track switch. So the play threshold has to be applied server-side: we let
-// ReportPlayback's own StateStopped logic decide (play counts + external scrobble only when the
-// reported position passes 50% of the track, capped at 4 minutes). Force-submitting here instead
-// would mark even a one-second skip as played.
+// Jellyfin clients (Finamp) send a Stopped report on *every* stop, even an immediate track switch,
+// so the play threshold is applied server-side: ReportPlayback's StateStopped logic counts the play
+// only past 50% (capped at 4 minutes). Force-submitting here would mark a one-second skip as played.
 func (api *Router) reportPlaybackStopped(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	body := decodeReport(r)

@@ -61,10 +61,9 @@ func AlbumsByArtistID(artistId string) Options {
 	})
 }
 
-// AlbumsByContributingArtistID matches albums where the artist appears as a track (performing)
-// artist but is NOT the album artist — Jellyfin's ContributingArtistIds / the "Featured On"
-// section. It is the disjoint complement of AlbumsByArtistID's album-artist match, so an artist's
-// own discography never leaks into their "appears on" list.
+// AlbumsByContributingArtistID matches albums where the artist performs on a track but is not the
+// album artist — Jellyfin's "Featured On". The disjoint complement of AlbumsByArtistID, so an
+// artist's own discography never leaks into it.
 func AlbumsByContributingArtistID(artistId string) Options {
 	return addDefaultFilters(Options{
 		Sort: "max_year",
@@ -165,9 +164,7 @@ func ApplyArtistLibraryFilter(opts Options, musicFolderIds []int) Options {
 }
 
 // ArtistsByRole restricts an artist query to artists appearing in the given role (album artist,
-// performer, composer, ...), mirroring the artist repository's own role filter over
-// library_artist.stats — which selectArtist/CountAll always join. The role name comes from a
-// model.Role constant so it's trusted; an unknown role is ignored (no filter) as a guard.
+// performer, composer, ...) via library_artist.stats. An unknown role is ignored (no filter).
 func ArtistsByRole(opts Options, role model.Role) Options {
 	if _, ok := model.AllRoles[role.String()]; !ok {
 		return opts

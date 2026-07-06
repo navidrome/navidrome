@@ -15,21 +15,19 @@ import (
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
-// similarWait bounds how long a Similar request waits for the (deduplicated) provider fetch.
-// Cached lookups resolve in milliseconds; a cold one usually completes within the agents' HTTP
-// timeout, and returning its real result beats answering an instant empty list, which clients
-// cache as "no similar items exist". A var so tests can shorten it.
+// similarWait bounds how long a Similar request waits for the provider fetch. Returning the real
+// result beats an instant empty list, which clients cache as "no similar items exist". A var so
+// tests can shorten it.
 var similarWait = 10 * time.Second
 
-// similarFetchTimeout bounds the detached background fetch, so a hung provider can't hold a
-// goroutine (and its outbound connection) indefinitely.
+// similarFetchTimeout bounds the detached background fetch so a hung provider can't hold a goroutine
+// indefinitely.
 const similarFetchTimeout = time.Minute
 
-// awaitSimilar runs fetch on a detached background context — so the lookup completes and caches
-// even if this request times out or the client disconnects — waiting up to similarWait for the
-// result and answering empty past that. Concurrent identical requests share one in-flight fetch
-// via singleflight; the key includes the user because the mapped items embed that user's
-// annotations.
+// awaitSimilar runs fetch on a detached background context (so it completes and caches even if the
+// request times out or the client disconnects), waiting up to similarWait then answering empty.
+// Identical concurrent requests share one fetch via singleflight; the key includes the user since
+// mapped items embed that user's annotations.
 func (api *Router) awaitSimilar(ctx context.Context, id string, limit int, fetch func(context.Context) dto.QueryResult) dto.QueryResult {
 	u, _ := request.UserFrom(ctx)
 	key := fmt.Sprintf("%s|%s|%d", u.ID, id, limit)
@@ -46,11 +44,9 @@ func (api *Router) awaitSimilar(ctx context.Context, id string, limit int, fetch
 	}
 }
 
-// getSimilarArtists answers GET /Artists/{itemId}/Similar with artists related to the given artist,
-// sourced from the same external.Provider (Last.fm etc.) that powers Subsonic's getArtistInfo2.
-// Only artists present in the library are returned, so each one is navigable. Any provider error
-// (agent disabled, artist unknown, nothing found) degrades to an empty result rather than the 404
-// the client would otherwise keep retrying.
+// getSimilarArtists answers GET /Artists/{itemId}/Similar with related artists from the same
+// external.Provider that powers Subsonic's getArtistInfo2. Only artists present in the library are
+// returned. Any provider error degrades to an empty result, not a 404 the client would keep retrying.
 func (api *Router) getSimilarArtists(w http.ResponseWriter, r *http.Request) {
 	id := dto.DecodeID(chi.URLParam(r, "itemId"))
 	limit := req.Params(r).IntOr("limit", 20)
@@ -59,10 +55,9 @@ func (api *Router) getSimilarArtists(w http.ResponseWriter, r *http.Request) {
 	}))
 }
 
-// getSimilarItems answers GET /Items/{itemId}/Similar with items of the same kind as the target:
-// similar songs for a track, similar albums for an album, similar artists for an artist. Jellify
-// uses this for non-artist items; /Artists/{id}/Similar covers artists directly. An unresolvable id
-// yields an empty result (not 404) so the client stops retrying.
+// getSimilarItems answers GET /Items/{itemId}/Similar with items of the target's kind: similar
+// songs for a track, albums for an album, artists for an artist. An unresolvable id yields an empty
+// result (not 404) so the client stops retrying.
 func (api *Router) getSimilarItems(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := dto.DecodeID(chi.URLParam(r, "itemId"))
@@ -106,9 +101,9 @@ func (api *Router) similarSongs(ctx context.Context, id string, limit int) dto.Q
 	return result(items, len(items), 0)
 }
 
-// similarAlbums derives similar albums from the provider's similar-songs signal (Navidrome has no
-// direct "similar albums" source), keeping each album once in first-seen order and resolving it to
-// a full model.Album so the mapped item carries cover art and metadata.
+// similarAlbums derives similar albums from the provider's similar-songs signal (there's no direct
+// "similar albums" source), keeping each album once in first-seen order and resolving it to a full
+// model.Album for cover art and metadata.
 func (api *Router) similarAlbums(ctx context.Context, id string, limit int) dto.QueryResult {
 	songs, err := api.provider.SimilarSongs(ctx, id, limit*5)
 	if err != nil {

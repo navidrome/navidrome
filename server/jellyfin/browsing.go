@@ -8,9 +8,9 @@ import (
 	"github.com/navidrome/navidrome/utils/req"
 )
 
-// getArtists handles GET /Artists — performing artists (Finamp's "Artists" tab). getAlbumArtists
-// handles GET /Artists/AlbumArtists — album artists only ("Album Artists" tab). They're distinct
-// roles: without this, both listed every participant (composers, arrangers, ...) identically.
+// getArtists handles GET /Artists (performing artists, Finamp's "Artists" tab); getAlbumArtists
+// handles GET /Artists/AlbumArtists (album artists only). Distinct roles, so composers/arrangers
+// don't appear identically in both.
 func (api *Router) getArtists(w http.ResponseWriter, r *http.Request) {
 	api.listArtistsByRole(w, r, model.RoleArtist)
 }
@@ -19,9 +19,8 @@ func (api *Router) getAlbumArtists(w http.ResponseWriter, r *http.Request) {
 	api.listArtistsByRole(w, r, model.RoleAlbumArtist)
 }
 
-// listArtistsByRole is the shared body of the /Artists* handlers. It defaults to the user's
-// accessible libraries but narrows to a single one when ParentId names a library the user can
-// access, matching how queryItems treats ParentId as a UserView id.
+// listArtistsByRole is the shared body of the /Artists* handlers, scoping to ParentId's library
+// when accessible (like queryItems) or all accessible libraries otherwise.
 func (api *Router) listArtistsByRole(w http.ResponseWriter, r *http.Request, role model.Role) {
 	ctx := r.Context()
 	p := req.Params(r)
@@ -38,8 +37,7 @@ func (api *Router) listArtistsByRole(w http.ResponseWriter, r *http.Request, rol
 	api.ok(w, r, res)
 }
 
-// getGenres handles /Genres and /MusicGenres. Genres are global (see listGenres), so no
-// library scoping is applied here.
+// getGenres handles /Genres and /MusicGenres. Genres are global, so no library scoping applies.
 func (api *Router) getGenres(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	p := req.Params(r)

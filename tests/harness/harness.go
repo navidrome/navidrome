@@ -1,7 +1,6 @@
 // Package harness holds the pieces shared by the API e2e suites (server/e2e and
-// server/jellyfin/e2e): golden-database lifecycle, fast snapshot restore, fixture-FS
-// registration, and service doubles both suites use. Like core/storage/storagetest, it is an
-// importable test-helper package and must only be imported from test code.
+// server/jellyfin/e2e): golden-database lifecycle, snapshot restore, fixture-FS registration,
+// and service doubles. Like core/storage/storagetest, it must only be imported from test code.
 package harness
 
 import (
@@ -48,9 +47,9 @@ func CreateFS(files fstest.MapFS) storagetest.FakeFS {
 }
 
 // SetupDB boots the golden database: a temp SQLite file, the given users (password "password",
-// all with access to the single seeded "Music Library"), a full scan of the registered fake FS,
-// and a WAL-checkpointed snapshot for per-test restore. Callers must set conf.Server.MusicFolder
-// and register the FS first. Each user's Libraries field is populated in place.
+// all with access to the seeded "Music Library"), a full scan of the registered fake FS, and a
+// snapshot for per-test restore. Callers must set conf.Server.MusicFolder and register the FS
+// first; each user's Libraries field is populated in place.
 func SetupDB(ctx context.Context, users ...*model.User) *DB {
 	tmpDir := ginkgo.GinkgoT().TempDir()
 	h := &DB{FilePath: filepath.Join(tmpDir, "test-e2e.db")}

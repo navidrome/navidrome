@@ -48,8 +48,8 @@ func New(ds model.DataStore, artwork artwork.Artwork, streamer stream.MediaStrea
 func (api *Router) routes() http.Handler {
 	inner := chi.NewRouter()
 
-	// Read every query parameter case-insensitively, like real Jellyfin. Must precede all routes
-	// so both public and authenticated handlers (and the api_key auth check) see folded keys.
+	// Read query params case-insensitively, like real Jellyfin. Must precede all routes so every
+	// handler and the api_key check see folded keys.
 	inner.Use(normalizeQueryKeys)
 
 	// Public (no auth): handshake + login.
@@ -60,8 +60,7 @@ func (api *Router) routes() http.Handler {
 	inner.Post("/Users/AuthenticateByName", api.authenticateByName)
 	inner.Get("/Users/Public", api.getPublicUsers)
 
-	// Images are intentionally fully public and do not require authentication: artwork isn't
-	// sensitive media content, and this matches Jellyfin's lenient image handling.
+	// Images are intentionally public: artwork isn't sensitive, matching Jellyfin's image handling.
 	inner.Get("/Items/{itemId}/Images/{type}", api.getItemImage)
 	inner.Get("/Items/{itemId}/Images/{type}/{index}", api.getItemImage)
 
@@ -84,8 +83,8 @@ func (api *Router) routes() http.Handler {
 		r.Post("/Users/{userId}/Items/{itemId}/Rating", api.setRating)
 		r.Delete("/Users/{userId}/Items/{itemId}/Rating", api.removeRating)
 
-		// Per-item play/favorite/rating state. Jellify fetches the /UserItems form per item to
-		// render played/favourite indicators; the /Users/{userId}/Items form is the legacy spelling.
+		// Per-item play/favorite/rating state. Jellify uses the /UserItems form;
+		// /Users/{userId}/Items is the legacy spelling.
 		r.Get("/UserItems/{itemId}/UserData", api.getUserItemData)
 		r.Get("/Users/{userId}/Items/{itemId}/UserData", api.getUserItemData)
 
@@ -105,8 +104,8 @@ func (api *Router) routes() http.Handler {
 		r.Get("/Playlists/{playlistId}/Users", api.getPlaylistUsers)
 		r.Get("/Playlists/{playlistId}/Users/{userId}", api.getPlaylistUser)
 
-		// Cover upload/delete: only playlists are writable through this API (see
-		// postItemImage); the GET routes above stay public and unauthenticated.
+		// Cover upload/delete: only playlists are writable (see postItemImage); the GET routes
+		// above stay public.
 		r.Post("/Items/{itemId}/Images/{type}", api.postItemImage)
 		r.Delete("/Items/{itemId}/Images/{type}", api.deleteItemImage)
 
@@ -115,14 +114,12 @@ func (api *Router) routes() http.Handler {
 		r.Get("/Audio/{itemId}/universal", api.streamAudio)
 		r.Get("/Items/{itemId}/PlaybackInfo", api.getPlaybackInfo)
 		r.Post("/Items/{itemId}/PlaybackInfo", api.getPlaybackInfo)
-		// Direct-file endpoints: some clients (e.g. Finamp's just_audio) fetch playback audio
-		// here instead of /Audio/{id}/stream after PlaybackInfo; /Download reuses the same
-		// direct-play handler since Jellyfin serves the same original file for both.
+		// Direct-file endpoints: some clients (Finamp's just_audio) fetch here instead of
+		// /Audio/{id}/stream; /Download reuses the direct-play handler as Jellyfin serves the same file.
 		r.Get("/Items/{itemId}/File", api.streamFile)
 		r.Get("/Items/{itemId}/Download", api.streamFile)
 
-		// Playback reports carry only the caller's own play data (see reportPlaybackStart
-		// doc comment), so no library-access gate is needed here.
+		// Playback reports carry only the caller's own play data, so no library-access gate is needed.
 		r.Group(func(r chi.Router) {
 			r.Use(api.withPlayer)
 			r.Post("/Sessions/Playing", api.reportPlaybackStart)
@@ -132,13 +129,12 @@ func (api *Router) routes() http.Handler {
 		r.Post("/Sessions/Capabilities", api.postCapabilities)
 		r.Post("/Sessions/Capabilities/Full", api.postCapabilities)
 
-		// Real-time clients (e.g. Finamp) open this right after login; without it they
-		// 404-loop-reconnect instead of settling into a working session.
+		// Real-time clients (e.g. Finamp) open this right after login; without it they 404-loop-reconnect.
 		r.Get("/socket", api.handleSocket)
 	})
 
-	// Logged at Debug (not Warn/Error) because a real client probing for optional/legacy
-	// endpoints is expected traffic, not a problem; this just surfaces what's missing.
+	// Logged at Debug, not Warn/Error: clients probing for optional/legacy endpoints is expected
+	// traffic, and this just surfaces what's missing.
 	inner.NotFound(api.notFound)
 	inner.MethodNotAllowed(api.notFound)
 
@@ -154,9 +150,8 @@ func (api *Router) ok(w http.ResponseWriter, r *http.Request, payload any) {
 	}
 }
 
-// notFound handles both unmatched routes and unsupported methods on known routes, so any
-// endpoint a real client needs that we haven't implemented shows up in the logs instead of
-// silently confusing the client with chi's default plain-text 404/405.
+// notFound handles unmatched routes and unsupported methods, logging them so unimplemented
+// endpoints surface instead of returning chi's default plain-text 404/405.
 func (api *Router) notFound(w http.ResponseWriter, r *http.Request) {
 	log.Debug(r.Context(), "Jellyfin API: unhandled route", "method", r.Method, "path", r.URL.Path)
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -164,8 +159,8 @@ func (api *Router) notFound(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(`{}`))
 }
 
-// internalError logs the real error server-side and writes a generic 500 response, so ffmpeg
-// output, file paths or other internal detail in err never reaches the client.
+// internalError logs the real error and writes a generic 500, so internal detail (ffmpeg output,
+// file paths) never reaches the client.
 func (api *Router) internalError(w http.ResponseWriter, r *http.Request, err error) {
 	log.Error(r.Context(), "Jellyfin API: internal error", "method", r.Method, "path", r.URL.Path, err)
 	http.Error(w, "Internal Server Error", http.StatusInternalServerError)

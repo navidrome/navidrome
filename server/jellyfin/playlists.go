@@ -16,16 +16,13 @@ import (
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
-// playlistsFolderID is the reserved id of the synthetic "playlists library" folder. Jellyfin
-// clients (Jellify) first resolve this folder via an IncludeItemTypes=ManualPlaylistsFolder query,
-// then list playlists with ParentId set to its id. Navidrome has no such container, so it's
-// modelled here. The literal can't collide with a real album/artist/song id (those are hashes).
+// playlistsFolderID is the reserved id of the synthetic "playlists library" folder. Clients resolve
+// it via a ManualPlaylistsFolder query, then list playlists with ParentId set to it. The literal
+// can't collide with real ids (those are hashes).
 const playlistsFolderID = "playlists"
 
-// playlistsFolder is the single item returned for a ManualPlaylistsFolder query. Its CollectionType
-// must be "playlists" — that's how the client picks it out. Without it, the client's playlist-library
-// query resolves to undefined and (because React Query rejects undefined results) retries in a
-// backoff loop that stalls the home screen.
+// playlistsFolder is the item returned for a ManualPlaylistsFolder query. CollectionType must be
+// "playlists" — how the client identifies it; without it Jellify's playlist-library query loops.
 func playlistsFolder() dto.BaseItemDto {
 	return dto.BaseItemDto{
 		Id:             dto.EncodeID(playlistsFolderID),
@@ -36,9 +33,8 @@ func playlistsFolder() dto.BaseItemDto {
 	}
 }
 
-// playlistError maps core/playlists write errors to an HTTP status: ownership -> 403, missing or
-// invisible -> 404 (never revealing another user's private playlist), anything else -> 500.
-// Shared by the playlist mutation handlers.
+// playlistError maps core/playlists write errors to HTTP status: ownership -> 403, missing/invisible
+// -> 404 (never revealing another user's private playlist), else -> 500.
 func (api *Router) playlistError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, model.ErrNotAuthorized):
@@ -56,8 +52,8 @@ type createPlaylistRequest struct {
 	MediaType string   `json:"MediaType"`
 }
 
-// createPlaylist always creates a brand-new playlist (playlistId "" tells core/playlists.Create
-// not to replace an existing one), owned by the authenticated user.
+// createPlaylist always creates a new playlist (playlistId "" tells core/playlists.Create not to
+// replace an existing one), owned by the authenticated user.
 func (api *Router) createPlaylist(w http.ResponseWriter, r *http.Request) {
 	var body createPlaylistRequest
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -73,18 +69,16 @@ func (api *Router) createPlaylist(w http.ResponseWriter, r *http.Request) {
 	api.ok(w, r, map[string]string{"Id": dto.EncodeID(id)})
 }
 
-// updatePlaylistRequest mirrors Jellyfin's NewPlaylist body reused for updates. Name/IsPublic are
-// pointers so an absent field means "leave unchanged"; Finamp sends name/visibility edits and
-// track-order edits as two separate requests, never combined.
+// updatePlaylistRequest mirrors Jellyfin's NewPlaylist body. Name/IsPublic are pointers so an absent
+// field means "leave unchanged".
 type updatePlaylistRequest struct {
 	Name     *string  `json:"Name"`
 	Ids      []string `json:"Ids"`
 	IsPublic *bool    `json:"IsPublic"`
 }
 
-// updatePlaylist handles POST /Playlists/{id}, applying every provided field (Jellyfin's
-// UpdatePlaylist semantics): Ids replace the playlist's track list, Name/IsPublic update
-// metadata, and a combined body applies both. Ownership is enforced by core/playlists.
+// updatePlaylist handles POST /Playlists/{id}: Ids replace the track list, Name/IsPublic update
+// metadata, a combined body applies both. Ownership is enforced by core/playlists.
 func (api *Router) updatePlaylist(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := dto.DecodeID(chi.URLParam(r, "playlistId"))
@@ -94,8 +88,8 @@ func (api *Router) updatePlaylist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create with an existing id replaces the tracks and keeps the name; expandContainerIDs lets a
-	// client send containers here too, consistent with create/add.
+	// Create with an existing id replaces tracks and keeps the name; expandContainerIDs lets clients
+	// send containers here too, like create/add.
 	if len(body.Ids) > 0 {
 		ids := api.expandContainerIDs(ctx, slice.Map(body.Ids, dto.DecodeID))
 		if _, err := api.playlists.Create(ctx, id, "", ids); err != nil {
@@ -112,21 +106,19 @@ func (api *Router) updatePlaylist(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// trackToBaseItem maps a playlist entry to a BaseItemDto, tagging it with PlaylistItemId — the
-// entry's position within the playlist (model.PlaylistTrack.ID) — rather than only the underlying
-// song id. Jellyfin clients read this list, then echo PlaylistItemId back via
-// DELETE .../Items?EntryIds=... to remove a specific occurrence; that's also the id
-// core/playlists.RemoveTracks expects (see removeFromPlaylist), so the round trip works even when
-// the same song appears more than once in the playlist.
+// trackToBaseItem maps a playlist entry to a BaseItemDto, tagging it with PlaylistItemId (the
+// entry's id, model.PlaylistTrack.ID, not the song id). Clients echo it back via
+// DELETE .../Items?EntryIds= to remove a specific occurrence, so duplicates of the same song remain
+// individually removable.
 func trackToBaseItem(t model.PlaylistTrack) dto.BaseItemDto {
 	item := dto.SongToBaseItem(t.MediaFile)
 	item.PlaylistItemId = dto.EncodeID(t.ID)
 	return item
 }
 
-// getPlaylist returns a playlist's public-visibility flag and item ids. Finamp calls this before
-// opening a playlist's edit screen to read OpenAccess. Visibility is enforced by GetWithTracks
-// (public or owned by the current user); any error maps to 404 so private playlists can't be probed.
+// getPlaylist returns a playlist's visibility flag and item ids (Finamp reads OpenAccess before the
+// edit screen). GetWithTracks enforces visibility; any error maps to 404 so private playlists can't
+// be probed.
 func (api *Router) getPlaylist(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := dto.DecodeID(chi.URLParam(r, "playlistId"))
@@ -143,9 +135,8 @@ func (api *Router) getPlaylist(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// getPlaylistItems relies on core/playlists.GetWithTracks to enforce playlist visibility
-// (public or owned by the current user); any error — not found or not visible — is reported as
-// a generic 404 so a playlist id can't be used to probe for the existence of private playlists.
+// getPlaylistItems relies on GetWithTracks to enforce visibility; any error maps to a generic 404 so
+// a playlist id can't probe for private playlists.
 func (api *Router) getPlaylistItems(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := dto.DecodeID(chi.URLParam(r, "playlistId"))
@@ -167,13 +158,10 @@ func splitIds(s string) []string {
 	return strings.Split(s, ",")
 }
 
-// expandContainerIDs turns the ids a Jellyfin client sends when building a playlist into the
-// underlying media file ids. Clients populate the id list with containers — albums, artists,
-// playlists — not just songs, and expect the server to expand each into its tracks, in order.
-// core/playlists only understands media file ids, so an unexpanded album id would silently add
-// nothing. A bare song id (or any id matching no container) passes through unchanged.
-// Songs (the common case, e.g. a 1000-track bulk add) are classified with one batched query;
-// only the rest pays the per-id container probes.
+// expandContainerIDs expands the container ids (albums, artists, playlists) a client sends when
+// building a playlist into their track ids, in order, since core/playlists only understands media
+// file ids. Unknown ids pass through unchanged. Songs are classified with one batched query; only
+// the rest pays per-id container probes.
 func (api *Router) expandContainerIDs(ctx context.Context, ids []string) []string {
 	songs := api.songsByIDs(ctx, ids)
 	out := make([]string, 0, len(ids))
@@ -202,9 +190,8 @@ func (api *Router) songIDs(ctx context.Context, opts model.QueryOptions) []strin
 	return slice.Map(mfs, func(mf model.MediaFile) string { return mf.ID })
 }
 
-// addToPlaylist appends items by id, expanding album/artist/playlist containers into their tracks
-// (see expandContainerIDs). Ownership/editability is enforced by AddTracks itself; any error maps
-// to 404.
+// addToPlaylist appends items by id, expanding containers into tracks (see expandContainerIDs).
+// AddTracks enforces ownership; any error maps to 404.
 func (api *Router) addToPlaylist(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := dto.DecodeID(chi.URLParam(r, "playlistId"))
@@ -216,11 +203,9 @@ func (api *Router) addToPlaylist(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// removeFromPlaylist removes entries by entryIds. Unlike addToPlaylist's ids, these must be
-// playlist-entry ids (model.PlaylistTrack.ID / trackToBaseItem's PlaylistItemId) — the position
-// of the entry within the playlist — because core/playlists.RemoveTracks deletes playlist_tracks
-// rows by that id, not by media file id. Ownership/editability is enforced by RemoveTracks itself;
-// any error maps to 404.
+// removeFromPlaylist removes entries by entryIds — playlist-entry ids (PlaylistItemId), not media
+// file ids, since RemoveTracks deletes playlist_tracks rows by that id. RemoveTracks enforces
+// ownership; any error maps to 404.
 func (api *Router) removeFromPlaylist(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := dto.DecodeID(chi.URLParam(r, "playlistId"))
@@ -232,9 +217,9 @@ func (api *Router) removeFromPlaylist(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// getPlaylistUsers and getPlaylistUser are best-effort probes some clients (e.g. Finamp) make
-// before allowing playlist edits. Navidrome has no per-playlist ACL model, so every user is
-// reported as able to edit; ownership is still enforced by AddTracks/RemoveTracks themselves.
+// getPlaylistUsers and getPlaylistUser answer client probes (e.g. Finamp) made before allowing
+// edits. Navidrome has no per-playlist ACL, so every user is reported CanEdit; ownership is still
+// enforced by AddTracks/RemoveTracks.
 func (api *Router) getPlaylistUsers(w http.ResponseWriter, r *http.Request) {
 	u, _ := request.UserFrom(r.Context())
 	api.ok(w, r, []dto.PlaylistUserPermissions{{UserId: u.ID, CanEdit: true}})

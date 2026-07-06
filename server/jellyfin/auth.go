@@ -42,9 +42,8 @@ func (api *Router) authenticateByName(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// SessionInfo is omitted (not just empty): real Jellyfin returns a large object here, and
-	// ours would be a partial {Id, UserId} that a strict client could fail to parse. Finamp's
-	// login doesn't require it (its AuthenticationResult.sessionInfo is nullable).
+	// SessionInfo is omitted, not partially filled: a stub {Id, UserId} could fail a strict client's
+	// parse, and Finamp's login doesn't need it (its AuthenticationResult.sessionInfo is nullable).
 	api.ok(w, r, dto.AuthenticationResult{
 		User:        userToDto(usr, api.serverName(), api.serverID(ctx)),
 		AccessToken: token,
@@ -52,9 +51,8 @@ func (api *Router) authenticateByName(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// userToDto builds the User object real Jellyfin clients expect. Policy and Configuration
-// are always populated on real Jellyfin servers; Finamp reads them right after login and
-// null-crashes if they're absent, so we fill them with Navidrome-appropriate defaults.
+// userToDto builds the User object clients expect. Finamp reads Policy and Configuration right after
+// login and null-crashes if absent, so both are filled with Navidrome-appropriate defaults.
 func userToDto(u *model.User, serverName, serverID string) *dto.UserDto {
 	return &dto.UserDto{
 		Name:                  u.UserName,

@@ -13,14 +13,11 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 )
 
-// normalizeQueryKeys folds every query-parameter key to lowercase so handlers can read params
-// case-insensitively, matching real Jellyfin (whose ASP.NET model binding ignores case). Clients
-// disagree on casing: Finamp sends PascalCase (ParentId, IncludeItemTypes), while Jellify and the
-// official Jellyfin TypeScript SDK send camelCase (parentId, includeItemTypes). A case-sensitive
-// read would silently drop one client's filters, sort and paging. The original request is left
-// untouched so request logging still shows the casing the client sent; a shallow copy with a
-// rewritten query is passed downstream. Handlers therefore read query params by their lowercase
-// name. Only keys are folded — values keep their case (e.g. IncludeItemTypes=MusicAlbum).
+// normalizeQueryKeys folds query-parameter keys to lowercase so handlers can read params
+// case-insensitively, matching real Jellyfin. Clients disagree on casing (Finamp sends PascalCase,
+// Jellify and the Jellyfin TypeScript SDK camelCase), so a case-sensitive read would drop one
+// client's filters, sort and paging. Only keys are folded — values keep their case. The original
+// request is left untouched (a rewritten copy goes downstream) so logging shows the client's casing.
 func normalizeQueryKeys(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
@@ -28,8 +25,7 @@ func normalizeQueryKeys(next http.Handler) http.Handler {
 		changed := false
 		for k, vs := range q {
 			lk := strings.ToLower(k)
-			// Append rather than assign: two casings of the same key must merge (url.Values
-			// semantics), not have one nondeterministically overwrite the other.
+			// Append, don't assign: two casings of the same key must merge, not overwrite.
 			folded[lk] = append(folded[lk], vs...)
 			if lk != k {
 				changed = true
@@ -87,18 +83,16 @@ func tokenFromRequest(r *http.Request) string {
 	if t := parseEmbyAuth(r).Token; t != "" {
 		return t
 	}
-	// Both api_key and ApiKey are used in the wild (Finamp's just_audio engine fetches direct-file
-	// URLs with ?ApiKey=); normalizeQueryKeys has already folded key case, but the two spellings
-	// differ by an underscore, not case, so both are still checked.
+	// api_key and apikey differ by an underscore, not case, so normalizeQueryKeys' folding doesn't
+	// merge them; both are checked (Finamp's just_audio engine fetches direct-file URLs with ?ApiKey=).
 	if t := r.URL.Query().Get("api_key"); t != "" {
 		return t
 	}
 	return r.URL.Query().Get("apikey")
 }
 
-// userFromToken resolves the user identified by the request's token, if any; ok is false for a
-// missing/invalid token or an unknown subject. Used by authenticate and by public routes that
-// grant extra visibility to an (optional) authenticated caller.
+// userFromToken resolves the user for the request's token; ok is false for a missing/invalid token
+// or unknown subject. Used by authenticate and by public routes that optionally identify the caller.
 func (api *Router) userFromToken(r *http.Request) (model.User, bool) {
 	token := tokenFromRequest(r)
 	if token == "" {
@@ -128,12 +122,10 @@ func (api *Router) authenticate(next http.Handler) http.Handler {
 	})
 }
 
-// withPlayer resolves/registers a model.Player for the calling device and injects
-// it into the context, mirroring the Subsonic API's getPlayer middleware. Unlike
-// Subsonic (which has no stable client-supplied device id and falls back to a
-// cookie), Jellyfin clients always send a DeviceId in the auth header, so it's
-// used directly as the player id: playback reports from the same install
-// consistently resolve to the same player/scrobbling session.
+// withPlayer resolves/registers a model.Player for the calling device into the context, mirroring
+// Subsonic's getPlayer. Jellyfin clients always send a DeviceId in the auth header (unlike Subsonic),
+// so it's used directly as the player id and reports from the same install share a player/scrobbling
+// session.
 func (api *Router) withPlayer(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -141,8 +133,8 @@ func (api *Router) withPlayer(next http.Handler) http.Handler {
 		ip, _, _ := net.SplitHostPort(r.RemoteAddr)
 		player, _, err := api.players.Register(ctx, a.DeviceId, a.Client, a.Device, ip)
 		if err != nil {
-			// Fail open: log and proceed without a player in context, same as Subsonic's
-			// getPlayer. Playback reporting handlers degrade gracefully when no player is set.
+			// Fail open, like Subsonic's getPlayer: proceed without a player; reporting handlers
+			// degrade gracefully.
 			log.Warn(ctx, "Jellyfin API: could not register player", "client", a.Client, "device", a.Device, err)
 			next.ServeHTTP(w, r)
 			return

@@ -11,14 +11,10 @@ import (
 	"github.com/navidrome/navidrome/utils/req"
 )
 
-// resolveAnnotated finds which repo (album, artist or media file) owns id, mirroring getItem's
-// probe order and access control: albums and songs each belong to exactly one library and 404
-// when the current user can't access it, so an id can't be used to favorite/rate content outside
-// the user's libraries by guessing. Artists span multiple libraries (via library_artist), so —
-// same as getItem — there's no single LibraryID to check; access for them relies on list-time
-// scoping and the persistence layer's defense-in-depth.
-// ok is false, and the response has already been written, when the id doesn't resolve to any
-// entity or access is denied; callers must return immediately without writing the annotation.
+// resolveAnnotated finds which repo (album, artist or media file) owns id. Albums and songs 404
+// when the user can't access their library; artists span libraries (library_artist), so have no
+// single LibraryID to gate on and rely on list-time scoping. When ok is false the response has
+// already been written, so callers must return without writing the annotation.
 func (api *Router) resolveAnnotated(w http.ResponseWriter, r *http.Request, id string) (repo model.AnnotatedRepository, ok bool) {
 	ctx := r.Context()
 	u, _ := request.UserFrom(ctx)
@@ -43,11 +39,9 @@ func (api *Router) resolveAnnotated(w http.ResponseWriter, r *http.Request, id s
 	return nil, false
 }
 
-// getUserItemData answers GET /UserItems/{itemId}/UserData with the caller's play/favorite/rating
-// state for a single item. Jellify fetches this per item to render played and favourite indicators.
-// It reuses resolveItemByID (getItem's resolver), which loads annotations for the context user and
-// enforces the same library-access gate, so the UserData already computed for the BaseItemDto is
-// returned directly.
+// getUserItemData returns the caller's play/favorite/rating state for a single item. Jellify
+// fetches this per item to render played/favourite indicators; resolveItemByID enforces the
+// library-access gate.
 func (api *Router) getUserItemData(w http.ResponseWriter, r *http.Request) {
 	id := dto.DecodeID(chi.URLParam(r, "itemId"))
 	item, ok := api.resolveItemByID(r.Context(), id)
@@ -57,7 +51,7 @@ func (api *Router) getUserItemData(w http.ResponseWriter, r *http.Request) {
 	}
 	data := item.UserData
 	if data == nil {
-		// Items without annotations (e.g. playlists) still return a valid, empty UserData object.
+		// Items without annotations (e.g. playlists) still return a valid empty UserData.
 		data = dto.UserData(model.Annotations{}, id)
 	}
 	api.ok(w, r, data)
@@ -101,13 +95,12 @@ func (api *Router) setItemRating(w http.ResponseWriter, r *http.Request, rating 
 	api.ok(w, r, d)
 }
 
-// setRating maps Jellyfin's 0-10 rating (a nullable double in the API contract, so odd and
-// fractional values are valid) to Navidrome's 0-5 stars, rounding to the nearest star. A nonzero
-// rating is floored at one star: rounding it to 0 would silently clear the rating (SetRating(0)
-// is the delete path).
+// setRating maps Jellyfin's 0-10 rating (a nullable double, so fractional values are valid) to
+// Navidrome's 0-5 stars. A nonzero rating floors at one star: rounding to 0 would clear it, since
+// SetRating(0) is the delete path.
 func (api *Router) setRating(w http.ResponseWriter, r *http.Request) {
 	jfRating := req.Params(r).Float64Or("rating", 0)
-	jfRating = min(max(jfRating, 0), 10) // clamp: a client sending e.g. Rating=100 must not write an out-of-domain Navidrome rating
+	jfRating = min(max(jfRating, 0), 10) // clamp: a client sending e.g. Rating=100 must not write an out-of-domain rating
 	rating := int(math.Round(jfRating / 2))
 	if jfRating > 0 {
 		rating = max(rating, 1)

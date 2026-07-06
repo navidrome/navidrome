@@ -8,8 +8,8 @@ import (
 
 func TicksFromSeconds(sec float32) int64 { return int64(float64(sec) * 1e7) }
 
-// jellyfinDate formats a time as the ISO 8601 string Jellyfin clients expect for DateCreated, or
-// "" for the zero time so the field is omitted rather than sent as a meaningless epoch.
+// jellyfinDate formats t as the ISO 8601 string clients expect, or "" for the zero time so the
+// field is omitted rather than sent as a meaningless epoch.
 func jellyfinDate(t *time.Time) string {
 	if t == nil || t.IsZero() {
 		return ""
@@ -33,10 +33,9 @@ func channelLayout(n int) string {
 	}
 }
 
-// MediaSourceFromMediaFile builds the MediaSourceInfo describing direct playback of mf's
-// source file. Shared by SongToBaseItem and getPlaybackInfo so clients see the same Size and
-// Bitrate whether they read it from a browse response or from /PlaybackInfo -- Finamp's
-// download dialog reads MediaSources[0].Size from the former.
+// MediaSourceFromMediaFile builds the MediaSourceInfo for direct playback of mf's source file.
+// Shared by SongToBaseItem and getPlaybackInfo so Size/Bitrate match across browse and /PlaybackInfo
+// responses (Finamp's download dialog reads MediaSources[0].Size from the browse response).
 func MediaSourceFromMediaFile(mf model.MediaFile) MediaSourceInfo {
 	return MediaSourceInfo{
 		Id:                   EncodeID(mf.ID),
@@ -67,8 +66,7 @@ func MediaSourceFromMediaFile(mf model.MediaFile) MediaSourceInfo {
 }
 
 func UserData(a model.Annotations, itemID string) *UserItemDataDto {
-	// Callers pass the raw model id; encode here so Key/ItemId match the encoded Id on the
-	// BaseItemDto this UserData is attached to.
+	// Callers pass the raw model id; encode here so Key/ItemId match the encoded Id on the BaseItemDto.
 	encodedID := EncodeID(itemID)
 	d := &UserItemDataDto{
 		PlayCount:  int(a.PlayCount),
@@ -108,9 +106,9 @@ func SongToBaseItem(mf model.MediaFile) BaseItemDto {
 		UserData:          UserData(mf.Annotations, mf.ID),
 		MediaSources:      []MediaSourceInfo{MediaSourceFromMediaFile(mf)},
 	}
-	// Structured artist links: clients (e.g. Finamp's Now Playing screen) read ArtistItems for the
-	// displayed artist and fall back to "Unknown Artist" when it's absent, even though Artists
-	// carries the same name. ArtistItems is the track artist; AlbumArtists the album artist.
+	// Finamp's Now Playing screen reads ArtistItems for the displayed artist (falling back to "Unknown
+	// Artist" if absent), even though Artists carries the same name. ArtistItems is the track artist;
+	// AlbumArtists the album artist.
 	if mf.ArtistID != "" {
 		item.ArtistItems = []NameGuidPair{{Name: mf.Artist, Id: EncodeID(mf.ArtistID)}}
 	}
@@ -200,17 +198,15 @@ func GenreToBaseItem(g model.Genre) BaseItemDto {
 	}
 }
 
-// PlaylistToBaseItem maps a playlist to a Playlist BaseItemDto. Unlike songs/albums/artists,
-// model.Playlist has no embedded Annotations (no starred/rating/play-count), so UserData is
-// left nil rather than synthesized.
+// PlaylistToBaseItem maps a playlist to a Playlist BaseItemDto. model.Playlist has no embedded
+// Annotations (no starred/rating/play-count), so UserData is left nil.
 func PlaylistToBaseItem(p model.Playlist) BaseItemDto {
 	return BaseItemDto{
 		Name: p.Name,
 		Id:   EncodeID(p.ID),
 		Type: "Playlist",
-		// A synthetic path under "data": Jellify only surfaces playlists whose Path contains "data"
-		// (real Jellyfin stores them under its data folder), so without this its Playlists tab
-		// filters them all out.
+		// Synthetic path: Jellify only surfaces playlists whose Path contains "data" (real Jellyfin
+		// stores them under its data folder), so without this its Playlists tab hides them all.
 		Path:              "/data/playlists/" + p.ID,
 		IsFolder:          true,
 		MediaType:         "Audio",

@@ -8,8 +8,8 @@ import (
 	"github.com/navidrome/navidrome/log"
 )
 
-// socketKeepAliveInterval is sent to the client in the initial ForceKeepAlive message, telling it
-// how often (in seconds) it must send a KeepAlive, and used locally to bound the read deadline.
+// socketKeepAliveInterval (seconds) is sent in the initial ForceKeepAlive telling the client how
+// often to send KeepAlive, and bounds the local read deadline.
 const socketKeepAliveInterval = 60
 
 // socketReadTimeout is generous relative to socketKeepAliveInterval so a single delayed
@@ -17,15 +17,14 @@ const socketKeepAliveInterval = 60
 const socketReadTimeout = 90 * time.Second
 
 var socketUpgrader = websocket.Upgrader{
-	// Finamp (and other Jellyfin clients) are not browsers, so there's no cross-origin risk
-	// to guard against here; the connection is already authenticated via api_key.
+	// Jellyfin clients aren't browsers, so there's no cross-origin risk; the connection is
+	// already authenticated via api_key.
 	CheckOrigin: func(*http.Request) bool { return true },
 }
 
-// handleSocket implements Jellyfin's /socket WebSocket endpoint. Real-time clients like Finamp
-// open this right after login; without it they 404-loop-reconnect instead of ever settling into
-// a working session. This is a minimal implementation: it just keeps the connection alive and
-// answers KeepAlive pings, with no session/playstate push, which is enough to stop the loop.
+// handleSocket implements Jellyfin's /socket WebSocket endpoint. Finamp opens it right after login
+// and 404-loop-reconnects without it. Minimal: keeps the connection alive and answers KeepAlive
+// pings, with no session/playstate push.
 func (api *Router) handleSocket(w http.ResponseWriter, r *http.Request) {
 	conn, err := socketUpgrader.Upgrade(w, r, nil)
 	if err != nil {

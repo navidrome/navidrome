@@ -18,11 +18,9 @@ import (
 )
 
 func (api *Router) getItemImage(w http.ResponseWriter, r *http.Request) {
-	// This endpoint is intentionally public (see routes), so the request carries no user in ctx.
-	// Library artwork (album/artist/song covers) isn't user-sensitive, and playlist access is
-	// gated inside resolveArtworkID; resolution then runs under an elevated context — the same
-	// approach core/artwork's cache warmer uses — so a legitimately served cover isn't eaten by
-	// the persistence layer's visibility filter.
+	// Public endpoint (no user in ctx): library artwork isn't user-sensitive, so resolution runs
+	// under an elevated context to bypass the persistence visibility filter; playlist access is
+	// gated inside resolveArtworkID.
 	ctx := request.WithUser(r.Context(), model.User{IsAdmin: true})
 	itemId := dto.DecodeID(chi.URLParam(r, "itemId"))
 	size, _ := strconv.Atoi(r.URL.Query().Get("maxwidth"))
@@ -38,13 +36,12 @@ func (api *Router) getItemImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer reader.Close()
-	// Content-Type is left unset so net/http sniffs it from the first bytes written
-	// (placeholders are WebP; unresized covers can be PNG/WebP/etc, not always JPEG).
+	// Leave Content-Type unset so net/http sniffs it (covers may be PNG/WebP/JPEG).
 	_, _ = io.Copy(w, reader)
 }
 
-// resolveArtworkID maps a bare Jellyfin item id to a Navidrome ArtworkID string
-// by probing album -> artist -> media file -> playlist.
+// resolveArtworkID maps a Jellyfin item id to a Navidrome ArtworkID, probing
+// album -> artist -> media file -> playlist.
 func (api *Router) resolveArtworkID(ctx context.Context, r *http.Request, itemId string) string {
 	if al, err := api.ds.Album(ctx).Get(itemId); err == nil {
 		return al.CoverArtID().String()
@@ -56,10 +53,8 @@ func (api *Router) resolveArtworkID(ctx context.Context, r *http.Request, itemId
 		return mf.CoverArtID().String()
 	}
 	if pl, err := api.ds.Playlist(ctx).Get(itemId); err == nil {
-		// Playlists are user-scoped, unlike library artwork: a private playlist's uploaded cover
-		// is served only when the playlist is public or the request's (optional) token identifies
-		// a user who may see it. Anyone else gets the placeholder, so an id can't be used to
-		// probe another user's private covers on this unauthenticated route.
+		// Playlist covers are user-scoped: serve a private one only for a public playlist or a
+		// token identifying its owner/an admin, so this public route can't probe others' covers.
 		u, ok := api.userFromToken(r)
 		if pl.Public || (ok && (u.IsAdmin || pl.OwnerID == u.ID)) {
 			return pl.CoverArtID().String()
@@ -68,10 +63,9 @@ func (api *Router) resolveArtworkID(ctx context.Context, r *http.Request, itemId
 	return (model.ArtworkID{}).String()
 }
 
-// postItemImage handles cover image upload. Only playlists support upload through this API;
-// album/artist covers come from tag/sidecar scanning. The body is always drained first —
-// even on the not-implemented path — because Jellyfin clients (e.g. Finamp) write it
-// synchronously and see a broken pipe if we respond before reading it.
+// postItemImage handles cover upload. Only playlists are writable here; album/artist covers come
+// from scanning. The body is always drained first (even on the not-implemented path) because
+// Finamp writes it synchronously and sees a broken pipe if we respond before reading it.
 func (api *Router) postItemImage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := dto.DecodeID(chi.URLParam(r, "itemId"))
@@ -101,8 +95,7 @@ func (api *Router) postItemImage(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// deleteItemImage removes a playlist's uploaded cover. Like postItemImage, only playlists
-// are supported.
+// deleteItemImage removes a playlist's uploaded cover. Only playlists are supported.
 func (api *Router) deleteItemImage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := dto.DecodeID(chi.URLParam(r, "itemId"))
@@ -119,9 +112,8 @@ func (api *Router) deleteItemImage(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// decodeImageBody returns the raw image bytes. Jellyfin sends the image base64-encoded in the
-// request body; a few clients send raw bytes instead, so bytes already starting with a known
-// image magic number are passed through as-is.
+// decodeImageBody returns the raw image bytes. Jellyfin base64-encodes the body, but some clients
+// send raw bytes, so input already starting with an image magic number is passed through as-is.
 func decodeImageBody(body []byte) ([]byte, error) {
 	if isImageMagic(body) {
 		return body, nil
@@ -141,8 +133,7 @@ func isImageMagic(b []byte) bool {
 	}
 }
 
-// extFromContentType maps the client-supplied Content-Type to a file extension for storage;
-// defaults to .jpg (Jellyfin's own default cover format) for anything unrecognized.
+// extFromContentType maps a Content-Type to a storage file extension, defaulting to .jpg.
 func extFromContentType(contentType string) string {
 	ct, _, _ := strings.Cut(contentType, ";")
 	switch strings.ToLower(strings.TrimSpace(ct)) {

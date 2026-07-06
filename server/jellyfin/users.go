@@ -7,9 +7,8 @@ import (
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 )
 
-// getUserViews returns one CollectionFolder view per library the current user can access,
-// so Jellyfin clients browse each library as its own top-level view (instead of a single
-// aggregate "music" view spanning every library).
+// getUserViews returns one CollectionFolder view per accessible library, so clients browse each
+// library as its own top-level view rather than one aggregate.
 func (api *Router) getUserViews(w http.ResponseWriter, r *http.Request) {
 	u, _ := request.UserFrom(r.Context())
 	views := make([]dto.BaseItemDto, 0, len(u.Libraries))

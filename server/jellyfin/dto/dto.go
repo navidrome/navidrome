@@ -40,9 +40,9 @@ type BaseItemDto struct {
 	Name     string `json:"Name"`
 	ServerId string `json:"ServerId,omitempty"`
 	Id       string `json:"Id"`
-	// PlaylistItemId identifies this entry within a playlist listing (GET /Playlists/{id}/Items).
-	// It's only set there, and is distinct from Id so a song appearing more than once in the same
-	// playlist can be removed by occurrence (DELETE .../Items?EntryIds=...) rather than by song id.
+	// PlaylistItemId identifies an entry within a playlist listing (GET /Playlists/{id}/Items),
+	// distinct from Id so a song appearing more than once can be removed by occurrence
+	// (DELETE .../Items?EntryIds=...) rather than by song id.
 	PlaylistItemId    string `json:"PlaylistItemId,omitempty"`
 	Type              string `json:"Type"`
 	IsFolder          bool   `json:"IsFolder"`
@@ -69,9 +69,9 @@ type BaseItemDto struct {
 	SongCount            *int              `json:"SongCount,omitempty"`
 	AlbumCount           *int              `json:"AlbumCount,omitempty"`
 	ImageTags            map[string]string `json:"ImageTags,omitempty"`
-	// ImageBlurHashes is keyed by image type (e.g. "Primary") then image tag. Finamp uses it both
-	// to render a placeholder while art loads and, more importantly, as a de-dup key for image
-	// downloads -- without it Finamp warns that the server isn't calculating blurhashes.
+	// ImageBlurHashes is keyed by image type (e.g. "Primary") then image tag. Finamp uses it as a
+	// de-dup key for image downloads (and a placeholder); absent, it warns the server isn't
+	// calculating blurhashes.
 	ImageBlurHashes   map[string]map[string]string `json:"ImageBlurHashes,omitempty"`
 	BackdropImageTags []string                     `json:"BackdropImageTags"`
 	UserData          *UserItemDataDto             `json:"UserData,omitempty"`
@@ -87,9 +87,8 @@ type PlaylistUserPermissions struct {
 	CanEdit bool   `json:"CanEdit"`
 }
 
-// PlaylistInfo is the response shape for GET /Playlists/{id}. Finamp reads OpenAccess to show a
-// playlist's public-visibility toggle; ItemIds are the playlist's media item ids (matching real
-// Jellyfin, which returns item ids here — not playlist-entry ids).
+// PlaylistInfo is the response shape for GET /Playlists/{id}. ItemIds are media item ids, not
+// playlist-entry ids (matching real Jellyfin); Finamp reads OpenAccess for the public-visibility toggle.
 type PlaylistInfo struct {
 	OpenAccess bool                      `json:"OpenAccess"`
 	Shares     []PlaylistUserPermissions `json:"Shares"`
@@ -115,9 +114,8 @@ type UserDto struct {
 	Configuration             *UserConfiguration `json:"Configuration,omitempty"`
 }
 
-// UserPolicy mirrors real Jellyfin's User.Policy object. Finamp (and presumably other
-// up-to-date clients) reads it right after login and crashes if it's absent, so every
-// field below must be present even though Navidrome has no concept of most of them.
+// UserPolicy mirrors real Jellyfin's User.Policy. Finamp reads it right after login and crashes if
+// it's absent, so every field must be present even though Navidrome lacks most of these concepts.
 type UserPolicy struct {
 	IsAdministrator                  bool     `json:"IsAdministrator"`
 	IsHidden                         bool     `json:"IsHidden"`
@@ -163,9 +161,8 @@ type UserPolicy struct {
 	SyncPlayAccess                   string   `json:"SyncPlayAccess"`
 }
 
-// UserConfiguration mirrors real Jellyfin's User.Configuration object. Like UserPolicy,
-// clients expect it to always be present, even though most of these settings (subtitles,
-// TV episode tracking) don't apply to Navidrome's audio-only library.
+// UserConfiguration mirrors real Jellyfin's User.Configuration. Like UserPolicy, clients expect it
+// always present, even though most settings don't apply to Navidrome's audio-only library.
 type UserConfiguration struct {
 	PlayDefaultAudioTrack      bool     `json:"PlayDefaultAudioTrack"`
 	SubtitleLanguagePreference string   `json:"SubtitleLanguagePreference"`
@@ -196,10 +193,9 @@ type AuthenticationResult struct {
 	ServerId    string       `json:"ServerId"`
 }
 
-// MediaStream mirrors real Jellyfin's MediaStream object. Finamp's model declares several bools
-// as non-nullable, so they must always be emitted (no omitempty) even when false. Finamp's
-// MediaSourceInfo.transcodedSize also does MediaStreams.firstWhere((s) => s.type == 'Audio'), so
-// MediaSourceInfo must always include at least one Audio stream or that lookup throws.
+// MediaStream mirrors real Jellyfin's MediaStream. Finamp declares several bools as non-nullable, so
+// they must always be emitted (no omitempty). Finamp also does MediaStreams.firstWhere((s) => s.type
+// == 'Audio'), so MediaSourceInfo must include at least one Audio stream or that lookup throws.
 type MediaStream struct {
 	Codec                  string `json:"Codec,omitempty"`
 	Type                   string `json:"Type"`
@@ -216,10 +212,9 @@ type MediaStream struct {
 	SupportsExternalStream bool   `json:"SupportsExternalStream"`
 }
 
-// MediaSourceInfo mirrors real Jellyfin's MediaSourceInfo object. Finamp's model declares several
-// of these bools and arrays as non-nullable, so a missing field deserializes as null and throws a
-// "type 'Null' is not a subtype of type 'bool'" cast error that aborts parsing of the whole item
-// list. They must always be emitted (no omitempty on bools) even when false/empty.
+// MediaSourceInfo mirrors real Jellyfin's MediaSourceInfo. Finamp declares several bools/arrays as
+// non-nullable, so a missing field deserializes to null and throws a cast error that aborts parsing
+// of the whole item list; emit them always (no omitempty on bools).
 type MediaSourceInfo struct {
 	Id                                  string        `json:"Id"`
 	Path                                string        `json:"Path,omitempty"`

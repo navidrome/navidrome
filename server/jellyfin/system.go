@@ -16,9 +16,8 @@ import (
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 )
 
-// jellyfinVersion is the Jellyfin API version we advertise in the handshake. Clients parse
-// Version as a Jellyfin release and feature-gate on it, so it must stay a real Jellyfin
-// version rather than Navidrome's own.
+// jellyfinVersion is the Jellyfin API version advertised in the handshake. Clients feature-gate
+// on it, so it must stay a real Jellyfin release, not Navidrome's own version.
 const jellyfinVersion = "10.8.13"
 
 func (api *Router) serverName() string {
@@ -28,16 +27,13 @@ func (api *Router) serverName() string {
 	return fmt.Sprintf("Navidrome %s", consts.Version)
 }
 
-// serverID returns a stable Id that survives restarts, get-or-created in the Property table
-// the same way core/metrics/insights.go derives its InsightsID. Jellyfin clients cache
-// ServerId across sessions, so a per-process value would break re-authentication.
-// api.ds is nil only in unit tests that construct Router{} directly; New() always sets it.
+// serverID returns a stable Id that survives restarts, get-or-created in the Property table.
+// Jellyfin clients cache ServerId across sessions, so a per-process value would break
+// re-authentication. api.ds is nil only in unit tests; New() always sets it.
 //
-// The mutex serializes first-boot resolution (concurrent requests can't each persist a
-// different UUID) while still allowing retries: only a successful read — or a successfully
-// persisted new id — is cached. A transient failure (busy DB, canceled request context) must
-// neither rotate the stored id nor pin a value for the process lifetime, so it yields a
-// temporary id and the next request tries again.
+// The mutex serializes first-boot resolution so concurrent requests can't persist different
+// UUIDs. Only a successful read or persisted id is cached; a transient failure yields a
+// temporary id and retries on the next request rather than pinning a value.
 func (api *Router) serverID(ctx context.Context) string {
 	api.serverIDMu.Lock()
 	defer api.serverIDMu.Unlock()
@@ -75,11 +71,9 @@ func (api *Router) publicInfo(r *http.Request) dto.PublicSystemInfo {
 	}
 }
 
-// localAddress reconstructs the base URL the client used to reach this Jellyfin API: scheme and
-// host from the request (honoring reverse-proxy X-Forwarded-* headers), plus the mount path. Real
-// Jellyfin advertises this as LocalAddress; a client connecting by raw address (Jellify over HTTP,
-// when TLS isn't available) adopts it as its server base URL. Without it, Jellify's SDK api
-// instance is undefined and sign-in crashes ("Cannot read property 'configuration' of undefined").
+// localAddress reconstructs the base URL the client used (scheme/host from the request, honoring
+// X-Forwarded-* headers, plus the mount path), advertised as LocalAddress. Jellify adopts it as
+// its server base URL; without it its SDK api instance is undefined and sign-in crashes.
 func localAddress(r *http.Request) string {
 	scheme, host := server.ServerAddress(r)
 	return scheme + "://" + host + path.Join(conf.Server.BasePath, consts.URLPathJellyfinAPI)
@@ -89,8 +83,8 @@ func (api *Router) getPublicSystemInfo(w http.ResponseWriter, r *http.Request) {
 	api.ok(w, r, api.publicInfo(r))
 }
 
-// ping answers /System/Ping with a bare plain-text server name, not a JSON-quoted string:
-// Jellyfin's own server does this, and clients parse the raw body.
+// ping answers /System/Ping with a bare plain-text server name (not JSON-quoted): Jellyfin's
+// server does this and clients parse the raw body.
 func (api *Router) ping(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)

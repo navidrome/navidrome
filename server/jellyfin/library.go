@@ -9,19 +9,16 @@ import (
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 )
 
-// accessibleLibraryIDs returns the ids of the libraries the current user can access. An
-// empty slice only occurs for the edge case of a non-admin user with no assigned libraries;
-// filter.ApplyLibraryFilter/ApplyArtistLibraryFilter treat it as a no-op (unrestricted).
+// accessibleLibraryIDs returns the ids of the libraries the current user can access. An empty
+// slice (non-admin with no libraries) is treated as a no-op/unrestricted by the library filters.
 func accessibleLibraryIDs(ctx context.Context) []int {
 	u, _ := request.UserFrom(ctx)
 	return u.Libraries.IDs()
 }
 
-// resolveLibraryScope handles ParentId's ambiguity: it can be a library id (browsing a
-// UserView) or an entity id (an artist for MusicAlbum queries, an album for Audio queries).
-// It's only treated as a library when the user actually has access to it; otherwise
-// isLibraryParent is false and callers should fall through to treating parentId as an entity
-// id, which safely matches nothing rather than leaking another library's content.
+// resolveLibraryScope handles ParentId's ambiguity: a library id (browsing a UserView) or an
+// entity id (artist/album). It's treated as a library only when the user has access; otherwise
+// isLibraryParent is false and callers fall through to entity-id handling.
 func resolveLibraryScope(ctx context.Context, parentId string) (scopeIDs []int, isLibraryParent bool) {
 	if parentId != "" {
 		if id, err := strconv.Atoi(parentId); err == nil {
@@ -33,10 +30,8 @@ func resolveLibraryScope(ctx context.Context, parentId string) (scopeIDs []int, 
 	return accessibleLibraryIDs(ctx), false
 }
 
-// libraryView builds the CollectionFolder BaseItemDto Jellyfin clients use to represent a
-// library as a top-level browsing node. It's shared by getUserViews (which lists every
-// accessible library) and getItem (which resolves a single one), since Finamp fetches a
-// UserView's id as a plain item to load the library.
+// libraryView builds the CollectionFolder BaseItemDto representing a library as a top-level node.
+// Shared by getUserViews and getItem, since Finamp fetches a UserView's id as a plain item.
 func libraryView(lib model.Library) dto.BaseItemDto {
 	return dto.BaseItemDto{
 		Id:                dto.EncodeID(strconv.Itoa(lib.ID)),
