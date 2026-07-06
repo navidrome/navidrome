@@ -1,6 +1,7 @@
 package jellyfin
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"sync"
@@ -17,6 +18,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
+	"github.com/navidrome/navidrome/server/jellyfin/dto"
 )
 
 type Router struct {
@@ -146,11 +148,28 @@ func (api *Router) routes() http.Handler {
 	return server.CaseInsensitivePaths(inner)
 }
 
-// ok writes payload as JSON.
+// ok writes payload as JSON, stamping ServerId on any item(s) in it — real Jellyfin always sets it,
+// and it's the same value for every item, so it's applied here rather than threaded through mappers.
 func (api *Router) ok(w http.ResponseWriter, r *http.Request, payload any) {
+	switch p := payload.(type) {
+	case dto.QueryResult:
+		api.stampServerID(r.Context(), p.Items)
+	case []dto.BaseItemDto:
+		api.stampServerID(r.Context(), p)
+	case dto.BaseItemDto:
+		p.ServerId = api.serverID(r.Context())
+		payload = p
+	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	if err := json.NewEncoder(w).Encode(payload); err != nil {
 		log.Error(r.Context(), "Jellyfin API: error encoding response", err)
+	}
+}
+
+func (api *Router) stampServerID(ctx context.Context, items []dto.BaseItemDto) {
+	sid := api.serverID(ctx)
+	for i := range items {
+		items[i].ServerId = sid
 	}
 }
 

@@ -44,7 +44,7 @@ func (api *Router) resolveAnnotated(w http.ResponseWriter, r *http.Request, id s
 // library-access gate.
 func (api *Router) getUserItemData(w http.ResponseWriter, r *http.Request) {
 	id := dto.DecodeID(chi.URLParam(r, "itemId"))
-	item, ok := api.resolveItemByID(r.Context(), id)
+	item, ok := api.resolveItemByID(r.Context(), id, nil)
 	if !ok {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return

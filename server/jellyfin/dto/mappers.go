@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"cmp"
 	"time"
 
 	"github.com/navidrome/navidrome/model"
@@ -86,13 +87,18 @@ func UserData(a model.Annotations, itemID string) *UserItemDataDto {
 	return d
 }
 
-func SongToBaseItem(mf model.MediaFile) BaseItemDto {
+// SongToBaseItem maps a media file to an Audio BaseItemDto. MediaSources and SortName are attached
+// only when the request's Fields asks for them, mirroring real Jellyfin (which omits both from a
+// plain list response); a nil fields set means neither.
+func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 	item := BaseItemDto{
 		Name:              mf.Title,
 		Id:                EncodeID(mf.ID),
 		Type:              "Audio",
 		MediaType:         "Audio",
 		IsFolder:          false,
+		LocationType:      "FileSystem",
+		HasLyrics:         mf.Lyrics != "",
 		ParentId:          EncodeID(mf.AlbumID),
 		Album:             mf.Album,
 		AlbumId:           EncodeID(mf.AlbumID),
@@ -104,7 +110,12 @@ func SongToBaseItem(mf model.MediaFile) BaseItemDto {
 		CanDownload:       true,
 		BackdropImageTags: []string{},
 		UserData:          UserData(mf.Annotations, mf.ID),
-		MediaSources:      []MediaSourceInfo{MediaSourceFromMediaFile(mf)},
+	}
+	if fields.Has("MediaSources") {
+		item.MediaSources = []MediaSourceInfo{MediaSourceFromMediaFile(mf)}
+	}
+	if fields.Has("SortName") {
+		item.SortName = cmp.Or(mf.SortTitle, mf.OrderTitle, mf.Title)
 	}
 	// Finamp's Now Playing screen reads ArtistItems for the displayed artist (falling back to "Unknown
 	// Artist" if absent), even though Artists carries the same name. ArtistItems is the track artist;

@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/filter"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
+	"github.com/navidrome/navidrome/utils/req"
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
@@ -110,8 +111,8 @@ func (api *Router) updatePlaylist(w http.ResponseWriter, r *http.Request) {
 // entry's id, model.PlaylistTrack.ID, not the song id). Clients echo it back via
 // DELETE .../Items?EntryIds= to remove a specific occurrence, so duplicates of the same song remain
 // individually removable.
-func trackToBaseItem(t model.PlaylistTrack) dto.BaseItemDto {
-	item := dto.SongToBaseItem(t.MediaFile)
+func trackToBaseItem(t model.PlaylistTrack, fields dto.Fields) dto.BaseItemDto {
+	item := dto.SongToBaseItem(t.MediaFile, fields)
 	item.PlaylistItemId = dto.EncodeID(t.ID)
 	return item
 }
@@ -145,7 +146,8 @@ func (api *Router) getPlaylistItems(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
-	items := slice.Map(pls.Tracks, trackToBaseItem)
+	fields := dto.ParseFields(req.Params(r).StringOr("fields", ""))
+	items := slice.Map(pls.Tracks, func(t model.PlaylistTrack) dto.BaseItemDto { return trackToBaseItem(t, fields) })
 	api.ok(w, r, dto.QueryResult{Items: items, TotalRecordCount: len(items)})
 }
 

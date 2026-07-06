@@ -97,7 +97,7 @@ func (api *Router) similarSongs(ctx context.Context, id string, limit int) dto.Q
 		log.Debug(ctx, "Jellyfin API: no similar songs", "id", id, err)
 		return result(nil, 0, 0)
 	}
-	items := slice.Map(songs, dto.SongToBaseItem)
+	items := slice.Map(songs, func(mf model.MediaFile) dto.BaseItemDto { return dto.SongToBaseItem(mf, nil) })
 	return result(items, len(items), 0)
 }
 

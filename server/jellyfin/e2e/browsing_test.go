@@ -43,7 +43,22 @@ var _ = Describe("Browsing", func() {
 			for _, it := range q.Items {
 				Expect(it.Type).To(Equal("Audio"))
 				Expect(it.MediaType).To(Equal("Audio"))
+				Expect(it.LocationType).To(Equal("FileSystem"))
+				Expect(it.ServerId).ToNot(BeEmpty()) // real Jellyfin always sets it
 				Expect(it.AlbumId).ToNot(BeEmpty())
+			}
+		})
+
+		// Real Jellyfin omits MediaSources from a plain list response, returning it only when the
+		// client asks via Fields=MediaSources (Finamp's download dialog does).
+		It("omits MediaSources unless Fields=MediaSources is requested", func() {
+			plain := queryResult(get("/Items?IncludeItemTypes=Audio&Recursive=true"))
+			for _, it := range plain.Items {
+				Expect(it.MediaSources).To(BeEmpty())
+			}
+			withSources := queryResult(get("/Items?IncludeItemTypes=Audio&Recursive=true&Fields=MediaSources"))
+			for _, it := range withSources.Items {
+				Expect(it.MediaSources).To(HaveLen(1))
 			}
 		})
 

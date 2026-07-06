@@ -18,9 +18,11 @@ var _ = Describe("mappers", func() {
 		}
 		mf.PlayCount = 2
 		mf.Starred = true
-		item := SongToBaseItem(mf)
+		item := SongToBaseItem(mf, nil)
 		Expect(item.Type).To(Equal("Audio"))
+		Expect(item.MediaType).To(Equal("Audio"))
 		Expect(item.IsFolder).To(BeFalse())
+		Expect(item.LocationType).To(Equal("FileSystem"))
 		Expect(item.Id).To(Equal(EncodeID("song-1")))
 		Expect(item.AlbumId).To(Equal(EncodeID("alb-1")))
 		Expect(item.ParentId).To(Equal(EncodeID("alb-1")))
@@ -31,26 +33,50 @@ var _ = Describe("mappers", func() {
 		Expect(item.UserData.Played).To(BeTrue())
 		Expect(item.UserData.Key).To(Equal(EncodeID("song-1")))
 		Expect(item.UserData.ItemId).To(Equal(EncodeID("song-1")))
-		Expect(item.MediaSources).To(HaveLen(1))
-		Expect(item.MediaSources[0].Size).To(Equal(int64(2_500_000)))
 		Expect(item.ImageBlurHashes["Primary"]).To(HaveKey(item.AlbumPrimaryImageTag))
 		Expect(item.ImageBlurHashes["Primary"][item.AlbumPrimaryImageTag]).To(HaveLen(6))
 	})
 
+	Describe("Fields gating (matches real Jellyfin)", func() {
+		mf := model.MediaFile{ID: "s1", Title: "Song", Size: 2_500_000, Suffix: "mp3", Duration: 60,
+			SortTitle: "sort song", Lyrics: `[{"line":"la"}]`}
+
+		It("omits MediaSources and SortName when Fields does not ask for them", func() {
+			item := SongToBaseItem(mf, nil)
+			Expect(item.MediaSources).To(BeNil())
+			Expect(item.SortName).To(BeEmpty())
+		})
+
+		It("includes MediaSources only when Fields=MediaSources", func() {
+			item := SongToBaseItem(mf, ParseFields("ChildCount,MediaSources,SortName"))
+			Expect(item.MediaSources).To(HaveLen(1))
+			Expect(item.MediaSources[0].Size).To(Equal(int64(2_500_000)))
+		})
+
+		It("includes SortName (from the sort title) only when Fields=SortName", func() {
+			Expect(SongToBaseItem(mf, ParseFields("SortName")).SortName).To(Equal("sort song"))
+		})
+
+		It("sets HasLyrics from the media file's lyrics", func() {
+			Expect(SongToBaseItem(mf, nil).HasLyrics).To(BeTrue())
+			Expect(SongToBaseItem(model.MediaFile{ID: "s2", Title: "No Lyrics"}, nil).HasLyrics).To(BeFalse())
+		})
+	})
+
 	It("omits ImageBlurHashes when a song has no album", func() {
 		mf := model.MediaFile{ID: "song-noalbum", Title: "Song", Duration: 60}
-		item := SongToBaseItem(mf)
+		item := SongToBaseItem(mf, nil)
 		Expect(item.AlbumPrimaryImageTag).To(BeEmpty())
 		Expect(item.ImageBlurHashes).To(BeNil())
 	})
 
 	It("sets DateCreated from the media file's CreatedAt", func() {
 		mf := model.MediaFile{ID: "s1", Title: "Song", CreatedAt: time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)}
-		Expect(SongToBaseItem(mf).DateCreated).To(Equal("2024-01-15T10:30:00Z"))
+		Expect(SongToBaseItem(mf, nil).DateCreated).To(Equal("2024-01-15T10:30:00Z"))
 	})
 
 	It("omits DateCreated when CreatedAt is the zero time", func() {
-		Expect(SongToBaseItem(model.MediaFile{ID: "s1", Title: "Song"}).DateCreated).To(BeEmpty())
+		Expect(SongToBaseItem(model.MediaFile{ID: "s1", Title: "Song"}, nil).DateCreated).To(BeEmpty())
 	})
 
 	It("sets ArtistItems and AlbumArtists (encoded ids) from the track and album artist", func() {
@@ -59,13 +85,13 @@ var _ = Describe("mappers", func() {
 			Artist: "The Band", ArtistID: "ar-1",
 			AlbumArtist: "Various", AlbumArtistID: "ar-2",
 		}
-		item := SongToBaseItem(mf)
+		item := SongToBaseItem(mf, nil)
 		Expect(item.ArtistItems).To(Equal([]NameGuidPair{{Name: "The Band", Id: EncodeID("ar-1")}}))
 		Expect(item.AlbumArtists).To(Equal([]NameGuidPair{{Name: "Various", Id: EncodeID("ar-2")}}))
 	})
 
 	It("omits ArtistItems when the track has no artist id", func() {
-		Expect(SongToBaseItem(model.MediaFile{ID: "s1", Title: "Song", Artist: "X"}).ArtistItems).To(BeNil())
+		Expect(SongToBaseItem(model.MediaFile{ID: "s1", Title: "Song", Artist: "X"}, nil).ArtistItems).To(BeNil())
 	})
 
 	It("builds a MediaSourceInfo from a media file", func() {
@@ -129,7 +155,7 @@ var _ = Describe("mappers", func() {
 			Artist: "Art", AlbumArtist: "AA", TrackNumber: 0, DiscNumber: 0,
 			Duration: 60,
 		}
-		item := SongToBaseItem(mf)
+		item := SongToBaseItem(mf, nil)
 		Expect(item.IndexNumber).To(BeNil())
 		Expect(item.ParentIndexNumber).To(BeNil())
 	})
@@ -141,7 +167,7 @@ var _ = Describe("mappers", func() {
 			Artist: "Art", AlbumArtist: "AA", Duration: 60,
 		}
 		mf.PlayDate = &playDate
-		item := SongToBaseItem(mf)
+		item := SongToBaseItem(mf, nil)
 		Expect(item.UserData.LastPlayedDate).NotTo(BeNil())
 		Expect(*item.UserData.LastPlayedDate).To(Equal(playDate.Format(time.RFC3339)))
 	})

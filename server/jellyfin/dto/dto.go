@@ -48,6 +48,9 @@ type BaseItemDto struct {
 	IsFolder          bool   `json:"IsFolder"`
 	MediaType         string `json:"MediaType,omitempty"`
 	CollectionType    string `json:"CollectionType,omitempty"`
+	LocationType      string `json:"LocationType,omitempty"`
+	HasLyrics         bool   `json:"HasLyrics,omitempty"`
+	SortName          string `json:"SortName,omitempty"`
 	Path              string `json:"Path,omitempty"`
 	ParentId          string `json:"ParentId,omitempty"`
 	RunTimeTicks      int64  `json:"RunTimeTicks,omitempty"`
