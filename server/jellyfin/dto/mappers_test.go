@@ -47,6 +47,22 @@ var _ = Describe("mappers", func() {
 		Expect(src.SupportsDirectPlay).To(BeTrue())
 	})
 
+	It("populates MediaStreams with a single Audio stream so Finamp can size downloads", func() {
+		mf := model.MediaFile{
+			ID: "s1", Size: 5242880, Suffix: "mp3", BitRate: 320, Duration: 100,
+			Channels: 2, SampleRate: 44100, Codec: "mp3",
+		}
+		src := MediaSourceFromMediaFile(mf)
+		Expect(src.MediaStreams).To(HaveLen(1))
+		stream := src.MediaStreams[0]
+		Expect(stream.Type).To(Equal("Audio"))
+		Expect(stream.Channels).To(Equal(2))
+		Expect(stream.SampleRate).To(Equal(44100))
+		Expect(stream.BitRate).To(Equal(320_000))
+		Expect(stream.Codec).To(Equal("mp3"))
+		Expect(stream.ChannelLayout).To(Equal("stereo"))
+	})
+
 	It("serializes all Finamp-required MediaSourceInfo bools and arrays, never as null", func() {
 		mf := model.MediaFile{ID: "s1", Size: 5242880, Suffix: "mp3", BitRate: 320, Duration: 100}
 		src := MediaSourceFromMediaFile(mf)
@@ -56,9 +72,22 @@ var _ = Describe("mappers", func() {
 		Expect(j).To(ContainSubstring(`"SupportsProbing":true`))
 		Expect(j).To(ContainSubstring(`"IsInfiniteStream":false`))
 		Expect(j).To(ContainSubstring(`"RequiresOpening":false`))
-		Expect(j).To(ContainSubstring(`"MediaStreams":[]`))
 		Expect(j).To(ContainSubstring(`"MediaAttachments":[]`))
 		Expect(j).To(ContainSubstring(`"Formats":[]`))
+	})
+
+	It("serializes MediaStream's required non-nullable bools, never omitted", func() {
+		stream := MediaStream{Type: "Audio", Index: 0}
+		b, err := json.Marshal(stream)
+		Expect(err).ToNot(HaveOccurred())
+		j := string(b)
+		Expect(j).To(ContainSubstring(`"Type":"Audio"`))
+		Expect(j).To(ContainSubstring(`"IsDefault":false`))
+		Expect(j).To(ContainSubstring(`"IsInterlaced":false`))
+		Expect(j).To(ContainSubstring(`"IsForced":false`))
+		Expect(j).To(ContainSubstring(`"IsExternal":false`))
+		Expect(j).To(ContainSubstring(`"IsTextSubtitleStream":false`))
+		Expect(j).To(ContainSubstring(`"SupportsExternalStream":false`))
 	})
 
 	It("omits IndexNumber and ParentIndexNumber when track/disc numbers are untagged", func() {

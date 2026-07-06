@@ -8,6 +8,22 @@ import (
 
 func TicksFromSeconds(sec float32) int64 { return int64(float64(sec) * 1e7) }
 
+// channelLayout maps a channel count to the label Jellyfin clients expect on a MediaStream.
+func channelLayout(n int) string {
+	switch n {
+	case 1:
+		return "mono"
+	case 2:
+		return "stereo"
+	case 6:
+		return "5.1"
+	case 8:
+		return "7.1"
+	default:
+		return ""
+	}
+}
+
 // MediaSourceFromMediaFile builds the MediaSourceInfo describing direct playback of mf's
 // source file. Shared by SongToBaseItem and getPlaybackInfo so clients see the same Size and
 // Bitrate whether they read it from a browse response or from /PlaybackInfo -- Finamp's
@@ -27,9 +43,17 @@ func MediaSourceFromMediaFile(mf model.MediaFile) MediaSourceInfo {
 		SupportsTranscoding:  true,
 		IsRemote:             false,
 		SupportsProbing:      true,
-		MediaStreams:         []any{},
-		MediaAttachments:     []any{},
-		Formats:              []string{},
+		MediaStreams: []MediaStream{{
+			Type:          "Audio",
+			Index:         0,
+			Codec:         mf.Codec,
+			BitRate:       mf.BitRate * 1000, // Navidrome stores kbps; Jellyfin's BitRate is bps.
+			Channels:      mf.Channels,
+			SampleRate:    mf.SampleRate,
+			ChannelLayout: channelLayout(mf.Channels),
+		}},
+		MediaAttachments: []any{},
+		Formats:          []string{},
 	}
 }
 

@@ -179,38 +179,58 @@ type AuthenticationResult struct {
 	ServerId    string       `json:"ServerId"`
 }
 
+// MediaStream mirrors real Jellyfin's MediaStream object. Finamp's model declares several bools
+// as non-nullable, so they must always be emitted (no omitempty) even when false. Finamp's
+// MediaSourceInfo.transcodedSize also does MediaStreams.firstWhere((s) => s.type == 'Audio'), so
+// MediaSourceInfo must always include at least one Audio stream or that lookup throws.
+type MediaStream struct {
+	Codec                  string `json:"Codec,omitempty"`
+	Type                   string `json:"Type"`
+	Index                  int    `json:"Index"`
+	BitRate                int    `json:"BitRate,omitempty"`
+	Channels               int    `json:"Channels,omitempty"`
+	SampleRate             int    `json:"SampleRate,omitempty"`
+	ChannelLayout          string `json:"ChannelLayout,omitempty"`
+	IsInterlaced           bool   `json:"IsInterlaced"`
+	IsDefault              bool   `json:"IsDefault"`
+	IsForced               bool   `json:"IsForced"`
+	IsExternal             bool   `json:"IsExternal"`
+	IsTextSubtitleStream   bool   `json:"IsTextSubtitleStream"`
+	SupportsExternalStream bool   `json:"SupportsExternalStream"`
+}
+
 // MediaSourceInfo mirrors real Jellyfin's MediaSourceInfo object. Finamp's model declares several
 // of these bools and arrays as non-nullable, so a missing field deserializes as null and throws a
 // "type 'Null' is not a subtype of type 'bool'" cast error that aborts parsing of the whole item
 // list. They must always be emitted (no omitempty on bools) even when false/empty.
 type MediaSourceInfo struct {
-	Id                                  string   `json:"Id"`
-	Path                                string   `json:"Path,omitempty"`
-	Protocol                            string   `json:"Protocol"`
-	Container                           string   `json:"Container,omitempty"`
-	Size                                int64    `json:"Size,omitempty"`
-	Name                                string   `json:"Name,omitempty"`
-	IsRemote                            bool     `json:"IsRemote"`
-	RunTimeTicks                        int64    `json:"RunTimeTicks,omitempty"`
-	Bitrate                             int      `json:"Bitrate,omitempty"`
-	SupportsTranscoding                 bool     `json:"SupportsTranscoding"`
-	SupportsDirectStream                bool     `json:"SupportsDirectStream"`
-	SupportsDirectPlay                  bool     `json:"SupportsDirectPlay"`
-	Type                                string   `json:"Type"`
-	ReadAtNativeFramerate               bool     `json:"ReadAtNativeFramerate"`
-	IgnoreDts                           bool     `json:"IgnoreDts"`
-	IgnoreIndex                         bool     `json:"IgnoreIndex"`
-	GenPtsInput                         bool     `json:"GenPtsInput"`
-	IsInfiniteStream                    bool     `json:"IsInfiniteStream"`
-	UseMostCompatibleTranscodingProfile bool     `json:"UseMostCompatibleTranscodingProfile"`
-	RequiresOpening                     bool     `json:"RequiresOpening"`
-	RequiresClosing                     bool     `json:"RequiresClosing"`
-	RequiresLooping                     bool     `json:"RequiresLooping"`
-	SupportsProbing                     bool     `json:"SupportsProbing"`
-	HasSegments                         bool     `json:"HasSegments"`
-	MediaStreams                        []any    `json:"MediaStreams"`
-	MediaAttachments                    []any    `json:"MediaAttachments"`
-	Formats                             []string `json:"Formats"`
+	Id                                  string        `json:"Id"`
+	Path                                string        `json:"Path,omitempty"`
+	Protocol                            string        `json:"Protocol"`
+	Container                           string        `json:"Container,omitempty"`
+	Size                                int64         `json:"Size,omitempty"`
+	Name                                string        `json:"Name,omitempty"`
+	IsRemote                            bool          `json:"IsRemote"`
+	RunTimeTicks                        int64         `json:"RunTimeTicks,omitempty"`
+	Bitrate                             int           `json:"Bitrate,omitempty"`
+	SupportsTranscoding                 bool          `json:"SupportsTranscoding"`
+	SupportsDirectStream                bool          `json:"SupportsDirectStream"`
+	SupportsDirectPlay                  bool          `json:"SupportsDirectPlay"`
+	Type                                string        `json:"Type"`
+	ReadAtNativeFramerate               bool          `json:"ReadAtNativeFramerate"`
+	IgnoreDts                           bool          `json:"IgnoreDts"`
+	IgnoreIndex                         bool          `json:"IgnoreIndex"`
+	GenPtsInput                         bool          `json:"GenPtsInput"`
+	IsInfiniteStream                    bool          `json:"IsInfiniteStream"`
+	UseMostCompatibleTranscodingProfile bool          `json:"UseMostCompatibleTranscodingProfile"`
+	RequiresOpening                     bool          `json:"RequiresOpening"`
+	RequiresClosing                     bool          `json:"RequiresClosing"`
+	RequiresLooping                     bool          `json:"RequiresLooping"`
+	SupportsProbing                     bool          `json:"SupportsProbing"`
+	HasSegments                         bool          `json:"HasSegments"`
+	MediaStreams                        []MediaStream `json:"MediaStreams"`
+	MediaAttachments                    []any         `json:"MediaAttachments"`
+	Formats                             []string      `json:"Formats"`
 }
 
 type PlaybackInfoResponse struct {
