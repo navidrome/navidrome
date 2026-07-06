@@ -1,6 +1,13 @@
 import { vi } from 'vitest'
 import config from '../config'
+import { httpClient } from '../dataProvider'
 import subsonic from './index'
+
+vi.mock('../dataProvider', () => ({
+  httpClient: vi.fn((target) => Promise.resolve({ target })),
+  clientUniqueId: 'test-client-id',
+  clientUniqueIdHeader: 'x-test-client-id',
+}))
 
 describe('getCoverArtUrl', () => {
   beforeEach(() => {
@@ -119,6 +126,33 @@ describe('getCoverArtUrl', () => {
 
     expect(url).toContain('ar-test-123')
     expect(url).not.toContain('_=')
+  })
+})
+
+describe('getLyricsBySongId', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    const localStorageMock = {
+      getItem: vi.fn((key) => {
+        const values = {
+          username: 'testuser',
+          'subsonic-token': 'testtoken',
+          'subsonic-salt': 'testsalt',
+        }
+        return values[key] || null
+      }),
+    }
+    Object.defineProperty(window, 'localStorage', { value: localStorageMock })
+  })
+
+  it('requests enhanced structured lyrics for the song id', async () => {
+    await subsonic.getLyricsBySongId('song-123')
+
+    expect(httpClient).toHaveBeenCalledTimes(1)
+    const requestedUrl = httpClient.mock.calls[0][0]
+    expect(requestedUrl).toContain('/rest/getLyricsBySongId?')
+    expect(requestedUrl).toContain('id=song-123')
+    expect(requestedUrl).toContain('enhanced=true')
   })
 })
 

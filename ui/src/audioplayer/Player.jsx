@@ -34,6 +34,15 @@ import { keyMap } from '../hotkeys'
 import keyHandlers from './keyHandlers'
 import { calculateGain } from '../utils/calculateReplayGain'
 import { detectBrowserProfile, decisionService } from '../transcode'
+import LyricsPanel from './LyricsPanel'
+import LyricsSidebar from './LyricsSidebar'
+import MobileKaraokeLyricsPortal from './MobileKaraokeLyricsPortal'
+import { hasStructuredLyricContent } from './lyrics'
+import {
+  resolveLyricsSidebarState,
+  toggleLayerPreference,
+} from './lyricsSidebarState'
+import useEnhancedLyrics from './useEnhancedLyrics'
 
 const Player = () => {
   const theme = useCurrentTheme()
@@ -138,6 +147,48 @@ const Player = () => {
   const gainInfo = useSelector((state) => state.replayGain)
   const [context, setContext] = useState(null)
   const [gainNode, setGainNode] = useState(null)
+  const [lyricsVisiblePreference, setLyricsVisiblePreference] = useState(false)
+  const [translationPreference, setTranslationPreference] = useState(null)
+  const [pronunciationPreference, setPronunciationPreference] = useState(null)
+  const lyricsTrackId = playerState.current?.trackId || currentTrackId
+  const lyricsTrackIsRadio = playerState.current?.isRadio || false
+  const {
+    layers: lyricLayers,
+    loading: lyricsLoading,
+    error: lyricsError,
+  } = useEnhancedLyrics(lyricsTrackId, lyricsTrackIsRadio)
+  const hasMainLyric = hasStructuredLyricContent(lyricLayers.main)
+  const hasTranslationLyric = hasStructuredLyricContent(lyricLayers.translation)
+  const hasPronunciationLyric = hasStructuredLyricContent(
+    lyricLayers.pronunciation,
+  )
+  const { lyricsVisible, showTranslation, showPronunciation } =
+    resolveLyricsSidebarState({
+      lyricsVisiblePreference,
+      translationPreference,
+      pronunciationPreference,
+      hasTranslationLyric,
+      hasPronunciationLyric,
+    })
+  const lyricsToggleDisabled =
+    (lyricsLoading || !hasMainLyric) && !lyricsVisiblePreference
+  const useInlineMobileLyrics = lyricsVisible && hasMainLyric && !isDesktop
+
+  const toggleLyrics = useCallback(() => {
+    setLyricsVisiblePreference((current) => (current ? false : hasMainLyric))
+  }, [hasMainLyric])
+
+  const toggleTranslation = useCallback(() => {
+    setTranslationPreference((current) =>
+      toggleLayerPreference(current, hasTranslationLyric),
+    )
+  }, [hasTranslationLyric])
+
+  const togglePronunciation = useCallback(() => {
+    setPronunciationPreference((current) =>
+      toggleLayerPreference(current, hasPronunciationLyric),
+    )
+  }, [hasPronunciationLyric])
 
   useEffect(() => {
     if (
@@ -213,7 +264,7 @@ const Player = () => {
       clearPriorAudioLists: false,
       showDestroy: true,
       showDownload: false,
-      showLyric: true,
+      showLyric: false,
       showReload: false,
       toggleMode: !isDesktop,
       glassBg: false,
@@ -251,12 +302,27 @@ const Player = () => {
         (playerState.clear || playerState.playIndex === 0),
       clearPriorAudioLists: playerState.clear,
       extendsContent: (
-        <PlayerToolbar id={current.trackId} isRadio={current.isRadio} />
+        <PlayerToolbar
+          id={current.trackId}
+          isRadio={current.isRadio}
+          onToggleLyrics={toggleLyrics}
+          lyricsActive={lyricsVisible}
+          lyricsDisabled={lyricsToggleDisabled}
+          lyricsLoading={lyricsLoading}
+        />
       ),
       defaultVolume: isMobilePlayer ? 1 : playerState.volume,
       showMediaSession: !current.isRadio,
     }
-  }, [playerState, defaultOptions, isMobilePlayer])
+  }, [
+    playerState,
+    defaultOptions,
+    isMobilePlayer,
+    toggleLyrics,
+    lyricsVisible,
+    lyricsToggleDisabled,
+    lyricsLoading,
+  ])
 
   const onAudioListsChange = useCallback(
     (_, audioLists, audioInfo) => dispatch(syncQueue(audioInfo, audioLists)),
@@ -365,11 +431,15 @@ const Player = () => {
     [dispatch, dataProvider, currentTrackId],
   )
 
-  const onCoverClick = useCallback((mode, audioLists, audioInfo) => {
-    if (mode === 'full' && audioInfo?.song?.albumId) {
-      window.location.href = `#/album/${audioInfo.song.albumId}/show`
-    }
-  }, [])
+  const onCoverClick = useCallback(
+    (mode, audioLists, audioInfo) => {
+      if (useInlineMobileLyrics) return
+      if (mode === 'full' && audioInfo?.song?.albumId) {
+        window.location.href = `#/album/${audioInfo.song.albumId}/show`
+      }
+    },
+    [useInlineMobileLyrics],
+  )
 
   const onAudioError = useCallback(
     (error, currentPlayId, audioLists, audioInfo) => {
@@ -471,6 +541,37 @@ const Player = () => {
         onBeforeDestroy={onBeforeDestroy}
         getAudioInstance={setAudioInstance}
       />
+      {isDesktop && (
+        <LyricsSidebar
+          visible={lyricsVisible}
+          mainLyric={lyricLayers.main}
+          translationLyric={lyricLayers.translation}
+          pronunciationLyric={lyricLayers.pronunciation}
+          showTranslation={showTranslation}
+          showPronunciation={showPronunciation}
+          translationEnabled={hasTranslationLyric}
+          pronunciationEnabled={hasPronunciationLyric}
+          onToggleTranslation={toggleTranslation}
+          onTogglePronunciation={togglePronunciation}
+          audioInstance={audioInstance}
+          loading={lyricsLoading}
+          error={lyricsError}
+        />
+      )}
+      <MobileKaraokeLyricsPortal active={useInlineMobileLyrics}>
+        <LyricsPanel
+          visible={useInlineMobileLyrics}
+          mainLyric={lyricLayers.main}
+          translationLyric={lyricLayers.translation}
+          pronunciationLyric={lyricLayers.pronunciation}
+          showTranslation={showTranslation}
+          showPronunciation={showPronunciation}
+          audioInstance={audioInstance}
+          loading={lyricsLoading}
+          error={lyricsError}
+          inline
+        />
+      </MobileKaraokeLyricsPortal>
       <GlobalHotKeys handlers={handlers} keyMap={keyMap} allowChanges />
     </ThemeProvider>
   )
