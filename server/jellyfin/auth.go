@@ -30,6 +30,11 @@ func (api *Router) authenticateByName(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
+	// Best-effort, like the web UI's validateLogin: without it, Jellyfin-only users show a
+	// never/stale "Last Login" in the admin UI.
+	if err := api.ds.User(ctx).UpdateLastLoginAt(usr.ID); err != nil {
+		log.Error(ctx, "Jellyfin API: could not update last login date", "username", body.Username, err)
+	}
 
 	token, err := auth.CreateToken(usr)
 	if err != nil {

@@ -53,6 +53,19 @@ var _ = Describe("AuthenticateByName", func() {
 		Expect(res.SessionInfo).To(BeNil())
 	})
 
+	It("records the login time, like the web UI login does", func() {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("POST", "/Users/AuthenticateByName",
+			strings.NewReader(`{"Username":"alice","Pw":"secret"}`))
+		api.authenticateByName(w, r)
+
+		Expect(w.Code).To(Equal(http.StatusOK))
+		ur := ds.User(context.Background()).(*tests.MockedUserRepo)
+		usr, err := ur.FindByUsername("alice")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(usr.LastLoginAt).ToNot(BeNil())
+	})
+
 	It("reflects an administrator in the User.Policy", func() {
 		ur := ds.User(context.Background()).(*tests.MockedUserRepo)
 		Expect(ur.Put(&model.User{ID: "admin1", UserName: "root", NewPassword: "secret", IsAdmin: true})).To(Succeed())
