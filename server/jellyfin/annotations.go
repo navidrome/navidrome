@@ -42,6 +42,26 @@ func (api *Router) resolveAnnotated(w http.ResponseWriter, r *http.Request, id s
 	return nil, false
 }
 
+// getUserItemData answers GET /UserItems/{itemId}/UserData with the caller's play/favorite/rating
+// state for a single item. Jellify fetches this per item to render played and favourite indicators.
+// It reuses resolveItemByID (getItem's resolver), which loads annotations for the context user and
+// enforces the same library-access gate, so the UserData already computed for the BaseItemDto is
+// returned directly.
+func (api *Router) getUserItemData(w http.ResponseWriter, r *http.Request) {
+	id := dto.DecodeID(chi.URLParam(r, "itemId"))
+	item, ok := api.resolveItemByID(r.Context(), id)
+	if !ok {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+	data := item.UserData
+	if data == nil {
+		// Items without annotations (e.g. playlists) still return a valid, empty UserData object.
+		data = dto.UserData(model.Annotations{}, id)
+	}
+	api.ok(w, r, data)
+}
+
 func (api *Router) setFavorite(w http.ResponseWriter, r *http.Request, starred bool) {
 	id := dto.DecodeID(chi.URLParam(r, "itemId"))
 	repo, ok := api.resolveAnnotated(w, r, id)

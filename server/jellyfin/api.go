@@ -79,6 +79,11 @@ func (api *Router) routes() http.Handler {
 		r.Post("/Users/{userId}/Items/{itemId}/Rating", api.setRating)
 		r.Delete("/Users/{userId}/Items/{itemId}/Rating", api.removeRating)
 
+		// Per-item play/favorite/rating state. Jellify fetches the /UserItems form per item to
+		// render played/favourite indicators; the /Users/{userId}/Items form is the legacy spelling.
+		r.Get("/UserItems/{itemId}/UserData", api.getUserItemData)
+		r.Get("/Users/{userId}/Items/{itemId}/UserData", api.getUserItemData)
+
 		r.Get("/Artists", api.getArtists)
 		r.Get("/Artists/AlbumArtists", api.getAlbumArtists)
 		r.Get("/Genres", api.getGenres)

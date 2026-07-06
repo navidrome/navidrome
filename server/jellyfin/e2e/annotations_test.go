@@ -59,6 +59,29 @@ var _ = Describe("Annotations", func() {
 		})
 	})
 
+	Describe("GET /UserItems/{id}/UserData", func() {
+		It("returns per-item favorite/played state (Jellify's played/favourite indicators)", func() {
+			id := songID("So What")
+			post("/Users/admin-1/FavoriteItems/"+enc(id), "")
+
+			var data dto.UserItemDataDto
+			parseInto(get("/UserItems/"+enc(id)+"/UserData?userId=admin-1"), &data)
+			Expect(data.IsFavorite).To(BeTrue())
+			Expect(data.ItemId).To(Equal(enc(id)))
+		})
+
+		It("returns a valid (unfavorited) UserData for an item with no annotations", func() {
+			var data dto.UserItemDataDto
+			parseInto(get("/UserItems/"+enc(albumID("Kind of Blue"))+"/UserData"), &data)
+			Expect(data.IsFavorite).To(BeFalse())
+			Expect(data.ItemId).To(Equal(enc(albumID("Kind of Blue"))))
+		})
+
+		It("returns 404 for an unknown item", func() {
+			Expect(get("/UserItems/" + enc("nope") + "/UserData").Code).To(Equal(http.StatusNotFound))
+		})
+	})
+
 	Describe("ratings", func() {
 		It("sets and clears an album rating (Jellyfin 0-10 scale)", func() {
 			id := albumID("IV")
