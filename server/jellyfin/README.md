@@ -208,11 +208,14 @@ make test PKG=./server/jellyfin/...
   Access control for artists is enforced by scoping the `Artists`/`Items?IncludeItemTypes=MusicArtist`
   *list* to the user's libraries, plus the persistence layer's own defense-in-depth; a client
   that already has an artist id from elsewhere is not re-checked against library membership.
-- **Playlists never match `Filters=IsFavorite`.** `GET Items?IncludeItemTypes=Playlist` (alone
-  or mixed with other types, e.g. Finamp's favorites screen sending
-  `IncludeItemTypes=Audio,MusicAlbum,Playlist`) is supported, but `model.Playlist` has no
-  starred/annotation concept, so a favorites query always returns zero playlists rather than
-  erroring.
+- **Playlists can't be favourited (follow-up).** `GET Items?IncludeItemTypes=Playlist` (alone or
+  mixed with other types, e.g. Finamp's favorites screen sending
+  `IncludeItemTypes=Audio,MusicAlbum,Playlist`) is supported, but Navidrome's `model.Playlist` has
+  no starred/annotation concept — only a playlist's *tracks* can be starred, not the playlist
+  itself. So `PlaylistToBaseItem` sets no `UserData`, and a `Filters=IsFavorite`/`isFavorite=true`
+  query returns zero playlists rather than erroring (`listPlaylists` short-circuits). Supporting
+  favourited playlists would require adding playlist favorite state to Navidrome's model (a core
+  change), then surfacing it as `UserData.IsFavorite` and honoring the favorites filter here.
 - **MD5-hash ids from old migrated libraries.** The hex id codec assumes ids are opaque; a raw
   32-char MD5 id is itself valid hex and so must be encoded/decoded symmetrically like any other.
   This is handled, but is the most fragile id case — see the note in `dto/ids.go`.
@@ -226,3 +229,8 @@ make test PKG=./server/jellyfin/...
   real blurhash in the `core/artwork` pipeline (where the image is already decoded), cache it
   keyed like the artwork, and have the mappers read it — keeping the synthetic value as a fallback
   for art that hasn't been rendered yet.
+- **The WebSocket only keep-alives; it pushes no events (follow-up).** `GET socket` sends a
+  `ForceKeepAlive` and answers `KeepAlive` pings so real-time clients (Finamp) settle into a
+  working session instead of 404-loop-reconnecting, but it never pushes anything. A follow-up
+  would broadcast real session/playstate and library-change events over it (via `server/events`),
+  mirroring Jellyfin's session messages.
