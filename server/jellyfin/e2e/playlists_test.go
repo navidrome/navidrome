@@ -104,6 +104,28 @@ var _ = Describe("Playlists", func() {
 		})
 	})
 
+	// Jellify resolves the "playlists library" via a ManualPlaylistsFolder query, then lists
+	// playlists with ParentId set to that folder's id (no IncludeItemTypes). Without a folder item
+	// whose CollectionType is "playlists", its query resolves undefined and React Query retries in a
+	// backoff loop that stalls the home screen.
+	Describe("playlists library folder (ManualPlaylistsFolder)", func() {
+		It("returns a synthetic playlists folder with CollectionType=playlists", func() {
+			q := queryResult(get("/Items?includeItemTypes=ManualPlaylistsFolder&excludeItemTypes=CollectionFolder"))
+			Expect(q.Items).To(HaveLen(1))
+			Expect(q.Items[0].CollectionType).To(Equal("playlists"))
+			Expect(q.Items[0].Id).To(Equal(enc("playlists")))
+		})
+
+		It("lists the user's playlists when browsing the folder by ParentId (no IncludeItemTypes)", func() {
+			createPlaylist("My Mix", nil)
+			q := queryResult(get("/Items?parentId=" + enc("playlists")))
+			Expect(names(q.Items)).To(ContainElement("My Mix"))
+			Expect(q.Items[0].Type).To(Equal("Playlist"))
+			// Jellify keeps only playlists whose Path contains "data".
+			Expect(q.Items[0].Path).To(ContainSubstring("data"))
+		})
+	})
+
 	Describe("cover art", func() {
 		jpeg := []byte{0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 'J', 'F', 'I', 'F', 0x00}
 

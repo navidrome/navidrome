@@ -205,9 +205,13 @@ func GenreToBaseItem(g model.Genre) BaseItemDto {
 // left nil rather than synthesized.
 func PlaylistToBaseItem(p model.Playlist) BaseItemDto {
 	return BaseItemDto{
-		Name:              p.Name,
-		Id:                EncodeID(p.ID),
-		Type:              "Playlist",
+		Name: p.Name,
+		Id:   EncodeID(p.ID),
+		Type: "Playlist",
+		// A synthetic path under "data": Jellify only surfaces playlists whose Path contains "data"
+		// (real Jellyfin stores them under its data folder), so without this its Playlists tab
+		// filters them all out.
+		Path:              "/data/playlists/" + p.ID,
 		IsFolder:          true,
 		MediaType:         "Audio",
 		ChildCount:        new(p.SongCount),

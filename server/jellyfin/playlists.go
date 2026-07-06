@@ -16,6 +16,26 @@ import (
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
+// playlistsFolderID is the reserved id of the synthetic "playlists library" folder. Jellyfin
+// clients (Jellify) first resolve this folder via an IncludeItemTypes=ManualPlaylistsFolder query,
+// then list playlists with ParentId set to its id. Navidrome has no such container, so it's
+// modelled here. The literal can't collide with a real album/artist/song id (those are hashes).
+const playlistsFolderID = "playlists"
+
+// playlistsFolder is the single item returned for a ManualPlaylistsFolder query. Its CollectionType
+// must be "playlists" — that's how the client picks it out. Without it, the client's playlist-library
+// query resolves to undefined and (because React Query rejects undefined results) retries in a
+// backoff loop that stalls the home screen.
+func playlistsFolder() dto.BaseItemDto {
+	return dto.BaseItemDto{
+		Id:             dto.EncodeID(playlistsFolderID),
+		Name:           "Playlists",
+		Type:           "ManualPlaylistsFolder",
+		CollectionType: "playlists",
+		IsFolder:       true,
+	}
+}
+
 // playlistError maps core/playlists write errors to an HTTP status: ownership -> 403, missing or
 // invisible -> 404 (never revealing another user's private playlist), anything else -> 500.
 // Shared by the playlist mutation handlers.

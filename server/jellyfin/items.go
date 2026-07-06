@@ -61,6 +61,11 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (dto.QueryRe
 	offset := p.IntOr("startindex", 0)
 	limit := p.IntOr("limit", 0)
 	rawTypes := p.StringOr("includeitemtypes", "")
+	// A ManualPlaylistsFolder query asks for the "playlists library" container, not real items.
+	// Answer it with the synthetic folder so the client can then browse into it (see below).
+	if strings.Contains(rawTypes, "ManualPlaylistsFolder") {
+		return result([]dto.BaseItemDto{playlistsFolder()}, 1, 0), nil
+	}
 	types := parseTypes(rawTypes)
 	// An artist's page filters by artist, not by ParentId: Finamp sends ParentId=<libraryId> for
 	// scoping plus AlbumArtistIds/ArtistIds/contributingArtistIds for the artist itself. Without
@@ -80,8 +85,14 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (dto.QueryRe
 	// the child type from the parent. Without this we'd fall back to parseTypes' MusicAlbum default
 	// and list every album instead. An artist parent keeps that default (browse its albums).
 	if rawTypes == "" && parentId != "" && !isLibraryParent {
-		if _, err := api.ds.Album(ctx).Get(parentId); err == nil {
-			types = []string{"Audio"}
+		switch {
+		case parentId == playlistsFolderID:
+			// Browsing into the synthetic playlists folder lists the user's playlists.
+			types = []string{"Playlist"}
+		default:
+			if _, err := api.ds.Album(ctx).Get(parentId); err == nil {
+				types = []string{"Audio"}
+			}
 		}
 	}
 	entityParent := parentId
