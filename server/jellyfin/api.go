@@ -86,6 +86,11 @@ func (api *Router) routes() http.Handler {
 		r.Get("/Playlists/{playlistId}/Users", api.getPlaylistUsers)
 		r.Get("/Playlists/{playlistId}/Users/{userId}", api.getPlaylistUser)
 
+		// Cover upload/delete: only playlists are writable through this API (see
+		// postItemImage); the GET routes above stay public and unauthenticated.
+		r.Post("/Items/{itemId}/Images/{type}", api.postItemImage)
+		r.Delete("/Items/{itemId}/Images/{type}", api.deleteItemImage)
+
 		r.Get("/Audio/{itemId}/stream", api.streamAudio)
 		r.Get("/Audio/{itemId}/stream.{container}", api.streamAudio)
 		r.Get("/Audio/{itemId}/universal", api.streamAudio)

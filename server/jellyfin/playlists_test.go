@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -39,6 +40,14 @@ type fakePlaylists struct {
 	removePlaylistID string
 	removeIds        []string
 	removeErr        error
+
+	setImagePlaylistID string
+	setImageBytes      []byte
+	setImageExt        string
+	setImageErr        error
+
+	removeImagePlaylistID string
+	removeImageErr        error
 }
 
 func (f *fakePlaylists) Create(_ context.Context, _ string, name string, ids []string) (string, error) {
@@ -80,6 +89,20 @@ func (f *fakePlaylists) RemoveTracks(_ context.Context, playlistID string, track
 	f.removePlaylistID = playlistID
 	f.removeIds = trackIds
 	return f.removeErr
+}
+
+func (f *fakePlaylists) SetImage(_ context.Context, playlistID string, reader io.Reader, ext string) error {
+	f.setImagePlaylistID = playlistID
+	f.setImageExt = ext
+	if reader != nil {
+		f.setImageBytes, _ = io.ReadAll(reader)
+	}
+	return f.setImageErr
+}
+
+func (f *fakePlaylists) RemoveImage(_ context.Context, playlistID string) error {
+	f.removeImagePlaylistID = playlistID
+	return f.removeImageErr
 }
 
 var _ = Describe("Playlists", func() {
