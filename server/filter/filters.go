@@ -61,6 +61,20 @@ func AlbumsByArtistID(artistId string) Options {
 	})
 }
 
+// AlbumsByContributingArtistID matches albums where the artist appears as a track (performing)
+// artist but is NOT the album artist — Jellyfin's ContributingArtistIds / the "Featured On"
+// section. It is the disjoint complement of AlbumsByArtistID's album-artist match, so an artist's
+// own discography never leaks into their "appears on" list.
+func AlbumsByContributingArtistID(artistId string) Options {
+	return addDefaultFilters(Options{
+		Sort: "max_year",
+		Filters: And{
+			persistence.Exists("json_tree(participants, '$.artist')", Eq{"value": artistId}),
+			persistence.NotExists("json_tree(participants, '$.albumartist')", Eq{"value": artistId}),
+		},
+	})
+}
+
 func AlbumsByYear(fromYear, toYear int) Options {
 	orderOption := ""
 	if fromYear > toYear {

@@ -65,11 +65,14 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (dto.QueryRe
 	// An artist's page filters by artist, not by ParentId: Finamp sends ParentId=<libraryId> for
 	// scoping plus AlbumArtistIds/ArtistIds/contributingArtistIds for the artist itself. Without
 	// this, an artist's albums/tracks come back unfiltered (all artists).
-	artistId := firstDecodedID(firstNonEmpty(
-		p.StringOr("albumartistids", ""),
-		p.StringOr("artistids", ""),
-		p.StringOr("contributingartistids", ""),
-	))
+	//
+	// albumArtistIds/artistIds select the artist's own discography; contributingArtistIds alone
+	// selects albums the artist merely appears on (Jellyfin's "Featured On"), which must exclude
+	// that discography — otherwise their own albums show up in both sections.
+	albumArtistScope := firstNonEmpty(p.StringOr("albumartistids", ""), p.StringOr("artistids", ""))
+	contributingScope := p.StringOr("contributingartistids", "")
+	artistId := firstDecodedID(firstNonEmpty(albumArtistScope, contributingScope))
+	contributingOnly := albumArtistScope == "" && contributingScope != ""
 
 	scopeIDs, isLibraryParent := resolveLibraryScope(ctx, parentId)
 	// When no item type is requested and ParentId is an album, browse into that album's tracks:
@@ -92,7 +95,7 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (dto.QueryRe
 	if len(types) == 1 {
 		opts := model.QueryOptions{Offset: offset, Max: limit}
 		applySort(&opts, types[0], sortBy, sortOrder)
-		return api.queryItemsOfType(ctx, types[0], opts, entityParent, artistId, scopeIDs, search, favOnly)
+		return api.queryItemsOfType(ctx, types[0], opts, entityParent, artistId, contributingOnly, scopeIDs, search, favOnly)
 	}
 
 	var items []dto.BaseItemDto
@@ -100,7 +103,7 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (dto.QueryRe
 	for _, itemType := range types {
 		var opts model.QueryOptions
 		applySort(&opts, itemType, sortBy, sortOrder)
-		res, err := api.queryItemsOfType(ctx, itemType, opts, entityParent, artistId, scopeIDs, search, favOnly)
+		res, err := api.queryItemsOfType(ctx, itemType, opts, entityParent, artistId, contributingOnly, scopeIDs, search, favOnly)
 		if err != nil {
 			return dto.QueryResult{}, err
 		}
@@ -110,7 +113,7 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (dto.QueryRe
 	return result(paginate(items, offset, limit), total, offset), nil
 }
 
-func (api *Router) queryItemsOfType(ctx context.Context, itemType string, opts model.QueryOptions, entityParent, artistId string, scopeIDs []int, search string, favOnly bool) (dto.QueryResult, error) {
+func (api *Router) queryItemsOfType(ctx context.Context, itemType string, opts model.QueryOptions, entityParent, artistId string, contributingOnly bool, scopeIDs []int, search string, favOnly bool) (dto.QueryResult, error) {
 	switch itemType {
 	case "Audio":
 		return api.listSongs(ctx, opts, entityParent, artistId, scopeIDs, search, favOnly)
@@ -122,7 +125,7 @@ func (api *Router) queryItemsOfType(ctx context.Context, itemType string, opts m
 	case "Playlist":
 		return api.listPlaylists(ctx, opts, favOnly)
 	default: // MusicAlbum
-		return api.listAlbums(ctx, opts, entityParent, artistId, scopeIDs, search, favOnly)
+		return api.listAlbums(ctx, opts, entityParent, artistId, contributingOnly, scopeIDs, search, favOnly)
 	}
 }
 
@@ -180,14 +183,18 @@ func paginate(items []dto.BaseItemDto, offset, limit int) []dto.BaseItemDto {
 	return items
 }
 
-func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, parentId, artistId string, scopeIDs []int, search string, fav bool) (dto.QueryResult, error) {
+func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, parentId, artistId string, contributingOnly bool, scopeIDs []int, search string, fav bool) (dto.QueryResult, error) {
 	repo := api.ds.Album(ctx)
 	filters := squirrel.And{}
 	// For albums, both ParentId (browse into an artist) and AlbumArtistIds/ArtistIds mean "this
-	// artist's albums".
-	if scope := firstNonEmpty(artistId, parentId); scope != "" {
-		filters = append(filters, filter.AlbumsByArtistID(scope).Filters)
-	} else {
+	// artist's albums"; contributingArtistIds instead means "albums this artist only appears on"
+	// (Featured On), which excludes their own discography.
+	switch {
+	case contributingOnly && artistId != "":
+		filters = append(filters, filter.AlbumsByContributingArtistID(artistId).Filters)
+	case firstNonEmpty(artistId, parentId) != "":
+		filters = append(filters, filter.AlbumsByArtistID(firstNonEmpty(artistId, parentId)).Filters)
+	default:
 		filters = append(filters, notMissing)
 	}
 	if fav {

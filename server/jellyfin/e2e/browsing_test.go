@@ -117,6 +117,19 @@ var _ = Describe("Browsing", func() {
 			q := queryResult(get("/Items?IncludeItemTypes=Audio&Recursive=true&ArtistIds=" + enc(artistID("Miles Davis"))))
 			Expect(names(q.Items)).To(ConsistOf("So What"))
 		})
+
+		// contributingArtistIds is Jellify's "Featured On" section: albums the artist only appears
+		// on, which must exclude their own discography (albums where they are the album artist).
+		It("lists Featured On albums (contributingArtistIds) a performer only guests on", func() {
+			q := queryResult(get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true&contributingArtistIds=" + enc(artistID("Featured Guest"))))
+			Expect(names(q.Items)).To(ConsistOf("Singles"))
+		})
+
+		It("excludes an album artist's own discography from Featured On (contributingArtistIds)", func() {
+			q := queryResult(get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true&contributingArtistIds=" + enc(artistID("The Beatles"))))
+			Expect(names(q.Items)).ToNot(ContainElement("Abbey Road"))
+			Expect(names(q.Items)).ToNot(ContainElement("Help!"))
+		})
 	})
 
 	// Jellify (and the official Jellyfin TypeScript SDK) send query params in camelCase
