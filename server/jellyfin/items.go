@@ -51,7 +51,10 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (dto.QueryRe
 	}
 	parentId := dto.DecodeID(p.StringOr("ParentId", ""))
 	search := p.StringOr("SearchTerm", "")
-	favOnly := strings.Contains(p.StringOr("Filters", ""), "IsFavorite")
+	// Clients express "favorites only" two ways: Jellyfin's Filters=IsFavorite, and the standalone
+	// isFavorite=true query param (Finamp's artist "Favourite tracks" widget uses the latter).
+	favOnly := strings.Contains(p.StringOr("Filters", ""), "IsFavorite") ||
+		p.BoolOr("IsFavorite", false) || p.BoolOr("isFavorite", false)
 	sortBy := p.StringOr("SortBy", "")
 	sortOrder := p.StringOr("SortOrder", "")
 	offset := p.IntOr("StartIndex", 0)

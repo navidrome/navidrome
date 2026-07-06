@@ -46,6 +46,14 @@ var _ = Describe("Annotations", func() {
 			Expect(q.Items[0].Name).To(Equal("Abbey Road"))
 		})
 
+		It("filters to favorites via the isFavorite query param (Finamp's artist widget form)", func() {
+			// Finamp's "Favourite tracks" widget sends isFavorite=true as a query param (not
+			// Filters=IsFavorite), combined with ArtistIds.
+			post("/Users/admin-1/FavoriteItems/"+enc(songID("Help!")), "")
+			q := queryResult(get("/Items?IncludeItemTypes=Audio&Recursive=true&ArtistIds=" + enc(artistID("The Beatles")) + "&isFavorite=true"))
+			Expect(names(q.Items)).To(ConsistOf("Help!"))
+		})
+
 		It("returns 404 when favoriting an unknown item", func() {
 			Expect(post("/Users/admin-1/FavoriteItems/"+enc("nope"), "").Code).To(Equal(http.StatusNotFound))
 		})
