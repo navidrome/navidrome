@@ -79,9 +79,16 @@ var _ = Describe("Browsing", func() {
 		It("browses an album's tracks in track order by default", func() {
 			q := queryResult(get("/Items?IncludeItemTypes=Audio&ParentId=" + enc(albumID("Abbey Road"))))
 			Expect(q.TotalRecordCount).To(Equal(2))
-			Expect(names(q.Items)).To(Equal([]string{"Come Together", "Something"}))
+			// Track order (Something=1, Come Together=2) differs from alphabetical title order,
+			// proving the sort is by track number, not name.
+			Expect(names(q.Items)).To(Equal([]string{"Something", "Come Together"}))
 			Expect(*q.Items[0].IndexNumber).To(Equal(1))
 			Expect(*q.Items[1].IndexNumber).To(Equal(2))
+		})
+
+		It("respects Finamp's explicit ParentIndexNumber/IndexNumber SortBy on an album", func() {
+			q := queryResult(get("/Items?IncludeItemTypes=Audio&ParentId=" + enc(albumID("Abbey Road")) + "&SortBy=ParentIndexNumber,IndexNumber,SortName"))
+			Expect(names(q.Items)).To(Equal([]string{"Something", "Come Together"}))
 		})
 	})
 

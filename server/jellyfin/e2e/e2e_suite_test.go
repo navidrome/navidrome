@@ -11,7 +11,7 @@
 //
 // # Seeded library (see buildTestFS)
 //
-//	Rock/The Beatles/Abbey Road/  01 Come Together (1969), 02 Something (1969)
+//	Rock/The Beatles/Abbey Road/  01 Something (1969), 02 Come Together (1969)
 //	Rock/The Beatles/Help!/       01 Help! (1965)
 //	Rock/Led Zeppelin/IV/         01 Stairway To Heaven (1971)
 //	Jazz/Miles Davis/Kind of Blue/01 So What (1959)
@@ -120,8 +120,10 @@ func buildTestFS() storagetest.FakeFS {
 	singles := template(_t{"albumartist": "Solo Artist", "artist": "Solo Artist", "album": "Singles", "year": 2020, "genre": "Pop"})
 
 	return createFS(fstest.MapFS{
-		"Rock/The Beatles/Abbey Road/01 - Come Together.mp3": abbeyRoad(track(1, "Come Together")),
-		"Rock/The Beatles/Abbey Road/02 - Something.mp3":     abbeyRoad(track(2, "Something")),
+		// Track numbers are deliberately reversed vs. alphabetical title order (Something=1,
+		// Come Together=2) so tests can tell track-order sorting apart from title sorting.
+		"Rock/The Beatles/Abbey Road/01 - Something.mp3":     abbeyRoad(track(1, "Something")),
+		"Rock/The Beatles/Abbey Road/02 - Come Together.mp3": abbeyRoad(track(2, "Come Together")),
 		"Rock/The Beatles/Help!/01 - Help.mp3":               help(track(1, "Help!")),
 		"Rock/Led Zeppelin/IV/01 - Stairway To Heaven.mp3":   ledZepIV(track(1, "Stairway To Heaven")),
 		"Jazz/Miles Davis/Kind of Blue/01 - So What.mp3":     kindOfBlue(track(1, "So What")),

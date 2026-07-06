@@ -410,14 +410,19 @@ func applySort(opts *model.QueryOptions, itemType, sortBy, order string) {
 var sortColumnsByType = map[string]map[string]string{
 	"Audio": {
 		"sortname": "title", "name": "title",
-		"album":           "album",
-		"artist":          "artist",
-		"albumartist":     "album_artist",
-		"datecreated":     "recently_added",
-		"playcount":       "play_count",
-		"dateplayed":      "play_date",
-		"communityrating": "rating",
-		"random":          "random",
+		"album": "album",
+		// Finamp's album view sorts by ParentIndexNumber,IndexNumber (disc, track). Navidrome's
+		// "album" sort key is order_album_name, album_id, disc_number, track_number, ..., which is
+		// exactly disc+track order within an album, so map both here.
+		"indexnumber":       "album",
+		"parentindexnumber": "album",
+		"artist":            "artist",
+		"albumartist":       "album_artist",
+		"datecreated":       "recently_added",
+		"playcount":         "play_count",
+		"dateplayed":        "play_date",
+		"communityrating":   "rating",
+		"random":            "random",
 	},
 	"MusicArtist": {
 		"sortname": "name", "name": "name",

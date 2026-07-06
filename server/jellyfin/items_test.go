@@ -288,10 +288,20 @@ var _ = Describe("Items", func() {
 				mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
 				mfRepo.SetData(model.MediaFiles{{ID: "s1", Title: "Song"}})
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio&SortBy=ParentIndexNumber,IndexNumber,SortName", nil).WithContext(ctxUser())
+				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio&SortBy=Unknown1,Unknown2,SortName", nil).WithContext(ctxUser())
 				api.getItems(w, r)
 				Expect(w.Code).To(Equal(http.StatusOK))
 				Expect(mfRepo.Options.Sort).To(Equal("title"))
+			})
+
+			It("maps Finamp's album view SortBy (ParentIndexNumber,IndexNumber) to disc+track order", func() {
+				mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
+				mfRepo.SetData(model.MediaFiles{{ID: "s1", Title: "Song"}})
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio&SortBy=ParentIndexNumber,IndexNumber,SortName", nil).WithContext(ctxUser())
+				api.getItems(w, r)
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(mfRepo.Options.Sort).To(Equal("album"))
 			})
 
 			It("leaves Sort at the repo default when no SortBy key is recognized", func() {
