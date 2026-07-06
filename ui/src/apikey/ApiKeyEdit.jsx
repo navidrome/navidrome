@@ -49,7 +49,7 @@ const ApiKeyEdit = (props) => {
         })
         refresh()
       } catch (error) {
-        if (error.body.errors) {
+        if (error?.body?.errors) {
           return error.body.errors
         }
       }

@@ -59,21 +59,15 @@ const MaskedKeyField = ({ record, isSimpleMode }) => {
   }
 
   const handleCopy = (e) => {
-    if (isSimpleMode) {
-      e.preventDefault()
-    } else {
-      e.stopPropagation()
-    }
+    e.stopPropagation()
+    e.preventDefault()
     navigator.clipboard.writeText(record.key)
     notify('API key copied to clipboard', 'info')
   }
 
   const toggleVisibility = (e) => {
-    if (isSimpleMode) {
-      e.preventDefault()
-    } else {
-      e.stopPropagation()
-    }
+    e.stopPropagation()
+    e.preventDefault()
     setVisible(!visible)
   }
 
