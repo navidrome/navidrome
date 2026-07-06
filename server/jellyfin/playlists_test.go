@@ -8,8 +8,10 @@ import (
 	"net/http/httptest"
 	"strings"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -157,9 +159,9 @@ var _ = Describe("Playlists", func() {
 	})
 
 	Describe("addToPlaylist", func() {
-		It("adds tracks by song id and returns 204", func() {
+		It("adds tracks by song id from the lowercase ids param real Jellyfin clients send", func() {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Playlists/pl1/Items?Ids=s1,s2", nil).WithContext(context.Background())
+			r := httptest.NewRequest("POST", "/Playlists/pl1/Items?ids=s1,s2", nil).WithContext(context.Background())
 			r = withChiURLParam(r, "playlistId", "pl1")
 			api.addToPlaylist(w, r)
 			Expect(w.Code).To(Equal(http.StatusNoContent))
@@ -167,16 +169,25 @@ var _ = Describe("Playlists", func() {
 			Expect(fp.addIds).To(Equal([]string{"s1", "s2"}))
 		})
 
+		It("falls back to the PascalCase Ids param", func() {
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("POST", "/Playlists/pl1/Items?Ids=s1,s2", nil).WithContext(context.Background())
+			r = withChiURLParam(r, "playlistId", "pl1")
+			api.addToPlaylist(w, r)
+			Expect(w.Code).To(Equal(http.StatusNoContent))
+			Expect(fp.addIds).To(Equal([]string{"s1", "s2"}))
+		})
+
 		It("returns 404 when the service rejects the request (not found/not owned)", func() {
 			fp.addErr = model.ErrNotAuthorized
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Playlists/pl1/Items?Ids=s1", nil).WithContext(context.Background())
+			r := httptest.NewRequest("POST", "/Playlists/pl1/Items?ids=s1", nil).WithContext(context.Background())
 			r = withChiURLParam(r, "playlistId", "pl1")
 			api.addToPlaylist(w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
 		})
 
-		It("passes no ids (not a spurious empty string) when the Ids param is absent", func() {
+		It("passes no ids (not a spurious empty string) when the ids param is absent", func() {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Playlists/pl1/Items", nil).WithContext(context.Background())
 			r = withChiURLParam(r, "playlistId", "pl1")
@@ -188,9 +199,9 @@ var _ = Describe("Playlists", func() {
 	})
 
 	Describe("removeFromPlaylist", func() {
-		It("removes entries by EntryIds (playlist-track position ids, not song ids) and returns 204", func() {
+		It("removes entries by the lowercase entryIds param real Jellyfin clients send (playlist-track position ids, not song ids)", func() {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("DELETE", "/Playlists/pl1/Items?EntryIds=1,2", nil).WithContext(context.Background())
+			r := httptest.NewRequest("DELETE", "/Playlists/pl1/Items?entryIds=1,2", nil).WithContext(context.Background())
 			r = withChiURLParam(r, "playlistId", "pl1")
 			api.removeFromPlaylist(w, r)
 			Expect(w.Code).To(Equal(http.StatusNoContent))
@@ -198,16 +209,25 @@ var _ = Describe("Playlists", func() {
 			Expect(fp.removeIds).To(Equal([]string{"1", "2"}))
 		})
 
+		It("falls back to the PascalCase EntryIds param", func() {
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("DELETE", "/Playlists/pl1/Items?EntryIds=1,2", nil).WithContext(context.Background())
+			r = withChiURLParam(r, "playlistId", "pl1")
+			api.removeFromPlaylist(w, r)
+			Expect(w.Code).To(Equal(http.StatusNoContent))
+			Expect(fp.removeIds).To(Equal([]string{"1", "2"}))
+		})
+
 		It("returns 404 when the service rejects the request (not found/not owned)", func() {
 			fp.removeErr = model.ErrNotFound
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("DELETE", "/Playlists/pl1/Items?EntryIds=1", nil).WithContext(context.Background())
+			r := httptest.NewRequest("DELETE", "/Playlists/pl1/Items?entryIds=1", nil).WithContext(context.Background())
 			r = withChiURLParam(r, "playlistId", "pl1")
 			api.removeFromPlaylist(w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
 		})
 
-		It("passes no ids (not a spurious empty string) when the EntryIds param is absent", func() {
+		It("passes no ids (not a spurious empty string) when the entryIds param is absent", func() {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("DELETE", "/Playlists/pl1/Items", nil).WithContext(context.Background())
 			r = withChiURLParam(r, "playlistId", "pl1")
@@ -215,6 +235,36 @@ var _ = Describe("Playlists", func() {
 			Expect(w.Code).To(Equal(http.StatusNoContent))
 			Expect(fp.removePlaylistID).To(Equal("pl1"))
 			Expect(fp.removeIds).To(BeEmpty())
+		})
+	})
+
+	Describe("getPlaylistUsers", func() {
+		It("returns the current user with CanEdit true", func() {
+			w := httptest.NewRecorder()
+			ctx := request.WithUser(context.Background(), model.User{ID: "u1", UserName: "alice"})
+			r := httptest.NewRequest("GET", "/Playlists/pl1/Users", nil).WithContext(ctx)
+			r = withChiURLParam(r, "playlistId", "pl1")
+			api.getPlaylistUsers(w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res []dto.PlaylistUserPermissions
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res).To(Equal([]dto.PlaylistUserPermissions{{UserId: "u1", CanEdit: true}}))
+		})
+	})
+
+	Describe("getPlaylistUser", func() {
+		It("returns CanEdit true for the requested user", func() {
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Playlists/pl1/Users/u1", nil).WithContext(context.Background())
+			rctx := chi.NewRouteContext()
+			rctx.URLParams.Add("playlistId", "pl1")
+			rctx.URLParams.Add("userId", "u1")
+			r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
+			api.getPlaylistUser(w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.PlaylistUserPermissions
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res).To(Equal(dto.PlaylistUserPermissions{UserId: "u1", CanEdit: true}))
 		})
 	})
 })

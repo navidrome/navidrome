@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	"github.com/navidrome/navidrome/utils/slice"
 )
@@ -69,12 +70,21 @@ func splitIds(s string) []string {
 	return strings.Split(s, ",")
 }
 
+// queryParam reads lower first, falling back to pascal. Real Jellyfin clients (e.g. Finamp) send
+// lowercase query params (ids, entryIds); PascalCase is also accepted for robustness.
+func queryParam(r *http.Request, lower, pascal string) string {
+	if v := r.URL.Query().Get(lower); v != "" {
+		return v
+	}
+	return r.URL.Query().Get(pascal)
+}
+
 // addToPlaylist appends songs by their own id (core/playlists.AddTracks treats ids as media file
 // ids). Ownership/editability is enforced by AddTracks itself; any error maps to 404.
 func (api *Router) addToPlaylist(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := chi.URLParam(r, "playlistId")
-	ids := splitIds(r.URL.Query().Get("Ids"))
+	ids := splitIds(queryParam(r, "ids", "Ids"))
 	if _, err := api.playlists.AddTracks(ctx, id, ids); err != nil {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
@@ -82,7 +92,7 @@ func (api *Router) addToPlaylist(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// removeFromPlaylist removes entries by EntryIds. Unlike addToPlaylist's Ids, these must be
+// removeFromPlaylist removes entries by entryIds. Unlike addToPlaylist's ids, these must be
 // playlist-entry ids (model.PlaylistTrack.ID / trackToBaseItem's PlaylistItemId) — the position
 // of the entry within the playlist — because core/playlists.RemoveTracks deletes playlist_tracks
 // rows by that id, not by media file id. Ownership/editability is enforced by RemoveTracks itself;
@@ -90,10 +100,23 @@ func (api *Router) addToPlaylist(w http.ResponseWriter, r *http.Request) {
 func (api *Router) removeFromPlaylist(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := chi.URLParam(r, "playlistId")
-	ids := splitIds(r.URL.Query().Get("EntryIds"))
+	ids := splitIds(queryParam(r, "entryIds", "EntryIds"))
 	if err := api.playlists.RemoveTracks(ctx, id, ids); err != nil {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// getPlaylistUsers and getPlaylistUser are best-effort probes some clients (e.g. Finamp) make
+// before allowing playlist edits. Navidrome has no per-playlist ACL model, so every user is
+// reported as able to edit; ownership is still enforced by AddTracks/RemoveTracks themselves.
+func (api *Router) getPlaylistUsers(w http.ResponseWriter, r *http.Request) {
+	u, _ := request.UserFrom(r.Context())
+	api.ok(w, r, []dto.PlaylistUserPermissions{{UserId: u.ID, CanEdit: true}})
+}
+
+func (api *Router) getPlaylistUser(w http.ResponseWriter, r *http.Request) {
+	userId := chi.URLParam(r, "userId")
+	api.ok(w, r, dto.PlaylistUserPermissions{UserId: userId, CanEdit: true})
 }

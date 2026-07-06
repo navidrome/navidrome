@@ -72,6 +72,13 @@ type BaseItemDto struct {
 	CanDownload          bool              `json:"CanDownload"`
 }
 
+// PlaylistUserPermissions is the response shape for GET /Playlists/{id}/Users(/{userId}), which
+// Finamp probes before allowing playlist edits.
+type PlaylistUserPermissions struct {
+	UserId  string `json:"UserId"`
+	CanEdit bool   `json:"CanEdit"`
+}
+
 type QueryResult struct {
 	Items            []BaseItemDto `json:"Items"`
 	TotalRecordCount int           `json:"TotalRecordCount"`
