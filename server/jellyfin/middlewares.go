@@ -9,6 +9,7 @@ import (
 
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 )
 
@@ -95,26 +96,34 @@ func tokenFromRequest(r *http.Request) string {
 	return r.URL.Query().Get("apikey")
 }
 
+// userFromToken resolves the user identified by the request's token, if any; ok is false for a
+// missing/invalid token or an unknown subject. Used by authenticate and by public routes that
+// grant extra visibility to an (optional) authenticated caller.
+func (api *Router) userFromToken(r *http.Request) (model.User, bool) {
+	token := tokenFromRequest(r)
+	if token == "" {
+		return model.User{}, false
+	}
+	claims, err := auth.Validate(token)
+	if err != nil || claims.Subject == "" {
+		return model.User{}, false
+	}
+	usr, err := api.ds.User(r.Context()).FindByUsername(claims.Subject)
+	if err != nil {
+		log.Warn(r.Context(), "Jellyfin API: token subject not found", "user", claims.Subject, err)
+		return model.User{}, false
+	}
+	return *usr, true
+}
+
 func (api *Router) authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		token := tokenFromRequest(r)
-		if token == "" {
+		usr, ok := api.userFromToken(r)
+		if !ok {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
-		claims, err := auth.Validate(token)
-		if err != nil || claims.Subject == "" {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-		usr, err := api.ds.User(ctx).FindByUsername(claims.Subject)
-		if err != nil {
-			log.Warn(ctx, "Jellyfin API: token subject not found", "user", claims.Subject, err)
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-		ctx = request.WithUser(ctx, *usr)
+		ctx := request.WithUser(r.Context(), usr)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

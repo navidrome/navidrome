@@ -18,15 +18,16 @@ import (
 )
 
 func (api *Router) getItemImage(w http.ResponseWriter, r *http.Request) {
-	// This endpoint is intentionally public (see routes), so the request carries no user. Artwork
-	// resolution for user-scoped items (private playlists) would otherwise fail its visibility
-	// filter and fall back to the placeholder, so resolve under an elevated context — the same
-	// approach core/artwork's cache warmer uses to pre-generate every item's cover.
+	// This endpoint is intentionally public (see routes), so the request carries no user in ctx.
+	// Library artwork (album/artist/song covers) isn't user-sensitive, and playlist access is
+	// gated inside resolveArtworkID; resolution then runs under an elevated context — the same
+	// approach core/artwork's cache warmer uses — so a legitimately served cover isn't eaten by
+	// the persistence layer's visibility filter.
 	ctx := request.WithUser(r.Context(), model.User{IsAdmin: true})
 	itemId := dto.DecodeID(chi.URLParam(r, "itemId"))
 	size, _ := strconv.Atoi(r.URL.Query().Get("maxwidth"))
 
-	artID := api.resolveArtworkID(ctx, itemId)
+	artID := api.resolveArtworkID(ctx, r, itemId)
 	reader, _, err := api.artwork.GetOrPlaceholder(ctx, artID, size, false)
 	switch {
 	case errors.Is(err, context.Canceled):
@@ -44,7 +45,7 @@ func (api *Router) getItemImage(w http.ResponseWriter, r *http.Request) {
 
 // resolveArtworkID maps a bare Jellyfin item id to a Navidrome ArtworkID string
 // by probing album -> artist -> media file -> playlist.
-func (api *Router) resolveArtworkID(ctx context.Context, itemId string) string {
+func (api *Router) resolveArtworkID(ctx context.Context, r *http.Request, itemId string) string {
 	if al, err := api.ds.Album(ctx).Get(itemId); err == nil {
 		return al.CoverArtID().String()
 	}
@@ -55,7 +56,14 @@ func (api *Router) resolveArtworkID(ctx context.Context, itemId string) string {
 		return mf.CoverArtID().String()
 	}
 	if pl, err := api.ds.Playlist(ctx).Get(itemId); err == nil {
-		return pl.CoverArtID().String()
+		// Playlists are user-scoped, unlike library artwork: a private playlist's uploaded cover
+		// is served only when the playlist is public or the request's (optional) token identifies
+		// a user who may see it. Anyone else gets the placeholder, so an id can't be used to
+		// probe another user's private covers on this unauthenticated route.
+		u, ok := api.userFromToken(r)
+		if pl.Public || (ok && (u.IsAdmin || pl.OwnerID == u.ID)) {
+			return pl.CoverArtID().String()
+		}
 	}
 	return (model.ArtworkID{}).String()
 }
