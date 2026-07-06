@@ -37,6 +37,18 @@ func (api *Router) getItems(w http.ResponseWriter, r *http.Request) {
 // (IncludeItemTypes=Audio,MusicAlbum,Playlist&Filters=IsFavorite).
 func (api *Router) queryItems(ctx context.Context, r *http.Request) (dto.QueryResult, error) {
 	p := req.Params(r)
+	// Jellyfin's /Items?ids= is a batch-fetch-by-id that cuts across the type dispatch below
+	// entirely; Finamp's download/sync uses it to fetch a single track's BaseItemDto. Query
+	// params are case-sensitive, and clients send both "Ids" and "ids".
+	if ids := p.StringOr("Ids", p.StringOr("ids", "")); ids != "" {
+		var items []dto.BaseItemDto
+		for _, rawID := range strings.Split(ids, ",") {
+			if item, ok := api.resolveItemByID(ctx, dto.DecodeID(strings.TrimSpace(rawID))); ok {
+				items = append(items, item)
+			}
+		}
+		return result(items, len(items), 0), nil
+	}
 	parentId := dto.DecodeID(p.StringOr("ParentId", ""))
 	search := p.StringOr("SearchTerm", "")
 	favOnly := strings.Contains(p.StringOr("Filters", ""), "IsFavorite")
@@ -234,57 +246,57 @@ func (api *Router) listPlaylists(ctx context.Context, opts model.QueryOptions, f
 	return result(slice.Map(playlists, dto.PlaylistToBaseItem), int(total), opts.Offset), nil
 }
 
-// getItem fetches a single entity by id, trying library view, album, artist, song and playlist in
-// turn. For albums and songs (which each belong to exactly one library) it 404s if the current
-// user lacks access to that library, so an id can't be used to probe content outside the user's
-// libraries.
-func (api *Router) getItem(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	id := dto.DecodeID(chi.URLParam(r, "itemId"))
+// resolveItemByID resolves an already-decoded navidrome id to its BaseItemDto, trying library
+// view, album, artist, song and playlist in turn. For albums and songs (which each belong to
+// exactly one library) it reports not-found if the current user lacks access to that library, so
+// an id can't be used to probe content outside the user's libraries. Shared by getItem (single
+// fetch) and queryItems' Ids batch-fetch.
+func (api *Router) resolveItemByID(ctx context.Context, id string) (dto.BaseItemDto, bool) {
 	u, _ := request.UserFrom(ctx)
 	// Finamp resolves a /UserViews entry (Id=library id) by fetching it as a plain item; without
 	// this, the home screen and every library tab 404 trying to probe it as an album/artist/song.
 	if libID, err := strconv.Atoi(id); err == nil && u.HasLibraryAccess(libID) {
 		for _, lib := range u.Libraries {
 			if lib.ID == libID {
-				api.ok(w, r, libraryView(lib))
-				return
+				return libraryView(lib), true
 			}
 		}
 		// Admin bypass: Libraries is empty but access is granted to every library, so fetch the
 		// real one instead of returning a placeholder.
 		if lib, err := api.ds.Library(ctx).Get(libID); err == nil {
-			api.ok(w, r, libraryView(*lib))
-			return
+			return libraryView(*lib), true
 		}
 	}
 	if al, err := api.ds.Album(ctx).Get(id); err == nil {
 		if !u.HasLibraryAccess(al.LibraryID) {
-			http.Error(w, "Not Found", http.StatusNotFound)
-			return
+			return dto.BaseItemDto{}, false
 		}
-		api.ok(w, r, dto.AlbumToBaseItem(*al))
-		return
+		return dto.AlbumToBaseItem(*al), true
 	}
 	if ar, err := api.ds.Artist(ctx).Get(id); err == nil {
 		// TODO: an artist can have content in multiple libraries (via library_artist), so
 		// there's no single LibraryID to check here; access control for artists relies on
 		// list-time scoping (listArtists) and the persistence layer's defense-in-depth.
-		api.ok(w, r, dto.ArtistToBaseItem(*ar))
-		return
+		return dto.ArtistToBaseItem(*ar), true
 	}
 	if mf, err := api.ds.MediaFile(ctx).Get(id); err == nil {
 		if !u.HasLibraryAccess(mf.LibraryID) {
-			http.Error(w, "Not Found", http.StatusNotFound)
-			return
+			return dto.BaseItemDto{}, false
 		}
-		api.ok(w, r, dto.SongToBaseItem(*mf))
-		return
+		return dto.SongToBaseItem(*mf), true
 	}
 	// api.playlists.Get enforces ownership/visibility itself, so a non-owned or missing playlist
-	// id falls through to the generic 404 below, same as every other probe here.
+	// id falls through to the generic not-found below, same as every other probe here.
 	if pl, err := api.playlists.Get(ctx, id); err == nil {
-		api.ok(w, r, dto.PlaylistToBaseItem(*pl))
+		return dto.PlaylistToBaseItem(*pl), true
+	}
+	return dto.BaseItemDto{}, false
+}
+
+func (api *Router) getItem(w http.ResponseWriter, r *http.Request) {
+	id := dto.DecodeID(chi.URLParam(r, "itemId"))
+	if item, ok := api.resolveItemByID(r.Context(), id); ok {
+		api.ok(w, r, item)
 		return
 	}
 	http.Error(w, "Not Found", http.StatusNotFound)

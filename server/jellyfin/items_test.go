@@ -204,6 +204,55 @@ var _ = Describe("Items", func() {
 			Expect(albumRepo.Options.Max).To(Equal(10))
 		})
 
+		Describe("Ids batch-fetch", func() {
+			// Finamp's download/sync fetches a track's BaseItemDto via /Items?ids=<id>; without
+			// this, queryItems ignored Ids and returned the default type-dispatched list instead.
+			It("returns exactly the requested item when Ids has a single id", func() {
+				ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: "s1", Title: "Song", LibraryID: 1}})
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", "/Items?Ids="+dto.EncodeID("s1"), nil).WithContext(ctxUser())
+				api.getItems(w, r)
+				Expect(w.Code).To(Equal(http.StatusOK))
+				var res dto.QueryResult
+				Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+				Expect(res.Items).To(HaveLen(1))
+				Expect(res.Items[0].Id).To(Equal(dto.EncodeID("s1")))
+				Expect(res.Items[0].Name).To(Equal("Song"))
+				Expect(res.TotalRecordCount).To(Equal(1))
+			})
+
+			It("returns items of different types for a lowercase ids param with multiple ids", func() {
+				ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1", Name: "One", LibraryID: 1}})
+				ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: "s1", Title: "Song", LibraryID: 1}})
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", "/Items?ids="+dto.EncodeID("a1")+","+dto.EncodeID("s1"), nil).WithContext(ctxUser())
+				api.getItems(w, r)
+				Expect(w.Code).To(Equal(http.StatusOK))
+				var res dto.QueryResult
+				Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+				Expect(res.Items).To(HaveLen(2))
+				ids := []string{res.Items[0].Id, res.Items[1].Id}
+				Expect(ids).To(ConsistOf(dto.EncodeID("a1"), dto.EncodeID("s1")))
+				types := []string{res.Items[0].Type, res.Items[1].Type}
+				Expect(types).To(ConsistOf("MusicAlbum", "Audio"))
+				Expect(res.TotalRecordCount).To(Equal(2))
+			})
+
+			It("omits an id in a library the user can't access, without erroring the whole batch", func() {
+				ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1", Name: "One", LibraryID: 1}})
+				ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: "s1", Title: "Song", LibraryID: 2}}) // alice only has access to library 1
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", "/Items?Ids="+dto.EncodeID("a1")+","+dto.EncodeID("s1"), nil).WithContext(ctxUser())
+				api.getItems(w, r)
+				Expect(w.Code).To(Equal(http.StatusOK))
+				var res dto.QueryResult
+				Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+				Expect(res.Items).To(HaveLen(1))
+				Expect(res.Items[0].Id).To(Equal(dto.EncodeID("a1")))
+				Expect(res.TotalRecordCount).To(Equal(1))
+			})
+		})
+
 		Describe("sorting", func() {
 			It("maps SortBy=PlayCount to the play_count column", func() {
 				albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
