@@ -73,15 +73,12 @@ func (api *Router) postItemImage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := dto.DecodeID(chi.URLParam(r, "itemId"))
 
-	// Honor the same global artwork-upload gate as the native endpoint: non-admins can't upload
-	// when EnableArtworkUpload is off.
+	// Honor the same artwork-upload gate and size cap as the native endpoint.
 	u, _ := request.UserFrom(ctx)
 	if !conf.Server.EnableArtworkUpload && !u.IsAdmin {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
-
-	// Cap the read like the native upload path, so an oversized body can't be buffered into memory.
 	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxImageUploadSize()))
 	if err != nil {
 		http.Error(w, "Bad Request", http.StatusBadRequest)

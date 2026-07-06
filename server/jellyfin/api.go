@@ -137,8 +137,6 @@ func (api *Router) routes() http.Handler {
 		r.Get("/Items/{itemId}/File", api.streamFile)
 		r.Get("/Items/{itemId}/Download", api.streamFile)
 
-		// Playback reports carry only the caller's own play data, so no library-access gate is needed.
-		// The player comes from the group-level withPlayer above.
 		r.Post("/Sessions/Playing", api.reportPlaybackStart)
 		r.Post("/Sessions/Playing/Progress", api.reportPlaybackProgress)
 		r.Post("/Sessions/Playing/Stopped", api.reportPlaybackStopped)

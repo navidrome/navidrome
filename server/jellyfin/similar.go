@@ -20,8 +20,6 @@ import (
 // tests can shorten it.
 var similarWait = 10 * time.Second
 
-// maxSimilarLimit caps the client-supplied limit before it's used to size allocations or ask the
-// provider for results, so a hostile ?limit=… can't drive a huge map/slice allocation.
 const maxSimilarLimit = 100
 
 // similarFetchTimeout bounds the detached background fetch so a hung provider can't hold a goroutine
@@ -95,8 +93,8 @@ func (api *Router) similarArtists(ctx context.Context, id string, limit int) dto
 	return result(items, len(items), 0)
 }
 
-// clampLimit bounds a client-supplied limit to a sane range, so it can't drive oversized
-// allocations or provider fetches (also flagged by CodeQL as a user-controlled allocation size).
+// clampLimit bounds a client-supplied limit so it can't drive an oversized allocation or provider
+// fetch (flagged by CodeQL as a user-controlled allocation size).
 func clampLimit(limit int) int {
 	if limit <= 0 {
 		return 20
@@ -110,8 +108,7 @@ func (api *Router) similarSongs(ctx context.Context, id string, limit int) dto.Q
 		log.Debug(ctx, "Jellyfin API: no similar songs", "id", id, err)
 		return result(nil, 0, 0)
 	}
-	// Filter to the caller's libraries: the provider can return songs from any library, and a
-	// mapped item would otherwise leak another library's metadata.
+	// Filter to the caller's libraries; the provider can return songs from any library.
 	u, _ := request.UserFrom(ctx)
 	var items []dto.BaseItemDto
 	for _, mf := range songs {
@@ -139,8 +136,6 @@ func (api *Router) similarAlbums(ctx context.Context, id string, limit int) dto.
 			continue
 		}
 		seen[s.AlbumID] = true
-		// Resolve the full album and gate on library access: the provider's songs may belong to
-		// libraries the caller can't see.
 		if al, err := api.ds.Album(ctx).Get(s.AlbumID); err == nil && u.HasLibraryAccess(al.LibraryID) {
 			items = append(items, dto.AlbumToBaseItem(*al))
 			if len(items) >= limit {

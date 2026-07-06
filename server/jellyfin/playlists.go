@@ -70,18 +70,14 @@ func (api *Router) createPlaylist(w http.ResponseWriter, r *http.Request) {
 	api.ok(w, r, map[string]string{"Id": dto.EncodeID(id)})
 }
 
-// updatePlaylistRequest mirrors Jellyfin's NewPlaylist body. Name/IsPublic/Ids are pointers so an
-// absent field means "leave unchanged" — distinguishing an omitted Ids from an explicit empty list,
-// which must clear the playlist rather than be treated as "no change".
+// updatePlaylistRequest mirrors Jellyfin's NewPlaylist body. Pointers so an absent field means
+// "leave unchanged", distinguishing an omitted Ids (no change) from an explicit empty list (clear).
 type updatePlaylistRequest struct {
 	Name     *string   `json:"Name"`
 	Ids      *[]string `json:"Ids"`
 	IsPublic *bool     `json:"IsPublic"`
 }
 
-// updatePlaylist handles POST /Playlists/{id}: Ids replace the track list (an explicit empty list
-// clears it), Name/IsPublic update metadata, a combined body applies both. Ownership is enforced by
-// core/playlists.
 func (api *Router) updatePlaylist(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := dto.DecodeID(chi.URLParam(r, "playlistId"))
@@ -91,9 +87,8 @@ func (api *Router) updatePlaylist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// A present Ids replaces the track list. A non-empty list goes through Create (which keeps the
-	// name); a present-but-empty list must clear the playlist, but Create can't persist an empty
-	// track list (the repository skips track writes when the list is empty), so clear explicitly.
+	// A present Ids replaces the track list. An empty list must clear it explicitly, since Create
+	// can't persist an empty track list (the repository skips track writes when the list is empty).
 	if body.Ids != nil {
 		if len(*body.Ids) == 0 {
 			if err := api.clearPlaylist(ctx, id); err != nil {
@@ -117,8 +112,7 @@ func (api *Router) updatePlaylist(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// clearPlaylist removes every track from a playlist. Used for a present-but-empty Ids replacement,
-// since Create can't persist an empty track list. RemoveTracks enforces ownership.
+// clearPlaylist removes every track from a playlist. RemoveTracks enforces ownership.
 func (api *Router) clearPlaylist(ctx context.Context, id string) error {
 	pls, err := api.playlists.GetWithTracks(ctx, id)
 	if err != nil {

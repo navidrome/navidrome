@@ -27,10 +27,9 @@ func (api *Router) getCurrentUser(w http.ResponseWriter, r *http.Request) {
 	api.ok(w, r, userToDto(&u, api.serverName(), api.serverID(ctx)))
 }
 
-// getPublicUsers advertises the users named in Jellyfin.ExposedPublicUsers so a client can render a
-// login user-picker. This route is unauthenticated, so only the admin-configured allowlist is
-// exposed (never the full user table), and each entry is a minimal DTO — no Policy/Configuration,
-// which would leak admin status to anyone. An empty config exposes no users.
+// getPublicUsers advertises the users named in Jellyfin.ExposedPublicUsers for a client login
+// picker. The route is unauthenticated, so it lists only the configured allowlist (never the full
+// user table) and returns a minimal DTO — no Policy/Configuration, which would leak admin status.
 func (api *Router) getPublicUsers(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	serverID := api.serverID(ctx)
@@ -52,8 +51,6 @@ func (api *Router) getPublicUsers(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		users = append(users, dto.UserDto{
-			// Jellyfin's Name is the login handle the client sends back as Username, so it must be
-			// UserName (not the display Name), matching userToDto on the login path.
 			Name:        usr.UserName,
 			Id:          usr.ID,
 			ServerId:    serverID,
