@@ -41,8 +41,6 @@ import (
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/external"
-	"github.com/navidrome/navidrome/core/ffmpeg"
-	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/core/storage/storagetest"
@@ -52,11 +50,11 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/persistence"
-	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/jellyfin"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/tests/harness"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -82,14 +80,10 @@ var (
 	ctx          context.Context
 	ds           *tests.MockDataStore
 	router       http.Handler
-	streamerSpy  *spyStreamer
+	streamerSpy  *harness.SpyStreamer
 	artworkSpy   *spyArtwork
 	providerFake *fakeExternalProvider
-	lib          model.Library
-
-	// Snapshot paths for fast DB restore
-	dbFilePath   string
-	snapshotPath string
+	goldenDB     *harness.DB
 	dataFolder   string
 
 	adminUser = model.User{
@@ -107,13 +101,6 @@ var (
 	}
 )
 
-func createFS(files fstest.MapFS) storagetest.FakeFS {
-	fs := storagetest.FakeFS{}
-	fs.SetFiles(files)
-	storagetest.Register("fake", &fs)
-	return fs
-}
-
 // buildTestFS creates the seeded test filesystem (see package doc for totals).
 func buildTestFS() storagetest.FakeFS {
 	abbeyRoad := template(_t{"albumartist": "The Beatles", "artist": "The Beatles", "album": "Abbey Road", "year": 1969, "genre": "Rock"})
@@ -122,7 +109,7 @@ func buildTestFS() storagetest.FakeFS {
 	kindOfBlue := template(_t{"albumartist": "Miles Davis", "artist": "Miles Davis", "album": "Kind of Blue", "year": 1959, "genre": "Jazz"})
 	singles := template(_t{"albumartist": "Solo Artist", "artist": "Solo Artist", "album": "Singles", "year": 2020, "genre": "Pop"})
 
-	return createFS(fstest.MapFS{
+	return harness.CreateFS(fstest.MapFS{
 		// Track numbers are deliberately reversed vs. alphabetical title order (Something=1,
 		// Come Together=2) so tests can tell track-order sorting apart from title sorting.
 		"Rock/The Beatles/Abbey Road/01 - Something.mp3":     abbeyRoad(track(1, "Something")),
@@ -274,55 +261,16 @@ func artistID(name string) string {
 
 var _ = BeforeSuite(func() {
 	ctx = request.WithUser(GinkgoT().Context(), adminUser)
-	tmpDir := GinkgoT().TempDir()
-	dbFilePath = filepath.Join(tmpDir, "test-jf-e2e.db")
-	snapshotPath = filepath.Join(tmpDir, "test-jf-e2e.db.snapshot")
-	dataFolder = filepath.Join(tmpDir, "data")
+	dataFolder = filepath.Join(GinkgoT().TempDir(), "data")
 	Expect(os.MkdirAll(dataFolder, 0o755)).To(Succeed())
-	conf.Server.DbPath = dbFilePath + "?_journal_mode=WAL"
-	db.Db().SetMaxOpenConns(1)
 
 	conf.Server.MusicFolder = "fake:///music"
 	conf.Server.DataFolder = conf.NewDir(dataFolder)
 	conf.Server.DevExternalScanner = false
 
-	db.Init(ctx)
-
-	initDS := &tests.MockDataStore{RealDS: persistence.New(db.Db())}
-	auth.Init(initDS)
-
-	adminWithPass := adminUser
-	adminWithPass.NewPassword = "password"
-	Expect(initDS.User(ctx).Put(&adminWithPass)).To(Succeed())
-	regularWithPass := regularUser
-	regularWithPass.NewPassword = "password"
-	Expect(initDS.User(ctx).Put(&regularWithPass)).To(Succeed())
-
-	lib = model.Library{ID: 1, Name: "Music Library", Path: "fake:///music"}
-	Expect(initDS.Library(ctx).Put(&lib)).To(Succeed())
-	Expect(initDS.User(ctx).SetUserLibraries(adminUser.ID, []int{lib.ID})).To(Succeed())
-	Expect(initDS.User(ctx).SetUserLibraries(regularUser.ID, []int{lib.ID})).To(Succeed())
-
-	loadedAdmin, err := initDS.User(ctx).FindByUsername(adminUser.UserName)
-	Expect(err).ToNot(HaveOccurred())
-	adminUser.Libraries = loadedAdmin.Libraries
-	loadedRegular, err := initDS.User(ctx).FindByUsername(regularUser.UserName)
-	Expect(err).ToNot(HaveOccurred())
-	regularUser.Libraries = loadedRegular.Libraries
-
-	ctx = request.WithUser(GinkgoT().Context(), adminUser)
-
 	buildTestFS()
-	s := scanner.New(ctx, initDS, artwork.NoopCacheWarmer(), events.NoopBroker(),
-		playlists.NewPlaylists(initDS, core.NewImageUploadService()), metrics.NewNoopInstance())
-	_, err = s.ScanAll(ctx, true)
-	Expect(err).ToNot(HaveOccurred())
-
-	_, err = db.Db().Exec("PRAGMA wal_checkpoint(TRUNCATE)")
-	Expect(err).ToNot(HaveOccurred())
-	data, err := os.ReadFile(dbFilePath)
-	Expect(err).ToNot(HaveOccurred())
-	Expect(os.WriteFile(snapshotPath, data, 0o600)).To(Succeed())
+	goldenDB = harness.SetupDB(ctx, &adminUser, &regularUser)
+	ctx = request.WithUser(GinkgoT().Context(), adminUser)
 })
 
 var _ = AfterSuite(func() {
@@ -340,15 +288,15 @@ func setupTestDB() {
 	conf.Server.DevExternalScanner = false
 	conf.Server.DevEnableMediaFileProbe = false
 
-	restoreDB()
+	goldenDB.Restore()
 
 	ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
 	auth.Init(ds)
 
-	streamerSpy = &spyStreamer{}
+	streamerSpy = &harness.SpyStreamer{}
 	artworkSpy = &spyArtwork{}
 	providerFake = &fakeExternalProvider{}
-	decider := stream.NewTranscodeDecider(ds, noopFFmpeg{})
+	decider := stream.NewTranscodeDecider(ds, harness.NoopFFmpeg{})
 	router = jellyfin.New(
 		ds,
 		artworkSpy,
@@ -378,40 +326,7 @@ func (f *fakeExternalProvider) SimilarSongs(context.Context, string, int) (model
 	return f.similarSongs, nil
 }
 
-// restoreDB restores all table data from the snapshot using ATTACH DATABASE (faster than rescan).
-func restoreDB() {
-	sqlDB := db.Db()
-	_, err := sqlDB.Exec("PRAGMA foreign_keys = OFF")
-	Expect(err).ToNot(HaveOccurred())
-	_, err = sqlDB.Exec("ATTACH DATABASE ? AS snapshot", snapshotPath)
-	Expect(err).ToNot(HaveOccurred())
-
-	rows, err := sqlDB.Query("SELECT name FROM main.sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '%_fts' AND name NOT LIKE '%_fts_%'")
-	Expect(err).ToNot(HaveOccurred())
-	var tables []string
-	for rows.Next() {
-		var name string
-		Expect(rows.Scan(&name)).To(Succeed())
-		tables = append(tables, name)
-	}
-	Expect(rows.Err()).ToNot(HaveOccurred())
-	rows.Close()
-
-	for _, table := range tables {
-		// Table names come from sqlite_master, not user input, so concatenation is safe here.
-		_, err = sqlDB.Exec(`DELETE FROM main."` + table + `"`) //nolint:gosec
-		Expect(err).ToNot(HaveOccurred())
-		_, err = sqlDB.Exec(`INSERT INTO main."` + table + `" SELECT * FROM snapshot."` + table + `"`) //nolint:gosec
-		Expect(err).ToNot(HaveOccurred())
-	}
-
-	_, err = sqlDB.Exec("DETACH DATABASE snapshot")
-	Expect(err).ToNot(HaveOccurred())
-	_, err = sqlDB.Exec("PRAGMA foreign_keys = ON")
-	Expect(err).ToNot(HaveOccurred())
-}
-
-// --- Spy/noop dependencies ---
+// --- Spy/noop dependencies (shared ones live in tests/harness) ---
 
 // spyArtwork captures the id and context passed to GetOrPlaceholder so image tests can assert the
 // resolved ArtworkID and that resolution runs under an elevated (admin) context.
@@ -435,50 +350,4 @@ func (s *spyArtwork) GetOrPlaceholder(c context.Context, id string, _ int, _ boo
 	return io.NopCloser(bytes.NewReader(d)), time.Time{}, nil
 }
 
-// spyStreamer captures the stream.Request and returns a minimal fake stream.
-type spyStreamer struct {
-	LastRequest   stream.Request
-	LastMediaFile *model.MediaFile
-	SimulateError error
-}
-
-func (s *spyStreamer) NewStream(_ context.Context, mf *model.MediaFile, req stream.Request) (*stream.Stream, error) {
-	s.LastRequest = req
-	s.LastMediaFile = mf
-	if s.SimulateError != nil {
-		return nil, s.SimulateError
-	}
-	format := req.Format
-	if format == "" || format == "raw" {
-		format = mf.Suffix
-	}
-	r := io.NopCloser(strings.NewReader("fake audio data"))
-	return stream.NewStream(mf, format, req.BitRate, r), nil
-}
-
-// noopFFmpeg implements ffmpeg.FFmpeg with no-op methods (transcoding never actually runs in e2e).
-type noopFFmpeg struct{}
-
-func (noopFFmpeg) Transcode(context.Context, ffmpeg.TranscodeOptions) (io.ReadCloser, error) {
-	return nil, model.ErrNotFound
-}
-func (noopFFmpeg) ExtractImage(context.Context, string) (io.ReadCloser, error) {
-	return nil, model.ErrNotFound
-}
-func (noopFFmpeg) Probe(context.Context, []string) (string, error) { return "", nil }
-func (noopFFmpeg) ProbeAudioStream(context.Context, string) (*ffmpeg.AudioProbeResult, error) {
-	return nil, model.ErrNotFound
-}
-func (noopFFmpeg) ConvertAnimatedImage(context.Context, io.Reader, int, int) (io.ReadCloser, error) {
-	return nil, model.ErrNotFound
-}
-func (noopFFmpeg) CmdPath() (string, error) { return "", nil }
-func (noopFFmpeg) IsAvailable() bool        { return false }
-func (noopFFmpeg) IsProbeAvailable() bool   { return true }
-func (noopFFmpeg) Version() string          { return "noop" }
-
-var (
-	_ artwork.Artwork      = &spyArtwork{}
-	_ stream.MediaStreamer = &spyStreamer{}
-	_ ffmpeg.FFmpeg        = noopFFmpeg{}
-)
+var _ artwork.Artwork = &spyArtwork{}
