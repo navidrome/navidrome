@@ -2,6 +2,7 @@ package jellyfin
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -21,19 +22,32 @@ import (
 // once) stall the whole screen on a synchronous Last.fm round-trip per item.
 const similarQuickWait = 500 * time.Millisecond
 
+// similarFetchTimeout bounds the detached background fetch: the provider's fallback chains can
+// issue many sequential agent calls, and without a deadline a hung provider would hold a
+// goroutine (and its outbound connection) indefinitely.
+const similarFetchTimeout = time.Minute
+
 // awaitSimilar runs fetch on a background context — so a cold external lookup completes and caches
 // even after this request returns — and returns its result if ready within similarQuickWait,
 // otherwise an empty result. The background context carries the caller's user (external info is
-// user-agnostic, but repositories still expect a user in context) but not the request's
-// cancellation, so navigating away doesn't abort the cache warm-up.
-func awaitSimilar(ctx context.Context, fetch func(context.Context) dto.QueryResult) dto.QueryResult {
+// user-agnostic, but repositories still expect a user in context, and the mapped items embed that
+// user's annotations) but not the request's cancellation, so navigating away doesn't abort the
+// cache warm-up.
+//
+// Concurrent identical requests — clients re-poll after the empty quick-wait response — share one
+// in-flight fetch via singleflight instead of each spawning a duplicate provider chain; the key
+// includes the user so one user's annotations never leak into another's response.
+func (api *Router) awaitSimilar(ctx context.Context, id string, limit int, fetch func(context.Context) dto.QueryResult) dto.QueryResult {
 	u, _ := request.UserFrom(ctx)
-	bgCtx := request.WithUser(context.Background(), u)
-	resCh := make(chan dto.QueryResult, 1)
-	go func() { resCh <- fetch(bgCtx) }()
+	key := fmt.Sprintf("%s|%s|%d", u.ID, id, limit)
+	ch := api.similarFlight.DoChan(key, func() (any, error) {
+		bgCtx, cancel := context.WithTimeout(request.WithUser(context.Background(), u), similarFetchTimeout)
+		defer cancel()
+		return fetch(bgCtx), nil
+	})
 	select {
-	case res := <-resCh:
-		return res
+	case res := <-ch:
+		return res.Val.(dto.QueryResult)
 	case <-time.After(similarQuickWait):
 		return result(nil, 0, 0)
 	}
@@ -47,7 +61,7 @@ func awaitSimilar(ctx context.Context, fetch func(context.Context) dto.QueryResu
 func (api *Router) getSimilarArtists(w http.ResponseWriter, r *http.Request) {
 	id := dto.DecodeID(chi.URLParam(r, "itemId"))
 	limit := req.Params(r).IntOr("limit", 20)
-	api.ok(w, r, awaitSimilar(r.Context(), func(ctx context.Context) dto.QueryResult {
+	api.ok(w, r, api.awaitSimilar(r.Context(), id, limit, func(ctx context.Context) dto.QueryResult {
 		return api.similarArtists(ctx, id, limit)
 	}))
 }
@@ -66,7 +80,7 @@ func (api *Router) getSimilarItems(w http.ResponseWriter, r *http.Request) {
 		api.ok(w, r, result(nil, 0, 0))
 		return
 	}
-	api.ok(w, r, awaitSimilar(ctx, func(ctx context.Context) dto.QueryResult {
+	api.ok(w, r, api.awaitSimilar(ctx, id, limit, func(ctx context.Context) dto.QueryResult {
 		switch entity.(type) {
 		case *model.Artist:
 			return api.similarArtists(ctx, id, limit)

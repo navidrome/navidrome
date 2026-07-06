@@ -6,6 +6,8 @@ import (
 	"sync"
 
 	"github.com/go-chi/chi/v5"
+	"golang.org/x/sync/singleflight"
+
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/external"
@@ -27,6 +29,7 @@ type Router struct {
 	scrobbler        scrobbler.PlayTracker
 	playlists        playlists.Playlists
 	provider         external.Provider
+	similarFlight    singleflight.Group
 	serverIDMu       sync.Mutex
 	serverIDVal      string
 }
