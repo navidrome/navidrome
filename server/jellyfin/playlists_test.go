@@ -100,7 +100,7 @@ var _ = Describe("Playlists", func() {
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res map[string]string
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
-			Expect(res["Id"]).To(Equal("pl-new"))
+			Expect(res["Id"]).To(Equal(dto.EncodeID("pl-new")))
 			Expect(fp.createdName).To(Equal("Mix"))
 			Expect(fp.createdIds).To(Equal([]string{"s1", "s2"}))
 		})
@@ -141,11 +141,11 @@ var _ = Describe("Playlists", func() {
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
 			Expect(res.TotalRecordCount).To(Equal(2))
 			Expect(res.Items).To(HaveLen(2))
-			Expect(res.Items[0].Id).To(Equal("s1"))
+			Expect(res.Items[0].Id).To(Equal(dto.EncodeID("s1")))
 			Expect(res.Items[0].Type).To(Equal("Audio"))
-			Expect(res.Items[0].PlaylistItemId).To(Equal("1"))
-			Expect(res.Items[1].Id).To(Equal("s2"))
-			Expect(res.Items[1].PlaylistItemId).To(Equal("2"))
+			Expect(res.Items[0].PlaylistItemId).To(Equal(dto.EncodeID("1")))
+			Expect(res.Items[1].Id).To(Equal(dto.EncodeID("s2")))
+			Expect(res.Items[1].PlaylistItemId).To(Equal(dto.EncodeID("2")))
 		})
 
 		It("returns 404 for a non-owned or absent playlist", func() {

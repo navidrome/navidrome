@@ -42,15 +42,15 @@ var _ = Describe("Stream", func() {
 				{ID: "s1", Title: "Song", Suffix: "mp3", Duration: 100, Size: 1000, LibraryID: 1},
 			})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Items/s1/PlaybackInfo", nil).WithContext(ctxUser())
-			r = withChiURLParam(r, "itemId", "s1")
+			r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID("s1")+"/PlaybackInfo", nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", dto.EncodeID("s1"))
 			api.getPlaybackInfo(w, r)
 
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res dto.PlaybackInfoResponse
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
 			Expect(res.MediaSources).To(HaveLen(1))
-			Expect(res.MediaSources[0].Id).To(Equal("s1"))
+			Expect(res.MediaSources[0].Id).To(Equal(dto.EncodeID("s1")))
 			Expect(res.MediaSources[0].Container).To(Equal("mp3"))
 			Expect(res.MediaSources[0].Size).To(Equal(int64(1000)))
 			Expect(res.PlaySessionId).ToNot(BeEmpty())

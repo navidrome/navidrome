@@ -14,7 +14,7 @@ func TicksFromSeconds(sec float32) int64 { return int64(float64(sec) * 1e7) }
 // download dialog reads MediaSources[0].Size from the former.
 func MediaSourceFromMediaFile(mf model.MediaFile) MediaSourceInfo {
 	return MediaSourceInfo{
-		Id:                   mf.ID,
+		Id:                   EncodeID(mf.ID),
 		Protocol:             "Http",
 		Container:            mf.Suffix,
 		Size:                 mf.Size,
@@ -34,12 +34,15 @@ func MediaSourceFromMediaFile(mf model.MediaFile) MediaSourceInfo {
 }
 
 func UserData(a model.Annotations, itemID string) *UserItemDataDto {
+	// Callers pass the raw model id; encode here so Key/ItemId match the encoded Id on the
+	// BaseItemDto this UserData is attached to.
+	encodedID := EncodeID(itemID)
 	d := &UserItemDataDto{
 		PlayCount:  int(a.PlayCount),
 		IsFavorite: a.Starred,
 		Played:     a.PlayCount > 0,
-		Key:        itemID,
-		ItemId:     itemID,
+		Key:        encodedID,
+		ItemId:     encodedID,
 	}
 	if a.Rating > 0 {
 		r := float64(a.Rating) * 2 // Navidrome 0-5 -> Jellyfin 0-10
@@ -55,13 +58,13 @@ func UserData(a model.Annotations, itemID string) *UserItemDataDto {
 func SongToBaseItem(mf model.MediaFile) BaseItemDto {
 	item := BaseItemDto{
 		Name:              mf.Title,
-		Id:                mf.ID,
+		Id:                EncodeID(mf.ID),
 		Type:              "Audio",
 		MediaType:         "Audio",
 		IsFolder:          false,
-		ParentId:          mf.AlbumID,
+		ParentId:          EncodeID(mf.AlbumID),
 		Album:             mf.Album,
-		AlbumId:           mf.AlbumID,
+		AlbumId:           EncodeID(mf.AlbumID),
 		AlbumArtist:       mf.AlbumArtist,
 		Artists:           []string{mf.Artist},
 		RunTimeTicks:      TicksFromSeconds(mf.Duration),
@@ -97,10 +100,10 @@ func SongToBaseItem(mf model.MediaFile) BaseItemDto {
 func AlbumToBaseItem(al model.Album) BaseItemDto {
 	item := BaseItemDto{
 		Name:              al.Name,
-		Id:                al.ID,
+		Id:                EncodeID(al.ID),
 		Type:              "MusicAlbum",
 		IsFolder:          true,
-		ParentId:          al.AlbumArtistID,
+		ParentId:          EncodeID(al.AlbumArtistID),
 		AlbumArtist:       al.AlbumArtist,
 		Album:             al.Name,
 		ChildCount:        new(al.SongCount),
@@ -111,7 +114,7 @@ func AlbumToBaseItem(al model.Album) BaseItemDto {
 		UserData:          UserData(al.Annotations, al.ID),
 	}
 	if al.AlbumArtistID != "" {
-		item.AlbumArtists = []NameGuidPair{{Name: al.AlbumArtist, Id: al.AlbumArtistID}}
+		item.AlbumArtists = []NameGuidPair{{Name: al.AlbumArtist, Id: EncodeID(al.AlbumArtistID)}}
 		item.ArtistItems = item.AlbumArtists
 	}
 	if al.MaxYear > 0 {
@@ -128,7 +131,7 @@ func AlbumToBaseItem(al model.Album) BaseItemDto {
 func ArtistToBaseItem(ar model.Artist) BaseItemDto {
 	return BaseItemDto{
 		Name:              ar.Name,
-		Id:                ar.ID,
+		Id:                EncodeID(ar.ID),
 		Type:              "MusicArtist",
 		IsFolder:          true,
 		AlbumCount:        new(ar.AlbumCount),
@@ -142,7 +145,7 @@ func ArtistToBaseItem(ar model.Artist) BaseItemDto {
 func GenreToBaseItem(g model.Genre) BaseItemDto {
 	return BaseItemDto{
 		Name:              g.Name,
-		Id:                g.ID,
+		Id:                EncodeID(g.ID),
 		Type:              "MusicGenre",
 		IsFolder:          true,
 		BackdropImageTags: []string{},
@@ -155,7 +158,7 @@ func GenreToBaseItem(g model.Genre) BaseItemDto {
 func PlaylistToBaseItem(p model.Playlist) BaseItemDto {
 	return BaseItemDto{
 		Name:              p.Name,
-		Id:                p.ID,
+		Id:                EncodeID(p.ID),
 		Type:              "Playlist",
 		IsFolder:          true,
 		MediaType:         "Audio",

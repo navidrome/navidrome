@@ -9,6 +9,7 @@ import (
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/server/jellyfin/dto"
 )
 
 // playbackReport is the subset of Jellyfin's PlaybackStartInfo/PlaybackProgressInfo
@@ -21,12 +22,14 @@ type playbackReport struct {
 
 // decodeReport reads the playback report body. ItemId falls back to a query
 // param, as some clients send it there instead of (or in addition to) the JSON body.
+// ItemId is decoded here since it flows straight into scrobbler lookups by raw media file id.
 func decodeReport(r *http.Request) playbackReport {
 	var body playbackReport
 	_ = json.NewDecoder(r.Body).Decode(&body)
 	if body.ItemId == "" {
 		body.ItemId = r.URL.Query().Get("ItemId")
 	}
+	body.ItemId = dto.DecodeID(body.ItemId)
 	return body
 }
 

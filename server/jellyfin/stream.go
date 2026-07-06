@@ -18,7 +18,7 @@ import (
 // content, mirroring the same gate applied to getItem in items.go.
 func (api *Router) mediaFileForRequest(w http.ResponseWriter, r *http.Request) (*model.MediaFile, bool) {
 	ctx := r.Context()
-	id := chi.URLParam(r, "itemId")
+	id := dto.DecodeID(chi.URLParam(r, "itemId"))
 	mf, err := api.ds.MediaFile(ctx).Get(id)
 	if err != nil {
 		http.Error(w, "Not Found", http.StatusNotFound)

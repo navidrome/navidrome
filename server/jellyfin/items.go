@@ -37,7 +37,7 @@ func (api *Router) getItems(w http.ResponseWriter, r *http.Request) {
 // (IncludeItemTypes=Audio,MusicAlbum,Playlist&Filters=IsFavorite).
 func (api *Router) queryItems(ctx context.Context, r *http.Request) (dto.QueryResult, error) {
 	p := req.Params(r)
-	parentId := p.StringOr("ParentId", "")
+	parentId := dto.DecodeID(p.StringOr("ParentId", ""))
 	search := p.StringOr("SearchTerm", "")
 	favOnly := strings.Contains(p.StringOr("Filters", ""), "IsFavorite")
 	sortBy := p.StringOr("SortBy", "")
@@ -240,7 +240,7 @@ func (api *Router) listPlaylists(ctx context.Context, opts model.QueryOptions, f
 // libraries.
 func (api *Router) getItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	id := chi.URLParam(r, "itemId")
+	id := dto.DecodeID(chi.URLParam(r, "itemId"))
 	u, _ := request.UserFrom(ctx)
 	// Finamp resolves a /UserViews entry (Id=library id) by fetching it as a plain item; without
 	// this, the home screen and every library tab 404 trying to probe it as an album/artist/song.

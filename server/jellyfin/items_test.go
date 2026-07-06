@@ -62,19 +62,19 @@ var _ = Describe("Items", func() {
 			ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1", Name: "One"}})
 			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: "s1", Title: "Song", AlbumID: "a1"}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items?ParentId=a1&IncludeItemTypes=Audio", nil).WithContext(ctxUser())
+			r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeID("a1")+"&IncludeItemTypes=Audio", nil).WithContext(ctxUser())
 			api.getItems(w, r)
 			var res dto.QueryResult
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
 			Expect(res.Items).To(HaveLen(1))
 			Expect(res.Items[0].Type).To(Equal("Audio"))
-			Expect(res.Items[0].Id).To(Equal("s1"))
+			Expect(res.Items[0].Id).To(Equal(dto.EncodeID("s1")))
 		})
 
 		It("lists an artist's albums when ParentId is an artist and type is MusicAlbum", func() {
 			ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1", Name: "One", AlbumArtistID: "ar1"}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items?ParentId=ar1&IncludeItemTypes=MusicAlbum", nil).WithContext(ctxUser())
+			r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeID("ar1")+"&IncludeItemTypes=MusicAlbum", nil).WithContext(ctxUser())
 			api.getItems(w, r)
 			var res dto.QueryResult
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
@@ -116,7 +116,7 @@ var _ = Describe("Items", func() {
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
 			Expect(res.Items).To(HaveLen(1))
 			Expect(res.Items[0].Type).To(Equal("Playlist"))
-			Expect(res.Items[0].Id).To(Equal("p1"))
+			Expect(res.Items[0].Id).To(Equal(dto.EncodeID("p1")))
 			Expect(res.TotalRecordCount).To(Equal(1))
 		})
 
@@ -304,7 +304,7 @@ var _ = Describe("Items", func() {
 				albumRepo.SetData(model.Albums{{ID: "a1", Name: "One"}})
 				w := httptest.NewRecorder()
 				libs := model.Libraries{{ID: 1}, {ID: 2}}
-				r := httptest.NewRequest("GET", "/Items?ParentId=2&IncludeItemTypes=MusicAlbum", nil).WithContext(ctxUserWithLibraries(libs))
+				r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeID("2")+"&IncludeItemTypes=MusicAlbum", nil).WithContext(ctxUserWithLibraries(libs))
 				api.getItems(w, r)
 				Expect(w.Code).To(Equal(http.StatusOK))
 				sql, args, err := albumRepo.Options.Filters.ToSql()
@@ -319,7 +319,7 @@ var _ = Describe("Items", func() {
 				albumRepo.SetData(model.Albums{{ID: "a1", Name: "One"}})
 				w := httptest.NewRecorder()
 				libs := model.Libraries{{ID: 1}} // no access to library 99
-				r := httptest.NewRequest("GET", "/Items?ParentId=99&IncludeItemTypes=MusicAlbum", nil).WithContext(ctxUserWithLibraries(libs))
+				r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeID("99")+"&IncludeItemTypes=MusicAlbum", nil).WithContext(ctxUserWithLibraries(libs))
 				api.getItems(w, r)
 				Expect(w.Code).To(Equal(http.StatusOK))
 				sql, args, err := albumRepo.Options.Filters.ToSql()
@@ -355,13 +355,13 @@ var _ = Describe("Items", func() {
 		It("returns an album by id", func() {
 			ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1", Name: "One", LibraryID: 1}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items/a1", nil).WithContext(ctxUser())
-			r = withChiURLParam(r, "itemId", "a1")
+			r := httptest.NewRequest("GET", "/Items/"+dto.EncodeID("a1"), nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", dto.EncodeID("a1"))
 			api.getItem(w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var item dto.BaseItemDto
 			Expect(json.Unmarshal(w.Body.Bytes(), &item)).To(Succeed())
-			Expect(item.Id).To(Equal("a1"))
+			Expect(item.Id).To(Equal(dto.EncodeID("a1")))
 			Expect(item.Type).To(Equal("MusicAlbum"))
 		})
 
@@ -376,8 +376,8 @@ var _ = Describe("Items", func() {
 		It("returns 404 for an album in a library the user can't access", func() {
 			ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1", Name: "One", LibraryID: 2}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items/a1", nil).WithContext(ctxUser()) // only has access to library 1
-			r = withChiURLParam(r, "itemId", "a1")
+			r := httptest.NewRequest("GET", "/Items/"+dto.EncodeID("a1"), nil).WithContext(ctxUser()) // only has access to library 1
+			r = withChiURLParam(r, "itemId", dto.EncodeID("a1"))
 			api.getItem(w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
 		})
@@ -385,8 +385,8 @@ var _ = Describe("Items", func() {
 		It("returns 404 for a song in a library the user can't access", func() {
 			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: "s1", Title: "Song", LibraryID: 2}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items/s1", nil).WithContext(ctxUser()) // only has access to library 1
-			r = withChiURLParam(r, "itemId", "s1")
+			r := httptest.NewRequest("GET", "/Items/"+dto.EncodeID("s1"), nil).WithContext(ctxUser()) // only has access to library 1
+			r = withChiURLParam(r, "itemId", dto.EncodeID("s1"))
 			api.getItem(w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
 		})
@@ -394,13 +394,13 @@ var _ = Describe("Items", func() {
 		It("returns an album to an admin even when it's outside their (empty) Libraries", func() {
 			ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1", Name: "One", LibraryID: 2}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items/a1", nil).WithContext(ctxAdmin()) // admin, Libraries: nil
-			r = withChiURLParam(r, "itemId", "a1")
+			r := httptest.NewRequest("GET", "/Items/"+dto.EncodeID("a1"), nil).WithContext(ctxAdmin()) // admin, Libraries: nil
+			r = withChiURLParam(r, "itemId", dto.EncodeID("a1"))
 			api.getItem(w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var item dto.BaseItemDto
 			Expect(json.Unmarshal(w.Body.Bytes(), &item)).To(Succeed())
-			Expect(item.Id).To(Equal("a1"))
+			Expect(item.Id).To(Equal(dto.EncodeID("a1")))
 		})
 
 		// Finamp fetches a /UserViews entry (Id=library id) as a plain item to resolve the
@@ -408,13 +408,13 @@ var _ = Describe("Items", func() {
 		It("resolves a library-view id (from /UserViews) as a CollectionFolder item", func() {
 			w := httptest.NewRecorder()
 			libs := model.Libraries{{ID: 1, Name: "Music Library"}}
-			r := httptest.NewRequest("GET", "/Items/1", nil).WithContext(ctxUserWithLibraries(libs))
-			r = withChiURLParam(r, "itemId", "1")
+			r := httptest.NewRequest("GET", "/Items/"+dto.EncodeID("1"), nil).WithContext(ctxUserWithLibraries(libs))
+			r = withChiURLParam(r, "itemId", dto.EncodeID("1"))
 			api.getItem(w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var item dto.BaseItemDto
 			Expect(json.Unmarshal(w.Body.Bytes(), &item)).To(Succeed())
-			Expect(item.Id).To(Equal("1"))
+			Expect(item.Id).To(Equal(dto.EncodeID("1")))
 			Expect(item.Name).To(Equal("Music Library"))
 			Expect(item.Type).To(Equal("CollectionFolder"))
 			Expect(item.CollectionType).To(Equal("music"))
@@ -424,8 +424,8 @@ var _ = Describe("Items", func() {
 		It("does not resolve a library-view id the user has no access to", func() {
 			w := httptest.NewRecorder()
 			libs := model.Libraries{{ID: 2, Name: "Other"}} // no access to library 1
-			r := httptest.NewRequest("GET", "/Items/1", nil).WithContext(ctxUserWithLibraries(libs))
-			r = withChiURLParam(r, "itemId", "1")
+			r := httptest.NewRequest("GET", "/Items/"+dto.EncodeID("1"), nil).WithContext(ctxUserWithLibraries(libs))
+			r = withChiURLParam(r, "itemId", dto.EncodeID("1"))
 			api.getItem(w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
 		})
@@ -435,13 +435,13 @@ var _ = Describe("Items", func() {
 		It("resolves a playlist id via the playlists service", func() {
 			fp.getByIDPls = &model.Playlist{ID: "p1", Name: "My Mix", SongCount: 5}
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items/p1", nil).WithContext(ctxUser())
-			r = withChiURLParam(r, "itemId", "p1")
+			r := httptest.NewRequest("GET", "/Items/"+dto.EncodeID("p1"), nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", dto.EncodeID("p1"))
 			api.getItem(w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var item dto.BaseItemDto
 			Expect(json.Unmarshal(w.Body.Bytes(), &item)).To(Succeed())
-			Expect(item.Id).To(Equal("p1"))
+			Expect(item.Id).To(Equal(dto.EncodeID("p1")))
 			Expect(item.Name).To(Equal("My Mix"))
 			Expect(item.Type).To(Equal("Playlist"))
 		})
@@ -449,8 +449,8 @@ var _ = Describe("Items", func() {
 		It("returns 404 for a non-owned or absent playlist id", func() {
 			fp.getByIDErr = model.ErrNotFound
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items/p1", nil).WithContext(ctxUser())
-			r = withChiURLParam(r, "itemId", "p1")
+			r := httptest.NewRequest("GET", "/Items/"+dto.EncodeID("p1"), nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", dto.EncodeID("p1"))
 			api.getItem(w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
 		})
@@ -458,13 +458,13 @@ var _ = Describe("Items", func() {
 		It("resolves a library-view id for an admin even though their Libraries slice is empty", func() {
 			ds.Library(context.Background()).(*tests.MockLibraryRepo).SetData(model.Libraries{{ID: 1, Name: "Music Library"}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items/1", nil).WithContext(ctxAdmin())
-			r = withChiURLParam(r, "itemId", "1")
+			r := httptest.NewRequest("GET", "/Items/"+dto.EncodeID("1"), nil).WithContext(ctxAdmin())
+			r = withChiURLParam(r, "itemId", dto.EncodeID("1"))
 			api.getItem(w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var item dto.BaseItemDto
 			Expect(json.Unmarshal(w.Body.Bytes(), &item)).To(Succeed())
-			Expect(item.Id).To(Equal("1"))
+			Expect(item.Id).To(Equal(dto.EncodeID("1")))
 			Expect(item.Name).To(Equal("Music Library"))
 			Expect(item.Type).To(Equal("CollectionFolder"))
 		})
@@ -480,7 +480,7 @@ var _ = Describe("Items", func() {
 			var items []dto.BaseItemDto
 			Expect(json.Unmarshal(w.Body.Bytes(), &items)).To(Succeed())
 			Expect(items).To(HaveLen(1))
-			Expect(items[0].Id).To(Equal("a1"))
+			Expect(items[0].Id).To(Equal(dto.EncodeID("a1")))
 		})
 
 		It("scopes to the user's accessible libraries", func() {

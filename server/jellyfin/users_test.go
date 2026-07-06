@@ -33,13 +33,13 @@ var _ = Describe("Users", func() {
 			Expect(res.Items).To(HaveLen(2))
 			Expect(res.TotalRecordCount).To(Equal(2))
 
-			Expect(res.Items[0].Id).To(Equal("1"))
+			Expect(res.Items[0].Id).To(Equal(dto.EncodeID("1")))
 			Expect(res.Items[0].Name).To(Equal("Music"))
 			Expect(res.Items[0].Type).To(Equal("CollectionFolder"))
 			Expect(res.Items[0].CollectionType).To(Equal("music"))
 			Expect(res.Items[0].IsFolder).To(BeTrue())
 
-			Expect(res.Items[1].Id).To(Equal("2"))
+			Expect(res.Items[1].Id).To(Equal(dto.EncodeID("2")))
 			Expect(res.Items[1].Name).To(Equal("Podcasts"))
 		})
 
@@ -51,7 +51,7 @@ var _ = Describe("Users", func() {
 			var res dto.QueryResult
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
 			Expect(res.Items).To(HaveLen(1))
-			Expect(res.Items[0].Id).To(Equal("1"))
+			Expect(res.Items[0].Id).To(Equal(dto.EncodeID("1")))
 		})
 
 		It("returns no views for a user with no library access", func() {

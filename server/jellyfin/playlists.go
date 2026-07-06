@@ -26,12 +26,13 @@ func (api *Router) createPlaylist(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
-	id, err := api.playlists.Create(r.Context(), "", body.Name, body.Ids)
+	ids := slice.Map(body.Ids, dto.DecodeID)
+	id, err := api.playlists.Create(r.Context(), "", body.Name, ids)
 	if err != nil {
 		api.internalError(w, r, err)
 		return
 	}
-	api.ok(w, r, map[string]string{"Id": id})
+	api.ok(w, r, map[string]string{"Id": dto.EncodeID(id)})
 }
 
 // trackToBaseItem maps a playlist entry to a BaseItemDto, tagging it with PlaylistItemId — the
@@ -42,7 +43,7 @@ func (api *Router) createPlaylist(w http.ResponseWriter, r *http.Request) {
 // the same song appears more than once in the playlist.
 func trackToBaseItem(t model.PlaylistTrack) dto.BaseItemDto {
 	item := dto.SongToBaseItem(t.MediaFile)
-	item.PlaylistItemId = t.ID
+	item.PlaylistItemId = dto.EncodeID(t.ID)
 	return item
 }
 
@@ -51,7 +52,7 @@ func trackToBaseItem(t model.PlaylistTrack) dto.BaseItemDto {
 // a generic 404 so a playlist id can't be used to probe for the existence of private playlists.
 func (api *Router) getPlaylistItems(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	id := chi.URLParam(r, "playlistId")
+	id := dto.DecodeID(chi.URLParam(r, "playlistId"))
 	pls, err := api.playlists.GetWithTracks(ctx, id)
 	if err != nil {
 		http.Error(w, "Not Found", http.StatusNotFound)
@@ -83,8 +84,8 @@ func queryParam(r *http.Request, lower, pascal string) string {
 // ids). Ownership/editability is enforced by AddTracks itself; any error maps to 404.
 func (api *Router) addToPlaylist(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	id := chi.URLParam(r, "playlistId")
-	ids := splitIds(queryParam(r, "ids", "Ids"))
+	id := dto.DecodeID(chi.URLParam(r, "playlistId"))
+	ids := slice.Map(splitIds(queryParam(r, "ids", "Ids")), dto.DecodeID)
 	if _, err := api.playlists.AddTracks(ctx, id, ids); err != nil {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
@@ -99,8 +100,8 @@ func (api *Router) addToPlaylist(w http.ResponseWriter, r *http.Request) {
 // any error maps to 404.
 func (api *Router) removeFromPlaylist(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	id := chi.URLParam(r, "playlistId")
-	ids := splitIds(queryParam(r, "entryIds", "EntryIds"))
+	id := dto.DecodeID(chi.URLParam(r, "playlistId"))
+	ids := slice.Map(splitIds(queryParam(r, "entryIds", "EntryIds")), dto.DecodeID)
 	if err := api.playlists.RemoveTracks(ctx, id, ids); err != nil {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return

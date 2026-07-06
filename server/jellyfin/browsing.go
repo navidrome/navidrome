@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	"github.com/navidrome/navidrome/utils/req"
 )
 
@@ -16,7 +17,7 @@ func (api *Router) getArtists(w http.ResponseWriter, r *http.Request) {
 	opts := model.QueryOptions{Offset: p.IntOr("StartIndex", 0), Max: p.IntOr("Limit", 0)}
 	applySort(&opts, "MusicArtist", p.StringOr("SortBy", ""), p.StringOr("SortOrder", ""))
 
-	scopeIDs, _ := resolveLibraryScope(ctx, p.StringOr("ParentId", ""))
+	scopeIDs, _ := resolveLibraryScope(ctx, dto.DecodeID(p.StringOr("ParentId", "")))
 
 	res, err := api.listArtists(ctx, opts, scopeIDs, p.StringOr("SearchTerm", ""), false)
 	if err != nil {

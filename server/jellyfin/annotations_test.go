@@ -46,8 +46,8 @@ var _ = Describe("Annotations", func() {
 			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: "a1", Name: "One", LibraryID: 1}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/a1", nil).WithContext(ctxUser())
-			r = withChiURLParam(r, "itemId", "a1")
+			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/"+dto.EncodeID("a1"), nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", dto.EncodeID("a1"))
 			api.markFavorite(w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var d dto.UserItemDataDto
@@ -89,8 +89,8 @@ var _ = Describe("Annotations", func() {
 			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: "a1", Name: "One", LibraryID: 2}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/a1", nil).WithContext(ctxUser()) // only has access to library 1
-			r = withChiURLParam(r, "itemId", "a1")
+			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/"+dto.EncodeID("a1"), nil).WithContext(ctxUser()) // only has access to library 1
+			r = withChiURLParam(r, "itemId", dto.EncodeID("a1"))
 			api.markFavorite(w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
 			Expect(albumRepo.Data["a1"].Starred).To(BeFalse())
@@ -136,8 +136,8 @@ var _ = Describe("Annotations", func() {
 			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: "a1", Name: "One", LibraryID: 1}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Users/u1/Items/a1/Rating?Rating=10", nil).WithContext(ctxUser())
-			r = withChiURLParam(r, "itemId", "a1")
+			r := httptest.NewRequest("POST", "/Users/u1/Items/"+dto.EncodeID("a1")+"/Rating?Rating=10", nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", dto.EncodeID("a1"))
 			api.setRating(w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(albumRepo.Data["a1"].Rating).To(Equal(5))
@@ -161,8 +161,8 @@ var _ = Describe("Annotations", func() {
 			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: "a1", Name: "One", LibraryID: 2}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Users/u1/Items/a1/Rating?Rating=10", nil).WithContext(ctxUser()) // only has access to library 1
-			r = withChiURLParam(r, "itemId", "a1")
+			r := httptest.NewRequest("POST", "/Users/u1/Items/"+dto.EncodeID("a1")+"/Rating?Rating=10", nil).WithContext(ctxUser()) // only has access to library 1
+			r = withChiURLParam(r, "itemId", dto.EncodeID("a1"))
 			api.setRating(w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
 			Expect(albumRepo.Data["a1"].Rating).To(Equal(0))

@@ -10,11 +10,12 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/server/jellyfin/dto"
 )
 
 func (api *Router) getItemImage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	itemId := chi.URLParam(r, "itemId")
+	itemId := dto.DecodeID(chi.URLParam(r, "itemId"))
 	size, _ := strconv.Atoi(r.URL.Query().Get("maxWidth"))
 
 	artID := api.resolveArtworkID(ctx, itemId)

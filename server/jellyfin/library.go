@@ -39,7 +39,7 @@ func resolveLibraryScope(ctx context.Context, parentId string) (scopeIDs []int, 
 // UserView's id as a plain item to load the library.
 func libraryView(lib model.Library) dto.BaseItemDto {
 	return dto.BaseItemDto{
-		Id:                strconv.Itoa(lib.ID),
+		Id:                dto.EncodeID(strconv.Itoa(lib.ID)),
 		Name:              lib.Name,
 		Type:              "CollectionFolder",
 		CollectionType:    "music",

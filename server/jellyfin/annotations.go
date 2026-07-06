@@ -43,7 +43,7 @@ func (api *Router) resolveAnnotated(w http.ResponseWriter, r *http.Request, id s
 }
 
 func (api *Router) setFavorite(w http.ResponseWriter, r *http.Request, starred bool) {
-	id := chi.URLParam(r, "itemId")
+	id := dto.DecodeID(chi.URLParam(r, "itemId"))
 	repo, ok := api.resolveAnnotated(w, r, id)
 	if !ok {
 		return
@@ -52,7 +52,8 @@ func (api *Router) setFavorite(w http.ResponseWriter, r *http.Request, starred b
 		api.internalError(w, r, err)
 		return
 	}
-	api.ok(w, r, &dto.UserItemDataDto{IsFavorite: starred, Key: id, ItemId: id})
+	encodedID := dto.EncodeID(id)
+	api.ok(w, r, &dto.UserItemDataDto{IsFavorite: starred, Key: encodedID, ItemId: encodedID})
 }
 
 func (api *Router) markFavorite(w http.ResponseWriter, r *http.Request) { api.setFavorite(w, r, true) }
@@ -61,7 +62,7 @@ func (api *Router) unmarkFavorite(w http.ResponseWriter, r *http.Request) {
 }
 
 func (api *Router) setItemRating(w http.ResponseWriter, r *http.Request, rating int) {
-	id := chi.URLParam(r, "itemId")
+	id := dto.DecodeID(chi.URLParam(r, "itemId"))
 	repo, ok := api.resolveAnnotated(w, r, id)
 	if !ok {
 		return
@@ -70,7 +71,8 @@ func (api *Router) setItemRating(w http.ResponseWriter, r *http.Request, rating 
 		api.internalError(w, r, err)
 		return
 	}
-	d := &dto.UserItemDataDto{Key: id, ItemId: id}
+	encodedID := dto.EncodeID(id)
+	d := &dto.UserItemDataDto{Key: encodedID, ItemId: encodedID}
 	if rating > 0 {
 		jfRating := float64(rating) * 2 // Navidrome 0-5 -> Jellyfin 0-10, mirrors dto.UserData
 		d.Rating = &jfRating

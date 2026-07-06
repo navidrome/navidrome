@@ -11,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -48,7 +49,7 @@ var _ = Describe("Images", func() {
 		fa := &fakeArtwork{}
 		api := &Router{ds: ds, artwork: fa}
 
-		w, r := newImageRequest("a1")
+		w, r := newImageRequest(dto.EncodeID("a1"))
 		api.getItemImage(w, r)
 
 		Expect(w.Code).To(Equal(http.StatusOK))
@@ -64,7 +65,7 @@ var _ = Describe("Images", func() {
 		fa := &fakeArtwork{data: png}
 		api := &Router{ds: ds, artwork: fa}
 
-		w, r := newImageRequest("a1")
+		w, r := newImageRequest(dto.EncodeID("a1"))
 		api.getItemImage(w, r)
 
 		Expect(w.Code).To(Equal(http.StatusOK))
