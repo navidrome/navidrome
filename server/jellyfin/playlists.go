@@ -148,15 +148,6 @@ func splitIds(s string) []string {
 	return strings.Split(s, ",")
 }
 
-// queryParam reads lower first, falling back to pascal. Real Jellyfin clients (e.g. Finamp) send
-// lowercase query params (ids, entryIds); PascalCase is also accepted for robustness.
-func queryParam(r *http.Request, lower, pascal string) string {
-	if v := r.URL.Query().Get(lower); v != "" {
-		return v
-	}
-	return r.URL.Query().Get(pascal)
-}
-
 // expandContainerIDs turns the ids a Jellyfin client sends when building a playlist into the
 // underlying media file ids. Clients populate the id list with containers — albums, artists,
 // playlists — not just songs, and expect the server to expand each into its tracks, in order.
@@ -195,7 +186,7 @@ func (api *Router) songIDs(ctx context.Context, opts model.QueryOptions) []strin
 func (api *Router) addToPlaylist(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := dto.DecodeID(chi.URLParam(r, "playlistId"))
-	ids := api.expandContainerIDs(ctx, slice.Map(splitIds(queryParam(r, "ids", "Ids")), dto.DecodeID))
+	ids := api.expandContainerIDs(ctx, slice.Map(splitIds(r.URL.Query().Get("ids")), dto.DecodeID))
 	if _, err := api.playlists.AddTracks(ctx, id, ids); err != nil {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
@@ -211,7 +202,7 @@ func (api *Router) addToPlaylist(w http.ResponseWriter, r *http.Request) {
 func (api *Router) removeFromPlaylist(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := dto.DecodeID(chi.URLParam(r, "playlistId"))
-	ids := slice.Map(splitIds(queryParam(r, "entryIds", "EntryIds")), dto.DecodeID)
+	ids := slice.Map(splitIds(r.URL.Query().Get("entryids")), dto.DecodeID)
 	if err := api.playlists.RemoveTracks(ctx, id, ids); err != nil {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return

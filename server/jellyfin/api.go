@@ -43,6 +43,10 @@ func New(ds model.DataStore, artwork artwork.Artwork, streamer stream.MediaStrea
 func (api *Router) routes() http.Handler {
 	inner := chi.NewRouter()
 
+	// Read every query parameter case-insensitively, like real Jellyfin. Must precede all routes
+	// so both public and authenticated handlers (and the api_key auth check) see folded keys.
+	inner.Use(normalizeQueryKeys)
+
 	// Public (no auth): handshake + login.
 	inner.Get("/System/Info/Public", api.getPublicSystemInfo)
 	inner.Get("/System/Ping", api.ping)

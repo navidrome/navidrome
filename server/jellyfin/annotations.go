@@ -81,7 +81,7 @@ func (api *Router) setItemRating(w http.ResponseWriter, r *http.Request, rating 
 }
 
 func (api *Router) setRating(w http.ResponseWriter, r *http.Request) {
-	jfRating := req.Params(r).IntOr("Rating", 0)
+	jfRating := req.Params(r).IntOr("rating", 0)
 	jfRating = min(max(jfRating, 0), 10) // clamp: a client sending e.g. Rating=100 must not write an out-of-domain Navidrome rating
 	api.setItemRating(w, r, jfRating/2)  // Jellyfin 0-10 -> Navidrome 0-5
 }

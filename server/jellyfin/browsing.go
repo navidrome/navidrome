@@ -25,12 +25,12 @@ func (api *Router) getAlbumArtists(w http.ResponseWriter, r *http.Request) {
 func (api *Router) listArtistsByRole(w http.ResponseWriter, r *http.Request, role model.Role) {
 	ctx := r.Context()
 	p := req.Params(r)
-	opts := model.QueryOptions{Offset: p.IntOr("StartIndex", 0), Max: p.IntOr("Limit", 0)}
-	applySort(&opts, "MusicArtist", p.StringOr("SortBy", ""), p.StringOr("SortOrder", ""))
+	opts := model.QueryOptions{Offset: p.IntOr("startindex", 0), Max: p.IntOr("limit", 0)}
+	applySort(&opts, "MusicArtist", p.StringOr("sortby", ""), p.StringOr("sortorder", ""))
 
-	scopeIDs, _ := resolveLibraryScope(ctx, dto.DecodeID(p.StringOr("ParentId", "")))
+	scopeIDs, _ := resolveLibraryScope(ctx, dto.DecodeID(p.StringOr("parentid", "")))
 
-	res, err := api.listArtists(ctx, opts, scopeIDs, p.StringOr("SearchTerm", ""), false, role)
+	res, err := api.listArtists(ctx, opts, scopeIDs, p.StringOr("searchterm", ""), false, role)
 	if err != nil {
 		api.internalError(w, r, err)
 		return

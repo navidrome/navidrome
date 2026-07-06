@@ -85,8 +85,34 @@ var _ = Describe("tokenFromRequest", func() {
 		Expect(tokenFromRequest(r)).To(Equal("tok123"))
 	})
 
-	It("accepts the PascalCase ApiKey query param, as sent by Finamp/just_audio", func() {
+	It("accepts a PascalCase ApiKey query param once normalizeQueryKeys has folded it", func() {
 		r := httptest.NewRequest("GET", "/Items/s1/File?ApiKey=tok123", nil)
-		Expect(tokenFromRequest(r)).To(Equal("tok123"))
+		var got string
+		invoke(func(_ http.ResponseWriter, r *http.Request) { got = tokenFromRequest(r) }, httptest.NewRecorder(), r)
+		Expect(got).To(Equal("tok123"))
+	})
+})
+
+var _ = Describe("normalizeQueryKeys", func() {
+	// keyFor runs a request through normalizeQueryKeys and reports the value the handler sees for
+	// the given (lowercase) key — i.e. what a case-insensitive read would find.
+	keyFor := func(rawQuery, key string) string {
+		r := httptest.NewRequest("GET", "/Items?"+rawQuery, nil)
+		var got string
+		invoke(func(_ http.ResponseWriter, r *http.Request) { got = r.URL.Query().Get(key) }, httptest.NewRecorder(), r)
+		return got
+	}
+
+	It("folds PascalCase (Finamp) and camelCase (Jellify) keys to lowercase", func() {
+		Expect(keyFor("ParentId=abc", "parentid")).To(Equal("abc"))
+		Expect(keyFor("parentId=abc", "parentid")).To(Equal("abc"))
+	})
+
+	It("leaves values untouched", func() {
+		Expect(keyFor("IncludeItemTypes=MusicAlbum,Audio", "includeitemtypes")).To(Equal("MusicAlbum,Audio"))
+	})
+
+	It("passes already-lowercase keys through unchanged", func() {
+		Expect(keyFor("container=mp3", "container")).To(Equal("mp3"))
 	})
 })

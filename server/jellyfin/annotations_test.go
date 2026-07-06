@@ -34,7 +34,7 @@ var _ = Describe("Annotations", func() {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/s1", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", "s1")
-			api.markFavorite(w, r)
+			invoke(api.markFavorite, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var d dto.UserItemDataDto
 			Expect(json.Unmarshal(w.Body.Bytes(), &d)).To(Succeed())
@@ -48,7 +48,7 @@ var _ = Describe("Annotations", func() {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/"+dto.EncodeID("a1"), nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID("a1"))
-			api.markFavorite(w, r)
+			invoke(api.markFavorite, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var d dto.UserItemDataDto
 			Expect(json.Unmarshal(w.Body.Bytes(), &d)).To(Succeed())
@@ -63,7 +63,7 @@ var _ = Describe("Annotations", func() {
 			// alice only has access to library 1, but artists aren't gated per-library.
 			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/ar1", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", "ar1")
-			api.markFavorite(w, r)
+			invoke(api.markFavorite, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var d dto.UserItemDataDto
 			Expect(json.Unmarshal(w.Body.Bytes(), &d)).To(Succeed())
@@ -77,7 +77,7 @@ var _ = Describe("Annotations", func() {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("DELETE", "/Users/u1/FavoriteItems/s1", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", "s1")
-			api.unmarkFavorite(w, r)
+			invoke(api.unmarkFavorite, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var d dto.UserItemDataDto
 			Expect(json.Unmarshal(w.Body.Bytes(), &d)).To(Succeed())
@@ -91,7 +91,7 @@ var _ = Describe("Annotations", func() {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/"+dto.EncodeID("a1"), nil).WithContext(ctxUser()) // only has access to library 1
 			r = withChiURLParam(r, "itemId", dto.EncodeID("a1"))
-			api.markFavorite(w, r)
+			invoke(api.markFavorite, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
 			Expect(albumRepo.Data["a1"].Starred).To(BeFalse())
 		})
@@ -102,7 +102,7 @@ var _ = Describe("Annotations", func() {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/s1", nil).WithContext(ctxUser()) // only has access to library 1
 			r = withChiURLParam(r, "itemId", "s1")
-			api.markFavorite(w, r)
+			invoke(api.markFavorite, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
 			Expect(mfRepo.Data["s1"].Starred).To(BeFalse())
 		})
@@ -111,7 +111,7 @@ var _ = Describe("Annotations", func() {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/missing", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", "missing")
-			api.markFavorite(w, r)
+			invoke(api.markFavorite, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
 		})
 	})
@@ -123,7 +123,7 @@ var _ = Describe("Annotations", func() {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/Items/s1/Rating?Rating=8", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", "s1")
-			api.setRating(w, r)
+			invoke(api.setRating, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(mfRepo.Data["s1"].Rating).To(Equal(4))
 			var d dto.UserItemDataDto
@@ -138,7 +138,7 @@ var _ = Describe("Annotations", func() {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/Items/"+dto.EncodeID("a1")+"/Rating?Rating=10", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID("a1"))
-			api.setRating(w, r)
+			invoke(api.setRating, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(albumRepo.Data["a1"].Rating).To(Equal(5))
 		})
@@ -149,7 +149,7 @@ var _ = Describe("Annotations", func() {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("DELETE", "/Users/u1/Items/s1/Rating", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", "s1")
-			api.removeRating(w, r)
+			invoke(api.removeRating, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(mfRepo.Data["s1"].Rating).To(Equal(0))
 			var d dto.UserItemDataDto
@@ -163,7 +163,7 @@ var _ = Describe("Annotations", func() {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/Items/"+dto.EncodeID("a1")+"/Rating?Rating=10", nil).WithContext(ctxUser()) // only has access to library 1
 			r = withChiURLParam(r, "itemId", dto.EncodeID("a1"))
-			api.setRating(w, r)
+			invoke(api.setRating, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
 			Expect(albumRepo.Data["a1"].Rating).To(Equal(0))
 		})
@@ -174,7 +174,7 @@ var _ = Describe("Annotations", func() {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/Items/s1/Rating?Rating=100", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", "s1")
-			api.setRating(w, r)
+			invoke(api.setRating, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(mfRepo.Data["s1"].Rating).To(Equal(5))
 		})
@@ -185,7 +185,7 @@ var _ = Describe("Annotations", func() {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/Items/s1/Rating?Rating=-5", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", "s1")
-			api.setRating(w, r)
+			invoke(api.setRating, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(mfRepo.Data["s1"].Rating).To(Equal(0))
 		})

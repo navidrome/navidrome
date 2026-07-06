@@ -67,7 +67,7 @@ var _ = Describe("Sessions", func() {
 			w := httptest.NewRecorder()
 			r := authed(httptest.NewRequest("POST", "/Sessions/Playing", strings.NewReader(`{"ItemId":"s1","PositionTicks":10000000}`)))
 
-			api.reportPlaybackStart(w, r)
+			invoke(api.reportPlaybackStart, w, r)
 
 			Expect(w.Code).To(Equal(http.StatusNoContent))
 			Expect(pt.reported).To(HaveLen(1))
@@ -82,7 +82,7 @@ var _ = Describe("Sessions", func() {
 			w := httptest.NewRecorder()
 			r := authed(httptest.NewRequest("POST", "/Sessions/Playing?ItemId=s2", nil))
 
-			api.reportPlaybackStart(w, r)
+			invoke(api.reportPlaybackStart, w, r)
 
 			Expect(w.Code).To(Equal(http.StatusNoContent))
 			Expect(pt.reported).To(HaveLen(1))
@@ -95,7 +95,7 @@ var _ = Describe("Sessions", func() {
 			w := httptest.NewRecorder()
 			r := authed(httptest.NewRequest("POST", "/Sessions/Playing/Progress", strings.NewReader(`{"ItemId":"s1","PositionTicks":20000000,"IsPaused":false}`)))
 
-			api.reportPlaybackProgress(w, r)
+			invoke(api.reportPlaybackProgress, w, r)
 
 			Expect(w.Code).To(Equal(http.StatusNoContent))
 			Expect(pt.reported).To(HaveLen(1))
@@ -107,7 +107,7 @@ var _ = Describe("Sessions", func() {
 			w := httptest.NewRecorder()
 			r := authed(httptest.NewRequest("POST", "/Sessions/Playing/Progress", strings.NewReader(`{"ItemId":"s1","PositionTicks":20000000,"IsPaused":true}`)))
 
-			api.reportPlaybackProgress(w, r)
+			invoke(api.reportPlaybackProgress, w, r)
 
 			Expect(w.Code).To(Equal(http.StatusNoContent))
 			Expect(pt.reported).To(HaveLen(1))
@@ -120,7 +120,7 @@ var _ = Describe("Sessions", func() {
 			w := httptest.NewRecorder()
 			r := authed(httptest.NewRequest("POST", "/Sessions/Playing/Stopped", strings.NewReader(`{"ItemId":"s1","PositionTicks":600000000}`)))
 
-			api.reportPlaybackStopped(w, r)
+			invoke(api.reportPlaybackStopped, w, r)
 
 			Expect(w.Code).To(Equal(http.StatusNoContent))
 

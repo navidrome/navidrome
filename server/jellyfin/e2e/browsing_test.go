@@ -119,6 +119,35 @@ var _ = Describe("Browsing", func() {
 		})
 	})
 
+	// Jellify (and the official Jellyfin TypeScript SDK) send query params in camelCase
+	// (parentId, includeItemTypes, albumArtistIds), where Finamp sends PascalCase. Real Jellyfin
+	// binds them case-insensitively; these guard that our dispatcher does too, and that browsing an
+	// album with only parentId (no IncludeItemTypes, as Jellify does) returns its tracks.
+	Describe("camelCase query params (Jellify / JS SDK)", func() {
+		lib1 := enc("1")
+
+		It("filters albums by camelCase albumArtistIds", func() {
+			q := queryResult(get("/Items?includeItemTypes=MusicAlbum&recursive=true&parentId=" + lib1 + "&albumArtistIds=" + enc(artistID("The Beatles"))))
+			Expect(names(q.Items)).To(ConsistOf("Abbey Road", "Help!"))
+		})
+
+		It("filters songs by camelCase artistIds", func() {
+			q := queryResult(get("/Items?includeItemTypes=Audio&recursive=true&parentId=" + lib1 + "&artistIds=" + enc(artistID("The Beatles"))))
+			Expect(names(q.Items)).To(ConsistOf("Come Together", "Something", "Help!"))
+		})
+
+		It("browses an album's tracks with only camelCase parentId (no IncludeItemTypes)", func() {
+			q := queryResult(get("/Items?parentId=" + enc(albumID("Abbey Road")) + "&sortBy=ParentIndexNumber&sortBy=IndexNumber&sortBy=SortName"))
+			Expect(q.TotalRecordCount).To(Equal(2))
+			Expect(names(q.Items)).To(Equal([]string{"Something", "Come Together"}))
+		})
+
+		It("browses an artist's albums with only camelCase parentId (no IncludeItemTypes)", func() {
+			q := queryResult(get("/Items?parentId=" + enc(artistID("The Beatles"))))
+			Expect(names(q.Items)).To(ConsistOf("Abbey Road", "Help!"))
+		})
+	})
+
 	Describe("search, batch and pagination", func() {
 		It("searches albums by term", func() {
 			q := queryResult(get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true&SearchTerm=Abbey"))

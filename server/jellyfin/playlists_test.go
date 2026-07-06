@@ -132,7 +132,7 @@ var _ = Describe("Playlists", func() {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Playlists", strings.NewReader(`{"Name":"Mix","Ids":["s1","s2"]}`)).
 				WithContext(context.Background())
-			api.createPlaylist(w, r)
+			invoke(api.createPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res map[string]string
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
@@ -145,7 +145,7 @@ var _ = Describe("Playlists", func() {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Playlists", strings.NewReader(`not json`)).
 				WithContext(context.Background())
-			api.createPlaylist(w, r)
+			invoke(api.createPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusBadRequest))
 		})
 
@@ -154,7 +154,7 @@ var _ = Describe("Playlists", func() {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Playlists", strings.NewReader(`{"Name":"Mix"}`)).
 				WithContext(context.Background())
-			api.createPlaylist(w, r)
+			invoke(api.createPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusInternalServerError))
 		})
 	})
@@ -208,7 +208,7 @@ var _ = Describe("Playlists", func() {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Playlists", strings.NewReader(`{"Name":"Mix","Ids":["`+id+`"]}`)).
 				WithContext(ctx)
-			api.createPlaylist(w, r)
+			invoke(api.createPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 		}
 
@@ -258,7 +258,7 @@ var _ = Describe("Playlists", func() {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("GET", "/Playlists/pl1", nil).WithContext(context.Background())
 			r = withChiURLParam(r, "playlistId", "pl1")
-			api.getPlaylist(w, r)
+			invoke(api.getPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res dto.PlaylistInfo
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
@@ -272,7 +272,7 @@ var _ = Describe("Playlists", func() {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("GET", "/Playlists/missing", nil).WithContext(context.Background())
 			r = withChiURLParam(r, "playlistId", "missing")
-			api.getPlaylist(w, r)
+			invoke(api.getPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
 		})
 	})
@@ -317,17 +317,17 @@ var _ = Describe("Playlists", func() {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Playlists/pl1/Items?ids=s1,s2", nil).WithContext(context.Background())
 			r = withChiURLParam(r, "playlistId", "pl1")
-			api.addToPlaylist(w, r)
+			invoke(api.addToPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusNoContent))
 			Expect(fp.addPlaylistID).To(Equal("pl1"))
 			Expect(fp.addIds).To(Equal([]string{"s1", "s2"}))
 		})
 
-		It("falls back to the PascalCase Ids param", func() {
+		It("accepts a PascalCase Ids param (case-folded by the middleware)", func() {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Playlists/pl1/Items?Ids=s1,s2", nil).WithContext(context.Background())
 			r = withChiURLParam(r, "playlistId", "pl1")
-			api.addToPlaylist(w, r)
+			invoke(api.addToPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusNoContent))
 			Expect(fp.addIds).To(Equal([]string{"s1", "s2"}))
 		})
@@ -337,7 +337,7 @@ var _ = Describe("Playlists", func() {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Playlists/pl1/Items?ids=s1", nil).WithContext(context.Background())
 			r = withChiURLParam(r, "playlistId", "pl1")
-			api.addToPlaylist(w, r)
+			invoke(api.addToPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
 		})
 
@@ -345,7 +345,7 @@ var _ = Describe("Playlists", func() {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Playlists/pl1/Items", nil).WithContext(context.Background())
 			r = withChiURLParam(r, "playlistId", "pl1")
-			api.addToPlaylist(w, r)
+			invoke(api.addToPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusNoContent))
 			Expect(fp.addPlaylistID).To(Equal("pl1"))
 			Expect(fp.addIds).To(BeEmpty())
@@ -357,17 +357,17 @@ var _ = Describe("Playlists", func() {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("DELETE", "/Playlists/pl1/Items?entryIds=1,2", nil).WithContext(context.Background())
 			r = withChiURLParam(r, "playlistId", "pl1")
-			api.removeFromPlaylist(w, r)
+			invoke(api.removeFromPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusNoContent))
 			Expect(fp.removePlaylistID).To(Equal("pl1"))
 			Expect(fp.removeIds).To(Equal([]string{"1", "2"}))
 		})
 
-		It("falls back to the PascalCase EntryIds param", func() {
+		It("accepts a PascalCase EntryIds param (case-folded by the middleware)", func() {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("DELETE", "/Playlists/pl1/Items?EntryIds=1,2", nil).WithContext(context.Background())
 			r = withChiURLParam(r, "playlistId", "pl1")
-			api.removeFromPlaylist(w, r)
+			invoke(api.removeFromPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusNoContent))
 			Expect(fp.removeIds).To(Equal([]string{"1", "2"}))
 		})
@@ -377,7 +377,7 @@ var _ = Describe("Playlists", func() {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("DELETE", "/Playlists/pl1/Items?entryIds=1", nil).WithContext(context.Background())
 			r = withChiURLParam(r, "playlistId", "pl1")
-			api.removeFromPlaylist(w, r)
+			invoke(api.removeFromPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
 		})
 
@@ -385,7 +385,7 @@ var _ = Describe("Playlists", func() {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("DELETE", "/Playlists/pl1/Items", nil).WithContext(context.Background())
 			r = withChiURLParam(r, "playlistId", "pl1")
-			api.removeFromPlaylist(w, r)
+			invoke(api.removeFromPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusNoContent))
 			Expect(fp.removePlaylistID).To(Equal("pl1"))
 			Expect(fp.removeIds).To(BeEmpty())

@@ -64,10 +64,10 @@ func (api *Router) streamAudio(w http.ResponseWriter, r *http.Request) {
 		format = "raw"
 	}
 
-	bitRate := p.IntOr("audioBitRate", 0)
+	bitRate := p.IntOr("audiobitrate", 0)
 	if bitRate == 0 {
 		// maxStreamingBitrate is bits/sec by Jellyfin convention; ResolveRequest expects kbps.
-		bitRate = p.IntOr("maxStreamingBitrate", 0) / 1000
+		bitRate = p.IntOr("maxstreamingbitrate", 0) / 1000
 	}
 
 	streamReq := api.transcodeDecider.ResolveRequest(ctx, mf, format, bitRate, 0)

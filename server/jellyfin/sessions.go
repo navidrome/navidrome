@@ -26,7 +26,7 @@ func decodeReport(r *http.Request) playbackReport {
 	var body playbackReport
 	_ = json.NewDecoder(r.Body).Decode(&body)
 	if body.ItemId == "" {
-		body.ItemId = r.URL.Query().Get("ItemId")
+		body.ItemId = r.URL.Query().Get("itemid")
 	}
 	body.ItemId = dto.DecodeID(body.ItemId)
 	return body

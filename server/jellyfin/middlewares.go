@@ -3,12 +3,45 @@ package jellyfin
 import (
 	"net"
 	"net/http"
+	"net/url"
 	"regexp"
+	"strings"
 
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/request"
 )
+
+// normalizeQueryKeys folds every query-parameter key to lowercase so handlers can read params
+// case-insensitively, matching real Jellyfin (whose ASP.NET model binding ignores case). Clients
+// disagree on casing: Finamp sends PascalCase (ParentId, IncludeItemTypes), while Jellify and the
+// official Jellyfin TypeScript SDK send camelCase (parentId, includeItemTypes). A case-sensitive
+// read would silently drop one client's filters, sort and paging. The original request is left
+// untouched so request logging still shows the casing the client sent; a shallow copy with a
+// rewritten query is passed downstream. Handlers therefore read query params by their lowercase
+// name. Only keys are folded — values keep their case (e.g. IncludeItemTypes=MusicAlbum).
+func normalizeQueryKeys(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		folded := make(url.Values, len(q))
+		changed := false
+		for k, vs := range q {
+			lk := strings.ToLower(k)
+			folded[lk] = vs
+			if lk != k {
+				changed = true
+			}
+		}
+		if changed {
+			r2 := *r
+			u := *r.URL
+			u.RawQuery = folded.Encode()
+			r2.URL = &u
+			r = &r2
+		}
+		next.ServeHTTP(w, r)
+	})
+}
 
 type embyAuth struct {
 	Client, Device, DeviceId, Version, Token string
@@ -51,11 +84,13 @@ func tokenFromRequest(r *http.Request) string {
 	if t := parseEmbyAuth(r).Token; t != "" {
 		return t
 	}
+	// Both api_key and ApiKey are used in the wild (Finamp's just_audio engine fetches direct-file
+	// URLs with ?ApiKey=); normalizeQueryKeys has already folded key case, but the two spellings
+	// differ by an underscore, not case, so both are still checked.
 	if t := r.URL.Query().Get("api_key"); t != "" {
 		return t
 	}
-	// Finamp's just_audio engine fetches direct-file URLs with ?ApiKey= (PascalCase).
-	return r.URL.Query().Get("ApiKey")
+	return r.URL.Query().Get("apikey")
 }
 
 func (api *Router) authenticate(next http.Handler) http.Handler {

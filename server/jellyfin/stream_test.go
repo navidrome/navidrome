@@ -87,7 +87,7 @@ var _ = Describe("Stream", func() {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("GET", "/Audio/s1/stream", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", "s1")
-			api.streamAudio(w, r)
+			invoke(api.streamAudio, w, r)
 
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(decider.invoked).To(BeTrue())
@@ -102,7 +102,7 @@ var _ = Describe("Stream", func() {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("GET", "/Audio/s1/stream", nil).WithContext(ctxUser()) // only has access to library 1
 			r = withChiURLParam(r, "itemId", "s1")
-			api.streamAudio(w, r)
+			invoke(api.streamAudio, w, r)
 
 			Expect(w.Code).To(Equal(http.StatusNotFound))
 			Expect(decider.invoked).To(BeFalse())
@@ -113,7 +113,7 @@ var _ = Describe("Stream", func() {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("GET", "/Audio/missing/stream", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", "missing")
-			api.streamAudio(w, r)
+			invoke(api.streamAudio, w, r)
 
 			Expect(w.Code).To(Equal(http.StatusNotFound))
 			Expect(decider.invoked).To(BeFalse())
@@ -128,7 +128,7 @@ var _ = Describe("Stream", func() {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("GET", "/Audio/s1/stream", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", "s1")
-			api.streamAudio(w, r)
+			invoke(api.streamAudio, w, r)
 
 			Expect(w.Code).To(Equal(http.StatusInternalServerError))
 		})

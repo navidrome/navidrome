@@ -37,39 +37,50 @@ func (api *Router) getItems(w http.ResponseWriter, r *http.Request) {
 // (IncludeItemTypes=Audio,MusicAlbum,Playlist&Filters=IsFavorite).
 func (api *Router) queryItems(ctx context.Context, r *http.Request) (dto.QueryResult, error) {
 	p := req.Params(r)
+	// normalizeQueryKeys has folded every query key to lowercase, so params are read by their
+	// lowercase name here (matching real Jellyfin's case-insensitive binding).
+	//
 	// Jellyfin's /Items?ids= is a batch-fetch-by-id that cuts across the type dispatch below
-	// entirely; Finamp's download/sync uses it to fetch a single track's BaseItemDto. Query
-	// params are case-sensitive, and clients send both "Ids" and "ids".
-	if ids := p.StringOr("Ids", p.StringOr("ids", "")); ids != "" {
+	// entirely; Finamp's download/sync uses it to fetch a single track's BaseItemDto.
+	if ids := p.StringOr("ids", ""); ids != "" {
 		var items []dto.BaseItemDto
-		for _, rawID := range strings.Split(ids, ",") {
+		for rawID := range strings.SplitSeq(ids, ",") {
 			if item, ok := api.resolveItemByID(ctx, dto.DecodeID(strings.TrimSpace(rawID))); ok {
 				items = append(items, item)
 			}
 		}
 		return result(items, len(items), 0), nil
 	}
-	parentId := dto.DecodeID(p.StringOr("ParentId", ""))
-	search := p.StringOr("SearchTerm", "")
+	parentId := dto.DecodeID(p.StringOr("parentid", ""))
+	search := p.StringOr("searchterm", "")
 	// Clients express "favorites only" two ways: Jellyfin's Filters=IsFavorite, and the standalone
 	// isFavorite=true query param (Finamp's artist "Favourite tracks" widget uses the latter).
-	favOnly := strings.Contains(p.StringOr("Filters", ""), "IsFavorite") ||
-		p.BoolOr("IsFavorite", false) || p.BoolOr("isFavorite", false)
-	sortBy := p.StringOr("SortBy", "")
-	sortOrder := p.StringOr("SortOrder", "")
-	offset := p.IntOr("StartIndex", 0)
-	limit := p.IntOr("Limit", 0)
-	types := parseTypes(p.StringOr("IncludeItemTypes", ""))
+	favOnly := strings.Contains(p.StringOr("filters", ""), "IsFavorite") || p.BoolOr("isfavorite", false)
+	sortBy := p.StringOr("sortby", "")
+	sortOrder := p.StringOr("sortorder", "")
+	offset := p.IntOr("startindex", 0)
+	limit := p.IntOr("limit", 0)
+	rawTypes := p.StringOr("includeitemtypes", "")
+	types := parseTypes(rawTypes)
 	// An artist's page filters by artist, not by ParentId: Finamp sends ParentId=<libraryId> for
 	// scoping plus AlbumArtistIds/ArtistIds/contributingArtistIds for the artist itself. Without
 	// this, an artist's albums/tracks come back unfiltered (all artists).
 	artistId := firstDecodedID(firstNonEmpty(
-		p.StringOr("AlbumArtistIds", ""),
-		p.StringOr("ArtistIds", ""),
-		p.StringOr("ContributingArtistIds", p.StringOr("contributingArtistIds", "")),
+		p.StringOr("albumartistids", ""),
+		p.StringOr("artistids", ""),
+		p.StringOr("contributingartistids", ""),
 	))
 
 	scopeIDs, isLibraryParent := resolveLibraryScope(ctx, parentId)
+	// When no item type is requested and ParentId is an album, browse into that album's tracks:
+	// Jellify opens an album with just parentId=<albumId> (no IncludeItemTypes), and Jellyfin infers
+	// the child type from the parent. Without this we'd fall back to parseTypes' MusicAlbum default
+	// and list every album instead. An artist parent keeps that default (browse its albums).
+	if rawTypes == "" && parentId != "" && !isLibraryParent {
+		if _, err := api.ds.Album(ctx).Get(parentId); err == nil {
+			types = []string{"Audio"}
+		}
+	}
 	entityParent := parentId
 	// ParentId-as-entity-id (an artist for a MusicAlbum query, an album for an Audio query) only
 	// makes sense when browsing a single type; a multi-type query has no single natural parent
@@ -137,9 +148,9 @@ func firstDecodedID(s string) string {
 // parseTypes returns every recognized entry in the (possibly comma-separated) IncludeItemTypes,
 // in the order they appear, defaulting to []string{"MusicAlbum"} when nothing is recognized.
 // The MusicAlbum default makes ParentId=<artistId> (no explicit type) browse into that artist's
-// albums, matching the UserViews -> artists -> albums -> songs hierarchy; callers browsing into
-// an album are expected to pass IncludeItemTypes=Audio explicitly, as Finamp and Jellyfin's own
-// clients do.
+// albums, matching the UserViews -> artists -> albums -> songs hierarchy. Browsing into an album
+// with no explicit type (as Jellify does) is handled by queryItems, which infers Audio when
+// ParentId names an album.
 func parseTypes(types string) []string {
 	var recognized []string
 	for t := range strings.SplitSeq(types, ",") {
@@ -378,7 +389,7 @@ func (api *Router) deleteItem(w http.ResponseWriter, r *http.Request) {
 func (api *Router) getLatest(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	opts := filter.AlbumsByNewest()
-	opts.Max = req.Params(r).IntOr("Limit", 20)
+	opts.Max = req.Params(r).IntOr("limit", 20)
 	opts = filter.ApplyLibraryFilter(opts, accessibleLibraryIDs(ctx))
 	albums, err := api.ds.Album(ctx).GetAll(opts)
 	if err != nil {
