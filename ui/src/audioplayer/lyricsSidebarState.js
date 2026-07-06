@@ -6,17 +6,23 @@ export const resolveLyricsSidebarState = ({
   hasPronunciationLyric,
 }) => ({
   lyricsVisible: Boolean(lyricsVisiblePreference),
-  showTranslation:
+  showTranslation: Boolean(
     (translationPreference == null ? true : translationPreference) &&
     hasTranslationLyric,
-  showPronunciation:
-    (pronunciationPreference == null ? true : pronunciationPreference) &&
+  ),
+  showPronunciation: Boolean(
+    (pronunciationPreference == null ? false : pronunciationPreference) &&
     hasPronunciationLyric,
+  ),
 })
 
-export const toggleLayerPreference = (previousPreference, hasLayer) => {
+export const toggleLayerPreference = (
+  previousPreference,
+  hasLayer,
+  defaultEnabled = true,
+) => {
   if (!hasLayer) return false
   const currentPreference =
-    previousPreference == null ? true : previousPreference
+    previousPreference == null ? defaultEnabled : previousPreference
   return !currentPreference
 }

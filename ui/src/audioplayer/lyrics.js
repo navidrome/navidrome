@@ -417,8 +417,13 @@ const buildLineFromCueLineGroup = (index, group, baseLines, offset = 0) => {
         ?.end,
     ]),
   )
-  const value =
-    baseLine.value || first.value || tokens.map((token) => token.value).join('')
+  const fallbackValue = tokens
+    .map((token) => token.value)
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  const value = baseLine.value || first.value || fallbackValue
 
   return {
     ...baseLine,
@@ -507,15 +512,18 @@ export const buildKaraokeLines = (structuredLyric) => {
         )
       : buildBaseKaraokeLines(baseLines, offset)
 
-  const normalized = lines
-    .filter((line) => line.value || line.tokens.length > 0)
-    .sort((a, b) => {
-      if (a.start == null && b.start == null) return a.index - b.index
-      if (a.start == null) return 1
-      if (b.start == null) return -1
-      if (a.start !== b.start) return a.start - b.start
-      return a.index - b.index
-    })
+  const renderableLines = lines.filter(
+    (line) => line.value || line.tokens.length > 0,
+  )
+  const hasUntimedLines = renderableLines.some((line) => line.start == null)
+  const normalized = renderableLines.sort((a, b) => {
+    if (hasUntimedLines) return a.index - b.index
+    if (a.start == null && b.start == null) return a.index - b.index
+    if (a.start == null) return 1
+    if (b.start == null) return -1
+    if (a.start !== b.start) return a.start - b.start
+    return a.index - b.index
+  })
 
   for (let i = 0; i < normalized.length; i += 1) {
     if (normalized[i].end == null) {

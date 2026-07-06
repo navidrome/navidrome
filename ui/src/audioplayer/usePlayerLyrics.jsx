@@ -1,0 +1,108 @@
+import React, { useCallback, useMemo, useState } from 'react'
+import LyricsPanel from './LyricsPanel'
+import LyricsSidebar from './LyricsSidebar'
+import MobileKaraokeLyricsPortal from './MobileKaraokeLyricsPortal'
+import { hasStructuredLyricContent } from './lyrics'
+import {
+  resolveLyricsSidebarState,
+  toggleLayerPreference,
+} from './lyricsSidebarState'
+import useEnhancedLyrics from './useEnhancedLyrics'
+
+const usePlayerLyrics = ({ trackId, isRadio, audioInstance, isDesktop }) => {
+  const [lyricsVisiblePreference, setLyricsVisiblePreference] = useState(false)
+  const [translationPreference, setTranslationPreference] = useState(null)
+  const [pronunciationPreference, setPronunciationPreference] = useState(null)
+  const {
+    layers: lyricLayers,
+    loading: lyricsLoading,
+    error: lyricsError,
+  } = useEnhancedLyrics(trackId, isRadio)
+
+  const hasMainLyric = hasStructuredLyricContent(lyricLayers.main)
+  const hasTranslationLyric = hasStructuredLyricContent(lyricLayers.translation)
+  const hasPronunciationLyric = hasStructuredLyricContent(
+    lyricLayers.pronunciation,
+  )
+  const { lyricsVisible, showTranslation, showPronunciation } =
+    resolveLyricsSidebarState({
+      lyricsVisiblePreference,
+      translationPreference,
+      pronunciationPreference,
+      hasTranslationLyric,
+      hasPronunciationLyric,
+    })
+  const lyricsToggleDisabled =
+    (lyricsLoading || !hasMainLyric) && !lyricsVisiblePreference
+  const useInlineMobileLyrics = lyricsVisible && hasMainLyric && !isDesktop
+
+  const toggleLyrics = useCallback(() => {
+    setLyricsVisiblePreference((current) => (current ? false : hasMainLyric))
+  }, [hasMainLyric])
+
+  const toggleTranslation = useCallback(() => {
+    setTranslationPreference((current) =>
+      toggleLayerPreference(current, hasTranslationLyric),
+    )
+  }, [hasTranslationLyric])
+
+  const togglePronunciation = useCallback(() => {
+    setPronunciationPreference((current) =>
+      toggleLayerPreference(current, hasPronunciationLyric, false),
+    )
+  }, [hasPronunciationLyric])
+
+  const toolbarLyricsProps = useMemo(
+    () => ({
+      onToggleLyrics: toggleLyrics,
+      lyricsActive: lyricsVisible,
+      lyricsDisabled: lyricsToggleDisabled,
+      lyricsLoading,
+    }),
+    [lyricsLoading, lyricsToggleDisabled, lyricsVisible, toggleLyrics],
+  )
+
+  const lyricsSurface = (
+    <>
+      {isDesktop && (
+        <LyricsSidebar
+          visible={lyricsVisible}
+          mainLyric={lyricLayers.main}
+          translationLyric={lyricLayers.translation}
+          pronunciationLyric={lyricLayers.pronunciation}
+          showTranslation={showTranslation}
+          showPronunciation={showPronunciation}
+          translationEnabled={hasTranslationLyric}
+          pronunciationEnabled={hasPronunciationLyric}
+          onToggleTranslation={toggleTranslation}
+          onTogglePronunciation={togglePronunciation}
+          audioInstance={audioInstance}
+          loading={lyricsLoading}
+          error={lyricsError}
+        />
+      )}
+      <MobileKaraokeLyricsPortal active={useInlineMobileLyrics}>
+        <LyricsPanel
+          visible={useInlineMobileLyrics}
+          mainLyric={lyricLayers.main}
+          translationLyric={lyricLayers.translation}
+          pronunciationLyric={lyricLayers.pronunciation}
+          showTranslation={showTranslation}
+          showPronunciation={showPronunciation}
+          audioInstance={audioInstance}
+          loading={lyricsLoading}
+          error={lyricsError}
+          inline
+        />
+      </MobileKaraokeLyricsPortal>
+    </>
+  )
+
+  return {
+    toolbarLyricsProps,
+    lyricsSurface,
+    useInlineMobileLyrics,
+  }
+}
+
+export default usePlayerLyrics

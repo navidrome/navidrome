@@ -1,8 +1,4 @@
 import { makeStyles } from '@material-ui/core/styles'
-import {
-  LYRICS_SIDEBAR_RESIZING_BODY_CLASS,
-  LYRICS_SIDEBAR_TRANSITION_MS,
-} from './lyricsSidebarWidth'
 
 const useStyle = makeStyles(
   (theme) => ({
@@ -47,32 +43,6 @@ const useStyle = makeStyles(
       },
       '& .play-mode-title': {
         'pointer-events': 'none',
-      },
-      'body.nd-lyrics-sidebar-open & .react-jinke-music-player-main .music-player-panel':
-        {
-          width: 'calc(100% - var(--nd-lyrics-sidebar-width, 360px))',
-        },
-      '& .react-jinke-music-player-main .music-player-panel': {
-        transition: `width ${LYRICS_SIDEBAR_TRANSITION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`,
-      },
-      [`body.${LYRICS_SIDEBAR_RESIZING_BODY_CLASS} & .react-jinke-music-player-main .music-player-panel`]:
-        {
-          transition: 'none',
-        },
-      'body.nd-lyrics-sidebar-open & .audio-lists-panel': {
-        right: 'calc(33px + var(--nd-lyrics-sidebar-width, 360px))',
-      },
-      '& .audio-lists-panel': {
-        transition: `right ${LYRICS_SIDEBAR_TRANSITION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`,
-      },
-      [`body.${LYRICS_SIDEBAR_RESIZING_BODY_CLASS} & .audio-lists-panel`]: {
-        transition: 'none',
-      },
-      '@media (prefers-reduced-motion: reduce)': {
-        '& .react-jinke-music-player-main .music-player-panel, & .audio-lists-panel':
-          {
-            transition: 'none',
-          },
       },
       '& .music-player-panel .panel-content div.img-rotate': {
         // Customize desktop player when cover animation is disabled

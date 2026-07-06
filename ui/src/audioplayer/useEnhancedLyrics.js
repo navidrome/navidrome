@@ -17,6 +17,17 @@ const normalizeLyricLayers = (layers) => ({
 const readStructuredLyrics = (response) =>
   response?.json?.['subsonic-response']?.lyricsList?.structuredLyrics || []
 
+const MAX_LYRIC_CACHE_ENTRIES = 75
+
+const rememberLyrics = (cache, trackId, layers) => {
+  cache.delete(trackId)
+  cache.set(trackId, layers)
+  while (cache.size > MAX_LYRIC_CACHE_ENTRIES) {
+    const oldestTrackId = cache.keys().next().value
+    cache.delete(oldestTrackId)
+  }
+}
+
 const useEnhancedLyrics = (trackId, disabled = false) => {
   const cacheRef = useRef(new Map())
   const requestIdRef = useRef(0)
@@ -27,20 +38,26 @@ const useEnhancedLyrics = (trackId, disabled = false) => {
   useEffect(() => {
     requestIdRef.current += 1
     const requestId = requestIdRef.current
+    let cancelled = false
 
     if (!trackId || disabled) {
       setLayers(emptyLyricLayers)
       setLoading(false)
       setError(null)
-      return undefined
+      return () => {
+        cancelled = true
+      }
     }
 
     const cached = cacheRef.current.get(trackId)
     if (cached) {
+      rememberLyrics(cacheRef.current, trackId, cached)
       setLayers(cached)
       setLoading(false)
       setError(null)
-      return undefined
+      return () => {
+        cancelled = true
+      }
     }
 
     setLoading(true)
@@ -49,30 +66,32 @@ const useEnhancedLyrics = (trackId, disabled = false) => {
     subsonic
       .getLyricsBySongId(trackId)
       .then((response) => {
-        if (requestIdRef.current !== requestId) return
+        if (cancelled || requestIdRef.current !== requestId) return
         const selected = normalizeLyricLayers(
           selectLyricLayers(
             readStructuredLyrics(response),
             getPreferredLyricLanguage(),
           ),
         )
-        cacheRef.current.set(trackId, selected)
+        rememberLyrics(cacheRef.current, trackId, selected)
         setLayers(selected)
         setError(null)
       })
       .catch((err) => {
-        if (requestIdRef.current !== requestId) return
+        if (cancelled || requestIdRef.current !== requestId) return
         cacheRef.current.delete(trackId)
         setLayers(emptyLyricLayers)
         setError(err)
       })
       .finally(() => {
-        if (requestIdRef.current === requestId) {
+        if (!cancelled && requestIdRef.current === requestId) {
           setLoading(false)
         }
       })
 
-    return undefined
+    return () => {
+      cancelled = true
+    }
   }, [disabled, trackId])
 
   return { layers, loading, error }

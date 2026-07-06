@@ -4,6 +4,7 @@ import {
   getActiveKaraokeLineIndexes,
   getActiveKaraokeState,
   hasStructuredLyricContent,
+  resolveKaraokeTokenWindow,
   selectLyricLayers,
   structuredLyricToLrc,
   utf8ByteRangeToCodeUnitRange,
@@ -305,6 +306,74 @@ describe('lyrics helpers', () => {
     ])
   })
 
+  it('uses whitespace-aware text when cue-only fallback values are needed', () => {
+    const lines = buildKaraokeLines({
+      synced: true,
+      cueLine: [
+        {
+          index: 0,
+          start: 1000,
+          end: 3000,
+          value: '',
+          cue: [
+            { start: 1000, end: 2000, value: 'Lead' },
+            { start: 2000, end: 3000, value: 'all' },
+            { start: 3000, end: 3500, value: 'echo' },
+          ],
+        },
+      ],
+    })
+
+    expect(lines[0].value).toBe('Lead all echo')
+  })
+
+  it('preserves untimed lyric rows between surrounding timed rows', () => {
+    const lines = buildKaraokeLines({
+      synced: true,
+      line: [
+        { start: 1000, value: 'First verse' },
+        { value: '[instrumental]' },
+        { start: 2000, value: 'Second verse' },
+      ],
+    })
+
+    expect(lines.map((line) => line.value)).toEqual([
+      'First verse',
+      '[instrumental]',
+      'Second verse',
+    ])
+  })
+
+  it('estimates token windows when cue token timing is collapsed', () => {
+    const lines = buildKaraokeLines({
+      synced: true,
+      line: [{ start: 1000, end: 5000, value: 'one two three four' }],
+      cueLine: [
+        {
+          index: 0,
+          start: 1000,
+          end: 5000,
+          value: 'one two three four',
+          cue: [
+            { start: 1000, end: 5000, value: 'one' },
+            { start: 1000, end: 5000, value: 'two' },
+            { start: 1000, end: 5000, value: 'three' },
+            { start: 1000, end: 5000, value: 'four' },
+          ],
+        },
+      ],
+    })
+
+    expect(resolveKaraokeTokenWindow(lines[0], 0)).toEqual({
+      start: 1000,
+      end: 2000,
+    })
+    expect(resolveKaraokeTokenWindow(lines[0], 3)).toEqual({
+      start: 4000,
+      end: 5000,
+    })
+  })
+
   it('reports overlapping YAML-style active lines without changing primary focus', () => {
     const lines = buildKaraokeLines({
       synced: true,
@@ -363,7 +432,21 @@ describe('lyrics helpers', () => {
     ).toEqual({
       lyricsVisible: true,
       showTranslation: true,
-      showPronunciation: true,
+      showPronunciation: false,
+    })
+
+    expect(
+      resolveLyricsSidebarState({
+        lyricsVisiblePreference: 1,
+        translationPreference: true,
+        pronunciationPreference: true,
+        hasTranslationLyric: 'yes',
+        hasPronunciationLyric: undefined,
+      }),
+    ).toEqual({
+      lyricsVisible: true,
+      showTranslation: true,
+      showPronunciation: false,
     })
 
     expect(
@@ -381,6 +464,7 @@ describe('lyrics helpers', () => {
     })
 
     expect(toggleLayerPreference(null, true)).toBe(false)
+    expect(toggleLayerPreference(null, true, false)).toBe(true)
     expect(toggleLayerPreference(false, true)).toBe(true)
     expect(toggleLayerPreference(true, false)).toBe(false)
   })

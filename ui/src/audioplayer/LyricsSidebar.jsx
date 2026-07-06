@@ -7,19 +7,17 @@ import clsx from 'clsx'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import LyricsPanel from './LyricsPanel'
 import {
-  LYRICS_SIDEBAR_BODY_CLASS,
   LYRICS_SIDEBAR_BOTTOM_OFFSET,
   LYRICS_SIDEBAR_MAX_WIDTH,
   LYRICS_SIDEBAR_MIN_WIDTH,
-  LYRICS_SIDEBAR_RESIZING_BODY_CLASS,
   LYRICS_SIDEBAR_TRANSITION_MS,
   LYRICS_SIDEBAR_TOP_OFFSET,
   LYRICS_SIDEBAR_WIDTH_STEP,
-  LYRICS_SIDEBAR_WIDTH_VAR,
   clampSidebarWidth,
   loadSidebarWidth,
   saveSidebarWidth,
 } from './lyricsSidebarWidth'
+import useEnterExitTransition from './useEnterExitTransition'
 
 const useStyles = makeStyles((theme) => ({
   sidebar: {
@@ -40,9 +38,6 @@ const useStyles = makeStyles((theme) => ({
     boxShadow: 'none',
     transition: `transform ${LYRICS_SIDEBAR_TRANSITION_MS}ms cubic-bezier(0.22, 1, 0.36, 1), opacity ${LYRICS_SIDEBAR_TRANSITION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`,
     willChange: 'transform, opacity',
-    [`body.${LYRICS_SIDEBAR_RESIZING_BODY_CLASS} &`]: {
-      transition: 'none',
-    },
     '@media (prefers-reduced-motion: reduce)': {
       transition: 'none',
     },
@@ -178,9 +173,12 @@ const LyricsSidebar = ({
   error = null,
 }) => {
   const [width, setWidth] = useState(loadSidebarWidth)
+  const sidebarRef = useRef(null)
   const widthRef = useRef(width)
-  const [rendered, setRendered] = useState(visible)
-  const [entered, setEntered] = useState(visible)
+  const { rendered, entered } = useEnterExitTransition(
+    visible,
+    LYRICS_SIDEBAR_TRANSITION_MS,
+  )
   const [isResizing, setIsResizing] = useState(false)
   const classes = useStyles({ width })
 
@@ -189,44 +187,12 @@ const LyricsSidebar = ({
   }, [width])
 
   useEffect(() => {
-    if (visible) {
-      setRendered(true)
-      const frameId = window.requestAnimationFrame(() => setEntered(true))
-      return () => window.cancelAnimationFrame(frameId)
+    if (entered || typeof document === 'undefined') return
+    const activeElement = document.activeElement
+    if (activeElement && sidebarRef.current?.contains(activeElement)) {
+      activeElement.blur()
     }
-
-    setEntered(false)
-    const timerId = window.setTimeout(
-      () => setRendered(false),
-      LYRICS_SIDEBAR_TRANSITION_MS,
-    )
-    return () => window.clearTimeout(timerId)
-  }, [visible])
-
-  useEffect(() => {
-    if (typeof document === 'undefined' || !rendered) return undefined
-    document.body.classList.add(LYRICS_SIDEBAR_BODY_CLASS)
-    return () => {
-      document.body.classList.remove(LYRICS_SIDEBAR_BODY_CLASS)
-      document.body.classList.remove(LYRICS_SIDEBAR_RESIZING_BODY_CLASS)
-      document.body.style.removeProperty(LYRICS_SIDEBAR_WIDTH_VAR)
-    }
-  }, [rendered])
-
-  useEffect(() => {
-    if (typeof document === 'undefined' || !rendered) return
-    const nextWidth = clampSidebarWidth(width)
-    document.body.style.setProperty(LYRICS_SIDEBAR_WIDTH_VAR, `${nextWidth}px`)
-  }, [rendered, width])
-
-  useEffect(
-    () => () => {
-      if (typeof document !== 'undefined') {
-        document.body.classList.remove(LYRICS_SIDEBAR_RESIZING_BODY_CLASS)
-      }
-    },
-    [],
-  )
+  }, [entered])
 
   const updateWidth = useCallback((next, { persist = false } = {}) => {
     const resolvedWidth = clampSidebarWidth(
@@ -244,9 +210,6 @@ const LyricsSidebar = ({
       const startWidth = widthRef.current
       let latestWidth = startWidth
       setIsResizing(true)
-      if (typeof document !== 'undefined') {
-        document.body.classList.add(LYRICS_SIDEBAR_RESIZING_BODY_CLASS)
-      }
 
       const handlePointerMove = (moveEvent) => {
         latestWidth = clampSidebarWidth(startWidth + startX - moveEvent.clientX)
@@ -258,9 +221,6 @@ const LyricsSidebar = ({
         window.removeEventListener('pointerup', handlePointerUp)
         saveSidebarWidth(latestWidth)
         setIsResizing(false)
-        if (typeof document !== 'undefined') {
-          document.body.classList.remove(LYRICS_SIDEBAR_RESIZING_BODY_CLASS)
-        }
       }
 
       window.addEventListener('pointermove', handlePointerMove)
@@ -298,6 +258,7 @@ const LyricsSidebar = ({
     <aside
       className={classes.sidebar}
       data-testid="lyrics-sidebar"
+      ref={sidebarRef}
       style={{
         width,
         transform: entered ? 'translateX(0)' : 'translateX(100%)',

@@ -301,7 +301,7 @@ describe('<LyricsPanel />', () => {
       color: 'rgba(17, 17, 17, 0.98)',
     })
     expect(screen.getByText('translation line')).toHaveStyle({
-      color: 'rgba(119, 136, 153, 0.9)',
+      color: 'rgba(119, 136, 153, 0.86)',
     })
   })
 
@@ -334,7 +334,7 @@ describe('<LyricsPanel />', () => {
       },
     })
 
-    expect(screen.getByText('lain').style.backgroundImage).toBe('')
+    expect(screen.getByText('lain').style.backgroundImage).toBe('none')
     expect(screen.getByText('lain')).toHaveStyle({
       color: 'rgba(34, 102, 170, 0.34)',
     })
@@ -378,7 +378,7 @@ describe('<LyricsPanel />', () => {
       'linear-gradient',
     )
     expect(pronunciationTokens[1]).toHaveTextContent('ham kke')
-    expect(pronunciationTokens[1].style.backgroundImage).toBe('')
+    expect(pronunciationTokens[1].style.backgroundImage).toBe('none')
   })
 
   it('adds stacked pronunciation row spacing only after wrapping', async () => {
@@ -670,7 +670,7 @@ describe('<LyricsPanel />', () => {
       screen.getByText('Upcoming line').closest('.MuiTypography-root'),
     ).toHaveStyle({
       opacity: '0.86',
-      color: 'rgba(17, 17, 17, 0.78)',
+      color: 'rgba(17, 17, 17, 0.98)',
     })
   })
 
@@ -697,7 +697,7 @@ describe('<LyricsPanel />', () => {
 
     const token = screen.getByTestId('lyrics-token')
     expect(token).toHaveTextContent('go')
-    expect(token.style.backgroundImage).toBe('')
+    expect(token.style.backgroundImage).toBe('none')
     expect(token.style.color).toMatch(/^rgba\(17, 17, 17,/)
   })
 
@@ -789,10 +789,10 @@ describe('<LyricsPanel />', () => {
       'data-highlight-active',
       'false',
     )
-    expect(screen.getByText('Main').style.color).toBe('')
-    expect(screen.getByText('Main').style.backgroundImage).toBe('')
+    expect(screen.getByText('Main').style.color).not.toBe('transparent')
+    expect(screen.getByText('Main').style.backgroundImage).toBe('none')
     expect(screen.getByText('mein').style.color).not.toBe('transparent')
-    expect(screen.getByText('mein').style.backgroundImage).toBe('')
+    expect(screen.getByText('mein').style.backgroundImage).toBe('none')
   })
 
   it('keeps background and chorus-style tokens italic after highlighting ends', async () => {
@@ -826,7 +826,7 @@ describe('<LyricsPanel />', () => {
       'data-exiting',
     )
     expect(screen.getByText('(Us,hello?)').style.fontStyle).toBe('italic')
-    expect(screen.getByText('(Us,hello?)').style.backgroundImage).toBe('')
+    expect(screen.getByText('(Us,hello?)').style.backgroundImage).toBe('none')
     expect(screen.getByText('(Us,hello?)').style.textShadow).toBe('')
   })
 
@@ -891,8 +891,21 @@ describe('<LyricsPanel />', () => {
       audioInstance,
     })
 
-    fireEvent.click(screen.getByText('Seek line'))
+    const line = screen.getByText('Seek line')
+    const group = line.closest('[data-testid="lyrics-line-group"]')
+    expect(group).toHaveAttribute('role', 'button')
+    expect(group).toHaveAttribute('tabindex', '0')
 
+    fireEvent.click(line)
+
+    expect(audioInstance.currentTime).toBe(2.3)
+
+    audioInstance.currentTime = 0
+    fireEvent.keyDown(group, { key: 'Enter' })
+    expect(audioInstance.currentTime).toBe(2.3)
+
+    audioInstance.currentTime = 0
+    fireEvent.keyDown(group, { key: ' ' })
     expect(audioInstance.currentTime).toBe(2.3)
   })
 

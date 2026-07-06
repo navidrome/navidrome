@@ -59,7 +59,6 @@ describe('<LyricsSidebar />', () => {
     cleanup()
     localStorage.clear()
     document.body.className = ''
-    document.body.style.removeProperty('--nd-lyrics-sidebar-width')
     Object.defineProperty(window, 'PointerEvent', {
       configurable: true,
       writable: true,
@@ -67,13 +66,10 @@ describe('<LyricsSidebar />', () => {
     })
   })
 
-  it('sets and cleans up the global layout class and width variable', () => {
+  it('renders as a contained fixed sidebar without global layout side effects', () => {
     const { unmount } = renderSidebar()
 
-    expect(document.body).toHaveClass('nd-lyrics-sidebar-open')
-    expect(
-      document.body.style.getPropertyValue('--nd-lyrics-sidebar-width'),
-    ).toBe('360px')
+    expect(document.body.className).toBe('')
     const sidebar = screen.getByTestId('lyrics-sidebar')
     expect(sidebar).toHaveStyle({
       top: `${LYRICS_SIDEBAR_TOP_OFFSET}px`,
@@ -99,10 +95,7 @@ describe('<LyricsSidebar />', () => {
 
     unmount()
 
-    expect(document.body).not.toHaveClass('nd-lyrics-sidebar-open')
-    expect(
-      document.body.style.getPropertyValue('--nd-lyrics-sidebar-width'),
-    ).toBe('')
+    expect(document.body.className).toBe('')
   })
 
   it('keeps the sidebar mounted while sliding closed', () => {
@@ -128,7 +121,7 @@ describe('<LyricsSidebar />', () => {
       transform: 'translateX(100%)',
       opacity: '0',
     })
-    expect(document.body).toHaveClass('nd-lyrics-sidebar-open')
+    expect(document.body.className).toBe('')
 
     vi.advanceTimersByTime(LYRICS_SIDEBAR_TRANSITION_MS)
 
@@ -176,7 +169,6 @@ describe('<LyricsSidebar />', () => {
     const resizer = screen.getByTestId('lyrics-sidebar-resizer')
 
     fireEvent.pointerDown(resizer, { clientX: 500 })
-    expect(document.body).toHaveClass('nd-lyrics-sidebar-resizing')
     window.dispatchEvent(new MouseEvent('pointermove', { clientX: -100 }))
     await waitFor(() =>
       expect(sidebar).toHaveStyle({ width: `${LYRICS_SIDEBAR_MAX_WIDTH}px` }),
@@ -189,10 +181,35 @@ describe('<LyricsSidebar />', () => {
     )
 
     window.dispatchEvent(new MouseEvent('pointerup'))
-    expect(document.body).not.toHaveClass('nd-lyrics-sidebar-resizing')
     expect(localStorage.getItem(LYRICS_SIDEBAR_STORAGE_KEY)).toBe(
       String(LYRICS_SIDEBAR_MIN_WIDTH),
     )
+  })
+
+  it('blurs focus inside the sidebar when exit transition hides it', () => {
+    vi.useFakeTimers()
+    const { rerender } = renderSidebar()
+    const resizer = screen.getByTestId('lyrics-sidebar-resizer')
+    resizer.focus()
+    expect(document.activeElement).toBe(resizer)
+
+    rerender(
+      <ThemeProvider theme={theme}>
+        <LyricsSidebar
+          visible={false}
+          mainLyric={lyric}
+          showTranslation
+          showPronunciation
+          translationEnabled
+          pronunciationEnabled
+          onToggleTranslation={vi.fn()}
+          onTogglePronunciation={vi.fn()}
+        />
+      </ThemeProvider>,
+    )
+
+    expect(document.activeElement).not.toBe(resizer)
+    vi.advanceTimersByTime(LYRICS_SIDEBAR_TRANSITION_MS)
   })
 
   it('uses icon toggle buttons with pressed and disabled states', () => {

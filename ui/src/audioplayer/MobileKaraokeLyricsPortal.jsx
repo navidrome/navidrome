@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import useEnterExitTransition from './useEnterExitTransition'
 
 export const MOBILE_KARAOKE_LYRICS_TRANSITION_MS = 260
 export const MOBILE_KARAOKE_LYRICS_HOST_SELECTOR =
@@ -14,26 +15,13 @@ const resolveMobileLyricsHost = () => {
 }
 
 const MobileKaraokeLyricsPortal = ({ active, children }) => {
-  const [rendered, setRendered] = useState(active)
-  const [entered, setEntered] = useState(active)
+  const { rendered, entered } = useEnterExitTransition(
+    active,
+    MOBILE_KARAOKE_LYRICS_TRANSITION_MS,
+  )
   const [host, setHost] = useState(() =>
     active ? resolveMobileLyricsHost() : null,
   )
-
-  useEffect(() => {
-    if (active) {
-      setRendered(true)
-      const frameId = window.requestAnimationFrame(() => setEntered(true))
-      return () => window.cancelAnimationFrame(frameId)
-    }
-
-    setEntered(false)
-    const timerId = window.setTimeout(
-      () => setRendered(false),
-      MOBILE_KARAOKE_LYRICS_TRANSITION_MS,
-    )
-    return () => window.clearTimeout(timerId)
-  }, [active])
 
   useEffect(() => {
     if (typeof document === 'undefined') {
@@ -46,10 +34,18 @@ const MobileKaraokeLyricsPortal = ({ active, children }) => {
       return undefined
     }
 
-    const syncHost = () => setHost(resolveMobileLyricsHost())
-    syncHost()
+    const currentHost = resolveMobileLyricsHost()
+    if (currentHost) {
+      setHost(currentHost)
+      return undefined
+    }
 
-    const observer = new MutationObserver(syncHost)
+    const observer = new MutationObserver(() => {
+      const nextHost = resolveMobileLyricsHost()
+      if (!nextHost) return
+      setHost(nextHost)
+      observer.disconnect()
+    })
     observer.observe(document.body, { childList: true, subtree: true })
 
     return () => observer.disconnect()

@@ -6,9 +6,6 @@ export const LYRICS_SIDEBAR_WIDTH_STEP = 20
 export const LYRICS_SIDEBAR_TOP_OFFSET = 48
 export const LYRICS_SIDEBAR_BOTTOM_OFFSET = 80
 export const LYRICS_SIDEBAR_TRANSITION_MS = 260
-export const LYRICS_SIDEBAR_BODY_CLASS = 'nd-lyrics-sidebar-open'
-export const LYRICS_SIDEBAR_RESIZING_BODY_CLASS = 'nd-lyrics-sidebar-resizing'
-export const LYRICS_SIDEBAR_WIDTH_VAR = '--nd-lyrics-sidebar-width'
 
 export const clampSidebarWidth = (value) => {
   const numeric = Number(value)
@@ -21,8 +18,13 @@ export const clampSidebarWidth = (value) => {
   )
 }
 
-const hasLocalStorage = () =>
-  typeof window !== 'undefined' && Boolean(window.localStorage)
+const hasLocalStorage = () => {
+  try {
+    return typeof window !== 'undefined' && Boolean(window.localStorage)
+  } catch {
+    return false
+  }
+}
 
 export const loadSidebarWidth = () => {
   if (!hasLocalStorage()) return LYRICS_SIDEBAR_DEFAULT_WIDTH

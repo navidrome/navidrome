@@ -71,4 +71,30 @@ describe('useEnhancedLyrics', () => {
     expect(result.current.loading).toBe(false)
     expect(subsonic.getLyricsBySongId).not.toHaveBeenCalled()
   })
+
+  it('resets layers and retries after a lyrics request error', async () => {
+    const error = new Error('lyrics failed')
+    subsonic.getLyricsBySongId
+      .mockRejectedValueOnce(error)
+      .mockResolvedValueOnce(responseFor('Recovered lyrics'))
+
+    const { result, rerender } = renderHook(
+      ({ trackId }) => useEnhancedLyrics(trackId),
+      { initialProps: { trackId: 'song-error' } },
+    )
+
+    await waitFor(() => expect(result.current.error).toBe(error))
+    expect(result.current.layers).toBe(emptyLyricLayers)
+    expect(result.current.loading).toBe(false)
+
+    rerender({ trackId: null })
+    rerender({ trackId: 'song-error' })
+
+    await waitFor(() =>
+      expect(result.current.layers.main?.line[0].value).toBe(
+        'Recovered lyrics',
+      ),
+    )
+    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(2)
+  })
 })

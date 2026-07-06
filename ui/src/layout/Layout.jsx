@@ -8,27 +8,10 @@ import AppBar from './AppBar'
 import Notification from './Notification'
 import useCurrentTheme from '../themes/useCurrentTheme'
 import { useSearchRefocus } from '../common'
-import {
-  LYRICS_SIDEBAR_RESIZING_BODY_CLASS,
-  LYRICS_SIDEBAR_TRANSITION_MS,
-} from '../audioplayer/lyricsSidebarWidth'
 
-const useStyles = makeStyles((theme) => ({
-  root: {
-    paddingBottom: (props) => (props.addPadding ? '80px' : 0),
-    minWidth: 0,
-    transition: `width ${LYRICS_SIDEBAR_TRANSITION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`,
-    '@media (prefers-reduced-motion: reduce)': {
-      transition: 'none',
-    },
-    [`body.${LYRICS_SIDEBAR_RESIZING_BODY_CLASS} &`]: {
-      transition: 'none',
-    },
-    'body.nd-lyrics-sidebar-open &': {
-      width: 'calc(100% - var(--nd-lyrics-sidebar-width, 360px))',
-    },
-  },
-}))
+const useStyles = makeStyles({
+  root: { paddingBottom: (props) => (props.addPadding ? '80px' : 0) },
+})
 
 const Layout = (props) => {
   const theme = useCurrentTheme()
