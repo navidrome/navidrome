@@ -174,6 +174,16 @@ var _ = Describe("Browsing", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
+		It("includes structured ArtistItems and AlbumArtists on a song (now-playing artist)", func() {
+			var item dto.BaseItemDto
+			parseInto(get("/Items/"+enc(songID("So What"))), &item)
+			Expect(item.ArtistItems).ToNot(BeEmpty())
+			Expect(item.ArtistItems[0].Name).To(Equal("Miles Davis"))
+			Expect(item.ArtistItems[0].Id).ToNot(BeEmpty())
+			Expect(item.AlbumArtists).ToNot(BeEmpty())
+			Expect(item.AlbumArtists[0].Name).To(Equal("Miles Davis"))
+		})
+
 		It("resolves an artist", func() {
 			var item dto.BaseItemDto
 			parseInto(get("/Items/"+enc(artistID("Miles Davis"))), &item)

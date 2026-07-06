@@ -108,6 +108,15 @@ func SongToBaseItem(mf model.MediaFile) BaseItemDto {
 		UserData:          UserData(mf.Annotations, mf.ID),
 		MediaSources:      []MediaSourceInfo{MediaSourceFromMediaFile(mf)},
 	}
+	// Structured artist links: clients (e.g. Finamp's Now Playing screen) read ArtistItems for the
+	// displayed artist and fall back to "Unknown Artist" when it's absent, even though Artists
+	// carries the same name. ArtistItems is the track artist; AlbumArtists the album artist.
+	if mf.ArtistID != "" {
+		item.ArtistItems = []NameGuidPair{{Name: mf.Artist, Id: EncodeID(mf.ArtistID)}}
+	}
+	if mf.AlbumArtistID != "" {
+		item.AlbumArtists = []NameGuidPair{{Name: mf.AlbumArtist, Id: EncodeID(mf.AlbumArtistID)}}
+	}
 	if mf.Year > 0 {
 		item.ProductionYear = new(mf.Year)
 	}

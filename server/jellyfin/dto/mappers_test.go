@@ -53,6 +53,21 @@ var _ = Describe("mappers", func() {
 		Expect(SongToBaseItem(model.MediaFile{ID: "s1", Title: "Song"}).DateCreated).To(BeEmpty())
 	})
 
+	It("sets ArtistItems and AlbumArtists (encoded ids) from the track and album artist", func() {
+		mf := model.MediaFile{
+			ID: "s1", Title: "Song",
+			Artist: "The Band", ArtistID: "ar-1",
+			AlbumArtist: "Various", AlbumArtistID: "ar-2",
+		}
+		item := SongToBaseItem(mf)
+		Expect(item.ArtistItems).To(Equal([]NameGuidPair{{Name: "The Band", Id: EncodeID("ar-1")}}))
+		Expect(item.AlbumArtists).To(Equal([]NameGuidPair{{Name: "Various", Id: EncodeID("ar-2")}}))
+	})
+
+	It("omits ArtistItems when the track has no artist id", func() {
+		Expect(SongToBaseItem(model.MediaFile{ID: "s1", Title: "Song", Artist: "X"}).ArtistItems).To(BeNil())
+	})
+
 	It("builds a MediaSourceInfo from a media file", func() {
 		mf := model.MediaFile{ID: "s1", Size: 5242880, Suffix: "mp3", BitRate: 320, Duration: 100}
 		src := MediaSourceFromMediaFile(mf)
