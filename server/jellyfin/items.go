@@ -3,6 +3,7 @@ package jellyfin
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/Masterminds/squirrel"
@@ -233,13 +234,30 @@ func (api *Router) listPlaylists(ctx context.Context, opts model.QueryOptions, f
 	return result(slice.Map(playlists, dto.PlaylistToBaseItem), int(total), opts.Offset), nil
 }
 
-// getItem fetches a single entity by id, trying album, artist and song in turn. For albums
-// and songs (which each belong to exactly one library) it 404s if the current user lacks
-// access to that library, so an id can't be used to probe content outside the user's libraries.
+// getItem fetches a single entity by id, trying library view, album, artist and song in turn.
+// For albums and songs (which each belong to exactly one library) it 404s if the current user
+// lacks access to that library, so an id can't be used to probe content outside the user's
+// libraries.
 func (api *Router) getItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := chi.URLParam(r, "itemId")
 	u, _ := request.UserFrom(ctx)
+	// Finamp resolves a /UserViews entry (Id=library id) by fetching it as a plain item; without
+	// this, the home screen and every library tab 404 trying to probe it as an album/artist/song.
+	if libID, err := strconv.Atoi(id); err == nil && u.HasLibraryAccess(libID) {
+		for _, lib := range u.Libraries {
+			if lib.ID == libID {
+				api.ok(w, r, libraryView(lib))
+				return
+			}
+		}
+		// Admin bypass: Libraries is empty but access is granted to every library, so fetch the
+		// real one instead of returning a placeholder.
+		if lib, err := api.ds.Library(ctx).Get(libID); err == nil {
+			api.ok(w, r, libraryView(*lib))
+			return
+		}
+	}
 	if al, err := api.ds.Album(ctx).Get(id); err == nil {
 		if !u.HasLibraryAccess(al.LibraryID) {
 			http.Error(w, "Not Found", http.StatusNotFound)

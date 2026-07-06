@@ -4,7 +4,9 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/server/jellyfin/dto"
 )
 
 // accessibleLibraryIDs returns the ids of the libraries the current user can access. An
@@ -29,4 +31,19 @@ func resolveLibraryScope(ctx context.Context, parentId string) (scopeIDs []int, 
 		}
 	}
 	return accessibleLibraryIDs(ctx), false
+}
+
+// libraryView builds the CollectionFolder BaseItemDto Jellyfin clients use to represent a
+// library as a top-level browsing node. It's shared by getUserViews (which lists every
+// accessible library) and getItem (which resolves a single one), since Finamp fetches a
+// UserView's id as a plain item to load the library.
+func libraryView(lib model.Library) dto.BaseItemDto {
+	return dto.BaseItemDto{
+		Id:                strconv.Itoa(lib.ID),
+		Name:              lib.Name,
+		Type:              "CollectionFolder",
+		CollectionType:    "music",
+		IsFolder:          true,
+		BackdropImageTags: []string{},
+	}
 }

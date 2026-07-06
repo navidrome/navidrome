@@ -400,6 +400,47 @@ var _ = Describe("Items", func() {
 			Expect(json.Unmarshal(w.Body.Bytes(), &item)).To(Succeed())
 			Expect(item.Id).To(Equal("a1"))
 		})
+
+		// Finamp fetches a /UserViews entry (Id=library id) as a plain item to resolve the
+		// library node before it can load the home screen or any library tab.
+		It("resolves a library-view id (from /UserViews) as a CollectionFolder item", func() {
+			w := httptest.NewRecorder()
+			libs := model.Libraries{{ID: 1, Name: "Music Library"}}
+			r := httptest.NewRequest("GET", "/Items/1", nil).WithContext(ctxUserWithLibraries(libs))
+			r = withChiURLParam(r, "itemId", "1")
+			api.getItem(w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var item dto.BaseItemDto
+			Expect(json.Unmarshal(w.Body.Bytes(), &item)).To(Succeed())
+			Expect(item.Id).To(Equal("1"))
+			Expect(item.Name).To(Equal("Music Library"))
+			Expect(item.Type).To(Equal("CollectionFolder"))
+			Expect(item.CollectionType).To(Equal("music"))
+			Expect(item.IsFolder).To(BeTrue())
+		})
+
+		It("does not resolve a library-view id the user has no access to", func() {
+			w := httptest.NewRecorder()
+			libs := model.Libraries{{ID: 2, Name: "Other"}} // no access to library 1
+			r := httptest.NewRequest("GET", "/Items/1", nil).WithContext(ctxUserWithLibraries(libs))
+			r = withChiURLParam(r, "itemId", "1")
+			api.getItem(w, r)
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
+
+		It("resolves a library-view id for an admin even though their Libraries slice is empty", func() {
+			ds.Library(context.Background()).(*tests.MockLibraryRepo).SetData(model.Libraries{{ID: 1, Name: "Music Library"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items/1", nil).WithContext(ctxAdmin())
+			r = withChiURLParam(r, "itemId", "1")
+			api.getItem(w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var item dto.BaseItemDto
+			Expect(json.Unmarshal(w.Body.Bytes(), &item)).To(Succeed())
+			Expect(item.Id).To(Equal("1"))
+			Expect(item.Name).To(Equal("Music Library"))
+			Expect(item.Type).To(Equal("CollectionFolder"))
+		})
 	})
 
 	Describe("getLatest", func() {

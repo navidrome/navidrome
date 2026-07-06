@@ -2,7 +2,6 @@ package jellyfin
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
@@ -15,14 +14,7 @@ func (api *Router) getUserViews(w http.ResponseWriter, r *http.Request) {
 	u, _ := request.UserFrom(r.Context())
 	views := make([]dto.BaseItemDto, 0, len(u.Libraries))
 	for _, lib := range u.Libraries {
-		views = append(views, dto.BaseItemDto{
-			Id:                strconv.Itoa(lib.ID),
-			Name:              lib.Name,
-			Type:              "CollectionFolder",
-			CollectionType:    "music",
-			IsFolder:          true,
-			BackdropImageTags: []string{},
-		})
+		views = append(views, libraryView(lib))
 	}
 	api.ok(w, r, dto.QueryResult{Items: views, TotalRecordCount: len(views), StartIndex: 0})
 }
