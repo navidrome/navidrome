@@ -2,6 +2,7 @@ package jellyfin
 
 import (
 	"net/http"
+	"net/url"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/log"
@@ -41,6 +42,16 @@ func (api *Router) getPlaybackInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	src := dto.MediaSourceFromMediaFile(*mf)
+	// Advertise a stream URL with the caller's token embedded, as real Jellyfin does. Jellify's
+	// native player (react-native-nitro-player) fetches MediaSources[0].TranscodingUrl verbatim and
+	// does NOT forward an auth header, so without a self-authenticating URL here its stream 401s.
+	// Direct-play clients (Finamp builds its own /Items/{id}/File?ApiKey URL) ignore this field, so
+	// SupportsDirectPlay is left true for them. The path is relative to the client's server base URL
+	// (which already includes the /jellyfin mount), matching how Jellify concatenates basePath+URL.
+	if token := tokenFromRequest(r); token != "" {
+		src.TranscodingSubProtocol = "http"
+		src.TranscodingUrl = "/Audio/" + src.Id + "/universal?static=true&api_key=" + url.QueryEscape(token)
+	}
 	api.ok(w, r, dto.PlaybackInfoResponse{MediaSources: []dto.MediaSourceInfo{src}, PlaySessionId: mf.ID})
 }
 

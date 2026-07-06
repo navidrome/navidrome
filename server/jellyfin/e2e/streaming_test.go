@@ -82,5 +82,18 @@ var _ = Describe("Streaming", func() {
 			parseInto(post("/Items/"+enc(id)+"/PlaybackInfo", "{}"), &info)
 			Expect(info.MediaSources).To(HaveLen(1))
 		})
+
+		It("embeds a self-authenticating TranscodingUrl (for native players that omit auth headers)", func() {
+			id := songID("So What")
+			var info dto.PlaybackInfoResponse
+			parseInto(get("/Items/"+enc(id)+"/PlaybackInfo"), &info)
+			streamURL := info.MediaSources[0].TranscodingUrl
+			Expect(streamURL).To(HavePrefix("/Audio/" + enc(id) + "/universal"))
+			Expect(streamURL).To(ContainSubstring("api_key="))
+			// The embedded api_key alone must authenticate the stream — no auth header sent.
+			w := rawReq("GET", streamURL, "")
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(streamerSpy.LastMediaFile.ID).To(Equal(id))
+		})
 	})
 })

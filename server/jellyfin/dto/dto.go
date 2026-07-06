@@ -224,6 +224,8 @@ type MediaSourceInfo struct {
 	Path                                string        `json:"Path,omitempty"`
 	Protocol                            string        `json:"Protocol"`
 	Container                           string        `json:"Container,omitempty"`
+	TranscodingUrl                      string        `json:"TranscodingUrl,omitempty"`
+	TranscodingSubProtocol              string        `json:"TranscodingSubProtocol,omitempty"`
 	Size                                int64         `json:"Size,omitempty"`
 	Name                                string        `json:"Name,omitempty"`
 	IsRemote                            bool          `json:"IsRemote"`
