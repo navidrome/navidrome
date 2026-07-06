@@ -122,3 +122,19 @@ func GenreToBaseItem(g model.Genre) BaseItemDto {
 		BackdropImageTags: []string{},
 	}
 }
+
+// PlaylistToBaseItem maps a playlist to a Playlist BaseItemDto. Unlike songs/albums/artists,
+// model.Playlist has no embedded Annotations (no starred/rating/play-count), so UserData is
+// left nil rather than synthesized.
+func PlaylistToBaseItem(p model.Playlist) BaseItemDto {
+	return BaseItemDto{
+		Name:              p.Name,
+		Id:                p.ID,
+		Type:              "Playlist",
+		IsFolder:          true,
+		MediaType:         "Audio",
+		ChildCount:        new(p.SongCount),
+		RunTimeTicks:      TicksFromSeconds(p.Duration),
+		BackdropImageTags: []string{},
+	}
+}

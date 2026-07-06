@@ -29,24 +29,53 @@ func (api *Router) getItems(w http.ResponseWriter, r *http.Request) {
 	api.ok(w, r, res)
 }
 
-// queryItems is the universal /Items dispatcher: it picks a target entity from
-// IncludeItemTypes (falling back to MusicAlbum) and delegates to the matching listXxx.
+// queryItems is the universal /Items dispatcher. It parses every recognized entity type out of
+// IncludeItemTypes (falling back to MusicAlbum when none are recognized), queries each type via
+// the matching listXxx, and — when more than one type was requested — merges the results into a
+// single paginated list, as real Finamp does for its favorites screen
+// (IncludeItemTypes=Audio,MusicAlbum,Playlist&Filters=IsFavorite).
 func (api *Router) queryItems(ctx context.Context, r *http.Request) (dto.QueryResult, error) {
 	p := req.Params(r)
 	parentId := p.StringOr("ParentId", "")
 	search := p.StringOr("SearchTerm", "")
 	favOnly := strings.Contains(p.StringOr("Filters", ""), "IsFavorite")
-	itemType := firstType(p.StringOr("IncludeItemTypes", ""))
-
-	opts := model.QueryOptions{Offset: p.IntOr("StartIndex", 0), Max: p.IntOr("Limit", 0)}
-	applySort(&opts, itemType, p.StringOr("SortBy", ""), p.StringOr("SortOrder", ""))
+	sortBy := p.StringOr("SortBy", "")
+	sortOrder := p.StringOr("SortOrder", "")
+	offset := p.IntOr("StartIndex", 0)
+	limit := p.IntOr("Limit", 0)
+	types := parseTypes(p.StringOr("IncludeItemTypes", ""))
 
 	scopeIDs, isLibraryParent := resolveLibraryScope(ctx, parentId)
 	entityParent := parentId
-	if isLibraryParent {
+	// ParentId-as-entity-id (an artist for a MusicAlbum query, an album for an Audio query) only
+	// makes sense when browsing a single type; a multi-type query has no single natural parent
+	// entity type, so there ParentId only ever acts as library scoping.
+	if isLibraryParent || len(types) > 1 {
 		entityParent = ""
 	}
 
+	if len(types) == 1 {
+		opts := model.QueryOptions{Offset: offset, Max: limit}
+		applySort(&opts, types[0], sortBy, sortOrder)
+		return api.queryItemsOfType(ctx, types[0], opts, entityParent, scopeIDs, search, favOnly)
+	}
+
+	var items []dto.BaseItemDto
+	total := 0
+	for _, itemType := range types {
+		var opts model.QueryOptions
+		applySort(&opts, itemType, sortBy, sortOrder)
+		res, err := api.queryItemsOfType(ctx, itemType, opts, entityParent, scopeIDs, search, favOnly)
+		if err != nil {
+			return dto.QueryResult{}, err
+		}
+		items = append(items, res.Items...)
+		total += res.TotalRecordCount
+	}
+	return result(paginate(items, offset, limit), total, offset), nil
+}
+
+func (api *Router) queryItemsOfType(ctx context.Context, itemType string, opts model.QueryOptions, entityParent string, scopeIDs []int, search string, favOnly bool) (dto.QueryResult, error) {
 	switch itemType {
 	case "Audio":
 		return api.listSongs(ctx, opts, entityParent, scopeIDs, search, favOnly)
@@ -54,25 +83,46 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (dto.QueryRe
 		return api.listArtists(ctx, opts, scopeIDs, search, favOnly)
 	case "MusicGenre":
 		return api.listGenres(ctx, opts)
+	case "Playlist":
+		return api.listPlaylists(ctx, opts, favOnly)
 	default: // MusicAlbum
 		return api.listAlbums(ctx, opts, entityParent, scopeIDs, search, favOnly)
 	}
 }
 
-// firstType picks the first recognized entry in the (possibly comma-separated)
-// IncludeItemTypes, defaulting to MusicAlbum otherwise. This makes ParentId=<artistId>
-// (no explicit type) browse into that artist's albums, matching the UserViews ->
-// artists -> albums -> songs hierarchy; callers browsing into an album are expected to
-// pass IncludeItemTypes=Audio explicitly, as Finamp and Jellyfin's own clients do.
-func firstType(types string) string {
+// parseTypes returns every recognized entry in the (possibly comma-separated) IncludeItemTypes,
+// in the order they appear, defaulting to []string{"MusicAlbum"} when nothing is recognized.
+// The MusicAlbum default makes ParentId=<artistId> (no explicit type) browse into that artist's
+// albums, matching the UserViews -> artists -> albums -> songs hierarchy; callers browsing into
+// an album are expected to pass IncludeItemTypes=Audio explicitly, as Finamp and Jellyfin's own
+// clients do.
+func parseTypes(types string) []string {
+	var recognized []string
 	for t := range strings.SplitSeq(types, ",") {
 		t = strings.TrimSpace(t)
 		switch t {
-		case "Audio", "MusicArtist", "MusicAlbum", "MusicGenre":
-			return t
+		case "Audio", "MusicArtist", "MusicAlbum", "MusicGenre", "Playlist":
+			recognized = append(recognized, t)
 		}
 	}
-	return "MusicAlbum"
+	if len(recognized) == 0 {
+		return []string{"MusicAlbum"}
+	}
+	return recognized
+}
+
+// paginate applies StartIndex/Limit to an already-fetched, in-memory item list. It's only used
+// for the multi-type merge path; single-type queries push Offset/Max down to the SQL query
+// instead, which is why this isn't just folded into queryItems.
+func paginate(items []dto.BaseItemDto, offset, limit int) []dto.BaseItemDto {
+	if offset >= len(items) {
+		return []dto.BaseItemDto{}
+	}
+	items = items[offset:]
+	if limit > 0 && limit < len(items) {
+		items = items[:limit]
+	}
+	return items
 }
 
 func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, parentId string, scopeIDs []int, search string, fav bool) (dto.QueryResult, error) {
@@ -164,6 +214,25 @@ func (api *Router) listGenres(ctx context.Context, opts model.QueryOptions) (dto
 	return result(slice.Map(genres, dto.GenreToBaseItem), len(genres), opts.Offset), nil
 }
 
+// listPlaylists lists playlists visible to the current user. Unlike albums/songs/artists,
+// playlists aren't scoped by library — visibility (public, or owned by the current user) is
+// enforced by persistence's playlistRepository itself, not by scopeIDs here. model.Playlist also
+// carries no annotations (no starred concept), so a favorites query can never match a playlist;
+// rather than send Filters=IsFavorite to a repo that doesn't understand it, short-circuit to an
+// empty result.
+func (api *Router) listPlaylists(ctx context.Context, opts model.QueryOptions, favOnly bool) (dto.QueryResult, error) {
+	if favOnly {
+		return result(nil, 0, opts.Offset), nil
+	}
+	repo := api.ds.Playlist(ctx)
+	playlists, err := repo.GetAll(opts)
+	if err != nil {
+		return dto.QueryResult{}, err
+	}
+	total, _ := repo.CountAll(model.QueryOptions{Filters: opts.Filters})
+	return result(slice.Map(playlists, dto.PlaylistToBaseItem), int(total), opts.Offset), nil
+}
+
 // getItem fetches a single entity by id, trying album, artist and song in turn. For albums
 // and songs (which each belong to exactly one library) it 404s if the current user lacks
 // access to that library, so an id can't be used to probe content outside the user's libraries.
@@ -217,64 +286,68 @@ func result(items []dto.BaseItemDto, total, start int) dto.QueryResult {
 	return dto.QueryResult{Items: items, TotalRecordCount: total, StartIndex: start}
 }
 
-// applySort translates Jellyfin's SortBy/SortOrder into a model.QueryOptions sort key valid
-// for the given item type. Each repository maps different logical fields to different (or
-// annotation-joined) real columns, so a key valid for one type can be an invalid column for
-// another (e.g. media_file has no "name" column, only "title"; artist has no "random" column).
-// An unrecognized SortBy is dropped rather than passed through raw, to avoid an invalid ORDER BY.
+// applySort translates Jellyfin's SortBy/SortOrder into a model.QueryOptions sort key valid for
+// the given item type (see sortColumnsByType). Real clients (Finamp included) send SortBy as a
+// comma-separated list of fallback keys, e.g. "DateCreated,SortName" or
+// "ParentIndexNumber,IndexNumber,SortName" — this uses the first recognized key and ignores the
+// rest. An unrecognized SortBy leaves opts.Sort untouched (the repo's own default), rather than
+// passing it through raw and risking an invalid ORDER BY.
 func applySort(opts *model.QueryOptions, itemType, sortBy, order string) {
-	switch itemType {
-	case "Audio":
-		switch strings.ToLower(sortBy) {
-		case "sortname", "name":
-			opts.Sort = "title"
-		case "album":
-			opts.Sort = "album"
-		case "albumartist":
-			opts.Sort = "album_artist"
-		case "datecreated":
-			opts.Sort = "recently_added"
-		case "playcount":
-			opts.Sort = "play_count"
-		case "dateplayed":
-			opts.Sort = "play_date"
-		case "random":
-			opts.Sort = "random"
-		}
-	case "MusicArtist":
-		switch strings.ToLower(sortBy) {
-		case "sortname", "name":
-			opts.Sort = "name"
-		case "albumcount":
-			opts.Sort = "album_count"
-		case "songcount":
-			opts.Sort = "song_count"
-		case "datecreated":
-			opts.Sort = "created_at"
-		case "playcount":
-			opts.Sort = "play_count"
-		case "dateplayed":
-			opts.Sort = "play_date"
-		}
-	default: // MusicAlbum
-		switch strings.ToLower(sortBy) {
-		case "sortname", "name", "album":
-			opts.Sort = "name"
-		case "albumartist":
-			opts.Sort = "album_artist"
-		case "datecreated":
-			opts.Sort = "recently_added"
-		case "random":
-			opts.Sort = "random"
-		case "playcount":
-			opts.Sort = "play_count"
-		case "dateplayed":
-			opts.Sort = "play_date"
-		case "premieredate", "productionyear":
-			opts.Sort = "max_year"
+	for key := range strings.SplitSeq(sortBy, ",") {
+		if col, ok := sortColumn(itemType, strings.TrimSpace(key)); ok {
+			opts.Sort = col
+			break
 		}
 	}
 	if strings.EqualFold(order, "Descending") {
 		opts.Order = "desc"
 	}
+}
+
+// sortColumnsByType is a lowercased-SortBy -> repo-sort-key table per item type. A map (rather
+// than a switch per type) keeps this a flat data lookup instead of a large branch, since each
+// repository maps different logical fields to different (or annotation-joined) real columns —
+// e.g. media_file has no "name" column, only "title"; artist has no "random" column.
+var sortColumnsByType = map[string]map[string]string{
+	"Audio": {
+		"sortname": "title", "name": "title",
+		"album":           "album",
+		"artist":          "artist",
+		"albumartist":     "album_artist",
+		"datecreated":     "recently_added",
+		"playcount":       "play_count",
+		"dateplayed":      "play_date",
+		"communityrating": "rating",
+		"random":          "random",
+	},
+	"MusicArtist": {
+		"sortname": "name", "name": "name",
+		"albumcount":      "album_count",
+		"songcount":       "song_count",
+		"datecreated":     "created_at",
+		"playcount":       "play_count",
+		"dateplayed":      "play_date",
+		"communityrating": "rating",
+	},
+	"MusicAlbum": {
+		"sortname": "name", "name": "name", "album": "name",
+		"artist":          "artist",
+		"albumartist":     "album_artist",
+		"datecreated":     "recently_added",
+		"random":          "random",
+		"playcount":       "play_count",
+		"dateplayed":      "play_date",
+		"communityrating": "rating",
+		"premieredate":    "max_year", "productionyear": "max_year",
+	},
+	"MusicGenre": {
+		"sortname": "name", "name": "name",
+	},
+}
+
+// sortColumn maps a single (non comma-list) Jellyfin SortBy key to the repo sort key for
+// itemType, reporting false when it isn't recognized for that type.
+func sortColumn(itemType, sortBy string) (string, bool) {
+	col, ok := sortColumnsByType[itemType][strings.ToLower(sortBy)]
+	return col, ok
 }

@@ -19,6 +19,8 @@ type MockPlaylistRepo struct {
 	model.PlaylistRepository
 	Data       map[string]*model.Playlist // keyed by ID
 	PathMap    map[string]*model.Playlist // keyed by path
+	All        model.Playlists
+	Options    model.QueryOptions
 	Last       *model.Playlist
 	Deleted    []string
 	Err        bool
@@ -27,6 +29,25 @@ type MockPlaylistRepo struct {
 
 func (m *MockPlaylistRepo) SetError(err bool) {
 	m.Err = err
+}
+
+// SetData seeds both Get-by-id lookups (Data) and GetAll's result set (All).
+func (m *MockPlaylistRepo) SetData(playlists model.Playlists) {
+	m.Data = make(map[string]*model.Playlist, len(playlists))
+	m.All = playlists
+	for i, p := range m.All {
+		m.Data[p.ID] = &m.All[i]
+	}
+}
+
+func (m *MockPlaylistRepo) GetAll(options ...model.QueryOptions) (model.Playlists, error) {
+	if len(options) > 0 {
+		m.Options = options[0]
+	}
+	if m.Err {
+		return nil, errors.New("error")
+	}
+	return m.All, nil
 }
 
 func (m *MockPlaylistRepo) Get(id string) (*model.Playlist, error) {

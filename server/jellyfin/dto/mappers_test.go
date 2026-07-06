@@ -79,4 +79,16 @@ var _ = Describe("mappers", func() {
 		Expect(item.Id).To(Equal("genre-1"))
 		Expect(item.Name).To(Equal("Rock"))
 	})
+
+	It("maps a playlist to a Playlist BaseItemDto", func() {
+		p := model.Playlist{ID: "pl-1", Name: "Chill", SongCount: 7, Duration: 120}
+		item := PlaylistToBaseItem(p)
+		Expect(item.Type).To(Equal("Playlist"))
+		Expect(item.IsFolder).To(BeTrue())
+		Expect(item.Id).To(Equal("pl-1"))
+		Expect(item.Name).To(Equal("Chill"))
+		Expect(item.MediaType).To(Equal("Audio"))
+		Expect(*item.ChildCount).To(Equal(7))
+		Expect(item.RunTimeTicks).To(Equal(int64(1_200_000_000)))
+	})
 })

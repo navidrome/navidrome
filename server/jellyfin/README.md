@@ -149,3 +149,8 @@ curl -s -X DELETE "${AUTH[@]}" "$BASE/Playlists/$PLAYLIST_ID/Items?EntryIds=$ENT
 - **ID handling is pass-through only.** Navidrome ids are used verbatim as Jellyfin item ids;
   there's no hex/GUID-reversible id scheme. If a client turns out to mangle ids in a way that
   requires one (e.g. expecting a GUID shape), that will need a follow-up change.
+- **Playlists never match `Filters=IsFavorite`.** `GET Items?IncludeItemTypes=Playlist` (alone
+  or mixed with other types, e.g. Finamp's favorites screen sending
+  `IncludeItemTypes=Audio,MusicAlbum,Playlist`) is supported, but `model.Playlist` has no
+  starred/annotation concept, so a favorites query always returns zero playlists rather than
+  erroring.

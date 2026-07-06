@@ -104,6 +104,69 @@ var _ = Describe("Items", func() {
 			Expect(res.Items).NotTo(BeNil())
 		})
 
+		It("lists playlists when IncludeItemTypes=Playlist", func() {
+			ds.Playlist(context.Background()).(*tests.MockPlaylistRepo).SetData(model.Playlists{{ID: "p1", Name: "My Mix", SongCount: 5}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Playlist", nil).WithContext(ctxUser())
+			api.getItems(w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.QueryResult
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.Items).To(HaveLen(1))
+			Expect(res.Items[0].Type).To(Equal("Playlist"))
+			Expect(res.Items[0].Id).To(Equal("p1"))
+			Expect(res.TotalRecordCount).To(Equal(1))
+		})
+
+		It("merges results from every requested type in IncludeItemTypes", func() {
+			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: "s1", Title: "Song"}})
+			ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1", Name: "One"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio,MusicAlbum", nil).WithContext(ctxUser())
+			api.getItems(w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.QueryResult
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.Items).To(HaveLen(2))
+			types := []string{res.Items[0].Type, res.Items[1].Type}
+			Expect(types).To(ConsistOf("Audio", "MusicAlbum"))
+			Expect(res.TotalRecordCount).To(Equal(2))
+		})
+
+		It("merges a multi-type favorites query (Finamp's favorites screen), skipping playlists (no starred concept)", func() {
+			mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
+			mfRepo.SetData(model.MediaFiles{{ID: "s1", Title: "Song"}})
+			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
+			albumRepo.SetData(model.Albums{{ID: "a1", Name: "One"}})
+			ds.Playlist(context.Background()).(*tests.MockPlaylistRepo).SetData(model.Playlists{{ID: "p1", Name: "My Mix"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio,MusicAlbum,Playlist&Filters=IsFavorite", nil).WithContext(ctxUser())
+			api.getItems(w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.QueryResult
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.Items).To(HaveLen(2))
+			types := []string{res.Items[0].Type, res.Items[1].Type}
+			Expect(types).To(ConsistOf("Audio", "MusicAlbum"))
+			sql, _, err := albumRepo.Options.Filters.ToSql()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(sql).To(ContainSubstring("starred"))
+		})
+
+		It("applies StartIndex/Limit to the merged multi-type result set", func() {
+			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: "s1", Title: "Song"}, {ID: "s2", Title: "Song2"}})
+			ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1", Name: "One"}, {ID: "a2", Name: "Two"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio,MusicAlbum&StartIndex=1&Limit=2", nil).WithContext(ctxUser())
+			api.getItems(w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.QueryResult
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.Items).To(HaveLen(2))
+			Expect(res.TotalRecordCount).To(Equal(4))
+			Expect(res.StartIndex).To(Equal(1))
+		})
+
 		It("applies a starred filter when Filters=IsFavorite", func() {
 			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: "a1", Name: "One"}})
@@ -137,6 +200,58 @@ var _ = Describe("Items", func() {
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(albumRepo.Options.Offset).To(Equal(5))
 			Expect(albumRepo.Options.Max).To(Equal(10))
+		})
+
+		Describe("sorting", func() {
+			It("maps SortBy=PlayCount to the play_count column", func() {
+				albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
+				albumRepo.SetData(model.Albums{{ID: "a1", Name: "One"}})
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&SortBy=PlayCount", nil).WithContext(ctxUser())
+				api.getItems(w, r)
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(albumRepo.Options.Sort).To(Equal("play_count"))
+			})
+
+			It("maps SortBy=DatePlayed to the play_date column", func() {
+				mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
+				mfRepo.SetData(model.MediaFiles{{ID: "s1", Title: "Song"}})
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio&SortBy=DatePlayed", nil).WithContext(ctxUser())
+				api.getItems(w, r)
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(mfRepo.Options.Sort).To(Equal("play_date"))
+			})
+
+			It("uses the first recognized key in a comma-separated SortBy list", func() {
+				albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
+				albumRepo.SetData(model.Albums{{ID: "a1", Name: "One"}})
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&SortBy=DateCreated,SortName", nil).WithContext(ctxUser())
+				api.getItems(w, r)
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(albumRepo.Options.Sort).To(Equal("recently_added"))
+			})
+
+			It("skips unrecognized keys in a comma-separated SortBy list to find one that is", func() {
+				mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
+				mfRepo.SetData(model.MediaFiles{{ID: "s1", Title: "Song"}})
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio&SortBy=ParentIndexNumber,IndexNumber,SortName", nil).WithContext(ctxUser())
+				api.getItems(w, r)
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(mfRepo.Options.Sort).To(Equal("title"))
+			})
+
+			It("leaves Sort at the repo default when no SortBy key is recognized", func() {
+				albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
+				albumRepo.SetData(model.Albums{{ID: "a1", Name: "One"}})
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&SortBy=SeriesSortName", nil).WithContext(ctxUser())
+				api.getItems(w, r)
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(albumRepo.Options.Sort).To(Equal(""))
+			})
 		})
 
 		Describe("library scoping", func() {
