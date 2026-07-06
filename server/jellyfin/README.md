@@ -216,3 +216,13 @@ make test PKG=./server/jellyfin/...
 - **MD5-hash ids from old migrated libraries.** The hex id codec assumes ids are opaque; a raw
   32-char MD5 id is itself valid hex and so must be encoded/decoded symmetrically like any other.
   This is handled, but is the most fragile id case — see the note in `dto/ids.go`.
+- **Blurhashes are synthetic, not computed from the artwork (follow-up).** `ImageBlurHashes` is
+  populated by `dto/blurhash.go`, which derives a well-formed **1-component (solid color)**
+  blurhash by hashing the item id — it never looks at the actual image. Real Jellyfin computes a
+  multi-component blurhash from the cover's pixels (downscaled to 128×128) once at scan time and
+  stores it per image, so its placeholder approximates the art. Ours satisfies the protocol
+  (Finamp gets a valid value to use as a de-dup key and a placeholder, no missing-blurhash
+  warning) but renders as a flat color while art loads. A proper implementation would compute the
+  real blurhash in the `core/artwork` pipeline (where the image is already decoded), cache it
+  keyed like the artwork, and have the mappers read it — keeping the synthetic value as a fallback
+  for art that hasn't been rendered yet.
