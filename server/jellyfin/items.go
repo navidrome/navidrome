@@ -234,9 +234,9 @@ func (api *Router) listPlaylists(ctx context.Context, opts model.QueryOptions, f
 	return result(slice.Map(playlists, dto.PlaylistToBaseItem), int(total), opts.Offset), nil
 }
 
-// getItem fetches a single entity by id, trying library view, album, artist and song in turn.
-// For albums and songs (which each belong to exactly one library) it 404s if the current user
-// lacks access to that library, so an id can't be used to probe content outside the user's
+// getItem fetches a single entity by id, trying library view, album, artist, song and playlist in
+// turn. For albums and songs (which each belong to exactly one library) it 404s if the current
+// user lacks access to that library, so an id can't be used to probe content outside the user's
 // libraries.
 func (api *Router) getItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -279,6 +279,12 @@ func (api *Router) getItem(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		api.ok(w, r, dto.SongToBaseItem(*mf))
+		return
+	}
+	// api.playlists.Get enforces ownership/visibility itself, so a non-owned or missing playlist
+	// id falls through to the generic 404 below, same as every other probe here.
+	if pl, err := api.playlists.Get(ctx, id); err == nil {
+		api.ok(w, r, dto.PlaylistToBaseItem(*pl))
 		return
 	}
 	http.Error(w, "Not Found", http.StatusNotFound)

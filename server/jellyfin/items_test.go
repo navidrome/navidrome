@@ -26,6 +26,7 @@ func withChiURLParam(r *http.Request, key, value string) *http.Request {
 var _ = Describe("Items", func() {
 	var api *Router
 	var ds *tests.MockDataStore
+	var fp *fakePlaylists
 	// alice has access to library 1 only; used by tests that don't care about scoping.
 	ctxUser := func() context.Context {
 		return request.WithUser(context.Background(), model.User{ID: "u1", UserName: "alice", Libraries: model.Libraries{{ID: 1, Name: "Music"}}})
@@ -39,7 +40,8 @@ var _ = Describe("Items", func() {
 	}
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{}
-		api = &Router{ds: ds}
+		fp = &fakePlaylists{}
+		api = &Router{ds: ds, playlists: fp}
 	})
 
 	Describe("getItems", func() {
@@ -424,6 +426,31 @@ var _ = Describe("Items", func() {
 			libs := model.Libraries{{ID: 2, Name: "Other"}} // no access to library 1
 			r := httptest.NewRequest("GET", "/Items/1", nil).WithContext(ctxUserWithLibraries(libs))
 			r = withChiURLParam(r, "itemId", "1")
+			api.getItem(w, r)
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
+
+		// Finamp's SyncBuffer fetches a playlist by id as a plain item; without this probe it
+		// 404s with "Could not fetch BaseItemDto <playlist> from server."
+		It("resolves a playlist id via the playlists service", func() {
+			fp.getByIDPls = &model.Playlist{ID: "p1", Name: "My Mix", SongCount: 5}
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items/p1", nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", "p1")
+			api.getItem(w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var item dto.BaseItemDto
+			Expect(json.Unmarshal(w.Body.Bytes(), &item)).To(Succeed())
+			Expect(item.Id).To(Equal("p1"))
+			Expect(item.Name).To(Equal("My Mix"))
+			Expect(item.Type).To(Equal("Playlist"))
+		})
+
+		It("returns 404 for a non-owned or absent playlist id", func() {
+			fp.getByIDErr = model.ErrNotFound
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items/p1", nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", "p1")
 			api.getItem(w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
 		})

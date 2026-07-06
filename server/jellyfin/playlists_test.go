@@ -27,6 +27,9 @@ type fakePlaylists struct {
 	getPls *model.Playlist
 	getErr error
 
+	getByIDPls *model.Playlist
+	getByIDErr error
+
 	addPlaylistID string
 	addIds        []string
 	addErr        error
@@ -43,6 +46,19 @@ func (f *fakePlaylists) Create(_ context.Context, _ string, name string, ids []s
 		return "", f.createErr
 	}
 	return "pl-new", nil
+}
+
+// Get defaults to model.ErrNotFound when getByIDPls/getByIDErr aren't set, matching the real
+// service's behavior for a missing or inaccessible playlist and letting getItem tests that don't
+// care about playlists leave it unconfigured.
+func (f *fakePlaylists) Get(_ context.Context, _ string) (*model.Playlist, error) {
+	if f.getByIDErr != nil {
+		return nil, f.getByIDErr
+	}
+	if f.getByIDPls == nil {
+		return nil, model.ErrNotFound
+	}
+	return f.getByIDPls, nil
 }
 
 func (f *fakePlaylists) GetWithTracks(_ context.Context, _ string) (*model.Playlist, error) {
