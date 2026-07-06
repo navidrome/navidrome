@@ -83,7 +83,7 @@ func SetupDB(ctx context.Context, users ...*model.User) *DB {
 	Expect(err).ToNot(HaveOccurred())
 	data, err := os.ReadFile(h.FilePath)
 	Expect(err).ToNot(HaveOccurred())
-	Expect(os.WriteFile(h.SnapshotPath, data, 0o600)).To(Succeed())
+	Expect(os.WriteFile(h.SnapshotPath, data, 0o600)).To(Succeed()) //nolint:gosec // path derives from TempDir
 	return h
 }
 
