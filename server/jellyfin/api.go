@@ -67,6 +67,7 @@ func (api *Router) routes() http.Handler {
 		r.Get("/Users/{userId}/Items", api.getItems)
 		r.Get("/Items/{itemId}", api.getItem)
 		r.Get("/Users/{userId}/Items/{itemId}", api.getItem)
+		r.Delete("/Items/{itemId}", api.deleteItem)
 		r.Get("/Users/{userId}/Items/Latest", api.getLatest)
 
 		r.Post("/Users/{userId}/FavoriteItems/{itemId}", api.markFavorite)

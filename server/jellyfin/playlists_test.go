@@ -50,6 +50,14 @@ type fakePlaylists struct {
 
 	removeImagePlaylistID string
 	removeImageErr        error
+
+	deletePlaylistID string
+	deleteErr        error
+}
+
+func (f *fakePlaylists) Delete(_ context.Context, id string) error {
+	f.deletePlaylistID = id
+	return f.deleteErr
 }
 
 func (f *fakePlaylists) Create(_ context.Context, _ string, name string, ids []string) (string, error) {
@@ -266,6 +274,41 @@ var _ = Describe("Playlists", func() {
 			r = withChiURLParam(r, "playlistId", "missing")
 			api.getPlaylist(w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
+	})
+
+	Describe("deleteItem", func() {
+		deleteReq := func(id string) *http.Request {
+			r := httptest.NewRequest("DELETE", "/Items/"+dto.EncodeID(id), nil).WithContext(context.Background())
+			return withChiURLParam(r, "itemId", dto.EncodeID(id))
+		}
+
+		It("deletes the playlist and returns 204", func() {
+			w := httptest.NewRecorder()
+			api.deleteItem(w, deleteReq("pl1"))
+			Expect(w.Code).To(Equal(http.StatusNoContent))
+			Expect(fp.deletePlaylistID).To(Equal("pl1"))
+		})
+
+		It("returns 403 when the user doesn't own the playlist", func() {
+			fp.deleteErr = model.ErrNotAuthorized
+			w := httptest.NewRecorder()
+			api.deleteItem(w, deleteReq("pl1"))
+			Expect(w.Code).To(Equal(http.StatusForbidden))
+		})
+
+		It("returns 404 for a missing playlist or non-playlist id", func() {
+			fp.deleteErr = model.ErrNotFound
+			w := httptest.NewRecorder()
+			api.deleteItem(w, deleteReq("al1"))
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
+
+		It("returns 500 on an unexpected error", func() {
+			fp.deleteErr = errors.New("boom")
+			w := httptest.NewRecorder()
+			api.deleteItem(w, deleteReq("pl1"))
+			Expect(w.Code).To(Equal(http.StatusInternalServerError))
 		})
 	})
 

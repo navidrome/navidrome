@@ -2,6 +2,7 @@ package jellyfin
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -300,6 +301,25 @@ func (api *Router) getItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Error(w, "Not Found", http.StatusNotFound)
+}
+
+// deleteItem handles DELETE /Items/{id}. Only playlists are deletable through this API — albums and
+// songs come from library scanning, not the client — so any non-playlist id resolves to 404.
+// core/playlists.Delete enforces ownership (checkWritable) and removes the cover file.
+func (api *Router) deleteItem(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id := dto.DecodeID(chi.URLParam(r, "itemId"))
+	err := api.playlists.Delete(ctx, id)
+	switch {
+	case err == nil:
+		w.WriteHeader(http.StatusNoContent)
+	case errors.Is(err, model.ErrNotAuthorized):
+		http.Error(w, "Forbidden", http.StatusForbidden)
+	case errors.Is(err, model.ErrNotFound):
+		http.Error(w, "Not Found", http.StatusNotFound)
+	default:
+		api.internalError(w, r, err)
+	}
 }
 
 func (api *Router) getLatest(w http.ResponseWriter, r *http.Request) {
