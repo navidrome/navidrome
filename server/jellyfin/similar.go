@@ -15,28 +15,21 @@ import (
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
-// similarQuickWait bounds how long a Similar request waits on the external metadata provider
-// (Last.fm etc.). A cached artist resolves well within it and returns immediately; a cold lookup
-// exceeds it, so we return an empty result now and let the lookup finish caching in the background,
-// making a later load instant. Without this, clients (Jellify request Similar for many items at
-// once) stall the whole screen on a synchronous Last.fm round-trip per item.
-const similarQuickWait = 500 * time.Millisecond
+// similarWait bounds how long a Similar request waits for the (deduplicated) provider fetch.
+// Cached lookups resolve in milliseconds; a cold one usually completes within the agents' HTTP
+// timeout, and returning its real result beats answering an instant empty list, which clients
+// cache as "no similar items exist". A var so tests can shorten it.
+var similarWait = 10 * time.Second
 
-// similarFetchTimeout bounds the detached background fetch: the provider's fallback chains can
-// issue many sequential agent calls, and without a deadline a hung provider would hold a
+// similarFetchTimeout bounds the detached background fetch, so a hung provider can't hold a
 // goroutine (and its outbound connection) indefinitely.
 const similarFetchTimeout = time.Minute
 
-// awaitSimilar runs fetch on a background context — so a cold external lookup completes and caches
-// even after this request returns — and returns its result if ready within similarQuickWait,
-// otherwise an empty result. The background context carries the caller's user (external info is
-// user-agnostic, but repositories still expect a user in context, and the mapped items embed that
-// user's annotations) but not the request's cancellation, so navigating away doesn't abort the
-// cache warm-up.
-//
-// Concurrent identical requests — clients re-poll after the empty quick-wait response — share one
-// in-flight fetch via singleflight instead of each spawning a duplicate provider chain; the key
-// includes the user so one user's annotations never leak into another's response.
+// awaitSimilar runs fetch on a detached background context — so the lookup completes and caches
+// even if this request times out or the client disconnects — waiting up to similarWait for the
+// result and answering empty past that. Concurrent identical requests share one in-flight fetch
+// via singleflight; the key includes the user because the mapped items embed that user's
+// annotations.
 func (api *Router) awaitSimilar(ctx context.Context, id string, limit int, fetch func(context.Context) dto.QueryResult) dto.QueryResult {
 	u, _ := request.UserFrom(ctx)
 	key := fmt.Sprintf("%s|%s|%d", u.ID, id, limit)
@@ -48,7 +41,7 @@ func (api *Router) awaitSimilar(ctx context.Context, id string, limit int, fetch
 	select {
 	case res := <-ch:
 		return res.Val.(dto.QueryResult)
-	case <-time.After(similarQuickWait):
+	case <-time.After(similarWait):
 		return result(nil, 0, 0)
 	}
 }

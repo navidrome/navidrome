@@ -2,7 +2,6 @@ package jellyfin
 
 import (
 	"context"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -18,12 +17,17 @@ var _ = Describe("awaitSimilar", func() {
 	ctxFor := func(userID string) context.Context {
 		return request.WithUser(context.Background(), model.User{ID: userID})
 	}
+	shortenWait := func() {
+		old := similarWait
+		similarWait = 20 * time.Millisecond
+		DeferCleanup(func() { similarWait = old })
+	}
 
 	BeforeEach(func() {
 		api = &Router{}
 	})
 
-	It("returns the fetch result when it completes within the quick wait", func() {
+	It("returns the fetch result when it completes within the wait", func() {
 		res := api.awaitSimilar(ctxFor("u1"), "id1", 20, func(context.Context) dto.QueryResult {
 			return result([]dto.BaseItemDto{{Name: "fast"}}, 1, 0)
 		})
@@ -31,36 +35,34 @@ var _ = Describe("awaitSimilar", func() {
 		Expect(res.Items[0].Name).To(Equal("fast"))
 	})
 
-	It("returns an empty result (does not block the client) when the fetch exceeds the quick wait", func() {
+	It("returns an empty result when the fetch exceeds the wait", func() {
+		shortenWait()
+		release := make(chan struct{})
+		DeferCleanup(func() { close(release) })
 		res := api.awaitSimilar(ctxFor("u1"), "id2", 20, func(context.Context) dto.QueryResult {
-			time.Sleep(2 * similarQuickWait) // slow external lookup; finishes caching in the background
+			<-release // hung provider; would finish caching in the background
 			return result([]dto.BaseItemDto{{Name: "late"}}, 1, 0)
 		})
 		Expect(res.Items).To(BeEmpty())
 		Expect(res.TotalRecordCount).To(Equal(0))
 	})
 
-	It("dedupes concurrent identical requests into a single fetch", func() {
+	It("dedupes requests into the in-flight fetch", func() {
+		shortenWait()
 		var calls atomic.Int32
 		release := make(chan struct{})
 		fetch := func(context.Context) dto.QueryResult {
 			calls.Add(1)
 			<-release
-			return result([]dto.BaseItemDto{{Name: "shared"}}, 1, 0)
+			return result(nil, 0, 0)
 		}
-		var wg sync.WaitGroup
-		for range 5 {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				api.awaitSimilar(ctxFor("u1"), "id3", 20, fetch)
-			}()
-		}
-		// Let all five reach the flight, then release the single in-flight fetch.
-		Eventually(calls.Load).Should(Equal(int32(1)))
+		// Both calls time out, but the flight can't complete before release closes, so the
+		// second call must join it rather than start a new fetch.
+		api.awaitSimilar(ctxFor("u1"), "id3", 20, fetch)
+		api.awaitSimilar(ctxFor("u1"), "id3", 20, fetch)
 		close(release)
-		wg.Wait()
-		Expect(calls.Load()).To(Equal(int32(1)))
+		Eventually(calls.Load).Should(Equal(int32(1)))
+		Consistently(calls.Load, "50ms").Should(Equal(int32(1)))
 	})
 
 	It("does not share fetches across users (items embed the user's annotations)", func() {
