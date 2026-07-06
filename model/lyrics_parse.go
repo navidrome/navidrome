@@ -2,6 +2,7 @@ package model
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"slices"
 	"strings"
@@ -28,7 +29,10 @@ var lyricFormats = []struct {
 // ParseLyrics is the single entry point for parsing lyrics. A known suffix routes
 // to that format's parser; an empty or "auto" suffix content-sniffs. Either way,
 // a structured parser that does not match falls back to the LRC/plain-text floor.
-func ParseLyrics(suffix, lang string, contents []byte) (LyricList, error) {
+//
+// Parse failures are logged through ctx; callers that know the source should
+// attach it for attribution, e.g. log.NewContext(ctx, "file", path).
+func ParseLyrics(ctx context.Context, suffix, lang string, contents []byte) (LyricList, error) {
 	contents = stripBOM(contents)
 	suffix = strings.ToLower(suffix)
 	sniff := suffix == "" || suffix == "auto"
@@ -41,17 +45,24 @@ func ParseLyrics(suffix, lang string, contents []byte) (LyricList, error) {
 			candidates = append(candidates, f.parse)
 		}
 	}
-	return parseFirstMatch(lang, contents, candidates...)
+	return parseFirstMatch(ctx, sniff, lang, contents, candidates...)
 }
 
-func parseFirstMatch(lang string, contents []byte, candidates ...lyricParser) (LyricList, error) {
+func parseFirstMatch(ctx context.Context, sniff bool, lang string, contents []byte, candidates ...lyricParser) (LyricList, error) {
 	for _, parse := range candidates {
 		list, err := parse(lang, contents)
 		if err == nil && len(list) > 0 {
 			return list, nil
 		}
 		if err != nil {
-			log.Warn("Error parsing lyrics, falling back to plain text", "error", err)
+			// While sniffing, a probe rejecting content it does not own is expected
+			// control flow, so keep it at trace. A failure under an explicit suffix
+			// means the declared format is malformed and deserves a warning.
+			if sniff {
+				log.Trace(ctx, "Lyrics probe did not match, trying next format", err)
+			} else {
+				log.Warn(ctx, "Error parsing lyrics, falling back to plain text", err)
+			}
 		}
 	}
 	return plainLRC(lang, contents)

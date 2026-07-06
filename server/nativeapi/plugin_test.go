@@ -29,6 +29,7 @@ var _ = Describe("Plugin API", func() {
 
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
+		conf.Server.EnableSharing = false
 		conf.Server.Plugins.Enabled = true
 		ds = &tests.MockDataStore{}
 		mockManager = &tests.MockPluginManager{}

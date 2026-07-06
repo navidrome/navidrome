@@ -44,15 +44,19 @@ func (l *LyricsPlugin) GetLyrics(ctx context.Context, mf *model.MediaFile) (mode
 		return nil, err
 	}
 
+	// The lyric text comes from the plugin, not the media file's own tags, so
+	// attribute logs to both the plugin and the track it was fetched for.
+	ctx = log.NewContext(ctx, "plugin", l.name, "file", mf.Path)
+
 	var result model.LyricList
 	for _, lt := range resp.Lyrics {
 		lang := lt.Lang
 		if lang == "" {
 			lang = "xxx"
 		}
-		parsed, err := model.ParseLyrics("", lang, []byte(lt.Text))
+		parsed, err := model.ParseLyrics(ctx, "", lang, []byte(lt.Text))
 		if err != nil {
-			log.Warn(ctx, "Error parsing plugin lyrics", "plugin", l.name, err)
+			log.Warn(ctx, "Error parsing plugin lyrics", err)
 			continue
 		}
 		for _, lyric := range parsed {

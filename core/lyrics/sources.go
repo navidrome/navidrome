@@ -28,6 +28,7 @@ func fromEmbedded(ctx context.Context, mf *model.MediaFile) (model.LyricList, er
 func fromExternalFile(ctx context.Context, mf *model.MediaFile, suffix string) (model.LyricList, error) {
 	ext := path.Ext(mf.Path)
 	sidecarRelPath := mf.Path[0:len(mf.Path)-len(ext)] + suffix
+	ctx = log.NewContext(ctx, "file", sidecarRelPath)
 
 	store, err := storage.For(mf.LibraryPath)
 	if err != nil {
@@ -40,7 +41,7 @@ func fromExternalFile(ctx context.Context, mf *model.MediaFile, suffix string) (
 
 	f, err := fsys.Open(sidecarRelPath)
 	if errors.Is(err, fs.ErrNotExist) {
-		log.Trace(ctx, "no lyrics found at path", "path", sidecarRelPath)
+		log.Trace(ctx, "no lyrics found at path")
 		return nil, nil
 	} else if err != nil {
 		return nil, err
@@ -52,18 +53,18 @@ func fromExternalFile(ctx context.Context, mf *model.MediaFile, suffix string) (
 		return nil, err
 	}
 
-	list, err := model.ParseLyrics(suffix, "xxx", contents)
+	list, err := model.ParseLyrics(ctx, suffix, "xxx", contents)
 	if err != nil {
-		log.Error(ctx, "error parsing external lyric file", "path", sidecarRelPath, err)
+		log.Error(ctx, "error parsing external lyric file", err)
 		return nil, err
 	}
 
 	if len(list) == 0 {
-		log.Trace(ctx, "empty lyrics from external file", "path", sidecarRelPath)
+		log.Trace(ctx, "empty lyrics from external file")
 		return nil, nil
 	}
 
-	log.Trace(ctx, "retrieved lyrics from external file", "path", sidecarRelPath)
+	log.Trace(ctx, "retrieved lyrics from external file")
 	return list, nil
 }
 

@@ -189,6 +189,34 @@ var _ = Describe("Scanner", Ordered, func() {
 		})
 	})
 
+	Context("Artist with atomic non-ASCII letters, 'GØGGS'", func() {
+		BeforeEach(func() {
+			goggs := template(_t{"albumartist": "GØGGS", "album": "Pre Strike Sweep", "year": 2018})
+			createFS(fstest.MapFS{
+				"GØGGS/Pre Strike Sweep/01 - Falling For You.mp3": goggs(track(1, "Falling For You")),
+			})
+		})
+
+		searchNormalized := func() string {
+			var sn string
+			Expect(db.Db().QueryRowContext(ctx,
+				"SELECT search_normalized FROM artist WHERE name = 'GØGGS'").Scan(&sn)).To(Succeed())
+			return sn
+		}
+
+		It("repopulates a stale search_normalized on a full rescan", func() {
+			Expect(runScanner(ctx, true)).To(Succeed())
+			Expect(searchNormalized()).To(Equal("GOGGS"))
+
+			// Simulate the stale value left by the FTS5 migration's SQL back-fill
+			_, err := db.Db().ExecContext(ctx, "UPDATE artist SET search_normalized = '' WHERE name = 'GØGGS'")
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(runScanner(ctx, true)).To(Succeed())
+			Expect(searchNormalized()).To(Equal("GOGGS"))
+		})
+	})
+
 	Context("Ignored entries", func() {
 		BeforeEach(func() {
 			revolver := template(_t{"albumartist": "The Beatles", "album": "Revolver", "year": 1966})

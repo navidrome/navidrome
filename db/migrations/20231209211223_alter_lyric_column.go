@@ -46,7 +46,7 @@ func upAlterLyricColumn(ctx context.Context, tx *sql.Tx) error {
 			continue
 		}
 
-		parsed, err := model.ParseLyrics(".lrc", "xxx", []byte(lyrics.String))
+		parsed, err := model.ParseLyrics(ctx, ".lrc", "xxx", []byte(lyrics.String))
 		if err != nil {
 			return err
 		}

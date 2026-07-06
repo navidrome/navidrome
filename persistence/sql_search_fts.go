@@ -11,6 +11,7 @@ import (
 	"github.com/deluan/sanitize"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/str"
 )
 
 // containsCJK returns true if the string contains any CJK (Chinese/Japanese/Korean) characters.
@@ -35,47 +36,11 @@ func containsCJK(s string) bool {
 // as unbalanced string delimiters.
 var fts5SpecialChars = regexp.MustCompile(`[^\p{L}\p{N}\s*"\x00]`)
 
-// fts5PunctStrip strips everything except letters and numbers (no whitespace, wildcards, or quotes).
-// Used for normalizing words at index time to create concatenated forms (e.g., "R.E.M." → "REM").
-var fts5PunctStrip = regexp.MustCompile(`[^\p{L}\p{N}]`)
-
 // fts5Operators matches FTS5 boolean operators as whole words (case-insensitive).
 var fts5Operators = regexp.MustCompile(`(?i)\b(AND|OR|NOT|NEAR)\b`)
 
 // fts5LeadingStar matches a * at the start of a token. FTS5 only supports * at the end (prefix queries).
 var fts5LeadingStar = regexp.MustCompile(`(^|[\s])\*+`)
-
-// normalizeForFTS takes multiple strings and returns a space-separated, deduplicated list of
-// alternative searchable forms for each word: punctuation-stripped (R.E.M. → REM, AC/DC → ACDC)
-// and ASCII-transliterated (Bjørk → Bjork, œuvre → oeuvre). The transliterated form is needed
-// because FTS5's `unicode61 remove_diacritics 2` only handles NFKD-decomposable diacritics —
-// atomic letters like ø/æ/œ/ß survive tokenization, so the query side and index side disagree
-// without an explicit transliterated entry here.
-func normalizeForFTS(values ...string) string {
-	seen := make(map[string]struct{})
-	var result []string
-	add := func(orig, variant string) {
-		if variant == "" || variant == orig {
-			return
-		}
-		lower := strings.ToLower(variant)
-		if _, ok := seen[lower]; ok {
-			return
-		}
-		seen[lower] = struct{}{}
-		result = append(result, variant)
-	}
-	for _, v := range values {
-		for word := range strings.FieldsSeq(v) {
-			transliterated := sanitize.Accents(word)
-			// Concatenated ASCII form: R.E.M. → REM, AC/DC → ACDC, St-Étienne → StEtienne.
-			add(word, fts5PunctStrip.ReplaceAllString(transliterated, ""))
-			// Accent-only transliteration for words without name-punctuation (Bjørk → Bjork).
-			add(word, transliterated)
-		}
-	}
-	return strings.Join(result, " ")
-}
 
 // isSingleUnicodeLetter returns true if token is exactly one Unicode letter.
 func isSingleUnicodeLetter(token string) bool {
@@ -100,7 +65,7 @@ func processPunctuatedWords(input string, phrases []string) (string, []string) {
 			result = append(result, w)
 			continue
 		}
-		concat := fts5PunctStrip.ReplaceAllString(w, "")
+		concat := str.FTSPunctStrip.ReplaceAllString(w, "")
 		if concat == "" || concat == w {
 			result = append(result, w)
 			continue
@@ -140,13 +105,15 @@ func isDottedAbbreviation(w string, subTokens []string) bool {
 }
 
 // buildFTS5Query preprocesses user input into a safe FTS5 MATCH expression.
+// Plain tokens are emitted as (token OR token*) so bm25 ranks exact-token hits above prefix-only matches.
 // It preserves quoted phrases and * prefix wildcards, neutralizes FTS5 operators
 // (by lowercasing them, since FTS5 operators are case-sensitive) and strips
 // special characters to prevent query injection.
-func buildFTS5Query(userInput string) string {
+// The second return reports whether tokenization degraded the query (see ftsQueryDegraded).
+func buildFTS5Query(userInput string) (string, bool) {
 	q := strings.TrimSpace(userInput)
 	if q == "" || q == `""` {
-		return ""
+		return "", false
 	}
 
 	var phrases []string
@@ -186,25 +153,38 @@ func buildFTS5Query(userInput string) string {
 	result = fts5LeadingStar.ReplaceAllString(result, "$1")
 	tokens := strings.Fields(result)
 
-	// Append * to plain tokens for prefix matching (e.g., "love" → "love*").
-	// Skip tokens that are already wildcarded or are quoted phrase placeholders.
+	// Two forms per token: a plain prefix form (love*) used only to evaluate query
+	// degradation, and the final (love OR love*) form. The OR adds no matches
+	// (exact ⊂ prefix) but gives bm25 a high-IDF exact-term hit, ranking rows that
+	// contain the literal word above prefix-only matches. Placeholders and
+	// user-supplied wildcards pass through untouched in both forms.
+	prefixTokens := make([]string, len(tokens))
+	wrappedTokens := make([]string, len(tokens))
 	for i, t := range tokens {
 		if strings.HasPrefix(t, "\x00") || strings.HasSuffix(t, "*") {
+			prefixTokens[i], wrappedTokens[i] = t, t
 			continue
 		}
-		tokens[i] = t + "*"
+		prefixTokens[i] = t + "*"
+		wrappedTokens[i] = "(" + t + " OR " + t + "*)"
 	}
 
 	// Use explicit AND between tokens — FTS5's implicit AND (space-separated)
-	// doesn't work correctly with parenthesized OR groups from processPunctuatedWords.
-	result = strings.Join(tokens, " AND ")
+	// doesn't work correctly with parenthesized OR groups. The prefix form is
+	// space-joined instead: it only feeds ftsQueryDegraded, which would count a
+	// literal "AND" as a long token and never flag all-short-token queries.
+	prefixQuery := strings.Join(prefixTokens, " ")
+	result = strings.Join(wrappedTokens, " AND ")
 
 	for i, phrase := range phrases {
 		placeholder := fmt.Sprintf("\x00PHRASE%d\x00", i)
+		prefixQuery = strings.ReplaceAll(prefixQuery, placeholder, phrase)
 		result = strings.ReplaceAll(result, placeholder, phrase)
 	}
 
-	return result
+	// Degradation is evaluated on the prefix form: ftsQueryDegraded treats
+	// leading-( tokens as punctuated-word groups and would never flag wrapped ones.
+	return result, ftsQueryDegraded(userInput, prefixQuery)
 }
 
 // ftsColumn pairs an FTS5 column name with its BM25 relevance weight.
@@ -244,7 +224,10 @@ var ftsColumnDefs = map[string][]ftsColumn{
 	"artist": {
 		{"name", 10.0},
 		{"sort_artist_name", 1.0},
-		{"search_normalized", 1.0},
+		// Same weight as name: for artists this column is purely the name in
+		// alternate spelling (unlike media_file/album, where it mixes
+		// title/album/artist variants and full weight would distort ranking).
+		{"search_normalized", 10.0},
 	},
 }
 
@@ -329,7 +312,7 @@ func ftsQueryDegraded(original, ftsQuery string) bool {
 	// Strip quotes from original for comparison — we want the raw content
 	stripped := strings.ReplaceAll(original, `"`, "")
 	// Extract the alphanumeric content from the original query
-	alphaNum := fts5PunctStrip.ReplaceAllString(stripped, "")
+	alphaNum := str.FTSPunctStrip.ReplaceAllString(stripped, "")
 	// If the original is entirely alphanumeric, nothing was stripped — not degraded
 	if len(alphaNum) == len(stripped) {
 		return false
@@ -353,7 +336,7 @@ func ftsQueryDegraded(original, ftsQuery string) bool {
 		if strings.HasPrefix(t, `"`) {
 			// Extract content between quotes
 			inner := strings.Trim(t, `"`)
-			innerAlpha := fts5PunctStrip.ReplaceAllString(inner, " ")
+			innerAlpha := str.FTSPunctStrip.ReplaceAllString(inner, " ")
 			for it := range strings.FieldsSeq(innerAlpha) {
 				if len(it) > 2 {
 					return false
@@ -373,8 +356,8 @@ func ftsQueryDegraded(original, ftsQuery string) bool {
 // tokenization stripped significant content from the query (e.g., "1+" → "1*").
 // Returns nil when the query produces no searchable tokens at all.
 func newFTSSearch(tableName, query string) searchStrategy {
-	q := buildFTS5Query(query)
-	if q == "" || ftsQueryDegraded(query, q) {
+	q, degraded := buildFTS5Query(query)
+	if q == "" || degraded {
 		// Fallback: try LIKE search with the raw query
 		cleaned := strings.TrimSpace(strings.ReplaceAll(query, `"`, ""))
 		if cleaned != "" {

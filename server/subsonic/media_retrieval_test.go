@@ -78,7 +78,7 @@ var _ = Describe("MediaRetrievalController", func() {
 
 		When("client disconnects (context is cancelled)", func() {
 			It("should not call the service if cancelled before the call", func() {
-				ctx, cancel := context.WithCancel(context.Background())
+				ctx, cancel := context.WithCancel(GinkgoT().Context())
 				r := newGetRequest("id=34", "size=128", "square=true")
 				r = r.WithContext(ctx)
 				cancel()
@@ -93,7 +93,7 @@ var _ = Describe("MediaRetrievalController", func() {
 			})
 
 			It("should not return data if cancelled during the call", func() {
-				ctx, cancel := context.WithCancel(context.Background())
+				ctx, cancel := context.WithCancel(GinkgoT().Context())
 				defer cancel()
 				r := newGetRequest("id=34", "size=128", "square=true")
 				r = r.WithContext(ctx)
@@ -113,7 +113,7 @@ var _ = Describe("MediaRetrievalController", func() {
 	Describe("GetLyrics", func() {
 		It("should return data for given artist & title", func() {
 			r := newGetRequest("artist=Rick+Astley", "title=Never+Gonna+Give+You+Up")
-			lyricsList, _ := model.ParseLyrics(".lrc", "eng", []byte("[00:18.80]We're no strangers to love\n[00:22.80]You know the rules and so do I"))
+			lyricsList, _ := model.ParseLyrics(GinkgoT().Context(), ".lrc", "eng", []byte("[00:18.80]We're no strangers to love\n[00:22.80]You know the rules and so do I"))
 			lyrics, _ := lyricsList.Main()
 			lyricsJson, err := json.Marshal(model.LyricList{
 				lyrics,
