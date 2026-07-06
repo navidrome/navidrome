@@ -1,4 +1,4 @@
-package server
+package jellyfin
 
 import (
 	"net/http"
@@ -7,11 +7,11 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// CaseInsensitivePaths normalizes each request path's literal segments to the case they were
+// caseInsensitivePaths normalizes each request path's literal segments to the case they were
 // registered with before delegating to r, since Jellyfin clients route case-insensitively but
 // chi matches case-sensitively. Param placeholders (e.g. "{itemId}") aren't literals, so id
 // segments pass through untouched.
-func CaseInsensitivePaths(r chi.Router) http.Handler {
+func caseInsensitivePaths(r chi.Router) http.Handler {
 	canon := canonicalRouteSegments(r)
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		normalizeRequestPath(req, canon)

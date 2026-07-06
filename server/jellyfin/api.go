@@ -19,7 +19,6 @@ import (
 	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 )
 
@@ -156,7 +155,7 @@ func (api *Router) routes() http.Handler {
 	inner.MethodNotAllowed(api.notFound)
 
 	// Real Jellyfin clients route case-insensitively; chi does not.
-	return server.CaseInsensitivePaths(inner)
+	return caseInsensitivePaths(inner)
 }
 
 // ok writes payload as JSON, stamping ServerId on any item(s) in it — real Jellyfin always sets it,

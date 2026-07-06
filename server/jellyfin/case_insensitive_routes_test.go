@@ -1,4 +1,4 @@
-package server
+package jellyfin
 
 import (
 	"net/http"
@@ -9,7 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("CaseInsensitivePaths", func() {
+var _ = Describe("caseInsensitivePaths", func() {
 	var handler http.Handler
 	var gotID string
 
@@ -32,7 +32,7 @@ var _ = Describe("CaseInsensitivePaths", func() {
 			gotContainer = chi.URLParam(req, "container")
 			w.WriteHeader(http.StatusOK)
 		})
-		handler = CaseInsensitivePaths(r)
+		handler = caseInsensitivePaths(r)
 	})
 
 	It("normalizes the literal prefix of a mixed literal.param segment", func() {
