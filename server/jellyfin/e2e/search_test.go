@@ -1,6 +1,8 @@
 package e2e
 
 import (
+	"fmt"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -38,6 +40,37 @@ var _ = Describe("Search", func() {
 		It("searches songs scoped to a library", func() {
 			q := queryResult(get("/Items?IncludeItemTypes=Audio&Recursive=true&ParentId=" + lib1() + "&SearchTerm=Stairway"))
 			Expect(names(q.Items)).To(ContainElement("Stairway To Heaven"))
+		})
+	})
+
+	Describe("pagination totals", func() {
+		It("reports the search match count, not the unfiltered library count", func() {
+			q := queryResult(get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true&SearchTerm=Abbey&Limit=50"))
+			Expect(q.Items).To(HaveLen(1))
+			Expect(q.TotalRecordCount).To(Equal(1)) // not the 5-album library total
+		})
+
+		It("reaches the true total when paging song search results", func() {
+			// "So" prefix-matches several songs (titles and Solo Artist's tracks); learn the true
+			// count from an unpaged query, then walk one-item pages: the reported total must keep
+			// the client paging until the last match and stop it exactly there.
+			all := queryResult(get("/Items?IncludeItemTypes=Audio&Recursive=true&SearchTerm=So"))
+			total := all.TotalRecordCount
+			Expect(total).To(Equal(len(all.Items)))
+			Expect(total).To(BeNumerically(">=", 2))
+
+			var collected []string
+			for start := range total {
+				page := queryResult(get(fmt.Sprintf("/Items?IncludeItemTypes=Audio&Recursive=true&SearchTerm=So&Limit=1&StartIndex=%d", start)))
+				Expect(page.Items).To(HaveLen(1))
+				if start+1 < total {
+					Expect(page.TotalRecordCount).To(BeNumerically(">", start+1)) // more remain: keep paging
+				} else {
+					Expect(page.TotalRecordCount).To(Equal(total)) // last page: exact, so the client stops
+				}
+				collected = append(collected, page.Items[0].Name)
+			}
+			Expect(collected).To(ConsistOf(names(all.Items)))
 		})
 	})
 })

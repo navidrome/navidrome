@@ -193,6 +193,20 @@ var _ = Describe("Items", func() {
 			Expect(res.Items).To(HaveLen(1))
 		})
 
+		It("reports a search total beyond the fetched page instead of the page length", func() {
+			ds.Artist(context.Background()).(*tests.MockArtistRepo).SetData(model.Artists{
+				{ID: "r1", Name: "Alpha"}, {ID: "r2", Name: "Beta"}, {ID: "r3", Name: "Gamma"},
+			})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicArtist&SearchTerm=a&Limit=1", nil).WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.QueryResult
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.Items).To(HaveLen(1))
+			Expect(res.TotalRecordCount).To(Equal(3))
+		})
+
 		It("forwards StartIndex/Limit as Offset/Max", func() {
 			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: "a1", Name: "One"}})

@@ -194,6 +194,27 @@ func paginate(items []dto.BaseItemDto, offset, limit int) []dto.BaseItemDto {
 	return items
 }
 
+// searchPage runs a repository Search with one extra row beyond the requested page and derives
+// TotalRecordCount from what came back: the repos' Search API returns a page without a match
+// count, and CountAll can't see the search term. offset+len(rows) is exact once the matches end
+// and a strictly growing lower bound before that, so a client that pages until StartIndex
+// reaches TotalRecordCount terminates exactly at the last match.
+func searchPage[S ~[]E, E any](opts model.QueryOptions, search func(model.QueryOptions) (S, error)) (S, int, error) {
+	fetch := opts
+	if fetch.Max > 0 {
+		fetch.Max++
+	}
+	rows, err := search(fetch)
+	if err != nil {
+		return nil, 0, err
+	}
+	total := opts.Offset + len(rows)
+	if opts.Max > 0 && len(rows) > opts.Max {
+		rows = rows[:opts.Max]
+	}
+	return rows, total, nil
+}
+
 func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, parentId, artistId string, contributingOnly bool, scopeIDs []int, search string, fav bool) (dto.QueryResult, error) {
 	repo := api.ds.Album(ctx)
 	filters := squirrel.And{}
@@ -214,13 +235,16 @@ func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, pare
 	opts.Filters = filters
 	opts = filter.ApplyLibraryFilter(opts, scopeIDs)
 
-	var albums model.Albums
-	var err error
 	if search != "" {
-		albums, err = repo.Search(search, opts)
-	} else {
-		albums, err = repo.GetAll(opts)
+		albums, total, err := searchPage(opts, func(o model.QueryOptions) (model.Albums, error) {
+			return repo.Search(search, o)
+		})
+		if err != nil {
+			return dto.QueryResult{}, err
+		}
+		return result(slice.Map(albums, dto.AlbumToBaseItem), total, opts.Offset), nil
 	}
+	albums, err := repo.GetAll(opts)
 	if err != nil {
 		return dto.QueryResult{}, err
 	}
@@ -247,19 +271,22 @@ func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, paren
 	opts.Filters = filters
 	opts = filter.ApplyLibraryFilter(opts, scopeIDs)
 
-	var mfs model.MediaFiles
-	var err error
 	if search != "" {
-		mfs, err = repo.Search(search, opts)
-	} else {
-		// When browsing an album's tracks, default to track order (disc + track number) like
-		// Subsonic's GetAlbum and real Jellyfin do; an explicit SortBy from the client still wins,
-		// since applySort would already have set opts.Sort.
-		if artistId == "" && parentId != "" && opts.Sort == "" {
-			opts.Sort = filter.SongsByAlbum(parentId).Sort
+		mfs, total, err := searchPage(opts, func(o model.QueryOptions) (model.MediaFiles, error) {
+			return repo.Search(search, o)
+		})
+		if err != nil {
+			return dto.QueryResult{}, err
 		}
-		mfs, err = repo.GetAll(opts)
+		return result(slice.Map(mfs, dto.SongToBaseItem), total, opts.Offset), nil
 	}
+	// When browsing an album's tracks, default to track order (disc + track number) like
+	// Subsonic's GetAlbum and real Jellyfin do; an explicit SortBy from the client still wins,
+	// since applySort would already have set opts.Sort.
+	if artistId == "" && parentId != "" && opts.Sort == "" {
+		opts.Sort = filter.SongsByAlbum(parentId).Sort
+	}
+	mfs, err := repo.GetAll(opts)
 	if err != nil {
 		return dto.QueryResult{}, err
 	}
@@ -284,11 +311,13 @@ func (api *Router) listArtists(ctx context.Context, opts model.QueryOptions, sco
 		if len(scopeIDs) > 0 {
 			opts.Filters = squirrel.Eq{"library_id": scopeIDs}
 		}
-		artists, err := repo.Search(search, opts)
+		artists, total, err := searchPage(opts, func(o model.QueryOptions) (model.Artists, error) {
+			return repo.Search(search, o)
+		})
 		if err != nil {
 			return dto.QueryResult{}, err
 		}
-		return result(slice.Map(artists, dto.ArtistToBaseItem), len(artists), opts.Offset), nil
+		return result(slice.Map(artists, dto.ArtistToBaseItem), total, opts.Offset), nil
 	}
 
 	if fav {
