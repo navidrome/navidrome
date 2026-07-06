@@ -43,16 +43,19 @@ type BaseItemDto struct {
 	// PlaylistItemId identifies this entry within a playlist listing (GET /Playlists/{id}/Items).
 	// It's only set there, and is distinct from Id so a song appearing more than once in the same
 	// playlist can be removed by occurrence (DELETE .../Items?EntryIds=...) rather than by song id.
-	PlaylistItemId       string            `json:"PlaylistItemId,omitempty"`
-	Type                 string            `json:"Type"`
-	IsFolder             bool              `json:"IsFolder"`
-	MediaType            string            `json:"MediaType,omitempty"`
-	CollectionType       string            `json:"CollectionType,omitempty"`
-	ParentId             string            `json:"ParentId,omitempty"`
-	RunTimeTicks         int64             `json:"RunTimeTicks,omitempty"`
-	IndexNumber          *int              `json:"IndexNumber,omitempty"`
-	ParentIndexNumber    *int              `json:"ParentIndexNumber,omitempty"`
-	ProductionYear       *int              `json:"ProductionYear,omitempty"`
+	PlaylistItemId    string `json:"PlaylistItemId,omitempty"`
+	Type              string `json:"Type"`
+	IsFolder          bool   `json:"IsFolder"`
+	MediaType         string `json:"MediaType,omitempty"`
+	CollectionType    string `json:"CollectionType,omitempty"`
+	ParentId          string `json:"ParentId,omitempty"`
+	RunTimeTicks      int64  `json:"RunTimeTicks,omitempty"`
+	IndexNumber       *int   `json:"IndexNumber,omitempty"`
+	ParentIndexNumber *int   `json:"ParentIndexNumber,omitempty"`
+	ProductionYear    *int   `json:"ProductionYear,omitempty"`
+	// DateCreated is the ISO 8601 date the item was added to the library; clients show it as
+	// "Date Added" and sort "Recently Added" by it.
+	DateCreated          string            `json:"DateCreated,omitempty"`
 	Album                string            `json:"Album,omitempty"`
 	AlbumId              string            `json:"AlbumId,omitempty"`
 	AlbumArtist          string            `json:"AlbumArtist,omitempty"`

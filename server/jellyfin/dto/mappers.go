@@ -8,6 +8,15 @@ import (
 
 func TicksFromSeconds(sec float32) int64 { return int64(float64(sec) * 1e7) }
 
+// jellyfinDate formats a time as the ISO 8601 string Jellyfin clients expect for DateCreated, or
+// "" for the zero time so the field is omitted rather than sent as a meaningless epoch.
+func jellyfinDate(t *time.Time) string {
+	if t == nil || t.IsZero() {
+		return ""
+	}
+	return t.UTC().Format(time.RFC3339)
+}
+
 // channelLayout maps a channel count to the label Jellyfin clients expect on a MediaStream.
 func channelLayout(n int) string {
 	switch n {
@@ -92,6 +101,7 @@ func SongToBaseItem(mf model.MediaFile) BaseItemDto {
 		AlbumArtist:       mf.AlbumArtist,
 		Artists:           []string{mf.Artist},
 		RunTimeTicks:      TicksFromSeconds(mf.Duration),
+		DateCreated:       jellyfinDate(&mf.CreatedAt),
 		Container:         mf.Suffix,
 		CanDownload:       true,
 		BackdropImageTags: []string{},
@@ -134,6 +144,7 @@ func AlbumToBaseItem(al model.Album) BaseItemDto {
 		ChildCount:        new(al.SongCount),
 		SongCount:         new(al.SongCount),
 		RunTimeTicks:      TicksFromSeconds(al.Duration),
+		DateCreated:       jellyfinDate(&al.CreatedAt),
 		ImageTags:         map[string]string{"Primary": al.ID},
 		ImageBlurHashes:   map[string]map[string]string{"Primary": {al.ID: blurHash(al.ID)}},
 		BackdropImageTags: []string{},
@@ -162,6 +173,7 @@ func ArtistToBaseItem(ar model.Artist) BaseItemDto {
 		IsFolder:          true,
 		AlbumCount:        new(ar.AlbumCount),
 		SongCount:         new(ar.SongCount),
+		DateCreated:       jellyfinDate(ar.CreatedAt),
 		ImageTags:         map[string]string{"Primary": ar.ID},
 		ImageBlurHashes:   map[string]map[string]string{"Primary": {ar.ID: blurHash(ar.ID)}},
 		BackdropImageTags: []string{},

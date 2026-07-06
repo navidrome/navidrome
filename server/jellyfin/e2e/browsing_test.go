@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	. "github.com/onsi/ginkgo/v2"
@@ -163,6 +164,14 @@ var _ = Describe("Browsing", func() {
 			var item dto.BaseItemDto
 			parseInto(get("/Items/"+enc(songID("So What"))), &item)
 			Expect(item.Type).To(Equal("Audio"))
+		})
+
+		It("includes a parseable DateCreated (Date Added) on a song", func() {
+			var item dto.BaseItemDto
+			parseInto(get("/Items/"+enc(songID("So What"))), &item)
+			Expect(item.DateCreated).ToNot(BeEmpty())
+			_, err := time.Parse(time.RFC3339, item.DateCreated)
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("resolves an artist", func() {
