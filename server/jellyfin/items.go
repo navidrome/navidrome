@@ -80,10 +80,11 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (dto.QueryRe
 	contributingOnly := albumArtistScope == "" && contributingScope != ""
 
 	scopeIDs, isLibraryParent := resolveLibraryScope(ctx, parentId)
-	// When no item type is requested and ParentId is an album, browse into that album's tracks:
-	// Jellify opens an album with just parentId=<albumId> (no IncludeItemTypes), and Jellyfin infers
-	// the child type from the parent. Without this we'd fall back to parseTypes' MusicAlbum default
-	// and list every album instead. An artist parent keeps that default (browse its albums).
+	// When no item type is requested, Jellyfin infers the child type from the parent: Jellify
+	// opens an album with just parentId=<albumId> (no IncludeItemTypes), and real Jellyfin
+	// returns a playlist's tracks for parentId=<playlistId>. Without this we'd fall back to
+	// parseTypes' MusicAlbum default and list every album instead. An artist parent keeps that
+	// default (browse its albums).
 	if rawTypes == "" && parentId != "" && !isLibraryParent {
 		switch {
 		case parentId == playlistsFolderID:
@@ -92,6 +93,10 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (dto.QueryRe
 		default:
 			if _, err := api.ds.Album(ctx).Get(parentId); err == nil {
 				types = []string{"Audio"}
+			} else if pls, err := api.playlists.GetWithTracks(ctx, parentId); err == nil {
+				// GetWithTracks enforces visibility (public or owned by the current user).
+				items := slice.Map(pls.Tracks, trackToBaseItem)
+				return result(paginate(items, offset, limit), len(items), offset), nil
 			}
 		}
 	}
@@ -372,6 +377,11 @@ func (api *Router) listPlaylists(ctx context.Context, opts model.QueryOptions, f
 // an id can't be used to probe content outside the user's libraries. Shared by getItem (single
 // fetch) and queryItems' Ids batch-fetch.
 func (api *Router) resolveItemByID(ctx context.Context, id string) (dto.BaseItemDto, bool) {
+	// The synthetic playlists folder is advertised by queryItems (ManualPlaylistsFolder), so a
+	// client refetching it by the id we emitted must get it back, not a 404.
+	if id == playlistsFolderID {
+		return playlistsFolder(), true
+	}
 	u, _ := request.UserFrom(ctx)
 	// Finamp resolves a /UserViews entry (Id=library id) by fetching it as a plain item; without
 	// this, the home screen and every library tab 404 trying to probe it as an album/artist/song.

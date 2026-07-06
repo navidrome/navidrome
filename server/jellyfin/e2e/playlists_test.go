@@ -124,6 +124,33 @@ var _ = Describe("Playlists", func() {
 			// Jellify keeps only playlists whose Path contains "data".
 			Expect(q.Items[0].Path).To(ContainSubstring("data"))
 		})
+
+		It("resolves the synthetic playlists folder by its own advertised id", func() {
+			var item dto.BaseItemDto
+			parseInto(get("/Items/"+enc("playlists")), &item)
+			Expect(item.Type).To(Equal("ManualPlaylistsFolder"))
+			Expect(item.CollectionType).To(Equal("playlists"))
+			Expect(item.Id).To(Equal(enc("playlists")))
+		})
+	})
+
+	// Real Jellyfin returns a playlist's children for /Items?ParentId=<playlistId> with no
+	// IncludeItemTypes; generic clients (not Finamp/Jellify) browse playlists this way.
+	Describe("browsing a playlist via the generic /Items path", func() {
+		It("lists the playlist's tracks for a typeless ParentId query", func() {
+			plID := createPlaylist("Browse Me", []string{enc(songID("Come Together")), enc(songID("So What"))})
+			q := queryResult(get("/Items?parentId=" + enc(plID)))
+			Expect(q.TotalRecordCount).To(Equal(2))
+			Expect(names(q.Items)).To(ConsistOf("Come Together", "So What"))
+			Expect(q.Items[0].Type).To(Equal("Audio"))
+		})
+
+		It("pages the playlist's tracks", func() {
+			plID := createPlaylist("Browse Paged", []string{enc(songID("Come Together")), enc(songID("So What"))})
+			q := queryResult(get("/Items?parentId=" + enc(plID) + "&startIndex=1&limit=1"))
+			Expect(q.Items).To(HaveLen(1))
+			Expect(q.TotalRecordCount).To(Equal(2))
+		})
 	})
 
 	Describe("cover art", func() {
