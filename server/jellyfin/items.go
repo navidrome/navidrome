@@ -57,6 +57,14 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (dto.QueryRe
 	offset := p.IntOr("StartIndex", 0)
 	limit := p.IntOr("Limit", 0)
 	types := parseTypes(p.StringOr("IncludeItemTypes", ""))
+	// An artist's page filters by artist, not by ParentId: Finamp sends ParentId=<libraryId> for
+	// scoping plus AlbumArtistIds/ArtistIds/contributingArtistIds for the artist itself. Without
+	// this, an artist's albums/tracks come back unfiltered (all artists).
+	artistId := firstDecodedID(firstNonEmpty(
+		p.StringOr("AlbumArtistIds", ""),
+		p.StringOr("ArtistIds", ""),
+		p.StringOr("ContributingArtistIds", p.StringOr("contributingArtistIds", "")),
+	))
 
 	scopeIDs, isLibraryParent := resolveLibraryScope(ctx, parentId)
 	entityParent := parentId
@@ -70,7 +78,7 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (dto.QueryRe
 	if len(types) == 1 {
 		opts := model.QueryOptions{Offset: offset, Max: limit}
 		applySort(&opts, types[0], sortBy, sortOrder)
-		return api.queryItemsOfType(ctx, types[0], opts, entityParent, scopeIDs, search, favOnly)
+		return api.queryItemsOfType(ctx, types[0], opts, entityParent, artistId, scopeIDs, search, favOnly)
 	}
 
 	var items []dto.BaseItemDto
@@ -78,7 +86,7 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (dto.QueryRe
 	for _, itemType := range types {
 		var opts model.QueryOptions
 		applySort(&opts, itemType, sortBy, sortOrder)
-		res, err := api.queryItemsOfType(ctx, itemType, opts, entityParent, scopeIDs, search, favOnly)
+		res, err := api.queryItemsOfType(ctx, itemType, opts, entityParent, artistId, scopeIDs, search, favOnly)
 		if err != nil {
 			return dto.QueryResult{}, err
 		}
@@ -88,10 +96,10 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (dto.QueryRe
 	return result(paginate(items, offset, limit), total, offset), nil
 }
 
-func (api *Router) queryItemsOfType(ctx context.Context, itemType string, opts model.QueryOptions, entityParent string, scopeIDs []int, search string, favOnly bool) (dto.QueryResult, error) {
+func (api *Router) queryItemsOfType(ctx context.Context, itemType string, opts model.QueryOptions, entityParent, artistId string, scopeIDs []int, search string, favOnly bool) (dto.QueryResult, error) {
 	switch itemType {
 	case "Audio":
-		return api.listSongs(ctx, opts, entityParent, scopeIDs, search, favOnly)
+		return api.listSongs(ctx, opts, entityParent, artistId, scopeIDs, search, favOnly)
 	case "MusicArtist":
 		return api.listArtists(ctx, opts, scopeIDs, search, favOnly)
 	case "MusicGenre":
@@ -99,8 +107,27 @@ func (api *Router) queryItemsOfType(ctx context.Context, itemType string, opts m
 	case "Playlist":
 		return api.listPlaylists(ctx, opts, favOnly)
 	default: // MusicAlbum
-		return api.listAlbums(ctx, opts, entityParent, scopeIDs, search, favOnly)
+		return api.listAlbums(ctx, opts, entityParent, artistId, scopeIDs, search, favOnly)
 	}
+}
+
+// firstNonEmpty returns the first non-empty string, or "".
+func firstNonEmpty(vals ...string) string {
+	for _, v := range vals {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+// firstDecodedID decodes the first id from a (possibly comma-separated) Jellyfin id list.
+func firstDecodedID(s string) string {
+	if s == "" {
+		return ""
+	}
+	first, _, _ := strings.Cut(s, ",")
+	return dto.DecodeID(strings.TrimSpace(first))
 }
 
 // parseTypes returns every recognized entry in the (possibly comma-separated) IncludeItemTypes,
@@ -138,11 +165,13 @@ func paginate(items []dto.BaseItemDto, offset, limit int) []dto.BaseItemDto {
 	return items
 }
 
-func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, parentId string, scopeIDs []int, search string, fav bool) (dto.QueryResult, error) {
+func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, parentId, artistId string, scopeIDs []int, search string, fav bool) (dto.QueryResult, error) {
 	repo := api.ds.Album(ctx)
 	filters := squirrel.And{}
-	if parentId != "" {
-		filters = append(filters, filter.AlbumsByArtistID(parentId).Filters)
+	// For albums, both ParentId (browse into an artist) and AlbumArtistIds/ArtistIds mean "this
+	// artist's albums".
+	if scope := firstNonEmpty(artistId, parentId); scope != "" {
+		filters = append(filters, filter.AlbumsByArtistID(scope).Filters)
 	} else {
 		filters = append(filters, notMissing)
 	}
@@ -166,12 +195,17 @@ func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, pare
 	return result(slice.Map(albums, dto.AlbumToBaseItem), int(total), opts.Offset), nil
 }
 
-func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, parentId string, scopeIDs []int, search string, fav bool) (dto.QueryResult, error) {
+func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, parentId, artistId string, scopeIDs []int, search string, fav bool) (dto.QueryResult, error) {
 	repo := api.ds.MediaFile(ctx)
 	filters := squirrel.And{}
-	if parentId != "" {
+	// For songs, ArtistIds/AlbumArtistIds selects an artist's tracks, while ParentId selects an
+	// album's tracks — different filters.
+	switch {
+	case artistId != "":
+		filters = append(filters, filter.SongsByArtistID(artistId).Filters)
+	case parentId != "":
 		filters = append(filters, filter.SongsByAlbum(parentId).Filters)
-	} else {
+	default:
 		filters = append(filters, notMissing)
 	}
 	if fav {
@@ -188,7 +222,7 @@ func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, paren
 		// When browsing an album's tracks, default to track order (disc + track number) like
 		// Subsonic's GetAlbum and real Jellyfin do; an explicit SortBy from the client still wins,
 		// since applySort would already have set opts.Sort.
-		if parentId != "" && opts.Sort == "" {
+		if artistId == "" && parentId != "" && opts.Sort == "" {
 			opts.Sort = filter.SongsByAlbum(parentId).Sort
 		}
 		mfs, err = repo.GetAll(opts)

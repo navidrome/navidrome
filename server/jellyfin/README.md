@@ -64,6 +64,14 @@ Browsing (`/Items`), artists, and the "Latest" list are all scoped to the librar
 authenticated user has access to; a library (or item within it) the user cannot access returns
 `404`, never `403`, so ids can't be used as an existence oracle.
 
+### Browsing filters
+
+`GET /Items` accepts the filter params clients use to build screens: `ParentId` (a library view id
+for scoping, an artist id when browsing into an artist's albums, or an album id when browsing into
+an album's tracks); `AlbumArtistIds`/`ArtistIds`/`contributingArtistIds` (an artist's albums or
+tracks — Finamp's artist screen sends these *alongside* `ParentId=<libraryId>`); `SearchTerm`;
+`Filters=IsFavorite`; `SortBy`/`SortOrder`; `StartIndex`/`Limit`; and `Ids` (batch fetch by id).
+
 ## Implemented endpoints
 
 | Area | Endpoints |

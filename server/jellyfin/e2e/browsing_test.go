@@ -85,6 +85,32 @@ var _ = Describe("Browsing", func() {
 		})
 	})
 
+	// Finamp's artist screen sends ParentId=<libraryId> (scoping) plus AlbumArtistIds/ArtistIds
+	// for the actual artist filter, not ParentId=<artistId>.
+	Describe("artist filtering (AlbumArtistIds / ArtistIds)", func() {
+		lib1 := enc("1")
+
+		It("filters albums by AlbumArtistIds", func() {
+			q := queryResult(get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true&ParentId=" + lib1 + "&AlbumArtistIds=" + enc(artistID("The Beatles"))))
+			Expect(names(q.Items)).To(ConsistOf("Abbey Road", "Help!"))
+		})
+
+		It("filters songs by ArtistIds", func() {
+			q := queryResult(get("/Items?IncludeItemTypes=Audio&Recursive=true&ParentId=" + lib1 + "&ArtistIds=" + enc(artistID("The Beatles"))))
+			Expect(names(q.Items)).To(ConsistOf("Come Together", "Something", "Help!"))
+		})
+
+		It("filters albums by a single-album artist", func() {
+			q := queryResult(get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true&AlbumArtistIds=" + enc(artistID("Led Zeppelin"))))
+			Expect(names(q.Items)).To(ConsistOf("IV"))
+		})
+
+		It("filters songs by a single-track artist", func() {
+			q := queryResult(get("/Items?IncludeItemTypes=Audio&Recursive=true&ArtistIds=" + enc(artistID("Miles Davis"))))
+			Expect(names(q.Items)).To(ConsistOf("So What"))
+		})
+	})
+
 	Describe("search, batch and pagination", func() {
 		It("searches albums by term", func() {
 			q := queryResult(get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true&SearchTerm=Abbey"))
