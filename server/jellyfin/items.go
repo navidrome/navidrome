@@ -104,7 +104,8 @@ func (api *Router) queryItemsOfType(ctx context.Context, itemType string, opts m
 	case "Audio":
 		return api.listSongs(ctx, opts, entityParent, artistId, scopeIDs, search, favOnly)
 	case "MusicArtist":
-		return api.listArtists(ctx, opts, scopeIDs, search, favOnly)
+		// The MusicArtist browse hierarchy (UserViews -> artists -> albums) means album artists.
+		return api.listArtists(ctx, opts, scopeIDs, search, favOnly, model.RoleAlbumArtist)
 	case "MusicGenre":
 		return api.listGenres(ctx, opts)
 	case "Playlist":
@@ -237,14 +238,19 @@ func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, paren
 	return result(slice.Map(mfs, dto.SongToBaseItem), int(total), opts.Offset), nil
 }
 
-func (api *Router) listArtists(ctx context.Context, opts model.QueryOptions, scopeIDs []int, search string, fav bool) (dto.QueryResult, error) {
+// listArtists lists artists in the given role — RoleAlbumArtist for the "album artists" views
+// (/Artists/AlbumArtists, the MusicArtist browse hierarchy) and RoleArtist for performing artists
+// (/Artists). Without a role filter every participant (composers, arrangers, ...) would show up in
+// both lists and they'd be identical.
+func (api *Router) listArtists(ctx context.Context, opts model.QueryOptions, scopeIDs []int, search string, fav bool, role model.Role) (dto.QueryResult, error) {
 	repo := api.ds.Artist(ctx)
 
 	// Artist Search does its own library scoping: it consumes a sole Eq{"library_id": ...} filter
 	// (artists have no library_id column, so it can't be a real WHERE clause) and realizes it as a
 	// search scope. The join-based ApplyArtistLibraryFilter, or any compound filter, would leak
 	// library_artist.library_id into the FTS query and 500. So the search and browse paths build
-	// their filters differently. See persistence/artist_repository.go's searchScope.
+	// their filters differently. See persistence/artist_repository.go's searchScope. Role isn't
+	// applied to search: it's a name lookup, and a compound filter would break the same way.
 	if search != "" {
 		if len(scopeIDs) > 0 {
 			opts.Filters = squirrel.Eq{"library_id": scopeIDs}
@@ -261,6 +267,7 @@ func (api *Router) listArtists(ctx context.Context, opts model.QueryOptions, sco
 	} else {
 		opts.Filters = notMissing
 	}
+	opts = filter.ArtistsByRole(opts, role)
 	opts = filter.ApplyArtistLibraryFilter(opts, scopeIDs)
 	artists, err := repo.GetAll(opts)
 	if err != nil {

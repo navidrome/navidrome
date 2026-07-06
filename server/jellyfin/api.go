@@ -76,7 +76,7 @@ func (api *Router) routes() http.Handler {
 		r.Delete("/Users/{userId}/Items/{itemId}/Rating", api.removeRating)
 
 		r.Get("/Artists", api.getArtists)
-		r.Get("/Artists/AlbumArtists", api.getArtists)
+		r.Get("/Artists/AlbumArtists", api.getAlbumArtists)
 		r.Get("/Genres", api.getGenres)
 		r.Get("/MusicGenres", api.getGenres)
 

@@ -8,10 +8,21 @@ import (
 	"github.com/navidrome/navidrome/utils/req"
 )
 
-// getArtists handles /Artists and /Artists/AlbumArtists. It defaults to the user's
-// accessible libraries but narrows to a single one when ParentId names a library the
-// user can access, matching how queryItems treats ParentId as a UserView id.
+// getArtists handles GET /Artists — performing artists (Finamp's "Artists" tab). getAlbumArtists
+// handles GET /Artists/AlbumArtists — album artists only ("Album Artists" tab). They're distinct
+// roles: without this, both listed every participant (composers, arrangers, ...) identically.
 func (api *Router) getArtists(w http.ResponseWriter, r *http.Request) {
+	api.listArtistsByRole(w, r, model.RoleArtist)
+}
+
+func (api *Router) getAlbumArtists(w http.ResponseWriter, r *http.Request) {
+	api.listArtistsByRole(w, r, model.RoleAlbumArtist)
+}
+
+// listArtistsByRole is the shared body of the /Artists* handlers. It defaults to the user's
+// accessible libraries but narrows to a single one when ParentId names a library the user can
+// access, matching how queryItems treats ParentId as a UserView id.
+func (api *Router) listArtistsByRole(w http.ResponseWriter, r *http.Request, role model.Role) {
 	ctx := r.Context()
 	p := req.Params(r)
 	opts := model.QueryOptions{Offset: p.IntOr("StartIndex", 0), Max: p.IntOr("Limit", 0)}
@@ -19,7 +30,7 @@ func (api *Router) getArtists(w http.ResponseWriter, r *http.Request) {
 
 	scopeIDs, _ := resolveLibraryScope(ctx, dto.DecodeID(p.StringOr("ParentId", "")))
 
-	res, err := api.listArtists(ctx, opts, scopeIDs, p.StringOr("SearchTerm", ""), false)
+	res, err := api.listArtists(ctx, opts, scopeIDs, p.StringOr("SearchTerm", ""), false, role)
 	if err != nil {
 		api.internalError(w, r, err)
 		return

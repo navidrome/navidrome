@@ -15,9 +15,10 @@
 //	Rock/The Beatles/Help!/       01 Help! (1965)
 //	Rock/Led Zeppelin/IV/         01 Stairway To Heaven (1971)
 //	Jazz/Miles Davis/Kind of Blue/01 So What (1959)
-//	Pop/Solo Artist/Singles/      01 Standalone Track (2020)
+//	Pop/Solo Artist/Singles/      01 Standalone Track (2020), 02 Duet (artist "Featured Guest")
 //
-// Totals: 6 songs, 5 albums, 4 album artists, 3 genres (Rock=4, Jazz=1, Pop=1).
+// Totals: 7 songs, 5 albums, 4 album artists (+ 1 performer-only "Featured Guest" = 5 artists),
+// 3 genres (Rock=4, Jazz=1, Pop=2).
 package e2e
 
 import (
@@ -128,6 +129,9 @@ func buildTestFS() storagetest.FakeFS {
 		"Rock/Led Zeppelin/IV/01 - Stairway To Heaven.mp3":   ledZepIV(track(1, "Stairway To Heaven")),
 		"Jazz/Miles Davis/Kind of Blue/01 - So What.mp3":     kindOfBlue(track(1, "So What")),
 		"Pop/Solo Artist/Singles/01 - Standalone Track.mp3":  singles(track(1, "Standalone Track")),
+		// "Featured Guest" is the track artist here (album artist stays "Solo Artist"), so it's a
+		// performer but not an album artist — lets tests tell /Artists from /Artists/AlbumArtists.
+		"Pop/Solo Artist/Singles/02 - Duet.mp3": singles(track(2, "Duet", _t{"artist": "Featured Guest"})),
 	})
 }
 

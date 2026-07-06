@@ -39,7 +39,7 @@ var _ = Describe("Browsing", func() {
 
 		It("lists all songs with Audio type and an AlbumId", func() {
 			q := queryResult(get("/Items?IncludeItemTypes=Audio&Recursive=true"))
-			Expect(q.TotalRecordCount).To(Equal(6))
+			Expect(q.TotalRecordCount).To(Equal(7))
 			for _, it := range q.Items {
 				Expect(it.Type).To(Equal("Audio"))
 				Expect(it.MediaType).To(Equal("Audio"))
@@ -148,7 +148,7 @@ var _ = Describe("Browsing", func() {
 
 		It("merges multiple types into one paginated result", func() {
 			q := queryResult(get("/Items?IncludeItemTypes=MusicAlbum,Audio&Recursive=true"))
-			Expect(q.TotalRecordCount).To(Equal(11)) // 5 albums + 6 songs
+			Expect(q.TotalRecordCount).To(Equal(12)) // 5 albums + 7 songs
 		})
 	})
 
@@ -207,9 +207,22 @@ var _ = Describe("Browsing", func() {
 	})
 
 	Describe("GET /Artists and /Genres", func() {
-		It("lists artists", func() {
-			q := queryResult(get("/Artists"))
-			Expect(q.TotalRecordCount).To(Equal(4))
+		It("lists album artists only on /Artists/AlbumArtists (excludes performer-only artists)", func() {
+			names := names(queryResult(get("/Artists/AlbumArtists")).Items)
+			Expect(names).To(ConsistOf("The Beatles", "Led Zeppelin", "Miles Davis", "Solo Artist"))
+			Expect(names).ToNot(ContainElement("Featured Guest"))
+		})
+
+		It("lists performing artists on /Artists (includes a track's guest artist)", func() {
+			names := names(queryResult(get("/Artists")).Items)
+			Expect(names).To(ContainElement("Featured Guest"))
+			Expect(names).To(ContainElement("Solo Artist"))
+		})
+
+		It("returns different lists for album artists and performing artists", func() {
+			aa := names(queryResult(get("/Artists/AlbumArtists")).Items)
+			ar := names(queryResult(get("/Artists")).Items)
+			Expect(aa).ToNot(Equal(ar))
 		})
 
 		It("lists genres", func() {

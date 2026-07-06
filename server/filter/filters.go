@@ -150,6 +150,23 @@ func ApplyArtistLibraryFilter(opts Options, musicFolderIds []int) Options {
 	return opts
 }
 
+// ArtistsByRole restricts an artist query to artists appearing in the given role (album artist,
+// performer, composer, ...), mirroring the artist repository's own role filter over
+// library_artist.stats — which selectArtist/CountAll always join. The role name comes from a
+// model.Role constant so it's trusted; an unknown role is ignored (no filter) as a guard.
+func ArtistsByRole(opts Options, role model.Role) Options {
+	if _, ok := model.AllRoles[role.String()]; !ok {
+		return opts
+	}
+	roleFilter := Expr("JSON_EXTRACT(library_artist.stats, '$." + role.String() + ".m') IS NOT NULL")
+	if opts.Filters == nil {
+		opts.Filters = roleFilter
+	} else {
+		opts.Filters = And{opts.Filters, roleFilter}
+	}
+	return opts
+}
+
 func ByGenre(genre string) Options {
 	return addDefaultFilters(Options{
 		Sort:    "name",
