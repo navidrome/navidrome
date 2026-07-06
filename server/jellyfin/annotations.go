@@ -1,6 +1,7 @@
 package jellyfin
 
 import (
+	"math"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -100,10 +101,18 @@ func (api *Router) setItemRating(w http.ResponseWriter, r *http.Request, rating 
 	api.ok(w, r, d)
 }
 
+// setRating maps Jellyfin's 0-10 rating (a nullable double in the API contract, so odd and
+// fractional values are valid) to Navidrome's 0-5 stars, rounding to the nearest star. A nonzero
+// rating is floored at one star: rounding it to 0 would silently clear the rating (SetRating(0)
+// is the delete path).
 func (api *Router) setRating(w http.ResponseWriter, r *http.Request) {
-	jfRating := req.Params(r).IntOr("rating", 0)
+	jfRating := req.Params(r).Float64Or("rating", 0)
 	jfRating = min(max(jfRating, 0), 10) // clamp: a client sending e.g. Rating=100 must not write an out-of-domain Navidrome rating
-	api.setItemRating(w, r, jfRating/2)  // Jellyfin 0-10 -> Navidrome 0-5
+	rating := int(math.Round(jfRating / 2))
+	if jfRating > 0 {
+		rating = max(rating, 1)
+	}
+	api.setItemRating(w, r, rating)
 }
 
 func (api *Router) removeRating(w http.ResponseWriter, r *http.Request) {

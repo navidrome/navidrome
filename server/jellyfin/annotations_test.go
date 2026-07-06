@@ -168,6 +168,39 @@ var _ = Describe("Annotations", func() {
 			Expect(albumRepo.Data["a1"].Rating).To(Equal(0))
 		})
 
+		It("rounds an odd rating to the nearest star instead of truncating", func() {
+			mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
+			mfRepo.SetData(model.MediaFiles{{ID: "s1", Title: "Song", LibraryID: 1}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("POST", "/Users/u1/Items/s1/Rating?Rating=9", nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", "s1")
+			invoke(api.setRating, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(mfRepo.Data["s1"].Rating).To(Equal(5))
+		})
+
+		It("stores the minimum star for Rating=1 instead of clearing the rating", func() {
+			mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
+			mfRepo.SetData(model.MediaFiles{{ID: "s1", Title: "Song", LibraryID: 1, Annotations: model.Annotations{Rating: 4}}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("POST", "/Users/u1/Items/s1/Rating?Rating=1", nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", "s1")
+			invoke(api.setRating, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(mfRepo.Data["s1"].Rating).To(Equal(1))
+		})
+
+		It("accepts a fractional rating (UserItemDataDto.Rating is a double)", func() {
+			mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
+			mfRepo.SetData(model.MediaFiles{{ID: "s1", Title: "Song", LibraryID: 1}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("POST", "/Users/u1/Items/s1/Rating?Rating=7.5", nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", "s1")
+			invoke(api.setRating, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(mfRepo.Data["s1"].Rating).To(Equal(4))
+		})
+
 		It("clamps a Rating above 10 to Navidrome's max (5)", func() {
 			mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
 			mfRepo.SetData(model.MediaFiles{{ID: "s1", Title: "Song", LibraryID: 1}})
