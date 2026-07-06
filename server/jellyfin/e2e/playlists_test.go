@@ -94,6 +94,14 @@ var _ = Describe("Playlists", func() {
 			Expect(q.Items[0].Name).To(Equal("Listed"))
 			Expect(q.Items[0].ImageTags).To(HaveKey("Primary"))
 		})
+
+		It("sorts playlists by name when SortBy=SortName", func() {
+			createPlaylist("Charlie", nil)
+			createPlaylist("Alpha", nil)
+			createPlaylist("Bravo", nil)
+			q := queryResult(get("/Items?IncludeItemTypes=Playlist&Recursive=true&SortBy=SortName"))
+			Expect(names(q.Items)).To(Equal([]string{"Alpha", "Bravo", "Charlie"}))
+		})
 	})
 
 	Describe("cover art", func() {

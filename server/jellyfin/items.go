@@ -457,6 +457,10 @@ var sortColumnsByType = map[string]map[string]string{
 	"MusicGenre": {
 		"sortname": "name", "name": "name",
 	},
+	"Playlist": {
+		"sortname": "name", "name": "name",
+		"datecreated": "created_at",
+	},
 }
 
 // sortColumn maps a single (non comma-list) Jellyfin SortBy key to the repo sort key for
