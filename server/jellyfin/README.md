@@ -46,6 +46,21 @@ every subsequent request as the `X-Emby-Token` header (or embedded in the
 `X-Emby-Authorization`/`Authorization` header's `Token="..."` field, or as an `api_key`/`ApiKey`
 query param — all forms are accepted, matching what different clients do).
 
+`POST /Users/AuthenticateByName` is rate-limited per IP with the same limiter as the native
+`/auth/login` (`AuthRequestLimit`/`AuthWindowLength`), since it's an unauthenticated brute-force
+surface.
+
+## Players and sessions
+
+Every authenticated request registers (or refreshes) the calling device as a Navidrome player,
+mirroring Subsonic's `getPlayer` — so a Jellyfin client shows up in the players list (and scrobbling
+has a player) as soon as it makes any authenticated call, not only when it reports playback. The
+player id is the device id from `X-Emby-Authorization` (`DeviceId="..."`); the player name is
+`Client [Device]`. Those field values are URL-decoded, since some clients percent-encode them
+(Jellify sends `Device="Pixel%208%20Pro"`, Finamp sends it raw). A request that carries no
+client/device info (e.g. the `GET socket` handshake, which authenticates via `?api_key=` only) is
+skipped, so it doesn't create a nameless player.
+
 ## ID encoding
 
 Navidrome item ids are **hex-encoded at the API boundary** (`dto.EncodeID`/`DecodeID`): every id
@@ -82,8 +97,9 @@ favorites-only (`Filters=IsFavorite` or the standalone `isFavorite=true`); `Sort
 | Users | `GET UserViews`, `GET Users/{userId}/Views`, `GET Users/Me`, `GET Users/{userId}` |
 | Browsing | `GET Items`, `GET Users/{userId}/Items`, `GET Items/{itemId}`, `GET Users/{userId}/Items/{itemId}`, `GET Users/{userId}/Items/Latest`, `DELETE Items/{itemId}` (playlists only) |
 | Artists / genres | `GET Artists`, `GET Artists/AlbumArtists`, `GET Genres`, `GET MusicGenres` |
+| Similar | `GET Artists/{itemId}/Similar`, `GET Items/{itemId}/Similar` |
 | Images | `GET Items/{itemId}/Images/{type}[/{index}]` (public), `POST`/`DELETE Items/{itemId}/Images/{type}` (playlist cover, authenticated) |
-| Favorites / ratings | `POST`/`DELETE Users/{userId}/FavoriteItems/{itemId}`, `POST`/`DELETE Users/{userId}/Items/{itemId}/Rating` |
+| Favorites / ratings | `POST`/`DELETE UserFavoriteItems/{itemId}`, `POST`/`DELETE Users/{userId}/FavoriteItems/{itemId}`, `POST`/`DELETE Users/{userId}/Items/{itemId}/Rating`, `GET UserItems/{itemId}/UserData`, `GET Users/{userId}/Items/{itemId}/UserData` |
 | Streaming | `GET Audio/{itemId}/stream[.{container}]`, `GET Audio/{itemId}/universal`, `GET Items/{itemId}/File`, `GET Items/{itemId}/Download`, `GET`/`POST Items/{itemId}/PlaybackInfo` |
 | Playback reporting | `POST Sessions/Playing`, `POST Sessions/Playing/Progress`, `POST Sessions/Playing/Stopped`, `POST Sessions/Capabilities[/Full]` |
 | Playlists | `POST Playlists`, `GET Playlists/{playlistId}`, `POST Playlists/{playlistId}` (rename / visibility / replace tracks), `GET Playlists/{playlistId}/Items`, `POST`/`DELETE Playlists/{playlistId}/Items`, `GET Playlists/{playlistId}/Users[/{userId}]` |
@@ -102,12 +118,19 @@ Playlists are the main writable surface of this API:
   or replacing (`POST Playlists/{id}`) a playlist, the `Ids` may contain **containers** — album,
   artist or playlist ids — not just song ids. Each is expanded into its tracks (in order) before
   the write, matching how Jellyfin clients populate these lists. A bare song id passes through.
+- **Id list encoding.** `POST`/`DELETE Playlists/{id}/Items` accept the id list both ways clients
+  spell it: repeated params (`ids=X&ids=Y`, how Jellify's `@jellyfin/sdk` serializes arrays) and a
+  single comma-separated value (`ids=X,Y`, Finamp). Reading only the first value would add just one
+  track of an expanded album.
 - **Update** (`POST Playlists/{id}`): with `Ids` present, the track list is **replaced** (Finamp
-  uses this for reordering); otherwise `Name` and/or `IsPublic` are updated. `IsPublic` maps to
+  uses this for reordering) — an explicit empty `Ids` (`[]`) **clears** the playlist, while an
+  omitted `Ids` leaves the tracks untouched and only updates `Name`/`IsPublic`. `IsPublic` maps to
   Navidrome's `Public` flag, surfaced to clients as `OpenAccess` on `GET Playlists/{id}`.
 - **Cover art**: `POST Items/{id}/Images/Primary` uploads a playlist cover (raw or base64 body,
-  extension from `Content-Type`); `DELETE` removes it. Only playlists are writable through this
-  API — album/artist covers come from tag/sidecar scanning, so a non-playlist id returns `501`.
+  JPEG/PNG/WebP/GIF detected by magic number, extension from `Content-Type`); `DELETE` removes it.
+  Only playlists are writable through this API — album/artist covers come from tag/sidecar scanning,
+  so a non-playlist id returns `501`. Uploads honor the same gates as the native endpoint: they're
+  bounded by `MaxImageUploadSize` and require `EnableArtworkUpload` for non-admins.
 - **`PlaylistItemId`**: `GET Playlists/{id}/Items` tags each entry with `PlaylistItemId` (the
   playlist-track row id, distinct from the song id) so a client can echo it back via
   `DELETE Playlists/{id}/Items?EntryIds=...` to remove one occurrence of a song that appears more
