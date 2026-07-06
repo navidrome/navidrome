@@ -3,6 +3,7 @@ package jellyfin
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -14,6 +15,20 @@ import (
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	"github.com/navidrome/navidrome/utils/slice"
 )
+
+// playlistError maps core/playlists write errors to an HTTP status: ownership -> 403, missing or
+// invisible -> 404 (never revealing another user's private playlist), anything else -> 500.
+// Shared by the playlist mutation handlers.
+func (api *Router) playlistError(w http.ResponseWriter, r *http.Request, err error) {
+	switch {
+	case errors.Is(err, model.ErrNotAuthorized):
+		http.Error(w, "Forbidden", http.StatusForbidden)
+	case errors.Is(err, model.ErrNotFound):
+		http.Error(w, "Not Found", http.StatusNotFound)
+	default:
+		api.internalError(w, r, err)
+	}
+}
 
 type createPlaylistRequest struct {
 	Name      string   `json:"Name"`
@@ -36,6 +51,46 @@ func (api *Router) createPlaylist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	api.ok(w, r, map[string]string{"Id": dto.EncodeID(id)})
+}
+
+// updatePlaylistRequest mirrors Jellyfin's NewPlaylist body reused for updates. Name/IsPublic are
+// pointers so an absent field means "leave unchanged"; Finamp sends name/visibility edits and
+// track-order edits as two separate requests, never combined.
+type updatePlaylistRequest struct {
+	Name     *string  `json:"Name"`
+	Ids      []string `json:"Ids"`
+	IsPublic *bool    `json:"IsPublic"`
+}
+
+// updatePlaylist handles POST /Playlists/{id}. When Ids are provided it replaces the playlist's
+// track list (Jellyfin's semantics, used by Finamp for reordering); otherwise it updates the
+// name and/or public visibility. Ownership is enforced by core/playlists.
+func (api *Router) updatePlaylist(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id := dto.DecodeID(chi.URLParam(r, "playlistId"))
+	var body updatePlaylistRequest
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
+
+	// Create with an existing id replaces the tracks and keeps the name; expandContainerIDs lets a
+	// client send containers here too, consistent with create/add.
+	if len(body.Ids) > 0 {
+		ids := api.expandContainerIDs(ctx, slice.Map(body.Ids, dto.DecodeID))
+		if _, err := api.playlists.Create(ctx, id, "", ids); err != nil {
+			api.playlistError(w, r, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	if err := api.playlists.Update(ctx, id, body.Name, nil, body.IsPublic, nil, nil); err != nil {
+		api.playlistError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // trackToBaseItem maps a playlist entry to a BaseItemDto, tagging it with PlaylistItemId — the

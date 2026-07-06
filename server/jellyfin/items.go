@@ -2,7 +2,6 @@ package jellyfin
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -319,17 +318,11 @@ func (api *Router) getItem(w http.ResponseWriter, r *http.Request) {
 func (api *Router) deleteItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := dto.DecodeID(chi.URLParam(r, "itemId"))
-	err := api.playlists.Delete(ctx, id)
-	switch {
-	case err == nil:
-		w.WriteHeader(http.StatusNoContent)
-	case errors.Is(err, model.ErrNotAuthorized):
-		http.Error(w, "Forbidden", http.StatusForbidden)
-	case errors.Is(err, model.ErrNotFound):
-		http.Error(w, "Not Found", http.StatusNotFound)
-	default:
-		api.internalError(w, r, err)
+	if err := api.playlists.Delete(ctx, id); err != nil {
+		api.playlistError(w, r, err)
+		return
 	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (api *Router) getLatest(w http.ResponseWriter, r *http.Request) {

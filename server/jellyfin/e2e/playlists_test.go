@@ -122,6 +122,41 @@ var _ = Describe("Playlists", func() {
 		})
 	})
 
+	Describe("update", func() {
+		It("makes a playlist public", func() {
+			plID := createPlaylist("Make Public", nil)
+			Expect(post("/Playlists/"+enc(plID), `{"Name":"Make Public","IsPublic":true}`).Code).To(Equal(http.StatusNoContent))
+
+			var info dto.PlaylistInfo
+			parseInto(get("/Playlists/"+enc(plID)), &info)
+			Expect(info.OpenAccess).To(BeTrue())
+			// Now visible to other users.
+			Expect(queryResult(getAs(regularUser, "/Items?IncludeItemTypes=Playlist&Recursive=true")).TotalRecordCount).To(Equal(1))
+		})
+
+		It("renames a playlist", func() {
+			plID := createPlaylist("Old Name", nil)
+			Expect(post("/Playlists/"+enc(plID), `{"Name":"New Name"}`).Code).To(Equal(http.StatusNoContent))
+			pls, _ := ds.Playlist(ctx).Get(plID)
+			Expect(pls.Name).To(Equal("New Name"))
+		})
+
+		It("replaces the track list when Ids are provided", func() {
+			plID := createPlaylist("Reorder", []string{enc(songID("Come Together")), enc(songID("Something"))})
+			// Replace with a single different track.
+			Expect(post("/Playlists/"+enc(plID), `{"Ids":["`+enc(songID("So What"))+`"]}`).Code).To(Equal(http.StatusNoContent))
+			q := playlistItems(plID)
+			Expect(q.TotalRecordCount).To(Equal(1))
+			Expect(q.Items[0].Name).To(Equal("So What"))
+		})
+
+		It("forbids a non-owner from updating a public playlist", func() {
+			plID := createPlaylist("Owned", nil)
+			post("/Playlists/"+enc(plID), `{"IsPublic":true}`) // make it visible to the regular user
+			Expect(postAs(regularUser, "/Playlists/"+enc(plID), `{"Name":"Hijacked"}`).Code).To(Equal(http.StatusForbidden))
+		})
+	})
+
 	Describe("delete", func() {
 		It("deletes a playlist", func() {
 			plID := createPlaylist("ToDelete", nil)
