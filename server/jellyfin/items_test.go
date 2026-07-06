@@ -266,6 +266,22 @@ var _ = Describe("Items", func() {
 				Expect(res.TotalRecordCount).To(Equal(2))
 			})
 
+			It("resolves song ids with one batched IN query, not a Get per id", func() {
+				mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
+				mfRepo.SetData(model.MediaFiles{{ID: "s1", Title: "Song", LibraryID: 1}, {ID: "s2", Title: "Song2", LibraryID: 1}})
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", "/Items?ids="+dto.EncodeID("s1")+","+dto.EncodeID("s2"), nil).WithContext(ctxUser())
+				invoke(api.getItems, w, r)
+				Expect(w.Code).To(Equal(http.StatusOK))
+				var res dto.QueryResult
+				Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+				Expect(res.Items).To(HaveLen(2))
+				sql, args, err := mfRepo.Options.Filters.ToSql()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(sql).To(ContainSubstring("media_file.id IN"))
+				Expect(args).To(ConsistOf("s1", "s2"))
+			})
+
 			It("omits an id in a library the user can't access, without erroring the whole batch", func() {
 				ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1", Name: "One", LibraryID: 1}})
 				ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: "s1", Title: "Song", LibraryID: 2}}) // alice only has access to library 1

@@ -172,10 +172,13 @@ func splitIds(s string) []string {
 // playlists — not just songs, and expect the server to expand each into its tracks, in order.
 // core/playlists only understands media file ids, so an unexpanded album id would silently add
 // nothing. A bare song id (or any id matching no container) passes through unchanged.
+// Songs (the common case, e.g. a 1000-track bulk add) are classified with one batched query;
+// only the rest pays the per-id container probes.
 func (api *Router) expandContainerIDs(ctx context.Context, ids []string) []string {
+	songs := api.songsByIDs(ctx, ids)
 	out := make([]string, 0, len(ids))
 	for _, id := range ids {
-		if _, err := api.ds.MediaFile(ctx).Get(id); err == nil {
+		if _, ok := songs[id]; ok {
 			out = append(out, id) // already a song
 		} else if _, err := api.ds.Album(ctx).Get(id); err == nil {
 			out = append(out, api.songIDs(ctx, filter.SongsByAlbum(id))...)

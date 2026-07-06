@@ -3,11 +3,13 @@ package jellyfin
 import (
 	"context"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/go-chi/chi/v5"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/filter"
@@ -43,13 +45,7 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (dto.QueryRe
 	// Jellyfin's /Items?ids= is a batch-fetch-by-id that cuts across the type dispatch below
 	// entirely; Finamp's download/sync uses it to fetch a single track's BaseItemDto.
 	if ids := p.StringOr("ids", ""); ids != "" {
-		var items []dto.BaseItemDto
-		for rawID := range strings.SplitSeq(ids, ",") {
-			if item, ok := api.resolveItemByID(ctx, dto.DecodeID(strings.TrimSpace(rawID))); ok {
-				items = append(items, item)
-			}
-		}
-		return result(items, len(items), 0), nil
+		return api.itemsByIDs(ctx, ids), nil
 	}
 	parentId := dto.DecodeID(p.StringOr("parentid", ""))
 	search := p.StringOr("searchterm", "")
@@ -428,6 +424,45 @@ func (api *Router) resolveItemByID(ctx context.Context, id string) (dto.BaseItem
 		return dto.PlaylistToBaseItem(*pl), true
 	}
 	return dto.BaseItemDto{}, false
+}
+
+// songsByIDs fetches the media files among ids with chunked IN queries instead of a Get per id.
+func (api *Router) songsByIDs(ctx context.Context, ids []string) map[string]model.MediaFile {
+	songs := make(map[string]model.MediaFile, len(ids))
+	// Chunked to stay under SQLITE_MAX_VARIABLE_NUMBER, like playqueue's loadTracks.
+	for chunk := range slice.CollectChunks(slices.Values(ids), 500) {
+		mfs, err := api.ds.MediaFile(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"media_file.id": chunk}})
+		if err != nil {
+			log.Error(ctx, "Jellyfin API: error fetching songs by id", err)
+			continue
+		}
+		for _, mf := range mfs {
+			songs[mf.ID] = mf
+		}
+	}
+	return songs
+}
+
+// itemsByIDs resolves a comma-separated encoded id list: songs (the common case) come from one
+// batched query, anything else falls back to resolveItemByID's probes. Input order is kept and
+// unresolvable ids are skipped.
+func (api *Router) itemsByIDs(ctx context.Context, rawIDs string) dto.QueryResult {
+	u, _ := request.UserFrom(ctx)
+	ids := slice.Map(strings.Split(rawIDs, ","), func(s string) string { return dto.DecodeID(strings.TrimSpace(s)) })
+	songs := api.songsByIDs(ctx, ids)
+	var items []dto.BaseItemDto
+	for _, id := range ids {
+		if mf, ok := songs[id]; ok {
+			if u.HasLibraryAccess(mf.LibraryID) {
+				items = append(items, dto.SongToBaseItem(mf))
+			}
+			continue
+		}
+		if item, ok := api.resolveItemByID(ctx, id); ok {
+			items = append(items, item)
+		}
+	}
+	return result(items, len(items), 0)
 }
 
 func (api *Router) getItem(w http.ResponseWriter, r *http.Request) {
