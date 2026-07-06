@@ -234,3 +234,15 @@ make test PKG=./server/jellyfin/...
   working session instead of 404-loop-reconnecting, but it never pushes anything. A follow-up
   would broadcast real session/playstate and library-change events over it (via `server/events`),
   mirroring Jellyfin's session messages.
+- **No lyrics endpoint (follow-up).** `GET Audio/{id}/Lyrics` is unimplemented (404), but Finamp
+  and Jellify both request it. Navidrome already has line-synced lyrics, so a follow-up would serve
+  Jellyfin's `LyricsResponse` (`Lyrics: [{Text, Start}]`, `Start` in 100ns ticks) — enough for both
+  clients' synced view. (Finamp also renders word-level `Cues`, but Navidrome has only line-level
+  timing, so word-sync is out of scope.)
+- **No InstantMix / sonic similarity (follow-up).** Jellyfin's "Instant Mix" action calls
+  `GET Items/{id}/InstantMix` (unimplemented), and the `/Similar` endpoints are backed only by
+  external metadata agents (Last.fm), not sonic analysis. A follow-up would implement
+  `Items/{id}/InstantMix` (and optionally back `/Similar`) with Navidrome's `core/sonic` provider —
+  the same one behind the OpenSubsonic `sonicSimilarity` extension (`getSonicSimilarTracks`) that
+  AudioMuse-AI feeds via its Navidrome plugin, and the exact endpoint AudioMuse's own Jellyfin
+  plugin overrides. Needs the `core/sonic.Sonic` service injected into the `Router` (wire change).
