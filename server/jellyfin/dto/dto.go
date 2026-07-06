@@ -65,11 +65,15 @@ type BaseItemDto struct {
 	SongCount            *int              `json:"SongCount,omitempty"`
 	AlbumCount           *int              `json:"AlbumCount,omitempty"`
 	ImageTags            map[string]string `json:"ImageTags,omitempty"`
-	BackdropImageTags    []string          `json:"BackdropImageTags"`
-	UserData             *UserItemDataDto  `json:"UserData,omitempty"`
-	MediaSources         []MediaSourceInfo `json:"MediaSources,omitempty"`
-	Container            string            `json:"Container,omitempty"`
-	CanDownload          bool              `json:"CanDownload"`
+	// ImageBlurHashes is keyed by image type (e.g. "Primary") then image tag. Finamp uses it both
+	// to render a placeholder while art loads and, more importantly, as a de-dup key for image
+	// downloads -- without it Finamp warns that the server isn't calculating blurhashes.
+	ImageBlurHashes   map[string]map[string]string `json:"ImageBlurHashes,omitempty"`
+	BackdropImageTags []string                     `json:"BackdropImageTags"`
+	UserData          *UserItemDataDto             `json:"UserData,omitempty"`
+	MediaSources      []MediaSourceInfo            `json:"MediaSources,omitempty"`
+	Container         string                       `json:"Container,omitempty"`
+	CanDownload       bool                         `json:"CanDownload"`
 }
 
 // PlaylistUserPermissions is the response shape for GET /Playlists/{id}/Users(/{userId}), which

@@ -117,6 +117,7 @@ func SongToBaseItem(mf model.MediaFile) BaseItemDto {
 	// Finamp resolves song art via AlbumId + a non-empty AlbumPrimaryImageTag.
 	if mf.AlbumID != "" {
 		item.AlbumPrimaryImageTag = mf.AlbumID
+		item.ImageBlurHashes = map[string]map[string]string{"Primary": {mf.AlbumID: blurHash(mf.AlbumID)}}
 	}
 	return item
 }
@@ -134,6 +135,7 @@ func AlbumToBaseItem(al model.Album) BaseItemDto {
 		SongCount:         new(al.SongCount),
 		RunTimeTicks:      TicksFromSeconds(al.Duration),
 		ImageTags:         map[string]string{"Primary": al.ID},
+		ImageBlurHashes:   map[string]map[string]string{"Primary": {al.ID: blurHash(al.ID)}},
 		BackdropImageTags: []string{},
 		UserData:          UserData(al.Annotations, al.ID),
 	}
@@ -161,6 +163,7 @@ func ArtistToBaseItem(ar model.Artist) BaseItemDto {
 		AlbumCount:        new(ar.AlbumCount),
 		SongCount:         new(ar.SongCount),
 		ImageTags:         map[string]string{"Primary": ar.ID},
+		ImageBlurHashes:   map[string]map[string]string{"Primary": {ar.ID: blurHash(ar.ID)}},
 		BackdropImageTags: []string{},
 		UserData:          UserData(ar.Annotations, ar.ID),
 	}

@@ -33,6 +33,15 @@ var _ = Describe("mappers", func() {
 		Expect(item.UserData.ItemId).To(Equal(EncodeID("song-1")))
 		Expect(item.MediaSources).To(HaveLen(1))
 		Expect(item.MediaSources[0].Size).To(Equal(int64(2_500_000)))
+		Expect(item.ImageBlurHashes["Primary"]).To(HaveKey(item.AlbumPrimaryImageTag))
+		Expect(item.ImageBlurHashes["Primary"][item.AlbumPrimaryImageTag]).To(HaveLen(6))
+	})
+
+	It("omits ImageBlurHashes when a song has no album", func() {
+		mf := model.MediaFile{ID: "song-noalbum", Title: "Song", Duration: 60}
+		item := SongToBaseItem(mf)
+		Expect(item.AlbumPrimaryImageTag).To(BeEmpty())
+		Expect(item.ImageBlurHashes).To(BeNil())
 	})
 
 	It("builds a MediaSourceInfo from a media file", func() {
@@ -125,6 +134,8 @@ var _ = Describe("mappers", func() {
 		Expect(item.ArtistItems).To(Equal(item.AlbumArtists))
 		Expect(*item.ProductionYear).To(Equal(1999))
 		Expect(*item.ChildCount).To(Equal(10))
+		Expect(item.ImageBlurHashes["Primary"]).To(HaveKey(item.ImageTags["Primary"]))
+		Expect(item.ImageBlurHashes["Primary"][item.ImageTags["Primary"]]).To(HaveLen(6))
 	})
 
 	It("maps an artist to a MusicArtist folder item", func() {
