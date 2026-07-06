@@ -36,6 +36,21 @@ var _ = Describe("System", func() {
 		Expect(info.ServerName).To(HavePrefix("Navidrome"))
 	})
 
+	It("advertises a LocalAddress with the request scheme, host and Jellyfin base path", func() {
+		DeferCleanup(configtest.SetupConfig())
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "/System/Info/Public", nil)
+		r.Host = "music.example.com:4599"
+		api.getPublicSystemInfo(w, r)
+
+		var info dto.PublicSystemInfo
+		Expect(json.Unmarshal(w.Body.Bytes(), &info)).To(Succeed())
+		// Jellify connecting over HTTP sets its server base URL from LocalAddress; without it the
+		// SDK `api` is undefined and sign-in crashes. It must include the /jellyfin mount path.
+		Expect(info.LocalAddress).To(Equal("http://music.example.com:4599/jellyfin"))
+	})
+
 	It("responds to ping with the server name as plain text", func() {
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.Jellyfin.ServerName = ""

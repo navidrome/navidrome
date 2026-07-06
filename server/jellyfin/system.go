@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"path"
 
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 )
 
@@ -49,18 +51,29 @@ func (api *Router) serverID(ctx context.Context) string {
 	return api.serverIDVal
 }
 
-func (api *Router) publicInfo(ctx context.Context) dto.PublicSystemInfo {
+func (api *Router) publicInfo(r *http.Request) dto.PublicSystemInfo {
 	return dto.PublicSystemInfo{
+		LocalAddress:           localAddress(r),
 		ServerName:             api.serverName(),
 		Version:                jellyfinVersion,
 		ProductName:            "Jellyfin Server",
-		Id:                     api.serverID(ctx),
+		Id:                     api.serverID(r.Context()),
 		StartupWizardCompleted: true,
 	}
 }
 
+// localAddress reconstructs the base URL the client used to reach this Jellyfin API: scheme and
+// host from the request (honoring reverse-proxy X-Forwarded-* headers), plus the mount path. Real
+// Jellyfin advertises this as LocalAddress; a client connecting by raw address (Jellify over HTTP,
+// when TLS isn't available) adopts it as its server base URL. Without it, Jellify's SDK api
+// instance is undefined and sign-in crashes ("Cannot read property 'configuration' of undefined").
+func localAddress(r *http.Request) string {
+	scheme, host := server.ServerAddress(r)
+	return scheme + "://" + host + path.Join(conf.Server.BasePath, consts.URLPathJellyfinAPI)
+}
+
 func (api *Router) getPublicSystemInfo(w http.ResponseWriter, r *http.Request) {
-	api.ok(w, r, api.publicInfo(r.Context()))
+	api.ok(w, r, api.publicInfo(r))
 }
 
 // ping answers /System/Ping with a bare plain-text server name, not a JSON-quoted string:
