@@ -40,6 +40,7 @@ import (
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playlists"
@@ -78,12 +79,13 @@ var (
 
 // Shared test state
 var (
-	ctx         context.Context
-	ds          *tests.MockDataStore
-	router      http.Handler
-	streamerSpy *spyStreamer
-	artworkSpy  *spyArtwork
-	lib         model.Library
+	ctx          context.Context
+	ds           *tests.MockDataStore
+	router       http.Handler
+	streamerSpy  *spyStreamer
+	artworkSpy   *spyArtwork
+	providerFake *fakeExternalProvider
+	lib          model.Library
 
 	// Snapshot paths for fast DB restore
 	dbFilePath   string
@@ -345,6 +347,7 @@ func setupTestDB() {
 
 	streamerSpy = &spyStreamer{}
 	artworkSpy = &spyArtwork{}
+	providerFake = &fakeExternalProvider{}
 	decider := stream.NewTranscodeDecider(ds, noopFFmpeg{})
 	router = jellyfin.New(
 		ds,
@@ -354,7 +357,25 @@ func setupTestDB() {
 		core.NewPlayers(ds),
 		scrobbler.NewPlayTracker(ds, events.NoopBroker(), nil),
 		playlists.NewPlaylists(ds, core.NewImageUploadService()),
+		providerFake,
 	)
+}
+
+// fakeExternalProvider is a configurable stand-in for external.Provider. Tests set the return
+// values they need; unset fields yield empty similar lists. Only the methods the Jellyfin API uses
+// are overridden — the embedded interface panics for anything else, flagging unexpected calls.
+type fakeExternalProvider struct {
+	external.Provider
+	similarArtists model.Artists
+	similarSongs   model.MediaFiles
+}
+
+func (f *fakeExternalProvider) UpdateArtistInfo(_ context.Context, id string, _ int, _ bool) (*model.Artist, error) {
+	return &model.Artist{ID: id, SimilarArtists: f.similarArtists}, nil
+}
+
+func (f *fakeExternalProvider) SimilarSongs(context.Context, string, int) (model.MediaFiles, error) {
+	return f.similarSongs, nil
 }
 
 // restoreDB restores all table data from the snapshot using ATTACH DATABASE (faster than rescan).

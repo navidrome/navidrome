@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
+	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/core/stream"
@@ -25,16 +26,17 @@ type Router struct {
 	players          core.Players
 	scrobbler        scrobbler.PlayTracker
 	playlists        playlists.Playlists
+	provider         external.Provider
 	serverIDOnce     sync.Once
 	serverIDVal      string
 }
 
 func New(ds model.DataStore, artwork artwork.Artwork, streamer stream.MediaStreamer,
 	transcodeDecider stream.TranscodeDecider, players core.Players,
-	scrobbler scrobbler.PlayTracker, playlists playlists.Playlists) *Router {
+	scrobbler scrobbler.PlayTracker, playlists playlists.Playlists, provider external.Provider) *Router {
 	r := &Router{
 		ds: ds, artwork: artwork, streamer: streamer, transcodeDecider: transcodeDecider,
-		players: players, scrobbler: scrobbler, playlists: playlists,
+		players: players, scrobbler: scrobbler, playlists: playlists, provider: provider,
 	}
 	r.Handler = r.routes()
 	return r
@@ -86,6 +88,8 @@ func (api *Router) routes() http.Handler {
 
 		r.Get("/Artists", api.getArtists)
 		r.Get("/Artists/AlbumArtists", api.getAlbumArtists)
+		r.Get("/Artists/{itemId}/Similar", api.getSimilarArtists)
+		r.Get("/Items/{itemId}/Similar", api.getSimilarItems)
 		r.Get("/Genres", api.getGenres)
 		r.Get("/MusicGenres", api.getGenres)
 
