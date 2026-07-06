@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/navidrome/navidrome/model"
@@ -42,6 +43,20 @@ var _ = Describe("mappers", func() {
 		Expect(src.RunTimeTicks).To(Equal(int64(1_000_000_000)))
 		Expect(src.Protocol).To(Equal("Http"))
 		Expect(src.SupportsDirectPlay).To(BeTrue())
+	})
+
+	It("serializes all Finamp-required MediaSourceInfo bools and arrays, never as null", func() {
+		mf := model.MediaFile{ID: "s1", Size: 5242880, Suffix: "mp3", BitRate: 320, Duration: 100}
+		src := MediaSourceFromMediaFile(mf)
+		b, err := json.Marshal(src)
+		Expect(err).ToNot(HaveOccurred())
+		j := string(b)
+		Expect(j).To(ContainSubstring(`"SupportsProbing":true`))
+		Expect(j).To(ContainSubstring(`"IsInfiniteStream":false`))
+		Expect(j).To(ContainSubstring(`"RequiresOpening":false`))
+		Expect(j).To(ContainSubstring(`"MediaStreams":[]`))
+		Expect(j).To(ContainSubstring(`"MediaAttachments":[]`))
+		Expect(j).To(ContainSubstring(`"Formats":[]`))
 	})
 
 	It("omits IndexNumber and ParentIndexNumber when track/disc numbers are untagged", func() {

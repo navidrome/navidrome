@@ -26,6 +26,10 @@ func MediaSourceFromMediaFile(mf model.MediaFile) MediaSourceInfo {
 		SupportsDirectStream: true,
 		SupportsTranscoding:  true,
 		IsRemote:             false,
+		SupportsProbing:      true,
+		MediaStreams:         []any{},
+		MediaAttachments:     []any{},
+		Formats:              []string{},
 	}
 }
 
