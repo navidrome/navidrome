@@ -93,6 +93,32 @@ var _ = Describe("tokenFromRequest", func() {
 	})
 })
 
+var _ = Describe("parseEmbyAuth", func() {
+	authFor := func(header string) embyAuth {
+		r := httptest.NewRequest("GET", "/", nil)
+		r.Header.Set("X-Emby-Authorization", header)
+		return parseEmbyAuth(r)
+	}
+
+	It("reads Finamp's raw (unencoded) field values", func() {
+		a := authFor(`MediaBrowser Client="Finamp", Device="Pixel 8 Pro", DeviceId="dev1", Version="1.0", Token="tok"`)
+		Expect(a.Client).To(Equal("Finamp"))
+		Expect(a.Device).To(Equal("Pixel 8 Pro"))
+		Expect(a.DeviceId).To(Equal("dev1"))
+	})
+
+	It("percent-decodes Jellify's URL-encoded field values", func() {
+		a := authFor(`MediaBrowser Client="Jellify", Device="Pixel%208%20Pro", DeviceId="dev1", Version="1.0", Token="tok"`)
+		Expect(a.Client).To(Equal("Jellify"))
+		Expect(a.Device).To(Equal("Pixel 8 Pro"))
+	})
+
+	It("keeps a literal '%' that isn't valid percent-encoding", func() {
+		a := authFor(`MediaBrowser Client="100% Player", Device="d"`)
+		Expect(a.Client).To(Equal("100% Player"))
+	})
+})
+
 var _ = Describe("normalizeQueryKeys", func() {
 	// keyFor runs a request through normalizeQueryKeys and reports the value the handler sees for
 	// the given (lowercase) key — i.e. what a case-insensitive read would find.

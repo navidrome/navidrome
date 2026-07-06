@@ -37,10 +37,14 @@ func (f *fakePlayTracker) Submit(_ context.Context, s []scrobbler.Submission) er
 // fakePlayers is a local double for core.Players, used to exercise withPlayer.
 type fakePlayers struct {
 	core.Players
-	err error
+	err           error
+	registerCalls int
+	lastClient    string
 }
 
 func (f *fakePlayers) Register(_ context.Context, id, client, _, _ string) (*model.Player, *model.Transcoding, error) {
+	f.registerCalls++
+	f.lastClient = client
 	if f.err != nil {
 		return nil, nil, f.err
 	}
@@ -193,5 +197,19 @@ var _ = Describe("withPlayer middleware", func() {
 
 		Expect(w.Code).To(Equal(http.StatusNoContent))
 		Expect(gotOk).To(BeFalse())
+	})
+
+	// The /socket handshake authenticates via ?api_key= with no X-Emby-Authorization header, so it
+	// carries no client/device info; registering it would create a junk player named " []".
+	It("skips registration when the request has no client or device info", func() {
+		next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNoContent) })
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "/socket?api_key=tok", nil)
+
+		api.withPlayer(next).ServeHTTP(w, r)
+
+		Expect(w.Code).To(Equal(http.StatusNoContent))
+		Expect(fp.registerCalls).To(Equal(0))
 	})
 })

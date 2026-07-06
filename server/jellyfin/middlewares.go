@@ -50,6 +50,8 @@ var embyAuthField = regexp.MustCompile(`(\w+)="([^"]*)"`)
 
 // parseEmbyAuth reads the MediaBrowser/Emby authorization header, e.g.
 // `MediaBrowser Client="Finamp", Device="Pixel", DeviceId="abc", Version="1.0", Token="jwt"`.
+// Field values are URL-decoded: Jellify (@jellyfin/sdk) percent-encodes them (Device="Pixel%208%20Pro"),
+// while Finamp sends them raw; unescapeField leaves a raw value untouched.
 func parseEmbyAuth(r *http.Request) embyAuth {
 	var a embyAuth
 	h := r.Header.Get("X-Emby-Authorization")
@@ -59,18 +61,28 @@ func parseEmbyAuth(r *http.Request) embyAuth {
 	for _, m := range embyAuthField.FindAllStringSubmatch(h, -1) {
 		switch m[1] {
 		case "Client":
-			a.Client = m[2]
+			a.Client = unescapeField(m[2])
 		case "Device":
-			a.Device = m[2]
+			a.Device = unescapeField(m[2])
 		case "DeviceId":
-			a.DeviceId = m[2]
+			a.DeviceId = unescapeField(m[2])
 		case "Version":
-			a.Version = m[2]
+			a.Version = unescapeField(m[2])
 		case "Token":
-			a.Token = m[2]
+			a.Token = unescapeField(m[2])
 		}
 	}
 	return a
+}
+
+// unescapeField percent-decodes a header field value, falling back to the raw value when it isn't
+// valid encoding (Finamp sends raw values that may contain a literal '%'). PathUnescape, not
+// QueryUnescape, so a literal '+' in a value is preserved rather than turned into a space.
+func unescapeField(v string) string {
+	if decoded, err := url.PathUnescape(v); err == nil {
+		return decoded
+	}
+	return v
 }
 
 func tokenFromRequest(r *http.Request) string {
@@ -128,8 +140,19 @@ func (api *Router) authenticate(next http.Handler) http.Handler {
 // session.
 func (api *Router) withPlayer(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if api.players == nil { // fail open when players isn't wired (e.g. in unit tests)
+			next.ServeHTTP(w, r)
+			return
+		}
 		ctx := r.Context()
 		a := parseEmbyAuth(r)
+		// Skip registration when the request can't identify a client (no X-Emby-Authorization, e.g.
+		// the /socket handshake that authenticates via ?api_key= only). Otherwise Register would
+		// create a junk player with an empty name (" []").
+		if a.Client == "" && a.DeviceId == "" {
+			next.ServeHTTP(w, r)
+			return
+		}
 		ip, _, _ := net.SplitHostPort(r.RemoteAddr)
 		player, _, err := api.players.Register(ctx, a.DeviceId, a.Client, a.Device, ip)
 		if err != nil {

@@ -77,6 +77,10 @@ func (api *Router) routes() http.Handler {
 
 	inner.Group(func(r chi.Router) {
 		r.Use(api.authenticate)
+		// Register/refresh the calling device as a player on every authenticated request, like
+		// Subsonic's getPlayer, so Jellyfin clients show up in the players list (and scrobbling has a
+		// player) even before the first playback report.
+		r.Use(api.withPlayer)
 		r.Get("/UserViews", api.getUserViews)
 		r.Get("/Users/{userId}/Views", api.getUserViews)
 		r.Get("/Users/Me", api.getCurrentUser)
@@ -135,12 +139,10 @@ func (api *Router) routes() http.Handler {
 		r.Get("/Items/{itemId}/Download", api.streamFile)
 
 		// Playback reports carry only the caller's own play data, so no library-access gate is needed.
-		r.Group(func(r chi.Router) {
-			r.Use(api.withPlayer)
-			r.Post("/Sessions/Playing", api.reportPlaybackStart)
-			r.Post("/Sessions/Playing/Progress", api.reportPlaybackProgress)
-			r.Post("/Sessions/Playing/Stopped", api.reportPlaybackStopped)
-		})
+		// The player comes from the group-level withPlayer above.
+		r.Post("/Sessions/Playing", api.reportPlaybackStart)
+		r.Post("/Sessions/Playing/Progress", api.reportPlaybackProgress)
+		r.Post("/Sessions/Playing/Stopped", api.reportPlaybackStopped)
 		r.Post("/Sessions/Capabilities", api.postCapabilities)
 		r.Post("/Sessions/Capabilities/Full", api.postCapabilities)
 
