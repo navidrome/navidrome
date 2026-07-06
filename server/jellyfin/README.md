@@ -199,9 +199,6 @@ make test PKG=./server/jellyfin/...
   Access control for artists is enforced by scoping the `Artists`/`Items?IncludeItemTypes=MusicArtist`
   *list* to the user's libraries, plus the persistence layer's own defense-in-depth; a client
   that already has an artist id from elsewhere is not re-checked against library membership.
-- **Album track order.** Browsing an album's tracks (`Items?ParentId=<albumId>&IncludeItemTypes=Audio`)
-  without an explicit `SortBy` does not guarantee track order — clients that need it should pass a
-  sort. Track numbers are always present on each item (`IndexNumber`).
 - **Playlists never match `Filters=IsFavorite`.** `GET Items?IncludeItemTypes=Playlist` (alone
   or mixed with other types, e.g. Finamp's favorites screen sending
   `IncludeItemTypes=Audio,MusicAlbum,Playlist`) is supported, but `model.Playlist` has no

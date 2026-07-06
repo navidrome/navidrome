@@ -76,15 +76,12 @@ var _ = Describe("Browsing", func() {
 			Expect(names(q.Items)).To(ConsistOf("Abbey Road", "Help!"))
 		})
 
-		It("browses an album's tracks with their track numbers", func() {
+		It("browses an album's tracks in track order by default", func() {
 			q := queryResult(get("/Items?IncludeItemTypes=Audio&ParentId=" + enc(albumID("Abbey Road"))))
 			Expect(q.TotalRecordCount).To(Equal(2))
-			Expect(names(q.Items)).To(ConsistOf("Come Together", "Something"))
-			idx := map[string]int{}
-			for _, it := range q.Items {
-				idx[it.Name] = *it.IndexNumber
-			}
-			Expect(idx).To(Equal(map[string]int{"Come Together": 1, "Something": 2}))
+			Expect(names(q.Items)).To(Equal([]string{"Come Together", "Something"}))
+			Expect(*q.Items[0].IndexNumber).To(Equal(1))
+			Expect(*q.Items[1].IndexNumber).To(Equal(2))
 		})
 	})
 

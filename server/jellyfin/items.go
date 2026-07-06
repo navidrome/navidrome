@@ -185,6 +185,12 @@ func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, paren
 	if search != "" {
 		mfs, err = repo.Search(search, opts)
 	} else {
+		// When browsing an album's tracks, default to track order (disc + track number) like
+		// Subsonic's GetAlbum and real Jellyfin do; an explicit SortBy from the client still wins,
+		// since applySort would already have set opts.Sort.
+		if parentId != "" && opts.Sort == "" {
+			opts.Sort = filter.SongsByAlbum(parentId).Sort
+		}
 		mfs, err = repo.GetAll(opts)
 	}
 	if err != nil {
