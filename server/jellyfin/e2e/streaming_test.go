@@ -43,6 +43,13 @@ var _ = Describe("Streaming", func() {
 		It("returns 404 for an unknown track", func() {
 			Expect(get("/Audio/" + enc("nope") + "/stream").Code).To(Equal(http.StatusNotFound))
 		})
+
+		It("streams when authenticated only by a bare Authorization token (Jellify native player)", func() {
+			id := songID("Come Together")
+			w := getWithBareToken("/Audio/" + enc(id) + "/stream?playSessionId=x&static=true")
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(streamerSpy.LastMediaFile.ID).To(Equal(id))
+		})
 	})
 
 	Describe("direct-file endpoints", func() {

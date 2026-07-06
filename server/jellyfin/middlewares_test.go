@@ -91,6 +91,24 @@ var _ = Describe("tokenFromRequest", func() {
 		invoke(func(_ http.ResponseWriter, r *http.Request) { got = tokenFromRequest(r) }, httptest.NewRecorder(), r)
 		Expect(got).To(Equal("tok123"))
 	})
+
+	It("accepts a bare token in the Authorization header (Jellify's native player)", func() {
+		r := httptest.NewRequest("GET", "/Audio/s1/stream", nil)
+		r.Header.Set("Authorization", "tok123")
+		Expect(tokenFromRequest(r)).To(Equal("tok123"))
+	})
+
+	It("accepts a Bearer token in the Authorization header", func() {
+		r := httptest.NewRequest("GET", "/Audio/s1/stream", nil)
+		r.Header.Set("Authorization", "Bearer tok123")
+		Expect(tokenFromRequest(r)).To(Equal("tok123"))
+	})
+
+	It("does not treat a tokenless MediaBrowser Authorization header as a bare token", func() {
+		r := httptest.NewRequest("GET", "/Items", nil)
+		r.Header.Set("Authorization", `MediaBrowser Client="Jellify", DeviceId="x"`)
+		Expect(tokenFromRequest(r)).To(BeEmpty())
+	})
 })
 
 var _ = Describe("normalizeQueryKeys", func() {

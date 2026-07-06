@@ -156,6 +156,19 @@ func jReq(user model.User, method, path, body string) *httptest.ResponseRecorder
 	return w
 }
 
+// getWithBareToken performs a GET authenticated only by a bare Authorization header carrying the
+// raw token, as react-native-nitro-player (Jellify's native audio player) does — no X-Emby-Token,
+// no MediaBrowser scheme.
+func getWithBareToken(path string) *httptest.ResponseRecorder {
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", path, nil)
+	token, err := auth.CreateToken(&adminUser)
+	Expect(err).ToNot(HaveOccurred())
+	r.Header.Set("Authorization", token)
+	router.ServeHTTP(w, r)
+	return w
+}
+
 // rawReq performs a request with no authentication (for public routes).
 func rawReq(method, path, body string) *httptest.ResponseRecorder {
 	w := httptest.NewRecorder()
