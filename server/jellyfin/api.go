@@ -78,6 +78,10 @@ func (api *Router) routes() http.Handler {
 		r.Delete("/Items/{itemId}", api.deleteItem)
 		r.Get("/Users/{userId}/Items/Latest", api.getLatest)
 
+		// /UserFavoriteItems is the current @jellyfin/sdk spelling (Jellify); the
+		// /Users/{userId}/FavoriteItems form is the legacy one Finamp still uses.
+		r.Post("/UserFavoriteItems/{itemId}", api.markFavorite)
+		r.Delete("/UserFavoriteItems/{itemId}", api.unmarkFavorite)
 		r.Post("/Users/{userId}/FavoriteItems/{itemId}", api.markFavorite)
 		r.Delete("/Users/{userId}/FavoriteItems/{itemId}", api.unmarkFavorite)
 		r.Post("/Users/{userId}/Items/{itemId}/Rating", api.setRating)

@@ -39,6 +39,20 @@ var _ = Describe("Annotations", func() {
 			Expect(itemUserData(id).IsFavorite).To(BeTrue())
 		})
 
+		It("marks and unmarks via the current SDK endpoint /UserFavoriteItems/{id} (Jellify)", func() {
+			id := songID("Come Together")
+
+			var marked dto.UserItemDataDto
+			parseInto(post("/UserFavoriteItems/"+enc(id), ""), &marked)
+			Expect(marked.IsFavorite).To(BeTrue())
+			Expect(itemUserData(id).IsFavorite).To(BeTrue())
+
+			var unmarked dto.UserItemDataDto
+			parseInto(del("/UserFavoriteItems/"+enc(id)), &unmarked)
+			Expect(unmarked.IsFavorite).To(BeFalse())
+			Expect(itemUserData(id).IsFavorite).To(BeFalse())
+		})
+
 		It("filters items to favorites only", func() {
 			post("/Users/admin-1/FavoriteItems/"+enc(albumID("Abbey Road")), "")
 			q := queryResult(get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true&Filters=IsFavorite"))
