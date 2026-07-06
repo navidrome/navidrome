@@ -70,16 +70,18 @@ func (api *Router) createPlaylist(w http.ResponseWriter, r *http.Request) {
 	api.ok(w, r, map[string]string{"Id": dto.EncodeID(id)})
 }
 
-// updatePlaylistRequest mirrors Jellyfin's NewPlaylist body. Name/IsPublic are pointers so an absent
-// field means "leave unchanged".
+// updatePlaylistRequest mirrors Jellyfin's NewPlaylist body. Name/IsPublic/Ids are pointers so an
+// absent field means "leave unchanged" — distinguishing an omitted Ids from an explicit empty list,
+// which must clear the playlist rather than be treated as "no change".
 type updatePlaylistRequest struct {
-	Name     *string  `json:"Name"`
-	Ids      []string `json:"Ids"`
-	IsPublic *bool    `json:"IsPublic"`
+	Name     *string   `json:"Name"`
+	Ids      *[]string `json:"Ids"`
+	IsPublic *bool     `json:"IsPublic"`
 }
 
-// updatePlaylist handles POST /Playlists/{id}: Ids replace the track list, Name/IsPublic update
-// metadata, a combined body applies both. Ownership is enforced by core/playlists.
+// updatePlaylist handles POST /Playlists/{id}: Ids replace the track list (an explicit empty list
+// clears it), Name/IsPublic update metadata, a combined body applies both. Ownership is enforced by
+// core/playlists.
 func (api *Router) updatePlaylist(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := dto.DecodeID(chi.URLParam(r, "playlistId"))
@@ -89,22 +91,44 @@ func (api *Router) updatePlaylist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create with an existing id replaces tracks and keeps the name; expandContainerIDs lets clients
-	// send containers here too, like create/add.
-	if len(body.Ids) > 0 {
-		ids := api.expandContainerIDs(ctx, slice.Map(body.Ids, dto.DecodeID))
-		if _, err := api.playlists.Create(ctx, id, "", ids); err != nil {
-			api.playlistError(w, r, err)
-			return
+	// A present Ids replaces the track list. A non-empty list goes through Create (which keeps the
+	// name); a present-but-empty list must clear the playlist, but Create can't persist an empty
+	// track list (the repository skips track writes when the list is empty), so clear explicitly.
+	if body.Ids != nil {
+		if len(*body.Ids) == 0 {
+			if err := api.clearPlaylist(ctx, id); err != nil {
+				api.playlistError(w, r, err)
+				return
+			}
+		} else {
+			ids := api.expandContainerIDs(ctx, slice.Map(*body.Ids, dto.DecodeID))
+			if _, err := api.playlists.Create(ctx, id, "", ids); err != nil {
+				api.playlistError(w, r, err)
+				return
+			}
 		}
 	}
-	if len(body.Ids) == 0 || body.Name != nil || body.IsPublic != nil {
+	if body.Ids == nil || body.Name != nil || body.IsPublic != nil {
 		if err := api.playlists.Update(ctx, id, body.Name, nil, body.IsPublic, nil, nil); err != nil {
 			api.playlistError(w, r, err)
 			return
 		}
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// clearPlaylist removes every track from a playlist. Used for a present-but-empty Ids replacement,
+// since Create can't persist an empty track list. RemoveTracks enforces ownership.
+func (api *Router) clearPlaylist(ctx context.Context, id string) error {
+	pls, err := api.playlists.GetWithTracks(ctx, id)
+	if err != nil {
+		return err
+	}
+	if len(pls.Tracks) == 0 {
+		return nil
+	}
+	entryIDs := slice.Map(pls.Tracks, func(t model.PlaylistTrack) string { return t.ID })
+	return api.playlists.RemoveTracks(ctx, id, entryIDs)
 }
 
 // trackToBaseItem maps a playlist entry to a BaseItemDto, tagging it with PlaylistItemId (the
@@ -151,13 +175,19 @@ func (api *Router) getPlaylistItems(w http.ResponseWriter, r *http.Request) {
 	api.ok(w, r, dto.QueryResult{Items: items, TotalRecordCount: len(items)})
 }
 
-// splitIds parses a comma-separated query parameter into ids, treating an absent or empty
-// parameter as no ids rather than a single empty-string id.
-func splitIds(s string) []string {
-	if s == "" {
-		return nil
+// queryIDs reads an id-list query param that clients spell two ways: comma-separated in a single
+// param (Finamp: ids=X,Y) or as repeated params (Jellify's @jellyfin/sdk: ids=X&ids=Y). It returns
+// the flattened, non-empty ids across both forms.
+func queryIDs(r *http.Request, key string) []string {
+	var ids []string
+	for _, v := range r.URL.Query()[key] {
+		for id := range strings.SplitSeq(v, ",") {
+			if id != "" {
+				ids = append(ids, id)
+			}
+		}
 	}
-	return strings.Split(s, ",")
+	return ids
 }
 
 // expandContainerIDs expands the container ids (albums, artists, playlists) a client sends when
@@ -197,7 +227,7 @@ func (api *Router) songIDs(ctx context.Context, opts model.QueryOptions) []strin
 func (api *Router) addToPlaylist(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := dto.DecodeID(chi.URLParam(r, "playlistId"))
-	ids := api.expandContainerIDs(ctx, slice.Map(splitIds(r.URL.Query().Get("ids")), dto.DecodeID))
+	ids := api.expandContainerIDs(ctx, slice.Map(queryIDs(r, "ids"), dto.DecodeID))
 	if _, err := api.playlists.AddTracks(ctx, id, ids); err != nil {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
@@ -211,7 +241,7 @@ func (api *Router) addToPlaylist(w http.ResponseWriter, r *http.Request) {
 func (api *Router) removeFromPlaylist(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := dto.DecodeID(chi.URLParam(r, "playlistId"))
-	ids := slice.Map(splitIds(r.URL.Query().Get("entryids")), dto.DecodeID)
+	ids := slice.Map(queryIDs(r, "entryids"), dto.DecodeID)
 	if err := api.playlists.RemoveTracks(ctx, id, ids); err != nil {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return

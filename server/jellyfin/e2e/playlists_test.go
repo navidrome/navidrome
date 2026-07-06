@@ -67,10 +67,28 @@ var _ = Describe("Playlists", func() {
 			Expect(playlistItems(plID).TotalRecordCount).To(Equal(3)) // 1 + Abbey Road (2)
 		})
 
+		// Jellify's @jellyfin/sdk serializes id arrays as repeated params (ids=X&ids=Y), not a
+		// comma-joined value; all ids must be added, not just the first.
+		It("adds multiple songs sent as repeated ids params", func() {
+			plID := createPlaylist("Multi", nil)
+			url := "/Playlists/" + enc(plID) + "/Items?ids=" + enc(songID("So What")) +
+				"&ids=" + enc(songID("Come Together")) + "&ids=" + enc(songID("Help!"))
+			Expect(post(url, "").Code).To(Equal(http.StatusNoContent))
+			Expect(playlistItems(plID).TotalRecordCount).To(Equal(3))
+		})
+
 		It("removes an entry by its PlaylistItemId", func() {
 			plID := createPlaylist("Remove", []string{enc(songID("Come Together")), enc(songID("Something"))})
 			entryID := playlistItems(plID).Items[0].PlaylistItemId
 			Expect(del("/Playlists/" + enc(plID) + "/Items?entryIds=" + entryID).Code).To(Equal(http.StatusNoContent))
+			Expect(playlistItems(plID).TotalRecordCount).To(Equal(1))
+		})
+
+		It("removes multiple entries sent as repeated entryIds params", func() {
+			plID := createPlaylist("MultiRemove", []string{enc(songID("Come Together")), enc(songID("Something")), enc(songID("So What"))})
+			items := playlistItems(plID).Items
+			url := "/Playlists/" + enc(plID) + "/Items?entryIds=" + items[0].PlaylistItemId + "&entryIds=" + items[1].PlaylistItemId
+			Expect(del(url).Code).To(Equal(http.StatusNoContent))
 			Expect(playlistItems(plID).TotalRecordCount).To(Equal(1))
 		})
 	})
@@ -151,6 +169,15 @@ var _ = Describe("Playlists", func() {
 			Expect(q.Items).To(HaveLen(1))
 			Expect(q.TotalRecordCount).To(Equal(2))
 		})
+
+		// Jellify opens a playlist with ParentId=<playlist>&IncludeItemTypes=Audio&Recursive=false.
+		// The playlist id must resolve to its tracks, not be treated as an album id (which returns none).
+		It("lists the playlist's tracks even when IncludeItemTypes=Audio is set", func() {
+			plID := createPlaylist("Typed Browse", []string{enc(songID("Come Together")), enc(songID("So What"))})
+			q := queryResult(get("/Items?parentId=" + enc(plID) + "&includeItemTypes=Audio&recursive=false"))
+			Expect(q.TotalRecordCount).To(Equal(2))
+			Expect(names(q.Items)).To(ConsistOf("Come Together", "So What"))
+		})
 	})
 
 	Describe("cover art", func() {
@@ -205,6 +232,18 @@ var _ = Describe("Playlists", func() {
 			q := playlistItems(plID)
 			Expect(q.TotalRecordCount).To(Equal(1))
 			Expect(q.Items[0].Name).To(Equal("So What"))
+		})
+
+		It("clears the track list when an explicit empty Ids array is sent", func() {
+			plID := createPlaylist("Clear Me", []string{enc(songID("Come Together")), enc(songID("Something"))})
+			Expect(post("/Playlists/"+enc(plID), `{"Ids":[]}`).Code).To(Equal(http.StatusNoContent))
+			Expect(playlistItems(plID).TotalRecordCount).To(Equal(0))
+		})
+
+		It("leaves the track list intact when Ids is omitted (metadata-only update)", func() {
+			plID := createPlaylist("Keep Tracks", []string{enc(songID("Come Together")), enc(songID("Something"))})
+			Expect(post("/Playlists/"+enc(plID), `{"Name":"Renamed"}`).Code).To(Equal(http.StatusNoContent))
+			Expect(playlistItems(plID).TotalRecordCount).To(Equal(2))
 		})
 
 		It("applies Name and IsPublic sent together with a track replacement", func() {

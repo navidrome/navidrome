@@ -67,22 +67,26 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (dto.QueryRe
 	contributingOnly := albumArtistScope == "" && contributingScope != ""
 
 	scopeIDs, isLibraryParent := resolveLibraryScope(ctx, parentId)
+	// A playlist parent always resolves to its tracks, whatever IncludeItemTypes says: Jellify opens
+	// a playlist with ParentId=<playlist>&IncludeItemTypes=Audio, and routing that through listSongs
+	// would treat the playlist id as an album id and return nothing. Playlist tracks are audio, so
+	// this is the right answer for both the bare-parent and Audio-typed requests.
+	if parentId != "" && !isLibraryParent && parentId != playlistsFolderID {
+		if pls, err := api.playlists.GetWithTracks(ctx, parentId); err == nil {
+			// GetWithTracks enforces visibility (public or owned by the current user).
+			items := slice.Map(pls.Tracks, func(t model.PlaylistTrack) dto.BaseItemDto { return trackToBaseItem(t, fields) })
+			return result(paginate(items, offset, limit), len(items), offset), nil
+		}
+	}
 	// With no item type, Jellyfin infers the child type from the parent: album parent -> its tracks
-	// (Jellify opens albums this way), playlist parent -> its tracks. An artist parent keeps
-	// parseTypes' MusicAlbum default (browse its albums).
+	// (Jellify opens albums this way). An artist parent keeps parseTypes' MusicAlbum default (browse
+	// its albums).
 	if rawTypes == "" && parentId != "" && !isLibraryParent {
-		switch {
-		case parentId == playlistsFolderID:
+		if parentId == playlistsFolderID {
 			// Browsing into the synthetic playlists folder lists the user's playlists.
 			types = []string{"Playlist"}
-		default:
-			if _, err := api.ds.Album(ctx).Get(parentId); err == nil {
-				types = []string{"Audio"}
-			} else if pls, err := api.playlists.GetWithTracks(ctx, parentId); err == nil {
-				// GetWithTracks enforces visibility (public or owned by the current user).
-				items := slice.Map(pls.Tracks, func(t model.PlaylistTrack) dto.BaseItemDto { return trackToBaseItem(t, fields) })
-				return result(paginate(items, offset, limit), len(items), offset), nil
-			}
+		} else if _, err := api.ds.Album(ctx).Get(parentId); err == nil {
+			types = []string{"Audio"}
 		}
 	}
 	entityParent := parentId
