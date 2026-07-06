@@ -197,20 +197,30 @@ func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, paren
 
 func (api *Router) listArtists(ctx context.Context, opts model.QueryOptions, scopeIDs []int, search string, fav bool) (dto.QueryResult, error) {
 	repo := api.ds.Artist(ctx)
+
+	// Artist Search does its own library scoping: it consumes a sole Eq{"library_id": ...} filter
+	// (artists have no library_id column, so it can't be a real WHERE clause) and realizes it as a
+	// search scope. The join-based ApplyArtistLibraryFilter, or any compound filter, would leak
+	// library_artist.library_id into the FTS query and 500. So the search and browse paths build
+	// their filters differently. See persistence/artist_repository.go's searchScope.
+	if search != "" {
+		if len(scopeIDs) > 0 {
+			opts.Filters = squirrel.Eq{"library_id": scopeIDs}
+		}
+		artists, err := repo.Search(search, opts)
+		if err != nil {
+			return dto.QueryResult{}, err
+		}
+		return result(slice.Map(artists, dto.ArtistToBaseItem), len(artists), opts.Offset), nil
+	}
+
 	if fav {
 		opts.Filters = filter.ArtistsByStarred().Filters
 	} else {
 		opts.Filters = notMissing
 	}
 	opts = filter.ApplyArtistLibraryFilter(opts, scopeIDs)
-
-	var artists model.Artists
-	var err error
-	if search != "" {
-		artists, err = repo.Search(search, opts)
-	} else {
-		artists, err = repo.GetAll(opts)
-	}
+	artists, err := repo.GetAll(opts)
 	if err != nil {
 		return dto.QueryResult{}, err
 	}
