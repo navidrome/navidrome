@@ -82,9 +82,9 @@ type updatePlaylistRequest struct {
 	IsPublic *bool    `json:"IsPublic"`
 }
 
-// updatePlaylist handles POST /Playlists/{id}. When Ids are provided it replaces the playlist's
-// track list (Jellyfin's semantics, used by Finamp for reordering); otherwise it updates the
-// name and/or public visibility. Ownership is enforced by core/playlists.
+// updatePlaylist handles POST /Playlists/{id}, applying every provided field (Jellyfin's
+// UpdatePlaylist semantics): Ids replace the playlist's track list, Name/IsPublic update
+// metadata, and a combined body applies both. Ownership is enforced by core/playlists.
 func (api *Router) updatePlaylist(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := dto.DecodeID(chi.URLParam(r, "playlistId"))
@@ -102,13 +102,12 @@ func (api *Router) updatePlaylist(w http.ResponseWriter, r *http.Request) {
 			api.playlistError(w, r, err)
 			return
 		}
-		w.WriteHeader(http.StatusNoContent)
-		return
 	}
-
-	if err := api.playlists.Update(ctx, id, body.Name, nil, body.IsPublic, nil, nil); err != nil {
-		api.playlistError(w, r, err)
-		return
+	if len(body.Ids) == 0 || body.Name != nil || body.IsPublic != nil {
+		if err := api.playlists.Update(ctx, id, body.Name, nil, body.IsPublic, nil, nil); err != nil {
+			api.playlistError(w, r, err)
+			return
+		}
 	}
 	w.WriteHeader(http.StatusNoContent)
 }

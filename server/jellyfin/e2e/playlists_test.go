@@ -180,6 +180,18 @@ var _ = Describe("Playlists", func() {
 			Expect(q.Items[0].Name).To(Equal("So What"))
 		})
 
+		It("applies Name and IsPublic sent together with a track replacement", func() {
+			plID := createPlaylist("Combo", []string{enc(songID("Come Together"))})
+			body := `{"Name":"Combo Renamed","IsPublic":true,"Ids":["` + enc(songID("So What")) + `"]}`
+			Expect(post("/Playlists/"+enc(plID), body).Code).To(Equal(http.StatusNoContent))
+			q := playlistItems(plID)
+			Expect(q.TotalRecordCount).To(Equal(1))
+			Expect(q.Items[0].Name).To(Equal("So What"))
+			pls, _ := ds.Playlist(ctx).Get(plID)
+			Expect(pls.Name).To(Equal("Combo Renamed"))
+			Expect(pls.Public).To(BeTrue())
+		})
+
 		It("forbids a non-owner from updating a public playlist", func() {
 			plID := createPlaylist("Owned", nil)
 			post("/Playlists/"+enc(plID), `{"IsPublic":true}`) // make it visible to the regular user
