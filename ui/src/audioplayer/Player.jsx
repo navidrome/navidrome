@@ -35,6 +35,7 @@ import keyHandlers from './keyHandlers'
 import { calculateGain } from '../utils/calculateReplayGain'
 import { detectBrowserProfile, decisionService } from '../transcode'
 import usePlayerLyrics from './usePlayerLyrics'
+import { useLyricsLayout } from './LyricsLayoutContext'
 
 const Player = () => {
   const theme = useCurrentTheme()
@@ -139,13 +140,28 @@ const Player = () => {
   const gainInfo = useSelector((state) => state.replayGain)
   const [context, setContext] = useState(null)
   const [gainNode, setGainNode] = useState(null)
-  const { toolbarLyricsProps, lyricsSurface, useInlineMobileLyrics } =
-    usePlayerLyrics({
-      trackId: playerState.current?.trackId || currentTrackId,
-      isRadio: playerState.current?.isRadio || false,
-      audioInstance,
-      isDesktop,
-    })
+  const { setDesktopLyricsProps } = useLyricsLayout()
+  const {
+    toolbarLyricsProps,
+    desktopLyricsProps,
+    mobileLyricsSurface,
+    useInlineMobileLyrics,
+  } = usePlayerLyrics({
+    trackId: playerState.current?.trackId || currentTrackId,
+    isRadio: playerState.current?.isRadio || false,
+    audioInstance,
+    isDesktop,
+  })
+
+  useEffect(() => {
+    if (!isDesktop) {
+      setDesktopLyricsProps(null)
+      return undefined
+    }
+
+    setDesktopLyricsProps(desktopLyricsProps)
+    return () => setDesktopLyricsProps(null)
+  }, [desktopLyricsProps, isDesktop, setDesktopLyricsProps])
 
   useEffect(() => {
     if (
@@ -487,7 +503,7 @@ const Player = () => {
         onBeforeDestroy={onBeforeDestroy}
         getAudioInstance={setAudioInstance}
       />
-      {lyricsSurface}
+      {mobileLyricsSurface}
       <GlobalHotKeys handlers={handlers} keyMap={keyMap} allowChanges />
     </ThemeProvider>
   )

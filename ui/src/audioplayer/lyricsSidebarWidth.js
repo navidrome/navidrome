@@ -3,8 +3,6 @@ export const LYRICS_SIDEBAR_DEFAULT_WIDTH = 360
 export const LYRICS_SIDEBAR_MIN_WIDTH = 300
 export const LYRICS_SIDEBAR_MAX_WIDTH = 520
 export const LYRICS_SIDEBAR_WIDTH_STEP = 20
-export const LYRICS_SIDEBAR_TOP_OFFSET = 48
-export const LYRICS_SIDEBAR_BOTTOM_OFFSET = 80
 export const LYRICS_SIDEBAR_TRANSITION_MS = 260
 
 export const clampSidebarWidth = (value) => {

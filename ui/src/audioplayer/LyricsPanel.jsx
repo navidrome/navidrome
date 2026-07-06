@@ -380,9 +380,6 @@ const LyricsPanel = ({
 
     return latestStartedIndex
   }, [activeIndex, hasTimedMainLines, mainLines, playbackMs])
-  const lineStyleReferenceIndex =
-    activeIndex >= 0 ? activeIndex : scrollTargetIndex
-
   const trByMainIndex = useMemo(() => {
     if (!showTranslation || translationLines.length === 0) return {}
     const map = {}
@@ -590,14 +587,6 @@ const LyricsPanel = ({
     return 0.38
   }
 
-  const getIdleOpacity = (delta) => {
-    if (delta > 1) return Math.max(0.54, 0.74 - clamp(delta, 1, 6) * 0.035)
-    if (delta < -1) {
-      return Math.max(0.5, 0.68 - clamp(Math.abs(delta), 1, 6) * 0.035)
-    }
-    return delta < 0 ? 0.68 : 0.74
-  }
-
   const getLineFocusScale = (idx) =>
     clamp(lineLifecycleStates[idx]?.lineFocusScale ?? 0, 0, 1)
 
@@ -605,16 +594,12 @@ const LyricsPanel = ({
     const sourceColor = colors[layer]
     if (!hasTimedMainLines) {
       return {
-        opacity: layer === 'main' ? 1 : 0.9,
+        opacity: 1,
         color: colorWithAlpha(sourceColor, layer === 'main' ? 0.98 : 0.86),
       }
     }
 
-    const referenceIndex =
-      lineStyleReferenceIndex >= 0 ? lineStyleReferenceIndex : idx
-    const delta = idx - referenceIndex
     const focusScale = getLineFocusScale(idx)
-    const opacity = lerp(getIdleOpacity(delta), 1, focusScale)
     const colorAlpha = lerp(
       getLayerIdleAlpha(layer),
       getLayerActiveAlpha(layer),
@@ -622,7 +607,7 @@ const LyricsPanel = ({
     )
 
     return {
-      opacity,
+      opacity: 1,
       color: colorWithAlpha(sourceColor, colorAlpha),
     }
   }

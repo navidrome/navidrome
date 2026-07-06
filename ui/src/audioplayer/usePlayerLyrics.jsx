@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react'
 import LyricsPanel from './LyricsPanel'
-import LyricsSidebar from './LyricsSidebar'
 import MobileKaraokeLyricsPortal from './MobileKaraokeLyricsPortal'
 import { hasStructuredLyricContent } from './lyrics'
 import {
@@ -62,25 +61,42 @@ const usePlayerLyrics = ({ trackId, isRadio, audioInstance, isDesktop }) => {
     [lyricsLoading, lyricsToggleDisabled, lyricsVisible, toggleLyrics],
   )
 
-  const lyricsSurface = (
+  const desktopLyricsProps = useMemo(
+    () => ({
+      visible: isDesktop && lyricsVisible,
+      mainLyric: lyricLayers.main,
+      translationLyric: lyricLayers.translation,
+      pronunciationLyric: lyricLayers.pronunciation,
+      showTranslation,
+      showPronunciation,
+      translationEnabled: hasTranslationLyric,
+      pronunciationEnabled: hasPronunciationLyric,
+      onToggleTranslation: toggleTranslation,
+      onTogglePronunciation: togglePronunciation,
+      audioInstance,
+      loading: lyricsLoading,
+      error: lyricsError,
+    }),
+    [
+      audioInstance,
+      hasPronunciationLyric,
+      hasTranslationLyric,
+      isDesktop,
+      lyricLayers.main,
+      lyricLayers.pronunciation,
+      lyricLayers.translation,
+      lyricsError,
+      lyricsLoading,
+      lyricsVisible,
+      showPronunciation,
+      showTranslation,
+      togglePronunciation,
+      toggleTranslation,
+    ],
+  )
+
+  const mobileLyricsSurface = (
     <>
-      {isDesktop && (
-        <LyricsSidebar
-          visible={lyricsVisible}
-          mainLyric={lyricLayers.main}
-          translationLyric={lyricLayers.translation}
-          pronunciationLyric={lyricLayers.pronunciation}
-          showTranslation={showTranslation}
-          showPronunciation={showPronunciation}
-          translationEnabled={hasTranslationLyric}
-          pronunciationEnabled={hasPronunciationLyric}
-          onToggleTranslation={toggleTranslation}
-          onTogglePronunciation={togglePronunciation}
-          audioInstance={audioInstance}
-          loading={lyricsLoading}
-          error={lyricsError}
-        />
-      )}
       <MobileKaraokeLyricsPortal active={useInlineMobileLyrics}>
         <LyricsPanel
           visible={useInlineMobileLyrics}
@@ -100,7 +116,8 @@ const usePlayerLyrics = ({ trackId, isRadio, audioInstance, isDesktop }) => {
 
   return {
     toolbarLyricsProps,
-    lyricsSurface,
+    desktopLyricsProps,
+    mobileLyricsSurface,
     useInlineMobileLyrics,
   }
 }

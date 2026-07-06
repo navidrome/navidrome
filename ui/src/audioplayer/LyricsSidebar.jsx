@@ -7,11 +7,9 @@ import clsx from 'clsx'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import LyricsPanel from './LyricsPanel'
 import {
-  LYRICS_SIDEBAR_BOTTOM_OFFSET,
   LYRICS_SIDEBAR_MAX_WIDTH,
   LYRICS_SIDEBAR_MIN_WIDTH,
   LYRICS_SIDEBAR_TRANSITION_MS,
-  LYRICS_SIDEBAR_TOP_OFFSET,
   LYRICS_SIDEBAR_WIDTH_STEP,
   clampSidebarWidth,
   loadSidebarWidth,
@@ -21,11 +19,11 @@ import useEnterExitTransition from './useEnterExitTransition'
 
 const useStyles = makeStyles((theme) => ({
   sidebar: {
-    position: 'fixed',
-    top: LYRICS_SIDEBAR_TOP_OFFSET,
-    right: 0,
-    bottom: LYRICS_SIDEBAR_BOTTOM_OFFSET,
-    zIndex: theme.zIndex.appBar - 1,
+    position: 'relative',
+    flex: '0 0 auto',
+    alignSelf: 'stretch',
+    height: '100%',
+    minHeight: 0,
     width: (props) => props.width,
     minWidth: LYRICS_SIDEBAR_MIN_WIDTH,
     maxWidth: LYRICS_SIDEBAR_MAX_WIDTH,
@@ -34,7 +32,7 @@ const useStyles = makeStyles((theme) => ({
     color: theme.palette.text.primary,
     backgroundColor: theme.palette.background.default,
     backgroundImage: 'none',
-    borderLeft: 0,
+    borderLeft: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
     boxShadow: 'none',
     transition: `transform ${LYRICS_SIDEBAR_TRANSITION_MS}ms cubic-bezier(0.22, 1, 0.36, 1), opacity ${LYRICS_SIDEBAR_TRANSITION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`,
     willChange: 'transform, opacity',

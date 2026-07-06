@@ -10,12 +10,10 @@ import { ThemeProvider, createTheme } from '@material-ui/core/styles'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import LyricsSidebar from './LyricsSidebar'
 import {
-  LYRICS_SIDEBAR_BOTTOM_OFFSET,
   LYRICS_SIDEBAR_MAX_WIDTH,
   LYRICS_SIDEBAR_MIN_WIDTH,
   LYRICS_SIDEBAR_STORAGE_KEY,
   LYRICS_SIDEBAR_TRANSITION_MS,
-  LYRICS_SIDEBAR_TOP_OFFSET,
   clampSidebarWidth,
 } from './lyricsSidebarWidth'
 
@@ -66,23 +64,23 @@ describe('<LyricsSidebar />', () => {
     })
   })
 
-  it('renders as a contained fixed sidebar without global layout side effects', () => {
+  it('renders as an embedded sidebar without global layout side effects', () => {
     const { unmount } = renderSidebar()
 
     expect(document.body.className).toBe('')
     const sidebar = screen.getByTestId('lyrics-sidebar')
     expect(sidebar).toHaveStyle({
-      top: `${LYRICS_SIDEBAR_TOP_OFFSET}px`,
-      bottom: `${LYRICS_SIDEBAR_BOTTOM_OFFSET}px`,
       transform: 'translateX(0)',
       opacity: '1',
     })
     const sidebarStyle = window.getComputedStyle(sidebar)
+    expect(sidebarStyle.position).toBe('relative')
+    expect(sidebarStyle.height).toBe('100%')
     expect(sidebarStyle.backgroundColor).toBe('rgb(16, 24, 32)')
     expect(sidebarStyle.backgroundImage).toBe('none')
-    expect(sidebarStyle.borderLeftWidth).toBe('0px')
+    expect(sidebarStyle.borderLeftWidth).toBe('1px')
     expect(sidebarStyle.boxShadow).toBe('none')
-    expect(sidebarStyle.zIndex).toBe('1099')
+    expect(sidebarStyle.zIndex).not.toBe('1099')
     expect(screen.queryByRole('heading', { name: 'Lyrics' })).toBeNull()
     expect(screen.queryByTestId('lyrics-sidebar-header')).toBeNull()
     expect(screen.queryByTestId('close-lyrics-button')).not.toBeInTheDocument()

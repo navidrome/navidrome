@@ -10,14 +10,14 @@ vi.mock('../subsonic', () => ({
   },
 }))
 
-const responseFor = (value) => ({
+const responseFor = (value, lang = 'en') => ({
   json: {
     'subsonic-response': {
       lyricsList: {
         structuredLyrics: [
           {
             kind: 'main',
-            lang: 'en',
+            lang,
             synced: true,
             line: [{ start: 0, value }],
           },
@@ -94,6 +94,29 @@ describe('useEnhancedLyrics', () => {
       expect(result.current.layers.main?.line[0].value).toBe(
         'Recovered lyrics',
       ),
+    )
+    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps cached lyrics separate by preferred language', async () => {
+    subsonic.getLyricsBySongId
+      .mockResolvedValueOnce(responseFor('English lyrics', 'en'))
+      .mockResolvedValueOnce(responseFor('Japanese lyrics', 'ja'))
+
+    const { result, rerender } = renderHook(
+      ({ trackId }) => useEnhancedLyrics(trackId),
+      { initialProps: { trackId: 'song-1' } },
+    )
+
+    await waitFor(() =>
+      expect(result.current.layers.main?.line[0].value).toBe('English lyrics'),
+    )
+
+    localStorage.setItem('locale', 'ja')
+    rerender({ trackId: 'song-1' })
+
+    await waitFor(() =>
+      expect(result.current.layers.main?.line[0].value).toBe('Japanese lyrics'),
     )
     expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(2)
   })

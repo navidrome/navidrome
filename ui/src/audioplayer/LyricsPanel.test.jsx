@@ -740,7 +740,7 @@ describe('<LyricsPanel />', () => {
           visible
           mainLyric={lyric}
           audioInstance={{
-            currentTime: 1.9,
+            currentTime: 1.7,
             paused: true,
           }}
         />
@@ -754,9 +754,10 @@ describe('<LyricsPanel />', () => {
     expect(
       screen.getByText('Upcoming line').closest('.MuiTypography-root'),
     ).toHaveStyle({
-      opacity: upcomingStyleBefore.opacity,
+      opacity: '1',
       color: upcomingStyleBefore.color,
     })
+    expect(upcomingStyleBefore.opacity).toBe('1')
     expect(groups[1].style.transform).toBe(upcomingStyleBefore.groupTransform)
   })
 
