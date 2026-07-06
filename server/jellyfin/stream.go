@@ -5,6 +5,7 @@ import (
 	"net/url"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -41,11 +42,11 @@ func (api *Router) getPlaybackInfo(w http.ResponseWriter, r *http.Request) {
 	src := dto.MediaSourceFromMediaFile(*mf)
 	// Embed the caller's token in the stream URL: Jellify's native player fetches TranscodingUrl
 	// verbatim without an auth header, so a non-self-authenticating URL would 401. Direct-play clients
-	// (Finamp) build their own /File?ApiKey URL and ignore this. The path is relative to the client's
-	// server base URL (which includes the /jellyfin mount).
+	// (Finamp) build their own /File?ApiKey URL and ignore this. Include the /jellyfin mount prefix so
+	// a client resolving it as an absolute host path still hits the mounted router.
 	if token := tokenFromRequest(r); token != "" {
 		src.TranscodingSubProtocol = "http"
-		src.TranscodingUrl = "/Audio/" + src.Id + "/universal?static=true&api_key=" + url.QueryEscape(token)
+		src.TranscodingUrl = consts.URLPathJellyfinAPI + "/Audio/" + src.Id + "/universal?static=true&api_key=" + url.QueryEscape(token)
 	}
 	api.ok(w, r, dto.PlaybackInfoResponse{MediaSources: []dto.MediaSourceInfo{src}, PlaySessionId: mf.ID})
 }

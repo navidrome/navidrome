@@ -114,6 +114,15 @@ var _ = Describe("Annotations", func() {
 			invoke(api.markFavorite, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
 		})
+
+		It("returns 500 (not 404) when a repository lookup fails for a reason other than not-found", func() {
+			ds.Album(context.Background()).(*tests.MockAlbumRepo).SetError(true)
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/x1", nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", "x1")
+			invoke(api.markFavorite, w, r)
+			Expect(w.Code).To(Equal(http.StatusInternalServerError))
+		})
 	})
 
 	Describe("setRating / removeRating", func() {

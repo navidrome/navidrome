@@ -50,11 +50,18 @@ func normalizeRequestPath(r *http.Request, canon map[string]string) {
 
 // normalizeCase rewrites each "/"-separated literal segment of path to the case it was
 // registered with in canon. Segments with no match (e.g. case-sensitive ids) are left untouched.
+// A segment like "STREAM.mp3" comes from a mixed literal+param route (e.g. "stream.{container}"),
+// whose literal prefix ("stream") is registered separately: normalize that prefix and lower-case
+// the extension so chi's case-sensitive match still hits.
 func normalizeCase(path string, canon map[string]string) string {
 	segs := strings.Split(path, "/")
 	for i, seg := range segs {
 		if canonical, ok := canon[strings.ToLower(seg)]; ok {
 			segs[i] = canonical
+		} else if prefix, suffix, found := strings.Cut(seg, "."); found {
+			if canonical, ok := canon[strings.ToLower(prefix)]; ok {
+				segs[i] = canonical + "." + strings.ToLower(suffix)
+			}
 		}
 	}
 	return strings.Join(segs, "/")

@@ -7,8 +7,10 @@ import (
 	"sync"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/httprate"
 	"golang.org/x/sync/singleflight"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/external"
@@ -59,7 +61,14 @@ func (api *Router) routes() http.Handler {
 	inner.Get("/System/Ping", api.ping)
 	inner.Post("/System/Ping", api.ping)
 	inner.Get("/QuickConnect/Enabled", api.quickConnectEnabled)
-	inner.Post("/Users/AuthenticateByName", api.authenticateByName)
+	// Rate-limit the password login, mirroring the native /auth/login: it's an unauthenticated
+	// brute-force surface, so it must share the same per-IP throttle when one is configured.
+	if conf.Server.AuthRequestLimit > 0 {
+		limiter := httprate.LimitByIP(conf.Server.AuthRequestLimit, conf.Server.AuthWindowLength)
+		inner.With(limiter).Post("/Users/AuthenticateByName", api.authenticateByName)
+	} else {
+		inner.Post("/Users/AuthenticateByName", api.authenticateByName)
+	}
 	inner.Get("/Users/Public", api.getPublicUsers)
 
 	// Images are intentionally public: artwork isn't sensitive, matching Jellyfin's image handling.

@@ -10,7 +10,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/dustin/go-humanize"
 	"github.com/go-chi/chi/v5"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -70,7 +73,16 @@ func (api *Router) postItemImage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := dto.DecodeID(chi.URLParam(r, "itemId"))
 
-	body, err := io.ReadAll(r.Body)
+	// Honor the same global artwork-upload gate as the native endpoint: non-admins can't upload
+	// when EnableArtworkUpload is off.
+	u, _ := request.UserFrom(ctx)
+	if !conf.Server.EnableArtworkUpload && !u.IsAdmin {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	// Cap the read like the native upload path, so an oversized body can't be buffered into memory.
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxImageUploadSize()))
 	if err != nil {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
@@ -112,6 +124,16 @@ func (api *Router) deleteItemImage(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// maxImageUploadSize mirrors the native endpoint's limit: the configured MaxImageUploadSize, or the
+// built-in default when it's unset/invalid.
+func maxImageUploadSize() int64 {
+	if size, err := humanize.ParseBytes(conf.Server.MaxImageUploadSize); err == nil && size > 0 {
+		return int64(size)
+	}
+	size, _ := humanize.ParseBytes(consts.DefaultMaxImageUploadSize)
+	return int64(size)
+}
+
 // decodeImageBody returns the raw image bytes. Jellyfin base64-encodes the body, but some clients
 // send raw bytes, so input already starting with an image magic number is passed through as-is.
 func decodeImageBody(body []byte) ([]byte, error) {
@@ -127,6 +149,10 @@ func isImageMagic(b []byte) bool {
 	case len(b) >= 2 && b[0] == 0xFF && b[1] == 0xD8: // JPEG
 		return true
 	case bytes.HasPrefix(b, []byte{0x89, 'P', 'N', 'G'}): // PNG
+		return true
+	case bytes.HasPrefix(b, []byte("GIF8")): // GIF (GIF87a/GIF89a)
+		return true
+	case len(b) >= 12 && bytes.HasPrefix(b, []byte("RIFF")) && bytes.Equal(b[8:12], []byte("WEBP")): // WebP
 		return true
 	default:
 		return false

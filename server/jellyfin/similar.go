@@ -20,6 +20,10 @@ import (
 // tests can shorten it.
 var similarWait = 10 * time.Second
 
+// maxSimilarLimit caps the client-supplied limit before it's used to size allocations or ask the
+// provider for results, so a hostile ?limit=… can't drive a huge map/slice allocation.
+const maxSimilarLimit = 100
+
 // similarFetchTimeout bounds the detached background fetch so a hung provider can't hold a goroutine
 // indefinitely.
 const similarFetchTimeout = time.Minute
@@ -49,7 +53,7 @@ func (api *Router) awaitSimilar(ctx context.Context, id string, limit int, fetch
 // returned. Any provider error degrades to an empty result, not a 404 the client would keep retrying.
 func (api *Router) getSimilarArtists(w http.ResponseWriter, r *http.Request) {
 	id := dto.DecodeID(chi.URLParam(r, "itemId"))
-	limit := req.Params(r).IntOr("limit", 20)
+	limit := clampLimit(req.Params(r).IntOr("limit", 20))
 	api.ok(w, r, api.awaitSimilar(r.Context(), id, limit, func(ctx context.Context) dto.QueryResult {
 		return api.similarArtists(ctx, id, limit)
 	}))
@@ -61,7 +65,7 @@ func (api *Router) getSimilarArtists(w http.ResponseWriter, r *http.Request) {
 func (api *Router) getSimilarItems(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := dto.DecodeID(chi.URLParam(r, "itemId"))
-	limit := req.Params(r).IntOr("limit", 20)
+	limit := clampLimit(req.Params(r).IntOr("limit", 20))
 
 	entity, err := model.GetEntityByID(ctx, api.ds, id)
 	if err != nil {
@@ -91,13 +95,30 @@ func (api *Router) similarArtists(ctx context.Context, id string, limit int) dto
 	return result(items, len(items), 0)
 }
 
+// clampLimit bounds a client-supplied limit to a sane range, so it can't drive oversized
+// allocations or provider fetches (also flagged by CodeQL as a user-controlled allocation size).
+func clampLimit(limit int) int {
+	if limit <= 0 {
+		return 20
+	}
+	return min(limit, maxSimilarLimit)
+}
+
 func (api *Router) similarSongs(ctx context.Context, id string, limit int) dto.QueryResult {
 	songs, err := api.provider.SimilarSongs(ctx, id, limit)
 	if err != nil {
 		log.Debug(ctx, "Jellyfin API: no similar songs", "id", id, err)
 		return result(nil, 0, 0)
 	}
-	items := slice.Map(songs, func(mf model.MediaFile) dto.BaseItemDto { return dto.SongToBaseItem(mf, nil) })
+	// Filter to the caller's libraries: the provider can return songs from any library, and a
+	// mapped item would otherwise leak another library's metadata.
+	u, _ := request.UserFrom(ctx)
+	var items []dto.BaseItemDto
+	for _, mf := range songs {
+		if u.HasLibraryAccess(mf.LibraryID) {
+			items = append(items, dto.SongToBaseItem(mf, nil))
+		}
+	}
 	return result(items, len(items), 0)
 }
 
@@ -110,6 +131,7 @@ func (api *Router) similarAlbums(ctx context.Context, id string, limit int) dto.
 		log.Debug(ctx, "Jellyfin API: no similar albums", "id", id, err)
 		return result(nil, 0, 0)
 	}
+	u, _ := request.UserFrom(ctx)
 	seen := make(map[string]bool, limit)
 	var items []dto.BaseItemDto
 	for _, s := range songs {
@@ -117,7 +139,9 @@ func (api *Router) similarAlbums(ctx context.Context, id string, limit int) dto.
 			continue
 		}
 		seen[s.AlbumID] = true
-		if al, err := api.ds.Album(ctx).Get(s.AlbumID); err == nil {
+		// Resolve the full album and gate on library access: the provider's songs may belong to
+		// libraries the caller can't see.
+		if al, err := api.ds.Album(ctx).Get(s.AlbumID); err == nil && u.HasLibraryAccess(al.LibraryID) {
 			items = append(items, dto.AlbumToBaseItem(*al))
 			if len(items) >= limit {
 				break

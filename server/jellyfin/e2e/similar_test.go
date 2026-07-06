@@ -29,10 +29,19 @@ var _ = Describe("Similar", func() {
 
 	Describe("GET /Items/{id}/Similar", func() {
 		It("returns similar songs for a track", func() {
-			providerFake.similarSongs = model.MediaFiles{{ID: "x1", Title: "Similar Song"}}
+			providerFake.similarSongs = model.MediaFiles{{ID: "x1", Title: "Similar Song", LibraryID: 1}}
 			q := queryResult(get("/Items/" + enc(songID("So What")) + "/Similar"))
 			Expect(names(q.Items)).To(ConsistOf("Similar Song"))
 			Expect(q.Items[0].Type).To(Equal("Audio"))
+		})
+
+		It("excludes similar songs from libraries the user can't access", func() {
+			providerFake.similarSongs = model.MediaFiles{
+				{ID: "x1", Title: "In Library", LibraryID: 1},
+				{ID: "x2", Title: "Other Library", LibraryID: 2}, // regularUser has no access
+			}
+			q := queryResult(getAs(regularUser, "/Items/"+enc(songID("So What"))+"/Similar"))
+			Expect(names(q.Items)).To(ConsistOf("In Library"))
 		})
 
 		It("returns similar albums (derived from similar songs, de-duplicated) for an album", func() {
@@ -44,6 +53,22 @@ var _ = Describe("Similar", func() {
 			q := queryResult(get("/Items/" + enc(albumID("Abbey Road")) + "/Similar"))
 			Expect(names(q.Items)).To(Equal([]string{"IV", "Kind of Blue"}))
 			Expect(q.Items[0].Type).To(Equal("MusicAlbum"))
+		})
+
+		It("excludes similar albums from libraries the user can't access", func() {
+			// Seed an album in a second library the regular user has no access to, and point a
+			// provider similar-song at it.
+			otherLib := model.Library{ID: 2, Name: "Other Library", Path: "fake:///other"}
+			Expect(ds.Library(ctx).Put(&otherLib)).To(Succeed())
+			otherAlbum := model.Album{ID: "other-album", Name: "Other Album", LibraryID: 2}
+			Expect(ds.Album(ctx).Put(&otherAlbum)).To(Succeed())
+
+			providerFake.similarSongs = model.MediaFiles{
+				{ID: "x1", AlbumID: albumID("IV")}, // library 1 -> visible
+				{ID: "x2", AlbumID: "other-album"}, // library 2 -> filtered for regularUser
+			}
+			q := queryResult(getAs(regularUser, "/Items/"+enc(albumID("Abbey Road"))+"/Similar"))
+			Expect(names(q.Items)).To(ConsistOf("IV"))
 		})
 
 		It("returns an empty result (not 404) for an unknown item, so the client stops retrying", func() {

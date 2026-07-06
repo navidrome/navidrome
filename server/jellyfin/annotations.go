@@ -1,6 +1,7 @@
 package jellyfin
 
 import (
+	"errors"
 	"math"
 	"net/http"
 
@@ -24,9 +25,15 @@ func (api *Router) resolveAnnotated(w http.ResponseWriter, r *http.Request, id s
 			return nil, false
 		}
 		return api.ds.Album(ctx), true
+	} else if !errors.Is(err, model.ErrNotFound) {
+		api.internalError(w, r, err)
+		return nil, false
 	}
 	if _, err := api.ds.Artist(ctx).Get(id); err == nil {
 		return api.ds.Artist(ctx), true
+	} else if !errors.Is(err, model.ErrNotFound) {
+		api.internalError(w, r, err)
+		return nil, false
 	}
 	if mf, err := api.ds.MediaFile(ctx).Get(id); err == nil {
 		if !u.HasLibraryAccess(mf.LibraryID) {
@@ -34,6 +41,9 @@ func (api *Router) resolveAnnotated(w http.ResponseWriter, r *http.Request, id s
 			return nil, false
 		}
 		return api.ds.MediaFile(ctx), true
+	} else if !errors.Is(err, model.ErrNotFound) {
+		api.internalError(w, r, err)
+		return nil, false
 	}
 	http.Error(w, "Not Found", http.StatusNotFound)
 	return nil, false

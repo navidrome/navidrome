@@ -3,7 +3,11 @@ package jellyfin
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
+	"time"
 
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -36,5 +40,24 @@ var _ = Describe("Router", func() {
 		api.ServeHTTP(w, r)
 		Expect(w.Code).To(Equal(http.StatusNotFound))
 		Expect(w.Body.String()).To(Equal("{}"))
+	})
+
+	It("rate-limits AuthenticateByName by IP when a login limit is configured", func() {
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.AuthRequestLimit = 2
+		conf.Server.AuthWindowLength = time.Minute
+		api := New(&tests.MockDataStore{}, nil, nil, nil, nil, nil, nil, nil)
+
+		login := func() int {
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("POST", "/Users/AuthenticateByName", strings.NewReader(`{"Username":"x","Pw":"y"}`))
+			r.RemoteAddr = "10.0.0.1:1234"
+			api.ServeHTTP(w, r)
+			return w.Code
+		}
+		// The bad credentials would be 401; the limiter cuts in on the 3rd attempt with 429.
+		Expect(login()).To(Equal(http.StatusUnauthorized))
+		Expect(login()).To(Equal(http.StatusUnauthorized))
+		Expect(login()).To(Equal(http.StatusTooManyRequests))
 	})
 })

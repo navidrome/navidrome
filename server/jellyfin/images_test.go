@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -199,6 +201,80 @@ var _ = Describe("postItemImage", func() {
 		api.postItemImage(w, r)
 
 		Expect(w.Code).To(Equal(http.StatusInternalServerError))
+	})
+
+	It("accepts a raw WebP body", func() {
+		body := append(append([]byte("RIFF"), 0x00, 0x00, 0x00, 0x00), []byte("WEBP")...)
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID("pl1")+"/Images/Primary", bytes.NewReader(body))
+		r.Header.Set("Content-Type", "image/webp")
+		r = withChiURLParam(r, "itemId", dto.EncodeID("pl1"))
+
+		api.postItemImage(w, r)
+
+		Expect(w.Code).To(Equal(http.StatusNoContent))
+		Expect(fp.setImageBytes).To(Equal(body))
+		Expect(fp.setImageExt).To(Equal(".webp"))
+	})
+
+	It("accepts a raw GIF body", func() {
+		body := append([]byte("GIF89a"), make([]byte, 8)...)
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID("pl1")+"/Images/Primary", bytes.NewReader(body))
+		r.Header.Set("Content-Type", "image/gif")
+		r = withChiURLParam(r, "itemId", dto.EncodeID("pl1"))
+
+		api.postItemImage(w, r)
+
+		Expect(w.Code).To(Equal(http.StatusNoContent))
+		Expect(fp.setImageBytes).To(Equal(body))
+		Expect(fp.setImageExt).To(Equal(".gif"))
+	})
+
+	It("rejects an oversized body with the configured limit", func() {
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.MaxImageUploadSize = "16" // 16 bytes
+		body := bytes.Repeat([]byte{0xFF, 0xD8, 0xFF, 0xE0}, 32)
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID("pl1")+"/Images/Primary", bytes.NewReader(body))
+		r.Header.Set("Content-Type", "image/jpeg")
+		r = withChiURLParam(r, "itemId", dto.EncodeID("pl1"))
+
+		api.postItemImage(w, r)
+
+		Expect(w.Code).To(Equal(http.StatusBadRequest))
+		Expect(fp.setImagePlaylistID).To(BeEmpty(), "must not persist an over-limit upload")
+	})
+
+	It("forbids a non-admin upload when artwork upload is disabled", func() {
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.EnableArtworkUpload = false
+		body := []byte{0xFF, 0xD8, 0xFF, 0xE0}
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID("pl1")+"/Images/Primary", bytes.NewReader(body))
+		r.Header.Set("Content-Type", "image/jpeg")
+		r = withChiURLParam(r, "itemId", dto.EncodeID("pl1"))
+		r = r.WithContext(request.WithUser(r.Context(), model.User{ID: "u1", IsAdmin: false}))
+
+		api.postItemImage(w, r)
+
+		Expect(w.Code).To(Equal(http.StatusForbidden))
+		Expect(fp.setImagePlaylistID).To(BeEmpty())
+	})
+
+	It("still allows an admin upload when artwork upload is disabled", func() {
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.EnableArtworkUpload = false
+		body := []byte{0xFF, 0xD8, 0xFF, 0xE0}
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID("pl1")+"/Images/Primary", bytes.NewReader(body))
+		r.Header.Set("Content-Type", "image/jpeg")
+		r = withChiURLParam(r, "itemId", dto.EncodeID("pl1"))
+		r = r.WithContext(request.WithUser(r.Context(), model.User{ID: "admin", IsAdmin: true}))
+
+		api.postItemImage(w, r)
+
+		Expect(w.Code).To(Equal(http.StatusNoContent))
 	})
 })
 
