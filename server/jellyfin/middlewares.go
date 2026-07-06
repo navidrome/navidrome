@@ -84,12 +84,6 @@ func tokenFromRequest(r *http.Request) string {
 	if t := parseEmbyAuth(r).Token; t != "" {
 		return t
 	}
-	// Jellify's native audio player (react-native-nitro-player) sends the raw access token in a bare
-	// Authorization header (optionally "Bearer <token>"), not the MediaBrowser scheme parseEmbyAuth
-	// understands. Accept that form too, as real Jellyfin does; otherwise its streams 401.
-	if t := bareAuthToken(r); t != "" {
-		return t
-	}
 	// Both api_key and ApiKey are used in the wild (Finamp's just_audio engine fetches direct-file
 	// URLs with ?ApiKey=); normalizeQueryKeys has already folded key case, but the two spellings
 	// differ by an underscore, not case, so both are still checked.
@@ -97,18 +91,6 @@ func tokenFromRequest(r *http.Request) string {
 		return t
 	}
 	return r.URL.Query().Get("apikey")
-}
-
-// bareAuthToken extracts a raw token from an Authorization header that is not the MediaBrowser/Emby
-// scheme (handled by parseEmbyAuth) — i.e. "Bearer <jwt>" or a bare "<jwt>". A JWT carries no spaces
-// or quotes, so a value containing either is a schemed header, not a bare token, and is ignored.
-func bareAuthToken(r *http.Request) string {
-	h := strings.TrimSpace(r.Header.Get("Authorization"))
-	h = strings.TrimPrefix(h, "Bearer ")
-	if h == "" || strings.ContainsAny(h, " \"") {
-		return ""
-	}
-	return h
 }
 
 func (api *Router) authenticate(next http.Handler) http.Handler {
