@@ -1,6 +1,7 @@
 import React from 'react'
 import { useMediaQuery } from '@material-ui/core'
 import { Link } from 'react-router-dom'
+import { useSelector } from 'react-redux'
 import clsx from 'clsx'
 import { QualityInfo } from '../common'
 import { decisionService } from '../transcode'
@@ -21,6 +22,16 @@ const AudioTitle = React.memo(({ audioInfo, gainInfo, isMobile }) => {
       options: { dropEffect: 'copy' },
     }),
     [song],
+  )
+
+  // The react-jinke-music-player library keeps its own internal snapshot of
+  // the queue item (audioInfo), copied when playback starts. Redux updates
+  // to state.player.current never reach that snapshot, so we read the live
+  // radio title from redux directly rather than relying on audioInfo alone.
+  const liveRadioTitle = useSelector((state) =>
+    audioInfo.isRadio && state.player?.current?.trackId === audioInfo.trackId
+      ? state.player.current.radioTitle
+      : undefined,
   )
 
   if (!song) {
@@ -45,7 +56,8 @@ const AudioTitle = React.memo(({ audioInfo, gainInfo, isMobile }) => {
     : {}
 
   const subtitle = song.tags?.['subtitle']
-  const displayTitle = audioInfo.radioTitle || song.radioTitle || song.title
+  const displayTitle =
+    liveRadioTitle || audioInfo.radioTitle || song.radioTitle || song.title
   const title = displayTitle + (subtitle ? ` (${subtitle})` : '')
 
   const linkTo = audioInfo.isRadio
