@@ -35,15 +35,25 @@ http://<host>:<port>/jellyfin
 ```
 
 All the paths below are relative to that base URL (e.g. `System/Info/Public` means
-`http://localhost:4533/jellyfin/System/Info/Public`).
+`http://localhost:4533/jellyfin/System/Info/Public`). Routes are matched **case-insensitively**,
+since real Jellyfin clients (and `jellyfin-apiclient-python`) send mixed-case paths.
 
 ## Authentication
 
 Jellyfin clients authenticate with `POST /Users/AuthenticateByName` using the user's Navidrome
 username/password, and get back an `AccessToken` (a Navidrome JWT). That token is then sent on
 every subsequent request as the `X-Emby-Token` header (or embedded in the
-`X-Emby-Authorization`/`Authorization` header's `Token="..."` field, or as an `api_key` query
-param — all three forms are accepted, matching what different clients do).
+`X-Emby-Authorization`/`Authorization` header's `Token="..."` field, or as an `api_key`/`ApiKey`
+query param — all forms are accepted, matching what different clients do).
+
+## ID encoding
+
+Navidrome item ids are **hex-encoded at the API boundary** (`dto.EncodeID`/`DecodeID`): every id
+is hex-encoded on the way out and hex-decoded on the way in. This is required because some clients
+parse ids as radix-16 — Finamp's queue `packIds`, for instance, does `int.parse(chunk, radix:16)`,
+which chokes on Navidrome's base-62 nanoids (e.g. `5QFKvMsJrd57QE2Le2dKKo`). Because a raw MD5 id
+from an old migrated library is itself valid hex, correctness depends on every emit path encoding
+and every receive path decoding — see `dto/ids.go`.
 
 ## Multi-library behavior
 
@@ -61,18 +71,51 @@ authenticated user has access to; a library (or item within it) the user cannot 
 | Handshake / system | `GET System/Info/Public`, `GET`/`POST System/Ping`, `GET QuickConnect/Enabled` |
 | Auth | `POST Users/AuthenticateByName`, `GET Users/Public` |
 | Users | `GET UserViews`, `GET Users/{userId}/Views`, `GET Users/Me`, `GET Users/{userId}` |
-| Browsing | `GET Items`, `GET Users/{userId}/Items`, `GET Items/{itemId}`, `GET Users/{userId}/Items/{itemId}`, `GET Users/{userId}/Items/Latest` |
+| Browsing | `GET Items`, `GET Users/{userId}/Items`, `GET Items/{itemId}`, `GET Users/{userId}/Items/{itemId}`, `GET Users/{userId}/Items/Latest`, `DELETE Items/{itemId}` (playlists only) |
 | Artists / genres | `GET Artists`, `GET Artists/AlbumArtists`, `GET Genres`, `GET MusicGenres` |
-| Images | `GET Items/{itemId}/Images/{type}[/{index}]` (public, not library-scoped) |
+| Images | `GET Items/{itemId}/Images/{type}[/{index}]` (public), `POST`/`DELETE Items/{itemId}/Images/{type}` (playlist cover, authenticated) |
 | Favorites / ratings | `POST`/`DELETE Users/{userId}/FavoriteItems/{itemId}`, `POST`/`DELETE Users/{userId}/Items/{itemId}/Rating` |
-| Streaming | `GET Audio/{itemId}/stream[.{container}]`, `GET Audio/{itemId}/universal`, `GET`/`POST Items/{itemId}/PlaybackInfo` |
+| Streaming | `GET Audio/{itemId}/stream[.{container}]`, `GET Audio/{itemId}/universal`, `GET Items/{itemId}/File`, `GET Items/{itemId}/Download`, `GET`/`POST Items/{itemId}/PlaybackInfo` |
 | Playback reporting | `POST Sessions/Playing`, `POST Sessions/Playing/Progress`, `POST Sessions/Playing/Stopped`, `POST Sessions/Capabilities[/Full]` |
-| Playlists | `POST Playlists`, `GET Playlists/{playlistId}/Items`, `POST`/`DELETE Playlists/{playlistId}/Items` |
+| Playlists | `POST Playlists`, `GET Playlists/{playlistId}`, `POST Playlists/{playlistId}` (rename / visibility / replace tracks), `GET Playlists/{playlistId}/Items`, `POST`/`DELETE Playlists/{playlistId}/Items`, `GET Playlists/{playlistId}/Users[/{userId}]` |
+| Real-time | `GET socket` (WebSocket; keeps clients like Finamp from 404-loop-reconnecting) |
 
 Any other path returns a `404` with a `{}` JSON body, and is logged server-side at `Debug` level
 as `Jellyfin API: unhandled route` (method + path). If a client you're testing needs an endpoint
 that isn't in the table above, check the server logs for these lines to see exactly what it's
 requesting.
+
+## Playlist management
+
+Playlists are the main writable surface of this API:
+
+- **Container expansion.** When creating (`POST Playlists`), adding to (`POST Playlists/{id}/Items`)
+  or replacing (`POST Playlists/{id}`) a playlist, the `Ids` may contain **containers** — album,
+  artist or playlist ids — not just song ids. Each is expanded into its tracks (in order) before
+  the write, matching how Jellyfin clients populate these lists. A bare song id passes through.
+- **Update** (`POST Playlists/{id}`): with `Ids` present, the track list is **replaced** (Finamp
+  uses this for reordering); otherwise `Name` and/or `IsPublic` are updated. `IsPublic` maps to
+  Navidrome's `Public` flag, surfaced to clients as `OpenAccess` on `GET Playlists/{id}`.
+- **Cover art**: `POST Items/{id}/Images/Primary` uploads a playlist cover (raw or base64 body,
+  extension from `Content-Type`); `DELETE` removes it. Only playlists are writable through this
+  API — album/artist covers come from tag/sidecar scanning, so a non-playlist id returns `501`.
+- **`PlaylistItemId`**: `GET Playlists/{id}/Items` tags each entry with `PlaylistItemId` (the
+  playlist-track row id, distinct from the song id) so a client can echo it back via
+  `DELETE Playlists/{id}/Items?EntryIds=...` to remove one occurrence of a song that appears more
+  than once in the same playlist.
+
+Ownership is enforced by `core/playlists`: a non-owner editing/deleting a playlist gets `403` if
+it is visible to them (public) or `404` if it is not (private) — the API never reveals that
+someone else's private playlist exists.
+
+## Images
+
+The `GET Items/{itemId}/Images/{type}` route is intentionally **public** (artwork isn't sensitive,
+matching Jellyfin's lenient image handling), so it carries no authenticated user. Artwork is
+therefore resolved under an **elevated admin context** — the same approach `core/artwork`'s cache
+warmer uses — so user-scoped items like private playlists still resolve their cover instead of
+falling back to the placeholder. Album, artist, media-file and playlist ids are all resolved to
+their Navidrome `ArtworkID`.
 
 ## curl walkthrough
 
@@ -120,12 +163,29 @@ curl -s -X POST "${AUTH[@]}" -H 'Content-Type: application/json' \
 curl -s -X POST "${AUTH[@]}" -H 'Content-Type: application/json' \
   -d "{\"ItemId\":\"$SONG_ID\",\"PositionTicks\":1200000000}" "$BASE/Sessions/Playing/Stopped"
 
-# 10. Create a playlist, add the song, then remove it
+# 10. Create a playlist from a whole album (the album id is expanded to its tracks)
 PLAYLIST_ID=$(curl -s -X POST "${AUTH[@]}" -H 'Content-Type: application/json' \
-  -d "{\"Name\":\"My Playlist\",\"Ids\":[\"$SONG_ID\"]}" "$BASE/Playlists" | jq -r .Id)
-curl -s -X POST "${AUTH[@]}" "$BASE/Playlists/$PLAYLIST_ID/Items?Ids=$SONG_ID"
+  -d "{\"Name\":\"My Playlist\",\"Ids\":[\"$ALBUM_ID\"]}" "$BASE/Playlists" | jq -r .Id)
+
+# 11. Make it public, then remove one entry
+curl -s -X POST "${AUTH[@]}" -H 'Content-Type: application/json' \
+  -d '{"IsPublic":true}' "$BASE/Playlists/$PLAYLIST_ID"
 ENTRY_ID=$(curl -s "${AUTH[@]}" "$BASE/Playlists/$PLAYLIST_ID/Items" | jq -r '.Items[0].PlaylistItemId')
 curl -s -X DELETE "${AUTH[@]}" "$BASE/Playlists/$PLAYLIST_ID/Items?EntryIds=$ENTRY_ID"
+
+# 12. Delete the playlist
+curl -s -X DELETE "${AUTH[@]}" "$BASE/Items/$PLAYLIST_ID"
+```
+
+## Testing
+
+Handler-level unit tests live alongside each file (`*_test.go`). A full end-to-end suite in
+[`e2e/`](e2e) exercises every endpoint through the real router against a real SQLite database and
+real repositories (only artwork/streaming/ffmpeg are stubbed), with per-`Describe` snapshot
+isolation — mirroring the Subsonic `server/e2e` suite. Run it with:
+
+```bash
+make test PKG=./server/jellyfin/...
 ```
 
 ## Known limitations
@@ -139,18 +199,14 @@ curl -s -X DELETE "${AUTH[@]}" "$BASE/Playlists/$PLAYLIST_ID/Items?EntryIds=$ENT
   Access control for artists is enforced by scoping the `Artists`/`Items?IncludeItemTypes=MusicArtist`
   *list* to the user's libraries, plus the persistence layer's own defense-in-depth; a client
   that already has an artist id from elsewhere is not re-checked against library membership.
-- **`PlaylistItemId` round-trip is untested against a live client.** `GET
-  Playlists/{id}/Items` tags each entry with `PlaylistItemId` (the playlist-track row id, not
-  the song id) specifically so a client can echo it back via
-  `DELETE Playlists/{id}/Items?EntryIds=...` to remove one occurrence of a song that appears
-  more than once in the same playlist. This is exercised by unit tests, but hasn't been
-  confirmed against a real Jellyfin client's actual request shape — worth a manual smoke test
-  before relying on it.
-- **ID handling is pass-through only.** Navidrome ids are used verbatim as Jellyfin item ids;
-  there's no hex/GUID-reversible id scheme. If a client turns out to mangle ids in a way that
-  requires one (e.g. expecting a GUID shape), that will need a follow-up change.
+- **Album track order.** Browsing an album's tracks (`Items?ParentId=<albumId>&IncludeItemTypes=Audio`)
+  without an explicit `SortBy` does not guarantee track order — clients that need it should pass a
+  sort. Track numbers are always present on each item (`IndexNumber`).
 - **Playlists never match `Filters=IsFavorite`.** `GET Items?IncludeItemTypes=Playlist` (alone
   or mixed with other types, e.g. Finamp's favorites screen sending
   `IncludeItemTypes=Audio,MusicAlbum,Playlist`) is supported, but `model.Playlist` has no
   starred/annotation concept, so a favorites query always returns zero playlists rather than
   erroring.
+- **MD5-hash ids from old migrated libraries.** The hex id codec assumes ids are opaque; a raw
+  32-char MD5 id is itself valid hex and so must be encoded/decoded symmetrically like any other.
+  This is handled, but is the most fragile id case — see the note in `dto/ids.go`.
