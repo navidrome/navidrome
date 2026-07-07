@@ -3,6 +3,7 @@ package e2e
 import (
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	. "github.com/onsi/ginkgo/v2"
@@ -203,6 +204,29 @@ var _ = Describe("Playlists", func() {
 		It("rejects cover upload for a non-playlist item", func() {
 			Expect(upload(adminUser, "/Items/"+enc(albumID("IV"))+"/Images/Primary", "image/jpeg", jpeg).Code).
 				To(Equal(http.StatusNotImplemented))
+		})
+
+		// Finamp caches covers keyed by the blurhash (derived from the image tag), so a stale tag
+		// means the client never refetches an uploaded cover. Guards the whole chain: SetImage must
+		// go through a full Put (which bumps UpdatedAt), and the tag must be versioned by it.
+		It("rotates the playlist's image tag and blurhash after a cover upload", func() {
+			plID := createPlaylist("Cover Tag", nil)
+			imageTag := func() string {
+				q := queryResult(get("/Items?ids=" + enc(plID)))
+				Expect(q.Items).To(HaveLen(1))
+				return q.Items[0].ImageTags["Primary"]
+			}
+			before := imageTag()
+			Expect(before).ToNot(BeEmpty())
+
+			time.Sleep(2 * time.Millisecond) // UpdatedAt has millisecond resolution in the tag
+			Expect(upload(adminUser, "/Items/"+enc(plID)+"/Images/Primary", "image/jpeg", jpeg).Code).
+				To(Equal(http.StatusNoContent))
+
+			after := imageTag()
+			Expect(after).ToNot(Equal(before))
+			q := queryResult(get("/Items?ids=" + enc(plID)))
+			Expect(q.Items[0].ImageBlurHashes["Primary"]).To(HaveKey(after))
 		})
 	})
 

@@ -2,6 +2,7 @@ package dto
 
 import (
 	"cmp"
+	"fmt"
 	"time"
 
 	"github.com/navidrome/navidrome/model"
@@ -212,6 +213,12 @@ func GenreToBaseItem(g model.Genre) BaseItemDto {
 // PlaylistToBaseItem maps a playlist to a Playlist BaseItemDto. model.Playlist has no embedded
 // Annotations (no starred/rating/play-count), so UserData is left nil.
 func PlaylistToBaseItem(p model.Playlist) BaseItemDto {
+	// The image tag (and the blurhash derived from it) must change when the cover changes: Finamp
+	// caches covers keyed by blurHash, since its imageId is the item id, which never changes.
+	// Playlist Put bumps UpdatedAt on cover upload, so it versions the tag. Real Jellyfin hashes
+	// the image itself; UpdatedAt over-invalidates (any playlist edit busts the cover cache), which
+	// only costs a refetch.
+	tag := fmt.Sprintf("%s-%x", p.ID, p.UpdatedAt.UnixMilli())
 	return BaseItemDto{
 		Name: p.Name,
 		Id:   EncodeID(p.ID),
@@ -223,8 +230,8 @@ func PlaylistToBaseItem(p model.Playlist) BaseItemDto {
 		MediaType:         "Audio",
 		ChildCount:        new(p.SongCount),
 		RunTimeTicks:      TicksFromSeconds(p.Duration),
-		ImageTags:         map[string]string{"Primary": p.ID},
-		ImageBlurHashes:   map[string]map[string]string{"Primary": {p.ID: blurHash(p.ID)}},
+		ImageTags:         map[string]string{"Primary": tag},
+		ImageBlurHashes:   map[string]map[string]string{"Primary": {tag: blurHash(tag)}},
 		BackdropImageTags: []string{},
 	}
 }

@@ -216,8 +216,26 @@ var _ = Describe("mappers", func() {
 		Expect(item.MediaType).To(Equal("Audio"))
 		Expect(*item.ChildCount).To(Equal(7))
 		Expect(item.RunTimeTicks).To(Equal(int64(1_200_000_000)))
-		Expect(item.ImageTags["Primary"]).To(Equal("pl-1"))
-		Expect(item.ImageBlurHashes["Primary"]).To(HaveKey("pl-1"))
-		Expect(item.ImageBlurHashes["Primary"]["pl-1"]).To(HaveLen(6))
+		tag := item.ImageTags["Primary"]
+		Expect(tag).ToNot(BeEmpty())
+		Expect(item.ImageBlurHashes["Primary"]).To(HaveKey(tag))
+		Expect(item.ImageBlurHashes["Primary"][tag]).To(HaveLen(6))
+	})
+
+	It("changes the playlist image tag and blurhash when the playlist is updated (cover upload)", func() {
+		p := model.Playlist{ID: "pl-1", Name: "Chill", UpdatedAt: time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)}
+		before := PlaylistToBaseItem(p)
+		p.UpdatedAt = time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC)
+		after := PlaylistToBaseItem(p)
+
+		// Finamp caches covers keyed by blurHash (its imageId is the item id, which never changes),
+		// so both the tag and the blurhash must change for an uploaded cover to show up.
+		Expect(after.ImageTags["Primary"]).ToNot(Equal(before.ImageTags["Primary"]))
+		Expect(after.ImageBlurHashes["Primary"]).ToNot(Equal(before.ImageBlurHashes["Primary"]))
+	})
+
+	It("keeps the playlist image tag stable when nothing changed", func() {
+		p := model.Playlist{ID: "pl-1", UpdatedAt: time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)}
+		Expect(PlaylistToBaseItem(p).ImageTags).To(Equal(PlaylistToBaseItem(p).ImageTags))
 	})
 })
