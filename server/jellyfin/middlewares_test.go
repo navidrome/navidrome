@@ -79,6 +79,45 @@ var _ = Describe("authenticate middleware", func() {
 	})
 })
 
+var _ = Describe("withPlayer middleware", func() {
+	var api *Router
+	var players *fakePlayers
+
+	BeforeEach(func() {
+		players = &fakePlayers{}
+		api = &Router{ds: &tests.MockDataStore{}, players: players}
+	})
+
+	callWith := func() (model.Player, model.Transcoding, bool) {
+		var gotPlayer model.Player
+		var gotTrc model.Transcoding
+		var hasTrc bool
+		next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			gotPlayer, _ = request.PlayerFrom(r.Context())
+			gotTrc, hasTrc = request.TranscodingFrom(r.Context())
+			w.WriteHeader(http.StatusOK)
+		})
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "/Audio/s1/stream", nil)
+		r.Header.Set("X-Emby-Authorization", `MediaBrowser Client="Finamp", Device="Pixel", DeviceId="dev1", Version="1.0"`)
+		api.withPlayer(next).ServeHTTP(w, r)
+		return gotPlayer, gotTrc, hasTrc
+	}
+
+	It("injects the registered player into the context", func() {
+		player, _, hasTrc := callWith()
+		Expect(player.ID).To(Equal("dev1"))
+		Expect(hasTrc).To(BeFalse())
+	})
+
+	It("injects the player's server-forced transcoding into the context", func() {
+		players.trc = &model.Transcoding{ID: "t1", TargetFormat: "opus"}
+		_, trc, hasTrc := callWith()
+		Expect(hasTrc).To(BeTrue())
+		Expect(trc.TargetFormat).To(Equal("opus"))
+	})
+})
+
 var _ = Describe("tokenFromRequest", func() {
 	It("accepts the lowercase api_key query param", func() {
 		r := httptest.NewRequest("GET", "/Items/s1/File?api_key=tok123", nil)

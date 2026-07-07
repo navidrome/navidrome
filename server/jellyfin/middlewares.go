@@ -154,7 +154,7 @@ func (api *Router) withPlayer(next http.Handler) http.Handler {
 			return
 		}
 		ip, _, _ := net.SplitHostPort(r.RemoteAddr)
-		player, _, err := api.players.Register(ctx, a.DeviceId, a.Client, a.Device, ip)
+		player, trc, err := api.players.Register(ctx, a.DeviceId, a.Client, a.Device, ip)
 		if err != nil {
 			// Fail open, like Subsonic's getPlayer: proceed without a player; reporting handlers
 			// degrade gracefully.
@@ -162,6 +162,11 @@ func (api *Router) withPlayer(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		next.ServeHTTP(w, r.WithContext(request.WithPlayer(ctx, *player)))
+		ctx = request.WithPlayer(ctx, *player)
+		// Like Subsonic's getPlayer: the forced transcoding must reach ResolveRequest's override.
+		if trc != nil {
+			ctx = request.WithTranscoding(ctx, *trc)
+		}
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

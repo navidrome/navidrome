@@ -120,6 +120,30 @@ var _ = Describe("Stream", func() {
 			Expect(streamer.invoked).To(BeFalse())
 		})
 
+		It("converts the bps audioBitRate param to kbps", func() {
+			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+				{ID: "s1", Title: "Song", Suffix: "flac", LibraryID: 1},
+			})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Audio/s1/stream?audiobitrate=320000", nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", "s1")
+			invoke(api.streamAudio, w, r)
+
+			Expect(decider.req.BitRate).To(Equal(320))
+		})
+
+		It("uses the audioCodec param as target format when no container is given", func() {
+			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+				{ID: "s1", Title: "Song", Suffix: "flac", LibraryID: 1},
+			})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Audio/s1/stream?audiocodec=aac", nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", "s1")
+			invoke(api.streamAudio, w, r)
+
+			Expect(decider.req.Format).To(Equal("aac"))
+		})
+
 		It("returns 500 and logs when the streamer fails", func() {
 			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 				{ID: "s1", Title: "Song", Suffix: "mp3", LibraryID: 1},
@@ -131,6 +155,75 @@ var _ = Describe("Stream", func() {
 			invoke(api.streamAudio, w, r)
 
 			Expect(w.Code).To(Equal(http.StatusInternalServerError))
+		})
+	})
+
+	Describe("streamHls", func() {
+		BeforeEach(func() {
+			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+				{ID: "s1", Title: "Song", Suffix: "dsf", Duration: 100.5, LibraryID: 1},
+			})
+		})
+
+		hls := func(query string, ctx context.Context) *httptest.ResponseRecorder {
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Audio/s1/main.m3u8"+query, nil).WithContext(ctx)
+			r = withChiURLParam(r, "itemId", "s1")
+			invoke(api.streamHls, w, r)
+			return w
+		}
+
+		It("returns a single-segment VOD playlist pointing at the progressive stream endpoint", func() {
+			w := hls("?audiocodec=aac&audiobitrate=320000&api_key=tok", ctxUser())
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Header().Get("Content-Type")).To(Equal("application/vnd.apple.mpegurl"))
+			body := w.Body.String()
+			Expect(body).To(HavePrefix("#EXTM3U\n"))
+			Expect(body).To(ContainSubstring("#EXT-X-PLAYLIST-TYPE:VOD\n"))
+			Expect(body).To(ContainSubstring("#EXT-X-TARGETDURATION:101\n"))
+			Expect(body).To(ContainSubstring("#EXTINF:100.500,\n"))
+			Expect(body).To(ContainSubstring("\nstream.aac?api_key=tok&audioBitRate=320000\n"))
+			Expect(body).To(HaveSuffix("#EXT-X-ENDLIST\n"))
+		})
+
+		It("omits the bitrate param when the client doesn't send one", func() {
+			w := hls("?audiocodec=aac&api_key=tok", ctxUser())
+			Expect(w.Body.String()).To(ContainSubstring("\nstream.aac?api_key=tok\n"))
+		})
+
+		It("falls back to aac for codecs HLS packed-audio can't carry", func() {
+			w := hls("?audiocodec=opus", ctxUser())
+			Expect(w.Body.String()).To(ContainSubstring("\nstream.aac\n"))
+		})
+
+		It("honors mp3 as segment codec", func() {
+			w := hls("?audiocodec=mp3", ctxUser())
+			Expect(w.Body.String()).To(ContainSubstring("\nstream.mp3\n"))
+		})
+
+		It("prefers the server-forced transcoding format over the requested codec", func() {
+			ctx := request.WithTranscoding(ctxUser(), model.Transcoding{TargetFormat: "mp3"})
+			w := hls("?audiocodec=aac", ctx)
+			Expect(w.Body.String()).To(ContainSubstring("\nstream.mp3\n"))
+		})
+
+		It("advertises an HLS-incompatible forced format verbatim, matching what the segment will contain", func() {
+			ctx := request.WithTranscoding(ctxUser(), model.Transcoding{TargetFormat: "opus"})
+			w := hls("?audiocodec=aac", ctx)
+			Expect(w.Body.String()).To(ContainSubstring("\nstream.opus\n"))
+		})
+
+		It("returns 404 for a track in a library the user can't access", func() {
+			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+				{ID: "s1", Title: "Song", Suffix: "dsf", LibraryID: 2},
+			})
+			Expect(hls("", ctxUser()).Code).To(Equal(http.StatusNotFound))
+		})
+
+		It("returns 404 when the id doesn't match any media file", func() {
+			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{})
+			Expect(hls("", ctxUser()).Code).To(Equal(http.StatusNotFound))
 		})
 	})
 

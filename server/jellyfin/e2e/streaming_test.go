@@ -47,6 +47,37 @@ var _ = Describe("Streaming", func() {
 		})
 	})
 
+	Describe("GET /Audio/{id}/main.m3u8 (Finamp transcoding mode)", func() {
+		It("returns a VOD playlist whose segment streams through the transcode pipeline", func() {
+			id := songID("Come Together")
+			w := get("/Audio/" + enc(id) + "/main.m3u8?audioCodec=aac&audioBitRate=320000")
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Header().Get("Content-Type")).To(Equal("application/vnd.apple.mpegurl"))
+			body := w.Body.String()
+			Expect(body).To(HavePrefix("#EXTM3U\n"))
+			Expect(body).To(HaveSuffix("#EXT-X-ENDLIST\n"))
+
+			// Fetch the advertised segment like an HLS player would (resolved against the
+			// playlist URL) and verify it hits the streamer with the aac transcode request.
+			var segment string
+			for _, line := range strings.Split(body, "\n") {
+				if line != "" && !strings.HasPrefix(line, "#") {
+					segment = line
+				}
+			}
+			Expect(segment).To(HavePrefix("stream.aac?"))
+			Expect(get("/Audio/" + enc(id) + "/" + segment).Code).To(Equal(http.StatusOK))
+			Expect(streamerSpy.LastMediaFile.ID).To(Equal(id))
+			Expect(streamerSpy.LastRequest.Format).To(Equal("aac"))
+			Expect(streamerSpy.LastRequest.BitRate).To(Equal(320))
+		})
+
+		It("is reachable with Jellyfin's case-insensitive routing", func() {
+			id := songID("Come Together")
+			Expect(get("/audio/" + enc(id) + "/Main.m3u8").Code).To(Equal(http.StatusOK))
+		})
+	})
+
 	Describe("direct-file endpoints", func() {
 		It("serves /Items/{id}/File as direct play (raw)", func() {
 			id := songID("Something")

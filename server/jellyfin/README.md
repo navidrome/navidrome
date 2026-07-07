@@ -119,7 +119,7 @@ favorites-only (`Filters=IsFavorite` or the standalone `isFavorite=true`); `Sort
 | Similar | `GET Artists/{itemId}/Similar`, `GET Items/{itemId}/Similar` |
 | Images | `GET Items/{itemId}/Images/{type}[/{index}]` (public), `POST`/`DELETE Items/{itemId}/Images/{type}` (playlist cover, authenticated) |
 | Favorites / ratings | `POST`/`DELETE UserFavoriteItems/{itemId}`, `POST`/`DELETE Users/{userId}/FavoriteItems/{itemId}`, `POST`/`DELETE Users/{userId}/Items/{itemId}/Rating`, `GET UserItems/{itemId}/UserData`, `GET Users/{userId}/Items/{itemId}/UserData` |
-| Streaming | `GET Audio/{itemId}/stream[.{container}]`, `GET Audio/{itemId}/universal`, `GET Items/{itemId}/File`, `GET Items/{itemId}/Download`, `GET`/`POST Items/{itemId}/PlaybackInfo` |
+| Streaming | `GET Audio/{itemId}/stream[.{container}]`, `GET Audio/{itemId}/universal`, `GET Audio/{itemId}/main.m3u8`, `GET Items/{itemId}/File`, `GET Items/{itemId}/Download`, `GET`/`POST Items/{itemId}/PlaybackInfo` |
 | Playback reporting | `POST Sessions/Playing`, `POST Sessions/Playing/Progress`, `POST Sessions/Playing/Stopped`, `POST Sessions/Capabilities[/Full]` |
 | Playlists | `POST Playlists`, `GET Playlists/{playlistId}`, `POST Playlists/{playlistId}` (rename / visibility / replace tracks), `GET Playlists/{playlistId}/Items`, `POST`/`DELETE Playlists/{playlistId}/Items`, `GET Playlists/{playlistId}/Users[/{userId}]` |
 | Real-time | `GET socket` (WebSocket; keeps clients like Finamp from 404-loop-reconnecting) |
@@ -167,6 +167,28 @@ therefore resolved under an **elevated admin context** — the same approach `co
 warmer uses — so user-scoped items like private playlists still resolve their cover instead of
 falling back to the placeholder. Album, artist, media-file and playlist ids are all resolved to
 their Navidrome `ArtworkID`.
+
+## Streaming and transcoding
+
+The stream endpoints reuse the same transcode-decision pipeline as the Subsonic `/stream` endpoint:
+
+- **`GET Audio/{id}/stream[.{container}]` / `universal`** — the target format comes from the
+  `.{container}` path suffix, the `container` param, or (when neither is present) `audioCodec`.
+  `audioBitRate`/`maxStreamingBitrate` are bits/sec, per Jellyfin convention. `static=true`
+  forces direct play (raw), never a transcode.
+- **`GET Items/{id}/File` / `Download`** — always the original file bytes, matching real Jellyfin.
+  Finamp plays through `File` when its transcoding setting is off, so an undecodable format (e.g.
+  DSF) can't be rescued server-side on this path.
+- **`GET Audio/{id}/main.m3u8`** — the endpoint Finamp plays through when its transcoding setting
+  is on. Implemented as a single-segment HLS VOD playlist whose one segment is the progressive
+  transcode endpoint above, so the whole pipeline (decision, cache, forced transcoding) is reused.
+  Segment codec honors `audioCodec` but is limited to what HLS packed-audio can carry (`aac`,
+  `mp3`); anything else falls back to `aac`. Seeking re-reads from the start, like Subsonic
+  transcoded streams.
+- **Server-forced transcoding.** A format/bitrate configured on the registered player (Settings →
+  Players) is applied to `stream`, `universal` and `main.m3u8` — same override semantics as
+  Subsonic. `File`/`Download` stay raw. For HLS clients, force `aac` or `mp3`; other formats are
+  advertised and served but packed-audio players won't decode them.
 
 ## curl walkthrough
 

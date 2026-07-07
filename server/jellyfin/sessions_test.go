@@ -40,6 +40,7 @@ type fakePlayers struct {
 	err           error
 	registerCalls int
 	lastClient    string
+	trc           *model.Transcoding
 }
 
 func (f *fakePlayers) Register(_ context.Context, id, client, _, _ string) (*model.Player, *model.Transcoding, error) {
@@ -48,7 +49,7 @@ func (f *fakePlayers) Register(_ context.Context, id, client, _, _ string) (*mod
 	if f.err != nil {
 		return nil, nil, f.err
 	}
-	return &model.Player{ID: id, Client: client}, nil, nil
+	return &model.Player{ID: id, Client: client}, f.trc, nil
 }
 
 var _ = Describe("Sessions", func() {

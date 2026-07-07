@@ -1,8 +1,12 @@
 package jellyfin
 
 import (
+	"fmt"
+	"math"
 	"net/http"
 	"net/url"
+	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/consts"
@@ -66,13 +70,17 @@ func (api *Router) streamAudio(w http.ResponseWriter, r *http.Request) {
 		// The /stream.{container} route form carries the format as a path segment, not a query param.
 		format = chi.URLParam(r, "container")
 	}
+	if format == "" {
+		// Jellyfin's audioCodec param names the target codec when no container is given.
+		format = p.StringOr("audiocodec", "")
+	}
 	if p.BoolOr("static", false) {
 		format = "raw"
 	}
 
-	bitRate := p.IntOr("audiobitrate", 0)
+	// Bitrate params are bits/sec by Jellyfin convention; ResolveRequest expects kbps.
+	bitRate := p.IntOr("audiobitrate", 0) / 1000
 	if bitRate == 0 {
-		// maxStreamingBitrate is bits/sec by Jellyfin convention; ResolveRequest expects kbps.
 		bitRate = p.IntOr("maxstreamingbitrate", 0) / 1000
 	}
 
@@ -86,6 +94,55 @@ func (api *Router) streamAudio(w http.ResponseWriter, r *http.Request) {
 	if _, err := s.Serve(ctx, w, r); err != nil {
 		log.Error(ctx, "Jellyfin API: error streaming", "id", mf.ID, err)
 	}
+}
+
+// streamHls serves /Audio/{itemId}/main.m3u8, the endpoint Finamp uses when its transcoding
+// setting is enabled. It returns a single-segment VOD playlist whose one segment is the existing
+// progressive transcode endpoint, reusing the whole pipeline instead of real segmented HLS.
+// Trade-off: seeking re-reads from the start, same as Subsonic transcoded streams.
+func (api *Router) streamHls(w http.ResponseWriter, r *http.Request) {
+	mf, ok := api.mediaFileForRequest(w, r)
+	if !ok {
+		return
+	}
+	p := req.Params(r)
+
+	// HLS packed-audio segments can only carry ADTS/AAC or MP3, so other codecs fall back to aac.
+	// A server-forced transcoding wins verbatim (ResolveRequest's override rewrites the segment
+	// format anyway, and the playlist must agree with the actual segment bytes).
+	codec := strings.ToLower(p.StringOr("audiocodec", ""))
+	if codec != "mp3" {
+		codec = "aac"
+	}
+	if trc, ok := request.TranscodingFrom(r.Context()); ok && trc.TargetFormat != "" {
+		codec = strings.ToLower(trc.TargetFormat)
+	}
+
+	// Relative URI, resolved by the player against the playlist URL. HLS fetches don't carry the
+	// original auth headers, so the token rides in the query.
+	segment := "stream." + codec
+	q := url.Values{}
+	if token := tokenFromRequest(r); token != "" {
+		q.Set("api_key", token)
+	}
+	if bitRate := p.IntOr("audiobitrate", 0); bitRate > 0 {
+		q.Set("audioBitRate", strconv.Itoa(bitRate))
+	}
+	if len(q) > 0 {
+		segment += "?" + q.Encode()
+	}
+
+	w.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
+	//nolint:gosec // not HTML; the only tainted value is query-escaped
+	fmt.Fprintf(w, "#EXTM3U\n"+
+		"#EXT-X-VERSION:3\n"+
+		"#EXT-X-PLAYLIST-TYPE:VOD\n"+
+		"#EXT-X-TARGETDURATION:%d\n"+
+		"#EXT-X-MEDIA-SEQUENCE:0\n"+
+		"#EXTINF:%.3f,\n"+
+		"%s\n"+
+		"#EXT-X-ENDLIST\n",
+		int(math.Ceil(float64(mf.Duration))), mf.Duration, segment)
 }
 
 // streamFile serves /Items/{itemId}/File and /Download, Jellyfin's direct-file endpoints. Some
