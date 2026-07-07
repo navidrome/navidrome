@@ -61,9 +61,6 @@ func Close(ctx context.Context) {
 	// Ignore cancellations when closing the DB
 	ctx = context.WithoutCancel(ctx)
 
-	// Run optimize before closing
-	Optimize(ctx)
-
 	log.Info(ctx, "Closing Database")
 	err := Db().Close()
 	if err != nil {
@@ -103,10 +100,12 @@ func Init(ctx context.Context) func() {
 	}
 
 	if hasSchemaChanges && conf.Server.DevOptimizeDB {
-		log.Debug(ctx, "Applying PRAGMA optimize after schema changes")
-		_, err = db.ExecContext(ctx, "PRAGMA optimize")
+		// Migrations that create indexes leave them unanalyzed; refresh the planner statistics
+		// with a full ANALYZE (see Optimize for why not PRAGMA optimize).
+		log.Debug(ctx, "Running ANALYZE after schema changes")
+		_, err = db.ExecContext(ctx, "ANALYZE")
 		if err != nil {
-			log.Error(ctx, "Error applying PRAGMA optimize", err)
+			log.Error(ctx, "Error running ANALYZE", err)
 		}
 	}
 
@@ -115,34 +114,25 @@ func Init(ctx context.Context) func() {
 	}
 }
 
-// Optimize runs PRAGMA optimize on each connection in the pool
+// Optimize refreshes the query-planner statistics with a full ANALYZE. Called after scans and on
+// a daily schedule, so the planner keeps up with library changes.
+//
+// Deliberately not PRAGMA optimize: its internal ANALYZE runs with a limited analysis budget that
+// writes wrong stats for low-cardinality indexes (e.g. claiming (missing, library_id) narrows to
+// ~2000 rows when it matches the whole table), flipping the planner to full-table temp B-tree
+// sorts. The stats live in the database file, so one connection is enough — no pool loop needed.
 func Optimize(ctx context.Context) {
 	if !conf.Server.DevOptimizeDB {
 		return
 	}
-	numConns := Db().Stats().OpenConnections
-	if numConns == 0 {
-		log.Debug(ctx, "No open connections to optimize")
-		return
-	}
-	log.Debug(ctx, "Optimizing open connections", "numConns", numConns)
-	var conns []*sql.Conn
-	for range numConns {
-		conn, err := Db().Conn(ctx)
-		conns = append(conns, conn)
-		if err != nil {
-			log.Error(ctx, "Error getting connection from pool", err)
-			continue
-		}
-		_, err = conn.ExecContext(ctx, "PRAGMA optimize;")
-		if err != nil {
-			log.Error(ctx, "Error running PRAGMA optimize", err)
-		}
-	}
+	optimize(ctx, Db())
+}
 
-	// Return all connections to the Connection Pool
-	for _, conn := range conns {
-		conn.Close()
+func optimize(ctx context.Context, db *sql.DB) {
+	log.Debug(ctx, "Refreshing query planner statistics")
+	_, err := db.ExecContext(ctx, "ANALYZE")
+	if err != nil {
+		log.Error(ctx, "Error running ANALYZE", err)
 	}
 }
 
