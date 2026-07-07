@@ -76,4 +76,61 @@ var _ = Describe("Similar", func() {
 			Expect(q.Items).To(BeEmpty())
 		})
 	})
+
+	// Finamp requests /Items/{id}/InstantMix when "start instant mix for individual tracks" is on
+	// (every track tap) and from the long-press menus. It plays exactly what is returned, so a
+	// track seed must lead its own mix.
+	Describe("GET /Items/{id}/InstantMix", func() {
+		It("returns the seed track first, followed by similar songs", func() {
+			providerFake.similarSongs = model.MediaFiles{{ID: "x1", Title: "Similar Song", LibraryID: 1}}
+			q := queryResult(get("/Items/" + enc(songID("So What")) + "/InstantMix?limit=19"))
+			Expect(names(q.Items)).To(Equal([]string{"So What", "Similar Song"}))
+			Expect(q.Items[0].Type).To(Equal("Audio"))
+		})
+
+		It("does not duplicate the seed when the provider returns it", func() {
+			providerFake.similarSongs = model.MediaFiles{
+				{ID: songID("So What"), Title: "So What", LibraryID: 1},
+				{ID: "x1", Title: "Similar Song", LibraryID: 1},
+			}
+			q := queryResult(get("/Items/" + enc(songID("So What")) + "/InstantMix"))
+			Expect(names(q.Items)).To(Equal([]string{"So What", "Similar Song"}))
+		})
+
+		It("caps the mix at the requested limit", func() {
+			providerFake.similarSongs = model.MediaFiles{
+				{ID: "x1", Title: "S1", LibraryID: 1},
+				{ID: "x2", Title: "S2", LibraryID: 1},
+				{ID: "x3", Title: "S3", LibraryID: 1},
+			}
+			q := queryResult(get("/Items/" + enc(songID("So What")) + "/InstantMix?limit=2"))
+			Expect(names(q.Items)).To(Equal([]string{"So What", "S1"}))
+		})
+
+		It("excludes similar songs from libraries the user can't access", func() {
+			providerFake.similarSongs = model.MediaFiles{
+				{ID: "x1", Title: "In Library", LibraryID: 1},
+				{ID: "x2", Title: "Other Library", LibraryID: 2},
+			}
+			q := queryResult(getAs(regularUser, "/Items/"+enc(songID("So What"))+"/InstantMix"))
+			Expect(names(q.Items)).To(Equal([]string{"So What", "In Library"}))
+		})
+
+		It("returns a mix of the provider's similar songs for an artist seed", func() {
+			providerFake.similarSongs = model.MediaFiles{{ID: "x1", Title: "Artist Mix Song", LibraryID: 1}}
+			q := queryResult(get("/Items/" + enc(artistID("Miles Davis")) + "/InstantMix"))
+			Expect(names(q.Items)).To(Equal([]string{"Artist Mix Song"}))
+		})
+
+		It("returns an empty result (not 404) for an unknown item", func() {
+			w := get("/Items/" + enc("does-not-exist") + "/InstantMix")
+			Expect(w.Code).To(Equal(200))
+			Expect(queryResult(w).Items).To(BeEmpty())
+		})
+
+		It("returns only the seed when the provider has nothing", func() {
+			q := queryResult(get("/Items/" + enc(songID("Help!")) + "/InstantMix"))
+			Expect(names(q.Items)).To(Equal([]string{"Help!"}))
+		})
+	})
 })

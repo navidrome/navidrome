@@ -110,6 +110,7 @@ func (api *Router) routes() http.Handler {
 		r.Get("/Artists/AlbumArtists", api.getAlbumArtists)
 		r.Get("/Artists/{itemId}/Similar", api.getSimilarArtists)
 		r.Get("/Items/{itemId}/Similar", api.getSimilarItems)
+		r.Get("/Items/{itemId}/InstantMix", api.getInstantMix)
 		r.Get("/Genres", api.getGenres)
 		r.Get("/MusicGenres", api.getGenres)
 

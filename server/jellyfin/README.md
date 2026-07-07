@@ -119,7 +119,7 @@ favorites-only (`Filters=IsFavorite` or the standalone `isFavorite=true`); `Sort
 | Users | `GET UserViews`, `GET Users/{userId}/Views`, `GET Users/Me`, `GET Users/{userId}` |
 | Browsing | `GET Items`, `GET Users/{userId}/Items`, `GET Items/{itemId}`, `GET Users/{userId}/Items/{itemId}`, `GET Users/{userId}/Items/Latest`, `DELETE Items/{itemId}` (playlists only) |
 | Artists / genres | `GET Artists`, `GET Artists/AlbumArtists`, `GET Genres`, `GET MusicGenres` |
-| Similar | `GET Artists/{itemId}/Similar`, `GET Items/{itemId}/Similar` |
+| Similar / mixes | `GET Artists/{itemId}/Similar`, `GET Items/{itemId}/Similar`, `GET Items/{itemId}/InstantMix` |
 | Images | `GET Items/{itemId}/Images/{type}[/{index}]` (public), `POST`/`DELETE Items/{itemId}/Images/{type}` (playlist cover, authenticated) |
 | Favorites / ratings | `POST`/`DELETE UserFavoriteItems/{itemId}`, `POST`/`DELETE Users/{userId}/FavoriteItems/{itemId}`, `POST`/`DELETE Users/{userId}/Items/{itemId}/Rating`, `GET UserItems/{itemId}/UserData`, `GET Users/{userId}/Items/{itemId}/UserData` |
 | Streaming | `GET Audio/{itemId}/stream[.{container}]`, `GET Audio/{itemId}/universal`, `GET Audio/{itemId}/main.m3u8`, `GET Items/{itemId}/File`, `GET Items/{itemId}/Download`, `GET`/`POST Items/{itemId}/PlaybackInfo` |
@@ -327,10 +327,10 @@ make test PKG=./server/jellyfin/...
   Jellyfin's `LyricsResponse` (`Lyrics: [{Text, Start}]`, `Start` in 100ns ticks) — enough for both
   clients' synced view. (Finamp also renders word-level `Cues`, but Navidrome has only line-level
   timing, so word-sync is out of scope.)
-- **No InstantMix / sonic similarity (follow-up).** Jellyfin's "Instant Mix" action calls
-  `GET Items/{id}/InstantMix` (unimplemented), and the `/Similar` endpoints are backed only by
-  external metadata agents (Last.fm), not sonic analysis. A follow-up would implement
-  `Items/{id}/InstantMix` (and optionally back `/Similar`) with Navidrome's `core/sonic` provider —
-  the same one behind the OpenSubsonic `sonicSimilarity` extension (`getSonicSimilarTracks`) that
-  AudioMuse-AI feeds via its Navidrome plugin, and the exact endpoint AudioMuse's own Jellyfin
-  plugin overrides. Needs the `core/sonic.Sonic` service injected into the `Router` (wire change).
+- **No sonic similarity (follow-up).** `Items/{id}/InstantMix` and the `/Similar` endpoints are
+  backed only by external metadata agents (Last.fm), not sonic analysis: an instant mix is the seed
+  track followed by the provider's similar songs (with agents disabled it degrades to a seed-only
+  mix). A follow-up would back them with Navidrome's `core/sonic` provider — the same one behind
+  the OpenSubsonic `sonicSimilarity` extension (`getSonicSimilarTracks`) that AudioMuse-AI feeds
+  via its Navidrome plugin, and the exact endpoint AudioMuse's own Jellyfin plugin overrides.
+  Needs the `core/sonic.Sonic` service injected into the `Router` (wire change).

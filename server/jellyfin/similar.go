@@ -82,6 +82,59 @@ func (api *Router) getSimilarItems(w http.ResponseWriter, r *http.Request) {
 	}))
 }
 
+// getInstantMix answers GET /Items/{itemId}/InstantMix with a playable track mix seeded by the
+// item, powered by the same provider as the Similar endpoints. Finamp requests this on every track
+// tap when its "start instant mix for individual tracks" setting is on, and plays exactly what is
+// returned — so a track seed must lead its own mix or the tapped song wouldn't play. An
+// unresolvable seed (or one the provider knows nothing about) degrades to an empty/seed-only
+// result, never a 404 the client would surface as an error.
+func (api *Router) getInstantMix(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id := api.resolveItemID(ctx, dto.DecodeID(chi.URLParam(r, "itemId")))
+	limit := clampLimit(req.Params(r).IntOr("limit", 20))
+
+	entity, err := model.GetEntityByID(ctx, api.ds, id)
+	if err != nil {
+		api.ok(w, r, result(nil, 0, 0))
+		return
+	}
+	// The key is prefixed so a mix never shares a singleflight/cache slot with a Similar request
+	// for the same id and limit — they answer different shapes.
+	api.ok(w, r, api.awaitSimilar(ctx, "mix|"+id, limit, func(ctx context.Context) dto.QueryResult {
+		if mf, ok := entity.(*model.MediaFile); ok {
+			return api.instantMixForSong(ctx, mf, limit)
+		}
+		// Container seeds (artist, album): the provider's similar-songs signal already blends the
+		// seed's own tracks with related ones.
+		return api.similarSongs(ctx, id, limit)
+	}))
+}
+
+// instantMixForSong builds a track-seeded mix: the seed first, then the provider's similar songs,
+// skipping a repeated seed and songs outside the caller's libraries.
+func (api *Router) instantMixForSong(ctx context.Context, mf *model.MediaFile, limit int) dto.QueryResult {
+	u, _ := request.UserFrom(ctx)
+	if !u.HasLibraryAccess(mf.LibraryID) {
+		return result(nil, 0, 0)
+	}
+	items := []dto.BaseItemDto{dto.SongToBaseItem(*mf, nil)}
+	songs, err := api.provider.SimilarSongs(ctx, mf.ID, limit)
+	if err != nil {
+		log.Debug(ctx, "Jellyfin API: no similar songs for instant mix", "id", mf.ID, err)
+		return result(items, len(items), 0)
+	}
+	for _, s := range songs {
+		if len(items) >= limit {
+			break
+		}
+		if s.ID == mf.ID || !u.HasLibraryAccess(s.LibraryID) {
+			continue
+		}
+		items = append(items, dto.SongToBaseItem(s, nil))
+	}
+	return result(items, len(items), 0)
+}
+
 func (api *Router) similarArtists(ctx context.Context, id string, limit int) dto.QueryResult {
 	artist, err := api.provider.UpdateArtistInfo(ctx, id, limit, false)
 	if err != nil {
