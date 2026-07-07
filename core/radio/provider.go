@@ -19,6 +19,8 @@ var icyHTTPClient = &http.Client{
 		}).DialContext,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ResponseHeaderTimeout: 30 * time.Second,
+		IdleConnTimeout:       60 * time.Second,
+		MaxIdleConnsPerHost:   1,
 	},
 }
 
