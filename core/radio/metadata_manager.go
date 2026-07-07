@@ -19,6 +19,29 @@ var (
 // keep an ICY reader connected to the station forever.
 const defaultSessionTTL = 10 * time.Minute
 
+// permanentRetryDelay is used instead of the regular backoff when the reader
+// reports a permanent error (dead URL, station without ICY metadata), so we
+// do not hammer a stream that will never yield titles.
+const permanentRetryDelay = 10 * time.Minute
+
+type permanentError struct{ err error }
+
+func (e *permanentError) Error() string { return e.err.Error() }
+func (e *permanentError) Unwrap() error { return e.err }
+
+// MarkPermanent wraps err so the retry loop switches to permanentRetryDelay.
+func MarkPermanent(err error) error {
+	if err == nil {
+		return nil
+	}
+	return &permanentError{err: err}
+}
+
+func isPermanent(err error) bool {
+	var p *permanentError
+	return errors.As(err, &p)
+}
+
 type Station struct {
 	ID        string
 	StreamURL string
@@ -229,6 +252,9 @@ func (m *MetadataManager) runReader(reader *activeReader) {
 		}
 
 		delay := m.backoff(attempt)
+		if isPermanent(err) && delay < permanentRetryDelay {
+			delay = permanentRetryDelay
+		}
 		if delay <= 0 {
 			continue
 		}

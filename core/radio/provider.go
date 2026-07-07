@@ -2,6 +2,7 @@ package radio
 
 import (
 	"context"
+	"errors"
 	"net"
 	"net/http"
 	"time"
@@ -26,6 +27,22 @@ var icyHTTPClient = &http.Client{
 
 func NewMetadataManagerService(publisher TitlePublisher) *MetadataManager {
 	return NewMetadataManager(func(ctx context.Context, streamURL string, handleTitle func(string)) error {
-		return icy.ReadHTTPStreamTitles(ctx, icyHTTPClient, streamURL, handleTitle)
+		return classifyICYError(icy.ReadHTTPStreamTitles(ctx, icyHTTPClient, streamURL, handleTitle))
 	}, publisher)
+}
+
+// classifyICYError marks errors that a retry will not fix — a stream without
+// ICY metadata or a client-error HTTP status — so the reader backs off for
+// much longer instead of hammering the station.
+func classifyICYError(err error) error {
+	if errors.Is(err, icy.ErrMissingMetaInt) {
+		return MarkPermanent(err)
+	}
+	var statusErr *icy.ResponseStatusError
+	if errors.As(err, &statusErr) &&
+		statusErr.StatusCode >= 400 && statusErr.StatusCode < 500 &&
+		statusErr.StatusCode != http.StatusRequestTimeout && statusErr.StatusCode != http.StatusTooManyRequests {
+		return MarkPermanent(err)
+	}
+	return err
 }

@@ -155,6 +155,25 @@ var _ = Describe("MetadataManager", func() {
 		Expect(manager.Start(context.Background(), "session-1", Station{ID: "rd-1", StreamURL: ""})).To(MatchError(ErrInvalidStation))
 	})
 
+	It("backs off for a long time on permanent reader errors", func() {
+		reader.err = MarkPermanent(errors.New("missing icy metadata interval"))
+		slow := NewMetadataManager(
+			reader.Read,
+			publisher.Publish,
+			WithRetryBackoff(func(int) time.Duration { return time.Millisecond }),
+		)
+
+		Expect(slow.Start(context.Background(), "session-1", Station{
+			ID:        "rd-1",
+			StreamURL: "https://stream.example.test/radio",
+		})).To(Succeed())
+
+		Eventually(reader.StartCount).Should(Equal(1))
+		// Regular backoff is 1ms; the permanent error must stretch it, so no
+		// second attempt happens within the observation window.
+		Consistently(reader.StartCount, 300*time.Millisecond, 20*time.Millisecond).Should(Equal(1))
+	})
+
 	It("expires sessions that are never refreshed", func() {
 		expiring := NewMetadataManager(
 			reader.Read,
