@@ -12,8 +12,8 @@ func TicksFromSeconds(sec float32) int64 { return int64(float64(sec) * 1e7) }
 
 // premiereDate converts a possibly partial date tag ("2007", "2007-02") into the ISO 8601
 // PremiereDate clients parse, falling back to year; nil when neither exists.
-func premiereDate[T ~string](date T, year int) *string {
-	d := string(date)
+func premiereDate(date string, year int) *string {
+	d := date
 	switch len(d) {
 	case 4:
 		d += "-01-01"

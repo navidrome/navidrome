@@ -50,7 +50,7 @@ func (api *Router) awaitSimilar(ctx context.Context, id string, limit int, fetch
 // external.Provider that powers Subsonic's getArtistInfo2. Only artists present in the library are
 // returned. Any provider error degrades to an empty result, not a 404 the client would keep retrying.
 func (api *Router) getSimilarArtists(w http.ResponseWriter, r *http.Request) {
-	id := dto.DecodeID(chi.URLParam(r, "itemId"))
+	id := api.resolveItemID(r.Context(), dto.DecodeID(chi.URLParam(r, "itemId")))
 	limit := clampLimit(req.Params(r).IntOr("limit", 20))
 	api.ok(w, r, api.awaitSimilar(r.Context(), id, limit, func(ctx context.Context) dto.QueryResult {
 		return api.similarArtists(ctx, id, limit)
@@ -62,7 +62,7 @@ func (api *Router) getSimilarArtists(w http.ResponseWriter, r *http.Request) {
 // result (not 404) so the client stops retrying.
 func (api *Router) getSimilarItems(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	id := dto.DecodeID(chi.URLParam(r, "itemId"))
+	id := api.resolveItemID(ctx, dto.DecodeID(chi.URLParam(r, "itemId")))
 	limit := clampLimit(req.Params(r).IntOr("limit", 20))
 
 	entity, err := model.GetEntityByID(ctx, api.ds, id)

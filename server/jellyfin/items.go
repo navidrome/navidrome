@@ -432,7 +432,7 @@ func (api *Router) songsByIDs(ctx context.Context, ids []string) map[string]mode
 // queue items against its stored (truncated) ids.
 func (api *Router) itemsByIDs(ctx context.Context, ids []string, fields dto.Fields) dto.QueryResult {
 	u, _ := request.UserFrom(ctx)
-	fullIDs := slice.Map(ids, func(id string) string { return api.resolveItemID(ctx, id) })
+	fullIDs := api.resolveItemIDs(ctx, ids)
 	songs := api.songsByIDs(ctx, fullIDs)
 	var items []dto.BaseItemDto
 	for i, id := range fullIDs {

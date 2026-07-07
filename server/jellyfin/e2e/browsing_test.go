@@ -264,6 +264,12 @@ var _ = Describe("Browsing", func() {
 				Expect(q.Items[0].Id).To(Equal(enc(truncated)))
 			})
 
+			It("batch-resolves a mixed list of truncated and full ids, keeping order", func() {
+				ids := enc(songID("Come Together")[:16]) + "," + enc(songID("So What")) + "," + enc(songID("Help!")[:16])
+				q := queryResult(get("/Items?ids=" + ids))
+				Expect(names(q.Items)).To(Equal([]string{"Come Together", "So What", "Help!"}))
+			})
+
 			It("streams a track by its truncated id", func() {
 				full := songID("So What")
 				w := get("/Audio/" + enc(full[:16]) + "/stream")
