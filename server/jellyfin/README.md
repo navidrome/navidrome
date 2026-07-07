@@ -104,7 +104,9 @@ authenticated user has access to; a library (or item within it) the user cannot 
 for scoping, an artist id when browsing into an artist's albums, or an album id when browsing into
 an album's tracks); `AlbumArtistIds`/`ArtistIds`/`contributingArtistIds` (an artist's albums or
 tracks — Finamp's artist screen sends these *alongside* `ParentId=<libraryId>`); `GenreIds` (a
-genre's albums or tracks — Finamp's genre screen sends it the same way); `SearchTerm`;
+genre's albums or tracks — Finamp's genre screen sends it the same way; `/Artists/AlbumArtists`
+and `MusicArtist` queries accept it too, matching artists credited on an album of that genre);
+`SearchTerm`;
 favorites-only (`Filters=IsFavorite` or the standalone `isFavorite=true`); `SortBy`/`SortOrder`;
 `StartIndex`/`Limit`; and `Ids` (batch fetch by id).
 

@@ -190,6 +190,18 @@ func ByGenreID(genreIds []string) Sqlizer {
 	return persistence.TagIDFilter("genre_id", genreIds)
 }
 
+// ArtistsByGenreID matches artists credited as album artist on an album tagged with any of the
+// given genre tag ids. A non-correlated semi-join: the album subquery runs once, not per artist
+// row (the correlated EXISTS form rescans albums for every artist and is orders of magnitude
+// slower on large libraries).
+func ArtistsByGenreID(genreIds []string) Sqlizer {
+	return Expr(
+		`artist.id IN (SELECT jt.value FROM album, json_tree(album.participants, '$.albumartist') jt
+			WHERE jt.atom IS NOT NULL AND ?)`,
+		persistence.TagIDFilter("genre_id", genreIds),
+	)
+}
+
 func filterByGenre(genre string) Sqlizer {
 	return persistence.Exists(`json_tree(tags, "$.genre")`, And{
 		Like{"value": genre},

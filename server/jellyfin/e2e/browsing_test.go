@@ -178,6 +178,27 @@ var _ = Describe("Browsing", func() {
 			Expect(q.Items).To(BeEmpty())
 			Expect(q.TotalRecordCount).To(Equal(0))
 		})
+
+		It("filters album artists by GenreIds on /Artists/AlbumArtists", func() {
+			q := queryResult(get("/Artists/AlbumArtists?ParentId=" + lib1 + "&GenreIds=" + enc(genreID("Jazz"))))
+			Expect(names(q.Items)).To(ConsistOf("Miles Davis"))
+			Expect(q.TotalRecordCount).To(Equal(1))
+		})
+
+		It("matches album artists of any of multiple GenreIds", func() {
+			q := queryResult(get("/Artists/AlbumArtists?GenreIds=" + enc(genreID("Jazz")) + "," + enc(genreID("Pop"))))
+			Expect(names(q.Items)).To(ConsistOf("Miles Davis", "Solo Artist"))
+		})
+
+		It("filters album artists by GenreIds via /Items?IncludeItemTypes=MusicArtist", func() {
+			q := queryResult(get("/Items?IncludeItemTypes=MusicArtist&Recursive=true&GenreIds=" + enc(genreID("Rock"))))
+			Expect(names(q.Items)).To(ConsistOf("The Beatles", "Led Zeppelin"))
+		})
+
+		It("returns no artists for an unknown genre id", func() {
+			q := queryResult(get("/Artists/AlbumArtists?GenreIds=" + enc("no-such-genre")))
+			Expect(q.Items).To(BeEmpty())
+		})
 	})
 
 	// Jellify (and the official Jellyfin TypeScript SDK) send query params in camelCase

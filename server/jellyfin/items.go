@@ -130,7 +130,7 @@ func (api *Router) queryItemsOfType(ctx context.Context, itemType string, opts m
 		return api.listSongs(ctx, opts, entityParent, artistId, genreIds, scopeIDs, search, favOnly, fields)
 	case "MusicArtist":
 		// The MusicArtist browse hierarchy (UserViews -> artists -> albums) means album artists.
-		return api.listArtists(ctx, opts, scopeIDs, search, favOnly, model.RoleAlbumArtist)
+		return api.listArtists(ctx, opts, genreIds, scopeIDs, search, favOnly, model.RoleAlbumArtist)
 	case "MusicGenre":
 		return api.listGenres(ctx, opts)
 	case "Playlist":
@@ -299,7 +299,9 @@ func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, paren
 
 // listArtists lists artists in the given role: RoleAlbumArtist for the "album artists" views,
 // RoleArtist for performing artists (/Artists). Without the role filter both lists would be identical.
-func (api *Router) listArtists(ctx context.Context, opts model.QueryOptions, scopeIDs []int, search string, fav bool, role model.Role) (dto.QueryResult, error) {
+// genreIds restricts to album artists of that genre's albums; it isn't applied to search (a name
+// lookup, like role — see below).
+func (api *Router) listArtists(ctx context.Context, opts model.QueryOptions, genreIds []string, scopeIDs []int, search string, fav bool, role model.Role) (dto.QueryResult, error) {
 	repo := api.ds.Artist(ctx)
 
 	// Artist Search does its own library scoping: it consumes a sole Eq{"library_id": ...} filter as a
@@ -323,6 +325,9 @@ func (api *Router) listArtists(ctx context.Context, opts model.QueryOptions, sco
 		opts.Filters = filter.ArtistsByStarred().Filters
 	} else {
 		opts.Filters = notMissing
+	}
+	if len(genreIds) > 0 {
+		opts.Filters = squirrel.And{opts.Filters, filter.ArtistsByGenreID(genreIds)}
 	}
 	opts = filter.ArtistsByRole(opts, role)
 	opts = filter.ApplyArtistLibraryFilter(opts, scopeIDs)

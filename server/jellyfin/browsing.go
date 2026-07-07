@@ -28,8 +28,10 @@ func (api *Router) listArtistsByRole(w http.ResponseWriter, r *http.Request, rol
 	applySort(&opts, "MusicArtist", p.StringOr("sortby", ""), p.StringOr("sortorder", ""))
 
 	scopeIDs, _ := resolveLibraryScope(ctx, dto.DecodeID(p.StringOr("parentid", "")))
+	// Finamp's artist tab sends GenreIds when a genre filter is active.
+	genreIds := decodedQueryIDs(r, "genreids")
 
-	res, err := api.listArtists(ctx, opts, scopeIDs, p.StringOr("searchterm", ""), false, role)
+	res, err := api.listArtists(ctx, opts, genreIds, scopeIDs, p.StringOr("searchterm", ""), false, role)
 	if err != nil {
 		api.internalError(w, r, err)
 		return
