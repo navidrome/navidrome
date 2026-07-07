@@ -10,6 +10,27 @@ import (
 
 func TicksFromSeconds(sec float32) int64 { return int64(float64(sec) * 1e7) }
 
+// premiereDate turns a (possibly partial) Navidrome date tag into the ISO 8601 PremiereDate
+// clients parse, padding "2007" / "2007-02" to a full date and falling back to year. Returns nil
+// when there is no date information at all, so the field is omitted.
+func premiereDate[T ~string](date T, year int) *string {
+	d := string(date)
+	switch len(d) {
+	case 4:
+		d += "-01-01"
+	case 7:
+		d += "-01"
+	case 10: // already yyyy-mm-dd
+	default:
+		if year <= 0 {
+			return nil
+		}
+		d = fmt.Sprintf("%04d-01-01", year)
+	}
+	s := d + "T00:00:00Z"
+	return &s
+}
+
 // jellyfinDate formats t as the ISO 8601 string clients expect, or "" for the zero time so the
 // field is omitted rather than sent as a meaningless epoch.
 func jellyfinDate(t *time.Time) string {
@@ -130,6 +151,7 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 	if mf.Year > 0 {
 		item.ProductionYear = new(mf.Year)
 	}
+	item.PremiereDate = premiereDate(mf.Date, mf.Year)
 	if mf.TrackNumber > 0 {
 		item.IndexNumber = new(mf.TrackNumber)
 	}
@@ -176,6 +198,7 @@ func AlbumToBaseItem(al model.Album) BaseItemDto {
 	if al.MaxYear > 0 {
 		item.ProductionYear = new(al.MaxYear)
 	}
+	item.PremiereDate = premiereDate(al.Date, al.MaxYear)
 	if len(al.Genres) > 0 {
 		for _, g := range al.Genres {
 			item.Genres = append(item.Genres, g.Name)

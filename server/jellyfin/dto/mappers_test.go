@@ -206,6 +206,41 @@ var _ = Describe("mappers", func() {
 		Expect(item.Name).To(Equal("Rock"))
 	})
 
+	Describe("premiereDate", func() {
+		// Finamp re-sorts "Latest Releases" client-side by PremiereDate (parsed with
+		// DateTime.tryParse); a missing value makes that sort a no-op over unstable ordering.
+		It("serializes a full date", func() {
+			mf := model.MediaFile{ID: "s1", Title: "Song", Date: "2007-02-01", Year: 2007}
+			item := SongToBaseItem(mf, nil)
+			Expect(*item.PremiereDate).To(Equal("2007-02-01T00:00:00Z"))
+		})
+
+		It("pads a year-only date so clients can parse it", func() {
+			mf := model.MediaFile{ID: "s1", Title: "Song", Date: "2007", Year: 2007}
+			Expect(*SongToBaseItem(mf, nil).PremiereDate).To(Equal("2007-01-01T00:00:00Z"))
+		})
+
+		It("pads a year-month date", func() {
+			mf := model.MediaFile{ID: "s1", Title: "Song", Date: "2007-02"}
+			Expect(*SongToBaseItem(mf, nil).PremiereDate).To(Equal("2007-02-01T00:00:00Z"))
+		})
+
+		It("falls back to the year when no date tag exists", func() {
+			mf := model.MediaFile{ID: "s1", Title: "Song", Year: 1999}
+			Expect(*SongToBaseItem(mf, nil).PremiereDate).To(Equal("1999-01-01T00:00:00Z"))
+		})
+
+		It("is omitted when the track has no date at all", func() {
+			Expect(SongToBaseItem(model.MediaFile{ID: "s1", Title: "Song"}, nil).PremiereDate).To(BeNil())
+		})
+
+		It("is set on albums from their date, falling back to MaxYear", func() {
+			Expect(*AlbumToBaseItem(model.Album{ID: "a1", Date: "2013-09-06"}).PremiereDate).To(Equal("2013-09-06T00:00:00Z"))
+			Expect(*AlbumToBaseItem(model.Album{ID: "a2", MaxYear: 2013}).PremiereDate).To(Equal("2013-01-01T00:00:00Z"))
+			Expect(AlbumToBaseItem(model.Album{ID: "a3"}).PremiereDate).To(BeNil())
+		})
+	})
+
 	It("maps a playlist to a Playlist BaseItemDto", func() {
 		p := model.Playlist{ID: "pl-1", Name: "Chill", SongCount: 7, Duration: 120}
 		item := PlaylistToBaseItem(p)

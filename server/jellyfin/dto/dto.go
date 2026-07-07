@@ -57,6 +57,9 @@ type BaseItemDto struct {
 	IndexNumber       *int   `json:"IndexNumber,omitempty"`
 	ParentIndexNumber *int   `json:"ParentIndexNumber,omitempty"`
 	ProductionYear    *int   `json:"ProductionYear,omitempty"`
+	// PremiereDate is the release date in ISO 8601; Finamp sorts its "Latest Releases" sections
+	// by it client-side, so tracks and albums without it end up in arbitrary order there.
+	PremiereDate *string `json:"PremiereDate,omitempty"`
 	// DateCreated is the ISO 8601 date the item was added to the library; clients show it as
 	// "Date Added" and sort "Recently Added" by it.
 	DateCreated          string            `json:"DateCreated,omitempty"`
