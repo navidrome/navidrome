@@ -154,6 +154,42 @@ var _ = Describe("MetadataManager", func() {
 		Expect(manager.Start(context.Background(), "session-1", Station{ID: "", StreamURL: "https://stream.example.test/radio"})).To(MatchError(ErrInvalidStation))
 		Expect(manager.Start(context.Background(), "session-1", Station{ID: "rd-1", StreamURL: ""})).To(MatchError(ErrInvalidStation))
 	})
+
+	It("expires sessions that are never refreshed", func() {
+		expiring := NewMetadataManager(
+			reader.Read,
+			publisher.Publish,
+			WithRetryBackoff(func(int) time.Duration { return 0 }),
+			WithSessionTTL(20*time.Millisecond),
+		)
+
+		Expect(expiring.Start(context.Background(), "session-1", Station{
+			ID:        "rd-1",
+			StreamURL: "https://stream.example.test/radio",
+		})).To(Succeed())
+
+		Eventually(reader.StartCount).Should(Equal(1))
+		Eventually(reader.CancelCount).Should(Equal(1))
+	})
+
+	It("keeps refreshed sessions alive past the TTL", func() {
+		expiring := NewMetadataManager(
+			reader.Read,
+			publisher.Publish,
+			WithRetryBackoff(func(int) time.Duration { return 0 }),
+			WithSessionTTL(50*time.Millisecond),
+		)
+		station := Station{ID: "rd-1", StreamURL: "https://stream.example.test/radio"}
+
+		Expect(expiring.Start(context.Background(), "session-1", station)).To(Succeed())
+		Eventually(reader.StartCount).Should(Equal(1))
+
+		// Refresh the session on every poll, well inside the TTL window.
+		Consistently(func() int {
+			Expect(expiring.Start(context.Background(), "session-1", station)).To(Succeed())
+			return reader.CancelCount()
+		}, 200*time.Millisecond, 10*time.Millisecond).Should(Equal(0))
+	})
 })
 
 type fakeStreamReader struct {

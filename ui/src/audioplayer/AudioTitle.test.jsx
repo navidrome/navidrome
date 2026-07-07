@@ -143,8 +143,35 @@ describe('<AudioTitle />', () => {
     )
 
     expect(screen.getByText('Station Name')).toBeInTheDocument()
-    expect(
-      screen.queryByText('Some Other Live Title'),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByText('Some Other Live Title')).not.toBeInTheDocument()
+  })
+
+  it('shows live title from the queue when current is not set yet', () => {
+    const audioInfo = {
+      trackId: 'radio-1',
+      isRadio: true,
+      song: {
+        id: 'radio-1',
+        title: 'Station Name',
+        artist: 'Station Artist',
+        album: 'https://stream.example.test/radio',
+      },
+    }
+    renderWithStore(
+      <AudioTitle audioInfo={audioInfo} gainInfo={{}} isMobile={false} />,
+      {
+        current: {},
+        queue: [
+          {
+            trackId: 'radio-1',
+            isRadio: true,
+            radioTitle: 'Queued Live Title',
+            song: audioInfo.song,
+          },
+        ],
+      },
+    )
+
+    expect(screen.getByText('Queued Live Title')).toBeInTheDocument()
   })
 })

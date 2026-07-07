@@ -5,12 +5,19 @@ import (
 	"errors"
 	"sync"
 	"time"
+
+	"github.com/navidrome/navidrome/log"
 )
 
 var (
 	ErrInvalidSession = errors.New("invalid radio metadata session")
 	ErrInvalidStation = errors.New("invalid radio metadata station")
 )
+
+// defaultSessionTTL bounds how long a session survives without a refresh, so
+// clients that vanish without calling Stop (e.g. a closed browser tab) do not
+// keep an ICY reader connected to the station forever.
+const defaultSessionTTL = 10 * time.Minute
 
 type Station struct {
 	ID        string
@@ -30,10 +37,11 @@ type TitlePublisher func(ctx context.Context, update TitleUpdate)
 type MetadataManager struct {
 	mu sync.Mutex
 
-	reader  StreamReader
-	publish TitlePublisher
-	now     func() time.Time
-	backoff func(attempt int) time.Duration
+	reader     StreamReader
+	publish    TitlePublisher
+	now        func() time.Time
+	backoff    func(attempt int) time.Duration
+	sessionTTL time.Duration
 
 	sessions map[string]activeSession
 	readers  map[string]*activeReader
@@ -42,8 +50,11 @@ type MetadataManager struct {
 type ManagerOption func(*MetadataManager)
 
 type activeSession struct {
-	radioID   string
-	streamURL string
+	radioID     string
+	streamURL   string
+	notifyCtx   context.Context
+	expiresAt   time.Time
+	expireTimer *time.Timer
 }
 
 type activeReader struct {
@@ -56,12 +67,13 @@ type activeReader struct {
 
 func NewMetadataManager(reader StreamReader, publisher TitlePublisher, opts ...ManagerOption) *MetadataManager {
 	m := &MetadataManager{
-		reader:   reader,
-		publish:  publisher,
-		now:      time.Now,
-		backoff:  defaultBackoff,
-		sessions: map[string]activeSession{},
-		readers:  map[string]*activeReader{},
+		reader:     reader,
+		publish:    publisher,
+		now:        time.Now,
+		backoff:    defaultBackoff,
+		sessionTTL: defaultSessionTTL,
+		sessions:   map[string]activeSession{},
+		readers:    map[string]*activeReader{},
 	}
 	for _, opt := range opts {
 		opt(m)
@@ -85,6 +97,14 @@ func WithRetryBackoff(backoff func(attempt int) time.Duration) ManagerOption {
 	}
 }
 
+// WithSessionTTL sets how long a session lives without a refreshing Start
+// call. A zero or negative TTL disables expiry.
+func WithSessionTTL(ttl time.Duration) ManagerOption {
+	return func(m *MetadataManager) {
+		m.sessionTTL = ttl
+	}
+}
+
 func (m *MetadataManager) Start(ctx context.Context, sessionID string, station Station) error {
 	if sessionID == "" {
 		return ErrInvalidSession
@@ -101,6 +121,7 @@ func (m *MetadataManager) Start(ctx context.Context, sessionID string, station S
 
 	if current, ok := m.sessions[sessionID]; ok {
 		if current.radioID == station.ID && current.streamURL == station.StreamURL {
+			m.touchSessionLocked(sessionID, current)
 			return nil
 		}
 		m.removeSessionLocked(sessionID)
@@ -120,8 +141,42 @@ func (m *MetadataManager) Start(ctx context.Context, sessionID string, station S
 	}
 
 	reader.radioRefs[station.ID]++
-	m.sessions[sessionID] = activeSession{radioID: station.ID, streamURL: station.StreamURL}
+	session := activeSession{
+		radioID:   station.ID,
+		streamURL: station.StreamURL,
+		notifyCtx: context.WithoutCancel(ctx),
+	}
+	if m.sessionTTL > 0 {
+		session.expiresAt = m.now().Add(m.sessionTTL)
+		session.expireTimer = time.AfterFunc(m.sessionTTL, func() { m.expireSession(sessionID) })
+	}
+	m.sessions[sessionID] = session
 	return nil
+}
+
+// touchSessionLocked extends the session deadline. The pending expiry timer
+// reschedules itself when it fires before the new deadline.
+func (m *MetadataManager) touchSessionLocked(sessionID string, session activeSession) {
+	if m.sessionTTL <= 0 || session.expireTimer == nil {
+		return
+	}
+	session.expiresAt = m.now().Add(m.sessionTTL)
+	m.sessions[sessionID] = session
+}
+
+func (m *MetadataManager) expireSession(sessionID string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	session, ok := m.sessions[sessionID]
+	if !ok || session.expireTimer == nil {
+		return
+	}
+	if remaining := session.expiresAt.Sub(m.now()); remaining > 0 {
+		session.expireTimer.Reset(remaining)
+		return
+	}
+	log.Debug("Radio metadata session expired without refresh", "sessionID", sessionID, "radioID", session.radioID)
+	m.removeSessionLocked(sessionID)
 }
 
 func (m *MetadataManager) Stop(sessionID string) {
@@ -136,6 +191,9 @@ func (m *MetadataManager) removeSessionLocked(sessionID string) {
 		return
 	}
 	delete(m.sessions, sessionID)
+	if session.expireTimer != nil {
+		session.expireTimer.Stop()
+	}
 
 	reader := m.readers[session.streamURL]
 	if reader == nil {
@@ -167,6 +225,7 @@ func (m *MetadataManager) runReader(reader *activeReader) {
 			attempt = 0
 		} else {
 			attempt++
+			log.Trace("Radio metadata reader retrying", "streamURL", reader.streamURL, "attempt", attempt, err)
 		}
 
 		delay := m.backoff(attempt)
@@ -198,14 +257,31 @@ func (m *MetadataManager) publishTitle(reader *activeReader, title string) {
 	}
 	updatedAt := m.now()
 	publish := m.publish
+	// Copy matching session contexts while the lock is held.
+	type sessionNotify struct {
+		radioID   string
+		notifyCtx context.Context
+	}
+	notifies := make([]sessionNotify, 0, len(m.sessions))
+	for _, session := range m.sessions {
+		if session.streamURL != reader.streamURL {
+			continue
+		}
+		for _, radioID := range radioIDs {
+			if session.radioID == radioID {
+				notifies = append(notifies, sessionNotify{radioID: radioID, notifyCtx: session.notifyCtx})
+				break
+			}
+		}
+	}
 	m.mu.Unlock()
 
 	if publish == nil {
 		return
 	}
-	for _, radioID := range radioIDs {
-		publish(reader.ctx, TitleUpdate{
-			RadioID:   radioID,
+	for _, target := range notifies {
+		publish(target.notifyCtx, TitleUpdate{
+			RadioID:   target.radioID,
 			Title:     title,
 			UpdatedAt: updatedAt,
 		})

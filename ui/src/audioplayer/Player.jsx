@@ -34,7 +34,7 @@ import { keyMap } from '../hotkeys'
 import keyHandlers from './keyHandlers'
 import { calculateGain } from '../utils/calculateReplayGain'
 import { detectBrowserProfile, decisionService } from '../transcode'
-import { httpClient } from '../dataProvider'
+import { httpVoid } from '../dataProvider'
 import { REST_URL } from '../consts'
 
 const radioNowPlayingURL = (radioId) =>
@@ -44,8 +44,12 @@ const requestRadioNowPlaying = (radioId, method) => {
   if (!radioId) {
     return Promise.resolve()
   }
-  return httpClient(radioNowPlayingURL(radioId), { method }).catch(() => {})
+  return httpVoid(radioNowPlayingURL(radioId), { method }).catch(() => {})
 }
+
+// Server-side now-playing sessions expire after an idle TTL; re-POST while a
+// radio session is active so long listening sessions keep their live titles.
+const radioSessionRefreshMs = 4 * 60 * 1000
 
 const Player = () => {
   const theme = useCurrentTheme()
@@ -59,6 +63,7 @@ const Player = () => {
   const lastPositionMsRef = useRef(0)
   const currentTrackIdRef = useRef(null)
   const currentRadioIdRef = useRef(null)
+  const [activeRadioId, setActiveRadioId] = useState(null)
   const stoppedRef = useRef(false)
   const [audioInstance, setAudioInstance] = useState(null)
   const isDesktop = useMediaQuery('(min-width:810px)')
@@ -84,6 +89,7 @@ const Player = () => {
       requestRadioNowPlaying(radioId, 'DELETE')
       if (currentRadioIdRef.current === radioId) {
         currentRadioIdRef.current = null
+        setActiveRadioId(null)
       }
     },
     [],
@@ -97,8 +103,18 @@ const Player = () => {
       requestRadioNowPlaying(currentRadioIdRef.current, 'DELETE')
     }
     currentRadioIdRef.current = radioId
+    setActiveRadioId(radioId)
     requestRadioNowPlaying(radioId, 'POST')
   }, [])
+
+  useInterval(
+    () => {
+      if (currentRadioIdRef.current) {
+        requestRadioNowPlaying(currentRadioIdRef.current, 'POST')
+      }
+    },
+    activeRadioId ? radioSessionRefreshMs : null,
+  )
 
   useInterval(
     () => {
@@ -380,20 +396,25 @@ const Player = () => {
     ],
   )
 
-  const onAudioPlayTrackChange = useCallback(() => {
-    if (currentRadioIdRef.current) {
-      stopRadioNowPlaying()
-    }
-    if (currentTrackId) {
-      subsonic.reportPlayback(
-        currentTrackId,
-        lastPositionMsRef.current,
-        'stopped',
-      )
-    }
-    setHeartbeatTrackId(null)
-    setCurrentTrackId(null)
-  }, [currentTrackId, stopRadioNowPlaying])
+  const onAudioPlayTrackChange = useCallback(
+    (playId, audioLists, audioInfo) => {
+      // Switching to another radio is handled in onAudioPlay; avoid stopping the
+      // session here or the ICY reader is torn down before playback resumes.
+      if (!audioInfo?.isRadio && currentRadioIdRef.current) {
+        stopRadioNowPlaying()
+      }
+      if (currentTrackId) {
+        subsonic.reportPlayback(
+          currentTrackId,
+          lastPositionMsRef.current,
+          'stopped',
+        )
+      }
+      setHeartbeatTrackId(null)
+      setCurrentTrackId(null)
+    },
+    [currentTrackId, stopRadioNowPlaying],
+  )
 
   const onAudioPause = useCallback(
     (info) => {

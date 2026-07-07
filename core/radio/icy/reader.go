@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+
+	"github.com/navidrome/navidrome/consts"
 )
 
 var ErrMissingMetaInt = errors.New("missing icy metadata interval")
@@ -30,6 +32,7 @@ func ReadHTTPStreamTitles(ctx context.Context, client *http.Client, streamURL st
 		return err
 	}
 	req.Header.Set("Icy-MetaData", "1")
+	req.Header.Set("User-Agent", consts.HTTPUserAgent)
 
 	resp, err := client.Do(req)
 	if err != nil {

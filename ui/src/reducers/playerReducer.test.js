@@ -323,5 +323,63 @@ describe('playerReducer', () => {
       expect(result.current).toEqual({})
       expect(result.queue[0].radioTitle).toBe('Artist - Title')
     })
+
+    it('preserves live radio title when the player snapshot omits it', () => {
+      const liveRadio = {
+        ...radioItem,
+        radioTitle: 'Artist - Title',
+        song: { ...radioItem.song, radioTitle: 'Artist - Title' },
+      }
+      const state = {
+        queue: [liveRadio],
+        current: {},
+        savedPlayIndex: 0,
+        clear: false,
+        volume: 1,
+      }
+      const result = playerReducer(state, {
+        type: PLAYER_CURRENT,
+        data: { ...radioItem },
+      })
+
+      expect(result.current.radioTitle).toBe('Artist - Title')
+      expect(result.current.song.radioTitle).toBe('Artist - Title')
+    })
+
+    it('does not inherit the previous station title when switching stations', () => {
+      const previousStation = {
+        ...radioItem,
+        radioTitle: 'Old Station Song',
+        song: { ...radioItem.song, radioTitle: 'Old Station Song' },
+      }
+      const nextStation = {
+        trackId: 'rd-2',
+        uuid: 'radio-uuid-2',
+        name: 'Other Station',
+        musicSrc: 'https://stream.example.test/other',
+        isRadio: true,
+        song: {
+          id: 'rd-2',
+          title: 'Other Station',
+          artist: 'Other Station',
+          album: 'https://stream.example.test/other',
+          streamUrl: 'https://stream.example.test/other',
+        },
+      }
+      const state = {
+        queue: [previousStation, nextStation],
+        current: previousStation,
+        savedPlayIndex: 0,
+        clear: false,
+        volume: 1,
+      }
+      const result = playerReducer(state, {
+        type: PLAYER_CURRENT,
+        data: { ...nextStation },
+      })
+
+      expect(result.current.radioTitle).toBeUndefined()
+      expect(result.current.song.title).toBe('Other Station')
+    })
   })
 })

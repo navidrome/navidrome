@@ -28,11 +28,21 @@ const AudioTitle = React.memo(({ audioInfo, gainInfo, isMobile }) => {
   // the queue item (audioInfo), copied when playback starts. Redux updates
   // to state.player.current never reach that snapshot, so we read the live
   // radio title from redux directly rather than relying on audioInfo alone.
-  const liveRadioTitle = useSelector((state) =>
-    audioInfo.isRadio && state.player?.current?.trackId === audioInfo.trackId
-      ? state.player.current.radioTitle
-      : undefined,
-  )
+  const liveRadioTitle = useSelector((state) => {
+    if (!audioInfo.isRadio) {
+      return undefined
+    }
+    if (
+      state.player?.current?.trackId === audioInfo.trackId &&
+      state.player.current.radioTitle
+    ) {
+      return state.player.current.radioTitle
+    }
+    const queued = state.player.queue?.find(
+      (item) => item.isRadio && item.trackId === audioInfo.trackId,
+    )
+    return queued?.radioTitle
+  })
 
   if (!song) {
     return ''
@@ -55,9 +65,18 @@ const AudioTitle = React.memo(({ audioInfo, gainInfo, isMobile }) => {
       }
     : {}
 
+  const stationTitle = song.title
   const subtitle = song.tags?.['subtitle']
-  const displayTitle =
-    liveRadioTitle || audioInfo.radioTitle || song.radioTitle || song.title
+  // Keep the configured station name until ICY delivers a StreamTitle. Stations that
+  // already embed the current song in the stream metadata show up via radioTitle;
+  // others stay on stationTitle until the backend reader picks up ICY.
+  const icyTitle = (
+    liveRadioTitle ||
+    audioInfo.radioTitle ||
+    song.radioTitle ||
+    ''
+  ).trim()
+  const displayTitle = icyTitle || stationTitle
   const title = displayTitle + (subtitle ? ` (${subtitle})` : '')
 
   const linkTo = audioInfo.isRadio
