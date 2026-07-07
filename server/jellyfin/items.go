@@ -431,27 +431,33 @@ func (api *Router) songsByIDs(ctx context.Context, ids []string) map[string]mode
 
 // itemsByIDs resolves a decoded id list: songs (the common case) come from one batched query,
 // anything else falls back to resolveItemByID's probes. Input order is kept and unresolvable ids
-// are skipped.
+// are skipped. A Finamp-truncated id is resolved by prefix, but the response echoes the id as
+// requested — Finamp matches restored queue items back to its stored (truncated) ids.
 func (api *Router) itemsByIDs(ctx context.Context, ids []string, fields dto.Fields) dto.QueryResult {
 	u, _ := request.UserFrom(ctx)
-	songs := api.songsByIDs(ctx, ids)
+	fullIDs := slice.Map(ids, func(id string) string { return api.resolveItemID(ctx, id) })
+	songs := api.songsByIDs(ctx, fullIDs)
 	var items []dto.BaseItemDto
-	for _, id := range ids {
+	for i, id := range fullIDs {
+		var item dto.BaseItemDto
 		if mf, ok := songs[id]; ok {
-			if u.HasLibraryAccess(mf.LibraryID) {
-				items = append(items, dto.SongToBaseItem(mf, fields))
+			if !u.HasLibraryAccess(mf.LibraryID) {
+				continue
 			}
+			item = dto.SongToBaseItem(mf, fields)
+		} else if item, ok = api.resolveItemByID(ctx, id, fields); !ok {
 			continue
 		}
-		if item, ok := api.resolveItemByID(ctx, id, fields); ok {
-			items = append(items, item)
+		if id != ids[i] {
+			item.Id = dto.EncodeID(ids[i])
 		}
+		items = append(items, item)
 	}
 	return result(items, len(items), 0)
 }
 
 func (api *Router) getItem(w http.ResponseWriter, r *http.Request) {
-	id := dto.DecodeID(chi.URLParam(r, "itemId"))
+	id := api.resolveItemID(r.Context(), dto.DecodeID(chi.URLParam(r, "itemId")))
 	fields := dto.ParseFields(req.Params(r).StringOr("fields", ""))
 	if item, ok := api.resolveItemByID(r.Context(), id, fields); ok {
 		api.ok(w, r, item)

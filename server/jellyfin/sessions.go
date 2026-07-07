@@ -21,13 +21,14 @@ type playbackReport struct {
 
 // decodeReport reads the playback report body. ItemId falls back to a query param (some clients send
 // it there) and is decoded here since it flows straight into scrobbler lookups by media file id.
-func decodeReport(r *http.Request) playbackReport {
+// Finamp reports restored-queue playback with truncated ids, hence resolveItemID.
+func (api *Router) decodeReport(r *http.Request) playbackReport {
 	var body playbackReport
 	_ = json.NewDecoder(r.Body).Decode(&body)
 	if body.ItemId == "" {
 		body.ItemId = r.URL.Query().Get("itemid")
 	}
-	body.ItemId = dto.DecodeID(body.ItemId)
+	body.ItemId = api.resolveItemID(r.Context(), dto.DecodeID(body.ItemId))
 	return body
 }
 
@@ -44,7 +45,7 @@ func clientIdentity(ctx context.Context) (id, name string) {
 // browse/stream they are intentionally not library-access-gated.
 func (api *Router) reportPlaybackStart(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	body := decodeReport(r)
+	body := api.decodeReport(r)
 	clientId, clientName := clientIdentity(ctx)
 	err := api.scrobbler.ReportPlayback(ctx, scrobbler.ReportPlaybackParams{
 		MediaId:      body.ItemId,
@@ -64,7 +65,7 @@ func (api *Router) reportPlaybackStart(w http.ResponseWriter, r *http.Request) {
 // (and on pause/resume/seek) while a client keeps playing an item.
 func (api *Router) reportPlaybackProgress(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	body := decodeReport(r)
+	body := api.decodeReport(r)
 	state := scrobbler.StatePlaying
 	if body.IsPaused {
 		state = scrobbler.StatePaused
@@ -91,7 +92,7 @@ func (api *Router) reportPlaybackProgress(w http.ResponseWriter, r *http.Request
 // only past 50% (capped at 4 minutes). Force-submitting here would mark a one-second skip as played.
 func (api *Router) reportPlaybackStopped(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	body := decodeReport(r)
+	body := api.decodeReport(r)
 	clientId, clientName := clientIdentity(ctx)
 
 	err := api.scrobbler.ReportPlayback(ctx, scrobbler.ReportPlaybackParams{

@@ -29,7 +29,7 @@ func (api *Router) getItemImage(w http.ResponseWriter, r *http.Request) {
 	// under an elevated context to bypass the persistence visibility filter; playlist access is
 	// gated inside resolveArtworkID.
 	ctx := request.WithUser(r.Context(), model.User{IsAdmin: true})
-	itemId := dto.DecodeID(chi.URLParam(r, "itemId"))
+	itemId := api.resolveItemID(ctx, dto.DecodeID(chi.URLParam(r, "itemId")))
 	size, _ := strconv.Atoi(r.URL.Query().Get("maxwidth"))
 
 	artID := api.resolveArtworkID(ctx, r, itemId)
