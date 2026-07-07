@@ -33,6 +33,7 @@ var _ = Describe("Radio now-playing metadata endpoints", func() {
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.SessionTimeout = time.Minute
+		conf.Server.EnableSharing = false
 
 		radioRepo = &tests.MockedRadioRepo{
 			Data: map[string]*model.Radio{
