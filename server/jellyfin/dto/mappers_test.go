@@ -207,8 +207,7 @@ var _ = Describe("mappers", func() {
 	})
 
 	Describe("premiereDate", func() {
-		// Finamp re-sorts "Latest Releases" client-side by PremiereDate (parsed with
-		// DateTime.tryParse); a missing value makes that sort a no-op over unstable ordering.
+		// Finamp re-sorts "Latest Releases" client-side by PremiereDate; absent values sort arbitrarily.
 		It("serializes a full date", func() {
 			mf := model.MediaFile{ID: "s1", Title: "Song", Date: "2007-02-01", Year: 2007}
 			item := SongToBaseItem(mf, nil)
@@ -263,8 +262,7 @@ var _ = Describe("mappers", func() {
 		p.UpdatedAt = time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC)
 		after := PlaylistToBaseItem(p)
 
-		// Finamp caches covers keyed by blurHash (its imageId is the item id, which never changes),
-		// so both the tag and the blurhash must change for an uploaded cover to show up.
+		// Finamp caches covers keyed by blurHash, so tag and blurhash must change with the cover.
 		Expect(after.ImageTags["Primary"]).ToNot(Equal(before.ImageTags["Primary"]))
 		Expect(after.ImageBlurHashes["Primary"]).ToNot(Equal(before.ImageBlurHashes["Primary"]))
 	})

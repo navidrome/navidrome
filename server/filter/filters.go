@@ -103,9 +103,8 @@ func SongsByAlbum(albumId string) Options {
 	})
 }
 
-// SongsByArtistID matches media files where the artist participates as either album artist or track
-// artist, in album order. It semi-joins the media_file_artists junction (indexed by artist_id)
-// rather than scanning the participants JSON, which is an order of magnitude slower at library scale.
+// SongsByArtistID matches media files where the artist participates as album or track artist, in
+// album order. Semi-joins media_file_artists; scanning the participants JSON is ~10x slower at scale.
 func SongsByArtistID(artistId string) Options {
 	return addDefaultFilters(Options{
 		Sort: "album",
@@ -190,10 +189,8 @@ func ByGenreID(genreIds []string) Sqlizer {
 	return persistence.TagIDFilter("genre_id", genreIds)
 }
 
-// ArtistsByGenreID matches artists credited as album artist on an album tagged with any of the
-// given genre tag ids. A non-correlated semi-join: the album subquery runs once, not per artist
-// row (the correlated EXISTS form rescans albums for every artist and is orders of magnitude
-// slower on large libraries).
+// ArtistsByGenreID matches artists credited as album artist on an album with any of the given
+// genre tag ids. Non-correlated semi-join: the correlated EXISTS form rescans albums per artist row.
 func ArtistsByGenreID(genreIds []string) Sqlizer {
 	return Expr(
 		`artist.id IN (SELECT jt.value FROM album, json_tree(album.participants, '$.albumartist') jt

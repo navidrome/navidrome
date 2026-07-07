@@ -130,8 +130,7 @@ var _ = Describe("Images", func() {
 	})
 })
 
-// Real image fixtures: postItemImage validates uploads by decoding them (like the native API),
-// so magic-number-only fakes don't pass.
+// Real image fixtures: postItemImage validates uploads by decoding them.
 func pngBytes() []byte {
 	var b bytes.Buffer
 	Expect(png.Encode(&b, image.NewRGBA(image.Rect(0, 0, 1, 1)))).To(Succeed())

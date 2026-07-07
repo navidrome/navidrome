@@ -77,9 +77,7 @@ var _ = Describe("Similar", func() {
 		})
 	})
 
-	// Finamp requests /Items/{id}/InstantMix when "start instant mix for individual tracks" is on
-	// (every track tap) and from the long-press menus. It plays exactly what is returned, so a
-	// track seed must lead its own mix.
+	// Finamp plays exactly what InstantMix returns, so a track seed must lead its own mix.
 	Describe("GET /Items/{id}/InstantMix", func() {
 		It("returns the seed track first, followed by similar songs", func() {
 			providerFake.similarSongs = model.MediaFiles{{ID: "x1", Title: "Similar Song", LibraryID: 1}}

@@ -131,7 +131,6 @@ func (api *Router) routes() http.Handler {
 		r.Get("/Audio/{itemId}/stream", api.streamAudio)
 		r.Get("/Audio/{itemId}/stream.{container}", api.streamAudio)
 		r.Get("/Audio/{itemId}/universal", api.streamAudio)
-		// Finamp's transcoding mode plays HLS from here (see streamHls).
 		r.Get("/Audio/{itemId}/main.m3u8", api.streamHls)
 		r.Get("/Items/{itemId}/PlaybackInfo", api.getPlaybackInfo)
 		r.Post("/Items/{itemId}/PlaybackInfo", api.getPlaybackInfo)

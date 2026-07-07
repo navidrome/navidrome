@@ -10,9 +10,8 @@ import (
 
 func TicksFromSeconds(sec float32) int64 { return int64(float64(sec) * 1e7) }
 
-// premiereDate turns a (possibly partial) Navidrome date tag into the ISO 8601 PremiereDate
-// clients parse, padding "2007" / "2007-02" to a full date and falling back to year. Returns nil
-// when there is no date information at all, so the field is omitted.
+// premiereDate converts a possibly partial date tag ("2007", "2007-02") into the ISO 8601
+// PremiereDate clients parse, falling back to year; nil when neither exists.
 func premiereDate[T ~string](date T, year int) *string {
 	d := string(date)
 	switch len(d) {
@@ -236,11 +235,8 @@ func GenreToBaseItem(g model.Genre) BaseItemDto {
 // PlaylistToBaseItem maps a playlist to a Playlist BaseItemDto. model.Playlist has no embedded
 // Annotations (no starred/rating/play-count), so UserData is left nil.
 func PlaylistToBaseItem(p model.Playlist) BaseItemDto {
-	// The image tag (and the blurhash derived from it) must change when the cover changes: Finamp
-	// caches covers keyed by blurHash, since its imageId is the item id, which never changes.
-	// Playlist Put bumps UpdatedAt on cover upload, so it versions the tag. Real Jellyfin hashes
-	// the image itself; UpdatedAt over-invalidates (any playlist edit busts the cover cache), which
-	// only costs a refetch.
+	// Finamp caches covers keyed by blurHash, so the tag (and blurhash) must change with the cover.
+	// UpdatedAt versions it (Put bumps it on upload); over-invalidation only costs a refetch.
 	tag := fmt.Sprintf("%s-%x", p.ID, p.UpdatedAt.UnixMilli())
 	return BaseItemDto{
 		Name: p.Name,

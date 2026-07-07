@@ -48,8 +48,7 @@ func marshalTags(tags model.Tags) string {
 	return string(res)
 }
 
-// TagIDFilter matches rows whose tags JSON contains the given tag id(s) under the tag name
-// (a "<name>_id" filter key maps to "$.<name>"). idValue may be a single id or a slice.
+// TagIDFilter matches rows whose tags JSON contains the tag id(s); a "<name>_id" key maps to "$.<name>".
 func TagIDFilter(name string, idValue any) Sqlizer {
 	name = strings.TrimSuffix(name, "_id")
 	return Exists(

@@ -102,13 +102,11 @@ var _ = Describe("Browsing", func() {
 			Expect(*q.Items[1].IndexNumber).To(Equal(2))
 		})
 
-		// Finamp's "Latest Releases" artist section: newest release year first. PremiereDate must be
-		// recognized, or applySort falls through to Album and the view sorts by album name instead.
+		// "Latest Releases": if PremiereDate isn't recognized, applySort falls through to album-name order.
 		It("sorts an artist's tracks by release year for SortBy=PremiereDate (Latest Releases)", func() {
 			q := queryResult(get("/Items?IncludeItemTypes=Audio&Recursive=true&AlbumArtistIds=" + enc(artistID("The Beatles")) +
 				"&SortBy=PremiereDate%2CAlbum%2CParentIndexNumber%2CIndexNumber%2CSortName&SortOrder=Descending"))
 			got := names(q.Items)
-			// Abbey Road (1969) tracks must come before Help! (1965).
 			Expect(got).To(HaveLen(3))
 			Expect(got[:2]).To(ConsistOf("Come Together", "Something"))
 			Expect(got[2]).To(Equal("Help!"))
@@ -255,17 +253,14 @@ var _ = Describe("Browsing", func() {
 			Expect(names(q.Items)).To(ConsistOf("Abbey Road", "IV"))
 		})
 
-		// Finamp persists its play queue with ids packed into 16 bytes (Jellyfin GUID assumption),
-		// so after an app restart it batch-fetches truncated ids. See "Finamp saved-queue id
-		// truncation" in the README.
+		// Finamp restores its saved queue with ids truncated to 16 bytes (see README).
 		Describe("Finamp-truncated ids (saved queue restore)", func() {
 			It("resolves a truncated id by unique prefix and echoes the requested id", func() {
 				full := songID("Come Together")
 				truncated := full[:16]
 				q := queryResult(get("/Items?ids=" + enc(truncated)))
 				Expect(names(q.Items)).To(ConsistOf("Come Together"))
-				// Finamp matches restored items back to its stored ids, so the response must carry
-				// the id that was requested, not the full one.
+				// Finamp matches restored items by its stored ids, so the requested id must be echoed.
 				Expect(q.Items[0].Id).To(Equal(enc(truncated)))
 			})
 

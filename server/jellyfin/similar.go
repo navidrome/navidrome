@@ -82,12 +82,9 @@ func (api *Router) getSimilarItems(w http.ResponseWriter, r *http.Request) {
 	}))
 }
 
-// getInstantMix answers GET /Items/{itemId}/InstantMix with a playable track mix seeded by the
-// item, powered by the same provider as the Similar endpoints. Finamp requests this on every track
-// tap when its "start instant mix for individual tracks" setting is on, and plays exactly what is
-// returned — so a track seed must lead its own mix or the tapped song wouldn't play. An
-// unresolvable seed (or one the provider knows nothing about) degrades to an empty/seed-only
-// result, never a 404 the client would surface as an error.
+// getInstantMix answers GET /Items/{itemId}/InstantMix. Finamp plays exactly what is returned, so
+// a track seed leads its own mix; provider errors and unknown seeds degrade to seed-only/empty
+// results, never a 404 the client would surface as an error.
 func (api *Router) getInstantMix(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := api.resolveItemID(ctx, dto.DecodeID(chi.URLParam(r, "itemId")))
@@ -98,20 +95,16 @@ func (api *Router) getInstantMix(w http.ResponseWriter, r *http.Request) {
 		api.ok(w, r, result(nil, 0, 0))
 		return
 	}
-	// The key is prefixed so a mix never shares a singleflight/cache slot with a Similar request
-	// for the same id and limit — they answer different shapes.
+	// Prefixed key: a mix must not share the singleflight/cache slot with a Similar request.
 	api.ok(w, r, api.awaitSimilar(ctx, "mix|"+id, limit, func(ctx context.Context) dto.QueryResult {
 		if mf, ok := entity.(*model.MediaFile); ok {
 			return api.instantMixForSong(ctx, mf, limit)
 		}
-		// Container seeds (artist, album): the provider's similar-songs signal already blends the
-		// seed's own tracks with related ones.
+		// Container seeds: the provider's similar songs already blend the seed's own tracks.
 		return api.similarSongs(ctx, id, limit)
 	}))
 }
 
-// instantMixForSong builds a track-seeded mix: the seed first, then the provider's similar songs,
-// skipping a repeated seed and songs outside the caller's libraries.
 func (api *Router) instantMixForSong(ctx context.Context, mf *model.MediaFile, limit int) dto.QueryResult {
 	u, _ := request.UserFrom(ctx)
 	if !u.HasLibraryAccess(mf.LibraryID) {

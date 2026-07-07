@@ -57,8 +57,7 @@ var _ = Describe("Streaming", func() {
 			Expect(body).To(HavePrefix("#EXTM3U\n"))
 			Expect(body).To(HaveSuffix("#EXT-X-ENDLIST\n"))
 
-			// Fetch the advertised segment like an HLS player would (resolved against the
-			// playlist URL) and verify it hits the streamer with the aac transcode request.
+			// Fetch the advertised segment like an HLS player would.
 			var segment string
 			for _, line := range strings.Split(body, "\n") {
 				if line != "" && !strings.HasPrefix(line, "#") {

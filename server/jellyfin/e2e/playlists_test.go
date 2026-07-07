@@ -215,9 +215,8 @@ var _ = Describe("Playlists", func() {
 				To(Equal(http.StatusNotImplemented))
 		})
 
-		// Finamp caches covers keyed by the blurhash (derived from the image tag), so a stale tag
-		// means the client never refetches an uploaded cover. Guards the whole chain: SetImage must
-		// go through a full Put (which bumps UpdatedAt), and the tag must be versioned by it.
+		// Guards the whole chain: SetImage must go through a full Put (which bumps UpdatedAt), and the
+		// tag must be versioned by it, or clients keep their blurhash-keyed cover cache forever.
 		It("rotates the playlist's image tag and blurhash after a cover upload", func() {
 			plID := createPlaylist("Cover Tag", nil)
 			imageTag := func() string {

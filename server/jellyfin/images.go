@@ -83,9 +83,8 @@ func (api *Router) postItemImage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
-	// MaxImageUploadSize caps the image itself, matching the native endpoint's semantics. Jellyfin
-	// clients base64-encode the wire body (4/3 bigger), so the read cap allows for the inflation
-	// and the real check happens after decoding.
+	// The limit caps the decoded image (native endpoint semantics); Jellyfin clients base64-encode
+	// the wire body (4/3 bigger), so the read cap allows for inflation.
 	limit := maxImageUploadSize()
 	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, limit*4/3+4))
 	if err != nil {
@@ -112,8 +111,7 @@ func (api *Router) postItemImage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "file too large", http.StatusBadRequest)
 		return
 	}
-	// Validate by decoding and take the extension from the real format, like the native endpoint —
-	// clients lie in Content-Type (Finamp falls back to image/jpeg for anything it doesn't know).
+	// Validate by decoding and derive the extension from the real format — clients lie in Content-Type.
 	_, format, err := image.DecodeConfig(bytes.NewReader(imgBytes))
 	if err != nil {
 		log.Warn(ctx, "Jellyfin API: cover upload rejected: not a valid image", "playlistId", id, err)

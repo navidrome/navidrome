@@ -159,8 +159,7 @@ func firstDecodedID(s string) string {
 	return dto.DecodeID(strings.TrimSpace(first))
 }
 
-// decodedQueryIDs reads an id-list query param in both spellings clients use (see queryIDs) and
-// decodes each id.
+// decodedQueryIDs reads an id-list param in both client spellings (see queryIDs), decoding each id.
 func decodedQueryIDs(r *http.Request, key string) []string {
 	return slice.Map(queryIDs(r, key), dto.DecodeID)
 }
@@ -299,8 +298,7 @@ func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, paren
 
 // listArtists lists artists in the given role: RoleAlbumArtist for the "album artists" views,
 // RoleArtist for performing artists (/Artists). Without the role filter both lists would be identical.
-// genreIds restricts to album artists of that genre's albums; it isn't applied to search (a name
-// lookup, like role — see below).
+// genreIds isn't applied to search — a name lookup, like role (see below).
 func (api *Router) listArtists(ctx context.Context, opts model.QueryOptions, genreIds []string, scopeIDs []int, search string, fav bool, role model.Role) (dto.QueryResult, error) {
 	repo := api.ds.Artist(ctx)
 
@@ -429,10 +427,9 @@ func (api *Router) songsByIDs(ctx context.Context, ids []string) map[string]mode
 	return songs
 }
 
-// itemsByIDs resolves a decoded id list: songs (the common case) come from one batched query,
-// anything else falls back to resolveItemByID's probes. Input order is kept and unresolvable ids
-// are skipped. A Finamp-truncated id is resolved by prefix, but the response echoes the id as
-// requested — Finamp matches restored queue items back to its stored (truncated) ids.
+// itemsByIDs resolves a decoded id list, keeping input order and skipping unresolvable ids.
+// A Finamp-truncated id is resolved by prefix but echoed as requested — Finamp matches restored
+// queue items against its stored (truncated) ids.
 func (api *Router) itemsByIDs(ctx context.Context, ids []string, fields dto.Fields) dto.QueryResult {
 	u, _ := request.UserFrom(ctx)
 	fullIDs := slice.Map(ids, func(id string) string { return api.resolveItemID(ctx, id) })
@@ -532,8 +529,7 @@ var sortColumnsByType = map[string]map[string]string{
 		"dateplayed":        "play_date",
 		"communityrating":   "rating",
 		"random":            "random",
-		// Finamp's "Latest Releases" artist section sorts by PremiereDate; "year" matches the
-		// ProductionYear the DTO exposes for songs.
+		// Finamp's "Latest Releases" sorts by PremiereDate; "year" matches songs' ProductionYear.
 		"premieredate":   "year",
 		"productionyear": "year",
 	},

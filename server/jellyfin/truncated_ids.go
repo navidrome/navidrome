@@ -8,16 +8,13 @@ import (
 	"github.com/navidrome/navidrome/model"
 )
 
-// truncatedIDLen is the length of an item id after Finamp's saved-queue persistence truncates it:
-// its packIds() stores every id as exactly 16 bytes, assuming Jellyfin's 32-hex-char GUIDs, so our
-// longer ids come back cut to their first 16 characters after an app restart. No Navidrome id
-// family is 16 chars long (nanoid=22, legacy MD5=32, playlist UUID=36), so the length alone
-// identifies a truncated id. See "Finamp saved-queue id truncation" in the README.
+// truncatedIDLen is what Finamp's saved-queue persistence cuts item ids to (16 bytes, assuming
+// Jellyfin GUIDs). No Navidrome id family is 16 chars (nanoid=22, legacy MD5=32, playlist
+// UUID=36), so the length alone identifies a truncated id. See README.
 const truncatedIDLen = 16
 
-// resolveItemID maps a truncated item id back to the full entity id via unique-prefix lookup,
-// probing songs first (queue items), then the container types a saved queue can reference. The id
-// is returned unchanged when it isn't truncation-shaped, matches nothing, or is ambiguous.
+// resolveItemID maps a truncated item id back to the full id via unique-prefix lookup. The id is
+// returned unchanged when it isn't truncation-shaped, matches nothing, or is ambiguous.
 func (api *Router) resolveItemID(ctx context.Context, id string) string {
 	if len(id) != truncatedIDLen {
 		return id

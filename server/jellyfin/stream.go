@@ -96,10 +96,9 @@ func (api *Router) streamAudio(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// streamHls serves /Audio/{itemId}/main.m3u8, the endpoint Finamp uses when its transcoding
-// setting is enabled. It returns a single-segment VOD playlist whose one segment is the existing
-// progressive transcode endpoint, reusing the whole pipeline instead of real segmented HLS.
-// Trade-off: seeking re-reads from the start, same as Subsonic transcoded streams.
+// streamHls serves /Audio/{itemId}/main.m3u8 (Finamp's transcoding mode) as a single-segment VOD
+// playlist whose one segment is the progressive transcode endpoint, reusing that whole pipeline.
+// Trade-off: seeking re-reads from the start, like Subsonic transcoded streams.
 func (api *Router) streamHls(w http.ResponseWriter, r *http.Request) {
 	mf, ok := api.mediaFileForRequest(w, r)
 	if !ok {
@@ -107,9 +106,8 @@ func (api *Router) streamHls(w http.ResponseWriter, r *http.Request) {
 	}
 	p := req.Params(r)
 
-	// HLS packed-audio segments can only carry ADTS/AAC or MP3, so other codecs fall back to aac.
-	// A server-forced transcoding wins verbatim (ResolveRequest's override rewrites the segment
-	// format anyway, and the playlist must agree with the actual segment bytes).
+	// HLS packed audio can only carry ADTS/AAC or MP3; other codecs fall back to aac. A forced
+	// transcoding wins verbatim — its override rewrites the segment anyway, and the playlist must match.
 	codec := strings.ToLower(p.StringOr("audiocodec", ""))
 	if codec != "mp3" {
 		codec = "aac"
@@ -118,8 +116,7 @@ func (api *Router) streamHls(w http.ResponseWriter, r *http.Request) {
 		codec = strings.ToLower(trc.TargetFormat)
 	}
 
-	// Relative URI, resolved by the player against the playlist URL. HLS fetches don't carry the
-	// original auth headers, so the token rides in the query.
+	// Relative to the playlist URL. HLS fetches drop auth headers, so the token rides in the query.
 	segment := "stream." + codec
 	q := url.Values{}
 	if token := tokenFromRequest(r); token != "" {
