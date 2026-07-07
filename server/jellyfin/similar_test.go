@@ -2,12 +2,16 @@ package jellyfin
 
 import (
 	"context"
+	"encoding/json"
+	"net/http/httptest"
 	"sync/atomic"
 	"time"
 
+	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -85,5 +89,43 @@ var _ = Describe("awaitSimilar", func() {
 		})
 		Expect(hasDeadline).To(BeTrue(), "background fetch must not be able to run forever")
 		Expect(time.Until(deadline)).To(BeNumerically("<=", similarFetchTimeout))
+	})
+})
+
+// blockingProvider hangs SimilarSongs until release is closed, simulating a slow/unreachable agent.
+type blockingProvider struct {
+	external.Provider
+	release chan struct{}
+}
+
+func (p *blockingProvider) SimilarSongs(context.Context, string, int) (model.MediaFiles, error) {
+	<-p.release
+	return nil, nil
+}
+
+var _ = Describe("getInstantMix", func() {
+	It("returns the seed track even when the provider fetch exceeds the wait", func() {
+		old := similarWait
+		similarWait = 20 * time.Millisecond
+		DeferCleanup(func() { similarWait = old })
+
+		ds := &tests.MockDataStore{}
+		ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+			{ID: "s1", Title: "Seed Song", LibraryID: 1},
+		})
+		release := make(chan struct{})
+		DeferCleanup(func() { close(release) })
+		api := &Router{ds: ds, provider: &blockingProvider{release: release}}
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "/Items/"+dto.EncodeID("s1")+"/InstantMix", nil).
+			WithContext(request.WithUser(context.Background(), model.User{ID: "u1", Libraries: model.Libraries{{ID: 1}}}))
+		r = withChiURLParam(r, "itemId", dto.EncodeID("s1"))
+		api.getInstantMix(w, r)
+
+		var res dto.QueryResult
+		Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+		Expect(res.Items).To(HaveLen(1))
+		Expect(res.Items[0].Name).To(Equal("Seed Song"))
 	})
 })

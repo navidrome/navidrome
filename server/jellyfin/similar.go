@@ -95,37 +95,34 @@ func (api *Router) getInstantMix(w http.ResponseWriter, r *http.Request) {
 		api.ok(w, r, result(nil, 0, 0))
 		return
 	}
-	// Prefixed key: a mix must not share the singleflight/cache slot with a Similar request.
-	api.ok(w, r, api.awaitSimilar(ctx, "mix|"+id, limit, func(ctx context.Context) dto.QueryResult {
-		if mf, ok := entity.(*model.MediaFile); ok {
-			return api.instantMixForSong(ctx, mf, limit)
+	mf, isSong := entity.(*model.MediaFile)
+	if isSong {
+		if u, _ := request.UserFrom(ctx); !u.HasLibraryAccess(mf.LibraryID) {
+			api.ok(w, r, result(nil, 0, 0))
+			return
 		}
-		// Container seeds: the provider's similar songs already blend the seed's own tracks.
+	}
+	// Prefixed key: a mix must not share the singleflight/cache slot with a Similar request.
+	tail := api.awaitSimilar(ctx, "mix|"+id, limit, func(ctx context.Context) dto.QueryResult {
 		return api.similarSongs(ctx, id, limit)
-	}))
-}
-
-func (api *Router) instantMixForSong(ctx context.Context, mf *model.MediaFile, limit int) dto.QueryResult {
-	u, _ := request.UserFrom(ctx)
-	if !u.HasLibraryAccess(mf.LibraryID) {
-		return result(nil, 0, 0)
+	})
+	if !isSong {
+		// Container seeds: the provider's similar songs already blend the seed's own tracks.
+		api.ok(w, r, tail)
+		return
 	}
+	// The seed leads the mix and must not depend on the provider: a slow or failing provider times
+	// the await out with an empty tail, but the tapped track still plays.
 	items := []dto.BaseItemDto{dto.SongToBaseItem(*mf, nil)}
-	songs, err := api.provider.SimilarSongs(ctx, mf.ID, limit)
-	if err != nil {
-		log.Debug(ctx, "Jellyfin API: no similar songs for instant mix", "id", mf.ID, err)
-		return result(items, len(items), 0)
-	}
-	for _, s := range songs {
+	for _, it := range tail.Items {
 		if len(items) >= limit {
 			break
 		}
-		if s.ID == mf.ID || !u.HasLibraryAccess(s.LibraryID) {
-			continue
+		if it.Id != items[0].Id {
+			items = append(items, it)
 		}
-		items = append(items, dto.SongToBaseItem(s, nil))
 	}
-	return result(items, len(items), 0)
+	api.ok(w, r, result(items, len(items), 0))
 }
 
 func (api *Router) similarArtists(ctx context.Context, id string, limit int) dto.QueryResult {
