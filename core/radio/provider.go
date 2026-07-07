@@ -35,7 +35,7 @@ func NewMetadataManagerService(publisher TitlePublisher) *MetadataManager {
 // ICY metadata or a client-error HTTP status — so the reader backs off for
 // much longer instead of hammering the station.
 func classifyICYError(err error) error {
-	if errors.Is(err, icy.ErrMissingMetaInt) {
+	if errors.Is(err, icy.ErrMissingMetaInt) || errors.Is(err, icy.ErrInvalidMetaInt) {
 		return MarkPermanent(err)
 	}
 	var statusErr *icy.ResponseStatusError

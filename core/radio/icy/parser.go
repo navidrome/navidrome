@@ -17,17 +17,22 @@ var (
 	errEndOfStream         = errors.New("icy stream ended")
 )
 
+const (
+	maxMetaInt     = 1024 * 1024
+	maxMetadataLen = 255 * 16
+)
+
 // ReadStreamTitles reads ICY metadata blocks from r and emits changed StreamTitle values.
 func ReadStreamTitles(ctx context.Context, r io.Reader, metaInt int, handleTitle func(string)) error {
-	if metaInt <= 0 {
+	if metaInt <= 0 || metaInt > maxMetaInt {
 		return ErrInvalidMetaInt
 	}
 	if handleTitle == nil {
 		return ErrMissingTitleHandler
 	}
 
-	audio := make([]byte, metaInt)
 	length := make([]byte, 1)
+	metadataBuf := make([]byte, maxMetadataLen)
 	lastTitle := ""
 
 	for {
@@ -35,8 +40,8 @@ func ReadStreamTitles(ctx context.Context, r io.Reader, metaInt int, handleTitle
 			return err
 		}
 
-		if err := readFullOrEnd(r, audio); err != nil {
-			if errors.Is(err, errEndOfStream) {
+		if _, err := io.CopyN(io.Discard, r, int64(metaInt)); err != nil {
+			if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
 				return nil
 			}
 			return err
@@ -58,7 +63,7 @@ func ReadStreamTitles(ctx context.Context, r io.Reader, metaInt int, handleTitle
 			continue
 		}
 
-		metadata := make([]byte, metadataLen)
+		metadata := metadataBuf[:metadataLen]
 		if err := readFullOrEnd(r, metadata); err != nil {
 			if errors.Is(err, errEndOfStream) {
 				return nil
@@ -96,9 +101,12 @@ func streamTitle(metadata []byte) string {
 	}
 
 	start += len(prefix)
-	end := strings.IndexByte(text[start:], '\'')
+	end := strings.Index(text[start:], "';")
 	if end < 0 {
-		return ""
+		end = strings.IndexByte(text[start:], '\'')
+		if end < 0 {
+			return ""
+		}
 	}
 
 	return strings.TrimSpace(text[start : start+end])

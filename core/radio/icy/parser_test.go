@@ -73,6 +73,22 @@ var _ = Describe("ReadStreamTitles", func() {
 		Expect(titles).To(BeEmpty())
 	})
 
+	It("returns an error for huge metadata intervals", func() {
+		titles, err := readTitles(context.Background(), nil, maxMetaInt+1)
+
+		Expect(err).To(MatchError(ErrInvalidMetaInt))
+		Expect(titles).To(BeEmpty())
+	})
+
+	It("keeps single quotes inside StreamTitle values", func() {
+		stream := icyStream(metaInt, "StreamTitle='L'Oiseau - Track';")
+
+		titles, err := readTitles(context.Background(), stream, metaInt)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(titles).To(Equal([]string{"L'Oiseau - Track"}))
+	})
+
 	It("stops when context is cancelled", func() {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
