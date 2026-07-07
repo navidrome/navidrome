@@ -4,4 +4,5 @@ package db
 var (
 	IsSchemaEmpty = isSchemaEmpty
 	BackupPath    = backupPath
+	OptimizeDB    = optimize
 )
