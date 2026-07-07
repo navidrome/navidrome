@@ -104,14 +104,14 @@ func SongsByAlbum(albumId string) Options {
 }
 
 // SongsByArtistID matches media files where the artist participates as either album artist or track
-// artist, in album order. Mirrors AlbumsByArtistID but at the media_file level.
+// artist, in album order. It semi-joins the media_file_artists junction (indexed by artist_id)
+// rather than scanning the participants JSON, which is an order of magnitude slower at library scale.
 func SongsByArtistID(artistId string) Options {
 	return addDefaultFilters(Options{
 		Sort: "album",
-		Filters: Or{
-			persistence.Exists("json_tree(participants, '$.albumartist')", Eq{"value": artistId}),
-			persistence.Exists("json_tree(participants, '$.artist')", Eq{"value": artistId}),
-		},
+		Filters: Expr(
+			"media_file.id IN (SELECT media_file_id FROM media_file_artists WHERE artist_id = ? AND role IN (?, ?))",
+			artistId, model.RoleArtist.String(), model.RoleAlbumArtist.String()),
 	})
 }
 
