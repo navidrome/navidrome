@@ -257,6 +257,18 @@ func artistID(name string) string {
 	return ""
 }
 
+func genreID(name string) string {
+	genres, err := ds.Genre(ctx).GetAll()
+	Expect(err).ToNot(HaveOccurred())
+	for _, g := range genres {
+		if g.Name == name {
+			return g.ID
+		}
+	}
+	Fail("genre not found: " + name)
+	return ""
+}
+
 // --- Suite lifecycle ---
 
 var _ = BeforeSuite(func() {

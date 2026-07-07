@@ -185,6 +185,11 @@ func ByGenre(genre string) Options {
 	})
 }
 
+// ByGenreID matches items (albums or songs) tagged with any of the given genre tag ids.
+func ByGenreID(genreIds []string) Sqlizer {
+	return persistence.TagIDFilter("genre_id", genreIds)
+}
+
 func filterByGenre(genre string) Sqlizer {
 	return persistence.Exists(`json_tree(tags, "$.genre")`, And{
 		Like{"value": genre},

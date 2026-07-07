@@ -147,6 +147,39 @@ var _ = Describe("Browsing", func() {
 		})
 	})
 
+	// Finamp's genre screen sends ParentId=<libraryId> (scoping) plus GenreIds=<genreId>.
+	Describe("genre filtering (GenreIds)", func() {
+		lib1 := enc("1")
+
+		It("filters albums by GenreIds", func() {
+			q := queryResult(get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true&ParentId=" + lib1 + "&GenreIds=" + enc(genreID("Jazz"))))
+			Expect(names(q.Items)).To(ConsistOf("Kind of Blue"))
+			Expect(q.TotalRecordCount).To(Equal(1))
+		})
+
+		It("filters songs by GenreIds", func() {
+			q := queryResult(get("/Items?IncludeItemTypes=Audio&Recursive=true&ParentId=" + lib1 + "&GenreIds=" + enc(genreID("Rock"))))
+			Expect(names(q.Items)).To(ConsistOf("Come Together", "Something", "Help!", "Stairway To Heaven"))
+			Expect(q.TotalRecordCount).To(Equal(4))
+		})
+
+		It("matches any of multiple comma-separated GenreIds", func() {
+			q := queryResult(get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true&GenreIds=" + enc(genreID("Jazz")) + "," + enc(genreID("Pop"))))
+			Expect(names(q.Items)).To(ConsistOf("Kind of Blue", "Singles"))
+		})
+
+		It("matches any of multiple repeated GenreIds params (@jellyfin/sdk spelling)", func() {
+			q := queryResult(get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true&GenreIds=" + enc(genreID("Jazz")) + "&GenreIds=" + enc(genreID("Pop"))))
+			Expect(names(q.Items)).To(ConsistOf("Kind of Blue", "Singles"))
+		})
+
+		It("returns nothing for an unknown genre id", func() {
+			q := queryResult(get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true&GenreIds=" + enc("no-such-genre")))
+			Expect(q.Items).To(BeEmpty())
+			Expect(q.TotalRecordCount).To(Equal(0))
+		})
+	})
+
 	// Jellify (and the official Jellyfin TypeScript SDK) send query params in camelCase
 	// (parentId, includeItemTypes, albumArtistIds), where Finamp sends PascalCase. Real Jellyfin
 	// binds them case-insensitively; these guard that our dispatcher does too, and that browsing an

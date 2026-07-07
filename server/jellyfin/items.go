@@ -39,7 +39,7 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (dto.QueryRe
 	// Query keys are read lowercase because normalizeQueryKeys folded them (Jellyfin binds
 	// case-insensitively). /Items?ids= is a batch-fetch-by-id that bypasses the type dispatch below.
 	fields := dto.ParseFields(p.StringOr("fields", ""))
-	if ids := p.StringOr("ids", ""); ids != "" {
+	if ids := decodedQueryIDs(r, "ids"); len(ids) > 0 {
 		return api.itemsByIDs(ctx, ids, fields), nil
 	}
 	parentId := dto.DecodeID(p.StringOr("parentid", ""))
@@ -65,6 +65,8 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (dto.QueryRe
 	contributingScope := p.StringOr("contributingartistids", "")
 	artistId := firstDecodedID(firstNonEmpty(albumArtistScope, contributingScope))
 	contributingOnly := albumArtistScope == "" && contributingScope != ""
+	// Finamp's genre screen sends ParentId=<libraryId> for scoping plus GenreIds for the genre.
+	genreIds := decodedQueryIDs(r, "genreids")
 
 	scopeIDs, isLibraryParent := resolveLibraryScope(ctx, parentId)
 	// A playlist parent always resolves to its tracks, whatever IncludeItemTypes says. Jellify opens
@@ -98,7 +100,7 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (dto.QueryRe
 	if len(types) == 1 {
 		opts := model.QueryOptions{Offset: offset, Max: limit}
 		applySort(&opts, types[0], sortBy, sortOrder)
-		return api.queryItemsOfType(ctx, types[0], opts, entityParent, artistId, contributingOnly, scopeIDs, search, favOnly, fields)
+		return api.queryItemsOfType(ctx, types[0], opts, entityParent, artistId, contributingOnly, genreIds, scopeIDs, search, favOnly, fields)
 	}
 
 	var items []dto.BaseItemDto
@@ -112,7 +114,7 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (dto.QueryRe
 			opts.Max = offset + limit
 		}
 		applySort(&opts, itemType, sortBy, sortOrder)
-		res, err := api.queryItemsOfType(ctx, itemType, opts, entityParent, artistId, contributingOnly, scopeIDs, search, favOnly, fields)
+		res, err := api.queryItemsOfType(ctx, itemType, opts, entityParent, artistId, contributingOnly, genreIds, scopeIDs, search, favOnly, fields)
 		if err != nil {
 			return dto.QueryResult{}, err
 		}
@@ -122,10 +124,10 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (dto.QueryRe
 	return result(paginate(items, offset, limit), total, offset), nil
 }
 
-func (api *Router) queryItemsOfType(ctx context.Context, itemType string, opts model.QueryOptions, entityParent, artistId string, contributingOnly bool, scopeIDs []int, search string, favOnly bool, fields dto.Fields) (dto.QueryResult, error) {
+func (api *Router) queryItemsOfType(ctx context.Context, itemType string, opts model.QueryOptions, entityParent, artistId string, contributingOnly bool, genreIds []string, scopeIDs []int, search string, favOnly bool, fields dto.Fields) (dto.QueryResult, error) {
 	switch itemType {
 	case "Audio":
-		return api.listSongs(ctx, opts, entityParent, artistId, scopeIDs, search, favOnly, fields)
+		return api.listSongs(ctx, opts, entityParent, artistId, genreIds, scopeIDs, search, favOnly, fields)
 	case "MusicArtist":
 		// The MusicArtist browse hierarchy (UserViews -> artists -> albums) means album artists.
 		return api.listArtists(ctx, opts, scopeIDs, search, favOnly, model.RoleAlbumArtist)
@@ -134,7 +136,7 @@ func (api *Router) queryItemsOfType(ctx context.Context, itemType string, opts m
 	case "Playlist":
 		return api.listPlaylists(ctx, opts, favOnly)
 	default: // MusicAlbum
-		return api.listAlbums(ctx, opts, entityParent, artistId, contributingOnly, scopeIDs, search, favOnly)
+		return api.listAlbums(ctx, opts, entityParent, artistId, contributingOnly, genreIds, scopeIDs, search, favOnly)
 	}
 }
 
@@ -155,6 +157,12 @@ func firstDecodedID(s string) string {
 	}
 	first, _, _ := strings.Cut(s, ",")
 	return dto.DecodeID(strings.TrimSpace(first))
+}
+
+// decodedQueryIDs reads an id-list query param in both spellings clients use (see queryIDs) and
+// decodes each id.
+func decodedQueryIDs(r *http.Request, key string) []string {
+	return slice.Map(queryIDs(r, key), dto.DecodeID)
 }
 
 // parseTypes returns the recognized entries in IncludeItemTypes in order, defaulting to
@@ -206,7 +214,7 @@ func searchPage[S ~[]E, E any](opts model.QueryOptions, search func(model.QueryO
 	return rows, total, nil
 }
 
-func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, parentId, artistId string, contributingOnly bool, scopeIDs []int, search string, fav bool) (dto.QueryResult, error) {
+func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, parentId, artistId string, contributingOnly bool, genreIds []string, scopeIDs []int, search string, fav bool) (dto.QueryResult, error) {
 	repo := api.ds.Album(ctx)
 	filters := squirrel.And{}
 	// For albums, ParentId (browse an artist) and AlbumArtistIds/ArtistIds both mean "this artist's
@@ -218,6 +226,9 @@ func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, pare
 		filters = append(filters, filter.AlbumsByArtistID(firstNonEmpty(artistId, parentId)).Filters)
 	default:
 		filters = append(filters, notMissing)
+	}
+	if len(genreIds) > 0 {
+		filters = append(filters, filter.ByGenreID(genreIds))
 	}
 	if fav {
 		filters = append(filters, filter.ByStarred().Filters)
@@ -242,7 +253,7 @@ func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, pare
 	return result(slice.Map(albums, dto.AlbumToBaseItem), int(total), opts.Offset), nil
 }
 
-func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, parentId, artistId string, scopeIDs []int, search string, fav bool, fields dto.Fields) (dto.QueryResult, error) {
+func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, parentId, artistId string, genreIds []string, scopeIDs []int, search string, fav bool, fields dto.Fields) (dto.QueryResult, error) {
 	toItem := func(mf model.MediaFile) dto.BaseItemDto { return dto.SongToBaseItem(mf, fields) }
 	repo := api.ds.MediaFile(ctx)
 	filters := squirrel.And{}
@@ -254,6 +265,9 @@ func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, paren
 		filters = append(filters, filter.SongsByAlbum(parentId).Filters)
 	default:
 		filters = append(filters, notMissing)
+	}
+	if len(genreIds) > 0 {
+		filters = append(filters, filter.ByGenreID(genreIds))
 	}
 	if fav {
 		filters = append(filters, filter.ByStarred().Filters)
@@ -410,12 +424,11 @@ func (api *Router) songsByIDs(ctx context.Context, ids []string) map[string]mode
 	return songs
 }
 
-// itemsByIDs resolves a comma-separated encoded id list: songs (the common case) come from one
-// batched query, anything else falls back to resolveItemByID's probes. Input order is kept and
-// unresolvable ids are skipped.
-func (api *Router) itemsByIDs(ctx context.Context, rawIDs string, fields dto.Fields) dto.QueryResult {
+// itemsByIDs resolves a decoded id list: songs (the common case) come from one batched query,
+// anything else falls back to resolveItemByID's probes. Input order is kept and unresolvable ids
+// are skipped.
+func (api *Router) itemsByIDs(ctx context.Context, ids []string, fields dto.Fields) dto.QueryResult {
 	u, _ := request.UserFrom(ctx)
-	ids := slice.Map(strings.Split(rawIDs, ","), func(s string) string { return dto.DecodeID(strings.TrimSpace(s)) })
 	songs := api.songsByIDs(ctx, ids)
 	var items []dto.BaseItemDto
 	for _, id := range ids {

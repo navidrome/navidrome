@@ -126,13 +126,13 @@ var albumFilters = sync.OnceValue(func() map[string]filterFunc {
 		"starred":         annotationBoolFilter("starred"),
 		"has_rating":      annotationBoolFilter("rating"),
 		"missing":         booleanFilter,
-		"genre_id":        tagIDFilter,
+		"genre_id":        TagIDFilter,
 		"role_total_id":   allRolesFilter,
 		"library_id":      libraryIdFilter,
 	}
 	// Add all album tags as filters
 	for tag := range model.AlbumLevelTags() {
-		filters[string(tag)] = tagIDFilter
+		filters[string(tag)] = TagIDFilter
 	}
 
 	for role := range model.AllRoles {

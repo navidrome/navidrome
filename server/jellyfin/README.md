@@ -103,7 +103,8 @@ authenticated user has access to; a library (or item within it) the user cannot 
 `GET /Items` accepts the filter params clients use to build screens: `ParentId` (a library view id
 for scoping, an artist id when browsing into an artist's albums, or an album id when browsing into
 an album's tracks); `AlbumArtistIds`/`ArtistIds`/`contributingArtistIds` (an artist's albums or
-tracks — Finamp's artist screen sends these *alongside* `ParentId=<libraryId>`); `SearchTerm`;
+tracks — Finamp's artist screen sends these *alongside* `ParentId=<libraryId>`); `GenreIds` (a
+genre's albums or tracks — Finamp's genre screen sends it the same way); `SearchTerm`;
 favorites-only (`Filters=IsFavorite` or the standalone `isFavorite=true`); `SortBy`/`SortOrder`;
 `StartIndex`/`Limit`; and `Ids` (batch fetch by id).
 
