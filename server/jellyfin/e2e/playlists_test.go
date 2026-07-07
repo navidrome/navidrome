@@ -1,6 +1,9 @@
 package e2e
 
 import (
+	"bytes"
+	"image"
+	jpeglib "image/jpeg"
 	"net/http"
 	"os"
 	"time"
@@ -182,7 +185,13 @@ var _ = Describe("Playlists", func() {
 	})
 
 	Describe("cover art", func() {
-		jpeg := []byte{0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 'J', 'F', 'I', 'F', 0x00}
+		// A real (decodable) image: the upload endpoint validates by decoding, like the native one.
+		var jpeg []byte
+		BeforeEach(func() {
+			var buf bytes.Buffer
+			Expect(jpeglib.Encode(&buf, image.NewRGBA(image.Rect(0, 0, 1, 1)), nil)).To(Succeed())
+			jpeg = buf.Bytes()
+		})
 
 		It("uploads and removes a playlist cover", func() {
 			plID := createPlaylist("Cover", nil)

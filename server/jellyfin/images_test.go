@@ -5,9 +5,15 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"image"
+	"image/gif"
+	"image/jpeg"
+	"image/png"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -124,6 +130,34 @@ var _ = Describe("Images", func() {
 	})
 })
 
+// Real image fixtures: postItemImage validates uploads by decoding them (like the native API),
+// so magic-number-only fakes don't pass.
+func pngBytes() []byte {
+	var b bytes.Buffer
+	Expect(png.Encode(&b, image.NewRGBA(image.Rect(0, 0, 1, 1)))).To(Succeed())
+	return b.Bytes()
+}
+
+func jpegBytes() []byte {
+	var b bytes.Buffer
+	Expect(jpeg.Encode(&b, image.NewRGBA(image.Rect(0, 0, 1, 1)), nil)).To(Succeed())
+	return b.Bytes()
+}
+
+func gifBytes() []byte {
+	var b bytes.Buffer
+	Expect(gif.Encode(&b, image.NewRGBA(image.Rect(0, 0, 1, 1)), nil)).To(Succeed())
+	return b.Bytes()
+}
+
+// 1x1 WebP (Go's webp support is decode-only, so this one is pre-encoded).
+func webpBytes() []byte {
+	b, err := base64.StdEncoding.DecodeString(
+		"UklGRjwAAABXRUJQVlA4IDAAAADQAQCdASoBAAEAAgA0JaACdLoB+AADsAD+8Oj3/yC5YXXI1/8gP+QH/ID/+PIAAAA=")
+	Expect(err).ToNot(HaveOccurred())
+	return b
+}
+
 var _ = Describe("postItemImage", func() {
 	var api *Router
 	var fp *fakePlaylists
@@ -134,7 +168,7 @@ var _ = Describe("postItemImage", func() {
 	})
 
 	It("uploads a raw JPEG body and returns 204", func() {
-		body := []byte{0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 'J', 'F', 'I', 'F'}
+		body := jpegBytes()
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID("pl1")+"/Images/Primary", bytes.NewReader(body))
 		r.Header.Set("Content-Type", "image/jpeg")
@@ -145,33 +179,21 @@ var _ = Describe("postItemImage", func() {
 		Expect(w.Code).To(Equal(http.StatusNoContent))
 		Expect(fp.setImagePlaylistID).To(Equal("pl1"))
 		Expect(fp.setImageBytes).To(Equal(body))
-		Expect(fp.setImageExt).To(Equal(".jpg"))
+		Expect(fp.setImageExt).To(Equal(".jpeg"))
 	})
 
-	It("base64-decodes the body when it isn't raw image bytes", func() {
-		raw := []byte{0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 'J', 'F', 'I', 'F'}
+	It("base64-decodes the body and derives the extension from the actual format, not Content-Type", func() {
+		raw := pngBytes()
 		encoded := base64.StdEncoding.EncodeToString(raw)
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID("pl1")+"/Images/Primary", bytes.NewReader([]byte(encoded)))
-		r.Header.Set("Content-Type", "image/jpeg")
+		r.Header.Set("Content-Type", "image/jpeg") // lies: the payload is a PNG
 		r = withChiURLParam(r, "itemId", dto.EncodeID("pl1"))
 
 		api.postItemImage(w, r)
 
 		Expect(w.Code).To(Equal(http.StatusNoContent))
 		Expect(fp.setImageBytes).To(Equal(raw))
-	})
-
-	It("maps Content-Type to the right extension", func() {
-		body := []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'}
-		w := httptest.NewRecorder()
-		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID("pl1")+"/Images/Primary", bytes.NewReader(body))
-		r.Header.Set("Content-Type", "image/png")
-		r = withChiURLParam(r, "itemId", dto.EncodeID("pl1"))
-
-		api.postItemImage(w, r)
-
-		Expect(w.Code).To(Equal(http.StatusNoContent))
 		Expect(fp.setImageExt).To(Equal(".png"))
 	})
 
@@ -192,9 +214,8 @@ var _ = Describe("postItemImage", func() {
 
 	It("returns 500 when the service fails", func() {
 		fp.setImageErr = errors.New("boom")
-		body := []byte{0xFF, 0xD8, 0xFF, 0xE0}
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID("pl1")+"/Images/Primary", bytes.NewReader(body))
+		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID("pl1")+"/Images/Primary", bytes.NewReader(jpegBytes()))
 		r.Header.Set("Content-Type", "image/jpeg")
 		r = withChiURLParam(r, "itemId", dto.EncodeID("pl1"))
 
@@ -204,7 +225,7 @@ var _ = Describe("postItemImage", func() {
 	})
 
 	It("accepts a raw WebP body", func() {
-		body := append(append([]byte("RIFF"), 0x00, 0x00, 0x00, 0x00), []byte("WEBP")...)
+		body := webpBytes()
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID("pl1")+"/Images/Primary", bytes.NewReader(body))
 		r.Header.Set("Content-Type", "image/webp")
@@ -218,7 +239,7 @@ var _ = Describe("postItemImage", func() {
 	})
 
 	It("accepts a raw GIF body", func() {
-		body := append([]byte("GIF89a"), make([]byte, 8)...)
+		body := gifBytes()
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID("pl1")+"/Images/Primary", bytes.NewReader(body))
 		r.Header.Set("Content-Type", "image/gif")
@@ -231,12 +252,11 @@ var _ = Describe("postItemImage", func() {
 		Expect(fp.setImageExt).To(Equal(".gif"))
 	})
 
-	It("rejects an oversized body with the configured limit", func() {
+	It("rejects an oversized body with 400, like the native endpoint", func() {
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.MaxImageUploadSize = "16" // 16 bytes
-		body := bytes.Repeat([]byte{0xFF, 0xD8, 0xFF, 0xE0}, 32)
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID("pl1")+"/Images/Primary", bytes.NewReader(body))
+		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID("pl1")+"/Images/Primary", bytes.NewReader(jpegBytes()))
 		r.Header.Set("Content-Type", "image/jpeg")
 		r = withChiURLParam(r, "itemId", dto.EncodeID("pl1"))
 
@@ -246,12 +266,70 @@ var _ = Describe("postItemImage", func() {
 		Expect(fp.setImagePlaylistID).To(BeEmpty(), "must not persist an over-limit upload")
 	})
 
+	It("applies the size limit to the decoded image, not the base64 body", func() {
+		DeferCleanup(configtest.SetupConfig())
+		img := pngBytes()
+		// The raw image is exactly at the limit; its base64 form is 4/3 bigger.
+		conf.Server.MaxImageUploadSize = strconv.Itoa(len(img))
+		body := []byte(base64.StdEncoding.EncodeToString(img))
+		Expect(len(body)).To(BeNumerically(">", len(img)))
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID("pl1")+"/Images/Primary", bytes.NewReader(body))
+		r.Header.Set("Content-Type", "image/png")
+		r = withChiURLParam(r, "itemId", dto.EncodeID("pl1"))
+
+		api.postItemImage(w, r)
+
+		Expect(w.Code).To(Equal(http.StatusNoContent))
+		Expect(fp.setImageBytes).To(Equal(img))
+	})
+
+	It("rejects a base64 body whose decoded image exceeds the limit with 400", func() {
+		DeferCleanup(configtest.SetupConfig())
+		img := pngBytes()
+		conf.Server.MaxImageUploadSize = strconv.Itoa(len(img) - 1)
+		body := []byte(base64.StdEncoding.EncodeToString(img))
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID("pl1")+"/Images/Primary", bytes.NewReader(body))
+		r.Header.Set("Content-Type", "image/png")
+		r = withChiURLParam(r, "itemId", dto.EncodeID("pl1"))
+
+		api.postItemImage(w, r)
+
+		Expect(w.Code).To(Equal(http.StatusBadRequest))
+		Expect(fp.setImagePlaylistID).To(BeEmpty())
+	})
+
+	It("rejects a body that is neither an image nor base64 with 400", func() {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID("pl1")+"/Images/Primary", strings.NewReader("!!not base64!!"))
+		r.Header.Set("Content-Type", "image/jpeg")
+		r = withChiURLParam(r, "itemId", dto.EncodeID("pl1"))
+
+		api.postItemImage(w, r)
+
+		Expect(w.Code).To(Equal(http.StatusBadRequest))
+		Expect(fp.setImagePlaylistID).To(BeEmpty())
+	})
+
+	It("rejects bytes that sniff as an image but don't decode (e.g. a truncated or renamed file)", func() {
+		body := []byte{0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 'J', 'F', 'I', 'F'} // JPEG magic, not a JPEG
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID("pl1")+"/Images/Primary", bytes.NewReader(body))
+		r.Header.Set("Content-Type", "image/jpeg")
+		r = withChiURLParam(r, "itemId", dto.EncodeID("pl1"))
+
+		api.postItemImage(w, r)
+
+		Expect(w.Code).To(Equal(http.StatusBadRequest))
+		Expect(fp.setImagePlaylistID).To(BeEmpty())
+	})
+
 	It("forbids a non-admin upload when artwork upload is disabled", func() {
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.EnableArtworkUpload = false
-		body := []byte{0xFF, 0xD8, 0xFF, 0xE0}
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID("pl1")+"/Images/Primary", bytes.NewReader(body))
+		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID("pl1")+"/Images/Primary", bytes.NewReader(jpegBytes()))
 		r.Header.Set("Content-Type", "image/jpeg")
 		r = withChiURLParam(r, "itemId", dto.EncodeID("pl1"))
 		r = r.WithContext(request.WithUser(r.Context(), model.User{ID: "u1", IsAdmin: false}))
@@ -265,9 +343,8 @@ var _ = Describe("postItemImage", func() {
 	It("still allows an admin upload when artwork upload is disabled", func() {
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.EnableArtworkUpload = false
-		body := []byte{0xFF, 0xD8, 0xFF, 0xE0}
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID("pl1")+"/Images/Primary", bytes.NewReader(body))
+		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID("pl1")+"/Images/Primary", bytes.NewReader(jpegBytes()))
 		r.Header.Set("Content-Type", "image/jpeg")
 		r = withChiURLParam(r, "itemId", dto.EncodeID("pl1"))
 		r = r.WithContext(request.WithUser(r.Context(), model.User{ID: "admin", IsAdmin: true}))

@@ -5,10 +5,13 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"image"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
 	"io"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/dustin/go-humanize"
 	"github.com/go-chi/chi/v5"
@@ -18,6 +21,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
+	_ "golang.org/x/image/webp"
 )
 
 func (api *Router) getItemImage(w http.ResponseWriter, r *http.Request) {
@@ -79,9 +83,15 @@ func (api *Router) postItemImage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
-	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxImageUploadSize()))
+	// MaxImageUploadSize caps the image itself, matching the native endpoint's semantics. Jellyfin
+	// clients base64-encode the wire body (4/3 bigger), so the read cap allows for the inflation
+	// and the real check happens after decoding.
+	limit := maxImageUploadSize()
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, limit*4/3+4))
 	if err != nil {
-		http.Error(w, "Bad Request", http.StatusBadRequest)
+		log.Warn(ctx, "Jellyfin API: cover upload rejected: body exceeds MaxImageUploadSize",
+			"playlistId", id, "limit", humanize.Bytes(uint64(limit)), err)
+		http.Error(w, "file too large", http.StatusBadRequest)
 		return
 	}
 
@@ -92,10 +102,25 @@ func (api *Router) postItemImage(w http.ResponseWriter, r *http.Request) {
 
 	imgBytes, err := decodeImageBody(body)
 	if err != nil {
+		log.Warn(ctx, "Jellyfin API: cover upload rejected: body is neither an image nor base64", "playlistId", id, err)
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
-	ext := extFromContentType(r.Header.Get("Content-Type"))
+	if int64(len(imgBytes)) > limit {
+		log.Warn(ctx, "Jellyfin API: cover upload rejected: image exceeds MaxImageUploadSize",
+			"playlistId", id, "size", humanize.Bytes(uint64(len(imgBytes))), "limit", humanize.Bytes(uint64(limit)))
+		http.Error(w, "file too large", http.StatusBadRequest)
+		return
+	}
+	// Validate by decoding and take the extension from the real format, like the native endpoint —
+	// clients lie in Content-Type (Finamp falls back to image/jpeg for anything it doesn't know).
+	_, format, err := image.DecodeConfig(bytes.NewReader(imgBytes))
+	if err != nil {
+		log.Warn(ctx, "Jellyfin API: cover upload rejected: not a valid image", "playlistId", id, err)
+		http.Error(w, "invalid image file", http.StatusBadRequest)
+		return
+	}
+	ext := "." + format
 
 	if err := api.playlists.SetImage(ctx, id, bytes.NewReader(imgBytes), ext); err != nil {
 		api.internalError(w, r, err)
@@ -153,20 +178,5 @@ func isImageMagic(b []byte) bool {
 		return true
 	default:
 		return false
-	}
-}
-
-// extFromContentType maps a Content-Type to a storage file extension, defaulting to .jpg.
-func extFromContentType(contentType string) string {
-	ct, _, _ := strings.Cut(contentType, ";")
-	switch strings.ToLower(strings.TrimSpace(ct)) {
-	case "image/png":
-		return ".png"
-	case "image/webp":
-		return ".webp"
-	case "image/gif":
-		return ".gif"
-	default:
-		return ".jpg"
 	}
 }
