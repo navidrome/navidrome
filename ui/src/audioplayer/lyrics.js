@@ -1,16 +1,9 @@
 const normalizeLanguageTag = (language) =>
   (language || '').toLowerCase().replace('_', '-')
 
-// Roughly one 60fps frame; keeps line/token switching stable near tight boundaries.
-const KARAOKE_SWITCH_EPSILON_MS = 50
 const LYRIC_KIND_MAIN = 'main'
 const LYRIC_KIND_TRANSLATION = 'translation'
 const LYRIC_KIND_PRONUNCIATION = 'pronunciation'
-
-const padTime = (value) => {
-  const str = value.toString()
-  return str.length === 1 ? `0${str}` : str
-}
 
 const toTime = (value) => {
   if (value == null || value === '') {
@@ -298,36 +291,6 @@ export const selectLyricLayers = (structuredLyrics, preferredLanguage) => {
       preferredLanguage,
     ),
   }
-}
-
-export const pickStructuredLyric = (structuredLyrics, preferredLanguage) =>
-  selectLyricLayers(structuredLyrics, preferredLanguage).main
-
-export const structuredLyricToLrc = (structuredLyric) => {
-  if (!structuredLyric?.synced || !Array.isArray(structuredLyric.line)) {
-    return ''
-  }
-
-  let lyricText = ''
-  for (const line of structuredLyric.line) {
-    const start = Number(line.start)
-    if (!Number.isFinite(start) || start < 0) continue
-
-    let time = Math.floor(start / 10)
-    const ms = time % 100
-    time = Math.floor(time / 100)
-    const sec = time % 60
-    const min = Math.floor(time / 60)
-
-    lyricText += `[${padTime(min)}:${padTime(sec)}.${padTime(ms)}] ${line.value || ''}\n`
-  }
-  return lyricText
-}
-
-export const structuredLyricsToLrc = (structuredLyrics, preferredLanguage) => {
-  const selected = pickStructuredLyric(structuredLyrics, preferredLanguage)
-  if (!selected) return ''
-  return structuredLyricToLrc(selected)
 }
 
 const buildBaseKaraokeLine = (line, index, offset = 0) => ({
@@ -624,86 +587,6 @@ export const resolveKaraokeTokenWindow = (
   }
 
   return { start, end }
-}
-
-export const getActiveKaraokeState = (lines, currentTimeMs) => {
-  if (!Array.isArray(lines) || lines.length === 0) {
-    return { lineIndex: -1, tokenIndex: -1 }
-  }
-
-  const current = Number.isFinite(Number(currentTimeMs))
-    ? Number(currentTimeMs)
-    : 0
-  let lineIndex = -1
-
-  for (let i = 0; i < lines.length; i += 1) {
-    const lineStart = toTime(lines[i]?.start)
-    if (lineStart == null || lineStart <= current + KARAOKE_SWITCH_EPSILON_MS) {
-      lineIndex = i
-      continue
-    }
-    break
-  }
-
-  for (let i = lineIndex; i >= 0; i -= 1) {
-    const lineStart = toTime(lines[i]?.start)
-    const lineEnd = toTime(lines[i]?.end) ?? toTime(lines[i + 1]?.start)
-    if (lineStart != null && current + KARAOKE_SWITCH_EPSILON_MS < lineStart) {
-      continue
-    }
-    if (lineEnd == null || current <= lineEnd + KARAOKE_SWITCH_EPSILON_MS) {
-      lineIndex = i
-      break
-    }
-  }
-
-  if (lineIndex < 0) return { lineIndex: -1, tokenIndex: -1 }
-
-  const activeLine = lines[lineIndex] || null
-  const tokens = Array.isArray(activeLine?.tokens) ? activeLine.tokens : []
-  let tokenIndex = -1
-  for (let i = 0; i < tokens.length; i += 1) {
-    const { start: tokenStart, end: tokenEnd } = resolveKaraokeTokenWindow(
-      activeLine,
-      i,
-      lines[lineIndex + 1]?.start,
-    )
-    if (
-      tokenStart == null ||
-      tokenStart <= current + KARAOKE_SWITCH_EPSILON_MS
-    ) {
-      tokenIndex = i
-      if (tokenEnd != null && current <= tokenEnd + KARAOKE_SWITCH_EPSILON_MS) {
-        break
-      }
-      continue
-    }
-    break
-  }
-
-  return { lineIndex, tokenIndex }
-}
-
-export const getActiveKaraokeLineIndexes = (lines, currentTimeMs) => {
-  if (!Array.isArray(lines) || lines.length === 0) return []
-
-  const current = Number.isFinite(Number(currentTimeMs))
-    ? Number(currentTimeMs)
-    : 0
-  const indexes = []
-
-  for (let i = 0; i < lines.length; i += 1) {
-    const lineStart = toTime(lines[i]?.start)
-    const lineEnd = toTime(lines[i]?.end) ?? toTime(lines[i + 1]?.start)
-    if (lineStart == null || current + KARAOKE_SWITCH_EPSILON_MS < lineStart) {
-      continue
-    }
-    if (lineEnd == null || current <= lineEnd + KARAOKE_SWITCH_EPSILON_MS) {
-      indexes.push(i)
-    }
-  }
-
-  return indexes
 }
 
 export const hasUsableKaraokeTiming = (lines) =>

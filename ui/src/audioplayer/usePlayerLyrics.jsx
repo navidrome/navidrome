@@ -99,8 +99,8 @@ const usePlayerLyrics = ({ trackId, isRadio, audioInstance, isDesktop }) => {
     ],
   )
 
-  const mobileLyricsSurface = (
-    <>
+  const mobileLyricsSurface = useMemo(
+    () => (
       <MobileKaraokeLyricsPortal active={useInlineMobileLyrics}>
         <LyricsPanel
           visible={useInlineMobileLyrics}
@@ -115,7 +115,18 @@ const usePlayerLyrics = ({ trackId, isRadio, audioInstance, isDesktop }) => {
           inline
         />
       </MobileKaraokeLyricsPortal>
-    </>
+    ),
+    [
+      audioInstance,
+      lyricLayers.main,
+      lyricLayers.pronunciation,
+      lyricLayers.translation,
+      lyricsError,
+      lyricsLoading,
+      showPronunciation,
+      showTranslation,
+      useInlineMobileLyrics,
+    ],
   )
 
   return {

@@ -185,6 +185,44 @@ describe('<LyricsSidebar />', () => {
     )
   })
 
+  it('cleans pointer resizing on cancellation and unmount', async () => {
+    Object.defineProperty(window, 'PointerEvent', {
+      configurable: true,
+      writable: true,
+      value: MouseEvent,
+    })
+    const { unmount } = renderSidebar()
+
+    const sidebar = screen.getByTestId('lyrics-sidebar')
+    const resizer = screen.getByTestId('lyrics-sidebar-resizer')
+
+    fireEvent.pointerDown(resizer, { clientX: 500 })
+    window.dispatchEvent(new MouseEvent('pointermove', { clientX: -100 }))
+    await waitFor(() =>
+      expect(sidebar).toHaveStyle({ width: `${LYRICS_SIDEBAR_MAX_WIDTH}px` }),
+    )
+
+    window.dispatchEvent(new MouseEvent('pointercancel'))
+    await waitFor(() =>
+      expect(sidebar).toHaveAttribute('data-resizing', 'false'),
+    )
+
+    window.dispatchEvent(new MouseEvent('pointermove', { clientX: 1000 }))
+    expect(sidebar).toHaveStyle({ width: `${LYRICS_SIDEBAR_MAX_WIDTH}px` })
+    expect(localStorage.getItem(LYRICS_SIDEBAR_STORAGE_KEY)).toBeNull()
+
+    fireEvent.pointerDown(resizer, { clientX: 500 })
+    window.dispatchEvent(new MouseEvent('pointermove', { clientX: 1000 }))
+    await waitFor(() =>
+      expect(sidebar).toHaveStyle({ width: `${LYRICS_SIDEBAR_MIN_WIDTH}px` }),
+    )
+
+    unmount()
+    window.dispatchEvent(new MouseEvent('pointerup'))
+
+    expect(localStorage.getItem(LYRICS_SIDEBAR_STORAGE_KEY)).toBeNull()
+  })
+
   it('blurs focus inside the sidebar when exit transition hides it', () => {
     vi.useFakeTimers()
     const { rerender } = renderSidebar()

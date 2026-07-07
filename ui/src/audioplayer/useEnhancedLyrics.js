@@ -65,6 +65,7 @@ const useEnhancedLyrics = (trackId, disabled = false) => {
       }
     }
 
+    setLayers(emptyLyricLayers)
     setLoading(true)
     setError(null)
 

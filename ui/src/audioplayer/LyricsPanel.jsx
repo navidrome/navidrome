@@ -606,8 +606,6 @@ const LyricsPanel = ({
     }
   }
 
-  const getLineGroupStyle = () => undefined
-
   const seekToLine = (line) => {
     if (!audioInstance || line.start == null) return
     audioInstance.currentTime = line.start / 1000
@@ -679,7 +677,6 @@ const LyricsPanel = ({
                 }
                 data-testid="lyrics-line-group"
                 style={{
-                  ...getLineGroupStyle(idx),
                   cursor: canSeekLine ? 'pointer' : undefined,
                 }}
                 role={canSeekLine ? 'button' : undefined}

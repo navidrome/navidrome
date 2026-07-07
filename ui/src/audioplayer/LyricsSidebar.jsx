@@ -191,6 +191,7 @@ const LyricsSidebar = ({
   const [width, setWidth] = useState(loadSidebarWidth)
   const sidebarRef = useRef(null)
   const widthRef = useRef(width)
+  const resizeCleanupRef = useRef(null)
   const { rendered, entered } = useEnterExitTransition(
     visible,
     LYRICS_SIDEBAR_TRANSITION_MS,
@@ -201,6 +202,14 @@ const LyricsSidebar = ({
   useEffect(() => {
     widthRef.current = width
   }, [width])
+
+  useEffect(
+    () => () => {
+      resizeCleanupRef.current?.()
+      resizeCleanupRef.current = null
+    },
+    [],
+  )
 
   useEffect(() => {
     if (entered || typeof document === 'undefined') return
@@ -223,9 +232,17 @@ const LyricsSidebar = ({
   const handleResizePointerDown = useCallback(
     (event) => {
       event.preventDefault()
+      resizeCleanupRef.current?.()
+
+      const target = event.currentTarget
+      const pointerId = event.pointerId
       const startX = event.clientX
       const startWidth = widthRef.current
       let latestWidth = startWidth
+      let cleanedUp = false
+      const canCapture =
+        pointerId != null && typeof target.setPointerCapture === 'function'
+      const listenerTarget = canCapture ? target : window
       setIsResizing(true)
 
       const handlePointerMove = (moveEvent) => {
@@ -233,15 +250,46 @@ const LyricsSidebar = ({
         updateWidth(latestWidth)
       }
 
-      const handlePointerUp = () => {
-        window.removeEventListener('pointermove', handlePointerMove)
-        window.removeEventListener('pointerup', handlePointerUp)
-        saveSidebarWidth(latestWidth)
+      const cleanupResize = ({ persist = false } = {}) => {
+        if (cleanedUp) return
+        cleanedUp = true
+        listenerTarget.removeEventListener('pointermove', handlePointerMove)
+        listenerTarget.removeEventListener('pointerup', handlePointerUp)
+        listenerTarget.removeEventListener('pointercancel', handlePointerCancel)
+        target.removeEventListener('lostpointercapture', handlePointerCancel)
+        if (
+          canCapture &&
+          typeof target.releasePointerCapture === 'function' &&
+          (!target.hasPointerCapture || target.hasPointerCapture(pointerId))
+        ) {
+          try {
+            target.releasePointerCapture(pointerId)
+          } catch {
+            // Ignore stale pointer capture state.
+          }
+        }
+        if (persist) saveSidebarWidth(latestWidth)
         setIsResizing(false)
+        if (resizeCleanupRef.current === cleanupResize) {
+          resizeCleanupRef.current = null
+        }
       }
 
-      window.addEventListener('pointermove', handlePointerMove)
-      window.addEventListener('pointerup', handlePointerUp)
+      const handlePointerUp = () => cleanupResize({ persist: true })
+      const handlePointerCancel = () => cleanupResize()
+
+      resizeCleanupRef.current = cleanupResize
+      listenerTarget.addEventListener('pointermove', handlePointerMove)
+      listenerTarget.addEventListener('pointerup', handlePointerUp)
+      listenerTarget.addEventListener('pointercancel', handlePointerCancel)
+      target.addEventListener('lostpointercapture', handlePointerCancel)
+      if (canCapture) {
+        try {
+          target.setPointerCapture(pointerId)
+        } catch {
+          // Fall back to direct listener cleanup if capture is unavailable.
+        }
+      }
     },
     [updateWidth],
   )

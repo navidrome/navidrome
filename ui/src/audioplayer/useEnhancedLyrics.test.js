@@ -27,6 +27,16 @@ const responseFor = (value, lang = 'en') => ({
   },
 })
 
+const createDeferred = () => {
+  let resolve
+  let reject
+  const promise = new Promise((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise
+    reject = rejectPromise
+  })
+  return { promise, resolve, reject }
+}
+
 describe('useEnhancedLyrics', () => {
   beforeEach(() => {
     localStorage.setItem('locale', 'en')
@@ -62,6 +72,32 @@ describe('useEnhancedLyrics', () => {
       expect(result.current.layers.main?.line[0].value).toBe('Track one'),
     )
     expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(2)
+  })
+
+  it('clears previous lyrics while loading an uncached track', async () => {
+    const nextRequest = createDeferred()
+    subsonic.getLyricsBySongId
+      .mockResolvedValueOnce(responseFor('Track one'))
+      .mockReturnValueOnce(nextRequest.promise)
+
+    const { result, rerender } = renderHook(
+      ({ trackId }) => useEnhancedLyrics(trackId),
+      { initialProps: { trackId: 'song-1' } },
+    )
+
+    await waitFor(() =>
+      expect(result.current.layers.main?.line[0].value).toBe('Track one'),
+    )
+
+    rerender({ trackId: 'song-2' })
+
+    await waitFor(() => expect(result.current.loading).toBe(true))
+    expect(result.current.layers).toBe(emptyLyricLayers)
+
+    nextRequest.resolve(responseFor('Track two'))
+    await waitFor(() =>
+      expect(result.current.layers.main?.line[0].value).toBe('Track two'),
+    )
   })
 
   it('stays empty when disabled', () => {

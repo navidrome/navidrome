@@ -1,12 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildKaraokeLines,
-  getActiveKaraokeLineIndexes,
-  getActiveKaraokeState,
   hasStructuredLyricContent,
   resolveKaraokeTokenWindow,
   selectLyricLayers,
-  structuredLyricToLrc,
   utf8ByteRangeToCodeUnitRange,
 } from './lyrics'
 import {
@@ -54,21 +51,6 @@ describe('lyrics helpers', () => {
     expect(utf8ByteRangeToCodeUnitRange(text, 6, 10)).toMatchObject({
       text: 'caf\u00e9',
       start: 5,
-    })
-  })
-
-  it('does not mark a line active before the first timed line', () => {
-    const lines = buildKaraokeLines({
-      synced: true,
-      line: [
-        { start: 1000, value: 'First' },
-        { start: 2500, value: 'Second' },
-      ],
-    })
-
-    expect(getActiveKaraokeState(lines, 0)).toEqual({
-      lineIndex: -1,
-      tokenIndex: -1,
     })
   })
 
@@ -372,40 +354,6 @@ describe('lyrics helpers', () => {
       start: 4000,
       end: 5000,
     })
-  })
-
-  it('reports overlapping YAML-style active lines without changing primary focus', () => {
-    const lines = buildKaraokeLines({
-      synced: true,
-      line: [
-        { start: 1000, end: 4000, value: 'Lead vocal' },
-        { start: 2000, end: 3000, value: 'echo' },
-      ],
-    })
-
-    expect(getActiveKaraokeLineIndexes(lines, 2500)).toEqual([0, 1])
-    expect(getActiveKaraokeState(lines, 2500)).toEqual({
-      lineIndex: 1,
-      tokenIndex: -1,
-    })
-  })
-
-  it('keeps LRC minutes increasing past one hour', () => {
-    const lrc = structuredLyricToLrc({
-      synced: true,
-      line: [{ start: 3661000, value: 'Long track line' }],
-    })
-
-    expect(lrc).toContain('[61:01.00] Long track line')
-  })
-
-  it('does not convert unsynced structured lyrics to LRC', () => {
-    expect(
-      structuredLyricToLrc({
-        synced: false,
-        line: [{ value: 'Unsynced text' }],
-      }),
-    ).toBe('')
   })
 
   it('treats instrumental empty lyrics as no renderable content', () => {

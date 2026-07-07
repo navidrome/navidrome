@@ -62,10 +62,11 @@ const usePlaybackClock = (visible, audioInstance) => {
       }
 
       const backwardsDrift = lastRenderMs - nowMs
-      if (canInterpolate && backwardsDrift > 0) nowMs = lastRenderMs
-
       if (canInterpolate && backwardsDrift > KARAOKE_CLOCK_RESET_THRESHOLD_MS) {
+        nowMs = observedMs
         resetAnchor(perfNow, observedMs)
+      } else if (canInterpolate && backwardsDrift > 0) {
+        nowMs = lastRenderMs
       } else if (
         !canInterpolate &&
         backwardsDrift > 0 &&

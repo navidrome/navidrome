@@ -28,9 +28,3 @@ export const easeInOut = (value) => {
   const clamped = clamp(value, 0, 1)
   return clamped < 0.5 ? 2 * clamped * clamped : 1 - (-2 * clamped + 2) ** 2 / 2
 }
-export const easeInOutCubic = (value) => {
-  const clamped = clamp(value, 0, 1)
-  return clamped < 0.5
-    ? 4 * clamped * clamped * clamped
-    : 1 - (-2 * clamped + 2) ** 3 / 2
-}
