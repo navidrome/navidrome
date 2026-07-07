@@ -1,10 +1,13 @@
 import React from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ThemeProvider, createTheme } from '@material-ui/core/styles'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import LyricsPanel from './LyricsPanel'
-import { KARAOKE_DESKTOP_ACTIVE_LINE_ANCHOR_RATIO } from './lyricsKaraokeConstants'
+import {
+  KARAOKE_DESKTOP_ACTIVE_LINE_ANCHOR_RATIO,
+  KARAOKE_MANUAL_SCROLL_PAUSE_MS,
+} from './lyricsKaraokeConstants'
 import { buildSegmentsFromLine } from './lyricsSegments'
 
 const theme = createTheme({
@@ -710,6 +713,35 @@ describe('<LyricsPanel />', () => {
     expect(body).toHaveAttribute('data-scrollbar-visible', 'false')
   })
 
+  it('resumes auto-scroll after manual pause even when active line is unchanged', async () => {
+    vi.useFakeTimers()
+    const requestAnimationFrameSpy = vi
+      .spyOn(window, 'requestAnimationFrame')
+      .mockImplementation(() => 0)
+    renderPanel({
+      mainLyric,
+      audioInstance: {
+        currentTime: 0.5,
+        paused: true,
+      },
+    })
+
+    const body = screen.getByTestId('lyrics-scroll-body')
+    const initialFrameCount = requestAnimationFrameSpy.mock.calls.length
+
+    fireEvent.wheel(body)
+
+    act(() => {
+      vi.advanceTimersByTime(KARAOKE_MANUAL_SCROLL_PAUSE_MS)
+    })
+
+    await waitFor(() => {
+      expect(requestAnimationFrameSpy.mock.calls.length).toBeGreaterThan(
+        initialFrameCount,
+      )
+    })
+  })
+
   it('holds the finished line during long pauses until the next line pre-roll', async () => {
     const lyric = {
       synced: true,
@@ -767,6 +799,30 @@ describe('<LyricsPanel />', () => {
     })
     expect(upcomingStyleBefore.opacity).toBe('1')
     expect(groups[1].style.transform).toBe(upcomingStyleBefore.groupTransform)
+  })
+
+  it('skips untimed lines while choosing the finished scroll target', async () => {
+    renderPanel({
+      mainLyric: {
+        synced: true,
+        line: [
+          { start: 0, end: 1000, value: 'Opening line' },
+          { value: '[instrumental]' },
+          { start: 5000, end: 6000, value: 'Later line' },
+        ],
+      },
+      audioInstance: {
+        currentTime: 6.5,
+        paused: true,
+      },
+    })
+
+    const groups = screen.getAllByTestId('lyrics-line-group')
+
+    await waitFor(() => {
+      expect(groups[2]).toHaveAttribute('data-scroll-target', 'true')
+    })
+    expect(groups[0]).toHaveAttribute('data-scroll-target', 'false')
   })
 
   it('crossfades very short tokens instead of drawing a hard wipe', () => {

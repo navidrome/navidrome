@@ -40,11 +40,27 @@ describe('usePlaybackClock', () => {
     const { result } = renderHook(() => usePlaybackClock(true, audioInstance))
 
     runNextFrame()
-    expect(result.current).toBe(10000)
+    expect(result.current).toBe(10016)
 
     audioInstance.currentTime = 3
     runNextFrame()
 
     expect(result.current).toBe(3000)
+  })
+
+  it('interpolates from an anchor captured at performance time zero', () => {
+    const audioInstance = {
+      currentTime: 2,
+      playbackRate: 1,
+      paused: false,
+      seeking: false,
+    }
+    const { result } = renderHook(() => usePlaybackClock(true, audioInstance))
+
+    expect(result.current).toBe(2000)
+
+    runNextFrame()
+
+    expect(result.current).toBe(2016)
   })
 })

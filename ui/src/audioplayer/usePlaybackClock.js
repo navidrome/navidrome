@@ -18,7 +18,7 @@ const usePlaybackClock = (visible, audioInstance) => {
     let rafId = 0
     let cancelled = false
     let anchorAudioMs = 0
-    let anchorPerfMs = 0
+    let anchorPerfMs = null
     let lastRenderMs = 0
 
     const readPlaybackMs = () => {
@@ -47,7 +47,7 @@ const usePlaybackClock = (visible, audioInstance) => {
 
       if (!canInterpolate) {
         resetAnchor(perfNow, observedMs)
-      } else if (anchorPerfMs === 0) {
+      } else if (anchorPerfMs == null) {
         resetAnchor(perfNow, observedMs)
       } else {
         const predicted =

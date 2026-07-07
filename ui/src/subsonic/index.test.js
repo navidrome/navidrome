@@ -1,4 +1,4 @@
-import { vi } from 'vitest'
+import { afterEach, vi } from 'vitest'
 import config from '../config'
 import { httpClient } from '../dataProvider'
 import subsonic from './index'
@@ -9,26 +9,48 @@ vi.mock('../dataProvider', () => ({
   clientUniqueIdHeader: 'x-test-client-id',
 }))
 
+const originalLocalStorageDescriptor = Object.getOwnPropertyDescriptor(
+  window,
+  'localStorage',
+)
+
+const mockSubsonicLocalStorage = () => {
+  const localStorageMock = {
+    getItem: vi.fn((key) => {
+      const values = {
+        username: 'testuser',
+        'subsonic-token': 'testtoken',
+        'subsonic-salt': 'testsalt',
+      }
+      return values[key] || null
+    }),
+    setItem: vi.fn(),
+    clear: vi.fn(),
+  }
+
+  Object.defineProperty(window, 'localStorage', {
+    configurable: true,
+    value: localStorageMock,
+  })
+}
+
+afterEach(() => {
+  if (originalLocalStorageDescriptor) {
+    Object.defineProperty(
+      window,
+      'localStorage',
+      originalLocalStorageDescriptor,
+    )
+  }
+})
+
 describe('getCoverArtUrl', () => {
   beforeEach(() => {
     // Mock window.location
     delete window.location
     window.location = { href: 'http://localhost:3000/app' }
 
-    // Mock localStorage values required by subsonic
-    const localStorageMock = {
-      getItem: vi.fn((key) => {
-        const values = {
-          username: 'testuser',
-          'subsonic-token': 'testtoken',
-          'subsonic-salt': 'testsalt',
-        }
-        return values[key] || null
-      }),
-      setItem: vi.fn(),
-      clear: vi.fn(),
-    }
-    Object.defineProperty(window, 'localStorage', { value: localStorageMock })
+    mockSubsonicLocalStorage()
   })
 
   it('should return playlist cover art URL for records with sync property', () => {
@@ -132,17 +154,7 @@ describe('getCoverArtUrl', () => {
 describe('getLyricsBySongId', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    const localStorageMock = {
-      getItem: vi.fn((key) => {
-        const values = {
-          username: 'testuser',
-          'subsonic-token': 'testtoken',
-          'subsonic-salt': 'testsalt',
-        }
-        return values[key] || null
-      }),
-    }
-    Object.defineProperty(window, 'localStorage', { value: localStorageMock })
+    mockSubsonicLocalStorage()
   })
 
   it('requests enhanced structured lyrics for the song id', async () => {
@@ -158,17 +170,7 @@ describe('getLyricsBySongId', () => {
 
 describe('getDiscCoverArtUrl', () => {
   beforeEach(() => {
-    const localStorageMock = {
-      getItem: vi.fn((key) => {
-        const values = {
-          username: 'testuser',
-          'subsonic-token': 'testtoken',
-          'subsonic-salt': 'testsalt',
-        }
-        return values[key] || null
-      }),
-    }
-    Object.defineProperty(window, 'localStorage', { value: localStorageMock })
+    mockSubsonicLocalStorage()
   })
 
   it('should construct URL with dc-albumId:discNumber format, size, and cache param', () => {
@@ -208,18 +210,7 @@ describe('getDiscCoverArtUrl', () => {
 
 describe('getAvatarUrl', () => {
   beforeEach(() => {
-    // Mock localStorage values required by subsonic
-    const localStorageMock = {
-      getItem: vi.fn((key) => {
-        const values = {
-          username: 'testuser',
-          'subsonic-token': 'testtoken',
-          'subsonic-salt': 'testsalt',
-        }
-        return values[key] || null
-      }),
-    }
-    Object.defineProperty(window, 'localStorage', { value: localStorageMock })
+    mockSubsonicLocalStorage()
   })
 
   it('should include username parameter', () => {
@@ -231,17 +222,7 @@ describe('getAvatarUrl', () => {
 
 describe('reportPlayback', () => {
   beforeEach(() => {
-    const localStorageMock = {
-      getItem: vi.fn((key) => {
-        const values = {
-          username: 'testuser',
-          'subsonic-token': 'testtoken',
-          'subsonic-salt': 'testsalt',
-        }
-        return values[key] || null
-      }),
-    }
-    Object.defineProperty(window, 'localStorage', { value: localStorageMock })
+    mockSubsonicLocalStorage()
   })
 
   it('should construct reportPlayback URL with correct parameters', () => {

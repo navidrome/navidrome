@@ -242,7 +242,7 @@ const LyricsSidebar = ({
       let cleanedUp = false
       const canCapture =
         pointerId != null && typeof target.setPointerCapture === 'function'
-      const listenerTarget = canCapture ? target : window
+      const listenerTarget = window
       setIsResizing(true)
 
       const handlePointerMove = (moveEvent) => {
@@ -287,7 +287,7 @@ const LyricsSidebar = ({
         try {
           target.setPointerCapture(pointerId)
         } catch {
-          // Fall back to direct listener cleanup if capture is unavailable.
+          // Window-level listeners keep resize working when capture is unavailable.
         }
       }
     },

@@ -266,8 +266,8 @@ const LyricsPanel = ({
   const scrollTargetLineRef = useRef(null)
   const scrollAnimationRef = useRef(null)
   const scrollbarTimerRef = useRef(null)
+  const manualScrollTimerRef = useRef(null)
   const manualScrollUntilRef = useRef(0)
-  const manualScrollActiveIndexRef = useRef(-1)
   const [showScrollbar, setShowScrollbar] = useState(false)
   const [autoScrollResumeKey, setAutoScrollResumeKey] = useState(0)
   const [layoutVersion, setLayoutVersion] = useState(0)
@@ -342,7 +342,8 @@ const LyricsPanel = ({
     for (let i = 0; i < mainLines.length; i += 1) {
       const nextLineStart = mainLines[i + 1]?.start ?? null
       const { start } = getLineRenderWindow(mainLines[i], nextLineStart)
-      if (start == null || playbackMs < start) break
+      if (start == null) continue
+      if (playbackMs < start) break
       latestStartedIndex = i
     }
 
@@ -418,19 +419,30 @@ const LyricsPanel = ({
     }, KARAOKE_SCROLLBAR_VISIBLE_MS)
   }, [])
 
-  const markManualScrollIntent = useCallback(() => {
-    cancelScrollAnimation(scrollAnimationRef)
-    manualScrollActiveIndexRef.current = activeIndex
-    manualScrollUntilRef.current =
-      performance.now() + KARAOKE_MANUAL_SCROLL_PAUSE_MS
-    showScrollbarForManualScroll()
-  }, [activeIndex, showScrollbarForManualScroll])
+  const clearManualScrollTimer = useCallback(() => {
+    if (manualScrollTimerRef.current) {
+      window.clearTimeout(manualScrollTimerRef.current)
+      manualScrollTimerRef.current = null
+    }
+  }, [])
 
   const resumeAutoScroll = useCallback(() => {
+    clearManualScrollTimer()
     manualScrollUntilRef.current = 0
-    manualScrollActiveIndexRef.current = activeIndex
     setAutoScrollResumeKey((current) => current + 1)
-  }, [activeIndex])
+  }, [clearManualScrollTimer])
+
+  const markManualScrollIntent = useCallback(() => {
+    cancelScrollAnimation(scrollAnimationRef)
+    clearManualScrollTimer()
+    manualScrollUntilRef.current =
+      performance.now() + KARAOKE_MANUAL_SCROLL_PAUSE_MS
+    manualScrollTimerRef.current = window.setTimeout(() => {
+      manualScrollTimerRef.current = null
+      resumeAutoScroll()
+    }, KARAOKE_MANUAL_SCROLL_PAUSE_MS)
+    showScrollbarForManualScroll()
+  }, [clearManualScrollTimer, resumeAutoScroll, showScrollbarForManualScroll])
 
   const updateTopFade = useCallback(() => {
     const body = bodyRef.current
@@ -444,6 +456,9 @@ const LyricsPanel = ({
     () => () => {
       if (scrollbarTimerRef.current) {
         window.clearTimeout(scrollbarTimerRef.current)
+      }
+      if (manualScrollTimerRef.current) {
+        window.clearTimeout(manualScrollTimerRef.current)
       }
       cancelScrollAnimation(scrollAnimationRef)
     },
@@ -490,10 +505,11 @@ const LyricsPanel = ({
     if (!visible || !body) return
 
     cancelScrollAnimation(scrollAnimationRef)
+    clearManualScrollTimer()
     manualScrollUntilRef.current = 0
     body.scrollTop = 0
     setHasTopFade(false)
-  }, [mainLyric, visible])
+  }, [clearManualScrollTimer, mainLyric, visible])
 
   useEffect(() => {
     if (!visible || !hasTimedMainLines) {
@@ -532,13 +548,6 @@ const LyricsPanel = ({
     scrollTargetIndex,
     visible,
   ])
-
-  useEffect(() => {
-    if (manualScrollUntilRef.current === 0) return
-    if (activeIndex === manualScrollActiveIndexRef.current) return
-    if (performance.now() < manualScrollUntilRef.current) return
-    resumeAutoScroll()
-  }, [activeIndex, resumeAutoScroll])
 
   if (!visible) {
     return null

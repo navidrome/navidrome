@@ -120,7 +120,7 @@ const PlayerToolbar = ({
           className={buttonClass}
           color={lyricsActive ? 'primary' : 'default'}
           aria-label={lyricsLoading ? 'Loading lyrics' : 'Toggle lyrics'}
-          aria-busy={lyricsLoading ? 'true' : undefined}
+          aria-busy={lyricsLoading}
         >
           <RiFileMusicLine
             className={!isDesktop ? classes.mobileIcon : undefined}

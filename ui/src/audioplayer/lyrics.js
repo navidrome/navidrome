@@ -1,5 +1,5 @@
 const normalizeLanguageTag = (language) =>
-  (language || '').toLowerCase().replace('_', '-')
+  (language || '').toLowerCase().replace(/_/g, '-')
 
 const LYRIC_KIND_MAIN = 'main'
 const LYRIC_KIND_TRANSLATION = 'translation'

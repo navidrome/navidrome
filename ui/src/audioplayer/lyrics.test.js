@@ -42,6 +42,28 @@ describe('lyrics helpers', () => {
     expect(layers.translation.line[0].value).toBe('Hola')
   })
 
+  it('matches language tags with multiple underscore separators', () => {
+    const layers = selectLyricLayers(
+      [
+        {
+          kind: 'main',
+          lang: 'zh-Hans',
+          synced: true,
+          line: [{ start: 0, value: '简体' }],
+        },
+        {
+          kind: 'main',
+          lang: 'zh-Hant-TW',
+          synced: true,
+          line: [{ start: 0, value: '繁體' }],
+        },
+      ],
+      'zh_Hant_TW',
+    )
+
+    expect(layers.main.line[0].value).toBe('繁體')
+  })
+
   it('resolves UTF-8 byte ranges without confusing repeated words', () => {
     const text = 'caf\u00e9 caf\u00e9'
 

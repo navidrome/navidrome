@@ -223,6 +223,35 @@ describe('<LyricsSidebar />', () => {
     expect(localStorage.getItem(LYRICS_SIDEBAR_STORAGE_KEY)).toBeNull()
   })
 
+  it('keeps resizing through window listeners when pointer capture fails', async () => {
+    Object.defineProperty(window, 'PointerEvent', {
+      configurable: true,
+      writable: true,
+      value: MouseEvent,
+    })
+    renderSidebar()
+
+    const sidebar = screen.getByTestId('lyrics-sidebar')
+    const resizer = screen.getByTestId('lyrics-sidebar-resizer')
+    resizer.setPointerCapture = vi.fn(() => {
+      throw new Error('pointer capture unavailable')
+    })
+    resizer.releasePointerCapture = vi.fn()
+
+    fireEvent.pointerDown(resizer, { clientX: 500, pointerId: 1 })
+    window.dispatchEvent(new MouseEvent('pointermove', { clientX: -100 }))
+
+    await waitFor(() =>
+      expect(sidebar).toHaveStyle({ width: `${LYRICS_SIDEBAR_MAX_WIDTH}px` }),
+    )
+
+    window.dispatchEvent(new MouseEvent('pointerup'))
+
+    expect(localStorage.getItem(LYRICS_SIDEBAR_STORAGE_KEY)).toBe(
+      String(LYRICS_SIDEBAR_MAX_WIDTH),
+    )
+  })
+
   it('blurs focus inside the sidebar when exit transition hides it', () => {
     vi.useFakeTimers()
     const { rerender } = renderSidebar()
