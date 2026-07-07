@@ -526,6 +526,10 @@ var sortColumnsByType = map[string]map[string]string{
 		"dateplayed":        "play_date",
 		"communityrating":   "rating",
 		"random":            "random",
+		// Finamp's "Latest Releases" artist section sorts by PremiereDate; "year" matches the
+		// ProductionYear the DTO exposes for songs.
+		"premieredate":   "year",
+		"productionyear": "year",
 	},
 	"MusicArtist": {
 		"sortname": "name", "name": "name",

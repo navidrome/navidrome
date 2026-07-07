@@ -102,6 +102,18 @@ var _ = Describe("Browsing", func() {
 			Expect(*q.Items[1].IndexNumber).To(Equal(2))
 		})
 
+		// Finamp's "Latest Releases" artist section: newest release year first. PremiereDate must be
+		// recognized, or applySort falls through to Album and the view sorts by album name instead.
+		It("sorts an artist's tracks by release year for SortBy=PremiereDate (Latest Releases)", func() {
+			q := queryResult(get("/Items?IncludeItemTypes=Audio&Recursive=true&AlbumArtistIds=" + enc(artistID("The Beatles")) +
+				"&SortBy=PremiereDate%2CAlbum%2CParentIndexNumber%2CIndexNumber%2CSortName&SortOrder=Descending"))
+			got := names(q.Items)
+			// Abbey Road (1969) tracks must come before Help! (1965).
+			Expect(got).To(HaveLen(3))
+			Expect(got[:2]).To(ConsistOf("Come Together", "Something"))
+			Expect(got[2]).To(Equal("Help!"))
+		})
+
 		It("respects Finamp's explicit ParentIndexNumber/IndexNumber SortBy on an album", func() {
 			q := queryResult(get("/Items?IncludeItemTypes=Audio&ParentId=" + enc(albumID("Abbey Road")) + "&SortBy=ParentIndexNumber,IndexNumber,SortName"))
 			Expect(names(q.Items)).To(Equal([]string{"Something", "Come Together"}))
