@@ -13,16 +13,17 @@ import {
   LYRICS_SIDEBAR_WIDTH_STEP,
   clampSidebarWidth,
   loadSidebarWidth,
+  notifySidebarWidthChange,
   saveSidebarWidth,
 } from './lyricsSidebarWidth'
 import useEnterExitTransition from './useEnterExitTransition'
 
 const useStyles = makeStyles((theme) => ({
   sidebar: {
-    position: 'relative',
-    flex: '0 0 auto',
-    alignSelf: 'stretch',
-    height: '100%',
+    position: 'fixed',
+    top: 48,
+    right: 0,
+    bottom: 80,
     minHeight: 0,
     width: (props) => props.width,
     minWidth: LYRICS_SIDEBAR_MIN_WIDTH,
@@ -32,15 +33,18 @@ const useStyles = makeStyles((theme) => ({
     color: theme.palette.text.primary,
     backgroundColor: theme.palette.background.default,
     backgroundImage: 'none',
-    borderLeft: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
+    borderLeft: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
     boxShadow: 'none',
+    zIndex: theme.zIndex.appBar - 1,
     transition: `transform ${LYRICS_SIDEBAR_TRANSITION_MS}ms cubic-bezier(0.22, 1, 0.36, 1), opacity ${LYRICS_SIDEBAR_TRANSITION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`,
     willChange: 'transform, opacity',
     '@media (prefers-reduced-motion: reduce)': {
       transition: 'none',
     },
-    '&:hover $resizer::after': {
-      background: alpha(theme.palette.primary.main, 0.32),
+    '@media (hover: hover) and (pointer: fine)': {
+      '&:hover $resizer::after': {
+        background: alpha(theme.palette.primary.main, 0.32),
+      },
     },
   },
   resizer: {
@@ -64,8 +68,13 @@ const useStyles = makeStyles((theme) => ({
       background: 'transparent',
       transition: 'background 160ms ease',
     },
-    '&:hover::after, &:focus::after': {
+    '&:focus::after': {
       background: alpha(theme.palette.primary.main, 0.48),
+    },
+    '@media (hover: hover) and (pointer: fine)': {
+      '&:hover::after': {
+        background: alpha(theme.palette.primary.main, 0.48),
+      },
     },
     '&:focus': {
       outline: 'none',
@@ -73,7 +82,7 @@ const useStyles = makeStyles((theme) => ({
   },
   controls: {
     position: 'absolute',
-    top: theme.spacing(1),
+    bottom: theme.spacing(1),
     right: theme.spacing(0.75),
     zIndex: 2,
     display: 'flex',
@@ -81,28 +90,34 @@ const useStyles = makeStyles((theme) => ({
     gap: theme.spacing(0.25),
     padding: theme.spacing(0.25),
     borderRadius: theme.shape.borderRadius * 2,
-    backgroundColor: alpha(theme.palette.background.default, 0.72),
-    backdropFilter: 'blur(12px)',
-    WebkitBackdropFilter: 'blur(12px)',
+    backgroundColor: 'transparent',
   },
   controlButton: {
     padding: theme.spacing(0.75),
     color: alpha(theme.palette.text.primary, 0.58),
     backgroundColor: 'transparent',
     transition:
-      'color 160ms ease, background-color 160ms ease, transform 160ms ease',
-    '&:hover': {
-      color: theme.palette.text.primary,
-      backgroundColor: alpha(theme.palette.primary.main, 0.08),
+      'color 160ms ease, background-color 160ms ease, transform 160ms cubic-bezier(0.23, 1, 0.32, 1)',
+    '@media (hover: hover) and (pointer: fine)': {
+      '&:hover': {
+        color: theme.palette.text.primary,
+        backgroundColor: alpha(theme.palette.primary.main, 0.08),
+      },
+      '&$controlActive:hover': {
+        color: theme.palette.primary.main,
+      },
     },
     '&:focus-visible': {
       color: theme.palette.text.primary,
       backgroundColor: alpha(theme.palette.primary.main, 0.1),
     },
+    '&:active:not(:disabled)': {
+      transform: 'scale(0.97)',
+    },
     '&$controlActive': {
       color: theme.palette.primary.main,
     },
-    '&$controlActive:hover, &$controlActive:focus-visible': {
+    '&$controlActive:focus-visible': {
       color: theme.palette.primary.main,
     },
     '&:disabled': {
@@ -110,6 +125,9 @@ const useStyles = makeStyles((theme) => ({
     },
     '@media (prefers-reduced-motion: reduce)': {
       transition: 'none',
+      '&:active:not(:disabled)': {
+        transform: 'none',
+      },
     },
   },
   controlActive: {},
@@ -198,6 +216,7 @@ const LyricsSidebar = ({
     )
     widthRef.current = resolvedWidth
     setWidth(resolvedWidth)
+    notifySidebarWidthChange(resolvedWidth)
     if (persist) saveSidebarWidth(resolvedWidth)
   }, [])
 

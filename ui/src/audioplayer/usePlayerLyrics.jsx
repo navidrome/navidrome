@@ -39,6 +39,10 @@ const usePlayerLyrics = ({ trackId, isRadio, audioInstance, isDesktop }) => {
     setLyricsVisiblePreference((current) => (current ? false : hasMainLyric))
   }, [hasMainLyric])
 
+  const closeLyrics = useCallback(() => {
+    setLyricsVisiblePreference(false)
+  }, [])
+
   const toggleTranslation = useCallback(() => {
     setTranslationPreference((current) =>
       toggleLayerPreference(current, hasTranslationLyric),
@@ -47,7 +51,7 @@ const usePlayerLyrics = ({ trackId, isRadio, audioInstance, isDesktop }) => {
 
   const togglePronunciation = useCallback(() => {
     setPronunciationPreference((current) =>
-      toggleLayerPreference(current, hasPronunciationLyric, false),
+      toggleLayerPreference(current, hasPronunciationLyric, true),
     )
   }, [hasPronunciationLyric])
 
@@ -119,6 +123,7 @@ const usePlayerLyrics = ({ trackId, isRadio, audioInstance, isDesktop }) => {
     desktopLyricsProps,
     mobileLyricsSurface,
     useInlineMobileLyrics,
+    closeLyrics,
   }
 }
 

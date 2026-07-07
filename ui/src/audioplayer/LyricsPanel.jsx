@@ -64,15 +64,14 @@ const useStyles = makeStyles((theme) => ({
     minHeight: 0,
     overflowY: 'auto',
     overflowX: 'hidden',
-    padding: theme.spacing(0, 2.25, 3.25),
-    paddingTop: 'clamp(72px, 10vh, 128px)',
+    padding: theme.spacing(4, 2.25, 3.25),
     overscrollBehavior: 'contain',
     scrollbarWidth: 'none',
     msOverflowStyle: 'none',
     maskImage:
-      'linear-gradient(to bottom, #000 0, #000 calc(100% - 76px), rgba(0, 0, 0, 0.15) calc(100% - 22px), transparent 100%)',
+      'linear-gradient(to bottom, transparent 0, rgba(0, 0, 0, 0.15) 12px, #000 40px, #000 calc(100% - 120px), rgba(0, 0, 0, 0.12) calc(100% - 48px), transparent 100%)',
     WebkitMaskImage:
-      'linear-gradient(to bottom, #000 0, #000 calc(100% - 76px), rgba(0, 0, 0, 0.15) calc(100% - 22px), transparent 100%)',
+      'linear-gradient(to bottom, transparent 0, rgba(0, 0, 0, 0.15) 12px, #000 40px, #000 calc(100% - 120px), rgba(0, 0, 0, 0.12) calc(100% - 48px), transparent 100%)',
     '&::-webkit-scrollbar': {
       width: 0,
       height: 0,
@@ -80,9 +79,9 @@ const useStyles = makeStyles((theme) => ({
   },
   bodyTopFade: {
     maskImage:
-      'linear-gradient(to bottom, transparent 0, rgba(0, 0, 0, 0.15) 16px, #000 56px, #000 calc(100% - 76px), rgba(0, 0, 0, 0.15) calc(100% - 22px), transparent 100%)',
+      'linear-gradient(to bottom, transparent 0, rgba(0, 0, 0, 0.15) 8px, #000 24px, #000 calc(100% - 120px), rgba(0, 0, 0, 0.12) calc(100% - 48px), transparent 100%)',
     WebkitMaskImage:
-      'linear-gradient(to bottom, transparent 0, rgba(0, 0, 0, 0.15) 16px, #000 56px, #000 calc(100% - 76px), rgba(0, 0, 0, 0.15) calc(100% - 22px), transparent 100%)',
+      'linear-gradient(to bottom, transparent 0, rgba(0, 0, 0, 0.15) 8px, #000 24px, #000 calc(100% - 120px), rgba(0, 0, 0, 0.12) calc(100% - 48px), transparent 100%)',
   },
   bodyUserScrolling: {
     scrollbarWidth: 'thin',
@@ -107,16 +106,11 @@ const useStyles = makeStyles((theme) => ({
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'stretch',
-    gap: theme.spacing(3.5),
+    gap: theme.spacing(3),
   },
   lineGroup: {
     width: '100%',
     borderRadius: theme.shape.borderRadius,
-    transformOrigin: 'left center',
-    transition: `transform ${KARAOKE_ANIMATION_MS}ms ${KARAOKE_EASING}`,
-    '@media (prefers-reduced-motion: reduce)': {
-      transition: 'none',
-    },
   },
   line: {
     display: 'inline-block',
@@ -612,18 +606,7 @@ const LyricsPanel = ({
     }
   }
 
-  const getLineGroupStyle = (idx) => {
-    if (!hasTimedMainLines) return undefined
-
-    const focusScale = getLineFocusScale(idx)
-    const scale = lerp(0.992, 1, focusScale)
-    const translateY = lerp(1.5, 0, focusScale)
-    return {
-      transform: `scale(${scale.toFixed(3)}) translateY(${translateY.toFixed(
-        2,
-      )}px)`,
-    }
-  }
+  const getLineGroupStyle = () => undefined
 
   const seekToLine = (line) => {
     if (!audioInstance || line.start == null) return
@@ -702,6 +685,13 @@ const LyricsPanel = ({
                 role={canSeekLine ? 'button' : undefined}
                 tabIndex={canSeekLine ? 0 : undefined}
                 onClick={() => seekToLine(line)}
+                onMouseDown={
+                  canSeekLine
+                    ? (event) => {
+                        event.preventDefault()
+                      }
+                    : undefined
+                }
                 onKeyDown={(event) => {
                   if (
                     canSeekLine &&

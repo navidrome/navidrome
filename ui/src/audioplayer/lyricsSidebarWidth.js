@@ -1,4 +1,5 @@
 export const LYRICS_SIDEBAR_STORAGE_KEY = 'nd.lyricsSidebar.width.v1'
+export const LYRICS_SIDEBAR_WIDTH_EVENT = 'nd:lyrics-sidebar-width'
 export const LYRICS_SIDEBAR_DEFAULT_WIDTH = 360
 export const LYRICS_SIDEBAR_MIN_WIDTH = 300
 export const LYRICS_SIDEBAR_MAX_WIDTH = 520
@@ -36,12 +37,23 @@ export const loadSidebarWidth = () => {
   }
 }
 
+export const notifySidebarWidthChange = (width) => {
+  if (typeof window === 'undefined') return
+
+  window.dispatchEvent(
+    new CustomEvent(LYRICS_SIDEBAR_WIDTH_EVENT, {
+      detail: { width: clampSidebarWidth(width) },
+    }),
+  )
+}
+
 export const saveSidebarWidth = (width) => {
+  const resolvedWidth = clampSidebarWidth(width)
   if (!hasLocalStorage()) return
   try {
     window.localStorage.setItem(
       LYRICS_SIDEBAR_STORAGE_KEY,
-      String(clampSidebarWidth(width)),
+      String(resolvedWidth),
     )
   } catch {
     // Ignore storage failures.

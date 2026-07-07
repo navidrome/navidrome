@@ -22,9 +22,69 @@ import {
 } from './lyricsKaraokeStyles'
 import { shouldSkipLineFrame } from './lyricsTiming'
 
+const EMPHASIS_TONE = 0.7
+
 const tokenColor = (rgb, alpha) => {
   const [r, g, b] = rgb || [255, 255, 255]
   return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+const toneEmphasisRGB = (rgb) =>
+  rgb ? rgb.map((channel) => Math.round(channel * EMPHASIS_TONE)) : rgb
+
+const getTokenRGB = (token, rgb) =>
+  isEmphasisRole(token) ? toneEmphasisRGB(rgb) : rgb
+
+const toneEmphasisColor = (color) => {
+  const rgb = parseColorRGB(color)
+  if (!rgb) return color
+
+  const alpha = String(color).match(/rgba?\([^)]*?,\s*([\d.]+)\s*\)$/)?.[1]
+  return tokenColor(toneEmphasisRGB(rgb), alpha == null ? 1 : Number(alpha))
+}
+
+const buildLineStyle = (line, style) => {
+  const emphasisStyle = buildEmphasisStyle(line)
+  if (!emphasisStyle) return style
+
+  const emphasisColor = style?.color ? toneEmphasisColor(style.color) : null
+  return {
+    ...style,
+    ...emphasisStyle,
+    ...(emphasisColor
+      ? {
+          color: emphasisColor,
+          WebkitTextFillColor: emphasisColor,
+        }
+      : {}),
+  }
+}
+
+const buildInactiveTokenStyle = (token, rgb) => {
+  const tonedRGB = getTokenRGB(token, rgb)
+  const color = tokenColor(tonedRGB, TOKEN_FUTURE_ALPHA)
+  return {
+    color,
+    WebkitTextFillColor: color,
+    backgroundImage: 'none',
+    ...buildEmphasisStyle(token),
+  }
+}
+
+const buildStaticEmphasisStyle = (token, color) => {
+  const emphasisStyle = buildEmphasisStyle(token)
+  if (!emphasisStyle) return undefined
+
+  const emphasisColor = color ? toneEmphasisColor(color) : null
+  return {
+    ...emphasisStyle,
+    ...(emphasisColor
+      ? {
+          color: emphasisColor,
+          WebkitTextFillColor: emphasisColor,
+        }
+      : {}),
+  }
 }
 
 const areLineStylesEqual = (prevStyle, nextStyle) => {
@@ -39,7 +99,8 @@ const areLineStylesEqual = (prevStyle, nextStyle) => {
     a.maxWidth === b.maxWidth &&
     a.fontStyle === b.fontStyle &&
     a.whiteSpace === b.whiteSpace &&
-    a.transform === b.transform
+    a.transform === b.transform &&
+    a.WebkitTextFillColor === b.WebkitTextFillColor
   )
 }
 
@@ -66,6 +127,14 @@ const buildTokenWipeStyle = ({
   }
 
   if (useCrossfade) {
+    return {
+      color: doneColor,
+      WebkitTextFillColor: doneColor,
+      backgroundImage: 'none',
+    }
+  }
+
+  if (fillPct >= 100) {
     return {
       color: doneColor,
       WebkitTextFillColor: doneColor,
@@ -151,10 +220,7 @@ const buildSegmentTokenStyle = ({
   alpha = clamp(alpha, TOKEN_FUTURE_ALPHA, TOKEN_ACTIVE_ALPHA)
   alpha = lerp(TOKEN_FUTURE_ALPHA, alpha, clamp(highlightAlphaScale, 0, 1))
   const fillProgress = isDone ? 1 : isActive ? progress : 0
-  const isEmphasis = isEmphasisRole(segment.token)
-  const futureAlpha = isEmphasis
-    ? TOKEN_FUTURE_ALPHA * 0.72
-    : TOKEN_FUTURE_ALPHA
+  const tokenRGB = getTokenRGB(segment.token, rgb)
   const tokenDuration =
     visualStart != null && visualEnd != null ? visualEnd - visualStart : null
   const useCrossfade =
@@ -166,9 +232,9 @@ const buildSegmentTokenStyle = ({
     style: {
       ...buildTokenWipeStyle({
         fillProgress,
-        highlightAlpha: isEmphasis ? alpha * 0.72 : alpha,
-        futureAlpha,
-        rgb,
+        highlightAlpha: alpha,
+        futureAlpha: TOKEN_FUTURE_ALPHA,
+        rgb: tokenRGB,
         useCrossfade,
       }),
       ...buildEmphasisStyle(segment.token),
@@ -193,10 +259,7 @@ export const KaraokeLineRow = memo(
       () => (style?.color ? parseColorRGB(style.color) : [255, 255, 255]),
       [style?.color],
     )
-    const lineStyle = useMemo(
-      () => ({ ...style, ...buildEmphasisStyle(line) }),
-      [line, style],
-    )
+    const lineStyle = useMemo(() => buildLineStyle(line, style), [line, style])
 
     return (
       <Typography
@@ -220,12 +283,7 @@ export const KaraokeLineRow = memo(
               })
             : {
                 tokenStart: segment.token?.start,
-                style: {
-                  color: tokenColor(tokenRGB, TOKEN_FUTURE_ALPHA),
-                  WebkitTextFillColor: tokenColor(tokenRGB, TOKEN_FUTURE_ALPHA),
-                  backgroundImage: 'none',
-                  ...buildEmphasisStyle(segment.token),
-                },
+                style: buildInactiveTokenStyle(segment.token, tokenRGB),
               }
 
           return (
@@ -299,6 +357,12 @@ const buildPronunciationParts = (line) => {
     }))
 }
 
+const canPairPronunciationSegment = (segment, hasTokenSegments) =>
+  Boolean(
+    segment.token ||
+    (!hasTokenSegments && !segment.isWhitespace && segment.text.trim()),
+  )
+
 const buildStackedPronunciationSegments = (line, pronunciationLine) => {
   const lineSegments = buildSegmentsFromLine(line)
   const hasTokenSegments = lineSegments.some((segment) => segment.token)
@@ -306,10 +370,8 @@ const buildStackedPronunciationSegments = (line, pronunciationLine) => {
     ? lineSegments
     : splitTextSegments(line?.value || '')
   const pronunciationParts = buildPronunciationParts(pronunciationLine)
-  const pairableSegments = mainSegments.filter(
-    (segment) =>
-      segment.token ||
-      (!hasTokenSegments && !segment.isWhitespace && segment.text.trim()),
+  const pairableSegments = mainSegments.filter((segment) =>
+    canPairPronunciationSegment(segment, hasTokenSegments),
   )
 
   if (
@@ -330,17 +392,45 @@ const buildStackedPronunciationSegments = (line, pronunciationLine) => {
     ]
   }
 
+  const plainPronunciationParts = []
+  const emphasisPronunciationParts = []
+  for (const part of pronunciationParts) {
+    if (hasTokenSegments && isEmphasisRole(part.segment?.token)) {
+      emphasisPronunciationParts.push(part)
+    } else {
+      plainPronunciationParts.push(part)
+    }
+  }
+
   let pronunciationIndex = 0
+  let plainPronunciationIndex = 0
+  let emphasisPronunciationIndex = 0
+
+  const getPronunciationPart = (segment) => {
+    if (!hasTokenSegments) {
+      const part = pronunciationParts[pronunciationIndex] || null
+      pronunciationIndex += 1
+      return part
+    }
+
+    if (isEmphasisRole(segment.token)) {
+      const part =
+        emphasisPronunciationParts[emphasisPronunciationIndex] || null
+      emphasisPronunciationIndex += 1
+      return part
+    }
+
+    const part = plainPronunciationParts[plainPronunciationIndex] || null
+    plainPronunciationIndex += 1
+    return part
+  }
 
   return mainSegments.map((segment) => {
-    const canPair =
-      segment.token ||
-      (!hasTokenSegments && !segment.isWhitespace && segment.text.trim())
+    const canPair = canPairPronunciationSegment(segment, hasTokenSegments)
 
     if (!canPair) return { ...segment, pronunciation: '' }
 
-    const pronunciationPart = pronunciationParts[pronunciationIndex] || null
-    pronunciationIndex += 1
+    const pronunciationPart = getPronunciationPart(segment)
     return {
       ...segment,
       pronunciation: pronunciationPart?.text || '',
@@ -381,10 +471,7 @@ export const KaraokeStackedLineRow = memo(
           : [255, 255, 255],
       [pronunciationStyle?.color],
     )
-    const lineStyle = useMemo(
-      () => ({ ...style, ...buildEmphasisStyle(line) }),
-      [line, style],
-    )
+    const lineStyle = useMemo(() => buildLineStyle(line, style), [line, style])
 
     useLayoutEffect(() => {
       const row = rowRef.current
@@ -427,7 +514,7 @@ export const KaraokeStackedLineRow = memo(
             return (
               <span
                 key={`text-${idx}`}
-                style={buildEmphasisStyle(segment.token)}
+                style={buildStaticEmphasisStyle(segment.token, style?.color)}
               >
                 {segment.text}
               </span>
@@ -447,15 +534,7 @@ export const KaraokeStackedLineRow = memo(
               : segment.token
                 ? {
                     tokenStart: segment.token.start,
-                    style: {
-                      color: tokenColor(tokenRGB, TOKEN_FUTURE_ALPHA),
-                      WebkitTextFillColor: tokenColor(
-                        tokenRGB,
-                        TOKEN_FUTURE_ALPHA,
-                      ),
-                      backgroundImage: 'none',
-                      ...buildEmphasisStyle(segment.token),
-                    },
+                    style: buildInactiveTokenStyle(segment.token, tokenRGB),
                   }
                 : null
           const pronunciationTokenData =
@@ -488,7 +567,10 @@ export const KaraokeStackedLineRow = memo(
               <span
                 className={clsx(tokenClassName, classes.stackedMainText)}
                 data-testid={segment.token ? 'lyrics-token' : undefined}
-                style={tokenData?.style || buildEmphasisStyle(segment.token)}
+                style={
+                  tokenData?.style ||
+                  buildStaticEmphasisStyle(segment.token, style?.color)
+                }
               >
                 {segment.text}
               </span>
@@ -500,8 +582,9 @@ export const KaraokeStackedLineRow = memo(
                     color: pronunciationStyle?.color,
                     WebkitTextFillColor: pronunciationStyle?.color,
                     backgroundImage: 'none',
-                    ...buildEmphasisStyle(
+                    ...buildStaticEmphasisStyle(
                       segment.pronunciationSegment?.token || segment.token,
+                      pronunciationStyle?.color,
                     ),
                   }
                 }

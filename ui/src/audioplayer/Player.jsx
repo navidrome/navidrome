@@ -146,6 +146,7 @@ const Player = () => {
     desktopLyricsProps,
     mobileLyricsSurface,
     useInlineMobileLyrics,
+    closeLyrics,
   } = usePlayerLyrics({
     trackId: playerState.current?.trackId || currentTrackId,
     isRadio: playerState.current?.isRadio || false,
@@ -436,10 +437,11 @@ const Player = () => {
       }
       setHeartbeatTrackId(null)
       setCurrentTrackId(null)
+      closeLyrics()
       dispatch(clearQueue())
       reject()
     })
-  }, [dispatch, currentTrackId])
+  }, [closeLyrics, dispatch, currentTrackId])
 
   if (!visible) {
     document.title = 'Navidrome'

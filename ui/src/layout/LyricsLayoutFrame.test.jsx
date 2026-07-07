@@ -66,16 +66,13 @@ describe('<LyricsLayoutFrame />', () => {
 
     const sidebar = await screen.findByTestId('lyrics-sidebar')
     const frame = screen.getByTestId('lyrics-layout-frame')
-    const content = screen.getByTestId('lyrics-layout-content')
+    const content = screen.getByTestId('route-content')
 
-    expect(frame).toHaveAttribute('data-lyrics-layout-active', 'true')
     expect(frame).toHaveAttribute('data-lyrics-sidebar-visible', 'true')
-    expect(window.getComputedStyle(frame).display).toBe('flex')
-    expect(window.getComputedStyle(content).overflowY).toBe('auto')
-    expect(content).toContainElement(screen.getByTestId('route-content'))
+    expect(frame).toHaveStyle({ marginRight: '360px' })
     expect(frame).toContainElement(content)
     expect(frame).toContainElement(sidebar)
-    expect(window.getComputedStyle(sidebar).position).toBe('relative')
+    expect(window.getComputedStyle(sidebar).position).toBe('fixed')
   })
 
   it('releases the layout frame after the sidebar exit transition', async () => {
@@ -96,9 +93,12 @@ describe('<LyricsLayoutFrame />', () => {
     )
 
     expect(screen.getByTestId('lyrics-layout-frame')).toHaveAttribute(
-      'data-lyrics-layout-active',
-      'true',
+      'data-lyrics-sidebar-visible',
+      'false',
     )
+    expect(screen.getByTestId('lyrics-layout-frame')).toHaveStyle({
+      marginRight: '0px',
+    })
     expect(screen.getByTestId('lyrics-sidebar')).toHaveStyle({
       transform: 'translateX(100%)',
     })
@@ -108,7 +108,7 @@ describe('<LyricsLayoutFrame />', () => {
     })
 
     expect(screen.getByTestId('lyrics-layout-frame')).toHaveAttribute(
-      'data-lyrics-layout-active',
+      'data-lyrics-sidebar-visible',
       'false',
     )
     expect(screen.queryByTestId('lyrics-sidebar')).toBeNull()

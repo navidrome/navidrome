@@ -11,7 +11,7 @@ export const resolveLyricsSidebarState = ({
     hasTranslationLyric,
   ),
   showPronunciation: Boolean(
-    (pronunciationPreference == null ? false : pronunciationPreference) &&
+    (pronunciationPreference == null ? true : pronunciationPreference) &&
     hasPronunciationLyric,
   ),
 })

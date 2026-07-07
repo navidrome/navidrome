@@ -432,7 +432,7 @@ describe('lyrics helpers', () => {
     ).toEqual({
       lyricsVisible: true,
       showTranslation: true,
-      showPronunciation: false,
+      showPronunciation: true,
     })
 
     expect(

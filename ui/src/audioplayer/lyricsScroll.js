@@ -1,9 +1,4 @@
-import {
-  KARAOKE_SCROLL_DURATION_MS,
-  KARAOKE_SCROLL_SETTLE_PX,
-  clamp,
-  easeInOutCubic,
-} from './lyricsKaraokeConstants'
+import { KARAOKE_SCROLL_SETTLE_PX, clamp } from './lyricsKaraokeConstants'
 
 export const cancelScrollAnimation = (scrollAnimationRef) => {
   const animation = scrollAnimationRef.current
@@ -38,36 +33,12 @@ export const animateScrollTop = ({
   const distance = targetTop - startTop
   if (Math.abs(distance) < KARAOKE_SCROLL_SETTLE_PX) return
 
+  const maxTop = Math.max(0, body.scrollHeight - body.clientHeight)
+  const nextTargetTop = clamp(targetTop, 0, maxTop)
   if (reducedMotion) {
-    body.scrollTop = targetTop
+    body.scrollTop = nextTargetTop
     return
   }
 
-  const startTime = performance.now()
-
-  const animation = { frameId: 0 }
-  const step = (now) => {
-    if (scrollAnimationRef.current !== animation) return
-
-    const elapsed = now - startTime
-    const progress = Math.min(elapsed / KARAOKE_SCROLL_DURATION_MS, 1)
-    const maxTop = Math.max(0, body.scrollHeight - body.clientHeight)
-    const nextTargetTop = clamp(targetTop, 0, maxTop)
-    body.scrollTop =
-      startTop + (nextTargetTop - startTop) * easeInOutCubic(progress)
-
-    if (
-      progress < 1 &&
-      Math.abs(body.scrollTop - nextTargetTop) >= KARAOKE_SCROLL_SETTLE_PX
-    ) {
-      animation.frameId = window.requestAnimationFrame(step)
-      return
-    }
-
-    body.scrollTop = nextTargetTop
-    scrollAnimationRef.current = null
-  }
-
-  scrollAnimationRef.current = animation
-  animation.frameId = window.requestAnimationFrame(step)
+  body.scrollTo({ top: nextTargetTop, behavior: 'smooth' })
 }

@@ -1,8 +1,10 @@
 import React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { ThemeProvider, createTheme } from '@material-ui/core/styles'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import LyricsPanel from './LyricsPanel'
+import { KARAOKE_DESKTOP_ACTIVE_LINE_ANCHOR_RATIO } from './lyricsKaraokeConstants'
 import { buildSegmentsFromLine } from './lyricsSegments'
 
 const theme = createTheme({
@@ -374,7 +376,7 @@ describe('<LyricsPanel />', () => {
     )
     expect(getRgbaAlpha(settledTranslation.style.color)).toBe(0.72)
     expect(settledTranslation.style.transform).toBe('')
-    expect(settledGroup.style.transform).toBe('scale(1.000) translateY(0.00px)')
+    expect(settledGroup.style.transform).toBe('')
   })
 
   it('highlights stacked pronunciation tokens from the current Material UI theme', () => {
@@ -541,8 +543,14 @@ describe('<LyricsPanel />', () => {
       const lines = screen
         .getByTestId('lyrics-scroll-body')
         .querySelector('[data-scroll-end-padding]')
-      expect(lines).toHaveAttribute('data-scroll-end-padding', '350')
-      expect(lines).toHaveStyle({ paddingBottom: '350px' })
+      const expectedPadding = Math.round(
+        500 * (1 - KARAOKE_DESKTOP_ACTIVE_LINE_ANCHOR_RATIO),
+      )
+      expect(lines).toHaveAttribute(
+        'data-scroll-end-padding',
+        String(expectedPadding),
+      )
+      expect(lines).toHaveStyle({ paddingBottom: `${expectedPadding}px` })
     } finally {
       if (originalClientHeight) {
         Object.defineProperty(
@@ -625,7 +633,7 @@ describe('<LyricsPanel />', () => {
       .closest('[data-testid="lyrics-line-group"]')
     expect(activeGroup).toHaveAttribute('data-active', 'true')
     expect(activeGroup).toHaveAttribute('aria-current', 'true')
-    expect(activeGroup.style.transform).toBe('scale(1.000) translateY(0.00px)')
+    expect(activeGroup.style.transform).toBe('')
     expect(screen.getByText('Current line').style.fontSize).toBe('')
     expect(screen.getByText('Current line').style.transform).toBe('')
     expect(screen.getByText('Later line').style.fontSize).toBe('')
@@ -842,15 +850,17 @@ describe('<LyricsPanel />', () => {
     expect(screen.getAllByTestId('lyrics-line-group')[0]).not.toHaveAttribute(
       'data-exiting',
     )
-    expect(screen.getByText('Main').style.color).toBe('transparent')
-    expect(screen.getByText('Main').style.backgroundImage).toContain(
-      'linear-gradient',
+    expect(getRgbaAlpha(screen.getByText('Main').style.color)).toBeGreaterThan(
+      0.34,
     )
+    expect(getRgbaAlpha(screen.getByText('Main').style.color)).toBeLessThan(1)
+    expect(screen.getByText('Main').style.backgroundImage).toBe('none')
     expect(screen.getByText('Main').style.textShadow).toBe('')
-    expect(screen.getByText('mein').style.color).toBe('transparent')
-    expect(screen.getByText('mein').style.backgroundImage).toContain(
-      'linear-gradient',
+    expect(getRgbaAlpha(screen.getByText('mein').style.color)).toBeGreaterThan(
+      0.34,
     )
+    expect(getRgbaAlpha(screen.getByText('mein').style.color)).toBeLessThan(1)
+    expect(screen.getByText('mein').style.backgroundImage).toBe('none')
     expect(screen.getByText('mein').style.textShadow).toBe('')
 
     rerender(
@@ -994,6 +1004,27 @@ describe('<LyricsPanel />', () => {
     audioInstance.currentTime = 0
     fireEvent.keyDown(group, { key: ' ' })
     expect(audioInstance.currentTime).toBe(2.3)
+  })
+
+  it('does not keep focus on a mouse-clicked lyric line', async () => {
+    const user = userEvent.setup()
+    const audioInstance = { currentTime: 0 }
+    renderPanel({
+      mainLyric: {
+        synced: true,
+        line: [{ start: 2300, end: 3200, value: 'Mouse seek line' }],
+      },
+      audioInstance,
+    })
+
+    const group = screen
+      .getByText('Mouse seek line')
+      .closest('[data-testid="lyrics-line-group"]')
+
+    await user.click(group)
+
+    expect(audioInstance.currentTime).toBe(2.3)
+    expect(document.activeElement).not.toBe(group)
   })
 
   it('uses exact byte-offset segments for repeated UTF-8 tokens', () => {
