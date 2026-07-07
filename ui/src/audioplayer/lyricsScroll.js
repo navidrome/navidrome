@@ -7,7 +7,9 @@ import {
 
 export const cancelScrollAnimation = (scrollAnimationRef) => {
   const animation = scrollAnimationRef.current
-  if (animation?.frameId) window.cancelAnimationFrame(animation.frameId)
+  if (animation?.frameId != null) {
+    window.cancelAnimationFrame(animation.frameId)
+  }
   scrollAnimationRef.current = null
 }
 
@@ -46,7 +48,7 @@ export const animateScrollTop = ({
   }
 
   const startedAt = performance.now()
-  const animation = { frameId: 0 }
+  const animation = { frameId: null }
   const step = () => {
     const progress = clamp(
       (performance.now() - startedAt) / KARAOKE_SCROLL_ANIMATION_MS,
