@@ -107,6 +107,11 @@ func (m *Manager) removePluginFromDB(ctx context.Context, repo model.PluginRepos
 	if err := repo.Delete(pluginID); err != nil {
 		return fmt.Errorf("deleting plugin from DB: %w", err)
 	}
+	// Discard any scrobbles still buffered for the removed plugin, so they are
+	// not delivered to an unrelated plugin that reuses the same name later.
+	if err := m.ds.ScrobbleBuffer(ctx).Discard(pluginID); err != nil {
+		log.Error(ctx, "Error discarding buffered scrobbles for removed plugin", "plugin", pluginID, err)
+	}
 	log.Info(ctx, "Plugin removed", "plugin", pluginID)
 	m.sendPluginRefreshEvent(ctx, events.Any)
 	return nil
