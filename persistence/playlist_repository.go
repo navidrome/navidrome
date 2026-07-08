@@ -203,8 +203,9 @@ func (r *playlistRepository) GetPlaylists(mediaFileId string) (model.Playlists, 
 }
 
 func (r *playlistRepository) selectPlaylist(options ...model.QueryOptions) SelectBuilder {
-	return r.newSelect(options...).Join("user on user.id = owner_id").
+	sel := r.newSelect(options...).Join("user on user.id = owner_id").
 		Columns(r.tableName+".*", "user.user_name as owner_name")
+	return r.withAnnotation(sel, "playlist.id")
 }
 
 func (r *playlistRepository) updateTracks(id string, tracks model.MediaFiles) error {

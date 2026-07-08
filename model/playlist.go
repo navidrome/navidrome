@@ -27,6 +27,8 @@ type Playlist struct {
 	CreatedAt        time.Time      `structs:"created_at" json:"createdAt"`
 	UpdatedAt        time.Time      `structs:"updated_at" json:"updatedAt"`
 
+	Annotations `structs:"-"`
+
 	// SmartPlaylist attributes
 	Rules       *criteria.Criteria `structs:"rules" json:"rules"`
 	EvaluatedAt *time.Time         `structs:"evaluated_at" json:"evaluatedAt"`
@@ -121,6 +123,7 @@ type Playlists []Playlist
 
 type PlaylistRepository interface {
 	ResourceRepository
+	AnnotatedRepository
 	CountAll(options ...QueryOptions) (int64, error)
 	Exists(id string) (bool, error)
 	Put(pls *Playlist, cols ...string) error

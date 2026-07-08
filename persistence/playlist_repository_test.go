@@ -71,6 +71,47 @@ var _ = Describe("PlaylistRepository", func() {
 		})
 	})
 
+	Describe("Annotations", func() {
+		var plsID string
+
+		BeforeEach(func() {
+			pls := model.Playlist{Name: "Annotated", OwnerID: "userid"}
+			Expect(repo.Put(&pls)).To(Succeed())
+			plsID = pls.ID
+		})
+
+		It("stores and reads back starred", func() {
+			Expect(repo.SetStar(true, plsID)).To(Succeed())
+
+			p, err := repo.Get(plsID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(p.Starred).To(BeTrue())
+			Expect(p.StarredAt).ToNot(BeNil())
+		})
+
+		It("stores and reads back rating and average_rating", func() {
+			Expect(repo.SetRating(4, plsID)).To(Succeed())
+
+			p, err := repo.Get(plsID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(p.Rating).To(Equal(4))
+			Expect(p.RatedAt).ToNot(BeNil())
+			Expect(p.AverageRating).To(Equal(4.0))
+		})
+
+		It("keeps annotations isolated per user", func() {
+			Expect(repo.SetStar(true, plsID)).To(Succeed())
+
+			otherCtx := request.WithUser(log.NewContext(GinkgoT().Context()),
+				model.User{ID: "otheruser", UserName: "otheruser", IsAdmin: true})
+			otherRepo := NewPlaylistRepository(otherCtx, GetDBXBuilder())
+
+			p, err := otherRepo.Get(plsID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(p.Starred).To(BeFalse())
+		})
+	})
+
 	It("Put/Exists/Delete", func() {
 		By("saves the playlist to the DB")
 		newPls := model.Playlist{Name: "Great!", OwnerID: "userid"}
