@@ -63,12 +63,15 @@ func parseMediaBrowserAuth(r *http.Request) mediaBrowserAuth {
 	return a
 }
 
-// parseAuthHeader extracts the MediaBrowser fields from one header value; ok reports whether any
-// recognized field was present (a foreign scheme like Basic or Digest yields none).
+// parseAuthHeader extracts the MediaBrowser fields from one header value; ok reports whether the
+// value uses the MediaBrowser scheme ("Emby" is the legacy spelling real Jellyfin also accepts).
 func parseAuthHeader(h string) (mediaBrowserAuth, bool) {
 	var a mediaBrowserAuth
-	ok := false
-	for _, m := range mediaBrowserAuthField.FindAllStringSubmatch(h, -1) {
+	scheme, params, found := strings.Cut(h, " ")
+	if !found || (!strings.EqualFold(scheme, "MediaBrowser") && !strings.EqualFold(scheme, "Emby")) {
+		return a, false
+	}
+	for _, m := range mediaBrowserAuthField.FindAllStringSubmatch(params, -1) {
 		switch m[1] {
 		case "Client":
 			a.Client = unescapeField(m[2])
@@ -80,12 +83,9 @@ func parseAuthHeader(h string) (mediaBrowserAuth, bool) {
 			a.Version = unescapeField(m[2])
 		case "Token":
 			a.Token = unescapeField(m[2])
-		default:
-			continue
 		}
-		ok = true
 	}
-	return a, ok
+	return a, true
 }
 
 // unescapeField percent-decodes a header field value, falling back to the raw value when it isn't

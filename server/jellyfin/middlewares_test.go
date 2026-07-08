@@ -203,6 +203,23 @@ var _ = Describe("parseMediaBrowserAuth", func() {
 		Expect(a.Client).To(Equal("Finamp"))
 		Expect(a.Token).To(Equal("tok"))
 	})
+
+	It("rejects a foreign scheme even when its parameters mimic MediaBrowser fields", func() {
+		r := httptest.NewRequest("GET", "/", nil)
+		r.Header.Set("Authorization", `Custom Token="not-for-us"`)
+		Expect(parseMediaBrowserAuth(r).Token).To(BeEmpty())
+	})
+
+	It("accepts the legacy Emby scheme spelling, like real Jellyfin", func() {
+		a := authFor(`Emby Client="OldClient", DeviceId="dev1", Token="tok"`)
+		Expect(a.Client).To(Equal("OldClient"))
+		Expect(a.Token).To(Equal("tok"))
+	})
+
+	It("matches the scheme case-insensitively (HTTP auth schemes are)", func() {
+		a := authFor(`mediabrowser Token="tok"`)
+		Expect(a.Token).To(Equal("tok"))
+	})
 })
 
 var _ = Describe("normalizeQueryKeys", func() {
