@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -22,9 +23,10 @@ var _ = Describe("removePluginFromDB", func() {
 		plugin := model.Plugin{ID: "my-plugin", Enabled: false}
 		repo.SetData(model.Plugins{plugin})
 
+		// No broker: sendPluginRefreshEvent is nil-safe, and testBroker is
+		// defined in manager_test.go, which is excluded on Windows.
 		m := &Manager{
-			ds:     &tests.MockDataStore{MockedScrobbleBuffer: buffer},
-			broker: &testBroker{},
+			ds: &tests.MockDataStore{MockedScrobbleBuffer: buffer},
 		}
 		Expect(m.removePluginFromDB(ctx, repo, &plugin)).To(Succeed())
 
@@ -37,6 +39,26 @@ var _ = Describe("removePluginFromDB", func() {
 		entry, err := buffer.Next("other-plugin", "user1")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(entry).ToNot(BeNil(), "entries of other services must be kept")
+	})
+
+	It("keeps buffered scrobbles of a builtin scrobbler sharing the removed plugin's name", func() {
+		ctx := context.Background()
+		scrobbler.Register("builtin-svc", func(model.DataStore) scrobbler.Scrobbler { return nil })
+		buffer := tests.CreateMockedScrobbleBufferRepo()
+		Expect(buffer.Enqueue("builtin-svc", "user1", "track1", time.Now())).To(Succeed())
+
+		repo := tests.CreateMockPluginRepo()
+		plugin := model.Plugin{ID: "builtin-svc", Enabled: false}
+		repo.SetData(model.Plugins{plugin})
+
+		m := &Manager{
+			ds: &tests.MockDataStore{MockedScrobbleBuffer: buffer},
+		}
+		Expect(m.removePluginFromDB(ctx, repo, &plugin)).To(Succeed())
+
+		remaining, err := buffer.Length()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(remaining).To(Equal(int64(1)), "builtin scrobbler queue must not be wiped")
 	})
 })
 

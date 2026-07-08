@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -109,7 +110,12 @@ func (m *Manager) removePluginFromDB(ctx context.Context, repo model.PluginRepos
 	}
 	// Discard any scrobbles still buffered for the removed plugin, so they are
 	// not delivered to an unrelated plugin that reuses the same name later.
-	if err := m.ds.ScrobbleBuffer(ctx).Discard(pluginID); err != nil {
+	// Skip names owned by builtin scrobblers: buffer entries are keyed by
+	// service name, so removing a plugin file named e.g. "lastfm.ndp" must not
+	// wipe the builtin Last.fm retry queue.
+	if scrobbler.IsBuiltinScrobbler(pluginID) {
+		log.Debug(ctx, "Keeping buffered scrobbles: name is owned by a builtin scrobbler", "plugin", pluginID)
+	} else if err := m.ds.ScrobbleBuffer(ctx).Discard(pluginID); err != nil {
 		log.Error(ctx, "Error discarding buffered scrobbles for removed plugin", "plugin", pluginID, err)
 	}
 	log.Info(ctx, "Plugin removed", "plugin", pluginID)
