@@ -42,23 +42,24 @@ func normalizeQueryKeys(next http.Handler) http.Handler {
 	})
 }
 
-type embyAuth struct {
+type mediaBrowserAuth struct {
 	Client, Device, DeviceId, Version, Token string
 }
 
-var embyAuthField = regexp.MustCompile(`(\w+)="([^"]*)"`)
+var mediaBrowserAuthField = regexp.MustCompile(`(\w+)="([^"]*)"`)
 
-// parseEmbyAuth reads the MediaBrowser/Emby authorization header, e.g.
+// parseMediaBrowserAuth reads the MediaBrowser-scheme authorization header (from Authorization or
+// the deprecated X-Emby-Authorization), e.g.
 // `MediaBrowser Client="Finamp", Device="Pixel", DeviceId="abc", Version="1.0", Token="jwt"`.
 // Field values are URL-decoded: Jellify (@jellyfin/sdk) percent-encodes them (Device="Pixel%208%20Pro"),
 // while Finamp sends them raw; unescapeField leaves a raw value untouched.
-func parseEmbyAuth(r *http.Request) embyAuth {
-	var a embyAuth
+func parseMediaBrowserAuth(r *http.Request) mediaBrowserAuth {
+	var a mediaBrowserAuth
 	h := r.Header.Get("X-Emby-Authorization")
 	if h == "" {
 		h = r.Header.Get("Authorization")
 	}
-	for _, m := range embyAuthField.FindAllStringSubmatch(h, -1) {
+	for _, m := range mediaBrowserAuthField.FindAllStringSubmatch(h, -1) {
 		switch m[1] {
 		case "Client":
 			a.Client = unescapeField(m[2])
@@ -88,7 +89,7 @@ func unescapeField(v string) string {
 // tokenFromRequest prefers the recommended Authorization scheme; the rest are legacy spellings
 // deprecated by Jellyfin but still sent by clients.
 func tokenFromRequest(r *http.Request) string {
-	if t := parseEmbyAuth(r).Token; t != "" {
+	if t := parseMediaBrowserAuth(r).Token; t != "" {
 		return t
 	}
 	if t := r.Header.Get("X-Emby-Token"); t != "" {
@@ -147,7 +148,7 @@ func (api *Router) withPlayer(next http.Handler) http.Handler {
 			return
 		}
 		ctx := r.Context()
-		a := parseEmbyAuth(r)
+		a := parseMediaBrowserAuth(r)
 		// Skip registration when the request can't identify a client (no X-Emby-Authorization, e.g.
 		// the /socket handshake that authenticates via ?api_key= only). Otherwise Register would
 		// create a junk player with an empty name (" []").

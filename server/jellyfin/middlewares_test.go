@@ -159,11 +159,11 @@ var _ = Describe("tokenFromRequest", func() {
 	})
 })
 
-var _ = Describe("parseEmbyAuth", func() {
-	authFor := func(header string) embyAuth {
+var _ = Describe("parseMediaBrowserAuth", func() {
+	authFor := func(header string) mediaBrowserAuth {
 		r := httptest.NewRequest("GET", "/", nil)
 		r.Header.Set("X-Emby-Authorization", header)
-		return parseEmbyAuth(r)
+		return parseMediaBrowserAuth(r)
 	}
 
 	It("reads Finamp's raw (unencoded) field values", func() {
