@@ -2,6 +2,7 @@ package subsonic
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -246,6 +247,22 @@ var _ = Describe("buildPlaylist", func() {
 				Expect(result.Public).To(BeTrue())
 				Expect(result.OpenSubsonicPlaylist).To(BeNil())
 			})
+		})
+	})
+
+	Describe("annotation leakage", func() {
+		It("does not serialize starred/rating even when the model carries them", func() {
+			p := model.Playlist{ID: "pl-1", Name: "My Playlist"}
+			p.Starred = true
+			p.Rating = 5
+
+			resp := router.buildPlaylist(ctx, p)
+
+			data, err := json.Marshal(resp)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(data)).ToNot(ContainSubstring("starred"))
+			Expect(string(data)).ToNot(ContainSubstring("rating"))
+			Expect(string(data)).ToNot(ContainSubstring("userRating"))
 		})
 	})
 })
