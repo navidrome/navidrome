@@ -125,6 +125,14 @@ RUN --mount=type=bind,source=. \
         export CXX=$(xx-info)-g++
         export LD_EXTRA="-extldflags '-static -latomic'"
     fi
+    # GNU ld corrupts the R_ARM_IRELATIVE addends of libatomic's ifunc resolvers
+    # (wrong address, Thumb bit lost) once .text outgrows the 16MB Thumb branch
+    # range, making static arm binaries jump to garbage inside glibc's ifunc
+    # resolution and crash before main() (issue #5738). Link 32-bit arm with LLD,
+    # which emits correct addends.
+    if [ "$(xx-info arch)" = "arm" ]; then
+        export LD_EXTRA="-extldflags '-static -latomic -fuse-ld=lld'"
+    fi
     if [ "$(xx-info os)" = "windows" ]; then
         export EXT=".exe"
     fi
