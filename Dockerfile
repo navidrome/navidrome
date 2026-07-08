@@ -111,11 +111,12 @@ RUN --mount=type=bind,source=. \
     --mount=from=osxcross,src=/osxcross/SDK,target=/xx-sdk,ro \
     --mount=type=cache,target=/root/.cache \
     --mount=type=cache,target=/go/pkg/mod <<EOT
+    set -e
 
     # Setup CGO cross-compilation environment
     xx-go --wrap
     export CGO_ENABLED=1
-    cat $(go env GOENV)
+    cat "$(go env GOENV)" 2>/dev/null || true
 
     # Only Darwin (macOS) requires clang (default), Windows requires gcc, everything else can use any compiler.
     # So let's use gcc for everything except Darwin.
@@ -128,13 +129,13 @@ RUN --mount=type=bind,source=. \
         export EXT=".exe"
     fi
 
-    BUILD_TAGS=$(./release/build-tags.sh) || exit 1
+    BUILD_TAGS=$(./release/build-tags.sh)
     go build -tags=${BUILD_TAGS} -ldflags="${LD_EXTRA} -w -s \
         -X github.com/navidrome/navidrome/consts.gitSha=${GIT_SHA} \
         -X github.com/navidrome/navidrome/consts.gitTag=${GIT_TAG}" \
-        -o /out/navidrome${EXT} . || exit 1
+        -o /out/navidrome${EXT} .
     # Fail the build if native libwebp (purego) leaked into a 32-bit binary (issue #5738).
-    ./release/verify-binary.sh /out/navidrome* || exit 1
+    ./release/verify-binary.sh /out/navidrome*
 EOT
 
 # Verify if the binary was built for the correct platform and it is statically linked

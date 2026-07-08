@@ -10,8 +10,13 @@
 # stages (Docker-image and standalone downloads) call it so they cannot drift apart.
 set -e
 
+# Prefer xx-info (the cross-build target arch); fall back to `go env GOARCH` so the
+# script is still correct when run outside the xx environment. Both report the
+# cross-compilation target, unlike `uname -m`, which would report the build host.
+arch=$(xx-info arch 2>/dev/null || go env GOARCH)
+
 tags="netgo,sqlite_fts5"
-case "$(xx-info arch)" in
+case "${arch}" in
     arm | 386) tags="${tags},nodynamic" ;;
 esac
 printf '%s' "${tags}"
