@@ -6,6 +6,7 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/pocketbase/dbx"
 )
 
 var _ = Describe("PlaylistRepository", func() {
@@ -109,6 +110,19 @@ var _ = Describe("PlaylistRepository", func() {
 			p, err := otherRepo.Get(plsID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(p.Starred).To(BeFalse())
+		})
+
+		It("removes annotations when the playlist is deleted", func() {
+			Expect(repo.SetStar(true, plsID)).To(Succeed())
+
+			Expect(repo.Delete(plsID)).To(Succeed())
+
+			var count int
+			err := GetDBXBuilder().NewQuery(
+				"SELECT count(*) FROM annotation WHERE item_type = 'playlist' AND item_id = {:id}").
+				Bind(dbx.Params{"id": plsID}).Row(&count)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(count).To(Equal(0))
 		})
 	})
 

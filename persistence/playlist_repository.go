@@ -94,7 +94,13 @@ func (r *playlistRepository) Exists(id string) (bool, error) {
 }
 
 func (r *playlistRepository) Delete(id string) error {
-	return r.delete(And{Eq{"id": id}, r.userFilter()})
+	if err := r.delete(And{Eq{"id": id}, r.userFilter()}); err != nil {
+		return err
+	}
+	// annotation rows have no FK cascade to playlist; clean orphans for this table.
+	// cleanAnnotations only removes rows whose playlist no longer exists, so a
+	// permission-denied no-op delete leaves other users' annotations untouched.
+	return r.cleanAnnotations()
 }
 
 func (r *playlistRepository) Put(p *model.Playlist, cols ...string) error {
