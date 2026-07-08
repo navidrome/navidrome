@@ -47,9 +47,6 @@ func Db() *sql.DB {
 		if err != nil {
 			log.Fatal("Error opening database", err)
 		}
-		// No PRAGMA optimize here on purpose: its budget-limited ANALYZE poisons the planner
-		// statistics (see Optimize). Stats are refreshed with a full ANALYZE after schema-changing
-		// migrations (Init) and via Optimize at scan-end and on a daily schedule.
 		return db
 	})
 }
@@ -96,9 +93,8 @@ func Init(ctx context.Context) func() {
 		log.Fatal(ctx, "Failed to apply new migrations", err)
 	}
 
-	if hasSchemaChanges && conf.Server.DevOptimizeDB {
-		// Migrations that create indexes leave them unanalyzed; refresh the planner statistics
-		// with a full ANALYZE (see Optimize for why not PRAGMA optimize).
+	if hasSchemaChanges {
+		// Migrations that create indexes leave them unanalyzed (see Optimize for why a full ANALYZE).
 		log.Debug(ctx, "Running ANALYZE after schema changes")
 		_, err = db.ExecContext(ctx, "ANALYZE")
 		if err != nil {
@@ -111,18 +107,11 @@ func Init(ctx context.Context) func() {
 	}
 }
 
-// Optimize refreshes the query-planner statistics with a full ANALYZE. Called after scans and on
-// a daily schedule, so the planner keeps up with library changes. It is a no-op unless
-// conf.Server.DevOptimizeDB is enabled.
-//
-// Deliberately not PRAGMA optimize: its internal ANALYZE runs with a limited analysis budget that
-// writes wrong stats for low-cardinality indexes (e.g. claiming (missing, library_id) narrows to
-// ~2000 rows when it matches the whole table), flipping the planner to full-table temp B-tree
-// sorts. The stats live in the database file, so one connection is enough — no pool loop needed.
+// Optimize refreshes the query-planner statistics with a full ANALYZE, after scans and on a daily
+// schedule. Deliberately not PRAGMA optimize: its internal ANALYZE runs with a limited analysis
+// budget that writes wrong stats for low-cardinality indexes, flipping the planner to full-table
+// temp B-tree sorts. Stats live in the database file, so one connection is enough.
 func Optimize(ctx context.Context) {
-	if !conf.Server.DevOptimizeDB {
-		return
-	}
 	optimize(ctx, Db())
 }
 

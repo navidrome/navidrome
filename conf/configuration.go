@@ -147,7 +147,6 @@ type configOptions struct {
 	DevEnablePluginsInsights          bool
 	DevPluginCompilationTimeout       time.Duration
 	DevExternalArtistFetchMultiplier  float64
-	DevOptimizeDB                     bool
 	DevPreserveUnicodeInExternalCalls bool
 	DevEnableMediaFileProbe           bool
 }
@@ -891,7 +890,6 @@ func setViperDefaults() {
 	viper.SetDefault("devenablepluginsinsights", true)
 	viper.SetDefault("devplugincompilationtimeout", time.Minute)
 	viper.SetDefault("devexternalartistfetchmultiplier", 1.5)
-	viper.SetDefault("devoptimizedb", true)
 	viper.SetDefault("devpreserveunicodeinexternalcalls", false)
 	viper.SetDefault("devenablemediafileprobe", true)
 }
