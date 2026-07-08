@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playlists"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -228,6 +229,15 @@ func (s *controller) ScanFolders(requestCtx context.Context, fullScan bool, targ
 	// Store scan error in database so it can be displayed in the UI
 	if scanError != nil {
 		_ = s.ds.Property(ctx).Put(consts.LastScanErrorKey, scanError.Error())
+	}
+	// Refresh the query-planner statistics after a successful full scan. This must run in the
+	// server process: with the external scanner, an ANALYZE in the subprocess is invisible to the
+	// server's pooled connections — their shared schema cache keeps the old statistics until the
+	// process restarts.
+	if fullScan && scanError == nil {
+		start := time.Now()
+		db.Optimize(ctx)
+		log.Debug(ctx, "Scanner: Optimized DB", "elapsed", time.Since(start))
 	}
 	// If changes were detected, send a refresh event to all clients
 	if s.changesDetected {
