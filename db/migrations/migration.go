@@ -20,10 +20,6 @@ func notice(ctx context.Context, tx *sql.Tx, msg string) {
 
 // Call this in migrations that requires a full rescan
 func forceFullRescan(ctx context.Context, tx *sql.Tx) error {
-	// If a full scan is required, most probably the query optimizer is outdated, so we run `analyze`.
-	if _, err := tx.ExecContext(ctx, `ANALYZE;`); err != nil {
-		return err
-	}
 	_, err := tx.ExecContext(ctx, fmt.Sprintf(`
 INSERT OR REPLACE into property (id, value) values ('%s', '1');
 `, consts.FullScanAfterMigrationFlagKey))

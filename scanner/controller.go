@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 	"sync/atomic"
 	"time"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/artwork"
@@ -53,7 +53,8 @@ func (s *controller) getScanner() scanner {
 
 // CallScan starts an in-process scan of specific library/folder pairs.
 // If targets is empty, it scans all libraries.
-// This is meant to be called from the command line (see cmd/scan.go).
+// This is meant to be called from the command line (see cmd/scan.go). It deliberately skips the
+// post-scan Optimize: the daily job and the post-migration ANALYZE keep the statistics healthy.
 func CallScan(ctx context.Context, ds model.DataStore, pls playlists.Playlists, fullScan bool, targets []model.ScanTarget) (<-chan *ProgressInfo, error) {
 	release, err := lockScan(ctx)
 	if err != nil {
@@ -285,11 +286,8 @@ func lockScan(ctx context.Context) (func(), error) {
 
 // resumingFullScan reports whether any library still has an interrupted full scan to resume.
 func (s *controller) resumingFullScan(ctx context.Context) bool {
-	libs, err := s.ds.Library(ctx).GetAll()
-	if err != nil {
-		return false
-	}
-	return slices.ContainsFunc(libs, func(lib model.Library) bool { return lib.FullScanInProgress })
+	count, err := s.ds.Library(ctx).CountAll(model.QueryOptions{Filters: squirrel.Eq{"full_scan_in_progress": true}})
+	return err == nil && count > 0
 }
 
 func (s *controller) trackProgress(ctx context.Context, progress <-chan *ProgressInfo) ([]string, error) {
