@@ -282,8 +282,6 @@ func (s *scannerImpl) runRefreshStats(ctx context.Context, state *scanState) fun
 
 func (s *scannerImpl) runOptimize(ctx context.Context, state *scanState) func() error {
 	return func() error {
-		// A full ANALYZE is only worth it when the library changed wholesale; quick scans rely on
-		// the daily schedule.
 		if !state.fullScan {
 			return nil
 		}
