@@ -71,7 +71,7 @@ RUN --mount=type=bind,source=. \
     export CGO_ENABLED=1
     BUILD_TAGS=$(./release/build-tags.sh)
     # -latomic is required on 32-bit arm (arm/v6, arm/v7) so SQLite's 64-bit atomics resolve.
-    go build -tags=${BUILD_TAGS} -ldflags="-w -s \
+    go build -tags="${BUILD_TAGS}" -ldflags="-w -s \
         -linkmode=external -extldflags '-latomic' \
         -X github.com/navidrome/navidrome/consts.gitSha=${GIT_SHA} \
         -X github.com/navidrome/navidrome/consts.gitTag=${GIT_TAG}" \
@@ -130,7 +130,7 @@ RUN --mount=type=bind,source=. \
     fi
 
     BUILD_TAGS=$(./release/build-tags.sh)
-    go build -tags=${BUILD_TAGS} -ldflags="${LD_EXTRA} -w -s \
+    go build -tags="${BUILD_TAGS}" -ldflags="${LD_EXTRA} -w -s \
         -X github.com/navidrome/navidrome/consts.gitSha=${GIT_SHA} \
         -X github.com/navidrome/navidrome/consts.gitTag=${GIT_TAG}" \
         -o /out/navidrome${EXT} .
