@@ -44,6 +44,20 @@ var _ = Describe("authenticate middleware", func() {
 		Expect(gotUser.UserName).To(Equal("alice"))
 	})
 
+	It("passes with the recommended Authorization: MediaBrowser scheme and injects the user", func() {
+		var gotUser model.User
+		next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			gotUser, _ = request.UserFrom(r.Context())
+			w.WriteHeader(http.StatusOK)
+		})
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "/Items", nil)
+		r.Header.Set("Authorization", `MediaBrowser Token="`+tokenFor("alice")+`", Client="Test", DeviceId="dev1"`)
+		api.authenticate(next).ServeHTTP(w, r)
+		Expect(w.Code).To(Equal(http.StatusOK))
+		Expect(gotUser.UserName).To(Equal("alice"))
+	})
+
 	It("rejects a missing token with 401", func() {
 		next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
 		w := httptest.NewRecorder()
@@ -119,6 +133,19 @@ var _ = Describe("withPlayer middleware", func() {
 })
 
 var _ = Describe("tokenFromRequest", func() {
+	It("accepts the recommended Authorization: MediaBrowser scheme", func() {
+		r := httptest.NewRequest("GET", "/Items", nil)
+		r.Header.Set("Authorization", `MediaBrowser Token="tok123", Client="Finamp", Device="Pixel", DeviceId="dev1", Version="1.0"`)
+		Expect(tokenFromRequest(r)).To(Equal("tok123"))
+	})
+
+	It("prefers the Authorization scheme token over deprecated token headers", func() {
+		r := httptest.NewRequest("GET", "/Items", nil)
+		r.Header.Set("Authorization", `MediaBrowser Token="scheme-token"`)
+		r.Header.Set("X-Emby-Token", "legacy-token")
+		Expect(tokenFromRequest(r)).To(Equal("scheme-token"))
+	})
+
 	It("accepts the lowercase api_key query param", func() {
 		r := httptest.NewRequest("GET", "/Items/s1/File?api_key=tok123", nil)
 		Expect(tokenFromRequest(r)).To(Equal("tok123"))

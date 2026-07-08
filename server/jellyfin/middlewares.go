@@ -85,14 +85,16 @@ func unescapeField(v string) string {
 	return v
 }
 
+// tokenFromRequest prefers the recommended Authorization scheme; the rest are legacy spellings
+// deprecated by Jellyfin but still sent by clients.
 func tokenFromRequest(r *http.Request) string {
+	if t := parseEmbyAuth(r).Token; t != "" {
+		return t
+	}
 	if t := r.Header.Get("X-Emby-Token"); t != "" {
 		return t
 	}
 	if t := r.Header.Get("X-MediaBrowser-Token"); t != "" {
-		return t
-	}
-	if t := parseEmbyAuth(r).Token; t != "" {
 		return t
 	}
 	// api_key and apikey differ by an underscore, not case, so normalizeQueryKeys' folding doesn't
