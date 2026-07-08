@@ -2,6 +2,7 @@ package tests
 
 import (
 	"errors"
+	"time"
 
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/model"
@@ -54,6 +55,13 @@ func (m *MockPlaylistRepo) Get(id string) (*model.Playlist, error) {
 
 func (m *MockPlaylistRepo) GetWithTracks(id string, _, _ bool) (*model.Playlist, error) {
 	return m.Get(id)
+}
+
+func (m *MockPlaylistRepo) GetAll(_ ...model.QueryOptions) (model.Playlists, error) {
+	if m.Err {
+		return nil, errors.New("error")
+	}
+	return m.All, nil
 }
 
 func (m *MockPlaylistRepo) Put(pls *model.Playlist, _ ...string) error {
@@ -111,6 +119,20 @@ func (m *MockPlaylistRepo) SetRating(rating int, id string) error {
 		m.Ratings = map[string]int{}
 	}
 	m.Ratings[id] = rating
+	return nil
+}
+
+func (m *MockPlaylistRepo) IncPlayCount(string, time.Time) error {
+	if m.Err {
+		return errors.New("error")
+	}
+	return nil
+}
+
+func (m *MockPlaylistRepo) ReassignAnnotation(string, string) error {
+	if m.Err {
+		return errors.New("error")
+	}
 	return nil
 }
 

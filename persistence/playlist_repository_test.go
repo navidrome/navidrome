@@ -1,6 +1,8 @@
 package persistence
 
 import (
+	"slices"
+
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -117,14 +119,34 @@ var _ = Describe("PlaylistRepository", func() {
 
 			all, err := repo.GetAll()
 			Expect(err).ToNot(HaveOccurred())
-			var found *model.Playlist
-			for i := range all {
-				if all[i].ID == plsID {
-					found = &all[i]
+			idx := slices.IndexFunc(all, func(p model.Playlist) bool { return p.ID == plsID })
+			Expect(idx).To(BeNumerically(">=", 0))
+			Expect(all[idx].Starred).To(BeTrue())
+		})
+
+		It("does not leak an annotation row of another item_type sharing the playlist id", func() {
+			// A stray media_file-typed row for the playlist id is the shape older
+			// builds (and the star fallthrough for non-visible playlists) can produce.
+			// The annotation join is scoped by item_type, so it must not surface on
+			// the playlist nor duplicate it in list results.
+			_, err := GetDBXBuilder().NewQuery(
+				"INSERT INTO annotation (user_id, item_id, item_type, starred) VALUES ({:uid}, {:id}, 'media_file', 1)").
+				Bind(dbx.Params{"uid": "userid", "id": plsID}).Execute()
+			Expect(err).ToNot(HaveOccurred())
+
+			p, err := repo.Get(plsID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(p.Starred).To(BeFalse())
+
+			all, err := repo.GetAll()
+			Expect(err).ToNot(HaveOccurred())
+			matches := 0
+			for _, pl := range all {
+				if pl.ID == plsID {
+					matches++
 				}
 			}
-			Expect(found).ToNot(BeNil())
-			Expect(found.Starred).To(BeTrue())
+			Expect(matches).To(Equal(1))
 		})
 
 		It("removes annotations when the playlist is deleted", func() {
