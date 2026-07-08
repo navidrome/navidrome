@@ -7,5 +7,13 @@ UPDATE playlist SET average_rating = coalesce(
     0
 );
 
+-- Remove stale annotation rows older builds mis-wrote for playlist ids as
+-- item_type='media_file' (Subsonic star/setRating fell through to the media_file
+-- branch before playlists were annotatable). Left in place they would surface via
+-- the playlist annotation join (which matches on item_id) and could duplicate a
+-- playlist in list results. A random media_file id never equals a playlist id, so
+-- this touches only the mis-typed rows.
+DELETE FROM annotation WHERE item_type = 'media_file' AND item_id IN (SELECT id FROM playlist);
+
 -- +goose Down
 ALTER TABLE playlist DROP COLUMN average_rating;

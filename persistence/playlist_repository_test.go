@@ -112,6 +112,21 @@ var _ = Describe("PlaylistRepository", func() {
 			Expect(p.Starred).To(BeFalse())
 		})
 
+		It("reads starred back through GetAll", func() {
+			Expect(repo.SetStar(true, plsID)).To(Succeed())
+
+			all, err := repo.GetAll()
+			Expect(err).ToNot(HaveOccurred())
+			var found *model.Playlist
+			for i := range all {
+				if all[i].ID == plsID {
+					found = &all[i]
+				}
+			}
+			Expect(found).ToNot(BeNil())
+			Expect(found.Starred).To(BeTrue())
+		})
+
 		It("removes annotations when the playlist is deleted", func() {
 			Expect(repo.SetStar(true, plsID)).To(Succeed())
 

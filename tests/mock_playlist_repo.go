@@ -20,7 +20,6 @@ type MockPlaylistRepo struct {
 	Data       map[string]*model.Playlist // keyed by ID
 	PathMap    map[string]*model.Playlist // keyed by path
 	All        model.Playlists
-	Options    model.QueryOptions
 	Last       *model.Playlist
 	Deleted    []string
 	Starred    map[string]bool // itemID -> starred, recorded by SetStar
