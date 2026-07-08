@@ -104,6 +104,13 @@ var _ = Describe("PlayTracker", func() {
 		Expect(tracker.builtinScrobblers).ToNot(HaveKey("disabled"))
 	})
 
+	Describe("IsBuiltinScrobbler", func() {
+		It("reports whether the name belongs to a registered builtin scrobbler", func() {
+			Expect(IsBuiltinScrobbler("fake")).To(BeTrue())
+			Expect(IsBuiltinScrobbler("some-plugin")).To(BeFalse())
+		})
+	})
+
 	Describe("GetNowPlaying", func() {
 		It("returns current playing music", func() {
 			track2 := track
