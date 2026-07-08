@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync/atomic"
 	"time"
 
@@ -212,6 +213,11 @@ func (s *controller) ScanFolders(requestCtx context.Context, fullScan bool, targ
 	ctx := request.AddValues(s.rootCtx, requestCtx)
 	ctx = auth.WithAdminUser(ctx, s.ds)
 
+	// A quick scan is promoted to a full one when it resumes an interrupted full scan; that happens
+	// inside the scanner (possibly in a subprocess), so mirror it here for the optimize gate. Must
+	// be read before the scan: ScanEnd clears the flag.
+	effectiveFullScan := fullScan || s.resumingFullScan(ctx)
+
 	// Send the initial scan status event
 	s.sendMessage(ctx, &events.ScanStatus{Scanning: true, Count: 0, FolderCount: 0})
 	progress := make(chan *ProgressInfo, 100)
@@ -234,7 +240,7 @@ func (s *controller) ScanFolders(requestCtx context.Context, fullScan bool, targ
 	// server process: with the external scanner, an ANALYZE in the subprocess is invisible to the
 	// server's pooled connections — their shared schema cache keeps the old statistics until the
 	// process restarts.
-	if fullScan && scanError == nil {
+	if effectiveFullScan && scanError == nil {
 		start := time.Now()
 		db.Optimize(ctx)
 		log.Debug(ctx, "Scanner: Optimized DB", "elapsed", time.Since(start))
@@ -275,6 +281,15 @@ func lockScan(ctx context.Context) (func(), error) {
 	return func() {
 		running.Store(false)
 	}, nil
+}
+
+// resumingFullScan reports whether any library still has an interrupted full scan to resume.
+func (s *controller) resumingFullScan(ctx context.Context) bool {
+	libs, err := s.ds.Library(ctx).GetAll()
+	if err != nil {
+		return false
+	}
+	return slices.ContainsFunc(libs, func(lib model.Library) bool { return lib.FullScanInProgress })
 }
 
 func (s *controller) trackProgress(ctx context.Context, progress <-chan *ProgressInfo) ([]string, error) {
