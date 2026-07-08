@@ -48,17 +48,26 @@ type mediaBrowserAuth struct {
 
 var mediaBrowserAuthField = regexp.MustCompile(`(\w+)="([^"]*)"`)
 
-// parseMediaBrowserAuth reads the MediaBrowser-scheme authorization header (from Authorization or
-// the deprecated X-Emby-Authorization), e.g.
+// parseMediaBrowserAuth reads the MediaBrowser-scheme authorization header, e.g.
 // `MediaBrowser Client="Finamp", Device="Pixel", DeviceId="abc", Version="1.0", Token="jwt"`.
-// Field values are URL-decoded: Jellify (@jellyfin/sdk) percent-encodes them (Device="Pixel%208%20Pro"),
-// while Finamp sends them raw; unescapeField leaves a raw value untouched.
+// The recommended Authorization header is preferred, but only when it actually carries
+// MediaBrowser data — a reverse proxy may inject Basic/Digest credentials there while the client
+// sends the deprecated X-Emby-Authorization. Field values are URL-decoded: Jellify (@jellyfin/sdk)
+// percent-encodes them (Device="Pixel%208%20Pro"), while Finamp sends them raw; unescapeField
+// leaves a raw value untouched.
 func parseMediaBrowserAuth(r *http.Request) mediaBrowserAuth {
-	var a mediaBrowserAuth
-	h := r.Header.Get("X-Emby-Authorization")
-	if h == "" {
-		h = r.Header.Get("Authorization")
+	if a, ok := parseAuthHeader(r.Header.Get("Authorization")); ok {
+		return a
 	}
+	a, _ := parseAuthHeader(r.Header.Get("X-Emby-Authorization"))
+	return a
+}
+
+// parseAuthHeader extracts the MediaBrowser fields from one header value; ok reports whether any
+// recognized field was present (a foreign scheme like Basic or Digest yields none).
+func parseAuthHeader(h string) (mediaBrowserAuth, bool) {
+	var a mediaBrowserAuth
+	ok := false
 	for _, m := range mediaBrowserAuthField.FindAllStringSubmatch(h, -1) {
 		switch m[1] {
 		case "Client":
@@ -71,9 +80,12 @@ func parseMediaBrowserAuth(r *http.Request) mediaBrowserAuth {
 			a.Version = unescapeField(m[2])
 		case "Token":
 			a.Token = unescapeField(m[2])
+		default:
+			continue
 		}
+		ok = true
 	}
-	return a
+	return a, ok
 }
 
 // unescapeField percent-decodes a header field value, falling back to the raw value when it isn't

@@ -183,6 +183,26 @@ var _ = Describe("parseMediaBrowserAuth", func() {
 		a := authFor(`MediaBrowser Client="100% Player", Device="d"`)
 		Expect(a.Client).To(Equal("100% Player"))
 	})
+
+	It("prefers the recommended Authorization header over the deprecated X-Emby-Authorization", func() {
+		r := httptest.NewRequest("GET", "/", nil)
+		r.Header.Set("Authorization", `MediaBrowser Client="New", DeviceId="dev-new"`)
+		r.Header.Set("X-Emby-Authorization", `MediaBrowser Client="Old", DeviceId="dev-old"`)
+		a := parseMediaBrowserAuth(r)
+		Expect(a.Client).To(Equal("New"))
+		Expect(a.DeviceId).To(Equal("dev-new"))
+	})
+
+	It("falls back to X-Emby-Authorization when Authorization carries a foreign scheme", func() {
+		// A reverse proxy may inject Basic/Digest credentials; the client's MediaBrowser data must
+		// still be honored.
+		r := httptest.NewRequest("GET", "/", nil)
+		r.Header.Set("Authorization", `Digest username="proxy", realm="site"`)
+		r.Header.Set("X-Emby-Authorization", `MediaBrowser Client="Finamp", DeviceId="dev1", Token="tok"`)
+		a := parseMediaBrowserAuth(r)
+		Expect(a.Client).To(Equal("Finamp"))
+		Expect(a.Token).To(Equal("tok"))
+	})
 })
 
 var _ = Describe("normalizeQueryKeys", func() {
