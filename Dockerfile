@@ -69,20 +69,15 @@ RUN --mount=type=bind,source=. \
     set -e
     xx-go --wrap
     export CGO_ENABLED=1
-    # Native libwebp (gen2brain/webp) uses ebitengine/purego reverse callbacks,
-    # which purego does not support on 32-bit ARM or x86 and crash with a SIGSEGV
-    # (issue #5597). Build those arches with the "nodynamic" tag so gen2brain/webp
-    # is WASM-only and never links the purego path. 64-bit arches keep native libwebp.
-    BUILD_TAGS=netgo,sqlite_fts5
-    if [ "$(xx-info arch)" = "arm" ] || [ "$(xx-info arch)" = "386" ]; then
-        BUILD_TAGS=${BUILD_TAGS},nodynamic
-    fi
+    BUILD_TAGS=$(./release/build-tags.sh)
     # -latomic is required on 32-bit arm (arm/v6, arm/v7) so SQLite's 64-bit atomics resolve.
     go build -tags=${BUILD_TAGS} -ldflags="-w -s \
         -linkmode=external -extldflags '-latomic' \
         -X github.com/navidrome/navidrome/consts.gitSha=${GIT_SHA} \
         -X github.com/navidrome/navidrome/consts.gitTag=${GIT_TAG}" \
         -o /out/navidrome .
+    # Fail the build if native libwebp (purego) leaked into a 32-bit binary (issue #5738).
+    ./release/verify-binary.sh /out/navidrome
     # Fail the build if the binary is accidentally statically linked: dlopen (and
     # therefore native libwebp detection) only works with a dynamic interpreter.
     file /out/navidrome | grep -q "dynamically linked" || { echo "ERROR: /out/navidrome is not dynamically linked"; file /out/navidrome; exit 1; }
@@ -133,10 +128,13 @@ RUN --mount=type=bind,source=. \
         export EXT=".exe"
     fi
 
-    go build -tags=netgo,sqlite_fts5 -ldflags="${LD_EXTRA} -w -s \
+    BUILD_TAGS=$(./release/build-tags.sh) || exit 1
+    go build -tags=${BUILD_TAGS} -ldflags="${LD_EXTRA} -w -s \
         -X github.com/navidrome/navidrome/consts.gitSha=${GIT_SHA} \
         -X github.com/navidrome/navidrome/consts.gitTag=${GIT_TAG}" \
-        -o /out/navidrome${EXT} .
+        -o /out/navidrome${EXT} . || exit 1
+    # Fail the build if native libwebp (purego) leaked into a 32-bit binary (issue #5738).
+    ./release/verify-binary.sh /out/navidrome* || exit 1
 EOT
 
 # Verify if the binary was built for the correct platform and it is statically linked
