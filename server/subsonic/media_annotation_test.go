@@ -185,6 +185,34 @@ var _ = Describe("MediaAnnotationController", func() {
 			Expect(playTracker.ReportedPlayback[0].ClientName).To(BeEmpty())
 		})
 	})
+
+	Describe("Star/Unstar playlists", func() {
+		var plRepo *tests.MockPlaylistRepo
+
+		BeforeEach(func() {
+			plRepo = tests.CreateMockPlaylistRepo()
+			plRepo.SetData(model.Playlists{{ID: "pl-1", Name: "My Playlist", OwnerID: "u1"}})
+			ds.(*tests.MockDataStore).MockedPlaylist = plRepo
+		})
+
+		It("stars a playlist by dispatching to the Playlist repo", func() {
+			r := newGetRequest("id=pl-1")
+
+			_, err := router.Star(r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(plRepo.Starred).To(HaveKeyWithValue("pl-1", true))
+		})
+
+		It("unstars a playlist by dispatching to the Playlist repo", func() {
+			r := newGetRequest("id=pl-1")
+
+			_, err := router.Unstar(r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(plRepo.Starred).To(HaveKeyWithValue("pl-1", false))
+		})
+	})
 })
 
 type fakePlayTracker struct {

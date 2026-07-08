@@ -19,14 +19,25 @@ type MockPlaylistRepo struct {
 	model.PlaylistRepository
 	Data       map[string]*model.Playlist // keyed by ID
 	PathMap    map[string]*model.Playlist // keyed by path
+	All        model.Playlists
+	Options    model.QueryOptions
 	Last       *model.Playlist
 	Deleted    []string
+	Starred    map[string]bool // itemID -> starred, recorded by SetStar
 	Err        bool
 	TracksRepo model.PlaylistTrackRepository
 }
 
 func (m *MockPlaylistRepo) SetError(err bool) {
 	m.Err = err
+}
+
+func (m *MockPlaylistRepo) SetData(pls model.Playlists) {
+	m.Data = make(map[string]*model.Playlist, len(pls))
+	m.All = pls
+	for i, p := range m.All {
+		m.Data[p.ID] = &m.All[i]
+	}
 }
 
 func (m *MockPlaylistRepo) Get(id string) (*model.Playlist, error) {
@@ -76,6 +87,19 @@ func (m *MockPlaylistRepo) Delete(id string) error {
 		return errors.New("error")
 	}
 	m.Deleted = append(m.Deleted, id)
+	return nil
+}
+
+func (m *MockPlaylistRepo) SetStar(starred bool, ids ...string) error {
+	if m.Err {
+		return errors.New("error")
+	}
+	if m.Starred == nil {
+		m.Starred = map[string]bool{}
+	}
+	for _, id := range ids {
+		m.Starred[id] = starred
+	}
 	return nil
 }
 
