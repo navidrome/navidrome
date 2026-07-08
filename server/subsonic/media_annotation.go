@@ -52,6 +52,9 @@ func (api *Router) setRating(ctx context.Context, id string, rating int) error {
 	case *model.Album:
 		repo = api.ds.Album(ctx)
 		resource = "album"
+	case *model.Playlist:
+		repo = api.ds.Playlist(ctx)
+		resource = "playlist"
 	default:
 		repo = api.ds.MediaFile(ctx)
 		resource = "song"

@@ -24,6 +24,7 @@ type MockPlaylistRepo struct {
 	Last       *model.Playlist
 	Deleted    []string
 	Starred    map[string]bool // itemID -> starred, recorded by SetStar
+	Ratings    map[string]int  // itemID -> rating, recorded by SetRating
 	Err        bool
 	TracksRepo model.PlaylistTrackRepository
 }
@@ -100,6 +101,17 @@ func (m *MockPlaylistRepo) SetStar(starred bool, ids ...string) error {
 	for _, id := range ids {
 		m.Starred[id] = starred
 	}
+	return nil
+}
+
+func (m *MockPlaylistRepo) SetRating(rating int, id string) error {
+	if m.Err {
+		return errors.New("error")
+	}
+	if m.Ratings == nil {
+		m.Ratings = map[string]int{}
+	}
+	m.Ratings[id] = rating
 	return nil
 }
 

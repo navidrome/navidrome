@@ -213,6 +213,25 @@ var _ = Describe("MediaAnnotationController", func() {
 			Expect(plRepo.Starred).To(HaveKeyWithValue("pl-1", false))
 		})
 	})
+
+	Describe("SetRating playlists", func() {
+		var plRepo *tests.MockPlaylistRepo
+
+		BeforeEach(func() {
+			plRepo = tests.CreateMockPlaylistRepo()
+			plRepo.SetData(model.Playlists{{ID: "pl-1", Name: "My Playlist", OwnerID: "u1"}})
+			ds.(*tests.MockDataStore).MockedPlaylist = plRepo
+		})
+
+		It("rates a playlist by dispatching to the Playlist repo", func() {
+			r := newGetRequest("id=pl-1", "rating=4")
+
+			_, err := router.SetRating(r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(plRepo.Ratings).To(HaveKeyWithValue("pl-1", 4))
+		})
+	})
 })
 
 type fakePlayTracker struct {
