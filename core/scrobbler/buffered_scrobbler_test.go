@@ -20,8 +20,11 @@ var _ = Describe("BufferedScrobbler", func() {
 	BeforeEach(func() {
 		ctx = context.Background()
 		buffer = tests.CreateMockedScrobbleBufferRepo()
+		userRepo := tests.CreateMockUserRepo()
+		Expect(userRepo.Put(&model.User{ID: "user1", UserName: "alice"})).To(Succeed())
 		ds = &tests.MockDataStore{
 			MockedScrobbleBuffer: buffer,
+			MockedUser:           userRepo,
 		}
 		scr = &fakeScrobbler{Authorized: true}
 		bs = newBufferedScrobbler(ds, scr, "test")
@@ -60,6 +63,16 @@ var _ = Describe("BufferedScrobbler", func() {
 		lastScrobble := scr.LastScrobble.Load()
 		Expect(lastScrobble.MediaFile.ID).To(Equal("123"))
 		Expect(lastScrobble.TimeStamp).To(BeTemporally("==", now))
+	})
+
+	It("restores the user in the context when draining buffered scrobbles", func() {
+		track := model.MediaFile{ID: "123", Title: "Test Track", Artist: "Test Artist"}
+		scrobble := Scrobble{MediaFile: track, TimeStamp: time.Now()}
+
+		Expect(bs.Scrobble(ctx, "user1", scrobble)).To(Succeed())
+
+		Eventually(scr.ScrobbleCalled.Load).Should(BeTrue())
+		Expect(scr.GetUsername()).To(Equal("alice"))
 	})
 
 	It("stops the background goroutine when Stop is called", func() {

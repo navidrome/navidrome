@@ -1098,6 +1098,13 @@ func (f *fakeScrobbler) GetUserID() string {
 	return ""
 }
 
+func (f *fakeScrobbler) GetUsername() string {
+	if p := f.username.Load(); p != nil {
+		return *p
+	}
+	return ""
+}
+
 func (f *fakeScrobbler) GetTrack() *model.MediaFile {
 	return f.track.Load()
 }
@@ -1129,6 +1136,16 @@ func (f *fakeScrobbler) NowPlaying(ctx context.Context, userId string, track *mo
 
 func (f *fakeScrobbler) Scrobble(ctx context.Context, userId string, s Scrobble) error {
 	f.userID.Store(&userId)
+	// Capture username from context (this is what plugin scrobblers do)
+	username, _ := request.UsernameFrom(ctx)
+	if username == "" {
+		if u, ok := request.UserFrom(ctx); ok {
+			username = u.UserName
+		}
+	}
+	if username != "" {
+		f.username.Store(&username)
+	}
 	f.LastScrobble.Store(&s)
 	f.ScrobbleCalled.Store(true)
 	if f.Error != nil {
