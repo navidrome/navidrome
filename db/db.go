@@ -47,12 +47,9 @@ func Db() *sql.DB {
 		if err != nil {
 			log.Fatal("Error opening database", err)
 		}
-		if conf.Server.DevOptimizeDB {
-			_, err = db.Exec("PRAGMA optimize=0x10002")
-			if err != nil {
-				log.Error("Error applying PRAGMA optimize", err)
-			}
-		}
+		// No PRAGMA optimize here on purpose: its budget-limited ANALYZE poisons the planner
+		// statistics (see Optimize). Stats are refreshed with a full ANALYZE after schema-changing
+		// migrations (Init) and via Optimize at scan-end and on a daily schedule.
 		return db
 	})
 }
@@ -115,7 +112,8 @@ func Init(ctx context.Context) func() {
 }
 
 // Optimize refreshes the query-planner statistics with a full ANALYZE. Called after scans and on
-// a daily schedule, so the planner keeps up with library changes.
+// a daily schedule, so the planner keeps up with library changes. It is a no-op unless
+// conf.Server.DevOptimizeDB is enabled.
 //
 // Deliberately not PRAGMA optimize: its internal ANALYZE runs with a limited analysis budget that
 // writes wrong stats for low-cardinality indexes (e.g. claiming (missing, library_id) narrows to
