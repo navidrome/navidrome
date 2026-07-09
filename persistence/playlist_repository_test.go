@@ -83,6 +83,14 @@ var _ = Describe("PlaylistRepository", func() {
 			plsID = pls.ID
 		})
 
+		countAnnotations := func() int {
+			var count int
+			Expect(GetDBXBuilder().NewQuery(
+				"SELECT count(*) FROM annotation WHERE item_type = 'playlist' AND item_id = {:id}").
+				Bind(dbx.Params{"id": plsID}).Row(&count)).To(Succeed())
+			return count
+		}
+
 		It("stores and reads back starred", func() {
 			Expect(repo.SetStar(true, plsID)).To(Succeed())
 
@@ -149,17 +157,14 @@ var _ = Describe("PlaylistRepository", func() {
 			Expect(matches).To(Equal(1))
 		})
 
-		It("removes annotations when the playlist is deleted", func() {
+		It("relies on the annotation sweep, not Delete, to clean up annotations", func() {
 			Expect(repo.SetStar(true, plsID)).To(Succeed())
 
 			Expect(repo.Delete(plsID)).To(Succeed())
+			Expect(countAnnotations()).To(Equal(1))
 
-			var count int
-			err := GetDBXBuilder().NewQuery(
-				"SELECT count(*) FROM annotation WHERE item_type = 'playlist' AND item_id = {:id}").
-				Bind(dbx.Params{"id": plsID}).Row(&count)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(count).To(Equal(0))
+			Expect(repo.(*playlistRepository).cleanAnnotations()).To(Succeed())
+			Expect(countAnnotations()).To(Equal(0))
 		})
 	})
 

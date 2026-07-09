@@ -94,24 +94,7 @@ func (r *playlistRepository) Exists(id string) (bool, error) {
 }
 
 func (r *playlistRepository) Delete(id string) error {
-	del := Delete(r.tableName).Where(And{Eq{"id": id}, r.userFilter()})
-	c, err := r.executeSQL(del)
-	if err != nil {
-		return err
-	}
-	if c == 0 {
-		// Nothing deleted (not found or not permitted): leave annotations untouched.
-		return nil
-	}
-	// annotation rows have no FK cascade to playlist. The playlist is now gone for
-	// everyone, so drop its annotations directly (scoped to this id, not a full-table
-	// sweep). Best-effort: a cleanup failure must not fail an already-committed delete,
-	// and an orphan row is harmless since the annotation join is scoped by item_type.
-	delAnn := Delete(annotationTable).Where(And{Eq{"item_type": r.tableName}, Eq{"item_id": id}})
-	if _, err := r.executeSQL(delAnn); err != nil {
-		log.Warn(r.ctx, "Failed to clean up annotations for deleted playlist", "id", id, err)
-	}
-	return nil
+	return r.delete(And{Eq{"id": id}, r.userFilter()})
 }
 
 func (r *playlistRepository) Put(p *model.Playlist, cols ...string) error {

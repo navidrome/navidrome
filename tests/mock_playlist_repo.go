@@ -23,8 +23,8 @@ type MockPlaylistRepo struct {
 	All        model.Playlists
 	Last       *model.Playlist
 	Deleted    []string
-	Starred    map[string]bool // itemID -> starred, recorded by SetStar
-	Ratings    map[string]int  // itemID -> rating, recorded by SetRating
+	Starred    map[string]bool // itemID -> starred
+	Ratings    map[string]int  // itemID -> rating
 	Err        bool
 	TracksRepo model.PlaylistTrackRepository
 }

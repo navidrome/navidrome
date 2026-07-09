@@ -10,6 +10,8 @@ import (
 )
 
 type Playlist struct {
+	Annotations `structs:"-"`
+
 	ID               string         `structs:"id" json:"id"`
 	Name             string         `structs:"name" json:"name"`
 	Comment          string         `structs:"comment" json:"comment"`
@@ -26,8 +28,6 @@ type Playlist struct {
 	ExternalImageURL string         `structs:"external_image_url" json:"externalImageUrl,omitempty"`
 	CreatedAt        time.Time      `structs:"created_at" json:"createdAt"`
 	UpdatedAt        time.Time      `structs:"updated_at" json:"updatedAt"`
-
-	Annotations `structs:"-"`
 
 	// SmartPlaylist attributes
 	Rules       *criteria.Criteria `structs:"rules" json:"rules"`
