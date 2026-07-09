@@ -254,6 +254,16 @@ func loadArtistFolder(ctx context.Context, ds model.DataStore, albums model.Albu
 
 	// Get the last update time for the folder
 	folders, err := ds.Folder(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"folder.id": folderID, "missing": false}})
+	fmt.Printf("DEBUG_ARTIST_FOLDER: paths=%v folderPath=%q libPath=%q folderID=%q err=%v len(folders)=%d\n", paths, folderPath, libPath, folderID, err, len(folders))
+	if len(folders) > 0 {
+		fmt.Printf("DEBUG_ARTIST_FOLDER_FOUND: id=%q name=%q parentId=%q imageFiles=%v\n", folders[0].ID, folders[0].Name, folders[0].ParentID, folders[0].ImageFiles)
+	} else {
+		// Let's also print ALL folders in the database to see what is stored!
+		allFolders, _ := ds.Folder(ctx).GetAll(model.QueryOptions{})
+		for _, f := range allFolders {
+			fmt.Printf("DEBUG_ALL_FOLDERS_DB: id=%q name=%q parentId=%q imageFiles=%v path=%q\n", f.ID, f.Name, f.ParentID, f.ImageFiles, f.Path)
+		}
+	}
 	if err != nil || len(folders) == 0 {
 		log.Warn(ctx, "Could not find folder for artist", "folderPath", folderPath, "id", folderID,
 			"libPath", libPath, "libID", libID, err)
