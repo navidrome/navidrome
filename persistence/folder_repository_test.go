@@ -245,7 +245,7 @@ var _ = Describe("FolderRepository", func() {
 		It("yields folders from a valid cursor", func() {
 			folder := &model.Folder{ID: "f1", Name: "Test"}
 			cursor := func(yield func(dbFolder, error) bool) {
-				yield(dbFolder{Folder: folder}, nil)
+				yield(dbFolder{Folder: *folder}, nil)
 			}
 
 			wrappedCursor := wrapFolderCursor(cursor)
@@ -290,7 +290,7 @@ var _ = Describe("FolderRepository", func() {
 
 			// Filter by parent_id
 			options := rest.QueryOptions{
-				Filters: map[string][]string{"parent_id": {parent.ID}},
+				Filters: map[string]any{"parent_id": parent.ID},
 			}
 			res, err := repo.(model.ResourceRepository).ReadAll(options)
 			Expect(err).ToNot(HaveOccurred())

@@ -141,7 +141,7 @@ var _ = Describe("ScrobbleBufferRepository", func() {
 			DescribeTable("enqueues an item properly",
 				func(service, userId, fileId string, playTime time.Time) {
 					now := time.Now()
-					err := scrobble.Enqueue(service, userId, fileId, playTime)
+					err := scrobble.Enqueue(service, userId, fileId, playTime, "", "", "", "")
 					Expect(err).ToNot(HaveOccurred())
 
 					count, err := scrobble.Length()
