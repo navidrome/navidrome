@@ -96,6 +96,23 @@ jobs:
             exit 1
           fi
 
+  validate-migrations:
+    name: Validate DB migrations
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      # Refresh the base branch so the check compares against its CURRENT tip,
+      # not the (possibly stale) commit the PR was opened against.
+      - name: Fetch latest base branch
+        run: git fetch --no-tags origin "+refs/heads/${{ github.event.pull_request.base.ref }}:refs/remotes/origin/${{ github.event.pull_request.base.ref }}"
+      - name: Validate migration ordering and naming
+        env:
+          BASE_REF: origin/${{ github.event.pull_request.base.ref }}
+        run: ./.github/workflows/validate-migrations.sh
+
   go:
     name: Test Go code
     runs-on: ubuntu-latest
@@ -257,7 +274,11 @@ jobs:
 
   build:
     name: Build
-    needs: [js, go, go-windows, go-lint, i18n-lint, git-version, check-push-enabled]
+    needs: [js, go, go-windows, go-lint, i18n-lint, git-version, check-push-enabled, validate-migrations]
+    # validate-migrations only runs on pull_request, so it is "skipped" on push/tag
+    # builds. Run Build unless a dependency actually failed — a *skipped* dependency
+    # (the migration check on non-PR events) must not block release builds.
+    if: ${{ !cancelled() && !failure() }}
     strategy:
       matrix:
         platform: [ linux/amd64, linux/arm64, linux/arm/v5, linux/arm/v6, linux/arm/v7, linux/386, linux/riscv64, darwin/amd64, darwin/arm64, windows/amd64, windows/386 ]
