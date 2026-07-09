@@ -41,12 +41,13 @@ jobs:
         id: git-version
         run: |
           GIT_TAG=$(git tag --sort=-committerdate | head -n 1)
-          if [ -n "$GIT_TAG" ]; then
-            if [[ "$GITHUB_REF" != refs/tags/* ]]; then
-              GIT_TAG=${GIT_TAG}-SNAPSHOT
-            fi
-            echo "GIT_TAG=$GIT_TAG" >> $GITHUB_OUTPUT
+          if [ -z "$GIT_TAG" ]; then
+            GIT_TAG="v0.0.0"
           fi
+          if [[ "$GITHUB_REF" != refs/tags/* ]]; then
+            GIT_TAG=${GIT_TAG}-SNAPSHOT
+          fi
+          echo "GIT_TAG=$GIT_TAG" >> $GITHUB_OUTPUT
           GIT_SHA=$(git rev-parse --short HEAD)
           PR_NUM=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
           if [[ $PR_NUM != "null" ]]; then
