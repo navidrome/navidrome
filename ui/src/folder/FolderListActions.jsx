@@ -5,10 +5,7 @@ import {
   useTranslate,
   Button,
 } from 'react-admin'
-import {
-  ButtonGroup,
-  makeStyles,
-} from '@material-ui/core'
+import { ButtonGroup, makeStyles } from '@material-ui/core'
 import ViewHeadlineIcon from '@material-ui/icons/ViewHeadline'
 import ViewModuleIcon from '@material-ui/icons/ViewModule'
 import { useDispatch, useSelector } from 'react-redux'
@@ -19,10 +16,7 @@ const useStyles = makeStyles({
 })
 
 const FolderListActions = (props) => {
-  const {
-    className,
-    ...rest
-  } = props
+  const { className, ...rest } = props
   const dispatch = useDispatch()
   const folderView = useSelector((state) => state.folderView)
   const classes = useStyles()

@@ -23,7 +23,13 @@ import Breadcrumbs from './Breadcrumbs'
 import FolderSongs from './FolderSongs'
 import FolderListActions from './FolderListActions'
 import FolderGridView from './FolderGridView'
-import { useResourceRefresh, Title, FolderContextMenu, DurationField, SizeField } from '../common'
+import {
+  useResourceRefresh,
+  Title,
+  FolderContextMenu,
+  DurationField,
+  SizeField,
+} from '../common'
 
 const useStyles = makeStyles({
   icon: {
@@ -132,7 +138,7 @@ const FolderShowLayout = (props) => {
       <FolderListActions {...props} />
       <SimpleShowLayout>
         <FolderHeader />
-        
+
         <ReferenceManyField
           reference="folder"
           target="parent_id"

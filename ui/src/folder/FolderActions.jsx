@@ -35,18 +35,10 @@ const useStyles = makeStyles({
 })
 
 const FolderButton = ({ children, ...rest }) => {
-  return (
-    <Button {...rest}>
-      {children}
-    </Button>
-  )
+  return <Button {...rest}>{children}</Button>
 }
 
-const FolderActions = ({
-  className,
-  record,
-  ...rest
-}) => {
+const FolderActions = ({ className, record, ...rest }) => {
   const dispatch = useDispatch()
   const translate = useTranslate()
   const dataProvider = useDataProvider()
@@ -56,18 +48,24 @@ const FolderActions = ({
   const isNotSmall = useMediaQuery((theme) => theme.breakpoints.up('sm'))
 
   const getRecursiveTracks = React.useCallback(() => {
-    return dataProvider.getList('song', {
-      pagination: { page: 1, perPage: -1 },
-      sort: { field: 'path', order: 'ASC' },
-      filter: { folder_id_recursive: record.id, missing: false },
-    }).then(({ data }) => {
-      const ids = data.map((s) => s.id)
-      const dataMap = data.reduce((acc, cur) => ({ ...acc, [cur.id]: cur }), {})
-      return { data: dataMap, ids }
-    }).catch((err) => {
-      notify('ra.notification.http_error', 'warning')
-      throw err
-    })
+    return dataProvider
+      .getList('song', {
+        pagination: { page: 1, perPage: -1 },
+        sort: { field: 'path', order: 'ASC' },
+        filter: { folder_id_recursive: record.id, missing: false },
+      })
+      .then(({ data }) => {
+        const ids = data.map((s) => s.id)
+        const dataMap = data.reduce(
+          (acc, cur) => ({ ...acc, [cur.id]: cur }),
+          {},
+        )
+        return { data: dataMap, ids }
+      })
+      .catch((err) => {
+        notify('ra.notification.http_error', 'warning')
+        throw err
+      })
   }, [dataProvider, record.id, notify])
 
   const handlePlay = React.useCallback(async () => {
@@ -111,7 +109,7 @@ const FolderActions = ({
           name: record.name,
           physicalFolderId: record.id,
           public: false,
-          tracks: ids.map(id => ({ mediaFileId: id }))
+          tracks: ids.map((id) => ({ mediaFileId: id })),
         },
       })
       notify('resources.folder.notifications.pinnedAsPlaylist', 'info')
@@ -175,7 +173,9 @@ const FolderActions = ({
               onClick={handleDownload}
               label={
                 translate('ra.action.download') +
-                (isDesktop && record.size ? ` (${formatBytes(record.size)})` : '')
+                (isDesktop && record.size
+                  ? ` (${formatBytes(record.size)})`
+                  : '')
               }
             >
               <CloudDownloadOutlinedIcon />

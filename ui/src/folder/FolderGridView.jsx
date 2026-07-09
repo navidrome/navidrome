@@ -109,11 +109,11 @@ const Cover = withContentRect('bounds')(({
 
   return (
     <div ref={measureRef} className={classes.coverContainer}>
-        <img
-            src={imgUrl || undefined}
-            alt={record.name}
-            className={`${classes.cover} ${imageLoading ? classes.coverLoading : ''}`}
-        />
+      <img
+        src={imgUrl || undefined}
+        alt={record.name}
+        className={`${classes.cover} ${imageLoading ? classes.coverLoading : ''}`}
+      />
     </div>
   )
 })
@@ -154,7 +154,9 @@ const FolderGridTile = ({ record, basePath }) => {
               {record.totalSongs} {record.totalSongs === 1 ? 'Song' : 'Songs'}
             </Typography>
           }
-          actionIcon={<FolderContextMenu record={record} color={'white'} source="name" />}
+          actionIcon={
+            <FolderContextMenu record={record} color={'white'} source="name" />
+          }
         />
       </Link>
       <Link
@@ -163,7 +165,9 @@ const FolderGridTile = ({ record, basePath }) => {
       >
         <span>
           <OverflowTooltip title={record.name}>
-            <Typography className={classes.folderName}>{record.name}</Typography>
+            <Typography className={classes.folderName}>
+              {record.name}
+            </Typography>
           </OverflowTooltip>
         </span>
       </Link>
@@ -183,10 +187,7 @@ const LoadedFolderGrid = ({ ids, data, basePath, width }) => {
       >
         {ids.map((id) => (
           <GridListTile key={id}>
-            <FolderGridTile
-              record={data[id]}
-              basePath={basePath}
-            />
+            <FolderGridTile record={data[id]} basePath={basePath} />
           </GridListTile>
         ))}
       </GridList>

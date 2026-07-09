@@ -36,18 +36,22 @@ func (m *MockedScrobbleBufferRepo) UserIDs(service string) ([]string, error) {
 	return result, nil
 }
 
-func (m *MockedScrobbleBufferRepo) Enqueue(service, userId, mediaFileId string, playTime time.Time) error {
+func (m *MockedScrobbleBufferRepo) Enqueue(service, userId, mediaFileId string, playTime time.Time, client, source, origin, playbackMode string) error {
 	if m.Error != nil {
 		return m.Error
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.Data = append(m.Data, model.ScrobbleEntry{
-		MediaFile:   model.MediaFile{ID: mediaFileId},
-		Service:     service,
-		UserID:      userId,
-		PlayTime:    playTime,
-		EnqueueTime: time.Now(),
+		MediaFile:    model.MediaFile{ID: mediaFileId},
+		Service:      service,
+		UserID:       userId,
+		PlayTime:     playTime,
+		EnqueueTime:  time.Now(),
+		Client:       client,
+		Source:       source,
+		Origin:       origin,
+		PlaybackMode: playbackMode,
 	})
 	return nil
 }
