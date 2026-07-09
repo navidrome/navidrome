@@ -15,9 +15,9 @@ builds:
       - darwin_arm64
       - linux_386
       - linux_amd64
-      - linux_arm_v5
-      - linux_arm_v6
-      - linux_arm_v7
+      - linux_arm_5
+      - linux_arm_6
+      - linux_arm_7
       - linux_arm64
       - linux_riscv64
       - windows_386
@@ -28,7 +28,7 @@ archives:
       - goos: windows
         formats:
           - zip
-    name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}{{ . }}{{ end }}{{ with .Mips }}_{{ . }}{{ end }}{{ if not (eq .Amd64 "v1") }}{{ .Amd64 }}{{ end }}'
+    name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}{{ with .Mips }}_{{ . }}{{ end }}{{ if not (eq .Amd64 "v1") }}{{ .Amd64 }}{{ end }}'
 
 checksum:
   name_template: "{{ .ProjectName }}_checksums.txt"
@@ -39,7 +39,7 @@ snapshot:
 nfpms:
   - id: navidrome
     package_name: navidrome
-    file_name_template: '{{ .PackageName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}{{ . }}{{ end }}{{ with .Mips }}_{{ . }}{{ end }}{{ if not (eq .Amd64 "v1") }}{{ .Amd64 }}{{ end }}'
+    file_name_template: '{{ .PackageName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}{{ with .Mips }}_{{ . }}{{ end }}{{ if not (eq .Amd64 "v1") }}{{ .Amd64 }}{{ end }}'
 
     homepage: https://navidrome.org
     description: |-
