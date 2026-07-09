@@ -26,10 +26,10 @@ type folderRepository struct {
 }
 
 type dbFolder struct {
-	model.Folder    `structs:",flatten"`
-	DBImageFiles    string `db:"image_files" structs:"image_files"`
-	LibraryPath     string `structs:"-" db:"library_path"`
-	LibraryName     string `structs:"-" db:"library_name"`
+	model.Folder `structs:",flatten"`
+	DBImageFiles string `db:"image_files" structs:"image_files"`
+	LibraryPath  string `structs:"-" db:"library_path"`
+	LibraryName  string `structs:"-" db:"library_name"`
 }
 
 func (f *dbFolder) PostScan() error {

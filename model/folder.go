@@ -17,20 +17,20 @@ import (
 // Folder represents a folder in the library. Its path is relative to the library root.
 // ALWAYS use NewFolder to create a new instance.
 type Folder struct {
-	ID              string    `structs:"id" db:"id" json:"id"`
-	LibraryID       int       `structs:"library_id" db:"library_id" json:"libraryId"`
-	LibraryPath     string    `structs:"-" json:"-" db:"-" hash:"ignore"`
-	Path            string    `structs:"path" db:"path" json:"path"`
-	Name            string    `structs:"name" db:"name" json:"name"`
-	ParentID        string    `structs:"parent_id" db:"parent_id" json:"parentId"`
-	NumAudioFiles   int       `structs:"num_audio_files" db:"num_audio_files" json:"numAudioFiles"`
-	NumPlaylists    int       `structs:"num_playlists" db:"num_playlists" json:"numPlaylists"`
-	ImageFiles      []string  `structs:"-" db:"-" json:"imageFiles"`
-	ImagesUpdatedAt time.Time `structs:"-" db:"-" json:"imagesUpdatedAt"`
-	Hash            string    `structs:"-" db:"-" json:"hash"`
-	Missing         bool      `structs:"missing" db:"missing" json:"missing"`
-	UpdatedAt       time.Time `structs:"updated_at" db:"updated_at" json:"updatedAt"`
-	CreatedAt       time.Time `structs:"created_at" db:"created_at" json:"createdAt"`
+	ID              string       `structs:"id" db:"id" json:"id"`
+	LibraryID       int          `structs:"library_id" db:"library_id" json:"libraryId"`
+	LibraryPath     string       `structs:"-" json:"-" db:"-" hash:"ignore"`
+	Path            string       `structs:"path" db:"path" json:"path"`
+	Name            string       `structs:"name" db:"name" json:"name"`
+	ParentID        string       `structs:"parent_id" db:"parent_id" json:"parentId"`
+	NumAudioFiles   int          `structs:"num_audio_files" db:"num_audio_files" json:"numAudioFiles"`
+	NumPlaylists    int          `structs:"num_playlists" db:"num_playlists" json:"numPlaylists"`
+	ImageFiles      []string     `structs:"-" db:"-" json:"imageFiles"`
+	ImagesUpdatedAt time.Time    `structs:"-" db:"-" json:"imagesUpdatedAt"`
+	Hash            string       `structs:"-" db:"-" json:"hash"`
+	Missing         bool         `structs:"missing" db:"missing" json:"missing"`
+	UpdatedAt       time.Time    `structs:"updated_at" db:"updated_at" json:"updatedAt"`
+	CreatedAt       time.Time    `structs:"created_at" db:"created_at" json:"createdAt"`
 	Breadcrumbs     []Breadcrumb `structs:"-" json:"breadcrumbs" db:"-"`
 }
 
