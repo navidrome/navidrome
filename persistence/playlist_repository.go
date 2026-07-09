@@ -21,9 +21,9 @@ type playlistRepository struct {
 }
 
 type dbPlaylist struct {
-	model.Playlist `structs:",flatten"`
-	Rules          sql.NullString `structs:"-"`
-	PhysicalFolderID string `db:"physical_folder_id" structs:"physical_folder_id"`
+	model.Playlist   `structs:",flatten"`
+	Rules            sql.NullString `structs:"-"`
+	PhysicalFolderID string         `db:"physical_folder_id" structs:"physical_folder_id"`
 }
 
 func (p *dbPlaylist) PostScan() error {

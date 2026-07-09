@@ -468,5 +468,3 @@ func (r sqlRepository) logSQL(sql string, args dbx.Params, err error, rowsAffect
 		log.Trace(r.ctx, "SQL success", "table", r.tableName, "rows", rowsAffected, "elapsed", elapsed)
 	}
 }
-
-
