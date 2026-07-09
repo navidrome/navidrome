@@ -94,6 +94,13 @@ while IFS= read -r f; do
     *.go) [[ "$b" == [0-9]* ]] || continue ;;  # non-timestamped .go = helper (e.g. migration.go), skip
     *) continue ;;
   esac
+  if [ "${f%/*}" != "$MIGRATIONS_DIR" ]; then
+    report "$f" "❌ Migration file in a subdirectory: $f
+   Migrations must live directly in $MIGRATIONS_DIR/ — only $MIGRATIONS_DIR/*.sql (and
+   top-level .go migrations) are embedded, so a nested file would be SILENTLY SKIPPED.
+   Move it to $MIGRATIONS_DIR/$b."
+    continue
+  fi
   if ! [[ "$b" =~ $NAME_RE ]]; then
     report "$f" "❌ Malformed migration filename: $f
    Expected YYYYMMDDHHMMSS_lower_snake_name.(sql|go); the name segment must be lowercase.
