@@ -398,7 +398,23 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 
 	return nil
 }
-...
+
+func (p *playTracker) GetNowPlaying(_ context.Context) ([]PlaybackSession, error) {
+	res := p.playMap.Values()
+	slices.SortFunc(res, func(a, b PlaybackSession) int {
+		return b.Start.Compare(a.Start)
+	})
+	for i := range res {
+		if res[i].State == StatePlaying {
+			elapsed := time.Since(res[i].LastReport).Milliseconds()
+			estimated := res[i].PositionMs + int64(float64(elapsed)*res[i].PlaybackRate)
+			trackDurationMs := int64(res[i].MediaFile.Duration * 1000)
+			res[i].PositionMs = min(estimated, trackDurationMs)
+		}
+	}
+	return res, nil
+}
+
 func (p *playTracker) Submit(ctx context.Context, submissions []Submission) error {
 	username, _ := request.UsernameFrom(ctx)
 	player, _ := request.PlayerFrom(ctx)
