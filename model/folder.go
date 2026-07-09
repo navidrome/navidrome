@@ -1,16 +1,13 @@
 package model
 
 import (
-	"context"
 	"fmt"
 	"iter"
 	"path"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/id"
 )
 
@@ -85,20 +82,21 @@ func NewFolder(lib Library, folderPath string) *Folder {
 
 	newID := FolderID(lib, folderPath)
 	dir, name := path.Split(folderPath)
-	dir = strings.Trim(dir, "/")
+	dir = path.Clean(dir)
 
 	var parentID string
 	if folderPath == "" {
+		dir = ""
+		name = "."
 		parentID = "" // Root folder
-	} else if dir == "" || dir == "." {
-		parentID = strconv.Itoa(lib.ID) // Top-level
 	} else {
 		parentID = FolderID(lib, dir)
 	}
+
 	f := &Folder{
 		LibraryID:       lib.ID,
 		ID:              newID,
-		Path:            folderPath,
+		Path:            dir,
 		Name:            name,
 		ParentID:        parentID,
 		ImageFiles:      []string{},
@@ -106,7 +104,6 @@ func NewFolder(lib Library, folderPath string) *Folder {
 		CreatedAt:       time.Now(),
 		ImagesUpdatedAt: time.Time{},
 	}
-	log.Error(context.Background(), "!!!CRITICAL_DEBUG!!! NewFolder created", "id", f.ID, "path", f.Path, "parentId", f.ParentID)
 	return f
 }
 
