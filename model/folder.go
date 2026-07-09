@@ -89,10 +89,8 @@ func NewFolder(lib Library, folderPath string) *Folder {
 
 	var parentID string
 	if folderPath == "" {
-		dir = ""
 		parentID = "" // Root folder
 	} else if dir == "" || dir == "." {
-		dir = ""
 		parentID = strconv.Itoa(lib.ID) // Top-level
 	} else {
 		parentID = FolderID(lib, dir)

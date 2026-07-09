@@ -97,7 +97,10 @@ func (a *folderArtworkReader) fromInternalMediaFile(ctx context.Context) sourceF
 			Filters: Eq{"folder_id": a.folder.ID, "media_file.missing": false},
 			Max:     1,
 		})
-		if err != nil || len(tracks) == 0 {
+		if err != nil {
+			return nil, "", err
+		}
+		if len(tracks) == 0 {
 			return nil, "", nil
 		}
 		return fromTag(ctx, a.lib.FS, tracks[0].Path)()
