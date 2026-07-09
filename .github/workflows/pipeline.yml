@@ -96,6 +96,19 @@ jobs:
             exit 1
           fi
 
+  validate-migrations:
+    name: Validate DB migrations
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Validate migration ordering and naming
+        env:
+          BASE_REF: origin/${{ github.event.pull_request.base.ref }}
+        run: ./.github/workflows/validate-migrations.sh
+
   go:
     name: Test Go code
     runs-on: ubuntu-latest
