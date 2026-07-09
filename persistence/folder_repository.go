@@ -35,7 +35,6 @@ type dbFolder struct {
 func (f *dbFolder) PostScan() error {
 	var err error
 	if f.DBImageFiles != "" {
-
 		if err = json.Unmarshal([]byte(f.DBImageFiles), &f.Folder.ImageFiles); err != nil {
 			return fmt.Errorf("parsing folder image files from db: %w", err)
 		}
