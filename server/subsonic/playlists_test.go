@@ -260,9 +260,14 @@ var _ = Describe("buildPlaylist", func() {
 
 			data, err := json.Marshal(resp)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(string(data)).ToNot(ContainSubstring("starred"))
-			Expect(string(data)).ToNot(ContainSubstring("rating"))
-			Expect(string(data)).ToNot(ContainSubstring("userRating"))
+			var fields map[string]any
+			Expect(json.Unmarshal(data, &fields)).To(Succeed())
+			Expect(fields).ToNot(HaveKey("starred"))
+			Expect(fields).ToNot(HaveKey("starredAt"))
+			Expect(fields).ToNot(HaveKey("rating"))
+			Expect(fields).ToNot(HaveKey("userRating"))
+			Expect(fields).ToNot(HaveKey("averageRating"))
+			Expect(fields).ToNot(HaveKey("playCount"))
 		})
 	})
 })
