@@ -18,6 +18,9 @@ inputs:
     required: false
     default: ''
 outputs:
+  repository:
+    description: 'Lowercased GHCR repository path (owner/repo), since Docker requires lowercase image references'
+    value: ${{ steps.repo.outputs.repository }}
   tags:
     description: 'Docker image tags'
     value: ${{ steps.meta.outputs.tags }}
@@ -40,6 +43,11 @@ outputs:
 runs:
   using: 'composite'
   steps:
+    - name: Compute lowercase repository name
+      id: repo
+      shell: bash
+      run: echo "repository=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+
     - name: Check Docker Hub configuration
       shell: bash
       run: |
@@ -78,7 +86,7 @@ runs:
           maintainer=deluan@navidrome.org
         images: |
           name=${{env.DOCKER_HUB_REPO}},enable=${{env.DOCKER_HUB_ENABLED}}
-          name=ghcr.io/${{ github.repository }}
+          name=ghcr.io/${{ steps.repo.outputs.repository }}
         tags: |
           type=ref,event=pr
           type=semver,pattern={{version}}
