@@ -252,13 +252,18 @@ jobs:
     outputs:
       is_enabled: ${{ steps.check.outputs.is_enabled }}
     steps:
+      # GHCR publishing only needs the built-in GITHUB_TOKEN, so it's always enabled.
+      # Docker Hub publishing is separately gated on its own secrets/vars below.
       - name: Check if Docker push is configured
         id: check
-        run: echo "is_enabled=${{ secrets.DOCKER_HUB_USERNAME != '' }}" >> $GITHUB_OUTPUT
+        run: echo "is_enabled=true" >> $GITHUB_OUTPUT
 
   build:
     name: Build
     needs: [js, go, go-windows, go-lint, i18n-lint, git-version, check-push-enabled]
+    permissions:
+      contents: read
+      packages: write
     strategy:
       matrix:
         platform: [ linux/amd64, linux/arm64, linux/arm/v5, linux/arm/v6, linux/arm/v7, linux/386, linux/riscv64, darwin/amd64, darwin/arm64, windows/amd64, windows/386 ]
