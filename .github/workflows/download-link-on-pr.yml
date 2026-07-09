@@ -3,6 +3,8 @@ on:
   workflow_run:
     workflows: ['Pipeline: Test, Lint, Build']
     types: [completed]
+permissions:
+  pull-requests: write
 jobs:
   pr_comment:
     if: github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success'
