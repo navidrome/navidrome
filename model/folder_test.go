@@ -28,7 +28,7 @@ var _ = Describe("Folder", func() {
 		When("the folder path is the library root", func() {
 			It("should return the correct folder ID", func() {
 				folderPath := lib.Path
-				expectedID := id.NewHash("1:.")
+				expectedID := id.NewHash("1:")
 				Expect(model.FolderID(lib, folderPath)).To(Equal(expectedID))
 			})
 		})
@@ -36,7 +36,7 @@ var _ = Describe("Folder", func() {
 		When("the folder path is '.' (library root)", func() {
 			It("should return the correct folder ID", func() {
 				folderPath := "."
-				expectedID := id.NewHash("1:.")
+				expectedID := id.NewHash("1:")
 				Expect(model.FolderID(lib, folderPath)).To(Equal(expectedID))
 			})
 		})

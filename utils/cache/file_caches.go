@@ -74,10 +74,11 @@ type FileCache interface {
 //	    return strings.NewReader(item.Key()), nil
 //	})
 func NewFileCache(name, cacheSize, cacheFolder string, maxItems int, getReader ReadFunc) FileCache {
+	absCacheFolder := filepath.Join(conf.Server.CacheFolder.MustPath(), filepath.FromSlash(cacheFolder))
 	fc := &fileCache{
 		name:        name,
 		cacheSize:   cacheSize,
-		cacheFolder: filepath.FromSlash(cacheFolder),
+		cacheFolder: absCacheFolder,
 		maxItems:    maxItems,
 		getReader:   getReader,
 		mutex:       &sync.RWMutex{},
@@ -262,7 +263,6 @@ func newFSCache(name, cacheSize, cacheFolder string, maxItems int) (fscache.Cach
 
 	lru := NewFileHaunter(name, maxItems, size, consts.DefaultCacheCleanUpInterval)
 	h := fscache.NewLRUHaunterStrategy(lru)
-	cacheFolder = filepath.Join(conf.Server.CacheFolder.MustPath(), cacheFolder)
 
 	var fs *spreadFS
 	log.Info(fmt.Sprintf("Creating %s cache", name), "path", cacheFolder, "maxSize", humanize.Bytes(size))

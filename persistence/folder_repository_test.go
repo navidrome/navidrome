@@ -294,7 +294,7 @@ var _ = Describe("FolderRepository", func() {
 			}
 			res, err := repo.(model.ResourceRepository).ReadAll(options)
 			Expect(err).ToNot(HaveOccurred())
-			folders := res.([]model.Folder)
+			folders := res.(model.Folders)
 			Expect(folders).To(HaveLen(2))
 			names := slice.Map(folders, func(f model.Folder) string { return f.Name })
 			Expect(names).To(ContainElements("Child1", "Child2"))
