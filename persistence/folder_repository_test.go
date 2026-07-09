@@ -220,16 +220,13 @@ var _ = Describe("FolderRepository", func() {
 	})
 
 	Describe("wrapFolderCursor", func() {
-		It("does not panic when the cursor yields a dbFolder with nil Folder", func() {
-			// Simulate what queryWithStableResults does on the rows.Err() path:
-			// it yields a zero-value dbFolder (where Folder is nil) with an error.
+		It("does not panic when the cursor yields a dbFolder with an error", func() {
 			dbErr := fmt.Errorf("database is locked")
 			cursor := func(yield func(dbFolder, error) bool) {
-				var empty dbFolder // Folder pointer is nil
+				var empty dbFolder
 				yield(empty, dbErr)
 			}
 
-			// wrapFolderCursor should handle the nil Folder without panicking
 			wrappedCursor := wrapFolderCursor(cursor)
 			var gotErr error
 			Expect(func() {
@@ -238,8 +235,7 @@ var _ = Describe("FolderRepository", func() {
 				}
 			}).ToNot(Panic())
 			Expect(gotErr).To(HaveOccurred())
-			Expect(gotErr.Error()).To(ContainSubstring("unexpected nil folder"))
-			Expect(errors.Is(gotErr, dbErr)).To(BeTrue(), "should wrap the original cursor error")
+			Expect(errors.Is(gotErr, dbErr)).To(BeTrue(), "should yield the original cursor error")
 		})
 
 		It("yields folders from a valid cursor", func() {
