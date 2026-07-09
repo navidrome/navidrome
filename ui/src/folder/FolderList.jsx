@@ -57,7 +57,12 @@ const FolderList = (props) => {
   }, [dataProvider])
 
   if (loading) return null
-  if (!libraryId) return <div style={{ padding: '20px' }}>No libraries found. Please scan your music first.</div>
+  if (!libraryId)
+    return (
+      <div style={{ padding: '20px' }}>
+        No libraries found. Please scan your music first.
+      </div>
+    )
 
   return (
     <List
