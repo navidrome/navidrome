@@ -101,5 +101,4 @@ func (r *scrobbleBufferRepository) Length() (int64, error) {
 	return r.count(r.newSelect())
 }
 
-
 var _ model.ScrobbleBufferRepository = (*scrobbleBufferRepository)(nil)
