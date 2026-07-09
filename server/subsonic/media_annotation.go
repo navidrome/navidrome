@@ -113,8 +113,9 @@ func (api *Router) setStar(ctx context.Context, star bool, ids ...string) error 
 		return nil
 	}
 	log.Debug(ctx, "Changing starred", "ids", ids, "starred", star)
-	event := &events.RefreshResource{}
 	err := api.ds.WithTxImmediate(func(tx model.DataStore) error {
+		event := &events.RefreshResource{}
+		changed := false
 		for _, id := range ids {
 			var repo model.AnnotatedRepository
 			var resource string
@@ -144,8 +145,13 @@ func (api *Router) setStar(ctx context.Context, star bool, ids ...string) error 
 				return err
 			}
 			event = event.With(resource, id)
+			changed = true
 		}
-		api.broker.SendMessage(ctx, event)
+		// Skip the broadcast when nothing changed: an empty RefreshResource
+		// serializes as a "{*:*}" wildcard, forcing every client to refresh.
+		if changed {
+			api.broker.SendMessage(ctx, event)
+		}
 		return nil
 	})
 	if err != nil {

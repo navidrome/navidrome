@@ -232,6 +232,17 @@ var _ = Describe("MediaAnnotationController", func() {
 			Expect(plRepo.Ratings).To(HaveKeyWithValue("pl-1", 4))
 		})
 	})
+
+	Describe("Star with an unresolvable id", func() {
+		It("skips the id without broadcasting an empty (wildcard) refresh", func() {
+			r := newGetRequest("id=does-not-exist")
+
+			_, err := router.Star(r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(eventBroker.Events).To(BeEmpty())
+		})
+	})
 })
 
 type fakePlayTracker struct {
