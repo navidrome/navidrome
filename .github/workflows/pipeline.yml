@@ -104,8 +104,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      # Refresh the base branch so the check compares against the CURRENT tip of
-      # master, not the (possibly stale) base the PR was opened against.
+      # Refresh the base branch so the check compares against its CURRENT tip,
+      # not the (possibly stale) commit the PR was opened against.
       - name: Fetch latest base branch
         run: git fetch --no-tags origin "+refs/heads/${{ github.event.pull_request.base.ref }}:refs/remotes/origin/${{ github.event.pull_request.base.ref }}"
       - name: Validate migration ordering and naming
