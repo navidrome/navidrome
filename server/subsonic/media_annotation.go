@@ -108,57 +108,38 @@ func (api *Router) Unstar(r *http.Request) (*responses.Subsonic, error) {
 
 func (api *Router) setStar(ctx context.Context, star bool, ids ...string) error {
 	if len(ids) == 0 {
-		return nil
-	}
-	log.Debug(ctx, "Changing starred", "ids", ids, "starred", star)
-	if len(ids) == 0 {
 		log.Warn(ctx, "Cannot star/unstar an empty list of ids")
 		return nil
 	}
+	log.Debug(ctx, "Changing starred", "ids", ids, "starred", star)
 	event := &events.RefreshResource{}
 	err := api.ds.WithTxImmediate(func(tx model.DataStore) error {
 		for _, id := range ids {
-			exist, err := tx.Album(ctx).Exists(id)
+			var repo model.AnnotatedRepository
+			var resource string
+			entity, err := model.GetEntityByID(ctx, tx, id)
 			if err != nil {
-				return err
-			}
-			if exist {
-				err = tx.Album(ctx).SetStar(star, id)
-				if err != nil {
-					return err
-				}
-				event = event.With("album", id)
+				log.Error(ctx, "Error getting entity by ID in setStar. Skipping", "id", id, err)
 				continue
 			}
-			exist, err = tx.Artist(ctx).Exists(id)
-			if err != nil {
+			switch entity.(type) {
+			case *model.Artist:
+				repo = tx.Artist(ctx)
+				resource = "artist"
+			case *model.Album:
+				repo = tx.Album(ctx)
+				resource = "album"
+			case *model.Playlist:
+				repo = tx.Playlist(ctx)
+				resource = "playlist"
+			default:
+				repo = tx.MediaFile(ctx)
+				resource = "song"
+			}
+			if err := repo.SetStar(star, id); err != nil {
 				return err
 			}
-			if exist {
-				err = tx.Artist(ctx).SetStar(star, id)
-				if err != nil {
-					return err
-				}
-				event = event.With("artist", id)
-				continue
-			}
-			exist, err = tx.Playlist(ctx).Exists(id)
-			if err != nil {
-				return err
-			}
-			if exist {
-				err = tx.Playlist(ctx).SetStar(star, id)
-				if err != nil {
-					return err
-				}
-				event = event.With("playlist", id)
-				continue
-			}
-			err = tx.MediaFile(ctx).SetStar(star, id)
-			if err != nil {
-				return err
-			}
-			event = event.With("song", id)
+			event = event.With(resource, id)
 		}
 		api.broker.SendMessage(ctx, event)
 		return nil
