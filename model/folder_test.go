@@ -87,7 +87,7 @@ var _ = Describe("Folder", func() {
 			Expect(folder.Name).To(Equal("metal"))
 			Expect(folder.ParentID).To(Equal(model.FolderID(lib, "rock")))
 			Expect(folder.ImageFiles).To(BeEmpty())
-			Expect(folder.UpdateAt).To(BeTemporally("~", time.Now(), time.Second))
+			Expect(folder.UpdatedAt).To(BeTemporally("~", time.Now(), time.Second))
 			Expect(folder.CreatedAt).To(BeTemporally("~", time.Now(), time.Second))
 		})
 
@@ -101,7 +101,7 @@ var _ = Describe("Folder", func() {
 			Expect(folder.Name).To(Equal("rock"))
 			Expect(folder.ParentID).To(Equal(model.FolderID(lib, ".")))
 			Expect(folder.ImageFiles).To(BeEmpty())
-			Expect(folder.UpdateAt).To(BeTemporally("~", time.Now(), time.Second))
+			Expect(folder.UpdatedAt).To(BeTemporally("~", time.Now(), time.Second))
 			Expect(folder.CreatedAt).To(BeTemporally("~", time.Now(), time.Second))
 		})
 
@@ -115,7 +115,7 @@ var _ = Describe("Folder", func() {
 			Expect(folder.Name).To(Equal("."))
 			Expect(folder.ParentID).To(Equal(""))
 			Expect(folder.ImageFiles).To(BeEmpty())
-			Expect(folder.UpdateAt).To(BeTemporally("~", time.Now(), time.Second))
+			Expect(folder.UpdatedAt).To(BeTemporally("~", time.Now(), time.Second))
 			Expect(folder.CreatedAt).To(BeTemporally("~", time.Now(), time.Second))
 		})
 	})

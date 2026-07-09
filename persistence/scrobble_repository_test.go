@@ -63,7 +63,7 @@ var _ = Describe("ScrobbleRepository", func() {
 			}).Execute()
 			Expect(err).ToNot(HaveOccurred())
 
-			err = repo.RecordScrobble(fileID, submissionTime)
+			err = repo.RecordScrobble(fileID, submissionTime, "", "", "", "")
 			Expect(err).ToNot(HaveOccurred())
 
 			// Verify insertion

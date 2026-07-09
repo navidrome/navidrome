@@ -697,14 +697,14 @@ var _ = Describe("artistArtworkReader", func() {
 
 type fakeFolderRepo struct {
 	model.FolderRepository
-	result       []model.Folder
+	result       model.Folders
 	parentResult *model.Folder
 	getErr       error
 	getCallCount int
 	err          error
 }
 
-func (f *fakeFolderRepo) GetAll(...model.QueryOptions) ([]model.Folder, error) {
+func (f *fakeFolderRepo) GetAll(...model.QueryOptions) (model.Folders, error) {
 	return f.result, f.err
 }
 
