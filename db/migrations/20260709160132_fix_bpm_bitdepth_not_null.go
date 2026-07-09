@@ -3,7 +3,7 @@ package migrations
 import (
 	"context"
 	"database/sql"
-	"fmt"
+	"errors"
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/pressly/goose/v3"
@@ -72,24 +72,16 @@ func downFixBpmBitdepthNotNull(ctx context.Context, tx *sql.Tx) error {
 }
 
 // columnIsNotNull reports whether the given column of the given table is declared
-// with a NOT NULL constraint, using PRAGMA table_info. The table name is a fixed
-// internal constant, so it is safe to interpolate (PRAGMA cannot bind parameters).
+// with a NOT NULL constraint. "notnull" must be quoted: NOTNULL is an SQLite
+// operator keyword.
 func columnIsNotNull(ctx context.Context, tx *sql.Tx, table, column string) (bool, error) {
-	rows, err := tx.QueryContext(ctx, fmt.Sprintf("PRAGMA table_info(%s)", table))
+	var notNull int
+	err := tx.QueryRowContext(ctx, `SELECT "notnull" FROM pragma_table_info(?) WHERE name = ?`, table, column).Scan(&notNull)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
 	if err != nil {
 		return false, err
 	}
-	defer rows.Close()
-	for rows.Next() {
-		var cid, notnull, pk int
-		var name, ctype string
-		var dflt sql.NullString
-		if err = rows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err != nil {
-			return false, err
-		}
-		if name == column {
-			return notnull == 1, nil
-		}
-	}
-	return false, rows.Err()
+	return notNull == 1, nil
 }
