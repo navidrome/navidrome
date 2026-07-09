@@ -300,6 +300,21 @@ jobs:
             GIT_SHA=${{ env.GIT_SHA }}
             GIT_TAG=${{ env.GIT_TAG }}
 
+      - name: Set up QEMU for smoke test
+        if: env.IS_LINUX == 'true'
+        uses: docker/setup-qemu-action@v3
+
+      # The binary is static, so binfmt+qemu runs it directly on the runner.
+      # Catches startup crashes in cross-compiled binaries before they ship,
+      # e.g. the broken ifunc relocations on 32-bit arm from issue #5738.
+      - name: Smoke-test binary
+        if: env.IS_LINUX == 'true'
+        run: |
+          BIN=./output/${{ env.PLATFORM }}/navidrome
+          chmod +x "$BIN"
+          "$BIN" --help >/dev/null
+          echo "OK: ${{ matrix.platform }} binary starts"
+
       - name: Upload Binaries
         uses: actions/upload-artifact@v7
         with:
