@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import PropTypes from 'prop-types'
-import { useDispatch } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import {
   useNotify,
   usePermissions,
@@ -65,6 +65,9 @@ export const SongContextMenu = ({
   const notify = useNotify()
   const dataProvider = useDataProvider()
   const [anchorEl, setAnchorEl] = useState(null)
+  const showFolderView = useSelector(
+    (state) => state.settings.showFolderView !== false,
+  )
   const [playlistAnchorEl, setPlaylistAnchorEl] = useState(null)
   const [playlists, setPlaylists] = useState([])
   const [playlistsLoaded, setPlaylistsLoaded] = useState(false)
@@ -144,7 +147,7 @@ export const SongContextMenu = ({
         dispatch(openDownloadMenu(record, DOWNLOAD_MENU_SONG)),
     },
     showInFolder: {
-      enabled: record.folderId || record.folder_id,
+      enabled: showFolderView && (record.folderId || record.folder_id),
       label: translate('resources.folder.actions.showInFolder'),
       action: (record) => {
         const folderId = record.folderId || record.folder_id

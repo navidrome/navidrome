@@ -53,6 +53,9 @@ const Menu = ({ dense = false }) => {
   const queue = useSelector((state) => state.player?.queue)
   const classes = useStyles({ addPadding: queue.length > 0 })
   const resources = useSelector(getResources)
+  const showFolderView = useSelector(
+    (state) => state.settings.showFolderView !== false,
+  )
 
   // TODO State is not persisted in mobile when you close the sidebar menu. Move to redux?
   const [state, setState] = useState({
@@ -126,14 +129,16 @@ const Menu = ({ dense = false }) => {
           renderAlbumMenuItemLink(type, albumLists[type]),
         )}
       </SubMenu>
-      <MenuItemLink
-        to="/folder"
-        activeClassName={classes.active}
-        primaryText={translate('menu.folders')}
-        leftIcon={<FolderIcon />}
-        sidebarIsOpen={open}
-        dense={dense}
-      />
+      {showFolderView && (
+        <MenuItemLink
+          to="/folder"
+          activeClassName={classes.active}
+          primaryText={translate('menu.folders')}
+          leftIcon={<FolderIcon />}
+          sidebarIsOpen={open}
+          dense={dense}
+        />
+      )}
       {resources
         .filter((r) => r.name !== 'folder' && subItems(undefined)(r))
         .map(renderResourceMenuItemLink)}

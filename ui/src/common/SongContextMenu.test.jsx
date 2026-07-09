@@ -23,7 +23,10 @@ vi.mock('../config', () => ({
 }))
 
 const mockDispatch = vi.fn()
-vi.mock('react-redux', () => ({ useDispatch: () => mockDispatch }))
+vi.mock('react-redux', () => ({
+  useDispatch: () => mockDispatch,
+  useSelector: (selector) => selector({ settings: { showFolderView: true } }),
+}))
 
 const getPlaylistsMock = vi.fn()
 const mockNotify = vi.fn()

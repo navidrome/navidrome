@@ -1,13 +1,18 @@
 import React, { useState } from 'react'
 import PropTypes from 'prop-types'
-import { useDispatch } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import IconButton from '@material-ui/core/IconButton'
 import Menu from '@material-ui/core/Menu'
 import MenuItem from '@material-ui/core/MenuItem'
 import MoreVertIcon from '@material-ui/icons/MoreVert'
 import { MdQuestionMark } from 'react-icons/md'
 import { makeStyles } from '@material-ui/core/styles'
-import { useDataProvider, useNotify, useTranslate, useRedirect } from 'react-admin'
+import {
+  useDataProvider,
+  useNotify,
+  useTranslate,
+  useRedirect,
+} from 'react-admin'
 import clsx from 'clsx'
 import {
   playNext,
@@ -71,6 +76,9 @@ const ContextMenu = ({
   const notify = useNotify()
   const redirect = useRedirect()
   const [anchorEl, setAnchorEl] = useState(null)
+  const showFolderView = useSelector(
+    (state) => state.settings.showFolderView !== false,
+  )
 
   const options = {
     play: {
@@ -115,7 +123,9 @@ const ContextMenu = ({
     download: {
       enabled: config.enableDownloads,
       needData: false,
-      label: translate('ra.action.download') + (record.size ? ` (${formatBytes(record.size)})` : ''),
+      label:
+        translate('ra.action.download') +
+        (record.size ? ` (${formatBytes(record.size)})` : ''),
       action: () => {
         let type = DOWNLOAD_MENU_ALBUM
         if (record.duration === undefined) type = DOWNLOAD_MENU_ARTIST
@@ -125,8 +135,8 @@ const ContextMenu = ({
     },
     showInFolder: {
       enabled:
-        record.folder_id ||
-        (record.folderIds && record.folderIds.length > 0),
+        showFolderView &&
+        (record.folder_id || (record.folderIds && record.folderIds.length > 0)),
       needData: false,
       label: translate('resources.folder.actions.showInFolder'),
       action: (record) => {
