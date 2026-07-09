@@ -7,9 +7,11 @@ output=$(echo "$@" | sed -n 's/.*-o \([^ ]*\).*/\1/p')
 mkdir -p "$(dirname "$output")"
 
 # Build the source folder name based on GOOS, GOARCH and GOARM.
+# The binaries folder uses Docker's platform variant naming (e.g. "v6"),
+# while GoReleaser's GOARM only accepts unprefixed values (e.g. "6").
 source="${GOOS}_${GOARCH}"
 if [ "$GOARCH" = "arm" ]; then
-    source="${source}_${GOARM}"
+    source="${source}_v${GOARM}"
 fi
 
 # Copy the output to the desired location
