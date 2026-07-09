@@ -133,10 +133,8 @@ var _ = Describe("PlaylistRepository", func() {
 		})
 
 		It("does not leak an annotation row of another item_type sharing the playlist id", func() {
-			// A stray media_file-typed row for the playlist id is the shape older
-			// builds (and the star fallthrough for non-visible playlists) can produce.
-			// The annotation join is scoped by item_type, so it must not surface on
-			// the playlist nor duplicate it in list results.
+			// Older builds (and the star fallthrough) can leave a media_file-typed row
+			// under a playlist id; the item_type-scoped join must not surface or dupe it.
 			_, err := GetDBXBuilder().NewQuery(
 				"INSERT INTO annotation (user_id, item_id, item_type, starred) VALUES ({:uid}, {:id}, 'media_file', 1)").
 				Bind(dbx.Params{"uid": "userid", "id": plsID}).Execute()
