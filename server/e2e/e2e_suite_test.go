@@ -363,6 +363,10 @@ func (n noopArchiver) ZipPlaylist(context.Context, string, string, int, io.Write
 	return model.ErrNotFound
 }
 
+func (n noopArchiver) ZipFolder(context.Context, string, string, int, io.Writer) error {
+	return model.ErrNotFound
+}
+
 // noopProvider implements external.Provider
 type noopProvider struct{}
 
