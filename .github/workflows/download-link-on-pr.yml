@@ -4,6 +4,7 @@ on:
     workflows: ['Pipeline: Test, Lint, Build']
     types: [completed]
 permissions:
+  issues: write
   pull-requests: write
 jobs:
   pr_comment:
