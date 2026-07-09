@@ -2,6 +2,7 @@ package subsonic
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
@@ -119,7 +120,10 @@ func (api *Router) setStar(ctx context.Context, star bool, ids ...string) error 
 			var resource string
 			entity, err := model.GetEntityByID(ctx, tx, id)
 			if err != nil {
-				log.Error(ctx, "Error getting entity by ID in setStar. Skipping", "id", id, err)
+				if !errors.Is(err, model.ErrNotFound) {
+					return err
+				}
+				log.Warn(ctx, "Cannot star/unstar unknown id, skipping", "id", id)
 				continue
 			}
 			switch entity.(type) {
