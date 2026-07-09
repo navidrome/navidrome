@@ -107,6 +107,7 @@ func (r folderRepository) selectFolder(options ...model.QueryOptions) SelectBuil
 }
 
 func (r folderRepository) populateBreadcrumbs(f *model.Folder, libPath, libName string) {
+	f.LibraryPath = libPath
 	lib := model.Library{ID: f.LibraryID, Path: libPath, Name: libName}
 	libIDStr := strconv.Itoa(lib.ID)
 	f.Breadcrumbs = []model.Breadcrumb{
