@@ -48,15 +48,20 @@ func (f Folder) CoverArtID() ArtworkID {
 	return artworkIDFromFolder(f)
 }
 
-// FolderID generates a unique ID for a folder in a library.
-// The ID is generated based on the library ID and the folder path relative to the library root.
-// Any leading or trailing slashes are removed from the folder path.
 func FolderID(lib Library, folderPath string) string {
 	// 1. Normalize all slashes to /
 	folderPath = strings.ReplaceAll(folderPath, "\\", "/")
+	libPath := strings.ReplaceAll(lib.Path, "\\", "/")
+
+	for strings.Contains(folderPath, "//") {
+		folderPath = strings.ReplaceAll(folderPath, "//", "/")
+	}
+	for strings.Contains(libPath, "//") {
+		libPath = strings.ReplaceAll(libPath, "//", "/")
+	}
 
 	// 2. Remove library prefix if present
-	folderPath = strings.TrimPrefix(folderPath, lib.Path)
+	folderPath = strings.TrimPrefix(folderPath, libPath)
 
 	// 3. Clean and trim slashes ONLY (preserving dots in names)
 	folderPath = path.Clean(folderPath)
