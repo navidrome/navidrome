@@ -10,6 +10,9 @@
 #
 # Compares HEAD against $BASE_REF (default origin/master). Requires full history
 # (fetch-depth: 0 in CI).
+# -e is intentionally omitted: the script accumulates violations into $status
+# and must not exit on the first non-zero command (grep no-match, a false [[ ]]
+# in an if, `is_migration || continue`).
 set -uo pipefail
 export LC_ALL=C
 
@@ -61,7 +64,8 @@ while IFS= read -r f; do
   [ -z "$f" ] && continue
   b="$(basename "$f")"
   case "$b" in
-    *.sql | *.go) ;;
+    *.sql) ;;                                  # any .sql in this dir must be a migration
+    *.go) [[ "$b" == [0-9]* ]] || continue ;;  # non-timestamped .go = helper (e.g. migration.go), skip
     *) continue ;;
   esac
   if ! [[ "$b" =~ $NAME_RE ]]; then
