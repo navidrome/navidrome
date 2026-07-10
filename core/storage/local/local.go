@@ -67,6 +67,9 @@ type localFS struct {
 // OS level, so links whose targets live outside the library folder (not reachable through
 // the fs.FS abstraction) still resolve to their final target.
 func (lfs *localFS) ResolveSymlink(name string) (string, error) {
+	if !fs.ValidPath(name) {
+		return "", &fs.PathError{Op: "resolvesymlink", Path: name, Err: fs.ErrInvalid}
+	}
 	return filepath.EvalSymlinks(filepath.Join(lfs.root, filepath.FromSlash(name)))
 }
 

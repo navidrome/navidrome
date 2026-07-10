@@ -255,6 +255,13 @@ var _ = Describe("LocalStorage", func() {
 			Expect(err).To(HaveOccurred())
 		})
 
+		It("rejects names that are not valid fs paths", func() {
+			for _, name := range []string{"../outside.mp3", "/etc/hosts", "sub/../../outside.mp3", ""} {
+				_, err := musicFS.(storage.SymlinkResolverFS).ResolveSymlink(name)
+				Expect(err).To(MatchError(fs.ErrInvalid), name)
+			}
+		})
+
 		It("returns an error for a symlink loop", func() {
 			Expect(os.Symlink(filepath.Join(tempDir, "loop2.mp3"), filepath.Join(tempDir, "loop1.mp3"))).To(Succeed())
 			Expect(os.Symlink(filepath.Join(tempDir, "loop1.mp3"), filepath.Join(tempDir, "loop2.mp3"))).To(Succeed())
