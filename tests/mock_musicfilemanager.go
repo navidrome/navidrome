@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+
+	"github.com/navidrome/navidrome/model"
 )
 
 type MockMusicFileManager struct {
@@ -14,6 +16,14 @@ func NewMockMusicFileManager(mfRepo *MockMediaFileRepo) *MockMusicFileManager {
 	return &MockMusicFileManager{
 		MediaFileRepo: mfRepo,
 	}
+}
+
+func (m *MockMusicFileManager) UploadSong(ctx context.Context, filename string, fileData io.Reader) (*model.MediaFile, error) {
+	if m.MediaFileRepo == nil {
+		return nil, fmt.Errorf("mock repository not initialized")
+	}
+
+	return nil, nil
 }
 
 func (m *MockMusicFileManager) DeleteSong(ctx context.Context, songID string) error {

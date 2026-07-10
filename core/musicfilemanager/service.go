@@ -7,18 +7,22 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/bogem/id3v2/v2"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 )
 
 type SongRepository interface {
+	AddSong(ctx context.Context, song *model.MediaFile) error
 	GetSongPath(ctx context.Context, songID string) (string, error)
 	RefreshSong(ctx context.Context, songID string) error
 	DeleteSong(ctx context.Context, songID string) error
 }
 
 type MusicFileService interface {
+	UploadSong(ctx context.Context, filename string, fileData io.Reader) (*model.MediaFile, error)
 	UpdateTags(ctx context.Context, songID string, tags map[string]string) error
 	UpdateArtwork(ctx context.Context, songID string, data io.Reader, mimeType string) error
 	DeleteSong(ctx context.Context, songID string) error
@@ -30,6 +34,40 @@ type mp3Service struct {
 
 func NewService(repo SongRepository) MusicFileService {
 	return &mp3Service{repo: repo}
+}
+
+func (s *mp3Service) UploadSong(ctx context.Context, filename string, fileData io.Reader) (*model.MediaFile, error) {
+	cleanName := filepath.Base(filename)
+
+	targetDir := "/music"
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create destination directory: %w", err)
+	}
+
+	destPath := filepath.Join(targetDir, cleanName)
+	out, err := os.Create(destPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create file on disk: %w", err)
+	}
+	defer out.Close()
+
+	if _, err = io.Copy(out, fileData); err != nil {
+		return nil, fmt.Errorf("failed to write file to disk: %w", err)
+	}
+
+	newSong := &model.MediaFile{
+		Title:     strings.TrimSuffix(cleanName, filepath.Ext(cleanName)),
+		Path:      destPath,
+		Suffix:    "mp3",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	if err := s.repo.AddSong(ctx, newSong); err != nil {
+		return nil, fmt.Errorf("failed to add song to repository: %w", err)
+	}
+
+	return newSong, nil
 }
 
 func (s *mp3Service) UpdateTags(ctx context.Context, songID string, tags map[string]string) error {
@@ -44,7 +82,6 @@ func (s *mp3Service) UpdateTags(ctx context.Context, songID string, tags map[str
 		return fmt.Errorf("file is inaccessible or is a directory: %s", cleanPath)
 	}
 
-	// Ensure we are only processing MP3 files as id3v2 library is specific to ID3 tags
 	if !strings.HasSuffix(strings.ToLower(cleanPath), ".mp3") {
 		return fmt.Errorf("metadata editing is currently only supported for MP3 files")
 	}
@@ -104,7 +141,6 @@ func (s *mp3Service) UpdateTags(ctx context.Context, songID string, tags map[str
 		return fmt.Errorf("error saving MP3 tags: %w", err)
 	}
 
-	// Trigger a rescan of this song so Navidrome updates its database (seems to generate lag)
 	return s.repo.RefreshSong(ctx, songID)
 }
 

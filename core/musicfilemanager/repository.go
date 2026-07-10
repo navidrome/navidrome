@@ -21,6 +21,11 @@ func NewRepository(ds model.DataStore, library core.Library, scanner model.Scann
 	}
 }
 
+func (r *navidromeRepo) AddSong(ctx context.Context, song *model.MediaFile) error {
+	_, err := r.scanner.ScanAll(ctx, false)
+	return err
+}
+
 func (r *navidromeRepo) GetSongPath(ctx context.Context, songID string) (string, error) {
 	mf, err := r.ds.MediaFile(ctx).Get(songID)
 	if err != nil {

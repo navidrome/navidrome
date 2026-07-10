@@ -19,6 +19,28 @@ func (h *Handler) BindRoutes(r chi.Router) {
 	r.Post("/song/{id}/tag", h.UpdateSong)
 	r.Post("/song/{id}/artwork", h.UpdateArtwork)
 	r.Delete("/song/{id}", h.DeleteSong)
+	r.Post("/song/upload", h.UploadSong)
+}
+
+func (h *Handler) UploadSong(w http.ResponseWriter, r *http.Request) {
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		http.Error(w, "Missing 'file' key in the form", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	newSong, err := h.service.UploadSong(r.Context(), header.Filename, file)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	if err := json.NewEncoder(w).Encode(newSong); err != nil {
+		return
+	}
 }
 
 func (h *Handler) UpdateSong(w http.ResponseWriter, r *http.Request) {
