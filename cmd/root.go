@@ -86,7 +86,7 @@ func runNavidrome(ctx context.Context) {
 	g.Go(startPlaybackServer(ctx))
 	g.Go(schedulePeriodicBackup(ctx))
 	g.Go(startInsightsCollector(ctx))
-	g.Go(scheduleDBOptimizer(ctx))
+	g.Go(scheduleDBAnalyzer(ctx))
 	g.Go(startPluginManager(ctx))
 	g.Go(runInitialScan(ctx))
 	if conf.Server.Scanner.Enabled {
@@ -275,16 +275,24 @@ func schedulePeriodicBackup(ctx context.Context) func() error {
 	}
 }
 
-func scheduleDBOptimizer(ctx context.Context) func() error {
+func scheduleDBAnalyzer(ctx context.Context) func() error {
 	return func() error {
-		log.Info(ctx, "Scheduling DB optimizer", "schedule", consts.OptimizeDBSchedule)
+		log.Info(ctx, "Scheduling DB analysis check", "schedule", consts.DBAnalyzeCheckSchedule)
 		schedulerInstance := scheduler.GetInstance()
-		_, err := schedulerInstance.Add(consts.OptimizeDBSchedule, func() {
-			if scanner.IsScanning() {
-				log.Debug(ctx, "Skipping DB optimization because a scan is in progress")
+		_, err := schedulerInstance.Add(consts.DBAnalyzeCheckSchedule, func() {
+			release, ok := scanner.LockForMaintenance()
+			if !ok {
+				log.Debug(ctx, "Skipping DB analysis check because a scan is in progress")
 				return
 			}
-			db.Optimize(ctx)
+			defer release()
+			start := time.Now()
+			ran, err := db.OptimizeIfNeeded(ctx)
+			if err != nil {
+				log.Error(ctx, "Error analyzing DB", "elapsed", time.Since(start), err)
+			} else if ran {
+				log.Info(ctx, "DB analysis complete", "elapsed", time.Since(start))
+			}
 		})
 		return err
 	}

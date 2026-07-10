@@ -8,6 +8,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/metrics"
@@ -122,6 +123,23 @@ var _ = Describe("ScanFolders", Ordered, func() {
 
 			// Verify files in the pop folder were NOT scanned
 			Expect(paths).ToNot(ContainElement("pop/track6.mp3"))
+			Expect(ds.Property(ctx).Get(consts.DBAnalyzePendingKey)).To(Equal("1"))
+		})
+	})
+
+	Describe("Planner statistics maintenance", func() {
+		It("does not treat an interrupted scan in an untargeted library as a full scan", func() {
+			otherLib := model.Library{ID: 2, Name: "Other Library", Path: "fake:///other"}
+			Expect(ds.Library(ctx).Put(&otherLib)).To(Succeed())
+			Expect(ds.Library(ctx).ScanBegin(lib.ID, true)).To(Succeed())
+
+			lastAnalyze := "2026-07-09T12:00:00Z"
+			Expect(ds.Property(ctx).Put(consts.LastDBAnalyzeAtKey, lastAnalyze)).To(Succeed())
+			Expect(ds.Property(ctx).Put(consts.DBAnalyzePendingKey, "0")).To(Succeed())
+
+			_, err := s.ScanFolders(ctx, false, []model.ScanTarget{{LibraryID: otherLib.ID, FolderPath: "."}})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ds.Property(ctx).Get(consts.LastDBAnalyzeAtKey)).To(Equal(lastAnalyze))
 		})
 	})
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -53,8 +54,7 @@ func (s *controller) getScanner() scanner {
 
 // CallScan starts an in-process scan of specific library/folder pairs.
 // If targets is empty, it scans all libraries.
-// This is meant to be called from the command line (see cmd/scan.go). It deliberately skips the
-// post-scan Optimize: the daily job and the post-migration ANALYZE keep the statistics healthy.
+// This is meant to be called from the command line (see cmd/scan.go).
 func CallScan(ctx context.Context, ds model.DataStore, pls playlists.Playlists, fullScan bool, targets []model.ScanTarget) (<-chan *ProgressInfo, error) {
 	release, err := lockScan(ctx)
 	if err != nil {
@@ -215,9 +215,9 @@ func (s *controller) ScanFolders(requestCtx context.Context, fullScan bool, targ
 	ctx = auth.WithAdminUser(ctx, s.ds)
 
 	// A quick scan is promoted to a full one when it resumes an interrupted full scan; that happens
-	// inside the scanner (possibly in a subprocess), so mirror it here for the optimize gate. Must
+	// inside the scanner (possibly in a subprocess), so mirror it here for the analysis gate. Must
 	// be read before the scan: ScanEnd clears the flag.
-	effectiveFullScan := fullScan || s.resumingFullScan(ctx)
+	effectiveFullScan := fullScan || s.resumingFullScan(ctx, targets)
 
 	// Send the initial scan status event
 	s.sendMessage(ctx, &events.ScanStatus{Scanning: true, Count: 0, FolderCount: 0})
@@ -237,14 +237,22 @@ func (s *controller) ScanFolders(requestCtx context.Context, fullScan bool, targ
 	if scanError != nil {
 		_ = s.ds.Property(ctx).Put(consts.LastScanErrorKey, scanError.Error())
 	}
+	if s.changesDetected {
+		if err := db.MarkOptimizePending(ctx); err != nil {
+			log.Error(ctx, "Scanner: Error marking DB analysis pending", err)
+		}
+	}
 	// Refresh the query-planner statistics after a successful full scan. This must run in the
 	// server process: with the external scanner, an ANALYZE in the subprocess is invisible to the
-	// server's pooled connections — their shared schema cache keeps the old statistics until the
+	// server's pooled connections; their shared schema cache keeps the old statistics until the
 	// process restarts.
 	if effectiveFullScan && scanError == nil {
 		start := time.Now()
-		db.Optimize(ctx)
-		log.Debug(ctx, "Scanner: Optimized DB", "elapsed", time.Since(start))
+		if err := db.Optimize(ctx); err != nil {
+			log.Error(ctx, "Scanner: Error analyzing DB", "elapsed", time.Since(start), err)
+		} else {
+			log.Debug(ctx, "Scanner: Analyzed DB", "elapsed", time.Since(start))
+		}
 	}
 	// If changes were detected, send a refresh event to all clients
 	if s.changesDetected {
@@ -272,21 +280,51 @@ func (s *controller) ScanFolders(requestCtx context.Context, fullScan bool, targ
 
 // This is a global variable that is used to prevent multiple scans from running at the same time.
 // "There can be only one" - https://youtu.be/sqcLjcSloXs?si=VlsjEOjTJZ68zIyg
-var running atomic.Bool
+var (
+	running            atomic.Bool
+	scanMaintenanceMux sync.Mutex
+)
 
 func lockScan(ctx context.Context) (func(), error) {
 	if !running.CompareAndSwap(false, true) {
 		log.Debug(ctx, "Scanner already running, ignoring request")
 		return func() {}, ErrAlreadyScanning
 	}
+	scanMaintenanceMux.Lock()
 	return func() {
+		scanMaintenanceMux.Unlock()
 		running.Store(false)
 	}, nil
 }
 
-// resumingFullScan reports whether any library still has an interrupted full scan to resume.
-func (s *controller) resumingFullScan(ctx context.Context) bool {
-	count, err := s.ds.Library(ctx).CountAll(model.QueryOptions{Filters: squirrel.Eq{"full_scan_in_progress": true}})
+// LockForMaintenance prevents a scan from starting while database maintenance is running.
+func LockForMaintenance() (func(), bool) {
+	if !scanMaintenanceMux.TryLock() {
+		return func() {}, false
+	}
+	if running.Load() {
+		scanMaintenanceMux.Unlock()
+		return func() {}, false
+	}
+	return scanMaintenanceMux.Unlock, true
+}
+
+// resumingFullScan reports whether a library included in this scan has an interrupted full scan.
+func (s *controller) resumingFullScan(ctx context.Context, targets []model.ScanTarget) bool {
+	filters := squirrel.Eq{"full_scan_in_progress": true}
+	if len(targets) > 0 {
+		ids := make([]int, 0, len(targets))
+		seen := make(map[int]struct{}, len(targets))
+		for _, target := range targets {
+			if _, ok := seen[target.LibraryID]; ok {
+				continue
+			}
+			seen[target.LibraryID] = struct{}{}
+			ids = append(ids, target.LibraryID)
+		}
+		filters["id"] = ids
+	}
+	count, err := s.ds.Library(ctx).CountAll(model.QueryOptions{Filters: filters})
 	return err == nil && count > 0
 }
 

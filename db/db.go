@@ -4,11 +4,15 @@ import (
 	"context"
 	"database/sql"
 	"embed"
+	"errors"
 	"fmt"
 	"runtime"
+	"sync"
+	"time"
 
 	"github.com/mattn/go-sqlite3"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	_ "github.com/navidrome/navidrome/db/migrations"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/utils/hasher"
@@ -17,9 +21,10 @@ import (
 )
 
 var (
-	Dialect = "sqlite3"
-	Driver  = Dialect + "_custom"
-	Path    string
+	Dialect    = "sqlite3"
+	Driver     = Dialect + "_custom"
+	Path       string
+	analyzeMux sync.Mutex
 )
 
 //go:embed migrations/*.sql
@@ -94,9 +99,8 @@ func Init(ctx context.Context) func() {
 	}
 
 	if hasSchemaChanges {
-		// Migrations that create indexes leave them unanalyzed (see Optimize for why a full ANALYZE).
 		log.Debug(ctx, "Running ANALYZE after schema changes")
-		_, err = db.ExecContext(ctx, "ANALYZE")
+		err = optimizeAt(ctx, db, time.Now())
 		if err != nil {
 			log.Error(ctx, "Error running ANALYZE", err)
 		}
@@ -107,20 +111,111 @@ func Init(ctx context.Context) func() {
 	}
 }
 
-// Optimize refreshes the query-planner statistics with a full ANALYZE, after scans and on a daily
-// schedule. Deliberately not PRAGMA optimize: its internal ANALYZE runs with a limited analysis
-// budget that writes wrong stats for low-cardinality indexes, flipping the planner to full-table
-// temp B-tree sorts. Stats live in the database file, so one connection is enough.
-func Optimize(ctx context.Context) {
-	optimize(ctx, Db())
+// Optimize refreshes the query-planner statistics with a full ANALYZE. PRAGMA optimize is avoided
+// because its limited analysis misestimates Navidrome's low-cardinality indexes.
+func Optimize(ctx context.Context) error {
+	analyzeMux.Lock()
+	defer analyzeMux.Unlock()
+	return optimizeAt(ctx, Db(), time.Now())
 }
 
-func optimize(ctx context.Context, db *sql.DB) {
+// OptimizeIfNeeded refreshes statistics when they are stale or a database-changing operation
+// marked them for refresh.
+func OptimizeIfNeeded(ctx context.Context) (bool, error) {
+	analyzeMux.Lock()
+	defer analyzeMux.Unlock()
+	return optimizeIfNeeded(ctx, Db(), time.Now())
+}
+
+func optimizeIfNeeded(ctx context.Context, db *sql.DB, now time.Time) (bool, error) {
+	due, err := optimizeDue(ctx, db, now)
+	if err != nil || !due {
+		return false, err
+	}
+	return true, optimizeAt(ctx, db, now)
+}
+
+func optimizeDue(ctx context.Context, db *sql.DB, now time.Time) (bool, error) {
+	pending, found, err := getProperty(ctx, db, consts.DBAnalyzePendingKey)
+	if err != nil {
+		return false, err
+	}
+	if found && pending == "1" {
+		return true, nil
+	}
+
+	value, found, err := getProperty(ctx, db, consts.LastDBAnalyzeAtKey)
+	if err != nil {
+		return false, err
+	}
+	if !found {
+		return true, nil
+	}
+
+	lastAnalyze, valid := parseAnalyzeTime(value)
+	if !valid || lastAnalyze.After(now) {
+		return true, nil
+	}
+	return now.Sub(lastAnalyze) >= consts.DBAnalyzeMaxAge, nil
+}
+
+func parseAnalyzeTime(value string) (time.Time, bool) {
+	parsed, err := time.Parse(time.RFC3339Nano, value)
+	return parsed, err == nil
+}
+
+// MarkOptimizePending requests a statistics refresh on the next scheduled maintenance check.
+func MarkOptimizePending(ctx context.Context) error {
+	analyzeMux.Lock()
+	defer analyzeMux.Unlock()
+	return markOptimizePending(ctx, Db())
+}
+
+func markOptimizePending(ctx context.Context, db *sql.DB) error {
+	return putProperty(ctx, db, consts.DBAnalyzePendingKey, "1")
+}
+
+func optimizeAt(ctx context.Context, db *sql.DB, now time.Time) error {
 	log.Debug(ctx, "Refreshing query planner statistics")
 	_, err := db.ExecContext(ctx, "ANALYZE")
 	if err != nil {
-		log.Error(ctx, "Error running ANALYZE", err)
+		return fmt.Errorf("running ANALYZE: %w", err)
 	}
+
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("recording ANALYZE time: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	if err = putProperty(ctx, tx, consts.LastDBAnalyzeAtKey, now.UTC().Format(time.RFC3339Nano)); err != nil {
+		return fmt.Errorf("recording ANALYZE time: %w", err)
+	}
+	if err = putProperty(ctx, tx, consts.DBAnalyzePendingKey, "0"); err != nil {
+		return fmt.Errorf("clearing pending ANALYZE: %w", err)
+	}
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("recording ANALYZE state: %w", err)
+	}
+	return nil
+}
+
+type sqlExecer interface {
+	ExecContext(context.Context, string, ...any) (sql.Result, error)
+}
+
+func putProperty(ctx context.Context, db sqlExecer, key, value string) error {
+	_, err := db.ExecContext(ctx, `insert into property(id, value) values(?, ?)
+		on conflict(id) do update set value=excluded.value`, key, value)
+	return err
+}
+
+func getProperty(ctx context.Context, db *sql.DB, key string) (string, bool, error) {
+	var value string
+	err := db.QueryRowContext(ctx, "select value from property where id=?", key).Scan(&value)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", false, nil
+	}
+	return value, err == nil, err
 }
 
 type statusLogger struct{ numPending int }

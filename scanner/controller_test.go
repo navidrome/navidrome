@@ -55,3 +55,14 @@ var _ = Describe("Controller", func() {
 		})
 	})
 })
+
+var _ = Describe("LockForMaintenance", func() {
+	It("allows only one database maintenance operation at a time", func() {
+		release, ok := scanner.LockForMaintenance()
+		Expect(ok).To(BeTrue())
+		DeferCleanup(release)
+
+		_, ok = scanner.LockForMaintenance()
+		Expect(ok).To(BeFalse())
+	})
+})
