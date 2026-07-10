@@ -491,3 +491,10 @@ func Register(name string, init Constructor) {
 	}
 	constructors[name] = init
 }
+
+// IsBuiltinScrobbler reports whether name belongs to a registered builtin
+// scrobbler (e.g. "lastfm", "listenbrainz").
+func IsBuiltinScrobbler(name string) bool {
+	_, ok := constructors[name]
+	return ok
+}
