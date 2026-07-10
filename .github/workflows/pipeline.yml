@@ -253,13 +253,18 @@ jobs:
     outputs:
       is_enabled: ${{ steps.check.outputs.is_enabled }}
     steps:
+      # GHCR publishing only needs the built-in GITHUB_TOKEN, so it's always enabled.
+      # Docker Hub publishing is separately gated on its own secrets/vars below.
       - name: Check if Docker push is configured
         id: check
-        run: echo "is_enabled=${{ secrets.DOCKER_HUB_USERNAME != '' }}" >> $GITHUB_OUTPUT
+        run: echo "is_enabled=true" >> $GITHUB_OUTPUT
 
   build:
     name: Build
     needs: [js, go, go-windows, go-lint, i18n-lint, git-version, check-push-enabled]
+    permissions:
+      contents: read
+      packages: write
     strategy:
       matrix:
         platform: [ linux/amd64, linux/arm64, linux/arm/v5, linux/arm/v6, linux/arm/v7, linux/386, linux/riscv64, darwin/amd64, darwin/arm64, windows/amd64, windows/386 ]
@@ -323,7 +328,7 @@ jobs:
             GIT_TAG=${{ env.GIT_TAG }}
           outputs: |
             type=image,name=${{ steps.docker.outputs.hub_repository }},push-by-digest=true,name-canonical=true,push=${{ steps.docker.outputs.hub_enabled }}
-            type=image,name=ghcr.io/${{ github.repository }},push-by-digest=true,name-canonical=true,push=true
+            type=image,name=ghcr.io/${{ steps.docker.outputs.repository }},push-by-digest=true,name-canonical=true,push=true
 
       - name: Export digest
         if: env.IS_LINUX == 'true' && env.IS_DOCKER_PUSH_CONFIGURED == 'true' && env.IS_ARMV5 == 'false'
@@ -349,8 +354,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build, check-push-enabled]
     if: needs.check-push-enabled.outputs.is_enabled == 'true'
-    env:
-      REGISTRY_IMAGE: ghcr.io/${{ github.repository }}
     steps:
       - uses: actions/checkout@v6
 
@@ -371,11 +374,11 @@ jobs:
         working-directory: /tmp/digests
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map(select(startswith("ghcr.io"))) | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)          
+            $(printf 'ghcr.io/${{ steps.docker.outputs.repository }}@sha256:%s ' *)
 
       - name: Inspect image in ghcr.io
         run: |
-          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.docker.outputs.version }}
+          docker buildx imagetools inspect ghcr.io/${{ steps.docker.outputs.repository }}:${{ steps.docker.outputs.version }}
 
   push-manifest-dockerhub:
     name: Push to Docker Hub
@@ -413,7 +416,7 @@ jobs:
           command: |
             cd /tmp/digests
             docker buildx imagetools create $(jq -cr '.tags | map(select(startswith("ghcr.io") | not)) | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-              $(printf 'ghcr.io/${{ github.repository }}@sha256:%s ' *)
+              $(printf 'ghcr.io/${{ steps.docker.outputs.repository }}@sha256:%s ' *)
 
       - name: Inspect image in Docker Hub
         run: |
@@ -422,6 +425,8 @@ jobs:
   cleanup-digests:
     name: Cleanup digest artifacts
     runs-on: ubuntu-latest
+    permissions:
+      actions: write
     needs: [push-manifest-ghcr, push-manifest-dockerhub]
     if: always() && needs.push-manifest-ghcr.result == 'success'
     steps:
