@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -218,6 +219,11 @@ func (s *controller) ScanFolders(requestCtx context.Context, fullScan bool, targ
 	// inside the scanner (possibly in a subprocess), so mirror it here for the analysis gate. Must
 	// be read before the scan: ScanEnd clears the flag.
 	effectiveFullScan := fullScan || s.resumingFullScan(ctx, targets)
+	if effectiveFullScan || s.includesUnscannedLibrary(ctx, targets) {
+		if err := db.MarkOptimizePending(ctx); err != nil {
+			log.Error(ctx, "Scanner: Error marking DB analysis pending", err)
+		}
+	}
 
 	// Send the initial scan status event
 	s.sendMessage(ctx, &events.ScanStatus{Scanning: true, Count: 0, FolderCount: 0})
@@ -236,11 +242,6 @@ func (s *controller) ScanFolders(requestCtx context.Context, fullScan bool, targ
 	// Store scan error in database so it can be displayed in the UI
 	if scanError != nil {
 		_ = s.ds.Property(ctx).Put(consts.LastScanErrorKey, scanError.Error())
-	}
-	if s.changesDetected {
-		if err := db.MarkOptimizePending(ctx); err != nil {
-			log.Error(ctx, "Scanner: Error marking DB analysis pending", err)
-		}
 	}
 	// Refresh the query-planner statistics after a successful full scan. This must run in the
 	// server process: with the external scanner, an ANALYZE in the subprocess is invisible to the
@@ -326,6 +327,27 @@ func (s *controller) resumingFullScan(ctx context.Context, targets []model.ScanT
 	}
 	count, err := s.ds.Library(ctx).CountAll(model.QueryOptions{Filters: filters})
 	return err == nil && count > 0
+}
+
+func (s *controller) includesUnscannedLibrary(ctx context.Context, targets []model.ScanTarget) bool {
+	libraries, err := s.ds.Library(ctx).GetAll()
+	if err != nil {
+		return false
+	}
+	if len(targets) == 0 {
+		return slices.ContainsFunc(libraries, func(library model.Library) bool {
+			return library.LastScanAt.IsZero()
+		})
+	}
+
+	targeted := make(map[int]struct{}, len(targets))
+	for _, target := range targets {
+		targeted[target.LibraryID] = struct{}{}
+	}
+	return slices.ContainsFunc(libraries, func(library model.Library) bool {
+		_, ok := targeted[library.ID]
+		return ok && library.LastScanAt.IsZero()
+	})
 }
 
 func (s *controller) trackProgress(ctx context.Context, progress <-chan *ProgressInfo) ([]string, error) {

@@ -176,6 +176,9 @@ func markOptimizePending(ctx context.Context, db *sql.DB) error {
 }
 
 func optimizeAt(ctx context.Context, db *sql.DB, now time.Time) error {
+	if err := markOptimizePending(ctx, db); err != nil {
+		return fmt.Errorf("marking ANALYZE pending: %w", err)
+	}
 	log.Debug(ctx, "Refreshing query planner statistics")
 	_, err := db.ExecContext(ctx, "ANALYZE")
 	if err != nil {
