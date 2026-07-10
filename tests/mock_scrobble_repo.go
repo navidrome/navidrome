@@ -13,6 +13,24 @@ type MockScrobbleRepo struct {
 	ctx               context.Context
 }
 
+func (m *MockScrobbleRepo) Get(id string) (*model.Scrobble, error) {
+	for _, scrobble := range m.RecordedScrobbles {
+		if scrobble.ID == id {
+			return &scrobble, nil
+		}
+	}
+
+	return nil, model.ErrNotFound
+}
+
+func (m *MockScrobbleRepo) GetAll(options ...model.QueryOptions) (model.Scrobbles, error) {
+	return m.RecordedScrobbles, nil
+}
+
+func (m *MockScrobbleRepo) CountAll(options ...model.QueryOptions) (int64, error) {
+	return int64(len(m.RecordedScrobbles)), nil
+}
+
 func (m *MockScrobbleRepo) RecordScrobble(fileID string, submissionTime time.Time) error {
 	user, _ := request.UserFrom(m.ctx)
 	m.RecordedScrobbles = append(m.RecordedScrobbles, model.Scrobble{
@@ -22,3 +40,5 @@ func (m *MockScrobbleRepo) RecordScrobble(fileID string, submissionTime time.Tim
 	})
 	return nil
 }
+
+var _ model.ScrobbleRepository = (*MockScrobbleRepo)(nil)
