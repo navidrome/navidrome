@@ -103,6 +103,16 @@ func runScanner(ctx context.Context) {
 		log.Info(ctx, "Scanning specific folders", "numTargets", len(scanTargets))
 	}
 
+	effectiveFullScan := fullScan
+	if !subprocess {
+		effectiveFullScan = scanner.EffectiveFullScan(ctx, ds, fullScan, scanTargets)
+		if effectiveFullScan {
+			if err := db.MarkOptimizePending(ctx); err != nil {
+				log.Error(ctx, "Error marking DB analysis pending", err)
+			}
+		}
+	}
+
 	progress, err := scanner.CallScan(ctx, ds, pls, fullScan, scanTargets)
 	if err != nil {
 		log.Fatal(ctx, "Failed to scan", err)
@@ -118,7 +128,7 @@ func runScanner(ctx context.Context) {
 				log.Error(ctx, "Error marking DB analysis pending", err)
 			}
 		}
-		if fullScan && scanErr == nil {
+		if effectiveFullScan && scanErr == nil {
 			start := time.Now()
 			if err := db.Optimize(ctx); err != nil {
 				log.Error(ctx, "Error analyzing DB", "elapsed", time.Since(start), err)

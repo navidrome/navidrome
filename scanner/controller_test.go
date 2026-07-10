@@ -66,3 +66,30 @@ var _ = Describe("LockForMaintenance", func() {
 		Expect(ok).To(BeFalse())
 	})
 })
+
+var _ = Describe("EffectiveFullScan", func() {
+	var ds *tests.MockDataStore
+
+	BeforeEach(func() {
+		libraries := &tests.MockLibraryRepo{}
+		libraries.SetData(model.Libraries{
+			{ID: 1, FullScanInProgress: true},
+			{ID: 2},
+		})
+		ds = &tests.MockDataStore{MockedLibrary: libraries}
+	})
+
+	It("detects an interrupted full scan in a targeted library", func() {
+		targets := []model.ScanTarget{{LibraryID: 1, FolderPath: "."}}
+		Expect(scanner.EffectiveFullScan(context.Background(), ds, false, targets)).To(BeTrue())
+	})
+
+	It("detects an interrupted full scan when scanning all libraries", func() {
+		Expect(scanner.EffectiveFullScan(context.Background(), ds, false, nil)).To(BeTrue())
+	})
+
+	It("ignores interrupted full scans in untargeted libraries", func() {
+		targets := []model.ScanTarget{{LibraryID: 2, FolderPath: "."}}
+		Expect(scanner.EffectiveFullScan(context.Background(), ds, false, targets)).To(BeFalse())
+	})
+})

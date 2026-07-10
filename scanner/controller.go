@@ -9,7 +9,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/artwork"
@@ -218,7 +217,7 @@ func (s *controller) ScanFolders(requestCtx context.Context, fullScan bool, targ
 	// A quick scan is promoted to a full one when it resumes an interrupted full scan; that happens
 	// inside the scanner (possibly in a subprocess), so mirror it here for the analysis gate. Must
 	// be read before the scan: ScanEnd clears the flag.
-	effectiveFullScan := fullScan || s.resumingFullScan(ctx, targets)
+	effectiveFullScan := EffectiveFullScan(ctx, s.ds, fullScan, targets)
 	if effectiveFullScan || s.includesUnscannedLibrary(ctx, targets) {
 		if err := db.MarkOptimizePending(ctx); err != nil {
 			log.Error(ctx, "Scanner: Error marking DB analysis pending", err)
@@ -310,23 +309,30 @@ func LockForMaintenance() (func(), bool) {
 	return scanMaintenanceMux.Unlock, true
 }
 
-// resumingFullScan reports whether a library included in this scan has an interrupted full scan.
-func (s *controller) resumingFullScan(ctx context.Context, targets []model.ScanTarget) bool {
-	filters := squirrel.Eq{"full_scan_in_progress": true}
-	if len(targets) > 0 {
-		ids := make([]int, 0, len(targets))
-		seen := make(map[int]struct{}, len(targets))
-		for _, target := range targets {
-			if _, ok := seen[target.LibraryID]; ok {
-				continue
-			}
-			seen[target.LibraryID] = struct{}{}
-			ids = append(ids, target.LibraryID)
-		}
-		filters["id"] = ids
+// EffectiveFullScan reports whether a scan was requested as full or will resume an interrupted
+// full scan in one of the included libraries.
+func EffectiveFullScan(ctx context.Context, ds model.DataStore, fullScan bool, targets []model.ScanTarget) bool {
+	if fullScan {
+		return true
 	}
-	count, err := s.ds.Library(ctx).CountAll(model.QueryOptions{Filters: filters})
-	return err == nil && count > 0
+	libraries, err := ds.Library(ctx).GetAll()
+	if err != nil {
+		return false
+	}
+	if len(targets) == 0 {
+		return slices.ContainsFunc(libraries, func(library model.Library) bool {
+			return library.FullScanInProgress
+		})
+	}
+
+	targeted := make(map[int]struct{}, len(targets))
+	for _, target := range targets {
+		targeted[target.LibraryID] = struct{}{}
+	}
+	return slices.ContainsFunc(libraries, func(library model.Library) bool {
+		_, ok := targeted[library.ID]
+		return ok && library.FullScanInProgress
+	})
 }
 
 func (s *controller) includesUnscannedLibrary(ctx context.Context, targets []model.ScanTarget) bool {
