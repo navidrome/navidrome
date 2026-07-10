@@ -103,24 +103,38 @@ func (c Criteria) MarshalJSON() ([]byte, error) {
 
 func (c *Criteria) UnmarshalJSON(data []byte) error {
 	var aux struct {
-		All          unmarshalConjunctionType `json:"all"`
-		Any          unmarshalConjunctionType `json:"any"`
-		Sort         string                   `json:"sort"`
-		Order        string                   `json:"order"`
-		Limit        int                      `json:"limit"`
-		LimitPercent int                      `json:"limitPercent"`
-		Offset       int                      `json:"offset"`
+		All          json.RawMessage `json:"all"`
+		Any          json.RawMessage `json:"any"`
+		Sort         string          `json:"sort"`
+		Order        string          `json:"order"`
+		Limit        int             `json:"limit"`
+		LimitPercent int             `json:"limitPercent"`
+		Offset       int             `json:"offset"`
 	}
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
 	}
-	if len(aux.Any) > 0 && len(aux.All) > 0 {
+	// Detect presence by key, not slice length: a present-but-empty (or null) group
+	// such as {"any":[],"all":[...]} would otherwise slip past and silently drop a group.
+	if aux.All != nil && aux.Any != nil {
 		return errors.New("invalid criteria json: 'all' and 'any' cannot both be used at the top level; nest one inside the other instead")
 	}
-	if len(aux.Any) > 0 {
-		c.Expression = Any(aux.Any)
-	} else if len(aux.All) > 0 {
-		c.Expression = All(aux.All)
+
+	var all, any unmarshalConjunctionType
+	if aux.All != nil {
+		if err := json.Unmarshal(aux.All, &all); err != nil {
+			return err
+		}
+	}
+	if aux.Any != nil {
+		if err := json.Unmarshal(aux.Any, &any); err != nil {
+			return err
+		}
+	}
+	if len(any) > 0 {
+		c.Expression = Any(any)
+	} else if len(all) > 0 {
+		c.Expression = All(all)
 	} else {
 		return errors.New("invalid criteria json. missing rules (key 'all' or 'any')")
 	}
