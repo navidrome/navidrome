@@ -37,6 +37,7 @@ const FolderList = (props) => {
   const dataProvider = useDataProvider()
   const folderView = useSelector((state) => state.folderView)
   const [libraryId, setLibraryId] = useState(null)
+  const [rootFolderId, setRootFolderId] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -48,16 +49,32 @@ const FolderList = (props) => {
         filter: {},
       })
       .then(({ data }) => {
-        if (data.length > 0) {
-          setLibraryId(data[0].id.toString())
+        if (data.length === 0) {
+          setLoading(false)
+          return
         }
-        setLoading(false)
+        const libId = data[0].id.toString()
+        setLibraryId(libId)
+        // The root folder itself is stored with parent_id="", so we need
+        // to look it up first to get its id, then list its children.
+        return dataProvider
+          .getList('folder', {
+            pagination: { page: 1, perPage: 1 },
+            sort: { field: 'id', order: 'ASC' },
+            filter: { library_id: libId, parent_id: '' },
+          })
+          .then(({ data: rootData }) => {
+            if (rootData.length > 0) {
+              setRootFolderId(rootData[0].id)
+            }
+            setLoading(false)
+          })
       })
       .catch(() => setLoading(false))
   }, [dataProvider])
 
   if (loading) return null
-  if (!libraryId)
+  if (!libraryId || !rootFolderId)
     return (
       <div style={{ padding: '20px' }}>
         No libraries found. Please scan your music first.
@@ -69,7 +86,7 @@ const FolderList = (props) => {
       {...props}
       perPage={500}
       sort={{ field: 'name', order: 'ASC' }}
-      filter={{ library_id: libraryId, parent_id: '' }}
+      filter={{ parent_id: rootFolderId }}
       actions={<FolderListActions />}
       pagination={<Pagination rowsPerPageOptions={[100, 250, 500, 1000]} />}
       title={<Title title={translate('menu.folders')} />}
