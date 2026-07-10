@@ -424,6 +424,8 @@ jobs:
   cleanup-digests:
     name: Cleanup digest artifacts
     runs-on: ubuntu-latest
+    permissions:
+      actions: write
     needs: [push-manifest-ghcr, push-manifest-dockerhub]
     if: always() && needs.push-manifest-ghcr.result == 'success'
     steps:
