@@ -69,7 +69,7 @@ const FolderList = (props) => {
       {...props}
       perPage={500}
       sort={{ field: 'name', order: 'ASC' }}
-      filter={{ parent_id: libraryId }}
+      filter={{ library_id: libraryId, parent_id: '' }}
       actions={<FolderListActions />}
       pagination={<Pagination rowsPerPageOptions={[100, 250, 500, 1000]} />}
       title={<Title title={translate('menu.folders')} />}
