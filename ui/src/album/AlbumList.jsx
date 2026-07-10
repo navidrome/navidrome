@@ -29,6 +29,7 @@ import AlbumListActions from './AlbumListActions'
 import AlbumTableView from './AlbumTableView'
 import AlbumGridView from './AlbumGridView'
 import albumLists, { defaultAlbumList } from './albumLists'
+import { isResourceDefaultView } from '../personal/defaultViews'
 import config from '../config'
 import AlbumInfo from './AlbumInfo'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
@@ -223,6 +224,9 @@ const AlbumList = (props) => {
     const type =
       albumListType || localStorage.getItem('defaultView') || defaultAlbumList
     const listParams = albumLists[type]
+    if (isResourceDefaultView(type)) {
+      return <Redirect to={`/${type}`} />
+    }
     if (type === 'random') {
       refresh()
     }
