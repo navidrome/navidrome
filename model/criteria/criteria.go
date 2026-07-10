@@ -114,6 +114,9 @@ func (c *Criteria) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
 	}
+	if len(aux.Any) > 0 && len(aux.All) > 0 {
+		return errors.New("invalid criteria json: 'all' and 'any' cannot both be used at the top level; nest one inside the other instead")
+	}
 	if len(aux.Any) > 0 {
 		c.Expression = Any(aux.Any)
 	} else if len(aux.All) > 0 {
