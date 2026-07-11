@@ -12,8 +12,8 @@ func TestLoginUserFilter(t *testing.T) {
 
 	t.Run("defaults to username attribute equality", func(t *testing.T) {
 		t.Parallel()
-		got := loginUserFilter(Source{UserNameAttribute: "uid"}, "firehawk")
-		want := "(uid=firehawk)"
+		got := loginUserFilter(Source{UserNameAttribute: "uid"}, "directory-user")
+		want := "(uid=directory-user)"
 		if got != want {
 			t.Fatalf("loginUserFilter() = %q, want %q", got, want)
 		}
@@ -21,8 +21,8 @@ func TestLoginUserFilter(t *testing.T) {
 
 	t.Run("preserves explicit placeholder filters", func(t *testing.T) {
 		t.Parallel()
-		got := loginUserFilter(Source{UserNameAttribute: "uid", UserFilter: "(&(objectClass=person)(%s=%s))"}, "firehawk")
-		want := "(&(objectClass=person)(uid=firehawk))"
+		got := loginUserFilter(Source{UserNameAttribute: "uid", UserFilter: "(&(objectClass=person)(%s=%s))"}, "directory-user")
+		want := "(&(objectClass=person)(uid=directory-user))"
 		if got != want {
 			t.Fatalf("loginUserFilter() = %q, want %q", got, want)
 		}
@@ -30,8 +30,8 @@ func TestLoginUserFilter(t *testing.T) {
 
 	t.Run("supports one-placeholder username filters", func(t *testing.T) {
 		t.Parallel()
-		got := loginUserFilter(Source{UserNameAttribute: "uid", UserFilter: "(uid=%s)"}, "firehawk")
-		want := "(uid=firehawk)"
+		got := loginUserFilter(Source{UserNameAttribute: "uid", UserFilter: "(uid=%s)"}, "directory-user")
+		want := "(uid=directory-user)"
 		if got != want {
 			t.Fatalf("loginUserFilter() = %q, want %q", got, want)
 		}
@@ -39,8 +39,8 @@ func TestLoginUserFilter(t *testing.T) {
 
 	t.Run("adds username assertion to discovery filters", func(t *testing.T) {
 		t.Parallel()
-		got := loginUserFilter(Source{UserNameAttribute: "uid", UserFilter: "(objectClass=person)"}, "firehawk")
-		want := "(&(objectClass=person)(uid=firehawk))"
+		got := loginUserFilter(Source{UserNameAttribute: "uid", UserFilter: "(objectClass=person)"}, "directory-user")
+		want := "(&(objectClass=person)(uid=directory-user))"
 		if got != want {
 			t.Fatalf("loginUserFilter() = %q, want %q", got, want)
 		}
@@ -65,10 +65,10 @@ func TestAuthInternalSkipsExternalUsersForFallback(t *testing.T) {
 	t.Parallel()
 
 	repo := tests.CreateMockUserRepo()
-	repo.Data["firehawk"] = &model.User{ID: "1", UserName: "firehawk", Password: "generated", AuthSource: "ldap", AuthSourceID: "freeipa"}
+	repo.Data["directory-user"] = &model.User{ID: "1", UserName: "directory-user", Password: "generated", AuthSource: "ldap", AuthSourceID: "freeipa"}
 	ds := &tests.MockDataStore{MockedUser: repo}
 
-	user, found, err := authInternal(t.Context(), ds, "firehawk", "ldap-password", true)
+	user, found, err := authInternal(t.Context(), ds, "directory-user", "ldap-password", true)
 	if err != nil {
 		t.Fatalf("authInternal() unexpected error: %v", err)
 	}
@@ -76,7 +76,7 @@ func TestAuthInternalSkipsExternalUsersForFallback(t *testing.T) {
 		t.Fatalf("authInternal() found=%v user=%#v, want external user to be skipped for fallback", found, user)
 	}
 
-	user, found, err = authInternal(t.Context(), ds, "firehawk", "ldap-password", false)
+	user, found, err = authInternal(t.Context(), ds, "directory-user", "ldap-password", false)
 	if err != nil {
 		t.Fatalf("authInternal() unexpected error: %v", err)
 	}
