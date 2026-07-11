@@ -21,8 +21,8 @@ func NewPodcastEpisodeRepository(ctx context.Context, db dbx.Builder) model.Podc
 	r.ctx = ctx
 	r.db = db
 	r.registerModel(&model.PodcastEpisode{}, map[string]filterFunc{
-		"title":          containsFilter("title"),
-		"channel_id":     eqFilter,
+		"title":           containsFilter("title"),
+		"channel_id":      eqFilter,
 		"download_status": eqFilter,
 	})
 	return r

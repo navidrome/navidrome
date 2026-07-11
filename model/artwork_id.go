@@ -18,11 +18,11 @@ func (k Kind) String() string {
 }
 
 var (
-	KindMediaFileArtwork = Kind{"mf", "media_file"}
-	KindArtistArtwork    = Kind{"ar", "artist"}
-	KindAlbumArtwork     = Kind{"al", "album"}
-	KindPlaylistArtwork  = Kind{"pl", "playlist"}
-	KindDiscArtwork      = Kind{"dc", "disc"}
+	KindMediaFileArtwork      = Kind{"mf", "media_file"}
+	KindArtistArtwork         = Kind{"ar", "artist"}
+	KindAlbumArtwork          = Kind{"al", "album"}
+	KindPlaylistArtwork       = Kind{"pl", "playlist"}
+	KindDiscArtwork           = Kind{"dc", "disc"}
 	KindRadioArtwork          = Kind{"ra", "radio"}
 	KindFolderArtwork         = Kind{"fo", "folder"}
 	KindPodcastChannelArtwork = Kind{"pc", "podcast_channel"}
