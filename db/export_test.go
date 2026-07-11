@@ -7,4 +7,5 @@ var (
 	OptimizeDBAt          = optimizeAt
 	OptimizeDBIfNeeded    = optimizeIfNeeded
 	MarkOptimizePendingDB = markOptimizePending
+	RecordAnalyzeFailure  = recordAnalyzeFailure
 )

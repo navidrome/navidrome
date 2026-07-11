@@ -128,6 +128,39 @@ var _ = Describe("Optimize", func() {
 		Expect(getProperty(consts.DBAnalyzePendingKey)).To(Equal("0"))
 	})
 
+	DescribeTable("backs off after consecutive analysis failures",
+		func(failures string, retryDelay time.Duration) {
+			putProperty(consts.DBAnalyzePendingKey, "1")
+			putProperty(consts.DBAnalyzeFailureCountKey, failures)
+			putProperty(consts.LastDBAnalyzeAttemptAtKey, now.Format(time.RFC3339Nano))
+
+			ran, err := db.OptimizeDBIfNeeded(ctx, database, now.Add(retryDelay-time.Nanosecond))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ran).To(BeFalse())
+
+			ran, err = db.OptimizeDBIfNeeded(ctx, database, now.Add(retryDelay))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ran).To(BeTrue())
+			Expect(getProperty(consts.DBAnalyzeFailureCountKey)).To(Equal("0"))
+			Expect(getProperty(consts.DBAnalyzePendingKey)).To(Equal("0"))
+		},
+		Entry("for 30 minutes after the first failure", "1", 30*time.Minute),
+		Entry("for one hour after the second failure", "2", time.Hour),
+		Entry("for two hours after the third failure", "3", 2*time.Hour),
+		Entry("for 24 hours after the fourth failure", "4", 24*time.Hour),
+		Entry("at 24 hours after later failures", "12", 24*time.Hour),
+	)
+
+	It("records consecutive analysis failures", func() {
+		putProperty(consts.DBAnalyzeFailureCountKey, "2")
+
+		Expect(db.RecordAnalyzeFailure(ctx, database, now)).To(Succeed())
+
+		Expect(getProperty(consts.DBAnalyzeFailureCountKey)).To(Equal("3"))
+		Expect(getProperty(consts.LastDBAnalyzeAttemptAtKey)).To(Equal(now.Format(time.RFC3339Nano)))
+		Expect(getProperty(consts.DBAnalyzePendingKey)).To(Equal("1"))
+	})
+
 	It("marks a refresh as pending", func() {
 		Expect(db.MarkOptimizePendingDB(ctx, database)).To(Succeed())
 		Expect(getProperty(consts.DBAnalyzePendingKey)).To(Equal("1"))

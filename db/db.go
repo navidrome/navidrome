@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
+	"strconv"
 	"sync"
 	"time"
 
@@ -136,6 +137,11 @@ func optimizeIfNeeded(ctx context.Context, db *sql.DB, now time.Time) (bool, err
 }
 
 func optimizeDue(ctx context.Context, db *sql.DB, now time.Time) (bool, error) {
+	backingOff, err := analyzeRetryBackoffActive(ctx, db, now)
+	if err != nil || backingOff {
+		return false, err
+	}
+
 	pending, found, err := getProperty(ctx, db, consts.DBAnalyzePendingKey)
 	if err != nil {
 		return false, err
@@ -164,6 +170,40 @@ func parseAnalyzeTime(value string) (time.Time, bool) {
 	return parsed, err == nil
 }
 
+func analyzeRetryBackoffActive(ctx context.Context, db *sql.DB, now time.Time) (bool, error) {
+	value, found, err := getProperty(ctx, db, consts.DBAnalyzeFailureCountKey)
+	if err != nil || !found {
+		return false, err
+	}
+	failures, _ := strconv.Atoi(value)
+	if failures < 1 {
+		return false, nil
+	}
+
+	value, found, err = getProperty(ctx, db, consts.LastDBAnalyzeAttemptAtKey)
+	if err != nil || !found {
+		return false, err
+	}
+	lastAttempt, valid := parseAnalyzeTime(value)
+	if !valid || lastAttempt.After(now) {
+		return false, nil
+	}
+	return now.Sub(lastAttempt) < analyzeRetryDelay(failures), nil
+}
+
+func analyzeRetryDelay(failures int) time.Duration {
+	switch failures {
+	case 1:
+		return 30 * time.Minute
+	case 2:
+		return time.Hour
+	case 3:
+		return 2 * time.Hour
+	default:
+		return 24 * time.Hour
+	}
+}
+
 // MarkOptimizePending requests a statistics refresh on the next scheduled maintenance check.
 func MarkOptimizePending(ctx context.Context) error {
 	analyzeMux.Lock()
@@ -177,14 +217,20 @@ func markOptimizePending(ctx context.Context, db *sql.DB) error {
 
 func optimizeAt(ctx context.Context, db *sql.DB, now time.Time) error {
 	if err := markOptimizePending(ctx, db); err != nil {
-		return fmt.Errorf("marking ANALYZE pending: %w", err)
+		return recordAnalyzeError(ctx, db, now, fmt.Errorf("marking ANALYZE pending: %w", err))
 	}
 	log.Debug(ctx, "Refreshing query planner statistics")
 	_, err := db.ExecContext(ctx, "ANALYZE")
 	if err != nil {
-		return fmt.Errorf("running ANALYZE: %w", err)
+		return recordAnalyzeError(ctx, db, now, fmt.Errorf("running ANALYZE: %w", err))
 	}
+	if err = recordAnalyzeSuccess(ctx, db, now); err != nil {
+		return recordAnalyzeError(ctx, db, now, err)
+	}
+	return nil
+}
 
+func recordAnalyzeSuccess(ctx context.Context, db *sql.DB, now time.Time) error {
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("recording ANALYZE time: %w", err)
@@ -193,8 +239,14 @@ func optimizeAt(ctx context.Context, db *sql.DB, now time.Time) error {
 	if err = putProperty(ctx, tx, consts.LastDBAnalyzeAtKey, now.UTC().Format(time.RFC3339Nano)); err != nil {
 		return fmt.Errorf("recording ANALYZE time: %w", err)
 	}
+	if err = putProperty(ctx, tx, consts.LastDBAnalyzeAttemptAtKey, now.UTC().Format(time.RFC3339Nano)); err != nil {
+		return fmt.Errorf("recording ANALYZE attempt: %w", err)
+	}
 	if err = putProperty(ctx, tx, consts.DBAnalyzePendingKey, "0"); err != nil {
 		return fmt.Errorf("clearing pending ANALYZE: %w", err)
+	}
+	if err = putProperty(ctx, tx, consts.DBAnalyzeFailureCountKey, "0"); err != nil {
+		return fmt.Errorf("clearing ANALYZE failure count: %w", err)
 	}
 	if err = tx.Commit(); err != nil {
 		return fmt.Errorf("recording ANALYZE state: %w", err)
@@ -202,8 +254,47 @@ func optimizeAt(ctx context.Context, db *sql.DB, now time.Time) error {
 	return nil
 }
 
+func recordAnalyzeError(ctx context.Context, db *sql.DB, now time.Time, analyzeErr error) error {
+	if err := recordAnalyzeFailure(ctx, db, now); err != nil {
+		return errors.Join(analyzeErr, fmt.Errorf("recording ANALYZE failure: %w", err))
+	}
+	return analyzeErr
+}
+
+func recordAnalyzeFailure(ctx context.Context, db *sql.DB, now time.Time) error {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	value, found, err := getProperty(ctx, tx, consts.DBAnalyzeFailureCountKey)
+	if err != nil {
+		return err
+	}
+	failures := 0
+	if found {
+		failures, _ = strconv.Atoi(value)
+		failures = max(failures, 0)
+	}
+	if err = putProperty(ctx, tx, consts.DBAnalyzePendingKey, "1"); err != nil {
+		return err
+	}
+	if err = putProperty(ctx, tx, consts.DBAnalyzeFailureCountKey, strconv.Itoa(failures+1)); err != nil {
+		return err
+	}
+	if err = putProperty(ctx, tx, consts.LastDBAnalyzeAttemptAtKey, now.UTC().Format(time.RFC3339Nano)); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
 type sqlExecer interface {
 	ExecContext(context.Context, string, ...any) (sql.Result, error)
+}
+
+type sqlQueryer interface {
+	QueryRowContext(context.Context, string, ...any) *sql.Row
 }
 
 func putProperty(ctx context.Context, db sqlExecer, key, value string) error {
@@ -212,7 +303,7 @@ func putProperty(ctx context.Context, db sqlExecer, key, value string) error {
 	return err
 }
 
-func getProperty(ctx context.Context, db *sql.DB, key string) (string, bool, error) {
+func getProperty(ctx context.Context, db sqlQueryer, key string) (string, bool, error) {
 	var value string
 	err := db.QueryRowContext(ctx, "select value from property where id=?", key).Scan(&value)
 	if errors.Is(err, sql.ErrNoRows) {

@@ -21,7 +21,9 @@ const (
 	LastScanTypeKey               = "LastScanType"
 	LastScanStartTimeKey          = "LastScanStartTime"
 	LastDBAnalyzeAtKey            = "LastDBAnalyzeAt"
+	LastDBAnalyzeAttemptAtKey     = "LastDBAnalyzeAttemptAt"
 	DBAnalyzePendingKey           = "DBAnalyzePending"
+	DBAnalyzeFailureCountKey      = "DBAnalyzeFailureCount"
 
 	UIAuthorizationHeader  = "X-ND-Authorization"
 	UIClientUniqueIDHeader = "X-ND-Client-Unique-Id"
