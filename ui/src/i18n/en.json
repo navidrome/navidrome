@@ -262,6 +262,43 @@
         "playNow": "Play Now"
       }
     },
+    "podcastChannel": {
+      "name": "Podcast |||| Podcasts",
+      "fields": {
+        "url": "Feed URL",
+        "title": "Title",
+        "description": "Description",
+        "status": "Status",
+        "downloadPolicy": "Download policy",
+        "retentionCount": "Keep last N episodes",
+        "retentionDays": "Keep episodes for N days",
+        "lastCheckedAt": "Last checked",
+        "updatedAt": "Updated at",
+        "createdAt": "Created at"
+      },
+      "downloadPolicy": {
+        "none": "Stream only",
+        "new": "Download new episodes",
+        "all": "Download all episodes"
+      }
+    },
+    "podcastEpisode": {
+      "name": "Episode |||| Episodes",
+      "fields": {
+        "title": "Title",
+        "publishDate": "Published",
+        "duration": "Duration",
+        "downloadStatus": "Download status"
+      },
+      "downloadStatus": {
+        "not_downloaded": "Not downloaded",
+        "queued": "Queued",
+        "downloading": "Downloading",
+        "downloaded": "Downloaded",
+        "error": "Error",
+        "deleted": "Deleted"
+      }
+    },
     "share": {
       "name": "Share |||| Shares",
       "fields": {
@@ -625,6 +662,7 @@
   "menu": {
     "library": "Library",
     "folders": "Folders",
+    "podcasts": "Podcasts",
     "librarySelector": {
       "allLibraries": "All Libraries (%{count})",
       "multipleLibraries": "%{selected} of %{total} Libraries",

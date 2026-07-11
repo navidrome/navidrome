@@ -30,5 +30,13 @@ func GetEntityByID(ctx context.Context, ds DataStore, id string) (any, error) {
 	if err == nil {
 		return r, nil
 	}
+	pc, err := ds.PodcastChannel(ctx).Get(id)
+	if err == nil {
+		return pc, nil
+	}
+	pe, err := ds.PodcastEpisode(ctx).Get(id)
+	if err == nil {
+		return pe, nil
+	}
 	return nil, err
 }

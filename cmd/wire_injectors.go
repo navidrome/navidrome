@@ -14,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
+	"github.com/navidrome/navidrome/core/podcasts"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/core/sonic"
 	"github.com/navidrome/navidrome/db"
@@ -110,6 +111,12 @@ func CreatePrometheus() metrics.Metrics {
 }
 
 func CreateScanner(ctx context.Context) model.Scanner {
+	panic(wire.Build(
+		allProviders,
+	))
+}
+
+func CreatePodcastsService(ctx context.Context) podcasts.Podcasts {
 	panic(wire.Build(
 		allProviders,
 	))

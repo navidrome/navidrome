@@ -21,6 +21,7 @@ import (
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/core/playlists"
+	"github.com/navidrome/navidrome/core/podcasts"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/core/sonic"
 	"github.com/navidrome/navidrome/core/stream"
@@ -82,7 +83,8 @@ func CreateNativeAPIRouter(ctx context.Context) *nativeapi.Router {
 	library := core.NewLibrary(dataStore, modelScanner, watcher, broker, manager)
 	user := core.NewUser(dataStore, manager)
 	maintenance := core.NewMaintenance(dataStore)
-	router := nativeapi.New(dataStore, share, playlistsPlaylists, insights, library, user, maintenance, manager, imageUploadService)
+	podcastsPodcasts := podcasts.New(dataStore, broker)
+	router := nativeapi.New(dataStore, share, playlistsPlaylists, insights, library, user, maintenance, manager, imageUploadService, podcastsPodcasts)
 	return router
 }
 
@@ -181,6 +183,14 @@ func CreateScanner(ctx context.Context) model.Scanner {
 	playlistsPlaylists := playlists.NewPlaylists(dataStore, imageUploadService)
 	modelScanner := scanner.New(ctx, dataStore, cacheWarmer, broker, playlistsPlaylists, metricsMetrics)
 	return modelScanner
+}
+
+func CreatePodcastsService(ctx context.Context) podcasts.Podcasts {
+	sqlDB := db.Db()
+	dataStore := persistence.New(sqlDB)
+	broker := events.GetBroker()
+	podcastsPodcasts := podcasts.New(dataStore, broker)
+	return podcastsPodcasts
 }
 
 func CreateScanWatcher(ctx context.Context) scanner.Watcher {

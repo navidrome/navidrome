@@ -95,6 +95,9 @@ func runNavidrome(ctx context.Context) {
 	} else {
 		log.Warn(ctx, "Automatic Scanning is DISABLED")
 	}
+	if conf.Server.Podcasts.Enabled {
+		g.Go(schedulePodcastRefresh(ctx))
+	}
 
 	if err := g.Wait(); err != nil {
 		log.Error("Fatal error in Navidrome. Aborting", err)
@@ -161,6 +164,31 @@ func schedulePeriodicScan(ctx context.Context) func() error {
 		})
 		if err != nil {
 			log.Error(ctx, "Error scheduling periodic scan", err)
+		}
+		return nil
+	}
+}
+
+// schedulePodcastRefresh schedules a periodic refresh of subscribed podcast feeds, if configured.
+func schedulePodcastRefresh(ctx context.Context) func() error {
+	return func() error {
+		schedule := conf.Server.Podcasts.Schedule
+		if schedule == "" {
+			log.Info(ctx, "Periodic podcast refresh is DISABLED")
+			return nil
+		}
+
+		p := CreatePodcastsService(ctx)
+		schedulerInstance := scheduler.GetInstance()
+
+		log.Info("Scheduling periodic podcast refresh", "schedule", schedule)
+		_, err := schedulerInstance.Add(schedule, func() {
+			if err := p.RefreshAll(ctx); err != nil {
+				log.Error(ctx, "Error executing periodic podcast refresh", err)
+			}
+		})
+		if err != nil {
+			log.Error(ctx, "Error scheduling periodic podcast refresh", err)
 		}
 		return nil
 	}

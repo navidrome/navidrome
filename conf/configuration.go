@@ -107,6 +107,7 @@ type configOptions struct {
 	HTTPHeaders                     httpHeaderOptions   `json:",omitzero"`
 	Prometheus                      prometheusOptions   `json:",omitzero"`
 	Scanner                         scannerOptions      `json:",omitzero"`
+	Podcasts                        podcastsOptions     `json:",omitzero"`
 	Jukebox                         jukeboxOptions      `json:",omitzero"`
 	Backup                          backupOptions       `json:",omitzero"`
 	PID                             pidOptions          `json:",omitzero"`
@@ -163,6 +164,15 @@ type scannerOptions struct {
 	GroupAlbumReleases bool   // Deprecated: Use PID.Album instead
 	FollowSymlinks     bool   // Whether to follow symlinks when scanning directories
 	PurgeMissing       string // Values: "never", "always", "full"
+}
+
+type podcastsOptions struct {
+	Enabled               bool
+	StorageFolder         Dir
+	Schedule              string
+	DownloadConcurrency   uint
+	DefaultDownloadPolicy string
+	MaxDownloadSizeMB     int
 }
 
 type transcodingOptions struct {
@@ -352,6 +362,10 @@ func Load(noConfigDump bool) {
 		Server.CacheFolder = NewDir(filepath.Join(Server.DataFolder.String(), "cache"))
 	}
 
+	if Server.Podcasts.StorageFolder.String() == "" {
+		Server.Podcasts.StorageFolder = NewDir(filepath.Join(Server.DataFolder.String(), "podcasts"))
+	}
+
 	if Server.Plugins.Enabled {
 		if Server.Plugins.Folder.String() == "" {
 			Server.Plugins.Folder = NewDirWithPerm(filepath.Join(Server.DataFolder.String(), "plugins"), 0700)
@@ -390,6 +404,7 @@ func Load(noConfigDump bool) {
 
 	err = run.Sequentially(
 		validateScanSchedule,
+		validatePodcastSchedule,
 		validateBackupSchedule,
 		validatePlaylistsPath,
 		validatePurgeMissingOption,
@@ -647,6 +662,16 @@ func validateScanSchedule() error {
 	return err
 }
 
+func validatePodcastSchedule() error {
+	if Server.Podcasts.Schedule == "0" || Server.Podcasts.Schedule == "" {
+		Server.Podcasts.Schedule = ""
+		return nil
+	}
+	var err error
+	Server.Podcasts.Schedule, err = validateSchedule(Server.Podcasts.Schedule, "Podcasts.Schedule")
+	return err
+}
+
 func validateBackupSchedule() error {
 	if Server.Backup.Path.String() == "" || Server.Backup.Schedule == "" || Server.Backup.Count == 0 {
 		Server.Backup.Schedule = ""
@@ -822,6 +847,12 @@ func setViperDefaults() {
 	viper.SetDefault("scanner.groupalbumreleases", false)
 	viper.SetDefault("scanner.followsymlinks", true)
 	viper.SetDefault("scanner.purgemissing", consts.PurgeMissingNever)
+	viper.SetDefault("podcasts.enabled", true)
+	viper.SetDefault("podcasts.storagefolder", "")
+	viper.SetDefault("podcasts.schedule", "0")
+	viper.SetDefault("podcasts.downloadconcurrency", 3)
+	viper.SetDefault("podcasts.defaultdownloadpolicy", "none")
+	viper.SetDefault("podcasts.maxdownloadsizemb", 0)
 	viper.SetDefault("subsonic.appendsubtitle", true)
 	viper.SetDefault("subsonic.appendalbumversion", true)
 	viper.SetDefault("subsonic.artistparticipations", false)

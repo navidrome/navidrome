@@ -10,6 +10,7 @@ import (
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/core/playlists"
+	"github.com/navidrome/navidrome/core/podcasts"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/core/stream"
 )
@@ -21,6 +22,7 @@ var Set = wire.NewSet(
 	NewPlayers,
 	NewShare,
 	playlists.NewPlaylists,
+	podcasts.New,
 	NewLibrary,
 	NewUser,
 	NewMaintenance,
