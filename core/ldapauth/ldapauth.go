@@ -244,6 +244,7 @@ func authLDAP(ctx context.Context, ds model.DataStore, src Source, username, pas
 	u.IsAdmin = memberAny(du.Groups, src.AdminGroupDNs)
 	u.AuthSource = "ldap"
 	u.AuthSourceID = first(src.ID, src.Name)
+	u.ExternalSync = true
 	if err := repo.Put(u); err != nil {
 		return nil, err
 	}

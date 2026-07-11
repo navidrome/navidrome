@@ -121,18 +121,37 @@ const UserEdit = (props) => {
         validate={validateForm}
       >
         {permissions === 'admin' && (
-          <TextInput
-            spellCheck={false}
-            source="userName"
-            validate={[required()]}
-          />
+          <FormDataConsumer>
+            {({ formData }) => (
+              <TextInput
+                spellCheck={false}
+                source="userName"
+                validate={[required()]}
+                disabled={!!formData.authSource}
+              />
+            )}
+          </FormDataConsumer>
         )}
-        <TextInput
-          source="name"
-          validate={[required()]}
-          {...getNameHelperText()}
-        />
-        <TextInput spellCheck={false} source="email" validate={[email()]} />
+        <FormDataConsumer>
+          {({ formData }) => (
+            <TextInput
+              source="name"
+              validate={[required()]}
+              disabled={!!formData.authSource}
+              {...getNameHelperText()}
+            />
+          )}
+        </FormDataConsumer>
+        <FormDataConsumer>
+          {({ formData }) => (
+            <TextInput
+              spellCheck={false}
+              source="email"
+              validate={[email()]}
+              disabled={!!formData.authSource}
+            />
+          )}
+        </FormDataConsumer>
         <FormDataConsumer>
           {({ formData }) =>
             formData.authSource ? (

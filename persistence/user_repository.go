@@ -182,8 +182,24 @@ func (r *userRepository) preserveExternalAuthSource(u *model.User) error {
 	if existing.AuthSource == "" {
 		return nil
 	}
+	if u.ExternalSync {
+		return nil
+	}
+	validation := &rest.ValidationError{Errors: map[string]string{}}
 	if u.NewPassword != "" {
-		return &rest.ValidationError{Errors: map[string]string{"password": "resources.user.validation.externalPasswordReadOnly"}}
+		validation.Errors["password"] = "resources.user.validation.externalFieldReadOnly"
+	}
+	if !strings.EqualFold(u.UserName, existing.UserName) {
+		validation.Errors["userName"] = "resources.user.validation.externalFieldReadOnly"
+	}
+	if u.Name != existing.Name {
+		validation.Errors["name"] = "resources.user.validation.externalFieldReadOnly"
+	}
+	if u.Email != existing.Email {
+		validation.Errors["email"] = "resources.user.validation.externalFieldReadOnly"
+	}
+	if len(validation.Errors) > 0 {
+		return validation
 	}
 	if u.AuthSource == "" {
 		u.AuthSource = existing.AuthSource

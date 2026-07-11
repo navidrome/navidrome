@@ -27,6 +27,9 @@ type User struct {
 	NewPassword string `structs:"password,omitempty" json:"password,omitempty"` //nolint:gosec
 	// If changing the password, this is also required
 	CurrentPassword string `structs:"current_password,omitempty" json:"currentPassword,omitempty"`
+
+	// ExternalSync allows external auth providers to update read-only identity fields for managed users.
+	ExternalSync bool `structs:"-" json:"-"`
 }
 
 func (u User) HasLibraryAccess(libraryID int) bool {

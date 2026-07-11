@@ -168,14 +168,14 @@
       },
       "validation": {
         "librariesRequired": "At least one library must be selected for non-admin users",
-        "externalPasswordReadOnly": "Password cannot be changed for users managed by an external authentication source."
+        "externalFieldReadOnly": "This field is managed by an external authentication source."
       },
       "message": {
         "listenBrainzToken": "Enter your ListenBrainz user token.",
         "clickHereForToken": "Click here to get your token",
         "selectAllLibraries": "Select all libraries",
         "adminAutoLibraries": "Admin users automatically have access to all libraries",
-        "externalPasswordReadOnly": "Password changes are disabled because this user is managed by an external authentication source."
+        "externalPasswordReadOnly": "Username, display name, email, and password changes are disabled because this user is managed by an external authentication source."
       }
     },
     "player": {
