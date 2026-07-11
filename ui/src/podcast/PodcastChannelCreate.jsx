@@ -29,6 +29,7 @@ import { Title } from '../common'
 import { REST_URL } from '../consts'
 import { httpClient } from '../dataProvider'
 import { urlValidate } from '../utils/validations'
+import TopFeedsSuggestions from './TopFeedsSuggestions'
 
 const useStyles = makeStyles({
   searchRow: {
@@ -153,6 +154,13 @@ const PodcastSearch = () => {
           ))}
         </List>
       )}
+
+      <Box mt={3}>
+        <TopFeedsSuggestions
+          title={translate('resources.podcastChannel.trendingLabel')}
+          onSubscribed={() => redirect('/podcastChannel')}
+        />
+      </Box>
     </Box>
   )
 }

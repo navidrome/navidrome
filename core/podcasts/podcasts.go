@@ -17,6 +17,7 @@ type Podcasts interface {
 	RefreshChannel(ctx context.Context, id string) error
 	RefreshAll(ctx context.Context) error
 	SearchFeeds(ctx context.Context, query string) ([]FeedSearchResult, error)
+	TopFeeds(ctx context.Context, country string) ([]FeedSearchResult, error)
 }
 
 type podcasts struct {
@@ -75,6 +76,10 @@ func (p *podcasts) SearchFeeds(ctx context.Context, query string) ([]FeedSearchR
 		return nil, errors.New("search query is required")
 	}
 	return searchFeeds(ctx, query)
+}
+
+func (p *podcasts) TopFeeds(ctx context.Context, country string) ([]FeedSearchResult, error) {
+	return topFeeds(ctx, country)
 }
 
 func (p *podcasts) notifyRefresh(ctx context.Context, resource string, ids ...string) {

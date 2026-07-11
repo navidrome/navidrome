@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React from 'react'
 import {
   CreateButton,
   Datagrid,
@@ -9,24 +9,15 @@ import {
   SearchInput,
   TextField,
   TopToolbar,
-  useDataProvider,
-  useNotify,
   useRefresh,
   useTranslate,
 } from 'react-admin'
-import {
-  Avatar,
-  Box,
-  Button,
-  Chip,
-  makeStyles,
-  Typography,
-} from '@material-ui/core'
+import { Avatar, Box, makeStyles, Typography } from '@material-ui/core'
 import MicIcon from '@material-ui/icons/Mic'
 import { List, Title } from '../common'
 import subsonic from '../subsonic'
 import config from '../config'
-import starterFeeds from './starterFeeds'
+import TopFeedsSuggestions from './TopFeedsSuggestions'
 
 const useStyles = makeStyles({
   avatar: {
@@ -37,15 +28,10 @@ const useStyles = makeStyles({
     textAlign: 'center',
     padding: '3rem 1rem',
   },
-  chips: {
+  suggestions: {
     display: 'flex',
-    flexWrap: 'wrap',
-    gap: '0.5rem',
     justifyContent: 'center',
-    marginTop: '1rem',
-    maxWidth: '40rem',
-    marginLeft: 'auto',
-    marginRight: 'auto',
+    marginTop: '1.5rem',
   },
 })
 
@@ -95,28 +81,7 @@ CoverArtField.defaultProps = { label: '' }
 const EmptyPodcastList = ({ basePath }) => {
   const classes = useStyles()
   const translate = useTranslate()
-  const dataProvider = useDataProvider()
-  const notify = useNotify()
   const refresh = useRefresh()
-  const [adding, setAdding] = useState(null)
-
-  const handleQuickAdd = (feed) => {
-    setAdding(feed.url)
-    dataProvider
-      .create('podcastChannel', { data: { url: feed.url } })
-      .then(() => {
-        notify('resources.podcastChannel.notifications.subscribed', {
-          type: 'info',
-        })
-        refresh()
-      })
-      .catch(() => {
-        notify('resources.podcastChannel.notifications.subscribeFailed', {
-          type: 'warning',
-        })
-      })
-      .finally(() => setAdding(null))
-  }
 
   return (
     <Box className={classes.emptyRoot}>
@@ -132,17 +97,8 @@ const EmptyPodcastList = ({ basePath }) => {
           {translate('resources.podcastChannel.search')}
         </CreateButton>
       </Box>
-      <Box className={classes.chips}>
-        {starterFeeds.map((feed) => (
-          <Chip
-            key={feed.url}
-            label={feed.title}
-            clickable
-            disabled={!!adding}
-            onClick={() => handleQuickAdd(feed)}
-            icon={<MicIcon />}
-          />
-        ))}
+      <Box className={classes.suggestions}>
+        <TopFeedsSuggestions onSubscribed={refresh} />
       </Box>
     </Box>
   )

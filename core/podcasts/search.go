@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"regexp"
+	"strconv"
+	"strings"
 )
 
 // FeedSearchResult is a normalized podcast search hit, independent of the
@@ -18,15 +21,22 @@ type FeedSearchResult struct {
 	EpisodeCount int    `json:"episodeCount,omitempty"`
 }
 
-const searchResultLimit = 25
+const (
+	searchResultLimit = 25
+	topFeedsLimit     = 10
+	defaultTopCountry = "us"
+)
 
-// iTunes Search API response shapes. Field names confirmed against a live
-// request to https://itunes.apple.com/search?media=podcast&entity=podcast.
-type itunesSearchResponse struct {
-	Results []itunesSearchResult `json:"results"`
+var countryCodePattern = regexp.MustCompile(`^[a-zA-Z]{2}$`)
+
+// iTunes Search/Lookup API response shapes. Field names confirmed against
+// live requests to https://itunes.apple.com/search and .../lookup.
+type itunesLookupResponse struct {
+	Results []itunesResult `json:"results"`
 }
 
-type itunesSearchResult struct {
+type itunesResult struct {
+	CollectionId   int    `json:"collectionId"`
 	CollectionName string `json:"collectionName"`
 	ArtistName     string `json:"artistName"`
 	FeedUrl        string `json:"feedUrl"`
@@ -35,30 +45,31 @@ type itunesSearchResult struct {
 	TrackCount     int    `json:"trackCount"`
 }
 
+func (r itunesResult) toFeedSearchResult() FeedSearchResult {
+	artwork := r.ArtworkUrl600
+	if artwork == "" {
+		artwork = r.ArtworkUrl100
+	}
+	return FeedSearchResult{
+		Title:        r.CollectionName,
+		Author:       r.ArtistName,
+		FeedUrl:      r.FeedUrl,
+		ArtworkUrl:   artwork,
+		EpisodeCount: r.TrackCount,
+	}
+}
+
 func searchFeeds(ctx context.Context, query string) ([]FeedSearchResult, error) {
 	u := "https://itunes.apple.com/search?" + url.Values{
 		"term":   {query},
 		"media":  {"podcast"},
 		"entity": {"podcast"},
-		"limit":  {fmt.Sprint(searchResultLimit)},
+		"limit":  {strconv.Itoa(searchResultLimit)},
 	}.Encode()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
+	var parsed itunesLookupResponse
+	if err := getJSON(ctx, u, &parsed); err != nil {
 		return nil, fmt.Errorf("searching podcast directory: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("podcast directory search returned status %d", resp.StatusCode)
-	}
-
-	var parsed itunesSearchResponse
-	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
-		return nil, fmt.Errorf("parsing podcast directory response: %w", err)
 	}
 
 	results := make([]FeedSearchResult, 0, len(parsed.Results))
@@ -66,17 +77,90 @@ func searchFeeds(ctx context.Context, query string) ([]FeedSearchResult, error) 
 		if r.FeedUrl == "" {
 			continue
 		}
-		artwork := r.ArtworkUrl600
-		if artwork == "" {
-			artwork = r.ArtworkUrl100
-		}
-		results = append(results, FeedSearchResult{
-			Title:        r.CollectionName,
-			Author:       r.ArtistName,
-			FeedUrl:      r.FeedUrl,
-			ArtworkUrl:   artwork,
-			EpisodeCount: r.TrackCount,
-		})
+		results = append(results, r.toFeedSearchResult())
 	}
 	return results, nil
+}
+
+// topFeeds returns the current top podcast chart for the given ISO 3166-1
+// alpha-2 country code (e.g. "us", "au", "gb"), sourced from Apple's public
+// Marketing Tools API and resolved to real RSS feed URLs via a bulk iTunes
+// Lookup call. Falls back to the US chart for an invalid/unknown country.
+func topFeeds(ctx context.Context, country string) ([]FeedSearchResult, error) {
+	country = strings.ToLower(strings.TrimSpace(country))
+	if !countryCodePattern.MatchString(country) {
+		country = defaultTopCountry
+	}
+
+	chartUrl := fmt.Sprintf("https://rss.marketingtools.apple.com/api/v2/%s/podcasts/top/%d/podcasts.json", country, topFeedsLimit)
+	var chart struct {
+		Feed struct {
+			Results []struct {
+				ID string `json:"id"`
+			} `json:"results"`
+		} `json:"feed"`
+	}
+	if err := getJSON(ctx, chartUrl, &chart); err != nil {
+		return nil, fmt.Errorf("fetching top podcasts chart: %w", err)
+	}
+	if len(chart.Feed.Results) == 0 {
+		return nil, nil
+	}
+
+	ids := make([]string, 0, len(chart.Feed.Results))
+	order := make(map[string]int, len(chart.Feed.Results))
+	for i, r := range chart.Feed.Results {
+		ids = append(ids, r.ID)
+		order[r.ID] = i
+	}
+
+	lookupUrl := "https://itunes.apple.com/lookup?" + url.Values{
+		"id":     {strings.Join(ids, ",")},
+		"entity": {"podcast"},
+	}.Encode()
+	var lookup itunesLookupResponse
+	if err := getJSON(ctx, lookupUrl, &lookup); err != nil {
+		return nil, fmt.Errorf("resolving top podcasts feed URLs: %w", err)
+	}
+
+	results := make([]FeedSearchResult, len(chart.Feed.Results))
+	found := make([]bool, len(chart.Feed.Results))
+	for _, r := range lookup.Results {
+		if r.FeedUrl == "" {
+			continue
+		}
+		idx, ok := order[strconv.Itoa(r.CollectionId)]
+		if !ok {
+			continue
+		}
+		results[idx] = r.toFeedSearchResult()
+		found[idx] = true
+	}
+
+	ordered := make([]FeedSearchResult, 0, len(results))
+	for i, ok := range found {
+		if ok {
+			ordered = append(ordered, results[i])
+		}
+	}
+	return ordered, nil
+}
+
+func getJSON(ctx context.Context, u string, target any) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status %d from %s", resp.StatusCode, u)
+	}
+	if err := json.NewDecoder(resp.Body).Decode(target); err != nil {
+		return fmt.Errorf("parsing response from %s: %w", u, err)
+	}
+	return nil
 }

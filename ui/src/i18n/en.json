@@ -287,6 +287,7 @@
       "subscribe": "Subscribe",
       "subscribing": "Subscribing...",
       "manualEntryLabel": "Or paste a feed URL directly",
+      "trendingLabel": "Or pick a trending show",
       "emptyTitle": "No podcasts yet",
       "emptyBody": "Search for a podcast by name, paste a feed URL, or try one of these",
       "notifications": {
