@@ -55,7 +55,8 @@ func (p *podcasts) CreateChannel(ctx context.Context, url string) (*model.Podcas
 
 	refreshed, err := p.ds.PodcastChannel(ctx).Get(channel.ID)
 	if err != nil {
-		return channel, nil
+		log.Warn(ctx, "Error re-fetching podcast channel after initial refresh", "id", channel.ID, err)
+		return channel, nil //nolint:nilerr
 	}
 	return refreshed, nil
 }
