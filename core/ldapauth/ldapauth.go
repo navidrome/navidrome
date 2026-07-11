@@ -176,7 +176,7 @@ func Sources(ctx context.Context) []AuthSource {
 
 func Authenticate(ctx context.Context, ds model.DataStore, sourceID, username, password string) (*model.User, error) {
 	if sourceID == "" || sourceID == "internal" {
-		u, found, err := authInternal(ctx, ds, username, password)
+		u, found, err := authInternal(ctx, ds, username, password, sourceID == "")
 		if err != nil || found {
 			return u, err
 		}
@@ -205,13 +205,17 @@ func Authenticate(ctx context.Context, ds model.DataStore, sourceID, username, p
 	}
 	return nil, nil
 }
-func authInternal(ctx context.Context, ds model.DataStore, username, password string) (*model.User, bool, error) {
+func authInternal(ctx context.Context, ds model.DataStore, username, password string, skipExternal bool) (*model.User, bool, error) {
 	u, err := ds.User(ctx).FindByUsernameWithPassword(username)
 	if errors.Is(err, model.ErrNotFound) {
 		return nil, false, nil
 	}
 	if err != nil {
 		return nil, true, err
+	}
+	if skipExternal && u.AuthSource != "" {
+		log.Debug(ctx, "Skipping internal password check for externally managed user", "username", username, "authSource", u.AuthSource, "authSourceId", u.AuthSourceID)
+		return nil, false, nil
 	}
 	if u.Password != password {
 		return nil, true, nil

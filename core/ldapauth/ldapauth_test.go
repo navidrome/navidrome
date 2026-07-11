@@ -1,6 +1,11 @@
 package ldapauth
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/tests"
+)
 
 func TestLoginUserFilter(t *testing.T) {
 	t.Parallel()
@@ -53,5 +58,29 @@ func TestDedupeStrings(t *testing.T) {
 		if got[i] != want[i] {
 			t.Fatalf("dedupeStrings() = %#v, want %#v", got, want)
 		}
+	}
+}
+
+func TestAuthInternalSkipsExternalUsersForFallback(t *testing.T) {
+	t.Parallel()
+
+	repo := tests.CreateMockUserRepo()
+	repo.Data["firehawk"] = &model.User{ID: "1", UserName: "firehawk", Password: "generated", AuthSource: "ldap", AuthSourceID: "freeipa"}
+	ds := &tests.MockDataStore{MockedUser: repo}
+
+	user, found, err := authInternal(t.Context(), ds, "firehawk", "ldap-password", true)
+	if err != nil {
+		t.Fatalf("authInternal() unexpected error: %v", err)
+	}
+	if found || user != nil {
+		t.Fatalf("authInternal() found=%v user=%#v, want external user to be skipped for fallback", found, user)
+	}
+
+	user, found, err = authInternal(t.Context(), ds, "firehawk", "ldap-password", false)
+	if err != nil {
+		t.Fatalf("authInternal() unexpected error: %v", err)
+	}
+	if !found || user != nil {
+		t.Fatalf("authInternal() found=%v user=%#v, want explicit internal auth to stop", found, user)
 	}
 }
