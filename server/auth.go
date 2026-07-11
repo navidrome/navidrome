@@ -19,6 +19,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/core/ldapauth"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
@@ -35,19 +36,19 @@ var (
 
 func login(ds model.DataStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		username, password, err := getCredentialsFromBody(r)
+		username, password, authSource, err := getCredentialsFromBody(r)
 		if err != nil {
 			log.Error(r, "Parsing request body", err)
 			_ = rest.RespondWithError(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
 
-		doLogin(ds, username, password, w, r)
+		doLogin(ds, username, password, authSource, w, r)
 	}
 }
 
-func doLogin(ds model.DataStore, username string, password string, w http.ResponseWriter, r *http.Request) {
-	user, err := validateLogin(ds.User(r.Context()), username, password)
+func doLogin(ds model.DataStore, username string, password string, authSource string, w http.ResponseWriter, r *http.Request) {
+	user, err := ldapauth.Authenticate(r.Context(), ds, authSource, username, password)
 	if err != nil {
 		_ = rest.RespondWithError(w, http.StatusInternalServerError, "Unknown error authentication user. Please try again")
 		return
@@ -94,7 +95,7 @@ func buildAuthPayload(user *model.User) map[string]any {
 	return payload
 }
 
-func getCredentialsFromBody(r *http.Request) (username string, password string, err error) {
+func getCredentialsFromBody(r *http.Request) (username string, password string, authSource string, err error) {
 	data := make(map[string]string)
 	decoder := json.NewDecoder(r.Body)
 	if err = decoder.Decode(&data); err != nil {
@@ -104,12 +105,13 @@ func getCredentialsFromBody(r *http.Request) (username string, password string, 
 	}
 	username = data["username"]
 	password = data["password"]
-	return username, password, nil
+	authSource = data["authSource"]
+	return username, password, authSource, nil
 }
 
 func createAdmin(ds model.DataStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		username, password, err := getCredentialsFromBody(r)
+		username, password, _, err := getCredentialsFromBody(r)
 		if err != nil {
 			log.Error(r, "parsing request body", err)
 			_ = rest.RespondWithError(w, http.StatusUnprocessableEntity, err.Error())
@@ -129,7 +131,7 @@ func createAdmin(ds model.DataStore) func(w http.ResponseWriter, r *http.Request
 			_ = rest.RespondWithError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
-		doLogin(ds, username, password, w, r)
+		doLogin(ds, username, password, "internal", w, r)
 	}
 }
 
@@ -371,4 +373,10 @@ func validateIPAgainstList(ip string, comaSeparatedList string) bool {
 	}
 
 	return false
+}
+
+func authSources() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		_ = rest.RespondWithJSON(w, http.StatusOK, ldapauth.Sources(r.Context()))
+	}
 }
