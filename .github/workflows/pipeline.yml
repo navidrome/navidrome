@@ -99,10 +99,8 @@ jobs:
   validate-migrations:
     name: Validate DB migrations
     runs-on: ubuntu-latest
-    # The PR-only gate is at step level, NOT job level: a skipped job propagates
-    # "skipped" transitively through the needs chain (actions/runner#491), which
-    # skipped every release job after Build on tag pushes. With all steps skipped
-    # the job still concludes "success", so downstream jobs run normally.
+    # PR-only gate is at step level: a job-level skip would propagate through
+    # the needs chain (actions/runner#491) and skip all release jobs on tag pushes.
     steps:
       - uses: actions/checkout@v7
         if: github.event_name == 'pull_request'
