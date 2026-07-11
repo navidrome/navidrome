@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
@@ -18,6 +20,8 @@ type Podcasts interface {
 	RefreshAll(ctx context.Context) error
 	SearchFeeds(ctx context.Context, query string) ([]FeedSearchResult, error)
 	TopFeeds(ctx context.Context, country string) ([]FeedSearchResult, error)
+	DownloadEpisode(ctx context.Context, episodeID string) error
+	DeleteEpisode(ctx context.Context, id string) error
 }
 
 type podcasts struct {
@@ -67,7 +71,12 @@ func (p *podcasts) DeleteChannel(ctx context.Context, id string) error {
 	if err := p.ds.PodcastChannel(ctx).Delete(id); err != nil {
 		return err
 	}
+	channelDir := filepath.Join(conf.Server.Podcasts.StorageFolder.String(), id)
+	if err := os.RemoveAll(channelDir); err != nil {
+		log.Warn(ctx, "Error removing downloaded episodes for deleted podcast channel", "id", id, "dir", channelDir, err)
+	}
 	p.notifyRefresh(ctx, "podcastChannel", id)
+	p.notifyRefresh(ctx, "podcastEpisode")
 	return nil
 }
 
@@ -87,6 +96,19 @@ func (p *podcasts) notifyRefresh(ctx context.Context, resource string, ids ...st
 		return
 	}
 	p.broker.SendBroadcastMessage(ctx, (&events.RefreshResource{}).With(resource, ids...))
+}
+
+func (p *podcasts) notifyDownload(ctx context.Context, ep *model.PodcastEpisode) {
+	p.notifyRefresh(ctx, "podcastEpisode", ep.ID)
+	if p.broker == nil {
+		return
+	}
+	p.broker.SendBroadcastMessage(ctx, &events.PodcastDownloadStatus{
+		EpisodeID: ep.ID,
+		ChannelID: ep.ChannelID,
+		Status:    string(ep.DownloadStatus),
+		Error:     ep.ErrorMessage,
+	})
 }
 
 func defaultDownloadPolicy() string {

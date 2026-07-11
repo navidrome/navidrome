@@ -1,10 +1,10 @@
 import subsonic from '../subsonic'
 import config from '../config'
 
-// Phase 1 plays episodes by streaming the RSS enclosure URL directly,
-// reusing the player's isRadio bypass (no local download, no /rest/stream
-// involvement yet). Phase 2 replaces this with a normal subsonic.streamUrl()
-// call once stream.go can resolve podcast episode ids.
+// Episodes are queued like any other track: the player resolves
+// musicSrc via subsonic.streamUrl(episode.id), which now works for every
+// episode regardless of download state - stream.go serves the local file
+// if downloaded, or transparently proxies the source URL otherwise.
 export function songFromPodcastEpisode(episode, channel) {
   if (!episode) {
     return undefined
@@ -22,7 +22,5 @@ export function songFromPodcastEpisode(episode, channel) {
     artist: channel?.title || '',
     duration: episode.duration,
     cover,
-    streamUrl: episode.enclosureUrl,
-    isRadio: true,
   }
 }

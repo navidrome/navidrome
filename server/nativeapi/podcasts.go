@@ -10,6 +10,7 @@ import (
 	"github.com/deluan/rest"
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
 )
@@ -41,6 +42,8 @@ func (api *Router) addPodcastRoutes(r chi.Router) {
 		r.Route("/{id}", func(r chi.Router) {
 			r.Use(server.URLParamsMiddleware)
 			r.Get("/", rest.Get(episodeConstructor))
+			r.Delete("/", api.deletePodcastEpisode())
+			r.Post("/download", api.downloadPodcastEpisode())
 		})
 	})
 }
@@ -114,6 +117,38 @@ func (api *Router) refreshPodcastChannel() http.HandlerFunc {
 			_ = rest.RespondWithError(w, http.StatusBadRequest, err.Error())
 			return
 		}
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
+func (api *Router) deletePodcastEpisode() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := chi.URLParamFromCtx(r.Context(), "id")
+		if err := api.podcasts.DeleteEpisode(r.Context(), id); err != nil {
+			if errors.Is(err, model.ErrNotFound) || errors.Is(err, rest.ErrNotFound) {
+				_ = rest.RespondWithError(w, http.StatusNotFound, err.Error())
+				return
+			}
+			_ = rest.RespondWithError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
+// downloadPodcastEpisode enqueues the download and returns immediately,
+// detached from the request context so it survives the response being
+// sent; the web UI learns about completion via the podcastEpisode SSE
+// refresh/status events.
+func (api *Router) downloadPodcastEpisode() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := chi.URLParamFromCtx(r.Context(), "id")
+		bgCtx := context.WithoutCancel(r.Context())
+		go func() {
+			if err := api.podcasts.DownloadEpisode(bgCtx, id); err != nil {
+				log.Error(bgCtx, "Error downloading podcast episode", "id", id, err)
+			}
+		}()
 		w.WriteHeader(http.StatusOK)
 	}
 }

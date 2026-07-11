@@ -11,15 +11,27 @@ import {
   FunctionField,
   SimpleShowLayout,
   useTranslate,
+  useNotify,
   Pagination,
 } from 'react-admin'
 import { useDispatch } from 'react-redux'
-import { Typography, Box, Avatar, makeStyles } from '@material-ui/core'
+import {
+  Typography,
+  Box,
+  Avatar,
+  Chip,
+  IconButton,
+  makeStyles,
+} from '@material-ui/core'
 import MicIcon from '@material-ui/icons/Mic'
-import { Title } from '../common'
+import DownloadIcon from '@material-ui/icons/GetApp'
+import DeleteIcon from '@material-ui/icons/Delete'
+import { Title, useResourceRefresh } from '../common'
 import { setTrack } from '../actions'
 import subsonic from '../subsonic'
 import config from '../config'
+import { REST_URL } from '../consts'
+import { httpClient } from '../dataProvider'
 import { songFromPodcastEpisode } from './helper'
 
 const useStyles = makeStyles({
@@ -34,6 +46,13 @@ const useStyles = makeStyles({
     height: '5rem',
   },
 })
+
+const statusColor = {
+  downloaded: 'primary',
+  downloading: 'default',
+  queued: 'default',
+  error: 'secondary',
+}
 
 const PodcastChannelHeader = () => {
   const { record } = useShowContext()
@@ -60,7 +79,61 @@ const PodcastChannelHeader = () => {
   )
 }
 
-const EpisodesSection = ({ channel }) => {
+const DownloadStatusChip = ({ record }) => {
+  const translate = useTranslate()
+  if (!record) return null
+  return (
+    <Chip
+      size="small"
+      label={translate(
+        `resources.podcastEpisode.downloadStatus.${record.downloadStatus}`,
+        { _: record.downloadStatus },
+      )}
+      color={statusColor[record.downloadStatus] || 'default'}
+      variant={record.downloadStatus === 'downloaded' ? 'default' : 'outlined'}
+    />
+  )
+}
+
+const EpisodeActions = ({ record, isAdmin }) => {
+  const notify = useNotify()
+  if (!isAdmin || !record) return null
+
+  const stop = (e) => e.stopPropagation()
+
+  const handleDownload = (e) => {
+    stop(e)
+    httpClient(`${REST_URL}/podcastEpisode/${record.id}/download`, {
+      method: 'POST',
+    }).catch(() => notify('ra.page.error', { type: 'warning' }))
+  }
+
+  const handleDelete = (e) => {
+    stop(e)
+    httpClient(`${REST_URL}/podcastEpisode/${record.id}`, {
+      method: 'DELETE',
+    }).catch(() => notify('ra.page.error', { type: 'warning' }))
+  }
+
+  if (
+    record.downloadStatus === 'downloaded' ||
+    record.downloadStatus === 'downloading' ||
+    record.downloadStatus === 'queued'
+  ) {
+    return (
+      <IconButton size="small" onClick={handleDelete} onFocus={stop}>
+        <DeleteIcon fontSize="small" />
+      </IconButton>
+    )
+  }
+  return (
+    <IconButton size="small" onClick={handleDownload} onFocus={stop}>
+      <DownloadIcon fontSize="small" />
+    </IconButton>
+  )
+}
+
+const EpisodesSection = ({ channel, isAdmin }) => {
   const dispatch = useDispatch()
   const translate = useTranslate()
 
@@ -92,20 +165,25 @@ const EpisodesSection = ({ channel }) => {
         />
         <FunctionField
           source="downloadStatus"
-          render={(record) =>
-            translate(
-              `resources.podcastEpisode.downloadStatus.${record.downloadStatus}`,
-              { _: record.downloadStatus },
-            )
-          }
+          render={(record) => <DownloadStatusChip record={record} />}
+        />
+        <FunctionField
+          source="id"
+          label=""
+          sortable={false}
+          render={(record) => (
+            <EpisodeActions record={record} isAdmin={isAdmin} />
+          )}
         />
       </Datagrid>
     </>
   )
 }
 
-const PodcastChannelShowLayout = (props) => {
+const PodcastChannelShowLayout = ({ permissions, ...props }) => {
   const { record, loading } = useShowContext(props)
+  useResourceRefresh('podcastChannel', 'podcastEpisode')
+  const isAdmin = permissions === 'admin'
 
   if (loading || !record) return null
 
@@ -123,7 +201,7 @@ const PodcastChannelShowLayout = (props) => {
           pagination={<Pagination rowsPerPageOptions={[50, 100, 250]} />}
           fullWidth
         >
-          <EpisodesSection channel={record} />
+          <EpisodesSection channel={record} isAdmin={isAdmin} />
         </ReferenceManyField>
       </SimpleShowLayout>
     </>

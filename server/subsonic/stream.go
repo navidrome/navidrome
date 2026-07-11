@@ -30,6 +30,9 @@ func (api *Router) Stream(w http.ResponseWriter, r *http.Request) (*responses.Su
 
 	mf, err := api.ds.MediaFile(ctx).Get(id)
 	if err != nil {
+		if errors.Is(err, model.ErrNotFound) {
+			return nil, api.streamPodcastEpisode(ctx, w, r, id)
+		}
 		return nil, err
 	}
 
@@ -132,6 +135,8 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 	case *model.Playlist:
 		setHeaders(v.Name)
 		return nil, handleArchiveErr(ctx, id, api.archiver.ZipPlaylist(ctx, id, format, maxBitRate, w))
+	case *model.PodcastEpisode:
+		return nil, api.downloadPodcastEpisodeFile(ctx, w, r, v)
 	default:
 		return nil, model.ErrNotFound
 	}
