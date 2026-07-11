@@ -103,38 +103,26 @@ func (c Criteria) MarshalJSON() ([]byte, error) {
 
 func (c *Criteria) UnmarshalJSON(data []byte) error {
 	var aux struct {
-		All          json.RawMessage `json:"all"`
-		Any          json.RawMessage `json:"any"`
-		Sort         string          `json:"sort"`
-		Order        string          `json:"order"`
-		Limit        int             `json:"limit"`
-		LimitPercent int             `json:"limitPercent"`
-		Offset       int             `json:"offset"`
+		All          optionalConjunction `json:"all"`
+		Any          optionalConjunction `json:"any"`
+		Sort         string              `json:"sort"`
+		Order        string              `json:"order"`
+		Limit        int                 `json:"limit"`
+		LimitPercent int                 `json:"limitPercent"`
+		Offset       int                 `json:"offset"`
 	}
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
 	}
-	// Detect presence by key, not slice length: a present-but-empty (or null) group
-	// such as {"any":[],"all":[...]} would otherwise slip past and silently drop a group.
-	if aux.All != nil && aux.Any != nil {
+	// A Criteria has a single top-level group. Reject files that provide both keys
+	// (even when one is [] or null) rather than silently dropping one of them.
+	if aux.All.present && aux.Any.present {
 		return errors.New("invalid criteria json: 'all' and 'any' cannot both be used at the top level; nest one inside the other instead")
 	}
-
-	var all, any unmarshalConjunctionType
-	if aux.All != nil {
-		if err := json.Unmarshal(aux.All, &all); err != nil {
-			return err
-		}
-	}
-	if aux.Any != nil {
-		if err := json.Unmarshal(aux.Any, &any); err != nil {
-			return err
-		}
-	}
-	if len(any) > 0 {
-		c.Expression = Any(any)
-	} else if len(all) > 0 {
-		c.Expression = All(all)
+	if len(aux.Any.rules) > 0 {
+		c.Expression = Any(aux.Any.rules)
+	} else if len(aux.All.rules) > 0 {
+		c.Expression = All(aux.All.rules)
 	} else {
 		return errors.New("invalid criteria json. missing rules (key 'all' or 'any')")
 	}
