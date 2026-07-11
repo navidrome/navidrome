@@ -16,15 +16,15 @@ type scrobbleRepository struct {
 }
 
 type dbScrobble struct {
-	dbMediaFile
-	RowId          int64 `structs:"row_id" json:"rowId"`
-	SubmissionTime int64 `structs:"submission_time" json:"submissionTime"`
+	MediaFileID    string `structs:"media_file_id" json:"mediaFileId"`
+	RowId          int64  `structs:"row_id" json:"rowId"`
+	SubmissionTime int64  `structs:"submission_time" json:"submissionTime"`
 }
 
 func (m dbScrobble) toScrobble() model.Scrobble {
 	return model.Scrobble{
-		MediaFile:      *m.MediaFile,
-		RowId:          m.RowId,
+		MediaFileID:    m.MediaFileID,
+		ID:             m.RowId,
 		SubmissionTime: time.Unix(m.SubmissionTime, 0),
 	}
 }
@@ -49,20 +49,7 @@ func (r *scrobbleRepository) baseQuery(options ...model.QueryOptions) SelectBuil
 	user := loggedUser(r.ctx)
 
 	return r.newSelect(options...).
-		Columns("scrobbles.ROWID row_id", "submission_time", "media_file.*", "library.path as library_path", "library.name as library_name").
-		Join("media_file on media_file.id = media_file_id").
-		LeftJoin("library on media_file.library_id = library.id").
-		LeftJoin("annotation on ("+
-			"annotation.item_id = media_file.id"+
-			" AND annotation.item_type = 'media_file'"+
-			" AND annotation.user_id = '"+user.ID+"')").
-		Columns(
-			"coalesce(starred, 0) as starred",
-			"coalesce(rating, 0) as rating",
-			"starred_at",
-			"play_date",
-			"coalesce(play_count, 0) as play_count",
-		).
+		Columns("scrobbles.ROWID row_id", "media_file_id", "submission_time").
 		Where(Eq{"scrobbles.user_id": user.ID})
 }
 
@@ -72,9 +59,8 @@ func NewScrobbleRepository(ctx context.Context, db dbx.Builder) model.ScrobbleRe
 	r.db = db
 	r.tableName = "scrobbles"
 	r.registerModel(&model.Scrobble{}, map[string]filterFunc{
-		"from":  fromTs,
-		"to":    toTs,
-		"title": fullTextFilter("media_file"),
+		"from": fromTs,
+		"to":   toTs,
 	})
 	r.setSortMappings(map[string]string{
 		"submission_time": "submission_time",
@@ -95,17 +81,9 @@ func (r *scrobbleRepository) RecordScrobble(mediaFileID string, submissionTime t
 }
 
 func (r *scrobbleRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	user := loggedUser(r.ctx)
-
-	sel := r.newSelect().
-		Columns("count(*) count").
-		Join("media_file on media_file.id = media_file_id").
-		Where(Eq{"user_id": user.ID})
-
-	sel = r.applyFilters(sel, options...)
-
+	count := r.baseQuery(options...).RemoveColumns().Column("COUNT() as count").RemoveOffset().RemoveLimit().OrderBy("scrobbles.ROWID")
 	var res struct{ Count int64 }
-	err := r.queryOne(sel, &res)
+	err := r.queryOne(count, &res)
 	return res.Count, err
 }
 
@@ -115,13 +93,13 @@ func (r *scrobbleRepository) Count(options ...rest.QueryOptions) (int64, error) 
 
 func (r *scrobbleRepository) Get(id string) (*model.Scrobble, error) {
 	sel := r.baseQuery().Where(Eq{"row_id": id})
-	res := dbScrobble{}
+	var res dbScrobble
 	err := r.queryOne(sel, &res)
 	if err != nil {
 		return nil, err
 	}
 	model := res.toScrobble()
-	return &model, nil
+	return &model, err
 }
 
 func (r *scrobbleRepository) GetAll(options ...model.QueryOptions) (model.Scrobbles, error) {

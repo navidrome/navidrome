@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/navidrome/navidrome/model"
@@ -15,7 +16,7 @@ type MockScrobbleRepo struct {
 
 func (m *MockScrobbleRepo) Get(id string) (*model.Scrobble, error) {
 	for _, scrobble := range m.RecordedScrobbles {
-		if scrobble.ID == id {
+		if strconv.FormatInt(scrobble.ID, 10) == id {
 			return &scrobble, nil
 		}
 	}
