@@ -117,9 +117,9 @@ const FormLogin = ({
   loading,
   handleSubmit,
   validate,
-  authSources,
-  authSource,
-  setAuthSource,
+  authSources = [],
+  authSource = 'internal',
+  setAuthSource = () => {},
 }) => {
   const translate = useTranslate()
   const classes = useStyles()
@@ -435,6 +435,9 @@ const Login = ({ location }) => {
       handleSubmit={handleSubmit}
       validate={validateLogin}
       loading={loading}
+      authSources={authSources}
+      authSource={authSource}
+      setAuthSource={setAuthSource}
     />
   )
 }
