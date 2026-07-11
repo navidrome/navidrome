@@ -82,7 +82,7 @@ func (api *Router) downloadPodcastEpisodeFile(ctx context.Context, w http.Respon
 }
 
 func serveLocalPodcastFile(w http.ResponseWriter, r *http.Request, episode *model.PodcastEpisode, disposition string) error {
-	f, err := os.Open(episode.AbsolutePath())
+	f, err := os.Open(episode.AbsolutePath()) //nolint:gosec // path is built from server-generated channel/episode IDs (see naming.go), not user input
 	if err != nil {
 		return fmt.Errorf("opening downloaded podcast episode file: %w", err)
 	}
@@ -105,11 +105,11 @@ func serveLocalPodcastFile(w http.ResponseWriter, r *http.Request, episode *mode
 // currently forward Range requests, so seeking on a not-yet-downloaded
 // episode may not work on every upstream host.
 func proxyPodcastEnclosure(ctx context.Context, w http.ResponseWriter, r *http.Request, episode *model.PodcastEpisode) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, episode.EnclosureUrl, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, episode.EnclosureUrl, nil) //nolint:gosec // URL is the channel's RSS enclosure URL, set by the admin when subscribing to the feed
 	if err != nil {
 		return err
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := http.DefaultClient.Do(req) //nolint:gosec // see above: URL is admin-configured, not arbitrary user input
 	if err != nil {
 		return fmt.Errorf("proxying podcast episode: %w", err)
 	}
