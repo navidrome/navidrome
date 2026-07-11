@@ -43,11 +43,31 @@ func (p *podcasts) runChannelRetention(ctx context.Context, channel model.Podcas
 		return err
 	}
 	for _, ep := range retentionCandidates(channel, episodes) {
+		pinned, err := p.isPinnedByPlaylist(ctx, ep.ID)
+		if err != nil {
+			log.Error(ctx, "Error checking playlist membership before retention delete", "channel", channel.ID, "episode", ep.ID, err)
+			continue
+		}
+		if pinned {
+			log.Debug(ctx, "Skipping retention delete for episode referenced by a playlist", "channel", channel.ID, "episode", ep.ID)
+			continue
+		}
 		if err := p.deleteEpisodeFile(ctx, &ep); err != nil {
 			log.Error(ctx, "Error deleting podcast episode during retention cleanup", "channel", channel.ID, "episode", ep.ID, err)
 		}
 	}
 	return nil
+}
+
+// isPinnedByPlaylist reports whether an episode is referenced by any
+// playlist, exempting it from automatic retention cleanup - if it was
+// deliberately queued for listening, retention shouldn't silently delete it.
+func (p *podcasts) isPinnedByPlaylist(ctx context.Context, episodeID string) (bool, error) {
+	playlists, err := p.ds.Playlist(ctx).GetPlaylists(episodeID)
+	if err != nil {
+		return false, err
+	}
+	return len(playlists) > 0, nil
 }
 
 // retentionCandidates returns which of a channel's downloaded episodes

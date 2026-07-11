@@ -40,7 +40,10 @@ func (p *podcasts) DeleteEpisode(ctx context.Context, id string) error {
 
 // deleteEpisodeFile removes a downloaded episode's local file (if any) and
 // marks it deleted, shared by both the on-demand DeleteEpisode API and
-// scheduled retention cleanup.
+// scheduled retention cleanup. Also removes the episode from any playlist
+// it was added to - a playlist can only ever reference a downloaded
+// episode, so once the download is gone the playlist entry would otherwise
+// be left dangling.
 func (p *podcasts) deleteEpisodeFile(ctx context.Context, episode *model.PodcastEpisode) error {
 	if episode.Path != "" {
 		if err := os.Remove(episodeAbsolutePath(episode.Path)); err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -54,6 +57,9 @@ func (p *podcasts) deleteEpisodeFile(ctx context.Context, episode *model.Podcast
 	episode.ErrorMessage = ""
 	if err := p.ds.PodcastEpisode(ctx).Put(episode); err != nil {
 		return err
+	}
+	if err := p.ds.Playlist(ctx).RemoveItemFromPlaylists(episode.ID); err != nil {
+		log.Warn(ctx, "Error removing deleted podcast episode from playlists", "id", episode.ID, err)
 	}
 	p.notifyDownload(ctx, episode)
 	return nil

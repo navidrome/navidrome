@@ -417,6 +417,12 @@ func (mfs MediaFiles) ToM3U8(title string, absolutePaths bool) string {
 	buf.WriteString("#EXTM3U\n")
 	buf.WriteString(fmt.Sprintf("#PLAYLIST:%s\n", title))
 	for _, t := range mfs {
+		// A track with no Path (e.g. a podcast episode track whose download
+		// was deleted between loading the playlist and exporting it) has
+		// nothing to point at - skip it rather than emit a garbage line.
+		if t.Path == "" {
+			continue
+		}
 		buf.WriteString(fmt.Sprintf("#EXTINF:%.f,%s - %s\n", t.Duration, t.Artist, t.Title))
 		if absolutePaths {
 			buf.WriteString(t.AbsolutePath() + "\n")

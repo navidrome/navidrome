@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -69,12 +70,25 @@ func (p *podcasts) CreateChannel(ctx context.Context, url string) (*model.Podcas
 }
 
 func (p *podcasts) DeleteChannel(ctx context.Context, id string) error {
+	// Look up episodes before deleting the channel, since that DB-cascades
+	// their rows away - each needs to be unlinked from any playlist first,
+	// or the playlist would be left with a dangling entry.
+	episodes, err := p.ds.PodcastEpisode(ctx).GetAll(model.QueryOptions{Filters: Eq{"channel_id": id}})
+	if err != nil {
+		log.Warn(ctx, "Error listing episodes for deleted podcast channel", "id", id, err)
+	}
+
 	if err := p.ds.PodcastChannel(ctx).Delete(id); err != nil {
 		return err
 	}
 	channelDir := filepath.Join(conf.Server.Podcasts.StorageFolder.String(), id)
 	if err := os.RemoveAll(channelDir); err != nil {
 		log.Warn(ctx, "Error removing downloaded episodes for deleted podcast channel", "id", id, "dir", channelDir, err)
+	}
+	for _, ep := range episodes {
+		if err := p.ds.Playlist(ctx).RemoveItemFromPlaylists(ep.ID); err != nil {
+			log.Warn(ctx, "Error removing deleted podcast episode from playlists", "id", ep.ID, err)
+		}
 	}
 	p.notifyRefresh(ctx, "podcastChannel", id)
 	p.notifyRefresh(ctx, "podcastEpisode")

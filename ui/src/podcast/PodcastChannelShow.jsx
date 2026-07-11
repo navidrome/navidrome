@@ -26,8 +26,9 @@ import {
 import MicIcon from '@material-ui/icons/Mic'
 import DownloadIcon from '@material-ui/icons/GetApp'
 import DeleteIcon from '@material-ui/icons/Delete'
+import PlaylistAddIcon from '@material-ui/icons/PlaylistAdd'
 import { Title, useResourceRefresh } from '../common'
-import { setTrack } from '../actions'
+import { setTrack, openAddToPlaylist } from '../actions'
 import subsonic from '../subsonic'
 import config from '../config'
 import { REST_URL } from '../consts'
@@ -96,8 +97,9 @@ const DownloadStatusChip = ({ record }) => {
 }
 
 const EpisodeActions = ({ record, isAdmin }) => {
+  const dispatch = useDispatch()
   const notify = useNotify()
-  if (!isAdmin || !record) return null
+  if (!record) return null
 
   const stop = (e) => e.stopPropagation()
 
@@ -115,21 +117,35 @@ const EpisodeActions = ({ record, isAdmin }) => {
     }).catch(() => notify('ra.page.error', { type: 'warning' }))
   }
 
-  if (
-    record.downloadStatus === 'downloaded' ||
-    record.downloadStatus === 'downloading' ||
-    record.downloadStatus === 'queued'
-  ) {
-    return (
-      <IconButton size="small" onClick={handleDelete} onFocus={stop}>
-        <DeleteIcon fontSize="small" />
-      </IconButton>
-    )
+  const handleAddToPlaylist = (e) => {
+    stop(e)
+    dispatch(openAddToPlaylist({ selectedIds: [record.id] }))
   }
+
+  // Only downloaded episodes can be added to a playlist - a playlist entry
+  // has no way to represent "stream this from the source URL".
+  const isDownloaded = record.downloadStatus === 'downloaded'
+
   return (
-    <IconButton size="small" onClick={handleDownload} onFocus={stop}>
-      <DownloadIcon fontSize="small" />
-    </IconButton>
+    <>
+      {isDownloaded && (
+        <IconButton size="small" onClick={handleAddToPlaylist} onFocus={stop}>
+          <PlaylistAddIcon fontSize="small" />
+        </IconButton>
+      )}
+      {isAdmin &&
+        (isDownloaded ||
+        record.downloadStatus === 'downloading' ||
+        record.downloadStatus === 'queued' ? (
+          <IconButton size="small" onClick={handleDelete} onFocus={stop}>
+            <DeleteIcon fontSize="small" />
+          </IconButton>
+        ) : (
+          <IconButton size="small" onClick={handleDownload} onFocus={stop}>
+            <DownloadIcon fontSize="small" />
+          </IconButton>
+        ))}
+    </>
   )
 }
 
