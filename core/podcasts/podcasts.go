@@ -22,6 +22,7 @@ type Podcasts interface {
 	TopFeeds(ctx context.Context, country string) ([]FeedSearchResult, error)
 	DownloadEpisode(ctx context.Context, episodeID string) error
 	DeleteEpisode(ctx context.Context, id string) error
+	RunRetention(ctx context.Context) error
 }
 
 type podcasts struct {

@@ -72,6 +72,7 @@ const PodcastChannelEdit = (props) => {
         />
         <NumberInput source="retentionCount" />
         <NumberInput source="retentionDays" />
+        <NumberInput source="maxStorageMb" />
         <DateField variant="body1" source="lastCheckedAt" showTime />
         <DateField variant="body1" source="updatedAt" showTime />
         <DateField variant="body1" source="createdAt" showTime />

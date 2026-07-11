@@ -40,6 +40,7 @@ type PodcastChannel struct {
 	DownloadPolicy   PodcastDownloadPolicy `structs:"download_policy" json:"downloadPolicy"`
 	RetentionCount   int                   `structs:"retention_count" json:"retentionCount"`
 	RetentionDays    int                   `structs:"retention_days" json:"retentionDays"`
+	MaxStorageMB     int                   `structs:"max_storage_mb" json:"maxStorageMb"`
 	LastCheckedAt    *time.Time            `structs:"last_checked_at" json:"lastCheckedAt,omitempty"`
 	CreatedAt        time.Time             `structs:"created_at" json:"createdAt"`
 	UpdatedAt        time.Time             `structs:"updated_at" json:"updatedAt"`

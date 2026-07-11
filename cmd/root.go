@@ -186,6 +186,9 @@ func schedulePodcastRefresh(ctx context.Context) func() error {
 			if err := p.RefreshAll(ctx); err != nil {
 				log.Error(ctx, "Error executing periodic podcast refresh", err)
 			}
+			if err := p.RunRetention(ctx); err != nil {
+				log.Error(ctx, "Error enforcing podcast retention", err)
+			}
 		})
 		if err != nil {
 			log.Error(ctx, "Error scheduling periodic podcast refresh", err)

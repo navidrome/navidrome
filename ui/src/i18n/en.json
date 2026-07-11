@@ -272,6 +272,7 @@
         "downloadPolicy": "Download policy",
         "retentionCount": "Keep last N episodes",
         "retentionDays": "Keep episodes for N days",
+        "maxStorageMb": "Max storage (MB)",
         "lastCheckedAt": "Last checked",
         "updatedAt": "Updated at",
         "createdAt": "Created at"

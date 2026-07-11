@@ -35,9 +35,16 @@ func (p *podcasts) DeleteEpisode(ctx context.Context, id string) error {
 	if err != nil {
 		return err
 	}
+	return p.deleteEpisodeFile(ctx, episode)
+}
+
+// deleteEpisodeFile removes a downloaded episode's local file (if any) and
+// marks it deleted, shared by both the on-demand DeleteEpisode API and
+// scheduled retention cleanup.
+func (p *podcasts) deleteEpisodeFile(ctx context.Context, episode *model.PodcastEpisode) error {
 	if episode.Path != "" {
 		if err := os.Remove(episodeAbsolutePath(episode.Path)); err != nil && !errors.Is(err, os.ErrNotExist) {
-			log.Warn(ctx, "Error removing downloaded podcast episode file", "id", id, "path", episode.Path, err)
+			log.Warn(ctx, "Error removing downloaded podcast episode file", "id", episode.ID, "path", episode.Path, err)
 		}
 	}
 	episode.Path = ""
