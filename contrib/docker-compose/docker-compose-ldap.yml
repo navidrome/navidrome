@@ -1,0 +1,64 @@
+version: '3.6'
+
+# Standalone demo stack for trying Navidrome with LDAP authentication.
+# Start it from this directory with:
+#   docker compose -f docker-compose-ldap.yml up -d
+#
+# After creating the first local Navidrome admin at http://localhost:4533,
+# open Settings -> LDAP and add a source similar to:
+# {
+#   "sources": [{
+#     "name": "Demo LDAP",
+#     "enabled": true,
+#     "url": "ldap://openldap:1389",
+#     "bindDN": "cn=admin,dc=example,dc=org",
+#     "bindPassword": "adminpassword",
+#     "userBaseDN": "ou=users,dc=example,dc=org",
+#     "userFilter": "(%s=%s)",
+#     "userNameAttribute": "uid",
+#     "displayNameAttribute": "cn",
+#     "emailAttribute": "mail",
+#     "groupBaseDN": "ou=groups,dc=example,dc=org",
+#     "groupFilter": "(objectClass=groupOfNames)",
+#     "groupNameAttribute": "cn",
+#     "groupMemberAttribute": "member",
+#     "adminGroupDNs": ["cn=admins,ou=groups,dc=example,dc=org"]
+#   }]
+# }
+
+volumes:
+  navidrome_data:
+  openldap_data:
+
+services:
+  navidrome:
+    container_name: "navidrome-ldap-demo"
+    image: deluan/navidrome:latest
+    restart: unless-stopped
+    read_only: true
+    ports:
+      - "4533:4533"
+    volumes:
+      - "navidrome_data:/data"
+      # Bind your local music folder here when testing playback:
+      # - "/mnt/music:/music:ro"
+    depends_on:
+      - openldap
+
+  openldap:
+    container_name: "navidrome-openldap-demo"
+    image: bitnami/openldap:2.6
+    restart: unless-stopped
+    environment:
+      LDAP_ROOT: "dc=example,dc=org"
+      LDAP_ADMIN_USERNAME: "admin"
+      LDAP_ADMIN_PASSWORD: "adminpassword"
+      LDAP_USERS: "alice,bob"
+      LDAP_PASSWORDS: "alicepassword,bobpassword"
+      LDAP_GROUP: "users"
+    ports:
+      # Exposed only for local ldapsearch/debugging; Navidrome uses the service
+      # name openldap:1389 on the compose network.
+      - "1389:1389"
+    volumes:
+      - "openldap_data:/bitnami/openldap"
