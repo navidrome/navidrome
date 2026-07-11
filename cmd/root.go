@@ -276,16 +276,13 @@ func schedulePeriodicBackup(ctx context.Context) func() error {
 }
 
 func scheduleDBAnalyzer(ctx context.Context) func() error {
-	return scheduleDBAnalyzerWith(ctx, scheduler.GetInstance())
-}
-
-func scheduleDBAnalyzerWith(ctx context.Context, schedulerInstance scheduler.Scheduler) func() error {
 	return func() error {
 		if !conf.Server.EnableScheduledDBAnalyze {
 			log.Info(ctx, "Scheduled DB analysis is DISABLED")
 			return nil
 		}
 		log.Info(ctx, "Scheduling DB analysis check", "schedule", consts.DBAnalyzeCheckSchedule)
+		schedulerInstance := scheduler.GetInstance()
 		_, err := schedulerInstance.Add(consts.DBAnalyzeCheckSchedule, func() {
 			release, ok := scanner.LockForMaintenance()
 			if !ok {

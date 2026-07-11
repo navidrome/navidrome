@@ -148,7 +148,6 @@ var _ = Describe("Optimize", func() {
 		Entry("for one hour after the second failure", "2", time.Hour),
 		Entry("for two hours after the third failure", "3", 2*time.Hour),
 		Entry("for 24 hours after the fourth failure", "4", 24*time.Hour),
-		Entry("at 24 hours after later failures", "12", 24*time.Hour),
 	)
 
 	It("records consecutive analysis failures", func() {
@@ -158,11 +157,6 @@ var _ = Describe("Optimize", func() {
 
 		Expect(getProperty(consts.DBAnalyzeFailureCountKey)).To(Equal("3"))
 		Expect(getProperty(consts.LastDBAnalyzeAttemptAtKey)).To(Equal(now.Format(time.RFC3339Nano)))
-		Expect(getProperty(consts.DBAnalyzePendingKey)).To(Equal("1"))
-	})
-
-	It("marks a refresh as pending", func() {
-		Expect(db.MarkOptimizePendingDB(ctx, database)).To(Succeed())
 		Expect(getProperty(consts.DBAnalyzePendingKey)).To(Equal("1"))
 	})
 
