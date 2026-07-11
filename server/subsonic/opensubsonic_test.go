@@ -41,7 +41,7 @@ var _ = Describe("GetOpenSubsonicExtensions", func() {
 
 	Context("without sonic similarity plugin", func() {
 		BeforeEach(func() {
-			router = subsonic.New(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+			router = subsonic.New(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 		})
 
 		It("should return the base 6 OpenSubsonicExtensions without sonicSimilarity", func() {
@@ -72,7 +72,7 @@ var _ = Describe("GetOpenSubsonicExtensions", func() {
 	Context("with sonic similarity plugin", func() {
 		BeforeEach(func() {
 			sonicService := sonicsvc.New(nil, &mockSonicPluginLoader{names: []string{"test-plugin"}}, nil)
-			router = subsonic.New(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, sonicService)
+			router = subsonic.New(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, sonicService, nil)
 		})
 
 		It("should return 7 extensions including sonicSimilarity", func() {
