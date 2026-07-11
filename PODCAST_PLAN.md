@@ -164,10 +164,27 @@ Requiring users to already have an RSS feed URL is a poor onboarding experience,
 **Outcome:** subscribing to a podcast is "search by name" or "pick a trending show for your region", always reachable via the Create page, not just requiring a raw feed URL on first run.
 
 **Phase 2 — Subsonic API + download-to-disk + real stream.view serving (unlocks Cirque)**
-Finish config (`StorageFolder`/`DownloadConcurrency`/`MaxDownloadSizeMB`) + download pipeline (`go-pipeline`) + SSE progress events + all 7 Subsonic handlers + response structs + the `stream.go`/`Download()` branching logic + native REST download/delete actions + web UI download-status badges, and remove the Phase 1 player bypass now that `stream.view` handles every episode. **Outcome:** the user's actual goal — Cirque (Android/Windows) can subscribe, browse, download, and stream podcasts exactly like any other Subsonic server.
+Finish config (`StorageFolder`/`DownloadConcurrency`/`MaxDownloadSizeMB`) + download pipeline (`go-pipeline`) + SSE progress events + all 7 Subsonic handlers + response structs + the `stream.go`/`Download()` branching logic + native REST download/delete actions + web UI download-status badges, and remove the Phase 1 player bypass now that `stream.view` handles every episode. **Outcome:** the user's actual goal — Cirque (Android/Windows) can subscribe, browse, download, and stream podcasts exactly like any other Subsonic server. **Status: done.**
 
-**Phase 3 — Policies, retention, quota, polish**
-Retention cleanup wired into the scheduled refresh, storage quota enforcement, live SSE-driven download progress bars in the UI, optional per-episode artwork, optional transcoding support for podcast streams, optional Range-header passthrough on the stream-only proxy path (for seeking), docs page.
+**Phase 3 — Retention enforcement, playlist integration, personal UX polish**
+Not started. Scoped from a design discussion covering three linked pieces:
+
+1. **Retention enforcement** (`core/podcasts/retention.go`, new) — `RetentionCount`/`RetentionDays` already exist as columns on `PodcastChannel` (added in Phase 1) but are currently dormant; nothing reads or acts on them yet. This phase adds the actual `RunRetention(ctx)` enforcement, run per-channel after each scheduled refresh (same job as `schedulePodcastRefresh`) and available as an explicit trigger:
+   - Enforces `RetentionCount` (max episodes kept) and `RetentionDays` (max age), oldest-downloaded-first, same semantics as `DeleteEpisode` (file removed, row kept, `DownloadStatus=deleted`, `Path`/`Suffix`/`Size` cleared).
+   - Decision: **no separate "number of episodes to download" / "max downloads" settings** — collapsed into `RetentionCount`/`RetentionDays`, since a distinct field would just be a second name for the same "cap how many stay downloaded" behavior. Paired with the existing `DownloadPolicy` (`none`/`new`/`all`), e.g. policy `all` + `RetentionCount: 10` already means "download everything as it publishes, keep only the newest 10 on disk" with no extra knob needed.
+   - New field: per-channel `MaxStorageMB` (0 = unlimited) — a genuinely distinct axis from count/age, since episode file size varies hugely by show (a 20-minute news podcast vs. a 2-hour video-heavy interview), so a count-based cap alone doesn't bound disk usage predictably. Enforced the same oldest-first way when exceeded.
+   - Retention must skip any episode currently referenced by a playlist (see pinning rule below) — being in a playlist counts as "in use."
+
+2. **Playlist integration, downloaded episodes only** — the actual feature request. Podcast episodes may be added to regular playlists, but **only once downloaded** (`DownloadStatus == Downloaded`); stream-only/not-yet-downloaded episodes are rejected at add-time (both native REST and Subsonic `createPlaylist`/`updatePlaylist`). This restriction is what keeps the feature simple:
+   - Schema: relax `playlist_track` to reference an episode as well as a `MediaFile`, reusing the polymorphic-ID pattern already established by `model.GetEntityByID` and `stream.go`'s MediaFile-then-PodcastEpisode fallback, rather than a full playlist rearchitecture.
+   - Drag-to-reorder comes for free — it's the existing playlist position mechanism, agnostic to what the underlying entity is.
+   - M3U export (`model/mediafile.go`'s `ToM3U8`, also used by playlist share links) writes local filesystem paths per line, with no concept of "stream from the server." Because only *downloaded* episodes can ever be in a playlist, every entry always has a real file on disk, so no special-casing is needed for the stream-only case. Keep a defensive fallback (skip the row if `Path` is unexpectedly empty) rather than assuming a file can never go missing.
+   - **Cascade rule**: deleting an episode's download — via manual delete *or* via retention cleanup above — also removes it from any playlist it belongs to, not just clears the file. This is what prevents dangling/broken playlist entries.
+   - **Retention pinning**: an episode referenced by at least one playlist is exempt from automatic retention cleanup (implicitly "in use," shouldn't be silently deleted out from under a queued playlist). Manual delete still works and cascades per the rule above.
+
+3. **Personal UI toggle** — a per-user, per-browser preference controlling whether "add to playlist" affordances show up on podcast episodes, mirroring the existing Folders toggle exactly (`ui/src/personal/FolderViewToggle.jsx`, `state.settings.showFolderView`, Redux `settings` slice + Personal Options panel) rather than a server admin config field. Rationale: this is UI decluttering (like Folders), not a capability gate — the capability gate is the existing server-wide `conf.Server.Podcasts.Enabled`, which this toggle is only meaningful underneath.
+
+Carried over from the original Phase 3 scope, still applicable: live SSE-driven download progress bars in the UI, optional per-episode artwork, optional transcoding support for podcast streams, optional Range-header passthrough on the stream-only proxy path (for seeking), docs page.
 
 ---
 
@@ -182,6 +199,10 @@ Retention cleanup wired into the scheduled refresh, storage quota enforcement, l
 - `server/subsonic/responses/responses.go` (modify) — `Podcasts`/`PodcastChannel`/`PodcastEpisode` response structs
 - `server/nativeapi/podcasts.go` (new) — native REST, mirrors `radios.go`
 - `ui/src/podcast/` (new) — mirrors `ui/src/radio/`
+- `core/podcasts/retention.go` (Phase 3, new) — `RunRetention`, count/days/size-based cleanup, playlist-pinning exemption
+- `model/playlist.go`, `persistence/playlist_repository.go`, migration (Phase 3, modify) — polymorphic playlist entries (MediaFile or PodcastEpisode)
+- `model/mediafile.go`'s `ToM3U8` (Phase 3, modify) — defensive empty-`Path` fallback
+- `ui/src/personal/` (Phase 3, new toggle) — personal preference mirroring `FolderViewToggle.jsx`
 
 ## Verification
 
