@@ -6,6 +6,7 @@ import (
 	"errors"
 	"path/filepath"
 	"testing/fstest"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
@@ -210,6 +211,15 @@ var _ = Describe("Scanner", Ordered, func() {
 
 			// Simulate the stale value left by the FTS5 migration's SQL back-fill
 			_, err := db.Db().ExecContext(ctx, "UPDATE artist SET search_normalized = '' WHERE name = 'GØGGS'")
+			Expect(err).ToNot(HaveOccurred())
+
+			// Backdate the folder so the next full scan reliably sees it as outdated.
+			// isOutdated() compares folder.updated_at (written by this scan) against the
+			// next scan's last_scan_started_at with a strict Before(); back-to-back scans
+			// can capture both within one clock tick on Windows (coarse wall-clock), making
+			// the refresh flaky. Backdating forces the comparison to be unambiguous.
+			_, err = db.Db().ExecContext(ctx,
+				"UPDATE folder SET updated_at = ?", time.Now().Add(-time.Hour))
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(runScanner(ctx, true)).To(Succeed())
