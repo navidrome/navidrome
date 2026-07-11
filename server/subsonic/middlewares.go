@@ -19,6 +19,7 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/core/ldapauth"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -133,7 +134,11 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 				}
 				switch {
 				case errors.Is(err, model.ErrNotFound):
-					log.Warn(ctx, "API: Invalid login", "auth", "subsonic", "username", username, "remoteAddr", r.RemoteAddr, err)
+					if pass != "" && token == "" && jwt == "" {
+						usr, err = ldapauth.Authenticate(ctx, ds, "", username, pass)
+					} else {
+						err = model.ErrInvalidAuth
+					}
 				case err != nil:
 					log.Error(ctx, "API: Error authenticating username", "auth", "subsonic", "username", username, "remoteAddr", r.RemoteAddr, err)
 				default:

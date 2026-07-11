@@ -411,6 +411,10 @@
         "configKey": "key",
         "configValue": "value"
       }
+    },
+    "ldap": {
+      "name": "LDAP |||| LDAP",
+      "fields": {}
     }
   },
   "ra": {
