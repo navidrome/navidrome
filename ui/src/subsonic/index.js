@@ -98,6 +98,9 @@ const getCoverArtUrl = (record, size, square) => {
   } else if (record.streamUrl !== undefined) {
     // This is a radio station
     return baseUrl(url('getCoverArt', 'ra-' + record.id, options))
+  } else if (record.downloadPolicy !== undefined) {
+    // This is a podcast channel
+    return baseUrl(url('getCoverArt', 'pc-' + record.id, options))
   } else if (record.parentId !== undefined) {
     // This is a folder
     return baseUrl(url('getCoverArt', 'fo-' + record.id, options))
