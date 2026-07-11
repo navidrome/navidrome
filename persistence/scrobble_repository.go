@@ -83,7 +83,7 @@ func (r *scrobbleRepository) RecordScrobble(mediaFileID string, submissionTime t
 func (r *scrobbleRepository) CountAll(options ...model.QueryOptions) (int64, error) {
 	userID := loggedUser(r.ctx).ID
 	count := r.newSelect().Column("COUNT(*) as count").Where(Eq{"user_id": userID})
-	// We do this instead of newSeelct, because we do not want to apply limit/offset/order
+	// We do this instead of newSelect, because we do not want to apply limit/offset/order
 	count = r.applyFilters(count, options...)
 	var res struct{ Count int64 }
 	err := r.queryOne(count, &res)
