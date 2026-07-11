@@ -290,12 +290,8 @@ func scheduleDBAnalyzer(ctx context.Context) func() error {
 				return
 			}
 			defer release()
-			start := time.Now()
-			ran, err := db.OptimizeIfNeeded(ctx)
-			if err != nil {
-				log.Error(ctx, "Error analyzing DB", "elapsed", time.Since(start), err)
-			} else if ran {
-				log.Info(ctx, "DB analysis complete", "elapsed", time.Since(start))
+			if _, err := db.OptimizeIfNeeded(ctx); err != nil {
+				log.Error(ctx, "Error analyzing DB", err)
 			}
 		})
 		return err

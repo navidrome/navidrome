@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/playlists"
@@ -123,18 +122,19 @@ func runScanner(ctx context.Context) {
 		trackScanAsSubprocess(ctx, progress)
 	} else {
 		changesDetected, scanErr := trackScanInteractively(ctx, progress)
-		if changesDetected {
-			if err := db.MarkOptimizePending(ctx); err != nil {
-				log.Error(ctx, "Error marking DB analysis pending", err)
-			}
+		runPostScanAnalysis(ctx, changesDetected, effectiveFullScan, scanErr)
+	}
+}
+
+func runPostScanAnalysis(ctx context.Context, changesDetected, effectiveFullScan bool, scanErr error) {
+	if changesDetected {
+		if err := db.MarkOptimizePending(ctx); err != nil {
+			log.Error(ctx, "Error marking DB analysis pending", err)
 		}
-		if effectiveFullScan && scanErr == nil {
-			start := time.Now()
-			if err := db.Optimize(ctx); err != nil {
-				log.Error(ctx, "Error analyzing DB", "elapsed", time.Since(start), err)
-			} else {
-				log.Info(ctx, "DB analysis complete", "elapsed", time.Since(start))
-			}
+	}
+	if effectiveFullScan && scanErr == nil {
+		if err := db.Optimize(ctx); err != nil {
+			log.Error(ctx, "Error analyzing DB", err)
 		}
 	}
 }

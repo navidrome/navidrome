@@ -247,11 +247,8 @@ func (s *controller) ScanFolders(requestCtx context.Context, fullScan bool, targ
 	// server's pooled connections; their shared schema cache keeps the old statistics until the
 	// process restarts.
 	if effectiveFullScan && scanError == nil {
-		start := time.Now()
 		if err := db.Optimize(ctx); err != nil {
-			log.Error(ctx, "Scanner: Error analyzing DB", "elapsed", time.Since(start), err)
-		} else {
-			log.Debug(ctx, "Scanner: Analyzed DB", "elapsed", time.Since(start))
+			log.Error(ctx, "Scanner: Error analyzing DB", err)
 		}
 	}
 	// If changes were detected, send a refresh event to all clients
@@ -315,14 +312,26 @@ func EffectiveFullScan(ctx context.Context, ds model.DataStore, fullScan bool, t
 	if fullScan {
 		return true
 	}
+	return anyIncludedLibrary(ctx, ds, targets, func(library model.Library) bool {
+		return library.FullScanInProgress
+	})
+}
+
+func (s *controller) includesUnscannedLibrary(ctx context.Context, targets []model.ScanTarget) bool {
+	return anyIncludedLibrary(ctx, s.ds, targets, func(library model.Library) bool {
+		return library.LastScanAt.IsZero()
+	})
+}
+
+// anyIncludedLibrary reports whether any library included in the scan (all of them when targets is
+// empty) matches pred.
+func anyIncludedLibrary(ctx context.Context, ds model.DataStore, targets []model.ScanTarget, pred func(model.Library) bool) bool {
 	libraries, err := ds.Library(ctx).GetAll()
 	if err != nil {
 		return false
 	}
 	if len(targets) == 0 {
-		return slices.ContainsFunc(libraries, func(library model.Library) bool {
-			return library.FullScanInProgress
-		})
+		return slices.ContainsFunc(libraries, pred)
 	}
 
 	targeted := make(map[int]struct{}, len(targets))
@@ -331,28 +340,7 @@ func EffectiveFullScan(ctx context.Context, ds model.DataStore, fullScan bool, t
 	}
 	return slices.ContainsFunc(libraries, func(library model.Library) bool {
 		_, ok := targeted[library.ID]
-		return ok && library.FullScanInProgress
-	})
-}
-
-func (s *controller) includesUnscannedLibrary(ctx context.Context, targets []model.ScanTarget) bool {
-	libraries, err := s.ds.Library(ctx).GetAll()
-	if err != nil {
-		return false
-	}
-	if len(targets) == 0 {
-		return slices.ContainsFunc(libraries, func(library model.Library) bool {
-			return library.LastScanAt.IsZero()
-		})
-	}
-
-	targeted := make(map[int]struct{}, len(targets))
-	for _, target := range targets {
-		targeted[target.LibraryID] = struct{}{}
-	}
-	return slices.ContainsFunc(libraries, func(library model.Library) bool {
-		_, ok := targeted[library.ID]
-		return ok && library.LastScanAt.IsZero()
+		return ok && pred(library)
 	})
 }
 
