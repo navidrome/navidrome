@@ -23,6 +23,7 @@ func (api *Router) addPodcastRoutes(r chi.Router) {
 	}
 	r.Route("/podcastChannel", func(r chi.Router) {
 		r.Get("/", rest.GetAll(channelConstructor))
+		r.Get("/search", api.searchPodcastChannels())
 		r.Post("/", api.createPodcastChannel())
 		r.Route("/{id}", func(r chi.Router) {
 			r.Use(server.URLParamsMiddleware)
@@ -41,6 +42,18 @@ func (api *Router) addPodcastRoutes(r chi.Router) {
 			r.Get("/", rest.Get(episodeConstructor))
 		})
 	})
+}
+
+func (api *Router) searchPodcastChannels() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query().Get("q")
+		results, err := api.podcasts.SearchFeeds(r.Context(), q)
+		if err != nil {
+			_ = rest.RespondWithError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		_ = rest.RespondWithJSON(w, http.StatusOK, results)
+	}
 }
 
 func (api *Router) createPodcastChannel() http.HandlerFunc {

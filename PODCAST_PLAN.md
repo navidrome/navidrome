@@ -152,7 +152,15 @@ Mirrors `ui/src/radio/` (`index.jsx`, `*List.jsx`, `*Create.jsx`, `*Edit.jsx`, `
 ## Phased roadmap
 
 **Phase 1 — Data model, RSS refresh, native REST, minimal web UI (web-only, stream-only playback)**
-Model + migration + persistence + `core/podcasts` (refresh only, no download pipeline) + gofeed dependency + config (`Enabled`/`Schedule`/`DefaultDownloadPolicy`) + scheduler wiring + artwork reader + native REST (channel CRUD + refresh) + web UI (channel list/create/edit, read-only episode list). Episodes play via a temporary direct-URL player bypass (copy of the `isRadio` pattern) since `stream.go` doesn't branch yet. **Outcome:** admin can subscribe to a feed and play episodes in the Navidrome web UI.
+Model + migration + persistence + `core/podcasts` (refresh only, no download pipeline) + gofeed dependency + config (`Enabled`/`Schedule`/`DefaultDownloadPolicy`) + scheduler wiring + artwork reader + native REST (channel CRUD + refresh) + web UI (channel list/create/edit, read-only episode list). Episodes play via a temporary direct-URL player bypass (copy of the `isRadio` pattern) since `stream.go` doesn't branch yet. **Outcome:** admin can subscribe to a feed and play episodes in the Navidrome web UI. **Status: done.**
+
+**Phase 1.5 — Podcast discovery (search + curated starter list)**
+Requiring users to already have an RSS feed URL is a poor onboarding experience, so this phase adds real discovery before Phase 2's heavier download-pipeline work:
+- `core/podcasts` gains `SearchFeeds(ctx, query string) ([]FeedSearchResult, error)`, calling the free, keyless iTunes Search API (`https://itunes.apple.com/search?media=podcast&entity=podcast&term=...`). Confirmed response fields: `collectionName` (title), `artistName` (author), `feedUrl`, `artworkUrl600`/`artworkUrl100`, `trackCount` (episode count), `collectionId`.
+- New native REST endpoint `GET /api/podcastChannel/search?q=...` (admin-only, matching create/delete) proxying the search so the browser never calls Apple directly (avoids CORS, keeps the external dependency server-side).
+- `PodcastChannelCreate.jsx` becomes search-first: a search box returning result cards (artwork, title, author, episode count) with a one-click "Subscribe" button that calls the existing `createPodcastChannel` flow with the result's `feedUrl`; manual URL entry kept as a fallback/advanced option.
+- A small hardcoded curated list of popular feeds (frontend-only constant, no backend needed) shown as quick-add suggestions on the empty-state Podcasts list page.
+**Outcome:** subscribing to a podcast is "search by name, click Subscribe" instead of requiring a raw feed URL.
 
 **Phase 2 — Subsonic API + download-to-disk + real stream.view serving (unlocks Cirque)**
 Finish config (`StorageFolder`/`DownloadConcurrency`/`MaxDownloadSizeMB`) + download pipeline (`go-pipeline`) + SSE progress events + all 7 Subsonic handlers + response structs + the `stream.go`/`Download()` branching logic + native REST download/delete actions + web UI download-status badges, and remove the Phase 1 player bypass now that `stream.view` handles every episode. **Outcome:** the user's actual goal — Cirque (Android/Windows) can subscribe, browse, download, and stream podcasts exactly like any other Subsonic server.

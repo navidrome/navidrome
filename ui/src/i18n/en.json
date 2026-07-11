@@ -280,6 +280,19 @@
         "none": "Stream only",
         "new": "Download new episodes",
         "all": "Download all episodes"
+      },
+      "search": "Search",
+      "searchPlaceholder": "Search for a podcast by name",
+      "noSearchResults": "No podcasts found",
+      "subscribe": "Subscribe",
+      "subscribing": "Subscribing...",
+      "manualEntryLabel": "Or paste a feed URL directly",
+      "emptyTitle": "No podcasts yet",
+      "emptyBody": "Search for a podcast by name, paste a feed URL, or try one of these",
+      "notifications": {
+        "searchFailed": "Could not search for podcasts",
+        "subscribeFailed": "Could not subscribe to this podcast",
+        "subscribed": "Subscribed"
       }
     },
     "podcastEpisode": {

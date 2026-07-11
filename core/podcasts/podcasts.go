@@ -16,6 +16,7 @@ type Podcasts interface {
 	DeleteChannel(ctx context.Context, id string) error
 	RefreshChannel(ctx context.Context, id string) error
 	RefreshAll(ctx context.Context) error
+	SearchFeeds(ctx context.Context, query string) ([]FeedSearchResult, error)
 }
 
 type podcasts struct {
@@ -67,6 +68,13 @@ func (p *podcasts) DeleteChannel(ctx context.Context, id string) error {
 	}
 	p.notifyRefresh(ctx, "podcastChannel", id)
 	return nil
+}
+
+func (p *podcasts) SearchFeeds(ctx context.Context, query string) ([]FeedSearchResult, error) {
+	if query == "" {
+		return nil, errors.New("search query is required")
+	}
+	return searchFeeds(ctx, query)
 }
 
 func (p *podcasts) notifyRefresh(ctx context.Context, resource string, ids ...string) {
