@@ -15,9 +15,9 @@ type MockScrobbleRepo struct {
 }
 
 func (m *MockScrobbleRepo) Get(id string) (*model.Scrobble, error) {
-	for _, scrobble := range m.RecordedScrobbles {
-		if strconv.FormatInt(scrobble.ID, 10) == id {
-			return &scrobble, nil
+	for idx := range m.RecordedScrobbles {
+		if strconv.FormatInt(m.RecordedScrobbles[idx].ID, 10) == id {
+			return &m.RecordedScrobbles[idx], nil
 		}
 	}
 
