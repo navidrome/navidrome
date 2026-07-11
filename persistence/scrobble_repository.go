@@ -95,7 +95,7 @@ func (r *scrobbleRepository) Count(options ...rest.QueryOptions) (int64, error) 
 }
 
 func (r *scrobbleRepository) Get(id string) (*model.Scrobble, error) {
-	sel := r.baseQuery().Where(Eq{"row_id": id})
+	sel := r.baseQuery().Where(Eq{"scrobbles.ROWID": id})
 	var res dbScrobble
 	err := r.queryOne(sel, &res)
 	if err != nil {
