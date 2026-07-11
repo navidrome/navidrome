@@ -116,6 +116,9 @@ func (r *userRepository) Put(u *model.User) error {
 		u.ID = id.NewRandom()
 	}
 	u.UpdatedAt = time.Now()
+	if err := r.preserveExternalAuthSource(u); err != nil {
+		return err
+	}
 	if u.NewPassword != "" {
 		_ = r.encryptPassword(u)
 	}
@@ -162,6 +165,30 @@ func (r *userRepository) Put(u *model.User) error {
 		}
 	}
 
+	return nil
+}
+
+func (r *userRepository) preserveExternalAuthSource(u *model.User) error {
+	if u.ID == "" {
+		return nil
+	}
+	existing, err := r.Get(u.ID)
+	if errors.Is(err, model.ErrNotFound) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if existing.AuthSource == "" {
+		return nil
+	}
+	if u.NewPassword != "" {
+		return &rest.ValidationError{Errors: map[string]string{"password": "resources.user.validation.externalPasswordReadOnly"}}
+	}
+	if u.AuthSource == "" {
+		u.AuthSource = existing.AuthSource
+		u.AuthSourceID = existing.AuthSourceID
+	}
 	return nil
 }
 

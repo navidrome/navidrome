@@ -70,6 +70,27 @@ var _ = Describe("UserRepository", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(actual.Password).To(Equal("newpass"))
 		})
+		It("does not update password for LDAP-sourced users", func() {
+			ldapUser := model.User{
+				ID:           "ldap-user",
+				UserName:     "ldap_user",
+				Name:         "LDAP User",
+				NewPassword:  "generated",
+				AuthSource:   "ldap",
+				AuthSourceID: "ldap01",
+			}
+			Expect(repo.Put(&ldapUser)).To(Succeed())
+
+			ldapUser.NewPassword = "newpass"
+			err := repo.Put(&ldapUser)
+			var verr *rest.ValidationError
+			Expect(errors.As(err, &verr)).To(BeTrue())
+			Expect(verr.Errors).To(HaveKeyWithValue("password", "resources.user.validation.externalPasswordReadOnly"))
+
+			actual, err := repo.FindByUsernameWithPassword("ldap_user")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(actual.Password).To(Equal("generated"))
+		})
 	})
 
 	Describe("validatePasswordChange", func() {

@@ -48,14 +48,16 @@ const UserToolbar = ({ showDelete, ...props }) => (
 
 const CurrentPasswordInput = ({ formData, isMyself, ...rest }) => {
   const { permissions } = usePermissions()
-  return formData.changePassword && (isMyself || permissions !== 'admin') ? (
+  return formData.changePassword &&
+    !formData.authSource &&
+    (isMyself || permissions !== 'admin') ? (
     <PasswordInput className="ra-input" source="currentPassword" {...rest} />
   ) : null
 }
 
 const NewPasswordInput = ({ formData, ...rest }) => {
   const translate = useTranslate()
-  return formData.changePassword ? (
+  return formData.changePassword && !formData.authSource ? (
     <PasswordInput
       source="password"
       className="ra-input"
@@ -131,7 +133,21 @@ const UserEdit = (props) => {
           {...getNameHelperText()}
         />
         <TextInput spellCheck={false} source="email" validate={[email()]} />
-        <BooleanInput source="changePassword" />
+        <FormDataConsumer>
+          {({ formData }) =>
+            formData.authSource ? (
+              <Typography
+                variant="body2"
+                color="textSecondary"
+                style={{ marginTop: 16, marginBottom: 16 }}
+              >
+                {translate('resources.user.message.externalPasswordReadOnly')}
+              </Typography>
+            ) : (
+              <BooleanInput source="changePassword" />
+            )
+          }
+        </FormDataConsumer>
         <FormDataConsumer>
           {(formDataProps) => (
             <CurrentPasswordInput
