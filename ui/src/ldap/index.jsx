@@ -286,6 +286,26 @@ const SourceWizard = ({ initialSource, onCancel, onSave, onTest, testing }) => {
               Cached users: {source.cache?.users?.length || 0} · Cached groups:{' '}
               {source.cache?.groups?.length || 0}
             </Typography>
+            {!!source.cache?.users?.length && (
+              <Typography variant="body2" style={{ marginTop: 8 }}>
+                Matched users:{' '}
+                {source.cache.users
+                  .slice(0, 10)
+                  .map((user) => user.userName || user.dn)
+                  .join(', ')}
+                {source.cache.users.length > 10 ? '…' : ''}
+              </Typography>
+            )}
+            {!!source.cache?.groups?.length && (
+              <Typography variant="body2" style={{ marginTop: 8 }}>
+                Matched groups:{' '}
+                {source.cache.groups
+                  .slice(0, 10)
+                  .map((group) => group.name || group.dn)
+                  .join(', ')}
+                {source.cache.groups.length > 10 ? '…' : ''}
+              </Typography>
+            )}
           </>
         )}
 

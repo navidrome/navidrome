@@ -89,6 +89,23 @@ func cmpKey() string {
 	return consts.DefaultEncryptionKey
 }
 func keyTo32Bytes(input string) []byte { s := sha256.Sum256([]byte(input)); return s[:] }
+func applyDefaults(src *Source) {
+	if src.UserNameAttribute == "" {
+		src.UserNameAttribute = "uid"
+	}
+	if src.DisplayNameAttribute == "" {
+		src.DisplayNameAttribute = "cn"
+	}
+	if src.EmailAttribute == "" {
+		src.EmailAttribute = "mail"
+	}
+	if src.GroupNameAttribute == "" {
+		src.GroupNameAttribute = "cn"
+	}
+	if src.GroupMemberAttribute == "" {
+		src.GroupMemberAttribute = "member"
+	}
+}
 func (s *Store) Load(ctx context.Context) (Config, error) {
 	var c Config
 	b, err := os.ReadFile(s.path)
@@ -111,6 +128,7 @@ func (s *Store) Load(ctx context.Context) (Config, error) {
 				c.Sources[i].BindPassword = p
 			}
 		}
+		applyDefaults(&c.Sources[i])
 	}
 	return c, nil
 }
@@ -130,21 +148,7 @@ func (s *Store) Save(ctx context.Context, c Config) error {
 		if out.Sources[i].ID == "" {
 			out.Sources[i].ID = id.NewRandom()
 		}
-		if out.Sources[i].UserNameAttribute == "" {
-			out.Sources[i].UserNameAttribute = "uid"
-		}
-		if out.Sources[i].DisplayNameAttribute == "" {
-			out.Sources[i].DisplayNameAttribute = "cn"
-		}
-		if out.Sources[i].EmailAttribute == "" {
-			out.Sources[i].EmailAttribute = "mail"
-		}
-		if out.Sources[i].GroupNameAttribute == "" {
-			out.Sources[i].GroupNameAttribute = "cn"
-		}
-		if out.Sources[i].GroupMemberAttribute == "" {
-			out.Sources[i].GroupMemberAttribute = "member"
-		}
+		applyDefaults(&out.Sources[i])
 		if out.Sources[i].BindPassword != "" {
 			enc, err := utils.Encrypt(ctx, s.key, out.Sources[i].BindPassword)
 			if err != nil {
@@ -190,9 +194,11 @@ func Authenticate(ctx context.Context, ds model.DataStore, sourceID, username, p
 		}
 		u, err := authLDAP(ctx, ds, src, username, password)
 		if errors.Is(err, ErrUserNotFound) {
+			log.Debug(ctx, "LDAP user not found in source", "source", src.Name, "username", username)
 			continue
 		}
 		if err != nil {
+			log.Warn(ctx, "LDAP authentication failed", "source", src.Name, "username", username, err)
 			return nil, nil
 		}
 		return u, nil
@@ -215,6 +221,7 @@ func authInternal(ctx context.Context, ds model.DataStore, username, password st
 }
 
 func authLDAP(ctx context.Context, ds model.DataStore, src Source, username, password string) (*model.User, error) {
+	applyDefaults(&src)
 	if password == "" {
 		return nil, ErrBadPassword
 	}
@@ -248,7 +255,9 @@ func lookupAndBind(src Source, username, password string) (DiscoveredUser, error
 	}
 	defer l.Close()
 	if src.StartTLS {
-		_ = l.StartTLS(&tls.Config{InsecureSkipVerify: src.InsecureSkipVerify}) //nolint:gosec
+		if err = l.StartTLS(&tls.Config{InsecureSkipVerify: src.InsecureSkipVerify}); err != nil { //nolint:gosec
+			return DiscoveredUser{}, err
+		}
 	}
 	if src.DirectBindDNTemplate != "" {
 		dn := fmt.Sprintf(src.DirectBindDNTemplate, ldap.EscapeFilter(username))
@@ -262,11 +271,8 @@ func lookupAndBind(src Source, username, password string) (DiscoveredUser, error
 			return DiscoveredUser{}, err
 		}
 	}
-	filt := src.UserFilter
-	if filt == "" {
-		filt = "(%s=%s)"
-	}
-	filt = fmt.Sprintf(filt, src.UserNameAttribute, ldap.EscapeFilter(username))
+	filt := loginUserFilter(src, username)
+	log.Debug("LDAP searching user", "source", src.Name, "username", username, "filter", filt, "baseDN", src.UserBaseDN)
 	req := ldap.NewSearchRequest(src.UserBaseDN, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 1, 30, false, filt, []string{src.UserNameAttribute, src.DisplayNameAttribute, src.EmailAttribute, "memberOf"}, nil)
 	res, err := l.Search(req)
 	if err != nil || len(res.Entries) == 0 {
@@ -334,14 +340,63 @@ func first(v ...string) string {
 	return ""
 }
 
+func loginUserFilter(src Source, username string) string {
+	attr := first(src.UserNameAttribute, "uid")
+	escapedUsername := ldap.EscapeFilter(username)
+	if src.UserFilter == "" {
+		return fmt.Sprintf("(%s=%s)", attr, escapedUsername)
+	}
+	if placeholders := strings.Count(src.UserFilter, "%s"); placeholders > 0 {
+		if placeholders == 1 {
+			return fmt.Sprintf(src.UserFilter, escapedUsername)
+		}
+		return fmt.Sprintf(src.UserFilter, attr, escapedUsername)
+	}
+	return fmt.Sprintf("(&%s(%s=%s))", src.UserFilter, attr, escapedUsername)
+}
+
+func dedupeStrings(values []string) []string {
+	seen := map[string]bool{}
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		key := strings.ToLower(value)
+		if value == "" || seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, value)
+	}
+	return out
+}
+
+func userNames(users []DiscoveredUser) []string {
+	names := make([]string, 0, len(users))
+	for _, user := range users {
+		names = append(names, first(user.UserName, user.DN))
+	}
+	return names
+}
+
+func groupNames(groups []DiscoveredGroup) []string {
+	names := make([]string, 0, len(groups))
+	for _, group := range groups {
+		names = append(names, first(group.Name, group.DN))
+	}
+	return names
+}
+
 func TestAndCache(ctx context.Context, src Source) (Source, error) {
+	applyDefaults(&src)
+	src.Cache = Cache{}
 	l, err := ldap.DialURL(src.URL)
 	if err != nil {
 		return src, err
 	}
 	defer l.Close()
 	if src.StartTLS {
-		_ = l.StartTLS(&tls.Config{InsecureSkipVerify: src.InsecureSkipVerify}) //nolint:gosec
+		if err = l.StartTLS(&tls.Config{InsecureSkipVerify: src.InsecureSkipVerify}); err != nil { //nolint:gosec
+			return src, err
+		}
 	}
 	if src.BindDN != "" {
 		if err = l.Bind(src.BindDN, src.BindPassword); err != nil {
@@ -354,10 +409,13 @@ func TestAndCache(ctx context.Context, src Source) (Source, error) {
 		uf = "(objectClass=person)"
 	}
 	ur := ldap.NewSearchRequest(src.UserBaseDN, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 60, false, uf, attrs, nil)
-	users, _ := l.Search(ur)
+	users, err := l.Search(ur)
+	if err != nil {
+		return src, err
+	}
 	grps := map[string][]string{}
 	for _, e := range users.Entries {
-		src.Cache.Users = append(src.Cache.Users, DiscoveredUser{DN: e.DN, UserName: e.GetAttributeValue(src.UserNameAttribute), Name: e.GetAttributeValue(src.DisplayNameAttribute), Email: e.GetAttributeValue(src.EmailAttribute), Groups: e.GetAttributeValues("memberOf")})
+		src.Cache.Users = append(src.Cache.Users, DiscoveredUser{DN: e.DN, UserName: e.GetAttributeValue(src.UserNameAttribute), Name: e.GetAttributeValue(src.DisplayNameAttribute), Email: e.GetAttributeValue(src.EmailAttribute), Groups: dedupeStrings(e.GetAttributeValues("memberOf"))})
 	}
 	gf := src.GroupFilter
 	if gf == "" {
@@ -365,9 +423,17 @@ func TestAndCache(ctx context.Context, src Source) (Source, error) {
 	}
 	if src.GroupBaseDN != "" {
 		gr := ldap.NewSearchRequest(src.GroupBaseDN, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 60, false, gf, []string{src.GroupNameAttribute, src.GroupMemberAttribute}, nil)
-		gres, _ := l.Search(gr)
+		gres, err := l.Search(gr)
+		if err != nil {
+			return src, err
+		}
+		seenGroups := map[string]bool{}
 		for _, e := range gres.Entries {
-			m := e.GetAttributeValues(src.GroupMemberAttribute)
+			if seenGroups[e.DN] {
+				continue
+			}
+			seenGroups[e.DN] = true
+			m := dedupeStrings(e.GetAttributeValues(src.GroupMemberAttribute))
 			grps[e.DN] = m
 			src.Cache.Groups = append(src.Cache.Groups, DiscoveredGroup{DN: e.DN, Name: e.GetAttributeValue(src.GroupNameAttribute), Members: m})
 		}
@@ -378,9 +444,10 @@ func TestAndCache(ctx context.Context, src Source) (Source, error) {
 				src.Cache.Users[i].Groups = append(src.Cache.Users[i].Groups, g)
 			}
 		}
+		src.Cache.Users[i].Groups = dedupeStrings(src.Cache.Users[i].Groups)
 	}
 	now := time.Now()
 	src.LastSyncAt = &now
-	log.Info(ctx, "LDAP test/cache completed", "source", src.Name, "users", len(src.Cache.Users), "groups", len(src.Cache.Groups))
+	log.Info(ctx, "LDAP test/cache completed", "source", src.Name, "users", len(src.Cache.Users), "groups", len(src.Cache.Groups), "matchedUsers", strings.Join(userNames(src.Cache.Users), ","), "matchedGroups", strings.Join(groupNames(src.Cache.Groups), ","))
 	return src, nil
 }
