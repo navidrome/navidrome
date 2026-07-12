@@ -147,6 +147,10 @@ const ShelvTheme = {
       root: {
         '&:hover': { backgroundColor: '#27202D !important' },
         backgroundColor: '#1B1720',
+        '&:has(> td.column-title) > td': {
+          paddingTop: '6px !important',
+          paddingBottom: '6px !important',
+        },
       },
     },
     MuiTableCell: {
@@ -367,17 +371,17 @@ const ShelvTheme = {
     },
     NDAlbumShow: {
       albumActions: {
-        padding: '1rem 0',
+        padding: '0 8px',
         alignItems: 'center',
         '@global': {
           button: {
             border: '1px solid transparent',
             backgroundColor: '#1B1720',
             color: '#A9A4B0',
-            margin: '0 0.5rem',
+            margin: '0 4px',
             borderRadius: '50%',
             minWidth: 0,
-            padding: '1rem',
+            padding: 8,
             position: 'relative',
             '&:hover': {
               backgroundColor: '#27202D !important',
@@ -386,26 +390,30 @@ const ShelvTheme = {
           },
           'button:first-child:not(:only-child)': {
             '@media screen and (max-width: 720px)': {
-              transform: 'scale(1.5)',
-              margin: '1rem',
-              '&:hover': { transform: 'scale(1.6) !important' },
+              transform: 'scale(1.25)',
+              margin: '4px 8px',
+              '&:hover': { transform: 'scale(1.3) !important' },
             },
-            transform: 'scale(2)',
-            margin: '1.5rem',
+            transform: 'scale(1.35)',
+            margin: '4px 10px',
             minWidth: 0,
-            padding: '0.3125rem',
+            padding: 4,
             transition: 'transform .3s ease',
             background: '#7C3AED',
             color: '#fff',
             borderRadius: '50%',
             border: 0,
             '&:hover': {
-              transform: 'scale(2.1)',
+              transform: 'scale(1.42) !important',
               backgroundColor: '#7C3AED !important',
               border: 0,
             },
           },
-          'button:only-child': { margin: '1.5rem' },
+          'button:only-child': {
+            margin: 4,
+            padding: 4,
+            backgroundColor: 'transparent',
+          },
           'button:first-child>span:first-child': { padding: 0 },
           'button>span:first-child>span': { display: 'none' },
           'button:not(:first-child):hover>span:first-child>span': {
@@ -425,6 +433,9 @@ const ShelvTheme = {
           },
           'button:not(:first-child)>span:first-child>svg': { color: '#A9A4B0' },
         },
+        '& > div': { justifyContent: 'space-between', alignItems: 'center' },
+        '& > div > div': { display: 'flex', alignItems: 'center' },
+        '& > div > div:first-child': { marginLeft: -16 },
       },
     },
     NDPlaylistShow: {
@@ -493,6 +504,7 @@ const ShelvTheme = {
         },
         '& > div': { justifyContent: 'space-between', alignItems: 'center' },
         '& > div > div': { display: 'flex', alignItems: 'center' },
+        '& > div > div:first-child': { marginLeft: -16 },
       },
     },
     NDSubMenu: {
@@ -596,6 +608,11 @@ const ShelvTheme = {
         '& + div > .MuiCard-root': {
           borderLeft: '1px solid rgba(165, 125, 190, 0.16)',
           borderRight: '1px solid rgba(165, 125, 190, 0.16)',
+        },
+        '&:has([class*="NDAlbumShow-albumActions"]) + div > .MuiCard-root': {
+          borderBottom: '1px solid rgba(165, 125, 190, 0.16)',
+          borderRadius: '0 0 14px 14px !important',
+          overflow: 'hidden',
         },
         '& ~ .MuiTablePagination-root': {
           borderLeft: '1px solid rgba(165, 125, 190, 0.16)',
@@ -744,6 +761,9 @@ const ShelvTheme = {
     },
     RaSimpleList: {
       link: { '& .MuiListItem-root': { paddingTop: 16, paddingBottom: 16 } },
+    },
+    RaSongSimpleList: {
+      listItem: { paddingTop: 5, paddingBottom: 5 },
     },
     RaArtistSimpleList: {
       listItem: { padding: 16 },
