@@ -11,8 +11,8 @@ func init() {
 	goose.AddMigrationContext(upCreatePodcasts, downCreatePodcasts)
 }
 
-func upCreatePodcasts(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func upCreatePodcasts(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 create table if not exists podcast_channel
 (
     id                 varchar(255) not null primary key,
@@ -62,7 +62,7 @@ create index if not exists idx_podcast_episode_publish_date on podcast_episode (
 	return err
 }
 
-func downCreatePodcasts(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`drop table if exists podcast_episode; drop table if exists podcast_channel;`)
+func downCreatePodcasts(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `drop table if exists podcast_episode; drop table if exists podcast_channel;`)
 	return err
 }

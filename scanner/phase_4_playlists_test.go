@@ -222,6 +222,10 @@ func (p *mockPlaylists) ImportFromFolder(ctx context.Context, folder *model.Fold
 	return args.Get(0).(*model.Playlist), args.Error(1)
 }
 
+func (p *mockPlaylists) SyncPhysicalFolderPlaylists(context.Context) (int, error) {
+	return 0, nil
+}
+
 type mockFolderRepository struct {
 	model.FolderRepository
 	data    map[*model.Folder]error
