@@ -16,15 +16,15 @@ type scrobbleRepository struct {
 }
 
 type dbScrobble struct {
+	ID             int64  `db:"id"`
 	MediaFileID    string `db:"media_file_id"`
-	RowId          int64  `db:"row_id"`
 	SubmissionTime int64  `db:"submission_time"`
 }
 
 func (m dbScrobble) toScrobble() model.Scrobble {
 	return model.Scrobble{
 		MediaFileID:    m.MediaFileID,
-		ID:             m.RowId,
+		ID:             m.ID,
 		SubmissionTime: time.Unix(m.SubmissionTime, 0),
 	}
 }
@@ -49,7 +49,7 @@ func (r *scrobbleRepository) baseQuery(options ...model.QueryOptions) SelectBuil
 	user := loggedUser(r.ctx)
 
 	return r.newSelect(options...).
-		Columns("scrobbles.ROWID row_id", "media_file_id", "submission_time").
+		Columns("id", "media_file_id", "submission_time").
 		Where(Eq{"scrobbles.user_id": user.ID})
 }
 
@@ -81,13 +81,7 @@ func (r *scrobbleRepository) RecordScrobble(mediaFileID string, submissionTime t
 }
 
 func (r *scrobbleRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	userID := loggedUser(r.ctx).ID
-	count := r.newSelect().Column("COUNT(*) as count").Where(Eq{"user_id": userID})
-	// We do this instead of newSelect, because we do not want to apply limit/offset/order
-	count = r.applyFilters(count, options...)
-	var res struct{ Count int64 }
-	err := r.queryOne(count, &res)
-	return res.Count, err
+	return r.count(r.baseQuery(), options...)
 }
 
 func (r *scrobbleRepository) Count(options ...rest.QueryOptions) (int64, error) {
@@ -95,7 +89,7 @@ func (r *scrobbleRepository) Count(options ...rest.QueryOptions) (int64, error) 
 }
 
 func (r *scrobbleRepository) Get(id string) (*model.Scrobble, error) {
-	sel := r.baseQuery().Where(Eq{"scrobbles.ROWID": id})
+	sel := r.baseQuery().Where(Eq{"id": id})
 	var res dbScrobble
 	err := r.queryOne(sel, &res)
 	if err != nil {
