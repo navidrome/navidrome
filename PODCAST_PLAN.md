@@ -167,7 +167,7 @@ Requiring users to already have an RSS feed URL is a poor onboarding experience,
 Finish config (`StorageFolder`/`DownloadConcurrency`/`MaxDownloadSizeMB`) + download pipeline (`go-pipeline`) + SSE progress events + all 7 Subsonic handlers + response structs + the `stream.go`/`Download()` branching logic + native REST download/delete actions + web UI download-status badges, and remove the Phase 1 player bypass now that `stream.view` handles every episode. **Outcome:** the user's actual goal — Cirque (Android/Windows) can subscribe, browse, download, and stream podcasts exactly like any other Subsonic server. **Status: done.**
 
 **Phase 3 — Retention enforcement, playlist integration, personal UX polish**
-Not started. Scoped from a design discussion covering three linked pieces:
+**Status: done.** Scoped from a design discussion covering three linked pieces:
 
 1. **Retention enforcement** (`core/podcasts/retention.go`, new) — `RetentionCount`/`RetentionDays` already exist as columns on `PodcastChannel` (added in Phase 1) but are currently dormant; nothing reads or acts on them yet. This phase adds the actual `RunRetention(ctx)` enforcement, run per-channel after each scheduled refresh (same job as `schedulePodcastRefresh`) and available as an explicit trigger:
    - Enforces `RetentionCount` (max episodes kept) and `RetentionDays` (max age), oldest-downloaded-first, same semantics as `DeleteEpisode` (file removed, row kept, `DownloadStatus=deleted`, `Path`/`Suffix`/`Size` cleared).
@@ -184,7 +184,34 @@ Not started. Scoped from a design discussion covering three linked pieces:
 
 3. **Personal UI toggle** — a per-user, per-browser preference controlling whether the Podcasts sidebar entry shows up at all, mirroring the existing Folders toggle exactly (`ui/src/personal/FolderViewToggle.jsx`, `state.settings.showFolderView`, Redux `settings` slice + Personal Options panel). **Status: done** — `ui/src/personal/PodcastsToggle.jsx` (`state.settings.showPodcasts`) hides/shows the `podcastChannel` resource's auto-generated sidebar link in `ui/src/layout/Menu.jsx`, same declutter-only semantics as Folders (not a capability gate — that's the existing server-wide `conf.Server.Podcasts.Enabled`).
 
+4. **"Listened" indicator** (added after the above three, same phase in spirit) — episodes participate in the same per-user `annotation` table songs use (`play_count`/`play_date`), scoped to just play-tracking (no starring/rating - that needs an `average_rating` column podcast_episode doesn't have). `persistence/podcast_episode_repository.go`'s `withPlayAnnotation` left-joins it into `Get`/`GetAll`/`GetNewest`. `server/subsonic/podcast_stream.go`'s `streamPodcastEpisode` records a play as soon as a client starts streaming (no position/completion threshold - see Phase 4 item 1 for why that's a separate, bigger piece). Web UI shows a checkmark column in the episode list. **Status: done.**
+
 Carried over from the original Phase 3 scope, still applicable: live SSE-driven download progress bars in the UI, optional per-episode artwork, optional transcoding support for podcast streams, optional Range-header passthrough on the stream-only proxy path (for seeking), docs page.
+
+---
+
+**Phase 4 — Resume position, continue-listening queue, OPML import/export**
+Not started. Scoped from a discussion about what would most improve the actual day-to-day podcast experience (mostly used via Cirque, a third-party Subsonic client, not just the web UI) rather than from a specific user request:
+
+1. **Resume position ("in progress" tracking)** — the biggest usability gap for podcasts specifically: a 90-minute episode isn't finished in one sitting, and today every replay starts from zero. There's no existing per-track resume mechanism anywhere in Navidrome to reuse (`PlayQueue` is a single per-user "current item + position" snapshot backing Subsonic's `savePlayQueue`/resume, not a historical position kept per item across a whole library) - this is genuinely new capability, not a "extend an existing thing" job like the listened indicator was.
+   - Schema: add `play_position` (integer, milliseconds) to `annotation` - the correct per-user, per-item table, alongside the `play_count`/`play_date` this phase already uses for episodes. Reusing `annotation` rather than a `podcast_episode` column matters: playback position is inherently per-*user*, and podcast subscriptions/episodes are shared/admin-managed across the whole server, so a column on `podcast_episode` itself would incorrectly share one position across every user.
+   - `model/annotation.go`: add `PlayPosition int64` to `Annotations`. `persistence/sql_annotations.go`: add a generic `SetPlayPosition(itemID string, positionMs int64) error` alongside the existing `IncPlayCount` (safe to add to the shared `sqlRepository` mixin the same way - doesn't touch `average_rating`, so no repeat of the `SetRating` footgun noted in Phase 3 item 4).
+   - Wire-up point: `server/subsonic/media_annotation.go`'s `ReportPlayback()` already receives a `mediaType` param but only logs a warning and ignores it for anything other than `"song"` - this is where episode-aware position tracking plugs in, dispatching to `PodcastEpisode(ctx).SetPlayPosition(...)` instead of the MediaFile-only `PlayTracker.ReportPlayback` when the id resolves to an episode.
+   - Auto-clear position back to 0 once playback crosses ~95% of the episode's duration (treat as "finished," matching standard podcast-app behavior - otherwise a listener who reaches the very end forever gets offered a "resume near the end" prompt instead of a fresh replay).
+   - **Open question, needs checking before implementation**: this repo already advertises the OpenSubsonic `playbackReport` extension (`getOpenSubsonicExtensions`) - verify whether that extension's spec already defines a standard way for a *client* to read back a stored resume position (vs. just report one), so this aligns with the extension rather than inventing a parallel, Navidrome-only field third-party clients like Cirque have no reason to read.
+   - `persistence/podcast_episode_repository.go`'s `withPlayAnnotation` gains `play_position`, `model.PodcastEpisode` gains `PlayPosition int64`. Web UI surfaces "resume from mm:ss" wherever an episode is shown/played.
+
+2. **Cross-channel "Up Next" / continue-listening queue** — today, episodes are only browsable one channel at a time (`ReferenceManyField target="channel_id"` in `PodcastChannelShow.jsx`). Every mainstream podcast app's home screen is a single unified feed of newest-unplayed episodes across every subscription - low marginal backend cost given `GetNewest` and the listened-tracking from Phase 3 item 4 already exist, but a materially different daily workflow (check one feed of what's new, not N channel pages).
+   - New repository method, e.g. `GetUnlistened(count int) (PodcastEpisodes, error)` - LEFT JOIN `annotation` scoped to the current user, filtering `coalesce(play_count, 0) = 0`, ordered by `publish_date desc`. Distinct from `GetNewest` (which has no listened-filter) and needs its own query rather than a Go-side filter, since it should scan efficiently across every channel server-wide.
+   - Deliberately **not** added to the spec-compliant `getNewestPodcasts` Subsonic endpoint (real `getNewestPodcasts` has no "unlistened" concept in the spec) - keep that endpoint spec-compliant/unchanged, and add this as a native-only endpoint + web UI view, since it's a Navidrome-experimental value-add rather than a protocol feature.
+   - No download-status filter - a stream-only episode is just as eligible as a downloaded one, since `stream.view` already resolves either transparently (Phase 2).
+   - UI: a new cross-channel list/section (e.g. replacing or supplementing the current empty-state suggestions area), each row showing its channel name/artwork since channel context isn't implicit here the way it is inside a single channel's episode list.
+
+3. **OPML import/export** — the standard interchange format every podcast app (Overcast, Pocket Casts, AntennaPod, etc.) supports for subscription lists. Right now the only way in or out of this server's subscription list is one feed at a time through search/manual-URL entry - OPML lets someone migrate an existing list wholesale, or back theirs up independent of the database.
+   - `core/podcasts` gains `ImportOPML(ctx, reader io.Reader) (imported, skipped int, errs []error)` - parse with stdlib `encoding/xml` (OPML is simple enough not to need a new dependency, unlike gofeed for RSS), recursively walk `<outline>` elements for `xmlUrl` attributes, call the existing `CreateChannel` per feed (already dedups via `FindByUrl`) - one bad feed in the file shouldn't abort the whole import.
+   - `core/podcasts` gains `ExportOPML(ctx) ([]byte, error)` - builds an OPML document (title + url per subscribed channel) via `encoding/xml` marshaling.
+   - New native REST endpoints, admin-only (matching `createPodcastChannel`'s existing permission convention): `POST /api/rest/podcastChannel/importOpml` (file upload), `GET /api/rest/podcastChannel/exportOpml` (file download, `Content-Disposition: attachment`, mirroring the existing playlist M3U export convention).
+   - UI: "Import OPML" (file picker dialog) and "Export OPML" (download trigger) actions on the Podcasts list page, admin-only, alongside the existing search-first subscribe flow.
 
 ---
 
@@ -203,6 +230,11 @@ Carried over from the original Phase 3 scope, still applicable: live SSE-driven 
 - `model/playlist.go`, `persistence/playlist_repository.go`, migration (Phase 3, modify) — polymorphic playlist entries (MediaFile or PodcastEpisode)
 - `model/mediafile.go`'s `ToM3U8` (Phase 3, modify) — defensive empty-`Path` fallback
 - `ui/src/personal/` (Phase 3, new toggle) — personal preference mirroring `FolderViewToggle.jsx`
+- `persistence/podcast_episode_repository.go`'s `withPlayAnnotation` (Phase 3 item 4, new) — listened-tracking join
+- `model/annotation.go`, `persistence/sql_annotations.go` (Phase 4, modify) — `PlayPosition`/`SetPlayPosition`
+- `server/subsonic/media_annotation.go`'s `ReportPlayback` (Phase 4, modify) — episode-aware position dispatch
+- `core/podcasts/` (Phase 4, new) — `GetUnlistened` query, `ImportOPML`/`ExportOPML`
+- `server/nativeapi/podcasts.go` (Phase 4, modify) — `importOpml`/`exportOpml`/unlistened-queue routes
 
 ## Verification
 
