@@ -13,20 +13,22 @@ music collection from any browser or mobile device. It's like your personal Spot
 
 ## About This Fork
 
-**navidrome-experimental** is a personal fork of [Navidrome](https://github.com/navidrome/navidrome) adding features
-not yet available upstream. It tracks upstream closely and aims to stay compatible with the standard Navidrome/Subsonic
-ecosystem (clients, plugins, themes) — it just adds a few things on top:
+Navidrome is already the best self-hosted alternative to Spotify for your music library. **navidrome-experimental**
+takes that same server and gives it a second life as a podcast platform too — full RSS subscriptions, streaming,
+downloads, and retention, through the exact same Subsonic API you already use for your songs. No separate podcast
+app, no separate sync, no separate account. It also adds physical folder browsing, for anyone who's spent years
+organizing music by hand and doesn't want that structure hidden behind a metadata-only view.
 
-- **[Podcast support](PODCAST_PLAN.md)** — subscribe by search or regional top-charts, stream or download episodes,
-  per-channel retention policies, downloaded episodes in regular playlists, full Subsonic API coverage (works with
-  any Subsonic-compatible client, not just the web UI).
-- **[Physical folder browsing](navidrome-folder-roadmap.md)** — navigate your library exactly as it's laid out on
-  disk, with recursive play/shuffle/playlist actions, ZIP downloads, folder-pinned playlists, and Subsonic client
-  compatibility. See below for details.
+Everything else works exactly like upstream Navidrome — same installation, same configuration, same Subsonic
+compatibility, same plugin system. This fork just adds:
 
-Docker images are published to `ghcr.io/rflundgren/navidrome_experimental`. Everything else — installation,
-configuration, the Subsonic API, plugins — works exactly like upstream Navidrome; see the
-[Documentation](#documentation) section below.
+- 🎙️ **[Podcast support](PODCAST_PLAN.md)** — full RSS subscriptions, streamed or downloaded, through the real
+  Subsonic API. See [below](#podcast-support-experimental) for the full feature list.
+- 📁 **[Physical folder browsing](navidrome-folder-roadmap.md)** — navigate, play, and manage your library exactly
+  as it's laid out on disk. See [below](#physical-folder-browsing-experimental) for the full feature list.
+
+Docker images are published to `ghcr.io/rflundgren/navidrome_experimental`. Installation, configuration, and the
+Subsonic API all work exactly like upstream Navidrome — see the [Documentation](#documentation) section below.
 
 **Note**: The `master` branch may be in an unstable or even broken state during development. 
 Please use [releases](https://github.com/navidrome/navidrome/releases) instead of 
@@ -72,41 +74,89 @@ A share of the revenue helps fund the development of Navidrome at no additional 
 
 ## Podcast Support (Experimental)
 
-This version of Navidrome includes full **Podcast support** over RSS, built specifically to work through the real
-Subsonic API — not just the web UI — so any Subsonic-compatible client can subscribe, download, and stream episodes
-exactly like it would for a standard Subsonic server.
+Most self-hosted music servers treat podcasts as an afterthought, if they support them at all — usually meaning a
+separate app, a separate sync, or no real download management. This fork builds podcasts as a first-class feature
+on the same server, through the real Subsonic API, so it works in whatever client you already use to stream your
+music — Cirque, Symfonium, Sublime Music, DSub, or anything else that speaks Subsonic. No plugin required on the
+client side.
 
-### Current Features
-- **Discovery**: subscribe by searching iTunes' podcast directory, or pick from live, region-specific top charts.
-- **Stream or download**: per-channel policy — stream-only (proxied through the server on demand) or auto-download
-  new/all episodes to disk.
-- **Retention policies**: per-channel limits on episode count, age, or total storage, with oldest-downloaded-first
-  cleanup.
-- **Playlists**: downloaded episodes can be added to regular playlists alongside songs, reordered, and exported.
-- **Listened tracking**: episodes you've played are marked, per user.
-- **Full Subsonic API coverage**: `getPodcasts`, `getNewestPodcasts`, `createPodcastChannel`,
-  `downloadPodcastEpisode`, and streaming/download both work through the standard endpoints, so third-party apps
-  need no special support.
-- **Personal toggle**: hide the Podcasts section from your own sidebar if you don't use it (same as the Folder
-  view toggle below).
+### 🔍 Discover shows without hunting for RSS URLs
+Search by name, or browse live, region-specific top charts to see what's actually trending where you are — pasting
+in a feed URL directly still works too, if you already know exactly what you want.
 
-For more details, including what's still on the roadmap, see [PODCAST_PLAN.md](PODCAST_PLAN.md).
+### ▶️ Stream instantly, or keep it forever — your call, per show
+Every subscription gets its own download policy: **stream-only** (nothing touches your disk — episodes proxy
+through the server on demand, so any client can play them without ever knowing the source URL), **auto-download
+new episodes** as they publish, or **backfill and download the entire back catalog**.
+
+### 💾 Never worry about disk space
+Set retention per channel by episode count, age, or total storage, and let oldest-downloaded-first cleanup run
+automatically on the same schedule as feed refreshes. Add an episode to a playlist and it's automatically protected
+from cleanup — retention will never quietly delete something you're actively queued up to listen to.
+
+### 🎵 Episodes are real library citizens, not a bolted-on side feature
+Downloaded episodes slot into regular playlists right alongside your music — reorder them, mix songs and episodes
+in the same playlist, export it like any other. A checkmark shows which episodes you've already listened to,
+tracked independently per user on multi-user servers.
+
+### 🔌 Real Subsonic API coverage, not a partial implementation
+`getPodcasts`, `getNewestPodcasts`, `createPodcastChannel`, `refreshPodcasts`, `deletePodcastChannel`/
+`deletePodcastEpisode`, `downloadPodcastEpisode` — and streaming/downloading both go through the exact same
+endpoints your client already uses for songs. No special client-side support required, no separate integration to
+build.
+
+### 🎛️ Fine-grained control
+Personal toggle to hide the Podcasts section from your own sidebar if you don't use it (same mechanism as the
+Folder view toggle below) — and every setting above is per-channel, so a daily news show and a sprawling back
+catalog can be managed completely differently on the same server.
+
+Full design writeup, including what's still on the roadmap (resume playback position, a cross-channel "up next"
+queue, OPML import/export), see [PODCAST_PLAN.md](PODCAST_PLAN.md).
 
 ## Physical Folder Browsing (Experimental)
 
-This version of Navidrome includes a major new feature: **Physical Folder Browsing**. This allows you to navigate your music library exactly as it is organized on your hard drive, bypassing traditional metadata-based views.
+If you've spent years curating a folder structure by hand — by label, by era, by mood, by whatever system makes
+sense to you — metadata-only browsing throws all of that away. This fork adds a complete second way to navigate
+your library: exactly as it sits on disk, breadcrumbs and all, with every action a metadata-based view gives you
+plus a few it doesn't.
 
-### Current Features
-- **Hierarchical Navigation**: Browse through folders and subfolders with functional breadcrumbs.
-- **Recursive Actions**: Play All, Shuffle, or Add to Playlist for an entire folder hierarchy with one click.
-- **ZIP Downloads**: Download entire physical folders as a ZIP archive directly from the UI.
-- **Scoped Search**: Search for specific tracks or subfolders directly within a physical folder hierarchy.
-- **Visual Polish**: Support for folder thumbnails (including composite artwork), a Grid/List view toggle, and automatic hiding of empty UI sections.
-- **"Show in Folder"**: Jump directly to a song or album's physical location from anywhere in the app.
-- **Folder Sync**: "Pin" physical folders as virtual Navidrome playlists that automatically update during library scans.
-- **Subsonic Integration**: Compatible with mobile apps that support physical folder browsing.
+### 🗂️ Browse it exactly how you built it
+Hierarchical navigation with working breadcrumbs at every depth, tested past 500+ items per level. Folders get the
+same visual treatment as albums — thumbnails (automatically composited from the first four albums found inside, so
+even a folder full of subfolders looks right), a Grid/List view toggle, and empty sections hidden automatically
+rather than cluttering the view.
 
-For more details, see [navidrome-folder-roadmap.md](navidrome-folder-roadmap.md).
+### ⚡ Act on a whole folder tree at once
+Play All, Shuffle, or Add to Playlist for an entire folder hierarchy — subfolders included — in a single click. No
+more selecting every track by hand when you just want to queue up an entire artist's directory or a whole era of
+your collection.
+
+### 📊 Know what's actually in a folder before you open it
+Every folder shows its subfolder count, song count, total physical disk size, and total play time right in the
+list — at a glance, without drilling in.
+
+### 📦 Take it with you
+Download an entire physical folder as a ZIP archive directly from the toolbar, generated on-the-fly from your
+existing library — perfect for backups or handing a chunk of your collection to someone else.
+
+### 🔎 Search that stays where you are
+A scoped search bar inside any folder view filters to just that folder and its children — find a specific track or
+subfolder without losing your place in a large hierarchy.
+
+### 📌 Folders that stay in sync, automatically
+"Pin" any physical folder as a Navidrome playlist, and it updates itself as files are added to or removed from that
+folder on disk during the next library scan. Set it up once and it stays accurate forever — no manual re-adding.
+
+### 🧭 Jump straight to where a file lives
+A "Show in Folder" action on any song or album jumps you directly to its exact physical location — useful for
+tracking down duplicates, checking tag consistency, or just satisfying curiosity about where something actually
+lives.
+
+### 🔌 Works beyond the web UI too
+Compatible with Subsonic clients that support physical folder browsing, so this isn't a web-only feature.
+
+For the full history of what's shipped and what's planned, see
+[navidrome-folder-roadmap.md](navidrome-folder-roadmap.md).
 
 ## Translations
 
