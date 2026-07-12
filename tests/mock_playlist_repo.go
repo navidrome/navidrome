@@ -17,12 +17,13 @@ func CreateMockPlaylistRepo() *MockPlaylistRepo {
 
 type MockPlaylistRepo struct {
 	model.PlaylistRepository
-	Data       map[string]*model.Playlist // keyed by ID
-	PathMap    map[string]*model.Playlist // keyed by path
-	Last       *model.Playlist
-	Deleted    []string
-	Err        bool
-	TracksRepo model.PlaylistTrackRepository
+	Data           map[string]*model.Playlist // keyed by ID
+	PathMap        map[string]*model.Playlist // keyed by path
+	Last           *model.Playlist
+	Deleted        []string
+	RemovedItemIDs []string
+	Err            bool
+	TracksRepo     model.PlaylistTrackRepository
 }
 
 func (m *MockPlaylistRepo) SetError(err bool) {
@@ -81,6 +82,14 @@ func (m *MockPlaylistRepo) Delete(id string) error {
 
 func (m *MockPlaylistRepo) Tracks(_ string, _ bool) model.PlaylistTrackRepository {
 	return m.TracksRepo
+}
+
+func (m *MockPlaylistRepo) RemoveItemFromPlaylists(itemID string) error {
+	if m.Err {
+		return errors.New("error")
+	}
+	m.RemovedItemIDs = append(m.RemovedItemIDs, itemID)
+	return nil
 }
 
 func (m *MockPlaylistRepo) Exists(id string) (bool, error) {

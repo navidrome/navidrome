@@ -345,6 +345,7 @@ func (t dbPlaylistEpisodeTrack) toPlaylistTrack(playlistID string) model.Playlis
 		MediaFile: model.MediaFile{
 			ID:          ep.ID,
 			Title:       ep.Title,
+			OrderTitle:  ep.Title,
 			Duration:    ep.Duration,
 			Size:        ep.Size,
 			Suffix:      ep.Suffix,
@@ -352,6 +353,11 @@ func (t dbPlaylistEpisodeTrack) toPlaylistTrack(playlistID string) model.Playlis
 			Album:       t.ChannelTitle,
 			Artist:      t.ChannelTitle,
 			AlbumArtist: t.ChannelTitle,
+			// Order* fields feed sortPlaylistTracks' comparators, which are
+			// shared with song tracks.
+			OrderAlbumName:       t.ChannelTitle,
+			OrderArtistName:      t.ChannelTitle,
+			OrderAlbumArtistName: t.ChannelTitle,
 			// Path is the episode's full absolute on-disk path (not
 			// library-relative - LibraryPath is left empty), so generic
 			// MediaFile.AbsolutePath()/M3U export code works unmodified for
@@ -367,14 +373,11 @@ func (t dbPlaylistEpisodeTrack) toPlaylistTrack(playlistID string) model.Playlis
 // (media_file) and/or downloaded podcast episodes. The two are fetched with
 // separate queries - podcast episodes have no library/annotation/missing
 // concept, so folding them into the existing song query's joins isn't
-// possible - then merged and ordered by position in Go.
-//
-// Known limitation: only options.Sort == "id" (position, the default and
-// the only order that makes sense for a manually-ordered playlist) and
-// options.Max/Offset are honored; other sort fields fall back to position
-// order rather than being applied across the merged, mixed-type result.
-// The web UI's playlist view only ever uses position order, so this isn't
-// a functional gap in practice.
+// possible - then merged and sorted in Go via sortPlaylistTracks, using the
+// same field mappings playlistTrackRepository previously pushed to SQL via
+// setSortMappings, so existing sort-by-column behavior (e.g. "album", which
+// orders by disc/track number within it) keeps working across the merged
+// result.
 func (r *playlistRepository) loadTracks(playlistID string, options model.QueryOptions, excludeMissingSongs bool) (model.PlaylistTracks, error) {
 	userID := loggedUser(r.ctx).ID
 	songSel := Select(
@@ -420,15 +423,7 @@ func (r *playlistRepository) loadTracks(playlistID string, options model.QueryOp
 		tracks = append(tracks, row.toPlaylistTrack(playlistID))
 	}
 
-	order := strings.ToLower(options.Order) == "desc"
-	sort.Slice(tracks, func(i, j int) bool {
-		pi, _ := strconv.Atoi(tracks[i].ID)
-		pj, _ := strconv.Atoi(tracks[j].ID)
-		if order {
-			return pi > pj
-		}
-		return pi < pj
-	})
+	sortPlaylistTracks(tracks, options.Sort, options.Order)
 
 	if options.Offset > 0 {
 		if options.Offset >= len(tracks) {
@@ -441,6 +436,67 @@ func (r *playlistRepository) loadTracks(playlistID string, options model.QueryOp
 	}
 
 	return tracks, nil
+}
+
+// sortPlaylistTracks sorts a merged song+episode track list in place,
+// mirroring the field mappings playlistTrackRepository previously handed to
+// SQL via setSortMappings (id/artist/album_artist/album/title/duration/
+// year/bpm/channels). Applied in Go, rather than pushed to SQL separately
+// per branch, since after loadTracks both songs and episodes are already
+// represented as comparable model.PlaylistTrack/MediaFile values.
+func sortPlaylistTracks(tracks model.PlaylistTracks, sortField, order string) {
+	less := playlistTrackLess(sortField)
+	desc := strings.EqualFold(order, "desc")
+	sort.SliceStable(tracks, func(i, j int) bool {
+		if desc {
+			return less(tracks[j], tracks[i])
+		}
+		return less(tracks[i], tracks[j])
+	})
+}
+
+func playlistTrackLess(sortField string) func(a, b model.PlaylistTrack) bool {
+	switch sortField {
+	case "artist":
+		return func(a, b model.PlaylistTrack) bool { return a.OrderArtistName < b.OrderArtistName }
+	case "album_artist":
+		return func(a, b model.PlaylistTrack) bool { return a.OrderAlbumArtistName < b.OrderAlbumArtistName }
+	case "album":
+		return func(a, b model.PlaylistTrack) bool {
+			if a.OrderAlbumName != b.OrderAlbumName {
+				return a.OrderAlbumName < b.OrderAlbumName
+			}
+			if a.AlbumID != b.AlbumID {
+				return a.AlbumID < b.AlbumID
+			}
+			if a.DiscNumber != b.DiscNumber {
+				return a.DiscNumber < b.DiscNumber
+			}
+			if a.TrackNumber != b.TrackNumber {
+				return a.TrackNumber < b.TrackNumber
+			}
+			if a.OrderArtistName != b.OrderArtistName {
+				return a.OrderArtistName < b.OrderArtistName
+			}
+			return a.Title < b.Title
+		}
+	case "title":
+		return func(a, b model.PlaylistTrack) bool { return a.OrderTitle < b.OrderTitle }
+	case "duration":
+		return func(a, b model.PlaylistTrack) bool { return a.Duration < b.Duration }
+	case "year":
+		return func(a, b model.PlaylistTrack) bool { return a.Year < b.Year }
+	case "bpm":
+		return func(a, b model.PlaylistTrack) bool { return a.BPM < b.BPM }
+	case "channels":
+		return func(a, b model.PlaylistTrack) bool { return a.Channels < b.Channels }
+	default: // "id" (position) and anything unrecognized
+		return func(a, b model.PlaylistTrack) bool {
+			pa, _ := strconv.Atoi(a.ID)
+			pb, _ := strconv.Atoi(b.ID)
+			return pa < pb
+		}
+	}
 }
 
 func (r *playlistRepository) Count(options ...rest.QueryOptions) (int64, error) {
