@@ -2,6 +2,7 @@ export const SET_NOTIFICATIONS_STATE = 'SET_NOTIFICATIONS_STATE'
 export const SET_TOGGLEABLE_FIELDS = 'SET_TOGGLEABLE_FIELDS'
 export const SET_OMITTED_FIELDS = 'SET_OMITTED_FIELDS'
 export const SET_SHOW_FOLDER_VIEW = 'SET_SHOW_FOLDER_VIEW'
+export const SET_SHOW_PODCASTS = 'SET_SHOW_PODCASTS'
 
 export const setNotificationsState = (enabled) => ({
   type: SET_NOTIFICATIONS_STATE,
@@ -20,5 +21,10 @@ export const setOmittedFields = (obj) => ({
 
 export const setShowFolderView = (enabled) => ({
   type: SET_SHOW_FOLDER_VIEW,
+  data: enabled,
+})
+
+export const setShowPodcasts = (enabled) => ({
+  type: SET_SHOW_PODCASTS,
   data: enabled,
 })

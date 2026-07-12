@@ -56,6 +56,9 @@ const Menu = ({ dense = false }) => {
   const showFolderView = useSelector(
     (state) => state.settings.showFolderView !== false,
   )
+  const showPodcasts = useSelector(
+    (state) => state.settings.showPodcasts !== false,
+  )
 
   // TODO State is not persisted in mobile when you close the sidebar menu. Move to redux?
   const [state, setState] = useState({
@@ -140,7 +143,12 @@ const Menu = ({ dense = false }) => {
         />
       )}
       {resources
-        .filter((r) => r.name !== 'folder' && subItems(undefined)(r))
+        .filter(
+          (r) =>
+            r.name !== 'folder' &&
+            (r.name !== 'podcastChannel' || showPodcasts) &&
+            subItems(undefined)(r),
+        )
         .map(renderResourceMenuItemLink)}
       {config.devSidebarPlaylists && open ? (
         <>

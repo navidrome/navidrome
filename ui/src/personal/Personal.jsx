@@ -6,6 +6,7 @@ import { SelectTheme } from './SelectTheme'
 import { SelectDefaultView } from './SelectDefaultView'
 import { NotificationsToggle } from './NotificationsToggle'
 import { FolderViewToggle } from './FolderViewToggle'
+import { PodcastsToggle } from './PodcastsToggle'
 import { LastfmScrobbleToggle } from './LastfmScrobbleToggle'
 import { ListenBrainzScrobbleToggle } from './ListenBrainzScrobbleToggle'
 import config from '../config'
@@ -29,6 +30,7 @@ const Personal = () => {
         {config.enableReplayGain && <ReplayGainToggle />}
         <NotificationsToggle />
         <FolderViewToggle />
+        <PodcastsToggle />
         {config.lastFMEnabled && <LastfmScrobbleToggle />}
         {config.listenBrainzEnabled && <ListenBrainzScrobbleToggle />}
       </SimpleForm>
