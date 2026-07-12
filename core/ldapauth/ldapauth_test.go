@@ -19,10 +19,10 @@ func TestLoginUserFilter(t *testing.T) {
 		}
 	})
 
-	t.Run("preserves explicit placeholder filters", func(t *testing.T) {
+	t.Run("replaces every username placeholder", func(t *testing.T) {
 		t.Parallel()
-		got := loginUserFilter(Source{UserNameAttribute: "uid", UserFilter: "(&(objectClass=person)(%s=%s))"}, "directory-user")
-		want := "(&(objectClass=person)(uid=directory-user))"
+		got := loginUserFilter(Source{UserNameAttribute: "uid", UserFilter: "(|(uid=%s)(mail=%s))"}, "directory-user")
+		want := "(|(uid=directory-user)(mail=directory-user))"
 		if got != want {
 			t.Fatalf("loginUserFilter() = %q, want %q", got, want)
 		}

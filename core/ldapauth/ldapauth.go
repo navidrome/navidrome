@@ -124,9 +124,11 @@ func (s *Store) Load(ctx context.Context) (Config, error) {
 	}
 	for i := range c.Sources {
 		if c.Sources[i].BindPassword != "" {
-			if p, e := utils.Decrypt(ctx, s.key, c.Sources[i].BindPassword); e == nil {
-				c.Sources[i].BindPassword = p
+			p, e := utils.Decrypt(ctx, s.key, c.Sources[i].BindPassword)
+			if e != nil {
+				return c, fmt.Errorf("failed to decrypt bind password for source %s: %w", c.Sources[i].Name, e)
 			}
+			c.Sources[i].BindPassword = p
 		}
 		applyDefaults(&c.Sources[i])
 	}
@@ -258,7 +260,7 @@ func authLDAP(ctx context.Context, ds model.DataStore, src Source, username, pas
 func lookupAndBind(src Source, username, password string) (DiscoveredUser, error) {
 	l, err := ldap.DialURL(src.URL)
 	if err != nil {
-		return DiscoveredUser{}, ErrUserNotFound
+		return DiscoveredUser{}, err
 	}
 	defer l.Close()
 	if src.StartTLS {
@@ -290,10 +292,10 @@ func lookupAndBind(src Source, username, password string) (DiscoveredUser, error
 		return DiscoveredUser{}, ErrBadPassword
 	}
 	du := DiscoveredUser{DN: e.DN, UserName: first(e.GetAttributeValue(src.UserNameAttribute), username), Name: e.GetAttributeValue(src.DisplayNameAttribute), Email: e.GetAttributeValue(src.EmailAttribute), Groups: e.GetAttributeValues("memberOf")}
-	du.Groups = append(du.Groups, groupsForUser(src, e.DN)...)
+	du.Groups = append(du.Groups, groupsForUser(src, e.DN, du.UserName)...)
 	return du, nil
 }
-func groupsForUser(src Source, userDN string) []string {
+func groupsForUser(src Source, userDN, username string) []string {
 	if src.GroupBaseDN == "" {
 		return nil
 	}
@@ -303,10 +305,14 @@ func groupsForUser(src Source, userDN string) []string {
 	}
 	defer l.Close()
 	if src.StartTLS {
-		_ = l.StartTLS(&tls.Config{InsecureSkipVerify: src.InsecureSkipVerify}) //nolint:gosec
+		if err = l.StartTLS(&tls.Config{InsecureSkipVerify: src.InsecureSkipVerify}); err != nil { //nolint:gosec
+			return nil
+		}
 	}
 	if src.BindDN != "" {
-		_ = l.Bind(src.BindDN, src.BindPassword)
+		if err = l.Bind(src.BindDN, src.BindPassword); err != nil {
+			return nil
+		}
 	}
 	gf := src.GroupFilter
 	if gf == "" {
@@ -319,7 +325,8 @@ func groupsForUser(src Source, userDN string) []string {
 	}
 	var out []string
 	for _, g := range res.Entries {
-		if slices.Contains(g.GetAttributeValues(src.GroupMemberAttribute), userDN) {
+		members := g.GetAttributeValues(src.GroupMemberAttribute)
+		if slices.Contains(members, userDN) || slices.Contains(members, username) {
 			out = append(out, g.DN)
 		}
 	}
@@ -353,11 +360,8 @@ func loginUserFilter(src Source, username string) string {
 	if src.UserFilter == "" {
 		return fmt.Sprintf("(%s=%s)", attr, escapedUsername)
 	}
-	if placeholders := strings.Count(src.UserFilter, "%s"); placeholders > 0 {
-		if placeholders == 1 {
-			return fmt.Sprintf(src.UserFilter, escapedUsername)
-		}
-		return fmt.Sprintf(src.UserFilter, attr, escapedUsername)
+	if strings.Contains(src.UserFilter, "%s") {
+		return strings.ReplaceAll(src.UserFilter, "%s", escapedUsername)
 	}
 	return fmt.Sprintf("(&%s(%s=%s))", src.UserFilter, attr, escapedUsername)
 }
@@ -447,7 +451,7 @@ func TestAndCache(ctx context.Context, src Source) (Source, error) {
 	}
 	for i, u := range src.Cache.Users {
 		for g, m := range grps {
-			if slices.Contains(m, u.DN) {
+			if slices.Contains(m, u.DN) || slices.Contains(m, u.UserName) {
 				src.Cache.Users[i].Groups = append(src.Cache.Users[i].Groups, g)
 			}
 		}
