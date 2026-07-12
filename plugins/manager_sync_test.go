@@ -16,8 +16,8 @@ var _ = Describe("removePluginFromDB", func() {
 	It("discards buffered scrobbles for the removed plugin", func() {
 		ctx := context.Background()
 		buffer := tests.CreateMockedScrobbleBufferRepo()
-		Expect(buffer.Enqueue("my-plugin", "user1", "track1", time.Now())).To(Succeed())
-		Expect(buffer.Enqueue("other-plugin", "user1", "track2", time.Now())).To(Succeed())
+		Expect(buffer.Enqueue("my-plugin", "user1", "track1", time.Now(), "", "", "", "")).To(Succeed())
+		Expect(buffer.Enqueue("other-plugin", "user1", "track2", time.Now(), "", "", "", "")).To(Succeed())
 
 		repo := tests.CreateMockPluginRepo()
 		plugin := model.Plugin{ID: "my-plugin", Enabled: false}
@@ -45,7 +45,7 @@ var _ = Describe("removePluginFromDB", func() {
 		ctx := context.Background()
 		scrobbler.Register("builtin-svc", func(model.DataStore) scrobbler.Scrobbler { return nil })
 		buffer := tests.CreateMockedScrobbleBufferRepo()
-		Expect(buffer.Enqueue("builtin-svc", "user1", "track1", time.Now())).To(Succeed())
+		Expect(buffer.Enqueue("builtin-svc", "user1", "track1", time.Now(), "", "", "", "")).To(Succeed())
 
 		repo := tests.CreateMockPluginRepo()
 		plugin := model.Plugin{ID: "builtin-svc", Enabled: false}
