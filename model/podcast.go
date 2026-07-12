@@ -87,10 +87,21 @@ type PodcastEpisode struct {
 	BitRate        int                          `structs:"bit_rate" json:"bitRate,omitempty"`
 	CreatedAt      time.Time                    `structs:"created_at" json:"createdAt"`
 	UpdatedAt      time.Time                    `structs:"updated_at" json:"updatedAt"`
+
+	// PlayCount/PlayDate come from the per-user annotation table (the same
+	// mechanism songs use), not a podcast_episode column - populated by
+	// repository reads, excluded from writes.
+	PlayCount int64      `structs:"-" json:"playCount,omitempty"`
+	PlayDate  *time.Time `structs:"-" json:"playDate,omitempty"`
 }
 
 func (e PodcastEpisode) IsDownloaded() bool {
 	return e.DownloadStatus == PodcastEpisodeDownloaded
+}
+
+// IsListened reports whether the current user has ever played this episode.
+func (e PodcastEpisode) IsListened() bool {
+	return e.PlayCount > 0
 }
 
 // AbsolutePath mirrors MediaFile.AbsolutePath(), joining the episode's
@@ -124,4 +135,10 @@ type PodcastEpisodeRepository interface {
 	Put(e *PodcastEpisode, colsToUpdate ...string) error
 	FindByGuid(channelID, guid string) (*PodcastEpisode, error)
 	GetNewest(count int) (PodcastEpisodes, error)
+	// IncPlayCount marks the episode as listened to (by the current user),
+	// mirroring MediaFile's play-tracking mechanism via the shared
+	// annotation table. Podcast episodes don't support starring/rating (no
+	// average_rating column), so only this piece of AnnotatedRepository is
+	// exposed.
+	IncPlayCount(itemID string, ts time.Time) error
 }

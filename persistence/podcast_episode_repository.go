@@ -45,15 +45,33 @@ func (r *podcastEpisodeRepository) Delete(id string) error {
 	return r.delete(Eq{"id": id})
 }
 
+// withPlayAnnotation left-joins the current user's annotation row, exposing
+// play_count/play_date as a "listened" signal. Doesn't reuse
+// sqlRepository.withAnnotation, which also selects starred/rating/
+// average_rating - podcast episodes have no average_rating column and don't
+// support starring/rating (yet).
+func (r *podcastEpisodeRepository) withPlayAnnotation(sel SelectBuilder) SelectBuilder {
+	userID := loggedUser(r.ctx).ID
+	if userID == invalidUserId {
+		return sel
+	}
+	return sel.
+		LeftJoin("annotation on ("+
+			"annotation.item_id = podcast_episode.id"+
+			" AND annotation.item_type = 'podcast_episode'"+
+			" AND annotation.user_id = '"+userID+"')").
+		Columns("coalesce(play_count, 0) as play_count", "play_date")
+}
+
 func (r *podcastEpisodeRepository) Get(id string) (*model.PodcastEpisode, error) {
-	sel := r.newSelect().Where(Eq{"id": id}).Columns("*")
+	sel := r.withPlayAnnotation(r.newSelect().Where(Eq{"id": id}).Columns("*"))
 	res := model.PodcastEpisode{}
 	err := r.queryOne(sel, &res)
 	return &res, err
 }
 
 func (r *podcastEpisodeRepository) GetAll(options ...model.QueryOptions) (model.PodcastEpisodes, error) {
-	sel := r.newSelect(options...).Columns("*")
+	sel := r.withPlayAnnotation(r.newSelect(options...).Columns("*"))
 	res := model.PodcastEpisodes{}
 	err := r.queryAll(sel, &res)
 	return res, err
@@ -67,7 +85,7 @@ func (r *podcastEpisodeRepository) FindByGuid(channelID, guid string) (*model.Po
 }
 
 func (r *podcastEpisodeRepository) GetNewest(count int) (model.PodcastEpisodes, error) {
-	sel := r.newSelect().Columns("*").OrderBy("publish_date desc").Limit(uint64(count))
+	sel := r.withPlayAnnotation(r.newSelect().Columns("*")).OrderBy("publish_date desc").Limit(uint64(count))
 	res := model.PodcastEpisodes{}
 	err := r.queryAll(sel, &res)
 	return res, err

@@ -312,7 +312,8 @@
         "downloaded": "Downloaded",
         "error": "Error",
         "deleted": "Deleted"
-      }
+      },
+      "listened": "Listened"
     },
     "share": {
       "name": "Share |||| Shares",

@@ -21,12 +21,14 @@ import {
   Avatar,
   Chip,
   IconButton,
+  Tooltip,
   makeStyles,
 } from '@material-ui/core'
 import MicIcon from '@material-ui/icons/Mic'
 import DownloadIcon from '@material-ui/icons/GetApp'
 import DeleteIcon from '@material-ui/icons/Delete'
 import PlaylistAddIcon from '@material-ui/icons/PlaylistAdd'
+import CheckCircleIcon from '@material-ui/icons/CheckCircle'
 import { Title, useResourceRefresh } from '../common'
 import { setTrack, openAddToPlaylist } from '../actions'
 import subsonic from '../subsonic'
@@ -93,6 +95,16 @@ const DownloadStatusChip = ({ record }) => {
       color={statusColor[record.downloadStatus] || 'default'}
       variant={record.downloadStatus === 'downloaded' ? 'default' : 'outlined'}
     />
+  )
+}
+
+const ListenedIndicator = ({ record }) => {
+  const translate = useTranslate()
+  if (!record || !record.playCount) return null
+  return (
+    <Tooltip title={translate('resources.podcastEpisode.listened')}>
+      <CheckCircleIcon fontSize="small" color="primary" />
+    </Tooltip>
   )
 }
 
@@ -182,6 +194,11 @@ const EpisodesSection = ({ channel, isAdmin }) => {
         <FunctionField
           source="downloadStatus"
           render={(record) => <DownloadStatusChip record={record} />}
+        />
+        <FunctionField
+          source="playCount"
+          label={translate('resources.podcastEpisode.listened')}
+          render={(record) => <ListenedIndicator record={record} />}
         />
         <FunctionField
           source="id"
