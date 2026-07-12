@@ -93,6 +93,10 @@ func (r *scrobbleBufferRepository) Dequeue(entry *model.ScrobbleEntry) error {
 	return r.delete(Eq{"id": entry.ID})
 }
 
+func (r *scrobbleBufferRepository) Discard(service string) error {
+	return r.delete(Eq{"service": service})
+}
+
 func (r *scrobbleBufferRepository) Length() (int64, error) {
 	return r.count(Select())
 }
