@@ -27,8 +27,35 @@ compatibility, same plugin system. This fork just adds:
 - 📁 **[Physical folder browsing](navidrome-folder-roadmap.md)** — navigate, play, and manage your library exactly
   as it's laid out on disk. See [below](#physical-folder-browsing-experimental) for the full feature list.
 
-Docker images are published to `ghcr.io/rflundgren/navidrome_experimental`. Installation, configuration, and the
-Subsonic API all work exactly like upstream Navidrome — see the [Documentation](#documentation) section below.
+### Getting navidrome-experimental
+
+This isn't in the official Navidrome image — you'll need to pull this fork's image specifically. Docker Compose:
+
+```yaml
+services:
+  navidrome:
+    image: ghcr.io/rflundgren/navidrome_experimental:develop
+    container_name: navidrome
+    ports:
+      - "4533:4533"
+    restart: unless-stopped
+    environment:
+      ND_SCANSCHEDULE: 1h
+      ND_LOGLEVEL: info
+      ND_SESSIONTIMEOUT: 24h
+    volumes:
+      - "./data:/data"
+      - "/path/to/your/music:/music:ro"
+```
+
+Already running stock Navidrome? Point your existing `docker-compose.yml` at `ghcr.io/rflundgren/navidrome_experimental:develop`
+instead of the official image and keep your existing `/data` volume — this fork tracks upstream closely and only
+*adds* tables/migrations, so your library and settings carry over untouched; `docker compose pull && docker compose up -d`
+is all it takes.
+
+For everything else — configuration options, reverse proxy setup, environment variables, building from source — the
+[Documentation](#documentation) section below and [project's website](https://www.navidrome.org/docs/) apply exactly
+as they do for upstream Navidrome.
 
 **Note**: The `master` branch may be in an unstable or even broken state during development. 
 Please use [releases](https://github.com/navidrome/navidrome/releases) instead of 
@@ -46,7 +73,9 @@ please file a [GitHub issue](https://github.com/navidrome/navidrome/issues) or j
 
 ## Installation
 
-See instructions on the [project's website](https://www.navidrome.org/docs/installation/)
+For this fork specifically, see [Getting navidrome-experimental](#getting-navidrome-experimental) above. For
+general installation concepts (reverse proxies, environment variables, building from source, etc.) that apply the
+same way here as upstream, see instructions on the [project's website](https://www.navidrome.org/docs/installation/).
 
 ## Cloud Hosting
 
