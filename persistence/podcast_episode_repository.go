@@ -64,14 +64,14 @@ func (r *podcastEpisodeRepository) withPlayAnnotation(sel SelectBuilder) SelectB
 }
 
 func (r *podcastEpisodeRepository) Get(id string) (*model.PodcastEpisode, error) {
-	sel := r.withPlayAnnotation(r.newSelect().Where(Eq{"id": id}).Columns("*"))
+	sel := r.withPlayAnnotation(r.newSelect().Where(Eq{"id": id}).Columns("podcast_episode.*"))
 	res := model.PodcastEpisode{}
 	err := r.queryOne(sel, &res)
 	return &res, err
 }
 
 func (r *podcastEpisodeRepository) GetAll(options ...model.QueryOptions) (model.PodcastEpisodes, error) {
-	sel := r.withPlayAnnotation(r.newSelect(options...).Columns("*"))
+	sel := r.withPlayAnnotation(r.newSelect(options...).Columns("podcast_episode.*"))
 	res := model.PodcastEpisodes{}
 	err := r.queryAll(sel, &res)
 	return res, err
@@ -85,7 +85,7 @@ func (r *podcastEpisodeRepository) FindByGuid(channelID, guid string) (*model.Po
 }
 
 func (r *podcastEpisodeRepository) GetNewest(count int) (model.PodcastEpisodes, error) {
-	sel := r.withPlayAnnotation(r.newSelect().Columns("*")).OrderBy("publish_date desc").Limit(uint64(count))
+	sel := r.withPlayAnnotation(r.newSelect().Columns("podcast_episode.*")).OrderBy("publish_date desc").Limit(uint64(count))
 	res := model.PodcastEpisodes{}
 	err := r.queryAll(sel, &res)
 	return res, err
