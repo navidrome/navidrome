@@ -9,10 +9,17 @@ import (
 	"github.com/navidrome/navidrome/model"
 )
 
-func CreateMockUserRepo() *MockedUserRepo {
+func CreateMockUserRepo(apiKeyRepo ...*MockedAPIKeyRepo) *MockedUserRepo {
+	var repo *MockedAPIKeyRepo
+	if len(apiKeyRepo) > 0 {
+		repo = apiKeyRepo[0]
+	} else {
+		repo = CreateMockApiKeyRepo()
+	}
 	return &MockedUserRepo{
 		Data:          map[string]*model.User{},
 		UserLibraries: map[string][]int{},
+		APIKeyRepo:    repo,
 	}
 }
 
@@ -21,9 +28,10 @@ type MockedUserRepo struct {
 	Error         error
 	Data          map[string]*model.User
 	UserLibraries map[string][]int // userID -> libraryIDs
+	APIKeyRepo *MockedAPIKeyRepo
 }
 
-func (u *MockedUserRepo) CountAll(qo ...model.QueryOptions) (int64, error) {
+func (u *MockedUserRepo) CountAll(_ ...model.QueryOptions) (int64, error) {
 	if u.Error != nil {
 		return 0, u.Error
 	}
@@ -175,4 +183,23 @@ func (u *MockedUserRepo) Update(id string, entity any, cols ...string) error {
 	usr := entity.(*model.User)
 	usr.ID = id
 	return u.Put(usr)
+}
+
+func (u *MockedUserRepo) FindByAPIKey(key string) (*model.User, error) {
+	if u.Error != nil {
+		return nil, u.Error
+	}
+
+	apiKey, err := u.APIKeyRepo.FindByKey(key)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, usr := range u.Data {
+		if usr.ID == apiKey.UserID {
+			return usr, nil
+		}
+	}
+
+	return nil, model.ErrNotFound
 }

@@ -97,6 +97,10 @@ func (s *SQLStore) Plugin(ctx context.Context) model.PluginRepository {
 	return NewPluginRepository(ctx, s.getDBXBuilder())
 }
 
+func (s *SQLStore) APIKey(ctx context.Context) model.APIKeyRepository {
+	return NewAPIKeyRepository(ctx, s.getDBXBuilder())
+}
+
 func (s *SQLStore) Resource(ctx context.Context, m any) model.ResourceRepository {
 	switch m.(type) {
 	case model.User:
@@ -123,6 +127,8 @@ func (s *SQLStore) Resource(ctx context.Context, m any) model.ResourceRepository
 		return s.Tag(ctx).(model.ResourceRepository)
 	case model.Plugin:
 		return s.Plugin(ctx).(model.ResourceRepository)
+	case model.APIKey:
+		return s.APIKey(ctx).(model.ResourceRepository)
 	}
 	log.Error("Resource not implemented", "model", reflect.TypeOf(m).Name())
 	return nil

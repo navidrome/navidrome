@@ -50,6 +50,7 @@ import { HTML5Backend } from 'react-dnd-html5-backend'
 import { DndProvider } from 'react-dnd'
 import missing from './missing/index.js'
 import { useEffect } from 'react'
+import apikey from './apikey/index.js'
 
 const history = createHashHistory()
 
@@ -138,6 +139,11 @@ const Admin = (props) => {
           options={{ subMenu: 'playlist' }}
         />,
         <Resource name="user" {...user} options={{ subMenu: 'settings' }} />,
+        <Resource
+          name="apikey"
+          {...apikey}
+          options={{ subMenu: 'settings' }}
+        />,
         <Resource
           name="player"
           {...player}

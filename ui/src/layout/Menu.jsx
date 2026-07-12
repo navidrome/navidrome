@@ -103,7 +103,10 @@ const Menu = ({ dense = false }) => {
   }
 
   const subItems = (subMenu) => (resource) =>
-    resource.hasList && resource.options && resource.options.subMenu === subMenu
+    resource.hasList &&
+    resource.options &&
+    resource.options.subMenu === subMenu &&
+    resource.name !== 'apikey'
 
   return (
     <div
