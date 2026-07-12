@@ -487,7 +487,16 @@ func playlistTrackLess(sortField string) func(a, b model.PlaylistTrack) bool {
 	case "year":
 		return func(a, b model.PlaylistTrack) bool { return a.Year < b.Year }
 	case "bpm":
-		return func(a, b model.PlaylistTrack) bool { return a.BPM < b.BPM }
+		return func(a, b model.PlaylistTrack) bool {
+			switch {
+			case a.BPM == nil:
+				return b.BPM != nil
+			case b.BPM == nil:
+				return false
+			default:
+				return *a.BPM < *b.BPM
+			}
+		}
 	case "channels":
 		return func(a, b model.PlaylistTrack) bool { return a.Channels < b.Channels }
 	default: // "id" (position) and anything unrecognized

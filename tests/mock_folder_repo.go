@@ -96,4 +96,18 @@ func (r *MockFolderRepo) GetTouchedWithPlaylists() (model.FolderCursor, error) {
 	return func(yield func(model.Folder, error) bool) {}, nil
 }
 
+func (r *MockFolderRepo) GetAllWithPlaylists() (model.FolderCursor, error) {
+	if r.Error != nil {
+		return nil, r.Error
+	}
+	return func(yield func(model.Folder, error) bool) {}, nil
+}
+
+func (r *MockFolderRepo) HasAudioOutsideFolders(model.Folder, []string) (bool, error) {
+	if r.Error != nil {
+		return false, r.Error
+	}
+	return false, nil
+}
+
 var _ model.FolderRepository = (*MockFolderRepo)(nil)
