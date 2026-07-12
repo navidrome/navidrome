@@ -61,8 +61,6 @@ as they do for upstream Navidrome.
 Please use [releases](https://github.com/navidrome/navidrome/releases) instead of 
 the `master` branch in order to get a stable set of binaries.
 
-## [Check out our Live Demo!](https://www.navidrome.org/demo/)
-
 __Any feedback is welcome!__ If you need/want a new feature, find a bug or think of any way to improve Navidrome, 
 please file a [GitHub issue](https://github.com/navidrome/navidrome/issues) or join the discussion in our 
 [Subreddit](https://www.reddit.com/r/navidrome/). If you want to contribute to the project in any other way 
@@ -76,14 +74,6 @@ please file a [GitHub issue](https://github.com/navidrome/navidrome/issues) or j
 For this fork specifically, see [Getting navidrome-experimental](#getting-navidrome-experimental) above. For
 general installation concepts (reverse proxies, environment variables, building from source, etc.) that apply the
 same way here as upstream, see instructions on the [project's website](https://www.navidrome.org/docs/installation/).
-
-## Cloud Hosting
-
-[PikaPods](https://www.pikapods.com) has partnered with us to offer you an 
-[officially supported, cloud-hosted solution](https://www.navidrome.org/docs/installation/managed/#pikapods). 
-A share of the revenue helps fund the development of Navidrome at no additional cost for you.
-
-[![PikaPods](https://www.pikapods.com/static/run-button.svg)](https://www.pikapods.com/pods?run=navidrome)
 
 ## Features
  
