@@ -15,7 +15,7 @@ Drafted, **not yet posted**. Holding these until a few open questions below are 
 
 > Hey all — I've been running a personal fork of Navidrome and wanted to share what I've added, in case it's useful to anyone else.
 >
-> **Podcast support** ([github.com/RFLundgren/navidrome_experimental](https://github.com/RFLundgren/navidrome_experimental)) — built specifically to work through the real Subsonic API, not just the web UI, so any Subsonic-compatible client can subscribe, download, and stream episodes exactly like a standard Subsonic server:
+> **Podcast support** ([github.com/RFLundgren/navidrome_experimental](https://github.com/RFLundgren/navidrome_experimental)) — built through the real Subsonic API spec's podcast endpoints (not a Navidrome-only extension), so any client that's implemented that part of the spec gets full support with no server-specific hacks needed. (Whether your particular client has built that UI is up to its own developers — spec coverage for podcasts varies a lot across the ecosystem, so this isn't a guarantee your app already shows a podcasts tab.)
 > - Discovery via search or live regional top-charts (manual RSS URL entry also supported)
 > - Stream-only or download-to-disk, set per channel
 > - Retention policies (episode count / age / total storage, oldest-downloaded-first cleanup)

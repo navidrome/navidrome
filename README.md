@@ -105,9 +105,10 @@ A share of the revenue helps fund the development of Navidrome at no additional 
 
 Most self-hosted music servers treat podcasts as an afterthought, if they support them at all — usually meaning a
 separate app, a separate sync, or no real download management. This fork builds podcasts as a first-class feature
-on the same server, through the real Subsonic API, so it works in whatever client you already use to stream your
-music — Cirque, Symfonium, Sublime Music, DSub, or anything else that speaks Subsonic. No plugin required on the
-client side.
+on the same server, through the real Subsonic API spec's podcast endpoints — not a Navidrome-only extension. Any
+client that has implemented that part of the spec gets full support with no server-specific hacks needed. Whether
+your particular client shows a podcasts tab at all comes down to that client's own developers — spec coverage
+varies a lot across the Subsonic app ecosystem, so check what your client actually supports before assuming.
 
 ### 🔍 Discover shows without hunting for RSS URLs
 Search by name, or browse live, region-specific top charts to see what's actually trending where you are — pasting
@@ -130,9 +131,11 @@ tracked independently per user on multi-user servers.
 
 ### 🔌 Real Subsonic API coverage, not a partial implementation
 `getPodcasts`, `getNewestPodcasts`, `createPodcastChannel`, `refreshPodcasts`, `deletePodcastChannel`/
-`deletePodcastEpisode`, `downloadPodcastEpisode` — and streaming/downloading both go through the exact same
-endpoints your client already uses for songs. No special client-side support required, no separate integration to
-build.
+`deletePodcastEpisode`, `downloadPodcastEpisode` are all real, spec-compliant endpoints — a client still needs its
+own UI to call them (subscribing, browsing episodes, etc. are new surface area, not something existing song-browsing
+screens do for free). Where it *does* piggyback on what's already there: once a client has an episode's ID,
+streaming and downloading it go through the exact same `stream.view`/`download.view` endpoints it already uses for
+songs — no separate playback path to build.
 
 ### 🎛️ Fine-grained control
 Personal toggle to hide the Podcasts section from your own sidebar if you don't use it (same mechanism as the
