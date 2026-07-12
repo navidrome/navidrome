@@ -54,6 +54,9 @@ type Subsonic struct {
 
 	InternetRadioStations *InternetRadioStations `xml:"internetRadioStations,omitempty"   json:"internetRadioStations,omitempty"`
 
+	Podcasts       *Podcasts       `xml:"podcasts,omitempty"                            json:"podcasts,omitempty"`
+	NewestPodcasts *NewestPodcasts `xml:"newestPodcasts,omitempty"                      json:"newestPodcasts,omitempty"`
+
 	JukeboxStatus   *JukeboxStatus   `xml:"jukeboxStatus,omitempty"                       json:"jukeboxStatus,omitempty"`
 	JukeboxPlaylist *JukeboxPlaylist `xml:"jukeboxPlaylist,omitempty"                     json:"jukeboxPlaylist,omitempty"`
 
@@ -528,6 +531,35 @@ type Radio struct {
 
 type OpenSubsonicRadio struct {
 	CoverArt string `xml:"coverArt,attr,omitempty"  json:"coverArt"`
+}
+
+type Podcasts struct {
+	Channel []PodcastChannel `xml:"channel"           json:"channel,omitempty"`
+}
+
+type PodcastChannel struct {
+	Id               string           `xml:"id,attr"                         json:"id"`
+	Url              string           `xml:"url,attr"                        json:"url"`
+	Title            string           `xml:"title,attr"                      json:"title"`
+	Description      string           `xml:"description,attr,omitempty"      json:"description,omitempty"`
+	CoverArt         string           `xml:"coverArt,attr,omitempty"         json:"coverArt,omitempty"`
+	OriginalImageUrl string           `xml:"originalImageUrl,attr,omitempty" json:"originalImageUrl,omitempty"`
+	Status           string           `xml:"status,attr"                     json:"status"`
+	ErrorMessage     string           `xml:"errorMessage,attr,omitempty"     json:"errorMessage,omitempty"`
+	Episode          []PodcastEpisode `xml:"episode,omitempty"               json:"episode,omitempty"`
+}
+
+type PodcastEpisode struct {
+	Child
+	StreamId    string     `xml:"streamId,attr,omitempty"    json:"streamId,omitempty"`
+	ChannelId   string     `xml:"channelId,attr"             json:"channelId"`
+	Description string     `xml:"description,attr,omitempty" json:"description,omitempty"`
+	Status      string     `xml:"status,attr"                json:"status"`
+	PublishDate *time.Time `xml:"publishDate,attr,omitempty" json:"publishDate,omitempty"`
+}
+
+type NewestPodcasts struct {
+	Episode []PodcastEpisode `xml:"episode,omitempty" json:"episode,omitempty"`
 }
 
 type JukeboxStatus struct {

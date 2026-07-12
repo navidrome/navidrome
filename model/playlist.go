@@ -106,6 +106,24 @@ func (pls *Playlist) AddMediaFiles(mfs MediaFiles) {
 	pls.refreshStats()
 }
 
+// AddTrackRefs appends tracks that may reference either a song or a
+// downloaded podcast episode, per ref.ItemType.
+func (pls *Playlist) AddTrackRefs(refs []PlaylistTrackRef) {
+	pos := len(pls.Tracks)
+	for _, ref := range refs {
+		pos++
+		t := PlaylistTrack{
+			ID:          strconv.Itoa(pos),
+			MediaFileID: ref.ID,
+			ItemType:    ref.ItemType,
+			MediaFile:   MediaFile{ID: ref.ID},
+			PlaylistID:  pls.ID,
+		}
+		pls.Tracks = append(pls.Tracks, t)
+	}
+	pls.refreshStats()
+}
+
 func (pls Playlist) CoverArtID() ArtworkID {
 	return artworkIDFromPlaylist(pls)
 }
@@ -132,13 +150,28 @@ type PlaylistRepository interface {
 	FindByPath(path string) (*Playlist, error)
 	Delete(id string) error
 	Tracks(playlistId string, refreshSmartPlaylist bool) PlaylistTrackRepository
-	GetPlaylists(mediaFileId string) (Playlists, error)
+	GetPlaylists(itemID string) (Playlists, error)
+	// RemoveItemFromPlaylists deletes every playlist_tracks row referencing itemID
+	// (a MediaFile or PodcastEpisode ID) across all playlists, renumbering each
+	// affected playlist. Used to cascade a podcast episode's download deletion.
+	RemoveItemFromPlaylists(itemID string) error
 }
 
+// PlaylistTrackItemType distinguishes what a PlaylistTrack's MediaFileID
+// refers to. Historically playlists only ever referenced MediaFile rows;
+// this lets a track reference a downloaded PodcastEpisode instead.
+type PlaylistTrackItemType string
+
+const (
+	PlaylistTrackSong           PlaylistTrackItemType = "song"
+	PlaylistTrackPodcastEpisode PlaylistTrackItemType = "podcast_episode"
+)
+
 type PlaylistTrack struct {
-	ID          string `json:"id"`
-	MediaFileID string `json:"mediaFileId"`
-	PlaylistID  string `json:"playlistId"`
+	ID          string                `json:"id"`
+	MediaFileID string                `json:"mediaFileId"`
+	PlaylistID  string                `json:"playlistId"`
+	ItemType    PlaylistTrackItemType `json:"itemType,omitempty"`
 	MediaFile
 }
 
@@ -152,11 +185,19 @@ func (plt PlaylistTracks) MediaFiles() MediaFiles {
 	return mfs
 }
 
+// PlaylistTrackRef identifies an item to add to a playlist, either a song
+// (MediaFile) or a downloaded PodcastEpisode.
+type PlaylistTrackRef struct {
+	ID       string
+	ItemType PlaylistTrackItemType
+}
+
 type PlaylistTrackRepository interface {
 	ResourceRepository
 	GetAll(options ...QueryOptions) (PlaylistTracks, error)
 	GetAlbumIDs(options ...QueryOptions) ([]string, error)
 	Add(mediaFileIds []string) (int, error)
+	AddItems(items []PlaylistTrackRef) (int, error)
 	AddAlbums(albumIds []string) (int, error)
 	AddArtists(artistIds []string) (int, error)
 	AddDiscs(discs []DiscID) (int, error)

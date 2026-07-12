@@ -3,11 +3,13 @@ import {
   SET_OMITTED_FIELDS,
   SET_TOGGLEABLE_FIELDS,
   SET_SHOW_FOLDER_VIEW,
+  SET_SHOW_PODCASTS,
 } from '../actions'
 
 const initialState = {
   notifications: false,
   showFolderView: true,
+  showPodcasts: true,
   toggleableFields: {},
   omittedFields: {},
 }
@@ -21,6 +23,12 @@ export const settingsReducer = (previousState = initialState, payload) => {
       showFolderView: true,
     }
   }
+  if (previousState && previousState.showPodcasts === undefined) {
+    previousState = {
+      ...previousState,
+      showPodcasts: true,
+    }
+  }
 
   switch (type) {
     case SET_NOTIFICATIONS_STATE:
@@ -32,6 +40,11 @@ export const settingsReducer = (previousState = initialState, payload) => {
       return {
         ...previousState,
         showFolderView: data,
+      }
+    case SET_SHOW_PODCASTS:
+      return {
+        ...previousState,
+        showPodcasts: data,
       }
     case SET_TOGGLEABLE_FIELDS:
       return {

@@ -110,9 +110,10 @@ const (
 
 // Entity types
 const (
-	EntityArtist   = "artist"
-	EntityPlaylist = "playlist"
-	EntityRadio    = "radio"
+	EntityArtist         = "artist"
+	EntityPlaylist       = "playlist"
+	EntityRadio          = "radio"
+	EntityPodcastChannel = "podcastChannel"
 )
 
 const (

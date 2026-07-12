@@ -85,6 +85,21 @@ func (r *playlistTrackRepository) Count(options ...rest.QueryOptions) (int64, er
 }
 
 func (r *playlistTrackRepository) Read(id string) (any, error) {
+	var row struct {
+		ItemType string `db:"item_type"`
+	}
+	typeSel := r.newSelect().Columns("item_type").
+		Where(And{Eq{"playlist_id": r.playlistId}, Eq{"playlist_tracks.id": id}})
+	if err := r.queryOne(typeSel, &row); err != nil {
+		return nil, err
+	}
+	if row.ItemType == string(model.PlaylistTrackPodcastEpisode) {
+		return r.readEpisodeTrack(id)
+	}
+	return r.readSongTrack(id)
+}
+
+func (r *playlistTrackRepository) readSongTrack(id string) (any, error) {
 	userID := loggedUser(r.ctx).ID
 	sel := r.newSelect().
 		LeftJoin("annotation on ("+
@@ -108,8 +123,26 @@ func (r *playlistTrackRepository) Read(id string) (any, error) {
 	return trk.PlaylistTrack, err
 }
 
+func (r *playlistTrackRepository) readEpisodeTrack(id string) (any, error) {
+	sel := Select("pe.*", "pc.title as channel_title", "playlist_tracks.id as position").
+		From("playlist_tracks").
+		Join("podcast_episode pe on pe.id = playlist_tracks.media_file_id").
+		Join("podcast_channel pc on pc.id = pe.channel_id").
+		Where(And{Eq{"playlist_tracks.playlist_id": r.playlistId}, Eq{"playlist_tracks.id": id}})
+	var row dbPlaylistEpisodeTrack
+	if err := r.queryOne(sel, &row); err != nil {
+		return nil, err
+	}
+	trk := row.toPlaylistTrack(r.playlistId)
+	return &trk, nil
+}
+
 func (r *playlistTrackRepository) GetAll(options ...model.QueryOptions) (model.PlaylistTracks, error) {
-	tracks, err := r.playlistRepo.loadTracks(r.newSelect(options...), r.playlistId)
+	var opts model.QueryOptions
+	if len(options) > 0 {
+		opts = options[0]
+	}
+	tracks, err := r.playlistRepo.loadTracks(r.playlistId, opts, false)
 	if err != nil {
 		return nil, err
 	}
@@ -141,8 +174,16 @@ func (r *playlistTrackRepository) NewInstance() any {
 }
 
 func (r *playlistTrackRepository) Add(mediaFileIds []string) (int, error) {
-	if len(mediaFileIds) > 0 {
-		log.Debug(r.ctx, "Adding songs to playlist", "playlistId", r.playlistId, "mediaFileIds", mediaFileIds)
+	refs := make([]model.PlaylistTrackRef, len(mediaFileIds))
+	for i, id := range mediaFileIds {
+		refs[i] = model.PlaylistTrackRef{ID: id, ItemType: model.PlaylistTrackSong}
+	}
+	return r.AddItems(refs)
+}
+
+func (r *playlistTrackRepository) AddItems(items []model.PlaylistTrackRef) (int, error) {
+	if len(items) > 0 {
+		log.Debug(r.ctx, "Adding items to playlist", "playlistId", r.playlistId, "count", len(items))
 	} else {
 		return 0, nil
 	}
@@ -155,7 +196,7 @@ func (r *playlistTrackRepository) Add(mediaFileIds []string) (int, error) {
 		return 0, err
 	}
 
-	return len(mediaFileIds), r.playlistRepo.addTracks(r.playlistId, int(res.Max.Int32+1), mediaFileIds)
+	return len(items), r.playlistRepo.addTracks(r.playlistId, int(res.Max.Int32+1), items)
 }
 
 func (r *playlistTrackRepository) addMediaFileIds(cond Sqlizer) (int, error) {

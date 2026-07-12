@@ -93,6 +93,24 @@ describe('getCoverArtUrl', () => {
     expect(url).toContain('square=true')
   })
 
+  it('should return podcast channel cover art URL for records with downloadPolicy', () => {
+    const podcastChannelRecord = {
+      id: 'channel-123',
+      downloadPolicy: 'none',
+      updatedAt: '2023-01-01T00:00:00Z',
+    }
+
+    const url = subsonic.getCoverArtUrl(
+      podcastChannelRecord,
+      config.uiCoverArtSize,
+      true,
+    )
+
+    expect(url).toContain('pc-channel-123')
+    expect(url).toContain('size=600')
+    expect(url).toContain('square=true')
+  })
+
   it('should return artist cover art URL for other records', () => {
     const artistRecord = {
       id: 'artist-123',

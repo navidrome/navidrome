@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	. "github.com/Masterminds/squirrel"
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
@@ -107,6 +108,7 @@ func (s *playlists) GetPlaylists(ctx context.Context, mediaFileId string) (model
 // playlist (when playlistId is provided). This matches the Subsonic createPlaylist semantics.
 func (s *playlists) Create(ctx context.Context, playlistId string, name string, ids []string) (string, error) {
 	usr, _ := request.UserFrom(ctx)
+	refs := s.classifyTrackRefs(ctx, ids)
 	err := s.ds.WithTxImmediate(func(tx model.DataStore) error {
 		var pls *model.Playlist
 		var err error
@@ -127,13 +129,48 @@ func (s *playlists) Create(ctx context.Context, playlistId string, name string, 
 			pls.OwnerID = usr.ID
 		}
 		pls.Tracks = nil
-		pls.AddMediaFilesByID(ids)
+		pls.AddTrackRefs(refs)
 
 		err = tx.Playlist(ctx).Put(pls)
 		playlistId = pls.ID
 		return err
 	})
 	return playlistId, err
+}
+
+// classifyTrackRefs splits a raw list of IDs (as sent by a Subsonic or
+// native REST client) into song vs. podcast episode references. An ID that
+// matches a podcast episode which isn't downloaded yet is dropped rather
+// than added as a broken reference - only downloaded episodes may belong
+// to a playlist, since a playlist entry has no way to represent "stream
+// this from the source URL" the way stream.view does.
+func (s *playlists) classifyTrackRefs(ctx context.Context, ids []string) []model.PlaylistTrackRef {
+	if len(ids) == 0 {
+		return nil
+	}
+	episodesByID := map[string]model.PodcastEpisode{}
+	episodes, err := s.ds.PodcastEpisode(ctx).GetAll(model.QueryOptions{Filters: Eq{"id": ids}})
+	if err != nil {
+		log.Warn(ctx, "Error checking for podcast episodes among playlist track ids", err)
+	} else {
+		for _, ep := range episodes {
+			episodesByID[ep.ID] = ep
+		}
+	}
+
+	refs := make([]model.PlaylistTrackRef, 0, len(ids))
+	for _, id := range ids {
+		if ep, ok := episodesByID[id]; ok {
+			if !ep.IsDownloaded() {
+				log.Warn(ctx, "Skipping podcast episode not downloaded, can't be added to a playlist", "id", id)
+				continue
+			}
+			refs = append(refs, model.PlaylistTrackRef{ID: id, ItemType: model.PlaylistTrackPodcastEpisode})
+			continue
+		}
+		refs = append(refs, model.PlaylistTrackRef{ID: id, ItemType: model.PlaylistTrackSong})
+	}
+	return refs
 }
 
 func (s *playlists) Delete(ctx context.Context, id string) error {
@@ -166,6 +203,7 @@ func (s *playlists) Update(ctx context.Context, playlistID string,
 	if err != nil {
 		return err
 	}
+	refs := s.classifyTrackRefs(ctx, idsToAdd)
 	return s.ds.WithTxImmediate(func(tx model.DataStore) error {
 		repo := tx.Playlist(ctx)
 
@@ -180,16 +218,16 @@ func (s *playlists) Update(ctx context.Context, playlistID string,
 			if err := tracksRepo.Delete(positions...); err != nil {
 				return err
 			}
-			if len(idsToAdd) > 0 {
-				if _, err := tracksRepo.Add(idsToAdd); err != nil {
+			if len(refs) > 0 {
+				if _, err := tracksRepo.AddItems(refs); err != nil {
 					return err
 				}
 			}
 			return s.updateMetadata(ctx, tx, pls, name, comment, public)
 		}
 
-		if len(idsToAdd) > 0 {
-			if _, err := repo.Tracks(playlistID, false).Add(idsToAdd); err != nil {
+		if len(refs) > 0 {
+			if _, err := repo.Tracks(playlistID, false).AddItems(refs); err != nil {
 				return err
 			}
 		}
@@ -250,7 +288,8 @@ func (s *playlists) AddTracks(ctx context.Context, playlistID string, ids []stri
 	if _, err := s.checkTracksEditable(ctx, playlistID); err != nil {
 		return 0, err
 	}
-	return s.ds.Playlist(ctx).Tracks(playlistID, false).Add(ids)
+	refs := s.classifyTrackRefs(ctx, ids)
+	return s.ds.Playlist(ctx).Tracks(playlistID, false).AddItems(refs)
 }
 
 func (s *playlists) AddAlbums(ctx context.Context, playlistID string, albumIds []string) (int, error) {

@@ -262,6 +262,59 @@
         "playNow": "Play Now"
       }
     },
+    "podcastChannel": {
+      "name": "Podcast |||| Podcasts",
+      "fields": {
+        "url": "Feed URL",
+        "title": "Title",
+        "description": "Description",
+        "status": "Status",
+        "downloadPolicy": "Download policy",
+        "retentionCount": "Keep last N episodes",
+        "retentionDays": "Keep episodes for N days",
+        "maxStorageMb": "Max storage (MB)",
+        "lastCheckedAt": "Last checked",
+        "updatedAt": "Updated at",
+        "createdAt": "Created at"
+      },
+      "downloadPolicy": {
+        "none": "Stream only",
+        "new": "Download new episodes",
+        "all": "Download all episodes"
+      },
+      "search": "Search",
+      "searchPlaceholder": "Search for a podcast by name",
+      "noSearchResults": "No podcasts found",
+      "subscribe": "Subscribe",
+      "subscribing": "Subscribing...",
+      "manualEntryLabel": "Or paste a feed URL directly",
+      "trendingLabel": "Or pick a trending show",
+      "emptyTitle": "No podcasts yet",
+      "emptyBody": "Search for a podcast by name, paste a feed URL, or try one of these",
+      "notifications": {
+        "searchFailed": "Could not search for podcasts",
+        "subscribeFailed": "Could not subscribe to this podcast",
+        "subscribed": "Subscribed"
+      }
+    },
+    "podcastEpisode": {
+      "name": "Episode |||| Episodes",
+      "fields": {
+        "title": "Title",
+        "publishDate": "Published",
+        "duration": "Duration",
+        "downloadStatus": "Download status"
+      },
+      "downloadStatus": {
+        "not_downloaded": "Not downloaded",
+        "queued": "Queued",
+        "downloading": "Downloading",
+        "downloaded": "Downloaded",
+        "error": "Error",
+        "deleted": "Deleted"
+      },
+      "listened": "Listened"
+    },
     "share": {
       "name": "Share |||| Shares",
       "fields": {
@@ -625,6 +678,7 @@
   "menu": {
     "library": "Library",
     "folders": "Folders",
+    "podcasts": "Podcasts",
     "librarySelector": {
       "allLibraries": "All Libraries (%{count})",
       "multipleLibraries": "%{selected} of %{total} Libraries",
@@ -642,6 +696,7 @@
         "defaultView": "Default View",
         "desktop_notifications": "Desktop Notifications",
         "showFolderView": "Show Folder View",
+        "showPodcasts": "Show Podcasts",
         "lastfmNotConfigured": "Last.fm API-Key is not configured",
         "lastfmScrobbling": "Scrobble to Last.fm",
         "listenBrainzScrobbling": "Scrobble to ListenBrainz",

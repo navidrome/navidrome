@@ -19,6 +19,16 @@ func (m *MockPlaylistTrackRepo) Add(ids []string) (int, error) {
 	return m.AddCount, nil
 }
 
+func (m *MockPlaylistTrackRepo) AddItems(items []model.PlaylistTrackRef) (int, error) {
+	for _, item := range items {
+		m.AddedIds = append(m.AddedIds, item.ID)
+	}
+	if m.Err != nil {
+		return 0, m.Err
+	}
+	return m.AddCount, nil
+}
+
 func (m *MockPlaylistTrackRepo) AddAlbums(_ []string) (int, error) {
 	if m.Err != nil {
 		return 0, m.Err

@@ -18,23 +18,25 @@ func (k Kind) String() string {
 }
 
 var (
-	KindMediaFileArtwork = Kind{"mf", "media_file"}
-	KindArtistArtwork    = Kind{"ar", "artist"}
-	KindAlbumArtwork     = Kind{"al", "album"}
-	KindPlaylistArtwork  = Kind{"pl", "playlist"}
-	KindDiscArtwork      = Kind{"dc", "disc"}
-	KindRadioArtwork     = Kind{"ra", "radio"}
-	KindFolderArtwork    = Kind{"fo", "folder"}
+	KindMediaFileArtwork      = Kind{"mf", "media_file"}
+	KindArtistArtwork         = Kind{"ar", "artist"}
+	KindAlbumArtwork          = Kind{"al", "album"}
+	KindPlaylistArtwork       = Kind{"pl", "playlist"}
+	KindDiscArtwork           = Kind{"dc", "disc"}
+	KindRadioArtwork          = Kind{"ra", "radio"}
+	KindFolderArtwork         = Kind{"fo", "folder"}
+	KindPodcastChannelArtwork = Kind{"pc", "podcast_channel"}
 )
 
 var artworkKindMap = map[string]Kind{
-	KindMediaFileArtwork.prefix: KindMediaFileArtwork,
-	KindArtistArtwork.prefix:    KindArtistArtwork,
-	KindAlbumArtwork.prefix:     KindAlbumArtwork,
-	KindPlaylistArtwork.prefix:  KindPlaylistArtwork,
-	KindDiscArtwork.prefix:      KindDiscArtwork,
-	KindRadioArtwork.prefix:     KindRadioArtwork,
-	KindFolderArtwork.prefix:    KindFolderArtwork,
+	KindMediaFileArtwork.prefix:      KindMediaFileArtwork,
+	KindArtistArtwork.prefix:         KindArtistArtwork,
+	KindAlbumArtwork.prefix:          KindAlbumArtwork,
+	KindPlaylistArtwork.prefix:       KindPlaylistArtwork,
+	KindDiscArtwork.prefix:           KindDiscArtwork,
+	KindRadioArtwork.prefix:          KindRadioArtwork,
+	KindFolderArtwork.prefix:         KindFolderArtwork,
+	KindPodcastChannelArtwork.prefix: KindPodcastChannelArtwork,
 }
 
 type ArtworkID struct {
@@ -149,6 +151,14 @@ func artworkIDFromRadio(r Radio) ArtworkID {
 		Kind:       KindRadioArtwork,
 		ID:         r.ID,
 		LastUpdate: r.UpdatedAt,
+	}
+}
+
+func artworkIDFromPodcastChannel(c PodcastChannel) ArtworkID {
+	return ArtworkID{
+		Kind:       KindPodcastChannelArtwork,
+		ID:         c.ID,
+		LastUpdate: c.UpdatedAt,
 	}
 }
 
