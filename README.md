@@ -2,18 +2,31 @@
 
 # Navidrome Music Server &nbsp;[![Tweet](https://img.shields.io/twitter/url/http/shields.io.svg?style=social)](https://twitter.com/intent/tweet?text=Tired%20of%20paying%20for%20music%20subscriptions%2C%20and%20not%20finding%20what%20you%20really%20like%3F%20Roll%20your%20own%20streaming%20service%21&url=https://navidrome.org&via=navidrome)
 
-[![Last Release](https://img.shields.io/github/v/release/navidrome/navidrome?logo=github&label=latest&style=flat-square)](https://github.com/navidrome/navidrome/releases)
-[![Build](https://img.shields.io/github/actions/workflow/status/navidrome/navidrome/pipeline.yml?branch=master&logo=github&style=flat-square)](https://nightly.link/navidrome/navidrome/workflows/pipeline/master)
-[![Downloads](https://img.shields.io/github/downloads/navidrome/navidrome/total?logo=github&style=flat-square)](https://github.com/navidrome/navidrome/releases/latest)
-[![Docker Pulls](https://img.shields.io/docker/pulls/deluan/navidrome?logo=docker&label=pulls&style=flat-square)](https://hub.docker.com/r/deluan/navidrome)
+[![Build](https://img.shields.io/github/actions/workflow/status/RFLundgren/navidrome_experimental/pipeline.yml?branch=master&logo=github&style=flat-square)](https://github.com/RFLundgren/navidrome_experimental/actions)
+[![Docker Image](https://img.shields.io/badge/ghcr.io-navidrome__experimental-blue?logo=docker&style=flat-square)](https://github.com/RFLundgren/navidrome_experimental/pkgs/container/navidrome_experimental)
 [![Dev Chat](https://img.shields.io/discord/671335427726114836?logo=discord&label=discord&style=flat-square)](https://discord.gg/xh7j7yF)
 [![Subreddit](https://img.shields.io/reddit/subreddit-subscribers/navidrome?logo=reddit&label=/r/navidrome&style=flat-square)](https://www.reddit.com/r/navidrome/)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.0-ff69b4.svg?style=flat-square)](CODE_OF_CONDUCT.md)
-[![Gurubase](https://img.shields.io/badge/Gurubase-Ask%20Navidrome%20Guru-006BFF?style=flat-square)](https://gurubase.io/g/navidrome)
 
 Navidrome is an open source web-based music collection server and streamer. It gives you freedom to listen to your
 music collection from any browser or mobile device. It's like your personal Spotify!
 
+## About This Fork
+
+**navidrome-experimental** is a personal fork of [Navidrome](https://github.com/navidrome/navidrome) adding features
+not yet available upstream. It tracks upstream closely and aims to stay compatible with the standard Navidrome/Subsonic
+ecosystem (clients, plugins, themes) — it just adds a few things on top:
+
+- **[Podcast support](PODCAST_PLAN.md)** — subscribe by search or regional top-charts, stream or download episodes,
+  per-channel retention policies, downloaded episodes in regular playlists, full Subsonic API coverage (works with
+  any Subsonic-compatible client, not just the web UI).
+- **[Physical folder browsing](navidrome-folder-roadmap.md)** — navigate your library exactly as it's laid out on
+  disk, with recursive play/shuffle/playlist actions, ZIP downloads, folder-pinned playlists, and Subsonic client
+  compatibility. See below for details.
+
+Docker images are published to `ghcr.io/rflundgren/navidrome_experimental`. Everything else — installation,
+configuration, the Subsonic API, plugins — works exactly like upstream Navidrome; see the
+[Documentation](#documentation) section below.
 
 **Note**: The `master` branch may be in an unstable or even broken state during development. 
 Please use [releases](https://github.com/navidrome/navidrome/releases) instead of 
@@ -56,6 +69,28 @@ A share of the revenue helps fund the development of Navidrome at no additional 
  - **Compatible** with all Subsonic/Madsonic/Airsonic [clients](https://www.navidrome.org/docs/overview/#apps)
  - **Transcoding** on the fly. Can be set per user/player. **Opus encoding is supported**
  - Translated to **various languages**
+
+## Podcast Support (Experimental)
+
+This version of Navidrome includes full **Podcast support** over RSS, built specifically to work through the real
+Subsonic API — not just the web UI — so any Subsonic-compatible client can subscribe, download, and stream episodes
+exactly like it would for a standard Subsonic server.
+
+### Current Features
+- **Discovery**: subscribe by searching iTunes' podcast directory, or pick from live, region-specific top charts.
+- **Stream or download**: per-channel policy — stream-only (proxied through the server on demand) or auto-download
+  new/all episodes to disk.
+- **Retention policies**: per-channel limits on episode count, age, or total storage, with oldest-downloaded-first
+  cleanup.
+- **Playlists**: downloaded episodes can be added to regular playlists alongside songs, reordered, and exported.
+- **Listened tracking**: episodes you've played are marked, per user.
+- **Full Subsonic API coverage**: `getPodcasts`, `getNewestPodcasts`, `createPodcastChannel`,
+  `downloadPodcastEpisode`, and streaming/download both work through the standard endpoints, so third-party apps
+  need no special support.
+- **Personal toggle**: hide the Podcasts section from your own sidebar if you don't use it (same as the Folder
+  view toggle below).
+
+For more details, including what's still on the roadmap, see [PODCAST_PLAN.md](PODCAST_PLAN.md).
 
 ## Physical Folder Browsing (Experimental)
 
