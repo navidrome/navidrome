@@ -106,19 +106,17 @@ var _ = Describe("ScrobbleRepository", func() {
 				Expect(err).To(BeNil())
 				Expect(scrobble.ID).To(Equal(int64(1)))
 				Expect(scrobble.MediaFileID).To(Equal("1001"))
-				Expect(scrobble.SubmissionTime).To(BeTemporally("==", firstScrobble.SubmissionTime))
+				Expect(scrobble.SubmissionTime).To(Equal(firstScrobble.SubmissionTime))
 
 			})
 
 			It("does not return a scrobble that exists for another user", func() {
-				scrobble, err := repo.Get("2")
-				Expect(scrobble).To(BeNil())
+				_, err := repo.Get("2")
 				Expect(err).To(MatchError(model.ErrNotFound))
 			})
 
 			It("does not return a scrobble that does not exist", func() {
-				scrobble, err := repo.Get("444")
-				Expect(scrobble).To(BeNil())
+				_, err := repo.Get("444")
 				Expect(err).To(MatchError(model.ErrNotFound))
 			})
 		})
@@ -134,11 +132,11 @@ var _ = Describe("ScrobbleRepository", func() {
 
 				Expect(scrobbles[0].ID).To(Equal(int64(3)))
 				Expect(scrobbles[0].MediaFileID).To(Equal("1002"))
-				Expect(scrobbles[0].SubmissionTime).To(BeTemporally("==", thirdScrobble.SubmissionTime))
+				Expect(scrobbles[0].SubmissionTime).To(Equal(thirdScrobble.SubmissionTime))
 
 				Expect(scrobbles[1].ID).To(Equal(int64(1)))
 				Expect(scrobbles[1].MediaFileID).To(Equal("1001"))
-				Expect(scrobbles[1].SubmissionTime).To(BeTemporally("==", firstScrobble.SubmissionTime))
+				Expect(scrobbles[1].SubmissionTime).To(Equal(firstScrobble.SubmissionTime))
 			})
 
 			It("returns scrobbles in a range", func() {
@@ -150,7 +148,7 @@ var _ = Describe("ScrobbleRepository", func() {
 
 				Expect(scrobbles[0].ID).To(Equal(int64(3)))
 				Expect(scrobbles[0].MediaFileID).To(Equal("1002"))
-				Expect(scrobbles[0].SubmissionTime).To(BeTemporally("==", thirdScrobble.SubmissionTime))
+				Expect(scrobbles[0].SubmissionTime).To(Equal(thirdScrobble.SubmissionTime))
 			})
 		})
 	})
@@ -177,18 +175,16 @@ var _ = Describe("ScrobbleRepository", func() {
 				Expect(err).To(BeNil())
 				Expect(scrobble.ID).To(Equal(int64(2)))
 				Expect(scrobble.MediaFileID).To(Equal("1003"))
-				Expect(scrobble.SubmissionTime).To(BeTemporally("==", secondScrobble.SubmissionTime))
+				Expect(scrobble.SubmissionTime).To(Equal(secondScrobble.SubmissionTime))
 			})
 
 			It("does not return a scrobble that exists for another user", func() {
-				scrobble, err := repo.Get("1")
-				Expect(scrobble).To(BeNil())
+				_, err := repo.Get("1")
 				Expect(err).To(MatchError(model.ErrNotFound))
 			})
 
 			It("does not return a scrobble that does not exist", func() {
-				scrobble, err := repo.Get("444")
-				Expect(scrobble).To(BeNil())
+				_, err := repo.Get("444")
 				Expect(err).To(MatchError(model.ErrNotFound))
 			})
 		})
@@ -204,7 +200,7 @@ var _ = Describe("ScrobbleRepository", func() {
 
 				Expect(scrobbles[0].ID).To(Equal(int64(2)))
 				Expect(scrobbles[0].MediaFileID).To(Equal("1003"))
-				Expect(scrobbles[0].SubmissionTime).To(BeTemporally("==", secondScrobble.SubmissionTime))
+				Expect(scrobbles[0].SubmissionTime).To(Equal(secondScrobble.SubmissionTime))
 			})
 
 			It("returns scrobbles in a range", func() {
@@ -216,7 +212,7 @@ var _ = Describe("ScrobbleRepository", func() {
 
 				Expect(scrobbles[0].ID).To(Equal(int64(2)))
 				Expect(scrobbles[0].MediaFileID).To(Equal("1003"))
-				Expect(scrobbles[0].SubmissionTime).To(BeTemporally("==", secondScrobble.SubmissionTime))
+				Expect(scrobbles[0].SubmissionTime).To(Equal(secondScrobble.SubmissionTime))
 			})
 		})
 	})

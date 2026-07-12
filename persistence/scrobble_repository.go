@@ -7,34 +7,11 @@ import (
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/pocketbase/dbx"
 )
 
 type scrobbleRepository struct {
 	sqlRepository
-}
-
-type dbScrobble struct {
-	ID             int64  `db:"id"`
-	MediaFileID    string `db:"media_file_id"`
-	SubmissionTime int64  `db:"submission_time"`
-}
-
-func (m dbScrobble) toScrobble() model.Scrobble {
-	return model.Scrobble{
-		MediaFileID:    m.MediaFileID,
-		ID:             m.ID,
-		SubmissionTime: time.Unix(m.SubmissionTime, 0),
-	}
-}
-
-type dbScrobbles []dbScrobble
-
-func (m dbScrobbles) toModels() model.Scrobbles {
-	return slice.Map(m, func(db dbScrobble) model.Scrobble {
-		return db.toScrobble()
-	})
 }
 
 func fromTs(_ string, value any) Sqlizer {
@@ -90,23 +67,16 @@ func (r *scrobbleRepository) Count(options ...rest.QueryOptions) (int64, error) 
 
 func (r *scrobbleRepository) Get(id string) (*model.Scrobble, error) {
 	sel := r.baseQuery().Where(Eq{"id": id})
-	var res dbScrobble
+	var res model.Scrobble
 	err := r.queryOne(sel, &res)
-	if err != nil {
-		return nil, err
-	}
-	asModel := res.toScrobble()
-	return &asModel, err
+	return &res, err
 }
 
 func (r *scrobbleRepository) GetAll(options ...model.QueryOptions) (model.Scrobbles, error) {
 	sel := r.baseQuery(options...)
-	var scrobbles dbScrobbles
+	var scrobbles model.Scrobbles
 	err := r.queryAll(sel, &scrobbles)
-	if err != nil {
-		return nil, err
-	}
-	return scrobbles.toModels(), nil
+	return scrobbles, err
 }
 
 func (r *scrobbleRepository) Read(id string) (any, error) {

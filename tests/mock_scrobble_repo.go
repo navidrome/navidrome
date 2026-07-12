@@ -37,7 +37,7 @@ func (m *MockScrobbleRepo) RecordScrobble(fileID string, submissionTime time.Tim
 	m.RecordedScrobbles = append(m.RecordedScrobbles, model.Scrobble{
 		MediaFileID:    fileID,
 		UserID:         user.ID,
-		SubmissionTime: submissionTime,
+		SubmissionTime: submissionTime.Unix(),
 	})
 	return nil
 }

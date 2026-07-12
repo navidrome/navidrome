@@ -3,10 +3,10 @@ package model
 import "time"
 
 type Scrobble struct {
-	ID             int64     `structs:"id" json:"id"`
-	MediaFileID    string    `structs:"media_file_id" json:"mediaFileId"`
-	UserID         string    `json:"-"`
-	SubmissionTime time.Time `structs:"submission_time" json:"submissionTime"`
+	ID             int64  `structs:"id" json:"id"`
+	MediaFileID    string `structs:"media_file_id" json:"mediaFileId"`
+	UserID         string `json:"-"`
+	SubmissionTime int64  `structs:"submission_time" json:"submissionTime"`
 }
 
 type ScrobbleRepository interface {
