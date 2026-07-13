@@ -97,6 +97,22 @@ func (pub *Router) mapShareToM3U(r *http.Request, s model.Share) *model.Share {
 	return &s
 }
 
+// encodeMediafileShare builds the signed token embedded in a public share link
+// for a single track.
+//
+// NOTE ON JWT USAGE: This is deliberately NOT part of Navidrome's authentication.
+// The token is a signed, opaque capability that identifies one shared track
+// (plus its transcode format/bitrate and the parent share id). We use a JWT here
+// (reusing the library we already have) because it is a simple way to get three
+// properties for a public link: the embedded ids can't be enumerated by guessing,
+// the signature
+// makes the claims tamper-evident, and the self-contained exp lets us reject
+// stale links without a DB lookup. It carries no user identity (no subject, no
+// admin flag) and grants access to nothing beyond the share it belongs to; the
+// stream handler still verifies the share exists, is unexpired, and that the
+// track is actually a member of it. An attacker who can forge these tokens
+// necessarily already holds the signing secret, which also signs real user
+// sessions, so that scenario is out of scope for the share boundary specifically.
 func encodeMediafileShare(s model.Share, id string) string {
 	claims := auth.Claims{
 		ID:      id,
