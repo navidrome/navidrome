@@ -136,6 +136,7 @@ func (api *Router) routes() http.Handler {
 			h(r, "getStarred", api.GetStarred)
 			h(r, "getStarred2", api.GetStarred2)
 			h(r, "getNowPlaying", api.GetNowPlaying)
+			h(r, "getMostPlayedSongs", api.GetMostPlayedSongs)
 			h(r, "getRandomSongs", api.GetRandomSongs)
 			h(r, "getSongsByGenre", api.GetSongsByGenre)
 		})
