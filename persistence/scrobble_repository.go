@@ -32,3 +32,48 @@ func (r *scrobbleRepository) RecordScrobble(mediaFileID string, submissionTime t
 	_, err := r.executeSQL(insert)
 	return err
 }
+
+type dbHistoryEntry struct {
+	dbMediaFile
+	SubmissionTime int64 `structs:"-"`
+}
+
+func (h *dbHistoryEntry) PostScan() error {
+	return h.dbMediaFile.PostScan()
+}
+
+func (r *scrobbleRepository) GetHistory(offset, count int) ([]model.HistoryEntry, error) {
+	if offset < 0 {
+		offset = 0
+	}
+	if count <= 0 {
+		count = 50
+	}
+	userID := loggedUser(r.ctx).ID
+	sq := Select("m.*", "s.submission_time").
+		From(r.tableName+" s").
+		LeftJoin("media_file m ON m.id = s.media_file_id").
+		Where(Eq{"s.user_id": userID}).
+		OrderBy("s.submission_time DESC").
+		Offset(uint64(offset)).
+		Limit(uint64(count))
+
+	var rows []dbHistoryEntry
+	if err := r.queryAll(sq, &rows); err != nil {
+		return nil, err
+	}
+
+	entries := make([]model.HistoryEntry, 0, len(rows))
+	for i := range rows {
+		if rows[i].MediaFile == nil {
+			continue
+		}
+		entries = append(entries, model.HistoryEntry{
+			MediaFile: *rows[i].MediaFile,
+			PlayedAt:  time.Unix(rows[i].SubmissionTime, 0),
+		})
+	}
+	return entries, nil
+}
+
+var _ model.ScrobbleRepository = (*scrobbleRepository)(nil)

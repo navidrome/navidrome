@@ -22,3 +22,7 @@ func (m *MockScrobbleRepo) RecordScrobble(fileID string, submissionTime time.Tim
 	})
 	return nil
 }
+
+func (m *MockScrobbleRepo) GetHistory(offset, count int) ([]model.HistoryEntry, error) {
+	return nil, nil
+}

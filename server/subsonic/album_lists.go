@@ -228,6 +228,30 @@ func (api *Router) GetNowPlaying(r *http.Request) (*responses.Subsonic, error) {
 	return response, nil
 }
 
+func (api *Router) GetSongHistory(r *http.Request) (*responses.Subsonic, error) {
+	p := req.Params(r)
+	count := min(p.IntOr("count", 50), 500)
+	offset := p.IntOr("offset", 0)
+
+	ctx := r.Context()
+	entries, err := api.ds.Scrobble(ctx).GetHistory(offset, count)
+	if err != nil {
+		log.Error(r, "Error retrieving song history", err)
+		return nil, err
+	}
+
+	response := newResponse()
+	response.SongHistory = &responses.SongHistory{
+		Song: slice.Map(entries, func(e model.HistoryEntry) responses.SongHistoryEntry {
+			return responses.SongHistoryEntry{
+				Child:    childFromMediaFile(ctx, e.MediaFile),
+				PlayedAt: e.PlayedAt.Unix(),
+			}
+		}),
+	}
+	return response, nil
+}
+
 func (api *Router) GetRandomSongs(r *http.Request) (*responses.Subsonic, error) {
 	p := req.Params(r)
 	size := min(p.IntOr("size", 10), 500)
