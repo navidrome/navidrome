@@ -323,7 +323,7 @@ jobs:
 
       - name: Set up QEMU for smoke test
         if: env.IS_LINUX == 'true'
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
 
       # The binary is static, so binfmt+qemu runs it directly on the runner.
       # Catches startup crashes in cross-compiled binaries before they ship,
