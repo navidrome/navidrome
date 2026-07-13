@@ -103,8 +103,9 @@ func (pub *Router) mapShareToM3U(r *http.Request, s model.Share) *model.Share {
 // NOTE ON JWT USAGE: This is deliberately NOT part of Navidrome's authentication.
 // The token is a signed, opaque capability that identifies one shared track
 // (plus its transcode format/bitrate and the parent share id). We use a JWT here
-// only because it is a simple, dependency-free way to get three properties for a
-// public link: the embedded ids can't be enumerated by guessing, the signature
+// (reusing the library we already have) because it is a simple way to get three
+// properties for a public link: the embedded ids can't be enumerated by guessing,
+// the signature
 // makes the claims tamper-evident, and the self-contained exp lets us reject
 // stale links without a DB lookup. It carries no user identity (no subject, no
 // admin flag) and grants access to nothing beyond the share it belongs to; the
