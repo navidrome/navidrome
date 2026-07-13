@@ -13,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/metrics"
 	playlistsvc "github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/log"
@@ -45,10 +46,11 @@ type Router struct {
 	maintenance   core.Maintenance
 	pluginManager PluginManager
 	imgUpload     core.ImageUploadService
+	artwork       artwork.Artwork
 }
 
-func New(ds model.DataStore, share core.Share, playlists playlistsvc.Playlists, insights metrics.Insights, libraryService core.Library, userService core.User, maintenance core.Maintenance, pluginManager PluginManager, imgUpload core.ImageUploadService) *Router {
-	r := &Router{ds: ds, share: share, playlists: playlists, insights: insights, libs: libraryService, users: userService, maintenance: maintenance, pluginManager: pluginManager, imgUpload: imgUpload}
+func New(ds model.DataStore, share core.Share, playlists playlistsvc.Playlists, insights metrics.Insights, libraryService core.Library, userService core.User, maintenance core.Maintenance, pluginManager PluginManager, imgUpload core.ImageUploadService, artwork artwork.Artwork) *Router {
+	r := &Router{ds: ds, share: share, playlists: playlists, insights: insights, libs: libraryService, users: userService, maintenance: maintenance, pluginManager: pluginManager, imgUpload: imgUpload, artwork: artwork}
 	r.Handler = r.routes()
 	return r
 }
@@ -81,6 +83,7 @@ func (api *Router) routes() http.Handler {
 		api.addPlaylistRoute(r)
 		api.addPlaylistTrackRoute(r)
 		api.addSongPlaylistsRoute(r)
+		api.addAlbumImagesRoute(r)
 		api.addQueueRoute(r)
 		api.addMissingFilesRoute(r)
 		api.addKeepAliveRoute(r)
@@ -174,6 +177,10 @@ func (api *Router) addPlaylistTrackRoute(r chi.Router) {
 			})
 		})
 	})
+}
+
+func (api *Router) addAlbumImagesRoute(r chi.Router) {
+	r.Get("/album/{id}/images", albumImages(api.artwork))
 }
 
 func (api *Router) addSongPlaylistsRoute(r chi.Router) {

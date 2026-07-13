@@ -113,6 +113,12 @@ const getDiscCoverArtUrl = (albumId, discNumber, updatedAt, size) => {
   )
 }
 
+// Builds a getCoverArt URL from a ready-made coverArt id (from /album/{id}/images).
+const getImageCoverArtUrl = (coverArtId, size) => {
+  const options = { ...(size && { size }) }
+  return baseUrl(url('getCoverArt', coverArtId, options))
+}
+
 const getArtistInfo = (id) => {
   return httpClient(url('getArtistInfo', id))
 }
@@ -152,6 +158,7 @@ export default {
   getNowPlaying,
   getCoverArtUrl,
   getDiscCoverArtUrl,
+  getImageCoverArtUrl,
   getAvatarUrl,
   streamUrl,
   getAlbumInfo,

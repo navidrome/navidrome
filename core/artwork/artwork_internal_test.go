@@ -69,6 +69,82 @@ var _ = Describe("Artwork", func() {
 		aw = NewArtwork(ds, cache, ffmpeg, nil).(*artwork)
 	})
 
+	Describe("AlbumImages", func() {
+		BeforeEach(func() {
+			conf.Server.CoverArtPriority = "cover.*, folder.*, front.*, embedded, external"
+		})
+
+		It("lists the primary cover plus recognized externals, deduping the cover file", func() {
+			ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{
+				{ID: "al1", LibraryID: 0, FolderIDs: []string{"f1"}},
+			})
+			folderRepo.result = []model.Folder{
+				{ID: "f1", Path: "Artist", Name: "Album", ImageFiles: []string{"cover.jpg", "back.jpg", "booklet.jpg", "toto.jpg"}},
+			}
+
+			imgs, err := aw.AlbumImages(ctx, "al1")
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(imgs).To(HaveLen(3)) // primary + back + booklet; cover.jpg deduped, toto.jpg excluded
+			Expect(imgs[0].Type).To(Equal("Front"))
+			Expect(imgs[0].CoverArt).To(HavePrefix("al-al1_")) // primary id, no image index
+			Expect(imgs[1].Type).To(Equal("Back"))
+			Expect(imgs[1].Name).To(Equal("back.jpg"))
+			Expect(imgs[1].CoverArt).To(ContainSubstring("al-al1:1"))
+			Expect(imgs[2].Type).To(Equal("Booklet"))
+			Expect(imgs[2].CoverArt).To(ContainSubstring("al-al1:2"))
+		})
+
+		It("keeps external front images when the cover resolves to a non-file source", func() {
+			// art.jpg is Front-typed but matches no priority pattern → must not be dropped.
+			ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{
+				{ID: "al2", LibraryID: 0, FolderIDs: []string{"f1"}},
+			})
+			folderRepo.result = []model.Folder{
+				{ID: "f1", Path: "Artist", Name: "Album", ImageFiles: []string{"art.jpg", "back.jpg"}},
+			}
+
+			imgs, err := aw.AlbumImages(ctx, "al2")
+
+			Expect(err).ToNot(HaveOccurred())
+			names := make([]string, 0, len(imgs)-1)
+			for _, im := range imgs[1:] {
+				names = append(names, im.Name)
+			}
+			Expect(names).To(ConsistOf("art.jpg", "back.jpg"))
+		})
+
+		It("returns just the primary cover when there are no recognized images", func() {
+			ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{
+				{ID: "al3", LibraryID: 0, FolderIDs: []string{"f1"}},
+			})
+			folderRepo.result = []model.Folder{
+				{ID: "f1", Path: "Artist", Name: "Album", ImageFiles: []string{"toto.jpg"}},
+			}
+
+			imgs, err := aw.AlbumImages(ctx, "al3")
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(imgs).To(HaveLen(1))
+			Expect(imgs[0].Type).To(Equal("Front"))
+		})
+	})
+
+	Describe("indexed album image reader", func() {
+		It("returns ErrNotFound for an out-of-range image index", func() {
+			ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{
+				{ID: "al9", LibraryID: 0, FolderIDs: []string{"f1"}},
+			})
+			folderRepo.result = []model.Folder{
+				{ID: "f1", Path: "Artist", Name: "Album", ImageFiles: []string{"cover.jpg"}},
+			}
+
+			_, err := newAlbumArtworkReader(ctx, aw, model.MustParseArtworkID("al-al9:99"), nil)
+
+			Expect(err).To(MatchError(model.ErrNotFound))
+		})
+	})
+
 	Describe("albumArtworkReader", func() {
 		Context("ID not found", func() {
 			It("returns ErrNotFound if album is not in the DB", func() {
