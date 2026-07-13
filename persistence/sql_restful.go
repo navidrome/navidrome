@@ -23,12 +23,13 @@ func (r *sqlRepository) parseRestFilters(ctx context.Context, options rest.Query
 	}
 	filters := And{}
 	for f, v := range options.Filters {
-		// Ignore filters with empty values
-		if v == "" {
+		f = strings.ToLower(f)
+		// Ignore filters with empty values, unless the field was explicitly registered
+		// (via allowEmptyFilterValue) as one where an empty value is meaningful.
+		if v == "" && !r.emptyValueFilters[f] {
 			continue
 		}
 		// Look for a custom filter function
-		f = strings.ToLower(f)
 		if ff, ok := r.filterMappings[f]; ok {
 			if filter := ff(f, v); filter != nil {
 				filters = append(filters, filter)

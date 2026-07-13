@@ -74,6 +74,10 @@ func newFolderRepository(ctx context.Context, db dbx.Builder) model.FolderReposi
 		"library_id": libraryIdFilter,
 		"missing":    booleanFilter,
 	})
+	// parent_id="" identifies a library's root folder - a real, meaningful filter value,
+	// not an absent one. Without this, parseRestFilters would silently drop the filter and
+	// the query would fall through to "first folder row for this library" instead.
+	r.allowEmptyFilterValue("parent_id")
 	r.setSortMappings(map[string]string{
 		"name": "folder.name",
 		"path": "folder.path",

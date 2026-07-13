@@ -46,6 +46,22 @@ type sqlRepository struct {
 	isFieldWhiteListed fieldWhiteListedFunc
 	// Do not set this field manually, it is set by the setSortMappings method
 	sortMappings map[string]string
+	// Fields registered via allowEmptyFilterValue, for which an empty filter value is
+	// meaningful and must not be treated as "no filter". See parseRestFilters.
+	emptyValueFilters map[string]bool
+}
+
+// allowEmptyFilterValue opts specific fields out of parseRestFilters' default behavior of
+// ignoring filters with an empty value. Most fields treat "" as "no filter" (e.g. clearing a
+// search box should show everything again), but some fields use "" as a real, meaningful value
+// - e.g. folder.parent_id="" identifies a library's root folder - and must not be dropped.
+func (r *sqlRepository) allowEmptyFilterValue(fields ...string) {
+	if r.emptyValueFilters == nil {
+		r.emptyValueFilters = map[string]bool{}
+	}
+	for _, f := range fields {
+		r.emptyValueFilters[strings.ToLower(f)] = true
+	}
 }
 
 const invalidUserId = "-1"
