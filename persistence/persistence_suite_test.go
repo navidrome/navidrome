@@ -4,6 +4,7 @@ import (
 	"context"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	_ "github.com/mattn/go-sqlite3"
@@ -157,6 +158,13 @@ var (
 	testUsers   = model.Users{adminUser, regularUser, thirdUser}
 )
 
+var (
+	firstScrobble  = model.Scrobble{ID: 1, MediaFileID: "1001", UserID: "userid", SubmissionTime: time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC).Unix()}
+	secondScrobble = model.Scrobble{ID: 2, MediaFileID: "1003", UserID: "2222", SubmissionTime: time.Date(1970, 2, 1, 0, 0, 0, 0, time.UTC).Unix()}
+	thirdScrobble  = model.Scrobble{ID: 3, MediaFileID: "1002", UserID: "userid", SubmissionTime: time.Date(1970, 3, 1, 0, 0, 0, 0, time.UTC).Unix()}
+	scrobbles      = model.Scrobbles{firstScrobble, secondScrobble, thirdScrobble}
+)
+
 func p(path string) string {
 	return filepath.FromSlash(path)
 }
@@ -304,6 +312,18 @@ var _ = BeforeSuite(func() {
 	songComeTogether.Starred = true
 	songComeTogether.StarredAt = mf.StarredAt
 	testSongs[1] = songComeTogether
+
+	scrobbleRepo := NewScrobbleRepository(ctx, conn).(*scrobbleRepository)
+	for _, s := range scrobbles {
+		_, err := scrobbleRepo.executeSQL(squirrel.Insert("scrobbles").SetMap(map[string]any{
+			"media_file_id":   s.MediaFileID,
+			"user_id":         s.UserID,
+			"submission_time": s.SubmissionTime,
+		}))
+		if err != nil {
+			panic(err)
+		}
+	}
 })
 
 func GetDBXBuilder() *dbx.DB {
