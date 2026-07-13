@@ -103,12 +103,16 @@ var _ = Describe("UserRepository", func() {
 
 			actual.Name = "Synced User"
 			actual.Email = "synced@example.com"
+			actual.AuthSource = ""
+			actual.AuthSourceID = ""
 			actual.ExternalSync = true
 			Expect(repo.Put(actual)).To(Succeed())
 			actual, err = repo.FindByUsername("ldap_user")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(actual.Name).To(Equal("Synced User"))
 			Expect(actual.Email).To(Equal("synced@example.com"))
+			Expect(actual.AuthSource).To(Equal("ldap"))
+			Expect(actual.AuthSourceID).To(Equal("ldap01"))
 		})
 	})
 

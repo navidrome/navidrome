@@ -182,6 +182,10 @@ func (r *userRepository) preserveExternalAuthSource(u *model.User) error {
 	if existing.AuthSource == "" {
 		return nil
 	}
+	if u.AuthSource == "" {
+		u.AuthSource = existing.AuthSource
+		u.AuthSourceID = existing.AuthSourceID
+	}
 	if u.ExternalSync {
 		return nil
 	}
@@ -200,10 +204,6 @@ func (r *userRepository) preserveExternalAuthSource(u *model.User) error {
 	}
 	if len(validation.Errors) > 0 {
 		return validation
-	}
-	if u.AuthSource == "" {
-		u.AuthSource = existing.AuthSource
-		u.AuthSourceID = existing.AuthSourceID
 	}
 	return nil
 }
