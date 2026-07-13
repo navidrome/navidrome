@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -13,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playlists"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -211,6 +214,16 @@ func (s *controller) ScanFolders(requestCtx context.Context, fullScan bool, targ
 	ctx := request.AddValues(s.rootCtx, requestCtx)
 	ctx = auth.WithAdminUser(ctx, s.ds)
 
+	// A quick scan is promoted to a full one when it resumes an interrupted full scan; that happens
+	// inside the scanner (possibly in a subprocess), so mirror it here for the analysis gate. Must
+	// be read before the scan: ScanEnd clears the flag.
+	effectiveFullScan := EffectiveFullScan(ctx, s.ds, fullScan, targets)
+	if effectiveFullScan || s.includesUnscannedLibrary(ctx, targets) {
+		if err := db.MarkOptimizePending(ctx); err != nil {
+			log.Error(ctx, "Scanner: Error marking DB analysis pending", err)
+		}
+	}
+
 	// Send the initial scan status event
 	s.sendMessage(ctx, &events.ScanStatus{Scanning: true, Count: 0, FolderCount: 0})
 	progress := make(chan *ProgressInfo, 100)
@@ -228,6 +241,15 @@ func (s *controller) ScanFolders(requestCtx context.Context, fullScan bool, targ
 	// Store scan error in database so it can be displayed in the UI
 	if scanError != nil {
 		_ = s.ds.Property(ctx).Put(consts.LastScanErrorKey, scanError.Error())
+	}
+	// Refresh the query-planner statistics after a successful full scan. This must run in the
+	// server process: with the external scanner, an ANALYZE in the subprocess is invisible to the
+	// server's pooled connections; their shared schema cache keeps the old statistics until the
+	// process restarts.
+	if effectiveFullScan && scanError == nil {
+		if err := db.Optimize(ctx); err != nil {
+			log.Error(ctx, "Scanner: Error analyzing DB", err)
+		}
 	}
 	// If changes were detected, send a refresh event to all clients
 	if s.changesDetected {
@@ -255,16 +277,71 @@ func (s *controller) ScanFolders(requestCtx context.Context, fullScan bool, targ
 
 // This is a global variable that is used to prevent multiple scans from running at the same time.
 // "There can be only one" - https://youtu.be/sqcLjcSloXs?si=VlsjEOjTJZ68zIyg
-var running atomic.Bool
+var (
+	running            atomic.Bool
+	scanMaintenanceMux sync.Mutex
+)
 
 func lockScan(ctx context.Context) (func(), error) {
 	if !running.CompareAndSwap(false, true) {
 		log.Debug(ctx, "Scanner already running, ignoring request")
 		return func() {}, ErrAlreadyScanning
 	}
+	scanMaintenanceMux.Lock()
 	return func() {
+		scanMaintenanceMux.Unlock()
 		running.Store(false)
 	}, nil
+}
+
+// LockForMaintenance prevents a scan from starting while database maintenance is running.
+func LockForMaintenance() (func(), bool) {
+	if !scanMaintenanceMux.TryLock() {
+		return func() {}, false
+	}
+	if running.Load() {
+		scanMaintenanceMux.Unlock()
+		return func() {}, false
+	}
+	return scanMaintenanceMux.Unlock, true
+}
+
+// EffectiveFullScan reports whether a scan was requested as full or will resume an interrupted
+// full scan in one of the included libraries.
+func EffectiveFullScan(ctx context.Context, ds model.DataStore, fullScan bool, targets []model.ScanTarget) bool {
+	if fullScan {
+		return true
+	}
+	return anyIncludedLibrary(ctx, ds, targets, func(library model.Library) bool {
+		return library.FullScanInProgress
+	})
+}
+
+func (s *controller) includesUnscannedLibrary(ctx context.Context, targets []model.ScanTarget) bool {
+	return anyIncludedLibrary(ctx, s.ds, targets, func(library model.Library) bool {
+		return library.LastScanAt.IsZero()
+	})
+}
+
+// anyIncludedLibrary reports whether any library included in the scan (all of them when targets is
+// empty) matches pred.
+func anyIncludedLibrary(ctx context.Context, ds model.DataStore, targets []model.ScanTarget, pred func(model.Library) bool) bool {
+	libraries, err := ds.Library(ctx).GetAll()
+	if err != nil {
+		return false
+	}
+	if len(targets) == 0 {
+		return slices.ContainsFunc(libraries, pred)
+	}
+
+	targeted := make(map[int]struct{}, len(targets))
+	for _, target := range targets {
+		targeted[target.LibraryID] = struct{}{}
+	}
+	return slices.ContainsFunc(libraries, func(library model.Library) bool {
+		_, ok := targeted[library.ID]
+		return ok && pred(library)
+	})
 }
 
 func (s *controller) trackProgress(ctx context.Context, progress <-chan *ProgressInfo) ([]string, error) {
