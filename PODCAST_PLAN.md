@@ -2,7 +2,7 @@
 
 ## Context
 
-Navidrome (and this fork) has no podcast support today. The Subsonic API spec's podcast endpoints already exist as stubs returning HTTP 501 (`server/subsonic/api.go:229-230`: `getPodcasts`, `getNewestPodcasts`, `refreshPodcasts`, `createPodcastChannel`, `deletePodcastChannel`, `deletePodcastEpisode`, `downloadPodcastEpisode`).
+Navidrome has no podcast support today. The Subsonic API spec's podcast endpoints already exist as stubs returning HTTP 501 (`server/subsonic/api.go:229-230`: `getPodcasts`, `getNewestPodcasts`, `refreshPodcasts`, `createPodcastChannel`, `deletePodcastChannel`, `deletePodcastEpisode`, `downloadPodcastEpisode`).
 
 I wanted podcasts usable both in the Navidrome web UI **and** through third-party Subsonic-protocol client apps ("Cirque" on Android and Windows) that I already use to access my server. That second requirement is the constraint that drove most of the design: it's not enough to bolt a podcast list onto the web UI — episodes need to be playable through the real `/rest/stream.view` endpoint that any Subsonic client calls, and the real spec endpoints need to actually work.
 
