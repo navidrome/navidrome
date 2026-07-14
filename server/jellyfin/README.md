@@ -280,7 +280,7 @@ curl -s -X DELETE "${AUTH[@]}" "$BASE/Items/$PLAYLIST_ID"
 Handler-level unit tests live alongside each file (`*_test.go`). A full end-to-end suite in
 [`e2e/`](e2e) exercises every endpoint through the real router against a real SQLite database and
 real repositories (only artwork/streaming/ffmpeg are stubbed), with per-`Describe` snapshot
-isolation — mirroring the Subsonic `server/e2e` suite. Run it with:
+isolation — mirroring the Subsonic `server/subsonic/e2e` suite. Run it with:
 
 ```bash
 make test PKG=./server/jellyfin/...

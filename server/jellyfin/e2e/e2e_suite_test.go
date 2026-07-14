@@ -4,7 +4,7 @@
 // using a real SQLite database and real repository implementations while stubbing out external
 // services (artwork, streaming, transcoding) with spy/noop implementations.
 //
-// The harness mirrors server/e2e (the Subsonic suite): BeforeSuite creates a temporary SQLite
+// The harness mirrors server/subsonic/e2e (the Subsonic suite): BeforeSuite creates a temporary SQLite
 // database, seeds two users (admin + regular) and one library backed by a fake in-memory
 // filesystem, runs the scanner, and snapshots the golden DB. Each top-level Describe restores
 // that snapshot and builds a fresh jellyfin.Router.
