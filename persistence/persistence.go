@@ -123,6 +123,8 @@ func (s *SQLStore) Resource(ctx context.Context, m any) model.ResourceRepository
 		return s.Tag(ctx).(model.ResourceRepository)
 	case model.Plugin:
 		return s.Plugin(ctx).(model.ResourceRepository)
+	case model.Scrobble:
+		return s.Scrobble(ctx).(model.ResourceRepository)
 	}
 	log.Error("Resource not implemented", "model", reflect.TypeOf(m).Name())
 	return nil

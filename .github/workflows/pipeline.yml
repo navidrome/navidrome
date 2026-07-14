@@ -99,16 +99,20 @@ jobs:
   validate-migrations:
     name: Validate DB migrations
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    # PR-only gate is at step level: a job-level skip would propagate through
+    # the needs chain (actions/runner#491) and skip all release jobs on tag pushes.
     steps:
       - uses: actions/checkout@v7
+        if: github.event_name == 'pull_request'
         with:
           fetch-depth: 0
       # Refresh the base branch so the check compares against its CURRENT tip,
       # not the (possibly stale) commit the PR was opened against.
       - name: Fetch latest base branch
+        if: github.event_name == 'pull_request'
         run: git fetch --no-tags origin "+refs/heads/${{ github.event.pull_request.base.ref }}:refs/remotes/origin/${{ github.event.pull_request.base.ref }}"
       - name: Validate migration ordering and naming
+        if: github.event_name == 'pull_request'
         env:
           BASE_REF: origin/${{ github.event.pull_request.base.ref }}
         run: ./.github/workflows/validate-migrations.sh
@@ -162,7 +166,7 @@ jobs:
 
       - name: Cache ffmpeg
         id: ffmpeg-cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: C:\ffmpeg
           key: ffmpeg-${{ env.FFMPEG_VERSION }}-win64
@@ -275,10 +279,6 @@ jobs:
   build:
     name: Build
     needs: [js, go, go-windows, go-lint, i18n-lint, git-version, check-push-enabled, validate-migrations]
-    # validate-migrations only runs on pull_request, so it is "skipped" on push/tag
-    # builds. Run Build unless a dependency actually failed — a *skipped* dependency
-    # (the migration check on non-PR events) must not block release builds.
-    if: ${{ !cancelled() && !failure() }}
     strategy:
       matrix:
         platform: [ linux/amd64, linux/arm64, linux/arm/v5, linux/arm/v6, linux/arm/v7, linux/386, linux/riscv64, darwin/amd64, darwin/arm64, windows/amd64, windows/386 ]
@@ -323,7 +323,7 @@ jobs:
 
       - name: Set up QEMU for smoke test
         if: env.IS_LINUX == 'true'
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
 
       # The binary is static, so binfmt+qemu runs it directly on the runner.
       # Catches startup crashes in cross-compiled binaries before they ship,

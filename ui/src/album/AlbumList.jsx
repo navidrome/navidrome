@@ -28,7 +28,11 @@ import {
 import AlbumListActions from './AlbumListActions'
 import AlbumTableView from './AlbumTableView'
 import AlbumGridView from './AlbumGridView'
-import albumLists, { defaultAlbumList } from './albumLists'
+import albumLists from './albumLists'
+import {
+  getStoredDefaultView,
+  isResourceDefaultView,
+} from '../personal/defaultViews'
 import config from '../config'
 import AlbumInfo from './AlbumInfo'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
@@ -220,8 +224,10 @@ const AlbumList = (props) => {
   // If it does not have filter/sort params (usually coming from Menu),
   // reload with correct filter/sort params
   if (!location.search) {
-    const type =
-      albumListType || localStorage.getItem('defaultView') || defaultAlbumList
+    const type = albumListType || getStoredDefaultView()
+    if (isResourceDefaultView(type)) {
+      return <Redirect to={`/${type}`} />
+    }
     const listParams = albumLists[type]
     if (type === 'random') {
       refresh()
