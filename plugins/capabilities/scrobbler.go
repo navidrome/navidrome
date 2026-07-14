@@ -1,11 +1,13 @@
 package capabilities
 
+import "github.com/navidrome/navidrome/plugins/types"
+
 // Scrobbler provides scrobbling functionality to external services.
 // This capability allows plugins to submit listening history to services like Last.fm,
 // ListenBrainz, or custom scrobbling backends.
 //
 // All methods are required - plugins implementing this capability must provide
-// all three functions: IsAuthorized, NowPlaying, and Scrobble.
+// all four functions: IsAuthorized, NowPlaying, Scrobble, and PlaybackReport.
 //
 //nd:capability name=scrobbler required=true
 type Scrobbler interface {
@@ -20,22 +22,16 @@ type Scrobbler interface {
 	// Scrobble submits a completed scrobble to the scrobbling service.
 	//nd:export name=nd_scrobbler_scrobble
 	Scrobble(ScrobbleRequest) error
+
+	// PlaybackReport sends a playback state report to the scrobbling service.
+	//nd:export name=nd_scrobbler_playback_report
+	PlaybackReport(PlaybackReportRequest) error
 }
 
 // IsAuthorizedRequest is the request for authorization check.
 type IsAuthorizedRequest struct {
 	// Username is the username of the user.
 	Username string `json:"username"`
-}
-
-// ArtistRef is a reference to an artist with name and optional MBID.
-type ArtistRef struct {
-	// ID is the internal Navidrome artist ID (if known).
-	ID string `json:"id,omitempty"`
-	// Name is the artist name.
-	Name string `json:"name"`
-	// MBID is the MusicBrainz ID for the artist.
-	MBID string `json:"mbid,omitempty"`
 }
 
 // TrackInfo contains track metadata.
@@ -51,9 +47,9 @@ type TrackInfo struct {
 	// AlbumArtist is the formatted album artist name for display.
 	AlbumArtist string `json:"albumArtist"`
 	// Artists is the list of track artists.
-	Artists []ArtistRef `json:"artists"`
+	Artists []types.ArtistRef `json:"artists"`
 	// AlbumArtists is the list of album artists.
-	AlbumArtists []ArtistRef `json:"albumArtists"`
+	AlbumArtists []types.ArtistRef `json:"albumArtists"`
 	// Duration is the track duration in seconds.
 	Duration float32 `json:"duration"`
 	// TrackNumber is the track number on the album.
@@ -68,6 +64,12 @@ type TrackInfo struct {
 	MBZReleaseGroupID string `json:"mbzReleaseGroupId,omitempty"`
 	// MBZReleaseTrackID is the MusicBrainz release track ID.
 	MBZReleaseTrackID string `json:"mbzReleaseTrackId,omitempty"`
+	// LibraryID is the ID of the library the track belongs to.
+	// Only included if the plugin has library permission with filesystem access for the track's library.
+	LibraryID int32 `json:"libraryId,omitempty"`
+	// Path is the full path to the track file, relative to the library root.
+	// Only included if the plugin has library permission with filesystem access for the track's library.
+	Path string `json:"path,omitempty"`
 }
 
 // NowPlayingRequest is the request for now playing notification.
@@ -87,6 +89,26 @@ type ScrobbleRequest struct {
 	// Track is the track that was played.
 	Track TrackInfo `json:"track"`
 	// Timestamp is the Unix timestamp when the track started playing.
+	Timestamp int64 `json:"timestamp"`
+}
+
+// PlaybackReportRequest is the request for playback report notifications.
+type PlaybackReportRequest struct {
+	// Username is the username of the user.
+	Username string `json:"username"`
+	// Track is the track being played.
+	Track TrackInfo `json:"track"`
+	// State is the current playback state (starting/playing/paused/stopped/expired).
+	State string `json:"state"`
+	// PositionMs is the current playback position in milliseconds.
+	PositionMs int64 `json:"positionMs"`
+	// PlaybackRate is the playback speed (1.0 = normal).
+	PlaybackRate float64 `json:"playbackRate"`
+	// PlayerId is the unique client identifier.
+	PlayerId string `json:"playerId"`
+	// PlayerName is the human-readable player name.
+	PlayerName string `json:"playerName"`
+	// Timestamp is the Unix timestamp when this report was generated.
 	Timestamp int64 `json:"timestamp"`
 }
 

@@ -5,12 +5,11 @@ comma:=,
 GO_BUILD_TAGS=netgo,sqlite_fts5$(if $(EXTRA_BUILD_TAGS),$(comma)$(EXTRA_BUILD_TAGS))
 
 # Set global environment variables, required for most targets
-export CGO_CFLAGS_ALLOW=--define-prefix
 export ND_ENABLEINSIGHTSCOLLECTOR=false
 
 ifneq ("$(wildcard .git/HEAD)","")
 GIT_SHA=$(shell git rev-parse --short HEAD)
-GIT_TAG=$(shell git describe --tags `git rev-list --tags --max-count=1`)-SNAPSHOT
+GIT_TAG=$(shell git describe --tags --abbrev=0 2>/dev/null || echo v0.0.0)-SNAPSHOT
 else
 GIT_SHA=source_archive
 GIT_TAG=$(patsubst navidrome-%,v%,$(notdir $(PWD)))-SNAPSHOT
@@ -21,9 +20,7 @@ IMAGE_PLATFORMS ?= $(shell echo $(SUPPORTED_PLATFORMS) | tr ',' '\n' | grep "lin
 PLATFORMS ?= $(SUPPORTED_PLATFORMS)
 DOCKER_TAG ?= deluan/navidrome:develop
 
-# Taglib version to use in cross-compilation, from https://github.com/navidrome/cross-taglib
-CROSS_TAGLIB_VERSION ?= 2.2.1-1
-GOLANGCI_LINT_VERSION ?= v2.11.1
+GOLANGCI_LINT_VERSION ?= v2.12.0
 
 UI_SRC_FILES := $(shell find ui -type f -not -path "ui/build/*" -not -path "ui/node_modules/*")
 
@@ -78,8 +75,8 @@ test-i18n: ##@Development Validate all translations files
 
 install-golangci-lint: ##@Development Install golangci-lint if not present
 	@INSTALL=false; \
-	if PATH=$$PATH:./bin which golangci-lint > /dev/null 2>&1; then \
-		CURRENT_VERSION=$$(PATH=$$PATH:./bin golangci-lint version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n1); \
+	if PATH=./bin:$$PATH which golangci-lint > /dev/null 2>&1; then \
+		CURRENT_VERSION=$$(PATH=./bin:$$PATH golangci-lint version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n1); \
 		REQUIRED_VERSION=$$(echo "$(GOLANGCI_LINT_VERSION)" | sed 's/^v//'); \
 		if [ "$$CURRENT_VERSION" != "$$REQUIRED_VERSION" ]; then \
 			echo "Found golangci-lint $$CURRENT_VERSION, but $$REQUIRED_VERSION is required. Reinstalling..."; \
@@ -96,7 +93,7 @@ install-golangci-lint: ##@Development Install golangci-lint if not present
 .PHONY: install-golangci-lint
 
 lint: install-golangci-lint ##@Development Lint Go code
-	PATH=$$PATH:./bin golangci-lint run --timeout 5m
+	PATH=./bin:$$PATH golangci-lint run --timeout 5m
 .PHONY: lint
 
 lintall: lint ##@Development Lint Go and JS code
@@ -116,10 +113,11 @@ wire: check_go_env ##@Development Update Dependency Injection
 
 gen: check_go_env ##@Development Run go generate for code generation
 	go generate ./...
-	cd plugins/cmd/ndpgen && go run . -host-wrappers -input=../../host -package=host
-	cd plugins/cmd/ndpgen && go run . -input=../../host -output=../../pdk -go -python -rust
-	cd plugins/cmd/ndpgen && go run . -capability-only -input=../../capabilities -output=../../pdk -go -rust
-	cd plugins/cmd/ndpgen && go run . -schemas -input=../../capabilities
+	cd plugins/cmd/ndpgen && go run . -shared-types -input=../../types -output=../../pdk -go -rust
+	cd plugins/cmd/ndpgen && go run . -host-wrappers -input=../../host -package=host -shared=../../types
+	cd plugins/cmd/ndpgen && go run . -input=../../host -output=../../pdk -go -rust -shared=../../types
+	cd plugins/cmd/ndpgen && go run . -capability-only -input=../../capabilities -output=../../pdk -go -rust -shared=../../types
+	cd plugins/cmd/ndpgen && go run . -schemas -input=../../capabilities -shared=../../types
 	go mod tidy -C plugins/pdk/go
 .PHONY: gen
 
@@ -179,7 +177,6 @@ docker-build: ##@Cross_Compilation Cross-compile for any supported platform (che
 		--platform $(PLATFORMS) \
 		--build-arg GIT_TAG=${GIT_TAG} \
 		--build-arg GIT_SHA=${GIT_SHA} \
-		--build-arg CROSS_TAGLIB_VERSION=${CROSS_TAGLIB_VERSION} \
 		--output "./binaries" --target binary .
 .PHONY: docker-build
 
@@ -191,7 +188,6 @@ docker-image: ##@Cross_Compilation Build Docker image, tagged as `deluan/navidro
 		--platform $(IMAGE_PLATFORMS) \
 		--build-arg GIT_TAG=${GIT_TAG} \
 		--build-arg GIT_SHA=${GIT_SHA} \
-		--build-arg CROSS_TAGLIB_VERSION=${CROSS_TAGLIB_VERSION} \
 		--tag $(DOCKER_TAG) .
 .PHONY: docker-image
 

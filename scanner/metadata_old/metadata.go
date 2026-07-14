@@ -1,6 +1,7 @@
 package metadata_old
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -205,13 +206,14 @@ func (t Tags) Lyrics() string {
 	basicLyrics := t.getAllTagValues("lyrics", "unsynced_lyrics", "unsynced lyrics", "unsyncedlyrics")
 
 	for _, value := range basicLyrics {
-		lyrics, err := model.ToLyrics("xxx", value)
+		parsed, err := model.ParseLyrics(context.Background(), ".lrc", "xxx", []byte(value))
 		if err != nil {
 			log.Warn("Unexpected failure occurred when parsing lyrics", "file", t.filePath, "error", err)
 			continue
 		}
-
-		lyricList = append(lyricList, *lyrics)
+		if main, ok := parsed.Main(); ok {
+			lyricList = append(lyricList, main)
+		}
 	}
 
 	for tag, value := range t.Tags {
@@ -223,13 +225,14 @@ func (t Tags) Lyrics() string {
 			}
 
 			for _, text := range value {
-				lyrics, err := model.ToLyrics(language, text)
+				parsed, err := model.ParseLyrics(context.Background(), ".lrc", language, []byte(text))
 				if err != nil {
 					log.Warn("Unexpected failure occurred when parsing lyrics", "file", t.filePath, "error", err)
 					continue
 				}
-
-				lyricList = append(lyricList, *lyrics)
+				if main, ok := parsed.Main(); ok {
+					lyricList = append(lyricList, main)
+				}
 			}
 		}
 	}

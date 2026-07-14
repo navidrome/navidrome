@@ -8,7 +8,6 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/metadata"
 	"github.com/navidrome/navidrome/tests"
-	. "github.com/navidrome/navidrome/utils/gg"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -108,14 +107,42 @@ var _ = Describe("ToMediaFile", func() {
 
 			expected := model.LyricList{
 				{Lang: "eng", Line: []model.Line{
-					{Value: "This is", Start: P(int64(0))},
-					{Value: "English SYLT", Start: P(int64(2500))},
+					{Value: "This is", Start: new(int64(0))},
+					{Value: "English SYLT", Start: new(int64(2500))},
 				}, Synced: true},
 				{Lang: "xxx", Line: []model.Line{{Value: "Lyrics"}}, Synced: false},
 			}
 			sort.Slice(actual, func(i, j int) bool { return actual[i].Lang < actual[j].Lang })
 			sort.Slice(expected, func(i, j int) bool { return expected[i].Lang < expected[j].Lang })
 			Expect(actual).To(Equal(expected))
+		})
+	})
+
+	Describe("BPM", func() {
+		It("maps the BPM tag rounded to the nearest integer", func() {
+			mf = toMediaFile(model.RawTags{"BPM": {"120.6"}})
+			Expect(mf.BPM).To(Equal(new(121)))
+		})
+		It("leaves BPM nil when the tag is absent", func() {
+			mf = toMediaFile(model.RawTags{})
+			Expect(mf.BPM).To(BeNil())
+		})
+		It("leaves BPM nil when the tag is zero or unparseable", func() {
+			Expect(toMediaFile(model.RawTags{"BPM": {"0"}}).BPM).To(BeNil())
+			Expect(toMediaFile(model.RawTags{"BPM": {"fast"}}).BPM).To(BeNil())
+		})
+	})
+
+	Describe("BitDepth", func() {
+		It("maps the bit depth when present", func() {
+			props.AudioProperties = metadata.AudioProperties{BitDepth: 24}
+			mf = toMediaFile(model.RawTags{})
+			Expect(mf.BitDepth).To(Equal(new(24)))
+		})
+		It("leaves BitDepth nil when zero (lossy codecs have no bit depth)", func() {
+			props.AudioProperties = metadata.AudioProperties{BitDepth: 0}
+			mf = toMediaFile(model.RawTags{})
+			Expect(mf.BitDepth).To(BeNil())
 		})
 	})
 })

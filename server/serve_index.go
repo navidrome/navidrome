@@ -45,7 +45,7 @@ func serveIndex(ds model.DataStore, fs fs.FS, shareInfo *model.Share) http.Handl
 			"variousArtistsId":          consts.VariousArtistsID,
 			"baseURL":                   str.SanitizeText(strings.TrimSuffix(conf.Server.BasePath, "/")),
 			"loginBackgroundURL":        str.SanitizeText(conf.Server.UILoginBackgroundURL),
-			"welcomeMessage":            str.SanitizeText(conf.Server.UIWelcomeMessage),
+			"welcomeMessage":            str.SanitizeHTML(conf.Server.UIWelcomeMessage),
 			"maxSidebarPlaylists":       conf.Server.MaxSidebarPlaylists,
 			"enableTranscodingConfig":   conf.Server.EnableTranscodingConfig,
 			"enableDownloads":           conf.Server.EnableDownloads,
@@ -58,6 +58,7 @@ func serveIndex(ds model.DataStore, fs fs.FS, shareInfo *model.Share) http.Handl
 			"uiCoverArtSize":            conf.Server.UICoverArtSize,
 			"enableCoverAnimation":      conf.Server.EnableCoverAnimation,
 			"enableNowPlaying":          conf.Server.EnableNowPlaying,
+			"playbackReportIntervalMs":  conf.Server.UIPlaybackReportInterval.Milliseconds(),
 			"gaTrackingId":              conf.Server.GATrackingID,
 			"losslessFormats":           strings.ToUpper(strings.Join(mime.LosslessFormats, ",")),
 			"devActivityPanel":          conf.Server.DevActivityPanel,
@@ -106,6 +107,7 @@ func serveIndex(ds model.DataStore, fs fs.FS, shareInfo *model.Share) http.Handl
 		addShareData(r, data, shareInfo)
 
 		w.Header().Set("Content-Type", "text/html")
+		w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
 		err = t.Execute(w, data)
 		if err != nil {
 			log.Error(r, "Could not execute `index.html` template", err)

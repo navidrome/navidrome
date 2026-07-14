@@ -8,7 +8,9 @@
 
 package host
 
-import "github.com/stretchr/testify/mock"
+import (
+	"github.com/stretchr/testify/mock"
+)
 
 // mockSchedulerService is the mock implementation for testing.
 type mockSchedulerService struct {

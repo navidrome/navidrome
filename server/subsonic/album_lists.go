@@ -212,13 +212,17 @@ func (api *Router) GetNowPlaying(r *http.Request) (*responses.Subsonic, error) {
 	response := newResponse()
 	response.NowPlaying = &responses.NowPlaying{}
 	var i int32
-	response.NowPlaying.Entry = slice.Map(npInfo, func(np scrobbler.NowPlayingInfo) responses.NowPlayingEntry {
+	response.NowPlaying.Entry = slice.Map(npInfo, func(np scrobbler.PlaybackSession) responses.NowPlayingEntry {
+		i++
 		return responses.NowPlayingEntry{
-			Child:      childFromMediaFile(ctx, np.MediaFile),
-			UserName:   np.Username,
-			MinutesAgo: int32(time.Since(np.Start).Minutes()),
-			PlayerId:   i + 1, // Fake numeric playerId, it does not seem to be used for anything
-			PlayerName: np.PlayerName,
+			Child:        childFromMediaFile(ctx, np.MediaFile),
+			UserName:     np.Username,
+			MinutesAgo:   int32(time.Since(np.Start).Minutes()),
+			PlayerId:     i,
+			PlayerName:   np.PlayerName,
+			State:        np.State,
+			PositionMs:   np.PositionMs,
+			PlaybackRate: np.PlaybackRate,
 		}
 	})
 	return response, nil
@@ -236,10 +240,11 @@ func (api *Router) GetRandomSongs(r *http.Request) (*responses.Subsonic, error) 
 	if err != nil {
 		return nil, err
 	}
-	opts := filter.SongsByRandom(genre, fromYear, toYear)
+	opts := filter.SongsByGenreAndYearRange(genre, fromYear, toYear)
 	opts = filter.ApplyLibraryFilter(opts, musicFolderIds)
+	opts.Max = size
 
-	songs, err := api.getSongs(r.Context(), 0, size, opts)
+	songs, err := api.ds.MediaFile(r.Context()).GetRandom(opts)
 	if err != nil {
 		log.Error(r, "Error retrieving random songs", err)
 		return nil, err

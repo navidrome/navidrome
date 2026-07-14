@@ -11,8 +11,8 @@ func init() {
 	goose.AddMigrationContext(upAddMediafileChannels, downAddMediafileChannels)
 }
 
-func upAddMediafileChannels(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func upAddMediafileChannels(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 alter table media_file
     add channels integer;
 
@@ -22,10 +22,10 @@ create index if not exists media_file_channels
 	if err != nil {
 		return err
 	}
-	notice(tx, "A full rescan needs to be performed to import more tags")
-	return forceFullRescan(tx)
+	notice(ctx, tx, "A full rescan needs to be performed to import more tags")
+	return forceFullRescan(ctx, tx)
 }
 
-func downAddMediafileChannels(_ context.Context, tx *sql.Tx) error {
+func downAddMediafileChannels(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

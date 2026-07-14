@@ -32,17 +32,17 @@ var inspectCmd = &cobra.Command{
 	},
 }
 
-var marshalers = map[string]func(interface{}) ([]byte, error){
+var marshalers = map[string]func(any) ([]byte, error){
 	"pretty": prettyMarshal,
 	"toml":   toml.Marshal,
 	"yaml":   yaml.Marshal,
 	"json":   json.Marshal,
-	"jsonindent": func(v interface{}) ([]byte, error) {
+	"jsonindent": func(v any) ([]byte, error) {
 		return json.MarshalIndent(v, "", "  ")
 	},
 }
 
-func prettyMarshal(v interface{}) ([]byte, error) {
+func prettyMarshal(v any) ([]byte, error) {
 	out := v.([]core.InspectOutput)
 	var res strings.Builder
 	for i := range out {

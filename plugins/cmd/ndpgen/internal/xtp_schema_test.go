@@ -700,6 +700,115 @@ var _ = Describe("XTP Schema Generation", func() {
 		})
 	})
 
+	Describe("GenerateSchema with shared aliases", func() {
+		It("inlines shared-alias shapes as schema components", func() {
+			cap := Capability{
+				Name: "scrobbler", Interface: "Scrobbler", Required: true,
+				Methods: []Export{{Name: "NowPlaying", ExportName: "nd_scrobbler_now_playing",
+					Input: Param{Name: "input", Type: "NowPlayingRequest"}}},
+				Structs: []StructDef{{Name: "NowPlayingRequest", Fields: []FieldDef{
+					{Name: "Track", Type: "TrackInfo", JSONTag: "track"}}}},
+				SharedAliases: []SharedAlias{{
+					Name: "TrackInfo", Target: "types.TrackInfo",
+					Def: StructDef{Name: "TrackInfo", Fields: []FieldDef{
+						{Name: "Title", Type: "string", JSONTag: "title"}}},
+				}},
+			}
+			out, err := GenerateSchema(cap)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(out)).To(ContainSubstring("TrackInfo:"))
+			Expect(string(out)).To(ContainSubstring("title:"))
+		})
+
+		It("names the shared component by its canonical type for qualified types.X fields", func() {
+			cap := Capability{
+				Name: "scrobbler", Interface: "Scrobbler", Required: true,
+				Methods: []Export{{Name: "NowPlaying", ExportName: "nd_scrobbler_now_playing",
+					Input: Param{Name: "input", Type: "NowPlayingRequest"}}},
+				Structs: []StructDef{{Name: "NowPlayingRequest", Fields: []FieldDef{
+					{Name: "Track", Type: "types.Track", JSONTag: "track"}}}},
+				SharedAliases: []SharedAlias{{
+					Name: "TrackInfo", Target: "types.Track",
+					Def: StructDef{Name: "Track", Fields: []FieldDef{
+						{Name: "Title", Type: "string", JSONTag: "title"}}},
+				}},
+			}
+			out, err := GenerateSchema(cap)
+			Expect(err).NotTo(HaveOccurred())
+			s := string(out)
+			// Component is named by the canonical type (Track), not the deprecated alias.
+			Expect(s).To(ContainSubstring("Track:"))
+			Expect(s).NotTo(ContainSubstring("TrackInfo:"))
+			// The field $ref points at the canonical component.
+			Expect(s).To(ContainSubstring("$ref: '#/components/schemas/Track'"))
+			Expect(s).To(ContainSubstring("title:"))
+		})
+
+		It("points an alias-named field at the canonical component for a renamed alias", func() {
+			cap := Capability{
+				Name: "demo", Interface: "Demo", Required: true,
+				Methods: []Export{{Name: "Play", ExportName: "nd_demo_play",
+					Input: Param{Name: "input", Type: "PlayRequest"}}},
+				Structs: []StructDef{{Name: "PlayRequest", Fields: []FieldDef{
+					// Field is typed with the deprecated alias name, not the canonical types.Track.
+					{Name: "Track", Type: "TrackInfo", JSONTag: "track"}}}},
+				SharedAliases: []SharedAlias{{
+					Name: "TrackInfo", Target: "types.Track",
+					Def: StructDef{Name: "Track", Fields: []FieldDef{
+						{Name: "Title", Type: "string", JSONTag: "title"}}},
+				}},
+			}
+			out, err := GenerateSchema(cap)
+			Expect(err).NotTo(HaveOccurred())
+			s := string(out)
+			// The component is emitted under the canonical name, and the field $ref must
+			// point at it — not at a non-existent TrackInfo component (dangling reference).
+			Expect(s).To(ContainSubstring("Track:"))
+			Expect(s).To(ContainSubstring("$ref: '#/components/schemas/Track'"))
+			Expect(s).NotTo(ContainSubstring("$ref: '#/components/schemas/TrackInfo'"))
+		})
+
+		It("points an alias-named export input/output at the canonical component", func() {
+			cap := Capability{
+				Name: "demo", Interface: "Demo", Required: true,
+				// The method takes/returns the deprecated alias name directly.
+				Methods: []Export{{Name: "Play", ExportName: "nd_demo_play",
+					Input:  Param{Name: "input", Type: "TrackInfo"},
+					Output: Param{Name: "output", Type: "TrackInfo"}}},
+				SharedAliases: []SharedAlias{{
+					Name: "TrackInfo", Target: "types.Track",
+					Def: StructDef{Name: "Track", Fields: []FieldDef{
+						{Name: "Title", Type: "string", JSONTag: "title"}}},
+				}},
+			}
+			out, err := GenerateSchema(cap)
+			Expect(err).NotTo(HaveOccurred())
+			s := string(out)
+			// Export $ref must resolve to the canonical component, not a missing TrackInfo.
+			Expect(s).To(ContainSubstring("$ref: '#/components/schemas/Track'"))
+			Expect(s).NotTo(ContainSubstring("$ref: '#/components/schemas/TrackInfo'"))
+		})
+
+		It("inlines a directly-referenced shared type that has no deprecated alias", func() {
+			cap := Capability{
+				Name: "scrobbler", Interface: "Scrobbler", Required: true,
+				Methods: []Export{{Name: "NowPlaying", ExportName: "nd_scrobbler_now_playing",
+					Input: Param{Name: "input", Type: "NowPlayingRequest"}}},
+				Structs: []StructDef{{Name: "NowPlayingRequest", Fields: []FieldDef{
+					{Name: "Song", Type: "types.SongRef", JSONTag: "song"}}}},
+				// No SharedAliases: the field references the canonical type directly.
+				SharedTypes: []StructDef{{Name: "SongRef", Fields: []FieldDef{
+					{Name: "Name", Type: "string", JSONTag: "name"}}}},
+			}
+			out, err := GenerateSchema(cap)
+			Expect(err).NotTo(HaveOccurred())
+			s := string(out)
+			Expect(s).To(ContainSubstring("SongRef:"))
+			Expect(s).To(ContainSubstring("$ref: '#/components/schemas/SongRef'"))
+			Expect(s).To(ContainSubstring("name:"))
+		})
+	})
+
 	Describe("GenerateSchema enum filtering", func() {
 		It("should only include enums that are actually used by exports", func() {
 			capability := Capability{

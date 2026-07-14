@@ -8,7 +8,9 @@
 
 package host
 
-import "github.com/stretchr/testify/mock"
+import (
+	"github.com/stretchr/testify/mock"
+)
 
 // QueueConfig represents the QueueConfig data structure.
 // QueueConfig holds configuration for a task queue.

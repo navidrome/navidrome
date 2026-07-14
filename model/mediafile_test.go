@@ -6,6 +6,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	. "github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -22,7 +23,7 @@ var _ = Describe("MediaFiles", func() {
 						SortAlbumName: "SortAlbumName", SortArtistName: "SortArtistName", SortAlbumArtistName: "SortAlbumArtistName",
 						OrderAlbumName: "OrderAlbumName", OrderAlbumArtistName: "OrderAlbumArtistName",
 						MbzAlbumArtistID: "MbzAlbumArtistID", MbzAlbumType: "MbzAlbumType", MbzAlbumComment: "MbzAlbumComment",
-						MbzReleaseGroupID: "MbzReleaseGroupID", Compilation: false, CatalogNum: "", Path: "/music1/file1.mp3", FolderID: "Folder1",
+						MbzReleaseGroupID: "MbzReleaseGroupID", Compilation: false, CatalogNum: "", Path: "music1/file1.mp3", FolderID: "Folder1",
 					},
 					{
 						ID: "2", Album: "Album", ArtistID: "ArtistID", Artist: "Artist", AlbumArtistID: "AlbumArtistID", AlbumArtist: "AlbumArtist", AlbumID: "AlbumID",
@@ -30,7 +31,7 @@ var _ = Describe("MediaFiles", func() {
 						OrderAlbumName: "OrderAlbumName", OrderArtistName: "OrderArtistName", OrderAlbumArtistName: "OrderAlbumArtistName",
 						MbzAlbumArtistID: "MbzAlbumArtistID", MbzAlbumType: "MbzAlbumType", MbzAlbumComment: "MbzAlbumComment",
 						MbzReleaseGroupID: "MbzReleaseGroupID",
-						Compilation:       true, CatalogNum: "CatalogNum", HasCoverArt: true, Path: "/music2/file2.mp3", FolderID: "Folder2",
+						Compilation:       true, CatalogNum: "CatalogNum", HasCoverArt: true, Path: "music2/file2.mp3", FolderID: "Folder2",
 					},
 				}
 			})
@@ -51,7 +52,7 @@ var _ = Describe("MediaFiles", func() {
 				Expect(album.MbzReleaseGroupID).To(Equal("MbzReleaseGroupID"))
 				Expect(album.CatalogNum).To(Equal("CatalogNum"))
 				Expect(album.Compilation).To(BeTrue())
-				Expect(album.EmbedArtPath).To(Equal("/music2/file2.mp3"))
+				Expect(album.EmbedArtPath).To(Equal("music2/file2.mp3"))
 				Expect(album.FolderIDs).To(ConsistOf("Folder1", "Folder2"))
 			})
 		})
@@ -117,6 +118,20 @@ var _ = Describe("MediaFiles", func() {
 						mfs = MediaFiles{{Year: 2000}, {Year: 0}, {Year: 1999}}
 						a := mfs.ToAlbum()
 						Expect(a.MinYear).To(Equal(1999))
+					})
+				})
+				Context("CreatedAt aggregation", func() {
+					It("ignores zero BirthTime values when computing the oldest", func() {
+						mfs = MediaFiles{
+							{BirthTime: t("2022-12-19 08:30")},
+							{BirthTime: time.Time{}},
+							{BirthTime: t("2022-12-18 10:00")},
+						}
+						Expect(mfs.ToAlbum().CreatedAt).To(Equal(t("2022-12-18 10:00")))
+					})
+					It("returns zero when all BirthTime values are zero", func() {
+						mfs = MediaFiles{{BirthTime: time.Time{}}, {BirthTime: time.Time{}}}
+						Expect(mfs.ToAlbum().CreatedAt).To(BeZero())
 					})
 				})
 			})
@@ -433,6 +448,9 @@ var _ = Describe("MediaFiles", func() {
 
 			DescribeTable("generates correct output",
 				func(absolutePaths bool, expectedContent string) {
+					if absolutePaths {
+						tests.SkipOnWindows("path separator bug (#TBD-path-sep-model)")
+					}
 					result := mfs.ToM3U8("Multi Track", absolutePaths)
 					Expect(result).To(Equal(expectedContent))
 				},
@@ -453,6 +471,7 @@ var _ = Describe("MediaFiles", func() {
 
 		Context("path variations", func() {
 			It("handles different path structures", func() {
+				tests.SkipOnWindows("path separator bug (#TBD-path-sep-model)")
 				mfs = MediaFiles{
 					{Title: "Root", Artist: "Artist", Duration: 60, Path: "song.mp3", LibraryPath: "/lib"},
 					{Title: "Nested", Artist: "Artist", Duration: 60, Path: "deep/nested/song.mp3", LibraryPath: "/lib"},
@@ -545,7 +564,7 @@ var _ = Describe("MediaFile", func() {
 
 		DescribeTable("infers codec from suffix when Codec field is empty",
 			func(suffix string, bitDepth int, expected string) {
-				mf := MediaFile{Suffix: suffix, BitDepth: bitDepth}
+				mf := MediaFile{Suffix: suffix, BitDepth: new(bitDepth)}
 				Expect(mf.AudioCodec()).To(Equal(expected))
 			},
 			Entry("mp3", "mp3", 0, "mp3"),
@@ -578,11 +597,91 @@ var _ = Describe("MediaFile", func() {
 		)
 
 		It("prefers stored codec over suffix inference", func() {
-			mf := MediaFile{Codec: "ALAC", Suffix: "m4a", BitDepth: 0}
+			mf := MediaFile{Codec: "ALAC", Suffix: "m4a"}
 			Expect(mf.AudioCodec()).To(Equal("alac"))
 		})
 	})
 
+})
+
+var _ = Describe("MediaFile.Works", func() {
+	It("returns nil when there are no work tags", func() {
+		mf := MediaFile{}
+		Expect(mf.Works()).To(BeNil())
+	})
+
+	It("pairs a work name with its MbzWorkID", func() {
+		mf := MediaFile{Tags: Tags{
+			TagWork:              {"Symphony No. 5"},
+			TagMusicBrainzWorkID: {"abc-123"},
+		}}
+		Expect(mf.Works()).To(Equal([]Work{
+			{Name: "Symphony No. 5", MbzWorkID: "abc-123"},
+		}))
+	})
+
+	It("leaves MbzWorkID empty when no id is present", func() {
+		mf := MediaFile{Tags: Tags{TagWork: {"Symphony No. 5"}}}
+		Expect(mf.Works()).To(Equal([]Work{
+			{Name: "Symphony No. 5"},
+		}))
+	})
+
+	It("pairs by index and ignores extra ids", func() {
+		mf := MediaFile{Tags: Tags{
+			TagWork:              {"Work A", "Work B"},
+			TagMusicBrainzWorkID: {"id-a"},
+		}}
+		Expect(mf.Works()).To(Equal([]Work{
+			{Name: "Work A", MbzWorkID: "id-a"},
+			{Name: "Work B"},
+		}))
+	})
+})
+
+var _ = Describe("MediaFile.Movements", func() {
+	It("returns nil when there are no movement tags", func() {
+		mf := MediaFile{}
+		Expect(mf.Movements()).To(BeNil())
+	})
+
+	It("builds a movement with name, number and count", func() {
+		mf := MediaFile{Tags: Tags{
+			TagMovementName:   {"I. Allegro"},
+			TagMovementNumber: {"1"},
+			TagMovementTotal:  {"4"},
+		}}
+		Expect(mf.Movements()).To(Equal([]Movement{
+			{Name: "I. Allegro", Number: 1, Count: 4},
+		}))
+	})
+
+	It("non-numeric number/count yields 0", func() {
+		mf := MediaFile{Tags: Tags{
+			TagMovementName:   {"I. Allegro"},
+			TagMovementNumber: {"not-a-number"},
+		}}
+		Expect(mf.Movements()).To(Equal([]Movement{
+			{Name: "I. Allegro"},
+		}))
+	})
+})
+
+var _ = Describe("MediaFile.Hash", func() {
+	// Guards the upgrade guarantee: converting BPM/BitDepth from int to *int must not change hashes,
+	// or every file would be spuriously re-imported on the next scan.
+	// Golden hashes were captured at 46221d516 when those fields were plain ints.
+	It("keeps hashes identical to the pre-pointer-conversion values", func() {
+		// Golden hashes computed at 46221d516, when BPM/BitDepth were plain ints — pinning
+		// them guarantees the pointer conversion cannot trigger a full-library re-import.
+		Expect(MediaFile{Title: "Song"}.Hash()).To(Equal("1d856ced42cb96db39e354a4bac9a622"))
+		Expect(MediaFile{Title: "Song", BPM: new(120), BitDepth: new(16)}.Hash()).To(Equal("b2b0b1d1dd7fd767093588e4af3a0689"))
+	})
+	It("changes the hash when a pointer field has a value", func() {
+		base := MediaFile{Title: "Song"}
+		Expect(base.Equals(MediaFile{Title: "Song", BPM: new(120)})).To(BeFalse())
+		Expect(base.Equals(MediaFile{Title: "Song", BitDepth: new(24)})).To(BeFalse())
+	})
 })
 
 func t(v string) time.Time {

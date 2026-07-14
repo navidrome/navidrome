@@ -97,8 +97,8 @@ insert into property (id, value) values ('PIDTrack', 'track_legacy') on conflict
 insert into property (id, value) values ('PIDAlbum', 'album_legacy') on conflict do nothing;
 `),
 		func() error {
-			notice(tx, "A full scan will be triggered to populate the new tables. This may take a while.")
-			return forceFullRescan(tx)
+			notice(ctx, tx, "A full scan will be triggered to populate the new tables. This may take a while.")
+			return forceFullRescan(ctx, tx)
 		},
 	)
 }
@@ -314,6 +314,6 @@ alter table artist
 	}
 }
 
-func downSupportNewScanner(context.Context, *sql.Tx) error {
+func downSupportNewScanner(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

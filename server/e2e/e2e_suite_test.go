@@ -70,6 +70,20 @@ const (
 	mbidSomethingRec      = "44444444-4444-4444-a444-444444444444" // mbz_recording_id
 )
 
+// lyricFixture reads a public-domain lyric fixture (the same files the parser
+// benchmarks use) so the e2e fixtures stay in sync with real-world content,
+// including the word-level timing carried by the .elrc and .yaml variants.
+func lyricFixture(name string) string {
+	// tests.Init chdirs to the project root, so reference fixtures from there.
+	data, err := os.ReadFile(filepath.Join("tests", "fixtures", "lyrics", name))
+	Expect(err).ToNot(HaveOccurred(), "reading lyric fixture %q", name)
+	return string(data)
+}
+
+// firstFixtureLine is the opening lyric line shared by every auld-lang-syne
+// fixture; tests assert against it regardless of source format.
+const firstFixtureLine = "Should auld acquaintance be forgot,"
+
 // Shared test state
 var (
 	ctx         context.Context
@@ -128,12 +142,15 @@ func buildTestFS() storagetest.FakeFS {
 	// Template for diverse-format transcode test tracks
 	tcBase := _t{"albumartist": "Test Artist", "artist": "Test Artist", "album": "Transcode Formats", "year": 2024, "genre": "Test"}
 
+	// Template for lyrics e2e fixture tracks — isolated under Lyrics/ to keep other suite counts stable
+	lyricsAlbum := template(_t{"albumartist": "Lyric Tester", "artist": "Lyric Tester", "album": "Lyrics", "year": 2024, "genre": "Test"})
+
 	return createFS(fstest.MapFS{
 		// Rock / The Beatles / Abbey Road (with MBIDs)
 		// Note: "musicbrainz_trackid" is an alias for the musicbrainz_recordingid tag (populates MbzRecordingID),
 		//       "musicbrainz_releasetrackid" is an alias for the musicbrainz_trackid tag (populates MbzReleaseTrackID).
 		"Rock/The Beatles/Abbey Road/01 - Come Together.mp3": abbeyRoad(track(1, "Come Together",
-			_t{"musicbrainz_releasetrackid": mbidComeTogether, "musicbrainz_trackid": mbidComeTogetherRec})),
+			_t{"musicbrainz_releasetrackid": mbidComeTogether, "musicbrainz_trackid": mbidComeTogetherRec, "bpm": 120})),
 		"Rock/The Beatles/Abbey Road/02 - Something.mp3": abbeyRoad(track(2, "Something",
 			_t{"musicbrainz_releasetrackid": mbidSomething, "musicbrainz_trackid": mbidSomethingRec})),
 		// Rock / The Beatles / Help! (no MBIDs)
@@ -172,6 +189,35 @@ func buildTestFS() storagetest.FakeFS {
 			"title": "TC MKA Opus", "track": 6, "suffix": "mka", "codec": "opus",
 			"bitrate": 128, "samplerate": 48000, "bitdepth": 0, "channels": 2, "duration": int64(220),
 		}),
+		"Test/Transcode Formats/07 - TC FLAC Multichannel.flac": file(tcBase, _t{
+			"title": "TC FLAC Multichannel", "track": 7, "suffix": "flac",
+			"bitrate": 4500, "samplerate": 48000, "bitdepth": 24, "channels": 6, "duration": int64(180),
+		}),
+
+		// Lyrics fixtures (isolated under Lyrics/ to keep other suite counts stable).
+		// Content comes from tests/fixtures/lyrics (the same public-domain files the
+		// parser benchmarks use); the .elrc and .yaml variants carry word-level
+		// timing, which drives the v1 (line-level) vs v2 (enhanced/word-level) tests.
+		//
+		// Embedded — lyrics delivered via the "lyrics" tag, parsed at scan time.
+		// "Enhanced LRC" embeds ELRC (word-level) content; the title is kept generic
+		// since ELRC is still valid LRC.
+		"Lyrics/Embedded/01 - Embedded Enhanced LRC.mp3": lyricsAlbum(track(1, "Embedded Enhanced LRC",
+			_t{"lyrics": lyricFixture("auld-lang-syne.elrc")})),
+		"Lyrics/Embedded/02 - Embedded Plain.mp3": lyricsAlbum(track(2, "Embedded Plain",
+			_t{"lyrics": lyricFixture("auld-lang-syne.txt")})),
+		"Lyrics/Embedded/03 - Embedded TTML.mp3": lyricsAlbum(track(3, "Embedded TTML",
+			_t{"lyrics": lyricFixture("auld-lang-syne.ttml")})),
+
+		// Sidecar — raw lyric text files read from the library FS at request time via fromExternalFile.
+		// The scanner skips non-audio extensions (.lrc, .srt, .yaml), so placing them as raw MapFile
+		// entries is safe: they are visible to the fake FS but invisible to the scanner.
+		"Lyrics/Sidecar/01 - Sidecar LRC.mp3":   lyricsAlbum(track(1, "Sidecar LRC")),
+		"Lyrics/Sidecar/01 - Sidecar LRC.lrc":   &fstest.MapFile{Data: []byte(lyricFixture("auld-lang-syne.lrc")), ModTime: time.Now()},
+		"Lyrics/Sidecar/02 - Sidecar SRT.mp3":   lyricsAlbum(track(2, "Sidecar SRT")),
+		"Lyrics/Sidecar/02 - Sidecar SRT.srt":   &fstest.MapFile{Data: []byte(lyricFixture("auld-lang-syne.srt")), ModTime: time.Now()},
+		"Lyrics/Sidecar/03 - Sidecar YAML.mp3":  lyricsAlbum(track(3, "Sidecar YAML")),
+		"Lyrics/Sidecar/03 - Sidecar YAML.yaml": &fstest.MapFile{Data: []byte(lyricFixture("auld-lang-syne.yaml")), ModTime: time.Now()},
 
 		// _empty folder (directory with no audio)
 		"_empty/.keep": &fstest.MapFile{Data: []byte{}, ModTime: time.Now()},
@@ -337,6 +383,7 @@ func (n noopFFmpeg) ConvertAnimatedImage(context.Context, io.Reader, int, int) (
 
 func (n noopFFmpeg) CmdPath() (string, error) { return "", nil }
 func (n noopFFmpeg) IsAvailable() bool        { return false }
+func (n noopFFmpeg) IsProbeAvailable() bool   { return true }
 func (n noopFFmpeg) Version() string          { return "noop" }
 
 // noopArchiver implements core.Archiver
@@ -385,29 +432,13 @@ func (n noopProvider) AlbumImage(context.Context, string) (*url.URL, error) {
 	return nil, model.ErrNotFound
 }
 
-// noopPlayTracker implements scrobbler.PlayTracker
-type noopPlayTracker struct{}
-
-func (n noopPlayTracker) NowPlaying(context.Context, string, string, string, int) error {
-	return nil
-}
-
-func (n noopPlayTracker) GetNowPlaying(context.Context) ([]scrobbler.NowPlayingInfo, error) {
-	return nil, nil
-}
-
-func (n noopPlayTracker) Submit(context.Context, []scrobbler.Submission) error {
-	return nil
-}
-
 // Compile-time interface checks
 var (
-	_ artwork.Artwork       = noopArtwork{}
-	_ stream.MediaStreamer  = &spyStreamer{}
-	_ core.Archiver         = noopArchiver{}
-	_ external.Provider     = noopProvider{}
-	_ scrobbler.PlayTracker = noopPlayTracker{}
-	_ ffmpeg.FFmpeg         = noopFFmpeg{}
+	_ artwork.Artwork      = noopArtwork{}
+	_ stream.MediaStreamer = &spyStreamer{}
+	_ core.Archiver        = noopArchiver{}
+	_ external.Provider    = noopProvider{}
+	_ ffmpeg.FFmpeg        = noopFFmpeg{}
 )
 
 var _ = BeforeSuite(func() {
@@ -420,6 +451,7 @@ var _ = BeforeSuite(func() {
 
 	// Initial setup: schema, user, library, and full scan (runs once for the entire suite)
 	conf.Server.MusicFolder = "fake:///music"
+	conf.Server.LyricsPriority = "embedded,.lrc,.srt,.yaml"
 	conf.Server.DevExternalScanner = false
 
 	db.Init(ctx)
@@ -465,6 +497,13 @@ var _ = BeforeSuite(func() {
 	Expect(os.WriteFile(snapshotPath, data, 0600)).To(Succeed())
 })
 
+// Close the database before the suite's TempDir cleanup runs. Required on
+// Windows where open SQLite handles hold file locks that block temp-dir
+// removal; harmless on other OSes.
+var _ = AfterSuite(func() {
+	db.Close(ctx)
+})
+
 // setupTestDB restores the database from the golden snapshot and creates the
 // Subsonic Router. Call this from BeforeEach/BeforeAll in each test container.
 func setupTestDB() {
@@ -501,12 +540,13 @@ func setupTestDB() {
 		s,
 		events.NoopBroker(),
 		playlists.NewPlaylists(ds, core.NewImageUploadService()),
-		noopPlayTracker{},
+		scrobbler.NewPlayTracker(ds, events.NoopBroker(), nil),
 		core.NewShare(ds),
 		playback.PlaybackServer(nil),
 		metrics.NewNoopInstance(),
-		lyrics.NewLyrics(nil),
+		lyrics.NewLyrics(ds, nil),
 		decider,
+		nil,
 	)
 }
 

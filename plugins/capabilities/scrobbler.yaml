@@ -18,22 +18,13 @@ exports:
         input:
             $ref: '#/components/schemas/ScrobbleRequest'
             contentType: application/json
+    nd_scrobbler_playback_report:
+        description: PlaybackReport sends a playback state report to the scrobbling service.
+        input:
+            $ref: '#/components/schemas/PlaybackReportRequest'
+            contentType: application/json
 components:
     schemas:
-        ArtistRef:
-            description: ArtistRef is a reference to an artist with name and optional MBID.
-            properties:
-                id:
-                    type: string
-                    description: ID is the internal Navidrome artist ID (if known).
-                name:
-                    type: string
-                    description: Name is the artist name.
-                mbid:
-                    type: string
-                    description: MBID is the MusicBrainz ID for the artist.
-            required:
-                - name
         IsAuthorizedRequest:
             description: IsAuthorizedRequest is the request for authorization check.
             properties:
@@ -59,6 +50,45 @@ components:
                 - username
                 - track
                 - position
+        PlaybackReportRequest:
+            description: PlaybackReportRequest is the request for playback report notifications.
+            properties:
+                username:
+                    type: string
+                    description: Username is the username of the user.
+                track:
+                    $ref: '#/components/schemas/TrackInfo'
+                    description: Track is the track being played.
+                state:
+                    type: string
+                    description: State is the current playback state (starting/playing/paused/stopped/expired).
+                positionMs:
+                    type: integer
+                    format: int64
+                    description: PositionMs is the current playback position in milliseconds.
+                playbackRate:
+                    type: number
+                    format: float
+                    description: PlaybackRate is the playback speed (1.0 = normal).
+                playerId:
+                    type: string
+                    description: PlayerId is the unique client identifier.
+                playerName:
+                    type: string
+                    description: PlayerName is the human-readable player name.
+                timestamp:
+                    type: integer
+                    format: int64
+                    description: Timestamp is the Unix timestamp when this report was generated.
+            required:
+                - username
+                - track
+                - state
+                - positionMs
+                - playbackRate
+                - playerId
+                - playerName
+                - timestamp
         ScrobbleRequest:
             description: ScrobbleRequest is the request for submitting a scrobble.
             properties:
@@ -128,6 +158,17 @@ components:
                 mbzReleaseTrackId:
                     type: string
                     description: MBZReleaseTrackID is the MusicBrainz release track ID.
+                libraryId:
+                    type: integer
+                    format: int32
+                    description: |-
+                        LibraryID is the ID of the library the track belongs to.
+                        Only included if the plugin has library permission with filesystem access for the track's library.
+                path:
+                    type: string
+                    description: |-
+                        Path is the full path to the track file, relative to the library root.
+                        Only included if the plugin has library permission with filesystem access for the track's library.
             required:
                 - id
                 - title
@@ -139,3 +180,31 @@ components:
                 - duration
                 - trackNumber
                 - discNumber
+        ArtistRef:
+            description: |-
+                ArtistRef is the minimal information a plugin returns for Navidrome to match an
+                artist against the library. It is a reference, not a full artist entity: it
+                carries only matching keys (name and optional internal/MusicBrainz IDs) plus a
+                few projection fields used when describing a track's participants, never
+                descriptive data such as biographies or images.
+            properties:
+                id:
+                    type: string
+                    description: ID is the internal Navidrome artist ID (if known).
+                name:
+                    type: string
+                    description: Name is the artist name.
+                mbid:
+                    type: string
+                    description: MBID is the MusicBrainz ID for the artist.
+                sortName:
+                    type: string
+                    description: SortName is the artist name used for sorting (if known).
+                role:
+                    type: string
+                    description: Role is the participation category (e.g. "artist", "composer", "performer").
+                subRole:
+                    type: string
+                    description: SubRole is a specialization within Role (e.g. the instrument for a performer).
+            required:
+                - name

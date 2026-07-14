@@ -208,11 +208,11 @@ export default {
         borderBottom: `1px solid ${colors.gray[300]}`,
         padding: '10px !important',
         color: `${colors.gray[100]} !important`,
-        '& img': {
+        '& img[alt="playing"], & img[alt="paused"]': {
           filter:
-            'brightness(0) saturate(100%) invert(36%) sepia(93%) saturate(7463%) hue-rotate(289deg) brightness(95%) contrast(102%);',
+            'brightness(0) saturate(100%) invert(36%) sepia(93%) saturate(7463%) hue-rotate(289deg) brightness(95%) contrast(102%)',
         },
-        '& img + span': {
+        '& img[alt="playing"] + span, & img[alt="paused"] + span': {
           color: colors.pink[500],
         },
       },

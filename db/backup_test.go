@@ -60,7 +60,7 @@ var _ = Describe("database backups", func() {
 
 			tempFolder, err := os.MkdirTemp("", "navidrome_backup")
 			Expect(err).ToNot(HaveOccurred())
-			conf.Server.Backup.Path = tempFolder
+			conf.Server.Backup.Path = conf.NewDir(tempFolder)
 
 			DeferCleanup(func() {
 				_ = os.RemoveAll(tempFolder)
@@ -118,7 +118,7 @@ var _ = Describe("database backups", func() {
 		BeforeEach(func() {
 			tempFolder, err := os.MkdirTemp("", "navidrome_backup")
 			Expect(err).ToNot(HaveOccurred())
-			conf.Server.Backup.Path = tempFolder
+			conf.Server.Backup.Path = conf.NewDir(tempFolder)
 
 			DeferCleanup(func() {
 				_ = os.RemoveAll(tempFolder)

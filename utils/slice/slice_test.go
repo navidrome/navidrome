@@ -81,6 +81,20 @@ var _ = Describe("Slice Utils", func() {
 		})
 	})
 
+	Describe("ToSet", func() {
+		It("returns empty set for an empty input", func() {
+			Expect(slice.ToSet([]int{})).To(BeEmpty())
+		})
+
+		It("builds a set with one key per distinct element", func() {
+			result := slice.ToSet([]int{1, 2, 2, 3, 3, 3})
+			Expect(result).To(HaveLen(3))
+			Expect(result).To(HaveKey(1))
+			Expect(result).To(HaveKey(2))
+			Expect(result).To(HaveKey(3))
+		})
+	})
+
 	Describe("CompactByFrequency", func() {
 		It("returns empty slice for an empty input", func() {
 			Expect(slice.CompactByFrequency([]int{})).To(BeEmpty())
@@ -134,7 +148,7 @@ var _ = Describe("Slice Utils", func() {
 			count := 0
 			file, _ := os.Open(path)
 			defer file.Close()
-			for _ = range slice.LinesFrom(file) {
+			for range slice.LinesFrom(file) {
 				count++
 			}
 			Expect(count).To(Equal(expected))

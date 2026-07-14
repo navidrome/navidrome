@@ -56,7 +56,12 @@
         "displayAlbumArtist": "Display album artist",
         "contributors": [],
         "displayComposer": "",
-        "explicitStatus": "explicit"
+        "explicitStatus": "explicit",
+        "groupings": [
+          "Soundtrack"
+        ],
+        "works": [],
+        "movements": []
       }
     ]
   }

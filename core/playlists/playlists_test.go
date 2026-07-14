@@ -144,29 +144,25 @@ var _ = Describe("Playlists", func() {
 
 		It("allows owner to update their playlist", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
-			newName := "Updated Name"
-			err := ps.Update(ctx, "pls-1", &newName, nil, nil, nil, nil)
+			err := ps.Update(ctx, "pls-1", new("Updated Name"), nil, nil, nil, nil)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("allows admin to update any playlist", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "admin-1", IsAdmin: true})
-			newName := "Updated Name"
-			err := ps.Update(ctx, "pls-other", &newName, nil, nil, nil, nil)
+			err := ps.Update(ctx, "pls-other", new("Updated Name"), nil, nil, nil, nil)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("denies non-owner, non-admin from updating", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "other-user", IsAdmin: false})
-			newName := "Updated Name"
-			err := ps.Update(ctx, "pls-1", &newName, nil, nil, nil, nil)
+			err := ps.Update(ctx, "pls-1", new("Updated Name"), nil, nil, nil, nil)
 			Expect(err).To(MatchError(model.ErrNotAuthorized))
 		})
 
 		It("returns error when playlist not found", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
-			newName := "Updated Name"
-			err := ps.Update(ctx, "nonexistent", &newName, nil, nil, nil, nil)
+			err := ps.Update(ctx, "nonexistent", new("Updated Name"), nil, nil, nil, nil)
 			Expect(err).To(Equal(model.ErrNotFound))
 		})
 
@@ -184,8 +180,7 @@ var _ = Describe("Playlists", func() {
 
 		It("allows metadata updates on a smart playlist", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
-			newName := "Updated Smart"
-			err := ps.Update(ctx, "pls-smart", &newName, nil, nil, nil, nil)
+			err := ps.Update(ctx, "pls-smart", new("Updated Smart"), nil, nil, nil, nil)
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})
@@ -307,7 +302,7 @@ var _ = Describe("Playlists", func() {
 		BeforeEach(func() {
 			DeferCleanup(configtest.SetupConfig())
 			tmpDir = GinkgoT().TempDir()
-			conf.Server.DataFolder = tmpDir
+			conf.Server.DataFolder = conf.NewDir(tmpDir)
 
 			mockPlsRepo.Data = map[string]*model.Playlist{
 				"pls-1":     {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
@@ -371,7 +366,7 @@ var _ = Describe("Playlists", func() {
 		BeforeEach(func() {
 			DeferCleanup(configtest.SetupConfig())
 			tmpDir = GinkgoT().TempDir()
-			conf.Server.DataFolder = tmpDir
+			conf.Server.DataFolder = conf.NewDir(tmpDir)
 
 			// Create a real image file on disk
 			imgDir := filepath.Join(tmpDir, "artwork", "playlist")

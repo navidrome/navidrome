@@ -12,6 +12,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/core/matcher"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
@@ -41,6 +42,7 @@ type Provider interface {
 type provider struct {
 	ds          model.DataStore
 	ag          Agents
+	matcher     *matcher.Matcher
 	artistQueue refreshQueue[auxArtist]
 	albumQueue  refreshQueue[auxAlbum]
 }
@@ -85,8 +87,8 @@ type Agents interface {
 	agents.SimilarSongsByArtistRetriever
 }
 
-func NewProvider(ds model.DataStore, agents Agents) Provider {
-	e := &provider{ds: ds, ag: agents}
+func NewProvider(ds model.DataStore, agents Agents, m *matcher.Matcher) Provider {
+	e := &provider{ds: ds, ag: agents, matcher: m}
 	e.artistQueue = newRefreshQueue(context.TODO(), e.populateArtistInfo)
 	e.albumQueue = newRefreshQueue(context.TODO(), e.populateAlbumInfo)
 	return e
@@ -151,7 +153,7 @@ func (e *provider) populateAlbumInfo(ctx context.Context, album auxAlbum) (auxAl
 		return album, err
 	}
 
-	album.ExternalInfoUpdatedAt = P(time.Now())
+	album.ExternalInfoUpdatedAt = new(time.Now())
 	album.ExternalUrl = info.URL
 
 	if info.Description != "" {
@@ -267,7 +269,7 @@ func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (au
 		return artist, ctx.Err()
 	}
 
-	artist.ExternalInfoUpdatedAt = P(time.Now())
+	artist.ExternalInfoUpdatedAt = new(time.Now())
 	err := e.ds.Artist(ctx).UpdateExternalInfo(&artist.Artist)
 	if err != nil {
 		log.Error(ctx, "Error trying to update artist external information", "id", artist.ID, "name", artistName,
@@ -300,7 +302,7 @@ func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (mode
 	}
 
 	if err == nil && len(songs) > 0 {
-		return e.matchSongsToLibrary(ctx, songs, count)
+		return e.matcher.MatchSongs(ctx, songs, count)
 	}
 
 	// Fallback to existing similar artists + top songs algorithm
@@ -469,17 +471,23 @@ func (e *provider) getMatchingTopSongs(ctx context.Context, agent agents.ArtistT
 		return nil, fmt.Errorf("failed to get top songs for artist %s: %w", artistName, err)
 	}
 
-	// Enrich songs with artist info if not already present (for top songs, we know the artist)
+	// Enrich top songs with the queried artist. A song with no artists, or whose first credit the
+	// agent left unnamed, is attributed to the queried artist. A first credit that already names an
+	// artist is left as-is: it may be a different (e.g. featured) artist, so stamping the queried
+	// MBID onto it would create a false name+MBID pairing.
 	for i := range songs {
-		if songs[i].Artist == "" {
-			songs[i].Artist = artistName
-		}
-		if songs[i].ArtistMBID == "" {
-			songs[i].ArtistMBID = artist.MbzArtistID
+		switch {
+		case len(songs[i].Artists) == 0:
+			songs[i].Artists = []agents.Artist{{Name: artistName, MBID: artist.MbzArtistID}}
+		case songs[i].Artists[0].Name == "":
+			songs[i].Artists[0].Name = artistName
+			if songs[i].Artists[0].MBID == "" {
+				songs[i].Artists[0].MBID = artist.MbzArtistID
+			}
 		}
 	}
 
-	mfs, err := e.matchSongsToLibrary(ctx, songs, count)
+	mfs, err := e.matcher.MatchSongs(ctx, songs, count)
 	if err != nil {
 		return nil, err
 	}

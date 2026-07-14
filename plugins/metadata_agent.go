@@ -6,6 +6,8 @@ import (
 
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/plugins/capabilities"
+	"github.com/navidrome/navidrome/plugins/types"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 // CapabilityMetadataAgent indicates the plugin can provide artist/album metadata.
@@ -42,6 +44,10 @@ func init() {
 		FuncGetSimilarSongsByAlbum,
 		FuncGetSimilarSongsByArtist,
 	)
+}
+
+func newMetadataAgent(p *plugin) *MetadataAgent {
+	return &MetadataAgent{name: p.name, plugin: p}
 }
 
 // MetadataAgent is an adapter that wraps an Extism plugin and implements
@@ -222,23 +228,35 @@ func (a *MetadataAgent) GetSimilarSongsByArtist(ctx context.Context, id, name, m
 	return callSimilarSongsPluginFunction[capabilities.SimilarSongsByArtistRequest](ctx, a.plugin, FuncGetSimilarSongsByArtist, capabilities.SimilarSongsByArtistRequest{ID: id, Name: name, MBID: mbid, Count: int32(count)})
 }
 
-// songRefsToAgentSongs converts a slice of SongRef to agents.Song
-func songRefsToAgentSongs(refs []capabilities.SongRef) []agents.Song {
-	songs := make([]agents.Song, len(refs))
-	for i, s := range refs {
-		songs[i] = agents.Song{
-			ID:         s.ID,
-			Name:       s.Name,
-			MBID:       s.MBID,
-			ISRC:       s.ISRC,
-			Artist:     s.Artist,
-			ArtistMBID: s.ArtistMBID,
-			Album:      s.Album,
-			AlbumMBID:  s.AlbumMBID,
-			Duration:   uint32(s.Duration * 1000),
+// songRefToAgentSong converts a single SongRef to agents.Song. SongRef keeps the single
+// Artist/ArtistMBID fields as part of the plugin wire contract; when a plugin sends those instead
+// of the artists array, they are folded into a one-element Artists list here.
+func songRefToAgentSong(s types.SongRef) agents.Song {
+	var artists []agents.Artist
+	switch {
+	case len(s.Artists) > 0:
+		artists = make([]agents.Artist, len(s.Artists))
+		for i, a := range s.Artists {
+			artists[i] = agents.Artist{ID: a.ID, Name: a.Name, MBID: a.MBID}
 		}
+	case s.Artist != "" || s.ArtistMBID != "":
+		artists = []agents.Artist{{Name: s.Artist, MBID: s.ArtistMBID}}
 	}
-	return songs
+	return agents.Song{
+		ID:        s.ID,
+		Name:      s.Name,
+		MBID:      s.MBID,
+		ISRC:      s.ISRC,
+		Artists:   artists,
+		Album:     s.Album,
+		AlbumMBID: s.AlbumMBID,
+		Duration:  s.DurationInMs(),
+	}
+}
+
+// songRefsToAgentSongs converts a slice of SongRef to agents.Song
+func songRefsToAgentSongs(refs []types.SongRef) []agents.Song {
+	return slice.Map(refs, songRefToAgentSong)
 }
 
 // Verify interface implementations at compile time

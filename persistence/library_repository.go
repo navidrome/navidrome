@@ -173,15 +173,6 @@ func (r *libraryRepository) ScanEnd(id int) error {
 		Set("last_scan_started_at", time.Time{}).
 		Where(Eq{"id": id})
 	_, err := r.executeSQL(sq)
-	if err != nil {
-		return err
-	}
-	// https://www.sqlite.org/pragma.html#pragma_optimize
-	// Use mask 0x10000 to check table sizes without running ANALYZE
-	// Running ANALYZE can cause query planner issues with expression-based collation indexes
-	if conf.Server.DevOptimizeDB {
-		_, err = r.executeSQL(Expr("PRAGMA optimize=0x10000;"))
-	}
 	return err
 }
 
@@ -259,6 +250,11 @@ func (r *libraryRepository) Delete(id int) error {
 	err := r.delete(Eq{"id": id})
 	if err != nil {
 		return err
+	}
+
+	// The cascade above can drop an artist's last library_artist row; reconcile any such orphans.
+	if err := NewArtistRepository(r.ctx, r.db).(*artistRepository).markOrphansMissing(); err != nil {
+		return fmt.Errorf("marking orphaned artists missing after deleting library %d: %w", id, err)
 	}
 
 	// Clear cache entry for this library only if DB operation was successful

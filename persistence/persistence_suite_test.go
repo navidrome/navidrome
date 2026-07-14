@@ -4,6 +4,7 @@ import (
 	"context"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	_ "github.com/mattn/go-sqlite3"
@@ -13,7 +14,6 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
-	"github.com/navidrome/navidrome/utils/gg"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pocketbase/dbx"
@@ -77,14 +77,14 @@ var (
 )
 
 var (
-	albumSgtPeppers    = al(model.Album{ID: "101", Name: "Sgt Peppers", AlbumArtist: "The Beatles", OrderAlbumName: "sgt peppers", AlbumArtistID: "3", EmbedArtPath: p("/beatles/1/sgt/a day.mp3"), SongCount: 1, MaxYear: 1967})
-	albumAbbeyRoad     = al(model.Album{ID: "102", Name: "Abbey Road", AlbumArtist: "The Beatles", OrderAlbumName: "abbey road", AlbumArtistID: "3", EmbedArtPath: p("/beatles/1/come together.mp3"), SongCount: 1, MaxYear: 1969})
-	albumRadioactivity = al(model.Album{ID: "103", Name: "Radioactivity", AlbumArtist: "Kraftwerk", OrderAlbumName: "radioactivity", AlbumArtistID: "2", EmbedArtPath: p("/kraft/radio/radio.mp3"), SongCount: 2})
-	albumMultiDisc     = al(model.Album{ID: "104", Name: "Multi Disc Album", AlbumArtist: "Test Artist", OrderAlbumName: "multi disc album", AlbumArtistID: "1", EmbedArtPath: p("/test/multi/disc1/track1.mp3"), SongCount: 4})
-	albumCJK           = al(model.Album{ID: "105", Name: "COWBOY BEBOP", AlbumArtist: "シートベルツ", OrderAlbumName: "cowboy bebop", AlbumArtistID: "4", EmbedArtPath: p("/seatbelts/cowboy-bebop/track1.mp3"), SongCount: 1})
-	albumWithVersion   = alWithTags(model.Album{ID: "106", Name: "Abbey Road", AlbumArtist: "The Beatles", OrderAlbumName: "abbey road", AlbumArtistID: "3", EmbedArtPath: p("/beatles/2/come together.mp3"), SongCount: 1, MaxYear: 2019},
+	albumSgtPeppers    = al(model.Album{ID: "101", Name: "Sgt Peppers", AlbumArtist: "The Beatles", OrderAlbumName: "sgt peppers", AlbumArtistID: "3", EmbedArtPath: p("beatles/1/sgt/a day.mp3"), SongCount: 1, MaxYear: 1967})
+	albumAbbeyRoad     = al(model.Album{ID: "102", Name: "Abbey Road", AlbumArtist: "The Beatles", OrderAlbumName: "abbey road", AlbumArtistID: "3", EmbedArtPath: p("beatles/1/come together.mp3"), SongCount: 1, MaxYear: 1969})
+	albumRadioactivity = al(model.Album{ID: "103", Name: "Radioactivity", AlbumArtist: "Kraftwerk", OrderAlbumName: "radioactivity", AlbumArtistID: "2", EmbedArtPath: p("kraft/radio/radio.mp3"), SongCount: 2})
+	albumMultiDisc     = al(model.Album{ID: "104", Name: "Multi Disc Album", AlbumArtist: "Test Artist", OrderAlbumName: "multi disc album", AlbumArtistID: "1", EmbedArtPath: p("test/multi/disc1/track1.mp3"), SongCount: 4})
+	albumCJK           = al(model.Album{ID: "105", Name: "COWBOY BEBOP", AlbumArtist: "シートベルツ", OrderAlbumName: "cowboy bebop", AlbumArtistID: "4", EmbedArtPath: p("seatbelts/cowboy-bebop/track1.mp3"), SongCount: 1})
+	albumWithVersion   = alWithTags(model.Album{ID: "106", Name: "Abbey Road", AlbumArtist: "The Beatles", OrderAlbumName: "abbey road", AlbumArtistID: "3", EmbedArtPath: p("beatles/2/come together.mp3"), SongCount: 1, MaxYear: 2019},
 		model.Tags{model.TagAlbumVersion: {"Deluxe Edition"}})
-	albumPunctuation = al(model.Album{ID: "107", Name: "Things Fall Apart", AlbumArtist: "The Roots", OrderAlbumName: "things fall apart", AlbumArtistID: "5", EmbedArtPath: p("/roots/things/track1.mp3"), SongCount: 1})
+	albumPunctuation = al(model.Album{ID: "107", Name: "Things Fall Apart", AlbumArtist: "The Roots", OrderAlbumName: "things fall apart", AlbumArtistID: "5", EmbedArtPath: p("roots/things/track1.mp3"), SongCount: 1})
 	testAlbums       = model.Albums{
 		albumSgtPeppers,
 		albumAbbeyRoad,
@@ -97,13 +97,13 @@ var (
 )
 
 var (
-	songDayInALife    = mf(model.MediaFile{ID: "1001", Title: "A Day In A Life", ArtistID: "3", Artist: "The Beatles", AlbumID: "101", Album: "Sgt Peppers", Path: p("/beatles/1/sgt/a day.mp3")})
-	songComeTogether  = mf(model.MediaFile{ID: "1002", Title: "Come Together", ArtistID: "3", Artist: "The Beatles", AlbumID: "102", Album: "Abbey Road", Path: p("/beatles/1/come together.mp3")})
-	songRadioactivity = mf(model.MediaFile{ID: "1003", Title: "Radioactivity", ArtistID: "2", Artist: "Kraftwerk", AlbumID: "103", Album: "Radioactivity", Path: p("/kraft/radio/radio.mp3")})
+	songDayInALife    = mf(model.MediaFile{ID: "1001", Title: "A Day In A Life", ArtistID: "3", Artist: "The Beatles", AlbumID: "101", Album: "Sgt Peppers", Path: p("beatles/1/sgt/a day.mp3")})
+	songComeTogether  = mf(model.MediaFile{ID: "1002", Title: "Come Together", ArtistID: "3", Artist: "The Beatles", AlbumID: "102", Album: "Abbey Road", Path: p("beatles/1/come together.mp3")})
+	songRadioactivity = mf(model.MediaFile{ID: "1003", Title: "Radioactivity", ArtistID: "2", Artist: "Kraftwerk", AlbumID: "103", Album: "Radioactivity", Path: p("kraft/radio/radio.mp3")})
 	songAntenna       = mf(model.MediaFile{ID: "1004", Title: "Antenna", ArtistID: "2", Artist: "Kraftwerk",
 		AlbumID:     "103",
-		Path:        p("/kraft/radio/antenna.mp3"),
-		RGAlbumGain: gg.P(1.0), RGAlbumPeak: gg.P(2.0), RGTrackGain: gg.P(3.0), RGTrackPeak: gg.P(4.0),
+		Path:        p("kraft/radio/antenna.mp3"),
+		RGAlbumGain: new(1.0), RGAlbumPeak: new(2.0), RGTrackGain: new(3.0), RGTrackPeak: new(4.0),
 	})
 	songAntennaWithLyrics = mf(model.MediaFile{
 		ID:       "1005",
@@ -115,13 +115,13 @@ var (
 	})
 	songAntenna2 = mf(model.MediaFile{ID: "1006", Title: "Antenna", ArtistID: "2", Artist: "Kraftwerk", AlbumID: "103"})
 	// Multi-disc album tracks (intentionally out of order to test sorting)
-	songDisc2Track11 = mf(model.MediaFile{ID: "2001", Title: "Disc 2 Track 11", ArtistID: "1", Artist: "Test Artist", AlbumID: "104", Album: "Multi Disc Album", DiscNumber: 2, TrackNumber: 11, Path: p("/test/multi/disc2/track11.mp3"), OrderAlbumName: "multi disc album", OrderArtistName: "test artist"})
-	songDisc1Track01 = mf(model.MediaFile{ID: "2002", Title: "Disc 1 Track 1", ArtistID: "1", Artist: "Test Artist", AlbumID: "104", Album: "Multi Disc Album", DiscNumber: 1, TrackNumber: 1, Path: p("/test/multi/disc1/track1.mp3"), OrderAlbumName: "multi disc album", OrderArtistName: "test artist"})
-	songDisc2Track01 = mf(model.MediaFile{ID: "2003", Title: "Disc 2 Track 1", ArtistID: "1", Artist: "Test Artist", AlbumID: "104", Album: "Multi Disc Album", DiscNumber: 2, TrackNumber: 1, Path: p("/test/multi/disc2/track1.mp3"), OrderAlbumName: "multi disc album", OrderArtistName: "test artist"})
-	songDisc1Track02 = mf(model.MediaFile{ID: "2004", Title: "Disc 1 Track 2", ArtistID: "1", Artist: "Test Artist", AlbumID: "104", Album: "Multi Disc Album", DiscNumber: 1, TrackNumber: 2, Path: p("/test/multi/disc1/track2.mp3"), OrderAlbumName: "multi disc album", OrderArtistName: "test artist"})
-	songCJK          = mf(model.MediaFile{ID: "3001", Title: "プラチナ・ジェット", ArtistID: "4", Artist: "シートベルツ", AlbumID: "105", Album: "COWBOY BEBOP", Path: p("/seatbelts/cowboy-bebop/track1.mp3")})
-	songVersioned    = mf(model.MediaFile{ID: "3002", Title: "Come Together", ArtistID: "3", Artist: "The Beatles", AlbumID: "106", Album: "Abbey Road", Path: p("/beatles/2/come together.mp3")})
-	songPunctuation  = mf(model.MediaFile{ID: "3003", Title: "!!!!!!!", ArtistID: "5", Artist: "The Roots", AlbumID: "107", Album: "Things Fall Apart", Path: p("/roots/things/track1.mp3")})
+	songDisc2Track11 = mf(model.MediaFile{ID: "2001", Title: "Disc 2 Track 11", ArtistID: "1", Artist: "Test Artist", AlbumID: "104", Album: "Multi Disc Album", DiscNumber: 2, TrackNumber: 11, Path: p("test/multi/disc2/track11.mp3"), OrderAlbumName: "multi disc album", OrderArtistName: "test artist"})
+	songDisc1Track01 = mf(model.MediaFile{ID: "2002", Title: "Disc 1 Track 1", ArtistID: "1", Artist: "Test Artist", AlbumID: "104", Album: "Multi Disc Album", DiscNumber: 1, TrackNumber: 1, Path: p("test/multi/disc1/track1.mp3"), OrderAlbumName: "multi disc album", OrderArtistName: "test artist"})
+	songDisc2Track01 = mf(model.MediaFile{ID: "2003", Title: "Disc 2 Track 1", ArtistID: "1", Artist: "Test Artist", AlbumID: "104", Album: "Multi Disc Album", DiscNumber: 2, TrackNumber: 1, Path: p("test/multi/disc2/track1.mp3"), OrderAlbumName: "multi disc album", OrderArtistName: "test artist"})
+	songDisc1Track02 = mf(model.MediaFile{ID: "2004", Title: "Disc 1 Track 2", ArtistID: "1", Artist: "Test Artist", AlbumID: "104", Album: "Multi Disc Album", DiscNumber: 1, TrackNumber: 2, Path: p("test/multi/disc1/track2.mp3"), OrderAlbumName: "multi disc album", OrderArtistName: "test artist"})
+	songCJK          = mf(model.MediaFile{ID: "3001", Title: "プラチナ・ジェット", ArtistID: "4", Artist: "シートベルツ", AlbumID: "105", Album: "COWBOY BEBOP", Path: p("seatbelts/cowboy-bebop/track1.mp3")})
+	songVersioned    = mf(model.MediaFile{ID: "3002", Title: "Come Together", ArtistID: "3", Artist: "The Beatles", AlbumID: "106", Album: "Abbey Road", Path: p("beatles/2/come together.mp3")})
+	songPunctuation  = mf(model.MediaFile{ID: "3003", Title: "!!!!!!!", ArtistID: "5", Artist: "The Roots", AlbumID: "107", Album: "Things Fall Apart", Path: p("roots/things/track1.mp3")})
 	testSongs        = model.MediaFiles{
 		songDayInALife,
 		songComeTogether,
@@ -158,12 +158,17 @@ var (
 	testUsers   = model.Users{adminUser, regularUser, thirdUser}
 )
 
+var (
+	firstScrobble  = model.Scrobble{ID: 1, MediaFileID: "1001", UserID: "userid", SubmissionTime: time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC).Unix()}
+	secondScrobble = model.Scrobble{ID: 2, MediaFileID: "1003", UserID: "2222", SubmissionTime: time.Date(1970, 2, 1, 0, 0, 0, 0, time.UTC).Unix()}
+	thirdScrobble  = model.Scrobble{ID: 3, MediaFileID: "1002", UserID: "userid", SubmissionTime: time.Date(1970, 3, 1, 0, 0, 0, 0, time.UTC).Unix()}
+	scrobbles      = model.Scrobbles{firstScrobble, secondScrobble, thirdScrobble}
+)
+
 func p(path string) string {
 	return filepath.FromSlash(path)
 }
 
-// Initialize test DB
-// TODO Load this data setup from file(s)
 var _ = BeforeSuite(func() {
 	conn := GetDBXBuilder()
 	ctx := log.NewContext(context.TODO())
@@ -187,8 +192,7 @@ var _ = BeforeSuite(func() {
 
 	alr := NewAlbumRepository(ctx, conn).(*albumRepository)
 	for i := range testAlbums {
-		a := testAlbums[i]
-		err := alr.Put(&a)
+		err := alr.Put(new(testAlbums[i]))
 		if err != nil {
 			panic(err)
 		}
@@ -196,8 +200,7 @@ var _ = BeforeSuite(func() {
 
 	arr := NewArtistRepository(ctx, conn)
 	for i := range testArtists {
-		a := testArtists[i]
-		err := arr.Put(&a)
+		err := arr.Put(new(testArtists[i]))
 		if err != nil {
 			panic(err)
 		}
@@ -243,8 +246,7 @@ var _ = BeforeSuite(func() {
 
 	rar := NewRadioRepository(ctx, conn)
 	for i := range testRadios {
-		r := testRadios[i]
-		err := rar.Put(&r)
+		err := rar.Put(new(testRadios[i]))
 		if err != nil {
 			panic(err)
 		}
@@ -310,6 +312,18 @@ var _ = BeforeSuite(func() {
 	songComeTogether.Starred = true
 	songComeTogether.StarredAt = mf.StarredAt
 	testSongs[1] = songComeTogether
+
+	scrobbleRepo := NewScrobbleRepository(ctx, conn).(*scrobbleRepository)
+	for _, s := range scrobbles {
+		_, err := scrobbleRepo.executeSQL(squirrel.Insert("scrobbles").SetMap(map[string]any{
+			"media_file_id":   s.MediaFileID,
+			"user_id":         s.UserID,
+			"submission_time": s.SubmissionTime,
+		}))
+		if err != nil {
+			panic(err)
+		}
+	}
 })
 
 func GetDBXBuilder() *dbx.DB {

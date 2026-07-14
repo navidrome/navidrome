@@ -18,6 +18,9 @@ fn is_zero_u64(value: &u64) -> bool { *value == 0 }
 fn is_zero_f32(value: &f32) -> bool { *value == 0.0 }
 #[allow(dead_code)]
 fn is_zero_f64(value: &f64) -> bool { *value == 0.0 }
+
+#[deprecated(note = "use nd_pdk::types::ArtistRef")]
+pub type ArtistRef = nd_pdk_types::ArtistRef;
 /// ScrobblerError represents an error type for scrobbling operations.
 pub type ScrobblerError = &'static str;
 /// ScrobblerErrorNotAuthorized indicates the user is not authorized.
@@ -26,20 +29,6 @@ pub const SCROBBLER_ERROR_NOT_AUTHORIZED: ScrobblerError = "scrobbler(not_author
 pub const SCROBBLER_ERROR_RETRY_LATER: ScrobblerError = "scrobbler(retry_later)";
 /// ScrobblerErrorUnrecoverable indicates an unrecoverable error.
 pub const SCROBBLER_ERROR_UNRECOVERABLE: ScrobblerError = "scrobbler(unrecoverable)";
-/// ArtistRef is a reference to an artist with name and optional MBID.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ArtistRef {
-    /// ID is the internal Navidrome artist ID (if known).
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub id: String,
-    /// Name is the artist name.
-    #[serde(default)]
-    pub name: String,
-    /// MBID is the MusicBrainz ID for the artist.
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub mbid: String,
-}
 /// IsAuthorizedRequest is the request for authorization check.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -61,6 +50,35 @@ pub struct NowPlayingRequest {
     /// Position is the current playback position in seconds.
     #[serde(default)]
     pub position: i32,
+}
+/// PlaybackReportRequest is the request for playback report notifications.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlaybackReportRequest {
+    /// Username is the username of the user.
+    #[serde(default)]
+    pub username: String,
+    /// Track is the track being played.
+    #[serde(default)]
+    pub track: TrackInfo,
+    /// State is the current playback state (starting/playing/paused/stopped/expired).
+    #[serde(default)]
+    pub state: String,
+    /// PositionMs is the current playback position in milliseconds.
+    #[serde(default)]
+    pub position_ms: i64,
+    /// PlaybackRate is the playback speed (1.0 = normal).
+    #[serde(default)]
+    pub playback_rate: f64,
+    /// PlayerId is the unique client identifier.
+    #[serde(default)]
+    pub player_id: String,
+    /// PlayerName is the human-readable player name.
+    #[serde(default)]
+    pub player_name: String,
+    /// Timestamp is the Unix timestamp when this report was generated.
+    #[serde(default)]
+    pub timestamp: i64,
 }
 /// ScrobbleRequest is the request for submitting a scrobble.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -97,10 +115,10 @@ pub struct TrackInfo {
     pub album_artist: String,
     /// Artists is the list of track artists.
     #[serde(default)]
-    pub artists: Vec<ArtistRef>,
+    pub artists: Vec<nd_pdk_types::ArtistRef>,
     /// AlbumArtists is the list of album artists.
     #[serde(default)]
-    pub album_artists: Vec<ArtistRef>,
+    pub album_artists: Vec<nd_pdk_types::ArtistRef>,
     /// Duration is the track duration in seconds.
     #[serde(default)]
     pub duration: f32,
@@ -122,6 +140,14 @@ pub struct TrackInfo {
     /// MBZReleaseTrackID is the MusicBrainz release track ID.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub mbz_release_track_id: String,
+    /// LibraryID is the ID of the library the track belongs to.
+    /// Only included if the plugin has library permission with filesystem access for the track's library.
+    #[serde(default, skip_serializing_if = "is_zero_i32")]
+    pub library_id: i32,
+    /// Path is the full path to the track file, relative to the library root.
+    /// Only included if the plugin has library permission with filesystem access for the track's library.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub path: String,
 }
 
 /// Error represents an error from a capability method.
@@ -150,7 +176,7 @@ impl Error {
 /// ListenBrainz, or custom scrobbling backends.
 /// 
 /// All methods are required - plugins implementing this capability must provide
-/// all three functions: IsAuthorized, NowPlaying, and Scrobble.
+/// all four functions: IsAuthorized, NowPlaying, Scrobble, and PlaybackReport.
 pub trait Scrobbler {
     /// IsAuthorized - IsAuthorized checks if a user is authorized to scrobble to this service.
     fn is_authorized(&self, req: IsAuthorizedRequest) -> Result<bool, Error>;
@@ -158,6 +184,8 @@ pub trait Scrobbler {
     fn now_playing(&self, req: NowPlayingRequest) -> Result<(), Error>;
     /// Scrobble - Scrobble submits a completed scrobble to the scrobbling service.
     fn scrobble(&self, req: ScrobbleRequest) -> Result<(), Error>;
+    /// PlaybackReport - PlaybackReport sends a playback state report to the scrobbling service.
+    fn playback_report(&self, req: PlaybackReportRequest) -> Result<(), Error>;
 }
 
 /// Register all exports for the Scrobbler capability.
@@ -187,6 +215,14 @@ macro_rules! register_scrobbler {
         ) -> extism_pdk::FnResult<()> {
             let plugin = <$plugin_type>::default();
             $crate::scrobbler::Scrobbler::scrobble(&plugin, req.into_inner())?;
+            Ok(())
+        }
+        #[extism_pdk::plugin_fn]
+        pub fn nd_scrobbler_playback_report(
+            req: extism_pdk::Json<$crate::scrobbler::PlaybackReportRequest>
+        ) -> extism_pdk::FnResult<()> {
+            let plugin = <$plugin_type>::default();
+            $crate::scrobbler::Scrobbler::playback_report(&plugin, req.into_inner())?;
             Ok(())
         }
     };

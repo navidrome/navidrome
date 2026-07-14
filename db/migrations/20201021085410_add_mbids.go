@@ -11,8 +11,8 @@ func init() {
 	goose.AddMigrationContext(Up20201021085410, Down20201021085410)
 }
 
-func Up20201021085410(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func Up20201021085410(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 alter table media_file
 	add mbz_track_id varchar(255);
 alter table media_file
@@ -49,11 +49,11 @@ alter table artist
 	if err != nil {
 		return err
 	}
-	notice(tx, "A full rescan needs to be performed to import more tags")
-	return forceFullRescan(tx)
+	notice(ctx, tx, "A full rescan needs to be performed to import more tags")
+	return forceFullRescan(ctx, tx)
 }
 
-func Down20201021085410(_ context.Context, tx *sql.Tx) error {
+func Down20201021085410(ctx context.Context, tx *sql.Tx) error {
 	// This code is executed when the migration is rolled back.
 	return nil
 }

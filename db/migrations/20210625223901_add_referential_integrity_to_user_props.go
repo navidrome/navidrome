@@ -11,8 +11,8 @@ func init() {
 	goose.AddMigrationContext(upAddReferentialIntegrityToUserProps, downAddReferentialIntegrityToUserProps)
 }
 
-func upAddReferentialIntegrityToUserProps(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func upAddReferentialIntegrityToUserProps(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 create table user_props_dg_tmp
 (
 	user_id varchar not null
@@ -34,6 +34,6 @@ alter table user_props_dg_tmp rename to user_props;
 	return err
 }
 
-func downAddReferentialIntegrityToUserProps(_ context.Context, tx *sql.Tx) error {
+func downAddReferentialIntegrityToUserProps(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

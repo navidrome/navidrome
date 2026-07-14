@@ -76,7 +76,7 @@ The YAML schemas in this package are automatically generated from the capability
 To regenerate the schemas after modifying the interfaces, run:
 
 ```bash
-cd plugins/cmd/ndpgen && go run . -schemas -input=./plugins/capabilities
+cd plugins/cmd/ndpgen && go run . -schemas -input=../../capabilities -shared=../../types
 ```
 
 ## Resources

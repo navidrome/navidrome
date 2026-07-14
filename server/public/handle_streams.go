@@ -3,12 +3,15 @@ package public
 import (
 	"errors"
 	"net/http"
+	"slices"
 	"strconv"
+	"time"
 
 	"github.com/navidrome/navidrome/core/auth"
-	"github.com/navidrome/navidrome/core/stream"
+	streampkg "github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	. "github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/req"
 )
 
@@ -23,6 +26,22 @@ func (pub *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	share, err := pub.ds.Share(ctx).Get(info.shareID)
+	if err != nil {
+		checkShareError(ctx, w, err, info.shareID)
+		return
+	}
+	if expiresAt := V(share.ExpiresAt); !expiresAt.IsZero() && expiresAt.Before(time.Now()) {
+		checkShareError(ctx, w, model.ErrExpired, info.shareID)
+		return
+	}
+	shareOwner, err := pub.ds.User(ctx).Get(share.UserID)
+	if err != nil {
+		log.Error(ctx, "Error retrieving share owner for shared stream", "share", info.shareID, "owner", share.UserID, err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
 	mf, err := pub.ds.MediaFile(ctx).Get(info.id)
 	if err != nil {
 		if errors.Is(err, model.ErrNotFound) {
@@ -34,10 +53,22 @@ func (pub *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stream, err := pub.streamer.NewStream(ctx, mf, stream.Request{
+	// 404 rather than 403 so the response doesn't reveal whether the id exists.
+	// The track must belong to the share AND be within the owner's libraries.
+	if !shareContainsTrack(share, mf.ID) || !shareOwner.HasLibraryAccess(mf.LibraryID) {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+
+	stream, err := pub.streamer.NewStream(ctx, mf, streampkg.Request{
 		Format: info.format, BitRate: info.bitrate,
 	})
 	if err != nil {
+		if errors.Is(err, streampkg.ErrTooManyTranscodes) {
+			w.Header().Set("Retry-After", strconv.Itoa(streampkg.RetryAfterSeconds))
+			http.Error(w, "too many concurrent transcodes, please retry shortly", http.StatusTooManyRequests)
+			return
+		}
 		log.Error(ctx, "Error starting shared stream", err)
 		http.Error(w, "invalid request", http.StatusInternalServerError)
 		return
@@ -63,23 +94,33 @@ type shareTrackInfo struct {
 	id      string
 	format  string
 	bitrate int
+	shareID string
 }
 
+func shareContainsTrack(share *model.Share, mediaFileID string) bool {
+	return slices.ContainsFunc(share.Tracks, func(mf model.MediaFile) bool {
+		return mf.ID == mediaFileID
+	})
+}
+
+// decodeStreamInfo decodes the signed share-link token. This is a scoped
+// public-share capability, not an auth credential; see encodeMediafileShare for
+// why a JWT is used here.
 func decodeStreamInfo(tokenString string) (shareTrackInfo, error) {
-	token, err := auth.TokenAuth.Decode(tokenString)
+	c, err := auth.Validate(tokenString)
 	if err != nil {
 		return shareTrackInfo{}, err
 	}
-	if token == nil {
-		return shareTrackInfo{}, errors.New("unauthorized")
-	}
-	c := auth.ClaimsFromToken(token)
 	if c.ID == "" {
 		return shareTrackInfo{}, errors.New("required claim \"id\" not found")
+	}
+	if c.ShareID == "" {
+		return shareTrackInfo{}, errors.New("required claim \"sid\" not found")
 	}
 	return shareTrackInfo{
 		id:      c.ID,
 		format:  c.Format,
 		bitrate: c.BitRate,
+		shareID: c.ShareID,
 	}, nil
 }

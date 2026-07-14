@@ -2,6 +2,7 @@ package metadata
 
 import (
 	"cmp"
+	"context"
 	"encoding/json"
 	"maps"
 	"math"
@@ -35,7 +36,11 @@ func (md Metadata) ToMediaFile(libID int, folderID string) model.MediaFile {
 	mf.DiscSubtitle = md.String(model.TagDiscSubtitle)
 	mf.CatalogNum = md.String(model.TagCatalogNumber)
 	mf.Comment = md.String(model.TagComment)
-	mf.BPM = int(math.Round(md.Float(model.TagBPM)))
+	if f := md.NullableFloat(model.TagBPM); f != nil {
+		if v := int(math.Round(*f)); v != 0 {
+			mf.BPM = new(v)
+		}
+	}
 	mf.Lyrics = md.mapLyrics()
 	mf.ExplicitStatus = md.mapExplicitStatusTag()
 
@@ -63,7 +68,9 @@ func (md Metadata) ToMediaFile(libID int, folderID string) model.MediaFile {
 	mf.Duration = md.Length()
 	mf.BitRate = md.AudioProperties().BitRate
 	mf.SampleRate = md.AudioProperties().SampleRate
-	mf.BitDepth = md.AudioProperties().BitDepth
+	if bd := md.AudioProperties().BitDepth; bd > 0 {
+		mf.BitDepth = new(bd)
+	}
 	mf.Channels = md.AudioProperties().Channels
 	mf.Codec = md.AudioProperties().Codec
 	mf.Path = md.FilePath()
@@ -133,17 +140,20 @@ func (md Metadata) mapLyrics() string {
 
 	lyricList := make(model.LyricList, 0, len(rawLyrics))
 
+	ctx := log.NewContext(context.Background(), "file", md.filePath)
 	for _, raw := range rawLyrics {
 		lang := raw.Key()
 		text := raw.Value()
 
-		lyrics, err := model.ToLyrics(lang, text)
+		lyrics, err := model.ParseLyrics(ctx, "", lang, []byte(text))
 		if err != nil {
-			log.Warn("Unexpected failure occurred when parsing lyrics", "file", md.filePath, err)
+			log.Warn(ctx, "Unexpected failure occurred when parsing lyrics", err)
 			continue
 		}
-		if !lyrics.IsEmpty() {
-			lyricList = append(lyricList, *lyrics)
+		for _, lyric := range lyrics {
+			if !lyric.IsEmpty() {
+				lyricList = append(lyricList, lyric)
+			}
 		}
 	}
 

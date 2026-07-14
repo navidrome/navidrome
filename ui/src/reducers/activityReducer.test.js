@@ -18,6 +18,7 @@ describe('activityReducer', () => {
     },
     serverStart: { version: config.version },
     nowPlayingCount: 0,
+    nowPlayingLastUpdate: 0,
     streamReconnected: 0,
   }
 
@@ -131,6 +132,22 @@ describe('activityReducer', () => {
     }
     const newState = activityReducer(initialState, action)
     expect(newState.nowPlayingCount).toEqual(5)
+  })
+
+  it('handles EVENT_NOW_PLAYING_COUNT with nowPlayingLastUpdate', () => {
+    const action = {
+      type: EVENT_NOW_PLAYING_COUNT,
+      data: { count: 3 },
+    }
+    const beforeTimestamp = Date.now()
+    const newState = activityReducer(initialState, action)
+    const afterTimestamp = Date.now()
+
+    expect(newState.nowPlayingCount).toEqual(3)
+    expect(newState.nowPlayingLastUpdate).toBeGreaterThanOrEqual(
+      beforeTimestamp,
+    )
+    expect(newState.nowPlayingLastUpdate).toBeLessThanOrEqual(afterTimestamp)
   })
 
   it('handles EVENT_STREAM_RECONNECTED', () => {

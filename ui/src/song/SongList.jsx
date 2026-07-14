@@ -20,7 +20,6 @@ import {
   SongContextMenu,
   SongDatagrid,
   SongInfo,
-  QuickFilter,
   SongTitleField,
   SongSimpleList,
   RatingField,
@@ -119,10 +118,9 @@ const SongFilter = (props) => {
         />
       </ReferenceArrayInput>
       {config.enableFavourites && (
-        <QuickFilter
+        <NullableBooleanInput
           source="starred"
           label={<FavoriteIcon fontSize={'small'} />}
-          defaultValue={true}
         />
       )}
       {isAdmin && <NullableBooleanInput source="missing" />}
@@ -145,9 +143,11 @@ const SongList = (props) => {
     return {
       album: isDesktop && <AlbumLinkField source="album" sortByOrder={'ASC'} />,
       artist: <ArtistLinkField source="artist" />,
-      composer: <ArtistLinkField source="composer" />,
+      composer: <ArtistLinkField source="composer" sortable={false} />,
       albumArtist: <ArtistLinkField source="albumArtist" />,
-      trackNumber: isDesktop && <NumberField source="trackNumber" />,
+      trackNumber: isDesktop && (
+        <NumberField source="trackNumber" sortable={false} />
+      ),
       playCount: isDesktop && (
         <NumberField source="playCount" sortByOrder={'DESC'} />
       ),

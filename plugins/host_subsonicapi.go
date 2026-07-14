@@ -26,27 +26,19 @@ const subsonicAPIVersion = "1.16.1"
 // URL Format: Only the path and query parameters are used - host/protocol are ignored.
 // Automatic Parameters: The service adds 'c' (client), 'v' (version), and optionally 'f' (format).
 type subsonicAPIServiceImpl struct {
-	pluginID       string
-	router         SubsonicRouter
-	ds             model.DataStore
-	allowedUserIDs []string // User IDs this plugin can access (from DB configuration)
-	allUsers       bool     // If true, plugin can access all users
-	userIDMap      map[string]struct{}
+	pluginID string
+	router   SubsonicRouter
+	ds       model.DataStore
+	users    userAccess // users this plugin may act as (from DB configuration)
 }
 
 // newSubsonicAPIService creates a new SubsonicAPIService for a plugin.
-func newSubsonicAPIService(pluginID string, router SubsonicRouter, ds model.DataStore, allowedUserIDs []string, allUsers bool) host.SubsonicAPIService {
-	userIDMap := make(map[string]struct{})
-	for _, id := range allowedUserIDs {
-		userIDMap[id] = struct{}{}
-	}
+func newSubsonicAPIService(pluginID string, router SubsonicRouter, ds model.DataStore, users userAccess) host.SubsonicAPIService {
 	return &subsonicAPIServiceImpl{
-		pluginID:       pluginID,
-		router:         router,
-		ds:             ds,
-		allowedUserIDs: allowedUserIDs,
-		allUsers:       allUsers,
-		userIDMap:      userIDMap,
+		pluginID: pluginID,
+		router:   router,
+		ds:       ds,
+		users:    users,
 	}
 }
 
@@ -136,12 +128,12 @@ func (s *subsonicAPIServiceImpl) CallRaw(ctx context.Context, uri string) (strin
 
 func (s *subsonicAPIServiceImpl) checkPermissions(ctx context.Context, username string) error {
 	// If allUsers is true, allow any user
-	if s.allUsers {
+	if s.users.allUsers {
 		return nil
 	}
 
 	// Must have at least one allowed user ID configured
-	if len(s.allowedUserIDs) == 0 {
+	if len(s.users.userIDSet) == 0 {
 		return fmt.Errorf("no users configured for plugin %s", s.pluginID)
 	}
 
@@ -155,7 +147,7 @@ func (s *subsonicAPIServiceImpl) checkPermissions(ctx context.Context, username 
 	}
 
 	// Check if the user's ID is in the allowed list
-	if _, ok := s.userIDMap[usr.ID]; !ok {
+	if !s.users.allows(usr.ID) {
 		return fmt.Errorf("user %s is not authorized for this plugin", username)
 	}
 

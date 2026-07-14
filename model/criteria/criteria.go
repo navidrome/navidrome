@@ -1,17 +1,17 @@
-// Package criteria implements a Criteria API based on Masterminds/squirrel
+// Package criteria implements the smart playlist criteria DSL.
 package criteria
 
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
-	"strings"
+	"slices"
 
-	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/log"
 )
 
-type Expression = squirrel.Sqlizer
+type Expression interface {
+	fields() map[string]any
+}
 
 type Criteria struct {
 	Expression
@@ -43,113 +43,20 @@ func (c Criteria) EffectiveLimit(totalCount int64) int {
 	return 0
 }
 
+// ResolveLimit converts a percentage-based limit into an absolute Limit using
+// the given totalCount. It is a no-op when a fixed Limit is already set or when
+// no percentage limit is configured.
+func (c *Criteria) ResolveLimit(totalCount int64) {
+	if !c.IsPercentageLimit() {
+		return
+	}
+	c.Limit = c.EffectiveLimit(totalCount)
+}
+
 // IsPercentageLimit returns true when the criteria uses a valid percentage-based
 // limit (i.e. LimitPercent is in [1, 100] and no fixed Limit overrides it).
 func (c Criteria) IsPercentageLimit() bool {
 	return c.Limit == 0 && c.LimitPercent > 0 && c.LimitPercent <= 100
-}
-
-func (c Criteria) OrderBy() string {
-	if c.Sort == "" {
-		c.Sort = "title"
-	}
-
-	order := strings.ToLower(strings.TrimSpace(c.Order))
-	if order != "" && order != "asc" && order != "desc" {
-		log.Error("Invalid value in 'order' field. Valid values: 'asc', 'desc'", "order", c.Order)
-		order = ""
-	}
-
-	parts := strings.Split(c.Sort, ",")
-	fields := make([]string, 0, len(parts))
-
-	for _, p := range parts {
-		p = strings.TrimSpace(p)
-		if p == "" {
-			continue
-		}
-
-		dir := "asc"
-		if strings.HasPrefix(p, "+") || strings.HasPrefix(p, "-") {
-			if strings.HasPrefix(p, "-") {
-				dir = "desc"
-			}
-			p = strings.TrimSpace(p[1:])
-		}
-
-		sortField := strings.ToLower(p)
-		f := fieldMap[sortField]
-		if f == nil {
-			log.Error("Invalid field in 'sort' field", "sort", sortField)
-			continue
-		}
-
-		var mapped string
-
-		if f.order != "" {
-			mapped = f.order
-		} else if f.isTag {
-			// Use the actual field name (handles aliases like albumtype -> releasetype)
-			tagName := sortField
-			if f.field != "" {
-				tagName = f.field
-			}
-			mapped = "COALESCE(json_extract(media_file.tags, '$." + tagName + "[0].value'), '')"
-		} else if f.isRole {
-			mapped = "COALESCE(json_extract(media_file.participants, '$." + sortField + "[0].name'), '')"
-		} else {
-			mapped = f.field
-		}
-		if f.numeric {
-			mapped = fmt.Sprintf("CAST(%s AS REAL)", mapped)
-		}
-		// If the global 'order' field is set to 'desc', reverse the default or field-specific sort direction.
-		// This ensures that the global order applies consistently across all fields.
-		if order == "desc" {
-			if dir == "asc" {
-				dir = "desc"
-			} else {
-				dir = "asc"
-			}
-		}
-
-		fields = append(fields, mapped+" "+dir)
-	}
-
-	return strings.Join(fields, ", ")
-}
-
-func (c Criteria) ToSql() (sql string, args []any, err error) {
-	return c.Expression.ToSql()
-}
-
-// ExpressionJoins returns only the JOINs needed by the WHERE-clause expression,
-// excluding any JOINs required solely for sorting. This is useful for COUNT
-// queries where sort order is irrelevant.
-func (c Criteria) ExpressionJoins() JoinType {
-	if c.Expression == nil {
-		return JoinNone
-	}
-	return extractJoinTypes(c.Expression)
-}
-
-// RequiredJoins inspects the expression tree and Sort field to determine which
-// additional JOINs are needed when evaluating this criteria.
-func (c Criteria) RequiredJoins() JoinType {
-	result := JoinNone
-	if c.Expression != nil {
-		result |= extractJoinTypes(c.Expression)
-	}
-	// Also check Sort fields
-	if c.Sort != "" {
-		for _, p := range strings.Split(c.Sort, ",") {
-			p = strings.TrimSpace(p)
-			p = strings.TrimLeft(p, "+-")
-			p = strings.TrimSpace(p)
-			result |= fieldJoinType(p)
-		}
-	}
-	return result
 }
 
 func (c Criteria) ChildPlaylistIds() []string {
@@ -157,11 +64,14 @@ func (c Criteria) ChildPlaylistIds() []string {
 		return nil
 	}
 
-	if parent := c.Expression.(interface{ ChildPlaylistIds() (ids []string) }); parent != nil {
-		return parent.ChildPlaylistIds()
+	parent, ok := c.Expression.(conjunction)
+	if !ok {
+		return nil
 	}
 
-	return nil
+	ids := parent.ChildPlaylistIds()
+	slices.Sort(ids)
+	return slices.Compact(ids)
 }
 
 func (c Criteria) MarshalJSON() ([]byte, error) {
@@ -193,21 +103,26 @@ func (c Criteria) MarshalJSON() ([]byte, error) {
 
 func (c *Criteria) UnmarshalJSON(data []byte) error {
 	var aux struct {
-		All          unmarshalConjunctionType `json:"all"`
-		Any          unmarshalConjunctionType `json:"any"`
-		Sort         string                   `json:"sort"`
-		Order        string                   `json:"order"`
-		Limit        int                      `json:"limit"`
-		LimitPercent int                      `json:"limitPercent"`
-		Offset       int                      `json:"offset"`
+		All          optionalConjunction `json:"all"`
+		Any          optionalConjunction `json:"any"`
+		Sort         string              `json:"sort"`
+		Order        string              `json:"order"`
+		Limit        int                 `json:"limit"`
+		LimitPercent int                 `json:"limitPercent"`
+		Offset       int                 `json:"offset"`
 	}
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
 	}
-	if len(aux.Any) > 0 {
-		c.Expression = Any(aux.Any)
-	} else if len(aux.All) > 0 {
-		c.Expression = All(aux.All)
+	// A Criteria has a single top-level group. Reject files that provide both keys
+	// (even when one is [] or null) rather than silently dropping one of them.
+	if aux.All.present && aux.Any.present {
+		return errors.New("invalid criteria json: 'all' and 'any' cannot both be used at the top level; nest one inside the other instead")
+	}
+	if len(aux.Any.rules) > 0 {
+		c.Expression = Any(aux.Any.rules)
+	} else if len(aux.All.rules) > 0 {
+		c.Expression = All(aux.All.rules)
 	} else {
 		return errors.New("invalid criteria json. missing rules (key 'all' or 'any')")
 	}

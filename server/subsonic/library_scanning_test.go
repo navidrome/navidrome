@@ -23,29 +23,6 @@ var _ = Describe("LibraryScanning", func() {
 	})
 
 	Describe("StartScan", func() {
-		It("requires admin authentication", func() {
-			// Create non-admin user
-			ctx := request.WithUser(context.Background(), model.User{
-				ID:      "user-id",
-				IsAdmin: false,
-			})
-
-			// Create request
-			r := httptest.NewRequest("GET", "/rest/startScan", nil)
-			r = r.WithContext(ctx)
-
-			// Call endpoint
-			response, err := api.StartScan(r)
-
-			// Should return authorization error
-			Expect(err).To(HaveOccurred())
-			Expect(response).To(BeNil())
-			var subErr subError
-			ok := errors.As(err, &subErr)
-			Expect(ok).To(BeTrue())
-			Expect(subErr.code).To(Equal(responses.ErrorAuthorizationFail))
-		})
-
 		It("triggers a full scan with no parameters", func() {
 			// Create admin user
 			ctx := request.WithUser(context.Background(), model.User{

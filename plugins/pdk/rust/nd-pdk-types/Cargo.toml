@@ -1,0 +1,15 @@
+[package]
+name = "nd-pdk-types"
+version = "0.1.0"
+edition = "2021"
+description = "Navidrome shared plugin data types for Rust"
+authors = ["Navidrome Team"]
+license = "GPL-3.0"
+
+[lib]
+path = "src/lib.rs"
+crate-type = ["rlib"]
+
+[dependencies]
+base64 = "0.22"
+serde = { version = "1.0", features = ["derive"] }

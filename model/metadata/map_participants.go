@@ -94,18 +94,20 @@ func (md Metadata) processPerformers(participants model.Participants, rolesMbzId
 		roleIdx[role] = 0
 	}
 
+	conf := model.TagRolesConf().WithParticipantExceptions(model.TagPerformer)
 	titleCaser := cases.Title(language.Und)
 	for _, performer := range md.Pairs(model.TagPerformer) {
-		name := performer.Value()
 		subRole := titleCaser.String(performer.Key())
-
-		artist := model.Artist{
-			ID:              md.artistID(name),
-			Name:            name,
-			OrderArtistName: str.SanitizeFieldForSortingNoArticle(name),
-			MbzArtistID:     md.getPerformerMbid(subRole, rolesMbzIdMap, roleIdx),
+		names := splitParticipantValues(conf, []string{performer.Value()})
+		for _, name := range names {
+			artist := model.Artist{
+				ID:              md.artistID(name),
+				Name:            name,
+				OrderArtistName: str.SanitizeFieldForSortingNoArticle(name),
+				MbzArtistID:     md.getPerformerMbid(subRole, rolesMbzIdMap, roleIdx),
+			}
+			participants.AddWithSubRole(model.RolePerformer, subRole, artist)
 		}
-		participants.AddWithSubRole(model.RolePerformer, subRole, artist)
 	}
 }
 
@@ -171,6 +173,16 @@ func (md Metadata) buildArtists(names, sorts, mbids []string) []model.Artist {
 	return artists
 }
 
+// splitParticipantValues splits values by the conf separators, dropping
+// duplicated or empty entries. Values are returned unchanged when the conf
+// has no separators.
+func splitParticipantValues(conf model.TagConf, values []string) []string {
+	if len(conf.Split) == 0 {
+		return values
+	}
+	return filterDuplicatedOrEmptyValues(conf.SplitTagValue(values))
+}
+
 // getRoleValues returns the values of a role tag, splitting them if necessary
 func (md Metadata) getRoleValues(role model.TagName) []string {
 	values := md.Strings(role)
@@ -181,11 +193,8 @@ func (md Metadata) getRoleValues(role model.TagName) []string {
 	if conf.Split == nil {
 		conf = model.TagRolesConf()
 	}
-	if len(conf.Split) > 0 {
-		values = conf.SplitTagValue(values)
-		return filterDuplicatedOrEmptyValues(values)
-	}
-	return values
+	conf = conf.WithParticipantExceptions(role)
+	return splitParticipantValues(conf, values)
 }
 
 // getArtistValues returns the values of a single or multi artist tag, splitting them if necessary
@@ -202,11 +211,8 @@ func (md Metadata) getArtistValues(single, multi model.TagName) []string {
 	if conf.Split == nil {
 		conf = model.TagArtistsConf()
 	}
-	if len(conf.Split) > 0 {
-		vSingle = conf.SplitTagValue(vSingle)
-		return filterDuplicatedOrEmptyValues(vSingle)
-	}
-	return vSingle
+	conf = conf.WithParticipantExceptions(single)
+	return splitParticipantValues(conf, vSingle)
 }
 
 func (md Metadata) mapDisplayName(singularTagName, pluralTagName model.TagName) string {

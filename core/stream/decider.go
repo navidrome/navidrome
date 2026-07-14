@@ -12,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/utils/gg"
 )
 
 const fallbackBitrate = 256 // kbps
@@ -44,28 +45,20 @@ func (s *deciderService) MakeDecision(ctx context.Context, mf *model.MediaFile, 
 
 	var probe *ffmpeg.AudioProbeResult
 	if !opts.SkipProbe {
-		var err error
-		probe, err = s.ensureProbed(ctx, mf)
-		if err != nil {
-			return nil, err
+		if !s.ff.IsProbeAvailable() {
+			log.Debug(ctx, "ffprobe not available, using tag metadata for transcode decision", "mediaID", mf.ID)
+		} else {
+			var err error
+			probe, err = s.ensureProbed(ctx, mf)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
 	// Build source stream details (uses probe data if available)
 	decision.SourceStream = buildSourceStream(mf, probe)
 	src := &decision.SourceStream
-
-	// Check for server-side player transcoding override
-	if trc, ok := request.TranscodingFrom(ctx); ok && trc.TargetFormat != "" {
-		clientInfo = applyServerOverride(ctx, clientInfo, &trc)
-	} else if player, ok := request.PlayerFrom(ctx); ok && player.MaxBitRate > 0 {
-		if clientInfo.MaxAudioBitrate == 0 || player.MaxBitRate < clientInfo.MaxAudioBitrate {
-			modified := *clientInfo
-			modified.MaxAudioBitrate = player.MaxBitRate
-			clientInfo = &modified
-			log.Debug(ctx, "Applied player MaxBitRate cap", "playerMaxBitRate", player.MaxBitRate, "client", clientInfo.Name)
-		}
-	}
 
 	log.Trace(ctx, "Making transcode decision", "mediaID", mf.ID, "container", src.Container,
 		"codec", src.Codec, "bitrate", src.Bitrate, "channels", src.Channels,
@@ -150,7 +143,7 @@ func buildSourceStream(mf *model.MediaFile, probe *ffmpeg.AudioProbeResult) Deta
 		sd.Codec = mf.AudioCodec()
 		sd.Bitrate = mf.BitRate
 		sd.SampleRate = mf.SampleRate
-		sd.BitDepth = mf.BitDepth
+		sd.BitDepth = gg.V(mf.BitDepth)
 		sd.Channels = mf.Channels
 	}
 	sd.IsLossless = isLosslessFormat(sd.Codec)
@@ -276,7 +269,7 @@ func (s *deciderService) computeTranscodedStream(ctx context.Context, src *Detai
 		Codec:      strings.ToLower(profile.AudioCodec),
 		SampleRate: normalizeSourceSampleRate(src.SampleRate, src.Codec),
 		Channels:   src.Channels,
-		BitDepth:   normalizeSourceBitDepth(src.BitDepth, src.Codec),
+		BitDepth:   targetBitDepth(src.BitDepth, src.Codec, targetIsLossless),
 		IsLossless: targetIsLossless,
 	}
 	if ts.Codec == "" {
@@ -290,14 +283,19 @@ func (s *deciderService) computeTranscodedStream(ctx context.Context, src *Detai
 	if maxRate := codecMaxSampleRate(ts.Codec); maxRate > 0 && ts.SampleRate > maxRate {
 		ts.SampleRate = maxRate
 	}
+	if maxCh := codecMaxChannels(ts.Codec); maxCh > 0 && ts.Channels > maxCh {
+		ts.Channels = maxCh
+	}
 
 	// Determine target bitrate (all in kbps)
 	if ok := s.computeBitrate(ctx, src, targetFormat, targetIsLossless, clientInfo, ts); !ok {
 		return nil, ""
 	}
 
-	// Apply MaxAudioChannels from the transcoding profile
-	if profile.MaxAudioChannels > 0 && src.Channels > profile.MaxAudioChannels {
+	// Apply MaxAudioChannels from the transcoding profile. Compare against the
+	// already-clamped ts.Channels (not src.Channels) so the codec hard limit
+	// applied above is never raised by a looser profile setting.
+	if profile.MaxAudioChannels > 0 && ts.Channels > profile.MaxAudioChannels {
 		ts.Channels = profile.MaxAudioChannels
 	}
 

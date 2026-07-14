@@ -11,6 +11,7 @@ import (
 
 	"github.com/djherbis/times"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/metadata"
@@ -28,7 +29,13 @@ type localStorage struct {
 func newLocalStorage(u url.URL) storage.Storage {
 	newExtractor, ok := extractors[conf.Server.Scanner.Extractor]
 	if !ok || newExtractor == nil {
-		log.Fatal("Extractor not found", "path", conf.Server.Scanner.Extractor)
+		if conf.Server.Scanner.Extractor != consts.DefaultScannerExtractor {
+			log.Warn("Extractor not found, using default", "extractor", conf.Server.Scanner.Extractor, "default", consts.DefaultScannerExtractor)
+		}
+		newExtractor = extractors[consts.DefaultScannerExtractor]
+		if newExtractor == nil {
+			log.Fatal("Default extractor not registered", "extractor", consts.DefaultScannerExtractor)
+		}
 	}
 	isWindowsPath := filepath.VolumeName(u.Host) != ""
 	if u.Scheme == storage.LocalSchemaID && isWindowsPath {
@@ -47,12 +54,23 @@ func (s *localStorage) FS() (storage.MusicFS, error) {
 	if _, err := os.Stat(path); err != nil { //nolint:gosec
 		return nil, fmt.Errorf("%w: %s", err, path)
 	}
-	return &localFS{FS: os.DirFS(path), extractor: s.extractor}, nil
+	return &localFS{FS: os.DirFS(path), extractor: s.extractor, root: path}, nil
 }
 
 type localFS struct {
 	fs.FS
 	extractor Extractor
+	root      string
+}
+
+// ResolveSymlink implements storage.SymlinkResolverFS. It resolves the whole chain at the
+// OS level, so links whose targets live outside the library folder (not reachable through
+// the fs.FS abstraction) still resolve to their final target.
+func (lfs *localFS) ResolveSymlink(name string) (string, error) {
+	if !fs.ValidPath(name) {
+		return "", &fs.PathError{Op: "resolvesymlink", Path: name, Err: fs.ErrInvalid}
+	}
+	return filepath.EvalSymlinks(filepath.Join(lfs.root, filepath.FromSlash(name)))
 }
 
 func (lfs *localFS) ReadTags(path ...string) (map[string]metadata.Info, error) {

@@ -8,7 +8,6 @@ import (
 	"github.com/djherbis/times"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/metadata"
-	"github.com/navidrome/navidrome/utils/gg"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -91,8 +90,7 @@ var _ = Describe("Extractor", func() {
 		info.FileInfo = testFileInfo{FileInfo: fileInfo}
 
 		metadata := metadata.New(path, info)
-		mf := metadata.ToMediaFile(1, "folderID")
-		return &mf
+		return new(metadata.ToMediaFile(1, "folderID"))
 	}
 
 	BeforeEach(func() {
@@ -109,7 +107,7 @@ var _ = Describe("Extractor", func() {
 			Expect(mf.RGAlbumPeak).To(Equal(albumPeak))
 		},
 			Entry("mp3 with no replaygain", "no_replaygain.mp3", nil, nil, nil, nil),
-			Entry("mp3 with no zero replaygain", "zero_replaygain.mp3", gg.P(0.0), gg.P(1.0), gg.P(0.0), gg.P(1.0)),
+			Entry("mp3 with no zero replaygain", "zero_replaygain.mp3", new(0.0), new(1.0), new(0.0), new(1.0)),
 		)
 	})
 
@@ -120,8 +118,8 @@ var _ = Describe("Extractor", func() {
 				DisplayTitle:  "",
 				Lang:          code,
 				Line: []model.Line{
-					{Start: gg.P(int64(0)), Value: "This is"},
-					{Start: gg.P(int64(2500)), Value: secondLine},
+					{Start: new(int64(0)), Value: "This is"},
+					{Start: new(int64(2500)), Value: secondLine},
 				},
 				Offset: nil,
 				Synced: true,

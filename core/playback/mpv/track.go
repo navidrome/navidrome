@@ -206,7 +206,7 @@ func (t *MpvTrack) IsPlaying() bool {
 func waitForSocket(path string, timeout time.Duration, pause time.Duration) error {
 	start := time.Now()
 	end := start.Add(timeout)
-	var retries int = 0
+	var retries = 0
 
 	for {
 		fileInfo, err := os.Stat(path)

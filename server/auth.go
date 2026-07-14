@@ -135,7 +135,6 @@ func createAdmin(ds model.DataStore) func(w http.ResponseWriter, r *http.Request
 
 func createAdminUser(ctx context.Context, ds model.DataStore, username, password string) error {
 	log.Warn(ctx, "Creating initial user", "user", username)
-	now := time.Now()
 	caser := cases.Title(language.Und)
 	initialUser := model.User{
 		ID:          id.NewRandom(),
@@ -144,7 +143,7 @@ func createAdminUser(ctx context.Context, ds model.DataStore, username, password
 		Email:       "",
 		NewPassword: password,
 		IsAdmin:     true,
-		LastLoginAt: &now,
+		LastLoginAt: new(time.Now()),
 	}
 	err := ds.User(ctx).Put(&initialUser)
 	if err != nil {

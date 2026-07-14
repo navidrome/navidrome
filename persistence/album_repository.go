@@ -17,6 +17,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
+	"github.com/navidrome/navidrome/utils/str"
 	"github.com/pocketbase/dbx"
 )
 
@@ -69,7 +70,7 @@ func (a *dbAlbum) PostMapArgs(args map[string]any) error {
 	fullText = append(fullText, a.Album.Tags[model.TagCatalogNumber]...)
 	args["full_text"] = formatFullText(fullText...)
 	args["search_participants"] = strings.Join(participantNames, " ")
-	args["search_normalized"] = normalizeForFTS(a.Name, a.AlbumArtist)
+	args["search_normalized"] = str.NormalizeForFTS(a.Name, a.AlbumArtist)
 
 	args["tags"] = marshalTags(a.Album.Tags)
 	args["participants"] = marshalParticipants(a.Album.Participants)
@@ -143,9 +144,9 @@ var albumFilters = sync.OnceValue(func() map[string]filterFunc {
 
 func recentlyAddedSort() string {
 	if conf.Server.RecentlyAddedByModTime {
-		return "datetime(album.updated_at)"
+		return "album.updated_at, album.id"
 	}
-	return "datetime(album.created_at)"
+	return "album.created_at, album.id"
 }
 
 func recentlyPlayedFilter(string, any) Sqlizer {
@@ -186,8 +187,10 @@ func allRolesFilter(_ string, value any) Sqlizer {
 
 func (r *albumRepository) CountAll(options ...model.QueryOptions) (int64, error) {
 	query := r.newSelect()
-	query = r.withAnnotation(query, "album.id")
 	query = r.applyLibraryFilter(query)
+	if filtersNeedAnnotation(r.applyFilters(query, options...)) {
+		query = r.withAnnotation(query, "album.id")
+	}
 	return r.count(query, options...)
 }
 
@@ -252,7 +255,17 @@ func (r *albumRepository) CopyAttributes(fromID, toID string, columns ...string)
 	}
 	to := make(map[string]any)
 	for _, col := range columns {
-		to[col] = from[col]
+		v := from[col]
+		// created_at is aggregated from song birth_times and must never be
+		// overwritten with a zero/poisoned value, or it propagates forward on
+		// every metadata-driven album ID change.
+		if col == "created_at" && (!v.Valid || v.String == "" || strings.HasPrefix(v.String, "0001-")) {
+			continue
+		}
+		to[col] = v
+	}
+	if len(to) == 0 {
+		return nil
 	}
 	_, err = r.executeSQL(Update(r.tableName).SetMap(to).Where(Eq{"id": toID}))
 	return err

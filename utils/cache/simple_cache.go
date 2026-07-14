@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/jellydator/ttlcache/v3"
-	. "github.com/navidrome/navidrome/utils/gg"
 )
 
 type SimpleCache[K comparable, V any] interface {
@@ -17,6 +16,7 @@ type SimpleCache[K comparable, V any] interface {
 	AddWithTTL(key K, value V, ttl time.Duration) error
 	Get(key K) (V, error)
 	GetWithLoader(key K, loader func(key K) (V, time.Duration, error)) (V, error)
+	Remove(key K)
 	Keys() []K
 	Values() []V
 	Len() int
@@ -77,6 +77,10 @@ func (c *simpleCache[K, V]) AddWithTTL(key K, value V, ttl time.Duration) error 
 	return nil
 }
 
+func (c *simpleCache[K, V]) Remove(key K) {
+	c.data.Delete(key)
+}
+
 func (c *simpleCache[K, V]) Get(key K) (V, error) {
 	item := c.data.Get(key)
 	if item == nil {
@@ -114,7 +118,7 @@ func (c *simpleCache[K, V]) GetWithLoader(key K, loader func(key K) (V, time.Dur
 func (c *simpleCache[K, V]) evictExpired() {
 	if c.evictionDeadline.Load() == nil || c.evictionDeadline.Load().Before(time.Now()) {
 		c.data.DeleteExpired()
-		c.evictionDeadline.Store(P(time.Now().Add(evictionTimeout)))
+		c.evictionDeadline.Store(new(time.Now().Add(evictionTimeout)))
 	}
 }
 

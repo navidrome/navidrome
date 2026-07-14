@@ -11,11 +11,11 @@ func init() {
 	goose.AddMigrationContext(Up20200409002249, Down20200409002249)
 }
 
-func Up20200409002249(_ context.Context, tx *sql.Tx) error {
-	notice(tx, "A full rescan will be performed to enable search by individual Artist in an Album!")
-	return forceFullRescan(tx)
+func Up20200409002249(ctx context.Context, tx *sql.Tx) error {
+	notice(ctx, tx, "A full rescan will be performed to enable search by individual Artist in an Album!")
+	return forceFullRescan(ctx, tx)
 }
 
-func Down20200409002249(_ context.Context, tx *sql.Tx) error {
+func Down20200409002249(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

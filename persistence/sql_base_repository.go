@@ -13,6 +13,7 @@ import (
 	"time"
 
 	. "github.com/Masterminds/squirrel"
+	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -55,6 +56,33 @@ func loggedUser(ctx context.Context) *model.User {
 	} else {
 		return &user
 	}
+}
+
+// ownerFilter returns the predicate restricting access to rows owned by the logged-in user, for
+// tables with a user_id column. It returns nil for admins and for headless/system contexts (invalid
+// user), meaning "no ownership restriction". Callers should skip the WHERE clause when it is nil.
+//
+// The predicate uses an unqualified user_id, so it only works on queries where that column is
+// unambiguous (no join introducing a second user_id).
+func (r sqlRepository) ownerFilter() Sqlizer {
+	if usr := loggedUser(r.ctx); !usr.IsAdmin && usr.ID != invalidUserId {
+		return Eq{"user_id": usr.ID}
+	}
+	return nil
+}
+
+// addRestriction combines an optional caller predicate with the ownership filter, producing the
+// WHERE clause for owner-scoped reads. For admins and headless contexts ownerFilter() is nil and
+// only the caller's predicate (if any) remains.
+func (r sqlRepository) addRestriction(sql ...Sqlizer) Sqlizer {
+	s := And{}
+	if len(sql) > 0 {
+		s = append(s, sql[0])
+	}
+	if owner := r.ownerFilter(); owner != nil {
+		s = append(s, owner)
+	}
+	return s
 }
 
 func (r *sqlRepository) registerModel(instance any, filters map[string]filterFunc) {
@@ -186,15 +214,6 @@ func (r sqlRepository) applyFilters(sq SelectBuilder, options ...model.QueryOpti
 	return sq
 }
 
-func (r *sqlRepository) withTableName(filter filterFunc) filterFunc {
-	return func(field string, value any) Sqlizer {
-		if r.tableName != "" {
-			field = r.tableName + "." + field
-		}
-		return filter(field, value)
-	}
-}
-
 // libraryIdFilter is a filter function to be added to resources that have a library_id column.
 func libraryIdFilter(_ string, value any) Sqlizer {
 	return Eq{"library_id": value}
@@ -210,6 +229,12 @@ func (r sqlRepository) applyLibraryFilter(sq SelectBuilder, tableName ...string)
 		return sq
 	}
 
+	// A non-admin granted every library sees everything the subquery would return, so applying it is
+	// pure overhead. Skip it in that case (same fast path admins get).
+	if visible, err := r.visibleLibraryIDs(); err == nil && r.userSeesAllLibraries(visible) {
+		return sq
+	}
+
 	table := r.tableName
 	if len(tableName) > 0 {
 		table = tableName[0]
@@ -219,6 +244,32 @@ func (r sqlRepository) applyLibraryFilter(sq SelectBuilder, tableName ...string)
 	// Use subquery to filter by user's library access
 	return sq.Where(Expr(table+".library_id IN ("+
 		"SELECT ul.library_id FROM user_library ul WHERE ul.user_id = ?)", user.ID))
+}
+
+// userSeesAllLibraries reports whether the visible set already covers every library, so a
+// library filter would exclude nothing.
+func (r sqlRepository) userSeesAllLibraries(visible []int) bool {
+	user := loggedUser(r.ctx)
+	if user.IsAdmin || user.ID == invalidUserId {
+		return true // visible is the whole library table
+	}
+	total, err := NewLibraryRepository(r.ctx, r.db).CountAll()
+	if err != nil || total == 0 {
+		return false
+	}
+	return int64(len(visible)) == total
+}
+
+// visibleLibraryIDs returns the libraries the current user can see: all libraries for admin and
+// headless processes, otherwise the user's granted libraries.
+func (r sqlRepository) visibleLibraryIDs() ([]int, error) {
+	user := loggedUser(r.ctx)
+	if user.IsAdmin || user.ID == invalidUserId {
+		var ids []int
+		err := r.queryAllSlice(Select("id").From("library"), &ids)
+		return ids, err
+	}
+	return slice.Map(user.Libraries, func(lib model.Library) int { return lib.ID }), nil
 }
 
 func (r sqlRepository) seedKey() string {
@@ -382,6 +433,65 @@ func (r sqlRepository) exists(cond Sqlizer) (bool, error) {
 	return res.Exist > 0, err
 }
 
+// updateOwned performs an atomic, ownership-restricted update of the row identified by id, for
+// repositories whose table has a user_id column. Non-admins can only update rows they own: the
+// ownership predicate is part of the UPDATE's WHERE clause, so a row owned by another user simply
+// does not match and no write happens. Ownership itself is immutable here: user_id is never written,
+// so no caller (admin included) can reassign a row to a different owner via an update. Unlike put,
+// it never falls through to an INSERT, so a non-matching id never creates a row.
+//
+// When the update matches no row it classifies the failure: if the row exists but is owned by
+// another user it returns rest.ErrPermissionDenied, otherwise rest.ErrNotFound. The write itself is
+// still atomic; the extra lookup happens only on the failure path (count == 0), where no write
+// occurred, so there is no TOCTOU on the update.
+func (r sqlRepository) updateOwned(id string, m any, colsToUpdate ...string) error {
+	values, err := toSQLArgs(m)
+	if err != nil {
+		return fmt.Errorf("error preparing values to write to DB: %w", err)
+	}
+	updateValues := filterUpdateValues(values, id, colsToUpdate...)
+	delete(updateValues, "user_id") // ownership is immutable on update
+	update := Update(r.tableName).Where(r.addRestriction(Eq{"id": id})).SetMap(updateValues)
+	count, err := r.executeSQL(update)
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return r.classifyOwnedWriteMiss(id)
+	}
+	return nil
+}
+
+// deleteOwned performs an atomic, ownership-restricted delete of the row identified by id, for
+// repositories whose table has a user_id column. Non-admins can only delete rows they own: the
+// ownership predicate is part of the DELETE's WHERE clause, so a row owned by another user simply
+// does not match and is left untouched. The failure path mirrors updateOwned (see
+// classifyOwnedWriteMiss), so there is no TOCTOU on the delete.
+func (r sqlRepository) deleteOwned(id string) error {
+	count, err := r.executeSQL(Delete(r.tableName).Where(r.addRestriction(Eq{"id": id})))
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return r.classifyOwnedWriteMiss(id)
+	}
+	return nil
+}
+
+// classifyOwnedWriteMiss explains why an ownership-filtered write (updateOwned/deleteOwned) matched
+// no row: rest.ErrPermissionDenied if the row exists but is owned by another user, otherwise
+// rest.ErrNotFound. It runs only on the failure path (count == 0), where no write occurred.
+func (r sqlRepository) classifyOwnedWriteMiss(id string) error {
+	exists, err := r.exists(Eq{"id": id})
+	if err != nil {
+		return err
+	}
+	if exists {
+		return rest.ErrPermissionDenied
+	}
+	return rest.ErrNotFound
+}
+
 func (r sqlRepository) count(countQuery SelectBuilder, options ...model.QueryOptions) (int64, error) {
 	countQuery = countQuery.
 		RemoveColumns().Columns("count(distinct " + r.tableName + ".id) as count").
@@ -408,6 +518,30 @@ func (r sqlRepository) putByMatch(filter Sqlizer, id string, m any, colsToUpdate
 	return r.put(res.ID, m, colsToUpdate...)
 }
 
+// filterUpdateValues selects, from a marshaled column map, the values to write in an UPDATE on the
+// row identified by id: only the requested colsToUpdate (or all columns when none are specified),
+// dropping columns that must never be overwritten on update (created_at, birth_time).
+func filterUpdateValues(values map[string]any, id string, colsToUpdate ...string) map[string]any {
+	updateValues := map[string]any{}
+
+	// This is a map of the columns that need to be updated, if specified
+	c2upd := slice.ToMap(colsToUpdate, func(s string) (string, struct{}) {
+		return toSnakeCase(s), struct{}{}
+	})
+	for k, v := range values {
+		if _, found := c2upd[k]; len(c2upd) == 0 || found {
+			updateValues[k] = v
+		}
+	}
+
+	updateValues["id"] = id
+	delete(updateValues, "created_at")
+	// To avoid updating the media_file birth_time on each scan. Not the best solution, but it works for now
+	// TODO move to mediafile_repository when each repo has its own upsert method
+	delete(updateValues, "birth_time")
+	return updateValues
+}
+
 func (r sqlRepository) put(id string, m any, colsToUpdate ...string) (newId string, err error) {
 	values, err := toSQLArgs(m)
 	if err != nil {
@@ -415,24 +549,7 @@ func (r sqlRepository) put(id string, m any, colsToUpdate ...string) (newId stri
 	}
 	// If there's an ID, try to update first
 	if id != "" {
-		updateValues := map[string]any{}
-
-		// This is a map of the columns that need to be updated, if specified
-		c2upd := slice.ToMap(colsToUpdate, func(s string) (string, struct{}) {
-			return toSnakeCase(s), struct{}{}
-		})
-		for k, v := range values {
-			if _, found := c2upd[k]; len(c2upd) == 0 || found {
-				updateValues[k] = v
-			}
-		}
-
-		updateValues["id"] = id
-		delete(updateValues, "created_at")
-		// To avoid updating the media_file birth_time on each scan. Not the best solution, but it works for now
-		// TODO move to mediafile_repository when each repo has its own upsert method
-		delete(updateValues, "birth_time")
-		update := Update(r.tableName).Where(Eq{"id": id}).SetMap(updateValues)
+		update := Update(r.tableName).Where(Eq{"id": id}).SetMap(filterUpdateValues(values, id, colsToUpdate...))
 		count, err := r.executeSQL(update)
 		if err != nil {
 			return "", err

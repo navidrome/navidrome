@@ -9,7 +9,11 @@ package scrobbler
 
 import (
 	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
+	"github.com/navidrome/navidrome/plugins/pdk/go/types"
 )
+
+// Deprecated: use types.ArtistRef.
+type ArtistRef = types.ArtistRef
 
 // ScrobblerError represents an error type for scrobbling operations.
 type ScrobblerError string
@@ -26,16 +30,6 @@ const (
 // Error implements the error interface for ScrobblerError.
 func (e ScrobblerError) Error() string { return string(e) }
 
-// ArtistRef is a reference to an artist with name and optional MBID.
-type ArtistRef struct {
-	// ID is the internal Navidrome artist ID (if known).
-	ID string `json:"id,omitempty"`
-	// Name is the artist name.
-	Name string `json:"name"`
-	// MBID is the MusicBrainz ID for the artist.
-	MBID string `json:"mbid,omitempty"`
-}
-
 // IsAuthorizedRequest is the request for authorization check.
 type IsAuthorizedRequest struct {
 	// Username is the username of the user.
@@ -50,6 +44,26 @@ type NowPlayingRequest struct {
 	Track TrackInfo `json:"track"`
 	// Position is the current playback position in seconds.
 	Position int32 `json:"position"`
+}
+
+// PlaybackReportRequest is the request for playback report notifications.
+type PlaybackReportRequest struct {
+	// Username is the username of the user.
+	Username string `json:"username"`
+	// Track is the track being played.
+	Track TrackInfo `json:"track"`
+	// State is the current playback state (starting/playing/paused/stopped/expired).
+	State string `json:"state"`
+	// PositionMs is the current playback position in milliseconds.
+	PositionMs int64 `json:"positionMs"`
+	// PlaybackRate is the playback speed (1.0 = normal).
+	PlaybackRate float64 `json:"playbackRate"`
+	// PlayerId is the unique client identifier.
+	PlayerId string `json:"playerId"`
+	// PlayerName is the human-readable player name.
+	PlayerName string `json:"playerName"`
+	// Timestamp is the Unix timestamp when this report was generated.
+	Timestamp int64 `json:"timestamp"`
 }
 
 // ScrobbleRequest is the request for submitting a scrobble.
@@ -75,9 +89,9 @@ type TrackInfo struct {
 	// AlbumArtist is the formatted album artist name for display.
 	AlbumArtist string `json:"albumArtist"`
 	// Artists is the list of track artists.
-	Artists []ArtistRef `json:"artists"`
+	Artists []types.ArtistRef `json:"artists"`
 	// AlbumArtists is the list of album artists.
-	AlbumArtists []ArtistRef `json:"albumArtists"`
+	AlbumArtists []types.ArtistRef `json:"albumArtists"`
 	// Duration is the track duration in seconds.
 	Duration float32 `json:"duration"`
 	// TrackNumber is the track number on the album.
@@ -92,6 +106,12 @@ type TrackInfo struct {
 	MBZReleaseGroupID string `json:"mbzReleaseGroupId,omitempty"`
 	// MBZReleaseTrackID is the MusicBrainz release track ID.
 	MBZReleaseTrackID string `json:"mbzReleaseTrackId,omitempty"`
+	// LibraryID is the ID of the library the track belongs to.
+	// Only included if the plugin has library permission with filesystem access for the track's library.
+	LibraryID int32 `json:"libraryId,omitempty"`
+	// Path is the full path to the track file, relative to the library root.
+	// Only included if the plugin has library permission with filesystem access for the track's library.
+	Path string `json:"path,omitempty"`
 }
 
 // Scrobbler requires all methods to be implemented.
@@ -100,7 +120,7 @@ type TrackInfo struct {
 // ListenBrainz, or custom scrobbling backends.
 //
 // All methods are required - plugins implementing this capability must provide
-// all three functions: IsAuthorized, NowPlaying, and Scrobble.
+// all four functions: IsAuthorized, NowPlaying, Scrobble, and PlaybackReport.
 type Scrobbler interface {
 	// IsAuthorized - IsAuthorized checks if a user is authorized to scrobble to this service.
 	IsAuthorized(IsAuthorizedRequest) (bool, error)
@@ -108,11 +128,14 @@ type Scrobbler interface {
 	NowPlaying(NowPlayingRequest) error
 	// Scrobble - Scrobble submits a completed scrobble to the scrobbling service.
 	Scrobble(ScrobbleRequest) error
+	// PlaybackReport - PlaybackReport sends a playback state report to the scrobbling service.
+	PlaybackReport(PlaybackReportRequest) error
 } // Internal implementation holders
 var (
-	isAuthorizedImpl func(IsAuthorizedRequest) (bool, error)
-	nowPlayingImpl   func(NowPlayingRequest) error
-	scrobbleImpl     func(ScrobbleRequest) error
+	isAuthorizedImpl   func(IsAuthorizedRequest) (bool, error)
+	nowPlayingImpl     func(NowPlayingRequest) error
+	scrobbleImpl       func(ScrobbleRequest) error
+	playbackReportImpl func(PlaybackReportRequest) error
 )
 
 // Register registers a scrobbler implementation.
@@ -121,6 +144,7 @@ func Register(impl Scrobbler) {
 	isAuthorizedImpl = impl.IsAuthorized
 	nowPlayingImpl = impl.NowPlaying
 	scrobbleImpl = impl.Scrobble
+	playbackReportImpl = impl.PlaybackReport
 }
 
 // NotImplementedCode is the standard return code for unimplemented functions.
@@ -189,6 +213,27 @@ func _NdScrobblerScrobble() int32 {
 	}
 
 	if err := scrobbleImpl(input); err != nil {
+		pdk.SetError(err)
+		return -1
+	}
+
+	return 0
+}
+
+//go:wasmexport nd_scrobbler_playback_report
+func _NdScrobblerPlaybackReport() int32 {
+	if playbackReportImpl == nil {
+		// Return standard code - host will skip this plugin gracefully
+		return NotImplementedCode
+	}
+
+	var input PlaybackReportRequest
+	if err := pdk.InputJSON(&input); err != nil {
+		pdk.SetError(err)
+		return -1
+	}
+
+	if err := playbackReportImpl(input); err != nil {
 		pdk.SetError(err)
 		return -1
 	}

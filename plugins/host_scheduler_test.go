@@ -51,7 +51,7 @@ var _ = Describe("SchedulerService", Ordered, func() {
 		// Setup config
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.Plugins.Enabled = true
-		conf.Server.Plugins.Folder = tmpDir
+		conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
 		conf.Server.Plugins.AutoReload = false
 
 		// Create mock scheduler and timer registry

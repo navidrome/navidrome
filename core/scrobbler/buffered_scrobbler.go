@@ -7,6 +7,7 @@ import (
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 )
 
 // Loader is a function that loads a scrobbler by name.
@@ -80,6 +81,14 @@ func (b *bufferedScrobbler) Scrobble(ctx context.Context, userId string, s Scrob
 	return nil
 }
 
+func (b *bufferedScrobbler) PlaybackReport(ctx context.Context, info PlaybackSession) error {
+	s, ok := b.loader()
+	if !ok {
+		return errors.New("scrobbler not available")
+	}
+	return s.PlaybackReport(ctx, info)
+}
+
 func (b *bufferedScrobbler) sendWakeSignal() {
 	// Don't block if the previous signal was not read yet
 	select {
@@ -121,6 +130,14 @@ func (b *bufferedScrobbler) processQueue(ctx context.Context) bool {
 }
 
 func (b *bufferedScrobbler) processUserQueue(ctx context.Context, userId string) bool {
+	// Scrobbles are drained on a background context that no longer carries the
+	// request's authenticated user. Restore it from the buffered userId so that
+	// scrobblers relying on the user in the context (e.g. plugins) still get it.
+	if user, err := b.ds.User(ctx).Get(userId); err != nil {
+		log.Warn(ctx, "Could not load user for buffered scrobble", "userId", userId, "scrobbler", b.service, err)
+	} else {
+		ctx = request.WithUser(ctx, *user)
+	}
 	buffer := b.ds.ScrobbleBuffer(ctx)
 	for {
 		entry, err := buffer.Next(b.service, userId)

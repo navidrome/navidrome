@@ -38,7 +38,9 @@
         "missing": "Ontbrekend",
         "libraryName": "Bibliotheek",
         "composer": "Componist",
-        "disc": "Schijf %{discNumber}"
+        "disc": "Schijf %{discNumber}",
+        "albumGain": "Album gain",
+        "trackGain": "Nummer gain"
       },
       "actions": {
         "addToQueue": "Voeg toe aan wachtrij",
