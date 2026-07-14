@@ -112,6 +112,10 @@ client that has implemented that part of the spec gets full support with no serv
 your particular client shows a podcasts tab at all comes down to that client's own developers — spec coverage
 varies a lot across the Subsonic app ecosystem, so check what your client actually supports before assuming.
 
+<p align="left">
+    <img width="800" src=".github/screenshots/ss-podcast-episodes.png" alt="Podcast channel with episode list, showing download status and listened tracking">
+</p>
+
 ### 🔍 Discover shows without hunting for RSS URLs
 Search by name, or browse live, region-specific top charts to see what's actually trending where you are — pasting
 in a feed URL directly still works too, if you already know exactly what you want.
@@ -120,6 +124,10 @@ in a feed URL directly still works too, if you already know exactly what you wan
 Every subscription gets its own download policy: **stream-only** (nothing touches your disk — episodes proxy
 through the server on demand, so any client can play them without ever knowing the source URL), **auto-download
 new episodes** as they publish, or **backfill and download the entire back catalog**.
+
+<p align="left">
+    <img width="800" src=".github/screenshots/ss-podcast-subscriptions.png" alt="Podcast subscriptions list, showing status and download policy per channel">
+</p>
 
 ### 💾 Never worry about disk space
 Set retention per channel by episode count, age, or total storage, and let oldest-downloaded-first cleanup run
@@ -144,6 +152,10 @@ Personal toggle to hide the Podcasts section from your own sidebar if you don't 
 Folder view toggle below) — and every setting above is per-channel, so a daily news show and a sprawling back
 catalog can be managed completely differently on the same server.
 
+<p align="left">
+    <img width="800" src=".github/screenshots/ss-personal-settings.png" alt="Personal settings, showing the Show Folder View and Show Podcasts toggles">
+</p>
+
 Full design writeup, including what's still on the roadmap (resume playback position, a cross-channel "up next"
 queue, OPML import/export), see [PODCAST_PLAN.md](PODCAST_PLAN.md).
 
@@ -153,6 +165,10 @@ If you've spent years curating a folder structure by hand — by label, by era, 
 sense to you — metadata-only browsing throws all of that away. This fork adds a complete second way to navigate
 your library: exactly as it sits on disk, breadcrumbs and all, with every action a metadata-based view gives you
 plus a few it doesn't.
+
+<p align="left">
+    <img width="800" src=".github/screenshots/ss-folder-browse.png" alt="Folder browser at an album, showing the breadcrumb trail, folder-wide action toolbar, and per-song context menu">
+</p>
 
 ### 🗂️ Browse it exactly how you built it
 Hierarchical navigation with working breadcrumbs at every depth, tested past 500+ items per level. Folders get the
