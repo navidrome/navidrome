@@ -30,7 +30,7 @@ compatibility, same plugin system. This fork just adds:
 Kept in sync with upstream: currently based on [Navidrome v0.63.2](https://github.com/navidrome/navidrome/releases/tag/v0.63.2),
 merged in directly rather than maintained as a standalone patch set. Syncs happen periodically, not on a fixed
 schedule — check the [releases page](https://github.com/RFLundgren/navidrome_experimental/releases) for this fork's
-own tagged checkpoints (e.g. `v0.63.2-experimental.1`), which pin the exact upstream baseline plus the fork-specific
+own tagged checkpoints (e.g. `v0.63.2-experimental.3`), which pin the exact upstream baseline plus the fork-specific
 fixes each one includes.
 
 ### Getting navidrome-experimental
@@ -72,7 +72,7 @@ as they do for upstream Navidrome.
 
 **Note**: to pin an exact version rather than following whichever release is newest, use one of this fork's
 [tagged releases](https://github.com/RFLundgren/navidrome_experimental/releases) directly (e.g.
-`ghcr.io/rflundgren/navidrome_experimental:0.63.2-experimental.1`) instead of the `:stable` alias.
+`ghcr.io/rflundgren/navidrome_experimental:0.63.2-experimental.3`) instead of the `:stable` alias.
 
 __Any feedback is welcome!__ Found a bug or have a feature idea specific to this fork's podcast/folder support?
 File it on [this fork's issue tracker](https://github.com/RFLundgren/navidrome_experimental/issues) — please don't
