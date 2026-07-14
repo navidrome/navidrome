@@ -7,8 +7,9 @@ Jellyfin-compatible clients (e.g. [Finamp](https://github.com/jmshrv/finamp),
 requiring a real Jellyfin server.
 
 It is **not** a full Jellyfin server implementation: only the endpoints needed to browse a music
-library, stream audio, manage favorites/ratings, report playback, and manage playlists are
-implemented. Video, live TV, plugins, and Jellyfin's admin/dashboard APIs are out of scope.
+library, stream audio, manage favorites/ratings for songs, albums, artists, and playlists, report
+playback, and manage playlists are implemented. Video, live TV, plugins, and Jellyfin's
+admin/dashboard APIs are out of scope.
 
 ## Enabling
 
@@ -121,7 +122,7 @@ favorites-only (`Filters=IsFavorite` or the standalone `isFavorite=true`); `Sort
 | Artists / genres | `GET Artists`, `GET Artists/AlbumArtists`, `GET Genres`, `GET MusicGenres` |
 | Similar / mixes | `GET Artists/{itemId}/Similar`, `GET Items/{itemId}/Similar`, `GET Items/{itemId}/InstantMix` |
 | Images | `GET Items/{itemId}/Images/{type}[/{index}]` (public), `POST`/`DELETE Items/{itemId}/Images/{type}` (playlist cover, authenticated) |
-| Favorites / ratings | `POST`/`DELETE UserFavoriteItems/{itemId}`, `POST`/`DELETE Users/{userId}/FavoriteItems/{itemId}`, `POST`/`DELETE Users/{userId}/Items/{itemId}/Rating`, `GET UserItems/{itemId}/UserData`, `GET Users/{userId}/Items/{itemId}/UserData` |
+| Favorites / ratings for songs, albums, artists, and playlists | `POST`/`DELETE UserFavoriteItems/{itemId}`, `POST`/`DELETE Users/{userId}/FavoriteItems/{itemId}`, `POST`/`DELETE Users/{userId}/Items/{itemId}/Rating`, `GET UserItems/{itemId}/UserData`, `GET Users/{userId}/Items/{itemId}/UserData` |
 | Streaming | `GET Audio/{itemId}/stream[.{container}]`, `GET Audio/{itemId}/universal`, `GET Audio/{itemId}/main.m3u8`, `GET Items/{itemId}/File`, `GET Items/{itemId}/Download`, `GET`/`POST Items/{itemId}/PlaybackInfo` |
 | Playback reporting | `POST Sessions/Playing`, `POST Sessions/Playing/Progress`, `POST Sessions/Playing/Stopped`, `POST Sessions/Capabilities[/Full]` |
 | Playlists | `POST Playlists`, `GET Playlists/{playlistId}`, `POST Playlists/{playlistId}` (rename / visibility / replace tracks), `GET Playlists/{playlistId}/Items`, `POST`/`DELETE Playlists/{playlistId}/Items`, `GET Playlists/{playlistId}/Users[/{userId}]` |
@@ -296,14 +297,6 @@ make test PKG=./server/jellyfin/...
   Access control for artists is enforced by scoping the `Artists`/`Items?IncludeItemTypes=MusicArtist`
   *list* to the user's libraries, plus the persistence layer's own defense-in-depth; a client
   that already has an artist id from elsewhere is not re-checked against library membership.
-- **Playlists can't be favourited (follow-up).** `GET Items?IncludeItemTypes=Playlist` (alone or
-  mixed with other types, e.g. Finamp's favorites screen sending
-  `IncludeItemTypes=Audio,MusicAlbum,Playlist`) is supported, but Navidrome's `model.Playlist` has
-  no starred/annotation concept — only a playlist's *tracks* can be starred, not the playlist
-  itself. So `PlaylistToBaseItem` sets no `UserData`, and a `Filters=IsFavorite`/`isFavorite=true`
-  query returns zero playlists rather than erroring (`listPlaylists` short-circuits). Supporting
-  favourited playlists would require adding playlist favorite state to Navidrome's model (a core
-  change), then surfacing it as `UserData.IsFavorite` and honoring the favorites filter here.
 - **MD5-hash ids from old migrated libraries.** The hex id codec assumes ids are opaque; a raw
   32-char MD5 id is itself valid hex and so must be encoded/decoded symmetrically like any other.
   This is handled, but is the most fragile id case — see the note in `dto/ids.go`.
