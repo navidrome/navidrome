@@ -1,18 +1,22 @@
 # Session Notes — Outreach Drafts
 
-Drafted, **not yet posted**. The one blocker (AI-attribution trailers in git history) is resolved — history was
-rewritten to strip them, force-pushed, and CI re-verified green on the result. Ready to post whenever you are.
+## Posted
+
+- **Draft 1** ("Show and tell" on `navidrome/navidrome`): live at
+  [navidrome/navidrome#5781](https://github.com/navidrome/navidrome/discussions/5781).
+- **Own repo Discussions set up**: welcome post pinned, Cirque beta-testing announcement live at
+  [navidrome_experimental#15](https://github.com/RFLundgren/navidrome_experimental/discussions/15).
 
 ## Recommended approach
 
-Post **Draft 1 only**, to Discussions → "Show and tell" on `navidrome/navidrome`. That category exists specifically
-for sharing personal builds/forks — low friction, opt-in for readers, doesn't interrupt anyone's issue-tracking
-workflow. Holding off on Draft 2 (a direct comment on issue #793) for now — an unsolicited comment on someone else's
-tracked issue reads more presumptuous than a Discussions post, even with humble framing. Better to let people find
-it via the Discussions post and link it into #793 themselves if they want to. Revisit Draft 2 later if the
-Discussions post gets traction and it feels like a natural next step.
+Posted **Draft 1 only** (see link above), to Discussions → "Show and tell" on `navidrome/navidrome`. That category
+exists specifically for sharing personal builds/forks — low friction, opt-in for readers, doesn't interrupt anyone's
+issue-tracking workflow. Still holding off on Draft 2 (a direct comment on issue #793) — an unsolicited comment on
+someone else's tracked issue reads more presumptuous than a Discussions post, even with humble framing. Better to
+let people find it via the Discussions post and link it into #793 themselves if they want to. Revisit Draft 2 later
+if the Discussions post gets traction and it feels like a natural next step.
 
-## Draft 1 — "Show and tell" post for navidrome/navidrome Discussions
+## Draft 1 — "Show and tell" post for navidrome/navidrome Discussions (POSTED — see link above)
 
 **Title:** navidrome-experimental: a fork adding full Podcast support (Subsonic API) + physical folder browsing
 
@@ -32,7 +36,11 @@ Discussions post gets traction and it feels like a natural next step.
 >
 > **To try it:** swap `ghcr.io/rflundgren/navidrome_experimental:stable` in for the official image in your `docker-compose.yml` — it tracks upstream closely and only adds tables/migrations, so your existing `/data` volume and library carry over untouched, `docker compose pull && docker compose up -d` is all it takes.
 >
+> If you'd rather not touch your existing instance at all, it's just as easy to run it side-by-side instead — spin up a second container from the same image, pointed at a different `/data` volume and a different host port (e.g. `4534:4533`), and it won't interfere with what's already running. Good way to poke around before deciding whether to switch your main setup over.
+>
 > Design writeup: [PODCAST_PLAN.md](https://github.com/RFLundgren/navidrome_experimental/blob/master/PODCAST_PLAN.md)
+>
+> Also in the works: dedicated clients ("Cirque") for Android and Windows desktop, currently in private testing. They won't be open source — planning to release them as donationware — but if you want to hear when public testing opens, there's a [thread for that](https://github.com/RFLundgren/navidrome_experimental/discussions/15) where I'll post updates.
 >
 > Happy to answer questions if anyone wants to try it, and open to feedback on the podcast design in particular — I know [#793](https://github.com/navidrome/navidrome/issues/793) has been open a long time, curious if this is close to what the project would want if there's ever appetite to bring something like it upstream.
 
