@@ -1,13 +1,16 @@
-# Session Notes — Outreach Drafts (on hold)
+# Session Notes — Outreach Drafts
 
-Drafted, **not yet posted**. Holding these until a few open questions below are resolved, then revisit.
+Drafted, **not yet posted**. The one blocker (AI-attribution trailers in git history) is resolved — history was
+rewritten to strip them, force-pushed, and CI re-verified green on the result. Ready to post whenever you are.
 
-## Open questions to resolve first
+## Recommended approach
 
-- Whether to scrub the `Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>` trailers currently present in
-  a lot of the git history before pointing more outside attention at the repo (this would mean rewriting published
-  history and force-pushing — needs a deliberate decision, not something to do casually).
-- Anything else that comes up before posting publicly.
+Post **Draft 1 only**, to Discussions → "Show and tell" on `navidrome/navidrome`. That category exists specifically
+for sharing personal builds/forks — low friction, opt-in for readers, doesn't interrupt anyone's issue-tracking
+workflow. Holding off on Draft 2 (a direct comment on issue #793) for now — an unsolicited comment on someone else's
+tracked issue reads more presumptuous than a Discussions post, even with humble framing. Better to let people find
+it via the Discussions post and link it into #793 themselves if they want to. Revisit Draft 2 later if the
+Discussions post gets traction and it feels like a natural next step.
 
 ## Draft 1 — "Show and tell" post for navidrome/navidrome Discussions
 
@@ -25,7 +28,9 @@ Drafted, **not yet posted**. Holding these until a few open questions below are 
 >
 > **Physical folder browsing** is also included — navigate your library the way it's laid out on disk, with recursive play/shuffle/playlist actions, ZIP downloads, and folder-pinned playlists.
 >
-> **To try it:** swap `ghcr.io/rflundgren/navidrome_experimental:develop` in for the official image in your `docker-compose.yml` — it tracks upstream closely and only adds tables/migrations, so your existing `/data` volume and library carry over untouched, `docker compose pull && docker compose up -d` is all it takes.
+> Screenshots of both in the [README](https://github.com/RFLundgren/navidrome_experimental#readme) if you want to see it before trying it.
+>
+> **To try it:** swap `ghcr.io/rflundgren/navidrome_experimental:stable` in for the official image in your `docker-compose.yml` — it tracks upstream closely and only adds tables/migrations, so your existing `/data` volume and library carry over untouched, `docker compose pull && docker compose up -d` is all it takes.
 >
 > Design writeup: [PODCAST_PLAN.md](https://github.com/RFLundgren/navidrome_experimental/blob/master/PODCAST_PLAN.md)
 >
@@ -37,7 +42,7 @@ Drafted, **not yet posted**. Holding these until a few open questions below are 
 >
 > Full Subsonic API coverage (`getPodcasts`, `getNewestPodcasts`, `createPodcastChannel`, `refreshPodcasts`, delete endpoints, `downloadPodcastEpisode`), stream-or-download per channel, retention policies, and playlist integration for downloaded episodes. Design notes: [PODCAST_PLAN.md](https://github.com/RFLundgren/navidrome_experimental/blob/master/PODCAST_PLAN.md)
 >
-> Docker image if anyone wants to try it: `ghcr.io/rflundgren/navidrome_experimental:develop` (drop-in for the official image — existing library/data carry over). Happy to discuss the approach or help adapt it if there's interest.
+> Docker image if anyone wants to try it: `ghcr.io/rflundgren/navidrome_experimental:stable` (drop-in for the official image — existing library/data carry over). Happy to discuss the approach or help adapt it if there's interest.
 
 ## Related, not yet drafted
 
