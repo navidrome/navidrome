@@ -58,6 +58,19 @@ var _ = Describe("Configuration", func() {
 		})
 	})
 
+	Describe("scheduled DB analysis", func() {
+		It("is enabled by default", func() {
+			conf.Load(true)
+			Expect(conf.Server.EnableScheduledDBAnalyze).To(BeTrue())
+		})
+
+		It("can be disabled", func() {
+			viper.Set("enablescheduleddbanalyze", false)
+			conf.Load(true)
+			Expect(conf.Server.EnableScheduledDBAnalyze).To(BeFalse())
+		})
+	})
+
 	Describe("ValidateURL", func() {
 		It("accepts a valid http URL", func() {
 			fn := conf.ValidateURL("TestOption", "http://example.com/path")

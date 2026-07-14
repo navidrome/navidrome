@@ -51,6 +51,7 @@ type configOptions struct {
 	EnableExternalServices          bool
 	EnableM3UExternalAlbumArt       bool
 	EnableInsightsCollector         bool
+	EnableScheduledDBAnalyze        bool
 	EnableMediaFileCoverArt         bool
 	TranscodingCacheSize            string
 	ImageCacheSize                  string
@@ -147,7 +148,6 @@ type configOptions struct {
 	DevEnablePluginsInsights          bool
 	DevPluginCompilationTimeout       time.Duration
 	DevExternalArtistFetchMultiplier  float64
-	DevOptimizeDB                     bool
 	DevPreserveUnicodeInExternalCalls bool
 	DevEnableMediaFileProbe           bool
 }
@@ -800,6 +800,7 @@ func setViperDefaults() {
 	viper.SetDefault("defaultdownloadableshare", false)
 	viper.SetDefault("gatrackingid", "")
 	viper.SetDefault("enableinsightscollector", true)
+	viper.SetDefault("enablescheduleddbanalyze", true)
 	viper.SetDefault("enablelogredacting", true)
 	viper.SetDefault("authrequestlimit", 5)
 	viper.SetDefault("authwindowlength", 20*time.Second)
@@ -891,7 +892,6 @@ func setViperDefaults() {
 	viper.SetDefault("devenablepluginsinsights", true)
 	viper.SetDefault("devplugincompilationtimeout", time.Minute)
 	viper.SetDefault("devexternalartistfetchmultiplier", 1.5)
-	viper.SetDefault("devoptimizedb", true)
 	viper.SetDefault("devpreserveunicodeinexternalcalls", false)
 	viper.SetDefault("devenablemediafileprobe", true)
 }
