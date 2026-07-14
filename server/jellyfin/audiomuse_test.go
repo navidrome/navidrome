@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 
@@ -77,16 +78,21 @@ func mf(id, artist, title string, lib int) model.MediaFile {
 	return model.MediaFile{ID: id, Artist: artist, Title: title, LibraryID: lib}
 }
 
+// audioMuseGet drives a GET through normalizeQueryKeys as the given user, mirroring a real request.
+func audioMuseGet(handler http.HandlerFunc, path, query string, user model.User) *httptest.ResponseRecorder {
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", path+"?"+query, nil)
+	r = r.WithContext(request.WithUser(r.Context(), user))
+	invoke(handler, w, r)
+	return w
+}
+
 var _ = Describe("AudioMuse similar_tracks", func() {
 	var fake *fakeSonicEngine
 	var api *Router
 
 	call := func(query string, user model.User) *httptest.ResponseRecorder {
-		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/AudioMuseAI/similar_tracks?"+query, nil)
-		r = r.WithContext(request.WithUser(r.Context(), user))
-		invoke(api.audioMuseSimilarTracks, w, r)
-		return w
+		return audioMuseGet(api.audioMuseSimilarTracks, "/AudioMuseAI/similar_tracks", query, user)
 	}
 
 	BeforeEach(func() {
@@ -167,11 +173,7 @@ var _ = Describe("AudioMuse find_path", func() {
 	var api *Router
 
 	call := func(query string, user model.User) *httptest.ResponseRecorder {
-		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/AudioMuseAI/find_path?"+query, nil)
-		r = r.WithContext(request.WithUser(r.Context(), user))
-		invoke(api.audioMuseFindPath, w, r)
-		return w
+		return audioMuseGet(api.audioMuseFindPath, "/AudioMuseAI/find_path", query, user)
 	}
 
 	BeforeEach(func() {

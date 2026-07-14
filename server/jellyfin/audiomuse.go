@@ -69,7 +69,7 @@ func (api *Router) audioMuseSimilarTracks(w http.ResponseWriter, r *http.Request
 	}
 
 	u, _ := request.UserFrom(ctx)
-	seenArtists := map[string]bool{}
+	seenArtists := make(map[string]bool, len(matches))
 	for _, m := range matches {
 		mf := m.MediaFile
 		if !u.HasLibraryAccess(mf.LibraryID) {
