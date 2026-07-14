@@ -46,9 +46,7 @@ func New(ds model.DataStore, pluginLoader PluginLoader, matcher *matcher.Matcher
 	}
 }
 
-// Engine is the sonic-similarity surface the API layers depend on. *Sonic satisfies it; defining it
-// beside the concrete type lets consumers take it as an interface (and inject a fake in tests)
-// without the interface drifting from the implementation.
+// Engine is the sonic-similarity surface the API layers depend on; *Sonic satisfies it.
 type Engine interface {
 	HasProvider() bool
 	GetSonicSimilarTracks(ctx context.Context, id string, count int) ([]SimilarMatch, error)

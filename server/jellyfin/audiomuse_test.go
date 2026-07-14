@@ -30,8 +30,9 @@ var _ = Describe("AudioMuse info", func() {
 		Expect(json.Unmarshal(w.Body.Bytes(), &body)).To(Succeed())
 		Expect(body.Version).To(Equal(consts.Version))
 		Expect(body.AvailableEndpoints).To(ConsistOf(
-			"GET /AudioMuseAI/similar_tracks",
 			"GET /AudioMuseAI/find_path",
+			"GET /AudioMuseAI/health",
+			"GET /AudioMuseAI/similar_tracks",
 		))
 	})
 
@@ -77,6 +78,21 @@ func (f *fakeSonicEngine) FindSonicPath(_ context.Context, startID, endID string
 func mf(id, artist, title string, lib int) model.MediaFile {
 	return model.MediaFile{ID: id, Artist: artist, Title: title, LibraryID: lib}
 }
+
+var _ = Describe("AudioMuse health", func() {
+	It("returns 200 with an empty body when a provider is loaded", func() {
+		api := &Router{sonic: &fakeSonicEngine{provider: true}}
+		w := audioMuseGet(api.audioMuseHealth, "/AudioMuseAI/health", "", model.User{IsAdmin: true})
+		Expect(w.Code).To(Equal(200))
+		Expect(w.Body.Len()).To(Equal(0))
+	})
+
+	It("returns 404 when no provider is loaded", func() {
+		api := &Router{}
+		w := audioMuseGet(api.audioMuseHealth, "/AudioMuseAI/health", "", model.User{IsAdmin: true})
+		Expect(w.Code).To(Equal(404))
+	})
+})
 
 // audioMuseGet drives a GET through normalizeQueryKeys as the given user, mirroring a real request.
 func audioMuseGet(handler http.HandlerFunc, path, query string, user model.User) *httptest.ResponseRecorder {

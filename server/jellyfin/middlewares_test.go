@@ -339,8 +339,7 @@ var _ = Describe("caseInsensitivePaths", func() {
 			gotContainer = chi.URLParam(req, "container")
 			w.WriteHeader(http.StatusOK)
 		})
-		// A second route reusing the "bar" segment name at a different position, to prove segment
-		// names shared across routes coexist (the flat-map predecessor collided on these).
+		// A second route reusing the "bar" segment name at a different position.
 		r.Get("/bar/{id}", func(w http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(http.StatusOK)
 		})

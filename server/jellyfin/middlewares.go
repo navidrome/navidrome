@@ -30,17 +30,12 @@ func throttleStreams(limit int) func(http.Handler) http.Handler {
 	return middleware.ThrottleBacklog(limit, consts.RequestThrottleBacklogLimit, consts.RequestThrottleBacklogTimeout)
 }
 
-// caseInsensitivePaths lowercases each request path before chi matches it. Jellyfin clients route
-// case-insensitively but chi matches case-sensitively; every route in this package is registered in
-// lowercase (see routes()), so lowering the request path routes any casing to the right handler.
-//
-// This lowercases id/param segments too, which is safe because every id on the Jellyfin boundary is
-// lowercase hex (see dto.EncodeID) — lowering it is a no-op. The invariant this relies on: no route
-// in this package may carry case-sensitive data in its path.
+// caseInsensitivePaths lowercases the request path so chi (case-sensitive) matches the
+// lowercase-registered routes; Jellyfin clients route case-insensitively. It lowercases id/param
+// segments too, safe only because every id on the boundary is lowercase hex (dto.EncodeID).
 func caseInsensitivePaths(r chi.Router) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		// When mounted under a parent, chi has already stripped the mount prefix and matches against
-		// RouteContext.RoutePath rather than r.URL.Path, so that's what must be lowered.
+		// Mounted under a parent, chi matches RouteContext.RoutePath, not r.URL.Path.
 		if rctx := chi.RouteContext(req.Context()); rctx != nil && rctx.RoutePath != "" {
 			rctx.RoutePath = strings.ToLower(rctx.RoutePath)
 		} else {

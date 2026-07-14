@@ -59,8 +59,7 @@ func (api *Router) routes() http.Handler {
 	// handler and the api_key check see folded keys.
 	inner.Use(normalizeQueryKeys)
 
-	// Routes are registered in lowercase; caseInsensitivePaths lowercases every request path so any
-	// casing a Jellyfin client sends matches. Keep new routes lowercase (param names stay as-is).
+	// Routes are lowercase; caseInsensitivePaths lowercases the request path. Keep new routes lowercase.
 
 	// Public (no auth): handshake + login.
 	inner.Get("/system/info/public", api.getPublicSystemInfo)
@@ -170,6 +169,7 @@ func (api *Router) routes() http.Handler {
 		r.Get("/socket", api.handleSocket)
 
 		r.Get("/audiomuseai/info", api.audioMuseInfo)
+		r.Get("/audiomuseai/health", api.audioMuseHealth)
 		r.Get("/audiomuseai/similar_tracks", api.audioMuseSimilarTracks)
 		r.Get("/audiomuseai/find_path", api.audioMuseFindPath)
 	})

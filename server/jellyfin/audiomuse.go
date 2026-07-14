@@ -10,11 +10,12 @@ import (
 	"github.com/navidrome/navidrome/utils/req"
 )
 
-// audioMuseEndpoints is the list reported by /AudioMuseAI/info. It excludes info itself,
-// matching the reference plugin, whose reflection-built list drops the info route.
+// audioMuseEndpoints is what /AudioMuseAI/info advertises; it omits info itself, like the plugin,
+// and is sorted the same way (the plugin builds it with OrderBy).
 var audioMuseEndpoints = []string{
-	"GET /AudioMuseAI/similar_tracks",
 	"GET /AudioMuseAI/find_path",
+	"GET /AudioMuseAI/health",
+	"GET /AudioMuseAI/similar_tracks",
 }
 
 type audioMuseInfoResponse struct {
@@ -23,9 +24,7 @@ type audioMuseInfoResponse struct {
 }
 
 func (api *Router) audioMuseInfo(w http.ResponseWriter, r *http.Request) {
-	// Like getOpenSubsonicExtensions: advertise the sonic endpoints only when a provider is loaded.
-	// []string{} (never nil) so an empty AvailableEndpoints serializes as [] rather than null.
-	endpoints := []string{}
+	endpoints := []string{} // non-nil so an empty list serializes as [], not null
 	if api.sonic != nil && api.sonic.HasProvider() {
 		endpoints = audioMuseEndpoints
 	}
@@ -33,6 +32,16 @@ func (api *Router) audioMuseInfo(w http.ResponseWriter, r *http.Request) {
 		Version:            consts.Version,
 		AvailableEndpoints: endpoints,
 	})
+}
+
+// audioMuseHealth is a liveness probe: 200 with an empty body when a sonic provider is loaded, else
+// 404 — mirroring the reference plugin, which returns 200 when its backend is reachable.
+func (api *Router) audioMuseHealth(w http.ResponseWriter, r *http.Request) {
+	if api.sonic == nil || !api.sonic.HasProvider() {
+		api.notFound(w, r)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }
 
 type audioMuseSimilarTrack struct {
@@ -44,7 +53,7 @@ type audioMuseSimilarTrack struct {
 
 func (api *Router) audioMuseSimilarTracks(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	// Gate the whole endpoint on a sonic provider, like the Subsonic sonicSimilarity handlers.
+	// 404 without a provider, like the Subsonic sonicSimilarity handlers.
 	if api.sonic == nil || !api.sonic.HasProvider() {
 		api.notFound(w, r)
 		return
@@ -106,7 +115,6 @@ type audioMusePathResponse struct {
 
 func (api *Router) audioMuseFindPath(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	// Gate the whole endpoint on a sonic provider, like the Subsonic sonicSimilarity handlers.
 	if api.sonic == nil || !api.sonic.HasProvider() {
 		api.notFound(w, r)
 		return

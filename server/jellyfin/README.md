@@ -223,7 +223,8 @@ external AudioMuse-AI backend or proxy is involved. The endpoints are gated on a
 plugin being loaded, like the Subsonic `sonicSimilarity` OpenSubsonic extension.
 
 - `GET AudioMuseAI/info` — returns `{"Version": <navidrome version>, "AvailableEndpoints": [...]}` (200).
-  `AvailableEndpoints` lists the two endpoints below only when a provider is loaded; otherwise it is empty.
+  `AvailableEndpoints` lists the endpoints below only when a provider is loaded; otherwise it is empty.
+- `GET AudioMuseAI/health` — liveness probe: 200 with an empty body when a provider is loaded, else 404.
 - `GET AudioMuseAI/similar_tracks?item_id=<id>&n=10&eliminate_duplicates=true` — 404 when no provider is
   loaded; otherwise a JSON array of `{author, distance, item_id, title}` (200; `[]` when there is no match
   or no `item_id`). `eliminate_duplicates` (default true) limits results to one track per artist.

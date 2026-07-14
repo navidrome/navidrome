@@ -23,13 +23,26 @@ var _ = Describe("AudioMuse endpoints", func() {
 			parseInto(get("/AudioMuseAI/info"), &body)
 			Expect(body.Version).To(Equal(consts.Version))
 			Expect(body.AvailableEndpoints).To(ConsistOf(
-				"GET /AudioMuseAI/similar_tracks",
 				"GET /AudioMuseAI/find_path",
+				"GET /AudioMuseAI/health",
+				"GET /AudioMuseAI/similar_tracks",
 			))
 		})
 
 		It("requires authentication", func() {
 			Expect(rawReq("GET", "/AudioMuseAI/info", "").Code).To(Equal(http.StatusUnauthorized))
+		})
+	})
+
+	Describe("GET /AudioMuseAI/health", func() {
+		It("returns 200 with an empty body when a provider is loaded", func() {
+			w := get("/AudioMuseAI/health")
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Body.Len()).To(Equal(0))
+		})
+
+		It("requires authentication", func() {
+			Expect(rawReq("GET", "/AudioMuseAI/health", "").Code).To(Equal(http.StatusUnauthorized))
 		})
 	})
 
