@@ -10,6 +10,8 @@ import (
 )
 
 type Playlist struct {
+	Annotations `structs:"-"`
+
 	ID               string         `structs:"id" json:"id"`
 	Name             string         `structs:"name" json:"name"`
 	Comment          string         `structs:"comment" json:"comment"`
@@ -121,6 +123,7 @@ type Playlists []Playlist
 
 type PlaylistRepository interface {
 	ResourceRepository
+	AnnotatedRepository
 	CountAll(options ...QueryOptions) (int64, error)
 	Exists(id string) (bool, error)
 	Put(pls *Playlist, cols ...string) error
