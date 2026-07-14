@@ -3,6 +3,7 @@ package jellyfin
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http/httptest"
 	"strings"
 
@@ -44,6 +45,7 @@ var _ = Describe("AudioMuse info", func() {
 		var body audioMuseInfoResponse
 		Expect(json.Unmarshal(w.Body.Bytes(), &body)).To(Succeed())
 		Expect(body.AvailableEndpoints).To(BeEmpty())
+		Expect(w.Body.String()).To(ContainSubstring(`"AvailableEndpoints":[]`))
 	})
 })
 
@@ -150,6 +152,14 @@ var _ = Describe("AudioMuse similar_tracks", func() {
 		w := call("item_id="+dto.EncodeID("seed"), model.User{IsAdmin: true})
 		Expect(w.Code).To(Equal(404))
 	})
+
+	It("returns an empty array when the engine errors", func() {
+		fake.similarErr = errors.New("boom")
+		fake.similar = []sonic.SimilarMatch{{MediaFile: mf("mf1", "A", "T1", 1), Similarity: 0.3}}
+		w := call("item_id="+dto.EncodeID("seed"), model.User{IsAdmin: true})
+		Expect(w.Code).To(Equal(200))
+		Expect(strings.TrimSpace(w.Body.String())).To(Equal("[]"))
+	})
 })
 
 var _ = Describe("AudioMuse find_path", func() {
@@ -207,5 +217,16 @@ var _ = Describe("AudioMuse find_path", func() {
 		fake.provider = false
 		w := call("start_song_id="+dto.EncodeID("s")+"&end_song_id="+dto.EncodeID("e"), model.User{IsAdmin: true})
 		Expect(w.Code).To(Equal(404))
+	})
+
+	It("returns an empty path object when the engine errors", func() {
+		fake.pathErr = errors.New("boom")
+		fake.path = []sonic.SimilarMatch{{MediaFile: mf("mf1", "A", "T1", 1), Similarity: 1.0}}
+		w := call("start_song_id="+dto.EncodeID("s")+"&end_song_id="+dto.EncodeID("e"), model.User{IsAdmin: true})
+		Expect(w.Code).To(Equal(200))
+		var body audioMusePathResponse
+		Expect(json.Unmarshal(w.Body.Bytes(), &body)).To(Succeed())
+		Expect(body.Path).To(BeEmpty())
+		Expect(body.TotalDistance).To(Equal(0.0))
 	})
 })

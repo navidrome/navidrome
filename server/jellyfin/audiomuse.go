@@ -24,6 +24,7 @@ type audioMuseInfoResponse struct {
 
 func (api *Router) audioMuseInfo(w http.ResponseWriter, r *http.Request) {
 	// Like getOpenSubsonicExtensions: advertise the sonic endpoints only when a provider is loaded.
+	// []string{} (never nil) so an empty AvailableEndpoints serializes as [] rather than null.
 	endpoints := []string{}
 	if api.sonic != nil && api.sonic.HasProvider() {
 		endpoints = audioMuseEndpoints
