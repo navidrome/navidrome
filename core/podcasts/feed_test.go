@@ -36,7 +36,13 @@ func TestFeedChannelInfoStripsHTMLDescription(t *testing.T) {
 		Link:        "https://example.com",
 	}
 
-	_, description, _, _ := feedChannelInfo(feed)
+	_, description, homePage, imageUrl := feedChannelInfo(feed)
+	if homePage != feed.Link {
+		t.Errorf("homePage = %q, want %q", homePage, feed.Link)
+	}
+	if imageUrl != "" {
+		t.Errorf("imageUrl = %q, want empty", imageUrl)
+	}
 
 	if strings.ContainsAny(description, "<>") {
 		t.Errorf("expected no HTML tags in description, got %q", description)
