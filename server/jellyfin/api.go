@@ -177,6 +177,8 @@ func (api *Router) routes() http.Handler {
 
 		// Real-time clients (e.g. Finamp) open this right after login; without it they 404-loop-reconnect.
 		r.Get("/socket", api.handleSocket)
+
+		r.Get("/AudioMuseAI/info", api.audioMuseInfo)
 	})
 
 	// Logged at Debug, not Warn/Error: clients probing for optional/legacy endpoints is expected
