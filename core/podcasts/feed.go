@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/deluan/sanitize"
 	"github.com/mmcdole/gofeed"
 	"github.com/navidrome/navidrome/model"
 )
@@ -20,7 +21,7 @@ func feedItemToEpisode(channelID string, item *gofeed.Item) model.PodcastEpisode
 		ChannelID:      channelID,
 		Guid:           item.GUID,
 		Title:          item.Title,
-		Description:    item.Description,
+		Description:    strings.TrimSpace(sanitize.HTML(item.Description)),
 		DownloadStatus: model.PodcastEpisodeNotDownloaded,
 	}
 
@@ -75,7 +76,7 @@ func parseItunesDuration(raw string) float32 {
 
 func feedChannelInfo(feed *gofeed.Feed) (title, description, homePage, imageUrl string) {
 	title = feed.Title
-	description = feed.Description
+	description = strings.TrimSpace(sanitize.HTML(feed.Description))
 	homePage = feed.Link
 	if feed.Image != nil {
 		imageUrl = feed.Image.URL
