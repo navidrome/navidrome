@@ -80,6 +80,28 @@ var _ = Describe("Criteria", func() {
 		})
 	})
 
+	Context("with both top-level 'all' and 'any'", func() {
+		It("returns an error instead of silently dropping one of the groups", func() {
+			jsonStr := `{"any":[{"inPlaylist":{"path":"a.nsp"}}],"all":[{"notInPlaylist":{"path":"b.nsp"}}]}`
+			var c Criteria
+			err := json.Unmarshal([]byte(jsonStr), &c)
+			gomega.Expect(err).To(gomega.HaveOccurred())
+			gomega.Expect(err.Error()).To(gomega.And(gomega.ContainSubstring("all"), gomega.ContainSubstring("any")))
+		})
+
+		DescribeTable("rejects both keys even when one group is present but empty",
+			func(jsonStr string) {
+				var c Criteria
+				err := json.Unmarshal([]byte(jsonStr), &c)
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(err.Error()).To(gomega.And(gomega.ContainSubstring("all"), gomega.ContainSubstring("any")))
+			},
+			Entry("empty any", `{"any":[],"all":[{"is":{"loved":true}}]}`),
+			Entry("empty all", `{"all":[],"any":[{"is":{"loved":true}}]}`),
+			Entry("null any", `{"any":null,"all":[{"is":{"loved":true}}]}`),
+		)
+	})
+
 	Describe("LimitPercent", func() {
 		Describe("JSON round-trip", func() {
 			It("marshals and unmarshals limitPercent", func() {

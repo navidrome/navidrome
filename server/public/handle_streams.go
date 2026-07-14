@@ -3,6 +3,7 @@ package public
 import (
 	"errors"
 	"net/http"
+	"slices"
 	"strconv"
 	"time"
 
@@ -25,23 +26,20 @@ func (pub *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var shareOwner *model.User
-	if info.shareID != "" {
-		share, err := pub.ds.Share(ctx).Get(info.shareID)
-		if err != nil {
-			checkShareError(ctx, w, err, info.shareID)
-			return
-		}
-		if expiresAt := V(share.ExpiresAt); !expiresAt.IsZero() && expiresAt.Before(time.Now()) {
-			checkShareError(ctx, w, model.ErrExpired, info.shareID)
-			return
-		}
-		shareOwner, err = pub.ds.User(ctx).Get(share.UserID)
-		if err != nil {
-			log.Error(ctx, "Error retrieving share owner for shared stream", "share", info.shareID, "owner", share.UserID, err)
-			http.Error(w, "internal error", http.StatusInternalServerError)
-			return
-		}
+	share, err := pub.ds.Share(ctx).Get(info.shareID)
+	if err != nil {
+		checkShareError(ctx, w, err, info.shareID)
+		return
+	}
+	if expiresAt := V(share.ExpiresAt); !expiresAt.IsZero() && expiresAt.Before(time.Now()) {
+		checkShareError(ctx, w, model.ErrExpired, info.shareID)
+		return
+	}
+	shareOwner, err := pub.ds.User(ctx).Get(share.UserID)
+	if err != nil {
+		log.Error(ctx, "Error retrieving share owner for shared stream", "share", info.shareID, "owner", share.UserID, err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
 	}
 
 	mf, err := pub.ds.MediaFile(ctx).Get(info.id)
@@ -56,7 +54,8 @@ func (pub *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 404 rather than 403 so the response doesn't reveal whether the id exists.
-	if shareOwner != nil && !shareOwner.HasLibraryAccess(mf.LibraryID) {
+	// The track must belong to the share AND be within the owner's libraries.
+	if !shareContainsTrack(share, mf.ID) || !shareOwner.HasLibraryAccess(mf.LibraryID) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
@@ -98,6 +97,15 @@ type shareTrackInfo struct {
 	shareID string
 }
 
+func shareContainsTrack(share *model.Share, mediaFileID string) bool {
+	return slices.ContainsFunc(share.Tracks, func(mf model.MediaFile) bool {
+		return mf.ID == mediaFileID
+	})
+}
+
+// decodeStreamInfo decodes the signed share-link token. This is a scoped
+// public-share capability, not an auth credential; see encodeMediafileShare for
+// why a JWT is used here.
 func decodeStreamInfo(tokenString string) (shareTrackInfo, error) {
 	c, err := auth.Validate(tokenString)
 	if err != nil {
@@ -105,6 +113,9 @@ func decodeStreamInfo(tokenString string) (shareTrackInfo, error) {
 	}
 	if c.ID == "" {
 		return shareTrackInfo{}, errors.New("required claim \"id\" not found")
+	}
+	if c.ShareID == "" {
+		return shareTrackInfo{}, errors.New("required claim \"sid\" not found")
 	}
 	return shareTrackInfo{
 		id:      c.ID,

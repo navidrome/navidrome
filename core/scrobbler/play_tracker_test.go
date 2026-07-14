@@ -290,7 +290,7 @@ var _ = Describe("PlayTracker", func() {
 				Expect(mockScrobble.RecordedScrobbles).To(HaveLen(1))
 				Expect(mockScrobble.RecordedScrobbles[0].MediaFileID).To(Equal("123"))
 				Expect(mockScrobble.RecordedScrobbles[0].UserID).To(Equal("u-1"))
-				Expect(mockScrobble.RecordedScrobbles[0].SubmissionTime).To(Equal(ts))
+				Expect(mockScrobble.RecordedScrobbles[0].SubmissionTime).To(Equal(ts.Unix()))
 			})
 
 			It("does not record scrobble when history is disabled", func() {
