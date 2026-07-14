@@ -106,7 +106,9 @@ func (api *Router) deletePodcastChannel() http.HandlerFunc {
 			_ = rest.RespondWithError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
-		w.WriteHeader(http.StatusOK)
+		// react-admin's bulk delete reads response.json.id off every DELETE
+		// response; an empty body resolves to a null/undefined json and crashes.
+		_ = rest.RespondWithJSON(w, http.StatusOK, map[string]string{"id": id})
 	}
 }
 
@@ -132,7 +134,7 @@ func (api *Router) deletePodcastEpisode() http.HandlerFunc {
 			_ = rest.RespondWithError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
-		w.WriteHeader(http.StatusOK)
+		_ = rest.RespondWithJSON(w, http.StatusOK, map[string]string{"id": id})
 	}
 }
 
