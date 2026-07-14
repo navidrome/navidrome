@@ -511,6 +511,8 @@ jobs:
     name: Package/Release
     needs: [build, msi]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     outputs:
       package_list: ${{ steps.set-package-list.outputs.package_list }}
     steps:

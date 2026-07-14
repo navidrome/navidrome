@@ -35,12 +35,19 @@ fixes each one includes.
 
 ### Getting navidrome-experimental
 
-This isn't in the official Navidrome image — you'll need to pull this fork's image specifically. Docker Compose:
+This isn't in the official Navidrome image — you'll need to pull this fork's image specifically. Two tags are
+published:
+
+- `:stable` — the newest [tagged release](https://github.com/RFLundgren/navidrome_experimental/releases). Updated
+  only when a new checkpoint is cut, not on every commit. **Recommended for most people.**
+- `:develop` — tracks the tip of `master` directly. Gets fixes sooner, but may occasionally be in flux mid-fix.
+
+Docker Compose, using the recommended `:stable` tag:
 
 ```yaml
 services:
   navidrome:
-    image: ghcr.io/rflundgren/navidrome_experimental:develop
+    image: ghcr.io/rflundgren/navidrome_experimental:stable
     container_name: navidrome
     ports:
       - "4533:4533"
@@ -54,17 +61,18 @@ services:
       - "/path/to/your/music:/music:ro"
 ```
 
-Already running stock Navidrome? Point your existing `docker-compose.yml` at `ghcr.io/rflundgren/navidrome_experimental:develop`
-instead of the official image and keep your existing `/data` volume — this fork tracks upstream closely and only
-*adds* tables/migrations, so your library and settings carry over untouched; `docker compose pull && docker compose up -d`
-is all it takes.
+Already running stock Navidrome? Point your existing `docker-compose.yml` at
+`ghcr.io/rflundgren/navidrome_experimental:stable` instead of the official image and keep your existing `/data`
+volume — this fork tracks upstream closely and only *adds* tables/migrations, so your library and settings carry
+over untouched; `docker compose pull && docker compose up -d` is all it takes.
 
 For everything else — configuration options, reverse proxy setup, environment variables, building from source — the
 [Documentation](#documentation) section below and [project's website](https://www.navidrome.org/docs/) apply exactly
 as they do for upstream Navidrome.
 
-**Note**: the `:develop` image always tracks the tip of `master` and may occasionally be in flux mid-fix. For a
-pinned, known-good build instead, use one of this fork's [tagged releases](https://github.com/RFLundgren/navidrome_experimental/releases).
+**Note**: to pin an exact version rather than following whichever release is newest, use one of this fork's
+[tagged releases](https://github.com/RFLundgren/navidrome_experimental/releases) directly (e.g.
+`ghcr.io/rflundgren/navidrome_experimental:0.63.2-experimental.1`) instead of the `:stable` alias.
 
 __Any feedback is welcome!__ Found a bug or have a feature idea specific to this fork's podcast/folder support?
 File it on [this fork's issue tracker](https://github.com/RFLundgren/navidrome_experimental/issues) — please don't
