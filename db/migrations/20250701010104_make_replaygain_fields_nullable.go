@@ -39,7 +39,7 @@ ALTER TABLE media_file RENAME COLUMN rg_track_peak_new TO rg_track_peak;
 		return err
 	}
 
-	notice(tx, "Fetching replaygain fields properly will require a full scan")
+	notice(ctx, tx, "Fetching replaygain fields properly will require a full scan")
 	return nil
 }
 

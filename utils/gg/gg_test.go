@@ -16,22 +16,9 @@ func TestGG(t *testing.T) {
 }
 
 var _ = Describe("GG", func() {
-	Describe("P", func() {
-		It("returns a pointer to the input value", func() {
-			v := 123
-			Expect(gg.P(123)).To(Equal(&v))
-		})
-
-		It("returns nil if the input value is zero", func() {
-			v := 0
-			Expect(gg.P(0)).To(Equal(&v))
-		})
-	})
-
 	Describe("V", func() {
 		It("returns the value of the input pointer", func() {
-			v := 123
-			Expect(gg.V(&v)).To(Equal(123))
+			Expect(gg.V(new(123))).To(Equal(123))
 		})
 
 		It("returns a zero value if the input pointer is nil", func() {
@@ -57,6 +44,27 @@ var _ = Describe("GG", func() {
 		It("works with different types", func() {
 			Expect(gg.If(true, 1.1, 2.2)).To(Equal(1.1))
 			Expect(gg.If(false, 1.1, 2.2)).To(Equal(2.2))
+		})
+	})
+
+	Describe("Clone", func() {
+		It("returns a pointer to a copy of the value", func() {
+			original := 123
+			cloned := gg.Clone(&original)
+			Expect(cloned).To(HaveValue(Equal(123)))
+			Expect(cloned).NotTo(BeIdenticalTo(&original))
+		})
+
+		It("does not alias the original value", func() {
+			original := 123
+			cloned := gg.Clone(&original)
+			original = 456
+			Expect(*cloned).To(Equal(123))
+		})
+
+		It("returns nil when the input is nil", func() {
+			var v *int
+			Expect(gg.Clone(v)).To(BeNil())
 		})
 	})
 })

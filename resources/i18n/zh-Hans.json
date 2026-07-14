@@ -6,7 +6,7 @@
       "fields": {
         "albumArtist": "专辑艺人",
         "duration": "时长",
-        "trackNumber": "音轨号",
+        "trackNumber": "曲目序号",
         "playCount": "播放次数",
         "title": "标题",
         "artist": "艺人",
@@ -22,6 +22,8 @@
         "bitRate": "比特率",
         "bitDepth": "位深度",
         "sampleRate": "采样率",
+        "albumGain": "专辑增益",
+        "trackGain": "曲目增益",
         "channels": "声道",
         "disc": "碟片 %{discNumber}",
         "discSubtitle": "碟片副标题",
@@ -142,7 +144,7 @@
       "name": "用户",
       "fields": {
         "userName": "用户名",
-        "isAdmin": "是否管理员",
+        "isAdmin": "是否为管理员",
         "lastLoginAt": "上次登录",
         "lastAccessAt": "上次访问",
         "updatedAt": "更新于",
@@ -623,11 +625,11 @@
         "lastfmScrobbling": "启用 Last.fm 的个性化记录",
         "listenBrainzScrobbling": "启用 ListenBrainz 的个性化记录",
         "replaygain": "回放增益",
-        "preAmp": "前置放大器 (dB)",
+        "preAmp": "回放增益 - 前置放大 (dB)",
         "gain": {
-          "none": "禁用增益",
-          "album": "使用专辑增益信息",
-          "track": "使用歌曲增益信息"
+          "none": "禁用",
+          "album": "使用专辑增益",
+          "track": "使用曲目增益"
         }
       }
     },

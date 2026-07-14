@@ -4,6 +4,7 @@ package plugins
 
 import (
 	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/plugins/capabilities"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -118,7 +119,8 @@ var _ = Describe("MetadataAgent", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(songs).To(HaveLen(3))
 			Expect(songs[0].Name).To(Equal("Similar to Yesterday #1"))
-			Expect(songs[0].Artist).To(Equal("The Beatles"))
+			Expect(songs[0].Artists).To(HaveLen(1))
+			Expect(songs[0].Artists[0].Name).To(Equal("The Beatles"))
 		})
 	})
 
@@ -327,5 +329,33 @@ var _ = Describe("MetadataAgent partial implementation", Ordered, func() {
 		retriever := partialAgent.(agents.SimilarSongsByArtistRetriever)
 		_, err := retriever.GetSimilarSongsByArtist(GinkgoT().Context(), "artist-1", "Artist", "mbid", 5)
 		Expect(err).To(MatchError(errNotImplemented))
+	})
+})
+
+var _ = Describe("songRefToAgentSong multi-artist", func() {
+	It("maps ArtistRef to agents.Artist", func() {
+		ref := capabilities.SongRef{Name: "Collab", Artist: "Drake", Artists: []capabilities.ArtistRef{
+			{ID: "id-drake", Name: "Drake", MBID: "m-drake"},
+			{Name: "Future", MBID: "m-future"},
+		}}
+		got := songRefToAgentSong(ref)
+		Expect(got.Artists).To(Equal([]agents.Artist{
+			{ID: "id-drake", Name: "Drake", MBID: "m-drake"},
+			{Name: "Future", MBID: "m-future"},
+		}))
+	})
+	It("folds the single Artist/ArtistMBID into a one-element Artists when no Artists provided", func() {
+		ref := capabilities.SongRef{Name: "Solo", Artist: "Drake", ArtistMBID: "m-drake"}
+		got := songRefToAgentSong(ref)
+		Expect(got.Artists).To(Equal([]agents.Artist{{Name: "Drake", MBID: "m-drake"}}))
+	})
+	It("folds an MBID-only single artist (empty name) so the MBID is not dropped", func() {
+		ref := capabilities.SongRef{Name: "Solo", ArtistMBID: "m-drake"}
+		got := songRefToAgentSong(ref)
+		Expect(got.Artists).To(Equal([]agents.Artist{{MBID: "m-drake"}}))
+	})
+	It("leaves Artists nil when neither Artists nor the single Artist/ArtistMBID are provided", func() {
+		got := songRefToAgentSong(capabilities.SongRef{Name: "Anon"})
+		Expect(got.Artists).To(BeNil())
 	})
 })

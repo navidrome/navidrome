@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"path/filepath"
 	"runtime"
 	"sync"
@@ -124,7 +123,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	m.ctx, m.cancel = context.WithCancel(ctx)
 
 	// Initialize wazero compilation cache for better performance
-	cacheDir := filepath.Join(conf.Server.CacheFolder, "plugins")
+	cacheDir := filepath.Join(conf.Server.CacheFolder.MustPath(), "plugins")
 	purgeCacheBySize(ctx, cacheDir, conf.Server.Plugins.CacheSize)
 
 	var err error
@@ -134,17 +133,12 @@ func (m *Manager) Start(ctx context.Context) error {
 		return fmt.Errorf("creating wazero compilation cache: %w", err)
 	}
 
-	folder := conf.Server.Plugins.Folder
-	if folder == "" {
+	if conf.Server.Plugins.Folder.String() == "" {
 		log.Debug(ctx, "No plugins folder configured")
 		return nil
 	}
 
-	// Create plugins folder if it doesn't exist
-	if err := os.MkdirAll(folder, 0755); err != nil {
-		log.Error(ctx, "Failed to create plugins folder", "folder", folder, err)
-		return fmt.Errorf("creating plugins folder: %w", err)
-	}
+	folder := conf.Server.Plugins.Folder.MustPath()
 
 	log.Info(ctx, "Starting plugin manager", "folder", folder)
 
@@ -247,7 +241,7 @@ func (m *Manager) LoadScrobbler(name string) (scrobbler.Scrobbler, bool) {
 	return loadPlugin(m, name, CapabilityScrobbler, newScrobblerPlugin)
 }
 
-func (m *Manager) LoadLyricsProvider(name string) (lyrics.Lyrics, bool) {
+func (m *Manager) LoadLyricsProvider(name string) (lyrics.Provider, bool) {
 	return loadPlugin(m, name, CapabilityLyrics, newLyricsPlugin)
 }
 
@@ -388,7 +382,7 @@ func (m *Manager) ValidatePluginConfig(ctx context.Context, id, configJSON strin
 		return fmt.Errorf("getting plugin from DB: %w", err)
 	}
 
-	manifest, err := readManifest(plugin.Path)
+	manifest, err := ReadManifest(plugin.Path)
 	if err != nil {
 		return fmt.Errorf("reading manifest: %w", err)
 	}
@@ -431,7 +425,7 @@ func (m *Manager) UpdatePluginLibraries(ctx context.Context, id, librariesJSON s
 // This synchronizes the database with the filesystem, discovering new plugins,
 // updating changed ones, and removing deleted ones.
 func (m *Manager) RescanPlugins(ctx context.Context) error {
-	folder := conf.Server.Plugins.Folder
+	folder := conf.Server.Plugins.Folder.String()
 	if folder == "" {
 		return fmt.Errorf("plugins folder not configured")
 	}
@@ -466,7 +460,7 @@ func (m *Manager) updatePluginSettings(ctx context.Context, id string, updateFn 
 	shouldDisable := false
 	disableReason := ""
 	if wasEnabled {
-		manifest, err := readManifest(plugin.Path)
+		manifest, err := ReadManifest(plugin.Path)
 		if err == nil && manifest.Permissions != nil {
 			if manifest.Permissions.Users != nil && !hasValidUsersConfig(plugin.Users, plugin.AllUsers) {
 				shouldDisable = true
@@ -597,7 +591,7 @@ func (m *Manager) UnloadDisabledPlugins(ctx context.Context) {
 // before a plugin can be enabled. Returns an error if any gate condition fails.
 func (m *Manager) checkPermissionGates(p *model.Plugin) error {
 	// Parse manifest to check permissions
-	manifest, err := readManifest(p.Path)
+	manifest, err := ReadManifest(p.Path)
 	if err != nil {
 		return fmt.Errorf("reading manifest: %w", err)
 	}

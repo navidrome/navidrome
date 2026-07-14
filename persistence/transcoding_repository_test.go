@@ -64,9 +64,69 @@ var _ = Describe("TranscodingRepository", func() {
 			_, err = adminRepo.Get("to-delete")
 			Expect(err).To(MatchError(model.ErrNotFound))
 		})
+
+		It("reads the Command field via the REST Read method", func() {
+			tr := &model.Transcoding{ID: "adminread", Name: "temp", TargetFormat: "test_format", DefaultBitRate: 64, Command: "ffmpeg -secret"}
+			Expect(adminRepo.Put(tr)).To(Succeed())
+
+			res, err := adminRepo.(*transcodingRepository).Read("adminread")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res.(*model.Transcoding).Command).To(Equal("ffmpeg -secret"))
+		})
 	})
 
 	Describe("Regular User", func() {
+		It("reads a transcoding but with the Command field redacted", func() {
+			tr := &model.Transcoding{ID: "readreg", Name: "temp", TargetFormat: "test_format", DefaultBitRate: 64, Command: "ffmpeg -secret"}
+			Expect(adminRepo.Put(tr)).To(Succeed())
+
+			res, err := repo.(*transcodingRepository).Read("readreg")
+			Expect(err).ToNot(HaveOccurred())
+			t := res.(*model.Transcoding)
+			Expect(t.Name).To(Equal("temp"))
+			Expect(t.TargetFormat).To(Equal("test_format"))
+			Expect(t.Command).To(BeEmpty())
+		})
+
+		It("lists transcodings but with the Command field redacted", func() {
+			tr := &model.Transcoding{ID: "listreg", Name: "temp", TargetFormat: "test_format", DefaultBitRate: 64, Command: "ffmpeg -secret"}
+			Expect(adminRepo.Put(tr)).To(Succeed())
+
+			res, err := repo.(*transcodingRepository).ReadAll()
+			Expect(err).ToNot(HaveOccurred())
+			list := res.(model.Transcodings)
+			Expect(list).ToNot(BeEmpty())
+			for _, t := range list {
+				Expect(t.Command).To(BeEmpty())
+			}
+		})
+
+		It("counts transcodings", func() {
+			count, err := repo.(*transcodingRepository).Count()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(count).To(BeNumerically(">=", 0))
+		})
+
+		It("can still resolve a transcoding for streaming via Get (Command not redacted)", func() {
+			tr := &model.Transcoding{ID: "streamreg", Name: "temp", TargetFormat: "test_format", DefaultBitRate: 64, Command: "ffmpeg -secret"}
+			Expect(adminRepo.Put(tr)).To(Succeed())
+
+			res, err := repo.Get("streamreg")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res.ID).To(Equal("streamreg"))
+			Expect(res.Command).To(Equal("ffmpeg -secret"))
+		})
+
+		It("can still resolve a transcoding for streaming via FindByFormat (Command not redacted)", func() {
+			tr := &model.Transcoding{ID: "fmtreg", Name: "temp", TargetFormat: "test_format", DefaultBitRate: 64, Command: "ffmpeg -secret"}
+			Expect(adminRepo.Put(tr)).To(Succeed())
+
+			res, err := repo.FindByFormat("test_format")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res.ID).To(Equal("fmtreg"))
+			Expect(res.Command).To(Equal("ffmpeg -secret"))
+		})
+
 		It("fails to create", func() {
 			err := repo.Put(&model.Transcoding{ID: "bad", Name: "bad", TargetFormat: "test_format", DefaultBitRate: 64, Command: "ffmpeg"})
 			Expect(err).To(Equal(rest.ErrPermissionDenied))

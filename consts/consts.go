@@ -14,9 +14,16 @@ const (
 	DefaultDbPath                 = "navidrome.db?cache=shared&_busy_timeout=15000&_journal_mode=WAL&_foreign_keys=on&synchronous=normal"
 	InitialSetupFlagKey           = "InitialSetup"
 	FullScanAfterMigrationFlagKey = "FullScanAfterMigration"
+	// PlaylistsImportPendingFlagKey marks that playlist import was deferred because
+	// no admin user existed yet; the next scan with an admin imports them.
+	PlaylistsImportPendingFlagKey = "PlaylistsImportPending"
 	LastScanErrorKey              = "LastScanError"
 	LastScanTypeKey               = "LastScanType"
 	LastScanStartTimeKey          = "LastScanStartTime"
+	LastDBAnalyzeAtKey            = "LastDBAnalyzeAt"
+	LastDBAnalyzeAttemptAtKey     = "LastDBAnalyzeAttemptAt"
+	DBAnalyzePendingKey           = "DBAnalyzePending"
+	DBAnalyzeFailureCountKey      = "DBAnalyzeFailureCount"
 
 	UIAuthorizationHeader  = "X-ND-Authorization"
 	UIClientUniqueIDHeader = "X-ND-Client-Unique-Id"
@@ -25,7 +32,8 @@ const (
 	DefaultSessionTimeout  = 48 * time.Hour
 	CookieExpiry           = 365 * 24 * 3600 // One year
 
-	OptimizeDBSchedule = "@every 24h"
+	DBAnalyzeCheckSchedule = "@every 30m"
+	DBAnalyzeMaxAge        = 24 * time.Hour
 
 	// DefaultEncryptionKey This is the encryption key used if none is specified in the `PasswordEncryptionKey` option
 	// Never ever change this! Or it will break all Navidrome installations that don't set the config option
@@ -153,25 +161,25 @@ var (
 			Name:           "mp3 audio",
 			TargetFormat:   "mp3",
 			DefaultBitRate: 192,
-			Command:        "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -f mp3 -",
+			Command:        "ffmpeg -ss %t -i %s -map 0:a:0 -map_metadata 0 -map_metadata 0:s:a:0 -b:a %bk -v 0 -f mp3 -",
 		},
 		{
 			Name:           "opus audio",
 			TargetFormat:   "opus",
 			DefaultBitRate: 128,
-			Command:        "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a libopus -f opus -",
+			Command:        "ffmpeg -ss %t -i %s -map 0:a:0 -map_metadata 0 -map_metadata 0:s:a:0 -b:a %bk -v 0 -c:a libopus -f opus -",
 		},
 		{
 			Name:           "aac audio",
 			TargetFormat:   "aac",
 			DefaultBitRate: 256,
-			Command:        "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a aac -f adts -",
+			Command:        "ffmpeg -ss %t -i %s -map 0:a:0 -map_metadata 0 -map_metadata 0:s:a:0 -b:a %bk -v 0 -c:a aac -f adts -",
 		},
 		{
 			Name:           "flac audio",
 			TargetFormat:   "flac",
 			DefaultBitRate: 0,
-			Command:        "ffmpeg -i %s -ss %t -map 0:a:0 -v 0 -c:a flac -f flac -",
+			Command:        "ffmpeg -ss %t -i %s -map 0:a:0 -map_metadata 0 -map_metadata 0:s:a:0 -v 0 -c:a flac -f flac -",
 		},
 	}
 )

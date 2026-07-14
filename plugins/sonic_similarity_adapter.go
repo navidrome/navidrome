@@ -6,6 +6,7 @@ import (
 	"github.com/navidrome/navidrome/core/sonic"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/plugins/capabilities"
+	"github.com/navidrome/navidrome/plugins/types"
 )
 
 const CapabilitySonicSimilarity Capability = "SonicSimilarity"
@@ -61,8 +62,8 @@ func (a *SonicSimilarityPlugin) FindSonicPath(ctx context.Context, startMf, endM
 	return sonicMatchesToSimilarResults(resp.Matches), nil
 }
 
-func mediaFileToSongRef(mf *model.MediaFile) capabilities.SongRef {
-	ref := capabilities.SongRef{
+func mediaFileToSongRef(mf *model.MediaFile) types.SongRef {
+	ref := types.SongRef{
 		ID:         mf.ID,
 		Name:       mf.Title,
 		MBID:       mf.MbzRecordingID,
@@ -70,7 +71,10 @@ func mediaFileToSongRef(mf *model.MediaFile) capabilities.SongRef {
 		ArtistMBID: mf.MbzArtistID,
 		Album:      mf.Album,
 		AlbumMBID:  mf.MbzAlbumID,
-		Duration:   mf.Duration,
+	}
+	ref.SetDuration(mf.Duration)
+	for _, p := range mf.Participants[model.RoleArtist] {
+		ref.Artists = append(ref.Artists, types.ArtistRef{ID: p.ID, Name: p.Name, MBID: p.MbzArtistID, SortName: p.SortArtistName, Role: model.RoleArtist.String()})
 	}
 	if isrcs := mf.Tags.Values(model.TagISRC); len(isrcs) > 0 {
 		ref.ISRC = isrcs[0]

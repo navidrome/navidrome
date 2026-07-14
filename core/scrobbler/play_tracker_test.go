@@ -104,6 +104,13 @@ var _ = Describe("PlayTracker", func() {
 		Expect(tracker.builtinScrobblers).ToNot(HaveKey("disabled"))
 	})
 
+	Describe("IsBuiltinScrobbler", func() {
+		It("reports whether the name belongs to a registered builtin scrobbler", func() {
+			Expect(IsBuiltinScrobbler("fake")).To(BeTrue())
+			Expect(IsBuiltinScrobbler("some-plugin")).To(BeFalse())
+		})
+	})
+
 	Describe("GetNowPlaying", func() {
 		It("returns current playing music", func() {
 			track2 := track
@@ -283,7 +290,7 @@ var _ = Describe("PlayTracker", func() {
 				Expect(mockScrobble.RecordedScrobbles).To(HaveLen(1))
 				Expect(mockScrobble.RecordedScrobbles[0].MediaFileID).To(Equal("123"))
 				Expect(mockScrobble.RecordedScrobbles[0].UserID).To(Equal("u-1"))
-				Expect(mockScrobble.RecordedScrobbles[0].SubmissionTime).To(Equal(ts))
+				Expect(mockScrobble.RecordedScrobbles[0].SubmissionTime).To(Equal(ts.Unix()))
 			})
 
 			It("does not record scrobble when history is disabled", func() {
@@ -521,6 +528,7 @@ var _ = Describe("PlayTracker", func() {
 			})
 
 			It("does NOT scrobble when ignoreScrobble=true even if threshold met", func() {
+				fake.ScrobbleCalled.Store(false)
 				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
 					MediaId: "123", PositionMs: 0, State: "starting", PlaybackRate: 1.0, ClientId: defaultClientId,
 				})
@@ -531,6 +539,7 @@ var _ = Describe("PlayTracker", func() {
 				})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(track.PlayCount).To(Equal(int64(0)))
+				Consistently(func() bool { return fake.ScrobbleCalled.Load() }).Should(BeFalse())
 			})
 
 			It("does NOT scrobble when player ScrobbleEnabled=false even if threshold met", func() {
@@ -715,14 +724,14 @@ var _ = Describe("PlayTracker", func() {
 				Consistently(func() bool { return fake.GetNowPlayingCalled() }).Should(BeFalse())
 			})
 
-			It("does NOT dispatch when ignoreScrobble=true", func() {
+			It("still dispatches NowPlaying when ignoreScrobble=true", func() {
 				fake.nowPlayingCalled.Store(false)
 				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
 					MediaId: "123", PositionMs: 0, State: "starting", PlaybackRate: 1.0, ClientId: defaultClientId,
 					IgnoreScrobble: true,
 				})
 				Expect(err).ToNot(HaveOccurred())
-				Consistently(func() bool { return fake.GetNowPlayingCalled() }).Should(BeFalse())
+				Eventually(func() bool { return fake.GetNowPlayingCalled() }).Should(BeTrue())
 			})
 
 			It("does NOT dispatch when ScrobbleEnabled=false", func() {
@@ -1089,6 +1098,13 @@ func (f *fakeScrobbler) GetUserID() string {
 	return ""
 }
 
+func (f *fakeScrobbler) GetUsername() string {
+	if p := f.username.Load(); p != nil {
+		return *p
+	}
+	return ""
+}
+
 func (f *fakeScrobbler) GetTrack() *model.MediaFile {
 	return f.track.Load()
 }
@@ -1120,6 +1136,16 @@ func (f *fakeScrobbler) NowPlaying(ctx context.Context, userId string, track *mo
 
 func (f *fakeScrobbler) Scrobble(ctx context.Context, userId string, s Scrobble) error {
 	f.userID.Store(&userId)
+	// Capture username from context (this is what plugin scrobblers do)
+	username, _ := request.UsernameFrom(ctx)
+	if username == "" {
+		if u, ok := request.UserFrom(ctx); ok {
+			username = u.UserName
+		}
+	}
+	if username != "" {
+		f.username.Store(&username)
+	}
 	f.LastScrobble.Store(&s)
 	f.ScrobbleCalled.Store(true)
 	if f.Error != nil {
@@ -1133,8 +1159,7 @@ func (f *fakeScrobbler) PlaybackReport(ctx context.Context, info PlaybackSession
 	if f.Error != nil {
 		return f.Error
 	}
-	uid := info.UserId
-	f.userID.Store(&uid)
+	f.userID.Store(new(info.UserId))
 	f.LastPlaybackReport.Store(&info)
 	return nil
 }

@@ -141,22 +141,35 @@ func (l *listenBrainzAgent) GetArtistTopSongs(ctx context.Context, id, artistNam
 
 	res := make([]agents.Song, len(resp))
 	for i, t := range resp {
-		mbid := ""
-		if len(t.ArtistMBIDs) > 0 {
-			mbid = t.ArtistMBIDs[0]
-		}
-
 		res[i] = agents.Song{
-			Album:      t.ReleaseName,
-			AlbumMBID:  t.ReleaseMBID,
-			Artist:     t.ArtistName,
-			ArtistMBID: mbid,
-			Duration:   t.DurationMs,
-			Name:       t.RecordingName,
-			MBID:       t.RecordingMbid,
+			Album:     t.ReleaseName,
+			AlbumMBID: t.ReleaseMBID,
+			Artists:   topSongArtists(t.ArtistName, t.ArtistMBIDs),
+			Duration:  t.DurationMs,
+			Name:      t.RecordingName,
+			MBID:      t.RecordingMbid,
 		}
 	}
 	return res, nil
+}
+
+// topSongArtists maps the top-recordings response, which carries a single combined display name
+// (e.g. "X feat. Y") plus a per-artist MBID list, onto agents.Artist. Names and MBIDs are not
+// positionally pairable, so the display name attaches to the first credit and any further MBIDs
+// become MBID-only collaborators — still valid identity signals for the matcher.
+func topSongArtists(name string, mbids []string) []agents.Artist {
+	if len(mbids) == 0 {
+		if name == "" {
+			return nil
+		}
+		return []agents.Artist{{Name: name}}
+	}
+	artists := make([]agents.Artist, len(mbids))
+	artists[0] = agents.Artist{Name: name, MBID: mbids[0]}
+	for i, m := range mbids[1:] {
+		artists[i+1] = agents.Artist{MBID: m}
+	}
+	return artists
 }
 
 func (l *listenBrainzAgent) GetSimilarArtists(ctx context.Context, id string, name string, mbid string, limit int) ([]agents.Artist, error) {
@@ -203,7 +216,7 @@ func (l *listenBrainzAgent) GetSimilarSongsByTrack(ctx context.Context, id strin
 		songs[i] = agents.Song{
 			Album:     song.ReleaseName,
 			AlbumMBID: song.ReleaseMBID,
-			Artist:    song.Artist,
+			Artists:   []agents.Artist{{Name: song.Artist}},
 			MBID:      song.MBID,
 			Name:      song.Name,
 		}

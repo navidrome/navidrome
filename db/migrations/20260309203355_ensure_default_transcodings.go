@@ -13,7 +13,7 @@ func init() {
 	goose.AddMigrationContext(upEnsureDefaultTranscodings, downEnsureDefaultTranscodings)
 }
 
-func upEnsureDefaultTranscodings(_ context.Context, tx *sql.Tx) error {
+func upEnsureDefaultTranscodings(ctx context.Context, tx *sql.Tx) error {
 	// Older installations may be missing default transcodings that were added
 	// after the initial seeding (e.g., aac was added later than mp3/opus).
 	// Insert any missing defaults without touching user-customized entries.
@@ -22,12 +22,12 @@ func upEnsureDefaultTranscodings(_ context.Context, tx *sql.Tx) error {
 	// but the same name.
 	for _, t := range consts.DefaultTranscodings {
 		var count int
-		err := tx.QueryRow("SELECT COUNT(*) FROM transcoding WHERE target_format = ? OR name = ?", t.TargetFormat, t.Name).Scan(&count)
+		err := tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM transcoding WHERE target_format = ? OR name = ?", t.TargetFormat, t.Name).Scan(&count)
 		if err != nil {
 			return err
 		}
 		if count == 0 {
-			_, err = tx.Exec(
+			_, err = tx.ExecContext(ctx,
 				"INSERT INTO transcoding (id, name, target_format, default_bit_rate, command) VALUES (?, ?, ?, ?, ?)",
 				id.NewRandom(), t.Name, t.TargetFormat, t.DefaultBitRate, t.Command,
 			)
@@ -39,6 +39,6 @@ func upEnsureDefaultTranscodings(_ context.Context, tx *sql.Tx) error {
 	return nil
 }
 
-func downEnsureDefaultTranscodings(_ context.Context, tx *sql.Tx) error {
+func downEnsureDefaultTranscodings(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

@@ -2,6 +2,7 @@ package artworke2e_test
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"testing"
 
@@ -63,7 +64,7 @@ func setupHarness() {
 	// Reuse the suite-level DB path so the singleton connection keeps working
 	// across specs (see suiteDBTempDir comment).
 	conf.Server.DbPath = filepath.Join(suiteDBTempDir, "artwork-e2e.db") + "?_journal_mode=WAL"
-	conf.Server.DataFolder = tempDir
+	conf.Server.DataFolder = conf.NewDir(tempDir)
 	conf.Server.MusicFolder = fakeLibPath
 	conf.Server.DevExternalScanner = false
 	conf.Server.ImageCacheSize = "0" // disabled cache → reader runs on every call
@@ -103,4 +104,17 @@ func firstAlbum() model.Album {
 	Expect(err).ToNot(HaveOccurred())
 	Expect(albums).To(HaveLen(1), "expected exactly one album, got %d", len(albums))
 	return albums[0]
+}
+
+func albumByName(name string) model.Album {
+	GinkgoHelper()
+	albums, err := ds.Album(ctx).GetAll(model.QueryOptions{})
+	Expect(err).ToNot(HaveOccurred())
+	for _, al := range albums {
+		if al.Name == name {
+			return al
+		}
+	}
+	Fail(fmt.Sprintf("album %q not found among %d albums", name, len(albums)))
+	return model.Album{}
 }

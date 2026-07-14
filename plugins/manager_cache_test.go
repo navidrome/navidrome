@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -143,7 +144,7 @@ var _ = Describe("purgeCacheBySize", func() {
 
 			// Create 5 files, 1MiB each (total 5MiB)
 			for i := range 5 {
-				path := filepath.Join(cacheDir, filepath.Join("dir", "file"+string(rune('0'+i))+".bin"))
+				path := filepath.Join(cacheDir, filepath.Join("dir", "file"+strconv.Itoa(i)+".bin"))
 				createFileWithSize(path, 1*1024*1024, now.Add(-time.Duration(5-i)*time.Hour))
 			}
 

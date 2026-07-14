@@ -11,8 +11,8 @@ func init() {
 	goose.AddMigrationContext(upAddSmartPlaylist, downAddSmartPlaylist)
 }
 
-func upAddSmartPlaylist(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func upAddSmartPlaylist(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 alter table playlist
 	add column rules varchar null;
 alter table playlist
@@ -33,6 +33,6 @@ create unique index playlist_fields_idx
 	return err
 }
 
-func downAddSmartPlaylist(_ context.Context, tx *sql.Tx) error {
+func downAddSmartPlaylist(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

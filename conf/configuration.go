@@ -2,6 +2,7 @@ package conf
 
 import (
 	"cmp"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/dustin/go-humanize"
 	"github.com/go-viper/encoding/ini"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/kr/pretty"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
@@ -29,8 +31,8 @@ type configOptions struct {
 	UnixSocketPerm                  string
 	EnforceNonRootUser              bool
 	MusicFolder                     string
-	DataFolder                      string
-	CacheFolder                     string
+	DataFolder                      Dir
+	CacheFolder                     Dir
 	DbPath                          string
 	LogLevel                        string
 	LogFile                         string
@@ -45,11 +47,11 @@ type configOptions struct {
 	UIWelcomeMessage                string
 	MaxSidebarPlaylists             int
 	EnableTranscodingConfig         bool
-	EnableTranscodingCancellation   bool
 	EnableDownloads                 bool
 	EnableExternalServices          bool
 	EnableM3UExternalAlbumArt       bool
 	EnableInsightsCollector         bool
+	EnableScheduledDBAnalyze        bool
 	EnableMediaFileCoverArt         bool
 	TranscodingCacheSize            string
 	ImageCacheSize                  string
@@ -111,6 +113,7 @@ type configOptions struct {
 	PID                             pidOptions          `json:",omitzero"`
 	Inspect                         inspectOptions      `json:",omitzero"`
 	Subsonic                        subsonicOptions     `json:",omitzero"`
+	Transcoding                     transcodingOptions  `json:",omitzero"`
 	LastFM                          lastfmOptions       `json:",omitzero"`
 	Deezer                          deezerOptions       `json:",omitzero"`
 	ListenBrainz                    listenBrainzOptions `json:",omitzero"`
@@ -145,22 +148,29 @@ type configOptions struct {
 	DevEnablePluginsInsights          bool
 	DevPluginCompilationTimeout       time.Duration
 	DevExternalArtistFetchMultiplier  float64
-	DevOptimizeDB                     bool
 	DevPreserveUnicodeInExternalCalls bool
 	DevEnableMediaFileProbe           bool
 }
 
 type scannerOptions struct {
-	Enabled            bool
-	Schedule           string
-	WatcherWait        time.Duration
-	ScanOnStartup      bool
-	Extractor          string
-	ArtistJoiner       string
-	GenreSeparators    string // Deprecated: Use Tags.genre.Split instead
-	GroupAlbumReleases bool   // Deprecated: Use PID.Album instead
-	FollowSymlinks     bool   // Whether to follow symlinks when scanning directories
-	PurgeMissing       string // Values: "never", "always", "full"
+	Enabled               bool
+	Schedule              string
+	WatcherWait           time.Duration
+	ScanOnStartup         bool
+	Extractor             string
+	ArtistJoiner          string
+	ArtistSplitExceptions []string // Artist names never split by tag separators
+	GenreSeparators       string   // Deprecated: Use Tags.genre.Split instead
+	GroupAlbumReleases    bool     // Deprecated: Use PID.Album instead
+	FollowSymlinks        bool     // Whether to follow symlinks when scanning directories
+	IgnoreDotFolders      bool     // Whether to ignore folders whose name starts with a dot when scanning
+	PurgeMissing          string   // Values: "never", "always", "full"
+}
+
+type transcodingOptions struct {
+	MaxConcurrent        int
+	MaxConcurrentPerUser int
+	EnableCancellation   bool
 }
 
 type subsonicOptions struct {
@@ -229,7 +239,7 @@ type jukeboxOptions struct {
 
 type backupOptions struct {
 	Count    int
-	Path     string
+	Path     Dir
 	Schedule string
 }
 
@@ -247,7 +257,7 @@ type inspectOptions struct {
 
 type pluginsOptions struct {
 	Enabled    bool
-	Folder     string
+	Folder     Dir
 	CacheSize  string
 	AutoReload bool
 	LogLevel   string
@@ -287,6 +297,22 @@ var (
 	hooks  []func()
 )
 
+// SnapshotConfig returns a function that restores Server to its current state.
+// Uses JSON round-tripping so Dir fields get fresh sync.Once values.
+func SnapshotConfig() func() {
+	snapshot, err := json.Marshal(Server)
+	if err != nil {
+		panic(fmt.Sprintf("SnapshotConfig: marshal failed: %v", err))
+	}
+	return func() {
+		var restored configOptions
+		if err := json.Unmarshal(snapshot, &restored); err != nil {
+			panic(fmt.Sprintf("SnapshotConfig: unmarshal failed: %v", err))
+		}
+		Server = &restored
+	}
+}
+
 func LoadFromFile(confFile string) {
 	viper.SetConfigFile(confFile)
 	err := viper.ReadInConfig()
@@ -306,8 +332,15 @@ func Load(noConfigDump bool) {
 	mapDeprecatedOption("HTTPSecurityHeaders.CustomFrameOptionsValue", "HTTPHeaders.FrameOptions")
 	mapDeprecatedOption("CoverJpegQuality", "CoverArtQuality")
 	mapDeprecatedOption("SimilarSongsMatchThreshold", "Matcher.FuzzyThreshold")
+	mapDeprecatedOption("EnableTranscodingCancellation", "Transcoding.EnableCancellation")
 
-	err := viper.Unmarshal(&Server)
+	err := viper.Unmarshal(&Server, viper.DecodeHook(
+		mapstructure.ComposeDecodeHookFunc(
+			mapstructure.TextUnmarshallerHookFunc(),
+			mapstructure.StringToTimeDurationHookFunc(),
+			mapstructure.StringToSliceHookFunc(","),
+		),
+	))
 	if err != nil {
 		logFatal("Error parsing config:", err)
 	}
@@ -317,48 +350,28 @@ func Load(noConfigDump bool) {
 		logFatal(err)
 	}
 
-	err = os.MkdirAll(Server.DataFolder, os.ModePerm)
-	if err != nil {
-		logFatal("Error creating data path:", err)
-	}
-
-	if Server.CacheFolder == "" {
-		Server.CacheFolder = filepath.Join(Server.DataFolder, "cache")
-	}
-	err = os.MkdirAll(Server.CacheFolder, os.ModePerm)
-	if err != nil {
-		logFatal("Error creating cache path:", err)
-	}
-
-	err = os.MkdirAll(filepath.Join(Server.DataFolder, consts.ArtworkFolder), os.ModePerm)
-	if err != nil {
-		logFatal("Error creating artwork path:", err)
+	if Server.CacheFolder.String() == "" {
+		Server.CacheFolder = NewDir(filepath.Join(Server.DataFolder.String(), "cache"))
 	}
 
 	if Server.Plugins.Enabled {
-		if Server.Plugins.Folder == "" {
-			Server.Plugins.Folder = filepath.Join(Server.DataFolder, "plugins")
-		}
-		err = os.MkdirAll(Server.Plugins.Folder, 0700)
-		if err != nil {
-			logFatal("Error creating plugins path:", err)
+		if Server.Plugins.Folder.String() == "" {
+			Server.Plugins.Folder = NewDirWithPerm(filepath.Join(Server.DataFolder.String(), "plugins"), 0700)
+		} else {
+			Server.Plugins.Folder = NewDirWithPerm(Server.Plugins.Folder.String(), 0700)
 		}
 	}
 
 	Server.ConfigFile = viper.GetViper().ConfigFileUsed()
 	if Server.DbPath == "" {
-		Server.DbPath = filepath.Join(Server.DataFolder, consts.DefaultDbPath)
-	}
-
-	if Server.Backup.Path != "" {
-		err = os.MkdirAll(Server.Backup.Path, os.ModePerm)
-		if err != nil {
-			logFatal("Error creating backup path:", err)
-		}
+		Server.DbPath = filepath.Join(Server.DataFolder.String(), consts.DefaultDbPath)
 	}
 
 	out := os.Stderr
 	if Server.LogFile != "" {
+		if mkErr := os.MkdirAll(filepath.Dir(Server.LogFile), os.ModePerm); mkErr != nil {
+			logFatal(fmt.Sprintf("Error creating log file directory: %s", mkErr.Error()))
+		}
 		out, err = os.OpenFile(Server.LogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			logFatal(fmt.Sprintf("Error opening log file %s: %s", Server.LogFile, err.Error()))
@@ -445,6 +458,7 @@ func Load(noConfigDump bool) {
 	logDeprecatedOptions("HTTPSecurityHeaders.CustomFrameOptionsValue", "HTTPHeaders.FrameOptions")
 	logDeprecatedOptions("CoverJpegQuality", "CoverArtQuality")
 	logDeprecatedOptions("SimilarSongsMatchThreshold", "Matcher.FuzzyThreshold")
+	logDeprecatedOptions("EnableTranscodingCancellation", "Transcoding.EnableCancellation")
 
 	// Removed options
 	logRemovedOptions("Spotify.ID", "Spotify.Secret")
@@ -636,7 +650,7 @@ func validateScanSchedule() error {
 }
 
 func validateBackupSchedule() error {
-	if Server.Backup.Path == "" || Server.Backup.Schedule == "" || Server.Backup.Count == 0 {
+	if Server.Backup.Path.String() == "" || Server.Backup.Schedule == "" || Server.Backup.Count == 0 {
 		Server.Backup.Schedule = ""
 		return nil
 	}
@@ -733,7 +747,6 @@ func setViperDefaults() {
 	viper.SetDefault("uiwelcomemessage", "")
 	viper.SetDefault("maxsidebarplaylists", consts.DefaultMaxSidebarPlaylists)
 	viper.SetDefault("enabletranscodingconfig", false)
-	viper.SetDefault("enabletranscodingcancellation", false)
 	viper.SetDefault("transcodingcachesize", "100MB")
 	viper.SetDefault("imagecachesize", "100MB")
 	viper.SetDefault("albumplaycountmode", consts.AlbumPlayCountModeAbsolute)
@@ -765,7 +778,7 @@ func setViperDefaults() {
 	viper.SetDefault("artistartpriority", "artist.*, album/artist.*, external")
 	viper.SetDefault("artistimagefolder", "")
 	viper.SetDefault("discartpriority", "disc*.*, cd*.*, cover.*, folder.*, front.*, discsubtitle, embedded")
-	viper.SetDefault("lyricspriority", ".lrc,.txt,embedded")
+	viper.SetDefault("lyricspriority", ".ttml,.yaml,.yml,.elrc,.lrc,.srt,.txt,embedded")
 	viper.SetDefault("enablegravatar", false)
 	viper.SetDefault("enablefavourites", true)
 	viper.SetDefault("enablestarrating", true)
@@ -781,12 +794,13 @@ func setViperDefaults() {
 	viper.SetDefault("uiplaybackreportinterval", consts.DefaultUIPlaybackReportInterval)
 	viper.SetDefault("enableartworkupload", true)
 	viper.SetDefault("maximageuploadsize", consts.DefaultMaxImageUploadSize)
-	viper.SetDefault("enablesharing", false)
+	viper.SetDefault("enablesharing", true)
 	viper.SetDefault("shareurl", "")
 	viper.SetDefault("defaultshareexpiration", 8760*time.Hour)
 	viper.SetDefault("defaultdownloadableshare", false)
 	viper.SetDefault("gatrackingid", "")
 	viper.SetDefault("enableinsightscollector", true)
+	viper.SetDefault("enablescheduleddbanalyze", true)
 	viper.SetDefault("enablelogredacting", true)
 	viper.SetDefault("authrequestlimit", 5)
 	viper.SetDefault("authwindowlength", 20*time.Second)
@@ -807,9 +821,11 @@ func setViperDefaults() {
 	viper.SetDefault("scanner.watcherwait", consts.DefaultWatcherWait)
 	viper.SetDefault("scanner.scanonstartup", true)
 	viper.SetDefault("scanner.artistjoiner", consts.ArtistJoiner)
+	viper.SetDefault("scanner.artistsplitexceptions", []string{})
 	viper.SetDefault("scanner.genreseparators", "")
 	viper.SetDefault("scanner.groupalbumreleases", false)
 	viper.SetDefault("scanner.followsymlinks", true)
+	viper.SetDefault("scanner.ignoredotfolders", true)
 	viper.SetDefault("scanner.purgemissing", consts.PurgeMissingNever)
 	viper.SetDefault("subsonic.appendsubtitle", true)
 	viper.SetDefault("subsonic.appendalbumversion", true)
@@ -818,6 +834,9 @@ func setViperDefaults() {
 	viper.SetDefault("subsonic.enableaveragerating", true)
 	viper.SetDefault("subsonic.legacyclients", "DSub")
 	viper.SetDefault("subsonic.minimalclients", "SubMusic")
+	viper.SetDefault("transcoding.maxconcurrent", 0)
+	viper.SetDefault("transcoding.maxconcurrentperuser", 0)
+	viper.SetDefault("transcoding.enablecancellation", false)
 	viper.SetDefault("agents", "deezer,lastfm,listenbrainz")
 	viper.SetDefault("lastfm.enabled", true)
 	viper.SetDefault("lastfm.language", consts.DefaultInfoLanguage)
@@ -873,7 +892,6 @@ func setViperDefaults() {
 	viper.SetDefault("devenablepluginsinsights", true)
 	viper.SetDefault("devplugincompilationtimeout", time.Minute)
 	viper.SetDefault("devexternalartistfetchmultiplier", 1.5)
-	viper.SetDefault("devoptimizedb", true)
 	viper.SetDefault("devpreserveunicodeinexternalcalls", false)
 	viper.SetDefault("devenablemediafileprobe", true)
 }

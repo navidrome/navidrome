@@ -13,8 +13,8 @@ func init() {
 	goose.AddMigrationContext(Up20200516140647, Down20200516140647)
 }
 
-func Up20200516140647(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func Up20200516140647(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 create table if not exists playlist_tracks
 (
 	id integer default 0 not null, 
@@ -28,7 +28,7 @@ create unique index if not exists playlist_tracks_pos
 	if err != nil {
 		return err
 	}
-	rows, err := tx.Query("select id, tracks from playlist")
+	rows, err := tx.QueryContext(ctx, "select id, tracks from playlist")
 	if err != nil {
 		return err
 	}
@@ -49,7 +49,7 @@ create unique index if not exists playlist_tracks_pos
 		return err
 	}
 
-	_, err = tx.Exec(`
+	_, err = tx.ExecContext(ctx, `
 create table playlist_dg_tmp
 (
 	id varchar(255) not null
@@ -96,6 +96,6 @@ func Up20200516140647UpdatePlaylistTracks(tx *sql.Tx, id string, tracks string) 
 	return nil
 }
 
-func Down20200516140647(_ context.Context, tx *sql.Tx) error {
+func Down20200516140647(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

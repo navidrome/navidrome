@@ -30,47 +30,18 @@ func NewShareRepository(ctx context.Context, db dbx.Builder) model.ShareReposito
 	return r
 }
 
-// TODO: Ownership checks should be moved to the service layer (core/share.go)
-func (r *shareRepository) checkOwnership(id string) error {
-	usr := loggedUser(r.ctx)
-	if usr.IsAdmin || usr.ID == invalidUserId {
-		return nil
-	}
-	sel := r.newSelect().Columns("user_id").Where(Eq{"id": id})
-	var share struct {
-		UserID string `db:"user_id"`
-	}
-	err := r.queryOne(sel, &share)
-	if err != nil {
-		if errors.Is(err, model.ErrNotFound) {
-			return rest.ErrNotFound
-		}
-		return err
-	}
-	if share.UserID != usr.ID {
-		return rest.ErrPermissionDenied
-	}
-	return nil
-}
-
 func (r *shareRepository) Delete(id string) error {
-	if err := r.checkOwnership(id); err != nil {
-		return err
-	}
-	err := r.delete(Eq{"id": id})
-	if errors.Is(err, model.ErrNotFound) {
-		return rest.ErrNotFound
-	}
-	return err
+	return r.deleteOwned(id)
 }
 
 func (r *shareRepository) selectShare(options ...model.QueryOptions) SelectBuilder {
 	return r.newSelect(options...).Join("user u on u.id = share.user_id").
-		Columns("share.*", "user_name as username")
+		Columns("share.*", "user_name as username").
+		Where(r.addRestriction())
 }
 
 func (r *shareRepository) Exists(id string) (bool, error) {
-	return r.exists(Eq{"id": id})
+	return r.exists(r.addRestriction(And{Eq{"id": id}}))
 }
 
 func (r *shareRepository) Get(id string) (*model.Share, error) {
@@ -129,16 +100,28 @@ func (r *shareRepository) loadMedia(share *model.Share) error {
 		share.Tracks, err = mfRepo.GetAll(model.QueryOptions{Filters: noMissing(Eq{"album_id": ids}), Sort: "album"})
 		return err
 	case "playlist":
-		// Create a context with a fake admin user, to be able to access all playlists
-		ctx := request.WithUser(r.ctx, model.User{IsAdmin: true})
+		// Load tracks as the share owner so their library access is applied.
+		owner, err := NewUserRepository(r.ctx, r.db).Get(share.UserID)
+		if err != nil {
+			return fmt.Errorf("loading share owner %q: %w", share.UserID, err)
+		}
+		if owner == nil {
+			return fmt.Errorf("share owner %q not found", share.UserID)
+		}
+		ctx := request.WithUser(r.ctx, *owner)
 		plsRepo := NewPlaylistRepository(ctx, r.db)
-		tracks, err := plsRepo.Tracks(ids[0], true).GetAll(model.QueryOptions{Sort: "id", Filters: noMissing(Eq{})})
+		// Tracks returns nil when the playlist is no longer visible to the owner
+		// (e.g. it was made private after the share was created); leave the share
+		// with no tracks rather than exposing it.
+		trackRepo := plsRepo.Tracks(ids[0], true)
+		if trackRepo == nil {
+			return nil
+		}
+		tracks, err := trackRepo.GetAll(model.QueryOptions{Sort: "id", Filters: noMissing(Eq{})})
 		if err != nil {
 			return err
 		}
-		if len(tracks) >= 0 {
-			share.Tracks = tracks.MediaFiles()
-		}
+		share.Tracks = tracks.MediaFiles()
 		return nil
 	case "media_file":
 		mfRepo := NewMediaFileRepository(r.ctx, r.db)
@@ -166,17 +149,12 @@ func sortByIdPosition(mfs model.MediaFiles, ids []string) model.MediaFiles {
 
 func (r *shareRepository) Update(id string, entity any, cols ...string) error {
 	s := entity.(*model.Share)
-	if err := r.checkOwnership(id); err != nil {
-		return err
-	}
 	s.ID = id
 	s.UpdatedAt = time.Now()
-	cols = append(cols, "updated_at")
-	_, err := r.put(id, s, cols...)
-	if errors.Is(err, model.ErrNotFound) {
-		return rest.ErrNotFound
+	if len(cols) > 0 {
+		cols = append(cols, "updated_at")
 	}
-	return err
+	return r.updateOwned(id, s, cols...)
 }
 
 func (r *shareRepository) Save(entity any) (string, error) {

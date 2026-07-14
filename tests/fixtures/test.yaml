@@ -1,0 +1,12 @@
+version: '1.0'
+metadata:
+  title: 'Sample Track'
+  artist: 'Test Artist'
+  language: 'eng'
+  offset_ms: -100
+
+lines:
+  - text: "We're no strangers to love"
+    start_ms: 18800
+  - text: "You know the rules and so do I"
+    start_ms: 22801

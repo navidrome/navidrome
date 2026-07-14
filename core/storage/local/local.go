@@ -54,12 +54,23 @@ func (s *localStorage) FS() (storage.MusicFS, error) {
 	if _, err := os.Stat(path); err != nil { //nolint:gosec
 		return nil, fmt.Errorf("%w: %s", err, path)
 	}
-	return &localFS{FS: os.DirFS(path), extractor: s.extractor}, nil
+	return &localFS{FS: os.DirFS(path), extractor: s.extractor, root: path}, nil
 }
 
 type localFS struct {
 	fs.FS
 	extractor Extractor
+	root      string
+}
+
+// ResolveSymlink implements storage.SymlinkResolverFS. It resolves the whole chain at the
+// OS level, so links whose targets live outside the library folder (not reachable through
+// the fs.FS abstraction) still resolve to their final target.
+func (lfs *localFS) ResolveSymlink(name string) (string, error) {
+	if !fs.ValidPath(name) {
+		return "", &fs.PathError{Op: "resolvesymlink", Path: name, Err: fs.ErrInvalid}
+	}
+	return filepath.EvalSymlinks(filepath.Join(lfs.root, filepath.FromSlash(name)))
 }
 
 func (lfs *localFS) ReadTags(path ...string) (map[string]metadata.Info, error) {

@@ -38,8 +38,7 @@ func (r *Values) String(param string) (string, error) {
 func (r *Values) StringPtr(param string) *string {
 	var v *string
 	if _, exists := r.URL.Query()[param]; exists {
-		s := r.URL.Query().Get(param)
-		v = &s
+		v = new(r.URL.Query().Get(param))
 	}
 	return v
 }
@@ -48,8 +47,7 @@ func (r *Values) BoolPtr(param string) *bool {
 	var v *bool
 	if _, exists := r.URL.Query()[param]; exists {
 		s := r.URL.Query().Get(param)
-		b := strings.Contains("/true/on/1/", "/"+strings.ToLower(s)+"/")
-		v = &b
+		v = new(strings.Contains("/true/on/1/", "/"+strings.ToLower(s)+"/"))
 	}
 	return v
 }

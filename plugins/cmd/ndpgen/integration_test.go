@@ -176,16 +176,15 @@ type ServiceB interface {
 
 	Describe("code generation", func() {
 		DescribeTable("generates correct client output",
-			func(serviceFile, goClientExpectedFile, pyClientExpectedFile, rsClientExpectedFile string) {
+			func(serviceFile, goClientExpectedFile, rsClientExpectedFile string) {
 				serviceCode := readTestdata(serviceFile)
 				goClientExpected := readTestdata(goClientExpectedFile)
-				pyClientExpected := readTestdata(pyClientExpectedFile)
 				rsClientExpected := readTestdata(rsClientExpectedFile)
 
 				Expect(os.WriteFile(filepath.Join(testDir, "service.go"), []byte(serviceCode), 0600)).To(Succeed())
 
-				// Generate all client code (Go, Python, Rust)
-				cmd := exec.Command(ndpgenBin, "-input", testDir, "-output", outputDir, "-package", "ndpdk", "-go", "-python", "-rust")
+				// Generate all client code (Go, Rust)
+				cmd := exec.Command(ndpgenBin, "-input", testDir, "-output", outputDir, "-package", "ndpdk", "-go", "-rust")
 				output, err := cmd.CombinedOutput()
 				Expect(err).ToNot(HaveOccurred(), "Command failed: %s", output)
 
@@ -217,17 +216,6 @@ type ServiceB interface {
 
 				Expect(string(formattedGoClientActual)).To(Equal(string(formattedGoClientExpected)), "Go client code mismatch")
 
-				// Verify Python client code (now in $output/python/host/)
-				pythonHostDir := filepath.Join(outputDir, "python", "host")
-				pyClientEntries, err := os.ReadDir(pythonHostDir)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(pyClientEntries).To(HaveLen(1), "Expected exactly one Python client file")
-
-				pyClientActual, err := os.ReadFile(filepath.Join(pythonHostDir, pyClientEntries[0].Name()))
-				Expect(err).ToNot(HaveOccurred())
-
-				Expect(string(pyClientActual)).To(Equal(pyClientExpected), "Python client code mismatch")
-
 				// Verify Rust client code (now in $output/rust/nd-pdk-host/src/)
 				rustSrcDir := filepath.Join(outputDir, "rust", "nd-pdk-host", "src")
 				rsClientEntries, err := os.ReadDir(rustSrcDir)
@@ -251,38 +239,58 @@ type ServiceB interface {
 			},
 
 			Entry("simple string params",
-				"echo_service.go.txt", "echo_client_expected.go.txt", "echo_client_expected.py", "echo_client_expected.rs"),
+				"echo_service.go.txt", "echo_client_expected.go.txt", "echo_client_expected.rs"),
 
 			Entry("multiple simple params (int32)",
-				"math_service.go.txt", "math_client_expected.go.txt", "math_client_expected.py", "math_client_expected.rs"),
+				"math_service.go.txt", "math_client_expected.go.txt", "math_client_expected.rs"),
 
 			Entry("struct param with request type",
-				"store_service.go.txt", "store_client_expected.go.txt", "store_client_expected.py", "store_client_expected.rs"),
+				"store_service.go.txt", "store_client_expected.go.txt", "store_client_expected.rs"),
 
 			Entry("mixed simple and complex params",
-				"list_service.go.txt", "list_client_expected.go.txt", "list_client_expected.py", "list_client_expected.rs"),
+				"list_service.go.txt", "list_client_expected.go.txt", "list_client_expected.rs"),
 
 			Entry("method without error",
-				"counter_service.go.txt", "counter_client_expected.go.txt", "counter_client_expected.py", "counter_client_expected.rs"),
+				"counter_service.go.txt", "counter_client_expected.go.txt", "counter_client_expected.rs"),
 
 			Entry("no params, error only",
-				"ping_service.go.txt", "ping_client_expected.go.txt", "ping_client_expected.py", "ping_client_expected.rs"),
+				"ping_service.go.txt", "ping_client_expected.go.txt", "ping_client_expected.rs"),
 
 			Entry("map and interface types",
-				"meta_service.go.txt", "meta_client_expected.go.txt", "meta_client_expected.py", "meta_client_expected.rs"),
+				"meta_service.go.txt", "meta_client_expected.go.txt", "meta_client_expected.rs"),
 
 			Entry("pointer types",
-				"users_service.go.txt", "users_client_expected.go.txt", "users_client_expected.py", "users_client_expected.rs"),
+				"users_service.go.txt", "users_client_expected.go.txt", "users_client_expected.rs"),
 
 			Entry("multiple returns",
-				"search_service.go.txt", "search_client_expected.go.txt", "search_client_expected.py", "search_client_expected.rs"),
+				"search_service.go.txt", "search_client_expected.go.txt", "search_client_expected.rs"),
 
 			Entry("bytes",
-				"codec_service.go.txt", "codec_client_expected.go.txt", "codec_client_expected.py", "codec_client_expected.rs"),
+				"codec_service.go.txt", "codec_client_expected.go.txt", "codec_client_expected.rs"),
 
 			Entry("option pattern (value, exists bool)",
-				"config_service.go.txt", "config_client_expected.go.txt", "config_client_expected.py", "config_client_expected.rs"),
+				"config_service.go.txt", "config_client_expected.go.txt", "config_client_expected.rs"),
 		)
+
+		It("generates the shared Go types package with -shared-types", func() {
+			typesSrc := `package types
+
+// ArtistRef references an artist.
+type ArtistRef struct {
+	ID   string ` + "`json:\"id,omitempty\"`" + `
+	Name string ` + "`json:\"name\"`" + `
+}
+`
+			Expect(os.WriteFile(filepath.Join(testDir, "types.go"), []byte(typesSrc), 0600)).To(Succeed())
+			cmd := exec.Command(ndpgenBin, "-shared-types", "-input", testDir, "-output", outputDir, "-go")
+			out, err := cmd.CombinedOutput()
+			Expect(err).ToNot(HaveOccurred(), "Command failed: %s", out)
+
+			content, err := os.ReadFile(filepath.Join(outputDir, "go", "types", "types.go"))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(content)).To(ContainSubstring("package types"))
+			Expect(string(content)).To(ContainSubstring("type ArtistRef struct {"))
+		})
 
 		It("generates compilable client code for comprehensive service", func() {
 			serviceCode := readTestdata("comprehensive_service.go.txt")
@@ -386,119 +394,6 @@ var _ = ndpdk.ComprehensiveNoParams
 			Expect(filepath.Join(pluginDir, "plugin.wasm")).To(BeAnExistingFile())
 		})
 
-		It("generates Python client code with -python flag", func() {
-			serviceCode := `package testpkg
-
-import "context"
-
-//nd:hostservice name=Test permission=test
-type TestService interface {
-	//nd:hostfunc
-	DoAction(ctx context.Context, input string) (output string, err error)
-}
-`
-			Expect(os.WriteFile(filepath.Join(testDir, "service.go"), []byte(serviceCode), 0600)).To(Succeed())
-
-			cmd := exec.Command(ndpgenBin, "-input", testDir, "-output", outputDir, "-package", "ndpdk", "-python")
-			output, err := cmd.CombinedOutput()
-			Expect(err).ToNot(HaveOccurred(), "Command failed: %s", output)
-
-			// Verify Python client code exists in $output/python/host/
-			pythonHostDir := filepath.Join(outputDir, "python", "host")
-			Expect(pythonHostDir).To(BeADirectory())
-
-			pythonFile := filepath.Join(pythonHostDir, "nd_host_test.py")
-			Expect(pythonFile).To(BeAnExistingFile())
-
-			content, err := os.ReadFile(pythonFile)
-			Expect(err).ToNot(HaveOccurred())
-
-			contentStr := string(content)
-			Expect(contentStr).To(ContainSubstring("Code generated by ndpgen. DO NOT EDIT."))
-			Expect(contentStr).To(ContainSubstring("class HostFunctionError(Exception):"))
-			Expect(contentStr).To(ContainSubstring(`@extism.import_fn("extism:host/user", "test_doaction")`))
-			Expect(contentStr).To(ContainSubstring("def test_do_action(input: str) -> str:"))
-		})
-
-		It("generates both Go and Python client code with -go -python flags", func() {
-			serviceCode := `package testpkg
-
-import "context"
-
-//nd:hostservice name=Test permission=test
-type TestService interface {
-	//nd:hostfunc
-	DoAction(ctx context.Context, input string) (output string, err error)
-}
-`
-			Expect(os.WriteFile(filepath.Join(testDir, "service.go"), []byte(serviceCode), 0600)).To(Succeed())
-
-			cmd := exec.Command(ndpgenBin, "-input", testDir, "-output", outputDir, "-package", "ndpdk", "-go", "-python")
-			output, err := cmd.CombinedOutput()
-			Expect(err).ToNot(HaveOccurred(), "Command failed: %s", output)
-
-			// Verify Go client code exists in $output/go/host/
-			goHostDir := filepath.Join(outputDir, "go", "host")
-			Expect(filepath.Join(goHostDir, "nd_host_test.go")).To(BeAnExistingFile())
-
-			// Verify Python client code exists in $output/python/host/
-			pythonHostDir := filepath.Join(outputDir, "python", "host")
-			Expect(pythonHostDir).To(BeADirectory())
-			Expect(filepath.Join(pythonHostDir, "nd_host_test.py")).To(BeAnExistingFile())
-		})
-
-		It("generates Python code with dataclass for multi-value returns", func() {
-			serviceCode := `package testpkg
-
-import "context"
-
-//nd:hostservice name=Cache permission=cache
-type CacheService interface {
-	//nd:hostfunc
-	GetString(ctx context.Context, key string) (value string, exists bool, err error)
-}
-`
-			Expect(os.WriteFile(filepath.Join(testDir, "service.go"), []byte(serviceCode), 0600)).To(Succeed())
-
-			cmd := exec.Command(ndpgenBin, "-input", testDir, "-output", outputDir, "-package", "ndpdk", "-python")
-			output, err := cmd.CombinedOutput()
-			Expect(err).ToNot(HaveOccurred(), "Command failed: %s", output)
-
-			content, err := os.ReadFile(filepath.Join(outputDir, "python", "host", "nd_host_cache.py"))
-			Expect(err).ToNot(HaveOccurred())
-
-			contentStr := string(content)
-			Expect(contentStr).To(ContainSubstring("@dataclass"))
-			Expect(contentStr).To(ContainSubstring("class CacheGetStringResult:"))
-			Expect(contentStr).To(ContainSubstring("value: str"))
-			Expect(contentStr).To(ContainSubstring("exists: bool"))
-			Expect(contentStr).To(ContainSubstring("def cache_get_string(key: str) -> CacheGetStringResult:"))
-		})
-
-		It("generates Python code for methods with no parameters", func() {
-			serviceCode := `package testpkg
-
-import "context"
-
-//nd:hostservice name=Test permission=test
-type TestService interface {
-	//nd:hostfunc
-	Ping(ctx context.Context) (status string, err error)
-}
-`
-			Expect(os.WriteFile(filepath.Join(testDir, "service.go"), []byte(serviceCode), 0600)).To(Succeed())
-
-			cmd := exec.Command(ndpgenBin, "-input", testDir, "-output", outputDir, "-package", "ndpdk", "-python")
-			output, err := cmd.CombinedOutput()
-			Expect(err).ToNot(HaveOccurred(), "Command failed: %s", output)
-
-			content, err := os.ReadFile(filepath.Join(outputDir, "python", "host", "nd_host_test.py"))
-			Expect(err).ToNot(HaveOccurred())
-
-			contentStr := string(content)
-			Expect(contentStr).To(ContainSubstring("def test_ping() -> str:"))
-			Expect(contentStr).To(ContainSubstring(`request_bytes = b"{}"`))
-		})
 	})
 })
 

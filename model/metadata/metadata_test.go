@@ -8,7 +8,6 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/metadata"
 	"github.com/navidrome/navidrome/utils"
-	"github.com/navidrome/navidrome/utils/gg"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -106,7 +105,7 @@ var _ = Describe("Metadata", func() {
 				props.Tags = model.RawTags{
 					"Title":      {strings.Repeat("a", 2048)},
 					"Comment":    {strings.Repeat("a", 8192)},
-					"lyrics:xxx": {strings.Repeat("a", 60000)},
+					"lyrics:xxx": {strings.Repeat("a", 2_000_000)},
 				}
 				md = metadata.New(filePath, props)
 
@@ -117,9 +116,10 @@ var _ = Describe("Metadata", func() {
 				Expect(pair).To(HaveLen(1))
 				Expect(pair[0].Key()).To(Equal("xxx"))
 
+				// Lyrics keep a much larger cap so word-timed karaoke survives.
 				// Note: a total of 6 characters are lost from maxLength from
-				// the key portion and separator
-				Expect(pair[0].Value()).To(HaveLen(32762))
+				// the key portion and separator.
+				Expect(pair[0].Value()).To(HaveLen(1048570))
 			})
 
 			It("should split multiple values", func() {
@@ -129,6 +129,21 @@ var _ = Describe("Metadata", func() {
 				md = metadata.New(filePath, props)
 
 				Expect(md.Strings(model.TagGenre)).To(Equal([]string{"Rock", "Pop", "Punk"}))
+			})
+
+			// Regression test for https://github.com/navidrome/navidrome/issues/5065
+			//
+			// MP3s with both an ID3v2 TMOO frame and a TXXX:MOOD frame are surfaced by
+			// TagLib's PropertyMap as a single "mood" key with multiple values. The split
+			// configuration must still apply to each value individually.
+			It("should split values from multiple frames mapping to the same tag", func() {
+				props.Tags = model.RawTags{
+					// Same shape as the bug report: two frames, comma-separated content.
+					"mood": {"Love, Emotional, Ballad", "Love; Emotional; Ballad"},
+				}
+				md = metadata.New(filePath, props)
+
+				Expect(md.Strings(model.TagMood)).To(ConsistOf("Love", "Emotional", "Ballad"))
 			})
 		})
 
@@ -274,8 +289,8 @@ var _ = Describe("Metadata", func() {
 					mf := createMF("replaygain_track_gain", tagValue)
 					Expect(mf.RGTrackGain).To(Equal(expected))
 				},
-				Entry("0", "0", gg.P(0.0)),
-				Entry("1.2dB", "1.2dB", gg.P(1.2)),
+				Entry("0", "0", new(0.0)),
+				Entry("1.2dB", "1.2dB", new(1.2)),
 				Entry("Infinity", "Infinity", nil),
 				Entry("Invalid value", "INVALID VALUE", nil),
 				Entry("NaN", "NaN", nil),
@@ -285,9 +300,9 @@ var _ = Describe("Metadata", func() {
 					mf := createMF("replaygain_track_peak", tagValue)
 					Expect(mf.RGTrackPeak).To(Equal(expected))
 				},
-				Entry("0", "0", gg.P(0.0)),
-				Entry("1.0", "1.0", gg.P(1.0)),
-				Entry("0.5", "0.5", gg.P(0.5)),
+				Entry("0", "0", new(0.0)),
+				Entry("1.0", "1.0", new(1.0)),
+				Entry("0.5", "0.5", new(0.5)),
 				Entry("Invalid dB suffix", "0.7dB", nil),
 				Entry("Infinity", "Infinity", nil),
 				Entry("Invalid value", "INVALID VALUE", nil),
@@ -299,8 +314,8 @@ var _ = Describe("Metadata", func() {
 					Expect(mf.RGTrackGain).To(Equal(expected))
 
 				},
-				Entry("0", "0", gg.P(5.0)),
-				Entry("-3776", "-3776", gg.P(-9.75)),
+				Entry("0", "0", new(5.0)),
+				Entry("-3776", "-3776", new(-9.75)),
 				Entry("Infinity", "Infinity", nil),
 				Entry("Invalid value", "INVALID VALUE", nil),
 			)

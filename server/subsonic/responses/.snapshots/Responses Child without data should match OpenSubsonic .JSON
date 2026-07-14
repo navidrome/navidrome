@@ -28,7 +28,10 @@
         "displayAlbumArtist": "",
         "contributors": [],
         "displayComposer": "",
-        "explicitStatus": ""
+        "explicitStatus": "",
+        "groupings": [],
+        "works": [],
+        "movements": []
       }
     ],
     "id": "",

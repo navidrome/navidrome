@@ -17,6 +17,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
+	"github.com/navidrome/navidrome/utils/str"
 	"github.com/pocketbase/dbx"
 )
 
@@ -69,7 +70,7 @@ func (a *dbAlbum) PostMapArgs(args map[string]any) error {
 	fullText = append(fullText, a.Album.Tags[model.TagCatalogNumber]...)
 	args["full_text"] = formatFullText(fullText...)
 	args["search_participants"] = strings.Join(participantNames, " ")
-	args["search_normalized"] = normalizeForFTS(a.Name, a.AlbumArtist)
+	args["search_normalized"] = str.NormalizeForFTS(a.Name, a.AlbumArtist)
 
 	args["tags"] = marshalTags(a.Album.Tags)
 	args["participants"] = marshalParticipants(a.Album.Participants)
@@ -143,9 +144,9 @@ var albumFilters = sync.OnceValue(func() map[string]filterFunc {
 
 func recentlyAddedSort() string {
 	if conf.Server.RecentlyAddedByModTime {
-		return "datetime(album.updated_at)"
+		return "album.updated_at, album.id"
 	}
-	return "datetime(album.created_at)"
+	return "album.created_at, album.id"
 }
 
 func recentlyPlayedFilter(string, any) Sqlizer {
@@ -186,8 +187,10 @@ func allRolesFilter(_ string, value any) Sqlizer {
 
 func (r *albumRepository) CountAll(options ...model.QueryOptions) (int64, error) {
 	query := r.newSelect()
-	query = r.withAnnotation(query, "album.id")
 	query = r.applyLibraryFilter(query)
+	if filtersNeedAnnotation(r.applyFilters(query, options...)) {
+		query = r.withAnnotation(query, "album.id")
+	}
 	return r.count(query, options...)
 }
 

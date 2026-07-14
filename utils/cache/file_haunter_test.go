@@ -29,15 +29,15 @@ var _ = Describe("FileHaunter", func() {
 		Expect(err).ToNot(HaveOccurred())
 		DeferCleanup(func() { _ = os.RemoveAll(tempDir) })
 
+		// Use a short haunter period so cleanup runs promptly; the assertions
+		// below poll with Eventually instead of racing a fixed sleep.
 		fsCache, err = fscache.NewCacheWithHaunter(fs, fscache.NewLRUHaunterStrategy(
-			cache.NewFileHaunter("", maxItems, maxSize, 300*time.Millisecond),
+			cache.NewFileHaunter("", maxItems, maxSize, 100*time.Millisecond),
 		))
 		Expect(err).ToNot(HaveOccurred())
 		DeferCleanup(fsCache.Clean)
 
 		Expect(createTestFiles(fsCache)).To(Succeed())
-
-		<-time.After(400 * time.Millisecond)
 	})
 
 	Context("When maxSize is defined", func() {
@@ -46,24 +46,39 @@ var _ = Describe("FileHaunter", func() {
 		})
 
 		It("removes files", func() {
-			Expect(os.ReadDir(cacheDir)).To(HaveLen(4))
-			Expect(fsCache.Exists("stream-5")).To(BeFalse(), "stream-5 (empty file) should have been scrubbed")
-			// TODO Fix flaky tests
-			//Expect(fsCache.Exists("stream-0")).To(BeFalse(), "stream-0 should have been scrubbed")
+			// stream-0..4 hold "hello" (5 bytes each) and stream-5 is empty.
+			// With maxSize=20, the haunter scrubs the empty file plus enough of
+			// the oldest files to bring the total size down to <= 20 bytes.
+			// Which files survive (and therefore the exact count) depends on
+			// access-time ordering, so we only assert the haunter's guarantees:
+			// the empty file is always scrubbed and the total size stays within
+			// the configured limit.
+			Eventually(func(g Gomega) {
+				g.Expect(fsCache.Exists("stream-5")).To(BeFalse(), "stream-5 (empty file) should have been scrubbed")
+				size, err := dirSize(cacheDir)
+				g.Expect(err).ToNot(HaveOccurred())
+				g.Expect(size).To(BeNumerically("<=", maxSize))
+			}).WithTimeout(5 * time.Second).WithPolling(50 * time.Millisecond).Should(Succeed())
 		})
 	})
 
-	XContext("When maxItems is defined", func() {
+	Context("When maxItems is defined", func() {
 		BeforeEach(func() {
 			maxItems = 3
 		})
 
 		It("removes files", func() {
-			Expect(os.ReadDir(cacheDir)).To(HaveLen(maxItems))
-			Expect(fsCache.Exists("stream-5")).To(BeFalse(), "stream-5 (empty file) should have been scrubbed")
-			// TODO Fix flaky tests
-			//Expect(fsCache.Exists("stream-0")).To(BeFalse(), "stream-0 should have been scrubbed")
-			//Expect(fsCache.Exists("stream-1")).To(BeFalse(), "stream-1 should have been scrubbed")
+			// With maxItems=3, the haunter scrubs the empty file plus enough of
+			// the oldest files to bring the count within the limit. As above, the
+			// exact survivors depend on access-time ordering, so we assert the
+			// guaranteed invariants: the empty file is gone and the item count
+			// stays within the configured limit.
+			Eventually(func(g Gomega) {
+				g.Expect(fsCache.Exists("stream-5")).To(BeFalse(), "stream-5 (empty file) should have been scrubbed")
+				entries, readErr := os.ReadDir(cacheDir)
+				g.Expect(readErr).ToNot(HaveOccurred())
+				g.Expect(len(entries)).To(BeNumerically("<=", maxItems))
+			}).WithTimeout(5 * time.Second).WithPolling(50 * time.Millisecond).Should(Succeed())
 		})
 	})
 })
@@ -91,6 +106,26 @@ func createTestFiles(c *fscache.FSCache) error {
 		}
 	}
 	return nil
+}
+
+// dirSize returns the total size in bytes of all regular files in dir.
+func dirSize(dir string) (uint64, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return 0, err
+	}
+	var total uint64
+	for _, e := range entries {
+		info, err := e.Info()
+		if err != nil {
+			return 0, err
+		}
+		if !info.Mode().IsRegular() {
+			continue
+		}
+		total += uint64(info.Size())
+	}
+	return total, nil
 }
 
 func createCachedStream(c *fscache.FSCache, name string, contents string) fscache.ReadAtCloser {

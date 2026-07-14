@@ -39,31 +39,93 @@ var _ = Describe("Spread FS", func() {
 		})
 	})
 
-	Describe("Reload", func() {
-		var files []string
+	Describe("MarkComplete / Remove markers", func() {
+		It("creates a .complete marker for a data file", func() {
+			data := fs.KeyMapper("song1")
+			f, err := fs.Create(data)
+			Expect(err).To(BeNil())
+			_, _ = f.Write([]byte("ok"))
+			_ = f.Close()
 
-		BeforeEach(func() {
-			files = []string{"aaaaa", "bbbbb", "ccccc"}
-			for _, content := range files {
-				file := fs.KeyMapper(content)
-				f, err := fs.Create(file)
-				Expect(err).To(BeNil())
-				_, _ = f.Write([]byte(content))
-				_ = f.Close()
-			}
+			Expect(fs.MarkComplete(data)).To(Succeed())
+			_, statErr := os.Stat(data + ".complete")
+			Expect(statErr).To(BeNil())
 		})
 
-		It("loads all files from fs", func() {
+		It("removes the sibling marker when the data file is removed", func() {
+			data := fs.KeyMapper("song2")
+			f, err := fs.Create(data)
+			Expect(err).To(BeNil())
+			_, _ = f.Write([]byte("ok"))
+			_ = f.Close()
+			Expect(fs.MarkComplete(data)).To(Succeed())
+
+			Expect(fs.Remove(data)).To(Succeed())
+			_, dataErr := os.Stat(data)
+			Expect(os.IsNotExist(dataErr)).To(BeTrue())
+			_, markErr := os.Stat(data + ".complete")
+			Expect(os.IsNotExist(markErr)).To(BeTrue())
+		})
+	})
+
+	Describe("Reload", func() {
+		makeData := func(content string) string {
+			file := fs.KeyMapper(content)
+			f, err := fs.Create(file)
+			Expect(err).To(BeNil())
+			_, _ = f.Write([]byte(content))
+			_ = f.Close()
+			return file
+		}
+
+		It("migrates all existing files on first run and writes the sentinel", func() {
+			for _, c := range []string{"aaaaa", "bbbbb", "ccccc"} {
+				makeData(c) // no markers, simulating a pre-upgrade cache
+			}
+
 			var actual []string
-			err := fs.Reload(func(key string, name string) {
+			err := fs.Reload(func(key, name string) {
 				Expect(key).To(Equal(name))
-				data, err := os.ReadFile(name)
-				Expect(err).To(BeNil())
+				data, _ := os.ReadFile(name)
 				actual = append(actual, string(data))
 			})
 			Expect(err).To(BeNil())
-			Expect(actual).To(HaveLen(len(files)))
-			Expect(actual).To(ContainElements(files[0], files[1], files[2]))
+			Expect(actual).To(ContainElements("aaaaa", "bbbbb", "ccccc"))
+			Expect(actual).To(HaveLen(3))
+
+			_, sentinelErr := os.Stat(filepath.Join(rootDir, ".nd-migrated"))
+			Expect(sentinelErr).To(BeNil())
+		})
+
+		It("after migration, adopts only marked files and deletes unmarked partials", func() {
+			// Pretend migration already happened.
+			Expect(os.WriteFile(filepath.Join(rootDir, ".nd-migrated"), nil, 0600)).To(Succeed())
+
+			good := makeData("good")
+			Expect(fs.MarkComplete(good)).To(Succeed())
+			bad := makeData("bad") // partial: no marker
+
+			var actual []string
+			err := fs.Reload(func(key, name string) { actual = append(actual, name) })
+			Expect(err).To(BeNil())
+			Expect(actual).To(ConsistOf(good))
+
+			_, badErr := os.Stat(bad)
+			Expect(os.IsNotExist(badErr)).To(BeTrue()) // partial deleted
+		})
+
+		It("ignores and cleans orphan markers", func() {
+			Expect(os.WriteFile(filepath.Join(rootDir, ".nd-migrated"), nil, 0600)).To(Succeed())
+			orphan := fs.KeyMapper("orphan") + ".complete"
+			Expect(os.MkdirAll(filepath.Dir(orphan), 0755)).To(Succeed())
+			Expect(os.WriteFile(orphan, nil, 0600)).To(Succeed())
+
+			var actual []string
+			err := fs.Reload(func(key, name string) { actual = append(actual, name) })
+			Expect(err).To(BeNil())
+			Expect(actual).To(BeEmpty())
+			_, orphanErr := os.Stat(orphan)
+			Expect(os.IsNotExist(orphanErr)).To(BeTrue())
 		})
 	})
 })

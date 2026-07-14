@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils/gg"
 )
 
 func CreateMockUserRepo() *MockedUserRepo {
@@ -58,6 +57,18 @@ func (u *MockedUserRepo) FindByUsernameWithPassword(username string) (*model.Use
 	return u.FindByUsername(username)
 }
 
+func (u *MockedUserRepo) FindFirstAdmin() (*model.User, error) {
+	if u.Error != nil {
+		return nil, u.Error
+	}
+	for _, usr := range u.Data {
+		if usr.IsAdmin {
+			return usr, nil
+		}
+	}
+	return nil, model.ErrNotFound
+}
+
 func (u *MockedUserRepo) Get(id string) (*model.User, error) {
 	if u.Error != nil {
 		return nil, u.Error
@@ -84,7 +95,7 @@ func (u *MockedUserRepo) GetAll(options ...model.QueryOptions) (model.Users, err
 func (u *MockedUserRepo) UpdateLastLoginAt(id string) error {
 	for _, usr := range u.Data {
 		if usr.ID == id {
-			usr.LastLoginAt = gg.P(time.Now())
+			usr.LastLoginAt = new(time.Now())
 			return nil
 		}
 	}
@@ -94,7 +105,7 @@ func (u *MockedUserRepo) UpdateLastLoginAt(id string) error {
 func (u *MockedUserRepo) UpdateLastAccessAt(id string) error {
 	for _, usr := range u.Data {
 		if usr.ID == id {
-			usr.LastAccessAt = gg.P(time.Now())
+			usr.LastAccessAt = new(time.Now())
 			return nil
 		}
 	}

@@ -1030,8 +1030,6 @@ extism-py plugin.wasm -o plugin.wasm *.py
 zip -j my-plugin.ndp manifest.json plugin.wasm
 ```
 
-**For Python host services:** Copy functions from the `nd_host_*.py` files in `plugins/pdk/python/host/` into your `__init__.py` (see comments in those files for extism-py limitations).
-
 ### Using XTP CLI (Scaffolding)
 
 Bootstrap a new plugin from a schema:

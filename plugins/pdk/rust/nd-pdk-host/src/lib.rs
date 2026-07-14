@@ -38,6 +38,7 @@
 //! - [`http`] - provides outbound HTTP request capabilities for plugins.
 //! - [`kvstore`] - provides persistent key-value storage for plugins.
 //! - [`library`] - provides access to music library metadata for plugins.
+//! - [`matcher`] - resolves externally-obtained songs to local library tracks,
 //! - [`scheduler`] - provides task scheduling capabilities for plugins.
 //! - [`subsonicapi`] - provides access to Navidrome's Subsonic API from plugins.
 //! - [`task`] - provides persistent task queues for plugins.
@@ -84,6 +85,13 @@ mod nd_host_library;
 /// provides access to music library metadata for plugins.
 pub mod library {
     pub use super::nd_host_library::*;
+}
+
+#[doc(hidden)]
+mod nd_host_matcher;
+/// resolves externally-obtained songs to local library tracks,
+pub mod matcher {
+    pub use super::nd_host_matcher::*;
 }
 
 #[doc(hidden)]

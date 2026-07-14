@@ -6,6 +6,7 @@ import (
 	"embed"
 	"fmt"
 	"runtime"
+	"time"
 
 	"github.com/mattn/go-sqlite3"
 	"github.com/navidrome/navidrome/conf"
@@ -38,19 +39,14 @@ func Db() *sql.DB {
 		if Path == ":memory:" {
 			Path = "file::memory:?cache=shared&_foreign_keys=on"
 			conf.Server.DbPath = Path
+		} else {
+			conf.Server.DataFolder.MustPath()
 		}
 		log.Debug("Opening DataBase", "dbPath", Path, "driver", Driver)
 		db, err := sql.Open(Driver, Path)
 		db.SetMaxOpenConns(max(4, runtime.NumCPU()))
 		if err != nil {
 			log.Fatal("Error opening database", err)
-		}
-		if conf.Server.DevOptimizeDB {
-			_, err = db.Exec("PRAGMA optimize=0x10002")
-			if err != nil {
-				log.Error("Error applying PRAGMA optimize", err)
-				return nil
-			}
 		}
 		return db
 	})
@@ -59,9 +55,6 @@ func Db() *sql.DB {
 func Close(ctx context.Context) {
 	// Ignore cancellations when closing the DB
 	ctx = context.WithoutCancel(ctx)
-
-	// Run optimize before closing
-	Optimize(ctx)
 
 	log.Info(ctx, "Closing Database")
 	err := Db().Close()
@@ -101,47 +94,16 @@ func Init(ctx context.Context) func() {
 		log.Fatal(ctx, "Failed to apply new migrations", err)
 	}
 
-	if hasSchemaChanges && conf.Server.DevOptimizeDB {
-		log.Debug(ctx, "Applying PRAGMA optimize after schema changes")
-		_, err = db.ExecContext(ctx, "PRAGMA optimize")
+	if hasSchemaChanges {
+		log.Debug(ctx, "Running ANALYZE after schema changes")
+		err = optimizeAt(ctx, db, time.Now())
 		if err != nil {
-			log.Error(ctx, "Error applying PRAGMA optimize", err)
+			log.Error(ctx, "Error running ANALYZE", err)
 		}
 	}
 
 	return func() {
 		Close(ctx)
-	}
-}
-
-// Optimize runs PRAGMA optimize on each connection in the pool
-func Optimize(ctx context.Context) {
-	if !conf.Server.DevOptimizeDB {
-		return
-	}
-	numConns := Db().Stats().OpenConnections
-	if numConns == 0 {
-		log.Debug(ctx, "No open connections to optimize")
-		return
-	}
-	log.Debug(ctx, "Optimizing open connections", "numConns", numConns)
-	var conns []*sql.Conn
-	for range numConns {
-		conn, err := Db().Conn(ctx)
-		conns = append(conns, conn)
-		if err != nil {
-			log.Error(ctx, "Error getting connection from pool", err)
-			continue
-		}
-		_, err = conn.ExecContext(ctx, "PRAGMA optimize;")
-		if err != nil {
-			log.Error(ctx, "Error running PRAGMA optimize", err)
-		}
-	}
-
-	// Return all connections to the Connection Pool
-	for _, conn := range conns {
-		conn.Close()
 	}
 }
 

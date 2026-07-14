@@ -21,6 +21,12 @@ import (
 
 func init() {
 	conf.AddHook(func() {
+		// gen2brain/webp selects native (purego/libwebp) vs WASM in its own
+		// package init() and exposes the result only via webp.Dynamic(); there is
+		// no runtime way to switch back. On 32-bit ARM/x86 the purego callback path
+		// crashes (issue #5597), so those builds must be compiled with the
+		// "nodynamic" tag (see Dockerfile), which makes webp.Dynamic() report an
+		// error here and forces the safe WASM path.
 		if err := webp.Dynamic(); err != nil {
 			log.Debug("Using WASM WebP encoder/decoder", "reason", err)
 		} else {
@@ -126,6 +132,22 @@ func (a *resizedArtworkReader) resizeImage(ctx context.Context, reader io.Reader
 	return resizeStaticImage(data, a.size, a.square)
 }
 
+// toFastScaleType converts images whose concrete type has no optimized scaler
+// in x/image/draw (e.g. *image.NYCbCrA from WebP, *image.Paletted from indexed
+// PNGs) into *image.RGBA, which has a fast path. Without this, CatmullRom.Scale
+// falls back to a generic per-pixel At()/RGBA() loop that is several times
+// slower. Fast-path types are returned unchanged.
+func toFastScaleType(img image.Image) image.Image {
+	switch img.(type) {
+	case *image.RGBA, *image.NRGBA, *image.Gray, *image.YCbCr:
+		return img
+	default:
+		rgba := image.NewRGBA(img.Bounds())
+		draw.Draw(rgba, rgba.Bounds(), img, img.Bounds().Min, draw.Src)
+		return rgba
+	}
+}
+
 func resizeStaticImage(data []byte, size int, square bool) (io.Reader, int, error) {
 	original, format, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
@@ -163,6 +185,7 @@ func resizeStaticImage(data []byte, size int, square bool) (io.Reader, int, erro
 		dst = image.NewNRGBA(image.Rect(0, 0, dstW, dstH))
 		dstRect = dst.Bounds()
 	}
+	original = toFastScaleType(original)
 	xdraw.CatmullRom.Scale(dst, dstRect, original, bounds, draw.Src, nil)
 
 	buf := bufPool.Get().(*bytes.Buffer)

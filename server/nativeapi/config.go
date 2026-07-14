@@ -97,7 +97,7 @@ func getConfig(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Marshal the actual configuration struct to preserve original field names
-	configBytes, err := json.Marshal(*conf.Server)
+	configBytes, err := json.Marshal(conf.Server)
 	if err != nil {
 		log.Error(ctx, "Error marshaling config", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)

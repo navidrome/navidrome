@@ -20,4 +20,5 @@ type ScrobbleBufferRepository interface {
 	Next(service string, userId string) (*ScrobbleEntry, error)
 	Dequeue(entry *ScrobbleEntry) error
 	Length() (int64, error)
+	Discard(service string) error
 }

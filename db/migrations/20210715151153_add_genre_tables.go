@@ -11,9 +11,9 @@ func init() {
 	goose.AddMigrationContext(upAddGenreTables, downAddGenreTables)
 }
 
-func upAddGenreTables(_ context.Context, tx *sql.Tx) error {
-	notice(tx, "A full rescan will be performed to import multiple genres!")
-	_, err := tx.Exec(`
+func upAddGenreTables(ctx context.Context, tx *sql.Tx) error {
+	notice(ctx, tx, "A full rescan will be performed to import multiple genres!")
+	_, err := tx.ExecContext(ctx, `
 create table if not exists genre
 (
   id varchar not null primary key,
@@ -61,9 +61,9 @@ create table if not exists  artist_genres
 	if err != nil {
 		return err
 	}
-	return forceFullRescan(tx)
+	return forceFullRescan(ctx, tx)
 }
 
-func downAddGenreTables(_ context.Context, tx *sql.Tx) error {
+func downAddGenreTables(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

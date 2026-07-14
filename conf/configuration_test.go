@@ -58,6 +58,19 @@ var _ = Describe("Configuration", func() {
 		})
 	})
 
+	Describe("scheduled DB analysis", func() {
+		It("is enabled by default", func() {
+			conf.Load(true)
+			Expect(conf.Server.EnableScheduledDBAnalyze).To(BeTrue())
+		})
+
+		It("can be disabled", func() {
+			viper.Set("enablescheduleddbanalyze", false)
+			conf.Load(true)
+			Expect(conf.Server.EnableScheduledDBAnalyze).To(BeFalse())
+		})
+	})
+
 	Describe("ValidateURL", func() {
 		It("accepts a valid http URL", func() {
 			fn := conf.ValidateURL("TestOption", "http://example.com/path")
@@ -186,27 +199,12 @@ var _ = Describe("Configuration", func() {
 			}).To(PanicWith(ContainSubstring("Error reading config file")))
 		})
 
-		It("is called when DataFolder is not writable", func() {
-			viper.SetDefault("datafolder", invalidPath)
-			Expect(func() {
-				conf.Load(true)
-			}).To(PanicWith(ContainSubstring("Error creating data path")))
-		})
-
-		It("is called when CacheFolder is not writable", func() {
-			viper.SetDefault("datafolder", GinkgoT().TempDir())
-			viper.SetDefault("cachefolder", invalidPath)
-			Expect(func() {
-				conf.Load(true)
-			}).To(PanicWith(ContainSubstring("Error creating cache path")))
-		})
-
 		It("is called when LogFile path is not writable", func() {
 			viper.SetDefault("datafolder", GinkgoT().TempDir())
 			viper.SetDefault("logfile", filepath.Join(invalidPath, "log.txt"))
 			Expect(func() {
 				conf.Load(true)
-			}).To(PanicWith(ContainSubstring("Error opening log file")))
+			}).To(PanicWith(ContainSubstring("Error creating log file directory")))
 		})
 
 		It("is called when BaseURL is invalid", func() {

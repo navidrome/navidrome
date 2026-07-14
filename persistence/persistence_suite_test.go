@@ -4,6 +4,7 @@ import (
 	"context"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	_ "github.com/mattn/go-sqlite3"
@@ -13,7 +14,6 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
-	"github.com/navidrome/navidrome/utils/gg"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pocketbase/dbx"
@@ -103,7 +103,7 @@ var (
 	songAntenna       = mf(model.MediaFile{ID: "1004", Title: "Antenna", ArtistID: "2", Artist: "Kraftwerk",
 		AlbumID:     "103",
 		Path:        p("kraft/radio/antenna.mp3"),
-		RGAlbumGain: gg.P(1.0), RGAlbumPeak: gg.P(2.0), RGTrackGain: gg.P(3.0), RGTrackPeak: gg.P(4.0),
+		RGAlbumGain: new(1.0), RGAlbumPeak: new(2.0), RGTrackGain: new(3.0), RGTrackPeak: new(4.0),
 	})
 	songAntennaWithLyrics = mf(model.MediaFile{
 		ID:       "1005",
@@ -158,12 +158,17 @@ var (
 	testUsers   = model.Users{adminUser, regularUser, thirdUser}
 )
 
+var (
+	firstScrobble  = model.Scrobble{ID: 1, MediaFileID: "1001", UserID: "userid", SubmissionTime: time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC).Unix()}
+	secondScrobble = model.Scrobble{ID: 2, MediaFileID: "1003", UserID: "2222", SubmissionTime: time.Date(1970, 2, 1, 0, 0, 0, 0, time.UTC).Unix()}
+	thirdScrobble  = model.Scrobble{ID: 3, MediaFileID: "1002", UserID: "userid", SubmissionTime: time.Date(1970, 3, 1, 0, 0, 0, 0, time.UTC).Unix()}
+	scrobbles      = model.Scrobbles{firstScrobble, secondScrobble, thirdScrobble}
+)
+
 func p(path string) string {
 	return filepath.FromSlash(path)
 }
 
-// Initialize test DB
-// TODO Load this data setup from file(s)
 var _ = BeforeSuite(func() {
 	conn := GetDBXBuilder()
 	ctx := log.NewContext(context.TODO())
@@ -187,8 +192,7 @@ var _ = BeforeSuite(func() {
 
 	alr := NewAlbumRepository(ctx, conn).(*albumRepository)
 	for i := range testAlbums {
-		a := testAlbums[i]
-		err := alr.Put(&a)
+		err := alr.Put(new(testAlbums[i]))
 		if err != nil {
 			panic(err)
 		}
@@ -196,8 +200,7 @@ var _ = BeforeSuite(func() {
 
 	arr := NewArtistRepository(ctx, conn)
 	for i := range testArtists {
-		a := testArtists[i]
-		err := arr.Put(&a)
+		err := arr.Put(new(testArtists[i]))
 		if err != nil {
 			panic(err)
 		}
@@ -243,8 +246,7 @@ var _ = BeforeSuite(func() {
 
 	rar := NewRadioRepository(ctx, conn)
 	for i := range testRadios {
-		r := testRadios[i]
-		err := rar.Put(&r)
+		err := rar.Put(new(testRadios[i]))
 		if err != nil {
 			panic(err)
 		}
@@ -310,6 +312,18 @@ var _ = BeforeSuite(func() {
 	songComeTogether.Starred = true
 	songComeTogether.StarredAt = mf.StarredAt
 	testSongs[1] = songComeTogether
+
+	scrobbleRepo := NewScrobbleRepository(ctx, conn).(*scrobbleRepository)
+	for _, s := range scrobbles {
+		_, err := scrobbleRepo.executeSQL(squirrel.Insert("scrobbles").SetMap(map[string]any{
+			"media_file_id":   s.MediaFileID,
+			"user_id":         s.UserID,
+			"submission_time": s.SubmissionTime,
+		}))
+		if err != nil {
+			panic(err)
+		}
+	}
 })
 
 func GetDBXBuilder() *dbx.DB {

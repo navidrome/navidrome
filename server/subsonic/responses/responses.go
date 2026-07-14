@@ -189,6 +189,9 @@ type OpenSubsonicChild struct {
 	Contributors       Array[Contributor]  `xml:"contributors,omitempty"            json:"contributors"`
 	DisplayComposer    string              `xml:"displayComposer,attr,omitempty"    json:"displayComposer"`
 	ExplicitStatus     string              `xml:"explicitStatus,attr,omitempty"     json:"explicitStatus"`
+	Groupings          Array[string]       `xml:"groupings,omitempty"               json:"groupings"`
+	Works              Array[Work]         `xml:"works,omitempty"                   json:"works"`
+	Movements          Array[Movement]     `xml:"movements,omitempty"               json:"movements"`
 }
 
 type Songs struct {
@@ -250,10 +253,10 @@ type AlbumID3 struct {
 	Artist                string     `xml:"artist,attr,omitempty"              json:"artist,omitempty"`
 	ArtistId              string     `xml:"artistId,attr,omitempty"            json:"artistId,omitempty"`
 	CoverArt              string     `xml:"coverArt,attr,omitempty"            json:"coverArt,omitempty"`
-	SongCount             int32      `xml:"songCount,attr,omitempty"           json:"songCount,omitempty"`
+	SongCount             int32      `xml:"songCount,attr"                     json:"songCount"`
 	Duration              int32      `xml:"duration,attr"                      json:"duration"`
 	PlayCount             int64      `xml:"playCount,attr,omitempty"           json:"playCount,omitempty"`
-	Created               *time.Time `xml:"created,attr,omitempty"             json:"created,omitempty"`
+	Created               time.Time  `xml:"created,attr"                       json:"created"`
 	Starred               *time.Time `xml:"starred,attr,omitempty"             json:"starred,omitempty"`
 	Year                  int32      `xml:"year,attr,omitempty"                json:"year,omitempty"`
 	Genre                 string     `xml:"genre,attr,omitempty"               json:"genre,omitempty"`
@@ -546,13 +549,39 @@ type Line struct {
 	Value string `xml:",chardata"            json:"value"`
 }
 
+type LyricCue struct {
+	Start     int64  `xml:"start,attr"           json:"start"`
+	End       *int64 `xml:"end,attr,omitempty"   json:"end,omitempty"`
+	ByteStart int    `xml:"byteStart,attr"       json:"byteStart"`
+	ByteEnd   int    `xml:"byteEnd,attr"         json:"byteEnd"`
+	Value     string `xml:",chardata"            json:"value"`
+}
+
+type Agent struct {
+	ID   string `xml:"id,attr"                 json:"id"`
+	Role string `xml:"role,attr"               json:"role"`
+	Name string `xml:"name,attr,omitempty"     json:"name,omitempty"`
+}
+
+type CueLine struct {
+	Index   int32      `xml:"index,attr"                    json:"index"`
+	Start   *int64     `xml:"start,attr,omitempty"          json:"start,omitempty"`
+	End     *int64     `xml:"end,attr,omitempty"            json:"end,omitempty"`
+	Value   string     `xml:"value,attr"                    json:"value"`
+	AgentID string     `xml:"agentId,attr,omitempty"        json:"agentId,omitempty"`
+	Cue     []LyricCue `xml:"cue,omitempty"                 json:"cue,omitempty"`
+}
+
 type StructuredLyric struct {
-	DisplayArtist string `xml:"displayArtist,attr,omitempty" json:"displayArtist,omitempty"`
-	DisplayTitle  string `xml:"displayTitle,attr,omitempty"  json:"displayTitle,omitempty"`
-	Lang          string `xml:"lang,attr"                    json:"lang"`
-	Line          []Line `xml:"line"                         json:"line"`
-	Offset        *int64 `xml:"offset,attr,omitempty"        json:"offset,omitempty"`
-	Synced        bool   `xml:"synced,attr"                  json:"synced"`
+	DisplayArtist string    `xml:"displayArtist,attr,omitempty" json:"displayArtist,omitempty"`
+	DisplayTitle  string    `xml:"displayTitle,attr,omitempty"  json:"displayTitle,omitempty"`
+	Kind          string    `xml:"kind,attr,omitempty"          json:"kind,omitempty"`
+	Lang          string    `xml:"lang,attr"                    json:"lang"`
+	Line          []Line    `xml:"line"                         json:"line"`
+	Agents        []Agent   `xml:"agent,omitempty"              json:"agents,omitempty"`
+	CueLine       []CueLine `xml:"cueLine,omitempty"     json:"cueLine,omitempty"`
+	Offset        *int64    `xml:"offset,attr,omitempty"        json:"offset,omitempty"`
+	Synced        bool      `xml:"synced,attr"                  json:"synced"`
 }
 
 type StructuredLyrics []StructuredLyric
@@ -569,6 +598,17 @@ type OpenSubsonicExtensions []OpenSubsonicExtension
 
 type ItemGenre struct {
 	Name string `xml:"name,attr" json:"name"`
+}
+
+type Work struct {
+	Name          string `xml:"name,attr"                    json:"name"`
+	MusicBrainzId string `xml:"musicBrainzId,attr,omitempty" json:"musicBrainzId,omitempty"`
+}
+
+type Movement struct {
+	Name   string `xml:"name,attr"             json:"name"`
+	Number int32  `xml:"number,attr,omitempty" json:"number,omitempty"`
+	Count  int32  `xml:"count,attr,omitempty"  json:"count,omitempty"`
 }
 
 type ReplayGain struct {

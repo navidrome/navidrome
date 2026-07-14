@@ -25,6 +25,27 @@ func Register(schema string, c constructor) {
 	registry[schema] = c
 }
 
+// LocalPathToURL converts a bare OS filesystem path into an absolute file:// URL,
+// applying the same slash-normalisation and per-component escaping the scanner
+// relies on. It is the single source of truth for how a local path becomes a
+// storage URL, shared by For and by storage tests.
+func LocalPathToURL(osPath string) (url.URL, error) {
+	abs, _ := filepath.Abs(osPath)
+	abs = filepath.ToSlash(abs)
+
+	// Properly escape each path component using URL standards
+	pathParts := strings.Split(abs, "/")
+	escapedParts := slice.Map(pathParts, func(s string) string {
+		return url.PathEscape(s)
+	})
+
+	u, err := url.Parse(LocalSchemaID + "://" + strings.Join(escapedParts, "/"))
+	if err != nil {
+		return url.URL{}, err
+	}
+	return *u, nil
+}
+
 // For returns a Storage implementation for the given URI.
 // It uses the schema part of the URI to find the correct registered
 // Storage constructor.
@@ -34,24 +55,22 @@ func For(uri string) (Storage, error) {
 	defer lock.RUnlock()
 	parts := strings.Split(uri, "://")
 
+	var u *url.URL
 	// Paths without schema are treated as file:// and use the default LocalStorage implementation
 	if len(parts) < 2 {
-		uri, _ = filepath.Abs(uri)
-		uri = filepath.ToSlash(uri)
-
-		// Properly escape each path component using URL standards
-		pathParts := strings.Split(uri, "/")
-		escapedParts := slice.Map(pathParts, func(s string) string {
-			return url.PathEscape(s)
-		})
-
-		uri = LocalSchemaID + "://" + strings.Join(escapedParts, "/")
+		parsed, err := LocalPathToURL(uri)
+		if err != nil {
+			return nil, err
+		}
+		u = &parsed
+	} else {
+		parsed, err := url.Parse(uri)
+		if err != nil {
+			return nil, err
+		}
+		u = parsed
 	}
 
-	u, err := url.Parse(uri)
-	if err != nil {
-		return nil, err
-	}
 	c, ok := registry[u.Scheme]
 	if !ok {
 		return nil, errors.New("schema '" + u.Scheme + "' not registered")

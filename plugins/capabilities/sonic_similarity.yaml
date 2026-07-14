@@ -39,39 +39,6 @@ components:
             required:
                 - song
                 - count
-        SongRef:
-            description: SongRef is a reference to a song with metadata for matching.
-            properties:
-                id:
-                    type: string
-                    description: ID is the internal Navidrome mediafile ID (if known).
-                name:
-                    type: string
-                    description: Name is the song name.
-                mbid:
-                    type: string
-                    description: MBID is the MusicBrainz ID for the song.
-                isrc:
-                    type: string
-                    description: ISRC is the International Standard Recording Code for the song.
-                artist:
-                    type: string
-                    description: Artist is the artist name.
-                artistMbid:
-                    type: string
-                    description: ArtistMBID is the MusicBrainz artist ID.
-                album:
-                    type: string
-                    description: Album is the album name.
-                albumMbid:
-                    type: string
-                    description: AlbumMBID is the MusicBrainz release ID.
-                duration:
-                    type: number
-                    format: float
-                    description: Duration is the song duration in seconds.
-            required:
-                - name
         SonicMatch:
             properties:
                 song:
@@ -90,3 +57,91 @@ components:
                         $ref: '#/components/schemas/SonicMatch'
             required:
                 - matches
+        ArtistRef:
+            description: |-
+                ArtistRef is the minimal information a plugin returns for Navidrome to match an
+                artist against the library. It is a reference, not a full artist entity: it
+                carries only matching keys (name and optional internal/MusicBrainz IDs) plus a
+                few projection fields used when describing a track's participants, never
+                descriptive data such as biographies or images.
+            properties:
+                id:
+                    type: string
+                    description: ID is the internal Navidrome artist ID (if known).
+                name:
+                    type: string
+                    description: Name is the artist name.
+                mbid:
+                    type: string
+                    description: MBID is the MusicBrainz ID for the artist.
+                sortName:
+                    type: string
+                    description: SortName is the artist name used for sorting (if known).
+                role:
+                    type: string
+                    description: Role is the participation category (e.g. "artist", "composer", "performer").
+                subRole:
+                    type: string
+                    description: SubRole is a specialization within Role (e.g. the instrument for a performer).
+            required:
+                - name
+        SongRef:
+            description: |-
+                SongRef is the minimal information exchanged between a plugin and Navidrome to
+                match a song. It is used both as input (a song Navidrome already has) and as
+                output (a song a plugin suggests, which may not be in the library yet). Unlike
+                Track, it is an abstract recording reference carrying only matching keys (IDs,
+                ISRC, and title/artist/album/duration) that Navidrome resolves to a library track.
+            properties:
+                id:
+                    type: string
+                    description: ID is the internal Navidrome mediafile ID (if known).
+                name:
+                    type: string
+                    description: Name is the song name.
+                mbid:
+                    type: string
+                    description: MBID is the MusicBrainz ID for the song.
+                isrc:
+                    type: string
+                    description: ISRC is the International Standard Recording Code for the song.
+                artist:
+                    type: string
+                    description: |-
+                        Artist is the artist name.
+
+                        Deprecated: use Artists.
+                artistMbid:
+                    type: string
+                    description: |-
+                        ArtistMBID is the MusicBrainz artist ID.
+
+                        Deprecated: use Artists.
+                artists:
+                    type: array
+                    description: Artists is the full artist list; when set, takes precedence over Artist/ArtistMBID for matching.
+                    items:
+                        $ref: '#/components/schemas/ArtistRef'
+                album:
+                    type: string
+                    description: Album is the album name.
+                albumMbid:
+                    type: string
+                    description: AlbumMBID is the MusicBrainz release ID.
+                duration:
+                    type: number
+                    format: float
+                    description: |-
+                        Duration is the song duration in seconds.
+
+                        Deprecated: use DurationMs, which carries millisecond precision. When
+                        DurationMs is non-zero it takes precedence; Duration is kept only for
+                        backwards compatibility with plugins that still send seconds.
+                durationMs:
+                    type: integer
+                    format: int64
+                    description: |-
+                        DurationMs is the song duration in milliseconds. It supersedes Duration
+                        when non-zero.
+            required:
+                - name

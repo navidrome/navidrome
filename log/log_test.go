@@ -135,18 +135,32 @@ var _ = Describe("Logger", func() {
 	})
 
 	Describe("LogLevels", func() {
-		It("logs at specific levels", func() {
-			SetLevel(LevelError)
-			Debug("message 1")
+		BeforeEach(func() {
+			SetLevel(LevelFatal)
+			SetLogLevels(nil)
+		})
+
+		DescribeTable("logs at specific levels", func(logger func(...any), level Level) {
+			logger("message 1")
 			Expect(hook.LastEntry()).To(BeNil())
 
-			SetLogLevels(map[string]string{
-				"log/log_test": "debug",
-			})
+			Log(level, "message 1.5")
+			Expect(hook.LastEntry()).To(BeNil())
 
-			Debug("message 2")
+			SetLogLevels(map[string]string{"log/log_test": "trace"})
+
+			logger("message 2")
 			Expect(hook.LastEntry().Message).To(Equal("message 2"))
-		})
+
+			Log(level, "message 2.5")
+			Expect(hook.LastEntry().Message).To(Equal("message 2.5"))
+		},
+			Entry("Error", Error, LevelError),
+			Entry("Warn", Warn, LevelWarn),
+			Entry("Info", Info, LevelInfo),
+			Entry("Debug", Debug, LevelDebug),
+			Entry("Trace", Trace, LevelTrace),
+		)
 	})
 
 	Describe("IsGreaterOrEqualTo", func() {
