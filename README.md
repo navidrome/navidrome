@@ -70,10 +70,6 @@ For everything else — configuration options, reverse proxy setup, environment 
 [Documentation](#documentation) section below and [project's website](https://www.navidrome.org/docs/) apply exactly
 as they do for upstream Navidrome.
 
-**Note**: to pin an exact version rather than following whichever release is newest, use one of this fork's
-[tagged releases](https://github.com/RFLundgren/navidrome_experimental/releases) directly (e.g.
-`ghcr.io/rflundgren/navidrome_experimental:0.63.2-experimental.3`) instead of the `:stable` alias.
-
 __Any feedback is welcome!__ Found a bug or have a feature idea specific to this fork's podcast/folder support?
 File it on [this fork's issue tracker](https://github.com/RFLundgren/navidrome_experimental/issues) — please don't
 report fork-specific issues upstream. For anything about Navidrome itself, the upstream project welcomes
