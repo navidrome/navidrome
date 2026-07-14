@@ -186,7 +186,7 @@ func ByGenre(genre string) Options {
 
 // ByGenreID matches items (albums or songs) tagged with any of the given genre tag ids.
 func ByGenreID(genreIds []string) Sqlizer {
-	return persistence.TagIDFilter("genre_id", genreIds)
+	return genreTagFilter(Eq{"value": genreIds})
 }
 
 // ArtistsByGenreID matches artists credited as album artist on an album with any of the given
@@ -195,15 +195,18 @@ func ArtistsByGenreID(genreIds []string) Sqlizer {
 	return Expr(
 		`artist.id IN (SELECT jt.value FROM album, json_tree(album.participants, '$.albumartist') jt
 			WHERE jt.atom IS NOT NULL AND ?)`,
-		persistence.TagIDFilter("genre_id", genreIds),
+		genreTagFilter(Eq{"value": genreIds}),
 	)
 }
 
+// genreTagFilter builds an EXISTS over the genre entries in the tags JSON, matching each entry
+// against cond (its name via Like, or its tag id via Eq/IN). Shared by the name- and id-based lookups.
+func genreTagFilter(cond Sqlizer) Sqlizer {
+	return persistence.Exists(`json_tree(tags, "$.genre")`, And{NotEq{"atom": nil}, cond})
+}
+
 func filterByGenre(genre string) Sqlizer {
-	return persistence.Exists(`json_tree(tags, "$.genre")`, And{
-		Like{"value": genre},
-		NotEq{"atom": nil},
-	})
+	return genreTagFilter(Like{"value": genre})
 }
 
 func ByRating() Options {

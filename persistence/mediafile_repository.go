@@ -111,7 +111,7 @@ var mediaFileFilter = sync.OnceValue(func() map[string]filterFunc {
 		"title":      fullTextFilter("media_file", "mbz_recording_id", "mbz_release_track_id"),
 		"starred":    annotationBoolFilter("starred"),
 		"has_rating": annotationBoolFilter("rating"),
-		"genre_id":   TagIDFilter,
+		"genre_id":   tagIDFilter,
 		"missing":    booleanFilter,
 		"artists_id": artistFilter,
 		"library_id": libraryIdFilter,
@@ -120,7 +120,7 @@ var mediaFileFilter = sync.OnceValue(func() map[string]filterFunc {
 	// Add all album tags as filters
 	for tag := range model.TagMappings() {
 		if _, exists := filters[string(tag)]; !exists {
-			filters[string(tag)] = TagIDFilter
+			filters[string(tag)] = tagIDFilter
 		}
 	}
 	return filters
