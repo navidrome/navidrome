@@ -21,6 +21,7 @@ type MockPlaylistRepo struct {
 	Data       map[string]*model.Playlist // keyed by ID
 	PathMap    map[string]*model.Playlist // keyed by path
 	All        model.Playlists
+	Options    model.QueryOptions
 	Last       *model.Playlist
 	Deleted    []string
 	Starred    map[string]bool // itemID -> starred
@@ -33,12 +34,22 @@ func (m *MockPlaylistRepo) SetError(err bool) {
 	m.Err = err
 }
 
-func (m *MockPlaylistRepo) SetData(pls model.Playlists) {
-	m.Data = make(map[string]*model.Playlist, len(pls))
-	m.All = pls
+func (m *MockPlaylistRepo) SetData(playlists model.Playlists) {
+	m.Data = make(map[string]*model.Playlist, len(playlists))
+	m.All = playlists
 	for i, p := range m.All {
 		m.Data[p.ID] = &m.All[i]
 	}
+}
+
+func (m *MockPlaylistRepo) GetAll(options ...model.QueryOptions) (model.Playlists, error) {
+	if len(options) > 0 {
+		m.Options = options[0]
+	}
+	if m.Err {
+		return nil, errors.New("error")
+	}
+	return m.All, nil
 }
 
 func (m *MockPlaylistRepo) Get(id string) (*model.Playlist, error) {
@@ -55,13 +66,6 @@ func (m *MockPlaylistRepo) Get(id string) (*model.Playlist, error) {
 
 func (m *MockPlaylistRepo) GetWithTracks(id string, _, _ bool) (*model.Playlist, error) {
 	return m.Get(id)
-}
-
-func (m *MockPlaylistRepo) GetAll(_ ...model.QueryOptions) (model.Playlists, error) {
-	if m.Err {
-		return nil, errors.New("error")
-	}
-	return m.All, nil
 }
 
 func (m *MockPlaylistRepo) Put(pls *model.Playlist, _ ...string) error {

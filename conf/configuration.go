@@ -117,6 +117,7 @@ type configOptions struct {
 	LastFM                          lastfmOptions       `json:",omitzero"`
 	Deezer                          deezerOptions       `json:",omitzero"`
 	ListenBrainz                    listenBrainzOptions `json:",omitzero"`
+	Jellyfin                        jellyfinOptions     `json:",omitzero"`
 	EnableScrobbleHistory           bool
 	Tags                            map[string]TagConf `json:",omitempty"`
 	Agents                          string
@@ -216,6 +217,14 @@ type listenBrainzOptions struct {
 	BaseURL         string
 	ArtistAlgorithm string
 	TrackAlgorithm  string
+}
+
+type jellyfinOptions struct {
+	Enabled    bool
+	ServerName string
+	// ExposedPublicUsers is a comma-separated list of usernames to advertise on the unauthenticated
+	// GET /Users/Public, so Jellyfin clients can show a login user-picker. Empty exposes no users.
+	ExposedPublicUsers string
 }
 
 type httpHeaderOptions struct {
@@ -849,6 +858,8 @@ func setViperDefaults() {
 	viper.SetDefault("listenbrainz.baseurl", consts.DefaultListenBrainzBaseURL)
 	viper.SetDefault("listenbrainz.artistalgorithm", consts.DefaultListenBrainzArtistAlgorithm)
 	viper.SetDefault("listenbrainz.trackalgorithm", consts.DefaultListenBrainzTrackAlgorithm)
+	viper.SetDefault("jellyfin.enabled", false)
+	viper.SetDefault("jellyfin.servername", "")
 	viper.SetDefault("enablescrobblehistory", true)
 	viper.SetDefault("httpheaders.frameoptions", "DENY")
 	viper.SetDefault("backup.path", "")

@@ -85,8 +85,11 @@ func (r *playlistRepository) userFilter() Sqlizer {
 }
 
 func (r *playlistRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	sq := Select().Where(r.userFilter())
-	return r.count(sq, options...)
+	query := Select().Where(r.userFilter())
+	if filtersNeedAnnotation(r.applyFilters(query, options...)) {
+		query = r.withAnnotation(query, "playlist.id")
+	}
+	return r.count(query, options...)
 }
 
 func (r *playlistRepository) Exists(id string) (bool, error) {

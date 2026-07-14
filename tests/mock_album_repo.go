@@ -174,6 +174,9 @@ func (m *MockAlbumRepo) SetRating(rating int, itemID string) error {
 	if m.Err {
 		return errors.New("unexpected error")
 	}
+	if d, ok := m.Data[itemID]; ok {
+		d.Rating = rating
+	}
 	return nil
 }
 
@@ -181,6 +184,11 @@ func (m *MockAlbumRepo) SetRating(rating int, itemID string) error {
 func (m *MockAlbumRepo) SetStar(starred bool, itemIDs ...string) error {
 	if m.Err {
 		return errors.New("unexpected error")
+	}
+	for _, id := range itemIDs {
+		if d, ok := m.Data[id]; ok {
+			d.Starred = starred
+		}
 	}
 	return nil
 }

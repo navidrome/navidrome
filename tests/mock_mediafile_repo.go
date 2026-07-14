@@ -154,6 +154,28 @@ func (m *MockMediaFileRepo) IncPlayCount(id string, timestamp time.Time) error {
 	return model.ErrNotFound
 }
 
+func (m *MockMediaFileRepo) SetStar(starred bool, itemIDs ...string) error {
+	if m.Err {
+		return errors.New("error")
+	}
+	for _, id := range itemIDs {
+		if d, ok := m.Data[id]; ok {
+			d.Starred = starred
+		}
+	}
+	return nil
+}
+
+func (m *MockMediaFileRepo) SetRating(rating int, itemID string) error {
+	if m.Err {
+		return errors.New("error")
+	}
+	if d, ok := m.Data[itemID]; ok {
+		d.Rating = rating
+	}
+	return nil
+}
+
 func (m *MockMediaFileRepo) FindByAlbum(artistId string) (model.MediaFiles, error) {
 	if m.Err {
 		return nil, errors.New("error")

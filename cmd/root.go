@@ -124,6 +124,9 @@ func startServer(ctx context.Context) func() error {
 		if conf.Server.ListenBrainz.Enabled {
 			a.MountRouter("ListenBrainz Auth", consts.URLPathNativeAPI+"/listenbrainz", CreateListenBrainzRouter())
 		}
+		if conf.Server.Jellyfin.Enabled {
+			a.MountRouter("Jellyfin API", consts.URLPathJellyfinAPI, CreateJellyfinAPIRouter(ctx))
+		}
 		if conf.Server.Prometheus.Enabled {
 			p := CreatePrometheus()
 			// blocking call because takes <100ms but useful if fails

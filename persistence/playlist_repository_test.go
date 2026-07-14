@@ -3,6 +3,7 @@ package persistence
 import (
 	"slices"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -130,6 +131,19 @@ var _ = Describe("PlaylistRepository", func() {
 			idx := slices.IndexFunc(all, func(p model.Playlist) bool { return p.ID == plsID })
 			Expect(idx).To(BeNumerically(">=", 0))
 			Expect(all[idx].Starred).To(BeTrue())
+		})
+
+		It("counts playlists using annotation filters", func() {
+			Expect(repo.SetStar(true, plsID)).To(Succeed())
+
+			options := model.QueryOptions{Filters: squirrel.Eq{"starred": true}}
+			starred, err := repo.GetAll(options)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(starred).To(ContainElement(HaveField("ID", plsID)))
+
+			count, err := repo.CountAll(options)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(count).To(Equal(int64(len(starred))))
 		})
 
 		It("does not leak an annotation row of another item_type sharing the playlist id", func() {
