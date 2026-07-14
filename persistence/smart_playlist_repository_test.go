@@ -71,13 +71,23 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 							criteria.Contains{"title": "Day"},
 						},
 					}
-					nestedPls := model.Playlist{Name: "Nested", OwnerID: "userid", Public: true, Rules: childRules}
+					nestedPls := model.Playlist{Name: "Nested [ID]", OwnerID: "userid", Public: true, Rules: childRules}
 					Expect(repo.Put(&nestedPls)).To(Succeed())
 					DeferCleanup(func() { _ = repo.Delete(nestedPls.ID) })
 
-					parentPls := model.Playlist{Name: "Parent", OwnerID: "userid", Rules: &criteria.Criteria{
+					childRules = &criteria.Criteria{
 						Expression: criteria.All{
+							criteria.Eq{"artist": "シートベルツ"},
+						},
+					}
+					nestedPathPls := model.Playlist{Name: "Nested [Path]", OwnerID: "userid", Path: "test.nsp", Public: true, Rules: childRules}
+					Expect(repo.Put(&nestedPathPls)).To(Succeed())
+					DeferCleanup(func() { _ = repo.Delete(nestedPathPls.ID) })
+
+					parentPls := model.Playlist{Name: "Parent", OwnerID: "userid", Rules: &criteria.Criteria{
+						Expression: criteria.Any{
 							criteria.InPlaylist{"id": nestedPls.ID},
+							criteria.InPlaylist{"path": nestedPathPls.Path},
 						},
 					}}
 					Expect(repo.Put(&parentPls)).To(Succeed())
@@ -95,11 +105,16 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 					Expect(*pls.EvaluatedAt).To(BeTemporally("~", time.Now(), 2*time.Second))
 
 					// Parent should have tracks from the nested playlist
-					Expect(pls.Tracks).To(HaveLen(1))
+					Expect(pls.Tracks).To(HaveLen(2))
 					Expect(pls.Tracks[0].MediaFileID).To(Equal(songDayInALife.ID))
 
-					// Nested playlist should now have been refreshed (EvaluatedAt set)
+					// Nested playlists should now have been refreshed (EvaluatedAt set)
 					nestedPlsAfterParentGet, err := repo.Get(nestedPls.ID)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(nestedPlsAfterParentGet.EvaluatedAt).ToNot(BeNil())
+					Expect(*nestedPlsAfterParentGet.EvaluatedAt).To(BeTemporally("~", time.Now(), 2*time.Second))
+
+					nestedPlsAfterParentGet, err = repo.Get(nestedPathPls.ID)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(nestedPlsAfterParentGet.EvaluatedAt).ToNot(BeNil())
 					Expect(*nestedPlsAfterParentGet.EvaluatedAt).To(BeTemporally("~", time.Now(), 2*time.Second))

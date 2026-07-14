@@ -2,6 +2,7 @@ package model_test
 
 import (
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -41,6 +42,70 @@ var _ = Describe("Playlist", func() {
 /music/library/Legião Urbana/Música p_ acampamentos/02-05 On the Way Home.mp3
 `
 			Expect(pls.ToM3U8()).To(Equal(expected))
+		})
+	})
+
+	Describe("NormalizeChildPaths()", func() {
+		It("normalizes file paths", func() {
+			tests.SkipOnWindows("path separator bug (#TBD-path-sep-model)")
+
+			pls := model.Playlist{
+				Rules: &criteria.Criteria{
+					Expression: criteria.All{
+						criteria.InPlaylist{"path": "/test/my-test-path.m3u"},
+						criteria.InPlaylist{"path": "../my-test-path.m3u"},
+						criteria.NotInPlaylist{"path": "/not-test/not-my-test-path.m3u"},
+						criteria.Eq{"artist": "Bob Dealin'"},
+						criteria.Any{
+							criteria.InPlaylist{"path": "../../in-the-test.nsp"},
+							criteria.NotInPlaylist{"path": "./sibling.nsp"},
+							criteria.NotInPlaylist{"path": ""},
+							criteria.All{
+								criteria.InPlaylist{"path": "/other-root/other.m3u"},
+								criteria.NotInPlaylist{"path": "../../../out-of-containment.nsp"},
+								criteria.InPlaylist{"id": "94d8ba52-7aca-40e2-af82-4cb09c43d710"},
+							},
+						},
+					},
+				},
+				Path: "/test/nested/my-playlist.nsp"}
+
+			newPls := pls.WithNormalizeChildPaths()
+			Expect(newPls.Rules).Should(BeEquivalentTo(&criteria.Criteria{
+				Expression: criteria.All{
+					criteria.InPlaylist{"path": "/test/my-test-path.m3u"},
+					criteria.InPlaylist{"path": "/test/my-test-path.m3u"},
+					criteria.NotInPlaylist{"path": "/not-test/not-my-test-path.m3u"},
+					criteria.Eq{"artist": "Bob Dealin'"},
+					criteria.Any{
+						criteria.InPlaylist{"path": "/in-the-test.nsp"},
+						criteria.NotInPlaylist{"path": "/test/nested/sibling.nsp"},
+						criteria.NotInPlaylist{"path": ""},
+						criteria.All{
+							criteria.InPlaylist{"path": "/other-root/other.m3u"},
+							criteria.NotInPlaylist{"path": "/out-of-containment.nsp"},
+							criteria.InPlaylist{"id": "94d8ba52-7aca-40e2-af82-4cb09c43d710"},
+						},
+					},
+				},
+			}))
+		})
+
+		It("skips normalization when playlist path is empty", func() {
+			pls := model.Playlist{
+				Rules: &criteria.Criteria{
+					Expression: criteria.All{
+						criteria.InPlaylist{"path": "../my-test-path.m3u"},
+					},
+				},
+				Path: ""}
+
+			newPls := pls.WithNormalizeChildPaths()
+			Expect(newPls.Rules).Should(BeEquivalentTo(&criteria.Criteria{
+				Expression: criteria.All{
+					criteria.InPlaylist{"path": "../my-test-path.m3u"},
+				},
+			}))
 		})
 	})
 })

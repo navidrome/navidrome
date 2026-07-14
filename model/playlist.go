@@ -1,6 +1,8 @@
 package model
 
 import (
+	"maps"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"time"
@@ -117,6 +119,72 @@ func (pls Playlist) CoverArtID() ArtworkID {
 // by the artwork reader's fallback chain.
 func (pls Playlist) UploadedImagePath() string {
 	return UploadedImagePath(consts.EntityPlaylist, pls.UploadedImage)
+}
+
+func (pls Playlist) WithNormalizeChildPaths() Playlist {
+	if pls.Rules == nil || pls.Rules.Expression == nil {
+		return pls
+	}
+
+	plsClone := pls
+	plsClone.Rules = &criteria.Criteria{
+		Sort:         pls.Rules.Sort,
+		Limit:        pls.Rules.Limit,
+		LimitPercent: pls.Rules.LimitPercent,
+		Offset:       pls.Rules.Offset,
+		Order:        pls.Rules.Order,
+		Expression:   normalizePlaylistPaths(pls.Rules.Expression, pls.Path),
+	}
+	return plsClone
+}
+
+func normalizePlaylistPaths(inputRule criteria.Expression, referencingPlaylistPath string) criteria.Expression {
+	if referencingPlaylistPath == "" {
+		return inputRule
+	}
+
+	switch rule := inputRule.(type) {
+	case criteria.Any:
+		anyCriteria := make(criteria.Any, len(rule))
+		for i, rules := range rule {
+			anyCriteria[i] = normalizePlaylistPaths(rules, referencingPlaylistPath)
+		}
+		return anyCriteria
+	case criteria.All:
+		allCriteria := make(criteria.All, len(rule))
+		for i, rules := range rule {
+			allCriteria[i] = normalizePlaylistPaths(rules, referencingPlaylistPath)
+		}
+		return allCriteria
+	case criteria.InPlaylist:
+		inPlaylist := maps.Clone(rule)
+		if path, ok := rule["path"].(string); ok {
+			if path == "" {
+				return inPlaylist
+			}
+
+			if !filepath.IsAbs(path) {
+				dir := filepath.Dir(referencingPlaylistPath)
+				inPlaylist["path"] = filepath.Clean(filepath.Join(dir, path))
+			}
+		}
+		return inPlaylist
+	case criteria.NotInPlaylist:
+		notInPlaylist := maps.Clone(rule)
+		if path, ok := rule["path"].(string); ok {
+			if path == "" {
+				return notInPlaylist
+			}
+
+			if !filepath.IsAbs(path) {
+				dir := filepath.Dir(referencingPlaylistPath)
+				notInPlaylist["path"] = filepath.Clean(filepath.Join(dir, path))
+			}
+		}
+		return notInPlaylist
+	}
+
+	return inputRule
 }
 
 type Playlists []Playlist
