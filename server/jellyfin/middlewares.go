@@ -32,7 +32,8 @@ func throttleStreams(limit int) func(http.Handler) http.Handler {
 
 // caseInsensitivePaths lowercases the request path so chi (case-sensitive) matches the
 // lowercase-registered routes; Jellyfin clients route case-insensitively. It lowercases id/param
-// segments too, safe only because every id on the boundary is lowercase hex (dto.EncodeID).
+// segments too, which is safe because every id the API emits — user ids included — is lowercase hex
+// (dto.EncodeID).
 func caseInsensitivePaths(r chi.Router) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		// Mounted under a parent, chi matches RouteContext.RoutePath, not r.URL.Path.

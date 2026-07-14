@@ -375,8 +375,8 @@ func (f *fakeSonicProvider) FindSonicPath(context.Context, *model.MediaFile, *mo
 	return f.path, nil
 }
 
-// songAgent builds an agents.Song from a seeded track's title+artist, so the matcher resolves it
-// back to that library MediaFile.
+// songAgent looks a seeded track up by title (titles are unique in the seed) and builds an
+// agents.Song carrying its title+artist, so the matcher resolves it back to that MediaFile.
 func songAgent(title string) agents.Song {
 	mfs, err := ds.MediaFile(ctx).GetAll()
 	Expect(err).ToNot(HaveOccurred())

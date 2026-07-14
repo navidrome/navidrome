@@ -52,7 +52,7 @@ func (api *Router) getPublicUsers(w http.ResponseWriter, r *http.Request) {
 		}
 		users = append(users, dto.UserDto{
 			Name:        usr.UserName,
-			Id:          usr.ID,
+			Id:          dto.EncodeID(usr.ID),
 			ServerId:    serverID,
 			HasPassword: true,
 		})

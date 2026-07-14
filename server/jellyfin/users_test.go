@@ -106,7 +106,7 @@ var _ = Describe("Users", func() {
 			users := publicUsers()
 			Expect(users).To(HaveLen(2))
 			Expect(users[0].Name).To(Equal("bob"))
-			Expect(users[0].Id).To(Equal("u2"))
+			Expect(users[0].Id).To(Equal(dto.EncodeID("u2")))
 			Expect(users[1].Name).To(Equal("alice"))
 			// The public list must not expose Policy/Configuration to unauthenticated callers.
 			Expect(users[0].Policy).To(BeNil())

@@ -68,7 +68,7 @@ func (api *Router) audioMuseSimilarTracks(w http.ResponseWriter, r *http.Request
 	}
 
 	id := api.resolveItemID(ctx, dto.DecodeID(itemID))
-	n := p.IntOr("n", 10)
+	n := min(p.IntOr("n", 10), maxSimilarLimit) // cap a user-controlled count, like clampLimit
 	eliminateDuplicates := p.BoolOr("eliminate_duplicates", true)
 
 	matches, err := api.sonic.GetSonicSimilarTracks(ctx, id, n)
@@ -129,7 +129,7 @@ func (api *Router) audioMuseFindPath(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := audioMusePathResponse{Path: []audioMusePathTrack{}}
-	maxSteps := p.IntOr("max_steps", 25)
+	maxSteps := min(p.IntOr("max_steps", 25), maxSimilarLimit) // cap a user-controlled count
 	matches, err := api.sonic.FindSonicPath(ctx,
 		api.resolveItemID(ctx, dto.DecodeID(startID)),
 		api.resolveItemID(ctx, dto.DecodeID(endID)),
