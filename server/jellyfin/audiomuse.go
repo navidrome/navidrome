@@ -90,3 +90,63 @@ func (api *Router) audioMuseSimilarTracks(w http.ResponseWriter, r *http.Request
 	}
 	api.ok(w, r, tracks)
 }
+
+type audioMusePathTrack struct {
+	Author string   `json:"author"`
+	ItemID string   `json:"item_id"`
+	Title  string   `json:"title"`
+	Tempo  *float64 `json:"tempo,omitempty"`
+}
+
+type audioMusePathResponse struct {
+	Path          []audioMusePathTrack `json:"path"`
+	TotalDistance float64              `json:"total_distance"`
+}
+
+func (api *Router) audioMuseFindPath(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	// Gate the whole endpoint on a sonic provider, like the Subsonic sonicSimilarity handlers.
+	if api.sonic == nil || !api.sonic.HasProvider() {
+		api.notFound(w, r)
+		return
+	}
+	p := req.Params(r)
+
+	startID := p.StringOr("start_song_id", "")
+	endID := p.StringOr("end_song_id", "")
+	if startID == "" || endID == "" {
+		http.Error(w, "start_song_id and end_song_id are required.", http.StatusBadRequest)
+		return
+	}
+
+	resp := audioMusePathResponse{Path: []audioMusePathTrack{}}
+	maxSteps := p.IntOr("max_steps", 25)
+	matches, err := api.sonic.FindSonicPath(ctx,
+		api.resolveItemID(ctx, dto.DecodeID(startID)),
+		api.resolveItemID(ctx, dto.DecodeID(endID)),
+		maxSteps)
+	if err != nil {
+		api.ok(w, r, resp)
+		return
+	}
+
+	u, _ := request.UserFrom(ctx)
+	for _, m := range matches {
+		mf := m.MediaFile
+		if !u.HasLibraryAccess(mf.LibraryID) {
+			continue
+		}
+		track := audioMusePathTrack{
+			Author: mf.Artist,
+			ItemID: dto.EncodeID(mf.ID),
+			Title:  mf.Title,
+		}
+		if mf.BPM != nil {
+			tempo := float64(*mf.BPM)
+			track.Tempo = &tempo
+		}
+		resp.Path = append(resp.Path, track)
+		resp.TotalDistance += m.Similarity
+	}
+	api.ok(w, r, resp)
+}

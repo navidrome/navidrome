@@ -180,6 +180,7 @@ func (api *Router) routes() http.Handler {
 
 		r.Get("/AudioMuseAI/info", api.audioMuseInfo)
 		r.Get("/AudioMuseAI/similar_tracks", api.audioMuseSimilarTracks)
+		r.Get("/AudioMuseAI/find_path", api.audioMuseFindPath)
 	})
 
 	// Logged at Debug, not Warn/Error: clients probing for optional/legacy endpoints is expected

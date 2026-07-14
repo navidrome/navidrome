@@ -151,3 +151,61 @@ var _ = Describe("AudioMuse similar_tracks", func() {
 		Expect(w.Code).To(Equal(404))
 	})
 })
+
+var _ = Describe("AudioMuse find_path", func() {
+	var fake *fakeSonicEngine
+	var api *Router
+
+	call := func(query string, user model.User) *httptest.ResponseRecorder {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "/AudioMuseAI/find_path?"+query, nil)
+		r = r.WithContext(request.WithUser(r.Context(), user))
+		invoke(api.audioMuseFindPath, w, r)
+		return w
+	}
+
+	BeforeEach(func() {
+		fake = &fakeSonicEngine{provider: true}
+		api = &Router{sonic: fake}
+	})
+
+	It("returns 400 with the exact message when start_song_id is missing", func() {
+		w := call("end_song_id="+dto.EncodeID("e"), model.User{IsAdmin: true})
+		Expect(w.Code).To(Equal(400))
+		Expect(strings.TrimSpace(w.Body.String())).To(Equal("start_song_id and end_song_id are required."))
+	})
+
+	It("returns 400 when end_song_id is missing", func() {
+		w := call("start_song_id="+dto.EncodeID("s"), model.User{IsAdmin: true})
+		Expect(w.Code).To(Equal(400))
+	})
+
+	It("maps the path, decodes ids, sums total_distance, fills tempo from BPM", func() {
+		bpm := 120
+		withBPM := mf("mf1", "A", "T1", 1)
+		withBPM.BPM = &bpm
+		fake.path = []sonic.SimilarMatch{
+			{MediaFile: withBPM, Similarity: 1.5},
+			{MediaFile: mf("mf2", "B", "T2", 1), Similarity: 2.0},
+		}
+		w := call("start_song_id="+dto.EncodeID("s")+"&end_song_id="+dto.EncodeID("e")+"&max_steps=10", model.User{IsAdmin: true})
+
+		Expect(w.Code).To(Equal(200))
+		Expect(fake.gotStart).To(Equal("s"))
+		Expect(fake.gotEnd).To(Equal("e"))
+		Expect(fake.gotCount).To(Equal(10))
+		var body audioMusePathResponse
+		Expect(json.Unmarshal(w.Body.Bytes(), &body)).To(Succeed())
+		Expect(body.Path).To(HaveLen(2))
+		Expect(body.TotalDistance).To(Equal(3.5))
+		Expect(body.Path[0].ItemID).To(Equal(dto.EncodeID("mf1")))
+		Expect(*body.Path[0].Tempo).To(Equal(120.0))
+		Expect(body.Path[1].Tempo).To(BeNil())
+	})
+
+	It("returns 404 when no sonic provider is loaded", func() {
+		fake.provider = false
+		w := call("start_song_id="+dto.EncodeID("s")+"&end_song_id="+dto.EncodeID("e"), model.User{IsAdmin: true})
+		Expect(w.Code).To(Equal(404))
+	})
+})
