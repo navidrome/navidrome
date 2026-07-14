@@ -15,12 +15,21 @@ import (
 	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/core/scrobbler"
+	"github.com/navidrome/navidrome/core/sonic"
 	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 )
+
+// sonicEngine is the subset of *core/sonic.Sonic the AudioMuse endpoints need. An interface
+// (not the concrete type) so handler tests can inject a fake without the matcher+plugin stack.
+type sonicEngine interface {
+	HasProvider() bool
+	GetSonicSimilarTracks(ctx context.Context, id string, count int) ([]sonic.SimilarMatch, error)
+	FindSonicPath(ctx context.Context, startID, endID string, count int) ([]sonic.SimilarMatch, error)
+}
 
 type Router struct {
 	http.Handler
@@ -32,6 +41,7 @@ type Router struct {
 	scrobbler        scrobbler.PlayTracker
 	playlists        playlists.Playlists
 	provider         external.Provider
+	sonic            sonicEngine
 	similarFlight    singleflight.Group
 	serverIDMu       sync.Mutex
 	serverIDVal      string
@@ -39,10 +49,16 @@ type Router struct {
 
 func New(ds model.DataStore, artwork artwork.Artwork, streamer stream.MediaStreamer,
 	transcodeDecider stream.TranscodeDecider, players core.Players,
-	scrobbler scrobbler.PlayTracker, playlists playlists.Playlists, provider external.Provider) *Router {
+	scrobbler scrobbler.PlayTracker, playlists playlists.Playlists, provider external.Provider,
+	sonicSvc *sonic.Sonic) *Router {
 	r := &Router{
 		ds: ds, artwork: artwork, streamer: streamer, transcodeDecider: transcodeDecider,
 		players: players, scrobbler: scrobbler, playlists: playlists, provider: provider,
+	}
+	// Guard the typed-nil: a nil *sonic.Sonic stored in the interface field would be non-nil and
+	// panic on first call. Leaving the field nil lets handlers treat "no engine" cleanly.
+	if sonicSvc != nil {
+		r.sonic = sonicSvc
 	}
 	r.Handler = r.routes()
 	return r

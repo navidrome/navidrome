@@ -318,6 +318,7 @@ func setupTestDB() {
 		scrobbler.NewPlayTracker(ds, events.NoopBroker(), nil),
 		playlists.NewPlaylists(ds, core.NewImageUploadService()),
 		providerFake,
+		nil,
 	)
 }
 

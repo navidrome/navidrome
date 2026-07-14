@@ -19,7 +19,7 @@ var _ = Describe("Case-insensitive routing", func() {
 	var api *Router
 
 	BeforeEach(func() {
-		api = New(&tests.MockDataStore{}, nil, nil, nil, nil, nil, nil, nil)
+		api = New(&tests.MockDataStore{}, nil, nil, nil, nil, nil, nil, nil, nil)
 	})
 
 	It("serves a fully lowercase path directly", func() {

@@ -94,7 +94,7 @@ var _ = Describe("handleSocket", func() {
 			Expect(err).ToNot(HaveOccurred())
 			token = t
 
-			api = New(ds, nil, nil, nil, nil, nil, nil, nil)
+			api = New(ds, nil, nil, nil, nil, nil, nil, nil, nil)
 		})
 
 		It("upgrades when authenticated via the api_key query parameter", func() {
