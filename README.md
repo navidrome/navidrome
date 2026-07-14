@@ -73,7 +73,7 @@ report fork-specific issues upstream. For anything about Navidrome itself, the u
 [Subreddit](https://www.reddit.com/r/navidrome/). If you want to contribute to the upstream project in any other way 
 ([ui/backend dev](https://www.navidrome.org/docs/developers/), 
 [translations](https://www.navidrome.org/docs/developers/translations/), 
-[themes](https://www.navidrome.org/docs/developers/creating-themes)), please join the chat in our 
+[themes](https://www.navidrome.org/docs/developers/creating-themes)), please join the chat in their 
 [Discord server](https://discord.gg/xh7j7yF). 
 
 ## Installation
