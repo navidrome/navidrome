@@ -27,6 +27,12 @@ compatibility, same plugin system. This fork just adds:
 - 📁 **[Physical folder browsing](navidrome-folder-roadmap.md)** — navigate, play, and manage your library exactly
   as it's laid out on disk. See [below](#physical-folder-browsing-experimental) for the full feature list.
 
+Kept in sync with upstream: currently based on [Navidrome v0.63.2](https://github.com/navidrome/navidrome/releases/tag/v0.63.2),
+merged in directly rather than maintained as a standalone patch set. Syncs happen periodically, not on a fixed
+schedule — check the [releases page](https://github.com/RFLundgren/navidrome_experimental/releases) for this fork's
+own tagged checkpoints (e.g. `v0.63.2-experimental.1`), which pin the exact upstream baseline plus the fork-specific
+fixes each one includes.
+
 ### Getting navidrome-experimental
 
 This isn't in the official Navidrome image — you'll need to pull this fork's image specifically. Docker Compose:
@@ -57,13 +63,14 @@ For everything else — configuration options, reverse proxy setup, environment 
 [Documentation](#documentation) section below and [project's website](https://www.navidrome.org/docs/) apply exactly
 as they do for upstream Navidrome.
 
-**Note**: The `master` branch may be in an unstable or even broken state during development. 
-Please use [releases](https://github.com/navidrome/navidrome/releases) instead of 
-the `master` branch in order to get a stable set of binaries.
+**Note**: the `:develop` image always tracks the tip of `master` and may occasionally be in flux mid-fix. For a
+pinned, known-good build instead, use one of this fork's [tagged releases](https://github.com/RFLundgren/navidrome_experimental/releases).
 
-__Any feedback is welcome!__ If you need/want a new feature, find a bug or think of any way to improve Navidrome, 
-please file a [GitHub issue](https://github.com/navidrome/navidrome/issues) or join the discussion in our 
-[Subreddit](https://www.reddit.com/r/navidrome/). If you want to contribute to the project in any other way 
+__Any feedback is welcome!__ Found a bug or have a feature idea specific to this fork's podcast/folder support?
+File it on [this fork's issue tracker](https://github.com/RFLundgren/navidrome_experimental/issues) — please don't
+report fork-specific issues upstream. For anything about Navidrome itself, the upstream project welcomes
+[GitHub issues](https://github.com/navidrome/navidrome/issues) or discussion in their
+[Subreddit](https://www.reddit.com/r/navidrome/). If you want to contribute to the upstream project in any other way 
 ([ui/backend dev](https://www.navidrome.org/docs/developers/), 
 [translations](https://www.navidrome.org/docs/developers/translations/), 
 [themes](https://www.navidrome.org/docs/developers/creating-themes)), please join the chat in our 
