@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
@@ -27,6 +28,26 @@ func throttleStreams(limit int) func(http.Handler) http.Handler {
 		return func(next http.Handler) http.Handler { return next }
 	}
 	return middleware.ThrottleBacklog(limit, consts.RequestThrottleBacklogLimit, consts.RequestThrottleBacklogTimeout)
+}
+
+// caseInsensitivePaths lowercases each request path before chi matches it. Jellyfin clients route
+// case-insensitively but chi matches case-sensitively; every route in this package is registered in
+// lowercase (see routes()), so lowering the request path routes any casing to the right handler.
+//
+// This lowercases id/param segments too, which is safe because every id on the Jellyfin boundary is
+// lowercase hex (see dto.EncodeID) — lowering it is a no-op. The invariant this relies on: no route
+// in this package may carry case-sensitive data in its path.
+func caseInsensitivePaths(r chi.Router) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		// When mounted under a parent, chi has already stripped the mount prefix and matches against
+		// RouteContext.RoutePath rather than r.URL.Path, so that's what must be lowered.
+		if rctx := chi.RouteContext(req.Context()); rctx != nil && rctx.RoutePath != "" {
+			rctx.RoutePath = strings.ToLower(rctx.RoutePath)
+		} else {
+			req.URL.Path = strings.ToLower(req.URL.Path)
+		}
+		r.ServeHTTP(w, req)
+	})
 }
 
 // normalizeQueryKeys folds query-parameter keys to lowercase so handlers can read params

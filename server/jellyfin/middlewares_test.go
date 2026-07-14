@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -319,5 +320,64 @@ var _ = Describe("throttleStreams", func() {
 	It("is disabled, not panicking, when the limit is zero", func() {
 		Expect(func() { serve(0, 4) }).ToNot(Panic())
 		Expect(serve(0, 4)).To(BeNumerically(">", int32(1)))
+	})
+})
+
+var _ = Describe("caseInsensitivePaths", func() {
+	var handler http.Handler
+	var gotID, gotContainer string
+
+	BeforeEach(func() {
+		gotID, gotContainer = "", ""
+		r := chi.NewRouter()
+		// Routes are registered lowercase, mirroring the real router.
+		r.Get("/foo/{id}/bar", func(w http.ResponseWriter, req *http.Request) {
+			gotID = chi.URLParam(req, "id")
+			w.WriteHeader(http.StatusOK)
+		})
+		r.Get("/audio/{id}/stream.{container}", func(w http.ResponseWriter, req *http.Request) {
+			gotContainer = chi.URLParam(req, "container")
+			w.WriteHeader(http.StatusOK)
+		})
+		// A second route reusing the "bar" segment name at a different position, to prove segment
+		// names shared across routes coexist (the flat-map predecessor collided on these).
+		r.Get("/bar/{id}", func(w http.ResponseWriter, req *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		})
+		handler = caseInsensitivePaths(r)
+	})
+
+	serve := func(path string) *httptest.ResponseRecorder {
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, httptest.NewRequest("GET", path, nil))
+		return w
+	}
+
+	It("routes a mixed-case request to its lowercase-registered route", func() {
+		Expect(serve("/FOO/abc/BAR").Code).To(Equal(http.StatusOK))
+	})
+
+	It("routes both routes that share a segment name, regardless of casing", func() {
+		Expect(serve("/Foo/abc/Bar").Code).To(Equal(http.StatusOK))
+		Expect(serve("/BAR/abc").Code).To(Equal(http.StatusOK))
+	})
+
+	It("lowercases the mixed literal.extension segment so the route and container match", func() {
+		w := serve("/Audio/abc/STREAM.MP3")
+		Expect(w.Code).To(Equal(http.StatusOK))
+		Expect(gotContainer).To(Equal("mp3"))
+	})
+
+	It("lowercases id/param segments (safe: Jellyfin ids are lowercase hex)", func() {
+		serve("/foo/DEADBEEF/bar")
+		Expect(gotID).To(Equal("deadbeef"))
+	})
+
+	It("normalizes the RoutePath branch when mounted under a parent", func() {
+		parent := chi.NewRouter()
+		parent.Mount("/jellyfin", handler)
+		w := httptest.NewRecorder()
+		parent.ServeHTTP(w, httptest.NewRequest("GET", "/jellyfin/FOO/abc/BAR", nil))
+		Expect(w.Code).To(Equal(http.StatusOK))
 	})
 })

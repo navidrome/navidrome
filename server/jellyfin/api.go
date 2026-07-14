@@ -59,20 +59,23 @@ func (api *Router) routes() http.Handler {
 	// handler and the api_key check see folded keys.
 	inner.Use(normalizeQueryKeys)
 
+	// Routes are registered in lowercase; caseInsensitivePaths lowercases every request path so any
+	// casing a Jellyfin client sends matches. Keep new routes lowercase (param names stay as-is).
+
 	// Public (no auth): handshake + login.
-	inner.Get("/System/Info/Public", api.getPublicSystemInfo)
-	inner.Get("/System/Ping", api.ping)
-	inner.Post("/System/Ping", api.ping)
-	inner.Get("/QuickConnect/Enabled", api.quickConnectEnabled)
+	inner.Get("/system/info/public", api.getPublicSystemInfo)
+	inner.Get("/system/ping", api.ping)
+	inner.Post("/system/ping", api.ping)
+	inner.Get("/quickconnect/enabled", api.quickConnectEnabled)
 	// Rate-limit the password login, mirroring the native /auth/login: it's an unauthenticated
 	// brute-force surface, so it must share the same per-IP throttle when one is configured.
 	if conf.Server.AuthRequestLimit > 0 {
 		limiter := httprate.LimitByIP(conf.Server.AuthRequestLimit, conf.Server.AuthWindowLength)
-		inner.With(limiter).Post("/Users/AuthenticateByName", api.authenticateByName)
+		inner.With(limiter).Post("/users/authenticatebyname", api.authenticateByName)
 	} else {
-		inner.Post("/Users/AuthenticateByName", api.authenticateByName)
+		inner.Post("/users/authenticatebyname", api.authenticateByName)
 	}
-	inner.Get("/Users/Public", api.getPublicUsers)
+	inner.Get("/users/public", api.getPublicUsers)
 
 	// Images are intentionally public: artwork isn't sensitive, matching Jellyfin's image handling.
 	// Bound concurrency like Subsonic's getCoverArt: image decode/resize is CPU- and memory-heavy,
@@ -80,8 +83,8 @@ func (api *Router) routes() http.Handler {
 	inner.Group(func(r chi.Router) {
 		r.Use(server.ThrottleBacklog(conf.Server.DevArtworkMaxRequests, conf.Server.DevArtworkThrottleBacklogLimit,
 			conf.Server.DevArtworkThrottleBacklogTimeout))
-		r.Get("/Items/{itemId}/Images/{type}", api.getItemImage)
-		r.Get("/Items/{itemId}/Images/{type}/{index}", api.getItemImage)
+		r.Get("/items/{itemId}/images/{type}", api.getItemImage)
+		r.Get("/items/{itemId}/images/{type}/{index}", api.getItemImage)
 	})
 
 	inner.Group(func(r chi.Router) {
@@ -90,10 +93,10 @@ func (api *Router) routes() http.Handler {
 		// Subsonic's getPlayer, so Jellyfin clients show up in the players list (and scrobbling has a
 		// player) even before the first playback report.
 		r.Use(api.withPlayer)
-		r.Get("/UserViews", api.getUserViews)
-		r.Get("/Users/{userId}/Views", api.getUserViews)
-		r.Get("/Users/Me", api.getCurrentUser)
-		r.Get("/Users/{userId}", api.getCurrentUser)
+		r.Get("/userviews", api.getUserViews)
+		r.Get("/users/{userId}/views", api.getUserViews)
+		r.Get("/users/me", api.getCurrentUser)
+		r.Get("/users/{userId}", api.getCurrentUser)
 
 		// Cursor-backed collections: each streams straight from the DB, holding a connection for the
 		// whole client-paced response, so enough slow clients would take the entire pool and stall the
@@ -101,74 +104,74 @@ func (api *Router) routes() http.Handler {
 		// requests queue rather than fail.
 		r.Group(func(r chi.Router) {
 			r.Use(throttleStreams(conf.Server.Jellyfin.MaxConcurrentStreams))
-			r.Get("/Items", api.getItems)
-			r.Get("/Users/{userId}/Items", api.getItems)
-			r.Get("/Users/{userId}/Items/Latest", api.getLatest)
-			r.Get("/Artists", api.getArtists)
-			r.Get("/Artists/AlbumArtists", api.getAlbumArtists)
-			r.Get("/Playlists/{playlistId}/Items", api.getPlaylistItems)
+			r.Get("/items", api.getItems)
+			r.Get("/users/{userId}/items", api.getItems)
+			r.Get("/users/{userId}/items/latest", api.getLatest)
+			r.Get("/artists", api.getArtists)
+			r.Get("/artists/albumartists", api.getAlbumArtists)
+			r.Get("/playlists/{playlistId}/items", api.getPlaylistItems)
 		})
 
-		r.Get("/Items/{itemId}", api.getItem)
-		r.Get("/Users/{userId}/Items/{itemId}", api.getItem)
-		r.Delete("/Items/{itemId}", api.deleteItem)
+		r.Get("/items/{itemId}", api.getItem)
+		r.Get("/users/{userId}/items/{itemId}", api.getItem)
+		r.Delete("/items/{itemId}", api.deleteItem)
 
 		// /UserFavoriteItems is the current @jellyfin/sdk spelling (Jellify); the
 		// /Users/{userId}/FavoriteItems form is the legacy one Finamp still uses.
-		r.Post("/UserFavoriteItems/{itemId}", api.markFavorite)
-		r.Delete("/UserFavoriteItems/{itemId}", api.unmarkFavorite)
-		r.Post("/Users/{userId}/FavoriteItems/{itemId}", api.markFavorite)
-		r.Delete("/Users/{userId}/FavoriteItems/{itemId}", api.unmarkFavorite)
-		r.Post("/Users/{userId}/Items/{itemId}/Rating", api.setRating)
-		r.Delete("/Users/{userId}/Items/{itemId}/Rating", api.removeRating)
+		r.Post("/userfavoriteitems/{itemId}", api.markFavorite)
+		r.Delete("/userfavoriteitems/{itemId}", api.unmarkFavorite)
+		r.Post("/users/{userId}/favoriteitems/{itemId}", api.markFavorite)
+		r.Delete("/users/{userId}/favoriteitems/{itemId}", api.unmarkFavorite)
+		r.Post("/users/{userId}/items/{itemId}/rating", api.setRating)
+		r.Delete("/users/{userId}/items/{itemId}/rating", api.removeRating)
 
 		// Per-item play/favorite/rating state. Jellify uses the /UserItems form;
 		// /Users/{userId}/Items is the legacy spelling.
-		r.Get("/UserItems/{itemId}/UserData", api.getUserItemData)
-		r.Get("/Users/{userId}/Items/{itemId}/UserData", api.getUserItemData)
+		r.Get("/useritems/{itemId}/userdata", api.getUserItemData)
+		r.Get("/users/{userId}/items/{itemId}/userdata", api.getUserItemData)
 
-		r.Get("/Artists/{itemId}/Similar", api.getSimilarArtists)
-		r.Get("/Items/{itemId}/Similar", api.getSimilarItems)
-		r.Get("/Items/{itemId}/InstantMix", api.getInstantMix)
-		r.Get("/Genres", api.getGenres)
-		r.Get("/MusicGenres", api.getGenres)
+		r.Get("/artists/{itemId}/similar", api.getSimilarArtists)
+		r.Get("/items/{itemId}/similar", api.getSimilarItems)
+		r.Get("/items/{itemId}/instantmix", api.getInstantMix)
+		r.Get("/genres", api.getGenres)
+		r.Get("/musicgenres", api.getGenres)
 
-		r.Post("/Playlists", api.createPlaylist)
-		r.Get("/Playlists/{playlistId}", api.getPlaylist)
-		r.Post("/Playlists/{playlistId}", api.updatePlaylist)
-		r.Post("/Playlists/{playlistId}/Items", api.addToPlaylist)
-		r.Delete("/Playlists/{playlistId}/Items", api.removeFromPlaylist)
-		r.Get("/Playlists/{playlistId}/Users", api.getPlaylistUsers)
-		r.Get("/Playlists/{playlistId}/Users/{userId}", api.getPlaylistUser)
+		r.Post("/playlists", api.createPlaylist)
+		r.Get("/playlists/{playlistId}", api.getPlaylist)
+		r.Post("/playlists/{playlistId}", api.updatePlaylist)
+		r.Post("/playlists/{playlistId}/items", api.addToPlaylist)
+		r.Delete("/playlists/{playlistId}/items", api.removeFromPlaylist)
+		r.Get("/playlists/{playlistId}/users", api.getPlaylistUsers)
+		r.Get("/playlists/{playlistId}/users/{userId}", api.getPlaylistUser)
 
 		// Cover upload/delete: only playlists are writable (see postItemImage); the GET routes
 		// above stay public.
-		r.Post("/Items/{itemId}/Images/{type}", api.postItemImage)
-		r.Delete("/Items/{itemId}/Images/{type}", api.deleteItemImage)
+		r.Post("/items/{itemId}/images/{type}", api.postItemImage)
+		r.Delete("/items/{itemId}/images/{type}", api.deleteItemImage)
 
-		r.Get("/Audio/{itemId}/stream", api.streamAudio)
-		r.Get("/Audio/{itemId}/stream.{container}", api.streamAudio)
-		r.Get("/Audio/{itemId}/universal", api.streamAudio)
-		r.Get("/Audio/{itemId}/main.m3u8", api.streamHls)
-		r.Get("/Items/{itemId}/PlaybackInfo", api.getPlaybackInfo)
-		r.Post("/Items/{itemId}/PlaybackInfo", api.getPlaybackInfo)
+		r.Get("/audio/{itemId}/stream", api.streamAudio)
+		r.Get("/audio/{itemId}/stream.{container}", api.streamAudio)
+		r.Get("/audio/{itemId}/universal", api.streamAudio)
+		r.Get("/audio/{itemId}/main.m3u8", api.streamHls)
+		r.Get("/items/{itemId}/playbackinfo", api.getPlaybackInfo)
+		r.Post("/items/{itemId}/playbackinfo", api.getPlaybackInfo)
 		// Direct-file endpoints: some clients (Finamp's just_audio) fetch here instead of
 		// /Audio/{id}/stream; /Download reuses the direct-play handler as Jellyfin serves the same file.
-		r.Get("/Items/{itemId}/File", api.streamFile)
-		r.Get("/Items/{itemId}/Download", api.streamFile)
+		r.Get("/items/{itemId}/file", api.streamFile)
+		r.Get("/items/{itemId}/download", api.streamFile)
 
-		r.Post("/Sessions/Playing", api.reportPlaybackStart)
-		r.Post("/Sessions/Playing/Progress", api.reportPlaybackProgress)
-		r.Post("/Sessions/Playing/Stopped", api.reportPlaybackStopped)
-		r.Post("/Sessions/Capabilities", api.postCapabilities)
-		r.Post("/Sessions/Capabilities/Full", api.postCapabilities)
+		r.Post("/sessions/playing", api.reportPlaybackStart)
+		r.Post("/sessions/playing/progress", api.reportPlaybackProgress)
+		r.Post("/sessions/playing/stopped", api.reportPlaybackStopped)
+		r.Post("/sessions/capabilities", api.postCapabilities)
+		r.Post("/sessions/capabilities/full", api.postCapabilities)
 
 		// Real-time clients (e.g. Finamp) open this right after login; without it they 404-loop-reconnect.
 		r.Get("/socket", api.handleSocket)
 
-		r.Get("/AudioMuseAI/info", api.audioMuseInfo)
-		r.Get("/AudioMuseAI/similar_tracks", api.audioMuseSimilarTracks)
-		r.Get("/AudioMuseAI/find_path", api.audioMuseFindPath)
+		r.Get("/audiomuseai/info", api.audioMuseInfo)
+		r.Get("/audiomuseai/similar_tracks", api.audioMuseSimilarTracks)
+		r.Get("/audiomuseai/find_path", api.audioMuseFindPath)
 	})
 
 	// Logged at Debug, not Warn/Error: clients probing for optional/legacy endpoints is expected
