@@ -42,3 +42,4 @@ go.work*
 .worktrees/
 PODCAST_CLIENT_INTEGRATION.md
 FOLDER_CLIENT_INTEGRATION.md
+private_beta_testing.md
