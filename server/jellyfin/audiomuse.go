@@ -23,9 +23,14 @@ type audioMuseInfoResponse struct {
 }
 
 func (api *Router) audioMuseInfo(w http.ResponseWriter, r *http.Request) {
+	// Like getOpenSubsonicExtensions: advertise the sonic endpoints only when a provider is loaded.
+	endpoints := []string{}
+	if api.sonic != nil && api.sonic.HasProvider() {
+		endpoints = audioMuseEndpoints
+	}
 	api.ok(w, r, audioMuseInfoResponse{
 		Version:            consts.Version,
-		AvailableEndpoints: audioMuseEndpoints,
+		AvailableEndpoints: endpoints,
 	})
 }
 
@@ -38,11 +43,16 @@ type audioMuseSimilarTrack struct {
 
 func (api *Router) audioMuseSimilarTracks(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	// Gate the whole endpoint on a sonic provider, like the Subsonic sonicSimilarity handlers.
+	if api.sonic == nil || !api.sonic.HasProvider() {
+		api.notFound(w, r)
+		return
+	}
 	p := req.Params(r)
 	tracks := []audioMuseSimilarTrack{}
 
 	itemID := p.StringOr("item_id", "")
-	if itemID == "" || api.sonic == nil || !api.sonic.HasProvider() {
+	if itemID == "" {
 		api.ok(w, r, tracks)
 		return
 	}

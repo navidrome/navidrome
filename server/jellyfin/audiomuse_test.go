@@ -16,8 +16,8 @@ import (
 )
 
 var _ = Describe("AudioMuse info", func() {
-	It("returns the version and available endpoints, excluding info itself", func() {
-		api := &Router{}
+	It("lists the sonic endpoints (excluding info) when a provider is present", func() {
+		api := &Router{sonic: &fakeSonicEngine{provider: true}}
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("GET", "/AudioMuseAI/info", nil)
 
@@ -31,6 +31,19 @@ var _ = Describe("AudioMuse info", func() {
 			"GET /AudioMuseAI/similar_tracks",
 			"GET /AudioMuseAI/find_path",
 		))
+	})
+
+	It("returns an empty endpoint list when no provider is loaded", func() {
+		api := &Router{}
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "/AudioMuseAI/info", nil)
+
+		api.audioMuseInfo(w, r)
+
+		Expect(w.Code).To(Equal(200))
+		var body audioMuseInfoResponse
+		Expect(json.Unmarshal(w.Body.Bytes(), &body)).To(Succeed())
+		Expect(body.AvailableEndpoints).To(BeEmpty())
 	})
 })
 
@@ -132,10 +145,9 @@ var _ = Describe("AudioMuse similar_tracks", func() {
 		Expect(fake.gotID).To(Equal(""))
 	})
 
-	It("returns an empty array when no provider is loaded", func() {
+	It("returns 404 when no sonic provider is loaded", func() {
 		fake.provider = false
 		w := call("item_id="+dto.EncodeID("seed"), model.User{IsAdmin: true})
-		Expect(w.Code).To(Equal(200))
-		Expect(strings.TrimSpace(w.Body.String())).To(Equal("[]"))
+		Expect(w.Code).To(Equal(404))
 	})
 })
