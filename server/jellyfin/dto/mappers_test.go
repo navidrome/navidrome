@@ -241,7 +241,10 @@ var _ = Describe("mappers", func() {
 	})
 
 	It("maps a playlist to a Playlist BaseItemDto", func() {
-		p := model.Playlist{ID: "pl-1", Name: "Chill", SongCount: 7, Duration: 120}
+		p := model.Playlist{
+			ID: "pl-1", Name: "Chill", SongCount: 7, Duration: 120,
+			Annotations: model.Annotations{Starred: true, Rating: 4, PlayCount: 2},
+		}
 		item := PlaylistToBaseItem(p)
 		Expect(item.Type).To(Equal("Playlist"))
 		Expect(item.IsFolder).To(BeTrue())
@@ -250,6 +253,9 @@ var _ = Describe("mappers", func() {
 		Expect(item.MediaType).To(Equal("Audio"))
 		Expect(*item.ChildCount).To(Equal(7))
 		Expect(item.RunTimeTicks).To(Equal(int64(1_200_000_000)))
+		Expect(item.UserData.IsFavorite).To(BeTrue())
+		Expect(item.UserData.PlayCount).To(Equal(2))
+		Expect(*item.UserData.Rating).To(Equal(8.0))
 		tag := item.ImageTags["Primary"]
 		Expect(tag).ToNot(BeEmpty())
 		Expect(item.ImageBlurHashes["Primary"]).To(HaveKey(tag))

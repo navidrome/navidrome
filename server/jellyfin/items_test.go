@@ -135,24 +135,29 @@ var _ = Describe("Items", func() {
 			Expect(res.TotalRecordCount).To(Equal(2))
 		})
 
-		It("merges a multi-type favorites query (Finamp's favorites screen), skipping playlists (no starred concept)", func() {
+		It("merges favorite songs, albums, and playlists", func() {
 			mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
 			mfRepo.SetData(model.MediaFiles{{ID: "s1", Title: "Song"}})
 			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: "a1", Name: "One"}})
-			ds.Playlist(context.Background()).(*tests.MockPlaylistRepo).SetData(model.Playlists{{ID: "p1", Name: "My Mix"}})
+			playlistRepo := ds.Playlist(context.Background()).(*tests.MockPlaylistRepo)
+			playlistRepo.SetData(model.Playlists{{ID: "p1", Name: "My Mix", Annotations: model.Annotations{Starred: true}}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio,MusicAlbum,Playlist&Filters=IsFavorite", nil).WithContext(ctxUser())
 			invoke(api.getItems, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res dto.QueryResult
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
-			Expect(res.Items).To(HaveLen(2))
+			Expect(res.Items).To(HaveLen(3))
 			types := []string{res.Items[0].Type, res.Items[1].Type}
-			Expect(types).To(ConsistOf("Audio", "MusicAlbum"))
+			types = append(types, res.Items[2].Type)
+			Expect(types).To(ConsistOf("Audio", "MusicAlbum", "Playlist"))
 			sql, _, err := albumRepo.Options.Filters.ToSql()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(sql).To(ContainSubstring("starred"))
+			playlistSQL, _, err := playlistRepo.Options.Filters.ToSql()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(playlistSQL).To(ContainSubstring("starred"))
 		})
 
 		It("applies StartIndex/Limit to the merged multi-type result set", func() {

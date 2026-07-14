@@ -49,6 +49,12 @@ var _ = Describe("Multi-user access control", func() {
 			Expect(queryResult(get("/Items?IncludeItemTypes=Playlist&Recursive=true")).TotalRecordCount).To(Equal(1))
 		})
 
+		It("does not let a non-owner annotate another user's private playlist", func() {
+			adminPl := createPlaylist("Admin Private", nil)
+			Expect(postAs(regularUser, "/Users/user-1/FavoriteItems/"+enc(adminPl), "").Code).To(Equal(http.StatusNotFound))
+			Expect(postAs(regularUser, "/Users/user-1/Items/"+enc(adminPl)+"/Rating?Rating=10", "").Code).To(Equal(http.StatusNotFound))
+		})
+
 		It("lets each user manage their own playlist", func() {
 			regularPl := createPlaylistAs(regularUser, "Regular's Mix")
 			Expect(queryResult(getAs(regularUser, "/Items?IncludeItemTypes=Playlist&Recursive=true")).TotalRecordCount).To(Equal(1))

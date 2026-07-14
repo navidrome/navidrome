@@ -60,6 +60,16 @@ var _ = Describe("Annotations", func() {
 			Expect(q.Items[0].Name).To(Equal("Abbey Road"))
 		})
 
+		It("marks and lists a playlist as favorite", func() {
+			id := createPlaylist("Favorite Mix", nil)
+			Expect(post("/Users/admin-1/FavoriteItems/"+enc(id), "").Code).To(Equal(http.StatusOK))
+			Expect(itemUserData(id).IsFavorite).To(BeTrue())
+
+			q := queryResult(get("/Items?IncludeItemTypes=Playlist&Recursive=true&Filters=IsFavorite"))
+			Expect(q.TotalRecordCount).To(Equal(1))
+			Expect(q.Items[0].Name).To(Equal("Favorite Mix"))
+		})
+
 		It("filters to favorites via the isFavorite query param (Finamp's artist widget form)", func() {
 			// Finamp's "Favourite tracks" widget sends isFavorite=true as a query param (not
 			// Filters=IsFavorite), combined with ArtistIds.
@@ -112,6 +122,12 @@ var _ = Describe("Annotations", func() {
 			parseInto(del("/Users/admin-1/Items/"+enc(id)+"/Rating"), &cleared)
 			Expect(cleared.Rating).To(BeNil())
 			Expect(itemUserData(id).Rating).To(BeNil())
+		})
+
+		It("sets and reads a playlist rating", func() {
+			id := createPlaylist("Rated Mix", nil)
+			Expect(post("/Users/admin-1/Items/"+enc(id)+"/Rating?Rating=8", "").Code).To(Equal(http.StatusOK))
+			Expect(*itemUserData(id).Rating).To(Equal(float64(8)))
 		})
 
 		It("clamps an out-of-range rating to the valid domain", func() {

@@ -85,8 +85,11 @@ func (r *playlistRepository) userFilter() Sqlizer {
 }
 
 func (r *playlistRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	sq := Select().Where(r.userFilter())
-	return r.count(sq, options...)
+	query := Select().Where(r.userFilter())
+	if filtersNeedAnnotation(r.applyFilters(query, options...)) {
+		query = r.withAnnotation(query, "playlist.id")
+	}
+	return r.count(query, options...)
 }
 
 func (r *playlistRepository) Exists(id string) (bool, error) {
@@ -203,8 +206,9 @@ func (r *playlistRepository) GetPlaylists(mediaFileId string) (model.Playlists, 
 }
 
 func (r *playlistRepository) selectPlaylist(options ...model.QueryOptions) SelectBuilder {
-	return r.newSelect(options...).Join("user on user.id = owner_id").
+	sel := r.newSelect(options...).Join("user on user.id = owner_id").
 		Columns(r.tableName+".*", "user.user_name as owner_name")
+	return r.withAnnotation(sel, r.tableName+".id")
 }
 
 func (r *playlistRepository) updateTracks(id string, tracks model.MediaFiles) error {

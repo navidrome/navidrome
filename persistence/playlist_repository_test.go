@@ -1,11 +1,15 @@
 package persistence
 
 import (
+	"slices"
+
+	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/pocketbase/dbx"
 )
 
 var _ = Describe("PlaylistRepository", func() {
@@ -68,6 +72,111 @@ var _ = Describe("PlaylistRepository", func() {
 			Expect(mfs).To(HaveLen(2))
 			Expect(mfs[0].ID).To(Equal(songDayInALife.ID))
 			Expect(mfs[1].ID).To(Equal(songRadioactivity.ID))
+		})
+	})
+
+	Describe("Annotations", func() {
+		var plsID string
+
+		BeforeEach(func() {
+			pls := model.Playlist{Name: "Annotated", OwnerID: "userid"}
+			Expect(repo.Put(&pls)).To(Succeed())
+			plsID = pls.ID
+		})
+
+		countAnnotations := func() int {
+			var count int
+			Expect(GetDBXBuilder().NewQuery(
+				"SELECT count(*) FROM annotation WHERE item_type = 'playlist' AND item_id = {:id}").
+				Bind(dbx.Params{"id": plsID}).Row(&count)).To(Succeed())
+			return count
+		}
+
+		It("stores and reads back starred", func() {
+			Expect(repo.SetStar(true, plsID)).To(Succeed())
+
+			p, err := repo.Get(plsID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(p.Starred).To(BeTrue())
+			Expect(p.StarredAt).ToNot(BeNil())
+		})
+
+		It("stores and reads back rating and average_rating", func() {
+			Expect(repo.SetRating(4, plsID)).To(Succeed())
+
+			p, err := repo.Get(plsID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(p.Rating).To(Equal(4))
+			Expect(p.RatedAt).ToNot(BeNil())
+			Expect(p.AverageRating).To(Equal(4.0))
+		})
+
+		It("keeps annotations isolated per user", func() {
+			Expect(repo.SetStar(true, plsID)).To(Succeed())
+
+			otherCtx := request.WithUser(log.NewContext(GinkgoT().Context()),
+				model.User{ID: "otheruser", UserName: "otheruser", IsAdmin: true})
+			otherRepo := NewPlaylistRepository(otherCtx, GetDBXBuilder())
+
+			p, err := otherRepo.Get(plsID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(p.Starred).To(BeFalse())
+		})
+
+		It("reads starred back through GetAll", func() {
+			Expect(repo.SetStar(true, plsID)).To(Succeed())
+
+			all, err := repo.GetAll()
+			Expect(err).ToNot(HaveOccurred())
+			idx := slices.IndexFunc(all, func(p model.Playlist) bool { return p.ID == plsID })
+			Expect(idx).To(BeNumerically(">=", 0))
+			Expect(all[idx].Starred).To(BeTrue())
+		})
+
+		It("counts playlists using annotation filters", func() {
+			Expect(repo.SetStar(true, plsID)).To(Succeed())
+
+			options := model.QueryOptions{Filters: squirrel.Eq{"starred": true}}
+			starred, err := repo.GetAll(options)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(starred).To(ContainElement(HaveField("ID", plsID)))
+
+			count, err := repo.CountAll(options)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(count).To(Equal(int64(len(starred))))
+		})
+
+		It("does not leak an annotation row of another item_type sharing the playlist id", func() {
+			// Older builds (and the star fallthrough) can leave a media_file-typed row
+			// under a playlist id; the item_type-scoped join must not surface or dupe it.
+			_, err := GetDBXBuilder().NewQuery(
+				"INSERT INTO annotation (user_id, item_id, item_type, starred) VALUES ({:uid}, {:id}, 'media_file', 1)").
+				Bind(dbx.Params{"uid": "userid", "id": plsID}).Execute()
+			Expect(err).ToNot(HaveOccurred())
+
+			p, err := repo.Get(plsID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(p.Starred).To(BeFalse())
+
+			all, err := repo.GetAll()
+			Expect(err).ToNot(HaveOccurred())
+			matches := 0
+			for _, pl := range all {
+				if pl.ID == plsID {
+					matches++
+				}
+			}
+			Expect(matches).To(Equal(1))
+		})
+
+		It("relies on the annotation sweep, not Delete, to clean up annotations", func() {
+			Expect(repo.SetStar(true, plsID)).To(Succeed())
+
+			Expect(repo.Delete(plsID)).To(Succeed())
+			Expect(countAnnotations()).To(Equal(1))
+
+			Expect(repo.(*playlistRepository).cleanAnnotations()).To(Succeed())
+			Expect(countAnnotations()).To(Equal(0))
 		})
 	})
 

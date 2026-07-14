@@ -232,8 +232,7 @@ func GenreToBaseItem(g model.Genre) BaseItemDto {
 	}
 }
 
-// PlaylistToBaseItem maps a playlist to a Playlist BaseItemDto. model.Playlist has no embedded
-// Annotations (no starred/rating/play-count), so UserData is left nil.
+// PlaylistToBaseItem maps a playlist to a Playlist BaseItemDto.
 func PlaylistToBaseItem(p model.Playlist) BaseItemDto {
 	// Finamp caches covers keyed by blurHash, so the tag (and blurhash) must change with the cover.
 	// UpdatedAt versions it (Put bumps it on upload); over-invalidation only costs a refetch.
@@ -252,5 +251,6 @@ func PlaylistToBaseItem(p model.Playlist) BaseItemDto {
 		ImageTags:         map[string]string{"Primary": tag},
 		ImageBlurHashes:   map[string]map[string]string{"Primary": {tag: blurHash(tag)}},
 		BackdropImageTags: []string{},
+		UserData:          UserData(p.Annotations, p.ID),
 	}
 }

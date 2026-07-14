@@ -349,18 +349,25 @@ func (api *Router) listGenres(ctx context.Context, opts model.QueryOptions) (dto
 }
 
 // listPlaylists lists playlists visible to the current user. Visibility (public or owned) is
-// enforced by playlistRepository, not scopeIDs. Playlists carry no starred annotation, so a
-// favorites query can never match one — short-circuit to empty rather than pass Filters=IsFavorite.
+// enforced by playlistRepository, not scopeIDs.
 func (api *Router) listPlaylists(ctx context.Context, opts model.QueryOptions, favOnly bool) (dto.QueryResult, error) {
 	if favOnly {
-		return result(nil, 0, opts.Offset), nil
+		starred := squirrel.Eq{"starred": true}
+		if opts.Filters == nil {
+			opts.Filters = starred
+		} else {
+			opts.Filters = squirrel.And{opts.Filters, starred}
+		}
 	}
 	repo := api.ds.Playlist(ctx)
 	playlists, err := repo.GetAll(opts)
 	if err != nil {
 		return dto.QueryResult{}, err
 	}
-	total, _ := repo.CountAll(model.QueryOptions{Filters: opts.Filters})
+	total, err := repo.CountAll(model.QueryOptions{Filters: opts.Filters})
+	if err != nil {
+		return dto.QueryResult{}, err
+	}
 	return result(slice.Map(playlists, dto.PlaylistToBaseItem), int(total), opts.Offset), nil
 }
 

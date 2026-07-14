@@ -12,10 +12,11 @@ import (
 	"github.com/navidrome/navidrome/utils/req"
 )
 
-// resolveAnnotated finds which repo (album, artist or media file) owns id. Albums and songs 404
-// when the user can't access their library; artists span libraries (library_artist), so have no
-// single LibraryID to gate on and rely on list-time scoping. When ok is false the response has
-// already been written, so callers must return without writing the annotation.
+// resolveAnnotated finds which annotated repo owns id. Albums and songs 404 when the user can't
+// access their library; artists span libraries (library_artist), so have no single LibraryID to
+// gate on and rely on list-time scoping. PlaylistRepository.Get enforces playlist visibility.
+// When ok is false the response has already been written, so callers must return without writing
+// the annotation.
 func (api *Router) resolveAnnotated(w http.ResponseWriter, r *http.Request, id string) (repo model.AnnotatedRepository, ok bool) {
 	ctx := r.Context()
 	u, _ := request.UserFrom(ctx)
@@ -45,6 +46,13 @@ func (api *Router) resolveAnnotated(w http.ResponseWriter, r *http.Request, id s
 		api.internalError(w, r, err)
 		return nil, false
 	}
+	playlistRepo := api.ds.Playlist(ctx)
+	if _, err := playlistRepo.Get(id); err == nil {
+		return playlistRepo, true
+	} else if !errors.Is(err, model.ErrNotFound) {
+		api.internalError(w, r, err)
+		return nil, false
+	}
 	http.Error(w, "Not Found", http.StatusNotFound)
 	return nil, false
 }
@@ -61,7 +69,7 @@ func (api *Router) getUserItemData(w http.ResponseWriter, r *http.Request) {
 	}
 	data := item.UserData
 	if data == nil {
-		// Items without annotations (e.g. playlists) still return a valid empty UserData.
+		// Items without annotations still return a valid empty UserData.
 		data = dto.UserData(model.Annotations{}, id)
 	}
 	api.ok(w, r, data)

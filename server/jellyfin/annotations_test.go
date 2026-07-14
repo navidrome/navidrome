@@ -71,6 +71,17 @@ var _ = Describe("Annotations", func() {
 			Expect(artistRepo.Data["ar1"].Starred).To(BeTrue())
 		})
 
+		It("stars a visible playlist", func() {
+			playlistRepo := ds.Playlist(context.Background()).(*tests.MockPlaylistRepo)
+			playlistRepo.SetData(model.Playlists{{ID: "p1", Name: "Mix", OwnerID: "u1"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/"+dto.EncodeID("p1"), nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", dto.EncodeID("p1"))
+			invoke(api.markFavorite, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(playlistRepo.Starred["p1"]).To(BeTrue())
+		})
+
 		It("unstars a song and returns IsFavorite=false", func() {
 			mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
 			mfRepo.SetData(model.MediaFiles{{ID: "s1", Title: "Song", LibraryID: 1, Annotations: model.Annotations{Starred: true}}})
@@ -150,6 +161,17 @@ var _ = Describe("Annotations", func() {
 			invoke(api.setRating, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(albumRepo.Data["a1"].Rating).To(Equal(5))
+		})
+
+		It("rates a visible playlist", func() {
+			playlistRepo := ds.Playlist(context.Background()).(*tests.MockPlaylistRepo)
+			playlistRepo.SetData(model.Playlists{{ID: "p1", Name: "Mix", OwnerID: "u1"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("POST", "/Users/u1/Items/"+dto.EncodeID("p1")+"/Rating?Rating=8", nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", dto.EncodeID("p1"))
+			invoke(api.setRating, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(playlistRepo.Ratings["p1"]).To(Equal(4))
 		})
 
 		It("removes a rating", func() {

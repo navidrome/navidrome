@@ -2,6 +2,7 @@ package tests
 
 import (
 	"errors"
+	"time"
 
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/model"
@@ -23,6 +24,8 @@ type MockPlaylistRepo struct {
 	Options    model.QueryOptions
 	Last       *model.Playlist
 	Deleted    []string
+	Starred    map[string]bool // itemID -> starred
+	Ratings    map[string]int  // itemID -> rating
 	Err        bool
 	TracksRepo model.PlaylistTrackRepository
 }
@@ -31,7 +34,6 @@ func (m *MockPlaylistRepo) SetError(err bool) {
 	m.Err = err
 }
 
-// SetData seeds both Get-by-id lookups (Data) and GetAll's result set (All).
 func (m *MockPlaylistRepo) SetData(playlists model.Playlists) {
 	m.Data = make(map[string]*model.Playlist, len(playlists))
 	m.All = playlists
@@ -97,6 +99,44 @@ func (m *MockPlaylistRepo) Delete(id string) error {
 		return errors.New("error")
 	}
 	m.Deleted = append(m.Deleted, id)
+	return nil
+}
+
+func (m *MockPlaylistRepo) SetStar(starred bool, ids ...string) error {
+	if m.Err {
+		return errors.New("error")
+	}
+	if m.Starred == nil {
+		m.Starred = map[string]bool{}
+	}
+	for _, id := range ids {
+		m.Starred[id] = starred
+	}
+	return nil
+}
+
+func (m *MockPlaylistRepo) SetRating(rating int, id string) error {
+	if m.Err {
+		return errors.New("error")
+	}
+	if m.Ratings == nil {
+		m.Ratings = map[string]int{}
+	}
+	m.Ratings[id] = rating
+	return nil
+}
+
+func (m *MockPlaylistRepo) IncPlayCount(string, time.Time) error {
+	if m.Err {
+		return errors.New("error")
+	}
+	return nil
+}
+
+func (m *MockPlaylistRepo) ReassignAnnotation(string, string) error {
+	if m.Err {
+		return errors.New("error")
+	}
 	return nil
 }
 
