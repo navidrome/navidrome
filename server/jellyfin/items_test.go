@@ -320,6 +320,24 @@ var _ = Describe("Items", func() {
 			Expect(albumRepo.SearchQuery).To(BeEmpty())
 		})
 
+		It("reports a multi-type search total past the page, so clients keep paging", func() {
+			songs := make(model.MediaFiles, defaultSearchLimit*2)
+			for i := range songs {
+				songs[i] = model.MediaFile{ID: fmt.Sprintf("s%05d", i), Title: "Song"}
+			}
+			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(songs)
+			ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1", Name: "One"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song&Limit=10", nil).
+				WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.QueryResult
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.Items).To(HaveLen(10))
+			Expect(res.TotalRecordCount).To(BeNumerically(">", 10))
+		})
+
 		It("bounds the multi-type search window however large StartIndex is", func() {
 			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: "a1", Name: "One"}})

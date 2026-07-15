@@ -362,8 +362,9 @@ func (api *Router) mergeTypes(ctx context.Context, q itemsQuery) (itemsResult, e
 	limit := q.limit
 	if q.search != "" {
 		// Past the window the merged order isn't the true one, so serve nothing rather than another
-		// type's rows, and report a total the client can actually page to.
-		total = min(total, window)
+		// type's rows. The total is what's pageable overall, not this page's window, or a client
+		// paging on it would stop after the first page.
+		total = min(total, maxSearchLimit)
 		limit = max(0, window-q.offset)
 		if limit == 0 {
 			return materialized(result(nil, total, q.offset)), nil
