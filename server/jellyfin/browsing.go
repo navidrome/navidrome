@@ -28,10 +28,15 @@ func (api *Router) listArtistsByRole(w http.ResponseWriter, r *http.Request, rol
 	applySort(&opts, "MusicArtist", p.StringOr("sortby", ""), p.StringOr("sortorder", ""))
 
 	scopeIDs, _ := resolveLibraryScope(ctx, dto.DecodeID(p.StringOr("parentid", "")))
+	// Only the fields listArtists reads: /Artists has no favorites filter, so favOnly stays false.
 	// Finamp's artist tab sends GenreIds when a genre filter is active.
-	genreIds := decodedQueryIDs(r, "genreids")
+	q := itemsQuery{
+		scopeIDs: scopeIDs,
+		genreIds: decodedQueryIDs(r, "genreids"),
+		search:   p.StringOr("searchterm", ""),
+	}
 
-	res, err := api.listArtists(ctx, opts, genreIds, scopeIDs, p.StringOr("searchterm", ""), false, role)
+	res, err := api.listArtists(ctx, opts, q, role)
 	if err != nil {
 		api.internalError(w, r, err)
 		return
