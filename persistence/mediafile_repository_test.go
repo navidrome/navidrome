@@ -1028,7 +1028,7 @@ var _ = Describe("MediaRepository", func() {
 				}
 			}).ToNot(Panic())
 			Expect(gotErr).To(HaveOccurred())
-			Expect(gotErr.Error()).To(ContainSubstring("unexpected nil mediafile"))
+			Expect(gotErr.Error()).To(ContainSubstring("unexpected nil model.MediaFile"))
 			Expect(errors.Is(gotErr, dbErr)).To(BeTrue(), "should wrap the original cursor error")
 		})
 

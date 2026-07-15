@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"iter"
 	"slices"
 	"time"
 
@@ -193,13 +194,12 @@ func (r *playlistRepository) GetCursor(options ...model.QueryOptions) (model.Pla
 	if err != nil {
 		return nil, err
 	}
-	return func(yield func(model.Playlist, error) bool) {
-		for p, err := range cursor {
-			if !yield(p.Playlist, err) || err != nil {
-				return
-			}
-		}
-	}, nil
+	return wrapPlaylistCursor(cursor), nil
+}
+
+// dbPlaylist embeds a value, not a pointer, so its model is never nil.
+func wrapPlaylistCursor(cursor iter.Seq2[dbPlaylist, error]) model.PlaylistCursor {
+	return model.PlaylistCursor(wrapCursor(cursor, func(p dbPlaylist) *model.Playlist { return &p.Playlist }))
 }
 
 func (r *playlistRepository) GetPlaylists(mediaFileId string) (model.Playlists, error) {

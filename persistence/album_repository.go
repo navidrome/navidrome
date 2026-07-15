@@ -328,17 +328,7 @@ func (r *albumRepository) GetTouchedAlbums(libID int) (model.AlbumCursor, error)
 }
 
 func wrapAlbumCursor(cursor iter.Seq2[dbAlbum, error]) model.AlbumCursor {
-	return func(yield func(model.Album, error) bool) {
-		for a, err := range cursor {
-			if a.Album == nil {
-				yield(model.Album{}, fmt.Errorf("unexpected nil album (%v): %w", a, err))
-				return
-			}
-			if !yield(*a.Album, err) || err != nil {
-				return
-			}
-		}
-	}
+	return model.AlbumCursor(wrapCursor(cursor, func(a dbAlbum) *model.Album { return a.Album }))
 }
 
 // RefreshPlayCounts updates the play count and last play date annotations for all albums, based

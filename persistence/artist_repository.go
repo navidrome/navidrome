@@ -274,17 +274,7 @@ func (r *artistRepository) GetCursor(options ...model.QueryOptions) (model.Artis
 }
 
 func wrapArtistCursor(cursor iter.Seq2[dbArtist, error]) model.ArtistCursor {
-	return func(yield func(model.Artist, error) bool) {
-		for a, err := range cursor {
-			if a.Artist == nil {
-				yield(model.Artist{}, fmt.Errorf("unexpected nil artist (%v): %w", a, err))
-				return
-			}
-			if !yield(*a.Artist, err) || err != nil {
-				return
-			}
-		}
-	}
+	return model.ArtistCursor(wrapCursor(cursor, func(a dbArtist) *model.Artist { return a.Artist }))
 }
 
 func (r *artistRepository) getIndexKey(a model.Artist) string {
