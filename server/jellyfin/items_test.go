@@ -320,9 +320,22 @@ var _ = Describe("Items", func() {
 			Expect(albumRepo.SearchQuery).To(BeEmpty())
 		})
 
-		It("pages a multi-type search past the ceiling without dropping matches", func() {
-			// The per-type merge window is offset+limit, not the client's limit: clamping it to the
-			// ceiling would make the merged page skip to the next type.
+		It("bounds the multi-type search window however large StartIndex is", func() {
+			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
+			albumRepo.SetData(model.Albums{{ID: "a1", Name: "One"}})
+			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: "s1", Title: "Song"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song&StartIndex=500000&Limit=1", nil).
+				WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			// Without the bound this asks each type for ~500001 rows.
+			Expect(albumRepo.Options.Max).To(Equal(maxSearchLimit + 1))
+		})
+
+		It("stops a multi-type search at the ceiling rather than serving another type's rows", func() {
+			// Bounding the per-type window is what keeps StartIndex from driving it without limit, and
+			// past that window the merged order is no longer the true one.
 			songs := make(model.MediaFiles, maxSearchLimit+1)
 			for i := range songs {
 				songs[i] = model.MediaFile{ID: fmt.Sprintf("s%05d", i), Title: "Song"}
@@ -337,8 +350,28 @@ var _ = Describe("Items", func() {
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res dto.QueryResult
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.Items).To(BeEmpty())
+			Expect(res.TotalRecordCount).To(Equal(maxSearchLimit))
+		})
+
+		It("serves the last page below the ceiling in full", func() {
+			songs := make(model.MediaFiles, maxSearchLimit+1)
+			for i := range songs {
+				songs[i] = model.MediaFile{ID: fmt.Sprintf("s%05d", i), Title: "Song"}
+			}
+			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(songs)
+			ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1", Name: "One"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET",
+				fmt.Sprintf("/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song&StartIndex=%d&Limit=10", maxSearchLimit-1),
+				nil).WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.QueryResult
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			// Clipped to the window, and still the real row at that index — not the album behind it.
 			Expect(res.Items).To(HaveLen(1))
-			Expect(res.Items[0].Id).To(Equal(dto.EncodeID(songs[maxSearchLimit].ID)))
+			Expect(res.Items[0].Id).To(Equal(dto.EncodeID(songs[maxSearchLimit-1].ID)))
 		})
 
 		It("bounds an unbounded multi-type search to the default in total, not per type", func() {

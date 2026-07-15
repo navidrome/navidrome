@@ -323,13 +323,21 @@ func (api *Router) playlistTracks(ctx context.Context, q itemsQuery) (res itemsR
 func (api *Router) mergeTypes(ctx context.Context, q itemsQuery) (itemsResult, error) {
 	// Each per-type query needs at most offset+limit rows (the worst case where one type fills the
 	// whole [offset, offset+limit) window). Totals are unaffected — they come from CountAll.
+	window := 0
+	if q.limit > 0 {
+		window = q.offset + q.limit
+	}
+	// A search materializes its whole window per type (it can't stream), so StartIndex would drive
+	// that without bound. Below the window the merged rows are exactly the client's page; at it, a
+	// truncated type is followed by the next one's rows, so searchWindow also clips what's served.
+	if q.search != "" {
+		window = min(window, maxSearchLimit)
+	}
 	var results []itemsResult
 	total := 0
 	for _, itemType := range q.types {
 		var opts model.QueryOptions
-		if q.limit > 0 {
-			opts.Max = q.offset + q.limit
-		}
+		opts.Max = window
 		applySort(&opts, itemType, q.sortBy, q.sortOrder)
 		res, err := api.queryItemsOfType(ctx, itemType, opts, q)
 		if err != nil {
@@ -351,7 +359,17 @@ func (api *Router) mergeTypes(ctx context.Context, q itemsQuery) (itemsResult, e
 		}
 		items = append(items, typeItems...)
 	}
-	return materialized(result(paginate(items, q.offset, q.limit), total, q.offset)), nil
+	limit := q.limit
+	if q.search != "" {
+		// Past the window the merged order isn't the true one, so serve nothing rather than another
+		// type's rows, and report a total the client can actually page to.
+		total = min(total, window)
+		limit = max(0, window-q.offset)
+		if limit == 0 {
+			return materialized(result(nil, total, q.offset)), nil
+		}
+	}
+	return materialized(result(paginate(items, q.offset, limit), total, q.offset)), nil
 }
 
 func (api *Router) queryItemsOfType(ctx context.Context, itemType string, opts model.QueryOptions, q itemsQuery) (itemsResult, error) {
