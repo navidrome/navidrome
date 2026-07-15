@@ -111,6 +111,23 @@ var _ = Describe("Browsing", func() {
 			Expect(res.Items).To(HaveLen(1))
 		})
 
+		It("bounds a search the client left unbounded, and clamps an oversized one", func() {
+			artistRepo := ds.Artist(context.Background()).(*tests.MockArtistRepo)
+			artistRepo.SetData(model.Artists{{ID: "ar1", Name: "Artist"}})
+
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Artists?SearchTerm=art", nil).WithContext(ctxUser(model.Libraries{{ID: 1}}))
+			invoke(api.getArtists, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(artistRepo.Options.Max).To(Equal(defaultSearchLimit + 1))
+
+			w = httptest.NewRecorder()
+			r = httptest.NewRequest("GET", "/Artists?SearchTerm=art&Limit=999999", nil).WithContext(ctxUser(model.Libraries{{ID: 1}}))
+			invoke(api.getArtists, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(artistRepo.Options.Max).To(Equal(maxSearchLimit + 1))
+		})
+
 		It("forwards StartIndex/Limit as Offset/Max", func() {
 			artistRepo := ds.Artist(context.Background()).(*tests.MockArtistRepo)
 			artistRepo.SetData(model.Artists{{ID: "ar1", Name: "Artist"}})

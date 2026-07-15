@@ -157,10 +157,15 @@ func (plt PlaylistTracks) MediaFiles() MediaFiles {
 	return mfs
 }
 
+type PlaylistTrackCursor iter.Seq2[PlaylistTrack, error]
+
 type PlaylistTrackRepository interface {
 	ResourceRepository
+	CountAll(options ...QueryOptions) (int64, error)
 	GetAll(options ...QueryOptions) (PlaylistTracks, error)
+	GetCursor(options ...QueryOptions) (PlaylistTrackCursor, error)
 	GetAlbumIDs(options ...QueryOptions) ([]string, error)
+	GetMediaFileIDs(options ...QueryOptions) ([]string, error)
 	Add(mediaFileIds []string) (int, error)
 	AddAlbums(albumIds []string) (int, error)
 	AddArtists(artistIds []string) (int, error)

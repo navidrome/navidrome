@@ -298,10 +298,11 @@ func (r *playlistRepository) refreshCounters(pls *model.Playlist) error {
 	return nil
 }
 
-func (r *playlistRepository) loadTracks(sel SelectBuilder, id string) (model.PlaylistTracks, error) {
-	sel = r.applyLibraryFilter(sel, "f")
+// tracksQuery is shared by loadTracks and GetCursor, so both hydrate rows identically.
+func (r *playlistRepository) tracksQuery(query SelectBuilder, id string) SelectBuilder {
+	query = r.applyLibraryFilter(query, "f")
 	userID := loggedUser(r.ctx).ID
-	tracksQuery := sel.
+	return query.
 		Columns(
 			"coalesce(starred, 0) as starred",
 			"starred_at",
@@ -321,8 +322,11 @@ func (r *playlistRepository) loadTracks(sel SelectBuilder, id string) (model.Pla
 		Join("media_file f on f.id = media_file_id").
 		Join("library on f.library_id = library.id").
 		Where(Eq{"playlist_id": id})
+}
+
+func (r *playlistRepository) loadTracks(query SelectBuilder, id string) (model.PlaylistTracks, error) {
 	tracks := dbPlaylistTracks{}
-	err := r.queryAll(tracksQuery, &tracks)
+	err := r.queryAll(r.tracksQuery(query, id), &tracks)
 	if err != nil {
 		return nil, err
 	}

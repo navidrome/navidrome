@@ -3,6 +3,7 @@ package jellyfin
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 
@@ -68,6 +69,59 @@ var _ = Describe("Items", func() {
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
 			Expect(res.Items).To(HaveLen(1))
 			Expect(res.Items[0].Type).To(Equal("Audio"))
+			Expect(res.Items[0].Id).To(Equal(dto.EncodeID("s1")))
+		})
+
+		It("lists a playlist's tracks when ParentId is a playlist, whatever the type", func() {
+			fp.getPls = &model.Playlist{ID: "pl1", Tracks: model.PlaylistTracks{
+				{ID: "1", MediaFileID: "s1", PlaylistID: "pl1", MediaFile: model.MediaFile{ID: "s1"}},
+				{ID: "2", MediaFileID: "s2", PlaylistID: "pl1", MediaFile: model.MediaFile{ID: "s2"}},
+			}}
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeID("pl1")+"&IncludeItemTypes=Audio", nil).
+				WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.QueryResult
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.Items).To(HaveLen(2))
+			Expect(res.Items[0].Id).To(Equal(dto.EncodeID("s1")))
+			Expect(res.Items[0].PlaylistItemId).To(Equal(dto.EncodeID("1")))
+			Expect(res.TotalRecordCount).To(Equal(2))
+		})
+
+		It("pages a playlist parent's tracks in the query, not in memory", func() {
+			fp.getPls = &model.Playlist{ID: "pl1", Tracks: model.PlaylistTracks{
+				{ID: "1", MediaFileID: "s1", PlaylistID: "pl1", MediaFile: model.MediaFile{ID: "s1"}},
+				{ID: "2", MediaFileID: "s2", PlaylistID: "pl1", MediaFile: model.MediaFile{ID: "s2"}},
+				{ID: "3", MediaFileID: "s3", PlaylistID: "pl1", MediaFile: model.MediaFile{ID: "s3"}},
+			}}
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeID("pl1")+"&StartIndex=1&Limit=1", nil).
+				WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.QueryResult
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.TotalRecordCount).To(Equal(3))
+			Expect(res.Items).To(HaveLen(1))
+			Expect(res.Items[0].Id).To(Equal(dto.EncodeID("s2")))
+			Expect(fp.tracksRepo.Options.Offset).To(Equal(1))
+			Expect(fp.tracksRepo.Options.Max).To(Equal(1))
+		})
+
+		It("falls through to the type dispatch when ParentId is not a playlist", func() {
+			fp.getErr = model.ErrNotFound
+			ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1", Name: "One"}})
+			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: "s1", AlbumID: "a1"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeID("a1")+"&IncludeItemTypes=Audio", nil).
+				WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.QueryResult
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.Items).To(HaveLen(1))
 			Expect(res.Items[0].Id).To(Equal(dto.EncodeID("s1")))
 		})
 
@@ -218,6 +272,160 @@ var _ = Describe("Items", func() {
 			var res dto.QueryResult
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
 			Expect(res.Items).To(HaveLen(1))
+		})
+
+		It("caps a search the client left unbounded", func() {
+			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
+			albumRepo.SetData(model.Albums{{ID: "a1", Name: "One"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&SearchTerm=one", nil).WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(albumRepo.Options.Max).To(Equal(defaultSearchLimit + 1))
+		})
+
+		It("honors an explicit search Limit up to the ceiling", func() {
+			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
+			albumRepo.SetData(model.Albums{{ID: "a1", Name: "One"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&SearchTerm=one&Limit=500", nil).
+				WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(albumRepo.Options.Max).To(Equal(501))
+		})
+
+		It("clamps a search Limit that would materialize the library", func() {
+			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
+			albumRepo.SetData(model.Albums{{ID: "a1", Name: "One"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&SearchTerm=one&Limit=999999", nil).
+				WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(albumRepo.Options.Max).To(Equal(maxSearchLimit + 1))
+		})
+
+		It("treats an all-whitespace SearchTerm as no search, streaming the unfiltered list", func() {
+			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
+			albumRepo.SetData(model.Albums{{ID: "a1", Name: "One"}, {ID: "a2", Name: "Two"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&SearchTerm=%20%20", nil).
+				WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.QueryResult
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.Items).To(HaveLen(2))
+			Expect(albumRepo.SearchQuery).To(BeEmpty())
+		})
+
+		It("reports a multi-type search total past the page, so clients keep paging", func() {
+			songs := make(model.MediaFiles, defaultSearchLimit*2)
+			for i := range songs {
+				songs[i] = model.MediaFile{ID: fmt.Sprintf("s%05d", i), Title: "Song"}
+			}
+			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(songs)
+			ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1", Name: "One"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song&Limit=10", nil).
+				WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.QueryResult
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.Items).To(HaveLen(10))
+			Expect(res.TotalRecordCount).To(BeNumerically(">", 10))
+		})
+
+		It("bounds the multi-type search window however large StartIndex is", func() {
+			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
+			albumRepo.SetData(model.Albums{{ID: "a1", Name: "One"}})
+			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: "s1", Title: "Song"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song&StartIndex=500000&Limit=1", nil).
+				WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			// Without the bound this asks each type for ~500001 rows.
+			Expect(albumRepo.Options.Max).To(Equal(maxSearchLimit + 1))
+		})
+
+		It("stops a multi-type search at the ceiling rather than serving another type's rows", func() {
+			// Bounding the per-type window is what keeps StartIndex from driving it without limit, and
+			// past that window the merged order is no longer the true one.
+			songs := make(model.MediaFiles, maxSearchLimit+1)
+			for i := range songs {
+				songs[i] = model.MediaFile{ID: fmt.Sprintf("s%05d", i), Title: "Song"}
+			}
+			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(songs)
+			ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1", Name: "One"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET",
+				fmt.Sprintf("/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song&StartIndex=%d&Limit=1", maxSearchLimit),
+				nil).WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.QueryResult
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.Items).To(BeEmpty())
+			Expect(res.TotalRecordCount).To(Equal(maxSearchLimit))
+		})
+
+		It("serves the last page below the ceiling in full", func() {
+			songs := make(model.MediaFiles, maxSearchLimit+1)
+			for i := range songs {
+				songs[i] = model.MediaFile{ID: fmt.Sprintf("s%05d", i), Title: "Song"}
+			}
+			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(songs)
+			ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1", Name: "One"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET",
+				fmt.Sprintf("/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song&StartIndex=%d&Limit=10", maxSearchLimit-1),
+				nil).WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.QueryResult
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			// Clipped to the window, and still the real row at that index — not the album behind it.
+			Expect(res.Items).To(HaveLen(1))
+			Expect(res.Items[0].Id).To(Equal(dto.EncodeID(songs[maxSearchLimit-1].ID)))
+		})
+
+		It("bounds an unbounded multi-type search to the default in total, not per type", func() {
+			songs := make(model.MediaFiles, defaultSearchLimit*2)
+			for i := range songs {
+				songs[i] = model.MediaFile{ID: fmt.Sprintf("s%05d", i), Title: "Song"}
+			}
+			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(songs)
+			ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1", Name: "One"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song", nil).
+				WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.QueryResult
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.Items).To(HaveLen(defaultSearchLimit))
+		})
+
+		It("pages an unbounded multi-type search past the default without dropping matches", func() {
+			songs := make(model.MediaFiles, defaultSearchLimit*2)
+			for i := range songs {
+				songs[i] = model.MediaFile{ID: fmt.Sprintf("s%05d", i), Title: "Song"}
+			}
+			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(songs)
+			ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1", Name: "One"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET",
+				fmt.Sprintf("/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song&StartIndex=%d", defaultSearchLimit+50),
+				nil).WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.QueryResult
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.Items).ToNot(BeEmpty())
+			Expect(res.Items[0].Id).To(Equal(dto.EncodeID(songs[defaultSearchLimit+50].ID)))
 		})
 
 		It("reports a search total beyond the fetched page instead of the page length", func() {

@@ -33,7 +33,10 @@ func (api *Router) listArtistsByRole(w http.ResponseWriter, r *http.Request, rol
 	q := itemsQuery{
 		scopeIDs: scopeIDs,
 		genreIds: decodedQueryIDs(r, "genreids"),
-		search:   p.StringOr("searchterm", ""),
+		search:   searchTerm(p),
+	}
+	if q.search != "" {
+		opts.Max = clampLimit(opts.Max, defaultSearchLimit, maxSearchLimit)
 	}
 
 	res, err := api.listArtists(ctx, opts, q, role)

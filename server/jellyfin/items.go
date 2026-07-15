@@ -24,6 +24,12 @@ import (
 // album, artist and media_file).
 var notMissing = squirrel.Eq{"missing": false}
 
+// searchTerm trims, so a whitespace-only term is not a search: doSearch would read it as "match
+// everything" and materialize the library, where the unfiltered path streams.
+func searchTerm(p *req.Values) string {
+	return strings.TrimSpace(p.StringOr("searchterm", ""))
+}
+
 func (api *Router) getItems(w http.ResponseWriter, r *http.Request) {
 	res, err := api.queryItems(r.Context(), r)
 	if err != nil {
@@ -226,7 +232,7 @@ func (api *Router) parseItemsQuery(ctx context.Context, r *http.Request) itemsQu
 		fields:    dto.ParseFields(p.StringOr("fields", "")),
 		ids:       decodedQueryIDs(r, "ids"),
 		rawTypes:  p.StringOr("includeitemtypes", ""),
-		search:    p.StringOr("searchterm", ""),
+		search:    searchTerm(p),
 		sortBy:    p.StringOr("sortby", ""),
 		sortOrder: p.StringOr("sortorder", ""),
 		offset:    p.IntOr("startindex", 0),
@@ -281,8 +287,11 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (itemsResult
 	case strings.Contains(q.rawTypes, "ManualPlaylistsFolder"):
 		return materialized(result([]dto.BaseItemDto{playlistsFolder()}, 1, 0)), nil
 	}
-	if res, ok := api.playlistTracks(ctx, q); ok {
-		return res, nil
+	if repo, ok := api.playlistTracksRepo(ctx, q); ok {
+		return api.playlistTrackPage(repo, q.fields, q.offset, q.limit)
+	}
+	if q.search != "" {
+		q.limit = clampLimit(q.limit, defaultSearchLimit, maxSearchLimit)
 	}
 	if len(q.types) == 1 {
 		opts := model.QueryOptions{Offset: q.offset, Max: q.limit}
@@ -292,32 +301,39 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (itemsResult
 	return api.mergeTypes(ctx, q)
 }
 
-// playlistTracks resolves a playlist parent to its tracks, whatever IncludeItemTypes says: Jellify
-// opens a playlist with ParentId=<playlist>&IncludeItemTypes=Audio, and routing that through
-// listSongs would treat the playlist id as an album id and return nothing.
-func (api *Router) playlistTracks(ctx context.Context, q itemsQuery) (itemsResult, bool) {
+// playlistTracksRepo resolves a playlist parent, whatever IncludeItemTypes says: Jellify opens a
+// playlist with ParentId=<playlist>&IncludeItemTypes=Audio, and routing that through listSongs would
+// treat the playlist id as an album id and return nothing.
+//
+// ok is false when ParentId isn't a visible playlist, so the caller falls through to the type
+// dispatch: ParentId is usually an album or artist.
+func (api *Router) playlistTracksRepo(ctx context.Context, q itemsQuery) (model.PlaylistTrackRepository, bool) {
 	if q.parentId == "" || q.isLibraryParent || q.parentId == playlistsFolderID {
-		return itemsResult{}, false
+		return nil, false
 	}
-	pls, err := api.playlists.GetWithTracks(ctx, q.parentId)
-	if err != nil {
-		return itemsResult{}, false
-	}
-	// GetWithTracks enforces visibility (public or owned by the current user).
-	items := slice.Map(pls.Tracks, func(t model.PlaylistTrack) dto.BaseItemDto { return trackToBaseItem(t, q.fields) })
-	return materialized(result(paginate(items, q.offset, q.limit), len(items), q.offset)), true
+	// Tracks enforces visibility.
+	repo, err := api.playlists.Tracks(ctx, q.parentId)
+	return repo, err == nil
 }
 
 func (api *Router) mergeTypes(ctx context.Context, q itemsQuery) (itemsResult, error) {
 	// Each per-type query needs at most offset+limit rows (the worst case where one type fills the
 	// whole [offset, offset+limit) window). Totals are unaffected — they come from CountAll.
+	window := 0
+	if q.limit > 0 {
+		window = q.offset + q.limit
+	}
+	// A search can't stream, so the window is what each type materializes and StartIndex would drive
+	// it without bound. Only below the window are the merged rows the true order, hence the clip
+	// below too. Non-search stays unbounded in StartIndex: a known gap, fixable with per-type counts.
+	if q.search != "" {
+		window = min(window, maxSearchLimit)
+	}
 	var results []itemsResult
 	total := 0
 	for _, itemType := range q.types {
 		var opts model.QueryOptions
-		if q.limit > 0 {
-			opts.Max = q.offset + q.limit
-		}
+		opts.Max = window
 		applySort(&opts, itemType, q.sortBy, q.sortOrder)
 		res, err := api.queryItemsOfType(ctx, itemType, opts, q)
 		if err != nil {
@@ -338,6 +354,13 @@ func (api *Router) mergeTypes(ctx context.Context, q itemsQuery) (itemsResult, e
 			return itemsResult{}, err
 		}
 		items = append(items, typeItems...)
+	}
+	if q.search != "" {
+		// Past the window the merged order isn't the true one, so drop it rather than serve another
+		// type's rows. The total is what's pageable overall, not this page, or a client paging on it
+		// would stop after the first page.
+		items = items[:min(window, len(items))]
+		total = min(total, maxSearchLimit)
 	}
 	return materialized(result(paginate(items, q.offset, q.limit), total, q.offset)), nil
 }
@@ -412,20 +435,37 @@ func paginate(items []dto.BaseItemDto, offset, limit int) []dto.BaseItemDto {
 	return items
 }
 
+// Search can't stream (Search returns a slice), so it needs both a default and a ceiling: without
+// the ceiling, Limit=999999 still materializes every match.
+const (
+	defaultSearchLimit = 100
+	maxSearchLimit     = 2000
+)
+
+// clampLimit bounds a client-supplied limit, 0 or less meaning it sent none, so it can't drive an
+// oversized allocation or provider fetch (flagged by CodeQL as a user-controlled allocation size).
+//
+// Searches clamp their Limit here rather than in searchPage, which also sees mergeTypes' larger
+// offset+limit window: bounding that would truncate each type before the merged page is cut.
+func clampLimit(limit, def, ceiling int) int {
+	if limit <= 0 {
+		return def
+	}
+	return min(limit, ceiling)
+}
+
 // searchPage runs a repository Search fetching one extra row to derive TotalRecordCount, since the
 // Search API returns no match count and CountAll can't see the search term. offset+len(rows) is
 // exact once matches end (and a growing lower bound before), so paging terminates at the last match.
 func searchPage[S ~[]E, E any](opts model.QueryOptions, search func(model.QueryOptions) (S, error)) (S, int, error) {
 	fetch := opts
-	if fetch.Max > 0 {
-		fetch.Max++
-	}
+	fetch.Max++
 	rows, err := search(fetch)
 	if err != nil {
 		return nil, 0, err
 	}
 	total := opts.Offset + len(rows)
-	if opts.Max > 0 && len(rows) > opts.Max {
+	if len(rows) > opts.Max {
 		rows = rows[:opts.Max]
 	}
 	return rows, total, nil
