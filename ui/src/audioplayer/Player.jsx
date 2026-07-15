@@ -284,6 +284,18 @@ const Player = () => {
         context.resume()
       }
 
+      // Auto-advance past a track flagged skipped, unless the user just
+      // explicitly selected it (playIndex is only set for a pending explicit
+      // selection - see reducePlayTracks/reduceSetTrack) - a deliberate
+      // click on a dimmed row should still play it.
+      const isExplicitSelection = playerStateRef.current?.playIndex != null
+      if (!info.isRadio && info.song?.skipped && !isExplicitSelection) {
+        if (audioInstance) {
+          audioInstance.playNext()
+        }
+        return
+      }
+
       dispatch(currentPlaying(info))
       if (info.duration) {
         const song = info.song
@@ -320,7 +332,7 @@ const Player = () => {
         }
       }
     },
-    [context, dispatch, showNotifications, currentTrackId],
+    [context, dispatch, showNotifications, currentTrackId, audioInstance],
   )
 
   const onAudioPlayTrackChange = useCallback(() => {

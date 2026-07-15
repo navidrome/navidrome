@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useDataProvider, useNotify } from 'react-admin'
+import { useDispatch } from 'react-redux'
 import subsonic from '../subsonic'
+import { updateQueueSkipped } from '../actions'
 
 export const useToggleSkip = (resource, record = {}) => {
   const [loading, setLoading] = useState(false)
   const notify = useNotify()
+  const dispatch = useDispatch()
 
   const mountedRef = useRef(false)
   useEffect(() => {
@@ -44,12 +47,16 @@ export const useToggleSkip = (resource, record = {}) => {
   }, [dataProvider, record.mediaFileId, record.id, record.playlistId, resource])
 
   const toggleSkip = () => {
+    const nextSkipped = !record.skipped
     const toggle = record.skipped ? subsonic.unskip : subsonic.skip
     const id = record.mediaFileId || record.id
 
     setLoading(true)
     toggle(id)
-      .then(refreshRecord)
+      .then(() => {
+        dispatch(updateQueueSkipped(id, nextSkipped))
+        refreshRecord()
+      })
       .catch((e) => {
         // eslint-disable-next-line no-console
         console.log('Error toggling skip: ', e)

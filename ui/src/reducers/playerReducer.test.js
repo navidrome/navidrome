@@ -4,6 +4,7 @@ import {
   PLAYER_SYNC_QUEUE,
   PLAYER_CURRENT,
   PLAYER_REFRESH_QUEUE,
+  PLAYER_UPDATE_SKIPPED,
 } from '../actions'
 
 describe('playerReducer', () => {
@@ -222,6 +223,46 @@ describe('playerReducer', () => {
       const action = { type: PLAYER_REFRESH_QUEUE, data: {} }
       const result = playerReducer(state, action)
       expect(result.playIndex).toBe(0)
+    })
+  })
+
+  describe('PLAYER_UPDATE_SKIPPED', () => {
+    const state = {
+      queue: [
+        { trackId: 's1', uuid: 'aaa', song: { id: 's1', skipped: false } },
+        { trackId: 's2', uuid: 'bbb', song: { id: 's2', skipped: false } },
+      ],
+      current: { trackId: 's2', uuid: 'bbb', song: { id: 's2', skipped: false } },
+      clear: false,
+      volume: 1,
+    }
+
+    it('updates the matching queue entry, leaving others untouched', () => {
+      const action = {
+        type: PLAYER_UPDATE_SKIPPED,
+        data: { trackId: 's1', skipped: true },
+      }
+      const result = playerReducer(state, action)
+      expect(result.queue[0].song.skipped).toBe(true)
+      expect(result.queue[1].song.skipped).toBe(false)
+    })
+
+    it('updates current when it matches the toggled track', () => {
+      const action = {
+        type: PLAYER_UPDATE_SKIPPED,
+        data: { trackId: 's2', skipped: true },
+      }
+      const result = playerReducer(state, action)
+      expect(result.current.song.skipped).toBe(true)
+    })
+
+    it('leaves current untouched when it does not match', () => {
+      const action = {
+        type: PLAYER_UPDATE_SKIPPED,
+        data: { trackId: 's1', skipped: true },
+      }
+      const result = playerReducer(state, action)
+      expect(result.current.song.skipped).toBe(false)
     })
   })
 })
