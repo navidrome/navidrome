@@ -16,6 +16,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
+	"github.com/navidrome/navidrome/utils/str"
 	"github.com/pocketbase/dbx"
 )
 
@@ -62,7 +63,7 @@ func (m *dbMediaFile) PostMapArgs(args map[string]any) error {
 	fullText = append(fullText, participantNames...)
 	args["full_text"] = formatFullText(fullText...)
 	args["search_participants"] = strings.Join(participantNames, " ")
-	args["search_normalized"] = normalizeForFTS(m.FullTitle(), m.Album, m.Artist, m.AlbumArtist)
+	args["search_normalized"] = str.NormalizeForFTS(m.FullTitle(), m.Album, m.Artist, m.AlbumArtist)
 	args["tags"] = marshalTags(m.MediaFile.Tags)
 	args["participants"] = marshalParticipants(m.MediaFile.Participants)
 	return nil
@@ -90,6 +91,16 @@ func NewMediaFileRepository(ctx context.Context, db dbx.Builder) model.MediaFile
 		"recently_added": mediaFileRecentlyAddedSort(),
 		"starred_at":     "starred, starred_at",
 		"rated_at":       "rating, rated_at",
+		"year":           "year",
+		"genre":          "genre",
+		"duration":       "duration",
+		"channels":       "channels",
+		"bpm":            "bpm",
+		"path":           "path",
+		"comment":        "comment",
+		"play_count":     "play_count",
+		"play_date":      "play_date",
+		"rating":         "rating",
 	})
 	return r
 }
@@ -104,8 +115,8 @@ var mediaFileFilter = sync.OnceValue(func() map[string]filterFunc {
 		"missing":    booleanFilter,
 		"artists_id": artistFilter,
 		"library_id": libraryIdFilter,
+		"path":       startsWithFilter("media_file.path"),
 		"folder_id": func(_ string, v any) Sqlizer {
-			log.Error(context.Background(), "!!!TRACK_DEBUG!!! folder_id filter requested", "value", v)
 			// Handle slice of IDs or a single ID string
 			if ids, ok := v.([]string); ok {
 				return Eq{"media_file.folder_id": ids}
@@ -117,7 +128,7 @@ var mediaFileFilter = sync.OnceValue(func() map[string]filterFunc {
 			// Subquery to find all subfolders (including the folder itself)
 			return Expr(`media_file.folder_id IN (
 				SELECT f2.id FROM folder f1
-				JOIN folder f2 ON f2.library_id = f1.library_id 
+				JOIN folder f2 ON f2.library_id = f1.library_id
 				WHERE f1.id = ? AND (f2.path = f1.path OR f1.path = '' OR f2.path LIKE f1.path || '/%')
 			)`, folderID)
 		},
@@ -135,15 +146,18 @@ var mediaFileFilter = sync.OnceValue(func() map[string]filterFunc {
 
 func mediaFileRecentlyAddedSort() string {
 	if conf.Server.RecentlyAddedByModTime {
-		return "media_file.updated_at"
+		return "media_file.updated_at, media_file.id"
 	}
-	return "media_file.created_at"
+	return "media_file.created_at, media_file.id"
 }
 
 func (r *mediaFileRepository) CountAll(options ...model.QueryOptions) (int64, error) {
 	query := r.newSelect()
-	query = r.withAnnotation(query, "media_file.id")
 	query = r.applyLibraryFilter(query)
+	// The annotation join is expensive with count(distinct) and pointless unless a filter uses it.
+	if filtersNeedAnnotation(r.applyFilters(query, options...)) {
+		query = r.withAnnotation(query, "media_file.id")
+	}
 	return r.count(query, options...)
 }
 
@@ -225,6 +239,40 @@ func (r *mediaFileRepository) GetAll(options ...model.QueryOptions) (model.Media
 	return res.toModels(), nil
 }
 
+// GetRandom uses two passes so the random sort runs over a narrow rowid index instead of the
+// wide media_file row: pick random rowids first, then hydrate only those.
+func (r *mediaFileRepository) GetRandom(options ...model.QueryOptions) (model.MediaFiles, error) {
+	var opt model.QueryOptions
+	if len(options) > 0 {
+		opt = options[0]
+	}
+
+	rowidQuery := Select("media_file.rowid").From(r.tableName)
+	rowidQuery = r.applyFilters(rowidQuery, model.QueryOptions{Filters: opt.Filters})
+	rowidQuery = r.applyLibraryFilter(rowidQuery)
+	rowidQuery = rowidQuery.OrderBy("random()")
+	if opt.Max > 0 {
+		rowidQuery = rowidQuery.Limit(uint64(opt.Max))
+	}
+
+	var rowids []int64
+	if err := r.queryAllSlice(rowidQuery, &rowids); err != nil {
+		return nil, err
+	}
+	if len(rowids) == 0 {
+		return model.MediaFiles{}, nil
+	}
+
+	// Re-shuffle in Phase 2: `WHERE rowid IN (...)` returns rows in ascending rowid order, not
+	// the random order from Phase 1. Sorting only the (<=Max) hydrated rows is negligible.
+	sq := r.selectMediaFile().Where(Eq{"media_file.rowid": rowids}).OrderBy("random()")
+	var res dbMediaFiles
+	if err := r.queryAll(sq, &res); err != nil {
+		return nil, err
+	}
+	return res.toModels(), nil
+}
+
 func (r *mediaFileRepository) GetAllByTags(tag model.TagName, values []string, options ...model.QueryOptions) (model.MediaFiles, error) {
 	placeholders := make([]string, len(values))
 	args := make([]any, len(values))
@@ -290,7 +338,7 @@ func (r *mediaFileRepository) FindByPaths(paths []string) (model.MediaFiles, err
 		return model.MediaFiles{}, nil
 	}
 
-	sel := r.newSelect().Columns("*").Where(query)
+	sel := r.applyLibraryFilter(r.newSelect().Columns("*").Where(query))
 	var res dbMediaFiles
 	if err := r.queryAll(sel, &res); err != nil {
 		return nil, err

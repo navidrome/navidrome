@@ -205,6 +205,7 @@ func clean(filePath string, tags model.RawTags) model.Tags {
 	cleaned := make(model.Tags, len(mappings))
 
 	for name, mapping := range mappings {
+		mapping = mapping.WithParticipantExceptions(name)
 		var values []string
 		switch mapping.Type {
 		case model.TagTypePair:

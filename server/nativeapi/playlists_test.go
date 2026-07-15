@@ -76,6 +76,7 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
+		conf.Server.EnableSharing = false
 		conf.Server.SessionTimeout = time.Minute
 
 		plsSvc = &mockPlaylistsService{}

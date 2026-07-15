@@ -7,6 +7,19 @@
 //go:build !wasip1
 
 package {{.Package}}
+{{- if .Capability.ImportsSharedTypes}}
+
+import "github.com/navidrome/navidrome/plugins/pdk/go/types"
+{{- end}}
+
+{{- /* Generate deprecated shared-type aliases */ -}}
+{{- range .Capability.SharedAliases}}
+
+{{- if .Doc}}
+{{formatDoc .Doc}}
+{{- end}}
+type {{.Name}} = {{.Target}}
+{{- end}}
 
 {{- /* Generate type alias definitions */ -}}
 {{- range .Capability.TypeAliases}}

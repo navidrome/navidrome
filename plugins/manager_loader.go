@@ -30,11 +30,23 @@ type serviceContext struct {
 	allLibraries     bool     // If true, plugin can access all libraries
 }
 
+// baseCtx returns the manager's lifecycle context, for host services that
+// outlive the plugin call that created them. It falls back to
+// context.Background() when the manager was never started, which is the case
+// for CLI commands (e.g. `navidrome plugin enable`) that load plugins without
+// calling Start.
+func (c *serviceContext) baseCtx() context.Context {
+	if c.manager.ctx == nil {
+		return context.Background()
+	}
+	return c.manager.ctx
+}
+
 // hostServiceEntry defines a host service for table-driven registration.
 type hostServiceEntry struct {
 	name          string
 	hasPermission func(*Permissions) bool
-	create        func(*serviceContext) ([]extism.HostFunction, io.Closer)
+	create        func(*serviceContext) ([]extism.HostFunction, io.Closer, error)
 }
 
 // hostServices defines all available host services.
@@ -43,106 +55,117 @@ var hostServices = []hostServiceEntry{
 	{
 		name:          "Config",
 		hasPermission: func(p *Permissions) bool { return true }, // Always available, no permission required
-		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
 			service := newConfigService(ctx.pluginName, ctx.config)
-			return host.RegisterConfigHostFunctions(service), nil
+			return host.RegisterConfigHostFunctions(service), nil, nil
 		},
 	},
 	{
 		name:          "SubsonicAPI",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Subsonicapi != nil },
-		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
-			service := newSubsonicAPIService(ctx.pluginName, ctx.manager.subsonicRouter, ctx.manager.ds, ctx.allowedUsers, ctx.allUsers)
-			return host.RegisterSubsonicAPIHostFunctions(service), nil
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
+			service := newSubsonicAPIService(ctx.pluginName, ctx.manager.subsonicRouter, ctx.manager.ds, newUserAccess(ctx.allowedUsers, ctx.allUsers))
+			return host.RegisterSubsonicAPIHostFunctions(service), nil, nil
 		},
 	},
 	{
 		name:          "Scheduler",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Scheduler != nil },
-		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
 			service := newSchedulerService(ctx.pluginName, ctx.manager, scheduler.GetInstance())
-			return host.RegisterSchedulerHostFunctions(service), service
+			return host.RegisterSchedulerHostFunctions(service), service, nil
 		},
 	},
 	{
 		name:          "WebSocket",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Websocket != nil },
-		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
 			perm := ctx.permissions.Websocket
-			service := newWebSocketService(ctx.pluginName, ctx.manager, perm)
-			return host.RegisterWebSocketHostFunctions(service), service
+			service := newWebSocketService(ctx.baseCtx(), ctx.pluginName, ctx.manager, perm)
+			return host.RegisterWebSocketHostFunctions(service), service, nil
 		},
 	},
 	{
 		name:          "Artwork",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Artwork != nil },
-		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
 			service := newArtworkService()
-			return host.RegisterArtworkHostFunctions(service), nil
+			return host.RegisterArtworkHostFunctions(service), nil, nil
 		},
 	},
 	{
 		name:          "Cache",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Cache != nil },
-		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
 			service := newCacheService(ctx.pluginName)
-			return host.RegisterCacheHostFunctions(service), service
+			return host.RegisterCacheHostFunctions(service), service, nil
 		},
 	},
 	{
 		name:          "Library",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Library != nil },
-		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
 			perm := ctx.permissions.Library
 			service := newLibraryService(ctx.manager.ds, perm, ctx.allowedLibraries, ctx.allLibraries)
-			return host.RegisterLibraryHostFunctions(service), nil
+			return host.RegisterLibraryHostFunctions(service), nil, nil
 		},
 	},
 	{
 		name:          "KVStore",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Kvstore != nil },
-		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
 			perm := ctx.permissions.Kvstore
-			service, err := newKVStoreService(ctx.manager.ctx, ctx.pluginName, perm)
+			service, err := newKVStoreService(ctx.baseCtx(), ctx.pluginName, perm)
 			if err != nil {
-				log.Error("Failed to create KVStore service", "plugin", ctx.pluginName, err)
-				return nil, nil
+				return nil, nil, err
 			}
-			return host.RegisterKVStoreHostFunctions(service), service
+			return host.RegisterKVStoreHostFunctions(service), service, nil
 		},
 	},
 	{
 		name:          "Users",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Users != nil },
-		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
 			service := newUsersService(ctx.manager.ds, ctx.allowedUsers, ctx.allUsers)
-			return host.RegisterUsersHostFunctions(service), nil
+			return host.RegisterUsersHostFunctions(service), nil, nil
+		},
+	},
+	{
+		name:          "Matcher",
+		hasPermission: func(p *Permissions) bool { return p != nil && p.Matcher != nil },
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
+			hasFilesystemPerm := ctx.permissions.Library != nil && ctx.permissions.Library.Filesystem
+			service := newMatcherService(
+				ctx.manager.ds, hasFilesystemPerm,
+				newUserAccess(ctx.allowedUsers, ctx.allUsers),
+				newLibraryAccess(ctx.allowedLibraries, ctx.allLibraries),
+			)
+			return host.RegisterMatcherHostFunctions(service), nil, nil
 		},
 	},
 	{
 		name:          "HTTP",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Http != nil },
-		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
 			perm := ctx.permissions.Http
 			service := newHTTPService(ctx.pluginName, perm)
-			return host.RegisterHTTPHostFunctions(service), nil
+			return host.RegisterHTTPHostFunctions(service), nil, nil
 		},
 	},
 	{
 		name:          "Task",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Taskqueue != nil },
-		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
 			perm := ctx.permissions.Taskqueue
 			maxConcurrency := int32(1)
 			if perm.MaxConcurrency > 0 {
 				maxConcurrency = int32(perm.MaxConcurrency)
 			}
-			service, err := newTaskQueueService(ctx.pluginName, ctx.manager, maxConcurrency)
+			service, err := newTaskQueueService(ctx.baseCtx(), ctx.pluginName, ctx.manager, maxConcurrency)
 			if err != nil {
-				log.Error("Failed to create Task service", "plugin", ctx.pluginName, err)
-				return nil, nil
+				return nil, nil, err
 			}
-			return host.RegisterTaskHostFunctions(service), service
+			return host.RegisterTaskHostFunctions(service), service, nil
 		},
 	},
 }
@@ -155,12 +178,12 @@ func (m *Manager) extractManifest(ndpPath string) (*PluginMetadata, error) {
 		return nil, fmt.Errorf("manager is stopped")
 	}
 
-	manifest, err := readManifest(ndpPath)
+	manifest, err := ReadManifest(ndpPath)
 	if err != nil {
 		return nil, err
 	}
 
-	sha256Hash, err := computeFileSHA256(ndpPath)
+	sha256Hash, err := ComputeFileSHA256(ndpPath)
 	if err != nil {
 		return nil, fmt.Errorf("computing hash: %w", err)
 	}
@@ -243,6 +266,7 @@ func (m *Manager) loadEnabledPlugins(ctx context.Context) error {
 // loadPluginWithConfig loads a plugin with configuration from DB.
 // The p.Path should point to an .ndp package file.
 func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
+	// NewContext falls back to context.Background() when m.ctx is nil (unstarted manager)
 	ctx := log.NewContext(m.ctx, "plugin", p.ID)
 
 	if m.stopped.Load() {
@@ -315,6 +339,15 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 	// Build host functions based on permissions from manifest
 	var hostFunctions []extism.HostFunction
 	var closers []io.Closer
+	loaded := false
+	// On success the closers are owned by the registered plugin; on any
+	// failure past this point, close them so partially-created services
+	// don't leak goroutines or file handles.
+	defer func() {
+		if !loaded {
+			closeAll(closers)
+		}
+	}()
 
 	svcCtx := &serviceContext{
 		pluginName:       p.ID,
@@ -328,7 +361,10 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 	}
 	for _, entry := range hostServices {
 		if entry.hasPermission(pkg.Manifest.Permissions) {
-			funcs, closer := entry.create(svcCtx)
+			funcs, closer, err := entry.create(svcCtx)
+			if err != nil {
+				return fmt.Errorf("creating %s service: %w", entry.name, err)
+			}
 			hostFunctions = append(hostFunctions, funcs...)
 			if closer != nil {
 				closers = append(closers, closer)
@@ -387,11 +423,20 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 		libraries:      newLibraryAccess(allowedLibraries, p.AllLibraries),
 	}
 	m.mu.Unlock()
+	loaded = true
 
 	// Call plugin init function
 	callPluginInit(ctx, m.plugins[p.ID])
 
 	return nil
+}
+
+// closeAll closes host service closers accumulated before a load failure,
+// so partially-created services don't leak goroutines or file handles.
+func closeAll(closers []io.Closer) {
+	for _, c := range closers {
+		_ = c.Close()
+	}
 }
 
 // parsePluginConfig parses a JSON config string into a map of string values.

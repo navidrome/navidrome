@@ -66,14 +66,23 @@ ARG GIT_TAG
 RUN --mount=type=bind,source=. \
     --mount=from=ui,source=/build,target=./ui/build,ro \
     --mount=type=cache,target=/root/.cache \
-    --mount=type=cache,target=/go/pkg/mod \
-    set -e; \
-    xx-go --wrap; \
-    export CGO_ENABLED=1; \
-    go build -tags=netgo,sqlite_fts5 -ldflags="-w -s \
+    --mount=type=cache,target=/go/pkg/mod <<EOT
+    set -e
+    xx-go --wrap
+    export CGO_ENABLED=1
+    BUILD_TAGS=$(./release/build-tags.sh)
+    # -latomic is required on 32-bit arm (arm/v6, arm/v7) so SQLite's 64-bit atomics resolve.
+    go build -tags="${BUILD_TAGS}" -ldflags="-w -s \
+        -linkmode=external -extldflags '-latomic' \
         -X github.com/navidrome/navidrome/consts.gitSha=${GIT_SHA} \
         -X github.com/navidrome/navidrome/consts.gitTag=${GIT_TAG}" \
         -o /out/navidrome .
+    # Fail the build if native libwebp (purego) leaked into a 32-bit binary (issue #5738).
+    ./release/verify-binary.sh /out/navidrome
+    # Fail the build if the binary is accidentally statically linked: dlopen (and
+    # therefore native libwebp detection) only works with a dynamic interpreter.
+    file /out/navidrome | grep -q "dynamically linked" || { echo "ERROR: /out/navidrome is not dynamically linked"; file /out/navidrome; exit 1; }
+EOT
 
 ########################################################################################################################
 ### Build Navidrome binary for standalone distribution (static glibc, cross-compiled)
@@ -102,21 +111,41 @@ RUN --mount=type=bind,source=. \
     --mount=from=ui,source=/build,target=./ui/build,ro \
     --mount=from=osxcross,src=/osxcross/SDK,target=/xx-sdk,ro \
     --mount=type=cache,target=/root/.cache \
-    --mount=type=cache,target=/go/pkg/mod \
-    xx-go --wrap; \
-    export CGO_ENABLED=1; \
-    if [ "$(xx-info os)" != "darwin" ]; then \
-        export CC=$(xx-info)-gcc; \
-        export CXX=$(xx-info)-g++; \
-        export LD_EXTRA="-extldflags '-static -latomic'"; \
-    fi; \
-    if [ "$(xx-info os)" = "windows" ]; then \
-        export EXT=".exe"; \
-    fi; \
-    go build -tags=netgo,sqlite_fts5 -ldflags="${LD_EXTRA} -w -s \
+    --mount=type=cache,target=/go/pkg/mod <<EOT
+    set -e
+
+    # Setup CGO cross-compilation environment
+    xx-go --wrap
+    export CGO_ENABLED=1
+    cat "$(go env GOENV)" 2>/dev/null || true
+
+    # Only Darwin (macOS) requires clang (default), Windows requires gcc, everything else can use any compiler.
+    # So let's use gcc for everything except Darwin.
+    if [ "$(xx-info os)" != "darwin" ]; then
+        export CC=$(xx-info)-gcc
+        export CXX=$(xx-info)-g++
+        export LD_EXTRA="-extldflags '-static -latomic'"
+    fi
+    # GNU ld corrupts the R_ARM_IRELATIVE addends of libatomic's ifunc resolvers
+    # (wrong address, Thumb bit lost) once .text outgrows the 16MB Thumb branch
+    # range, making static arm binaries jump to garbage inside glibc's ifunc
+    # resolution and crash before main() (issue #5738). Link 32-bit arm with LLD,
+    # which emits correct addends.
+    if [ "$(xx-info arch)" = "arm" ]; then
+        export LD_EXTRA="-extldflags '-static -latomic -fuse-ld=lld'"
+    fi
+    if [ "$(xx-info os)" = "windows" ]; then
+        export EXT=".exe"
+    fi
+
+    BUILD_TAGS=$(./release/build-tags.sh)
+    go build -tags="${BUILD_TAGS}" -ldflags="${LD_EXTRA} -w -s \
         -X github.com/navidrome/navidrome/consts.gitSha=${GIT_SHA} \
         -X github.com/navidrome/navidrome/consts.gitTag=${GIT_TAG}" \
         -o /out/navidrome${EXT} .
+    # Fail the build if native libwebp (purego) leaked into a 32-bit binary (issue #5738).
+    ./release/verify-binary.sh /out/navidrome*
+EOT
 
 # Verify if the binary was built for the correct platform and it is statically linked
 RUN xx-verify --static /out/navidrome*
@@ -146,7 +175,6 @@ ENV ND_MUSICFOLDER=/music
 ENV ND_DATAFOLDER=/data
 ENV ND_CONFIGFILE=/data/navidrome.toml
 ENV ND_PORT=4533
-ENV ND_ENABLEWEBPENCODING=true
 RUN touch /.nddockerenv
 
 EXPOSE ${ND_PORT}

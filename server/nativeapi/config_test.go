@@ -25,6 +25,7 @@ var _ = Describe("Config API", func() {
 
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
+		conf.Server.EnableSharing = false
 		conf.Server.DevUIShowConfig = true // Enable config endpoint for tests
 		ds = &tests.MockDataStore{}
 		auth.Init(ds)

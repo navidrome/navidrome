@@ -171,7 +171,9 @@
         "groupings": [
           "Soundtrack",
           "Live"
-        ]
+        ],
+        "works": [],
+        "movements": []
       },
       {
         "id": "2",
@@ -217,7 +219,9 @@
         "contributors": [],
         "displayComposer": "",
         "explicitStatus": "",
-        "groupings": []
+        "groupings": [],
+        "works": [],
+        "movements": []
       }
     ]
   }

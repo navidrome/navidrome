@@ -8,7 +8,9 @@
 
 package host
 
-import "github.com/stretchr/testify/mock"
+import (
+	"github.com/stretchr/testify/mock"
+)
 
 // User represents the User data structure.
 // User represents a Navidrome user with minimal information exposed to plugins.

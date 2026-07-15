@@ -646,5 +646,43 @@ var _ = Describe("Playlist Endpoints", Ordered, func() {
 			stringResp := doReq("getPlaylist", "id", stringPls.ID)
 			Expect(stringResp.Playlist.SongCount).To(Equal(boolResp.Playlist.SongCount))
 		})
+
+		DescribeTable("isMissing/isPresent partition all songs for nullable column fields",
+			func(fieldName string) {
+				allPls := &model.Playlist{
+					Name:    "All Songs " + fieldName,
+					OwnerID: adminUser.ID,
+					Rules:   &criteria.Criteria{Expression: criteria.Contains{"title": ""}},
+				}
+				Expect(ds.Playlist(ctx).Put(allPls)).To(Succeed())
+				missingPls := &model.Playlist{
+					Name:    "Missing " + fieldName,
+					OwnerID: adminUser.ID,
+					Rules:   &criteria.Criteria{Expression: criteria.All{criteria.IsMissing{fieldName: true}}},
+				}
+				Expect(ds.Playlist(ctx).Put(missingPls)).To(Succeed())
+				presentPls := &model.Playlist{
+					Name:    "Present " + fieldName,
+					OwnerID: adminUser.ID,
+					Rules:   &criteria.Criteria{Expression: criteria.All{criteria.IsPresent{fieldName: true}}},
+				}
+				Expect(ds.Playlist(ctx).Put(presentPls)).To(Succeed())
+
+				allResp := doReq("getPlaylist", "id", allPls.ID)
+				missingResp := doReq("getPlaylist", "id", missingPls.ID)
+				presentResp := doReq("getPlaylist", "id", presentPls.ID)
+
+				Expect(allResp.Status).To(Equal(responses.StatusOK))
+				Expect(allResp.Playlist.SongCount).To(BeNumerically(">", int32(0)))
+				Expect(missingResp.Playlist.SongCount + presentResp.Playlist.SongCount).
+					To(Equal(allResp.Playlist.SongCount))
+			},
+			Entry("bpm", "bpm"),
+			Entry("bitdepth", "bitdepth"),
+			Entry("lyrics", "lyrics"),
+			Entry("mbz_recording_id", "mbz_recording_id"),
+			Entry("album", "album"),
+			Entry("comment", "comment"),
+		)
 	})
 })

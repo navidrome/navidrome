@@ -21,36 +21,32 @@ func (r *sqlRepository) parseRestFilters(ctx context.Context, options rest.Query
 	if len(options.Filters) == 0 {
 		return nil
 	}
-	log.Info(ctx, "!!!REST_DEBUG!!! Raw filters received", "filters", options.Filters, "table", r.tableName)
 	filters := And{}
 	for f, v := range options.Filters {
-		// Look for a custom filter function
-		f = strings.ToLower(f)
-		if ff, ok := r.filterMappings[f]; ok {
-			if filter := ff(f, v); filter != nil {
-				log.Info(ctx, "!!!REST_DEBUG!!! Applied custom filter", "filter", f, "value", v)
-				filters = append(filters, filter)
-			}
-			continue
-		}
 		// Ignore filters with empty values
 		if v == "" {
 			continue
 		}
+		// Look for a custom filter function
+		f = strings.ToLower(f)
+		if ff, ok := r.filterMappings[f]; ok {
+			if filter := ff(f, v); filter != nil {
+				filters = append(filters, filter)
+			}
+			continue
+		}
 		// Ignore invalid filters (not based on a field or filter function)
 		if r.isFieldWhiteListed != nil && !r.isFieldWhiteListed(f) {
-			log.Warn(ctx, "!!!REST_DEBUG!!! Ignoring filter not whitelisted", "filter", f, "table", r.tableName)
+			log.Warn(ctx, "Ignoring filter not whitelisted", "filter", f, "table", r.tableName)
 			continue
 		}
 		// For fields ending in "id", use an exact match
 		if strings.HasSuffix(f, "id") {
-			log.Info(ctx, "!!!REST_DEBUG!!! Applied ID filter", "filter", f, "value", v)
 			filters = append(filters, eqFilter(f, v))
 			continue
 		}
 		// Default to a "starts with" filter
-		log.Info(ctx, "!!!REST_DEBUG!!! Applied default startsWith filter", "filter", f, "value", v)
-		filters = append(filters, startsWithFilter(f, v))
+		filters = append(filters, Like{f: fmt.Sprintf("%s%%", v)})
 	}
 	return filters
 }
@@ -95,8 +91,10 @@ func eqFilter(field string, value any) Sqlizer {
 	return Eq{field: value}
 }
 
-func startsWithFilter(field string, value any) Sqlizer {
-	return Like{field: fmt.Sprintf("%s%%", value)}
+func startsWithFilter(field string) func(string, any) Sqlizer {
+	return func(_ string, value any) Sqlizer {
+		return Like{field: fmt.Sprintf("%s%%", value)}
+	}
 }
 
 func containsFilter(field string) func(string, any) Sqlizer {

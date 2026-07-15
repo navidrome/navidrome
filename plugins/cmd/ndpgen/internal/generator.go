@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"embed"
 	"fmt"
+	"slices"
 	"strings"
 	"text/template"
 )
@@ -76,17 +77,6 @@ func mockAccessor(typ string, idx int) string {
 	default:
 		// For slices, maps, pointers, and custom types, use Get with type assertion
 		return fmt.Sprintf("args.Get(%d).(%s)", idx, typ)
-	}
-}
-
-// pythonFuncMap returns the template functions for Python client code generation.
-func pythonFuncMap(svc Service) template.FuncMap {
-	return template.FuncMap{
-		"lower":            strings.ToLower,
-		"exportName":       func(m Method) string { return m.FunctionName(svc.ExportPrefix()) },
-		"pythonFunc":       func(m Method) string { return m.PythonFunctionName(svc.ExportPrefix()) },
-		"pythonResultType": func(m Method) string { return m.PythonResultTypeName(svc.Name) },
-		"pythonDefault":    pythonDefaultValue,
 	}
 }
 
@@ -186,51 +176,13 @@ func formatDoc(doc string) string {
 	return strings.Join(result, "\n")
 }
 
-// GenerateClientPython generates Python client wrapper code for plugins.
-func GenerateClientPython(svc Service) ([]byte, error) {
-	tmplContent, err := templatesFS.ReadFile("templates/client.py.tmpl")
-	if err != nil {
-		return nil, fmt.Errorf("reading Python client template: %w", err)
-	}
-
-	tmpl, err := template.New("client_py").Funcs(pythonFuncMap(svc)).Parse(string(tmplContent))
-	if err != nil {
-		return nil, fmt.Errorf("parsing template: %w", err)
-	}
-
-	data := templateData{
-		Service: svc,
-	}
-
-	var buf bytes.Buffer
-	if err := tmpl.Execute(&buf, data); err != nil {
-		return nil, fmt.Errorf("executing template: %w", err)
-	}
-
-	return buf.Bytes(), nil
-}
-
-// pythonDefaultValue returns a Python default value for response.get() calls.
-func pythonDefaultValue(p Param) string {
-	switch p.Type {
-	case "string":
-		return `, ""`
-	case "int", "int32", "int64":
-		return ", 0"
-	case "float32", "float64":
-		return ", 0.0"
-	case "bool":
-		return ", False"
-	case "[]byte":
-		return ", b\"\""
-	default:
-		return ", None"
-	}
-}
-
 // rustFuncMap returns the template functions for Rust client code generation.
 func rustFuncMap(svc Service) template.FuncMap {
 	knownStructs := svc.KnownStructs()
+	shared := make(map[string]string)
+	for _, a := range svc.SharedAliases {
+		shared[a.Name] = "nd_pdk_types::" + strings.TrimPrefix(a.Target, sharedTypesPrefix)
+	}
 	return template.FuncMap{
 		"lower":          strings.ToLower,
 		"exportName":     func(m Method) string { return m.FunctionName(svc.ExportPrefix()) },
@@ -238,9 +190,9 @@ func rustFuncMap(svc Service) template.FuncMap {
 		"responseType":   func(m Method) string { return m.ResponseTypeName(svc.Name) },
 		"rustFunc":       func(m Method) string { return m.RustFunctionName(svc.ExportPrefix()) },
 		"rustDocComment": RustDocComment,
-		"rustType":       func(p Param) string { return p.RustTypeWithStructs(knownStructs) },
-		"rustParamType":  func(p Param) string { return p.RustParamTypeWithStructs(knownStructs) },
-		"fieldRustType":  func(f FieldDef) string { return f.RustType(knownStructs) },
+		"rustType":       func(p Param) string { return p.RustTypeWithShared(knownStructs, shared) },
+		"rustParamType":  func(p Param) string { return p.RustParamTypeWithShared(knownStructs, shared) },
+		"fieldRustType":  func(f FieldDef) string { return ToRustTypeWithShared(f.Type, knownStructs, shared) },
 	}
 }
 
@@ -388,6 +340,18 @@ func indentText(n int, s string) string {
 	return strings.Join(lines, "\n")
 }
 
+// indentSpaces adds n spaces to each non-empty line of text.
+func indentSpaces(spaces int, s string) string {
+	ind := strings.Repeat(" ", spaces)
+	lines := strings.Split(s, "\n")
+	for i, line := range lines {
+		if line != "" {
+			lines[i] = ind + line
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
 // capabilityAgentName returns the interface name for a capability.
 // Uses the Go interface name stripped of common suffixes.
 func capabilityAgentName(cap Capability) string {
@@ -459,6 +423,10 @@ func GenerateCapabilityGoStub(cap Capability, pkgName string) ([]byte, error) {
 // rustCapabilityFuncMap returns template functions for Rust capability code generation.
 func rustCapabilityFuncMap(cap Capability) template.FuncMap {
 	knownStructs := cap.KnownStructs()
+	shared := make(map[string]string)
+	for _, a := range cap.SharedAliases {
+		shared[a.Name] = "nd_pdk_types::" + strings.TrimPrefix(a.Target, sharedTypesPrefix)
+	}
 	return template.FuncMap{
 		"rustDocComment":      RustDocComment,
 		"rustTypeAlias":       rustTypeAlias,
@@ -466,25 +434,25 @@ func rustCapabilityFuncMap(cap Capability) template.FuncMap {
 		"rustConstName":       rustConstName,
 		"rustFieldName":       func(name string) string { return ToSnakeCase(name) },
 		"rustMethodName":      func(name string) string { return ToSnakeCase(name) },
-		"fieldRustType":       func(f FieldDef) string { return f.RustType(knownStructs) },
-		"rustOutputType":      rustOutputType,
-		"isPrimitiveRust":     isPrimitiveRustType,
+		"fieldRustType":       func(f FieldDef) string { return ToRustTypeWithShared(f.Type, knownStructs, shared) },
+		"rustOutputType":      func(goType string) string { return rustTraitType(goType, shared) },
+		"rustMethodType":      func(goType string) string { return rustMethodType(goType, cap.Name, shared) },
 		"skipSerializingFunc": skipSerializingFunc,
 		"hasHashMap":          hasHashMap,
 		"agentName":           capabilityAgentName,
 		"providerInterface":   func(e Export) string { return e.ProviderInterfaceName() },
 		"registerMacroName":   func(name string) string { return registerMacroName(cap.Name, name) },
-		"snakeCase":           ToSnakeCase,
-		"indent": func(spaces int, s string) string {
-			indent := strings.Repeat(" ", spaces)
-			lines := strings.Split(s, "\n")
-			for i, line := range lines {
-				if line != "" {
-					lines[i] = indent + line
-				}
-			}
-			return strings.Join(lines, "\n")
+		"rustSharedTarget": func(target string) string {
+			return "nd_pdk_types::" + strings.TrimPrefix(target, sharedTypesPrefix)
 		},
+		// rustSharedNote is the human-facing path for deprecation notes: plugin
+		// authors depend on the nd-pdk umbrella crate, which re-exports nd_pdk_types
+		// as `types`, so they reference these via nd_pdk::types::X.
+		"rustSharedNote": func(target string) string {
+			return "nd_pdk::types::" + strings.TrimPrefix(target, sharedTypesPrefix)
+		},
+		"snakeCase": ToSnakeCase,
+		"indent":    indentSpaces,
 	}
 }
 
@@ -526,6 +494,46 @@ func rustConstType(goType string) string {
 // TODO: Pointer to primitive types (e.g., *string, *int32) are not handled correctly.
 // Currently "*string" returns "string" instead of "String". This would generate invalid
 // Rust code. No current capability uses this pattern, but it should be fixed if needed.
+// rustMethodType returns the fully-qualified Rust type for a capability method
+// input/output as referenced inside the generated export macro. The macro expands
+// in the downstream plugin crate, which depends on the umbrella nd-pdk crate and
+// not on nd-pdk-types directly, so shared types must be reached through $crate
+// (the defining nd-pdk-capabilities crate, which re-exports nd_pdk_types as
+// `types`) rather than by naming the transitive crate. Primitives map to their
+// Rust name; any other named type is a capability-local struct, qualified as
+// $crate::<package>::X. This is used instead of hand-assembling
+// "$crate::<pkg>::" + rustOutputType, which produced invalid paths like
+// "$crate::demo::types.SongRef" for shared types used directly in a signature.
+func rustMethodType(goType, pkg string, shared map[string]string) string {
+	goType = strings.TrimPrefix(goType, "*")
+	if isPrimitiveRustType(goType) {
+		return rustOutputType(goType)
+	}
+	if rest, ok := strings.CutPrefix(goType, sharedTypesPrefix); ok {
+		return "$crate::types::" + rest
+	}
+	if t, ok := shared[goType]; ok {
+		return "$crate::types::" + strings.TrimPrefix(t, "nd_pdk_types::")
+	}
+	return "$crate::" + ToSnakeCase(pkg) + "::" + goType
+}
+
+// rustTraitType returns the Rust type for a capability trait method signature.
+// The trait lives in the capability module alongside its local structs, so those
+// stay bare; shared types must still resolve to their nd_pdk_types::X crate path
+// (a shared type used directly in a signature would otherwise pass through as the
+// invalid Go selector "types.SongRef").
+func rustTraitType(goType string, shared map[string]string) string {
+	stripped := strings.TrimPrefix(goType, "*")
+	if rest, ok := strings.CutPrefix(stripped, sharedTypesPrefix); ok {
+		return "nd_pdk_types::" + rest
+	}
+	if t, ok := shared[stripped]; ok {
+		return t
+	}
+	return rustOutputType(goType)
+}
+
 func rustOutputType(goType string) string {
 	// Strip pointer prefix - capability outputs use Result<T, Error> for optionality
 	if strings.HasPrefix(goType, "*") {
@@ -568,9 +576,16 @@ func rustConstName(name string) string {
 }
 
 // skipSerializingFunc returns the appropriate skip_serializing_if function name.
+// The check must match the rendered Rust type: pointers become Option<T>, slices Vec<T>,
+// and maps HashMap<K,V>, each with a different emptiness predicate.
 func skipSerializingFunc(goType string) string {
-	if strings.HasPrefix(goType, "*") || strings.HasPrefix(goType, "[]") || strings.HasPrefix(goType, "map[") {
+	switch {
+	case strings.HasPrefix(goType, "*"):
 		return "Option::is_none"
+	case strings.HasPrefix(goType, "[]"):
+		return "Vec::is_empty"
+	case strings.HasPrefix(goType, "map["):
+		return "HashMap::is_empty"
 	}
 	switch goType {
 	case "string":
@@ -594,9 +609,9 @@ func skipSerializingFunc(goType string) string {
 	}
 }
 
-// hasHashMap returns true if any struct in the capability uses HashMap.
-func hasHashMap(cap Capability) bool {
-	for _, st := range cap.Structs {
+// anyFieldUsesHashMap returns true if any field in the given structs uses a map type.
+func anyFieldUsesHashMap(structs []StructDef) bool {
+	for _, st := range structs {
 		for _, f := range st.Fields {
 			if strings.HasPrefix(f.Type, "map[") {
 				return true
@@ -604,6 +619,32 @@ func hasHashMap(cap Capability) bool {
 		}
 	}
 	return false
+}
+
+// anyFieldIsByteSlice reports whether any field across the given structs is a
+// []byte, which Go's JSON encoder serializes as a base64 string. The Rust
+// shared-types crate must match that with a base64_bytes serde override.
+func anyFieldIsByteSlice(structs []StructDef) bool {
+	for _, st := range structs {
+		for _, f := range st.Fields {
+			if f.IsByteSlice() {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// hasHashMap returns true if any struct in the capability uses HashMap.
+func hasHashMap(cap Capability) bool {
+	return anyFieldUsesHashMap(cap.Structs)
+}
+
+// sortedStructs returns a sorted copy of structs, ordered by name.
+func sortedStructs(structs []StructDef) []StructDef {
+	sorted := append([]StructDef(nil), structs...)
+	slices.SortFunc(sorted, func(a, b StructDef) int { return strings.Compare(a.Name, b.Name) })
+	return sorted
 }
 
 // registerMacroName returns the macro name for registering an optional method.
@@ -661,6 +702,11 @@ func GenerateCapabilityRustLib(capabilities []Capability) ([]byte, error) {
 	buf.WriteString("//!\n")
 	buf.WriteString("//! This crate provides type definitions, traits, and registration macros\n")
 	buf.WriteString("//! for implementing Navidrome plugin capabilities in Rust.\n\n")
+
+	// Re-export the shared types so generated registration macros can reference them
+	// via $crate::types::X. The macro expands in the downstream plugin crate, which
+	// depends on the umbrella nd-pdk crate and not on nd-pdk-types directly.
+	buf.WriteString("pub use nd_pdk_types as types;\n\n")
 
 	// Module declarations
 	for _, cap := range capabilities {
@@ -885,5 +931,72 @@ func GeneratePDKTypesStub(symbols *PDKSymbols) ([]byte, error) {
 		return nil, fmt.Errorf("executing template: %w", err)
 	}
 
+	return buf.Bytes(), nil
+}
+
+// GenerateSharedTypesRust generates the nd-pdk-types crate root (lib.rs).
+func GenerateSharedTypesRust(structs []StructDef) ([]byte, error) {
+	tmplContent, err := templatesFS.ReadFile("templates/types.rs.tmpl")
+	if err != nil {
+		return nil, fmt.Errorf("reading types rust template: %w", err)
+	}
+	sorted := sortedStructs(structs)
+	known := map[string]bool{}
+	for _, s := range sorted {
+		known[s.Name] = true
+	}
+	tmpl, err := template.New("types_rs").Funcs(template.FuncMap{
+		"rustDocComment":      RustDocComment,
+		"rustFieldName":       func(n string) string { return ToSnakeCase(n) },
+		"fieldRustType":       func(f FieldDef) string { return f.RustType(known) },
+		"skipSerializingFunc": skipSerializingFunc,
+		"indent":              indentSpaces,
+	}).Parse(string(tmplContent))
+	if err != nil {
+		return nil, fmt.Errorf("parsing template: %w", err)
+	}
+
+	partialContent, err := templatesFS.ReadFile("templates/base64_bytes.rs.tmpl")
+	if err != nil {
+		return nil, fmt.Errorf("reading base64_bytes partial: %w", err)
+	}
+	tmpl, err = tmpl.Parse(string(partialContent))
+	if err != nil {
+		return nil, fmt.Errorf("parsing base64_bytes partial: %w", err)
+	}
+
+	data := struct {
+		Structs       []StructDef
+		HasHashMap    bool
+		HasByteFields bool
+	}{Structs: sorted, HasHashMap: anyFieldUsesHashMap(sorted), HasByteFields: anyFieldIsByteSlice(sorted)}
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return nil, fmt.Errorf("executing template: %w", err)
+	}
+	return buf.Bytes(), nil
+}
+
+// GenerateSharedTypesGo generates the shared `types` package (plain data structs).
+func GenerateSharedTypesGo(structs []StructDef, pkgName string) ([]byte, error) {
+	tmplContent, err := templatesFS.ReadFile("templates/types.go.tmpl")
+	if err != nil {
+		return nil, fmt.Errorf("reading types template: %w", err)
+	}
+	tmpl, err := template.New("types").Funcs(template.FuncMap{
+		"formatDoc": formatDoc,
+		"indent":    indentText,
+	}).Parse(string(tmplContent))
+	if err != nil {
+		return nil, fmt.Errorf("parsing template: %w", err)
+	}
+	data := struct {
+		Package string
+		Structs []StructDef
+	}{Package: pkgName, Structs: sortedStructs(structs)}
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return nil, fmt.Errorf("executing template: %w", err)
+	}
 	return buf.Bytes(), nil
 }

@@ -219,6 +219,67 @@ var _ = Describe("FolderRepository", func() {
 		})
 	})
 
+	Describe("HasAudioOutsideFolders", func() {
+		var albumRoot, disc1, disc2 *model.Folder
+
+		// TestHasAudio/Album/
+		// ├── CD1/   (audio, belongs to the album)
+		// └── CD2/   (audio, belongs to the album)
+		BeforeEach(func() {
+			albumRoot = model.NewFolder(testLib, "TestHasAudio/Album")
+			disc1 = model.NewFolder(testLib, "TestHasAudio/Album/CD1")
+			disc1.NumAudioFiles = 5
+			disc2 = model.NewFolder(testLib, "TestHasAudio/Album/CD2")
+			disc2.NumAudioFiles = 5
+			for _, f := range []*model.Folder{albumRoot, disc1, disc2} {
+				Expect(repo.Put(f)).To(Succeed())
+			}
+		})
+
+		It("returns false when all audio under the parent belongs to the given folders", func() {
+			Expect(repo.HasAudioOutsideFolders(*albumRoot, []string{disc1.ID, disc2.ID})).To(BeFalse())
+		})
+
+		It("returns true when another folder under the parent has audio", func() {
+			bonus := model.NewFolder(testLib, "TestHasAudio/Album/Bonus")
+			bonus.NumAudioFiles = 1
+			Expect(repo.Put(bonus)).To(Succeed())
+
+			Expect(repo.HasAudioOutsideFolders(*albumRoot, []string{disc1.ID, disc2.ID})).To(BeTrue())
+		})
+
+		It("returns true when the parent itself contains audio files", func() {
+			albumRoot.NumAudioFiles = 2
+
+			Expect(repo.HasAudioOutsideFolders(*albumRoot, []string{disc1.ID, disc2.ID})).To(BeTrue())
+		})
+
+		It("ignores audio outside the parent's subtree", func() {
+			other := model.NewFolder(testLib, "TestHasAudio/Other Album")
+			other.NumAudioFiles = 10
+			Expect(repo.Put(other)).To(Succeed())
+
+			Expect(repo.HasAudioOutsideFolders(*albumRoot, []string{disc1.ID, disc2.ID})).To(BeFalse())
+		})
+
+		It("ignores missing folders", func() {
+			gone := model.NewFolder(testLib, "TestHasAudio/Album/Gone")
+			gone.NumAudioFiles = 3
+			gone.Missing = true
+			Expect(repo.Put(gone)).To(Succeed())
+
+			Expect(repo.HasAudioOutsideFolders(*albumRoot, []string{disc1.ID, disc2.ID})).To(BeFalse())
+		})
+
+		It("does not treat LIKE wildcards in the parent path as patterns", func() {
+			// "TestHas_udio" would LIKE-match "TestHasAudio" if "_" were not escaped
+			wildcardRoot := model.NewFolder(testLib, "TestHas_udio/Album")
+			Expect(repo.Put(wildcardRoot)).To(Succeed())
+
+			Expect(repo.HasAudioOutsideFolders(*wildcardRoot, []string{"none"})).To(BeFalse())
+		})
+	})
+
 	Describe("wrapFolderCursor", func() {
 		It("does not panic when the cursor yields a dbFolder with an error", func() {
 			dbErr := fmt.Errorf("database is locked")
@@ -294,6 +355,38 @@ var _ = Describe("FolderRepository", func() {
 			Expect(folders).To(HaveLen(2))
 			names := slice.Map(folders, func(f model.Folder) string { return f.Name })
 			Expect(names).To(ContainElements("Child1", "Child2"))
+		})
+	})
+
+	Describe("GetAllWithPlaylists", func() {
+		It("returns all non-missing folders with playlists, ignoring the scan-timestamp gate", func() {
+			withPls := model.NewFolder(testLib, "TestAllPls/WithPls")
+			withPls.NumPlaylists = 2
+			noPls := model.NewFolder(testLib, "TestAllPls/NoPls")
+			noPls.NumPlaylists = 0
+			missingWithPls := model.NewFolder(testLib, "TestAllPls/Missing")
+			missingWithPls.NumPlaylists = 1
+			missingWithPls.Missing = true
+
+			Expect(repo.Put(withPls)).To(Succeed())
+			Expect(repo.Put(noPls)).To(Succeed())
+			Expect(repo.Put(missingWithPls)).To(Succeed())
+
+			// Force the folder's updated_at to the past so GetTouchedWithPlaylists
+			// (which gates on updated_at > last_scan_at) would NOT return it.
+			_, err := conn.NewQuery("UPDATE folder SET updated_at = {:t} WHERE id = {:id}").
+				Bind(dbx.Params{"t": "2000-01-01 00:00:00", "id": withPls.ID}).Execute()
+			Expect(err).ToNot(HaveOccurred())
+
+			var ids []string
+			cursor, err := repo.GetAllWithPlaylists()
+			Expect(err).ToNot(HaveOccurred())
+			for f, err := range cursor {
+				Expect(err).ToNot(HaveOccurred())
+				ids = append(ids, f.ID)
+			}
+
+			Expect(ids).To(ConsistOf(withPls.ID)) // only the non-missing folder with playlists
 		})
 	})
 })

@@ -101,7 +101,7 @@ var _ = Describe("Sonic", func() {
 
 			provider := &mockProvider{
 				similarResults: []sonic.SimilarResult{
-					{Song: agents.Song{ID: "song-2", Name: "Similar Song", Artist: "Test Artist"}, Similarity: 0.85},
+					{Song: agents.Song{ID: "song-2", Name: "Similar Song", Artists: []agents.Artist{{Name: "Test Artist"}}}, Similarity: 0.85},
 				},
 			}
 			loader.names = []string{"test-plugin"}

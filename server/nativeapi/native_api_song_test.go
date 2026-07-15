@@ -32,6 +32,7 @@ var _ = Describe("Song Endpoints", func() {
 
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
+		conf.Server.EnableSharing = false
 		conf.Server.SessionTimeout = time.Minute
 
 		// Setup mock repositories

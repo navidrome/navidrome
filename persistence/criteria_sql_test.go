@@ -14,7 +14,7 @@ import (
 var _ = Describe("Smart playlist criteria SQL", func() {
 	BeforeEach(func() {
 		criteria.AddRoles([]string{"artist", "composer", "producer"})
-		criteria.AddTagNames([]string{"genre", "mood", "releasetype", "recordingdate"})
+		criteria.AddTagNames([]string{"genre", "mood", "releasetype", "recordingdate", "replaygain_album_gain"})
 		criteria.AddNumericTags([]string{"rate"})
 	})
 
@@ -30,16 +30,16 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 		},
 		Entry("all group",
 			criteria.All{criteria.Contains{"title": "love"}, criteria.Gt{"rating": 3}},
-			"(media_file.title LIKE ? AND COALESCE(annotation.rating, 0) > ?)", "%love%", 3),
+			"(media_file.title LIKE ? AND annotation.rating > ?)", "%love%", 3),
 		Entry("any group",
 			criteria.Any{criteria.Is{"title": "Low Rider"}, criteria.Is{"album": "Best Of"}},
 			"(media_file.title = ? OR media_file.album = ?)", "Low Rider", "Best Of"),
 		Entry("is string", criteria.Is{"title": "Low Rider"}, "media_file.title = ?", "Low Rider"),
-		Entry("is bool", criteria.Is{"loved": true}, "COALESCE(annotation.starred, false) = ?", true),
+		Entry("is bool", criteria.Is{"loved": true}, "annotation.starred = ?", true),
 		Entry("is numeric list", criteria.Is{"library_id": []int{1, 2}}, "media_file.library_id IN (?,?)", 1, 2),
 		Entry("is not", criteria.IsNot{"title": "Low Rider"}, "media_file.title <> ?", "Low Rider"),
-		Entry("gt", criteria.Gt{"playCount": 10}, "COALESCE(annotation.play_count, 0) > ?", 10),
-		Entry("lt", criteria.Lt{"playCount": 10}, "COALESCE(annotation.play_count, 0) < ?", 10),
+		Entry("gt", criteria.Gt{"playCount": 10}, "annotation.play_count > ?", 10),
+		Entry("lt", criteria.Lt{"playCount": 10}, "(annotation.play_count < ? OR annotation.play_count IS NULL)", 10),
 		Entry("contains", criteria.Contains{"title": "Low Rider"}, "media_file.title LIKE ?", "%Low Rider%"),
 		Entry("not contains", criteria.NotContains{"title": "Low Rider"}, "media_file.title NOT LIKE ?", "%Low Rider%"),
 		Entry("starts with", criteria.StartsWith{"title": "Low Rider"}, "media_file.title LIKE ?", "Low Rider%"),
@@ -49,8 +49,51 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 		Entry("after", criteria.After{"lastPlayed": time.Date(2021, 10, 1, 0, 0, 0, 0, time.Local)}, "annotation.play_date > ?", time.Date(2021, 10, 1, 0, 0, 0, 0, time.Local)),
 		Entry("in playlist", criteria.InPlaylist{"id": "deadbeef-dead-beef"}, "media_file.id IN (SELECT media_file_id FROM playlist_tracks pl LEFT JOIN playlist on pl.playlist_id = playlist.id WHERE (pl.playlist_id = ? AND playlist.public = ?))", "deadbeef-dead-beef", 1),
 		Entry("not in playlist", criteria.NotInPlaylist{"id": "deadbeef-dead-beef"}, "media_file.id NOT IN (SELECT media_file_id FROM playlist_tracks pl LEFT JOIN playlist on pl.playlist_id = playlist.id WHERE (pl.playlist_id = ? AND playlist.public = ?))", "deadbeef-dead-beef", 1),
-		Entry("album annotation", criteria.Gt{"albumRating": 3}, "COALESCE(album_annotation.rating, 0) > ?", 3),
-		Entry("artist annotation", criteria.Is{"artistLoved": true}, "COALESCE(artist_annotation.starred, false) = ?", true),
+		Entry("album annotation", criteria.Gt{"albumRating": 3}, "album_annotation.rating > ?", 3),
+		Entry("artist annotation", criteria.Is{"artistLoved": true}, "artist_annotation.starred = ?", true),
+		// Annotation fields use a COALESCE default (0 for numeric, false for bool) so that tracks
+		// with no annotation row behave as that default. To keep the annotation index usable, the
+		// COALESCE is dropped when the compared value cannot match the default (the missing-row
+		// case is then naturally excluded); otherwise an explicit `OR col IS NULL` preserves it.
+		Entry("is safe (value != default)", criteria.Is{"playCount": 3}, "annotation.play_count = ?", 3),
+		Entry("is unsafe (value == default)", criteria.Is{"playCount": 0},
+			"(annotation.play_count = ? OR annotation.play_count IS NULL)", 0),
+		Entry("is bool false (value == default)", criteria.Is{"loved": false},
+			"(annotation.starred = ? OR annotation.starred IS NULL)", false),
+		Entry("gt safe (value >= default)", criteria.Gt{"playCount": 0}, "annotation.play_count > ?", 0),
+		Entry("gt unsafe (value < default)", criteria.Gt{"playCount": -1},
+			"(annotation.play_count > ? OR annotation.play_count IS NULL)", -1),
+		Entry("lt safe (value <= default)", criteria.Lt{"playCount": 0}, "annotation.play_count < ?", 0),
+		Entry("lt unsafe (value > default)", criteria.Lt{"playCount": 5},
+			"(annotation.play_count < ? OR annotation.play_count IS NULL)", 5),
+		Entry("isNot annotation keeps null match", criteria.IsNot{"playCount": 3},
+			"(annotation.play_count <> ? OR annotation.play_count IS NULL)", 3),
+		Entry("isNot annotation value == default", criteria.IsNot{"playCount": 0},
+			"annotation.play_count <> ?", 0),
+		Entry("in range spanning default", criteria.InTheRange{"playCount": []int{-1, 5}},
+			"((annotation.play_count >= ? OR annotation.play_count IS NULL) AND (annotation.play_count <= ? OR annotation.play_count IS NULL))", -1, 5),
+		Entry("in range above default", criteria.InTheRange{"playCount": []int{1, 5}},
+			"(annotation.play_count >= ? AND (annotation.play_count <= ? OR annotation.play_count IS NULL))", 1, 5),
+		// A list value can't drive the index and a default-inclusive list has per-element NULL
+		// semantics, so the COALESCE form is kept to stay equivalent to the original.
+		Entry("is list keeps coalesce", criteria.Is{"playCount": []int{0, 3}},
+			"COALESCE(annotation.play_count, 0) IN (?,?)", 0, 3),
+		// LIKE operators can't use the column index, so annotation fields keep the COALESCE form to
+		// match missing-annotation rows exactly as before (a NULL column never matches LIKE).
+		Entry("contains annotation keeps coalesce", criteria.Contains{"playCount": 0},
+			"COALESCE(annotation.play_count, 0) LIKE ?", "%0%"),
+		Entry("starts with annotation keeps coalesce", criteria.StartsWith{"rating": 5},
+			"COALESCE(annotation.rating, 0) LIKE ?", "5%"),
+		Entry("not contains annotation keeps coalesce", criteria.NotContains{"playCount": 0},
+			"COALESCE(annotation.play_count, 0) NOT LIKE ?", "%0%"),
+		// Bool annotation fields only have a clean index-friendly form for equality; ordering
+		// comparators keep the COALESCE form so the missing-row default is honored exactly.
+		Entry("gt bool keeps coalesce", criteria.Gt{"loved": false},
+			"COALESCE(annotation.starred, false) > ?", false),
+		// A list value on a bool field is non-scalar, so it keeps the COALESCE form too (same as the
+		// numeric list case) — otherwise a NULL column would diverge from the original.
+		Entry("is bool list keeps coalesce", criteria.Is{"loved": []any{true}},
+			"COALESCE(annotation.starred, false) IN (?)", true),
 		Entry("tag is", criteria.Is{"genre": "Rock"}, "exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value = ?)", "Rock"),
 		Entry("tag is not", criteria.IsNot{"genre": "Rock"}, "not exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value = ?)", "Rock"),
 		Entry("tag contains", criteria.Contains{"genre": "Rock"}, "exists (select 1 from json_tree(media_file.tags, '$.genre') where key='value' and value LIKE ?)", "%Rock%"),
@@ -85,6 +128,70 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 			"exists (select 1 from media_file_artists mfa where mfa.media_file_id = media_file.id and mfa.role = ?)", "composer"),
 		Entry("isPresent role [false]", criteria.IsPresent{"composer": false},
 			"not exists (select 1 from media_file_artists mfa where mfa.media_file_id = media_file.id and mfa.role = ?)", "composer"),
+		// isMissing/isPresent — nullable column fields (ReplayGain)
+		Entry("isMissing rgAlbumGain [true]", criteria.IsMissing{"rgAlbumGain": true},
+			"(media_file.rg_album_gain IS NULL)"),
+		Entry("isMissing rgAlbumGain [false]", criteria.IsMissing{"rgAlbumGain": false},
+			"(media_file.rg_album_gain IS NOT NULL)"),
+		Entry("isPresent rgTrackPeak [true]", criteria.IsPresent{"rgTrackPeak": true},
+			"(media_file.rg_track_peak IS NOT NULL)"),
+		Entry("isPresent rgTrackPeak [false]", criteria.IsPresent{"rgTrackPeak": false},
+			"(media_file.rg_track_peak IS NULL)"),
+		// isMissing — replaygain_* tag-name alias resolves to the nullable column (issue #5584)
+		Entry("isMissing replaygain_album_gain alias [true]", criteria.IsMissing{"replaygain_album_gain": true},
+			"(media_file.rg_album_gain IS NULL)"),
+		Entry("isPresent replaygain_album_gain alias [true]", criteria.IsPresent{"replaygain_album_gain": true},
+			"(media_file.rg_album_gain IS NOT NULL)"),
+		// isMissing/isPresent — string column fields (empty string means missing)
+		Entry("isMissing mbz_recording_id [true]", criteria.IsMissing{"mbz_recording_id": true},
+			"(media_file.mbz_recording_id IS NULL OR media_file.mbz_recording_id = ?)", ""),
+		Entry("isMissing mbz_recording_id [false]", criteria.IsMissing{"mbz_recording_id": false},
+			"(media_file.mbz_recording_id IS NOT NULL AND media_file.mbz_recording_id <> ?)", ""),
+		Entry("isPresent mbz_album_id [true]", criteria.IsPresent{"mbz_album_id": true},
+			"(media_file.mbz_album_id IS NOT NULL AND media_file.mbz_album_id <> ?)", ""),
+		Entry("isPresent mbz_album_id [false]", criteria.IsPresent{"mbz_album_id": false},
+			"(media_file.mbz_album_id IS NULL OR media_file.mbz_album_id = ?)", ""),
+		// lyrics: absence is encoded as '' or '[]' (empty serialized LyricList)
+		Entry("isMissing lyrics [true]", criteria.IsMissing{"lyrics": true},
+			"(media_file.lyrics IS NULL OR media_file.lyrics = ? OR media_file.lyrics = ?)", "", "[]"),
+		Entry("isPresent lyrics [true]", criteria.IsPresent{"lyrics": true},
+			"(media_file.lyrics IS NOT NULL AND media_file.lyrics <> ? AND media_file.lyrics <> ?)", "", "[]"),
+		Entry("isMissing lyrics [false]", criteria.IsMissing{"lyrics": false},
+			"(media_file.lyrics IS NOT NULL AND media_file.lyrics <> ? AND media_file.lyrics <> ?)", "", "[]"),
+		Entry("isPresent lyrics [false]", criteria.IsPresent{"lyrics": false},
+			"(media_file.lyrics IS NULL OR media_file.lyrics = ? OR media_file.lyrics = ?)", "", "[]"),
+		// isMissing/isPresent — nullable numeric columns (BPM, BitDepth)
+		Entry("isMissing bpm [true]", criteria.IsMissing{"bpm": true},
+			"(media_file.bpm IS NULL)"),
+		Entry("isPresent bpm [true]", criteria.IsPresent{"bpm": true},
+			"(media_file.bpm IS NOT NULL)"),
+		Entry("isMissing bitdepth [true]", criteria.IsMissing{"bitdepth": true},
+			"(media_file.bit_depth IS NULL)"),
+		Entry("isPresent bitdepth [false]", criteria.IsPresent{"bitdepth": false},
+			"(media_file.bit_depth IS NULL)"),
+		// isMissing/isPresent — more string column fields (empty string means missing)
+		Entry("isMissing album [true]", criteria.IsMissing{"album": true},
+			"(media_file.album IS NULL OR media_file.album = ?)", ""),
+		Entry("isMissing comment [true]", criteria.IsMissing{"comment": true},
+			"(media_file.comment IS NULL OR media_file.comment = ?)", ""),
+		Entry("isMissing catalognumber [true]", criteria.IsMissing{"catalognumber": true},
+			"(media_file.catalog_num IS NULL OR media_file.catalog_num = ?)", ""),
+		Entry("isMissing discsubtitle [true]", criteria.IsMissing{"discsubtitle": true},
+			"(media_file.disc_subtitle IS NULL OR media_file.disc_subtitle = ?)", ""),
+		Entry("isMissing albumcomment [true]", criteria.IsMissing{"albumcomment": true},
+			"(media_file.mbz_album_comment IS NULL OR media_file.mbz_album_comment = ?)", ""),
+		Entry("isMissing sorttitle [true]", criteria.IsMissing{"sorttitle": true},
+			"(media_file.sort_title IS NULL OR media_file.sort_title = ?)", ""),
+		Entry("isMissing sortalbum [true]", criteria.IsMissing{"sortalbum": true},
+			"(media_file.sort_album_name IS NULL OR media_file.sort_album_name = ?)", ""),
+		Entry("isMissing sortartist [true]", criteria.IsMissing{"sortartist": true},
+			"(media_file.sort_artist_name IS NULL OR media_file.sort_artist_name = ?)", ""),
+		Entry("isMissing sortalbumartist [true]", criteria.IsMissing{"sortalbumartist": true},
+			"(media_file.sort_album_artist_name IS NULL OR media_file.sort_album_artist_name = ?)", ""),
+		Entry("isMissing explicitstatus [true]", criteria.IsMissing{"explicitstatus": true},
+			"(media_file.explicit_status IS NULL OR media_file.explicit_status = ?)", ""),
+		Entry("isPresent comment [true]", criteria.IsPresent{"comment": true},
+			"(media_file.comment IS NOT NULL AND media_file.comment <> ?)", ""),
 	)
 
 	Describe("playlist permissions", func() {
@@ -143,17 +250,27 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 
 	It("returns an error when isMissing is used with a regular field", func() {
 		_, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: criteria.IsMissing{"year": true}}).Where()
-		Expect(err).To(MatchError(ContainSubstring("isMissing/isPresent operator is only supported for tag and role fields")))
+		Expect(err).To(MatchError(ContainSubstring("isMissing/isPresent operator is not supported for field")))
 	})
 
 	It("returns an error when isPresent is used with a regular field", func() {
 		_, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: criteria.IsPresent{"title": true}}).Where()
-		Expect(err).To(MatchError(ContainSubstring("isMissing/isPresent operator is only supported for tag and role fields")))
+		Expect(err).To(MatchError(ContainSubstring("isMissing/isPresent operator is not supported for field")))
 	})
 
 	It("returns an error when isMissing has a non-boolean value", func() {
 		_, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: criteria.IsMissing{"genre": "hello"}}).Where()
 		Expect(err).To(MatchError(ContainSubstring("invalid boolean value for 'missing' expression")))
+	})
+
+	It("returns an error for a range over a tag/role field", func() {
+		_, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: criteria.InTheRange{"rate": []int{1, 5}}}).Where()
+		Expect(err).To(MatchError(ContainSubstring("range operator not supported for tag/role field")))
+	})
+
+	It("returns a clear error for a malformed range value", func() {
+		_, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: criteria.InTheRange{"playCount": []int{1, 2, 3}}}).Where()
+		Expect(err).To(MatchError(ContainSubstring("must be a [min, max] pair")))
 	})
 
 	Describe("sort", func() {
@@ -343,6 +460,97 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 			Expect(sql).To(ContainSubstring("artist.name LIKE ? OR artist.name LIKE ?"))
 			Expect(sql).To(ContainSubstring("value LIKE ? OR value LIKE ?"))
 			Expect(args).To(HaveLen(2 + 2 + 1)) // 2 tag patterns + 2 role patterns + 1 role name
+		})
+
+		It("merges negated role conditions in an AND group into a single NOT EXISTS", func() {
+			expr := criteria.All{
+				criteria.IsNot{"artist": "Beatles"},
+				criteria.IsNot{"artist": "Kraftwerk"},
+			}
+			sqlizer, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: expr}).Where()
+			Expect(err).ToNot(HaveOccurred())
+
+			sql, args, err := sqlizer.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			// A single NOT EXISTS with both names ORed inside (De Morgan)
+			Expect(strings.Count(sql, "not exists")).To(Equal(1))
+			Expect(sql).To(ContainSubstring("artist.name = ? OR artist.name = ?"))
+			Expect(args).To(HaveExactElements("artist", "Beatles", "Kraftwerk"))
+		})
+
+		It("merges negated notContains role conditions in an AND group", func() {
+			expr := criteria.All{
+				criteria.NotContains{"artist": "Beatles"},
+				criteria.NotContains{"artist": "Kraftwerk"},
+			}
+			sqlizer, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: expr}).Where()
+			Expect(err).ToNot(HaveOccurred())
+
+			sql, args, err := sqlizer.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(strings.Count(sql, "not exists")).To(Equal(1))
+			Expect(sql).To(ContainSubstring("artist.name LIKE ? OR artist.name LIKE ?"))
+			Expect(args).To(HaveExactElements("artist", "%Beatles%", "%Kraftwerk%"))
+		})
+
+		It("merges negated tag conditions in an AND group into a single NOT EXISTS", func() {
+			expr := criteria.All{
+				criteria.NotContains{"genre": "Rock"},
+				criteria.NotContains{"genre": "Metal"},
+			}
+			sqlizer, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: expr}).Where()
+			Expect(err).ToNot(HaveOccurred())
+
+			sql, args, err := sqlizer.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(strings.Count(sql, "not exists")).To(Equal(1))
+			Expect(sql).To(ContainSubstring("value LIKE ? OR value LIKE ?"))
+			Expect(args).To(HaveExactElements("%Rock%", "%Metal%"))
+		})
+
+		It("does not merge a single negated condition with a positive one of the same role in AND", func() {
+			// AND of mixed polarity must not be collapsed: NOT EXISTS(a) AND EXISTS(b)
+			// is not equivalent to any single merged subquery.
+			expr := criteria.All{
+				criteria.Contains{"artist": "Beatles"},
+				criteria.IsNot{"artist": "Kraftwerk"},
+			}
+			sqlizer, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: expr}).Where()
+			Expect(err).ToNot(HaveOccurred())
+
+			sql, _, err := sqlizer.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			// One positive EXISTS and one negated NOT EXISTS, kept separate
+			Expect(strings.Count(sql, "not exists")).To(Equal(1))
+			Expect(strings.Count(sql, "exists")).To(Equal(2)) // "not exists" contains "exists"
+		})
+
+		It("does not merge negated conditions of different roles in AND", func() {
+			expr := criteria.All{
+				criteria.IsNot{"artist": "Beatles"},
+				criteria.IsNot{"composer": "Lennon"},
+			}
+			sqlizer, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: expr}).Where()
+			Expect(err).ToNot(HaveOccurred())
+
+			sql, _, err := sqlizer.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(strings.Count(sql, "not exists")).To(Equal(2))
+		})
+
+		It("batches large negated AND groups to avoid SQLite expression tree depth limit", func() {
+			allExprs := make(criteria.All, jsonCondBatchSize+1)
+			for i := range allExprs {
+				allExprs[i] = criteria.IsNot{"artist": fmt.Sprintf("Artist%d", i)}
+			}
+			sqlizer, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: allExprs}).Where()
+			Expect(err).ToNot(HaveOccurred())
+
+			sql, args, err := sqlizer.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			// Two NOT EXISTS subqueries (one batch of jsonCondBatchSize, one of 1)
+			Expect(strings.Count(sql, "not exists")).To(Equal(2))
+			Expect(args).To(HaveLen(2 + jsonCondBatchSize + 1))
 		})
 	})
 

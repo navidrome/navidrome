@@ -111,7 +111,7 @@ func CreateSubsonicAPIRouter(ctx context.Context) *subsonic.Router {
 	modelScanner := scanner.New(ctx, dataStore, cacheWarmer, broker, playlistsPlaylists, metricsMetrics)
 	playTracker := scrobbler.GetPlayTracker(dataStore, broker, manager)
 	playbackServer := playback.GetInstance(dataStore)
-	lyricsLyrics := lyrics.NewLyrics(manager)
+	lyricsLyrics := lyrics.NewLyrics(dataStore, manager)
 	transcodeDecider := stream.NewTranscodeDecider(dataStore, fFmpeg)
 	sonicSonic := sonic.New(dataStore, manager, matcherMatcher)
 	podcastsPodcasts := podcasts.New(dataStore, broker)

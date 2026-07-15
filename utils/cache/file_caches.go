@@ -86,10 +86,11 @@ func NewFileCache(name, cacheSize, cacheFolder string, maxItems int, getReader R
 
 	go func() {
 		start := time.Now()
-		cache, err := newFSCache(fc.name, fc.cacheSize, fc.cacheFolder, fc.maxItems)
+		cache, sfs, err := newFSCache(fc.name, fc.cacheSize, fc.cacheFolder, fc.maxItems)
 		fc.mutex.Lock()
 		defer fc.mutex.Unlock()
 		fc.cache = cache
+		fc.fs = sfs
 		fc.disabled = cache == nil || err != nil
 		log.Info("Finished initializing cache", "cache", fc.name, "maxSize", fc.cacheSize, "elapsedTime", time.Since(start))
 		fc.ready.Store(true)
@@ -110,6 +111,7 @@ type fileCache struct {
 	cacheFolder string
 	maxItems    int
 	cache       fscache.Cache
+	fs          *spreadFS
 	getReader   ReadFunc
 	disabled    bool
 	ready       atomic.Bool
@@ -178,6 +180,7 @@ func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
 				_ = fc.invalidate(ctx, key)
 			} else {
 				log.Trace(ctx, "File successfully stored in cache", "cache", fc.name, "key", key)
+				fc.markComplete(ctx, key)
 			}
 		}()
 	}
@@ -249,7 +252,18 @@ func copyAndClose(w io.WriteCloser, r io.Reader) error {
 	return err
 }
 
-func newFSCache(name, cacheSize, cacheFolder string, maxItems int) (fscache.Cache, error) {
+// markComplete records on disk that the entry for key was written in full,
+// so it is eligible for adoption after a restart (see spreadFS.Reload).
+func (fc *fileCache) markComplete(ctx context.Context, key string) {
+	if fc.fs == nil {
+		return
+	}
+	if err := fc.fs.MarkComplete(key); err != nil {
+		log.Warn(ctx, "Error writing cache completion marker", "cache", fc.name, "key", key, err)
+	}
+}
+
+func newFSCache(name, cacheSize, cacheFolder string, maxItems int) (fscache.Cache, *spreadFS, error) {
 	size, err := humanize.ParseBytes(cacheSize)
 	if err != nil {
 		log.Error("Invalid cache size. Using default size", "cache", name, "size", cacheSize,
@@ -258,7 +272,7 @@ func newFSCache(name, cacheSize, cacheFolder string, maxItems int) (fscache.Cach
 	}
 	if size == 0 {
 		log.Warn(fmt.Sprintf("%s cache disabled", name))
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	lru := NewFileHaunter(name, maxItems, size, consts.DefaultCacheCleanUpInterval)
@@ -269,15 +283,15 @@ func newFSCache(name, cacheSize, cacheFolder string, maxItems int) (fscache.Cach
 	fs, err = NewSpreadFS(cacheFolder, 0755)
 	if err != nil {
 		log.Error(fmt.Sprintf("Error initializing %s cache FS", name), err)
-		return nil, err
+		return nil, nil, err
 	}
 
 	ck, err := fscache.NewCacheWithHaunter(fs, h)
 	if err != nil {
 		log.Error(fmt.Sprintf("Error initializing %s cache", name), err)
-		return nil, err
+		return nil, nil, err
 	}
 	ck.SetKeyMapper(fs.KeyMapper)
 
-	return ck, nil
+	return ck, fs, nil
 }

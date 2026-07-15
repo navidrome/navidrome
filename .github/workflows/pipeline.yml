@@ -25,7 +25,7 @@ jobs:
       git_tag: ${{ steps.git-version.outputs.GIT_TAG }}
       git_sha: ${{ steps.git-version.outputs.GIT_SHA }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           fetch-tags: true
@@ -33,7 +33,7 @@ jobs:
       - name: Show git version info
         run: |
           echo "git describe (dirty): $(git describe --dirty --always --tags)"
-          echo "git describe --tags: $(git describe --tags `git rev-list --tags --max-count=1`)"
+          echo "git describe --tags --abbrev=0: $(git describe --tags --abbrev=0)"
           echo "git tag: $(git tag --sort=-committerdate | head -n 1)"
           echo "github_ref: $GITHUB_REF"
           echo "github_head_sha: ${{ github.event.pull_request.head.sha }}"
@@ -64,7 +64,7 @@ jobs:
     name: Lint Go code
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-go@v6
         with:
@@ -98,12 +98,33 @@ jobs:
             exit 1
           fi
 
+  validate-migrations:
+    name: Validate DB migrations
+    runs-on: ubuntu-latest
+    # PR-only gate is at step level: a job-level skip would propagate through
+    # the needs chain (actions/runner#491) and skip all release jobs on tag pushes.
+    steps:
+      - uses: actions/checkout@v7
+        if: github.event_name == 'pull_request'
+        with:
+          fetch-depth: 0
+      # Refresh the base branch so the check compares against its CURRENT tip,
+      # not the (possibly stale) commit the PR was opened against.
+      - name: Fetch latest base branch
+        if: github.event_name == 'pull_request'
+        run: git fetch --no-tags origin "+refs/heads/${{ github.event.pull_request.base.ref }}:refs/remotes/origin/${{ github.event.pull_request.base.ref }}"
+      - name: Validate migration ordering and naming
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: origin/${{ github.event.pull_request.base.ref }}
+        run: ./.github/workflows/validate-migrations.sh
+
   go:
     name: Test Go code
     runs-on: ubuntu-latest
     steps:
       - name: Check out code into the Go module directory
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - uses: actions/setup-go@v6
         with:
@@ -129,7 +150,7 @@ jobs:
       FFMPEG_VERSION: "7.1"
       FFMPEG_REPOSITORY: navidrome/ffmpeg-windows-builds
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-go@v6
         with:
@@ -201,7 +222,7 @@ jobs:
     env:
       NODE_OPTIONS: "--max_old_space_size=4096"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
         with:
           node-version: 24
@@ -232,7 +253,7 @@ jobs:
     name: Lint i18n files
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - run: |
           set -e
           for file in resources/i18n/*.json; do
@@ -261,7 +282,7 @@ jobs:
 
   build:
     name: Build
-    needs: [js, go, go-windows, go-lint, i18n-lint, git-version, check-push-enabled]
+    needs: [js, go, go-windows, go-lint, i18n-lint, git-version, check-push-enabled, validate-migrations]
     permissions:
       contents: read
       packages: write
@@ -283,7 +304,7 @@ jobs:
           PLATFORM=$(echo ${{ matrix.platform }} | tr '/' '_')
           echo "PLATFORM=$PLATFORM" >> $GITHUB_ENV
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Prepare Docker Buildx
         uses: ./.github/actions/prepare-docker
@@ -306,6 +327,21 @@ jobs:
           build-args: |
             GIT_SHA=${{ env.GIT_SHA }}
             GIT_TAG=${{ env.GIT_TAG }}
+
+      - name: Set up QEMU for smoke test
+        if: env.IS_LINUX == 'true'
+        uses: docker/setup-qemu-action@v3
+
+      # The binary is static, so binfmt+qemu runs it directly on the runner.
+      # Catches startup crashes in cross-compiled binaries before they ship,
+      # e.g. the broken ifunc relocations on 32-bit arm from issue #5738.
+      - name: Smoke-test binary
+        if: env.IS_LINUX == 'true'
+        run: |
+          BIN=./output/${{ env.PLATFORM }}/navidrome
+          chmod +x "$BIN"
+          "$BIN" --help >/dev/null
+          echo "OK: ${{ matrix.platform }} binary starts"
 
       - name: Upload Binaries
         uses: actions/upload-artifact@v7
@@ -355,7 +391,7 @@ jobs:
     needs: [build, check-push-enabled]
     if: needs.check-push-enabled.outputs.is_enabled == 'true'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Download digests
         uses: actions/download-artifact@v8
@@ -389,7 +425,7 @@ jobs:
     if: needs.check-push-enabled.outputs.is_enabled == 'true' && vars.DOCKER_HUB_REPO != ''
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Download digests
         uses: actions/download-artifact@v8
@@ -444,7 +480,7 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: actions/download-artifact@v8
         with:
@@ -478,7 +514,7 @@ jobs:
     outputs:
       package_list: ${{ steps.set-package-list.outputs.package_list }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           fetch-tags: true
@@ -498,7 +534,7 @@ jobs:
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v7
         with:
-          version: '~> v2'
+          version: '2.16.0'
           args: "release --clean -f release/goreleaser.yml ${{ env.RELEASE_FLAGS }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

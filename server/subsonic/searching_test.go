@@ -39,12 +39,17 @@ var _ = Describe("Search", func() {
 		}
 
 		Describe("Search2", func() {
-			It("should accept musicFolderId parameter", func() {
+			It("scopes all entity types to the requested libraries", func() {
+				// The subsonic layer passes the same library_id filter to all three repos; the
+				// artist repository translates it to the join-free library_artist predicate itself.
 				r := newGetRequest("query=test", "musicFolderId=1")
 				ctx := request.WithUser(r.Context(), model.User{
-					ID:        "user1",
-					UserName:  "testuser",
-					Libraries: []model.Library{{ID: 1, Name: "Library 1"}},
+					ID:       "user1",
+					UserName: "testuser",
+					Libraries: []model.Library{
+						{ID: 1, Name: "Library 1"},
+						{ID: 2, Name: "Library 2"},
+					},
 				})
 				r = r.WithContext(ctx)
 
@@ -54,14 +59,13 @@ var _ = Describe("Search", func() {
 				Expect(resp).ToNot(BeNil())
 				Expect(resp.SearchResult2).ToNot(BeNil())
 
-				// Verify that library filter was applied to all repositories
 				assertQueryOptions(mockAlbumRepo.Options.Filters, "library_id IN (?)", 1)
-				assertQueryOptions(mockArtistRepo.Options.Filters, "library_id IN (?)", 1)
 				assertQueryOptions(mockMediaFileRepo.Options.Filters, "library_id IN (?)", 1)
+				assertQueryOptions(mockArtistRepo.Options.Filters, "library_id IN (?)", 1)
 			})
 
-			It("should return results from all accessible libraries when musicFolderId is not provided", func() {
-				r := newGetRequest("query=test")
+			It("applies no library filter when musicFolderId is not provided", func() {
+				r := newGetRequest("query=test") // no musicFolderId → all accessible libraries
 				ctx := request.WithUser(r.Context(), model.User{
 					ID:       "user1",
 					UserName: "testuser",
@@ -79,10 +83,9 @@ var _ = Describe("Search", func() {
 				Expect(resp).ToNot(BeNil())
 				Expect(resp.SearchResult2).ToNot(BeNil())
 
-				// Verify that library filter was applied to all repositories with all accessible libraries
 				assertQueryOptions(mockAlbumRepo.Options.Filters, "library_id IN (?,?,?)", 1, 2, 3)
-				assertQueryOptions(mockArtistRepo.Options.Filters, "library_id IN (?,?,?)", 1, 2, 3)
 				assertQueryOptions(mockMediaFileRepo.Options.Filters, "library_id IN (?,?,?)", 1, 2, 3)
+				assertQueryOptions(mockArtistRepo.Options.Filters, "library_id IN (?,?,?)", 1, 2, 3)
 			})
 
 			It("should return empty results when user has no accessible libraries", func() {
@@ -122,12 +125,15 @@ var _ = Describe("Search", func() {
 		})
 
 		Describe("Search3", func() {
-			It("should accept musicFolderId parameter", func() {
+			It("scopes all entity types to the requested libraries", func() {
 				r := newGetRequest("query=test", "musicFolderId=1")
 				ctx := request.WithUser(r.Context(), model.User{
-					ID:        "user1",
-					UserName:  "testuser",
-					Libraries: []model.Library{{ID: 1, Name: "Library 1"}},
+					ID:       "user1",
+					UserName: "testuser",
+					Libraries: []model.Library{
+						{ID: 1, Name: "Library 1"},
+						{ID: 2, Name: "Library 2"},
+					},
 				})
 				r = r.WithContext(ctx)
 
@@ -137,14 +143,13 @@ var _ = Describe("Search", func() {
 				Expect(resp).ToNot(BeNil())
 				Expect(resp.SearchResult3).ToNot(BeNil())
 
-				// Verify that library filter was applied to all repositories
 				assertQueryOptions(mockAlbumRepo.Options.Filters, "library_id IN (?)", 1)
-				assertQueryOptions(mockArtistRepo.Options.Filters, "library_id IN (?)", 1)
 				assertQueryOptions(mockMediaFileRepo.Options.Filters, "library_id IN (?)", 1)
+				assertQueryOptions(mockArtistRepo.Options.Filters, "library_id IN (?)", 1)
 			})
 
-			It("should return results from all accessible libraries when musicFolderId is not provided", func() {
-				r := newGetRequest("query=test")
+			It("applies no library filter when musicFolderId is not provided", func() {
+				r := newGetRequest("query=test") // no musicFolderId → all accessible libraries
 				ctx := request.WithUser(r.Context(), model.User{
 					ID:       "user1",
 					UserName: "testuser",
@@ -162,10 +167,9 @@ var _ = Describe("Search", func() {
 				Expect(resp).ToNot(BeNil())
 				Expect(resp.SearchResult3).ToNot(BeNil())
 
-				// Verify that library filter was applied to all repositories with all accessible libraries
 				assertQueryOptions(mockAlbumRepo.Options.Filters, "library_id IN (?,?,?)", 1, 2, 3)
-				assertQueryOptions(mockArtistRepo.Options.Filters, "library_id IN (?,?,?)", 1, 2, 3)
 				assertQueryOptions(mockMediaFileRepo.Options.Filters, "library_id IN (?,?,?)", 1, 2, 3)
+				assertQueryOptions(mockArtistRepo.Options.Filters, "library_id IN (?,?,?)", 1, 2, 3)
 			})
 
 			It("should return empty results when user has no accessible libraries", func() {

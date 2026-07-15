@@ -42,15 +42,11 @@ var _ = Describe("TaskQueueService", func() {
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.DataFolder = conf.NewDir(tmpDir)
 
-		// Create a mock manager with context
-		managerCtx, cancel := context.WithCancel(ctx)
 		manager = &Manager{
 			plugins: make(map[string]*plugin),
-			ctx:     managerCtx,
 		}
-		DeferCleanup(cancel)
 
-		service, err = newTaskQueueService("test_plugin", manager, 5)
+		service, err = newTaskQueueService(ctx, "test_plugin", manager, 5)
 		Expect(err).ToNot(HaveOccurred())
 	})
 
@@ -367,8 +363,8 @@ var _ = Describe("TaskQueueService", func() {
 
 			// Enqueue several more tasks — they stay pending since the worker is busy
 			var pendingIDs []string
-			for i := 0; i < 3; i++ {
-				taskID, err := service.Enqueue(ctx, "clear-test", []byte(fmt.Sprintf("task-%d", i)))
+			for i := range 3 {
+				taskID, err := service.Enqueue(ctx, "clear-test", fmt.Appendf(nil, "task-%d", i))
 				Expect(err).ToNot(HaveOccurred())
 				pendingIDs = append(pendingIDs, taskID)
 			}
@@ -674,8 +670,8 @@ var _ = Describe("TaskQueueService", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			// Enqueue 5 tasks
-			for i := 0; i < 5; i++ {
-				_, err := service.Enqueue(ctx, "delay-concurrent", []byte(fmt.Sprintf("task-%d", i)))
+			for i := range 5 {
+				_, err := service.Enqueue(ctx, "delay-concurrent", fmt.Appendf(nil, "task-%d", i))
 				Expect(err).ToNot(HaveOccurred())
 			}
 
@@ -730,14 +726,11 @@ var _ = Describe("TaskQueueService", func() {
 			service.Close()
 
 			// Create a new service pointing to the same DB
-			managerCtx2, cancel2 := context.WithCancel(ctx)
-			DeferCleanup(cancel2)
 			manager2 := &Manager{
 				plugins: make(map[string]*plugin),
-				ctx:     managerCtx2,
 			}
 
-			service, err = newTaskQueueService("test_plugin", manager2, 5)
+			service, err = newTaskQueueService(ctx, "test_plugin", manager2, 5)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Override callback to succeed
@@ -775,14 +768,11 @@ var _ = Describe("TaskQueueService", func() {
 
 	Describe("Plugin isolation", func() {
 		It("uses separate databases for different plugins", func() {
-			managerCtx2, cancel2 := context.WithCancel(ctx)
-			DeferCleanup(cancel2)
 			manager2 := &Manager{
 				plugins: make(map[string]*plugin),
-				ctx:     managerCtx2,
 			}
 
-			service2, err := newTaskQueueService("other_plugin", manager2, 5)
+			service2, err := newTaskQueueService(ctx, "other_plugin", manager2, 5)
 			Expect(err).ToNot(HaveOccurred())
 			defer service2.Close()
 
@@ -1112,7 +1102,7 @@ var _ = Describe("TaskQueueService Integration", Ordered, func() {
 			// the second will be dequeued but block on the rate limiter (status=running),
 			// the rest will stay pending.
 			var taskIDs []string
-			for i := 0; i < 5; i++ {
+			for range 5 {
 				output, err := callTestTaskQueue(ctx, testTaskQueueInput{
 					Operation: "enqueue",
 					QueueName: "test-cancel",
@@ -1186,11 +1176,11 @@ var _ = Describe("TaskQueueService Integration", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			// Enqueue several tasks
-			for i := 0; i < 4; i++ {
+			for i := range 4 {
 				_, err := callTestTaskQueue(ctx, testTaskQueueInput{
 					Operation: "enqueue",
 					QueueName: "test-clear",
-					Payload:   []byte(fmt.Sprintf("task-%d", i)),
+					Payload:   fmt.Appendf(nil, "task-%d", i),
 				})
 				Expect(err).ToNot(HaveOccurred())
 			}

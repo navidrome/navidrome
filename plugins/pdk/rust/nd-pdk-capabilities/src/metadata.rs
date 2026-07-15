@@ -18,6 +18,12 @@ fn is_zero_u64(value: &u64) -> bool { *value == 0 }
 fn is_zero_f32(value: &f32) -> bool { *value == 0.0 }
 #[allow(dead_code)]
 fn is_zero_f64(value: &f64) -> bool { *value == 0.0 }
+
+#[deprecated(note = "use nd_pdk::types::ArtistRef")]
+pub type ArtistRef = nd_pdk_types::ArtistRef;
+
+#[deprecated(note = "use nd_pdk::types::SongRef")]
+pub type SongRef = nd_pdk_types::SongRef;
 /// AlbumImagesResponse is the response for GetAlbumImages.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -92,20 +98,6 @@ pub struct ArtistMBIDResponse {
     #[serde(default)]
     pub mbid: String,
 }
-/// ArtistRef is a reference to an artist with name and optional MBID.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ArtistRef {
-    /// ID is the internal Navidrome artist ID (if known).
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub id: String,
-    /// Name is the artist name.
-    #[serde(default)]
-    pub name: String,
-    /// MBID is the MusicBrainz ID for the artist.
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub mbid: String,
-}
 /// ArtistRequest is the common request for artist-related functions.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -162,7 +154,7 @@ pub struct SimilarArtistsRequest {
 pub struct SimilarArtistsResponse {
     /// Artists is the list of similar artists.
     #[serde(default)]
-    pub artists: Vec<ArtistRef>,
+    pub artists: Vec<nd_pdk_types::ArtistRef>,
 }
 /// SimilarSongsByAlbumRequest is the request for GetSimilarSongsByAlbum.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -227,39 +219,7 @@ pub struct SimilarSongsByTrackRequest {
 pub struct SimilarSongsResponse {
     /// Songs is the list of similar songs.
     #[serde(default)]
-    pub songs: Vec<SongRef>,
-}
-/// SongRef is a reference to a song with metadata for matching.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SongRef {
-    /// ID is the internal Navidrome mediafile ID (if known).
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub id: String,
-    /// Name is the song name.
-    #[serde(default)]
-    pub name: String,
-    /// MBID is the MusicBrainz ID for the song.
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub mbid: String,
-    /// ISRC is the International Standard Recording Code for the song.
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub isrc: String,
-    /// Artist is the artist name.
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub artist: String,
-    /// ArtistMBID is the MusicBrainz artist ID.
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub artist_mbid: String,
-    /// Album is the album name.
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub album: String,
-    /// AlbumMBID is the MusicBrainz release ID.
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub album_mbid: String,
-    /// Duration is the song duration in seconds.
-    #[serde(default, skip_serializing_if = "is_zero_f32")]
-    pub duration: f32,
+    pub songs: Vec<nd_pdk_types::SongRef>,
 }
 /// TopSongsRequest is the request for GetArtistTopSongs.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -284,7 +244,7 @@ pub struct TopSongsRequest {
 pub struct TopSongsResponse {
     /// Songs is the list of top songs.
     #[serde(default)]
-    pub songs: Vec<SongRef>,
+    pub songs: Vec<nd_pdk_types::SongRef>,
 }
 
 /// Error represents an error from a capability method.

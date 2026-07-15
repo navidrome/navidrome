@@ -8,7 +8,9 @@
 
 package host
 
-import "github.com/stretchr/testify/mock"
+import (
+	"github.com/stretchr/testify/mock"
+)
 
 // mockKVStoreService is the mock implementation for testing.
 type mockKVStoreService struct {

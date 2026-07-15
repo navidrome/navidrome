@@ -4,6 +4,8 @@ import (
 	"os"
 
 	"github.com/google/uuid"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/metadata"
@@ -563,6 +565,37 @@ var _ = Describe("Participants", func() {
 					matchPerformer("Tim Carmon", "tim carmon", "Hammond Organ"),
 				))
 			})
+
+			It("should split multiple names in a single value", func() {
+				mf = toMediaFile(model.RawTags{
+					"PERFORMER:GUITAR": {"Eric Clapton/B.B. King"},
+					"PERFORMER:BASS":   {"Nathan East"},
+				})
+
+				participants := mf.Participants
+				Expect(participants).To(HaveKeyWithValue(model.RolePerformer, HaveLen(3)))
+
+				p := participants[model.RolePerformer]
+				Expect(p).To(ContainElements(
+					matchPerformer("Eric Clapton", "eric clapton", "Guitar"),
+					matchPerformer("B.B. King", "b.b. king", "Guitar"),
+					matchPerformer("Nathan East", "nathan east", "Bass"),
+				))
+			})
+
+			It("should assign MBIDs in order to names split from a single value", func() {
+				mf = toMediaFile(model.RawTags{
+					"PERFORMER:GUITAR":               {"Eric Clapton/B.B. King"},
+					"MUSICBRAINZ_PERFORMERID:GUITAR": {mbid1, mbid2},
+				})
+
+				p := mf.Participants[model.RolePerformer]
+				Expect(p).To(HaveLen(2))
+				Expect(p[0].Name).To(Equal("Eric Clapton"))
+				Expect(p[0].MbzArtistID).To(Equal(mbid1))
+				Expect(p[1].Name).To(Equal("B.B. King"))
+				Expect(p[1].MbzArtistID).To(Equal(mbid2))
+			})
 		})
 
 		When("MUSICBRAINZ_PERFORMERID tag is set", func() {
@@ -800,6 +833,62 @@ var _ = Describe("Participants", func() {
 				Expect(roles[1].Name).To(Equal("b"))
 				Expect(roles[1].MbzArtistID).To(Equal(""))
 			}
+		})
+	})
+
+	Describe("Artist split exceptions", func() {
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+		})
+
+		It("does not split a whitelisted artist name on the default separators", func() {
+			// " feat. " is a default artists separator (mappings.yaml)
+			conf.Server.Scanner.ArtistSplitExceptions = []string{"Someone feat. Else"}
+			mf = toMediaFile(model.RawTags{
+				"ARTIST": {"Artist Name feat. Someone feat. Else"},
+			})
+
+			artists := mf.Participants[model.RoleArtist]
+			Expect(artists).To(HaveLen(2))
+			Expect(artists[0].Name).To(Equal("Artist Name"))
+			Expect(artists[1].Name).To(Equal("Someone feat. Else"))
+		})
+
+		It("does not split a whitelisted name in role tags", func() {
+			// "/" is a default roles separator (mappings.yaml)
+			conf.Server.Scanner.ArtistSplitExceptions = []string{"AC/DC"}
+			mf = toMediaFile(model.RawTags{
+				"COMPOSER": {"AC/DC/John Doe"},
+			})
+
+			composers := mf.Participants[model.RoleComposer]
+			Expect(composers).To(HaveLen(2))
+			Expect(composers[0].Name).To(Equal("AC/DC"))
+			Expect(composers[1].Name).To(Equal("John Doe"))
+		})
+
+		It("splits normally when the exception does not match", func() {
+			conf.Server.Scanner.ArtistSplitExceptions = []string{"Iron and Wine"}
+			mf = toMediaFile(model.RawTags{
+				"ARTIST": {"Artist Name feat. Someone Else"},
+			})
+
+			artists := mf.Participants[model.RoleArtist]
+			Expect(artists).To(HaveLen(2))
+			Expect(artists[0].Name).To(Equal("Artist Name"))
+			Expect(artists[1].Name).To(Equal("Someone Else"))
+		})
+
+		It("does not split a whitelisted name in performer tags", func() {
+			conf.Server.Scanner.ArtistSplitExceptions = []string{"AC/DC"}
+			mf = toMediaFile(model.RawTags{
+				"PERFORMER:GUITAR": {"AC/DC/Brian Johnson"},
+			})
+
+			performers := mf.Participants[model.RolePerformer]
+			Expect(performers).To(HaveLen(2))
+			Expect(performers[0].Name).To(Equal("AC/DC"))
+			Expect(performers[1].Name).To(Equal("Brian Johnson"))
 		})
 	})
 })

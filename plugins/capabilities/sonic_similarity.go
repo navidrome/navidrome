@@ -1,5 +1,7 @@
 package capabilities
 
+import "github.com/navidrome/navidrome/plugins/types"
+
 // SonicSimilarity provides audio-similarity based track discovery.
 //
 //nd:capability name=sonicsimilarity required=true
@@ -12,14 +14,14 @@ type SonicSimilarity interface {
 }
 
 type GetSonicSimilarTracksRequest struct {
-	Song  SongRef `json:"song"`
-	Count int32   `json:"count"`
+	Song  types.SongRef `json:"song"`
+	Count int32         `json:"count"`
 }
 
 type FindSonicPathRequest struct {
-	StartSong SongRef `json:"startSong"`
-	EndSong   SongRef `json:"endSong"`
-	Count     int32   `json:"count"`
+	StartSong types.SongRef `json:"startSong"`
+	EndSong   types.SongRef `json:"endSong"`
+	Count     int32         `json:"count"`
 }
 
 type SonicSimilarityResponse struct {
@@ -27,6 +29,6 @@ type SonicSimilarityResponse struct {
 }
 
 type SonicMatch struct {
-	Song       SongRef `json:"song"`
-	Similarity float64 `json:"similarity"`
+	Song       types.SongRef `json:"song"`
+	Similarity float64       `json:"similarity"`
 }

@@ -7,6 +7,7 @@ import (
 	"iter"
 	"maps"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -239,6 +240,33 @@ func (r folderRepository) queryFolderUpdateInfo(where And) (map[string]model.Fol
 	return m, nil
 }
 
+// HasAudioOutsideFolders reports whether any folder in parent's subtree
+// (including parent itself) contains audio files and is not one of the given
+// folder IDs. LIKE wildcards in the parent path are escaped, so it is always
+// matched as a literal prefix.
+func (r folderRepository) HasAudioOutsideFolders(parent model.Folder, excludeFolderIDs []string) (bool, error) {
+	if parent.NumAudioFiles > 0 {
+		return true, nil
+	}
+	parentPath := strings.TrimPrefix(path.Join(parent.Path, parent.Name), "/")
+	return r.exists(And{
+		Eq{"library_id": parent.LibraryID, "missing": false},
+		Gt{"num_audio_files": 0},
+		NotEq{"id": excludeFolderIDs},
+		Or{
+			// Direct children have path = parentPath; deeper descendants match the prefix
+			Eq{"path": parentPath},
+			Expr(`path LIKE ? ESCAPE '\'`, escapeLikePrefix(parentPath)+"/%"),
+		},
+	})
+}
+
+// escapeLikePrefix escapes SQL LIKE wildcards so a string can be used as a
+// literal prefix in a LIKE pattern (with ESCAPE '\').
+func escapeLikePrefix(s string) string {
+	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)
+}
+
 func (r folderRepository) Put(f *model.Folder) error {
 	dbf := dbFolder{Folder: *f}
 	_, err := r.put(dbf.ID, &dbf)
@@ -264,6 +292,18 @@ func (r folderRepository) GetTouchedWithPlaylists() (model.FolderCursor, error) 
 		Eq{"missing": false},
 		Gt{"num_playlists": 0},
 		ConcatExpr("folder.updated_at > library.last_scan_at"),
+	})
+	cursor, err := queryWithStableResults[dbFolder](r.sqlRepository, query)
+	if err != nil {
+		return nil, err
+	}
+	return wrapFolderCursor(cursor), nil
+}
+
+func (r folderRepository) GetAllWithPlaylists() (model.FolderCursor, error) {
+	query := r.selectFolder().Where(And{
+		Eq{"missing": false},
+		Gt{"num_playlists": 0},
 	})
 	cursor, err := queryWithStableResults[dbFolder](r.sqlRepository, query)
 	if err != nil {

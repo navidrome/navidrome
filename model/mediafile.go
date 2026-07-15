@@ -16,6 +16,8 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/gg"
+	"github.com/navidrome/navidrome/utils/number"
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
@@ -54,7 +56,7 @@ type MediaFile struct {
 	Duration             float32  `structs:"duration" json:"duration"`
 	BitRate              int      `structs:"bit_rate" json:"bitRate"`
 	SampleRate           int      `structs:"sample_rate" json:"sampleRate"`
-	BitDepth             int      `structs:"bit_depth" json:"bitDepth"`
+	BitDepth             *int     `structs:"bit_depth" json:"bitDepth,omitempty"`
 	Channels             int      `structs:"channels" json:"channels"`
 	Codec                string   `structs:"codec" json:"codec"`
 	ProbeData            string   `structs:"probe_data" json:"-" hash:"ignore"`
@@ -71,7 +73,7 @@ type MediaFile struct {
 	Compilation          bool     `structs:"compilation" json:"compilation"`
 	Comment              string   `structs:"comment" json:"comment,omitempty"`
 	Lyrics               string   `structs:"lyrics" json:"lyrics"`
-	BPM                  int      `structs:"bpm" json:"bpm,omitempty"`
+	BPM                  *int     `structs:"bpm" json:"bpm,omitempty"`
 	ExplicitStatus       string   `structs:"explicit_status" json:"explicitStatus"`
 	CatalogNum           string   `structs:"catalog_num" json:"catalogNum,omitempty"`
 	MbzRecordingID       string   `structs:"mbz_recording_id" json:"mbzRecordingID,omitempty"`
@@ -137,7 +139,7 @@ func (mf MediaFile) AlbumCoverArtID() ArtworkID {
 }
 
 func (mf MediaFile) StructuredLyrics() (LyricList, error) {
-	lyrics := LyricList{}
+	var lyrics LyricList
 	err := json.Unmarshal([]byte(mf.Lyrics), &lyrics)
 	if err != nil {
 		return nil, err
@@ -148,6 +150,55 @@ func (mf MediaFile) StructuredLyrics() (LyricList, error) {
 // String is mainly used for debugging
 func (mf MediaFile) String() string {
 	return mf.Path
+}
+
+type Work struct {
+	Name      string
+	MbzWorkID string
+}
+
+type Movement struct {
+	Name   string
+	Number int32
+	Count  int32
+}
+
+func (mf MediaFile) Works() []Work {
+	names := mf.Tags.Values(TagWork)
+	if len(names) == 0 {
+		return nil
+	}
+	ids := mf.Tags.Values(TagMusicBrainzWorkID)
+	works := make([]Work, 0, len(names))
+	for i, name := range names {
+		w := Work{Name: name}
+		if i < len(ids) {
+			w.MbzWorkID = ids[i]
+		}
+		works = append(works, w)
+	}
+	return works
+}
+
+func (mf MediaFile) Movements() []Movement {
+	names := mf.Tags.Values(TagMovementName)
+	if len(names) == 0 {
+		return nil
+	}
+	numbers := mf.Tags.Values(TagMovementNumber)
+	counts := mf.Tags.Values(TagMovementTotal)
+	movements := make([]Movement, 0, len(names))
+	for i, name := range names {
+		m := Movement{Name: name}
+		if i < len(numbers) {
+			m.Number = number.ParseInt[int32](numbers[i])
+		}
+		if i < len(counts) {
+			m.Count = number.ParseInt[int32](counts[i])
+		}
+		movements = append(movements, m)
+	}
+	return movements
 }
 
 // Hash returns a hash of the MediaFile based on its tags and audio properties
@@ -225,7 +276,7 @@ func (mf MediaFile) inferCodecFromSuffix() string {
 		return "dsd"
 	case "m4a":
 		// AAC if BitDepth==0, ALAC if BitDepth>0
-		if mf.BitDepth > 0 {
+		if gg.V(mf.BitDepth) > 0 {
 			return "alac"
 		}
 		return "aac"
@@ -444,6 +495,9 @@ type MediaFileRepository interface {
 	Get(id string) (*MediaFile, error)
 	GetWithParticipants(id string) (*MediaFile, error)
 	GetAll(options ...QueryOptions) (MediaFiles, error)
+	// GetRandom returns up to options.Max media files in random order, applying the same
+	// filters as GetAll. Sort/Order are ignored.
+	GetRandom(options ...QueryOptions) (MediaFiles, error)
 	GetAllByTags(tag TagName, values []string, options ...QueryOptions) (MediaFiles, error)
 	GetCursor(options ...QueryOptions) (MediaFileCursor, error)
 	Delete(id string) error

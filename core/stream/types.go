@@ -40,6 +40,50 @@ type ClientInfo struct {
 	CodecProfiles              []CodecProfile
 }
 
+// CapBitrate lowers the client's declared audio bitrate limits to maxKbps,
+// never raising them. A zero limit means "unlimited" and is set to maxKbps.
+// Returns true if anything changed. No-op when maxKbps <= 0.
+func (ci *ClientInfo) CapBitrate(maxKbps int) bool {
+	if maxKbps <= 0 {
+		return false
+	}
+	changed := false
+	if ci.MaxAudioBitrate == 0 || maxKbps < ci.MaxAudioBitrate {
+		ci.MaxAudioBitrate = maxKbps
+		changed = true
+	}
+	if ci.MaxTranscodingAudioBitrate == 0 || maxKbps < ci.MaxTranscodingAudioBitrate {
+		ci.MaxTranscodingAudioBitrate = maxKbps
+		changed = true
+	}
+	return changed
+}
+
+// ForceFormat narrows the client to transcoding to targetFormat and suppresses
+// direct play, but only if the client already declares a profile for that
+// format. All matching profiles are kept so negotiation can still pick among
+// them (e.g. by protocol). Returns false (no-op) when targetFormat is empty or
+// unsupported.
+func (ci *ClientInfo) ForceFormat(targetFormat string) bool {
+	if targetFormat == "" {
+		return false
+	}
+	var matched []Profile
+	for i := range ci.TranscodingProfiles {
+		// matchesContainer is alias-aware, so a forced "oga" (legacy Opus
+		// target_format) still matches a resolved "opus" profile.
+		if _, format := resolveTargetFormat(&ci.TranscodingProfiles[i]); matchesContainer(format, []string{targetFormat}) {
+			matched = append(matched, ci.TranscodingProfiles[i])
+		}
+	}
+	if len(matched) == 0 {
+		return false
+	}
+	ci.TranscodingProfiles = matched
+	ci.DirectPlayProfiles = nil
+	return true
+}
+
 // DirectPlayProfile describes a format the client can play directly
 type DirectPlayProfile struct {
 	Containers       []string

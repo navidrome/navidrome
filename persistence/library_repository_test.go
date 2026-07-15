@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -204,6 +205,51 @@ var _ = Describe("LibraryRepository", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(libAfter.LastScanAt).To(BeTemporally(">=", libBefore.LastScanStartedAt))
 			})
+		})
+	})
+
+	Describe("Delete", func() {
+		var adminRepo model.LibraryRepository
+		var artistRepo model.ArtistRepository
+
+		artistMissing := func(id string) bool {
+			var missing bool
+			err := conn.NewQuery("SELECT missing FROM artist WHERE id = {:id}").
+				Bind(dbx.Params{"id": id}).Row(&missing)
+			Expect(err).ToNot(HaveOccurred())
+			return missing
+		}
+
+		BeforeEach(func() {
+			adminCtx := request.WithUser(log.NewContext(context.TODO()), adminUser)
+			adminRepo = NewLibraryRepository(adminCtx, conn)
+			artistRepo = NewArtistRepository(adminCtx, conn)
+		})
+
+		It("marks artists orphaned by the delete as missing", func() {
+			lib := model.Library{Name: "Doomed Library", Path: "/doomed"}
+			Expect(adminRepo.Put(&lib)).To(Succeed())
+
+			orphanArtist := model.Artist{ID: "delete-orphan", Name: "Orphan To Be"}
+			sharedArtist := model.Artist{ID: "delete-shared", Name: "Shared Artist"}
+			Expect(artistRepo.Put(&orphanArtist)).To(Succeed())
+			Expect(artistRepo.Put(&sharedArtist)).To(Succeed())
+			Expect(adminRepo.AddArtist(lib.ID, orphanArtist.ID)).To(Succeed())
+			Expect(adminRepo.AddArtist(lib.ID, sharedArtist.ID)).To(Succeed())
+			Expect(adminRepo.AddArtist(1, sharedArtist.ID)).To(Succeed())
+			DeferCleanup(func() {
+				if raw, ok := artistRepo.(*artistRepository); ok {
+					_, _ = raw.executeSQL(squirrel.Delete("artist").
+						Where(squirrel.Eq{"id": []string{orphanArtist.ID, sharedArtist.ID}}))
+				}
+			})
+
+			Expect(artistMissing(orphanArtist.ID)).To(BeFalse())
+
+			Expect(adminRepo.Delete(lib.ID)).To(Succeed())
+
+			Expect(artistMissing(orphanArtist.ID)).To(BeTrue(), "orphaned artist should be marked missing")
+			Expect(artistMissing(sharedArtist.ID)).To(BeFalse(), "artist still in another library must stay visible")
 		})
 	})
 })

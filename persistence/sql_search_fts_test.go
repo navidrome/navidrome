@@ -12,49 +12,64 @@ import (
 
 var _ = DescribeTable("buildFTS5Query",
 	func(input, expected string) {
-		Expect(buildFTS5Query(input)).To(Equal(expected))
+		q, _ := buildFTS5Query(input)
+		Expect(q).To(Equal(expected))
 	},
 	Entry("returns empty string for empty input", "", ""),
 	Entry("returns empty string for whitespace-only input", "   ", ""),
-	Entry("appends * to a single word for prefix matching", "beatles", "beatles*"),
-	Entry("appends * to each word for prefix matching", "abbey road", "abbey* AND road*"),
-	Entry("preserves quoted phrases without appending *", `"the beatles"`, `"the beatles"`),
-	Entry("does not double-append * to existing prefix wildcard", "beat*", "beat*"),
-	Entry("strips FTS5 operators and appends * to lowercased words", "AND OR NOT NEAR", "and* AND or* AND not* AND near*"),
-	Entry("strips special FTS5 syntax characters and appends *", "test^col:val", "test* AND col* AND val*"),
-	Entry("handles mixed phrases and words", `"the beatles" abbey`, `"the beatles" AND abbey*`),
-	Entry("handles prefix with multiple words", "beat* abbey", "beat* AND abbey*"),
-	Entry("collapses multiple spaces", "abbey   road", "abbey* AND road*"),
-	Entry("strips leading * from tokens and appends trailing *", "*livia", "livia*"),
-	Entry("strips leading * and preserves existing trailing *", "*livia oliv*", "livia* AND oliv*"),
+	Entry("wraps a single word as exact OR prefix", "beatles", "(beatles OR beatles*)"),
+	Entry("wraps each word as exact OR prefix", "abbey road", "(abbey OR abbey*) AND (road OR road*)"),
+	Entry("preserves quoted phrases without wrapping", `"the beatles"`, `"the beatles"`),
+	Entry("does not wrap user-supplied prefix wildcard", "beat*", "beat*"),
+	Entry("strips FTS5 operators and wraps lowercased words", "AND OR NOT NEAR", "(and OR and*) AND (or OR or*) AND (not OR not*) AND (near OR near*)"),
+	Entry("strips special FTS5 syntax characters and wraps", "test^col:val", "(test OR test*) AND (col OR col*) AND (val OR val*)"),
+	Entry("handles mixed phrases and words", `"the beatles" abbey`, `"the beatles" AND (abbey OR abbey*)`),
+	Entry("handles prefix with multiple words", "beat* abbey", "beat* AND (abbey OR abbey*)"),
+	Entry("collapses multiple spaces", "abbey   road", "(abbey OR abbey*) AND (road OR road*)"),
+	Entry("strips leading * from tokens and wraps", "*livia", "(livia OR livia*)"),
+	Entry("strips leading * and preserves existing trailing *", "*livia oliv*", "(livia OR livia*) AND oliv*"),
 	Entry("strips standalone *", "*", ""),
-	Entry("strips apostrophe from input", "Guns N' Roses", "Guns* AND N* AND Roses*"),
+	Entry("strips apostrophe from input", "Guns N' Roses", "(Guns OR Guns*) AND (N OR N*) AND (Roses OR Roses*)"),
 	Entry("converts slashed word to phrase+concat OR", "AC/DC", `("AC DC" OR ACDC*)`),
 	Entry("converts hyphenated word to phrase+concat OR", "a-ha", `("a ha" OR aha*)`),
 	Entry("converts partial hyphenated word to phrase+concat OR", "a-h", `("a h" OR ah*)`),
 	Entry("converts hyphenated name to phrase+concat OR", "Jay-Z", `("Jay Z" OR JayZ*)`),
 	Entry("converts contraction to phrase+concat OR", "it's", `("it s" OR its*)`),
-	Entry("handles punctuated word mixed with plain words", "best of a-ha", `best* AND of* AND ("a ha" OR aha*)`),
-	Entry("handles contraction followed by plain words", "you've got", `("you ve" OR youve*) AND got*`),
-	Entry("strips miscellaneous punctuation", "rock & roll, vol. 2", "rock* AND roll* AND vol* AND 2*"),
-	Entry("transliterates NFKD-decomposable diacritics", "Björk début", "Bjork* AND debut*"),
-	Entry("transliterates ø to o", "Øystein", "Oystein*"),
-	Entry("transliterates œ ligature to oe", "œuvre", "oeuvre*"),
-	Entry("transliterates æ ligature to ae", "Brennæ", "Brennae*"),
-	Entry("transliterates mixed unicode words", "Mø Sigur Rós", "Mo* AND Sigur* AND Ros*"),
-	Entry("transliterates ß to ss", "Straße", "Strasse*"),
+	Entry("handles punctuated word mixed with plain words", "best of a-ha", `(best OR best*) AND (of OR of*) AND ("a ha" OR aha*)`),
+	Entry("handles contraction followed by plain words", "you've got", `("you ve" OR youve*) AND (got OR got*)`),
+	Entry("strips miscellaneous punctuation", "rock & roll, vol. 2", "(rock OR rock*) AND (roll OR roll*) AND (vol OR vol*) AND (2 OR 2*)"),
+	Entry("transliterates NFKD-decomposable diacritics", "Björk début", "(Bjork OR Bjork*) AND (debut OR debut*)"),
+	Entry("transliterates ø to o", "Øystein", "(Oystein OR Oystein*)"),
+	Entry("transliterates œ ligature to oe", "œuvre", "(oeuvre OR oeuvre*)"),
+	Entry("transliterates æ ligature to ae", "Brennæ", "(Brennae OR Brennae*)"),
+	Entry("transliterates mixed unicode words", "Mø Sigur Rós", "(Mo OR Mo*) AND (Sigur OR Sigur*) AND (Ros OR Ros*)"),
+	Entry("transliterates ß to ss", "Straße", "(Strasse OR Strasse*)"),
 	Entry("preserves quoted unicode phrase verbatim", `"Björk"`, `"Björk"`),
 	Entry("collapses dotted abbreviation into phrase", "R.E.M.", `"R E M"`),
 	Entry("collapses abbreviation without trailing dot", "R.E.M", `"R E M"`),
-	Entry("collapses abbreviation mixed with words", "best of R.E.M.", `best* AND of* AND "R E M"`),
+	Entry("collapses abbreviation mixed with words", "best of R.E.M.", `(best OR best*) AND (of OR of*) AND "R E M"`),
 	Entry("collapses two-letter abbreviation", "U.K.", `"U K"`),
-	Entry("does not collapse single letter surrounded by words", "I am fine", "I* AND am* AND fine*"),
-	Entry("does not collapse single standalone letter", "A test", "A* AND test*"),
+	Entry("does not collapse single letter surrounded by words", "I am fine", "(I OR I*) AND (am OR am*) AND (fine OR fine*)"),
+	Entry("does not collapse single standalone letter", "A test", "(A OR A*) AND (test OR test*)"),
 	Entry("preserves quoted phrase with punctuation verbatim", `"ac/dc"`, `"ac/dc"`),
 	Entry("preserves quoted abbreviation verbatim", `"R.E.M."`, `"R.E.M."`),
 	Entry("returns empty string for punctuation-only input", "!!!!!!!", ""),
 	Entry("returns empty string for mixed punctuation", "!@#$%^&", ""),
 	Entry("returns empty string for empty quoted phrase", `""`, ""),
+)
+
+var _ = DescribeTable("buildFTS5Query degraded flag",
+	func(input string, expected bool) {
+		_, degraded := buildFTS5Query(input)
+		Expect(degraded).To(Equal(expected))
+	},
+	Entry("plain words are not degraded", "beatles", false),
+	Entry("special chars stripped leaving short token is degraded", "1+", true),
+	Entry("multiple short tokens are degraded", "1+ 2+", true),
+	Entry("short tokens mixed with a long word are not degraded", "1+ beatles", false),
+	Entry("quoted short-token phrase is degraded", `"1+"`, true),
+	Entry("punctuated-name group is not degraded", "AC/DC", false),
+	Entry("empty input is not degraded", "", false),
 )
 
 var _ = DescribeTable("ftsQueryDegraded",
@@ -72,28 +87,6 @@ var _ = DescribeTable("ftsQueryDegraded",
 	Entry("degraded when special chars stripped leaving two short tokens", "C# 1", "C* 1*", true),
 	Entry("not degraded when at least one long token remains", "1+ beatles", "1* beatles*", false),
 	Entry("not degraded for OR groups from processPunctuatedWords", "AC/DC", `("AC DC" OR ACDC*)`, false),
-)
-
-var _ = DescribeTable("normalizeForFTS",
-	func(expected string, values ...string) {
-		Expect(normalizeForFTS(values...)).To(Equal(expected))
-	},
-	Entry("strips dots and concatenates", "REM", "R.E.M."),
-	Entry("strips slash", "ACDC", "AC/DC"),
-	Entry("strips hyphen", "Aha", "A-ha"),
-	Entry("skips unchanged ASCII words", "", "The Beatles"),
-	Entry("handles mixed input", "REM", "R.E.M.", "Automatic for the People"),
-	Entry("deduplicates", "REM", "R.E.M.", "R.E.M."),
-	Entry("strips apostrophe from word", "N", "Guns N' Roses"),
-	Entry("handles multiple values with punctuation", "REM ACDC", "R.E.M.", "AC/DC"),
-	Entry("transliterates ø to o", "Bjork", "Bjørk"),
-	Entry("transliterates Ø to O", "Oystein", "Øystein"),
-	Entry("transliterates œ ligature to oe", "oeuvre", "œuvre"),
-	Entry("transliterates Latin diacritics", "cafe", "café"),
-	Entry("transliterates only the non-ASCII words", "Mo Ros", "Mø Rós"),
-	Entry("combines punctuation strip and transliteration", "StEtienne St-Etienne", "St-Étienne"),
-	Entry("deduplicates against punctuation form", "Cafe", "Café", "Cafe"),
-	Entry("transliterates ß to ss", "Strasse", "Straße"),
 )
 
 var _ = DescribeTable("containsCJK",
@@ -165,7 +158,7 @@ var _ = Describe("ftsColumnDefs helpers", func() {
 
 		It("returns weight CSV for artist", func() {
 			Expect(ftsBM25Weights).To(HaveKeyWithValue("artist",
-				"10.0, 1.0, 1.0",
+				"10.0, 1.0, 10.0",
 			))
 		})
 
@@ -259,18 +252,18 @@ var _ = Describe("newFTSSearch", func() {
 		Expect(fts.rankExpr).To(Equal("unknown_table_fts.rank"))
 	})
 
-	It("wraps query with column filter for known tables", func() {
+	It("wraps query with column filter", func() {
 		strategy := newFTSSearch("artist", "Beatles")
 		fts, ok := strategy.(*ftsSearch)
 		Expect(ok).To(BeTrue())
-		Expect(fts.matchExpr).To(Equal("{name sort_artist_name search_normalized} : (Beatles*)"))
+		Expect(fts.matchExpr).To(Equal("{name sort_artist_name search_normalized} : ((Beatles OR Beatles*))"))
 	})
 
 	It("passes query without column filter for unknown tables", func() {
 		strategy := newFTSSearch("unknown_table", "test")
 		fts, ok := strategy.(*ftsSearch)
 		Expect(ok).To(BeTrue())
-		Expect(fts.matchExpr).To(Equal("test*"))
+		Expect(fts.matchExpr).To(Equal("(test OR test*)"))
 	})
 
 	It("preserves phrase queries inside column filter", func() {
@@ -445,6 +438,40 @@ var _ = Describe("FTS5 Integration Search", func() {
 			results, err := mr.Search("Beatles", model.QueryOptions{Max: 0})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(results).ToNot(BeEmpty(), "Max=0 should mean no limit, not LIMIT 0")
+		})
+	})
+
+	Describe("Exact-match ranking", func() {
+		BeforeEach(func() {
+			// Registered before the inserts so a mid-loop failure cannot leak corpus rows.
+			DeferCleanup(func() {
+				// library_artist rows are removed by the artist_id ON DELETE CASCADE FK.
+				_, err := GetDBXBuilder().NewQuery("DELETE FROM artist WHERE id LIKE 'fts-rank-%'").Execute()
+				Expect(err).ToNot(HaveOccurred())
+			})
+			// Corpus has no competing exact-word names ("Mo X"): exact-vs-exact order depends
+			// on corpus statistics; the guaranteed property is exact > prefix.
+			for _, a := range []model.Artist{
+				{ID: "fts-rank-1", Name: "MØ", OrderArtistName: "mø"},
+				{ID: "fts-rank-2", Name: "Modest Mouse", OrderArtistName: "modest mouse"},
+				{ID: "fts-rank-3", Name: "Morrissey", OrderArtistName: "morrissey"},
+			} {
+				Expect(createArtistWithLibrary(arr, &a, 1)).To(Succeed())
+			}
+		})
+
+		It("ranks the exact transliterated match first for 'MO'", func() {
+			results, err := arr.Search("MO", model.QueryOptions{Max: 10})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(HaveLen(3))
+			Expect(results[0].Name).To(Equal("MØ"), "exact match via search_normalized must outrank prefix matches")
+		})
+
+		It("ranks the exact match first for the accented query 'MØ'", func() {
+			results, err := arr.Search("MØ", model.QueryOptions{Max: 10})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).ToNot(BeEmpty())
+			Expect(results[0].Name).To(Equal("MØ"))
 		})
 	})
 })

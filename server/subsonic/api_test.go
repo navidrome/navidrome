@@ -1,19 +1,22 @@
 package subsonic
 
 import (
+	"context"
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 
+	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/core/stream"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"golang.org/x/net/context"
 )
 
 var _ = Describe("sendResponse", func() {
@@ -186,4 +189,25 @@ var _ = Describe("sendResponse", func() {
 
 		Expect(pointer).To(Equal(responses.ErrorDataNotFound))
 	})
+})
+
+var _ = Describe("mapToSubsonicError", func() {
+	DescribeTable("maps repository errors to the correct Subsonic error code",
+		func(err error, expectedCode int32) {
+			subErr := mapToSubsonicError(err)
+			Expect(subErr.code).To(Equal(expectedCode))
+		},
+		Entry("rest.ErrPermissionDenied -> not authorized (50)",
+			rest.ErrPermissionDenied, responses.ErrorAuthorizationFail),
+		Entry("rest.ErrNotFound -> data not found (70)",
+			rest.ErrNotFound, responses.ErrorDataNotFound),
+		Entry("model.ErrNotAuthorized -> not authorized (50)",
+			model.ErrNotAuthorized, responses.ErrorAuthorizationFail),
+		Entry("model.ErrNotFound -> data not found (70)",
+			model.ErrNotFound, responses.ErrorDataNotFound),
+		Entry("wrapped rest.ErrPermissionDenied is still mapped",
+			fmt.Errorf("update share: %w", rest.ErrPermissionDenied), responses.ErrorAuthorizationFail),
+		Entry("unknown error -> generic (0)",
+			errors.New("boom"), responses.ErrorGeneric),
+	)
 })

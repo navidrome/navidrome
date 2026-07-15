@@ -11,6 +11,7 @@ import (
 	"github.com/deluan/sanitize"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/str"
 )
 
 // containsCJK returns true if the string contains any CJK (Chinese/Japanese/Korean) characters.
@@ -35,47 +36,11 @@ func containsCJK(s string) bool {
 // as unbalanced string delimiters.
 var fts5SpecialChars = regexp.MustCompile(`[^\p{L}\p{N}\s*"\x00]`)
 
-// fts5PunctStrip strips everything except letters and numbers (no whitespace, wildcards, or quotes).
-// Used for normalizing words at index time to create concatenated forms (e.g., "R.E.M." → "REM").
-var fts5PunctStrip = regexp.MustCompile(`[^\p{L}\p{N}]`)
-
 // fts5Operators matches FTS5 boolean operators as whole words (case-insensitive).
 var fts5Operators = regexp.MustCompile(`(?i)\b(AND|OR|NOT|NEAR)\b`)
 
 // fts5LeadingStar matches a * at the start of a token. FTS5 only supports * at the end (prefix queries).
 var fts5LeadingStar = regexp.MustCompile(`(^|[\s])\*+`)
-
-// normalizeForFTS takes multiple strings and returns a space-separated, deduplicated list of
-// alternative searchable forms for each word: punctuation-stripped (R.E.M. → REM, AC/DC → ACDC)
-// and ASCII-transliterated (Bjørk → Bjork, œuvre → oeuvre). The transliterated form is needed
-// because FTS5's `unicode61 remove_diacritics 2` only handles NFKD-decomposable diacritics —
-// atomic letters like ø/æ/œ/ß survive tokenization, so the query side and index side disagree
-// without an explicit transliterated entry here.
-func normalizeForFTS(values ...string) string {
-	seen := make(map[string]struct{})
-	var result []string
-	add := func(orig, variant string) {
-		if variant == "" || variant == orig {
-			return
-		}
-		lower := strings.ToLower(variant)
-		if _, ok := seen[lower]; ok {
-			return
-		}
-		seen[lower] = struct{}{}
-		result = append(result, variant)
-	}
-	for _, v := range values {
-		for _, word := range strings.Fields(v) {
-			transliterated := sanitize.Accents(word)
-			// Concatenated ASCII form: R.E.M. → REM, AC/DC → ACDC, St-Étienne → StEtienne.
-			add(word, fts5PunctStrip.ReplaceAllString(transliterated, ""))
-			// Accent-only transliteration for words without name-punctuation (Bjørk → Bjork).
-			add(word, transliterated)
-		}
-	}
-	return strings.Join(result, " ")
-}
 
 // isSingleUnicodeLetter returns true if token is exactly one Unicode letter.
 func isSingleUnicodeLetter(token string) bool {
@@ -100,7 +65,7 @@ func processPunctuatedWords(input string, phrases []string) (string, []string) {
 			result = append(result, w)
 			continue
 		}
-		concat := fts5PunctStrip.ReplaceAllString(w, "")
+		concat := str.FTSPunctStrip.ReplaceAllString(w, "")
 		if concat == "" || concat == w {
 			result = append(result, w)
 			continue
@@ -140,13 +105,15 @@ func isDottedAbbreviation(w string, subTokens []string) bool {
 }
 
 // buildFTS5Query preprocesses user input into a safe FTS5 MATCH expression.
+// Plain tokens are emitted as (token OR token*) so bm25 ranks exact-token hits above prefix-only matches.
 // It preserves quoted phrases and * prefix wildcards, neutralizes FTS5 operators
 // (by lowercasing them, since FTS5 operators are case-sensitive) and strips
 // special characters to prevent query injection.
-func buildFTS5Query(userInput string) string {
+// The second return reports whether tokenization degraded the query (see ftsQueryDegraded).
+func buildFTS5Query(userInput string) (string, bool) {
 	q := strings.TrimSpace(userInput)
 	if q == "" || q == `""` {
-		return ""
+		return "", false
 	}
 
 	var phrases []string
@@ -186,25 +153,38 @@ func buildFTS5Query(userInput string) string {
 	result = fts5LeadingStar.ReplaceAllString(result, "$1")
 	tokens := strings.Fields(result)
 
-	// Append * to plain tokens for prefix matching (e.g., "love" → "love*").
-	// Skip tokens that are already wildcarded or are quoted phrase placeholders.
+	// Two forms per token: a plain prefix form (love*) used only to evaluate query
+	// degradation, and the final (love OR love*) form. The OR adds no matches
+	// (exact ⊂ prefix) but gives bm25 a high-IDF exact-term hit, ranking rows that
+	// contain the literal word above prefix-only matches. Placeholders and
+	// user-supplied wildcards pass through untouched in both forms.
+	prefixTokens := make([]string, len(tokens))
+	wrappedTokens := make([]string, len(tokens))
 	for i, t := range tokens {
 		if strings.HasPrefix(t, "\x00") || strings.HasSuffix(t, "*") {
+			prefixTokens[i], wrappedTokens[i] = t, t
 			continue
 		}
-		tokens[i] = t + "*"
+		prefixTokens[i] = t + "*"
+		wrappedTokens[i] = "(" + t + " OR " + t + "*)"
 	}
 
 	// Use explicit AND between tokens — FTS5's implicit AND (space-separated)
-	// doesn't work correctly with parenthesized OR groups from processPunctuatedWords.
-	result = strings.Join(tokens, " AND ")
+	// doesn't work correctly with parenthesized OR groups. The prefix form is
+	// space-joined instead: it only feeds ftsQueryDegraded, which would count a
+	// literal "AND" as a long token and never flag all-short-token queries.
+	prefixQuery := strings.Join(prefixTokens, " ")
+	result = strings.Join(wrappedTokens, " AND ")
 
 	for i, phrase := range phrases {
 		placeholder := fmt.Sprintf("\x00PHRASE%d\x00", i)
+		prefixQuery = strings.ReplaceAll(prefixQuery, placeholder, phrase)
 		result = strings.ReplaceAll(result, placeholder, phrase)
 	}
 
-	return result
+	// Degradation is evaluated on the prefix form: ftsQueryDegraded treats
+	// leading-( tokens as punctuated-word groups and would never flag wrapped ones.
+	return result, ftsQueryDegraded(userInput, prefixQuery)
 }
 
 // ftsColumn pairs an FTS5 column name with its BM25 relevance weight.
@@ -244,7 +224,10 @@ var ftsColumnDefs = map[string][]ftsColumn{
 	"artist": {
 		{"name", 10.0},
 		{"sort_artist_name", 1.0},
-		{"search_normalized", 1.0},
+		// Same weight as name: for artists this column is purely the name in
+		// alternate spelling (unlike media_file/album, where it mixes
+		// title/album/artist variants and full weight would distort ranking).
+		{"search_normalized", 10.0},
 	},
 }
 
@@ -279,16 +262,14 @@ type ftsSearch struct {
 }
 
 // ToSql returns a single-query fallback for the REST filter path (no two-phase split).
-func (s *ftsSearch) ToSql() (string, []interface{}, error) {
+func (s *ftsSearch) ToSql() (string, []any, error) {
 	sql := s.tableName + ".rowid IN (SELECT rowid FROM " + s.ftsTable + " WHERE " + s.ftsTable + " MATCH ?)"
-	return sql, []interface{}{s.matchExpr}, nil
+	return sql, []any{s.matchExpr}, nil
 }
 
-// execute runs a two-phase FTS5 search:
-//   - Phase 1: lightweight rowid query (main table + FTS + library filter) for ranking and pagination.
-//   - Phase 2: full SELECT with all JOINs, scoped to Phase 1's rowid set.
-//
-// Complex ORDER BY (function calls, aggregations) are dropped from Phase 1.
+// execute runs a two-phase FTS5 search (see executeTwoPhase): Phase 1 here contributes the
+// FTS MATCH join and BM25 rank ordering. Complex ORDER BY (function calls, aggregations) are
+// dropped from Phase 1.
 func (s *ftsSearch) execute(r sqlRepository, sq SelectBuilder, dest any, cfg searchConfig, options model.QueryOptions) error {
 	qualifiedOrderBys := []string{s.rankExpr}
 	for _, ob := range cfg.OrderBy {
@@ -297,45 +278,11 @@ func (s *ftsSearch) execute(r sqlRepository, sq SelectBuilder, dest any, cfg sea
 		}
 	}
 
-	// Phase 1: fresh query — must set LIMIT/OFFSET from options explicitly.
-	// Mirror applyOptions behavior: Max=0 means no limit, not LIMIT 0.
-	rowidQuery := Select(s.tableName+".rowid").
+	rowidCore := Select(s.tableName+".rowid").
 		From(s.tableName).
 		Join(s.ftsTable+" ON "+s.ftsTable+".rowid = "+s.tableName+".rowid AND "+s.ftsTable+" MATCH ?", s.matchExpr).
-		Where(Eq{s.tableName + ".missing": false}).
 		OrderBy(qualifiedOrderBys...)
-	if options.Max > 0 {
-		rowidQuery = rowidQuery.Limit(uint64(options.Max))
-	}
-	if options.Offset > 0 {
-		rowidQuery = rowidQuery.Offset(uint64(options.Offset))
-	}
-
-	// Library filter + musicFolderId must be applied here, before pagination.
-	if cfg.LibraryFilter != nil {
-		rowidQuery = cfg.LibraryFilter(rowidQuery)
-	} else {
-		rowidQuery = r.applyLibraryFilter(rowidQuery)
-	}
-	if options.Filters != nil {
-		rowidQuery = rowidQuery.Where(options.Filters)
-	}
-
-	rowidSQL, rowidArgs, err := rowidQuery.ToSql()
-	if err != nil {
-		return fmt.Errorf("building FTS rowid query: %w", err)
-	}
-
-	// Phase 2: strip LIMIT/OFFSET from sq (Phase 1 handled pagination),
-	// join on the ranked rowid set to hydrate with full columns.
-	sq = sq.RemoveLimit().RemoveOffset()
-	rankedSubquery := fmt.Sprintf(
-		"(SELECT rowid as _rid, row_number() OVER () AS _rn FROM (%s)) AS _ranked",
-		rowidSQL,
-	)
-	sq = sq.Join(rankedSubquery+" ON "+s.tableName+".rowid = _ranked._rid", rowidArgs...)
-	sq = sq.OrderBy("_ranked._rn")
-	return r.queryAll(sq, dest)
+	return r.executeTwoPhase(sq, dest, rowidCore, cfg, options)
 }
 
 // qualifyOrderBy prepends tableName to a simple column name. Returns empty string for
@@ -365,7 +312,7 @@ func ftsQueryDegraded(original, ftsQuery string) bool {
 	// Strip quotes from original for comparison — we want the raw content
 	stripped := strings.ReplaceAll(original, `"`, "")
 	// Extract the alphanumeric content from the original query
-	alphaNum := fts5PunctStrip.ReplaceAllString(stripped, "")
+	alphaNum := str.FTSPunctStrip.ReplaceAllString(stripped, "")
 	// If the original is entirely alphanumeric, nothing was stripped — not degraded
 	if len(alphaNum) == len(stripped) {
 		return false
@@ -373,8 +320,8 @@ func ftsQueryDegraded(original, ftsQuery string) bool {
 	// Check if all effective FTS tokens are very short (≤2 chars).
 	// Short tokens with prefix matching are too broad when special chars were stripped.
 	// For quoted phrases, extract the content and check the tokens inside.
-	tokens := strings.Fields(ftsQuery)
-	for _, t := range tokens {
+	tokens := strings.FieldsSeq(ftsQuery)
+	for t := range tokens {
 		t = strings.TrimSuffix(t, "*")
 		// Skip internal phrase placeholders
 		if strings.HasPrefix(t, "\x00") {
@@ -389,8 +336,8 @@ func ftsQueryDegraded(original, ftsQuery string) bool {
 		if strings.HasPrefix(t, `"`) {
 			// Extract content between quotes
 			inner := strings.Trim(t, `"`)
-			innerAlpha := fts5PunctStrip.ReplaceAllString(inner, " ")
-			for _, it := range strings.Fields(innerAlpha) {
+			innerAlpha := str.FTSPunctStrip.ReplaceAllString(inner, " ")
+			for it := range strings.FieldsSeq(innerAlpha) {
 				if len(it) > 2 {
 					return false
 				}
@@ -409,8 +356,8 @@ func ftsQueryDegraded(original, ftsQuery string) bool {
 // tokenization stripped significant content from the query (e.g., "1+" → "1*").
 // Returns nil when the query produces no searchable tokens at all.
 func newFTSSearch(tableName, query string) searchStrategy {
-	q := buildFTS5Query(query)
-	if q == "" || ftsQueryDegraded(query, q) {
+	q, degraded := buildFTS5Query(query)
+	if q == "" || degraded {
 		// Fallback: try LIKE search with the raw query
 		cleaned := strings.TrimSpace(strings.ReplaceAll(query, `"`, ""))
 		if cleaned != "" {

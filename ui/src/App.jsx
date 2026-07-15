@@ -1,7 +1,12 @@
 import ReactGA from 'react-ga'
 import { Provider } from 'react-redux'
 import { createHashHistory } from 'history'
-import { Admin as RAAdmin, Resource } from 'react-admin'
+import {
+  Admin as RAAdmin,
+  Resource,
+  useSetLocale,
+  useRefresh,
+} from 'react-admin'
 import { HotKeys } from 'react-hotkeys'
 import dataProvider from './dataProvider'
 import authProvider from './authProvider'
@@ -39,7 +44,7 @@ import {
   transcodingReducer,
 } from './reducers'
 import createAdminStore from './store/createAdminStore'
-import { i18nProvider } from './i18n'
+import { i18nProvider, retrieveTranslation } from './i18n'
 import config, { shareInfo } from './config'
 import { keyMap } from './hotkeys'
 import useChangeThemeColor from './useChangeThemeColor'
@@ -47,6 +52,7 @@ import SharePlayer from './share/SharePlayer'
 import { HTML5Backend } from 'react-dnd-html5-backend'
 import { DndProvider } from 'react-dnd'
 import missing from './missing/index.js'
+import { useEffect } from 'react'
 
 const history = createHashHistory()
 
@@ -88,6 +94,24 @@ const App = () => (
 )
 
 const Admin = (props) => {
+  const setLocale = useSetLocale()
+  const refresh = useRefresh()
+  useEffect(() => {
+    if (config.defaultLanguage !== '' && !localStorage.getItem('locale')) {
+      retrieveTranslation(config.defaultLanguage)
+        .then(() => setLocale(config.defaultLanguage))
+        .then(() => {
+          localStorage.setItem('locale', config.defaultLanguage)
+          refresh(true)
+        })
+        .catch((e) => {
+          // eslint-disable-next-line no-console
+          console.error(
+            'Cannot load language "' + config.defaultLanguage + '": ' + e,
+          )
+        })
+    }
+  }, [setLocale, refresh])
   useChangeThemeColor()
   /* eslint-disable react/jsx-key */
   return (

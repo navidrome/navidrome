@@ -1,5 +1,7 @@
 package capabilities
 
+import "github.com/navidrome/navidrome/plugins/types"
+
 // Scrobbler provides scrobbling functionality to external services.
 // This capability allows plugins to submit listening history to services like Last.fm,
 // ListenBrainz, or custom scrobbling backends.
@@ -32,16 +34,6 @@ type IsAuthorizedRequest struct {
 	Username string `json:"username"`
 }
 
-// ArtistRef is a reference to an artist with name and optional MBID.
-type ArtistRef struct {
-	// ID is the internal Navidrome artist ID (if known).
-	ID string `json:"id,omitempty"`
-	// Name is the artist name.
-	Name string `json:"name"`
-	// MBID is the MusicBrainz ID for the artist.
-	MBID string `json:"mbid,omitempty"`
-}
-
 // TrackInfo contains track metadata.
 type TrackInfo struct {
 	// ID is the internal Navidrome track ID.
@@ -55,9 +47,9 @@ type TrackInfo struct {
 	// AlbumArtist is the formatted album artist name for display.
 	AlbumArtist string `json:"albumArtist"`
 	// Artists is the list of track artists.
-	Artists []ArtistRef `json:"artists"`
+	Artists []types.ArtistRef `json:"artists"`
 	// AlbumArtists is the list of album artists.
-	AlbumArtists []ArtistRef `json:"albumArtists"`
+	AlbumArtists []types.ArtistRef `json:"albumArtists"`
 	// Duration is the track duration in seconds.
 	Duration float32 `json:"duration"`
 	// TrackNumber is the track number on the album.

@@ -90,10 +90,8 @@ func SongsByAlbum(albumId string) Options {
 	})
 }
 
-func SongsByRandom(genre string, fromYear, toYear int) Options {
-	options := Options{
-		Sort: "random",
-	}
+func SongsByGenreAndYearRange(genre string, fromYear, toYear int) Options {
+	options := Options{}
 	ff := And{}
 	if genre != "" {
 		ff = append(ff, filterByGenre(genre))
@@ -106,21 +104,6 @@ func SongsByRandom(genre string, fromYear, toYear int) Options {
 	}
 	options.Filters = ff
 	return addDefaultFilters(options)
-}
-
-func SongsByArtistTitleWithLyricsFirst(artist, title string) Options {
-	return addDefaultFilters(Options{
-		Sort:  "lyrics, updated_at",
-		Order: "desc",
-		Max:   1,
-		Filters: And{
-			Eq{"title": title},
-			Or{
-				persistence.Exists("json_tree(participants, '$.albumartist')", Eq{"value": artist}),
-				persistence.Exists("json_tree(participants, '$.artist')", Eq{"value": artist}),
-			},
-		},
-	})
 }
 
 func ApplyLibraryFilter(opts Options, musicFolderIds []int) Options {

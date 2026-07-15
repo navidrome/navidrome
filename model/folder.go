@@ -127,7 +127,14 @@ type FolderRepository interface {
 	GetAll(...QueryOptions) (Folders, error)
 	CountAll(...QueryOptions) (int64, error)
 	GetFolderUpdateInfo(lib Library, targetPaths ...string) (map[string]FolderUpdateInfo, error)
+	// HasAudioOutsideFolders reports whether any folder in parent's subtree
+	// (including parent itself) contains audio files and is not one of the
+	// given folder IDs.
+	HasAudioOutsideFolders(parent Folder, excludeFolderIDs []string) (bool, error)
 	Put(*Folder) error
 	MarkMissing(missing bool, ids ...string) error
 	GetTouchedWithPlaylists() (FolderCursor, error)
+	// GetAllWithPlaylists returns all non-missing folders with playlists, ignoring
+	// the scan-timestamp gate used by GetTouchedWithPlaylists.
+	GetAllWithPlaylists() (FolderCursor, error)
 }

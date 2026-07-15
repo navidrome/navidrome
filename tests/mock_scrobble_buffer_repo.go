@@ -87,6 +87,22 @@ func (m *MockedScrobbleBufferRepo) Dequeue(entry *model.ScrobbleEntry) error {
 	return nil
 }
 
+func (m *MockedScrobbleBufferRepo) Discard(service string) error {
+	if m.Error != nil {
+		return m.Error
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	newData := model.ScrobbleEntries{}
+	for _, e := range m.Data {
+		if e.Service != service {
+			newData = append(newData, e)
+		}
+	}
+	m.Data = newData
+	return nil
+}
+
 func (m *MockedScrobbleBufferRepo) Length() (int64, error) {
 	if m.Error != nil {
 		return 0, m.Error

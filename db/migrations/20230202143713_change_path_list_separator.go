@@ -16,10 +16,10 @@ func init() {
 	goose.AddMigrationContext(upChangePathListSeparator, downChangePathListSeparator)
 }
 
-func upChangePathListSeparator(_ context.Context, tx *sql.Tx) error {
+func upChangePathListSeparator(ctx context.Context, tx *sql.Tx) error {
 	//nolint:gosec
-	rows, err := tx.Query(`
-	select album_id, group_concat(path, '` + consts.Zwsp + `') from media_file group by album_id
+	rows, err := tx.QueryContext(ctx, `
+	select album_id, group_concat(path, '`+consts.Zwsp+`') from media_file group by album_id
 	`)
 	if err != nil {
 		return err
@@ -58,6 +58,6 @@ func upChangePathListSeparatorDirs(filePaths string) string {
 	return strings.Join(dirs, consts.Zwsp)
 }
 
-func downChangePathListSeparator(_ context.Context, tx *sql.Tx) error {
+func downChangePathListSeparator(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

@@ -19,6 +19,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
+	"github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/number"
 	"github.com/navidrome/navidrome/utils/req"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -217,7 +218,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 		child.Path = fakePath(mf)
 	}
 	child.DiscNumber = int32(mf.DiscNumber)
-	child.Created = new(mf.BirthTime)
+	child.Created = new(mediaFileCreatedAt(mf))
 	child.AlbumId = mf.AlbumID
 	child.ArtistId = mf.ArtistID
 	child.Type = "music"
@@ -251,7 +252,7 @@ func osChildFromMediaFile(ctx context.Context, mf model.MediaFile) *responses.Op
 	}
 	child.Comment = mf.Comment
 	child.SortName = sortName(mf.SortTitle, mf.OrderTitle)
-	child.BPM = int32(mf.BPM)
+	child.BPM = int32(gg.V(mf.BPM))
 	child.MediaType = responses.MediaTypeSong
 	child.MusicBrainzId = mf.MbzRecordingID
 	child.Isrc = mf.Tags.Values(model.TagISRC)
@@ -263,7 +264,7 @@ func osChildFromMediaFile(ctx context.Context, mf model.MediaFile) *responses.Op
 	}
 	child.ChannelCount = int32(mf.Channels)
 	child.SamplingRate = int32(mf.SampleRate)
-	child.BitDepth = int32(mf.BitDepth)
+	child.BitDepth = int32(gg.V(mf.BitDepth))
 	child.Genres = toItemGenres(mf.Genres)
 	child.Moods = mf.Tags.Values(model.TagMood)
 	child.Groupings = mf.Tags.Values(model.TagGrouping)
@@ -290,6 +291,12 @@ func osChildFromMediaFile(ctx context.Context, mf model.MediaFile) *responses.Op
 	}
 	child.Contributors = contributors
 	child.ExplicitStatus = mapExplicitStatus(mf.ExplicitStatus)
+	child.Works = slice.Map(mf.Works(), func(w model.Work) responses.Work {
+		return responses.Work{Name: w.Name, MusicBrainzId: w.MbzWorkID}
+	})
+	child.Movements = slice.Map(mf.Movements(), func(m model.Movement) responses.Movement {
+		return responses.Movement{Name: m.Name, Number: m.Number, Count: m.Count}
+	})
 	return &child
 }
 
@@ -320,18 +327,36 @@ func sanitizeSlashes(target string) string {
 	return strings.ReplaceAll(target, "/", "_")
 }
 
-// albumCreatedAt returns a best-effort timestamp for the album's `created`
-// field, which is required by the OpenSubsonic spec but may be zero on legacy
-// DB rows. Falls back to UpdatedAt → ImportedAt; can still return zero if all
-// three are unset.
+// albumCreatedAt mirrors the column used by recentlyAddedSort so clients can
+// reproduce the "recently added" order locally: UpdatedAt when
+// RecentlyAddedByModTime is set, CreatedAt otherwise. The other timestamps are
+// fallbacks for legacy rows; returns zero only when all three are unset.
 func albumCreatedAt(al model.Album) time.Time {
-	if !al.CreatedAt.IsZero() {
-		return al.CreatedAt
+	candidates := []time.Time{al.CreatedAt, al.UpdatedAt, al.ImportedAt}
+	if conf.Server.RecentlyAddedByModTime {
+		candidates = []time.Time{al.UpdatedAt, al.CreatedAt, al.ImportedAt}
 	}
-	if !al.UpdatedAt.IsZero() {
-		return al.UpdatedAt
+	for _, t := range candidates {
+		if !t.IsZero() {
+			return t
+		}
 	}
-	return al.ImportedAt
+	return time.Time{}
+}
+
+// mediaFileCreatedAt is the song counterpart of albumCreatedAt, tracking
+// mediaFileRecentlyAddedSort; BirthTime is the legacy fallback.
+func mediaFileCreatedAt(mf model.MediaFile) time.Time {
+	candidates := []time.Time{mf.CreatedAt, mf.UpdatedAt, mf.BirthTime}
+	if conf.Server.RecentlyAddedByModTime {
+		candidates = []time.Time{mf.UpdatedAt, mf.CreatedAt, mf.BirthTime}
+	}
+	for _, t := range candidates {
+		if !t.IsZero() {
+			return t
+		}
+	}
+	return time.Time{}
 }
 
 func childFromAlbum(ctx context.Context, al model.Album) responses.Child {
@@ -519,48 +544,6 @@ func mapExplicitStatus(explicitStatus string) string {
 		return "explicit"
 	}
 	return ""
-}
-
-func buildStructuredLyric(mf *model.MediaFile, lyrics model.Lyrics) responses.StructuredLyric {
-	lines := make([]responses.Line, len(lyrics.Line))
-
-	for i, line := range lyrics.Line {
-		lines[i] = responses.Line{
-			Start: line.Start,
-			Value: line.Value,
-		}
-	}
-
-	structured := responses.StructuredLyric{
-		DisplayArtist: lyrics.DisplayArtist,
-		DisplayTitle:  lyrics.DisplayTitle,
-		Lang:          lyrics.Lang,
-		Line:          lines,
-		Offset:        lyrics.Offset,
-		Synced:        lyrics.Synced,
-	}
-
-	if structured.DisplayArtist == "" {
-		structured.DisplayArtist = mf.Artist
-	}
-	if structured.DisplayTitle == "" {
-		structured.DisplayTitle = mf.Title
-	}
-
-	return structured
-}
-
-func buildLyricsList(mf *model.MediaFile, lyricsList model.LyricList) *responses.LyricsList {
-	lyricList := make(responses.StructuredLyrics, len(lyricsList))
-
-	for i, lyrics := range lyricsList {
-		lyricList[i] = buildStructuredLyric(mf, lyrics)
-	}
-
-	res := &responses.LyricsList{
-		StructuredLyrics: lyricList,
-	}
-	return res
 }
 
 // getUserAccessibleLibraries returns the list of libraries the current user has access to.
