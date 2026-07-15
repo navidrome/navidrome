@@ -30,17 +30,6 @@ func (r *genreRepository) GetAll(opt ...model.QueryOptions) (model.Genres, error
 	return res, err
 }
 
-// GetCursor scans straight into model.Genre — unlike the other repositories, genres have no db*
-// wrapper to unwrap.
-func (r *genreRepository) GetCursor(opt ...model.QueryOptions) (model.GenreCursor, error) {
-	sq := r.selectGenre(opt...)
-	cursor, err := queryWithStableResults[model.Genre](r.sqlRepository, sq)
-	if err != nil {
-		return nil, err
-	}
-	return model.GenreCursor(cursor), nil
-}
-
 // Override ResourceRepository methods to return Genre objects instead of Tag objects
 
 func (r *genreRepository) Read(id string) (any, error) {

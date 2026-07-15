@@ -36,7 +36,7 @@ func (api *Router) listArtistsByRole(w http.ResponseWriter, r *http.Request, rol
 		api.internalError(w, r, err)
 		return
 	}
-	api.writeItems(w, r, res)
+	api.ok(w, r, res)
 }
 
 // getGenres handles /Genres and /MusicGenres. Genres are global, so no library scoping applies.
@@ -49,5 +49,5 @@ func (api *Router) getGenres(w http.ResponseWriter, r *http.Request) {
 		api.internalError(w, r, err)
 		return
 	}
-	api.writeItems(w, r, res)
+	api.ok(w, r, res)
 }

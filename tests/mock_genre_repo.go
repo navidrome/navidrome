@@ -28,20 +28,6 @@ func (r *MockedGenreRepo) GetAll(...model.QueryOptions) (model.Genres, error) {
 	return all, nil
 }
 
-func (r *MockedGenreRepo) GetCursor(opt ...model.QueryOptions) (model.GenreCursor, error) {
-	res, err := r.GetAll(opt...)
-	if err != nil {
-		return nil, err
-	}
-	return func(yield func(model.Genre, error) bool) {
-		for _, g := range res {
-			if !yield(g, nil) {
-				return
-			}
-		}
-	}, nil
-}
-
 func (r *MockedGenreRepo) Put(g *model.Genre) error {
 	if r.Error != nil {
 		return r.Error

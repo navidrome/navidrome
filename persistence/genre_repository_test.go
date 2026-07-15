@@ -63,16 +63,6 @@ var _ = Describe("GenreRepository", func() {
 		Expect(err).ToNot(HaveOccurred())
 	})
 
-	// GetCursor is the streaming equivalent of GetAll, so it must yield exactly what GetAll returns.
-	Describe("GetCursor", func() {
-		It("yields the same genres as GetAll", func() {
-			opts := model.QueryOptions{Sort: "name"}
-			want, err := repo.GetAll(opts)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(collectCursor(repo.GetCursor(opts))).To(Equal([]model.Genre(want)))
-		})
-	})
-
 	Describe("GetAll", func() {
 		It("should return all genres", func() {
 			genres, err := repo.GetAll()

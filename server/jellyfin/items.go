@@ -30,7 +30,7 @@ func (api *Router) getItems(w http.ResponseWriter, r *http.Request) {
 		api.internalError(w, r, err)
 		return
 	}
-	api.writeItems(w, r, res)
+	api.ok(w, r, res)
 }
 
 // itemsResult is the outcome of an /Items query: a materialized page, or a cursor opener (for the
@@ -604,7 +604,7 @@ func (api *Router) deleteItem(w http.ResponseWriter, r *http.Request) {
 }
 
 // getLatest returns a bare array, not a QueryResult envelope — that's the shape real Jellyfin uses
-// for /Items/Latest.
+// for /Items/Latest, and the reason it writes directly instead of going through api.ok.
 func (api *Router) getLatest(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	opts := filter.AlbumsByNewest()
