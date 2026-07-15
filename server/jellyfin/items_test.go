@@ -133,6 +133,69 @@ var _ = Describe("Items", func() {
 			Expect(w.Code).To(Equal(http.StatusInternalServerError))
 		})
 
+		// Recursive=false asks for direct children only. Finamp's sync probes a library this way
+		// looking for tracks outside any album; answering with every track streams the whole library.
+		Describe("Recursive=false", func() {
+			BeforeEach(func() {
+				ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1", Name: "One"}})
+				ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: "s1", AlbumID: "a1"}})
+			})
+
+			It("returns no songs for a library parent, as tracks are never its direct children", func() {
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeID("1")+"&IncludeItemTypes=Audio&Recursive=false", nil).
+					WithContext(ctxUser())
+				invoke(api.getItems, w, r)
+				Expect(w.Code).To(Equal(http.StatusOK))
+				var res dto.QueryResult
+				Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+				Expect(res.Items).To(BeEmpty())
+				Expect(res.TotalRecordCount).To(BeZero())
+			})
+
+			It("drops only Audio from a multi-type library query", func() {
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeID("1")+"&IncludeItemTypes=Audio,MusicAlbum&Recursive=false", nil).
+					WithContext(ctxUser())
+				invoke(api.getItems, w, r)
+				var res dto.QueryResult
+				Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+				Expect(res.Items).To(HaveLen(1))
+				Expect(res.Items[0].Type).To(Equal("MusicAlbum"))
+			})
+
+			It("still lists albums for a library parent, as they are its direct children", func() {
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeID("1")+"&IncludeItemTypes=MusicAlbum&Recursive=false", nil).
+					WithContext(ctxUser())
+				invoke(api.getItems, w, r)
+				var res dto.QueryResult
+				Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+				Expect(res.Items).To(HaveLen(1))
+			})
+
+			It("still lists an album's tracks, as they are its direct children", func() {
+				fp.getErr = model.ErrNotFound
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeID("a1")+"&IncludeItemTypes=Audio&Recursive=false", nil).
+					WithContext(ctxUser())
+				invoke(api.getItems, w, r)
+				var res dto.QueryResult
+				Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+				Expect(res.Items).To(HaveLen(1))
+				Expect(res.Items[0].Id).To(Equal(dto.EncodeID("s1")))
+			})
+
+			It("keeps returning every song when no parent scopes the query", func() {
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio&Recursive=false", nil).WithContext(ctxUser())
+				invoke(api.getItems, w, r)
+				var res dto.QueryResult
+				Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+				Expect(res.Items).To(HaveLen(1))
+			})
+		})
+
 		It("lists an artist's albums when ParentId is an artist and type is MusicAlbum", func() {
 			ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1", Name: "One", AlbumArtistID: "ar1"}})
 			w := httptest.NewRecorder()
