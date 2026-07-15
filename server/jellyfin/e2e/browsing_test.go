@@ -118,6 +118,28 @@ var _ = Describe("Browsing", func() {
 		})
 	})
 
+	// Finamp's download sync asks a library for the tracks outside any album this way; answering
+	// with every track would stream the whole library.
+	Describe("Recursive=false", func() {
+		lib1 := enc("1")
+
+		It("returns no songs for a library parent", func() {
+			q := queryResult(get("/Items?IncludeItemTypes=Audio&ParentId=" + lib1 + "&Recursive=false"))
+			Expect(q.Items).To(BeEmpty())
+			Expect(q.TotalRecordCount).To(BeZero())
+		})
+
+		It("still lists the library's albums", func() {
+			q := queryResult(get("/Items?IncludeItemTypes=MusicAlbum&ParentId=" + lib1 + "&Recursive=false"))
+			Expect(names(q.Items)).To(ConsistOf("Abbey Road", "Help!", "IV", "Kind of Blue", "Singles"))
+		})
+
+		It("still lists an album's tracks", func() {
+			q := queryResult(get("/Items?IncludeItemTypes=Audio&ParentId=" + enc(albumID("Abbey Road")) + "&Recursive=false"))
+			Expect(names(q.Items)).To(ConsistOf("Come Together", "Something"))
+		})
+	})
+
 	// Finamp's artist screen sends ParentId=<libraryId> (scoping) plus AlbumArtistIds/ArtistIds
 	// for the actual artist filter, not ParentId=<artistId>.
 	Describe("artist filtering (AlbumArtistIds / ArtistIds)", func() {
