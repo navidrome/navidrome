@@ -7,11 +7,27 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 )
+
+// throttleStreams bounds how many collection responses stream concurrently, so they can't take every
+// connection in the shared DB pool: each holds a cursor, and its connection, for the whole
+// client-paced response. Excess requests queue rather than fail. limit <= 0 disables it.
+//
+// Deliberately chi's ThrottleBacklog and not server.ThrottleBacklog: the latter buffers the entire
+// response to release its token early, which is right for artwork but would undo the streaming here.
+// chi's panics on a non-positive limit, hence the guard.
+func throttleStreams(limit int) func(http.Handler) http.Handler {
+	if limit <= 0 {
+		return func(next http.Handler) http.Handler { return next }
+	}
+	return middleware.ThrottleBacklog(limit, consts.RequestThrottleBacklogLimit, consts.RequestThrottleBacklogTimeout)
+}
 
 // normalizeQueryKeys folds query-parameter keys to lowercase so handlers can read params
 // case-insensitively, matching real Jellyfin. Clients disagree on casing (Finamp sends PascalCase,

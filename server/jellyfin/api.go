@@ -6,12 +6,10 @@ import (
 	"sync"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httprate"
 	"golang.org/x/sync/singleflight"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/external"
@@ -172,19 +170,6 @@ func (api *Router) routes() http.Handler {
 
 	// Real Jellyfin clients route case-insensitively; chi does not.
 	return caseInsensitivePaths(inner)
-}
-
-// throttleStreams bounds how many collection responses stream concurrently, so they can't take every
-// connection in the shared pool. limit <= 0 disables it.
-//
-// Deliberately chi's ThrottleBacklog and not server.ThrottleBacklog: the latter buffers the entire
-// response to release its token early, which is right for artwork but would undo the streaming here.
-// chi's panics on a non-positive limit, hence the guard.
-func throttleStreams(limit int) func(http.Handler) http.Handler {
-	if limit <= 0 {
-		return func(next http.Handler) http.Handler { return next }
-	}
-	return middleware.ThrottleBacklog(limit, consts.RequestThrottleBacklogLimit, consts.RequestThrottleBacklogTimeout)
 }
 
 // ok writes payload as JSON — the single entry point for every handler. Collections are routed to
