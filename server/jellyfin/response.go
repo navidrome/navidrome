@@ -16,8 +16,11 @@ import (
 // a DB cursor with peak memory of about one item. For a materialized slice the bytes are identical to
 // json.NewEncoder(w).Encode(QueryResult{...}).
 //
-// A mid-stream error stops iteration but still closes the envelope (valid, if short, JSON) and is
-// returned for logging; the HTTP status is already committed, as with a mid-encode failure before.
+// A mid-stream error aborts without closing the envelope, leaving malformed JSON: the HTTP 200 is
+// already committed, so a truncated-but-valid body would let a sync client treat the short list as
+// complete (and prune local tracks). Malformed JSON forces the client's parser to fail and retry.
+// Cursor-open errors are caught by the caller before any byte is written, so this only fires on a
+// rare mid-iteration failure.
 func streamItemsEnvelope(w io.Writer, items iter.Seq2[dto.BaseItemDto, error], total, start int) error {
 	// bufio latches the first write error and returns it from Flush, so intermediate writes go unchecked.
 	bw := bufio.NewWriterSize(w, 64*1024)
@@ -29,11 +32,10 @@ func streamItemsEnvelope(w io.Writer, items iter.Seq2[dto.BaseItemDto, error], t
 
 	write(`{"Items":[`)
 	first := true
-	var itemsErr error
 	for item, err := range items {
 		if err != nil {
-			itemsErr = err
-			break
+			_ = bw.Flush()
+			return err
 		}
 		if !first {
 			write(",")
@@ -41,8 +43,8 @@ func streamItemsEnvelope(w io.Writer, items iter.Seq2[dto.BaseItemDto, error], t
 		first = false
 		itemBuf.Reset()
 		if err := enc.Encode(item); err != nil {
-			itemsErr = err
-			break
+			_ = bw.Flush()
+			return err
 		}
 		b := itemBuf.Bytes()
 		_, _ = bw.Write(b[:len(b)-1])
@@ -52,10 +54,7 @@ func streamItemsEnvelope(w io.Writer, items iter.Seq2[dto.BaseItemDto, error], t
 	write(`,"StartIndex":`)
 	write(strconv.Itoa(start))
 	write("}\n")
-	if err := bw.Flush(); err != nil {
-		return err
-	}
-	return itemsErr
+	return bw.Flush()
 }
 
 // streamQueryResult streams a fully materialized QueryResult (used by api.ok for the bounded,

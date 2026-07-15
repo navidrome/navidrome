@@ -71,6 +71,16 @@ var _ = Describe("Items", func() {
 			Expect(res.Items[0].Id).To(Equal(dto.EncodeID("s1")))
 		})
 
+		It("returns 500 when the song cursor fails to open, instead of a truncated 200", func() {
+			// A cursor-open failure (e.g. a busy DB) must surface as an error before any bytes are
+			// written, not as a 200 with an empty item list.
+			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetError(true)
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio&Recursive=true", nil).WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusInternalServerError))
+		})
+
 		It("lists an artist's albums when ParentId is an artist and type is MusicAlbum", func() {
 			ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1", Name: "One", AlbumArtistID: "ar1"}})
 			w := httptest.NewRecorder()

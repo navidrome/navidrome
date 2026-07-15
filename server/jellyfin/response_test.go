@@ -74,7 +74,7 @@ var _ = Describe("streamItemsEnvelope", func() {
 		Expect(got.String()).To(Equal("{\"Items\":[],\"TotalRecordCount\":0,\"StartIndex\":0}\n"))
 	})
 
-	It("stops at a mid-stream error but still closes the envelope and returns the error", func() {
+	It("aborts on a mid-stream error, leaving the envelope open (malformed) so the client fails loudly", func() {
 		boom := errors.New("scan failed")
 		first := dto.BaseItemDto{Id: "a", Name: "One"}
 		seq := func(yield func(dto.BaseItemDto, error) bool) {
@@ -86,8 +86,9 @@ var _ = Describe("streamItemsEnvelope", func() {
 		var got bytes.Buffer
 		err := streamItemsEnvelope(&got, seq, 7, 0)
 		Expect(err).To(MatchError(boom))
-		// Valid JSON with the item written before the failure, and the totals still present.
+		// The envelope is deliberately left unclosed: a truncated-but-valid response would let a
+		// sync client treat the short list as complete. Malformed JSON forces a parse failure/retry.
 		firstJSON, _ := json.Marshal(first)
-		Expect(got.String()).To(Equal("{\"Items\":[" + string(firstJSON) + "],\"TotalRecordCount\":7,\"StartIndex\":0}\n"))
+		Expect(got.String()).To(Equal("{\"Items\":[" + string(firstJSON)))
 	})
 })

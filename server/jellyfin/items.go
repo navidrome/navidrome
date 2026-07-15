@@ -32,14 +32,16 @@ func (api *Router) getItems(w http.ResponseWriter, r *http.Request) {
 	api.writeItems(w, r, res)
 }
 
-// itemsResult is the outcome of an /Items query: a materialized page, or a lazy cursor (for the
+// itemsResult is the outcome of an /Items query: a materialized page, or a cursor opener (for the
 // single-type song listing) so a full-library response never builds every DTO at once. Exactly one
-// of items/cursor is set.
+// of items/openCursor is set. openCursor is deferred so it runs after the ServerId lookup (which can
+// write to the DB and would deadlock against an open reader) but before any response byte is written,
+// so a failed open becomes a clean error rather than a truncated 200.
 type itemsResult struct {
-	items  []dto.BaseItemDto
-	cursor iter.Seq2[dto.BaseItemDto, error]
-	total  int
-	start  int
+	items      []dto.BaseItemDto
+	openCursor func() (iter.Seq2[dto.BaseItemDto, error], error)
+	total      int
+	start      int
 }
 
 func materialized(q dto.QueryResult) itemsResult {
@@ -51,25 +53,30 @@ func wrapResult(q dto.QueryResult, err error) (itemsResult, error) {
 	return materialized(q), err
 }
 
-func streamed(cursor iter.Seq2[dto.BaseItemDto, error], total, start int) itemsResult {
-	return itemsResult{cursor: cursor, total: total, start: start}
+func streamed(open func() (iter.Seq2[dto.BaseItemDto, error], error), total, start int) itemsResult {
+	return itemsResult{openCursor: open, total: total, start: start}
 }
 
-// seq yields the items as one sequence, whichever backing store is set.
-func (ir itemsResult) seq() iter.Seq2[dto.BaseItemDto, error] {
-	if ir.cursor != nil {
-		return ir.cursor
+// seq returns the items as one sequence, opening the cursor if the result is cursor-backed. Any
+// open error surfaces here, before streaming starts.
+func (ir itemsResult) seq() (iter.Seq2[dto.BaseItemDto, error], error) {
+	if ir.openCursor != nil {
+		return ir.openCursor()
 	}
-	return sliceItems(ir.items)
+	return sliceItems(ir.items), nil
 }
 
 // collect drains the result into a slice, for the multi-type merge that combines queries before paginating.
 func (ir itemsResult) collect() ([]dto.BaseItemDto, error) {
-	if ir.cursor == nil {
+	if ir.openCursor == nil {
 		return ir.items, nil
 	}
+	seq, err := ir.openCursor()
+	if err != nil {
+		return nil, err
+	}
 	var out []dto.BaseItemDto
-	for it, err := range ir.cursor {
+	for it, err := range seq {
 		if err != nil {
 			return nil, err
 		}
@@ -79,11 +86,17 @@ func (ir itemsResult) collect() ([]dto.BaseItemDto, error) {
 }
 
 // writeItems streams the result, stamping every item's ServerId (constant per request, so it's set
-// here rather than in each mapper).
+// here rather than in each mapper). The cursor is opened before any byte is written, so an open
+// failure returns a clean 500 instead of a truncated 200.
 func (api *Router) writeItems(w http.ResponseWriter, r *http.Request, res itemsResult) {
 	sid := api.serverID(r.Context())
+	seq, err := res.seq()
+	if err != nil {
+		api.internalError(w, r, err)
+		return
+	}
 	stamped := func(yield func(dto.BaseItemDto, error) bool) {
-		for it, err := range res.seq() {
+		for it, err := range seq {
 			if err != nil {
 				yield(dto.BaseItemDto{}, err)
 				return
@@ -364,27 +377,28 @@ func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, paren
 		opts.Sort = filter.SongsByAlbum(parentId).Sort
 	}
 	// Stream songs from a DB cursor so a full-library request (Finamp's sync with MediaSources, tens
-	// of thousands of fat rows) never materializes every MediaFile + DTO at once.
+	// of thousands of fat rows) never materializes every MediaFile + DTO at once. The open is deferred
+	// (see itemsResult): it runs after the ServerId lookup, whose first-use DB write would deadlock
+	// against an open reader, and its error is surfaced before any response byte is written.
 	total, _ := repo.CountAll(model.QueryOptions{Filters: opts.Filters})
-	// Open the cursor lazily, at stream time: it holds a DB connection (read lock) until drained, and
-	// the ServerId lookup that runs next writes to the DB on first use — opening here would deadlock them.
-	items := func(yield func(dto.BaseItemDto, error) bool) {
+	open := func() (iter.Seq2[dto.BaseItemDto, error], error) {
 		cursor, err := repo.GetCursor(opts)
 		if err != nil {
-			yield(dto.BaseItemDto{}, err)
-			return
+			return nil, err
 		}
-		for mf, err := range cursor {
-			if err != nil {
-				yield(dto.BaseItemDto{}, err)
-				return
+		return func(yield func(dto.BaseItemDto, error) bool) {
+			for mf, err := range cursor {
+				if err != nil {
+					yield(dto.BaseItemDto{}, err)
+					return
+				}
+				if !yield(toItem(mf), nil) {
+					return
+				}
 			}
-			if !yield(toItem(mf), nil) {
-				return
-			}
-		}
+		}, nil
 	}
-	return streamed(items, int(total), opts.Offset), nil
+	return streamed(open, int(total), opts.Offset), nil
 }
 
 // listArtists lists artists in the given role: RoleAlbumArtist for the "album artists" views,
