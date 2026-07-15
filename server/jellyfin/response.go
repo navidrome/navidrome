@@ -44,8 +44,10 @@ func streamItemsArray(w io.Writer, items iter.Seq2[dto.BaseItemDto, error]) erro
 	return bw.Flush()
 }
 
-// encodeItems writes items comma-separated. bufio latches the first write error and returns it from
-// Flush, so intermediate writes go unchecked.
+// encodeItems writes items comma-separated. Unlike the fixed envelope writes, these are checked:
+// bufio surfaces a latched write error here once a flush fails, and a client that has gone away must
+// abandon the scan rather than pull the rest of the library through the cursor — which would hold its
+// pooled DB connection and stream slot for a response nobody is reading.
 func encodeItems(bw *bufio.Writer, items iter.Seq2[dto.BaseItemDto, error]) error {
 	// One reused buffer+encoder, so per-item JSON doesn't allocate. Encode HTML-escapes like
 	// json.Marshal, and appends a newline that's dropped below.
@@ -57,7 +59,9 @@ func encodeItems(bw *bufio.Writer, items iter.Seq2[dto.BaseItemDto, error]) erro
 			return err
 		}
 		if !first {
-			_, _ = bw.WriteString(",")
+			if _, err := bw.WriteString(","); err != nil {
+				return err
+			}
 		}
 		first = false
 		itemBuf.Reset()
@@ -65,7 +69,9 @@ func encodeItems(bw *bufio.Writer, items iter.Seq2[dto.BaseItemDto, error]) erro
 			return err
 		}
 		b := itemBuf.Bytes()
-		_, _ = bw.Write(b[:len(b)-1])
+		if _, err := bw.Write(b[:len(b)-1]); err != nil {
+			return err
+		}
 	}
 	return nil
 }

@@ -5,11 +5,17 @@ import (
 	"encoding/json"
 	"errors"
 	"iter"
+	"strings"
 
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
+
+// deadWriter stands in for a client that went away mid-response.
+type deadWriter struct{}
+
+func (deadWriter) Write([]byte) (int, error) { return 0, errors.New("connection reset by peer") }
 
 var _ = Describe("streaming a materialized QueryResult", func() {
 	// The materialized path (api.ok -> writeItems -> sliceItems) must stay byte-for-byte identical to
@@ -72,6 +78,24 @@ var _ = Describe("streamItemsEnvelope", func() {
 		var got bytes.Buffer
 		Expect(streamItemsEnvelope(&got, seqOf(), 0, 0)).To(Succeed())
 		Expect(got.String()).To(Equal("{\"Items\":[],\"TotalRecordCount\":0,\"StartIndex\":0}\n"))
+	})
+
+	// A client that goes away must not keep the source (a DB cursor, holding its pooled connection
+	// and a stream slot) running to the end of the library.
+	It("stops pulling from the source once writing fails", func() {
+		const total = 20000
+		pulled := 0
+		seq := func(yield func(dto.BaseItemDto, error) bool) {
+			for range total {
+				pulled++
+				if !yield(dto.BaseItemDto{Id: "a", Name: strings.Repeat("x", 200)}, nil) {
+					return
+				}
+			}
+		}
+		err := streamItemsEnvelope(deadWriter{}, seq, total, 0)
+		Expect(err).To(HaveOccurred())
+		Expect(pulled).To(BeNumerically("<", total), "should abandon the scan, not drain it")
 	})
 
 	It("aborts on a mid-stream error, leaving the envelope open (malformed) so the client fails loudly", func() {
