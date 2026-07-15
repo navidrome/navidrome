@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
-	"runtime"
 	"time"
 
 	"github.com/mattn/go-sqlite3"
@@ -44,7 +43,7 @@ func Db() *sql.DB {
 		}
 		log.Debug("Opening DataBase", "dbPath", Path, "driver", Driver)
 		db, err := sql.Open(Driver, Path)
-		db.SetMaxOpenConns(max(4, runtime.NumCPU()))
+		db.SetMaxOpenConns(conf.MaxOpenConns())
 		if err != nil {
 			log.Fatal("Error opening database", err)
 		}

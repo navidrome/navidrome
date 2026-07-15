@@ -6,10 +6,12 @@ import (
 	"sync"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httprate"
 	"golang.org/x/sync/singleflight"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/external"
@@ -91,12 +93,22 @@ func (api *Router) routes() http.Handler {
 		r.Get("/Users/Me", api.getCurrentUser)
 		r.Get("/Users/{userId}", api.getCurrentUser)
 
-		r.Get("/Items", api.getItems)
-		r.Get("/Users/{userId}/Items", api.getItems)
+		// Cursor-backed collections: each streams straight from the DB, holding a connection for the
+		// whole client-paced response, so enough slow clients would take the entire pool and stall the
+		// scanner, scrobbles and the UI. Cap them at half the pool (see conf.MaxOpenConns); excess
+		// requests queue rather than fail.
+		r.Group(func(r chi.Router) {
+			r.Use(throttleStreams(conf.Server.Jellyfin.MaxConcurrentStreams))
+			r.Get("/Items", api.getItems)
+			r.Get("/Users/{userId}/Items", api.getItems)
+			r.Get("/Users/{userId}/Items/Latest", api.getLatest)
+			r.Get("/Artists", api.getArtists)
+			r.Get("/Artists/AlbumArtists", api.getAlbumArtists)
+		})
+
 		r.Get("/Items/{itemId}", api.getItem)
 		r.Get("/Users/{userId}/Items/{itemId}", api.getItem)
 		r.Delete("/Items/{itemId}", api.deleteItem)
-		r.Get("/Users/{userId}/Items/Latest", api.getLatest)
 
 		// /UserFavoriteItems is the current @jellyfin/sdk spelling (Jellify); the
 		// /Users/{userId}/FavoriteItems form is the legacy one Finamp still uses.
@@ -112,8 +124,6 @@ func (api *Router) routes() http.Handler {
 		r.Get("/UserItems/{itemId}/UserData", api.getUserItemData)
 		r.Get("/Users/{userId}/Items/{itemId}/UserData", api.getUserItemData)
 
-		r.Get("/Artists", api.getArtists)
-		r.Get("/Artists/AlbumArtists", api.getAlbumArtists)
 		r.Get("/Artists/{itemId}/Similar", api.getSimilarArtists)
 		r.Get("/Items/{itemId}/Similar", api.getSimilarItems)
 		r.Get("/Items/{itemId}/InstantMix", api.getInstantMix)
@@ -162,6 +172,19 @@ func (api *Router) routes() http.Handler {
 
 	// Real Jellyfin clients route case-insensitively; chi does not.
 	return caseInsensitivePaths(inner)
+}
+
+// throttleStreams bounds how many collection responses stream concurrently, so they can't take every
+// connection in the shared pool. limit <= 0 disables it.
+//
+// Deliberately chi's ThrottleBacklog and not server.ThrottleBacklog: the latter buffers the entire
+// response to release its token early, which is right for artwork but would undo the streaming here.
+// chi's panics on a non-positive limit, hence the guard.
+func throttleStreams(limit int) func(http.Handler) http.Handler {
+	if limit <= 0 {
+		return func(next http.Handler) http.Handler { return next }
+	}
+	return middleware.ThrottleBacklog(limit, consts.RequestThrottleBacklogLimit, consts.RequestThrottleBacklogTimeout)
 }
 
 // ok writes payload as JSON — the single entry point for every handler. Collections are routed to

@@ -225,6 +225,10 @@ type jellyfinOptions struct {
 	// ExposedPublicUsers is a comma-separated list of usernames to advertise on the unauthenticated
 	// GET /Users/Public, so Jellyfin clients can show a login user-picker. Empty exposes no users.
 	ExposedPublicUsers string
+	// MaxConcurrentStreams bounds how many collection responses can stream at once. Each holds a DB
+	// cursor — and its pooled connection — for the whole client-paced response, so without a bound
+	// enough slow clients would take the entire pool and stall the scanner, scrobbles and the UI.
+	MaxConcurrentStreams int
 }
 
 type httpHeaderOptions struct {
@@ -889,6 +893,9 @@ func setViperDefaults() {
 	viper.SetDefault("devuishowconfig", true)
 	viper.SetDefault("devneweventstream", true)
 	viper.SetDefault("devoffsetoptimize", 50000)
+	// Half the pool: streams may take up to this many connections, leaving the rest for the scanner,
+	// scrobbles and the UI. See MaxOpenConns.
+	viper.SetDefault("jellyfin.maxconcurrentstreams", max(2, MaxOpenConns()/2))
 	viper.SetDefault("devartworkmaxrequests", max(2, runtime.NumCPU()/2))
 	viper.SetDefault("devartworkthrottlebackloglimit", consts.RequestThrottleBacklogLimit)
 	viper.SetDefault("devartworkthrottlebacklogtimeout", consts.RequestThrottleBacklogTimeout)
@@ -958,4 +965,15 @@ func getConfigFile(cfgFile string) string {
 		}
 	}
 	return ""
+}
+
+// MaxOpenConns is the size of the shared SQLite connection pool, used by every subsystem (scanner,
+// Subsonic, Jellyfin, native API, UI).
+//
+// It bounds concurrent *readers*: SQLite serializes writers on a single database-wide write lock, so
+// more connections buy no write parallelism. A connection is held while blocked on disk I/O or on a
+// slow HTTP client, neither of which is CPU-bound — the CPU-bound knob is DevScannerThreads — so the
+// count is only loosely related to core count, and the floor is what matters on small machines.
+func MaxOpenConns() int {
+	return max(4, runtime.NumCPU())
 }
