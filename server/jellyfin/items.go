@@ -287,11 +287,11 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (itemsResult
 	case strings.Contains(q.rawTypes, "ManualPlaylistsFolder"):
 		return materialized(result([]dto.BaseItemDto{playlistsFolder()}, 1, 0)), nil
 	}
-	if res, handled, err := api.playlistTracks(ctx, q); handled {
-		return res, err
+	if repo, ok := api.playlistTracksRepo(ctx, q); ok {
+		return api.playlistTrackPage(repo, q.fields, q.offset, q.limit)
 	}
 	if q.search != "" {
-		q.limit = clampSearchLimit(q.limit)
+		q.limit = clampLimit(q.limit, defaultSearchLimit, maxSearchLimit)
 	}
 	if len(q.types) == 1 {
 		opts := model.QueryOptions{Offset: q.offset, Max: q.limit}
@@ -301,23 +301,19 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (itemsResult
 	return api.mergeTypes(ctx, q)
 }
 
-// playlistTracks resolves a playlist parent to its tracks, whatever IncludeItemTypes says: Jellify
-// opens a playlist with ParentId=<playlist>&IncludeItemTypes=Audio, and routing that through
-// listSongs would treat the playlist id as an album id and return nothing.
+// playlistTracksRepo resolves a playlist parent, whatever IncludeItemTypes says: Jellify opens a
+// playlist with ParentId=<playlist>&IncludeItemTypes=Audio, and routing that through listSongs would
+// treat the playlist id as an album id and return nothing.
 //
-// handled is false when ParentId isn't a visible playlist, so the caller falls through to the type
+// ok is false when ParentId isn't a visible playlist, so the caller falls through to the type
 // dispatch: ParentId is usually an album or artist.
-func (api *Router) playlistTracks(ctx context.Context, q itemsQuery) (res itemsResult, handled bool, err error) {
+func (api *Router) playlistTracksRepo(ctx context.Context, q itemsQuery) (model.PlaylistTrackRepository, bool) {
 	if q.parentId == "" || q.isLibraryParent || q.parentId == playlistsFolderID {
-		return itemsResult{}, false, nil
+		return nil, false
 	}
 	// Tracks enforces visibility.
 	repo, err := api.playlists.Tracks(ctx, q.parentId)
-	if err != nil {
-		return itemsResult{}, false, nil //nolint:nilerr // not a playlist: fall through, not a failure
-	}
-	res, err = api.playlistTrackPage(repo, q.fields, q.offset, q.limit)
-	return res, true, err
+	return repo, err == nil
 }
 
 func (api *Router) mergeTypes(ctx context.Context, q itemsQuery) (itemsResult, error) {
@@ -327,9 +323,9 @@ func (api *Router) mergeTypes(ctx context.Context, q itemsQuery) (itemsResult, e
 	if q.limit > 0 {
 		window = q.offset + q.limit
 	}
-	// A search materializes its whole window per type (it can't stream), so StartIndex would drive
-	// that without bound. Below the window the merged rows are exactly the client's page; at it, a
-	// truncated type is followed by the next one's rows, so searchWindow also clips what's served.
+	// A search can't stream, so the window is what each type materializes and StartIndex would drive
+	// it without bound. Only below the window are the merged rows the true order, hence the clip
+	// below too. Non-search stays unbounded in StartIndex: a known gap, fixable with per-type counts.
 	if q.search != "" {
 		window = min(window, maxSearchLimit)
 	}
@@ -359,18 +355,14 @@ func (api *Router) mergeTypes(ctx context.Context, q itemsQuery) (itemsResult, e
 		}
 		items = append(items, typeItems...)
 	}
-	limit := q.limit
 	if q.search != "" {
-		// Past the window the merged order isn't the true one, so serve nothing rather than another
-		// type's rows. The total is what's pageable overall, not this page's window, or a client
-		// paging on it would stop after the first page.
+		// Past the window the merged order isn't the true one, so drop it rather than serve another
+		// type's rows. The total is what's pageable overall, not this page, or a client paging on it
+		// would stop after the first page.
+		items = items[:min(window, len(items))]
 		total = min(total, maxSearchLimit)
-		limit = max(0, window-q.offset)
-		if limit == 0 {
-			return materialized(result(nil, total, q.offset)), nil
-		}
 	}
-	return materialized(result(paginate(items, q.offset, limit), total, q.offset)), nil
+	return materialized(result(paginate(items, q.offset, q.limit), total, q.offset)), nil
 }
 
 func (api *Router) queryItemsOfType(ctx context.Context, itemType string, opts model.QueryOptions, q itemsQuery) (itemsResult, error) {
@@ -450,14 +442,16 @@ const (
 	maxSearchLimit     = 2000
 )
 
-// clampSearchLimit bounds a search's Limit, 0 meaning the client sent none. Applied to the client's
-// Limit rather than inside searchPage, which also sees mergeTypes' larger offset+limit window:
-// bounding that would truncate each type before the merged page is cut, dropping matches.
-func clampSearchLimit(limit int) int {
+// clampLimit bounds a client-supplied limit, 0 or less meaning it sent none, so it can't drive an
+// oversized allocation or provider fetch (flagged by CodeQL as a user-controlled allocation size).
+//
+// Searches clamp their Limit here rather than in searchPage, which also sees mergeTypes' larger
+// offset+limit window: bounding that would truncate each type before the merged page is cut.
+func clampLimit(limit, def, ceiling int) int {
 	if limit <= 0 {
-		return defaultSearchLimit
+		return def
 	}
-	return min(limit, maxSearchLimit)
+	return min(limit, ceiling)
 }
 
 // searchPage runs a repository Search fetching one extra row to derive TotalRecordCount, since the

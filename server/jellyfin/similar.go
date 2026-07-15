@@ -20,7 +20,10 @@ import (
 // tests can shorten it.
 var similarWait = 10 * time.Second
 
-const maxSimilarLimit = 100
+const (
+	defaultSimilarLimit = 20
+	maxSimilarLimit     = 100
+)
 
 // similarFetchTimeout bounds the detached background fetch so a hung provider can't hold a goroutine
 // indefinitely.
@@ -51,7 +54,7 @@ func (api *Router) awaitSimilar(ctx context.Context, id string, limit int, fetch
 // returned. Any provider error degrades to an empty result, not a 404 the client would keep retrying.
 func (api *Router) getSimilarArtists(w http.ResponseWriter, r *http.Request) {
 	id := api.resolveItemID(r.Context(), dto.DecodeID(chi.URLParam(r, "itemId")))
-	limit := clampLimit(req.Params(r).IntOr("limit", 20))
+	limit := clampLimit(req.Params(r).IntOr("limit", 0), defaultSimilarLimit, maxSimilarLimit)
 	api.ok(w, r, api.awaitSimilar(r.Context(), id, limit, func(ctx context.Context) dto.QueryResult {
 		return api.similarArtists(ctx, id, limit)
 	}))
@@ -63,7 +66,7 @@ func (api *Router) getSimilarArtists(w http.ResponseWriter, r *http.Request) {
 func (api *Router) getSimilarItems(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := api.resolveItemID(ctx, dto.DecodeID(chi.URLParam(r, "itemId")))
-	limit := clampLimit(req.Params(r).IntOr("limit", 20))
+	limit := clampLimit(req.Params(r).IntOr("limit", 0), defaultSimilarLimit, maxSimilarLimit)
 
 	entity, err := model.GetEntityByID(ctx, api.ds, id)
 	if err != nil {
@@ -88,7 +91,7 @@ func (api *Router) getSimilarItems(w http.ResponseWriter, r *http.Request) {
 func (api *Router) getInstantMix(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := api.resolveItemID(ctx, dto.DecodeID(chi.URLParam(r, "itemId")))
-	limit := clampLimit(req.Params(r).IntOr("limit", 20))
+	limit := clampLimit(req.Params(r).IntOr("limit", 0), defaultSimilarLimit, maxSimilarLimit)
 
 	entity, err := model.GetEntityByID(ctx, api.ds, id)
 	if err != nil {
@@ -134,15 +137,6 @@ func (api *Router) similarArtists(ctx context.Context, id string, limit int) dto
 	present := slice.Filter(artist.SimilarArtists, func(a model.Artist) bool { return a.ID != "" })
 	items := slice.Map(present, dto.ArtistToBaseItem)
 	return result(items, len(items), 0)
-}
-
-// clampLimit bounds a client-supplied limit so it can't drive an oversized allocation or provider
-// fetch (flagged by CodeQL as a user-controlled allocation size).
-func clampLimit(limit int) int {
-	if limit <= 0 {
-		return 20
-	}
-	return min(limit, maxSimilarLimit)
 }
 
 func (api *Router) similarSongs(ctx context.Context, id string, limit int) dto.QueryResult {

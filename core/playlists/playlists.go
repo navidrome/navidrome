@@ -99,9 +99,9 @@ func (s *playlists) GetPlaylists(ctx context.Context, mediaFileId string) (model
 	return s.ds.Playlist(ctx).GetPlaylists(mediaFileId)
 }
 
-// Tracks scopes a repository to one playlist's tracks, for callers that page or stream them instead
-// of loading every track like GetWithTracks. Gets the playlist first because
-// PlaylistRepository.Tracks logs a warning on an unknown id, and callers probe with arbitrary ids.
+// Tracks scopes a repository to one playlist's tracks, for callers that page or stream them rather
+// than loading every one like GetWithTracks. Gets first because PlaylistRepository.Tracks discards
+// its error behind a nil (and warns), and this is probed with ids that are usually not playlists.
 func (s *playlists) Tracks(ctx context.Context, id string) (model.PlaylistTrackRepository, error) {
 	repo := s.ds.Playlist(ctx)
 	if _, err := repo.Get(id); err != nil {
