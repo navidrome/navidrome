@@ -20,6 +20,7 @@ type MockAlbumRepo struct {
 	All                     model.Albums
 	Err                     bool
 	Options                 model.QueryOptions
+	SearchQuery             string            // empty when Search was never called
 	ReassignAnnotationCalls map[string]string // prevID -> newID
 	CopyAttributesCalls     map[string]string // fromID -> toID
 }
@@ -134,6 +135,7 @@ func (m *MockAlbumRepo) UpdateExternalInfo(album *model.Album) error {
 }
 
 func (m *MockAlbumRepo) Search(q string, options ...model.QueryOptions) (model.Albums, error) {
+	m.SearchQuery = q
 	if len(options) > 0 {
 		m.Options = options[0]
 	}

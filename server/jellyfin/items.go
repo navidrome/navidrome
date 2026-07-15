@@ -24,6 +24,12 @@ import (
 // album, artist and media_file).
 var notMissing = squirrel.Eq{"missing": false}
 
+// searchTerm trims, so a whitespace-only term is not a search: doSearch would read it as "match
+// everything" and materialize the library, where the unfiltered path streams.
+func searchTerm(p *req.Values) string {
+	return strings.TrimSpace(p.StringOr("searchterm", ""))
+}
+
 func (api *Router) getItems(w http.ResponseWriter, r *http.Request) {
 	res, err := api.queryItems(r.Context(), r)
 	if err != nil {
@@ -226,7 +232,7 @@ func (api *Router) parseItemsQuery(ctx context.Context, r *http.Request) itemsQu
 		fields:    dto.ParseFields(p.StringOr("fields", "")),
 		ids:       decodedQueryIDs(r, "ids"),
 		rawTypes:  p.StringOr("includeitemtypes", ""),
-		search:    p.StringOr("searchterm", ""),
+		search:    searchTerm(p),
 		sortBy:    p.StringOr("sortby", ""),
 		sortOrder: p.StringOr("sortorder", ""),
 		offset:    p.IntOr("startindex", 0),
@@ -415,20 +421,29 @@ func paginate(items []dto.BaseItemDto, offset, limit int) []dto.BaseItemDto {
 	return items
 }
 
+// Search can't stream (Search returns a slice), so it needs both a default and a ceiling: without
+// the ceiling, Limit=999999 still materializes every match.
+const (
+	defaultSearchLimit = 100
+	maxSearchLimit     = 2000
+)
+
 // searchPage runs a repository Search fetching one extra row to derive TotalRecordCount, since the
 // Search API returns no match count and CountAll can't see the search term. offset+len(rows) is
 // exact once matches end (and a growing lower bound before), so paging terminates at the last match.
 func searchPage[S ~[]E, E any](opts model.QueryOptions, search func(model.QueryOptions) (S, error)) (S, int, error) {
-	fetch := opts
-	if fetch.Max > 0 {
-		fetch.Max++
+	if opts.Max <= 0 {
+		opts.Max = defaultSearchLimit
 	}
+	opts.Max = min(opts.Max, maxSearchLimit)
+	fetch := opts
+	fetch.Max++
 	rows, err := search(fetch)
 	if err != nil {
 		return nil, 0, err
 	}
 	total := opts.Offset + len(rows)
-	if opts.Max > 0 && len(rows) > opts.Max {
+	if len(rows) > opts.Max {
 		rows = rows[:opts.Max]
 	}
 	return rows, total, nil

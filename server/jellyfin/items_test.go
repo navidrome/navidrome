@@ -273,6 +273,52 @@ var _ = Describe("Items", func() {
 			Expect(res.Items).To(HaveLen(1))
 		})
 
+		It("caps a search the client left unbounded", func() {
+			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
+			albumRepo.SetData(model.Albums{{ID: "a1", Name: "One"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&SearchTerm=one", nil).WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(albumRepo.Options.Max).To(Equal(defaultSearchLimit + 1))
+		})
+
+		It("honors an explicit search Limit up to the ceiling", func() {
+			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
+			albumRepo.SetData(model.Albums{{ID: "a1", Name: "One"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&SearchTerm=one&Limit=500", nil).
+				WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(albumRepo.Options.Max).To(Equal(501))
+		})
+
+		It("clamps a search Limit that would materialize the library", func() {
+			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
+			albumRepo.SetData(model.Albums{{ID: "a1", Name: "One"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&SearchTerm=one&Limit=999999", nil).
+				WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(albumRepo.Options.Max).To(Equal(maxSearchLimit + 1))
+		})
+
+		It("treats an all-whitespace SearchTerm as no search, streaming the unfiltered list", func() {
+			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
+			albumRepo.SetData(model.Albums{{ID: "a1", Name: "One"}, {ID: "a2", Name: "Two"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&SearchTerm=%20%20", nil).
+				WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.QueryResult
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.Items).To(HaveLen(2))
+			Expect(albumRepo.SearchQuery).To(BeEmpty())
+		})
+
 		It("reports a search total beyond the fetched page instead of the page length", func() {
 			ds.Artist(context.Background()).(*tests.MockArtistRepo).SetData(model.Artists{
 				{ID: "r1", Name: "Alpha"}, {ID: "r2", Name: "Beta"}, {ID: "r3", Name: "Gamma"},
