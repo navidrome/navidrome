@@ -23,6 +23,7 @@ import {
   openShareMenu,
 } from '../actions'
 import { LoveButton } from './LoveButton'
+import { SkipButton } from './SkipButton'
 import config from '../config'
 import { playSimilar } from './playbackActions.js'
 import { formatBytes } from '../utils'
@@ -257,6 +258,7 @@ export const SongContextMenu = ({
         visible={config.enableFavourites && showLove && present}
       />
       <MoreButton record={record} onClick={handleClick} info={options.info} />
+      <SkipButton record={record} resource={resource} visible={present} />
       <Menu
         id={'menu' + record.id}
         anchorEl={anchorEl}

@@ -101,8 +101,13 @@ const mapToAudioLists = (item) => {
 const reduceClearQueue = () => ({ ...initialState, clear: true })
 
 const reducePlayTracks = (state, { data, id }) => {
+  // Skipped tracks are dropped from the queue, except the one the user
+  // explicitly clicked (id) - a manual click always plays, even if skipped.
+  const keys = Object.keys(data).filter(
+    (key) => key === id || !data[key].skipped,
+  )
   let playIndex = 0
-  const queue = Object.keys(data).map((key, idx) => {
+  const queue = keys.map((key, idx) => {
     if (key === id) {
       playIndex = idx
     }
@@ -127,14 +132,18 @@ const reduceSetTrack = (state, { data }) => {
 
 const reduceAddTracks = (state, { data }) => {
   const queue = state.queue
-  Object.keys(data).forEach((id) => {
-    queue.push(mapToAudioLists(data[id]))
-  })
+  Object.keys(data)
+    .filter((id) => !data[id].skipped)
+    .forEach((id) => {
+      queue.push(mapToAudioLists(data[id]))
+    })
   return { ...state, queue, clear: false }
 }
 
 const reducePlayNext = (state, { data }) => {
-  const newTracks = Object.keys(data).map((id) => mapToAudioLists(data[id]))
+  const newTracks = Object.keys(data)
+    .filter((id) => !data[id].skipped)
+    .map((id) => mapToAudioLists(data[id]))
   const newQueue = []
   const current = state.current || {}
   let foundPos = false

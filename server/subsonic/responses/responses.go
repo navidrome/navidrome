@@ -167,6 +167,7 @@ type Child struct {
 	SongCount             int32      `xml:"songCount,attr,omitempty"                json:"songCount,omitempty"`
 	IsVideo               bool       `xml:"isVideo,attr,omitempty"                  json:"isVideo,omitempty"`
 	BookmarkPosition      int64      `xml:"bookmarkPosition,attr,omitempty"         json:"bookmarkPosition,omitempty"`
+	Skipped               bool       `xml:"skipped,attr,omitempty"                  json:"skipped,omitempty"`
 	*OpenSubsonicChild    `xml:",omitempty" json:",omitempty"`
 }
 

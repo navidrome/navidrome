@@ -147,6 +147,8 @@ func (api *Router) routes() http.Handler {
 			h(r, "setRating", api.SetRating)
 			h(r, "star", api.Star)
 			h(r, "unstar", api.Unstar)
+			h(r, "skip", api.Skip)
+			h(r, "unskip", api.Unskip)
 			h(r, "scrobble", api.Scrobble)
 			h(r, "reportPlayback", api.ReportPlayback)
 		})

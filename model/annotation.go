@@ -10,11 +10,14 @@ type Annotations struct {
 	Starred       bool       `structs:"starred"        json:"starred,omitempty"  `
 	StarredAt     *time.Time `structs:"starred_at"     json:"starredAt,omitempty"`
 	AverageRating float64    `structs:"average_rating" json:"averageRating,omitempty"`
+	Skipped       bool       `structs:"skipped"        json:"skipped,omitempty"  `
+	SkippedAt     *time.Time `structs:"skipped_at"     json:"skippedAt,omitempty"`
 }
 
 type AnnotatedRepository interface {
 	IncPlayCount(itemID string, ts time.Time) error
 	SetStar(starred bool, itemIDs ...string) error
 	SetRating(rating int, itemID string) error
+	SetSkip(skip bool, itemIDs ...string) error
 	ReassignAnnotation(prevID string, newID string) error
 }

@@ -61,6 +61,10 @@ const star = (id) => httpClient(url('star', id))
 
 const unstar = (id) => httpClient(url('unstar', id))
 
+const skip = (id) => httpClient(url('skip', id))
+
+const unskip = (id) => httpClient(url('unskip', id))
+
 const setRating = (id, rating) => httpClient(url('setRating', id, { rating }))
 
 const download = (id, format = 'raw', bitrate = '0') =>
@@ -152,6 +156,8 @@ export default {
   download,
   star,
   unstar,
+  skip,
+  unskip,
   setRating,
   startScan,
   getScanStatus,

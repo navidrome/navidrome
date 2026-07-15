@@ -10,7 +10,13 @@ vi.mock('../dataProvider', () => ({
 }))
 
 vi.mock('../subsonic', () => ({
-  default: { getSimilarSongs2: vi.fn() },
+  default: {
+    getSimilarSongs2: vi.fn(),
+    star: vi.fn(),
+    unstar: vi.fn(),
+    skip: vi.fn(),
+    unskip: vi.fn(),
+  },
 }))
 
 vi.mock('../config', () => ({

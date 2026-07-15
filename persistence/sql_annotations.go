@@ -71,9 +71,11 @@ func (r sqlRepository) withAnnotation(query SelectBuilder, idField string) Selec
 		Columns(
 			"coalesce(starred, 0) as starred",
 			"coalesce(rating, 0) as rating",
+			"coalesce(skipped, 0) as skipped",
 			"starred_at",
 			"play_date",
 			"rated_at",
+			"skipped_at",
 		)
 	if conf.Server.AlbumPlayCountMode == consts.AlbumPlayCountModeNormalized && r.tableName == "album" {
 		query = query.Columns(
@@ -135,6 +137,11 @@ func (r sqlRepository) annUpsert(values map[string]any, itemIDs ...string) error
 func (r sqlRepository) SetStar(starred bool, ids ...string) error {
 	starredAt := time.Now()
 	return r.annUpsert(map[string]any{"starred": starred, "starred_at": starredAt}, ids...)
+}
+
+func (r sqlRepository) SetSkip(skip bool, ids ...string) error {
+	skippedAt := time.Now()
+	return r.annUpsert(map[string]any{"skipped": skip, "skipped_at": skippedAt}, ids...)
 }
 
 func (r sqlRepository) SetRating(rating int, itemID string) error {

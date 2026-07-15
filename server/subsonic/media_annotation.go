@@ -155,6 +155,57 @@ func (api *Router) setStar(ctx context.Context, star bool, ids ...string) error 
 	return nil
 }
 
+func (api *Router) Skip(r *http.Request) (*responses.Subsonic, error) {
+	p := req.Params(r)
+	ids, err := p.Strings("id")
+	if err != nil || len(ids) == 0 {
+		return nil, newError(responses.ErrorMissingParameter, "Required id parameter is missing")
+	}
+
+	err = api.setSkip(r.Context(), true, ids...)
+	if err != nil {
+		return nil, err
+	}
+
+	return newResponse(), nil
+}
+
+func (api *Router) Unskip(r *http.Request) (*responses.Subsonic, error) {
+	p := req.Params(r)
+	ids, err := p.Strings("id")
+	if err != nil || len(ids) == 0 {
+		return nil, newError(responses.ErrorMissingParameter, "Required id parameter is missing")
+	}
+
+	err = api.setSkip(r.Context(), false, ids...)
+	if err != nil {
+		return nil, err
+	}
+
+	return newResponse(), nil
+}
+
+func (api *Router) setSkip(ctx context.Context, skip bool, ids ...string) error {
+	log.Debug(ctx, "Changing skipped", "ids", ids, "skipped", skip)
+	event := &events.RefreshResource{}
+	err := api.ds.WithTxImmediate(func(tx model.DataStore) error {
+		for _, id := range ids {
+			err := tx.MediaFile(ctx).SetSkip(skip, id)
+			if err != nil {
+				return err
+			}
+			event = event.With("song", id)
+		}
+		api.broker.SendMessage(ctx, event)
+		return nil
+	})
+	if err != nil {
+		log.Error(ctx, err)
+		return err
+	}
+	return nil
+}
+
 func (api *Router) Scrobble(r *http.Request) (*responses.Subsonic, error) {
 	p := req.Params(r)
 	ids, err := p.Strings("id")

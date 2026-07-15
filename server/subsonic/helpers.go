@@ -226,6 +226,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	if mf.Starred {
 		child.Starred = mf.StarredAt
 	}
+	child.Skipped = mf.Skipped
 	child.UserRating = int32(mf.Rating)
 	if conf.Server.Subsonic.EnableAverageRating {
 		child.AverageRating = mf.AverageRating
