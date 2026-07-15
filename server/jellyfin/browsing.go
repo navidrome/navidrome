@@ -36,7 +36,7 @@ func (api *Router) listArtistsByRole(w http.ResponseWriter, r *http.Request, rol
 		search:   searchTerm(p),
 	}
 	if q.search != "" {
-		opts.Max = min(opts.Max, maxSearchLimit)
+		opts.Max = clampSearchLimit(opts.Max)
 	}
 
 	res, err := api.listArtists(ctx, opts, q, role)

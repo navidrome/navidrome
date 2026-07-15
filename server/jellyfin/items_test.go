@@ -341,6 +341,42 @@ var _ = Describe("Items", func() {
 			Expect(res.Items[0].Id).To(Equal(dto.EncodeID(songs[maxSearchLimit].ID)))
 		})
 
+		It("bounds an unbounded multi-type search to the default in total, not per type", func() {
+			songs := make(model.MediaFiles, defaultSearchLimit*2)
+			for i := range songs {
+				songs[i] = model.MediaFile{ID: fmt.Sprintf("s%05d", i), Title: "Song"}
+			}
+			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(songs)
+			ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1", Name: "One"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song", nil).
+				WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.QueryResult
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.Items).To(HaveLen(defaultSearchLimit))
+		})
+
+		It("pages an unbounded multi-type search past the default without dropping matches", func() {
+			songs := make(model.MediaFiles, defaultSearchLimit*2)
+			for i := range songs {
+				songs[i] = model.MediaFile{ID: fmt.Sprintf("s%05d", i), Title: "Song"}
+			}
+			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(songs)
+			ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1", Name: "One"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET",
+				fmt.Sprintf("/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song&StartIndex=%d", defaultSearchLimit+50),
+				nil).WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.QueryResult
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.Items).ToNot(BeEmpty())
+			Expect(res.Items[0].Id).To(Equal(dto.EncodeID(songs[defaultSearchLimit+50].ID)))
+		})
+
 		It("reports a search total beyond the fetched page instead of the page length", func() {
 			ds.Artist(context.Background()).(*tests.MockArtistRepo).SetData(model.Artists{
 				{ID: "r1", Name: "Alpha"}, {ID: "r2", Name: "Beta"}, {ID: "r3", Name: "Gamma"},

@@ -290,9 +290,8 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (itemsResult
 	if res, handled, err := api.playlistTracks(ctx, q); handled {
 		return res, err
 	}
-	// 0 means "no limit", and keeps searchPage's default.
 	if q.search != "" {
-		q.limit = min(q.limit, maxSearchLimit)
+		q.limit = clampSearchLimit(q.limit)
 	}
 	if len(q.types) == 1 {
 		opts := model.QueryOptions{Offset: q.offset, Max: q.limit}
@@ -426,20 +425,26 @@ func paginate(items []dto.BaseItemDto, offset, limit int) []dto.BaseItemDto {
 }
 
 // Search can't stream (Search returns a slice), so it needs both a default and a ceiling: without
-// the ceiling, Limit=999999 still materializes every match. Callers apply the ceiling to the
-// client's Limit, since searchPage also sees mergeTypes' larger offset+limit window.
+// the ceiling, Limit=999999 still materializes every match.
 const (
 	defaultSearchLimit = 100
 	maxSearchLimit     = 2000
 )
 
+// clampSearchLimit bounds a search's Limit, 0 meaning the client sent none. Applied to the client's
+// Limit rather than inside searchPage, which also sees mergeTypes' larger offset+limit window:
+// bounding that would truncate each type before the merged page is cut, dropping matches.
+func clampSearchLimit(limit int) int {
+	if limit <= 0 {
+		return defaultSearchLimit
+	}
+	return min(limit, maxSearchLimit)
+}
+
 // searchPage runs a repository Search fetching one extra row to derive TotalRecordCount, since the
 // Search API returns no match count and CountAll can't see the search term. offset+len(rows) is
 // exact once matches end (and a growing lower bound before), so paging terminates at the last match.
 func searchPage[S ~[]E, E any](opts model.QueryOptions, search func(model.QueryOptions) (S, error)) (S, int, error) {
-	if opts.Max <= 0 {
-		opts.Max = defaultSearchLimit
-	}
 	fetch := opts
 	fetch.Max++
 	rows, err := search(fetch)
