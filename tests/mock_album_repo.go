@@ -20,7 +20,7 @@ type MockAlbumRepo struct {
 	All                     model.Albums
 	Err                     bool
 	Options                 model.QueryOptions
-	SearchQuery             string            // empty when Search was never called
+	SearchQuery             string            // last query passed to Search
 	ReassignAnnotationCalls map[string]string // prevID -> newID
 	CopyAttributesCalls     map[string]string // fromID -> toID
 }

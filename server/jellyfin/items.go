@@ -290,6 +290,10 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (itemsResult
 	if res, handled, err := api.playlistTracks(ctx, q); handled {
 		return res, err
 	}
+	// 0 means "no limit", and keeps searchPage's default.
+	if q.search != "" {
+		q.limit = min(q.limit, maxSearchLimit)
+	}
 	if len(q.types) == 1 {
 		opts := model.QueryOptions{Offset: q.offset, Max: q.limit}
 		applySort(&opts, q.types[0], q.sortBy, q.sortOrder)
@@ -422,7 +426,8 @@ func paginate(items []dto.BaseItemDto, offset, limit int) []dto.BaseItemDto {
 }
 
 // Search can't stream (Search returns a slice), so it needs both a default and a ceiling: without
-// the ceiling, Limit=999999 still materializes every match.
+// the ceiling, Limit=999999 still materializes every match. Callers apply the ceiling to the
+// client's Limit, since searchPage also sees mergeTypes' larger offset+limit window.
 const (
 	defaultSearchLimit = 100
 	maxSearchLimit     = 2000
@@ -435,7 +440,6 @@ func searchPage[S ~[]E, E any](opts model.QueryOptions, search func(model.QueryO
 	if opts.Max <= 0 {
 		opts.Max = defaultSearchLimit
 	}
-	opts.Max = min(opts.Max, maxSearchLimit)
 	fetch := opts
 	fetch.Max++
 	rows, err := search(fetch)

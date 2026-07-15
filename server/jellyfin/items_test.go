@@ -3,6 +3,7 @@ package jellyfin
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 
@@ -317,6 +318,27 @@ var _ = Describe("Items", func() {
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
 			Expect(res.Items).To(HaveLen(2))
 			Expect(albumRepo.SearchQuery).To(BeEmpty())
+		})
+
+		It("pages a multi-type search past the ceiling without dropping matches", func() {
+			// The per-type merge window is offset+limit, not the client's limit: clamping it to the
+			// ceiling would make the merged page skip to the next type.
+			songs := make(model.MediaFiles, maxSearchLimit+1)
+			for i := range songs {
+				songs[i] = model.MediaFile{ID: fmt.Sprintf("s%05d", i), Title: "Song"}
+			}
+			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(songs)
+			ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1", Name: "One"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET",
+				fmt.Sprintf("/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song&StartIndex=%d&Limit=1", maxSearchLimit),
+				nil).WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.QueryResult
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.Items).To(HaveLen(1))
+			Expect(res.Items[0].Id).To(Equal(dto.EncodeID(songs[maxSearchLimit].ID)))
 		})
 
 		It("reports a search total beyond the fetched page instead of the page length", func() {

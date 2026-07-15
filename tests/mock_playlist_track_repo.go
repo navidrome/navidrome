@@ -22,16 +22,18 @@ func (m *MockPlaylistTrackRepo) SetData(tracks model.PlaylistTracks) {
 
 // page applies Max/Offset as the real repository's SQL would.
 func (m *MockPlaylistTrackRepo) page(options ...model.QueryOptions) model.PlaylistTracks {
+	var opts model.QueryOptions
 	if len(options) > 0 {
-		m.Options = options[0]
+		opts = options[0]
+		m.Options = opts
 	}
 	tracks := m.Data
-	if m.Options.Offset >= len(tracks) {
+	if opts.Offset >= len(tracks) {
 		return nil
 	}
-	tracks = tracks[m.Options.Offset:]
-	if m.Options.Max > 0 && m.Options.Max < len(tracks) {
-		tracks = tracks[:m.Options.Max]
+	tracks = tracks[opts.Offset:]
+	if opts.Max > 0 && opts.Max < len(tracks) {
+		tracks = tracks[:opts.Max]
 	}
 	return tracks
 }
