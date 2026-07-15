@@ -53,6 +53,57 @@ func streamed(open func() (iter.Seq2[dto.BaseItemDto, error], error), total, sta
 	return itemsResult{openCursor: open, total: total, start: start}
 }
 
+// chained streams several results back to back, skipping the first skip items. It backs the
+// unbounded multi-type merge, where paginate(items, offset, 0) is just the concatenation of each
+// type's rows minus its head — so the merged page can be streamed instead of materialized.
+func chained(results []itemsResult, total, skip int) itemsResult {
+	open := func() (iter.Seq2[dto.BaseItemDto, error], error) {
+		if len(results) == 0 {
+			return sliceItems(nil), nil
+		}
+		// Open the first cursor eagerly so the usual failure still becomes a clean error before any
+		// byte is written. The rest open as the stream reaches them, so only one is ever held — a
+		// cursor pins a DB connection until drained.
+		first, err := results[0].seq()
+		if err != nil {
+			return nil, err
+		}
+		return func(yield func(dto.BaseItemDto, error) bool) {
+			n := 0
+			emit := func(seq iter.Seq2[dto.BaseItemDto, error]) bool {
+				for it, err := range seq {
+					if err != nil {
+						yield(dto.BaseItemDto{}, err)
+						return false
+					}
+					if n < skip {
+						n++
+						continue
+					}
+					if !yield(it, nil) {
+						return false
+					}
+				}
+				return true
+			}
+			if !emit(first) {
+				return
+			}
+			for _, res := range results[1:] {
+				seq, err := res.seq()
+				if err != nil {
+					yield(dto.BaseItemDto{}, err)
+					return
+				}
+				if !emit(seq) {
+					return
+				}
+			}
+		}, nil
+	}
+	return streamed(open, total, skip)
+}
+
 // streamCursor builds the deferred opener for a repository cursor, mapping each row as it is
 // yielded. openCursor takes the repository's cursor type (a named func type), so callers pass a
 // small wrapper around repo.GetCursor.
@@ -218,13 +269,14 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (itemsResult
 		return api.queryItemsOfType(ctx, types[0], opts, entityParent, artistId, contributingOnly, genreIds, scopeIDs, search, favOnly, fields)
 	}
 
-	var items []dto.BaseItemDto
+	// Each per-type query needs at most offset+limit rows (the worst case where one type fills the
+	// whole [offset, offset+limit) window); without a limit there is no such cap, so an unbounded
+	// multi-type request is streamed rather than merged in memory (see below). Totals are unaffected
+	// either way — they come from CountAll.
+	var results []itemsResult
 	total := 0
 	for _, itemType := range types {
 		var opts model.QueryOptions
-		// Each per-type query needs at most offset+limit rows (the worst case where one type fills the
-		// whole [offset, offset+limit) window); without this cap each would fetch its whole table.
-		// Totals are unaffected — they come from CountAll.
 		if limit > 0 {
 			opts.Max = offset + limit
 		}
@@ -233,14 +285,23 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (itemsResult
 		if err != nil {
 			return itemsResult{}, err
 		}
-		// Multi-type merge paginates across the combined list, so each type's items must be
-		// materialized here (a bounded set, capped at offset+limit per type above).
+		results = append(results, res)
+		total += res.total
+	}
+	if limit == 0 {
+		// Unbounded: the merged page is every type's rows in order, minus the first offset — exactly
+		// what chaining the cursors yields. Materializing here would pull every row of every type.
+		return chained(results, total, offset), nil
+	}
+	// Bounded: each type holds at most offset+limit rows, so merging and paginating across the
+	// combined list is safe.
+	var items []dto.BaseItemDto
+	for _, res := range results {
 		typeItems, err := res.collect()
 		if err != nil {
 			return itemsResult{}, err
 		}
 		items = append(items, typeItems...)
-		total += res.total
 	}
 	return materialized(result(paginate(items, offset, limit), total, offset)), nil
 }
