@@ -223,10 +223,6 @@ type itemsQuery struct {
 	genreIds         []string
 }
 
-// libraryChildTypes are the types directly under a library in the hierarchy this API exposes
-// (library -> album -> track), so no track is ever a library's direct child.
-var libraryChildTypes = []string{"MusicAlbum", "MusicArtist", "MusicGenre", "Playlist"}
-
 // parseItemsQuery also resolves the entity types (inferring them from the parent when
 // IncludeItemTypes is absent) and the library scope. Query keys are read lowercase because
 // normalizeQueryKeys folded them (Jellyfin binds case-insensitively).
@@ -258,10 +254,10 @@ func (api *Router) parseItemsQuery(ctx context.Context, r *http.Request) itemsQu
 	q.types = parseTypes(q.rawTypes)
 	q.scopeIDs, q.isLibraryParent = resolveLibraryScope(ctx, q.parentId)
 
-	// Recursive=false asks for direct children only. Finamp's sync probes a library for the tracks
-	// outside any album this way, and every track is a wrong (and unbounded) answer to it.
+	// Recursive=false asks for direct children only, and no track is a library's direct child.
+	// Finamp's sync probes a library this way, and every track is a wrong, unbounded answer.
 	if q.isLibraryParent && !p.BoolOr("recursive", false) {
-		q.types = slices.DeleteFunc(q.types, func(t string) bool { return !slices.Contains(libraryChildTypes, t) })
+		q.types = slices.DeleteFunc(q.types, func(t string) bool { return t == "Audio" })
 	}
 
 	// With no item type, Jellyfin infers the child type from the parent: album parent -> its tracks

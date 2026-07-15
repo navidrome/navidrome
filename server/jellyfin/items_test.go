@@ -194,6 +194,18 @@ var _ = Describe("Items", func() {
 				Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
 				Expect(res.Items).To(HaveLen(1))
 			})
+
+			// Jellyfin's own default: ItemsController binds `bool? recursive` and reads it as
+			// `recursive ?? false`, so an omitted Recursive is a non-recursive request.
+			It("treats an omitted Recursive as false, like Jellyfin", func() {
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeID("1")+"&IncludeItemTypes=Audio", nil).
+					WithContext(ctxUser())
+				invoke(api.getItems, w, r)
+				var res dto.QueryResult
+				Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+				Expect(res.Items).To(BeEmpty())
+			})
 		})
 
 		It("lists an artist's albums when ParentId is an artist and type is MusicAlbum", func() {
