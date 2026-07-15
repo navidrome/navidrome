@@ -27,8 +27,6 @@ var _ = Describe("PlaylistRepository", func() {
 		})
 	})
 
-	// GetCursor is the streaming equivalent of GetAll, so it must yield exactly what GetAll returns —
-	// including the same owner/public visibility filter.
 	Describe("GetCursor", func() {
 		It("yields the same playlists as GetAll", func() {
 			opts := model.QueryOptions{Sort: "name"}

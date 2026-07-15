@@ -11,16 +11,12 @@ import (
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 )
 
-// streamItemsEnvelope writes a Jellyfin QueryResult as JSON, encoding items one at a time from a
-// pull sequence instead of buffering the whole array — so a full-library /Items response streams from
-// a DB cursor with peak memory of about one item. For a materialized slice the bytes are identical to
-// json.NewEncoder(w).Encode(QueryResult{...}).
+// streamItemsEnvelope writes a QueryResult, byte-identical to json.NewEncoder(w).Encode(q).
 //
-// A mid-stream error aborts without closing the envelope, leaving malformed JSON: the HTTP 200 is
-// already committed, so a truncated-but-valid body would let a sync client treat the short list as
-// complete (and prune local tracks). Malformed JSON forces the client's parser to fail and retry.
-// Cursor-open errors are caught by the caller before any byte is written, so this only fires on a
-// rare mid-iteration failure.
+// A mid-stream error aborts without closing the envelope: the 200 is already committed, so a
+// truncated-but-valid body would let a sync client treat the short list as the whole library and
+// prune local tracks. Malformed JSON forces its parser to fail instead. Callers open the cursor
+// before the first byte, so this only fires on a rare mid-iteration failure.
 func streamItemsEnvelope(w io.Writer, items iter.Seq2[dto.BaseItemDto, error], total, start int) error {
 	bw := bufio.NewWriterSize(w, 64*1024)
 	_, _ = bw.WriteString(`{"Items":[`)
@@ -36,8 +32,7 @@ func streamItemsEnvelope(w io.Writer, items iter.Seq2[dto.BaseItemDto, error], t
 	return bw.Flush()
 }
 
-// streamItemsArray writes items as a bare JSON array — the shape /Items/Latest returns, which has no
-// QueryResult envelope. Same streaming and mid-stream-error behavior as streamItemsEnvelope.
+// streamItemsArray writes a bare JSON array — the shape /Items/Latest returns, with no envelope.
 func streamItemsArray(w io.Writer, items iter.Seq2[dto.BaseItemDto, error]) error {
 	bw := bufio.NewWriterSize(w, 64*1024)
 	_, _ = bw.WriteString("[")
@@ -49,11 +44,11 @@ func streamItemsArray(w io.Writer, items iter.Seq2[dto.BaseItemDto, error]) erro
 	return bw.Flush()
 }
 
-// encodeItems writes items comma-separated, encoding one at a time. bufio latches the first write
-// error and returns it from Flush, so intermediate writes go unchecked.
+// encodeItems writes items comma-separated. bufio latches the first write error and returns it from
+// Flush, so intermediate writes go unchecked.
 func encodeItems(bw *bufio.Writer, items iter.Seq2[dto.BaseItemDto, error]) error {
-	// Reuse one buffer+encoder so per-item JSON doesn't allocate a fresh slice each time. The encoder
-	// HTML-escapes like json.Marshal; the newline it appends is dropped below.
+	// One reused buffer+encoder, so per-item JSON doesn't allocate. Encode HTML-escapes like
+	// json.Marshal, and appends a newline that's dropped below.
 	var itemBuf bytes.Buffer
 	enc := json.NewEncoder(&itemBuf)
 	first := true
@@ -75,7 +70,6 @@ func encodeItems(bw *bufio.Writer, items iter.Seq2[dto.BaseItemDto, error]) erro
 	return nil
 }
 
-// sliceItems adapts a slice to the pull sequence streamItemsEnvelope consumes.
 func sliceItems(items []dto.BaseItemDto) iter.Seq2[dto.BaseItemDto, error] {
 	return func(yield func(dto.BaseItemDto, error) bool) {
 		for i := range items {

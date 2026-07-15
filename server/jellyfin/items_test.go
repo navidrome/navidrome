@@ -72,8 +72,6 @@ var _ = Describe("Items", func() {
 		})
 
 		It("returns 500 when the song cursor fails to open, instead of a truncated 200", func() {
-			// A cursor-open failure (e.g. a busy DB) must surface as an error before any bytes are
-			// written, not as a 200 with an empty item list.
 			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetError(true)
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio&Recursive=true", nil).WithContext(ctxUser())

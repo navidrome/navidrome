@@ -301,8 +301,7 @@ var _ = Describe("Browsing", func() {
 			Expect(q.TotalRecordCount).To(Equal(12)) // 5 albums + 7 songs
 		})
 
-		// An unbounded multi-type request streams each type's cursor back to back rather than pulling
-		// every row of every type into memory, so the merged order and StartIndex must still hold.
+		// Chaining the per-type cursors must preserve the merged order.
 		It("streams an unbounded multi-type merge, honoring StartIndex", func() {
 			all := queryResult(get("/Items?IncludeItemTypes=MusicAlbum,Audio&Recursive=true"))
 			Expect(all.Items).To(HaveLen(12))
@@ -314,8 +313,7 @@ var _ = Describe("Browsing", func() {
 			Expect(names(skipped.Items)).To(Equal(names(all.Items)[2:]))
 		})
 
-		// Songs stream from a DB cursor, so pagination must still be honored by the LIMIT/OFFSET the
-		// cursor query carries — not applied after materializing the whole list.
+		// Paging must ride on the cursor query's LIMIT/OFFSET, not be applied after materializing.
 		It("pages songs via StartIndex/Limit while reporting the full total", func() {
 			all := queryResult(get("/Items?IncludeItemTypes=Audio&Recursive=true&SortBy=SortName"))
 			Expect(all.TotalRecordCount).To(Equal(7))

@@ -164,14 +164,11 @@ func (api *Router) routes() http.Handler {
 	return caseInsensitivePaths(inner)
 }
 
-// ok writes payload as JSON — the single entry point for every handler. Collections (itemsResult,
-// whether cursor-backed or materialized, and dto.QueryResult) are routed to the streaming writer, so
-// a large one never buffers the whole response and callers don't need to know which kind they hold.
-// ServerId is stamped on any item(s) — real Jellyfin always sets it, and it's the same value for
-// every item, so it's applied here rather than threaded through the mappers.
+// ok writes payload as JSON — the single entry point for every handler. Collections are routed to
+// the streaming writer, so callers needn't know whether theirs is cursor-backed. ServerId is stamped
+// on any item(s): real Jellyfin always sets it, and it's constant per request.
 //
-// The one endpoint that can't come through here is /Items/Latest: it returns a bare JSON array
-// rather than a QueryResult envelope, so it calls writeItemsArray directly.
+// Only /Items/Latest bypasses this, for its bare-array shape (see writeItemsArray).
 func (api *Router) ok(w http.ResponseWriter, r *http.Request, payload any) {
 	switch p := payload.(type) {
 	case itemsResult:

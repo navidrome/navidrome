@@ -330,8 +330,8 @@ func GetDBXBuilder() *dbx.DB {
 	return dbx.NewFromDB(db.Db(), db.Dialect)
 }
 
-// collectCursor drains a repository cursor into a slice, failing on the first error. It takes the
-// cursor's underlying func type so the named cursor types (model.AlbumCursor, ...) infer T.
+// collectCursor takes the cursor's underlying func type so the named cursor types
+// (model.AlbumCursor, ...) infer T.
 func collectCursor[T any](cursor func(func(T, error) bool), err error) []T {
 	GinkgoHelper()
 	Expect(err).ToNot(HaveOccurred())

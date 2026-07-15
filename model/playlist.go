@@ -133,8 +133,6 @@ type PlaylistRepository interface {
 	Get(id string) (*Playlist, error)
 	GetWithTracks(id string, refreshSmartPlaylist, includeMissing bool) (*Playlist, error)
 	GetAll(options ...QueryOptions) (Playlists, error)
-	// GetCursor returns the same rows as GetAll, yielded one at a time, so large result sets can be
-	// streamed without materializing every playlist.
 	GetCursor(options ...QueryOptions) (PlaylistCursor, error)
 	FindByPath(path string) (*Playlist, error)
 	Delete(id string) error

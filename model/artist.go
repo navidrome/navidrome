@@ -89,8 +89,6 @@ type ArtistRepository interface {
 	UpdateExternalInfo(a *Artist) error
 	Get(id string) (*Artist, error)
 	GetAll(options ...QueryOptions) (Artists, error)
-	// GetCursor returns the same rows as GetAll, yielded one at a time, so large result sets can be
-	// streamed without materializing every artist.
 	GetCursor(options ...QueryOptions) (ArtistCursor, error)
 	GetIndex(includeMissing bool, libraryIds []int, roles ...Role) (ArtistIndexes, error)
 

@@ -86,8 +86,6 @@ var _ = Describe("streamItemsEnvelope", func() {
 		var got bytes.Buffer
 		err := streamItemsEnvelope(&got, seq, 7, 0)
 		Expect(err).To(MatchError(boom))
-		// The envelope is deliberately left unclosed: a truncated-but-valid response would let a
-		// sync client treat the short list as complete. Malformed JSON forces a parse failure/retry.
 		firstJSON, _ := json.Marshal(first)
 		Expect(got.String()).To(Equal("{\"Items\":[" + string(firstJSON)))
 	})

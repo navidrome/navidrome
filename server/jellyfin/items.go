@@ -33,11 +33,12 @@ func (api *Router) getItems(w http.ResponseWriter, r *http.Request) {
 	api.ok(w, r, res)
 }
 
-// itemsResult is the outcome of an /Items query: a materialized page, or a cursor opener (for the
-// single-type song listing) so a full-library response never builds every DTO at once. Exactly one
-// of items/openCursor is set. openCursor is deferred so it runs after the ServerId lookup (which can
-// write to the DB and would deadlock against an open reader) but before any response byte is written,
-// so a failed open becomes a clean error rather than a truncated 200.
+// itemsResult is the outcome of a collection query: a materialized page, or a cursor opener so a
+// full-library response never builds every DTO at once. Exactly one of items/openCursor is set.
+//
+// openCursor is deferred rather than opened here: it must run after the ServerId lookup, which
+// writes to the DB on first use and would deadlock against an open reader, but before the first
+// response byte, so a failed open is still a clean error rather than a truncated 200.
 type itemsResult struct {
 	items      []dto.BaseItemDto
 	openCursor func() (iter.Seq2[dto.BaseItemDto, error], error)
@@ -53,17 +54,15 @@ func streamed(open func() (iter.Seq2[dto.BaseItemDto, error], error), total, sta
 	return itemsResult{openCursor: open, total: total, start: start}
 }
 
-// chained streams several results back to back, skipping the first skip items. It backs the
-// unbounded multi-type merge, where paginate(items, offset, 0) is just the concatenation of each
-// type's rows minus its head — so the merged page can be streamed instead of materialized.
+// chained streams several results back to back, skipping the first skip items — the unbounded
+// multi-type merge, where paginate(items, offset, 0) is just the concatenation minus its head.
 func chained(results []itemsResult, total, skip int) itemsResult {
 	open := func() (iter.Seq2[dto.BaseItemDto, error], error) {
 		if len(results) == 0 {
 			return sliceItems(nil), nil
 		}
-		// Open the first cursor eagerly so the usual failure still becomes a clean error before any
-		// byte is written. The rest open as the stream reaches them, so only one is ever held — a
-		// cursor pins a DB connection until drained.
+		// Only the first opens eagerly (so the usual failure is still a clean error); the rest open as
+		// the stream reaches them, so only one cursor pins a DB connection at a time.
 		first, err := results[0].seq()
 		if err != nil {
 			return nil, err
@@ -104,9 +103,8 @@ func chained(results []itemsResult, total, skip int) itemsResult {
 	return streamed(open, total, skip)
 }
 
-// streamCursor builds the deferred opener for a repository cursor, mapping each row as it is
-// yielded. openCursor takes the repository's cursor type (a named func type), so callers pass a
-// small wrapper around repo.GetCursor.
+// streamCursor builds a deferred opener that maps each row as it's yielded. It takes the cursor's
+// underlying func type, so callers wrap repo.GetCursor for the named type to infer T.
 func streamCursor[T any](openCursor func() (func(func(T, error) bool), error), toItem func(T) dto.BaseItemDto) func() (iter.Seq2[dto.BaseItemDto, error], error) {
 	return func() (iter.Seq2[dto.BaseItemDto, error], error) {
 		cursor, err := openCursor()
@@ -127,8 +125,7 @@ func streamCursor[T any](openCursor func() (func(func(T, error) bool), error), t
 	}
 }
 
-// seq returns the items as one sequence, opening the cursor if the result is cursor-backed. Any
-// open error surfaces here, before streaming starts.
+// seq returns the items as one sequence, opening the cursor if there is one.
 func (ir itemsResult) seq() (iter.Seq2[dto.BaseItemDto, error], error) {
 	if ir.openCursor != nil {
 		return ir.openCursor()
@@ -136,7 +133,7 @@ func (ir itemsResult) seq() (iter.Seq2[dto.BaseItemDto, error], error) {
 	return sliceItems(ir.items), nil
 }
 
-// collect drains the result into a slice, for the multi-type merge that combines queries before paginating.
+// collect drains the result into a slice, for the merge that combines types before paginating.
 func (ir itemsResult) collect() ([]dto.BaseItemDto, error) {
 	if ir.openCursor == nil {
 		return ir.items, nil
@@ -155,22 +152,19 @@ func (ir itemsResult) collect() ([]dto.BaseItemDto, error) {
 	return out, nil
 }
 
-// writeItems streams the result as a Jellyfin QueryResult envelope.
 func (api *Router) writeItems(w http.ResponseWriter, r *http.Request, res itemsResult) {
 	api.streamResult(w, r, res, func(w io.Writer, items iter.Seq2[dto.BaseItemDto, error]) error {
 		return streamItemsEnvelope(w, items, res.total, res.start)
 	})
 }
 
-// writeItemsArray streams the result as a bare JSON array, for the endpoints Jellyfin returns
-// without a QueryResult envelope (/Items/Latest).
+// writeItemsArray writes the bare-array shape (/Items/Latest), which has no QueryResult envelope.
 func (api *Router) writeItemsArray(w http.ResponseWriter, r *http.Request, res itemsResult) {
 	api.streamResult(w, r, res, streamItemsArray)
 }
 
 // streamResult stamps every item's ServerId (constant per request, so it's set here rather than in
-// each mapper) and hands the items to write. The cursor is opened before any byte is written, so an
-// open failure returns a clean 500 instead of a truncated 200.
+// each mapper). The cursor opens before the first byte, so a failed open is still a clean 500.
 func (api *Router) streamResult(w http.ResponseWriter, r *http.Request, res itemsResult,
 	write func(io.Writer, iter.Seq2[dto.BaseItemDto, error]) error) {
 	sid := api.serverID(r.Context())
@@ -197,8 +191,8 @@ func (api *Router) streamResult(w http.ResponseWriter, r *http.Request, res item
 	}
 }
 
-// itemsQuery is a parsed /Items request. Parsing it once keeps the dispatch readable and spares
-// every listXxx a long positional parameter list.
+// itemsQuery is a parsed /Items request, so the dispatch and every listXxx take one value instead
+// of a long positional parameter list.
 type itemsQuery struct {
 	fields    dto.Fields
 	ids       []string
@@ -223,9 +217,9 @@ type itemsQuery struct {
 	genreIds         []string
 }
 
-// parseItemsQuery reads the /Items params and resolves what the dispatch needs: the entity types
-// (inferred from the parent when IncludeItemTypes is absent) and the library scope. Query keys are
-// read lowercase because normalizeQueryKeys folded them (Jellyfin binds case-insensitively).
+// parseItemsQuery also resolves the entity types (inferring them from the parent when
+// IncludeItemTypes is absent) and the library scope. Query keys are read lowercase because
+// normalizeQueryKeys folded them (Jellyfin binds case-insensitively).
 func (api *Router) parseItemsQuery(ctx context.Context, r *http.Request) itemsQuery {
 	p := req.Params(r)
 	q := itemsQuery{
@@ -300,8 +294,7 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (itemsResult
 
 // playlistTracks resolves a playlist parent to its tracks, whatever IncludeItemTypes says: Jellify
 // opens a playlist with ParentId=<playlist>&IncludeItemTypes=Audio, and routing that through
-// listSongs would treat the playlist id as an album id and return nothing. Reports false when the
-// parent isn't a playlist.
+// listSongs would treat the playlist id as an album id and return nothing.
 func (api *Router) playlistTracks(ctx context.Context, q itemsQuery) (itemsResult, bool) {
 	if q.parentId == "" || q.isLibraryParent || q.parentId == playlistsFolderID {
 		return itemsResult{}, false
@@ -315,12 +308,9 @@ func (api *Router) playlistTracks(ctx context.Context, q itemsQuery) (itemsResul
 	return materialized(result(paginate(items, q.offset, q.limit), len(items), q.offset)), true
 }
 
-// mergeTypes queries every requested type and merges them into one paginated list.
 func (api *Router) mergeTypes(ctx context.Context, q itemsQuery) (itemsResult, error) {
 	// Each per-type query needs at most offset+limit rows (the worst case where one type fills the
-	// whole [offset, offset+limit) window); without a limit there is no such cap, so an unbounded
-	// request is streamed rather than merged in memory (see below). Totals are unaffected either
-	// way — they come from CountAll.
+	// whole [offset, offset+limit) window). Totals are unaffected — they come from CountAll.
 	var results []itemsResult
 	total := 0
 	for _, itemType := range q.types {
@@ -337,12 +327,10 @@ func (api *Router) mergeTypes(ctx context.Context, q itemsQuery) (itemsResult, e
 		total += res.total
 	}
 	if q.limit == 0 {
-		// Unbounded: the merged page is every type's rows in order, minus the first offset — exactly
-		// what chaining the cursors yields. Materializing here would pull every row of every type.
+		// No cap above, so merging in memory would pull every row of every type. The merged page is
+		// just their rows in order minus the first offset — what chaining the cursors yields.
 		return chained(results, total, q.offset), nil
 	}
-	// Bounded: each type holds at most offset+limit rows, so merging and paginating across the
-	// combined list is safe.
 	var items []dto.BaseItemDto
 	for _, res := range results {
 		typeItems, err := res.collect()
@@ -517,8 +505,7 @@ func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, q ite
 	if q.artistId == "" && q.entityParent != "" && opts.Sort == "" {
 		opts.Sort = filter.SongsByAlbum(q.entityParent).Sort
 	}
-	// Stream songs from a DB cursor so a full-library request (Finamp's sync with MediaSources, tens
-	// of thousands of fat rows) never materializes every MediaFile + DTO at once.
+	// A full-library request (Finamp's sync, with MediaSources) is tens of thousands of fat rows.
 	total, _ := repo.CountAll(model.QueryOptions{Filters: opts.Filters})
 	open := streamCursor(func() (func(func(model.MediaFile, error) bool), error) {
 		return repo.GetCursor(opts)
@@ -567,9 +554,8 @@ func (api *Router) listArtists(ctx context.Context, opts model.QueryOptions, q i
 }
 
 // listGenres is intentionally unscoped: genres are global tags, not per-library entities. It's also
-// the one listXxx that stays materialized — GenreRepository has no CountAll, so TotalRecordCount is
-// the length of the full list and paging is in-memory, leaving nothing for a cursor to page over.
-// Genres are a few hundred rows at most.
+// the one listXxx that stays materialized: GenreRepository has no CountAll, so the total is the
+// length of the full list and paging is in-memory — nothing for a cursor to page over.
 func (api *Router) listGenres(ctx context.Context, opts model.QueryOptions) (itemsResult, error) {
 	genres, err := api.ds.Genre(ctx).GetAll(model.QueryOptions{Sort: opts.Sort, Order: opts.Order})
 	if err != nil {
@@ -712,8 +698,8 @@ func (api *Router) deleteItem(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// getLatest returns a bare array, not a QueryResult envelope — that's the shape real Jellyfin uses
-// for /Items/Latest, and the reason it writes directly instead of going through api.ok.
+// getLatest returns a bare array, not a QueryResult envelope — real Jellyfin's shape for
+// /Items/Latest, and why it writes directly instead of going through api.ok.
 func (api *Router) getLatest(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	opts := filter.AlbumsByNewest()

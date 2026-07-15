@@ -67,7 +67,6 @@ var _ = Describe("AlbumRepository", func() {
 		})
 	})
 
-	// GetCursor is the streaming equivalent of GetAll, so it must yield exactly what GetAll returns.
 	Describe("GetCursor", func() {
 		It("yields the same albums as GetAll", func() {
 			opts := model.QueryOptions{Sort: "name"}

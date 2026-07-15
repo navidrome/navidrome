@@ -268,7 +268,6 @@ var _ = Describe("ArtistRepository", func() {
 			repo = NewArtistRepository(ctx, GetDBXBuilder())
 		})
 
-		// GetCursor is the streaming equivalent of GetAll, so it must yield exactly what GetAll returns.
 		Describe("GetCursor", func() {
 			It("yields the same artists as GetAll", func() {
 				opts := model.QueryOptions{Sort: "name"}
