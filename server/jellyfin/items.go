@@ -2,6 +2,7 @@ package jellyfin
 
 import (
 	"context"
+	"iter"
 	"net/http"
 	"slices"
 	"strconv"
@@ -28,19 +29,87 @@ func (api *Router) getItems(w http.ResponseWriter, r *http.Request) {
 		api.internalError(w, r, err)
 		return
 	}
-	api.ok(w, r, res)
+	api.writeItems(w, r, res)
+}
+
+// itemsResult is the outcome of an /Items query: a materialized page, or a lazy cursor (for the
+// single-type song listing) so a full-library response never builds every DTO at once. Exactly one
+// of items/cursor is set.
+type itemsResult struct {
+	items  []dto.BaseItemDto
+	cursor iter.Seq2[dto.BaseItemDto, error]
+	total  int
+	start  int
+}
+
+func materialized(q dto.QueryResult) itemsResult {
+	return itemsResult{items: q.Items, total: q.TotalRecordCount, start: q.StartIndex}
+}
+
+// wrapResult adapts a materialized (QueryResult, error) listXxx to itemsResult.
+func wrapResult(q dto.QueryResult, err error) (itemsResult, error) {
+	return materialized(q), err
+}
+
+func streamed(cursor iter.Seq2[dto.BaseItemDto, error], total, start int) itemsResult {
+	return itemsResult{cursor: cursor, total: total, start: start}
+}
+
+// seq yields the items as one sequence, whichever backing store is set.
+func (ir itemsResult) seq() iter.Seq2[dto.BaseItemDto, error] {
+	if ir.cursor != nil {
+		return ir.cursor
+	}
+	return sliceItems(ir.items)
+}
+
+// collect drains the result into a slice, for the multi-type merge that combines queries before paginating.
+func (ir itemsResult) collect() ([]dto.BaseItemDto, error) {
+	if ir.cursor == nil {
+		return ir.items, nil
+	}
+	var out []dto.BaseItemDto
+	for it, err := range ir.cursor {
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, it)
+	}
+	return out, nil
+}
+
+// writeItems streams the result, stamping every item's ServerId (constant per request, so it's set
+// here rather than in each mapper).
+func (api *Router) writeItems(w http.ResponseWriter, r *http.Request, res itemsResult) {
+	sid := api.serverID(r.Context())
+	stamped := func(yield func(dto.BaseItemDto, error) bool) {
+		for it, err := range res.seq() {
+			if err != nil {
+				yield(dto.BaseItemDto{}, err)
+				return
+			}
+			it.ServerId = sid
+			if !yield(it, nil) {
+				return
+			}
+		}
+	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	if err := streamItemsEnvelope(w, stamped, res.total, res.start); err != nil {
+		log.Error(r.Context(), "Jellyfin API: error streaming /Items response", err)
+	}
 }
 
 // queryItems is the /Items dispatcher: it parses entity types from IncludeItemTypes (defaulting to
 // MusicAlbum), queries each via the matching listXxx, and merges multi-type results into one
 // paginated list (as Finamp's favorites screen requests).
-func (api *Router) queryItems(ctx context.Context, r *http.Request) (dto.QueryResult, error) {
+func (api *Router) queryItems(ctx context.Context, r *http.Request) (itemsResult, error) {
 	p := req.Params(r)
 	// Query keys are read lowercase because normalizeQueryKeys folded them (Jellyfin binds
 	// case-insensitively). /Items?ids= is a batch-fetch-by-id that bypasses the type dispatch below.
 	fields := dto.ParseFields(p.StringOr("fields", ""))
 	if ids := decodedQueryIDs(r, "ids"); len(ids) > 0 {
-		return api.itemsByIDs(ctx, ids, fields), nil
+		return materialized(api.itemsByIDs(ctx, ids, fields)), nil
 	}
 	parentId := dto.DecodeID(p.StringOr("parentid", ""))
 	search := p.StringOr("searchterm", "")
@@ -54,7 +123,7 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (dto.QueryRe
 	rawTypes := p.StringOr("includeitemtypes", "")
 	// A ManualPlaylistsFolder query asks for the synthetic "playlists library" container, not real items.
 	if strings.Contains(rawTypes, "ManualPlaylistsFolder") {
-		return result([]dto.BaseItemDto{playlistsFolder()}, 1, 0), nil
+		return materialized(result([]dto.BaseItemDto{playlistsFolder()}, 1, 0)), nil
 	}
 	types := parseTypes(rawTypes)
 	// An artist's page filters by artist, not ParentId: Finamp sends ParentId=<libraryId> for scoping
@@ -76,7 +145,7 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (dto.QueryRe
 		if pls, err := api.playlists.GetWithTracks(ctx, parentId); err == nil {
 			// GetWithTracks enforces visibility (public or owned by the current user).
 			items := slice.Map(pls.Tracks, func(t model.PlaylistTrack) dto.BaseItemDto { return trackToBaseItem(t, fields) })
-			return result(paginate(items, offset, limit), len(items), offset), nil
+			return materialized(result(paginate(items, offset, limit), len(items), offset)), nil
 		}
 	}
 	// With no item type, Jellyfin infers the child type from the parent: album parent -> its tracks
@@ -116,27 +185,33 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (dto.QueryRe
 		applySort(&opts, itemType, sortBy, sortOrder)
 		res, err := api.queryItemsOfType(ctx, itemType, opts, entityParent, artistId, contributingOnly, genreIds, scopeIDs, search, favOnly, fields)
 		if err != nil {
-			return dto.QueryResult{}, err
+			return itemsResult{}, err
 		}
-		items = append(items, res.Items...)
-		total += res.TotalRecordCount
+		// Multi-type merge paginates across the combined list, so each type's items must be
+		// materialized here (a bounded set, capped at offset+limit per type above).
+		typeItems, err := res.collect()
+		if err != nil {
+			return itemsResult{}, err
+		}
+		items = append(items, typeItems...)
+		total += res.total
 	}
-	return result(paginate(items, offset, limit), total, offset), nil
+	return materialized(result(paginate(items, offset, limit), total, offset)), nil
 }
 
-func (api *Router) queryItemsOfType(ctx context.Context, itemType string, opts model.QueryOptions, entityParent, artistId string, contributingOnly bool, genreIds []string, scopeIDs []int, search string, favOnly bool, fields dto.Fields) (dto.QueryResult, error) {
+func (api *Router) queryItemsOfType(ctx context.Context, itemType string, opts model.QueryOptions, entityParent, artistId string, contributingOnly bool, genreIds []string, scopeIDs []int, search string, favOnly bool, fields dto.Fields) (itemsResult, error) {
 	switch itemType {
 	case "Audio":
 		return api.listSongs(ctx, opts, entityParent, artistId, genreIds, scopeIDs, search, favOnly, fields)
 	case "MusicArtist":
 		// The MusicArtist browse hierarchy (UserViews -> artists -> albums) means album artists.
-		return api.listArtists(ctx, opts, genreIds, scopeIDs, search, favOnly, model.RoleAlbumArtist)
+		return wrapResult(api.listArtists(ctx, opts, genreIds, scopeIDs, search, favOnly, model.RoleAlbumArtist))
 	case "MusicGenre":
-		return api.listGenres(ctx, opts)
+		return wrapResult(api.listGenres(ctx, opts))
 	case "Playlist":
-		return api.listPlaylists(ctx, opts, favOnly)
+		return wrapResult(api.listPlaylists(ctx, opts, favOnly))
 	default: // MusicAlbum
-		return api.listAlbums(ctx, opts, entityParent, artistId, contributingOnly, genreIds, scopeIDs, search, favOnly)
+		return wrapResult(api.listAlbums(ctx, opts, entityParent, artistId, contributingOnly, genreIds, scopeIDs, search, favOnly))
 	}
 }
 
@@ -252,7 +327,7 @@ func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, pare
 	return result(slice.Map(albums, dto.AlbumToBaseItem), int(total), opts.Offset), nil
 }
 
-func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, parentId, artistId string, genreIds []string, scopeIDs []int, search string, fav bool, fields dto.Fields) (dto.QueryResult, error) {
+func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, parentId, artistId string, genreIds []string, scopeIDs []int, search string, fav bool, fields dto.Fields) (itemsResult, error) {
 	toItem := func(mf model.MediaFile) dto.BaseItemDto { return dto.SongToBaseItem(mf, fields) }
 	repo := api.ds.MediaFile(ctx)
 	filters := squirrel.And{}
@@ -279,21 +354,37 @@ func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, paren
 			return repo.Search(search, o)
 		})
 		if err != nil {
-			return dto.QueryResult{}, err
+			return itemsResult{}, err
 		}
-		return result(slice.Map(mfs, toItem), total, opts.Offset), nil
+		return materialized(result(slice.Map(mfs, toItem), total, opts.Offset)), nil
 	}
 	// When browsing an album's tracks, default to disc+track order (like Subsonic's GetAlbum); an
 	// explicit client SortBy still wins, since applySort already set opts.Sort.
 	if artistId == "" && parentId != "" && opts.Sort == "" {
 		opts.Sort = filter.SongsByAlbum(parentId).Sort
 	}
-	mfs, err := repo.GetAll(opts)
-	if err != nil {
-		return dto.QueryResult{}, err
-	}
+	// Stream songs from a DB cursor so a full-library request (Finamp's sync with MediaSources, tens
+	// of thousands of fat rows) never materializes every MediaFile + DTO at once.
 	total, _ := repo.CountAll(model.QueryOptions{Filters: opts.Filters})
-	return result(slice.Map(mfs, toItem), int(total), opts.Offset), nil
+	// Open the cursor lazily, at stream time: it holds a DB connection (read lock) until drained, and
+	// the ServerId lookup that runs next writes to the DB on first use — opening here would deadlock them.
+	items := func(yield func(dto.BaseItemDto, error) bool) {
+		cursor, err := repo.GetCursor(opts)
+		if err != nil {
+			yield(dto.BaseItemDto{}, err)
+			return
+		}
+		for mf, err := range cursor {
+			if err != nil {
+				yield(dto.BaseItemDto{}, err)
+				return
+			}
+			if !yield(toItem(mf), nil) {
+				return
+			}
+		}
+	}
+	return streamed(items, int(total), opts.Offset), nil
 }
 
 // listArtists lists artists in the given role: RoleAlbumArtist for the "album artists" views,

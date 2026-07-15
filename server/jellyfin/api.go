@@ -19,6 +19,7 @@ import (
 	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 )
 
@@ -71,8 +72,14 @@ func (api *Router) routes() http.Handler {
 	inner.Get("/Users/Public", api.getPublicUsers)
 
 	// Images are intentionally public: artwork isn't sensitive, matching Jellyfin's image handling.
-	inner.Get("/Items/{itemId}/Images/{type}", api.getItemImage)
-	inner.Get("/Items/{itemId}/Images/{type}/{index}", api.getItemImage)
+	// Bound concurrency like Subsonic's getCoverArt: image decode/resize is CPU- and memory-heavy,
+	// and an unbounded burst (a client fetching artwork across a large library) can exhaust memory.
+	inner.Group(func(r chi.Router) {
+		r.Use(server.ThrottleBacklog(conf.Server.DevArtworkMaxRequests, conf.Server.DevArtworkThrottleBacklogLimit,
+			conf.Server.DevArtworkThrottleBacklogTimeout))
+		r.Get("/Items/{itemId}/Images/{type}", api.getItemImage)
+		r.Get("/Items/{itemId}/Images/{type}/{index}", api.getItemImage)
+	})
 
 	inner.Group(func(r chi.Router) {
 		r.Use(api.authenticate)
@@ -163,7 +170,14 @@ func (api *Router) routes() http.Handler {
 func (api *Router) ok(w http.ResponseWriter, r *http.Request, payload any) {
 	switch p := payload.(type) {
 	case dto.QueryResult:
+		// A full-library /Items result can be huge; stream it so the encoder doesn't buffer the whole
+		// response (a second full copy) in memory before the first byte.
 		api.stampServerID(r.Context(), p.Items)
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		if err := streamQueryResult(w, p); err != nil {
+			log.Error(r.Context(), "Jellyfin API: error encoding response", err)
+		}
+		return
 	case []dto.BaseItemDto:
 		api.stampServerID(r.Context(), p)
 	case dto.BaseItemDto:

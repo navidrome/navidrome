@@ -300,6 +300,23 @@ var _ = Describe("Browsing", func() {
 			q := queryResult(get("/Items?IncludeItemTypes=MusicAlbum,Audio&Recursive=true"))
 			Expect(q.TotalRecordCount).To(Equal(12)) // 5 albums + 7 songs
 		})
+
+		// Songs stream from a DB cursor, so pagination must still be honored by the LIMIT/OFFSET the
+		// cursor query carries — not applied after materializing the whole list.
+		It("pages songs via StartIndex/Limit while reporting the full total", func() {
+			all := queryResult(get("/Items?IncludeItemTypes=Audio&Recursive=true&SortBy=SortName"))
+			Expect(all.TotalRecordCount).To(Equal(7))
+			Expect(all.Items).To(HaveLen(7))
+
+			p1 := queryResult(get("/Items?IncludeItemTypes=Audio&Recursive=true&SortBy=SortName&Limit=3&StartIndex=0"))
+			p2 := queryResult(get("/Items?IncludeItemTypes=Audio&Recursive=true&SortBy=SortName&Limit=3&StartIndex=3"))
+			Expect(p1.Items).To(HaveLen(3))
+			Expect(p2.Items).To(HaveLen(3))
+			Expect(p1.TotalRecordCount).To(Equal(7))
+			// The two pages are distinct and match the head of the unpaged, identically-sorted list.
+			Expect(names(p1.Items)).ToNot(ContainElement(BeElementOf(names(p2.Items))))
+			Expect(append(names(p1.Items), names(p2.Items)...)).To(Equal(names(all.Items)[:6]))
+		})
 	})
 
 	Describe("GET /Items/{id}", func() {
