@@ -1,7 +1,6 @@
 package jellyfin
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"sync"
@@ -165,21 +164,17 @@ func (api *Router) routes() http.Handler {
 	return caseInsensitivePaths(inner)
 }
 
-// ok writes payload as JSON, stamping ServerId on any item(s) in it — real Jellyfin always sets it,
-// and it's the same value for every item, so it's applied here rather than threaded through mappers.
+// ok writes a single (non-collection) payload as JSON. Collections go through writeItems /
+// writeItemsArray instead, which stream. A lone BaseItemDto still gets its ServerId stamped — real
+// Jellyfin always sets it, and it's the same value for every item, so it's applied here rather than
+// threaded through the mappers.
 func (api *Router) ok(w http.ResponseWriter, r *http.Request, payload any) {
 	switch p := payload.(type) {
 	case dto.QueryResult:
-		// A full-library /Items result can be huge; stream it so the encoder doesn't buffer the whole
-		// response (a second full copy) in memory before the first byte.
-		api.stampServerID(r.Context(), p.Items)
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		if err := streamQueryResult(w, p); err != nil {
-			log.Error(r.Context(), "Jellyfin API: error encoding response", err)
-		}
+		// Every QueryResult-shaped collection goes through the one streaming writer, so a large one
+		// never buffers the whole response and ServerId is stamped in a single place.
+		api.writeItems(w, r, materialized(p))
 		return
-	case []dto.BaseItemDto:
-		api.stampServerID(r.Context(), p)
 	case dto.BaseItemDto:
 		p.ServerId = api.serverID(r.Context())
 		payload = p
@@ -187,13 +182,6 @@ func (api *Router) ok(w http.ResponseWriter, r *http.Request, payload any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	if err := json.NewEncoder(w).Encode(payload); err != nil {
 		log.Error(r.Context(), "Jellyfin API: error encoding response", err)
-	}
-}
-
-func (api *Router) stampServerID(ctx context.Context, items []dto.BaseItemDto) {
-	sid := api.serverID(ctx)
-	for i := range items {
-		items[i].ServerId = sid
 	}
 }
 

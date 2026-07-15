@@ -11,12 +11,12 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("streamQueryResult", func() {
-	// The streamed output must be byte-for-byte identical to what json.Encoder.Encode produced
-	// before, so no client sees a different response.
+var _ = Describe("streaming a materialized QueryResult", func() {
+	// The materialized path (api.ok -> writeItems -> sliceItems) must stay byte-for-byte identical to
+	// what json.Encoder.Encode produced before, so no client sees a different response.
 	assertIdenticalToEncoder := func(q dto.QueryResult) {
 		var got bytes.Buffer
-		Expect(streamQueryResult(&got, q)).To(Succeed())
+		Expect(streamItemsEnvelope(&got, sliceItems(q.Items), q.TotalRecordCount, q.StartIndex)).To(Succeed())
 
 		var want bytes.Buffer
 		Expect(json.NewEncoder(&want).Encode(q)).To(Succeed())

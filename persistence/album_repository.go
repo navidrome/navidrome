@@ -247,6 +247,15 @@ func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, e
 	return res.toModels(), nil
 }
 
+func (r *albumRepository) GetCursor(options ...model.QueryOptions) (model.AlbumCursor, error) {
+	sq := r.selectAlbum(options...)
+	cursor, err := queryWithStableResults[dbAlbum](r.sqlRepository, sq)
+	if err != nil {
+		return nil, err
+	}
+	return wrapAlbumCursor(cursor), nil
+}
+
 func (r *albumRepository) CopyAttributes(fromID, toID string, columns ...string) error {
 	var from dbx.NullStringMap
 	err := r.queryOne(Select(columns...).From(r.tableName).Where(Eq{"id": fromID}), &from)

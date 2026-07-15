@@ -67,6 +67,23 @@ var _ = Describe("AlbumRepository", func() {
 		})
 	})
 
+	// GetCursor is the streaming equivalent of GetAll, so it must yield exactly what GetAll returns.
+	Describe("GetCursor", func() {
+		It("yields the same albums as GetAll", func() {
+			opts := model.QueryOptions{Sort: "name"}
+			want, err := albumRepo.GetAll(opts)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(collectCursor(albumRepo.GetCursor(opts))).To(Equal([]model.Album(want)))
+		})
+
+		It("honors Max/Offset like GetAll", func() {
+			opts := model.QueryOptions{Sort: "name", Max: 2, Offset: 1}
+			want, err := albumRepo.GetAll(opts)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(collectCursor(albumRepo.GetCursor(opts))).To(Equal([]model.Album(want)))
+		})
+	})
+
 	Describe("GetAll", func() {
 		var GetAll = func(opts ...model.QueryOptions) (model.Albums, error) {
 			albums, err := albumRepo.GetAll(opts...)

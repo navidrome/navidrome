@@ -2,6 +2,7 @@ package jellyfin
 
 import (
 	"context"
+	"io"
 	"iter"
 	"net/http"
 	"slices"
@@ -48,13 +49,31 @@ func materialized(q dto.QueryResult) itemsResult {
 	return itemsResult{items: q.Items, total: q.TotalRecordCount, start: q.StartIndex}
 }
 
-// wrapResult adapts a materialized (QueryResult, error) listXxx to itemsResult.
-func wrapResult(q dto.QueryResult, err error) (itemsResult, error) {
-	return materialized(q), err
-}
-
 func streamed(open func() (iter.Seq2[dto.BaseItemDto, error], error), total, start int) itemsResult {
 	return itemsResult{openCursor: open, total: total, start: start}
+}
+
+// streamCursor builds the deferred opener for a repository cursor, mapping each row as it is
+// yielded. openCursor takes the repository's cursor type (a named func type), so callers pass a
+// small wrapper around repo.GetCursor.
+func streamCursor[T any](openCursor func() (func(func(T, error) bool), error), toItem func(T) dto.BaseItemDto) func() (iter.Seq2[dto.BaseItemDto, error], error) {
+	return func() (iter.Seq2[dto.BaseItemDto, error], error) {
+		cursor, err := openCursor()
+		if err != nil {
+			return nil, err
+		}
+		return func(yield func(dto.BaseItemDto, error) bool) {
+			for row, err := range cursor {
+				if err != nil {
+					yield(dto.BaseItemDto{}, err)
+					return
+				}
+				if !yield(toItem(row), nil) {
+					return
+				}
+			}
+		}, nil
+	}
 }
 
 // seq returns the items as one sequence, opening the cursor if the result is cursor-backed. Any
@@ -85,10 +104,24 @@ func (ir itemsResult) collect() ([]dto.BaseItemDto, error) {
 	return out, nil
 }
 
-// writeItems streams the result, stamping every item's ServerId (constant per request, so it's set
-// here rather than in each mapper). The cursor is opened before any byte is written, so an open
-// failure returns a clean 500 instead of a truncated 200.
+// writeItems streams the result as a Jellyfin QueryResult envelope.
 func (api *Router) writeItems(w http.ResponseWriter, r *http.Request, res itemsResult) {
+	api.streamResult(w, r, res, func(w io.Writer, items iter.Seq2[dto.BaseItemDto, error]) error {
+		return streamItemsEnvelope(w, items, res.total, res.start)
+	})
+}
+
+// writeItemsArray streams the result as a bare JSON array, for the endpoints Jellyfin returns
+// without a QueryResult envelope (/Items/Latest).
+func (api *Router) writeItemsArray(w http.ResponseWriter, r *http.Request, res itemsResult) {
+	api.streamResult(w, r, res, streamItemsArray)
+}
+
+// streamResult stamps every item's ServerId (constant per request, so it's set here rather than in
+// each mapper) and hands the items to write. The cursor is opened before any byte is written, so an
+// open failure returns a clean 500 instead of a truncated 200.
+func (api *Router) streamResult(w http.ResponseWriter, r *http.Request, res itemsResult,
+	write func(io.Writer, iter.Seq2[dto.BaseItemDto, error]) error) {
 	sid := api.serverID(r.Context())
 	seq, err := res.seq()
 	if err != nil {
@@ -108,8 +141,8 @@ func (api *Router) writeItems(w http.ResponseWriter, r *http.Request, res itemsR
 		}
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	if err := streamItemsEnvelope(w, stamped, res.total, res.start); err != nil {
-		log.Error(r.Context(), "Jellyfin API: error streaming /Items response", err)
+	if err := write(w, stamped); err != nil {
+		log.Error(r.Context(), "Jellyfin API: error streaming response", err)
 	}
 }
 
@@ -218,13 +251,13 @@ func (api *Router) queryItemsOfType(ctx context.Context, itemType string, opts m
 		return api.listSongs(ctx, opts, entityParent, artistId, genreIds, scopeIDs, search, favOnly, fields)
 	case "MusicArtist":
 		// The MusicArtist browse hierarchy (UserViews -> artists -> albums) means album artists.
-		return wrapResult(api.listArtists(ctx, opts, genreIds, scopeIDs, search, favOnly, model.RoleAlbumArtist))
+		return api.listArtists(ctx, opts, genreIds, scopeIDs, search, favOnly, model.RoleAlbumArtist)
 	case "MusicGenre":
-		return wrapResult(api.listGenres(ctx, opts))
+		return api.listGenres(ctx, opts)
 	case "Playlist":
-		return wrapResult(api.listPlaylists(ctx, opts, favOnly))
+		return api.listPlaylists(ctx, opts, favOnly)
 	default: // MusicAlbum
-		return wrapResult(api.listAlbums(ctx, opts, entityParent, artistId, contributingOnly, genreIds, scopeIDs, search, favOnly))
+		return api.listAlbums(ctx, opts, entityParent, artistId, contributingOnly, genreIds, scopeIDs, search, favOnly)
 	}
 }
 
@@ -301,7 +334,7 @@ func searchPage[S ~[]E, E any](opts model.QueryOptions, search func(model.QueryO
 	return rows, total, nil
 }
 
-func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, parentId, artistId string, contributingOnly bool, genreIds []string, scopeIDs []int, search string, fav bool) (dto.QueryResult, error) {
+func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, parentId, artistId string, contributingOnly bool, genreIds []string, scopeIDs []int, search string, fav bool) (itemsResult, error) {
 	repo := api.ds.Album(ctx)
 	filters := squirrel.And{}
 	// For albums, ParentId (browse an artist) and AlbumArtistIds/ArtistIds both mean "this artist's
@@ -328,16 +361,15 @@ func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, pare
 			return repo.Search(search, o)
 		})
 		if err != nil {
-			return dto.QueryResult{}, err
+			return itemsResult{}, err
 		}
-		return result(slice.Map(albums, dto.AlbumToBaseItem), total, opts.Offset), nil
-	}
-	albums, err := repo.GetAll(opts)
-	if err != nil {
-		return dto.QueryResult{}, err
+		return materialized(result(slice.Map(albums, dto.AlbumToBaseItem), total, opts.Offset)), nil
 	}
 	total, _ := repo.CountAll(model.QueryOptions{Filters: opts.Filters})
-	return result(slice.Map(albums, dto.AlbumToBaseItem), int(total), opts.Offset), nil
+	open := streamCursor(func() (func(func(model.Album, error) bool), error) {
+		return repo.GetCursor(opts)
+	}, dto.AlbumToBaseItem)
+	return streamed(open, int(total), opts.Offset), nil
 }
 
 func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, parentId, artistId string, genreIds []string, scopeIDs []int, search string, fav bool, fields dto.Fields) (itemsResult, error) {
@@ -377,34 +409,18 @@ func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, paren
 		opts.Sort = filter.SongsByAlbum(parentId).Sort
 	}
 	// Stream songs from a DB cursor so a full-library request (Finamp's sync with MediaSources, tens
-	// of thousands of fat rows) never materializes every MediaFile + DTO at once. The open is deferred
-	// (see itemsResult): it runs after the ServerId lookup, whose first-use DB write would deadlock
-	// against an open reader, and its error is surfaced before any response byte is written.
+	// of thousands of fat rows) never materializes every MediaFile + DTO at once.
 	total, _ := repo.CountAll(model.QueryOptions{Filters: opts.Filters})
-	open := func() (iter.Seq2[dto.BaseItemDto, error], error) {
-		cursor, err := repo.GetCursor(opts)
-		if err != nil {
-			return nil, err
-		}
-		return func(yield func(dto.BaseItemDto, error) bool) {
-			for mf, err := range cursor {
-				if err != nil {
-					yield(dto.BaseItemDto{}, err)
-					return
-				}
-				if !yield(toItem(mf), nil) {
-					return
-				}
-			}
-		}, nil
-	}
+	open := streamCursor(func() (func(func(model.MediaFile, error) bool), error) {
+		return repo.GetCursor(opts)
+	}, toItem)
 	return streamed(open, int(total), opts.Offset), nil
 }
 
 // listArtists lists artists in the given role: RoleAlbumArtist for the "album artists" views,
 // RoleArtist for performing artists (/Artists). Without the role filter both lists would be identical.
 // genreIds isn't applied to search — a name lookup, like role (see below).
-func (api *Router) listArtists(ctx context.Context, opts model.QueryOptions, genreIds []string, scopeIDs []int, search string, fav bool, role model.Role) (dto.QueryResult, error) {
+func (api *Router) listArtists(ctx context.Context, opts model.QueryOptions, genreIds []string, scopeIDs []int, search string, fav bool, role model.Role) (itemsResult, error) {
 	repo := api.ds.Artist(ctx)
 
 	// Artist Search does its own library scoping: it consumes a sole Eq{"library_id": ...} filter as a
@@ -419,9 +435,9 @@ func (api *Router) listArtists(ctx context.Context, opts model.QueryOptions, gen
 			return repo.Search(search, o)
 		})
 		if err != nil {
-			return dto.QueryResult{}, err
+			return itemsResult{}, err
 		}
-		return result(slice.Map(artists, dto.ArtistToBaseItem), total, opts.Offset), nil
+		return materialized(result(slice.Map(artists, dto.ArtistToBaseItem), total, opts.Offset)), nil
 	}
 
 	if fav {
@@ -434,28 +450,29 @@ func (api *Router) listArtists(ctx context.Context, opts model.QueryOptions, gen
 	}
 	opts = filter.ArtistsByRole(opts, role)
 	opts = filter.ApplyArtistLibraryFilter(opts, scopeIDs)
-	artists, err := repo.GetAll(opts)
-	if err != nil {
-		return dto.QueryResult{}, err
-	}
 	total, _ := repo.CountAll(model.QueryOptions{Filters: opts.Filters})
-	return result(slice.Map(artists, dto.ArtistToBaseItem), int(total), opts.Offset), nil
+	open := streamCursor(func() (func(func(model.Artist, error) bool), error) {
+		return repo.GetCursor(opts)
+	}, dto.ArtistToBaseItem)
+	return streamed(open, int(total), opts.Offset), nil
 }
 
 // listGenres is intentionally unscoped: genres are global tags, not per-library entities. Paging is
 // in-memory (GenreRepository has no CountAll, lists are small) so TotalRecordCount is the real total.
-func (api *Router) listGenres(ctx context.Context, opts model.QueryOptions) (dto.QueryResult, error) {
+// listGenres stays materialized: its total is the length of the full list and it paginates in
+// memory, so there is nothing for a cursor to page over. Genres are a few hundred rows at most.
+func (api *Router) listGenres(ctx context.Context, opts model.QueryOptions) (itemsResult, error) {
 	genres, err := api.ds.Genre(ctx).GetAll(model.QueryOptions{Sort: opts.Sort, Order: opts.Order})
 	if err != nil {
-		return dto.QueryResult{}, err
+		return itemsResult{}, err
 	}
 	items := slice.Map(genres, dto.GenreToBaseItem)
-	return result(paginate(items, opts.Offset, opts.Max), len(items), opts.Offset), nil
+	return materialized(result(paginate(items, opts.Offset, opts.Max), len(items), opts.Offset)), nil
 }
 
 // listPlaylists lists playlists visible to the current user. Visibility (public or owned) is
 // enforced by playlistRepository, not scopeIDs.
-func (api *Router) listPlaylists(ctx context.Context, opts model.QueryOptions, favOnly bool) (dto.QueryResult, error) {
+func (api *Router) listPlaylists(ctx context.Context, opts model.QueryOptions, favOnly bool) (itemsResult, error) {
 	if favOnly {
 		starred := squirrel.Eq{"starred": true}
 		if opts.Filters == nil {
@@ -465,15 +482,14 @@ func (api *Router) listPlaylists(ctx context.Context, opts model.QueryOptions, f
 		}
 	}
 	repo := api.ds.Playlist(ctx)
-	playlists, err := repo.GetAll(opts)
-	if err != nil {
-		return dto.QueryResult{}, err
-	}
 	total, err := repo.CountAll(model.QueryOptions{Filters: opts.Filters})
 	if err != nil {
-		return dto.QueryResult{}, err
+		return itemsResult{}, err
 	}
-	return result(slice.Map(playlists, dto.PlaylistToBaseItem), int(total), opts.Offset), nil
+	open := streamCursor(func() (func(func(model.Playlist, error) bool), error) {
+		return repo.GetCursor(opts)
+	}, dto.PlaylistToBaseItem)
+	return streamed(open, int(total), opts.Offset), nil
 }
 
 // resolveItemByID resolves a decoded navidrome id to its BaseItemDto, trying library view, album,
@@ -587,17 +603,18 @@ func (api *Router) deleteItem(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// getLatest returns a bare array, not a QueryResult envelope — that's the shape real Jellyfin uses
+// for /Items/Latest.
 func (api *Router) getLatest(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	opts := filter.AlbumsByNewest()
 	opts.Max = req.Params(r).IntOr("limit", 20)
 	opts = filter.ApplyLibraryFilter(opts, accessibleLibraryIDs(ctx))
-	albums, err := api.ds.Album(ctx).GetAll(opts)
-	if err != nil {
-		api.internalError(w, r, err)
-		return
-	}
-	api.ok(w, r, slice.Map(albums, dto.AlbumToBaseItem)) // /Latest returns a bare array
+	repo := api.ds.Album(ctx)
+	open := streamCursor(func() (func(func(model.Album, error) bool), error) {
+		return repo.GetCursor(opts)
+	}, dto.AlbumToBaseItem)
+	api.writeItemsArray(w, r, streamed(open, 0, 0))
 }
 
 func result(items []dto.BaseItemDto, total, start int) dto.QueryResult {

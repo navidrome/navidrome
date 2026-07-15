@@ -29,6 +29,23 @@ var _ = Describe("MediaRepository", func() {
 		mr = NewMediaFileRepository(ctx, GetDBXBuilder())
 	})
 
+	// GetCursor is the streaming equivalent of GetAll, so it must yield exactly what GetAll returns.
+	Describe("GetCursor", func() {
+		It("yields the same media files as GetAll", func() {
+			opts := model.QueryOptions{Sort: "title"}
+			want, err := mr.GetAll(opts)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(collectCursor(mr.GetCursor(opts))).To(Equal([]model.MediaFile(want)))
+		})
+
+		It("honors Max/Offset like GetAll", func() {
+			opts := model.QueryOptions{Sort: "title", Max: 2, Offset: 1}
+			want, err := mr.GetAll(opts)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(collectCursor(mr.GetCursor(opts))).To(Equal([]model.MediaFile(want)))
+		})
+	})
+
 	It("gets mediafile from the DB", func() {
 		actual, err := mr.Get("1004")
 		Expect(err).ToNot(HaveOccurred())

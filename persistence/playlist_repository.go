@@ -186,6 +186,22 @@ func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playli
 	return playlists, err
 }
 
+func (r *playlistRepository) GetCursor(options ...model.QueryOptions) (model.PlaylistCursor, error) {
+	// Same userFilter as GetAll: a cursor must not widen visibility beyond public/owned playlists.
+	sel := r.selectPlaylist(options...).Where(r.userFilter())
+	cursor, err := queryWithStableResults[dbPlaylist](r.sqlRepository, sel)
+	if err != nil {
+		return nil, err
+	}
+	return func(yield func(model.Playlist, error) bool) {
+		for p, err := range cursor {
+			if !yield(p.Playlist, err) || err != nil {
+				return
+			}
+		}
+	}, nil
+}
+
 func (r *playlistRepository) GetPlaylists(mediaFileId string) (model.Playlists, error) {
 	sel := r.selectPlaylist(model.QueryOptions{Sort: "name"}).
 		Join("playlist_tracks on playlist.id = playlist_tracks.playlist_id").

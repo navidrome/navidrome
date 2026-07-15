@@ -22,46 +22,57 @@ import (
 // Cursor-open errors are caught by the caller before any byte is written, so this only fires on a
 // rare mid-iteration failure.
 func streamItemsEnvelope(w io.Writer, items iter.Seq2[dto.BaseItemDto, error], total, start int) error {
-	// bufio latches the first write error and returns it from Flush, so intermediate writes go unchecked.
 	bw := bufio.NewWriterSize(w, 64*1024)
-	write := func(s string) { _, _ = bw.WriteString(s) }
+	_, _ = bw.WriteString(`{"Items":[`)
+	if err := encodeItems(bw, items); err != nil {
+		_ = bw.Flush()
+		return err
+	}
+	_, _ = bw.WriteString(`],"TotalRecordCount":`)
+	_, _ = bw.WriteString(strconv.Itoa(total))
+	_, _ = bw.WriteString(`,"StartIndex":`)
+	_, _ = bw.WriteString(strconv.Itoa(start))
+	_, _ = bw.WriteString("}\n")
+	return bw.Flush()
+}
+
+// streamItemsArray writes items as a bare JSON array — the shape /Items/Latest returns, which has no
+// QueryResult envelope. Same streaming and mid-stream-error behavior as streamItemsEnvelope.
+func streamItemsArray(w io.Writer, items iter.Seq2[dto.BaseItemDto, error]) error {
+	bw := bufio.NewWriterSize(w, 64*1024)
+	_, _ = bw.WriteString("[")
+	if err := encodeItems(bw, items); err != nil {
+		_ = bw.Flush()
+		return err
+	}
+	_, _ = bw.WriteString("]\n")
+	return bw.Flush()
+}
+
+// encodeItems writes items comma-separated, encoding one at a time. bufio latches the first write
+// error and returns it from Flush, so intermediate writes go unchecked.
+func encodeItems(bw *bufio.Writer, items iter.Seq2[dto.BaseItemDto, error]) error {
 	// Reuse one buffer+encoder so per-item JSON doesn't allocate a fresh slice each time. The encoder
 	// HTML-escapes like json.Marshal; the newline it appends is dropped below.
 	var itemBuf bytes.Buffer
 	enc := json.NewEncoder(&itemBuf)
-
-	write(`{"Items":[`)
 	first := true
 	for item, err := range items {
 		if err != nil {
-			_ = bw.Flush()
 			return err
 		}
 		if !first {
-			write(",")
+			_, _ = bw.WriteString(",")
 		}
 		first = false
 		itemBuf.Reset()
 		if err := enc.Encode(item); err != nil {
-			_ = bw.Flush()
 			return err
 		}
 		b := itemBuf.Bytes()
 		_, _ = bw.Write(b[:len(b)-1])
 	}
-	write(`],"TotalRecordCount":`)
-	write(strconv.Itoa(total))
-	write(`,"StartIndex":`)
-	write(strconv.Itoa(start))
-	write("}\n")
-	return bw.Flush()
-}
-
-// streamQueryResult streams a fully materialized QueryResult (used by api.ok for the bounded,
-// non-cursor responses). Callers always pass a non-nil Items slice, so an empty result renders as
-// [] — identical to json.Encoder.
-func streamQueryResult(w io.Writer, q dto.QueryResult) error {
-	return streamItemsEnvelope(w, sliceItems(q.Items), q.TotalRecordCount, q.StartIndex)
+	return nil
 }
 
 // sliceItems adapts a slice to the pull sequence streamItemsEnvelope consumes.

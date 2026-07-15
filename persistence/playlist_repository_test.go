@@ -27,6 +27,17 @@ var _ = Describe("PlaylistRepository", func() {
 		})
 	})
 
+	// GetCursor is the streaming equivalent of GetAll, so it must yield exactly what GetAll returns —
+	// including the same owner/public visibility filter.
+	Describe("GetCursor", func() {
+		It("yields the same playlists as GetAll", func() {
+			opts := model.QueryOptions{Sort: "name"}
+			want, err := repo.GetAll(opts)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(collectCursor(repo.GetCursor(opts))).To(Equal([]model.Playlist(want)))
+		})
+	})
+
 	Describe("Exists", func() {
 		It("returns true for an existing playlist", func() {
 			Expect(repo.Exists(plsCool.ID)).To(BeTrue())

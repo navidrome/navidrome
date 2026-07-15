@@ -141,6 +141,9 @@ type AlbumRepository interface {
 	UpdateExternalInfo(*Album) error
 	Get(id string) (*Album, error)
 	GetAll(...QueryOptions) (Albums, error)
+	// GetCursor returns the same rows as GetAll, yielded one at a time, so large result sets can be
+	// streamed without materializing every album.
+	GetCursor(...QueryOptions) (AlbumCursor, error)
 
 	// The following methods are used exclusively by the scanner:
 	Touch(ids ...string) error

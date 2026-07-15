@@ -113,6 +113,20 @@ func (m *MockArtistRepo) GetAll(options ...model.QueryOptions) (model.Artists, e
 	return allArtists, nil
 }
 
+func (m *MockArtistRepo) GetCursor(options ...model.QueryOptions) (model.ArtistCursor, error) {
+	res, err := m.GetAll(options...)
+	if err != nil {
+		return nil, err
+	}
+	return func(yield func(model.Artist, error) bool) {
+		for _, a := range res {
+			if !yield(a, nil) {
+				return
+			}
+		}
+	}, nil
+}
+
 func (m *MockArtistRepo) UpdateExternalInfo(artist *model.Artist) error {
 	if m.Err {
 		return errors.New("mock repo error")

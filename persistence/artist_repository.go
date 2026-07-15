@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"iter"
 	"os"
 	"slices"
 	"strings"
@@ -261,6 +262,29 @@ func (r *artistRepository) GetAll(options ...model.QueryOptions) (model.Artists,
 	}
 	res := dba.toModels()
 	return res, err
+}
+
+func (r *artistRepository) GetCursor(options ...model.QueryOptions) (model.ArtistCursor, error) {
+	sel := r.selectArtist(options...)
+	cursor, err := queryWithStableResults[dbArtist](r.sqlRepository, sel)
+	if err != nil {
+		return nil, err
+	}
+	return wrapArtistCursor(cursor), nil
+}
+
+func wrapArtistCursor(cursor iter.Seq2[dbArtist, error]) model.ArtistCursor {
+	return func(yield func(model.Artist, error) bool) {
+		for a, err := range cursor {
+			if a.Artist == nil {
+				yield(model.Artist{}, fmt.Errorf("unexpected nil artist (%v): %w", a, err))
+				return
+			}
+			if !yield(*a.Artist, err) || err != nil {
+				return
+			}
+		}
+	}
 }
 
 func (r *artistRepository) getIndexKey(a model.Artist) string {
