@@ -232,7 +232,11 @@ describe('playerReducer', () => {
         { trackId: 's1', uuid: 'aaa', song: { id: 's1', skipped: false } },
         { trackId: 's2', uuid: 'bbb', song: { id: 's2', skipped: false } },
       ],
-      current: { trackId: 's2', uuid: 'bbb', song: { id: 's2', skipped: false } },
+      current: {
+        trackId: 's2',
+        uuid: 'bbb',
+        song: { id: 's2', skipped: false },
+      },
       clear: false,
       volume: 1,
     }
