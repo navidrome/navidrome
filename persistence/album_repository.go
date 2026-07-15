@@ -247,6 +247,15 @@ func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, e
 	return res.toModels(), nil
 }
 
+func (r *albumRepository) GetCursor(options ...model.QueryOptions) (model.AlbumCursor, error) {
+	sq := r.selectAlbum(options...)
+	cursor, err := queryWithStableResults[dbAlbum](r.sqlRepository, sq)
+	if err != nil {
+		return nil, err
+	}
+	return wrapAlbumCursor(cursor), nil
+}
+
 func (r *albumRepository) CopyAttributes(fromID, toID string, columns ...string) error {
 	var from dbx.NullStringMap
 	err := r.queryOne(Select(columns...).From(r.tableName).Where(Eq{"id": fromID}), &from)
@@ -319,17 +328,7 @@ func (r *albumRepository) GetTouchedAlbums(libID int) (model.AlbumCursor, error)
 }
 
 func wrapAlbumCursor(cursor iter.Seq2[dbAlbum, error]) model.AlbumCursor {
-	return func(yield func(model.Album, error) bool) {
-		for a, err := range cursor {
-			if a.Album == nil {
-				yield(model.Album{}, fmt.Errorf("unexpected nil album (%v): %w", a, err))
-				return
-			}
-			if !yield(*a.Album, err) || err != nil {
-				return
-			}
-		}
-	}
+	return model.AlbumCursor(wrapCursor(cursor, func(a dbAlbum) *model.Album { return a.Album }))
 }
 
 // RefreshPlayCounts updates the play count and last play date annotations for all albums, based

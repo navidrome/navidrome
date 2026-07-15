@@ -347,6 +347,24 @@ func (r sqlRepository) queryOne(sq Sqlizer, response any) error {
 	return err
 }
 
+// wrapCursor adapts a cursor over db rows into one over their models. toModel pulls out the row's
+// embedded model, which a type parameter can't reach on its own.
+func wrapCursor[D, T any](cursor iter.Seq2[D, error], toModel func(D) *T) iter.Seq2[T, error] {
+	return func(yield func(T, error) bool) {
+		for row, err := range cursor {
+			m := toModel(row)
+			if m == nil {
+				var zero T
+				yield(zero, fmt.Errorf("unexpected nil %T (%v): %w", zero, row, err))
+				return
+			}
+			if !yield(*m, err) || err != nil {
+				return
+			}
+		}
+	}
+}
+
 // queryWithStableResults is a helper function to execute a query and return an iterator that will yield its results
 // from a cursor, guaranteeing that the results will be stable, even if the underlying data changes.
 func queryWithStableResults[T any](r sqlRepository, sq SelectBuilder, options ...model.QueryOptions) (iter.Seq2[T, error], error) {

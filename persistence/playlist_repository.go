@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"iter"
 	"slices"
 	"time"
 
@@ -184,6 +185,21 @@ func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playli
 		playlists[i] = p.Playlist
 	}
 	return playlists, err
+}
+
+func (r *playlistRepository) GetCursor(options ...model.QueryOptions) (model.PlaylistCursor, error) {
+	// Same userFilter as GetAll: a cursor must not widen visibility beyond public/owned playlists.
+	sel := r.selectPlaylist(options...).Where(r.userFilter())
+	cursor, err := queryWithStableResults[dbPlaylist](r.sqlRepository, sel)
+	if err != nil {
+		return nil, err
+	}
+	return wrapPlaylistCursor(cursor), nil
+}
+
+// dbPlaylist embeds a value, not a pointer, so its model is never nil.
+func wrapPlaylistCursor(cursor iter.Seq2[dbPlaylist, error]) model.PlaylistCursor {
+	return model.PlaylistCursor(wrapCursor(cursor, func(p dbPlaylist) *model.Playlist { return &p.Playlist }))
 }
 
 func (r *playlistRepository) GetPlaylists(mediaFileId string) (model.Playlists, error) {

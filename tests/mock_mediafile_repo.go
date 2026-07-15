@@ -109,6 +109,20 @@ func (m *MockMediaFileRepo) GetRandom(qo ...model.QueryOptions) (model.MediaFile
 	return res, nil
 }
 
+func (m *MockMediaFileRepo) GetCursor(qo ...model.QueryOptions) (model.MediaFileCursor, error) {
+	res, err := m.GetAll(qo...)
+	if err != nil {
+		return nil, err
+	}
+	return func(yield func(model.MediaFile, error) bool) {
+		for _, mf := range res {
+			if !yield(mf, nil) {
+				return
+			}
+		}
+	}, nil
+}
+
 func (m *MockMediaFileRepo) Put(mf *model.MediaFile) error {
 	if m.Err {
 		return errors.New("error")

@@ -141,6 +141,7 @@ type AlbumRepository interface {
 	UpdateExternalInfo(*Album) error
 	Get(id string) (*Album, error)
 	GetAll(...QueryOptions) (Albums, error)
+	GetCursor(...QueryOptions) (AlbumCursor, error)
 
 	// The following methods are used exclusively by the scanner:
 	Touch(ids ...string) error

@@ -67,6 +67,22 @@ var _ = Describe("AlbumRepository", func() {
 		})
 	})
 
+	Describe("GetCursor", func() {
+		It("yields the same albums as GetAll", func() {
+			opts := model.QueryOptions{Sort: "name"}
+			want, err := albumRepo.GetAll(opts)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(collectCursor(albumRepo.GetCursor(opts))).To(Equal([]model.Album(want)))
+		})
+
+		It("honors Max/Offset like GetAll", func() {
+			opts := model.QueryOptions{Sort: "name", Max: 2, Offset: 1}
+			want, err := albumRepo.GetAll(opts)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(collectCursor(albumRepo.GetCursor(opts))).To(Equal([]model.Album(want)))
+		})
+	})
+
 	Describe("GetAll", func() {
 		var GetAll = func(opts ...model.QueryOptions) (model.Albums, error) {
 			albums, err := albumRepo.GetAll(opts...)
@@ -854,7 +870,7 @@ var _ = Describe("AlbumRepository", func() {
 				}
 			}).ToNot(Panic())
 			Expect(gotErr).To(HaveOccurred())
-			Expect(gotErr.Error()).To(ContainSubstring("unexpected nil album"))
+			Expect(gotErr.Error()).To(ContainSubstring("unexpected nil model.Album"))
 			Expect(errors.Is(gotErr, dbErr)).To(BeTrue(), "should wrap the original cursor error")
 		})
 

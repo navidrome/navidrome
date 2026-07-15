@@ -29,6 +29,22 @@ var _ = Describe("MediaRepository", func() {
 		mr = NewMediaFileRepository(ctx, GetDBXBuilder())
 	})
 
+	Describe("GetCursor", func() {
+		It("yields the same media files as GetAll", func() {
+			opts := model.QueryOptions{Sort: "title"}
+			want, err := mr.GetAll(opts)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(collectCursor(mr.GetCursor(opts))).To(Equal([]model.MediaFile(want)))
+		})
+
+		It("honors Max/Offset like GetAll", func() {
+			opts := model.QueryOptions{Sort: "title", Max: 2, Offset: 1}
+			want, err := mr.GetAll(opts)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(collectCursor(mr.GetCursor(opts))).To(Equal([]model.MediaFile(want)))
+		})
+	})
+
 	It("gets mediafile from the DB", func() {
 		actual, err := mr.Get("1004")
 		Expect(err).ToNot(HaveOccurred())
@@ -1012,7 +1028,7 @@ var _ = Describe("MediaRepository", func() {
 				}
 			}).ToNot(Panic())
 			Expect(gotErr).To(HaveOccurred())
-			Expect(gotErr.Error()).To(ContainSubstring("unexpected nil mediafile"))
+			Expect(gotErr.Error()).To(ContainSubstring("unexpected nil model.MediaFile"))
 			Expect(errors.Is(gotErr, dbErr)).To(BeTrue(), "should wrap the original cursor error")
 		})
 

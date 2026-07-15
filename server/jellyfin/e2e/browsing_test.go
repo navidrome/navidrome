@@ -300,6 +300,34 @@ var _ = Describe("Browsing", func() {
 			q := queryResult(get("/Items?IncludeItemTypes=MusicAlbum,Audio&Recursive=true"))
 			Expect(q.TotalRecordCount).To(Equal(12)) // 5 albums + 7 songs
 		})
+
+		// Chaining the per-type cursors must preserve the merged order.
+		It("streams an unbounded multi-type merge, honoring StartIndex", func() {
+			all := queryResult(get("/Items?IncludeItemTypes=MusicAlbum,Audio&Recursive=true"))
+			Expect(all.Items).To(HaveLen(12))
+
+			skipped := queryResult(get("/Items?IncludeItemTypes=MusicAlbum,Audio&Recursive=true&StartIndex=2"))
+			Expect(skipped.Items).To(HaveLen(10))
+			Expect(skipped.TotalRecordCount).To(Equal(12))
+			Expect(skipped.StartIndex).To(Equal(2))
+			Expect(names(skipped.Items)).To(Equal(names(all.Items)[2:]))
+		})
+
+		// Paging must ride on the cursor query's LIMIT/OFFSET, not be applied after materializing.
+		It("pages songs via StartIndex/Limit while reporting the full total", func() {
+			all := queryResult(get("/Items?IncludeItemTypes=Audio&Recursive=true&SortBy=SortName"))
+			Expect(all.TotalRecordCount).To(Equal(7))
+			Expect(all.Items).To(HaveLen(7))
+
+			p1 := queryResult(get("/Items?IncludeItemTypes=Audio&Recursive=true&SortBy=SortName&Limit=3&StartIndex=0"))
+			p2 := queryResult(get("/Items?IncludeItemTypes=Audio&Recursive=true&SortBy=SortName&Limit=3&StartIndex=3"))
+			Expect(p1.Items).To(HaveLen(3))
+			Expect(p2.Items).To(HaveLen(3))
+			Expect(p1.TotalRecordCount).To(Equal(7))
+			// The two pages are distinct and match the head of the unpaged, identically-sorted list.
+			Expect(names(p1.Items)).ToNot(ContainElement(BeElementOf(names(p2.Items))))
+			Expect(append(names(p1.Items), names(p2.Items)...)).To(Equal(names(all.Items)[:6]))
+		})
 	})
 
 	Describe("GET /Items/{id}", func() {

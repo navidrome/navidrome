@@ -1,7 +1,6 @@
 package jellyfin
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"sync"
@@ -19,6 +18,7 @@ import (
 	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 )
 
@@ -71,8 +71,14 @@ func (api *Router) routes() http.Handler {
 	inner.Get("/Users/Public", api.getPublicUsers)
 
 	// Images are intentionally public: artwork isn't sensitive, matching Jellyfin's image handling.
-	inner.Get("/Items/{itemId}/Images/{type}", api.getItemImage)
-	inner.Get("/Items/{itemId}/Images/{type}/{index}", api.getItemImage)
+	// Bound concurrency like Subsonic's getCoverArt: image decode/resize is CPU- and memory-heavy,
+	// and an unbounded burst (a client fetching artwork across a large library) can exhaust memory.
+	inner.Group(func(r chi.Router) {
+		r.Use(server.ThrottleBacklog(conf.Server.DevArtworkMaxRequests, conf.Server.DevArtworkThrottleBacklogLimit,
+			conf.Server.DevArtworkThrottleBacklogTimeout))
+		r.Get("/Items/{itemId}/Images/{type}", api.getItemImage)
+		r.Get("/Items/{itemId}/Images/{type}/{index}", api.getItemImage)
+	})
 
 	inner.Group(func(r chi.Router) {
 		r.Use(api.authenticate)
@@ -85,12 +91,22 @@ func (api *Router) routes() http.Handler {
 		r.Get("/Users/Me", api.getCurrentUser)
 		r.Get("/Users/{userId}", api.getCurrentUser)
 
-		r.Get("/Items", api.getItems)
-		r.Get("/Users/{userId}/Items", api.getItems)
+		// Cursor-backed collections: each streams straight from the DB, holding a connection for the
+		// whole client-paced response, so enough slow clients would take the entire pool and stall the
+		// scanner, scrobbles and the UI. Cap them at half the pool (see conf.MaxOpenConns); excess
+		// requests queue rather than fail.
+		r.Group(func(r chi.Router) {
+			r.Use(throttleStreams(conf.Server.Jellyfin.MaxConcurrentStreams))
+			r.Get("/Items", api.getItems)
+			r.Get("/Users/{userId}/Items", api.getItems)
+			r.Get("/Users/{userId}/Items/Latest", api.getLatest)
+			r.Get("/Artists", api.getArtists)
+			r.Get("/Artists/AlbumArtists", api.getAlbumArtists)
+		})
+
 		r.Get("/Items/{itemId}", api.getItem)
 		r.Get("/Users/{userId}/Items/{itemId}", api.getItem)
 		r.Delete("/Items/{itemId}", api.deleteItem)
-		r.Get("/Users/{userId}/Items/Latest", api.getLatest)
 
 		// /UserFavoriteItems is the current @jellyfin/sdk spelling (Jellify); the
 		// /Users/{userId}/FavoriteItems form is the legacy one Finamp still uses.
@@ -106,8 +122,6 @@ func (api *Router) routes() http.Handler {
 		r.Get("/UserItems/{itemId}/UserData", api.getUserItemData)
 		r.Get("/Users/{userId}/Items/{itemId}/UserData", api.getUserItemData)
 
-		r.Get("/Artists", api.getArtists)
-		r.Get("/Artists/AlbumArtists", api.getAlbumArtists)
 		r.Get("/Artists/{itemId}/Similar", api.getSimilarArtists)
 		r.Get("/Items/{itemId}/Similar", api.getSimilarItems)
 		r.Get("/Items/{itemId}/InstantMix", api.getInstantMix)
@@ -158,14 +172,19 @@ func (api *Router) routes() http.Handler {
 	return caseInsensitivePaths(inner)
 }
 
-// ok writes payload as JSON, stamping ServerId on any item(s) in it — real Jellyfin always sets it,
-// and it's the same value for every item, so it's applied here rather than threaded through mappers.
+// ok writes payload as JSON — the single entry point for every handler. Collections are routed to
+// the streaming writer, so callers needn't know whether theirs is cursor-backed. ServerId is stamped
+// on any item(s): real Jellyfin always sets it, and it's constant per request.
+//
+// Only /Items/Latest bypasses this, for its bare-array shape (see writeItemsArray).
 func (api *Router) ok(w http.ResponseWriter, r *http.Request, payload any) {
 	switch p := payload.(type) {
+	case itemsResult:
+		api.writeItems(w, r, p)
+		return
 	case dto.QueryResult:
-		api.stampServerID(r.Context(), p.Items)
-	case []dto.BaseItemDto:
-		api.stampServerID(r.Context(), p)
+		api.writeItems(w, r, materialized(p))
+		return
 	case dto.BaseItemDto:
 		p.ServerId = api.serverID(r.Context())
 		payload = p
@@ -173,13 +192,6 @@ func (api *Router) ok(w http.ResponseWriter, r *http.Request, payload any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	if err := json.NewEncoder(w).Encode(payload); err != nil {
 		log.Error(r.Context(), "Jellyfin API: error encoding response", err)
-	}
-}
-
-func (api *Router) stampServerID(ctx context.Context, items []dto.BaseItemDto) {
-	sid := api.serverID(ctx)
-	for i := range items {
-		items[i].ServerId = sid
 	}
 }
 

@@ -52,6 +52,20 @@ func (m *MockPlaylistRepo) GetAll(options ...model.QueryOptions) (model.Playlist
 	return m.All, nil
 }
 
+func (m *MockPlaylistRepo) GetCursor(options ...model.QueryOptions) (model.PlaylistCursor, error) {
+	res, err := m.GetAll(options...)
+	if err != nil {
+		return nil, err
+	}
+	return func(yield func(model.Playlist, error) bool) {
+		for _, p := range res {
+			if !yield(p, nil) {
+				return
+			}
+		}
+	}, nil
+}
+
 func (m *MockPlaylistRepo) Get(id string) (*model.Playlist, error) {
 	if m.Err {
 		return nil, errors.New("error")

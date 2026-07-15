@@ -75,6 +75,20 @@ func (m *MockAlbumRepo) GetAll(qo ...model.QueryOptions) (model.Albums, error) {
 	return m.All, nil
 }
 
+func (m *MockAlbumRepo) GetCursor(qo ...model.QueryOptions) (model.AlbumCursor, error) {
+	res, err := m.GetAll(qo...)
+	if err != nil {
+		return nil, err
+	}
+	return func(yield func(model.Album, error) bool) {
+		for _, a := range res {
+			if !yield(a, nil) {
+				return
+			}
+		}
+	}, nil
+}
+
 func (m *MockAlbumRepo) IncPlayCount(id string, timestamp time.Time) error {
 	if m.Err {
 		return errors.New("unexpected error")
