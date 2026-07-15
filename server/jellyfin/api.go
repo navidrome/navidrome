@@ -102,6 +102,7 @@ func (api *Router) routes() http.Handler {
 			r.Get("/Users/{userId}/Items/Latest", api.getLatest)
 			r.Get("/Artists", api.getArtists)
 			r.Get("/Artists/AlbumArtists", api.getAlbumArtists)
+			r.Get("/Playlists/{playlistId}/Items", api.getPlaylistItems)
 		})
 
 		r.Get("/Items/{itemId}", api.getItem)
@@ -131,7 +132,6 @@ func (api *Router) routes() http.Handler {
 		r.Post("/Playlists", api.createPlaylist)
 		r.Get("/Playlists/{playlistId}", api.getPlaylist)
 		r.Post("/Playlists/{playlistId}", api.updatePlaylist)
-		r.Get("/Playlists/{playlistId}/Items", api.getPlaylistItems)
 		r.Post("/Playlists/{playlistId}/Items", api.addToPlaylist)
 		r.Delete("/Playlists/{playlistId}/Items", api.removeFromPlaylist)
 		r.Get("/Playlists/{playlistId}/Users", api.getPlaylistUsers)

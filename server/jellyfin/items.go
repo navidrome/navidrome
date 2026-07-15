@@ -281,8 +281,8 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (itemsResult
 	case strings.Contains(q.rawTypes, "ManualPlaylistsFolder"):
 		return materialized(result([]dto.BaseItemDto{playlistsFolder()}, 1, 0)), nil
 	}
-	if res, ok := api.playlistTracks(ctx, q); ok {
-		return res, nil
+	if res, handled, err := api.playlistTracks(ctx, q); handled {
+		return res, err
 	}
 	if len(q.types) == 1 {
 		opts := model.QueryOptions{Offset: q.offset, Max: q.limit}
@@ -295,17 +295,20 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (itemsResult
 // playlistTracks resolves a playlist parent to its tracks, whatever IncludeItemTypes says: Jellify
 // opens a playlist with ParentId=<playlist>&IncludeItemTypes=Audio, and routing that through
 // listSongs would treat the playlist id as an album id and return nothing.
-func (api *Router) playlistTracks(ctx context.Context, q itemsQuery) (itemsResult, bool) {
+//
+// handled is false when ParentId isn't a visible playlist, so the caller falls through to the type
+// dispatch: ParentId is usually an album or artist.
+func (api *Router) playlistTracks(ctx context.Context, q itemsQuery) (res itemsResult, handled bool, err error) {
 	if q.parentId == "" || q.isLibraryParent || q.parentId == playlistsFolderID {
-		return itemsResult{}, false
+		return itemsResult{}, false, nil
 	}
-	pls, err := api.playlists.GetWithTracks(ctx, q.parentId)
+	// Tracks enforces visibility.
+	repo, err := api.playlists.Tracks(ctx, q.parentId)
 	if err != nil {
-		return itemsResult{}, false
+		return itemsResult{}, false, nil //nolint:nilerr // not a playlist: fall through, not a failure
 	}
-	// GetWithTracks enforces visibility (public or owned by the current user).
-	items := slice.Map(pls.Tracks, func(t model.PlaylistTrack) dto.BaseItemDto { return trackToBaseItem(t, q.fields) })
-	return materialized(result(paginate(items, q.offset, q.limit), len(items), q.offset)), true
+	res, err = api.playlistTrackPage(repo, q.fields, q.offset, q.limit)
+	return res, true, err
 }
 
 func (api *Router) mergeTypes(ctx context.Context, q itemsQuery) (itemsResult, error) {

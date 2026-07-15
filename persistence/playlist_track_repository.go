@@ -77,6 +77,14 @@ func (r *playlistRepository) Tracks(playlistId string, refreshSmartPlaylist bool
 	return p
 }
 
+func (r *playlistTrackRepository) CountAll(options ...model.QueryOptions) (int64, error) {
+	query := Select().
+		Join("media_file f on f.id = media_file_id").
+		Where(Eq{"playlist_id": r.playlistId})
+	query = r.applyLibraryFilter(query, "f")
+	return r.count(query, options...)
+}
+
 func (r *playlistTrackRepository) Count(options ...rest.QueryOptions) (int64, error) {
 	query := Select().
 		LeftJoin("media_file f on f.id = media_file_id").
@@ -114,6 +122,30 @@ func (r *playlistTrackRepository) GetAll(options ...model.QueryOptions) (model.P
 		return nil, err
 	}
 	return tracks, err
+}
+
+func (r *playlistTrackRepository) GetCursor(options ...model.QueryOptions) (model.PlaylistTrackCursor, error) {
+	sel := r.playlistRepo.tracksQuery(r.newSelect(options...), r.playlistId)
+	cursor, err := queryWithStableResults[dbPlaylistTrack](r.sqlRepository, sel)
+	if err != nil {
+		return nil, err
+	}
+	return model.PlaylistTrackCursor(wrapCursor(cursor, func(t dbPlaylistTrack) *model.PlaylistTrack {
+		return t.PlaylistTrack
+	})), nil
+}
+
+// GetMediaFileIDs returns the tracks' song ids, for callers that need every id but no track data.
+func (r *playlistTrackRepository) GetMediaFileIDs(options ...model.QueryOptions) ([]string, error) {
+	query := r.newSelect(options...).Columns("media_file_id").
+		Join("media_file f on f.id = media_file_id").
+		Where(Eq{"playlist_id": r.playlistId})
+	query = r.applyLibraryFilter(query, "f")
+	var ids []string
+	if err := r.queryAllSlice(query, &ids); err != nil {
+		return nil, err
+	}
+	return ids, nil
 }
 
 func (r *playlistTrackRepository) GetAlbumIDs(options ...model.QueryOptions) ([]string, error) {

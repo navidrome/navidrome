@@ -29,8 +29,9 @@ type fakePlaylists struct {
 	createdIds  []string
 	createErr   error
 
-	getPls *model.Playlist
-	getErr error
+	getPls     *model.Playlist
+	getErr     error
+	tracksRepo *tests.MockPlaylistTrackRepo
 
 	getByIDPls *model.Playlist
 	getByIDErr error
@@ -90,6 +91,20 @@ func (f *fakePlaylists) GetWithTracks(_ context.Context, _ string) (*model.Playl
 		return nil, model.ErrNotFound // mirror the real repo: never (nil, nil)
 	}
 	return f.getPls, nil
+}
+
+// Tracks serves the same getPls fixture as GetWithTracks. tracksRepo is kept so tests can assert
+// what was pushed down to the query.
+func (f *fakePlaylists) Tracks(_ context.Context, _ string) (model.PlaylistTrackRepository, error) {
+	if f.getErr != nil {
+		return nil, f.getErr
+	}
+	if f.getPls == nil {
+		return nil, model.ErrNotFound
+	}
+	f.tracksRepo = &tests.MockPlaylistTrackRepo{}
+	f.tracksRepo.SetData(f.getPls.Tracks)
+	return f.tracksRepo, nil
 }
 
 func (f *fakePlaylists) AddTracks(_ context.Context, playlistID string, ids []string) (int, error) {
@@ -184,6 +199,30 @@ var _ = Describe("Playlists", func() {
 			Expect(res.Items[1].PlaylistItemId).To(Equal(dto.EncodeID("2")))
 		})
 
+		It("pages with StartIndex/Limit, pushing them down to the query", func() {
+			fp.getPls = &model.Playlist{
+				ID: "pl1",
+				Tracks: model.PlaylistTracks{
+					{ID: "1", MediaFileID: "s1", PlaylistID: "pl1", MediaFile: model.MediaFile{ID: "s1"}},
+					{ID: "2", MediaFileID: "s2", PlaylistID: "pl1", MediaFile: model.MediaFile{ID: "s2"}},
+					{ID: "3", MediaFileID: "s3", PlaylistID: "pl1", MediaFile: model.MediaFile{ID: "s3"}},
+				},
+			}
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Playlists/pl1/Items?StartIndex=1&Limit=1", nil).
+				WithContext(context.Background())
+			r = withChiURLParam(r, "playlistId", "pl1")
+			invoke(api.getPlaylistItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.QueryResult
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.TotalRecordCount).To(Equal(3))
+			Expect(res.Items).To(HaveLen(1))
+			Expect(res.Items[0].Id).To(Equal(dto.EncodeID("s2")))
+			Expect(fp.tracksRepo.Options.Offset).To(Equal(1))
+			Expect(fp.tracksRepo.Options.Max).To(Equal(1))
+		})
+
 		It("returns 404 for a non-owned or absent playlist", func() {
 			fp.getErr = model.ErrNotFound
 			w := httptest.NewRecorder()
@@ -247,7 +286,7 @@ var _ = Describe("Playlists", func() {
 
 	Describe("getPlaylist", func() {
 		It("returns OpenAccess from Public and item ids (encoded media file ids, not entry ids)", func() {
-			fp.getPls = &model.Playlist{
+			pls := &model.Playlist{
 				ID:     "pl1",
 				Public: true,
 				Tracks: model.PlaylistTracks{
@@ -255,6 +294,7 @@ var _ = Describe("Playlists", func() {
 					{ID: "2", MediaFileID: "s2", PlaylistID: "pl1", MediaFile: model.MediaFile{ID: "s2"}},
 				},
 			}
+			fp.getPls, fp.getByIDPls = pls, pls
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("GET", "/Playlists/pl1", nil).WithContext(context.Background())
 			r = withChiURLParam(r, "playlistId", "pl1")

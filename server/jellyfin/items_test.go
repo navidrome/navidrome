@@ -71,6 +71,59 @@ var _ = Describe("Items", func() {
 			Expect(res.Items[0].Id).To(Equal(dto.EncodeID("s1")))
 		})
 
+		It("lists a playlist's tracks when ParentId is a playlist, whatever the type", func() {
+			fp.getPls = &model.Playlist{ID: "pl1", Tracks: model.PlaylistTracks{
+				{ID: "1", MediaFileID: "s1", PlaylistID: "pl1", MediaFile: model.MediaFile{ID: "s1"}},
+				{ID: "2", MediaFileID: "s2", PlaylistID: "pl1", MediaFile: model.MediaFile{ID: "s2"}},
+			}}
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeID("pl1")+"&IncludeItemTypes=Audio", nil).
+				WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.QueryResult
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.Items).To(HaveLen(2))
+			Expect(res.Items[0].Id).To(Equal(dto.EncodeID("s1")))
+			Expect(res.Items[0].PlaylistItemId).To(Equal(dto.EncodeID("1")))
+			Expect(res.TotalRecordCount).To(Equal(2))
+		})
+
+		It("pages a playlist parent's tracks in the query, not in memory", func() {
+			fp.getPls = &model.Playlist{ID: "pl1", Tracks: model.PlaylistTracks{
+				{ID: "1", MediaFileID: "s1", PlaylistID: "pl1", MediaFile: model.MediaFile{ID: "s1"}},
+				{ID: "2", MediaFileID: "s2", PlaylistID: "pl1", MediaFile: model.MediaFile{ID: "s2"}},
+				{ID: "3", MediaFileID: "s3", PlaylistID: "pl1", MediaFile: model.MediaFile{ID: "s3"}},
+			}}
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeID("pl1")+"&StartIndex=1&Limit=1", nil).
+				WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.QueryResult
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.TotalRecordCount).To(Equal(3))
+			Expect(res.Items).To(HaveLen(1))
+			Expect(res.Items[0].Id).To(Equal(dto.EncodeID("s2")))
+			Expect(fp.tracksRepo.Options.Offset).To(Equal(1))
+			Expect(fp.tracksRepo.Options.Max).To(Equal(1))
+		})
+
+		It("falls through to the type dispatch when ParentId is not a playlist", func() {
+			fp.getErr = model.ErrNotFound
+			ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1", Name: "One"}})
+			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: "s1", AlbumID: "a1"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeID("a1")+"&IncludeItemTypes=Audio", nil).
+				WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.QueryResult
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.Items).To(HaveLen(1))
+			Expect(res.Items[0].Id).To(Equal(dto.EncodeID("s1")))
+		})
+
 		It("returns 500 when the song cursor fails to open, instead of a truncated 200", func() {
 			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetError(true)
 			w := httptest.NewRecorder()

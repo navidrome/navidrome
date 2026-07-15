@@ -125,6 +125,21 @@ func (api *Router) clearPlaylist(ctx context.Context, id string) error {
 	return api.playlists.RemoveTracks(ctx, id, entryIDs)
 }
 
+// playlistTrackPage streams one page of a playlist's tracks. Streams because a playlist can be the
+// whole library (a smart playlist matching everything) and clients may omit Limit. Excludes missing
+// tracks, and counts the same set, like GetWithTracks.
+func (api *Router) playlistTrackPage(repo model.PlaylistTrackRepository, fields dto.Fields, offset, limit int) (itemsResult, error) {
+	total, err := repo.CountAll(model.QueryOptions{Filters: notMissing})
+	if err != nil {
+		return itemsResult{}, err
+	}
+	opts := model.QueryOptions{Sort: "id", Offset: offset, Max: limit, Filters: notMissing}
+	open := streamCursor(func() (func(func(model.PlaylistTrack, error) bool), error) {
+		return repo.GetCursor(opts)
+	}, func(t model.PlaylistTrack) dto.BaseItemDto { return trackToBaseItem(t, fields) })
+	return streamed(open, int(total), offset), nil
+}
+
 // trackToBaseItem maps a playlist entry to a BaseItemDto, tagging it with PlaylistItemId (the
 // entry's id, model.PlaylistTrack.ID, not the song id). Clients echo it back via
 // DELETE .../Items?EntryIds= to remove a specific occurrence, so duplicates of the same song remain
@@ -136,17 +151,28 @@ func trackToBaseItem(t model.PlaylistTrack, fields dto.Fields) dto.BaseItemDto {
 }
 
 // getPlaylist returns a playlist's visibility flag and item ids (Finamp reads OpenAccess before the
-// edit screen). GetWithTracks enforces visibility; any error maps to 404 so private playlists can't
+// edit screen). Get and Tracks enforce visibility; any error maps to 404 so private playlists can't
 // be probed.
 func (api *Router) getPlaylist(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := dto.DecodeID(chi.URLParam(r, "playlistId"))
-	pls, err := api.playlists.GetWithTracks(ctx, id)
+	pls, err := api.playlists.Get(ctx, id)
 	if err != nil {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
-	itemIds := slice.Map(pls.Tracks, func(t model.PlaylistTrack) string { return dto.EncodeID(t.MediaFileID) })
+	repo, err := api.playlists.Tracks(ctx, id)
+	if err != nil {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+	// PlaylistInfo carries every track id, so this can't be paged — but it needs no track data.
+	trackIDs, err := repo.GetMediaFileIDs(model.QueryOptions{Sort: "id", Filters: notMissing})
+	if err != nil {
+		api.internalError(w, r, err)
+		return
+	}
+	itemIds := slice.Map(trackIDs, dto.EncodeID)
 	api.ok(w, r, dto.PlaylistInfo{
 		OpenAccess: pls.Public,
 		Shares:     []dto.PlaylistUserPermissions{},
@@ -154,19 +180,24 @@ func (api *Router) getPlaylist(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// getPlaylistItems relies on GetWithTracks to enforce visibility; any error maps to a generic 404 so
-// a playlist id can't probe for private playlists.
+// getPlaylistItems relies on Tracks to enforce visibility; any error maps to a generic 404 so a
+// playlist id can't probe for private playlists.
 func (api *Router) getPlaylistItems(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := dto.DecodeID(chi.URLParam(r, "playlistId"))
-	pls, err := api.playlists.GetWithTracks(ctx, id)
+	repo, err := api.playlists.Tracks(ctx, id)
 	if err != nil {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
-	fields := dto.ParseFields(req.Params(r).StringOr("fields", ""))
-	items := slice.Map(pls.Tracks, func(t model.PlaylistTrack) dto.BaseItemDto { return trackToBaseItem(t, fields) })
-	api.ok(w, r, dto.QueryResult{Items: items, TotalRecordCount: len(items)})
+	p := req.Params(r)
+	fields := dto.ParseFields(p.StringOr("fields", ""))
+	res, err := api.playlistTrackPage(repo, fields, p.IntOr("startindex", 0), p.IntOr("limit", 0))
+	if err != nil {
+		api.internalError(w, r, err)
+		return
+	}
+	api.ok(w, r, res)
 }
 
 // queryIDs reads an id-list query param that clients spell two ways: comma-separated in a single

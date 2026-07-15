@@ -73,6 +73,28 @@ var _ = Describe("Playlists", func() {
 		})
 	})
 
+	Describe("Tracks", func() {
+		var mockTracks *tests.MockPlaylistTrackRepo
+
+		BeforeEach(func() {
+			mockTracks = &tests.MockPlaylistTrackRepo{}
+			mockPlsRepo.Data = map[string]*model.Playlist{
+				"pls-1": {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
+			}
+			mockPlsRepo.TracksRepo = mockTracks
+			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+		})
+
+		It("returns the playlist's track repository", func() {
+			Expect(ps.Tracks(ctx, "pls-1")).To(BeIdenticalTo(mockTracks))
+		})
+
+		It("returns ErrNotFound for an unknown or invisible playlist", func() {
+			_, err := ps.Tracks(ctx, "nonexistent")
+			Expect(err).To(MatchError(model.ErrNotFound))
+		})
+	})
+
 	Describe("Create", func() {
 		BeforeEach(func() {
 			mockPlsRepo.Data = map[string]*model.Playlist{
