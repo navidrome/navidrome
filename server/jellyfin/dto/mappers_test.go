@@ -60,7 +60,7 @@ var _ = Describe("mappers", func() {
 		It("sets HasLyrics from the media file's lyrics", func() {
 			Expect(SongToBaseItem(mf, nil).HasLyrics).To(BeTrue())
 			Expect(SongToBaseItem(model.MediaFile{ID: "s2", Title: "No Lyrics"}, nil).HasLyrics).To(BeFalse())
-			// Post-scan the column is never "", but the JSON "no lyrics" sentinel "[]" — must not read as HasLyrics.
+			// "[]" is the no-lyrics sentinel, not a truthy value.
 			Expect(SongToBaseItem(model.MediaFile{ID: "s3", Title: "Empty Lyrics", Lyrics: "[]"}, nil).HasLyrics).To(BeFalse())
 		})
 	})

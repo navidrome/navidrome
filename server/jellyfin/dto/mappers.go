@@ -55,16 +55,10 @@ func channelLayout(n int) string {
 	}
 }
 
-// hasEmbeddedLyrics reports whether mf carries a non-empty embedded lyric track. mf.Lyrics is
-// never the empty string post-scan (the persistence layer normalizes no-lyrics to the JSON "[]"
-// sentinel), so this must parse rather than compare against "".
+// hasEmbeddedLyrics reports whether mf carries embedded lyrics. The column is never "" post-scan;
+// no-lyrics is normalized to the "[]" sentinel, so string emptiness alone is meaningless.
 func hasEmbeddedLyrics(mf model.MediaFile) bool {
-	list, err := mf.StructuredLyrics()
-	if err != nil {
-		return false
-	}
-	main, found := list.Main()
-	return found && !main.IsEmpty()
+	return mf.Lyrics != "" && mf.Lyrics != "[]"
 }
 
 // MediaSourceFromMediaFile builds the MediaSourceInfo for direct playback of mf's source file.
