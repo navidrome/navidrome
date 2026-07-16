@@ -149,6 +149,24 @@ var _ = Describe("mappers", func() {
 		Expect(j).To(ContainSubstring(`"SupportsExternalStream":false`))
 	})
 
+	Describe("Lyric media stream advertising", func() {
+		It("adds a Lyric media stream when the file has embedded lyrics", func() {
+			mf := model.MediaFile{ID: "s1", Lyrics: `[{"line":[{"value":"la"}]}]`}
+			src := MediaSourceFromMediaFile(mf)
+			Expect(src.MediaStreams).To(HaveLen(2))
+			Expect(src.MediaStreams[0].Type).To(Equal("Audio"))
+			Expect(src.MediaStreams[1].Type).To(Equal("Lyric"))
+			Expect(src.MediaStreams[1].Index).To(Equal(1))
+			Expect(src.MediaStreams[1].IsExternal).To(BeTrue())
+		})
+
+		It("emits only the Audio stream without lyrics", func() {
+			src := MediaSourceFromMediaFile(model.MediaFile{ID: "s1"})
+			Expect(src.MediaStreams).To(HaveLen(1))
+			Expect(src.MediaStreams[0].Type).To(Equal("Audio"))
+		})
+	})
+
 	It("omits IndexNumber and ParentIndexNumber when track/disc numbers are untagged", func() {
 		mf := model.MediaFile{
 			ID: "song-2", Title: "Song", Album: "Alb", AlbumID: "alb-1",

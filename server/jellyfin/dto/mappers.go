@@ -59,6 +59,19 @@ func channelLayout(n int) string {
 // Shared by SongToBaseItem and getPlaybackInfo so Size/Bitrate match across browse and /PlaybackInfo
 // responses (Finamp's download dialog reads MediaSources[0].Size from the browse response).
 func MediaSourceFromMediaFile(mf model.MediaFile) MediaSourceInfo {
+	streams := []MediaStream{{
+		Type:          "Audio",
+		Index:         0,
+		Codec:         mf.Codec,
+		BitRate:       mf.BitRate * 1000, // Navidrome stores kbps; Jellyfin's BitRate is bps.
+		Channels:      mf.Channels,
+		SampleRate:    mf.SampleRate,
+		ChannelLayout: channelLayout(mf.Channels),
+	}}
+	// Finamp gates its lyrics view on a Lyric stream in PlaybackInfo, not on HasLyrics.
+	if mf.Lyrics != "" {
+		streams = append(streams, MediaStream{Type: "Lyric", Index: 1, IsExternal: true})
+	}
 	return MediaSourceInfo{
 		Id:                   EncodeID(mf.ID),
 		Protocol:             "Http",
@@ -73,17 +86,9 @@ func MediaSourceFromMediaFile(mf model.MediaFile) MediaSourceInfo {
 		SupportsTranscoding:  true,
 		IsRemote:             false,
 		SupportsProbing:      true,
-		MediaStreams: []MediaStream{{
-			Type:          "Audio",
-			Index:         0,
-			Codec:         mf.Codec,
-			BitRate:       mf.BitRate * 1000, // Navidrome stores kbps; Jellyfin's BitRate is bps.
-			Channels:      mf.Channels,
-			SampleRate:    mf.SampleRate,
-			ChannelLayout: channelLayout(mf.Channels),
-		}},
-		MediaAttachments: []any{},
-		Formats:          []string{},
+		MediaStreams:         streams,
+		MediaAttachments:     []any{},
+		Formats:              []string{},
 	}
 }
 
