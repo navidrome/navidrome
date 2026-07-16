@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/httprate"
@@ -13,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/external"
+	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/core/sonic"
@@ -21,6 +23,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
+	"github.com/navidrome/navidrome/utils/cache"
 )
 
 type Router struct {
@@ -34,6 +37,8 @@ type Router struct {
 	playlists        playlists.Playlists
 	provider         external.Provider
 	sonic            sonic.Engine
+	lyrics           lyrics.Lyrics
+	lyricsCache      cache.SimpleCache[string, model.LyricList]
 	similarFlight    singleflight.Group
 	serverIDMu       sync.Mutex
 	serverIDVal      string
@@ -42,11 +47,15 @@ type Router struct {
 func New(ds model.DataStore, artwork artwork.Artwork, streamer stream.MediaStreamer,
 	transcodeDecider stream.TranscodeDecider, players core.Players,
 	scrobbler scrobbler.PlayTracker, playlists playlists.Playlists, provider external.Provider,
-	sonicSvc sonic.Engine) *Router {
+	sonicSvc sonic.Engine, lyricsSvc lyrics.Lyrics) *Router {
 	r := &Router{
 		ds: ds, artwork: artwork, streamer: streamer, transcodeDecider: transcodeDecider,
 		players: players, scrobbler: scrobbler, playlists: playlists, provider: provider,
-		sonic: sonicSvc,
+		sonic: sonicSvc, lyrics: lyricsSvc,
+		lyricsCache: cache.NewSimpleCache[string, model.LyricList](cache.Options{
+			SizeLimit:  1000,
+			DefaultTTL: 5 * time.Minute,
+		}),
 	}
 	r.Handler = r.routes()
 	return r
@@ -155,6 +164,7 @@ func (api *Router) routes() http.Handler {
 		r.Get("/audio/{itemId}/main.m3u8", api.streamHls)
 		r.Get("/items/{itemId}/playbackinfo", api.getPlaybackInfo)
 		r.Post("/items/{itemId}/playbackinfo", api.getPlaybackInfo)
+		r.Get("/audio/{itemId}/lyrics", api.getLyrics)
 		// Direct-file endpoints: some clients (Finamp's just_audio) fetch here instead of
 		// /Audio/{id}/stream; /Download reuses the direct-play handler as Jellyfin serves the same file.
 		r.Get("/items/{itemId}/file", api.streamFile)

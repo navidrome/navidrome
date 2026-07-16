@@ -137,7 +137,8 @@ func CreateJellyfinAPIRouter(ctx context.Context) *jellyfin.Router {
 	imageUploadService := core.NewImageUploadService()
 	playlistsPlaylists := playlists.NewPlaylists(dataStore, imageUploadService)
 	sonicSonic := sonic.New(dataStore, manager, matcherMatcher)
-	router := jellyfin.New(dataStore, artworkArtwork, mediaStreamer, transcodeDecider, players, playTracker, playlistsPlaylists, provider, sonicSonic)
+	lyricsLyrics := lyrics.NewLyrics(dataStore, manager)
+	router := jellyfin.New(dataStore, artworkArtwork, mediaStreamer, transcodeDecider, players, playTracker, playlistsPlaylists, provider, sonicSonic, lyricsLyrics)
 	return router
 }
 

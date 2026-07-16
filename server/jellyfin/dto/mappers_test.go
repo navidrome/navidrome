@@ -39,7 +39,7 @@ var _ = Describe("mappers", func() {
 
 	Describe("Fields gating (matches real Jellyfin)", func() {
 		mf := model.MediaFile{ID: "s1", Title: "Song", Size: 2_500_000, Suffix: "mp3", Duration: 60,
-			SortTitle: "sort song", Lyrics: `[{"line":"la"}]`}
+			SortTitle: "sort song", Lyrics: `[{"line":[{"value":"la"}]}]`}
 
 		It("omits MediaSources and SortName when Fields does not ask for them", func() {
 			item := SongToBaseItem(mf, nil)
@@ -60,6 +60,8 @@ var _ = Describe("mappers", func() {
 		It("sets HasLyrics from the media file's lyrics", func() {
 			Expect(SongToBaseItem(mf, nil).HasLyrics).To(BeTrue())
 			Expect(SongToBaseItem(model.MediaFile{ID: "s2", Title: "No Lyrics"}, nil).HasLyrics).To(BeFalse())
+			// "[]" is the no-lyrics sentinel, not a truthy value.
+			Expect(SongToBaseItem(model.MediaFile{ID: "s3", Title: "Empty Lyrics", Lyrics: "[]"}, nil).HasLyrics).To(BeFalse())
 		})
 	})
 
@@ -147,6 +149,29 @@ var _ = Describe("mappers", func() {
 		Expect(j).To(ContainSubstring(`"IsExternal":false`))
 		Expect(j).To(ContainSubstring(`"IsTextSubtitleStream":false`))
 		Expect(j).To(ContainSubstring(`"SupportsExternalStream":false`))
+	})
+
+	Describe("Lyric media stream advertising", func() {
+		It("adds a Lyric media stream when the file has embedded lyrics", func() {
+			mf := model.MediaFile{ID: "s1", Lyrics: `[{"line":[{"value":"la"}]}]`}
+			src := MediaSourceFromMediaFile(mf)
+			Expect(src.MediaStreams).To(HaveLen(2))
+			Expect(src.MediaStreams[0].Type).To(Equal("Audio"))
+			Expect(src.MediaStreams[1].Type).To(Equal("Lyric"))
+			Expect(src.MediaStreams[1].Index).To(Equal(1))
+			Expect(src.MediaStreams[1].IsExternal).To(BeTrue())
+		})
+
+		It("emits only the Audio stream without lyrics", func() {
+			src := MediaSourceFromMediaFile(model.MediaFile{ID: "s1"})
+			Expect(src.MediaStreams).To(HaveLen(1))
+			Expect(src.MediaStreams[0].Type).To(Equal("Audio"))
+		})
+
+		It("emits only the Audio stream for the post-scan empty-lyrics sentinel", func() {
+			src := MediaSourceFromMediaFile(model.MediaFile{ID: "s1", Lyrics: "[]"})
+			Expect(src.MediaStreams).To(HaveLen(1))
+		})
 	})
 
 	It("omits IndexNumber and ParentIndexNumber when track/disc numbers are untagged", func() {
@@ -276,5 +301,92 @@ var _ = Describe("mappers", func() {
 	It("keeps the playlist image tag stable when nothing changed", func() {
 		p := model.Playlist{ID: "pl-1", UpdatedAt: time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)}
 		Expect(PlaylistToBaseItem(p).ImageTags).To(Equal(PlaylistToBaseItem(p).ImageTags))
+	})
+})
+
+var _ = Describe("LyricDtoFromLyrics", func() {
+	ms := func(v int64) *int64 { return &v }
+
+	mf := model.MediaFile{ID: "s1", Title: "Song", Artist: "Artist", Album: "Album", Duration: 100}
+
+	It("maps synced lyrics with tick conversion", func() {
+		l := model.Lyrics{
+			DisplayArtist: "Display Artist",
+			DisplayTitle:  "Display Title",
+			Synced:        true,
+			Offset:        ms(-150),
+			Line: []model.Line{
+				{Start: ms(1000), Value: "line one"},
+				{Start: ms(2500), Value: "line two"},
+			},
+		}
+		d := LyricDtoFromLyrics(mf, l)
+		Expect(d.Metadata.Artist).To(Equal("Display Artist"))
+		Expect(d.Metadata.Title).To(Equal("Display Title"))
+		Expect(d.Metadata.Album).To(Equal("Album"))
+		Expect(d.Metadata.IsSynced).To(BeTrue())
+		Expect(*d.Metadata.Offset).To(Equal(int64(-1_500_000)))
+		Expect(d.Metadata.Length).To(Equal(TicksFromSeconds(100)))
+		Expect(d.Lyrics).To(HaveLen(2))
+		Expect(d.Lyrics[0].Text).To(Equal("line one"))
+		Expect(*d.Lyrics[0].Start).To(Equal(int64(10_000_000)))
+		Expect(*d.Lyrics[1].Start).To(Equal(int64(25_000_000)))
+	})
+
+	It("falls back to the media file's artist and title", func() {
+		d := LyricDtoFromLyrics(mf, model.Lyrics{Line: []model.Line{{Value: "x"}}})
+		Expect(d.Metadata.Artist).To(Equal("Artist"))
+		Expect(d.Metadata.Title).To(Equal("Song"))
+	})
+
+	It("drops start-less lines from synced lyrics", func() {
+		l := model.Lyrics{Synced: true, Line: []model.Line{
+			{Start: ms(0), Value: "kept"},
+			{Value: "dropped"},
+		}}
+		d := LyricDtoFromLyrics(mf, l)
+		Expect(d.Lyrics).To(HaveLen(1))
+		Expect(d.Lyrics[0].Text).To(Equal("kept"))
+	})
+
+	It("emits no Start on unsynced lyrics even when lines have one", func() {
+		l := model.Lyrics{Synced: false, Line: []model.Line{{Start: ms(1000), Value: "plain"}}}
+		d := LyricDtoFromLyrics(mf, l)
+		Expect(d.Lyrics).To(HaveLen(1))
+		Expect(d.Lyrics[0].Start).To(BeNil())
+		Expect(d.Metadata.IsSynced).To(BeFalse())
+	})
+
+	It("maps word cues", func() {
+		end := int64(1500)
+		l := model.Lyrics{Synced: true, Line: []model.Line{{
+			Start: ms(1000),
+			Value: "word cue",
+			Cue:   []model.Cue{{Start: ms(1000), End: &end, Value: "word", ByteStart: 0, ByteEnd: 4}},
+		}}}
+		d := LyricDtoFromLyrics(mf, l)
+		Expect(d.Lyrics[0].Cues).To(HaveLen(1))
+		c := d.Lyrics[0].Cues[0]
+		Expect(c.Position).To(Equal(0))
+		Expect(c.EndPosition).To(Equal(4))
+		Expect(c.Start).To(Equal(int64(10_000_000)))
+		Expect(*c.End).To(Equal(int64(15_000_000)))
+	})
+
+	It("skips a start-less cue while keeping its sibling", func() {
+		l := model.Lyrics{Synced: true, Line: []model.Line{{
+			Start: ms(1000),
+			Value: "word cue",
+			Cue: []model.Cue{
+				{Start: nil, Value: "dropped", ByteStart: 0, ByteEnd: 7},
+				{Start: ms(1000), Value: "kept", ByteStart: 8, ByteEnd: 12},
+			},
+		}}}
+		d := LyricDtoFromLyrics(mf, l)
+		Expect(d.Lyrics[0].Cues).To(HaveLen(1))
+		c := d.Lyrics[0].Cues[0]
+		Expect(c.Position).To(Equal(8))
+		Expect(c.EndPosition).To(Equal(12))
+		Expect(c.Start).To(Equal(int64(10_000_000)))
 	})
 })

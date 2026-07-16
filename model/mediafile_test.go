@@ -604,6 +604,15 @@ var _ = Describe("MediaFile", func() {
 
 })
 
+var _ = DescribeTable("MediaFile.HasEmbeddedLyrics",
+	func(lyrics string, expected bool) {
+		Expect(MediaFile{Lyrics: lyrics}.HasEmbeddedLyrics()).To(Equal(expected))
+	},
+	Entry("empty string (never-scanned zero value)", "", false),
+	Entry(`the post-scan "[]" no-lyrics sentinel`, "[]", false),
+	Entry("a stored lyric list", `[{"lang":"eng","line":[{"value":"la"}]}]`, true),
+)
+
 var _ = Describe("MediaFile.Works", func() {
 	It("returns nil when there are no work tags", func() {
 		mf := MediaFile{}

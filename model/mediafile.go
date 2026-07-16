@@ -147,6 +147,12 @@ func (mf MediaFile) StructuredLyrics() (LyricList, error) {
 	return lyrics, nil
 }
 
+// HasEmbeddedLyrics reports whether the lyrics column holds any lyrics. It is never "" post-scan;
+// no-lyrics is normalized to the "[]" sentinel, so string emptiness alone is meaningless.
+func (mf MediaFile) HasEmbeddedLyrics() bool {
+	return mf.Lyrics != "" && mf.Lyrics != "[]"
+}
+
 // String is mainly used for debugging
 func (mf MediaFile) String() string {
 	return mf.Path

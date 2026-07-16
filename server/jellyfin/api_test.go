@@ -18,7 +18,7 @@ import (
 var _ = Describe("Router", func() {
 	It("serves the public handshake through the mounted handler", func() {
 		ds := &tests.MockDataStore{}
-		api := New(ds, nil, nil, nil, nil, nil, nil, nil, nil)
+		api := New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("GET", "/System/Info/Public", nil)
 		api.ServeHTTP(w, r)
@@ -26,7 +26,7 @@ var _ = Describe("Router", func() {
 	})
 
 	It("returns 404 JSON for unknown routes", func() {
-		api := New(&tests.MockDataStore{}, nil, nil, nil, nil, nil, nil, nil, nil)
+		api := New(&tests.MockDataStore{}, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("GET", "/Nonexistent/Route", nil)
 		api.ServeHTTP(w, r)
@@ -36,7 +36,7 @@ var _ = Describe("Router", func() {
 	})
 
 	It("returns 404 JSON for a known path with an unsupported method", func() {
-		api := New(&tests.MockDataStore{}, nil, nil, nil, nil, nil, nil, nil, nil)
+		api := New(&tests.MockDataStore{}, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("PATCH", "/System/Info/Public", nil)
 		api.ServeHTTP(w, r)
@@ -53,7 +53,7 @@ var _ = Describe("Router", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		fp := &fakePlayers{}
-		api := New(ds, nil, nil, nil, fp, nil, nil, nil, nil)
+		api := New(ds, nil, nil, nil, fp, nil, nil, nil, nil, nil)
 
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("GET", "/Users/Me", nil)
@@ -70,7 +70,7 @@ var _ = Describe("Router", func() {
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.AuthRequestLimit = 2
 		conf.Server.AuthWindowLength = time.Minute
-		api := New(&tests.MockDataStore{}, nil, nil, nil, nil, nil, nil, nil, nil)
+		api := New(&tests.MockDataStore{}, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 		login := func() int {
 			w := httptest.NewRecorder()

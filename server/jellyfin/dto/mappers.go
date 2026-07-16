@@ -8,7 +8,16 @@ import (
 	"github.com/navidrome/navidrome/model"
 )
 
-func TicksFromSeconds(sec float32) int64 { return int64(float64(sec) * 1e7) }
+// Jellyfin wire times are ticks: 100ns units, i.e. 10,000 per millisecond.
+const ticksPerMillis = 10_000
+
+func TicksFromSeconds(sec float32) int64 { return int64(float64(sec) * 1000 * ticksPerMillis) }
+
+// TicksFromMillis converts milliseconds (Navidrome lyric timestamps) to ticks.
+func TicksFromMillis(ms int64) int64 { return ms * ticksPerMillis }
+
+// MillisFromTicks converts ticks (client-reported playback positions) to milliseconds.
+func MillisFromTicks(ticks int64) int64 { return ticks / ticksPerMillis }
 
 // premiereDate converts a possibly partial date tag ("2007", "2007-02") into the ISO 8601
 // PremiereDate clients parse, falling back to year; nil when neither exists.
@@ -59,6 +68,20 @@ func channelLayout(n int) string {
 // Shared by SongToBaseItem and getPlaybackInfo so Size/Bitrate match across browse and /PlaybackInfo
 // responses (Finamp's download dialog reads MediaSources[0].Size from the browse response).
 func MediaSourceFromMediaFile(mf model.MediaFile) MediaSourceInfo {
+	streams := make([]MediaStream, 1, 2)
+	streams[0] = MediaStream{
+		Type:          "Audio",
+		Index:         0,
+		Codec:         mf.Codec,
+		BitRate:       mf.BitRate * 1000, // Navidrome stores kbps; Jellyfin's BitRate is bps.
+		Channels:      mf.Channels,
+		SampleRate:    mf.SampleRate,
+		ChannelLayout: channelLayout(mf.Channels),
+	}
+	// Finamp gates its lyrics view on a Lyric stream in PlaybackInfo, not on HasLyrics.
+	if mf.HasEmbeddedLyrics() {
+		streams = append(streams, MediaStream{Type: "Lyric", Index: 1, IsExternal: true})
+	}
 	return MediaSourceInfo{
 		Id:                   EncodeID(mf.ID),
 		Protocol:             "Http",
@@ -73,17 +96,9 @@ func MediaSourceFromMediaFile(mf model.MediaFile) MediaSourceInfo {
 		SupportsTranscoding:  true,
 		IsRemote:             false,
 		SupportsProbing:      true,
-		MediaStreams: []MediaStream{{
-			Type:          "Audio",
-			Index:         0,
-			Codec:         mf.Codec,
-			BitRate:       mf.BitRate * 1000, // Navidrome stores kbps; Jellyfin's BitRate is bps.
-			Channels:      mf.Channels,
-			SampleRate:    mf.SampleRate,
-			ChannelLayout: channelLayout(mf.Channels),
-		}},
-		MediaAttachments: []any{},
-		Formats:          []string{},
+		MediaStreams:         streams,
+		MediaAttachments:     []any{},
+		Formats:              []string{},
 	}
 }
 
@@ -119,7 +134,7 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 		MediaType:         "Audio",
 		IsFolder:          false,
 		LocationType:      "FileSystem",
-		HasLyrics:         mf.Lyrics != "",
+		HasLyrics:         mf.HasEmbeddedLyrics(),
 		ParentId:          EncodeID(mf.AlbumID),
 		Album:             mf.Album,
 		AlbumId:           EncodeID(mf.AlbumID),
@@ -253,4 +268,50 @@ func PlaylistToBaseItem(p model.Playlist) BaseItemDto {
 		BackdropImageTags: []string{},
 		UserData:          UserData(p.Annotations, p.ID),
 	}
+}
+
+// LyricDtoFromLyrics maps one lyric track to Jellyfin's LyricDto. Clients infer synced-vs-plain
+// from per-line Start presence, so synced drops start-less lines and unsynced never emits Start.
+func LyricDtoFromLyrics(mf model.MediaFile, lyrics model.Lyrics) LyricDto {
+	d := LyricDto{
+		Metadata: LyricMetadata{
+			Artist:   cmp.Or(lyrics.DisplayArtist, mf.Artist),
+			Album:    mf.Album,
+			Title:    cmp.Or(lyrics.DisplayTitle, mf.Title),
+			Length:   TicksFromSeconds(mf.Duration),
+			IsSynced: lyrics.Synced,
+		},
+		Lyrics: make([]LyricLine, 0, len(lyrics.Line)),
+	}
+	if lyrics.Offset != nil {
+		offset := TicksFromMillis(*lyrics.Offset)
+		d.Metadata.Offset = &offset
+	}
+	for _, line := range lyrics.Line {
+		out := LyricLine{Text: line.Value}
+		if lyrics.Synced {
+			if line.Start == nil {
+				continue
+			}
+			start := TicksFromMillis(*line.Start)
+			out.Start = &start
+			for _, cue := range line.Cue {
+				if cue.Start == nil {
+					continue
+				}
+				c := LyricLineCue{
+					Position:    cue.ByteStart,
+					EndPosition: cue.ByteEnd,
+					Start:       TicksFromMillis(*cue.Start),
+				}
+				if cue.End != nil {
+					end := TicksFromMillis(*cue.End)
+					c.End = &end
+				}
+				out.Cues = append(out.Cues, c)
+			}
+		}
+		d.Lyrics = append(d.Lyrics, out)
+	}
+	return d
 }

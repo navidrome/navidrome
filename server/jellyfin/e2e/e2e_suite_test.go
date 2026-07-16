@@ -42,6 +42,7 @@ import (
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/external"
+	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/core/matcher"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/core/scrobbler"
@@ -119,9 +120,11 @@ func buildTestFS() storagetest.FakeFS {
 		"Rock/The Beatles/Abbey Road/01 - Something.mp3":     abbeyRoad(track(1, "Something")),
 		"Rock/The Beatles/Abbey Road/02 - Come Together.mp3": abbeyRoad(track(2, "Come Together")),
 		"Rock/The Beatles/Help!/01 - Help.mp3":               help(track(1, "Help!")),
-		"Rock/Led Zeppelin/IV/01 - Stairway To Heaven.mp3":   ledZepIV(track(1, "Stairway To Heaven")),
-		"Jazz/Miles Davis/Kind of Blue/01 - So What.mp3":     kindOfBlue(track(1, "So What")),
-		"Pop/Solo Artist/Singles/01 - Standalone Track.mp3":  singles(track(1, "Standalone Track")),
+		"Rock/Led Zeppelin/IV/01 - Stairway To Heaven.mp3": ledZepIV(track(1, "Stairway To Heaven", _t{
+			"lyrics:eng": "[00:01.00]There's a lady who's sure\n[00:05.50]All that glitters is gold",
+		})),
+		"Jazz/Miles Davis/Kind of Blue/01 - So What.mp3":    kindOfBlue(track(1, "So What")),
+		"Pop/Solo Artist/Singles/01 - Standalone Track.mp3": singles(track(1, "Standalone Track")),
 		// "Featured Guest" is the track artist here (album artist stays "Solo Artist"), so it's a
 		// performer but not an album artist — lets tests tell /Artists from /Artists/AlbumArtists.
 		"Pop/Solo Artist/Singles/02 - Duet.mp3": singles(track(2, "Duet", _t{"artist": "Featured Guest"})),
@@ -325,6 +328,7 @@ func setupTestDB() {
 		playlists.NewPlaylists(ds, core.NewImageUploadService()),
 		providerFake,
 		sonicSvc,
+		lyrics.NewLyrics(ds, nil),
 	)
 }
 

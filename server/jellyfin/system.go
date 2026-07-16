@@ -17,8 +17,9 @@ import (
 )
 
 // jellyfinVersion is the Jellyfin API version advertised in the handshake. Clients feature-gate
-// on it, so it must stay a real Jellyfin release, not Navidrome's own version.
-const jellyfinVersion = "10.8.13"
+// on it, so it must stay a real Jellyfin release, not Navidrome's own version. 10.9+ is required
+// for Feishin to use the server lyrics endpoint.
+const jellyfinVersion = "10.9.11"
 
 func (api *Router) serverName() string {
 	if conf.Server.Jellyfin.ServerName != "" {
