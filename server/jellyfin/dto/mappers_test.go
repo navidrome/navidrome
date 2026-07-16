@@ -39,7 +39,7 @@ var _ = Describe("mappers", func() {
 
 	Describe("Fields gating (matches real Jellyfin)", func() {
 		mf := model.MediaFile{ID: "s1", Title: "Song", Size: 2_500_000, Suffix: "mp3", Duration: 60,
-			SortTitle: "sort song", Lyrics: `[{"line":"la"}]`}
+			SortTitle: "sort song", Lyrics: `[{"line":[{"value":"la"}]}]`}
 
 		It("omits MediaSources and SortName when Fields does not ask for them", func() {
 			item := SongToBaseItem(mf, nil)
@@ -60,6 +60,8 @@ var _ = Describe("mappers", func() {
 		It("sets HasLyrics from the media file's lyrics", func() {
 			Expect(SongToBaseItem(mf, nil).HasLyrics).To(BeTrue())
 			Expect(SongToBaseItem(model.MediaFile{ID: "s2", Title: "No Lyrics"}, nil).HasLyrics).To(BeFalse())
+			// Post-scan the column is never "", but the JSON "no lyrics" sentinel "[]" — must not read as HasLyrics.
+			Expect(SongToBaseItem(model.MediaFile{ID: "s3", Title: "Empty Lyrics", Lyrics: "[]"}, nil).HasLyrics).To(BeFalse())
 		})
 	})
 
@@ -164,6 +166,11 @@ var _ = Describe("mappers", func() {
 			src := MediaSourceFromMediaFile(model.MediaFile{ID: "s1"})
 			Expect(src.MediaStreams).To(HaveLen(1))
 			Expect(src.MediaStreams[0].Type).To(Equal("Audio"))
+		})
+
+		It("emits only the Audio stream for the post-scan empty-lyrics sentinel", func() {
+			src := MediaSourceFromMediaFile(model.MediaFile{ID: "s1", Lyrics: "[]"})
+			Expect(src.MediaStreams).To(HaveLen(1))
 		})
 	})
 

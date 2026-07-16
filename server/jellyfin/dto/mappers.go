@@ -55,6 +55,18 @@ func channelLayout(n int) string {
 	}
 }
 
+// hasEmbeddedLyrics reports whether mf carries a non-empty embedded lyric track. mf.Lyrics is
+// never the empty string post-scan (the persistence layer normalizes no-lyrics to the JSON "[]"
+// sentinel), so this must parse rather than compare against "".
+func hasEmbeddedLyrics(mf model.MediaFile) bool {
+	list, err := mf.StructuredLyrics()
+	if err != nil {
+		return false
+	}
+	main, found := list.Main()
+	return found && !main.IsEmpty()
+}
+
 // MediaSourceFromMediaFile builds the MediaSourceInfo for direct playback of mf's source file.
 // Shared by SongToBaseItem and getPlaybackInfo so Size/Bitrate match across browse and /PlaybackInfo
 // responses (Finamp's download dialog reads MediaSources[0].Size from the browse response).
@@ -69,7 +81,7 @@ func MediaSourceFromMediaFile(mf model.MediaFile) MediaSourceInfo {
 		ChannelLayout: channelLayout(mf.Channels),
 	}}
 	// Finamp gates its lyrics view on a Lyric stream in PlaybackInfo, not on HasLyrics.
-	if mf.Lyrics != "" {
+	if hasEmbeddedLyrics(mf) {
 		streams = append(streams, MediaStream{Type: "Lyric", Index: 1, IsExternal: true})
 	}
 	return MediaSourceInfo{
@@ -124,7 +136,7 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 		MediaType:         "Audio",
 		IsFolder:          false,
 		LocationType:      "FileSystem",
-		HasLyrics:         mf.Lyrics != "",
+		HasLyrics:         hasEmbeddedLyrics(mf),
 		ParentId:          EncodeID(mf.AlbumID),
 		Album:             mf.Album,
 		AlbumId:           EncodeID(mf.AlbumID),
