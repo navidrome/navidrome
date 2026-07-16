@@ -43,7 +43,7 @@ func (pls Playlist) IsSmartPlaylist() bool {
 // RefreshDelay returns the playlist's own refresh window when set, falling
 // back to the global SmartPlaylistRefreshDelay.
 func (pls Playlist) RefreshDelay() time.Duration {
-	if pls.Rules != nil && pls.Rules.RefreshDelay > 0 {
+	if pls.IsSmartPlaylist() && pls.Rules.RefreshDelay > 0 {
 		return pls.Rules.RefreshDelay
 	}
 	return conf.Server.SmartPlaylistRefreshDelay

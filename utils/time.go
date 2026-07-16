@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -19,7 +18,7 @@ func TimeNewest(times ...time.Time) time.Time {
 	return newest
 }
 
-var durationDayWeekRe = regexp.MustCompile(`\d+(?:\.\d+)?[dw]`)
+var durationDayWeekRe = regexp.MustCompile(`-?\d+(?:\.\d+)?[dw]`)
 
 // ParseDuration is time.ParseDuration extended with d (24h) and w (168h) units.
 // Negative durations are rejected.
@@ -40,7 +39,7 @@ func ParseDuration(s string) (time.Duration, error) {
 		return 0, fmt.Errorf("invalid duration %q: %w", s, err)
 	}
 	if d < 0 {
-		return 0, errors.New("negative duration not allowed: " + s)
+		return 0, fmt.Errorf("negative duration not allowed: %q", s)
 	}
 	return d, nil
 }

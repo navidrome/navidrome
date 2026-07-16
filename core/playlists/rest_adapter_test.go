@@ -327,8 +327,7 @@ var _ = Describe("REST Adapter", func() {
 					newRules := &criteria.Criteria{Expression: criteria.Is{"genre": "Jazz"}}
 					err := repo.Update("smart-reset", &model.Playlist{Rules: newRules}, "rules")
 					Expect(err).ToNot(HaveOccurred())
-					Expect(mockPlsRepo.Last.EvaluatedAt).ToNot(BeNil())
-					Expect(mockPlsRepo.Last.EvaluatedAt.IsZero()).To(BeTrue())
+					Expect(mockPlsRepo.Last.EvaluatedAt).To(BeNil())
 				})
 
 				It("keeps EvaluatedAt when rules are not changed", func() {

@@ -56,12 +56,15 @@ var _ = Describe("ParseDuration", func() {
 		Entry("unknown unit", "5y"),
 	)
 
-	It("rejects negative durations", func() {
-		_, err := utils.ParseDuration("-1d")
-		Expect(err).To(HaveOccurred())
-		_, err = utils.ParseDuration("-30m")
-		Expect(err).To(HaveOccurred())
-	})
+	DescribeTable("rejects negative durations",
+		func(input string) {
+			_, err := utils.ParseDuration(input)
+			Expect(err).To(MatchError(ContainSubstring("negative duration")))
+		},
+		Entry("negative days", "-1d"),
+		Entry("negative weeks", "-0.5w"),
+		Entry("negative Go units", "-30m"),
+	)
 })
 
 var _ = Describe("FormatDuration", func() {

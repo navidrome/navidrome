@@ -5,7 +5,6 @@ import (
 	"errors"
 	"reflect"
 	"strings"
-	"time"
 
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/model"
@@ -136,7 +135,7 @@ func (s *playlists) applyContentUpdate(ctx context.Context, current, entity *mod
 	}
 	if rulesChanged {
 		current.Rules = entity.Rules
-		current.EvaluatedAt = &time.Time{}
+		current.EvaluatedAt = nil // force re-evaluation on next read
 	}
 	if sent("sync") && current.Path != "" && current.Sync != entity.Sync {
 		current.Sync = entity.Sync
