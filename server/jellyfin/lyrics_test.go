@@ -36,6 +36,10 @@ func (f *fakeLyricsService) GetLyricsByArtistTitle(context.Context, string, stri
 
 func p(ms int64) *int64 { return &ms }
 
+func newTestLyricsCache() cache.SimpleCache[string, model.LyricList] {
+	return cache.NewSimpleCache[string, model.LyricList](cache.Options{SizeLimit: 1000})
+}
+
 var _ = Describe("getLyrics", func() {
 	var api *Router
 	var ds *tests.MockDataStore
@@ -49,12 +53,9 @@ var _ = Describe("getLyrics", func() {
 		})
 		fake = &fakeLyricsService{lyrics: map[string]model.LyricList{}}
 		api = &Router{
-			ds:     ds,
-			lyrics: fake,
-			lyricsCache: cache.NewSimpleCache[string, model.LyricList](cache.Options{
-				SizeLimit:  1000,
-				DefaultTTL: 0,
-			}),
+			ds:          ds,
+			lyrics:      fake,
+			lyricsCache: newTestLyricsCache(),
 		}
 	})
 

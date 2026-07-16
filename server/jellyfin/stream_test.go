@@ -14,7 +14,6 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	"github.com/navidrome/navidrome/tests"
-	"github.com/navidrome/navidrome/utils/cache"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -37,7 +36,7 @@ var _ = Describe("Stream", func() {
 		api = &Router{
 			ds: ds, streamer: streamer, transcodeDecider: decider,
 			lyrics:      &fakeLyricsService{lyrics: map[string]model.LyricList{}},
-			lyricsCache: cache.NewSimpleCache[string, model.LyricList](cache.Options{SizeLimit: 1000}),
+			lyricsCache: newTestLyricsCache(),
 		}
 	})
 
