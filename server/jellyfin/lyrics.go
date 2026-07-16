@@ -13,8 +13,11 @@ import (
 // cachedLyrics resolves lyrics through the full source pipeline (embedded, sidecar, plugins),
 // caching results — including empty: clients poll per played track, so misses are the hot path.
 func (api *Router) cachedLyrics(ctx context.Context, mf *model.MediaFile) model.LyricList {
+	// The load is shared across requests (singleflight) and cached, so don't let one
+	// cancelled request abort it for everybody — detach it from the request's lifetime.
+	loadCtx := context.WithoutCancel(ctx)
 	list, err := api.lyricsCache.GetWithLoader(mf.ID, func(string) (model.LyricList, time.Duration, error) {
-		l, err := api.lyrics.GetLyrics(ctx, mf)
+		l, err := api.lyrics.GetLyrics(loadCtx, mf)
 		return l, 0, err // 0 → cache DefaultTTL
 	})
 	if err != nil {

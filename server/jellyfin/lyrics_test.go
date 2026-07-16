@@ -22,8 +22,11 @@ type fakeLyricsService struct {
 	calls  int
 }
 
-func (f *fakeLyricsService) GetLyrics(_ context.Context, mf *model.MediaFile) (model.LyricList, error) {
+func (f *fakeLyricsService) GetLyrics(ctx context.Context, mf *model.MediaFile) (model.LyricList, error) {
 	f.calls++
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if f.err != nil {
 		return nil, f.err
 	}
@@ -127,6 +130,19 @@ var _ = Describe("getLyrics", func() {
 	It("caches empty results too", func() {
 		Expect(doRequest("s2").Code).To(Equal(http.StatusNotFound))
 		Expect(doRequest("s2").Code).To(Equal(http.StatusNotFound))
+		Expect(fake.calls).To(Equal(1))
+	})
+
+	It("completes and caches the fetch even when the request context is cancelled", func() {
+		fake.lyrics["s1"] = model.LyricList{
+			{Kind: "main", Synced: true, Line: []model.Line{{Start: p(1000), Value: "hello"}}},
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		list := api.cachedLyrics(ctx, &model.MediaFile{ID: "s1"})
+		Expect(list).ToNot(BeEmpty())
+		Expect(doRequest("s1").Code).To(Equal(http.StatusOK))
 		Expect(fake.calls).To(Equal(1))
 	})
 })

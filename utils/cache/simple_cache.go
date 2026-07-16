@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/jellydator/ttlcache/v3"
+	"golang.org/x/sync/singleflight"
 )
 
 type SimpleCache[K comparable, V any] interface {
@@ -61,6 +62,7 @@ const evictionTimeout = 1 * time.Hour
 type simpleCache[K comparable, V any] struct {
 	data             *ttlcache.Cache[K, V]
 	evictionDeadline atomic.Pointer[time.Time]
+	loadGroup        singleflight.Group
 }
 
 func (c *simpleCache[K, V]) Add(key K, value V) error {
@@ -90,29 +92,29 @@ func (c *simpleCache[K, V]) Get(key K) (V, error) {
 	return item.Value(), nil
 }
 
+// GetWithLoader loads misses via the loader, deduplicating concurrent loads of
+// the same key: one loader call runs, and every waiter shares its result (or error).
 func (c *simpleCache[K, V]) GetWithLoader(key K, loader func(key K) (V, time.Duration, error)) (V, error) {
-	var err error
-	loaderWrapper := ttlcache.LoaderFunc[K, V](
-		func(t *ttlcache.Cache[K, V], key K) *ttlcache.Item[K, V] {
-			c.evictExpired()
-			var value V
-			var ttl time.Duration
-			value, ttl, err = loader(key)
-			if err != nil {
-				return nil
-			}
-			return t.Set(key, value, ttl)
-		},
-	)
-	item := c.data.Get(key, ttlcache.WithLoader[K, V](loaderWrapper))
-	if item == nil {
-		var zero V
-		if err != nil {
-			return zero, fmt.Errorf("cache error: loader returned %w", err)
-		}
-		return zero, errors.New("item not found")
+	if item := c.data.Get(key); item != nil {
+		return item.Value(), nil
 	}
-	return item.Value(), nil
+	v, err, _ := c.loadGroup.Do(fmt.Sprintf("%v", key), func() (any, error) {
+		if item := c.data.Get(key); item != nil {
+			return item.Value(), nil
+		}
+		c.evictExpired()
+		value, ttl, err := loader(key)
+		if err != nil {
+			return nil, err
+		}
+		c.data.Set(key, value, ttl)
+		return value, nil
+	})
+	if err != nil {
+		var zero V
+		return zero, fmt.Errorf("cache error: loader returned %w", err)
+	}
+	return v.(V), nil
 }
 
 func (c *simpleCache[K, V]) evictExpired() {

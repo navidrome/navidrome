@@ -14,6 +14,10 @@ const (
 	FuncLyricsGetLyrics = "nd_lyrics_get_lyrics"
 )
 
+// maxConcurrentLyricsCalls caps in-flight lyrics calls per plugin: clients prefetch
+// lyrics for whole queues, and the resulting burst can rate-limit upstream providers.
+const maxConcurrentLyricsCalls = 2
+
 func init() {
 	registerCapability(
 		CapabilityLyrics,
@@ -34,12 +38,18 @@ type LyricsPlugin struct {
 // GetLyrics calls the plugin to fetch lyrics, then content-sniffs each response
 // via model.ParseLyrics (TTML/SRT/YAML/LRC/plain).
 func (l *LyricsPlugin) GetLyrics(ctx context.Context, mf *model.MediaFile) (model.LyricList, error) {
+	select {
+	case l.plugin.lyricsSem <- struct{}{}:
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 	req := capabilities.GetLyricsRequest{
 		Track: mediaFileToTrackInfo(l.plugin, mf),
 	}
 	resp, err := callPluginFunction[capabilities.GetLyricsRequest, capabilities.GetLyricsResponse](
 		ctx, l.plugin, FuncLyricsGetLyrics, req,
 	)
+	<-l.plugin.lyricsSem
 	if err != nil {
 		return nil, err
 	}
