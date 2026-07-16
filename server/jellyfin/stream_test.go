@@ -14,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/utils/cache"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -33,7 +34,11 @@ var _ = Describe("Stream", func() {
 		ds = &tests.MockDataStore{}
 		streamer = &fakeMediaStreamer{}
 		decider = &fakeTranscodeDecider{}
-		api = &Router{ds: ds, streamer: streamer, transcodeDecider: decider}
+		api = &Router{
+			ds: ds, streamer: streamer, transcodeDecider: decider,
+			lyrics:      &fakeLyricsService{lyrics: map[string]model.LyricList{}},
+			lyricsCache: cache.NewSimpleCache[string, model.LyricList](cache.Options{SizeLimit: 1000}),
+		}
 	})
 
 	Describe("getPlaybackInfo", func() {
@@ -75,6 +80,56 @@ var _ = Describe("Stream", func() {
 			api.getPlaybackInfo(w, r)
 
 			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
+
+		playbackInfo := func() dto.PlaybackInfoResponse {
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID("s1")+"/PlaybackInfo", nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", dto.EncodeID("s1"))
+			api.getPlaybackInfo(w, r)
+			var res dto.PlaybackInfoResponse
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			return res
+		}
+
+		lyricStreams := func(res dto.PlaybackInfoResponse) []dto.MediaStream {
+			var out []dto.MediaStream
+			for _, s := range res.MediaSources[0].MediaStreams {
+				if s.Type == "Lyric" {
+					out = append(out, s)
+				}
+			}
+			return out
+		}
+
+		It("advertises a Lyric stream for plugin/sidecar-sourced lyrics not embedded in the file", func() {
+			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+				{ID: "s1", Title: "Song", Suffix: "mp3", LibraryID: 1},
+			})
+			api.lyrics = &fakeLyricsService{lyrics: map[string]model.LyricList{
+				"s1": {{Kind: "main", Synced: true, Line: []model.Line{{Value: "hello"}}}},
+			}}
+
+			Expect(lyricStreams(playbackInfo())).To(HaveLen(1))
+		})
+
+		It("advertises no Lyric stream when the pipeline finds nothing", func() {
+			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+				{ID: "s1", Title: "Song", Suffix: "mp3", LibraryID: 1},
+			})
+
+			Expect(lyricStreams(playbackInfo())).To(BeEmpty())
+		})
+
+		It("doesn't duplicate the Lyric stream when lyrics are already embedded", func() {
+			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+				{ID: "s1", Title: "Song", Suffix: "mp3", LibraryID: 1, Lyrics: `[{"lang":"xxx","line":[]}]`},
+			})
+			api.lyrics = &fakeLyricsService{lyrics: map[string]model.LyricList{
+				"s1": {{Kind: "main", Synced: true, Line: []model.Line{{Value: "hello"}}}},
+			}}
+
+			Expect(lyricStreams(playbackInfo())).To(HaveLen(1))
 		})
 	})
 
