@@ -66,17 +66,14 @@ func (a Artist) CoverArtID() ArtworkID {
 	return artworkIDFromArtist(a)
 }
 
-// ArtworkUpdatedAt is the artist's artwork version; images often arrive via external agents,
-// which bump ExternalInfoUpdatedAt rather than UpdatedAt.
+// ArtworkUpdatedAt is the artist's artwork version. ExternalInfoUpdatedAt is deliberately
+// excluded: it bumps on every agent TTL refresh even when the image is unchanged, and actual
+// image changes are caught by the image-cache-miss recompute instead.
 func (a Artist) ArtworkUpdatedAt() time.Time {
-	var t time.Time
-	if a.UpdatedAt != nil {
-		t = *a.UpdatedAt
+	if a.UpdatedAt == nil {
+		return time.Time{}
 	}
-	if a.ExternalInfoUpdatedAt != nil && a.ExternalInfoUpdatedAt.After(t) {
-		t = *a.ExternalInfoUpdatedAt
-	}
-	return t
+	return *a.UpdatedAt
 }
 
 func (a Artist) UploadedImagePath() string {

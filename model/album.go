@@ -77,15 +77,13 @@ func (a Album) CoverArtID() ArtworkID {
 	return artworkIDFromAlbum(a)
 }
 
-// ArtworkUpdatedAt is the album's artwork version: the newest row timestamp that can affect
-// which cover image is served (scan updates, imports, agent-fetched external images).
+// ArtworkUpdatedAt is the album's artwork version. ExternalInfoUpdatedAt is deliberately excluded:
+// it bumps on every agent TTL refresh even when the image is unchanged, and actual image changes
+// are caught by the image-cache-miss recompute instead.
 func (a Album) ArtworkUpdatedAt() time.Time {
 	t := a.UpdatedAt
 	if a.ImportedAt.After(t) {
 		t = a.ImportedAt
-	}
-	if a.ExternalInfoUpdatedAt != nil && a.ExternalInfoUpdatedAt.After(t) {
-		t = *a.ExternalInfoUpdatedAt
 	}
 	return t
 }

@@ -37,10 +37,10 @@ var _ = Describe("Artist.ArtworkUpdatedAt", func() {
 	It("handles nil timestamps", func() {
 		Expect(model.Artist{}.ArtworkUpdatedAt()).To(Equal(time.Time{}))
 	})
-	It("returns UpdatedAt when newest", func() {
+	It("returns UpdatedAt", func() {
 		Expect(model.Artist{UpdatedAt: &later, ExternalInfoUpdatedAt: &base}.ArtworkUpdatedAt()).To(Equal(later))
 	})
-	It("returns ExternalInfoUpdatedAt when newest", func() {
-		Expect(model.Artist{UpdatedAt: &base, ExternalInfoUpdatedAt: &later}.ArtworkUpdatedAt()).To(Equal(later))
+	It("ignores ExternalInfoUpdatedAt (agent TTL refreshes bump it without an image change)", func() {
+		Expect(model.Artist{UpdatedAt: &base, ExternalInfoUpdatedAt: &later}.ArtworkUpdatedAt()).To(Equal(base))
 	})
 })

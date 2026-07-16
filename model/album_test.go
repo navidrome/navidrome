@@ -65,8 +65,8 @@ var _ = Describe("Album.ArtworkUpdatedAt", func() {
 		al := Album{UpdatedAt: base, ImportedAt: later}
 		Expect(al.ArtworkUpdatedAt()).To(Equal(later))
 	})
-	It("returns ExternalInfoUpdatedAt when it is the newest", func() {
+	It("ignores ExternalInfoUpdatedAt (agent TTL refreshes bump it without an image change)", func() {
 		al := Album{UpdatedAt: base, ImportedAt: later, ExternalInfoUpdatedAt: &latest}
-		Expect(al.ArtworkUpdatedAt()).To(Equal(latest))
+		Expect(al.ArtworkUpdatedAt()).To(Equal(later))
 	})
 })
