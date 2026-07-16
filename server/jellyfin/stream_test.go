@@ -131,6 +131,27 @@ var _ = Describe("Stream", func() {
 
 			Expect(lyricStreams(playbackInfo())).To(HaveLen(1))
 		})
+
+		It("still returns 200 with a valid MediaSource and no Lyric stream when the lyrics pipeline errors", func() {
+			// Own ID: an erroring loader isn't cached, but a shared ID could still pick up
+			// another test's cached (non-error) result and mask this assertion.
+			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+				{ID: "s-err", Title: "Song", Suffix: "mp3", Duration: 100, Size: 1000, LibraryID: 1},
+			})
+			api.lyrics = &fakeLyricsService{err: errors.New("boom")}
+
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID("s-err")+"/PlaybackInfo", nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", dto.EncodeID("s-err"))
+			api.getPlaybackInfo(w, r)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.PlaybackInfoResponse
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.MediaSources).To(HaveLen(1))
+			Expect(res.MediaSources[0].Id).To(Equal(dto.EncodeID("s-err")))
+			Expect(lyricStreams(res)).To(BeEmpty())
+		})
 	})
 
 	Describe("streamAudio", func() {

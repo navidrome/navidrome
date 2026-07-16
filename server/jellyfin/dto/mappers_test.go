@@ -372,4 +372,21 @@ var _ = Describe("LyricDtoFromLyrics", func() {
 		Expect(c.Start).To(Equal(int64(10_000_000)))
 		Expect(*c.End).To(Equal(int64(15_000_000)))
 	})
+
+	It("skips a start-less cue while keeping its sibling", func() {
+		l := model.Lyrics{Synced: true, Line: []model.Line{{
+			Start: ms(1000),
+			Value: "word cue",
+			Cue: []model.Cue{
+				{Start: nil, Value: "dropped", ByteStart: 0, ByteEnd: 7},
+				{Start: ms(1000), Value: "kept", ByteStart: 8, ByteEnd: 12},
+			},
+		}}}
+		d := LyricDtoFromLyrics(mf, l)
+		Expect(d.Lyrics[0].Cues).To(HaveLen(1))
+		c := d.Lyrics[0].Cues[0]
+		Expect(c.Position).To(Equal(8))
+		Expect(c.EndPosition).To(Equal(12))
+		Expect(c.Start).To(Equal(int64(10_000_000)))
+	})
 })
