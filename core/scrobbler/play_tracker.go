@@ -268,6 +268,12 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 
 	switch params.State {
 	case StateStarting:
+		// Clients may send starting/playing unordered; a late "starting" must not downgrade
+		// an active session, or position estimation freezes until the next report.
+		if cur, err := p.playMap.Get(clientId); err == nil && cur.MediaFile.ID == params.MediaId && cur.State == StatePlaying {
+			log.Trace(ctx, "Ignoring out-of-order starting report for active session", "clientId", clientId, "mediaId", params.MediaId)
+			break
+		}
 		mf, err := p.ds.MediaFile(ctx).GetWithParticipants(params.MediaId)
 		if err != nil {
 			return err
@@ -339,6 +345,13 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 				p.dispatchScrobble(ctx, mf, now)
 			}
 		}
+		info, getErr := p.playMap.Get(clientId)
+		// A late stop for a previous track must not end the current session nor reach
+		// playback reporters, or presence-style plugins would clear the active track.
+		if getErr == nil && info.MediaFile.ID != params.MediaId {
+			log.Trace(ctx, "Ignoring out-of-order stopped report for different track", "clientId", clientId, "stoppedMediaId", params.MediaId, "currentMediaId", info.MediaFile.ID)
+			break
+		}
 		stoppedInfo := PlaybackSession{
 			UserId:       user.ID,
 			Username:     user.UserName,
@@ -349,7 +362,7 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 			PlaybackRate: params.PlaybackRate,
 			LastReport:   now,
 		}
-		if info, getErr := p.playMap.Get(clientId); getErr == nil {
+		if getErr == nil {
 			stoppedInfo.MediaFile = info.MediaFile
 			stoppedInfo.Start = info.Start
 		} else {
