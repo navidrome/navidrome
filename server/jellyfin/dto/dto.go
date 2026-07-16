@@ -256,3 +256,32 @@ type PlaybackInfoResponse struct {
 	MediaSources  []MediaSourceInfo `json:"MediaSources"`
 	PlaySessionId string            `json:"PlaySessionId"`
 }
+
+// LyricDto mirrors Jellyfin's GET /Audio/{itemId}/Lyrics response. Feishin and Jellify read only
+// Lyrics[].Text and Start (ticks); Metadata is for completeness/Finamp.
+type LyricDto struct {
+	Metadata LyricMetadata `json:"Metadata"`
+	Lyrics   []LyricLine   `json:"Lyrics"`
+}
+
+type LyricMetadata struct {
+	Artist   string `json:"Artist,omitempty"`
+	Album    string `json:"Album,omitempty"`
+	Title    string `json:"Title,omitempty"`
+	Length   int64  `json:"Length,omitempty"`
+	Offset   *int64 `json:"Offset,omitempty"`
+	IsSynced bool   `json:"IsSynced"`
+}
+
+type LyricLine struct {
+	Text  string         `json:"Text"`
+	Start *int64         `json:"Start,omitempty"`
+	Cues  []LyricLineCue `json:"Cues,omitempty"`
+}
+
+type LyricLineCue struct {
+	Position    int    `json:"Position"`
+	EndPosition int    `json:"EndPosition"`
+	Start       int64  `json:"Start"`
+	End         *int64 `json:"End,omitempty"`
+}

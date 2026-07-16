@@ -254,3 +254,53 @@ func PlaylistToBaseItem(p model.Playlist) BaseItemDto {
 		UserData:          UserData(p.Annotations, p.ID),
 	}
 }
+
+// TicksFromMillis converts milliseconds (Navidrome lyric timestamps) to Jellyfin 100ns ticks.
+func TicksFromMillis(ms int64) int64 { return ms * 10_000 }
+
+// LyricDtoFromLyrics maps one lyric track to Jellyfin's LyricDto. Clients infer synced-vs-plain
+// from per-line Start presence, so it is all-or-nothing: synced drops start-less lines, unsynced
+// never emits Start.
+func LyricDtoFromLyrics(mf model.MediaFile, lyrics model.Lyrics) LyricDto {
+	d := LyricDto{
+		Metadata: LyricMetadata{
+			Artist:   cmp.Or(lyrics.DisplayArtist, mf.Artist),
+			Album:    mf.Album,
+			Title:    cmp.Or(lyrics.DisplayTitle, mf.Title),
+			Length:   TicksFromSeconds(mf.Duration),
+			IsSynced: lyrics.Synced,
+		},
+		Lyrics: make([]LyricLine, 0, len(lyrics.Line)),
+	}
+	if lyrics.Offset != nil {
+		offset := TicksFromMillis(*lyrics.Offset)
+		d.Metadata.Offset = &offset
+	}
+	for _, line := range lyrics.Line {
+		out := LyricLine{Text: line.Value}
+		if lyrics.Synced {
+			if line.Start == nil {
+				continue
+			}
+			start := TicksFromMillis(*line.Start)
+			out.Start = &start
+			for _, cue := range line.Cue {
+				if cue.Start == nil {
+					continue
+				}
+				c := LyricLineCue{
+					Position:    cue.ByteStart,
+					EndPosition: cue.ByteEnd,
+					Start:       TicksFromMillis(*cue.Start),
+				}
+				if cue.End != nil {
+					end := TicksFromMillis(*cue.End)
+					c.End = &end
+				}
+				out.Cues = append(out.Cues, c)
+			}
+		}
+		d.Lyrics = append(d.Lyrics, out)
+	}
+	return d
+}

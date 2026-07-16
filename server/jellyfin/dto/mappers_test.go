@@ -278,3 +278,73 @@ var _ = Describe("mappers", func() {
 		Expect(PlaylistToBaseItem(p).ImageTags).To(Equal(PlaylistToBaseItem(p).ImageTags))
 	})
 })
+
+var _ = Describe("LyricDtoFromLyrics", func() {
+	ms := func(v int64) *int64 { return &v }
+
+	mf := model.MediaFile{ID: "s1", Title: "Song", Artist: "Artist", Album: "Album", Duration: 100}
+
+	It("maps synced lyrics with tick conversion", func() {
+		l := model.Lyrics{
+			DisplayArtist: "Display Artist",
+			DisplayTitle:  "Display Title",
+			Synced:        true,
+			Offset:        ms(-150),
+			Line: []model.Line{
+				{Start: ms(1000), Value: "line one"},
+				{Start: ms(2500), Value: "line two"},
+			},
+		}
+		d := LyricDtoFromLyrics(mf, l)
+		Expect(d.Metadata.Artist).To(Equal("Display Artist"))
+		Expect(d.Metadata.Title).To(Equal("Display Title"))
+		Expect(d.Metadata.Album).To(Equal("Album"))
+		Expect(d.Metadata.IsSynced).To(BeTrue())
+		Expect(*d.Metadata.Offset).To(Equal(int64(-1_500_000)))
+		Expect(d.Metadata.Length).To(Equal(TicksFromSeconds(100)))
+		Expect(d.Lyrics).To(HaveLen(2))
+		Expect(d.Lyrics[0].Text).To(Equal("line one"))
+		Expect(*d.Lyrics[0].Start).To(Equal(int64(10_000_000)))
+		Expect(*d.Lyrics[1].Start).To(Equal(int64(25_000_000)))
+	})
+
+	It("falls back to the media file's artist and title", func() {
+		d := LyricDtoFromLyrics(mf, model.Lyrics{Line: []model.Line{{Value: "x"}}})
+		Expect(d.Metadata.Artist).To(Equal("Artist"))
+		Expect(d.Metadata.Title).To(Equal("Song"))
+	})
+
+	It("drops start-less lines from synced lyrics", func() {
+		l := model.Lyrics{Synced: true, Line: []model.Line{
+			{Start: ms(0), Value: "kept"},
+			{Value: "dropped"},
+		}}
+		d := LyricDtoFromLyrics(mf, l)
+		Expect(d.Lyrics).To(HaveLen(1))
+		Expect(d.Lyrics[0].Text).To(Equal("kept"))
+	})
+
+	It("emits no Start on unsynced lyrics even when lines have one", func() {
+		l := model.Lyrics{Synced: false, Line: []model.Line{{Start: ms(1000), Value: "plain"}}}
+		d := LyricDtoFromLyrics(mf, l)
+		Expect(d.Lyrics).To(HaveLen(1))
+		Expect(d.Lyrics[0].Start).To(BeNil())
+		Expect(d.Metadata.IsSynced).To(BeFalse())
+	})
+
+	It("maps word cues", func() {
+		end := int64(1500)
+		l := model.Lyrics{Synced: true, Line: []model.Line{{
+			Start: ms(1000),
+			Value: "word cue",
+			Cue:   []model.Cue{{Start: ms(1000), End: &end, Value: "word", ByteStart: 0, ByteEnd: 4}},
+		}}}
+		d := LyricDtoFromLyrics(mf, l)
+		Expect(d.Lyrics[0].Cues).To(HaveLen(1))
+		c := d.Lyrics[0].Cues[0]
+		Expect(c.Position).To(Equal(0))
+		Expect(c.EndPosition).To(Equal(4))
+		Expect(c.Start).To(Equal(int64(10_000_000)))
+		Expect(*c.End).To(Equal(int64(15_000_000)))
+	})
+})
