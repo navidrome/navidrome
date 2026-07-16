@@ -31,10 +31,17 @@ func (api *Router) getLyrics(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	main, found := api.cachedLyrics(r.Context(), mf).Main()
-	if !found || main.IsEmpty() {
+	main, found := servableLyric(api.cachedLyrics(r.Context(), mf))
+	if !found {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
 	api.ok(w, r, dto.LyricDtoFromLyrics(*mf, main))
+}
+
+// servableLyric is the single predicate for both serving and advertising, so PlaybackInfo never
+// advertises a Lyric stream that this endpoint would 404.
+func servableLyric(list model.LyricList) (model.Lyrics, bool) {
+	main, found := list.Main()
+	return main, found && !main.IsEmpty()
 }

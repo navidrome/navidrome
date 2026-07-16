@@ -120,6 +120,17 @@ var _ = Describe("Stream", func() {
 			Expect(lyricStreams(playbackInfo())).To(BeEmpty())
 		})
 
+		It("advertises no Lyric stream when the lyrics endpoint would 404 (main lyric has no lines)", func() {
+			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+				{ID: "s1", Title: "Song", Suffix: "mp3", LibraryID: 1},
+			})
+			api.lyrics = &fakeLyricsService{lyrics: map[string]model.LyricList{
+				"s1": {{Kind: "main", Lang: "eng"}},
+			}}
+
+			Expect(lyricStreams(playbackInfo())).To(BeEmpty())
+		})
+
 		It("doesn't duplicate the Lyric stream when lyrics are already embedded", func() {
 			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 				{ID: "s1", Title: "Song", Suffix: "mp3", LibraryID: 1, Lyrics: `[{"lang":"xxx","line":[]}]`},

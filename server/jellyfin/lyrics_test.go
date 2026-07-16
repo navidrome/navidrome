@@ -62,8 +62,10 @@ var _ = Describe("getLyrics", func() {
 	doRequest := func(id string) *httptest.ResponseRecorder {
 		w := httptest.NewRecorder()
 		ctx := request.WithUser(context.Background(), model.User{ID: "u1", Libraries: model.Libraries{{ID: 1}}})
-		r := httptest.NewRequest("GET", "/Audio/"+id+"/Lyrics", nil).WithContext(ctx)
-		r = withChiURLParam(r, "itemId", id)
+		// Clients send hex-encoded ids (matching real traffic and the other handler tests).
+		enc := dto.EncodeID(id)
+		r := httptest.NewRequest("GET", "/Audio/"+enc+"/Lyrics", nil).WithContext(ctx)
+		r = withChiURLParam(r, "itemId", enc)
 		invoke(api.getLyrics, w, r)
 		return w
 	}
@@ -99,6 +101,12 @@ var _ = Describe("getLyrics", func() {
 
 	It("returns 404 when the service returns no lyrics", func() {
 		w := doRequest("s2")
+		Expect(w.Code).To(Equal(http.StatusNotFound))
+	})
+
+	It("returns 404 when the main lyric has no lines", func() {
+		fake.lyrics["s1"] = model.LyricList{{Kind: "main", Lang: "eng"}}
+		w := doRequest("s1")
 		Expect(w.Code).To(Equal(http.StatusNotFound))
 	})
 
