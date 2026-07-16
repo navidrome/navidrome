@@ -41,6 +41,9 @@ type Artist struct {
 
 	CreatedAt *time.Time `structs:"created_at" json:"createdAt,omitempty"`
 	UpdatedAt *time.Time `structs:"updated_at" json:"updatedAt,omitempty"`
+
+	BlurHash          string     `structs:"blur_hash" json:"blurHash,omitempty"`
+	BlurHashUpdatedAt *time.Time `structs:"blur_hash_updated_at" json:"-"`
 }
 
 type ArtistStats struct {
@@ -61,6 +64,19 @@ func (a Artist) ArtistImageUrl() string {
 
 func (a Artist) CoverArtID() ArtworkID {
 	return artworkIDFromArtist(a)
+}
+
+// ArtworkUpdatedAt is the artist's artwork version; images often arrive via external agents,
+// which bump ExternalInfoUpdatedAt rather than UpdatedAt.
+func (a Artist) ArtworkUpdatedAt() time.Time {
+	var t time.Time
+	if a.UpdatedAt != nil {
+		t = *a.UpdatedAt
+	}
+	if a.ExternalInfoUpdatedAt != nil && a.ExternalInfoUpdatedAt.After(t) {
+		t = *a.ExternalInfoUpdatedAt
+	}
+	return t
 }
 
 func (a Artist) UploadedImagePath() string {

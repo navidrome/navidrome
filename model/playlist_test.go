@@ -1,6 +1,8 @@
 package model_test
 
 import (
+	"time"
+
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -42,5 +44,12 @@ var _ = Describe("Playlist", func() {
 `
 			Expect(pls.ToM3U8()).To(Equal(expected))
 		})
+	})
+})
+
+var _ = Describe("Playlist.ArtworkUpdatedAt", func() {
+	It("returns UpdatedAt", func() {
+		now := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+		Expect(model.Playlist{UpdatedAt: now}.ArtworkUpdatedAt()).To(Equal(now))
 	})
 })

@@ -67,10 +67,27 @@ type Album struct {
 	ImportedAt time.Time `structs:"imported_at" json:"importedAt" hash:"ignore"` // When this album was imported/updated
 	CreatedAt  time.Time `structs:"created_at" json:"createdAt"`                 // Oldest CreatedAt for all songs in this album
 	UpdatedAt  time.Time `structs:"updated_at" json:"updatedAt"`                 // Newest UpdatedAt for all songs in this album
+
+	// BlurHash of the album cover, computed asynchronously from the served artwork.
+	BlurHash          string     `structs:"blur_hash" json:"blurHash,omitempty" hash:"ignore"`
+	BlurHashUpdatedAt *time.Time `structs:"blur_hash_updated_at" json:"-" hash:"ignore"`
 }
 
 func (a Album) CoverArtID() ArtworkID {
 	return artworkIDFromAlbum(a)
+}
+
+// ArtworkUpdatedAt is the album's artwork version: the newest row timestamp that can affect
+// which cover image is served (scan updates, imports, agent-fetched external images).
+func (a Album) ArtworkUpdatedAt() time.Time {
+	t := a.UpdatedAt
+	if a.ImportedAt.After(t) {
+		t = a.ImportedAt
+	}
+	if a.ExternalInfoUpdatedAt != nil && a.ExternalInfoUpdatedAt.After(t) {
+		t = *a.ExternalInfoUpdatedAt
+	}
+	return t
 }
 
 func (a Album) FullName() string {

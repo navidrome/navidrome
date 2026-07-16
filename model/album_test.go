@@ -2,6 +2,7 @@ package model_test
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -48,5 +49,24 @@ var _ = Describe("Albums", func() {
 				Expect(albums2).To(Equal(albums))
 			})
 		})
+	})
+})
+
+var _ = Describe("Album.ArtworkUpdatedAt", func() {
+	base := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	later := base.Add(24 * time.Hour)
+	latest := base.Add(48 * time.Hour)
+
+	It("returns UpdatedAt when it is the newest", func() {
+		al := Album{UpdatedAt: later, ImportedAt: base}
+		Expect(al.ArtworkUpdatedAt()).To(Equal(later))
+	})
+	It("returns ImportedAt when it is the newest", func() {
+		al := Album{UpdatedAt: base, ImportedAt: later}
+		Expect(al.ArtworkUpdatedAt()).To(Equal(later))
+	})
+	It("returns ExternalInfoUpdatedAt when it is the newest", func() {
+		al := Album{UpdatedAt: base, ImportedAt: later, ExternalInfoUpdatedAt: &latest}
+		Expect(al.ArtworkUpdatedAt()).To(Equal(latest))
 	})
 })

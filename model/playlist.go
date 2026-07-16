@@ -30,6 +30,9 @@ type Playlist struct {
 	CreatedAt        time.Time      `structs:"created_at" json:"createdAt"`
 	UpdatedAt        time.Time      `structs:"updated_at" json:"updatedAt"`
 
+	BlurHash          string     `structs:"blur_hash" json:"blurHash,omitempty"`
+	BlurHashUpdatedAt *time.Time `structs:"blur_hash_updated_at" json:"-"`
+
 	// SmartPlaylist attributes
 	Rules       *criteria.Criteria `structs:"rules" json:"rules"`
 	EvaluatedAt *time.Time         `structs:"evaluated_at" json:"evaluatedAt"`
@@ -37,6 +40,10 @@ type Playlist struct {
 
 func (pls Playlist) IsSmartPlaylist() bool {
 	return pls.Rules != nil && pls.Rules.Expression != nil
+}
+
+func (pls Playlist) ArtworkUpdatedAt() time.Time {
+	return pls.UpdatedAt
 }
 
 func (pls Playlist) MediaFiles() MediaFiles {
