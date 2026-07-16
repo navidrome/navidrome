@@ -83,6 +83,13 @@ func (api *Router) getPublicSystemInfo(w http.ResponseWriter, r *http.Request) {
 	api.ok(w, r, api.publicInfo(r))
 }
 
+func (api *Router) getSystemInfo(w http.ResponseWriter, r *http.Request) {
+	api.ok(w, r, dto.SystemInfo{
+		PublicSystemInfo:       api.publicInfo(r),
+		SupportsLibraryMonitor: true,
+	})
+}
+
 // ping answers /System/Ping with a bare plain-text server name (not JSON-quoted): Jellyfin's
 // server does this and clients parse the raw body.
 func (api *Router) ping(w http.ResponseWriter, r *http.Request) {

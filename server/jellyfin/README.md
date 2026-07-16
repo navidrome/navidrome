@@ -115,7 +115,7 @@ favorites-only (`Filters=IsFavorite` or the standalone `isFavorite=true`); `Sort
 
 | Area | Endpoints |
 |---|---|
-| Handshake / system | `GET System/Info/Public`, `GET`/`POST System/Ping`, `GET QuickConnect/Enabled` |
+| Handshake / system | `GET System/Info/Public`, `GET System/Info` (authenticated), `GET`/`POST System/Ping`, `GET QuickConnect/Enabled` |
 | Auth | `POST Users/AuthenticateByName`, `GET Users/Public` |
 | Users | `GET UserViews`, `GET Users/{userId}/Views`, `GET Users/Me`, `GET Users/{userId}` |
 | Browsing | `GET Items`, `GET Users/{userId}/Items`, `GET Items/{itemId}`, `GET Users/{userId}/Items/{itemId}`, `GET Users/{userId}/Items/Latest`, `DELETE Items/{itemId}` (playlists only) |

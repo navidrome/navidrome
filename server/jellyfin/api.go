@@ -92,6 +92,7 @@ func (api *Router) routes() http.Handler {
 		// Subsonic's getPlayer, so Jellyfin clients show up in the players list (and scrobbling has a
 		// player) even before the first playback report.
 		r.Use(api.withPlayer)
+		r.Get("/system/info", api.getSystemInfo)
 		r.Get("/userviews", api.getUserViews)
 		r.Get("/users/{userId}/views", api.getUserViews)
 		r.Get("/users/me", api.getCurrentUser)
