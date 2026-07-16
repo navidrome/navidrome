@@ -17,13 +17,15 @@ import (
 
 // fakeLyricsService returns canned lyrics per media-file ID and counts calls.
 type fakeLyricsService struct {
-	lyrics map[string]model.LyricList
-	err    error
-	calls  int
+	lyrics      map[string]model.LyricList
+	err         error
+	calls       int
+	hadDeadline bool
 }
 
 func (f *fakeLyricsService) GetLyrics(ctx context.Context, mf *model.MediaFile) (model.LyricList, error) {
 	f.calls++
+	_, f.hadDeadline = ctx.Deadline()
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -144,5 +146,10 @@ var _ = Describe("getLyrics", func() {
 		Expect(list).ToNot(BeEmpty())
 		Expect(doRequest("s1").Code).To(Equal(http.StatusOK))
 		Expect(fake.calls).To(Equal(1))
+	})
+
+	It("bounds the detached fetch with a timeout", func() {
+		Expect(doRequest("s2").Code).To(Equal(http.StatusNotFound))
+		Expect(fake.hadDeadline).To(BeTrue())
 	})
 })

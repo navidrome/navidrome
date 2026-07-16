@@ -40,6 +40,7 @@ type LyricsPlugin struct {
 func (l *LyricsPlugin) GetLyrics(ctx context.Context, mf *model.MediaFile) (model.LyricList, error) {
 	select {
 	case l.plugin.lyricsSem <- struct{}{}:
+		defer func() { <-l.plugin.lyricsSem }()
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
@@ -49,7 +50,6 @@ func (l *LyricsPlugin) GetLyrics(ctx context.Context, mf *model.MediaFile) (mode
 	resp, err := callPluginFunction[capabilities.GetLyricsRequest, capabilities.GetLyricsResponse](
 		ctx, l.plugin, FuncLyricsGetLyrics, req,
 	)
-	<-l.plugin.lyricsSem
 	if err != nil {
 		return nil, err
 	}

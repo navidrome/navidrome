@@ -5,11 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/jellydator/ttlcache/v3"
-	"golang.org/x/sync/singleflight"
 )
 
 type SimpleCache[K comparable, V any] interface {
@@ -45,7 +45,8 @@ func NewSimpleCache[K comparable, V any](options ...Options) SimpleCache[K, V] {
 
 	c := ttlcache.New[K, V](opts...)
 	cache := &simpleCache[K, V]{
-		data: c,
+		data:  c,
+		loads: make(map[K]*flight[V]),
 	}
 	go cache.data.Start()
 
@@ -62,7 +63,23 @@ const evictionTimeout = 1 * time.Hour
 type simpleCache[K comparable, V any] struct {
 	data             *ttlcache.Cache[K, V]
 	evictionDeadline atomic.Pointer[time.Time]
-	loadGroup        singleflight.Group
+	loadsMu          sync.Mutex
+	loads            map[K]*flight[V]
+}
+
+// flight tracks an in-progress load so concurrent misses of the same key share it.
+type flight[V any] struct {
+	done chan struct{}
+	val  V
+	err  error
+}
+
+func (f *flight[V]) result() (V, error) {
+	if f.err != nil {
+		var zero V
+		return zero, fmt.Errorf("cache error: loader returned %w", f.err)
+	}
+	return f.val, nil
 }
 
 func (c *simpleCache[K, V]) Add(key K, value V) error {
@@ -98,24 +115,40 @@ func (c *simpleCache[K, V]) GetWithLoader(key K, loader func(key K) (V, time.Dur
 	if item := c.data.Get(key); item != nil {
 		return item.Value(), nil
 	}
-	v, err, _ := c.loadGroup.Do(fmt.Sprintf("%v", key), func() (any, error) {
-		if item := c.data.Get(key); item != nil {
-			return item.Value(), nil
-		}
-		c.evictExpired()
-		value, ttl, err := loader(key)
-		if err != nil {
-			return nil, err
-		}
-		c.data.Set(key, value, ttl)
-		return value, nil
-	})
-	if err != nil {
-		var zero V
-		return zero, fmt.Errorf("cache error: loader returned %w", err)
+
+	c.loadsMu.Lock()
+	if f, ok := c.loads[key]; ok {
+		c.loadsMu.Unlock()
+		<-f.done
+		return f.result()
 	}
-	return v.(V), nil
+	f := &flight[V]{done: make(chan struct{}), err: errLoaderPanicked}
+	c.loads[key] = f
+	c.loadsMu.Unlock()
+
+	// Deregister even if the loader panics, so waiters get an error instead of
+	// blocking forever on a flight that will never complete.
+	defer func() {
+		close(f.done)
+		c.loadsMu.Lock()
+		delete(c.loads, key)
+		c.loadsMu.Unlock()
+	}()
+
+	if item := c.data.Get(key); item != nil { // a flight may have completed since the miss
+		f.val, f.err = item.Value(), nil
+	} else {
+		c.evictExpired()
+		var ttl time.Duration
+		f.val, ttl, f.err = loader(key)
+		if f.err == nil {
+			c.data.Set(key, f.val, ttl)
+		}
+	}
+	return f.result()
 }
+
+var errLoaderPanicked = errors.New("loader panicked")
 
 func (c *simpleCache[K, V]) evictExpired() {
 	if c.evictionDeadline.Load() == nil || c.evictionDeadline.Load().Before(time.Now()) {

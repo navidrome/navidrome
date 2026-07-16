@@ -133,6 +133,30 @@ var _ = Describe("SimpleCache", func() {
 			}
 		})
 
+		It("supports interface value types with nil results", func() {
+			c := NewSimpleCache[string, any]()
+			v, err := c.GetWithLoader("key", func(string) (any, time.Duration, error) {
+				return nil, time.Minute, nil
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(v).To(BeNil())
+		})
+
+		It("cleans up the in-flight registration when the loader panics", func() {
+			Expect(func() {
+				_, _ = cache.GetWithLoader("key", func(string) (string, time.Duration, error) {
+					panic("boom")
+				})
+			}).To(PanicWith("boom"))
+
+			// Without cleanup this would deadlock on the never-completed flight
+			v, err := cache.GetWithLoader("key", func(string) (string, time.Duration, error) {
+				return "ok", 0, nil
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(v).To(Equal("ok"))
+		})
+
 		It("loads different keys independently", func() {
 			release := make(chan struct{})
 			started := make(chan struct{}, 10)
