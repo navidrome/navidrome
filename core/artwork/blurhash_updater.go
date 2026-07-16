@@ -11,7 +11,6 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/resources"
 )
 
 // blurHashUpdater keeps stored blurhashes in sync with the artwork actually served. Enqueue is
@@ -127,26 +126,23 @@ func (u *blurHashUpdater) computeFromArtwork(ctx context.Context, artID model.Ar
 	if err != nil {
 		return "", err
 	}
-	// Bypasses artwork.Get so the worker's own fetch is never re-enqueued.
-	r, err := u.a.cache.Get(ctx, artReader)
+	// Reads straight from the source (not artwork.Get): no re-enqueue, and the returned path
+	// identifies placeholder artwork, which must never be persisted as an entity's blurhash.
+	r, path, err := artReader.Reader(ctx)
 	if err != nil {
 		return "", err
 	}
 	defer r.Close()
+	if path == consts.PlaceholderAlbumArt || path == consts.PlaceholderArtistArt {
+		return "", nil
+	}
 	img, _, err := image.Decode(r)
 	if err != nil {
 		return "", err
 	}
 	b := img.Bounds()
 	x, y := blurhash.Components(b.Dx(), b.Dy())
-	hash, err := blurhash.Encode(img, x, y)
-	if err != nil {
-		return "", err
-	}
-	if _, isPlaceholder := placeholderHashes()[hash]; isPlaceholder {
-		return "", nil
-	}
-	return hash, nil
+	return blurhash.Encode(img, x, y)
 }
 
 func (u *blurHashUpdater) persist(ctx context.Context, artID model.ArtworkID, hash string, version time.Time) error {
@@ -160,26 +156,3 @@ func (u *blurHashUpdater) persist(ctx context.Context, artID model.ArtworkID, ha
 	}
 	return nil
 }
-
-// placeholderHashes identifies placeholder bytes by their hash, since cached reads lose the
-// source path; placeholder artwork must never be persisted as an entity's blurhash.
-var placeholderHashes = sync.OnceValue(func() map[string]struct{} {
-	hashes := make(map[string]struct{})
-	for _, name := range []string{consts.PlaceholderAlbumArt, consts.PlaceholderArtistArt} {
-		f, err := resources.FS().Open(name)
-		if err != nil {
-			continue
-		}
-		img, _, err := image.Decode(f)
-		_ = f.Close()
-		if err != nil {
-			continue
-		}
-		b := img.Bounds()
-		x, y := blurhash.Components(b.Dx(), b.Dy())
-		if hash, err := blurhash.Encode(img, x, y); err == nil {
-			hashes[hash] = struct{}{}
-		}
-	}
-	return hashes
-})

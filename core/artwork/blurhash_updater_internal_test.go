@@ -59,14 +59,4 @@ var _ = Describe("blurHashUpdater", func() {
 			Expect(func() { u.process(GinkgoT().Context(), model.Album{ID: "missing"}.CoverArtID()) }).ToNot(Panic())
 		})
 	})
-
-	Describe("placeholderHashes", func() {
-		It("computes hashes for the embedded placeholder images", func() {
-			hashes := placeholderHashes()
-			Expect(hashes).To(HaveLen(2))
-			for h := range hashes {
-				Expect(len(h)).To(BeNumerically(">", 6))
-			}
-		})
-	})
 })

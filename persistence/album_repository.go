@@ -213,14 +213,8 @@ func (r *albumRepository) Put(al *model.Album) error {
 	return nil
 }
 
-// UpdateBlurHash is a targeted update: a full-row put would race with the scanner. Deliberately
-// a plain UPDATE with no insert fallback — updating a just-deleted row must be a silent no-op.
 func (r *albumRepository) UpdateBlurHash(id, blurHash string, artworkUpdatedAt time.Time) error {
-	upd := Update(r.tableName).Where(Eq{"id": id}).
-		Set("blur_hash", blurHash).
-		Set("blur_hash_updated_at", artworkUpdatedAt)
-	_, err := r.executeSQL(upd)
-	return err
+	return r.updateBlurHash(id, blurHash, artworkUpdatedAt)
 }
 
 // TODO Move external metadata to a separated table
