@@ -103,7 +103,7 @@ var _ = Describe("Playlists", func() {
 			var perms []dto.PlaylistUserPermissions
 			parseInto(get("/Playlists/"+enc(plID)+"/Users"), &perms)
 			Expect(perms).To(HaveLen(1))
-			Expect(perms[0].UserId).To(Equal("admin-1"))
+			Expect(perms[0].UserId).To(Equal(enc("admin-1")))
 			Expect(perms[0].CanEdit).To(BeTrue())
 		})
 	})

@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
@@ -27,6 +28,22 @@ func throttleStreams(limit int) func(http.Handler) http.Handler {
 		return func(next http.Handler) http.Handler { return next }
 	}
 	return middleware.ThrottleBacklog(limit, consts.RequestThrottleBacklogLimit, consts.RequestThrottleBacklogTimeout)
+}
+
+// caseInsensitivePaths lowercases the request path so chi (case-sensitive) matches the
+// lowercase-registered routes; Jellyfin clients route case-insensitively. It lowercases id/param
+// segments too, which is safe because every id the API emits — user ids included — is lowercase hex
+// (dto.EncodeID).
+func caseInsensitivePaths(r chi.Router) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		// Mounted under a parent, chi matches RouteContext.RoutePath, not r.URL.Path.
+		if rctx := chi.RouteContext(req.Context()); rctx != nil && rctx.RoutePath != "" {
+			rctx.RoutePath = strings.ToLower(rctx.RoutePath)
+		} else {
+			req.URL.Path = strings.ToLower(req.URL.Path)
+		}
+		r.ServeHTTP(w, req)
+	})
 }
 
 // normalizeQueryKeys folds query-parameter keys to lowercase so handlers can read params

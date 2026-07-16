@@ -56,7 +56,7 @@ func (api *Router) authenticateByName(w http.ResponseWriter, r *http.Request) {
 func userToDto(u *model.User, serverName, serverID string) *dto.UserDto {
 	return &dto.UserDto{
 		Name:                  u.UserName,
-		Id:                    u.ID,
+		Id:                    dto.EncodeID(u.ID), // hex like every other id, so lowercased paths stay valid
 		ServerId:              serverID,
 		ServerName:            serverName,
 		HasPassword:           true,

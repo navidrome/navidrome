@@ -27,7 +27,7 @@ var _ = Describe("Authentication", func() {
 			Expect(res.AccessToken).ToNot(BeEmpty())
 			Expect(res.User).ToNot(BeNil())
 			Expect(res.User.Name).To(Equal("admin"))
-			Expect(res.User.Id).To(Equal("admin-1"))
+			Expect(res.User.Id).To(Equal(enc("admin-1")))
 			Expect(res.User.Policy.IsAdministrator).To(BeTrue())
 			Expect(res.ServerId).ToNot(BeEmpty())
 
@@ -84,7 +84,7 @@ var _ = Describe("Authentication", func() {
 			users := publicUsers()
 			Expect(users).To(HaveLen(1))
 			Expect(users[0].Name).To(Equal("regular"))
-			Expect(users[0].Id).To(Equal("regular-1"))
+			Expect(users[0].Id).To(Equal(enc("regular-1")))
 			Expect(users[0].Policy).To(BeNil()) // must not leak admin status pre-login
 		})
 	})
@@ -94,7 +94,7 @@ var _ = Describe("Authentication", func() {
 			var u dto.UserDto
 			parseInto(getAs(regularUser, "/Users/Me"), &u)
 			Expect(u.Name).To(Equal("regular"))
-			Expect(u.Id).To(Equal("regular-1"))
+			Expect(u.Id).To(Equal(enc("regular-1")))
 		})
 
 		It("returns the caller from GET /Users/{userId}", func() {

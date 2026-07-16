@@ -215,6 +215,29 @@ The stream endpoints reuse the same transcode-decision pipeline as the Subsonic 
   Subsonic. `File`/`Download` stay raw. For HLS clients, force `aac` or `mp3`; other formats are
   advertised and served but packed-audio players won't decode them.
 
+## AudioMuse-AI compatible endpoints
+
+Compatibility shim for Jellyfin front-ends that integrate [AudioMuse-AI](https://github.com/NeptuneHub/audiomuse-ai-plugin).
+Backed natively by Navidrome's `core/sonic` engine (the `SonicSimilarity` plugin capability) — no
+external AudioMuse-AI backend or proxy is involved. The endpoints are gated on a `SonicSimilarity`
+plugin being loaded, like the Subsonic `sonicSimilarity` OpenSubsonic extension.
+
+- `GET /AudioMuseAI/info` — returns `{"Version": <navidrome version>, "AvailableEndpoints": [...]}` (200).
+  `AvailableEndpoints` lists the endpoints below only when a provider is loaded; otherwise it is empty.
+- `GET /AudioMuseAI/health` — liveness probe: 200 with an empty body when a provider is loaded, else 404.
+- `GET /AudioMuseAI/similar_tracks?item_id=<id>&n=10&eliminate_duplicates=true` — 404 when no provider is
+  loaded; otherwise a JSON array of `{author, distance, item_id, title}` (200; `[]` when there is no match
+  or no `item_id`). `eliminate_duplicates` (default true) limits results to one track per artist.
+- `GET /AudioMuseAI/find_path?start_song_id=<id>&end_song_id=<id>&max_steps=25` — 404 when no provider is
+  loaded; otherwise `{"path": [{author, item_id, title, tempo?}], "total_distance": <float>}` (200), or 400
+  with `start_song_id and end_song_id are required.` when either id is missing.
+
+`item_id`/`start_song_id`/`end_song_id` are the hex-encoded ids Navidrome hands Jellyfin clients.
+`tempo` comes from the track's BPM when known; the richer AudioMuse per-track features
+(`energy`, `key`, `mood_vector`, `scale`, `other_features`) are not provided. In multi-library
+setups, `find_path`'s `path` and `total_distance` only reflect hops through tracks in libraries
+the caller can access, since hops through inaccessible libraries are filtered out of the result.
+
 ## curl walkthrough
 
 This mirrors the sequence a real client (e.g. Finamp) follows: handshake, login, browse the

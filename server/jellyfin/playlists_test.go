@@ -442,7 +442,7 @@ var _ = Describe("Playlists", func() {
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res []dto.PlaylistUserPermissions
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
-			Expect(res).To(Equal([]dto.PlaylistUserPermissions{{UserId: "u1", CanEdit: true}}))
+			Expect(res).To(Equal([]dto.PlaylistUserPermissions{{UserId: dto.EncodeID("u1"), CanEdit: true}}))
 		})
 	})
 

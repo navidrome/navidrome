@@ -38,11 +38,14 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/external"
+	"github.com/navidrome/navidrome/core/matcher"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/core/scrobbler"
+	"github.com/navidrome/navidrome/core/sonic"
 	"github.com/navidrome/navidrome/core/storage/storagetest"
 	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/db"
@@ -77,14 +80,15 @@ var (
 
 // Shared test state
 var (
-	ctx          context.Context
-	ds           *tests.MockDataStore
-	router       http.Handler
-	streamerSpy  *harness.SpyStreamer
-	artworkSpy   *spyArtwork
-	providerFake *fakeExternalProvider
-	goldenDB     *harness.DB
-	dataFolder   string
+	ctx               context.Context
+	ds                *tests.MockDataStore
+	router            http.Handler
+	streamerSpy       *harness.SpyStreamer
+	artworkSpy        *spyArtwork
+	providerFake      *fakeExternalProvider
+	sonicProviderFake *fakeSonicProvider
+	goldenDB          *harness.DB
+	dataFolder        string
 
 	adminUser = model.User{
 		ID:       "admin-1",
@@ -308,6 +312,8 @@ func setupTestDB() {
 	streamerSpy = &harness.SpyStreamer{}
 	artworkSpy = &spyArtwork{}
 	providerFake = &fakeExternalProvider{}
+	sonicProviderFake = &fakeSonicProvider{}
+	sonicSvc := sonic.New(ds, &fakeSonicLoader{provider: sonicProviderFake}, matcher.New(ds))
 	decider := stream.NewTranscodeDecider(ds, harness.NoopFFmpeg{})
 	router = jellyfin.New(
 		ds,
@@ -318,6 +324,7 @@ func setupTestDB() {
 		scrobbler.NewPlayTracker(ds, events.NoopBroker(), nil),
 		playlists.NewPlaylists(ds, core.NewImageUploadService()),
 		providerFake,
+		sonicSvc,
 	)
 }
 
@@ -336,6 +343,50 @@ func (f *fakeExternalProvider) UpdateArtistInfo(_ context.Context, id string, _ 
 
 func (f *fakeExternalProvider) SimilarSongs(context.Context, string, int) (model.MediaFiles, error) {
 	return f.similarSongs, nil
+}
+
+// fakeSonicLoader always advertises a SonicSimilarity provider so the AudioMuse endpoints are
+// active in e2e; the provider it hands back returns test-configured results.
+type fakeSonicLoader struct{ provider sonic.Provider }
+
+func (f *fakeSonicLoader) PluginNames(capability string) []string {
+	if capability == "SonicSimilarity" {
+		return []string{"fake"}
+	}
+	return nil
+}
+
+func (f *fakeSonicLoader) LoadSonicSimilarity(string) (sonic.Provider, bool) {
+	return f.provider, true
+}
+
+// fakeSonicProvider is a configurable stand-in for a sonic-similarity plugin. Tests set the
+// agents.Song results; the real matcher resolves them back to seeded library tracks.
+type fakeSonicProvider struct {
+	similar []sonic.SimilarResult
+	path    []sonic.SimilarResult
+}
+
+func (f *fakeSonicProvider) GetSonicSimilarTracks(context.Context, *model.MediaFile, int) ([]sonic.SimilarResult, error) {
+	return f.similar, nil
+}
+
+func (f *fakeSonicProvider) FindSonicPath(context.Context, *model.MediaFile, *model.MediaFile, int) ([]sonic.SimilarResult, error) {
+	return f.path, nil
+}
+
+// songAgent looks a seeded track up by title (titles are unique in the seed) and builds an
+// agents.Song carrying its title+artist, so the matcher resolves it back to that MediaFile.
+func songAgent(title string) agents.Song {
+	mfs, err := ds.MediaFile(ctx).GetAll()
+	Expect(err).ToNot(HaveOccurred())
+	for _, mf := range mfs {
+		if mf.Title == title {
+			return agents.Song{Name: mf.Title, Artists: []agents.Artist{{Name: mf.Artist}}}
+		}
+	}
+	Fail("song not found: " + title)
+	return agents.Song{}
 }
 
 // --- Spy/noop dependencies (shared ones live in tests/harness) ---

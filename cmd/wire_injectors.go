@@ -51,6 +51,7 @@ var allProviders = wire.NewSet(
 	wire.Bind(new(scrobbler.PluginLoader), new(*plugins.Manager)),
 	wire.Bind(new(lyrics.PluginLoader), new(*plugins.Manager)),
 	wire.Bind(new(sonic.PluginLoader), new(*plugins.Manager)),
+	wire.Bind(new(sonic.Engine), new(*sonic.Sonic)),
 	wire.Bind(new(nativeapi.PluginManager), new(*plugins.Manager)),
 	wire.Bind(new(core.PluginUnloader), new(*plugins.Manager)),
 	wire.Bind(new(plugins.PluginMetricsRecorder), new(metrics.Metrics)),

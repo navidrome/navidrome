@@ -279,7 +279,7 @@ func (api *Router) removeFromPlaylist(w http.ResponseWriter, r *http.Request) {
 // enforced by AddTracks/RemoveTracks.
 func (api *Router) getPlaylistUsers(w http.ResponseWriter, r *http.Request) {
 	u, _ := request.UserFrom(r.Context())
-	api.ok(w, r, []dto.PlaylistUserPermissions{{UserId: u.ID, CanEdit: true}})
+	api.ok(w, r, []dto.PlaylistUserPermissions{{UserId: dto.EncodeID(u.ID), CanEdit: true}})
 }
 
 func (api *Router) getPlaylistUser(w http.ResponseWriter, r *http.Request) {
