@@ -3,7 +3,9 @@ package jellyfin
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http/httptest"
+	"strconv"
 	"sync/atomic"
 	"time"
 
@@ -103,6 +105,16 @@ func (p *blockingProvider) SimilarSongs(context.Context, string, int) (model.Med
 	return nil, nil
 }
 
+// fakeSimilarProvider returns up to count of its canned songs, like a real agent honoring the limit.
+type fakeSimilarProvider struct {
+	external.Provider
+	songs model.MediaFiles
+}
+
+func (p *fakeSimilarProvider) SimilarSongs(_ context.Context, _ string, count int) (model.MediaFiles, error) {
+	return p.songs[:min(count, len(p.songs))], nil
+}
+
 var _ = Describe("getInstantMix", func() {
 	It("returns the seed track even when the provider fetch exceeds the wait", func() {
 		old := similarWait
@@ -127,5 +139,29 @@ var _ = Describe("getInstantMix", func() {
 		Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
 		Expect(res.Items).To(HaveLen(1))
 		Expect(res.Items[0].Name).To(Equal("Seed Song"))
+	})
+
+	// Finamp's Radio Mix asks for limit=250. Clamping that to the Similar ceiling (100) truncated the
+	// queue, so InstantMix gets its own, higher ceiling.
+	It("honors a mix-sized limit above the Similar ceiling", func() {
+		const want = 250
+		songs := model.MediaFiles{{ID: "s1", Title: "Seed Song", LibraryID: 1}}
+		for i := range want + 50 { // more than requested, so only the limit bounds the result
+			songs = append(songs, model.MediaFile{ID: fmt.Sprintf("t%d", i), Title: fmt.Sprintf("Track %d", i), LibraryID: 1})
+		}
+		ds := &tests.MockDataStore{}
+		ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(songs)
+		api := &Router{ds: ds, provider: &fakeSimilarProvider{songs: songs[1:]}}
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "/Items/"+dto.EncodeID("s1")+"/InstantMix?limit="+strconv.Itoa(want), nil).
+			WithContext(request.WithUser(context.Background(), model.User{ID: "u1", Libraries: model.Libraries{{ID: 1}}}))
+		r = withChiURLParam(r, "itemId", dto.EncodeID("s1"))
+		api.getInstantMix(w, r)
+
+		var res dto.QueryResult
+		Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+		Expect(res.Items).To(HaveLen(want), "a Radio Mix-sized request must not be truncated to the Similar ceiling")
+		Expect(res.Items[0].Name).To(Equal("Seed Song"), "the seed must still lead the mix")
 	})
 })

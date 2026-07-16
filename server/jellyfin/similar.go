@@ -23,6 +23,9 @@ var similarWait = 10 * time.Second
 const (
 	defaultSimilarLimit = 20
 	maxSimilarLimit     = 100
+	// A mix is a playback queue, not a "related items" list: Finamp's Radio Mix asks for 250, so the
+	// Similar ceiling would truncate it. Real Jellyfin builds mixes from a 200-track genre query.
+	maxInstantMixLimit = 500
 )
 
 // similarFetchTimeout bounds the detached background fetch so a hung provider can't hold a goroutine
@@ -91,7 +94,7 @@ func (api *Router) getSimilarItems(w http.ResponseWriter, r *http.Request) {
 func (api *Router) getInstantMix(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := api.resolveItemID(ctx, dto.DecodeID(chi.URLParam(r, "itemId")))
-	limit := clampLimit(req.Params(r).IntOr("limit", 0), defaultSimilarLimit, maxSimilarLimit)
+	limit := clampLimit(req.Params(r).IntOr("limit", 0), defaultSimilarLimit, maxInstantMixLimit)
 
 	entity, err := model.GetEntityByID(ctx, api.ds, id)
 	if err != nil {
