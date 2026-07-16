@@ -42,6 +42,7 @@ import (
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/external"
+	lyricssvc "github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/core/matcher"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/core/scrobbler"
@@ -325,6 +326,7 @@ func setupTestDB() {
 		playlists.NewPlaylists(ds, core.NewImageUploadService()),
 		providerFake,
 		sonicSvc,
+		lyricssvc.NewLyrics(ds, nil),
 	)
 }
 
