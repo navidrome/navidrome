@@ -899,3 +899,34 @@ func _p(id, name string, sortName ...string) model.Participant {
 	}
 	return p
 }
+
+var _ = Describe("AlbumRepository.UpdateBlurHash", func() {
+	var repo model.AlbumRepository
+
+	BeforeEach(func() {
+		ctx := request.WithUser(GinkgoT().Context(), model.User{ID: "userid", UserName: "johndoe"})
+		repo = NewAlbumRepository(ctx, GetDBXBuilder())
+		DeferCleanup(func() {
+			_, err := GetDBXBuilder().NewQuery("update album set blur_hash = '', blur_hash_updated_at = null").Execute()
+			Expect(err).ToNot(HaveOccurred())
+		})
+	})
+
+	It("persists the hash and its artwork version snapshot", func() {
+		al, err := repo.Get("103")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(al.BlurHash).To(BeEmpty())
+
+		version := time.Date(2024, 5, 1, 10, 30, 0, 0, time.UTC)
+		Expect(repo.UpdateBlurHash(al.ID, "LKO2?U%2Tw=w]~RBVZRi};RPxuwH", version)).To(Succeed())
+
+		updated, err := repo.Get(al.ID)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(updated.BlurHash).To(Equal("LKO2?U%2Tw=w]~RBVZRi};RPxuwH"))
+		Expect(updated.BlurHashUpdatedAt).ToNot(BeNil())
+		// Round-trip through SQLite must preserve equality — the DTO layer compares with Equal.
+		Expect(updated.BlurHashUpdatedAt.Equal(version)).To(BeTrue())
+		// The targeted update must not touch the row's own timestamps.
+		Expect(updated.UpdatedAt).To(Equal(al.UpdatedAt))
+	})
+})

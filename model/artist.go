@@ -103,6 +103,7 @@ type ArtistRepository interface {
 	Exists(id string) (bool, error)
 	Put(m *Artist, colsToUpdate ...string) error
 	UpdateExternalInfo(a *Artist) error
+	UpdateBlurHash(id string, blurHash string, artworkUpdatedAt time.Time) error
 	Get(id string) (*Artist, error)
 	GetAll(options ...QueryOptions) (Artists, error)
 	GetCursor(options ...QueryOptions) (ArtistCursor, error)

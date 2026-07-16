@@ -155,6 +155,16 @@ func (r *playlistRepository) GetWithTracks(id string, refreshSmartPlaylist, incl
 	return pls, nil
 }
 
+// UpdateBlurHash is a targeted update: a full-row put would race with playlist sync. Deliberately
+// a plain UPDATE with no insert fallback — updating a just-deleted row must be a silent no-op.
+func (r *playlistRepository) UpdateBlurHash(id, blurHash string, artworkUpdatedAt time.Time) error {
+	upd := Update(r.tableName).Where(Eq{"id": id}).
+		Set("blur_hash", blurHash).
+		Set("blur_hash_updated_at", artworkUpdatedAt)
+	_, err := r.executeSQL(upd)
+	return err
+}
+
 func (r *playlistRepository) FindByPath(path string) (*model.Playlist, error) {
 	return r.findBy(Eq{"path": path})
 }

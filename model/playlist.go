@@ -142,6 +142,7 @@ type PlaylistRepository interface {
 	GetAll(options ...QueryOptions) (Playlists, error)
 	GetCursor(options ...QueryOptions) (PlaylistCursor, error)
 	FindByPath(path string) (*Playlist, error)
+	UpdateBlurHash(id string, blurHash string, artworkUpdatedAt time.Time) error
 	Delete(id string) error
 	Tracks(playlistId string, refreshSmartPlaylist bool) PlaylistTrackRepository
 	GetPlaylists(mediaFileId string) (Playlists, error)

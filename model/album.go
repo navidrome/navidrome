@@ -156,6 +156,7 @@ type AlbumRepository interface {
 	Exists(id string) (bool, error)
 	Put(*Album) error
 	UpdateExternalInfo(*Album) error
+	UpdateBlurHash(id string, blurHash string, artworkUpdatedAt time.Time) error
 	Get(id string) (*Album, error)
 	GetAll(...QueryOptions) (Albums, error)
 	GetCursor(...QueryOptions) (AlbumCursor, error)
