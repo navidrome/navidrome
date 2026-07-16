@@ -189,6 +189,11 @@ func ByGenreID(genreIds []string) Sqlizer {
 	return genreTagFilter(Eq{"value": genreIds})
 }
 
+// ByAlbumID matches media files belonging to any of the given albums.
+func ByAlbumID(albumIds []string) Sqlizer {
+	return Eq{"album_id": albumIds}
+}
+
 // ArtistsByGenreID matches artists credited as album artist on an album with any of the given
 // genre tag ids. Non-correlated semi-join: the correlated EXISTS form rescans albums per artist row.
 func ArtistsByGenreID(genreIds []string) Sqlizer {

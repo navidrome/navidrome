@@ -221,6 +221,7 @@ type itemsQuery struct {
 	artistId         string
 	contributingOnly bool
 	genreIds         []string
+	albumIds         []string
 }
 
 // parseItemsQuery also resolves the entity types (inferring them from the parent when
@@ -243,6 +244,8 @@ func (api *Router) parseItemsQuery(ctx context.Context, r *http.Request) itemsQu
 		parentId: dto.DecodeID(p.StringOr("parentid", "")),
 		// Finamp's genre screen sends ParentId=<libraryId> for scoping plus GenreIds for the genre.
 		genreIds: decodedQueryIDs(r, "genreids"),
+		// Feishin fetches an album's tracks with AlbumIds instead of ParentId.
+		albumIds: decodedQueryIDs(r, "albumids"),
 	}
 	// An artist's page filters by artist, not ParentId: Finamp sends ParentId=<libraryId> for scoping
 	// plus AlbumArtistIds/ArtistIds/contributingArtistIds for the artist.
@@ -527,6 +530,9 @@ func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, q ite
 		filters = append(filters, filter.SongsByAlbum(q.entityParent).Filters)
 	default:
 		filters = append(filters, notMissing)
+	}
+	if len(q.albumIds) > 0 {
+		filters = append(filters, filter.ByAlbumID(q.albumIds))
 	}
 	if len(q.genreIds) > 0 {
 		filters = append(filters, filter.ByGenreID(q.genreIds))

@@ -179,6 +179,27 @@ var _ = Describe("Browsing", func() {
 		})
 	})
 
+	// Feishin fetches an album's tracks with AlbumIds=<albumId>&IncludeItemTypes=Audio&Recursive=true.
+	Describe("album filtering (AlbumIds)", func() {
+		It("filters songs by AlbumIds", func() {
+			q := queryResult(get("/Items?IncludeItemTypes=Audio&Recursive=true&AlbumIds=" + enc(albumID("Abbey Road"))))
+			Expect(names(q.Items)).To(ConsistOf("Come Together", "Something"))
+			Expect(q.TotalRecordCount).To(Equal(2))
+		})
+
+		It("matches any of multiple comma-separated AlbumIds", func() {
+			q := queryResult(get("/Items?IncludeItemTypes=Audio&Recursive=true&AlbumIds=" + enc(albumID("Abbey Road")) + "," + enc(albumID("IV"))))
+			Expect(names(q.Items)).To(ConsistOf("Come Together", "Something", "Stairway To Heaven"))
+			Expect(q.TotalRecordCount).To(Equal(3))
+		})
+
+		It("returns nothing for an unknown album id", func() {
+			q := queryResult(get("/Items?IncludeItemTypes=Audio&Recursive=true&AlbumIds=" + enc("no-such-album")))
+			Expect(q.Items).To(BeEmpty())
+			Expect(q.TotalRecordCount).To(Equal(0))
+		})
+	})
+
 	// Finamp's genre screen sends ParentId=<libraryId> (scoping) plus GenreIds=<genreId>.
 	Describe("genre filtering (GenreIds)", func() {
 		lib1 := enc("1")
