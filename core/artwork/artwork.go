@@ -25,14 +25,17 @@ type Artwork interface {
 }
 
 func NewArtwork(ds model.DataStore, cache cache.FileCache, ffmpeg ffmpeg.FFmpeg, provider external.Provider) Artwork {
-	return &artwork{ds: ds, cache: cache, ffmpeg: ffmpeg, provider: provider}
+	a := &artwork{ds: ds, cache: cache, ffmpeg: ffmpeg, provider: provider}
+	a.blurHashes = newBlurHashUpdater(a)
+	return a
 }
 
 type artwork struct {
-	ds       model.DataStore
-	cache    cache.FileCache
-	ffmpeg   ffmpeg.FFmpeg
-	provider external.Provider
+	ds         model.DataStore
+	cache      cache.FileCache
+	ffmpeg     ffmpeg.FFmpeg
+	provider   external.Provider
+	blurHashes *blurHashUpdater
 }
 
 type artworkReader interface {
@@ -69,6 +72,9 @@ func (a *artwork) Get(ctx context.Context, artID model.ArtworkID, size int, squa
 			log.Error(ctx, "Error accessing image cache", "id", artID, "size", size, err)
 		}
 		return nil, time.Time{}, err
+	}
+	if a.blurHashes != nil {
+		a.blurHashes.Enqueue(artID)
 	}
 	return r, artReader.LastUpdated(), nil
 }
