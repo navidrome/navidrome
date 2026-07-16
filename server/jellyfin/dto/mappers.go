@@ -8,7 +8,16 @@ import (
 	"github.com/navidrome/navidrome/model"
 )
 
-func TicksFromSeconds(sec float32) int64 { return int64(float64(sec) * 1e7) }
+// Jellyfin wire times are ticks: 100ns units, i.e. 10,000 per millisecond.
+const ticksPerMillis = 10_000
+
+func TicksFromSeconds(sec float32) int64 { return int64(float64(sec) * 1000 * ticksPerMillis) }
+
+// TicksFromMillis converts milliseconds (Navidrome lyric timestamps) to ticks.
+func TicksFromMillis(ms int64) int64 { return ms * ticksPerMillis }
+
+// MillisFromTicks converts ticks (client-reported playback positions) to milliseconds.
+func MillisFromTicks(ticks int64) int64 { return ticks / ticksPerMillis }
 
 // premiereDate converts a possibly partial date tag ("2007", "2007-02") into the ISO 8601
 // PremiereDate clients parse, falling back to year; nil when neither exists.
@@ -260,9 +269,6 @@ func PlaylistToBaseItem(p model.Playlist) BaseItemDto {
 		UserData:          UserData(p.Annotations, p.ID),
 	}
 }
-
-// TicksFromMillis converts milliseconds (Navidrome lyric timestamps) to Jellyfin 100ns ticks.
-func TicksFromMillis(ms int64) int64 { return ms * 10_000 }
 
 // LyricDtoFromLyrics maps one lyric track to Jellyfin's LyricDto. Clients infer synced-vs-plain
 // from per-line Start presence, so synced drops start-less lines and unsynced never emits Start.
