@@ -19,19 +19,18 @@ func TimeNewest(times ...time.Time) time.Time {
 	return newest
 }
 
-var durationDayWeekRe = regexp.MustCompile(`(\d+(?:\.\d+)?)([dw])`)
+var durationDayWeekRe = regexp.MustCompile(`\d+(?:\.\d+)?[dw]`)
 
 // ParseDuration is time.ParseDuration extended with d (24h) and w (168h) units.
 // Negative durations are rejected.
 func ParseDuration(s string) (time.Duration, error) {
 	expanded := durationDayWeekRe.ReplaceAllStringFunc(s, func(match string) string {
-		parts := durationDayWeekRe.FindStringSubmatch(match)
-		value, err := strconv.ParseFloat(parts[1], 64)
+		value, err := strconv.ParseFloat(match[:len(match)-1], 64)
 		if err != nil {
 			return match
 		}
 		hours := value * 24
-		if parts[2] == "w" {
+		if match[len(match)-1] == 'w' {
 			hours = value * 24 * 7
 		}
 		return strconv.FormatFloat(hours, 'f', -1, 64) + "h"
@@ -50,24 +49,28 @@ func ParseDuration(s string) (time.Duration, error) {
 // time.Duration.String for the sub-day remainder, so ParseDuration round-trips.
 func FormatDuration(d time.Duration) string {
 	if d < 24*time.Hour {
-		if d >= time.Hour && d%time.Hour == 0 {
-			return strconv.Itoa(int(d/time.Hour)) + "h"
-		}
-		return d.String()
+		return formatSubDay(d)
 	}
 	var b strings.Builder
 	weekDuration := 7 * 24 * time.Hour
 	if weeks := d / weekDuration; weeks > 0 {
-		fmt.Fprintf(&b, "%dw", weeks)
+		b.WriteString(strconv.Itoa(int(weeks)) + "w")
 		d %= weekDuration
 	}
 	dayDuration := 24 * time.Hour
 	if days := d / dayDuration; days > 0 {
-		fmt.Fprintf(&b, "%dd", days)
+		b.WriteString(strconv.Itoa(int(days)) + "d")
 		d %= dayDuration
 	}
 	if d > 0 {
-		b.WriteString(FormatDuration(d))
+		b.WriteString(formatSubDay(d))
 	}
 	return b.String()
+}
+
+func formatSubDay(d time.Duration) string {
+	if d >= time.Hour && d%time.Hour == 0 {
+		return strconv.Itoa(int(d/time.Hour)) + "h"
+	}
+	return d.String()
 }
