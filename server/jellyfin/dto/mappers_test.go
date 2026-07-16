@@ -390,3 +390,34 @@ var _ = Describe("LyricDtoFromLyrics", func() {
 		Expect(c.Start).To(Equal(int64(10_000_000)))
 	})
 })
+
+var _ = Describe("stored blurhashes", func() {
+	version := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	It("emits the stored album blurhash when fresh, and a rotating fake when stale", func() {
+		al := model.Album{ID: "al-1", Name: "A", UpdatedAt: version, ImportedAt: version,
+			BlurHash: "LEHV6nWB2yk8", BlurHashUpdatedAt: &version}
+		Expect(AlbumToBaseItem(al).ImageBlurHashes["Primary"]["al-1"]).To(Equal("LEHV6nWB2yk8"))
+
+		al.UpdatedAt = version.Add(time.Hour) // artwork version moved; stored hash is now stale
+		fake := AlbumToBaseItem(al).ImageBlurHashes["Primary"]["al-1"]
+		Expect(fake).To(HaveLen(6))
+
+		al.UpdatedAt = version.Add(2 * time.Hour)
+		Expect(AlbumToBaseItem(al).ImageBlurHashes["Primary"]["al-1"]).ToNot(Equal(fake))
+	})
+
+	It("emits the stored artist blurhash when fresh", func() {
+		ar := model.Artist{ID: "ar-1", Name: "B", UpdatedAt: &version,
+			BlurHash: "LEHV6nWB2yk8", BlurHashUpdatedAt: &version}
+		Expect(ArtistToBaseItem(ar).ImageBlurHashes["Primary"]["ar-1"]).To(Equal("LEHV6nWB2yk8"))
+	})
+
+	It("emits the stored playlist blurhash when fresh, keyed by the versioned tag", func() {
+		p := model.Playlist{ID: "pl-1", Name: "P", UpdatedAt: version,
+			BlurHash: "LEHV6nWB2yk8", BlurHashUpdatedAt: &version}
+		item := PlaylistToBaseItem(p)
+		tag := item.ImageTags["Primary"]
+		Expect(item.ImageBlurHashes["Primary"][tag]).To(Equal("LEHV6nWB2yk8"))
+	})
+})

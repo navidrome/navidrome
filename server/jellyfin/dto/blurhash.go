@@ -1,6 +1,10 @@
 package dto
 
-import "hash/fnv"
+import (
+	"fmt"
+	"hash/fnv"
+	"time"
+)
 
 // base83Alphabet is the blurhash spec's base83 encoding alphabet; order is part of the spec.
 const base83Alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz#$%*+,-.:;=?@[]^_{|}~"
@@ -33,4 +37,14 @@ func blurHash(seed string) string {
 	r, g, b := int(sum[0]), int(sum[1]), int(sum[2])
 	dc := (r << 16) | (g << 8) | b
 	return "00" + base83(dc, 4)
+}
+
+// primaryBlurHash returns the stored blurhash when it was computed from the entity's current
+// artwork version; otherwise a fake seeded by id+version, so the value still rotates on any
+// artwork change (Finamp keys its cover caches by this value; tags never reach its image URLs).
+func primaryBlurHash(stored string, storedAt *time.Time, id string, version time.Time) string {
+	if stored != "" && storedAt != nil && storedAt.Equal(version) {
+		return stored
+	}
+	return blurHash(fmt.Sprintf("%s-%x", id, version.UnixMilli()))
 }
