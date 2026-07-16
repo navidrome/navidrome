@@ -270,8 +270,7 @@ func PlaylistToBaseItem(p model.Playlist) BaseItemDto {
 func TicksFromMillis(ms int64) int64 { return ms * 10_000 }
 
 // LyricDtoFromLyrics maps one lyric track to Jellyfin's LyricDto. Clients infer synced-vs-plain
-// from per-line Start presence, so it is all-or-nothing: synced drops start-less lines, unsynced
-// never emits Start.
+// from per-line Start presence, so synced drops start-less lines and unsynced never emits Start.
 func LyricDtoFromLyrics(mf model.MediaFile, lyrics model.Lyrics) LyricDto {
 	d := LyricDto{
 		Metadata: LyricMetadata{

@@ -11,9 +11,7 @@ import (
 )
 
 // cachedLyrics resolves lyrics through the full source pipeline (embedded, sidecar, plugins),
-// caching results — including empty — so per-track fetches from clients that poll every song
-// don't re-run plugin lookups. core/lyrics degrades source errors to empty, which we accept
-// caching for the TTL.
+// caching results — including empty: clients poll per played track, so misses are the hot path.
 func (api *Router) cachedLyrics(ctx context.Context, mf *model.MediaFile) model.LyricList {
 	list, err := api.lyricsCache.GetWithLoader(mf.ID, func(string) (model.LyricList, time.Duration, error) {
 		l, err := api.lyrics.GetLyrics(ctx, mf)
