@@ -338,11 +338,21 @@ make test PKG=./server/jellyfin/...
   working session instead of 404-loop-reconnecting, but it never pushes anything. A follow-up
   would broadcast real session/playstate and library-change events over it (via `server/events`),
   mirroring Jellyfin's session messages.
-- **No lyrics endpoint (follow-up).** `GET Audio/{id}/Lyrics` is unimplemented (404), but Finamp
-  and Jellify both request it. Navidrome already has line-synced lyrics, so a follow-up would serve
-  Jellyfin's `LyricsResponse` (`Lyrics: [{Text, Start}]`, `Start` in 100ns ticks) — enough for both
-  clients' synced view. (Finamp also renders word-level `Cues`, but Navidrome has only line-level
-  timing, so word-sync is out of scope.)
+- **Lyrics.** `GET Audio/{id}/Lyrics` serves the main lyric track as a `LyricDto` (`Start` in
+  100ns ticks, word-level `Cues` when present), resolved through the full `core/lyrics` pipeline
+  (embedded, `.lrc` sidecars, plugins per `LyricsPriority`) behind a 5-minute TTL cache that also
+  caches misses — Jellify fetches for every played track, Feishin per song change, so lyric-less
+  tracks are the hot path. No lyrics → 404 (never an empty 200), which all three clients degrade
+  gracefully. Finamp gates its lyrics view on a `Lyric` `MediaStream` (not `HasLyrics`, which is
+  just a list badge): browse lists advertise it from embedded lyrics only (the `"[]"` sentinel
+  check — the column is never `""` post-scan), while `PlaybackInfo` runs the full pipeline per
+  track so sidecar/plugin lyrics also light up. Feishin additionally requires server version
+  ≥ 10.9 — the reason `jellyfinVersion` is 10.9.11.
+  Follow-ups: the lyrics cache loader is not singleflighted, so concurrent misses on the same
+  track can double-invoke the plugin pipeline (fix belongs in `utils/cache.SimpleCache` via
+  ttlcache's `SuppressedLoader`, affecting all callers — separate change); tracks whose only
+  lyrics are sidecar/plugin-sourced show no `HasLyrics` badge in lists (request-time sources
+  can't be known at list time without per-row I/O).
 - **No sonic similarity (follow-up).** `Items/{id}/InstantMix` and the `/Similar` endpoints are
   backed only by external metadata agents (Last.fm), not sonic analysis: an instant mix is the seed
   track followed by the provider's similar songs (with agents disabled it degrades to a seed-only
