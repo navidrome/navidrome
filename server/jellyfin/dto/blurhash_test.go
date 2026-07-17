@@ -34,6 +34,11 @@ var _ = Describe("primaryBlurHash", func() {
 		Expect(primaryBlurHash("LEHV6nWB2yk8", &version, "id-1", version)).To(Equal("LEHV6nWB2yk8"))
 	})
 
+	It("returns the stored hash when the snapshot is newer than the version (image mtime)", func() {
+		newer := version.Add(time.Hour)
+		Expect(primaryBlurHash("LEHV6nWB2yk8", &newer, "id-1", version)).To(Equal("LEHV6nWB2yk8"))
+	})
+
 	It("falls back to a fake when there is no stored hash", func() {
 		h := primaryBlurHash("", nil, "id-1", version)
 		Expect(h).To(HaveLen(6))

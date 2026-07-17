@@ -40,10 +40,11 @@ func blurHash(seed string) string {
 }
 
 // primaryBlurHash returns the stored blurhash when it was computed from the entity's current
-// artwork version; otherwise a fake seeded by id+version, so the value still rotates on any
-// artwork change (Finamp keys its cover caches by this value; tags never reach its image URLs).
+// artwork version or later (the snapshot folds in image file mtimes, which can exceed row
+// timestamps); otherwise a fake seeded by id+version, so the value still rotates on any artwork
+// change (Finamp keys its cover caches by this value; tags never reach its image URLs).
 func primaryBlurHash(stored string, storedAt *time.Time, id string, version time.Time) string {
-	if stored != "" && storedAt != nil && storedAt.Equal(version) {
+	if stored != "" && storedAt != nil && !storedAt.Before(version) {
 		return stored
 	}
 	return blurHash(fmt.Sprintf("%s-%x", id, version.UnixMilli()))

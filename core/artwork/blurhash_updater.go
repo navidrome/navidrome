@@ -148,7 +148,9 @@ func (u *blurHashUpdater) process(ctx context.Context, artID model.ArtworkID, re
 		sig = req.imageUpdatedAt
 	}
 	if !req.force {
-		if stored != "" && storedAt != nil && storedAt.Equal(version) && !sig.After(*storedAt) {
+		// Current when computed from this row version or later; the snapshot may exceed the row
+		// version because file mtimes (which don't move rows) are folded into it on persist.
+		if stored != "" && storedAt != nil && !storedAt.Before(version) && !sig.After(*storedAt) {
 			return
 		}
 		if last, ok := u.lastNoResult(artID); ok && !sig.After(last) {
@@ -168,7 +170,7 @@ func (u *blurHashUpdater) process(ctx context.Context, artID model.ArtworkID, re
 		u.setNoResult(artID, sig)
 		return
 	}
-	if err := u.persist(ctx, artID, hash, version); err != nil {
+	if err := u.persist(ctx, artID, hash, sig); err != nil {
 		log.Warn(ctx, "BlurHash: error persisting", "artID", artID, err)
 		return
 	}

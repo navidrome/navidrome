@@ -29,8 +29,9 @@ var _ = Describe("BlurHash", func() {
 			g.Expect(err).ToNot(HaveOccurred())
 			g.Expect(len(updated.BlurHash)).To(BeNumerically(">", 6))
 			g.Expect(updated.BlurHashUpdatedAt).ToNot(BeNil())
-			// The snapshot must match the artwork version, or the DTO layer would treat it as stale.
-			g.Expect(updated.BlurHashUpdatedAt.Equal(updated.ArtworkUpdatedAt())).To(BeTrue())
+			// The snapshot must not be before the artwork version, or the DTO would treat it as
+			// stale (it may exceed it: image file mtimes are folded in).
+			g.Expect(updated.BlurHashUpdatedAt.Before(updated.ArtworkUpdatedAt())).To(BeFalse())
 		}, "10s", "100ms").Should(Succeed())
 	})
 
