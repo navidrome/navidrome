@@ -30,6 +30,7 @@ type MockDataStore struct {
 	MockedPodcastChannel model.PodcastChannelRepository
 	MockedPodcastEpisode model.PodcastEpisodeRepository
 	MockedPlugin         model.PluginRepository
+	MockedMediaFileTag   model.MediaFileTagRepository
 	scrobbleBufferMu     sync.Mutex
 	repoMu               sync.Mutex
 
@@ -69,6 +70,17 @@ func (db *MockDataStore) Tag(ctx context.Context) model.TagRepository {
 	}
 	db.MockedTag = struct{ model.TagRepository }{}
 	return db.MockedTag
+}
+
+func (db *MockDataStore) MediaFileTag(ctx context.Context) model.MediaFileTagRepository {
+	if db.MockedMediaFileTag != nil {
+		return db.MockedMediaFileTag
+	}
+	if db.RealDS != nil {
+		return db.RealDS.MediaFileTag(ctx)
+	}
+	db.MockedMediaFileTag = struct{ model.MediaFileTagRepository }{}
+	return db.MockedMediaFileTag
 }
 
 func (db *MockDataStore) Album(ctx context.Context) model.AlbumRepository {
