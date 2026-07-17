@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model/criteria"
 )
@@ -37,6 +38,15 @@ type Playlist struct {
 
 func (pls Playlist) IsSmartPlaylist() bool {
 	return pls.Rules != nil && pls.Rules.Expression != nil
+}
+
+// RefreshDelay returns the playlist's own refresh window when set, falling
+// back to the global SmartPlaylistRefreshDelay.
+func (pls Playlist) RefreshDelay() time.Duration {
+	if pls.IsSmartPlaylist() && pls.Rules.RefreshDelay > 0 {
+		return pls.Rules.RefreshDelay
+	}
+	return conf.Server.SmartPlaylistRefreshDelay
 }
 
 func (pls Playlist) MediaFiles() MediaFiles {

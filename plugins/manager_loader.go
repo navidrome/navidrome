@@ -421,6 +421,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 		allowedUserIDs: allowedUsers,
 		allUsers:       p.AllUsers,
 		libraries:      newLibraryAccess(allowedLibraries, p.AllLibraries),
+		lyricsSem:      make(chan struct{}, maxConcurrentLyricsCalls),
 	}
 	m.mu.Unlock()
 	loaded = true

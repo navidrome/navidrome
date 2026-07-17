@@ -168,7 +168,7 @@ func buildOSPlaylist(ctx context.Context, p model.Playlist) *responses.OpenSubso
 		pls.Readonly = true
 
 		if p.EvaluatedAt != nil {
-			pls.ValidUntil = new(p.EvaluatedAt.Add(conf.Server.SmartPlaylistRefreshDelay))
+			pls.ValidUntil = new(p.EvaluatedAt.Add(p.RefreshDelay()))
 		}
 	} else {
 		user, ok := request.UserFrom(ctx)
