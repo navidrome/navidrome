@@ -198,6 +198,11 @@ func (u *blurHashUpdater) process(ctx context.Context, artID model.ArtworkID, re
 		}
 		return
 	}
+	// Unchanged hash with an unmoved signal needs no write — keeps forced recomputes (e.g. every
+	// original serve on cache-disabled installs) from hammering the DB.
+	if hash == stored && storedAt != nil && !sig.After(*storedAt) {
+		return
+	}
 	if err := u.persist(ctx, artID, hash, sig); err != nil {
 		log.Warn(ctx, "BlurHash: error persisting", "artID", artID, err)
 		return

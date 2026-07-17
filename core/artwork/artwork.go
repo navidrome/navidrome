@@ -90,9 +90,11 @@ func (a *artwork) Get(ctx context.Context, artID model.ArtworkID, size int, squa
 	if a.blurHashes != nil {
 		// An original-size miss on an operational cache means a new/changed image even when no
 		// entity row moved. Resized misses don't qualify (their keys vary per size, and their
-		// readers re-fetch the original through Get, carrying the real signal); nor does cache
-		// warmup/disabled, where every serve misses — there the LastUpdated signal applies.
-		force := size == 0 && !square && !r.Cached && a.cache.Available(ctx)
+		// readers re-fetch the original through Get, carrying the real signal). With the cache
+		// permanently disabled every serve reads live bytes, so original serves always force
+		// (the worker's unchanged-hash guard keeps that write-free); warmup forces nothing.
+		force := size == 0 && !square &&
+			((!r.Cached && a.cache.Available(ctx)) || a.cache.Disabled(ctx))
 		a.blurHashes.Enqueue(artID, artReader.LastUpdated(), force, false)
 	}
 	return r, artReader.LastUpdated(), nil
