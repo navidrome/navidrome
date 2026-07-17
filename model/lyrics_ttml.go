@@ -78,9 +78,10 @@ type ttmlDefinedAgent struct {
 }
 
 type ttmlPiece struct {
-	raw     string
-	cue     *Cue
-	isBreak bool
+	raw           string
+	cue           *Cue
+	isBreak       bool
+	invalidTiming bool
 }
 
 type ttmlParser struct {
@@ -189,20 +190,20 @@ func (p *ttmlParser) parseElement(start xml.StartElement, parent ttmlTimingConte
 		if err != nil {
 			return err
 		}
-		if ctx.invalid || lineText == "" {
+		if lineText == "" {
 			return nil
 		}
 
 		parsedLine := Line{Value: lineText}
-		if ctx.hasBegin {
+		if !ctx.invalid && ctx.hasBegin {
 			startMs := ctx.begin
 			parsedLine.Start = &startMs
 		}
-		if ctx.hasEnd {
+		if !ctx.invalid && ctx.hasEnd {
 			endMs := ctx.end
 			parsedLine.End = &endMs
 		}
-		if len(tokens) > 0 {
+		if !ctx.invalid && len(tokens) > 0 {
 			parsedLine.Cue = tokens
 		}
 		parsedLine = normalizeLineTiming(parsedLine)
@@ -331,21 +332,17 @@ func (p *ttmlParser) parseMetadataText(start xml.StartElement, parent ttmlTiming
 	}
 
 	ctx := p.childContext(start.Attr, parent)
-	if ctx.invalid {
-		return ttmlMetadataEntry{}, false, nil
-	}
-
 	value, tokens := buildTTMLLineFromPieces(pieces)
 	line := Line{Value: value}
-	if ctx.hasBegin {
+	if !ctx.invalid && ctx.hasBegin {
 		startMs := ctx.begin
 		line.Start = &startMs
 	}
-	if ctx.hasEnd {
+	if !ctx.invalid && ctx.hasEnd {
 		endMs := ctx.end
 		line.End = &endMs
 	}
-	if len(tokens) > 0 {
+	if !ctx.invalid && len(tokens) > 0 {
 		line.Cue = tokens
 	}
 	line = normalizeLineTiming(line)
@@ -416,7 +413,17 @@ func (p *ttmlParser) parseInlineElement(start xml.StartElement, parent ttmlTimin
 				continue
 			}
 
-			if local == "span" && hasOwnTiming && !ctx.invalid && !ttmlPiecesContainCue(pieces) {
+			if local == "span" && hasOwnTiming && ctx.invalid {
+				if len(pieces) == 0 {
+					pieces = append(pieces, ttmlPiece{})
+				}
+				for i := range pieces {
+					pieces[i].invalidTiming = true
+				}
+				return pieces, nil
+			}
+
+			if local == "span" && hasOwnTiming && !ttmlPiecesContainCue(pieces) {
 				rawValue := concatTTMLPieceRaw(pieces)
 				tokenText := sanitizeTTMLText(rawValue)
 				if tokenText != "" {
@@ -447,6 +454,10 @@ func (p *ttmlParser) parseInlineElement(start xml.StartElement, parent ttmlTimin
 }
 
 func buildTTMLLineFromPieces(pieces []ttmlPiece) (string, []Cue) {
+	invalidTiming := false
+	for _, piece := range pieces {
+		invalidTiming = invalidTiming || piece.invalidTiming
+	}
 	finalized := finalizeTTMLLines(splitTTMLPiecesByBreak(pieces))
 	for len(finalized) > 0 && finalized[0].text == "" && len(finalized[0].cues) == 0 {
 		finalized = finalized[1:]
@@ -476,6 +487,9 @@ func buildTTMLLineFromPieces(pieces []ttmlPiece) (string, []Cue) {
 		byteOffset += len(line.text)
 	}
 
+	if invalidTiming {
+		cues = nil
+	}
 	return value.String(), cues
 }
 
@@ -513,8 +527,9 @@ func splitTTMLPiecesByBreak(pieces []ttmlPiece) [][]ttmlPiece {
 			continue
 		}
 		lines[len(lines)-1] = append(lines[len(lines)-1], ttmlPiece{
-			raw: raw,
-			cue: gg.Clone(piece.cue),
+			raw:           raw,
+			cue:           gg.Clone(piece.cue),
+			invalidTiming: piece.invalidTiming,
 		})
 		prevEndedWithSpace = strings.HasSuffix(raw, " ")
 	}
@@ -701,7 +716,7 @@ func (p *ttmlParser) buildMetadataLyrics(kind string, langOrder []string, entrie
 
 func (p *ttmlParser) finalizeLyrics(lyrics Lyrics) Lyrics {
 	lyrics.Line, lyrics.Agents = p.resolveAgents(lyrics.Line)
-	return normalizeLyrics(lyrics)
+	return NormalizeLyrics(lyrics)
 }
 
 func (p *ttmlParser) resolveAgents(lines []Line) ([]Line, []Agent) {
@@ -979,6 +994,9 @@ func (p *ttmlParser) childContext(attrs []xml.Attr, parent ttmlTimingContext) tt
 
 	ctx.end = calculatedEnd
 	ctx.hasEnd = calculatedHasEnd
+	if ctx.hasBegin && ctx.hasEnd && ctx.end < ctx.begin {
+		ctx.invalid = true
+	}
 	return ctx
 }
 
