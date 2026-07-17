@@ -45,13 +45,22 @@ var _ = Describe("blurHashUpdater", func() {
 			Expect(u.buffer[id].gone).To(BeFalse())
 		})
 
-		It("merges a gone flag onto a pending snapshot for the same artwork", func() {
+		It("keeps a gone flag when it follows a pending fill (cover then vanished)", func() {
 			id := model.Album{ID: "al-1"}.CoverArtID()
 			t1 := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 			u.Enqueue(id, t1)
 			u.EnqueueGone(id)
 			Expect(u.buffer[id].snapshot).To(Equal(t1))
 			Expect(u.buffer[id].gone).To(BeTrue())
+		})
+
+		It("lets a successful fill supersede a pending gone (cover restored)", func() {
+			id := model.Album{ID: "al-1"}.CoverArtID()
+			t1 := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+			u.EnqueueGone(id)
+			u.Enqueue(id, t1)
+			Expect(u.buffer[id].snapshot).To(Equal(t1))
+			Expect(u.buffer[id].gone).To(BeFalse())
 		})
 
 		It("ignores other artwork kinds", func() {

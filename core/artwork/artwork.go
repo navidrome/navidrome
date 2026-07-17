@@ -87,10 +87,11 @@ func (a *artwork) Get(ctx context.Context, artID model.ArtworkID, size int, squa
 		}
 		return nil, time.Time{}, err
 	}
-	if a.blurHashes != nil && size == 0 && !square && !r.Cached {
-		// An original-size cache fill is exactly when the served bytes change: the single recompute
-		// trigger. Resized fills recurse through Get(size=0); a disabled cache reports every serve as
-		// a fill (the worker's unchanged-hash guard keeps that write-free).
+	if a.blurHashes != nil && size == 0 && !square {
+		// Every original-size serve carries the reader's true version; the worker's freshness guard
+		// turns already-hashed rows into a cheap read and only recomputes when the hash is stale or
+		// missing. Enqueuing on cache hits too (not just fills) is what backfills warm caches adopted
+		// from a pre-blurhash version, whose rows migrated in with an empty hash.
 		a.blurHashes.Enqueue(artID, artReader.LastUpdated())
 	}
 	return r, artReader.LastUpdated(), nil

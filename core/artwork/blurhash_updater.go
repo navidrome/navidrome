@@ -83,10 +83,16 @@ func (u *blurHashUpdater) enqueue(artID model.ArtworkID, req enqueueRequest) {
 		go u.run(ctx)
 	}
 	prev := u.buffer[artID]
-	if req.snapshot.After(prev.snapshot) {
-		prev.snapshot = req.snapshot
+	if !req.snapshot.IsZero() {
+		// A successful serve proves the artwork exists, so it supersedes any pending gone request for
+		// the same artwork (a cover restored right after a missing-art serve must still recompute).
+		prev.gone = false
+		if req.snapshot.After(prev.snapshot) {
+			prev.snapshot = req.snapshot
+		}
+	} else if req.gone {
+		prev.gone = true
 	}
-	prev.gone = prev.gone || req.gone
 	u.buffer[artID] = prev
 	u.mutex.Unlock()
 	select {
