@@ -1,9 +1,11 @@
 package artwork
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"image"
+	"io"
 	"sync"
 	"time"
 
@@ -12,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/resources"
 )
 
 // enqueueRequest carries the staleness signals seen at serve time: force (image-cache miss) and
@@ -244,17 +247,21 @@ func (u *blurHashUpdater) computeFromArtwork(ctx context.Context, artID model.Ar
 	if err != nil {
 		return "", err
 	}
-	// Reads straight from the source (not artwork.Get): no re-enqueue, and the returned path
-	// identifies placeholder artwork, which must never be persisted as an entity's blurhash.
-	r, path, err := artReader.Reader(ctx)
+	// Reads via the cache (not artwork.Get, so no re-enqueue): generated playlist mosaics are
+	// random per generation, and the hash must describe the bytes clients actually download.
+	r, err := u.a.cache.Get(ctx, artReader)
 	if err != nil {
 		return "", err
 	}
 	defer r.Close()
-	if path == consts.PlaceholderAlbumArt || path == consts.PlaceholderArtistArt {
+	data, err := io.ReadAll(r)
+	if err != nil {
+		return "", err
+	}
+	if isPlaceholder(data) {
 		return "", nil
 	}
-	img, _, err := image.Decode(r)
+	img, _, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
 		return "", err
 	}
@@ -262,6 +269,30 @@ func (u *blurHashUpdater) computeFromArtwork(ctx context.Context, artID model.Ar
 	x, y := blurhash.Components(b.Dx(), b.Dy())
 	return blurhash.Encode(img, x, y)
 }
+
+// isPlaceholder byte-compares against the embedded placeholder assets: placeholder artwork must
+// never be persisted as an entity's blurhash, and cached reads carry no source path to check.
+func isPlaceholder(data []byte) bool {
+	for _, p := range placeholderImages() {
+		if bytes.Equal(data, p) {
+			return true
+		}
+	}
+	return false
+}
+
+var placeholderImages = sync.OnceValue(func() [][]byte {
+	var imgs [][]byte
+	for _, name := range []string{consts.PlaceholderAlbumArt, consts.PlaceholderArtistArt} {
+		if f, err := resources.FS().Open(name); err == nil {
+			if data, err := io.ReadAll(f); err == nil {
+				imgs = append(imgs, data)
+			}
+			_ = f.Close()
+		}
+	}
+	return imgs
+})
 
 func (u *blurHashUpdater) persist(ctx context.Context, artID model.ArtworkID, hash string, version time.Time) error {
 	switch artID.Kind {
