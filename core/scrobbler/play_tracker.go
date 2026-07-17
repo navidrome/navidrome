@@ -89,6 +89,7 @@ type playTracker struct {
 	ds                model.DataStore
 	broker            events.Broker
 	playMap           cache.SimpleCache[string, PlaybackSession]
+	sessionsMu        sync.Mutex // serializes playMap check-then-write across concurrent reports
 	builtinScrobblers map[string]Scrobbler
 	pluginScrobblers  map[string]Scrobbler
 	pluginLoader      PluginLoader
@@ -249,6 +250,12 @@ func (p *playTracker) getActiveScrobblers() map[string]Scrobbler {
 	return combined
 }
 
+// hasPlayingSession reports whether clientId's current session is already playing mediaId.
+func (p *playTracker) hasPlayingSession(clientId, mediaId string) bool {
+	cur, err := p.playMap.Get(clientId)
+	return err == nil && cur.MediaFile.ID == mediaId && cur.State == StatePlaying
+}
+
 func remainingTTL(durationSec float32, positionMs int64, rate float64) time.Duration {
 	if rate <= 0 {
 		rate = 1.0
@@ -268,6 +275,12 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 
 	switch params.State {
 	case StateStarting:
+		// Clients may send starting/playing unordered; a late "starting" must not downgrade
+		// a playing session, or position estimation freezes until the next report.
+		if p.hasPlayingSession(clientId, params.MediaId) {
+			log.Trace(ctx, "Ignoring out-of-order starting report for playing session", "clientId", clientId, "mediaId", params.MediaId)
+			return nil
+		}
 		mf, err := p.ds.MediaFile(ctx).GetWithParticipants(params.MediaId)
 		if err != nil {
 			return err
@@ -284,7 +297,15 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 			PlaybackRate: params.PlaybackRate,
 			LastReport:   now,
 		}
+		p.sessionsMu.Lock()
+		// re-check: a concurrent "playing" report may have created the session during the load above
+		if p.hasPlayingSession(clientId, params.MediaId) {
+			p.sessionsMu.Unlock()
+			log.Trace(ctx, "Ignoring out-of-order starting report for playing session", "clientId", clientId, "mediaId", params.MediaId)
+			return nil
+		}
 		err = p.playMap.AddWithTTL(clientId, info, remainingTTL(mf.Duration, params.PositionMs, params.PlaybackRate))
+		p.sessionsMu.Unlock()
 		if err != nil {
 			log.Warn(ctx, "Error adding PlaybackSession to cache", "clientId", clientId, "mediaId", params.MediaId, "state", params.State, err)
 		}
@@ -315,7 +336,9 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 			ttl = remainingTTL(info.MediaFile.Duration, params.PositionMs, params.PlaybackRate)
 		}
 		log.Trace(ctx, "Updating PlaybackSession in cache", "clientId", clientId, "mediaId", params.MediaId, "state", params.State, "positionMs", params.PositionMs, "playbackRate", params.PlaybackRate, "ttl", ttl)
+		p.sessionsMu.Lock()
 		err := p.playMap.AddWithTTL(clientId, info, ttl)
+		p.sessionsMu.Unlock()
 		if err != nil {
 			log.Warn(ctx, "Error updating PlaybackSession in cache", "clientId", clientId, "mediaId", params.MediaId, "state", params.State, err)
 		}
@@ -339,6 +362,17 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 				p.dispatchScrobble(ctx, mf, now)
 			}
 		}
+		p.sessionsMu.Lock()
+		info, getErr := p.playMap.Get(clientId)
+		// A late stop for a previous track must not end the current session nor reach
+		// playback reporters, or presence-style plugins would clear the active track.
+		if getErr == nil && info.MediaFile.ID != params.MediaId {
+			p.sessionsMu.Unlock()
+			log.Trace(ctx, "Ignoring out-of-order stopped report for different track", "clientId", clientId, "stoppedMediaId", params.MediaId, "currentMediaId", info.MediaFile.ID)
+			return nil
+		}
+		p.playMap.Remove(clientId)
+		p.sessionsMu.Unlock()
 		stoppedInfo := PlaybackSession{
 			UserId:       user.ID,
 			Username:     user.UserName,
@@ -349,7 +383,7 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 			PlaybackRate: params.PlaybackRate,
 			LastReport:   now,
 		}
-		if info, getErr := p.playMap.Get(clientId); getErr == nil {
+		if getErr == nil {
 			stoppedInfo.MediaFile = info.MediaFile
 			stoppedInfo.Start = info.Start
 		} else {
@@ -364,7 +398,6 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 			stoppedInfo.MediaFile = *mf
 		}
 		p.enqueuePlaybackReport(ctx, stoppedInfo)
-		p.playMap.Remove(clientId)
 	}
 
 	if conf.Server.EnableNowPlaying {
