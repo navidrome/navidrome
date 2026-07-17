@@ -26,6 +26,9 @@ compatibility, same plugin system. This fork just adds:
   Subsonic API. See [below](#podcast-support-experimental) for the full feature list.
 - 📁 **[Physical folder browsing](navidrome-folder-roadmap.md)** — navigate, play, and manage your library exactly
   as it's laid out on disk. See [below](#physical-folder-browsing-experimental) for the full feature list.
+- 🏷️ **User-defined song tagging** — private per-user labels on songs, independent of file metadata, with
+  tag-based filtering, bulk playlist add, and smart-playlist criteria support. See
+  [below](#user-defined-song-tagging-experimental) for details.
 
 Kept in sync with upstream: currently based on [Navidrome v0.63.2](https://github.com/navidrome/navidrome/releases/tag/v0.63.2),
 merged in directly rather than maintained as a standalone patch set. Syncs happen periodically, not on a fixed
@@ -207,6 +210,39 @@ Compatible with Subsonic clients that support physical folder browsing, so this 
 
 For the full history of what's shipped and what's planned, see
 [navidrome-folder-roadmap.md](navidrome-folder-roadmap.md).
+
+## User-Defined Song Tagging (Experimental)
+
+Genre, mood, and grouping tags come from your files' embedded metadata — useful, but fixed, and shared across
+everyone on the server. This fork adds a second kind of tag: ones you create yourself, entirely separate from file
+metadata, and private to your own account even when other people share the same library.
+
+<p align="left">
+    <img width="800" src=".github/screenshots/ss-tags-context-menu.png" alt="Song context menu showing the new Tags option, alongside Add to Playlist, Share, and other actions">
+</p>
+
+### 🏷️ Tag anything, however you want
+Apply your own free-form labels to any song from its context menu — "workout," "background music for writing,"
+whatever makes sense to you. A tag doesn't need to be created ahead of time; typing a new name and applying it is
+enough, and it becomes a reusable option for every other song from that point on.
+
+<p align="left">
+    <img width="500" src=".github/screenshots/ss-tags-dialog.png" alt="Tags dialog, opened from a song's context menu">
+</p>
+
+### 🔒 Yours alone, even on a shared server
+Tags are scoped entirely to your own account. Two people tagging songs on the same shared library never see each
+other's tags, and there's no admin-managed or global tag list to work around.
+
+### 🎯 Filter and bulk-add in one action
+A "My Tag" filter on the song list narrows to everything carrying a given tag, and the "Bind by Tag" button adds
+every matching song to a playlist in one click — no selecting songs one at a time.
+
+### 🔁 Smart playlists that follow your tags automatically
+Tags are usable as smart-playlist (`.nsp`) criteria, so a playlist can auto-update as you tag or untag songs,
+instead of needing to be rebuilt by hand every time something changes.
+
+Requested in [navidrome/navidrome discussion #4823](https://github.com/navidrome/navidrome/discussions/4823).
 
 ## Translations
 
