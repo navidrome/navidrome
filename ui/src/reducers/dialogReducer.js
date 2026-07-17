@@ -17,6 +17,8 @@ import {
   SAVE_QUEUE_CLOSE,
   SHARE_MENU_OPEN,
   SHARE_MENU_CLOSE,
+  TAG_SONG_OPEN,
+  TAG_SONG_CLOSE,
 } from '../actions'
 
 export const shareDialogReducer = (
@@ -75,6 +77,31 @@ export const addToPlaylistDialogReducer = (
       }
     case DUPLICATE_SONG_WARNING_CLOSE:
       return { ...previousState, duplicateSong: false }
+    default:
+      return previousState
+  }
+}
+
+export const tagSongDialogReducer = (
+  previousState = {
+    open: false,
+    record: undefined,
+  },
+  payload,
+) => {
+  const { type } = payload
+  switch (type) {
+    case TAG_SONG_OPEN:
+      return {
+        ...previousState,
+        open: true,
+        record: payload.record,
+      }
+    case TAG_SONG_CLOSE:
+      return {
+        ...previousState,
+        open: false,
+      }
     default:
       return previousState
   }

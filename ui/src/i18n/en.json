@@ -51,7 +51,16 @@
         "download": "Download",
         "playNext": "Play Next",
         "info": "Get Info",
-        "instantMix": "Instant Mix"
+        "instantMix": "Instant Mix",
+        "editTags": "Tags"
+      },
+      "message": {
+        "selectTags": "Select tags:",
+        "addNewTag": "Create \"%{name}\"",
+        "searchOrCreateTag": "Search tags or type to create new...",
+        "pressEnterToCreateTag": "Press Enter to create new tag",
+        "noTagsFound": "No tags found",
+        "noTags": "No tags available"
       }
     },
     "album": {

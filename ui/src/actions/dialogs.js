@@ -17,6 +17,8 @@ export const DOWNLOAD_MENU_SONG = 'song'
 export const DOWNLOAD_MENU_FOLDER = 'folder'
 export const SHARE_MENU_OPEN = 'SHARE_MENU_OPEN'
 export const SHARE_MENU_CLOSE = 'SHARE_MENU_CLOSE'
+export const TAG_SONG_OPEN = 'TAG_SONG_OPEN'
+export const TAG_SONG_CLOSE = 'TAG_SONG_CLOSE'
 
 export const openShareMenu = (ids, resource, name, label) => ({
   type: SHARE_MENU_OPEN,
@@ -38,6 +40,15 @@ export const openAddToPlaylist = ({ selectedIds, onSuccess }) => ({
 
 export const closeAddToPlaylist = () => ({
   type: ADD_TO_PLAYLIST_CLOSE,
+})
+
+export const openTagSongDialog = (record) => ({
+  type: TAG_SONG_OPEN,
+  record,
+})
+
+export const closeTagSongDialog = () => ({
+  type: TAG_SONG_CLOSE,
 })
 
 export const openDownloadMenu = (record, recordType) => {

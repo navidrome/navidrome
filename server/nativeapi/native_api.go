@@ -79,6 +79,7 @@ func (api *Router) routes() http.Handler {
 			api.addPodcastRoutes(r)
 		}
 		api.R(r, "/tag", model.Tag{}, true)
+		api.addMediaFileTagRoutes(r)
 		if conf.Server.EnableSharing {
 			api.RX(r, "/share", api.share.NewRepository, true)
 		}

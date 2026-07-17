@@ -17,6 +17,7 @@ import {
   addTracks,
   setTrack,
   openAddToPlaylist,
+  openTagSongDialog,
   openExtendedInfoDialog,
   openDownloadMenu,
   DOWNLOAD_MENU_SONG,
@@ -128,6 +129,11 @@ export const SongContextMenu = ({
       action: (record, e) => {
         setPlaylistAnchorEl(e.currentTarget)
       },
+    },
+    editTags: {
+      enabled: true,
+      label: translate('resources.song.actions.editTags'),
+      action: (record) => dispatch(openTagSongDialog(record)),
     },
     share: {
       enabled: config.enableSharing,
