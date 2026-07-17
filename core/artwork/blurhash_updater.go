@@ -171,6 +171,14 @@ func (u *blurHashUpdater) process(ctx context.Context, artID model.ArtworkID, re
 		log.Trace(ctx, "BlurHash: could not load entity", "artID", artID, err)
 		return
 	}
+	// A future-dated artwork file mtime (clock skew, a future-stamped file) would otherwise be
+	// persisted verbatim and, via the !Before checks here and in the DTO, pin the stored hash until
+	// wall time caught up. Cap the snapshot at now so a later real change always moves past it.
+	now := time.Now()
+	snapshot := req.snapshot
+	if snapshot.After(now) {
+		snapshot = now
+	}
 	if req.gone {
 		// Only the failed serve witnesses a deletion; clear a stored hash so the DTO falls back to
 		// the rotating fake. An empty hash means there is nothing to clear.
@@ -183,7 +191,7 @@ func (u *blurHashUpdater) process(ctx context.Context, artID model.ArtworkID, re
 	}
 	// snapshot folds row timestamps and file mtimes into one clock; a stored hash at or after it is
 	// already current. This is the only freshness comparison the fill trigger needs.
-	if stored != "" && storedAt != nil && !storedAt.Before(req.snapshot) {
+	if stored != "" && storedAt != nil && !storedAt.Before(snapshot) {
 		return
 	}
 	hash, err := u.computeFromArtwork(ctx, artID)
@@ -197,7 +205,7 @@ func (u *blurHashUpdater) process(ctx context.Context, artID model.ArtworkID, re
 		// An empty hash means the served bytes are a placeholder: the cover is gone. Clear a stored
 		// hash so the DTO stops describing artwork no longer served.
 		if stored != "" {
-			if err := u.persist(ctx, artID, "", req.snapshot); err != nil {
+			if err := u.persist(ctx, artID, "", snapshot); err != nil {
 				log.Warn(ctx, "BlurHash: error clearing stale hash", "artID", artID, err)
 			}
 		}
@@ -205,10 +213,10 @@ func (u *blurHashUpdater) process(ctx context.Context, artID model.ArtworkID, re
 	}
 	// Unchanged hash with an unmoved snapshot needs no write — keeps cache-disabled installs (which
 	// fill on every original serve) from hammering the DB.
-	if hash == stored && storedAt != nil && !req.snapshot.After(*storedAt) {
+	if hash == stored && storedAt != nil && !snapshot.After(*storedAt) {
 		return
 	}
-	if err := u.persist(ctx, artID, hash, req.snapshot); err != nil {
+	if err := u.persist(ctx, artID, hash, snapshot); err != nil {
 		log.Warn(ctx, "BlurHash: error persisting", "artID", artID, err)
 	}
 }

@@ -2,6 +2,7 @@ package artworke2e_test
 
 import (
 	"testing/fstest"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -32,6 +33,28 @@ var _ = Describe("BlurHash", func() {
 			// The snapshot must not be before the artwork version, or the DTO would treat it as
 			// stale (it may exceed it: image file mtimes are folded in).
 			g.Expect(updated.BlurHashUpdatedAt.Before(updated.ArtworkUpdatedAt())).To(BeFalse())
+		}, "10s", "100ms").Should(Succeed())
+	})
+
+	It("does not persist a future-dated blurhash timestamp", func() {
+		cover := realPNG("future-cover")
+		cover.ModTime = time.Now().Add(500 * time.Hour) // clock skew / future-stamped file
+		setLayout(fstest.MapFS{
+			"Artist/Album/01 - Song.mp3": trackFile(1, "Song"),
+			"Artist/Album/cover.png":     cover,
+		})
+		scan()
+		al := firstAlbum()
+		readArtwork(al.CoverArtID())
+
+		Eventually(func(g Gomega) {
+			updated, err := ds.Album(ctx).Get(al.ID)
+			g.Expect(err).ToNot(HaveOccurred())
+			g.Expect(updated.BlurHash).ToNot(BeEmpty())
+			g.Expect(updated.BlurHashUpdatedAt).ToNot(BeNil())
+			// A future file mtime must be capped at now, or the !Before checks would pin the hash
+			// (and the client's cover cache) until wall time caught up.
+			g.Expect(updated.BlurHashUpdatedAt.After(time.Now())).To(BeFalse())
 		}, "10s", "100ms").Should(Succeed())
 	})
 
