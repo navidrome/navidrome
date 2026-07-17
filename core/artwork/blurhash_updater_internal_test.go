@@ -101,6 +101,21 @@ var _ = Describe("blurHashUpdater", func() {
 			Expect(last.sig).To(Equal(newer))
 		})
 
+		It("clears a stored hash when a recompute with change evidence yields no result", func() {
+			storedAt := version.Add(-time.Hour)
+			al := model.Album{ID: "al-1", UpdatedAt: version, BlurHash: "LEHV6nWB2yk8", BlurHashUpdatedAt: &storedAt}
+			repo := tests.CreateMockAlbumRepo()
+			repo.SetData(model.Albums{al})
+			ds.MockedAlbum = repo
+			ds.MockedFolder = failingFolderRepo{}
+
+			// storedAt < version = change evidence; the compute fails, so the stale hash must go.
+			u.process(GinkgoT().Context(), al.CoverArtID(), enqueueRequest{imageUpdatedAt: version})
+			stored, err := ds.Album(GinkgoT().Context()).Get("al-1")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(stored.BlurHash).To(BeEmpty())
+		})
+
 		It("does nothing when the entity is gone", func() {
 			ds.MockedAlbum = tests.CreateMockAlbumRepo()
 			Expect(func() {

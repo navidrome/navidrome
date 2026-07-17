@@ -183,6 +183,13 @@ func (u *blurHashUpdater) process(ctx context.Context, artID model.ArtworkID, re
 		// with a TTL: browsing stays cheap, and failures still retry once it expires.
 		log.Trace(ctx, "BlurHash: nothing to persist", "artID", artID, err)
 		u.setNoResult(artID, sig)
+		// Reaching compute with a stored hash means there was change evidence — clear it, so the
+		// DTO falls back to the rotating fake instead of describing artwork no longer served.
+		if stored != "" {
+			if err := u.persist(ctx, artID, "", sig); err != nil {
+				log.Warn(ctx, "BlurHash: error clearing stale hash", "artID", artID, err)
+			}
+		}
 		return
 	}
 	if err := u.persist(ctx, artID, hash, sig); err != nil {
