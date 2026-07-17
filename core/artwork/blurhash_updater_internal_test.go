@@ -80,20 +80,20 @@ var _ = Describe("blurHashUpdater", func() {
 			Expect(stored.BlurHash).To(Equal("LEHV6nWB2yk8"))
 		})
 
-		It("clears a stored hash when a recompute yields no result", func() {
+		It("keeps the stored hash when a recompute fails transiently", func() {
 			al := model.Album{ID: "al-1", UpdatedAt: version, BlurHash: "LEHV6nWB2yk8", BlurHashUpdatedAt: nil}
 			repo := tests.CreateMockAlbumRepo()
 			repo.SetData(model.Albums{al})
 			ds.MockedAlbum = repo
 			ds.MockedFolder = failingFolderRepo{}
 
-			// A stored hash with a newer snapshot is change evidence; the compute fails, so the
-			// stale hash must go.
+			// A newer snapshot forces a recompute, but the reader chain errors (transient): the stored
+			// hash must survive, so clients don't churn on a fake until a later fill succeeds.
 			newer := version.Add(time.Hour)
 			u.process(GinkgoT().Context(), al.CoverArtID(), enqueueRequest{snapshot: newer})
 			stored, err := ds.Album(GinkgoT().Context()).Get("al-1")
 			Expect(err).ToNot(HaveOccurred())
-			Expect(stored.BlurHash).To(BeEmpty())
+			Expect(stored.BlurHash).To(Equal("LEHV6nWB2yk8"))
 		})
 
 		It("clears a stored hash when the source is gone", func() {

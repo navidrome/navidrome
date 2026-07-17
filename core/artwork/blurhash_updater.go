@@ -181,10 +181,15 @@ func (u *blurHashUpdater) process(ctx context.Context, artID model.ArtworkID, re
 		return
 	}
 	hash, err := u.computeFromArtwork(ctx, artID)
-	if err != nil || hash == "" {
-		log.Trace(ctx, "BlurHash: nothing to persist", "artID", artID, err)
-		// Reaching compute with a stored hash means the cover became a placeholder or vanished;
-		// clear it so the DTO stops describing artwork no longer served.
+	if err != nil {
+		// A transient failure (timeout, flaky cache/DB read) is not evidence the artwork changed;
+		// leave the stored hash intact and let a later fill retry, so clients don't churn on a fake.
+		log.Trace(ctx, "BlurHash: recompute failed, keeping stored hash", "artID", artID, err)
+		return
+	}
+	if hash == "" {
+		// An empty hash means the served bytes are a placeholder: the cover is gone. Clear a stored
+		// hash so the DTO stops describing artwork no longer served.
 		if stored != "" {
 			if err := u.persist(ctx, artID, "", req.snapshot); err != nil {
 				log.Warn(ctx, "BlurHash: error clearing stale hash", "artID", artID, err)
