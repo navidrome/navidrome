@@ -173,10 +173,11 @@ func SetOutputFile(path string) error {
 		return err
 	}
 	SetOutput(f)
-	if outputFile != nil {
-		_ = outputFile.Close()
-	}
+	prev := outputFile
 	outputFile = f
+	if prev != nil {
+		_ = prev.Close()
+	}
 	return nil
 }
 
