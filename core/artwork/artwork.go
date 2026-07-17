@@ -80,6 +80,11 @@ func (a *artwork) Get(ctx context.Context, artID model.ArtworkID, size int, squa
 		if !errors.Is(err, context.Canceled) && !errors.Is(err, ErrUnavailable) {
 			log.Error(ctx, "Error accessing image cache", "id", artID, "size", size, err)
 		}
+		// A vanished source must still reach the worker, or a stored hash would keep describing
+		// artwork that no longer exists.
+		if a.blurHashes != nil && errors.Is(err, ErrUnavailable) {
+			a.blurHashes.Enqueue(artID, artReader.LastUpdated(), false)
+		}
 		return nil, time.Time{}, err
 	}
 	if a.blurHashes != nil {

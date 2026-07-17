@@ -35,6 +35,34 @@ var _ = Describe("BlurHash", func() {
 		}, "10s", "100ms").Should(Succeed())
 	})
 
+	It("clears the stored blurhash when the cover disappears", func() {
+		setLayout(fstest.MapFS{
+			"Artist/Album/01 - Song.mp3": trackFile(1, "Song"),
+			"Artist/Album/cover.png":     realPNG("vanishing-cover"),
+		})
+		scan()
+		al := firstAlbum()
+		readArtwork(al.CoverArtID())
+		Eventually(func(g Gomega) {
+			updated, err := ds.Album(ctx).Get(al.ID)
+			g.Expect(err).ToNot(HaveOccurred())
+			g.Expect(updated.BlurHash).ToNot(BeEmpty())
+		}, "10s", "100ms").Should(Succeed())
+
+		setLayout(fstest.MapFS{
+			"Artist/Album/01 - Song.mp3": trackFile(1, "Song"),
+		})
+		scan()
+		_, err := readArtworkOrErr(al.CoverArtID())
+		Expect(err).To(HaveOccurred())
+
+		Eventually(func(g Gomega) {
+			updated, err := ds.Album(ctx).Get(al.ID)
+			g.Expect(err).ToNot(HaveOccurred())
+			g.Expect(updated.BlurHash).To(BeEmpty())
+		}, "10s", "100ms").Should(Succeed())
+	})
+
 	It("does not persist a blurhash when the served image cannot be decoded", func() {
 		setLayout(fstest.MapFS{
 			"Artist/Album/01 - Song.mp3": trackFile(1, "Song"),
