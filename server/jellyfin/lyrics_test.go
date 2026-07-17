@@ -17,13 +17,18 @@ import (
 
 // fakeLyricsService returns canned lyrics per media-file ID and counts calls.
 type fakeLyricsService struct {
-	lyrics map[string]model.LyricList
-	err    error
-	calls  int
+	lyrics      map[string]model.LyricList
+	err         error
+	calls       int
+	hadDeadline bool
 }
 
-func (f *fakeLyricsService) GetLyrics(_ context.Context, mf *model.MediaFile) (model.LyricList, error) {
+func (f *fakeLyricsService) GetLyrics(ctx context.Context, mf *model.MediaFile) (model.LyricList, error) {
 	f.calls++
+	_, f.hadDeadline = ctx.Deadline()
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if f.err != nil {
 		return nil, f.err
 	}
@@ -128,5 +133,23 @@ var _ = Describe("getLyrics", func() {
 		Expect(doRequest("s2").Code).To(Equal(http.StatusNotFound))
 		Expect(doRequest("s2").Code).To(Equal(http.StatusNotFound))
 		Expect(fake.calls).To(Equal(1))
+	})
+
+	It("completes and caches the fetch even when the request context is cancelled", func() {
+		fake.lyrics["s1"] = model.LyricList{
+			{Kind: "main", Synced: true, Line: []model.Line{{Start: p(1000), Value: "hello"}}},
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		list := api.cachedLyrics(ctx, &model.MediaFile{ID: "s1"})
+		Expect(list).ToNot(BeEmpty())
+		Expect(doRequest("s1").Code).To(Equal(http.StatusOK))
+		Expect(fake.calls).To(Equal(1))
+	})
+
+	It("bounds the detached fetch with a timeout", func() {
+		Expect(doRequest("s2").Code).To(Equal(http.StatusNotFound))
+		Expect(fake.hadDeadline).To(BeTrue())
 	})
 })

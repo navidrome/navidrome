@@ -24,6 +24,7 @@ type plugin struct {
 	allowedUserIDs []string // User IDs this plugin can access (from DB configuration)
 	allUsers       bool     // If true, plugin can access all users
 	libraries      libraryAccess
+	lyricsSem      chan struct{} // Caps concurrent lyrics calls (see LyricsPlugin.GetLyrics)
 }
 
 // instance creates a new plugin instance for the given context.
