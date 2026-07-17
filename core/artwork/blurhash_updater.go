@@ -44,7 +44,7 @@ func (u *blurHashUpdater) Enqueue(artID model.ArtworkID, force bool) {
 	u.start.Do(func() {
 		// Playlist artwork readers require a user in the context. Like the cacheWarmer, the worker
 		// lives for the rest of the process; lazy-starting keeps idle Artwork instances goroutine-free.
-		go u.run(request.WithUser(context.TODO(), model.User{IsAdmin: true}))
+		go u.run(request.WithUser(context.Background(), model.User{IsAdmin: true}))
 	})
 	u.mutex.Lock()
 	u.buffer[artID] = u.buffer[artID] || force
@@ -106,7 +106,10 @@ func (u *blurHashUpdater) process(ctx context.Context, artID model.ArtworkID, fo
 	hash, err := u.computeFromArtwork(ctx, artID)
 	if err != nil || hash == "" {
 		log.Trace(ctx, "BlurHash: nothing to persist", "artID", artID, err)
-		u.setNoResult(artID, version)
+		// A timed-out/cancelled attempt is transient — don't suppress future retries for it.
+		if ctx.Err() == nil {
+			u.setNoResult(artID, version)
+		}
 		return
 	}
 	if err := u.persist(ctx, artID, hash, version); err != nil {
@@ -123,9 +126,16 @@ func (u *blurHashUpdater) lastNoResult(artID model.ArtworkID) (time.Time, bool) 
 	return t, ok
 }
 
+// maxNoResultEntries bounds the negative cache; entries only accumulate for artwork-less entities,
+// so a wholesale reset just costs those entities one extra verification pass each.
+const maxNoResultEntries = 25_000
+
 func (u *blurHashUpdater) setNoResult(artID model.ArtworkID, version time.Time) {
 	u.mutex.Lock()
 	defer u.mutex.Unlock()
+	if len(u.noResult) >= maxNoResultEntries {
+		clear(u.noResult)
+	}
 	u.noResult[artID] = version
 }
 

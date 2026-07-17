@@ -42,8 +42,8 @@ type Artist struct {
 	CreatedAt *time.Time `structs:"created_at" json:"createdAt,omitempty"`
 	UpdatedAt *time.Time `structs:"updated_at" json:"updatedAt,omitempty"`
 
-	BlurHash          string     `structs:"blur_hash" json:"blurHash,omitempty"`
-	BlurHashUpdatedAt *time.Time `structs:"blur_hash_updated_at" json:"-"`
+	BlurHash          string     `structs:"blur_hash" json:"blurHash,omitempty" hash:"ignore"`
+	BlurHashUpdatedAt *time.Time `structs:"blur_hash_updated_at" json:"-" hash:"ignore"`
 }
 
 type ArtistStats struct {
