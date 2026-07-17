@@ -153,27 +153,27 @@ func (c smartPlaylistCriteria) exprSQL(expr criteria.Expression) (squirrel.Sqliz
 		}
 		return mergeJsonConds(or), nil
 	case criteria.Is:
-		return comparisonExpr(e, cmpEq)
+		return comparisonExpr(e, cmpEq, c.owner.ID)
 	case criteria.IsNot:
-		return isNotExpr(e)
+		return isNotExpr(e, c.owner.ID)
 	case criteria.Gt:
-		return comparisonExpr(e, cmpGt)
+		return comparisonExpr(e, cmpGt, c.owner.ID)
 	case criteria.Lt:
-		return comparisonExpr(e, cmpLt)
+		return comparisonExpr(e, cmpLt, c.owner.ID)
 	case criteria.Before:
-		return comparisonExpr(e, cmpLt)
+		return comparisonExpr(e, cmpLt, c.owner.ID)
 	case criteria.After:
-		return comparisonExpr(e, cmpGt)
+		return comparisonExpr(e, cmpGt, c.owner.ID)
 	case criteria.Contains:
-		return likeExpr(e, "%%%v%%", false)
+		return likeExpr(e, "%%%v%%", false, c.owner.ID)
 	case criteria.NotContains:
-		return likeExpr(e, "%%%v%%", true)
+		return likeExpr(e, "%%%v%%", true, c.owner.ID)
 	case criteria.StartsWith:
-		return likeExpr(e, "%v%%", false)
+		return likeExpr(e, "%v%%", false, c.owner.ID)
 	case criteria.EndsWith:
-		return likeExpr(e, "%%%v", false)
+		return likeExpr(e, "%%%v", false, c.owner.ID)
 	case criteria.InTheRange:
-		return rangeExpr(e)
+		return rangeExpr(e, c.owner.ID)
 	case criteria.InTheLast:
 		return periodExpr(e, false)
 	case criteria.NotInTheLast:
@@ -183,22 +183,22 @@ func (c smartPlaylistCriteria) exprSQL(expr criteria.Expression) (squirrel.Sqliz
 	case criteria.NotInPlaylist:
 		return c.inList(e, true)
 	case criteria.IsMissing:
-		return missingExpr(e, true)
+		return missingExpr(e, true, c.owner.ID)
 	case criteria.IsPresent:
-		return missingExpr(e, false)
+		return missingExpr(e, false, c.owner.ID)
 	default:
 		return nil, fmt.Errorf("unknown criteria expression type %T", expr)
 	}
 }
 
-func isNotExpr(values map[string]any) (squirrel.Sqlizer, error) {
-	if _, value, info, ok := singleField(values); ok && (info.IsTag || info.IsRole) {
-		return jsonExpr(info, squirrel.Eq{"value": value}, true), nil
+func isNotExpr(values map[string]any, ownerID string) (squirrel.Sqlizer, error) {
+	if _, value, info, ok := singleField(values); ok && (info.IsTag || info.IsRole || info.IsUserTag) {
+		return jsonExpr(info, squirrel.Eq{"value": value}, true, ownerID), nil
 	}
-	return comparisonExpr(values, cmpNe)
+	return comparisonExpr(values, cmpNe, ownerID)
 }
 
-func missingExpr(values map[string]any, checkAbsence bool) (squirrel.Sqlizer, error) {
+func missingExpr(values map[string]any, checkAbsence bool, ownerID string) (squirrel.Sqlizer, error) {
 	field, value, info, ok := singleField(values)
 	if !ok {
 		if len(values) != 1 {
@@ -213,8 +213,8 @@ func missingExpr(values map[string]any, checkAbsence bool) (squirrel.Sqlizer, er
 	negate := checkAbsence == b
 
 	switch {
-	case info.IsTag || info.IsRole:
-		return jsonExpr(info, nil, negate), nil
+	case info.IsTag || info.IsRole || info.IsUserTag:
+		return jsonExpr(info, nil, negate, ownerID), nil
 	case info.Nullable:
 		// Nullable column fields are stored in dedicated columns, not in the tags JSON, so
 		// "missing" maps to a column check rather than a json_tree lookup. Numeric/boolean
@@ -246,10 +246,10 @@ func missingExpr(values map[string]any, checkAbsence bool) (squirrel.Sqlizer, er
 	}
 }
 
-func likeExpr(values map[string]any, pattern string, negate bool) (squirrel.Sqlizer, error) {
+func likeExpr(values map[string]any, pattern string, negate bool, ownerID string) (squirrel.Sqlizer, error) {
 	if _, value, info, ok := singleField(values); ok {
-		if info.IsTag || info.IsRole {
-			return jsonExpr(info, squirrel.Like{"value": fmt.Sprintf(pattern, value)}, negate), nil
+		if info.IsTag || info.IsRole || info.IsUserTag {
+			return jsonExpr(info, squirrel.Like{"value": fmt.Sprintf(pattern, value)}, negate, ownerID), nil
 		}
 		// LIKE can't use the column index, so annotation fields keep the COALESCE form: a NULL
 		// column never matches LIKE, which would silently drop missing-annotation rows the original
@@ -283,12 +283,12 @@ func likeCond(col, pattern string, negate bool) squirrel.Sqlizer {
 	return squirrel.Like{col: pattern}
 }
 
-func rangeExpr(values map[string]any) (squirrel.Sqlizer, error) {
+func rangeExpr(values map[string]any, ownerID string) (squirrel.Sqlizer, error) {
 	field, value, info, ok := singleField(values)
 	if !ok {
 		return nil, fmt.Errorf("invalid field in criteria: %s", field)
 	}
-	if info.IsTag || info.IsRole {
+	if info.IsTag || info.IsRole || info.IsUserTag {
 		// Tags/roles are multi-valued JSON, so splitting a range into two independent EXISTS
 		// subqueries would let different values satisfy each bound. Ranges are unsupported there.
 		return nil, fmt.Errorf("range operator not supported for tag/role field: %s", field)
@@ -297,11 +297,11 @@ func rangeExpr(values map[string]any) (squirrel.Sqlizer, error) {
 	if s.Kind() != reflect.Slice || s.Len() != 2 {
 		return nil, fmt.Errorf("range criteria for %q must be a [min, max] pair, got: %v", field, value)
 	}
-	low, err := comparisonExpr(map[string]any{field: s.Index(0).Interface()}, cmpGe)
+	low, err := comparisonExpr(map[string]any{field: s.Index(0).Interface()}, cmpGe, ownerID)
 	if err != nil {
 		return nil, err
 	}
-	high, err := comparisonExpr(map[string]any{field: s.Index(1).Interface()}, cmpLe)
+	high, err := comparisonExpr(map[string]any{field: s.Index(1).Interface()}, cmpLe, ownerID)
 	if err != nil {
 		return nil, err
 	}
@@ -367,9 +367,12 @@ func (c smartPlaylistCriteria) inList(values map[string]any, negate bool) (squir
 	return squirrel.Expr("media_file.id IN ("+subSQL+")", subArgs...), nil
 }
 
-func jsonExpr(info criteria.FieldInfo, cond squirrel.Sqlizer, negate bool) squirrel.Sqlizer {
+func jsonExpr(info criteria.FieldInfo, cond squirrel.Sqlizer, negate bool, ownerID string) squirrel.Sqlizer {
 	if info.IsRole {
 		return roleCond{role: info.Name(), cond: cond, not: negate}
+	}
+	if info.IsUserTag {
+		return userTagCond{cond: cond, not: negate, ownerID: ownerID}
 	}
 	return tagCond{tag: info.Name(), numeric: info.Numeric, cond: cond, not: negate}
 }
@@ -398,6 +401,39 @@ func (e tagCond) ToSql() (string, []any, error) {
 		cond = "not " + cond
 	}
 	return cond, args, err
+}
+
+// userTagCond matches a media_file against the per-user media_file_tag table, scoped to ownerID
+// (the smart playlist's owner - see smartPlaylistCriteria.owner). Unlike tagCond, there's no
+// per-field-name JSON path: every usertag criterion shares one field, and the tag name being
+// matched is the criteria value itself, carried through cond exactly like tagCond's "value" column
+// (the derived table below aliases tag_name as value so cond, built by the same comparator/like
+// helpers tags use, applies unchanged).
+type userTagCond struct {
+	cond    squirrel.Sqlizer
+	not     bool
+	ownerID string
+}
+
+func (e userTagCond) ToSql() (string, []any, error) {
+	inner := "select tag_name as value from media_file_tag where media_file_id = media_file.id and user_id = ?"
+	var cond string
+	var innerArgs []any
+	if e.cond != nil {
+		var err error
+		cond, innerArgs, err = e.cond.ToSql()
+		if err != nil {
+			return "", nil, err
+		}
+		cond = fmt.Sprintf("exists (select 1 from (%s) where %s)", inner, cond)
+	} else {
+		cond = fmt.Sprintf("exists (%s)", inner)
+	}
+	if e.not {
+		cond = "not " + cond
+	}
+	args := append([]any{e.ownerID}, innerArgs...)
+	return cond, args, nil
 }
 
 type roleCond struct {
@@ -618,7 +654,7 @@ func sqlFields(values map[string]any) (map[string]any, error) {
 		if !ok {
 			return nil, fmt.Errorf("invalid field in criteria: %s", field)
 		}
-		if info.IsTag || info.IsRole {
+		if info.IsTag || info.IsRole || info.IsUserTag {
 			return nil, fmt.Errorf("tag and role criteria must contain exactly one field: %s", field)
 		}
 		sqlField, ok := fieldExpr(info.Name())
@@ -673,10 +709,10 @@ func (f smartPlaylistField) coalesced() string {
 	return fmt.Sprintf("COALESCE(%s, %s)", f.expr, sqlLiteral(f.coalesceDefault))
 }
 
-func comparisonExpr(values map[string]any, cmp comparator) (squirrel.Sqlizer, error) {
+func comparisonExpr(values map[string]any, cmp comparator, ownerID string) (squirrel.Sqlizer, error) {
 	if _, value, info, ok := singleField(values); ok {
-		if info.IsTag || info.IsRole {
-			return jsonExpr(info, cmp.build(map[string]any{"value": value}), false), nil
+		if info.IsTag || info.IsRole || info.IsUserTag {
+			return jsonExpr(info, cmp.build(map[string]any{"value": value}), false, ownerID), nil
 		}
 		if f, isAnnotation := annotationField(info); isAnnotation {
 			return annotationCond(f, cmp, value), nil

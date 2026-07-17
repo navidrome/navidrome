@@ -4,11 +4,12 @@ import "strings"
 
 // FieldInfo contains semantic metadata about a criteria field.
 type FieldInfo struct {
-	Alias   string // If set, this field is a backward-compat alias for another canonical name
-	IsTag   bool
-	IsRole  bool
-	Numeric bool
-	Boolean bool
+	Alias     string // If set, this field is a backward-compat alias for another canonical name
+	IsTag     bool
+	IsRole    bool
+	IsUserTag bool // Per-user tag (model.MediaFileTag), evaluated scoped to the playlist owner
+	Numeric   bool
+	Boolean   bool
 	// Nullable: isMissing/isPresent are supported on this column field. For numeric/boolean
 	// fields, missing means NULL; for string fields it means NULL or empty string.
 	Nullable bool
@@ -102,6 +103,10 @@ var fieldMap = map[string]FieldInfo{
 
 	// Pseudo-field for random sorting
 	"random": {},
+
+	// Per-user free-form song tags (model.MediaFileTag) - the criteria value is a tag name, not
+	// a field name; per-user isolation happens in the SQL layer, not here. See userTagCond.
+	"usertag": {IsUserTag: true},
 }
 
 // AllFieldNames returns the names of all registered criteria fields.

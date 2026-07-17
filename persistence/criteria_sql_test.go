@@ -192,6 +192,19 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 			"(media_file.explicit_status IS NULL OR media_file.explicit_status = ?)", ""),
 		Entry("isPresent comment [true]", criteria.IsPresent{"comment": true},
 			"(media_file.comment IS NOT NULL AND media_file.comment <> ?)", ""),
+		// User tags (model.MediaFileTag) - scoped by ownerID, empty here since this table builds
+		// criteria without withSmartPlaylistOwner. See "user tag ownership scoping" below for a
+		// non-empty owner.
+		Entry("usertag is", criteria.Is{"usertag": "workout"},
+			"exists (select 1 from (select tag_name as value from media_file_tag where media_file_id = media_file.id and user_id = ?) where value = ?)", "", "workout"),
+		Entry("usertag is not", criteria.IsNot{"usertag": "workout"},
+			"not exists (select 1 from (select tag_name as value from media_file_tag where media_file_id = media_file.id and user_id = ?) where value = ?)", "", "workout"),
+		Entry("usertag contains", criteria.Contains{"usertag": "work"},
+			"exists (select 1 from (select tag_name as value from media_file_tag where media_file_id = media_file.id and user_id = ?) where value LIKE ?)", "", "%work%"),
+		Entry("isMissing usertag [true]", criteria.IsMissing{"usertag": true},
+			"not exists (select tag_name as value from media_file_tag where media_file_id = media_file.id and user_id = ?)", ""),
+		Entry("isPresent usertag [true]", criteria.IsPresent{"usertag": true},
+			"exists (select tag_name as value from media_file_tag where media_file_id = media_file.id and user_id = ?)", ""),
 	)
 
 	Describe("playlist permissions", func() {
@@ -268,6 +281,27 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 		Expect(err).To(MatchError(ContainSubstring("range operator not supported for tag/role field")))
 	})
 
+	It("returns an error for a range over a user tag field", func() {
+		_, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: criteria.InTheRange{"usertag": []int{1, 5}}}).Where()
+		Expect(err).To(MatchError(ContainSubstring("range operator not supported for tag/role field")))
+	})
+
+	Describe("user tag ownership scoping", func() {
+		It("scopes the query to the smart playlist owner, not the viewer", func() {
+			owner := model.User{ID: "owner-id"}
+			sqlizer, err := newSmartPlaylistCriteria(
+				criteria.Criteria{Expression: criteria.Is{"usertag": "workout"}},
+				withSmartPlaylistOwner(owner),
+			).Where()
+			Expect(err).ToNot(HaveOccurred())
+
+			sql, args, err := sqlizer.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(sql).To(Equal("exists (select 1 from (select tag_name as value from media_file_tag where media_file_id = media_file.id and user_id = ?) where value = ?)"))
+			Expect(args).To(HaveExactElements("owner-id", "workout"))
+		})
+	})
+
 	It("returns a clear error for a malformed range value", func() {
 		_, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: criteria.InTheRange{"playCount": []int{1, 2, 3}}}).Where()
 		Expect(err).To(MatchError(ContainSubstring("must be a [min, max] pair")))
@@ -309,13 +343,17 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 		It("ignores invalid sort fields", func() {
 			Expect(newSmartPlaylistCriteria(criteria.Criteria{Sort: "bogus,title"}).OrderBy()).To(Equal("media_file.title asc"))
 		})
+
+		It("ignores usertag as a sort field (no single sortable value)", func() {
+			Expect(newSmartPlaylistCriteria(criteria.Criteria{Sort: "usertag,title"}).OrderBy()).To(Equal("media_file.title asc"))
+		})
 	})
 
 	It("has SQL mappings for all non-tag/non-role criteria fields", func() {
 		for _, name := range criteria.AllFieldNames() {
 			info, ok := criteria.LookupField(name)
 			Expect(ok).To(BeTrue(), "field %q registered but LookupField fails", name)
-			if info.IsTag || info.IsRole {
+			if info.IsTag || info.IsRole || info.IsUserTag {
 				continue
 			}
 			_, hasSQLField := smartPlaylistFields[info.Name()]
