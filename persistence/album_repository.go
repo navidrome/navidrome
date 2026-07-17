@@ -219,6 +219,22 @@ func (r *albumRepository) UpdateExternalInfo(al *model.Album) error {
 	return err
 }
 
+// UpdateImage is the sole writer of uploaded_image: it uses raw SQL because Put's
+// structs.Map marshaling drops the structs:"-" tagged UploadedImage field.
+func (r *albumRepository) UpdateImage(id, filename string) error {
+	c, err := r.executeSQL(Update(r.tableName).
+		Set("uploaded_image", filename).
+		Set("updated_at", time.Now()).
+		Where(Eq{"id": id}))
+	if err != nil {
+		return err
+	}
+	if c == 0 {
+		return model.ErrNotFound
+	}
+	return nil
+}
+
 func (r *albumRepository) selectAlbum(options ...model.QueryOptions) SelectBuilder {
 	sql := r.newSelect(options...).Columns("album.*", "library.path as library_path", "library.name as library_name").
 		LeftJoin("library on album.library_id = library.id")

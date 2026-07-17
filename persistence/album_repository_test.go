@@ -41,6 +41,37 @@ var _ = Describe("AlbumRepository", func() {
 		})
 	})
 
+	Describe("UpdateImage", func() {
+		BeforeEach(func() {
+			Expect(albumRepo.Put(&model.Album{ID: "img-1", Name: "img", LibraryID: 1})).To(Succeed())
+			DeferCleanup(func() {
+				_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": "img-1"}))
+			})
+		})
+		It("sets and clears the uploaded image filename", func() {
+			Expect(albumRepo.UpdateImage("img-1", "img-1_cover.jpg")).To(Succeed())
+			got, err := albumRepo.Get("img-1")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.UploadedImage).To(Equal("img-1_cover.jpg"))
+
+			Expect(albumRepo.UpdateImage("img-1", "")).To(Succeed())
+			got, err = albumRepo.Get("img-1")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.UploadedImage).To(BeEmpty())
+		})
+		It("is preserved across a full-row Put (structs:\"-\" contract)", func() {
+			Expect(albumRepo.UpdateImage("img-1", "img-1_cover.jpg")).To(Succeed())
+			// A scan-style refresh re-Puts the album with a zero-valued UploadedImage.
+			Expect(albumRepo.Put(&model.Album{ID: "img-1", Name: "img changed", LibraryID: 1})).To(Succeed())
+			got, err := albumRepo.Get("img-1")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.UploadedImage).To(Equal("img-1_cover.jpg"))
+		})
+		It("returns ErrNotFound for a missing album", func() {
+			Expect(albumRepo.UpdateImage("does-not-exist", "x.jpg")).To(MatchError(model.ErrNotFound))
+		})
+	})
+
 	Describe("CopyAttributes", func() {
 		var srcTime, dstTime time.Time
 		BeforeEach(func() {

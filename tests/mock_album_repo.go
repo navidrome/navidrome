@@ -134,6 +134,17 @@ func (m *MockAlbumRepo) UpdateExternalInfo(album *model.Album) error {
 	return nil
 }
 
+func (m *MockAlbumRepo) UpdateImage(id, filename string) error {
+	if m.Err {
+		return errors.New("unexpected error")
+	}
+	if al, ok := m.Data[id]; ok {
+		al.UploadedImage = filename
+		return nil
+	}
+	return model.ErrNotFound
+}
+
 func (m *MockAlbumRepo) Search(q string, options ...model.QueryOptions) (model.Albums, error) {
 	m.SearchQuery = q
 	if len(options) > 0 {
