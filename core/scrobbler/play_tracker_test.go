@@ -3,6 +3,7 @@ package scrobbler
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"sync"
 	"sync/atomic"
@@ -43,6 +44,17 @@ func (m *mockPluginLoader) LoadScrobbler(name string) (Scrobbler, bool) {
 	defer m.mu.RUnlock()
 	s, ok := m.scrobblers[name]
 	return s, ok
+}
+
+// slowMediaFileRepo widens the window between a report's session check and its
+// write, making check-then-write races reproducible.
+type slowMediaFileRepo struct {
+	model.MediaFileRepository
+}
+
+func (s *slowMediaFileRepo) GetWithParticipants(id string) (*model.MediaFile, error) {
+	time.Sleep(5 * time.Millisecond)
+	return s.MediaFileRepository.GetWithParticipants(id)
 }
 
 var _ = Describe("PlayTracker", func() {
@@ -752,6 +764,33 @@ var _ = Describe("PlayTracker", func() {
 				})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(track.PlayCount).To(Equal(int64(1)))
+			})
+
+			It("never lets a concurrent starting report downgrade the playing session", func() {
+				ds.(*tests.MockDataStore).MockedMediaFile = &slowMediaFileRepo{MediaFileRepository: ds.MediaFile(ctx)}
+				for i := range 20 {
+					raceClientId := fmt.Sprintf("race-client-%d", i)
+					var wg sync.WaitGroup
+					wg.Add(2)
+					go func() {
+						defer wg.Done()
+						defer GinkgoRecover()
+						_ = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+							MediaId: "123", PositionMs: 0, State: "starting", PlaybackRate: 1.0, ClientId: raceClientId,
+						})
+					}()
+					go func() {
+						defer wg.Done()
+						defer GinkgoRecover()
+						_ = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+							MediaId: "123", PositionMs: 0, State: "playing", PlaybackRate: 1.0, ClientId: raceClientId,
+						})
+					}()
+					wg.Wait()
+					info, err := tracker.playMap.Get(raceClientId)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(info.State).To(Equal("playing"), "iteration %d", i)
+				}
 			})
 
 			It("does NOT forward a stopped report for a different track to playback reporters", func() {
