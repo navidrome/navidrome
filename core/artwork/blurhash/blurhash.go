@@ -8,6 +8,7 @@ import (
 	"image/draw"
 	"math"
 	"strings"
+	"sync"
 
 	xdraw "golang.org/x/image/draw"
 )
@@ -32,8 +33,8 @@ func Encode(img image.Image, xComp, yComp int) (string, error) {
 	if xComp < 1 || xComp > 9 || yComp < 1 || yComp > 9 {
 		return "", errors.New("blurhash: components must be between 1 and 9")
 	}
-	img = downscale(img)
-	bounds := img.Bounds()
+	rgba := toRGBA(downscale(img))
+	bounds := rgba.Bounds()
 	w, h := bounds.Dx(), bounds.Dy()
 	if w == 0 || h == 0 {
 		return "", errors.New("blurhash: empty image")
@@ -54,11 +55,13 @@ func Encode(img image.Image, xComp, yComp int) (string, error) {
 		}
 	}
 
+	lin := srgbToLinearTable()
 	factors := make([][3]float64, xComp*yComp)
 	for y := 0; y < h; y++ {
+		row := rgba.Pix[y*rgba.Stride:]
 		for x := 0; x < w; x++ {
-			r, g, b, _ := img.At(bounds.Min.X+x, bounds.Min.Y+y).RGBA()
-			lr, lg, lb := srgbToLinear(int(r>>8)), srgbToLinear(int(g>>8)), srgbToLinear(int(b>>8))
+			p := x * 4
+			lr, lg, lb := lin[row[p]], lin[row[p+1]], lin[row[p+2]]
 			for j := 0; j < yComp; j++ {
 				for i := 0; i < xComp; i++ {
 					basis := cosX[i][x] * cosY[j][y]
@@ -105,6 +108,26 @@ func Encode(img image.Image, xComp, yComp int) (string, error) {
 	}
 	return sb.String(), nil
 }
+
+// toRGBA gives the pixel loop direct Pix access, avoiding a per-pixel allocation through the
+// image.At interface (~16k allocs per encode).
+func toRGBA(img image.Image) *image.RGBA {
+	if rgba, ok := img.(*image.RGBA); ok {
+		return rgba
+	}
+	b := img.Bounds()
+	dst := image.NewRGBA(image.Rect(0, 0, b.Dx(), b.Dy()))
+	draw.Draw(dst, dst.Bounds(), img, b.Min, draw.Src)
+	return dst
+}
+
+var srgbToLinearTable = sync.OnceValue(func() *[256]float64 {
+	var t [256]float64
+	for i := range t {
+		t[i] = srgbToLinear(i)
+	}
+	return &t
+})
 
 func downscale(img image.Image) image.Image {
 	b := img.Bounds()
