@@ -4,9 +4,12 @@ package criteria
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"slices"
+	"time"
 
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/utils"
 )
 
 type Expression interface {
@@ -20,6 +23,7 @@ type Criteria struct {
 	Limit        int
 	LimitPercent int
 	Offset       int
+	RefreshDelay time.Duration // 0 = use conf.Server.SmartPlaylistRefreshDelay
 }
 
 // EffectiveLimit resolves the effective limit for a query. If a fixed Limit is
@@ -83,12 +87,16 @@ func (c Criteria) MarshalJSON() ([]byte, error) {
 		Limit        int          `json:"limit,omitempty"`
 		LimitPercent int          `json:"limitPercent,omitempty"`
 		Offset       int          `json:"offset,omitempty"`
+		RefreshDelay string       `json:"refreshDelay,omitempty"`
 	}{
 		Sort:         c.Sort,
 		Order:        c.Order,
 		Limit:        c.Limit,
 		LimitPercent: c.LimitPercent,
 		Offset:       c.Offset,
+	}
+	if c.RefreshDelay > 0 {
+		aux.RefreshDelay = utils.FormatDuration(c.RefreshDelay)
 	}
 	switch rules := c.Expression.(type) {
 	case Any:
@@ -110,6 +118,7 @@ func (c *Criteria) UnmarshalJSON(data []byte) error {
 		Limit        int                 `json:"limit"`
 		LimitPercent int                 `json:"limitPercent"`
 		Offset       int                 `json:"offset"`
+		RefreshDelay string              `json:"refreshDelay"`
 	}
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
@@ -130,6 +139,14 @@ func (c *Criteria) UnmarshalJSON(data []byte) error {
 	c.Order = aux.Order
 	c.Limit = aux.Limit
 	c.Offset = aux.Offset
+
+	if aux.RefreshDelay != "" {
+		d, err := utils.ParseDuration(aux.RefreshDelay)
+		if err != nil {
+			return fmt.Errorf("invalid refreshDelay: %w", err)
+		}
+		c.RefreshDelay = d
+	}
 
 	// Clamp LimitPercent to [0, 100]
 	if aux.LimitPercent < 0 {
