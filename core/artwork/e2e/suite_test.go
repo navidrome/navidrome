@@ -3,6 +3,7 @@ package artworke2e_test
 import (
 	"context"
 	"fmt"
+	"io"
 	"path/filepath"
 	"testing"
 
@@ -88,6 +89,8 @@ func setupHarness() {
 	storagetest.Register(fakeLibScheme, fakeFS)
 
 	aw = artwork.NewArtwork(ds, artwork.GetImageCache(), newNoopFFmpeg(), &noopProvider{})
+	// The worker must not outlive the spec: it would race the next spec's fakeFS/DB swaps.
+	DeferCleanup(aw.(io.Closer).Close)
 }
 
 func scan() {

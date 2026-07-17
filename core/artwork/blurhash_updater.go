@@ -31,7 +31,10 @@ type blurHashUpdater struct {
 	buffer   map[model.ArtworkID]enqueueRequest
 	noResult map[model.ArtworkID]time.Time
 	wake     chan struct{}
-	start    sync.Once
+	done     chan struct{}
+	runDone  chan struct{}
+	started  bool
+	stopped  bool
 }
 
 func newBlurHashUpdater(a *artwork) *blurHashUpdater {
@@ -40,6 +43,8 @@ func newBlurHashUpdater(a *artwork) *blurHashUpdater {
 		buffer:   make(map[model.ArtworkID]enqueueRequest),
 		noResult: make(map[model.ArtworkID]time.Time),
 		wake:     make(chan struct{}, 1),
+		done:     make(chan struct{}),
+		runDone:  make(chan struct{}),
 	}
 }
 
@@ -49,12 +54,17 @@ func (u *blurHashUpdater) Enqueue(artID model.ArtworkID, imageUpdatedAt time.Tim
 	default:
 		return
 	}
-	u.start.Do(func() {
-		// Playlist artwork readers require a user in the context. Like the cacheWarmer, the worker
-		// lives for the rest of the process; lazy-starting keeps idle Artwork instances goroutine-free.
-		go u.run(request.WithUser(context.Background(), model.User{IsAdmin: true}))
-	})
 	u.mutex.Lock()
+	if u.stopped {
+		u.mutex.Unlock()
+		return
+	}
+	if !u.started {
+		u.started = true
+		// Playlist artwork readers require a user in the context. Lazy-starting keeps idle Artwork
+		// instances goroutine-free; stop() ends the worker (tests must call it, the server never does).
+		go u.run(request.WithUser(context.Background(), model.User{IsAdmin: true}))
+	}
 	req := u.buffer[artID]
 	req.force = req.force || force
 	if imageUpdatedAt.After(req.imageUpdatedAt) {
@@ -68,8 +78,31 @@ func (u *blurHashUpdater) Enqueue(artID model.ArtworkID, imageUpdatedAt time.Tim
 	}
 }
 
+// stop ends the worker and waits for any in-flight computation, so callers can safely tear down
+// the resources (DataStore, filesystems) the worker touches.
+func (u *blurHashUpdater) stop() {
+	u.mutex.Lock()
+	if u.stopped {
+		u.mutex.Unlock()
+		return
+	}
+	u.stopped = true
+	started := u.started
+	u.mutex.Unlock()
+	close(u.done)
+	if started {
+		<-u.runDone
+	}
+}
+
 func (u *blurHashUpdater) run(ctx context.Context) {
-	for range u.wake {
+	defer close(u.runDone)
+	for {
+		select {
+		case <-u.done:
+			return
+		case <-u.wake:
+		}
 		for {
 			artID, req, ok := u.next()
 			if !ok {

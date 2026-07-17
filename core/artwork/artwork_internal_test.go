@@ -67,6 +67,8 @@ var _ = Describe("Artwork", func() {
 		cache := GetImageCache()
 		ffmpeg = tests.NewMockFFmpeg("content from ffmpeg")
 		aw = NewArtwork(ds, cache, ffmpeg, nil).(*artwork)
+		// Stop the blurhash worker up front: it would mutate the non-thread-safe mocks mid-spec.
+		Expect(aw.Close()).To(Succeed())
 	})
 
 	Describe("albumArtworkReader", func() {

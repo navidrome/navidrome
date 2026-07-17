@@ -15,12 +15,13 @@ var _ = Describe("blurHashUpdater", func() {
 
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{}
-		// No run() goroutine: tests drive next()/process() directly.
+		// started is pre-set so Enqueue never spawns run(): tests drive next()/process() directly.
 		u = &blurHashUpdater{
 			a:        &artwork{ds: ds},
 			buffer:   make(map[model.ArtworkID]enqueueRequest),
 			noResult: make(map[model.ArtworkID]time.Time),
 			wake:     make(chan struct{}, 1),
+			started:  true,
 		}
 	})
 

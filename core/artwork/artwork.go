@@ -30,6 +30,15 @@ func NewArtwork(ds model.DataStore, cache cache.FileCache, ffmpeg ffmpeg.FFmpeg,
 	return a
 }
 
+// Close stops the background blurhash worker. The server never calls it; tests must, so a leaked
+// worker can't touch mocks/filesystems being torn down by the next spec.
+func (a *artwork) Close() error {
+	if a.blurHashes != nil {
+		a.blurHashes.stop()
+	}
+	return nil
+}
+
 type artwork struct {
 	ds         model.DataStore
 	cache      cache.FileCache
