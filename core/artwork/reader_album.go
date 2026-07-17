@@ -79,8 +79,13 @@ func (a *albumArtworkReader) LastUpdated() time.Time {
 }
 
 func (a *albumArtworkReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
-	var ff = a.fromCoverArtPriority(ctx, a.a.ffmpeg, conf.Server.CoverArtPriority)
+	ff := []sourceFunc{a.fromAlbumUploadedImage()}
+	ff = append(ff, a.fromCoverArtPriority(ctx, a.a.ffmpeg, conf.Server.CoverArtPriority)...)
 	return selectImageReader(ctx, a.artID, ff...)
+}
+
+func (a *albumArtworkReader) fromAlbumUploadedImage() sourceFunc {
+	return fromLocalFile(a.album.UploadedImagePath())
 }
 
 func (a *albumArtworkReader) fromCoverArtPriority(ctx context.Context, ffmpeg ffmpeg.FFmpeg, priority string) []sourceFunc {
