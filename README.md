@@ -29,6 +29,10 @@ compatibility, same plugin system. This fork just adds:
 - 🏷️ **User-defined song tagging** — private per-user labels on songs, independent of file metadata, with
   tag-based filtering, bulk playlist add, and smart-playlist criteria support. See
   [below](#user-defined-song-tagging-experimental) for details.
+- ⏭️ **Skip / auto-pass disliked songs** — flag a song as skipped and the player automatically passes over it during
+  playback, without deleting it. See [below](#skip--auto-pass-disliked-songs-experimental) for details.
+- 📡 **Enhanced scrobble attribution** — richer client/source/playback-mode context on every scrobble, available to
+  plugins too. See [below](#enhanced-scrobble-attribution-pulse-integration) for details.
 
 Kept in sync with upstream: currently based on [Navidrome v0.63.2](https://github.com/navidrome/navidrome/releases/tag/v0.63.2),
 merged in directly rather than maintained as a standalone patch set. Syncs happen periodically, not on a fixed
@@ -243,6 +247,39 @@ Tags are usable as smart-playlist (`.nsp`) criteria, so a playlist can auto-upda
 instead of needing to be rebuilt by hand every time something changes.
 
 Requested in [navidrome/navidrome discussion #4823](https://github.com/navidrome/navidrome/discussions/4823).
+
+## Skip / Auto-Pass Disliked Songs (Experimental)
+
+Some songs in your library you never want to hear again, but don't want to delete or maintain a separate exclusion
+playlist for. This fork lets you flag a song as skipped, and the player automatically passes over it whenever it
+comes up next — during shuffle, a playlist, an album, anywhere.
+
+### ⏭️ Flag it once, skip it everywhere
+Mark a song as skipped from its context menu. Nothing is deleted or hidden — the song stays exactly where it is in
+your library, the player just automatically advances past it during playback.
+
+### 🔁 Takes effect immediately, even mid-session
+Flagging a song already sitting in your current queue skips it right away, not just for songs added afterward.
+
+### 👀 Still visible, just dimmed
+Skipped songs stay in the song list (dimmed, not hidden) and remain fully playable with an explicit click — the
+auto-skip only kicks in during normal advance/auto-play.
+
+Requested in [navidrome/navidrome discussion #3899](https://github.com/navidrome/navidrome/discussions/3899).
+
+## Enhanced Scrobble Attribution (Pulse Integration)
+
+Beyond just recording that a song was played, this fork adds richer context about *how* and *where* it was played
+to the scrobbling pipeline.
+
+### 📡 Client, source, and playback-mode context
+Every scrobble/play report can now carry `client`, `source`, `origin`, and `playback_mode` fields (e.g.
+distinguishing "Android Auto" from "Web" from "Windows Desktop"), stored alongside the play itself.
+
+### 🔌 Available to plugins too
+The Plugin API's `ScrobbleRequest`/`NowPlayingRequest` types carry the same attribution fields, so a companion
+plugin (built for this fork's own Pulse project) can build listening stats like "you mostly listen via your
+Favorites mix" without needing a separate external bridge process.
 
 ## Translations
 

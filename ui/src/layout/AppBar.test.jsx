@@ -33,6 +33,7 @@ vi.mock('../dialogs/Dialogs', () => ({
 }))
 vi.mock('../dialogs', () => ({
   AboutDialog: () => <div />,
+  ForkFeaturesDialog: () => <div />,
 }))
 
 describe('<AppBar />', () => {

@@ -6,12 +6,12 @@ import {
   usePermissions,
   getResources,
 } from 'react-admin'
-import { MdInfo, MdPerson, MdSupervisorAccount } from 'react-icons/md'
+import { MdInfo, MdHelp, MdPerson, MdSupervisorAccount } from 'react-icons/md'
 import { useSelector } from 'react-redux'
 import { makeStyles, MenuItem, ListItemIcon, Divider } from '@material-ui/core'
 import ViewListIcon from '@material-ui/icons/ViewList'
 import { Dialogs } from '../dialogs/Dialogs'
-import { AboutDialog } from '../dialogs'
+import { AboutDialog, ForkFeaturesDialog } from '../dialogs'
 import PersonalMenu from './PersonalMenu'
 import ActivityPanel from './ActivityPanel'
 import NowPlayingPanel from './NowPlayingPanel'
@@ -60,6 +60,34 @@ const AboutMenuItem = forwardRef(({ onClick, ...rest }, ref) => {
 })
 
 AboutMenuItem.displayName = 'AboutMenuItem'
+
+const ForkHelpMenuItem = forwardRef(({ onClick, ...rest }, ref) => {
+  const classes = useStyles(rest)
+  const translate = useTranslate()
+  const [open, setOpen] = React.useState(false)
+
+  const handleOpen = () => {
+    setOpen(true)
+  }
+  const handleClose = () => {
+    onClick && onClick()
+    setOpen(false)
+  }
+  const label = translate('menu.forkHelp')
+  return (
+    <>
+      <MenuItem ref={ref} onClick={handleOpen} className={classes.root}>
+        <ListItemIcon className={classes.icon}>
+          <MdHelp title={label} size={24} />
+        </ListItemIcon>
+        {label}
+      </MenuItem>
+      <ForkFeaturesDialog onClose={handleClose} open={open} />
+    </>
+  )
+})
+
+ForkHelpMenuItem.displayName = 'ForkHelpMenuItem'
 
 const settingsResources = (resource) =>
   resource.name !== 'user' &&
@@ -132,6 +160,7 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
           .filter(settingsResources)
           .map((r) => renderSettingsMenuItemLink(r))}
         <Divider />
+        <ForkHelpMenuItem />
         <AboutMenuItem />
       </UserMenu>
       <Dialogs />

@@ -1,4 +1,5 @@
 export * from './AboutDialog'
+export * from './ForkFeaturesDialog'
 export * from './SelectPlaylistInput'
 export * from './ListenBrainzTokenDialog'
 export * from './SaveQueueDialog'

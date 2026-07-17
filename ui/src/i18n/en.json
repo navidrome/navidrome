@@ -724,7 +724,8 @@
     "albumList": "Albums",
     "playlists": "Playlists",
     "sharedPlaylists": "Shared Playlists",
-    "about": "About"
+    "about": "About",
+    "forkHelp": "Fork Features"
   },
   "player": {
     "playListsText": "Play Queue",
@@ -777,6 +778,31 @@
       "exportFailed": "Failed to copy configuration",
       "devFlagsHeader": "Development Flags (subject to change/removal)",
       "devFlagsComment": "These are experimental settings and may be removed in future versions"
+    }
+  },
+  "forkFeatures": {
+    "title": "navidrome-experimental Features",
+    "intro": "This server runs navidrome-experimental, a fork of Navidrome with a few extra features on top of the official release. Everything else works exactly like upstream Navidrome.",
+    "learnMore": "Learn more",
+    "podcasts": {
+      "title": "Podcast Support",
+      "description": "Subscribe to and stream or download podcasts through the same Subsonic API you already use for songs."
+    },
+    "folders": {
+      "title": "Physical Folder Browsing",
+      "description": "Browse, play, and manage your library exactly as it's laid out on disk."
+    },
+    "tagging": {
+      "title": "User-Defined Song Tagging",
+      "description": "Create your own private tags on songs, filter and bulk-add by tag, and use tags in smart playlists."
+    },
+    "skipSongs": {
+      "title": "Skip / Auto-Pass Disliked Songs",
+      "description": "Flag a song as skipped and the player automatically passes over it during playback."
+    },
+    "scrobbleAttribution": {
+      "title": "Enhanced Scrobble Attribution",
+      "description": "Richer client/source/playback-mode context on every scrobble, available to plugins too."
     }
   },
   "activity": {
