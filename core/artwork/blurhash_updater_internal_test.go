@@ -1,6 +1,7 @@
 package artwork
 
 import (
+	"errors"
 	"time"
 
 	"github.com/navidrome/navidrome/model"
@@ -8,6 +9,13 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
+
+// failingFolderRepo makes the artwork reader chain fail with a clean (transient-style) error.
+type failingFolderRepo struct{ model.FolderRepository }
+
+func (failingFolderRepo) GetAll(...model.QueryOptions) ([]model.Folder, error) {
+	return nil, errors.New("boom")
+}
 
 var _ = Describe("blurHashUpdater", func() {
 	var u *blurHashUpdater
@@ -19,7 +27,7 @@ var _ = Describe("blurHashUpdater", func() {
 		u = &blurHashUpdater{
 			a:        &artwork{ds: ds},
 			buffer:   make(map[model.ArtworkID]enqueueRequest),
-			noResult: make(map[model.ArtworkID]time.Time),
+			noResult: make(map[model.ArtworkID]noResultEntry),
 			wake:     make(chan struct{}, 1),
 			started:  true,
 		}
@@ -76,20 +84,21 @@ var _ = Describe("blurHashUpdater", func() {
 			Expect(stored.BlurHash).To(BeEmpty())
 		})
 
-		It("does not refresh the no-result entry when a retry fails transiently", func() {
+		It("memoizes a failed retry under the newer signal", func() {
 			al := model.Album{ID: "al-1", UpdatedAt: version}
 			repo := tests.CreateMockAlbumRepo()
 			repo.SetData(model.Albums{al})
 			ds.MockedAlbum = repo
+			ds.MockedFolder = failingFolderRepo{}
 			u.setNoResult(al.CoverArtID(), version)
 
-			// A newer image mtime must bypass the no-result skip and attempt a compute; the compute
-			// fails transiently here (no readers wired), so the no-result entry must NOT be refreshed.
+			// A newer image mtime bypasses the no-result skip; the compute fails cleanly here, so
+			// the entry is refreshed under the newer signal, with the TTL as the retry bound.
 			newer := version.Add(time.Hour)
 			u.process(GinkgoT().Context(), al.CoverArtID(), enqueueRequest{imageUpdatedAt: newer})
 			last, ok := u.lastNoResult(al.CoverArtID())
 			Expect(ok).To(BeTrue())
-			Expect(last).To(Equal(version))
+			Expect(last.sig).To(Equal(newer))
 		})
 
 		It("does nothing when the entity is gone", func() {

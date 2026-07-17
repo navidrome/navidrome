@@ -83,10 +83,9 @@ func (a *artwork) Get(ctx context.Context, artID model.ArtworkID, size int, squa
 		return nil, time.Time{}, err
 	}
 	if a.blurHashes != nil {
-		// A cache miss means the image is new or changed, even when no entity row moved (e.g. an
-		// in-place cover.jpg swap) — force a recompute so the stored blurhash follows the image.
-		// The reader's LastUpdated covers the same case when the image cache is disabled.
-		force := !r.Cached && !a.cache.Disabled(ctx)
+		// A miss on an operational cache means a new/changed image even when no entity row moved;
+		// while warming up or disabled every serve misses, so only the LastUpdated signal applies.
+		force := !r.Cached && a.cache.Available(ctx)
 		a.blurHashes.Enqueue(artID, artReader.LastUpdated(), force)
 	}
 	return r, artReader.LastUpdated(), nil
