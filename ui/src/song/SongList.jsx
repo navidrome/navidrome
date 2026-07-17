@@ -32,6 +32,7 @@ import { makeStyles } from '@material-ui/core/styles'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import { setTrack } from '../actions'
 import { SongListActions } from './SongListActions'
+import { UserTagFilterInput } from './UserTagFilterInput'
 import { AlbumLinkField } from './AlbumLinkField'
 import { SongBulkActions, QualityInfo, useSelectedFields } from '../common'
 import config from '../config'
@@ -117,6 +118,7 @@ const SongFilter = (props) => {
           optionText="tagValue"
         />
       </ReferenceArrayInput>
+      <UserTagFilterInput />
       {config.enableFavourites && (
         <NullableBooleanInput
           source="starred"

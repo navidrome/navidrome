@@ -152,10 +152,16 @@ var mediaFileFilter = sync.OnceValue(func() map[string]filterFunc {
 // mediaFileUserTagFilter filters songs by the requesting user's own tags (model.MediaFileTag),
 // via an EXISTS subquery - mirrors tagIDFilter's shape but against the per-user tag table
 // instead of the scanner-owned tag table, since media_file_tag rows must never leak across users.
+// Eq handles both a single value and a slice, so this transparently supports the same
+// multi-select-as-OR behavior genre_id/grouping/mood already have.
 func mediaFileUserTagFilter(ctx context.Context) filterFunc {
 	return func(_ string, value any) Sqlizer {
 		userID := loggedUser(ctx).ID
-		return Expr(`exists (select 1 from media_file_tag t where t.media_file_id = media_file.id and t.user_id = ? and t.tag_name = ?)`, userID, value)
+		return Exists("media_file_tag t", And{
+			Expr("t.media_file_id = media_file.id"),
+			Eq{"t.user_id": userID},
+			Eq{"t.tag_name": value},
+		})
 	}
 }
 
