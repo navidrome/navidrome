@@ -420,17 +420,7 @@ func (r *mediaFileRepository) GetMissingAndMatching(libId int) (model.MediaFileC
 }
 
 func wrapMediaFileCursor(cursor iter.Seq2[dbMediaFile, error]) model.MediaFileCursor {
-	return func(yield func(model.MediaFile, error) bool) {
-		for m, err := range cursor {
-			if m.MediaFile == nil {
-				yield(model.MediaFile{}, fmt.Errorf("unexpected nil mediafile (%v): %w", m, err))
-				return
-			}
-			if !yield(*m.MediaFile, err) || err != nil {
-				return
-			}
-		}
-	}
+	return model.MediaFileCursor(wrapCursor(cursor, func(m dbMediaFile) *model.MediaFile { return m.MediaFile }))
 }
 
 // FindRecentFilesByMBZTrackID finds recently added files by MusicBrainz Track ID in other libraries

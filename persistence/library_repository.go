@@ -173,15 +173,6 @@ func (r *libraryRepository) ScanEnd(id int) error {
 		Set("last_scan_started_at", time.Time{}).
 		Where(Eq{"id": id})
 	_, err := r.executeSQL(sq)
-	if err != nil {
-		return err
-	}
-	// https://www.sqlite.org/pragma.html#pragma_optimize
-	// Use mask 0x10000 to check table sizes without running ANALYZE
-	// Running ANALYZE can cause query planner issues with expression-based collation indexes
-	if conf.Server.DevOptimizeDB {
-		_, err = r.executeSQL(Expr("PRAGMA optimize=0x10000;"))
-	}
 	return err
 }
 

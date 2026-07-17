@@ -1,6 +1,7 @@
 package model
 
 import (
+	"iter"
 	"slices"
 	"strconv"
 	"time"
@@ -10,6 +11,8 @@ import (
 )
 
 type Playlist struct {
+	Annotations `structs:"-"`
+
 	ID               string         `structs:"id" json:"id"`
 	Name             string         `structs:"name" json:"name"`
 	Comment          string         `structs:"comment" json:"comment"`
@@ -119,14 +122,18 @@ func (pls Playlist) UploadedImagePath() string {
 
 type Playlists []Playlist
 
+type PlaylistCursor iter.Seq2[Playlist, error]
+
 type PlaylistRepository interface {
 	ResourceRepository
+	AnnotatedRepository
 	CountAll(options ...QueryOptions) (int64, error)
 	Exists(id string) (bool, error)
 	Put(pls *Playlist, cols ...string) error
 	Get(id string) (*Playlist, error)
 	GetWithTracks(id string, refreshSmartPlaylist, includeMissing bool) (*Playlist, error)
 	GetAll(options ...QueryOptions) (Playlists, error)
+	GetCursor(options ...QueryOptions) (PlaylistCursor, error)
 	FindByPath(path string) (*Playlist, error)
 	Delete(id string) error
 	Tracks(playlistId string, refreshSmartPlaylist bool) PlaylistTrackRepository
@@ -150,10 +157,15 @@ func (plt PlaylistTracks) MediaFiles() MediaFiles {
 	return mfs
 }
 
+type PlaylistTrackCursor iter.Seq2[PlaylistTrack, error]
+
 type PlaylistTrackRepository interface {
 	ResourceRepository
+	CountAll(options ...QueryOptions) (int64, error)
 	GetAll(options ...QueryOptions) (PlaylistTracks, error)
+	GetCursor(options ...QueryOptions) (PlaylistTrackCursor, error)
 	GetAlbumIDs(options ...QueryOptions) ([]string, error)
+	GetMediaFileIDs(options ...QueryOptions) ([]string, error)
 	Add(mediaFileIds []string) (int, error)
 	AddAlbums(albumIds []string) (int, error)
 	AddArtists(artistIds []string) (int, error)

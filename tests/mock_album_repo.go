@@ -20,6 +20,7 @@ type MockAlbumRepo struct {
 	All                     model.Albums
 	Err                     bool
 	Options                 model.QueryOptions
+	SearchQuery             string            // last query passed to Search
 	ReassignAnnotationCalls map[string]string // prevID -> newID
 	CopyAttributesCalls     map[string]string // fromID -> toID
 }
@@ -75,6 +76,20 @@ func (m *MockAlbumRepo) GetAll(qo ...model.QueryOptions) (model.Albums, error) {
 	return m.All, nil
 }
 
+func (m *MockAlbumRepo) GetCursor(qo ...model.QueryOptions) (model.AlbumCursor, error) {
+	res, err := m.GetAll(qo...)
+	if err != nil {
+		return nil, err
+	}
+	return func(yield func(model.Album, error) bool) {
+		for _, a := range res {
+			if !yield(a, nil) {
+				return
+			}
+		}
+	}, nil
+}
+
 func (m *MockAlbumRepo) IncPlayCount(id string, timestamp time.Time) error {
 	if m.Err {
 		return errors.New("unexpected error")
@@ -120,6 +135,7 @@ func (m *MockAlbumRepo) UpdateExternalInfo(album *model.Album) error {
 }
 
 func (m *MockAlbumRepo) Search(q string, options ...model.QueryOptions) (model.Albums, error) {
+	m.SearchQuery = q
 	if len(options) > 0 {
 		m.Options = options[0]
 	}
@@ -174,6 +190,9 @@ func (m *MockAlbumRepo) SetRating(rating int, itemID string) error {
 	if m.Err {
 		return errors.New("unexpected error")
 	}
+	if d, ok := m.Data[itemID]; ok {
+		d.Rating = rating
+	}
 	return nil
 }
 
@@ -181,6 +200,11 @@ func (m *MockAlbumRepo) SetRating(rating int, itemID string) error {
 func (m *MockAlbumRepo) SetStar(starred bool, itemIDs ...string) error {
 	if m.Err {
 		return errors.New("unexpected error")
+	}
+	for _, id := range itemIDs {
+		if d, ok := m.Data[id]; ok {
+			d.Starred = starred
+		}
 	}
 	return nil
 }

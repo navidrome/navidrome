@@ -109,6 +109,20 @@ func (m *MockMediaFileRepo) GetRandom(qo ...model.QueryOptions) (model.MediaFile
 	return res, nil
 }
 
+func (m *MockMediaFileRepo) GetCursor(qo ...model.QueryOptions) (model.MediaFileCursor, error) {
+	res, err := m.GetAll(qo...)
+	if err != nil {
+		return nil, err
+	}
+	return func(yield func(model.MediaFile, error) bool) {
+		for _, mf := range res {
+			if !yield(mf, nil) {
+				return
+			}
+		}
+	}, nil
+}
+
 func (m *MockMediaFileRepo) Put(mf *model.MediaFile) error {
 	if m.Err {
 		return errors.New("error")
@@ -152,6 +166,28 @@ func (m *MockMediaFileRepo) IncPlayCount(id string, timestamp time.Time) error {
 		return nil
 	}
 	return model.ErrNotFound
+}
+
+func (m *MockMediaFileRepo) SetStar(starred bool, itemIDs ...string) error {
+	if m.Err {
+		return errors.New("error")
+	}
+	for _, id := range itemIDs {
+		if d, ok := m.Data[id]; ok {
+			d.Starred = starred
+		}
+	}
+	return nil
+}
+
+func (m *MockMediaFileRepo) SetRating(rating int, itemID string) error {
+	if m.Err {
+		return errors.New("error")
+	}
+	if d, ok := m.Data[itemID]; ok {
+		d.Rating = rating
+	}
+	return nil
 }
 
 func (m *MockMediaFileRepo) FindByAlbum(artistId string) (model.MediaFiles, error) {

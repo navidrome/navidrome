@@ -23,6 +23,7 @@ import (
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/events"
+	"github.com/navidrome/navidrome/server/jellyfin"
 	"github.com/navidrome/navidrome/server/nativeapi"
 	"github.com/navidrome/navidrome/server/public"
 	"github.com/navidrome/navidrome/server/subsonic"
@@ -33,6 +34,7 @@ var allProviders = wire.NewSet(
 	artwork.Set,
 	server.New,
 	subsonic.New,
+	jellyfin.New,
 	nativeapi.New,
 	public.New,
 	persistence.New,
@@ -49,6 +51,7 @@ var allProviders = wire.NewSet(
 	wire.Bind(new(scrobbler.PluginLoader), new(*plugins.Manager)),
 	wire.Bind(new(lyrics.PluginLoader), new(*plugins.Manager)),
 	wire.Bind(new(sonic.PluginLoader), new(*plugins.Manager)),
+	wire.Bind(new(sonic.Engine), new(*sonic.Sonic)),
 	wire.Bind(new(nativeapi.PluginManager), new(*plugins.Manager)),
 	wire.Bind(new(core.PluginUnloader), new(*plugins.Manager)),
 	wire.Bind(new(plugins.PluginMetricsRecorder), new(metrics.Metrics)),
@@ -74,6 +77,12 @@ func CreateNativeAPIRouter(ctx context.Context) *nativeapi.Router {
 }
 
 func CreateSubsonicAPIRouter(ctx context.Context) *subsonic.Router {
+	panic(wire.Build(
+		allProviders,
+	))
+}
+
+func CreateJellyfinAPIRouter(ctx context.Context) *jellyfin.Router {
 	panic(wire.Build(
 		allProviders,
 	))

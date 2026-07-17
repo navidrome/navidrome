@@ -46,6 +46,15 @@ func New(ds model.DataStore, pluginLoader PluginLoader, matcher *matcher.Matcher
 	}
 }
 
+// Engine is the sonic-similarity surface the API layers depend on; *Sonic satisfies it.
+type Engine interface {
+	HasProvider() bool
+	GetSonicSimilarTracks(ctx context.Context, id string, count int) ([]SimilarMatch, error)
+	FindSonicPath(ctx context.Context, startID, endID string, count int) ([]SimilarMatch, error)
+}
+
+var _ Engine = (*Sonic)(nil)
+
 func (s *Sonic) HasProvider() bool {
 	return len(s.pluginLoader.PluginNames(capabilitySonicSimilarity)) > 0
 }

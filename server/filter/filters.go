@@ -61,6 +61,19 @@ func AlbumsByArtistID(artistId string) Options {
 	})
 }
 
+// AlbumsByContributingArtistID matches albums where the artist performs on a track but is not the
+// album artist — Jellyfin's "Featured On". The disjoint complement of AlbumsByArtistID, so an
+// artist's own discography never leaks into it.
+func AlbumsByContributingArtistID(artistId string) Options {
+	return addDefaultFilters(Options{
+		Sort: "max_year",
+		Filters: And{
+			persistence.Exists("json_tree(participants, '$.artist')", Eq{"value": artistId}),
+			persistence.NotExists("json_tree(participants, '$.albumartist')", Eq{"value": artistId}),
+		},
+	})
+}
+
 func AlbumsByYear(fromYear, toYear int) Options {
 	orderOption := ""
 	if fromYear > toYear {
@@ -87,6 +100,17 @@ func SongsByAlbum(albumId string) Options {
 	return addDefaultFilters(Options{
 		Filters: Eq{"album_id": albumId},
 		Sort:    "album",
+	})
+}
+
+// SongsByArtistID matches media files where the artist participates as album or track artist, in
+// album order. Semi-joins media_file_artists; scanning the participants JSON is ~10x slower at scale.
+func SongsByArtistID(artistId string) Options {
+	return addDefaultFilters(Options{
+		Sort: "album",
+		Filters: Expr(
+			"media_file.id IN (SELECT media_file_id FROM media_file_artists WHERE artist_id = ? AND role IN (?, ?))",
+			artistId, model.RoleArtist.String(), model.RoleAlbumArtist.String()),
 	})
 }
 
@@ -138,6 +162,21 @@ func ApplyArtistLibraryFilter(opts Options, musicFolderIds []int) Options {
 	return opts
 }
 
+// ArtistsByRole restricts an artist query to artists appearing in the given role (album artist,
+// performer, composer, ...) via library_artist.stats. An unknown role is ignored (no filter).
+func ArtistsByRole(opts Options, role model.Role) Options {
+	if _, ok := model.AllRoles[role.String()]; !ok {
+		return opts
+	}
+	roleFilter := Expr("JSON_EXTRACT(library_artist.stats, '$." + role.String() + ".m') IS NOT NULL")
+	if opts.Filters == nil {
+		opts.Filters = roleFilter
+	} else {
+		opts.Filters = And{opts.Filters, roleFilter}
+	}
+	return opts
+}
+
 func ByGenre(genre string) Options {
 	return addDefaultFilters(Options{
 		Sort:    "name",
@@ -145,11 +184,29 @@ func ByGenre(genre string) Options {
 	})
 }
 
+// ByGenreID matches items (albums or songs) tagged with any of the given genre tag ids.
+func ByGenreID(genreIds []string) Sqlizer {
+	return genreTagFilter(Eq{"value": genreIds})
+}
+
+// ArtistsByGenreID matches artists credited as album artist on an album with any of the given
+// genre tag ids. Non-correlated semi-join: the correlated EXISTS form rescans albums per artist row.
+func ArtistsByGenreID(genreIds []string) Sqlizer {
+	return Expr(
+		`artist.id IN (SELECT jt.value FROM album, json_tree(album.participants, '$.albumartist') jt
+			WHERE jt.atom IS NOT NULL AND ?)`,
+		genreTagFilter(Eq{"value": genreIds}),
+	)
+}
+
+// genreTagFilter builds an EXISTS over the genre entries in the tags JSON, matching each entry
+// against cond (its name via Like, or its tag id via Eq/IN). Shared by the name- and id-based lookups.
+func genreTagFilter(cond Sqlizer) Sqlizer {
+	return persistence.Exists(`json_tree(tags, "$.genre")`, And{NotEq{"atom": nil}, cond})
+}
+
 func filterByGenre(genre string) Sqlizer {
-	return persistence.Exists(`json_tree(tags, "$.genre")`, And{
-		Like{"value": genre},
-		NotEq{"atom": nil},
-	})
+	return genreTagFilter(Like{"value": genre})
 }
 
 func ByRating() Options {

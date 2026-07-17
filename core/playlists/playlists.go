@@ -22,6 +22,7 @@ type Playlists interface {
 	GetAll(ctx context.Context, options ...model.QueryOptions) (model.Playlists, error)
 	Get(ctx context.Context, id string) (*model.Playlist, error)
 	GetWithTracks(ctx context.Context, id string) (*model.Playlist, error)
+	Tracks(ctx context.Context, id string) (model.PlaylistTrackRepository, error)
 	GetPlaylists(ctx context.Context, mediaFileId string) (model.Playlists, error)
 
 	// Mutations
@@ -96,6 +97,21 @@ func (s *playlists) GetWithTracks(ctx context.Context, id string) (*model.Playli
 
 func (s *playlists) GetPlaylists(ctx context.Context, mediaFileId string) (model.Playlists, error) {
 	return s.ds.Playlist(ctx).GetPlaylists(mediaFileId)
+}
+
+// Tracks scopes a repository to one playlist's tracks, for callers that page or stream them rather
+// than loading every one like GetWithTracks. Gets first because PlaylistRepository.Tracks discards
+// its error behind a nil (and warns), and this is probed with ids that are usually not playlists.
+func (s *playlists) Tracks(ctx context.Context, id string) (model.PlaylistTrackRepository, error) {
+	repo := s.ds.Playlist(ctx)
+	if _, err := repo.Get(id); err != nil {
+		return nil, err
+	}
+	tracks := repo.Tracks(id, true)
+	if tracks == nil {
+		return nil, model.ErrNotFound
+	}
+	return tracks, nil
 }
 
 // --- Mutation operations ---

@@ -4,14 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"testing/fstest"
 	"time"
@@ -22,7 +20,6 @@ import (
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/external"
-	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
@@ -40,6 +37,7 @@ import (
 	"github.com/navidrome/navidrome/server/subsonic"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/tests/harness"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -89,12 +87,9 @@ var (
 	ctx         context.Context
 	ds          *tests.MockDataStore
 	router      *subsonic.Router
-	streamerSpy *spyStreamer
+	streamerSpy *harness.SpyStreamer
+	goldenDB    *harness.DB
 	lib         model.Library
-
-	// Snapshot paths for fast DB restore
-	dbFilePath   string
-	snapshotPath string
 
 	// Admin user used for most tests
 	adminUser = model.User{
@@ -112,13 +107,6 @@ var (
 		IsAdmin:  false,
 	}
 )
-
-func createFS(files fstest.MapFS) storagetest.FakeFS {
-	fs := storagetest.FakeFS{}
-	fs.SetFiles(files)
-	storagetest.Register("fake", &fs)
-	return fs
-}
 
 // buildTestFS creates the full test filesystem matching the plan
 func buildTestFS() storagetest.FakeFS {
@@ -145,7 +133,7 @@ func buildTestFS() storagetest.FakeFS {
 	// Template for lyrics e2e fixture tracks — isolated under Lyrics/ to keep other suite counts stable
 	lyricsAlbum := template(_t{"albumartist": "Lyric Tester", "artist": "Lyric Tester", "album": "Lyrics", "year": 2024, "genre": "Test"})
 
-	return createFS(fstest.MapFS{
+	return harness.CreateFS(fstest.MapFS{
 		// Rock / The Beatles / Abbey Road (with MBIDs)
 		// Note: "musicbrainz_trackid" is an alias for the musicbrainz_recordingid tag (populates MbzRecordingID),
 		//       "musicbrainz_releasetrackid" is an alias for the musicbrainz_trackid tag (populates MbzReleaseTrackID).
@@ -331,61 +319,6 @@ func (n noopArtwork) GetOrPlaceholder(_ context.Context, _ string, _ int, _ bool
 	return io.NopCloser(io.LimitReader(nil, 0)), time.Time{}, nil
 }
 
-// spyStreamer captures the Request passed to NewStream for test assertions,
-// then returns a minimal fake Stream so the handler completes without error.
-type spyStreamer struct {
-	LastRequest         stream.Request
-	LastMediaFile       *model.MediaFile
-	SimulateError       error // When set, NewStream returns this error
-	SimulateEmptyStream bool  // When true, returns a 0-byte stream (simulates ffmpeg producing no output)
-}
-
-func (s *spyStreamer) NewStream(_ context.Context, mf *model.MediaFile, req stream.Request) (*stream.Stream, error) {
-	s.LastRequest = req
-	s.LastMediaFile = mf
-	if s.SimulateError != nil {
-		return nil, s.SimulateError
-	}
-	format := req.Format
-	if format == "" || format == "raw" {
-		format = mf.Suffix
-	}
-	content := "fake audio data"
-	if s.SimulateEmptyStream {
-		content = ""
-	}
-	r := io.NopCloser(strings.NewReader(content))
-	return stream.NewStream(mf, format, req.BitRate, r), nil
-}
-
-// noopFFmpeg implements ffmpeg.FFmpeg with no-op methods.
-type noopFFmpeg struct{}
-
-func (n noopFFmpeg) Transcode(context.Context, ffmpeg.TranscodeOptions) (io.ReadCloser, error) {
-	return nil, errors.New("noop ffmpeg: transcode not supported")
-}
-
-func (n noopFFmpeg) ExtractImage(context.Context, string) (io.ReadCloser, error) {
-	return nil, errors.New("noop ffmpeg: extract image not supported")
-}
-
-func (n noopFFmpeg) Probe(context.Context, []string) (string, error) {
-	return "", nil
-}
-
-func (n noopFFmpeg) ProbeAudioStream(context.Context, string) (*ffmpeg.AudioProbeResult, error) {
-	return nil, errors.New("noop ffmpeg: probe not supported")
-}
-
-func (n noopFFmpeg) ConvertAnimatedImage(context.Context, io.Reader, int, int) (io.ReadCloser, error) {
-	return nil, errors.New("noop ffmpeg: convert animated image not supported")
-}
-
-func (n noopFFmpeg) CmdPath() (string, error) { return "", nil }
-func (n noopFFmpeg) IsAvailable() bool        { return false }
-func (n noopFFmpeg) IsProbeAvailable() bool   { return true }
-func (n noopFFmpeg) Version() string          { return "noop" }
-
 // noopArchiver implements core.Archiver
 type noopArchiver struct{}
 
@@ -434,67 +367,22 @@ func (n noopProvider) AlbumImage(context.Context, string) (*url.URL, error) {
 
 // Compile-time interface checks
 var (
-	_ artwork.Artwork      = noopArtwork{}
-	_ stream.MediaStreamer = &spyStreamer{}
-	_ core.Archiver        = noopArchiver{}
-	_ external.Provider    = noopProvider{}
-	_ ffmpeg.FFmpeg        = noopFFmpeg{}
+	_ artwork.Artwork   = noopArtwork{}
+	_ core.Archiver     = noopArchiver{}
+	_ external.Provider = noopProvider{}
 )
 
 var _ = BeforeSuite(func() {
 	ctx = request.WithUser(GinkgoT().Context(), adminUser)
-	tmpDir := GinkgoT().TempDir()
-	dbFilePath = filepath.Join(tmpDir, "test-e2e.db")
-	snapshotPath = filepath.Join(tmpDir, "test-e2e.db.snapshot")
-	conf.Server.DbPath = dbFilePath + "?_journal_mode=WAL"
-	db.Db().SetMaxOpenConns(1)
 
-	// Initial setup: schema, user, library, and full scan (runs once for the entire suite)
 	conf.Server.MusicFolder = "fake:///music"
 	conf.Server.LyricsPriority = "embedded,.lrc,.srt,.yaml"
 	conf.Server.DevExternalScanner = false
 
-	db.Init(ctx)
-
-	initDS := &tests.MockDataStore{RealDS: persistence.New(db.Db())}
-	auth.Init(initDS)
-
-	adminUserWithPass := adminUser
-	adminUserWithPass.NewPassword = "password"
-	Expect(initDS.User(ctx).Put(&adminUserWithPass)).To(Succeed())
-
-	regularUserWithPass := regularUser
-	regularUserWithPass.NewPassword = "password"
-	Expect(initDS.User(ctx).Put(&regularUserWithPass)).To(Succeed())
-
-	lib = model.Library{ID: 1, Name: "Music Library", Path: "fake:///music"}
-	Expect(initDS.Library(ctx).Put(&lib)).To(Succeed())
-
-	Expect(initDS.User(ctx).SetUserLibraries(adminUser.ID, []int{lib.ID})).To(Succeed())
-	Expect(initDS.User(ctx).SetUserLibraries(regularUser.ID, []int{lib.ID})).To(Succeed())
-
-	loadedUser, err := initDS.User(ctx).FindByUsername(adminUser.UserName)
-	Expect(err).ToNot(HaveOccurred())
-	adminUser.Libraries = loadedUser.Libraries
-
-	loadedRegular, err := initDS.User(ctx).FindByUsername(regularUser.UserName)
-	Expect(err).ToNot(HaveOccurred())
-	regularUser.Libraries = loadedRegular.Libraries
-
-	ctx = request.WithUser(GinkgoT().Context(), adminUser)
-
 	buildTestFS()
-	s := scanner.New(ctx, initDS, artwork.NoopCacheWarmer(), events.NoopBroker(),
-		playlists.NewPlaylists(initDS, core.NewImageUploadService()), metrics.NewNoopInstance())
-	_, err = s.ScanAll(ctx, true)
-	Expect(err).ToNot(HaveOccurred())
-
-	// Checkpoint WAL and snapshot the golden DB state
-	_, err = db.Db().Exec("PRAGMA wal_checkpoint(TRUNCATE)")
-	Expect(err).ToNot(HaveOccurred())
-	data, err := os.ReadFile(dbFilePath)
-	Expect(err).ToNot(HaveOccurred())
-	Expect(os.WriteFile(snapshotPath, data, 0600)).To(Succeed())
+	goldenDB = harness.SetupDB(ctx, &adminUser, &regularUser)
+	lib = goldenDB.Library
+	ctx = request.WithUser(GinkgoT().Context(), adminUser)
 })
 
 // Close the database before the suite's TempDir cleanup runs. Required on
@@ -520,14 +408,14 @@ func setupTestDB() {
 	conf.Server.DevEnableMediaFileProbe = false
 
 	// Restore DB to golden state (no scan needed)
-	restoreDB()
+	goldenDB.Restore()
 
 	ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
 	auth.Init(ds)
 
 	// Create the Subsonic Router with real DS, streamer spy, and real Decider
-	streamerSpy = &spyStreamer{}
-	decider := stream.NewTranscodeDecider(ds, noopFFmpeg{})
+	streamerSpy = &harness.SpyStreamer{}
+	decider := stream.NewTranscodeDecider(ds, harness.NoopFFmpeg{})
 	s := scanner.New(ctx, ds, artwork.NoopCacheWarmer(), events.NoopBroker(),
 		playlists.NewPlaylists(ds, core.NewImageUploadService()), metrics.NewNoopInstance())
 	router = subsonic.New(
@@ -548,40 +436,4 @@ func setupTestDB() {
 		decider,
 		nil,
 	)
-}
-
-// restoreDB restores all table data from the snapshot using ATTACH DATABASE.
-// This is much faster than re-running the scanner for each test.
-func restoreDB() {
-	sqlDB := db.Db()
-
-	_, err := sqlDB.Exec("PRAGMA foreign_keys = OFF")
-	Expect(err).ToNot(HaveOccurred())
-
-	_, err = sqlDB.Exec("ATTACH DATABASE ? AS snapshot", snapshotPath)
-	Expect(err).ToNot(HaveOccurred())
-
-	rows, err := sqlDB.Query("SELECT name FROM main.sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '%_fts' AND name NOT LIKE '%_fts_%'")
-	Expect(err).ToNot(HaveOccurred())
-	var tables []string
-	for rows.Next() {
-		var name string
-		Expect(rows.Scan(&name)).To(Succeed())
-		tables = append(tables, name)
-	}
-	Expect(rows.Err()).ToNot(HaveOccurred())
-	rows.Close()
-
-	for _, table := range tables {
-		// Table names come from sqlite_master, not user input, so concatenation is safe here
-		_, err = sqlDB.Exec(`DELETE FROM main."` + table + `"`) //nolint:gosec
-		Expect(err).ToNot(HaveOccurred())
-		_, err = sqlDB.Exec(`INSERT INTO main."` + table + `" SELECT * FROM snapshot."` + table + `"`) //nolint:gosec
-		Expect(err).ToNot(HaveOccurred())
-	}
-
-	_, err = sqlDB.Exec("DETACH DATABASE snapshot")
-	Expect(err).ToNot(HaveOccurred())
-	_, err = sqlDB.Exec("PRAGMA foreign_keys = ON")
-	Expect(err).ToNot(HaveOccurred())
 }

@@ -103,7 +103,7 @@
 //
 // The e2e tests are included in the standard test suite and can be run with:
 //
-//	make test PKG=./server/e2e   # Run only e2e tests
+//	make test PKG=./server/subsonic/e2e   # Run only e2e tests
 //	make test                     # Run all tests including e2e
 //	make test-race                # Run with race detector
 //
