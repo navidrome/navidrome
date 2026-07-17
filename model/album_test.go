@@ -2,6 +2,7 @@ package model_test
 
 import (
 	"encoding/json"
+	"path/filepath"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -25,6 +26,19 @@ var _ = Describe("Album", func() {
 		Entry("returns just name when tag is absent", true, Tags{}, "Album"),
 		Entry("returns just name when tag is an empty slice", true, Tags{TagAlbumVersion: []string{}}, "Album"),
 	)
+
+	Describe("UploadedImagePath", func() {
+		BeforeEach(func() {
+			conf.Server.DataFolder = conf.NewDir("/data")
+		})
+		It("returns empty when no image was uploaded", func() {
+			Expect(Album{ID: "al-1"}.UploadedImagePath()).To(BeEmpty())
+		})
+		It("returns the path under the data folder when set", func() {
+			a := Album{ID: "al-1", UploadedImage: "al-1_cover.jpg"}
+			Expect(a.UploadedImagePath()).To(Equal(filepath.Join("/data", "artwork", "album", "al-1_cover.jpg")))
+		})
+	})
 })
 
 var _ = Describe("Albums", func() {
