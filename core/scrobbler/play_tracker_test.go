@@ -766,6 +766,21 @@ var _ = Describe("PlayTracker", func() {
 				Expect(track.PlayCount).To(Equal(int64(1)))
 			})
 
+			It("does not dispatch NowPlaying from an ignored out-of-order starting report", func() {
+				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 60000, State: "playing", PlaybackRate: 1.0, ClientId: defaultClientId,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Eventually(func() bool { return fake.GetNowPlayingCalled() }).Should(BeTrue())
+				fake.nowPlayingCalled.Store(false)
+
+				err = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 0, State: "starting", PlaybackRate: 1.0, ClientId: defaultClientId,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Consistently(func() bool { return fake.GetNowPlayingCalled() }).Should(BeFalse())
+			})
+
 			It("never lets a concurrent starting report downgrade the playing session", func() {
 				ds.(*tests.MockDataStore).MockedMediaFile = &slowMediaFileRepo{MediaFileRepository: ds.MediaFile(ctx)}
 				for i := range 20 {

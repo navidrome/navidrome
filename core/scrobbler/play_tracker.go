@@ -279,7 +279,7 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 		// a playing session, or position estimation freezes until the next report.
 		if p.hasPlayingSession(clientId, params.MediaId) {
 			log.Trace(ctx, "Ignoring out-of-order starting report for playing session", "clientId", clientId, "mediaId", params.MediaId)
-			break
+			return nil
 		}
 		mf, err := p.ds.MediaFile(ctx).GetWithParticipants(params.MediaId)
 		if err != nil {
@@ -302,7 +302,7 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 		if p.hasPlayingSession(clientId, params.MediaId) {
 			p.sessionsMu.Unlock()
 			log.Trace(ctx, "Ignoring out-of-order starting report for playing session", "clientId", clientId, "mediaId", params.MediaId)
-			break
+			return nil
 		}
 		err = p.playMap.AddWithTTL(clientId, info, remainingTTL(mf.Duration, params.PositionMs, params.PlaybackRate))
 		p.sessionsMu.Unlock()
@@ -369,7 +369,7 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 		if getErr == nil && info.MediaFile.ID != params.MediaId {
 			p.sessionsMu.Unlock()
 			log.Trace(ctx, "Ignoring out-of-order stopped report for different track", "clientId", clientId, "stoppedMediaId", params.MediaId, "currentMediaId", info.MediaFile.ID)
-			break
+			return nil
 		}
 		p.playMap.Remove(clientId)
 		p.sessionsMu.Unlock()
