@@ -3,6 +3,8 @@ package cache
 import (
 	"errors"
 	"fmt"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -68,6 +70,116 @@ var _ = Describe("SimpleCache", func() {
 
 			_, err := cache.GetWithLoader("key", loader)
 			Expect(err).To(HaveOccurred())
+		})
+
+		It("suppresses concurrent loads for the same key", func() {
+			var calls atomic.Int32
+			release := make(chan struct{})
+			started := make(chan struct{}, 10)
+			loader := func(key string) (string, time.Duration, error) {
+				calls.Add(1)
+				started <- struct{}{}
+				<-release
+				return "shared", time.Minute, nil
+			}
+
+			const n = 5
+			var wg sync.WaitGroup
+			results := make([]string, n)
+			errs := make([]error, n)
+			for i := range n {
+				wg.Go(func() {
+					results[i], errs[i] = cache.GetWithLoader("key", loader)
+				})
+			}
+
+			Eventually(started).Should(Receive())
+			Consistently(started).ShouldNot(Receive())
+			close(release)
+			wg.Wait()
+
+			Expect(calls.Load()).To(Equal(int32(1)))
+			for i := range n {
+				Expect(errs[i]).ToNot(HaveOccurred())
+				Expect(results[i]).To(Equal("shared"))
+			}
+		})
+
+		It("returns the loader error to all concurrent callers", func() {
+			release := make(chan struct{})
+			started := make(chan struct{}, 10)
+			loader := func(key string) (string, time.Duration, error) {
+				started <- struct{}{}
+				<-release
+				return "", 0, errors.New("load failed")
+			}
+
+			const n = 3
+			var wg sync.WaitGroup
+			errs := make([]error, n)
+			for i := range n {
+				wg.Go(func() {
+					_, errs[i] = cache.GetWithLoader("key", loader)
+				})
+			}
+
+			Eventually(started).Should(Receive())
+			Consistently(started).ShouldNot(Receive())
+			close(release)
+			wg.Wait()
+
+			for i := range n {
+				Expect(errs[i]).To(MatchError(ContainSubstring("load failed")))
+			}
+		})
+
+		It("supports interface value types with nil results", func() {
+			c := NewSimpleCache[string, any]()
+			v, err := c.GetWithLoader("key", func(string) (any, time.Duration, error) {
+				return nil, time.Minute, nil
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(v).To(BeNil())
+		})
+
+		It("cleans up the in-flight registration when the loader panics", func() {
+			Expect(func() {
+				_, _ = cache.GetWithLoader("key", func(string) (string, time.Duration, error) {
+					panic("boom")
+				})
+			}).To(PanicWith("boom"))
+
+			// Without cleanup this would deadlock on the never-completed flight
+			v, err := cache.GetWithLoader("key", func(string) (string, time.Duration, error) {
+				return "ok", 0, nil
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(v).To(Equal("ok"))
+		})
+
+		It("loads different keys independently", func() {
+			release := make(chan struct{})
+			started := make(chan struct{}, 10)
+			loader := func(key string) (string, time.Duration, error) {
+				started <- struct{}{}
+				<-release
+				return key + "=value", time.Minute, nil
+			}
+
+			var wg sync.WaitGroup
+			for _, key := range []string{"key1", "key2"} {
+				wg.Go(func() {
+					value, err := cache.GetWithLoader(key, loader)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(value).To(Equal(key + "=value"))
+				})
+			}
+
+			// Both loaders must be in flight at once: distinct keys are not suppressed
+			Eventually(started).Should(Receive())
+			Eventually(started).Should(Receive())
+			close(release)
+			wg.Wait()
 		})
 	})
 
