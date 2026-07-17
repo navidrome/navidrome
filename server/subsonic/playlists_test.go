@@ -248,6 +248,20 @@ var _ = Describe("buildPlaylist", func() {
 				Expect(result.OpenSubsonicPlaylist).To(BeNil())
 			})
 		})
+
+		Context("with a per-playlist refreshDelay", func() {
+			BeforeEach(func() {
+				playlist.Rules.RefreshDelay = 24 * time.Hour
+				player := model.Player{Client: "regular-client"}
+				ctx = request.WithPlayer(ctx, player)
+			})
+
+			It("computes validUntil from the playlist's own delay", func() {
+				result := router.buildPlaylist(ctx, playlist)
+				expected := evaluatedAt.Add(24 * time.Hour)
+				Expect(result.ValidUntil).To(Equal(&expected))
+			})
+		})
 	})
 
 	Describe("annotation leakage", func() {
