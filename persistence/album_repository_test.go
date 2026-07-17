@@ -96,6 +96,13 @@ var _ = Describe("AlbumRepository", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.CreatedAt).To(BeTemporally("~", dstTime, time.Second))
 		})
+		It("copies uploaded_image from source to destination", func() {
+			Expect(albumRepo.UpdateImage("copy-src", "copy-src_cover.jpg")).To(Succeed())
+			Expect(albumRepo.CopyAttributes("copy-src", "copy-dst", "uploaded_image")).To(Succeed())
+			got, err := albumRepo.Get("copy-dst")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.UploadedImage).To(Equal("copy-src_cover.jpg"))
+		})
 	})
 
 	Describe("GetCursor", func() {
