@@ -120,6 +120,41 @@ var _ = Describe("BlurHash", func() {
 		}, "10s", "100ms").Should(Succeed())
 	})
 
+	PIt("recomputes when cover bytes change under a preserved mtime (cache disabled)", func() {
+		cover := realPNG("orig-bytes")
+		fixed := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+		cover.ModTime = fixed
+		setLayout(fstest.MapFS{
+			"Artist/Album/01 - Song.mp3": trackFile(1, "Song"),
+			"Artist/Album/cover.png":     cover,
+		})
+		scan()
+		al := firstAlbum()
+		readArtwork(al.CoverArtID())
+		var firstHash string
+		Eventually(func(g Gomega) {
+			updated, err := ds.Album(ctx).Get(al.ID)
+			g.Expect(err).ToNot(HaveOccurred())
+			g.Expect(updated.BlurHash).ToNot(BeEmpty())
+			firstHash = updated.BlurHash
+		}, "10s", "100ms").Should(Succeed())
+
+		// Replace the bytes but keep the SAME mtime and do NOT rescan: only the served bytes change.
+		swapped := realPNG("swapped-bytes")
+		swapped.ModTime = fixed
+		setLayout(fstest.MapFS{
+			"Artist/Album/01 - Song.mp3": trackFile(1, "Song"),
+			"Artist/Album/cover.png":     swapped,
+		})
+		readArtwork(al.CoverArtID())
+
+		Eventually(func(g Gomega) {
+			updated, err := ds.Album(ctx).Get(al.ID)
+			g.Expect(err).ToNot(HaveOccurred())
+			g.Expect(updated.BlurHash).ToNot(Equal(firstHash))
+		}, "10s", "100ms").Should(Succeed())
+	})
+
 	It("does not persist a blurhash when the served image cannot be decoded", func() {
 		setLayout(fstest.MapFS{
 			"Artist/Album/01 - Song.mp3": trackFile(1, "Song"),
