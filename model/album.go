@@ -68,9 +68,10 @@ type Album struct {
 	CreatedAt  time.Time `structs:"created_at" json:"createdAt"`                 // Oldest CreatedAt for all songs in this album
 	UpdatedAt  time.Time `structs:"updated_at" json:"updatedAt"`                 // Newest UpdatedAt for all songs in this album
 
-	// BlurHash of the album cover, computed asynchronously from the served artwork.
-	BlurHash          string     `structs:"blur_hash" json:"blurHash,omitempty" hash:"ignore"`
-	BlurHashUpdatedAt *time.Time `structs:"blur_hash_updated_at" json:"-" hash:"ignore"`
+	// BlurHash of the album cover, computed asynchronously from the served artwork. Excluded from
+	// full-row writes (structs:"-"): only UpdateBlurHash writes it, so scans can't erase it.
+	BlurHash          string     `structs:"-" json:"blurHash,omitempty" hash:"ignore"`
+	BlurHashUpdatedAt *time.Time `structs:"-" json:"-" hash:"ignore"`
 }
 
 func (a Album) CoverArtID() ArtworkID {

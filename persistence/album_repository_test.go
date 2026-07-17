@@ -928,5 +928,13 @@ var _ = Describe("AlbumRepository.UpdateBlurHash", func() {
 		Expect(updated.BlurHashUpdatedAt.Equal(version)).To(BeTrue())
 		// The targeted update must not touch the row's own timestamps.
 		Expect(updated.UpdatedAt).To(Equal(al.UpdatedAt))
+
+		// A full-row Put (e.g. a scanner refresh with empty BlurHash fields) must preserve the hash.
+		updated.BlurHash = ""
+		updated.BlurHashUpdatedAt = nil
+		Expect(repo.Put(updated)).To(Succeed())
+		after, err := repo.Get(al.ID)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(after.BlurHash).To(Equal("LKO2?U%2Tw=w]~RBVZRi};RPxuwH"))
 	})
 })

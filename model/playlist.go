@@ -31,8 +31,8 @@ type Playlist struct {
 	CreatedAt        time.Time      `structs:"created_at" json:"createdAt"`
 	UpdatedAt        time.Time      `structs:"updated_at" json:"updatedAt"`
 
-	BlurHash          string     `structs:"blur_hash" json:"blurHash,omitempty" hash:"ignore"`
-	BlurHashUpdatedAt *time.Time `structs:"blur_hash_updated_at" json:"-" hash:"ignore"`
+	BlurHash          string     `structs:"-" json:"blurHash,omitempty" hash:"ignore"`
+	BlurHashUpdatedAt *time.Time `structs:"-" json:"-" hash:"ignore"`
 
 	// SmartPlaylist attributes
 	Rules       *criteria.Criteria `structs:"rules" json:"rules"`
