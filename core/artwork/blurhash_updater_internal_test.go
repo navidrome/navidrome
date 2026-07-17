@@ -25,31 +25,38 @@ var _ = Describe("blurHashUpdater", func() {
 		ds = &tests.MockDataStore{}
 		// started is pre-set so Enqueue never spawns run(): tests drive next()/process() directly.
 		u = &blurHashUpdater{
-			a:        &artwork{ds: ds},
-			buffer:   make(map[model.ArtworkID]enqueueRequest),
-			noResult: make(map[model.ArtworkID]noResultEntry),
-			wake:     make(chan struct{}, 1),
-			started:  true,
+			a:       &artwork{ds: ds},
+			buffer:  make(map[model.ArtworkID]enqueueRequest),
+			wake:    make(chan struct{}, 1),
+			started: true,
 		}
 	})
 
 	Describe("Enqueue", func() {
-		It("accepts album, artist and playlist artwork and dedups, merging force and newest image time", func() {
+		It("accepts album, artist and playlist artwork and dedups, keeping the newest snapshot", func() {
 			id := model.Album{ID: "al-1"}.CoverArtID()
 			t1 := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 			t2 := t1.Add(time.Hour)
-			u.Enqueue(id, t2, true, false)
-			u.Enqueue(id, t1, false, true)
-			u.Enqueue(model.Artist{ID: "ar-1"}.CoverArtID(), t1, false, false)
+			u.Enqueue(id, t1)
+			u.Enqueue(id, t2)
+			u.Enqueue(model.Artist{ID: "ar-1"}.CoverArtID(), t1)
 			Expect(u.buffer).To(HaveLen(2))
-			Expect(u.buffer[id].force).To(BeTrue())
-			Expect(u.buffer[id].sourceGone).To(BeTrue())
-			Expect(u.buffer[id].imageUpdatedAt).To(Equal(t2))
+			Expect(u.buffer[id].snapshot).To(Equal(t2))
+			Expect(u.buffer[id].gone).To(BeFalse())
+		})
+
+		It("merges a gone flag onto a pending snapshot for the same artwork", func() {
+			id := model.Album{ID: "al-1"}.CoverArtID()
+			t1 := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+			u.Enqueue(id, t1)
+			u.EnqueueGone(id)
+			Expect(u.buffer[id].snapshot).To(Equal(t1))
+			Expect(u.buffer[id].gone).To(BeTrue())
 		})
 
 		It("ignores other artwork kinds", func() {
-			u.Enqueue(model.ArtworkID{Kind: model.KindMediaFileArtwork, ID: "mf-1"}, time.Time{}, false, false)
-			u.Enqueue(model.ArtworkID{Kind: model.KindRadioArtwork, ID: "ra-1"}, time.Time{}, true, false)
+			u.Enqueue(model.ArtworkID{Kind: model.KindMediaFileArtwork, ID: "mf-1"}, time.Time{})
+			u.EnqueueGone(model.ArtworkID{Kind: model.KindRadioArtwork, ID: "ra-1"})
 			Expect(u.buffer).To(BeEmpty())
 		})
 	})
@@ -61,74 +68,56 @@ var _ = Describe("blurHashUpdater", func() {
 			version = time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 		})
 
-		It("skips entities whose stored hash matches the current artwork version", func() {
+		It("skips entities whose stored hash is at or after the snapshot", func() {
 			al := model.Album{ID: "al-1", UpdatedAt: version, BlurHash: "LEHV6nWB2yk8", BlurHashUpdatedAt: &version}
 			repo := tests.CreateMockAlbumRepo()
 			repo.SetData(model.Albums{al})
 			ds.MockedAlbum = repo
 
-			u.process(GinkgoT().Context(), al.CoverArtID(), enqueueRequest{imageUpdatedAt: version})
+			u.process(GinkgoT().Context(), al.CoverArtID(), enqueueRequest{snapshot: version})
 			stored, err := ds.Album(GinkgoT().Context()).Get("al-1")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(stored.BlurHash).To(Equal("LEHV6nWB2yk8"))
 		})
 
-		It("skips entities that previously yielded no result for the same signals", func() {
-			al := model.Album{ID: "al-1", UpdatedAt: version}
-			repo := tests.CreateMockAlbumRepo()
-			repo.SetData(model.Albums{al})
-			ds.MockedAlbum = repo
-			u.setNoResult(al.CoverArtID(), version)
-
-			u.process(GinkgoT().Context(), al.CoverArtID(), enqueueRequest{imageUpdatedAt: version})
-			stored, _ := ds.Album(GinkgoT().Context()).Get("al-1")
-			Expect(stored.BlurHash).To(BeEmpty())
-		})
-
-		It("memoizes a failed retry under the newer signal", func() {
-			al := model.Album{ID: "al-1", UpdatedAt: version}
+		It("clears a stored hash when a recompute yields no result", func() {
+			al := model.Album{ID: "al-1", UpdatedAt: version, BlurHash: "LEHV6nWB2yk8", BlurHashUpdatedAt: nil}
 			repo := tests.CreateMockAlbumRepo()
 			repo.SetData(model.Albums{al})
 			ds.MockedAlbum = repo
 			ds.MockedFolder = failingFolderRepo{}
-			u.setNoResult(al.CoverArtID(), version)
 
-			// A newer image mtime bypasses the no-result skip; the compute fails cleanly here, so
-			// the entry is refreshed under the newer signal, with the TTL as the retry bound.
+			// A stored hash with a newer snapshot is change evidence; the compute fails, so the
+			// stale hash must go.
 			newer := version.Add(time.Hour)
-			u.process(GinkgoT().Context(), al.CoverArtID(), enqueueRequest{imageUpdatedAt: newer})
-			last, ok := u.lastNoResult(al.CoverArtID())
-			Expect(ok).To(BeTrue())
-			Expect(last.sig).To(Equal(newer))
-		})
-
-		It("clears a stored hash when a recompute with change evidence yields no result", func() {
-			storedAt := version.Add(-time.Hour)
-			al := model.Album{ID: "al-1", UpdatedAt: version, BlurHash: "LEHV6nWB2yk8", BlurHashUpdatedAt: &storedAt}
-			repo := tests.CreateMockAlbumRepo()
-			repo.SetData(model.Albums{al})
-			ds.MockedAlbum = repo
-			ds.MockedFolder = failingFolderRepo{}
-
-			// storedAt < version = change evidence; the compute fails, so the stale hash must go.
-			u.process(GinkgoT().Context(), al.CoverArtID(), enqueueRequest{imageUpdatedAt: version})
+			u.process(GinkgoT().Context(), al.CoverArtID(), enqueueRequest{snapshot: newer})
 			stored, err := ds.Album(GinkgoT().Context()).Get("al-1")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(stored.BlurHash).To(BeEmpty())
 		})
 
-		It("clears a fresh-looking stored hash when the source is gone", func() {
+		It("clears a stored hash when the source is gone", func() {
 			al := model.Album{ID: "al-1", UpdatedAt: version, BlurHash: "LEHV6nWB2yk8", BlurHashUpdatedAt: &version}
 			repo := tests.CreateMockAlbumRepo()
 			repo.SetData(model.Albums{al})
 			ds.MockedAlbum = repo
-			ds.MockedFolder = failingFolderRepo{}
 
-			// No row/mtime signal moved (eviction/restart window), but the serve 404ed: sourceGone
-			// must bypass the freshness skip so the stale hash is cleared.
-			u.process(GinkgoT().Context(), al.CoverArtID(), enqueueRequest{imageUpdatedAt: version, sourceGone: true})
+			u.process(GinkgoT().Context(), al.CoverArtID(), enqueueRequest{gone: true})
 			stored, err := ds.Album(GinkgoT().Context()).Get("al-1")
 			Expect(err).ToNot(HaveOccurred())
+			Expect(stored.BlurHash).To(BeEmpty())
+		})
+
+		It("does nothing for a gone serve with no stored hash", func() {
+			al := model.Album{ID: "al-1", UpdatedAt: version}
+			repo := tests.CreateMockAlbumRepo()
+			repo.SetData(model.Albums{al})
+			ds.MockedAlbum = repo
+
+			Expect(func() {
+				u.process(GinkgoT().Context(), al.CoverArtID(), enqueueRequest{gone: true})
+			}).ToNot(Panic())
+			stored, _ := ds.Album(GinkgoT().Context()).Get("al-1")
 			Expect(stored.BlurHash).To(BeEmpty())
 		})
 

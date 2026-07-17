@@ -35,6 +35,39 @@ var _ = Describe("BlurHash", func() {
 		}, "10s", "100ms").Should(Succeed())
 	})
 
+	It("recomputes when the cover is swapped in place", func() {
+		setLayout(fstest.MapFS{
+			"Artist/Album/01 - Song.mp3": trackFile(1, "Song"),
+			"Artist/Album/cover.png":     realPNG("original-cover"),
+		})
+		scan()
+		al := firstAlbum()
+		readArtwork(al.CoverArtID())
+		var firstHash string
+		Eventually(func(g Gomega) {
+			updated, err := ds.Album(ctx).Get(al.ID)
+			g.Expect(err).ToNot(HaveOccurred())
+			g.Expect(updated.BlurHash).ToNot(BeEmpty())
+			firstHash = updated.BlurHash
+		}, "10s", "100ms").Should(Succeed())
+
+		// Swap the cover bytes and rescan: the folder's image version moves, so the reader key moves,
+		// the cache misses and the fill re-triggers the compute — no serve-time force hint needed.
+		setLayout(fstest.MapFS{
+			"Artist/Album/01 - Song.mp3": trackFile(1, "Song"),
+			"Artist/Album/cover.png":     realPNG("swapped-cover"),
+		})
+		scan()
+		readArtwork(al.CoverArtID())
+
+		Eventually(func(g Gomega) {
+			updated, err := ds.Album(ctx).Get(al.ID)
+			g.Expect(err).ToNot(HaveOccurred())
+			g.Expect(updated.BlurHash).ToNot(BeEmpty())
+			g.Expect(updated.BlurHash).ToNot(Equal(firstHash))
+		}, "10s", "100ms").Should(Succeed())
+	})
+
 	It("clears the stored blurhash when the cover disappears", func() {
 		setLayout(fstest.MapFS{
 			"Artist/Album/01 - Song.mp3": trackFile(1, "Song"),

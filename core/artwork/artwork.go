@@ -83,19 +83,15 @@ func (a *artwork) Get(ctx context.Context, artID model.ArtworkID, size int, squa
 		// A vanished source must still reach the worker, or a stored hash would keep describing
 		// artwork that no longer exists.
 		if a.blurHashes != nil && errors.Is(err, ErrUnavailable) {
-			a.blurHashes.Enqueue(artID, artReader.LastUpdated(), false, true)
+			a.blurHashes.EnqueueGone(artID)
 		}
 		return nil, time.Time{}, err
 	}
-	if a.blurHashes != nil {
-		// An original-size miss on an operational cache means a new/changed image even when no
-		// entity row moved. Resized misses don't qualify (their keys vary per size, and their
-		// readers re-fetch the original through Get, carrying the real signal). With the cache
-		// permanently disabled every serve reads live bytes, so original serves always force
-		// (the worker's unchanged-hash guard keeps that write-free); warmup forces nothing.
-		force := size == 0 && !square &&
-			((!r.Cached && a.cache.Available(ctx)) || a.cache.Disabled(ctx))
-		a.blurHashes.Enqueue(artID, artReader.LastUpdated(), force, false)
+	if a.blurHashes != nil && size == 0 && !square && !r.Cached {
+		// An original-size cache fill is exactly when the served bytes change: the single recompute
+		// trigger. Resized fills recurse through Get(size=0); a disabled cache reports every serve as
+		// a fill (the worker's unchanged-hash guard keeps that write-free).
+		a.blurHashes.Enqueue(artID, artReader.LastUpdated())
 	}
 	return r, artReader.LastUpdated(), nil
 }
