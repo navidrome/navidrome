@@ -58,6 +58,18 @@ var _ = AfterSuite(func() {
 	db.Close(GinkgoT().Context())
 })
 
+// AfterEach runs before any DeferCleanup a spec body registered, so it stops the blurhash worker
+// before spec-local TempDirs are removed. On Windows a still-running worker can hold an artwork
+// file open, and TempDir removal cannot unlink an open file.
+var _ = AfterEach(func() {
+	if aw == nil {
+		return
+	}
+	if c, ok := aw.(io.Closer); ok {
+		Expect(c.Close()).To(Succeed())
+	}
+})
+
 func setupHarness() {
 	DeferCleanup(configtest.SetupConfig())
 
@@ -89,8 +101,8 @@ func setupHarness() {
 	storagetest.Register(fakeLibScheme, fakeFS)
 
 	aw = artwork.NewArtwork(ds, artwork.GetImageCache(), newNoopFFmpeg(), &noopProvider{})
-	// The worker must not outlive the spec: it would race the next spec's fakeFS/DB swaps.
-	DeferCleanup(aw.(io.Closer).Close)
+	// The worker is stopped by the suite-level AfterEach (which runs before spec-local TempDir
+	// cleanups), so it can't outlive the spec or hold a file open past TempDir removal.
 }
 
 func scan() {
