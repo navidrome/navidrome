@@ -83,7 +83,7 @@ func (a *artwork) Get(ctx context.Context, artID model.ArtworkID, size int, squa
 		// A vanished source must still reach the worker, or a stored hash would keep describing
 		// artwork that no longer exists.
 		if a.blurHashes != nil && errors.Is(err, ErrUnavailable) {
-			a.blurHashes.Enqueue(artID, artReader.LastUpdated(), false)
+			a.blurHashes.Enqueue(artID, artReader.LastUpdated(), false, true)
 		}
 		return nil, time.Time{}, err
 	}
@@ -93,7 +93,7 @@ func (a *artwork) Get(ctx context.Context, artID model.ArtworkID, size int, squa
 		// readers re-fetch the original through Get, carrying the real signal); nor does cache
 		// warmup/disabled, where every serve misses — there the LastUpdated signal applies.
 		force := size == 0 && !square && !r.Cached && a.cache.Available(ctx)
-		a.blurHashes.Enqueue(artID, artReader.LastUpdated(), force)
+		a.blurHashes.Enqueue(artID, artReader.LastUpdated(), force, false)
 	}
 	return r, artReader.LastUpdated(), nil
 }

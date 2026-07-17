@@ -17,10 +17,12 @@ import (
 	"github.com/navidrome/navidrome/resources"
 )
 
-// enqueueRequest carries the staleness signals seen at serve time: force (image-cache miss) and
-// the reader's LastUpdated, which tracks file mtimes that no entity row timestamp reflects.
+// enqueueRequest carries the staleness signals seen at serve time: force (image-cache miss),
+// sourceGone (the serve failed with ErrUnavailable) and the reader's LastUpdated, which tracks
+// file mtimes that no entity row timestamp reflects.
 type enqueueRequest struct {
 	force          bool
+	sourceGone     bool
 	imageUpdatedAt time.Time
 }
 
@@ -59,7 +61,7 @@ func newBlurHashUpdater(a *artwork) *blurHashUpdater {
 	}
 }
 
-func (u *blurHashUpdater) Enqueue(artID model.ArtworkID, imageUpdatedAt time.Time, force bool) {
+func (u *blurHashUpdater) Enqueue(artID model.ArtworkID, imageUpdatedAt time.Time, force, sourceGone bool) {
 	switch artID.Kind {
 	case model.KindAlbumArtwork, model.KindArtistArtwork, model.KindPlaylistArtwork:
 	default:
@@ -80,6 +82,7 @@ func (u *blurHashUpdater) Enqueue(artID model.ArtworkID, imageUpdatedAt time.Tim
 	}
 	req := u.buffer[artID]
 	req.force = req.force || force
+	req.sourceGone = req.sourceGone || sourceGone
 	if imageUpdatedAt.After(req.imageUpdatedAt) {
 		req.imageUpdatedAt = imageUpdatedAt
 	}
@@ -167,7 +170,10 @@ func (u *blurHashUpdater) process(ctx context.Context, artID model.ArtworkID, re
 	if req.imageUpdatedAt.After(sig) {
 		sig = req.imageUpdatedAt
 	}
-	if !req.force {
+	// A gone source only forces while a hash remains to clear; afterwards the negative cache
+	// applies, so artwork-less entities don't re-resolve on every placeholder serve.
+	force := req.force || (req.sourceGone && stored != "")
+	if !force {
 		// Current when computed from this row version or later; the snapshot may exceed the row
 		// version because file mtimes (which don't move rows) are folded into it on persist.
 		if stored != "" && storedAt != nil && !storedAt.Before(version) && !sig.After(*storedAt) {

@@ -38,17 +38,18 @@ var _ = Describe("blurHashUpdater", func() {
 			id := model.Album{ID: "al-1"}.CoverArtID()
 			t1 := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 			t2 := t1.Add(time.Hour)
-			u.Enqueue(id, t2, true)
-			u.Enqueue(id, t1, false)
-			u.Enqueue(model.Artist{ID: "ar-1"}.CoverArtID(), t1, false)
+			u.Enqueue(id, t2, true, false)
+			u.Enqueue(id, t1, false, true)
+			u.Enqueue(model.Artist{ID: "ar-1"}.CoverArtID(), t1, false, false)
 			Expect(u.buffer).To(HaveLen(2))
 			Expect(u.buffer[id].force).To(BeTrue())
+			Expect(u.buffer[id].sourceGone).To(BeTrue())
 			Expect(u.buffer[id].imageUpdatedAt).To(Equal(t2))
 		})
 
 		It("ignores other artwork kinds", func() {
-			u.Enqueue(model.ArtworkID{Kind: model.KindMediaFileArtwork, ID: "mf-1"}, time.Time{}, false)
-			u.Enqueue(model.ArtworkID{Kind: model.KindRadioArtwork, ID: "ra-1"}, time.Time{}, true)
+			u.Enqueue(model.ArtworkID{Kind: model.KindMediaFileArtwork, ID: "mf-1"}, time.Time{}, false, false)
+			u.Enqueue(model.ArtworkID{Kind: model.KindRadioArtwork, ID: "ra-1"}, time.Time{}, true, false)
 			Expect(u.buffer).To(BeEmpty())
 		})
 	})
@@ -111,6 +112,21 @@ var _ = Describe("blurHashUpdater", func() {
 
 			// storedAt < version = change evidence; the compute fails, so the stale hash must go.
 			u.process(GinkgoT().Context(), al.CoverArtID(), enqueueRequest{imageUpdatedAt: version})
+			stored, err := ds.Album(GinkgoT().Context()).Get("al-1")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(stored.BlurHash).To(BeEmpty())
+		})
+
+		It("clears a fresh-looking stored hash when the source is gone", func() {
+			al := model.Album{ID: "al-1", UpdatedAt: version, BlurHash: "LEHV6nWB2yk8", BlurHashUpdatedAt: &version}
+			repo := tests.CreateMockAlbumRepo()
+			repo.SetData(model.Albums{al})
+			ds.MockedAlbum = repo
+			ds.MockedFolder = failingFolderRepo{}
+
+			// No row/mtime signal moved (eviction/restart window), but the serve 404ed: sourceGone
+			// must bypass the freshness skip so the stale hash is cleared.
+			u.process(GinkgoT().Context(), al.CoverArtID(), enqueueRequest{imageUpdatedAt: version, sourceGone: true})
 			stored, err := ds.Album(GinkgoT().Context()).Get("al-1")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(stored.BlurHash).To(BeEmpty())

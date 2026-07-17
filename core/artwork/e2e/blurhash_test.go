@@ -49,10 +49,11 @@ var _ = Describe("BlurHash", func() {
 			g.Expect(updated.BlurHash).ToNot(BeEmpty())
 		}, "10s", "100ms").Should(Succeed())
 
+		// No rescan: the folder row still lists the cover, but the file is gone — the serve's
+		// ErrUnavailable alone must trigger the clear.
 		setLayout(fstest.MapFS{
 			"Artist/Album/01 - Song.mp3": trackFile(1, "Song"),
 		})
-		scan()
 		_, err := readArtworkOrErr(al.CoverArtID())
 		Expect(err).To(HaveOccurred())
 
