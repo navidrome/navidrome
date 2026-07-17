@@ -76,8 +76,9 @@ func (a *artwork) Get(ctx context.Context, artID model.ArtworkID, size int, squa
 	if a.blurHashes != nil {
 		// A cache miss means the image is new or changed, even when no entity row moved (e.g. an
 		// in-place cover.jpg swap) — force a recompute so the stored blurhash follows the image.
+		// The reader's LastUpdated covers the same case when the image cache is disabled.
 		force := !r.Cached && !a.cache.Disabled(ctx)
-		a.blurHashes.Enqueue(artID, force)
+		a.blurHashes.Enqueue(artID, artReader.LastUpdated(), force)
 	}
 	return r, artReader.LastUpdated(), nil
 }

@@ -18,25 +18,28 @@ var _ = Describe("blurHashUpdater", func() {
 		// No run() goroutine: tests drive next()/process() directly.
 		u = &blurHashUpdater{
 			a:        &artwork{ds: ds},
-			buffer:   make(map[model.ArtworkID]bool),
+			buffer:   make(map[model.ArtworkID]enqueueRequest),
 			noResult: make(map[model.ArtworkID]time.Time),
 			wake:     make(chan struct{}, 1),
 		}
 	})
 
 	Describe("Enqueue", func() {
-		It("accepts album, artist and playlist artwork and dedups, keeping the force flag sticky", func() {
+		It("accepts album, artist and playlist artwork and dedups, merging force and newest image time", func() {
 			id := model.Album{ID: "al-1"}.CoverArtID()
-			u.Enqueue(id, true)
-			u.Enqueue(id, false)
-			u.Enqueue(model.Artist{ID: "ar-1"}.CoverArtID(), false)
+			t1 := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+			t2 := t1.Add(time.Hour)
+			u.Enqueue(id, t2, true)
+			u.Enqueue(id, t1, false)
+			u.Enqueue(model.Artist{ID: "ar-1"}.CoverArtID(), t1, false)
 			Expect(u.buffer).To(HaveLen(2))
-			Expect(u.buffer[id]).To(BeTrue())
+			Expect(u.buffer[id].force).To(BeTrue())
+			Expect(u.buffer[id].imageUpdatedAt).To(Equal(t2))
 		})
 
 		It("ignores other artwork kinds", func() {
-			u.Enqueue(model.ArtworkID{Kind: model.KindMediaFileArtwork, ID: "mf-1"}, false)
-			u.Enqueue(model.ArtworkID{Kind: model.KindRadioArtwork, ID: "ra-1"}, true)
+			u.Enqueue(model.ArtworkID{Kind: model.KindMediaFileArtwork, ID: "mf-1"}, time.Time{}, false)
+			u.Enqueue(model.ArtworkID{Kind: model.KindRadioArtwork, ID: "ra-1"}, time.Time{}, true)
 			Expect(u.buffer).To(BeEmpty())
 		})
 	})
@@ -54,27 +57,45 @@ var _ = Describe("blurHashUpdater", func() {
 			repo.SetData(model.Albums{al})
 			ds.MockedAlbum = repo
 
-			u.process(GinkgoT().Context(), al.CoverArtID(), false)
+			u.process(GinkgoT().Context(), al.CoverArtID(), enqueueRequest{imageUpdatedAt: version})
 			stored, err := ds.Album(GinkgoT().Context()).Get("al-1")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(stored.BlurHash).To(Equal("LEHV6nWB2yk8"))
 		})
 
-		It("skips entities that previously yielded no result for the same artwork version", func() {
+		It("skips entities that previously yielded no result for the same signals", func() {
 			al := model.Album{ID: "al-1", UpdatedAt: version}
 			repo := tests.CreateMockAlbumRepo()
 			repo.SetData(model.Albums{al})
 			ds.MockedAlbum = repo
-			u.setNoResult(al.CoverArtID(), al.ArtworkUpdatedAt())
+			u.setNoResult(al.CoverArtID(), version)
 
-			u.process(GinkgoT().Context(), al.CoverArtID(), false)
+			u.process(GinkgoT().Context(), al.CoverArtID(), enqueueRequest{imageUpdatedAt: version})
 			stored, _ := ds.Album(GinkgoT().Context()).Get("al-1")
 			Expect(stored.BlurHash).To(BeEmpty())
 		})
 
+		It("does not refresh the no-result entry when a retry fails transiently", func() {
+			al := model.Album{ID: "al-1", UpdatedAt: version}
+			repo := tests.CreateMockAlbumRepo()
+			repo.SetData(model.Albums{al})
+			ds.MockedAlbum = repo
+			u.setNoResult(al.CoverArtID(), version)
+
+			// A newer image mtime must bypass the no-result skip and attempt a compute; the compute
+			// fails transiently here (no readers wired), so the no-result entry must NOT be refreshed.
+			newer := version.Add(time.Hour)
+			u.process(GinkgoT().Context(), al.CoverArtID(), enqueueRequest{imageUpdatedAt: newer})
+			last, ok := u.lastNoResult(al.CoverArtID())
+			Expect(ok).To(BeTrue())
+			Expect(last).To(Equal(version))
+		})
+
 		It("does nothing when the entity is gone", func() {
 			ds.MockedAlbum = tests.CreateMockAlbumRepo()
-			Expect(func() { u.process(GinkgoT().Context(), model.Album{ID: "missing"}.CoverArtID(), false) }).ToNot(Panic())
+			Expect(func() {
+				u.process(GinkgoT().Context(), model.Album{ID: "missing"}.CoverArtID(), enqueueRequest{})
+			}).ToNot(Panic())
 		})
 	})
 })

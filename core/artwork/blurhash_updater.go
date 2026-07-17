@@ -2,6 +2,7 @@ package artwork
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"image"
 	"sync"
@@ -17,10 +18,17 @@ import (
 // blurHashUpdater keeps stored blurhashes in sync with the artwork actually served. Enqueue is
 // cheap (dedup map insert); the worker re-checks freshness against the DB and only decodes when
 // the hash is missing or was computed from an older artwork version.
+// enqueueRequest carries the staleness signals seen at serve time: force (image-cache miss) and
+// the reader's LastUpdated, which tracks file mtimes that no entity row timestamp reflects.
+type enqueueRequest struct {
+	force          bool
+	imageUpdatedAt time.Time
+}
+
 type blurHashUpdater struct {
 	a        *artwork
 	mutex    sync.Mutex
-	buffer   map[model.ArtworkID]bool // value: force recompute (image-cache miss)
+	buffer   map[model.ArtworkID]enqueueRequest
 	noResult map[model.ArtworkID]time.Time
 	wake     chan struct{}
 	start    sync.Once
@@ -29,13 +37,13 @@ type blurHashUpdater struct {
 func newBlurHashUpdater(a *artwork) *blurHashUpdater {
 	return &blurHashUpdater{
 		a:        a,
-		buffer:   make(map[model.ArtworkID]bool),
+		buffer:   make(map[model.ArtworkID]enqueueRequest),
 		noResult: make(map[model.ArtworkID]time.Time),
 		wake:     make(chan struct{}, 1),
 	}
 }
 
-func (u *blurHashUpdater) Enqueue(artID model.ArtworkID, force bool) {
+func (u *blurHashUpdater) Enqueue(artID model.ArtworkID, imageUpdatedAt time.Time, force bool) {
 	switch artID.Kind {
 	case model.KindAlbumArtwork, model.KindArtistArtwork, model.KindPlaylistArtwork:
 	default:
@@ -47,7 +55,12 @@ func (u *blurHashUpdater) Enqueue(artID model.ArtworkID, force bool) {
 		go u.run(request.WithUser(context.Background(), model.User{IsAdmin: true}))
 	})
 	u.mutex.Lock()
-	u.buffer[artID] = u.buffer[artID] || force
+	req := u.buffer[artID]
+	req.force = req.force || force
+	if imageUpdatedAt.After(req.imageUpdatedAt) {
+		req.imageUpdatedAt = imageUpdatedAt
+	}
+	u.buffer[artID] = req
 	u.mutex.Unlock()
 	select {
 	case u.wake <- struct{}{}:
@@ -58,30 +71,30 @@ func (u *blurHashUpdater) Enqueue(artID model.ArtworkID, force bool) {
 func (u *blurHashUpdater) run(ctx context.Context) {
 	for range u.wake {
 		for {
-			artID, force, ok := u.next()
+			artID, req, ok := u.next()
 			if !ok {
 				break
 			}
-			u.process(ctx, artID, force)
+			u.process(ctx, artID, req)
 		}
 	}
 }
 
-func (u *blurHashUpdater) next() (model.ArtworkID, bool, bool) {
+func (u *blurHashUpdater) next() (model.ArtworkID, enqueueRequest, bool) {
 	u.mutex.Lock()
 	defer u.mutex.Unlock()
-	for artID, force := range u.buffer {
+	for artID, req := range u.buffer {
 		delete(u.buffer, artID)
-		return artID, force, true
+		return artID, req, true
 	}
-	return model.ArtworkID{}, false, false
+	return model.ArtworkID{}, enqueueRequest{}, false
 }
 
 // processTimeout bounds one computation: readers can call external agents, and a hung call must
 // not stall the worker forever.
 const processTimeout = 30 * time.Second
 
-func (u *blurHashUpdater) process(ctx context.Context, artID model.ArtworkID, force bool) {
+func (u *blurHashUpdater) process(ctx context.Context, artID model.ArtworkID, req enqueueRequest) {
 	// Artwork readers can touch storage, agents and plugins; a panic here must not kill the server.
 	defer func() {
 		if r := recover(); r != nil {
@@ -95,21 +108,31 @@ func (u *blurHashUpdater) process(ctx context.Context, artID model.ArtworkID, fo
 		log.Trace(ctx, "BlurHash: could not load entity", "artID", artID, err)
 		return
 	}
-	if !force {
-		if stored != "" && storedAt != nil && storedAt.Equal(version) {
+	// sig is the newest staleness signal: the entity's artwork version or the served image's own
+	// timestamp, whichever is later (file swaps move the latter without touching any row).
+	sig := version
+	if req.imageUpdatedAt.After(sig) {
+		sig = req.imageUpdatedAt
+	}
+	if !req.force {
+		if stored != "" && storedAt != nil && storedAt.Equal(version) && !sig.After(*storedAt) {
 			return
 		}
-		if last, ok := u.lastNoResult(artID); ok && last.Equal(version) {
+		if last, ok := u.lastNoResult(artID); ok && !sig.After(last) {
 			return
 		}
 	}
 	hash, err := u.computeFromArtwork(ctx, artID)
+	if err != nil && !errors.Is(err, ErrUnavailable) {
+		// Transient failure (timeout, storage/agent hiccup) — leave un-memoized so a later serve retries.
+		log.Trace(ctx, "BlurHash: compute failed", "artID", artID, err)
+		return
+	}
 	if err != nil || hash == "" {
+		// Definitively no artwork (or a placeholder) for this state — remember it, so browsing
+		// artwork-less entities doesn't re-resolve them on every serve.
 		log.Trace(ctx, "BlurHash: nothing to persist", "artID", artID, err)
-		// A timed-out/cancelled attempt is transient — don't suppress future retries for it.
-		if ctx.Err() == nil {
-			u.setNoResult(artID, version)
-		}
+		u.setNoResult(artID, sig)
 		return
 	}
 	if err := u.persist(ctx, artID, hash, version); err != nil {
