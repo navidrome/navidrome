@@ -29,6 +29,7 @@ type dbMediaFile struct {
 	*model.MediaFile `structs:",flatten"`
 	Participants     string `structs:"-" json:"-"`
 	Tags             string `structs:"-" json:"-"`
+	UserTags         string `structs:"-" json:"-"`
 	// These are necessary to map the correct names (rg_*) to the correct fields (RG*)
 	// without using `db` struct tags in the model.MediaFile struct
 	RgAlbumGain *float64 `structs:"-" json:"-"`
@@ -53,6 +54,9 @@ func (m *dbMediaFile) PostScan() error {
 			return fmt.Errorf("parsing media_file from db: %w", err)
 		}
 		m.Genre, m.Genres = m.MediaFile.Tags.ToGenres()
+	}
+	if m.UserTags != "" {
+		m.MediaFile.UserTags = strings.Split(m.UserTags, userTagsSeparator)
 	}
 	return nil
 }
@@ -222,9 +226,18 @@ func (r *mediaFileRepository) UpdateProbeData(id string, data string) error {
 	return err
 }
 
+// userTagsSeparator joins a song's user tags into the single string the SQL layer returns them
+// as (via group_concat). A control character, not a comma, since tag names are free-form user text.
+const userTagsSeparator = "\x1f"
+
 func (r *mediaFileRepository) selectMediaFile(options ...model.QueryOptions) SelectBuilder {
 	sql := r.newSelect(options...).Columns("media_file.*", "library.path as library_path", "library.name as library_name").
-		LeftJoin("library on media_file.library_id = library.id")
+		LeftJoin("library on media_file.library_id = library.id").
+		Column(
+			"coalesce((select group_concat(mft.tag_name, ?) from media_file_tag mft "+
+				"where mft.media_file_id = media_file.id and mft.user_id = ?), '') as user_tags",
+			userTagsSeparator, loggedUser(r.ctx).ID,
+		)
 	sql = r.withAnnotation(sql, "media_file.id")
 	sql = r.withBookmark(sql, "media_file.id")
 	return r.applyLibraryFilter(sql)

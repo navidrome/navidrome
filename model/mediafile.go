@@ -92,6 +92,8 @@ type MediaFile struct {
 	Tags         Tags         `structs:"tags" json:"tags,omitempty" hash:"ignore"`       // All imported tags from the original file
 	Participants Participants `structs:"participants" json:"participants" hash:"ignore"` // All artists that participated in this track
 
+	UserTags []string `structs:"-" json:"userTags,omitempty" hash:"ignore"` // The requesting user's own free-form tags (model.MediaFileTag)
+
 	Missing   bool      `structs:"missing" json:"missing" hash:"ignore"`      // If the file is not found in the library's FS
 	BirthTime time.Time `structs:"birth_time" json:"birthTime" hash:"ignore"` // Time of file creation (ctime)
 	CreatedAt time.Time `structs:"created_at" json:"createdAt" hash:"ignore"` // Time this entry was created in the DB

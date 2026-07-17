@@ -118,7 +118,10 @@ const SongFilter = (props) => {
           optionText="tagValue"
         />
       </ReferenceArrayInput>
-      <UserTagFilterInput />
+      <UserTagFilterInput
+        source="user_tag"
+        label={translate('resources.song.fields.userTag')}
+      />
       {config.enableFavourites && (
         <NullableBooleanInput
           source="starred"
@@ -184,6 +187,13 @@ const SongList = (props) => {
         />
       ),
       comment: <TextField source="comment" />,
+      userTags: (
+        <FunctionField
+          source="userTags"
+          render={(r) => (r.userTags || []).join(', ')}
+          sortable={false}
+        />
+      ),
       path: <PathField source="path" />,
       createdAt: (
         <DateField source="createdAt" sortBy="recently_added" showTime />
@@ -203,6 +213,7 @@ const SongList = (props) => {
       'genre',
       'mood',
       'comment',
+      'userTags',
       'path',
       'createdAt',
     ],

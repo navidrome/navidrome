@@ -41,7 +41,8 @@
         "mappedTags": "Mapped tags",
         "rawTags": "Raw tags",
         "missing": "Missing",
-        "userTag": "My Tag"
+        "userTag": "My Tag",
+        "userTags": "My Tags"
       },
       "actions": {
         "addToQueue": "Play Later",
