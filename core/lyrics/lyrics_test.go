@@ -230,7 +230,7 @@ var _ = Describe("Lyrics", func() {
 		}))
 	})
 
-	It("returns a non-Lyricsfile YAML sidecar as plain text, shadowing lower-priority sources", func() {
+	It("skips a non-Lyricsfile YAML sidecar and resolves the next source", func() {
 		dir, err := os.MkdirTemp("", "lyrics-yaml-fallback-*")
 		Expect(err).ToNot(HaveOccurred())
 		DeferCleanup(func() {
@@ -247,14 +247,11 @@ var _ = Describe("Lyrics", func() {
 			Path:        "song.mp3",
 		})
 
-		// ParseLyrics falls back to plain text for any suffix when the content
-		// doesn't match the structured format, so the .yaml hit is non-empty and
-		// shadows the lower-priority .lrc entirely.
 		Expect(err).To(BeNil())
 		Expect(list).To(HaveLen(1))
-		Expect(list[0].Synced).To(BeFalse())
+		Expect(list[0].Synced).To(BeTrue())
 		Expect(list[0].Line).To(Equal([]model.Line{
-			{Value: "title: not lyricsfile"},
+			{Start: new(int64(1000)), Value: "Fallback line"},
 		}))
 	})
 

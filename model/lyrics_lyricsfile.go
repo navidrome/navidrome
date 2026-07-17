@@ -71,6 +71,16 @@ func parseLyricsfile(lang string, contents []byte) (LyricList, error) {
 
 const lyricsfileVersion = "1.0"
 
+func hasLyricsfileVersion(contents []byte) bool {
+	var header struct {
+		Version string `yaml:"version"`
+	}
+	if err := yaml.Unmarshal(contents, &header); err != nil {
+		return false
+	}
+	return strings.TrimSpace(header.Version) == lyricsfileVersion
+}
+
 type lyricsfileDocument struct {
 	Version  string                `yaml:"version"`
 	Metadata lyricsfileMetadata    `yaml:"metadata"`

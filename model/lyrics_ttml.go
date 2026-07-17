@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/xml"
 	"errors"
+	"fmt"
 	"io"
 	"math"
 	"regexp"
@@ -123,6 +124,9 @@ func parseTTML(defaultLang string, contents []byte) (LyricList, error) {
 	// text — isTTMLDocument does a cheap decode that stops at the first element.
 	// Checked after the encoding fixup so UTF-16-declared documents are recognized.
 	if !isTTMLDocument(contents) {
+		if claimsTTML(contents) {
+			return nil, fmt.Errorf("malformed TTML document")
+		}
 		return nil, nil
 	}
 
