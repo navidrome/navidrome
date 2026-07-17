@@ -147,6 +147,9 @@ jobs:
     env:
       FFMPEG_VERSION: "7.1"
       FFMPEG_REPOSITORY: navidrome/ffmpeg-windows-builds
+      # Go 1.26's green-tea GC crashes intermittently on Windows runners (runtime fatal errors in
+      # the persistence suite, three distinct signatures across 1.26.4/1.26.5).
+      GOEXPERIMENT: nogreenteagc
     steps:
       - uses: actions/checkout@v7
 
