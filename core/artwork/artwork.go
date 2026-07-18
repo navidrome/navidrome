@@ -104,9 +104,10 @@ func (a *artwork) Get(ctx context.Context, artID model.ArtworkID, size int, squa
 	if a.blurHashes != nil && size == 0 && !square && eligibleKind(artID) {
 		// Tee the served bytes: the blurhash is computed from exactly what the client downloads, so it
 		// changes precisely when the served cover changes. Placeholder bytes (playlist fallback) clear.
+		// The tee wraps r directly, so Close reaches the underlying stream (no fd leak).
 		version := capAtNow(artReader.LastUpdated())
-		reader = &teeCachedStream{CachedStream: r, tee: newTeeReader(io.NopCloser(r), maxTeeBytes,
-			func(data []byte) { a.blurHashes.EnqueueBytes(artID, data, version) })}
+		reader = newTeeReader(r, maxTeeBytes,
+			func(data []byte) { a.blurHashes.EnqueueBytes(artID, data, version) })
 	}
 	return reader, artReader.LastUpdated(), nil
 }

@@ -8,7 +8,23 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+type closeSpy struct {
+	io.Reader
+	closed bool
+}
+
+func (c *closeSpy) Close() error { c.closed = true; return nil }
+
 var _ = Describe("teeReader", func() {
+	It("closes the underlying source exactly once", func() {
+		src := &closeSpy{Reader: bytes.NewReader([]byte("hello"))}
+		tr := newTeeReader(src, 1024, func([]byte) {})
+		_, err := io.ReadAll(tr)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(tr.Close()).To(Succeed())
+		Expect(src.closed).To(BeTrue(), "the source stream must be closed, or its fd leaks")
+	})
+
 	It("calls onComplete with the full bytes after a complete read+close", func() {
 		var got []byte
 		src := io.NopCloser(bytes.NewReader([]byte("hello world")))

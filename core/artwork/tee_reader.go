@@ -3,13 +3,11 @@ package artwork
 import (
 	"bytes"
 	"io"
-
-	"github.com/navidrome/navidrome/utils/cache"
 )
 
 // teeReader mirrors bytes read from src into buf, and on Close invokes onComplete with the captured
 // bytes only if the stream was fully consumed (EOF) and stayed within maxBytes. Partial reads and
-// oversized streams are skipped, so a hash is only ever computed from a complete, bounded image.
+// oversized streams are skipped, so the callback only ever receives a complete, bounded payload.
 type teeReader struct {
 	src        io.ReadCloser
 	buf        bytes.Buffer
@@ -48,14 +46,3 @@ func (t *teeReader) Close() error {
 	}
 	return err
 }
-
-// teeCachedStream wraps a *cache.CachedStream so reads are teed for blurhash capture while callers
-// still see a ReadCloser. Seek is intentionally dropped: blurhash-eligible serves are full reads
-// (every artwork handler does io.Copy), so no caller Seeks a teed stream.
-type teeCachedStream struct {
-	*cache.CachedStream
-	tee *teeReader
-}
-
-func (t *teeCachedStream) Read(p []byte) (int, error) { return t.tee.Read(p) }
-func (t *teeCachedStream) Close() error               { return t.tee.Close() }
