@@ -61,6 +61,9 @@ var _ = Describe("BlurHash", func() {
 		// A future file mtime must be capped at now, or the !Before checks would pin the hash
 		// (and the client's cover cache) until wall time caught up.
 		Expect(updated.BlurHashUpdatedAt.After(time.Now())).To(BeFalse())
+		// The scanner caps the folder's images_updated_at too, so the artwork version is not future
+		// and the freshly computed hash is accepted by the DTO instead of the fake.
+		Expect(updated.BlurHashUpdatedAt.Before(updated.ArtworkUpdatedAt())).To(BeFalse())
 	})
 
 	It("recomputes when the cover is swapped in place", func() {

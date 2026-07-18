@@ -9,6 +9,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/storage"
@@ -160,7 +161,13 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string, checker *IgnoreC
 				folder.numPlaylists++
 			case model.IsImageFile(name):
 				folder.imageFiles[entry.Name()] = entry
-				folder.imagesUpdatedAt = utils.TimeNewest(folder.imagesUpdatedAt, fileInfo.ModTime(), folder.modTime)
+				imagesAt := utils.TimeNewest(folder.imagesUpdatedAt, fileInfo.ModTime(), folder.modTime)
+				// Cap at now: a future-stamped image (clock skew) would otherwise become a future artwork
+				// version that pins the emitted blurhash to the fake until wall time caught up.
+				if now := time.Now(); imagesAt.After(now) {
+					imagesAt = now
+				}
+				folder.imagesUpdatedAt = imagesAt
 			}
 		}
 	}
