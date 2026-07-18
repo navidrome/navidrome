@@ -1,9 +1,12 @@
 package artworke2e_test
 
 import (
+	"os"
+	"path/filepath"
 	"testing/fstest"
 	"time"
 
+	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -152,6 +155,34 @@ var _ = Describe("BlurHash", func() {
 			updated, err := ds.Album(ctx).Get(al.ID)
 			g.Expect(err).ToNot(HaveOccurred())
 			g.Expect(updated.BlurHash).ToNot(Equal(firstHash))
+		}, "10s", "100ms").Should(Succeed())
+	})
+
+	It("clears a stored playlist hash when it falls back to the placeholder", func() {
+		// A playlist with a sidecar cover gets a real hash; removing the sidecar makes the reader chain
+		// fall through to fromAlbumPlaceholder(), whose bytes flow through the tee on Get and clear it.
+		dir := GinkgoT().TempDir()
+		m3uPath := filepath.Join(dir, "MyList.m3u")
+		Expect(os.WriteFile(m3uPath, []byte("#EXTM3U\n"), 0600)).To(Succeed())
+		sidecar := filepath.Join(dir, "MyList.png")
+		Expect(os.WriteFile(sidecar, realPNG("pl-cover").Data, 0600)).To(Succeed())
+
+		pl := putPlaylist(model.Playlist{ID: "pl-blur", Name: "MyList", Path: m3uPath})
+		readArtwork(pl.CoverArtID())
+		Eventually(func(g Gomega) {
+			updated, err := ds.Playlist(ctx).Get(pl.ID)
+			g.Expect(err).ToNot(HaveOccurred())
+			g.Expect(updated.BlurHash).ToNot(BeEmpty())
+		}, "10s", "100ms").Should(Succeed())
+
+		// Remove the sidecar: the serve now falls through to the placeholder, captured by the tee.
+		Expect(os.Remove(sidecar)).To(Succeed())
+		Expect(readArtwork(pl.CoverArtID())).To(Equal(placeholderBytes()))
+
+		Eventually(func(g Gomega) {
+			updated, err := ds.Playlist(ctx).Get(pl.ID)
+			g.Expect(err).ToNot(HaveOccurred())
+			g.Expect(updated.BlurHash).To(BeEmpty())
 		}, "10s", "100ms").Should(Succeed())
 	})
 
