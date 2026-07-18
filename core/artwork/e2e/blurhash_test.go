@@ -74,8 +74,8 @@ var _ = Describe("BlurHash", func() {
 			firstHash = updated.BlurHash
 		}, "10s", "100ms").Should(Succeed())
 
-		// Swap the cover bytes and rescan: the folder's image version moves, so the reader key moves,
-		// the cache misses and the fill re-triggers the compute — no serve-time force hint needed.
+		// Swap the cover bytes and rescan, then serve: the tee hashes the newly-served bytes, so the
+		// stored hash moves to describe the new cover.
 		setLayout(fstest.MapFS{
 			"Artist/Album/01 - Song.mp3": trackFile(1, "Song"),
 			"Artist/Album/cover.png":     realPNG("swapped-cover"),
@@ -105,13 +105,13 @@ var _ = Describe("BlurHash", func() {
 			g.Expect(updated.BlurHash).ToNot(BeEmpty())
 		}, "10s", "100ms").Should(Succeed())
 
-		// No rescan: the folder row still lists the cover, but the file is gone — the serve's
-		// ErrUnavailable alone must trigger the clear.
+		// No rescan: the folder row still lists the cover, but the file is gone. The serve falls back
+		// to the placeholder (GetOrPlaceholder, the real Jellyfin/Subsonic path), and the worker's
+		// gone-recheck confirms the source is really gone and clears the stored hash.
 		setLayout(fstest.MapFS{
 			"Artist/Album/01 - Song.mp3": trackFile(1, "Song"),
 		})
-		_, err := readArtworkOrErr(al.CoverArtID())
-		Expect(err).To(HaveOccurred())
+		Expect(readOrPlaceholder(al.CoverArtID())).To(Equal(placeholderBytes()))
 
 		Eventually(func(g Gomega) {
 			updated, err := ds.Album(ctx).Get(al.ID)
@@ -120,7 +120,7 @@ var _ = Describe("BlurHash", func() {
 		}, "10s", "100ms").Should(Succeed())
 	})
 
-	PIt("recomputes when cover bytes change under a preserved mtime (cache disabled)", func() {
+	It("recomputes when cover bytes change under a preserved mtime (cache disabled)", func() {
 		cover := realPNG("orig-bytes")
 		fixed := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 		cover.ModTime = fixed

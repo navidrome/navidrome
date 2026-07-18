@@ -158,6 +158,18 @@ func readArtworkOrErr(artID model.ArtworkID) ([]byte, error) {
 	return io.ReadAll(r)
 }
 
+// readOrPlaceholder serves through GetOrPlaceholder — the path real Jellyfin/Subsonic handlers use —
+// so a vanished album/artist cover falls back to the placeholder, whose bytes drive the blurhash clear.
+func readOrPlaceholder(artID model.ArtworkID) []byte {
+	GinkgoHelper()
+	r, _, err := aw.GetOrPlaceholder(ctx, artID.String(), 0, false)
+	Expect(err).ToNot(HaveOccurred())
+	defer r.Close()
+	b, err := io.ReadAll(r)
+	Expect(err).ToNot(HaveOccurred())
+	return b
+}
+
 // noopProvider implements external.Provider with not-found returns so the
 // "external" priority entry never produces a result.
 type noopProvider struct{}

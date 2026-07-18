@@ -19,6 +19,19 @@ import (
 
 var ErrUnavailable = errors.New("artwork unavailable")
 
+// maxTeeBytes bounds the per-serve capture buffer; artwork is a few MB, and anything larger is not
+// hashed (skipped), so a pathological source can't accumulate unbounded memory across serves.
+const maxTeeBytes = 20 * 1024 * 1024
+
+// capAtNow keeps a future artwork mtime (clock skew, a future-stamped file) from being stored as the
+// blurhash version, which would let the DTO's !Before check pin the hash until wall time caught up.
+func capAtNow(t time.Time) time.Time {
+	if now := time.Now(); t.After(now) {
+		return now
+	}
+	return t
+}
+
 type Artwork interface {
 	Get(ctx context.Context, artID model.ArtworkID, size int, square bool) (io.ReadCloser, time.Time, error)
 	GetOrPlaceholder(ctx context.Context, id string, size int, square bool) (io.ReadCloser, time.Time, error)
@@ -59,6 +72,11 @@ func (a *artwork) GetOrPlaceholder(ctx context.Context, id string, size int, squ
 		reader, lastUpdate, err = a.Get(ctx, artID, size, square)
 	}
 	if errors.Is(err, ErrUnavailable) {
+		if a.blurHashes != nil && eligibleKind(artID) {
+			// No bytes flowed through the tee; a real deletion must still clear the stored hash. The
+			// worker re-checks so a transient fetch failure doesn't clobber a valid hash.
+			a.blurHashes.EnqueueClearIfGone(artID, capAtNow(consts.ServerStart))
+		}
 		if artID.Kind == model.KindArtistArtwork {
 			reader, _ = resources.FS().Open(consts.PlaceholderArtistArt)
 		} else {
@@ -80,21 +98,17 @@ func (a *artwork) Get(ctx context.Context, artID model.ArtworkID, size int, squa
 		if !errors.Is(err, context.Canceled) && !errors.Is(err, ErrUnavailable) {
 			log.Error(ctx, "Error accessing image cache", "id", artID, "size", size, err)
 		}
-		// A vanished source must still reach the worker, or a stored hash would keep describing
-		// artwork that no longer exists.
-		if a.blurHashes != nil && errors.Is(err, ErrUnavailable) {
-			a.blurHashes.EnqueueGone(artID)
-		}
 		return nil, time.Time{}, err
 	}
-	if a.blurHashes != nil && size == 0 && !square {
-		// Every original-size serve carries the reader's true version; the worker's freshness guard
-		// turns already-hashed rows into a cheap read and only recomputes when the hash is stale or
-		// missing. Enqueuing on cache hits too (not just fills) is what backfills warm caches adopted
-		// from a pre-blurhash version, whose rows migrated in with an empty hash.
-		a.blurHashes.Enqueue(artID, artReader.LastUpdated())
+	reader = r
+	if a.blurHashes != nil && size == 0 && !square && eligibleKind(artID) {
+		// Tee the served bytes: the blurhash is computed from exactly what the client downloads, so it
+		// changes precisely when the served cover changes. Placeholder bytes (playlist fallback) clear.
+		version := capAtNow(artReader.LastUpdated())
+		reader = &teeCachedStream{CachedStream: r, tee: newTeeReader(io.NopCloser(r), maxTeeBytes,
+			func(data []byte) { a.blurHashes.EnqueueBytes(artID, data, version) })}
 	}
-	return r, artReader.LastUpdated(), nil
+	return reader, artReader.LastUpdated(), nil
 }
 
 type coverArtGetter interface {
