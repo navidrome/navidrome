@@ -224,7 +224,11 @@ func (r *albumRepository) UpdateExternalInfo(al *model.Album) error {
 }
 
 func (r *albumRepository) selectAlbum(options ...model.QueryOptions) SelectBuilder {
-	sql := r.newSelect(options...).Columns("album.*", "library.path as library_path", "library.name as library_name").
+	sql := r.newSelect(options...).Columns("album.*", "library.path as library_path", "library.name as library_name",
+		// Folds folder image mtimes into the artwork version: an in-place cover swap moves them without
+		// touching the album row. Bare column (not max()) keeps the decltype so the driver scans time.Time.
+		"(select f.images_updated_at from folder f, json_each(album.folder_ids) je where f.id = je.value"+
+			" order by f.images_updated_at desc limit 1) as folder_images_updated_at").
 		LeftJoin("library on album.library_id = library.id")
 	sql = r.withAnnotation(sql, "album.id")
 	return r.applyLibraryFilter(sql)

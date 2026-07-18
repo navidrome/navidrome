@@ -72,6 +72,10 @@ type Album struct {
 	// full-row writes (structs:"-"): only UpdateBlurHash writes it, so scans can't erase it.
 	BlurHash          string     `structs:"-" json:"blurHash,omitempty" hash:"ignore"`
 	BlurHashUpdatedAt *time.Time `structs:"-" json:"-" hash:"ignore"`
+
+	// FolderImagesUpdatedAt is the newest images_updated_at among the album's folders (selected, not
+	// persisted): an in-place cover-file swap moves it even though the album row stays untouched.
+	FolderImagesUpdatedAt *time.Time `structs:"-" json:"-" hash:"ignore"`
 }
 
 func (a Album) CoverArtID() ArtworkID {
@@ -85,6 +89,9 @@ func (a Album) ArtworkUpdatedAt() time.Time {
 	t := a.UpdatedAt
 	if a.ImportedAt.After(t) {
 		t = a.ImportedAt
+	}
+	if a.FolderImagesUpdatedAt != nil && a.FolderImagesUpdatedAt.After(t) {
+		t = *a.FolderImagesUpdatedAt
 	}
 	return t
 }

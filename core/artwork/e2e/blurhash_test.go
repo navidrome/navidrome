@@ -135,6 +135,35 @@ var _ = Describe("BlurHash", func() {
 		Expect(storedAlbum(al.ID).BlurHash).ToNot(Equal(firstHash))
 	})
 
+	It("advances the album artwork version when only the cover file changes (quick scan)", func() {
+		setLayout(fstest.MapFS{
+			"Artist/Album/01 - Song.mp3": trackFile(1, "Song"),
+			"Artist/Album/cover.png":     realPNG("p1-orig"),
+		})
+		scan()
+		al := firstAlbum()
+		readArtwork(al.CoverArtID())
+		first := storedAlbum(al.ID)
+		Expect(first.BlurHash).ToNot(BeEmpty())
+		Expect(first.BlurHashUpdatedAt.Before(first.ArtworkUpdatedAt())).To(BeFalse())
+
+		// Replace only the cover and quick-scan: the album row stays untouched while the folder's
+		// images_updated_at advances the artwork version, so hash-keyed clients refetch.
+		fakeFS.Add("Artist/Album/cover.png", realPNG("p1-swapped"), time.Now())
+		quickScan()
+
+		stale := storedAlbum(al.ID)
+		Expect(stale.UpdatedAt).To(Equal(first.UpdatedAt), "premise: image-only change must not touch the album row")
+		Expect(stale.BlurHash).To(Equal(first.BlurHash))
+		Expect(stale.BlurHashUpdatedAt.Before(stale.ArtworkUpdatedAt())).To(BeTrue(), "stored hash must read as stale")
+
+		// The refetch serves the new bytes; the tee rotates the hash and its version catches up.
+		readArtwork(al.CoverArtID())
+		fresh := storedAlbum(al.ID)
+		Expect(fresh.BlurHash).ToNot(Equal(first.BlurHash))
+		Expect(fresh.BlurHashUpdatedAt.Before(fresh.ArtworkUpdatedAt())).To(BeFalse())
+	})
+
 	It("clears a stored playlist hash when it falls back to the placeholder", func() {
 		// A playlist with a sidecar cover gets a real hash; removing the sidecar makes the reader chain
 		// fall through to fromAlbumPlaceholder(), whose bytes flow through the tee on Get and clear it.

@@ -900,6 +900,48 @@ func _p(id, name string, sortName ...string) model.Participant {
 	return p
 }
 
+var _ = Describe("AlbumRepository folder images version", func() {
+	var repo model.AlbumRepository
+
+	BeforeEach(func() {
+		ctx := request.WithUser(GinkgoT().Context(), model.User{ID: "userid", UserName: "johndoe"})
+		repo = NewAlbumRepository(ctx, GetDBXBuilder())
+		var origFolderIDs string
+		Expect(GetDBXBuilder().NewQuery("select folder_ids from album where id = '103'").
+			Row(&origFolderIDs)).To(Succeed())
+		DeferCleanup(func() {
+			_, err := GetDBXBuilder().NewQuery("delete from folder where id = 'fold-blur-1'").Execute()
+			Expect(err).ToNot(HaveOccurred())
+			_, err = GetDBXBuilder().NewQuery("update album set folder_ids = {:f} where id = '103'").
+				Bind(map[string]any{"f": origFolderIDs}).Execute()
+			Expect(err).ToNot(HaveOccurred())
+		})
+	})
+
+	It("surfaces the newest folder images_updated_at on the selected album", func() {
+		// Newer than any fixture row timestamp, so it must win as the artwork version.
+		imagesAt := time.Date(2030, 6, 1, 12, 0, 0, 0, time.UTC)
+		_, err := GetDBXBuilder().NewQuery(
+			"insert into folder (id, library_id, path, name, images_updated_at) values ('fold-blur-1', 1, '.', 'Radioactivity', {:t})").
+			Bind(map[string]any{"t": imagesAt}).Execute()
+		Expect(err).ToNot(HaveOccurred())
+		_, err = GetDBXBuilder().NewQuery(`update album set folder_ids = '["fold-blur-1"]' where id = '103'`).Execute()
+		Expect(err).ToNot(HaveOccurred())
+
+		al, err := repo.Get("103")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(al.FolderImagesUpdatedAt).ToNot(BeNil())
+		Expect(al.FolderImagesUpdatedAt.Equal(imagesAt)).To(BeTrue())
+		Expect(al.ArtworkUpdatedAt().Equal(imagesAt)).To(BeTrue(), "folder image changes must advance the artwork version")
+	})
+
+	It("leaves FolderImagesUpdatedAt nil when the album has no folders", func() {
+		al, err := repo.Get("101")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(al.FolderImagesUpdatedAt).To(BeNil())
+	})
+})
+
 var _ = Describe("AlbumRepository.UpdateBlurHash", func() {
 	var repo model.AlbumRepository
 

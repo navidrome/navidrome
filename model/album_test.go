@@ -69,4 +69,12 @@ var _ = Describe("Album.ArtworkUpdatedAt", func() {
 		al := Album{UpdatedAt: base, ImportedAt: later, ExternalInfoUpdatedAt: &latest}
 		Expect(al.ArtworkUpdatedAt()).To(Equal(later))
 	})
+	It("returns FolderImagesUpdatedAt when it is the newest (in-place cover swap)", func() {
+		al := Album{UpdatedAt: base, ImportedAt: later, FolderImagesUpdatedAt: &latest}
+		Expect(al.ArtworkUpdatedAt()).To(Equal(latest))
+	})
+	It("ignores an older FolderImagesUpdatedAt", func() {
+		al := Album{UpdatedAt: later, ImportedAt: base, FolderImagesUpdatedAt: &base}
+		Expect(al.ArtworkUpdatedAt()).To(Equal(later))
+	})
 })
