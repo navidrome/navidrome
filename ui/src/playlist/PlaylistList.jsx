@@ -4,6 +4,7 @@ import {
   DateField,
   EditButton,
   Filter,
+  NullableBooleanInput,
   NumberField,
   ReferenceInput,
   SearchInput,
@@ -22,11 +23,14 @@ import {
   CoverArtAvatar,
   DurationField,
   List,
+  LoveButton,
   Writable,
   isWritable,
   useSelectedFields,
   useResourceRefresh,
 } from '../common'
+import FavoriteIcon from '@material-ui/icons/Favorite'
+import config from '../config'
 import PlaylistListActions from './PlaylistListActions'
 import ChangePublicStatusButton from './ChangePublicStatusButton'
 
@@ -52,6 +56,12 @@ const PlaylistFilter = (props) => {
         >
           <SelectInput optionText="name" />
         </ReferenceInput>
+      )}
+      {config.enableFavourites && (
+        <NullableBooleanInput
+          source="starred"
+          label={<FavoriteIcon fontSize={'small'} />}
+        />
       )}
     </Filter>
   )
@@ -139,6 +149,10 @@ const PlaylistListBulkActions = (props) => {
   )
 }
 
+const PlaylistLove = ({ record }) => (
+  <LoveButton record={record} resource={'playlist'} />
+)
+
 const PlaylistList = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
@@ -181,6 +195,7 @@ const PlaylistList = (props) => {
       <Datagrid rowClick="show" isRowSelectable={(r) => isWritable(r?.ownerId)}>
         <CoverArtAvatar source="id" variant="square" />
         <TextField source="name" />
+        {config.enableFavourites && <PlaylistLove sortable={false} />}
         {columns}
         <Writable>
           <EditButton />
