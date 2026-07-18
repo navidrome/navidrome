@@ -1,32 +1,35 @@
 import React from 'react'
 import PropTypes from 'prop-types'
 import Dialog from '@material-ui/core/Dialog'
-import List from '@material-ui/core/List'
-import ListItem from '@material-ui/core/ListItem'
-import ListItemText from '@material-ui/core/ListItemText'
-import Link from '@material-ui/core/Link'
+import Accordion from '@material-ui/core/Accordion'
+import AccordionSummary from '@material-ui/core/AccordionSummary'
+import AccordionDetails from '@material-ui/core/AccordionDetails'
 import Typography from '@material-ui/core/Typography'
+import { MdExpandMore } from 'react-icons/md'
 import { useTranslate } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
 import { DialogTitle } from './DialogTitle'
 import { DialogContent } from './DialogContent'
-import { FORK_README_URL } from '../consts'
 
 const useStyles = makeStyles((theme) => ({
   intro: {
     marginBottom: theme.spacing(2),
   },
+  overview: {
+    marginBottom: theme.spacing(1),
+  },
+  howToLabel: {
+    fontWeight: 600,
+    marginBottom: theme.spacing(0.5),
+  },
 }))
 
-const FEATURES = [
-  { key: 'podcasts', anchor: 'podcast-support-experimental' },
-  { key: 'folders', anchor: 'physical-folder-browsing-experimental' },
-  { key: 'tagging', anchor: 'user-defined-song-tagging-experimental' },
-  { key: 'skipSongs', anchor: 'skip--auto-pass-disliked-songs-experimental' },
-  {
-    key: 'scrobbleAttribution',
-    anchor: 'enhanced-scrobble-attribution-pulse-integration',
-  },
+const FEATURE_KEYS = [
+  'podcasts',
+  'folders',
+  'tagging',
+  'skipSongs',
+  'scrobbleAttribution',
 ]
 
 export const ForkFeaturesDialog = ({ open, onClose }) => {
@@ -48,27 +51,28 @@ export const ForkFeaturesDialog = ({ open, onClose }) => {
         <Typography variant="body2" className={classes.intro}>
           {translate('forkFeatures.intro')}
         </Typography>
-        <List>
-          {FEATURES.map(({ key, anchor }) => (
-            <ListItem key={key} disableGutters>
-              <ListItemText
-                primary={translate(`forkFeatures.${key}.title`)}
-                secondary={
-                  <>
-                    {translate(`forkFeatures.${key}.description`)}{' '}
-                    <Link
-                      href={`${FORK_README_URL}${anchor}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {translate('forkFeatures.learnMore')}
-                    </Link>
-                  </>
-                }
-              />
-            </ListItem>
-          ))}
-        </List>
+        {FEATURE_KEYS.map((key) => (
+          <Accordion key={key}>
+            <AccordionSummary expandIcon={<MdExpandMore />}>
+              <Typography variant="subtitle1">
+                {translate(`forkFeatures.${key}.title`)}
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              <div>
+                <Typography variant="body2" className={classes.overview}>
+                  {translate(`forkFeatures.${key}.overview`)}
+                </Typography>
+                <Typography variant="body2" className={classes.howToLabel}>
+                  {translate('forkFeatures.howToLabel')}
+                </Typography>
+                <Typography variant="body2">
+                  {translate(`forkFeatures.${key}.howTo`)}
+                </Typography>
+              </div>
+            </AccordionDetails>
+          </Accordion>
+        ))}
       </DialogContent>
     </Dialog>
   )

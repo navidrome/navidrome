@@ -783,26 +783,31 @@
   "forkFeatures": {
     "title": "navidrome-experimental Features",
     "intro": "This server runs navidrome-experimental, a fork of Navidrome with a few extra features on top of the official release. Everything else works exactly like upstream Navidrome.",
-    "learnMore": "Learn more",
+    "howToLabel": "How to use it",
     "podcasts": {
       "title": "Podcast Support",
-      "description": "Subscribe to and stream or download podcasts through the same Subsonic API you already use for songs."
+      "overview": "Subscribe to podcasts by RSS feed or search, then stream episodes on demand or download them to keep permanently — all through the same Subsonic API your music already uses, so downloaded episodes show up as real library tracks.",
+      "howTo": "Open Podcasts from the sidebar (enable it first in Personal settings if it's hidden), search for a show or paste its RSS URL to subscribe, then choose to stream or download each episode. Set a retention rule (max episodes, days, or storage) so older downloads clean themselves up automatically, and add downloaded episodes to playlists just like any other song."
     },
     "folders": {
       "title": "Physical Folder Browsing",
-      "description": "Browse, play, and manage your library exactly as it's laid out on disk."
+      "overview": "Browse, play, and manage your library exactly as it's organized on disk, as an alternative to the metadata-driven Artist/Album views.",
+      "howTo": "Open Folders from the sidebar (enable it first in Personal settings if it's hidden) to navigate your library's actual folder tree, complete with thumbnails, track counts, and size per folder. Right-click a folder for recursive actions — play, queue, download the whole tree as a ZIP, or keep it in sync as a playlist — and use the in-folder search to filter without leaving where you are."
     },
     "tagging": {
       "title": "User-Defined Song Tagging",
-      "description": "Create your own private tags on songs, filter and bulk-add by tag, and use tags in smart playlists."
+      "overview": "Create your own private labels on songs, completely separate from embedded file metadata — visible only to your account, even on a library shared with other users.",
+      "howTo": "Right-click any song and choose Tags to apply a new or existing tag. Use the \"My Tag\" filter on the Songs list to narrow to everything carrying a tag, and \"Bind by Tag\" to add every matching song to a playlist in one click. Turn on the \"My Tags\" column (via Columns to Display) to see tags at a glance, or use a tag in a smart playlist's criteria (e.g. {\"is\": {\"usertag\": \"workout\"}}) for a playlist that keeps itself updated automatically."
     },
     "skipSongs": {
       "title": "Skip / Auto-Pass Disliked Songs",
-      "description": "Flag a song as skipped and the player automatically passes over it during playback."
+      "overview": "Flag a song you never want to hear again, and the player automatically passes over it during normal playback — no deleting the file or maintaining a separate exclusion playlist.",
+      "howTo": "Right-click a song and choose Skip to flag it. It stays fully visible in the song list (just dimmed) and is still playable with a direct click — the auto-skip only applies when the player naturally advances to it, including songs already sitting in your current queue."
     },
     "scrobbleAttribution": {
       "title": "Enhanced Scrobble Attribution",
-      "description": "Richer client/source/playback-mode context on every scrobble, available to plugins too."
+      "overview": "Adds richer context to every scrobble/play report — not just that a song played, but the client, source, origin, and playback mode it played through (e.g. distinguishing Android Auto from Web from Windows Desktop).",
+      "howTo": "This happens automatically in the background; there's nothing to turn on. It's most useful for compatible companion apps and plugins (built for this fork's own Pulse project) that use the extra context to build richer listening stats."
     }
   },
   "activity": {
