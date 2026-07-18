@@ -66,8 +66,12 @@ func resizedFromOriginal(ctx context.Context, a *artwork, artID model.ArtworkID,
 	return r, nil
 }
 
+// resizedKeyVersion invalidates resized entries cached by pre-blurhash versions: the refill is what
+// pulls the original through the tee, so warm entries would otherwise never backfill a hash.
+const resizedKeyVersion = "v1"
+
 func (a *resizedArtworkReader) Key() string {
-	baseKey := fmt.Sprintf("%s.%d", a.cacheKey, a.size)
+	baseKey := fmt.Sprintf("%s.%d.%s", a.cacheKey, a.size, resizedKeyVersion)
 	if a.square {
 		return baseKey + ".square"
 	}
