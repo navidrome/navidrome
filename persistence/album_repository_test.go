@@ -910,7 +910,7 @@ var _ = Describe("AlbumRepository folder images version", func() {
 		Expect(GetDBXBuilder().NewQuery("select folder_ids from album where id = '103'").
 			Row(&origFolderIDs)).To(Succeed())
 		DeferCleanup(func() {
-			_, err := GetDBXBuilder().NewQuery("delete from folder where id in ('fold-blur-1', 'fold-blur-root')").Execute()
+			_, err := GetDBXBuilder().NewQuery("delete from folder where id like 'fold-blur-%'").Execute()
 			Expect(err).ToNot(HaveOccurred())
 			_, err = GetDBXBuilder().NewQuery("update album set folder_ids = {:f} where id = '103'").
 				Bind(map[string]any{"f": origFolderIDs}).Execute()
@@ -938,9 +938,11 @@ var _ = Describe("AlbumRepository folder images version", func() {
 	It("includes the parent folder's images (album-root cover with disc subfolders)", func() {
 		discAt := time.Date(2030, 6, 1, 12, 0, 0, 0, time.UTC)
 		rootAt := discAt.Add(time.Hour) // the root cover is the newest image
+		// The album root sits under an artist folder (non-empty parent_id): the library root never counts.
 		_, err := GetDBXBuilder().NewQuery(
 			"insert into folder (id, library_id, path, name, parent_id, images_updated_at) values" +
-				" ('fold-blur-root', 1, '.', 'Album', '', {:root}), ('fold-blur-1', 1, './Album', 'CD1', 'fold-blur-root', {:disc})").
+				" ('fold-blur-root', 1, './Artist', 'Album', 'fold-blur-artist', {:root})," +
+				" ('fold-blur-1', 1, './Artist/Album', 'CD1', 'fold-blur-root', {:disc})").
 			Bind(map[string]any{"root": rootAt, "disc": discAt}).Execute()
 		Expect(err).ToNot(HaveOccurred())
 		_, err = GetDBXBuilder().NewQuery(`update album set folder_ids = '["fold-blur-1"]' where id = '103'`).Execute()
@@ -950,6 +952,25 @@ var _ = Describe("AlbumRepository folder images version", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(al.FolderImagesUpdatedAt).ToNot(BeNil())
 		Expect(al.FolderImagesUpdatedAt.Equal(rootAt)).To(BeTrue(), "the parent folder's newer cover must win")
+	})
+
+	It("ignores parents when the album's folders do not share a single one (mixed parents)", func() {
+		// A compilation spread across artist folders has no album root; folding every artist's images
+		// would suppress the album's hash on any unrelated artist-image change.
+		at := time.Date(2030, 6, 1, 12, 0, 0, 0, time.UTC)
+		_, err := GetDBXBuilder().NewQuery(
+			"insert into folder (id, library_id, path, name, parent_id, images_updated_at) values" +
+				" ('fold-blur-root', 1, '.', 'ArtistA', 'fold-blur-lib', {:parent})," +
+				" ('fold-blur-1', 1, './A', 'Songs', 'fold-blur-root', {:own})," +
+				" ('fold-blur-2', 1, './B', 'Songs', 'fold-blur-other', {:own})").
+			Bind(map[string]any{"parent": at.Add(time.Hour), "own": at}).Execute()
+		Expect(err).ToNot(HaveOccurred())
+		_, err = GetDBXBuilder().NewQuery(`update album set folder_ids = '["fold-blur-1","fold-blur-2"]' where id = '103'`).Execute()
+		Expect(err).ToNot(HaveOccurred())
+
+		al, err := repo.Get("103")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(al.FolderImagesUpdatedAt).To(HaveValue(Equal(at)), "only the albums' own folders must count")
 	})
 
 	It("ignores the parent when the album's single folder has images of its own", func() {
