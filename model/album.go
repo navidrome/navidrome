@@ -147,6 +147,7 @@ type AlbumRepository interface {
 	Put(*Album) error
 	UpdateExternalInfo(*Album) error
 	UpdateImage(id, filename string) error
+	CountByImage(filename string) (int64, error)
 	Get(id string) (*Album, error)
 	GetAll(...QueryOptions) (Albums, error)
 	GetCursor(...QueryOptions) (AlbumCursor, error)

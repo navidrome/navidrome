@@ -38,12 +38,33 @@ func (api *Router) uploadAlbumImage() http.HandlerFunc {
 			}
 			return err
 		}
-		filename, err := api.imgUpload.SetImage(ctx, consts.EntityAlbum, al.ID, al.Name, al.UploadedImagePath(), reader, ext)
+		oldPath, err := api.albumImagePathToRemove(ctx, al)
+		if err != nil {
+			return err
+		}
+		filename, err := api.imgUpload.SetImage(ctx, consts.EntityAlbum, al.ID, al.Name, oldPath, reader, ext)
 		if err != nil {
 			return err
 		}
 		return api.ds.Album(ctx).UpdateImage(al.ID, filename)
 	})
+}
+
+// albumImagePathToRemove returns the album's current image path, or "" when the file is
+// shared with another album row (post album-ID copy) and must be left on disk.
+func (api *Router) albumImagePathToRemove(ctx context.Context, al *model.Album) (string, error) {
+	path := al.UploadedImagePath()
+	if path == "" {
+		return "", nil
+	}
+	refs, err := api.ds.Album(ctx).CountByImage(al.UploadedImage)
+	if err != nil {
+		return "", err
+	}
+	if refs > 1 {
+		return "", nil
+	}
+	return path, nil
 }
 
 func (api *Router) deleteAlbumImage() http.HandlerFunc {
@@ -56,7 +77,11 @@ func (api *Router) deleteAlbumImage() http.HandlerFunc {
 			}
 			return err
 		}
-		if err := api.imgUpload.RemoveImage(ctx, al.UploadedImagePath()); err != nil {
+		oldPath, err := api.albumImagePathToRemove(ctx, al)
+		if err != nil {
+			return err
+		}
+		if err := api.imgUpload.RemoveImage(ctx, oldPath); err != nil {
 			return err
 		}
 		return api.ds.Album(ctx).UpdateImage(al.ID, "")

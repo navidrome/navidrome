@@ -147,6 +147,19 @@ func (m *MockAlbumRepo) UpdateImage(id, filename string) error {
 	return model.ErrNotFound
 }
 
+func (m *MockAlbumRepo) CountByImage(filename string) (int64, error) {
+	if m.Err {
+		return 0, errors.New("unexpected error")
+	}
+	var n int64
+	for _, al := range m.Data {
+		if filename != "" && al.UploadedImage == filename {
+			n++
+		}
+	}
+	return n, nil
+}
+
 func (m *MockAlbumRepo) Search(q string, options ...model.QueryOptions) (model.Albums, error) {
 	m.SearchQuery = q
 	if len(options) > 0 {

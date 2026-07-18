@@ -238,6 +238,15 @@ func (r *albumRepository) UpdateImage(id, filename string) error {
 	return nil
 }
 
+// CountByImage counts album rows referencing an uploaded image filename, unfiltered by
+// library — CopyAttributes can leave two rows sharing one file across an album-ID change.
+func (r *albumRepository) CountByImage(filename string) (int64, error) {
+	if filename == "" {
+		return 0, nil
+	}
+	return r.count(Select(), model.QueryOptions{Filters: Eq{"uploaded_image": filename}})
+}
+
 func (r *albumRepository) selectAlbum(options ...model.QueryOptions) SelectBuilder {
 	sql := r.newSelect(options...).Columns("album.*", "library.path as library_path", "library.name as library_name").
 		LeftJoin("library on album.library_id = library.id")
