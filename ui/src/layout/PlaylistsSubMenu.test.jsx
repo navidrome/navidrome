@@ -45,13 +45,28 @@ const playlists = {
   'pl-2': { id: 'pl-2', name: 'Theirs', ownerId: 'user-2' },
 }
 
-const renderMenu = (preloadedSettings = {}) => {
+const SET_PLAYLIST_DATA = 'TEST/SET_PLAYLIST_DATA'
+const adminReducer = (state = { resources: {} }, action) =>
+  action.type === SET_PLAYLIST_DATA
+    ? { resources: { playlist: { data: action.data } } }
+    : state
+
+const renderMenu = (preloadedSettings = {}, preloadedPlaylistData) => {
   const store = createStore(
     combineReducers({
       settings: settingsReducer,
       activity: activityReducer,
+      admin: adminReducer,
     }),
-    { settings: preloadedSettings, activity: {} },
+    {
+      settings: preloadedSettings,
+      activity: {},
+      admin: {
+        resources: preloadedPlaylistData
+          ? { playlist: { data: preloadedPlaylistData } }
+          : {},
+      },
+    },
   )
   const theme = createTheme()
   render(
@@ -124,5 +139,23 @@ describe('<PlaylistsSubMenu />', () => {
       )
     })
     expect(lastQuery().payload.refresh).toBe(before + 1)
+  })
+
+  it('refetches when a playlist is starred locally (no SSE echo)', () => {
+    const store = renderMenu(
+      { sidebarPlaylistsOnlyFavourites: true },
+      { 'pl-1': { id: 'pl-1', name: 'Mine', ownerId: 'user-1' } },
+    )
+    const before = lastQuery().payload.starFingerprint
+    act(() => {
+      store.dispatch({
+        type: SET_PLAYLIST_DATA,
+        data: {
+          'pl-1': { id: 'pl-1', name: 'Mine', ownerId: 'user-1', starred: true },
+        },
+      })
+    })
+    expect(lastQuery().payload.starFingerprint).not.toBe(before)
+    expect(lastQuery().payload.starFingerprint).toContain('pl-1')
   })
 })

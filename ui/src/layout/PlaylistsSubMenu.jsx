@@ -63,14 +63,23 @@ const PlaylistsSubMenu = ({ state, setState, sidebarIsOpen, dense }) => {
   const onlyFavourites = useSelector(
     (state) => state.settings.sidebarPlaylistsOnlyFavourites,
   )
+  // Fingerprint of local star state; changes only when a playlist is (un)starred,
+  // so a local toggle refetches the sidebar without the SSE echo the actor never gets
+  const starFingerprint = useSelector((state) => {
+    const data = state.admin.resources.playlist?.data || {}
+    return Object.keys(data)
+      .filter((id) => data[id]?.starred)
+      .sort()
+      .join(',')
+  })
   const [refreshCount, setRefreshCount] = useState(0)
 
-  // A changed payload signature makes useQueryWithStore refetch on SSE events
   const onRefresh = useCallback(async () => {
     setRefreshCount((count) => count + 1)
   }, [])
   useRefreshOnEvents({ events: ['playlist'], onRefresh })
 
+  // A changed payload signature makes useQueryWithStore refetch
   const { data, loaded } = useQueryWithStore({
     type: 'getList',
     resource: 'playlist',
@@ -82,6 +91,7 @@ const PlaylistsSubMenu = ({ state, setState, sidebarIsOpen, dense }) => {
       sort: { field: 'name' },
       ...(onlyFavourites && { filter: { starred: true } }),
       refresh: refreshCount,
+      starFingerprint,
     },
   })
 
