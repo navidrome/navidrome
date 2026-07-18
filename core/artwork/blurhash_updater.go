@@ -15,14 +15,14 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/resources"
+	"github.com/navidrome/navidrome/utils"
 )
 
-// blurHashState remembers what was last persisted for an artwork, keyed by a checksum of the served
-// bytes, so repeated serves of the same image skip the decode and the write entirely.
+// blurHashState is a decode cache: the hash last computed for an artwork's served bytes, keyed by
+// their checksum, so repeated serves of the same image skip the decode.
 type blurHashState struct {
-	sum     uint64
-	version time.Time
-	hash    string
+	sum  uint64
+	hash string
 }
 
 // blurHashUpdater keeps stored blurhashes in sync with the bytes actually served. It runs inline in
@@ -55,8 +55,7 @@ func (u *blurHashUpdater) update(ctx context.Context, artID model.ArtworkID, dat
 			log.Error(ctx, "BlurHash: recovered from panic", "artID", artID, "panic", r)
 		}
 	}()
-	// ArtworkID embeds the client token's LastUpdate; without zeroing it the seen key would rotate on
-	// every scan bump, defeating the same-bytes dedup and stranding stale entries forever.
+	// ArtworkID embeds the client token's LastUpdate; zero it so the decode cache keys by identity.
 	artID.LastUpdate = time.Time{}
 	// The response is already written when the tee fires; a client abort must not lose the write.
 	ctx = context.WithoutCancel(ctx)
@@ -65,31 +64,36 @@ func (u *blurHashUpdater) update(ctx context.Context, artID model.ArtworkID, dat
 		return
 	}
 	sum := checksum(data)
-	u.mutex.Lock()
-	prev, ok := u.seen[artID]
-	u.mutex.Unlock()
-	if ok && prev.hash != "" && prev.sum == sum {
-		if !version.After(prev.version) {
+	hash := u.cachedHash(artID, sum)
+	if hash == "" {
+		img, _, err := image.Decode(bytes.NewReader(data))
+		if err != nil {
+			// Undecodable served bytes are not proof of change; leave the stored hash intact.
+			log.Trace(ctx, "BlurHash: served bytes not decodable, keeping stored hash", "artID", artID, err)
 			return
 		}
-		// Same bytes under a newer artwork version: re-persist so blur_hash_updated_at keeps pace with
-		// the entity version, or the DTO staleness gate would emit the fake after any routine scan.
-		u.persistAndRemember(ctx, artID, prev.hash, sum, version)
-		return
+		b := img.Bounds()
+		x, y := blurhash.Components(b.Dx(), b.Dy())
+		if hash, err = blurhash.Encode(img, x, y); err != nil || hash == "" {
+			return
+		}
 	}
-	img, _, err := image.Decode(bytes.NewReader(data))
+	stored, storedAt, entityVersion, err := u.loadState(ctx, artID)
 	if err != nil {
-		// Undecodable served bytes are not proof of change; leave the stored hash intact.
-		log.Trace(ctx, "BlurHash: served bytes not decodable, keeping stored hash", "artID", artID, err)
 		return
 	}
-	b := img.Bounds()
-	x, y := blurhash.Components(b.Dx(), b.Dy())
-	hash, err := blurhash.Encode(img, x, y)
-	if err != nil || hash == "" {
+	if stored == hash && storedAt != nil && !storedAt.Before(entityVersion) {
+		u.remember(artID, blurHashState{sum: sum, hash: hash})
 		return
 	}
-	u.persistAndRemember(ctx, artID, hash, sum, version)
+	// Clamp the persisted version up to the entity's: the hash is fresh for what is served right now,
+	// so the DTO accepts it after any serve, however much the read-side version over-approximates.
+	target := capAtNow(utils.TimeNewest(version, entityVersion))
+	if err := u.persist(ctx, artID, hash, target); err != nil {
+		log.Warn(ctx, "BlurHash: error persisting", "artID", artID, err)
+		return
+	}
+	u.remember(artID, blurHashState{sum: sum, hash: hash})
 }
 
 // clearIfStored clears the persisted hash after a placeholder was served (a cold map costs one row
@@ -107,7 +111,7 @@ func (u *blurHashUpdater) clearIfStored(ctx context.Context, artID model.Artwork
 		return
 	}
 	if !ok {
-		stored, err := u.loadStoredHash(ctx, artID)
+		stored, _, _, err := u.loadState(ctx, artID)
 		if err != nil {
 			return
 		}
@@ -123,12 +127,14 @@ func (u *blurHashUpdater) clearIfStored(ctx context.Context, artID model.Artwork
 	u.remember(artID, blurHashState{})
 }
 
-func (u *blurHashUpdater) persistAndRemember(ctx context.Context, artID model.ArtworkID, hash string, sum uint64, version time.Time) {
-	if err := u.persist(ctx, artID, hash, version); err != nil {
-		log.Warn(ctx, "BlurHash: error persisting", "artID", artID, err)
-		return
+// cachedHash returns the previously computed hash when the served bytes are unchanged.
+func (u *blurHashUpdater) cachedHash(artID model.ArtworkID, sum uint64) string {
+	u.mutex.Lock()
+	defer u.mutex.Unlock()
+	if prev, ok := u.seen[artID]; ok && prev.hash != "" && prev.sum == sum {
+		return prev.hash
 	}
-	u.remember(artID, blurHashState{sum: sum, version: version, hash: hash})
+	return ""
 }
 
 func (u *blurHashUpdater) remember(artID model.ArtworkID, s blurHashState) {
@@ -143,28 +149,28 @@ func checksum(data []byte) uint64 {
 	return h.Sum64()
 }
 
-func (u *blurHashUpdater) loadStoredHash(ctx context.Context, artID model.ArtworkID) (string, error) {
+func (u *blurHashUpdater) loadState(ctx context.Context, artID model.ArtworkID) (string, *time.Time, time.Time, error) {
 	switch artID.Kind {
 	case model.KindAlbumArtwork:
 		al, err := u.ds.Album(ctx).Get(artID.ID)
 		if err != nil {
-			return "", err
+			return "", nil, time.Time{}, err
 		}
-		return al.BlurHash, nil
+		return al.BlurHash, al.BlurHashUpdatedAt, al.ArtworkUpdatedAt(), nil
 	case model.KindArtistArtwork:
 		ar, err := u.ds.Artist(ctx).Get(artID.ID)
 		if err != nil {
-			return "", err
+			return "", nil, time.Time{}, err
 		}
-		return ar.BlurHash, nil
+		return ar.BlurHash, ar.BlurHashUpdatedAt, ar.ArtworkUpdatedAt(), nil
 	case model.KindPlaylistArtwork:
 		pl, err := u.ds.Playlist(ctx).Get(artID.ID)
 		if err != nil {
-			return "", err
+			return "", nil, time.Time{}, err
 		}
-		return pl.BlurHash, nil
+		return pl.BlurHash, pl.BlurHashUpdatedAt, pl.ArtworkUpdatedAt(), nil
 	}
-	return "", model.ErrNotFound
+	return "", nil, time.Time{}, model.ErrNotFound
 }
 
 // isPlaceholder byte-compares against the embedded placeholder assets: placeholder artwork must never

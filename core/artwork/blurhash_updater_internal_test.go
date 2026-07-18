@@ -79,28 +79,40 @@ var _ = Describe("blurHashUpdater", func() {
 		Expect(stored("al-1").BlurHash).To(Equal("KEEP"))
 	})
 
-	It("skips the write when the same bytes are served again under the same version", func() {
+	It("does not rewrite when the stored hash is current for the entity version", func() {
 		id := album(model.Album{ID: "al-1", UpdatedAt: version})
 		data := realPNGBytes("dedup")
 		u.update(GinkgoT().Context(), id, data, version)
-		// Tamper with the stored value: a second identical serve must not touch the row.
-		Expect(repo.UpdateBlurHash("al-1", "TAMPERED", version)).To(Succeed())
-		u.update(GinkgoT().Context(), id, data, version)
-		Expect(stored("al-1").BlurHash).To(Equal("TAMPERED"))
+		first := stored("al-1")
+		// A later serve of the same bytes (newer tee version, unchanged entity) must not move the row.
+		u.update(GinkgoT().Context(), id, data, version.Add(time.Hour))
+		Expect(stored("al-1").BlurHashUpdatedAt).To(HaveValue(Equal(*first.BlurHashUpdatedAt)))
 	})
 
-	It("re-persists the same hash when the artwork version advances", func() {
-		// A scan can bump the entity version without changing the cover; blur_hash_updated_at must
-		// follow, or the DTO's staleness gate would emit the fake hash forever after.
+	It("clamps the persisted version up to the entity's artwork version", func() {
+		// The read-side version may over-approximate (folder parents); after a serve the hash is fresh
+		// by construction, so the write clamps up and the DTO accepts it — omission windows close.
 		id := album(model.Album{ID: "al-1", UpdatedAt: version})
-		data := realPNGBytes("same-bytes")
+		data := realPNGBytes("clamp")
 		u.update(GinkgoT().Context(), id, data, version)
 		first := stored("al-1")
+
 		newer := version.Add(time.Hour)
-		u.update(GinkgoT().Context(), id, data, newer)
+		album(model.Album{ID: "al-1", UpdatedAt: newer, BlurHash: first.BlurHash, BlurHashUpdatedAt: first.BlurHashUpdatedAt})
+		u.update(GinkgoT().Context(), id, data, version) // same bytes, old tee version
 		second := stored("al-1")
 		Expect(second.BlurHash).To(Equal(first.BlurHash))
 		Expect(second.BlurHashUpdatedAt).To(HaveValue(Equal(newer)))
+	})
+
+	It("restores the stored hash when it drifts from the served bytes", func() {
+		id := album(model.Album{ID: "al-1", UpdatedAt: version})
+		data := realPNGBytes("truth")
+		u.update(GinkgoT().Context(), id, data, version)
+		truth := stored("al-1").BlurHash
+		Expect(repo.UpdateBlurHash("al-1", "DRIFTED", version)).To(Succeed())
+		u.update(GinkgoT().Context(), id, data, version)
+		Expect(stored("al-1").BlurHash).To(Equal(truth))
 	})
 
 	It("does not write when a placeholder is served and nothing was ever stored", func() {
@@ -116,17 +128,13 @@ var _ = Describe("blurHashUpdater", func() {
 		Expect(u.seen).To(BeEmpty())
 	})
 
-	It("dedups across artwork ids that differ only in their embedded timestamp", func() {
-		// Client coverArt tokens embed a LastUpdate; the seen key must ignore it, or every scan bump
-		// would defeat the dedup and re-decode identical bytes.
+	It("keys the decode cache by identity, ignoring the artwork id's embedded timestamp", func() {
 		id := album(model.Album{ID: "al-1", UpdatedAt: version})
 		data := realPNGBytes("dedup")
 		u.update(GinkgoT().Context(), id, data, version)
-		Expect(repo.UpdateBlurHash("al-1", "TAMPERED", version)).To(Succeed())
 		bumped := id
 		bumped.LastUpdate = version.Add(time.Hour)
 		u.update(GinkgoT().Context(), bumped, data, version)
-		Expect(stored("al-1").BlurHash).To(Equal("TAMPERED"))
 		Expect(u.seen).To(HaveLen(1))
 	})
 })
