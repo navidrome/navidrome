@@ -1,6 +1,7 @@
 import {
   SET_NOTIFICATIONS_STATE,
   SET_OMITTED_FIELDS,
+  SET_SIDEBAR_PLAYLISTS_FAVOURITES,
   SET_TOGGLEABLE_FIELDS,
 } from '../actions'
 
@@ -8,6 +9,7 @@ const initialState = {
   notifications: false,
   toggleableFields: {},
   omittedFields: {},
+  sidebarPlaylistsOnlyFavourites: false,
 }
 
 export const settingsReducer = (previousState = initialState, payload) => {
@@ -33,6 +35,11 @@ export const settingsReducer = (previousState = initialState, payload) => {
           ...previousState.omittedFields,
           ...data,
         },
+      }
+    case SET_SIDEBAR_PLAYLISTS_FAVOURITES:
+      return {
+        ...previousState,
+        sidebarPlaylistsOnlyFavourites: data,
       }
     default:
       return previousState
