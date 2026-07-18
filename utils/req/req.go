@@ -60,7 +60,7 @@ func (r *Values) StringOr(param, def string) string {
 	return v
 }
 
-// Strings returns all occurrences of the param, or an empty slice when absent. Callers that
+// Strings returns all occurrences of the param, or a nil (empty) slice when absent. Callers that
 // require the param should check for emptiness themselves.
 func (r *Values) Strings(param string) []string {
 	return r.URL.Query()[param]
