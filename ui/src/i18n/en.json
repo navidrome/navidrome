@@ -210,7 +210,8 @@
         "songCount": "Songs",
         "comment": "Comment",
         "sync": "Auto-import",
-        "path": "Import from"
+        "path": "Import from",
+        "starred": "Favourite"
       },
       "actions": {
         "selectPlaylist": "Select a playlist:",

@@ -152,6 +152,7 @@ const PlaylistListBulkActions = (props) => {
 const PlaylistLove = ({ record }) => (
   <LoveButton record={record} resource={'playlist'} />
 )
+PlaylistLove.defaultProps = { source: 'starred' }
 
 const PlaylistList = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
@@ -173,6 +174,7 @@ const PlaylistList = (props) => {
       sync: !isXsmall && (
         <ToggleAutoImport source="sync" sortByOrder={'DESC'} />
       ),
+      starred: config.enableFavourites && <PlaylistLove sortable={false} />,
     }),
     [isDesktop, isXsmall],
   )
@@ -196,7 +198,6 @@ const PlaylistList = (props) => {
         <CoverArtAvatar source="id" variant="square" />
         <TextField source="name" />
         {columns}
-        {config.enableFavourites && <PlaylistLove sortable={false} />}
         <Writable>
           <EditButton />
         </Writable>
