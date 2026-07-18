@@ -952,6 +952,25 @@ var _ = Describe("AlbumRepository folder images version", func() {
 		Expect(al.FolderImagesUpdatedAt.Equal(rootAt)).To(BeTrue(), "the parent folder's newer cover must win")
 	})
 
+	It("ignores the parent when the album's single folder has images of its own", func() {
+		// Mirrors albumRootParent's first gate: the reader would serve the folder's own cover, so an
+		// unrelated artist-level image must not advance (and suppress) this album's version.
+		ownAt := time.Date(2030, 6, 1, 12, 0, 0, 0, time.UTC)
+		parentAt := ownAt.Add(time.Hour)
+		_, err := GetDBXBuilder().NewQuery(
+			"insert into folder (id, library_id, path, name, parent_id, images_updated_at, image_files) values" +
+				" ('fold-blur-root', 1, '.', 'Artist', '', {:parent}, '[\"artist.jpg\"]')," +
+				" ('fold-blur-1', 1, './Artist', 'Album', 'fold-blur-root', {:own}, '[\"cover.jpg\"]')").
+			Bind(map[string]any{"parent": parentAt, "own": ownAt}).Execute()
+		Expect(err).ToNot(HaveOccurred())
+		_, err = GetDBXBuilder().NewQuery(`update album set folder_ids = '["fold-blur-1"]' where id = '103'`).Execute()
+		Expect(err).ToNot(HaveOccurred())
+
+		al, err := repo.Get("103")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(al.FolderImagesUpdatedAt).To(HaveValue(Equal(ownAt)))
+	})
+
 	It("leaves FolderImagesUpdatedAt nil when the album has no folders", func() {
 		al, err := repo.Get("101")
 		Expect(err).ToNot(HaveOccurred())
