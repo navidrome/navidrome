@@ -224,20 +224,13 @@ type itemsQuery struct {
 	albumIds         []string
 }
 
-// parseFields reads the Fields param, accepting both repeated params (Fields=a&Fields=b) and a
-// comma-separated value (Fields=a,b), matching real Jellyfin. StringOr would keep only one value.
-func parseFields(p *req.Values) dto.Fields {
-	values, _ := p.Strings("fields")
-	return dto.ParseFields(values...)
-}
-
 // parseItemsQuery also resolves the entity types (inferring them from the parent when
 // IncludeItemTypes is absent) and the library scope. Query keys are read lowercase because
 // normalizeQueryKeys folded them (Jellyfin binds case-insensitively).
 func (api *Router) parseItemsQuery(ctx context.Context, r *http.Request) itemsQuery {
 	p := req.Params(r)
 	q := itemsQuery{
-		fields:    parseFields(p),
+		fields:    dto.ParseFields(p.Strings("fields")...),
 		ids:       decodedQueryIDs(r, "ids"),
 		rawTypes:  p.StringOr("includeitemtypes", ""),
 		search:    searchTerm(p),
@@ -737,7 +730,7 @@ func (api *Router) itemsByIDs(ctx context.Context, ids []string, fields dto.Fiel
 
 func (api *Router) getItem(w http.ResponseWriter, r *http.Request) {
 	id := api.resolveItemID(r.Context(), dto.DecodeID(chi.URLParam(r, "itemId")))
-	fields := parseFields(req.Params(r))
+	fields := dto.ParseFields(req.Params(r).Strings("fields")...)
 	if item, ok := api.resolveItemByID(r.Context(), id, fields); ok {
 		api.ok(w, r, item)
 		return

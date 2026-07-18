@@ -62,7 +62,7 @@ func (api *Router) getPlaylist(ctx context.Context, id string) (*responses.Subso
 func (api *Router) CreatePlaylist(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
 	p := req.Params(r)
-	songIds, _ := p.Strings("songId")
+	songIds := p.Strings("songId")
 	playlistId, _ := p.String("playlistId")
 	name, _ := p.String("name")
 	if playlistId == "" && name == "" {
@@ -99,7 +99,7 @@ func (api *Router) UpdatePlaylist(r *http.Request) (*responses.Subsonic, error) 
 	if err != nil {
 		return nil, err
 	}
-	songsToAdd, _ := p.Strings("songIdToAdd")
+	songsToAdd := p.Strings("songIdToAdd")
 	songIndexesToRemove, _ := p.Ints("songIndexToRemove")
 	var plsName *string
 	if s, err := p.String("name"); err == nil {

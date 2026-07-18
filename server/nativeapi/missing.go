@@ -68,7 +68,7 @@ func deleteMissingFiles(maintenance core.Maintenance) http.HandlerFunc {
 		ctx := r.Context()
 
 		p := req.Params(r)
-		ids, _ := p.Strings("id")
+		ids := p.Strings("id")
 
 		var err error
 		if len(ids) == 0 {
