@@ -17,22 +17,21 @@ import (
 	"github.com/navidrome/navidrome/resources"
 )
 
-// enqueueRequest carries the fill-time snapshot (the reader's LastUpdated, which folds row
-// timestamps and live file mtimes into one clock). gone marks a serve that failed with
-// ErrUnavailable: the only change no passive signal witnesses, so it clears a stale hash.
-type enqueueRequest struct {
-	snapshot time.Time
-	gone     bool
+// blurHashJob is a unit of work: either bytes to hash (data != nil) or a deletion check (checkGone).
+type blurHashJob struct {
+	data      []byte
+	version   time.Time
+	checkGone bool
 }
 
-// blurHashUpdater keeps stored blurhashes in sync with the artwork entering the image cache.
-// Computation is triggered by cache fills (every change), not serves, so the worker only re-derives
-// the hash and skips idempotent writes: Enqueue is a cheap dedup insert, a single worker decodes
-// and persists.
+// blurHashUpdater keeps stored blurhashes in sync with the bytes actually served. The serve path tees
+// the served image and hands it here; there is no change-detection proxy — the hash is a pure function
+// of the captured bytes. A single worker decodes, encodes, and writes (dedup'd in memory).
 type blurHashUpdater struct {
 	a         *artwork
 	mutex     sync.Mutex
-	buffer    map[model.ArtworkID]enqueueRequest
+	buffer    map[model.ArtworkID]blurHashJob
+	last      map[model.ArtworkID]string // last hash written this process; avoids redundant writes
 	wake      chan struct{}
 	done      chan struct{}
 	runDone   chan struct{}
@@ -44,29 +43,35 @@ type blurHashUpdater struct {
 func newBlurHashUpdater(a *artwork) *blurHashUpdater {
 	return &blurHashUpdater{
 		a:       a,
-		buffer:  make(map[model.ArtworkID]enqueueRequest),
+		buffer:  make(map[model.ArtworkID]blurHashJob),
+		last:    make(map[model.ArtworkID]string),
 		wake:    make(chan struct{}, 1),
 		done:    make(chan struct{}),
 		runDone: make(chan struct{}),
 	}
 }
 
-// Enqueue schedules a recompute for an original-size cache fill, using the reader's snapshot as the
-// artwork version. Called on the miss that fills the cache — i.e. exactly when the served bytes change.
-func (u *blurHashUpdater) Enqueue(artID model.ArtworkID, snapshot time.Time) {
-	u.enqueue(artID, enqueueRequest{snapshot: snapshot})
-}
-
-// EnqueueGone schedules a clear for a serve that failed with ErrUnavailable, so a stored hash stops
-// describing artwork that no longer exists (deletion is invisible to every passive signal).
-func (u *blurHashUpdater) EnqueueGone(artID model.ArtworkID) {
-	u.enqueue(artID, enqueueRequest{gone: true})
-}
-
-func (u *blurHashUpdater) enqueue(artID model.ArtworkID, req enqueueRequest) {
+func eligibleKind(artID model.ArtworkID) bool {
 	switch artID.Kind {
 	case model.KindAlbumArtwork, model.KindArtistArtwork, model.KindPlaylistArtwork:
-	default:
+		return true
+	}
+	return false
+}
+
+// EnqueueBytes schedules a blurhash update computed from the exact bytes served for artID.
+func (u *blurHashUpdater) EnqueueBytes(artID model.ArtworkID, data []byte, version time.Time) {
+	u.enqueue(artID, blurHashJob{data: data, version: version})
+}
+
+// EnqueueClearIfGone schedules a deletion check: the worker re-reads the source once and clears the
+// stored hash only if it still fails/serves a placeholder, so a transient failure won't clobber it.
+func (u *blurHashUpdater) EnqueueClearIfGone(artID model.ArtworkID, version time.Time) {
+	u.enqueue(artID, blurHashJob{checkGone: true, version: version})
+}
+
+func (u *blurHashUpdater) enqueue(artID model.ArtworkID, job blurHashJob) {
+	if !eligibleKind(artID) {
 		return
 	}
 	u.mutex.Lock()
@@ -76,24 +81,18 @@ func (u *blurHashUpdater) enqueue(artID model.ArtworkID, req enqueueRequest) {
 	}
 	if !u.started {
 		u.started = true
-		// Admin context: playlist artwork readers require a user. Lazy-starting keeps idle Artwork
-		// instances goroutine-free; stop() ends the worker (tests must call it, the server never does).
+		// Admin context: playlist artwork readers require a user. Lazy start keeps idle Artwork
+		// instances goroutine-free; stop() ends the worker (tests call it, the server never does).
 		ctx, cancel := context.WithCancel(request.WithUser(context.Background(), model.User{IsAdmin: true}))
 		u.runCancel = cancel
 		go u.run(ctx)
 	}
-	prev := u.buffer[artID]
-	if !req.snapshot.IsZero() {
-		// A successful serve proves the artwork exists, so it supersedes any pending gone request for
-		// the same artwork (a cover restored right after a missing-art serve must still recompute).
-		prev.gone = false
-		if req.snapshot.After(prev.snapshot) {
-			prev.snapshot = req.snapshot
-		}
-	} else if req.gone {
-		prev.gone = true
+	// A bytes job supersedes a pending gone-check (a successful serve proves the artwork exists);
+	// otherwise keep whichever is newer.
+	prev, ok := u.buffer[artID]
+	if !ok || job.data != nil || (prev.checkGone && job.version.After(prev.version)) {
+		u.buffer[artID] = job
 	}
-	u.buffer[artID] = prev
 	u.mutex.Unlock()
 	select {
 	case u.wake <- struct{}{}:
@@ -134,30 +133,30 @@ func (u *blurHashUpdater) run(ctx context.Context) {
 				return
 			default:
 			}
-			artID, req, ok := u.next()
+			artID, job, ok := u.next()
 			if !ok {
 				break
 			}
-			u.process(ctx, artID, req)
+			u.processJob(ctx, artID, job)
 		}
 	}
 }
 
-func (u *blurHashUpdater) next() (model.ArtworkID, enqueueRequest, bool) {
+func (u *blurHashUpdater) next() (model.ArtworkID, blurHashJob, bool) {
 	u.mutex.Lock()
 	defer u.mutex.Unlock()
-	for artID, req := range u.buffer {
+	for artID, job := range u.buffer {
 		delete(u.buffer, artID)
-		return artID, req, true
+		return artID, job, true
 	}
-	return model.ArtworkID{}, enqueueRequest{}, false
+	return model.ArtworkID{}, blurHashJob{}, false
 }
 
 // processTimeout bounds one computation: readers can call external agents, and a hung call must not
 // stall the worker forever.
 const processTimeout = 30 * time.Second
 
-func (u *blurHashUpdater) process(ctx context.Context, artID model.ArtworkID, req enqueueRequest) {
+func (u *blurHashUpdater) processJob(ctx context.Context, artID model.ArtworkID, job blurHashJob) {
 	// Artwork readers can touch storage, agents and plugins; a panic here must not kill the server.
 	defer func() {
 		if r := recover(); r != nil {
@@ -166,115 +165,77 @@ func (u *blurHashUpdater) process(ctx context.Context, artID model.ArtworkID, re
 	}()
 	ctx, cancel := context.WithTimeout(ctx, processTimeout)
 	defer cancel()
-	stored, storedAt, version, err := u.loadState(ctx, artID)
-	if err != nil {
-		log.Trace(ctx, "BlurHash: could not load entity", "artID", artID, err)
-		return
-	}
-	// A future-dated artwork file mtime (clock skew, a future-stamped file) would otherwise be
-	// persisted verbatim and, via the !Before checks here and in the DTO, pin the stored hash until
-	// wall time caught up. Cap the snapshot at now so a later real change always moves past it.
-	now := time.Now()
-	snapshot := req.snapshot
-	if snapshot.After(now) {
-		snapshot = now
-	}
-	if req.gone {
-		// Only the failed serve witnesses a deletion; clear a stored hash so the DTO falls back to
-		// the rotating fake. An empty hash means there is nothing to clear.
-		if stored != "" {
-			if err := u.persist(ctx, artID, "", version); err != nil {
-				log.Warn(ctx, "BlurHash: error clearing stale hash", "artID", artID, err)
-			}
-		}
-		return
-	}
-	// snapshot folds row timestamps and file mtimes into one clock; a stored hash at or after it is
-	// already current. This is the only freshness comparison the fill trigger needs.
-	if stored != "" && storedAt != nil && !storedAt.Before(snapshot) {
-		return
-	}
-	hash, err := u.computeFromArtwork(ctx, artID)
-	if err != nil {
-		// A transient failure (timeout, flaky cache/DB read) is not evidence the artwork changed;
-		// leave the stored hash intact and let a later fill retry, so clients don't churn on a fake.
-		log.Trace(ctx, "BlurHash: recompute failed, keeping stored hash", "artID", artID, err)
-		return
-	}
-	if hash == "" {
-		// An empty hash means the served bytes are a placeholder: the cover is gone. Clear a stored
-		// hash so the DTO stops describing artwork no longer served.
-		if stored != "" {
-			if err := u.persist(ctx, artID, "", snapshot); err != nil {
-				log.Warn(ctx, "BlurHash: error clearing stale hash", "artID", artID, err)
-			}
-		}
-		return
-	}
-	// Unchanged hash with an unmoved snapshot needs no write — keeps cache-disabled installs (which
-	// fill on every original serve) from hammering the DB.
-	if hash == stored && storedAt != nil && !snapshot.After(*storedAt) {
-		return
-	}
-	if err := u.persist(ctx, artID, hash, snapshot); err != nil {
-		log.Warn(ctx, "BlurHash: error persisting", "artID", artID, err)
-	}
-}
 
-func (u *blurHashUpdater) loadState(ctx context.Context, artID model.ArtworkID) (string, *time.Time, time.Time, error) {
-	switch artID.Kind {
-	case model.KindAlbumArtwork:
-		al, err := u.a.ds.Album(ctx).Get(artID.ID)
-		if err != nil {
-			return "", nil, time.Time{}, err
-		}
-		return al.BlurHash, al.BlurHashUpdatedAt, al.ArtworkUpdatedAt(), nil
-	case model.KindArtistArtwork:
-		ar, err := u.a.ds.Artist(ctx).Get(artID.ID)
-		if err != nil {
-			return "", nil, time.Time{}, err
-		}
-		return ar.BlurHash, ar.BlurHashUpdatedAt, ar.ArtworkUpdatedAt(), nil
-	case model.KindPlaylistArtwork:
-		pl, err := u.a.ds.Playlist(ctx).Get(artID.ID)
-		if err != nil {
-			return "", nil, time.Time{}, err
-		}
-		return pl.BlurHash, pl.BlurHashUpdatedAt, pl.ArtworkUpdatedAt(), nil
+	if job.checkGone {
+		u.processGone(ctx, artID, job.version)
+		return
 	}
-	return "", nil, time.Time{}, model.ErrNotFound
-}
-
-func (u *blurHashUpdater) computeFromArtwork(ctx context.Context, artID model.ArtworkID) (string, error) {
-	artReader, err := u.a.getArtworkReader(ctx, artID, 0, false)
+	if isPlaceholder(job.data) {
+		u.clear(ctx, artID, job.version)
+		return
+	}
+	img, _, err := image.Decode(bytes.NewReader(job.data))
 	if err != nil {
-		return "", err
-	}
-	// Reads via the cache (not artwork.Get, so no re-enqueue): generated playlist mosaics are
-	// random per generation, and the hash must describe the bytes clients actually download.
-	r, err := u.a.cache.Get(ctx, artReader)
-	if err != nil {
-		return "", err
-	}
-	defer r.Close()
-	data, err := io.ReadAll(r)
-	if err != nil {
-		return "", err
-	}
-	if isPlaceholder(data) {
-		return "", nil
-	}
-	img, _, err := image.Decode(bytes.NewReader(data))
-	if err != nil {
-		return "", err
+		// Undecodable served bytes are not proof of change; leave the stored hash intact.
+		log.Trace(ctx, "BlurHash: served bytes not decodable, keeping stored hash", "artID", artID, err)
+		return
 	}
 	b := img.Bounds()
 	x, y := blurhash.Components(b.Dx(), b.Dy())
-	return blurhash.Encode(img, x, y)
+	hash, err := blurhash.Encode(img, x, y)
+	if err != nil || hash == "" {
+		return
+	}
+	u.write(ctx, artID, hash, job.version)
 }
 
-// isPlaceholder byte-compares against the embedded placeholder assets: placeholder artwork must
-// never be persisted as an entity's blurhash, and cached reads carry no source path to check.
+// processGone re-reads the source once; if it still yields a placeholder or fails, the artwork is
+// really gone and the stored hash is cleared. A transient failure recovers by now and is left alone.
+func (u *blurHashUpdater) processGone(ctx context.Context, artID model.ArtworkID, version time.Time) {
+	artReader, err := u.a.getArtworkReader(ctx, artID, 0, false)
+	if err == nil {
+		r, gErr := u.a.cache.Get(ctx, artReader)
+		if gErr == nil {
+			data, rErr := io.ReadAll(r)
+			_ = r.Close()
+			if rErr == nil && !isPlaceholder(data) {
+				return // source came back (or never really failed): keep the hash
+			}
+		}
+	}
+	u.clear(ctx, artID, version)
+}
+
+func (u *blurHashUpdater) write(ctx context.Context, artID model.ArtworkID, hash string, version time.Time) {
+	u.mutex.Lock()
+	if u.last[artID] == hash {
+		u.mutex.Unlock()
+		return
+	}
+	u.mutex.Unlock()
+	if err := u.persist(ctx, artID, hash, version); err != nil {
+		log.Warn(ctx, "BlurHash: error persisting", "artID", artID, err)
+		return
+	}
+	u.mutex.Lock()
+	u.last[artID] = hash
+	u.mutex.Unlock()
+}
+
+func (u *blurHashUpdater) clear(ctx context.Context, artID model.ArtworkID, version time.Time) {
+	// No cold-map dedup: an empty u.last[artID] means "never written" as easily as "already cleared",
+	// so skipping would leave a previous process's DB hash describing gone artwork. Clears are rare.
+	if err := u.persist(ctx, artID, "", version); err != nil {
+		log.Warn(ctx, "BlurHash: error clearing hash", "artID", artID, err)
+		return
+	}
+	u.mutex.Lock()
+	u.last[artID] = ""
+	u.mutex.Unlock()
+}
+
+// isPlaceholder byte-compares against the embedded placeholder assets: placeholder artwork must never
+// be persisted as an entity's blurhash, and captured bytes carry no source path to check.
 func isPlaceholder(data []byte) bool {
 	for _, p := range placeholderImages() {
 		if bytes.Equal(data, p) {

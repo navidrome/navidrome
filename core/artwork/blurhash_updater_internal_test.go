@@ -1,7 +1,10 @@
 package artwork
 
 import (
-	"errors"
+	"bytes"
+	"image"
+	"image/color"
+	"image/png"
 	"time"
 
 	"github.com/navidrome/navidrome/model"
@@ -10,131 +13,103 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-// failingFolderRepo makes the artwork reader chain fail with a clean (transient-style) error.
-type failingFolderRepo struct{ model.FolderRepository }
+// pngImage builds a deterministic 2x2 PNG image for a label (color derived from label bytes).
+func pngImage(label string) *image.RGBA {
+	img := image.NewRGBA(image.Rect(0, 0, 2, 2))
+	var seed byte
+	for i := range len(label) {
+		seed += label[i]
+	}
+	c := color.RGBA{R: seed, G: seed * 3, B: seed * 7, A: 255}
+	for y := range 2 {
+		for x := range 2 {
+			img.Set(x, y, c)
+		}
+	}
+	return img
+}
 
-func (failingFolderRepo) GetAll(...model.QueryOptions) ([]model.Folder, error) {
-	return nil, errors.New("boom")
+func realPNGBytes(label string) []byte {
+	var buf bytes.Buffer
+	Expect(png.Encode(&buf, pngImage(label))).To(Succeed())
+	return buf.Bytes()
 }
 
 var _ = Describe("blurHashUpdater", func() {
 	var u *blurHashUpdater
 	var ds *tests.MockDataStore
+	var version time.Time
 
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{}
-		// started is pre-set so Enqueue never spawns run(): tests drive next()/process() directly.
 		u = &blurHashUpdater{
 			a:       &artwork{ds: ds},
-			buffer:  make(map[model.ArtworkID]enqueueRequest),
+			buffer:  make(map[model.ArtworkID]blurHashJob),
 			wake:    make(chan struct{}, 1),
+			last:    make(map[model.ArtworkID]string),
 			started: true,
 		}
+		version = time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	})
 
-	Describe("Enqueue", func() {
-		It("accepts album, artist and playlist artwork and dedups, keeping the newest snapshot", func() {
-			id := model.Album{ID: "al-1"}.CoverArtID()
-			t1 := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-			t2 := t1.Add(time.Hour)
-			u.Enqueue(id, t1)
-			u.Enqueue(id, t2)
-			u.Enqueue(model.Artist{ID: "ar-1"}.CoverArtID(), t1)
-			Expect(u.buffer).To(HaveLen(2))
-			Expect(u.buffer[id].snapshot).To(Equal(t2))
-			Expect(u.buffer[id].gone).To(BeFalse())
-		})
+	It("persists a hash computed from the given bytes", func() {
+		al := model.Album{ID: "al-1", UpdatedAt: version}
+		repo := tests.CreateMockAlbumRepo()
+		repo.SetData(model.Albums{al})
+		ds.MockedAlbum = repo
 
-		It("keeps a gone flag when it follows a pending fill (cover then vanished)", func() {
-			id := model.Album{ID: "al-1"}.CoverArtID()
-			t1 := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-			u.Enqueue(id, t1)
-			u.EnqueueGone(id)
-			Expect(u.buffer[id].snapshot).To(Equal(t1))
-			Expect(u.buffer[id].gone).To(BeTrue())
-		})
-
-		It("lets a successful fill supersede a pending gone (cover restored)", func() {
-			id := model.Album{ID: "al-1"}.CoverArtID()
-			t1 := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-			u.EnqueueGone(id)
-			u.Enqueue(id, t1)
-			Expect(u.buffer[id].snapshot).To(Equal(t1))
-			Expect(u.buffer[id].gone).To(BeFalse())
-		})
-
-		It("ignores other artwork kinds", func() {
-			u.Enqueue(model.ArtworkID{Kind: model.KindMediaFileArtwork, ID: "mf-1"}, time.Time{})
-			u.EnqueueGone(model.ArtworkID{Kind: model.KindRadioArtwork, ID: "ra-1"})
-			Expect(u.buffer).To(BeEmpty())
-		})
+		u.processJob(GinkgoT().Context(), al.CoverArtID(), blurHashJob{data: realPNGBytes("x"), version: version})
+		stored, err := ds.Album(GinkgoT().Context()).Get("al-1")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(stored.BlurHash).ToNot(BeEmpty())
 	})
 
-	Describe("process", func() {
-		var version time.Time
+	It("clears the hash when the bytes are a placeholder", func() {
+		al := model.Album{ID: "al-1", UpdatedAt: version, BlurHash: "OLD"}
+		repo := tests.CreateMockAlbumRepo()
+		repo.SetData(model.Albums{al})
+		ds.MockedAlbum = repo
 
-		BeforeEach(func() {
-			version = time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-		})
+		u.processJob(GinkgoT().Context(), al.CoverArtID(), blurHashJob{data: placeholderImages()[0], version: version})
+		stored, _ := ds.Album(GinkgoT().Context()).Get("al-1")
+		Expect(stored.BlurHash).To(BeEmpty()) // cleared: placeholder means gone
+	})
 
-		It("skips entities whose stored hash is at or after the snapshot", func() {
-			al := model.Album{ID: "al-1", UpdatedAt: version, BlurHash: "LEHV6nWB2yk8", BlurHashUpdatedAt: &version}
-			repo := tests.CreateMockAlbumRepo()
-			repo.SetData(model.Albums{al})
-			ds.MockedAlbum = repo
+	It("leaves the hash untouched on undecodable bytes", func() {
+		al := model.Album{ID: "al-1", UpdatedAt: version, BlurHash: "KEEP"}
+		repo := tests.CreateMockAlbumRepo()
+		repo.SetData(model.Albums{al})
+		ds.MockedAlbum = repo
 
-			u.process(GinkgoT().Context(), al.CoverArtID(), enqueueRequest{snapshot: version})
-			stored, err := ds.Album(GinkgoT().Context()).Get("al-1")
-			Expect(err).ToNot(HaveOccurred())
-			Expect(stored.BlurHash).To(Equal("LEHV6nWB2yk8"))
-		})
+		u.processJob(GinkgoT().Context(), al.CoverArtID(), blurHashJob{data: []byte("not an image"), version: version})
+		stored, _ := ds.Album(GinkgoT().Context()).Get("al-1")
+		Expect(stored.BlurHash).To(Equal("KEEP"))
+	})
 
-		It("keeps the stored hash when a recompute fails transiently", func() {
-			al := model.Album{ID: "al-1", UpdatedAt: version, BlurHash: "LEHV6nWB2yk8", BlurHashUpdatedAt: nil}
-			repo := tests.CreateMockAlbumRepo()
-			repo.SetData(model.Albums{al})
-			ds.MockedAlbum = repo
-			ds.MockedFolder = failingFolderRepo{}
+	It("skips a redundant write when the hash is unchanged (in-memory dedup)", func() {
+		al := model.Album{ID: "al-1", UpdatedAt: version}
+		repo := tests.CreateMockAlbumRepo()
+		repo.SetData(model.Albums{al})
+		ds.MockedAlbum = repo
+		data := realPNGBytes("dedup")
 
-			// A newer snapshot forces a recompute, but the reader chain errors (transient): the stored
-			// hash must survive, so clients don't churn on a fake until a later fill succeeds.
-			newer := version.Add(time.Hour)
-			u.process(GinkgoT().Context(), al.CoverArtID(), enqueueRequest{snapshot: newer})
-			stored, err := ds.Album(GinkgoT().Context()).Get("al-1")
-			Expect(err).ToNot(HaveOccurred())
-			Expect(stored.BlurHash).To(Equal("LEHV6nWB2yk8"))
-		})
+		u.processJob(GinkgoT().Context(), al.CoverArtID(), blurHashJob{data: data, version: version})
+		first, _ := ds.Album(GinkgoT().Context()).Get("al-1")
+		u.processJob(GinkgoT().Context(), al.CoverArtID(), blurHashJob{data: data, version: version.Add(time.Hour)})
+		second, _ := ds.Album(GinkgoT().Context()).Get("al-1")
+		Expect(second.BlurHash).To(Equal(first.BlurHash))
+	})
 
-		It("clears a stored hash when the source is gone", func() {
-			al := model.Album{ID: "al-1", UpdatedAt: version, BlurHash: "LEHV6nWB2yk8", BlurHashUpdatedAt: &version}
-			repo := tests.CreateMockAlbumRepo()
-			repo.SetData(model.Albums{al})
-			ds.MockedAlbum = repo
+	It("ignores non-eligible artwork kinds on enqueue", func() {
+		u.EnqueueBytes(model.ArtworkID{Kind: model.KindMediaFileArtwork, ID: "mf-1"}, realPNGBytes("x"), version)
+		Expect(u.buffer).To(BeEmpty())
+	})
 
-			u.process(GinkgoT().Context(), al.CoverArtID(), enqueueRequest{gone: true})
-			stored, err := ds.Album(GinkgoT().Context()).Get("al-1")
-			Expect(err).ToNot(HaveOccurred())
-			Expect(stored.BlurHash).To(BeEmpty())
-		})
-
-		It("does nothing for a gone serve with no stored hash", func() {
-			al := model.Album{ID: "al-1", UpdatedAt: version}
-			repo := tests.CreateMockAlbumRepo()
-			repo.SetData(model.Albums{al})
-			ds.MockedAlbum = repo
-
-			Expect(func() {
-				u.process(GinkgoT().Context(), al.CoverArtID(), enqueueRequest{gone: true})
-			}).ToNot(Panic())
-			stored, _ := ds.Album(GinkgoT().Context()).Get("al-1")
-			Expect(stored.BlurHash).To(BeEmpty())
-		})
-
-		It("does nothing when the entity is gone", func() {
-			ds.MockedAlbum = tests.CreateMockAlbumRepo()
-			Expect(func() {
-				u.process(GinkgoT().Context(), model.Album{ID: "missing"}.CoverArtID(), enqueueRequest{})
-			}).ToNot(Panic())
-		})
+	It("supersedes a pending gone-check with a bytes job", func() {
+		id := model.Album{ID: "al-1"}.CoverArtID()
+		u.EnqueueClearIfGone(id, version)
+		u.EnqueueBytes(id, realPNGBytes("x"), version.Add(time.Hour))
+		Expect(u.buffer[id].checkGone).To(BeFalse())
+		Expect(u.buffer[id].data).ToNot(BeNil())
 	})
 })
