@@ -910,7 +910,7 @@ var _ = Describe("AlbumRepository folder images version", func() {
 		Expect(GetDBXBuilder().NewQuery("select folder_ids from album where id = '103'").
 			Row(&origFolderIDs)).To(Succeed())
 		DeferCleanup(func() {
-			_, err := GetDBXBuilder().NewQuery("delete from folder where id = 'fold-blur-1'").Execute()
+			_, err := GetDBXBuilder().NewQuery("delete from folder where id in ('fold-blur-1', 'fold-blur-root')").Execute()
 			Expect(err).ToNot(HaveOccurred())
 			_, err = GetDBXBuilder().NewQuery("update album set folder_ids = {:f} where id = '103'").
 				Bind(map[string]any{"f": origFolderIDs}).Execute()
@@ -933,6 +933,23 @@ var _ = Describe("AlbumRepository folder images version", func() {
 		Expect(al.FolderImagesUpdatedAt).ToNot(BeNil())
 		Expect(al.FolderImagesUpdatedAt.Equal(imagesAt)).To(BeTrue())
 		Expect(al.ArtworkUpdatedAt().Equal(imagesAt)).To(BeTrue(), "folder image changes must advance the artwork version")
+	})
+
+	It("includes the parent folder's images (album-root cover with disc subfolders)", func() {
+		discAt := time.Date(2030, 6, 1, 12, 0, 0, 0, time.UTC)
+		rootAt := discAt.Add(time.Hour) // the root cover is the newest image
+		_, err := GetDBXBuilder().NewQuery(
+			"insert into folder (id, library_id, path, name, parent_id, images_updated_at) values" +
+				" ('fold-blur-root', 1, '.', 'Album', '', {:root}), ('fold-blur-1', 1, './Album', 'CD1', 'fold-blur-root', {:disc})").
+			Bind(map[string]any{"root": rootAt, "disc": discAt}).Execute()
+		Expect(err).ToNot(HaveOccurred())
+		_, err = GetDBXBuilder().NewQuery(`update album set folder_ids = '["fold-blur-1"]' where id = '103'`).Execute()
+		Expect(err).ToNot(HaveOccurred())
+
+		al, err := repo.Get("103")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(al.FolderImagesUpdatedAt).ToNot(BeNil())
+		Expect(al.FolderImagesUpdatedAt.Equal(rootAt)).To(BeTrue(), "the parent folder's newer cover must win")
 	})
 
 	It("leaves FolderImagesUpdatedAt nil when the album has no folders", func() {
