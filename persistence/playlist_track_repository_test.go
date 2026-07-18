@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -34,6 +35,30 @@ var _ = Describe("PlaylistTrackRepository", func() {
 			Expect(want).To(HaveLen(1))
 
 			Expect(collectCursor(repo.GetCursor(opts))).To(Equal([]model.PlaylistTrack(want)))
+		})
+	})
+
+	Describe("Read", func() {
+		It("exposes the album's cover timestamp on a single track", func() {
+			tracks, err := repo.GetAll(model.QueryOptions{Sort: "id"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(tracks).ToNot(BeEmpty())
+			albumID := tracks[0].AlbumID
+
+			albumRepo := NewAlbumRepository(request.WithUser(GinkgoT().Context(), model.User{ID: "userid"}), GetDBXBuilder()).(*albumRepository)
+			Expect(albumRepo.UpdateImage(albumID, "cover-read.jpg")).To(Succeed())
+			DeferCleanup(func() {
+				// Restore both columns so fixture-equality tests stay untouched
+				_, _ = albumRepo.executeSQL(squirrel.Update("album").
+					Set("uploaded_image", "").Set("cover_art_updated_at", nil).
+					Where(squirrel.Eq{"id": albumID}))
+			})
+
+			got, err := repo.Read(tracks[0].ID)
+			Expect(err).ToNot(HaveOccurred())
+			trk, ok := got.(*model.PlaylistTrack)
+			Expect(ok).To(BeTrue())
+			Expect(trk.CoverArtUpdatedAt).ToNot(BeNil())
 		})
 	})
 
