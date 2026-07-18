@@ -112,10 +112,14 @@ func ParseDiscArtworkID(id string) (albumID string, discNumber int, err error) {
 }
 
 func artworkIDFromAlbum(al Album) ArtworkID {
+	lastUpdate := al.UpdatedAt
+	if al.ImportedAt.After(lastUpdate) {
+		lastUpdate = al.ImportedAt
+	}
 	return ArtworkID{
 		Kind:       KindAlbumArtwork,
 		ID:         al.ID,
-		LastUpdate: al.UpdatedAt,
+		LastUpdate: lastUpdate,
 	}
 }
 
