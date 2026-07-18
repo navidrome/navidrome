@@ -315,6 +315,13 @@ func (p *phaseMissingTracks) moveMatched(target, missing model.MediaFile) error 
 						log.Warn(p.ctx, "Scanner: Could not reassign album annotations", "from", oldAlbumID, "to", newAlbumID, err)
 					}
 
+					// Keep created_at once per target, so moved albums don't resurface in "Recently Added"
+					if err := tx.Album(p.ctx).CopyAttributes(oldAlbumID, newAlbumID, "created_at"); err != nil {
+						if !errors.Is(err, model.ErrNotFound) {
+							log.Warn(p.ctx, "Scanner: Could not copy album created_at", "from", oldAlbumID, "to", newAlbumID, err)
+						}
+					}
+
 					// Note: RefreshPlayCounts will be called in later phases, so we don't need to call it here
 					p.processedAlbumAnnotations[newAlbumID] = true
 				}
@@ -323,8 +330,8 @@ func (p *phaseMissingTracks) moveMatched(target, missing model.MediaFile) error 
 				log.Trace(p.ctx, "Scanner: Skipping album annotation reassignment", "from", oldAlbumID, "to", newAlbumID)
 			}
 
-			// Copy created_at/cover per old→new pair (not per target): with several old albums
-			// merging into one, any of them may hold the uploaded cover; empty sources never copy.
+			// Copy the cover per old→new pair (not per target): with several old albums
+			// merging into one, any of them may hold it; empty sources never copy.
 			pairKey := oldAlbumID + "\x00" + newAlbumID
 			p.annotationMutex.RLock()
 			copyDone := p.processedAlbumCopies[pairKey]
@@ -332,9 +339,9 @@ func (p *phaseMissingTracks) moveMatched(target, missing model.MediaFile) error 
 			if !copyDone {
 				p.annotationMutex.Lock()
 				if !p.processedAlbumCopies[pairKey] {
-					if err := tx.Album(p.ctx).CopyAttributes(oldAlbumID, newAlbumID, "created_at", "uploaded_image", "cover_art_updated_at"); err != nil {
+					if err := tx.Album(p.ctx).CopyAttributes(oldAlbumID, newAlbumID, "uploaded_image", "cover_art_updated_at"); err != nil {
 						if !errors.Is(err, model.ErrNotFound) {
-							log.Warn(p.ctx, "Scanner: Could not copy album attributes", "from", oldAlbumID, "to", newAlbumID, err)
+							log.Warn(p.ctx, "Scanner: Could not copy album cover", "from", oldAlbumID, "to", newAlbumID, err)
 						}
 					}
 					p.processedAlbumCopies[pairKey] = true

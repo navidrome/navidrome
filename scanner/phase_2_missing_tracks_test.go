@@ -874,9 +874,10 @@ var _ = Describe("phaseMissingTracks", func() {
 			missing2 := model.MediaFile{ID: "mg-2", PID: "MG2", Path: "lib1/b.mp3", AlbumID: "old-2", LibraryID: 1}
 			matched2 := model.MediaFile{ID: "mt-2", PID: "MG2", Path: "lib2/b.mp3", AlbumID: "new-album", LibraryID: 1}
 
+			firstTime := time.Date(2018, 3, 1, 0, 0, 0, 0, time.UTC)
 			albumRepo.SetData(model.Albums{
-				{ID: "old-1", LibraryID: 1},
-				{ID: "old-2", LibraryID: 1, UploadedImage: "old-2_cover.jpg"},
+				{ID: "old-1", LibraryID: 1, CreatedAt: firstTime},
+				{ID: "old-2", LibraryID: 1, UploadedImage: "old-2_cover.jpg", CreatedAt: time.Date(2022, 9, 9, 0, 0, 0, 0, time.UTC)},
 				{ID: "new-album", LibraryID: 1},
 			})
 
@@ -890,6 +891,8 @@ var _ = Describe("phaseMissingTracks", func() {
 			newAlbum, err := albumRepo.Get("new-album")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(newAlbum.UploadedImage).To(Equal("old-2_cover.jpg"))
+			// created_at copies once per target: the second merged album must not overwrite it
+			Expect(newAlbum.CreatedAt).To(Equal(firstTime))
 		})
 
 		It("should not copy album created_at when album ID does not change", func() {
