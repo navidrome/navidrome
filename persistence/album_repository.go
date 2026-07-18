@@ -299,8 +299,12 @@ func (r *albumRepository) CopyAttributes(fromID, toID string, columns ...string)
 		if col == "created_at" && (!v.Valid || v.String == "" || strings.HasPrefix(v.String, "0001-")) {
 			continue
 		}
-		// A source without an uploaded cover must not wipe one the destination has.
+		// A source without an uploaded cover must not wipe one the destination has,
+		// nor contribute a stale cover stamp left behind by a cover removal.
 		if (col == "uploaded_image" || col == "cover_art_updated_at") && (!v.Valid || v.String == "") {
+			continue
+		}
+		if col == "cover_art_updated_at" && (!from["uploaded_image"].Valid || from["uploaded_image"].String == "") {
 			continue
 		}
 		to[col] = v

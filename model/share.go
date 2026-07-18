@@ -37,6 +37,10 @@ func (s Share) CoverArtID() ArtworkID {
 	}
 	switch s.ResourceType {
 	case "album":
+		// Use the loaded album when available, so the public URL busts on cover edits
+		if len(s.Albums) > 0 && s.Albums[0].ID == ids[0] {
+			return s.Albums[0].CoverArtID()
+		}
 		return Album{ID: ids[0]}.CoverArtID()
 	case "playlist":
 		return Playlist{ID: ids[0]}.CoverArtID()
