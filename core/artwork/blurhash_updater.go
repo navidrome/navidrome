@@ -71,7 +71,8 @@ func (u *blurHashUpdater) update(ctx context.Context, artID model.ArtworkID, dat
 	hash := u.cachedHash(artID, sum)
 	if hash == "" {
 		cfg, _, err := image.DecodeConfig(bytes.NewReader(data))
-		if err != nil || cfg.Width*cfg.Height > maxDecodePixels {
+		// int64: on 32-bit builds the pixel product can overflow int and bypass the guard.
+		if err != nil || int64(cfg.Width)*int64(cfg.Height) > maxDecodePixels {
 			// Undecodable or oversized served bytes are not proof of change; keep the stored hash.
 			log.Trace(ctx, "BlurHash: skipping served bytes", "artID", artID, "width", cfg.Width, "height", cfg.Height, err)
 			return
