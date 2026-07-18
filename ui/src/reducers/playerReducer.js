@@ -91,6 +91,7 @@ const mapToAudioLists = (item) => {
       {
         id: trackId,
         updatedAt: item.updatedAt,
+        coverArtUpdatedAt: item.coverArtUpdatedAt,
         album: item.album,
       },
       300,

@@ -29,6 +29,27 @@ var _ = Describe("MediaRepository", func() {
 		mr = NewMediaFileRepository(ctx, GetDBXBuilder())
 	})
 
+	Describe("CoverArtUpdatedAt", func() {
+		It("exposes the album's cover timestamp on its songs", func() {
+			albumRepo := NewAlbumRepository(request.WithUser(GinkgoT().Context(), model.User{ID: "userid"}), GetDBXBuilder())
+			Expect(albumRepo.Put(&model.Album{ID: "cover-al", Name: "cover", LibraryID: 1})).To(Succeed())
+			Expect(mr.Put(&model.MediaFile{ID: "cover-mf", LibraryID: 1, AlbumID: "cover-al", Path: "test/cover-mf.mp3"})).To(Succeed())
+			DeferCleanup(func() {
+				_, _ = mr.(*mediaFileRepository).executeSQL(squirrel.Delete("media_file").Where(squirrel.Eq{"id": "cover-mf"}))
+				_, _ = mr.(*mediaFileRepository).executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": "cover-al"}))
+			})
+
+			got, err := mr.Get("cover-mf")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.CoverArtUpdatedAt).To(BeNil())
+
+			Expect(albumRepo.UpdateImage("cover-al", "cover-al_x.jpg")).To(Succeed())
+			got, err = mr.Get("cover-mf")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.CoverArtUpdatedAt).ToNot(BeNil())
+		})
+	})
+
 	Describe("GetCursor", func() {
 		It("yields the same media files as GetAll", func() {
 			opts := model.QueryOptions{Sort: "title"}

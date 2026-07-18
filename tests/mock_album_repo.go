@@ -134,6 +134,32 @@ func (m *MockAlbumRepo) UpdateExternalInfo(album *model.Album) error {
 	return nil
 }
 
+func (m *MockAlbumRepo) UpdateImage(id, filename string) error {
+	if m.Err {
+		return errors.New("unexpected error")
+	}
+	if al, ok := m.Data[id]; ok {
+		al.UploadedImage = filename
+		now := time.Now()
+		al.CoverArtUpdatedAt = &now
+		return nil
+	}
+	return model.ErrNotFound
+}
+
+func (m *MockAlbumRepo) CountByImage(filename string) (int64, error) {
+	if m.Err {
+		return 0, errors.New("unexpected error")
+	}
+	var n int64
+	for _, al := range m.Data {
+		if filename != "" && al.UploadedImage == filename {
+			n++
+		}
+	}
+	return n, nil
+}
+
 func (m *MockAlbumRepo) Search(q string, options ...model.QueryOptions) (model.Albums, error) {
 	m.SearchQuery = q
 	if len(options) > 0 {
@@ -176,6 +202,16 @@ func (m *MockAlbumRepo) CopyAttributes(fromID, toID string, columns ...string) e
 		switch col {
 		case "created_at":
 			to.CreatedAt = from.CreatedAt
+		case "uploaded_image":
+			// Mirrors the real repo: an empty source never wipes the destination's cover
+			if from.UploadedImage != "" {
+				to.UploadedImage = from.UploadedImage
+			}
+		case "cover_art_updated_at":
+			// Mirrors the real repo: a coverless source never contributes a stale stamp
+			if from.CoverArtUpdatedAt != nil && from.UploadedImage != "" {
+				to.CoverArtUpdatedAt = from.CoverArtUpdatedAt
+			}
 		}
 	}
 	if m.CopyAttributesCalls == nil {

@@ -112,10 +112,17 @@ func ParseDiscArtworkID(id string) (albumID string, discNumber int, err error) {
 }
 
 func artworkIDFromAlbum(al Album) ArtworkID {
+	// The suffix is a cache discriminator, not a date: mix (not max/add) the timestamps so
+	// the id changes whenever either does — updated_at can decrease and cancel a plain sum.
+	lastUpdate := al.UpdatedAt
+	if al.CoverArtUpdatedAt != nil {
+		mixed := (uint64(al.UpdatedAt.Unix()) ^ (uint64(al.CoverArtUpdatedAt.Unix()) * 0x9E3779B97F4A7C15)) & 0x3FFFFFFFFFFFFFFF
+		lastUpdate = time.Unix(int64(max(mixed, 1)), 0)
+	}
 	return ArtworkID{
 		Kind:       KindAlbumArtwork,
 		ID:         al.ID,
-		LastUpdate: al.UpdatedAt,
+		LastUpdate: lastUpdate,
 	}
 }
 

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 
 	"github.com/gohugoio/hashstructure"
 )
@@ -23,32 +24,34 @@ type Album struct {
 	EmbedArtPath  string `structs:"embed_art_path" json:"-"`
 	AlbumArtistID string `structs:"album_artist_id" json:"albumArtistId"` // Deprecated, use Participants
 	// AlbumArtist is the display name used for the album artist.
-	AlbumArtist          string   `structs:"album_artist" json:"albumArtist"`
-	MaxYear              int      `structs:"max_year" json:"maxYear"`
-	MinYear              int      `structs:"min_year" json:"minYear"`
-	Date                 string   `structs:"date" json:"date,omitempty"`
-	MaxOriginalYear      int      `structs:"max_original_year" json:"maxOriginalYear"`
-	MinOriginalYear      int      `structs:"min_original_year" json:"minOriginalYear"`
-	OriginalDate         string   `structs:"original_date" json:"originalDate,omitempty"`
-	ReleaseDate          string   `structs:"release_date" json:"releaseDate,omitempty"`
-	Compilation          bool     `structs:"compilation" json:"compilation"`
-	Comment              string   `structs:"comment" json:"comment,omitempty"`
-	SongCount            int      `structs:"song_count" json:"songCount"`
-	Duration             float32  `structs:"duration" json:"duration"`
-	Size                 int64    `structs:"size" json:"size"`
-	Discs                Discs    `structs:"discs" json:"discs,omitempty"`
-	SortAlbumName        string   `structs:"sort_album_name" json:"sortAlbumName,omitempty"`
-	SortAlbumArtistName  string   `structs:"sort_album_artist_name" json:"sortAlbumArtistName,omitempty"`
-	OrderAlbumName       string   `structs:"order_album_name" json:"orderAlbumName"`
-	OrderAlbumArtistName string   `structs:"order_album_artist_name" json:"orderAlbumArtistName"`
-	CatalogNum           string   `structs:"catalog_num" json:"catalogNum,omitempty"`
-	MbzAlbumID           string   `structs:"mbz_album_id" json:"mbzAlbumId,omitempty"`
-	MbzAlbumArtistID     string   `structs:"mbz_album_artist_id" json:"mbzAlbumArtistId,omitempty"`
-	MbzAlbumType         string   `structs:"mbz_album_type" json:"mbzAlbumType,omitempty"`
-	MbzAlbumComment      string   `structs:"mbz_album_comment" json:"mbzAlbumComment,omitempty"`
-	MbzReleaseGroupID    string   `structs:"mbz_release_group_id" json:"mbzReleaseGroupId,omitempty"`
-	FolderIDs            []string `structs:"folder_ids" json:"-" hash:"set"` // All folders that contain media_files for this album
-	ExplicitStatus       string   `structs:"explicit_status" json:"explicitStatus"`
+	AlbumArtist          string     `structs:"album_artist" json:"albumArtist"`
+	MaxYear              int        `structs:"max_year" json:"maxYear"`
+	MinYear              int        `structs:"min_year" json:"minYear"`
+	Date                 string     `structs:"date" json:"date,omitempty"`
+	MaxOriginalYear      int        `structs:"max_original_year" json:"maxOriginalYear"`
+	MinOriginalYear      int        `structs:"min_original_year" json:"minOriginalYear"`
+	OriginalDate         string     `structs:"original_date" json:"originalDate,omitempty"`
+	ReleaseDate          string     `structs:"release_date" json:"releaseDate,omitempty"`
+	Compilation          bool       `structs:"compilation" json:"compilation"`
+	Comment              string     `structs:"comment" json:"comment,omitempty"`
+	SongCount            int        `structs:"song_count" json:"songCount"`
+	Duration             float32    `structs:"duration" json:"duration"`
+	Size                 int64      `structs:"size" json:"size"`
+	Discs                Discs      `structs:"discs" json:"discs,omitempty"`
+	SortAlbumName        string     `structs:"sort_album_name" json:"sortAlbumName,omitempty"`
+	SortAlbumArtistName  string     `structs:"sort_album_artist_name" json:"sortAlbumArtistName,omitempty"`
+	OrderAlbumName       string     `structs:"order_album_name" json:"orderAlbumName"`
+	OrderAlbumArtistName string     `structs:"order_album_artist_name" json:"orderAlbumArtistName"`
+	CatalogNum           string     `structs:"catalog_num" json:"catalogNum,omitempty"`
+	MbzAlbumID           string     `structs:"mbz_album_id" json:"mbzAlbumId,omitempty"`
+	MbzAlbumArtistID     string     `structs:"mbz_album_artist_id" json:"mbzAlbumArtistId,omitempty"`
+	MbzAlbumType         string     `structs:"mbz_album_type" json:"mbzAlbumType,omitempty"`
+	MbzAlbumComment      string     `structs:"mbz_album_comment" json:"mbzAlbumComment,omitempty"`
+	MbzReleaseGroupID    string     `structs:"mbz_release_group_id" json:"mbzReleaseGroupId,omitempty"`
+	FolderIDs            []string   `structs:"folder_ids" json:"-" hash:"set"` // All folders that contain media_files for this album
+	ExplicitStatus       string     `structs:"explicit_status" json:"explicitStatus"`
+	UploadedImage        string     `structs:"-" json:"uploadedImage,omitempty" hash:"ignore"`
+	CoverArtUpdatedAt    *time.Time `structs:"-" json:"coverArtUpdatedAt,omitempty" hash:"ignore"`
 
 	// External metadata fields
 	Description           string     `structs:"description" json:"description,omitempty" hash:"ignore"`
@@ -71,6 +74,10 @@ type Album struct {
 
 func (a Album) CoverArtID() ArtworkID {
 	return artworkIDFromAlbum(a)
+}
+
+func (a Album) UploadedImagePath() string {
+	return UploadedImagePath(consts.EntityAlbum, a.UploadedImage)
 }
 
 func (a Album) FullName() string {
@@ -139,6 +146,8 @@ type AlbumRepository interface {
 	Exists(id string) (bool, error)
 	Put(*Album) error
 	UpdateExternalInfo(*Album) error
+	UpdateImage(id, filename string) error
+	CountByImage(filename string) (int64, error)
 	Get(id string) (*Album, error)
 	GetAll(...QueryOptions) (Albums, error)
 	GetCursor(...QueryOptions) (AlbumCursor, error)

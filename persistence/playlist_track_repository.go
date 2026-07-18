@@ -108,6 +108,7 @@ func (r *playlistTrackRepository) Read(id string) (any, error) {
 			"rated_at",
 			"f.*",
 			"playlist_tracks.*",
+			coverArtUpdatedAtCol("f"),
 		).
 		Join("media_file f on f.id = media_file_id").
 		Where(And{Eq{"playlist_id": r.playlistId}, Eq{"playlist_tracks.id": id}})

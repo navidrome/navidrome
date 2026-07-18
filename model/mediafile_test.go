@@ -549,6 +549,17 @@ var _ = Describe("MediaFile", func() {
 			Expect(id.Kind).To(Equal(KindAlbumArtwork))
 			Expect(id.ID).To(Equal(mf.AlbumID))
 		})
+		It("folds CoverArtUpdatedAt into disc and album fallback ids", func() {
+			stamp := time.Date(2026, 7, 17, 0, 0, 0, 0, time.UTC)
+			disc := MediaFile{ID: "111", AlbumID: "1", DiscNumber: 2}
+			album := MediaFile{ID: "111", AlbumID: "1"}
+			Expect(disc.CoverArtID().String()).To(HaveSuffix("_0"))
+			Expect(album.CoverArtID().String()).To(HaveSuffix("_0"))
+			disc.CoverArtUpdatedAt = &stamp
+			album.CoverArtUpdatedAt = &stamp
+			Expect(disc.CoverArtID().String()).ToNot(HaveSuffix("_0"))
+			Expect(album.CoverArtID().String()).ToNot(HaveSuffix("_0"))
+		})
 	})
 
 	Describe("AudioCodec", func() {

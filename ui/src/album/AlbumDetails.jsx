@@ -26,6 +26,7 @@ import {
   CollapsibleComment,
   DurationField,
   formatRange,
+  ImageUploadOverlay,
   LoveButton,
   RatingField,
   SizeField,
@@ -74,6 +75,7 @@ const useStyles = makeStyles(
         width: '15em',
         minWidth: '15em',
       },
+      position: 'relative',
       backgroundColor: 'transparent',
       display: 'flex',
       alignItems: 'center',
@@ -275,6 +277,11 @@ const AlbumDetails = (props) => {
             style={{
               cursor: imageError ? 'default' : 'pointer',
             }}
+          />
+          <ImageUploadOverlay
+            entityType="album"
+            entityId={record.id}
+            hasUploadedImage={!!record.uploadedImage}
           />
         </div>
         <div className={classes.details}>

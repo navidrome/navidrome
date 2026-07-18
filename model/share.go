@@ -2,6 +2,7 @@ package model
 
 import (
 	"cmp"
+	"slices"
 	"strings"
 	"time"
 
@@ -37,6 +38,10 @@ func (s Share) CoverArtID() ArtworkID {
 	}
 	switch s.ResourceType {
 	case "album":
+		// Use the loaded album when available, so the public URL busts on cover edits
+		if i := slices.IndexFunc(s.Albums, func(al Album) bool { return al.ID == ids[0] }); i >= 0 {
+			return s.Albums[i].CoverArtID()
+		}
 		return Album{ID: ids[0]}.CoverArtID()
 	case "playlist":
 		return Playlist{ID: ids[0]}.CoverArtID()

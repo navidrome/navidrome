@@ -3,11 +3,14 @@ package persistence
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
@@ -41,6 +44,97 @@ var _ = Describe("AlbumRepository", func() {
 		})
 	})
 
+	Describe("UpdateImage", func() {
+		BeforeEach(func() {
+			Expect(albumRepo.Put(&model.Album{ID: "img-1", Name: "img", LibraryID: 1})).To(Succeed())
+			DeferCleanup(func() {
+				_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": "img-1"}))
+			})
+		})
+		It("sets and clears the uploaded image filename", func() {
+			Expect(albumRepo.UpdateImage("img-1", "img-1_cover.jpg")).To(Succeed())
+			got, err := albumRepo.Get("img-1")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.UploadedImage).To(Equal("img-1_cover.jpg"))
+
+			Expect(albumRepo.UpdateImage("img-1", "")).To(Succeed())
+			got, err = albumRepo.Get("img-1")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.UploadedImage).To(BeEmpty())
+		})
+		It("is preserved across a full-row Put (structs:\"-\" contract)", func() {
+			Expect(albumRepo.UpdateImage("img-1", "img-1_cover.jpg")).To(Succeed())
+			// A scan-style refresh re-Puts the album with a zero-valued UploadedImage.
+			Expect(albumRepo.Put(&model.Album{ID: "img-1", Name: "img changed", LibraryID: 1})).To(Succeed())
+			got, err := albumRepo.Get("img-1")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.UploadedImage).To(Equal("img-1_cover.jpg"))
+		})
+		It("returns ErrNotFound for a missing album", func() {
+			Expect(albumRepo.UpdateImage("does-not-exist", "x.jpg")).To(MatchError(model.ErrNotFound))
+		})
+		It("counts rows sharing an image filename, ignoring library filters", func() {
+			Expect(albumRepo.CountByImage("img-1_cover.jpg")).To(Equal(int64(0)))
+			Expect(albumRepo.UpdateImage("img-1", "img-1_cover.jpg")).To(Succeed())
+			Expect(albumRepo.CountByImage("img-1_cover.jpg")).To(Equal(int64(1)))
+			Expect(albumRepo.CountByImage("")).To(Equal(int64(0)))
+		})
+		It("bumps cover_art_updated_at without touching updated_at", func() {
+			before, err := albumRepo.Get("img-1")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(before.CoverArtUpdatedAt).To(BeNil())
+
+			Expect(albumRepo.UpdateImage("img-1", "img-1_cover.jpg")).To(Succeed())
+
+			after, err := albumRepo.Get("img-1")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(after.CoverArtUpdatedAt).ToNot(BeNil())
+			Expect(*after.CoverArtUpdatedAt).To(BeTemporally("~", time.Now(), time.Minute))
+			Expect(after.UpdatedAt).To(Equal(before.UpdatedAt))
+		})
+	})
+
+	Describe("purgeEmpty image cleanup", func() {
+		var artDir string
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+			tempDir := GinkgoT().TempDir()
+			conf.Server.DataFolder = conf.NewDir(tempDir)
+			artDir = filepath.Join(tempDir, "artwork", "album")
+			Expect(os.MkdirAll(artDir, 0755)).To(Succeed())
+
+			_, err := albumRepo.executeSQL(squirrel.Insert("library").Columns("id", "name", "path").Values(99, "purge-lib", "/tmp/purge-lib"))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(albumRepo.Put(&model.Album{ID: "purge-a", Name: "a", LibraryID: 99})).To(Succeed())
+			Expect(albumRepo.Put(&model.Album{ID: "purge-b", Name: "b", LibraryID: 99})).To(Succeed())
+			Expect(albumRepo.Put(&model.Album{ID: "purge-keeper", Name: "k", LibraryID: 1})).To(Succeed())
+			Expect(albumRepo.UpdateImage("purge-a", "orphan.jpg")).To(Succeed())
+			Expect(albumRepo.UpdateImage("purge-b", "shared.jpg")).To(Succeed())
+			Expect(albumRepo.UpdateImage("purge-keeper", "shared.jpg")).To(Succeed())
+			Expect(os.WriteFile(filepath.Join(artDir, "orphan.jpg"), []byte("x"), 0600)).To(Succeed())
+			Expect(os.WriteFile(filepath.Join(artDir, "shared.jpg"), []byte("x"), 0600)).To(Succeed())
+
+			DeferCleanup(func() {
+				_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": []string{"purge-a", "purge-b", "purge-keeper"}}))
+				_, _ = albumRepo.executeSQL(squirrel.Delete("library").Where(squirrel.Eq{"id": 99}))
+			})
+		})
+
+		It("removes orphaned image files but keeps ones still referenced elsewhere", func() {
+			Expect(albumRepo.purgeEmpty(99)).To(Succeed())
+
+			var ids []string
+			Expect(albumRepo.queryAllSlice(squirrel.Select("id").From("album").Where(squirrel.Eq{"id": []string{"purge-a", "purge-b"}}), &ids)).To(Succeed())
+			Expect(ids).To(BeEmpty(), "purged album rows should be gone")
+			Expect(albumRepo.queryAllSlice(squirrel.Select("id").From("album").Where(squirrel.Eq{"id": "purge-keeper"}), &ids)).To(Succeed())
+			Expect(ids).To(HaveLen(1), "album in another library must survive")
+
+			_, err := os.Stat(filepath.Join(artDir, "orphan.jpg"))
+			Expect(os.IsNotExist(err)).To(BeTrue(), "orphaned image file should be removed")
+			Expect(filepath.Join(artDir, "shared.jpg")).To(BeAnExistingFile(), "file still referenced by a surviving album must be kept")
+		})
+	})
+
 	Describe("CopyAttributes", func() {
 		var srcTime, dstTime time.Time
 		BeforeEach(func() {
@@ -64,6 +158,52 @@ var _ = Describe("AlbumRepository", func() {
 			got, err := albumRepo.Get("copy-dst")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.CreatedAt).To(BeTemporally("~", dstTime, time.Second))
+		})
+		It("copies uploaded_image from source to destination", func() {
+			Expect(albumRepo.UpdateImage("copy-src", "copy-src_cover.jpg")).To(Succeed())
+			Expect(albumRepo.CopyAttributes("copy-src", "copy-dst", "uploaded_image")).To(Succeed())
+			got, err := albumRepo.Get("copy-dst")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.UploadedImage).To(Equal("copy-src_cover.jpg"))
+		})
+		It("does not wipe the destination's cover when the source has none", func() {
+			Expect(albumRepo.UpdateImage("copy-dst", "copy-dst_cover.jpg")).To(Succeed())
+			Expect(albumRepo.CopyAttributes("copy-src", "copy-dst", "uploaded_image", "cover_art_updated_at")).To(Succeed())
+			got, err := albumRepo.Get("copy-dst")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.UploadedImage).To(Equal("copy-dst_cover.jpg"))
+			Expect(got.CoverArtUpdatedAt).ToNot(BeNil())
+		})
+		It("applies the cover-stamp guard even when uploaded_image is not requested", func() {
+			Expect(albumRepo.UpdateImage("copy-src", "copy-src_cover.jpg")).To(Succeed())
+			Expect(albumRepo.CopyAttributes("copy-src", "copy-dst", "cover_art_updated_at")).To(Succeed())
+			got, err := albumRepo.Get("copy-dst")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.CoverArtUpdatedAt).ToNot(BeNil(), "stamp must copy when the source has a cover")
+
+			Expect(albumRepo.UpdateImage("copy-src", "")).To(Succeed())
+			Expect(albumRepo.UpdateImage("copy-zero", "z.jpg")).To(Succeed())
+			Expect(albumRepo.UpdateImage("copy-zero", "")).To(Succeed())
+			before, err := albumRepo.Get("copy-dst")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(albumRepo.CopyAttributes("copy-zero", "copy-dst", "cover_art_updated_at")).To(Succeed())
+			got, err = albumRepo.Get("copy-dst")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.CoverArtUpdatedAt.Equal(*before.CoverArtUpdatedAt)).To(BeTrue(), "coverless source must not contribute a stamp")
+		})
+		It("does not copy a stale cover stamp left behind by a cover removal", func() {
+			// A removal clears uploaded_image but keeps cover_art_updated_at set
+			Expect(albumRepo.UpdateImage("copy-src", "copy-src_cover.jpg")).To(Succeed())
+			Expect(albumRepo.UpdateImage("copy-src", "")).To(Succeed())
+			Expect(albumRepo.UpdateImage("copy-dst", "copy-dst_cover.jpg")).To(Succeed())
+			before, err := albumRepo.Get("copy-dst")
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(albumRepo.CopyAttributes("copy-src", "copy-dst", "uploaded_image", "cover_art_updated_at")).To(Succeed())
+			got, err := albumRepo.Get("copy-dst")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.UploadedImage).To(Equal("copy-dst_cover.jpg"))
+			Expect(got.CoverArtUpdatedAt.Equal(*before.CoverArtUpdatedAt)).To(BeTrue())
 		})
 	})
 

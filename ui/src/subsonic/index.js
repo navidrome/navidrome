@@ -80,9 +80,16 @@ const getAvatarUrl = (username, size) =>
     }),
   )
 
+// Cache-buster from both timestamps (cover uploads bump coverArtUpdatedAt); joined,
+// not max'd, so the URL changes even when updatedAt is newer (future file mtimes).
+const artCacheKey = (record) =>
+  [record.updatedAt, record.coverArtUpdatedAt].filter(Boolean).join('|') ||
+  undefined
+
 const getCoverArtUrl = (record, size, square) => {
+  const cacheKey = artCacheKey(record)
   const options = {
-    ...(record.updatedAt && { _: record.updatedAt }),
+    ...(cacheKey && { _: cacheKey }),
     ...(size && { size }),
     ...(square && { square }),
   }
@@ -103,13 +110,18 @@ const getCoverArtUrl = (record, size, square) => {
   }
 }
 
-const getDiscCoverArtUrl = (albumId, discNumber, updatedAt, size) => {
+const getDiscCoverArtUrl = (record, size) => {
+  const cacheKey = artCacheKey(record)
   const options = {
-    ...(updatedAt && { _: updatedAt }),
+    ...(cacheKey && { _: cacheKey }),
     ...(size && { size }),
   }
   return baseUrl(
-    url('getCoverArt', 'dc-' + albumId + ':' + discNumber, options),
+    url(
+      'getCoverArt',
+      'dc-' + record.albumId + ':' + record.discNumber,
+      options,
+    ),
   )
 }
 

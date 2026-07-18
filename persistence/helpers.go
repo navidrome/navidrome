@@ -90,3 +90,9 @@ func mapSortOrder(tableName, order string) string {
 	repl := fmt.Sprintf("(coalesce(nullif(%[1]s.sort_$1,''),%[1]s.order_$1) collate nocase)", tableName)
 	return sortOrderRegex.ReplaceAllString(order, repl)
 }
+
+// coverArtUpdatedAtCol projects the album's manual-cover timestamp onto rows of the given
+// table/alias as a scalar subquery — a join would clash with media_file's column names.
+func coverArtUpdatedAtCol(alias string) string {
+	return "(select cover_art_updated_at from album where album.id = " + alias + ".album_id) as cover_art_updated_at"
+}

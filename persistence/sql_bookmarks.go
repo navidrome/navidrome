@@ -100,7 +100,9 @@ func (r sqlRepository) GetBookmarks() (model.Bookmarks, error) {
 	user, _ := request.UserFrom(r.ctx)
 
 	idField := r.tableName + ".id"
-	sq := r.newSelect().Columns(r.tableName + ".*")
+	// Only media files are bookmarkable (see dbMediaFiles scan below), so the cover
+	// stamp projection is safe to add here
+	sq := r.newSelect().Columns(r.tableName+".*", coverArtUpdatedAtCol(r.tableName))
 	sq = r.withAnnotation(sq, idField)
 	sq = r.withBookmark(sq, idField).Where(NotEq{bookmarkTable + ".item_id": nil})
 	var mfs dbMediaFiles // TODO Decouple from media_file

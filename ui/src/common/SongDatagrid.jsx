@@ -96,18 +96,9 @@ const DiscSubtitleRow = forwardRef(
       onClick(discNumber)
     }
 
-    const coverArtUrl = subsonic.getDiscCoverArtUrl(
-      record.albumId,
-      record.discNumber,
-      record.updatedAt,
-      96,
-    )
+    const coverArtUrl = subsonic.getDiscCoverArtUrl(record, 96)
 
-    const fullImageUrl = subsonic.getDiscCoverArtUrl(
-      record.albumId,
-      record.discNumber,
-      record.updatedAt,
-    )
+    const fullImageUrl = subsonic.getDiscCoverArtUrl(record)
 
     const handleOpenLightbox = useCallback(
       (e) => {

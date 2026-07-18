@@ -58,6 +58,9 @@ func newAlbumArtworkReader(ctx context.Context, artwork *artwork, artID model.Ar
 	if imagesUpdateAt != nil {
 		a.cacheKey.lastUpdate = utils.TimeNewest(a.cacheKey.lastUpdate, *imagesUpdateAt)
 	}
+	if al.CoverArtUpdatedAt != nil {
+		a.cacheKey.lastUpdate = utils.TimeNewest(a.cacheKey.lastUpdate, *al.CoverArtUpdatedAt)
+	}
 	return a, nil
 }
 
@@ -67,11 +70,14 @@ func (a *albumArtworkReader) Key() string {
 		hashInput = conf.Server.Agents + hashInput
 	}
 	hash := md5.Sum([]byte(hashInput))
+	// coverStamp is a separate component: folded into lastUpdate it could be masked
+	// by a newer updated_at (files with future mtimes).
 	return fmt.Sprintf(
-		"%s.%x.%t",
+		"%s.%x.%t.%d",
 		a.cacheKey.Key(),
 		hash,
 		conf.Server.EnableExternalServices,
+		coverStamp(a.album.CoverArtUpdatedAt),
 	)
 }
 func (a *albumArtworkReader) LastUpdated() time.Time {
@@ -79,8 +85,13 @@ func (a *albumArtworkReader) LastUpdated() time.Time {
 }
 
 func (a *albumArtworkReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
-	var ff = a.fromCoverArtPriority(ctx, a.a.ffmpeg, conf.Server.CoverArtPriority)
+	ff := []sourceFunc{a.fromAlbumUploadedImage()}
+	ff = append(ff, a.fromCoverArtPriority(ctx, a.a.ffmpeg, conf.Server.CoverArtPriority)...)
 	return selectImageReader(ctx, a.artID, ff...)
+}
+
+func (a *albumArtworkReader) fromAlbumUploadedImage() sourceFunc {
+	return fromLocalFile(a.album.UploadedImagePath())
 }
 
 func (a *albumArtworkReader) fromCoverArtPriority(ctx context.Context, ffmpeg ffmpeg.FFmpeg, priority string) []sourceFunc {

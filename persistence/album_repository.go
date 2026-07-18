@@ -3,9 +3,11 @@ package persistence
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"iter"
 	"maps"
+	"os"
 	"slices"
 	"strings"
 	"sync"
@@ -14,6 +16,7 @@ import (
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -219,6 +222,31 @@ func (r *albumRepository) UpdateExternalInfo(al *model.Album) error {
 	return err
 }
 
+// UpdateImage is the sole writer of uploaded_image (raw SQL: Put's structs.Map drops the
+// structs:"-" field). Bumps cover_art_updated_at, not updated_at, to leave Recently Added put.
+func (r *albumRepository) UpdateImage(id, filename string) error {
+	c, err := r.executeSQL(Update(r.tableName).
+		Set("uploaded_image", filename).
+		Set("cover_art_updated_at", time.Now()).
+		Where(Eq{"id": id}))
+	if err != nil {
+		return err
+	}
+	if c == 0 {
+		return model.ErrNotFound
+	}
+	return nil
+}
+
+// CountByImage counts album rows referencing an uploaded image filename, unfiltered by
+// library — CopyAttributes can leave two rows sharing one file across an album-ID change.
+func (r *albumRepository) CountByImage(filename string) (int64, error) {
+	if filename == "" {
+		return 0, nil
+	}
+	return r.count(Select(), model.QueryOptions{Filters: Eq{"uploaded_image": filename}})
+}
+
 func (r *albumRepository) selectAlbum(options ...model.QueryOptions) SelectBuilder {
 	sql := r.newSelect(options...).Columns("album.*", "library.path as library_path", "library.name as library_name").
 		LeftJoin("library on album.library_id = library.id")
@@ -257,8 +285,14 @@ func (r *albumRepository) GetCursor(options ...model.QueryOptions) (model.AlbumC
 }
 
 func (r *albumRepository) CopyAttributes(fromID, toID string, columns ...string) error {
+	// The cover-stamp guard below needs the source's uploaded_image even when the
+	// caller didn't request it
+	selectCols := columns
+	if slices.Contains(columns, "cover_art_updated_at") && !slices.Contains(columns, "uploaded_image") {
+		selectCols = append(slices.Clone(columns), "uploaded_image")
+	}
 	var from dbx.NullStringMap
-	err := r.queryOne(Select(columns...).From(r.tableName).Where(Eq{"id": fromID}), &from)
+	err := r.queryOne(Select(selectCols...).From(r.tableName).Where(Eq{"id": fromID}), &from)
 	if err != nil {
 		return fmt.Errorf("getting album to copy fields from: %w", err)
 	}
@@ -269,6 +303,14 @@ func (r *albumRepository) CopyAttributes(fromID, toID string, columns ...string)
 		// overwritten with a zero/poisoned value, or it propagates forward on
 		// every metadata-driven album ID change.
 		if col == "created_at" && (!v.Valid || v.String == "" || strings.HasPrefix(v.String, "0001-")) {
+			continue
+		}
+		// A source without an uploaded cover must not wipe one the destination has,
+		// nor contribute a stale cover stamp left behind by a cover removal.
+		if (col == "uploaded_image" || col == "cover_art_updated_at") && (!v.Valid || v.String == "") {
+			continue
+		}
+		if col == "cover_art_updated_at" && (!from["uploaded_image"].Valid || from["uploaded_image"].String == "") {
 			continue
 		}
 		to[col] = v
@@ -353,17 +395,55 @@ on conflict (user_id, item_id, item_type) do update
 }
 
 func (r *albumRepository) purgeEmpty(libraryIDs ...int) error {
-	del := Delete(r.tableName).Where("id not in (select distinct(album_id) from media_file)")
+	orphanFilter := "id not in (select distinct(album_id) from media_file)"
+
+	// Collect uploaded image filenames before deleting
+	sel := Select("uploaded_image").From(r.tableName).
+		Where(orphanFilter).
+		Where("uploaded_image <> ''")
+	del := Delete(r.tableName).Where(orphanFilter)
 	// If libraryIDs are specified, only purge albums from those libraries
 	if len(libraryIDs) > 0 {
+		sel = sel.Where(Eq{"library_id": libraryIDs})
 		del = del.Where(Eq{"library_id": libraryIDs})
 	}
+	var imageFiles []string
+	if err := r.queryAllSlice(sel, &imageFiles); err != nil && !errors.Is(err, model.ErrNotFound) {
+		return fmt.Errorf("collecting album images for cleanup: %w", err)
+	}
+
 	c, err := r.executeSQL(del)
 	if err != nil {
 		return fmt.Errorf("purging empty albums: %w", err)
 	}
 	if c > 0 {
 		log.Debug(r.ctx, "Purged empty albums", "totalDeleted", c)
+	}
+
+	if len(imageFiles) == 0 {
+		return nil
+	}
+	// CopyAttributes carries the filename (not the file) across album-ID changes, so a
+	// surviving album may still reference a purged album's image — keep those.
+	var stillUsed []string
+	if err := r.queryAllSlice(Select("uploaded_image").From(r.tableName).Where(Eq{"uploaded_image": imageFiles}), &stillUsed); err != nil && !errors.Is(err, model.ErrNotFound) {
+		return fmt.Errorf("checking album images still in use: %w", err)
+	}
+	used := make(map[string]struct{}, len(stillUsed))
+	for _, f := range stillUsed {
+		used[f] = struct{}{}
+	}
+
+	// Best-effort cleanup of uploaded image files
+	log.Debug(r.ctx, "Cleaning up album images", "totalImages", len(imageFiles))
+	for _, filename := range imageFiles {
+		if _, ok := used[filename]; ok {
+			continue
+		}
+		path := model.UploadedImagePath(consts.EntityAlbum, filename)
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			log.Warn(r.ctx, "Failed to remove album image during GC", "path", path, err)
+		}
 	}
 	return nil
 }

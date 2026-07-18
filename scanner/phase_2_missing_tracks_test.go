@@ -841,6 +841,60 @@ var _ = Describe("phaseMissingTracks", func() {
 			Expect(newAlbum.CreatedAt).To(Equal(originalTime))
 		})
 
+		It("should preserve an uploaded cover during moves with album change", func() {
+			missingTrack := model.MediaFile{
+				ID: "missing-img", PID: "C", Path: "lib1/song.mp3",
+				AlbumID: "old-album", LibraryID: 1,
+			}
+			matchedTrack := model.MediaFile{
+				ID: "matched-img", PID: "C", Path: "lib2/song.mp3",
+				AlbumID: "new-album", LibraryID: 2,
+			}
+
+			albumRepo.SetData(model.Albums{
+				{ID: "old-album", LibraryID: 1, UploadedImage: "old-album_cover.jpg"},
+				{ID: "new-album", LibraryID: 2},
+			})
+
+			_ = ds.MediaFile(ctx).Put(&missingTrack)
+			_ = ds.MediaFile(ctx).Put(&matchedTrack)
+
+			Expect(phase.moveMatched(matchedTrack, missingTrack)).To(Succeed())
+
+			newAlbum, err := albumRepo.Get("new-album")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(newAlbum.UploadedImage).To(Equal("old-album_cover.jpg"))
+		})
+
+		It("should preserve a cover held by any of several old albums merged into one", func() {
+			// old-1 (no cover) merges first and marks the target as processed for annotations;
+			// old-2 carries the cover and must still contribute it.
+			missing1 := model.MediaFile{ID: "mg-1", PID: "MG1", Path: "lib1/a.mp3", AlbumID: "old-1", LibraryID: 1}
+			matched1 := model.MediaFile{ID: "mt-1", PID: "MG1", Path: "lib2/a.mp3", AlbumID: "new-album", LibraryID: 1}
+			missing2 := model.MediaFile{ID: "mg-2", PID: "MG2", Path: "lib1/b.mp3", AlbumID: "old-2", LibraryID: 1}
+			matched2 := model.MediaFile{ID: "mt-2", PID: "MG2", Path: "lib2/b.mp3", AlbumID: "new-album", LibraryID: 1}
+
+			firstTime := time.Date(2018, 3, 1, 0, 0, 0, 0, time.UTC)
+			albumRepo.SetData(model.Albums{
+				{ID: "old-1", LibraryID: 1, CreatedAt: firstTime},
+				{ID: "old-2", LibraryID: 1, UploadedImage: "old-2_cover.jpg", CreatedAt: time.Date(2022, 9, 9, 0, 0, 0, 0, time.UTC)},
+				{ID: "new-album", LibraryID: 1},
+			})
+
+			for _, mf := range []*model.MediaFile{&missing1, &matched1, &missing2, &matched2} {
+				_ = ds.MediaFile(ctx).Put(mf)
+			}
+
+			Expect(phase.moveMatched(matched1, missing1)).To(Succeed())
+			Expect(phase.moveMatched(matched2, missing2)).To(Succeed())
+
+			newAlbum, err := albumRepo.Get("new-album")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(newAlbum.UploadedImage).To(Equal("old-2_cover.jpg"))
+			// created_at copies once per target: the second merged album must not overwrite it
+			Expect(newAlbum.CreatedAt).To(Equal(firstTime))
+		})
+
 		It("should not copy album created_at when album ID does not change", func() {
 			originalTime := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
 			missingTrack := model.MediaFile{

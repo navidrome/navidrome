@@ -2,6 +2,8 @@ package model_test
 
 import (
 	"encoding/json"
+	"path/filepath"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -25,6 +27,41 @@ var _ = Describe("Album", func() {
 		Entry("returns just name when tag is absent", true, Tags{}, "Album"),
 		Entry("returns just name when tag is an empty slice", true, Tags{TagAlbumVersion: []string{}}, "Album"),
 	)
+
+	Describe("UploadedImagePath", func() {
+		BeforeEach(func() {
+			conf.Server.DataFolder = conf.NewDir("/data")
+		})
+		It("returns empty when no image was uploaded", func() {
+			Expect(Album{ID: "al-1"}.UploadedImagePath()).To(BeEmpty())
+		})
+		It("returns the path under the data folder when set", func() {
+			a := Album{ID: "al-1", UploadedImage: "al-1_cover.jpg"}
+			Expect(a.UploadedImagePath()).To(Equal(filepath.Join("/data", "artwork", "album", "al-1_cover.jpg")))
+		})
+	})
+
+	Describe("CoverArtID", func() {
+		It("changes when a cover is uploaded, even if updated_at is in the future", func() {
+			future := time.Now().Add(365 * 24 * time.Hour)
+			stamp := time.Now()
+			a := Album{ID: "al-1", UpdatedAt: future}
+			before := a.CoverArtID().String()
+			a.CoverArtUpdatedAt = &stamp
+			Expect(a.CoverArtID().String()).ToNot(Equal(before))
+		})
+		It("does not collide when updated_at decreases by the cover-stamp delta", func() {
+			// With an additive combination, updated_at dropping by N while the cover
+			// stamp advances by N re-emits the same id — the mix must not.
+			u1 := time.Unix(1_000_000_000, 0)
+			c1 := time.Unix(2_000_000_000, 0)
+			u2 := u1.Add(-100 * time.Second)
+			c2 := c1.Add(100 * time.Second)
+			id1 := Album{ID: "al-1", UpdatedAt: u1, CoverArtUpdatedAt: &c1}.CoverArtID().String()
+			id2 := Album{ID: "al-1", UpdatedAt: u2, CoverArtUpdatedAt: &c2}.CoverArtID().String()
+			Expect(id1).ToNot(Equal(id2))
+		})
+	})
 })
 
 var _ = Describe("Albums", func() {

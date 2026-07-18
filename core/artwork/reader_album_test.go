@@ -3,14 +3,56 @@ package artwork
 import (
 	"context"
 	"errors"
+	"io"
+	"os"
+	"path/filepath"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Album Artwork Reader", func() {
+	Describe("fromAlbumUploadedImage", func() {
+		var (
+			tempDir string
+			reader  *albumArtworkReader
+		)
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+			tempDir = GinkgoT().TempDir()
+			conf.Server.DataFolder = conf.NewDir(tempDir)
+			Expect(os.MkdirAll(filepath.Join(tempDir, "artwork", "album"), 0755)).To(Succeed())
+			reader = &albumArtworkReader{}
+		})
+		When("the album has an uploaded image", func() {
+			It("returns the uploaded image", func() {
+				imgPath := filepath.Join(tempDir, "artwork", "album", "al-1_test.jpg")
+				Expect(os.WriteFile(imgPath, []byte("uploaded album image"), 0600)).To(Succeed())
+				reader.album = model.Album{ID: "al-1", UploadedImage: "al-1_test.jpg"}
+				r, path, err := reader.fromAlbumUploadedImage()()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(r).ToNot(BeNil())
+				Expect(path).To(Equal(imgPath))
+				data, err := io.ReadAll(r)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(string(data)).To(Equal("uploaded album image"))
+				r.Close()
+			})
+		})
+		When("the album has no uploaded image", func() {
+			It("returns a nil reader so the next source is tried", func() {
+				reader.album = model.Album{ID: "al-1"}
+				r, _, err := reader.fromAlbumUploadedImage()()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(r).To(BeNil())
+			})
+		})
+	})
+
 	Describe("loadAlbumFoldersPaths", func() {
 		var (
 			ctx        context.Context

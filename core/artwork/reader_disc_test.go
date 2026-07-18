@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
@@ -11,6 +12,17 @@ import (
 )
 
 var _ = Describe("Disc Artwork Reader", func() {
+	Describe("Key", func() {
+		It("changes when the album's cover stamp changes", func() {
+			r := &discArtworkReader{}
+			r.album = model.Album{ID: "al-1"}
+			before := r.Key()
+			stamp := time.Now()
+			r.album.CoverArtUpdatedAt = &stamp
+			Expect(r.Key()).ToNot(Equal(before))
+		})
+	})
+
 	Describe("extractDiscNumber", func() {
 		DescribeTable("extracts disc number from filename based on glob pattern",
 			func(pattern, filename string, expectedNum int, expectedOk bool) {

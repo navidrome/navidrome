@@ -110,15 +110,19 @@ func newDiscArtworkReader(ctx context.Context, a *artwork, artID model.ArtworkID
 	if imagesUpdatedAt != nil {
 		r.cacheKey.lastUpdate = utils.TimeNewest(r.cacheKey.lastUpdate, *imagesUpdatedAt)
 	}
+	if al.CoverArtUpdatedAt != nil {
+		r.cacheKey.lastUpdate = utils.TimeNewest(r.cacheKey.lastUpdate, *al.CoverArtUpdatedAt)
+	}
 	return r, nil
 }
 
 func (d *discArtworkReader) Key() string {
 	hash := md5.Sum([]byte(conf.Server.DiscArtPriority))
 	return fmt.Sprintf(
-		"%s.%x",
+		"%s.%x.%d",
 		d.cacheKey.Key(),
 		hash,
+		coverStamp(d.album.CoverArtUpdatedAt),
 	)
 }
 

@@ -184,7 +184,8 @@ func (r *mediaFileRepository) UpdateProbeData(id string, data string) error {
 }
 
 func (r *mediaFileRepository) selectMediaFile(options ...model.QueryOptions) SelectBuilder {
-	sql := r.newSelect(options...).Columns("media_file.*", "library.path as library_path", "library.name as library_name").
+	sql := r.newSelect(options...).Columns("media_file.*", "library.path as library_path", "library.name as library_name",
+		coverArtUpdatedAtCol("media_file")).
 		LeftJoin("library on media_file.library_id = library.id")
 	sql = r.withAnnotation(sql, "media_file.id")
 	sql = r.withBookmark(sql, "media_file.id")
