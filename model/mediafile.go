@@ -30,11 +30,14 @@ type MediaFile struct {
 	LibraryID   int    `structs:"library_id" json:"libraryId" hash:"ignore"`
 	LibraryPath string `structs:"-" json:"libraryPath" hash:"ignore"`
 	LibraryName string `structs:"-" json:"libraryName" hash:"ignore"`
-	FolderID    string `structs:"folder_id" json:"folderId" hash:"ignore"`
-	Path        string `structs:"path" json:"path" hash:"ignore"`
-	Title       string `structs:"title" json:"title"`
-	Album       string `structs:"album" json:"album"`
-	ArtistID    string `structs:"artist_id" json:"artistId"` // Deprecated: Use Participants instead
+	// CoverArtUpdatedAt mirrors the album's manual-cover timestamp so clients can
+	// bust song artwork URLs that resolve to the album cover.
+	CoverArtUpdatedAt *time.Time `structs:"-" json:"coverArtUpdatedAt,omitempty" hash:"ignore"`
+	FolderID          string     `structs:"folder_id" json:"folderId" hash:"ignore"`
+	Path              string     `structs:"path" json:"path" hash:"ignore"`
+	Title             string     `structs:"title" json:"title"`
+	Album             string     `structs:"album" json:"album"`
+	ArtistID          string     `structs:"artist_id" json:"artistId"` // Deprecated: Use Participants instead
 	// Artist is the display name used for the artist.
 	Artist        string `structs:"artist" json:"artist"`
 	AlbumArtistID string `structs:"album_artist_id" json:"albumArtistId"` // Deprecated: Use Participants instead
