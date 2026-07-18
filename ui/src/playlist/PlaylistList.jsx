@@ -149,10 +149,12 @@ const PlaylistListBulkActions = (props) => {
   )
 }
 
-const PlaylistLove = ({ record }) => (
-  <LoveButton record={record} resource={'playlist'} />
+// Datagrid reads `source`/`sortable`/`label` off this element for the column
+// header; only record/resource are forwarded so they never leak onto the button.
+export const PlaylistLove = ({ record, className }) => (
+  <LoveButton record={record} resource={'playlist'} className={className} />
 )
-PlaylistLove.defaultProps = { source: 'starred' }
+PlaylistLove.defaultProps = { source: 'starred', sortable: false }
 
 const PlaylistList = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
@@ -174,7 +176,7 @@ const PlaylistList = (props) => {
       sync: !isXsmall && (
         <ToggleAutoImport source="sync" sortByOrder={'DESC'} />
       ),
-      starred: config.enableFavourites && <PlaylistLove sortable={false} />,
+      starred: config.enableFavourites && <PlaylistLove />,
     }),
     [isDesktop, isXsmall],
   )

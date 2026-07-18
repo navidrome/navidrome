@@ -63,6 +63,9 @@ const PlaylistsSubMenu = ({ state, setState, sidebarIsOpen, dense }) => {
   const onlyFavourites = useSelector(
     (state) => state.settings.sidebarPlaylistsOnlyFavourites,
   )
+  // Ignore a persisted preference when the feature is off, so disabling it later
+  // (with the toggle now hidden) doesn't strand the user on a filtered sidebar
+  const showFavouritesOnly = config.enableFavourites && onlyFavourites
   const playlistData = useSelector(
     (state) => state.admin.resources.playlist?.data,
   )
@@ -79,9 +82,10 @@ const PlaylistsSubMenu = ({ state, setState, sidebarIsOpen, dense }) => {
 
   // Only the favourites-only view depends on star state changing elsewhere;
   // when showing all playlists a star event from another client changes nothing
+  // async because useRefreshOnEvents calls .catch() on the returned value
   const onRefresh = useCallback(async () => {
-    if (onlyFavourites) setRefreshCount((count) => count + 1)
-  }, [onlyFavourites])
+    if (showFavouritesOnly) setRefreshCount((count) => count + 1)
+  }, [showFavouritesOnly])
   useRefreshOnEvents({ events: ['playlist'], onRefresh })
 
   // A changed payload signature makes useQueryWithStore refetch
@@ -94,7 +98,7 @@ const PlaylistsSubMenu = ({ state, setState, sidebarIsOpen, dense }) => {
         perPage: config.maxSidebarPlaylists,
       },
       sort: { field: 'name' },
-      ...(onlyFavourites && {
+      ...(showFavouritesOnly && {
         filter: { starred: true },
         starFingerprint,
         refresh: refreshCount,

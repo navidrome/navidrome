@@ -104,6 +104,7 @@ const SubMenu = ({
           <IconButton
             size={'small'}
             title={secondaryActionTitle}
+            aria-label={secondaryActionTitle}
             className={
               isDesktop && !secondaryActionActive ? classes.actionIcon : null
             }
