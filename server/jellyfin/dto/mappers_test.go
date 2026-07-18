@@ -96,6 +96,28 @@ var _ = Describe("mappers", func() {
 		Expect(SongToBaseItem(model.MediaFile{ID: "s1", Title: "Song", Artist: "X"}, nil).ArtistItems).To(BeNil())
 	})
 
+	It("splits Artists and ArtistItems per track artist from Participants", func() {
+		mf := model.MediaFile{
+			ID: "s1", Title: "Oooh",
+			Artist: "De La Soul feat. Redman", ArtistID: "ar-delasoul",
+			AlbumArtist: "De La Soul", AlbumArtistID: "ar-delasoul",
+		}
+		mf.Participants = model.Participants{
+			model.RoleArtist: model.ParticipantList{
+				{Artist: model.Artist{ID: "ar-delasoul", Name: "De La Soul"}},
+				{Artist: model.Artist{ID: "ar-redman", Name: "Redman"}},
+			},
+		}
+		item := SongToBaseItem(mf, nil)
+		Expect(item.Artists).To(Equal([]string{"De La Soul", "Redman"}))
+		Expect(item.ArtistItems).To(Equal([]NameGuidPair{
+			{Name: "De La Soul", Id: EncodeID("ar-delasoul")},
+			{Name: "Redman", Id: EncodeID("ar-redman")},
+		}))
+		// AlbumArtists stays single, matching real Jellyfin.
+		Expect(item.AlbumArtists).To(Equal([]NameGuidPair{{Name: "De La Soul", Id: EncodeID("ar-delasoul")}}))
+	})
+
 	It("builds a MediaSourceInfo from a media file", func() {
 		mf := model.MediaFile{ID: "s1", Size: 5242880, Suffix: "mp3", BitRate: 320, Duration: 100}
 		src := MediaSourceFromMediaFile(mf)

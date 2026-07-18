@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 // Jellyfin wire times are ticks: 100ns units, i.e. 10,000 per millisecond.
@@ -139,7 +140,6 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 		Album:             mf.Album,
 		AlbumId:           EncodeID(mf.AlbumID),
 		AlbumArtist:       mf.AlbumArtist,
-		Artists:           []string{mf.Artist},
 		RunTimeTicks:      TicksFromSeconds(mf.Duration),
 		DateCreated:       jellyfinDate(&mf.CreatedAt),
 		Container:         mf.Suffix,
@@ -153,11 +153,18 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 	if fields.Has("SortName") {
 		item.SortName = cmp.Or(mf.SortTitle, mf.OrderTitle, mf.Title)
 	}
-	// Finamp's Now Playing screen reads ArtistItems for the displayed artist (falling back to "Unknown
-	// Artist" if absent), even though Artists carries the same name. ArtistItems is the track artist;
-	// AlbumArtists the album artist.
-	if mf.ArtistID != "" {
-		item.ArtistItems = []NameGuidPair{{Name: mf.Artist, Id: EncodeID(mf.ArtistID)}}
+	// Real Jellyfin splits Artists/ArtistItems per track artist (AlbumArtists stays a single credit).
+	// Participants holds the per-artist list; fall back to the flattened display fields when absent.
+	if artists := mf.Participants[model.RoleArtist]; len(artists) > 0 {
+		item.Artists = slice.Map(artists, func(p model.Participant) string { return p.Name })
+		item.ArtistItems = slice.Map(artists, func(p model.Participant) NameGuidPair {
+			return NameGuidPair{Name: p.Name, Id: EncodeID(p.ID)}
+		})
+	} else {
+		item.Artists = []string{mf.Artist}
+		if mf.ArtistID != "" {
+			item.ArtistItems = []NameGuidPair{{Name: mf.Artist, Id: EncodeID(mf.ArtistID)}}
+		}
 	}
 	if mf.AlbumArtistID != "" {
 		item.AlbumArtists = []NameGuidPair{{Name: mf.AlbumArtist, Id: EncodeID(mf.AlbumArtistID)}}
