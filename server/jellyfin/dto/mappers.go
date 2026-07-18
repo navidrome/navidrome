@@ -171,6 +171,9 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 	if mf.AlbumArtistID != "" {
 		item.AlbumArtists = []NameGuidPair{{Name: mf.AlbumArtist, Id: EncodeID(mf.AlbumArtistID)}}
 	}
+	// dB to apply at the RG2 −18 LUFS reference — same convention real Jellyfin uses, no conversion.
+	item.NormalizationGain = mf.RGTrackGain
+	item.AlbumNormalizationGain = mf.RGAlbumGain
 	if mf.Year > 0 {
 		item.ProductionYear = new(mf.Year)
 	}

@@ -125,6 +125,30 @@ var _ = Describe("mappers", func() {
 		Expect(item.AlbumArtists).To(Equal([]NameGuidPair{{Name: "De La Soul", Id: EncodeID("ar-delasoul")}}))
 	})
 
+	It("sets NormalizationGain and AlbumNormalizationGain from ReplayGain values", func() {
+		mf := model.MediaFile{ID: "s1", Title: "Song",
+			RGTrackGain: new(-3.5), RGAlbumGain: new(-4.25)}
+		item := SongToBaseItem(mf, nil)
+		Expect(*item.NormalizationGain).To(Equal(-3.5))
+		Expect(*item.AlbumNormalizationGain).To(Equal(-4.25))
+	})
+
+	It("serializes normalization gains with Jellyfin's exact key casing", func() {
+		mf := model.MediaFile{ID: "s1", Title: "Song",
+			RGTrackGain: new(-3.5), RGAlbumGain: new(-4.25)}
+		b, err := json.Marshal(SongToBaseItem(mf, nil))
+		Expect(err).ToNot(HaveOccurred())
+		Expect(string(b)).To(ContainSubstring(`"NormalizationGain":-3.5`))
+		Expect(string(b)).To(ContainSubstring(`"AlbumNormalizationGain":-4.25`))
+	})
+
+	It("omits normalization gains when the file has no ReplayGain tags", func() {
+		b, err := json.Marshal(SongToBaseItem(model.MediaFile{ID: "s1", Title: "Song"}, nil))
+		Expect(err).ToNot(HaveOccurred())
+		// Substring check covers both keys (AlbumNormalizationGain contains NormalizationGain).
+		Expect(string(b)).ToNot(ContainSubstring("NormalizationGain"))
+	})
+
 	It("builds a MediaSourceInfo from a media file", func() {
 		mf := model.MediaFile{ID: "s1", Size: 5242880, Suffix: "mp3", BitRate: 320, Duration: 100}
 		src := MediaSourceFromMediaFile(mf)
