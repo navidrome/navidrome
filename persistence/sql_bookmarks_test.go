@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -69,6 +70,25 @@ var _ = Describe("sqlBookmarks", func() {
 
 			Expect(mr.DeleteBookmark(songComeTogether.ID)).To(Succeed())
 			Expect(mr.GetBookmarks()).To(BeEmpty())
+		})
+
+		It("exposes the album's cover timestamp on bookmarked songs", func() {
+			albumRepo := NewAlbumRepository(request.WithUser(GinkgoT().Context(), model.User{ID: "userid"}), GetDBXBuilder()).(*albumRepository)
+			Expect(mr.AddBookmark(songAntenna.ID, "cover test", 1)).To(Succeed())
+			DeferCleanup(func() {
+				_ = mr.DeleteBookmark(songAntenna.ID)
+				// Restore both columns so fixture-equality tests stay untouched
+				_, _ = albumRepo.executeSQL(squirrel.Update("album").
+					Set("uploaded_image", "").Set("cover_art_updated_at", nil).
+					Where(squirrel.Eq{"id": songAntenna.AlbumID}))
+			})
+
+			Expect(albumRepo.UpdateImage(songAntenna.AlbumID, "cover-bm.jpg")).To(Succeed())
+
+			bms, err := mr.GetBookmarks()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(bms).To(HaveLen(1))
+			Expect(bms[0].Item.CoverArtUpdatedAt).ToNot(BeNil())
 		})
 	})
 })

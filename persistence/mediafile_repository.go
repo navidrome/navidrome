@@ -184,10 +184,8 @@ func (r *mediaFileRepository) UpdateProbeData(id string, data string) error {
 }
 
 func (r *mediaFileRepository) selectMediaFile(options ...model.QueryOptions) SelectBuilder {
-	// Scalar subquery (not a join): album shares column names with media_file, and a join
-	// would make unqualified filter/sort references ambiguous.
 	sql := r.newSelect(options...).Columns("media_file.*", "library.path as library_path", "library.name as library_name",
-		"(select cover_art_updated_at from album where album.id = media_file.album_id) as cover_art_updated_at").
+		coverArtUpdatedAtCol("media_file")).
 		LeftJoin("library on media_file.library_id = library.id")
 	sql = r.withAnnotation(sql, "media_file.id")
 	sql = r.withBookmark(sql, "media_file.id")

@@ -314,7 +314,7 @@ func (r *playlistRepository) tracksQuery(query SelectBuilder, id string) SelectB
 			"playlist_tracks.*",
 			"library.path as library_path",
 			"library.name as library_name",
-			"(select cover_art_updated_at from album where album.id = f.album_id) as cover_art_updated_at",
+			coverArtUpdatedAtCol("f"),
 		).
 		LeftJoin("annotation on (" +
 			"annotation.item_id = media_file_id" +
