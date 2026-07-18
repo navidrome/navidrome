@@ -213,6 +213,10 @@ func (r *albumRepository) Put(al *model.Album) error {
 	return nil
 }
 
+func (r *albumRepository) UpdateBlurHash(id, blurHash string, artworkUpdatedAt time.Time) error {
+	return r.updateBlurHash(id, blurHash, artworkUpdatedAt)
+}
+
 // TODO Move external metadata to a separated table
 func (r *albumRepository) UpdateExternalInfo(al *model.Album) error {
 	_, err := r.put(al.ID, &dbAlbum{Album: al}, "description", "small_image_url", "medium_image_url", "large_image_url", "external_url", "external_info_updated_at")
@@ -220,7 +224,22 @@ func (r *albumRepository) UpdateExternalInfo(al *model.Album) error {
 }
 
 func (r *albumRepository) selectAlbum(options ...model.QueryOptions) SelectBuilder {
-	sql := r.newSelect(options...).Columns("album.*", "library.path as library_path", "library.name as library_name").
+	sql := r.newSelect(options...).Columns("album.*", "library.path as library_path", "library.name as library_name",
+		// Folds folder image mtimes into the artwork version: an in-place cover swap moves them without
+		// touching the album row. The parent counts only when albumRootParent could serve it: single
+		// common parent, not the library root, not an album folder, and disc subfolders or an imageless
+		// folder. The subtree-audio gate is deliberately unmirrored (a per-row LIKE scan): it can only
+		// suppress a hash briefly, healed on the next serve. Bare column keeps the datetime decltype.
+		"(select f.images_updated_at from folder f where f.id in"+
+			" (select je.value from json_each(album.folder_ids) je"+
+			" union select pf.id from json_each(album.folder_ids) je2"+
+			" join folder p on p.id = je2.value join folder pf on pf.id = p.parent_id"+
+			" where pf.parent_id <> ''"+
+			" and (json_array_length(album.folder_ids) > 1 or json_array_length(p.image_files) = 0)"+
+			" and pf.id not in (select je3.value from json_each(album.folder_ids) je3)"+
+			" and (select count(distinct p2.parent_id) from folder p2, json_each(album.folder_ids) je4"+
+			" where p2.id = je4.value) = 1)"+
+			" order by f.images_updated_at desc limit 1) as folder_images_updated_at").
 		LeftJoin("library on album.library_id = library.id")
 	sql = r.withAnnotation(sql, "album.id")
 	return r.applyLibraryFilter(sql)

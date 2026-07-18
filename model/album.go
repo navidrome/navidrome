@@ -67,10 +67,33 @@ type Album struct {
 	ImportedAt time.Time `structs:"imported_at" json:"importedAt" hash:"ignore"` // When this album was imported/updated
 	CreatedAt  time.Time `structs:"created_at" json:"createdAt"`                 // Oldest CreatedAt for all songs in this album
 	UpdatedAt  time.Time `structs:"updated_at" json:"updatedAt"`                 // Newest UpdatedAt for all songs in this album
+
+	// BlurHash of the album cover, computed from the served artwork bytes. Excluded from
+	// full-row writes (structs:"-"): only UpdateBlurHash writes it, so scans can't erase it.
+	BlurHash          string     `structs:"-" json:"blurHash,omitempty" hash:"ignore"`
+	BlurHashUpdatedAt *time.Time `structs:"-" json:"-" hash:"ignore"`
+
+	// FolderImagesUpdatedAt is the newest images_updated_at among the album's folders (selected, not
+	// persisted): an in-place cover-file swap moves it even though the album row stays untouched.
+	FolderImagesUpdatedAt *time.Time `structs:"-" json:"-" hash:"ignore"`
 }
 
 func (a Album) CoverArtID() ArtworkID {
 	return artworkIDFromAlbum(a)
+}
+
+// ArtworkUpdatedAt is the album's artwork version. ExternalInfoUpdatedAt is deliberately excluded:
+// it bumps on every agent TTL refresh even when the image is unchanged, and actual image changes
+// are caught by hashing the served bytes instead.
+func (a Album) ArtworkUpdatedAt() time.Time {
+	t := a.UpdatedAt
+	if a.ImportedAt.After(t) {
+		t = a.ImportedAt
+	}
+	if a.FolderImagesUpdatedAt != nil && a.FolderImagesUpdatedAt.After(t) {
+		t = *a.FolderImagesUpdatedAt
+	}
+	return t
 }
 
 func (a Album) FullName() string {
@@ -139,6 +162,7 @@ type AlbumRepository interface {
 	Exists(id string) (bool, error)
 	Put(*Album) error
 	UpdateExternalInfo(*Album) error
+	UpdateBlurHash(id string, blurHash string, artworkUpdatedAt time.Time) error
 	Get(id string) (*Album, error)
 	GetAll(...QueryOptions) (Albums, error)
 	GetCursor(...QueryOptions) (AlbumCursor, error)

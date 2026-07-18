@@ -92,9 +92,21 @@ func setupHarness() {
 
 func scan() {
 	GinkgoHelper()
+	doScan(true)
+}
+
+// quickScan runs a non-full scan: only outdated folders are processed and unchanged audio files are
+// not reimported, so an image-only change reaches the folder row without touching the album row.
+func quickScan() {
+	GinkgoHelper()
+	doScan(false)
+}
+
+func doScan(full bool) {
+	GinkgoHelper()
 	s := scanner.New(ctx, ds, artwork.NoopCacheWarmer(), events.NoopBroker(),
 		playlists.NewPlaylists(ds, core.NewImageUploadService()), metrics.NewNoopInstance())
-	_, err := s.ScanAll(ctx, true)
+	_, err := s.ScanAll(ctx, full)
 	Expect(err).ToNot(HaveOccurred())
 }
 

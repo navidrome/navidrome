@@ -157,6 +157,10 @@ func (r *playlistRepository) GetWithTracks(id string, refreshSmartPlaylist, incl
 	return pls, nil
 }
 
+func (r *playlistRepository) UpdateBlurHash(id, blurHash string, artworkUpdatedAt time.Time) error {
+	return r.updateBlurHash(id, blurHash, artworkUpdatedAt)
+}
+
 func (r *playlistRepository) FindByPath(path string) (*model.Playlist, error) {
 	return r.findBy(Eq{"path": path})
 }

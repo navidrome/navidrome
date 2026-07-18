@@ -41,6 +41,9 @@ type Artist struct {
 
 	CreatedAt *time.Time `structs:"created_at" json:"createdAt,omitempty"`
 	UpdatedAt *time.Time `structs:"updated_at" json:"updatedAt,omitempty"`
+
+	BlurHash          string     `structs:"-" json:"blurHash,omitempty" hash:"ignore"`
+	BlurHashUpdatedAt *time.Time `structs:"-" json:"-" hash:"ignore"`
 }
 
 type ArtistStats struct {
@@ -61,6 +64,16 @@ func (a Artist) ArtistImageUrl() string {
 
 func (a Artist) CoverArtID() ArtworkID {
 	return artworkIDFromArtist(a)
+}
+
+// ArtworkUpdatedAt is the artist's artwork version. ExternalInfoUpdatedAt is deliberately
+// excluded: it bumps on every agent TTL refresh even when the image is unchanged, and actual
+// image changes are caught by hashing the served bytes instead.
+func (a Artist) ArtworkUpdatedAt() time.Time {
+	if a.UpdatedAt == nil {
+		return time.Time{}
+	}
+	return *a.UpdatedAt
 }
 
 func (a Artist) UploadedImagePath() string {
@@ -87,6 +100,7 @@ type ArtistRepository interface {
 	Exists(id string) (bool, error)
 	Put(m *Artist, colsToUpdate ...string) error
 	UpdateExternalInfo(a *Artist) error
+	UpdateBlurHash(id string, blurHash string, artworkUpdatedAt time.Time) error
 	Get(id string) (*Artist, error)
 	GetAll(options ...QueryOptions) (Artists, error)
 	GetCursor(options ...QueryOptions) (ArtistCursor, error)

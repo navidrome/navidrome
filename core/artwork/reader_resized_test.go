@@ -6,11 +6,27 @@ import (
 	"errors"
 	"io"
 
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
+
+var _ = Describe("resizedArtworkReader.Key", func() {
+	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.CoverArtQuality = 75
+	})
+
+	It("includes the cache version so pre-blurhash resized entries are invalidated", func() {
+		r := &resizedArtworkReader{cacheKey: "al-1.123", size: 300}
+		Expect(r.Key()).To(Equal("al-1.123.300.v1.75"))
+		r.square = true
+		Expect(r.Key()).To(Equal("al-1.123.300.v1.square"))
+	})
+})
 
 var _ = Describe("resizeImage", func() {
 	var mockFF *tests.MockFFmpeg

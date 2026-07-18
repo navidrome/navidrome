@@ -33,8 +33,9 @@ var _ = Describe("mappers", func() {
 		Expect(item.UserData.Played).To(BeTrue())
 		Expect(item.UserData.Key).To(Equal(EncodeID("song-1")))
 		Expect(item.UserData.ItemId).To(Equal(EncodeID("song-1")))
-		Expect(item.ImageBlurHashes["Primary"]).To(HaveKey(item.AlbumPrimaryImageTag))
-		Expect(item.ImageBlurHashes["Primary"][item.AlbumPrimaryImageTag]).To(HaveLen(6))
+		Expect(item.AlbumPrimaryImageTag).To(Equal("alb-1"))
+		// Songs never carry a fabricated blurhash; clients cache covers by it as identity.
+		Expect(item.ImageBlurHashes).To(BeNil())
 	})
 
 	Describe("Fields gating (matches real Jellyfin)", func() {
@@ -209,8 +210,8 @@ var _ = Describe("mappers", func() {
 		Expect(item.ArtistItems).To(Equal(item.AlbumArtists))
 		Expect(*item.ProductionYear).To(Equal(1999))
 		Expect(*item.ChildCount).To(Equal(10))
-		Expect(item.ImageBlurHashes["Primary"]).To(HaveKey(item.ImageTags["Primary"]))
-		Expect(item.ImageBlurHashes["Primary"][item.ImageTags["Primary"]]).To(HaveLen(6))
+		// No stored blurhash: the field is omitted, never fabricated.
+		Expect(item.ImageBlurHashes).To(BeNil())
 	})
 
 	It("maps an artist to a MusicArtist folder item", func() {
@@ -283,19 +284,18 @@ var _ = Describe("mappers", func() {
 		Expect(*item.UserData.Rating).To(Equal(8.0))
 		tag := item.ImageTags["Primary"]
 		Expect(tag).ToNot(BeEmpty())
-		Expect(item.ImageBlurHashes["Primary"]).To(HaveKey(tag))
-		Expect(item.ImageBlurHashes["Primary"][tag]).To(HaveLen(6))
+		// No stored blurhash on this playlist: omitted, never fabricated.
+		Expect(item.ImageBlurHashes).To(BeNil())
 	})
 
-	It("changes the playlist image tag and blurhash when the playlist is updated (cover upload)", func() {
+	It("changes the playlist image tag when the playlist is updated (cover upload)", func() {
 		p := model.Playlist{ID: "pl-1", Name: "Chill", UpdatedAt: time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)}
 		before := PlaylistToBaseItem(p)
 		p.UpdatedAt = time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC)
 		after := PlaylistToBaseItem(p)
 
-		// Finamp caches covers keyed by blurHash, so tag and blurhash must change with the cover.
+		// The tag is the cover cache-buster: it must rotate when the playlist (cover) is updated.
 		Expect(after.ImageTags["Primary"]).ToNot(Equal(before.ImageTags["Primary"]))
-		Expect(after.ImageBlurHashes["Primary"]).ToNot(Equal(before.ImageBlurHashes["Primary"]))
 	})
 
 	It("keeps the playlist image tag stable when nothing changed", func() {
@@ -388,5 +388,33 @@ var _ = Describe("LyricDtoFromLyrics", func() {
 		Expect(c.Position).To(Equal(8))
 		Expect(c.EndPosition).To(Equal(12))
 		Expect(c.Start).To(Equal(int64(10_000_000)))
+	})
+})
+
+var _ = Describe("stored blurhashes", func() {
+	version := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	It("emits the stored album blurhash when fresh, and omits it when stale", func() {
+		al := model.Album{ID: "al-1", Name: "A", UpdatedAt: version, ImportedAt: version,
+			BlurHash: "LEHV6nWB2yk8", BlurHashUpdatedAt: &version}
+		Expect(AlbumToBaseItem(al).ImageBlurHashes["Primary"]["al-1"]).To(Equal("LEHV6nWB2yk8"))
+
+		al.UpdatedAt = version.Add(time.Hour) // artwork version moved; stored hash is now stale
+		Expect(AlbumToBaseItem(al).ImageBlurHashes).To(BeNil(),
+			"a stale hash must be suppressed, not emitted or replaced by a fake")
+	})
+
+	It("emits the stored artist blurhash when fresh", func() {
+		ar := model.Artist{ID: "ar-1", Name: "B", UpdatedAt: &version,
+			BlurHash: "LEHV6nWB2yk8", BlurHashUpdatedAt: &version}
+		Expect(ArtistToBaseItem(ar).ImageBlurHashes["Primary"]["ar-1"]).To(Equal("LEHV6nWB2yk8"))
+	})
+
+	It("emits the stored playlist blurhash when fresh, keyed by the versioned tag", func() {
+		p := model.Playlist{ID: "pl-1", Name: "P", UpdatedAt: version,
+			BlurHash: "LEHV6nWB2yk8", BlurHashUpdatedAt: &version}
+		item := PlaylistToBaseItem(p)
+		tag := item.ImageTags["Primary"]
+		Expect(item.ImageBlurHashes["Primary"][tag]).To(Equal("LEHV6nWB2yk8"))
 	})
 })

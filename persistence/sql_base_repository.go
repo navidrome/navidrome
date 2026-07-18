@@ -293,6 +293,16 @@ func (r sqlRepository) resetSeededRandom(options []model.QueryOptions) {
 	}
 }
 
+// updateBlurHash is a targeted update: a full-row put would race with the scanner. Deliberately
+// a plain UPDATE with no insert fallback — updating a just-deleted row must be a silent no-op.
+func (r sqlRepository) updateBlurHash(id, blurHash string, artworkUpdatedAt time.Time) error {
+	upd := Update(r.tableName).Where(Eq{"id": id}).
+		Set("blur_hash", blurHash).
+		Set("blur_hash_updated_at", artworkUpdatedAt)
+	_, err := r.executeSQL(upd)
+	return err
+}
+
 func (r sqlRepository) executeSQL(sq Sqlizer) (int64, error) {
 	query, args, err := r.toSQL(sq)
 	if err != nil {

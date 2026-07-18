@@ -19,20 +19,34 @@ import (
 
 var ErrUnavailable = errors.New("artwork unavailable")
 
+// maxTeeBytes bounds the per-serve capture buffer; artwork is a few MB, and anything larger is not
+// hashed (skipped), so a pathological source can't accumulate unbounded memory across serves.
+const maxTeeBytes = 20 * 1024 * 1024
+
+// capAtNow keeps a future artwork mtime (clock skew, a future-stamped file) from being stored as the
+// blurhash version, which would let the DTO's !Before check pin the hash until wall time caught up.
+func capAtNow(t time.Time) time.Time {
+	if now := time.Now(); t.After(now) {
+		return now
+	}
+	return t
+}
+
 type Artwork interface {
 	Get(ctx context.Context, artID model.ArtworkID, size int, square bool) (io.ReadCloser, time.Time, error)
 	GetOrPlaceholder(ctx context.Context, id string, size int, square bool) (io.ReadCloser, time.Time, error)
 }
 
 func NewArtwork(ds model.DataStore, cache cache.FileCache, ffmpeg ffmpeg.FFmpeg, provider external.Provider) Artwork {
-	return &artwork{ds: ds, cache: cache, ffmpeg: ffmpeg, provider: provider}
+	return &artwork{ds: ds, cache: cache, ffmpeg: ffmpeg, provider: provider, blurHashes: newBlurHashUpdater(ds)}
 }
 
 type artwork struct {
-	ds       model.DataStore
-	cache    cache.FileCache
-	ffmpeg   ffmpeg.FFmpeg
-	provider external.Provider
+	ds         model.DataStore
+	cache      cache.FileCache
+	ffmpeg     ffmpeg.FFmpeg
+	provider   external.Provider
+	blurHashes *blurHashUpdater
 }
 
 type artworkReader interface {
@@ -47,6 +61,9 @@ func (a *artwork) GetOrPlaceholder(ctx context.Context, id string, size int, squ
 		reader, lastUpdate, err = a.Get(ctx, artID, size, square)
 	}
 	if errors.Is(err, ErrUnavailable) {
+		// The client is receiving the placeholder, so a stored hash describing the old cover must
+		// clear — hash-what-you-serve applies to the fallback too.
+		a.blurHashes.clearIfStored(ctx, artID)
 		if artID.Kind == model.KindArtistArtwork {
 			reader, _ = resources.FS().Open(consts.PlaceholderArtistArt)
 		} else {
@@ -70,7 +87,17 @@ func (a *artwork) Get(ctx context.Context, artID model.ArtworkID, size int, squa
 		}
 		return nil, time.Time{}, err
 	}
-	return r, artReader.LastUpdated(), nil
+	reader = r
+	if size == 0 && !square && eligibleKind(artID) {
+		// Tee the served bytes: the blurhash is computed from exactly what the client downloads, so it
+		// changes precisely when the served cover changes. Placeholder bytes (playlist fallback) clear.
+		// The tee wraps r directly, so Close reaches the underlying stream (no fd leak).
+		version := capAtNow(artReader.LastUpdated())
+		start := time.Now()
+		reader = newTeeReader(r, maxTeeBytes,
+			func(data []byte) { a.blurHashes.update(ctx, artID, data, version, start) })
+	}
+	return reader, artReader.LastUpdated(), nil
 }
 
 type coverArtGetter interface {

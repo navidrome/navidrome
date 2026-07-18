@@ -29,6 +29,17 @@ func (m *MockAlbumRepo) SetError(err bool) {
 	m.Err = err
 }
 
+func (m *MockAlbumRepo) UpdateBlurHash(id, blurHash string, artworkUpdatedAt time.Time) error {
+	if m.Err {
+		return errors.New("unexpected error")
+	}
+	if al, ok := m.Data[id]; ok {
+		al.BlurHash = blurHash
+		al.BlurHashUpdatedAt = &artworkUpdatedAt
+	}
+	return nil
+}
+
 func (m *MockAlbumRepo) SetData(albums model.Albums) {
 	m.Data = make(map[string]*model.Album, len(albums))
 	m.All = albums

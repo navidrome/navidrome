@@ -31,6 +31,9 @@ type Playlist struct {
 	CreatedAt        time.Time      `structs:"created_at" json:"createdAt"`
 	UpdatedAt        time.Time      `structs:"updated_at" json:"updatedAt"`
 
+	BlurHash          string     `structs:"-" json:"blurHash,omitempty" hash:"ignore"`
+	BlurHashUpdatedAt *time.Time `structs:"-" json:"-" hash:"ignore"`
+
 	// SmartPlaylist attributes
 	Rules       *criteria.Criteria `structs:"rules" json:"rules"`
 	EvaluatedAt *time.Time         `structs:"evaluated_at" json:"evaluatedAt"`
@@ -38,6 +41,10 @@ type Playlist struct {
 
 func (pls Playlist) IsSmartPlaylist() bool {
 	return pls.Rules != nil && pls.Rules.Expression != nil
+}
+
+func (pls Playlist) ArtworkUpdatedAt() time.Time {
+	return pls.UpdatedAt
 }
 
 // RefreshDelay returns the playlist's own refresh window when set, falling
@@ -145,6 +152,7 @@ type PlaylistRepository interface {
 	GetAll(options ...QueryOptions) (Playlists, error)
 	GetCursor(options ...QueryOptions) (PlaylistCursor, error)
 	FindByPath(path string) (*Playlist, error)
+	UpdateBlurHash(id string, blurHash string, artworkUpdatedAt time.Time) error
 	Delete(id string) error
 	Tracks(playlistId string, refreshSmartPlaylist bool) PlaylistTrackRepository
 	GetPlaylists(mediaFileId string) (Playlists, error)

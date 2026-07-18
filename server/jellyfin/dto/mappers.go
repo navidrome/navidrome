@@ -179,10 +179,10 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 	} else if mf.Genre != "" {
 		item.Genres = []string{mf.Genre}
 	}
-	// Finamp resolves song art via AlbumId + a non-empty AlbumPrimaryImageTag.
+	// Finamp resolves song art via AlbumId + a non-empty AlbumPrimaryImageTag. No blurhash for songs:
+	// there is no stored hash of their own, and clients cache covers by the value as identity.
 	if mf.AlbumID != "" {
 		item.AlbumPrimaryImageTag = mf.AlbumID
-		item.ImageBlurHashes = map[string]map[string]string{"Primary": {mf.AlbumID: blurHash(mf.AlbumID)}}
 	}
 	return item
 }
@@ -201,7 +201,7 @@ func AlbumToBaseItem(al model.Album) BaseItemDto {
 		RunTimeTicks:      TicksFromSeconds(al.Duration),
 		DateCreated:       jellyfinDate(&al.CreatedAt),
 		ImageTags:         map[string]string{"Primary": al.ID},
-		ImageBlurHashes:   map[string]map[string]string{"Primary": {al.ID: blurHash(al.ID)}},
+		ImageBlurHashes:   primaryBlurHashes(al.ID, primaryBlurHash(al.BlurHash, al.BlurHashUpdatedAt, al.ArtworkUpdatedAt())),
 		BackdropImageTags: []string{},
 		UserData:          UserData(al.Annotations, al.ID),
 	}
@@ -231,7 +231,7 @@ func ArtistToBaseItem(ar model.Artist) BaseItemDto {
 		SongCount:         new(ar.SongCount),
 		DateCreated:       jellyfinDate(ar.CreatedAt),
 		ImageTags:         map[string]string{"Primary": ar.ID},
-		ImageBlurHashes:   map[string]map[string]string{"Primary": {ar.ID: blurHash(ar.ID)}},
+		ImageBlurHashes:   primaryBlurHashes(ar.ID, primaryBlurHash(ar.BlurHash, ar.BlurHashUpdatedAt, ar.ArtworkUpdatedAt())),
 		BackdropImageTags: []string{},
 		UserData:          UserData(ar.Annotations, ar.ID),
 	}
@@ -264,7 +264,7 @@ func PlaylistToBaseItem(p model.Playlist) BaseItemDto {
 		ChildCount:        new(p.SongCount),
 		RunTimeTicks:      TicksFromSeconds(p.Duration),
 		ImageTags:         map[string]string{"Primary": tag},
-		ImageBlurHashes:   map[string]map[string]string{"Primary": {tag: blurHash(tag)}},
+		ImageBlurHashes:   primaryBlurHashes(tag, primaryBlurHash(p.BlurHash, p.BlurHashUpdatedAt, p.ArtworkUpdatedAt())),
 		BackdropImageTags: []string{},
 		UserData:          UserData(p.Annotations, p.ID),
 	}

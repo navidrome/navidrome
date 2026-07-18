@@ -32,6 +32,17 @@ func (m *MockArtistRepo) SetData(artists model.Artists) {
 	}
 }
 
+func (m *MockArtistRepo) UpdateBlurHash(id, blurHash string, artworkUpdatedAt time.Time) error {
+	if m.Err {
+		return errors.New("unexpected error")
+	}
+	if ar, ok := m.Data[id]; ok {
+		ar.BlurHash = blurHash
+		ar.BlurHashUpdatedAt = &artworkUpdatedAt
+	}
+	return nil
+}
+
 func (m *MockArtistRepo) Exists(id string) (bool, error) {
 	if m.Err {
 		return false, errors.New("Error!")

@@ -217,7 +217,7 @@ var _ = Describe("Playlists", func() {
 
 		// Guards the whole chain: SetImage must go through a full Put (which bumps UpdatedAt), and the
 		// tag must be versioned by it, or clients keep their blurhash-keyed cover cache forever.
-		It("rotates the playlist's image tag and blurhash after a cover upload", func() {
+		It("rotates the playlist's image tag after a cover upload", func() {
 			plID := createPlaylist("Cover Tag", nil)
 			imageTag := func() string {
 				q := queryResult(get("/Items?ids=" + enc(plID)))
@@ -233,8 +233,10 @@ var _ = Describe("Playlists", func() {
 
 			after := imageTag()
 			Expect(after).ToNot(Equal(before))
+			// The stored hash (if any) is stale for the new cover, so no blurhash is emitted — clients
+			// fall back to tag-keyed caching until the new cover is served and re-hashed.
 			q := queryResult(get("/Items?ids=" + enc(plID)))
-			Expect(q.Items[0].ImageBlurHashes["Primary"]).To(HaveKey(after))
+			Expect(q.Items[0].ImageBlurHashes).To(BeEmpty())
 		})
 	})
 

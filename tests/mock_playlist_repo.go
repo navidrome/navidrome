@@ -42,6 +42,17 @@ func (m *MockPlaylistRepo) SetData(playlists model.Playlists) {
 	}
 }
 
+func (m *MockPlaylistRepo) UpdateBlurHash(id, blurHash string, artworkUpdatedAt time.Time) error {
+	if m.Err {
+		return errors.New("unexpected error")
+	}
+	if pl, ok := m.Data[id]; ok {
+		pl.BlurHash = blurHash
+		pl.BlurHashUpdatedAt = &artworkUpdatedAt
+	}
+	return nil
+}
+
 func (m *MockPlaylistRepo) GetAll(options ...model.QueryOptions) (model.Playlists, error) {
 	if len(options) > 0 {
 		m.Options = options[0]

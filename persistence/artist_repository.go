@@ -232,6 +232,10 @@ func (r *artistRepository) Put(a *model.Artist, colsToUpdate ...string) error {
 	return err
 }
 
+func (r *artistRepository) UpdateBlurHash(id, blurHash string, artworkUpdatedAt time.Time) error {
+	return r.updateBlurHash(id, blurHash, artworkUpdatedAt)
+}
+
 func (r *artistRepository) UpdateExternalInfo(a *model.Artist) error {
 	dba := &dbArtist{Artist: a}
 	_, err := r.put(a.ID, dba,

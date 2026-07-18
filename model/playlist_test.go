@@ -74,3 +74,10 @@ var _ = Describe("Playlist", func() {
 		})
 	})
 })
+
+var _ = Describe("Playlist.ArtworkUpdatedAt", func() {
+	It("returns UpdatedAt", func() {
+		now := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+		Expect(model.Playlist{UpdatedAt: now}.ArtworkUpdatedAt()).To(Equal(now))
+	})
+})
