@@ -38,7 +38,8 @@ type phaseMissingTracks struct {
 	totalMatched              atomic.Uint32
 	state                     *scanState
 	processedAlbumAnnotations map[string]bool // Track processed album annotation reassignments
-	annotationMutex           sync.RWMutex    // Protects processedAlbumAnnotations
+	processedAlbumCopies      map[string]bool // Track attribute copies, per old→new album pair
+	annotationMutex           sync.RWMutex    // Protects the two maps above
 }
 
 func createPhaseMissingTracks(ctx context.Context, state *scanState, ds model.DataStore) *phaseMissingTracks {
@@ -47,6 +48,7 @@ func createPhaseMissingTracks(ctx context.Context, state *scanState, ds model.Da
 		ds:                        ds,
 		state:                     state,
 		processedAlbumAnnotations: make(map[string]bool),
+		processedAlbumCopies:      make(map[string]bool),
 	}
 }
 
@@ -313,20 +315,31 @@ func (p *phaseMissingTracks) moveMatched(target, missing model.MediaFile) error 
 						log.Warn(p.ctx, "Scanner: Could not reassign album annotations", "from", oldAlbumID, "to", newAlbumID, err)
 					}
 
-					// Keep created_at (so moved albums don't resurface in "Recently Added")
-					// and any manually uploaded cover from the previous album instance.
-					if err := tx.Album(p.ctx).CopyAttributes(oldAlbumID, newAlbumID, "created_at", "uploaded_image", "cover_art_updated_at"); err != nil {
-						if !errors.Is(err, model.ErrNotFound) {
-							log.Warn(p.ctx, "Scanner: Could not copy album attributes", "from", oldAlbumID, "to", newAlbumID, err)
-						}
-					}
-
 					// Note: RefreshPlayCounts will be called in later phases, so we don't need to call it here
 					p.processedAlbumAnnotations[newAlbumID] = true
 				}
 				p.annotationMutex.Unlock()
 			} else {
 				log.Trace(p.ctx, "Scanner: Skipping album annotation reassignment", "from", oldAlbumID, "to", newAlbumID)
+			}
+
+			// Copy created_at/cover per old→new pair (not per target): with several old albums
+			// merging into one, any of them may hold the uploaded cover; empty sources never copy.
+			pairKey := oldAlbumID + "\x00" + newAlbumID
+			p.annotationMutex.RLock()
+			copyDone := p.processedAlbumCopies[pairKey]
+			p.annotationMutex.RUnlock()
+			if !copyDone {
+				p.annotationMutex.Lock()
+				if !p.processedAlbumCopies[pairKey] {
+					if err := tx.Album(p.ctx).CopyAttributes(oldAlbumID, newAlbumID, "created_at", "uploaded_image", "cover_art_updated_at"); err != nil {
+						if !errors.Is(err, model.ErrNotFound) {
+							log.Warn(p.ctx, "Scanner: Could not copy album attributes", "from", oldAlbumID, "to", newAlbumID, err)
+						}
+					}
+					p.processedAlbumCopies[pairKey] = true
+				}
+				p.annotationMutex.Unlock()
 			}
 		}
 
