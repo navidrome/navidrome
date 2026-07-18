@@ -175,6 +175,7 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 	if len(mf.Genres) > 0 {
 		for _, g := range mf.Genres {
 			item.Genres = append(item.Genres, g.Name)
+			item.GenreItems = append(item.GenreItems, NameGuidPair{Id: g.ID, Name: g.Name})
 		}
 	} else if mf.Genre != "" {
 		item.Genres = []string{mf.Genre}
@@ -216,6 +217,7 @@ func AlbumToBaseItem(al model.Album) BaseItemDto {
 	if len(al.Genres) > 0 {
 		for _, g := range al.Genres {
 			item.Genres = append(item.Genres, g.Name)
+			item.GenreItems = append(item.GenreItems, NameGuidPair{Id: g.ID, Name: g.Name})
 		}
 	}
 	return item
