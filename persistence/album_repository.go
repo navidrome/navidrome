@@ -3,9 +3,11 @@ package persistence
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"iter"
 	"maps"
+	"os"
 	"slices"
 	"strings"
 	"sync"
@@ -14,6 +16,7 @@ import (
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -373,17 +376,55 @@ on conflict (user_id, item_id, item_type) do update
 }
 
 func (r *albumRepository) purgeEmpty(libraryIDs ...int) error {
-	del := Delete(r.tableName).Where("id not in (select distinct(album_id) from media_file)")
+	orphanFilter := "id not in (select distinct(album_id) from media_file)"
+
+	// Collect uploaded image filenames before deleting
+	sel := Select("uploaded_image").From(r.tableName).
+		Where(orphanFilter).
+		Where("uploaded_image <> ''")
+	del := Delete(r.tableName).Where(orphanFilter)
 	// If libraryIDs are specified, only purge albums from those libraries
 	if len(libraryIDs) > 0 {
+		sel = sel.Where(Eq{"library_id": libraryIDs})
 		del = del.Where(Eq{"library_id": libraryIDs})
 	}
+	var imageFiles []string
+	if err := r.queryAllSlice(sel, &imageFiles); err != nil && !errors.Is(err, model.ErrNotFound) {
+		return fmt.Errorf("collecting album images for cleanup: %w", err)
+	}
+
 	c, err := r.executeSQL(del)
 	if err != nil {
 		return fmt.Errorf("purging empty albums: %w", err)
 	}
 	if c > 0 {
 		log.Debug(r.ctx, "Purged empty albums", "totalDeleted", c)
+	}
+
+	if len(imageFiles) == 0 {
+		return nil
+	}
+	// CopyAttributes carries the filename (not the file) across album-ID changes, so a
+	// surviving album may still reference a purged album's image — keep those.
+	var stillUsed []string
+	if err := r.queryAllSlice(Select("uploaded_image").From(r.tableName).Where(Eq{"uploaded_image": imageFiles}), &stillUsed); err != nil && !errors.Is(err, model.ErrNotFound) {
+		return fmt.Errorf("checking album images still in use: %w", err)
+	}
+	used := make(map[string]struct{}, len(stillUsed))
+	for _, f := range stillUsed {
+		used[f] = struct{}{}
+	}
+
+	// Best-effort cleanup of uploaded image files
+	log.Debug(r.ctx, "Cleaning up album images", "totalImages", len(imageFiles))
+	for _, filename := range imageFiles {
+		if _, ok := used[filename]; ok {
+			continue
+		}
+		path := model.UploadedImagePath(consts.EntityAlbum, filename)
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			log.Warn(r.ctx, "Failed to remove album image during GC", "path", path, err)
+		}
 	}
 	return nil
 }

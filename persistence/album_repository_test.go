@@ -3,11 +3,14 @@ package persistence
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
@@ -82,6 +85,47 @@ var _ = Describe("AlbumRepository", func() {
 			Expect(after.CoverArtUpdatedAt).ToNot(BeNil())
 			Expect(*after.CoverArtUpdatedAt).To(BeTemporally("~", time.Now(), time.Minute))
 			Expect(after.UpdatedAt).To(Equal(before.UpdatedAt))
+		})
+	})
+
+	Describe("purgeEmpty image cleanup", func() {
+		var artDir string
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+			tempDir := GinkgoT().TempDir()
+			conf.Server.DataFolder = conf.NewDir(tempDir)
+			artDir = filepath.Join(tempDir, "artwork", "album")
+			Expect(os.MkdirAll(artDir, 0755)).To(Succeed())
+
+			_, err := albumRepo.executeSQL(squirrel.Insert("library").Columns("id", "name", "path").Values(99, "purge-lib", "/tmp/purge-lib"))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(albumRepo.Put(&model.Album{ID: "purge-a", Name: "a", LibraryID: 99})).To(Succeed())
+			Expect(albumRepo.Put(&model.Album{ID: "purge-b", Name: "b", LibraryID: 99})).To(Succeed())
+			Expect(albumRepo.Put(&model.Album{ID: "purge-keeper", Name: "k", LibraryID: 1})).To(Succeed())
+			Expect(albumRepo.UpdateImage("purge-a", "orphan.jpg")).To(Succeed())
+			Expect(albumRepo.UpdateImage("purge-b", "shared.jpg")).To(Succeed())
+			Expect(albumRepo.UpdateImage("purge-keeper", "shared.jpg")).To(Succeed())
+			Expect(os.WriteFile(filepath.Join(artDir, "orphan.jpg"), []byte("x"), 0600)).To(Succeed())
+			Expect(os.WriteFile(filepath.Join(artDir, "shared.jpg"), []byte("x"), 0600)).To(Succeed())
+
+			DeferCleanup(func() {
+				_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": []string{"purge-a", "purge-b", "purge-keeper"}}))
+				_, _ = albumRepo.executeSQL(squirrel.Delete("library").Where(squirrel.Eq{"id": 99}))
+			})
+		})
+
+		It("removes orphaned image files but keeps ones still referenced elsewhere", func() {
+			Expect(albumRepo.purgeEmpty(99)).To(Succeed())
+
+			var ids []string
+			Expect(albumRepo.queryAllSlice(squirrel.Select("id").From("album").Where(squirrel.Eq{"id": []string{"purge-a", "purge-b"}}), &ids)).To(Succeed())
+			Expect(ids).To(BeEmpty(), "purged album rows should be gone")
+			Expect(albumRepo.queryAllSlice(squirrel.Select("id").From("album").Where(squirrel.Eq{"id": "purge-keeper"}), &ids)).To(Succeed())
+			Expect(ids).To(HaveLen(1), "album in another library must survive")
+
+			_, err := os.Stat(filepath.Join(artDir, "orphan.jpg"))
+			Expect(os.IsNotExist(err)).To(BeTrue(), "orphaned image file should be removed")
+			Expect(filepath.Join(artDir, "shared.jpg")).To(BeAnExistingFile(), "file still referenced by a surviving album must be kept")
 		})
 	})
 
