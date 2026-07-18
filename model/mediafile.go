@@ -132,13 +132,13 @@ func (mf MediaFile) CoverArtID() ArtworkID {
 // otherwise it returns the album artwork ID.
 func (mf MediaFile) DiscCoverArtID() ArtworkID {
 	if mf.DiscNumber > 0 {
-		return NewArtworkID(KindDiscArtwork, DiscArtworkID(mf.AlbumID, mf.DiscNumber), nil)
+		return NewArtworkID(KindDiscArtwork, DiscArtworkID(mf.AlbumID, mf.DiscNumber), mf.CoverArtUpdatedAt)
 	}
 	return mf.AlbumCoverArtID()
 }
 
 func (mf MediaFile) AlbumCoverArtID() ArtworkID {
-	return artworkIDFromAlbum(Album{ID: mf.AlbumID})
+	return artworkIDFromAlbum(Album{ID: mf.AlbumID, CoverArtUpdatedAt: mf.CoverArtUpdatedAt})
 }
 
 func (mf MediaFile) StructuredLyrics() (LyricList, error) {

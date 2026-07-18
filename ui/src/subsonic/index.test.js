@@ -154,9 +154,11 @@ describe('getDiscCoverArtUrl', () => {
 
   it('should construct URL with dc-albumId:discNumber format, size, and cache param', () => {
     const url = subsonic.getDiscCoverArtUrl(
-      'album-123',
-      2,
-      '2023-01-01T00:00:00Z',
+      {
+        albumId: 'album-123',
+        discNumber: 2,
+        updatedAt: '2023-01-01T00:00:00Z',
+      },
       48,
     )
 
@@ -167,7 +169,10 @@ describe('getDiscCoverArtUrl', () => {
   })
 
   it('should handle missing updatedAt', () => {
-    const url = subsonic.getDiscCoverArtUrl('album-123', 1, undefined, 48)
+    const url = subsonic.getDiscCoverArtUrl(
+      { albumId: 'album-123', discNumber: 1 },
+      48,
+    )
 
     expect(url).toContain('id=dc-album-123%3A1')
     expect(url).toContain('size=48')
@@ -175,15 +180,28 @@ describe('getDiscCoverArtUrl', () => {
   })
 
   it('should handle missing size', () => {
-    const url = subsonic.getDiscCoverArtUrl(
-      'album-123',
-      1,
-      '2023-01-01T00:00:00Z',
-    )
+    const url = subsonic.getDiscCoverArtUrl({
+      albumId: 'album-123',
+      discNumber: 1,
+      updatedAt: '2023-01-01T00:00:00Z',
+    })
 
     expect(url).toContain('id=dc-album-123%3A1')
     expect(url).toContain('_=2023-01-01T00%3A00%3A00Z')
     expect(url).not.toContain('size=')
+  })
+
+  it('should bust the cache on coverArtUpdatedAt when it is newer', () => {
+    const url = subsonic.getDiscCoverArtUrl({
+      albumId: 'album-123',
+      discNumber: 1,
+      updatedAt: '2023-01-01T00:00:00Z',
+      coverArtUpdatedAt: '2024-06-01T00:00:00Z',
+    })
+
+    expect(url).toContain('id=dc-album-123%3A1')
+    expect(url).toContain('_=2024-06-01T00%3A00%3A00Z')
+    expect(url).not.toContain('_=2023-01-01')
   })
 })
 
