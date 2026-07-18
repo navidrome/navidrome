@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import {
   MenuItemLink,
@@ -63,15 +63,18 @@ const PlaylistsSubMenu = ({ state, setState, sidebarIsOpen, dense }) => {
   const onlyFavourites = useSelector(
     (state) => state.settings.sidebarPlaylistsOnlyFavourites,
   )
+  const playlistData = useSelector(
+    (state) => state.admin.resources.playlist?.data,
+  )
   // Fingerprint of local star state; changes only when a playlist is (un)starred,
   // so a local toggle refetches the sidebar without the SSE echo the actor never gets
-  const starFingerprint = useSelector((state) => {
-    const data = state.admin.resources.playlist?.data || {}
+  const starFingerprint = useMemo(() => {
+    const data = playlistData || {}
     return Object.keys(data)
       .filter((id) => data[id]?.starred)
       .sort()
       .join(',')
-  })
+  }, [playlistData])
   const [refreshCount, setRefreshCount] = useState(0)
 
   const onRefresh = useCallback(async () => {
@@ -89,9 +92,8 @@ const PlaylistsSubMenu = ({ state, setState, sidebarIsOpen, dense }) => {
         perPage: config.maxSidebarPlaylists,
       },
       sort: { field: 'name' },
-      ...(onlyFavourites && { filter: { starred: true } }),
+      ...(onlyFavourites && { filter: { starred: true }, starFingerprint }),
       refresh: refreshCount,
-      starFingerprint,
     },
   })
 
