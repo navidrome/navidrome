@@ -15,6 +15,7 @@ var _ = Describe("mappers", func() {
 			ID: "song-1", Title: "Song", Album: "Alb", AlbumID: "alb-1",
 			Artist: "Art", AlbumArtist: "AA", TrackNumber: 3, DiscNumber: 1,
 			Year: 1999, Duration: 60, Size: 2_500_000,
+			Genres: []model.Genre{{ID: "1", Name: "genre 1"}, {ID: "2", Name: "genre 2"}},
 		}
 		mf.PlayCount = 2
 		mf.Starred = true
@@ -35,6 +36,8 @@ var _ = Describe("mappers", func() {
 		Expect(item.UserData.ItemId).To(Equal(EncodeID("song-1")))
 		Expect(item.ImageBlurHashes["Primary"]).To(HaveKey(item.AlbumPrimaryImageTag))
 		Expect(item.ImageBlurHashes["Primary"][item.AlbumPrimaryImageTag]).To(HaveLen(6))
+		Expect(item.Genres).To(Equal([]string{"genre 1", "genre 2"}))
+		Expect(item.GenreItems).To(Equal([]NameGuidPair{{Id: EncodeID("1"), Name: "genre 1"}, {Id: EncodeID("2"), Name: "genre 2"}}))
 	})
 
 	Describe("Fields gating (matches real Jellyfin)", func() {
@@ -198,7 +201,7 @@ var _ = Describe("mappers", func() {
 	})
 
 	It("maps an album to a MusicAlbum folder item", func() {
-		al := model.Album{ID: "alb-1", Name: "Alb", AlbumArtist: "AA", AlbumArtistID: "art-1", MaxYear: 1999, SongCount: 10}
+		al := model.Album{ID: "alb-1", Name: "Alb", AlbumArtist: "AA", AlbumArtistID: "art-1", MaxYear: 1999, SongCount: 10, Genres: []model.Genre{{ID: "1", Name: "genre 1"}, {ID: "2", Name: "genre 2"}}}
 		item := AlbumToBaseItem(al)
 		Expect(item.Type).To(Equal("MusicAlbum"))
 		Expect(item.IsFolder).To(BeTrue())
@@ -211,6 +214,8 @@ var _ = Describe("mappers", func() {
 		Expect(*item.ChildCount).To(Equal(10))
 		Expect(item.ImageBlurHashes["Primary"]).To(HaveKey(item.ImageTags["Primary"]))
 		Expect(item.ImageBlurHashes["Primary"][item.ImageTags["Primary"]]).To(HaveLen(6))
+		Expect(item.Genres).To(Equal([]string{"genre 1", "genre 2"}))
+		Expect(item.GenreItems).To(Equal([]NameGuidPair{{Id: EncodeID("1"), Name: "genre 1"}, {Id: EncodeID("2"), Name: "genre 2"}}))
 	})
 
 	It("maps an artist to a MusicArtist folder item", func() {
