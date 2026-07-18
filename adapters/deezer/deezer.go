@@ -1,10 +1,12 @@
 package deezer
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
@@ -95,20 +97,32 @@ func (s *deezerAgent) searchArtist(ctx context.Context, name string) (*Artist, e
 		}
 	}
 
-	// Deezer's RANKING order isn't reliable for homonyms, so among exact-name
-	// matches pick the most popular one by fan count.
-	var best *Artist
-	for i := range artists {
-		if strings.EqualFold(artists[i].Name, name) && (best == nil || artists[i].NbFan > best.NbFan) {
-			best = &artists[i]
+	// Deezer's RANKING order isn't reliable for homonyms: rank name matches
+	// ahead of non-matches, prefer an exact-case match, then the most fans.
+	rank := func(a Artist) int {
+		switch {
+		case a.Name == name:
+			return 2
+		case strings.EqualFold(a.Name, name):
+			return 1
+		default:
+			return 0
 		}
 	}
-	if best == nil {
+	slices.SortFunc(artists, func(a, b Artist) int {
+		return cmp.Or(
+			cmp.Compare(rank(b), rank(a)),
+			cmp.Compare(b.NbFan, a.NbFan),
+			cmp.Compare(a.ID, b.ID),
+		)
+	})
+	best := artists[0]
+	if !strings.EqualFold(best.Name, name) {
 		log.Trace(ctx, "No artist matched the searched name", "searched_name", name, "found_name", artists[0].Name)
 		return nil, agents.ErrNotFound
 	}
-	log.Trace(ctx, "Found artist", "name", best.Name, "id", best.ID, "link", best.Link)
-	return best, nil
+	log.Trace(ctx, "Found artist", "name", best.Name, "id", best.ID, "link", best.Link, "nb_fan", best.NbFan)
+	return new(best), nil
 }
 
 func (s *deezerAgent) GetSimilarArtists(ctx context.Context, _, name, _ string, limit int) ([]agents.Artist, error) {
