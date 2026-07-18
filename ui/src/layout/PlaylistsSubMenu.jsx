@@ -13,7 +13,7 @@ import { Typography } from '@material-ui/core'
 import QueueMusicOutlinedIcon from '@material-ui/icons/QueueMusicOutlined'
 import FavoriteIcon from '@material-ui/icons/Favorite'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
-import { BiCog } from 'react-icons/bi'
+import { BiListUl } from 'react-icons/bi'
 import { useDrop } from 'react-dnd'
 import SubMenu from './SubMenu'
 import { canChangeTracks, OverflowTooltip, useRefreshOnEvents } from '../common'
@@ -141,7 +141,7 @@ const PlaylistsSubMenu = ({ state, setState, sidebarIsOpen, dense }) => {
         name={'menu.playlists'}
         icon={<QueueMusicIcon />}
         dense={dense}
-        actionIcon={<BiCog />}
+        actionIcon={<BiListUl />}
         onAction={onPlaylistConfig}
         onSecondaryAction={
           config.enableFavourites ? handleToggleFavourites : undefined

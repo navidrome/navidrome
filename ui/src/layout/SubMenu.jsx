@@ -33,6 +33,9 @@ const useStyles = makeStyles(
     menuHeader: {
       width: '100%',
     },
+    headerText: {
+      flexGrow: 1,
+    },
     headerWrapper: {
       display: 'flex',
       '&:hover $actionIcon': {
@@ -90,7 +93,11 @@ const SubMenu = ({
         <ListItemIcon className={classes.icon}>
           {isOpen ? <ExpandMore /> : icon}
         </ListItemIcon>
-        <Typography variant="inherit" color="textSecondary">
+        <Typography
+          variant="inherit"
+          color="textSecondary"
+          className={classes.headerText}
+        >
           {translate(name)}
         </Typography>
         {onSecondaryAction && sidebarIsOpen && (

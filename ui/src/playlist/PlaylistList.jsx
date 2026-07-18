@@ -195,8 +195,8 @@ const PlaylistList = (props) => {
       <Datagrid rowClick="show" isRowSelectable={(r) => isWritable(r?.ownerId)}>
         <CoverArtAvatar source="id" variant="square" />
         <TextField source="name" />
-        {config.enableFavourites && <PlaylistLove sortable={false} />}
         {columns}
+        {config.enableFavourites && <PlaylistLove sortable={false} />}
         <Writable>
           <EditButton />
         </Writable>
