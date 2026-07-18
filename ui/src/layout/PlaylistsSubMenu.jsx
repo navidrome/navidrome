@@ -77,9 +77,11 @@ const PlaylistsSubMenu = ({ state, setState, sidebarIsOpen, dense }) => {
   }, [playlistData])
   const [refreshCount, setRefreshCount] = useState(0)
 
+  // Only the favourites-only view depends on star state changing elsewhere;
+  // when showing all playlists a star event from another client changes nothing
   const onRefresh = useCallback(async () => {
-    setRefreshCount((count) => count + 1)
-  }, [])
+    if (onlyFavourites) setRefreshCount((count) => count + 1)
+  }, [onlyFavourites])
   useRefreshOnEvents({ events: ['playlist'], onRefresh })
 
   // A changed payload signature makes useQueryWithStore refetch
@@ -92,8 +94,11 @@ const PlaylistsSubMenu = ({ state, setState, sidebarIsOpen, dense }) => {
         perPage: config.maxSidebarPlaylists,
       },
       sort: { field: 'name' },
-      ...(onlyFavourites && { filter: { starred: true }, starFingerprint }),
-      refresh: refreshCount,
+      ...(onlyFavourites && {
+        filter: { starred: true },
+        starFingerprint,
+        refresh: refreshCount,
+      }),
     },
   })
 
