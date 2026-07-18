@@ -37,7 +37,7 @@ var _ = Describe("mappers", func() {
 		Expect(item.ImageBlurHashes["Primary"]).To(HaveKey(item.AlbumPrimaryImageTag))
 		Expect(item.ImageBlurHashes["Primary"][item.AlbumPrimaryImageTag]).To(HaveLen(6))
 		Expect(item.Genres).To(Equal([]string{"genre 1", "genre 2"}))
-		Expect(item.GenreItems).To(Equal([]NameGuidPair{{Id: "1", Name: "genre 1"}, {Id: "2", Name: "genre 2"}}))
+		Expect(item.GenreItems).To(Equal([]NameGuidPair{{Id: EncodeID("1"), Name: "genre 1"}, {Id: EncodeID("2"), Name: "genre 2"}}))
 	})
 
 	Describe("Fields gating (matches real Jellyfin)", func() {
@@ -215,7 +215,7 @@ var _ = Describe("mappers", func() {
 		Expect(item.ImageBlurHashes["Primary"]).To(HaveKey(item.ImageTags["Primary"]))
 		Expect(item.ImageBlurHashes["Primary"][item.ImageTags["Primary"]]).To(HaveLen(6))
 		Expect(item.Genres).To(Equal([]string{"genre 1", "genre 2"}))
-		Expect(item.GenreItems).To(Equal([]NameGuidPair{{Id: "1", Name: "genre 1"}, {Id: "2", Name: "genre 2"}}))
+		Expect(item.GenreItems).To(Equal([]NameGuidPair{{Id: EncodeID("1"), Name: "genre 1"}, {Id: EncodeID("2"), Name: "genre 2"}}))
 	})
 
 	It("maps an artist to a MusicArtist folder item", func() {
