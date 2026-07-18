@@ -1,19 +1,24 @@
-import React, { useCallback } from 'react'
+import React, { useCallback, useState } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import {
   MenuItemLink,
   useDataProvider,
   useNotify,
   useQueryWithStore,
+  useTranslate,
 } from 'react-admin'
 import { useHistory } from 'react-router-dom'
 import QueueMusicIcon from '@material-ui/icons/QueueMusic'
 import { Typography } from '@material-ui/core'
 import QueueMusicOutlinedIcon from '@material-ui/icons/QueueMusicOutlined'
+import FavoriteIcon from '@material-ui/icons/Favorite'
+import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import { BiCog } from 'react-icons/bi'
 import { useDrop } from 'react-dnd'
 import SubMenu from './SubMenu'
-import { canChangeTracks, OverflowTooltip } from '../common'
+import { canChangeTracks, OverflowTooltip, useRefreshOnEvents } from '../common'
 import { DraggableTypes } from '../consts'
+import { setSidebarPlaylistsOnlyFavourites } from '../actions'
 import config from '../config'
 
 const PlaylistMenuItemLink = ({ pls, sidebarIsOpen }) => {
@@ -53,6 +58,19 @@ const PlaylistMenuItemLink = ({ pls, sidebarIsOpen }) => {
 
 const PlaylistsSubMenu = ({ state, setState, sidebarIsOpen, dense }) => {
   const history = useHistory()
+  const dispatch = useDispatch()
+  const translate = useTranslate()
+  const onlyFavourites = useSelector(
+    (state) => state.settings.sidebarPlaylistsOnlyFavourites,
+  )
+  const [refreshCount, setRefreshCount] = useState(0)
+
+  // A changed payload signature makes useQueryWithStore refetch on SSE events
+  const onRefresh = useCallback(async () => {
+    setRefreshCount((count) => count + 1)
+  }, [])
+  useRefreshOnEvents({ events: ['playlist'], onRefresh })
+
   const { data, loaded } = useQueryWithStore({
     type: 'getList',
     resource: 'playlist',
@@ -62,6 +80,8 @@ const PlaylistsSubMenu = ({ state, setState, sidebarIsOpen, dense }) => {
         perPage: config.maxSidebarPlaylists,
       },
       sort: { field: 'name' },
+      ...(onlyFavourites && { filter: { starred: true } }),
+      refresh: refreshCount,
     },
   })
 
@@ -98,6 +118,10 @@ const PlaylistsSubMenu = ({ state, setState, sidebarIsOpen, dense }) => {
     [history],
   )
 
+  const handleToggleFavourites = useCallback(() => {
+    dispatch(setSidebarPlaylistsOnlyFavourites(!onlyFavourites))
+  }, [dispatch, onlyFavourites])
+
   return (
     <>
       <SubMenu
@@ -109,6 +133,18 @@ const PlaylistsSubMenu = ({ state, setState, sidebarIsOpen, dense }) => {
         dense={dense}
         actionIcon={<BiCog />}
         onAction={onPlaylistConfig}
+        onSecondaryAction={
+          config.enableFavourites ? handleToggleFavourites : undefined
+        }
+        secondaryActionIcon={
+          onlyFavourites ? (
+            <FavoriteIcon fontSize={'small'} />
+          ) : (
+            <FavoriteBorderIcon fontSize={'small'} />
+          )
+        }
+        secondaryActionTitle={translate('menu.onlyFavourites')}
+        secondaryActionActive={onlyFavourites}
       >
         {myPlaylists.map(renderPlaylistMenuItemLink)}
       </SubMenu>

@@ -55,6 +55,10 @@ const SubMenu = ({
   dense,
   onAction,
   actionIcon,
+  onSecondaryAction,
+  secondaryActionIcon,
+  secondaryActionTitle,
+  secondaryActionActive,
 }) => {
   const translate = useTranslate()
   const classes = useStyles()
@@ -68,6 +72,11 @@ const SubMenu = ({
     if (isSmall) {
       dispatch(setSidebarVisibility(false))
     }
+  }
+
+  const handleSecondaryClick = (e) => {
+    e.stopPropagation()
+    onSecondaryAction(e)
   }
 
   const header = (
@@ -84,6 +93,18 @@ const SubMenu = ({
         <Typography variant="inherit" color="textSecondary">
           {translate(name)}
         </Typography>
+        {onSecondaryAction && sidebarIsOpen && (
+          <IconButton
+            size={'small'}
+            title={secondaryActionTitle}
+            className={
+              isDesktop && !secondaryActionActive ? classes.actionIcon : null
+            }
+            onClick={handleSecondaryClick}
+          >
+            {secondaryActionIcon}
+          </IconButton>
+        )}
         {onAction && sidebarIsOpen && (
           <IconButton
             size={'small'}

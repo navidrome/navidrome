@@ -635,6 +635,7 @@
     },
     "albumList": "Albums",
     "playlists": "Playlists",
+    "onlyFavourites": "Only show favourites",
     "sharedPlaylists": "Shared Playlists",
     "about": "About"
   },
