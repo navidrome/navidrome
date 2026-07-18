@@ -62,6 +62,16 @@ var _ = Describe("Browsing", func() {
 			}
 		})
 
+		// Clients (Finamp, Feishin) send Fields as repeated params rather than one comma-separated
+		// value; real Jellyfin accepts both, so a later Fields=MediaSources must still take effect.
+		It("honors MediaSources when Fields is sent as repeated params", func() {
+			q := queryResult(get("/Items?IncludeItemTypes=Audio&Recursive=true&Fields=Genres&Fields=MediaSources"))
+			Expect(q.Items).ToNot(BeEmpty())
+			for _, it := range q.Items {
+				Expect(it.MediaSources).To(HaveLen(1))
+			}
+		})
+
 		It("lists all album artists", func() {
 			q := queryResult(get("/Items?IncludeItemTypes=MusicArtist&Recursive=true"))
 			Expect(q.TotalRecordCount).To(Equal(4))
