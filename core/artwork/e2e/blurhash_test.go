@@ -152,6 +152,7 @@ var _ = Describe("BlurHash", func() {
 
 		// Replace only the cover and quick-scan: the album row stays untouched while the folder's
 		// images_updated_at advances the artwork version, so hash-keyed clients refetch.
+		time.Sleep(50 * time.Millisecond) // Windows clock granularity: the swap must be measurably later
 		fakeFS.Add("Artist/Album/cover.png", realPNG("p1-swapped"), time.Now())
 		quickScan()
 
