@@ -112,10 +112,16 @@ func ParseDiscArtworkID(id string) (albumID string, discNumber int, err error) {
 }
 
 func artworkIDFromAlbum(al Album) ArtworkID {
+	// A manual cover edit bumps cover_art_updated_at (not updated_at), so fold it
+	// in here to refresh clients without disturbing Recently Added ordering.
+	lastUpdate := al.UpdatedAt
+	if al.CoverArtUpdatedAt != nil && al.CoverArtUpdatedAt.After(lastUpdate) {
+		lastUpdate = *al.CoverArtUpdatedAt
+	}
 	return ArtworkID{
 		Kind:       KindAlbumArtwork,
 		ID:         al.ID,
-		LastUpdate: al.UpdatedAt,
+		LastUpdate: lastUpdate,
 	}
 }
 

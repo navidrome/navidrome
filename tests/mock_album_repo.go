@@ -140,6 +140,8 @@ func (m *MockAlbumRepo) UpdateImage(id, filename string) error {
 	}
 	if al, ok := m.Data[id]; ok {
 		al.UploadedImage = filename
+		now := time.Now()
+		al.CoverArtUpdatedAt = &now
 		return nil
 	}
 	return model.ErrNotFound
@@ -187,6 +189,10 @@ func (m *MockAlbumRepo) CopyAttributes(fromID, toID string, columns ...string) e
 		switch col {
 		case "created_at":
 			to.CreatedAt = from.CreatedAt
+		case "uploaded_image":
+			to.UploadedImage = from.UploadedImage
+		case "cover_art_updated_at":
+			to.CoverArtUpdatedAt = from.CoverArtUpdatedAt
 		}
 	}
 	if m.CopyAttributesCalls == nil {

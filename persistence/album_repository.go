@@ -219,12 +219,12 @@ func (r *albumRepository) UpdateExternalInfo(al *model.Album) error {
 	return err
 }
 
-// UpdateImage is the sole writer of uploaded_image: it uses raw SQL because Put's
-// structs.Map marshaling drops the structs:"-" tagged UploadedImage field.
+// UpdateImage is the sole writer of uploaded_image (raw SQL: Put's structs.Map drops the
+// structs:"-" field). Bumps cover_art_updated_at, not updated_at, to leave Recently Added put.
 func (r *albumRepository) UpdateImage(id, filename string) error {
 	c, err := r.executeSQL(Update(r.tableName).
 		Set("uploaded_image", filename).
-		Set("updated_at", time.Now()).
+		Set("cover_art_updated_at", time.Now()).
 		Where(Eq{"id": id}))
 	if err != nil {
 		return err

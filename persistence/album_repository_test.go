@@ -70,6 +70,19 @@ var _ = Describe("AlbumRepository", func() {
 		It("returns ErrNotFound for a missing album", func() {
 			Expect(albumRepo.UpdateImage("does-not-exist", "x.jpg")).To(MatchError(model.ErrNotFound))
 		})
+		It("bumps cover_art_updated_at without touching updated_at", func() {
+			before, err := albumRepo.Get("img-1")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(before.CoverArtUpdatedAt).To(BeNil())
+
+			Expect(albumRepo.UpdateImage("img-1", "img-1_cover.jpg")).To(Succeed())
+
+			after, err := albumRepo.Get("img-1")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(after.CoverArtUpdatedAt).ToNot(BeNil())
+			Expect(*after.CoverArtUpdatedAt).To(BeTemporally("~", time.Now(), time.Minute))
+			Expect(after.UpdatedAt).To(Equal(before.UpdatedAt))
+		})
 	})
 
 	Describe("CopyAttributes", func() {

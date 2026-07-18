@@ -58,6 +58,9 @@ func newAlbumArtworkReader(ctx context.Context, artwork *artwork, artID model.Ar
 	if imagesUpdateAt != nil {
 		a.cacheKey.lastUpdate = utils.TimeNewest(a.cacheKey.lastUpdate, *imagesUpdateAt)
 	}
+	if al.CoverArtUpdatedAt != nil {
+		a.cacheKey.lastUpdate = utils.TimeNewest(a.cacheKey.lastUpdate, *al.CoverArtUpdatedAt)
+	}
 	return a, nil
 }
 

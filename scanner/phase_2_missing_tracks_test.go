@@ -841,6 +841,31 @@ var _ = Describe("phaseMissingTracks", func() {
 			Expect(newAlbum.CreatedAt).To(Equal(originalTime))
 		})
 
+		It("should preserve an uploaded cover during moves with album change", func() {
+			missingTrack := model.MediaFile{
+				ID: "missing-img", PID: "C", Path: "lib1/song.mp3",
+				AlbumID: "old-album", LibraryID: 1,
+			}
+			matchedTrack := model.MediaFile{
+				ID: "matched-img", PID: "C", Path: "lib2/song.mp3",
+				AlbumID: "new-album", LibraryID: 2,
+			}
+
+			albumRepo.SetData(model.Albums{
+				{ID: "old-album", LibraryID: 1, UploadedImage: "old-album_cover.jpg"},
+				{ID: "new-album", LibraryID: 2},
+			})
+
+			_ = ds.MediaFile(ctx).Put(&missingTrack)
+			_ = ds.MediaFile(ctx).Put(&matchedTrack)
+
+			Expect(phase.moveMatched(matchedTrack, missingTrack)).To(Succeed())
+
+			newAlbum, err := albumRepo.Get("new-album")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(newAlbum.UploadedImage).To(Equal("old-album_cover.jpg"))
+		})
+
 		It("should not copy album created_at when album ID does not change", func() {
 			originalTime := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
 			missingTrack := model.MediaFile{

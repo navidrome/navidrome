@@ -79,6 +79,21 @@ describe('getCoverArtUrl', () => {
     expect(url).toContain('square=true')
   })
 
+  it('should bust the cache on coverArtUpdatedAt when it is newer', () => {
+    const albumRecord = {
+      id: 'album-123',
+      albumArtist: 'Test Artist',
+      updatedAt: '2023-01-01T00:00:00Z',
+      coverArtUpdatedAt: '2024-06-01T00:00:00Z',
+    }
+
+    const url = subsonic.getCoverArtUrl(albumRecord)
+
+    expect(url).toContain('al-album-123')
+    expect(url).toContain('_=2024-06-01T00%3A00%3A00Z')
+    expect(url).not.toContain('_=2023-01-01')
+  })
+
   it('should return media file cover art URL for records with album', () => {
     const songRecord = {
       id: 'song-123',
