@@ -50,6 +50,17 @@ var _ = Describe("Album", func() {
 			a.CoverArtUpdatedAt = &stamp
 			Expect(a.CoverArtID().String()).ToNot(Equal(before))
 		})
+		It("does not collide when updated_at decreases by the cover-stamp delta", func() {
+			// With an additive combination, updated_at dropping by N while the cover
+			// stamp advances by N re-emits the same id — the mix must not.
+			u1 := time.Unix(1_000_000_000, 0)
+			c1 := time.Unix(2_000_000_000, 0)
+			u2 := u1.Add(-100 * time.Second)
+			c2 := c1.Add(100 * time.Second)
+			id1 := Album{ID: "al-1", UpdatedAt: u1, CoverArtUpdatedAt: &c1}.CoverArtID().String()
+			id2 := Album{ID: "al-1", UpdatedAt: u2, CoverArtUpdatedAt: &c2}.CoverArtID().String()
+			Expect(id1).ToNot(Equal(id2))
+		})
 	})
 })
 
