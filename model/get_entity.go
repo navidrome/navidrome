@@ -2,29 +2,26 @@ package model
 
 import (
 	"context"
+	"errors"
 )
 
 // TODO: Should the type be encoded in the ID?
 func GetEntityByID(ctx context.Context, ds DataStore, id string) (any, error) {
-	ar, err := ds.Artist(ctx).Get(id)
-	if err == nil {
-		return ar, nil
+	getters := []func() (any, error){
+		func() (any, error) { return ds.Artist(ctx).Get(id) },
+		func() (any, error) { return ds.Album(ctx).Get(id) },
+		func() (any, error) { return ds.Playlist(ctx).Get(id) },
+		func() (any, error) { return ds.MediaFile(ctx).Get(id) },
+		func() (any, error) { return ds.Radio(ctx).Get(id) },
 	}
-	al, err := ds.Album(ctx).Get(id)
-	if err == nil {
-		return al, nil
+	for _, get := range getters {
+		entity, err := get()
+		if err == nil {
+			return entity, nil
+		}
+		if !errors.Is(err, ErrNotFound) {
+			return nil, err
+		}
 	}
-	pls, err := ds.Playlist(ctx).Get(id)
-	if err == nil {
-		return pls, nil
-	}
-	mf, err := ds.MediaFile(ctx).Get(id)
-	if err == nil {
-		return mf, nil
-	}
-	r, err := ds.Radio(ctx).Get(id)
-	if err == nil {
-		return r, nil
-	}
-	return nil, err
+	return nil, ErrNotFound
 }

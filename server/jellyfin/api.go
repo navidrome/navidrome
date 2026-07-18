@@ -22,6 +22,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
+	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	"github.com/navidrome/navidrome/utils/cache"
 )
@@ -38,6 +39,7 @@ type Router struct {
 	provider         external.Provider
 	sonic            sonic.Engine
 	lyrics           lyrics.Lyrics
+	broker           events.Broker
 	lyricsCache      cache.SimpleCache[string, model.LyricList]
 	similarFlight    singleflight.Group
 	serverIDMu       sync.Mutex
@@ -47,11 +49,11 @@ type Router struct {
 func New(ds model.DataStore, artwork artwork.Artwork, streamer stream.MediaStreamer,
 	transcodeDecider stream.TranscodeDecider, players core.Players,
 	scrobbler scrobbler.PlayTracker, playlists playlists.Playlists, provider external.Provider,
-	sonicSvc sonic.Engine, lyricsSvc lyrics.Lyrics) *Router {
+	sonicSvc sonic.Engine, lyricsSvc lyrics.Lyrics, broker events.Broker) *Router {
 	r := &Router{
 		ds: ds, artwork: artwork, streamer: streamer, transcodeDecider: transcodeDecider,
 		players: players, scrobbler: scrobbler, playlists: playlists, provider: provider,
-		sonic: sonicSvc, lyrics: lyricsSvc,
+		sonic: sonicSvc, lyrics: lyricsSvc, broker: broker,
 		lyricsCache: cache.NewSimpleCache[string, model.LyricList](cache.Options{
 			SizeLimit:  1000,
 			DefaultTTL: 5 * time.Minute,

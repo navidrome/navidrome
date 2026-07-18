@@ -8,6 +8,7 @@ import (
 
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -17,6 +18,7 @@ import (
 var _ = Describe("Annotations", func() {
 	var api *Router
 	var ds *tests.MockDataStore
+	var broker *fakeEventBroker
 	// alice has access to library 1 only.
 	ctxUser := func() context.Context {
 		return request.WithUser(context.Background(), model.User{ID: "u1", UserName: "alice", Libraries: model.Libraries{{ID: 1, Name: "Music"}}})
@@ -24,7 +26,8 @@ var _ = Describe("Annotations", func() {
 
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{}
-		api = &Router{ds: ds}
+		broker = &fakeEventBroker{}
+		api = &Router{ds: ds, broker: broker}
 	})
 
 	Describe("markFavorite / unmarkFavorite", func() {
@@ -133,6 +136,39 @@ var _ = Describe("Annotations", func() {
 			r = withChiURLParam(r, "itemId", "x1")
 			invoke(api.markFavorite, w, r)
 			Expect(w.Code).To(Equal(http.StatusInternalServerError))
+		})
+
+		It("emits a refreshResource event when starring a song", func() {
+			mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
+			mfRepo.SetData(model.MediaFiles{{ID: "s1", Title: "Song", LibraryID: 1}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/s1", nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", "s1")
+			invoke(api.markFavorite, w, r)
+			Expect(broker.Events).To(HaveLen(1))
+			Expect(broker.Events[0].Data(broker.Events[0])).To(Equal(`{"song":["s1"]}`))
+		})
+
+		It("emits a refreshResource event when starring an album", func() {
+			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
+			albumRepo.SetData(model.Albums{{ID: "a1", Name: "One", LibraryID: 1}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/"+dto.EncodeID("a1"), nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", dto.EncodeID("a1"))
+			invoke(api.markFavorite, w, r)
+			Expect(broker.Events).To(HaveLen(1))
+			Expect(broker.Events[0].Data(broker.Events[0])).To(Equal(`{"album":["a1"]}`))
+		})
+
+		It("does not emit an event when the item is not accessible", func() {
+			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
+			albumRepo.SetData(model.Albums{{ID: "a1", Name: "One", LibraryID: 2}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/"+dto.EncodeID("a1"), nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", dto.EncodeID("a1"))
+			invoke(api.markFavorite, w, r)
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+			Expect(broker.Events).To(BeEmpty())
 		})
 	})
 
@@ -253,5 +289,31 @@ var _ = Describe("Annotations", func() {
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(mfRepo.Data["s1"].Rating).To(Equal(0))
 		})
+
+		It("emits a refreshResource event when rating a song", func() {
+			mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
+			mfRepo.SetData(model.MediaFiles{{ID: "s1", Title: "Song", LibraryID: 1}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("POST", "/Users/u1/Items/s1/Rating?Rating=8", nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", "s1")
+			invoke(api.setRating, w, r)
+			Expect(broker.Events).To(HaveLen(1))
+			Expect(broker.Events[0].Data(broker.Events[0])).To(Equal(`{"song":["s1"]}`))
+		})
 	})
 })
+
+type fakeEventBroker struct {
+	http.Handler
+	Events []events.Event
+}
+
+func (f *fakeEventBroker) SendMessage(_ context.Context, event events.Event) {
+	f.Events = append(f.Events, event)
+}
+
+func (f *fakeEventBroker) SendBroadcastMessage(_ context.Context, event events.Event) {
+	f.Events = append(f.Events, event)
+}
+
+var _ events.Broker = (*fakeEventBroker)(nil)

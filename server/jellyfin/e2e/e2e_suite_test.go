@@ -329,6 +329,7 @@ func setupTestDB() {
 		providerFake,
 		sonicSvc,
 		lyrics.NewLyrics(ds, nil),
+		events.NoopBroker(),
 	)
 }
 
