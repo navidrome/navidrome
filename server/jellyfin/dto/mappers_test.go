@@ -96,6 +96,10 @@ var _ = Describe("mappers", func() {
 		Expect(SongToBaseItem(model.MediaFile{ID: "s1", Title: "Song", Artist: "X"}, nil).ArtistItems).To(BeNil())
 	})
 
+	It("omits Artists when the track has no artist name or participants", func() {
+		Expect(SongToBaseItem(model.MediaFile{ID: "s1", Title: "Song"}, nil).Artists).To(BeNil())
+	})
+
 	It("splits Artists and ArtistItems per track artist from Participants", func() {
 		mf := model.MediaFile{
 			ID: "s1", Title: "Oooh",

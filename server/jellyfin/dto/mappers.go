@@ -161,7 +161,9 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 			return NameGuidPair{Name: p.Name, Id: EncodeID(p.ID)}
 		})
 	} else {
-		item.Artists = []string{mf.Artist}
+		if mf.Artist != "" {
+			item.Artists = []string{mf.Artist}
+		}
 		if mf.ArtistID != "" {
 			item.ArtistItems = []NameGuidPair{{Name: mf.Artist, Id: EncodeID(mf.ArtistID)}}
 		}
