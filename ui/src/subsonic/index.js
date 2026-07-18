@@ -82,10 +82,10 @@ const getAvatarUrl = (username, size) =>
 
 const getCoverArtUrl = (record, size, square) => {
   // Bust the cache on the newest of updatedAt / coverArtUpdatedAt (album cover
-  // uploads bump the latter) — ISO timestamps sort chronologically.
+  // uploads bump the latter).
   const cacheKey = [record.updatedAt, record.coverArtUpdatedAt]
     .filter(Boolean)
-    .sort()
+    .sort((a, b) => new Date(a) - new Date(b))
     .pop()
   const options = {
     ...(cacheKey && { _: cacheKey }),

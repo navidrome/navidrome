@@ -49,6 +49,9 @@ func newMediafileArtworkReader(ctx context.Context, artwork *artwork, artID mode
 	if imagesUpdatedAt != nil && imagesUpdatedAt.After(a.cacheKey.lastUpdate) {
 		a.cacheKey.lastUpdate = *imagesUpdatedAt
 	}
+	if al.CoverArtUpdatedAt != nil && al.CoverArtUpdatedAt.After(a.cacheKey.lastUpdate) {
+		a.cacheKey.lastUpdate = *al.CoverArtUpdatedAt
+	}
 	return a, nil
 }
 

@@ -190,9 +190,14 @@ func (m *MockAlbumRepo) CopyAttributes(fromID, toID string, columns ...string) e
 		case "created_at":
 			to.CreatedAt = from.CreatedAt
 		case "uploaded_image":
-			to.UploadedImage = from.UploadedImage
+			// Mirrors the real repo: an empty source never wipes the destination's cover
+			if from.UploadedImage != "" {
+				to.UploadedImage = from.UploadedImage
+			}
 		case "cover_art_updated_at":
-			to.CoverArtUpdatedAt = from.CoverArtUpdatedAt
+			if from.CoverArtUpdatedAt != nil {
+				to.CoverArtUpdatedAt = from.CoverArtUpdatedAt
+			}
 		}
 	}
 	if m.CopyAttributesCalls == nil {

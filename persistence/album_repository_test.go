@@ -116,6 +116,14 @@ var _ = Describe("AlbumRepository", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.UploadedImage).To(Equal("copy-src_cover.jpg"))
 		})
+		It("does not wipe the destination's cover when the source has none", func() {
+			Expect(albumRepo.UpdateImage("copy-dst", "copy-dst_cover.jpg")).To(Succeed())
+			Expect(albumRepo.CopyAttributes("copy-src", "copy-dst", "uploaded_image", "cover_art_updated_at")).To(Succeed())
+			got, err := albumRepo.Get("copy-dst")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.UploadedImage).To(Equal("copy-dst_cover.jpg"))
+			Expect(got.CoverArtUpdatedAt).ToNot(BeNil())
+		})
 	})
 
 	Describe("GetCursor", func() {
