@@ -95,7 +95,6 @@ func setupE2EBenchmark(b *testing.B, cacheSize string) (Artwork, model.ArtworkID
 	aw := NewArtwork(ds, imgCache, ffmpeg, nil)
 
 	cleanupAll := func() {
-		_ = aw.(*artwork).Close()
 		os.RemoveAll(tmpDir)
 	}
 	return aw, artID, cleanupAll

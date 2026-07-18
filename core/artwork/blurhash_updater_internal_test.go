@@ -38,78 +38,81 @@ func realPNGBytes(label string) []byte {
 var _ = Describe("blurHashUpdater", func() {
 	var u *blurHashUpdater
 	var ds *tests.MockDataStore
+	var repo *tests.MockAlbumRepo
 	var version time.Time
+
+	album := func(al model.Album) model.ArtworkID {
+		repo = tests.CreateMockAlbumRepo()
+		repo.SetData(model.Albums{al})
+		ds.MockedAlbum = repo
+		return al.CoverArtID()
+	}
+	stored := func(id string) model.Album {
+		al, err := ds.Album(GinkgoT().Context()).Get(id)
+		Expect(err).ToNot(HaveOccurred())
+		return *al
+	}
 
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{}
-		u = &blurHashUpdater{
-			a:       &artwork{ds: ds},
-			buffer:  make(map[model.ArtworkID]blurHashJob),
-			wake:    make(chan struct{}, 1),
-			last:    make(map[model.ArtworkID]string),
-			started: true,
-		}
+		u = newBlurHashUpdater(ds)
 		version = time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	})
 
-	It("persists a hash computed from the given bytes", func() {
-		al := model.Album{ID: "al-1", UpdatedAt: version}
-		repo := tests.CreateMockAlbumRepo()
-		repo.SetData(model.Albums{al})
-		ds.MockedAlbum = repo
-
-		u.processJob(GinkgoT().Context(), al.CoverArtID(), blurHashJob{data: realPNGBytes("x"), version: version})
-		stored, err := ds.Album(GinkgoT().Context()).Get("al-1")
-		Expect(err).ToNot(HaveOccurred())
-		Expect(stored.BlurHash).ToNot(BeEmpty())
+	It("persists a hash computed from the served bytes", func() {
+		id := album(model.Album{ID: "al-1", UpdatedAt: version})
+		u.update(GinkgoT().Context(), id, realPNGBytes("x"), version)
+		al := stored("al-1")
+		Expect(al.BlurHash).ToNot(BeEmpty())
+		Expect(al.BlurHashUpdatedAt).To(HaveValue(Equal(version)))
 	})
 
-	It("clears the hash when the bytes are a placeholder", func() {
-		al := model.Album{ID: "al-1", UpdatedAt: version, BlurHash: "OLD"}
-		repo := tests.CreateMockAlbumRepo()
-		repo.SetData(model.Albums{al})
-		ds.MockedAlbum = repo
-
-		u.processJob(GinkgoT().Context(), al.CoverArtID(), blurHashJob{data: placeholderImages()[0], version: version})
-		stored, _ := ds.Album(GinkgoT().Context()).Get("al-1")
-		Expect(stored.BlurHash).To(BeEmpty()) // cleared: placeholder means gone
+	It("clears the stored hash when the served bytes are a placeholder", func() {
+		id := album(model.Album{ID: "al-1", UpdatedAt: version, BlurHash: "OLD"})
+		u.update(GinkgoT().Context(), id, placeholderImages()[0], version)
+		Expect(stored("al-1").BlurHash).To(BeEmpty())
 	})
 
 	It("leaves the hash untouched on undecodable bytes", func() {
-		al := model.Album{ID: "al-1", UpdatedAt: version, BlurHash: "KEEP"}
-		repo := tests.CreateMockAlbumRepo()
-		repo.SetData(model.Albums{al})
-		ds.MockedAlbum = repo
-
-		u.processJob(GinkgoT().Context(), al.CoverArtID(), blurHashJob{data: []byte("not an image"), version: version})
-		stored, _ := ds.Album(GinkgoT().Context()).Get("al-1")
-		Expect(stored.BlurHash).To(Equal("KEEP"))
+		id := album(model.Album{ID: "al-1", UpdatedAt: version, BlurHash: "KEEP"})
+		u.update(GinkgoT().Context(), id, []byte("not an image"), version)
+		Expect(stored("al-1").BlurHash).To(Equal("KEEP"))
 	})
 
-	It("skips a redundant write when the hash is unchanged (in-memory dedup)", func() {
-		al := model.Album{ID: "al-1", UpdatedAt: version}
-		repo := tests.CreateMockAlbumRepo()
-		repo.SetData(model.Albums{al})
-		ds.MockedAlbum = repo
+	It("skips the write when the same bytes are served again under the same version", func() {
+		id := album(model.Album{ID: "al-1", UpdatedAt: version})
 		data := realPNGBytes("dedup")
+		u.update(GinkgoT().Context(), id, data, version)
+		// Tamper with the stored value: a second identical serve must not touch the row.
+		Expect(repo.UpdateBlurHash("al-1", "TAMPERED", version)).To(Succeed())
+		u.update(GinkgoT().Context(), id, data, version)
+		Expect(stored("al-1").BlurHash).To(Equal("TAMPERED"))
+	})
 
-		u.processJob(GinkgoT().Context(), al.CoverArtID(), blurHashJob{data: data, version: version})
-		first, _ := ds.Album(GinkgoT().Context()).Get("al-1")
-		u.processJob(GinkgoT().Context(), al.CoverArtID(), blurHashJob{data: data, version: version.Add(time.Hour)})
-		second, _ := ds.Album(GinkgoT().Context()).Get("al-1")
+	It("re-persists the same hash when the artwork version advances", func() {
+		// A scan can bump the entity version without changing the cover; blur_hash_updated_at must
+		// follow, or the DTO's staleness gate would emit the fake hash forever after.
+		id := album(model.Album{ID: "al-1", UpdatedAt: version})
+		data := realPNGBytes("same-bytes")
+		u.update(GinkgoT().Context(), id, data, version)
+		first := stored("al-1")
+		newer := version.Add(time.Hour)
+		u.update(GinkgoT().Context(), id, data, newer)
+		second := stored("al-1")
 		Expect(second.BlurHash).To(Equal(first.BlurHash))
+		Expect(second.BlurHashUpdatedAt).To(HaveValue(Equal(newer)))
 	})
 
-	It("ignores non-eligible artwork kinds on enqueue", func() {
-		u.EnqueueBytes(model.ArtworkID{Kind: model.KindMediaFileArtwork, ID: "mf-1"}, realPNGBytes("x"), version)
-		Expect(u.buffer).To(BeEmpty())
+	It("does not write when a placeholder is served and nothing was ever stored", func() {
+		id := album(model.Album{ID: "al-1", UpdatedAt: version})
+		u.update(GinkgoT().Context(), id, placeholderImages()[0], version)
+		Expect(stored("al-1").BlurHashUpdatedAt).To(BeNil())
 	})
 
-	It("supersedes a pending gone-check with a bytes job", func() {
-		id := model.Album{ID: "al-1"}.CoverArtID()
-		u.EnqueueClearIfGone(id, version)
-		u.EnqueueBytes(id, realPNGBytes("x"), version.Add(time.Hour))
-		Expect(u.buffer[id].checkGone).To(BeFalse())
-		Expect(u.buffer[id].data).ToNot(BeNil())
+	It("ignores non-eligible artwork kinds", func() {
+		Expect(func() {
+			u.clearIfStored(GinkgoT().Context(), model.ArtworkID{Kind: model.KindMediaFileArtwork, ID: "mf-1"}, version)
+		}).ToNot(Panic())
+		Expect(u.seen).To(BeEmpty())
 	})
 })

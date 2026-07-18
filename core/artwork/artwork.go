@@ -39,17 +39,8 @@ type Artwork interface {
 
 func NewArtwork(ds model.DataStore, cache cache.FileCache, ffmpeg ffmpeg.FFmpeg, provider external.Provider) Artwork {
 	a := &artwork{ds: ds, cache: cache, ffmpeg: ffmpeg, provider: provider}
-	a.blurHashes = newBlurHashUpdater(a)
+	a.blurHashes = newBlurHashUpdater(ds)
 	return a
-}
-
-// Close stops the background blurhash worker. The server never calls it; tests must, so a leaked
-// worker can't touch mocks/filesystems being torn down by the next spec.
-func (a *artwork) Close() error {
-	if a.blurHashes != nil {
-		a.blurHashes.stop()
-	}
-	return nil
 }
 
 type artwork struct {
@@ -72,10 +63,10 @@ func (a *artwork) GetOrPlaceholder(ctx context.Context, id string, size int, squ
 		reader, lastUpdate, err = a.Get(ctx, artID, size, square)
 	}
 	if errors.Is(err, ErrUnavailable) {
-		if a.blurHashes != nil && eligibleKind(artID) {
-			// No bytes flowed through the tee; a real deletion must still clear the stored hash. The
-			// worker re-checks so a transient fetch failure doesn't clobber a valid hash.
-			a.blurHashes.EnqueueClearIfGone(artID, capAtNow(consts.ServerStart))
+		if a.blurHashes != nil {
+			// The client is receiving the placeholder, so a stored hash describing the old cover must
+			// clear — hash-what-you-serve applies to the fallback too.
+			a.blurHashes.clearIfStored(ctx, artID, time.Now())
 		}
 		if artID.Kind == model.KindArtistArtwork {
 			reader, _ = resources.FS().Open(consts.PlaceholderArtistArt)
@@ -107,7 +98,7 @@ func (a *artwork) Get(ctx context.Context, artID model.ArtworkID, size int, squa
 		// The tee wraps r directly, so Close reaches the underlying stream (no fd leak).
 		version := capAtNow(artReader.LastUpdated())
 		reader = newTeeReader(r, maxTeeBytes,
-			func(data []byte) { a.blurHashes.EnqueueBytes(artID, data, version) })
+			func(data []byte) { a.blurHashes.update(ctx, artID, data, version) })
 	}
 	return reader, artReader.LastUpdated(), nil
 }
