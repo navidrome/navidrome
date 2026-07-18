@@ -51,6 +51,7 @@ func NewPlaylistRepository(ctx context.Context, db dbx.Builder) model.PlaylistRe
 	r.ctx = ctx
 	r.db = db
 	r.registerModel(&model.Playlist{}, map[string]filterFunc{
+		"id":      idFilter("playlist"),
 		"q":       playlistFilter,
 		"smart":   smartPlaylistFilter,
 		"starred": annotationBoolFilter("starred"),

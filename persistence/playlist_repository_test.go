@@ -176,6 +176,14 @@ var _ = Describe("PlaylistRepository", func() {
 			Expect(res.(model.Playlists)).ToNot(ContainElement(HaveField("ID", plsID)))
 		})
 
+		It("reads a playlist by id through the REST id filter without ambiguity", func() {
+			res, err := repo.(model.ResourceRepository).ReadAll(rest.QueryOptions{
+				Filters: map[string]any{"id": plsID},
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res.(model.Playlists)).To(ContainElement(HaveField("ID", plsID)))
+		})
+
 		It("does not leak an annotation row of another item_type sharing the playlist id", func() {
 			// Older builds (and the star fallthrough) can leave a media_file-typed row
 			// under a playlist id; the item_type-scoped join must not surface or dupe it.
