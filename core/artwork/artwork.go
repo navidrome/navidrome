@@ -93,8 +93,9 @@ func (a *artwork) Get(ctx context.Context, artID model.ArtworkID, size int, squa
 		// changes precisely when the served cover changes. Placeholder bytes (playlist fallback) clear.
 		// The tee wraps r directly, so Close reaches the underlying stream (no fd leak).
 		version := capAtNow(artReader.LastUpdated())
+		start := time.Now()
 		reader = newTeeReader(r, maxTeeBytes,
-			func(data []byte) { a.blurHashes.update(ctx, artID, data, version) })
+			func(data []byte) { a.blurHashes.update(ctx, artID, data, version, start) })
 	}
 	return reader, artReader.LastUpdated(), nil
 }

@@ -46,9 +46,13 @@ func eligibleKind(artID model.ArtworkID) bool {
 	return false
 }
 
+// maxDecodePixels bounds the decoded raster: the tee's byte cap limits compressed size only, and a
+// small file can declare huge dimensions that would allocate GBs on decode (decompression bomb).
+const maxDecodePixels = 36_000_000 // ~6000x6000; decoded RGBA tops out around 144MB
+
 // update hashes the exact bytes served for artID and persists the result. Placeholder bytes mean the
-// entity has no artwork anymore, so they clear a stored hash instead.
-func (u *blurHashUpdater) update(ctx context.Context, artID model.ArtworkID, data []byte, version time.Time) {
+// entity has no artwork anymore, so they clear a stored hash instead. start is when the serve began.
+func (u *blurHashUpdater) update(ctx context.Context, artID model.ArtworkID, data []byte, version, start time.Time) {
 	// Decoding arbitrary image bytes can panic; the serve already succeeded, so just log it.
 	defer func() {
 		if r := recover(); r != nil {
@@ -66,9 +70,14 @@ func (u *blurHashUpdater) update(ctx context.Context, artID model.ArtworkID, dat
 	sum := checksum(data)
 	hash := u.cachedHash(artID, sum)
 	if hash == "" {
+		cfg, _, err := image.DecodeConfig(bytes.NewReader(data))
+		if err != nil || cfg.Width*cfg.Height > maxDecodePixels {
+			// Undecodable or oversized served bytes are not proof of change; keep the stored hash.
+			log.Trace(ctx, "BlurHash: skipping served bytes", "artID", artID, "width", cfg.Width, "height", cfg.Height, err)
+			return
+		}
 		img, _, err := image.Decode(bytes.NewReader(data))
 		if err != nil {
-			// Undecodable served bytes are not proof of change; leave the stored hash intact.
 			log.Trace(ctx, "BlurHash: served bytes not decodable, keeping stored hash", "artID", artID, err)
 			return
 		}
@@ -82,12 +91,16 @@ func (u *blurHashUpdater) update(ctx context.Context, artID model.ArtworkID, dat
 	if err != nil {
 		return
 	}
+	// Clamp the persisted version up to the entity's, but never past the serve's start: a version that
+	// predates the serve is provably covered by the served bytes, one that landed mid-serve is not —
+	// there the clamp stops, the DTO omits, and the next serve of the new bytes heals.
+	if entityVersion.After(start) {
+		entityVersion = start
+	}
 	if stored == hash && storedAt != nil && !storedAt.Before(entityVersion) {
 		u.remember(artID, blurHashState{sum: sum, hash: hash})
 		return
 	}
-	// Clamp the persisted version up to the entity's: the hash is fresh for what is served right now,
-	// so the DTO accepts it after any serve, however much the read-side version over-approximates.
 	target := capAtNow(utils.TimeNewest(version, entityVersion))
 	if err := u.persist(ctx, artID, hash, target); err != nil {
 		log.Warn(ctx, "BlurHash: error persisting", "artID", artID, err)
