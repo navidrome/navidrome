@@ -151,7 +151,12 @@ describe('<PlaylistsSubMenu />', () => {
       store.dispatch({
         type: SET_PLAYLIST_DATA,
         data: {
-          'pl-1': { id: 'pl-1', name: 'Mine', ownerId: 'user-1', starred: true },
+          'pl-1': {
+            id: 'pl-1',
+            name: 'Mine',
+            ownerId: 'user-1',
+            starred: true,
+          },
         },
       })
     })
