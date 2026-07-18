@@ -285,8 +285,14 @@ func (r *albumRepository) GetCursor(options ...model.QueryOptions) (model.AlbumC
 }
 
 func (r *albumRepository) CopyAttributes(fromID, toID string, columns ...string) error {
+	// The cover-stamp guard below needs the source's uploaded_image even when the
+	// caller didn't request it
+	selectCols := columns
+	if slices.Contains(columns, "cover_art_updated_at") && !slices.Contains(columns, "uploaded_image") {
+		selectCols = append(slices.Clone(columns), "uploaded_image")
+	}
 	var from dbx.NullStringMap
-	err := r.queryOne(Select(columns...).From(r.tableName).Where(Eq{"id": fromID}), &from)
+	err := r.queryOne(Select(selectCols...).From(r.tableName).Where(Eq{"id": fromID}), &from)
 	if err != nil {
 		return fmt.Errorf("getting album to copy fields from: %w", err)
 	}

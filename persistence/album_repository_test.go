@@ -174,6 +174,23 @@ var _ = Describe("AlbumRepository", func() {
 			Expect(got.UploadedImage).To(Equal("copy-dst_cover.jpg"))
 			Expect(got.CoverArtUpdatedAt).ToNot(BeNil())
 		})
+		It("applies the cover-stamp guard even when uploaded_image is not requested", func() {
+			Expect(albumRepo.UpdateImage("copy-src", "copy-src_cover.jpg")).To(Succeed())
+			Expect(albumRepo.CopyAttributes("copy-src", "copy-dst", "cover_art_updated_at")).To(Succeed())
+			got, err := albumRepo.Get("copy-dst")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.CoverArtUpdatedAt).ToNot(BeNil(), "stamp must copy when the source has a cover")
+
+			Expect(albumRepo.UpdateImage("copy-src", "")).To(Succeed())
+			Expect(albumRepo.UpdateImage("copy-zero", "z.jpg")).To(Succeed())
+			Expect(albumRepo.UpdateImage("copy-zero", "")).To(Succeed())
+			before, err := albumRepo.Get("copy-dst")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(albumRepo.CopyAttributes("copy-zero", "copy-dst", "cover_art_updated_at")).To(Succeed())
+			got, err = albumRepo.Get("copy-dst")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.CoverArtUpdatedAt.Equal(*before.CoverArtUpdatedAt)).To(BeTrue(), "coverless source must not contribute a stamp")
+		})
 		It("does not copy a stale cover stamp left behind by a cover removal", func() {
 			// A removal clears uploaded_image but keeps cover_art_updated_at set
 			Expect(albumRepo.UpdateImage("copy-src", "copy-src_cover.jpg")).To(Succeed())

@@ -59,6 +59,11 @@ var _ = Describe("PlaylistTrackRepository", func() {
 			trk, ok := got.(*model.PlaylistTrack)
 			Expect(ok).To(BeTrue())
 			Expect(trk.CoverArtUpdatedAt).ToNot(BeNil())
+
+			// The list path (tracksQuery/loadTracks) must expose it too
+			all, err := repo.GetAll(model.QueryOptions{Sort: "id"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(all[0].CoverArtUpdatedAt).ToNot(BeNil())
 		})
 	})
 

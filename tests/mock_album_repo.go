@@ -208,7 +208,8 @@ func (m *MockAlbumRepo) CopyAttributes(fromID, toID string, columns ...string) e
 				to.UploadedImage = from.UploadedImage
 			}
 		case "cover_art_updated_at":
-			if from.CoverArtUpdatedAt != nil {
+			// Mirrors the real repo: a coverless source never contributes a stale stamp
+			if from.CoverArtUpdatedAt != nil && from.UploadedImage != "" {
 				to.CoverArtUpdatedAt = from.CoverArtUpdatedAt
 			}
 		}
