@@ -68,7 +68,7 @@ type Album struct {
 	CreatedAt  time.Time `structs:"created_at" json:"createdAt"`                 // Oldest CreatedAt for all songs in this album
 	UpdatedAt  time.Time `structs:"updated_at" json:"updatedAt"`                 // Newest UpdatedAt for all songs in this album
 
-	// BlurHash of the album cover, computed asynchronously from the served artwork. Excluded from
+	// BlurHash of the album cover, computed from the served artwork bytes. Excluded from
 	// full-row writes (structs:"-"): only UpdateBlurHash writes it, so scans can't erase it.
 	BlurHash          string     `structs:"-" json:"blurHash,omitempty" hash:"ignore"`
 	BlurHashUpdatedAt *time.Time `structs:"-" json:"-" hash:"ignore"`
@@ -80,7 +80,7 @@ func (a Album) CoverArtID() ArtworkID {
 
 // ArtworkUpdatedAt is the album's artwork version. ExternalInfoUpdatedAt is deliberately excluded:
 // it bumps on every agent TTL refresh even when the image is unchanged, and actual image changes
-// are caught by the image-cache-miss recompute instead.
+// are caught by hashing the served bytes instead.
 func (a Album) ArtworkUpdatedAt() time.Time {
 	t := a.UpdatedAt
 	if a.ImportedAt.After(t) {

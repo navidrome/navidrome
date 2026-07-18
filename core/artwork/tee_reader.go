@@ -15,7 +15,6 @@ type teeReader struct {
 	onComplete func(data []byte)
 	eof        bool
 	over       bool
-	done       bool
 }
 
 func newTeeReader(src io.ReadCloser, maxBytes int, onComplete func(data []byte)) *teeReader {
@@ -40,9 +39,10 @@ func (t *teeReader) Read(p []byte) (int, error) {
 
 func (t *teeReader) Close() error {
 	err := t.src.Close()
-	if !t.done && t.eof && !t.over && t.onComplete != nil {
-		t.done = true
-		t.onComplete(t.buf.Bytes())
+	if t.eof && !t.over && t.onComplete != nil {
+		cb := t.onComplete
+		t.onComplete = nil // fire at most once, even on double Close
+		cb(t.buf.Bytes())
 	}
 	return err
 }

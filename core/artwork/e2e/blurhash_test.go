@@ -16,6 +16,15 @@ var _ = Describe("BlurHash", func() {
 		setupHarness()
 	})
 
+	// The blurhash is computed inline when the served reader is closed, so by the time the read
+	// helpers return, the hash is already persisted — no polling needed.
+	storedAlbum := func(id string) model.Album {
+		GinkgoHelper()
+		updated, err := ds.Album(ctx).Get(id)
+		Expect(err).ToNot(HaveOccurred())
+		return *updated
+	}
+
 	It("persists a real blurhash after album artwork is served", func() {
 		setLayout(fstest.MapFS{
 			"Artist/Album/01 - Song.mp3": trackFile(1, "Song"),
@@ -25,18 +34,14 @@ var _ = Describe("BlurHash", func() {
 		al := firstAlbum()
 		Expect(al.BlurHash).To(BeEmpty())
 
-		// Serving the artwork enqueues the async blurhash computation.
 		readArtwork(al.CoverArtID())
 
-		Eventually(func(g Gomega) {
-			updated, err := ds.Album(ctx).Get(al.ID)
-			g.Expect(err).ToNot(HaveOccurred())
-			g.Expect(len(updated.BlurHash)).To(BeNumerically(">", 6))
-			g.Expect(updated.BlurHashUpdatedAt).ToNot(BeNil())
-			// The snapshot must not be before the artwork version, or the DTO would treat it as
-			// stale (it may exceed it: image file mtimes are folded in).
-			g.Expect(updated.BlurHashUpdatedAt.Before(updated.ArtworkUpdatedAt())).To(BeFalse())
-		}, "10s", "100ms").Should(Succeed())
+		updated := storedAlbum(al.ID)
+		Expect(len(updated.BlurHash)).To(BeNumerically(">", 6))
+		Expect(updated.BlurHashUpdatedAt).ToNot(BeNil())
+		// The snapshot must not be before the artwork version, or the DTO would treat it as
+		// stale (it may exceed it: image file mtimes are folded in).
+		Expect(updated.BlurHashUpdatedAt.Before(updated.ArtworkUpdatedAt())).To(BeFalse())
 	})
 
 	It("does not persist a future-dated blurhash timestamp", func() {
@@ -50,15 +55,12 @@ var _ = Describe("BlurHash", func() {
 		al := firstAlbum()
 		readArtwork(al.CoverArtID())
 
-		Eventually(func(g Gomega) {
-			updated, err := ds.Album(ctx).Get(al.ID)
-			g.Expect(err).ToNot(HaveOccurred())
-			g.Expect(updated.BlurHash).ToNot(BeEmpty())
-			g.Expect(updated.BlurHashUpdatedAt).ToNot(BeNil())
-			// A future file mtime must be capped at now, or the !Before checks would pin the hash
-			// (and the client's cover cache) until wall time caught up.
-			g.Expect(updated.BlurHashUpdatedAt.After(time.Now())).To(BeFalse())
-		}, "10s", "100ms").Should(Succeed())
+		updated := storedAlbum(al.ID)
+		Expect(updated.BlurHash).ToNot(BeEmpty())
+		Expect(updated.BlurHashUpdatedAt).ToNot(BeNil())
+		// A future file mtime must be capped at now, or the !Before checks would pin the hash
+		// (and the client's cover cache) until wall time caught up.
+		Expect(updated.BlurHashUpdatedAt.After(time.Now())).To(BeFalse())
 	})
 
 	It("recomputes when the cover is swapped in place", func() {
@@ -69,13 +71,8 @@ var _ = Describe("BlurHash", func() {
 		scan()
 		al := firstAlbum()
 		readArtwork(al.CoverArtID())
-		var firstHash string
-		Eventually(func(g Gomega) {
-			updated, err := ds.Album(ctx).Get(al.ID)
-			g.Expect(err).ToNot(HaveOccurred())
-			g.Expect(updated.BlurHash).ToNot(BeEmpty())
-			firstHash = updated.BlurHash
-		}, "10s", "100ms").Should(Succeed())
+		firstHash := storedAlbum(al.ID).BlurHash
+		Expect(firstHash).ToNot(BeEmpty())
 
 		// Swap the cover bytes and rescan, then serve: the tee hashes the newly-served bytes, so the
 		// stored hash moves to describe the new cover.
@@ -86,12 +83,9 @@ var _ = Describe("BlurHash", func() {
 		scan()
 		readArtwork(al.CoverArtID())
 
-		Eventually(func(g Gomega) {
-			updated, err := ds.Album(ctx).Get(al.ID)
-			g.Expect(err).ToNot(HaveOccurred())
-			g.Expect(updated.BlurHash).ToNot(BeEmpty())
-			g.Expect(updated.BlurHash).ToNot(Equal(firstHash))
-		}, "10s", "100ms").Should(Succeed())
+		updated := storedAlbum(al.ID)
+		Expect(updated.BlurHash).ToNot(BeEmpty())
+		Expect(updated.BlurHash).ToNot(Equal(firstHash))
 	})
 
 	It("clears the stored blurhash when the cover disappears", func() {
@@ -102,25 +96,17 @@ var _ = Describe("BlurHash", func() {
 		scan()
 		al := firstAlbum()
 		readArtwork(al.CoverArtID())
-		Eventually(func(g Gomega) {
-			updated, err := ds.Album(ctx).Get(al.ID)
-			g.Expect(err).ToNot(HaveOccurred())
-			g.Expect(updated.BlurHash).ToNot(BeEmpty())
-		}, "10s", "100ms").Should(Succeed())
+		Expect(storedAlbum(al.ID).BlurHash).ToNot(BeEmpty())
 
 		// No rescan: the folder row still lists the cover, but the file is gone. The serve falls back
-		// to the placeholder (GetOrPlaceholder, the real Jellyfin/Subsonic path), and the worker's
-		// gone-recheck confirms the source is really gone and clears the stored hash.
+		// to the placeholder (GetOrPlaceholder, the real Jellyfin/Subsonic path), which clears the
+		// stored hash inline.
 		setLayout(fstest.MapFS{
 			"Artist/Album/01 - Song.mp3": trackFile(1, "Song"),
 		})
 		Expect(readOrPlaceholder(al.CoverArtID())).To(Equal(placeholderBytes()))
 
-		Eventually(func(g Gomega) {
-			updated, err := ds.Album(ctx).Get(al.ID)
-			g.Expect(err).ToNot(HaveOccurred())
-			g.Expect(updated.BlurHash).To(BeEmpty())
-		}, "10s", "100ms").Should(Succeed())
+		Expect(storedAlbum(al.ID).BlurHash).To(BeEmpty())
 	})
 
 	It("recomputes when cover bytes change under a preserved mtime (cache disabled)", func() {
@@ -134,13 +120,8 @@ var _ = Describe("BlurHash", func() {
 		scan()
 		al := firstAlbum()
 		readArtwork(al.CoverArtID())
-		var firstHash string
-		Eventually(func(g Gomega) {
-			updated, err := ds.Album(ctx).Get(al.ID)
-			g.Expect(err).ToNot(HaveOccurred())
-			g.Expect(updated.BlurHash).ToNot(BeEmpty())
-			firstHash = updated.BlurHash
-		}, "10s", "100ms").Should(Succeed())
+		firstHash := storedAlbum(al.ID).BlurHash
+		Expect(firstHash).ToNot(BeEmpty())
 
 		// Replace the bytes but keep the SAME mtime and do NOT rescan: only the served bytes change.
 		swapped := realPNG("swapped-bytes")
@@ -151,11 +132,7 @@ var _ = Describe("BlurHash", func() {
 		})
 		readArtwork(al.CoverArtID())
 
-		Eventually(func(g Gomega) {
-			updated, err := ds.Album(ctx).Get(al.ID)
-			g.Expect(err).ToNot(HaveOccurred())
-			g.Expect(updated.BlurHash).ToNot(Equal(firstHash))
-		}, "10s", "100ms").Should(Succeed())
+		Expect(storedAlbum(al.ID).BlurHash).ToNot(Equal(firstHash))
 	})
 
 	It("clears a stored playlist hash when it falls back to the placeholder", func() {
@@ -169,21 +146,17 @@ var _ = Describe("BlurHash", func() {
 
 		pl := putPlaylist(model.Playlist{ID: "pl-blur", Name: "MyList", Path: m3uPath})
 		readArtwork(pl.CoverArtID())
-		Eventually(func(g Gomega) {
-			updated, err := ds.Playlist(ctx).Get(pl.ID)
-			g.Expect(err).ToNot(HaveOccurred())
-			g.Expect(updated.BlurHash).ToNot(BeEmpty())
-		}, "10s", "100ms").Should(Succeed())
+		stored, err := ds.Playlist(ctx).Get(pl.ID)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(stored.BlurHash).ToNot(BeEmpty())
 
 		// Remove the sidecar: the serve now falls through to the placeholder, captured by the tee.
 		Expect(os.Remove(sidecar)).To(Succeed())
 		Expect(readArtwork(pl.CoverArtID())).To(Equal(placeholderBytes()))
 
-		Eventually(func(g Gomega) {
-			updated, err := ds.Playlist(ctx).Get(pl.ID)
-			g.Expect(err).ToNot(HaveOccurred())
-			g.Expect(updated.BlurHash).To(BeEmpty())
-		}, "10s", "100ms").Should(Succeed())
+		stored, err = ds.Playlist(ctx).Get(pl.ID)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(stored.BlurHash).To(BeEmpty())
 	})
 
 	It("does not persist a blurhash when the served image cannot be decoded", func() {
@@ -196,10 +169,6 @@ var _ = Describe("BlurHash", func() {
 
 		readArtwork(al.CoverArtID())
 
-		Consistently(func(g Gomega) {
-			updated, err := ds.Album(ctx).Get(al.ID)
-			g.Expect(err).ToNot(HaveOccurred())
-			g.Expect(updated.BlurHash).To(BeEmpty())
-		}, "600ms", "100ms").Should(Succeed())
+		Expect(storedAlbum(al.ID).BlurHash).To(BeEmpty())
 	})
 })

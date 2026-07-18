@@ -38,9 +38,7 @@ type Artwork interface {
 }
 
 func NewArtwork(ds model.DataStore, cache cache.FileCache, ffmpeg ffmpeg.FFmpeg, provider external.Provider) Artwork {
-	a := &artwork{ds: ds, cache: cache, ffmpeg: ffmpeg, provider: provider}
-	a.blurHashes = newBlurHashUpdater(ds)
-	return a
+	return &artwork{ds: ds, cache: cache, ffmpeg: ffmpeg, provider: provider, blurHashes: newBlurHashUpdater(ds)}
 }
 
 type artwork struct {
@@ -63,11 +61,9 @@ func (a *artwork) GetOrPlaceholder(ctx context.Context, id string, size int, squ
 		reader, lastUpdate, err = a.Get(ctx, artID, size, square)
 	}
 	if errors.Is(err, ErrUnavailable) {
-		if a.blurHashes != nil {
-			// The client is receiving the placeholder, so a stored hash describing the old cover must
-			// clear — hash-what-you-serve applies to the fallback too.
-			a.blurHashes.clearIfStored(ctx, artID, time.Now())
-		}
+		// The client is receiving the placeholder, so a stored hash describing the old cover must
+		// clear — hash-what-you-serve applies to the fallback too.
+		a.blurHashes.clearIfStored(ctx, artID)
 		if artID.Kind == model.KindArtistArtwork {
 			reader, _ = resources.FS().Open(consts.PlaceholderArtistArt)
 		} else {
@@ -92,7 +88,7 @@ func (a *artwork) Get(ctx context.Context, artID model.ArtworkID, size int, squa
 		return nil, time.Time{}, err
 	}
 	reader = r
-	if a.blurHashes != nil && size == 0 && !square && eligibleKind(artID) {
+	if size == 0 && !square && eligibleKind(artID) {
 		// Tee the served bytes: the blurhash is computed from exactly what the client downloads, so it
 		// changes precisely when the served cover changes. Placeholder bytes (playlist fallback) clear.
 		// The tee wraps r directly, so Close reaches the underlying stream (no fd leak).

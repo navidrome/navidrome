@@ -8,6 +8,10 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+// base83Alphabet duplicates the spec alphabet on purpose: the test must catch the production copy
+// drifting, not drift along with it.
+const base83Alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz#$%*+,-.:;=?@[]^_{|}~"
+
 var _ = Describe("blurHash", func() {
 	It("returns a 6-char valid blurhash starting with the 1x1 component prefix", func() {
 		h := blurHash("x")

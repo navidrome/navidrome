@@ -85,7 +85,7 @@ func Encode(img image.Image, xComp, yComp int) (string, error) {
 	}
 
 	var sb strings.Builder
-	sb.WriteString(encode83((xComp-1)+(yComp-1)*9, 1))
+	sb.WriteString(Encode83((xComp-1)+(yComp-1)*9, 1))
 
 	ac := factors[1:]
 	maxVal := 1.0
@@ -96,15 +96,15 @@ func Encode(img image.Image, xComp, yComp int) (string, error) {
 		}
 		quantMax := int(math.Max(0, math.Min(82, math.Floor(actualMax*166-0.5))))
 		maxVal = float64(quantMax+1) / 166
-		sb.WriteString(encode83(quantMax, 1))
+		sb.WriteString(Encode83(quantMax, 1))
 	} else {
-		sb.WriteString(encode83(0, 1))
+		sb.WriteString(Encode83(0, 1))
 	}
 
 	dc := factors[0]
-	sb.WriteString(encode83(linearToSRGB(dc[0])<<16|linearToSRGB(dc[1])<<8|linearToSRGB(dc[2]), 4))
+	sb.WriteString(Encode83(linearToSRGB(dc[0])<<16|linearToSRGB(dc[1])<<8|linearToSRGB(dc[2]), 4))
 	for _, f := range ac {
-		sb.WriteString(encode83(quantAC(f[0], maxVal)*19*19+quantAC(f[1], maxVal)*19+quantAC(f[2], maxVal), 2))
+		sb.WriteString(Encode83(quantAC(f[0], maxVal)*19*19+quantAC(f[1], maxVal)*19+quantAC(f[2], maxVal), 2))
 	}
 	return sb.String(), nil
 }
@@ -165,7 +165,9 @@ func linearToSRGB(v float64) int {
 	return int((1.055*math.Pow(v, 1/2.4)-0.055)*255 + 0.5)
 }
 
-func encode83(value, length int) string {
+// Encode83 encodes value as a fixed-width, big-endian base83 string of the given length, using the
+// blurhash spec's alphabet.
+func Encode83(value, length int) string {
 	b := make([]byte, length)
 	for i := length - 1; i >= 0; i-- {
 		b[i] = alphabet[value%83]

@@ -68,7 +68,7 @@ func (a Artist) CoverArtID() ArtworkID {
 
 // ArtworkUpdatedAt is the artist's artwork version. ExternalInfoUpdatedAt is deliberately
 // excluded: it bumps on every agent TTL refresh even when the image is unchanged, and actual
-// image changes are caught by the image-cache-miss recompute instead.
+// image changes are caught by hashing the served bytes instead.
 func (a Artist) ArtworkUpdatedAt() time.Time {
 	if a.UpdatedAt == nil {
 		return time.Time{}

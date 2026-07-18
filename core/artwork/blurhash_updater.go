@@ -55,10 +55,13 @@ func (u *blurHashUpdater) update(ctx context.Context, artID model.ArtworkID, dat
 			log.Error(ctx, "BlurHash: recovered from panic", "artID", artID, "panic", r)
 		}
 	}()
+	// ArtworkID embeds the client token's LastUpdate; without zeroing it the seen key would rotate on
+	// every scan bump, defeating the same-bytes dedup and stranding stale entries forever.
+	artID.LastUpdate = time.Time{}
 	// The response is already written when the tee fires; a client abort must not lose the write.
 	ctx = context.WithoutCancel(ctx)
 	if isPlaceholder(data) {
-		u.clearIfStored(ctx, artID, version)
+		u.clearIfStored(ctx, artID)
 		return
 	}
 	sum := checksum(data)
@@ -91,10 +94,11 @@ func (u *blurHashUpdater) update(ctx context.Context, artID model.ArtworkID, dat
 
 // clearIfStored clears the persisted hash after a placeholder was served (a cold map costs one row
 // read to skip never-hashed entities); a failed read clears nothing — unknown state is not deletion.
-func (u *blurHashUpdater) clearIfStored(ctx context.Context, artID model.ArtworkID, version time.Time) {
+func (u *blurHashUpdater) clearIfStored(ctx context.Context, artID model.ArtworkID) {
 	if !eligibleKind(artID) {
 		return
 	}
+	artID.LastUpdate = time.Time{}
 	ctx = context.WithoutCancel(ctx)
 	u.mutex.Lock()
 	prev, ok := u.seen[artID]
@@ -108,15 +112,15 @@ func (u *blurHashUpdater) clearIfStored(ctx context.Context, artID model.Artwork
 			return
 		}
 		if stored == "" {
-			u.remember(artID, blurHashState{version: version})
+			u.remember(artID, blurHashState{})
 			return
 		}
 	}
-	if err := u.persist(ctx, artID, "", version); err != nil {
+	if err := u.persist(ctx, artID, "", time.Now()); err != nil {
 		log.Warn(ctx, "BlurHash: error clearing hash", "artID", artID, err)
 		return
 	}
-	u.remember(artID, blurHashState{version: version})
+	u.remember(artID, blurHashState{})
 }
 
 func (u *blurHashUpdater) persistAndRemember(ctx context.Context, artID model.ArtworkID, hash string, sum uint64, version time.Time) {

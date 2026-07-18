@@ -111,8 +111,22 @@ var _ = Describe("blurHashUpdater", func() {
 
 	It("ignores non-eligible artwork kinds", func() {
 		Expect(func() {
-			u.clearIfStored(GinkgoT().Context(), model.ArtworkID{Kind: model.KindMediaFileArtwork, ID: "mf-1"}, version)
+			u.clearIfStored(GinkgoT().Context(), model.ArtworkID{Kind: model.KindMediaFileArtwork, ID: "mf-1"})
 		}).ToNot(Panic())
 		Expect(u.seen).To(BeEmpty())
+	})
+
+	It("dedups across artwork ids that differ only in their embedded timestamp", func() {
+		// Client coverArt tokens embed a LastUpdate; the seen key must ignore it, or every scan bump
+		// would defeat the dedup and re-decode identical bytes.
+		id := album(model.Album{ID: "al-1", UpdatedAt: version})
+		data := realPNGBytes("dedup")
+		u.update(GinkgoT().Context(), id, data, version)
+		Expect(repo.UpdateBlurHash("al-1", "TAMPERED", version)).To(Succeed())
+		bumped := id
+		bumped.LastUpdate = version.Add(time.Hour)
+		u.update(GinkgoT().Context(), bumped, data, version)
+		Expect(stored("al-1").BlurHash).To(Equal("TAMPERED"))
+		Expect(u.seen).To(HaveLen(1))
 	})
 })

@@ -4,28 +4,9 @@ import (
 	"fmt"
 	"hash/fnv"
 	"time"
+
+	"github.com/navidrome/navidrome/core/artwork/blurhash"
 )
-
-// base83Alphabet is the blurhash spec's base83 encoding alphabet; order is part of the spec.
-const base83Alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz#$%*+,-.:;=?@[]^_{|}~"
-
-// base83 encodes value as a fixed-width, big-endian base83 string of the given length.
-func base83(value, length int) string {
-	b := make([]byte, length)
-	for i := 1; i <= length; i++ {
-		digit := (value / pow83(length-i)) % 83
-		b[i-1] = base83Alphabet[digit]
-	}
-	return string(b)
-}
-
-func pow83(n int) int {
-	result := 1
-	for range n {
-		result *= 83
-	}
-	return result
-}
 
 // blurHash returns a valid 6-char blurhash for a solid color derived from seed. Finamp only needs a
 // well-formed, per-tag-stable value (it uses this as a download de-dup key and blur placeholder), so
@@ -36,7 +17,7 @@ func blurHash(seed string) string {
 	sum := h.Sum(nil)
 	r, g, b := int(sum[0]), int(sum[1]), int(sum[2])
 	dc := (r << 16) | (g << 8) | b
-	return "00" + base83(dc, 4)
+	return "00" + blurhash.Encode83(dc, 4)
 }
 
 // primaryBlurHash returns the stored blurhash when it was computed from the entity's current
