@@ -3,8 +3,10 @@ package nativeapi
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/deluan/rest"
 	"github.com/go-chi/chi/v5"
@@ -42,7 +44,13 @@ func (api *Router) uploadAlbumImage() http.HandlerFunc {
 		if err != nil {
 			return err
 		}
-		filename, err := api.imgUpload.SetImage(ctx, consts.EntityAlbum, al.ID, al.Name, oldPath, reader, ext)
+		name := al.Name
+		if oldPath == "" && al.UploadedImage != "" {
+			// Current file is shared (post album-ID copy): write under a unique name so
+			// SetImage can't truncate the path the other album still references.
+			name = fmt.Sprintf("%s-%d", al.Name, time.Now().UnixMilli())
+		}
+		filename, err := api.imgUpload.SetImage(ctx, consts.EntityAlbum, al.ID, name, oldPath, reader, ext)
 		if err != nil {
 			return err
 		}
