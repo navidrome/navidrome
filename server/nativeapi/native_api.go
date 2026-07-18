@@ -6,6 +6,7 @@ import (
 	"html"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/deluan/rest"
@@ -45,6 +46,9 @@ type Router struct {
 	maintenance   core.Maintenance
 	pluginManager PluginManager
 	imgUpload     core.ImageUploadService
+	// Serializes album image check-and-act sequences: shared-file ref-counting is
+	// check-then-act, and concurrent requests could orphan or clobber a shared file.
+	albumImgOps sync.Mutex
 }
 
 func New(ds model.DataStore, share core.Share, playlists playlistsvc.Playlists, insights metrics.Insights, libraryService core.Library, userService core.User, maintenance core.Maintenance, pluginManager PluginManager, imgUpload core.ImageUploadService) *Router {

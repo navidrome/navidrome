@@ -32,6 +32,8 @@ func (api *Router) addAlbumRoute(r chi.Router) {
 
 func (api *Router) uploadAlbumImage() http.HandlerFunc {
 	return handleImageUpload(func(ctx context.Context, reader io.Reader, ext string) error {
+		api.albumImgOps.Lock()
+		defer api.albumImgOps.Unlock()
 		albumID := chi.URLParamFromCtx(ctx, "id")
 		al, err := api.ds.Album(ctx).Get(albumID)
 		if err != nil {
@@ -77,6 +79,8 @@ func (api *Router) albumImagePathToRemove(ctx context.Context, al *model.Album) 
 
 func (api *Router) deleteAlbumImage() http.HandlerFunc {
 	return handleImageDelete(func(ctx context.Context) error {
+		api.albumImgOps.Lock()
+		defer api.albumImgOps.Unlock()
 		albumID := chi.URLParamFromCtx(ctx, "id")
 		al, err := api.ds.Album(ctx).Get(albumID)
 		if err != nil {
