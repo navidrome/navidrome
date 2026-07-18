@@ -3,6 +3,7 @@ package model_test
 import (
 	"encoding/json"
 	"path/filepath"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -37,6 +38,17 @@ var _ = Describe("Album", func() {
 		It("returns the path under the data folder when set", func() {
 			a := Album{ID: "al-1", UploadedImage: "al-1_cover.jpg"}
 			Expect(a.UploadedImagePath()).To(Equal(filepath.Join("/data", "artwork", "album", "al-1_cover.jpg")))
+		})
+	})
+
+	Describe("CoverArtID", func() {
+		It("changes when a cover is uploaded, even if updated_at is in the future", func() {
+			future := time.Now().Add(365 * 24 * time.Hour)
+			stamp := time.Now()
+			a := Album{ID: "al-1", UpdatedAt: future}
+			before := a.CoverArtID().String()
+			a.CoverArtUpdatedAt = &stamp
+			Expect(a.CoverArtID().String()).ToNot(Equal(before))
 		})
 	})
 })

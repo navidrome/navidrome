@@ -70,11 +70,14 @@ func (a *albumArtworkReader) Key() string {
 		hashInput = conf.Server.Agents + hashInput
 	}
 	hash := md5.Sum([]byte(hashInput))
+	// coverStamp is a separate component: folded into lastUpdate it could be masked
+	// by a newer updated_at (files with future mtimes).
 	return fmt.Sprintf(
-		"%s.%x.%t",
+		"%s.%x.%t.%d",
 		a.cacheKey.Key(),
 		hash,
 		conf.Server.EnableExternalServices,
+		coverStamp(a.album.CoverArtUpdatedAt),
 	)
 }
 func (a *albumArtworkReader) LastUpdated() time.Time {

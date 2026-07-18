@@ -80,12 +80,11 @@ const getAvatarUrl = (username, size) =>
     }),
   )
 
-// Newest of updatedAt / coverArtUpdatedAt (album cover uploads bump the latter).
+// Cache-buster from both timestamps (cover uploads bump coverArtUpdatedAt); joined,
+// not max'd, so the URL changes even when updatedAt is newer (future file mtimes).
 const artCacheKey = (record) =>
-  [record.updatedAt, record.coverArtUpdatedAt]
-    .filter(Boolean)
-    .sort((a, b) => new Date(a) - new Date(b))
-    .pop()
+  [record.updatedAt, record.coverArtUpdatedAt].filter(Boolean).join('|') ||
+  undefined
 
 const getCoverArtUrl = (record, size, square) => {
   const cacheKey = artCacheKey(record)

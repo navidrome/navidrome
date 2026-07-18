@@ -557,9 +557,7 @@ var _ = Describe("MediaFile", func() {
 			Expect(album.CoverArtID().String()).To(HaveSuffix("_0"))
 			disc.CoverArtUpdatedAt = &stamp
 			album.CoverArtUpdatedAt = &stamp
-			Expect(disc.CoverArtID().LastUpdate).To(Equal(stamp))
 			Expect(disc.CoverArtID().String()).ToNot(HaveSuffix("_0"))
-			Expect(album.CoverArtID().LastUpdate).To(Equal(stamp))
 			Expect(album.CoverArtID().String()).ToNot(HaveSuffix("_0"))
 		})
 	})

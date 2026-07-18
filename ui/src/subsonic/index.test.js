@@ -79,7 +79,7 @@ describe('getCoverArtUrl', () => {
     expect(url).toContain('square=true')
   })
 
-  it('should bust the cache on coverArtUpdatedAt when it is newer', () => {
+  it('should include coverArtUpdatedAt in the cache key', () => {
     const albumRecord = {
       id: 'album-123',
       albumArtist: 'Test Artist',
@@ -90,8 +90,9 @@ describe('getCoverArtUrl', () => {
     const url = subsonic.getCoverArtUrl(albumRecord)
 
     expect(url).toContain('al-album-123')
-    expect(url).toContain('_=2024-06-01T00%3A00%3A00Z')
-    expect(url).not.toContain('_=2023-01-01')
+    expect(url).toContain(
+      '_=2023-01-01T00%3A00%3A00Z%7C2024-06-01T00%3A00%3A00Z',
+    )
   })
 
   it('should return media file cover art URL for records with album', () => {
@@ -191,7 +192,7 @@ describe('getDiscCoverArtUrl', () => {
     expect(url).not.toContain('size=')
   })
 
-  it('should bust the cache on coverArtUpdatedAt when it is newer', () => {
+  it('should include coverArtUpdatedAt in the cache key', () => {
     const url = subsonic.getDiscCoverArtUrl({
       albumId: 'album-123',
       discNumber: 1,
@@ -200,8 +201,9 @@ describe('getDiscCoverArtUrl', () => {
     })
 
     expect(url).toContain('id=dc-album-123%3A1')
-    expect(url).toContain('_=2024-06-01T00%3A00%3A00Z')
-    expect(url).not.toContain('_=2023-01-01')
+    expect(url).toContain(
+      '_=2023-01-01T00%3A00%3A00Z%7C2024-06-01T00%3A00%3A00Z',
+    )
   })
 })
 

@@ -57,9 +57,10 @@ func newMediafileArtworkReader(ctx context.Context, artwork *artwork, artID mode
 
 func (a *mediafileArtworkReader) Key() string {
 	return fmt.Sprintf(
-		"%s.%t",
+		"%s.%t.%d",
 		a.cacheKey.Key(),
 		conf.Server.EnableMediaFileCoverArt,
+		coverStamp(a.album.CoverArtUpdatedAt),
 	)
 }
 func (a *mediafileArtworkReader) LastUpdated() time.Time {

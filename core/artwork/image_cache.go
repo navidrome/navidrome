@@ -27,6 +27,14 @@ func (k *cacheKey) Key() string {
 	)
 }
 
+// coverStamp renders the album's manual-cover timestamp for cache keys (0 when unset).
+func coverStamp(t *time.Time) int64 {
+	if t == nil {
+		return 0
+	}
+	return t.UnixMilli()
+}
+
 type imageCache struct {
 	cache.FileCache
 }

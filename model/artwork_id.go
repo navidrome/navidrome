@@ -112,11 +112,11 @@ func ParseDiscArtworkID(id string) (albumID string, discNumber int, err error) {
 }
 
 func artworkIDFromAlbum(al Album) ArtworkID {
-	// A manual cover edit bumps cover_art_updated_at (not updated_at), so fold it
-	// in here to refresh clients without disturbing Recently Added ordering.
+	// The suffix is a cache discriminator, not a date: cover edits are added (not max'd)
+	// so the id changes even when updated_at is newer, e.g. files with future mtimes.
 	lastUpdate := al.UpdatedAt
-	if al.CoverArtUpdatedAt != nil && al.CoverArtUpdatedAt.After(lastUpdate) {
-		lastUpdate = *al.CoverArtUpdatedAt
+	if al.CoverArtUpdatedAt != nil {
+		lastUpdate = time.Unix(max(al.UpdatedAt.Unix(), 0)+al.CoverArtUpdatedAt.Unix(), 0)
 	}
 	return ArtworkID{
 		Kind:       KindAlbumArtwork,
