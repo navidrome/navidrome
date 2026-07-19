@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strconv"
 
+	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -315,7 +316,8 @@ func (api *Router) GetTranscodeDecision(w http.ResponseWriter, r *http.Request) 
 	decision, err := api.transcodeDecision.MakeDecision(ctx, mf, clientInfo, stream.TranscodeOptions{})
 	if err != nil {
 		log.Error(ctx, "Failed to make transcode decision", "mediaID", mediaID, err)
-		return nil, newError(responses.ErrorGeneric, "failed to make transcode decision")
+		code, reason := transcodeFailure(err)
+		return nil, newError(code, "failed to make transcode decision: %s", reason)
 	}
 
 	// Only create a token when there is a valid playback path
@@ -344,6 +346,19 @@ func (api *Router) GetTranscodeDecision(w http.ResponseWriter, r *http.Request) 
 	}
 
 	return response, nil
+}
+
+// transcodeFailure maps a decision error to a Subsonic error code and a reason
+// safe to send to clients, omitting server file paths.
+func transcodeFailure(err error) (int32, string) {
+	pe, ok := errors.AsType[*ffmpeg.ProbeError](err)
+	if !ok {
+		return responses.ErrorGeneric, "internal error"
+	}
+	if pe.NotFound {
+		return responses.ErrorDataNotFound, pe.SafeReason()
+	}
+	return responses.ErrorGeneric, pe.SafeReason()
 }
 
 // GetTranscodeStream handles the OpenSubsonic getTranscodeStream endpoint.
