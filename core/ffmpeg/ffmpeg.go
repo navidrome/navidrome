@@ -160,7 +160,8 @@ func (e *ffmpeg) ProbeAudioStream(ctx context.Context, filePath string) (*AudioP
 		return nil, err
 	}
 	if err := fileExists(filePath); err != nil {
-		return nil, &ProbeError{Path: filePath, Reason: fileAccessReason(err), err: err}
+		return nil, &ProbeError{Path: filePath, Reason: fileAccessReason(err),
+			NotFound: errors.Is(err, fs.ErrNotExist), err: err}
 	}
 	args := createFFmpegCommand(probeAudioStreamCmd, filePath, 0, 0)
 	log.Trace(ctx, "Executing ffprobe command", "args", args)
@@ -169,15 +170,23 @@ func (e *ffmpeg) ProbeAudioStream(ctx context.Context, filePath string) (*AudioP
 	if err != nil {
 		return nil, &ProbeError{Path: filePath, Reason: probeClientReason(err, filePath), err: err}
 	}
-	return parseProbeOutput(output)
+	result, err := parseProbeOutput(output)
+	if err != nil {
+		return nil, &ProbeError{Path: filePath, Reason: err.Error(), err: err}
+	}
+	return result, nil
 }
 
 // ProbeError reports an ffprobe failure. Reason is a path-free message safe to
 // expose to clients; the wrapped cause carries the full detail for logging.
+// NotFound marks the media file itself as missing — a launch failure of a
+// deleted ffprobe binary also wraps fs.ErrNotExist, so callers must not infer
+// it from the error chain.
 type ProbeError struct {
-	Path   string
-	Reason string
-	err    error
+	Path     string
+	Reason   string
+	NotFound bool
+	err      error
 }
 
 func (e *ProbeError) Error() string {

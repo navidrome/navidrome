@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/fs"
 	"net/http"
 	"slices"
 	"strconv"
@@ -317,11 +316,8 @@ func (api *Router) GetTranscodeDecision(w http.ResponseWriter, r *http.Request) 
 	decision, err := api.transcodeDecision.MakeDecision(ctx, mf, clientInfo, stream.TranscodeOptions{})
 	if err != nil {
 		log.Error(ctx, "Failed to make transcode decision", "mediaID", mediaID, err)
-		code := responses.ErrorGeneric
-		if errors.Is(err, fs.ErrNotExist) {
-			code = responses.ErrorDataNotFound
-		}
-		return nil, newError(code, "failed to make transcode decision: %s", transcodeFailureReason(err))
+		code, reason := transcodeFailure(err)
+		return nil, newError(code, "failed to make transcode decision: %s", reason)
 	}
 
 	// Only create a token when there is a valid playback path
@@ -352,12 +348,17 @@ func (api *Router) GetTranscodeDecision(w http.ResponseWriter, r *http.Request) 
 	return response, nil
 }
 
-// transcodeFailureReason returns a reason safe to send to clients, omitting server file paths.
-func transcodeFailureReason(err error) string {
-	if pe, ok := errors.AsType[*ffmpeg.ProbeError](err); ok {
-		return pe.SafeReason()
+// transcodeFailure maps a decision error to a Subsonic error code and a reason
+// safe to send to clients, omitting server file paths.
+func transcodeFailure(err error) (int32, string) {
+	pe, ok := errors.AsType[*ffmpeg.ProbeError](err)
+	if !ok {
+		return responses.ErrorGeneric, "internal error"
 	}
-	return "internal error"
+	if pe.NotFound {
+		return responses.ErrorDataNotFound, pe.SafeReason()
+	}
+	return responses.ErrorGeneric, pe.SafeReason()
 }
 
 // GetTranscodeStream handles the OpenSubsonic getTranscodeStream endpoint.

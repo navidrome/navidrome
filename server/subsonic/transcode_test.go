@@ -98,13 +98,28 @@ var _ = Describe("Transcode endpoints", func() {
 
 		It("returns ErrorDataNotFound when the source file is missing on disk", func() {
 			mockMFRepo.SetData(model.MediaFiles{{ID: "song-1", Suffix: "flac"}})
-			mockTD.decisionErr = fmt.Errorf("probing media file song-1: %w", fs.ErrNotExist)
+			mockTD.decisionErr = fmt.Errorf("probing media file song-1: %w",
+				&ffmpeg.ProbeError{Path: "/music/gone.flac", Reason: "file not found", NotFound: true})
+			r := newJSONPostRequest("mediaId=song-1&mediaType=song", "{}")
+			_, err := router.GetTranscodeDecision(w, r)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("file not found"))
+			var subErr subError
+			Expect(errors.As(err, &subErr)).To(BeTrue())
+			Expect(subErr.code).To(Equal(responses.ErrorDataNotFound))
+		})
+
+		It("keeps ErrorGeneric when ffprobe is missing, even though the cause wraps fs.ErrNotExist", func() {
+			mockMFRepo.SetData(model.MediaFiles{{ID: "song-1", Suffix: "flac"}})
+			pe := &ffmpeg.ProbeError{Path: "/music/song.flac", Reason: "could not read file"}
+			mockTD.decisionErr = fmt.Errorf("probing media file song-1: %w (%w)", pe, fs.ErrNotExist)
+			Expect(errors.Is(mockTD.decisionErr, fs.ErrNotExist)).To(BeTrue())
 			r := newJSONPostRequest("mediaId=song-1&mediaType=song", "{}")
 			_, err := router.GetTranscodeDecision(w, r)
 			Expect(err).To(HaveOccurred())
 			var subErr subError
 			Expect(errors.As(err, &subErr)).To(BeTrue())
-			Expect(subErr.code).To(Equal(responses.ErrorDataNotFound))
+			Expect(subErr.code).To(Equal(responses.ErrorGeneric))
 		})
 
 		It("returns error when body is empty", func() {

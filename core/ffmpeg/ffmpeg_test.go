@@ -633,6 +633,7 @@ var _ = Describe("ffmpeg", func() {
 				var pe *ProbeError
 				Expect(errors.As(err, &pe)).To(BeTrue())
 				Expect(pe.SafeReason()).To(Equal("file not found"))
+				Expect(pe.NotFound).To(BeTrue())
 			})
 
 			It("should interrupt transcoding when context is cancelled", func() {
