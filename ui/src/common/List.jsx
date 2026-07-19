@@ -1,8 +1,8 @@
 import React from 'react'
 import { List as RAList } from 'react-admin'
 import config from '../config'
-import { Pagination, defaultRowsPerPageOptions } from './Pagination'
-import { getStoredPerPage } from './perPageStore'
+import { Pagination } from './Pagination'
+import { defaultRowsPerPageOptions, getStoredPerPage } from './perPageStore'
 import { Title } from './index'
 
 export const List = (props) => {
