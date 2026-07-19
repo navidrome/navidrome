@@ -888,6 +888,16 @@ var _ = Describe("AlbumRepository", func() {
 			Expect(count).To(Equal(1), "year 2005 should appear exactly once despite two albums having it")
 		})
 
+		It("scopes years to the given libraries", func() {
+			all, err := albumRepo.GetYears()
+			Expect(err).ToNot(HaveOccurred())
+			// A library with no albums yields no years.
+			scoped, err := albumRepo.GetYears(99999)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(scoped).To(BeEmpty())
+			Expect(all).ToNot(BeEmpty())
+		})
+
 		It("excludes years that belong only to missing albums", func() {
 			gone := &model.Album{LibraryID: 1, ID: "missing-year-1", Name: "Gone", MaxYear: 1911, Missing: true}
 			Expect(albumRepo.Put(gone)).To(Succeed())

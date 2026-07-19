@@ -65,7 +65,7 @@ func (db *MockDataStore) Tag(ctx context.Context) model.TagRepository {
 	if db.RealDS != nil {
 		return db.RealDS.Tag(ctx)
 	}
-	db.MockedTag = struct{ model.TagRepository }{}
+	db.MockedTag = &MockTagRepo{}
 	return db.MockedTag
 }
 

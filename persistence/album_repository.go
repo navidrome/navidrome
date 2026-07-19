@@ -257,11 +257,12 @@ func (r *albumRepository) GetCursor(options ...model.QueryOptions) (model.AlbumC
 	return wrapAlbumCursor(cursor), nil
 }
 
-func (r *albumRepository) GetYears() ([]int, error) {
-	sq := r.applyLibraryFilter(
-		Select("distinct max_year").From("album").
-			Where(And{Gt{"max_year": 0}, Eq{"missing": false}}).OrderBy("max_year"),
-	)
+func (r *albumRepository) GetYears(libraryIDs ...int) ([]int, error) {
+	cond := And{Gt{"max_year": 0}, Eq{"missing": false}}
+	if len(libraryIDs) > 0 {
+		cond = append(cond, Eq{"library_id": libraryIDs})
+	}
+	sq := r.applyLibraryFilter(Select("distinct max_year").From("album").Where(cond).OrderBy("max_year"))
 	years := []int{}
 	err := r.queryAllSlice(sq, &years)
 	if err != nil && !errors.Is(err, model.ErrNotFound) {

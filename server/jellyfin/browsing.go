@@ -3,6 +3,7 @@ package jellyfin
 import (
 	"net/http"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	"github.com/navidrome/navidrome/utils/req"
@@ -62,11 +63,16 @@ func (api *Router) getGenres(w http.ResponseWriter, r *http.Request) {
 }
 
 // getStudios handles GET /Studios, exposing record labels (Jellyfin's audio "studio" source) as
-// Studio items. Global, like genres.
+// Studio items, scoped to ParentId's library when accessible.
 func (api *Router) getStudios(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	p := req.Params(r)
-	labels, err := api.ds.Tag(ctx).GetAll(model.TagRecordLabel, model.QueryOptions{Sort: "tag_value"})
+	scope, _ := resolveLibraryScope(ctx, dto.DecodeID(p.StringOr("parentid", "")))
+	opts := model.QueryOptions{Sort: "tag_value"}
+	if len(scope) > 0 {
+		opts.Filters = squirrel.Eq{"library_tag.library_id": scope}
+	}
+	labels, err := api.ds.Tag(ctx).GetAll(model.TagRecordLabel, opts)
 	if err != nil {
 		api.internalError(w, r, err)
 		return
@@ -76,16 +82,21 @@ func (api *Router) getStudios(w http.ResponseWriter, r *http.Request) {
 	api.ok(w, r, result(paginate(items, offset, max), len(items), offset))
 }
 
-// getQueryFiltersLegacy handles GET /Items/Filters. Genres reuse the global genre list; Years are
-// distinct album years. Tags/OfficialRatings have no music source, so they are always empty.
+// getQueryFiltersLegacy handles GET /Items/Filters. Genres and Years are scoped to ParentId's
+// library when accessible. Tags/OfficialRatings have no music source, so they are always empty.
 func (api *Router) getQueryFiltersLegacy(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	genres, err := api.ds.Genre(ctx).GetAll(model.QueryOptions{Sort: "name"})
+	scope, _ := resolveLibraryScope(ctx, dto.DecodeID(req.Params(r).StringOr("parentid", "")))
+	genreOpts := model.QueryOptions{Sort: "name"}
+	if len(scope) > 0 {
+		genreOpts.Filters = squirrel.Eq{"library_tag.library_id": scope}
+	}
+	genres, err := api.ds.Genre(ctx).GetAll(genreOpts)
 	if err != nil {
 		api.internalError(w, r, err)
 		return
 	}
-	years, err := api.ds.Album(ctx).GetYears()
+	years, err := api.ds.Album(ctx).GetYears(scope...)
 	if err != nil {
 		api.internalError(w, r, err)
 		return

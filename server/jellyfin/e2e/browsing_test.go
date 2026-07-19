@@ -243,6 +243,14 @@ var _ = Describe("Browsing", func() {
 			albums := queryResult(get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true&StudioIds=" + columbiaID))
 			Expect(names(albums.Items)).To(ConsistOf("Kind of Blue"))
 		})
+
+		It("returns filter lists scoped to a ParentId library", func() {
+			var filters dto.QueryFiltersLegacy
+			parseInto(get("/Items/Filters?ParentId="+enc("1")+"&IncludeItemTypes=Audio&Recursive=true"), &filters)
+			Expect(filters.Years).To(ContainElements(1959, 1965))
+			studios := queryResult(get("/Studios?ParentId=" + enc("1")))
+			Expect(names(studios.Items)).To(ContainElement("Columbia"))
+		})
 	})
 
 	// Finamp's genre screen sends ParentId=<libraryId> (scoping) plus GenreIds=<genreId>.

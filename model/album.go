@@ -142,7 +142,7 @@ type AlbumRepository interface {
 	Get(id string) (*Album, error)
 	GetAll(...QueryOptions) (Albums, error)
 	GetCursor(...QueryOptions) (AlbumCursor, error)
-	GetYears() ([]int, error)
+	GetYears(libraryIDs ...int) ([]int, error)
 
 	// The following methods are used exclusively by the scanner:
 	Touch(ids ...string) error
