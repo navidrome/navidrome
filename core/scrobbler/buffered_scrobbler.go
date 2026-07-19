@@ -18,8 +18,8 @@ const (
 	maxRetryShift = 6
 )
 
-// backoffDelay returns the retry delay for a given number of consecutive
-// failures: minRetryDelay doubled per failure, clamped to maxRetryDelay.
+// backoffDelay returns the delay for a zero-based retry index (0 = first retry):
+// minRetryDelay doubled per prior failure, clamped to maxRetryDelay.
 func backoffDelay(failures int) time.Duration {
 	if failures < 0 {
 		failures = 0
