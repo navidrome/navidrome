@@ -213,7 +213,7 @@ func (m *MockAlbumRepo) GetYears() ([]int, error) {
 	if m.Err {
 		return nil, errors.New("error")
 	}
-	return nil, nil
+	return []int{}, nil
 }
 
 var _ model.AlbumRepository = (*MockAlbumRepo)(nil)

@@ -259,7 +259,8 @@ func (r *albumRepository) GetCursor(options ...model.QueryOptions) (model.AlbumC
 
 func (r *albumRepository) GetYears() ([]int, error) {
 	sq := r.applyLibraryFilter(
-		Select("distinct max_year").From("album").Where(Gt{"max_year": 0}).OrderBy("max_year"),
+		Select("distinct max_year").From("album").
+			Where(And{Gt{"max_year": 0}, Eq{"missing": false}}).OrderBy("max_year"),
 	)
 	years := []int{}
 	err := r.queryAllSlice(sq, &years)
