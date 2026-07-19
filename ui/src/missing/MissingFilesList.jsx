@@ -2,6 +2,7 @@ import {
   List,
   Pagination,
   SizeField,
+  getStoredPerPage,
   useResourceRefresh,
 } from '../common/index'
 import {
@@ -53,8 +54,10 @@ const BulkActionButtons = (props) => (
   </>
 )
 
+const missingPerPageOptions = [50, 100, 200]
+
 const MissingPagination = (props) => (
-  <Pagination rowsPerPageOptions={[50, 100, 200]} {...props} />
+  <Pagination rowsPerPageOptions={missingPerPageOptions} {...props} />
 )
 
 const MissingFilesList = (props) => {
@@ -67,7 +70,7 @@ const MissingFilesList = (props) => {
       actions={<MissingListActions />}
       filters={<MissingFilesFilter />}
       bulkActionButtons={<BulkActionButtons />}
-      perPage={50}
+      perPage={getStoredPerPage('missing', missingPerPageOptions, 50)}
       pagination={<MissingPagination />}
     >
       <Datagrid>

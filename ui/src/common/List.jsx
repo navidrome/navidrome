@@ -1,7 +1,8 @@
 import React from 'react'
 import { List as RAList } from 'react-admin'
 import config from '../config'
-import { Pagination } from './Pagination'
+import { Pagination, defaultRowsPerPageOptions } from './Pagination'
+import { getStoredPerPage } from './perPageStore'
 import { Title } from './index'
 
 export const List = (props) => {
@@ -15,7 +16,7 @@ export const List = (props) => {
         />
       }
       debounce={config.uiSearchDebounceMs}
-      perPage={15}
+      perPage={getStoredPerPage(resource, defaultRowsPerPageOptions, 15)}
       pagination={<Pagination />}
       {...props}
     />
