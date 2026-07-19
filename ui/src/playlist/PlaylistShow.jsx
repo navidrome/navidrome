@@ -51,7 +51,6 @@ const PlaylistShowLayout = (props) => {
           perPage={getStoredPerPage(
             'playlistTrack',
             playlistTrackPerPageOptions,
-            100,
           )}
           filter={{ playlist_id: props.id }}
         >

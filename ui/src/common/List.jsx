@@ -16,7 +16,7 @@ export const List = (props) => {
         />
       }
       debounce={config.uiSearchDebounceMs}
-      perPage={getStoredPerPage(resource, defaultRowsPerPageOptions, 15)}
+      perPage={getStoredPerPage(resource, defaultRowsPerPageOptions)}
       pagination={<Pagination />}
       {...props}
     />

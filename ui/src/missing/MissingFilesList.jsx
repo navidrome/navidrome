@@ -70,7 +70,7 @@ const MissingFilesList = (props) => {
       actions={<MissingListActions />}
       filters={<MissingFilesFilter />}
       bulkActionButtons={<BulkActionButtons />}
-      perPage={getStoredPerPage('missing', missingPerPageOptions, 50)}
+      perPage={getStoredPerPage('missing', missingPerPageOptions)}
       pagination={<MissingPagination />}
     >
       <Datagrid>

@@ -33,4 +33,8 @@ describe('perPageStore', () => {
     setStoredPerPage('album', 90)
     expect(getStoredPerPage('album', [18, 36, 72], 18)).toEqual(18)
   })
+
+  it('defaults the fallback to the first option', () => {
+    expect(getStoredPerPage('song', options)).toEqual(15)
+  })
 })
