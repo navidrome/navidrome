@@ -418,7 +418,7 @@ func minMax(items []int) (int, int) {
 // (slice.MostFrequent skips the zero value and compares pointers by identity).
 func mostFrequentPtr(items []*float64) *float64 {
 	var counts map[float64]int
-	var best *float64
+	var best float64
 	var bestCount int
 	for _, it := range items {
 		if it == nil {
@@ -430,10 +430,13 @@ func mostFrequentPtr(items []*float64) *float64 {
 		counts[*it]++
 		if counts[*it] > bestCount {
 			bestCount = counts[*it]
-			best = it
+			best = *it
 		}
 	}
-	return best
+	if bestCount == 0 {
+		return nil
+	}
+	return &best
 }
 
 func newer(t1, t2 time.Time) time.Time {
