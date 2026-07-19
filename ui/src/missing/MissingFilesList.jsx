@@ -1,10 +1,14 @@
-import { List, SizeField, useResourceRefresh } from '../common/index'
+import {
+  List,
+  Pagination,
+  SizeField,
+  useResourceRefresh,
+} from '../common/index'
 import {
   Datagrid,
   DateField,
   TextField,
   downloadCSV,
-  Pagination,
   Filter,
   ReferenceInput,
   useTranslate,

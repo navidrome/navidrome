@@ -4,14 +4,18 @@ import {
   ShowContextProvider,
   useShowContext,
   useShowController,
-  Pagination,
   Title as RaTitle,
 } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
 import PlaylistDetails from './PlaylistDetails'
 import PlaylistSongs from './PlaylistSongs'
 import PlaylistActions from './PlaylistActions'
-import { Title, canChangeTracks, useResourceRefresh } from '../common'
+import {
+  Pagination,
+  Title,
+  canChangeTracks,
+  useResourceRefresh,
+} from '../common'
 
 const useStyles = makeStyles(
   (theme) => ({
