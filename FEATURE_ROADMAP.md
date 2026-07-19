@@ -13,24 +13,50 @@ it serves this fork's own use (Cirque compatibility, personal library workflow).
 
 ---
 
-## Status at a glance
+## At a glance
 
-| Feature | Source discussion(s) | Status | Effort | Value |
-|---|---|---|---|---|
-| Skip / auto-pass disliked songs | [#3899](https://github.com/navidrome/navidrome/discussions/3899) | ✅ Shipped | Small | High |
-| Genre exploration page + sidebar entry | [#4656](https://github.com/navidrome/navidrome/discussions/4656), [#4249](https://github.com/navidrome/navidrome/discussions/4249), [#2631](https://github.com/navidrome/navidrome/discussions/2631) | ✅ Shipped, with Create Playlist added beyond original scope | Medium | Medium |
-| Genre merging (admin-defined aliases, any-player sync) | User follow-up request; parallels Cirque's own client-side genre-merge feature | ✅ Shipped | Medium | Medium |
-| Remove/prevent duplicate playlist tracks | [#4206](https://github.com/navidrome/navidrome/discussions/4206) | 📋 Planned, not started | Small (exact-dup) / Medium (cross-album fuzzy match) | Medium–High |
-| Playlist "consume mode" (auto-remove on finish) | [#3276](https://github.com/navidrome/navidrome/discussions/3276) | 📋 Planned, not started | Small–Medium | Low–Medium |
-| Last.fm play count / loved sync | [#3454](https://github.com/navidrome/navidrome/discussions/3454) | 💡 Assessed — plugin, not core | Medium (as plugin) | Medium |
-| Sidecar tag files (`tags.yml` overrides) | [#3181](https://github.com/navidrome/navidrome/discussions/3181) | 💡 Assessed, not planned | Medium | Low–Medium (niche) |
-| User-defined song tagging + smart integration | [#4823](https://github.com/navidrome/navidrome/discussions/4823) | ✅ Shipped (3 phases) — see note below re: #3145 | Large | Medium |
-| AI-based auto-tagging/classification (as a plugin) | [#3145](https://github.com/navidrome/navidrome/discussions/3145) | 📋 Unblocked, plan written, not started | Small (write path) + Medium (plugin) | Medium |
-| Bulk multi-select / batch actions (Album, Artist lists) | mentioned in [#4249](https://github.com/navidrome/navidrome/discussions/4249) | 💡 Noted, not scoped | Unscoped | Low–Medium |
+**7 shipped · 3 planned, ready to build · 3 in the backlog (assessed, not prioritized)**
+
+Nothing below is currently mid-build — everything is either done, or scoped-but-not-started. When something is
+picked up, move it into its own "🔨 In progress" section at the top so it's visible at a glance.
+
+### ✅ Shipped (7)
+
+| Feature | Source | Effort (est. → actual) |
+|---|---|---|
+| Skip / auto-pass disliked songs | [#3899](https://github.com/navidrome/navidrome/discussions/3899) | Small → Small |
+| Genre exploration page + sidebar entry | [#4656](https://github.com/navidrome/navidrome/discussions/4656), [#4249](https://github.com/navidrome/navidrome/discussions/4249), [#2631](https://github.com/navidrome/navidrome/discussions/2631) | Medium → Medium |
+| Genre merging (admin-defined aliases, any-player sync) | User follow-up request | Medium → Medium |
+| User-defined song tagging + smart-playlist integration | [#4823](https://github.com/navidrome/navidrome/discussions/4823) | Large → Large |
+| Podcast support (Subsonic API) | own project, [PODCAST_PLAN.md](PODCAST_PLAN.md) | Large → Large |
+| Physical folder browsing | own project, [navidrome-folder-roadmap.md](navidrome-folder-roadmap.md) | Large → Large |
+| Enhanced scrobble attribution (Pulse integration) | own project | Small → Small |
+
+### 📋 Planned — scoped, ready to build (3)
+
+| Feature | Source | Effort | Value |
+|---|---|---|---|
+| Remove/prevent duplicate playlist tracks | [#4206](https://github.com/navidrome/navidrome/discussions/4206) | Small (exact-dup) / Medium (fuzzy cross-album) | Medium–High |
+| Playlist "consume mode" (auto-remove on finish) | [#3276](https://github.com/navidrome/navidrome/discussions/3276) | Small–Medium | Low–Medium |
+| AI-based auto-tagging/classification (as a plugin) | [#3145](https://github.com/navidrome/navidrome/discussions/3145) | Small (write path) + Medium (plugin) | Medium |
+
+Also planned, tracked in a separate doc rather than duplicated here: **Podcast Phase 4** — resume playback
+position, a cross-channel "Up Next" queue, and OPML import/export. See
+[PODCAST_PLAN.md](PODCAST_PLAN.md#phased-roadmap) for the full writeup.
+
+### 💡 Backlog — assessed, not prioritized (3)
+
+| Feature | Source | Why it's parked |
+|---|---|---|
+| Last.fm play count / loved status sync | [#3454](https://github.com/navidrome/navidrome/discussions/3454) | Real feedback-loop risk (see write-up) with no existing pull-path to build on; better fits as a plugin someone opts into than a core feature |
+| Sidecar tag files (`tags.yml` overrides) | [#3181](https://github.com/navidrome/navidrome/discussions/3181) | Niche audience relative to effort; revisit if there's a concrete personal need |
+| Bulk multi-select / batch actions (Album, Artist lists) | mentioned in [#4249](https://github.com/navidrome/navidrome/discussions/4249) | Not yet scoped in depth; distinct from the genre work it surfaced alongside |
 
 ---
 
-## ✅ Skip / auto-pass disliked songs
+## ✅ Shipped
+
+### Skip / auto-pass disliked songs
 
 **Source:** [#3899](https://github.com/navidrome/navidrome/discussions/3899) — mark individual songs to be automatically
 passed over during playback, without deleting them or needing a separate playlist.
@@ -58,7 +84,7 @@ songs) — deliberately deferred, would be a small follow-up given `starred`/`ra
 
 ---
 
-## ✅ Genre exploration page + sidebar entry
+### Genre exploration page + sidebar entry
 
 **Source:** [#4656](https://github.com/navidrome/navidrome/discussions/4656) ("Genres 'exploration' Page") +
 [#4249](https://github.com/navidrome/navidrome/discussions/4249) ("Include GENRE menu in Left Menu") +
@@ -67,7 +93,8 @@ template") — three discussions asking for the same underlying feature across f
 "genre homepage" with Albums, Top Songs, and a shuffle-this-genre action, reachable from a real sidebar entry
 instead of the current Albums-then-filter workaround.
 
-**Status:** Shipped, plus a "Create Playlist" action added beyond the original discussion scope (see below).
+**Status:** Shipped, plus a "Create Playlist" action and a colored chip dashboard added beyond the original
+discussion scope (see below).
 
 - **Genre index page.** Confirmed the near-free assessment was correct, with one wrinkle: `model.Genre.SongCount`/
   `AlbumCount` were tagged `json:"-"`, so native REST never actually returned them, even though
@@ -90,14 +117,16 @@ instead of the current Albums-then-filter workaround.
   hand-tracing — `core/matcher` builds locally, unlike `persistence`/`server`, so real execution was possible): 9
   constructed test cases covering MBID/ISRC/fuzzy clustering, correct non-clustering of covers and duration
   mismatches, order preservation, and edge cases all passed.
+- **Colored gradient chip dashboard** (added later, replacing the original plain text list): each genre gets a
+  deterministic hash-to-gradient chip showing name, song count, and album count at a glance.
 
 **What was cut from scope during this session's discussion, deliberately:**
 - **Artist-by-genre / Playlist-by-genre** sections — still genuinely unsupported (no backend query exists), same
   gap identified in the original assessment. Not built.
-- **Image-grid genre index** (cover-art collages) — still needs genre artwork that doesn't exist. Text-columns
-  list view shipped instead, as originally recommended.
+- **Image-grid genre index** (cover-art collages) — still needs genre artwork that doesn't exist. The colored chip
+  dashboard shipped instead.
 - **Genre listening stats** — considered and cut; belongs in the Pulse companion app, which already has richer
-  scrobble-attribution data (see the Pulse entry above) for exactly this purpose.
+  scrobble-attribution data (see below) for exactly this purpose.
 - **"Start Radio"** (infinite/self-extending queue) — considered and cut after review; "Shuffle This Genre" already
   gives a large (500-track) randomized queue with zero new backend work, and the infinite-queue mechanism wasn't
   judged worth the extra complexity without a demonstrated real gap.
@@ -110,7 +139,7 @@ first research pass concluded the opposite of what direct reading of `persistenc
 
 ---
 
-## ✅ Genre merging (admin-defined aliases, any-player sync)
+### Genre merging (admin-defined aliases, any-player sync)
 
 **Source:** Direct follow-up request after the Genre exploration page shipped — the genre index can get cluttered
 with near-duplicate genres ("Hip-Hop" / "Hip Hop" / "HipHop") from inconsistently-tagged files. The user already
@@ -118,7 +147,7 @@ has a genre-merge feature built client-side in Cirque and wants Navidrome to bec
 Cirque and any other Subsonic client see one consistent merged view instead of each client maintaining its own
 local merge.
 
-**Status:** Shipped.
+**Status:** Shipped, including a later revision adding multi-select merge and an Edit view (see below).
 
 - **Architecture decision, reversed once during scoping.** Genre matching happens in two structurally different
   places: an ID-based world (native REST, `tagIDFilter` against the `tag`/`library_tag` tables) and a name-based,
@@ -138,11 +167,16 @@ local merge.
 - **Scan-time hook** — `model/metadata/genre_aliases.go` (new), an `atomic.Pointer`-backed alias map mirroring how
   `model.TagMappings()` already provides config-like data to the same cleaning pipeline, loaded once per scan run
   (not per file) by `scanner/scanner.go` before Phase 1 runs.
-- **Admin UI** — a standard list+create resource under Settings (`ui/src/genreAlias/`), modeled on the Transcoding
-  admin-CRUD template; no edit/show, merges are delete-and-recreate.
+- **Admin UI, revised after initial ship:** the original single alias→canonical Create form was replaced with a
+  "Merge Genres" UI supporting multi-select (merge several source genres into one target in a single action, still
+  supporting a brand-new not-yet-scanned target name), plus an Edit view so an existing merge can be re-pointed or
+  corrected without deleting and recreating it. No backend changes were needed for Edit — the repository already
+  supported `Update()` with the same chain-flatten/repoint validation as `Save()`.
 
-**Trade-off, accepted:** a new merge takes effect on each affected file's *next* scan, not instantly — no
-auto-triggered rescan on alias creation in v1, the existing Scan Now action covers it.
+**Important caveat, initially mis-documented then corrected:** a merge only takes effect once each affected file's
+tags are actually re-read. A normal quick Scan Now skips files whose mtime on disk hasn't changed — which is every
+file already in the library — so **a Full Scan is required** to apply a new merge to existing data (new/changed
+files pick it up automatically on their next normal scan either way).
 
 **Verification:** the scan-time hook (`sanitize()`'s new genre-canonicalization branch) was verified with an
 actual standalone Go program exercising the real `metadata.New()` pipeline end-to-end (`model/metadata` builds
@@ -154,7 +188,75 @@ becomes an alias, direct self-merge rejection, and a cyclic self-merge caught vi
 
 ---
 
-## 📋 Remove/prevent duplicate playlist tracks
+### User-defined song tagging + smart-playlist integration
+
+**Source:** [#4823](https://github.com/navidrome/navidrome/discussions/4823) — per-user custom tags on songs
+(independent of embedded file metadata), a "Bind by Tags" bulk-add-to-playlist action, and tags usable as
+smart-playlist criteria so playlists auto-update as tags change.
+
+**Status:** Shipped, in three phases, matching the original plan almost exactly:
+- **Phase 1 — core tagging.** New `media_file_tag` table (flat, per-user, no separate "tag entity" — a tag starts
+  existing the first time it's applied and stops existing when unused, like a hashtag), native REST endpoints, and
+  a tag-picker dialog (modeled on the existing playlist-picker's "select existing or create new inline" pattern)
+  wired into the song context menu next to Add to Playlist.
+- **Phase 2 — smart-playlist criteria.** A new `usertag` criteria field, evaluated via an `EXISTS` subquery scoped
+  to the playlist owner — reused the exact per-owner scoping mechanism `rating`/`starred` criteria already use, so
+  a `.nsp` smart playlist can now auto-update based on a user's own tags.
+  Registering per-user tag *names* as individual criteria fields turned out not to work (the field registry is a
+  single global map populated once at startup) — the fix was one generic `usertag` field whose *value* is the tag
+  name, with per-user isolation living entirely in the SQL layer instead.
+- **Phase 3 — Bind by Tags.** A "My Tag" filter on the song list plus a "Bind by Tag" button, reusing the existing
+  add-to-playlist dialog rather than building a new one — fetch songs matching the filter, then open the standard
+  picker with those IDs pre-selected.
+
+**Effort — estimated vs. actual:** Estimated Large going in; held up as Large, not a surprise in either direction.
+The two pieces expected to be free (smart-playlist criteria reuse, per-user storage shape reuse) mostly were, though
+Phase 2 needed more surgery than planned: the criteria SQL generator's helper functions (`isNotExpr`, `missingExpr`,
+`likeExpr`, `comparisonExpr`, `rangeExpr`) were plain functions with no access to the playlist owner, not methods —
+threading the owner ID through required touching six call sites, not the "just add a new cond type" the plan
+assumed. Caught and fixed cleanly since it was verified by hand-tracing every test case against the generated SQL
+before pushing (local Go builds are blocked in this environment by a pre-existing, unrelated sqlite3-driver issue),
+and CI confirmed the trace was correct on the first attempt. Two real bugs did surface in CI, both from routine
+interface-surface gaps rather than the tagging logic itself: adding `MediaFileTag` to the `DataStore` interface
+broke `tests/mock_data_store.go` (needed the same stub method every other repository accessor has), and an existing
+test asserting "every non-tag/non-role field has a `smartPlaylistFields` entry" needed to also exclude the new
+`IsUserTag` fields.
+
+**Pros:** Confirms the roadmap's original read was right — the per-user annotation-table shape and the
+already-tag-aware smart-playlist criteria engine really were the two hardest pieces, and reusing them instead of
+inventing new ones kept this tractable despite being the largest single feature since podcasts/folder browsing.
+
+**Cons:** As anticipated, the tag-editor UI and write-path were genuinely new surface with no existing pattern to
+copy directly — mitigated by modeling the picker closely on the existing playlist-picker dialog instead of
+designing from scratch.
+
+**Follow-up unlocked:** the AI auto-tagging plugin idea ([#3145](https://github.com/navidrome/navidrome/discussions/3145))
+is still blocked — see that entry — but its prerequisite (a fork-owned, non-scanner tag table) now exists. Making
+`media_file_tag` plugin-writable would need a new host-service capability, not built as part of this feature.
+
+---
+
+### Podcast support (Subsonic API)
+
+**Status:** Shipped (Phases 1–3). Full design writeup, including what's still on the roadmap (Phase 4: resume
+playback position, a cross-channel "up next" queue, OPML import/export), see [PODCAST_PLAN.md](PODCAST_PLAN.md).
+
+### Physical folder browsing
+
+**Status:** Shipped. For the full history of what's shipped and what's planned, see
+[navidrome-folder-roadmap.md](navidrome-folder-roadmap.md).
+
+### Enhanced scrobble attribution (Pulse integration)
+
+**Status:** Shipped. `client`/`source`/`origin`/`playback_mode` fields on every scrobble/play report, exposed to
+plugins via the same `ScrobbleRequest`/`NowPlayingRequest` types, for this fork's own Pulse companion project. See
+the [README](README.md#enhanced-scrobble-attribution-pulse-integration) for details.
+
+---
+
+## 📋 Planned — scoped, ready to build
+
+### Remove/prevent duplicate playlist tracks
 
 **Source:** [#4206](https://github.com/navidrome/navidrome/discussions/4206) — detect and remove duplicate songs
 from a playlist (e.g. the same recording appears on both a studio album and a "Best Of" compilation, ending up
@@ -193,7 +295,7 @@ matcher, meaning the "clean" exact-identifier matches are likely the minority ca
 
 ---
 
-## 📋 Playlist "consume mode" (auto-remove on finish)
+### Playlist "consume mode" (auto-remove on finish)
 
 **Source:** [#3276](https://github.com/navidrome/navidrome/discussions/3276) — a playlist mode where each track is
 automatically removed once it finishes playing, so a curated queue (e.g. "these two albums") drains as you listen
@@ -237,70 +339,7 @@ turns out to matter in practice.
 
 ---
 
-## 💡 Last.fm play count / loved status sync
-
-**Source:** [#3454](https://github.com/navidrome/navidrome/discussions/3454) — pull `userplaycount`/`userloved`
-from Last.fm's API back into Navidrome, so listening history survives a library replacement/re-rip. A community
-member already built this as an *offline* Python script (NaviSync) that requires the server to be stopped.
-
-**Status:** Assessed as a **plugin**, not a core feature — and specifically NOT buildable as a plugin without a
-real design decision about the play-count backfill mechanism (see Cons).
-
-**Effort: Medium, as a plugin.** The plugin system (WASM/Extism, sandboxed, in-process) already provides
-everything needed at the infrastructure level: `http` permission for calling Last.fm's API, `scheduler` permission
-for a daily cron-style sync job (a documented example pattern already), and `subsonicapi` + `users` permissions for
-writing back into Navidrome via its own internal Subsonic API (no direct DB access is ever exposed to plugins, by
-design).
-
-**Pros:** Genuinely good fit for the plugin system — better than a core PR, since it's inherently
-per-user/optional/external-service-dependent, exactly what plugins exist for. `star`/`unstar` maps cleanly onto
-Last.fm's `userloved` — a clean, absolute set, no design problem there.
-
-**Cons:** There is no "set play_count to N" anywhere in this codebase (plugin or core) — only `IncPlayCount`,
-which always adds exactly +1. Backfilling a count of, say, 340 means firing 340 synthetic `scrobble` calls with
-fabricated historical timestamps. Worse: a scrobble event fans out to *every* registered scrobbler, not just the
-plugin issuing it — a naive backfill plugin would re-scrobble all those synthetic plays straight back to the
-user's real Last.fm account if they also have outbound scrobbling enabled, inflating the exact number it's trying
-to fix. No existing code to build on for the actual Last.fm data-pull either — the built-in Last.fm integration
-(`adapters/lastfm/`) is outbound-only (push scrobbles, fetch metadata/similarity); nothing calls `track.getInfo`.
-
-**Recommendation:** Not planned for this fork currently — flagging the feedback-loop risk here in case anyone
-attempts it, since it's the kind of bug that wouldn't show up until a user with active outbound scrobbling runs a
-backfill and quietly corrupts their own Last.fm history.
-
----
-
-## 💡 Sidecar tag files (`tags.yml` overrides)
-
-**Source:** [#3181](https://github.com/navidrome/navidrome/discussions/3181) — store metadata overrides in a
-separate file next to the media file instead of editing embedded tags, so corrections don't touch the original
-source files. A community fork (`tagfiles-bfr`) already built a more elaborate version with glob patterns and CEL
-expression transforms.
-
-**Status:** Assessed, not planned.
-
-**Effort: Medium**, scoped to the simple version (flat per-track/per-folder key-value overrides, no glob/CEL). The
-codebase answers the two scariest architectural questions favorably: the tag-merge pipeline (`RawTags` → `clean()`
-→ `ToMediaFile()`) is source-agnostic, so a sidecar's key-values could merge in before `metadata.New()` runs with
-no restructuring; and there's already a directly-reusable precedent — this fork's own lyrics sidecar support
-already parses a YAML sidecar format (`.lrc`/`.srt`/`.ttml` lookup, same-folder/same-basename convention). The one
-real gap: track-level rescan currently keys only on the *audio file's own* mtime, so a sidecar-only edit wouldn't
-trigger re-import on a quick scan without a small, contained fix to that check.
-
-**Pros:** Structurally smaller than it looks — two of the three hardest questions (merge pipeline assumptions,
-folder-walk visibility into non-audio files) already resolve favorably, with real sidecar precedent to copy rather
-than invent.
-
-**Cons:** Niche audience relative to effort — the community's own engagement level on this discussion is lower
-than genre or skip-songs, and the full-featured version people actually seem to want (glob patterns, CEL
-expression transforms) is a much bigger, more speculative scope than the tractable v1 described here.
-
-**Recommendation:** Not prioritized — revisit if there's a concrete personal need for it (e.g. correcting tags on
-files you don't want to touch directly), since the core mechanism is genuinely low-risk to add later.
-
----
-
-## 📋 AI-based auto-tagging/classification (as a plugin)
+### AI-based auto-tagging/classification (as a plugin)
 
 **Source:** [#3145](https://github.com/navidrome/navidrome/discussions/3145) — auto-classify tracks by genre,
 language, mood, etc. using an AI service (paid API like OpenAI, since local-LLM hardware isn't something most
@@ -411,55 +450,72 @@ a navidrome-experimental commit at all, or purely downstream consumer work once 
 
 ---
 
-## ✅ User-defined song tagging + smart-playlist integration
+## 💡 Backlog — assessed, not prioritized
 
-**Source:** [#4823](https://github.com/navidrome/navidrome/discussions/4823) — per-user custom tags on songs
-(independent of embedded file metadata), a "Bind by Tags" bulk-add-to-playlist action, and tags usable as
-smart-playlist criteria so playlists auto-update as tags change.
+### Last.fm play count / loved status sync
 
-**Status:** Shipped, in three phases, matching the original plan almost exactly:
-- **Phase 1 — core tagging.** New `media_file_tag` table (flat, per-user, no separate "tag entity" — a tag starts
-  existing the first time it's applied and stops existing when unused, like a hashtag), native REST endpoints, and
-  a tag-picker dialog (modeled on the existing playlist-picker's "select existing or create new inline" pattern)
-  wired into the song context menu next to Add to Playlist.
-- **Phase 2 — smart-playlist criteria.** A new `usertag` criteria field, evaluated via an `EXISTS` subquery scoped
-  to the playlist owner — reused the exact per-owner scoping mechanism `rating`/`starred` criteria already use, so
-  a `.nsp` smart playlist can now auto-update based on a user's own tags.
-  Registering per-user tag *names* as individual criteria fields turned out not to work (the field registry is a
-  single global map populated once at startup) — the fix was one generic `usertag` field whose *value* is the tag
-  name, with per-user isolation living entirely in the SQL layer instead.
-- **Phase 3 — Bind by Tags.** A "My Tag" filter on the song list plus a "Bind by Tag" button, reusing the existing
-  add-to-playlist dialog rather than building a new one — fetch songs matching the filter, then open the standard
-  picker with those IDs pre-selected.
+**Source:** [#3454](https://github.com/navidrome/navidrome/discussions/3454) — pull `userplaycount`/`userloved`
+from Last.fm's API back into Navidrome, so listening history survives a library replacement/re-rip. A community
+member already built this as an *offline* Python script (NaviSync) that requires the server to be stopped.
 
-**Effort — estimated vs. actual:** Estimated Large going in; held up as Large, not a surprise in either direction.
-The two pieces expected to be free (smart-playlist criteria reuse, per-user storage shape reuse) mostly were, though
-Phase 2 needed more surgery than planned: the criteria SQL generator's helper functions (`isNotExpr`, `missingExpr`,
-`likeExpr`, `comparisonExpr`, `rangeExpr`) were plain functions with no access to the playlist owner, not methods —
-threading the owner ID through required touching six call sites, not the "just add a new cond type" the plan
-assumed. Caught and fixed cleanly since it was verified by hand-tracing every test case against the generated SQL
-before pushing (local Go builds are blocked in this environment by a pre-existing, unrelated sqlite3-driver issue),
-and CI confirmed the trace was correct on the first attempt. Two real bugs did surface in CI, both from routine
-interface-surface gaps rather than the tagging logic itself: adding `MediaFileTag` to the `DataStore` interface
-broke `tests/mock_data_store.go` (needed the same stub method every other repository accessor has), and an existing
-test asserting "every non-tag/non-role field has a `smartPlaylistFields` entry" needed to also exclude the new
-`IsUserTag` fields.
+**Status:** Assessed as a **plugin**, not a core feature — and specifically NOT buildable as a plugin without a
+real design decision about the play-count backfill mechanism (see Cons).
 
-**Pros:** Confirms the roadmap's original read was right — the per-user annotation-table shape and the
-already-tag-aware smart-playlist criteria engine really were the two hardest pieces, and reusing them instead of
-inventing new ones kept this tractable despite being the largest single feature since podcasts/folder browsing.
+**Effort: Medium, as a plugin.** The plugin system (WASM/Extism, sandboxed, in-process) already provides
+everything needed at the infrastructure level: `http` permission for calling Last.fm's API, `scheduler` permission
+for a daily cron-style sync job (a documented example pattern already), and `subsonicapi` + `users` permissions for
+writing back into Navidrome via its own internal Subsonic API (no direct DB access is ever exposed to plugins, by
+design).
 
-**Cons:** As anticipated, the tag-editor UI and write-path were genuinely new surface with no existing pattern to
-copy directly — mitigated by modeling the picker closely on the existing playlist-picker dialog instead of
-designing from scratch.
+**Pros:** Genuinely good fit for the plugin system — better than a core PR, since it's inherently
+per-user/optional/external-service-dependent, exactly what plugins exist for. `star`/`unstar` maps cleanly onto
+Last.fm's `userloved` — a clean, absolute set, no design problem there.
 
-**Follow-up unlocked:** the AI auto-tagging plugin idea ([#3145](https://github.com/navidrome/navidrome/discussions/3145))
-is still blocked — see that entry — but its prerequisite (a fork-owned, non-scanner tag table) now exists. Making
-`media_file_tag` plugin-writable would need a new host-service capability, not built as part of this feature.
+**Cons:** There is no "set play_count to N" anywhere in this codebase (plugin or core) — only `IncPlayCount`,
+which always adds exactly +1. Backfilling a count of, say, 340 means firing 340 synthetic `scrobble` calls with
+fabricated historical timestamps. Worse: a scrobble event fans out to *every* registered scrobbler, not just the
+plugin issuing it — a naive backfill plugin would re-scrobble all those synthetic plays straight back to the
+user's real Last.fm account if they also have outbound scrobbling enabled, inflating the exact number it's trying
+to fix. No existing code to build on for the actual Last.fm data-pull either — the built-in Last.fm integration
+(`adapters/lastfm/`) is outbound-only (push scrobbles, fetch metadata/similarity); nothing calls `track.getInfo`.
+
+**Recommendation:** Not planned for this fork currently — flagging the feedback-loop risk here in case anyone
+attempts it, since it's the kind of bug that wouldn't show up until a user with active outbound scrobbling runs a
+backfill and quietly corrupts their own Last.fm history.
 
 ---
 
-## 💡 Bulk multi-select / batch actions across list views
+### Sidecar tag files (`tags.yml` overrides)
+
+**Source:** [#3181](https://github.com/navidrome/navidrome/discussions/3181) — store metadata overrides in a
+separate file next to the media file instead of editing embedded tags, so corrections don't touch the original
+source files. A community fork (`tagfiles-bfr`) already built a more elaborate version with glob patterns and CEL
+expression transforms.
+
+**Status:** Assessed, not planned.
+
+**Effort: Medium**, scoped to the simple version (flat per-track/per-folder key-value overrides, no glob/CEL). The
+codebase answers the two scariest architectural questions favorably: the tag-merge pipeline (`RawTags` → `clean()`
+→ `ToMediaFile()`) is source-agnostic, so a sidecar's key-values could merge in before `metadata.New()` runs with
+no restructuring; and there's already a directly-reusable precedent — this fork's own lyrics sidecar support
+already parses a YAML sidecar format (`.lrc`/`.srt`/`.ttml` lookup, same-folder/same-basename convention). The one
+real gap: track-level rescan currently keys only on the *audio file's own* mtime, so a sidecar-only edit wouldn't
+trigger re-import on a quick scan without a small, contained fix to that check.
+
+**Pros:** Structurally smaller than it looks — two of the three hardest questions (merge pipeline assumptions,
+folder-walk visibility into non-audio files) already resolve favorably, with real sidecar precedent to copy rather
+than invent.
+
+**Cons:** Niche audience relative to effort — the community's own engagement level on this discussion is lower
+than genre or skip-songs, and the full-featured version people actually seem to want (glob patterns, CEL
+expression transforms) is a much bigger, more speculative scope than the tractable v1 described here.
+
+**Recommendation:** Not prioritized — revisit if there's a concrete personal need for it (e.g. correcting tags on
+files you don't want to touch directly), since the core mechanism is genuinely low-risk to add later.
+
+---
+
+### Bulk multi-select / batch actions across list views
 
 **Source:** mentioned in passing in [#4249](https://github.com/navidrome/navidrome/discussions/4249) — multi-select
 across Album, Artist, and Song pages with batch playback/action options.
