@@ -145,6 +145,7 @@
       },
       "topSongs": "Top Songs",
       "recentlyAdded": "Recently Added",
+      "chipCounts": "%{songs} songs · %{albums} albums",
       "createPlaylist": {
         "action": "Create Playlist",
         "title": "Create Playlist from %{genre}",
