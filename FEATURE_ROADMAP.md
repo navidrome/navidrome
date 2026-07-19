@@ -38,7 +38,7 @@ picked up, move it into its own "🔨 In progress" section at the top so it's vi
 |---|---|---|---|
 | Remove/prevent duplicate playlist tracks | [#4206](https://github.com/navidrome/navidrome/discussions/4206) | Small (exact-dup) / Medium (fuzzy cross-album) | Medium–High |
 | Playlist "consume mode" (auto-remove on finish) | [#3276](https://github.com/navidrome/navidrome/discussions/3276) | Small–Medium | Low–Medium |
-| AI-based auto-tagging/classification (as a plugin) | [#3145](https://github.com/navidrome/navidrome/discussions/3145) | Small (write path) + Medium (plugin) | Medium |
+| AI-based auto-tagging/classification (as a plugin) | [#3145](https://github.com/navidrome/navidrome/discussions/3145); plugin itself built separately, see [AI-Auto-Tagging-Plugin](https://github.com/RFLundgren/AI-Auto-Tagging-Plugin) | Small (write path, this repo) | Medium |
 | Classical music: show Work/Movement in the web UI | [#2953](https://github.com/navidrome/navidrome/discussions/2953) | Medium | Medium (niche but well-served by existing data) |
 
 Also planned, tracked in a separate doc rather than duplicated here: **Podcast Phase 4** — resume playback
@@ -343,111 +343,21 @@ turns out to matter in practice.
 ### AI-based auto-tagging/classification (as a plugin)
 
 **Source:** [#3145](https://github.com/navidrome/navidrome/discussions/3145) — auto-classify tracks by genre,
-language, mood, etc. using an AI service (paid API like OpenAI, since local-LLM hardware isn't something most
-self-hosters have), so the whole library becomes filterable by AI-suggested tags instead of manually maintained
-playlists per genre/language. The maintainer floated this as a future plugin use case.
+language, mood, etc. using an AI service, so the whole library becomes filterable by AI-suggested tags instead of
+manually maintained playlists per genre/language.
 
-**Status:** Reassessed 2026-07-18, after `#4823` shipped — no longer blocked. The plugin-write gap that blocked this
-originally has a small fix, not a new plugin-system capability: `SubsonicAPIService.Call(ctx, uri)`
-(`plugins/host/subsonicapi.go`) already proxies *any* registered Subsonic-tier route on the plugin's behalf, not a
-fixed whitelist — exactly how `skip`/`unskip` were added as fork-specific endpoints alongside the real Subsonic API
-(`server/subsonic/api.go`). Adding `setUserTag`/`removeUserTag` the same way — thin wrappers around the
-`MediaFileTagRepository.TagSong`/`UntagSong` methods that already exist — unblocks plugin writes with no new PDK
-permission, no new host-service capability, same shape as work already shipped this session. A build plan exists;
-see below.
+**Status:** Reassessed 2026-07-18, after `#4823` shipped — no longer blocked. Split into two pieces with the split
+resolved 2026-07-20: the plugin itself lives in its own repo,
+[AI-Auto-Tagging-Plugin](https://github.com/RFLundgren/AI-Auto-Tagging-Plugin) (not yet public), not in
+`plugins/examples/` here — it only talks to Navidrome through the plugin API, the same reasoning that already put
+Cirque and Pulse in their own repos rather than this one. Full design doc, build plan, and the open product
+decision (should AI tags be private-per-user or shared library-wide) live there, not duplicated here.
 
-**Effort: Small (write path) + Medium (the plugin itself).** The input half is a completely normal, buildable
-plugin: `http` permission to call an external AI API, `library`/`subsonicapi` to read track metadata, `taskqueue`/
-`TaskWorker` to batch-process the whole library in the background, `scheduler` to re-run on newly-added tracks.
-The output half no longer needs a new plugin capability — see Status above — just two new fork-specific Subsonic
-endpoints reusing the existing `subsonicapi` permission plugins already have.
-
-**Pros:** The AI-calling and background-processing half genuinely is "just build a normal plugin" — no core
-changes needed for that part. The write-path fix is now small and low-risk, reusing an established pattern
-(`skip`/`unskip`) rather than inventing new plugin-system surface.
-
-**Cons — the real remaining design question, not a technical blocker:** `media_file_tag` is deliberately
-private-per-user (the whole point of `#4823` — two people sharing a library never see each other's tags). AI
-classification is a library *fact*, though, and the original ask was "browse/filter the whole library by AI tags,"
-shared like `genre`/`mood` are today — not personal opinion like "workout." Writing AI tags into the private table
-as-is means only the identity the plugin authenticates as sees them. Checked `plugins/host_subsonicapi.go`'s
-`checkPermissions`: a plugin's `subsonicapi` grant can be configured `allUsers: true` at install time, so a plugin
-*could* loop over every user and write the same tag under each of their namespaces to fake shared visibility — N
-writes for one fact, and only works if the admin grants that broad a scope. A genuinely shared/global AI-tag layer
-(closer to how `genre` works) is a bigger, separate design than reusing `#4823`'s table verbatim. Both options are
-carried as open questions in the build plan rather than decided here.
-
-**Recommendation:** Unblocked. Build plan below, with explicit open questions for both the all-users and per-user
-scoping options. Not started; awaiting a decision on scope before implementation begins.
-
-**Build plan:**
-
-*Phase 1 — plugin-writable tag endpoints (core fork, small, needed either way).* Add `setUserTag`, `removeUserTag`,
-and `getUserTags` as fork-specific Subsonic-tier endpoints, mirroring `skip`/`unskip` exactly
-(`server/subsonic/media_annotation.go:158-207`, registered `server/subsonic/api.go:150-151` in the existing
-authenticated route group). Each is a thin wrapper — `id` (song) + `tag` params in, `api.ds.MediaFileTag(ctx).TagSong`/
-`UntagSong`/`TagsForSong` out, `newResponse()` back — zero new persistence code, since those repository methods
-already scope via `loggedUser(ctx)` internally. `getUserTags` exists so a plugin can check what's already applied
-before re-tagging (idempotent runs). Required regardless of which visibility option below is chosen.
-
-*Open decision — shared (all-users) vs. private (per-user) AI tags:*
-- **Option A — broadcast writes (zero further backend changes).** Plugin calls `UsersService.GetUsers(ctx)`
-  (`plugins/host/users.go`, confirmed via `plugins/host_users.go:25-45` that `allUsers: true` returns every real
-  user — `ds.User(ctx).GetAll()` filtered by the grant), then loops and calls `setUserTag.view?u=<username>&...`
-  once per user per song per tag using Phase 1's endpoint as-is. Pros: no backend work beyond Phase 1, tags land in
-  each user's real private namespace, fully consistent with `#4823`'s privacy model. Cons: O(users × tracks × tags)
-  write volume, requires the admin to grant broad `allUsers: true`, a user added after a run doesn't retroactively
-  get already-applied tags.
-- **Option B — shared "system" identity + read-path union (small backend change, O(1) writes).** One well-known
-  "AI tags" owner (config-designated user ID or dedicated service account); union that owner's rows into every
-  read path — `mediaFileUserTagFilter` (`persistence/mediafile_repository.go:157-166`, `Eq{"t.user_id": userID}` →
-  `Or{Eq{"t.user_id": userID}, Eq{"t.user_id": sharedTagOwnerID}}`), `userTagCond` (`persistence/criteria_sql.go`,
-  same union for smart-playlist criteria), and the `selectMediaFile` group_concat subquery (the "My Tags" column
-  added this session). Plugin writes under one identity only, so it only needs a narrow `subsonicapi` grant scoped
-  to that account, not `allUsers`. Pros: one write per song per tag, new users see AI tags immediately, narrower
-  permission grant. Cons: real new backend surface (3 read-path call sites + a config setting for the shared owner
-  + admin UX for configuring it), blurs the "tags are private" story `#4823` established — needs some UI signal
-  (e.g. a differently-labeled "AI Tags" filter alongside "My Tag") so tags don't appear to come from nowhere.
-- **Option C — fully private, no visibility feature (baseline/fallback).** Plugin only ever tags under whichever
-  single account it authenticates as (typically the installing admin). Simplest scope, but doesn't deliver the
-  original discussion's "whole library filterable by everyone" outcome by default.
-
-Phase 1 is identical regardless of which option wins — building it doesn't commit to an answer.
-
-*Phase 2 — the AI-tagging plugin itself.* Normal WASM plugin (Go/TinyGo), structurally a composite of two existing
-examples: `plugins/examples/nowplaying-py` for the scheduling half (`scheduler` permission, `ScheduleRecurring`,
-`nd_on_init`/`nd_scheduler_callback`), and `plugins/examples/wikimedia` for the external-API half (`http`
-permission with `requiredHosts` allowlisting the AI provider's domain, JSON response parsing). New pattern no
-existing example demonstrates: routing each track's classification through `taskqueue`/`TaskWorker`
-(`plugins/host/task.go`) rather than inline in the scheduler callback, for persistence across restarts, retries,
-and a concurrency cap suited to a rate-limited external API (reference: `plugins/host_taskqueue_test.go`). Reading
-tracks to classify: page via `search3?query=&songCount=N&songOffset=M` through `SubsonicAPIService.Call`, tracking
-a high-water mark in the plugin's `kvstore` permission for incremental re-runs, using Phase 1's `getUserTags` to
-skip already-classified tracks.
-
-*Multi-provider support (Claude / OpenAI / Gemini / etc.) — confirmed feasible, fully contained in Phase 2, no core
-fork changes.* The plugin's `http` permission isn't provider-specific. Design: an adapter pattern —
-`Classify(tracks []TrackInfo) ([]TagSuggestion, error)`, one implementation per provider (`AnthropicAdapter`,
-`OpenAIAdapter`, `GeminiAdapter`) each building that provider's request/response shape, selected at startup by a
-`provider` config field. Constraint: `requiredHosts` is fixed in the manifest at package build time, not editable
-per-install, so the plugin allowlists all candidate providers' API hosts upfront (`api.anthropic.com`,
-`api.openai.com`, `generativelanguage.googleapis.com`) and the `provider` config picks which one runs — a small,
-fixed, auditable list either way.
-
-*Plugin config (`manifest.json` `config` block, admin-set on install):* `provider` (enum), `apiKey`, `model` (e.g.
-`claude-haiku-4-5`/`gpt-5-mini`/`gemini-flash` — kept separate from `provider` since cost/quality varies a lot
-within one provider's own tiers), which tag categories to suggest (genre/mood/language/all), batch size / max
-tracks per run (cost control — batching "Artist – Title" pairs into one request rather than one call per track cuts
-cost roughly 3x by amortizing the instruction-prompt overhead), and — tied to the visibility decision — either
-nothing (Option A) or a target service-account username (Option B).
-
-*Cost, for scale: at Claude Haiku 4.5 pricing ($1/$5 per 1M input/output tokens) with 50-track batches, roughly
-$0.14 per 1,000 tracks classified — API cost is a rounding error next to the engineering effort; the visibility
-decision (A/B/C above) is the real scoping question.*
-
-**Open question, not resolved:** does the plugin live in-repo under `plugins/examples/` (like the other examples),
-or as a fully separate project outside this repo (the way the Pulse companion app is)? Affects whether Phase 2 is
-a navidrome-experimental commit at all, or purely downstream consumer work once Phase 1 ships.
+**What's left in this repo:** a small prerequisite, tracked here since it's core-fork work — three new
+Subsonic-tier endpoints (`setUserTag`, `removeUserTag`, `getUserTags`) so a plugin can write to the existing
+`media_file_tag` table, mirroring `skip`/`unskip` exactly (`server/subsonic/media_annotation.go`, registered in
+`server/subsonic/api.go`'s existing authenticated route group). Zero new persistence code — those repository
+methods already scope via `loggedUser(ctx)` internally. **Effort: Small. Not started.**
 
 ---
 
