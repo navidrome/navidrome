@@ -6,6 +6,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	"github.com/navidrome/navidrome/utils/req"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 // getArtists handles GET /Artists (performing artists, Finamp's "Artists" tab); getAlbumArtists
@@ -58,4 +59,26 @@ func (api *Router) getGenres(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	api.ok(w, r, res)
+}
+
+// getQueryFiltersLegacy handles GET /Items/Filters. Genres reuse the global genre list; Years are
+// distinct album years. Tags/OfficialRatings have no music source, so they are always empty.
+func (api *Router) getQueryFiltersLegacy(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	genres, err := api.ds.Genre(ctx).GetAll(model.QueryOptions{Sort: "name"})
+	if err != nil {
+		api.internalError(w, r, err)
+		return
+	}
+	years, err := api.ds.Album(ctx).GetYears()
+	if err != nil {
+		api.internalError(w, r, err)
+		return
+	}
+	api.ok(w, r, dto.QueryFiltersLegacy{
+		Genres:          slice.Map(genres, func(g model.Genre) string { return g.Name }),
+		Tags:            []string{},
+		OfficialRatings: []string{},
+		Years:           years,
+	})
 }

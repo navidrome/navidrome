@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
@@ -481,6 +482,22 @@ var _ = Describe("Browsing", func() {
 			q := queryResult(get("/Genres?StartIndex=1&Limit=1"))
 			Expect(q.Items).To(HaveLen(1))
 			Expect(q.TotalRecordCount).To(Equal(3))
+		})
+	})
+
+	Describe("GET /Items/Filters", func() {
+		It("returns legacy query filters with genres, years, and empty tags/ratings", func() {
+			var filters dto.QueryFiltersLegacy
+			parseInto(get("/Items/Filters?IncludeItemTypes=Audio&Recursive=true"), &filters)
+			Expect(filters.Genres).To(ContainElements("Rock", "Jazz"))
+			Expect(filters.Years).To(ContainElements(1959, 1965, 1969, 1971))
+			// Verify ascending sort by checking it equals itself sorted.
+			sorted := make([]int, len(filters.Years))
+			copy(sorted, filters.Years)
+			sort.Ints(sorted)
+			Expect(filters.Years).To(Equal(sorted))
+			Expect(filters.Tags).To(BeEmpty())
+			Expect(filters.OfficialRatings).To(BeEmpty())
 		})
 	})
 })

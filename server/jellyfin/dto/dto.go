@@ -288,3 +288,12 @@ type LyricLineCue struct {
 	Start       int64  `json:"Start"`
 	End         *int64 `json:"End,omitempty"`
 }
+
+// QueryFiltersLegacy is the response for GET /Items/Filters. All four lists are always present;
+// clients (jellyfin-web) render each unconditionally.
+type QueryFiltersLegacy struct {
+	Genres          []string `json:"Genres"`
+	Tags            []string `json:"Tags"`
+	OfficialRatings []string `json:"OfficialRatings"`
+	Years           []int    `json:"Years"`
+}
