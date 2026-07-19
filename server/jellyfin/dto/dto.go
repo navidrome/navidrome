@@ -71,6 +71,7 @@ type BaseItemDto struct {
 	ArtistItems            []NameGuidPair    `json:"ArtistItems,omitempty"`
 	Genres                 []string          `json:"Genres,omitempty"`
 	GenreItems             []NameGuidPair    `json:"GenreItems,omitempty"`
+	Studios                []NameGuidPair    `json:"Studios,omitempty"`
 	NormalizationGain      *float64          `json:"NormalizationGain,omitempty"`
 	AlbumNormalizationGain *float64          `json:"AlbumNormalizationGain,omitempty"`
 	ChildCount             *int              `json:"ChildCount,omitempty"`

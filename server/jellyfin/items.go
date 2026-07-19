@@ -496,6 +496,7 @@ func searchPage[S ~[]E, E any](opts model.QueryOptions, search func(model.QueryO
 }
 
 func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, q itemsQuery) (itemsResult, error) {
+	toItem := func(al model.Album) dto.BaseItemDto { return dto.AlbumToBaseItem(al, q.fields) }
 	repo := api.ds.Album(ctx)
 	filters := squirrel.And{}
 	// For albums, ParentId (browse an artist) and AlbumArtistIds/ArtistIds both mean "this artist's
@@ -530,12 +531,12 @@ func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, q it
 		if err != nil {
 			return itemsResult{}, err
 		}
-		return materialized(result(slice.Map(albums, dto.AlbumToBaseItem), total, opts.Offset)), nil
+		return materialized(result(slice.Map(albums, toItem), total, opts.Offset)), nil
 	}
 	total, _ := repo.CountAll(model.QueryOptions{Filters: opts.Filters})
 	open := streamCursor(func() (func(func(model.Album, error) bool), error) {
 		return repo.GetCursor(opts)
-	}, dto.AlbumToBaseItem)
+	}, toItem)
 	return streamed(open, int(total), opts.Offset), nil
 }
 
@@ -692,7 +693,7 @@ func (api *Router) resolveItemByID(ctx context.Context, id string, fields dto.Fi
 		if !u.HasLibraryAccess(al.LibraryID) {
 			return dto.BaseItemDto{}, false
 		}
-		return dto.AlbumToBaseItem(*al), true
+		return dto.AlbumToBaseItem(*al, fields), true
 	}
 	if ar, err := api.ds.Artist(ctx).Get(id); err == nil {
 		// TODO: an artist spans multiple libraries (library_artist), so there's no single
@@ -781,13 +782,15 @@ func (api *Router) deleteItem(w http.ResponseWriter, r *http.Request) {
 // /Items/Latest, and why it writes directly instead of going through api.ok.
 func (api *Router) getLatest(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	p := req.Params(r)
+	fields := dto.ParseFields(p.Strings("fields")...)
 	opts := filter.AlbumsByNewest()
-	opts.Max = req.Params(r).IntOr("limit", 20)
+	opts.Max = p.IntOr("limit", 20)
 	opts = filter.ApplyLibraryFilter(opts, accessibleLibraryIDs(ctx))
 	repo := api.ds.Album(ctx)
 	open := streamCursor(func() (func(func(model.Album, error) bool), error) {
 		return repo.GetCursor(opts)
-	}, dto.AlbumToBaseItem)
+	}, func(al model.Album) dto.BaseItemDto { return dto.AlbumToBaseItem(al, fields) })
 	api.writeItemsArray(w, r, streamed(open, 0, 0))
 }
 

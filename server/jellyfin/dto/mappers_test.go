@@ -244,7 +244,7 @@ var _ = Describe("mappers", func() {
 
 	It("maps an album to a MusicAlbum folder item", func() {
 		al := model.Album{ID: "alb-1", Name: "Alb", AlbumArtist: "AA", AlbumArtistID: "art-1", MaxYear: 1999, SongCount: 10, Genres: []model.Genre{{ID: "1", Name: "genre 1"}, {ID: "2", Name: "genre 2"}}}
-		item := AlbumToBaseItem(al)
+		item := AlbumToBaseItem(al, nil)
 		Expect(item.Type).To(Equal("MusicAlbum"))
 		Expect(item.IsFolder).To(BeTrue())
 		Expect(item.Id).To(Equal(EncodeID("alb-1")))
@@ -258,6 +258,19 @@ var _ = Describe("mappers", func() {
 		Expect(item.ImageBlurHashes["Primary"][item.ImageTags["Primary"]]).To(HaveLen(6))
 		Expect(item.Genres).To(Equal([]string{"genre 1", "genre 2"}))
 		Expect(item.GenreItems).To(Equal([]NameGuidPair{{Id: EncodeID("1"), Name: "genre 1"}, {Id: EncodeID("2"), Name: "genre 2"}}))
+	})
+
+	It("populates album Studios from record-label tags only when Fields=Studios", func() {
+		al := model.Album{ID: "alb-2", Name: "Alb2"}
+		al.Tags = model.Tags{model.TagRecordLabel: []string{"Columbia", "Legacy"}}
+
+		Expect(AlbumToBaseItem(al, nil).Studios).To(BeEmpty())
+
+		item := AlbumToBaseItem(al, ParseFields("Studios"))
+		Expect(item.Studios).To(Equal([]NameGuidPair{
+			{Name: "Columbia", Id: EncodeID(model.NewTag(model.TagRecordLabel, "Columbia").ID)},
+			{Name: "Legacy", Id: EncodeID(model.NewTag(model.TagRecordLabel, "Legacy").ID)},
+		}))
 	})
 
 	It("maps an artist to a MusicArtist folder item", func() {
@@ -313,9 +326,9 @@ var _ = Describe("mappers", func() {
 		})
 
 		It("is set on albums from their date, falling back to MaxYear", func() {
-			Expect(*AlbumToBaseItem(model.Album{ID: "a1", Date: "2013-09-06"}).PremiereDate).To(Equal("2013-09-06T00:00:00Z"))
-			Expect(*AlbumToBaseItem(model.Album{ID: "a2", MaxYear: 2013}).PremiereDate).To(Equal("2013-01-01T00:00:00Z"))
-			Expect(AlbumToBaseItem(model.Album{ID: "a3"}).PremiereDate).To(BeNil())
+			Expect(*AlbumToBaseItem(model.Album{ID: "a1", Date: "2013-09-06"}, nil).PremiereDate).To(Equal("2013-09-06T00:00:00Z"))
+			Expect(*AlbumToBaseItem(model.Album{ID: "a2", MaxYear: 2013}, nil).PremiereDate).To(Equal("2013-01-01T00:00:00Z"))
+			Expect(AlbumToBaseItem(model.Album{ID: "a3"}, nil).PremiereDate).To(BeNil())
 		})
 	})
 

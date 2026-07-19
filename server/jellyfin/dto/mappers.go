@@ -200,7 +200,7 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 	return item
 }
 
-func AlbumToBaseItem(al model.Album) BaseItemDto {
+func AlbumToBaseItem(al model.Album, fields Fields) BaseItemDto {
 	item := BaseItemDto{
 		Name:              al.Name,
 		Id:                EncodeID(al.ID),
@@ -230,6 +230,14 @@ func AlbumToBaseItem(al model.Album) BaseItemDto {
 		for _, g := range al.Genres {
 			item.Genres = append(item.Genres, g.Name)
 			item.GenreItems = append(item.GenreItems, NameGuidPair{Id: EncodeID(g.ID), Name: g.Name})
+		}
+	}
+	// Jellyfin leaves Studios empty for music; we expose record labels here to match our /Studios
+	// list and StudioIds= filter, so a client can display and click through to filter by label.
+	if fields.Has("Studios") {
+		for _, label := range al.Tags.Values(model.TagRecordLabel) {
+			id := EncodeID(model.NewTag(model.TagRecordLabel, label).ID)
+			item.Studios = append(item.Studios, NameGuidPair{Name: label, Id: id})
 		}
 	}
 	return item
