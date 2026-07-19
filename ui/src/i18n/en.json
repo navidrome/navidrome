@@ -155,6 +155,13 @@
         "empty": "No songs found for this genre"
       }
     },
+    "genreAlias": {
+      "name": "Genre Merge |||| Genre Merges",
+      "fields": {
+        "aliasName": "Merge this genre",
+        "canonicalName": "Into this genre"
+      }
+    },
     "artist": {
       "name": "Artist |||| Artists",
       "fields": {
@@ -834,6 +841,11 @@
       "title": "Genre Exploration",
       "overview": "A real sidebar entry for browsing by genre, instead of filtering the Albums view by hand — a sortable genre index, and a dedicated page per genre with its albums, top songs, and recently added tracks.",
       "howTo": "Click Genres in the sidebar, then click a genre to see its page. Use Shuffle for a large randomized queue, or Create Playlist to build a real playlist with as many tracks as you choose — duplicates (the same song on two different albums) are automatically collapsed to one copy, and you can exclude songs you've already flagged as skipped."
+    },
+    "genreMerge": {
+      "title": "Genre Merging (Admin)",
+      "overview": "Collapse near-duplicate genres coming from inconsistently-tagged files (e.g. \"Hip-Hop\" / \"Hip Hop\" / \"HipHop\") into one genre everywhere — not just in this web UI, but for every Subsonic-compatible player (Cirque included) and smart playlists too, since the merge is applied to the actual scanned data, not just this app's view of it.",
+      "howTo": "As an admin, go to Settings > Genre Merges and add a mapping from the genre name you want retired to the genre name it should count as. The merge takes effect the next time each affected file is scanned — trigger a Scan Now from the Activity page to apply it immediately. Merges chain and repoint automatically: if you later merge B into C after already merging A into B, A ends up pointing straight at C."
     }
   },
   "activity": {

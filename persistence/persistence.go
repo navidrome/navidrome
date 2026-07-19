@@ -45,6 +45,10 @@ func (s *SQLStore) Genre(ctx context.Context) model.GenreRepository {
 	return NewGenreRepository(ctx, s.getDBXBuilder())
 }
 
+func (s *SQLStore) GenreAlias(ctx context.Context) model.GenreAliasRepository {
+	return NewGenreAliasRepository(ctx, s.getDBXBuilder())
+}
+
 func (s *SQLStore) Tag(ctx context.Context) model.TagRepository {
 	return NewTagRepository(ctx, s.getDBXBuilder())
 }
@@ -127,6 +131,8 @@ func (s *SQLStore) Resource(ctx context.Context, m any) model.ResourceRepository
 		return s.MediaFile(ctx).(model.ResourceRepository)
 	case model.Genre:
 		return s.Genre(ctx).(model.ResourceRepository)
+	case model.GenreAlias:
+		return s.GenreAlias(ctx).(model.ResourceRepository)
 	case model.Playlist:
 		return s.Playlist(ctx).(model.ResourceRepository)
 	case model.Radio:

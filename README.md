@@ -35,6 +35,9 @@ compatibility, same plugin system. This fork just adds:
   plugins too. See [below](#enhanced-scrobble-attribution-pulse-integration) for details.
 - 🎼 **Genre exploration** — a real sidebar entry for browsing by genre, with albums, top songs, and one-click
   deduplicated playlist creation. See [below](#genre-exploration-experimental) for details.
+- 🔗 **Genre merging** — collapse near-duplicate genres from inconsistent tagging into one, applied at scan time so
+  every Subsonic client and smart playlist sees the merge too, not just this web UI. See
+  [below](#genre-merging-experimental) for details.
 
 Kept in sync with upstream: currently based on [Navidrome v0.63.2](https://github.com/navidrome/navidrome/releases/tag/v0.63.2),
 merged in directly rather than maintained as a standalone patch set. Syncs happen periodically, not on a fixed
@@ -303,6 +306,23 @@ duration similarity for files with neither), with an option to skip anything you
 Requested across [navidrome/navidrome discussion #2631](https://github.com/navidrome/navidrome/discussions/2631),
 [#4249](https://github.com/navidrome/navidrome/discussions/4249), and
 [#4656](https://github.com/navidrome/navidrome/discussions/4656).
+
+## Genre Merging (Experimental)
+
+Inconsistently-tagged files often produce near-duplicate genres — "Hip-Hop", "Hip Hop", and "HipHop" all showing up
+as separate entries. This fork lets an admin define a merge, and applies it where genre data is actually cleaned
+during scanning, so the fix isn't limited to this web UI.
+
+### 🎯 One merge, every surface in sync
+Because canonicalization happens at scan time (not as a read-time filter), the merge is visible everywhere genre
+data is read from: the genre index and per-genre pages in this UI, every Subsonic-compatible client (including
+Cirque), and smart-playlist criteria matching on genre.
+
+### ⚙️ Admin-only, under Settings
+Go to Settings > Genre Merges and add a mapping from the genre you want retired to the genre it should count as.
+Merges take effect on each affected file's next scan — trigger a Scan Now to apply immediately. Chained merges
+flatten automatically (merging B into C after A was already merged into B repoints A straight at C), and merges
+that would create a cycle are rejected.
 
 ## Translations
 

@@ -368,6 +368,10 @@ func sanitize(filePath string, tagName model.TagName, tag model.TagConf, value s
 		value = value[:maxLength]
 	}
 
+	if tagName == model.TagGenre {
+		value = canonicalGenre(value)
+	}
+
 	switch tag.Type {
 	case model.TagTypeDate:
 		value = parseDate(filePath, tagName, value)

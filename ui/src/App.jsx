@@ -54,6 +54,7 @@ import SharePlayer from './share/SharePlayer'
 import { HTML5Backend } from 'react-dnd-html5-backend'
 import { DndProvider } from 'react-dnd'
 import missing from './missing/index.js'
+import genreAlias from './genreAlias'
 import { useEffect } from 'react'
 
 const history = createHashHistory()
@@ -176,6 +177,13 @@ const Admin = (props) => {
           <Resource
             name="missing"
             {...missing}
+            options={{ subMenu: 'settings' }}
+          />
+        ) : null,
+        permissions === 'admin' ? (
+          <Resource
+            name="genreAlias"
+            {...genreAlias}
             options={{ subMenu: 'settings' }}
           />
         ) : null,

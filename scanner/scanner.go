@@ -16,6 +16,7 @@ import (
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/metadata"
 	"github.com/navidrome/navidrome/utils/run"
 	"github.com/navidrome/navidrome/utils/slice"
 )
@@ -135,6 +136,8 @@ func (s *scannerImpl) scanFolders(ctx context.Context, fullScan bool, targets []
 		return
 	}
 
+	s.loadGenreAliases(ctx)
+
 	err = run.Sequentially(
 		// Phase 1: Scan all libraries and import new/updated files
 		runPhase[*folderEntry](ctx, 1, createPhaseFolders(ctx, &state, s.ds, s.cw)),
@@ -183,6 +186,22 @@ func (s *scannerImpl) scanFolders(ctx context.Context, fullScan bool, targets []
 	} else {
 		log.Info(ctx, "Scanner: Finished scanning all libraries", "duration", time.Since(startTime))
 	}
+}
+
+// loadGenreAliases loads the admin-defined genre_alias mappings and installs them for this scan
+// run, so genre values get canonicalized as tags are cleaned. Loaded once per scan, not per file,
+// to avoid a DB round-trip per file.
+func (s *scannerImpl) loadGenreAliases(ctx context.Context) {
+	aliases, err := s.ds.GenreAlias(ctx).GetAll()
+	if err != nil {
+		log.Error(ctx, "Scanner: Error loading genre aliases", err)
+		return
+	}
+	m := make(map[string]string, len(aliases))
+	for _, a := range aliases {
+		m[a.AliasName] = a.CanonicalName
+	}
+	metadata.SetGenreAliases(m)
 }
 
 // prepareLibrariesForScan initializes the scan for all libraries in the state.

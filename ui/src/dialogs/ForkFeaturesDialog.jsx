@@ -31,6 +31,7 @@ const FEATURE_KEYS = [
   'skipSongs',
   'scrobbleAttribution',
   'genreExploration',
+  'genreMerge',
 ]
 
 export const ForkFeaturesDialog = ({ open, onClose }) => {

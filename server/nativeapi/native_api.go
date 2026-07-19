@@ -73,6 +73,7 @@ func (api *Router) routes() http.Handler {
 		api.addArtistRoute(r)
 		api.R(r, "/genre", model.Genre{}, false)
 		api.addGenreRandomSongsRoute(r)
+		api.R(r, "/genreAlias", model.GenreAlias{}, true)
 		api.R(r, "/player", model.Player{}, true)
 		api.R(r, "/transcoding", model.Transcoding{}, conf.Server.EnableTranscodingConfig)
 		api.addRadioRoute(r)
