@@ -194,6 +194,16 @@ func ByAlbumID(albumIds []string) Sqlizer {
 	return Eq{"album_id": albumIds}
 }
 
+// AlbumsByYears matches albums whose production year (max_year) is in years.
+func AlbumsByYears(years []int) Sqlizer {
+	return Eq{"max_year": years}
+}
+
+// SongsByYears matches media files whose year is in years.
+func SongsByYears(years []int) Sqlizer {
+	return Eq{"year": years}
+}
+
 // ArtistsByGenreID matches artists credited as album artist on an album with any of the given
 // genre tag ids. Non-correlated semi-join: the correlated EXISTS form rescans albums per artist row.
 func ArtistsByGenreID(genreIds []string) Sqlizer {

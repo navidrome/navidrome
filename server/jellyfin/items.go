@@ -222,6 +222,7 @@ type itemsQuery struct {
 	contributingOnly bool
 	genreIds         []string
 	albumIds         []string
+	years            []int
 }
 
 // parseItemsQuery also resolves the entity types (inferring them from the parent when
@@ -246,6 +247,7 @@ func (api *Router) parseItemsQuery(ctx context.Context, r *http.Request) itemsQu
 		genreIds: decodedQueryIDs(r, "genreids"),
 		// Feishin fetches an album's tracks with AlbumIds instead of ParentId.
 		albumIds: decodedQueryIDs(r, "albumids"),
+		years:    parseYears(r),
 	}
 	// An artist's page filters by artist, not ParentId: Finamp sends ParentId=<libraryId> for scoping
 	// plus AlbumArtistIds/ArtistIds/contributingArtistIds for the artist.
@@ -414,6 +416,17 @@ func decodedQueryIDs(r *http.Request, key string) []string {
 	return slice.Map(queryIDs(r, key), dto.DecodeID)
 }
 
+// parseYears reads Years= as a discrete list, accepting comma-separated and repeated params.
+func parseYears(r *http.Request) []int {
+	var years []int
+	for _, v := range queryIDs(r, "years") {
+		if y, err := strconv.Atoi(v); err == nil && y > 0 {
+			years = append(years, y)
+		}
+	}
+	return years
+}
+
 // parseTypes returns the recognized entries in IncludeItemTypes in order, defaulting to
 // {"MusicAlbum"} when none are recognized (so ParentId=<artistId> browses that artist's albums).
 func parseTypes(types string) []string {
@@ -496,6 +509,9 @@ func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, q it
 	if len(q.genreIds) > 0 {
 		filters = append(filters, filter.ByGenreID(q.genreIds))
 	}
+	if len(q.years) > 0 {
+		filters = append(filters, filter.AlbumsByYears(q.years))
+	}
 	if q.favOnly {
 		filters = append(filters, filter.ByStarred().Filters)
 	}
@@ -536,6 +552,9 @@ func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, q ite
 	}
 	if len(q.genreIds) > 0 {
 		filters = append(filters, filter.ByGenreID(q.genreIds))
+	}
+	if len(q.years) > 0 {
+		filters = append(filters, filter.SongsByYears(q.years))
 	}
 	if q.favOnly {
 		filters = append(filters, filter.ByStarred().Filters)
