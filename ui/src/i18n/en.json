@@ -789,7 +789,7 @@
     "podcasts": {
       "title": "Podcast Support",
       "overview": "Subscribe to podcasts by RSS feed or search, then stream episodes on demand or download them to keep permanently — all through the same Subsonic API your music already uses, so downloaded episodes show up as real library tracks.",
-      "howTo": "Open Podcasts from the sidebar (enable it first in Personal settings if it's hidden), search for a show or paste its RSS URL to subscribe, then choose to stream or download each episode. Set a retention rule (max episodes, days, or storage) so older downloads clean themselves up automatically, and add downloaded episodes to playlists just like any other song."
+      "howTo": "Open Podcasts from the sidebar (enable it first in Personal settings if it's hidden), search for a show or paste its RSS URL to subscribe, then choose to stream or download each episode. Set a retention rule (max episodes, days, or storage) so older downloads clean themselves up automatically, and add downloaded episodes to playlists just like any other song. Click the checkmark next to an episode to mark it listened (or unlistened) yourself — useful if you downloaded it and played it somewhere else entirely, and it syncs across every device."
     },
     "folders": {
       "title": "Physical Folder Browsing",
