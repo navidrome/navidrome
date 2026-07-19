@@ -44,7 +44,9 @@ const MergeGenresForm = () => {
 
   const trimmedTarget = target.trim()
   const canSubmit =
-    sources.length > 0 && trimmedTarget !== '' && !sources.includes(trimmedTarget)
+    sources.length > 0 &&
+    trimmedTarget !== '' &&
+    !sources.includes(trimmedTarget)
 
   const handleSubmit = async () => {
     setSubmitting(true)
