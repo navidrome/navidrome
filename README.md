@@ -33,6 +33,8 @@ compatibility, same plugin system. This fork just adds:
   playback, without deleting it. See [below](#skip--auto-pass-disliked-songs-experimental) for details.
 - 📡 **Enhanced scrobble attribution** — richer client/source/playback-mode context on every scrobble, available to
   plugins too. See [below](#enhanced-scrobble-attribution-pulse-integration) for details.
+- 🎼 **Genre exploration** — a real sidebar entry for browsing by genre, with albums, top songs, and one-click
+  deduplicated playlist creation. See [below](#genre-exploration-experimental) for details.
 
 Kept in sync with upstream: currently based on [Navidrome v0.63.2](https://github.com/navidrome/navidrome/releases/tag/v0.63.2),
 merged in directly rather than maintained as a standalone patch set. Syncs happen periodically, not on a fixed
@@ -282,6 +284,25 @@ distinguishing "Android Auto" from "Web" from "Windows Desktop"), stored alongsi
 The Plugin API's `ScrobbleRequest`/`NowPlayingRequest` types carry the same attribution fields, so a companion
 plugin (built for this fork's own Pulse project) can build listening stats like "you mostly listen via your
 Favorites mix" without needing a separate external bridge process.
+
+## Genre Exploration (Experimental)
+
+Genre browsing in upstream Navidrome means filtering the Albums view by genre by hand. This fork adds a real
+sidebar entry: a sortable genre index, and a dedicated page per genre.
+
+### 🎼 A genre is a real page, not a filter you have to remember
+Click a genre and land on its own page — the albums in that genre, its top songs by play count, recently added
+tracks, and a shuffle action, all scoped to that genre automatically.
+
+### 🔀 Shuffle or create a playlist, right from the genre page
+Shuffle queues a large randomized set of the genre's songs. "Create Playlist" goes further — pick how many tracks
+you want, and it builds a real playlist for you, deduplicated so a song that appears on both the studio album and
+a "Best Of" compilation only shows up once (matching by MusicBrainz Recording ID, then ISRC, then title/artist/
+duration similarity for files with neither), with an option to skip anything you've already flagged as skipped.
+
+Requested across [navidrome/navidrome discussion #2631](https://github.com/navidrome/navidrome/discussions/2631),
+[#4249](https://github.com/navidrome/navidrome/discussions/4249), and
+[#4656](https://github.com/navidrome/navidrome/discussions/4656).
 
 ## Translations
 

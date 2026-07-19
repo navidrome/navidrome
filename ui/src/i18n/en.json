@@ -136,6 +136,24 @@
         "pinnedAsPlaylist": "Folder pinned as playlist! It will be updated on the next scan."
       }
     },
+    "genre": {
+      "name": "Genre |||| Genres",
+      "fields": {
+        "name": "Name",
+        "songCount": "Songs",
+        "albumCount": "Albums"
+      },
+      "topSongs": "Top Songs",
+      "recentlyAdded": "Recently Added",
+      "createPlaylist": {
+        "action": "Create Playlist",
+        "title": "Create Playlist from %{genre}",
+        "trackCount": "Number of tracks",
+        "excludeSkipped": "Exclude skipped songs",
+        "submit": "Create",
+        "empty": "No songs found for this genre"
+      }
+    },
     "artist": {
       "name": "Artist |||| Artists",
       "fields": {
@@ -810,6 +828,11 @@
       "title": "Enhanced Scrobble Attribution",
       "overview": "Adds richer context to every scrobble/play report — not just that a song played, but the client, source, origin, and playback mode it played through (e.g. distinguishing Android Auto from Web from Windows Desktop).",
       "howTo": "This happens automatically in the background; there's nothing to turn on. It's most useful for compatible companion apps and plugins (built for this fork's own Pulse project) that use the extra context to build richer listening stats."
+    },
+    "genreExploration": {
+      "title": "Genre Exploration",
+      "overview": "A real sidebar entry for browsing by genre, instead of filtering the Albums view by hand — a sortable genre index, and a dedicated page per genre with its albums, top songs, and recently added tracks.",
+      "howTo": "Click Genres in the sidebar, then click a genre to see its page. Use Shuffle for a large randomized queue, or Create Playlist to build a real playlist with as many tracks as you choose — duplicates (the same song on two different albums) are automatically collapsed to one copy, and you can exclude songs you've already flagged as skipped."
     }
   },
   "activity": {

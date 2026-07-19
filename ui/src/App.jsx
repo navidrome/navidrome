@@ -18,6 +18,7 @@ import song from './song'
 import album from './album'
 import artist from './artist'
 import folder from './folder'
+import genre from './genre'
 import playlist from './playlist'
 import radio from './radio'
 import podcast from './podcast'
@@ -187,7 +188,7 @@ const Admin = (props) => {
         ) : null,
 
         <Resource name="translation" />,
-        <Resource name="genre" />,
+        <Resource name="genre" {...genre} />,
         <Resource name="tag" />,
         <Resource name="playlistTrack" />,
         <Resource name="keepalive" />,
