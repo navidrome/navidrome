@@ -555,14 +555,15 @@ var _ = Describe("ffmpeg", func() {
 	})
 
 	Describe("ProbeError", func() {
-		It("keeps the file path in Error() for logging", func() {
-			e := &ProbeError{Path: "/music/foo.flac", Reason: "/music/foo.flac: Invalid data found when processing input"}
+		It("uses the underlying cause in Error() so logs keep the full detail", func() {
+			e := &ProbeError{Path: "/music/foo.flac",
+				err: errors.New("/music/foo.flac: Invalid data found when processing input")}
 			Expect(e.Error()).To(ContainSubstring("/music/foo.flac"))
 			Expect(e.Error()).To(ContainSubstring("Invalid data found when processing input"))
 		})
 
-		It("strips the file path from SafeReason()", func() {
-			e := &ProbeError{Path: "/music/foo.flac", Reason: "/music/foo.flac: Invalid data found when processing input"}
+		It("returns the path-free reason from SafeReason()", func() {
+			e := &ProbeError{Path: "/music/foo.flac", Reason: "the file: Invalid data found when processing input"}
 			Expect(e.SafeReason()).To(Equal("the file: Invalid data found when processing input"))
 			Expect(e.SafeReason()).ToNot(ContainSubstring("/music/foo.flac"))
 		})
@@ -570,6 +571,33 @@ var _ = Describe("ffmpeg", func() {
 		It("unwraps to the underlying cause so errors.Is detects a missing file", func() {
 			e := &ProbeError{Path: "/music/foo.flac", Reason: "file not found", err: os.ErrNotExist}
 			Expect(errors.Is(e, os.ErrNotExist)).To(BeTrue())
+		})
+	})
+
+	Describe("probeClientReason", func() {
+		It("strips the file path from ffprobe stderr", func() {
+			if runtime.GOOS == "windows" {
+				Skip("uses /bin/sh")
+			}
+			_, err := exec.Command("/bin/sh", "-c", "echo '/music/foo.flac: Invalid data found' >&2; exit 1").Output()
+			Expect(err).To(HaveOccurred())
+			Expect(probeClientReason(err, "/music/foo.flac")).To(Equal("the file: Invalid data found"))
+		})
+
+		It("returns a generic reason for launch failures, without leaking the binary path", func() {
+			err := errors.New("fork/exec /opt/navidrome/bin/ffprobe: no such file or directory")
+			Expect(probeClientReason(err, "/music/foo.flac")).To(Equal("could not read file"))
+		})
+	})
+
+	Describe("probeDetail", func() {
+		It("surfaces ffprobe stderr for logging", func() {
+			if runtime.GOOS == "windows" {
+				Skip("uses /bin/sh")
+			}
+			_, err := exec.Command("/bin/sh", "-c", "echo 'boom detail' >&2; exit 1").Output()
+			Expect(err).To(HaveOccurred())
+			Expect(probeDetail(err)).To(Equal("boom detail"))
 		})
 	})
 

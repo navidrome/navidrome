@@ -167,13 +167,13 @@ func (e *ffmpeg) ProbeAudioStream(ctx context.Context, filePath string) (*AudioP
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...) // #nosec
 	output, err := cmd.Output()
 	if err != nil {
-		return nil, &ProbeError{Path: filePath, Reason: probeErrorReason(err), err: err}
+		return nil, &ProbeError{Path: filePath, Reason: probeClientReason(err, filePath), err: err}
 	}
 	return parseProbeOutput(output)
 }
 
-// ProbeError reports an ffprobe failure, keeping the file path separate from the
-// reason so callers can log the full detail but expose a path-free message.
+// ProbeError reports an ffprobe failure. Reason is a path-free message safe to
+// expose to clients; the wrapped cause carries the full detail for logging.
 type ProbeError struct {
 	Path   string
 	Reason string
@@ -181,17 +181,18 @@ type ProbeError struct {
 }
 
 func (e *ProbeError) Error() string {
-	return fmt.Sprintf("probe failed on %q: %s", e.Path, e.Reason)
+	if e.err == nil {
+		return fmt.Sprintf("probe failed on %q: %s", e.Path, e.Reason)
+	}
+	return fmt.Sprintf("probe failed on %q: %s", e.Path, probeDetail(e.err))
 }
 
 // Unwrap exposes the underlying cause so callers can test it with errors.Is
 // (e.g. fs.ErrNotExist to detect a missing file).
 func (e *ProbeError) Unwrap() error { return e.err }
 
-// SafeReason returns the failure reason with the file path removed.
-func (e *ProbeError) SafeReason() string {
-	return strings.TrimSpace(strings.ReplaceAll(e.Reason, e.Path, "the file"))
-}
+// SafeReason returns the path-free reason, safe to send to clients.
+func (e *ProbeError) SafeReason() string { return e.Reason }
 
 // fileAccessReason maps a stat failure to a clear, path-free reason, so a moved
 // or unreadable file reads as "file not found" rather than a raw ffprobe message.
@@ -206,13 +207,24 @@ func fileAccessReason(err error) string {
 	}
 }
 
-// probeErrorReason prefers ffprobe's stderr (populated on ExitError) over the
-// bare "exit status N", so the real diagnostic reaches logs and clients.
-func probeErrorReason(err error) string {
+// probeDetail returns the full diagnostic for logging (may contain paths):
+// ffprobe's stderr when present, otherwise the raw error text.
+func probeDetail(err error) string {
 	if exitErr, ok := errors.AsType[*exec.ExitError](err); ok && len(exitErr.Stderr) > 0 {
 		return strings.TrimSpace(string(exitErr.Stderr))
 	}
 	return err.Error()
+}
+
+// probeClientReason returns a path-free reason for an ffprobe execution failure:
+// ffprobe's stderr with the file path stripped, or a generic reason when ffprobe
+// couldn't run at all (its launch error may embed the binary path).
+func probeClientReason(err error, path string) string {
+	exitErr, ok := errors.AsType[*exec.ExitError](err)
+	if !ok || len(exitErr.Stderr) == 0 {
+		return "could not read file"
+	}
+	return strings.TrimSpace(strings.ReplaceAll(string(exitErr.Stderr), path, "the file"))
 }
 
 type probeOutput struct {

@@ -84,7 +84,7 @@ var _ = Describe("Transcode endpoints", func() {
 		It("enriches the decision error with the reason, without leaking the file path", func() {
 			mockMFRepo.SetData(model.MediaFiles{{ID: "song-1", Suffix: "flac"}})
 			mockTD.decisionErr = fmt.Errorf("probing media file song-1: %w",
-				&ffmpeg.ProbeError{Path: "/music/secret/foo.flac", Reason: "/music/secret/foo.flac: Invalid data found when processing input"})
+				&ffmpeg.ProbeError{Path: "/music/secret/foo.flac", Reason: "the file: Invalid data found when processing input"})
 			r := newJSONPostRequest("mediaId=song-1&mediaType=song", "{}")
 			_, err := router.GetTranscodeDecision(w, r)
 			Expect(err).To(HaveOccurred())
