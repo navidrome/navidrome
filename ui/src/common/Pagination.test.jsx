@@ -1,59 +1,62 @@
 import React from 'react'
-import { render } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { Pagination } from './Pagination'
 
-// no JSX in the factory: vi.mock hoists it above the React import
-vi.mock('react-admin', () => ({
-  Pagination: () => null,
-  useListPaginationContext: vi.fn(),
-}))
+// stub RA's Pagination so a test can invoke the injected setPerPage, i.e.
+// simulate an actual rows-per-page selection
+vi.mock('react-admin', async () => {
+  const React = await vi.importActual('react')
+  return {
+    Pagination: ({ setPerPage }) =>
+      React.createElement(
+        'button',
+        { onClick: () => setPerPage(50) },
+        'select 50',
+      ),
+    useListPaginationContext: vi.fn(),
+  }
+})
 
 describe('Pagination', () => {
   let mockContext
+  let setPerPage
 
   beforeEach(async () => {
     vi.clearAllMocks()
     localStorage.clear()
+    setPerPage = vi.fn()
     const { useListPaginationContext } = await import('react-admin')
     mockContext = vi.mocked(useListPaginationContext)
   })
 
-  it('persists perPage for the context resource', () => {
-    mockContext.mockReturnValue({ resource: 'song', perPage: 25 })
-    render(<Pagination />)
-    expect(localStorage.getItem('perPage.song')).toEqual('25')
-  })
+  const selectPerPage = () => fireEvent.click(screen.getByText('select 50'))
 
-  it('updates the stored value when perPage changes', () => {
-    mockContext.mockReturnValue({ resource: 'song', perPage: 25 })
-    const { rerender } = render(<Pagination />)
-    mockContext.mockReturnValue({ resource: 'song', perPage: 50 })
-    rerender(<Pagination />)
+  it('persists the page size chosen in the selector', () => {
+    mockContext.mockReturnValue({ resource: 'song', perPage: 15, setPerPage })
+    render(<Pagination />)
+    selectPerPage()
     expect(localStorage.getItem('perPage.song')).toEqual('50')
   })
 
-  it('does not persist without a resource in context', () => {
-    mockContext.mockReturnValue({ perPage: 25 })
+  it('still applies the change to the list', () => {
+    mockContext.mockReturnValue({ resource: 'song', perPage: 15, setPerPage })
     render(<Pagination />)
-    expect(localStorage.getItem('perPage.undefined')).toBeNull()
+    selectPerPage()
+    expect(setPerPage).toHaveBeenCalledWith(50)
   })
 
-  it('does not persist without a perPage in context', () => {
-    mockContext.mockReturnValue({ resource: 'song' })
+  it('does not persist a page size the user did not select', () => {
+    mockContext.mockReturnValue({ resource: 'song', perPage: 15, setPerPage })
     render(<Pagination />)
     expect(localStorage.getItem('perPage.song')).toBeNull()
   })
 
-  it('does not persist a value outside the offered options', () => {
-    mockContext.mockReturnValue({ resource: 'album', perPage: 15 })
-    render(<Pagination rowsPerPageOptions={[18, 36, 72]} />)
-    expect(localStorage.getItem('perPage.album')).toBeNull()
-  })
-
-  it('does not persist when the selector offers a single option', () => {
-    mockContext.mockReturnValue({ resource: 'album', perPage: 12 })
-    render(<Pagination rowsPerPageOptions={[12]} />)
-    expect(localStorage.getItem('perPage.album')).toBeNull()
+  it('does not persist without a resource in context', () => {
+    mockContext.mockReturnValue({ perPage: 15, setPerPage })
+    render(<Pagination />)
+    selectPerPage()
+    expect(localStorage.getItem('perPage.undefined')).toBeNull()
+    expect(setPerPage).toHaveBeenCalledWith(50)
   })
 })

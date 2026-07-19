@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useCallback } from 'react'
 import {
   Pagination as RAPagination,
   useListPaginationContext,
@@ -9,13 +9,21 @@ export const Pagination = ({
   rowsPerPageOptions = defaultRowsPerPageOptions,
   ...props
 }) => {
-  const { resource, perPage } = useListPaginationContext()
-  // Persist only a real user choice: an actual option in a multi-option
-  // selector, never a forced single option or a URL-injected page size.
-  const persistable =
-    rowsPerPageOptions.length > 1 && rowsPerPageOptions.includes(perPage)
-  useEffect(() => {
-    if (resource && persistable) setStoredPerPage(resource, perPage)
-  }, [resource, perPage, persistable])
-  return <RAPagination rowsPerPageOptions={rowsPerPageOptions} {...props} />
+  const { resource, setPerPage } = useListPaginationContext()
+  // Persist only a selector-driven change: mount, URL params and responsive
+  // fallbacks never call setPerPage, so they can't overwrite the preference.
+  const handleSetPerPage = useCallback(
+    (value) => {
+      if (resource) setStoredPerPage(resource, value)
+      setPerPage(value)
+    },
+    [resource, setPerPage],
+  )
+  return (
+    <RAPagination
+      rowsPerPageOptions={rowsPerPageOptions}
+      {...props}
+      setPerPage={handleSetPerPage}
+    />
+  )
 }
