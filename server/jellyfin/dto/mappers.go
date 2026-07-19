@@ -261,6 +261,15 @@ func GenreToBaseItem(g model.Genre) BaseItemDto {
 	}
 }
 
+func StudioToBaseItem(t model.Tag) BaseItemDto {
+	return BaseItemDto{
+		Name:              t.TagValue,
+		Id:                EncodeID(t.ID),
+		Type:              "Studio",
+		BackdropImageTags: []string{},
+	}
+}
+
 // PlaylistToBaseItem maps a playlist to a Playlist BaseItemDto.
 func PlaylistToBaseItem(p model.Playlist) BaseItemDto {
 	// Finamp caches covers keyed by blurHash, so the tag (and blurhash) must change with the cover.

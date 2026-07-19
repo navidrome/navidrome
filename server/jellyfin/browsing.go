@@ -61,6 +61,21 @@ func (api *Router) getGenres(w http.ResponseWriter, r *http.Request) {
 	api.ok(w, r, res)
 }
 
+// getStudios handles GET /Studios, exposing record labels (Jellyfin's audio "studio" source) as
+// Studio items. Global, like genres.
+func (api *Router) getStudios(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	p := req.Params(r)
+	labels, err := api.ds.Tag(ctx).GetAll(model.TagRecordLabel, model.QueryOptions{Sort: "tag_value"})
+	if err != nil {
+		api.internalError(w, r, err)
+		return
+	}
+	items := slice.Map(labels, dto.StudioToBaseItem)
+	offset, max := p.IntOr("startindex", 0), p.IntOr("limit", 0)
+	api.ok(w, r, result(paginate(items, offset, max), len(items), offset))
+}
+
 // getQueryFiltersLegacy handles GET /Items/Filters. Genres reuse the global genre list; Years are
 // distinct album years. Tags/OfficialRatings have no music source, so they are always empty.
 func (api *Router) getQueryFiltersLegacy(w http.ResponseWriter, r *http.Request) {

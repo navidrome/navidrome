@@ -278,6 +278,13 @@ var _ = Describe("mappers", func() {
 		Expect(item.Name).To(Equal("Rock"))
 	})
 
+	It("maps a tag to a Studio BaseItemDto", func() {
+		item := StudioToBaseItem(model.Tag{ID: "t1", TagValue: "Blue Note"})
+		Expect(item.Type).To(Equal("Studio"))
+		Expect(item.Name).To(Equal("Blue Note"))
+		Expect(item.Id).To(Equal(EncodeID("t1")))
+	})
+
 	Describe("premiereDate", func() {
 		// Finamp re-sorts "Latest Releases" client-side by PremiereDate; absent values sort arbitrarily.
 		It("serializes a full date", func() {

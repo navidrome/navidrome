@@ -483,6 +483,16 @@ var _ = Describe("Browsing", func() {
 			Expect(q.Items).To(HaveLen(1))
 			Expect(q.TotalRecordCount).To(Equal(3))
 		})
+
+		It("returns record labels as Studio items", func() {
+			q := queryResult(get("/Studios"))
+			names := make([]string, 0, len(q.Items))
+			for _, it := range q.Items {
+				Expect(it.Type).To(Equal("Studio"))
+				names = append(names, it.Name)
+			}
+			Expect(names).To(ContainElement("Columbia"))
+		})
 	})
 
 	Describe("GET /Items/Filters", func() {

@@ -153,6 +153,7 @@ func (t Tags) Add(name TagName, v string) {
 type TagRepository interface {
 	Add(libraryID int, tags ...Tag) error
 	UpdateCounts() error
+	GetAll(name TagName, options ...QueryOptions) (TagList, error)
 }
 
 type TagName string
