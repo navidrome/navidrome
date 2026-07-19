@@ -122,15 +122,23 @@ func (b *bufferedScrobbler) sendWakeSignal() {
 }
 
 func (b *bufferedScrobbler) run(ctx context.Context) {
+	timer := time.NewTimer(time.Hour)
+	timer.Stop()
+	defer timer.Stop()
+	failures := 0
 	for {
-		if !b.processQueue(ctx) {
-			time.AfterFunc(5*time.Second, func() {
-				b.sendWakeSignal()
-			})
+		if b.processQueue(ctx) {
+			failures = 0
+			timer.Stop()
+		} else {
+			timer.Reset(backoffDelay(failures))
+			if failures < maxRetryShift {
+				failures++
+			}
 		}
 		select {
 		case <-b.wakeSignal:
-			continue
+		case <-timer.C:
 		case <-ctx.Done():
 			return
 		}
