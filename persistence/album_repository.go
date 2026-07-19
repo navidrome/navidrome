@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"iter"
 	"maps"
@@ -260,6 +261,20 @@ func (r *albumRepository) GetCursor(options ...model.QueryOptions) (model.AlbumC
 		return nil, err
 	}
 	return wrapAlbumCursor(cursor), nil
+}
+
+func (r *albumRepository) GetYears(libraryIDs ...int) ([]int, error) {
+	cond := And{Gt{"max_year": 0}, Eq{"missing": false}}
+	if len(libraryIDs) > 0 {
+		cond = append(cond, Eq{"library_id": libraryIDs})
+	}
+	sq := r.applyLibraryFilter(Select("distinct max_year").From("album").Where(cond).OrderBy("max_year"))
+	years := []int{}
+	err := r.queryAllSlice(sq, &years)
+	if err != nil && !errors.Is(err, model.ErrNotFound) {
+		return nil, err
+	}
+	return years, nil
 }
 
 func (r *albumRepository) CopyAttributes(fromID, toID string, columns ...string) error {

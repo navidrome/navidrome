@@ -146,6 +146,8 @@ func (api *Router) routes() http.Handler {
 		r.Get("/items/{itemId}/instantmix", api.getInstantMix)
 		r.Get("/genres", api.getGenres)
 		r.Get("/musicgenres", api.getGenres)
+		r.Get("/studios", api.getStudios)
+		r.Get("/items/filters", api.getQueryFiltersLegacy)
 
 		r.Post("/playlists", api.createPlaylist)
 		r.Get("/playlists/{playlistId}", api.getPlaylist)

@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
@@ -207,6 +208,44 @@ var _ = Describe("Browsing", func() {
 			q := queryResult(get("/Items?IncludeItemTypes=Audio&Recursive=true&AlbumIds=" + enc("no-such-album")))
 			Expect(q.Items).To(BeEmpty())
 			Expect(q.TotalRecordCount).To(Equal(0))
+		})
+	})
+
+	Describe("year filtering (Years=)", func() {
+		It("filters items by Years=", func() {
+			albums := queryResult(get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true&Years=1959"))
+			Expect(names(albums.Items)).To(ConsistOf("Kind of Blue"))
+
+			songs := queryResult(get("/Items?IncludeItemTypes=Audio&Recursive=true&Years=1959"))
+			for _, it := range songs.Items {
+				Expect(it.ProductionYear).ToNot(BeNil())
+				Expect(*it.ProductionYear).To(Equal(1959))
+			}
+			Expect(songs.Items).ToNot(BeEmpty())
+		})
+	})
+
+	Describe("studio filtering (StudioIds=)", func() {
+		It("filters items by StudioIds=", func() {
+			studios := queryResult(get("/Studios"))
+			var columbiaID string
+			for _, it := range studios.Items {
+				if it.Name == "Columbia" {
+					columbiaID = it.Id
+				}
+			}
+			Expect(columbiaID).ToNot(BeEmpty())
+
+			albums := queryResult(get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true&StudioIds=" + columbiaID))
+			Expect(names(albums.Items)).To(ConsistOf("Kind of Blue"))
+		})
+
+		It("returns filter lists scoped to a ParentId library", func() {
+			var filters dto.QueryFiltersLegacy
+			parseInto(get("/Items/Filters?ParentId="+enc("1")+"&IncludeItemTypes=Audio&Recursive=true"), &filters)
+			Expect(filters.Years).To(ContainElements(1959, 1965))
+			studios := queryResult(get("/Studios?ParentId=" + enc("1")))
+			Expect(names(studios.Items)).To(ContainElement("Columbia"))
 		})
 	})
 
@@ -481,6 +520,32 @@ var _ = Describe("Browsing", func() {
 			q := queryResult(get("/Genres?StartIndex=1&Limit=1"))
 			Expect(q.Items).To(HaveLen(1))
 			Expect(q.TotalRecordCount).To(Equal(3))
+		})
+
+		It("returns record labels as Studio items", func() {
+			q := queryResult(get("/Studios"))
+			names := make([]string, 0, len(q.Items))
+			for _, it := range q.Items {
+				Expect(it.Type).To(Equal("Studio"))
+				names = append(names, it.Name)
+			}
+			Expect(names).To(ContainElement("Columbia"))
+		})
+	})
+
+	Describe("GET /Items/Filters", func() {
+		It("returns legacy query filters with genres, years, and empty tags/ratings", func() {
+			var filters dto.QueryFiltersLegacy
+			parseInto(get("/Items/Filters?IncludeItemTypes=Audio&Recursive=true"), &filters)
+			Expect(filters.Genres).To(ContainElements("Rock", "Jazz"))
+			Expect(filters.Years).To(ContainElements(1959, 1965, 1969, 1971))
+			// Verify ascending sort by checking it equals itself sorted.
+			sorted := make([]int, len(filters.Years))
+			copy(sorted, filters.Years)
+			sort.Ints(sorted)
+			Expect(filters.Years).To(Equal(sorted))
+			Expect(filters.Tags).To(BeEmpty())
+			Expect(filters.OfficialRatings).To(BeEmpty())
 		})
 	})
 })

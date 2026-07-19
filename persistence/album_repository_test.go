@@ -3,6 +3,7 @@ package persistence
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -848,6 +849,65 @@ var _ = Describe("AlbumRepository", func() {
 			// Clean up
 			_, _ = artistRepo.executeSQL(squirrel.Delete("artist").Where(squirrel.Eq{"id": artist.ID}))
 			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": album.ID}))
+		})
+	})
+
+	Describe("GetYears", func() {
+		It("returns distinct album years ascending, excluding zero", func() {
+			years, err := albumRepo.GetYears()
+			Expect(err).ToNot(HaveOccurred())
+			// Sorted ascending, no duplicates, no zero-year entries.
+			Expect(sort.IsSorted(sort.IntSlice(years))).To(BeTrue())
+			Expect(years).ToNot(ContainElement(0))
+			for i := 1; i < len(years); i++ {
+				Expect(years[i]).To(BeNumerically(">", years[i-1])) // strictly increasing = distinct
+			}
+		})
+
+		It("deduplicates repeated years", func() {
+			// Regression test: verify that DISTINCT is applied in the SQL.
+			// Insert two albums with the same non-zero max_year (2005).
+			album1 := &model.Album{LibraryID: 1, ID: "dedup-test-1", Name: "Album 1", MaxYear: 2005}
+			album2 := &model.Album{LibraryID: 1, ID: "dedup-test-2", Name: "Album 2", MaxYear: 2005}
+			Expect(albumRepo.Put(album1)).To(Succeed())
+			Expect(albumRepo.Put(album2)).To(Succeed())
+			DeferCleanup(func() {
+				_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": []string{"dedup-test-1", "dedup-test-2"}}))
+			})
+
+			years, err := albumRepo.GetYears()
+			Expect(err).ToNot(HaveOccurred())
+
+			// Count occurrences of 2005 in the result
+			count := 0
+			for _, y := range years {
+				if y == 2005 {
+					count++
+				}
+			}
+			Expect(count).To(Equal(1), "year 2005 should appear exactly once despite two albums having it")
+		})
+
+		It("scopes years to the given libraries", func() {
+			all, err := albumRepo.GetYears()
+			Expect(err).ToNot(HaveOccurred())
+			// A library with no albums yields no years.
+			scoped, err := albumRepo.GetYears(99999)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(scoped).To(BeEmpty())
+			Expect(all).ToNot(BeEmpty())
+		})
+
+		It("excludes years that belong only to missing albums", func() {
+			gone := &model.Album{LibraryID: 1, ID: "missing-year-1", Name: "Gone", MaxYear: 1911, Missing: true}
+			Expect(albumRepo.Put(gone)).To(Succeed())
+			DeferCleanup(func() {
+				_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": "missing-year-1"}))
+			})
+
+			years, err := albumRepo.GetYears()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(years).ToNot(ContainElement(1911))
 		})
 	})
 
