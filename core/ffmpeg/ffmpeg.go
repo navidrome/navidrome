@@ -204,8 +204,7 @@ func fileAccessReason(err error) string {
 // probeErrorReason prefers ffprobe's stderr (populated on ExitError) over the
 // bare "exit status N", so the real diagnostic reaches logs and clients.
 func probeErrorReason(err error) string {
-	var exitErr *exec.ExitError
-	if errors.As(err, &exitErr) && len(exitErr.Stderr) > 0 {
+	if exitErr, ok := errors.AsType[*exec.ExitError](err); ok && len(exitErr.Stderr) > 0 {
 		return strings.TrimSpace(string(exitErr.Stderr))
 	}
 	return err.Error()
