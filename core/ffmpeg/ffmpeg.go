@@ -160,14 +160,14 @@ func (e *ffmpeg) ProbeAudioStream(ctx context.Context, filePath string) (*AudioP
 		return nil, err
 	}
 	if err := fileExists(filePath); err != nil {
-		return nil, &ProbeError{Path: filePath, Reason: fileAccessReason(err)}
+		return nil, &ProbeError{Path: filePath, Reason: fileAccessReason(err), err: err}
 	}
 	args := createFFmpegCommand(probeAudioStreamCmd, filePath, 0, 0)
 	log.Trace(ctx, "Executing ffprobe command", "args", args)
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...) // #nosec
 	output, err := cmd.Output()
 	if err != nil {
-		return nil, &ProbeError{Path: filePath, Reason: probeErrorReason(err)}
+		return nil, &ProbeError{Path: filePath, Reason: probeErrorReason(err), err: err}
 	}
 	return parseProbeOutput(output)
 }
@@ -177,11 +177,16 @@ func (e *ffmpeg) ProbeAudioStream(ctx context.Context, filePath string) (*AudioP
 type ProbeError struct {
 	Path   string
 	Reason string
+	err    error
 }
 
 func (e *ProbeError) Error() string {
 	return fmt.Sprintf("probe failed on %q: %s", e.Path, e.Reason)
 }
+
+// Unwrap exposes the underlying cause so callers can test it with errors.Is
+// (e.g. fs.ErrNotExist to detect a missing file).
+func (e *ProbeError) Unwrap() error { return e.err }
 
 // SafeReason returns the failure reason with the file path removed.
 func (e *ProbeError) SafeReason() string {

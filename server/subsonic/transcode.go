@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"slices"
 	"strconv"
@@ -316,7 +317,11 @@ func (api *Router) GetTranscodeDecision(w http.ResponseWriter, r *http.Request) 
 	decision, err := api.transcodeDecision.MakeDecision(ctx, mf, clientInfo, stream.TranscodeOptions{})
 	if err != nil {
 		log.Error(ctx, "Failed to make transcode decision", "mediaID", mediaID, err)
-		return nil, newError(responses.ErrorGeneric, "failed to make transcode decision: %s", transcodeFailureReason(err))
+		code := responses.ErrorGeneric
+		if errors.Is(err, fs.ErrNotExist) {
+			code = responses.ErrorDataNotFound
+		}
+		return nil, newError(code, "failed to make transcode decision: %s", transcodeFailureReason(err))
 	}
 
 	// Only create a token when there is a valid playback path

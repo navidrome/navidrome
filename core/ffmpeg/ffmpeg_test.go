@@ -566,6 +566,11 @@ var _ = Describe("ffmpeg", func() {
 			Expect(e.SafeReason()).To(Equal("the file: Invalid data found when processing input"))
 			Expect(e.SafeReason()).ToNot(ContainSubstring("/music/foo.flac"))
 		})
+
+		It("unwraps to the underlying cause so errors.Is detects a missing file", func() {
+			e := &ProbeError{Path: "/music/foo.flac", Reason: "file not found", err: os.ErrNotExist}
+			Expect(errors.Is(e, os.ErrNotExist)).To(BeTrue())
+		})
 	})
 
 	Describe("fileAccessReason", func() {
@@ -591,6 +596,15 @@ var _ = Describe("ffmpeg", func() {
 				if !ff.IsAvailable() {
 					Skip("FFmpeg not available on this system")
 				}
+			})
+
+			It("ProbeAudioStream returns a not-found ProbeError for a missing file", func() {
+				_, err := ff.ProbeAudioStream(GinkgoT().Context(), "/no/such/dir/really-missing.flac")
+				Expect(err).To(HaveOccurred())
+				Expect(errors.Is(err, os.ErrNotExist)).To(BeTrue())
+				var pe *ProbeError
+				Expect(errors.As(err, &pe)).To(BeTrue())
+				Expect(pe.SafeReason()).To(Equal("file not found"))
 			})
 
 			It("should interrupt transcoding when context is cancelled", func() {

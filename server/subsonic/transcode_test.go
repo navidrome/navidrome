@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -89,6 +91,20 @@ var _ = Describe("Transcode endpoints", func() {
 			Expect(err.Error()).To(ContainSubstring("failed to make transcode decision"))
 			Expect(err.Error()).To(ContainSubstring("Invalid data found when processing input"))
 			Expect(err.Error()).ToNot(ContainSubstring("/music/secret"))
+			var subErr subError
+			Expect(errors.As(err, &subErr)).To(BeTrue())
+			Expect(subErr.code).To(Equal(responses.ErrorGeneric))
+		})
+
+		It("returns ErrorDataNotFound when the source file is missing on disk", func() {
+			mockMFRepo.SetData(model.MediaFiles{{ID: "song-1", Suffix: "flac"}})
+			mockTD.decisionErr = fmt.Errorf("probing media file song-1: %w", fs.ErrNotExist)
+			r := newJSONPostRequest("mediaId=song-1&mediaType=song", "{}")
+			_, err := router.GetTranscodeDecision(w, r)
+			Expect(err).To(HaveOccurred())
+			var subErr subError
+			Expect(errors.As(err, &subErr)).To(BeTrue())
+			Expect(subErr.code).To(Equal(responses.ErrorDataNotFound))
 		})
 
 		It("returns error when body is empty", func() {
