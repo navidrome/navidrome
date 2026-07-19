@@ -3,7 +3,6 @@ package jellyfin
 import (
 	"net/http"
 
-	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	"github.com/navidrome/navidrome/utils/req"
@@ -29,7 +28,7 @@ func (api *Router) listArtistsByRole(w http.ResponseWriter, r *http.Request, rol
 	opts := model.QueryOptions{Offset: p.IntOr("startindex", 0), Max: p.IntOr("limit", 0)}
 	applySort(&opts, "MusicArtist", p.StringOr("sortby", ""), p.StringOr("sortorder", ""))
 
-	scopeIDs, _ := resolveLibraryScope(ctx, dto.DecodeID(p.StringOr("parentid", "")))
+	scopeIDs, _ := parentIDScope(ctx, r)
 	// Only the fields listArtists reads; /Artists has no favorites filter, so favOnly stays false.
 	// Finamp's artist tab sends GenreIds when a genre filter is active.
 	q := itemsQuery{
@@ -67,11 +66,8 @@ func (api *Router) getGenres(w http.ResponseWriter, r *http.Request) {
 func (api *Router) getStudios(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	p := req.Params(r)
-	scope, _ := resolveLibraryScope(ctx, dto.DecodeID(p.StringOr("parentid", "")))
-	opts := model.QueryOptions{Sort: "tag_value"}
-	if len(scope) > 0 {
-		opts.Filters = squirrel.Eq{"library_tag.library_id": scope}
-	}
+	scope, _ := parentIDScope(ctx, r)
+	opts := model.QueryOptions{Sort: "tag_value", Filters: libraryScopeFilter(scope)}
 	labels, err := api.ds.Tag(ctx).GetAll(model.TagRecordLabel, opts)
 	if err != nil {
 		api.internalError(w, r, err)
@@ -86,11 +82,8 @@ func (api *Router) getStudios(w http.ResponseWriter, r *http.Request) {
 // library when accessible. Tags/OfficialRatings have no music source, so they are always empty.
 func (api *Router) getQueryFiltersLegacy(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	scope, _ := resolveLibraryScope(ctx, dto.DecodeID(req.Params(r).StringOr("parentid", "")))
-	genreOpts := model.QueryOptions{Sort: "name"}
-	if len(scope) > 0 {
-		genreOpts.Filters = squirrel.Eq{"library_tag.library_id": scope}
-	}
+	scope, _ := parentIDScope(ctx, r)
+	genreOpts := model.QueryOptions{Sort: "name", Filters: libraryScopeFilter(scope)}
 	genres, err := api.ds.Genre(ctx).GetAll(genreOpts)
 	if err != nil {
 		api.internalError(w, r, err)

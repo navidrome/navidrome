@@ -214,11 +214,7 @@ var _ = Describe("Browsing", func() {
 	Describe("year filtering (Years=)", func() {
 		It("filters items by Years=", func() {
 			albums := queryResult(get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true&Years=1959"))
-			names := make([]string, 0)
-			for _, it := range albums.Items {
-				names = append(names, it.Name)
-			}
-			Expect(names).To(ConsistOf("Kind of Blue"))
+			Expect(names(albums.Items)).To(ConsistOf("Kind of Blue"))
 
 			songs := queryResult(get("/Items?IncludeItemTypes=Audio&Recursive=true&Years=1959"))
 			for _, it := range songs.Items {
