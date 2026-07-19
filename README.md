@@ -33,8 +33,8 @@ compatibility, same plugin system. This fork just adds:
   playback, without deleting it. See [below](#skip--auto-pass-disliked-songs-experimental) for details.
 - 📡 **Enhanced scrobble attribution** — richer client/source/playback-mode context on every scrobble, available to
   plugins too. See [below](#enhanced-scrobble-attribution-pulse-integration) for details.
-- 🎼 **Genre exploration** — a real sidebar entry for browsing by genre, with albums, top songs, and one-click
-  deduplicated playlist creation. See [below](#genre-exploration-experimental) for details.
+- 🎼 **Genre exploration** — a real sidebar entry for browsing by genre, with a colored dashboard, albums, top
+  songs, and one-click deduplicated playlist creation. See [below](#genre-exploration-experimental) for details.
 - 🔗 **Genre merging** — collapse near-duplicate genres from inconsistent tagging into one, applied at scan time so
   every Subsonic client and smart playlist sees the merge too, not just this web UI. See
   [below](#genre-merging-experimental) for details.
@@ -291,7 +291,15 @@ Favorites mix" without needing a separate external bridge process.
 ## Genre Exploration (Experimental)
 
 Genre browsing in upstream Navidrome means filtering the Albums view by genre by hand. This fork adds a real
-sidebar entry: a sortable genre index, and a dedicated page per genre.
+sidebar entry: a colored dashboard of every genre, and a dedicated page per genre.
+
+<p align="left">
+    <img width="800" src=".github/screenshots/ss-genre-dashboard.png" alt="Genre dashboard, showing a grid of colored gradient chips with song and album counts">
+</p>
+
+### 🎨 A dashboard, not just a list
+Every genre gets its own colored gradient chip (the same genre always renders the same color) showing its song and
+album counts at a glance, instead of a plain text list you have to scan line by line.
 
 ### 🎼 A genre is a real page, not a filter you have to remember
 Click a genre and land on its own page — the albums in that genre, its top songs by play count, recently added
@@ -312,6 +320,10 @@ Requested across [navidrome/navidrome discussion #2631](https://github.com/navid
 Inconsistently-tagged files often produce near-duplicate genres — "Hip-Hop", "Hip Hop", and "HipHop" all showing up
 as separate entries. This fork lets an admin define a merge, and applies it where genre data is actually cleaned
 during scanning, so the fix isn't limited to this web UI.
+
+<p align="left">
+    <img width="800" src=".github/screenshots/ss-genre-merge.png" alt="Merge Genres admin page, showing multi-select source genres and a target genre field">
+</p>
 
 ### 🎯 One merge, every surface in sync
 Because canonicalization happens at scan time (not as a read-time filter), the merge is visible everywhere genre
