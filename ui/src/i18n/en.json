@@ -160,6 +160,16 @@
       "fields": {
         "aliasName": "Merge this genre",
         "canonicalName": "Into this genre"
+      },
+      "mergeHelp": "Pick one or more genres to merge, and the genre they should count as. Type a name that doesn't exist yet to merge into a brand new genre.",
+      "mergeSources": "Genres to merge",
+      "selectSources": "Select one or more genres",
+      "mergeTarget": "Merge into",
+      "targetHelp": "Type an existing genre name, or a new one to create it",
+      "merge": "Merge",
+      "message": {
+        "mergeSuccess": "Merged %{smart_count} genre into \"%{target}\" |||| Merged %{smart_count} genres into \"%{target}\"",
+        "mergePartialFailure": "%{failed} merge(s) failed (%{names}) — already merged elsewhere, or a naming conflict. The rest succeeded."
       }
     },
     "artist": {
@@ -845,7 +855,7 @@
     "genreMerge": {
       "title": "Genre Merging (Admin)",
       "overview": "Collapse near-duplicate genres coming from inconsistently-tagged files (e.g. \"Hip-Hop\" / \"Hip Hop\" / \"HipHop\") into one genre everywhere — not just in this web UI, but for every Subsonic-compatible player (Cirque included) and smart playlists too, since the merge is applied to the actual scanned data, not just this app's view of it.",
-      "howTo": "As an admin, go to Settings > Genre Merges and add a mapping from the genre name you want retired to the genre name it should count as. The merge takes effect the next time each affected file is scanned — trigger a Scan Now from the Activity page to apply it immediately. Merges chain and repoint automatically: if you later merge B into C after already merging A into B, A ends up pointing straight at C."
+      "howTo": "As an admin, go to Settings > Genre Merges. Create a merge by picking one or more genres and the genre they should count as — type a name that doesn't exist yet to merge into a brand new genre. Click an existing merge in the list to edit which genre it points to, or select rows and delete to unmerge. The merge takes effect the next time each affected file is scanned — trigger a Scan Now from the Activity page to apply it immediately. Merges chain and repoint automatically: if you later merge B into C after already merging A into B, A ends up pointing straight at C."
     }
   },
   "activity": {

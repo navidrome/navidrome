@@ -11,9 +11,10 @@ const GenreAliasList = (props) => {
         <SimpleList
           primaryText={(r) => r.aliasName}
           secondaryText={(r) => `-> ${r.canonicalName}`}
+          linkType="edit"
         />
       ) : (
-        <Datagrid rowClick={false}>
+        <Datagrid rowClick="edit">
           <TextField source="aliasName" />
           <TextField source="canonicalName" />
         </Datagrid>

@@ -319,10 +319,12 @@ data is read from: the genre index and per-genre pages in this UI, every Subsoni
 Cirque), and smart-playlist criteria matching on genre.
 
 ### ⚙️ Admin-only, under Settings
-Go to Settings > Genre Merges and add a mapping from the genre you want retired to the genre it should count as.
-Merges take effect on each affected file's next scan — trigger a Scan Now to apply immediately. Chained merges
-flatten automatically (merging B into C after A was already merged into B repoints A straight at C), and merges
-that would create a cycle are rejected.
+Go to Settings > Genre Merges. Pick one or more genres and the genre they should count as in a single action — type
+a name that doesn't exist yet to merge into a brand new genre. Existing merges are editable (click one to change
+what it points to) and deletable (select rows and delete to unmerge), so fixing a mistake or re-pointing a merge
+never means deleting and recreating it from scratch. Merges take effect on each affected file's next scan — trigger
+a Scan Now to apply immediately. Chained merges flatten automatically (merging B into C after A was already merged
+into B repoints A straight at C), and merges that would create a cycle are rejected.
 
 ## Translations
 
