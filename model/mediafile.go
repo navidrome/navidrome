@@ -314,6 +314,8 @@ func (mfs MediaFiles) ToAlbum() Album {
 	originalYears := make([]int, 0, len(mfs))
 	originalDates := make([]string, 0, len(mfs))
 	releaseDates := make([]string, 0, len(mfs))
+	rgAlbumGains := make([]*float64, 0, len(mfs))
+	rgAlbumPeaks := make([]*float64, 0, len(mfs))
 	tags := make(TagList, 0, len(mfs[0].Tags)*len(mfs))
 
 	a.Missing = true
@@ -344,6 +346,8 @@ func (mfs MediaFiles) ToAlbum() Album {
 		originalYears = append(originalYears, m.OriginalYear)
 		originalDates = append(originalDates, m.OriginalDate)
 		releaseDates = append(releaseDates, m.ReleaseDate)
+		rgAlbumGains = append(rgAlbumGains, m.RGAlbumGain)
+		rgAlbumPeaks = append(rgAlbumPeaks, m.RGAlbumPeak)
 		comments = append(comments, m.Comment)
 		mbzAlbumIds = append(mbzAlbumIds, m.MbzAlbumID)
 		mbzReleaseGroupIds = append(mbzReleaseGroupIds, m.MbzReleaseGroupID)
@@ -378,6 +382,8 @@ func (mfs MediaFiles) ToAlbum() Album {
 	a.Comment, _ = allOrNothing(comments)
 	a.MbzAlbumID = slice.MostFrequent(mbzAlbumIds)
 	a.MbzReleaseGroupID = slice.MostFrequent(mbzReleaseGroupIds)
+	a.RGAlbumGain = mostFrequentPtr(rgAlbumGains)
+	a.RGAlbumPeak = mostFrequentPtr(rgAlbumPeaks)
 	fixAlbumArtist(&a)
 
 	return a
@@ -405,6 +411,32 @@ func minMax(items []int) (int, int) {
 		}
 	}
 	return mn, mx
+}
+
+// mostFrequentPtr returns a pointer to the most common non-nil value, or nil if
+// none. It counts by dereferenced value so a genuine 0.0 is a real candidate
+// (slice.MostFrequent skips the zero value and compares pointers by identity).
+func mostFrequentPtr(items []*float64) *float64 {
+	var counts map[float64]int
+	var best float64
+	var bestCount int
+	for _, it := range items {
+		if it == nil {
+			continue
+		}
+		if counts == nil {
+			counts = map[float64]int{}
+		}
+		counts[*it]++
+		if counts[*it] > bestCount {
+			bestCount = counts[*it]
+			best = *it
+		}
+	}
+	if bestCount == 0 {
+		return nil
+	}
+	return &best
 }
 
 func newer(t1, t2 time.Time) time.Time {
