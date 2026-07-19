@@ -1,4 +1,5 @@
 import { useSelector } from 'react-redux'
+import { getStoredPerPage } from './perPageStore'
 
 const getPerPage = (width) => {
   if (width === 'xs') return 12
@@ -17,10 +18,11 @@ const getPerPageOptions = (width) => {
 }
 
 export const useAlbumsPerPage = (width) => {
+  const options = getPerPageOptions(width)
   const perPage =
     useSelector(
       (state) => state?.admin.resources?.album?.list?.params?.perPage,
-    ) || getPerPage(width)
+    ) || getStoredPerPage('album', options, getPerPage(width))
 
-  return [perPage, getPerPageOptions(width)]
+  return [perPage, options]
 }
