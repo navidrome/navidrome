@@ -15,7 +15,7 @@ it serves this fork's own use (Cirque compatibility, personal library workflow).
 
 ## At a glance
 
-**7 shipped · 3 planned, ready to build · 3 in the backlog (assessed, not prioritized)**
+**7 shipped · 4 planned, ready to build · 3 in the backlog (assessed, not prioritized)**
 
 Nothing below is currently mid-build — everything is either done, or scoped-but-not-started. When something is
 picked up, move it into its own "🔨 In progress" section at the top so it's visible at a glance.
@@ -32,13 +32,14 @@ picked up, move it into its own "🔨 In progress" section at the top so it's vi
 | Physical folder browsing | own project, [navidrome-folder-roadmap.md](navidrome-folder-roadmap.md) | Large → Large |
 | Enhanced scrobble attribution (Pulse integration) | own project | Small → Small |
 
-### 📋 Planned — scoped, ready to build (3)
+### 📋 Planned — scoped, ready to build (4)
 
 | Feature | Source | Effort | Value |
 |---|---|---|---|
 | Remove/prevent duplicate playlist tracks | [#4206](https://github.com/navidrome/navidrome/discussions/4206) | Small (exact-dup) / Medium (fuzzy cross-album) | Medium–High |
 | Playlist "consume mode" (auto-remove on finish) | [#3276](https://github.com/navidrome/navidrome/discussions/3276) | Small–Medium | Low–Medium |
 | AI-based auto-tagging/classification (as a plugin) | [#3145](https://github.com/navidrome/navidrome/discussions/3145) | Small (write path) + Medium (plugin) | Medium |
+| Classical music: show Work/Movement in the web UI | [#2953](https://github.com/navidrome/navidrome/discussions/2953) | Medium | Medium (niche but well-served by existing data) |
 
 Also planned, tracked in a separate doc rather than duplicated here: **Podcast Phase 4** — resume playback
 position, a cross-channel "Up Next" queue, and OPML import/export. See
@@ -447,6 +448,62 @@ decision (A/B/C above) is the real scoping question.*
 **Open question, not resolved:** does the plugin live in-repo under `plugins/examples/` (like the other examples),
 or as a fully separate project outside this repo (the way the Pulse companion app is)? Affects whether Phase 2 is
 a navidrome-experimental commit at all, or purely downstream consumer work once Phase 1 ships.
+
+---
+
+### Classical music: show Work/Movement in the web UI
+
+**Source:** [#2953](https://github.com/navidrome/navidrome/discussions/2953) — "It would be nice if we could get a
+working system for works, movements and movement names just like Qobuz's webplayer." Low direct engagement (1
+comment), but that comment points at [navidrome/navidrome#2601](https://github.com/navidrome/navidrome/pull/2601)
+("Classical music metadata support"), a substantial upstream PR that's been open since November 2023 and is still
+active (last updated within the last month) — real, ongoing community interest in this, just not concentrated in
+the discussion thread itself.
+
+**Status:** Scoped, not started. More is already in place than the open discussion/PR suggests.
+
+**What's already here, inherited from upstream:** confirmed by reading the current codebase directly, not
+assumption — `work`, `movementname`, `movement`, and `movementtotal` are already-registered tag mappings
+(`resources/mappings.yaml`), `model.MediaFile.Movements()` already builds structured `Movement{Name, Number, Count}`
+data from those tags (`model/mediafile.go`), and it's already serialized on the Subsonic/OpenSubsonic API response
+(`server/subsonic/helpers.go` → `responses.Child.Movements`, with test coverage confirming spec-compliant JSON
+output). So any OpenSubsonic client that renders `movements` already gets classical structure today, on the version
+this fork is currently synced to.
+
+**What's actually missing:** confirmed there is **no** `classical`/`IsClassical` flag anywhere in the backend (`grep`
+across `model`, `persistence`, `server/subsonic` for "classical" turns up nothing but an unrelated comment) — the
+auto-detection, composer-as-additional-artist, and `classical` smart-playlist-criteria pieces described in PR
+#2601 have not landed. Nor has PR #2601's web UI piece: "Displays the Work Name + Composers/Arrangers in the album
+tracklist (Navidrome Web UI only, not Subsonic API)" — confirmed via a repo-wide grep for "movement" that the web
+UI (`ui/src/`) never references it. So Navidrome's own web player is the one place a classical listener doesn't see
+any of this, despite the data already flowing through the API for everyone else.
+
+**Effort: Medium**, and deliberately scoped narrower than PR #2601's full ask to avoid the same trap that's
+apparently kept that PR from merging for two and a half years:
+- **In scope:** surface `work`/movement data in the album tracklist UI (`ui/src/album/AlbumSongs.jsx` and
+  `SongTitleField`) — show Work name as a grouping/subheading when present, and prefer "Movement N. Movement Name"
+  over the plain Title field for tracks that have movement tags. No new backend Go code needed for the data itself,
+  since parsing already exists — only exposing `work`/movement fields on the native REST song response the web UI
+  actually reads from (currently these live in the generic raw/mapped tags blob, not as first-class JSON fields on
+  `Child`/song the way `genre` is).
+- **Deliberately out of scope for v1:** auto-detecting "is this album classical" (PR #2601's `is_classical`/
+  `showmovement`-tag-or-heuristic logic), promoting composers to additional artists, and a `classical` smart-playlist
+  criteria field. All three are real, useful ideas, but each is its own design decision with room for disagreement
+  (the PR's own author flagged the genre-name-based heuristic as something they "don't 100% like") — bundling them
+  into a first pass risks the same two-and-a-half-year stall. Gate v1 purely on "does this track have work/movement
+  tags at all," no classification heuristic required.
+
+**Pros:** Real, load-bearing tag data already exists and is already tested/serialized correctly on the API side —
+this is a presentation gap, not a from-scratch metadata project. Zero risk to non-classical libraries (tracks
+without work/movement tags render exactly as they do today).
+
+**Cons:** Niche audience — classical listeners are a minority of self-hosters, and the discussion itself has low
+direct engagement. The "right" UI treatment (grouping by work vs. just relabeling the track title) has real design
+judgment calls that PR #2601's screenshots only partially resolve for this fork's own component structure.
+
+**Recommendation:** Worth building as a contained v1 (tracklist display only, no auto-detection or smart-playlist
+criteria) — the data's already there and tested, so this is mostly UI work. Revisit the auto-detect/composer/smart-
+playlist pieces later, independently, if v1 gets real use.
 
 ---
 
