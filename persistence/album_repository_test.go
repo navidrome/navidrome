@@ -892,6 +892,11 @@ var _ = Describe("AlbumRepository", func() {
 	})
 
 	Describe("ReplayGain", func() {
+		BeforeEach(func() {
+			DeferCleanup(func() {
+				_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": []string{"rg-1", "rg-2"}}))
+			})
+		})
 		It("round-trips album ReplayGain gain and peak", func() {
 			Expect(albumRepo.Put(&model.Album{
 				ID: "rg-1", Name: "rg", LibraryID: 1,

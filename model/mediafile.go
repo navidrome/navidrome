@@ -417,12 +417,15 @@ func minMax(items []int) (int, int) {
 // none. It counts by dereferenced value so a genuine 0.0 is a real candidate
 // (slice.MostFrequent skips the zero value and compares pointers by identity).
 func mostFrequentPtr(items []*float64) *float64 {
-	counts := map[float64]int{}
+	var counts map[float64]int
 	var best *float64
 	var bestCount int
 	for _, it := range items {
 		if it == nil {
 			continue
+		}
+		if counts == nil {
+			counts = map[float64]int{}
 		}
 		counts[*it]++
 		if counts[*it] > bestCount {
