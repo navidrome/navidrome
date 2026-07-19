@@ -32,6 +32,10 @@ type dbAlbum struct {
 	Participants string `structs:"-" json:"-"`
 	Tags         string `structs:"-" json:"-"`
 	FolderIDs    string `structs:"-" json:"-"`
+	// dbx maps columns to fields by name; RGAlbumGain doesn't convert to
+	// rg_album_gain, so shim fields carry the read and PostScan copies them over.
+	RgAlbumGain *float64 `structs:"-" json:"-"`
+	RgAlbumPeak *float64 `structs:"-" json:"-"`
 }
 
 func (a *dbAlbum) PostScan() error {
@@ -59,6 +63,8 @@ func (a *dbAlbum) PostScan() error {
 		}
 		a.Album.FolderIDs = ids
 	}
+	a.Album.RGAlbumGain = a.RgAlbumGain
+	a.Album.RGAlbumPeak = a.RgAlbumPeak
 	return nil
 }
 

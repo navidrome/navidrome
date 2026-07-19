@@ -273,6 +273,21 @@ var _ = Describe("mappers", func() {
 		}))
 	})
 
+	It("sets NormalizationGain on the album from its ReplayGain", func() {
+		al := model.Album{ID: "al1", Name: "Album", RGAlbumGain: new(-6.0)}
+		b, err := json.Marshal(AlbumToBaseItem(al, nil))
+		Expect(err).ToNot(HaveOccurred())
+		Expect(string(b)).To(ContainSubstring(`"NormalizationGain":-6`))
+		// Real Jellyfin never sets AlbumNormalizationGain on an album item.
+		Expect(string(b)).ToNot(ContainSubstring("AlbumNormalizationGain"))
+	})
+
+	It("omits NormalizationGain when the album has no ReplayGain", func() {
+		b, err := json.Marshal(AlbumToBaseItem(model.Album{ID: "al1", Name: "Album"}, nil))
+		Expect(err).ToNot(HaveOccurred())
+		Expect(string(b)).ToNot(ContainSubstring("NormalizationGain"))
+	})
+
 	It("maps an artist to a MusicArtist folder item", func() {
 		ar := model.Artist{ID: "art-1", Name: "AA", AlbumCount: 2, SongCount: 20}
 		item := ArtistToBaseItem(ar)
