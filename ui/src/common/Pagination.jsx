@@ -3,9 +3,7 @@ import {
   Pagination as RAPagination,
   useListPaginationContext,
 } from 'react-admin'
-import { setStoredPerPage } from './perPageStore'
-
-export const defaultRowsPerPageOptions = [15, 25, 50]
+import { setStoredPerPage, defaultRowsPerPageOptions } from './perPageStore'
 
 export const Pagination = (props) => {
   const { resource, perPage } = useListPaginationContext()

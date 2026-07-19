@@ -1,3 +1,5 @@
+export const defaultRowsPerPageOptions = [15, 25, 50]
+
 const key = (resource) => `perPage.${resource}`
 
 export const getStoredPerPage = (resource, options, fallback) => {
