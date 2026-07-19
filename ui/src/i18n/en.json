@@ -161,7 +161,7 @@
         "aliasName": "Merge this genre",
         "canonicalName": "Into this genre"
       },
-      "mergeHelp": "Pick one or more genres to merge, and the genre they should count as. Type a name that doesn't exist yet to merge into a brand new genre.",
+      "mergeHelp": "Pick one or more genres to merge, and the genre they should count as. Type a name that doesn't exist yet to merge into a brand new genre. Run a Full Scan (not Quick Scan) afterwards to apply this to your existing library.",
       "mergeSources": "Genres to merge",
       "selectSources": "Select one or more genres",
       "mergeTarget": "Merge into",
@@ -855,7 +855,7 @@
     "genreMerge": {
       "title": "Genre Merging (Admin)",
       "overview": "Collapse near-duplicate genres coming from inconsistently-tagged files (e.g. \"Hip-Hop\" / \"Hip Hop\" / \"HipHop\") into one genre everywhere — not just in this web UI, but for every Subsonic-compatible player (Cirque included) and smart playlists too, since the merge is applied to the actual scanned data, not just this app's view of it.",
-      "howTo": "As an admin, go to Settings > Genre Merges. Create a merge by picking one or more genres and the genre they should count as — type a name that doesn't exist yet to merge into a brand new genre. Click an existing merge in the list to edit which genre it points to, or select rows and delete to unmerge. The merge takes effect the next time each affected file is scanned — trigger a Scan Now from the Activity page to apply it immediately. Merges chain and repoint automatically: if you later merge B into C after already merging A into B, A ends up pointing straight at C."
+      "howTo": "As an admin, go to Settings > Genre Merges. Create a merge by picking one or more genres and the genre they should count as — type a name that doesn't exist yet to merge into a brand new genre. Click an existing merge in the list to edit which genre it points to, or select rows and delete to unmerge. A merge only takes effect once each affected file's tags are re-read, and a normal quick Scan Now skips files that haven't changed on disk — so for existing library data, run a Full Scan (not Quick Scan) from the Activity page to apply new merges. New or changed files pick up merges automatically on their next normal scan. Merges chain and repoint automatically: if you later merge B into C after already merging A into B, A ends up pointing straight at C."
     }
   },
   "activity": {

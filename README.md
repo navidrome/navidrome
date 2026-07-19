@@ -322,9 +322,11 @@ Cirque), and smart-playlist criteria matching on genre.
 Go to Settings > Genre Merges. Pick one or more genres and the genre they should count as in a single action — type
 a name that doesn't exist yet to merge into a brand new genre. Existing merges are editable (click one to change
 what it points to) and deletable (select rows and delete to unmerge), so fixing a mistake or re-pointing a merge
-never means deleting and recreating it from scratch. Merges take effect on each affected file's next scan — trigger
-a Scan Now to apply immediately. Chained merges flatten automatically (merging B into C after A was already merged
-into B repoints A straight at C), and merges that would create a cycle are rejected.
+never means deleting and recreating it from scratch. Merges take effect the next time each affected file's tags are
+actually re-read — a normal quick Scan Now skips files whose mtime on disk hasn't changed, which includes every file
+already in your library, so **a Full Scan is required** to apply a new merge to existing data (new/changed files
+pick it up on their next normal scan either way). Chained merges flatten automatically (merging B into C after A was
+already merged into B repoints A straight at C), and merges that would create a cycle are rejected.
 
 ## Translations
 
