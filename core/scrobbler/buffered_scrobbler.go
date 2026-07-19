@@ -10,6 +10,30 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 )
 
+const (
+	minRetryDelay = 5 * time.Second
+	maxRetryDelay = 4 * time.Minute
+	// maxRetryShift caps the exponent so the shift never overflows int64.
+	// minRetryDelay<<6 = 320s already exceeds maxRetryDelay, so 6 reaches the ceiling.
+	maxRetryShift = 6
+)
+
+// backoffDelay returns the retry delay for a given number of consecutive
+// failures: minRetryDelay doubled per failure, clamped to maxRetryDelay.
+func backoffDelay(failures int) time.Duration {
+	if failures < 0 {
+		failures = 0
+	}
+	if failures >= maxRetryShift {
+		return maxRetryDelay
+	}
+	d := minRetryDelay << failures
+	if d > maxRetryDelay {
+		return maxRetryDelay
+	}
+	return d
+}
+
 // Loader is a function that loads a scrobbler by name.
 // It returns the scrobbler and true if found, or nil and false if not available.
 // This allows the buffered scrobbler to always get the current plugin instance.

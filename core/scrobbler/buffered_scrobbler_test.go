@@ -100,3 +100,21 @@ var _ = Describe("BufferedScrobbler", func() {
 		}
 	})
 })
+
+var _ = Describe("backoffDelay", func() {
+	DescribeTable("computes the exponential backoff curve clamped to the ceiling",
+		func(failures int, expected time.Duration) {
+			Expect(backoffDelay(failures)).To(Equal(expected))
+		},
+		Entry("first failure", 0, 5*time.Second),
+		Entry("second failure", 1, 10*time.Second),
+		Entry("third failure", 2, 20*time.Second),
+		Entry("fourth failure", 3, 40*time.Second),
+		Entry("fifth failure", 4, 80*time.Second),
+		Entry("sixth failure", 5, 160*time.Second),
+		Entry("reaches the ceiling", 6, 4*time.Minute),
+		Entry("stays clamped past the ceiling", 7, 4*time.Minute),
+		Entry("stays clamped for large values", 1000, 4*time.Minute),
+		Entry("negative is treated as zero", -1, 5*time.Second),
+	)
+})
