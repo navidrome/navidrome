@@ -75,7 +75,7 @@ DO UPDATE SET %[1]s_count = excluded.%[1]s_count;
 }
 
 func (r *tagRepository) GetAll(name model.TagName, options ...model.QueryOptions) (model.TagList, error) {
-	sq := r.newSelect(options...).Columns("tag.id", "tag.tag_value").Where(Eq{"tag.tag_name": name})
+	sq := r.newSelect(options...).Where(Eq{"tag.tag_name": name})
 	res := model.TagList{}
 	err := r.queryAll(sq, &res)
 	return res, err
