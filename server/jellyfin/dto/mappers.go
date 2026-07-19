@@ -232,6 +232,9 @@ func AlbumToBaseItem(al model.Album) BaseItemDto {
 			item.GenreItems = append(item.GenreItems, NameGuidPair{Id: EncodeID(g.ID), Name: g.Name})
 		}
 	}
+	// The album's own ReplayGain gain (dB at the RG2 -18 LUFS reference) — same
+	// convention as tracks; clients read it off the album item as NormalizationGain.
+	item.NormalizationGain = al.RGAlbumGain
 	return item
 }
 
