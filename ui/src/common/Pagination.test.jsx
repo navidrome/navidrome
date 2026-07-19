@@ -44,4 +44,16 @@ describe('Pagination', () => {
     render(<Pagination />)
     expect(localStorage.getItem('perPage.song')).toBeNull()
   })
+
+  it('does not persist a value outside the offered options', () => {
+    mockContext.mockReturnValue({ resource: 'album', perPage: 15 })
+    render(<Pagination rowsPerPageOptions={[18, 36, 72]} />)
+    expect(localStorage.getItem('perPage.album')).toBeNull()
+  })
+
+  it('does not persist when the selector offers a single option', () => {
+    mockContext.mockReturnValue({ resource: 'album', perPage: 12 })
+    render(<Pagination rowsPerPageOptions={[12]} />)
+    expect(localStorage.getItem('perPage.album')).toBeNull()
+  })
 })

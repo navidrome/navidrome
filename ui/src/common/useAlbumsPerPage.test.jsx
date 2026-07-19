@@ -52,4 +52,10 @@ describe('useAlbumsPerPage', () => {
     const { result } = renderHook(() => useAlbumsPerPage('xl'))
     expect(result.current).toEqual([36, [18, 36, 72]])
   })
+
+  it('ignores a redux value invalid for the current width', () => {
+    setReduxPerPage(72) // valid for lg, not for md
+    const { result } = renderHook(() => useAlbumsPerPage('md'))
+    expect(result.current[0]).toEqual(12)
+  })
 })
