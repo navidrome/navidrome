@@ -2,6 +2,7 @@ package ffmpeg
 
 import (
 	"context"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -550,6 +551,32 @@ var _ = Describe("ffmpeg", func() {
 			result, err := parseProbeOutput(data)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result.Profile).To(BeEmpty())
+		})
+	})
+
+	Describe("ProbeError", func() {
+		It("keeps the file path in Error() for logging", func() {
+			e := &ProbeError{Path: "/music/foo.flac", Reason: "/music/foo.flac: Invalid data found when processing input"}
+			Expect(e.Error()).To(ContainSubstring("/music/foo.flac"))
+			Expect(e.Error()).To(ContainSubstring("Invalid data found when processing input"))
+		})
+
+		It("strips the file path from SafeReason()", func() {
+			e := &ProbeError{Path: "/music/foo.flac", Reason: "/music/foo.flac: Invalid data found when processing input"}
+			Expect(e.SafeReason()).To(Equal("the file: Invalid data found when processing input"))
+			Expect(e.SafeReason()).ToNot(ContainSubstring("/music/foo.flac"))
+		})
+	})
+
+	Describe("fileAccessReason", func() {
+		It("reports a missing file as 'file not found', not a raw stat message", func() {
+			_, err := os.Stat("/no/such/dir/really-missing.flac")
+			Expect(err).To(HaveOccurred())
+			Expect(fileAccessReason(err)).To(Equal("file not found"))
+		})
+
+		It("falls back to a generic reason for other access errors", func() {
+			Expect(fileAccessReason(errors.New("boom"))).To(Equal("file not accessible"))
 		})
 	})
 

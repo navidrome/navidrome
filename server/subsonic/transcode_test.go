@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -75,6 +77,18 @@ var _ = Describe("Transcode endpoints", func() {
 			_, err := router.GetTranscodeDecision(w, r)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("error retrieving media file"))
+		})
+
+		It("enriches the decision error with the reason, without leaking the file path", func() {
+			mockMFRepo.SetData(model.MediaFiles{{ID: "song-1", Suffix: "flac"}})
+			mockTD.decisionErr = fmt.Errorf("probing media file song-1: %w",
+				&ffmpeg.ProbeError{Path: "/music/secret/foo.flac", Reason: "/music/secret/foo.flac: Invalid data found when processing input"})
+			r := newJSONPostRequest("mediaId=song-1&mediaType=song", "{}")
+			_, err := router.GetTranscodeDecision(w, r)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("failed to make transcode decision"))
+			Expect(err.Error()).To(ContainSubstring("Invalid data found when processing input"))
+			Expect(err.Error()).ToNot(ContainSubstring("/music/secret"))
 		})
 
 		It("returns error when body is empty", func() {
@@ -516,6 +530,7 @@ func newJSONPostRequest(queryParams string, jsonBody string) *http.Request {
 // mockTranscodeDecision is a test double for stream.TranscodeDecider
 type mockTranscodeDecision struct {
 	decision       *stream.TranscodeDecision
+	decisionErr    error
 	token          string
 	tokenErr       error
 	resolvedReq    stream.Request
@@ -525,6 +540,9 @@ type mockTranscodeDecision struct {
 
 func (m *mockTranscodeDecision) MakeDecision(_ context.Context, _ *model.MediaFile, ci *stream.ClientInfo, _ stream.TranscodeOptions) (*stream.TranscodeDecision, error) {
 	m.capturedClient = ci
+	if m.decisionErr != nil {
+		return nil, m.decisionErr
+	}
 	if m.decision != nil {
 		return m.decision, nil
 	}

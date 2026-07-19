@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -67,7 +68,7 @@ var ErrAnimatedWebPUnsupported = errors.New("ffmpeg lacks libwebp_anim encoder â
 const (
 	extractImageCmd     = "ffmpeg -i %s -map 0:v -map -0:V -vcodec copy -f image2pipe -"
 	probeCmd            = "ffmpeg %s -f ffmetadata"
-	probeAudioStreamCmd = "ffprobe -v quiet -select_streams a:0 -print_format json -show_streams -show_format %s"
+	probeAudioStreamCmd = "ffprobe -v error -select_streams a:0 -print_format json -show_streams -show_format %s"
 )
 
 type ffmpeg struct{}
@@ -159,16 +160,55 @@ func (e *ffmpeg) ProbeAudioStream(ctx context.Context, filePath string) (*AudioP
 		return nil, err
 	}
 	if err := fileExists(filePath); err != nil {
-		return nil, err
+		return nil, &ProbeError{Path: filePath, Reason: fileAccessReason(err)}
 	}
 	args := createFFmpegCommand(probeAudioStreamCmd, filePath, 0, 0)
 	log.Trace(ctx, "Executing ffprobe command", "args", args)
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...) // #nosec
 	output, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("running ffprobe on %q: %w", filePath, err)
+		return nil, &ProbeError{Path: filePath, Reason: probeErrorReason(err)}
 	}
 	return parseProbeOutput(output)
+}
+
+// ProbeError reports an ffprobe failure, keeping the file path separate from the
+// reason so callers can log the full detail but expose a path-free message.
+type ProbeError struct {
+	Path   string
+	Reason string
+}
+
+func (e *ProbeError) Error() string {
+	return fmt.Sprintf("probe failed on %q: %s", e.Path, e.Reason)
+}
+
+// SafeReason returns the failure reason with the file path removed.
+func (e *ProbeError) SafeReason() string {
+	return strings.TrimSpace(strings.ReplaceAll(e.Reason, e.Path, "the file"))
+}
+
+// fileAccessReason maps a stat failure to a clear, path-free reason, so a moved
+// or unreadable file reads as "file not found" rather than a raw ffprobe message.
+func fileAccessReason(err error) string {
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		return "file not found"
+	case errors.Is(err, fs.ErrPermission):
+		return "permission denied"
+	default:
+		return "file not accessible"
+	}
+}
+
+// probeErrorReason prefers ffprobe's stderr (populated on ExitError) over the
+// bare "exit status N", so the real diagnostic reaches logs and clients.
+func probeErrorReason(err error) string {
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) && len(exitErr.Stderr) > 0 {
+		return strings.TrimSpace(string(exitErr.Stderr))
+	}
+	return err.Error()
 }
 
 type probeOutput struct {
