@@ -223,6 +223,7 @@ type itemsQuery struct {
 	genreIds         []string
 	albumIds         []string
 	years            []int
+	studioIds        []string
 }
 
 // parseItemsQuery also resolves the entity types (inferring them from the parent when
@@ -246,8 +247,9 @@ func (api *Router) parseItemsQuery(ctx context.Context, r *http.Request) itemsQu
 		// Finamp's genre screen sends ParentId=<libraryId> for scoping plus GenreIds for the genre.
 		genreIds: decodedQueryIDs(r, "genreids"),
 		// Feishin fetches an album's tracks with AlbumIds instead of ParentId.
-		albumIds: decodedQueryIDs(r, "albumids"),
-		years:    parseYears(r),
+		albumIds:  decodedQueryIDs(r, "albumids"),
+		years:     parseYears(r),
+		studioIds: decodedQueryIDs(r, "studioids"),
 	}
 	// An artist's page filters by artist, not ParentId: Finamp sends ParentId=<libraryId> for scoping
 	// plus AlbumArtistIds/ArtistIds/contributingArtistIds for the artist.
@@ -512,6 +514,9 @@ func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, q it
 	if len(q.years) > 0 {
 		filters = append(filters, filter.AlbumsByYears(q.years))
 	}
+	if len(q.studioIds) > 0 {
+		filters = append(filters, filter.ByStudioID(q.studioIds))
+	}
 	if q.favOnly {
 		filters = append(filters, filter.ByStarred().Filters)
 	}
@@ -555,6 +560,9 @@ func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, q ite
 	}
 	if len(q.years) > 0 {
 		filters = append(filters, filter.SongsByYears(q.years))
+	}
+	if len(q.studioIds) > 0 {
+		filters = append(filters, filter.ByStudioID(q.studioIds))
 	}
 	if q.favOnly {
 		filters = append(filters, filter.ByStarred().Filters)

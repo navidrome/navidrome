@@ -229,6 +229,22 @@ var _ = Describe("Browsing", func() {
 		})
 	})
 
+	Describe("studio filtering (StudioIds=)", func() {
+		It("filters items by StudioIds=", func() {
+			studios := queryResult(get("/Studios"))
+			var columbiaID string
+			for _, it := range studios.Items {
+				if it.Name == "Columbia" {
+					columbiaID = it.Id
+				}
+			}
+			Expect(columbiaID).ToNot(BeEmpty())
+
+			albums := queryResult(get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true&StudioIds=" + columbiaID))
+			Expect(names(albums.Items)).To(ConsistOf("Kind of Blue"))
+		})
+	})
+
 	// Finamp's genre screen sends ParentId=<libraryId> (scoping) plus GenreIds=<genreId>.
 	Describe("genre filtering (GenreIds)", func() {
 		lib1 := enc("1")

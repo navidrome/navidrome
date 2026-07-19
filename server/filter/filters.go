@@ -214,10 +214,17 @@ func ArtistsByGenreID(genreIds []string) Sqlizer {
 	)
 }
 
-// genreTagFilter builds an EXISTS over the genre entries in the tags JSON, matching each entry
-// against cond (its name via Like, or its tag id via Eq/IN). Shared by the name- and id-based lookups.
-func genreTagFilter(cond Sqlizer) Sqlizer {
-	return persistence.Exists(`json_tree(tags, "$.genre")`, And{NotEq{"atom": nil}, cond})
+// tagIDFilter builds an EXISTS over the given tag role's entries in the tags JSON, matching each
+// entry against cond (its name via Like, or its tag id via Eq/IN).
+func tagIDFilter(tagName string, cond Sqlizer) Sqlizer {
+	return persistence.Exists(`json_tree(tags, "$.`+tagName+`")`, And{NotEq{"atom": nil}, cond})
+}
+
+func genreTagFilter(cond Sqlizer) Sqlizer { return tagIDFilter("genre", cond) }
+
+// ByStudioID matches items (albums or songs) whose record-label tag id is in ids.
+func ByStudioID(ids []string) Sqlizer {
+	return tagIDFilter("recordlabel", Eq{"value": ids})
 }
 
 func filterByGenre(genre string) Sqlizer {
