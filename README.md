@@ -144,14 +144,16 @@ from cleanup — retention will never quietly delete something you're actively q
 ### 🎵 Episodes are real library citizens, not a bolted-on side feature
 Downloaded episodes slot into regular playlists right alongside your music — reorder them, mix songs and episodes
 in the same playlist, export it like any other. A checkmark shows which episodes you've already listened to,
-tracked independently per user on multi-user servers.
+tracked independently per user on multi-user servers — click it to mark (or unmark) an episode as listened
+yourself, for whenever you downloaded it and listened somewhere else entirely.
 
 ### 🔌 Real Subsonic API coverage, not a partial implementation
 `getPodcasts`, `getNewestPodcasts`, `createPodcastChannel`, `refreshPodcasts`, `deletePodcastChannel`/
-`deletePodcastEpisode`, `downloadPodcastEpisode` are all real, spec-compliant endpoints — a client still needs its
-own UI to call them (subscribing, browsing episodes, etc. are new surface area, not something existing song-browsing
-screens do for free). Where it *does* piggyback on what's already there: once a client has an episode's ID,
-streaming and downloading it go through the exact same `stream.view`/`download.view` endpoints it already uses for
+`deletePodcastEpisode`, `downloadPodcastEpisode`, `markPodcastEpisodeListened`/`markPodcastEpisodeUnlistened` are
+all real, spec-compliant endpoints — a client still needs its own UI to call them (subscribing, browsing episodes,
+etc. are new surface area, not something existing song-browsing screens do for free). Where it *does* piggyback on
+what's already there: once a client has an episode's ID, streaming and downloading it go through the exact same
+`stream.view`/`download.view` endpoints it already uses for
 songs — no separate playback path to build.
 
 ### 🎛️ Fine-grained control

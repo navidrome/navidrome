@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import {
   ReferenceManyField,
   ShowContextProvider,
@@ -12,6 +12,7 @@ import {
   SimpleShowLayout,
   useTranslate,
   useNotify,
+  useRefresh,
   Pagination,
 } from 'react-admin'
 import { useDispatch } from 'react-redux'
@@ -29,6 +30,7 @@ import DownloadIcon from '@material-ui/icons/GetApp'
 import DeleteIcon from '@material-ui/icons/Delete'
 import PlaylistAddIcon from '@material-ui/icons/PlaylistAdd'
 import CheckCircleIcon from '@material-ui/icons/CheckCircle'
+import CheckCircleOutlineIcon from '@material-ui/icons/CheckCircleOutline'
 import { Title, useResourceRefresh } from '../common'
 import { setTrack, openAddToPlaylist } from '../actions'
 import subsonic from '../subsonic'
@@ -98,12 +100,48 @@ const DownloadStatusChip = ({ record }) => {
   )
 }
 
-const ListenedIndicator = ({ record }) => {
+const ListenedToggle = ({ record }) => {
   const translate = useTranslate()
-  if (!record || !record.playCount) return null
+  const notify = useNotify()
+  const refresh = useRefresh()
+  const [loading, setLoading] = useState(false)
+  if (!record) return null
+
+  const listened = Boolean(record.playCount)
+  const stop = (e) => e.stopPropagation()
+
+  const handleClick = (e) => {
+    stop(e)
+    const toggle = listened
+      ? subsonic.markPodcastEpisodeUnlistened
+      : subsonic.markPodcastEpisodeListened
+    setLoading(true)
+    toggle(record.id)
+      .then(() => refresh())
+      .catch(() => notify('ra.page.error', { type: 'warning' }))
+      .finally(() => setLoading(false))
+  }
+
   return (
-    <Tooltip title={translate('resources.podcastEpisode.listened')}>
-      <CheckCircleIcon fontSize="small" color="primary" />
+    <Tooltip
+      title={translate(
+        listened
+          ? 'resources.podcastEpisode.markUnlistened'
+          : 'resources.podcastEpisode.markListened',
+      )}
+    >
+      <IconButton
+        size="small"
+        onClick={handleClick}
+        onFocus={stop}
+        disabled={loading}
+      >
+        {listened ? (
+          <CheckCircleIcon fontSize="small" color="primary" />
+        ) : (
+          <CheckCircleOutlineIcon fontSize="small" />
+        )}
+      </IconButton>
     </Tooltip>
   )
 }
@@ -198,7 +236,7 @@ const EpisodesSection = ({ channel, isAdmin }) => {
         <FunctionField
           source="playCount"
           label={translate('resources.podcastEpisode.listened')}
-          render={(record) => <ListenedIndicator record={record} />}
+          render={(record) => <ListenedToggle record={record} />}
         />
         <FunctionField
           source="id"

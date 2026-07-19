@@ -65,6 +65,12 @@ const skip = (id) => httpClient(url('skip', id))
 
 const unskip = (id) => httpClient(url('unskip', id))
 
+const markPodcastEpisodeListened = (id) =>
+  httpClient(url('markPodcastEpisodeListened', id))
+
+const markPodcastEpisodeUnlistened = (id) =>
+  httpClient(url('markPodcastEpisodeUnlistened', id))
+
 const setRating = (id, rating) => httpClient(url('setRating', id, { rating }))
 
 const download = (id, format = 'raw', bitrate = '0') =>
@@ -158,6 +164,8 @@ export default {
   unstar,
   skip,
   unskip,
+  markPodcastEpisodeListened,
+  markPodcastEpisodeUnlistened,
   setRating,
   startScan,
   getScanStatus,

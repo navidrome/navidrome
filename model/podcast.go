@@ -141,4 +141,9 @@ type PodcastEpisodeRepository interface {
 	// average_rating column), so only this piece of AnnotatedRepository is
 	// exposed.
 	IncPlayCount(itemID string, ts time.Time) error
+	// ResetPlayCount clears the current user's play_count/play_date for this
+	// episode, marking it unlistened again - the explicit counterpart to
+	// IncPlayCount, for clients that want to toggle listened state manually
+	// rather than relying on the passive stream.view side-effect.
+	ResetPlayCount(itemID string) error
 }

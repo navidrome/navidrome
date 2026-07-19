@@ -325,7 +325,9 @@
         "error": "Error",
         "deleted": "Deleted"
       },
-      "listened": "Listened"
+      "listened": "Listened",
+      "markListened": "Mark as listened",
+      "markUnlistened": "Mark as unlistened"
     },
     "share": {
       "name": "Share |||| Shares",

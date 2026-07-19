@@ -3,9 +3,11 @@ package subsonic
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/req"
 )
@@ -149,6 +151,61 @@ func (api *Router) DownloadPodcastEpisode(r *http.Request) (*responses.Subsonic,
 	return newResponse(), nil
 }
 
+// MarkPodcastEpisodeListened explicitly flags an episode as listened, independent of the passive
+// stream.view side-effect - lets a client (or a user who downloaded and played an episode
+// externally) record a listen without re-streaming it through Navidrome.
+func (api *Router) MarkPodcastEpisodeListened(r *http.Request) (*responses.Subsonic, error) {
+	p := req.Params(r)
+	ids, err := p.Strings("id")
+	if err != nil || len(ids) == 0 {
+		return nil, newError(responses.ErrorMissingParameter, "Required id parameter is missing")
+	}
+	if err := api.setPodcastListened(r.Context(), true, ids...); err != nil {
+		return nil, err
+	}
+	return newResponse(), nil
+}
+
+// MarkPodcastEpisodeUnlistened clears an episode's listened state, the explicit counterpart to
+// MarkPodcastEpisodeListened.
+func (api *Router) MarkPodcastEpisodeUnlistened(r *http.Request) (*responses.Subsonic, error) {
+	p := req.Params(r)
+	ids, err := p.Strings("id")
+	if err != nil || len(ids) == 0 {
+		return nil, newError(responses.ErrorMissingParameter, "Required id parameter is missing")
+	}
+	if err := api.setPodcastListened(r.Context(), false, ids...); err != nil {
+		return nil, err
+	}
+	return newResponse(), nil
+}
+
+func (api *Router) setPodcastListened(ctx context.Context, listened bool, ids ...string) error {
+	log.Debug(ctx, "Changing podcast episode listened state", "ids", ids, "listened", listened)
+	event := &events.RefreshResource{}
+	err := api.ds.WithTxImmediate(func(tx model.DataStore) error {
+		for _, id := range ids {
+			var err error
+			if listened {
+				err = tx.PodcastEpisode(ctx).IncPlayCount(id, time.Now())
+			} else {
+				err = tx.PodcastEpisode(ctx).ResetPlayCount(id)
+			}
+			if err != nil {
+				return err
+			}
+			event = event.With("podcastEpisode", id)
+		}
+		api.broker.SendMessage(ctx, event)
+		return nil
+	})
+	if err != nil {
+		log.Error(ctx, err)
+		return err
+	}
+	return nil
+}
+
 // podcastEpisodeStatus maps our internal download-status vocabulary to the
 // Subsonic spec's episode status attribute.
 func podcastEpisodeStatus(status model.PodcastEpisodeDownloadStatus, policy model.PodcastDownloadPolicy) string {
@@ -217,6 +274,7 @@ func toPodcastEpisode(ep model.PodcastEpisode, channel model.PodcastChannel) res
 			Suffix:      ep.Suffix,
 			Duration:    int32(ep.Duration),
 			BitRate:     int32(ep.BitRate),
+			PlayCount:   ep.PlayCount,
 		},
 		StreamId:    ep.ID,
 		ChannelId:   ep.ChannelID,

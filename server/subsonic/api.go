@@ -236,6 +236,8 @@ func (api *Router) routes() http.Handler {
 				r.Use(getPlayer(api.players))
 				h(r, "getPodcasts", api.GetPodcasts)
 				h(r, "getNewestPodcasts", api.GetNewestPodcasts)
+				h(r, "markPodcastEpisodeListened", api.MarkPodcastEpisodeListened)
+				h(r, "markPodcastEpisodeUnlistened", api.MarkPodcastEpisodeUnlistened)
 				r.Group(func(r chi.Router) {
 					r.Use(adminOnly)
 					h(r, "refreshPodcasts", api.RefreshPodcasts)
@@ -246,7 +248,8 @@ func (api *Router) routes() http.Handler {
 				})
 			})
 		} else {
-			h501(r, "getPodcasts", "getNewestPodcasts", "refreshPodcasts", "createPodcastChannel", "deletePodcastChannel",
+			h501(r, "getPodcasts", "getNewestPodcasts", "markPodcastEpisodeListened", "markPodcastEpisodeUnlistened",
+				"refreshPodcasts", "createPodcastChannel", "deletePodcastChannel",
 				"deletePodcastEpisode", "downloadPodcastEpisode")
 		}
 		// Not Implemented (yet?)

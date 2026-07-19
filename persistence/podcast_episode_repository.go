@@ -108,6 +108,12 @@ func (r *podcastEpisodeRepository) Put(episode *model.PodcastEpisode, colsToUpda
 	return err
 }
 
+// ResetPlayCount clears the current user's play_count/play_date annotation for this episode,
+// the explicit counterpart to sqlRepository.IncPlayCount (embedded via podcastEpisodeRepository).
+func (r *podcastEpisodeRepository) ResetPlayCount(itemID string) error {
+	return r.annUpsert(map[string]any{"play_count": 0, "play_date": nil}, itemID)
+}
+
 func (r *podcastEpisodeRepository) Count(options ...rest.QueryOptions) (int64, error) {
 	return r.CountAll(r.parseRestOptions(r.ctx, options...))
 }
