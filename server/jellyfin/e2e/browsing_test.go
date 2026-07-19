@@ -415,6 +415,22 @@ var _ = Describe("Browsing", func() {
 			Expect(item.AlbumArtists[0].Name).To(Equal("Miles Davis"))
 		})
 
+		It("exposes NormalizationGain and AlbumNormalizationGain from ReplayGain tags", func() {
+			var item dto.BaseItemDto
+			parseInto(get("/Items/"+enc(songID("Stairway To Heaven"))), &item)
+			Expect(item.NormalizationGain).ToNot(BeNil())
+			Expect(*item.NormalizationGain).To(BeNumerically("~", -3.5, 0.001))
+			Expect(item.AlbumNormalizationGain).ToNot(BeNil())
+			Expect(*item.AlbumNormalizationGain).To(BeNumerically("~", -4.25, 0.001))
+		})
+
+		It("omits normalization gains for files without ReplayGain tags", func() {
+			var item dto.BaseItemDto
+			parseInto(get("/Items/"+enc(songID("So What"))), &item)
+			Expect(item.NormalizationGain).To(BeNil())
+			Expect(item.AlbumNormalizationGain).To(BeNil())
+		})
+
 		It("resolves an artist", func() {
 			var item dto.BaseItemDto
 			parseInto(get("/Items/"+enc(artistID("Miles Davis"))), &item)

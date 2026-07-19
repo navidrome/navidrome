@@ -61,20 +61,22 @@ type BaseItemDto struct {
 	PremiereDate *string `json:"PremiereDate,omitempty"`
 	// DateCreated is the ISO 8601 date the item was added to the library; clients show it as
 	// "Date Added" and sort "Recently Added" by it.
-	DateCreated          string            `json:"DateCreated,omitempty"`
-	Album                string            `json:"Album,omitempty"`
-	AlbumId              string            `json:"AlbumId,omitempty"`
-	AlbumArtist          string            `json:"AlbumArtist,omitempty"`
-	AlbumArtists         []NameGuidPair    `json:"AlbumArtists,omitempty"`
-	AlbumPrimaryImageTag string            `json:"AlbumPrimaryImageTag,omitempty"`
-	Artists              []string          `json:"Artists,omitempty"`
-	ArtistItems          []NameGuidPair    `json:"ArtistItems,omitempty"`
-	Genres               []string          `json:"Genres,omitempty"`
-	GenreItems           []NameGuidPair    `json:"GenreItems,omitempty"`
-	ChildCount           *int              `json:"ChildCount,omitempty"`
-	SongCount            *int              `json:"SongCount,omitempty"`
-	AlbumCount           *int              `json:"AlbumCount,omitempty"`
-	ImageTags            map[string]string `json:"ImageTags,omitempty"`
+	DateCreated            string            `json:"DateCreated,omitempty"`
+	Album                  string            `json:"Album,omitempty"`
+	AlbumId                string            `json:"AlbumId,omitempty"`
+	AlbumArtist            string            `json:"AlbumArtist,omitempty"`
+	AlbumArtists           []NameGuidPair    `json:"AlbumArtists,omitempty"`
+	AlbumPrimaryImageTag   string            `json:"AlbumPrimaryImageTag,omitempty"`
+	Artists                []string          `json:"Artists,omitempty"`
+	ArtistItems            []NameGuidPair    `json:"ArtistItems,omitempty"`
+	Genres                 []string          `json:"Genres,omitempty"`
+	GenreItems             []NameGuidPair    `json:"GenreItems,omitempty"`
+	NormalizationGain      *float64          `json:"NormalizationGain,omitempty"`
+	AlbumNormalizationGain *float64          `json:"AlbumNormalizationGain,omitempty"`
+	ChildCount             *int              `json:"ChildCount,omitempty"`
+	SongCount              *int              `json:"SongCount,omitempty"`
+	AlbumCount             *int              `json:"AlbumCount,omitempty"`
+	ImageTags              map[string]string `json:"ImageTags,omitempty"`
 	// ImageBlurHashes is keyed by image type (e.g. "Primary") then image tag. Finamp uses it as a
 	// de-dup key for image downloads (and a placeholder); absent, it warns the server isn't
 	// calculating blurhashes.
