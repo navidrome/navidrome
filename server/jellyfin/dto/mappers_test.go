@@ -125,14 +125,6 @@ var _ = Describe("mappers", func() {
 		Expect(item.AlbumArtists).To(Equal([]NameGuidPair{{Name: "De La Soul", Id: EncodeID("ar-delasoul")}}))
 	})
 
-	It("sets NormalizationGain and AlbumNormalizationGain from ReplayGain values", func() {
-		mf := model.MediaFile{ID: "s1", Title: "Song",
-			RGTrackGain: new(-3.5), RGAlbumGain: new(-4.25)}
-		item := SongToBaseItem(mf, nil)
-		Expect(*item.NormalizationGain).To(Equal(-3.5))
-		Expect(*item.AlbumNormalizationGain).To(Equal(-4.25))
-	})
-
 	It("serializes normalization gains with Jellyfin's exact key casing", func() {
 		mf := model.MediaFile{ID: "s1", Title: "Song",
 			RGTrackGain: new(-3.5), RGAlbumGain: new(-4.25)}
