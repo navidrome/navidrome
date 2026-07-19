@@ -12,6 +12,7 @@ type MockDataStore struct {
 	MockedLibrary        model.LibraryRepository
 	MockedFolder         model.FolderRepository
 	MockedGenre          model.GenreRepository
+	MockedGenreAlias     model.GenreAliasRepository
 	MockedAlbum          model.AlbumRepository
 	MockedArtist         model.ArtistRepository
 	MockedMediaFile      model.MediaFileRepository
@@ -126,6 +127,17 @@ func (db *MockDataStore) Genre(ctx context.Context) model.GenreRepository {
 	}
 	db.MockedGenre = &MockedGenreRepo{}
 	return db.MockedGenre
+}
+
+func (db *MockDataStore) GenreAlias(ctx context.Context) model.GenreAliasRepository {
+	if db.MockedGenreAlias != nil {
+		return db.MockedGenreAlias
+	}
+	if db.RealDS != nil {
+		return db.RealDS.GenreAlias(ctx)
+	}
+	db.MockedGenreAlias = struct{ model.GenreAliasRepository }{}
+	return db.MockedGenreAlias
 }
 
 func (db *MockDataStore) Playlist(ctx context.Context) model.PlaylistRepository {
@@ -313,6 +325,8 @@ func (db *MockDataStore) Resource(ctx context.Context, m any) model.ResourceRepo
 		return db.Share(ctx).(model.ResourceRepository)
 	case model.Genre, *model.Genre:
 		return db.Genre(ctx).(model.ResourceRepository)
+	case model.GenreAlias, *model.GenreAlias:
+		return db.GenreAlias(ctx).(model.ResourceRepository)
 	case model.Tag, *model.Tag:
 		return db.Tag(ctx).(model.ResourceRepository)
 	case model.Transcoding, *model.Transcoding:
