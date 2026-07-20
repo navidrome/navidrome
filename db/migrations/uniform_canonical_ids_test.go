@@ -3,6 +3,7 @@ package migrations
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 
 	_ "github.com/mattn/go-sqlite3"
 	. "github.com/onsi/ginkgo/v2"
@@ -42,7 +43,7 @@ var _ = Describe("upUniformCanonicalIds", func() {
 			CREATE TABLE library_artist (artist_id text);
 			CREATE TABLE user (id text);
 			CREATE TABLE user_props (user_id text);
-			CREATE TABLE playlist (id text, owner_id text);
+			CREATE TABLE playlist (id text, owner_id text, rules text);
 			CREATE TABLE playlist_tracks (playlist_id text, media_file_id text);
 			CREATE TABLE playlist_fields (playlist_id text);
 			CREATE TABLE annotation (user_id text, item_id text, item_type text);
@@ -53,6 +54,12 @@ var _ = Describe("upUniformCanonicalIds", func() {
 			CREATE TABLE share (id text, user_id text, resource_ids text, contents text);
 			CREATE TABLE scrobble_buffer (id text, user_id text, media_file_id text);
 			CREATE TABLE playqueue (id text, user_id text, items text);
+			CREATE TABLE user_library (user_id text, library_id integer);
+			CREATE TABLE scrobbles (id integer, media_file_id text, user_id text);
+			CREATE TABLE media_file_artists (media_file_id text, artist_id text);
+			CREATE TABLE album_artists (album_id text, artist_id text);
+			CREATE TABLE library_tag (tag_id text, library_id integer);
+			CREATE TABLE plugin (id text, users text);
 		`)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -64,10 +71,18 @@ var _ = Describe("upUniformCanonicalIds", func() {
 		seed(`INSERT INTO media_file VALUES (?, ?, ?, ?, '', '', ?)`, legacyOld, legacyOld, hashID, legacyOld, uuidOld)
 		seed(`INSERT INTO album VALUES (?, ?)`, legacyOld, hashID)
 		seed(`INSERT INTO user VALUES (?)`, randOld)
-		seed(`INSERT INTO playlist VALUES (?, ?)`, uuidOld, randOld) // uuid id, random owner
+		// uuid id, random owner, smart-playlist rules with an embedded inPlaylist id
+		seed(`INSERT INTO playlist VALUES (?, ?, ?)`, uuidOld, randOld, `{"all":[{"inPlaylist":{"id":"`+uuidOld+`"}}]}`)
 		seed(`INSERT INTO annotation VALUES (?, ?, 'media_file')`, randOld, legacyOld)
 		seed(`INSERT INTO playqueue VALUES (?, ?, ?)`, randOld, randOld, legacyOld+","+hashID)
 		seed(`INSERT INTO share VALUES (?, ?, ?, 'Album Foo...')`, shareID, randOld, legacyOld+","+uuidOld)
+		seed(`INSERT INTO user_library VALUES (?, 1)`, randOld)
+		seed(`INSERT INTO scrobbles VALUES (1, ?, ?)`, legacyOld, randOld)
+		seed(`INSERT INTO media_file_artists VALUES (?, ?)`, legacyOld, hashID)
+		seed(`INSERT INTO album_artists VALUES (?, ?)`, legacyOld, hashID)
+		seed(`INSERT INTO library_tag VALUES (?, 1)`, hashID)
+		seed(`INSERT INTO plugin VALUES ('lastfm', ?)`, `["`+randOld+`","`+hashID+`"]`)
+		seed(`INSERT INTO plugin VALUES ('empty', '[]')`) // exempt: empty user list untouched
 
 		tx, err = db.Begin()
 		Expect(err).ToNot(HaveOccurred())
@@ -103,5 +118,33 @@ var _ = Describe("upUniformCanonicalIds", func() {
 		Expect(get(`SELECT id FROM share`)).To(Equal(shareID))
 		Expect(get(`SELECT contents FROM share`)).To(Equal("Album Foo..."))
 		Expect(get(`SELECT mbz_recording_id FROM media_file`)).To(Equal(uuidOld))
+	})
+
+	It("canonicalizes junction and membership tables", func() {
+		Expect(get(`SELECT user_id FROM user_library`)).To(Equal(randNew))
+		Expect(get(`SELECT media_file_id FROM scrobbles`)).To(Equal(legacyNew))
+		Expect(get(`SELECT user_id FROM scrobbles`)).To(Equal(randNew))
+		Expect(get(`SELECT media_file_id FROM media_file_artists`)).To(Equal(legacyNew))
+		Expect(get(`SELECT artist_id FROM media_file_artists`)).To(Equal(hashID)) // hash-family, unchanged
+		Expect(get(`SELECT album_id FROM album_artists`)).To(Equal(legacyNew))
+		Expect(get(`SELECT artist_id FROM album_artists`)).To(Equal(hashID)) // hash-family, unchanged
+		Expect(get(`SELECT tag_id FROM library_tag`)).To(Equal(hashID))      // hash-family, unchanged
+	})
+
+	It("rewrites JSON columns element-wise", func() {
+		Expect(get(`SELECT users FROM plugin WHERE id='lastfm'`)).To(Equal(`["` + randNew + `","` + hashID + `"]`))
+		Expect(get(`SELECT id FROM plugin WHERE id='lastfm'`)).To(Equal("lastfm")) // plugin name, untouched
+
+		var rules map[string]any
+		Expect(json.Unmarshal([]byte(get(`SELECT rules FROM playlist`)), &rules)).To(Succeed())
+		all, ok := rules["all"].([]any)
+		Expect(ok).To(BeTrue())
+		Expect(all).To(HaveLen(1))
+		inPl := all[0].(map[string]any)["inPlaylist"].(map[string]any)
+		Expect(inPl["id"]).To(Equal(uuidNew))
+	})
+
+	It("leaves exempt JSON rows untouched", func() {
+		Expect(get(`SELECT users FROM plugin WHERE id='empty'`)).To(Equal("[]"))
 	})
 })
