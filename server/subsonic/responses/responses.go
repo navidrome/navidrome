@@ -66,6 +66,9 @@ type Subsonic struct {
 	PlayQueueByIndex       *PlayQueueByIndex       `xml:"playQueueByIndex,omitempty" json:"playQueueByIndex,omitempty"`
 	TranscodeDecision      *TranscodeDecision      `xml:"transcodeDecision,omitempty"       json:"transcodeDecision,omitempty"`
 	SonicMatches           *Array[SonicMatch]      `xml:"sonicMatch,omitempty"              json:"sonicMatch,omitempty"`
+
+	// Fork-specific: user tagging (media_file_tag)
+	UserTags *UserTags `xml:"userTags,omitempty"                                json:"userTags,omitempty"`
 }
 
 const (
@@ -410,6 +413,10 @@ type Genre struct {
 
 type Genres struct {
 	Genre []Genre `xml:"genre,omitempty"                      json:"genre,omitempty"`
+}
+
+type UserTags struct {
+	Tag Array[string] `xml:"tag,omitempty"                    json:"tag,omitempty"`
 }
 
 type AlbumInfo struct {

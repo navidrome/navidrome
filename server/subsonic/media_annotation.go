@@ -206,6 +206,66 @@ func (api *Router) setSkip(ctx context.Context, skip bool, ids ...string) error 
 	return nil
 }
 
+func (api *Router) SetUserTag(r *http.Request) (*responses.Subsonic, error) {
+	p := req.Params(r)
+	id, err := p.String("id")
+	if err != nil {
+		return nil, err
+	}
+	tag, err := p.String("tag")
+	if err != nil {
+		return nil, err
+	}
+
+	log.Debug(r, "Setting user tag", "id", id, "tag", tag)
+	err = api.ds.MediaFileTag(r.Context()).TagSong(id, tag)
+	if err != nil {
+		log.Error(r, err)
+		return nil, err
+	}
+
+	return newResponse(), nil
+}
+
+func (api *Router) RemoveUserTag(r *http.Request) (*responses.Subsonic, error) {
+	p := req.Params(r)
+	id, err := p.String("id")
+	if err != nil {
+		return nil, err
+	}
+	tag, err := p.String("tag")
+	if err != nil {
+		return nil, err
+	}
+
+	log.Debug(r, "Removing user tag", "id", id, "tag", tag)
+	err = api.ds.MediaFileTag(r.Context()).UntagSong(id, tag)
+	if err != nil {
+		log.Error(r, err)
+		return nil, err
+	}
+
+	return newResponse(), nil
+}
+
+func (api *Router) GetUserTags(r *http.Request) (*responses.Subsonic, error) {
+	p := req.Params(r)
+	id, err := p.String("id")
+	if err != nil {
+		return nil, err
+	}
+
+	tags, err := api.ds.MediaFileTag(r.Context()).TagsForSong(id)
+	if err != nil {
+		log.Error(r, err)
+		return nil, err
+	}
+
+	res := newResponse()
+	res.UserTags = &responses.UserTags{Tag: tags}
+	return res, nil
+}
+
 func (api *Router) Scrobble(r *http.Request) (*responses.Subsonic, error) {
 	p := req.Params(r)
 	ids, err := p.Strings("id")
