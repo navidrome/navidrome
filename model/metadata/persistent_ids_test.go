@@ -218,6 +218,11 @@ var _ = Describe("getPID", func() {
 	})
 
 	Context("legacy specs", func() {
+		It("emits canonical 22-char base62 ids", func() {
+			mf := model.MediaFile{Path: "/music/a.mp3", LibraryID: 1}
+			// md5("/music/a.mp3") = e3b7fc2ae9447bbec37a13bf916e3cf6 re-encoded as base62
+			Expect(legacyTrackID(mf, false)).To(Equal("6VHl3uR4kss6sUPKA8Cwnk"))
+		})
 		Context("track_legacy", func() {
 			When("library ID is default (1)", func() {
 				It("should not prepend library ID even when prependLibId is true", func() {
