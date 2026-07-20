@@ -12,8 +12,8 @@ import (
 	"github.com/navidrome/navidrome/model/id"
 )
 
-// These are the legacy ID functions that were used in the original Navidrome ID generation.
-// They are kept here for backwards compatibility with existing databases.
+// These legacy ID functions hash the same inputs as the original Navidrome ID generation,
+// now emitted in the canonical base62 encoding (matching what the uniform-ids migration stores).
 
 func legacyTrackID(mf model.MediaFile, prependLibId bool) string {
 	key := mf.Path
