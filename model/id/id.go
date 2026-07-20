@@ -2,20 +2,16 @@ package id
 
 import (
 	"crypto/md5"
+	"crypto/rand"
 	"fmt"
 	"math/big"
 	"strings"
-
-	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/utils/nanoid"
 )
 
 func NewRandom() string {
-	id, err := nanoid.Generate("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz", 22)
-	if err != nil {
-		log.Error("Could not generate new ID", err)
-	}
-	return id
+	var b [16]byte
+	_, _ = rand.Read(b[:]) // never fails since Go 1.24
+	return Encode128(b[:])
 }
 
 // Encode128 renders a 16-byte value as the canonical 22-char zero-padded base62 id.

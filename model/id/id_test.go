@@ -34,6 +34,20 @@ var _ = Describe("Encode128/Decode128", func() {
 	})
 })
 
+var _ = Describe("NewRandom", func() {
+	It("emits 22-char canonical ids that always fit 128 bits", func() {
+		seen := make(map[string]struct{})
+		for range 1000 {
+			s := id.NewRandom()
+			Expect(s).To(HaveLen(22))
+			_, err := id.Decode128(s)
+			Expect(err).ToNot(HaveOccurred(), "id %q must decode to 128 bits", s)
+			seen[s] = struct{}{}
+		}
+		Expect(seen).To(HaveLen(1000))
+	})
+})
+
 var _ = Describe("NewHash", func() {
 	It("keeps its historical output byte-for-byte (golden)", func() {
 		Expect(id.NewHash("test")).To(Equal("5cLJPkLA5DK2BADhoeotPk"))
