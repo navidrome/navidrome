@@ -22,6 +22,7 @@ var _ = Describe("helpers", func() {
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
 		auth.TokenAuth = jwtauth.New("HS256", []byte("test secret"), nil)
+		auth.PublicTokenAuth = jwtauth.New("HS256", []byte("test public secret"), nil)
 	})
 
 	Describe("fakePath", func() {
