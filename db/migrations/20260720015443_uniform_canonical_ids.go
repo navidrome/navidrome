@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/pressly/goose/v3"
 )
 
@@ -63,6 +64,13 @@ func upUniformCanonicalIds(ctx context.Context, tx *sql.Tx) error {
 	}
 	if err := rewriteJSONColumn(ctx, tx, "playlist", "rules", canonicalizePlaylistRules); err != nil {
 		return err
+	}
+	// Legacy PID specs embed old-shaped album/track ids into composite pids; a full rescan
+	// rewrites every pid with the new encoding so path-based move matching stays consistent.
+	if strings.Contains(conf.Server.PID.Track, "legacy") || strings.Contains(conf.Server.PID.Album, "legacy") {
+		if err := forceFullRescan(ctx, tx); err != nil {
+			return err
+		}
 	}
 	_, err := tx.ExecContext(ctx, "DROP TABLE _id_map")
 	return err

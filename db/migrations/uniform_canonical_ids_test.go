@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -60,6 +62,7 @@ var _ = Describe("upUniformCanonicalIds", func() {
 			CREATE TABLE album_artists (album_id text, artist_id text);
 			CREATE TABLE library_tag (tag_id text, library_id integer);
 			CREATE TABLE plugin (id text, users text);
+			CREATE TABLE property (id text primary key, value text);
 		`)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -86,7 +89,10 @@ var _ = Describe("upUniformCanonicalIds", func() {
 		// malformed JSON in both a plugin list and a playlist rule: must pass through byte-for-byte
 		seed(`INSERT INTO plugin VALUES ('broken', 'not-json')`)
 		seed(`INSERT INTO playlist VALUES (?, ?, '{broken')`, hashID, hashID)
+	})
 
+	JustBeforeEach(func() {
+		var err error
 		tx, err = db.Begin()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(upUniformCanonicalIds(ctx, tx)).To(Succeed())
@@ -174,5 +180,28 @@ var _ = Describe("upUniformCanonicalIds", func() {
 	It("passes malformed JSON columns through byte-for-byte", func() {
 		Expect(get(`SELECT users FROM plugin WHERE id='broken'`)).To(Equal("not-json"))
 		Expect(get(`SELECT rules FROM playlist WHERE id='` + hashID + `'`)).To(Equal("{broken"))
+	})
+
+	rescanCount := func() int {
+		var count int
+		ExpectWithOffset(1, db.QueryRow(
+			`SELECT count(*) FROM property WHERE id = ?`, consts.FullScanAfterMigrationFlagKey).Scan(&count)).To(Succeed())
+		return count
+	}
+
+	It("does not force a full rescan for the default PID config", func() {
+		Expect(rescanCount()).To(Equal(0))
+	})
+
+	Context("with a legacy PID configuration", func() {
+		BeforeEach(func() {
+			prev := conf.Server.PID.Album
+			conf.Server.PID.Album = "album_legacy"
+			DeferCleanup(func() { conf.Server.PID.Album = prev })
+		})
+
+		It("forces a full rescan so composite pids are rewritten", func() {
+			Expect(rescanCount()).To(Equal(1))
+		})
 	})
 })
