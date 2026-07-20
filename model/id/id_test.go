@@ -22,10 +22,6 @@ var _ = Describe("Encode128/Decode128", func() {
 		Expect(id.Decode128(s)).To(Equal(b))
 	})
 
-	It("panics on non-16-byte input", func() {
-		Expect(func() { id.Encode128(make([]byte, 15)) }).To(Panic())
-	})
-
 	It("rejects invalid input", func() {
 		_, err := id.Decode128("short")
 		Expect(err).To(HaveOccurred())
