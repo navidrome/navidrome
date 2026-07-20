@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/pressly/goose/v3"
 )
 
@@ -72,7 +73,19 @@ func upUniformCanonicalIds(ctx context.Context, tx *sql.Tx) error {
 			return err
 		}
 	}
+	if err := rotateSessionSecret(ctx, tx); err != nil {
+		return err
+	}
 	_, err := tx.ExecContext(ctx, "DROP TABLE _id_map")
+	return err
+}
+
+// rotateSessionSecret renames the session JWT secret to the public key, so public-link tokens
+// keep verifying while auth.Init mints a fresh session secret, killing every stale session.
+func rotateSessionSecret(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx,
+		`UPDATE property SET id = ? WHERE id = ? AND NOT EXISTS (SELECT 1 FROM property WHERE id = ?)`,
+		consts.JWTPublicSecretKey, consts.JWTSecretKey, consts.JWTPublicSecretKey)
 	return err
 }
 

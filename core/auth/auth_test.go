@@ -89,6 +89,51 @@ var _ = Describe("Auth", func() {
 		})
 	})
 
+	Describe("Session/Public secret split", func() {
+		claims := func() map[string]any {
+			return map[string]any{"iss": "issuer", "exp": time.Now().Add(1 * time.Minute).Unix()}
+		}
+
+		It("verifies a session token via Validate but not ValidatePublic", func() {
+			_, tokenStr, err := auth.TokenAuth.Encode(claims())
+			Expect(err).NotTo(HaveOccurred())
+			_, err = auth.Validate(tokenStr)
+			Expect(err).NotTo(HaveOccurred())
+			_, err = auth.ValidatePublic(tokenStr)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("verifies a public token via ValidatePublic but not Validate", func() {
+			_, tokenStr, err := auth.PublicTokenAuth.Encode(claims())
+			Expect(err).NotTo(HaveOccurred())
+			_, err = auth.ValidatePublic(tokenStr)
+			Expect(err).NotTo(HaveOccurred())
+			_, err = auth.Validate(tokenStr)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("decodes public tokens minted by CreatePublicToken via PublicTokenAuth", func() {
+			tokenStr, err := auth.CreatePublicToken(auth.Claims{ID: "art-1"})
+			Expect(err).NotTo(HaveOccurred())
+			claims, err := auth.ValidatePublic(tokenStr)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(claims.ID).To(Equal("art-1"))
+			_, err = auth.Validate(tokenStr)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("decodes expiring public tokens minted by CreateExpiringPublicToken via PublicTokenAuth", func() {
+			exp := time.Now().Add(1 * time.Hour)
+			tokenStr, err := auth.CreateExpiringPublicToken(exp, auth.Claims{ID: "art-2"})
+			Expect(err).NotTo(HaveOccurred())
+			claims, err := auth.ValidatePublic(tokenStr)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(claims.ID).To(Equal("art-2"))
+			_, err = auth.Validate(tokenStr)
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
 	Describe("TouchToken", func() {
 		It("updates the expiration time", func() {
 			yesterday := time.Now().Add(-oneDay)
