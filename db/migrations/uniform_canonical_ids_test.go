@@ -71,8 +71,8 @@ var _ = Describe("upUniformCanonicalIds", func() {
 		seed(`INSERT INTO media_file VALUES (?, ?, ?, ?, '', '', ?)`, legacyOld, legacyOld, hashID, legacyOld, uuidOld)
 		seed(`INSERT INTO album VALUES (?, ?)`, legacyOld, hashID)
 		seed(`INSERT INTO user VALUES (?)`, randOld)
-		// uuid id, random owner, smart-playlist rules with an embedded inPlaylist id
-		seed(`INSERT INTO playlist VALUES (?, ?, ?)`, uuidOld, randOld, `{"all":[{"inPlaylist":{"id":"`+uuidOld+`"}}]}`)
+		// uuid id, random owner, smart-playlist rules with an embedded inPlaylist id and a sibling operator
+		seed(`INSERT INTO playlist VALUES (?, ?, ?)`, uuidOld, randOld, `{"all":[{"inPlaylist":{"id":"`+uuidOld+`"}},{"inTheLast":{"lastPlayed":30}}]}`)
 		seed(`INSERT INTO annotation VALUES (?, ?, 'media_file')`, randOld, legacyOld)
 		seed(`INSERT INTO playqueue VALUES (?, ?, ?)`, randOld, randOld, legacyOld+","+hashID)
 		seed(`INSERT INTO share VALUES (?, ?, ?, 'Album Foo...')`, shareID, randOld, legacyOld+","+uuidOld)
@@ -83,6 +83,9 @@ var _ = Describe("upUniformCanonicalIds", func() {
 		seed(`INSERT INTO library_tag VALUES (?, 1)`, hashID)
 		seed(`INSERT INTO plugin VALUES ('lastfm', ?)`, `["`+randOld+`","`+hashID+`"]`)
 		seed(`INSERT INTO plugin VALUES ('empty', '[]')`) // exempt: empty user list untouched
+		// malformed JSON in both a plugin list and a playlist rule: must pass through byte-for-byte
+		seed(`INSERT INTO plugin VALUES ('broken', 'not-json')`)
+		seed(`INSERT INTO playlist VALUES (?, ?, '{broken')`, hashID, hashID)
 
 		tx, err = db.Begin()
 		Expect(err).ToNot(HaveOccurred())
@@ -103,8 +106,8 @@ var _ = Describe("upUniformCanonicalIds", func() {
 		Expect(get(`SELECT album_id FROM media_file`)).To(Equal(legacyNew))
 		Expect(get(`SELECT id FROM album`)).To(Equal(legacyNew))
 		Expect(get(`SELECT id FROM user`)).To(Equal(randNew))
-		Expect(get(`SELECT id FROM playlist`)).To(Equal(uuidNew))
-		Expect(get(`SELECT owner_id FROM playlist`)).To(Equal(randNew))
+		Expect(get(`SELECT id FROM playlist WHERE owner_id='` + randNew + `'`)).To(Equal(uuidNew))
+		Expect(get(`SELECT owner_id FROM playlist WHERE id='` + uuidNew + `'`)).To(Equal(randNew))
 		Expect(get(`SELECT item_id FROM annotation`)).To(Equal(legacyNew))
 		Expect(get(`SELECT user_id FROM annotation`)).To(Equal(randNew))
 	})
@@ -136,15 +139,40 @@ var _ = Describe("upUniformCanonicalIds", func() {
 		Expect(get(`SELECT id FROM plugin WHERE id='lastfm'`)).To(Equal("lastfm")) // plugin name, untouched
 
 		var rules map[string]any
-		Expect(json.Unmarshal([]byte(get(`SELECT rules FROM playlist`)), &rules)).To(Succeed())
+		Expect(json.Unmarshal([]byte(get(`SELECT rules FROM playlist WHERE id='`+uuidNew+`'`)), &rules)).To(Succeed())
 		all, ok := rules["all"].([]any)
 		Expect(ok).To(BeTrue())
-		Expect(all).To(HaveLen(1))
+		Expect(all).To(HaveLen(2))
 		inPl := all[0].(map[string]any)["inPlaylist"].(map[string]any)
 		Expect(inPl["id"]).To(Equal(uuidNew))
 	})
 
+	It("preserves sibling operators alongside a rewritten inPlaylist id", func() {
+		var rules map[string]any
+		Expect(json.Unmarshal([]byte(get(`SELECT rules FROM playlist WHERE id='`+uuidNew+`'`)), &rules)).To(Succeed())
+		all := rules["all"].([]any)
+		var sawInPlaylist, sawInTheLast bool
+		for _, e := range all {
+			op := e.(map[string]any)
+			if pl, ok := op["inPlaylist"].(map[string]any); ok {
+				Expect(pl["id"]).To(Equal(uuidNew))
+				sawInPlaylist = true
+			}
+			if last, ok := op["inTheLast"].(map[string]any); ok {
+				Expect(last["lastPlayed"]).To(Equal(float64(30)))
+				sawInTheLast = true
+			}
+		}
+		Expect(sawInPlaylist).To(BeTrue())
+		Expect(sawInTheLast).To(BeTrue())
+	})
+
 	It("leaves exempt JSON rows untouched", func() {
 		Expect(get(`SELECT users FROM plugin WHERE id='empty'`)).To(Equal("[]"))
+	})
+
+	It("passes malformed JSON columns through byte-for-byte", func() {
+		Expect(get(`SELECT users FROM plugin WHERE id='broken'`)).To(Equal("not-json"))
+		Expect(get(`SELECT rules FROM playlist WHERE id='` + hashID + `'`)).To(Equal("{broken"))
 	})
 })

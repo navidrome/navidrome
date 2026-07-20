@@ -16,6 +16,9 @@ func NewRandom() string {
 
 // Encode128 renders a 16-byte value as the canonical 22-char zero-padded base62 id.
 func Encode128(b []byte) string {
+	if len(b) != 16 {
+		panic(fmt.Sprintf("id.Encode128: expected 16 bytes, got %d", len(b)))
+	}
 	return fmt.Sprintf("%022s", new(big.Int).SetBytes(b).Text(62))
 }
 
