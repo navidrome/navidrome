@@ -6,22 +6,17 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
-
-	"github.com/navidrome/navidrome/log"
 )
 
 func NewRandom() string {
 	var b [16]byte
 	_, _ = rand.Read(b[:]) // never fails since Go 1.24
-	return Encode128(b[:])
+	return Encode128(b)
 }
 
 // Encode128 renders a 16-byte value as the canonical 22-char zero-padded base62 id.
-func Encode128(b []byte) string {
-	if len(b) != 16 {
-		log.Fatal("Encode128: expected 16 bytes", "got", len(b))
-	}
-	return fmt.Sprintf("%022s", new(big.Int).SetBytes(b).Text(62))
+func Encode128(b [16]byte) string {
+	return fmt.Sprintf("%022s", new(big.Int).SetBytes(b[:]).Text(62))
 }
 
 // Decode128 is the exact inverse of Encode128.
@@ -45,7 +40,7 @@ func NewHash(data ...string) string {
 		hash.Write([]byte(d))
 		hash.Write([]byte(string('\u200b')))
 	}
-	return Encode128(hash.Sum(nil))
+	return Encode128([16]byte(hash.Sum(nil)))
 }
 
 func NewTagID(name, value string) string {

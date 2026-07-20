@@ -8,18 +8,18 @@ import (
 
 var _ = Describe("Encode128/Decode128", func() {
 	It("encodes 16 bytes as 22-char zero-padded base62", func() {
-		Expect(id.Encode128(make([]byte, 16))).To(Equal("0000000000000000000000"))
-		allFF := []byte{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+		Expect(id.Encode128([16]byte{})).To(Equal("0000000000000000000000"))
+		allFF := [16]byte{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 			0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
 		Expect(id.Encode128(allFF)).To(Equal("7N42dgm5tFLK9N8MT7fHC7"))
 	})
 
 	It("round-trips arbitrary 16-byte values", func() {
-		b := []byte{0xe3, 0xb7, 0xfc, 0x2a, 0xe9, 0x44, 0x7b, 0xbe,
+		b := [16]byte{0xe3, 0xb7, 0xfc, 0x2a, 0xe9, 0x44, 0x7b, 0xbe,
 			0xc3, 0x7a, 0x13, 0xbf, 0x91, 0x6e, 0x3c, 0xf6}
 		s := id.Encode128(b)
 		Expect(s).To(Equal("6VHl3uR4kss6sUPKA8Cwnk"))
-		Expect(id.Decode128(s)).To(Equal(b))
+		Expect(id.Decode128(s)).To(Equal(b[:]))
 	})
 
 	It("rejects invalid input", func() {
