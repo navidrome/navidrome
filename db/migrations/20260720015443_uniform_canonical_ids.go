@@ -3,6 +3,7 @@ package migrations
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -35,6 +36,11 @@ var idColumns = []struct{ table, col string }{
 	{"share", "user_id"},
 	{"scrobble_buffer", "id"}, {"scrobble_buffer", "user_id"}, {"scrobble_buffer", "media_file_id"},
 	{"playqueue", "id"}, {"playqueue", "user_id"},
+	{"user_library", "user_id"},
+	{"scrobbles", "user_id"}, {"scrobbles", "media_file_id"},
+	{"media_file_artists", "media_file_id"}, {"media_file_artists", "artist_id"},
+	{"album_artists", "album_id"}, {"album_artists", "artist_id"},
+	{"library_tag", "tag_id"},
 }
 
 func upUniformCanonicalIds(ctx context.Context, tx *sql.Tx) error {
@@ -50,6 +56,12 @@ func upUniformCanonicalIds(ctx context.Context, tx *sql.Tx) error {
 		return err
 	}
 	if err := rewriteListColumn(ctx, tx, "share", "resource_ids"); err != nil {
+		return err
+	}
+	if err := rewriteJSONColumn(ctx, tx, "plugin", "users", canonicalizePluginUsers); err != nil {
+		return err
+	}
+	if err := rewriteJSONColumn(ctx, tx, "playlist", "rules", canonicalizePlaylistRules); err != nil {
 		return err
 	}
 	_, err := tx.ExecContext(ctx, "DROP TABLE _id_map")
@@ -147,6 +159,112 @@ func rewriteListColumn(ctx context.Context, tx *sql.Tx, table, col string) error
 		}
 	}
 	return nil
+}
+
+// rewriteJSONColumn applies transform to each non-empty JSON cell, updating only rows it changed.
+func rewriteJSONColumn(ctx context.Context, tx *sql.Tx, table, col string, transform func(string) (string, bool)) error {
+	rows, err := tx.QueryContext(ctx, fmt.Sprintf(
+		"SELECT rowid, %[2]s FROM %[1]s WHERE ifnull(%[2]s, '') <> ''", table, col))
+	if err != nil {
+		return err
+	}
+	type change struct {
+		rowid int64
+		val   string
+	}
+	var changes []change
+	for rows.Next() {
+		var rowid int64
+		var val string
+		if err := rows.Scan(&rowid, &val); err != nil {
+			_ = rows.Close()
+			return err
+		}
+		if newVal, ok := transform(val); ok {
+			changes = append(changes, change{rowid, newVal})
+		}
+	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		return err
+	}
+	_ = rows.Close()
+	for _, c := range changes {
+		if _, err := tx.ExecContext(ctx, fmt.Sprintf(
+			"UPDATE %s SET %s = ? WHERE rowid = ?", table, col), c.val, c.rowid); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// canonicalizePluginUsers maps a JSON array of user ids; malformed JSON passes through untouched.
+func canonicalizePluginUsers(s string) (string, bool) {
+	var users []string
+	if err := json.Unmarshal([]byte(s), &users); err != nil {
+		return s, false
+	}
+	changed := false
+	for i, u := range users {
+		if n := canonicalID(u); n != u {
+			users[i] = n
+			changed = true
+		}
+	}
+	if !changed {
+		return s, false
+	}
+	out, err := json.Marshal(users)
+	if err != nil {
+		return s, false
+	}
+	return string(out), true
+}
+
+// canonicalizePlaylistRules rewrites inPlaylist/notInPlaylist ids in smart-playlist criteria; malformed JSON passes through.
+func canonicalizePlaylistRules(s string) (string, bool) {
+	var root map[string]any
+	if err := json.Unmarshal([]byte(s), &root); err != nil {
+		return s, false
+	}
+	if !canonicalizeRulesNode(root) {
+		return s, false
+	}
+	out, err := json.Marshal(root)
+	if err != nil {
+		return s, false
+	}
+	return string(out), true
+}
+
+// canonicalizeRulesNode walks the criteria tree, canonicalizing the id of any inPlaylist/notInPlaylist object.
+func canonicalizeRulesNode(node any) bool {
+	changed := false
+	switch v := node.(type) {
+	case map[string]any:
+		for k, val := range v {
+			if lk := strings.ToLower(k); lk == "inplaylist" || lk == "notinplaylist" {
+				if obj, ok := val.(map[string]any); ok {
+					if id, ok := obj["id"].(string); ok {
+						if n := canonicalID(id); n != id {
+							obj["id"] = n
+							changed = true
+						}
+					}
+				}
+			}
+			if canonicalizeRulesNode(val) {
+				changed = true
+			}
+		}
+	case []any:
+		for _, item := range v {
+			if canonicalizeRulesNode(item) {
+				changed = true
+			}
+		}
+	}
+	return changed
 }
 
 func downUniformCanonicalIds(ctx context.Context, tx *sql.Tx) error {
