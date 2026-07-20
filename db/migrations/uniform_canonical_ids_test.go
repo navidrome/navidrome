@@ -26,6 +26,8 @@ var _ = Describe("upUniformCanonicalIds", func() {
 		uuidOld   = "f47ac10b-58cc-4372-a567-0e02b2c3d479" // uuid -> re-encoded
 		uuidNew   = "7rke2SAWaicSeSYzkhww6R"
 		shareID   = "aB3xY9kQz1" // exempt family
+
+		sessionSecret = "encrypted-session-secret-sentinel"
 	)
 
 	BeforeEach(func() {
@@ -89,6 +91,7 @@ var _ = Describe("upUniformCanonicalIds", func() {
 		// malformed JSON in both a plugin list and a playlist rule: must pass through byte-for-byte
 		seed(`INSERT INTO plugin VALUES ('broken', 'not-json')`)
 		seed(`INSERT INTO playlist VALUES (?, ?, '{broken')`, hashID, hashID)
+		seed(`INSERT INTO property VALUES (?, ?)`, consts.JWTSecretKey, sessionSecret)
 	})
 
 	JustBeforeEach(func() {
@@ -202,6 +205,29 @@ var _ = Describe("upUniformCanonicalIds", func() {
 
 		It("forces a full rescan so composite pids are rewritten", func() {
 			Expect(rescanCount()).To(Equal(1))
+		})
+	})
+
+	propCount := func(key string) int {
+		var count int
+		ExpectWithOffset(1, db.QueryRow(`SELECT count(*) FROM property WHERE id = ?`, key).Scan(&count)).To(Succeed())
+		return count
+	}
+
+	It("rotates the session secret to the public key", func() {
+		Expect(propCount(consts.JWTSecretKey)).To(Equal(0))
+		Expect(get(`SELECT value FROM property WHERE id = '` + consts.JWTPublicSecretKey + `'`)).To(Equal(sessionSecret))
+	})
+
+	Context("with no stored session secret", func() {
+		BeforeEach(func() {
+			_, err := db.Exec(`DELETE FROM property WHERE id = ?`, consts.JWTSecretKey)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("is a no-op", func() {
+			Expect(propCount(consts.JWTSecretKey)).To(Equal(0))
+			Expect(propCount(consts.JWTPublicSecretKey)).To(Equal(0))
 		})
 	})
 })
