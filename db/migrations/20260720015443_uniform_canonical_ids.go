@@ -98,7 +98,7 @@ func buildIDMap(ctx context.Context, tx *sql.Tx) error {
 
 func collectColumn(ctx context.Context, tx *sql.Tx, ins *sql.Stmt, table, col string) error {
 	rows, err := tx.QueryContext(ctx, fmt.Sprintf(
-		"SELECT DISTINCT %[2]s FROM %[1]s WHERE %[2]s IS NOT NULL", table, col))
+		"SELECT DISTINCT %[2]s FROM %[1]s WHERE %[2]s IS NOT NULL AND %[2]s <> ''", table, col))
 	if err != nil {
 		return err
 	}
@@ -168,9 +168,16 @@ func rewriteColumn(ctx context.Context, tx *sql.Tx, table, col string, transform
 		return err
 	}
 	_ = rows.Close()
+	if len(changes) == 0 {
+		return nil
+	}
+	upd, err := tx.PrepareContext(ctx, fmt.Sprintf("UPDATE %s SET %s = ? WHERE rowid = ?", table, col))
+	if err != nil {
+		return err
+	}
+	defer upd.Close()
 	for _, c := range changes {
-		if _, err := tx.ExecContext(ctx, fmt.Sprintf(
-			"UPDATE %s SET %s = ? WHERE rowid = ?", table, col), c.val, c.rowid); err != nil {
+		if _, err := upd.ExecContext(ctx, c.val, c.rowid); err != nil {
 			return err
 		}
 	}
