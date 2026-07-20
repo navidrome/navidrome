@@ -53,16 +53,16 @@ func upUniformCanonicalIds(ctx context.Context, tx *sql.Tx) error {
 			return fmt.Errorf("canonicalizing %s.%s: %w", tc.table, tc.col, err)
 		}
 	}
-	if err := rewriteListColumn(ctx, tx, "playqueue", "items"); err != nil {
+	if err := rewriteColumn(ctx, tx, "playqueue", "items", canonicalizeIDList); err != nil {
 		return err
 	}
-	if err := rewriteListColumn(ctx, tx, "share", "resource_ids"); err != nil {
+	if err := rewriteColumn(ctx, tx, "share", "resource_ids", canonicalizeIDList); err != nil {
 		return err
 	}
-	if err := rewriteJSONColumn(ctx, tx, "plugin", "users", canonicalizePluginUsers); err != nil {
+	if err := rewriteColumn(ctx, tx, "plugin", "users", canonicalizePluginUsers); err != nil {
 		return err
 	}
-	if err := rewriteJSONColumn(ctx, tx, "playlist", "rules", canonicalizePlaylistRules); err != nil {
+	if err := rewriteColumn(ctx, tx, "playlist", "rules", canonicalizePlaylistRules); err != nil {
 		return err
 	}
 	// Legacy PID specs embed old-shaped album/track ids into composite pids; a full rescan
@@ -124,53 +124,24 @@ func applyIDMap(ctx context.Context, tx *sql.Tx, table, col string) error {
 	return err
 }
 
-// rewriteListColumn canonicalizes comma-separated id lists element-wise.
-func rewriteListColumn(ctx context.Context, tx *sql.Tx, table, col string) error {
-	rows, err := tx.QueryContext(ctx, fmt.Sprintf(
-		"SELECT rowid, %[2]s FROM %[1]s WHERE ifnull(%[2]s, '') <> ''", table, col))
-	if err != nil {
-		return err
-	}
-	type change struct {
-		rowid int64
-		val   string
-	}
-	var changes []change
-	for rows.Next() {
-		var rowid int64
-		var val string
-		if err := rows.Scan(&rowid, &val); err != nil {
-			_ = rows.Close()
-			return err
-		}
-		parts := strings.Split(val, ",")
-		changed := false
-		for i, p := range parts {
-			if n := canonicalID(p); n != p {
-				parts[i] = n
-				changed = true
-			}
-		}
-		if changed {
-			changes = append(changes, change{rowid, strings.Join(parts, ",")})
+// canonicalizeIDList canonicalizes a comma-separated id list element-wise.
+func canonicalizeIDList(s string) (string, bool) {
+	parts := strings.Split(s, ",")
+	changed := false
+	for i, p := range parts {
+		if n := canonicalID(p); n != p {
+			parts[i] = n
+			changed = true
 		}
 	}
-	if err := rows.Err(); err != nil {
-		_ = rows.Close()
-		return err
+	if !changed {
+		return s, false
 	}
-	_ = rows.Close()
-	for _, c := range changes {
-		if _, err := tx.ExecContext(ctx, fmt.Sprintf(
-			"UPDATE %s SET %s = ? WHERE rowid = ?", table, col), c.val, c.rowid); err != nil {
-			return err
-		}
-	}
-	return nil
+	return strings.Join(parts, ","), true
 }
 
-// rewriteJSONColumn applies transform to each non-empty JSON cell, updating only rows it changed.
-func rewriteJSONColumn(ctx context.Context, tx *sql.Tx, table, col string, transform func(string) (string, bool)) error {
+// rewriteColumn applies transform to each non-empty cell, updating only rows it changed.
+func rewriteColumn(ctx context.Context, tx *sql.Tx, table, col string, transform func(string) (string, bool)) error {
 	rows, err := tx.QueryContext(ctx, fmt.Sprintf(
 		"SELECT rowid, %[2]s FROM %[1]s WHERE ifnull(%[2]s, '') <> ''", table, col))
 	if err != nil {

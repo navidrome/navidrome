@@ -18,13 +18,13 @@ func canonicalID(s string) string {
 			return s
 		}
 		sum := md5.Sum([]byte(s))
-		return id.Encode128(sum[:])
+		return id.Encode128(sum)
 	case 32:
 		b, err := hex.DecodeString(s)
 		if err != nil {
 			return s
 		}
-		return id.Encode128(b)
+		return id.Encode128([16]byte(b))
 	case 36:
 		if s[8] != '-' || s[13] != '-' || s[18] != '-' || s[23] != '-' {
 			return s
@@ -33,7 +33,7 @@ func canonicalID(s string) string {
 		if err != nil {
 			return s
 		}
-		return id.Encode128(b)
+		return id.Encode128([16]byte(b))
 	}
 	return s
 }
