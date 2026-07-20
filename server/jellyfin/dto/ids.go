@@ -3,7 +3,7 @@ package dto
 import "encoding/hex"
 
 // EncodeID renders a Navidrome id as lowercase hex; Jellyfin clients parse ids as radix-16 (e.g.
-// Finamp's queue packing) and crash on Navidrome's base62 nanoids if emitted as-is.
+// Finamp's queue packing) and crash on Navidrome's base62 ids if emitted as-is.
 func EncodeID(id string) string {
 	if id == "" {
 		return ""
