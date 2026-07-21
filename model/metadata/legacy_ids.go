@@ -21,7 +21,7 @@ func legacyTrackID(mf model.MediaFile, prependLibId bool) string {
 		key = fmt.Sprintf("%d\\%s", mf.LibraryID, key)
 	}
 	sum := md5.Sum([]byte(key))
-	return id.Encode128(sum)
+	return id.Encode(sum)
 }
 
 func legacyAlbumID(mf model.MediaFile, md Metadata, prependLibId bool) string {
@@ -36,7 +36,7 @@ func legacyAlbumID(mf model.MediaFile, md Metadata, prependLibId bool) string {
 		albumPath = fmt.Sprintf("%d\\%s", mf.LibraryID, albumPath)
 	}
 	sum := md5.Sum([]byte(albumPath))
-	return id.Encode128(sum)
+	return id.Encode(sum)
 }
 
 func legacyMapAlbumArtistName(md Metadata) string {

@@ -225,12 +225,12 @@ var _ = Describe("getPID", func() {
 		})
 		It("prepends the library id for a non-default library", func() {
 			mf := model.MediaFile{Path: "/music/a.mp3", LibraryID: 2}
-			// id.Encode128(md5.Sum([]byte("2\\/music/a.mp3")))
+			// id.Encode(md5.Sum([]byte("2\\/music/a.mp3")))
 			Expect(legacyTrackID(mf, true)).To(Equal("4EK5DHQBMeFuDHw6S3iooO"))
 		})
 		It("emits a canonical album id (golden)", func() {
 			mf := model.MediaFile{LibraryID: 1}
-			// id.Encode128(md5.Sum([]byte("[unknown artist]\\[unknown album]")))
+			// id.Encode(md5.Sum([]byte("[unknown artist]\\[unknown album]")))
 			Expect(legacyAlbumID(mf, Metadata{}, false)).To(Equal("6xBmxSAUFJSQuW7UvwCq8X"))
 		})
 		Context("track_legacy", func() {
