@@ -9,17 +9,6 @@ import (
 	extism "github.com/extism/go-sdk"
 )
 
-// ScrobbleRetrieverGetLastTimestampRequest is the request type for ScrobbleRetriever.GetLastTimestamp.
-type ScrobbleRetrieverGetLastTimestampRequest struct {
-	Username string `json:"username"`
-}
-
-// ScrobbleRetrieverGetLastTimestampResponse is the response type for ScrobbleRetriever.GetLastTimestamp.
-type ScrobbleRetrieverGetLastTimestampResponse struct {
-	Result *int64 `json:"result,omitempty"`
-	Error  string `json:"error,omitempty"`
-}
-
 // ScrobbleRetrieverGetFirstTimestampRequest is the request type for ScrobbleRetriever.GetFirstTimestamp.
 type ScrobbleRetrieverGetFirstTimestampRequest struct {
 	Username string `json:"username"`
@@ -27,6 +16,17 @@ type ScrobbleRetrieverGetFirstTimestampRequest struct {
 
 // ScrobbleRetrieverGetFirstTimestampResponse is the response type for ScrobbleRetriever.GetFirstTimestamp.
 type ScrobbleRetrieverGetFirstTimestampResponse struct {
+	Result *int64 `json:"result,omitempty"`
+	Error  string `json:"error,omitempty"`
+}
+
+// ScrobbleRetrieverGetLastTimestampRequest is the request type for ScrobbleRetriever.GetLastTimestamp.
+type ScrobbleRetrieverGetLastTimestampRequest struct {
+	Username string `json:"username"`
+}
+
+// ScrobbleRetrieverGetLastTimestampResponse is the response type for ScrobbleRetriever.GetLastTimestamp.
+type ScrobbleRetrieverGetLastTimestampResponse struct {
 	Result *int64 `json:"result,omitempty"`
 	Error  string `json:"error,omitempty"`
 }
@@ -43,48 +43,27 @@ type ScrobbleRetrieverGetScrobblesResponse struct {
 	Error  string        `json:"error,omitempty"`
 }
 
+// ScrobbleRetrieverGetScrobbleCountRequest is the request type for ScrobbleRetriever.GetScrobbleCount.
+type ScrobbleRetrieverGetScrobbleCountRequest struct {
+	Username string               `json:"username"`
+	Options  ScrobbleCountOptions `json:"options"`
+}
+
+// ScrobbleRetrieverGetScrobbleCountResponse is the response type for ScrobbleRetriever.GetScrobbleCount.
+type ScrobbleRetrieverGetScrobbleCountResponse struct {
+	Result int64  `json:"result,omitempty"`
+	Error  string `json:"error,omitempty"`
+}
+
 // RegisterScrobbleRetrieverHostFunctions registers ScrobbleRetriever service host functions.
 // The returned host functions should be added to the plugin's configuration.
 func RegisterScrobbleRetrieverHostFunctions(service ScrobbleRetrieverService) []extism.HostFunction {
 	return []extism.HostFunction{
-		newScrobbleRetrieverGetLastTimestampHostFunction(service),
 		newScrobbleRetrieverGetFirstTimestampHostFunction(service),
+		newScrobbleRetrieverGetLastTimestampHostFunction(service),
 		newScrobbleRetrieverGetScrobblesHostFunction(service),
+		newScrobbleRetrieverGetScrobbleCountHostFunction(service),
 	}
-}
-
-func newScrobbleRetrieverGetLastTimestampHostFunction(service ScrobbleRetrieverService) extism.HostFunction {
-	return extism.NewHostFunctionWithStack(
-		"scrobbleretriever_getlasttimestamp",
-		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
-			// Read JSON request from plugin memory
-			reqBytes, err := p.ReadBytes(stack[0])
-			if err != nil {
-				scrobbleretrieverWriteError(p, stack, err)
-				return
-			}
-			var req ScrobbleRetrieverGetLastTimestampRequest
-			if err := json.Unmarshal(reqBytes, &req); err != nil {
-				scrobbleretrieverWriteError(p, stack, err)
-				return
-			}
-
-			// Call the service method
-			result, svcErr := service.GetLastTimestamp(ctx, req.Username)
-			if svcErr != nil {
-				scrobbleretrieverWriteError(p, stack, svcErr)
-				return
-			}
-
-			// Write JSON response to plugin memory
-			resp := ScrobbleRetrieverGetLastTimestampResponse{
-				Result: result,
-			}
-			scrobbleretrieverWriteResponse(p, stack, resp)
-		},
-		[]extism.ValueType{extism.ValueTypePTR},
-		[]extism.ValueType{extism.ValueTypePTR},
-	)
 }
 
 func newScrobbleRetrieverGetFirstTimestampHostFunction(service ScrobbleRetrieverService) extism.HostFunction {
@@ -121,6 +100,40 @@ func newScrobbleRetrieverGetFirstTimestampHostFunction(service ScrobbleRetriever
 	)
 }
 
+func newScrobbleRetrieverGetLastTimestampHostFunction(service ScrobbleRetrieverService) extism.HostFunction {
+	return extism.NewHostFunctionWithStack(
+		"scrobbleretriever_getlasttimestamp",
+		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
+			// Read JSON request from plugin memory
+			reqBytes, err := p.ReadBytes(stack[0])
+			if err != nil {
+				scrobbleretrieverWriteError(p, stack, err)
+				return
+			}
+			var req ScrobbleRetrieverGetLastTimestampRequest
+			if err := json.Unmarshal(reqBytes, &req); err != nil {
+				scrobbleretrieverWriteError(p, stack, err)
+				return
+			}
+
+			// Call the service method
+			result, svcErr := service.GetLastTimestamp(ctx, req.Username)
+			if svcErr != nil {
+				scrobbleretrieverWriteError(p, stack, svcErr)
+				return
+			}
+
+			// Write JSON response to plugin memory
+			resp := ScrobbleRetrieverGetLastTimestampResponse{
+				Result: result,
+			}
+			scrobbleretrieverWriteResponse(p, stack, resp)
+		},
+		[]extism.ValueType{extism.ValueTypePTR},
+		[]extism.ValueType{extism.ValueTypePTR},
+	)
+}
+
 func newScrobbleRetrieverGetScrobblesHostFunction(service ScrobbleRetrieverService) extism.HostFunction {
 	return extism.NewHostFunctionWithStack(
 		"scrobbleretriever_getscrobbles",
@@ -146,6 +159,40 @@ func newScrobbleRetrieverGetScrobblesHostFunction(service ScrobbleRetrieverServi
 
 			// Write JSON response to plugin memory
 			resp := ScrobbleRetrieverGetScrobblesResponse{
+				Result: result,
+			}
+			scrobbleretrieverWriteResponse(p, stack, resp)
+		},
+		[]extism.ValueType{extism.ValueTypePTR},
+		[]extism.ValueType{extism.ValueTypePTR},
+	)
+}
+
+func newScrobbleRetrieverGetScrobbleCountHostFunction(service ScrobbleRetrieverService) extism.HostFunction {
+	return extism.NewHostFunctionWithStack(
+		"scrobbleretriever_getscrobblecount",
+		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
+			// Read JSON request from plugin memory
+			reqBytes, err := p.ReadBytes(stack[0])
+			if err != nil {
+				scrobbleretrieverWriteError(p, stack, err)
+				return
+			}
+			var req ScrobbleRetrieverGetScrobbleCountRequest
+			if err := json.Unmarshal(reqBytes, &req); err != nil {
+				scrobbleretrieverWriteError(p, stack, err)
+				return
+			}
+
+			// Call the service method
+			result, svcErr := service.GetScrobbleCount(ctx, req.Username, req.Options)
+			if svcErr != nil {
+				scrobbleretrieverWriteError(p, stack, svcErr)
+				return
+			}
+
+			// Write JSON response to plugin memory
+			resp := ScrobbleRetrieverGetScrobbleCountResponse{
 				Result: result,
 			}
 			scrobbleretrieverWriteResponse(p, stack, resp)

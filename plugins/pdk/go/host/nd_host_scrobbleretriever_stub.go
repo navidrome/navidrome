@@ -12,6 +12,12 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// ScrobbleCountOptions represents the ScrobbleCountOptions data structure.
+type ScrobbleCountOptions struct {
+	FromTimestamp *int64 `json:"fromTimestamp"`
+	ToTimestamp   *int64 `json:"toTimestamp"`
+}
+
 // ScrobbleList represents the ScrobbleList data structure.
 type ScrobbleList struct {
 	Scrobbles     []ScrobbleRef `json:"scrobbles"`
@@ -41,18 +47,6 @@ type mockScrobbleRetrieverService struct {
 // Use this to set expectations: host.ScrobbleRetrieverMock.On("MethodName", args...).Return(values...)
 var ScrobbleRetrieverMock = &mockScrobbleRetrieverService{}
 
-// GetLastTimestamp is the mock method for ScrobbleRetrieverGetLastTimestamp.
-func (m *mockScrobbleRetrieverService) GetLastTimestamp(username string) (*int64, error) {
-	args := m.Called(username)
-	return args.Get(0).(*int64), args.Error(1)
-}
-
-// ScrobbleRetrieverGetLastTimestamp delegates to the mock instance.
-// GetLastTimestamp returns the unix timestamp of the most recent scrobble for the user
-func ScrobbleRetrieverGetLastTimestamp(username string) (*int64, error) {
-	return ScrobbleRetrieverMock.GetLastTimestamp(username)
-}
-
 // GetFirstTimestamp is the mock method for ScrobbleRetrieverGetFirstTimestamp.
 func (m *mockScrobbleRetrieverService) GetFirstTimestamp(username string) (*int64, error) {
 	args := m.Called(username)
@@ -65,6 +59,18 @@ func ScrobbleRetrieverGetFirstTimestamp(username string) (*int64, error) {
 	return ScrobbleRetrieverMock.GetFirstTimestamp(username)
 }
 
+// GetLastTimestamp is the mock method for ScrobbleRetrieverGetLastTimestamp.
+func (m *mockScrobbleRetrieverService) GetLastTimestamp(username string) (*int64, error) {
+	args := m.Called(username)
+	return args.Get(0).(*int64), args.Error(1)
+}
+
+// ScrobbleRetrieverGetLastTimestamp delegates to the mock instance.
+// GetLastTimestamp returns the unix timestamp of the most recent scrobble for the user
+func ScrobbleRetrieverGetLastTimestamp(username string) (*int64, error) {
+	return ScrobbleRetrieverMock.GetLastTimestamp(username)
+}
+
 // GetScrobbles is the mock method for ScrobbleRetrieverGetScrobbles.
 func (m *mockScrobbleRetrieverService) GetScrobbles(username string, options ScrobbleOptions) (*ScrobbleList, error) {
 	args := m.Called(username, options)
@@ -74,4 +80,15 @@ func (m *mockScrobbleRetrieverService) GetScrobbles(username string, options Scr
 // ScrobbleRetrieverGetScrobbles delegates to the mock instance.
 func ScrobbleRetrieverGetScrobbles(username string, options ScrobbleOptions) (*ScrobbleList, error) {
 	return ScrobbleRetrieverMock.GetScrobbles(username, options)
+}
+
+// GetScrobbleCount is the mock method for ScrobbleRetrieverGetScrobbleCount.
+func (m *mockScrobbleRetrieverService) GetScrobbleCount(username string, options ScrobbleCountOptions) (int64, error) {
+	args := m.Called(username, options)
+	return args.Get(0).(int64), args.Error(1)
+}
+
+// ScrobbleRetrieverGetScrobbleCount delegates to the mock instance.
+func ScrobbleRetrieverGetScrobbleCount(username string, options ScrobbleCountOptions) (int64, error) {
+	return ScrobbleRetrieverMock.GetScrobbleCount(username, options)
 }

@@ -19,6 +19,11 @@ type ScrobbleOptions struct {
 	MaxItems      int    `json:"maxItems"`
 }
 
+type ScrobbleCountOptions struct {
+	FromTimestamp *int64 `json:"fromTimestamp,omitempty"`
+	ToTimestamp   *int64 `json:"toTimestamp,omitempty"`
+}
+
 // ScrobbleRetrieverService allows a plugin to retrieve scrobbles for one or more authorized users.
 // It will only provide the media_file ID and submission time, which can be combined with the MatcherService
 // to fetch deduped tracks
@@ -35,4 +40,7 @@ type ScrobbleRetrieverService interface {
 
 	//nd:hostfunc
 	GetScrobbles(ctx context.Context, username string, options ScrobbleOptions) (*ScrobbleList, error)
+
+	//nd:hostfunc
+	GetScrobbleCount(ctx context.Context, username string, options ScrobbleCountOptions) (int64, error)
 }

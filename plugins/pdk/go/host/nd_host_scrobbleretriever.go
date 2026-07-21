@@ -14,6 +14,12 @@ import (
 	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
 )
 
+// ScrobbleCountOptions represents the ScrobbleCountOptions data structure.
+type ScrobbleCountOptions struct {
+	FromTimestamp *int64 `json:"fromTimestamp"`
+	ToTimestamp   *int64 `json:"toTimestamp"`
+}
+
 // ScrobbleList represents the ScrobbleList data structure.
 type ScrobbleList struct {
 	Scrobbles     []ScrobbleRef `json:"scrobbles"`
@@ -34,35 +40,40 @@ type ScrobbleRef struct {
 	SubmissionTime int64  `json:"submissionTime"`
 }
 
-// scrobbleretriever_getlasttimestamp is the host function provided by Navidrome.
-//
-//go:wasmimport extism:host/user scrobbleretriever_getlasttimestamp
-func scrobbleretriever_getlasttimestamp(uint64) uint64
-
 // scrobbleretriever_getfirsttimestamp is the host function provided by Navidrome.
 //
 //go:wasmimport extism:host/user scrobbleretriever_getfirsttimestamp
 func scrobbleretriever_getfirsttimestamp(uint64) uint64
+
+// scrobbleretriever_getlasttimestamp is the host function provided by Navidrome.
+//
+//go:wasmimport extism:host/user scrobbleretriever_getlasttimestamp
+func scrobbleretriever_getlasttimestamp(uint64) uint64
 
 // scrobbleretriever_getscrobbles is the host function provided by Navidrome.
 //
 //go:wasmimport extism:host/user scrobbleretriever_getscrobbles
 func scrobbleretriever_getscrobbles(uint64) uint64
 
-type scrobbleRetrieverGetLastTimestampRequest struct {
-	Username string `json:"username"`
-}
-
-type scrobbleRetrieverGetLastTimestampResponse struct {
-	Result *int64 `json:"result,omitempty"`
-	Error  string `json:"error,omitempty"`
-}
+// scrobbleretriever_getscrobblecount is the host function provided by Navidrome.
+//
+//go:wasmimport extism:host/user scrobbleretriever_getscrobblecount
+func scrobbleretriever_getscrobblecount(uint64) uint64
 
 type scrobbleRetrieverGetFirstTimestampRequest struct {
 	Username string `json:"username"`
 }
 
 type scrobbleRetrieverGetFirstTimestampResponse struct {
+	Result *int64 `json:"result,omitempty"`
+	Error  string `json:"error,omitempty"`
+}
+
+type scrobbleRetrieverGetLastTimestampRequest struct {
+	Username string `json:"username"`
+}
+
+type scrobbleRetrieverGetLastTimestampResponse struct {
 	Result *int64 `json:"result,omitempty"`
 	Error  string `json:"error,omitempty"`
 }
@@ -77,39 +88,14 @@ type scrobbleRetrieverGetScrobblesResponse struct {
 	Error  string        `json:"error,omitempty"`
 }
 
-// ScrobbleRetrieverGetLastTimestamp calls the scrobbleretriever_getlasttimestamp host function.
-// GetLastTimestamp returns the unix timestamp of the most recent scrobble for the user
-func ScrobbleRetrieverGetLastTimestamp(username string) (*int64, error) {
-	// Marshal request to JSON
-	req := scrobbleRetrieverGetLastTimestampRequest{
-		Username: username,
-	}
-	reqBytes, err := json.Marshal(req)
-	if err != nil {
-		return nil, err
-	}
-	reqMem := pdk.AllocateBytes(reqBytes)
-	defer reqMem.Free()
+type scrobbleRetrieverGetScrobbleCountRequest struct {
+	Username string               `json:"username"`
+	Options  ScrobbleCountOptions `json:"options"`
+}
 
-	// Call the host function
-	responsePtr := scrobbleretriever_getlasttimestamp(reqMem.Offset())
-
-	// Read the response from memory
-	responseMem := pdk.FindMemory(responsePtr)
-	responseBytes := responseMem.ReadBytes()
-
-	// Parse the response
-	var response scrobbleRetrieverGetLastTimestampResponse
-	if err := json.Unmarshal(responseBytes, &response); err != nil {
-		return nil, err
-	}
-
-	// Convert Error field to Go error
-	if response.Error != "" {
-		return nil, errors.New(response.Error)
-	}
-
-	return response.Result, nil
+type scrobbleRetrieverGetScrobbleCountResponse struct {
+	Result int64  `json:"result,omitempty"`
+	Error  string `json:"error,omitempty"`
 }
 
 // ScrobbleRetrieverGetFirstTimestamp calls the scrobbleretriever_getfirsttimestamp host function.
@@ -135,6 +121,41 @@ func ScrobbleRetrieverGetFirstTimestamp(username string) (*int64, error) {
 
 	// Parse the response
 	var response scrobbleRetrieverGetFirstTimestampResponse
+	if err := json.Unmarshal(responseBytes, &response); err != nil {
+		return nil, err
+	}
+
+	// Convert Error field to Go error
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+
+	return response.Result, nil
+}
+
+// ScrobbleRetrieverGetLastTimestamp calls the scrobbleretriever_getlasttimestamp host function.
+// GetLastTimestamp returns the unix timestamp of the most recent scrobble for the user
+func ScrobbleRetrieverGetLastTimestamp(username string) (*int64, error) {
+	// Marshal request to JSON
+	req := scrobbleRetrieverGetLastTimestampRequest{
+		Username: username,
+	}
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+	reqMem := pdk.AllocateBytes(reqBytes)
+	defer reqMem.Free()
+
+	// Call the host function
+	responsePtr := scrobbleretriever_getlasttimestamp(reqMem.Offset())
+
+	// Read the response from memory
+	responseMem := pdk.FindMemory(responsePtr)
+	responseBytes := responseMem.ReadBytes()
+
+	// Parse the response
+	var response scrobbleRetrieverGetLastTimestampResponse
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
 		return nil, err
 	}
@@ -177,6 +198,41 @@ func ScrobbleRetrieverGetScrobbles(username string, options ScrobbleOptions) (*S
 	// Convert Error field to Go error
 	if response.Error != "" {
 		return nil, errors.New(response.Error)
+	}
+
+	return response.Result, nil
+}
+
+// ScrobbleRetrieverGetScrobbleCount calls the scrobbleretriever_getscrobblecount host function.
+func ScrobbleRetrieverGetScrobbleCount(username string, options ScrobbleCountOptions) (int64, error) {
+	// Marshal request to JSON
+	req := scrobbleRetrieverGetScrobbleCountRequest{
+		Username: username,
+		Options:  options,
+	}
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return 0, err
+	}
+	reqMem := pdk.AllocateBytes(reqBytes)
+	defer reqMem.Free()
+
+	// Call the host function
+	responsePtr := scrobbleretriever_getscrobblecount(reqMem.Offset())
+
+	// Read the response from memory
+	responseMem := pdk.FindMemory(responsePtr)
+	responseBytes := responseMem.ReadBytes()
+
+	// Parse the response
+	var response scrobbleRetrieverGetScrobbleCountResponse
+	if err := json.Unmarshal(responseBytes, &response); err != nil {
+		return 0, err
+	}
+
+	// Convert Error field to Go error
+	if response.Error != "" {
+		return 0, errors.New(response.Error)
 	}
 
 	return response.Result, nil

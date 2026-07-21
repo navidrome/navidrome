@@ -8,6 +8,15 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ScrobbleCountOptions {
+    #[serde(default)]
+    pub from_timestamp: Option<i64>,
+    #[serde(default)]
+    pub to_timestamp: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ScrobbleList {
     pub scrobbles: Vec<ScrobbleRef>,
     #[serde(default)]
@@ -34,13 +43,13 @@ pub struct ScrobbleRef {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct ScrobbleRetrieverGetLastTimestampRequest {
+struct ScrobbleRetrieverGetFirstTimestampRequest {
     username: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct ScrobbleRetrieverGetLastTimestampResponse {
+struct ScrobbleRetrieverGetFirstTimestampResponse {
     #[serde(default)]
     result: Option<i64>,
     #[serde(default)]
@@ -49,13 +58,13 @@ struct ScrobbleRetrieverGetLastTimestampResponse {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct ScrobbleRetrieverGetFirstTimestampRequest {
+struct ScrobbleRetrieverGetLastTimestampRequest {
     username: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct ScrobbleRetrieverGetFirstTimestampResponse {
+struct ScrobbleRetrieverGetLastTimestampResponse {
     #[serde(default)]
     result: Option<i64>,
     #[serde(default)]
@@ -78,35 +87,28 @@ struct ScrobbleRetrieverGetScrobblesResponse {
     error: Option<String>,
 }
 
-#[host_fn]
-extern "ExtismHost" {
-    fn scrobbleretriever_getlasttimestamp(input: Json<ScrobbleRetrieverGetLastTimestampRequest>) -> Json<ScrobbleRetrieverGetLastTimestampResponse>;
-    fn scrobbleretriever_getfirsttimestamp(input: Json<ScrobbleRetrieverGetFirstTimestampRequest>) -> Json<ScrobbleRetrieverGetFirstTimestampResponse>;
-    fn scrobbleretriever_getscrobbles(input: Json<ScrobbleRetrieverGetScrobblesRequest>) -> Json<ScrobbleRetrieverGetScrobblesResponse>;
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ScrobbleRetrieverGetScrobbleCountRequest {
+    username: String,
+    options: ScrobbleCountOptions,
 }
 
-/// GetLastTimestamp returns the unix timestamp of the most recent scrobble for the user
-///
-/// # Arguments
-/// * `username` - String parameter.
-///
-/// # Returns
-/// The result value.
-///
-/// # Errors
-/// Returns an error if the host function call fails.
-pub fn get_last_timestamp(username: &str) -> Result<Option<i64>, Error> {
-    let response = unsafe {
-        scrobbleretriever_getlasttimestamp(Json(ScrobbleRetrieverGetLastTimestampRequest {
-            username: username.to_owned(),
-        }))?
-    };
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ScrobbleRetrieverGetScrobbleCountResponse {
+    #[serde(default)]
+    result: i64,
+    #[serde(default)]
+    error: Option<String>,
+}
 
-    if let Some(err) = response.0.error {
-        return Err(Error::msg(err));
-    }
-
-    Ok(response.0.result)
+#[host_fn]
+extern "ExtismHost" {
+    fn scrobbleretriever_getfirsttimestamp(input: Json<ScrobbleRetrieverGetFirstTimestampRequest>) -> Json<ScrobbleRetrieverGetFirstTimestampResponse>;
+    fn scrobbleretriever_getlasttimestamp(input: Json<ScrobbleRetrieverGetLastTimestampRequest>) -> Json<ScrobbleRetrieverGetLastTimestampResponse>;
+    fn scrobbleretriever_getscrobbles(input: Json<ScrobbleRetrieverGetScrobblesRequest>) -> Json<ScrobbleRetrieverGetScrobblesResponse>;
+    fn scrobbleretriever_getscrobblecount(input: Json<ScrobbleRetrieverGetScrobbleCountRequest>) -> Json<ScrobbleRetrieverGetScrobbleCountResponse>;
 }
 
 /// GetFirstTimestamp returns the unix timestamp of the oldest scrobble for the user
@@ -133,6 +135,30 @@ pub fn get_first_timestamp(username: &str) -> Result<Option<i64>, Error> {
     Ok(response.0.result)
 }
 
+/// GetLastTimestamp returns the unix timestamp of the most recent scrobble for the user
+///
+/// # Arguments
+/// * `username` - String parameter.
+///
+/// # Returns
+/// The result value.
+///
+/// # Errors
+/// Returns an error if the host function call fails.
+pub fn get_last_timestamp(username: &str) -> Result<Option<i64>, Error> {
+    let response = unsafe {
+        scrobbleretriever_getlasttimestamp(Json(ScrobbleRetrieverGetLastTimestampRequest {
+            username: username.to_owned(),
+        }))?
+    };
+
+    if let Some(err) = response.0.error {
+        return Err(Error::msg(err));
+    }
+
+    Ok(response.0.result)
+}
+
 /// Calls the scrobbleretriever_getscrobbles host function.
 ///
 /// # Arguments
@@ -147,6 +173,32 @@ pub fn get_first_timestamp(username: &str) -> Result<Option<i64>, Error> {
 pub fn get_scrobbles(username: &str, options: ScrobbleOptions) -> Result<Option<ScrobbleList>, Error> {
     let response = unsafe {
         scrobbleretriever_getscrobbles(Json(ScrobbleRetrieverGetScrobblesRequest {
+            username: username.to_owned(),
+            options: options,
+        }))?
+    };
+
+    if let Some(err) = response.0.error {
+        return Err(Error::msg(err));
+    }
+
+    Ok(response.0.result)
+}
+
+/// Calls the scrobbleretriever_getscrobblecount host function.
+///
+/// # Arguments
+/// * `username` - String parameter.
+/// * `options` - ScrobbleCountOptions parameter.
+///
+/// # Returns
+/// The result value.
+///
+/// # Errors
+/// Returns an error if the host function call fails.
+pub fn get_scrobble_count(username: &str, options: ScrobbleCountOptions) -> Result<i64, Error> {
+    let response = unsafe {
+        scrobbleretriever_getscrobblecount(Json(ScrobbleRetrieverGetScrobbleCountRequest {
             username: username.to_owned(),
             options: options,
         }))?

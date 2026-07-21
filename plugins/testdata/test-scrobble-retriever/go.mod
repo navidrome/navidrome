@@ -1,4 +1,4 @@
-module test-sonic-similarity
+module test-scrobble-retriever
 
 go 1.25
 
