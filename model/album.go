@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"iter"
 	"math"
 	"sync"
@@ -77,7 +76,7 @@ func (a Album) CoverArtID() ArtworkID {
 
 func (a Album) FullName() string {
 	if conf.Server.Subsonic.AppendAlbumVersion && len(a.Tags[TagAlbumVersion]) > 0 {
-		return fmt.Sprintf("%s (%s)", a.Name, a.Tags[TagAlbumVersion][0])
+		return appendSuffix(a.Name, a.Tags[TagAlbumVersion][0])
 	}
 	return a.Name
 }
