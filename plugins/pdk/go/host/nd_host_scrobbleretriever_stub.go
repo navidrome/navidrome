@@ -13,18 +13,22 @@ import (
 )
 
 // ScrobbleCountOptions represents the ScrobbleCountOptions data structure.
+// ScrobbleCountOptions carries optional parameters for counting user scrobbles
 type ScrobbleCountOptions struct {
 	FromTimestamp *int64 `json:"fromTimestamp"`
 	ToTimestamp   *int64 `json:"toTimestamp"`
 }
 
 // ScrobbleList represents the ScrobbleList data structure.
+// ScrobbleList is a list of scrobbles, plus an optional timestamp
+// that can be used as a cursor for the next fetch
 type ScrobbleList struct {
 	Scrobbles     []ScrobbleRef `json:"scrobbles"`
 	NextTimestamp *int64        `json:"nextTimestamp"`
 }
 
 // ScrobbleOptions represents the ScrobbleOptions data structure.
+// ScrobbleOptions carries optional parameters for retrieving user scrobbles
 type ScrobbleOptions struct {
 	FromTimestamp *int64 `json:"fromTimestamp"`
 	ToTimestamp   *int64 `json:"toTimestamp"`
@@ -32,6 +36,7 @@ type ScrobbleOptions struct {
 }
 
 // ScrobbleRef represents the ScrobbleRef data structure.
+// ScrobbleRef represents one instance of a scrobble (instance id, file id, submission time)
 type ScrobbleRef struct {
 	ID             int64  `json:"id"`
 	MediaFileID    string `json:"mediaFileId"`
@@ -54,7 +59,8 @@ func (m *mockScrobbleRetrieverService) GetFirstTimestamp(username string) (*int6
 }
 
 // ScrobbleRetrieverGetFirstTimestamp delegates to the mock instance.
-// GetFirstTimestamp returns the unix timestamp of the oldest scrobble for the user
+// GetFirstTimestamp returns the unix timestamp of the oldest scrobble for the user.
+// If the user has no scrobbles, returns nil
 func ScrobbleRetrieverGetFirstTimestamp(username string) (*int64, error) {
 	return ScrobbleRetrieverMock.GetFirstTimestamp(username)
 }
@@ -67,6 +73,7 @@ func (m *mockScrobbleRetrieverService) GetLastTimestamp(username string) (*int64
 
 // ScrobbleRetrieverGetLastTimestamp delegates to the mock instance.
 // GetLastTimestamp returns the unix timestamp of the most recent scrobble for the user
+// If the user has no scrobbles, return nil
 func ScrobbleRetrieverGetLastTimestamp(username string) (*int64, error) {
 	return ScrobbleRetrieverMock.GetLastTimestamp(username)
 }
@@ -78,6 +85,21 @@ func (m *mockScrobbleRetrieverService) GetScrobbles(username string, options Scr
 }
 
 // ScrobbleRetrieverGetScrobbles delegates to the mock instance.
+// GetScrobbles returns scrobbles for a user.
+//
+// Parameters:
+//   - username: the user to query for scrobbles
+//   - options.FromTimestamp: If specified, the first UNIX timestamp to start fetching scrobbles (inclusive). Otherwise, start from the first scrobble
+//   - options.ToTimestamp: If specified, the last UNIX timestamp to fetch (inclusive). Otherwise, end at the last scrobble
+//   - options.MaxItems: The maximum number of items to retrieve. The maximum value (and default) if not specified is 5000
+//
+// Returns:
+//   - Scrobbles: A list of scrobbles within the constraints given (if any). The order
+//     of the items depends on the options: if ToTimestamp is specified AND
+//     FromTImestamp is not specified, the order is in descending submission time.
+//     Otherwise, the scrobbles are returned in ascending submission time.
+//   - NextTimestamp: If there are additional items to retrieve in the range, the timestamp
+//     of the next scrobble that would be retrieved in the order (asc or desc)
 func ScrobbleRetrieverGetScrobbles(username string, options ScrobbleOptions) (*ScrobbleList, error) {
 	return ScrobbleRetrieverMock.GetScrobbles(username, options)
 }
@@ -89,6 +111,15 @@ func (m *mockScrobbleRetrieverService) GetScrobbleCount(username string, options
 }
 
 // ScrobbleRetrieverGetScrobbleCount delegates to the mock instance.
+// GetScrobbleCount returns the number of scrobbles for a user in a given range
+//
+// Parameters:
+//   - username: the user to query for scrobbles
+//   - options.FromTimestamp: If specified, the first UNIX timestamp to start fetching scrobbles (inclusive). Otherwise, start from the first scrobble
+//   - options.ToTimestamp: If specified, the last UNIX timestamp to fetch (inclusive). Otherwise, end at the last scrobble
+//
+// Returns:
+//   - the number of scrobbles in the given range, or 0
 func ScrobbleRetrieverGetScrobbleCount(username string, options ScrobbleCountOptions) (int64, error) {
 	return ScrobbleRetrieverMock.GetScrobbleCount(username, options)
 }

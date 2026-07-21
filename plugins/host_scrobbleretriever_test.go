@@ -130,16 +130,58 @@ var _ = Describe("Scrobbble Retriever Host Function", Ordered, func() {
 		})
 	})
 
-	Describe("no items", func() {
-		var plugin *plugin
+	var plugin *plugin
 
-		BeforeEach(func() {
-			manager.mu.RLock()
-			plugin = manager.plugins["test-scrobble-retriever"]
-			manager.mu.RUnlock()
-			Expect(plugin).ToNot(BeNil())
+	BeforeEach(func() {
+		manager.mu.RLock()
+		plugin = manager.plugins["test-scrobble-retriever"]
+		manager.mu.RUnlock()
+		Expect(plugin).ToNot(BeNil())
+	})
+
+	Describe("not authorized", func() {
+		It("rejects first timestamp", func() {
+			instance, err := plugin.instance(GinkgoT().Context())
+			Expect(err).ToNot(HaveOccurred())
+			defer instance.Close(GinkgoT().Context())
+
+			exit, _, err := instance.Call("call_get_first_timestamp", []byte("baduser"))
+			Expect(err).To(HaveOccurred())
+			Expect(exit).To(Equal(uint32(1)))
 		})
 
+		It("rejects last timestamp", func() {
+			instance, err := plugin.instance(GinkgoT().Context())
+			Expect(err).ToNot(HaveOccurred())
+			defer instance.Close(GinkgoT().Context())
+
+			exit, _, err := instance.Call("call_get_last_timestamp", []byte("baduser"))
+			Expect(err).To(HaveOccurred())
+			Expect(exit).To(Equal(uint32(1)))
+		})
+
+		It("rejects scrobbles", func() {
+			instance, err := plugin.instance(GinkgoT().Context())
+			Expect(err).ToNot(HaveOccurred())
+			defer instance.Close(GinkgoT().Context())
+
+			exit, _, err := instance.Call("call_get_scrobbles", []byte(`{"username":"baduser"}`))
+			Expect(err).To(HaveOccurred())
+			Expect(exit).To(Equal(uint32(1)))
+		})
+
+		It("rejects scrobbles", func() {
+			instance, err := plugin.instance(GinkgoT().Context())
+			Expect(err).ToNot(HaveOccurred())
+			defer instance.Close(GinkgoT().Context())
+
+			exit, _, err := instance.Call("call_get_scrobbles_count", []byte(`{"username":"baduser"}`))
+			Expect(err).To(HaveOccurred())
+			Expect(exit).To(Equal(uint32(1)))
+		})
+	})
+
+	Describe("no items", func() {
 		It("calls get first timestamp", func() {
 			instance, err := plugin.instance(GinkgoT().Context())
 			Expect(err).ToNot(HaveOccurred())
@@ -189,8 +231,6 @@ var _ = Describe("Scrobbble Retriever Host Function", Ordered, func() {
 	})
 
 	Describe("with items", func() {
-		var plugin *plugin
-
 		p := func(val int64) *int64 {
 			return &val
 		}
@@ -208,13 +248,6 @@ var _ = Describe("Scrobbble Retriever Host Function", Ordered, func() {
 			for idx := range scrobbles {
 				scrobblesReversed[3-idx] = scrobbles[idx]
 			}
-		})
-
-		BeforeEach(func() {
-			manager.mu.RLock()
-			plugin = manager.plugins["test-scrobble-retriever"]
-			manager.mu.RUnlock()
-			Expect(plugin).ToNot(BeNil())
 		})
 
 		It("calls get first timestamp", func() {

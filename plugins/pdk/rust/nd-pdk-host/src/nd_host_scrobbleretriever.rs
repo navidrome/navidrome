@@ -6,6 +6,7 @@
 use extism_pdk::*;
 use serde::{Deserialize, Serialize};
 
+/// ScrobbleCountOptions carries optional parameters for counting user scrobbles
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScrobbleCountOptions {
@@ -15,6 +16,8 @@ pub struct ScrobbleCountOptions {
     pub to_timestamp: Option<i64>,
 }
 
+/// ScrobbleList is a list of scrobbles, plus an optional timestamp
+/// that can be used as a cursor for the next fetch
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScrobbleList {
@@ -23,6 +26,7 @@ pub struct ScrobbleList {
     pub next_timestamp: Option<i64>,
 }
 
+/// ScrobbleOptions carries optional parameters for retrieving user scrobbles
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScrobbleOptions {
@@ -33,6 +37,7 @@ pub struct ScrobbleOptions {
     pub max_items: i32,
 }
 
+/// ScrobbleRef represents one instance of a scrobble (instance id, file id, submission time)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScrobbleRef {
@@ -111,7 +116,8 @@ extern "ExtismHost" {
     fn scrobbleretriever_getscrobblecount(input: Json<ScrobbleRetrieverGetScrobbleCountRequest>) -> Json<ScrobbleRetrieverGetScrobbleCountResponse>;
 }
 
-/// GetFirstTimestamp returns the unix timestamp of the oldest scrobble for the user
+/// GetFirstTimestamp returns the unix timestamp of the oldest scrobble for the user.
+/// If the user has no scrobbles, returns nil
 ///
 /// # Arguments
 /// * `username` - String parameter.
@@ -136,6 +142,7 @@ pub fn get_first_timestamp(username: &str) -> Result<Option<i64>, Error> {
 }
 
 /// GetLastTimestamp returns the unix timestamp of the most recent scrobble for the user
+/// If the user has no scrobbles, return nil
 ///
 /// # Arguments
 /// * `username` - String parameter.
@@ -159,7 +166,21 @@ pub fn get_last_timestamp(username: &str) -> Result<Option<i64>, Error> {
     Ok(response.0.result)
 }
 
-/// Calls the scrobbleretriever_getscrobbles host function.
+/// GetScrobbles returns scrobbles for a user.
+/// 
+/// Parameters:
+///   - username: the user to query for scrobbles
+///   - options.FromTimestamp: If specified, the first UNIX timestamp to start fetching scrobbles (inclusive). Otherwise, start from the first scrobble
+///   - options.ToTimestamp: If specified, the last UNIX timestamp to fetch (inclusive). Otherwise, end at the last scrobble
+///   - options.MaxItems: The maximum number of items to retrieve. The maximum value (and default) if not specified is 5000
+/// 
+/// Returns:
+///   - Scrobbles: A list of scrobbles within the constraints given (if any). The order
+///     of the items depends on the options: if ToTimestamp is specified AND
+///     FromTImestamp is not specified, the order is in descending submission time.
+///     Otherwise, the scrobbles are returned in ascending submission time.
+///   - NextTimestamp: If there are additional items to retrieve in the range, the timestamp
+///     of the next scrobble that would be retrieved in the order (asc or desc)
 ///
 /// # Arguments
 /// * `username` - String parameter.
@@ -185,7 +206,15 @@ pub fn get_scrobbles(username: &str, options: ScrobbleOptions) -> Result<Option<
     Ok(response.0.result)
 }
 
-/// Calls the scrobbleretriever_getscrobblecount host function.
+/// GetScrobbleCount returns the number of scrobbles for a user in a given range
+/// 
+/// Parameters:
+///   - username: the user to query for scrobbles
+///   - options.FromTimestamp: If specified, the first UNIX timestamp to start fetching scrobbles (inclusive). Otherwise, start from the first scrobble
+///   - options.ToTimestamp: If specified, the last UNIX timestamp to fetch (inclusive). Otherwise, end at the last scrobble
+/// 
+/// Returns:
+///   - the number of scrobbles in the given range, or 0
 ///
 /// # Arguments
 /// * `username` - String parameter.
