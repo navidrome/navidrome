@@ -1,7 +1,7 @@
 const stylesheet = `
   .react-jinke-music-player-main svg:active,
   .react-jinke-music-player-main svg:hover {
-    color: #9399b2 /* overlay2 */
+    color: #9399b2; /* overlay2 */
   }
 
   .react-jinke-music-player-main .music-player-panel .panel-content .rc-slider-handle,
