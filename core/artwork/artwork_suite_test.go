@@ -15,9 +15,17 @@ import (
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"go.uber.org/goleak"
 )
 
 func TestArtwork(t *testing.T) {
+	// Only run goleak checks when the GOLEAK env var is set
+	if os.Getenv("GOLEAK") != "" {
+		defer goleak.VerifyNone(t,
+			goleak.IgnoreTopFunction("github.com/onsi/ginkgo/v2/internal/interrupt_handler.(*InterruptHandler).registerForInterrupts.func2"),
+		)
+	}
+
 	tests.Init(t, false)
 	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
