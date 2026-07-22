@@ -11,6 +11,7 @@ import { DurationField, SongContextMenu, RatingField } from './index'
 import { setTrack } from '../actions'
 import { useDispatch } from 'react-redux'
 import config from '../config'
+import { TagEditorSongDialog } from '../tageditor'
 
 const useStyles = makeStyles(
   {
@@ -64,10 +65,12 @@ export const SongSimpleList = ({
   ...rest
 }) => {
   const dispatch = useDispatch()
+  const [editingSongId, setEditingSongId] = React.useState(null)
   const classes = useStyles({ classes: classesOverride })
   return (
     (loading || total > 0) && (
-      <List className={className} {...sanitizeListRestProps(rest)}>
+      <>
+        <List className={className} {...sanitizeListRestProps(rest)}>
         {ids.map(
           (id) =>
             data[id] && (
@@ -103,14 +106,26 @@ export const SongSimpleList = ({
                   />
                   <ListItemSecondaryAction className={classes.rightIcon}>
                     <ListItemIcon>
-                      <SongContextMenu record={data[id]} visible={true} />
+                      <SongContextMenu
+                        record={data[id]}
+                        visible={true}
+                        onEditTags={(record) =>
+                          setEditingSongId(record.mediaFileId || record.id)
+                        }
+                      />
                     </ListItemIcon>
                   </ListItemSecondaryAction>
                 </ListItem>
               </span>
             ),
         )}
-      </List>
+        </List>
+        <TagEditorSongDialog
+          open={Boolean(editingSongId)}
+          songId={editingSongId}
+          onClose={() => setEditingSongId(null)}
+        />
+      </>
     )
   )
 }

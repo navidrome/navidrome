@@ -57,6 +57,7 @@ export const SongContextMenu = ({
   record,
   showLove,
   onAddToPlaylist,
+  onEditTags,
   className,
 }) => {
   const classes = useStyles()
@@ -68,6 +69,7 @@ export const SongContextMenu = ({
   const [playlistAnchorEl, setPlaylistAnchorEl] = useState(null)
   const [playlists, setPlaylists] = useState([])
   const [playlistsLoaded, setPlaylistsLoaded] = useState(false)
+  const [pendingEditTags, setPendingEditTags] = useState(false)
   const { permissions } = usePermissions()
   const redirect = useRedirect()
 
@@ -143,6 +145,15 @@ export const SongContextMenu = ({
       action: (record) =>
         dispatch(openDownloadMenu(record, DOWNLOAD_MENU_SONG)),
     },
+    editTags: {
+      enabled: permissions === 'admin' && !record.missing && Boolean(onEditTags),
+      label: 'Edit song tags',
+      action: () => {
+        setPendingEditTags(true)
+        setPlaylistAnchorEl(null)
+        setAnchorEl(null)
+      },
+    },
     info: {
       enabled: true,
       label: translate('resources.song.actions.info'),
@@ -195,14 +206,15 @@ export const SongContextMenu = ({
     e.stopPropagation()
   }
 
-  const handleItemClick = (e) => {
+  const handleItemClick = (key) => (e) => {
     e.preventDefault()
-    const key = e.target.getAttribute('value')
     const action = options[key].action
 
     if (key === 'showInPlaylist') {
       // For showInPlaylist, we keep the main menu open and show submenu
       action(record, e)
+    } else if (key === 'editTags') {
+      action(record)
     } else {
       // For other actions, close the main menu
       setAnchorEl(null)
@@ -221,7 +233,16 @@ export const SongContextMenu = ({
   const handleMainMenuClose = (e) => {
     setAnchorEl(null)
     setPlaylistAnchorEl(null) // Close both menus
-    e.stopPropagation()
+    if (e) {
+      e.stopPropagation()
+    }
+  }
+
+  const handleMainMenuExited = () => {
+    if (pendingEditTags && onEditTags) {
+      setPendingEditTags(false)
+      onEditTags(record)
+    }
   }
 
   const handlePlaylistClick = (id, e) => {
@@ -251,6 +272,7 @@ export const SongContextMenu = ({
         anchorEl={anchorEl}
         open={open}
         onClose={handleMainMenuClose}
+        TransitionProps={{ onExited: handleMainMenuExited }}
       >
         {Object.keys(options).map((key) => {
           const showInPlaylistDisabled =
@@ -263,7 +285,7 @@ export const SongContextMenu = ({
                 onClick={
                   showInPlaylistDisabled
                     ? (e) => e.stopPropagation()
-                    : handleItemClick
+                    : handleItemClick(key)
                 }
                 disabled={showInPlaylistDisabled}
                 style={
@@ -303,11 +325,13 @@ SongContextMenu.propTypes = {
   resource: PropTypes.string.isRequired,
   record: PropTypes.object.isRequired,
   onAddToPlaylist: PropTypes.func,
+  onEditTags: PropTypes.func,
   showLove: PropTypes.bool,
 }
 
 SongContextMenu.defaultProps = {
   onAddToPlaylist: () => {},
+  onEditTags: null,
   record: {},
   resource: 'song',
   showLove: true,
