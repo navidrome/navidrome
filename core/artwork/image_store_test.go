@@ -44,11 +44,20 @@ var _ = Describe("ImageStore", func() {
 		Expect(got).To(Equal(data))
 	})
 
-	It("is idempotent on duplicate writes", func() {
+	It("is idempotent on duplicate writes and preserves the original content", func() {
 		data := []byte("dup")
 		h, _ := HashImage(bytes.NewReader(data))
 		Expect(store.Write(h, "image/png", bytes.NewReader(data))).To(Succeed())
-		Expect(store.Write(h, "image/png", bytes.NewReader(data))).To(Succeed())
+		// A duplicate write only touches mtime; passing different bytes under the same
+		// hash proves the second reader is never consumed to overwrite the file.
+		Expect(store.Write(h, "image/png", bytes.NewReader([]byte("not-dup")))).To(Succeed())
+
+		rc, err := store.Open(h, "image/png")
+		Expect(err).ToNot(HaveOccurred())
+		defer rc.Close()
+		got, err := io.ReadAll(rc)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(got).To(Equal(data))
 	})
 
 	It("refreshes the mtime on a duplicate write", func() {

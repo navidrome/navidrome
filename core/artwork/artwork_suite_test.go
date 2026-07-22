@@ -19,12 +19,17 @@ import (
 )
 
 func TestArtwork(t *testing.T) {
-	// Only run goleak checks when the GOLEAK env var is set
-	if os.Getenv("GOLEAK") != "" {
-		defer goleak.VerifyNone(t,
-			goleak.IgnoreTopFunction("github.com/onsi/ginkgo/v2/internal/interrupt_handler.(*InterruptHandler).registerForInterrupts.func2"),
-		)
-	}
+	// Runs unconditionally: the two leaks below are pre-existing and out of this
+	// package's control, so they're ignored by exact top-function instead.
+	defer goleak.VerifyNone(t,
+		goleak.IgnoreTopFunction("github.com/onsi/ginkgo/v2/internal/interrupt_handler.(*InterruptHandler).registerForInterrupts.func2"),
+		// notify's own init() starts this dispatcher the moment it's imported
+		// (via core/storage/local or plugins); it never exits.
+		goleak.IgnoreTopFunction("github.com/rjeczalik/notify.(*recursiveTree).dispatch"),
+		// The old cache_warmer.go starts a goroutine per NewCacheWarmer call with
+		// no shutdown path (dark-launch target for Phase 2, not touched here).
+		goleak.IgnoreTopFunction("github.com/navidrome/navidrome/core/artwork.(*cacheWarmer).waitSignal"),
+	)
 
 	tests.Init(t, false)
 	log.SetLevel(log.LevelFatal)
