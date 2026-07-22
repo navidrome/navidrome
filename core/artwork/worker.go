@@ -12,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/ffmpeg"
+	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"golang.org/x/time/rate"
@@ -116,7 +117,7 @@ func (w *Worker) RunPrune(ctx context.Context) error {
 func (w *Worker) drain(ctx context.Context, concurrency int) (int, error) {
 	// Resolved per drain, not once in Run: the worker starts at boot, possibly before any
 	// admin exists, so a late-created admin is picked up on the next poll (private playlists).
-	ctx = withAdminUser(ctx, w.deps.ds)
+	ctx = auth.WithAdminUser(ctx, w.deps.ds)
 	batch, err := w.deps.ds.ArtworkQueue(ctx).DequeueBatch(2 * concurrency)
 	if err != nil {
 		return 0, err

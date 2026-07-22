@@ -71,13 +71,9 @@ func processItem(ctx context.Context, deps *workerDeps, item model.ArtworkQueueI
 	}
 	defer res.reader.Close()
 
-	data, err := io.ReadAll(io.LimitReader(res.reader, maxImageBytes+1))
+	data, err := readCapped(res.reader)
 	if err != nil {
-		log.Warn(ctx, "artwork: failed to read resolved image", "kind", item.ItemKind, "id", item.ItemID, err)
-		return outcomeFailed
-	}
-	if len(data) > maxImageBytes {
-		log.Warn(ctx, "artwork: resolved image exceeds size cap", "kind", item.ItemKind, "id", item.ItemID, "source", res.source, "cap", maxImageBytes)
+		log.Warn(ctx, "artwork: failed to read resolved image", "kind", item.ItemKind, "id", item.ItemID, "source", res.source, err)
 		return outcomeFailed
 	}
 	log.Debug(ctx, "artwork: read resolved image", "kind", item.ItemKind, "id", item.ItemID, "source", res.source, "bytes", len(data))
@@ -147,19 +143,41 @@ func writeAbsent(ctx context.Context, repo model.ArtworkRepository, item model.A
 	return outcomeAbsent
 }
 
-// decodeArtwork builds a new Artwork row from raw bytes: dimensions, mime and a
-// blurhash computed from a downscaled thumbnail.
-func decodeArtwork(ctx context.Context, hash string, data []byte) (*model.Artwork, error) {
+// readCapped reads r, rejecting anything over maxImageBytes.
+func readCapped(r io.Reader) ([]byte, error) {
+	data, err := io.ReadAll(io.LimitReader(r, maxImageBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(data) > maxImageBytes {
+		return nil, fmt.Errorf("image exceeds size cap %d", maxImageBytes)
+	}
+	return data, nil
+}
+
+// decodeCapped rejects declared dimensions over maxImagePixels BEFORE the
+// full-decode allocation, then decodes.
+func decodeCapped(data []byte) (image.Image, string, error) {
 	cfg, format, err := image.DecodeConfig(bytes.NewReader(data))
 	if err != nil {
-		return nil, fmt.Errorf("decode image config: %w", err)
+		return nil, "", fmt.Errorf("decode image config: %w", err)
 	}
 	if int64(cfg.Width)*int64(cfg.Height) > maxImagePixels {
-		return nil, fmt.Errorf("image dimensions %dx%d exceed pixel cap %d", cfg.Width, cfg.Height, maxImagePixels)
+		return nil, "", fmt.Errorf("image dimensions %dx%d exceed pixel cap %d", cfg.Width, cfg.Height, maxImagePixels)
 	}
 	img, _, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
-		return nil, fmt.Errorf("decode image: %w", err)
+		return nil, "", fmt.Errorf("decode image: %w", err)
+	}
+	return img, format, nil
+}
+
+// decodeArtwork builds a new Artwork row from raw bytes: dimensions, mime and a
+// blurhash computed from a downscaled thumbnail.
+func decodeArtwork(ctx context.Context, hash string, data []byte) (*model.Artwork, error) {
+	img, format, err := decodeCapped(data)
+	if err != nil {
+		return nil, err
 	}
 
 	thumb := makeThumbnail(img, thumbnailSize)
@@ -173,8 +191,8 @@ func decodeArtwork(ctx context.Context, hash string, data []byte) (*model.Artwor
 	return &model.Artwork{
 		Hash:     hash,
 		Mime:     mimeForFormat(format),
-		Width:    cfg.Width,
-		Height:   cfg.Height,
+		Width:    img.Bounds().Dx(),
+		Height:   img.Bounds().Dy(),
 		BlurHash: bh,
 	}, nil
 }

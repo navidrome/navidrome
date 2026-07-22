@@ -392,21 +392,11 @@ func mtimeViaFS(fsys fs.FS, name string) int64 {
 // decodeTile runs on every sampled album's resolved bytes before processItem's
 // own maxImageBytes/maxImagePixels guards apply, so it enforces them itself too.
 func decodeTile(r io.ReadCloser) (image.Image, error) {
-	data, err := io.ReadAll(io.LimitReader(r, maxImageBytes+1))
+	data, err := readCapped(r)
 	if err != nil {
 		return nil, err
 	}
-	if len(data) > maxImageBytes {
-		return nil, fmt.Errorf("tile image exceeds size cap %d", maxImageBytes)
-	}
-	cfg, _, err := image.DecodeConfig(bytes.NewReader(data))
-	if err != nil {
-		return nil, err
-	}
-	if int64(cfg.Width)*int64(cfg.Height) > maxImagePixels {
-		return nil, fmt.Errorf("tile dimensions %dx%d exceed pixel cap %d", cfg.Width, cfg.Height, maxImagePixels)
-	}
-	img, _, err := image.Decode(bytes.NewReader(data))
+	img, _, err := decodeCapped(data)
 	if err != nil {
 		return nil, err
 	}

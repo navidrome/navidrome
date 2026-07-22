@@ -9,9 +9,9 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
@@ -35,20 +35,10 @@ func Fingerprint() string {
 	return hex.EncodeToString(sum[:])
 }
 
-// withAdminUser wraps ctx with the first admin so repos that apply a per-user visibility
-// filter (playlists) expose private rows during this headless work; no admin yet -> unchanged.
-func withAdminUser(ctx context.Context, ds model.DataStore) context.Context {
-	admin, err := ds.User(ctx).FindFirstAdmin()
-	if err != nil || admin == nil || admin.ID == "" {
-		return ctx
-	}
-	return request.WithUser(ctx, *admin)
-}
-
 // Backfill enqueues artwork resolution for every entity when the config fingerprint changed
 // (or was never stored), artists first so those pages resolve before the larger backlog.
 func Backfill(ctx context.Context, ds model.DataStore) (bool, error) {
-	ctx = withAdminUser(ctx, ds)
+	ctx = auth.WithAdminUser(ctx, ds)
 	current := Fingerprint()
 	props := ds.Property(ctx)
 	stored, err := props.DefaultGet(FingerprintPropertyKey, "")
