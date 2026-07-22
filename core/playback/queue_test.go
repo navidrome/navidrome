@@ -116,6 +116,18 @@ var _ = Describe("Queues", func() {
 			queue.Clear()
 			Expect(queue.Size()).To(Equal(0))
 		})
+
+		It("returns a copy from Get, not the backing slice", func() {
+			snapshot := queue.Get()
+			Expect(snapshot).To(HaveLen(5))
+
+			queue.Remove(0)
+			Expect(queue.Size()).To(Equal(4))
+
+			// The previously returned snapshot must be unaffected by the mutation.
+			Expect(snapshot).To(HaveLen(5))
+			Expect(snapshot[0].ID).To(Equal("1"))
+		})
 	})
 
 })
