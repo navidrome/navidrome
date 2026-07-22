@@ -8,6 +8,7 @@ import MonokaiTheme from './monokai'
 import ElectricPurpleTheme from './electricPurple'
 import NordTheme from './nord'
 import GruvboxDarkTheme from './gruvboxDark'
+import CatppuccinFrappeTheme from './catppuccinFrappe'
 import CatppuccinMacchiatoTheme from './catppuccinMacchiato'
 import CatppuccinMochaTheme from './catppuccinMocha'
 import CatppuccinLatteTheme from './catppuccinLatte'
@@ -32,9 +33,10 @@ export default {
 
   // New themes should be added here, in alphabetic order
   AmusicTheme,
+  CatppuccinFrappeTheme,
+  CatppuccinLatteTheme,
   CatppuccinMacchiatoTheme,
   CatppuccinMochaTheme,
-  CatppuccinLatteTheme,
   DraculaTheme,
   ElectricPurpleTheme,
   ExtraDarkTheme,
