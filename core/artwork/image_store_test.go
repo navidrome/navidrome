@@ -90,6 +90,15 @@ var _ = Describe("ImageStore", func() {
 		Expect(store.Remove("beefbeefbeefbeef", "image/jpeg", time.Now())).To(Succeed())
 	})
 
+	It("rejects invalid hashes instead of panicking", func() {
+		for _, h := range []string{"", "ab", "BEEFBEEFBEEFBEEF", "../../../../etcpw", "beefbeefbeefbee/"} {
+			Expect(store.Write(h, "image/jpeg", bytes.NewReader([]byte("x")))).To(MatchError(ContainSubstring("invalid hash")))
+			_, err := store.Open(h, "image/jpeg")
+			Expect(err).To(MatchError(ContainSubstring("invalid hash")))
+			Expect(store.Remove(h, "image/jpeg", time.Now())).To(MatchError(ContainSubstring("invalid hash")))
+		}
+	})
+
 	It("spares a file newer than the cutoff, removes an aged one", func() {
 		fresh := []byte("fresh")
 		hf, _ := HashImage(bytes.NewReader(fresh))
