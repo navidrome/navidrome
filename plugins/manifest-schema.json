@@ -92,6 +92,9 @@
         },
         "matcher": {
           "$ref": "#/$defs/MatcherPermission"
+        },
+        "scrobbleRetriever": {
+          "$ref": "#/$defs/ScrobbleRetrieverPermission"
         }
       }
     },
@@ -242,6 +245,17 @@
         "reason": {
           "type": "string",
           "description": "Explanation for why matcher access is needed"
+        }
+      }
+    },
+    "ScrobbleRetrieverPermission": {
+      "type": "object",
+      "description": "Scrobble retriever permissions for retrieving scrobbles from users",
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Explanation for why scrobble retriever access is needed"
         }
       }
     }

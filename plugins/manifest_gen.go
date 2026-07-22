@@ -178,6 +178,9 @@ type Permissions struct {
 	// Scheduler corresponds to the JSON schema field "scheduler".
 	Scheduler *SchedulerPermission `json:"scheduler,omitempty" yaml:"scheduler,omitempty" mapstructure:"scheduler,omitempty"`
 
+	// ScrobbleRetriever corresponds to the JSON schema field "scrobbleRetriever".
+	ScrobbleRetriever *ScrobbleRetrieverPermission `json:"scrobbleRetriever,omitempty" yaml:"scrobbleRetriever,omitempty" mapstructure:"scrobbleRetriever,omitempty"`
+
 	// Subsonicapi corresponds to the JSON schema field "subsonicapi".
 	Subsonicapi *SubsonicAPIPermission `json:"subsonicapi,omitempty" yaml:"subsonicapi,omitempty" mapstructure:"subsonicapi,omitempty"`
 
@@ -194,6 +197,12 @@ type Permissions struct {
 // Scheduler service permissions for scheduling tasks
 type SchedulerPermission struct {
 	// Explanation for why scheduler access is needed
+	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
+}
+
+// Scrobble retriever permissions for retrieving scrobbles from users
+type ScrobbleRetrieverPermission struct {
+	// Explanation for why scrobble retriever access is needed
 	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
 }
 
