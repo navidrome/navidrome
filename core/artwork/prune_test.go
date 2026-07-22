@@ -3,6 +3,7 @@ package artwork
 import (
 	"bytes"
 	"context"
+	"errors"
 	"os"
 	"time"
 
@@ -12,6 +13,14 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
+
+type flakyGetArtworkRepo struct {
+	*tests.MockArtworkRepo
+}
+
+func (f *flakyGetArtworkRepo) Get(string) (*model.Artwork, error) {
+	return nil, errors.New("db locked")
+}
 
 var _ = Describe("Prune", func() {
 	var ds *tests.MockDataStore
@@ -57,5 +66,19 @@ var _ = Describe("Prune", func() {
 
 		_, err := store.Open(h, "image/jpeg")
 		Expect(os.IsNotExist(err)).To(BeTrue())
+	})
+
+	It("never sweeps files on a transient DB error", func() {
+		ds.MockedArtwork = &flakyGetArtworkRepo{MockArtworkRepo: tests.CreateMockArtworkRepo()}
+
+		data := []byte("live-bytes")
+		h, _ := originals.Hash(bytes.NewReader(data))
+		Expect(store.Write(h, "image/jpeg", bytes.NewReader(data))).To(Succeed())
+
+		Expect(Prune(context.Background(), ds, store)).To(Succeed())
+
+		rc, err := store.Open(h, "image/jpeg")
+		Expect(err).ToNot(HaveOccurred())
+		rc.Close()
 	})
 })

@@ -2,6 +2,7 @@ package artwork
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/navidrome/navidrome/core/artwork/originals"
@@ -36,7 +37,7 @@ func Prune(ctx context.Context, ds model.DataStore, store *originals.Store) erro
 
 	removed, err := store.Sweep(func(hash string) bool {
 		_, err := repo.Get(hash)
-		return err == nil
+		return !errors.Is(err, model.ErrNotFound)
 	})
 	if err != nil {
 		return err
