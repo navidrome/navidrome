@@ -5,13 +5,15 @@ import (
 	"encoding/binary"
 	"errors"
 	"hash/crc32"
-	"net/url"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -40,7 +42,7 @@ var _ = Describe("processItem", func() {
 		folderRepo *fakeFolderRepo
 		libRepo    *tests.MockLibraryRepo
 		ffm        *tests.MockFFmpeg
-		prov       *fakeExternalProvider
+		ag         *agents.Agents
 		store      *ImageStore
 		artRepo    *tests.MockArtworkRepo
 		repoRoot   string
@@ -58,7 +60,7 @@ var _ = Describe("processItem", func() {
 		libRepo = &tests.MockLibraryRepo{}
 		libRepo.SetData(model.Libraries{{ID: 0, Path: testFileLibPath(repoRoot)}})
 		ffm = tests.NewMockFFmpeg("")
-		prov = &fakeExternalProvider{}
+		ag = agents.GetAgents(&tests.MockDataStore{}, nil)
 		artRepo = tests.CreateMockArtworkRepo()
 		ds = &tests.MockDataStore{
 			MockedFolder:  folderRepo,
@@ -67,7 +69,7 @@ var _ = Describe("processItem", func() {
 		}
 		ds.MockedAlbum = tests.CreateMockAlbumRepo()
 		store = NewImageStore(GinkgoT().TempDir())
-		deps = &workerDeps{ds: ds, store: store, prov: prov, ffmpeg: ffm}
+		deps = &workerDeps{ds: ds, store: store, agents: ag, ffmpeg: ffm}
 
 		conf.Server.CoverArtPriority = "cover.jpg, embedded"
 	})
@@ -141,9 +143,7 @@ var _ = Describe("processItem", func() {
 		ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
 			{ID: "al4", Name: "Album"},
 		})
-		prov.albumImage = func(context.Context, string) (*url.URL, error) {
-			return nil, errors.New("agent timed out")
-		}
+		imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 
 		out := processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al4"})
 		Expect(out).To(Equal(outcomeFailed))
@@ -161,9 +161,7 @@ var _ = Describe("processItem", func() {
 		ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
 			{ID: "alstale", Name: "Album", FolderIDs: []string{"f1"}},
 		})
-		prov.albumImage = func(context.Context, string) (*url.URL, error) {
-			return nil, errors.New("agent timed out")
-		}
+		imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 
 		out := processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alstale"})
 		Expect(out).To(Equal(outcomeFoundStale))
@@ -172,6 +170,34 @@ var _ = Describe("processItem", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ia.Hash).ToNot(BeEmpty())
 		Expect(ia.Source).To(Equal("folder"))
+	})
+
+	It("found-external: persists source as external:<agentName> and stores the fetched bytes", func() {
+		conf.Server.CoverArtPriority = "external"
+		imgBytes, err := os.ReadFile(filepath.Join(repoRoot, "tests/fixtures/artist/an-album/cover.jpg"))
+		Expect(err).ToNot(HaveOccurred())
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write(imgBytes)
+		}))
+		DeferCleanup(srv.Close)
+
+		ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "alext", Name: "Album"}})
+		imageAgents(&fakeImageAgent{name: "deezerFake", imgs: []agents.ExternalImage{{URL: srv.URL, Size: 500}}})
+
+		out := processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alext"})
+		Expect(out).To(Equal(outcomeFound))
+
+		ia, err := artRepo.GetItemArtwork("al", "alext", model.ImageTypePrimary)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(ia.Source).To(Equal("external:deezerFake"))
+		Expect(ia.Hash).ToNot(BeEmpty())
+
+		// External art is content-addressed into the store, not file-backed.
+		art, err := artRepo.GetImage(ia.Hash)
+		Expect(err).ToNot(HaveOccurred())
+		rc, err := store.Open(ia.Hash, art.Mime)
+		Expect(err).ToNot(HaveOccurred())
+		rc.Close()
 	})
 
 	It("dedup: a second item with identical bytes skips decode and reuses the artwork row", func() {

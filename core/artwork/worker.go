@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/core/external"
-	"github.com/navidrome/navidrome/core/ffmpeg"
+	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"golang.org/x/time/rate"
@@ -28,35 +28,38 @@ const (
 
 var errBreakerOpen = errors.New("artwork: external circuit breaker open")
 
-// Worker drains the artwork queue through processItem: the external step is rate-limited
-// and circuit-broken, and prune is serialized against in-flight acquisitions via pruneMu.
-type Worker struct {
-	deps    workerDeps
+// extGate is one agent's rate limiter + circuit breaker; each external agent gets its
+// own so a provider whose API or CDN is down backs off in isolation from the others.
+type extGate struct {
 	limiter *rate.Limiter
 	breaker *breaker
+}
+
+// Worker drains the artwork queue through processItem: each external agent is rate-limited
+// and circuit-broken independently, and prune is serialized against in-flight acquisitions
+// via pruneMu.
+type Worker struct {
+	deps    workerDeps
 	pruneMu sync.RWMutex
 	wake    chan struct{}
 	runCtx  context.Context
+
+	gatesMu sync.Mutex
+	gates   map[string]*extGate
 
 	mu       sync.Mutex
 	inFlight map[string]struct{}
 }
 
-func NewWorker(ds model.DataStore, store *ImageStore, prov external.Provider, ffmpeg ffmpeg.FFmpeg) *Worker {
-	rps := conf.Server.ArtworkExternalMaxRPS
-	limit := rate.Inf // 0 or negative disables the external throttle
-	if rps > 0 {
-		limit = rate.Limit(rps)
-	}
+func NewWorker(ds model.DataStore, store *ImageStore, ag *agents.Agents, ffmpeg ffmpeg.FFmpeg) *Worker {
 	w := &Worker{
-		deps:     workerDeps{ds: ds, store: store, prov: prov, ffmpeg: ffmpeg},
-		limiter:  rate.NewLimiter(limit, max(1, rps)),
-		breaker:  newBreaker(),
+		deps:     workerDeps{ds: ds, store: store, agents: ag, ffmpeg: ffmpeg},
 		wake:     make(chan struct{}, 1),
 		runCtx:   context.Background(),
+		gates:    map[string]*extGate{},
 		inFlight: map[string]struct{}{},
 	}
-	w.deps.extGate = w.gate
+	w.deps.gate = w.gate
 	return w
 }
 
@@ -195,18 +198,37 @@ func queueKey(it model.ArtworkQueueItem) string {
 	return it.ItemKind + "|" + it.ItemID + "|" + it.ImageType
 }
 
-// gate wraps the external step with the rate limiter and circuit breaker, matching
-// extGateFunc so it can be injected via workerDeps.extGate.
-func (w *Worker) gate(f func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error) {
-	if !w.breaker.allow() {
+// gate wraps a named external step with that agent's own rate limiter and circuit
+// breaker, matching gateFunc so it can be injected via workerDeps.gate.
+func (w *Worker) gate(name string, f func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error) {
+	g := w.gateFor(name)
+	if !g.breaker.allow() {
 		return nil, "", errBreakerOpen
 	}
-	if err := w.limiter.Wait(w.runCtx); err != nil {
+	if err := g.limiter.Wait(w.runCtx); err != nil {
 		return nil, "", err
 	}
 	r, path, err := f()
-	w.breaker.record(err)
+	g.breaker.record(err)
 	return r, path, err
+}
+
+// gateFor lazily creates the per-name gate on first use, each with its own limiter at
+// ArtworkExternalMaxRPS and its own breaker.
+func (w *Worker) gateFor(name string) *extGate {
+	w.gatesMu.Lock()
+	defer w.gatesMu.Unlock()
+	if g, ok := w.gates[name]; ok {
+		return g
+	}
+	rps := conf.Server.ArtworkExternalMaxRPS
+	limit := rate.Inf
+	if rps > 0 {
+		limit = rate.Limit(rps)
+	}
+	g := &extGate{limiter: rate.NewLimiter(limit, max(1, rps)), breaker: newBreaker()}
+	w.gates[name] = g
+	return g
 }
 
 // backoffFor returns min(5m×4^n, 48h) scaled by (1+jitter), with jitter in [-0.2, 0.2].

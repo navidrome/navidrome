@@ -10,6 +10,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -39,7 +40,7 @@ var _ = Describe("Worker soak", func() {
 			ImageFiles: []string{"cover.jpg"},
 		}}}
 		ffm := tests.NewMockFFmpeg("")
-		prov := &fakeExternalProvider{}
+		ag := agents.GetAgents(&tests.MockDataStore{}, nil)
 		artRepo := tests.CreateMockArtworkRepo()
 		albumRepo := tests.CreateMockAlbumRepo()
 		albumRepo.SetData(model.Albums{
@@ -53,7 +54,7 @@ var _ = Describe("Worker soak", func() {
 			MockedAlbum:   albumRepo,
 		}
 		store := NewImageStore(GinkgoT().TempDir())
-		deps := &workerDeps{ds: ds, store: store, prov: prov, ffmpeg: ffm}
+		deps := &workerDeps{ds: ds, store: store, agents: ag, ffmpeg: ffm}
 		conf.Server.CoverArtPriority = "cover.jpg, embedded"
 
 		// Dangling refs (al/ra ids the repos don't know about) mirror an entity

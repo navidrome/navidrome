@@ -244,10 +244,8 @@ func CreateArtworkWorker() *artwork.Worker {
 	metricsMetrics := metrics.GetPrometheusInstance(dataStore)
 	manager := plugins.GetManager(dataStore, broker, metricsMetrics)
 	agentsAgents := agents.GetAgents(dataStore, manager)
-	matcherMatcher := matcher.New(dataStore)
-	provider := external.NewProvider(dataStore, agentsAgents, matcherMatcher)
 	fFmpeg := ffmpeg.New()
-	worker := artwork.NewWorker(dataStore, imageStore, provider, fFmpeg)
+	worker := artwork.NewWorker(dataStore, imageStore, agentsAgents, fFmpeg)
 	return worker
 }
 

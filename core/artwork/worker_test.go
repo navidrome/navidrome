@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 	"io"
-	"net/url"
 	"os"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -54,7 +54,7 @@ var _ = Describe("Worker", func() {
 		folderRepo *fakeFolderRepo
 		libRepo    *tests.MockLibraryRepo
 		ffm        *tests.MockFFmpeg
-		prov       *fakeExternalProvider
+		ag         *agents.Agents
 		store      *ImageStore
 		artRepo    *tests.MockArtworkRepo
 		queueRepo  *tests.MockArtworkQueueRepo
@@ -73,7 +73,7 @@ var _ = Describe("Worker", func() {
 		libRepo = &tests.MockLibraryRepo{}
 		libRepo.SetData(model.Libraries{{ID: 0, Path: testFileLibPath(repoRoot)}})
 		ffm = tests.NewMockFFmpeg("")
-		prov = &fakeExternalProvider{}
+		ag = agents.GetAgents(&tests.MockDataStore{}, nil)
 		artRepo = tests.CreateMockArtworkRepo()
 		queueRepo = tests.CreateMockArtworkQueueRepo()
 		ds = &tests.MockDataStore{
@@ -86,7 +86,7 @@ var _ = Describe("Worker", func() {
 		store = NewImageStore(GinkgoT().TempDir())
 		conf.Server.CoverArtPriority = "cover.jpg, embedded"
 		conf.Server.ArtworkExternalMaxRPS = 1000 // keep the limiter out of the way of behavior tests
-		w = NewWorker(ds, store, prov, ffm)
+		w = NewWorker(ds, store, ag, ffm)
 	})
 
 	Describe("drain", func() {
@@ -118,9 +118,7 @@ var _ = Describe("Worker", func() {
 		It("reschedules a failed item via MarkFailed with a backed-off retry_at", func() {
 			conf.Server.CoverArtPriority = "external"
 			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al4", Name: "Album"}})
-			prov.albumImage = func(context.Context, string) (*url.URL, error) {
-				return nil, errors.New("agent timed out")
-			}
+			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al4"})).To(Succeed())
 
 			n, err := w.drain(ctx, 2)
@@ -145,9 +143,7 @@ var _ = Describe("Worker", func() {
 			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
 				{ID: "alstale", Name: "Album", FolderIDs: []string{"f1"}},
 			})
-			prov.albumImage = func(context.Context, string) (*url.URL, error) {
-				return nil, errors.New("agent timed out")
-			}
+			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "alstale"})).To(Succeed())
 
 			n, err := w.drain(ctx, 2)
@@ -174,7 +170,7 @@ var _ = Describe("Worker", func() {
 			})
 			racing := &reenqueueOnDequeue{MockArtworkQueueRepo: queueRepo}
 			ds.MockedArtworkQueue = racing
-			w = NewWorker(ds, store, prov, ffm)
+			w = NewWorker(ds, store, ag, ffm)
 			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{
 				ItemKind: "al", ItemID: "al7", Priority: model.ArtworkPriorityScan,
 			})).To(Succeed())
@@ -193,12 +189,10 @@ var _ = Describe("Worker", func() {
 		It("keeps a fresh re-enqueue ahead of a stale failure backoff", func() {
 			conf.Server.CoverArtPriority = "external"
 			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al8", Name: "Album"}})
-			prov.albumImage = func(context.Context, string) (*url.URL, error) {
-				return nil, errors.New("agent timed out")
-			}
+			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 			racing := &reenqueueOnDequeue{MockArtworkQueueRepo: queueRepo}
 			ds.MockedArtworkQueue = racing
-			w = NewWorker(ds, store, prov, ffm)
+			w = NewWorker(ds, store, ag, ffm)
 			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al8"})).To(Succeed())
 			dequeued := findQueued(queueRepo, "al", "al8").RetryAt
 
@@ -221,7 +215,7 @@ var _ = Describe("Worker", func() {
 				private:       model.Playlist{ID: "plPriv", OwnerID: "admin"},
 				tracks:        &tests.MockPlaylistTrackRepo{},
 			}
-			w = NewWorker(vds, store, prov, ffm)
+			w = NewWorker(vds, store, ag, ffm)
 			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "pl", ItemID: "plPriv"})).To(Succeed())
 
 			n, err := w.drain(ctx, 1)
@@ -259,13 +253,13 @@ var _ = Describe("Worker", func() {
 				return nil, "", errors.New("boom")
 			}
 			for range 5 {
-				_, _, err := w.gate(failing)
+				_, _, err := w.gate("A", failing)
 				Expect(err).To(HaveOccurred())
 			}
 			Expect(calls).To(Equal(5))
 
-			_, _, err := w.gate(failing)
-			Expect(err).To(HaveOccurred())
+			_, _, err := w.gate("A", failing)
+			Expect(err).To(MatchError(errBreakerOpen))
 			Expect(calls).To(Equal(5), "an open breaker must not call the external step")
 		})
 
@@ -273,9 +267,9 @@ var _ = Describe("Worker", func() {
 			failing := func() (io.ReadCloser, string, error) { return nil, "", errors.New("boom") }
 			ok := func() (io.ReadCloser, string, error) { return io.NopCloser(nil), "p", nil }
 			for range 4 {
-				_, _, _ = w.gate(failing)
+				_, _, _ = w.gate("A", failing)
 			}
-			_, _, err := w.gate(ok)
+			_, _, err := w.gate("A", ok)
 			Expect(err).ToNot(HaveOccurred())
 
 			var calls int
@@ -284,9 +278,29 @@ var _ = Describe("Worker", func() {
 				return nil, "", errors.New("boom")
 			}
 			for range 5 {
-				_, _, _ = w.gate(counting)
+				_, _, _ = w.gate("A", counting)
 			}
 			Expect(calls).To(Equal(5), "the breaker should have re-closed after the success")
+		})
+
+		It("isolates each agent's breaker: one open gate does not block another", func() {
+			failing := func() (io.ReadCloser, string, error) { return nil, "", errors.New("boom") }
+			for range breakerThreshold {
+				_, _, _ = w.gate("A", failing)
+			}
+			_, _, err := w.gate("A", failing)
+			Expect(err).To(MatchError(errBreakerOpen), "agent A's breaker is open")
+
+			var bCalls int
+			bStep := func() (io.ReadCloser, string, error) {
+				bCalls++
+				return io.NopCloser(nil), "p", nil
+			}
+			for range breakerThreshold + 2 {
+				_, _, err := w.gate("B", bStep)
+				Expect(err).ToNot(HaveOccurred(), "agent B keeps being called while A is open")
+			}
+			Expect(bCalls).To(Equal(breakerThreshold + 2))
 		})
 	})
 
@@ -313,7 +327,7 @@ var _ = Describe("Worker", func() {
 			DeferCleanup(func() { goleak.VerifyNone(GinkgoT(), ignore) })
 
 			localDS := &tests.MockDataStore{MockedArtworkQueue: tests.CreateMockArtworkQueueRepo()}
-			lw := NewWorker(localDS, NewImageStore(GinkgoT().TempDir()), &fakeExternalProvider{}, tests.NewMockFFmpeg(""))
+			lw := NewWorker(localDS, NewImageStore(GinkgoT().TempDir()), agents.GetAgents(localDS, nil), tests.NewMockFFmpeg(""))
 
 			runCtx, cancel := context.WithCancel(ctx)
 			done := make(chan error, 1)

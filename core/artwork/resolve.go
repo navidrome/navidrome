@@ -19,7 +19,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core/external"
+	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/model"
 )
@@ -35,26 +35,18 @@ type resolution struct {
 	extError bool
 }
 
-// extGateFunc is an alias for the external-step wrapper the worker injects (rate
-// limiter + circuit breaker); resolveItem defaults to a plain passthrough.
-type extGateFunc = func(func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error)
-
-func passthroughExtGate(f func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error) {
-	return f()
-}
-
 // resolveItem walks the kind's priority chain and returns the first hit.
-func resolveItem(ctx context.Context, ds model.DataStore, prov external.Provider, ffmpeg ffmpeg.FFmpeg, item model.ArtworkQueueItem, extGate extGateFunc) (resolution, error) {
-	if extGate == nil {
-		extGate = passthroughExtGate
+func resolveItem(ctx context.Context, ds model.DataStore, ag *agents.Agents, ffmpeg ffmpeg.FFmpeg, item model.ArtworkQueueItem, gate gateFunc) (resolution, error) {
+	if gate == nil {
+		gate = passthroughGate
 	}
 	switch item.ItemKind {
 	case "al":
-		return resolveAlbum(ctx, ds, prov, ffmpeg, item.ItemID, extGate)
+		return resolveAlbum(ctx, ds, ag, ffmpeg, item.ItemID, gate)
 	case "ar":
-		return resolveArtist(ctx, ds, prov, ffmpeg, item.ItemID, extGate)
+		return resolveArtist(ctx, ds, ag, ffmpeg, item.ItemID, gate)
 	case "pl":
-		return resolvePlaylist(ctx, ds, prov, ffmpeg, item.ItemID, extGate)
+		return resolvePlaylist(ctx, ds, ag, ffmpeg, item.ItemID, gate)
 	case "ra":
 		return resolveRadio(ctx, ds, item.ItemID)
 	default:
@@ -64,7 +56,7 @@ func resolveItem(ctx context.Context, ds model.DataStore, prov external.Provider
 
 // resolveAlbum ports the folder/embedded/external selection from
 // reader_album.go, walking conf.Server.CoverArtPriority.
-func resolveAlbum(ctx context.Context, ds model.DataStore, prov external.Provider, ffm ffmpeg.FFmpeg, albumID string, extGate extGateFunc) (resolution, error) {
+func resolveAlbum(ctx context.Context, ds model.DataStore, ag *agents.Agents, ffm ffmpeg.FFmpeg, albumID string, gate gateFunc) (resolution, error) {
 	al, err := ds.Album(ctx).Get(albumID)
 	if err != nil {
 		return resolution{}, err
@@ -88,8 +80,8 @@ func resolveAlbum(ctx context.Context, ds model.DataStore, prov external.Provide
 				return res, nil
 			}
 		case pattern == "external":
-			if res, ok, isErr := resolveExternalStep(extGate, fromAlbumExternalSource(ctx, *al, prov)); ok {
-				return res, nil
+			if r, name, isErr := fetchAlbumImage(ctx, ag, gate, *al); r != nil {
+				return resolution{reader: r, source: "external:" + name}, nil
 			} else if isErr {
 				extErr = true
 			}
@@ -105,7 +97,7 @@ func resolveAlbum(ctx context.Context, ds model.DataStore, prov external.Provide
 
 // resolveArtist ports the upload/folder/external selection from
 // reader_artist.go: upload always wins, then conf.Server.ArtistArtPriority.
-func resolveArtist(ctx context.Context, ds model.DataStore, prov external.Provider, ffm ffmpeg.FFmpeg, artistID string, extGate extGateFunc) (resolution, error) {
+func resolveArtist(ctx context.Context, ds model.DataStore, ag *agents.Agents, ffm ffmpeg.FFmpeg, artistID string, gate gateFunc) (resolution, error) {
 	ar, err := ds.Artist(ctx).Get(artistID)
 	if err != nil {
 		return resolution{}, err
@@ -145,8 +137,8 @@ func resolveArtist(ctx context.Context, ds model.DataStore, prov external.Provid
 		pattern = strings.TrimSpace(pattern)
 		switch {
 		case pattern == "external":
-			if res, ok, isErr := resolveExternalStep(extGate, fromArtistExternalResult(ctx, *ar, prov)); ok {
-				return res, nil
+			if r, name, isErr := fetchArtistImage(ctx, ag, gate, *ar); r != nil {
+				return resolution{reader: r, source: "external:" + name}, nil
 			} else if isErr {
 				extErr = true
 			}
@@ -178,7 +170,7 @@ func resolveArtist(ctx context.Context, ds model.DataStore, prov external.Provid
 
 // resolvePlaylist ports reader_playlist.go's chain: uploaded image, sidecar,
 // ExternalImageURL, then the generated 2x2 grid sourced through resolveAlbum.
-func resolvePlaylist(ctx context.Context, ds model.DataStore, prov external.Provider, ffm ffmpeg.FFmpeg, playlistID string, extGate extGateFunc) (resolution, error) {
+func resolvePlaylist(ctx context.Context, ds model.DataStore, ag *agents.Agents, ffm ffmpeg.FFmpeg, playlistID string, gate gateFunc) (resolution, error) {
 	pl, err := ds.Playlist(ctx).Get(playlistID)
 	if err != nil {
 		return resolution{}, err
@@ -191,7 +183,7 @@ func resolvePlaylist(ctx context.Context, ds model.DataStore, prov external.Prov
 	if res, ok := resolveLocalFile(findPlaylistSidecarPath(ctx, pl.Path), "folder"); ok {
 		return res, nil
 	}
-	if res, ok, isErr := resolveExternalStep(extGate, fromPlaylistExternalSource(ctx, *pl)); ok {
+	if res, ok, isErr := resolveExternalStep(gate, "m3u", fromPlaylistExternalSource(ctx, *pl)); ok {
 		return res, nil
 	} else if isErr {
 		extErr = true
@@ -205,7 +197,7 @@ func resolvePlaylist(ctx context.Context, ds model.DataStore, prov external.Prov
 	var tiles []image.Image
 	var tileErr error // first internal (non-external) tile failure, e.g. album deleted mid-flight
 	for _, albumID := range albumIDs {
-		res, err := resolveAlbum(ctx, ds, prov, ffm, albumID, extGate)
+		res, err := resolveAlbum(ctx, ds, ag, ffm, albumID, gate)
 		if err != nil {
 			if tileErr == nil {
 				tileErr = err
@@ -259,11 +251,11 @@ func resolveRadio(ctx context.Context, ds model.DataStore, radioID string) (reso
 	return res, nil
 }
 
-// resolveExternalStep runs an external sourceFunc through extGate, shared by
-// resolveAlbum and resolveArtist. ok reports a hit; extErr reports a
-// non-not-found error (a not-found is a definitive "no", not a failure).
-func resolveExternalStep(extGate extGateFunc, sf func() (io.ReadCloser, string, error)) (res resolution, ok bool, extErr bool) {
-	r, path, err := extGate(sf)
+// resolveExternalStep runs a single external sourceFunc through the named gate; used by
+// the playlist ExternalImageURL step. ok reports a hit; extErr reports a non-not-found
+// error (a not-found is a definitive "no", not a failure).
+func resolveExternalStep(gate gateFunc, name string, sf sourceFunc) (res resolution, ok bool, extErr bool) {
+	r, path, err := gate(name, sf)
 	if r != nil {
 		return resolution{reader: r, source: "external", sourcePath: path}, true, false
 	}
