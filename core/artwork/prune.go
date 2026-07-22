@@ -13,6 +13,15 @@ const pruneMinAge = time.Hour
 
 func Prune(ctx context.Context, ds model.DataStore, store *ImageStore) error {
 	repo := ds.Artwork(ctx)
+
+	purged, err := repo.PurgeDanglingItemArtwork()
+	if err != nil {
+		return err
+	}
+	if purged > 0 {
+		log.Info(ctx, "Prune: purged dangling item artwork state", "count", purged)
+	}
+
 	// One grace cutoff for both the DB orphan check and the file sweep: files younger
 	// than the window may belong to acquisitions whose rows aren't committed yet.
 	cutoff := time.Now().Add(-pruneMinAge)

@@ -7,6 +7,7 @@ import (
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
 	"github.com/pocketbase/dbx"
@@ -72,7 +73,16 @@ func (r *radioRepository) Put(radio *model.Radio, colsToUpdate ...string) error 
 		colsToUpdate = append(colsToUpdate, "UpdatedAt")
 	}
 	_, err := r.put(radio.ID, radio, colsToUpdate...)
-	return err
+	if err != nil {
+		return err
+	}
+	// Enqueue artwork resolution for the created/updated radio. Never fails the save.
+	item := model.ArtworkQueueItem{ItemKind: "ra", ItemID: radio.ID, ImageType: model.ImageTypePrimary,
+		Priority: model.ArtworkPriorityScan}
+	if err := NewArtworkQueueRepository(r.ctx, r.db).Enqueue(item); err != nil {
+		log.Warn(r.ctx, "could not enqueue radio artwork", "id", radio.ID, err)
+	}
+	return nil
 }
 
 func (r *radioRepository) Count(options ...rest.QueryOptions) (int64, error) {

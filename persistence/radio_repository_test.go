@@ -107,6 +107,27 @@ var _ = Describe("RadioRepository", func() {
 				Expect(err).To(BeNil())
 				Expect(all[2].StreamUrl).To(Equal("https://example.com:4533/app"))
 			})
+
+			It("enqueues artwork resolution for the saved radio", func() {
+				err := repo.Put(&model.Radio{
+					Name:      "Artwork radio",
+					StreamUrl: "https://example.com:4533/artwork",
+				})
+				Expect(err).To(BeNil())
+
+				all, err := repo.GetAll()
+				Expect(err).To(BeNil())
+				created := all[len(all)-1]
+
+				queueRepo := NewArtworkQueueRepository(context.Background(), GetDBXBuilder())
+				queued, err := queueRepo.DequeueBatch(1000)
+				Expect(err).To(BeNil())
+				Expect(queued).To(ContainElement(SatisfyAll(
+					HaveField("ItemKind", "ra"),
+					HaveField("ItemID", created.ID),
+					HaveField("Priority", model.ArtworkPriorityScan),
+				)))
+			})
 		})
 	})
 

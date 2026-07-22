@@ -39,6 +39,25 @@ var _ = Describe("Prune", func() {
 		awRepo.Data[h] = a
 	}
 
+	It("purges dangling item_artwork state for gone entities, summed across kinds", func() {
+		Expect(awRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "al", ItemID: "gone-album", ImageType: model.ImageTypePrimary})).To(Succeed())
+		Expect(awRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "ar", ItemID: "gone-artist", ImageType: model.ImageTypePrimary})).To(Succeed())
+		Expect(awRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "ar", ItemID: "live-artist", ImageType: model.ImageTypePrimary})).To(Succeed())
+		awRepo.ExistingIDs = map[string]map[string]bool{
+			"al": {},
+			"ar": {"live-artist": true},
+		}
+
+		Expect(Prune(context.Background(), ds, store)).To(Succeed())
+
+		_, err := awRepo.GetItemArtwork("al", "gone-album", model.ImageTypePrimary)
+		Expect(err).To(MatchError(model.ErrNotFound))
+		_, err = awRepo.GetItemArtwork("ar", "gone-artist", model.ImageTypePrimary)
+		Expect(err).To(MatchError(model.ErrNotFound))
+		_, err = awRepo.GetItemArtwork("ar", "live-artist", model.ImageTypePrimary)
+		Expect(err).ToNot(HaveOccurred())
+	})
+
 	It("deletes orphan rows and their store files, keeps referenced ones", func() {
 		data := []byte("orphan-bytes")
 		h, _ := HashImage(bytes.NewReader(data))

@@ -77,6 +77,8 @@ type ArtworkRepository interface {
 	GetInfoForItems(kind string, ids []string) (map[string]ItemArtworkInfo, error)
 	// GetAllMimes returns hash -> current mime for every stored artwork, for sweep retention checks.
 	GetAllMimes() (map[string]string, error)
+	// PurgeDanglingItemArtwork removes state rows whose entity no longer exists.
+	PurgeDanglingItemArtwork() (int64, error)
 }
 
 type ArtworkQueueRepository interface {

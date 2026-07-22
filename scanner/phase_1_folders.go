@@ -332,6 +332,8 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 
 	// Collect artwork IDs to pre-cache after the transaction commits
 	var artworkIDs []model.ArtworkID
+	// Collect artwork queue items for changed albums/artists, enqueued in the same transaction
+	var queueItems []model.ArtworkQueueItem
 
 	err := p.ds.WithTx(func(tx model.DataStore) error {
 		// Instantiate all repositories just once per folder
@@ -372,6 +374,10 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 			}
 			if entry.artists[i].Name != consts.UnknownArtist && entry.artists[i].Name != consts.VariousArtists {
 				artworkIDs = append(artworkIDs, entry.artists[i].CoverArtID())
+				queueItems = append(queueItems, model.ArtworkQueueItem{
+					ItemKind: "ar", ItemID: entry.artists[i].ID, ImageType: model.ImageTypePrimary,
+					Priority: model.ArtworkPriorityScan,
+				})
 			}
 		}
 
@@ -384,6 +390,10 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 			}
 			if entry.albums[i].Name != consts.UnknownAlbum {
 				artworkIDs = append(artworkIDs, entry.albums[i].CoverArtID())
+				queueItems = append(queueItems, model.ArtworkQueueItem{
+					ItemKind: "al", ItemID: entry.albums[i].ID, ImageType: model.ImageTypePrimary,
+					Priority: model.ArtworkPriorityScan,
+				})
 			}
 		}
 
@@ -413,6 +423,13 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error touching album", "folder", entry.path, "albums", albumsToUpdate, err)
 				return err
+			}
+		}
+
+		// Enqueue artwork resolution for changed albums/artists. Never fails the scan.
+		if len(queueItems) > 0 {
+			if err := tx.ArtworkQueue(p.ctx).Enqueue(queueItems...); err != nil {
+				log.Warn(p.ctx, "Scanner: could not enqueue artwork resolution", "folder", entry.path, err)
 			}
 		}
 		return nil
