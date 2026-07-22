@@ -5,6 +5,7 @@ import clsx from 'clsx'
 import { useTranslate, MenuItemLink, getResources } from 'react-admin'
 import ViewListIcon from '@material-ui/icons/ViewList'
 import AlbumIcon from '@material-ui/icons/Album'
+import PeopleIcon from '@material-ui/icons/People'
 import SubMenu from './SubMenu'
 import { humanize, pluralize } from 'inflection'
 import albumLists from '../album/albumLists'
@@ -126,6 +127,16 @@ const Menu = ({ dense = false }) => {
         )}
       </SubMenu>
       {resources.filter(subItems(undefined)).map(renderResourceMenuItemLink)}
+      {config.enableStarRating && (
+        <MenuItemLink
+          to="/userRatings"
+          activeClassName={classes.active}
+          primaryText={translate('menu.userRatings')}
+          leftIcon={<PeopleIcon />}
+          sidebarIsOpen={open}
+          dense={dense}
+        />
+      )}
       {config.devSidebarPlaylists && open ? (
         <>
           <Divider />

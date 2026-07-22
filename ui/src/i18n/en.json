@@ -30,6 +30,7 @@
         "starred": "Favourite",
         "comment": "Comment",
         "rating": "Rating",
+        "averageRating": "Avg. Rating",
         "quality": "Quality",
         "bpm": "BPM",
         "playDate": "Last Played",
@@ -76,6 +77,7 @@
         "updatedAt": "Updated at",
         "comment": "Comment",
         "rating": "Rating",
+        "averageRating": "Avg. Rating",
         "createdAt": "Date added",
         "recordLabel": "Label",
         "catalogNum": "Catalog Number",
@@ -114,6 +116,7 @@
         "size": "Size",
         "playCount": "Plays",
         "rating": "Rating",
+        "averageRating": "Avg. Rating",
         "genre": "Genre",
         "role": "Role",
         "missing": "Missing"
@@ -605,6 +608,7 @@
     "downloadOriginalFormat": "Download in original format"
   },
   "menu": {
+    "userRatings": "User Ratings",
     "library": "Library",
     "librarySelector": {
       "allLibraries": "All Libraries (%{count})",
@@ -723,5 +727,10 @@
       "vol_down": "Volume Down",
       "toggle_love": "Add this track to favourites"
     }
+  },
+  "userRatings": {
+    "noRatingsYet": "No ratings yet",
+    "noItemsFound": "No items found",
+    "avgRating": "Avg. Rating: %{avg}"
   }
 }

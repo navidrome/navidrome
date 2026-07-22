@@ -14,6 +14,7 @@ import { makeStyles } from '@material-ui/core/styles'
 import { useDrag } from 'react-dnd'
 import {
   ArtistLinkField,
+  AverageRatingField,
   CoverArtAvatar,
   DurationField,
   RangeField,
@@ -126,6 +127,9 @@ const AlbumTableView = ({
           className={classes.ratingField}
         />
       ),
+      averageRating: config.enableStarRating && (
+        <AverageRatingField source={'averageRating'} sortByOrder={'DESC'} />
+      ),
       createdAt: isDesktop && <DateField source="createdAt" showTime />,
     }
   }, [classes.ratingField, isDesktop])
@@ -133,7 +137,7 @@ const AlbumTableView = ({
   const columns = useSelectedFields({
     resource: 'album',
     columns: toggleableFields,
-    defaultOff: ['createdAt', 'size', 'mood'],
+    defaultOff: ['averageRating', 'createdAt', 'size', 'mood'],
   })
 
   return isXsmall ? (
