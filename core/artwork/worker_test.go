@@ -16,6 +16,27 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+// reenqueueOnDequeue simulates a concurrent scan Enqueue between DequeueBatch and the
+// worker's delete by bumping retry_at, so a DeleteIfUnchanged on the dequeued value no-ops.
+type reenqueueOnDequeue struct {
+	*tests.MockArtworkQueueRepo
+	done bool
+}
+
+func (r *reenqueueOnDequeue) DequeueBatch(n int) ([]model.ArtworkQueueItem, error) {
+	items, err := r.MockArtworkQueueRepo.DequeueBatch(n)
+	if !r.done && len(items) > 0 {
+		r.done = true
+		for k, it := range r.Data {
+			if it.ItemKind == items[0].ItemKind && it.ItemID == items[0].ItemID {
+				it.RetryAt = items[0].RetryAt.Add(time.Minute)
+				r.Data[k] = it
+			}
+		}
+	}
+	return items, err
+}
+
 func findQueued(q *tests.MockArtworkQueueRepo, kind, id string) *model.ArtworkQueueItem {
 	for _, it := range q.Data {
 		if it.ItemKind == kind && it.ItemID == id {
@@ -112,6 +133,32 @@ var _ = Describe("Worker", func() {
 
 			_, err = artRepo.GetItemArtwork("al", "al4", model.ImageTypePrimary)
 			Expect(err).To(MatchError(model.ErrNotFound), "a timeout must never settle on absent")
+		})
+
+		It("keeps a row re-enqueued between dequeue and delete", func() {
+			folderRepo.result = []model.Folder{{
+				Path:       "tests/fixtures/artist/an-album",
+				ImageFiles: []string{"cover.jpg"},
+			}}
+			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
+				{ID: "al7", Name: "Album", FolderIDs: []string{"f1"}},
+			})
+			racing := &reenqueueOnDequeue{MockArtworkQueueRepo: queueRepo}
+			ds.MockedArtworkQueue = racing
+			w = NewWorker(ds, store, prov, ffm)
+			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{
+				ItemKind: "al", ItemID: "al7", Priority: model.ArtworkPriorityScan,
+			})).To(Succeed())
+
+			n, err := w.drain(ctx, 1)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(n).To(Equal(1))
+
+			// The concurrent re-enqueue changed retry_at, so the found-path delete was a no-op.
+			Expect(findQueued(queueRepo, "al", "al7")).ToNot(BeNil())
+			ia, err := artRepo.GetItemArtwork("al", "al7", model.ImageTypePrimary)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ia.Source).To(Equal("folder"))
 		})
 
 		It("returns zero when the queue is empty", func() {

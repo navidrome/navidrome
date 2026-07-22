@@ -70,6 +70,29 @@ func (r *artworkQueueRepository) Delete(kind, id, imageType string) error {
 	return r.delete(Eq{"item_kind": kind, "item_id": id, "image_type": imageType})
 }
 
+// DeleteIfUnchanged deletes the row only while its retry_at still equals the dequeued
+// value; a concurrent Enqueue resets retry_at, so the row survives to be re-resolved.
+func (r *artworkQueueRepository) DeleteIfUnchanged(kind, id, imageType string, retryAt time.Time) error {
+	return r.delete(Eq{"item_kind": kind, "item_id": id, "image_type": imageType, "retry_at": retryAt})
+}
+
+// PurgeDangling removes queue rows whose entity no longer exists, per kind.
+func (r *artworkQueueRepository) PurgeDangling() (int64, error) {
+	var total int64
+	for kind, table := range danglingItemArtworkKinds {
+		del := Delete(r.tableName).Where(And{
+			Eq{"item_kind": kind},
+			Expr("item_id NOT IN (SELECT id FROM " + table + ")"),
+		})
+		c, err := r.executeSQL(del)
+		if err != nil {
+			return total, err
+		}
+		total += c
+	}
+	return total, nil
+}
+
 func (r *artworkQueueRepository) Count() (int64, error) {
 	var res struct{ Count int64 }
 	err := r.queryOne(Select("count(*) as count").From(r.tableName), &res)

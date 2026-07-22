@@ -89,7 +89,12 @@ type ArtworkQueueRepository interface {
 	// MarkFailed increments attempts and pushes retry_at into the future.
 	MarkFailed(kind, id, imageType string, retryAt time.Time) error
 	Delete(kind, id, imageType string) error
+	// DeleteIfUnchanged deletes the row only if its retry_at still matches retryAt, so a
+	// concurrent re-enqueue (which resets retry_at) survives instead of being erased.
+	DeleteIfUnchanged(kind, id, imageType string, retryAt time.Time) error
 	Count() (int64, error)
 	// EnqueueStaleAbsent inserts queue rows (priority Recheck) for absent states older than cutoff.
 	EnqueueStaleAbsent(kind string, attemptedBefore time.Time) (int64, error)
+	// PurgeDangling removes queue rows whose entity no longer exists.
+	PurgeDangling() (int64, error)
 }

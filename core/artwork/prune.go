@@ -22,6 +22,15 @@ func Prune(ctx context.Context, ds model.DataStore, store *ImageStore) error {
 		log.Info(ctx, "Prune: purged dangling item artwork state", "count", purged)
 	}
 
+	// Queue rows for deleted entities would otherwise retry forever (Get -> not found -> failed).
+	queuePurged, err := ds.ArtworkQueue(ctx).PurgeDangling()
+	if err != nil {
+		return err
+	}
+	if queuePurged > 0 {
+		log.Info(ctx, "Prune: purged dangling artwork queue rows", "count", queuePurged)
+	}
+
 	// One grace cutoff for both the DB orphan check and the file sweep: files younger
 	// than the window may belong to acquisitions whose rows aren't committed yet.
 	cutoff := time.Now().Add(-pruneMinAge)

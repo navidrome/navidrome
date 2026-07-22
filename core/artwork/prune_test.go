@@ -59,6 +59,21 @@ var _ = Describe("Prune", func() {
 		Expect(err).ToNot(HaveOccurred())
 	})
 
+	It("purges dangling artwork_queue rows for gone entities", func() {
+		queueRepo := tests.CreateMockArtworkQueueRepo()
+		Expect(queueRepo.Enqueue(
+			model.ArtworkQueueItem{ItemKind: "al", ItemID: "gone-album", ImageType: model.ImageTypePrimary},
+			model.ArtworkQueueItem{ItemKind: "al", ItemID: "live-album", ImageType: model.ImageTypePrimary},
+		)).To(Succeed())
+		queueRepo.ExistingIDs = map[string]map[string]bool{"al": {"live-album": true}}
+		ds.MockedArtworkQueue = queueRepo
+
+		Expect(Prune(context.Background(), ds, store)).To(Succeed())
+
+		Expect(findQueued(queueRepo, "al", "gone-album")).To(BeNil())
+		Expect(findQueued(queueRepo, "al", "live-album")).ToNot(BeNil())
+	})
+
 	It("deletes orphan rows and their store files, keeps referenced ones", func() {
 		data := []byte("orphan-bytes")
 		h, _ := HashImage(bytes.NewReader(data))

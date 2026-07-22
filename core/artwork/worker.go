@@ -27,9 +27,8 @@ const (
 
 var errBreakerOpen = errors.New("artwork: external circuit breaker open")
 
-// Worker drains the artwork queue and runs each item through processItem. The
-// external step is rate-limited and circuit-broken; prune is serialized against
-// in-flight acquisitions via pruneMu (acquisitions RLock, prune Lock).
+// Worker drains the artwork queue through processItem: the external step is rate-limited
+// and circuit-broken, and prune is serialized against in-flight acquisitions via pruneMu.
 type Worker struct {
 	deps    workerDeps
 	limiter *rate.Limiter
@@ -150,7 +149,9 @@ func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) {
 	queue := w.deps.ds.ArtworkQueue(ctx)
 	switch out {
 	case outcomeFound, outcomeAbsent:
-		if err := queue.Delete(item.ItemKind, item.ItemID, item.ImageType); err != nil {
+		// DeleteIfUnchanged, not Delete: a scan that re-enqueued this row mid-flight reset
+		// its retry_at, so the row survives here and the next drain re-resolves it.
+		if err := queue.DeleteIfUnchanged(item.ItemKind, item.ItemID, item.ImageType, item.RetryAt); err != nil {
 			log.Warn(ctx, "artwork: could not delete processed queue item", "kind", item.ItemKind, "id", item.ItemID, err)
 		}
 	case outcomeFailed:
@@ -161,8 +162,8 @@ func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) {
 	}
 }
 
-// claim reserves items not already in flight, so a wake-triggered re-drain never
-// double-processes an item still running from a previous cycle.
+// claim reserves items not already in flight, so a row appearing twice within a single
+// batch is processed once.
 func (w *Worker) claim(batch []model.ArtworkQueueItem) []model.ArtworkQueueItem {
 	w.mu.Lock()
 	defer w.mu.Unlock()
