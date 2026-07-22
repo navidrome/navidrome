@@ -70,6 +70,50 @@ var _ = Describe("UserRepository", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(actual.Password).To(Equal("newpass"))
 		})
+		It("does not update managed fields for LDAP-sourced users", func() {
+			ldapUser := model.User{
+				ID:           "ldap-user",
+				UserName:     "ldap_user",
+				Name:         "LDAP User",
+				Email:        "ldap@example.com",
+				NewPassword:  "generated",
+				AuthSource:   "ldap",
+				AuthSourceID: "ldap01",
+			}
+			Expect(repo.Put(&ldapUser)).To(Succeed())
+
+			ldapUser.UserName = "renamed"
+			ldapUser.Name = "Renamed User"
+			ldapUser.Email = "renamed@example.com"
+			ldapUser.NewPassword = "newpass"
+			err := repo.Put(&ldapUser)
+			var verr *rest.ValidationError
+			Expect(errors.As(err, &verr)).To(BeTrue())
+			Expect(verr.Errors).To(HaveKeyWithValue("userName", "resources.user.validation.externalFieldReadOnly"))
+			Expect(verr.Errors).To(HaveKeyWithValue("name", "resources.user.validation.externalFieldReadOnly"))
+			Expect(verr.Errors).To(HaveKeyWithValue("email", "resources.user.validation.externalFieldReadOnly"))
+			Expect(verr.Errors).To(HaveKeyWithValue("password", "resources.user.validation.externalFieldReadOnly"))
+
+			actual, err := repo.FindByUsernameWithPassword("ldap_user")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(actual.UserName).To(Equal("ldap_user"))
+			Expect(actual.Name).To(Equal("LDAP User"))
+			Expect(actual.Email).To(Equal("ldap@example.com"))
+			Expect(actual.Password).To(Equal("generated"))
+
+			actual.Name = "Synced User"
+			actual.Email = "synced@example.com"
+			actual.AuthSource = ""
+			actual.AuthSourceID = ""
+			actual.ExternalSync = true
+			Expect(repo.Put(actual)).To(Succeed())
+			actual, err = repo.FindByUsername("ldap_user")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(actual.Name).To(Equal("Synced User"))
+			Expect(actual.Email).To(Equal("synced@example.com"))
+			Expect(actual.AuthSource).To(Equal("ldap"))
+			Expect(actual.AuthSourceID).To(Equal("ldap01"))
+		})
 	})
 
 	Describe("validatePasswordChange", func() {

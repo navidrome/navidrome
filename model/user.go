@@ -10,6 +10,8 @@ type User struct {
 	Name         string     `structs:"name" json:"name"`
 	Email        string     `structs:"email" json:"email"`
 	IsAdmin      bool       `structs:"is_admin" json:"isAdmin"`
+	AuthSource   string     `structs:"auth_source" json:"authSource,omitempty"`
+	AuthSourceID string     `structs:"auth_source_id" json:"authSourceId,omitempty"`
 	LastLoginAt  *time.Time `structs:"last_login_at" json:"lastLoginAt"`
 	LastAccessAt *time.Time `structs:"last_access_at" json:"lastAccessAt"`
 	CreatedAt    time.Time  `structs:"created_at" json:"createdAt"`
@@ -25,6 +27,9 @@ type User struct {
 	NewPassword string `structs:"password,omitempty" json:"password,omitempty"` //nolint:gosec
 	// If changing the password, this is also required
 	CurrentPassword string `structs:"current_password,omitempty" json:"currentPassword,omitempty"`
+
+	// ExternalSync allows external auth providers to update read-only identity fields for managed users.
+	ExternalSync bool `structs:"-" json:"-"`
 }
 
 func (u User) HasLibraryAccess(libraryID int) bool {

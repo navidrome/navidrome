@@ -116,6 +116,9 @@ func (r *userRepository) Put(u *model.User) error {
 		u.ID = id.NewRandom()
 	}
 	u.UpdatedAt = time.Now()
+	if err := r.preserveExternalAuthSource(u); err != nil {
+		return err
+	}
 	if u.NewPassword != "" {
 		_ = r.encryptPassword(u)
 	}
@@ -162,6 +165,46 @@ func (r *userRepository) Put(u *model.User) error {
 		}
 	}
 
+	return nil
+}
+
+func (r *userRepository) preserveExternalAuthSource(u *model.User) error {
+	if u.ID == "" {
+		return nil
+	}
+	existing, err := r.Get(u.ID)
+	if errors.Is(err, model.ErrNotFound) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if existing.AuthSource == "" {
+		return nil
+	}
+	if u.AuthSource == "" {
+		u.AuthSource = existing.AuthSource
+		u.AuthSourceID = existing.AuthSourceID
+	}
+	if u.ExternalSync {
+		return nil
+	}
+	validation := &rest.ValidationError{Errors: map[string]string{}}
+	if u.NewPassword != "" {
+		validation.Errors["password"] = "resources.user.validation.externalFieldReadOnly"
+	}
+	if !strings.EqualFold(u.UserName, existing.UserName) {
+		validation.Errors["userName"] = "resources.user.validation.externalFieldReadOnly"
+	}
+	if u.Name != existing.Name {
+		validation.Errors["name"] = "resources.user.validation.externalFieldReadOnly"
+	}
+	if u.Email != existing.Email {
+		validation.Errors["email"] = "resources.user.validation.externalFieldReadOnly"
+	}
+	if len(validation.Errors) > 0 {
+		return validation
+	}
 	return nil
 }
 
