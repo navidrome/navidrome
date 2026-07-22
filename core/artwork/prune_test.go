@@ -78,6 +78,24 @@ var _ = Describe("Prune", func() {
 		rc.Close()
 	})
 
+	It("spares a candidate whose row was freshly recreated (created_at inside the grace window)", func() {
+		data := []byte("fresh-reacquired-bytes")
+		h, _ := HashImage(bytes.NewReader(data))
+		Expect(store.Write(h, "image/jpeg", bytes.NewReader(data))).To(Succeed())
+		// Reacquisition refreshed created_at after the snapshot; still unreferenced.
+		Expect(awRepo.PutImage(&model.Artwork{Hash: h, Mime: "image/jpeg",
+			CreatedAt: time.Now()})).To(Succeed())
+		awRepo.OrphanHashes = []string{h}
+
+		Expect(Prune(context.Background(), ds, store)).To(Succeed())
+
+		_, err := awRepo.GetImage(h)
+		Expect(err).ToNot(HaveOccurred())
+		rc, err := store.Open(h, "image/jpeg")
+		Expect(err).ToNot(HaveOccurred())
+		rc.Close()
+	})
+
 	It("spares an orphan file freshly touched by an overlapping acquisition", func() {
 		data := []byte("racing-bytes")
 		h, _ := HashImage(bytes.NewReader(data))

@@ -73,9 +73,12 @@ func (m *MockArtworkRepo) DeleteOrphans(createdBefore time.Time, hashes []string
 	if m.Err != nil {
 		return m.Err
 	}
-	// Mirror the SQL reference re-check; createdBefore is ignored in the mock for simplicity.
+	// Mirror the SQL re-check: only unreferenced rows older than the cutoff are deleted.
 	for _, h := range hashes {
 		if m.referenced(h) {
+			continue
+		}
+		if a, ok := m.Data[h]; ok && !a.CreatedAt.Before(createdBefore) {
 			continue
 		}
 		delete(m.Data, h)
