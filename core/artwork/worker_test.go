@@ -135,6 +135,34 @@ var _ = Describe("Worker", func() {
 			Expect(err).To(MatchError(model.ErrNotFound), "a timeout must never settle on absent")
 		})
 
+		It("reschedules a found-stale item via MarkFailed while keeping its served state", func() {
+			conf.Server.CoverArtPriority = "external, cover.jpg"
+			folderRepo.result = []model.Folder{{
+				Path:       "tests/fixtures/artist/an-album",
+				ImageFiles: []string{"cover.jpg"},
+			}}
+			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
+				{ID: "alstale", Name: "Album", FolderIDs: []string{"f1"}},
+			})
+			prov.albumImage = func(context.Context, string) (*url.URL, error) {
+				return nil, errors.New("agent timed out")
+			}
+			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "alstale"})).To(Succeed())
+
+			n, err := w.drain(ctx, 2)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(n).To(Equal(1))
+
+			it := findQueued(queueRepo, "al", "alstale")
+			Expect(it).ToNot(BeNil(), "a found-stale row must survive for a higher-priority retry")
+			Expect(it.Attempts).To(Equal(1))
+			Expect(it.RetryAt).To(BeTemporally(">", time.Now()))
+
+			ia, err := artRepo.GetItemArtwork("al", "alstale", model.ImageTypePrimary)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ia.Source).To(Equal("folder"), "the fallback art is served meanwhile")
+		})
+
 		It("keeps a row re-enqueued between dequeue and delete", func() {
 			folderRepo.result = []model.Folder{{
 				Path:       "tests/fixtures/artist/an-album",

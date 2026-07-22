@@ -154,7 +154,7 @@ func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) {
 		if err := queue.DeleteIfUnchanged(item.ItemKind, item.ItemID, item.ImageType, item.RetryAt); err != nil {
 			log.Warn(ctx, "artwork: could not delete processed queue item", "kind", item.ItemKind, "id", item.ItemID, err)
 		}
-	case outcomeFailed:
+	case outcomeFoundStale, outcomeFailed:
 		retryAt := time.Now().Add(backoff(item.Attempts))
 		if err := queue.MarkFailed(item.ItemKind, item.ItemID, item.ImageType, retryAt); err != nil {
 			log.Warn(ctx, "artwork: could not reschedule failed queue item", "kind", item.ItemKind, "id", item.ItemID, err)

@@ -136,6 +136,28 @@ var _ = Describe("processItem", func() {
 		Expect(err).To(MatchError(model.ErrNotFound))
 	})
 
+	It("found-stale: a fallback hit after a transient external failure persists state and returns outcomeFoundStale", func() {
+		conf.Server.CoverArtPriority = "external, cover.jpg"
+		folderRepo.result = []model.Folder{{
+			Path:       "tests/fixtures/artist/an-album",
+			ImageFiles: []string{"cover.jpg"},
+		}}
+		ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
+			{ID: "alstale", Name: "Album", FolderIDs: []string{"f1"}},
+		})
+		prov.albumImage = func(context.Context, string) (*url.URL, error) {
+			return nil, errors.New("agent timed out")
+		}
+
+		out := processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alstale"})
+		Expect(out).To(Equal(outcomeFoundStale))
+
+		ia, err := artRepo.GetItemArtwork("al", "alstale", model.ImageTypePrimary)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(ia.Hash).ToNot(BeEmpty())
+		Expect(ia.Source).To(Equal("folder"))
+	})
+
 	It("dedup: a second item with identical bytes skips decode and reuses the artwork row", func() {
 		folderRepo.result = []model.Folder{{
 			Path:       "tests/fixtures/artist/an-album",

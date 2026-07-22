@@ -24,6 +24,9 @@ type outcome int
 
 const (
 	outcomeFound outcome = iota
+	// outcomeFoundStale: state was written and is served, but a higher-priority external
+	// step failed, so the row must retry (via MarkFailed) to give that source another chance.
+	outcomeFoundStale
 	outcomeAbsent
 	outcomeFailed
 )
@@ -115,6 +118,9 @@ func processItem(ctx context.Context, deps *workerDeps, item model.ArtworkQueueI
 	}); err != nil {
 		log.Warn(ctx, "artwork: failed to persist item artwork state", "kind", item.ItemKind, "id", item.ItemID, err)
 		return outcomeFailed
+	}
+	if res.extError {
+		return outcomeFoundStale
 	}
 	return outcomeFound
 }

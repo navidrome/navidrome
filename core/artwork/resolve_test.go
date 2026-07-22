@@ -148,6 +148,46 @@ var _ = Describe("resolveItem", func() {
 			Expect(res.extError).To(BeFalse())
 		})
 
+		It("carries extError onto a fallback folder hit after a transient external failure", func() {
+			conf.Server.CoverArtPriority = "external, cover.jpg"
+			folderRepo.result = []model.Folder{{
+				Path:       "tests/fixtures/artist/an-album",
+				ImageFiles: []string{"cover.jpg"},
+			}}
+			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
+				{ID: "al6", Name: "Album", FolderIDs: []string{"f1"}},
+			})
+			prov.albumImage = func(context.Context, string) (*url.URL, error) {
+				return nil, errors.New("agent timed out")
+			}
+
+			res, err := resolveItem(ctx, ds, prov, ffm, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al6"}, nil)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res.reader).ToNot(BeNil())
+			defer res.reader.Close()
+			Expect(res.source).To(Equal("folder"))
+			Expect(res.extError).To(BeTrue())
+		})
+
+		It("does not carry extError onto a fallback folder hit after a definitive external not-found", func() {
+			conf.Server.CoverArtPriority = "external, cover.jpg"
+			folderRepo.result = []model.Folder{{
+				Path:       "tests/fixtures/artist/an-album",
+				ImageFiles: []string{"cover.jpg"},
+			}}
+			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
+				{ID: "al7", Name: "Album", FolderIDs: []string{"f1"}},
+			})
+			// prov.albumImage left nil -> fakeExternalProvider returns model.ErrNotFound
+
+			res, err := resolveItem(ctx, ds, prov, ffm, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al7"}, nil)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res.reader).ToNot(BeNil())
+			defer res.reader.Close()
+			Expect(res.source).To(Equal("folder"))
+			Expect(res.extError).To(BeFalse())
+		})
+
 		It("routes the external step through a custom extGate", func() {
 			conf.Server.CoverArtPriority = "external"
 			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{

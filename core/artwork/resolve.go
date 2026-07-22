@@ -27,7 +27,9 @@ type resolution struct {
 	source     string        // model.ItemArtwork.Source value: "folder", "embedded", "external", "upload", "generated"
 	sourcePath string        // backing library/upload file (folder/upload: the image; embedded: the audio file); "" otherwise
 	refMtime   int64         // mtime of sourcePath at resolution time; 0 when no sourcePath
-	extError   bool          // an external source errored/timed out (forces failed, never absent)
+	// external source errored/timed out. With no reader: forces failed (never absent).
+	// On a hit: a higher-priority external step failed—serve this, but retry later.
+	extError bool
 }
 
 // extGateFunc is an alias for the external-step wrapper the worker injects (rate
@@ -79,6 +81,7 @@ func resolveAlbum(ctx context.Context, ds model.DataStore, prov external.Provide
 		switch {
 		case pattern == "embedded":
 			if res, ok := resolveEmbedded(ctx, lib, ffm, al.EmbedArtPath); ok {
+				res.extError = extErr
 				return res, nil
 			}
 		case pattern == "external":
@@ -89,6 +92,7 @@ func resolveAlbum(ctx context.Context, ds model.DataStore, prov external.Provide
 			}
 		case len(imgFiles) > 0:
 			if res, ok := resolveFolderFile(ctx, lib, imgFiles, pattern); ok {
+				res.extError = extErr
 				return res, nil
 			}
 		}
@@ -145,6 +149,7 @@ func resolveArtist(ctx context.Context, ds model.DataStore, prov external.Provid
 			}
 		case pattern == "image-folder":
 			if res, ok := resolveArtistImageFolder(ar); ok {
+				res.extError = extErr
 				return res, nil
 			}
 		case strings.HasPrefix(pattern, "album/"):
@@ -152,6 +157,7 @@ func resolveArtist(ctx context.Context, ds model.DataStore, prov external.Provid
 				continue
 			}
 			if res, ok := resolveFolderFile(ctx, lib, imgFiles, strings.TrimPrefix(pattern, "album/")); ok {
+				res.extError = extErr
 				return res, nil
 			}
 		default:
@@ -159,6 +165,7 @@ func resolveArtist(ctx context.Context, ds model.DataStore, prov external.Provid
 				continue
 			}
 			if res, ok := resolveArtistFolderPattern(ctx, lib, artistFolder, pattern); ok {
+				res.extError = extErr
 				return res, nil
 			}
 		}
@@ -236,7 +243,7 @@ func resolvePlaylist(ctx context.Context, ds model.DataStore, prov external.Prov
 	if err != nil {
 		return resolution{extError: extErr}, nil //nolint:nilerr // encode failure is a soft "no image", not a resolveItem error
 	}
-	return resolution{reader: r, source: "generated"}, nil
+	return resolution{reader: r, source: "generated", extError: extErr}, nil
 }
 
 // resolveRadio ports reader_radio.go: only an uploaded image, no fallback.
