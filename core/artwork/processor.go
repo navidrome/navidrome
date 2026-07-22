@@ -28,7 +28,7 @@ const (
 	outcomeFailed
 )
 
-// thumbnailSize is the max dimension fed to blurhash, matching Jellyfin's own input cap.
+// thumbnailSize is the max dimension fed to blurhash.
 const thumbnailSize = 128
 
 // workerDeps are the collaborators processItem needs; extGate is nil outside
@@ -155,9 +155,8 @@ func decodeArtwork(ctx context.Context, hash string, data []byte) (*model.Artwor
 	}, nil
 }
 
-// makeThumbnail downscales img to fit within maxSize on its longest side,
-// reusing reader_resized.go's fast-scale-type + CatmullRom approach. Images
-// already within bounds are returned as-is (no upscaling).
+// makeThumbnail downscales img to fit within maxSize on its longest side.
+// Images within bounds are returned as-is (no upscaling).
 func makeThumbnail(img image.Image, maxSize int) image.Image {
 	b := img.Bounds()
 	w, h := b.Dx(), b.Dy()
