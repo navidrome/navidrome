@@ -362,6 +362,64 @@ var _ = Describe("Agents", func() {
 			})
 		})
 	})
+
+	Describe("Image retriever enumeration", func() {
+		var ag *Agents
+		var artistImg, artistImg2 *testImageAgent
+		var albumImg, albumImg2 *testAlbumImageAgent
+
+		BeforeEach(func() {
+			artistImg = &testImageAgent{Name: "artistImg"}
+			artistImg2 = &testImageAgent{Name: "artistImg2"}
+			albumImg = &testAlbumImageAgent{name: "albumImg"}
+			albumImg2 = &testAlbumImageAgent{name: "albumImg2"}
+			Register("artistImg", func(model.DataStore) Interface { return artistImg })
+			Register("artistImg2", func(model.DataStore) Interface { return artistImg2 })
+			Register("albumImg", func(model.DataStore) Interface { return albumImg })
+			Register("albumImg2", func(model.DataStore) Interface { return albumImg2 })
+			Register("noImages", func(model.DataStore) Interface { return &emptyAgent{} })
+		})
+
+		Describe("ArtistImageAgents", func() {
+			It("returns only ArtistImageRetriever agents, named, in configured order", func() {
+				conf.Server.Agents = "artistImg,noImages,artistImg2"
+				ag = createAgents(ds, nil)
+
+				result := ag.ArtistImageAgents()
+				Expect(result).To(HaveLen(2))
+				Expect(result[0].Name).To(Equal("artistImg"))
+				Expect(result[0].Retriever).To(BeIdenticalTo(artistImg))
+				Expect(result[1].Name).To(Equal("artistImg2"))
+				Expect(result[1].Retriever).To(BeIdenticalTo(artistImg2))
+			})
+
+			It("is empty when external services are disabled", func() {
+				conf.Server.Agents = "" // what disableExternalServices() sets when EnableExternalServices=false
+				ag = createAgents(ds, nil)
+				Expect(ag.ArtistImageAgents()).To(BeEmpty())
+			})
+		})
+
+		Describe("AlbumImageAgents", func() {
+			It("returns only AlbumImageRetriever agents, named, in configured order", func() {
+				conf.Server.Agents = "albumImg,noImages,albumImg2"
+				ag = createAgents(ds, nil)
+
+				result := ag.AlbumImageAgents()
+				Expect(result).To(HaveLen(2))
+				Expect(result[0].Name).To(Equal("albumImg"))
+				Expect(result[0].Retriever).To(BeIdenticalTo(albumImg))
+				Expect(result[1].Name).To(Equal("albumImg2"))
+				Expect(result[1].Retriever).To(BeIdenticalTo(albumImg2))
+			})
+
+			It("is empty when external services are disabled", func() {
+				conf.Server.Agents = "" // what disableExternalServices() sets when EnableExternalServices=false
+				ag = createAgents(ds, nil)
+				Expect(ag.AlbumImageAgents()).To(BeEmpty())
+			})
+		})
+	})
 })
 
 type mockAgent struct {
@@ -495,5 +553,19 @@ func (t *testImageAgent) AgentName() string { return t.Name }
 
 func (t *testImageAgent) GetArtistImages(_ context.Context, id, name, mbid string) ([]ExternalImage, error) {
 	t.Args = []any{id, name, mbid}
+	return t.Images, t.Err
+}
+
+type testAlbumImageAgent struct {
+	name   string
+	Images []ExternalImage
+	Err    error
+	Args   []any
+}
+
+func (t *testAlbumImageAgent) AgentName() string { return t.name }
+
+func (t *testAlbumImageAgent) GetAlbumImages(_ context.Context, name, artist, mbid string) ([]ExternalImage, error) {
+	t.Args = []any{name, artist, mbid}
 	return t.Images, t.Err
 }
