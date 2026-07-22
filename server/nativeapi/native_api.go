@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/metrics"
 	playlistsvc "github.com/navidrome/navidrome/core/playlists"
+	coreradio "github.com/navidrome/navidrome/core/radio"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -34,6 +35,11 @@ type PluginManager interface {
 	UnloadDisabledPlugins(ctx context.Context)
 }
 
+type RadioMetadataManager interface {
+	Start(ctx context.Context, sessionID string, station coreradio.Station) error
+	Stop(sessionID string)
+}
+
 type Router struct {
 	http.Handler
 	ds            model.DataStore
@@ -45,10 +51,11 @@ type Router struct {
 	maintenance   core.Maintenance
 	pluginManager PluginManager
 	imgUpload     core.ImageUploadService
+	radioMetadata RadioMetadataManager
 }
 
-func New(ds model.DataStore, share core.Share, playlists playlistsvc.Playlists, insights metrics.Insights, libraryService core.Library, userService core.User, maintenance core.Maintenance, pluginManager PluginManager, imgUpload core.ImageUploadService) *Router {
-	r := &Router{ds: ds, share: share, playlists: playlists, insights: insights, libs: libraryService, users: userService, maintenance: maintenance, pluginManager: pluginManager, imgUpload: imgUpload}
+func New(ds model.DataStore, share core.Share, playlists playlistsvc.Playlists, insights metrics.Insights, libraryService core.Library, userService core.User, maintenance core.Maintenance, pluginManager PluginManager, imgUpload core.ImageUploadService, radioMetadata RadioMetadataManager) *Router {
+	r := &Router{ds: ds, share: share, playlists: playlists, insights: insights, libs: libraryService, users: userService, maintenance: maintenance, pluginManager: pluginManager, imgUpload: imgUpload, radioMetadata: radioMetadata}
 	r.Handler = r.routes()
 	return r
 }
