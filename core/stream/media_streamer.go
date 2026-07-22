@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"io"
 	"mime"
 	"net/http"
@@ -60,6 +61,20 @@ func (j *streamJob) Key() string {
 	return fmt.Sprintf("%s.%s.%d.%d.%d.%d.%s.%d", j.mf.ID, j.mf.UpdatedAt.Format(time.RFC3339Nano), j.bitRate, j.sampleRate, j.bitDepth, j.channels, j.format, j.offset)
 }
 
+// weakETag derives a weak HTTP entity tag from a transcode identity (the cache
+// key). It is weak (W/) because ffmpeg output is not guaranteed to be
+// byte-for-byte identical across runs (e.g. embedded timestamps/metadata), but
+// it is a stable validator for a given representation: the same media file at
+// the same bitrate/format/offset always yields the same tag, and it changes
+// whenever any of those inputs change. Serving it lets a client revalidate a
+// repeated request for the same transcoded track with a cheap 304 Not Modified
+// instead of re-downloading the full audio.
+func weakETag(identity string) string {
+	h := fnv.New64a()
+	_, _ = io.WriteString(h, identity)
+	return fmt.Sprintf(`W/"%x"`, h.Sum64())
+}
+
 // NewStream creates a Stream for the given MediaFile and Request. It handles both raw streaming (no transcoding)
 // and transcoded streaming based on the requested format and bitrate. It also logs detailed information about
 // the streaming request and whether the transcoding result was served from cache or not.
@@ -109,6 +124,9 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, mf *model.MediaFile, req
 		channels:   req.Channels,
 		offset:     req.Offset,
 	}
+	// Tag the transcoded representation so repeated requests for the same
+	// track within a playback can be revalidated (304) instead of re-fetched.
+	s.etag = weakETag(job.Key())
 	r, err := ms.cache.Get(ctx, job)
 	if err != nil {
 		// Rate-limit rejections are already logged at warn level by the
@@ -137,6 +155,7 @@ type Stream struct {
 	mf      *model.MediaFile
 	bitRate int
 	format  string
+	etag    string
 	io.ReadCloser
 	io.Seeker
 }
@@ -156,6 +175,14 @@ func (s *Stream) EstimatedContentLength() int {
 // (meaning the HTTP 200 status has not been flushed yet and the caller can still send an error response).
 // Empty output (0 bytes, no error) is logged but not treated as an error.
 func (s *Stream) Serve(ctx context.Context, w http.ResponseWriter, r *http.Request) (int64, error) {
+	// Advertise a validator for the transcoded representation so clients can
+	// revalidate a repeated request with a conditional GET. On the seekable
+	// (fully cached) path http.ServeContent handles If-None-Match/If-Range
+	// against it, answering repeats with 304 instead of re-sending the audio.
+	if s.etag != "" {
+		w.Header().Set("ETag", s.etag)
+	}
+
 	if s.Seekable() {
 		http.ServeContent(w, r, s.Name(), s.ModTime(), s)
 		return -1, nil
