@@ -189,6 +189,9 @@ var _ = Describe("Prune", func() {
 
 	It("warns and continues past a store.Remove failure instead of aborting the loop", func() {
 		tests.SkipOnWindows("uses Unix file permission bits")
+		if os.Geteuid() == 0 {
+			Skip("read-only dir cannot block root (e.g. tests in a container)")
+		}
 		old := time.Now().Add(-2 * time.Hour)
 
 		blocked := []byte("blocked-bytes")
