@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"slices"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
@@ -47,16 +48,15 @@ func (r *artworkRepository) PutImage(a *model.Artwork) error {
 
 func (r *artworkRepository) GetImages(hashes []string) (map[string]model.Artwork, error) {
 	res := map[string]model.Artwork{}
-	if len(hashes) == 0 {
-		return res, nil
-	}
-	sel := Select("*").From(r.tableName).Where(Eq{"hash": hashes})
-	var all []model.Artwork
-	if err := r.queryAll(sel, &all); err != nil {
-		return nil, err
-	}
-	for _, a := range all {
-		res[a.Hash] = a
+	for chunk := range slices.Chunk(hashes, 200) {
+		sel := Select("*").From(r.tableName).Where(Eq{"hash": chunk})
+		var all []model.Artwork
+		if err := r.queryAll(sel, &all); err != nil {
+			return nil, err
+		}
+		for _, a := range all {
+			res[a.Hash] = a
+		}
 	}
 	return res, nil
 }
@@ -73,10 +73,12 @@ func (r *artworkRepository) GetOrphanHashes(createdBefore time.Time) ([]string, 
 }
 
 func (r *artworkRepository) DeleteImages(hashes ...string) error {
-	if len(hashes) == 0 {
-		return nil
+	for chunk := range slices.Chunk(hashes, 200) {
+		if err := r.delete(Eq{"hash": chunk}); err != nil {
+			return err
+		}
 	}
-	return r.delete(Eq{"hash": hashes})
+	return nil
 }
 
 func (r *artworkRepository) GetItemArtwork(kind, id, imageType string) (*model.ItemArtwork, error) {
@@ -113,28 +115,27 @@ func (r *artworkRepository) DeleteForItem(kind, id string) error {
 
 func (r *artworkRepository) GetInfoForItems(kind string, ids []string) (map[string]model.ItemArtworkInfo, error) {
 	res := map[string]model.ItemArtworkInfo{}
-	if len(ids) == 0 {
-		return res, nil
-	}
-	sel := Select("ia.item_id", "ia.hash", "COALESCE(a.blur_hash, '') as blur_hash").
-		From("item_artwork ia").
-		LeftJoin("artwork a ON a.hash = ia.hash").
-		Where(And{
-			Eq{"ia.item_kind": kind},
-			Eq{"ia.image_type": model.ImageTypePrimary},
-			Eq{"ia.item_id": ids},
-		})
-	var rows []struct {
-		ItemID   string
-		Hash     string
-		BlurHash string
-	}
-	if err := r.queryAll(sel, &rows); err != nil {
-		return nil, err
-	}
-	for _, row := range rows {
-		res[row.ItemID] = model.ItemArtworkInfo{
-			ItemID: row.ItemID, Hash: row.Hash, BlurHash: row.BlurHash, Absent: row.Hash == "",
+	for chunk := range slices.Chunk(ids, 200) {
+		sel := Select("ia.item_id", "ia.hash", "COALESCE(a.blur_hash, '') as blur_hash").
+			From("item_artwork ia").
+			LeftJoin("artwork a ON a.hash = ia.hash").
+			Where(And{
+				Eq{"ia.item_kind": kind},
+				Eq{"ia.image_type": model.ImageTypePrimary},
+				Eq{"ia.item_id": chunk},
+			})
+		var rows []struct {
+			ItemID   string
+			Hash     string
+			BlurHash string
+		}
+		if err := r.queryAll(sel, &rows); err != nil {
+			return nil, err
+		}
+		for _, row := range rows {
+			res[row.ItemID] = model.ItemArtworkInfo{
+				ItemID: row.ItemID, Hash: row.Hash, BlurHash: row.BlurHash, Absent: row.Hash == "",
+			}
 		}
 	}
 	return res, nil

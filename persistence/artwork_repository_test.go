@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/navidrome/navidrome/model"
@@ -80,6 +81,20 @@ var _ = Describe("ArtworkRepository", func() {
 		Expect(repo.DeleteImages("d1")).To(Succeed())
 		_, err := repo.GetImage("d1")
 		Expect(err).To(MatchError(model.ErrNotFound))
+	})
+
+	It("fetches a batch larger than the SQL variable limit", func() {
+		hashes := make([]string, 0, 250)
+		for i := 0; i < 250; i++ {
+			h := fmt.Sprintf("big%03d", i)
+			Expect(repo.PutImage(&model.Artwork{Hash: h, Mime: "image/jpeg"})).To(Succeed())
+			hashes = append(hashes, h)
+		}
+		hashes = append(hashes, "absent1", "absent2")
+
+		got, err := repo.GetImages(hashes)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(got).To(HaveLen(250))
 	})
 })
 

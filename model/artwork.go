@@ -19,11 +19,13 @@ const ImageTypePrimary = "primary"
 
 // ItemArtwork is an entity's resolved artwork state. Hash=="" means known absent.
 type ItemArtwork struct {
-	ItemKind    string    `structs:"item_kind"`
-	ItemID      string    `structs:"item_id"`
-	ImageType   string    `structs:"image_type"`
-	Hash        string    `structs:"hash"`
-	Source      string    `structs:"source"`
+	ItemKind  string `structs:"item_kind"`
+	ItemID    string `structs:"item_id"`
+	ImageType string `structs:"image_type"`
+	Hash      string `structs:"hash"`
+	Source    string `structs:"source"`
+	// attempted_at/updated_at are nullable in the schema but always set by PutItemArtwork;
+	// raw inserts must set them too, since these non-pointer time.Time fields fail to scan NULL.
 	AttemptedAt time.Time `structs:"attempted_at"`
 	UpdatedAt   time.Time `structs:"updated_at"`
 }
@@ -59,13 +61,16 @@ type ArtworkRepository interface {
 	GetImage(hash string) (*Artwork, error)
 	PutImage(a *Artwork) error
 	GetImages(hashes []string) (map[string]Artwork, error)
+	// GetOrphanHashes returns hashes referenced by no item_artwork row and older than cutoff.
 	GetOrphanHashes(createdBefore time.Time) ([]string, error)
 	DeleteImages(hashes ...string) error
 	// Per-item state (item_artwork table)
 	GetItemArtwork(kind, id, imageType string) (*ItemArtwork, error)
 	PutItemArtwork(ia *ItemArtwork) error
 	DeleteForItem(kind, id string) error
+	// GetInfoForItems hydrates a page: one batched query, item_artwork joined to artwork.
 	GetInfoForItems(kind string, ids []string) (map[string]ItemArtworkInfo, error)
+	// EnqueueStaleAbsent inserts queue rows (priority Recheck) for absent states older than cutoff.
 	EnqueueStaleAbsent(kind string, attemptedBefore time.Time) (int64, error)
 }
 
