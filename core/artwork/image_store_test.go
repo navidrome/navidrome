@@ -51,13 +51,49 @@ var _ = Describe("ImageStore", func() {
 		Expect(store.Write(h, "image/png", bytes.NewReader(data))).To(Succeed())
 	})
 
+	It("refreshes the mtime on a duplicate write", func() {
+		data := []byte("touch-me")
+		h, _ := HashImage(bytes.NewReader(data))
+		Expect(store.Write(h, "image/png", bytes.NewReader(data))).To(Succeed())
+		old := time.Now().Add(-2 * time.Hour)
+		Expect(os.Chtimes(store.path(h, "image/png"), old, old)).To(Succeed())
+
+		Expect(store.Write(h, "image/png", bytes.NewReader(data))).To(Succeed())
+
+		info, err := os.Stat(store.path(h, "image/png"))
+		Expect(err).ToNot(HaveOccurred())
+		Expect(info.ModTime()).To(BeTemporally(">", time.Now().Add(-time.Minute)))
+	})
+
 	It("returns fs.ErrNotExist for missing images", func() {
 		_, err := store.Open("beefbeefbeefbeef", "image/jpeg")
 		Expect(os.IsNotExist(err)).To(BeTrue())
 	})
 
 	It("removes without error when already gone", func() {
-		Expect(store.Remove("beefbeefbeefbeef", "image/jpeg")).To(Succeed())
+		Expect(store.Remove("beefbeefbeefbeef", "image/jpeg", time.Now())).To(Succeed())
+	})
+
+	It("spares a file newer than the cutoff, removes an aged one", func() {
+		fresh := []byte("fresh")
+		hf, _ := HashImage(bytes.NewReader(fresh))
+		Expect(store.Write(hf, "image/jpeg", bytes.NewReader(fresh))).To(Succeed())
+
+		aged := []byte("aged")
+		ha, _ := HashImage(bytes.NewReader(aged))
+		Expect(store.Write(ha, "image/jpeg", bytes.NewReader(aged))).To(Succeed())
+		old := time.Now().Add(-2 * time.Hour)
+		Expect(os.Chtimes(store.path(ha, "image/jpeg"), old, old)).To(Succeed())
+
+		cutoff := time.Now().Add(-time.Hour)
+		Expect(store.Remove(hf, "image/jpeg", cutoff)).To(Succeed())
+		Expect(store.Remove(ha, "image/jpeg", cutoff)).To(Succeed())
+
+		rc, err := store.Open(hf, "image/jpeg")
+		Expect(err).ToNot(HaveOccurred())
+		rc.Close()
+		_, err = store.Open(ha, "image/jpeg")
+		Expect(os.IsNotExist(err)).To(BeTrue())
 	})
 
 	It("sweeps unknown files, keeps known ones", func() {

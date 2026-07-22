@@ -54,6 +54,9 @@ func (s *ImageStore) path(hash, mimeType string) string {
 func (s *ImageStore) Write(hash, mimeType string, r io.Reader) error {
 	dst := s.path(hash, mimeType)
 	if _, err := os.Stat(dst); err == nil {
+		// A touched mtime marks the file live so a concurrent prune spares it.
+		now := time.Now()
+		_ = os.Chtimes(dst, now, now)
 		return nil
 	}
 	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
@@ -78,8 +81,21 @@ func (s *ImageStore) Open(hash, mimeType string) (io.ReadCloser, error) {
 	return os.Open(s.path(hash, mimeType))
 }
 
-func (s *ImageStore) Remove(hash, mimeType string) error {
-	err := os.Remove(s.path(hash, mimeType))
+// Remove deletes the store file unless it is newer than olderThan, in which case
+// an overlapping acquisition may have just touched it and be about to commit its row.
+func (s *ImageStore) Remove(hash, mimeType string, olderThan time.Time) error {
+	path := s.path(hash, mimeType)
+	info, err := os.Stat(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if info.ModTime().After(olderThan) {
+		return nil
+	}
+	err = os.Remove(path)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil
 	}

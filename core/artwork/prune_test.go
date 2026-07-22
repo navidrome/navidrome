@@ -36,6 +36,8 @@ var _ = Describe("Prune", func() {
 		data := []byte("orphan-bytes")
 		h, _ := HashImage(bytes.NewReader(data))
 		Expect(store.Write(h, "image/jpeg", bytes.NewReader(data))).To(Succeed())
+		old := time.Now().Add(-2 * time.Hour)
+		Expect(os.Chtimes(store.path(h, "image/jpeg"), old, old)).To(Succeed())
 		Expect(awRepo.PutImage(&model.Artwork{Hash: h, Mime: "image/jpeg",
 			CreatedAt: time.Now().Add(-2 * time.Hour)})).To(Succeed())
 		awRepo.OrphanHashes = []string{h}
@@ -71,6 +73,23 @@ var _ = Describe("Prune", func() {
 
 		_, err := awRepo.GetImage(h)
 		Expect(err).ToNot(HaveOccurred())
+		rc, err := store.Open(h, "image/jpeg")
+		Expect(err).ToNot(HaveOccurred())
+		rc.Close()
+	})
+
+	It("spares an orphan file freshly touched by an overlapping acquisition", func() {
+		data := []byte("racing-bytes")
+		h, _ := HashImage(bytes.NewReader(data))
+		Expect(store.Write(h, "image/jpeg", bytes.NewReader(data))).To(Succeed())
+		Expect(awRepo.PutImage(&model.Artwork{Hash: h, Mime: "image/jpeg",
+			CreatedAt: time.Now().Add(-2 * time.Hour)})).To(Succeed())
+		awRepo.OrphanHashes = []string{h}
+		// The row is legitimately orphaned, but a concurrent acquisition just touched the
+		// file's mtime (duplicate Write) and is about to commit a row referencing it.
+
+		Expect(Prune(context.Background(), ds, store)).To(Succeed())
+
 		rc, err := store.Open(h, "image/jpeg")
 		Expect(err).ToNot(HaveOccurred())
 		rc.Close()

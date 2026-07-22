@@ -39,7 +39,9 @@ func Prune(ctx context.Context, ds model.DataStore, store *ImageStore) error {
 			if _, ok := survivors[h]; ok {
 				continue
 			}
-			if err := store.Remove(h, arts[h].Mime); err != nil {
+			// A spared fresh file is at worst a stray a later sweep reclaims; full
+			// worker/prune mutual exclusion is Phase 2's concern.
+			if err := store.Remove(h, arts[h].Mime, cutoff); err != nil {
 				log.Warn(ctx, "Prune: could not remove artwork file", "hash", h, err)
 			}
 			removed++
