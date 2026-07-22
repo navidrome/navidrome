@@ -8,8 +8,9 @@ import (
 
 type MockArtworkRepo struct {
 	model.ArtworkRepository
-	Data map[string]model.Artwork
-	Err  error
+	Data         map[string]model.Artwork
+	OrphanHashes []string
+	Err          error
 }
 
 func CreateMockArtworkRepo() *MockArtworkRepo {
@@ -51,7 +52,7 @@ func (m *MockArtworkRepo) GetBatch(hashes []string) (map[string]model.Artwork, e
 }
 
 func (m *MockArtworkRepo) GetOrphanHashes(createdBefore time.Time) ([]string, error) {
-	return nil, m.Err
+	return m.OrphanHashes, m.Err
 }
 
 func (m *MockArtworkRepo) Delete(hashes ...string) error {
