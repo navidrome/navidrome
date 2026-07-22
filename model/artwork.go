@@ -4,15 +4,13 @@ import "time"
 
 // Artwork is one unique image, identified by the XXH3-64 hash of its bytes.
 type Artwork struct {
-	Hash       string    `structs:"hash"`
-	Mime       string    `structs:"mime"`
-	Width      int       `structs:"width"`
-	Height     int       `structs:"height"`
-	SizeBytes  int64     `structs:"size_bytes"`
-	BlurHash   string    `structs:"blur_hash"`
-	SourcePath string    `structs:"source_path"`
-	RefMtime   int64     `structs:"ref_mtime"`
-	CreatedAt  time.Time `structs:"created_at"`
+	Hash      string    `structs:"hash"`
+	Mime      string    `structs:"mime"`
+	Width     int       `structs:"width"`
+	Height    int       `structs:"height"`
+	SizeBytes int64     `structs:"size_bytes"`
+	BlurHash  string    `structs:"blur_hash"`
+	CreatedAt time.Time `structs:"created_at"`
 }
 
 const ImageTypePrimary = "primary"
@@ -24,6 +22,10 @@ type ItemArtwork struct {
 	ImageType string `structs:"image_type"`
 	Hash      string `structs:"hash"`
 	Source    string `structs:"source"`
+	// SourcePath is the backing file (folder/upload: the image; embedded: the audio file); "" otherwise.
+	SourcePath string `structs:"source_path"`
+	// RefMtime is SourcePath's mtime at resolution; 0 when there is no SourcePath.
+	RefMtime int64 `structs:"ref_mtime"`
 	// attempted_at/updated_at are nullable in the schema but always set by PutItemArtwork;
 	// raw inserts must set them too, since these non-pointer time.Time fields fail to scan NULL.
 	AttemptedAt time.Time `structs:"attempted_at"`

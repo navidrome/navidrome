@@ -6,8 +6,6 @@ CREATE TABLE artwork (
   height INTEGER NOT NULL DEFAULT 0,
   size_bytes INTEGER NOT NULL DEFAULT 0,
   blur_hash TEXT NOT NULL DEFAULT '',
-  source_path TEXT NOT NULL DEFAULT '',
-  ref_mtime INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -17,6 +15,8 @@ CREATE TABLE item_artwork (
   image_type TEXT NOT NULL DEFAULT 'primary',
   hash TEXT NOT NULL DEFAULT '',
   source TEXT NOT NULL DEFAULT '',
+  source_path TEXT NOT NULL DEFAULT '',
+  ref_mtime INTEGER NOT NULL DEFAULT 0,
   attempted_at TIMESTAMP,
   updated_at TIMESTAMP,
   PRIMARY KEY (item_kind, item_id, image_type)

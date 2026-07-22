@@ -137,16 +137,20 @@ var _ = Describe("ArtworkRepository", func() {
 	})
 
 	Context("item state", func() {
-		It("upserts and reads state", func() {
+		It("upserts and reads state, including per-item provenance", func() {
 			ia := &model.ItemArtwork{ItemKind: "al", ItemID: "al1", ImageType: model.ImageTypePrimary,
-				Hash: "h1", Source: "folder", AttemptedAt: time.Now()}
+				Hash: "h1", Source: "folder", SourcePath: "/music/a/cover.jpg", RefMtime: 111, AttemptedAt: time.Now()}
 			Expect(repo.PutItemArtwork(ia)).To(Succeed())
 			ia.Source = "embedded"
+			ia.SourcePath = "/music/a/track.mp3"
+			ia.RefMtime = 222
 			Expect(repo.PutItemArtwork(ia)).To(Succeed())
 
 			got, err := repo.GetItemArtwork("al", "al1", model.ImageTypePrimary)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.Source).To(Equal("embedded"))
+			Expect(got.SourcePath).To(Equal("/music/a/track.mp3"))
+			Expect(got.RefMtime).To(Equal(int64(222)))
 			Expect(got.UpdatedAt).ToNot(BeZero())
 		})
 

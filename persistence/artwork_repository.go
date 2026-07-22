@@ -53,8 +53,7 @@ func (r *artworkRepository) PutImage(a *model.Artwork) error {
 	}
 	// created_at=excluded.created_at: reacquiring an orphan must reset the prune grace window.
 	ins := Insert(r.tableName).SetMap(values).Suffix(`ON CONFLICT (hash) DO UPDATE SET mime=excluded.mime, width=excluded.width,
-		height=excluded.height, size_bytes=excluded.size_bytes, blur_hash=excluded.blur_hash,
-		source_path=excluded.source_path, ref_mtime=excluded.ref_mtime, created_at=excluded.created_at`)
+		height=excluded.height, size_bytes=excluded.size_bytes, blur_hash=excluded.blur_hash, created_at=excluded.created_at`)
 	_, err = r.executeSQL(ins)
 	return err
 }
@@ -139,7 +138,7 @@ func (r *artworkRepository) PutItemArtwork(ia *model.ItemArtwork) error {
 		return err
 	}
 	ins := Insert(itemArtworkTable).SetMap(values).Suffix(`ON CONFLICT (item_kind, item_id, image_type) DO UPDATE SET
-		hash=excluded.hash, source=excluded.source,
+		hash=excluded.hash, source=excluded.source, source_path=excluded.source_path, ref_mtime=excluded.ref_mtime,
 		attempted_at=excluded.attempted_at, updated_at=excluded.updated_at`)
 	_, err = r.items.executeSQL(ins)
 	return err
