@@ -7,7 +7,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/navidrome/navidrome/core/artwork/originals"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -24,25 +23,25 @@ func (f *flakyGetArtworkRepo) Get(string) (*model.Artwork, error) {
 
 var _ = Describe("Prune", func() {
 	var ds *tests.MockDataStore
-	var store *originals.Store
+	var store *ImageStore
 	var awRepo *tests.MockArtworkRepo
 
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{}
 		awRepo = ds.Artwork(context.Background()).(*tests.MockArtworkRepo)
-		store = originals.New(GinkgoT().TempDir())
+		store = NewImageStore(GinkgoT().TempDir())
 	})
 
 	It("deletes orphan rows and their store files, keeps referenced ones", func() {
 		data := []byte("orphan-bytes")
-		h, _ := originals.Hash(bytes.NewReader(data))
+		h, _ := HashImage(bytes.NewReader(data))
 		Expect(store.Write(h, "image/jpeg", bytes.NewReader(data))).To(Succeed())
 		Expect(awRepo.Put(&model.Artwork{Hash: h, Mime: "image/jpeg",
 			CreatedAt: time.Now().Add(-2 * time.Hour)})).To(Succeed())
 		awRepo.OrphanHashes = []string{h}
 
 		kept := []byte("kept-bytes")
-		hk, _ := originals.Hash(bytes.NewReader(kept))
+		hk, _ := HashImage(bytes.NewReader(kept))
 		Expect(store.Write(hk, "image/jpeg", bytes.NewReader(kept))).To(Succeed())
 		Expect(awRepo.Put(&model.Artwork{Hash: hk, Mime: "image/jpeg"})).To(Succeed())
 
@@ -59,7 +58,7 @@ var _ = Describe("Prune", func() {
 
 	It("sweeps store files that have no artwork row", func() {
 		stray := []byte("no-row-bytes")
-		h, _ := originals.Hash(bytes.NewReader(stray))
+		h, _ := HashImage(bytes.NewReader(stray))
 		Expect(store.Write(h, "image/jpeg", bytes.NewReader(stray))).To(Succeed())
 
 		Expect(Prune(context.Background(), ds, store)).To(Succeed())
@@ -72,7 +71,7 @@ var _ = Describe("Prune", func() {
 		ds.MockedArtwork = &flakyGetArtworkRepo{MockArtworkRepo: tests.CreateMockArtworkRepo()}
 
 		data := []byte("live-bytes")
-		h, _ := originals.Hash(bytes.NewReader(data))
+		h, _ := HashImage(bytes.NewReader(data))
 		Expect(store.Write(h, "image/jpeg", bytes.NewReader(data))).To(Succeed())
 
 		Expect(Prune(context.Background(), ds, store)).To(Succeed())

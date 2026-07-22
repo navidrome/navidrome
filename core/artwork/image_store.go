@@ -1,6 +1,4 @@
-// Package originals is the content-addressed store for artwork images that have
-// no library file backing them (external downloads, embedded extractions, generated).
-package originals
+package artwork
 
 import (
 	"errors"
@@ -14,7 +12,7 @@ import (
 	"github.com/zeebo/xxh3"
 )
 
-func Hash(r io.Reader) (string, error) {
+func HashImage(r io.Reader) (string, error) {
 	d := xxh3.New()
 	if _, err := io.Copy(d, r); err != nil {
 		return "", err
@@ -22,12 +20,14 @@ func Hash(r io.Reader) (string, error) {
 	return fmt.Sprintf("%016x", d.Sum64()), nil
 }
 
-type Store struct {
+// ImageStore is the content-addressed store for artwork images that have no
+// library file backing them (external downloads, embedded extractions, generated).
+type ImageStore struct {
 	root string
 }
 
-func New(rootDir string) *Store {
-	return &Store{root: rootDir}
+func NewImageStore(rootDir string) *ImageStore {
+	return &ImageStore{root: rootDir}
 }
 
 // extForMime is deliberately NOT mime.ExtensionsByType: extensions are baked into
@@ -46,11 +46,11 @@ func extForMime(m string) string {
 	return ".img"
 }
 
-func (s *Store) path(hash, mimeType string) string {
+func (s *ImageStore) path(hash, mimeType string) string {
 	return filepath.Join(s.root, hash[0:2], hash[2:4], hash+extForMime(mimeType))
 }
 
-func (s *Store) Write(hash, mimeType string, r io.Reader) error {
+func (s *ImageStore) Write(hash, mimeType string, r io.Reader) error {
 	dst := s.path(hash, mimeType)
 	if _, err := os.Stat(dst); err == nil {
 		return nil
@@ -73,11 +73,11 @@ func (s *Store) Write(hash, mimeType string, r io.Reader) error {
 	return os.Rename(tmp.Name(), dst)
 }
 
-func (s *Store) Open(hash, mimeType string) (io.ReadCloser, error) {
+func (s *ImageStore) Open(hash, mimeType string) (io.ReadCloser, error) {
 	return os.Open(s.path(hash, mimeType))
 }
 
-func (s *Store) Remove(hash, mimeType string) error {
+func (s *ImageStore) Remove(hash, mimeType string) error {
 	err := os.Remove(s.path(hash, mimeType))
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil
@@ -85,7 +85,7 @@ func (s *Store) Remove(hash, mimeType string) error {
 	return err
 }
 
-func (s *Store) Sweep(keep func(hash string) bool) (int, error) {
+func (s *ImageStore) Sweep(keep func(hash string) bool) (int, error) {
 	removed := 0
 	err := filepath.WalkDir(s.root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {

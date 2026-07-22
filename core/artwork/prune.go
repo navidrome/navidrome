@@ -5,7 +5,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/navidrome/navidrome/core/artwork/originals"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
@@ -13,7 +12,7 @@ import (
 // pruneMinAge guards the window between artwork insert and item_artwork upsert.
 const pruneMinAge = time.Hour
 
-func Prune(ctx context.Context, ds model.DataStore, store *originals.Store) error {
+func Prune(ctx context.Context, ds model.DataStore, store *ImageStore) error {
 	repo := ds.Artwork(ctx)
 	orphans, err := repo.GetOrphanHashes(time.Now().Add(-pruneMinAge))
 	if err != nil {
