@@ -32,14 +32,21 @@ var _ = Describe("Prune", func() {
 		store = NewImageStore(GinkgoT().TempDir())
 	})
 
+	// PutImage refreshes created_at like the SQL repo, so fixtures are aged directly.
+	ageArtwork := func(h string, t time.Time) {
+		a := awRepo.Data[h]
+		a.CreatedAt = t
+		awRepo.Data[h] = a
+	}
+
 	It("deletes orphan rows and their store files, keeps referenced ones", func() {
 		data := []byte("orphan-bytes")
 		h, _ := HashImage(bytes.NewReader(data))
 		Expect(store.Write(h, "image/jpeg", bytes.NewReader(data))).To(Succeed())
 		old := time.Now().Add(-2 * time.Hour)
 		Expect(os.Chtimes(store.path(h, "image/jpeg"), old, old)).To(Succeed())
-		Expect(awRepo.PutImage(&model.Artwork{Hash: h, Mime: "image/jpeg",
-			CreatedAt: time.Now().Add(-2 * time.Hour)})).To(Succeed())
+		Expect(awRepo.PutImage(&model.Artwork{Hash: h, Mime: "image/jpeg"})).To(Succeed())
+		ageArtwork(h, old)
 		awRepo.OrphanHashes = []string{h}
 
 		kept := []byte("kept-bytes")
@@ -62,8 +69,8 @@ var _ = Describe("Prune", func() {
 		data := []byte("reacquired-bytes")
 		h, _ := HashImage(bytes.NewReader(data))
 		Expect(store.Write(h, "image/jpeg", bytes.NewReader(data))).To(Succeed())
-		Expect(awRepo.PutImage(&model.Artwork{Hash: h, Mime: "image/jpeg",
-			CreatedAt: time.Now().Add(-2 * time.Hour)})).To(Succeed())
+		Expect(awRepo.PutImage(&model.Artwork{Hash: h, Mime: "image/jpeg"})).To(Succeed())
+		ageArtwork(h, time.Now().Add(-2*time.Hour))
 		awRepo.OrphanHashes = []string{h}
 		// Reacquisition: an item now references the hash the snapshot flagged as orphan.
 		Expect(awRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "al", ItemID: "a1",
@@ -83,8 +90,7 @@ var _ = Describe("Prune", func() {
 		h, _ := HashImage(bytes.NewReader(data))
 		Expect(store.Write(h, "image/jpeg", bytes.NewReader(data))).To(Succeed())
 		// Reacquisition refreshed created_at after the snapshot; still unreferenced.
-		Expect(awRepo.PutImage(&model.Artwork{Hash: h, Mime: "image/jpeg",
-			CreatedAt: time.Now()})).To(Succeed())
+		Expect(awRepo.PutImage(&model.Artwork{Hash: h, Mime: "image/jpeg"})).To(Succeed())
 		awRepo.OrphanHashes = []string{h}
 
 		Expect(Prune(context.Background(), ds, store)).To(Succeed())
@@ -100,8 +106,8 @@ var _ = Describe("Prune", func() {
 		data := []byte("racing-bytes")
 		h, _ := HashImage(bytes.NewReader(data))
 		Expect(store.Write(h, "image/jpeg", bytes.NewReader(data))).To(Succeed())
-		Expect(awRepo.PutImage(&model.Artwork{Hash: h, Mime: "image/jpeg",
-			CreatedAt: time.Now().Add(-2 * time.Hour)})).To(Succeed())
+		Expect(awRepo.PutImage(&model.Artwork{Hash: h, Mime: "image/jpeg"})).To(Succeed())
+		ageArtwork(h, time.Now().Add(-2*time.Hour))
 		awRepo.OrphanHashes = []string{h}
 		// The row is legitimately orphaned, but a concurrent acquisition just touched the
 		// file's mtime (duplicate Write) and is about to commit a row referencing it.

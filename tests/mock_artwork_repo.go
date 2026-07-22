@@ -34,9 +34,8 @@ func (m *MockArtworkRepo) PutImage(a *model.Artwork) error {
 	if m.Err != nil {
 		return m.Err
 	}
-	if a.CreatedAt.IsZero() {
-		a.CreatedAt = time.Now()
-	}
+	// Mirrors the SQL repository: every upsert refreshes created_at. Age fixtures via Data directly.
+	a.CreatedAt = time.Now()
 	m.Data[a.Hash] = *a
 	return nil
 }
