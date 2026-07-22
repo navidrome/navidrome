@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/zeebo/xxh3"
 )
@@ -85,18 +86,27 @@ func (s *ImageStore) Remove(hash, mimeType string) error {
 	return err
 }
 
-func (s *ImageStore) Sweep(keep func(hash string) bool) (int, error) {
+// Sweep removes store files not accepted by keep. Files modified after cutoff
+// (including temp files) are always kept: their acquisition row may not be committed yet.
+func (s *ImageStore) Sweep(cutoff time.Time, keep func(hash string) bool) (int, error) {
 	removed := 0
 	err := filepath.WalkDir(s.root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return err
 		}
-		name := d.Name()
-		if strings.HasPrefix(name, ".") { // in-flight temp files
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
+		if info.ModTime().After(cutoff) {
 			return nil
 		}
-		hash := strings.TrimSuffix(name, filepath.Ext(name))
-		if !keep(hash) {
+		name := d.Name()
+		remove := strings.HasPrefix(name, ".") // abandoned temp file past the grace window
+		if !remove {
+			remove = !keep(strings.TrimSuffix(name, filepath.Ext(name)))
+		}
+		if remove {
 			// #nosec G122 -- path comes from WalkDir over our own store root, no attacker-controlled symlinks
 			if err := os.Remove(path); err != nil {
 				return err

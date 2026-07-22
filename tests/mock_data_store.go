@@ -267,7 +267,11 @@ func (db *MockDataStore) ArtworkQueue(ctx context.Context) model.ArtworkQueueRep
 	if db.RealDS != nil {
 		return db.RealDS.ArtworkQueue(ctx)
 	}
-	db.MockedArtworkQueue = CreateMockArtworkQueueRepo()
+	q := CreateMockArtworkQueueRepo()
+	if aw, ok := db.Artwork(ctx).(*MockArtworkRepo); ok {
+		q.ItemArtworkSource = aw
+	}
+	db.MockedArtworkQueue = q
 	return db.MockedArtworkQueue
 }
 

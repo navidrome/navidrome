@@ -8,6 +8,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/pocketbase/dbx"
 )
 
 // clearArtworkTables resets the shared test DB's artwork tables so specs don't leak state.
@@ -46,6 +47,19 @@ var _ = Describe("ArtworkRepository", func() {
 			Expect(repo.PutImage(a)).To(Succeed())
 			got, _ := repo.GetImage("dup1")
 			Expect(got.BlurHash).To(Equal("XYZ"))
+		})
+
+		It("refreshes created_at when reacquiring an existing hash", func() {
+			Expect(repo.PutImage(&model.Artwork{Hash: "reacq", Mime: "image/jpeg"})).To(Succeed())
+			_, err := GetDBXBuilder().NewQuery("UPDATE artwork SET created_at={:t} WHERE hash='reacq'").
+				Bind(dbx.Params{"t": "2000-01-01 00:00:00"}).Execute()
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(repo.PutImage(&model.Artwork{Hash: "reacq", Mime: "image/png"})).To(Succeed())
+
+			got, err := repo.GetImage("reacq")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.CreatedAt).To(BeTemporally(">", time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)))
 		})
 
 		It("returns ErrNotFound for a missing hash", func() {

@@ -60,6 +60,8 @@ var _ = Describe("Prune", func() {
 		stray := []byte("no-row-bytes")
 		h, _ := HashImage(bytes.NewReader(stray))
 		Expect(store.Write(h, "image/jpeg", bytes.NewReader(stray))).To(Succeed())
+		old := time.Now().Add(-2 * time.Hour)
+		Expect(os.Chtimes(store.path(h, "image/jpeg"), old, old)).To(Succeed())
 
 		Expect(Prune(context.Background(), ds, store)).To(Succeed())
 

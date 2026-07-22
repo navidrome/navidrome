@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -67,7 +68,10 @@ var _ = Describe("ImageStore", func() {
 		h2, _ := HashImage(bytes.NewReader(d2))
 		Expect(store.Write(h2, "image/jpeg", bytes.NewReader(d2))).To(Succeed())
 
-		removed, err := store.Sweep(func(h string) bool { return h == h1 })
+		old := time.Now().Add(-2 * time.Hour)
+		Expect(os.Chtimes(store.path(h2, "image/jpeg"), old, old)).To(Succeed())
+
+		removed, err := store.Sweep(time.Now().Add(-time.Hour), func(h string) bool { return h == h1 })
 		Expect(err).ToNot(HaveOccurred())
 		Expect(removed).To(Equal(1))
 		_, err = store.Open(h2, "image/jpeg")
@@ -75,5 +79,34 @@ var _ = Describe("ImageStore", func() {
 		rc, err := store.Open(h1, "image/jpeg")
 		Expect(err).ToNot(HaveOccurred())
 		rc.Close()
+	})
+
+	It("keeps young unknown files inside the grace window", func() {
+		d := []byte("fresh-orphan")
+		h, _ := HashImage(bytes.NewReader(d))
+		Expect(store.Write(h, "image/jpeg", bytes.NewReader(d))).To(Succeed())
+
+		removed, err := store.Sweep(time.Now().Add(-time.Hour), func(string) bool { return false })
+		Expect(err).ToNot(HaveOccurred())
+		Expect(removed).To(Equal(0))
+		rc, err := store.Open(h, "image/jpeg")
+		Expect(err).ToNot(HaveOccurred())
+		rc.Close()
+	})
+
+	It("removes abandoned temp files past the grace window, keeps fresh ones", func() {
+		oldTmp := filepath.Join(root, ".old.tmp")
+		Expect(os.WriteFile(oldTmp, []byte("x"), 0600)).To(Succeed())
+		old := time.Now().Add(-2 * time.Hour)
+		Expect(os.Chtimes(oldTmp, old, old)).To(Succeed())
+
+		freshTmp := filepath.Join(root, ".fresh.tmp")
+		Expect(os.WriteFile(freshTmp, []byte("y"), 0600)).To(Succeed())
+
+		removed, err := store.Sweep(time.Now().Add(-time.Hour), func(string) bool { return true })
+		Expect(err).ToNot(HaveOccurred())
+		Expect(removed).To(Equal(1))
+		Expect(oldTmp).ToNot(BeAnExistingFile())
+		Expect(freshTmp).To(BeAnExistingFile())
 	})
 })

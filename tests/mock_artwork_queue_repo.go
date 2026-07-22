@@ -11,6 +11,8 @@ type MockArtworkQueueRepo struct {
 	model.ArtworkQueueRepository
 	Data map[string]model.ArtworkQueueItem // keyed by iaKey(kind, id, imageType)
 	Err  error
+	// ItemArtworkSource, when set, backs EnqueueStaleAbsent with real item_artwork state.
+	ItemArtworkSource *MockArtworkRepo
 }
 
 func CreateMockArtworkQueueRepo() *MockArtworkQueueRepo {
@@ -98,5 +100,28 @@ func (m *MockArtworkQueueRepo) Count() (int64, error) {
 }
 
 func (m *MockArtworkQueueRepo) EnqueueStaleAbsent(kind string, attemptedBefore time.Time) (int64, error) {
-	return 0, m.Err
+	if m.Err != nil || m.ItemArtworkSource == nil {
+		return 0, m.Err
+	}
+	now := time.Now()
+	var inserted int64
+	for _, ia := range m.ItemArtworkSource.ItemData {
+		if ia.ItemKind != kind || ia.Hash != "" || !ia.AttemptedAt.Before(attemptedBefore) {
+			continue
+		}
+		k := iaKey(ia.ItemKind, ia.ItemID, ia.ImageType)
+		if _, ok := m.Data[k]; ok { // DO NOTHING: never touch existing queue rows
+			continue
+		}
+		m.Data[k] = model.ArtworkQueueItem{
+			ItemKind:   ia.ItemKind,
+			ItemID:     ia.ItemID,
+			ImageType:  ia.ImageType,
+			Priority:   model.ArtworkPriorityRecheck,
+			RetryAt:    now,
+			EnqueuedAt: now,
+		}
+		inserted++
+	}
+	return inserted, nil
 }

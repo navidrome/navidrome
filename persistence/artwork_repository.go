@@ -45,16 +45,16 @@ func (r *artworkRepository) GetImage(hash string) (*model.Artwork, error) {
 }
 
 func (r *artworkRepository) PutImage(a *model.Artwork) error {
-	if a.CreatedAt.IsZero() {
-		a.CreatedAt = time.Now()
-	}
+	// created_at is the last-acquisition-write time the prune grace window keys on.
+	a.CreatedAt = time.Now()
 	values, err := toSQLArgs(*a)
 	if err != nil {
 		return err
 	}
+	// created_at=excluded.created_at: reacquiring an orphan must reset the prune grace window.
 	ins := Insert(r.tableName).SetMap(values).Suffix(`ON CONFLICT (hash) DO UPDATE SET mime=excluded.mime, width=excluded.width,
 		height=excluded.height, size_bytes=excluded.size_bytes, blur_hash=excluded.blur_hash,
-		source_path=excluded.source_path, ref_mtime=excluded.ref_mtime`)
+		source_path=excluded.source_path, ref_mtime=excluded.ref_mtime, created_at=excluded.created_at`)
 	_, err = r.executeSQL(ins)
 	return err
 }

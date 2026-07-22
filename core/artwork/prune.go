@@ -13,7 +13,10 @@ const pruneMinAge = time.Hour
 
 func Prune(ctx context.Context, ds model.DataStore, store *ImageStore) error {
 	repo := ds.Artwork(ctx)
-	orphans, err := repo.GetOrphanHashes(time.Now().Add(-pruneMinAge))
+	// One grace cutoff for both the DB orphan check and the file sweep: files younger
+	// than the window may belong to acquisitions whose rows aren't committed yet.
+	cutoff := time.Now().Add(-pruneMinAge)
+	orphans, err := repo.GetOrphanHashes(cutoff)
 	if err != nil {
 		return err
 	}
@@ -41,7 +44,7 @@ func Prune(ctx context.Context, ds model.DataStore, store *ImageStore) error {
 	for _, h := range hashes {
 		known[h] = struct{}{}
 	}
-	removed, err := store.Sweep(func(hash string) bool {
+	removed, err := store.Sweep(cutoff, func(hash string) bool {
 		_, ok := known[hash]
 		return ok
 	})
