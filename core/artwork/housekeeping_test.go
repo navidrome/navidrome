@@ -79,6 +79,13 @@ var _ = Describe("Housekeeping", func() {
 			conf.Server.ArtistImageFolder = "/after"
 			Expect(Fingerprint()).NotTo(Equal(f1))
 		})
+
+		It("changes when EnableM3UExternalAlbumArt is toggled", func() {
+			conf.Server.EnableM3UExternalAlbumArt = false
+			f1 := Fingerprint()
+			conf.Server.EnableM3UExternalAlbumArt = true
+			Expect(Fingerprint()).NotTo(Equal(f1))
+		})
 	})
 
 	Describe("Backfill", func() {
