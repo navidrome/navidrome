@@ -9,7 +9,7 @@ import ElectricPurpleTheme from './electricPurple'
 import NordTheme from './nord'
 import GruvboxDarkTheme from './gruvboxDark'
 import CatppuccinMacchiatoTheme from './catppuccinMacchiato'
-import catppuccinMochaTheme from './catppuccinMocha'
+import CatppuccinMochaTheme from './catppuccinMocha'
 import CatppuccinLatteTheme from './catppuccinLatte'
 import DraculaTheme from './dracula'
 import NuclearTheme from './nuclear'
@@ -33,7 +33,7 @@ export default {
   // New themes should be added here, in alphabetic order
   AmusicTheme,
   CatppuccinMacchiatoTheme,
-  catppuccinMochaTheme,
+  CatppuccinMochaTheme,
   CatppuccinLatteTheme,
   DraculaTheme,
   ElectricPurpleTheme,
