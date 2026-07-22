@@ -56,8 +56,10 @@ func (s *ImageStore) Write(hash, mimeType string, r io.Reader) error {
 	if _, err := os.Stat(dst); err == nil {
 		// A touched mtime marks the file live so a concurrent prune spares it.
 		now := time.Now()
-		_ = os.Chtimes(dst, now, now)
-		return nil
+		if err := os.Chtimes(dst, now, now); err == nil {
+			return nil
+		}
+		// touch failed (file likely pruned concurrently) — fall through and write it
 	}
 	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
 		return err
@@ -104,7 +106,7 @@ func (s *ImageStore) Remove(hash, mimeType string, olderThan time.Time) error {
 
 // Sweep removes store files not accepted by keep. Files modified after cutoff
 // (including temp files) are always kept: their acquisition row may not be committed yet.
-func (s *ImageStore) Sweep(cutoff time.Time, keep func(hash string) bool) (int, error) {
+func (s *ImageStore) Sweep(cutoff time.Time, keep func(hash, ext string) bool) (int, error) {
 	removed := 0
 	err := filepath.WalkDir(s.root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
@@ -120,7 +122,8 @@ func (s *ImageStore) Sweep(cutoff time.Time, keep func(hash string) bool) (int, 
 		name := d.Name()
 		remove := strings.HasPrefix(name, ".") // abandoned temp file past the grace window
 		if !remove {
-			remove = !keep(strings.TrimSuffix(name, filepath.Ext(name)))
+			ext := filepath.Ext(name)
+			remove = !keep(strings.TrimSuffix(name, ext), ext)
 		}
 		if remove {
 			// #nosec G122 -- path comes from WalkDir over our own store root, no attacker-controlled symlinks

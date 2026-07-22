@@ -74,11 +74,20 @@ func (r *artworkRepository) GetImages(hashes []string) (map[string]model.Artwork
 	return res, nil
 }
 
-func (r *artworkRepository) GetAllHashes() ([]string, error) {
-	sel := Select("hash").From(r.tableName)
-	var hashes []string
-	err := r.queryAllSlice(sel, &hashes)
-	return hashes, err
+func (r *artworkRepository) GetAllMimes() (map[string]string, error) {
+	sel := Select("hash", "mime").From(r.tableName)
+	var rows []struct {
+		Hash string
+		Mime string
+	}
+	if err := r.queryAll(sel, &rows); err != nil {
+		return nil, err
+	}
+	res := make(map[string]string, len(rows))
+	for _, row := range rows {
+		res[row.Hash] = row.Mime
+	}
+	return res, nil
 }
 
 func (r *artworkRepository) GetOrphanHashes(createdBefore time.Time) ([]string, error) {

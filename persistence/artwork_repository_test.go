@@ -76,12 +76,13 @@ var _ = Describe("ArtworkRepository", func() {
 			Expect(got["b2"].Mime).To(Equal("image/png"))
 		})
 
-		It("returns every stored hash", func() {
+		It("returns every stored hash with its current mime", func() {
 			Expect(repo.PutImage(&model.Artwork{Hash: "all1", Mime: "image/jpeg"})).To(Succeed())
 			Expect(repo.PutImage(&model.Artwork{Hash: "all2", Mime: "image/png"})).To(Succeed())
-			hashes, err := repo.GetAllHashes()
+			mimes, err := repo.GetAllMimes()
 			Expect(err).ToNot(HaveOccurred())
-			Expect(hashes).To(ConsistOf("all1", "all2"))
+			Expect(mimes).To(HaveKeyWithValue("all1", "image/jpeg"))
+			Expect(mimes).To(HaveKeyWithValue("all2", "image/png"))
 		})
 
 		It("finds orphans older than cutoff, honoring item_artwork references", func() {

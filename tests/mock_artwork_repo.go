@@ -58,15 +58,15 @@ func (m *MockArtworkRepo) GetOrphanHashes(createdBefore time.Time) ([]string, er
 	return m.OrphanHashes, m.Err
 }
 
-func (m *MockArtworkRepo) GetAllHashes() ([]string, error) {
+func (m *MockArtworkRepo) GetAllMimes() (map[string]string, error) {
 	if m.Err != nil {
 		return nil, m.Err
 	}
-	hashes := make([]string, 0, len(m.Data))
-	for h := range m.Data {
-		hashes = append(hashes, h)
+	mimes := make(map[string]string, len(m.Data))
+	for h, a := range m.Data {
+		mimes[h] = a.Mime
 	}
-	return hashes, nil
+	return mimes, nil
 }
 
 func (m *MockArtworkRepo) DeleteOrphans(createdBefore time.Time, hashes []string) error {

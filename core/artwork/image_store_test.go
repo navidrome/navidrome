@@ -65,6 +65,22 @@ var _ = Describe("ImageStore", func() {
 		Expect(info.ModTime()).To(BeTemporally(">", time.Now().Add(-time.Minute)))
 	})
 
+	It("rewrites the bytes when the existing file vanished before the liveness touch", func() {
+		data := []byte("vanishing")
+		h, _ := HashImage(bytes.NewReader(data))
+		for range 10 {
+			Expect(store.Write(h, "image/png", bytes.NewReader(data))).To(Succeed())
+			Expect(os.Remove(store.path(h, "image/png"))).To(Succeed())
+			Expect(store.Write(h, "image/png", bytes.NewReader(data))).To(Succeed())
+
+			rc, err := store.Open(h, "image/png")
+			Expect(err).ToNot(HaveOccurred())
+			got, _ := io.ReadAll(rc)
+			rc.Close()
+			Expect(got).To(Equal(data))
+		}
+	})
+
 	It("returns fs.ErrNotExist for missing images", func() {
 		_, err := store.Open("beefbeefbeefbeef", "image/jpeg")
 		Expect(os.IsNotExist(err)).To(BeTrue())
@@ -107,7 +123,7 @@ var _ = Describe("ImageStore", func() {
 		old := time.Now().Add(-2 * time.Hour)
 		Expect(os.Chtimes(store.path(h2, "image/jpeg"), old, old)).To(Succeed())
 
-		removed, err := store.Sweep(time.Now().Add(-time.Hour), func(h string) bool { return h == h1 })
+		removed, err := store.Sweep(time.Now().Add(-time.Hour), func(h, _ string) bool { return h == h1 })
 		Expect(err).ToNot(HaveOccurred())
 		Expect(removed).To(Equal(1))
 		_, err = store.Open(h2, "image/jpeg")
@@ -117,12 +133,34 @@ var _ = Describe("ImageStore", func() {
 		rc.Close()
 	})
 
+	It("sweeps a stale mime variant of a known hash, keeps the current one", func() {
+		data := []byte("same-bytes")
+		h, _ := HashImage(bytes.NewReader(data))
+		Expect(store.Write(h, "image/png", bytes.NewReader(data))).To(Succeed())
+		Expect(store.Write(h, "image/jpeg", bytes.NewReader(data))).To(Succeed())
+		old := time.Now().Add(-2 * time.Hour)
+		Expect(os.Chtimes(store.path(h, "image/png"), old, old)).To(Succeed())
+		Expect(os.Chtimes(store.path(h, "image/jpeg"), old, old)).To(Succeed())
+
+		// The recorded mime is image/jpeg, so the .png variant is obsolete.
+		removed, err := store.Sweep(time.Now().Add(-time.Hour), func(hash, ext string) bool {
+			return hash == h && ext == ".jpg"
+		})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(removed).To(Equal(1))
+		_, err = store.Open(h, "image/png")
+		Expect(os.IsNotExist(err)).To(BeTrue())
+		rc, err := store.Open(h, "image/jpeg")
+		Expect(err).ToNot(HaveOccurred())
+		rc.Close()
+	})
+
 	It("keeps young unknown files inside the grace window", func() {
 		d := []byte("fresh-orphan")
 		h, _ := HashImage(bytes.NewReader(d))
 		Expect(store.Write(h, "image/jpeg", bytes.NewReader(d))).To(Succeed())
 
-		removed, err := store.Sweep(time.Now().Add(-time.Hour), func(string) bool { return false })
+		removed, err := store.Sweep(time.Now().Add(-time.Hour), func(string, string) bool { return false })
 		Expect(err).ToNot(HaveOccurred())
 		Expect(removed).To(Equal(0))
 		rc, err := store.Open(h, "image/jpeg")
@@ -139,7 +177,7 @@ var _ = Describe("ImageStore", func() {
 		freshTmp := filepath.Join(root, ".fresh.tmp")
 		Expect(os.WriteFile(freshTmp, []byte("y"), 0600)).To(Succeed())
 
-		removed, err := store.Sweep(time.Now().Add(-time.Hour), func(string) bool { return true })
+		removed, err := store.Sweep(time.Now().Add(-time.Hour), func(string, string) bool { return true })
 		Expect(err).ToNot(HaveOccurred())
 		Expect(removed).To(Equal(1))
 		Expect(oldTmp).ToNot(BeAnExistingFile())

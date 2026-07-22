@@ -49,17 +49,14 @@ func Prune(ctx context.Context, ds model.DataStore, store *ImageStore) error {
 		log.Info(ctx, "Prune: removed orphan artwork", "count", removed)
 	}
 
-	hashes, err := repo.GetAllHashes()
+	mimes, err := repo.GetAllMimes()
 	if err != nil {
 		return err
 	}
-	known := make(map[string]struct{}, len(hashes))
-	for _, h := range hashes {
-		known[h] = struct{}{}
-	}
-	removed, err := store.Sweep(cutoff, func(hash string) bool {
-		_, ok := known[hash]
-		return ok
+	removed, err := store.Sweep(cutoff, func(hash, ext string) bool {
+		// A known hash under a stale extension is a superseded mime variant — reclaim it.
+		m, ok := mimes[hash]
+		return ok && ext == extForMime(m)
 	})
 	if err != nil {
 		return err

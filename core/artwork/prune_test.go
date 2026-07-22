@@ -17,7 +17,7 @@ type flakyGetArtworkRepo struct {
 	*tests.MockArtworkRepo
 }
 
-func (f *flakyGetArtworkRepo) GetAllHashes() ([]string, error) {
+func (f *flakyGetArtworkRepo) GetAllMimes() (map[string]string, error) {
 	return nil, errors.New("db locked")
 }
 
@@ -106,6 +106,26 @@ var _ = Describe("Prune", func() {
 
 		_, err := store.Open(h, "image/jpeg")
 		Expect(os.IsNotExist(err)).To(BeTrue())
+	})
+
+	It("sweeps an obsolete mime variant of a reacquired hash", func() {
+		data := []byte("variant-bytes")
+		h, _ := HashImage(bytes.NewReader(data))
+		Expect(store.Write(h, "image/png", bytes.NewReader(data))).To(Succeed())
+		Expect(store.Write(h, "image/jpeg", bytes.NewReader(data))).To(Succeed())
+		old := time.Now().Add(-2 * time.Hour)
+		Expect(os.Chtimes(store.path(h, "image/png"), old, old)).To(Succeed())
+		Expect(os.Chtimes(store.path(h, "image/jpeg"), old, old)).To(Succeed())
+		// The row records the current mime; the .png file is a superseded variant.
+		Expect(awRepo.PutImage(&model.Artwork{Hash: h, Mime: "image/jpeg"})).To(Succeed())
+
+		Expect(Prune(context.Background(), ds, store)).To(Succeed())
+
+		_, err := store.Open(h, "image/png")
+		Expect(os.IsNotExist(err)).To(BeTrue())
+		rc, err := store.Open(h, "image/jpeg")
+		Expect(err).ToNot(HaveOccurred())
+		rc.Close()
 	})
 
 	It("never sweeps files on a transient DB error", func() {

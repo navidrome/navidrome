@@ -73,8 +73,8 @@ type ArtworkRepository interface {
 	DeleteForItem(kind, id string) error
 	// GetInfoForItems hydrates a page: one batched query, item_artwork joined to artwork.
 	GetInfoForItems(kind string, ids []string) (map[string]ItemArtworkInfo, error)
-	// GetAllHashes returns every stored artwork hash, for sweep membership checks.
-	GetAllHashes() ([]string, error)
+	// GetAllMimes returns hash -> current mime for every stored artwork, for sweep retention checks.
+	GetAllMimes() (map[string]string, error)
 }
 
 type ArtworkQueueRepository interface {
