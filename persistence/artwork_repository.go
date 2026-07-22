@@ -122,20 +122,25 @@ var danglingItemArtworkKinds = map[string]string{
 	"ra": "radio",
 }
 
-func (r *artworkRepository) PurgeDanglingItemArtwork() (int64, error) {
+// purgeDangling deletes rows in table whose owning entity is gone, one statement per kind.
+func purgeDangling(execute func(Sqlizer) (int64, error), table string) (int64, error) {
 	var total int64
-	for kind, table := range danglingItemArtworkKinds {
-		del := Delete(itemArtworkTable).Where(And{
+	for kind, entityTable := range danglingItemArtworkKinds {
+		del := Delete(table).Where(And{
 			Eq{"item_kind": kind},
-			Expr("item_id NOT IN (SELECT id FROM " + table + ")"),
+			Expr("item_id NOT IN (SELECT id FROM " + entityTable + ")"),
 		})
-		c, err := r.items.executeSQL(del)
+		c, err := execute(del)
 		if err != nil {
 			return total, err
 		}
 		total += c
 	}
 	return total, nil
+}
+
+func (r *artworkRepository) PurgeDanglingItemArtwork() (int64, error) {
+	return purgeDangling(r.items.executeSQL, itemArtworkTable)
 }
 
 func (r *artworkRepository) GetItemArtwork(kind, id, imageType string) (*model.ItemArtwork, error) {

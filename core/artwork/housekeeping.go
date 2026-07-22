@@ -11,6 +11,7 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 // FingerprintPropertyKey is the model.PropertyRepository key Backfill compares against
@@ -46,36 +47,36 @@ func Backfill(ctx context.Context, ds model.DataStore) (bool, error) {
 		return false, nil
 	}
 
-	artists, err := ds.Artist(ctx).GetAll()
-	if err != nil {
-		return false, err
+	// Artists first: few entities, most external-dependent, so they get queue headstart.
+	kinds := []struct {
+		kind  string
+		fetch func() ([]string, error)
+	}{
+		{"ar", func() ([]string, error) {
+			as, err := ds.Artist(ctx).GetAll()
+			return slice.Map(as, func(a model.Artist) string { return a.ID }), err
+		}},
+		{"al", func() ([]string, error) {
+			as, err := ds.Album(ctx).GetAll()
+			return slice.Map(as, func(a model.Album) string { return a.ID }), err
+		}},
+		{"pl", func() ([]string, error) {
+			ps, err := ds.Playlist(ctx).GetAll()
+			return slice.Map(ps, func(p model.Playlist) string { return p.ID }), err
+		}},
+		{"ra", func() ([]string, error) {
+			rs, err := ds.Radio(ctx).GetAll()
+			return slice.Map(rs, func(r model.Radio) string { return r.ID }), err
+		}},
 	}
-	if err := enqueueBackfillKind(ctx, ds, "ar", idsOf(artists, func(a model.Artist) string { return a.ID })); err != nil {
-		return false, err
-	}
-
-	albums, err := ds.Album(ctx).GetAll()
-	if err != nil {
-		return false, err
-	}
-	if err := enqueueBackfillKind(ctx, ds, "al", idsOf(albums, func(a model.Album) string { return a.ID })); err != nil {
-		return false, err
-	}
-
-	playlists, err := ds.Playlist(ctx).GetAll()
-	if err != nil {
-		return false, err
-	}
-	if err := enqueueBackfillKind(ctx, ds, "pl", idsOf(playlists, func(p model.Playlist) string { return p.ID })); err != nil {
-		return false, err
-	}
-
-	radios, err := ds.Radio(ctx).GetAll()
-	if err != nil {
-		return false, err
-	}
-	if err := enqueueBackfillKind(ctx, ds, "ra", idsOf(radios, func(r model.Radio) string { return r.ID })); err != nil {
-		return false, err
+	for _, k := range kinds {
+		ids, err := k.fetch()
+		if err != nil {
+			return false, err
+		}
+		if err := enqueueBackfillKind(ctx, ds, k.kind, ids); err != nil {
+			return false, err
+		}
 	}
 
 	if err := props.Put(FingerprintPropertyKey, current); err != nil {
@@ -96,14 +97,6 @@ func enqueueBackfillKind(ctx context.Context, ds model.DataStore, kind string, i
 		}
 	}
 	return ds.ArtworkQueue(ctx).Enqueue(items...)
-}
-
-func idsOf[T any](items []T, id func(T) string) []string {
-	ids := make([]string, len(items))
-	for i, it := range items {
-		ids[i] = id(it)
-	}
-	return ids
 }
 
 // EnqueueStaleAbsentAll requeues absent-state entries older than staleAbsentAge, across

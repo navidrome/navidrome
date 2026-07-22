@@ -78,19 +78,7 @@ func (r *artworkQueueRepository) DeleteIfUnchanged(kind, id, imageType string, r
 
 // PurgeDangling removes queue rows whose entity no longer exists, per kind.
 func (r *artworkQueueRepository) PurgeDangling() (int64, error) {
-	var total int64
-	for kind, table := range danglingItemArtworkKinds {
-		del := Delete(r.tableName).Where(And{
-			Eq{"item_kind": kind},
-			Expr("item_id NOT IN (SELECT id FROM " + table + ")"),
-		})
-		c, err := r.executeSQL(del)
-		if err != nil {
-			return total, err
-		}
-		total += c
-	}
-	return total, nil
+	return purgeDangling(r.executeSQL, r.tableName)
 }
 
 func (r *artworkQueueRepository) Count() (int64, error) {

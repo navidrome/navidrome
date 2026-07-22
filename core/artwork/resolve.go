@@ -39,7 +39,7 @@ func passthroughExtGate(f func() (io.ReadCloser, string, error)) (io.ReadCloser,
 }
 
 // resolveItem walks the kind's priority chain and returns the first hit.
-func resolveItem(ctx context.Context, ds model.DataStore, prov external.Provider, ffmpeg ffmpeg.FFmpeg, item model.ArtworkQueueItem, extGate func(func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error)) (resolution, error) {
+func resolveItem(ctx context.Context, ds model.DataStore, prov external.Provider, ffmpeg ffmpeg.FFmpeg, item model.ArtworkQueueItem, extGate extGateFunc) (resolution, error) {
 	if extGate == nil {
 		extGate = passthroughExtGate
 	}
@@ -290,12 +290,10 @@ func resolveEmbedded(ctx context.Context, lib libraryView, ffm ffmpeg.FFmpeg, em
 		return resolution{}, false
 	}
 	abs := lib.Abs(embedRel)
-	mtime := mtimeViaFS(lib.FS, embedRel)
-	if r, _, _ := fromTag(ctx, lib.FS, embedRel)(); r != nil {
-		return resolution{reader: r, source: "embedded", sourcePath: abs, refMtime: mtime}, true
-	}
-	if r, _, _ := fromFFmpegTag(ctx, ffm, abs)(); r != nil {
-		return resolution{reader: r, source: "embedded", sourcePath: abs, refMtime: mtime}, true
+	for _, sf := range []sourceFunc{fromTag(ctx, lib.FS, embedRel), fromFFmpegTag(ctx, ffm, abs)} {
+		if r, _, _ := sf(); r != nil {
+			return resolution{reader: r, source: "embedded", sourcePath: abs, refMtime: mtimeViaFS(lib.FS, embedRel)}, true
+		}
 	}
 	return resolution{}, false
 }

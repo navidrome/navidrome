@@ -38,7 +38,7 @@ type workerDeps struct {
 	store   *ImageStore
 	prov    external.Provider
 	ffmpeg  ffmpeg.FFmpeg
-	extGate func(func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error)
+	extGate extGateFunc
 }
 
 // processItem resolves one queue item end to end: find an image, hash/decode/
