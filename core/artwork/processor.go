@@ -31,6 +31,10 @@ const (
 // thumbnailSize is the max dimension fed to blurhash.
 const thumbnailSize = 128
 
+// maxImageBytes caps a resolved image read: a user-editable ExternalImageURL could
+// point at an arbitrarily large endpoint, and 20MB is generous for any real cover.
+const maxImageBytes = 20 << 20
+
 // workerDeps are the collaborators processItem needs; extGate is set by NewWorker in
 // production and nil only in tests, where resolveItem falls back to a plain passthrough.
 type workerDeps struct {
@@ -60,9 +64,13 @@ func processItem(ctx context.Context, deps *workerDeps, item model.ArtworkQueueI
 	}
 	defer res.reader.Close()
 
-	data, err := io.ReadAll(res.reader)
+	data, err := io.ReadAll(io.LimitReader(res.reader, maxImageBytes+1))
 	if err != nil {
 		log.Warn(ctx, "artwork: failed to read resolved image", "kind", item.ItemKind, "id", item.ItemID, err)
+		return outcomeFailed
+	}
+	if len(data) > maxImageBytes {
+		log.Warn(ctx, "artwork: resolved image exceeds size cap", "kind", item.ItemKind, "id", item.ItemID, "source", res.source, "cap", maxImageBytes)
 		return outcomeFailed
 	}
 	log.Debug(ctx, "artwork: read resolved image", "kind", item.ItemKind, "id", item.ItemID, "source", res.source, "bytes", len(data))

@@ -186,6 +186,27 @@ var _ = Describe("processItem", func() {
 		Expect(err).To(MatchError(model.ErrNotFound))
 	})
 
+	It("oversized read: a resolved image larger than the cap fails without writing state", func() {
+		tmpDir := GinkgoT().TempDir()
+		conf.Server.DataFolder = conf.NewDir(tmpDir)
+		Expect(os.MkdirAll(filepath.Join(tmpDir, "artwork", "radio"), 0755)).To(Succeed())
+		imgPath := filepath.Join(tmpDir, "artwork", "radio", "big_test.jpg")
+		f, err := os.Create(imgPath)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(f.Truncate(maxImageBytes + 1)).To(Succeed())
+		Expect(f.Close()).To(Succeed())
+
+		radioRepo := tests.CreateMockedRadioRepo()
+		radioRepo.Data = map[string]*model.Radio{"big": {ID: "big", Name: "Radio", UploadedImage: "big_test.jpg"}}
+		ds.MockedRadio = radioRepo
+
+		out := processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "ra", ItemID: "big"})
+		Expect(out).To(Equal(outcomeFailed))
+
+		_, err = artRepo.GetItemArtwork("ra", "big", model.ImageTypePrimary)
+		Expect(err).To(MatchError(model.ErrNotFound))
+	})
+
 	It("store write failure: fails without writing state", func() {
 		ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
 			{ID: "al7", Name: "Album", EmbedArtPath: "tests/fixtures/artist/an-album/test.mp3", FolderIDs: []string{"f1"}},
