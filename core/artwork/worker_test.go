@@ -213,6 +213,27 @@ var _ = Describe("Worker", func() {
 			Expect(it.RetryAt).To(BeTemporally("==", dequeued.Add(time.Minute)))
 		})
 
+		It("resolves a private playlist under an admin context instead of failing forever", func() {
+			ds.MockedUser = adminUserRepo()
+			vds := &visibilityPlaylistDS{
+				MockDataStore: ds,
+				private:       model.Playlist{ID: "plPriv", OwnerID: "admin"},
+				tracks:        &tests.MockPlaylistTrackRepo{},
+			}
+			w = NewWorker(vds, store, prov, ffm)
+			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "pl", ItemID: "plPriv"})).To(Succeed())
+
+			n, err := w.drain(ctx, 1)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(n).To(Equal(1))
+
+			// Resolved as absent (no art) and removed — not stuck failing on ErrNotFound forever.
+			Expect(findQueued(queueRepo, "pl", "plPriv")).To(BeNil())
+			ia, err := artRepo.GetItemArtwork("pl", "plPriv", model.ImageTypePrimary)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ia.Hash).To(BeEmpty())
+		})
+
 		It("returns zero when the queue is empty", func() {
 			n, err := w.drain(ctx, 2)
 			Expect(err).ToNot(HaveOccurred())

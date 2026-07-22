@@ -7,10 +7,34 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
+
+// visibilityPlaylistDS models playlist_repository's userFilter: a private playlist is only
+// visible when the ctx carries an admin, so headless work must wrap ctx with one first.
+type visibilityPlaylistDS struct {
+	*tests.MockDataStore
+	private model.Playlist
+	tracks  model.PlaylistTrackRepository
+}
+
+func (v *visibilityPlaylistDS) Playlist(ctx context.Context) model.PlaylistRepository {
+	repo := tests.CreateMockPlaylistRepo()
+	repo.TracksRepo = v.tracks
+	if u, ok := request.UserFrom(ctx); ok && u.IsAdmin {
+		repo.SetData(model.Playlists{v.private})
+	}
+	return repo
+}
+
+func adminUserRepo() *tests.MockedUserRepo {
+	repo := tests.CreateMockUserRepo()
+	Expect(repo.Put(&model.User{ID: "admin", UserName: "admin", IsAdmin: true})).To(Succeed())
+	return repo
+}
 
 // orderTrackingQueueRepo records the item kind of each Enqueue call, so tests can
 // assert phase ordering (artists-first) that same-priority timestamps can't guarantee.
@@ -116,6 +140,20 @@ var _ = Describe("Housekeeping", func() {
 			stored, err := propRepo.Get(FingerprintPropertyKey)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(stored).To(Equal(Fingerprint()))
+		})
+
+		It("enqueues a private playlist by resolving it under an admin context", func() {
+			ds.MockedUser = adminUserRepo()
+			vds := &visibilityPlaylistDS{
+				MockDataStore: ds,
+				private:       model.Playlist{ID: "plPrivate", OwnerID: "admin"},
+				tracks:        &tests.MockPlaylistTrackRepo{},
+			}
+
+			did, err := Backfill(ctx, vds)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(did).To(BeTrue())
+			Expect(findQueued(queueRepo.MockArtworkQueueRepo, "pl", "plPrivate")).ToNot(BeNil())
 		})
 
 		It("enqueues artists before albums/playlists/radios, all at Backfill priority", func() {
