@@ -55,21 +55,17 @@ const (
 )
 
 type ArtworkRepository interface {
-	Get(hash string) (*Artwork, error)
-	Put(a *Artwork) error
-	GetBatch(hashes []string) (map[string]Artwork, error)
-	// GetOrphanHashes returns hashes referenced by no item_artwork row and older than cutoff.
+	// Image identity (artwork table)
+	GetImage(hash string) (*Artwork, error)
+	PutImage(a *Artwork) error
+	GetImages(hashes []string) (map[string]Artwork, error)
 	GetOrphanHashes(createdBefore time.Time) ([]string, error)
-	Delete(hashes ...string) error
-}
-
-type ItemArtworkRepository interface {
-	Get(kind, id, imageType string) (*ItemArtwork, error)
-	Put(ia *ItemArtwork) error
+	DeleteImages(hashes ...string) error
+	// Per-item state (item_artwork table)
+	GetItemArtwork(kind, id, imageType string) (*ItemArtwork, error)
+	PutItemArtwork(ia *ItemArtwork) error
 	DeleteForItem(kind, id string) error
-	// GetInfoForItems hydrates a page: one batched query, item_artwork joined to artwork.
 	GetInfoForItems(kind string, ids []string) (map[string]ItemArtworkInfo, error)
-	// EnqueueStaleAbsent inserts queue rows (priority Recheck) for absent states older than cutoff.
 	EnqueueStaleAbsent(kind string, attemptedBefore time.Time) (int64, error)
 }
 

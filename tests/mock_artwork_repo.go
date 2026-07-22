@@ -9,15 +9,18 @@ import (
 type MockArtworkRepo struct {
 	model.ArtworkRepository
 	Data         map[string]model.Artwork
+	ItemData     map[string]model.ItemArtwork // key: kind + "|" + id + "|" + imageType
 	OrphanHashes []string
 	Err          error
 }
 
 func CreateMockArtworkRepo() *MockArtworkRepo {
-	return &MockArtworkRepo{Data: map[string]model.Artwork{}}
+	return &MockArtworkRepo{Data: map[string]model.Artwork{}, ItemData: map[string]model.ItemArtwork{}}
 }
 
-func (m *MockArtworkRepo) Get(hash string) (*model.Artwork, error) {
+func iaKey(kind, id, imageType string) string { return kind + "|" + id + "|" + imageType }
+
+func (m *MockArtworkRepo) GetImage(hash string) (*model.Artwork, error) {
 	if m.Err != nil {
 		return nil, m.Err
 	}
@@ -27,7 +30,7 @@ func (m *MockArtworkRepo) Get(hash string) (*model.Artwork, error) {
 	return nil, model.ErrNotFound
 }
 
-func (m *MockArtworkRepo) Put(a *model.Artwork) error {
+func (m *MockArtworkRepo) PutImage(a *model.Artwork) error {
 	if m.Err != nil {
 		return m.Err
 	}
@@ -38,7 +41,7 @@ func (m *MockArtworkRepo) Put(a *model.Artwork) error {
 	return nil
 }
 
-func (m *MockArtworkRepo) GetBatch(hashes []string) (map[string]model.Artwork, error) {
+func (m *MockArtworkRepo) GetImages(hashes []string) (map[string]model.Artwork, error) {
 	if m.Err != nil {
 		return nil, m.Err
 	}
@@ -55,7 +58,7 @@ func (m *MockArtworkRepo) GetOrphanHashes(createdBefore time.Time) ([]string, er
 	return m.OrphanHashes, m.Err
 }
 
-func (m *MockArtworkRepo) Delete(hashes ...string) error {
+func (m *MockArtworkRepo) DeleteImages(hashes ...string) error {
 	if m.Err != nil {
 		return m.Err
 	}
@@ -63,4 +66,52 @@ func (m *MockArtworkRepo) Delete(hashes ...string) error {
 		delete(m.Data, h)
 	}
 	return nil
+}
+
+func (m *MockArtworkRepo) GetItemArtwork(kind, id, imageType string) (*model.ItemArtwork, error) {
+	if m.Err != nil {
+		return nil, m.Err
+	}
+	if ia, ok := m.ItemData[iaKey(kind, id, imageType)]; ok {
+		return &ia, nil
+	}
+	return nil, model.ErrNotFound
+}
+
+func (m *MockArtworkRepo) PutItemArtwork(ia *model.ItemArtwork) error {
+	if m.Err != nil {
+		return m.Err
+	}
+	ia.UpdatedAt = time.Now()
+	m.ItemData[iaKey(ia.ItemKind, ia.ItemID, ia.ImageType)] = *ia
+	return nil
+}
+
+func (m *MockArtworkRepo) DeleteForItem(kind, id string) error {
+	if m.Err != nil {
+		return m.Err
+	}
+	for k, ia := range m.ItemData {
+		if ia.ItemKind == kind && ia.ItemID == id {
+			delete(m.ItemData, k)
+		}
+	}
+	return nil
+}
+
+func (m *MockArtworkRepo) GetInfoForItems(kind string, ids []string) (map[string]model.ItemArtworkInfo, error) {
+	if m.Err != nil {
+		return nil, m.Err
+	}
+	res := map[string]model.ItemArtworkInfo{}
+	for _, id := range ids {
+		if ia, ok := m.ItemData[iaKey(kind, id, model.ImageTypePrimary)]; ok {
+			res[id] = model.ItemArtworkInfo{ItemID: id, Hash: ia.Hash, Absent: ia.Hash == ""}
+		}
+	}
+	return res, nil
+}
+
+func (m *MockArtworkRepo) EnqueueStaleAbsent(kind string, attemptedBefore time.Time) (int64, error) {
+	return 0, m.Err
 }

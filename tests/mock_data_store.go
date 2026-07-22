@@ -29,7 +29,6 @@ type MockDataStore struct {
 	MockedRadio          model.RadioRepository
 	MockedPlugin         model.PluginRepository
 	MockedArtwork        model.ArtworkRepository
-	MockedItemArtwork    model.ItemArtworkRepository
 	MockedArtworkQueue   model.ArtworkQueueRepository
 	scrobbleBufferMu     sync.Mutex
 	repoMu               sync.Mutex
@@ -259,17 +258,6 @@ func (db *MockDataStore) Artwork(ctx context.Context) model.ArtworkRepository {
 	}
 	db.MockedArtwork = CreateMockArtworkRepo()
 	return db.MockedArtwork
-}
-
-func (db *MockDataStore) ItemArtwork(ctx context.Context) model.ItemArtworkRepository {
-	if db.MockedItemArtwork != nil {
-		return db.MockedItemArtwork
-	}
-	if db.RealDS != nil {
-		return db.RealDS.ItemArtwork(ctx)
-	}
-	db.MockedItemArtwork = CreateMockItemArtworkRepo()
-	return db.MockedItemArtwork
 }
 
 func (db *MockDataStore) ArtworkQueue(ctx context.Context) model.ArtworkQueueRepository {

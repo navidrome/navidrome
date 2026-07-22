@@ -41,7 +41,6 @@ type DataStore interface {
 	Scrobble(ctx context.Context) ScrobbleRepository
 	Plugin(ctx context.Context) PluginRepository
 	Artwork(ctx context.Context) ArtworkRepository
-	ItemArtwork(ctx context.Context) ItemArtworkRepository
 	ArtworkQueue(ctx context.Context) ArtworkQueueRepository
 
 	Resource(ctx context.Context, model any) ResourceRepository

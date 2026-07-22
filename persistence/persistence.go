@@ -101,10 +101,6 @@ func (s *SQLStore) Artwork(ctx context.Context) model.ArtworkRepository {
 	return NewArtworkRepository(ctx, s.getDBXBuilder())
 }
 
-func (s *SQLStore) ItemArtwork(ctx context.Context) model.ItemArtworkRepository {
-	return NewItemArtworkRepository(ctx, s.getDBXBuilder())
-}
-
 func (s *SQLStore) ArtworkQueue(ctx context.Context) model.ArtworkQueueRepository {
 	return NewArtworkQueueRepository(ctx, s.getDBXBuilder())
 }

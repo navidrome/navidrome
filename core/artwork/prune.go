@@ -19,11 +19,11 @@ func Prune(ctx context.Context, ds model.DataStore, store *ImageStore) error {
 		return err
 	}
 	if len(orphans) > 0 {
-		arts, err := repo.GetBatch(orphans)
+		arts, err := repo.GetImages(orphans)
 		if err != nil {
 			return err
 		}
-		if err := repo.Delete(orphans...); err != nil {
+		if err := repo.DeleteImages(orphans...); err != nil {
 			return err
 		}
 		for _, a := range arts {
@@ -35,7 +35,7 @@ func Prune(ctx context.Context, ds model.DataStore, store *ImageStore) error {
 	}
 
 	removed, err := store.Sweep(func(hash string) bool {
-		_, err := repo.Get(hash)
+		_, err := repo.GetImage(hash)
 		return !errors.Is(err, model.ErrNotFound)
 	})
 	if err != nil {

@@ -17,7 +17,7 @@ type flakyGetArtworkRepo struct {
 	*tests.MockArtworkRepo
 }
 
-func (f *flakyGetArtworkRepo) Get(string) (*model.Artwork, error) {
+func (f *flakyGetArtworkRepo) GetImage(string) (*model.Artwork, error) {
 	return nil, errors.New("db locked")
 }
 
@@ -36,18 +36,18 @@ var _ = Describe("Prune", func() {
 		data := []byte("orphan-bytes")
 		h, _ := HashImage(bytes.NewReader(data))
 		Expect(store.Write(h, "image/jpeg", bytes.NewReader(data))).To(Succeed())
-		Expect(awRepo.Put(&model.Artwork{Hash: h, Mime: "image/jpeg",
+		Expect(awRepo.PutImage(&model.Artwork{Hash: h, Mime: "image/jpeg",
 			CreatedAt: time.Now().Add(-2 * time.Hour)})).To(Succeed())
 		awRepo.OrphanHashes = []string{h}
 
 		kept := []byte("kept-bytes")
 		hk, _ := HashImage(bytes.NewReader(kept))
 		Expect(store.Write(hk, "image/jpeg", bytes.NewReader(kept))).To(Succeed())
-		Expect(awRepo.Put(&model.Artwork{Hash: hk, Mime: "image/jpeg"})).To(Succeed())
+		Expect(awRepo.PutImage(&model.Artwork{Hash: hk, Mime: "image/jpeg"})).To(Succeed())
 
 		Expect(Prune(context.Background(), ds, store)).To(Succeed())
 
-		_, err := awRepo.Get(h)
+		_, err := awRepo.GetImage(h)
 		Expect(err).To(MatchError(model.ErrNotFound))
 		_, err = store.Open(h, "image/jpeg")
 		Expect(os.IsNotExist(err)).To(BeTrue())

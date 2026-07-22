@@ -28,9 +28,9 @@ var _ = Describe("ArtworkRepository", func() {
 
 	It("stores and retrieves an artwork by hash", func() {
 		a := &model.Artwork{Hash: "abc123", Mime: "image/jpeg", Width: 500, Height: 500, SizeBytes: 1234, BlurHash: "LKO2?U%2Tw=w"}
-		Expect(repo.Put(a)).To(Succeed())
+		Expect(repo.PutImage(a)).To(Succeed())
 
-		got, err := repo.Get("abc123")
+		got, err := repo.GetImage("abc123")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(got.Mime).To(Equal("image/jpeg"))
 		Expect(got.BlurHash).To(Equal("LKO2?U%2Tw=w"))
@@ -39,32 +39,31 @@ var _ = Describe("ArtworkRepository", func() {
 
 	It("is idempotent on Put (upsert by hash)", func() {
 		a := &model.Artwork{Hash: "dup1", Mime: "image/png"}
-		Expect(repo.Put(a)).To(Succeed())
+		Expect(repo.PutImage(a)).To(Succeed())
 		a.BlurHash = "XYZ"
-		Expect(repo.Put(a)).To(Succeed())
-		got, _ := repo.Get("dup1")
+		Expect(repo.PutImage(a)).To(Succeed())
+		got, _ := repo.GetImage("dup1")
 		Expect(got.BlurHash).To(Equal("XYZ"))
 	})
 
 	It("returns ErrNotFound for a missing hash", func() {
-		_, err := repo.Get("nope")
+		_, err := repo.GetImage("nope")
 		Expect(err).To(MatchError(model.ErrNotFound))
 	})
 
 	It("fetches a batch", func() {
-		Expect(repo.Put(&model.Artwork{Hash: "b1", Mime: "image/jpeg"})).To(Succeed())
-		Expect(repo.Put(&model.Artwork{Hash: "b2", Mime: "image/png"})).To(Succeed())
-		got, err := repo.GetBatch([]string{"b1", "b2", "missing"})
+		Expect(repo.PutImage(&model.Artwork{Hash: "b1", Mime: "image/jpeg"})).To(Succeed())
+		Expect(repo.PutImage(&model.Artwork{Hash: "b2", Mime: "image/png"})).To(Succeed())
+		got, err := repo.GetImages([]string{"b1", "b2", "missing"})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(got).To(HaveLen(2))
 		Expect(got["b2"].Mime).To(Equal("image/png"))
 	})
 
 	It("finds orphans older than cutoff, honoring item_artwork references", func() {
-		Expect(repo.Put(&model.Artwork{Hash: "orph1", Mime: "image/jpeg"})).To(Succeed())
-		Expect(repo.Put(&model.Artwork{Hash: "ref1", Mime: "image/jpeg"})).To(Succeed())
-		iaRepo := NewItemArtworkRepository(context.Background(), GetDBXBuilder())
-		Expect(iaRepo.Put(&model.ItemArtwork{ItemKind: "al", ItemID: "a1", ImageType: model.ImageTypePrimary, Hash: "ref1", Source: "folder"})).To(Succeed())
+		Expect(repo.PutImage(&model.Artwork{Hash: "orph1", Mime: "image/jpeg"})).To(Succeed())
+		Expect(repo.PutImage(&model.Artwork{Hash: "ref1", Mime: "image/jpeg"})).To(Succeed())
+		Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "al", ItemID: "a1", ImageType: model.ImageTypePrimary, Hash: "ref1", Source: "folder"})).To(Succeed())
 
 		orphans, err := repo.GetOrphanHashes(time.Now().Add(time.Minute))
 		Expect(err).ToNot(HaveOccurred())
@@ -77,9 +76,80 @@ var _ = Describe("ArtworkRepository", func() {
 	})
 
 	It("deletes by hashes", func() {
-		Expect(repo.Put(&model.Artwork{Hash: "d1", Mime: "image/jpeg"})).To(Succeed())
-		Expect(repo.Delete("d1")).To(Succeed())
-		_, err := repo.Get("d1")
+		Expect(repo.PutImage(&model.Artwork{Hash: "d1", Mime: "image/jpeg"})).To(Succeed())
+		Expect(repo.DeleteImages("d1")).To(Succeed())
+		_, err := repo.GetImage("d1")
 		Expect(err).To(MatchError(model.ErrNotFound))
+	})
+})
+
+var _ = Describe("ArtworkRepository item state", func() {
+	var repo model.ArtworkRepository
+
+	BeforeEach(func() {
+		clearArtworkTables()
+		repo = NewArtworkRepository(context.Background(), GetDBXBuilder())
+	})
+
+	It("upserts and reads state", func() {
+		ia := &model.ItemArtwork{ItemKind: "al", ItemID: "al1", ImageType: model.ImageTypePrimary,
+			Hash: "h1", Source: "folder", AttemptedAt: time.Now()}
+		Expect(repo.PutItemArtwork(ia)).To(Succeed())
+		ia.Source = "embedded"
+		Expect(repo.PutItemArtwork(ia)).To(Succeed())
+
+		got, err := repo.GetItemArtwork("al", "al1", model.ImageTypePrimary)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(got.Source).To(Equal("embedded"))
+		Expect(got.UpdatedAt).ToNot(BeZero())
+	})
+
+	It("represents known-absent as empty hash", func() {
+		Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "ar", ItemID: "ar1",
+			ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: time.Now()})).To(Succeed())
+		got, err := repo.GetItemArtwork("ar", "ar1", model.ImageTypePrimary)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(got.Hash).To(BeEmpty())
+	})
+
+	It("hydrates a page in one batch, including blurhash and absence", func() {
+		Expect(repo.PutImage(&model.Artwork{Hash: "h9", Mime: "image/jpeg", BlurHash: "BH9"})).To(Succeed())
+		Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "al", ItemID: "x1", ImageType: model.ImageTypePrimary, Hash: "h9", Source: "folder"})).To(Succeed())
+		Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "al", ItemID: "x2", ImageType: model.ImageTypePrimary, Hash: "", Source: ""})).To(Succeed())
+
+		info, err := repo.GetInfoForItems("al", []string{"x1", "x2", "x3"})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(info).To(HaveLen(2))
+		Expect(info["x1"].Hash).To(Equal("h9"))
+		Expect(info["x1"].BlurHash).To(Equal("BH9"))
+		Expect(info["x1"].Absent).To(BeFalse())
+		Expect(info["x2"].Absent).To(BeTrue())
+		_, unresolved := info["x3"]
+		Expect(unresolved).To(BeFalse())
+	})
+
+	It("deletes all rows for an item", func() {
+		Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "pl", ItemID: "p1", ImageType: model.ImageTypePrimary, Hash: "h1"})).To(Succeed())
+		Expect(repo.DeleteForItem("pl", "p1")).To(Succeed())
+		_, err := repo.GetItemArtwork("pl", "p1", model.ImageTypePrimary)
+		Expect(err).To(MatchError(model.ErrNotFound))
+	})
+
+	It("enqueues stale absent states for recheck", func() {
+		old := time.Now().Add(-48 * time.Hour)
+		Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "ar", ItemID: "stale1", ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: old})).To(Succeed())
+		Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "ar", ItemID: "fresh1", ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: time.Now()})).To(Succeed())
+		Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "ar", ItemID: "found1", ImageType: model.ImageTypePrimary, Hash: "hX", AttemptedAt: old})).To(Succeed())
+
+		n, err := repo.EnqueueStaleAbsent("ar", time.Now().Add(-24*time.Hour))
+		Expect(err).ToNot(HaveOccurred())
+		Expect(n).To(Equal(int64(1)))
+
+		qRepo := NewArtworkQueueRepository(context.Background(), GetDBXBuilder())
+		items, err := qRepo.DequeueBatch(10)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(items).To(HaveLen(1))
+		Expect(items[0].ItemID).To(Equal("stale1"))
+		Expect(items[0].Priority).To(Equal(model.ArtworkPriorityRecheck))
 	})
 })
