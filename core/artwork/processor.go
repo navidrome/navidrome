@@ -104,7 +104,8 @@ func processItem(ctx context.Context, deps *workerDeps, item model.ArtworkQueueI
 	}
 	art.SizeBytes = int64(len(data))
 
-	if err := placeBytes(deps.store, art, res, data); err != nil {
+	sourcePath, refMtime, err := placeBytes(deps.store, art, res, data)
+	if err != nil {
 		log.Warn(ctx, "artwork: failed to write image store", "kind", item.ItemKind, "id", item.ItemID, err)
 		return outcomeFailed
 	}
@@ -118,6 +119,8 @@ func processItem(ctx context.Context, deps *workerDeps, item model.ArtworkQueueI
 		ImageType:   item.ImageType,
 		Hash:        hash,
 		Source:      res.source,
+		SourcePath:  sourcePath,
+		RefMtime:    refMtime,
 		AttemptedAt: time.Now(),
 	}); err != nil {
 		log.Warn(ctx, "artwork: failed to persist item artwork state", "kind", item.ItemKind, "id", item.ItemID, err)
@@ -196,21 +199,16 @@ func isFileBacked(source string) bool {
 	return source == "folder" || source == "upload"
 }
 
-// placeBytes fills in art's SourcePath/RefMtime and, for sources with no library file
-// backing them, writes the bytes into the store (embedded keeps its audio file provenance).
-func placeBytes(store *ImageStore, art *model.Artwork, res resolution, data []byte) error {
+// placeBytes reports the item's backing-file provenance (folder/upload: image, embedded: audio,
+// external/generated: none) and writes the bytes into the store for the non-file-backed sources.
+func placeBytes(store *ImageStore, art *model.Artwork, res resolution, data []byte) (sourcePath string, refMtime int64, err error) {
 	if isFileBacked(res.source) {
-		art.SourcePath = res.sourcePath
-		art.RefMtime = res.refMtime
-		return nil
+		return res.sourcePath, res.refMtime, nil
 	}
-	art.SourcePath = ""
-	art.RefMtime = 0
 	if res.source == "embedded" {
-		art.SourcePath = res.sourcePath
-		art.RefMtime = res.refMtime
+		sourcePath, refMtime = res.sourcePath, res.refMtime
 	}
-	return store.Write(art.Hash, art.Mime, bytes.NewReader(data))
+	return sourcePath, refMtime, store.Write(art.Hash, art.Mime, bytes.NewReader(data))
 }
 
 // mimeForFormat maps an image.Decode format name to its MIME type; extForMime

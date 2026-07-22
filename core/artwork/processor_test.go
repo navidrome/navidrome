@@ -88,12 +88,11 @@ var _ = Describe("processItem", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ia.Hash).ToNot(BeEmpty())
 		Expect(ia.Source).To(Equal("folder"))
+		Expect(filepath.ToSlash(ia.SourcePath)).To(HaveSuffix("tests/fixtures/artist/an-album/cover.jpg"))
+		Expect(ia.RefMtime).To(BeNumerically(">", 0))
 
 		art, err := artRepo.GetImage(ia.Hash)
 		Expect(err).ToNot(HaveOccurred())
-		Expect(filepath.ToSlash(art.SourcePath)).To(HaveSuffix("tests/fixtures/artist/an-album/cover.jpg"))
-		Expect(art.RefMtime).To(BeNumerically(">", 0))
-
 		_, err = store.Open(ia.Hash, art.Mime)
 		Expect(os.IsNotExist(err)).To(BeTrue(), "folder-backed art must not be duplicated into the store")
 	})
@@ -110,11 +109,11 @@ var _ = Describe("processItem", func() {
 		ia, err := artRepo.GetItemArtwork("al", "al2", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ia.Source).To(Equal("embedded"))
+		Expect(filepath.ToSlash(ia.SourcePath)).To(HaveSuffix("tests/fixtures/artist/an-album/test.mp3"))
 
 		art, err := artRepo.GetImage(ia.Hash)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(art.BlurHash).ToNot(BeEmpty())
-		Expect(filepath.ToSlash(art.SourcePath)).To(HaveSuffix("tests/fixtures/artist/an-album/test.mp3"))
 
 		rc, err := store.Open(ia.Hash, art.Mime)
 		Expect(err).ToNot(HaveOccurred())
@@ -203,6 +202,59 @@ var _ = Describe("processItem", func() {
 		Expect(ia2.Hash).To(Equal(ia1.Hash))
 
 		reused, err := artRepo.GetImage(ia1.Hash)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(reused.BlurHash).To(Equal("SENTINEL"))
+	})
+
+	It("two items, two files, identical bytes: each item keeps its own provenance; the shared artwork row is written once", func() {
+		// Two distinct library files with byte-identical content resolve to the same
+		// hash. Provenance is per-item, so neither file's path may overwrite the other.
+		libRoot := GinkgoT().TempDir()
+		imgBytes, err := os.ReadFile(filepath.Join(repoRoot, "tests/fixtures/artist/an-album/cover.jpg"))
+		Expect(err).ToNot(HaveOccurred())
+		for sub, mtime := range map[string]int64{"album-a": 1000, "album-b": 2000} {
+			dir := filepath.Join(libRoot, sub)
+			Expect(os.MkdirAll(dir, 0755)).To(Succeed())
+			img := filepath.Join(dir, "cover.jpg")
+			Expect(os.WriteFile(img, imgBytes, 0600)).To(Succeed())
+			Expect(os.Chtimes(img, time.Unix(mtime, 0), time.Unix(mtime, 0))).To(Succeed())
+		}
+		libRepo.SetData(model.Libraries{{ID: 0, Path: testFileLibPath(libRoot)}})
+		ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
+			{ID: "alA", Name: "Album A", FolderIDs: []string{"fa"}},
+			{ID: "alB", Name: "Album B", FolderIDs: []string{"fb"}},
+		})
+
+		folderRepo.result = []model.Folder{{Path: "album-a", ImageFiles: []string{"cover.jpg"}}}
+		Expect(processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alA"})).To(Equal(outcomeFound))
+		iaA, err := artRepo.GetItemArtwork("al", "alA", model.ImageTypePrimary)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(iaA.Source).To(Equal("folder"))
+		Expect(filepath.ToSlash(iaA.SourcePath)).To(HaveSuffix("album-a/cover.jpg"))
+		Expect(iaA.RefMtime).To(Equal(int64(1000)))
+
+		// Poison the shared row's blurhash: the second item must dedup on hash, not re-decode.
+		poisoned := artRepo.Data[iaA.Hash]
+		poisoned.BlurHash = "SENTINEL"
+		artRepo.Data[iaA.Hash] = poisoned
+
+		folderRepo.result = []model.Folder{{Path: "album-b", ImageFiles: []string{"cover.jpg"}}}
+		Expect(processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alB"})).To(Equal(outcomeFound))
+		iaB, err := artRepo.GetItemArtwork("al", "alB", model.ImageTypePrimary)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(iaB.Hash).To(Equal(iaA.Hash))
+		Expect(filepath.ToSlash(iaB.SourcePath)).To(HaveSuffix("album-b/cover.jpg"))
+		Expect(iaB.RefMtime).To(Equal(int64(2000)))
+
+		// The first item's provenance survives the second item processing identical bytes.
+		iaAafter, err := artRepo.GetItemArtwork("al", "alA", model.ImageTypePrimary)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(filepath.ToSlash(iaAafter.SourcePath)).To(HaveSuffix("album-a/cover.jpg"))
+		Expect(iaAafter.RefMtime).To(Equal(int64(1000)))
+
+		// One shared artwork row, and dedup preserved it untouched.
+		Expect(artRepo.Data).To(HaveLen(1))
+		reused, err := artRepo.GetImage(iaA.Hash)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(reused.BlurHash).To(Equal("SENTINEL"))
 	})
