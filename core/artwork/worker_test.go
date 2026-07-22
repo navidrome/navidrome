@@ -14,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"go.uber.org/goleak"
 )
 
 // reenqueueOnDequeue simulates a concurrent scan Enqueue between DequeueBatch and the
@@ -304,5 +305,58 @@ var _ = Describe("Worker", func() {
 			cancel()
 			Eventually(done, time.Second).Should(Receive(BeNil()))
 		})
+
+		It("does not leak goroutines after Run exits", func() {
+			DeferCleanup(configtest.SetupConfig())
+
+			ignore := goleak.IgnoreCurrent()
+			DeferCleanup(func() { goleak.VerifyNone(GinkgoT(), ignore) })
+
+			localDS := &tests.MockDataStore{MockedArtworkQueue: tests.CreateMockArtworkQueueRepo()}
+			lw := NewWorker(localDS, NewImageStore(GinkgoT().TempDir()), &fakeExternalProvider{}, tests.NewMockFFmpeg(""))
+
+			runCtx, cancel := context.WithCancel(ctx)
+			done := make(chan error, 1)
+			go func() { done <- lw.Run(runCtx) }()
+
+			time.Sleep(20 * time.Millisecond) // let the loop settle on the idle select
+			cancel()
+			Eventually(done, 2*time.Second).Should(Receive(BeNil()))
+		})
+	})
+})
+
+var _ = Describe("backoff", func() {
+	It("returns the expected schedule with no jitter", func() {
+		for _, c := range []struct {
+			attempts int
+			want     time.Duration
+		}{
+			{0, 5 * time.Minute},
+			{1, 20 * time.Minute},
+			{2, 80 * time.Minute},
+			{3, 320 * time.Minute},
+			{4, 1280 * time.Minute},
+			{5, 48 * time.Hour},
+			{6, 48 * time.Hour},
+		} {
+			Expect(backoffFor(c.attempts, 0)).To(Equal(c.want), "attempt %d", c.attempts)
+		}
+	})
+
+	It("applies jitter proportionally", func() {
+		base := backoffFor(2, 0)
+		Expect(backoffFor(2, 0.2)).To(Equal(time.Duration(float64(base) * 1.2)))
+		Expect(backoffFor(2, -0.2)).To(Equal(time.Duration(float64(base) * 0.8)))
+	})
+
+	It("keeps random jitter within +/-20%", func() {
+		lo := time.Duration(float64(320*time.Minute) * 0.8)
+		hi := time.Duration(float64(320*time.Minute) * 1.2)
+		for range 200 {
+			d := backoff(3)
+			Expect(d).To(BeNumerically(">=", lo))
+			Expect(d).To(BeNumerically("<=", hi))
+		}
 	})
 })
