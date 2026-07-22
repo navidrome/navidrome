@@ -40,6 +40,10 @@ func (f *fakeExternalProvider) ArtistImage(ctx context.Context, id string) (*url
 	return nil, model.ErrNotFound
 }
 
+func (f *fakeExternalProvider) ArtistImageResult(ctx context.Context, id string) (*url.URL, error) {
+	return f.ArtistImage(ctx, id)
+}
+
 var _ = Describe("resolveItem", func() {
 	var (
 		ctx        context.Context
@@ -333,6 +337,66 @@ var _ = Describe("resolveItem", func() {
 			Entry("3 albums -> duplicated to 4 tiles", []string{"t1", "t2", "t3"}, tileSize-1),
 			Entry("4 albums -> full grid", []string{"t1", "t2", "t3", "t4"}, tileSize-1),
 		)
+
+		It("resolves the uploaded image before the generated grid", func() {
+			tmpDir := GinkgoT().TempDir()
+			conf.Server.DataFolder = conf.NewDir(tmpDir)
+			Expect(os.MkdirAll(filepath.Join(tmpDir, "artwork", "playlist"), 0755)).To(Succeed())
+			imgPath := filepath.Join(tmpDir, "artwork", "playlist", "plu_test.jpg")
+			Expect(os.WriteFile(imgPath, []byte("uploaded playlist image"), 0600)).To(Succeed())
+
+			plRepo := tests.CreateMockPlaylistRepo()
+			plRepo.SetData(model.Playlists{{ID: "plu", Name: "Playlist", UploadedImage: "plu_test.jpg"}})
+			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"t1", "t2"}}
+			ds.MockedPlaylist = plRepo
+
+			res, err := resolveItem(ctx, ds, prov, ffm, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "plu"}, nil)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res.reader).ToNot(BeNil())
+			defer res.reader.Close()
+			Expect(res.source).To(Equal("upload"))
+			Expect(res.sourcePath).To(Equal(imgPath))
+		})
+
+		It("resolves a sidecar image next to the playlist file before the grid", func() {
+			plDir := GinkgoT().TempDir()
+			Expect(os.WriteFile(filepath.Join(plDir, "list.m3u"), []byte("#EXTM3U"), 0600)).To(Succeed())
+			Expect(os.WriteFile(filepath.Join(plDir, "list.jpg"), []byte("sidecar image"), 0600)).To(Succeed())
+
+			plRepo := tests.CreateMockPlaylistRepo()
+			plRepo.SetData(model.Playlists{{ID: "pls", Name: "Playlist", Path: filepath.Join(plDir, "list.m3u")}})
+			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"t1", "t2"}}
+			ds.MockedPlaylist = plRepo
+
+			res, err := resolveItem(ctx, ds, prov, ffm, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "pls"}, nil)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res.reader).ToNot(BeNil())
+			defer res.reader.Close()
+			Expect(res.source).To(Equal("folder"))
+			Expect(filepath.ToSlash(res.sourcePath)).To(HaveSuffix("list.jpg"))
+		})
+
+		It("routes ExternalImageURL through extGate and sets extError on transient failure", func() {
+			conf.Server.EnableM3UExternalAlbumArt = true
+			folderRepo.result = nil // no grid tiles, so the external failure is what surfaces
+
+			plRepo := tests.CreateMockPlaylistRepo()
+			plRepo.SetData(model.Playlists{{ID: "ple", Name: "Playlist", ExternalImageURL: "http://example.com/cover.jpg"}})
+			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"t1"}}
+			ds.MockedPlaylist = plRepo
+
+			var extGateCalls int
+			extGate := func(f func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error) {
+				extGateCalls++
+				return nil, "", errors.New("network down")
+			}
+
+			res, err := resolveItem(ctx, ds, prov, ffm, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "ple"}, extGate)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res.reader).To(BeNil())
+			Expect(res.extError).To(BeTrue())
+			Expect(extGateCalls).To(Equal(1))
+		})
 
 		It("yields an empty resolution when no album has art", func() {
 			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
