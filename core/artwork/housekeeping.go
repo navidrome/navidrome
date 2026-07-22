@@ -26,8 +26,8 @@ var staleAbsentKinds = []string{"ar", "al", "pl", "ra"}
 // Fingerprint summarizes the config knobs that affect artwork resolution outcomes; a
 // change means previously resolved (or absent) state may no longer be correct.
 func Fingerprint() string {
-	raw := fmt.Sprintf("%s|%s|%s|%t|%s",
-		conf.Server.CoverArtPriority, conf.Server.ArtistArtPriority,
+	raw := fmt.Sprintf("%s|%s|%s|%s|%t|%s",
+		conf.Server.CoverArtPriority, conf.Server.ArtistArtPriority, conf.Server.ArtistImageFolder,
 		conf.Server.Agents, conf.Server.EnableExternalServices, consts.Version)
 	sum := md5.Sum([]byte(raw)) //nolint:gosec // fingerprint, not security-sensitive
 	return hex.EncodeToString(sum[:])

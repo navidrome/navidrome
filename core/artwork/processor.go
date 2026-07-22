@@ -31,8 +31,8 @@ const (
 // thumbnailSize is the max dimension fed to blurhash.
 const thumbnailSize = 128
 
-// workerDeps are the collaborators processItem needs; extGate is nil outside
-// tests, in which case resolveItem falls back to a plain passthrough.
+// workerDeps are the collaborators processItem needs; extGate is set by NewWorker in
+// production and nil only in tests, where resolveItem falls back to a plain passthrough.
 type workerDeps struct {
 	ds      model.DataStore
 	store   *ImageStore

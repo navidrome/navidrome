@@ -72,6 +72,13 @@ var _ = Describe("Housekeeping", func() {
 			f2 := Fingerprint()
 			Expect(f1).NotTo(Equal(f2))
 		})
+
+		It("changes when ArtistImageFolder changes", func() {
+			conf.Server.ArtistImageFolder = "/before"
+			f1 := Fingerprint()
+			conf.Server.ArtistImageFolder = "/after"
+			Expect(Fingerprint()).NotTo(Equal(f1))
+		})
 	})
 
 	Describe("Backfill", func() {

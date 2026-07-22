@@ -19,10 +19,8 @@ import (
 // performance benchmark, so it favors a stable signal over raw speed.
 const soakCycles = 2200
 
-// TestWorkerSoak drives processItem across a mix of sources (folder, embedded
-// extraction, dangling refs) for many cycles, reading each acquired image back
-// through ImageStore.Open, and asserts goroutines/heap plateau instead of
-// growing unbounded. Skipped under -short.
+// TestWorkerSoak runs processItem over many cycles across a mix of sources, asserting
+// goroutines/heap plateau instead of growing unbounded (a leak guard). Skipped under -short.
 func TestWorkerSoak(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping soak test in short mode")
