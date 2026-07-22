@@ -198,6 +198,18 @@ func fromArtistExternalSource(ctx context.Context, ar model.Artist, provider ext
 	}
 }
 
+// fromArtistExternalResult is the worker's artist external step: via ArtistImageResult a
+// transient agent failure surfaces as an error (extError) rather than settling as absent.
+func fromArtistExternalResult(ctx context.Context, ar model.Artist, provider external.Provider) sourceFunc {
+	return func() (io.ReadCloser, string, error) {
+		imageUrl, err := provider.ArtistImageResult(ctx, ar.ID)
+		if err != nil {
+			return nil, "", err
+		}
+		return fromURL(ctx, imageUrl)
+	}
+}
+
 func fromAlbumExternalSource(ctx context.Context, al model.Album, provider external.Provider) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
 		imageUrl, err := provider.AlbumImage(ctx, al.ID)

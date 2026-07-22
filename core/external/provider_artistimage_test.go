@@ -330,6 +330,49 @@ var _ = Describe("Provider - ArtistImage", func() {
 		Expect(logBuf.String()).To(ContainSubstring("Artist image info expired, enqueuing background refresh"))
 	})
 
+	Describe("ArtistImageResult", func() {
+		It("returns the real agent error on a transient failure, not ErrNotFound", func() {
+			agentErr := errors.New("agent timed out")
+			mockImageAgent.Mock = mock.Mock{}
+			mockImageAgent.On("GetArtistImages", ctx, "artist-1", "Artist One", "").Return(nil, agentErr).Once()
+
+			imgURL, err := provider.ArtistImageResult(ctx, "artist-1")
+
+			Expect(err).To(MatchError(agentErr))
+			Expect(err).ToNot(MatchError(model.ErrNotFound))
+			Expect(imgURL).To(BeNil())
+		})
+
+		It("returns ErrNotFound when the agent definitively has no image", func() {
+			mockImageAgent.Mock = mock.Mock{}
+			mockImageAgent.On("GetArtistImages", ctx, "artist-1", "Artist One", "").Return(nil, agents.ErrNotFound).Once()
+
+			imgURL, err := provider.ArtistImageResult(ctx, "artist-1")
+
+			Expect(err).To(MatchError(model.ErrNotFound))
+			Expect(imgURL).To(BeNil())
+		})
+
+		It("returns ErrNotFound when the agent returns no images without error", func() {
+			mockImageAgent.Mock = mock.Mock{}
+			mockImageAgent.On("GetArtistImages", ctx, "artist-1", "Artist One", "").Return([]agents.ExternalImage{}, nil).Once()
+
+			imgURL, err := provider.ArtistImageResult(ctx, "artist-1")
+
+			Expect(err).To(MatchError(model.ErrNotFound))
+			Expect(imgURL).To(BeNil())
+		})
+
+		It("returns the largest image URL on success", func() {
+			expectedURL, _ := url.Parse("http://example.com/large.jpg")
+
+			imgURL, err := provider.ArtistImageResult(ctx, "artist-1")
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(imgURL).To(Equal(expectedURL))
+		})
+	})
+
 	Context("Unicode handling in artist names", func() {
 		var artistWithEnDash *model.Artist
 		var expectedURL *url.URL

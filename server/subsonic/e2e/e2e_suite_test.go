@@ -361,6 +361,10 @@ func (n noopProvider) ArtistImage(context.Context, string) (*url.URL, error) {
 	return nil, model.ErrNotFound
 }
 
+func (n noopProvider) ArtistImageResult(context.Context, string) (*url.URL, error) {
+	return nil, model.ErrNotFound
+}
+
 func (n noopProvider) AlbumImage(context.Context, string) (*url.URL, error) {
 	return nil, model.ErrNotFound
 }
