@@ -207,6 +207,54 @@ var _ = Describe("resolveItem", func() {
 			Expect(res.source).To(Equal("folder"))
 			Expect(filepath.ToSlash(res.sourcePath)).To(HaveSuffix("tests/fixtures/artist/an-album/artist.png"))
 		})
+
+		It("sets extError when the external source errors without being not-found", func() {
+			conf.Server.ArtistArtPriority = "external"
+			artistRepo := tests.CreateMockArtistRepo()
+			artistRepo.SetData(model.Artists{{ID: "ar3", Name: "Artist"}})
+			ds.MockedArtist = artistRepo
+			prov.artistImage = func(context.Context, string) (*url.URL, error) {
+				return nil, errors.New("agent timed out")
+			}
+
+			res, err := resolveItem(ctx, ds, prov, ffm, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar3"}, nil)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res.reader).To(BeNil())
+			Expect(res.extError).To(BeTrue())
+		})
+
+		It("does not set extError when the external source reports not-found", func() {
+			conf.Server.ArtistArtPriority = "external"
+			artistRepo := tests.CreateMockArtistRepo()
+			artistRepo.SetData(model.Artists{{ID: "ar4", Name: "Artist"}})
+			ds.MockedArtist = artistRepo
+			// prov.artistImage left nil -> fakeExternalProvider returns model.ErrNotFound
+
+			res, err := resolveItem(ctx, ds, prov, ffm, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar4"}, nil)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res.reader).To(BeNil())
+			Expect(res.extError).To(BeFalse())
+		})
+
+		It("routes the external step through a custom extGate", func() {
+			conf.Server.ArtistArtPriority = "external"
+			artistRepo := tests.CreateMockArtistRepo()
+			artistRepo.SetData(model.Artists{{ID: "ar5", Name: "Artist"}})
+			ds.MockedArtist = artistRepo
+			prov.artistImage = func(context.Context, string) (*url.URL, error) {
+				return nil, errors.New("boom")
+			}
+			var extGateCalls int
+			extGate := func(f func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error) {
+				extGateCalls++
+				return f()
+			}
+
+			res, err := resolveItem(ctx, ds, prov, ffm, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar5"}, extGate)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res.extError).To(BeTrue())
+			Expect(extGateCalls).To(Equal(1))
+		})
 	})
 
 	Describe("radio", func() {
@@ -300,6 +348,19 @@ var _ = Describe("resolveItem", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).To(BeNil())
 			Expect(res.source).To(BeEmpty())
+		})
+
+		It("does not resolve as absent when every sampled album fails to resolve", func() {
+			// "missing1"/"missing2" are not in MockAlbumRepo's data, so resolveAlbum
+			// returns a genuine (non-external) error for every sampled tile.
+			plRepo := tests.CreateMockPlaylistRepo()
+			plRepo.SetData(model.Playlists{{ID: "pl3", Name: "Playlist"}})
+			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"missing1", "missing2"}}
+			ds.MockedPlaylist = plRepo
+
+			res, err := resolveItem(ctx, ds, prov, ffm, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "pl3"}, nil)
+			Expect(err).To(HaveOccurred())
+			Expect(res).To(Equal(resolution{}))
 		})
 	})
 })

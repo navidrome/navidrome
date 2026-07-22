@@ -81,11 +81,9 @@ func resolveAlbum(ctx context.Context, ds model.DataStore, prov external.Provide
 				return res, nil
 			}
 		case pattern == "external":
-			r, path, err := extGate(fromAlbumExternalSource(ctx, *al, prov))
-			if r != nil {
-				return resolution{reader: r, source: "external", sourcePath: path}, nil
-			}
-			if err != nil && !errors.Is(err, model.ErrNotFound) {
+			if res, ok, isErr := resolveExternalStep(extGate, fromAlbumExternalSource(ctx, *al, prov)); ok {
+				return res, nil
+			} else if isErr {
 				extErr = true
 			}
 		case len(imgFiles) > 0:
@@ -139,11 +137,9 @@ func resolveArtist(ctx context.Context, ds model.DataStore, prov external.Provid
 		pattern = strings.TrimSpace(pattern)
 		switch {
 		case pattern == "external":
-			r, path, err := extGate(fromArtistExternalSource(ctx, *ar, prov))
-			if r != nil {
-				return resolution{reader: r, source: "external", sourcePath: path}, nil
-			}
-			if err != nil && !errors.Is(err, model.ErrNotFound) {
+			if res, ok, isErr := resolveExternalStep(extGate, fromArtistExternalSource(ctx, *ar, prov)); ok {
+				return res, nil
+			} else if isErr {
 				extErr = true
 			}
 		case pattern == "image-folder":
@@ -183,9 +179,13 @@ func resolvePlaylist(ctx context.Context, ds model.DataStore, prov external.Prov
 
 	var tiles []image.Image
 	var extErr bool
+	var tileErr error // first internal (non-external) tile failure, e.g. album deleted mid-flight
 	for _, albumID := range albumIDs {
 		res, err := resolveAlbum(ctx, ds, prov, ffm, albumID, extGate)
 		if err != nil {
+			if tileErr == nil {
+				tileErr = err
+			}
 			continue
 		}
 		if res.extError {
@@ -203,10 +203,16 @@ func resolvePlaylist(ctx context.Context, ds model.DataStore, prov external.Prov
 			break
 		}
 	}
+	if len(tiles) == 0 {
+		// A tile-level failure must never resolve as a clean absent: propagate
+		// internal errors, and force extError for external ones.
+		if tileErr != nil {
+			return resolution{}, fmt.Errorf("resolvePlaylist: sampled album art failed: %w", tileErr)
+		}
+		return resolution{extError: extErr}, nil
+	}
 	// Grow to 4 tiles by repeating what we have, mirroring reader_playlist.go's loadTiles.
 	switch len(tiles) {
-	case 0:
-		return resolution{extError: extErr}, nil
 	case 2:
 		tiles = append(tiles, tiles[1], tiles[0])
 	case 3:
@@ -227,6 +233,17 @@ func resolveRadio(ctx context.Context, ds model.DataStore, radioID string) (reso
 	}
 	res, _ := resolveLocalFile(r.UploadedImagePath(), "upload")
 	return res, nil
+}
+
+// resolveExternalStep runs an external sourceFunc through extGate, shared by
+// resolveAlbum and resolveArtist. ok reports a hit; extErr reports a
+// non-not-found error (a not-found is a definitive "no", not a failure).
+func resolveExternalStep(extGate extGateFunc, sf func() (io.ReadCloser, string, error)) (res resolution, ok bool, extErr bool) {
+	r, path, err := extGate(sf)
+	if r != nil {
+		return resolution{reader: r, source: "external", sourcePath: path}, true, false
+	}
+	return resolution{}, false, err != nil && !errors.Is(err, model.ErrNotFound)
 }
 
 func resolveEmbedded(ctx context.Context, lib libraryView, ffm ffmpeg.FFmpeg, embedRel string) (resolution, bool) {
