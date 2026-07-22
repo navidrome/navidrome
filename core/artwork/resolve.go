@@ -278,7 +278,10 @@ func fromPlaylistExternalSource(ctx context.Context, pl model.Playlist) sourceFu
 			}
 			return fromURL(ctx, parsed)
 		}
-		return fromLocalFile(imgURL)()
+		// A missing/unreadable local file is a definitive miss, not a transient
+		// failure to retry: swallow the open error and fall through to the grid.
+		r, path, _ := fromLocalFile(imgURL)()
+		return r, path, nil
 	}
 }
 

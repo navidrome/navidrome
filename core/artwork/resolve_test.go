@@ -398,6 +398,20 @@ var _ = Describe("resolveItem", func() {
 			Expect(extGateCalls).To(Equal(1))
 		})
 
+		It("treats a missing local ExternalImageURL as a definitive miss, not extError", func() {
+			folderRepo.result = nil // no grid tiles, so the local-file miss is what surfaces
+
+			plRepo := tests.CreateMockPlaylistRepo()
+			plRepo.SetData(model.Playlists{{ID: "plm", Name: "Playlist", ExternalImageURL: "/nonexistent/path/cover.jpg"}})
+			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"t1"}}
+			ds.MockedPlaylist = plRepo
+
+			res, err := resolveItem(ctx, ds, prov, ffm, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "plm"}, nil)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res.reader).To(BeNil())
+			Expect(res.extError).To(BeFalse())
+		})
+
 		It("yields an empty resolution when no album has art", func() {
 			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
 				{ID: "empty1", Name: "Empty"},
