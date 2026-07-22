@@ -11,8 +11,8 @@ import (
 )
 
 // truncatedIDLen is what Finamp's saved-queue persistence cuts item ids to (16 bytes, assuming
-// Jellyfin GUIDs). No Navidrome id family is 16 chars (nanoid=22, legacy MD5=32, playlist
-// UUID=36), so the length alone identifies a truncated id. See README.
+// Jellyfin GUIDs). All Navidrome ids are 22 chars (share ids 10), so length alone flags a
+// truncated id. See README.
 //
 // Handlers taking an item id resolve it via resolveItemID/resolveItemIDs; playlist-write handlers
 // and ParentId scoping don't (a restored queue never edits playlists or browses by container id).

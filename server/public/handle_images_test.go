@@ -9,7 +9,7 @@ import (
 
 var _ = Describe("decodeArtworkID", func() {
 	BeforeEach(func() {
-		auth.TokenAuth = jwtauth.New("HS256", []byte("super secret"), nil)
+		auth.PublicTokenAuth = jwtauth.New("HS256", []byte("super secret"), nil)
 	})
 
 	It("fails to decode an invalid token", func() {

@@ -225,7 +225,7 @@ func decodeArtworkURL(artworkURL string) model.ArtworkID {
 	}
 
 	// Decode JWT token
-	token, err := auth.TokenAuth.Decode(tokenPart)
+	token, err := auth.PublicTokenAuth.Decode(tokenPart)
 	Expect(err).ToNot(HaveOccurred(), "Failed to decode JWT token")
 
 	c := auth.ClaimsFromToken(token)

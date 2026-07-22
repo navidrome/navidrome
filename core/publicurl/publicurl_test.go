@@ -175,7 +175,7 @@ var _ = Describe("Public URL Utilities", func() {
 		BeforeEach(func() {
 			conf.Server.ShareURL = "https://share.example.com"
 			// Initialize JWT auth for token generation
-			auth.TokenAuth = jwtauth.New("HS256", []byte("test secret"), nil)
+			auth.PublicTokenAuth = jwtauth.New("HS256", []byte("test secret"), nil)
 		})
 
 		It("generates a URL with the artwork token", func() {

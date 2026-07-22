@@ -111,8 +111,8 @@ func (pub *Router) mapShareToM3U(r *http.Request, s model.Share) *model.Share {
 // admin flag) and grants access to nothing beyond the share it belongs to; the
 // stream handler still verifies the share exists, is unexpired, and that the
 // track is actually a member of it. An attacker who can forge these tokens
-// necessarily already holds the signing secret, which also signs real user
-// sessions, so that scenario is out of scope for the share boundary specifically.
+// necessarily already holds the public-link signing secret, a full-server
+// compromise that is out of scope for the share boundary specifically.
 func encodeMediafileShare(s model.Share, id string) string {
 	claims := auth.Claims{
 		ID:      id,

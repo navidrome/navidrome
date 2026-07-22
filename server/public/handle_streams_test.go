@@ -29,7 +29,7 @@ func (m *mockStreamer) NewStream(_ context.Context, _ *model.MediaFile, r stream
 
 var _ = Describe("decodeStreamInfo", func() {
 	BeforeEach(func() {
-		auth.TokenAuth = jwtauth.New("HS256", []byte("test-secret"), nil)
+		auth.PublicTokenAuth = jwtauth.New("HS256", []byte("test-secret"), nil)
 	})
 
 	It("decodes a valid token with all fields", func() {
@@ -81,7 +81,7 @@ var _ = Describe("decodeStreamInfo", func() {
 
 var _ = Describe("encodeMediafileShare", func() {
 	BeforeEach(func() {
-		auth.TokenAuth = jwtauth.New("HS256", []byte("test-secret"), nil)
+		auth.PublicTokenAuth = jwtauth.New("HS256", []byte("test-secret"), nil)
 	})
 
 	It("includes the share ID in the token", func() {
@@ -113,7 +113,7 @@ var _ = Describe("handleStream", func() {
 	var pub *Router
 
 	BeforeEach(func() {
-		auth.TokenAuth = jwtauth.New("HS256", []byte("test-secret"), nil)
+		auth.PublicTokenAuth = jwtauth.New("HS256", []byte("test-secret"), nil)
 		ds = &tests.MockDataStore{}
 		shareRepo = &tests.MockShareRepo{}
 		ds.MockedShare = shareRepo

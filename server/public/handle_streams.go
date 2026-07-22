@@ -107,7 +107,7 @@ func shareContainsTrack(share *model.Share, mediaFileID string) bool {
 // public-share capability, not an auth credential; see encodeMediafileShare for
 // why a JWT is used here.
 func decodeStreamInfo(tokenString string) (shareTrackInfo, error) {
-	c, err := auth.Validate(tokenString)
+	c, err := auth.ValidatePublic(tokenString)
 	if err != nil {
 		return shareTrackInfo{}, err
 	}

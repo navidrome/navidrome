@@ -9,17 +9,19 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 )
 
-// These are the legacy ID functions that were used in the original Navidrome ID generation.
-// They are kept here for backwards compatibility with existing databases.
+// These legacy ID functions hash the same inputs as the original Navidrome ID generation,
+// now emitted in the canonical base62 encoding (matching what the uniform-ids migration stores).
 
 func legacyTrackID(mf model.MediaFile, prependLibId bool) string {
-	id := mf.Path
+	key := mf.Path
 	if prependLibId && mf.LibraryID != model.DefaultLibraryID {
-		id = fmt.Sprintf("%d\\%s", mf.LibraryID, id)
+		key = fmt.Sprintf("%d\\%s", mf.LibraryID, key)
 	}
-	return fmt.Sprintf("%x", md5.Sum([]byte(id)))
+	sum := md5.Sum([]byte(key))
+	return id.Encode(sum)
 }
 
 func legacyAlbumID(mf model.MediaFile, md Metadata, prependLibId bool) string {
@@ -33,7 +35,8 @@ func legacyAlbumID(mf model.MediaFile, md Metadata, prependLibId bool) string {
 	if prependLibId && mf.LibraryID != model.DefaultLibraryID {
 		albumPath = fmt.Sprintf("%d\\%s", mf.LibraryID, albumPath)
 	}
-	return fmt.Sprintf("%x", md5.Sum([]byte(albumPath)))
+	sum := md5.Sum([]byte(albumPath))
+	return id.Encode(sum)
 }
 
 func legacyMapAlbumArtistName(md Metadata) string {
