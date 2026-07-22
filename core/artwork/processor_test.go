@@ -2,7 +2,9 @@ package artwork
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
+	"hash/crc32"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -15,6 +17,21 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
+
+// pngHeaderWithDims builds just a PNG signature + IHDR chunk declaring w×h. DecodeConfig
+// reads the header without touching pixel data, so the body can be omitted entirely.
+func pngHeaderWithDims(w, h uint32) []byte {
+	ihdr := make([]byte, 13)
+	binary.BigEndian.PutUint32(ihdr[0:], w)
+	binary.BigEndian.PutUint32(ihdr[4:], h)
+	ihdr[8] = 8 // bit depth
+	ihdr[9] = 2 // color type: truecolor
+	chunk := append([]byte("IHDR"), ihdr...)
+	out := []byte{0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a}
+	out = binary.BigEndian.AppendUint32(out, uint32(len(ihdr)))
+	out = append(out, chunk...)
+	return binary.BigEndian.AppendUint32(out, crc32.ChecksumIEEE(chunk))
+}
 
 var _ = Describe("processItem", func() {
 	var (
@@ -227,6 +244,13 @@ var _ = Describe("processItem", func() {
 
 		_, err = artRepo.GetItemArtwork("ra", "big", model.ImageTypePrimary)
 		Expect(err).To(MatchError(model.ErrNotFound))
+	})
+
+	It("decompression bomb: rejects huge declared dimensions before the full decode", func() {
+		data := pngHeaderWithDims(50000, 50000) // 2.5 gigapixels, far above the cap
+		_, err := decodeArtwork(ctx, "bomb", data)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("dimensions"))
 	})
 
 	It("store write failure: fails without writing state", func() {

@@ -38,6 +38,10 @@ const thumbnailSize = 128
 // point at an arbitrarily large endpoint, and 20MB is generous for any real cover.
 const maxImageBytes = 20 << 20
 
+// maxImagePixels caps declared dimensions: a tiny compressed file can declare a
+// huge canvas that image.Decode would expand into gigabytes (decompression bomb).
+const maxImagePixels = 64 << 20
+
 // workerDeps are the collaborators processItem needs; extGate is set by NewWorker in
 // production and nil only in tests, where resolveItem falls back to a plain passthrough.
 type workerDeps struct {
@@ -146,6 +150,9 @@ func decodeArtwork(ctx context.Context, hash string, data []byte) (*model.Artwor
 	cfg, format, err := image.DecodeConfig(bytes.NewReader(data))
 	if err != nil {
 		return nil, fmt.Errorf("decode image config: %w", err)
+	}
+	if int64(cfg.Width)*int64(cfg.Height) > maxImagePixels {
+		return nil, fmt.Errorf("image dimensions %dx%d exceed pixel cap %d", cfg.Width, cfg.Height, maxImagePixels)
 	}
 	img, _, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
