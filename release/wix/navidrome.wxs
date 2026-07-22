@@ -98,7 +98,7 @@
 		</Directory>
 
 		<InstallUISequence>
-			<Custom Action="SetInstallDirProperty" After="CostFinalize">Not Installed AND NOT WIX_UPGRADE_DETECTED</Custom>
+			<Custom Action="SetInstallDirProperty" After="CostFinalize">(Not Installed AND NOT WIX_UPGRADE_DETECTED) OR (MSI_INSTALLATIONDIRECTORY=TARGETDIR)</Custom>
 			<Show Dialog="MyCustomPropertiesDlg" After="WelcomeDlg">Not Installed AND NOT WIX_UPGRADE_DETECTED</Show>
 		</InstallUISequence>
 
