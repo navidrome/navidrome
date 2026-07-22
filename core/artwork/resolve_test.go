@@ -1,6 +1,7 @@
 package artwork
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"image"
@@ -509,6 +510,25 @@ var _ = Describe("resolveItem", func() {
 			Expect(res.source).To(BeEmpty())
 		})
 
+		It("skips a grid tile whose declared dimensions are a decompression bomb", func() {
+			// End-to-end regression: a bomb-declaring tile must not break the grid.
+			libRoot := GinkgoT().TempDir()
+			Expect(os.MkdirAll(filepath.Join(libRoot, "bomb"), 0755)).To(Succeed())
+			Expect(os.WriteFile(filepath.Join(libRoot, "bomb", "cover.jpg"), pngHeaderWithDims(50000, 50000), 0600)).To(Succeed())
+			libRepo.SetData(model.Libraries{{ID: 0, Path: testFileLibPath(libRoot)}})
+			folderRepo.result = []model.Folder{{Path: "bomb", ImageFiles: []string{"cover.jpg"}}}
+
+			plRepo := tests.CreateMockPlaylistRepo()
+			plRepo.SetData(model.Playlists{{ID: "plbomb", Name: "Playlist"}})
+			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"t1"}}
+			ds.MockedPlaylist = plRepo
+
+			res, err := resolveItem(ctx, ds, prov, ffm, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "plbomb"}, nil)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res.reader).To(BeNil())
+			Expect(res.source).To(BeEmpty())
+		})
+
 		It("does not resolve as absent when every sampled album fails to resolve", func() {
 			// "missing1"/"missing2" are not in MockAlbumRepo's data, so resolveAlbum
 			// returns a genuine (non-external) error for every sampled tile.
@@ -521,5 +541,22 @@ var _ = Describe("resolveItem", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(res).To(Equal(resolution{}))
 		})
+	})
+})
+
+// decodeTile runs on every sampled album's resolved bytes before processItem's
+// own guards apply, so it must enforce the same caps independently.
+var _ = Describe("decodeTile", func() {
+	It("rejects a decompression bomb before the full decode", func() {
+		data := pngHeaderWithDims(50000, 50000) // 2.5 gigapixels, far above the cap
+		_, err := decodeTile(io.NopCloser(bytes.NewReader(data)))
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("dimensions"))
+	})
+
+	It("rejects a tile larger than the size cap", func() {
+		data := bytes.Repeat([]byte{0}, maxImageBytes+1)
+		_, err := decodeTile(io.NopCloser(bytes.NewReader(data)))
+		Expect(err).To(HaveOccurred())
 	})
 })
