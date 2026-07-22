@@ -54,6 +54,34 @@ var _ = Describe("ArtworkQueueRepository", func() {
 		Expect(got[0].Attempts).To(Equal(2))
 	})
 
+	It("MarkFailedIfUnchanged applies backoff only while retry_at is unchanged", func() {
+		Expect(repo.Enqueue(item("al", "m1", model.ArtworkPriorityScan))).To(Succeed())
+		// Anchor retry_at in the past (attempts -> 1) so it can never collide with the re-enqueue's now.
+		Expect(repo.MarkFailed("al", "m1", model.ImageTypePrimary, time.Now().Add(-time.Hour))).To(Succeed())
+		got, err := repo.DequeueBatch(10)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(got).To(HaveLen(1))
+		original := got[0].RetryAt
+
+		// A concurrent scan re-enqueues, resetting retry_at to now.
+		Expect(repo.Enqueue(item("al", "m1", model.ArtworkPriorityScan))).To(Succeed())
+
+		// Failing with the stale retry_at is a no-op: the re-enqueued row keeps its fresh state.
+		future := time.Now().Add(48 * time.Hour)
+		Expect(repo.MarkFailedIfUnchanged("al", "m1", model.ImageTypePrimary, original, future)).To(Succeed())
+		got, _ = repo.DequeueBatch(10)
+		Expect(got).To(HaveLen(1), "the fresh re-enqueue stays immediately eligible")
+		Expect(got[0].Attempts).To(Equal(1), "the stale failure must not bump attempts")
+		current := got[0].RetryAt
+
+		// Failing with the current retry_at applies the backoff and bumps attempts.
+		Expect(repo.MarkFailedIfUnchanged("al", "m1", model.ImageTypePrimary, current, future)).To(Succeed())
+		got, _ = repo.DequeueBatch(10)
+		Expect(got).To(BeEmpty(), "backed-off row is hidden until the future retry_at")
+		all, _ := repo.Count()
+		Expect(all).To(Equal(int64(1)))
+	})
+
 	It("deletes on completion and counts", func() {
 		Expect(repo.Enqueue(item("al", "c1", 0))).To(Succeed())
 		n, _ := repo.Count()

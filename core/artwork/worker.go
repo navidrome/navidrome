@@ -155,8 +155,10 @@ func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) {
 			log.Warn(ctx, "artwork: could not delete processed queue item", "kind", item.ItemKind, "id", item.ItemID, err)
 		}
 	case outcomeFoundStale, outcomeFailed:
+		// MarkFailedIfUnchanged, not MarkFailed: a scan that re-enqueued this row mid-flight reset
+		// retry_at, so stale backoff must not stomp its fresh, immediate eligibility.
 		retryAt := time.Now().Add(backoff(item.Attempts))
-		if err := queue.MarkFailed(item.ItemKind, item.ItemID, item.ImageType, retryAt); err != nil {
+		if err := queue.MarkFailedIfUnchanged(item.ItemKind, item.ItemID, item.ImageType, item.RetryAt, retryAt); err != nil {
 			log.Warn(ctx, "artwork: could not reschedule failed queue item", "kind", item.ItemKind, "id", item.ItemID, err)
 		}
 	}

@@ -189,6 +189,30 @@ var _ = Describe("Worker", func() {
 			Expect(ia.Source).To(Equal("folder"))
 		})
 
+		It("keeps a fresh re-enqueue ahead of a stale failure backoff", func() {
+			conf.Server.CoverArtPriority = "external"
+			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al8", Name: "Album"}})
+			prov.albumImage = func(context.Context, string) (*url.URL, error) {
+				return nil, errors.New("agent timed out")
+			}
+			racing := &reenqueueOnDequeue{MockArtworkQueueRepo: queueRepo}
+			ds.MockedArtworkQueue = racing
+			w = NewWorker(ds, store, prov, ffm)
+			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al8"})).To(Succeed())
+			dequeued := findQueued(queueRepo, "al", "al8").RetryAt
+
+			n, err := w.drain(ctx, 1)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(n).To(Equal(1))
+
+			// The concurrent re-enqueue reset retry_at; the failure path must not stomp it
+			// with stale backoff nor bump attempts, so the row stays immediately eligible.
+			it := findQueued(queueRepo, "al", "al8")
+			Expect(it).ToNot(BeNil())
+			Expect(it.Attempts).To(BeZero())
+			Expect(it.RetryAt).To(BeTemporally("==", dequeued.Add(time.Minute)))
+		})
+
 		It("returns zero when the queue is empty", func() {
 			n, err := w.drain(ctx, 2)
 			Expect(err).ToNot(HaveOccurred())

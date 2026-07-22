@@ -84,6 +84,19 @@ func (m *MockArtworkQueueRepo) MarkFailed(kind, id, imageType string, retryAt ti
 	return nil
 }
 
+func (m *MockArtworkQueueRepo) MarkFailedIfUnchanged(kind, id, imageType string, seenRetryAt, retryAt time.Time) error {
+	if m.Err != nil {
+		return m.Err
+	}
+	k := iaKey(kind, id, imageType)
+	if it, ok := m.Data[k]; ok && it.RetryAt.Equal(seenRetryAt) {
+		it.Attempts++
+		it.RetryAt = retryAt
+		m.Data[k] = it
+	}
+	return nil
+}
+
 func (m *MockArtworkQueueRepo) Delete(kind, id, imageType string) error {
 	if m.Err != nil {
 		return m.Err
