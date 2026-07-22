@@ -17,7 +17,7 @@ type flakyGetArtworkRepo struct {
 	*tests.MockArtworkRepo
 }
 
-func (f *flakyGetArtworkRepo) GetImage(string) (*model.Artwork, error) {
+func (f *flakyGetArtworkRepo) GetAllHashes() ([]string, error) {
 	return nil, errors.New("db locked")
 }
 
@@ -74,7 +74,7 @@ var _ = Describe("Prune", func() {
 		h, _ := HashImage(bytes.NewReader(data))
 		Expect(store.Write(h, "image/jpeg", bytes.NewReader(data))).To(Succeed())
 
-		Expect(Prune(context.Background(), ds, store)).To(Succeed())
+		Expect(Prune(context.Background(), ds, store)).ToNot(Succeed())
 
 		rc, err := store.Open(h, "image/jpeg")
 		Expect(err).ToNot(HaveOccurred())

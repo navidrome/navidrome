@@ -9,7 +9,7 @@ import (
 
 type MockArtworkQueueRepo struct {
 	model.ArtworkQueueRepository
-	Data map[string]model.ArtworkQueueItem // key: kind + "|" + id + "|" + imageType
+	Data map[string]model.ArtworkQueueItem // keyed by iaKey(kind, id, imageType)
 	Err  error
 }
 
@@ -21,16 +21,23 @@ func (m *MockArtworkQueueRepo) Enqueue(items ...model.ArtworkQueueItem) error {
 	if m.Err != nil {
 		return m.Err
 	}
+	now := time.Now()
 	for _, it := range items {
-		k := iaKey(it.ItemKind, it.ItemID, it.ImageType)
-		if prev, ok := m.Data[k]; ok && prev.Priority > it.Priority {
-			it.Priority = prev.Priority
-		}
-		if it.EnqueuedAt.IsZero() {
-			it.EnqueuedAt = time.Now()
+		if it.ImageType == "" {
+			it.ImageType = model.ImageTypePrimary
 		}
 		if it.RetryAt.IsZero() {
-			it.RetryAt = time.Now()
+			it.RetryAt = now
+		}
+		k := iaKey(it.ItemKind, it.ItemID, it.ImageType)
+		if prev, ok := m.Data[k]; ok {
+			prev.Priority = max(prev.Priority, it.Priority)
+			prev.RetryAt = it.RetryAt
+			m.Data[k] = prev
+			continue
+		}
+		if it.EnqueuedAt.IsZero() {
+			it.EnqueuedAt = now
 		}
 		m.Data[k] = it
 	}
@@ -88,4 +95,8 @@ func (m *MockArtworkQueueRepo) Count() (int64, error) {
 		return 0, m.Err
 	}
 	return int64(len(m.Data)), nil
+}
+
+func (m *MockArtworkQueueRepo) EnqueueStaleAbsent(kind string, attemptedBefore time.Time) (int64, error) {
+	return 0, m.Err
 }

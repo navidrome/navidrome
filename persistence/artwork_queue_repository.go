@@ -2,12 +2,16 @@ package persistence
 
 import (
 	"context"
+	"slices"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/model"
 	"github.com/pocketbase/dbx"
 )
+
+// enqueueChunkSize keeps each multi-row insert under SQLite's bind-variable limit (7 cols -> 700 vars).
+const enqueueChunkSize = 100
 
 type artworkQueueRepository struct {
 	sqlRepository
@@ -23,14 +27,15 @@ func NewArtworkQueueRepository(ctx context.Context, db dbx.Builder) model.Artwor
 
 func (r *artworkQueueRepository) Enqueue(items ...model.ArtworkQueueItem) error {
 	now := time.Now()
-	for _, it := range items {
-		if it.ImageType == "" {
-			it.ImageType = model.ImageTypePrimary
+	for chunk := range slices.Chunk(items, enqueueChunkSize) {
+		ins := Insert(r.tableName).Columns("item_kind", "item_id", "image_type", "priority", "attempts", "retry_at", "enqueued_at")
+		for _, it := range chunk {
+			if it.ImageType == "" {
+				it.ImageType = model.ImageTypePrimary
+			}
+			ins = ins.Values(it.ItemKind, it.ItemID, it.ImageType, it.Priority, 0, now, now)
 		}
-		ins := Insert(r.tableName).SetMap(map[string]any{
-			"item_kind": it.ItemKind, "item_id": it.ItemID, "image_type": it.ImageType,
-			"priority": it.Priority, "attempts": 0, "retry_at": now, "enqueued_at": now,
-		}).Suffix(`ON CONFLICT (item_kind, item_id, image_type) DO UPDATE SET
+		ins = ins.Suffix(`ON CONFLICT (item_kind, item_id, image_type) DO UPDATE SET
 			priority = MAX(priority, excluded.priority), retry_at = excluded.retry_at`)
 		if _, err := r.executeSQL(ins); err != nil {
 			return err
@@ -66,15 +71,20 @@ func (r *artworkQueueRepository) Delete(kind, id, imageType string) error {
 }
 
 func (r *artworkQueueRepository) Count() (int64, error) {
-	sel := Select("count(*)").From(r.tableName)
-	var counts []int64
-	if err := r.queryAllSlice(sel, &counts); err != nil {
-		return 0, err
-	}
-	if len(counts) == 0 {
-		return 0, nil
-	}
-	return counts[0], nil
+	var res struct{ Count int64 }
+	err := r.queryOne(Select("count(*) as count").From(r.tableName), &res)
+	return res.Count, err
+}
+
+func (r *artworkQueueRepository) EnqueueStaleAbsent(kind string, attemptedBefore time.Time) (int64, error) {
+	now := time.Now()
+	// DO NOTHING is deliberate: rechecks must not bump priority/retry_at of already-queued items.
+	ins := Expr(`INSERT INTO `+r.tableName+` (item_kind, item_id, image_type, priority, attempts, retry_at, enqueued_at)
+		SELECT item_kind, item_id, image_type, ?, 0, ?, ?
+		FROM `+itemArtworkTable+` WHERE item_kind = ? AND hash = '' AND attempted_at < ?
+		ON CONFLICT (item_kind, item_id, image_type) DO NOTHING`,
+		model.ArtworkPriorityRecheck, now, now, kind, attemptedBefore)
+	return r.executeSQL(ins)
 }
 
 var _ model.ArtworkQueueRepository = (*artworkQueueRepository)(nil)

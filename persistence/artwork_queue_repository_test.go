@@ -62,4 +62,22 @@ var _ = Describe("ArtworkQueueRepository", func() {
 		n, _ = repo.Count()
 		Expect(n).To(BeZero())
 	})
+
+	It("enqueues stale absent states for recheck", func() {
+		awRepo := NewArtworkRepository(context.Background(), GetDBXBuilder())
+		old := time.Now().Add(-48 * time.Hour)
+		Expect(awRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "ar", ItemID: "stale1", ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: old})).To(Succeed())
+		Expect(awRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "ar", ItemID: "fresh1", ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: time.Now()})).To(Succeed())
+		Expect(awRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "ar", ItemID: "found1", ImageType: model.ImageTypePrimary, Hash: "hX", AttemptedAt: old})).To(Succeed())
+
+		n, err := repo.EnqueueStaleAbsent("ar", time.Now().Add(-24*time.Hour))
+		Expect(err).ToNot(HaveOccurred())
+		Expect(n).To(Equal(int64(1)))
+
+		items, err := repo.DequeueBatch(10)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(items).To(HaveLen(1))
+		Expect(items[0].ItemID).To(Equal("stale1"))
+		Expect(items[0].Priority).To(Equal(model.ArtworkPriorityRecheck))
+	})
 })

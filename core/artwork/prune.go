@@ -2,7 +2,6 @@ package artwork
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/navidrome/navidrome/log"
@@ -34,9 +33,17 @@ func Prune(ctx context.Context, ds model.DataStore, store *ImageStore) error {
 		log.Info(ctx, "Prune: removed orphan artwork", "count", len(orphans))
 	}
 
+	hashes, err := repo.GetAllHashes()
+	if err != nil {
+		return err
+	}
+	known := make(map[string]struct{}, len(hashes))
+	for _, h := range hashes {
+		known[h] = struct{}{}
+	}
 	removed, err := store.Sweep(func(hash string) bool {
-		_, err := repo.GetImage(hash)
-		return !errors.Is(err, model.ErrNotFound)
+		_, ok := known[hash]
+		return ok
 	})
 	if err != nil {
 		return err

@@ -9,7 +9,7 @@ import (
 type MockArtworkRepo struct {
 	model.ArtworkRepository
 	Data         map[string]model.Artwork
-	ItemData     map[string]model.ItemArtwork // key: kind + "|" + id + "|" + imageType
+	ItemData     map[string]model.ItemArtwork // keyed by iaKey(kind, id, imageType)
 	OrphanHashes []string
 	Err          error
 }
@@ -58,6 +58,17 @@ func (m *MockArtworkRepo) GetOrphanHashes(createdBefore time.Time) ([]string, er
 	return m.OrphanHashes, m.Err
 }
 
+func (m *MockArtworkRepo) GetAllHashes() ([]string, error) {
+	if m.Err != nil {
+		return nil, m.Err
+	}
+	hashes := make([]string, 0, len(m.Data))
+	for h := range m.Data {
+		hashes = append(hashes, h)
+	}
+	return hashes, nil
+}
+
 func (m *MockArtworkRepo) DeleteImages(hashes ...string) error {
 	if m.Err != nil {
 		return m.Err
@@ -81,6 +92,9 @@ func (m *MockArtworkRepo) GetItemArtwork(kind, id, imageType string) (*model.Ite
 func (m *MockArtworkRepo) PutItemArtwork(ia *model.ItemArtwork) error {
 	if m.Err != nil {
 		return m.Err
+	}
+	if ia.ImageType == "" {
+		ia.ImageType = model.ImageTypePrimary
 	}
 	ia.UpdatedAt = time.Now()
 	m.ItemData[iaKey(ia.ItemKind, ia.ItemID, ia.ImageType)] = *ia
@@ -106,12 +120,12 @@ func (m *MockArtworkRepo) GetInfoForItems(kind string, ids []string) (map[string
 	res := map[string]model.ItemArtworkInfo{}
 	for _, id := range ids {
 		if ia, ok := m.ItemData[iaKey(kind, id, model.ImageTypePrimary)]; ok {
-			res[id] = model.ItemArtworkInfo{ItemID: id, Hash: ia.Hash, Absent: ia.Hash == ""}
+			info := model.ItemArtworkInfo{ItemID: id, Hash: ia.Hash}
+			if a, ok := m.Data[ia.Hash]; ok {
+				info.BlurHash = a.BlurHash
+			}
+			res[id] = info
 		}
 	}
 	return res, nil
-}
-
-func (m *MockArtworkRepo) EnqueueStaleAbsent(kind string, attemptedBefore time.Time) (int64, error) {
-	return 0, m.Err
 }

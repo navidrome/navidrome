@@ -35,8 +35,10 @@ type ItemArtworkInfo struct {
 	ItemID   string
 	Hash     string
 	BlurHash string
-	Absent   bool
 }
+
+// Absent reports a known-absent artwork state (resolved, no image).
+func (i ItemArtworkInfo) Absent() bool { return i.Hash == "" }
 
 type ArtworkQueueItem struct {
 	ItemKind   string    `structs:"item_kind"`
@@ -70,8 +72,8 @@ type ArtworkRepository interface {
 	DeleteForItem(kind, id string) error
 	// GetInfoForItems hydrates a page: one batched query, item_artwork joined to artwork.
 	GetInfoForItems(kind string, ids []string) (map[string]ItemArtworkInfo, error)
-	// EnqueueStaleAbsent inserts queue rows (priority Recheck) for absent states older than cutoff.
-	EnqueueStaleAbsent(kind string, attemptedBefore time.Time) (int64, error)
+	// GetAllHashes returns every stored artwork hash, for sweep membership checks.
+	GetAllHashes() ([]string, error)
 }
 
 type ArtworkQueueRepository interface {
@@ -83,4 +85,6 @@ type ArtworkQueueRepository interface {
 	MarkFailed(kind, id, imageType string, retryAt time.Time) error
 	Delete(kind, id, imageType string) error
 	Count() (int64, error)
+	// EnqueueStaleAbsent inserts queue rows (priority Recheck) for absent states older than cutoff.
+	EnqueueStaleAbsent(kind string, attemptedBefore time.Time) (int64, error)
 }
