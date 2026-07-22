@@ -230,6 +230,21 @@ func (a *Agents) GetArtistImages(ctx context.Context, id, name, mbid string) ([]
 	})
 }
 
+// IsArtistImagePlaceholder reports whether any enabled agent recognizes url as its own provider's
+// default/placeholder artist image.
+func (a *Agents) IsArtistImagePlaceholder(url string) bool {
+	if url == "" {
+		return false
+	}
+	for _, ea := range a.getEnabledAgentNames() {
+		ag := a.getAgent(ea)
+		if detector, ok := ag.(ArtistImagePlaceholderDetector); ok && detector.IsArtistImagePlaceholder(url) {
+			return true
+		}
+	}
+	return false
+}
+
 // GetArtistTopSongs returns top songs by id, name, and/or mbid. Because some songs returned from an enabled
 // agent may not exist in the database, return at most limit * conf.Server.DevExternalArtistFetchMultiplier items.
 func (a *Agents) GetArtistTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]Song, error) {

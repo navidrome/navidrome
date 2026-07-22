@@ -250,6 +250,25 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 		ag.AssertExpectations(GinkgoT())
 	})
 
+	It("does not persist provider placeholder image URLs returned by the agents", func() {
+		originalArtist := &model.Artist{ID: "ar-ph-image", Name: "Placeholder Image Artist"}
+		mockArtistRepo.SetData(model.Artists{*originalArtist})
+
+		ag.On("GetArtistMBID", ctx, "ar-ph-image", "Placeholder Image Artist").Return("", nil).Once()
+		ag.On("GetArtistImages", ctx, "ar-ph-image", "Placeholder Image Artist", "").
+			Return([]agents.ExternalImage{{URL: placeholderImageURL, Size: 1000}}, nil).Once()
+		ag.On("GetArtistBiography", ctx, "ar-ph-image", "Placeholder Image Artist", "").Return("", nil).Maybe()
+		ag.On("GetArtistURL", ctx, "ar-ph-image", "Placeholder Image Artist", "").Return("", nil).Maybe()
+		ag.On("GetSimilarArtists", ctx, "ar-ph-image", "Placeholder Image Artist", "", 100).Return(nil, nil).Maybe()
+
+		updatedArtist, err := p.UpdateArtistInfo(ctx, "ar-ph-image", 10, false)
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(updatedArtist.LargeImageUrl).To(BeEmpty())
+		Expect(updatedArtist.MediumImageUrl).To(BeEmpty())
+		Expect(updatedArtist.SmallImageUrl).To(BeEmpty())
+	})
+
 	It("matches similar artists by ID first when agent provides IDs", func() {
 		originalArtist := &model.Artist{
 			ID:   "ar-id-match",

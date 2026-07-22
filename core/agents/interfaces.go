@@ -86,6 +86,12 @@ type ArtistImageRetriever interface {
 	GetArtistImages(ctx context.Context, id, name, mbid string) ([]ExternalImage, error)
 }
 
+// ArtistImagePlaceholderDetector is implemented by agents that can recognize their own provider's
+// default/placeholder artist images, so those are never served or persisted as real artwork.
+type ArtistImagePlaceholderDetector interface {
+	IsArtistImagePlaceholder(url string) bool
+}
+
 type ArtistTopSongsRetriever interface {
 	GetArtistTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]Song, error)
 }

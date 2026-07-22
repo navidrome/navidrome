@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -300,6 +301,29 @@ var _ = Describe("Provider - ArtistImage", func() {
 
 	})
 
+	It("treats a cached provider placeholder URL as absent and fetches fresh", func() {
+		// Legacy row still holding Last.fm's star placeholder cached before agents filtered it out
+		starURL := "https://lastfm.freetls.fastly.net/i/u/ar0/2a96cbd8b46e442fc41c2b86b821562f.jpg"
+		cachedArtist := &model.Artist{
+			ID:                    "artist-placeholder",
+			Name:                  "Placeholder Artist",
+			LargeImageUrl:         starURL,
+			ExternalInfoUpdatedAt: new(time.Now().Add(-1 * time.Minute)),
+		}
+		mockArtistRepo.On("Get", "artist-placeholder").Return(cachedArtist, nil).Maybe()
+		mockImageAgent.On("GetArtistImages", mock.Anything, "artist-placeholder", "Placeholder Artist", "").
+			Return([]agents.ExternalImage{{URL: "http://example.com/real.jpg", Size: 1000}}, nil).Once()
+		expectedURL, _ := url.Parse("http://example.com/real.jpg")
+
+		// Act
+		imgURL, err := provider.ArtistImage(ctx, "artist-placeholder")
+
+		// Assert: placeholder ignored, agent consulted, real image returned
+		Expect(err).ToNot(HaveOccurred())
+		Expect(imgURL).To(Equal(expectedURL))
+		mockImageAgent.AssertCalled(GinkgoT(), "GetArtistImages", ctx, "artist-placeholder", "Placeholder Artist", "")
+	})
+
 	It("returns stale URL and enqueues refresh when info is expired", func() {
 		// Arrange
 		conf.Server.DevArtistInfoTimeToLive = 1 * time.Nanosecond
@@ -410,6 +434,10 @@ func newMockArtistImageAgent() *mockArtistImageAgent {
 func (m *mockArtistImageAgent) AgentName() string {
 	args := m.Called()
 	return args.String(0)
+}
+
+func (m *mockArtistImageAgent) IsArtistImagePlaceholder(url string) bool {
+	return strings.Contains(url, "2a96cbd8b46e442fc41c2b86b821562f")
 }
 
 func (m *mockArtistImageAgent) GetArtistImages(ctx context.Context, id, artistName, mbid string) ([]agents.ExternalImage, error) {

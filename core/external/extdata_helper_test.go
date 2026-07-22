@@ -3,11 +3,15 @@ package external_test
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/model"
 	"github.com/stretchr/testify/mock"
 )
+
+// placeholderImageURL is a stand-in provider placeholder the mock agents recognize in tests.
+const placeholderImageURL = "http://provider.example.com/placeholder.png"
 
 // --- Shared Mock Implementations ---
 
@@ -286,6 +290,17 @@ func (m *mockAgents) GetAlbumImages(ctx context.Context, name, artist, mbid stri
 		return args.Get(0).([]agents.ExternalImage), args.Error(1)
 	}
 	return nil, args.Error(1)
+}
+
+func (m *mockAgents) IsArtistImagePlaceholder(url string) bool {
+	if url == "" {
+		return false
+	}
+	// Delegate to a configured image agent that owns its detection; otherwise recognize the stand-in.
+	if d, ok := m.imageAgent.(agents.ArtistImagePlaceholderDetector); ok {
+		return d.IsArtistImagePlaceholder(url)
+	}
+	return strings.Contains(url, "placeholder")
 }
 
 func (m *mockAgents) GetSimilarSongsByTrack(ctx context.Context, id, name, artist, mbid string, count int) ([]agents.Song, error) {

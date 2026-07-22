@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -85,6 +86,7 @@ type Agents interface {
 	agents.SimilarSongsByTrackRetriever
 	agents.SimilarSongsByAlbumRetriever
 	agents.SimilarSongsByArtistRetriever
+	agents.ArtistImagePlaceholderDetector
 }
 
 func NewProvider(ds model.DataStore, agents Agents, m *matcher.Matcher) Provider {
@@ -377,6 +379,10 @@ func (e *provider) ArtistImage(ctx context.Context, id string) (*url.URL, error)
 	}
 
 	imageUrl := artist.ArtistImageUrl()
+	if e.ag.IsArtistImagePlaceholder(imageUrl) {
+		// Provider placeholder cached before filtering existed; treat as absent and refetch.
+		imageUrl = ""
+	}
 	if imageUrl == "" {
 		// No cached URL — must fetch from external source synchronously
 		e.callGetImage(ctx, e.ag, &artist)
@@ -524,6 +530,10 @@ func (e *provider) callGetImage(ctx context.Context, agent agents.ArtistImageRet
 	if err != nil {
 		return
 	}
+	// Never persist provider placeholders as real artwork.
+	images = slices.DeleteFunc(images, func(i agents.ExternalImage) bool {
+		return e.ag.IsArtistImagePlaceholder(i.URL)
+	})
 	sort.Slice(images, func(i, j int) bool { return images[i].Size > images[j].Size })
 
 	if len(images) >= 1 {

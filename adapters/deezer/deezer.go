@@ -70,14 +70,26 @@ func (s *deezerAgent) GetArtistImages(ctx context.Context, _, name, _ string) ([
 		{artist.PictureSmall, deezerApiPictureSmallSize},
 	}
 	for _, imgData := range possibleImages {
-		if imgData.URL != "" {
+		if imgData.URL != "" && !s.IsArtistImagePlaceholder(imgData.URL) {
 			res = append(res, agents.ExternalImage{
 				URL:  imgData.URL,
 				Size: imgData.Size,
 			})
 		}
 	}
+	if len(res) == 0 {
+		return nil, agents.ErrNotFound
+	}
 	return res, nil
+}
+
+// deezerEmptyPicturePath is Deezer's empty-image-id path shape for artists with no picture
+// (e.g. .../images/artist//1000x1000-...jpg), which serves a generic silhouette on any CDN host.
+const deezerEmptyPicturePath = "/images/artist//"
+
+// IsArtistImagePlaceholder recognizes Deezer's empty-image-id silhouette URLs.
+func (s *deezerAgent) IsArtistImagePlaceholder(url string) bool {
+	return strings.Contains(url, deezerEmptyPicturePath)
 }
 
 func (s *deezerAgent) searchArtist(ctx context.Context, name string) (*Artist, error) {

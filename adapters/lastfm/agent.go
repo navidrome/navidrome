@@ -244,6 +244,11 @@ var (
 	artistIgnoredImage   = "2a96cbd8b46e442fc41c2b86b821562f" // Last.fm artist placeholder image name
 )
 
+// IsArtistImagePlaceholder recognizes Last.fm's generic gray-star artist image.
+func (l *lastfmAgent) IsArtistImagePlaceholder(url string) bool {
+	return strings.Contains(url, artistIgnoredImage)
+}
+
 func (l *lastfmAgent) GetArtistImages(ctx context.Context, _, name, mbid string) ([]agents.ExternalImage, error) {
 	log.Debug(ctx, "Getting artist images from Last.fm", "name", name)
 	a, err := l.callArtistGetInfo(ctx, name, l.languages[0])
@@ -274,7 +279,7 @@ func (l *lastfmAgent) GetArtistImages(ctx context.Context, _, name, mbid string)
 		if attr.Key != "content" {
 			continue
 		}
-		if strings.Contains(attr.Val, artistIgnoredImage) {
+		if l.IsArtistImagePlaceholder(attr.Val) {
 			log.Debug(ctx, "Artist image is ignored default image", "name", name, "url", attr.Val)
 			return res, nil
 		}
