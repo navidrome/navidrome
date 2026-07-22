@@ -5,6 +5,8 @@ import (
 	"errors"
 	"image"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -450,6 +452,45 @@ var _ = Describe("resolveItem", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).To(BeNil())
 			Expect(res.extError).To(BeFalse())
+		})
+
+		It("treats an ExternalImageURL 404 as a definitive miss and falls through to the grid", func() {
+			conf.Server.EnableM3UExternalAlbumArt = true
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusNotFound)
+			}))
+			defer srv.Close()
+
+			plRepo := tests.CreateMockPlaylistRepo()
+			plRepo.SetData(model.Playlists{{ID: "pl404", Name: "Playlist", ExternalImageURL: srv.URL}})
+			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"t1"}}
+			ds.MockedPlaylist = plRepo
+
+			res, err := resolveItem(ctx, ds, prov, ffm, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "pl404"}, nil)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res.reader).ToNot(BeNil())
+			defer res.reader.Close()
+			Expect(res.source).To(Equal("generated"))
+			Expect(res.extError).To(BeFalse())
+		})
+
+		It("treats an ExternalImageURL 500 as a transient failure and sets extError", func() {
+			conf.Server.EnableM3UExternalAlbumArt = true
+			folderRepo.result = nil // no grid tiles, so the external failure is what surfaces
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusInternalServerError)
+			}))
+			defer srv.Close()
+
+			plRepo := tests.CreateMockPlaylistRepo()
+			plRepo.SetData(model.Playlists{{ID: "pl500", Name: "Playlist", ExternalImageURL: srv.URL}})
+			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"t1"}}
+			ds.MockedPlaylist = plRepo
+
+			res, err := resolveItem(ctx, ds, prov, ffm, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "pl500"}, nil)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res.reader).To(BeNil())
+			Expect(res.extError).To(BeTrue())
 		})
 
 		It("yields an empty resolution when no album has art", func() {
