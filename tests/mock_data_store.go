@@ -28,6 +28,9 @@ type MockDataStore struct {
 	MockedScrobble       model.ScrobbleRepository
 	MockedRadio          model.RadioRepository
 	MockedPlugin         model.PluginRepository
+	MockedArtwork        model.ArtworkRepository
+	MockedItemArtwork    model.ItemArtworkRepository
+	MockedArtworkQueue   model.ArtworkQueueRepository
 	scrobbleBufferMu     sync.Mutex
 	repoMu               sync.Mutex
 
@@ -245,6 +248,39 @@ func (db *MockDataStore) Plugin(ctx context.Context) model.PluginRepository {
 	}
 	db.MockedPlugin = CreateMockPluginRepo()
 	return db.MockedPlugin
+}
+
+func (db *MockDataStore) Artwork(ctx context.Context) model.ArtworkRepository {
+	if db.MockedArtwork != nil {
+		return db.MockedArtwork
+	}
+	if db.RealDS != nil {
+		return db.RealDS.Artwork(ctx)
+	}
+	db.MockedArtwork = CreateMockArtworkRepo()
+	return db.MockedArtwork
+}
+
+func (db *MockDataStore) ItemArtwork(ctx context.Context) model.ItemArtworkRepository {
+	if db.MockedItemArtwork != nil {
+		return db.MockedItemArtwork
+	}
+	if db.RealDS != nil {
+		return db.RealDS.ItemArtwork(ctx)
+	}
+	db.MockedItemArtwork = CreateMockItemArtworkRepo()
+	return db.MockedItemArtwork
+}
+
+func (db *MockDataStore) ArtworkQueue(ctx context.Context) model.ArtworkQueueRepository {
+	if db.MockedArtworkQueue != nil {
+		return db.MockedArtworkQueue
+	}
+	if db.RealDS != nil {
+		return db.RealDS.ArtworkQueue(ctx)
+	}
+	db.MockedArtworkQueue = CreateMockArtworkQueueRepo()
+	return db.MockedArtworkQueue
 }
 
 func (db *MockDataStore) WithTx(block func(tx model.DataStore) error, label ...string) error {
