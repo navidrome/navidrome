@@ -283,6 +283,25 @@ var _ = Describe("Worker", func() {
 			Expect(calls).To(Equal(5), "the breaker should have re-closed after the success")
 		})
 
+		It("does not open the breaker on a run of agent not-found misses", func() {
+			// Regression: agents.ErrNotFound is a definitive miss, not a fault. A run of
+			// artless items must never trip the breaker, or they'd loop in retry instead of
+			// settling absent. Uses the real gate, not passthroughGate.
+			notFound := func() (io.ReadCloser, string, error) { return nil, "", agents.ErrNotFound }
+			for range breakerThreshold + 3 {
+				_, _, err := w.gate("A", notFound)
+				Expect(err).To(MatchError(agents.ErrNotFound), "a miss passes through, never errBreakerOpen")
+			}
+
+			var calls int
+			counting := func() (io.ReadCloser, string, error) {
+				calls++
+				return nil, "", errors.New("boom")
+			}
+			_, _, _ = w.gate("A", counting)
+			Expect(calls).To(Equal(1), "the breaker stayed closed, so the step still runs")
+		})
+
 		It("isolates each agent's breaker: one open gate does not block another", func() {
 			failing := func() (io.ReadCloser, string, error) { return nil, "", errors.New("boom") }
 			for range breakerThreshold {

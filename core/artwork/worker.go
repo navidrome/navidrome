@@ -267,8 +267,9 @@ func (b *breaker) allow() bool {
 func (b *breaker) record(err error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	// A not-found is a definitive answer, not a fault; only real errors trip the breaker.
-	if err == nil || errors.Is(err, model.ErrNotFound) {
+	// A not-found (from either package) is a definitive answer, not a fault; only real
+	// errors trip the breaker. Must stay consistent with isTransientExternal.
+	if err == nil || errors.Is(err, model.ErrNotFound) || errors.Is(err, agents.ErrNotFound) {
 		b.failures = 0
 		return
 	}
