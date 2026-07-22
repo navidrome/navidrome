@@ -69,14 +69,27 @@ func (m *MockArtworkRepo) GetAllHashes() ([]string, error) {
 	return hashes, nil
 }
 
-func (m *MockArtworkRepo) DeleteImages(hashes ...string) error {
+func (m *MockArtworkRepo) DeleteOrphans(createdBefore time.Time, hashes []string) error {
 	if m.Err != nil {
 		return m.Err
 	}
+	// Mirror the SQL reference re-check; createdBefore is ignored in the mock for simplicity.
 	for _, h := range hashes {
+		if m.referenced(h) {
+			continue
+		}
 		delete(m.Data, h)
 	}
 	return nil
+}
+
+func (m *MockArtworkRepo) referenced(hash string) bool {
+	for _, ia := range m.ItemData {
+		if ia.Hash == hash {
+			return true
+		}
+	}
+	return false
 }
 
 func (m *MockArtworkRepo) GetItemArtwork(kind, id, imageType string) (*model.ItemArtwork, error) {
@@ -97,6 +110,9 @@ func (m *MockArtworkRepo) PutItemArtwork(ia *model.ItemArtwork) error {
 		ia.ImageType = model.ImageTypePrimary
 	}
 	ia.UpdatedAt = time.Now()
+	if ia.AttemptedAt.IsZero() {
+		ia.AttemptedAt = ia.UpdatedAt
+	}
 	m.ItemData[iaKey(ia.ItemKind, ia.ItemID, ia.ImageType)] = *ia
 	return nil
 }

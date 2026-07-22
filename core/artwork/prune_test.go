@@ -56,6 +56,26 @@ var _ = Describe("Prune", func() {
 		rc.Close()
 	})
 
+	It("spares a candidate reacquired between snapshot and delete", func() {
+		data := []byte("reacquired-bytes")
+		h, _ := HashImage(bytes.NewReader(data))
+		Expect(store.Write(h, "image/jpeg", bytes.NewReader(data))).To(Succeed())
+		Expect(awRepo.PutImage(&model.Artwork{Hash: h, Mime: "image/jpeg",
+			CreatedAt: time.Now().Add(-2 * time.Hour)})).To(Succeed())
+		awRepo.OrphanHashes = []string{h}
+		// Reacquisition: an item now references the hash the snapshot flagged as orphan.
+		Expect(awRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "al", ItemID: "a1",
+			ImageType: model.ImageTypePrimary, Hash: h, Source: "folder"})).To(Succeed())
+
+		Expect(Prune(context.Background(), ds, store)).To(Succeed())
+
+		_, err := awRepo.GetImage(h)
+		Expect(err).ToNot(HaveOccurred())
+		rc, err := store.Open(h, "image/jpeg")
+		Expect(err).ToNot(HaveOccurred())
+		rc.Close()
+	})
+
 	It("sweeps store files that have no artwork row", func() {
 		stray := []byte("no-row-bytes")
 		h, _ := HashImage(bytes.NewReader(stray))

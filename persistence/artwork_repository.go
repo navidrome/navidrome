@@ -92,9 +92,14 @@ func (r *artworkRepository) GetOrphanHashes(createdBefore time.Time) ([]string, 
 	return hashes, err
 }
 
-func (r *artworkRepository) DeleteImages(hashes ...string) error {
+func (r *artworkRepository) DeleteOrphans(createdBefore time.Time, hashes []string) error {
 	for chunk := range slices.Chunk(hashes, artworkBatchSize) {
-		if err := r.delete(Eq{"hash": chunk}); err != nil {
+		del := Delete(r.tableName).Where(And{
+			Eq{"hash": chunk},
+			Lt{"created_at": createdBefore},
+			Expr("hash NOT IN (SELECT hash FROM " + itemArtworkTable + " WHERE hash <> '')"),
+		})
+		if _, err := r.executeSQL(del); err != nil {
 			return err
 		}
 	}
@@ -116,6 +121,10 @@ func (r *artworkRepository) PutItemArtwork(ia *model.ItemArtwork) error {
 		ia.ImageType = model.ImageTypePrimary
 	}
 	ia.UpdatedAt = time.Now()
+	// PutItemArtwork records the outcome of an attempt, so an unset attempted_at is now.
+	if ia.AttemptedAt.IsZero() {
+		ia.AttemptedAt = ia.UpdatedAt
+	}
 	values, err := toSQLArgs(*ia)
 	if err != nil {
 		return err

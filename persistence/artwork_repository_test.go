@@ -99,11 +99,25 @@ var _ = Describe("ArtworkRepository", func() {
 			Expect(orphans).To(BeEmpty())
 		})
 
-		It("deletes by hashes", func() {
+		It("deletes only unreferenced hashes older than the cutoff", func() {
 			Expect(repo.PutImage(&model.Artwork{Hash: "d1", Mime: "image/jpeg"})).To(Succeed())
-			Expect(repo.DeleteImages("d1")).To(Succeed())
+			Expect(repo.PutImage(&model.Artwork{Hash: "dref", Mime: "image/jpeg"})).To(Succeed())
+			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "al", ItemID: "a1",
+				ImageType: model.ImageTypePrimary, Hash: "dref", Source: "folder"})).To(Succeed())
+
+			Expect(repo.DeleteOrphans(time.Now().Add(time.Minute), []string{"d1", "dref"})).To(Succeed())
+
 			_, err := repo.GetImage("d1")
 			Expect(err).To(MatchError(model.ErrNotFound))
+			_, err = repo.GetImage("dref")
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("spares an unreferenced hash younger than the cutoff", func() {
+			Expect(repo.PutImage(&model.Artwork{Hash: "young", Mime: "image/jpeg"})).To(Succeed())
+			Expect(repo.DeleteOrphans(time.Now().Add(-time.Hour), []string{"young"})).To(Succeed())
+			_, err := repo.GetImage("young")
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("fetches a batch larger than the SQL variable limit", func() {
@@ -133,6 +147,15 @@ var _ = Describe("ArtworkRepository", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.Source).To(Equal("embedded"))
 			Expect(got.UpdatedAt).ToNot(BeZero())
+		})
+
+		It("defaults attempted_at to now when unset", func() {
+			before := time.Now().Add(-time.Second)
+			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "ar", ItemID: "noattempt",
+				ImageType: model.ImageTypePrimary, Hash: ""})).To(Succeed())
+			got, err := repo.GetItemArtwork("ar", "noattempt", model.ImageTypePrimary)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.AttemptedAt).To(BeTemporally(">", before))
 		})
 
 		It("represents known-absent as empty hash", func() {

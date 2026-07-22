@@ -28,19 +28,17 @@ func (m *MockArtworkQueueRepo) Enqueue(items ...model.ArtworkQueueItem) error {
 		if it.ImageType == "" {
 			it.ImageType = model.ImageTypePrimary
 		}
-		if it.RetryAt.IsZero() {
-			it.RetryAt = now
-		}
 		k := iaKey(it.ItemKind, it.ItemID, it.ImageType)
+		// Mirror the SQL: retry_at/enqueued_at are server-set, never taken from the caller.
 		if prev, ok := m.Data[k]; ok {
 			prev.Priority = max(prev.Priority, it.Priority)
-			prev.RetryAt = it.RetryAt
+			prev.RetryAt = now
 			m.Data[k] = prev
 			continue
 		}
-		if it.EnqueuedAt.IsZero() {
-			it.EnqueuedAt = now
-		}
+		it.Attempts = 0
+		it.RetryAt = now
+		it.EnqueuedAt = now
 		m.Data[k] = it
 	}
 	return nil

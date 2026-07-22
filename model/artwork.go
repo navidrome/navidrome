@@ -65,7 +65,8 @@ type ArtworkRepository interface {
 	GetImages(hashes []string) (map[string]Artwork, error)
 	// GetOrphanHashes returns hashes referenced by no item_artwork row and older than cutoff.
 	GetOrphanHashes(createdBefore time.Time) ([]string, error)
-	DeleteImages(hashes ...string) error
+	// DeleteOrphans deletes the given hashes only if still unreferenced and older than cutoff (atomic re-check).
+	DeleteOrphans(createdBefore time.Time, hashes []string) error
 	// Per-item state (item_artwork table)
 	GetItemArtwork(kind, id, imageType string) (*ItemArtwork, error)
 	PutItemArtwork(ia *ItemArtwork) error
