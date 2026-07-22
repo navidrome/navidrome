@@ -253,6 +253,13 @@
         "updatedAt": "Ažurirano",
         "createdAt": "Kreirano",
         "downloadable": "Dozvoli preuzimanje?"
+      },
+      "actions": {
+        "download": {
+          "title": "Preuzmi",
+          "currentTrack": "Trenutna pjesma",
+          "allTracks": "Sve pjesme"
+        }
       }
     },
     "missing": {

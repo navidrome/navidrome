@@ -258,6 +258,13 @@
         "updatedAt": "更新於",
         "createdAt": "建立於",
         "downloadable": "允許下載？"
+      },
+      "actions": {
+        "download": {
+          "title": "下載",
+          "currentTrack": "目前曲目",
+          "allTracks": "所有曲目"
+        }
       }
     },
     "missing": {
