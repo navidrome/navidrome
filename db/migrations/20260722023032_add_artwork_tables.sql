@@ -33,7 +33,8 @@ CREATE TABLE artwork_queue (
   enqueued_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (item_kind, item_id, image_type)
 ) WITHOUT ROWID;
-CREATE INDEX ix_artwork_queue_drain ON artwork_queue(retry_at, priority, enqueued_at);
+-- Ordered to match DequeueBatch (priority DESC, enqueued_at) so drains stop after n rows; retry_at makes it covering.
+CREATE INDEX ix_artwork_queue_drain ON artwork_queue(priority DESC, enqueued_at, retry_at);
 
 -- +goose Down
 DROP TABLE artwork_queue;
