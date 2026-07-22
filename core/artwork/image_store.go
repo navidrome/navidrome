@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/zeebo/xxh3"
 )
 
@@ -29,6 +31,12 @@ type ImageStore struct {
 
 func NewImageStore(rootDir string) *ImageStore {
 	return &ImageStore{root: rootDir}
+}
+
+// ProvideImageStore roots the store in its own subtree under the data folder, so
+// Prune's recursive sweep never reaches the per-entity upload folders next to it.
+func ProvideImageStore() *ImageStore {
+	return NewImageStore(filepath.Join(conf.Server.DataFolder.String(), consts.ArtworkFolder, "store"))
 }
 
 // extForMime is deliberately NOT mime.ExtensionsByType: extensions are baked into

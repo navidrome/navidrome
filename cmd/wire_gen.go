@@ -236,6 +236,21 @@ func GetPlaybackServer() playback.PlaybackServer {
 	return playbackServer
 }
 
+func CreateArtworkWorker() *artwork.Worker {
+	sqlDB := db.Db()
+	dataStore := persistence.New(sqlDB)
+	imageStore := artwork.ProvideImageStore()
+	broker := events.GetBroker()
+	metricsMetrics := metrics.GetPrometheusInstance(dataStore)
+	manager := plugins.GetManager(dataStore, broker, metricsMetrics)
+	agentsAgents := agents.GetAgents(dataStore, manager)
+	matcherMatcher := matcher.New(dataStore)
+	provider := external.NewProvider(dataStore, agentsAgents, matcherMatcher)
+	fFmpeg := ffmpeg.New()
+	worker := artwork.NewWorker(dataStore, imageStore, provider, fFmpeg)
+	return worker
+}
+
 func getPluginManager() *plugins.Manager {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)

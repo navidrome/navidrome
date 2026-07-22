@@ -139,6 +139,8 @@ type configOptions struct {
 	DevArtworkThrottleBacklogLimit    int
 	DevArtworkThrottleBacklogTimeout  time.Duration
 	DevArtworkThrottleBuffered        bool
+	DevArtworkWorkerConcurrency       int
+	DevArtworkExternalRPS             int
 	DevArtistInfoTimeToLive           time.Duration
 	DevAlbumInfoTimeToLive            time.Duration
 	DevExternalScanner                bool
@@ -900,6 +902,8 @@ func setViperDefaults() {
 	viper.SetDefault("devartworkthrottlebackloglimit", consts.RequestThrottleBacklogLimit)
 	viper.SetDefault("devartworkthrottlebacklogtimeout", consts.RequestThrottleBacklogTimeout)
 	viper.SetDefault("devartworkthrottlebuffered", true)
+	viper.SetDefault("devartworkworkerconcurrency", 2)
+	viper.SetDefault("devartworkexternalrps", 2)
 	viper.SetDefault("devartistinfotimetolive", consts.ArtistInfoTimeToLive)
 	viper.SetDefault("devalbuminfotimetolive", consts.AlbumInfoTimeToLive)
 	viper.SetDefault("devexternalscanner", true)

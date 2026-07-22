@@ -88,6 +88,7 @@ func runNavidrome(ctx context.Context) {
 	g.Go(startInsightsCollector(ctx))
 	g.Go(scheduleDBAnalyzer(ctx))
 	g.Go(startPluginManager(ctx))
+	g.Go(startArtworkWorker(ctx))
 	g.Go(runInitialScan(ctx))
 	if conf.Server.Scanner.Enabled {
 		g.Go(startScanWatcher(ctx))
@@ -341,6 +342,15 @@ func startPlaybackServer(ctx context.Context) func() error {
 		log.Info(ctx, "Starting Jukebox service")
 		playbackInstance := GetPlaybackServer()
 		return playbackInstance.Run(ctx)
+	}
+}
+
+// startArtworkWorker starts the background artwork acquisition worker. It always
+// runs; the queue is simply empty until something enqueues work into it.
+func startArtworkWorker(ctx context.Context) func() error {
+	return func() error {
+		log.Info(ctx, "Starting artwork worker")
+		return CreateArtworkWorker().Run(ctx)
 	}
 }
 
