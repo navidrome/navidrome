@@ -27,5 +27,6 @@ func applyItemImage(infos map[string]model.ItemArtworkInfo, id string, img *mode
 	if info, ok := infos[id]; ok {
 		img.ImageHash = info.Hash
 		img.ImageAbsent = info.Absent()
+		img.BlurHash = info.BlurHash
 	}
 }

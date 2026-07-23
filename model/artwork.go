@@ -20,6 +20,7 @@ const ImageTypePrimary = "primary"
 type ItemImage struct {
 	ImageHash   string `structs:"-" json:"-"`
 	ImageAbsent bool   `structs:"-" json:"-"`
+	BlurHash    string `structs:"-" json:"-"`
 }
 
 // ItemArtwork is an entity's resolved artwork state. Hash=="" means known absent.

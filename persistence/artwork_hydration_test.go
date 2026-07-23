@@ -302,4 +302,33 @@ var _ = Describe("Artwork hydration", func() {
 			Expect(res[0].ImageHash).To(Equal("alsrchhhhhhhhhhh"))
 		})
 	})
+
+	Describe("applyItemImage", func() {
+		It("copies hash, absence and blurhash onto the item", func() {
+			infos := map[string]model.ItemArtworkInfo{
+				"al-1": {ItemID: "al-1", Hash: "0123456789abcdef", BlurHash: "LEHV6nWB2yk8"},
+			}
+			var img model.ItemImage
+			applyItemImage(infos, "al-1", &img)
+			Expect(img.ImageHash).To(Equal("0123456789abcdef"))
+			Expect(img.ImageAbsent).To(BeFalse())
+			Expect(img.BlurHash).To(Equal("LEHV6nWB2yk8"))
+		})
+
+		It("marks a hashless entry absent and carries no blurhash", func() {
+			infos := map[string]model.ItemArtworkInfo{"al-2": {ItemID: "al-2"}}
+			var img model.ItemImage
+			applyItemImage(infos, "al-2", &img)
+			Expect(img.ImageAbsent).To(BeTrue())
+			Expect(img.BlurHash).To(BeEmpty())
+		})
+
+		It("leaves an unresolved item zero-valued", func() {
+			var img model.ItemImage
+			applyItemImage(map[string]model.ItemArtworkInfo{}, "al-3", &img)
+			Expect(img.ImageHash).To(BeEmpty())
+			Expect(img.ImageAbsent).To(BeFalse())
+			Expect(img.BlurHash).To(BeEmpty())
+		})
+	})
 })
