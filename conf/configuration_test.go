@@ -204,7 +204,7 @@ var _ = Describe("Configuration", func() {
 			viper.SetDefault("logfile", filepath.Join(invalidPath, "log.txt"))
 			Expect(func() {
 				conf.Load(true)
-			}).To(PanicWith(ContainSubstring("Error creating log file directory")))
+			}).To(PanicWith(ContainSubstring("creating log file directory")))
 		})
 
 		It("is called when BaseURL is invalid", func() {

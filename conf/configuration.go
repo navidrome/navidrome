@@ -380,16 +380,10 @@ func Load(noConfigDump bool) {
 		Server.DbPath = filepath.Join(Server.DataFolder.String(), consts.DefaultDbPath)
 	}
 
-	out := os.Stderr
 	if Server.LogFile != "" {
-		if mkErr := os.MkdirAll(filepath.Dir(Server.LogFile), os.ModePerm); mkErr != nil {
-			logFatal(fmt.Sprintf("Error creating log file directory: %s", mkErr.Error()))
-		}
-		out, err = os.OpenFile(Server.LogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
+		if err := log.SetOutputFile(Server.LogFile); err != nil {
 			logFatal(fmt.Sprintf("Error opening log file %s: %s", Server.LogFile, err.Error()))
 		}
-		log.SetOutput(out)
 	} else if os.Getenv("ND_SYSTEMD_PRIORITY_LOGGING") != "" && os.Getenv("JOURNAL_STREAM") != "" {
 		// When running under systemd, prepend syslog priority prefixes so
 		// journald assigns the correct severity to each log line.
@@ -444,7 +438,7 @@ func Load(noConfigDump bool) {
 		if Server.EnableLogRedacting {
 			prettyConf = log.Redact(prettyConf)
 		}
-		_, _ = fmt.Fprintln(out, prettyConf)
+		_, _ = fmt.Fprintln(log.Output(), prettyConf)
 	}
 
 	if !Server.EnableExternalServices {
