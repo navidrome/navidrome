@@ -218,7 +218,37 @@ func (r *mediaFileRepository) GetAll(options ...model.QueryOptions) (model.Media
 	if err != nil {
 		return nil, err
 	}
-	return res.toModels(), nil
+	mfs := res.toModels()
+	r.hydrateArtwork(mfs)
+	return mfs, nil
+}
+
+// hydrateArtwork mirrors MediaFile.CoverArtID: an embedded-eligible file with resolved own art uses
+// it, else it falls back to the album's. Two batched item_artwork lookups per page, never a join.
+func (r *mediaFileRepository) hydrateArtwork(mfs model.MediaFiles) {
+	if len(mfs) == 0 {
+		return
+	}
+	albumIDs := make([]string, len(mfs))
+	var eligibleIDs []string
+	for i := range mfs {
+		albumIDs[i] = mfs[i].AlbumID
+		if mfs[i].HasCoverArt && conf.Server.EnableMediaFileCoverArt {
+			eligibleIDs = append(eligibleIDs, mfs[i].ID)
+		}
+	}
+	albumInfos := hydrateItemImages(r.ctx, r.db, model.KindAlbumArtwork.Prefix(), albumIDs)
+	mfInfos := hydrateItemImages(r.ctx, r.db, model.KindMediaFileArtwork.Prefix(), eligibleIDs)
+	for i := range mfs {
+		if mfs[i].HasCoverArt && conf.Server.EnableMediaFileCoverArt {
+			if info, ok := mfInfos[mfs[i].ID]; ok && !info.Absent() {
+				mfs[i].ImageHash = info.Hash
+				mfs[i].ImageAbsent = false
+				continue
+			}
+		}
+		applyItemImage(albumInfos, mfs[i].AlbumID, &mfs[i].ItemImage)
+	}
 }
 
 // GetRandom uses two passes so the random sort runs over a narrow rowid index instead of the
@@ -252,7 +282,9 @@ func (r *mediaFileRepository) GetRandom(options ...model.QueryOptions) (model.Me
 	if err := r.queryAll(sq, &res); err != nil {
 		return nil, err
 	}
-	return res.toModels(), nil
+	mfs := res.toModels()
+	r.hydrateArtwork(mfs)
+	return mfs, nil
 }
 
 func (r *mediaFileRepository) GetAllByTags(tag model.TagName, values []string, options ...model.QueryOptions) (model.MediaFiles, error) {
@@ -487,7 +519,9 @@ func (r *mediaFileRepository) Search(q string, options ...model.QueryOptions) (m
 	if err != nil {
 		return nil, fmt.Errorf("searching media_file %q: %w", q, err)
 	}
-	return res.toModels(), nil
+	mfs := res.toModels()
+	r.hydrateArtwork(mfs)
+	return mfs, nil
 }
 
 func (r *mediaFileRepository) Count(options ...rest.QueryOptions) (int64, error) {

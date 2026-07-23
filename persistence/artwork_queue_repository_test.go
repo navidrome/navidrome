@@ -19,6 +19,7 @@ var _ = Describe("ArtworkQueueRepository", func() {
 
 	BeforeEach(func() {
 		clearArtworkTables()
+		DeferCleanup(clearArtworkTables)
 		repo = NewArtworkQueueRepository(context.Background(), GetDBXBuilder())
 	})
 

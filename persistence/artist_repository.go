@@ -250,6 +250,7 @@ func (r *artistRepository) Get(id string) (*model.Artist, error) {
 		return nil, model.ErrNotFound
 	}
 	res := dba.toModels()
+	r.hydrateArtwork(res)
 	return &res[0], nil
 }
 
@@ -261,6 +262,7 @@ func (r *artistRepository) GetAll(options ...model.QueryOptions) (model.Artists,
 		return nil, err
 	}
 	res := dba.toModels()
+	r.hydrateArtwork(res)
 	return res, err
 }
 
@@ -271,6 +273,18 @@ func (r *artistRepository) GetAllIDs(options ...model.QueryOptions) ([]string, e
 	ids := []string{}
 	err := r.queryAllSlice(sq, &ids)
 	return ids, err
+}
+
+// hydrateArtwork fills each artist's ImageHash/ImageAbsent from one batched item_artwork lookup.
+func (r *artistRepository) hydrateArtwork(artists model.Artists) {
+	if len(artists) == 0 {
+		return
+	}
+	ids := slice.Map(artists, func(a model.Artist) string { return a.ID })
+	infos := hydrateItemImages(r.ctx, r.db, model.KindArtistArtwork.Prefix(), ids)
+	for i := range artists {
+		applyItemImage(infos, artists[i].ID, &artists[i].ItemImage)
+	}
 }
 
 func (r *artistRepository) GetCursor(options ...model.QueryOptions) (model.ArtistCursor, error) {
@@ -644,7 +658,9 @@ func (r *artistRepository) Search(q string, options ...model.QueryOptions) (mode
 	if err != nil {
 		return nil, fmt.Errorf("searching artist %q: %w", q, err)
 	}
-	return res.toModels(), nil
+	artists := res.toModels()
+	r.hydrateArtwork(artists)
+	return artists, nil
 }
 
 // searchScope returns the library IDs the search must be restricted to, or nil to skip the filter

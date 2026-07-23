@@ -17,6 +17,11 @@ func (k Kind) String() string {
 	return k.name
 }
 
+// Prefix is the short token used in artwork ids and the item_artwork.item_kind column.
+func (k Kind) Prefix() string {
+	return k.prefix
+}
+
 var (
 	KindMediaFileArtwork = Kind{"mf", "media_file"}
 	KindArtistArtwork    = Kind{"ar", "artist"}
