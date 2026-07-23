@@ -247,9 +247,14 @@ func (r *mediaFileRepository) hydrateArtwork(mfs model.MediaFiles) {
 			mf.ImageHash = ownInfo.Hash // own resolved art wins
 			continue
 		}
-		// Fallback (see MediaFile.CoverArtID): inherit a found album hash for optimistic caching.
+		// Fallback (see MediaFile.CoverArtID): inherit a found album hash for optimistic caching,
+		// but only for a single-disc track. A multi-disc track emits a dc- id served from
+		// disc-specific art of unknown identity, so stamping the album hash would advertise a
+		// wrong content-version; leave it bare (the served response still carries a correct ETag).
 		if album, ok := albumInfos[mf.AlbumID]; ok && !album.Absent() {
-			mf.ImageHash = album.Hash
+			if mf.DiscNumber == 0 {
+				mf.ImageHash = album.Hash
+			}
 			continue
 		}
 		// Nothing found. Mark absent only when serving would definitively yield a placeholder:

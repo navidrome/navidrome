@@ -249,6 +249,17 @@ var _ = Describe("Artwork hydration", func() {
 			Expect(byID["1003"].ImageAbsent).To(BeTrue())
 		})
 
+		It("does not stamp a found album hash onto a multi-disc track (its dc- id is disc-served)", func() {
+			putInfo("al", "104", "alh104foundxxxxx") // songs 2002/2004 album is found
+
+			byID := getByID()
+
+			// 2002 is multi-disc (DiscNumber>0); CoverArtID emits a dc- id served from disc art of
+			// unknown identity, so it must not advertise the album's hash as its content-version.
+			Expect(byID["2002"].ImageHash).To(BeEmpty())
+			Expect(byID["2002"].ImageAbsent).To(BeFalse())
+		})
+
 		It("keeps a multi-disc track requestable when its album is absent (disc art may resolve)", func() {
 			putInfo("al", "104", "") // songs 2002/2004 album known-absent
 
