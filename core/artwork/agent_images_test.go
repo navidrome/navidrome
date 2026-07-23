@@ -9,9 +9,11 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/utils/str"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -19,22 +21,26 @@ import (
 // fakeImageAgent is a built-in agent stub implementing both image retrievers; it
 // records call counts so per-agent ordering and short-circuiting can be asserted.
 type fakeImageAgent struct {
-	name        string
-	imgs        []agents.ExternalImage
-	err         error
-	artistCalls int
-	albumCalls  int
+	name          string
+	imgs          []agents.ExternalImage
+	err           error
+	artistCalls   int
+	albumCalls    int
+	gotArtistName string
+	gotAlbumName  string
 }
 
 func (f *fakeImageAgent) AgentName() string { return f.name }
 
-func (f *fakeImageAgent) GetArtistImages(context.Context, string, string, string) ([]agents.ExternalImage, error) {
+func (f *fakeImageAgent) GetArtistImages(_ context.Context, _, name, _ string) ([]agents.ExternalImage, error) {
 	f.artistCalls++
+	f.gotArtistName = name
 	return f.imgs, f.err
 }
 
-func (f *fakeImageAgent) GetAlbumImages(context.Context, string, string, string) ([]agents.ExternalImage, error) {
+func (f *fakeImageAgent) GetAlbumImages(_ context.Context, name, _, _ string) ([]agents.ExternalImage, error) {
 	f.albumCalls++
+	f.gotAlbumName = name
 	return f.imgs, f.err
 }
 
@@ -107,6 +113,28 @@ var _ = Describe("agent images", func() {
 			defer r.Close()
 			Expect(name).To(Equal("agentA"))
 			Expect(extErr).To(BeFalse())
+		})
+
+		It("skips the external lookup for synthetic artists", func() {
+			a := &fakeImageAgent{name: "agentA", imgs: []agents.ExternalImage{img("/a", 100)}}
+			ag := imageAgents(a)
+
+			for _, id := range []string{consts.UnknownArtistID, consts.VariousArtistsID} {
+				r, name, extErr := fetchArtistImage(ctx, ag, passthroughGate, model.Artist{ID: id, Name: "Various Artists"})
+				Expect(r).To(BeNil())
+				Expect(name).To(BeEmpty())
+				Expect(extErr).To(BeFalse())
+			}
+			Expect(a.artistCalls).To(Equal(0), "synthetic artists never reach the agents")
+		})
+
+		It("clears typographic characters from the query name unless preserving unicode", func() {
+			conf.Server.DevPreserveUnicodeInExternalCalls = false
+			a := &fakeImageAgent{name: "agentA"}
+			ag := imageAgents(a)
+
+			_, _, _ = fetchArtistImage(ctx, ag, passthroughGate, model.Artist{ID: "ar1", Name: "AC’DC"})
+			Expect(a.gotArtistName).To(Equal(str.Clear("AC’DC")))
 		})
 
 		It("falls through to a later agent, and its success beats the earlier error", func() {

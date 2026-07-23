@@ -6,9 +6,22 @@ import (
 	"io"
 	"net/url"
 
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/str"
 )
+
+// externalName applies the DevPreserveUnicodeInExternalCalls normalization the aggregate
+// provider used, so agent searches match the same way (typographic quotes/dashes cleared
+// unless preserved).
+func externalName(name string) string {
+	if conf.Server.DevPreserveUnicodeInExternalCalls {
+		return name
+	}
+	return str.Clear(name)
+}
 
 // gateFunc gates one named external fetch (rate limit + circuit breaker per name).
 // resolveItem defaults to passthroughGate; the worker injects the per-agent gate.
@@ -49,9 +62,16 @@ func bestImageURL(imgs []agents.ExternalImage) *url.URL {
 // Returns the winning reader + agent name; extErr is true only when NO agent succeeded and
 // at least one failed transiently (a later success beats an earlier agent error).
 func fetchArtistImage(ctx context.Context, ag *agents.Agents, gate gateFunc, ar model.Artist) (r io.ReadCloser, agentName string, extErr bool) {
+	// Synthetic artists have no real external image; mirror Agents.GetArtistImages' guard so a
+	// direct retriever call can't assign an unrelated result to Unknown/Various Artists.
+	switch ar.ID {
+	case consts.UnknownArtistID, consts.VariousArtistsID:
+		return nil, "", false
+	}
+	name := externalName(ar.Name)
 	for _, a := range ag.ArtistImageAgents() {
 		reader, _, err := gate(a.Name, func() (io.ReadCloser, string, error) {
-			imgs, err := a.Retriever.GetArtistImages(ctx, ar.ID, ar.Name, ar.MbzArtistID)
+			imgs, err := a.Retriever.GetArtistImages(ctx, ar.ID, name, ar.MbzArtistID)
 			if err != nil {
 				return nil, "", err
 			}
@@ -73,9 +93,10 @@ func fetchArtistImage(ctx context.Context, ag *agents.Agents, gate gateFunc, ar 
 
 // fetchAlbumImage is the album counterpart of fetchArtistImage.
 func fetchAlbumImage(ctx context.Context, ag *agents.Agents, gate gateFunc, al model.Album) (r io.ReadCloser, agentName string, extErr bool) {
+	name, artist := externalName(al.Name), externalName(al.AlbumArtist)
 	for _, a := range ag.AlbumImageAgents() {
 		reader, _, err := gate(a.Name, func() (io.ReadCloser, string, error) {
-			imgs, err := a.Retriever.GetAlbumImages(ctx, al.Name, al.AlbumArtist, al.MbzAlbumID)
+			imgs, err := a.Retriever.GetAlbumImages(ctx, name, artist, al.MbzAlbumID)
 			if err != nil {
 				return nil, "", err
 			}
