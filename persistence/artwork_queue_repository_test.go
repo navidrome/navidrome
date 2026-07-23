@@ -41,6 +41,30 @@ var _ = Describe("ArtworkQueueRepository", func() {
 		Expect(got[0].Priority).To(Equal(model.ArtworkPriorityBump))
 	})
 
+	It("EnqueueBump raises priority without resetting a backing-off row's retry_at", func() {
+		Expect(repo.Enqueue(item("al", "b1", model.ArtworkPriorityScan))).To(Succeed())
+		// Push retry_at into the future so the row is backing off and hidden from dequeue.
+		Expect(repo.MarkFailed("al", "b1", model.ImageTypePrimary, time.Now().Add(time.Hour))).To(Succeed())
+		Expect(repo.DequeueBatch(10)).To(BeEmpty())
+
+		// A request-triggered bump raises priority but must leave the backoff intact.
+		Expect(repo.EnqueueBump(item("al", "b1", model.ArtworkPriorityBump))).To(Succeed())
+		Expect(repo.DequeueBatch(10)).To(BeEmpty(), "bump must not reset retry_at")
+
+		// Enqueue (scan/manual), by contrast, resets retry_at and makes it eligible now.
+		Expect(repo.Enqueue(item("al", "b1", model.ArtworkPriorityScan))).To(Succeed())
+		got, _ := repo.DequeueBatch(10)
+		Expect(got).To(HaveLen(1))
+		Expect(got[0].Priority).To(Equal(model.ArtworkPriorityBump), "bump's higher priority is preserved")
+	})
+
+	It("EnqueueBump inserts a brand-new row eligible immediately", func() {
+		Expect(repo.EnqueueBump(item("ar", "n1", model.ArtworkPriorityBump))).To(Succeed())
+		got, _ := repo.DequeueBatch(10)
+		Expect(got).To(HaveLen(1))
+		Expect(got[0].ItemID).To(Equal("n1"))
+	})
+
 	It("hides failed items until retry_at", func() {
 		Expect(repo.Enqueue(item("al", "f1", model.ArtworkPriorityScan))).To(Succeed())
 		Expect(repo.MarkFailed("al", "f1", model.ImageTypePrimary, time.Now().Add(time.Hour))).To(Succeed())

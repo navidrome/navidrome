@@ -160,6 +160,32 @@ func (m *MockArtworkQueueRepo) Count() (int64, error) {
 	return int64(len(m.Data)), nil
 }
 
+func (m *MockArtworkQueueRepo) EnqueueBump(items ...model.ArtworkQueueItem) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.Err != nil {
+		return m.Err
+	}
+	now := time.Now()
+	for _, it := range items {
+		if it.ImageType == "" {
+			it.ImageType = model.ImageTypePrimary
+		}
+		k := iaKey(it.ItemKind, it.ItemID, it.ImageType)
+		// Preserve an existing row's retry_at: a bump raises priority without resetting backoff.
+		if prev, ok := m.Data[k]; ok {
+			prev.Priority = max(prev.Priority, it.Priority)
+			m.Data[k] = prev
+			continue
+		}
+		it.Attempts = 0
+		it.RetryAt = now
+		it.EnqueuedAt = now
+		m.Data[k] = it
+	}
+	return nil
+}
+
 func (m *MockArtworkQueueRepo) EnqueueStaleAbsent(kind string, attemptedBefore time.Time) (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

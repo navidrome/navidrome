@@ -286,8 +286,10 @@ func (s *service) dangling(ctx context.Context, artID model.ArtworkID) (*Image, 
 	return nil, ErrUnavailable
 }
 
+// enqueue schedules a request-triggered re-resolution. It uses EnqueueBump so an incidental
+// read-through never resets a failed resolution's backoff (unlike scan/manual re-resolve).
 func (s *service) enqueue(ctx context.Context, artID model.ArtworkID, priority int) {
-	err := s.ds.ArtworkQueue(ctx).Enqueue(model.ArtworkQueueItem{
+	err := s.ds.ArtworkQueue(ctx).EnqueueBump(model.ArtworkQueueItem{
 		ItemKind:  artID.Kind.Prefix(),
 		ItemID:    artID.ID,
 		ImageType: model.ImageTypePrimary,

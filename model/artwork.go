@@ -91,8 +91,12 @@ type ArtworkRepository interface {
 }
 
 type ArtworkQueueRepository interface {
-	// Enqueue upserts; an existing row keeps the higher of the two priorities.
+	// Enqueue upserts; an existing row keeps the higher of the two priorities and has its
+	// retry_at reset (a detected change wants immediate re-resolution).
 	Enqueue(items ...ArtworkQueueItem) error
+	// EnqueueBump upserts like Enqueue but preserves an existing row's retry_at, so a
+	// request-triggered read-through never resets a failed resolution's backoff.
+	EnqueueBump(items ...ArtworkQueueItem) error
 	// DequeueBatch returns up to n items with retry_at <= now, priority desc, enqueued_at asc.
 	DequeueBatch(n int) ([]ArtworkQueueItem, error)
 	// MarkFailed increments attempts and pushes retry_at into the future.
