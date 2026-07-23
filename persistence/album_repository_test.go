@@ -84,6 +84,21 @@ var _ = Describe("AlbumRepository", func() {
 		})
 	})
 
+	Describe("GetAllIDs", func() {
+		It("returns the same id set as GetAll", func() {
+			want, err := albumRepo.GetAll()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(want).ToNot(BeEmpty())
+			wantIDs := make([]string, 0, len(want))
+			for _, a := range want {
+				wantIDs = append(wantIDs, a.ID)
+			}
+			ids, err := albumRepo.GetAllIDs()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ids).To(ConsistOf(wantIDs))
+		})
+	})
+
 	Describe("GetAll", func() {
 		var GetAll = func(opts ...model.QueryOptions) (model.Albums, error) {
 			albums, err := albumRepo.GetAll(opts...)

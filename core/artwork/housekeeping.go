@@ -12,7 +12,6 @@ import (
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils/slice"
 )
 
 // FingerprintPropertyKey is the model.PropertyRepository key Backfill compares against
@@ -54,22 +53,10 @@ func Backfill(ctx context.Context, ds model.DataStore) (bool, error) {
 		kind  string
 		fetch func() ([]string, error)
 	}{
-		{"ar", func() ([]string, error) {
-			as, err := ds.Artist(ctx).GetAll()
-			return slice.Map(as, func(a model.Artist) string { return a.ID }), err
-		}},
-		{"al", func() ([]string, error) {
-			as, err := ds.Album(ctx).GetAll()
-			return slice.Map(as, func(a model.Album) string { return a.ID }), err
-		}},
-		{"pl", func() ([]string, error) {
-			ps, err := ds.Playlist(ctx).GetAll()
-			return slice.Map(ps, func(p model.Playlist) string { return p.ID }), err
-		}},
-		{"ra", func() ([]string, error) {
-			rs, err := ds.Radio(ctx).GetAll()
-			return slice.Map(rs, func(r model.Radio) string { return r.ID }), err
-		}},
+		{"ar", func() ([]string, error) { return ds.Artist(ctx).GetAllIDs() }},
+		{"al", func() ([]string, error) { return ds.Album(ctx).GetAllIDs() }},
+		{"pl", func() ([]string, error) { return ds.Playlist(ctx).GetAllIDs() }},
+		{"ra", func() ([]string, error) { return ds.Radio(ctx).GetAllIDs() }},
 	}
 	for _, k := range kinds {
 		ids, err := k.fetch()

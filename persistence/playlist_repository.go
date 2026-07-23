@@ -189,6 +189,16 @@ func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playli
 	return playlists, err
 }
 
+// GetAllIDs returns just the playlist IDs for the same row set as GetAll (honoring userFilter),
+// skipping the owner-name join columns and annotation. Used by bulk enumeration (artwork backfill).
+func (r *playlistRepository) GetAllIDs(options ...model.QueryOptions) ([]string, error) {
+	sq := r.newSelect(options...).Columns("playlist.id").
+		Join("user on user.id = owner_id").Where(r.userFilter())
+	ids := []string{}
+	err := r.queryAllSlice(sq, &ids)
+	return ids, err
+}
+
 func (r *playlistRepository) GetCursor(options ...model.QueryOptions) (model.PlaylistCursor, error) {
 	// Same userFilter as GetAll: a cursor must not widen visibility beyond public/owned playlists.
 	sel := r.selectPlaylist(options...).Where(r.userFilter())

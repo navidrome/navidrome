@@ -264,6 +264,15 @@ func (r *artistRepository) GetAll(options ...model.QueryOptions) (model.Artists,
 	return res, err
 }
 
+// GetAllIDs returns just the artist IDs for the same row set as GetAll, skipping the
+// heavy stats/annotation columns and JSON post-processing. Used by bulk enumeration (artwork backfill).
+func (r *artistRepository) GetAllIDs(options ...model.QueryOptions) ([]string, error) {
+	sq := r.applyLibraryFilterToArtistQuery(r.newSelect(options...).Columns("artist.id")).GroupBy("artist.id")
+	ids := []string{}
+	err := r.queryAllSlice(sq, &ids)
+	return ids, err
+}
+
 func (r *artistRepository) GetCursor(options ...model.QueryOptions) (model.ArtistCursor, error) {
 	sel := r.selectArtist(options...)
 	cursor, err := queryWithStableResults[dbArtist](r.sqlRepository, sel)

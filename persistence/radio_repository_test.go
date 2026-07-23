@@ -78,6 +78,21 @@ var _ = Describe("RadioRepository", func() {
 			})
 		})
 
+		Describe("GetAllIDs", func() {
+			It("returns the same id set as GetAll", func() {
+				want, err := repo.GetAll()
+				Expect(err).To(BeNil())
+				Expect(want).ToNot(BeEmpty())
+				wantIDs := make([]string, 0, len(want))
+				for _, r := range want {
+					wantIDs = append(wantIDs, r.ID)
+				}
+				ids, err := repo.GetAllIDs()
+				Expect(err).To(BeNil())
+				Expect(ids).To(ConsistOf(wantIDs))
+			})
+		})
+
 		Describe("Put", func() {
 			It("successfully updates item", func() {
 				err := repo.Put(&model.Radio{
