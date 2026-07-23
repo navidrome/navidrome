@@ -257,7 +257,7 @@ var _ = Describe("Service", func() {
 		It("delegates a multi-disc track to its disc art, not straight to the album", func() {
 			// Not embedded-eligible: the fallback must mirror CoverArtID (disc first, then album).
 			folderRepo.result = []model.Folder{{Path: "tests/fixtures/artist/an-album", ImageFiles: []string{"cover.jpg"}}}
-			albumRepo.SetData(model.Albums{{ID: "aldd", Name: "Album", FolderIDs: []string{"f1"}}})
+			albumRepo.SetData(model.Albums{{ID: "aldd", Name: "Album", FolderIDs: []string{"f1"}, Discs: model.Discs{1: "One", 2: "Two"}}})
 			seedFoundStore("al", "aldd", []byte("album-art-distinct")) // album's own found art differs
 			mfRepo.SetData(model.MediaFiles{{ID: "mf5", AlbumID: "aldd", DiscNumber: 1, HasCoverArt: false}})
 
@@ -265,6 +265,18 @@ var _ = Describe("Service", func() {
 			Expect(err).ToNot(HaveOccurred())
 			// The disc-folder image wins over the album's found art, proving it routed via serveDisc.
 			Expect(readAll(img)).To(Equal(coverBytes))
+		})
+
+		It("delegates a single-disc track straight to the album, skipping disc resolution", func() {
+			folderRepo.result = []model.Folder{{Path: "tests/fixtures/artist/an-album", ImageFiles: []string{"cover.jpg"}}}
+			albumRepo.SetData(model.Albums{{ID: "alsd", Name: "Album", FolderIDs: []string{"f1"}, Discs: model.Discs{1: ""}}})
+			seedFoundStore("al", "alsd", []byte("album-art-distinct"))
+			mfRepo.SetData(model.MediaFiles{{ID: "mf6", AlbumID: "alsd", DiscNumber: 1, HasCoverArt: false}})
+
+			img, err := svc.Get(ctx, model.MustParseArtworkID("mf-mf6"), 0, false)
+			Expect(err).ToNot(HaveOccurred())
+			// Single-disc album: album art wins; the folder disc image must not shadow it.
+			Expect(readAll(img)).To(Equal([]byte("album-art-distinct")))
 		})
 	})
 
