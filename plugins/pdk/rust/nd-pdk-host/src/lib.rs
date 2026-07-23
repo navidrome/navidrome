@@ -40,6 +40,7 @@
 //! - [`library`] - provides access to music library metadata for plugins.
 //! - [`matcher`] - resolves externally-obtained songs to local library tracks,
 //! - [`scheduler`] - provides task scheduling capabilities for plugins.
+//! - [`storage`] - provides access to a plugin-specific directory with read/write permissions
 //! - [`subsonicapi`] - provides access to Navidrome's Subsonic API from plugins.
 //! - [`task`] - provides persistent task queues for plugins.
 //! - [`users`] - provides access to user information for plugins.
@@ -99,6 +100,13 @@ mod nd_host_scheduler;
 /// provides task scheduling capabilities for plugins.
 pub mod scheduler {
     pub use super::nd_host_scheduler::*;
+}
+
+#[doc(hidden)]
+mod nd_host_storage;
+/// provides access to a plugin-specific directory with read/write permissions
+pub mod storage {
+    pub use super::nd_host_storage::*;
 }
 
 #[doc(hidden)]
