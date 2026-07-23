@@ -308,12 +308,23 @@ func (s *service) enqueue(ctx context.Context, artID model.ArtworkID, priority i
 }
 
 func (s *service) placeholder(kind model.Kind) *Image {
+	return placeholderImage(kind)
+}
+
+func placeholderImage(kind model.Kind) *Image {
 	path := consts.PlaceholderAlbumArt
 	if kind == model.KindArtistArtwork {
 		path = consts.PlaceholderArtistArt
 	}
 	r, _ := resources.FS().Open(path)
 	return &Image{ReadCloser: r, Placeholder: true}
+}
+
+// PlaceholderFor returns the kind-appropriate placeholder for an artwork id, for callers that must
+// serve a placeholder without consulting persisted state (e.g. an access-control denial).
+func PlaceholderFor(id string) *Image {
+	artID, _ := model.ParseArtworkID(id)
+	return placeholderImage(artID.Kind)
 }
 
 type coverArtIDGetter interface {

@@ -10,6 +10,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/resources"
@@ -78,6 +79,14 @@ func (api *Router) GetCoverArt(w http.ResponseWriter, r *http.Request) (*respons
 		log.Error(r, "Error retrieving coverArt", "id", id, err)
 		return nil, err
 	}
+
+	// Access control: the serving path reads persisted state by id, bypassing the library and
+	// private-playlist filters. On this authenticated path, fall back to the placeholder for an
+	// entity the caller cannot see, so a guessed id can't leak artwork (matches the legacy load).
+	if id != "" && !img.Placeholder && !api.artworkAccessible(ctx, id) {
+		_ = img.Close()
+		img = artwork.PlaceholderFor(id)
+	}
 	defer img.Close()
 
 	artID, _ := model.ParseArtworkID(id)
@@ -90,6 +99,37 @@ func (api *Router) GetCoverArt(w http.ResponseWriter, r *http.Request) (*respons
 	}
 
 	return nil, err
+}
+
+// artworkAccessible reports whether the caller may view the artwork for id, by resolving the
+// underlying entity through the request-scoped (filtered) repositories. Radios are global and
+// always accessible; an unparsable/unknown id defers to GetEntityByID.
+func (api *Router) artworkAccessible(ctx context.Context, id string) bool {
+	artID, err := model.ParseArtworkID(id)
+	if err != nil {
+		_, err := model.GetEntityByID(ctx, api.ds, id)
+		return err == nil
+	}
+	var lookupErr error
+	switch artID.Kind {
+	case model.KindArtistArtwork:
+		_, lookupErr = api.ds.Artist(ctx).Get(artID.ID)
+	case model.KindAlbumArtwork:
+		_, lookupErr = api.ds.Album(ctx).Get(artID.ID)
+	case model.KindMediaFileArtwork:
+		_, lookupErr = api.ds.MediaFile(ctx).Get(artID.ID)
+	case model.KindPlaylistArtwork:
+		_, lookupErr = api.ds.Playlist(ctx).Get(artID.ID)
+	case model.KindDiscArtwork:
+		albumID, _, perr := model.ParseDiscArtworkID(artID.ID)
+		if perr != nil {
+			return false
+		}
+		_, lookupErr = api.ds.Album(ctx).Get(albumID)
+	default: // radio and anything else has no per-user artwork access control
+		return true
+	}
+	return lookupErr == nil
 }
 
 func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {

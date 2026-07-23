@@ -30,8 +30,11 @@ var _ = Describe("MediaRetrievalController", func() {
 	var w *httptest.ResponseRecorder
 
 	BeforeEach(func() {
+		albumRepo := &tests.MockAlbumRepo{}
+		albumRepo.SetData(model.Albums{{ID: "34"}}) // the id the specs request, made accessible
 		ds = &tests.MockDataStore{
 			MockedMediaFile: mockRepo,
+			MockedAlbum:     albumRepo,
 		}
 		artwork = &fakeArtwork{data: "image data"}
 		router = New(ds, artwork, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, lyrics.NewLyrics(ds, nil), nil, nil)
@@ -58,6 +61,18 @@ var _ = Describe("MediaRetrievalController", func() {
 			Expect(err).To(BeNil())
 			Expect(artwork.recvId).To(BeEmpty())
 			Expect(w.Body.String()).To(Equal(artwork.data))
+		})
+
+		It("serves a placeholder for an entity the caller cannot access", func() {
+			// al-99 is not in the (filtered) album repo, so the caller must not get its bytes.
+			r := newGetRequest("id=al-99")
+			_, err := router.GetCoverArt(w, r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(w.Code).To(Equal(200))
+			Expect(w.Body.String()).ToNot(Equal(artwork.data))
+			Expect(w.Header().Get("Cache-Control")).To(Equal("no-store"))
+			Expect(w.Header().Get("ETag")).To(BeEmpty())
 		})
 
 		It("should fail when the file is not found", func() {
