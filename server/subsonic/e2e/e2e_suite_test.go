@@ -357,18 +357,6 @@ func (n noopProvider) TopSongs(context.Context, string, int) (model.MediaFiles, 
 	return nil, nil
 }
 
-func (n noopProvider) ArtistImage(context.Context, string) (*url.URL, error) {
-	return nil, model.ErrNotFound
-}
-
-func (n noopProvider) ArtistImageResult(context.Context, string) (*url.URL, error) {
-	return nil, model.ErrNotFound
-}
-
-func (n noopProvider) AlbumImage(context.Context, string) (*url.URL, error) {
-	return nil, model.ErrNotFound
-}
-
 // Compile-time interface checks
 var (
 	_ artwork.Service   = noopArtwork{}
@@ -420,7 +408,7 @@ func setupTestDB() {
 	// Create the Subsonic Router with real DS, streamer spy, and real Decider
 	streamerSpy = &harness.SpyStreamer{}
 	decider := stream.NewTranscodeDecider(ds, harness.NoopFFmpeg{})
-	s := scanner.New(ctx, ds, artwork.NoopCacheWarmer(), events.NoopBroker(),
+	s := scanner.New(ctx, ds, events.NoopBroker(),
 		playlists.NewPlaylists(ds, core.NewImageUploadService()), metrics.NewNoopInstance())
 	router = subsonic.New(
 		ds,

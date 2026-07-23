@@ -28,9 +28,6 @@ func TestArtwork(t *testing.T) {
 		goleak.IgnoreTopFunction("github.com/rjeczalik/notify.(*recursiveTree).dispatch"),
 		goleak.IgnoreTopFunction("github.com/rjeczalik/notify.(*nonrecursiveTree).dispatch"),
 		goleak.IgnoreTopFunction("github.com/rjeczalik/notify.(*nonrecursiveTree).internal"),
-		// The old cache_warmer.go starts a goroutine per NewCacheWarmer call with
-		// no shutdown path (dark-launch target for Phase 2, not touched here).
-		goleak.IgnoreTopFunction("github.com/navidrome/navidrome/core/artwork.(*cacheWarmer).waitSignal"),
 	)
 
 	tests.Init(t, false)
@@ -40,7 +37,7 @@ func TestArtwork(t *testing.T) {
 }
 
 // osDirFS wraps os.DirFS as a storage.MusicFS for integration tests.
-// ReadTags is not used by albumArtworkReader, so it is left as a stub.
+// ReadTags is not exercised by these tests, so it is left as a stub.
 type osDirFS struct{ fs.FS }
 
 func (o osDirFS) ReadTags(...string) (map[string]metadata.Info, error) { return nil, nil }

@@ -3,105 +3,17 @@ package artwork
 import (
 	"cmp"
 	"context"
-	"crypto/md5"
 	"errors"
-	"fmt"
-	"io"
 	"path"
 	"slices"
 	"strings"
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/core/external"
-	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/natural"
 )
-
-type albumArtworkReader struct {
-	cacheKey
-	a         *artwork
-	provider  external.Provider
-	album     model.Album
-	updatedAt *time.Time
-	imgFiles  []string // library-relative, forward-slash, no leading slash
-	lib       libraryView
-}
-
-func newAlbumArtworkReader(ctx context.Context, artwork *artwork, artID model.ArtworkID, provider external.Provider) (*albumArtworkReader, error) {
-	al, err := artwork.ds.Album(ctx).Get(artID.ID)
-	if err != nil {
-		return nil, err
-	}
-	_, imgFiles, imagesUpdateAt, err := loadAlbumFoldersPaths(ctx, artwork.ds, *al)
-	if err != nil {
-		return nil, err
-	}
-	lib, err := loadLibraryView(ctx, artwork.ds, al.LibraryID)
-	if err != nil {
-		return nil, err
-	}
-	a := &albumArtworkReader{
-		a:         artwork,
-		provider:  provider,
-		album:     *al,
-		updatedAt: imagesUpdateAt,
-		imgFiles:  imgFiles,
-		lib:       lib,
-	}
-	a.cacheKey.artID = artID
-	a.cacheKey.lastUpdate = utils.TimeNewest(al.UpdatedAt, al.ImportedAt)
-	if imagesUpdateAt != nil {
-		a.cacheKey.lastUpdate = utils.TimeNewest(a.cacheKey.lastUpdate, *imagesUpdateAt)
-	}
-	return a, nil
-}
-
-func (a *albumArtworkReader) Key() string {
-	hashInput := conf.Server.CoverArtPriority
-	if conf.Server.EnableExternalServices {
-		hashInput = conf.Server.Agents + hashInput
-	}
-	hash := md5.Sum([]byte(hashInput))
-	return fmt.Sprintf(
-		"%s.%x.%t",
-		a.cacheKey.Key(),
-		hash,
-		conf.Server.EnableExternalServices,
-	)
-}
-func (a *albumArtworkReader) LastUpdated() time.Time {
-	return a.lastUpdate
-}
-
-func (a *albumArtworkReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
-	var ff = a.fromCoverArtPriority(ctx, a.a.ffmpeg, conf.Server.CoverArtPriority)
-	return selectImageReader(ctx, a.artID, ff...)
-}
-
-func (a *albumArtworkReader) fromCoverArtPriority(ctx context.Context, ffmpeg ffmpeg.FFmpeg, priority string) []sourceFunc {
-	var ff []sourceFunc
-	for pattern := range strings.SplitSeq(strings.ToLower(priority), ",") {
-		pattern = strings.TrimSpace(pattern)
-		switch {
-		case pattern == "embedded":
-			embedRel := a.album.EmbedArtPath
-			ff = append(ff,
-				fromTag(ctx, a.lib.FS, embedRel),
-				fromFFmpegTag(ctx, ffmpeg, a.lib.Abs(embedRel)),
-			)
-		case pattern == "external":
-			ff = append(ff, fromAlbumExternalSource(ctx, a.album, a.provider))
-		case len(a.imgFiles) > 0:
-			ff = append(ff, fromExternalFile(ctx, a.lib.FS, a.imgFiles, pattern))
-		}
-	}
-	return ff
-}
 
 func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, albums ...model.Album) ([]string, []string, *time.Time, error) {
 	var folderIDs []string

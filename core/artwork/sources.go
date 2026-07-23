@@ -16,11 +16,9 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/resources"
 	"go.senan.xyz/taglib"
 )
 
@@ -169,44 +167,6 @@ func fromFFmpegTag(ctx context.Context, ffmpeg ffmpeg.FFmpeg, path string) sourc
 type readCloser struct {
 	io.Reader
 	io.Closer
-}
-
-func fromAlbum(ctx context.Context, a *artwork, id model.ArtworkID) sourceFunc {
-	return func() (io.ReadCloser, string, error) {
-		r, _, err := a.Get(ctx, id, 0, false)
-		if err != nil {
-			return nil, "", err
-		}
-		return r, id.String(), nil
-	}
-}
-
-func fromAlbumPlaceholder() sourceFunc {
-	return func() (io.ReadCloser, string, error) {
-		r, _ := resources.FS().Open(consts.PlaceholderAlbumArt)
-		return r, consts.PlaceholderAlbumArt, nil
-	}
-}
-func fromArtistExternalSource(ctx context.Context, ar model.Artist, provider external.Provider) sourceFunc {
-	return func() (io.ReadCloser, string, error) {
-		imageUrl, err := provider.ArtistImage(ctx, ar.ID)
-		if err != nil {
-			return nil, "", err
-		}
-
-		return fromURL(ctx, imageUrl)
-	}
-}
-
-func fromAlbumExternalSource(ctx context.Context, al model.Album, provider external.Provider) sourceFunc {
-	return func() (io.ReadCloser, string, error) {
-		imageUrl, err := provider.AlbumImage(ctx, al.ID)
-		if err != nil {
-			return nil, "", err
-		}
-
-		return fromURL(ctx, imageUrl)
-	}
 }
 
 func fromURL(ctx context.Context, imageUrl *url.URL) (io.ReadCloser, string, error) {

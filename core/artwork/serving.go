@@ -18,6 +18,8 @@ import (
 	"github.com/navidrome/navidrome/utils/cache"
 )
 
+var ErrUnavailable = errors.New("artwork unavailable")
+
 // errStaleSource signals that a backing file's mtime no longer matches the state
 // row's RefMtime: the stored hash may be stale, so the load is aborted (dangling).
 var errStaleSource = errors.New("artwork: source file changed since resolution")
@@ -254,7 +256,7 @@ func (s *service) provisionalEmbedded(ctx context.Context, artID model.ArtworkID
 // serveDisc serves disc-level artwork as a pure provisional read-through: no state rows,
 // no enqueue. It tries the disc-folder selection chain and falls back to the album cover.
 func (s *service) serveDisc(ctx context.Context, artID model.ArtworkID, size int, square bool) (*Image, error) {
-	dr, err := newDiscArtworkReader(ctx, &artwork{ds: s.ds, ffmpeg: s.ffmpeg}, artID)
+	dr, err := newDiscArtworkReader(ctx, s.ds, artID)
 	if err != nil {
 		return nil, err
 	}

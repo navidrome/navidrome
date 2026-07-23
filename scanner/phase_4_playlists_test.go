@@ -10,7 +10,6 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -27,7 +26,6 @@ var _ = Describe("phasePlaylists", func() {
 		folderRepo *mockFolderRepository
 		ds         *tests.MockDataStore
 		pls        *mockPlaylists
-		cw         artwork.CacheWarmer
 	)
 
 	var userRepo *tests.MockedUserRepo
@@ -48,9 +46,8 @@ var _ = Describe("phasePlaylists", func() {
 			MockedProperty: propRepo,
 		}
 		pls = &mockPlaylists{}
-		cw = artwork.NoopCacheWarmer()
 		state = &scanState{}
-		phase = createPhasePlaylists(ctx, state, ds, pls, cw)
+		phase = createPhasePlaylists(ctx, state, ds, pls)
 	})
 
 	Describe("description", func() {

@@ -2,29 +2,21 @@ package artwork
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/cache"
 	"github.com/navidrome/navidrome/utils/singleton"
 )
 
-type cacheKey struct {
-	artID      model.ArtworkID
-	lastUpdate time.Time
-}
-
-func (k *cacheKey) Key() string {
-	return fmt.Sprintf(
-		"%s-%s.%d",
-		k.artID.Kind,
-		k.artID.ID,
-		k.lastUpdate.UnixMilli(),
-	)
+// artworkReader is the cache.Item the image cache loader dispatches on: Reader
+// produces the (possibly resized) bytes to store under Key.
+type artworkReader interface {
+	cache.Item
+	LastUpdated() time.Time
+	Reader(ctx context.Context) (io.ReadCloser, string, error)
 }
 
 type imageCache struct {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
 	"sort"
 	"strings"
 	"time"
@@ -35,10 +34,6 @@ type Provider interface {
 	UpdateArtistInfo(ctx context.Context, id string, count int, includeNotPresent bool) (*model.Artist, error)
 	SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error)
 	TopSongs(ctx context.Context, artist string, count int) (model.MediaFiles, error)
-	ArtistImage(ctx context.Context, id string) (*url.URL, error)
-	// ArtistImageResult is like ArtistImage but reports a transient agent failure as a real error, not ErrNotFound.
-	ArtistImageResult(ctx context.Context, id string) (*url.URL, error)
-	AlbumImage(ctx context.Context, id string) (*url.URL, error)
 }
 
 type provider struct {
@@ -370,94 +365,6 @@ func (e *provider) similarSongsFallback(ctx context.Context, id string, count in
 	}
 
 	return similarSongs, nil
-}
-
-func (e *provider) ArtistImage(ctx context.Context, id string) (*url.URL, error) {
-	u, _, err := e.artistImage(ctx, id)
-	return u, err
-}
-
-// ArtistImageResult is like ArtistImage but surfaces a transient agent failure as the
-// real error, so an agent outage is not mistaken for a definitive no-image (ErrNotFound).
-func (e *provider) ArtistImageResult(ctx context.Context, id string) (*url.URL, error) {
-	u, agentErr, err := e.artistImage(ctx, id)
-	if agentErr != nil && errors.Is(err, model.ErrNotFound) {
-		return nil, agentErr
-	}
-	return u, err
-}
-
-// artistImage returns the agent error (agentErr) separately from the caller-facing err,
-// so ArtistImageResult can tell "agent errored" apart from "definitively no image".
-func (e *provider) artistImage(ctx context.Context, id string) (u *url.URL, agentErr error, err error) {
-	artist, err := e.getArtist(ctx, id)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	imageUrl := artist.ArtistImageUrl()
-	if imageUrl == "" {
-		// No cached URL — must fetch from external source synchronously
-		agentErr = e.callGetImage(ctx, e.ag, &artist)
-		if utils.IsCtxDone(ctx) {
-			log.Warn(ctx, "ArtistImage call canceled", ctx.Err())
-			return nil, agentErr, ctx.Err()
-		}
-		imageUrl = artist.ArtistImageUrl()
-	} else {
-		// If cached info is expired, enqueue a background refresh so that config changes
-		// (e.g. disabling an agent) take effect without waiting for a full artist info refresh.
-		updatedAt := V(artist.ExternalInfoUpdatedAt)
-		if !updatedAt.IsZero() && time.Since(updatedAt) > conf.Server.DevArtistInfoTimeToLive {
-			log.Debug(ctx, "Artist image info expired, enqueuing background refresh", "artist", artist.Name(), "updatedAt", updatedAt)
-			e.artistQueue.enqueue(&artist)
-		}
-	}
-
-	if imageUrl == "" {
-		return nil, agentErr, model.ErrNotFound
-	}
-	u, err = url.Parse(imageUrl)
-	return u, agentErr, err
-}
-
-func (e *provider) AlbumImage(ctx context.Context, id string) (*url.URL, error) {
-	album, err := e.getAlbum(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-
-	albumName := album.Name()
-	images, err := e.ag.GetAlbumImages(ctx, albumName, album.AlbumArtist, album.MbzAlbumID)
-	if err != nil {
-		switch {
-		case errors.Is(err, agents.ErrNotFound):
-			log.Trace(ctx, "Album not found in agent", "albumID", id, "name", albumName, "artist", album.AlbumArtist)
-			return nil, model.ErrNotFound
-		case errors.Is(err, context.Canceled):
-			log.Debug(ctx, "GetAlbumImages call canceled", err)
-		default:
-			log.Warn(ctx, "Error getting album images from agent", "albumID", id, "name", albumName, "artist", album.AlbumArtist, err)
-		}
-		return nil, err
-	}
-
-	if len(images) == 0 {
-		log.Warn(ctx, "Agent returned no images without error", "albumID", id, "name", albumName, "artist", album.AlbumArtist)
-		return nil, model.ErrNotFound
-	}
-
-	// Return the biggest image
-	var img agents.ExternalImage
-	for _, i := range images {
-		if img.Size <= i.Size {
-			img = i
-		}
-	}
-	if img.URL == "" {
-		return nil, model.ErrNotFound
-	}
-	return url.Parse(img.URL)
 }
 
 func (e *provider) TopSongs(ctx context.Context, artistName string, count int) (model.MediaFiles, error) {
