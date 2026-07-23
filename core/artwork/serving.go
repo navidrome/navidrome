@@ -244,7 +244,9 @@ func (s *service) serveMediaFile(ctx context.Context, artID model.ArtworkID, siz
 	if noRow && conf.Server.EnableMediaFileCoverArt && mf.HasCoverArt {
 		return s.provisionalEmbedded(ctx, artID, *mf, size, square)
 	}
-	return s.Get(ctx, mf.AlbumCoverArtID(), size, square)
+	// Mirror MediaFile.CoverArtID's fallback: a multi-disc track defers to its disc art
+	// (which itself falls back to the album), not straight to the album.
+	return s.Get(ctx, mf.DiscCoverArtID(), size, square)
 }
 
 // provisionalEmbedded extracts a track's embedded art for an immediate serve and always
