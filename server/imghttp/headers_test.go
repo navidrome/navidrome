@@ -5,14 +5,16 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
-	"testing"
 	"time"
 
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/server/imghttp"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
 const testHash = "0123456789abcdef"
+const testRepTag = testHash + ".300.false.q75"
 
 var lastMod = time.Date(2024, 1, 2, 3, 4, 5, 0, time.UTC)
 
@@ -28,8 +30,6 @@ func placeholder() *artwork.Image {
 	return &artwork.Image{ReadCloser: io.NopCloser(strings.NewReader("PH")), Placeholder: true}
 }
 
-const testRepTag = testHash + ".300.false.q75"
-
 // resized carries a representation ETag distinct from the pixel hash (as a resized/re-encoded
 // response does), so the validator versions with the encode settings.
 func resized() *artwork.Image {
@@ -41,9 +41,8 @@ func resized() *artwork.Image {
 	}
 }
 
-func TestWriteImageHeaders(t *testing.T) {
-	tests := []struct {
-		name          string
+var _ = Describe("WriteImageHeaders", func() {
+	type testCase struct {
 		img           *artwork.Image
 		requestedHash string
 		ifNoneMatch   string
@@ -51,155 +50,56 @@ func TestWriteImageHeaders(t *testing.T) {
 		wantCache     string
 		wantETag      string
 		wantLastMod   bool
-	}{
-		{
-			name:      "placeholder is never cached and carries no validators",
-			img:       placeholder(),
-			wantCache: "no-store",
-		},
-		{
-			name:          "found with matching requested hash is immutable",
-			img:           found(),
-			requestedHash: testHash,
-			wantCache:     "public, max-age=31536000, immutable",
-			wantETag:      `"` + testHash + `"`,
-			wantLastMod:   true,
-		},
-		{
-			name:        "found with bare id revalidates via no-cache",
-			img:         found(),
-			wantCache:   "public, no-cache",
-			wantETag:    `"` + testHash + `"`,
-			wantLastMod: true,
-		},
-		{
-			name:          "found with mismatched requested hash revalidates",
-			img:           found(),
-			requestedHash: "ffffffffffffffff",
-			wantCache:     "public, no-cache",
-			wantETag:      `"` + testHash + `"`,
-			wantLastMod:   true,
-		},
-		{
-			name:          "resized keeps pixel-hash immutable but serves the representation ETag",
-			img:           resized(),
-			requestedHash: testHash,
-			wantCache:     "public, max-age=31536000, immutable",
-			wantETag:      `"` + testRepTag + `"`,
-			wantLastMod:   true,
-		},
-		{
-			name:        "resized 304s on the representation ETag, not the pixel hash",
-			img:         resized(),
-			ifNoneMatch: `"` + testRepTag + `"`,
-			want304:     true,
-			wantCache:   "public, no-cache",
-			wantETag:    `"` + testRepTag + `"`,
-			wantLastMod: true,
-		},
-		{
-			name:        "resized does not 304 on a stale pixel-hash validator (config changed)",
-			img:         resized(),
-			ifNoneMatch: `"` + testHash + `"`,
-			want304:     false,
-			wantCache:   "public, no-cache",
-			wantETag:    `"` + testRepTag + `"`,
-			wantLastMod: true,
-		},
-		{
-			name:          "If-None-Match matching the hash yields 304",
-			img:           found(),
-			requestedHash: testHash,
-			ifNoneMatch:   `"` + testHash + `"`,
-			want304:       true,
-			wantCache:     "public, max-age=31536000, immutable",
-			wantETag:      `"` + testHash + `"`,
-			wantLastMod:   true,
-		},
-		{
-			name:        "weak If-None-Match matches (weak comparison)",
-			img:         found(),
-			ifNoneMatch: `W/"` + testHash + `"`,
-			want304:     true,
-			wantCache:   "public, no-cache",
-			wantETag:    `"` + testHash + `"`,
-			wantLastMod: true,
-		},
-		{
-			name:        "If-None-Match with multiple values matches one",
-			img:         found(),
-			ifNoneMatch: `"deadbeefdeadbeef", W/"` + testHash + `", "cafecafecafecafe"`,
-			want304:     true,
-			wantCache:   "public, no-cache",
-			wantETag:    `"` + testHash + `"`,
-			wantLastMod: true,
-		},
-		{
-			name:        "If-None-Match star matches any current representation",
-			img:         found(),
-			ifNoneMatch: "*",
-			want304:     true,
-			wantCache:   "public, no-cache",
-			wantETag:    `"` + testHash + `"`,
-			wantLastMod: true,
-		},
-		{
-			name:        "non-matching If-None-Match serves body",
-			img:         found(),
-			ifNoneMatch: `"deadbeefdeadbeef"`,
-			want304:     false,
-			wantCache:   "public, no-cache",
-			wantETag:    `"` + testHash + `"`,
-			wantLastMod: true,
-		},
-		{
-			name:        "placeholder ignores If-None-Match and never 304s",
-			img:         placeholder(),
-			ifNoneMatch: "*",
-			want304:     false,
-			wantCache:   "no-store",
-		},
 	}
 
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
+	DescribeTable("applies the artwork caching contract",
+		func(c testCase) {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("GET", "/img", nil)
-			if tc.ifNoneMatch != "" {
-				r.Header.Set("If-None-Match", tc.ifNoneMatch)
+			if c.ifNoneMatch != "" {
+				r.Header.Set("If-None-Match", c.ifNoneMatch)
 			}
 
-			got := imghttp.WriteImageHeaders(w, r, tc.img, tc.requestedHash)
-			if got != tc.want304 {
-				t.Fatalf("wrote304 = %v, want %v", got, tc.want304)
-			}
+			Expect(imghttp.WriteImageHeaders(w, r, c.img, c.requestedHash)).To(Equal(c.want304))
 
 			h := w.Header()
-			if got := h.Get("Cache-Control"); got != tc.wantCache {
-				t.Errorf("Cache-Control = %q, want %q", got, tc.wantCache)
+			Expect(h.Get("Cache-Control")).To(Equal(c.wantCache))
+			Expect(h.Get("ETag")).To(Equal(c.wantETag))
+			if c.img.Placeholder {
+				Expect(h.Get("ETag")).To(BeEmpty(), "placeholder must not set an ETag")
+				Expect(h.Get("Last-Modified")).To(BeEmpty(), "placeholder must not set Last-Modified")
 			}
-			if got := h.Get("ETag"); got != tc.wantETag {
-				t.Errorf("ETag = %q, want %q", got, tc.wantETag)
+			Expect(h.Get("Last-Modified") != "").To(Equal(c.wantLastMod))
+			if c.want304 {
+				Expect(w.Code).To(Equal(http.StatusNotModified))
+				Expect(w.Body.Len()).To(BeZero(), "a 304 must have an empty body")
 			}
-			if tc.img.Placeholder {
-				if h.Get("ETag") != "" {
-					t.Errorf("placeholder must not set ETag, got %q", h.Get("ETag"))
-				}
-				if h.Get("Last-Modified") != "" {
-					t.Errorf("placeholder must not set Last-Modified, got %q", h.Get("Last-Modified"))
-				}
-			}
-			if hasLM := h.Get("Last-Modified") != ""; hasLM != tc.wantLastMod {
-				t.Errorf("has Last-Modified = %v, want %v", hasLM, tc.wantLastMod)
-			}
-			if tc.want304 {
-				if w.Code != http.StatusNotModified {
-					t.Errorf("status = %d, want 304", w.Code)
-				}
-				if w.Body.Len() != 0 {
-					t.Errorf("304 must have empty body, got %q", w.Body.String())
-				}
-			}
-		})
-	}
-}
+		},
+		Entry("placeholder is never cached and carries no validators",
+			testCase{img: placeholder(), wantCache: "no-store"}),
+		Entry("found with matching requested hash is immutable",
+			testCase{img: found(), requestedHash: testHash, wantCache: "public, max-age=31536000, immutable", wantETag: `"` + testHash + `"`, wantLastMod: true}),
+		Entry("found with bare id revalidates via no-cache",
+			testCase{img: found(), wantCache: "public, no-cache", wantETag: `"` + testHash + `"`, wantLastMod: true}),
+		Entry("found with mismatched requested hash revalidates",
+			testCase{img: found(), requestedHash: "ffffffffffffffff", wantCache: "public, no-cache", wantETag: `"` + testHash + `"`, wantLastMod: true}),
+		Entry("resized keeps pixel-hash immutable but serves the representation ETag",
+			testCase{img: resized(), requestedHash: testHash, wantCache: "public, max-age=31536000, immutable", wantETag: `"` + testRepTag + `"`, wantLastMod: true}),
+		Entry("resized 304s on the representation ETag, not the pixel hash",
+			testCase{img: resized(), ifNoneMatch: `"` + testRepTag + `"`, want304: true, wantCache: "public, no-cache", wantETag: `"` + testRepTag + `"`, wantLastMod: true}),
+		Entry("resized does not 304 on a stale pixel-hash validator (config changed)",
+			testCase{img: resized(), ifNoneMatch: `"` + testHash + `"`, want304: false, wantCache: "public, no-cache", wantETag: `"` + testRepTag + `"`, wantLastMod: true}),
+		Entry("If-None-Match matching the hash yields 304",
+			testCase{img: found(), requestedHash: testHash, ifNoneMatch: `"` + testHash + `"`, want304: true, wantCache: "public, max-age=31536000, immutable", wantETag: `"` + testHash + `"`, wantLastMod: true}),
+		Entry("weak If-None-Match matches (weak comparison)",
+			testCase{img: found(), ifNoneMatch: `W/"` + testHash + `"`, want304: true, wantCache: "public, no-cache", wantETag: `"` + testHash + `"`, wantLastMod: true}),
+		Entry("If-None-Match with multiple values matches one",
+			testCase{img: found(), ifNoneMatch: `"deadbeefdeadbeef", W/"` + testHash + `", "cafecafecafecafe"`, want304: true, wantCache: "public, no-cache", wantETag: `"` + testHash + `"`, wantLastMod: true}),
+		Entry("If-None-Match star matches any current representation",
+			testCase{img: found(), ifNoneMatch: "*", want304: true, wantCache: "public, no-cache", wantETag: `"` + testHash + `"`, wantLastMod: true}),
+		Entry("non-matching If-None-Match serves body",
+			testCase{img: found(), ifNoneMatch: `"deadbeefdeadbeef"`, want304: false, wantCache: "public, no-cache", wantETag: `"` + testHash + `"`, wantLastMod: true}),
+		Entry("placeholder ignores If-None-Match and never 304s",
+			testCase{img: placeholder(), ifNoneMatch: "*", want304: false, wantCache: "no-store"}),
+	)
+})

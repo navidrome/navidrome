@@ -126,6 +126,14 @@ var _ = Describe("Service", func() {
 			}).Should(Succeed())
 		})
 
+		It("treats a negative size as a full-size request, not a giant resize", func() {
+			seedFoundStore("al", "alneg", coverBytes)
+
+			img, err := svc.Get(ctx, model.MustParseArtworkID("al-alneg"), -2000000000, false)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(readAll(img)).To(Equal(coverBytes), "original bytes, no resize (would OOM)")
+		})
+
 		It("streams a file-backed found image at full size", func() {
 			dir := GinkgoT().TempDir()
 			imgPath := filepath.Join(dir, "cover.jpg")

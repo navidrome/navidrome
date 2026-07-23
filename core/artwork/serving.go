@@ -76,6 +76,9 @@ func (s *service) Get(ctx context.Context, artID model.ArtworkID, size int, squa
 	if artID.ID == "" {
 		return nil, ErrUnavailable
 	}
+	if size < 0 {
+		size = 0 // a negative size is a full-size request, not a giant (OOM) resize rectangle
+	}
 	switch artID.Kind {
 	case model.KindDiscArtwork:
 		return s.serveDisc(ctx, artID, size, square)
