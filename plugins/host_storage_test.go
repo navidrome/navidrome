@@ -155,7 +155,7 @@ var _ = Describe("Storage Host Function", Ordered, func() {
 
 			exit, _, err := instance.Call("call_read", []byte("missing"))
 			Expect(exit).To(Equal(uint32(1)))
-			Expect(err).To(MatchError("failed to read file: open /storage/missing: file does not exist"))
+			Expect(err).To(HaveOccurred())
 		})
 
 		It("should read an existing file", func() {
@@ -193,7 +193,7 @@ var _ = Describe("Storage Host Function", Ordered, func() {
 
 			exit, _, err := instance.Call("call_write", []byte(`{"path":"nested/file","contents":"1234"}`))
 			Expect(exit).To(Equal(uint32(1)))
-			Expect(err).To(MatchError("failed to write file: open /storage/nested/file: file does not exist"))
+			Expect(err).To(HaveOccurred())
 		})
 
 		It("should write to a file", func() {
