@@ -25,25 +25,24 @@ func denyGate(_ string, _ func() (io.ReadCloser, string, error)) (io.ReadCloser,
 }
 
 // bestImageURL returns the largest-Size image URL, skipping empty or unparseable
-// URLs; nil when none qualifies.
+// URLs; nil when none qualifies. Parsing happens per candidate so a malformed largest
+// URL never shadows a valid smaller one.
 func bestImageURL(imgs []agents.ExternalImage) *url.URL {
-	var best *agents.ExternalImage
+	var best *url.URL
+	var bestSize int
 	for i := range imgs {
 		if imgs[i].URL == "" {
 			continue
 		}
-		if best == nil || imgs[i].Size > best.Size {
-			best = &imgs[i]
+		u, err := url.Parse(imgs[i].URL)
+		if err != nil {
+			continue
+		}
+		if best == nil || imgs[i].Size > bestSize {
+			best, bestSize = u, imgs[i].Size
 		}
 	}
-	if best == nil {
-		return nil
-	}
-	u, err := url.Parse(best.URL)
-	if err != nil {
-		return nil
-	}
-	return u
+	return best
 }
 
 // fetchArtistImage tries each enabled artist-image agent in order, each under its own gate.

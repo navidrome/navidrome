@@ -82,6 +82,15 @@ var _ = Describe("agent images", func() {
 			Expect(u.String()).To(Equal("http://x/big"))
 		})
 
+		It("skips a malformed largest URL and falls back to a valid smaller one", func() {
+			u := bestImageURL([]agents.ExternalImage{
+				{URL: "http://x/valid", Size: 10},
+				{URL: "http://x/%zz", Size: 100}, // invalid percent-escape, largest
+			})
+			Expect(u).ToNot(BeNil())
+			Expect(u.String()).To(Equal("http://x/valid"))
+		})
+
 		It("returns nil when there is no non-empty URL", func() {
 			Expect(bestImageURL(nil)).To(BeNil())
 			Expect(bestImageURL([]agents.ExternalImage{{URL: "", Size: 5}})).To(BeNil())
