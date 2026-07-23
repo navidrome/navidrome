@@ -222,6 +222,10 @@ var _ = Describe("Worker", func() {
 			ia, err := artRepo.GetItemArtwork("al", "alstale", model.ImageTypePrimary)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ia.Source).To(Equal("folder"), "the fallback art is served meanwhile")
+
+			evts := broker.getEvents()
+			Expect(evts).To(HaveLen(1), "the served fallback art must live-refresh the UI")
+			Expect(evts[0].(*events.RefreshResource).Data(evts[0])).To(ContainSubstring("alstale"))
 		})
 
 		It("keeps a row re-enqueued between dequeue and delete", func() {

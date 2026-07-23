@@ -143,7 +143,8 @@ func (w *Worker) drain(ctx context.Context, concurrency int) (int, error) {
 			defer wg.Done()
 			defer func() { <-sem }()
 			defer w.release(it)
-			if w.process(ctx, it) == outcomeFound {
+			// foundStale also wrote a served state row, so it must refresh the UI too.
+			if out := w.process(ctx, it); out == outcomeFound || out == outcomeFoundStale {
 				foundMu.Lock()
 				found = append(found, it)
 				foundMu.Unlock()
