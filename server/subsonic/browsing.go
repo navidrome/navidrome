@@ -230,9 +230,11 @@ func (api *Router) GetAlbumInfo(r *http.Request) (*responses.Subsonic, error) {
 	response := newResponse()
 	response.AlbumInfo = &responses.AlbumInfo{}
 	response.AlbumInfo.Notes = album.Description
-	response.AlbumInfo.SmallImageUrl = publicurl.ImageURL(r, album.CoverArtID(), 300)
-	response.AlbumInfo.MediumImageUrl = publicurl.ImageURL(r, album.CoverArtID(), 600)
-	response.AlbumInfo.LargeImageUrl = publicurl.ImageURL(r, album.CoverArtID(), 1200)
+	if !album.ImageAbsent {
+		response.AlbumInfo.SmallImageUrl = publicurl.ImageURL(r, album.CoverArtID(), 300)
+		response.AlbumInfo.MediumImageUrl = publicurl.ImageURL(r, album.CoverArtID(), 600)
+		response.AlbumInfo.LargeImageUrl = publicurl.ImageURL(r, album.CoverArtID(), 1200)
+	}
 
 	response.AlbumInfo.LastFmUrl = album.ExternalUrl
 	response.AlbumInfo.MusicBrainzID = album.MbzAlbumID
@@ -295,9 +297,11 @@ func (api *Router) getArtistInfo(r *http.Request) (*responses.ArtistInfoBase, *m
 
 	base := responses.ArtistInfoBase{}
 	base.Biography = artist.Biography
-	base.SmallImageUrl = publicurl.ImageURL(r, artist.CoverArtID(), 300)
-	base.MediumImageUrl = publicurl.ImageURL(r, artist.CoverArtID(), 600)
-	base.LargeImageUrl = publicurl.ImageURL(r, artist.CoverArtID(), 1200)
+	if !artist.ImageAbsent {
+		base.SmallImageUrl = publicurl.ImageURL(r, artist.CoverArtID(), 300)
+		base.MediumImageUrl = publicurl.ImageURL(r, artist.CoverArtID(), 600)
+		base.LargeImageUrl = publicurl.ImageURL(r, artist.CoverArtID(), 1200)
+	}
 	base.LastFmUrl = artist.ExternalUrl
 	base.MusicBrainzID = artist.MbzArtistID
 
@@ -453,7 +457,7 @@ func (api *Router) buildAlbumDirectory(ctx context.Context, album *model.Album) 
 		dir.AverageRating = album.AverageRating
 	}
 	dir.SongCount = int32(album.SongCount)
-	dir.CoverArt = album.CoverArtID().String()
+	dir.CoverArt = coverArtOrEmpty(album.CoverArtID(), album.ImageAbsent)
 	if album.Starred {
 		dir.Starred = album.StarredAt
 	}
