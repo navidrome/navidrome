@@ -132,6 +132,7 @@ func (r *playlistRepository) Put(p *model.Playlist, cols ...string) error {
 	if len(pls.Tracks) > 0 {
 		return r.updateTracks(id, p.MediaFiles())
 	}
+	pls.ID = id // r.put assigns the generated id to p, not to this copy; refreshCounters enqueues by it
 	return r.refreshCounters(&pls.Playlist)
 }
 

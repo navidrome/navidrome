@@ -363,8 +363,27 @@ var _ = Describe("Worker", func() {
 			Expect(data).To(ContainSubstring(`"album"`))
 			Expect(data).To(ContainSubstring("al1"))
 			Expect(data).To(ContainSubstring("al2"))
-			Expect(data).ToNot(ContainSubstring("artist"), "the absent artist must not be refreshed")
+			Expect(data).ToNot(ContainSubstring("artist"), "a failed (unresolved) artist must not be refreshed")
 			Expect(data).ToNot(ContainSubstring("ar1"))
+		})
+
+		It("broadcasts a refresh when an item resolves to absent (removed cover)", func() {
+			conf.Server.CoverArtPriority = "cover.*" // local-only; no folder image → absent
+			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al3", Name: "Artless"}})
+			folderRepo.result = nil
+			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al3", Priority: model.ArtworkPriorityScan})).To(Succeed())
+
+			n, err := w.drain(ctx, 2)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(n).To(Equal(1))
+
+			evts := broker.getEvents()
+			Expect(evts).To(HaveLen(1), "a removed cover must live-refresh clients so they drop it")
+			Expect(evts[0].(*events.RefreshResource).Data(evts[0])).To(ContainSubstring("al3"))
+
+			ia, err := artRepo.GetItemArtwork("al", "al3", model.ImageTypePrimary)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ia.Hash).To(BeEmpty(), "the outcome was absent, not found")
 		})
 
 		It("does not broadcast when no item is found", func() {

@@ -135,8 +135,8 @@ func (w *Worker) drain(ctx context.Context, concurrency int) (int, error) {
 	}
 	sem := make(chan struct{}, concurrency)
 	var wg sync.WaitGroup
-	var foundMu sync.Mutex
-	var found []model.ArtworkQueueItem
+	var refreshMu sync.Mutex
+	var refresh []model.ArtworkQueueItem
 	for _, item := range items {
 		sem <- struct{}{}
 		wg.Add(1)
@@ -144,19 +144,24 @@ func (w *Worker) drain(ctx context.Context, concurrency int) (int, error) {
 			defer wg.Done()
 			defer func() { <-sem }()
 			defer w.release(it)
-			// foundStale also wrote a served state row, so it must refresh the UI too.
-			if out := w.process(ctx, it); out == outcomeFound || out == outcomeFoundStale {
-				foundMu.Lock()
-				found = append(found, it)
-				foundMu.Unlock()
-				// Post-outcome only: the queue row was already settled by process, so warming
-				// the resize cache here can never block or alter queue-op handling.
+			out := w.process(ctx, it)
+			// Refresh clients on any visible state change: found/foundStale (new art) and absent
+			// (removed art — clients must drop a previously-served immutable cover). foundStale
+			// also wrote a served state row.
+			if out == outcomeFound || out == outcomeFoundStale || out == outcomeAbsent {
+				refreshMu.Lock()
+				refresh = append(refresh, it)
+				refreshMu.Unlock()
+			}
+			// Precache only actual images. Post-outcome only: the queue row was already settled
+			// by process, so warming the resize cache here can never block or alter queue ops.
+			if out == outcomeFound || out == outcomeFoundStale {
 				w.precache(ctx, it)
 			}
 		}(item)
 	}
 	wg.Wait()
-	w.broadcastRefresh(ctx, found)
+	w.broadcastRefresh(ctx, refresh)
 	return len(items), nil
 }
 

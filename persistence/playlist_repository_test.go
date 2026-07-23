@@ -260,6 +260,19 @@ var _ = Describe("PlaylistRepository", func() {
 		Expect(repo.Exists(newPls.ID)).To(BeFalse())
 	})
 
+	It("enqueues a new empty playlist's artwork under its generated id, not an empty id", func() {
+		ctx := request.WithUser(log.NewContext(GinkgoT().Context()), model.User{ID: "userid", UserName: "userid", IsAdmin: true})
+		newPls := model.Playlist{Name: "Empty PL", OwnerID: "userid"} // no tracks → refreshCounters path
+		Expect(repo.Put(&newPls)).To(Succeed())
+		Expect(newPls.ID).ToNot(BeEmpty())
+		DeferCleanup(func() { _ = repo.Delete(newPls.ID) })
+
+		queued, err := NewArtworkQueueRepository(ctx, GetDBXBuilder()).DequeueBatch(1000)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(queued).To(ContainElement(SatisfyAll(HaveField("ItemKind", "pl"), HaveField("ItemID", newPls.ID))))
+		Expect(queued).ToNot(ContainElement(HaveField("ItemID", "")), "must not enqueue an empty playlist id")
+	})
+
 	It("enqueues the playlist's artwork when its track set changes", func() {
 		ctx := request.WithUser(log.NewContext(GinkgoT().Context()), model.User{ID: "userid", UserName: "userid", IsAdmin: true})
 		newPls := model.Playlist{Name: "Grid PL", OwnerID: "userid"}
