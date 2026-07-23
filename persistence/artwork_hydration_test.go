@@ -249,6 +249,17 @@ var _ = Describe("Artwork hydration", func() {
 			Expect(byID["1003"].ImageAbsent).To(BeTrue())
 		})
 
+		It("keeps a multi-disc track requestable when its album is absent (disc art may resolve)", func() {
+			putInfo("al", "104", "") // songs 2002/2004 album known-absent
+
+			byID := getByID()
+
+			// 2002 is a multi-disc track (DiscNumber>0); CoverArtID points at disc art, which
+			// resolves provisionally, so it must never inherit the album's absence.
+			Expect(byID["2002"].ImageAbsent).To(BeFalse())
+			Expect(byID["2002"].ImageHash).To(BeEmpty())
+		})
+
 		It("uses the album hash for an eligible file whose own art is unresolved but album is found", func() {
 			setCover("1004", true)
 			DeferCleanup(func() { setCover("1004", false) })

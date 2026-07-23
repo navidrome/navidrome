@@ -240,24 +240,30 @@ func (r *mediaFileRepository) hydrateArtwork(mfs model.MediaFiles) {
 	albumInfos := hydrateItemImages(r.ctx, r.db, model.KindAlbumArtwork.Prefix(), albumIDs)
 	mfInfos := hydrateItemImages(r.ctx, r.db, model.KindMediaFileArtwork.Prefix(), eligibleIDs)
 	for i := range mfs {
-		if mfs[i].HasCoverArt && conf.Server.EnableMediaFileCoverArt {
-			if info, ok := mfInfos[mfs[i].ID]; ok {
-				if !info.Absent() {
-					mfs[i].ImageHash = info.Hash
-					continue
-				}
-				// Own art resolved absent → serving delegates to the album, so mirror that.
-				applyItemImage(albumInfos, mfs[i].AlbumID, &mfs[i].ItemImage)
-				continue
-			}
-			// Eligible but unresolved: take a found album hash for caching, but never the
-			// album's absence — serving still extracts the track's own embedded art on request.
-			if albumInfo, ok := albumInfos[mfs[i].AlbumID]; ok && !albumInfo.Absent() {
-				mfs[i].ImageHash = albumInfo.Hash
-			}
+		mf := &mfs[i]
+		eligible := mf.HasCoverArt && conf.Server.EnableMediaFileCoverArt
+		ownInfo, ownResolved := mfInfos[mf.ID]
+		if eligible && ownResolved && !ownInfo.Absent() {
+			mf.ImageHash = ownInfo.Hash // own resolved art wins
 			continue
 		}
-		applyItemImage(albumInfos, mfs[i].AlbumID, &mfs[i].ItemImage)
+		// Fallback (see MediaFile.CoverArtID): inherit a found album hash for optimistic caching.
+		if album, ok := albumInfos[mf.AlbumID]; ok && !album.Absent() {
+			mf.ImageHash = album.Hash
+			continue
+		}
+		// Nothing found. Mark absent only when serving would definitively yield a placeholder:
+		// a single-disc track whose album is known-absent and whose own art won't resolve. A
+		// multi-disc track resolves disc art provisionally (never known-absent), and an
+		// eligible-but-unresolved track can still extract its own embedded art — both stay
+		// requestable.
+		if mf.DiscNumber > 0 {
+			continue
+		}
+		ownWontResolve := !eligible || (ownResolved && ownInfo.Absent())
+		if album, ok := albumInfos[mf.AlbumID]; ok && album.Absent() && ownWontResolve {
+			mf.ImageAbsent = true
+		}
 	}
 }
 
