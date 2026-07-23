@@ -34,6 +34,8 @@ import { keyMap } from '../hotkeys'
 import keyHandlers from './keyHandlers'
 import { calculateGain } from '../utils/calculateReplayGain'
 import { detectBrowserProfile, decisionService } from '../transcode'
+import usePlayerLyrics from './usePlayerLyrics'
+import { useLyricsLayout } from './LyricsLayoutContext'
 
 const Player = () => {
   const theme = useCurrentTheme()
@@ -138,6 +140,29 @@ const Player = () => {
   const gainInfo = useSelector((state) => state.replayGain)
   const [context, setContext] = useState(null)
   const [gainNode, setGainNode] = useState(null)
+  const { setDesktopLyricsProps } = useLyricsLayout()
+  const {
+    toolbarLyricsProps,
+    desktopLyricsProps,
+    mobileLyricsSurface,
+    useInlineMobileLyrics,
+    closeLyrics,
+  } = usePlayerLyrics({
+    trackId: playerState.current?.trackId || currentTrackId,
+    isRadio: playerState.current?.isRadio || false,
+    audioInstance,
+    isDesktop,
+  })
+
+  useEffect(() => {
+    if (!isDesktop) {
+      setDesktopLyricsProps(null)
+      return undefined
+    }
+
+    setDesktopLyricsProps(desktopLyricsProps)
+    return () => setDesktopLyricsProps(null)
+  }, [desktopLyricsProps, isDesktop, setDesktopLyricsProps])
 
   useEffect(() => {
     if (
@@ -213,7 +238,7 @@ const Player = () => {
       clearPriorAudioLists: false,
       showDestroy: true,
       showDownload: false,
-      showLyric: true,
+      showLyric: false,
       showReload: false,
       toggleMode: !isDesktop,
       glassBg: false,
@@ -251,12 +276,16 @@ const Player = () => {
         (playerState.clear || playerState.playIndex === 0),
       clearPriorAudioLists: playerState.clear,
       extendsContent: (
-        <PlayerToolbar id={current.trackId} isRadio={current.isRadio} />
+        <PlayerToolbar
+          id={current.trackId}
+          isRadio={current.isRadio}
+          {...toolbarLyricsProps}
+        />
       ),
       defaultVolume: isMobilePlayer ? 1 : playerState.volume,
       showMediaSession: !current.isRadio,
     }
-  }, [playerState, defaultOptions, isMobilePlayer])
+  }, [playerState, defaultOptions, isMobilePlayer, toolbarLyricsProps])
 
   const onAudioListsChange = useCallback(
     (_, audioLists, audioInfo) => dispatch(syncQueue(audioInfo, audioLists)),
@@ -365,11 +394,15 @@ const Player = () => {
     [dispatch, dataProvider, currentTrackId],
   )
 
-  const onCoverClick = useCallback((mode, audioLists, audioInfo) => {
-    if (mode === 'full' && audioInfo?.song?.albumId) {
-      window.location.href = `#/album/${audioInfo.song.albumId}/show`
-    }
-  }, [])
+  const onCoverClick = useCallback(
+    (mode, audioLists, audioInfo) => {
+      if (useInlineMobileLyrics) return
+      if (mode === 'full' && audioInfo?.song?.albumId) {
+        window.location.href = `#/album/${audioInfo.song.albumId}/show`
+      }
+    },
+    [useInlineMobileLyrics],
+  )
 
   const onAudioError = useCallback(
     (error, currentPlayId, audioLists, audioInfo) => {
@@ -404,10 +437,11 @@ const Player = () => {
       }
       setHeartbeatTrackId(null)
       setCurrentTrackId(null)
+      closeLyrics()
       dispatch(clearQueue())
       reject()
     })
-  }, [dispatch, currentTrackId])
+  }, [closeLyrics, dispatch, currentTrackId])
 
   if (!visible) {
     document.title = 'Navidrome'
@@ -471,6 +505,7 @@ const Player = () => {
         onBeforeDestroy={onBeforeDestroy}
         getAudioInstance={setAudioInstance}
       />
+      {mobileLyricsSurface}
       <GlobalHotKeys handlers={handlers} keyMap={keyMap} allowChanges />
     </ThemeProvider>
   )

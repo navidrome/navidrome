@@ -4,6 +4,8 @@ import { useGetOne } from 'react-admin'
 import { GlobalHotKeys } from 'react-hotkeys'
 import IconButton from '@material-ui/core/IconButton'
 import { useMediaQuery } from '@material-ui/core'
+import Tooltip from '@material-ui/core/Tooltip'
+import { RiFileMusicLine } from 'react-icons/ri'
 import { RiSaveLine } from 'react-icons/ri'
 import { LoveButton, useToggleLove } from '../common'
 import { openSaveQueueDialog } from '../actions'
@@ -55,7 +57,14 @@ const useStyles = makeStyles((theme) => ({
   },
 }))
 
-const PlayerToolbar = ({ id, isRadio }) => {
+const PlayerToolbar = ({
+  id,
+  isRadio,
+  onToggleLyrics,
+  lyricsActive = false,
+  lyricsDisabled = false,
+  lyricsLoading = false,
+}) => {
   const dispatch = useDispatch()
   const { data, loading } = useGetOne('song', id, { enabled: !!id && !isRadio })
   const [toggleLove, toggling] = useToggleLove('song', data)
@@ -76,6 +85,7 @@ const PlayerToolbar = ({ id, isRadio }) => {
 
   const buttonClass = isDesktop ? classes.button : classes.mobileButton
   const listItemClass = isDesktop ? classes.toolbar : classes.mobileListItem
+  const lyricsUnavailable = lyricsDisabled || (lyricsLoading && !lyricsActive)
 
   const saveQueueButton = (
     <IconButton
@@ -99,6 +109,27 @@ const PlayerToolbar = ({ id, isRadio }) => {
     />
   )
 
+  const lyricsButton = (
+    <Tooltip title={lyricsLoading ? 'Loading lyrics' : 'Toggle lyrics'}>
+      <span>
+        <IconButton
+          size={isDesktop ? 'small' : undefined}
+          onClick={onToggleLyrics}
+          disabled={!onToggleLyrics || lyricsUnavailable}
+          data-testid="toggle-lyrics-button"
+          className={buttonClass}
+          color={lyricsActive ? 'primary' : 'default'}
+          aria-label={lyricsLoading ? 'Loading lyrics' : 'Toggle lyrics'}
+          aria-busy={lyricsLoading}
+        >
+          <RiFileMusicLine
+            className={!isDesktop ? classes.mobileIcon : undefined}
+          />
+        </IconButton>
+      </span>
+    </Tooltip>
+  )
+
   return (
     <>
       <GlobalHotKeys keyMap={keyMap} handlers={handlers} allowChanges />
@@ -106,11 +137,13 @@ const PlayerToolbar = ({ id, isRadio }) => {
         <li className={`${listItemClass} item`}>
           {saveQueueButton}
           {loveButton}
+          {lyricsButton}
         </li>
       ) : (
         <>
           <li className={`${listItemClass} item`}>{saveQueueButton}</li>
           <li className={`${listItemClass} item`}>{loveButton}</li>
+          <li className={`${listItemClass} item`}>{lyricsButton}</li>
         </>
       )}
     </>

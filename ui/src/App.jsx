@@ -23,6 +23,7 @@ import share from './share'
 import library from './library'
 import plugin from './plugin'
 import { Player } from './audioplayer'
+import { LyricsLayoutProvider } from './audioplayer/LyricsLayoutContext'
 import customRoutes from './routes'
 import {
   libraryReducer,
@@ -85,7 +86,9 @@ const adminStore = createAdminStore({
 
 const App = () => (
   <Provider store={adminStore}>
-    <Admin />
+    <LyricsLayoutProvider>
+      <Admin />
+    </LyricsLayoutProvider>
   </Provider>
 )
 
