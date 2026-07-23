@@ -201,15 +201,26 @@ func resolvePlaylist(ctx context.Context, ds model.DataStore, ag *agents.Agents,
 	if res, ok := resolveLocalFile(findPlaylistSidecarPath(ctx, pl.Path), "folder"); ok {
 		return res, nil
 	}
+	// A local ExternalImageURL is a file-backed reference: serve it in place (staleness-checked,
+	// and available even on the request path). Only http(s) URLs need the gated remote fetch.
+	localImg, remoteImg := classifyPlaylistImage(pl.ExternalImageURL)
+	if localImg != "" {
+		if res, ok := resolveLocalFile(localImg, "folder"); ok {
+			return res, nil
+		}
+	}
 	if localOnly {
-		// The ExternalImageURL step and the 2x2 grid are worker-only; a request must
+		// The remote ExternalImageURL fetch and the 2x2 grid are worker-only; a request must
 		// not fetch remotely nor sample album art synchronously.
 		return resolution{}, nil
 	}
-	if res, ok, isErr := resolveExternalStep(gate, "m3u", fromPlaylistExternalSource(ctx, *pl)); ok {
-		return res, nil
-	} else if isErr {
-		extErr = true
+	if remoteImg != nil && conf.Server.EnableM3UExternalAlbumArt {
+		sf := func() (io.ReadCloser, string, error) { return fetchPlaylistImageURL(ctx, remoteImg) }
+		if res, ok, isErr := resolveExternalStep(gate, "m3u", sf); ok {
+			return res, nil
+		} else if isErr {
+			extErr = true
+		}
 	}
 
 	albumIDs, err := ds.Playlist(ctx).Tracks(pl.ID, false).GetAlbumIDs(model.QueryOptions{Max: 4, Sort: "random()"})
@@ -303,28 +314,23 @@ func resolveExternalStep(gate gateFunc, name string, sf sourceFunc) (res resolut
 	return resolution{}, false, err != nil && !errors.Is(err, model.ErrNotFound)
 }
 
-// fromPlaylistExternalSource mirrors reader_playlist.go's ExternalImageURL step:
-// a remote URL (gated) when M3U external art is enabled, else a local file path.
-func fromPlaylistExternalSource(ctx context.Context, pl model.Playlist) sourceFunc {
-	return func() (io.ReadCloser, string, error) {
-		imgURL := pl.ExternalImageURL
-		if imgURL == "" {
-			return nil, "", nil
-		}
-		parsed, err := url.Parse(imgURL)
-		if err != nil {
-			return nil, "", err
-		}
-		if parsed.Scheme == "http" || parsed.Scheme == "https" {
-			if !conf.Server.EnableM3UExternalAlbumArt {
-				return nil, "", nil
-			}
-			return fetchPlaylistImageURL(ctx, parsed)
-		}
-		// A missing/unreadable local file is a definitive miss, not a transient
-		// failure to retry: swallow the open error and fall through to the grid.
-		r, path, _ := fromLocalFile(imgURL)()
-		return r, path, nil
+// classifyPlaylistImage splits a playlist ExternalImageURL into a local filesystem path
+// (served file-backed) or a remote http(s) URL (fetched and stored); at most one is set.
+func classifyPlaylistImage(imageURL string) (localPath string, remote *url.URL) {
+	if imageURL == "" {
+		return "", nil
+	}
+	u, err := url.Parse(imageURL)
+	if err != nil {
+		return imageURL, nil // unparseable → treat as a local path
+	}
+	switch u.Scheme {
+	case "http", "https":
+		return "", u
+	case "file":
+		return u.Path, nil
+	default:
+		return imageURL, nil
 	}
 }
 

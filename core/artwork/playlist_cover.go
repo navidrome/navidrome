@@ -4,7 +4,6 @@ import (
 	"context"
 	"image"
 	"image/draw"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,19 +14,6 @@ import (
 )
 
 const tileSize = 600
-
-func fromLocalFile(path string) sourceFunc {
-	return func() (io.ReadCloser, string, error) {
-		if path == "" {
-			return nil, "", nil
-		}
-		f, err := os.Open(path)
-		if err != nil {
-			return nil, "", err
-		}
-		return f, path, nil
-	}
-}
 
 // findPlaylistSidecarPath scans the directory of the playlist file for a sidecar
 // image file with the same base name (case-insensitive). Returns empty string if

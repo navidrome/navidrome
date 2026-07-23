@@ -432,6 +432,25 @@ var _ = Describe("resolveItem", func() {
 			Expect(filepath.ToSlash(res.sourcePath)).To(HaveSuffix("list.jpg"))
 		})
 
+		It("serves a local ExternalImageURL as a file-backed reference (staleness-checked)", func() {
+			dir := GinkgoT().TempDir()
+			imgPath := filepath.Join(dir, "cover.png")
+			Expect(os.WriteFile(imgPath, []byte("local external image"), 0600)).To(Succeed())
+
+			plRepo := tests.CreateMockPlaylistRepo()
+			plRepo.SetData(model.Playlists{{ID: "pll", Name: "Playlist", ExternalImageURL: imgPath}})
+			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"t1"}}
+			ds.MockedPlaylist = plRepo
+
+			res, err := resolveItem(ctx, ds, ag, ffm, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "pll"}, nil)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res.reader).ToNot(BeNil())
+			defer res.reader.Close()
+			Expect(res.source).To(Equal("folder"))
+			Expect(res.sourcePath).To(Equal(imgPath))
+			Expect(res.refMtime).To(BeNumerically(">", 0))
+		})
+
 		It("routes ExternalImageURL through extGate and sets extError on transient failure", func() {
 			conf.Server.EnableM3UExternalAlbumArt = true
 			folderRepo.result = nil // no grid tiles, so the external failure is what surfaces
