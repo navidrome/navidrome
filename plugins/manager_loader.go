@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"time"
 
 	extism "github.com/extism/go-sdk"
@@ -166,6 +167,17 @@ var hostServices = []hostServiceEntry{
 			return host.RegisterTaskHostFunctions(service), service, nil
 		},
 	},
+	{
+		name:          "Storage",
+		hasPermission: func(p *Permissions) bool { return p != nil && p.Storage != nil },
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
+			service, err := newStorageService(ctx.pluginName)
+			if err != nil {
+				return nil, nil, err
+			}
+			return host.RegisterStorageHostFunctions(service), nil, nil
+		},
+	},
 }
 
 // extractManifest reads manifest from an .ndp package and computes its SHA-256 hash.
@@ -323,14 +335,24 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 	}
 
 	// Configure filesystem access for library permission
-	if pkg.Manifest.HasLibraryFilesystemPermission() {
-		adminCtx := adminContext(ctx)
-		libraries, err := m.ds.Library(adminCtx).GetAll()
-		if err != nil {
-			return fmt.Errorf("failed to get libraries for filesystem access: %w", err)
+	if pkg.Manifest.HasLibraryFilesystemPermission() || pkg.Manifest.HasStoragePermissions() {
+		allowedPaths := map[string]string{}
+
+		if pkg.Manifest.HasLibraryFilesystemPermission() {
+			adminCtx := adminContext(ctx)
+			libraries, err := m.ds.Library(adminCtx).GetAll()
+			if err != nil {
+				return fmt.Errorf("failed to get libraries for filesystem access: %w", err)
+			}
+
+			libraryPaths := buildAllowedPaths(ctx, libraries, allowedLibraries, p.AllLibraries, p.AllowWriteAccess)
+			maps.Copy(allowedPaths, libraryPaths)
 		}
 
-		allowedPaths := buildAllowedPaths(ctx, libraries, allowedLibraries, p.AllLibraries, p.AllowWriteAccess)
+		if pkg.Manifest.HasStoragePermissions() {
+			allowedPaths[getHostStoragePath(p.ID)] = STORAGE_MOUNT
+		}
+
 		pluginManifest.AllowedPaths = allowedPaths
 	}
 
