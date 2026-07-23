@@ -241,11 +241,21 @@ func (r *mediaFileRepository) hydrateArtwork(mfs model.MediaFiles) {
 	mfInfos := hydrateItemImages(r.ctx, r.db, model.KindMediaFileArtwork.Prefix(), eligibleIDs)
 	for i := range mfs {
 		if mfs[i].HasCoverArt && conf.Server.EnableMediaFileCoverArt {
-			if info, ok := mfInfos[mfs[i].ID]; ok && !info.Absent() {
-				mfs[i].ImageHash = info.Hash
-				mfs[i].ImageAbsent = false
+			if info, ok := mfInfos[mfs[i].ID]; ok {
+				if !info.Absent() {
+					mfs[i].ImageHash = info.Hash
+					continue
+				}
+				// Own art resolved absent → serving delegates to the album, so mirror that.
+				applyItemImage(albumInfos, mfs[i].AlbumID, &mfs[i].ItemImage)
 				continue
 			}
+			// Eligible but unresolved: take a found album hash for caching, but never the
+			// album's absence — serving still extracts the track's own embedded art on request.
+			if albumInfo, ok := albumInfos[mfs[i].AlbumID]; ok && !albumInfo.Absent() {
+				mfs[i].ImageHash = albumInfo.Hash
+			}
+			continue
 		}
 		applyItemImage(albumInfos, mfs[i].AlbumID, &mfs[i].ItemImage)
 	}

@@ -233,6 +233,32 @@ var _ = Describe("Artwork hydration", func() {
 			Expect(byID["2002"].ImageAbsent).To(BeFalse())
 		})
 
+		It("keeps an eligible file optimistic when its own art is unresolved, even if the album is absent", func() {
+			// 1004 is eligible (has embedded cover) with no mf state row yet; its album (103) is absent.
+			setCover("1004", true)
+			DeferCleanup(func() { setCover("1004", false) })
+			putInfo("al", "103", "") // album known-absent
+
+			byID := getByID()
+
+			// The track's own embedded art is still unresolved, so it must NOT inherit the album's
+			// absence: coverArt stays requestable so serving can extract the embedded art.
+			Expect(byID["1004"].ImageAbsent).To(BeFalse())
+			Expect(byID["1004"].ImageHash).To(BeEmpty())
+			// A non-eligible sibling on the same absent album still inherits the absence.
+			Expect(byID["1003"].ImageAbsent).To(BeTrue())
+		})
+
+		It("uses the album hash for an eligible file whose own art is unresolved but album is found", func() {
+			setCover("1004", true)
+			DeferCleanup(func() { setCover("1004", false) })
+			putInfo("al", "103", "alh103found11111")
+
+			byID := getByID()
+			Expect(byID["1004"].ImageAbsent).To(BeFalse())
+			Expect(byID["1004"].ImageHash).To(Equal("alh103found11111"))
+		})
+
 		It("uses album info for an eligible file when EnableMediaFileCoverArt is off", func() {
 			conf.Server.EnableMediaFileCoverArt = false
 			setCover("1001", true)
