@@ -145,7 +145,7 @@ func openOriginal(ia *model.ItemArtwork, mime string, store *ImageStore) (io.Rea
 			f.Close()
 			return nil, err
 		}
-		if ia.RefMtime != 0 && info.ModTime().Unix() != ia.RefMtime {
+		if ia.RefMtime != 0 && info.ModTime().UnixNano() != ia.RefMtime {
 			f.Close()
 			return nil, errStaleSource
 		}
@@ -158,7 +158,7 @@ func openOriginal(ia *model.ItemArtwork, mime string, store *ImageStore) (io.Rea
 		if err != nil {
 			return nil, err
 		}
-		if info.ModTime().Unix() != ia.RefMtime {
+		if info.ModTime().UnixNano() != ia.RefMtime {
 			return nil, errStaleSource
 		}
 	}
@@ -232,6 +232,16 @@ func (s *service) serveBytes(ctx context.Context, hash string, data []byte, last
 // serveMediaFile serves a track: own found art wins; an absent row delegates to the album;
 // a missing row extracts embedded art (if eligible, enqueuing) else delegates without enqueue.
 func (s *service) serveMediaFile(ctx context.Context, artID model.ArtworkID, size int, square bool) (*Image, error) {
+	// Per-track art can be disabled after mf rows were resolved (the setting is not in the
+	// config fingerprint). Honor it at serve time so a direct mf- URL falls back to disc/album
+	// instead of serving stale persisted embedded art.
+	if !conf.Server.EnableMediaFileCoverArt {
+		mf, err := s.ds.MediaFile(ctx).Get(artID.ID)
+		if err != nil {
+			return nil, err
+		}
+		return s.Get(ctx, mf.DiscCoverArtID(), size, square)
+	}
 	ia, err := s.ds.Artwork(ctx).GetItemArtwork("mf", artID.ID, model.ImageTypePrimary)
 	switch {
 	case err == nil && ia.Hash != "":
@@ -362,7 +372,7 @@ func unixMtime(mtime int64) time.Time {
 	if mtime <= 0 {
 		return time.Time{}
 	}
-	return time.Unix(mtime, 0)
+	return time.Unix(0, mtime) // RefMtime is unix-nanoseconds
 }
 
 // resizedItem is an artworkReader that resizes bytes opened by open() and caches the

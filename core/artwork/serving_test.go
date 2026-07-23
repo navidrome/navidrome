@@ -219,6 +219,18 @@ var _ = Describe("Service", func() {
 			Expect(readAll(img)).To(Equal(coverBytes))
 		})
 
+		It("ignores a resolved mf row and delegates to the album when per-track art is disabled", func() {
+			conf.Server.EnableMediaFileCoverArt = false
+			// A resolved mf row exists (from when the setting was on) but must not be served.
+			seedFoundStore("mf", "mf7", []byte("stale embedded track art"))
+			seedFoundStore("al", "albz", coverBytes)
+			mfRepo.SetData(model.MediaFiles{{ID: "mf7", AlbumID: "albz"}})
+
+			img, err := svc.Get(ctx, model.MustParseArtworkID("mf-mf7"), 0, false)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(readAll(img)).To(Equal(coverBytes), "album art, not the persisted embedded art")
+		})
+
 		It("delegates to the album when the track's state is absent", func() {
 			seedFoundStore("al", "albm", coverBytes)
 			Expect(artRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "mf", ItemID: "mf2"})).To(Succeed())
@@ -348,5 +360,5 @@ func fileMtime(path string) int64 {
 	GinkgoHelper()
 	info, err := os.Stat(path)
 	Expect(err).ToNot(HaveOccurred())
-	return info.ModTime().Unix()
+	return info.ModTime().UnixNano()
 }

@@ -29,7 +29,7 @@ type resolution struct {
 	reader     io.ReadCloser // nil when no source yielded an image
 	source     string        // model.ItemArtwork.Source value: "folder", "embedded", "external", "upload", "generated"
 	sourcePath string        // backing library/upload file (folder/upload: the image; embedded: the audio file); "" otherwise
-	refMtime   int64         // mtime of sourcePath at resolution time; 0 when no sourcePath
+	refMtime   int64         // sourcePath mtime (unix-nanoseconds) at resolution; 0 when no sourcePath
 	// external source errored/timed out. With no reader: forces failed (never absent).
 	// On a hit: a higher-priority external step failed—serve this, but retry later.
 	extError bool
@@ -410,7 +410,7 @@ func mtimeOf(path string) int64 {
 	if err != nil {
 		return 0
 	}
-	return info.ModTime().Unix()
+	return info.ModTime().UnixNano()
 }
 
 // mtimeViaFS stats through the library FS instead of a joined absolute path,
@@ -423,7 +423,7 @@ func mtimeViaFS(fsys fs.FS, name string) int64 {
 	if err != nil {
 		return 0
 	}
-	return info.ModTime().Unix()
+	return info.ModTime().UnixNano()
 }
 
 // decodeTile and assembleTiles mirror playlistArtworkReader's createTile/

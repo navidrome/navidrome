@@ -257,7 +257,7 @@ var _ = Describe("processItem", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(iaA.Source).To(Equal("folder"))
 		Expect(filepath.ToSlash(iaA.SourcePath)).To(HaveSuffix("album-a/cover.jpg"))
-		Expect(iaA.RefMtime).To(Equal(int64(1000)))
+		Expect(iaA.RefMtime).To(Equal(time.Unix(1000, 0).UnixNano()))
 
 		// Poison the shared row's blurhash: the second item must dedup on hash, not re-decode.
 		poisoned := artRepo.Data[iaA.Hash]
@@ -270,13 +270,13 @@ var _ = Describe("processItem", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(iaB.Hash).To(Equal(iaA.Hash))
 		Expect(filepath.ToSlash(iaB.SourcePath)).To(HaveSuffix("album-b/cover.jpg"))
-		Expect(iaB.RefMtime).To(Equal(int64(2000)))
+		Expect(iaB.RefMtime).To(Equal(time.Unix(2000, 0).UnixNano()))
 
 		// The first item's provenance survives the second item processing identical bytes.
 		iaAafter, err := artRepo.GetItemArtwork("al", "alA", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(filepath.ToSlash(iaAafter.SourcePath)).To(HaveSuffix("album-a/cover.jpg"))
-		Expect(iaAafter.RefMtime).To(Equal(int64(1000)))
+		Expect(iaAafter.RefMtime).To(Equal(time.Unix(1000, 0).UnixNano()))
 
 		// One shared artwork row, and dedup preserved it untouched.
 		Expect(artRepo.Data).To(HaveLen(1))

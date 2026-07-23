@@ -31,7 +31,7 @@ type ItemArtwork struct {
 	Source    string `structs:"source"`
 	// SourcePath is the backing file (folder/upload: the image; embedded: the audio file); "" otherwise.
 	SourcePath string `structs:"source_path"`
-	// RefMtime is SourcePath's mtime at resolution; 0 when there is no SourcePath.
+	// RefMtime is SourcePath's mtime (unix-nanoseconds) at resolution; 0 when there is no SourcePath.
 	RefMtime int64 `structs:"ref_mtime"`
 	// attempted_at/updated_at are nullable in the schema but always set by PutItemArtwork;
 	// raw inserts must set them too, since these non-pointer time.Time fields fail to scan NULL.
