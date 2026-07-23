@@ -55,5 +55,10 @@ func localOSRoot(libPath string) string {
 	if err != nil || u.Scheme != storage.LocalSchemaID {
 		return libPath
 	}
+	// Windows drive URLs (file://C:/Music) put the volume in Host; rejoin it, matching
+	// core/storage/local's newLocalStorage so os.Open/os.Stat get a valid path.
+	if filepath.VolumeName(u.Host) != "" {
+		return filepath.Join(u.Host, u.Path)
+	}
 	return u.Path
 }
