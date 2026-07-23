@@ -34,14 +34,14 @@ func (api *Router) refreshArtwork() http.HandlerFunc {
 		}
 		if err := api.ds.Artwork(ctx).DeleteForItem(kind, id); err != nil {
 			log.Error(ctx, "Error clearing artwork state", "kind", kind, "id", id, err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
 		item := model.ArtworkQueueItem{ItemKind: kind, ItemID: id, ImageType: model.ImageTypePrimary,
 			Priority: model.ArtworkPriorityBump}
 		if err := api.ds.ArtworkQueue(ctx).Enqueue(item); err != nil {
 			log.Error(ctx, "Error enqueuing artwork refresh", "kind", kind, "id", id, err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)

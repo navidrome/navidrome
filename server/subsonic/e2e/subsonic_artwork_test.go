@@ -45,8 +45,7 @@ import (
 
 // The artwork serving path streams folder-backed originals via os.Open, which a fake FS cannot
 // back, so this suite scans a small REAL on-disk library and drives the real acquisition worker
-// and artwork.Service through the Subsonic and public image handlers. It restores the Task 11
-// full-pipeline coverage (album found/absent + suffix transition + share/img) against the new path.
+// and artwork.Service through the Subsonic and public image handlers.
 var _ = Describe("Artwork Serving", Ordered, func() {
 	var (
 		artRouter   *subsonic.Router

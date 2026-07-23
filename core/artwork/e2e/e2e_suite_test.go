@@ -1,7 +1,6 @@
-// Package e2e exercises the artwork pipeline end to end against the NEW acquisition→serve
-// path: it enqueues real entities, drives the real Worker to drain the queue, and serves the
-// result through the real Service, over a real ImageStore and real library files. It replaces
-// the legacy core/artwork/e2e suite that was removed with the old readers in the serving cutover.
+// Package e2e exercises the artwork pipeline end to end: it enqueues real entities, drives the
+// real Worker to drain the queue, and serves the result through the real Service, over a real
+// ImageStore and real library files.
 package e2e
 
 import (
