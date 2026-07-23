@@ -409,7 +409,7 @@ func setupTestDB() {
 	streamerSpy = &harness.SpyStreamer{}
 	decider := stream.NewTranscodeDecider(ds, harness.NoopFFmpeg{})
 	s := scanner.New(ctx, ds, events.NoopBroker(),
-		playlists.NewPlaylists(ds, core.NewImageUploadService()), metrics.NewNoopInstance())
+		playlists.NewPlaylists(ds, core.NewImageUploadService(ds)), metrics.NewNoopInstance())
 	router = subsonic.New(
 		ds,
 		noopArtwork{},
@@ -419,7 +419,7 @@ func setupTestDB() {
 		noopProvider{},
 		s,
 		events.NoopBroker(),
-		playlists.NewPlaylists(ds, core.NewImageUploadService()),
+		playlists.NewPlaylists(ds, core.NewImageUploadService(ds)),
 		scrobbler.NewPlayTracker(ds, events.NoopBroker(), nil),
 		core.NewShare(ds),
 		playback.PlaybackServer(nil),

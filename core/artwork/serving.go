@@ -106,21 +106,14 @@ func (s *service) serveHash(ctx context.Context, artID model.ArtworkID, ia *mode
 	}
 
 	if size == 0 && !square {
-		rc, err := s.openOriginal(ia, art.Mime)
+		rc, err := openOriginal(ia, art.Mime, s.store)
 		if err != nil {
 			return s.dangling(ctx, artID)
 		}
 		return &Image{ReadCloser: rc, Hash: ia.Hash, LastUpdated: ia.UpdatedAt}, nil
 	}
 
-	item := &resizedItem{
-		hash:       ia.Hash,
-		size:       size,
-		square:     square,
-		lastUpdate: ia.UpdatedAt,
-		ffmpeg:     s.ffmpeg,
-		open:       func() (io.ReadCloser, error) { return s.openOriginal(ia, art.Mime) },
-	}
+	item := newResizedItem(ia, art.Mime, size, square, s.store, s.ffmpeg)
 	stream, err := s.cache.Get(ctx, item)
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
@@ -133,7 +126,7 @@ func (s *service) serveHash(ctx context.Context, artID model.ArtworkID, ia *mode
 
 // openOriginal opens the full-resolution bytes for a found state row, enforcing the
 // mtime invariant: bytes are never served under a hash they no longer match.
-func (s *service) openOriginal(ia *model.ItemArtwork, mime string) (io.ReadCloser, error) {
+func openOriginal(ia *model.ItemArtwork, mime string, store *ImageStore) (io.ReadCloser, error) {
 	if isFileBacked(ia.Source) {
 		f, err := os.Open(ia.SourcePath)
 		if err != nil {
@@ -161,7 +154,20 @@ func (s *service) openOriginal(ia *model.ItemArtwork, mime string) (io.ReadClose
 			return nil, errStaleSource
 		}
 	}
-	return s.store.Open(ia.Hash, mime)
+	return store.Open(ia.Hash, mime)
+}
+
+// newResizedItem builds the resize-cache reader for a found state row's bytes; shared by
+// the serving path and the worker's precache so both key the cache identically.
+func newResizedItem(ia *model.ItemArtwork, mime string, size int, square bool, store *ImageStore, ffm ffmpeg.FFmpeg) *resizedItem {
+	return &resizedItem{
+		hash:       ia.Hash,
+		size:       size,
+		square:     square,
+		lastUpdate: ia.UpdatedAt,
+		ffmpeg:     ffm,
+		open:       func() (io.ReadCloser, error) { return openOriginal(ia, mime, store) },
+	}
 }
 
 // provisional does a local-only read-through for an entity with no state row: it enqueues
@@ -332,7 +338,7 @@ func unixMtime(mtime int64) time.Time {
 }
 
 // resizedItem is an artworkReader that resizes bytes opened by open() and caches the
-// result under a hash-derived key, sharing the image cache with the legacy readers.
+// result under a hash-derived key.
 type resizedItem struct {
 	hash       string
 	size       int

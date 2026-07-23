@@ -74,7 +74,7 @@ func SetupDB(ctx context.Context, users ...*model.User) *DB {
 	}
 
 	s := scanner.New(ctx, ds, events.NoopBroker(),
-		playlists.NewPlaylists(ds, core.NewImageUploadService()), metrics.NewNoopInstance())
+		playlists.NewPlaylists(ds, core.NewImageUploadService(ds)), metrics.NewNoopInstance())
 	_, err := s.ScanAll(ctx, true)
 	Expect(err).ToNot(HaveOccurred())
 

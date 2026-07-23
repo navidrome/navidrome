@@ -10,6 +10,8 @@ import (
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -17,12 +19,17 @@ import (
 var _ = Describe("ImageUploadService", func() {
 	var svc core.ImageUploadService
 	var tmpDir string
+	var artRepo *tests.MockArtworkRepo
+	var queueRepo *tests.MockArtworkQueueRepo
 
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
 		tmpDir = GinkgoT().TempDir()
 		conf.Server.DataFolder = conf.NewDir(tmpDir)
-		svc = core.NewImageUploadService()
+		artRepo = tests.CreateMockArtworkRepo()
+		queueRepo = tests.CreateMockArtworkQueueRepo()
+		ds := &tests.MockDataStore{MockedArtwork: artRepo, MockedArtworkQueue: queueRepo}
+		svc = core.NewImageUploadService(ds)
 	})
 
 	Describe("SetImage", func() {
@@ -68,6 +75,27 @@ var _ = Describe("ImageUploadService", func() {
 			reader := strings.NewReader("data")
 			_, err := svc.SetImage(ctx, consts.EntityArtist, "ar-1", "Name", "/nonexistent/path.jpg", reader, ".jpg")
 			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("clears artwork state and enqueues a Bump on success", func() {
+			ctx := context.Background()
+			Expect(artRepo.PutItemArtwork(&model.ItemArtwork{
+				ItemKind: "ar", ItemID: "ar-1", Hash: "oldhash", Source: "external",
+			})).To(Succeed())
+
+			_, err := svc.SetImage(ctx, consts.EntityArtist, "ar-1", "Pink Floyd", "", strings.NewReader("img"), ".jpg")
+			Expect(err).ToNot(HaveOccurred())
+
+			_, err = artRepo.GetItemArtwork("ar", "ar-1", model.ImageTypePrimary)
+			Expect(err).To(MatchError(model.ErrNotFound))
+
+			queued, err := queueRepo.DequeueBatch(1000)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(queued).To(ContainElement(SatisfyAll(
+				HaveField("ItemKind", "ar"),
+				HaveField("ItemID", "ar-1"),
+				HaveField("Priority", model.ArtworkPriorityBump),
+			)))
 		})
 	})
 

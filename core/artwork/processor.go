@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/cache"
 	xdraw "golang.org/x/image/draw"
 )
 
@@ -49,6 +50,7 @@ type workerDeps struct {
 	store  *ImageStore
 	agents *agents.Agents
 	ffmpeg ffmpeg.FFmpeg
+	cache  cache.FileCache
 	gate   gateFunc
 }
 

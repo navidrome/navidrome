@@ -16,6 +16,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/events"
+	"github.com/navidrome/navidrome/utils/cache"
 	"golang.org/x/time/rate"
 )
 
@@ -53,9 +54,9 @@ type Worker struct {
 	inFlight map[string]struct{}
 }
 
-func NewWorker(ds model.DataStore, store *ImageStore, ag *agents.Agents, ffmpeg ffmpeg.FFmpeg, broker events.Broker) *Worker {
+func NewWorker(ds model.DataStore, store *ImageStore, ag *agents.Agents, ffmpeg ffmpeg.FFmpeg, broker events.Broker, imgCache cache.FileCache) *Worker {
 	w := &Worker{
-		deps:     workerDeps{ds: ds, store: store, agents: ag, ffmpeg: ffmpeg},
+		deps:     workerDeps{ds: ds, store: store, agents: ag, ffmpeg: ffmpeg, cache: imgCache},
 		broker:   broker,
 		wake:     make(chan struct{}, 1),
 		runCtx:   context.Background(),
@@ -148,6 +149,9 @@ func (w *Worker) drain(ctx context.Context, concurrency int) (int, error) {
 				foundMu.Lock()
 				found = append(found, it)
 				foundMu.Unlock()
+				// Post-outcome only: the queue row was already settled by process, so warming
+				// the resize cache here can never block or alter queue-op handling.
+				w.precache(ctx, it)
 			}
 		}(item)
 	}
@@ -213,6 +217,34 @@ func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) outco
 		}
 	}
 	return out
+}
+
+// precache warms the resize cache for a newly-acquired image at the UI cover size, so the
+// first UI request is a cache hit. Skipped when disabled; failures are debug-only.
+func (w *Worker) precache(ctx context.Context, item model.ArtworkQueueItem) {
+	if !conf.Server.EnableArtworkPrecache || w.deps.cache == nil || w.deps.cache.Disabled(ctx) {
+		return
+	}
+	imageType := item.ImageType
+	if imageType == "" {
+		imageType = model.ImageTypePrimary
+	}
+	repo := w.deps.ds.Artwork(ctx)
+	ia, err := repo.GetItemArtwork(item.ItemKind, item.ItemID, imageType)
+	if err != nil || ia.Hash == "" {
+		return
+	}
+	art, err := repo.GetImage(ia.Hash)
+	if err != nil {
+		return
+	}
+	stream, err := w.deps.cache.Get(ctx, newResizedItem(ia, art.Mime, conf.Server.UICoverArtSize, false, w.deps.store, w.deps.ffmpeg))
+	if err != nil {
+		log.Debug(ctx, "artwork: precache failed", "kind", item.ItemKind, "id", item.ItemID, err)
+		return
+	}
+	_, _ = io.Copy(io.Discard, stream)
+	_ = stream.Close()
 }
 
 // claim reserves items not already in flight, so a row appearing twice within a single

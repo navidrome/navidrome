@@ -15,10 +15,37 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/utils/cache"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.uber.org/goleak"
 )
+
+// recordingCache captures the keys passed to Get so precache warming can be asserted,
+// and can be forced Disabled to exercise the skip path.
+type recordingCache struct {
+	cache.FileCache
+	mu       sync.Mutex
+	keys     []string
+	disabled bool
+}
+
+func (c *recordingCache) Disabled(ctx context.Context) bool {
+	return c.disabled || c.FileCache.Disabled(ctx)
+}
+
+func (c *recordingCache) Get(ctx context.Context, arg cache.Item) (*cache.CachedStream, error) {
+	c.mu.Lock()
+	c.keys = append(c.keys, arg.Key())
+	c.mu.Unlock()
+	return c.FileCache.Get(ctx, arg)
+}
+
+func (c *recordingCache) getKeys() []string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return append([]string(nil), c.keys...)
+}
 
 // reenqueueOnDequeue simulates a concurrent scan Enqueue between DequeueBatch and the
 // worker's delete by bumping retry_at, so a DeleteIfUnchanged on the dequeued value no-ops.
@@ -88,6 +115,7 @@ var _ = Describe("Worker", func() {
 		artRepo    *tests.MockArtworkRepo
 		queueRepo  *tests.MockArtworkQueueRepo
 		broker     *fakeEventBroker
+		imgCache   *recordingCache
 		repoRoot   string
 		w          *Worker
 	)
@@ -98,6 +126,7 @@ var _ = Describe("Worker", func() {
 		var err error
 		repoRoot, err = os.Getwd()
 		Expect(err).ToNot(HaveOccurred())
+		conf.Server.CacheFolder = conf.NewDir(GinkgoT().TempDir())
 
 		folderRepo = &fakeFolderRepo{}
 		libRepo = &tests.MockLibraryRepo{}
@@ -117,7 +146,13 @@ var _ = Describe("Worker", func() {
 		conf.Server.CoverArtPriority = "cover.jpg, embedded"
 		conf.Server.ArtworkExternalMaxRPS = 1000 // keep the limiter out of the way of behavior tests
 		broker = &fakeEventBroker{}
-		w = NewWorker(ds, store, ag, ffm, broker)
+		imgCache = &recordingCache{FileCache: cache.NewFileCache("WorkerTest", "100MB", "images", 0,
+			func(ctx context.Context, arg cache.Item) (io.Reader, error) {
+				r, _, err := arg.(artworkReader).Reader(ctx)
+				return r, err
+			})}
+		Eventually(func() bool { return imgCache.Available(ctx) }).Should(BeTrue())
+		w = NewWorker(ds, store, ag, ffm, broker, imgCache)
 	})
 
 	Describe("drain", func() {
@@ -238,7 +273,7 @@ var _ = Describe("Worker", func() {
 			})
 			racing := &reenqueueOnDequeue{MockArtworkQueueRepo: queueRepo}
 			ds.MockedArtworkQueue = racing
-			w = NewWorker(ds, store, ag, ffm, broker)
+			w = NewWorker(ds, store, ag, ffm, broker, imgCache)
 			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{
 				ItemKind: "al", ItemID: "al7", Priority: model.ArtworkPriorityScan,
 			})).To(Succeed())
@@ -260,7 +295,7 @@ var _ = Describe("Worker", func() {
 			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 			racing := &reenqueueOnDequeue{MockArtworkQueueRepo: queueRepo}
 			ds.MockedArtworkQueue = racing
-			w = NewWorker(ds, store, ag, ffm, broker)
+			w = NewWorker(ds, store, ag, ffm, broker, imgCache)
 			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al8"})).To(Succeed())
 			dequeued := findQueued(queueRepo, "al", "al8").RetryAt
 
@@ -283,7 +318,7 @@ var _ = Describe("Worker", func() {
 				private:       model.Playlist{ID: "plPriv", OwnerID: "admin"},
 				tracks:        &tests.MockPlaylistTrackRepo{},
 			}
-			w = NewWorker(vds, store, ag, ffm, broker)
+			w = NewWorker(vds, store, ag, ffm, broker, imgCache)
 			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "pl", ItemID: "plPriv"})).To(Succeed())
 
 			n, err := w.drain(ctx, 1)
@@ -433,6 +468,42 @@ var _ = Describe("Worker", func() {
 		})
 	})
 
+	Describe("precache", func() {
+		BeforeEach(func() {
+			folderRepo.result = []model.Folder{{
+				Path:       "tests/fixtures/artist/an-album",
+				ImageFiles: []string{"cover.jpg"},
+			}}
+			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
+				{ID: "alpc", Name: "Album", FolderIDs: []string{"f1"}},
+			})
+			conf.Server.UICoverArtSize = 300
+			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{
+				ItemKind: "al", ItemID: "alpc", Priority: model.ArtworkPriorityScan,
+			})).To(Succeed())
+		})
+
+		It("warms the resize cache at the UI cover size after a found acquisition", func() {
+			conf.Server.EnableArtworkPrecache = true
+
+			n, err := w.drain(ctx, 1)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(n).To(Equal(1))
+
+			Expect(imgCache.getKeys()).To(ContainElement(ContainSubstring(".300.false.")))
+		})
+
+		It("skips warming when precache is disabled", func() {
+			conf.Server.EnableArtworkPrecache = false
+
+			n, err := w.drain(ctx, 1)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(n).To(Equal(1))
+
+			Expect(imgCache.getKeys()).To(BeEmpty())
+		})
+	})
+
 	Describe("RunPrune", func() {
 		It("runs a prune under the worker mutex", func() {
 			Expect(w.RunPrune(ctx)).To(Succeed())
@@ -456,7 +527,7 @@ var _ = Describe("Worker", func() {
 			DeferCleanup(func() { goleak.VerifyNone(GinkgoT(), ignore) })
 
 			localDS := &tests.MockDataStore{MockedArtworkQueue: tests.CreateMockArtworkQueueRepo()}
-			lw := NewWorker(localDS, NewImageStore(GinkgoT().TempDir()), agents.GetAgents(localDS, nil), tests.NewMockFFmpeg(""), &fakeEventBroker{})
+			lw := NewWorker(localDS, NewImageStore(GinkgoT().TempDir()), agents.GetAgents(localDS, nil), tests.NewMockFFmpeg(""), &fakeEventBroker{}, imgCache)
 
 			runCtx, cancel := context.WithCancel(ctx)
 			done := make(chan error, 1)

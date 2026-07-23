@@ -106,9 +106,10 @@ func (r *radioRepository) Put(radio *model.Radio, colsToUpdate ...string) error 
 	if err != nil {
 		return err
 	}
-	// Enqueue artwork resolution for the created/updated radio. Never fails the save.
+	// Enqueue artwork resolution for the created/updated radio at Bump priority so a new
+	// radio's cover resolves proactively. Never fails the save.
 	item := model.ArtworkQueueItem{ItemKind: "ra", ItemID: radio.ID, ImageType: model.ImageTypePrimary,
-		Priority: model.ArtworkPriorityScan}
+		Priority: model.ArtworkPriorityBump}
 	if err := NewArtworkQueueRepository(r.ctx, r.db).Enqueue(item); err != nil {
 		log.Warn(r.ctx, "could not enqueue radio artwork", "id", radio.ID, err)
 	}

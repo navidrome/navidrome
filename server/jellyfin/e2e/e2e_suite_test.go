@@ -326,7 +326,7 @@ func setupTestDB() {
 		decider,
 		core.NewPlayers(ds),
 		scrobbler.NewPlayTracker(ds, events.NoopBroker(), nil),
-		playlists.NewPlaylists(ds, core.NewImageUploadService()),
+		playlists.NewPlaylists(ds, core.NewImageUploadService(ds)),
 		providerFake,
 		sonicSvc,
 		lyrics.NewLyrics(ds, nil),

@@ -82,7 +82,7 @@ func runScanner(ctx context.Context) {
 	sqlDB := db.Db()
 	defer db.Db().Close()
 	ds := persistence.New(sqlDB)
-	pls := playlists.NewPlaylists(ds, core.NewImageUploadService())
+	pls := playlists.NewPlaylists(ds, core.NewImageUploadService(ds))
 
 	// Parse targets from command line or file
 	var scanTargets []model.ScanTarget

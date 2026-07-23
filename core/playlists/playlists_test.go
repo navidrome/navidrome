@@ -42,7 +42,7 @@ var _ = Describe("Playlists", func() {
 				"pls-1": {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
 			}
 			mockPlsRepo.TracksRepo = mockTracks
-			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+			ps = playlists.NewPlaylists(ds, core.NewImageUploadService(ds))
 		})
 
 		It("allows owner to delete their playlist", func() {
@@ -82,7 +82,7 @@ var _ = Describe("Playlists", func() {
 				"pls-1": {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
 			}
 			mockPlsRepo.TracksRepo = mockTracks
-			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+			ps = playlists.NewPlaylists(ds, core.NewImageUploadService(ds))
 		})
 
 		It("returns the playlist's track repository", func() {
@@ -103,7 +103,7 @@ var _ = Describe("Playlists", func() {
 				"pls-smart": {ID: "pls-smart", Name: "Smart", OwnerID: "user-1",
 					Rules: &criteria.Criteria{Expression: criteria.Contains{"title": "test"}}},
 			}
-			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+			ps = playlists.NewPlaylists(ds, core.NewImageUploadService(ds))
 		})
 
 		It("creates a new playlist with owner set from context", func() {
@@ -161,7 +161,7 @@ var _ = Describe("Playlists", func() {
 					Rules: &criteria.Criteria{Expression: criteria.Contains{"title": "test"}}},
 			}
 			mockPlsRepo.TracksRepo = mockTracks
-			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+			ps = playlists.NewPlaylists(ds, core.NewImageUploadService(ds))
 		})
 
 		It("allows owner to update their playlist", func() {
@@ -219,7 +219,7 @@ var _ = Describe("Playlists", func() {
 				"pls-other": {ID: "pls-other", Name: "Other's", OwnerID: "other-user"},
 			}
 			mockPlsRepo.TracksRepo = mockTracks
-			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+			ps = playlists.NewPlaylists(ds, core.NewImageUploadService(ds))
 		})
 
 		It("allows owner to add tracks", func() {
@@ -267,7 +267,7 @@ var _ = Describe("Playlists", func() {
 					Rules: &criteria.Criteria{Expression: criteria.Contains{"title": "test"}}},
 			}
 			mockPlsRepo.TracksRepo = mockTracks
-			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+			ps = playlists.NewPlaylists(ds, core.NewImageUploadService(ds))
 		})
 
 		It("allows owner to remove tracks", func() {
@@ -301,7 +301,7 @@ var _ = Describe("Playlists", func() {
 					Rules: &criteria.Criteria{Expression: criteria.Contains{"title": "test"}}},
 			}
 			mockPlsRepo.TracksRepo = mockTracks
-			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+			ps = playlists.NewPlaylists(ds, core.NewImageUploadService(ds))
 		})
 
 		It("allows owner to reorder", func() {
@@ -330,7 +330,7 @@ var _ = Describe("Playlists", func() {
 				"pls-1":     {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
 				"pls-other": {ID: "pls-other", Name: "Other's", OwnerID: "other-user"},
 			}
-			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+			ps = playlists.NewPlaylists(ds, core.NewImageUploadService(ds))
 		})
 
 		It("saves image file and updates UploadedImage", func() {
@@ -400,7 +400,7 @@ var _ = Describe("Playlists", func() {
 				"pls-empty": {ID: "pls-empty", Name: "No Cover", OwnerID: "user-1"},
 				"pls-other": {ID: "pls-other", Name: "Other's", OwnerID: "other-user"},
 			}
-			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+			ps = playlists.NewPlaylists(ds, core.NewImageUploadService(ds))
 		})
 
 		It("removes file and clears UploadedImage", func() {

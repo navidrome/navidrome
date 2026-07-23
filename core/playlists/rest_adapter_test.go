@@ -37,7 +37,7 @@ var _ = Describe("REST Adapter", func() {
 			mockPlsRepo.Data = map[string]*model.Playlist{
 				"pls-1": {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
 			}
-			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+			ps = playlists.NewPlaylists(ds, core.NewImageUploadService(ds))
 		})
 
 		Describe("Save", func() {
