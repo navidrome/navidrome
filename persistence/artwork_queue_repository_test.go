@@ -19,6 +19,7 @@ var _ = Describe("ArtworkQueueRepository", func() {
 
 	BeforeEach(func() {
 		clearArtworkTables()
+		DeferCleanup(clearArtworkTables)
 		repo = NewArtworkQueueRepository(context.Background(), GetDBXBuilder())
 	})
 
@@ -38,6 +39,30 @@ var _ = Describe("ArtworkQueueRepository", func() {
 		got, _ := repo.DequeueBatch(10)
 		Expect(got).To(HaveLen(1))
 		Expect(got[0].Priority).To(Equal(model.ArtworkPriorityBump))
+	})
+
+	It("EnqueueBump raises priority without resetting a backing-off row's retry_at", func() {
+		Expect(repo.Enqueue(item("al", "b1", model.ArtworkPriorityScan))).To(Succeed())
+		// Push retry_at into the future so the row is backing off and hidden from dequeue.
+		Expect(repo.MarkFailed("al", "b1", model.ImageTypePrimary, time.Now().Add(time.Hour))).To(Succeed())
+		Expect(repo.DequeueBatch(10)).To(BeEmpty())
+
+		// A request-triggered bump raises priority but must leave the backoff intact.
+		Expect(repo.EnqueueBump(item("al", "b1", model.ArtworkPriorityBump))).To(Succeed())
+		Expect(repo.DequeueBatch(10)).To(BeEmpty(), "bump must not reset retry_at")
+
+		// Enqueue (scan/manual), by contrast, resets retry_at and makes it eligible now.
+		Expect(repo.Enqueue(item("al", "b1", model.ArtworkPriorityScan))).To(Succeed())
+		got, _ := repo.DequeueBatch(10)
+		Expect(got).To(HaveLen(1))
+		Expect(got[0].Priority).To(Equal(model.ArtworkPriorityBump), "bump's higher priority is preserved")
+	})
+
+	It("EnqueueBump inserts a brand-new row eligible immediately", func() {
+		Expect(repo.EnqueueBump(item("ar", "n1", model.ArtworkPriorityBump))).To(Succeed())
+		got, _ := repo.DequeueBatch(10)
+		Expect(got).To(HaveLen(1))
+		Expect(got[0].ItemID).To(Equal("n1"))
 	})
 
 	It("hides failed items until retry_at", func() {
@@ -126,18 +151,20 @@ var _ = Describe("ArtworkQueueRepository", func() {
 			item("pl", "no-such-playlist", model.ArtworkPriorityScan),
 			item("ra", radioWithHomePage.ID, model.ArtworkPriorityScan),
 			item("ra", "no-such-radio", model.ArtworkPriorityScan),
+			item("mf", songDayInALife.ID, model.ArtworkPriorityScan),
+			item("mf", "no-such-mediafile", model.ArtworkPriorityScan),
 		)).To(Succeed())
 
 		purged, err := repo.PurgeDangling()
 		Expect(err).ToNot(HaveOccurred())
-		Expect(purged).To(Equal(int64(4)))
+		Expect(purged).To(Equal(int64(5)))
 
 		got, _ := repo.DequeueBatch(100)
 		ids := make([]string, 0, len(got))
 		for _, it := range got {
 			ids = append(ids, it.ItemID)
 		}
-		Expect(ids).To(ConsistOf(albumSgtPeppers.ID, artistKraftwerk.ID, plsBest.ID, radioWithHomePage.ID))
+		Expect(ids).To(ConsistOf(albumSgtPeppers.ID, artistKraftwerk.ID, plsBest.ID, radioWithHomePage.ID, songDayInALife.ID))
 	})
 
 	It("enqueues stale absent states for recheck", func() {

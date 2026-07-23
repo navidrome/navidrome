@@ -251,7 +251,21 @@ func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, e
 	if err != nil {
 		return nil, err
 	}
-	return res.toModels(), nil
+	albums := res.toModels()
+	r.hydrateArtwork(albums)
+	return albums, nil
+}
+
+// hydrateArtwork fills each album's ImageHash/ImageAbsent from one batched item_artwork lookup.
+func (r *albumRepository) hydrateArtwork(albums model.Albums) {
+	if len(albums) == 0 {
+		return
+	}
+	ids := slice.Map(albums, func(a model.Album) string { return a.ID })
+	infos := hydrateItemImages(r.ctx, r.db, model.KindAlbumArtwork.Prefix(), ids)
+	for i := range albums {
+		applyItemImage(infos, albums[i].ID, &albums[i].ItemImage)
+	}
 }
 
 // GetAllIDs returns just the album IDs for the same row set as GetAll, skipping the
@@ -414,7 +428,9 @@ func (r *albumRepository) Search(q string, options ...model.QueryOptions) (model
 	if err != nil {
 		return nil, fmt.Errorf("searching album %q: %w", q, err)
 	}
-	return res.toModels(), nil
+	albums := res.toModels()
+	r.hydrateArtwork(albums)
+	return albums, nil
 }
 
 func (r *albumRepository) Count(options ...rest.QueryOptions) (int64, error) {

@@ -24,6 +24,7 @@ import (
 type MediaFile struct {
 	Annotations  `structs:"-" hash:"ignore"`
 	Bookmarkable `structs:"-" hash:"ignore"`
+	ItemImage    `structs:"-" json:"-" hash:"ignore"`
 
 	ID          string `structs:"id"  json:"id" hash:"ignore"`
 	PID         string `structs:"pid" json:"-" hash:"ignore"`
@@ -139,13 +140,15 @@ func (mf MediaFile) CoverArtID() ArtworkID {
 // otherwise it returns the album artwork ID.
 func (mf MediaFile) DiscCoverArtID() ArtworkID {
 	if mf.DiscNumber > 0 {
-		return NewArtworkID(KindDiscArtwork, DiscArtworkID(mf.AlbumID, mf.DiscNumber), nil)
+		id := NewArtworkID(KindDiscArtwork, DiscArtworkID(mf.AlbumID, mf.DiscNumber), nil)
+		id.Hash = mf.ImageHash
+		return id
 	}
 	return mf.AlbumCoverArtID()
 }
 
 func (mf MediaFile) AlbumCoverArtID() ArtworkID {
-	return artworkIDFromAlbum(Album{ID: mf.AlbumID})
+	return artworkIDFromAlbum(Album{ID: mf.AlbumID, ItemImage: mf.ItemImage})
 }
 
 func (mf MediaFile) StructuredLyrics() (LyricList, error) {

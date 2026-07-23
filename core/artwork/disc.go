@@ -2,26 +2,22 @@ package artwork
 
 import (
 	"context"
-	"crypto/md5"
 	"fmt"
 	"io"
 	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils"
 )
 
+// discArtworkReader resolves disc-level artwork from a library's folder images
+// and embedded tags. It is used by the serving path's provisional disc read-through.
 type discArtworkReader struct {
-	cacheKey
-	a              *artwork
 	album          model.Album
 	discNumber     int
 	imgFiles       []string        // library-relative, forward-slash, no leading slash
@@ -29,27 +25,26 @@ type discArtworkReader struct {
 	isMultiFolder  bool
 	firstTrackRel  string // library-relative; for fromTag / ffmpeg via lib.Abs
 	lib            libraryView
-	updatedAt      *time.Time
 }
 
-func newDiscArtworkReader(ctx context.Context, a *artwork, artID model.ArtworkID) (*discArtworkReader, error) {
+func newDiscArtworkReader(ctx context.Context, ds model.DataStore, artID model.ArtworkID) (*discArtworkReader, error) {
 	albumID, discNumber, err := model.ParseDiscArtworkID(artID.ID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid disc artwork id '%s': %w", artID.ID, err)
 	}
 
-	al, err := a.ds.Album(ctx).Get(albumID)
+	al, err := ds.Album(ctx).Get(albumID)
 	if err != nil {
 		return nil, err
 	}
 
-	_, imgFiles, imagesUpdatedAt, err := loadAlbumFoldersPaths(ctx, a.ds, *al)
+	_, imgFiles, _, err := loadAlbumFoldersPaths(ctx, ds, *al)
 	if err != nil {
 		return nil, err
 	}
 
 	// Query mediafiles for this album + disc to find folder associations and first track
-	mfs, err := a.ds.MediaFile(ctx).GetAll(model.QueryOptions{
+	mfs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
 		Sort:    "track_number",
 		Order:   "ASC",
 		Filters: squirrel.Eq{"album_id": albumID, "disc_number": discNumber},
@@ -58,7 +53,7 @@ func newDiscArtworkReader(ctx context.Context, a *artwork, artID model.ArtworkID
 		return nil, err
 	}
 
-	lib, err := loadLibraryView(ctx, a.ds, al.LibraryID)
+	lib, err := loadLibraryView(ctx, ds, al.LibraryID)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +75,7 @@ func newDiscArtworkReader(ctx context.Context, a *artwork, artID model.ArtworkID
 		for id := range allFolderIDs {
 			folderIDs = append(folderIDs, id)
 		}
-		folders, err := a.ds.Folder(ctx).GetAll(model.QueryOptions{
+		folders, err := ds.Folder(ctx).GetAll(model.QueryOptions{
 			Filters: squirrel.Eq{"folder.id": folderIDs},
 		})
 		if err != nil {
@@ -92,46 +87,15 @@ func newDiscArtworkReader(ctx context.Context, a *artwork, artID model.ArtworkID
 		}
 	}
 
-	isMultiFolder := len(al.FolderIDs) > 1
-
-	r := &discArtworkReader{
-		a:              a,
+	return &discArtworkReader{
 		album:          *al,
 		discNumber:     discNumber,
 		imgFiles:       imgFiles,
 		discFoldersRel: discFoldersRel,
-		isMultiFolder:  isMultiFolder,
+		isMultiFolder:  len(al.FolderIDs) > 1,
 		firstTrackRel:  firstTrackRel,
 		lib:            lib,
-		updatedAt:      imagesUpdatedAt,
-	}
-	r.cacheKey.artID = artID
-	r.cacheKey.lastUpdate = utils.TimeNewest(al.UpdatedAt, al.ImportedAt)
-	if imagesUpdatedAt != nil {
-		r.cacheKey.lastUpdate = utils.TimeNewest(r.cacheKey.lastUpdate, *imagesUpdatedAt)
-	}
-	return r, nil
-}
-
-func (d *discArtworkReader) Key() string {
-	hash := md5.Sum([]byte(conf.Server.DiscArtPriority))
-	return fmt.Sprintf(
-		"%s.%x",
-		d.cacheKey.Key(),
-		hash,
-	)
-}
-
-func (d *discArtworkReader) LastUpdated() time.Time {
-	return d.lastUpdate
-}
-
-func (d *discArtworkReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
-	var ff = d.fromDiscArtPriority(ctx, d.a.ffmpeg, conf.Server.DiscArtPriority)
-	// Fallback to album cover art
-	albumArtID := model.NewArtworkID(model.KindAlbumArtwork, d.album.ID, &d.album.UpdatedAt)
-	ff = append(ff, fromAlbum(ctx, d.a, albumArtID))
-	return selectImageReader(ctx, d.cacheKey.artID, ff...)
+	}, nil
 }
 
 func (d *discArtworkReader) fromDiscArtPriority(ctx context.Context, ffmpeg ffmpeg.FFmpeg, priority string) []sourceFunc {

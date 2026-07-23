@@ -2,6 +2,7 @@ package tests
 
 import (
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/navidrome/navidrome/model"
@@ -9,6 +10,8 @@ import (
 
 type MockArtworkQueueRepo struct {
 	model.ArtworkQueueRepository
+	// mu guards Data so the worker's concurrent drain can hit this mock race-free.
+	mu   sync.Mutex
 	Data map[string]model.ArtworkQueueItem // keyed by iaKey(kind, id, imageType)
 	Err  error
 	// ItemArtworkSource, when set, backs EnqueueStaleAbsent with real item_artwork state.
@@ -22,6 +25,8 @@ func CreateMockArtworkQueueRepo() *MockArtworkQueueRepo {
 }
 
 func (m *MockArtworkQueueRepo) Enqueue(items ...model.ArtworkQueueItem) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.Err != nil {
 		return m.Err
 	}
@@ -47,6 +52,8 @@ func (m *MockArtworkQueueRepo) Enqueue(items ...model.ArtworkQueueItem) error {
 }
 
 func (m *MockArtworkQueueRepo) DequeueBatch(n int) ([]model.ArtworkQueueItem, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.Err != nil {
 		return nil, m.Err
 	}
@@ -70,6 +77,8 @@ func (m *MockArtworkQueueRepo) DequeueBatch(n int) ([]model.ArtworkQueueItem, er
 }
 
 func (m *MockArtworkQueueRepo) MarkFailed(kind, id, imageType string, retryAt time.Time) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.Err != nil {
 		return m.Err
 	}
@@ -85,6 +94,8 @@ func (m *MockArtworkQueueRepo) MarkFailed(kind, id, imageType string, retryAt ti
 }
 
 func (m *MockArtworkQueueRepo) MarkFailedIfUnchanged(kind, id, imageType string, seenRetryAt, retryAt time.Time) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.Err != nil {
 		return m.Err
 	}
@@ -98,6 +109,8 @@ func (m *MockArtworkQueueRepo) MarkFailedIfUnchanged(kind, id, imageType string,
 }
 
 func (m *MockArtworkQueueRepo) Delete(kind, id, imageType string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.Err != nil {
 		return m.Err
 	}
@@ -106,6 +119,8 @@ func (m *MockArtworkQueueRepo) Delete(kind, id, imageType string) error {
 }
 
 func (m *MockArtworkQueueRepo) DeleteIfUnchanged(kind, id, imageType string, retryAt time.Time) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.Err != nil {
 		return m.Err
 	}
@@ -117,6 +132,8 @@ func (m *MockArtworkQueueRepo) DeleteIfUnchanged(kind, id, imageType string, ret
 }
 
 func (m *MockArtworkQueueRepo) PurgeDangling() (int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.Err != nil {
 		return 0, m.Err
 	}
@@ -135,13 +152,43 @@ func (m *MockArtworkQueueRepo) PurgeDangling() (int64, error) {
 }
 
 func (m *MockArtworkQueueRepo) Count() (int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.Err != nil {
 		return 0, m.Err
 	}
 	return int64(len(m.Data)), nil
 }
 
+func (m *MockArtworkQueueRepo) EnqueueBump(items ...model.ArtworkQueueItem) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.Err != nil {
+		return m.Err
+	}
+	now := time.Now()
+	for _, it := range items {
+		if it.ImageType == "" {
+			it.ImageType = model.ImageTypePrimary
+		}
+		k := iaKey(it.ItemKind, it.ItemID, it.ImageType)
+		// Preserve an existing row's retry_at: a bump raises priority without resetting backoff.
+		if prev, ok := m.Data[k]; ok {
+			prev.Priority = max(prev.Priority, it.Priority)
+			m.Data[k] = prev
+			continue
+		}
+		it.Attempts = 0
+		it.RetryAt = now
+		it.EnqueuedAt = now
+		m.Data[k] = it
+	}
+	return nil
+}
+
 func (m *MockArtworkQueueRepo) EnqueueStaleAbsent(kind string, attemptedBefore time.Time) (int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.Err != nil || m.ItemArtworkSource == nil {
 		return 0, m.Err
 	}

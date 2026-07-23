@@ -140,7 +140,7 @@ var _ = Describe("RadioRepository", func() {
 				Expect(queued).To(ContainElement(SatisfyAll(
 					HaveField("ItemKind", "ra"),
 					HaveField("ItemID", created.ID),
-					HaveField("Priority", model.ArtworkPriorityScan),
+					HaveField("Priority", model.ArtworkPriorityBump),
 				)))
 			})
 		})

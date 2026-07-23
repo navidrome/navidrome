@@ -43,7 +43,7 @@ var _ = Describe("Playlists - Import", func() {
 		var folder *model.Folder
 		BeforeEach(func() {
 			DeferCleanup(configtest.SetupConfig())
-			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+			ps = playlists.NewPlaylists(ds, core.NewImageUploadService(ds))
 			ds.MockedMediaFile = &mockedMediaFileRepo{}
 			libPath, _ := os.Getwd()
 			// Set up library with the actual library path that matches the folder
@@ -118,7 +118,7 @@ var _ = Describe("Playlists - Import", func() {
 
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
 				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3", "test.ogg"}}
-				ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+				ps = playlists.NewPlaylists(ds, core.NewImageUploadService(ds))
 
 				plsFolder := &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: ""}
 				pls, err := ps.ImportFromFolder(ctx, plsFolder, "test.m3u")
@@ -136,7 +136,7 @@ var _ = Describe("Playlists - Import", func() {
 
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
 				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3"}}
-				ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+				ps = playlists.NewPlaylists(ds, core.NewImageUploadService(ds))
 
 				plsFolder := &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: ""}
 				pls, err := ps.ImportFromFolder(ctx, plsFolder, "test.m3u")
@@ -155,7 +155,7 @@ var _ = Describe("Playlists - Import", func() {
 
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
 				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3"}}
-				ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+				ps = playlists.NewPlaylists(ds, core.NewImageUploadService(ds))
 
 				plsFolder := &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: ""}
 				pls, err := ps.ImportFromFolder(ctx, plsFolder, "test.m3u")
@@ -174,7 +174,7 @@ var _ = Describe("Playlists - Import", func() {
 
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
 				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3"}}
-				ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+				ps = playlists.NewPlaylists(ds, core.NewImageUploadService(ds))
 
 				plsFolder := &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: ""}
 				pls, err := ps.ImportFromFolder(ctx, plsFolder, "test.m3u")
@@ -192,7 +192,7 @@ var _ = Describe("Playlists - Import", func() {
 
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
 				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3"}}
-				ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+				ps = playlists.NewPlaylists(ds, core.NewImageUploadService(ds))
 
 				plsFolder := &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: ""}
 				pls, err := ps.ImportFromFolder(ctx, plsFolder, "test.m3u")
@@ -209,7 +209,7 @@ var _ = Describe("Playlists - Import", func() {
 
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
 				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3"}}
-				ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+				ps = playlists.NewPlaylists(ds, core.NewImageUploadService(ds))
 
 				plsFolder := &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: ""}
 				pls, err := ps.ImportFromFolder(ctx, plsFolder, "test.m3u")
@@ -226,7 +226,7 @@ var _ = Describe("Playlists - Import", func() {
 
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
 				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3"}}
-				ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+				ps = playlists.NewPlaylists(ds, core.NewImageUploadService(ds))
 
 				plsFolder := &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: ""}
 				pls, err := ps.ImportFromFolder(ctx, plsFolder, "test.m3u")
@@ -244,7 +244,7 @@ var _ = Describe("Playlists - Import", func() {
 
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
 				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3"}}
-				ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+				ps = playlists.NewPlaylists(ds, core.NewImageUploadService(ds))
 
 				plsFolder := &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: ""}
 				pls, err := ps.ImportFromFolder(ctx, plsFolder, "test.m3u")
@@ -258,7 +258,7 @@ var _ = Describe("Playlists - Import", func() {
 				tmpDir := GinkgoT().TempDir()
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
 				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3"}}
-				ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+				ps = playlists.NewPlaylists(ds, core.NewImageUploadService(ds))
 
 				m3u := "#EXTALBUMARTURL:https://example.com/new-cover.jpg\ntest.mp3\n"
 				plsFile := filepath.Join(tmpDir, "test.m3u")
@@ -285,7 +285,7 @@ var _ = Describe("Playlists - Import", func() {
 				tmpDir := GinkgoT().TempDir()
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
 				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3"}}
-				ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+				ps = playlists.NewPlaylists(ds, core.NewImageUploadService(ds))
 
 				plsFile := filepath.Join(tmpDir, "test.m3u")
 				Expect(os.WriteFile(plsFile, []byte("test.mp3\n"), 0600)).To(Succeed())
@@ -311,7 +311,7 @@ var _ = Describe("Playlists - Import", func() {
 				tmpDir := GinkgoT().TempDir()
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
 				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3"}}
-				ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+				ps = playlists.NewPlaylists(ds, core.NewImageUploadService(ds))
 
 				m3u := "test.mp3\n"
 				plsFile := filepath.Join(tmpDir, "test.m3u")
@@ -388,7 +388,7 @@ var _ = Describe("Playlists - Import", func() {
 				tmpDir := GinkgoT().TempDir()
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
 				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{}}
-				ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+				ps = playlists.NewPlaylists(ds, core.NewImageUploadService(ds))
 
 				// Create the playlist file on disk with the filesystem's normalization form
 				plsFile := tmpDir + "/" + filesystemName + ".m3u"
@@ -448,7 +448,7 @@ var _ = Describe("Playlists - Import", func() {
 						"def.mp3", // This is playlists/def.mp3 relative to plsDir
 					},
 				}
-				ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+				ps = playlists.NewPlaylists(ds, core.NewImageUploadService(ds))
 			})
 
 			It("handles relative paths that reference files in other libraries", func() {
@@ -604,7 +604,7 @@ var _ = Describe("Playlists - Import", func() {
 					},
 				}
 				// Recreate playlists service to pick up new mock
-				ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+				ps = playlists.NewPlaylists(ds, core.NewImageUploadService(ds))
 
 				// Create playlist in music library that references both tracks
 				plsContent := "#PLAYLIST:Same Path Test\nalbum/track.mp3\n../classical/album/track.mp3"
@@ -662,7 +662,7 @@ var _ = Describe("Playlists - Import", func() {
 				},
 			}
 			ds.MockedFolder = mockFolderRepo
-			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+			ps = playlists.NewPlaylists(ds, core.NewImageUploadService(ds))
 
 			plsContent := "#PLAYLIST:My Playlist\ntest.mp3\ntest.ogg\n"
 			plsFile := filepath.Join(tmpDir, "my-playlist.m3u")
@@ -681,7 +681,7 @@ var _ = Describe("Playlists - Import", func() {
 			libDir := filepath.Join(tmpDir, "music")
 			Expect(os.Mkdir(libDir, 0755)).To(Succeed())
 			mockLibRepo.SetData([]model.Library{{ID: 1, Path: libDir}})
-			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+			ps = playlists.NewPlaylists(ds, core.NewImageUploadService(ds))
 
 			plsContent := "#PLAYLIST:External Playlist\n" + libDir + "/test.mp3\n"
 			plsFile := filepath.Join(tmpDir, "external.m3u")
@@ -704,7 +704,7 @@ var _ = Describe("Playlists - Import", func() {
 				},
 			}
 			ds.MockedFolder = mockFolderRepo
-			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+			ps = playlists.NewPlaylists(ds, core.NewImageUploadService(ds))
 
 			plsFile := filepath.Join(tmpDir, "test.m3u")
 			Expect(os.WriteFile(plsFile, []byte("test.mp3\n"), 0600)).To(Succeed())
@@ -724,7 +724,7 @@ var _ = Describe("Playlists - Import", func() {
 				},
 			}
 			ds.MockedFolder = mockFolderRepo
-			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+			ps = playlists.NewPlaylists(ds, core.NewImageUploadService(ds))
 
 			plsFile := filepath.Join(tmpDir, "test.m3u")
 			Expect(os.WriteFile(plsFile, []byte("test.mp3\n"), 0600)).To(Succeed())
@@ -744,7 +744,7 @@ var _ = Describe("Playlists - Import", func() {
 				},
 			}
 			ds.MockedFolder = mockFolderRepo
-			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+			ps = playlists.NewPlaylists(ds, core.NewImageUploadService(ds))
 
 			plsFile := filepath.Join(tmpDir, "test.m3u")
 			Expect(os.WriteFile(plsFile, []byte("test.mp3\n"), 0600)).To(Succeed())
@@ -767,7 +767,7 @@ var _ = Describe("Playlists - Import", func() {
 		BeforeEach(func() {
 			repo = &mockedMediaFileFromListRepo{}
 			ds.MockedMediaFile = repo
-			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+			ps = playlists.NewPlaylists(ds, core.NewImageUploadService(ds))
 			mockLibRepo.SetData([]model.Library{{ID: 1, Path: "/music"}, {ID: 2, Path: "/new"}})
 			ctx = request.WithUser(ctx, model.User{ID: "123"})
 		})

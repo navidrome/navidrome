@@ -124,6 +124,50 @@ func (a *Agents) AgentName() string {
 	return "agents"
 }
 
+// ArtistImageAgent pairs an enabled agent's name with its ArtistImageRetriever capability.
+type ArtistImageAgent struct {
+	Name      string
+	Retriever ArtistImageRetriever
+}
+
+// AlbumImageAgent pairs an enabled agent's name with its AlbumImageRetriever capability.
+type AlbumImageAgent struct {
+	Name      string
+	Retriever AlbumImageRetriever
+}
+
+// ArtistImageAgents returns the enabled agents implementing ArtistImageRetriever,
+// in conf.Server.Agents order (same order the aggregate dispatch uses).
+func (a *Agents) ArtistImageAgents() []ArtistImageAgent {
+	var result []ArtistImageAgent
+	for _, ea := range a.getEnabledAgentNames() {
+		ag := a.getAgent(ea)
+		if ag == nil {
+			continue
+		}
+		if retriever, ok := ag.(ArtistImageRetriever); ok {
+			result = append(result, ArtistImageAgent{Name: ea.name, Retriever: retriever})
+		}
+	}
+	return result
+}
+
+// AlbumImageAgents returns the enabled agents implementing AlbumImageRetriever,
+// in conf.Server.Agents order (same order the aggregate dispatch uses).
+func (a *Agents) AlbumImageAgents() []AlbumImageAgent {
+	var result []AlbumImageAgent
+	for _, ea := range a.getEnabledAgentNames() {
+		ag := a.getAgent(ea)
+		if ag == nil {
+			continue
+		}
+		if retriever, ok := ag.(AlbumImageRetriever); ok {
+			result = append(result, AlbumImageAgent{Name: ea.name, Retriever: retriever})
+		}
+	}
+	return result
+}
+
 func (a *Agents) GetArtistMBID(ctx context.Context, id string, name string) (string, error) {
 	switch id {
 	case consts.UnknownArtistID:

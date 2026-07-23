@@ -14,6 +14,7 @@ import (
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/pocketbase/dbx"
 )
 
@@ -131,6 +132,7 @@ func (r *playlistRepository) Put(p *model.Playlist, cols ...string) error {
 	if len(pls.Tracks) > 0 {
 		return r.updateTracks(id, p.MediaFiles())
 	}
+	pls.ID = id // r.put assigns the generated id to p, not to this copy; refreshCounters enqueues by it
 	return r.refreshCounters(&pls.Playlist)
 }
 
@@ -172,7 +174,21 @@ func (r *playlistRepository) findBy(sql Sqlizer) (*model.Playlist, error) {
 		return nil, model.ErrNotFound
 	}
 
-	return &pls[0].Playlist, nil
+	list := model.Playlists{pls[0].Playlist}
+	r.hydrateArtwork(list)
+	return &list[0], nil
+}
+
+// hydrateArtwork fills each playlist's ImageHash/ImageAbsent from one batched item_artwork lookup.
+func (r *playlistRepository) hydrateArtwork(playlists model.Playlists) {
+	if len(playlists) == 0 {
+		return
+	}
+	ids := slice.Map(playlists, func(p model.Playlist) string { return p.ID })
+	infos := hydrateItemImages(r.ctx, r.db, model.KindPlaylistArtwork.Prefix(), ids)
+	for i := range playlists {
+		applyItemImage(infos, playlists[i].ID, &playlists[i].ItemImage)
+	}
 }
 
 func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playlists, error) {
@@ -186,6 +202,7 @@ func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playli
 	for i, p := range res {
 		playlists[i] = p.Playlist
 	}
+	r.hydrateArtwork(playlists)
 	return playlists, err
 }
 
@@ -230,6 +247,7 @@ func (r *playlistRepository) GetPlaylists(mediaFileId string) (model.Playlists, 
 	for i, p := range res {
 		playlists[i] = p.Playlist
 	}
+	r.hydrateArtwork(playlists)
 	return playlists, nil
 }
 
@@ -307,6 +325,13 @@ func (r *playlistRepository) refreshCounters(pls *model.Playlist) error {
 	pls.SongCount = int(res.Count)
 	pls.Duration = res.Duration
 	pls.Size = int64(res.Size)
+	// The generated 2x2 grid depends on the track set, so re-resolve the cover whenever it
+	// changes. No clear: the old cover keeps serving until the worker rebuilds (no flicker).
+	item := model.ArtworkQueueItem{ItemKind: "pl", ItemID: pls.ID, ImageType: model.ImageTypePrimary,
+		Priority: model.ArtworkPriorityScan}
+	if err := NewArtworkQueueRepository(r.ctx, r.db).Enqueue(item); err != nil {
+		log.Warn(r.ctx, "could not enqueue playlist artwork after content change", "id", pls.ID, err)
+	}
 	return nil
 }
 

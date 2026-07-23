@@ -2,7 +2,9 @@ package artwork
 
 import (
 	"context"
+	"net/url"
 	"path/filepath"
+	"strings"
 
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/model"
@@ -40,5 +42,23 @@ func loadLibraryView(ctx context.Context, ds model.DataStore, libID int) (librar
 	if err != nil {
 		return libraryView{}, err
 	}
-	return libraryView{FS: fs, absRoot: lib.Path}, nil
+	return libraryView{FS: fs, absRoot: localOSRoot(lib.Path)}, nil
+}
+
+// localOSRoot maps a library path to its on-disk root so Abs() yields paths os.Open/os.Stat accept:
+// a file:// URL becomes its parsed OS path (bare paths already are; non-local schemes stay unchanged).
+func localOSRoot(libPath string) string {
+	if !strings.Contains(libPath, "://") {
+		return libPath
+	}
+	u, err := url.Parse(libPath)
+	if err != nil || u.Scheme != storage.LocalSchemaID {
+		return libPath
+	}
+	// Windows drive URLs (file://C:/Music) put the volume in Host; rejoin it, matching
+	// core/storage/local's newLocalStorage so os.Open/os.Stat get a valid path.
+	if filepath.VolumeName(u.Host) != "" {
+		return filepath.Join(u.Host, u.Path)
+	}
+	return u.Path
 }

@@ -260,7 +260,7 @@ func runImport(ctx context.Context, files []string) {
 		ctx = request.WithUser(ctx, *user)
 	}
 
-	pls := playlists.NewPlaylists(ds, core.NewImageUploadService())
+	pls := playlists.NewPlaylists(ds, core.NewImageUploadService(ds))
 
 	for _, file := range files {
 		absPath, err := filepath.Abs(file)

@@ -26,6 +26,18 @@ func NewArtworkQueueRepository(ctx context.Context, db dbx.Builder) model.Artwor
 }
 
 func (r *artworkQueueRepository) Enqueue(items ...model.ArtworkQueueItem) error {
+	return r.enqueue(`ON CONFLICT (item_kind, item_id, image_type) DO UPDATE SET
+		priority = MAX(priority, excluded.priority), retry_at = excluded.retry_at`, items)
+}
+
+// EnqueueBump raises priority like Enqueue but leaves an existing row's retry_at intact, so a
+// request-triggered read-through never resets a failed resolution's backoff. New rows insert eligible.
+func (r *artworkQueueRepository) EnqueueBump(items ...model.ArtworkQueueItem) error {
+	return r.enqueue(`ON CONFLICT (item_kind, item_id, image_type) DO UPDATE SET
+		priority = MAX(priority, excluded.priority)`, items)
+}
+
+func (r *artworkQueueRepository) enqueue(conflict string, items []model.ArtworkQueueItem) error {
 	now := time.Now()
 	for chunk := range slices.Chunk(items, enqueueChunkSize) {
 		ins := Insert(r.tableName).Columns("item_kind", "item_id", "image_type", "priority", "attempts", "retry_at", "enqueued_at")
@@ -35,8 +47,7 @@ func (r *artworkQueueRepository) Enqueue(items ...model.ArtworkQueueItem) error 
 			}
 			ins = ins.Values(it.ItemKind, it.ItemID, it.ImageType, it.Priority, 0, now, now)
 		}
-		ins = ins.Suffix(`ON CONFLICT (item_kind, item_id, image_type) DO UPDATE SET
-			priority = MAX(priority, excluded.priority), retry_at = excluded.retry_at`)
+		ins = ins.Suffix(conflict)
 		if _, err := r.executeSQL(ins); err != nil {
 			return err
 		}

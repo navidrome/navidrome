@@ -129,6 +129,19 @@ var _ = Describe("buildPlaylist", func() {
 			})
 		})
 
+		Context("artwork emission", func() {
+			It("suffixes coverArt with the content hash when resolved", func() {
+				playlist.ImageHash = "0123456789abcdef"
+				result := router.buildPlaylist(ctx, playlist)
+				Expect(result.CoverArt).To(Equal("pl-pls-1_0123456789abcdef"))
+			})
+			It("omits coverArt when known absent", func() {
+				playlist.ImageAbsent = true
+				result := router.buildPlaylist(ctx, playlist)
+				Expect(result.CoverArt).To(BeEmpty())
+			})
+		})
+
 		Context("with legacy client", func() {
 			BeforeEach(func() {
 				conf.Server.Subsonic.LegacyClients = "legacy-client"

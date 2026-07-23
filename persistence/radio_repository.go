@@ -10,6 +10,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
+	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/pocketbase/dbx"
 )
 
@@ -49,14 +50,35 @@ func (r *radioRepository) Get(id string) (*model.Radio, error) {
 	sel := r.newSelect().Where(Eq{"id": id}).Columns("*")
 	res := model.Radio{}
 	err := r.queryOne(sel, &res)
-	return &res, err
+	if err != nil {
+		return &res, err
+	}
+	list := model.Radios{res}
+	r.hydrateArtwork(list)
+	return &list[0], nil
 }
 
 func (r *radioRepository) GetAll(options ...model.QueryOptions) (model.Radios, error) {
 	sel := r.newSelect(options...).Columns("*")
 	res := model.Radios{}
 	err := r.queryAll(sel, &res)
-	return res, err
+	if err != nil {
+		return res, err
+	}
+	r.hydrateArtwork(res)
+	return res, nil
+}
+
+// hydrateArtwork fills each radio's ImageHash/ImageAbsent from one batched item_artwork lookup.
+func (r *radioRepository) hydrateArtwork(radios model.Radios) {
+	if len(radios) == 0 {
+		return
+	}
+	ids := slice.Map(radios, func(rd model.Radio) string { return rd.ID })
+	infos := hydrateItemImages(r.ctx, r.db, model.KindRadioArtwork.Prefix(), ids)
+	for i := range radios {
+		applyItemImage(infos, radios[i].ID, &radios[i].ItemImage)
+	}
 }
 
 // GetAllIDs returns just the radio IDs. Used by bulk enumeration (artwork backfill).
@@ -84,9 +106,10 @@ func (r *radioRepository) Put(radio *model.Radio, colsToUpdate ...string) error 
 	if err != nil {
 		return err
 	}
-	// Enqueue artwork resolution for the created/updated radio. Never fails the save.
+	// Enqueue artwork resolution for the created/updated radio at Bump priority so a new
+	// radio's cover resolves proactively. Never fails the save.
 	item := model.ArtworkQueueItem{ItemKind: "ra", ItemID: radio.ID, ImageType: model.ImageTypePrimary,
-		Priority: model.ArtworkPriorityScan}
+		Priority: model.ArtworkPriorityBump}
 	if err := NewArtworkQueueRepository(r.ctx, r.db).Enqueue(item); err != nil {
 		log.Warn(r.ctx, "could not enqueue radio artwork", "id", radio.ID, err)
 	}

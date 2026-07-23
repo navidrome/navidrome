@@ -15,6 +15,13 @@ type Artwork struct {
 
 const ImageTypePrimary = "primary"
 
+// ItemImage is per-entity artwork state hydrated at query time; never persisted
+// (structs:"-" keeps it out of upserts) nor exposed via the native API (json:"-").
+type ItemImage struct {
+	ImageHash   string `structs:"-" json:"-"`
+	ImageAbsent bool   `structs:"-" json:"-"`
+}
+
 // ItemArtwork is an entity's resolved artwork state. Hash=="" means known absent.
 type ItemArtwork struct {
 	ItemKind  string `structs:"item_kind"`
@@ -24,7 +31,7 @@ type ItemArtwork struct {
 	Source    string `structs:"source"`
 	// SourcePath is the backing file (folder/upload: the image; embedded: the audio file); "" otherwise.
 	SourcePath string `structs:"source_path"`
-	// RefMtime is SourcePath's mtime at resolution; 0 when there is no SourcePath.
+	// RefMtime is SourcePath's mtime (unix-nanoseconds) at resolution; 0 when there is no SourcePath.
 	RefMtime int64 `structs:"ref_mtime"`
 	// attempted_at/updated_at are nullable in the schema but always set by PutItemArtwork;
 	// raw inserts must set them too, since these non-pointer time.Time fields fail to scan NULL.
@@ -73,6 +80,8 @@ type ArtworkRepository interface {
 	GetItemArtwork(kind, id, imageType string) (*ItemArtwork, error)
 	PutItemArtwork(ia *ItemArtwork) error
 	DeleteForItem(kind, id string) error
+	// DeleteForItems removes state rows for the given ids of one kind, in chunks.
+	DeleteForItems(kind string, ids []string) error
 	// GetInfoForItems hydrates a page: one batched query, item_artwork joined to artwork.
 	GetInfoForItems(kind string, ids []string) (map[string]ItemArtworkInfo, error)
 	// GetAllMimes returns hash -> current mime for every stored artwork, for sweep retention checks.
@@ -82,8 +91,12 @@ type ArtworkRepository interface {
 }
 
 type ArtworkQueueRepository interface {
-	// Enqueue upserts; an existing row keeps the higher of the two priorities.
+	// Enqueue upserts; an existing row keeps the higher of the two priorities and has its
+	// retry_at reset (a detected change wants immediate re-resolution).
 	Enqueue(items ...ArtworkQueueItem) error
+	// EnqueueBump upserts like Enqueue but preserves an existing row's retry_at, so a
+	// request-triggered read-through never resets a failed resolution's backoff.
+	EnqueueBump(items ...ArtworkQueueItem) error
 	// DequeueBatch returns up to n items with retry_at <= now, priority desc, enqueued_at asc.
 	DequeueBatch(n int) ([]ArtworkQueueItem, error)
 	// MarkFailed increments attempts and pushes retry_at into the future.

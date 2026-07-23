@@ -10,11 +10,12 @@ import (
 	"io"
 	"time"
 
+	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/artwork/blurhash"
-	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/cache"
 	xdraw "golang.org/x/image/draw"
 )
 
@@ -42,14 +43,15 @@ const maxImageBytes = 20 << 20
 // huge canvas that image.Decode would expand into gigabytes (decompression bomb).
 const maxImagePixels = 64 << 20
 
-// workerDeps are the collaborators processItem needs; extGate is set by NewWorker in
+// workerDeps are the collaborators processItem needs; gate is set by NewWorker in
 // production and nil only in tests, where resolveItem falls back to a plain passthrough.
 type workerDeps struct {
-	ds      model.DataStore
-	store   *ImageStore
-	prov    external.Provider
-	ffmpeg  ffmpeg.FFmpeg
-	extGate extGateFunc
+	ds     model.DataStore
+	store  *ImageStore
+	agents *agents.Agents
+	ffmpeg ffmpeg.FFmpeg
+	cache  cache.FileCache
+	gate   gateFunc
 }
 
 // processItem resolves one queue item end to end: find an image, hash/decode/
@@ -57,7 +59,7 @@ type workerDeps struct {
 func processItem(ctx context.Context, deps *workerDeps, item model.ArtworkQueueItem) outcome {
 	repo := deps.ds.Artwork(ctx)
 
-	res, err := resolveItem(ctx, deps.ds, deps.prov, deps.ffmpeg, item, deps.extGate)
+	res, err := resolveItem(ctx, deps.ds, deps.agents, deps.ffmpeg, item, deps.gate)
 	if err != nil {
 		log.Warn(ctx, "artwork: could not resolve item", "kind", item.ItemKind, "id", item.ItemID, err)
 		return outcomeFailed

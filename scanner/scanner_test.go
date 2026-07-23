@@ -14,7 +14,6 @@ import (
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
-	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/core/storage/storagetest"
@@ -86,8 +85,8 @@ var _ = Describe("Scanner", Ordered, func() {
 		}
 		Expect(ds.User(ctx).Put(&adminUser)).To(Succeed())
 
-		s = scanner.New(ctx, ds, artwork.NoopCacheWarmer(), events.NoopBroker(),
-			playlists.NewPlaylists(ds, core.NewImageUploadService()), metrics.NewNoopInstance())
+		s = scanner.New(ctx, ds, events.NoopBroker(),
+			playlists.NewPlaylists(ds, core.NewImageUploadService(ds)), metrics.NewNoopInstance())
 
 		lib = model.Library{ID: 1, Name: "Fake Library", Path: "fake:///music"}
 		Expect(ds.Library(ctx).Put(&lib)).To(Succeed())
@@ -209,6 +208,26 @@ var _ = Describe("Scanner", Ordered, func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(albums[0].Participants.First(model.RoleProducer).Name).To(Equal("George Martin"))
 				Expect(albums[0].SongCount).To(Equal(3))
+			})
+
+			It("invalidates the media_file artwork state so new embedded art is picked up lazily", func() {
+				Expect(runScanner(ctx, true)).To(Succeed())
+
+				mf, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"title": "Help!"}})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mf).ToNot(BeEmpty())
+				trackID := mf[0].ID
+
+				Expect(ds.Artwork(ctx).PutItemArtwork(&model.ItemArtwork{
+					ItemKind: "mf", ItemID: trackID, ImageType: model.ImageTypePrimary,
+					Source: "embedded", Hash: "stalehash",
+				})).To(Succeed())
+
+				fsys.UpdateTags("The Beatles/Help!/01 - Help!.mp3", _t{"comment": "reimport"})
+				Expect(runScanner(ctx, true)).To(Succeed())
+
+				_, err = ds.Artwork(ctx).GetItemArtwork("mf", trackID, model.ImageTypePrimary)
+				Expect(err).To(MatchError(model.ErrNotFound))
 			})
 		})
 	})

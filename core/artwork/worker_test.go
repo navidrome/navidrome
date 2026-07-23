@@ -4,18 +4,48 @@ import (
 	"context"
 	"errors"
 	"io"
-	"net/url"
+	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/utils/cache"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.uber.org/goleak"
 )
+
+// recordingCache captures the keys passed to Get so precache warming can be asserted,
+// and can be forced Disabled to exercise the skip path.
+type recordingCache struct {
+	cache.FileCache
+	mu       sync.Mutex
+	keys     []string
+	disabled bool
+}
+
+func (c *recordingCache) Disabled(ctx context.Context) bool {
+	return c.disabled || c.FileCache.Disabled(ctx)
+}
+
+func (c *recordingCache) Get(ctx context.Context, arg cache.Item) (*cache.CachedStream, error) {
+	c.mu.Lock()
+	c.keys = append(c.keys, arg.Key())
+	c.mu.Unlock()
+	return c.FileCache.Get(ctx, arg)
+}
+
+func (c *recordingCache) getKeys() []string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return append([]string(nil), c.keys...)
+}
 
 // reenqueueOnDequeue simulates a concurrent scan Enqueue between DequeueBatch and the
 // worker's delete by bumping retry_at, so a DeleteIfUnchanged on the dequeued value no-ops.
@@ -38,6 +68,32 @@ func (r *reenqueueOnDequeue) DequeueBatch(n int) ([]model.ArtworkQueueItem, erro
 	return items, err
 }
 
+type fakeEventBroker struct {
+	http.Handler
+	mu     sync.Mutex
+	events []events.Event
+}
+
+func (f *fakeEventBroker) SendMessage(_ context.Context, event events.Event) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.events = append(f.events, event)
+}
+
+func (f *fakeEventBroker) SendBroadcastMessage(_ context.Context, event events.Event) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.events = append(f.events, event)
+}
+
+func (f *fakeEventBroker) getEvents() []events.Event {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.events
+}
+
+var _ events.Broker = (*fakeEventBroker)(nil)
+
 func findQueued(q *tests.MockArtworkQueueRepo, kind, id string) *model.ArtworkQueueItem {
 	for _, it := range q.Data {
 		if it.ItemKind == kind && it.ItemID == id {
@@ -54,10 +110,12 @@ var _ = Describe("Worker", func() {
 		folderRepo *fakeFolderRepo
 		libRepo    *tests.MockLibraryRepo
 		ffm        *tests.MockFFmpeg
-		prov       *fakeExternalProvider
+		ag         *agents.Agents
 		store      *ImageStore
 		artRepo    *tests.MockArtworkRepo
 		queueRepo  *tests.MockArtworkQueueRepo
+		broker     *fakeEventBroker
+		imgCache   *recordingCache
 		repoRoot   string
 		w          *Worker
 	)
@@ -68,12 +126,13 @@ var _ = Describe("Worker", func() {
 		var err error
 		repoRoot, err = os.Getwd()
 		Expect(err).ToNot(HaveOccurred())
+		conf.Server.CacheFolder = conf.NewDir(GinkgoT().TempDir())
 
 		folderRepo = &fakeFolderRepo{}
 		libRepo = &tests.MockLibraryRepo{}
 		libRepo.SetData(model.Libraries{{ID: 0, Path: testFileLibPath(repoRoot)}})
 		ffm = tests.NewMockFFmpeg("")
-		prov = &fakeExternalProvider{}
+		ag = agents.GetAgents(&tests.MockDataStore{}, nil)
 		artRepo = tests.CreateMockArtworkRepo()
 		queueRepo = tests.CreateMockArtworkQueueRepo()
 		ds = &tests.MockDataStore{
@@ -86,7 +145,14 @@ var _ = Describe("Worker", func() {
 		store = NewImageStore(GinkgoT().TempDir())
 		conf.Server.CoverArtPriority = "cover.jpg, embedded"
 		conf.Server.ArtworkExternalMaxRPS = 1000 // keep the limiter out of the way of behavior tests
-		w = NewWorker(ds, store, prov, ffm)
+		broker = &fakeEventBroker{}
+		imgCache = &recordingCache{FileCache: cache.NewFileCache("WorkerTest", "100MB", "images", 0,
+			func(ctx context.Context, arg cache.Item) (io.Reader, error) {
+				r, _, err := arg.(artworkReader).Reader(ctx)
+				return r, err
+			})}
+		Eventually(func() bool { return imgCache.Available(ctx) }).Should(BeTrue())
+		w = NewWorker(ds, store, ag, ffm, broker, imgCache)
 	})
 
 	Describe("drain", func() {
@@ -115,12 +181,43 @@ var _ = Describe("Worker", func() {
 			Expect(count).To(BeZero(), "a found item must be deleted from the queue")
 		})
 
+		It("processes an mf queue item, writing state and storing embedded bytes", func() {
+			conf.Server.EnableMediaFileCoverArt = true
+			ds.MockedMediaFile = tests.CreateMockMediaFileRepo()
+			ds.MockedMediaFile.(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+				{ID: "mf1", LibraryID: 0, Path: "tests/fixtures/artist/an-album/test.mp3", HasCoverArt: true},
+			})
+			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{
+				ItemKind: "mf", ItemID: "mf1", Priority: model.ArtworkPriorityBump,
+			})).To(Succeed())
+
+			n, err := w.drain(ctx, 2)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(n).To(Equal(1))
+
+			ia, err := artRepo.GetItemArtwork("mf", "mf1", model.ImageTypePrimary)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ia.Source).To(Equal("embedded"))
+			Expect(ia.Hash).ToNot(BeEmpty())
+
+			art, err := artRepo.GetImage(ia.Hash)
+			Expect(err).ToNot(HaveOccurred())
+			r, err := store.Open(ia.Hash, art.Mime)
+			Expect(err).ToNot(HaveOccurred())
+			defer r.Close()
+			data, err := io.ReadAll(r)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(data).ToNot(BeEmpty(), "embedded bytes must be written to the store")
+
+			count, err := queueRepo.Count()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(count).To(BeZero())
+		})
+
 		It("reschedules a failed item via MarkFailed with a backed-off retry_at", func() {
 			conf.Server.CoverArtPriority = "external"
 			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al4", Name: "Album"}})
-			prov.albumImage = func(context.Context, string) (*url.URL, error) {
-				return nil, errors.New("agent timed out")
-			}
+			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al4"})).To(Succeed())
 
 			n, err := w.drain(ctx, 2)
@@ -145,9 +242,7 @@ var _ = Describe("Worker", func() {
 			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
 				{ID: "alstale", Name: "Album", FolderIDs: []string{"f1"}},
 			})
-			prov.albumImage = func(context.Context, string) (*url.URL, error) {
-				return nil, errors.New("agent timed out")
-			}
+			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "alstale"})).To(Succeed())
 
 			n, err := w.drain(ctx, 2)
@@ -162,6 +257,10 @@ var _ = Describe("Worker", func() {
 			ia, err := artRepo.GetItemArtwork("al", "alstale", model.ImageTypePrimary)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ia.Source).To(Equal("folder"), "the fallback art is served meanwhile")
+
+			evts := broker.getEvents()
+			Expect(evts).To(HaveLen(1), "the served fallback art must live-refresh the UI")
+			Expect(evts[0].(*events.RefreshResource).Data(evts[0])).To(ContainSubstring("alstale"))
 		})
 
 		It("keeps a row re-enqueued between dequeue and delete", func() {
@@ -174,7 +273,7 @@ var _ = Describe("Worker", func() {
 			})
 			racing := &reenqueueOnDequeue{MockArtworkQueueRepo: queueRepo}
 			ds.MockedArtworkQueue = racing
-			w = NewWorker(ds, store, prov, ffm)
+			w = NewWorker(ds, store, ag, ffm, broker, imgCache)
 			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{
 				ItemKind: "al", ItemID: "al7", Priority: model.ArtworkPriorityScan,
 			})).To(Succeed())
@@ -193,12 +292,10 @@ var _ = Describe("Worker", func() {
 		It("keeps a fresh re-enqueue ahead of a stale failure backoff", func() {
 			conf.Server.CoverArtPriority = "external"
 			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al8", Name: "Album"}})
-			prov.albumImage = func(context.Context, string) (*url.URL, error) {
-				return nil, errors.New("agent timed out")
-			}
+			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 			racing := &reenqueueOnDequeue{MockArtworkQueueRepo: queueRepo}
 			ds.MockedArtworkQueue = racing
-			w = NewWorker(ds, store, prov, ffm)
+			w = NewWorker(ds, store, ag, ffm, broker, imgCache)
 			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al8"})).To(Succeed())
 			dequeued := findQueued(queueRepo, "al", "al8").RetryAt
 
@@ -221,7 +318,7 @@ var _ = Describe("Worker", func() {
 				private:       model.Playlist{ID: "plPriv", OwnerID: "admin"},
 				tracks:        &tests.MockPlaylistTrackRepo{},
 			}
-			w = NewWorker(vds, store, prov, ffm)
+			w = NewWorker(vds, store, ag, ffm, broker, imgCache)
 			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "pl", ItemID: "plPriv"})).To(Succeed())
 
 			n, err := w.drain(ctx, 1)
@@ -239,6 +336,67 @@ var _ = Describe("Worker", func() {
 			n, err := w.drain(ctx, 2)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(n).To(BeZero())
+		})
+
+		It("broadcasts a single refresh event for the found items in a batch", func() {
+			folderRepo.result = []model.Folder{{
+				Path:       "tests/fixtures/artist/an-album",
+				ImageFiles: []string{"cover.jpg"},
+			}}
+			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
+				{ID: "al1", Name: "Album 1", FolderIDs: []string{"f1"}},
+				{ID: "al2", Name: "Album 2", FolderIDs: []string{"f1"}},
+			})
+			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al1", Priority: model.ArtworkPriorityScan})).To(Succeed())
+			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al2", Priority: model.ArtworkPriorityScan})).To(Succeed())
+			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar1", Priority: model.ArtworkPriorityScan})).To(Succeed())
+
+			n, err := w.drain(ctx, 3)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(n).To(Equal(3))
+
+			evts := broker.getEvents()
+			Expect(evts).To(HaveLen(1), "exactly one coalesced event per drain batch")
+			rr, ok := evts[0].(*events.RefreshResource)
+			Expect(ok).To(BeTrue())
+			data := rr.Data(rr)
+			Expect(data).To(ContainSubstring(`"album"`))
+			Expect(data).To(ContainSubstring("al1"))
+			Expect(data).To(ContainSubstring("al2"))
+			Expect(data).ToNot(ContainSubstring("artist"), "a failed (unresolved) artist must not be refreshed")
+			Expect(data).ToNot(ContainSubstring("ar1"))
+		})
+
+		It("broadcasts a refresh when an item resolves to absent (removed cover)", func() {
+			conf.Server.CoverArtPriority = "cover.*" // local-only; no folder image → absent
+			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al3", Name: "Artless"}})
+			folderRepo.result = nil
+			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al3", Priority: model.ArtworkPriorityScan})).To(Succeed())
+
+			n, err := w.drain(ctx, 2)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(n).To(Equal(1))
+
+			evts := broker.getEvents()
+			Expect(evts).To(HaveLen(1), "a removed cover must live-refresh clients so they drop it")
+			Expect(evts[0].(*events.RefreshResource).Data(evts[0])).To(ContainSubstring("al3"))
+
+			ia, err := artRepo.GetItemArtwork("al", "al3", model.ImageTypePrimary)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ia.Hash).To(BeEmpty(), "the outcome was absent, not found")
+		})
+
+		It("does not broadcast when no item is found", func() {
+			conf.Server.CoverArtPriority = "external"
+			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "alx", Name: "Album"}})
+			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
+			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "alx"})).To(Succeed())
+
+			n, err := w.drain(ctx, 2)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(n).To(Equal(1))
+
+			Expect(broker.getEvents()).To(BeEmpty(), "a drain with no found items sends no event")
 		})
 	})
 
@@ -259,13 +417,13 @@ var _ = Describe("Worker", func() {
 				return nil, "", errors.New("boom")
 			}
 			for range 5 {
-				_, _, err := w.gate(failing)
+				_, _, err := w.gate("A", failing)
 				Expect(err).To(HaveOccurred())
 			}
 			Expect(calls).To(Equal(5))
 
-			_, _, err := w.gate(failing)
-			Expect(err).To(HaveOccurred())
+			_, _, err := w.gate("A", failing)
+			Expect(err).To(MatchError(errBreakerOpen))
 			Expect(calls).To(Equal(5), "an open breaker must not call the external step")
 		})
 
@@ -273,9 +431,9 @@ var _ = Describe("Worker", func() {
 			failing := func() (io.ReadCloser, string, error) { return nil, "", errors.New("boom") }
 			ok := func() (io.ReadCloser, string, error) { return io.NopCloser(nil), "p", nil }
 			for range 4 {
-				_, _, _ = w.gate(failing)
+				_, _, _ = w.gate("A", failing)
 			}
-			_, _, err := w.gate(ok)
+			_, _, err := w.gate("A", ok)
 			Expect(err).ToNot(HaveOccurred())
 
 			var calls int
@@ -284,9 +442,84 @@ var _ = Describe("Worker", func() {
 				return nil, "", errors.New("boom")
 			}
 			for range 5 {
-				_, _, _ = w.gate(counting)
+				_, _, _ = w.gate("A", counting)
 			}
 			Expect(calls).To(Equal(5), "the breaker should have re-closed after the success")
+		})
+
+		It("does not open the breaker on a run of agent not-found misses", func() {
+			// Regression: agents.ErrNotFound is a definitive miss, not a fault. A run of
+			// artless items must never trip the breaker, or they'd loop in retry instead of
+			// settling absent. Uses the real gate, not passthroughGate.
+			notFound := func() (io.ReadCloser, string, error) { return nil, "", agents.ErrNotFound }
+			for range breakerThreshold + 3 {
+				_, _, err := w.gate("A", notFound)
+				Expect(err).To(MatchError(agents.ErrNotFound), "a miss passes through, never errBreakerOpen")
+			}
+
+			var calls int
+			counting := func() (io.ReadCloser, string, error) {
+				calls++
+				return nil, "", errors.New("boom")
+			}
+			_, _, _ = w.gate("A", counting)
+			Expect(calls).To(Equal(1), "the breaker stayed closed, so the step still runs")
+		})
+
+		It("isolates each agent's breaker: one open gate does not block another", func() {
+			failing := func() (io.ReadCloser, string, error) { return nil, "", errors.New("boom") }
+			for range breakerThreshold {
+				_, _, _ = w.gate("A", failing)
+			}
+			_, _, err := w.gate("A", failing)
+			Expect(err).To(MatchError(errBreakerOpen), "agent A's breaker is open")
+
+			var bCalls int
+			bStep := func() (io.ReadCloser, string, error) {
+				bCalls++
+				return io.NopCloser(nil), "p", nil
+			}
+			for range breakerThreshold + 2 {
+				_, _, err := w.gate("B", bStep)
+				Expect(err).ToNot(HaveOccurred(), "agent B keeps being called while A is open")
+			}
+			Expect(bCalls).To(Equal(breakerThreshold + 2))
+		})
+	})
+
+	Describe("precache", func() {
+		BeforeEach(func() {
+			folderRepo.result = []model.Folder{{
+				Path:       "tests/fixtures/artist/an-album",
+				ImageFiles: []string{"cover.jpg"},
+			}}
+			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
+				{ID: "alpc", Name: "Album", FolderIDs: []string{"f1"}},
+			})
+			conf.Server.UICoverArtSize = 300
+			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{
+				ItemKind: "al", ItemID: "alpc", Priority: model.ArtworkPriorityScan,
+			})).To(Succeed())
+		})
+
+		It("warms the resize cache at the UI cover size after a found acquisition", func() {
+			conf.Server.EnableArtworkPrecache = true
+
+			n, err := w.drain(ctx, 1)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(n).To(Equal(1))
+
+			Expect(imgCache.getKeys()).To(ContainElement(ContainSubstring(".300.false.")))
+		})
+
+		It("skips warming when precache is disabled", func() {
+			conf.Server.EnableArtworkPrecache = false
+
+			n, err := w.drain(ctx, 1)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(n).To(Equal(1))
+
+			Expect(imgCache.getKeys()).To(BeEmpty())
 		})
 	})
 
@@ -313,7 +546,7 @@ var _ = Describe("Worker", func() {
 			DeferCleanup(func() { goleak.VerifyNone(GinkgoT(), ignore) })
 
 			localDS := &tests.MockDataStore{MockedArtworkQueue: tests.CreateMockArtworkQueueRepo()}
-			lw := NewWorker(localDS, NewImageStore(GinkgoT().TempDir()), &fakeExternalProvider{}, tests.NewMockFFmpeg(""))
+			lw := NewWorker(localDS, NewImageStore(GinkgoT().TempDir()), agents.GetAgents(localDS, nil), tests.NewMockFFmpeg(""), &fakeEventBroker{}, imgCache)
 
 			runCtx, cancel := context.WithCancel(ctx)
 			done := make(chan error, 1)

@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
@@ -157,4 +158,57 @@ var _ = Describe("Browsing", func() {
 			Expect(response.Artist).ToNot(BeNil())
 		})
 	})
+
+	Describe("GetAlbumInfo", func() {
+		It("emits image URLs when the album artwork is unresolved", func() {
+			api.provider = &fakeInfoProvider{album: &model.Album{ID: "al-1"}}
+			r := httptest.NewRequest("GET", "/rest/getAlbumInfo?id=al-1", nil)
+			resp, err := api.GetAlbumInfo(r)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.AlbumInfo.SmallImageUrl).ToNot(BeEmpty())
+			Expect(resp.AlbumInfo.LargeImageUrl).ToNot(BeEmpty())
+		})
+		It("omits image URLs when the album artwork is known absent", func() {
+			api.provider = &fakeInfoProvider{album: &model.Album{ID: "al-1", ItemImage: model.ItemImage{ImageAbsent: true}}}
+			r := httptest.NewRequest("GET", "/rest/getAlbumInfo?id=al-1", nil)
+			resp, err := api.GetAlbumInfo(r)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.AlbumInfo.SmallImageUrl).To(BeEmpty())
+			Expect(resp.AlbumInfo.MediumImageUrl).To(BeEmpty())
+			Expect(resp.AlbumInfo.LargeImageUrl).To(BeEmpty())
+		})
+	})
+
+	Describe("GetArtistInfo", func() {
+		It("emits image URLs when the artist artwork is unresolved", func() {
+			api.provider = &fakeInfoProvider{artist: &model.Artist{ID: "ar-1"}}
+			r := httptest.NewRequest("GET", "/rest/getArtistInfo?id=ar-1", nil)
+			resp, err := api.GetArtistInfo(r)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.ArtistInfo.SmallImageUrl).ToNot(BeEmpty())
+		})
+		It("omits image URLs when the artist artwork is known absent", func() {
+			api.provider = &fakeInfoProvider{artist: &model.Artist{ID: "ar-1", ItemImage: model.ItemImage{ImageAbsent: true}}}
+			r := httptest.NewRequest("GET", "/rest/getArtistInfo?id=ar-1", nil)
+			resp, err := api.GetArtistInfo(r)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.ArtistInfo.SmallImageUrl).To(BeEmpty())
+			Expect(resp.ArtistInfo.MediumImageUrl).To(BeEmpty())
+			Expect(resp.ArtistInfo.LargeImageUrl).To(BeEmpty())
+		})
+	})
 })
+
+type fakeInfoProvider struct {
+	external.Provider
+	album  *model.Album
+	artist *model.Artist
+}
+
+func (f *fakeInfoProvider) UpdateAlbumInfo(context.Context, string) (*model.Album, error) {
+	return f.album, nil
+}
+
+func (f *fakeInfoProvider) UpdateArtistInfo(context.Context, string, int, bool) (*model.Artist, error) {
+	return f.artist, nil
+}

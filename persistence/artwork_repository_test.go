@@ -25,6 +25,7 @@ var _ = Describe("ArtworkRepository", func() {
 
 	BeforeEach(func() {
 		clearArtworkTables()
+		DeferCleanup(clearArtworkTables)
 		repo = NewArtworkRepository(context.Background(), GetDBXBuilder())
 	})
 
@@ -146,16 +147,19 @@ var _ = Describe("ArtworkRepository", func() {
 			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "pl", ItemID: "no-such-playlist", ImageType: model.ImageTypePrimary, Hash: "danglingPl"})).To(Succeed())
 			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "ra", ItemID: radioWithHomePage.ID, ImageType: model.ImageTypePrimary, Hash: "keepRa"})).To(Succeed())
 			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "ra", ItemID: "no-such-radio", ImageType: model.ImageTypePrimary, Hash: "danglingRa"})).To(Succeed())
+			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "mf", ItemID: songDayInALife.ID, ImageType: model.ImageTypePrimary, Hash: "keepMf"})).To(Succeed())
+			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "mf", ItemID: "no-such-mediafile", ImageType: model.ImageTypePrimary, Hash: "danglingMf"})).To(Succeed())
 
 			purged, err := repo.PurgeDanglingItemArtwork()
 			Expect(err).ToNot(HaveOccurred())
-			Expect(purged).To(Equal(int64(4)))
+			Expect(purged).To(Equal(int64(5)))
 
 			for _, kept := range []model.ItemArtwork{
 				{ItemKind: "al", ItemID: albumSgtPeppers.ID},
 				{ItemKind: "ar", ItemID: artistKraftwerk.ID},
 				{ItemKind: "pl", ItemID: plsBest.ID},
 				{ItemKind: "ra", ItemID: radioWithHomePage.ID},
+				{ItemKind: "mf", ItemID: songDayInALife.ID},
 			} {
 				_, err := repo.GetItemArtwork(kept.ItemKind, kept.ItemID, model.ImageTypePrimary)
 				Expect(err).ToNot(HaveOccurred())
@@ -165,6 +169,7 @@ var _ = Describe("ArtworkRepository", func() {
 				{ItemKind: "ar", ItemID: "no-such-artist"},
 				{ItemKind: "pl", ItemID: "no-such-playlist"},
 				{ItemKind: "ra", ItemID: "no-such-radio"},
+				{ItemKind: "mf", ItemID: "no-such-mediafile"},
 			} {
 				_, err := repo.GetItemArtwork(gone.ItemKind, gone.ItemID, model.ImageTypePrimary)
 				Expect(err).To(MatchError(model.ErrNotFound))
@@ -228,6 +233,27 @@ var _ = Describe("ArtworkRepository", func() {
 			Expect(repo.DeleteForItem("pl", "p1")).To(Succeed())
 			_, err := repo.GetItemArtwork("pl", "p1", model.ImageTypePrimary)
 			Expect(err).To(MatchError(model.ErrNotFound))
+		})
+
+		It("deletes rows for many items in chunks, leaving others untouched", func() {
+			const n = artworkBatchSize + 5
+			ids := make([]string, n)
+			for i := range n {
+				id := fmt.Sprintf("mf-%d", i)
+				ids[i] = id
+				Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "mf", ItemID: id, ImageType: model.ImageTypePrimary, Hash: "h1"})).To(Succeed())
+			}
+			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "mf", ItemID: "keep", ImageType: model.ImageTypePrimary, Hash: "h1"})).To(Succeed())
+
+			Expect(repo.DeleteForItems("mf", ids)).To(Succeed())
+
+			for _, id := range ids {
+				_, err := repo.GetItemArtwork("mf", id, model.ImageTypePrimary)
+				Expect(err).To(MatchError(model.ErrNotFound))
+			}
+			kept, err := repo.GetItemArtwork("mf", "keep", model.ImageTypePrimary)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(kept.ItemID).To(Equal("keep"))
 		})
 	})
 })

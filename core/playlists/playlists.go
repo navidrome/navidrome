@@ -57,6 +57,7 @@ type Playlists interface {
 type ImageUploadService interface {
 	SetImage(ctx context.Context, entityType string, entityID string, name string, oldPath string, reader io.Reader, ext string) (filename string, err error)
 	RemoveImage(ctx context.Context, path string) error
+	EnqueueArtwork(ctx context.Context, entityType, entityID string)
 }
 
 type playlists struct {
@@ -320,7 +321,11 @@ func (s *playlists) SetImage(ctx context.Context, playlistID string, reader io.R
 	}
 
 	pls.UploadedImage = filename
-	return s.ds.Playlist(ctx).Put(pls)
+	if err := s.ds.Playlist(ctx).Put(pls); err != nil {
+		return err
+	}
+	s.imgUpload.EnqueueArtwork(ctx, consts.EntityPlaylist, pls.ID)
+	return nil
 }
 
 func (s *playlists) RemoveImage(ctx context.Context, playlistID string) error {
@@ -334,5 +339,9 @@ func (s *playlists) RemoveImage(ctx context.Context, playlistID string) error {
 	}
 
 	pls.UploadedImage = ""
-	return s.ds.Playlist(ctx).Put(pls)
+	if err := s.ds.Playlist(ctx).Put(pls); err != nil {
+		return err
+	}
+	s.imgUpload.EnqueueArtwork(ctx, consts.EntityPlaylist, pls.ID)
+	return nil
 }

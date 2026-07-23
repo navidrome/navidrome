@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"sync"
 	"time"
 
 	"github.com/navidrome/navidrome/model"
@@ -8,6 +9,8 @@ import (
 
 type MockArtworkRepo struct {
 	model.ArtworkRepository
+	// mu guards the maps so the worker's concurrent drain can hit this mock race-free.
+	mu           sync.Mutex
 	Data         map[string]model.Artwork
 	ItemData     map[string]model.ItemArtwork // keyed by iaKey(kind, id, imageType)
 	OrphanHashes []string
@@ -23,6 +26,8 @@ func CreateMockArtworkRepo() *MockArtworkRepo {
 func iaKey(kind, id, imageType string) string { return kind + "|" + id + "|" + imageType }
 
 func (m *MockArtworkRepo) GetImage(hash string) (*model.Artwork, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.Err != nil {
 		return nil, m.Err
 	}
@@ -33,6 +38,8 @@ func (m *MockArtworkRepo) GetImage(hash string) (*model.Artwork, error) {
 }
 
 func (m *MockArtworkRepo) PutImage(a *model.Artwork) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.Err != nil {
 		return m.Err
 	}
@@ -43,6 +50,8 @@ func (m *MockArtworkRepo) PutImage(a *model.Artwork) error {
 }
 
 func (m *MockArtworkRepo) GetImages(hashes []string) (map[string]model.Artwork, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.Err != nil {
 		return nil, m.Err
 	}
@@ -56,10 +65,14 @@ func (m *MockArtworkRepo) GetImages(hashes []string) (map[string]model.Artwork, 
 }
 
 func (m *MockArtworkRepo) GetOrphanHashes(createdBefore time.Time) ([]string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	return m.OrphanHashes, m.Err
 }
 
 func (m *MockArtworkRepo) GetAllMimes() (map[string]string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.Err != nil {
 		return nil, m.Err
 	}
@@ -71,6 +84,8 @@ func (m *MockArtworkRepo) GetAllMimes() (map[string]string, error) {
 }
 
 func (m *MockArtworkRepo) PurgeDanglingItemArtwork() (int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.Err != nil {
 		return 0, m.Err
 	}
@@ -90,6 +105,8 @@ func (m *MockArtworkRepo) PurgeDanglingItemArtwork() (int64, error) {
 }
 
 func (m *MockArtworkRepo) DeleteOrphans(createdBefore time.Time, hashes []string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.Err != nil {
 		return m.Err
 	}
@@ -116,6 +133,8 @@ func (m *MockArtworkRepo) referenced(hash string) bool {
 }
 
 func (m *MockArtworkRepo) GetItemArtwork(kind, id, imageType string) (*model.ItemArtwork, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.Err != nil {
 		return nil, m.Err
 	}
@@ -126,6 +145,8 @@ func (m *MockArtworkRepo) GetItemArtwork(kind, id, imageType string) (*model.Ite
 }
 
 func (m *MockArtworkRepo) PutItemArtwork(ia *model.ItemArtwork) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.Err != nil {
 		return m.Err
 	}
@@ -141,6 +162,8 @@ func (m *MockArtworkRepo) PutItemArtwork(ia *model.ItemArtwork) error {
 }
 
 func (m *MockArtworkRepo) DeleteForItem(kind, id string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.Err != nil {
 		return m.Err
 	}
@@ -152,7 +175,27 @@ func (m *MockArtworkRepo) DeleteForItem(kind, id string) error {
 	return nil
 }
 
+func (m *MockArtworkRepo) DeleteForItems(kind string, ids []string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.Err != nil {
+		return m.Err
+	}
+	idSet := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		idSet[id] = true
+	}
+	for k, ia := range m.ItemData {
+		if ia.ItemKind == kind && idSet[ia.ItemID] {
+			delete(m.ItemData, k)
+		}
+	}
+	return nil
+}
+
 func (m *MockArtworkRepo) GetInfoForItems(kind string, ids []string) (map[string]model.ItemArtworkInfo, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.Err != nil {
 		return nil, m.Err
 	}

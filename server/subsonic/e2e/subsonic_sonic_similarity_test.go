@@ -43,7 +43,7 @@ func buildSonicRouter(provider sonic.Provider) *subsonic.Router {
 		noopProvider{},
 		nil, // scanner
 		events.NoopBroker(),
-		playlists.NewPlaylists(ds, core.NewImageUploadService()),
+		playlists.NewPlaylists(ds, core.NewImageUploadService(ds)),
 		scrobbler.NewPlayTracker(ds, events.NoopBroker(), nil),
 		core.NewShare(ds),
 		playback.PlaybackServer(nil),

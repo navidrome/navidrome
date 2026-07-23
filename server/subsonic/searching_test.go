@@ -1,6 +1,8 @@
 package subsonic
 
 import (
+	"net/http"
+
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
@@ -207,6 +209,34 @@ var _ = Describe("Search", func() {
 				Expect(err.Error()).To(ContainSubstring("Library 999 not found or not accessible"))
 				Expect(resp).To(BeNil())
 			})
+		})
+	})
+
+	Describe("artwork emission", func() {
+		newSearchRequest := func() *http.Request {
+			r := newGetRequest("query=test")
+			ctx := request.WithUser(r.Context(), model.User{ID: "user1", Libraries: []model.Library{{ID: 1}}})
+			return r.WithContext(ctx)
+		}
+
+		It("omits coverArt and imageUrl for a known-absent artist", func() {
+			mockArtistRepo.SetData(model.Artists{
+				{ID: "ar-1", Name: "Absent Artist", ItemImage: model.ItemImage{ImageAbsent: true}},
+			})
+			resp, err := router.Search2(newSearchRequest())
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.SearchResult2.Artist).To(HaveLen(1))
+			Expect(resp.SearchResult2.Artist[0].CoverArt).To(BeEmpty())
+			Expect(resp.SearchResult2.Artist[0].ArtistImageUrl).To(BeEmpty())
+		})
+
+		It("emits coverArt and imageUrl for an unresolved artist", func() {
+			mockArtistRepo.SetData(model.Artists{{ID: "ar-1", Name: "Unresolved Artist"}})
+			resp, err := router.Search2(newSearchRequest())
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.SearchResult2.Artist).To(HaveLen(1))
+			Expect(resp.SearchResult2.Artist[0].CoverArt).To(Equal("ar-ar-1"))
+			Expect(resp.SearchResult2.Artist[0].ArtistImageUrl).ToNot(BeEmpty())
 		})
 	})
 })

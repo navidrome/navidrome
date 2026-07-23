@@ -12,7 +12,6 @@ import (
 	ppl "github.com/google/go-pipeline/pkg/pipeline"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -24,18 +23,16 @@ type phasePlaylists struct {
 	scanState     *scanState
 	ds            model.DataStore
 	pls           playlists.Playlists
-	cw            artwork.CacheWarmer
 	refreshed     atomic.Uint32
 	pendingImport bool
 }
 
-func createPhasePlaylists(ctx context.Context, scanState *scanState, ds model.DataStore, pls playlists.Playlists, cw artwork.CacheWarmer) *phasePlaylists {
+func createPhasePlaylists(ctx context.Context, scanState *scanState, ds model.DataStore, pls playlists.Playlists) *phasePlaylists {
 	return &phasePlaylists{
 		ctx:       ctx,
 		scanState: scanState,
 		ds:        ds,
 		pls:       pls,
-		cw:        cw,
 	}
 }
 
@@ -148,7 +145,6 @@ func (p *phasePlaylists) processPlaylistsInFolder(folder *model.Folder) (*model.
 		} else {
 			log.Debug("Scanner: Imported playlist", "name", pls.Name, "lastUpdated", pls.UpdatedAt, "path", pls.Path, "numTracks", len(pls.Tracks), "elapsed", time.Since(started))
 		}
-		p.cw.PreCache(pls.CoverArtID())
 		item := model.ArtworkQueueItem{ItemKind: "pl", ItemID: pls.ID, ImageType: model.ImageTypePrimary,
 			Priority: model.ArtworkPriorityScan}
 		if err := p.ds.ArtworkQueue(p.ctx).Enqueue(item); err != nil {

@@ -17,6 +17,11 @@ func (k Kind) String() string {
 	return k.name
 }
 
+// Prefix is the short token used in artwork ids and the item_artwork.item_kind column.
+func (k Kind) Prefix() string {
+	return k.prefix
+}
+
 var (
 	KindMediaFileArtwork = Kind{"mf", "media_file"}
 	KindArtistArtwork    = Kind{"ar", "artist"}
@@ -38,7 +43,8 @@ var artworkKindMap = map[string]Kind{
 type ArtworkID struct {
 	Kind       Kind
 	ID         string
-	LastUpdate time.Time
+	Hash       string    // content-hash suffix; "" = unknown/none
+	LastUpdate time.Time // legacy: populated only when parsing old _<hexTimestamp> tokens
 }
 
 func (id ArtworkID) String() string {
@@ -46,14 +52,14 @@ func (id ArtworkID) String() string {
 		return ""
 	}
 	s := fmt.Sprintf("%s-%s", id.Kind.prefix, id.ID)
-	if lu := id.LastUpdate.Unix(); lu > 0 {
-		return fmt.Sprintf("%s_%x", s, lu)
+	if id.Hash != "" {
+		return s + "_" + id.Hash
 	}
-	return s + "_0"
+	return s
 }
 
 func NewArtworkID(kind Kind, id string, lastUpdate *time.Time) ArtworkID {
-	artID := ArtworkID{kind, id, time.Time{}}
+	artID := ArtworkID{Kind: kind, ID: id}
 	if lastUpdate != nil {
 		artID.LastUpdate = *lastUpdate
 	}
@@ -75,16 +81,32 @@ func ParseArtworkID(id string) (ArtworkID, error) {
 	}
 	parts = strings.SplitN(parts[1], "_", 2)
 	if len(parts) == 2 {
-		if parts[1] != "0" {
-			lastUpdate, err := strconv.ParseInt(parts[1], 16, 64)
-			if err != nil {
-				return ArtworkID{}, err
-			}
-			parsedID.LastUpdate = time.Unix(lastUpdate, 0)
-		}
 		parsedID.ID = parts[0]
+		suffix := parts[1]
+		switch {
+		// Hash detection must come first: a 16-hex value with the high bit set overflows int64.
+		case isImageHash(suffix):
+			parsedID.Hash = suffix
+		case suffix != "0":
+			if lastUpdate, err := strconv.ParseInt(suffix, 16, 64); err == nil {
+				parsedID.LastUpdate = time.Unix(lastUpdate, 0)
+			}
+		}
 	}
 	return parsedID, nil
+}
+
+// isImageHash reports whether s is a 16-char lowercase-hex XXH3-64 content hash.
+func isImageHash(s string) bool {
+	if len(s) != 16 {
+		return false
+	}
+	for _, c := range s {
+		if !(c >= '0' && c <= '9' || c >= 'a' && c <= 'f') {
+			return false
+		}
+	}
+	return true
 }
 
 func MustParseArtworkID(id string) ArtworkID {
@@ -112,40 +134,21 @@ func ParseDiscArtworkID(id string) (albumID string, discNumber int, err error) {
 }
 
 func artworkIDFromAlbum(al Album) ArtworkID {
-	return ArtworkID{
-		Kind:       KindAlbumArtwork,
-		ID:         al.ID,
-		LastUpdate: al.UpdatedAt,
-	}
+	return ArtworkID{Kind: KindAlbumArtwork, ID: al.ID, Hash: al.ImageHash}
 }
 
 func artworkIDFromMediaFile(mf MediaFile) ArtworkID {
-	return ArtworkID{
-		Kind:       KindMediaFileArtwork,
-		ID:         mf.ID,
-		LastUpdate: mf.UpdatedAt,
-	}
+	return ArtworkID{Kind: KindMediaFileArtwork, ID: mf.ID, Hash: mf.ImageHash}
 }
 
 func artworkIDFromPlaylist(pls Playlist) ArtworkID {
-	return ArtworkID{
-		Kind:       KindPlaylistArtwork,
-		ID:         pls.ID,
-		LastUpdate: pls.UpdatedAt,
-	}
+	return ArtworkID{Kind: KindPlaylistArtwork, ID: pls.ID, Hash: pls.ImageHash}
 }
 
 func artworkIDFromArtist(ar Artist) ArtworkID {
-	return ArtworkID{
-		Kind: KindArtistArtwork,
-		ID:   ar.ID,
-	}
+	return ArtworkID{Kind: KindArtistArtwork, ID: ar.ID, Hash: ar.ImageHash}
 }
 
 func artworkIDFromRadio(r Radio) ArtworkID {
-	return ArtworkID{
-		Kind:       KindRadioArtwork,
-		ID:         r.ID,
-		LastUpdate: r.UpdatedAt,
-	}
+	return ArtworkID{Kind: KindRadioArtwork, ID: r.ID, Hash: r.ImageHash}
 }

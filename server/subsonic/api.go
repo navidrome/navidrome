@@ -40,7 +40,7 @@ type handlerRaw = func(http.ResponseWriter, *http.Request) (*responses.Subsonic,
 type Router struct {
 	http.Handler
 	ds                model.DataStore
-	artwork           artwork.Artwork
+	artwork           artwork.Service
 	streamer          stream.MediaStreamer
 	archiver          core.Archiver
 	players           core.Players
@@ -57,7 +57,7 @@ type Router struct {
 	sonic             *sonicsvc.Sonic
 }
 
-func New(ds model.DataStore, artwork artwork.Artwork, streamer stream.MediaStreamer, archiver core.Archiver,
+func New(ds model.DataStore, artwork artwork.Service, streamer stream.MediaStreamer, archiver core.Archiver,
 	players core.Players, provider external.Provider, scanner model.Scanner, broker events.Broker,
 	playlists playlistsvc.Playlists, scrobbler scrobbler.PlayTracker, share core.Share, playback playback.PlaybackServer,
 	metrics metrics.Metrics, lyrics lyricssvc.Lyrics, transcodeDecision stream.TranscodeDecider,

@@ -2,7 +2,6 @@ package artwork
 
 import (
 	"context"
-	"crypto/md5"
 	"fmt"
 	"io"
 	"io/fs"
@@ -14,9 +13,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
-	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/str"
@@ -28,127 +25,6 @@ const (
 	maxArtistFolderTraversalDepth = 3
 )
 
-type artistReader struct {
-	cacheKey
-	a                *artwork
-	provider         external.Provider
-	artist           model.Artist
-	artistFolder     string
-	imgFiles         []string
-	imgFolderImgPath string // cached path from ArtistImageFolder lookup
-	lib              libraryView
-}
-
-func newArtistArtworkReader(ctx context.Context, artwork *artwork, artID model.ArtworkID, provider external.Provider) (*artistReader, error) {
-	ar, err := artwork.ds.Artist(ctx).Get(artID.ID)
-	if err != nil {
-		return nil, err
-	}
-	// Only consider albums where the artist is the sole album artist.
-	als, err := artwork.ds.Album(ctx).GetAll(model.QueryOptions{
-		Filters: squirrel.And{
-			squirrel.Eq{"album_artist_id": artID.ID},
-			squirrel.Eq{"json_array_length(participants, '$.albumartist')": 1},
-		},
-	})
-	if err != nil {
-		return nil, err
-	}
-	albumPaths, imgFiles, imagesUpdatedAt, err := loadAlbumFoldersPaths(ctx, artwork.ds, als...)
-	if err != nil {
-		return nil, err
-	}
-	artistFolder, artistFolderLastUpdate, err := loadArtistFolder(ctx, artwork.ds, als, albumPaths)
-	if err != nil {
-		return nil, err
-	}
-	var lib libraryView
-	if len(als) > 0 {
-		lib, err = loadLibraryView(ctx, artwork.ds, als[0].LibraryID)
-		if err != nil {
-			return nil, err
-		}
-	}
-	a := &artistReader{
-		a:            artwork,
-		provider:     provider,
-		artist:       *ar,
-		artistFolder: artistFolder,
-		imgFiles:     imgFiles,
-		lib:          lib,
-	}
-	// TODO Find a way to factor in the ExternalUpdateInfoAt in the cache key. Problem is that it can
-	// change _after_ retrieving from external sources, making the key invalid
-	//a.cacheKey.lastUpdate = ar.ExternalInfoUpdatedAt
-
-	a.cacheKey.lastUpdate = *imagesUpdatedAt
-	if ar.UpdatedAt != nil && ar.UpdatedAt.After(a.cacheKey.lastUpdate) {
-		a.cacheKey.lastUpdate = *ar.UpdatedAt
-	}
-	if artistFolderLastUpdate.After(a.cacheKey.lastUpdate) {
-		a.cacheKey.lastUpdate = artistFolderLastUpdate
-	}
-	if conf.Server.ArtistImageFolder != "" && strings.Contains(strings.ToLower(conf.Server.ArtistArtPriority), "image-folder") {
-		a.imgFolderImgPath = findImageInArtistFolder(conf.Server.ArtistImageFolder, ar.MbzArtistID, ar.Name)
-		if a.imgFolderImgPath != "" {
-			if info, err := os.Stat(a.imgFolderImgPath); err == nil && info.ModTime().After(a.cacheKey.lastUpdate) {
-				a.cacheKey.lastUpdate = info.ModTime()
-			}
-		}
-	}
-	a.cacheKey.artID = artID
-	return a, nil
-}
-
-func (a *artistReader) Key() string {
-	hash := md5.Sum([]byte(conf.Server.Agents))
-	return fmt.Sprintf(
-		"%s.%t.%x",
-		a.cacheKey.Key(),
-		conf.Server.EnableExternalServices,
-		hash,
-	)
-}
-
-func (a *artistReader) LastUpdated() time.Time {
-	return a.lastUpdate
-}
-
-func (a *artistReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
-	ff := []sourceFunc{a.fromArtistUploadedImage()}
-	ff = append(ff, a.fromArtistArtPriority(ctx, conf.Server.ArtistArtPriority)...)
-	return selectImageReader(ctx, a.artID, ff...)
-}
-
-func (a *artistReader) fromArtistUploadedImage() sourceFunc {
-	return fromLocalFile(a.artist.UploadedImagePath())
-}
-
-func (a *artistReader) fromArtistArtPriority(ctx context.Context, priority string) []sourceFunc {
-	var ff []sourceFunc
-	for pattern := range strings.SplitSeq(strings.ToLower(priority), ",") {
-		pattern = strings.TrimSpace(pattern)
-		switch {
-		case pattern == "external":
-			ff = append(ff, fromArtistExternalSource(ctx, a.artist, a.provider))
-		case pattern == "image-folder":
-			ff = append(ff, a.fromArtistImageFolder(ctx))
-		case strings.HasPrefix(pattern, "album/"):
-			if a.lib.FS != nil {
-				ff = append(ff, fromExternalFile(ctx, a.lib.FS, a.imgFiles, strings.TrimPrefix(pattern, "album/")))
-			}
-		default:
-			ff = append(ff, fromArtistFolder(ctx, a.lib.FS, a.lib.absRoot, a.artistFolder, pattern))
-		}
-	}
-	return ff
-}
-
-// fromArtistFolder walks up from artistFolder toward libPath looking for a
-// file matching pattern. Traversal is bounded by both maxArtistFolderTraversalDepth
-// and the library root: once we reach libPath (or if artistFolder is outside
-// libPath), the walk stops. All reads go through libFS, which keeps artwork
-// resolution scoped to the configured library.
 func fromArtistFolder(ctx context.Context, libFS fs.FS, libPath, artistFolder, pattern string) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
 		if libFS == nil {
@@ -260,29 +136,6 @@ func loadArtistFolder(ctx context.Context, ds model.DataStore, albums model.Albu
 		return "", time.Time{}, err
 	}
 	return folderPath, folders[0].ImagesUpdatedAt, nil
-}
-
-func (a *artistReader) fromArtistImageFolder(ctx context.Context) sourceFunc {
-	return func() (io.ReadCloser, string, error) {
-		folder := conf.Server.ArtistImageFolder
-		if folder == "" {
-			return nil, "", nil
-		}
-		// Use cached path from newArtistArtworkReader if available,
-		// avoiding a second directory scan.
-		path := a.imgFolderImgPath
-		if path == "" {
-			path = findImageInArtistFolder(folder, a.artist.MbzArtistID, a.artist.Name)
-		}
-		if path == "" {
-			return nil, "", fmt.Errorf("no image found for artist %q in %s", a.artist.Name, folder)
-		}
-		f, err := os.Open(path)
-		if err != nil {
-			return nil, "", err
-		}
-		return f, path, nil
-	}
 }
 
 // findImageInArtistFolder scans a folder for an image file matching the artist's MBID or name

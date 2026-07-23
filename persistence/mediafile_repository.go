@@ -218,7 +218,58 @@ func (r *mediaFileRepository) GetAll(options ...model.QueryOptions) (model.Media
 	if err != nil {
 		return nil, err
 	}
-	return res.toModels(), nil
+	mfs := res.toModels()
+	r.hydrateArtwork(mfs)
+	return mfs, nil
+}
+
+// hydrateArtwork mirrors MediaFile.CoverArtID: an embedded-eligible file with resolved own art uses
+// it, else it falls back to the album's. Two batched item_artwork lookups per page, never a join.
+func (r *mediaFileRepository) hydrateArtwork(mfs model.MediaFiles) {
+	if len(mfs) == 0 {
+		return
+	}
+	albumIDs := make([]string, len(mfs))
+	var eligibleIDs []string
+	for i := range mfs {
+		albumIDs[i] = mfs[i].AlbumID
+		if mfs[i].HasCoverArt && conf.Server.EnableMediaFileCoverArt {
+			eligibleIDs = append(eligibleIDs, mfs[i].ID)
+		}
+	}
+	albumInfos := hydrateItemImages(r.ctx, r.db, model.KindAlbumArtwork.Prefix(), albumIDs)
+	mfInfos := hydrateItemImages(r.ctx, r.db, model.KindMediaFileArtwork.Prefix(), eligibleIDs)
+	for i := range mfs {
+		mf := &mfs[i]
+		eligible := mf.HasCoverArt && conf.Server.EnableMediaFileCoverArt
+		ownInfo, ownResolved := mfInfos[mf.ID]
+		if eligible && ownResolved && !ownInfo.Absent() {
+			mf.ImageHash = ownInfo.Hash // own resolved art wins
+			continue
+		}
+		// Fallback (see MediaFile.CoverArtID): inherit a found album hash for optimistic caching,
+		// but only for a single-disc track. A multi-disc track emits a dc- id served from
+		// disc-specific art of unknown identity, so stamping the album hash would advertise a
+		// wrong content-version; leave it bare (the served response still carries a correct ETag).
+		if album, ok := albumInfos[mf.AlbumID]; ok && !album.Absent() {
+			if mf.DiscNumber == 0 {
+				mf.ImageHash = album.Hash
+			}
+			continue
+		}
+		// Nothing found. Mark absent only when serving would definitively yield a placeholder:
+		// a single-disc track whose album is known-absent and whose own art won't resolve. A
+		// multi-disc track resolves disc art provisionally (never known-absent), and an
+		// eligible-but-unresolved track can still extract its own embedded art — both stay
+		// requestable.
+		if mf.DiscNumber > 0 {
+			continue
+		}
+		ownWontResolve := !eligible || (ownResolved && ownInfo.Absent())
+		if album, ok := albumInfos[mf.AlbumID]; ok && album.Absent() && ownWontResolve {
+			mf.ImageAbsent = true
+		}
+	}
 }
 
 // GetRandom uses two passes so the random sort runs over a narrow rowid index instead of the
@@ -252,7 +303,9 @@ func (r *mediaFileRepository) GetRandom(options ...model.QueryOptions) (model.Me
 	if err := r.queryAll(sq, &res); err != nil {
 		return nil, err
 	}
-	return res.toModels(), nil
+	mfs := res.toModels()
+	r.hydrateArtwork(mfs)
+	return mfs, nil
 }
 
 func (r *mediaFileRepository) GetAllByTags(tag model.TagName, values []string, options ...model.QueryOptions) (model.MediaFiles, error) {
@@ -487,7 +540,9 @@ func (r *mediaFileRepository) Search(q string, options ...model.QueryOptions) (m
 	if err != nil {
 		return nil, fmt.Errorf("searching media_file %q: %w", q, err)
 	}
-	return res.toModels(), nil
+	mfs := res.toModels()
+	r.hydrateArtwork(mfs)
+	return mfs, nil
 }
 
 func (r *mediaFileRepository) Count(options ...rest.QueryOptions) (int64, error) {
