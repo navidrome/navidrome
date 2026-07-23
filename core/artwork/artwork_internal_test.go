@@ -281,14 +281,14 @@ var _ = Describe("Artwork", func() {
 				Expect(err).ToNot(HaveOccurred())
 				_, path, err := aw.Reader(ctx)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(path).To(Equal("al-444_0"))
+				Expect(path).To(Equal("al-444"))
 			})
 			It("returns album cover if media file has no cover art", func() {
 				aw, err := newMediafileArtworkReader(ctx, aw, model.MustParseArtworkID("mf-"+mfWithoutEmbed.ID))
 				Expect(err).ToNot(HaveOccurred())
 				_, path, err := aw.Reader(ctx)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(path).To(Equal("al-444_0"))
+				Expect(path).To(Equal("al-444"))
 			})
 			It("falls back to disc cover art when media file has a disc number on a multi-disc album", func() {
 				mfWithDisc := model.MediaFile{ID: "46", Path: "tests/fixtures/test.ogg", AlbumID: "444", DiscNumber: 2}
@@ -299,7 +299,7 @@ var _ = Describe("Artwork", func() {
 				_, path, err := aw.Reader(ctx)
 				Expect(err).ToNot(HaveOccurred())
 				// Should fall back to disc art, which itself falls back to album art
-				Expect(path).To(Equal("dc-444:2_0"))
+				Expect(path).To(Equal("dc-444:2"))
 			})
 			It("falls back to album cover art for single-disc albums even with a disc number", func() {
 				mfOnSingleDisc := model.MediaFile{ID: "47", Path: "tests/fixtures/test.ogg", AlbumID: "888", DiscNumber: 1}
@@ -310,7 +310,7 @@ var _ = Describe("Artwork", func() {
 				_, path, err := aw.Reader(ctx)
 				Expect(err).ToNot(HaveOccurred())
 				// Single-disc album should skip disc art and go straight to album art
-				Expect(path).To(Equal("al-888_0"))
+				Expect(path).To(Equal("al-888"))
 			})
 		})
 	})

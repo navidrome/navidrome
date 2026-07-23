@@ -15,6 +15,13 @@ type Artwork struct {
 
 const ImageTypePrimary = "primary"
 
+// ItemImage is per-entity artwork state hydrated at query time; never persisted
+// (structs:"-" keeps it out of upserts) nor exposed via the native API (json:"-").
+type ItemImage struct {
+	ImageHash   string `structs:"-" json:"-"`
+	ImageAbsent bool   `structs:"-" json:"-"`
+}
+
 // ItemArtwork is an entity's resolved artwork state. Hash=="" means known absent.
 type ItemArtwork struct {
 	ItemKind  string `structs:"item_kind"`

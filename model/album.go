@@ -13,6 +13,7 @@ import (
 
 type Album struct {
 	Annotations `structs:"-" hash:"ignore"`
+	ItemImage   `structs:"-" json:"-" hash:"ignore"`
 
 	ID            string `structs:"id" json:"id"`
 	LibraryID     int    `structs:"library_id" json:"libraryId"`

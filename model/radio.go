@@ -7,6 +7,8 @@ import (
 )
 
 type Radio struct {
+	ItemImage `structs:"-" json:"-"`
+
 	ID            string    `structs:"id"              json:"id"`
 	StreamUrl     string    `structs:"stream_url"      json:"streamUrl"`
 	Name          string    `structs:"name"            json:"name"`
