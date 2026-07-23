@@ -420,6 +420,24 @@ var _ = Describe("Playlists", func() {
 			Expect(mockPlsRepo.Last.UploadedImage).To(BeEmpty())
 		})
 
+		It("clears the resolved artwork state and re-queues after removing an upload", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			Expect(ds.Artwork(ctx).PutItemArtwork(&model.ItemArtwork{
+				ItemKind: "pl", ItemID: "pls-1", Hash: "oldhash", Source: "upload",
+			})).To(Succeed())
+
+			Expect(ps.RemoveImage(ctx, "pls-1")).To(Succeed())
+
+			_, err := ds.Artwork(ctx).GetItemArtwork("pl", "pls-1", model.ImageTypePrimary)
+			Expect(err).To(MatchError(model.ErrNotFound))
+			queued, _ := ds.ArtworkQueue(ctx).DequeueBatch(100)
+			Expect(queued).To(ContainElement(SatisfyAll(
+				HaveField("ItemKind", "pl"),
+				HaveField("ItemID", "pls-1"),
+				HaveField("Priority", model.ArtworkPriorityBump),
+			)))
+		})
+
 		It("denies non-owner", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "other-user", IsAdmin: false})
 			err := ps.RemoveImage(ctx, "pls-1")

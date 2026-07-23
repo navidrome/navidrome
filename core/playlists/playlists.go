@@ -339,5 +339,9 @@ func (s *playlists) RemoveImage(ctx context.Context, playlistID string) error {
 	}
 
 	pls.UploadedImage = ""
-	return s.ds.Playlist(ctx).Put(pls)
+	if err := s.ds.Playlist(ctx).Put(pls); err != nil {
+		return err
+	}
+	s.imgUpload.EnqueueArtwork(ctx, consts.EntityPlaylist, pls.ID)
+	return nil
 }
