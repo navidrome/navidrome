@@ -106,6 +106,10 @@ var _ = Describe("Service", func() {
 
 			img, err := svc.Get(ctx, model.MustParseArtworkID("al-al1"), 100, false)
 			Expect(err).ToNot(HaveOccurred())
+			// A resized response versions its validator with the encode settings, distinct from
+			// the pixel hash, so a CoverArtQuality/WebP change invalidates client caches.
+			Expect(img.ETag).To(Equal(representationTag(img.Hash, 100, false)))
+			Expect(img.ETag).ToNot(Equal(img.Hash))
 			resized := readAll(img)
 			cfg, _, err := image.DecodeConfig(bytes.NewReader(resized))
 			Expect(err).ToNot(HaveOccurred())

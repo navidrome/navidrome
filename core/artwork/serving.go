@@ -27,9 +27,17 @@ var errStaleSource = errors.New("artwork: source file changed since resolution")
 // Image is one servable artwork response.
 type Image struct {
 	io.ReadCloser
-	Hash        string    // "" for placeholders
+	Hash        string    // pixel-identity hash (immutable URL match); "" for placeholders
+	ETag        string    // served-representation validator; "" falls back to Hash (full-size original)
 	LastUpdated time.Time // zero for placeholders
 	Placeholder bool
+}
+
+// representationTag identifies a served resized representation for HTTP validation: it changes with
+// the dimensions and the encode settings (CoverArtQuality/EnableWebPEncoding), so a config change
+// invalidates a revalidating client's cache even though the pixel hash is unchanged.
+func representationTag(hash string, size int, square bool) string {
+	return fmt.Sprintf("%s.%d.%v.%s", hash, size, square, formatQualityTag())
 }
 
 type Service interface {
@@ -121,7 +129,7 @@ func (s *service) serveHash(ctx context.Context, artID model.ArtworkID, ia *mode
 		}
 		return s.dangling(ctx, artID)
 	}
-	return &Image{ReadCloser: stream, Hash: ia.Hash, LastUpdated: ia.UpdatedAt}, nil
+	return &Image{ReadCloser: stream, Hash: ia.Hash, ETag: representationTag(ia.Hash, size, square), LastUpdated: ia.UpdatedAt}, nil
 }
 
 // openOriginal opens the full-resolution bytes for a found state row, enforcing the
@@ -218,7 +226,7 @@ func (s *service) serveBytes(ctx context.Context, hash string, data []byte, last
 	if err != nil {
 		return nil, err
 	}
-	return &Image{ReadCloser: stream, Hash: hash, LastUpdated: lastUpdate}, nil
+	return &Image{ReadCloser: stream, Hash: hash, ETag: representationTag(hash, size, square), LastUpdated: lastUpdate}, nil
 }
 
 // serveMediaFile serves a track: own found art wins; an absent row delegates to the album;

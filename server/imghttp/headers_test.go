@@ -28,6 +28,19 @@ func placeholder() *artwork.Image {
 	return &artwork.Image{ReadCloser: io.NopCloser(strings.NewReader("PH")), Placeholder: true}
 }
 
+const testRepTag = testHash + ".300.false.q75"
+
+// resized carries a representation ETag distinct from the pixel hash (as a resized/re-encoded
+// response does), so the validator versions with the encode settings.
+func resized() *artwork.Image {
+	return &artwork.Image{
+		ReadCloser:  io.NopCloser(strings.NewReader("IMG")),
+		Hash:        testHash,
+		ETag:        testRepTag,
+		LastUpdated: lastMod,
+	}
+}
+
 func TestWriteImageHeaders(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -66,6 +79,32 @@ func TestWriteImageHeaders(t *testing.T) {
 			wantCache:     "public, no-cache",
 			wantETag:      `"` + testHash + `"`,
 			wantLastMod:   true,
+		},
+		{
+			name:          "resized keeps pixel-hash immutable but serves the representation ETag",
+			img:           resized(),
+			requestedHash: testHash,
+			wantCache:     "public, max-age=31536000, immutable",
+			wantETag:      `"` + testRepTag + `"`,
+			wantLastMod:   true,
+		},
+		{
+			name:        "resized 304s on the representation ETag, not the pixel hash",
+			img:         resized(),
+			ifNoneMatch: `"` + testRepTag + `"`,
+			want304:     true,
+			wantCache:   "public, no-cache",
+			wantETag:    `"` + testRepTag + `"`,
+			wantLastMod: true,
+		},
+		{
+			name:        "resized does not 304 on a stale pixel-hash validator (config changed)",
+			img:         resized(),
+			ifNoneMatch: `"` + testHash + `"`,
+			want304:     false,
+			wantCache:   "public, no-cache",
+			wantETag:    `"` + testRepTag + `"`,
+			wantLastMod: true,
 		},
 		{
 			name:          "If-None-Match matching the hash yields 304",

@@ -21,11 +21,18 @@ func WriteImageHeaders(w http.ResponseWriter, r *http.Request, img *artwork.Imag
 		return false
 	}
 
-	h.Set("ETag", `"`+img.Hash+`"`)
+	// The validator identifies the served representation (resized/re-encoded bytes version it via
+	// ETag), so a CoverArtQuality/EnableWebPEncoding change invalidates a revalidating client's
+	// cache. Falls back to the pixel hash for full-size originals (bytes == the hash).
+	etag := img.ETag
+	if etag == "" {
+		etag = img.Hash
+	}
+	h.Set("ETag", `"`+etag+`"`)
 	if !img.LastUpdated.IsZero() {
 		h.Set("Last-Modified", img.LastUpdated.UTC().Format(http.TimeFormat))
 	}
-	// Immutable only when the client asked for the exact current hash; bare/legacy/mismatched
+	// Immutable only when the client asked for the exact current pixel hash; bare/legacy/mismatched
 	// requests get cheap ETag revalidation instead, which fixes stale art after re-resolution.
 	if requestedHash != "" && requestedHash == img.Hash {
 		h.Set("Cache-Control", "public, max-age=31536000, immutable")
@@ -33,7 +40,7 @@ func WriteImageHeaders(w http.ResponseWriter, r *http.Request, img *artwork.Imag
 		h.Set("Cache-Control", "public, no-cache")
 	}
 
-	if ifNoneMatch(r.Header.Get("If-None-Match"), img.Hash) {
+	if ifNoneMatch(r.Header.Get("If-None-Match"), etag) {
 		w.WriteHeader(http.StatusNotModified)
 		return true
 	}
