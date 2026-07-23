@@ -13,7 +13,7 @@ import (
 
 type Playlist struct {
 	Annotations `structs:"-"`
-	ItemImage   `structs:"-" json:"-"`
+	ItemImage   `structs:"-"`
 
 	ID               string         `structs:"id" json:"id"`
 	Name             string         `structs:"name" json:"name"`

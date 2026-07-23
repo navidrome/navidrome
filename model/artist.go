@@ -11,7 +11,7 @@ import (
 
 type Artist struct {
 	Annotations `structs:"-"`
-	ItemImage   `structs:"-" json:"-"`
+	ItemImage   `structs:"-"`
 
 	ID string `structs:"id" json:"id"`
 

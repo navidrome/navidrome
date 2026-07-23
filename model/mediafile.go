@@ -24,7 +24,7 @@ import (
 type MediaFile struct {
 	Annotations  `structs:"-" hash:"ignore"`
 	Bookmarkable `structs:"-" hash:"ignore"`
-	ItemImage    `structs:"-" json:"-" hash:"ignore"`
+	ItemImage    `structs:"-" hash:"ignore"`
 
 	ID          string `structs:"id"  json:"id" hash:"ignore"`
 	PID         string `structs:"pid" json:"-" hash:"ignore"`
