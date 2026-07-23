@@ -115,6 +115,39 @@ var _ = Describe("Worker", func() {
 			Expect(count).To(BeZero(), "a found item must be deleted from the queue")
 		})
 
+		It("processes an mf queue item, writing state and storing embedded bytes", func() {
+			conf.Server.EnableMediaFileCoverArt = true
+			ds.MockedMediaFile = tests.CreateMockMediaFileRepo()
+			ds.MockedMediaFile.(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+				{ID: "mf1", LibraryID: 0, Path: "tests/fixtures/artist/an-album/test.mp3", HasCoverArt: true},
+			})
+			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{
+				ItemKind: "mf", ItemID: "mf1", Priority: model.ArtworkPriorityBump,
+			})).To(Succeed())
+
+			n, err := w.drain(ctx, 2)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(n).To(Equal(1))
+
+			ia, err := artRepo.GetItemArtwork("mf", "mf1", model.ImageTypePrimary)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ia.Source).To(Equal("embedded"))
+			Expect(ia.Hash).ToNot(BeEmpty())
+
+			art, err := artRepo.GetImage(ia.Hash)
+			Expect(err).ToNot(HaveOccurred())
+			r, err := store.Open(ia.Hash, art.Mime)
+			Expect(err).ToNot(HaveOccurred())
+			defer r.Close()
+			data, err := io.ReadAll(r)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(data).ToNot(BeEmpty(), "embedded bytes must be written to the store")
+
+			count, err := queueRepo.Count()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(count).To(BeZero())
+		})
+
 		It("reschedules a failed item via MarkFailed with a backed-off retry_at", func() {
 			conf.Server.CoverArtPriority = "external"
 			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al4", Name: "Album"}})

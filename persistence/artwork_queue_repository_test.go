@@ -127,18 +127,20 @@ var _ = Describe("ArtworkQueueRepository", func() {
 			item("pl", "no-such-playlist", model.ArtworkPriorityScan),
 			item("ra", radioWithHomePage.ID, model.ArtworkPriorityScan),
 			item("ra", "no-such-radio", model.ArtworkPriorityScan),
+			item("mf", songDayInALife.ID, model.ArtworkPriorityScan),
+			item("mf", "no-such-mediafile", model.ArtworkPriorityScan),
 		)).To(Succeed())
 
 		purged, err := repo.PurgeDangling()
 		Expect(err).ToNot(HaveOccurred())
-		Expect(purged).To(Equal(int64(4)))
+		Expect(purged).To(Equal(int64(5)))
 
 		got, _ := repo.DequeueBatch(100)
 		ids := make([]string, 0, len(got))
 		for _, it := range got {
 			ids = append(ids, it.ItemID)
 		}
-		Expect(ids).To(ConsistOf(albumSgtPeppers.ID, artistKraftwerk.ID, plsBest.ID, radioWithHomePage.ID))
+		Expect(ids).To(ConsistOf(albumSgtPeppers.ID, artistKraftwerk.ID, plsBest.ID, radioWithHomePage.ID, songDayInALife.ID))
 	})
 
 	It("enqueues stale absent states for recheck", func() {

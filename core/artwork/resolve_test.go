@@ -51,8 +51,58 @@ var _ = Describe("resolveItem", func() {
 
 	Describe("kind dispatch", func() {
 		It("returns an error for kinds the worker never enqueues", func() {
-			_, err := resolveItem(ctx, ds, ag, ffm, model.ArtworkQueueItem{ItemKind: "mf", ItemID: "x"}, nil)
+			_, err := resolveItem(ctx, ds, ag, ffm, model.ArtworkQueueItem{ItemKind: "zz", ItemID: "x"}, nil)
 			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	Describe("media file", func() {
+		BeforeEach(func() {
+			conf.Server.EnableMediaFileCoverArt = true
+			ds.MockedMediaFile = tests.CreateMockMediaFileRepo()
+		})
+
+		It("resolves embedded art from the track file", func() {
+			ds.MockedMediaFile.(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+				{ID: "mf1", LibraryID: 0, Path: "tests/fixtures/artist/an-album/test.mp3", HasCoverArt: true},
+			})
+
+			res, err := resolveItem(ctx, ds, ag, ffm, model.ArtworkQueueItem{ItemKind: "mf", ItemID: "mf1"}, nil)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res.reader).ToNot(BeNil())
+			defer res.reader.Close()
+			Expect(res.source).To(Equal("embedded"))
+			Expect(filepath.ToSlash(res.sourcePath)).To(HaveSuffix("tests/fixtures/artist/an-album/test.mp3"))
+			Expect(res.refMtime).To(BeNumerically(">", 0))
+			Expect(res.extError).To(BeFalse())
+		})
+
+		It("resolves absent when the track has no cover art", func() {
+			ds.MockedMediaFile.(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+				{ID: "mf2", LibraryID: 0, Path: "tests/fixtures/artist/an-album/test.mp3", HasCoverArt: false},
+			})
+
+			res, err := resolveItem(ctx, ds, ag, ffm, model.ArtworkQueueItem{ItemKind: "mf", ItemID: "mf2"}, nil)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res.reader).To(BeNil())
+			Expect(res.extError).To(BeFalse())
+		})
+
+		It("resolves absent when media file cover art is disabled", func() {
+			conf.Server.EnableMediaFileCoverArt = false
+			ds.MockedMediaFile.(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+				{ID: "mf3", LibraryID: 0, Path: "tests/fixtures/artist/an-album/test.mp3", HasCoverArt: true},
+			})
+
+			res, err := resolveItem(ctx, ds, ag, ffm, model.ArtworkQueueItem{ItemKind: "mf", ItemID: "mf3"}, nil)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res.reader).To(BeNil())
+		})
+
+		It("returns the error when the track is not in the DB", func() {
+			res, err := resolveItem(ctx, ds, ag, ffm, model.ArtworkQueueItem{ItemKind: "mf", ItemID: "missing"}, nil)
+			Expect(err).To(MatchError(model.ErrNotFound))
+			Expect(res.reader).To(BeNil())
 		})
 	})
 

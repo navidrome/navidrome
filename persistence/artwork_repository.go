@@ -120,6 +120,7 @@ var danglingItemArtworkKinds = map[string]string{
 	"ar": "artist",
 	"pl": "playlist",
 	"ra": "radio",
+	"mf": "media_file",
 }
 
 // purgeDangling deletes rows in table whose owning entity is gone, one statement per kind.
@@ -175,6 +176,15 @@ func (r *artworkRepository) PutItemArtwork(ia *model.ItemArtwork) error {
 
 func (r *artworkRepository) DeleteForItem(kind, id string) error {
 	return r.items.delete(Eq{"item_kind": kind, "item_id": id})
+}
+
+func (r *artworkRepository) DeleteForItems(kind string, ids []string) error {
+	for chunk := range slices.Chunk(ids, artworkBatchSize) {
+		if err := r.items.delete(Eq{"item_kind": kind, "item_id": chunk}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (r *artworkRepository) GetInfoForItems(kind string, ids []string) (map[string]model.ItemArtworkInfo, error) {

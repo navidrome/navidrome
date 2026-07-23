@@ -49,6 +49,8 @@ func resolveItem(ctx context.Context, ds model.DataStore, ag *agents.Agents, ffm
 		return resolvePlaylist(ctx, ds, ag, ffmpeg, item.ItemID, gate)
 	case "ra":
 		return resolveRadio(ctx, ds, item.ItemID)
+	case "mf":
+		return resolveMediaFile(ctx, ds, ffmpeg, item.ItemID)
 	default:
 		return resolution{}, fmt.Errorf("resolveItem: kind %q is not resolvable by the worker", item.ItemKind)
 	}
@@ -248,6 +250,24 @@ func resolveRadio(ctx context.Context, ds model.DataStore, radioID string) (reso
 		return resolution{}, err
 	}
 	res, _ := resolveLocalFile(r.UploadedImagePath(), "upload")
+	return res, nil
+}
+
+// resolveMediaFile resolves a track's own embedded art only; there is no folder or
+// external fallback, so disabled/missing cover art is a definitive absent.
+func resolveMediaFile(ctx context.Context, ds model.DataStore, ffm ffmpeg.FFmpeg, id string) (resolution, error) {
+	mf, err := ds.MediaFile(ctx).Get(id)
+	if err != nil {
+		return resolution{}, err
+	}
+	if !conf.Server.EnableMediaFileCoverArt || !mf.HasCoverArt {
+		return resolution{}, nil
+	}
+	lib, err := loadLibraryView(ctx, ds, mf.LibraryID)
+	if err != nil {
+		return resolution{}, err
+	}
+	res, _ := resolveEmbedded(ctx, lib, ffm, mf.Path)
 	return res, nil
 }
 

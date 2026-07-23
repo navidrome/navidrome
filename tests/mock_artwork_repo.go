@@ -152,6 +152,22 @@ func (m *MockArtworkRepo) DeleteForItem(kind, id string) error {
 	return nil
 }
 
+func (m *MockArtworkRepo) DeleteForItems(kind string, ids []string) error {
+	if m.Err != nil {
+		return m.Err
+	}
+	idSet := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		idSet[id] = true
+	}
+	for k, ia := range m.ItemData {
+		if ia.ItemKind == kind && idSet[ia.ItemID] {
+			delete(m.ItemData, k)
+		}
+	}
+	return nil
+}
+
 func (m *MockArtworkRepo) GetInfoForItems(kind string, ids []string) (map[string]model.ItemArtworkInfo, error) {
 	if m.Err != nil {
 		return nil, m.Err

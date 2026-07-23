@@ -80,6 +80,8 @@ type ArtworkRepository interface {
 	GetItemArtwork(kind, id, imageType string) (*ItemArtwork, error)
 	PutItemArtwork(ia *ItemArtwork) error
 	DeleteForItem(kind, id string) error
+	// DeleteForItems removes state rows for the given ids of one kind, in chunks.
+	DeleteForItems(kind string, ids []string) error
 	// GetInfoForItems hydrates a page: one batched query, item_artwork joined to artwork.
 	GetInfoForItems(kind string, ids []string) (map[string]ItemArtworkInfo, error)
 	// GetAllMimes returns hash -> current mime for every stored artwork, for sweep retention checks.
