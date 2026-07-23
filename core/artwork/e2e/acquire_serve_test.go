@@ -67,7 +67,7 @@ var _ = Describe("Acquisition → serve loop", func() {
 		conf.Server.CoverArtPriority = "cover.jpg"
 		conf.Server.ArtistArtPriority = "artist.png" // upload wins first; kept offline as a safety net
 		conf.Server.EnableMediaFileCoverArt = true
-		conf.Server.DevArtworkWorkerConcurrency = 1
+		conf.Server.ArtworkWorkerConcurrency = 1
 
 		folderRepo = &fakeFolderRepo{}
 		libRepo = &tests.MockLibraryRepo{}
