@@ -108,6 +108,53 @@ var _ = Describe("MediaRetrievalController", func() {
 				Expect(w.Body.String()).To(BeEmpty())
 			})
 		})
+
+		Describe("caching headers", func() {
+			const hash = "0123456789abcdef"
+
+			It("sets an ETag and no-cache for a bare id", func() {
+				artwork.hash = hash
+				r := newGetRequest("id=al-34")
+				_, err := router.GetCoverArt(w, r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(w.Header().Get("ETag")).To(Equal(`"` + hash + `"`))
+				Expect(w.Header().Get("Cache-Control")).To(Equal("public, no-cache"))
+				Expect(w.Body.String()).To(Equal(artwork.data))
+			})
+
+			It("marks the response immutable when the id asserts the current hash", func() {
+				artwork.hash = hash
+				r := newGetRequest("id=al-34_" + hash)
+				_, err := router.GetCoverArt(w, r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(w.Header().Get("Cache-Control")).To(Equal("public, max-age=31536000, immutable"))
+			})
+
+			It("returns 304 with no body when If-None-Match matches", func() {
+				artwork.hash = hash
+				r := newGetRequest("id=al-34")
+				r.Header.Set("If-None-Match", `"`+hash+`"`)
+				_, err := router.GetCoverArt(w, r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(w.Code).To(Equal(304))
+				Expect(w.Body.Len()).To(BeZero())
+			})
+
+			It("never caches a placeholder", func() {
+				artwork.placeholder = true
+				r := newGetRequest("id=al-missing")
+				_, err := router.GetCoverArt(w, r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(w.Code).To(Equal(200))
+				Expect(w.Header().Get("Cache-Control")).To(Equal("no-store"))
+				Expect(w.Header().Get("ETag")).To(BeEmpty())
+				Expect(w.Body.String()).To(Equal(artwork.data))
+			})
+		})
 	})
 
 	Describe("GetLyrics", func() {
@@ -186,8 +233,11 @@ var _ = Describe("MediaRetrievalController", func() {
 })
 
 type fakeArtwork struct {
-	artwork.Artwork
+	artwork.Service
 	data          string
+	hash          string
+	lastUpdated   time.Time
+	placeholder   bool
 	err           error
 	ctxCancelFunc func()
 	recvId        string
@@ -195,18 +245,23 @@ type fakeArtwork struct {
 	recvSquare    bool
 }
 
-func (c *fakeArtwork) GetOrPlaceholder(_ context.Context, id string, size int, square bool) (io.ReadCloser, time.Time, error) {
+func (c *fakeArtwork) GetOrPlaceholder(_ context.Context, id string, size int, square bool) (*artwork.Image, error) {
 	if c.err != nil {
-		return nil, time.Time{}, c.err
+		return nil, c.err
 	}
 	c.recvId = id
 	c.recvSize = size
 	c.recvSquare = square
 	if c.ctxCancelFunc != nil {
 		c.ctxCancelFunc()
-		return nil, time.Time{}, context.Canceled
+		return nil, context.Canceled
 	}
-	return io.NopCloser(bytes.NewReader([]byte(c.data))), time.Time{}, nil
+	return &artwork.Image{
+		ReadCloser:  io.NopCloser(bytes.NewReader([]byte(c.data))),
+		Hash:        c.hash,
+		LastUpdated: c.lastUpdated,
+		Placeholder: c.placeholder,
+	}, nil
 }
 
 type mockedMediaFile struct {

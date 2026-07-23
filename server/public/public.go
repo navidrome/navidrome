@@ -18,7 +18,7 @@ import (
 
 type Router struct {
 	http.Handler
-	artwork       artwork.Artwork
+	artwork       artwork.Service
 	streamer      stream.MediaStreamer
 	archiver      core.Archiver
 	share         core.Share
@@ -26,7 +26,7 @@ type Router struct {
 	ds            model.DataStore
 }
 
-func New(ds model.DataStore, artwork artwork.Artwork, streamer stream.MediaStreamer, share core.Share, archiver core.Archiver) *Router {
+func New(ds model.DataStore, artwork artwork.Service, streamer stream.MediaStreamer, share core.Share, archiver core.Archiver) *Router {
 	p := &Router{ds: ds, artwork: artwork, streamer: streamer, share: share, archiver: archiver}
 	shareRoot := path.Join(conf.Server.BasePath, consts.URLPathPublic)
 	p.assetsHandler = http.StripPrefix(shareRoot, http.FileServer(http.FS(ui.BuildAssets())))

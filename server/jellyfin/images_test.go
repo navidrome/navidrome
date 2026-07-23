@@ -29,20 +29,25 @@ import (
 )
 
 type fakeArtwork struct {
-	artwork.Artwork
+	artwork.Service
 	recvId  string
 	recvCtx context.Context
 	data    []byte
+	hash    string
 }
 
-func (f *fakeArtwork) GetOrPlaceholder(ctx context.Context, id string, size int, square bool) (io.ReadCloser, time.Time, error) {
+func (f *fakeArtwork) GetOrPlaceholder(ctx context.Context, id string, size int, square bool) (*artwork.Image, error) {
 	f.recvId = id
 	f.recvCtx = ctx
 	data := f.data
 	if data == nil {
 		data = []byte("IMG")
 	}
-	return io.NopCloser(bytes.NewReader(data)), time.Now(), nil
+	return &artwork.Image{
+		ReadCloser:  io.NopCloser(bytes.NewReader(data)),
+		Hash:        f.hash,
+		LastUpdated: time.Now(),
+	}, nil
 }
 
 func newImageRequest(itemId string) (*httptest.ResponseRecorder, *http.Request) {
@@ -114,6 +119,38 @@ var _ = Describe("Images", func() {
 		u, ok := request.UserFrom(fa.recvCtx)
 		Expect(ok).To(BeTrue())
 		Expect(u.IsAdmin).To(BeTrue())
+	})
+
+	It("serves immutable when the tag param asserts the current hash", func() {
+		const hash = "0123456789abcdef"
+		ds := &tests.MockDataStore{}
+		ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1", Name: "One"}})
+		fa := &fakeArtwork{hash: hash}
+		api := &Router{ds: ds, artwork: fa}
+
+		w, r := newImageRequest(dto.EncodeID("a1"))
+		q := r.URL.Query()
+		q.Set("tag", hash)
+		r.URL.RawQuery = q.Encode()
+		api.getItemImage(w, r)
+
+		Expect(w.Code).To(Equal(http.StatusOK))
+		Expect(w.Header().Get("Cache-Control")).To(Equal("public, max-age=31536000, immutable"))
+		Expect(w.Header().Get("ETag")).To(Equal(`"` + hash + `"`))
+	})
+
+	It("revalidates via no-cache when no tag is provided", func() {
+		const hash = "0123456789abcdef"
+		ds := &tests.MockDataStore{}
+		ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1", Name: "One"}})
+		fa := &fakeArtwork{hash: hash}
+		api := &Router{ds: ds, artwork: fa}
+
+		w, r := newImageRequest(dto.EncodeID("a1"))
+		api.getItemImage(w, r)
+
+		Expect(w.Code).To(Equal(http.StatusOK))
+		Expect(w.Header().Get("Cache-Control")).To(Equal("public, no-cache"))
 	})
 })
 

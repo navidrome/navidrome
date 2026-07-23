@@ -11,6 +11,7 @@ import (
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/server/imghttp"
 	"github.com/navidrome/navidrome/utils/req"
 )
 
@@ -40,7 +41,7 @@ func (pub *Router) handleImages(w http.ResponseWriter, r *http.Request) {
 	size := p.IntOr("size", 0)
 	square := p.BoolOr("square", false)
 
-	imgReader, lastUpdate, err := pub.artwork.Get(ctx, artId, size, square)
+	img, err := pub.artwork.Get(ctx, artId, size, square)
 	switch {
 	case errors.Is(err, context.Canceled):
 		return
@@ -58,10 +59,11 @@ func (pub *Router) handleImages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	defer imgReader.Close()
-	w.Header().Set("Cache-Control", "public, max-age=315360000")
-	w.Header().Set("Last-Modified", lastUpdate.Format(http.TimeFormat))
-	cnt, err := io.Copy(w, imgReader)
+	defer img.Close()
+	if imghttp.WriteImageHeaders(w, r, img, artId.Hash) {
+		return
+	}
+	cnt, err := io.Copy(w, img)
 	if err != nil {
 		log.Warn(ctx, "Error sending image", "count", cnt, err)
 	}

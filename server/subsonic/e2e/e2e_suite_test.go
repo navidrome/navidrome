@@ -308,15 +308,15 @@ func parseJSONResponse(w *httptest.ResponseRecorder) *responses.Subsonic {
 
 // --- Noop stub implementations for Router dependencies ---
 
-// noopArtwork implements artwork.Artwork
+// noopArtwork implements artwork.Service
 type noopArtwork struct{}
 
-func (n noopArtwork) Get(context.Context, model.ArtworkID, int, bool) (io.ReadCloser, time.Time, error) {
-	return nil, time.Time{}, model.ErrNotFound
+func (n noopArtwork) Get(context.Context, model.ArtworkID, int, bool) (*artwork.Image, error) {
+	return nil, model.ErrNotFound
 }
 
-func (n noopArtwork) GetOrPlaceholder(_ context.Context, _ string, _ int, _ bool) (io.ReadCloser, time.Time, error) {
-	return io.NopCloser(io.LimitReader(nil, 0)), time.Time{}, nil
+func (n noopArtwork) GetOrPlaceholder(_ context.Context, _ string, _ int, _ bool) (*artwork.Image, error) {
+	return &artwork.Image{ReadCloser: io.NopCloser(io.LimitReader(nil, 0))}, nil
 }
 
 // noopArchiver implements core.Archiver
@@ -371,7 +371,7 @@ func (n noopProvider) AlbumImage(context.Context, string) (*url.URL, error) {
 
 // Compile-time interface checks
 var (
-	_ artwork.Artwork   = noopArtwork{}
+	_ artwork.Service   = noopArtwork{}
 	_ core.Archiver     = noopArchiver{}
 	_ external.Provider = noopProvider{}
 )

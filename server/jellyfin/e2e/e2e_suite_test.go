@@ -33,7 +33,6 @@ import (
 	"strings"
 	"testing"
 	"testing/fstest"
-	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -406,18 +405,18 @@ type spyArtwork struct {
 	data    []byte
 }
 
-func (s *spyArtwork) Get(context.Context, model.ArtworkID, int, bool) (io.ReadCloser, time.Time, error) {
-	return nil, time.Time{}, model.ErrNotFound
+func (s *spyArtwork) Get(context.Context, model.ArtworkID, int, bool) (*artwork.Image, error) {
+	return nil, model.ErrNotFound
 }
 
-func (s *spyArtwork) GetOrPlaceholder(c context.Context, id string, _ int, _ bool) (io.ReadCloser, time.Time, error) {
+func (s *spyArtwork) GetOrPlaceholder(c context.Context, id string, _ int, _ bool) (*artwork.Image, error) {
 	s.lastID = id
 	s.lastCtx = c
 	d := s.data
 	if d == nil {
 		d = []byte("IMG")
 	}
-	return io.NopCloser(bytes.NewReader(d)), time.Time{}, nil
+	return &artwork.Image{ReadCloser: io.NopCloser(bytes.NewReader(d))}, nil
 }
 
-var _ artwork.Artwork = &spyArtwork{}
+var _ artwork.Service = &spyArtwork{}

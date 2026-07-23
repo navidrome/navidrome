@@ -30,7 +30,7 @@ import (
 type Router struct {
 	http.Handler
 	ds               model.DataStore
-	artwork          artwork.Artwork
+	artwork          artwork.Service
 	streamer         stream.MediaStreamer
 	transcodeDecider stream.TranscodeDecider
 	players          core.Players
@@ -46,7 +46,7 @@ type Router struct {
 	serverIDVal      string
 }
 
-func New(ds model.DataStore, artwork artwork.Artwork, streamer stream.MediaStreamer,
+func New(ds model.DataStore, artwork artwork.Service, streamer stream.MediaStreamer,
 	transcodeDecider stream.TranscodeDecider, players core.Players,
 	scrobbler scrobbler.PlayTracker, playlists playlists.Playlists, provider external.Provider,
 	sonicSvc sonic.Engine, lyricsSvc lyrics.Lyrics, broker events.Broker) *Router {
