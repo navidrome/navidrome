@@ -77,7 +77,7 @@ var _ = Describe("ImageUploadService", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("clears artwork state and enqueues a Bump on success", func() {
+		It("does not touch artwork state or the queue (that is EnqueueArtwork's job, post-Put)", func() {
 			ctx := context.Background()
 			Expect(artRepo.PutItemArtwork(&model.ItemArtwork{
 				ItemKind: "ar", ItemID: "ar-1", Hash: "oldhash", Source: "external",
@@ -86,7 +86,24 @@ var _ = Describe("ImageUploadService", func() {
 			_, err := svc.SetImage(ctx, consts.EntityArtist, "ar-1", "Pink Floyd", "", strings.NewReader("img"), ".jpg")
 			Expect(err).ToNot(HaveOccurred())
 
+			// SetImage only writes the file; the state row survives and nothing is queued until
+			// the caller has persisted the new filename and called EnqueueArtwork.
 			_, err = artRepo.GetItemArtwork("ar", "ar-1", model.ImageTypePrimary)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(queueRepo.DequeueBatch(1000)).To(BeEmpty())
+		})
+	})
+
+	Describe("EnqueueArtwork", func() {
+		It("clears artwork state and enqueues a Bump", func() {
+			ctx := context.Background()
+			Expect(artRepo.PutItemArtwork(&model.ItemArtwork{
+				ItemKind: "ar", ItemID: "ar-1", Hash: "oldhash", Source: "external",
+			})).To(Succeed())
+
+			svc.EnqueueArtwork(ctx, consts.EntityArtist, "ar-1")
+
+			_, err := artRepo.GetItemArtwork("ar", "ar-1", model.ImageTypePrimary)
 			Expect(err).To(MatchError(model.ErrNotFound))
 
 			queued, err := queueRepo.DequeueBatch(1000)
@@ -96,6 +113,11 @@ var _ = Describe("ImageUploadService", func() {
 				HaveField("ItemID", "ar-1"),
 				HaveField("Priority", model.ArtworkPriorityBump),
 			)))
+		})
+
+		It("is a no-op for an unknown entity type", func() {
+			svc.EnqueueArtwork(context.Background(), "unknown", "x-1")
+			Expect(queueRepo.DequeueBatch(1000)).To(BeEmpty())
 		})
 	})
 

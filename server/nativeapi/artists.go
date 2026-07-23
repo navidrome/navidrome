@@ -46,7 +46,11 @@ func (api *Router) uploadArtistImage() http.HandlerFunc {
 		}
 		ar.UploadedImage = filename
 		ar.UpdatedAt = new(time.Now())
-		return api.ds.Artist(ctx).Put(ar, "uploaded_image", "updated_at")
+		if err := api.ds.Artist(ctx).Put(ar, "uploaded_image", "updated_at"); err != nil {
+			return err
+		}
+		api.imgUpload.EnqueueArtwork(ctx, consts.EntityArtist, ar.ID)
+		return nil
 	})
 }
 

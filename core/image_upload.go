@@ -18,6 +18,9 @@ import (
 type ImageUploadService interface {
 	SetImage(ctx context.Context, entityType string, entityID string, name string, oldPath string, reader io.Reader, ext string) (filename string, err error)
 	RemoveImage(ctx context.Context, path string) error
+	// EnqueueArtwork clears an item's resolved state and re-queues it at Bump priority. Callers
+	// must invoke it AFTER persisting the new filename, so the worker never resolves the old one.
+	EnqueueArtwork(ctx context.Context, entityType, entityID string)
 }
 
 // MaxImageUploadSize returns the configured MaxImageUploadSize in bytes, or the built-in default
@@ -71,14 +74,12 @@ func (s *imageUploadService) SetImage(ctx context.Context, entityType string, en
 	if _, err := io.Copy(f, reader); err != nil {
 		return "", fmt.Errorf("writing image file: %w", err)
 	}
-
-	s.bumpArtwork(ctx, entityType, entityID)
 	return filename, nil
 }
 
-// bumpArtwork clears the item's resolved state and re-queues it at Bump priority: the
+// EnqueueArtwork clears the item's resolved state and re-queues it at Bump priority: the
 // upload is now the top-priority source, so the worker re-resolves and the UI swaps.
-func (s *imageUploadService) bumpArtwork(ctx context.Context, entityType, id string) {
+func (s *imageUploadService) EnqueueArtwork(ctx context.Context, entityType, id string) {
 	kind, ok := uploadEntityKind[entityType]
 	if !ok {
 		return

@@ -47,7 +47,11 @@ func (api *Router) uploadRadioImage() http.HandlerFunc {
 			return err
 		}
 		radio.UploadedImage = filename
-		return api.ds.Radio(ctx).Put(radio, "UploadedImage")
+		if err := api.ds.Radio(ctx).Put(radio, "UploadedImage"); err != nil {
+			return err
+		}
+		api.imgUpload.EnqueueArtwork(ctx, consts.EntityRadio, radio.ID)
+		return nil
 	})
 }
 
