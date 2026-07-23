@@ -12,6 +12,8 @@ type MockArtworkRepo struct {
 	ItemData     map[string]model.ItemArtwork // keyed by iaKey(kind, id, imageType)
 	OrphanHashes []string
 	Err          error
+	// ExistingIDs, keyed by item_kind, backs PurgeDanglingItemArtwork; nil map keeps everything.
+	ExistingIDs map[string]map[string]bool
 }
 
 func CreateMockArtworkRepo() *MockArtworkRepo {
@@ -66,6 +68,25 @@ func (m *MockArtworkRepo) GetAllMimes() (map[string]string, error) {
 		mimes[h] = a.Mime
 	}
 	return mimes, nil
+}
+
+func (m *MockArtworkRepo) PurgeDanglingItemArtwork() (int64, error) {
+	if m.Err != nil {
+		return 0, m.Err
+	}
+	var purged int64
+	for k, ia := range m.ItemData {
+		// A nil per-kind map means that kind isn't tracked by the test, so keep it.
+		existing := m.ExistingIDs[ia.ItemKind]
+		if existing == nil {
+			continue
+		}
+		if !existing[ia.ItemID] {
+			delete(m.ItemData, k)
+			purged++
+		}
+	}
+	return purged, nil
 }
 
 func (m *MockArtworkRepo) DeleteOrphans(createdBefore time.Time, hashes []string) error {

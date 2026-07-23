@@ -54,6 +54,34 @@ var _ = Describe("ArtworkQueueRepository", func() {
 		Expect(got[0].Attempts).To(Equal(2))
 	})
 
+	It("MarkFailedIfUnchanged applies backoff only while retry_at is unchanged", func() {
+		Expect(repo.Enqueue(item("al", "m1", model.ArtworkPriorityScan))).To(Succeed())
+		// Anchor retry_at in the past (attempts -> 1) so it can never collide with the re-enqueue's now.
+		Expect(repo.MarkFailed("al", "m1", model.ImageTypePrimary, time.Now().Add(-time.Hour))).To(Succeed())
+		got, err := repo.DequeueBatch(10)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(got).To(HaveLen(1))
+		original := got[0].RetryAt
+
+		// A concurrent scan re-enqueues, resetting retry_at to now.
+		Expect(repo.Enqueue(item("al", "m1", model.ArtworkPriorityScan))).To(Succeed())
+
+		// Failing with the stale retry_at is a no-op: the re-enqueued row keeps its fresh state.
+		future := time.Now().Add(48 * time.Hour)
+		Expect(repo.MarkFailedIfUnchanged("al", "m1", model.ImageTypePrimary, original, future)).To(Succeed())
+		got, _ = repo.DequeueBatch(10)
+		Expect(got).To(HaveLen(1), "the fresh re-enqueue stays immediately eligible")
+		Expect(got[0].Attempts).To(Equal(1), "the stale failure must not bump attempts")
+		current := got[0].RetryAt
+
+		// Failing with the current retry_at applies the backoff and bumps attempts.
+		Expect(repo.MarkFailedIfUnchanged("al", "m1", model.ImageTypePrimary, current, future)).To(Succeed())
+		got, _ = repo.DequeueBatch(10)
+		Expect(got).To(BeEmpty(), "backed-off row is hidden until the future retry_at")
+		all, _ := repo.Count()
+		Expect(all).To(Equal(int64(1)))
+	})
+
 	It("deletes on completion and counts", func() {
 		Expect(repo.Enqueue(item("al", "c1", 0))).To(Succeed())
 		n, _ := repo.Count()
@@ -61,6 +89,55 @@ var _ = Describe("ArtworkQueueRepository", func() {
 		Expect(repo.Delete("al", "c1", model.ImageTypePrimary)).To(Succeed())
 		n, _ = repo.Count()
 		Expect(n).To(BeZero())
+	})
+
+	It("DeleteIfUnchanged deletes only while retry_at is unchanged", func() {
+		Expect(repo.Enqueue(item("al", "d1", model.ArtworkPriorityScan))).To(Succeed())
+		// Anchor retry_at in the past so it can never collide with the re-enqueue's now.
+		Expect(repo.MarkFailed("al", "d1", model.ImageTypePrimary, time.Now().Add(-time.Hour))).To(Succeed())
+		got, err := repo.DequeueBatch(10)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(got).To(HaveLen(1))
+		original := got[0].RetryAt
+
+		// A concurrent scan re-enqueues, resetting retry_at to now.
+		Expect(repo.Enqueue(item("al", "d1", model.ArtworkPriorityScan))).To(Succeed())
+
+		// Deleting with the stale retry_at is a no-op: the re-enqueued row survives.
+		Expect(repo.DeleteIfUnchanged("al", "d1", model.ImageTypePrimary, original)).To(Succeed())
+		n, _ := repo.Count()
+		Expect(n).To(Equal(int64(1)))
+
+		// Deleting with the current retry_at removes it.
+		got, _ = repo.DequeueBatch(10)
+		Expect(got).To(HaveLen(1))
+		Expect(repo.DeleteIfUnchanged("al", "d1", model.ImageTypePrimary, got[0].RetryAt)).To(Succeed())
+		n, _ = repo.Count()
+		Expect(n).To(BeZero())
+	})
+
+	It("purges queue rows whose entity no longer exists, per kind", func() {
+		Expect(repo.Enqueue(
+			item("al", albumSgtPeppers.ID, model.ArtworkPriorityScan),
+			item("al", "no-such-album", model.ArtworkPriorityScan),
+			item("ar", artistKraftwerk.ID, model.ArtworkPriorityScan),
+			item("ar", "no-such-artist", model.ArtworkPriorityScan),
+			item("pl", plsBest.ID, model.ArtworkPriorityScan),
+			item("pl", "no-such-playlist", model.ArtworkPriorityScan),
+			item("ra", radioWithHomePage.ID, model.ArtworkPriorityScan),
+			item("ra", "no-such-radio", model.ArtworkPriorityScan),
+		)).To(Succeed())
+
+		purged, err := repo.PurgeDangling()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(purged).To(Equal(int64(4)))
+
+		got, _ := repo.DequeueBatch(100)
+		ids := make([]string, 0, len(got))
+		for _, it := range got {
+			ids = append(ids, it.ItemID)
+		}
+		Expect(ids).To(ConsistOf(albumSgtPeppers.ID, artistKraftwerk.ID, plsBest.ID, radioWithHomePage.ID))
 	})
 
 	It("enqueues stale absent states for recheck", func() {

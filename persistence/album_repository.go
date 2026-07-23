@@ -254,6 +254,15 @@ func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, e
 	return res.toModels(), nil
 }
 
+// GetAllIDs returns just the album IDs for the same row set as GetAll, skipping the
+// heavy column projection and JSON post-processing. Used by bulk enumeration (artwork backfill).
+func (r *albumRepository) GetAllIDs(options ...model.QueryOptions) ([]string, error) {
+	sq := r.applyLibraryFilter(r.newSelect(options...).Columns("album.id"))
+	ids := []string{}
+	err := r.queryAllSlice(sq, &ids)
+	return ids, err
+}
+
 func (r *albumRepository) GetCursor(options ...model.QueryOptions) (model.AlbumCursor, error) {
 	sq := r.selectAlbum(options...)
 	cursor, err := queryWithStableResults[dbAlbum](r.sqlRepository, sq)

@@ -136,6 +136,42 @@ var _ = Describe("ArtworkRepository", func() {
 		})
 	})
 
+	Context("dangling state cleanup", func() {
+		It("purges item_artwork rows per kind whose entity no longer exists, summing counts", func() {
+			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "al", ItemID: albumSgtPeppers.ID, ImageType: model.ImageTypePrimary, Hash: "keepAl"})).To(Succeed())
+			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "al", ItemID: "no-such-album", ImageType: model.ImageTypePrimary, Hash: "danglingAl"})).To(Succeed())
+			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "ar", ItemID: artistKraftwerk.ID, ImageType: model.ImageTypePrimary, Hash: "keepAr"})).To(Succeed())
+			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "ar", ItemID: "no-such-artist", ImageType: model.ImageTypePrimary, Hash: "danglingAr"})).To(Succeed())
+			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "pl", ItemID: plsBest.ID, ImageType: model.ImageTypePrimary, Hash: "keepPl"})).To(Succeed())
+			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "pl", ItemID: "no-such-playlist", ImageType: model.ImageTypePrimary, Hash: "danglingPl"})).To(Succeed())
+			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "ra", ItemID: radioWithHomePage.ID, ImageType: model.ImageTypePrimary, Hash: "keepRa"})).To(Succeed())
+			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "ra", ItemID: "no-such-radio", ImageType: model.ImageTypePrimary, Hash: "danglingRa"})).To(Succeed())
+
+			purged, err := repo.PurgeDanglingItemArtwork()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(purged).To(Equal(int64(4)))
+
+			for _, kept := range []model.ItemArtwork{
+				{ItemKind: "al", ItemID: albumSgtPeppers.ID},
+				{ItemKind: "ar", ItemID: artistKraftwerk.ID},
+				{ItemKind: "pl", ItemID: plsBest.ID},
+				{ItemKind: "ra", ItemID: radioWithHomePage.ID},
+			} {
+				_, err := repo.GetItemArtwork(kept.ItemKind, kept.ItemID, model.ImageTypePrimary)
+				Expect(err).ToNot(HaveOccurred())
+			}
+			for _, gone := range []model.ItemArtwork{
+				{ItemKind: "al", ItemID: "no-such-album"},
+				{ItemKind: "ar", ItemID: "no-such-artist"},
+				{ItemKind: "pl", ItemID: "no-such-playlist"},
+				{ItemKind: "ra", ItemID: "no-such-radio"},
+			} {
+				_, err := repo.GetItemArtwork(gone.ItemKind, gone.ItemID, model.ImageTypePrimary)
+				Expect(err).To(MatchError(model.ErrNotFound))
+			}
+		})
+	})
+
 	Context("item state", func() {
 		It("upserts and reads state, including per-item provenance", func() {
 			ia := &model.ItemArtwork{ItemKind: "al", ItemID: "al1", ImageType: model.ImageTypePrimary,

@@ -73,6 +73,18 @@ func (m *MockedRadioRepo) GetAll(qo ...model.QueryOptions) (model.Radios, error)
 	return m.All, nil
 }
 
+func (m *MockedRadioRepo) GetAllIDs(qo ...model.QueryOptions) ([]string, error) {
+	all, err := m.GetAll(qo...)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, len(all))
+	for i, r := range all {
+		ids[i] = r.ID
+	}
+	return ids, nil
+}
+
 func (m *MockedRadioRepo) Put(radio *model.Radio, _ ...string) error {
 	if m.Err {
 		return errors.New("error")

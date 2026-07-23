@@ -76,6 +76,18 @@ func (m *MockAlbumRepo) GetAll(qo ...model.QueryOptions) (model.Albums, error) {
 	return m.All, nil
 }
 
+func (m *MockAlbumRepo) GetAllIDs(qo ...model.QueryOptions) ([]string, error) {
+	all, err := m.GetAll(qo...)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, len(all))
+	for i, a := range all {
+		ids[i] = a.ID
+	}
+	return ids, nil
+}
+
 func (m *MockAlbumRepo) GetCursor(qo ...model.QueryOptions) (model.AlbumCursor, error) {
 	res, err := m.GetAll(qo...)
 	if err != nil {

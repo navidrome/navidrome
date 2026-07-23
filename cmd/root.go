@@ -11,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -88,6 +89,9 @@ func runNavidrome(ctx context.Context) {
 	g.Go(startInsightsCollector(ctx))
 	g.Go(scheduleDBAnalyzer(ctx))
 	g.Go(startPluginManager(ctx))
+	artworkWorker := CreateArtworkWorker()
+	g.Go(startArtworkWorker(ctx, artworkWorker))
+	g.Go(scheduleArtworkHousekeeping(ctx, artworkWorker))
 	g.Go(runInitialScan(ctx))
 	if conf.Server.Scanner.Enabled {
 		g.Go(startScanWatcher(ctx))
@@ -341,6 +345,60 @@ func startPlaybackServer(ctx context.Context) func() error {
 		log.Info(ctx, "Starting Jukebox service")
 		playbackInstance := GetPlaybackServer()
 		return playbackInstance.Run(ctx)
+	}
+}
+
+// startArtworkWorker starts the background artwork acquisition worker. It always
+// runs; the queue is simply empty until something enqueues work into it.
+func startArtworkWorker(ctx context.Context, worker *artwork.Worker) func() error {
+	return func() error {
+		log.Info(ctx, "Starting artwork worker")
+		return worker.Run(ctx)
+	}
+}
+
+// scheduleArtworkHousekeeping runs the startup fingerprint backfill and registers the
+// recurring stale-absent recheck and prune jobs. Scan-triggered prune lands in a later phase.
+func scheduleArtworkHousekeeping(ctx context.Context, worker *artwork.Worker) func() error {
+	return func() error {
+		ds := CreateDataStore()
+		schedulerInstance := scheduler.GetInstance()
+
+		if _, err := schedulerInstance.Add(consts.ArtworkStaleAbsentRecheckSchedule, func() {
+			if err := artwork.EnqueueStaleAbsentAll(ctx, ds); err != nil {
+				log.Error(ctx, "Error enqueueing stale artwork rechecks", err)
+			}
+		}); err != nil {
+			log.Error(ctx, "Error scheduling artwork stale-absent recheck", err)
+		}
+
+		if _, err := schedulerInstance.Add(consts.ArtworkPruneSchedule, func() {
+			if err := worker.RunPrune(ctx); err != nil {
+				log.Error(ctx, "Error running artwork prune", err)
+			}
+		}); err != nil {
+			log.Error(ctx, "Error scheduling artwork prune", err)
+		}
+
+		backfilled, err := artwork.Backfill(ctx, ds)
+		if err != nil {
+			log.Error(ctx, "Error running artwork backfill", err)
+			return nil
+		}
+		if !backfilled {
+			return nil
+		}
+		log.Info(ctx, "Artwork backfill enqueued, scheduling a follow-up prune")
+		timer := time.NewTimer(consts.ArtworkPostBackfillPruneDelay)
+		defer timer.Stop()
+		select {
+		case <-timer.C:
+			if err := worker.RunPrune(ctx); err != nil {
+				log.Error(ctx, "Error running post-backfill artwork prune", err)
+			}
+		case <-ctx.Done():
+		}
+		return nil
 	}
 }
 

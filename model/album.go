@@ -142,6 +142,7 @@ type AlbumRepository interface {
 	UpdateExternalInfo(*Album) error
 	Get(id string) (*Album, error)
 	GetAll(...QueryOptions) (Albums, error)
+	GetAllIDs(...QueryOptions) ([]string, error)
 	GetCursor(...QueryOptions) (AlbumCursor, error)
 	GetYears(libraryIDs ...int) ([]int, error)
 

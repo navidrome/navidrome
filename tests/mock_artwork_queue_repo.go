@@ -13,6 +13,8 @@ type MockArtworkQueueRepo struct {
 	Err  error
 	// ItemArtworkSource, when set, backs EnqueueStaleAbsent with real item_artwork state.
 	ItemArtworkSource *MockArtworkRepo
+	// ExistingIDs, keyed by item_kind, backs PurgeDangling; a nil per-kind map keeps that kind.
+	ExistingIDs map[string]map[string]bool
 }
 
 func CreateMockArtworkQueueRepo() *MockArtworkQueueRepo {
@@ -82,12 +84,54 @@ func (m *MockArtworkQueueRepo) MarkFailed(kind, id, imageType string, retryAt ti
 	return nil
 }
 
+func (m *MockArtworkQueueRepo) MarkFailedIfUnchanged(kind, id, imageType string, seenRetryAt, retryAt time.Time) error {
+	if m.Err != nil {
+		return m.Err
+	}
+	k := iaKey(kind, id, imageType)
+	if it, ok := m.Data[k]; ok && it.RetryAt.Equal(seenRetryAt) {
+		it.Attempts++
+		it.RetryAt = retryAt
+		m.Data[k] = it
+	}
+	return nil
+}
+
 func (m *MockArtworkQueueRepo) Delete(kind, id, imageType string) error {
 	if m.Err != nil {
 		return m.Err
 	}
 	delete(m.Data, iaKey(kind, id, imageType))
 	return nil
+}
+
+func (m *MockArtworkQueueRepo) DeleteIfUnchanged(kind, id, imageType string, retryAt time.Time) error {
+	if m.Err != nil {
+		return m.Err
+	}
+	k := iaKey(kind, id, imageType)
+	if it, ok := m.Data[k]; ok && it.RetryAt.Equal(retryAt) {
+		delete(m.Data, k)
+	}
+	return nil
+}
+
+func (m *MockArtworkQueueRepo) PurgeDangling() (int64, error) {
+	if m.Err != nil {
+		return 0, m.Err
+	}
+	var purged int64
+	for k, it := range m.Data {
+		existing := m.ExistingIDs[it.ItemKind]
+		if existing == nil {
+			continue
+		}
+		if !existing[it.ItemID] {
+			delete(m.Data, k)
+			purged++
+		}
+	}
+	return purged, nil
 }
 
 func (m *MockArtworkQueueRepo) Count() (int64, error) {

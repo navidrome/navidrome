@@ -66,8 +66,30 @@ func (r *artworkQueueRepository) MarkFailed(kind, id, imageType string, retryAt 
 	return err
 }
 
+// MarkFailedIfUnchanged applies the backoff only while retry_at still equals seenRetryAt;
+// a concurrent Enqueue resets retry_at, so its fresh eligibility survives untouched.
+func (r *artworkQueueRepository) MarkFailedIfUnchanged(kind, id, imageType string, seenRetryAt, retryAt time.Time) error {
+	upd := Update(r.tableName).
+		Set("attempts", Expr("attempts + 1")).
+		Set("retry_at", retryAt).
+		Where(Eq{"item_kind": kind, "item_id": id, "image_type": imageType, "retry_at": seenRetryAt})
+	_, err := r.executeSQL(upd)
+	return err
+}
+
 func (r *artworkQueueRepository) Delete(kind, id, imageType string) error {
 	return r.delete(Eq{"item_kind": kind, "item_id": id, "image_type": imageType})
+}
+
+// DeleteIfUnchanged deletes the row only while its retry_at still equals the dequeued
+// value; a concurrent Enqueue resets retry_at, so the row survives to be re-resolved.
+func (r *artworkQueueRepository) DeleteIfUnchanged(kind, id, imageType string, retryAt time.Time) error {
+	return r.delete(Eq{"item_kind": kind, "item_id": id, "image_type": imageType, "retry_at": retryAt})
+}
+
+// PurgeDangling removes queue rows whose entity no longer exists, per kind.
+func (r *artworkQueueRepository) PurgeDangling() (int64, error) {
+	return purgeDangling(r.executeSQL, r.tableName)
 }
 
 func (r *artworkQueueRepository) Count() (int64, error) {

@@ -35,6 +35,10 @@ const (
 	DBAnalyzeCheckSchedule = "@every 30m"
 	DBAnalyzeMaxAge        = 24 * time.Hour
 
+	ArtworkStaleAbsentRecheckSchedule = "@every 1h"
+	ArtworkPruneSchedule              = "@daily"
+	ArtworkPostBackfillPruneDelay     = 10 * time.Minute
+
 	// DefaultEncryptionKey This is the encryption key used if none is specified in the `PasswordEncryptionKey` option
 	// Never ever change this! Or it will break all Navidrome installations that don't set the config option
 	DefaultEncryptionKey  = "just for obfuscation"

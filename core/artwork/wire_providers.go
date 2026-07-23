@@ -8,4 +8,6 @@ var Set = wire.NewSet(
 	NewArtwork,
 	GetImageCache,
 	NewCacheWarmer,
+	NewWorker,
+	ProvideImageStore,
 )

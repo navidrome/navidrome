@@ -78,6 +78,21 @@ var _ = Describe("RadioRepository", func() {
 			})
 		})
 
+		Describe("GetAllIDs", func() {
+			It("returns the same id set as GetAll", func() {
+				want, err := repo.GetAll()
+				Expect(err).To(BeNil())
+				Expect(want).ToNot(BeEmpty())
+				wantIDs := make([]string, 0, len(want))
+				for _, r := range want {
+					wantIDs = append(wantIDs, r.ID)
+				}
+				ids, err := repo.GetAllIDs()
+				Expect(err).To(BeNil())
+				Expect(ids).To(ConsistOf(wantIDs))
+			})
+		})
+
 		Describe("Put", func() {
 			It("successfully updates item", func() {
 				err := repo.Put(&model.Radio{
@@ -106,6 +121,27 @@ var _ = Describe("RadioRepository", func() {
 				all, err := repo.GetAll()
 				Expect(err).To(BeNil())
 				Expect(all[2].StreamUrl).To(Equal("https://example.com:4533/app"))
+			})
+
+			It("enqueues artwork resolution for the saved radio", func() {
+				err := repo.Put(&model.Radio{
+					Name:      "Artwork radio",
+					StreamUrl: "https://example.com:4533/artwork",
+				})
+				Expect(err).To(BeNil())
+
+				all, err := repo.GetAll()
+				Expect(err).To(BeNil())
+				created := all[len(all)-1]
+
+				queueRepo := NewArtworkQueueRepository(context.Background(), GetDBXBuilder())
+				queued, err := queueRepo.DequeueBatch(1000)
+				Expect(err).To(BeNil())
+				Expect(queued).To(ContainElement(SatisfyAll(
+					HaveField("ItemKind", "ra"),
+					HaveField("ItemID", created.ID),
+					HaveField("Priority", model.ArtworkPriorityScan),
+				)))
 			})
 		})
 	})

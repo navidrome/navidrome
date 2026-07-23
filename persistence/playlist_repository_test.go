@@ -37,6 +37,21 @@ var _ = Describe("PlaylistRepository", func() {
 		})
 	})
 
+	Describe("GetAllIDs", func() {
+		It("returns the same id set as GetAll", func() {
+			want, err := repo.GetAll()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(want).ToNot(BeEmpty())
+			wantIDs := make([]string, 0, len(want))
+			for _, p := range want {
+				wantIDs = append(wantIDs, p.ID)
+			}
+			ids, err := repo.GetAllIDs()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ids).To(ConsistOf(wantIDs))
+		})
+	})
+
 	Describe("Exists", func() {
 		It("returns true for an existing playlist", func() {
 			Expect(repo.Exists(plsCool.ID)).To(BeTrue())

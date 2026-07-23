@@ -36,6 +36,8 @@ type Provider interface {
 	SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error)
 	TopSongs(ctx context.Context, artist string, count int) (model.MediaFiles, error)
 	ArtistImage(ctx context.Context, id string) (*url.URL, error)
+	// ArtistImageResult is like ArtistImage but reports a transient agent failure as a real error, not ErrNotFound.
+	ArtistImageResult(ctx context.Context, id string) (*url.URL, error)
 	AlbumImage(ctx context.Context, id string) (*url.URL, error)
 }
 
@@ -258,7 +260,7 @@ func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (au
 	// Call all registered agents and collect information
 	g := errgroup.Group{}
 	g.SetLimit(2)
-	g.Go(func() error { e.callGetImage(ctx, e.ag, &artist); return nil })
+	g.Go(func() error { _ = e.callGetImage(ctx, e.ag, &artist); return nil })
 	g.Go(func() error { e.callGetBiography(ctx, e.ag, &artist); return nil })
 	g.Go(func() error { e.callGetURL(ctx, e.ag, &artist); return nil })
 	g.Go(func() error { e.callGetSimilarArtists(ctx, e.ag, &artist, maxSimilarArtists, true); return nil })
@@ -371,18 +373,35 @@ func (e *provider) similarSongsFallback(ctx context.Context, id string, count in
 }
 
 func (e *provider) ArtistImage(ctx context.Context, id string) (*url.URL, error) {
+	u, _, err := e.artistImage(ctx, id)
+	return u, err
+}
+
+// ArtistImageResult is like ArtistImage but surfaces a transient agent failure as the
+// real error, so an agent outage is not mistaken for a definitive no-image (ErrNotFound).
+func (e *provider) ArtistImageResult(ctx context.Context, id string) (*url.URL, error) {
+	u, agentErr, err := e.artistImage(ctx, id)
+	if agentErr != nil && errors.Is(err, model.ErrNotFound) {
+		return nil, agentErr
+	}
+	return u, err
+}
+
+// artistImage returns the agent error (agentErr) separately from the caller-facing err,
+// so ArtistImageResult can tell "agent errored" apart from "definitively no image".
+func (e *provider) artistImage(ctx context.Context, id string) (u *url.URL, agentErr error, err error) {
 	artist, err := e.getArtist(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	imageUrl := artist.ArtistImageUrl()
 	if imageUrl == "" {
 		// No cached URL — must fetch from external source synchronously
-		e.callGetImage(ctx, e.ag, &artist)
+		agentErr = e.callGetImage(ctx, e.ag, &artist)
 		if utils.IsCtxDone(ctx) {
 			log.Warn(ctx, "ArtistImage call canceled", ctx.Err())
-			return nil, ctx.Err()
+			return nil, agentErr, ctx.Err()
 		}
 		imageUrl = artist.ArtistImageUrl()
 	} else {
@@ -396,9 +415,10 @@ func (e *provider) ArtistImage(ctx context.Context, id string) (*url.URL, error)
 	}
 
 	if imageUrl == "" {
-		return nil, model.ErrNotFound
+		return nil, agentErr, model.ErrNotFound
 	}
-	return url.Parse(imageUrl)
+	u, err = url.Parse(imageUrl)
+	return u, agentErr, err
 }
 
 func (e *provider) AlbumImage(ctx context.Context, id string) (*url.URL, error) {
@@ -519,10 +539,15 @@ func (e *provider) callGetBiography(ctx context.Context, agent agents.ArtistBiog
 	artist.Biography = strings.ReplaceAll(bio, "<a ", "<a target='_blank' ")
 }
 
-func (e *provider) callGetImage(ctx context.Context, agent agents.ArtistImageRetriever, artist *auxArtist) {
+// callGetImage populates artist's image URLs. A transient agent failure is
+// returned as-is; a definitive "no image" is normalized to model.ErrNotFound.
+func (e *provider) callGetImage(ctx context.Context, agent agents.ArtistImageRetriever, artist *auxArtist) error {
 	images, err := agent.GetArtistImages(ctx, artist.ID, artist.Name(), artist.MbzArtistID)
 	if err != nil {
-		return
+		if errors.Is(err, agents.ErrNotFound) {
+			return model.ErrNotFound
+		}
+		return err
 	}
 	sort.Slice(images, func(i, j int) bool { return images[i].Size > images[j].Size })
 
@@ -535,6 +560,7 @@ func (e *provider) callGetImage(ctx context.Context, agent agents.ArtistImageRet
 	if len(images) >= 3 {
 		artist.SmallImageUrl = images[2].URL
 	}
+	return nil
 }
 
 func (e *provider) callGetSimilarArtists(ctx context.Context, agent agents.ArtistSimilarRetriever, artist *auxArtist,

@@ -136,6 +136,12 @@ func GetPlaybackServer() playback.PlaybackServer {
 	))
 }
 
+func CreateArtworkWorker() *artwork.Worker {
+	panic(wire.Build(
+		allProviders,
+	))
+}
+
 func getPluginManager() *plugins.Manager {
 	panic(wire.Build(
 		allProviders,

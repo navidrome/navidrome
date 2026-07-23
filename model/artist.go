@@ -89,6 +89,7 @@ type ArtistRepository interface {
 	UpdateExternalInfo(a *Artist) error
 	Get(id string) (*Artist, error)
 	GetAll(options ...QueryOptions) (Artists, error)
+	GetAllIDs(options ...QueryOptions) ([]string, error)
 	GetCursor(options ...QueryOptions) (ArtistCursor, error)
 	GetIndex(includeMissing bool, libraryIds []int, roles ...Role) (ArtistIndexes, error)
 

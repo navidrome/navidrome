@@ -152,6 +152,29 @@ var _ = Describe("Scanner", Ordered, func() {
 					HaveField("SongCount", Equal(4)),
 				))
 			})
+			It("should enqueue artwork resolution for the scanned albums and artists", func() {
+				Expect(runScanner(ctx, true)).To(Succeed())
+
+				albums, _ := ds.Album(ctx).GetAll()
+				artists, _ := ds.Artist(ctx).GetAll(model.QueryOptions{Filters: squirrel.NotEq{"name": consts.UnknownArtist}})
+				queued, err := ds.ArtworkQueue(ctx).DequeueBatch(1000)
+				Expect(err).ToNot(HaveOccurred())
+
+				for _, al := range albums {
+					Expect(queued).To(ContainElement(SatisfyAll(
+						HaveField("ItemKind", "al"),
+						HaveField("ItemID", al.ID),
+						HaveField("Priority", model.ArtworkPriorityScan),
+					)))
+				}
+				for _, ar := range artists {
+					Expect(queued).To(ContainElement(SatisfyAll(
+						HaveField("ItemKind", "ar"),
+						HaveField("ItemID", ar.ID),
+						HaveField("Priority", model.ArtworkPriorityScan),
+					)))
+				}
+			})
 		})
 		When("a file was changed", func() {
 			It("should update the media_file", func() {

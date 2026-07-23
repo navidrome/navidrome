@@ -149,6 +149,11 @@ func (p *phasePlaylists) processPlaylistsInFolder(folder *model.Folder) (*model.
 			log.Debug("Scanner: Imported playlist", "name", pls.Name, "lastUpdated", pls.UpdatedAt, "path", pls.Path, "numTracks", len(pls.Tracks), "elapsed", time.Since(started))
 		}
 		p.cw.PreCache(pls.CoverArtID())
+		item := model.ArtworkQueueItem{ItemKind: "pl", ItemID: pls.ID, ImageType: model.ImageTypePrimary,
+			Priority: model.ArtworkPriorityScan}
+		if err := p.ds.ArtworkQueue(p.ctx).Enqueue(item); err != nil {
+			log.Warn(p.ctx, "Scanner: could not enqueue playlist artwork", "id", pls.ID, err)
+		}
 		p.refreshed.Add(1)
 	}
 	return folder, nil

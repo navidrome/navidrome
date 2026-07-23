@@ -114,6 +114,35 @@ func (r *artworkRepository) DeleteOrphans(createdBefore time.Time, hashes []stri
 	return nil
 }
 
+// danglingItemArtworkKinds maps item_kind prefixes to the table that owns the entity.
+var danglingItemArtworkKinds = map[string]string{
+	"al": "album",
+	"ar": "artist",
+	"pl": "playlist",
+	"ra": "radio",
+}
+
+// purgeDangling deletes rows in table whose owning entity is gone, one statement per kind.
+func purgeDangling(execute func(Sqlizer) (int64, error), table string) (int64, error) {
+	var total int64
+	for kind, entityTable := range danglingItemArtworkKinds {
+		del := Delete(table).Where(And{
+			Eq{"item_kind": kind},
+			Expr("item_id NOT IN (SELECT id FROM " + entityTable + ")"),
+		})
+		c, err := execute(del)
+		if err != nil {
+			return total, err
+		}
+		total += c
+	}
+	return total, nil
+}
+
+func (r *artworkRepository) PurgeDanglingItemArtwork() (int64, error) {
+	return purgeDangling(r.items.executeSQL, itemArtworkTable)
+}
+
 func (r *artworkRepository) GetItemArtwork(kind, id, imageType string) (*model.ItemArtwork, error) {
 	sel := Select("*").From(itemArtworkTable).
 		Where(Eq{"item_kind": kind, "item_id": id, "image_type": imageType})

@@ -77,6 +77,8 @@ type ArtworkRepository interface {
 	GetInfoForItems(kind string, ids []string) (map[string]ItemArtworkInfo, error)
 	// GetAllMimes returns hash -> current mime for every stored artwork, for sweep retention checks.
 	GetAllMimes() (map[string]string, error)
+	// PurgeDanglingItemArtwork removes state rows whose entity no longer exists.
+	PurgeDanglingItemArtwork() (int64, error)
 }
 
 type ArtworkQueueRepository interface {
@@ -86,8 +88,16 @@ type ArtworkQueueRepository interface {
 	DequeueBatch(n int) ([]ArtworkQueueItem, error)
 	// MarkFailed increments attempts and pushes retry_at into the future.
 	MarkFailed(kind, id, imageType string, retryAt time.Time) error
+	// MarkFailedIfUnchanged applies the failure backoff only while retry_at still matches
+	// seenRetryAt; a concurrent re-enqueue (which resets retry_at) keeps its fresh eligibility.
+	MarkFailedIfUnchanged(kind, id, imageType string, seenRetryAt, retryAt time.Time) error
 	Delete(kind, id, imageType string) error
+	// DeleteIfUnchanged deletes the row only if its retry_at still matches retryAt, so a
+	// concurrent re-enqueue (which resets retry_at) survives instead of being erased.
+	DeleteIfUnchanged(kind, id, imageType string, retryAt time.Time) error
 	Count() (int64, error)
 	// EnqueueStaleAbsent inserts queue rows (priority Recheck) for absent states older than cutoff.
 	EnqueueStaleAbsent(kind string, attemptedBefore time.Time) (int64, error)
+	// PurgeDangling removes queue rows whose entity no longer exists.
+	PurgeDangling() (int64, error)
 }
