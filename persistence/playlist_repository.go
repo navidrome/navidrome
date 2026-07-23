@@ -324,6 +324,13 @@ func (r *playlistRepository) refreshCounters(pls *model.Playlist) error {
 	pls.SongCount = int(res.Count)
 	pls.Duration = res.Duration
 	pls.Size = int64(res.Size)
+	// The generated 2x2 grid depends on the track set, so re-resolve the cover whenever it
+	// changes. No clear: the old cover keeps serving until the worker rebuilds (no flicker).
+	item := model.ArtworkQueueItem{ItemKind: "pl", ItemID: pls.ID, ImageType: model.ImageTypePrimary,
+		Priority: model.ArtworkPriorityScan}
+	if err := NewArtworkQueueRepository(r.ctx, r.db).Enqueue(item); err != nil {
+		log.Warn(r.ctx, "could not enqueue playlist artwork after content change", "id", pls.ID, err)
+	}
 	return nil
 }
 

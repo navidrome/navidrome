@@ -260,6 +260,21 @@ var _ = Describe("PlaylistRepository", func() {
 		Expect(repo.Exists(newPls.ID)).To(BeFalse())
 	})
 
+	It("enqueues the playlist's artwork when its track set changes", func() {
+		ctx := request.WithUser(log.NewContext(GinkgoT().Context()), model.User{ID: "userid", UserName: "userid", IsAdmin: true})
+		newPls := model.Playlist{Name: "Grid PL", OwnerID: "userid"}
+		newPls.AddMediaFilesByID([]string{"1001", "1002"})
+		Expect(repo.Put(&newPls)).To(Succeed())
+		DeferCleanup(func() { _ = repo.Delete(newPls.ID) })
+
+		queued, err := NewArtworkQueueRepository(ctx, GetDBXBuilder()).DequeueBatch(1000)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(queued).To(ContainElement(SatisfyAll(
+			HaveField("ItemKind", "pl"),
+			HaveField("ItemID", newPls.ID),
+		)))
+	})
+
 	Describe("GetAll", func() {
 		It("returns all playlists from DB", func() {
 			all, err := repo.GetAll()
