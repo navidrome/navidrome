@@ -85,7 +85,7 @@ var _ = Describe("Worker", func() {
 		ds.MockedAlbum = tests.CreateMockAlbumRepo()
 		store = NewImageStore(GinkgoT().TempDir())
 		conf.Server.CoverArtPriority = "cover.jpg, embedded"
-		conf.Server.DevArtworkExternalRPS = 1000 // keep the limiter out of the way of behavior tests
+		conf.Server.ArtworkExternalMaxRPS = 1000 // keep the limiter out of the way of behavior tests
 		w = NewWorker(ds, store, prov, ffm)
 	})
 

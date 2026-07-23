@@ -43,8 +43,8 @@ type Worker struct {
 }
 
 func NewWorker(ds model.DataStore, store *ImageStore, prov external.Provider, ffmpeg ffmpeg.FFmpeg) *Worker {
-	rps := conf.Server.DevArtworkExternalRPS
-	limit := rate.Inf
+	rps := conf.Server.ArtworkExternalMaxRPS
+	limit := rate.Inf // 0 or negative disables the external throttle
 	if rps > 0 {
 		limit = rate.Limit(rps)
 	}
@@ -64,7 +64,7 @@ func NewWorker(ds model.DataStore, store *ImageStore, prov external.Provider, ff
 // leaked goroutines: each drain waits for its batch before the loop can return.
 func (w *Worker) Run(ctx context.Context) error {
 	w.runCtx = ctx
-	concurrency := max(1, conf.Server.DevArtworkWorkerConcurrency)
+	concurrency := max(1, conf.Server.ArtworkWorkerConcurrency)
 	ticker := time.NewTicker(workerPollInterval)
 	defer ticker.Stop()
 	for {

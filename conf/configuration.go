@@ -57,6 +57,8 @@ type configOptions struct {
 	ImageCacheSize                  string
 	AlbumPlayCountMode              string
 	EnableArtworkPrecache           bool
+	ArtworkWorkerConcurrency        int
+	ArtworkExternalMaxRPS           int
 	AutoImportPlaylists             bool
 	DefaultPlaylistPublicVisibility bool
 	PlaylistsPath                   string
@@ -139,8 +141,6 @@ type configOptions struct {
 	DevArtworkThrottleBacklogLimit    int
 	DevArtworkThrottleBacklogTimeout  time.Duration
 	DevArtworkThrottleBuffered        bool
-	DevArtworkWorkerConcurrency       int
-	DevArtworkExternalRPS             int
 	DevArtistInfoTimeToLive           time.Duration
 	DevAlbumInfoTimeToLive            time.Duration
 	DevExternalScanner                bool
@@ -348,6 +348,8 @@ func Load(noConfigDump bool) {
 	mapDeprecatedOption("CoverJpegQuality", "CoverArtQuality")
 	mapDeprecatedOption("SimilarSongsMatchThreshold", "Matcher.FuzzyThreshold")
 	mapDeprecatedOption("EnableTranscodingCancellation", "Transcoding.EnableCancellation")
+	mapDeprecatedOption("DevArtworkWorkerConcurrency", "ArtworkWorkerConcurrency")
+	mapDeprecatedOption("DevArtworkExternalRPS", "ArtworkExternalMaxRPS")
 
 	err := viper.Unmarshal(&Server, viper.DecodeHook(
 		mapstructure.ComposeDecodeHookFunc(
@@ -902,8 +904,8 @@ func setViperDefaults() {
 	viper.SetDefault("devartworkthrottlebackloglimit", consts.RequestThrottleBacklogLimit)
 	viper.SetDefault("devartworkthrottlebacklogtimeout", consts.RequestThrottleBacklogTimeout)
 	viper.SetDefault("devartworkthrottlebuffered", true)
-	viper.SetDefault("devartworkworkerconcurrency", 2)
-	viper.SetDefault("devartworkexternalrps", 2)
+	viper.SetDefault("artworkworkerconcurrency", 4)
+	viper.SetDefault("artworkexternalmaxrps", 2)
 	viper.SetDefault("devartistinfotimetolive", consts.ArtistInfoTimeToLive)
 	viper.SetDefault("devalbuminfotimetolive", consts.AlbumInfoTimeToLive)
 	viper.SetDefault("devexternalscanner", true)
