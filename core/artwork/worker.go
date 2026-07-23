@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/server/events"
 	"golang.org/x/time/rate"
 )
 
@@ -40,6 +41,7 @@ type extGate struct {
 // via pruneMu.
 type Worker struct {
 	deps    workerDeps
+	broker  events.Broker
 	pruneMu sync.RWMutex
 	wake    chan struct{}
 	runCtx  context.Context
@@ -51,9 +53,10 @@ type Worker struct {
 	inFlight map[string]struct{}
 }
 
-func NewWorker(ds model.DataStore, store *ImageStore, ag *agents.Agents, ffmpeg ffmpeg.FFmpeg) *Worker {
+func NewWorker(ds model.DataStore, store *ImageStore, ag *agents.Agents, ffmpeg ffmpeg.FFmpeg, broker events.Broker) *Worker {
 	w := &Worker{
 		deps:     workerDeps{ds: ds, store: store, agents: ag, ffmpeg: ffmpeg},
+		broker:   broker,
 		wake:     make(chan struct{}, 1),
 		runCtx:   context.Background(),
 		gates:    map[string]*extGate{},
@@ -131,6 +134,8 @@ func (w *Worker) drain(ctx context.Context, concurrency int) (int, error) {
 	}
 	sem := make(chan struct{}, concurrency)
 	var wg sync.WaitGroup
+	var foundMu sync.Mutex
+	var found []model.ArtworkQueueItem
 	for _, item := range items {
 		sem <- struct{}{}
 		wg.Add(1)
@@ -138,14 +143,51 @@ func (w *Worker) drain(ctx context.Context, concurrency int) (int, error) {
 			defer wg.Done()
 			defer func() { <-sem }()
 			defer w.release(it)
-			w.process(ctx, it)
+			if w.process(ctx, it) == outcomeFound {
+				foundMu.Lock()
+				found = append(found, it)
+				foundMu.Unlock()
+			}
 		}(item)
 	}
 	wg.Wait()
+	w.broadcastRefresh(ctx, found)
 	return len(items), nil
 }
 
-func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) {
+// artworkKindToResource maps a queue item's kind to the UI resource name carried
+// in the refresh event.
+var artworkKindToResource = map[string]string{
+	"al": "album",
+	"ar": "artist",
+	"pl": "playlist",
+	"ra": "radio",
+	"mf": "song",
+}
+
+// broadcastRefresh emits one coalesced RefreshResource for the batch's newly-acquired
+// artwork, so connected UIs re-fetch the affected records (and pick up the new coverArt id).
+func (w *Worker) broadcastRefresh(ctx context.Context, found []model.ArtworkQueueItem) {
+	if len(found) == 0 {
+		return
+	}
+	event := &events.RefreshResource{}
+	byResource := map[string][]string{}
+	for _, it := range found {
+		if res, ok := artworkKindToResource[it.ItemKind]; ok {
+			byResource[res] = append(byResource[res], it.ItemID)
+		}
+	}
+	if len(byResource) == 0 {
+		return
+	}
+	for res, ids := range byResource {
+		event = event.With(res, ids...)
+	}
+	w.broker.SendBroadcastMessage(ctx, event)
+}
+
+func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) outcome {
 	if item.ImageType == "" {
 		item.ImageType = model.ImageTypePrimary
 	}
@@ -169,6 +211,7 @@ func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) {
 			log.Warn(ctx, "artwork: could not reschedule failed queue item", "kind", item.ItemKind, "id", item.ItemID, err)
 		}
 	}
+	return out
 }
 
 // claim reserves items not already in flight, so a row appearing twice within a single

@@ -245,7 +245,7 @@ func CreateArtworkWorker() *artwork.Worker {
 	manager := plugins.GetManager(dataStore, broker, metricsMetrics)
 	agentsAgents := agents.GetAgents(dataStore, manager)
 	fFmpeg := ffmpeg.New()
-	worker := artwork.NewWorker(dataStore, imageStore, agentsAgents, fFmpeg)
+	worker := artwork.NewWorker(dataStore, imageStore, agentsAgents, fFmpeg, broker)
 	return worker
 }
 

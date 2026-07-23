@@ -4,13 +4,16 @@ import (
 	"context"
 	"errors"
 	"io"
+	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -38,6 +41,32 @@ func (r *reenqueueOnDequeue) DequeueBatch(n int) ([]model.ArtworkQueueItem, erro
 	return items, err
 }
 
+type fakeEventBroker struct {
+	http.Handler
+	mu     sync.Mutex
+	events []events.Event
+}
+
+func (f *fakeEventBroker) SendMessage(_ context.Context, event events.Event) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.events = append(f.events, event)
+}
+
+func (f *fakeEventBroker) SendBroadcastMessage(_ context.Context, event events.Event) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.events = append(f.events, event)
+}
+
+func (f *fakeEventBroker) getEvents() []events.Event {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.events
+}
+
+var _ events.Broker = (*fakeEventBroker)(nil)
+
 func findQueued(q *tests.MockArtworkQueueRepo, kind, id string) *model.ArtworkQueueItem {
 	for _, it := range q.Data {
 		if it.ItemKind == kind && it.ItemID == id {
@@ -58,6 +87,7 @@ var _ = Describe("Worker", func() {
 		store      *ImageStore
 		artRepo    *tests.MockArtworkRepo
 		queueRepo  *tests.MockArtworkQueueRepo
+		broker     *fakeEventBroker
 		repoRoot   string
 		w          *Worker
 	)
@@ -86,7 +116,8 @@ var _ = Describe("Worker", func() {
 		store = NewImageStore(GinkgoT().TempDir())
 		conf.Server.CoverArtPriority = "cover.jpg, embedded"
 		conf.Server.ArtworkExternalMaxRPS = 1000 // keep the limiter out of the way of behavior tests
-		w = NewWorker(ds, store, ag, ffm)
+		broker = &fakeEventBroker{}
+		w = NewWorker(ds, store, ag, ffm, broker)
 	})
 
 	Describe("drain", func() {
@@ -203,7 +234,7 @@ var _ = Describe("Worker", func() {
 			})
 			racing := &reenqueueOnDequeue{MockArtworkQueueRepo: queueRepo}
 			ds.MockedArtworkQueue = racing
-			w = NewWorker(ds, store, ag, ffm)
+			w = NewWorker(ds, store, ag, ffm, broker)
 			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{
 				ItemKind: "al", ItemID: "al7", Priority: model.ArtworkPriorityScan,
 			})).To(Succeed())
@@ -225,7 +256,7 @@ var _ = Describe("Worker", func() {
 			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 			racing := &reenqueueOnDequeue{MockArtworkQueueRepo: queueRepo}
 			ds.MockedArtworkQueue = racing
-			w = NewWorker(ds, store, ag, ffm)
+			w = NewWorker(ds, store, ag, ffm, broker)
 			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al8"})).To(Succeed())
 			dequeued := findQueued(queueRepo, "al", "al8").RetryAt
 
@@ -248,7 +279,7 @@ var _ = Describe("Worker", func() {
 				private:       model.Playlist{ID: "plPriv", OwnerID: "admin"},
 				tracks:        &tests.MockPlaylistTrackRepo{},
 			}
-			w = NewWorker(vds, store, ag, ffm)
+			w = NewWorker(vds, store, ag, ffm, broker)
 			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "pl", ItemID: "plPriv"})).To(Succeed())
 
 			n, err := w.drain(ctx, 1)
@@ -266,6 +297,48 @@ var _ = Describe("Worker", func() {
 			n, err := w.drain(ctx, 2)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(n).To(BeZero())
+		})
+
+		It("broadcasts a single refresh event for the found items in a batch", func() {
+			folderRepo.result = []model.Folder{{
+				Path:       "tests/fixtures/artist/an-album",
+				ImageFiles: []string{"cover.jpg"},
+			}}
+			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
+				{ID: "al1", Name: "Album 1", FolderIDs: []string{"f1"}},
+				{ID: "al2", Name: "Album 2", FolderIDs: []string{"f1"}},
+			})
+			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al1", Priority: model.ArtworkPriorityScan})).To(Succeed())
+			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al2", Priority: model.ArtworkPriorityScan})).To(Succeed())
+			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar1", Priority: model.ArtworkPriorityScan})).To(Succeed())
+
+			n, err := w.drain(ctx, 3)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(n).To(Equal(3))
+
+			evts := broker.getEvents()
+			Expect(evts).To(HaveLen(1), "exactly one coalesced event per drain batch")
+			rr, ok := evts[0].(*events.RefreshResource)
+			Expect(ok).To(BeTrue())
+			data := rr.Data(rr)
+			Expect(data).To(ContainSubstring(`"album"`))
+			Expect(data).To(ContainSubstring("al1"))
+			Expect(data).To(ContainSubstring("al2"))
+			Expect(data).ToNot(ContainSubstring("artist"), "the absent artist must not be refreshed")
+			Expect(data).ToNot(ContainSubstring("ar1"))
+		})
+
+		It("does not broadcast when no item is found", func() {
+			conf.Server.CoverArtPriority = "external"
+			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "alx", Name: "Album"}})
+			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
+			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "alx"})).To(Succeed())
+
+			n, err := w.drain(ctx, 2)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(n).To(Equal(1))
+
+			Expect(broker.getEvents()).To(BeEmpty(), "a drain with no found items sends no event")
 		})
 	})
 
@@ -379,7 +452,7 @@ var _ = Describe("Worker", func() {
 			DeferCleanup(func() { goleak.VerifyNone(GinkgoT(), ignore) })
 
 			localDS := &tests.MockDataStore{MockedArtworkQueue: tests.CreateMockArtworkQueueRepo()}
-			lw := NewWorker(localDS, NewImageStore(GinkgoT().TempDir()), agents.GetAgents(localDS, nil), tests.NewMockFFmpeg(""))
+			lw := NewWorker(localDS, NewImageStore(GinkgoT().TempDir()), agents.GetAgents(localDS, nil), tests.NewMockFFmpeg(""), &fakeEventBroker{})
 
 			runCtx, cancel := context.WithCancel(ctx)
 			done := make(chan error, 1)
