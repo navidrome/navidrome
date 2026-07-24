@@ -192,13 +192,11 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 	} else if mf.Genre != "" {
 		item.Genres = []string{mf.Genre}
 	}
-	// A track's own cover wins in Finamp's precedence (ImageTags.Primary before AlbumId); emit only
-	// the matching blurhash, since Go sorts map keys and a second entry could pair the wrong one.
+	// A track's own cover wins in Finamp's precedence (ImageTags.Primary before AlbumId).
 	if mf.ImageHash != "" && mf.ImageHash != mf.AlbumImage.ImageHash {
-		item.ImageTags = map[string]string{"Primary": mf.ImageHash}
-		if mf.BlurHash != "" {
-			item.ImageBlurHashes = map[string]map[string]string{"Primary": {mf.ImageHash: mf.BlurHash}}
-		}
+		tag, blurs := primaryImageTag(mf.ItemImage, mf.ID)
+		item.ImageTags = map[string]string{"Primary": tag}
+		item.ImageBlurHashes = blurs
 	} else if mf.AlbumID != "" {
 		if tag, blurs := primaryImageTag(mf.AlbumImage, mf.AlbumID); tag != "" {
 			item.AlbumPrimaryImageTag = tag

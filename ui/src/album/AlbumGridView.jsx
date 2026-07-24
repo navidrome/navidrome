@@ -141,11 +141,12 @@ const Cover = withContentRect('bounds')(({
 
   const url = subsonic.getCoverArtUrl(record, config.uiCoverArtSize, true)
   const { imgUrl, loading: imageLoading } = useImageUrl(url)
+  const showBlurHash = imageLoading && record.blurHash
 
   return (
     <div ref={measureRef} className={classes.coverContainer}>
       <div ref={dragAlbumRef} style={{ position: 'relative' }}>
-        {imageLoading && record.blurHash && (
+        {showBlurHash && (
           <BlurHashCanvas hash={record.blurHash} className={classes.cover} />
         )}
         <img
@@ -153,9 +154,7 @@ const Cover = withContentRect('bounds')(({
           alt={record.name}
           className={`${classes.cover} ${imageLoading ? classes.coverLoading : ''}`}
           style={
-            imageLoading && record.blurHash
-              ? { position: 'absolute', left: 0, top: 0 }
-              : undefined
+            showBlurHash ? { position: 'absolute', left: 0, top: 0 } : undefined
           }
         />
       </div>
