@@ -81,10 +81,6 @@ const getAvatarUrl = (username, size) =>
   )
 
 const getCoverArtUrl = (record, size, square) => {
-  // Known-absent art would only ever return a placeholder; skip the round trip entirely.
-  if (record.imageAbsent) {
-    return ''
-  }
   const suffix = record.imageHash ? '_' + record.imageHash : ''
   const options = {
     // A hash-suffixed url is already pixel-versioned; the buster would defeat immutable caching.

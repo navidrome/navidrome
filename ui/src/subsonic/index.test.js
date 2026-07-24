@@ -151,14 +151,15 @@ describe('getCoverArtUrl', () => {
     expect(url).toContain('_=')
   })
 
-  it('returns an empty url for known-absent artwork', () => {
-    expect(
-      subsonic.getCoverArtUrl({
-        id: 'album-123',
-        albumArtist: 'AA',
-        imageAbsent: true,
-      }),
-    ).toBe('')
+  it('still builds a url for known-absent artwork so the server placeholder renders', () => {
+    // Returning '' here made <img src=undefined> render as a broken icon; the server serves a
+    // proper placeholder for absent art, so the client must still request it.
+    const url = subsonic.getCoverArtUrl({
+      id: 'album-123',
+      albumArtist: 'AA',
+      imageAbsent: true,
+    })
+    expect(url).toContain('al-album-123')
   })
 })
 
