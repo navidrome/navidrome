@@ -286,6 +286,24 @@ var _ = Describe("Artwork hydration", func() {
 			Expect(byID["2002"].AlbumImage.ImageAbsent).To(BeTrue())
 		})
 
+		It("carries the blurhash alongside the hash in both the own-art and inherited branches", func() {
+			setCover("1001", true) // eligible, resolves its own art -> own-art-wins branch
+			DeferCleanup(func() { setCover("1001", false) })
+
+			Expect(aw.PutImage(&model.Artwork{Hash: "mfh1001blurxxxxx", Mime: "image/jpeg", BlurHash: "LTRACKblur"})).To(Succeed())
+			Expect(aw.PutImage(&model.Artwork{Hash: "alh102blurxxxxxx", Mime: "image/jpeg", BlurHash: "LALBUMblur"})).To(Succeed())
+			putInfo("mf", "1001", "mfh1001blurxxxxx")
+			putInfo("al", "102", "alh102blurxxxxxx") // 1002's album: single-disc inheritance branch
+
+			byID := getByID()
+
+			Expect(byID["1001"].ImageHash).To(Equal("mfh1001blurxxxxx"))
+			Expect(byID["1001"].BlurHash).To(Equal("LTRACKblur"))
+
+			Expect(byID["1002"].ImageHash).To(Equal("alh102blurxxxxxx"))
+			Expect(byID["1002"].BlurHash).To(Equal("LALBUMblur"))
+		})
+
 		It("keeps an eligible file optimistic when its own art is unresolved, even if the album is absent", func() {
 			// 1004 is eligible (has embedded cover) with no mf state row yet; its album (103) is absent.
 			setCover("1004", true)

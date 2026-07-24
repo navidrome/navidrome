@@ -471,6 +471,47 @@ var _ = Describe("mappers", func() {
 			Expect(item.ImageTags).To(HaveKeyWithValue("Primary", "abcdef0123456789"))
 		})
 	})
+
+	Describe("per-song artwork", func() {
+		It("emits the track's own Primary tag when it has distinct art", func() {
+			mf := model.MediaFile{ID: "song-own", Title: "Song", AlbumID: "alb-1"}
+			mf.ImageHash = "aaaaaaaaaaaaaaaa"
+			mf.BlurHash = "LTRACKblur"
+			mf.AlbumImage.ImageHash = "bbbbbbbbbbbbbbbb"
+			mf.AlbumImage.BlurHash = "LALBUMblur"
+
+			item := SongToBaseItem(mf, nil)
+			Expect(item.ImageTags).To(HaveKeyWithValue("Primary", "aaaaaaaaaaaaaaaa"))
+			Expect(item.ImageBlurHashes["Primary"]).To(HaveLen(1),
+				"exactly one Primary entry: Go sorts map keys, so a second entry could pair the wrong blurhash with imageId")
+			Expect(item.ImageBlurHashes["Primary"]).To(HaveKeyWithValue("aaaaaaaaaaaaaaaa", "LTRACKblur"))
+		})
+
+		It("falls back to the album tag when the track has no distinct art", func() {
+			mf := model.MediaFile{ID: "song-inherit", Title: "Song", AlbumID: "alb-1"}
+			mf.ImageHash = "bbbbbbbbbbbbbbbb"
+			mf.BlurHash = "LALBUMblur"
+			mf.AlbumImage.ImageHash = "bbbbbbbbbbbbbbbb"
+			mf.AlbumImage.BlurHash = "LALBUMblur"
+
+			item := SongToBaseItem(mf, nil)
+			Expect(item.ImageTags).To(BeEmpty(), "an inherited cover is the album's image, not the track's")
+			Expect(item.AlbumPrimaryImageTag).To(Equal("bbbbbbbbbbbbbbbb"))
+			Expect(item.ImageBlurHashes["Primary"]).To(HaveLen(1))
+			Expect(item.ImageBlurHashes["Primary"]).To(HaveKeyWithValue("bbbbbbbbbbbbbbbb", "LALBUMblur"))
+		})
+
+		It("omits the track tag when its own art is known absent", func() {
+			mf := model.MediaFile{ID: "song-absent", Title: "Song", AlbumID: "alb-1"}
+			mf.ImageAbsent = true
+			mf.AlbumImage.ImageAbsent = true
+
+			item := SongToBaseItem(mf, nil)
+			Expect(item.ImageTags).To(BeEmpty())
+			Expect(item.AlbumPrimaryImageTag).To(BeEmpty())
+			Expect(item.ImageBlurHashes).To(BeNil())
+		})
+	})
 })
 
 var _ = Describe("LyricDtoFromLyrics", func() {

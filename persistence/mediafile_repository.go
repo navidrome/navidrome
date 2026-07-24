@@ -246,6 +246,7 @@ func (r *mediaFileRepository) hydrateArtwork(mfs model.MediaFiles) {
 		ownInfo, ownResolved := mfInfos[mf.ID]
 		if eligible && ownResolved && !ownInfo.Absent() {
 			mf.ImageHash = ownInfo.Hash // own resolved art wins
+			mf.BlurHash = ownInfo.BlurHash
 			continue
 		}
 		// Fallback (see MediaFile.CoverArtID): inherit a found album hash for optimistic caching,
@@ -255,6 +256,7 @@ func (r *mediaFileRepository) hydrateArtwork(mfs model.MediaFiles) {
 		if album, ok := albumInfos[mf.AlbumID]; ok && !album.Absent() {
 			if mf.DiscNumber == 0 {
 				mf.ImageHash = album.Hash
+				mf.BlurHash = album.BlurHash
 			}
 			continue
 		}
