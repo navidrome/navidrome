@@ -26,6 +26,10 @@ type MediaFile struct {
 	Bookmarkable `structs:"-" hash:"ignore"`
 	ItemImage    `structs:"-" hash:"ignore"`
 
+	// AlbumImage is the parent album's artwork state, hydrated alongside the track's own so a
+	// song's Jellyfin album-art tag can be pixel-versioned without a second query.
+	AlbumImage ItemImage `structs:"-" json:"-" hash:"ignore"`
+
 	ID          string `structs:"id"  json:"id" hash:"ignore"`
 	PID         string `structs:"pid" json:"-" hash:"ignore"`
 	LibraryID   int    `structs:"library_id" json:"libraryId" hash:"ignore"`

@@ -241,6 +241,7 @@ func (r *mediaFileRepository) hydrateArtwork(mfs model.MediaFiles) {
 	mfInfos := hydrateItemImages(r.ctx, r.db, model.KindMediaFileArtwork.Prefix(), eligibleIDs)
 	for i := range mfs {
 		mf := &mfs[i]
+		applyItemImage(albumInfos, mf.AlbumID, &mf.AlbumImage)
 		eligible := mf.HasCoverArt && conf.Server.EnableMediaFileCoverArt
 		ownInfo, ownResolved := mfInfos[mf.ID]
 		if eligible && ownResolved && !ownInfo.Absent() {
