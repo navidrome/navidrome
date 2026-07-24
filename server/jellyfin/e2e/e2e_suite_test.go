@@ -111,7 +111,7 @@ func buildTestFS() storagetest.FakeFS {
 	abbeyRoad := template(_t{"albumartist": "The Beatles", "artist": "The Beatles", "album": "Abbey Road", "year": 1969, "genre": "Rock"})
 	help := template(_t{"albumartist": "The Beatles", "artist": "The Beatles", "album": "Help!", "year": 1965, "genre": "Rock"})
 	ledZepIV := template(_t{"albumartist": "Led Zeppelin", "artist": "Led Zeppelin", "album": "IV", "year": 1971, "genre": "Rock"})
-	kindOfBlue := template(_t{"albumartist": "Miles Davis", "artist": "Miles Davis", "album": "Kind of Blue", "year": 1959, "genre": "Jazz"})
+	kindOfBlue := template(_t{"albumartist": "Miles Davis", "artist": "Miles Davis", "album": "Kind of Blue", "year": 1959, "genre": "Jazz", "label": "Columbia"})
 	singles := template(_t{"albumartist": "Solo Artist", "artist": "Solo Artist", "album": "Singles", "year": 2020, "genre": "Pop"})
 
 	return harness.CreateFS(fstest.MapFS{
@@ -121,7 +121,9 @@ func buildTestFS() storagetest.FakeFS {
 		"Rock/The Beatles/Abbey Road/02 - Come Together.mp3": abbeyRoad(track(2, "Come Together")),
 		"Rock/The Beatles/Help!/01 - Help.mp3":               help(track(1, "Help!")),
 		"Rock/Led Zeppelin/IV/01 - Stairway To Heaven.mp3": ledZepIV(track(1, "Stairway To Heaven", _t{
-			"lyrics:eng": "[00:01.00]There's a lady who's sure\n[00:05.50]All that glitters is gold",
+			"lyrics:eng":            "[00:01.00]There's a lady who's sure\n[00:05.50]All that glitters is gold",
+			"replaygain_track_gain": "-3.50 dB",
+			"replaygain_album_gain": "-4.25 dB",
 		})),
 		"Jazz/Miles Davis/Kind of Blue/01 - So What.mp3":    kindOfBlue(track(1, "So What")),
 		"Pop/Solo Artist/Singles/01 - Standalone Track.mp3": singles(track(1, "Standalone Track")),
@@ -329,6 +331,7 @@ func setupTestDB() {
 		providerFake,
 		sonicSvc,
 		lyrics.NewLyrics(ds, nil),
+		events.NoopBroker(),
 	)
 }
 

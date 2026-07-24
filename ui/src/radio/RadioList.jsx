@@ -16,6 +16,8 @@ import {
 } from 'react-admin'
 import {
   List,
+  defaultRowsPerPageOptions,
+  getStoredPerPage,
   useImageUrl,
   ToggleFieldsMenu,
   useSelectedFields,
@@ -135,7 +137,11 @@ const RadioList = ({ permissions, ...props }) => {
       hasCreate={isAdmin}
       actions={<RadioListActions isAdmin={isAdmin} />}
       filters={<RadioFilter />}
-      perPage={isXsmall ? 25 : 10}
+      perPage={getStoredPerPage(
+        'radio',
+        defaultRowsPerPageOptions,
+        isXsmall ? 25 : 10,
+      )}
     >
       {isXsmall ? (
         <SimpleList

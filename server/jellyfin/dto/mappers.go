@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 // Jellyfin wire times are ticks: 100ns units, i.e. 10,000 per millisecond.
@@ -139,7 +140,6 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 		Album:             mf.Album,
 		AlbumId:           EncodeID(mf.AlbumID),
 		AlbumArtist:       mf.AlbumArtist,
-		Artists:           []string{mf.Artist},
 		RunTimeTicks:      TicksFromSeconds(mf.Duration),
 		DateCreated:       jellyfinDate(&mf.CreatedAt),
 		Container:         mf.Suffix,
@@ -153,15 +153,27 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 	if fields.Has("SortName") {
 		item.SortName = cmp.Or(mf.SortTitle, mf.OrderTitle, mf.Title)
 	}
-	// Finamp's Now Playing screen reads ArtistItems for the displayed artist (falling back to "Unknown
-	// Artist" if absent), even though Artists carries the same name. ArtistItems is the track artist;
-	// AlbumArtists the album artist.
-	if mf.ArtistID != "" {
-		item.ArtistItems = []NameGuidPair{{Name: mf.Artist, Id: EncodeID(mf.ArtistID)}}
+	// Real Jellyfin splits Artists/ArtistItems per track artist (AlbumArtists stays a single credit).
+	// Participants holds the per-artist list; fall back to the flattened display fields when absent.
+	if artists := mf.Participants[model.RoleArtist]; len(artists) > 0 {
+		item.Artists = slice.Map(artists, func(p model.Participant) string { return p.Name })
+		item.ArtistItems = slice.Map(artists, func(p model.Participant) NameGuidPair {
+			return NameGuidPair{Name: p.Name, Id: EncodeID(p.ID)}
+		})
+	} else {
+		if mf.Artist != "" {
+			item.Artists = []string{mf.Artist}
+		}
+		if mf.ArtistID != "" {
+			item.ArtistItems = []NameGuidPair{{Name: mf.Artist, Id: EncodeID(mf.ArtistID)}}
+		}
 	}
 	if mf.AlbumArtistID != "" {
 		item.AlbumArtists = []NameGuidPair{{Name: mf.AlbumArtist, Id: EncodeID(mf.AlbumArtistID)}}
 	}
+	// dB to apply at the RG2 -18 LUFS reference, same convention real Jellyfin uses; no conversion.
+	item.NormalizationGain = mf.RGTrackGain
+	item.AlbumNormalizationGain = mf.RGAlbumGain
 	if mf.Year > 0 {
 		item.ProductionYear = new(mf.Year)
 	}
@@ -175,6 +187,7 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 	if len(mf.Genres) > 0 {
 		for _, g := range mf.Genres {
 			item.Genres = append(item.Genres, g.Name)
+			item.GenreItems = append(item.GenreItems, NameGuidPair{Id: EncodeID(g.ID), Name: g.Name})
 		}
 	} else if mf.Genre != "" {
 		item.Genres = []string{mf.Genre}
@@ -187,7 +200,7 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 	return item
 }
 
-func AlbumToBaseItem(al model.Album) BaseItemDto {
+func AlbumToBaseItem(al model.Album, fields Fields) BaseItemDto {
 	item := BaseItemDto{
 		Name:              al.Name,
 		Id:                EncodeID(al.ID),
@@ -216,8 +229,20 @@ func AlbumToBaseItem(al model.Album) BaseItemDto {
 	if len(al.Genres) > 0 {
 		for _, g := range al.Genres {
 			item.Genres = append(item.Genres, g.Name)
+			item.GenreItems = append(item.GenreItems, NameGuidPair{Id: EncodeID(g.ID), Name: g.Name})
 		}
 	}
+	// Jellyfin leaves Studios empty for music; we expose record labels here to match our /Studios
+	// list and StudioIds= filter, so a client can display and click through to filter by label.
+	if fields.Has("Studios") {
+		for _, label := range al.Tags.Values(model.TagRecordLabel) {
+			id := EncodeID(model.NewTag(model.TagRecordLabel, label).ID)
+			item.Studios = append(item.Studios, NameGuidPair{Name: label, Id: id})
+		}
+	}
+	// The album's own ReplayGain gain (dB at the RG2 -18 LUFS reference) — same
+	// convention as tracks; clients read it off the album item as NormalizationGain.
+	item.NormalizationGain = al.RGAlbumGain
 	return item
 }
 
@@ -243,6 +268,15 @@ func GenreToBaseItem(g model.Genre) BaseItemDto {
 		Id:                EncodeID(g.ID),
 		Type:              "MusicGenre",
 		IsFolder:          true,
+		BackdropImageTags: []string{},
+	}
+}
+
+func StudioToBaseItem(t model.Tag) BaseItemDto {
+	return BaseItemDto{
+		Name:              t.TagValue,
+		Id:                EncodeID(t.ID),
+		Type:              "Studio",
 		BackdropImageTags: []string{},
 	}
 }

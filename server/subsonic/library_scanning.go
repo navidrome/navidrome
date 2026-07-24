@@ -45,7 +45,8 @@ func (api *Router) StartScan(r *http.Request) (*responses.Subsonic, error) {
 
 	// Parse optional target parameters for selective scanning
 	var targets []model.ScanTarget
-	if targetParams, err := p.Strings("target"); err == nil && len(targetParams) > 0 {
+	if targetParams := p.Strings("target"); len(targetParams) > 0 {
+		var err error
 		targets, err = model.ParseTargets(targetParams)
 		if err != nil {
 			return nil, newError(responses.ErrorGeneric, fmt.Sprintf("Invalid target parameter: %v", err))

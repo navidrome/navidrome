@@ -24,6 +24,8 @@ var _ = Describe("Album", func() {
 		Entry("returns just name when disabled", false, Tags{TagAlbumVersion: []string{"Remastered"}}, "Album"),
 		Entry("returns just name when tag is absent", true, Tags{}, "Album"),
 		Entry("returns just name when tag is an empty slice", true, Tags{TagAlbumVersion: []string{}}, "Album"),
+		Entry("does not double parentheses when version is already parenthesized", true, Tags{TagAlbumVersion: []string{"(Remastered)"}}, "Album (Remastered)"),
+		Entry("does not add parentheses when version is wrapped in square brackets", true, Tags{TagAlbumVersion: []string{"[Remastered]"}}, "Album [Remastered]"),
 	)
 })
 
