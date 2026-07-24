@@ -200,7 +200,25 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 	return item
 }
 
+// primaryImageTag returns the image cache tag plus the real-blurhash map; absent art yields ("", nil),
+// and unresolved art falls back to the id. A blurhash is never synthesized: Finamp keys its cover cache
+// on the value, so a fake one pins a stale cover forever (#5798).
+func primaryImageTag(img model.ItemImage, fallback string) (string, map[string]map[string]string) {
+	if img.ImageAbsent {
+		return "", nil
+	}
+	tag := img.ImageHash
+	if tag == "" {
+		tag = fallback
+	}
+	if img.BlurHash == "" {
+		return tag, nil
+	}
+	return tag, map[string]map[string]string{"Primary": {tag: img.BlurHash}}
+}
+
 func AlbumToBaseItem(al model.Album, fields Fields) BaseItemDto {
+	tag, blurs := primaryImageTag(al.ItemImage, al.ID)
 	item := BaseItemDto{
 		Name:              al.Name,
 		Id:                EncodeID(al.ID),
@@ -213,10 +231,12 @@ func AlbumToBaseItem(al model.Album, fields Fields) BaseItemDto {
 		SongCount:         new(al.SongCount),
 		RunTimeTicks:      TicksFromSeconds(al.Duration),
 		DateCreated:       jellyfinDate(&al.CreatedAt),
-		ImageTags:         map[string]string{"Primary": al.ID},
-		ImageBlurHashes:   map[string]map[string]string{"Primary": {al.ID: blurHash(al.ID)}},
+		ImageBlurHashes:   blurs,
 		BackdropImageTags: []string{},
 		UserData:          UserData(al.Annotations, al.ID),
+	}
+	if tag != "" {
+		item.ImageTags = map[string]string{"Primary": tag}
 	}
 	if al.AlbumArtistID != "" {
 		item.AlbumArtists = []NameGuidPair{{Name: al.AlbumArtist, Id: EncodeID(al.AlbumArtistID)}}
@@ -247,7 +267,8 @@ func AlbumToBaseItem(al model.Album, fields Fields) BaseItemDto {
 }
 
 func ArtistToBaseItem(ar model.Artist) BaseItemDto {
-	return BaseItemDto{
+	tag, blurs := primaryImageTag(ar.ItemImage, ar.ID)
+	item := BaseItemDto{
 		Name:              ar.Name,
 		Id:                EncodeID(ar.ID),
 		Type:              "MusicArtist",
@@ -255,11 +276,14 @@ func ArtistToBaseItem(ar model.Artist) BaseItemDto {
 		AlbumCount:        new(ar.AlbumCount),
 		SongCount:         new(ar.SongCount),
 		DateCreated:       jellyfinDate(ar.CreatedAt),
-		ImageTags:         map[string]string{"Primary": ar.ID},
-		ImageBlurHashes:   map[string]map[string]string{"Primary": {ar.ID: blurHash(ar.ID)}},
+		ImageBlurHashes:   blurs,
 		BackdropImageTags: []string{},
 		UserData:          UserData(ar.Annotations, ar.ID),
 	}
+	if tag != "" {
+		item.ImageTags = map[string]string{"Primary": tag}
+	}
+	return item
 }
 
 func GenreToBaseItem(g model.Genre) BaseItemDto {

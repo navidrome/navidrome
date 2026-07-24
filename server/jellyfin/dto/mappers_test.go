@@ -254,8 +254,8 @@ var _ = Describe("mappers", func() {
 		Expect(item.ArtistItems).To(Equal(item.AlbumArtists))
 		Expect(*item.ProductionYear).To(Equal(1999))
 		Expect(*item.ChildCount).To(Equal(10))
-		Expect(item.ImageBlurHashes["Primary"]).To(HaveKey(item.ImageTags["Primary"]))
-		Expect(item.ImageBlurHashes["Primary"][item.ImageTags["Primary"]]).To(HaveLen(6))
+		Expect(item.ImageTags).To(HaveKeyWithValue("Primary", "alb-1"))
+		Expect(item.ImageBlurHashes).To(BeNil())
 		Expect(item.Genres).To(Equal([]string{"genre 1", "genre 2"}))
 		Expect(item.GenreItems).To(Equal([]NameGuidPair{{Id: EncodeID("1"), Name: "genre 1"}, {Id: EncodeID("2"), Name: "genre 2"}}))
 	})
@@ -383,6 +383,52 @@ var _ = Describe("mappers", func() {
 	It("keeps the playlist image tag stable when nothing changed", func() {
 		p := model.Playlist{ID: "pl-1", UpdatedAt: time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)}
 		Expect(PlaylistToBaseItem(p).ImageTags).To(Equal(PlaylistToBaseItem(p).ImageTags))
+	})
+
+	Describe("primary image tags", func() {
+		It("uses the content hash as the tag and emits the real blurhash", func() {
+			al := model.Album{ID: "alb-1", Name: "Album"}
+			al.ImageHash = "0123456789abcdef"
+			al.BlurHash = "LEHV6nWB2yk8"
+
+			item := AlbumToBaseItem(al, nil)
+			Expect(item.ImageTags).To(HaveKeyWithValue("Primary", "0123456789abcdef"))
+			Expect(item.ImageBlurHashes["Primary"]).To(HaveKeyWithValue("0123456789abcdef", "LEHV6nWB2yk8"))
+		})
+
+		It("omits the blurhash entirely when none was computed", func() {
+			al := model.Album{ID: "alb-2", Name: "Album"}
+			al.ImageHash = "0123456789abcdef"
+
+			item := AlbumToBaseItem(al, nil)
+			Expect(item.ImageTags).To(HaveKeyWithValue("Primary", "0123456789abcdef"))
+			Expect(item.ImageBlurHashes).To(BeNil(), "a synthesized blurhash pins stale covers in Finamp")
+		})
+
+		It("omits tags for known-absent artwork", func() {
+			al := model.Album{ID: "alb-3", Name: "Album"}
+			al.ImageAbsent = true
+
+			item := AlbumToBaseItem(al, nil)
+			Expect(item.ImageTags).To(BeEmpty())
+			Expect(item.ImageBlurHashes).To(BeNil())
+		})
+
+		It("falls back to the entity id while artwork is still unresolved", func() {
+			item := AlbumToBaseItem(model.Album{ID: "alb-4", Name: "Album"}, nil)
+			Expect(item.ImageTags).To(HaveKeyWithValue("Primary", "alb-4"))
+			Expect(item.ImageBlurHashes).To(BeNil())
+		})
+
+		It("versions an artist's tag by content hash", func() {
+			ar := model.Artist{ID: "art-1", Name: "Artist"}
+			ar.ImageHash = "fedcba9876543210"
+			ar.BlurHash = "L6PZfSi_.AyE"
+
+			item := ArtistToBaseItem(ar)
+			Expect(item.ImageTags).To(HaveKeyWithValue("Primary", "fedcba9876543210"))
+			Expect(item.ImageBlurHashes["Primary"]).To(HaveKeyWithValue("fedcba9876543210", "L6PZfSi_.AyE"))
+		})
 	})
 })
 
