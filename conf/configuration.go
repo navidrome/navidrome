@@ -96,7 +96,7 @@ type configOptions struct {
 	UICoverArtSize                  int
 	EnableReplayGain                bool
 	EnableCoverAnimation            bool
-	EnableNowPlaying                bool
+	NowPlaying                      nowPlayingOptions `json:",omitzero"`
 	UIPlaybackReportInterval        time.Duration
 	GATrackingID                    string
 	EnableLogRedacting              bool
@@ -250,6 +250,11 @@ type jukeboxOptions struct {
 	AdminOnly bool
 }
 
+type nowPlayingOptions struct {
+	Enabled   bool
+	AdminOnly bool
+}
+
 type backupOptions struct {
 	Count    int
 	Path     Dir
@@ -346,6 +351,7 @@ func Load(noConfigDump bool) {
 	mapDeprecatedOption("CoverJpegQuality", "CoverArtQuality")
 	mapDeprecatedOption("SimilarSongsMatchThreshold", "Matcher.FuzzyThreshold")
 	mapDeprecatedOption("EnableTranscodingCancellation", "Transcoding.EnableCancellation")
+	mapDeprecatedOption("EnableNowPlaying", "NowPlaying.Enabled")
 
 	err := viper.Unmarshal(&Server, viper.DecodeHook(
 		mapstructure.ComposeDecodeHookFunc(
@@ -472,6 +478,7 @@ func Load(noConfigDump bool) {
 	logDeprecatedOptions("CoverJpegQuality", "CoverArtQuality")
 	logDeprecatedOptions("SimilarSongsMatchThreshold", "Matcher.FuzzyThreshold")
 	logDeprecatedOptions("EnableTranscodingCancellation", "Transcoding.EnableCancellation")
+	logDeprecatedOptions("EnableNowPlaying", "NowPlaying.Enabled")
 
 	// Removed options
 	logRemovedOptions("Spotify.ID", "Spotify.Secret")
@@ -803,7 +810,8 @@ func setViperDefaults() {
 	viper.SetDefault("uicoverartsize", consts.DefaultUICoverArtSize)
 	viper.SetDefault("enablereplaygain", true)
 	viper.SetDefault("enablecoveranimation", true)
-	viper.SetDefault("enablenowplaying", true)
+	viper.SetDefault("nowplaying.enabled", true)
+	viper.SetDefault("nowplaying.adminonly", false)
 	viper.SetDefault("uiplaybackreportinterval", consts.DefaultUIPlaybackReportInterval)
 	viper.SetDefault("enableartworkupload", true)
 	viper.SetDefault("maximageuploadsize", consts.DefaultMaxImageUploadSize)
