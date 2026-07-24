@@ -89,8 +89,13 @@ func (s *service) Get(ctx context.Context, artID model.ArtworkID, size int, squa
 	}
 }
 
+// requestRecheckAge throttles view-triggered rechecks of an absent entity so repeatedly opening a
+// genuinely-absent page can't hammer external services; below staleAbsentAge to catch younger absences.
+const requestRecheckAge = time.Hour
+
 // serveEntity serves an entity whose state the worker owns (album/artist/playlist/radio):
-// found row serves its hash, absent row is unavailable, missing row reads through provisionally.
+// found row serves its hash, absent row is unavailable (promoting a stale recheck on view),
+// missing row reads through provisionally.
 func (s *service) serveEntity(ctx context.Context, artID model.ArtworkID, size int, square bool) (*Image, error) {
 	ia, err := s.ds.Artwork(ctx).GetItemArtwork(artID.Kind.Prefix(), artID.ID, model.ImageTypePrimary)
 	switch {
@@ -99,6 +104,11 @@ func (s *service) serveEntity(ctx context.Context, artID model.ArtworkID, size i
 	case err != nil:
 		return nil, err
 	case ia.Hash == "":
+		// EnqueueBump preserves an existing backoff row's retry_at; for a settled absent row
+		// (no queue row) it inserts a fresh, immediately-eligible recheck.
+		if time.Since(ia.AttemptedAt) > requestRecheckAge {
+			s.enqueue(ctx, artID, model.ArtworkPriorityBump)
+		}
 		return nil, ErrUnavailable
 	default:
 		return s.serveHash(ctx, artID, ia, size, square)

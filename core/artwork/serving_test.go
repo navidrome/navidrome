@@ -183,12 +183,28 @@ var _ = Describe("Service", func() {
 			Expect(queueRepo.Data[primaryKey("al", "al3b")].Priority).To(Equal(model.ArtworkPriorityScan))
 		})
 
-		It("returns ErrUnavailable for an absent state without enqueuing", func() {
-			Expect(artRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "al", ItemID: "al4"})).To(Succeed())
+		It("does not re-enqueue a recently-attempted absent state", func() {
+			Expect(artRepo.PutItemArtwork(&model.ItemArtwork{
+				ItemKind: "al", ItemID: "al4", AttemptedAt: time.Now(),
+			})).To(Succeed())
 
 			_, err := svc.Get(ctx, model.MustParseArtworkID("al-al4"), 0, false)
 			Expect(err).To(MatchError(ErrUnavailable))
 			Expect(queueRepo.Data).To(BeEmpty())
+		})
+
+		It("promotes a stale absent state at Bump priority on view", func() {
+			Expect(artRepo.PutItemArtwork(&model.ItemArtwork{
+				ItemKind: "al", ItemID: "al4b", AttemptedAt: time.Now().Add(-2 * requestRecheckAge),
+			})).To(Succeed())
+
+			_, err := svc.Get(ctx, model.MustParseArtworkID("al-al4b"), 0, false)
+			Expect(err).To(MatchError(ErrUnavailable))
+			Expect(queueRepo.Data[primaryKey("al", "al4b")].Priority).To(Equal(model.ArtworkPriorityBump))
+			// The absent state row is left intact; only a recheck is scheduled.
+			ia, err := artRepo.GetItemArtwork("al", "al4b", model.ImageTypePrimary)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ia.Hash).To(BeEmpty())
 		})
 	})
 
