@@ -22,7 +22,7 @@ import (
 
 const (
 	workerPollInterval = 5 * time.Second
-	backoffBase        = 5 * time.Minute
+	backoffBase        = 15 * time.Second
 	backoffCap         = 48 * time.Hour
 	breakerThreshold   = 5
 	breakerProbeAfter  = time.Minute

@@ -565,13 +565,15 @@ var _ = Describe("backoff", func() {
 			attempts int
 			want     time.Duration
 		}{
-			{0, 5 * time.Minute},
-			{1, 20 * time.Minute},
-			{2, 80 * time.Minute},
-			{3, 320 * time.Minute},
-			{4, 1280 * time.Minute},
-			{5, 48 * time.Hour},
-			{6, 48 * time.Hour},
+			{0, 15 * time.Second},
+			{1, 60 * time.Second},
+			{2, 4 * time.Minute},
+			{3, 16 * time.Minute},
+			{4, 64 * time.Minute},
+			{5, 256 * time.Minute},
+			{6, 1024 * time.Minute},
+			{7, 48 * time.Hour},
+			{8, 48 * time.Hour},
 		} {
 			Expect(backoffFor(c.attempts, 0)).To(Equal(c.want), "attempt %d", c.attempts)
 		}
@@ -584,8 +586,8 @@ var _ = Describe("backoff", func() {
 	})
 
 	It("keeps random jitter within +/-20%", func() {
-		lo := time.Duration(float64(320*time.Minute) * 0.8)
-		hi := time.Duration(float64(320*time.Minute) * 1.2)
+		lo := time.Duration(float64(16*time.Minute) * 0.8)
+		hi := time.Duration(float64(16*time.Minute) * 1.2)
 		for range 200 {
 			d := backoff(3)
 			Expect(d).To(BeNumerically(">=", lo))
