@@ -24,6 +24,7 @@ import config from '../config'
 import { DraggableTypes } from '../consts'
 import clsx from 'clsx'
 import { AlbumDatesField } from './AlbumDatesField.jsx'
+import { BlurHashCanvas } from '../common/BlurHashCanvas'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -143,11 +144,19 @@ const Cover = withContentRect('bounds')(({
 
   return (
     <div ref={measureRef} className={classes.coverContainer}>
-      <div ref={dragAlbumRef}>
+      <div ref={dragAlbumRef} style={{ position: 'relative' }}>
+        {imageLoading && record.blurHash && (
+          <BlurHashCanvas hash={record.blurHash} className={classes.cover} />
+        )}
         <img
           src={imgUrl || undefined}
           alt={record.name}
           className={`${classes.cover} ${imageLoading ? classes.coverLoading : ''}`}
+          style={
+            imageLoading && record.blurHash
+              ? { position: 'absolute', left: 0, top: 0 }
+              : undefined
+          }
         />
       </div>
     </div>
