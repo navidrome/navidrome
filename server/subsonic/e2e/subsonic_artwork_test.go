@@ -151,14 +151,14 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 		worker.Bump("al", artfulID)
 		worker.Bump("al", artlessID)
 		runWorkerUntil(ctx, worker, func() bool {
-			found, err := ds.Artwork(ctx).GetItemArtwork("al", artfulID, model.ImageTypePrimary)
+			found, err := ds.Artwork(ctx).GetItemArtwork(model.KindAlbumArtwork, artfulID, model.ImageTypePrimary)
 			if err != nil || found.Hash == "" {
 				return false
 			}
-			absent, err := ds.Artwork(ctx).GetItemArtwork("al", artlessID, model.ImageTypePrimary)
+			absent, err := ds.Artwork(ctx).GetItemArtwork(model.KindAlbumArtwork, artlessID, model.ImageTypePrimary)
 			return err == nil && absent.Hash == ""
 		})
-		ia, err := ds.Artwork(ctx).GetItemArtwork("al", artfulID, model.ImageTypePrimary)
+		ia, err := ds.Artwork(ctx).GetItemArtwork(model.KindAlbumArtwork, artfulID, model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ia.Source).To(Equal("folder"))
 		artfulHash = ia.Hash

@@ -172,7 +172,7 @@ var _ = Describe("Worker", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(n).To(Equal(1))
 
-			ia, err := artRepo.GetItemArtwork("al", "al1", model.ImageTypePrimary)
+			ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al1", model.ImageTypePrimary)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ia.Source).To(Equal("folder"))
 
@@ -195,7 +195,7 @@ var _ = Describe("Worker", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(n).To(Equal(1))
 
-			ia, err := artRepo.GetItemArtwork("mf", "mf1", model.ImageTypePrimary)
+			ia, err := artRepo.GetItemArtwork(model.KindMediaFileArtwork, "mf1", model.ImageTypePrimary)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ia.Source).To(Equal("embedded"))
 			Expect(ia.Hash).ToNot(BeEmpty())
@@ -229,7 +229,7 @@ var _ = Describe("Worker", func() {
 			Expect(it.Attempts).To(Equal(1))
 			Expect(it.RetryAt).To(BeTemporally(">", time.Now()))
 
-			_, err = artRepo.GetItemArtwork("al", "al4", model.ImageTypePrimary)
+			_, err = artRepo.GetItemArtwork(model.KindAlbumArtwork, "al4", model.ImageTypePrimary)
 			Expect(err).To(MatchError(model.ErrNotFound), "a timeout must never settle on absent")
 		})
 
@@ -254,7 +254,7 @@ var _ = Describe("Worker", func() {
 			Expect(it.Attempts).To(Equal(1))
 			Expect(it.RetryAt).To(BeTemporally(">", time.Now()))
 
-			ia, err := artRepo.GetItemArtwork("al", "alstale", model.ImageTypePrimary)
+			ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "alstale", model.ImageTypePrimary)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ia.Source).To(Equal("folder"), "the fallback art is served meanwhile")
 
@@ -284,7 +284,7 @@ var _ = Describe("Worker", func() {
 
 			// The concurrent re-enqueue changed retry_at, so the found-path delete was a no-op.
 			Expect(findQueued(queueRepo, "al", "al7")).ToNot(BeNil())
-			ia, err := artRepo.GetItemArtwork("al", "al7", model.ImageTypePrimary)
+			ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al7", model.ImageTypePrimary)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ia.Source).To(Equal("folder"))
 		})
@@ -327,7 +327,7 @@ var _ = Describe("Worker", func() {
 
 			// Resolved as absent (no art) and removed — not stuck failing on ErrNotFound forever.
 			Expect(findQueued(queueRepo, "pl", "plPriv")).To(BeNil())
-			ia, err := artRepo.GetItemArtwork("pl", "plPriv", model.ImageTypePrimary)
+			ia, err := artRepo.GetItemArtwork(model.KindPlaylistArtwork, "plPriv", model.ImageTypePrimary)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ia.Hash).To(BeEmpty())
 		})
@@ -381,7 +381,7 @@ var _ = Describe("Worker", func() {
 			Expect(evts).To(HaveLen(1), "a removed cover must live-refresh clients so they drop it")
 			Expect(evts[0].(*events.RefreshResource).Data(evts[0])).To(ContainSubstring("al3"))
 
-			ia, err := artRepo.GetItemArtwork("al", "al3", model.ImageTypePrimary)
+			ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al3", model.ImageTypePrimary)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ia.Hash).To(BeEmpty(), "the outcome was absent, not found")
 		})

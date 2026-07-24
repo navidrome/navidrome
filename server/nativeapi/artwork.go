@@ -10,12 +10,12 @@ import (
 )
 
 // refreshableArtworkKinds are the entity kinds a manual re-resolve accepts.
-var refreshableArtworkKinds = map[string]bool{
-	model.KindAlbumArtwork.Prefix():     true,
-	model.KindArtistArtwork.Prefix():    true,
-	model.KindPlaylistArtwork.Prefix():  true,
-	model.KindRadioArtwork.Prefix():     true,
-	model.KindMediaFileArtwork.Prefix(): true,
+var refreshableArtworkKinds = map[model.Kind]bool{
+	model.KindAlbumArtwork:     true,
+	model.KindArtistArtwork:    true,
+	model.KindPlaylistArtwork:  true,
+	model.KindRadioArtwork:     true,
+	model.KindMediaFileArtwork: true,
 }
 
 func (api *Router) addArtworkRoute(r chi.Router) {
@@ -27,7 +27,7 @@ func (api *Router) addArtworkRoute(r chi.Router) {
 func (api *Router) refreshArtwork() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		kind := chi.URLParam(r, "kind")
+		kind, _ := model.ParseKind(chi.URLParam(r, "kind"))
 		id := chi.URLParam(r, "id")
 		if !refreshableArtworkKinds[kind] {
 			http.Error(w, "invalid artwork kind", http.StatusBadRequest)

@@ -186,7 +186,7 @@ func (m *MockArtworkQueueRepo) EnqueueBump(items ...model.ArtworkQueueItem) erro
 	return nil
 }
 
-func (m *MockArtworkQueueRepo) EnqueueStaleAbsent(kind string, attemptedBefore time.Time) (int64, error) {
+func (m *MockArtworkQueueRepo) EnqueueStaleAbsent(kind model.Kind, attemptedBefore time.Time) (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil || m.ItemArtworkSource == nil {
@@ -195,7 +195,7 @@ func (m *MockArtworkQueueRepo) EnqueueStaleAbsent(kind string, attemptedBefore t
 	now := time.Now()
 	var inserted int64
 	for _, ia := range m.ItemArtworkSource.ItemData {
-		if ia.ItemKind != kind || ia.Hash != "" || !ia.AttemptedAt.Before(attemptedBefore) {
+		if ia.ItemKind != kind.Prefix() || ia.Hash != "" || !ia.AttemptedAt.Before(attemptedBefore) {
 			continue
 		}
 		k := iaKey(ia.ItemKind, ia.ItemID, ia.ImageType)

@@ -184,7 +184,7 @@ func (r *playlistRepository) hydrateArtwork(playlists model.Playlists) {
 		return
 	}
 	ids := slice.Map(playlists, func(p model.Playlist) string { return p.ID })
-	infos := hydrateItemImages(r.ctx, r.db, model.KindPlaylistArtwork.Prefix(), ids)
+	infos := hydrateItemImages(r.ctx, r.db, model.KindPlaylistArtwork, ids)
 	for i := range playlists {
 		applyItemImage(infos, playlists[i].ID, &playlists[i].ItemImage)
 	}
@@ -330,7 +330,7 @@ func (r *playlistRepository) refreshCounters(pls *model.Playlist) error {
 	pls.Size = int64(res.Size)
 	// The generated 2x2 grid depends on the track set, so re-resolve the cover whenever it
 	// changes. No clear: the old cover keeps serving until the worker rebuilds (no flicker).
-	item := model.ArtworkQueueItem{ItemKind: "pl", ItemID: pls.ID, ImageType: model.ImageTypePrimary,
+	item := model.ArtworkQueueItem{ItemKind: model.KindPlaylistArtwork.Prefix(), ItemID: pls.ID, ImageType: model.ImageTypePrimary,
 		Priority: model.ArtworkPriorityScan}
 	if err := NewArtworkQueueRepository(r.ctx, r.db).Enqueue(item); err != nil {
 		log.Warn(r.ctx, "could not enqueue playlist artwork after content change", "id", pls.ID, err)

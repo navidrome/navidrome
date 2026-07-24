@@ -174,7 +174,7 @@ var _ = Describe("ArtworkQueueRepository", func() {
 		Expect(awRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "ar", ItemID: "fresh1", ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: time.Now()})).To(Succeed())
 		Expect(awRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "ar", ItemID: "found1", ImageType: model.ImageTypePrimary, Hash: "hX", AttemptedAt: old})).To(Succeed())
 
-		n, err := repo.EnqueueStaleAbsent("ar", time.Now().Add(-24*time.Hour))
+		n, err := repo.EnqueueStaleAbsent(model.KindArtistArtwork, time.Now().Add(-24*time.Hour))
 		Expect(err).ToNot(HaveOccurred())
 		Expect(n).To(Equal(int64(1)))
 

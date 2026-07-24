@@ -51,11 +51,11 @@ var _ = Describe("Prune", func() {
 
 		Expect(Prune(context.Background(), ds, store)).To(Succeed())
 
-		_, err := awRepo.GetItemArtwork("al", "gone-album", model.ImageTypePrimary)
+		_, err := awRepo.GetItemArtwork(model.KindAlbumArtwork, "gone-album", model.ImageTypePrimary)
 		Expect(err).To(MatchError(model.ErrNotFound))
-		_, err = awRepo.GetItemArtwork("ar", "gone-artist", model.ImageTypePrimary)
+		_, err = awRepo.GetItemArtwork(model.KindArtistArtwork, "gone-artist", model.ImageTypePrimary)
 		Expect(err).To(MatchError(model.ErrNotFound))
-		_, err = awRepo.GetItemArtwork("ar", "live-artist", model.ImageTypePrimary)
+		_, err = awRepo.GetItemArtwork(model.KindArtistArtwork, "live-artist", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 	})
 

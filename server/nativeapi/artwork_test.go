@@ -56,7 +56,7 @@ var _ = Describe("Artwork API", func() {
 
 			Expect(w.Code).To(Equal(http.StatusNoContent))
 
-			_, err := artRepo.GetItemArtwork("al", "al-1", model.ImageTypePrimary)
+			_, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al-1", model.ImageTypePrimary)
 			Expect(err).To(MatchError(model.ErrNotFound))
 
 			queued, err := queueRepo.DequeueBatch(1000)

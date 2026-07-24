@@ -54,7 +54,7 @@ func chunkOptions(options []model.QueryOptions, idField string) func([]string) m
 
 // hydrateItemImages returns per-item artwork info for a fetched page via one batched query per kind
 // (never a join, see spec §6). On error it logs and returns an empty map so the page still renders.
-func hydrateItemImages(ctx context.Context, db dbx.Builder, kind string, ids []string) map[string]model.ItemArtworkInfo {
+func hydrateItemImages(ctx context.Context, db dbx.Builder, kind model.Kind, ids []string) map[string]model.ItemArtworkInfo {
 	if len(ids) == 0 {
 		return map[string]model.ItemArtworkInfo{}
 	}

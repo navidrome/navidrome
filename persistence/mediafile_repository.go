@@ -237,8 +237,8 @@ func (r *mediaFileRepository) hydrateArtwork(mfs model.MediaFiles) {
 			eligibleIDs = append(eligibleIDs, mfs[i].ID)
 		}
 	}
-	albumInfos := hydrateItemImages(r.ctx, r.db, model.KindAlbumArtwork.Prefix(), albumIDs)
-	mfInfos := hydrateItemImages(r.ctx, r.db, model.KindMediaFileArtwork.Prefix(), eligibleIDs)
+	albumInfos := hydrateItemImages(r.ctx, r.db, model.KindAlbumArtwork, albumIDs)
+	mfInfos := hydrateItemImages(r.ctx, r.db, model.KindMediaFileArtwork, eligibleIDs)
 	for i := range mfs {
 		mf := &mfs[i]
 		applyItemImage(albumInfos, mf.AlbumID, &mf.AlbumImage)

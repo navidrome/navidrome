@@ -109,14 +109,14 @@ func (r *artworkQueueRepository) Count() (int64, error) {
 	return res.Count, err
 }
 
-func (r *artworkQueueRepository) EnqueueStaleAbsent(kind string, attemptedBefore time.Time) (int64, error) {
+func (r *artworkQueueRepository) EnqueueStaleAbsent(kind model.Kind, attemptedBefore time.Time) (int64, error) {
 	now := time.Now()
 	// DO NOTHING is deliberate: rechecks must not bump priority/retry_at of already-queued items.
 	ins := Expr(`INSERT INTO `+r.tableName+` (item_kind, item_id, image_type, priority, attempts, retry_at, enqueued_at)
 		SELECT item_kind, item_id, image_type, ?, 0, ?, ?
 		FROM `+itemArtworkTable+` WHERE item_kind = ? AND hash = '' AND attempted_at < ?
 		ON CONFLICT (item_kind, item_id, image_type) DO NOTHING`,
-		model.ArtworkPriorityRecheck, now, now, kind, attemptedBefore)
+		model.ArtworkPriorityRecheck, now, now, kind.Prefix(), attemptedBefore)
 	return r.executeSQL(ins)
 }
 

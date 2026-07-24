@@ -22,7 +22,9 @@ const FingerprintPropertyKey = "artwork.fingerprint"
 const staleAbsentAge = 24 * time.Hour
 
 // staleAbsentKinds are the item kinds eligible for the periodic stale-absent recheck.
-var staleAbsentKinds = []string{"ar", "al", "pl", "ra"}
+var staleAbsentKinds = []model.Kind{
+	model.KindArtistArtwork, model.KindAlbumArtwork, model.KindPlaylistArtwork, model.KindRadioArtwork,
+}
 
 // Fingerprint summarizes the config knobs that affect artwork resolution outcomes; a
 // change means previously resolved (or absent) state may no longer be correct.
@@ -50,13 +52,13 @@ func Backfill(ctx context.Context, ds model.DataStore) (bool, error) {
 
 	// Artists first: few entities, most external-dependent, so they get queue headstart.
 	kinds := []struct {
-		kind  string
+		kind  model.Kind
 		fetch func() ([]string, error)
 	}{
-		{"ar", func() ([]string, error) { return ds.Artist(ctx).GetAllIDs() }},
-		{"al", func() ([]string, error) { return ds.Album(ctx).GetAllIDs() }},
-		{"pl", func() ([]string, error) { return ds.Playlist(ctx).GetAllIDs() }},
-		{"ra", func() ([]string, error) { return ds.Radio(ctx).GetAllIDs() }},
+		{model.KindArtistArtwork, func() ([]string, error) { return ds.Artist(ctx).GetAllIDs() }},
+		{model.KindAlbumArtwork, func() ([]string, error) { return ds.Album(ctx).GetAllIDs() }},
+		{model.KindPlaylistArtwork, func() ([]string, error) { return ds.Playlist(ctx).GetAllIDs() }},
+		{model.KindRadioArtwork, func() ([]string, error) { return ds.Radio(ctx).GetAllIDs() }},
 	}
 	for _, k := range kinds {
 		ids, err := k.fetch()
@@ -75,14 +77,14 @@ func Backfill(ctx context.Context, ds model.DataStore) (bool, error) {
 	return true, nil
 }
 
-func enqueueBackfillKind(ctx context.Context, ds model.DataStore, kind string, ids []string) error {
+func enqueueBackfillKind(ctx context.Context, ds model.DataStore, kind model.Kind, ids []string) error {
 	if len(ids) == 0 {
 		return nil
 	}
 	items := make([]model.ArtworkQueueItem, len(ids))
 	for i, id := range ids {
 		items[i] = model.ArtworkQueueItem{
-			ItemKind: kind, ItemID: id, ImageType: model.ImageTypePrimary, Priority: model.ArtworkPriorityBackfill,
+			ItemKind: kind.Prefix(), ItemID: id, ImageType: model.ImageTypePrimary, Priority: model.ArtworkPriorityBackfill,
 		}
 	}
 	return ds.ArtworkQueue(ctx).Enqueue(items...)

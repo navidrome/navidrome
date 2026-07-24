@@ -163,7 +163,7 @@ var _ = Describe("Service", func() {
 			_, err := svc.Get(ctx, model.MustParseArtworkID("al-al3"), 0, false)
 			Expect(err).To(MatchError(ErrUnavailable))
 			Expect(queueRepo.Data[primaryKey("al", "al3")].Priority).To(Equal(model.ArtworkPriorityScan))
-			ia, err := artRepo.GetItemArtwork("al", "al3", model.ImageTypePrimary)
+			ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al3", model.ImageTypePrimary)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ia.Hash).To(Equal("bbbbbbbbbbbbbbbb"))
 		})
@@ -202,7 +202,7 @@ var _ = Describe("Service", func() {
 			Expect(err).To(MatchError(ErrUnavailable))
 			Expect(queueRepo.Data[primaryKey("al", "al4b")].Priority).To(Equal(model.ArtworkPriorityBump))
 			// The absent state row is left intact; only a recheck is scheduled.
-			ia, err := artRepo.GetItemArtwork("al", "al4b", model.ImageTypePrimary)
+			ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al4b", model.ImageTypePrimary)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ia.Hash).To(BeEmpty())
 		})
@@ -218,7 +218,7 @@ var _ = Describe("Service", func() {
 			Expect(readAll(img)).To(Equal(coverBytes))
 
 			Expect(queueRepo.Data[primaryKey("al", "al5")].Priority).To(Equal(model.ArtworkPriorityBump))
-			_, err = artRepo.GetItemArtwork("al", "al5", model.ImageTypePrimary)
+			_, err = artRepo.GetItemArtwork(model.KindAlbumArtwork, "al5", model.ImageTypePrimary)
 			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 
@@ -229,7 +229,7 @@ var _ = Describe("Service", func() {
 			_, err := svc.Get(ctx, model.MustParseArtworkID("al-al6"), 0, false)
 			Expect(err).To(MatchError(ErrUnavailable))
 			Expect(queueRepo.Data[primaryKey("al", "al6")].Priority).To(Equal(model.ArtworkPriorityBump))
-			_, err = artRepo.GetItemArtwork("al", "al6", model.ImageTypePrimary)
+			_, err = artRepo.GetItemArtwork(model.KindAlbumArtwork, "al6", model.ImageTypePrimary)
 			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 	})
@@ -290,7 +290,7 @@ var _ = Describe("Service", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(readAll(img))).To(BeNumerically(">", 0))
 			Expect(queueRepo.Data[primaryKey("mf", "mf4")].Priority).To(Equal(model.ArtworkPriorityBump))
-			_, err = artRepo.GetItemArtwork("mf", "mf4", model.ImageTypePrimary)
+			_, err = artRepo.GetItemArtwork(model.KindMediaFileArtwork, "mf4", model.ImageTypePrimary)
 			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 

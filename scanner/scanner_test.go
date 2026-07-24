@@ -226,7 +226,7 @@ var _ = Describe("Scanner", Ordered, func() {
 				fsys.UpdateTags("The Beatles/Help!/01 - Help!.mp3", _t{"comment": "reimport"})
 				Expect(runScanner(ctx, true)).To(Succeed())
 
-				_, err = ds.Artwork(ctx).GetItemArtwork("mf", trackID, model.ImageTypePrimary)
+				_, err = ds.Artwork(ctx).GetItemArtwork(model.KindMediaFileArtwork, trackID, model.ImageTypePrimary)
 				Expect(err).To(MatchError(model.ErrNotFound))
 			})
 		})

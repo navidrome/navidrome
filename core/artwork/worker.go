@@ -165,14 +165,14 @@ func (w *Worker) drain(ctx context.Context, concurrency int) (int, error) {
 	return len(items), nil
 }
 
-// artworkKindToResource maps a queue item's kind to the UI resource name carried
-// in the refresh event.
-var artworkKindToResource = map[string]string{
-	"al": "album",
-	"ar": "artist",
-	"pl": "playlist",
-	"ra": "radio",
-	"mf": "song",
+// artworkKindToResource maps an artwork kind to the UI resource name carried in the refresh
+// event; note media_file maps to "song", so this can't derive from Kind.String().
+var artworkKindToResource = map[model.Kind]string{
+	model.KindAlbumArtwork:     "album",
+	model.KindArtistArtwork:    "artist",
+	model.KindPlaylistArtwork:  "playlist",
+	model.KindRadioArtwork:     "radio",
+	model.KindMediaFileArtwork: "song",
 }
 
 // broadcastRefresh emits one coalesced RefreshResource for the batch's newly-acquired
@@ -184,7 +184,8 @@ func (w *Worker) broadcastRefresh(ctx context.Context, found []model.ArtworkQueu
 	event := &events.RefreshResource{}
 	byResource := map[string][]string{}
 	for _, it := range found {
-		if res, ok := artworkKindToResource[it.ItemKind]; ok {
+		kind, _ := model.ParseKind(it.ItemKind)
+		if res, ok := artworkKindToResource[kind]; ok {
 			byResource[res] = append(byResource[res], it.ItemID)
 		}
 	}
@@ -235,7 +236,8 @@ func (w *Worker) precache(ctx context.Context, item model.ArtworkQueueItem) {
 		imageType = model.ImageTypePrimary
 	}
 	repo := w.deps.ds.Artwork(ctx)
-	ia, err := repo.GetItemArtwork(item.ItemKind, item.ItemID, imageType)
+	kind, _ := model.ParseKind(item.ItemKind)
+	ia, err := repo.GetItemArtwork(kind, item.ItemID, imageType)
 	if err != nil || ia.Hash == "" {
 		return
 	}

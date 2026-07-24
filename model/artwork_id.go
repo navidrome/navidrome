@@ -40,6 +40,13 @@ var artworkKindMap = map[string]Kind{
 	KindRadioArtwork.prefix:     KindRadioArtwork,
 }
 
+// ParseKind resolves an item_kind prefix (e.g. "al") to its Kind, reporting whether it was known.
+// Use it at string boundaries — URL params, the item_kind column — to enter the typed Kind domain.
+func ParseKind(prefix string) (Kind, bool) {
+	k, ok := artworkKindMap[prefix]
+	return k, ok
+}
+
 type ArtworkID struct {
 	Kind       Kind
 	ID         string

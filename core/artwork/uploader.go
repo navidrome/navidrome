@@ -37,10 +37,10 @@ type Uploader interface {
 
 // uploadEntityKind maps an upload's entity type to its artwork kind prefix, so a
 // successful upload can clear and re-queue that item's artwork state.
-var uploadEntityKind = map[string]string{
-	consts.EntityArtist:   model.KindArtistArtwork.Prefix(),
-	consts.EntityPlaylist: model.KindPlaylistArtwork.Prefix(),
-	consts.EntityRadio:    model.KindRadioArtwork.Prefix(),
+var uploadEntityKind = map[string]model.Kind{
+	consts.EntityArtist:   model.KindArtistArtwork,
+	consts.EntityPlaylist: model.KindPlaylistArtwork,
+	consts.EntityRadio:    model.KindRadioArtwork,
 }
 
 type uploader struct {

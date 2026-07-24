@@ -75,7 +75,7 @@ func (r *radioRepository) hydrateArtwork(radios model.Radios) {
 		return
 	}
 	ids := slice.Map(radios, func(rd model.Radio) string { return rd.ID })
-	infos := hydrateItemImages(r.ctx, r.db, model.KindRadioArtwork.Prefix(), ids)
+	infos := hydrateItemImages(r.ctx, r.db, model.KindRadioArtwork, ids)
 	for i := range radios {
 		applyItemImage(infos, radios[i].ID, &radios[i].ItemImage)
 	}
@@ -108,7 +108,7 @@ func (r *radioRepository) Put(radio *model.Radio, colsToUpdate ...string) error 
 	}
 	// Enqueue artwork resolution for the created/updated radio at Bump priority so a new
 	// radio's cover resolves proactively. Never fails the save.
-	item := model.ArtworkQueueItem{ItemKind: "ra", ItemID: radio.ID, ImageType: model.ImageTypePrimary,
+	item := model.ArtworkQueueItem{ItemKind: model.KindRadioArtwork.Prefix(), ItemID: radio.ID, ImageType: model.ImageTypePrimary,
 		Priority: model.ArtworkPriorityBump}
 	if err := NewArtworkQueueRepository(r.ctx, r.db).Enqueue(item); err != nil {
 		log.Warn(r.ctx, "could not enqueue radio artwork", "id", radio.ID, err)

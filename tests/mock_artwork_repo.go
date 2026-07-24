@@ -132,13 +132,13 @@ func (m *MockArtworkRepo) referenced(hash string) bool {
 	return false
 }
 
-func (m *MockArtworkRepo) GetItemArtwork(kind, id, imageType string) (*model.ItemArtwork, error) {
+func (m *MockArtworkRepo) GetItemArtwork(kind model.Kind, id, imageType string) (*model.ItemArtwork, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {
 		return nil, m.Err
 	}
-	if ia, ok := m.ItemData[iaKey(kind, id, imageType)]; ok {
+	if ia, ok := m.ItemData[iaKey(kind.Prefix(), id, imageType)]; ok {
 		return &ia, nil
 	}
 	return nil, model.ErrNotFound
@@ -161,21 +161,21 @@ func (m *MockArtworkRepo) PutItemArtwork(ia *model.ItemArtwork) error {
 	return nil
 }
 
-func (m *MockArtworkRepo) DeleteForItem(kind, id string) error {
+func (m *MockArtworkRepo) DeleteForItem(kind model.Kind, id string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {
 		return m.Err
 	}
 	for k, ia := range m.ItemData {
-		if ia.ItemKind == kind && ia.ItemID == id {
+		if ia.ItemKind == kind.Prefix() && ia.ItemID == id {
 			delete(m.ItemData, k)
 		}
 	}
 	return nil
 }
 
-func (m *MockArtworkRepo) DeleteForItems(kind string, ids []string) error {
+func (m *MockArtworkRepo) DeleteForItems(kind model.Kind, ids []string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {
@@ -186,14 +186,14 @@ func (m *MockArtworkRepo) DeleteForItems(kind string, ids []string) error {
 		idSet[id] = true
 	}
 	for k, ia := range m.ItemData {
-		if ia.ItemKind == kind && idSet[ia.ItemID] {
+		if ia.ItemKind == kind.Prefix() && idSet[ia.ItemID] {
 			delete(m.ItemData, k)
 		}
 	}
 	return nil
 }
 
-func (m *MockArtworkRepo) GetInfoForItems(kind string, ids []string) (map[string]model.ItemArtworkInfo, error) {
+func (m *MockArtworkRepo) GetInfoForItems(kind model.Kind, ids []string) (map[string]model.ItemArtworkInfo, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {
@@ -201,7 +201,7 @@ func (m *MockArtworkRepo) GetInfoForItems(kind string, ids []string) (map[string
 	}
 	res := map[string]model.ItemArtworkInfo{}
 	for _, id := range ids {
-		if ia, ok := m.ItemData[iaKey(kind, id, model.ImageTypePrimary)]; ok {
+		if ia, ok := m.ItemData[iaKey(kind.Prefix(), id, model.ImageTypePrimary)]; ok {
 			info := model.ItemArtworkInfo{ItemID: id, Hash: ia.Hash}
 			if a, ok := m.Data[ia.Hash]; ok {
 				info.BlurHash = a.BlurHash

@@ -50,16 +50,17 @@ func resolveItemMode(ctx context.Context, ds model.DataStore, ag *agents.Agents,
 	if gate == nil {
 		gate = passthroughGate
 	}
-	switch item.ItemKind {
-	case "al":
+	kind, _ := model.ParseKind(item.ItemKind)
+	switch kind {
+	case model.KindAlbumArtwork:
 		return resolveAlbum(ctx, ds, ag, ffmpeg, item.ItemID, gate, localOnly)
-	case "ar":
+	case model.KindArtistArtwork:
 		return resolveArtist(ctx, ds, ag, ffmpeg, item.ItemID, gate, localOnly)
-	case "pl":
+	case model.KindPlaylistArtwork:
 		return resolvePlaylist(ctx, ds, ag, ffmpeg, item.ItemID, gate, localOnly)
-	case "ra":
+	case model.KindRadioArtwork:
 		return resolveRadio(ctx, ds, item.ItemID)
-	case "mf":
+	case model.KindMediaFileArtwork:
 		return resolveMediaFile(ctx, ds, ffmpeg, item.ItemID)
 	default:
 		return resolution{}, fmt.Errorf("resolveItem: kind %q is not resolvable by the worker", item.ItemKind)

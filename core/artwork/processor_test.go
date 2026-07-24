@@ -86,7 +86,7 @@ var _ = Describe("processItem", func() {
 		out := processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al1"})
 		Expect(out).To(Equal(outcomeFound))
 
-		ia, err := artRepo.GetItemArtwork("al", "al1", model.ImageTypePrimary)
+		ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al1", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ia.Hash).ToNot(BeEmpty())
 		Expect(ia.Source).To(Equal("folder"))
@@ -108,7 +108,7 @@ var _ = Describe("processItem", func() {
 		out := processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al2"})
 		Expect(out).To(Equal(outcomeFound))
 
-		ia, err := artRepo.GetItemArtwork("al", "al2", model.ImageTypePrimary)
+		ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al2", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ia.Source).To(Equal("embedded"))
 		Expect(filepath.ToSlash(ia.SourcePath)).To(HaveSuffix("tests/fixtures/artist/an-album/test.mp3"))
@@ -131,7 +131,7 @@ var _ = Describe("processItem", func() {
 		out := processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al3"})
 		Expect(out).To(Equal(outcomeAbsent))
 
-		ia, err := artRepo.GetItemArtwork("al", "al3", model.ImageTypePrimary)
+		ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al3", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ia.Hash).To(BeEmpty())
 		Expect(ia.Source).To(BeEmpty())
@@ -148,7 +148,7 @@ var _ = Describe("processItem", func() {
 		out := processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al4"})
 		Expect(out).To(Equal(outcomeFailed))
 
-		_, err := artRepo.GetItemArtwork("al", "al4", model.ImageTypePrimary)
+		_, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al4", model.ImageTypePrimary)
 		Expect(err).To(MatchError(model.ErrNotFound))
 	})
 
@@ -166,7 +166,7 @@ var _ = Describe("processItem", func() {
 		out := processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alstale"})
 		Expect(out).To(Equal(outcomeFoundStale))
 
-		ia, err := artRepo.GetItemArtwork("al", "alstale", model.ImageTypePrimary)
+		ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "alstale", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ia.Hash).ToNot(BeEmpty())
 		Expect(ia.Source).To(Equal("folder"))
@@ -187,7 +187,7 @@ var _ = Describe("processItem", func() {
 		out := processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alext"})
 		Expect(out).To(Equal(outcomeFound))
 
-		ia, err := artRepo.GetItemArtwork("al", "alext", model.ImageTypePrimary)
+		ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "alext", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ia.Source).To(Equal("external:deezerFake"))
 		Expect(ia.Hash).ToNot(BeEmpty())
@@ -212,7 +212,7 @@ var _ = Describe("processItem", func() {
 
 		out1 := processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al5"})
 		Expect(out1).To(Equal(outcomeFound))
-		ia1, err := artRepo.GetItemArtwork("al", "al5", model.ImageTypePrimary)
+		ia1, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al5", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 
 		// Poison the stored blurhash: if the second item re-decodes instead of
@@ -223,7 +223,7 @@ var _ = Describe("processItem", func() {
 
 		out2 := processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al6"})
 		Expect(out2).To(Equal(outcomeFound))
-		ia2, err := artRepo.GetItemArtwork("al", "al6", model.ImageTypePrimary)
+		ia2, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al6", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ia2.Hash).To(Equal(ia1.Hash))
 
@@ -253,7 +253,7 @@ var _ = Describe("processItem", func() {
 
 		folderRepo.result = []model.Folder{{Path: "album-a", ImageFiles: []string{"cover.jpg"}}}
 		Expect(processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alA"})).To(Equal(outcomeFound))
-		iaA, err := artRepo.GetItemArtwork("al", "alA", model.ImageTypePrimary)
+		iaA, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "alA", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(iaA.Source).To(Equal("folder"))
 		Expect(filepath.ToSlash(iaA.SourcePath)).To(HaveSuffix("album-a/cover.jpg"))
@@ -266,14 +266,14 @@ var _ = Describe("processItem", func() {
 
 		folderRepo.result = []model.Folder{{Path: "album-b", ImageFiles: []string{"cover.jpg"}}}
 		Expect(processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alB"})).To(Equal(outcomeFound))
-		iaB, err := artRepo.GetItemArtwork("al", "alB", model.ImageTypePrimary)
+		iaB, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "alB", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(iaB.Hash).To(Equal(iaA.Hash))
 		Expect(filepath.ToSlash(iaB.SourcePath)).To(HaveSuffix("album-b/cover.jpg"))
 		Expect(iaB.RefMtime).To(Equal(time.Unix(2000, 0).UnixNano()))
 
 		// The first item's provenance survives the second item processing identical bytes.
-		iaAafter, err := artRepo.GetItemArtwork("al", "alA", model.ImageTypePrimary)
+		iaAafter, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "alA", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(filepath.ToSlash(iaAafter.SourcePath)).To(HaveSuffix("album-a/cover.jpg"))
 		Expect(iaAafter.RefMtime).To(Equal(time.Unix(1000, 0).UnixNano()))
@@ -299,7 +299,7 @@ var _ = Describe("processItem", func() {
 		out := processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "ra", ItemID: "ra1"})
 		Expect(out).To(Equal(outcomeFailed))
 
-		_, err := artRepo.GetItemArtwork("ra", "ra1", model.ImageTypePrimary)
+		_, err := artRepo.GetItemArtwork(model.KindRadioArtwork, "ra1", model.ImageTypePrimary)
 		Expect(err).To(MatchError(model.ErrNotFound))
 	})
 
@@ -320,7 +320,7 @@ var _ = Describe("processItem", func() {
 		out := processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "ra", ItemID: "big"})
 		Expect(out).To(Equal(outcomeFailed))
 
-		_, err = artRepo.GetItemArtwork("ra", "big", model.ImageTypePrimary)
+		_, err = artRepo.GetItemArtwork(model.KindRadioArtwork, "big", model.ImageTypePrimary)
 		Expect(err).To(MatchError(model.ErrNotFound))
 	})
 
@@ -345,7 +345,7 @@ var _ = Describe("processItem", func() {
 		out := processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al7"})
 		Expect(out).To(Equal(outcomeFailed))
 
-		_, err := artRepo.GetItemArtwork("al", "al7", model.ImageTypePrimary)
+		_, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al7", model.ImageTypePrimary)
 		Expect(err).To(MatchError(model.ErrNotFound))
 	})
 })

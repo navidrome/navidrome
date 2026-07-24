@@ -284,7 +284,7 @@ func (r *artistRepository) hydrateArtwork(artists model.Artists) {
 		return
 	}
 	ids := slice.Map(artists, func(a model.Artist) string { return a.ID })
-	infos := hydrateItemImages(r.ctx, r.db, model.KindArtistArtwork.Prefix(), ids)
+	infos := hydrateItemImages(r.ctx, r.db, model.KindArtistArtwork, ids)
 	for i := range artists {
 		applyItemImage(infos, artists[i].ID, &artists[i].ItemImage)
 	}

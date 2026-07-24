@@ -78,13 +78,13 @@ type ArtworkRepository interface {
 	// DeleteOrphans deletes the given hashes only if still unreferenced and older than cutoff (atomic re-check).
 	DeleteOrphans(createdBefore time.Time, hashes []string) error
 	// Per-item state (item_artwork table)
-	GetItemArtwork(kind, id, imageType string) (*ItemArtwork, error)
+	GetItemArtwork(kind Kind, id, imageType string) (*ItemArtwork, error)
 	PutItemArtwork(ia *ItemArtwork) error
-	DeleteForItem(kind, id string) error
+	DeleteForItem(kind Kind, id string) error
 	// DeleteForItems removes state rows for the given ids of one kind, in chunks.
-	DeleteForItems(kind string, ids []string) error
+	DeleteForItems(kind Kind, ids []string) error
 	// GetInfoForItems hydrates a page: one batched query, item_artwork joined to artwork.
-	GetInfoForItems(kind string, ids []string) (map[string]ItemArtworkInfo, error)
+	GetInfoForItems(kind Kind, ids []string) (map[string]ItemArtworkInfo, error)
 	// GetAllMimes returns hash -> current mime for every stored artwork, for sweep retention checks.
 	GetAllMimes() (map[string]string, error)
 	// PurgeDanglingItemArtwork removes state rows whose entity no longer exists.
@@ -111,7 +111,7 @@ type ArtworkQueueRepository interface {
 	DeleteIfUnchanged(kind, id, imageType string, retryAt time.Time) error
 	Count() (int64, error)
 	// EnqueueStaleAbsent inserts queue rows (priority Recheck) for absent states older than cutoff.
-	EnqueueStaleAbsent(kind string, attemptedBefore time.Time) (int64, error)
+	EnqueueStaleAbsent(kind Kind, attemptedBefore time.Time) (int64, error)
 	// PurgeDangling removes queue rows whose entity no longer exists.
 	PurgeDangling() (int64, error)
 }

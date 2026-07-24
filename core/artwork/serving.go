@@ -97,7 +97,7 @@ const requestRecheckAge = time.Hour
 // found row serves its hash, absent row is unavailable (promoting a stale recheck on view),
 // missing row reads through provisionally.
 func (s *service) serveEntity(ctx context.Context, artID model.ArtworkID, size int, square bool) (*Image, error) {
-	ia, err := s.ds.Artwork(ctx).GetItemArtwork(artID.Kind.Prefix(), artID.ID, model.ImageTypePrimary)
+	ia, err := s.ds.Artwork(ctx).GetItemArtwork(artID.Kind, artID.ID, model.ImageTypePrimary)
 	switch {
 	case errors.Is(err, model.ErrNotFound):
 		return s.provisional(ctx, artID, size, square)
@@ -255,7 +255,7 @@ func (s *service) serveMediaFile(ctx context.Context, artID model.ArtworkID, siz
 		}
 		return s.Get(ctx, mf.DiscCoverArtID(), size, square)
 	}
-	ia, err := s.ds.Artwork(ctx).GetItemArtwork("mf", artID.ID, model.ImageTypePrimary)
+	ia, err := s.ds.Artwork(ctx).GetItemArtwork(model.KindMediaFileArtwork, artID.ID, model.ImageTypePrimary)
 	switch {
 	case err == nil && ia.Hash != "":
 		return s.serveHash(ctx, artID, ia, size, square)

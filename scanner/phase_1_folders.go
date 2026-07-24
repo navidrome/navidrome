@@ -369,7 +369,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 			}
 			if entry.artists[i].Name != consts.UnknownArtist && entry.artists[i].Name != consts.VariousArtists {
 				queueItems = append(queueItems, model.ArtworkQueueItem{
-					ItemKind: "ar", ItemID: entry.artists[i].ID, ImageType: model.ImageTypePrimary,
+					ItemKind: model.KindArtistArtwork.Prefix(), ItemID: entry.artists[i].ID, ImageType: model.ImageTypePrimary,
 					Priority: model.ArtworkPriorityScan,
 				})
 			}
@@ -384,7 +384,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 			}
 			if entry.albums[i].Name != consts.UnknownAlbum {
 				queueItems = append(queueItems, model.ArtworkQueueItem{
-					ItemKind: "al", ItemID: entry.albums[i].ID, ImageType: model.ImageTypePrimary,
+					ItemKind: model.KindAlbumArtwork.Prefix(), ItemID: entry.albums[i].ID, ImageType: model.ImageTypePrimary,
 					Priority: model.ArtworkPriorityScan,
 				})
 			}
@@ -405,7 +405,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 			for i := range entry.tracks {
 				trackIDs[i] = entry.tracks[i].ID
 			}
-			if err := tx.Artwork(p.ctx).DeleteForItems("mf", trackIDs); err != nil {
+			if err := tx.Artwork(p.ctx).DeleteForItems(model.KindMediaFileArtwork, trackIDs); err != nil {
 				log.Warn(p.ctx, "Scanner: could not invalidate media_file artwork", "folder", entry.path, err)
 			}
 		}

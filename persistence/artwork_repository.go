@@ -114,13 +114,13 @@ func (r *artworkRepository) DeleteOrphans(createdBefore time.Time, hashes []stri
 	return nil
 }
 
-// danglingItemArtworkKinds maps item_kind prefixes to the table that owns the entity.
-var danglingItemArtworkKinds = map[string]string{
-	"al": "album",
-	"ar": "artist",
-	"pl": "playlist",
-	"ra": "radio",
-	"mf": "media_file",
+// danglingItemArtworkKinds maps an artwork kind to the table that owns the entity.
+var danglingItemArtworkKinds = map[model.Kind]string{
+	model.KindAlbumArtwork:     "album",
+	model.KindArtistArtwork:    "artist",
+	model.KindPlaylistArtwork:  "playlist",
+	model.KindRadioArtwork:     "radio",
+	model.KindMediaFileArtwork: "media_file",
 }
 
 // purgeDangling deletes rows in table whose owning entity is gone, one statement per kind.
@@ -128,7 +128,7 @@ func purgeDangling(execute func(Sqlizer) (int64, error), table string) (int64, e
 	var total int64
 	for kind, entityTable := range danglingItemArtworkKinds {
 		del := Delete(table).Where(And{
-			Eq{"item_kind": kind},
+			Eq{"item_kind": kind.Prefix()},
 			Expr("item_id NOT IN (SELECT id FROM " + entityTable + ")"),
 		})
 		c, err := execute(del)
@@ -144,9 +144,9 @@ func (r *artworkRepository) PurgeDanglingItemArtwork() (int64, error) {
 	return purgeDangling(r.items.executeSQL, itemArtworkTable)
 }
 
-func (r *artworkRepository) GetItemArtwork(kind, id, imageType string) (*model.ItemArtwork, error) {
+func (r *artworkRepository) GetItemArtwork(kind model.Kind, id, imageType string) (*model.ItemArtwork, error) {
 	sel := Select("*").From(itemArtworkTable).
-		Where(Eq{"item_kind": kind, "item_id": id, "image_type": imageType})
+		Where(Eq{"item_kind": kind.Prefix(), "item_id": id, "image_type": imageType})
 	var res model.ItemArtwork
 	if err := r.items.queryOne(sel, &res); err != nil {
 		return nil, err
@@ -174,27 +174,27 @@ func (r *artworkRepository) PutItemArtwork(ia *model.ItemArtwork) error {
 	return err
 }
 
-func (r *artworkRepository) DeleteForItem(kind, id string) error {
-	return r.items.delete(Eq{"item_kind": kind, "item_id": id})
+func (r *artworkRepository) DeleteForItem(kind model.Kind, id string) error {
+	return r.items.delete(Eq{"item_kind": kind.Prefix(), "item_id": id})
 }
 
-func (r *artworkRepository) DeleteForItems(kind string, ids []string) error {
+func (r *artworkRepository) DeleteForItems(kind model.Kind, ids []string) error {
 	for chunk := range slices.Chunk(ids, artworkBatchSize) {
-		if err := r.items.delete(Eq{"item_kind": kind, "item_id": chunk}); err != nil {
+		if err := r.items.delete(Eq{"item_kind": kind.Prefix(), "item_id": chunk}); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (r *artworkRepository) GetInfoForItems(kind string, ids []string) (map[string]model.ItemArtworkInfo, error) {
+func (r *artworkRepository) GetInfoForItems(kind model.Kind, ids []string) (map[string]model.ItemArtworkInfo, error) {
 	res := map[string]model.ItemArtworkInfo{}
 	for chunk := range slices.Chunk(ids, artworkBatchSize) {
 		sel := Select("ia.item_id", "ia.hash", "COALESCE(a.blur_hash, '') as blur_hash").
 			From(itemArtworkTable + " ia").
 			LeftJoin("artwork a ON a.hash = ia.hash").
 			Where(And{
-				Eq{"ia.item_kind": kind},
+				Eq{"ia.item_kind": kind.Prefix()},
 				Eq{"ia.image_type": model.ImageTypePrimary},
 				Eq{"ia.item_id": chunk},
 			})

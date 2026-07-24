@@ -87,7 +87,7 @@ var _ = Describe("Uploader", func() {
 
 			// SetImage only writes the file; the state row survives and nothing is queued until
 			// the caller has persisted the new filename and called EnqueueArtwork.
-			_, err = artRepo.GetItemArtwork("ar", "ar-1", model.ImageTypePrimary)
+			_, err = artRepo.GetItemArtwork(model.KindArtistArtwork, "ar-1", model.ImageTypePrimary)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(queueRepo.DequeueBatch(1000)).To(BeEmpty())
 		})
@@ -102,7 +102,7 @@ var _ = Describe("Uploader", func() {
 
 			svc.EnqueueArtwork(ctx, consts.EntityArtist, "ar-1")
 
-			_, err := artRepo.GetItemArtwork("ar", "ar-1", model.ImageTypePrimary)
+			_, err := artRepo.GetItemArtwork(model.KindArtistArtwork, "ar-1", model.ImageTypePrimary)
 			Expect(err).To(MatchError(model.ErrNotFound))
 
 			queued, err := queueRepo.DequeueBatch(1000)

@@ -105,7 +105,8 @@ var _ = Describe("Worker soak", func() {
 			// "Serve-adjacent" read-back: exercise the Phase 2 surfaces a caller would
 			// use after acquisition, not the old serving pipeline.
 			if out == outcomeFound {
-				ia, err := artRepo.GetItemArtwork(it.ItemKind, it.ItemID, model.ImageTypePrimary)
+				kind, _ := model.ParseKind(it.ItemKind)
+				ia, err := artRepo.GetItemArtwork(kind, it.ItemID, model.ImageTypePrimary)
 				Expect(err).ToNot(HaveOccurred(), "cycle %d: GetItemArtwork", i)
 				art, err := artRepo.GetImage(ia.Hash)
 				Expect(err).ToNot(HaveOccurred(), "cycle %d: GetImage", i)

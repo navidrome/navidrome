@@ -42,13 +42,13 @@ var _ = Describe("Acquisition → serve loop", func() {
 	)
 
 	// itemFound reports whether the worker has persisted a resolved (hash-bearing) state row.
-	itemFound := func(kind, id string) func() bool {
+	itemFound := func(kind model.Kind, id string) func() bool {
 		return func() bool {
 			ia, err := artRepo.GetItemArtwork(kind, id, model.ImageTypePrimary)
 			return err == nil && ia.Hash != ""
 		}
 	}
-	itemAbsent := func(kind, id string) func() bool {
+	itemAbsent := func(kind model.Kind, id string) func() bool {
 		return func() bool {
 			ia, err := artRepo.GetItemArtwork(kind, id, model.ImageTypePrimary)
 			return err == nil && ia.Hash == ""
@@ -115,9 +115,9 @@ var _ = Describe("Acquisition → serve loop", func() {
 	It("acquires album folder art and serves the exact bytes under its hash", func() {
 		seedFolderAlbum("al1")
 		worker.Bump("al", "al1")
-		runWorkerUntil(ctx, worker, itemFound("al", "al1"))
+		runWorkerUntil(ctx, worker, itemFound(model.KindAlbumArtwork, "al1"))
 
-		ia, err := artRepo.GetItemArtwork("al", "al1", model.ImageTypePrimary)
+		ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al1", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ia.Source).To(Equal("folder"))
 
@@ -132,9 +132,9 @@ var _ = Describe("Acquisition → serve loop", func() {
 		name := writeUpload(consts.EntityArtist, "artist-e2e.png", artistPngFixture)
 		artistRepo.SetData(model.Artists{{ID: "ar1", Name: "Artist", UploadedImage: name}})
 		worker.Bump("ar", "ar1")
-		runWorkerUntil(ctx, worker, itemFound("ar", "ar1"))
+		runWorkerUntil(ctx, worker, itemFound(model.KindArtistArtwork, "ar1"))
 
-		ia, err := artRepo.GetItemArtwork("ar", "ar1", model.ImageTypePrimary)
+		ia, err := artRepo.GetItemArtwork(model.KindArtistArtwork, "ar1", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ia.Source).To(Equal("upload"))
 
@@ -149,9 +149,9 @@ var _ = Describe("Acquisition → serve loop", func() {
 		plRepo.SetData(model.Playlists{{ID: "pl1", Name: "Playlist"}})
 		plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"al1"}}
 		worker.Bump("pl", "pl1")
-		runWorkerUntil(ctx, worker, itemFound("pl", "pl1"))
+		runWorkerUntil(ctx, worker, itemFound(model.KindPlaylistArtwork, "pl1"))
 
-		ia, err := artRepo.GetItemArtwork("pl", "pl1", model.ImageTypePrimary)
+		ia, err := artRepo.GetItemArtwork(model.KindPlaylistArtwork, "pl1", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ia.Source).To(Equal("generated"))
 
@@ -169,9 +169,9 @@ var _ = Describe("Acquisition → serve loop", func() {
 		name := writeUpload(consts.EntityRadio, "radio-e2e.jpg", coverFixture)
 		radioRepo.Data["ra1"] = &model.Radio{ID: "ra1", Name: "Station", UploadedImage: name}
 		worker.Bump("ra", "ra1")
-		runWorkerUntil(ctx, worker, itemFound("ra", "ra1"))
+		runWorkerUntil(ctx, worker, itemFound(model.KindRadioArtwork, "ra1"))
 
-		ia, err := artRepo.GetItemArtwork("ra", "ra1", model.ImageTypePrimary)
+		ia, err := artRepo.GetItemArtwork(model.KindRadioArtwork, "ra1", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ia.Source).To(Equal("upload"))
 
@@ -194,12 +194,12 @@ var _ = Describe("Acquisition → serve loop", func() {
 		provisionalBytes := readAll(provisional)
 		Expect(len(provisionalBytes)).To(BeNumerically(">", 0))
 
-		_, err = artRepo.GetItemArtwork("mf", "mf1", model.ImageTypePrimary)
+		_, err = artRepo.GetItemArtwork(model.KindMediaFileArtwork, "mf1", model.ImageTypePrimary)
 		Expect(err).To(MatchError(model.ErrNotFound), "provisional serving must not write a state row")
 
 		// The provisional read enqueued a Bump; drain it and confirm the persisted hash matches.
-		runWorkerUntil(ctx, worker, itemFound("mf", "mf1"))
-		ia, err := artRepo.GetItemArtwork("mf", "mf1", model.ImageTypePrimary)
+		runWorkerUntil(ctx, worker, itemFound(model.KindMediaFileArtwork, "mf1"))
+		ia, err := artRepo.GetItemArtwork(model.KindMediaFileArtwork, "mf1", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ia.Source).To(Equal("embedded"))
 		Expect(ia.Hash).To(Equal(provisional.Hash))
@@ -214,7 +214,7 @@ var _ = Describe("Acquisition → serve loop", func() {
 	It("records an absent state for an entity with no art and reports it unavailable", func() {
 		albumRepo.SetData(model.Albums{{ID: "alx", Name: "Artless", LibraryID: 0}})
 		worker.Bump("al", "alx")
-		runWorkerUntil(ctx, worker, itemAbsent("al", "alx"))
+		runWorkerUntil(ctx, worker, itemAbsent(model.KindAlbumArtwork, "alx"))
 
 		_, err := svc.Get(ctx, model.MustParseArtworkID("al-alx"), 0, false)
 		Expect(err).To(MatchError(artwork.ErrUnavailable))

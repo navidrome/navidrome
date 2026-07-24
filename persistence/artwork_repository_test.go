@@ -161,7 +161,8 @@ var _ = Describe("ArtworkRepository", func() {
 				{ItemKind: "ra", ItemID: radioWithHomePage.ID},
 				{ItemKind: "mf", ItemID: songDayInALife.ID},
 			} {
-				_, err := repo.GetItemArtwork(kept.ItemKind, kept.ItemID, model.ImageTypePrimary)
+				k, _ := model.ParseKind(kept.ItemKind)
+				_, err := repo.GetItemArtwork(k, kept.ItemID, model.ImageTypePrimary)
 				Expect(err).ToNot(HaveOccurred())
 			}
 			for _, gone := range []model.ItemArtwork{
@@ -171,7 +172,8 @@ var _ = Describe("ArtworkRepository", func() {
 				{ItemKind: "ra", ItemID: "no-such-radio"},
 				{ItemKind: "mf", ItemID: "no-such-mediafile"},
 			} {
-				_, err := repo.GetItemArtwork(gone.ItemKind, gone.ItemID, model.ImageTypePrimary)
+				k, _ := model.ParseKind(gone.ItemKind)
+				_, err := repo.GetItemArtwork(k, gone.ItemID, model.ImageTypePrimary)
 				Expect(err).To(MatchError(model.ErrNotFound))
 			}
 		})
@@ -187,7 +189,7 @@ var _ = Describe("ArtworkRepository", func() {
 			ia.RefMtime = 222
 			Expect(repo.PutItemArtwork(ia)).To(Succeed())
 
-			got, err := repo.GetItemArtwork("al", "al1", model.ImageTypePrimary)
+			got, err := repo.GetItemArtwork(model.KindAlbumArtwork, "al1", model.ImageTypePrimary)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.Source).To(Equal("embedded"))
 			Expect(got.SourcePath).To(Equal("/music/a/track.mp3"))
@@ -199,7 +201,7 @@ var _ = Describe("ArtworkRepository", func() {
 			before := time.Now().Add(-time.Second)
 			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "ar", ItemID: "noattempt",
 				ImageType: model.ImageTypePrimary, Hash: ""})).To(Succeed())
-			got, err := repo.GetItemArtwork("ar", "noattempt", model.ImageTypePrimary)
+			got, err := repo.GetItemArtwork(model.KindArtistArtwork, "noattempt", model.ImageTypePrimary)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.AttemptedAt).To(BeTemporally(">", before))
 		})
@@ -207,7 +209,7 @@ var _ = Describe("ArtworkRepository", func() {
 		It("represents known-absent as empty hash", func() {
 			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "ar", ItemID: "ar1",
 				ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: time.Now()})).To(Succeed())
-			got, err := repo.GetItemArtwork("ar", "ar1", model.ImageTypePrimary)
+			got, err := repo.GetItemArtwork(model.KindArtistArtwork, "ar1", model.ImageTypePrimary)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.Hash).To(BeEmpty())
 		})
@@ -217,7 +219,7 @@ var _ = Describe("ArtworkRepository", func() {
 			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "al", ItemID: "x1", ImageType: model.ImageTypePrimary, Hash: "h9", Source: "folder"})).To(Succeed())
 			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "al", ItemID: "x2", ImageType: model.ImageTypePrimary, Hash: "", Source: ""})).To(Succeed())
 
-			info, err := repo.GetInfoForItems("al", []string{"x1", "x2", "x3"})
+			info, err := repo.GetInfoForItems(model.KindAlbumArtwork, []string{"x1", "x2", "x3"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(info).To(HaveLen(2))
 			Expect(info["x1"].Hash).To(Equal("h9"))
@@ -230,8 +232,8 @@ var _ = Describe("ArtworkRepository", func() {
 
 		It("deletes all rows for an item", func() {
 			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "pl", ItemID: "p1", ImageType: model.ImageTypePrimary, Hash: "h1"})).To(Succeed())
-			Expect(repo.DeleteForItem("pl", "p1")).To(Succeed())
-			_, err := repo.GetItemArtwork("pl", "p1", model.ImageTypePrimary)
+			Expect(repo.DeleteForItem(model.KindPlaylistArtwork, "p1")).To(Succeed())
+			_, err := repo.GetItemArtwork(model.KindPlaylistArtwork, "p1", model.ImageTypePrimary)
 			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 
@@ -245,13 +247,13 @@ var _ = Describe("ArtworkRepository", func() {
 			}
 			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "mf", ItemID: "keep", ImageType: model.ImageTypePrimary, Hash: "h1"})).To(Succeed())
 
-			Expect(repo.DeleteForItems("mf", ids)).To(Succeed())
+			Expect(repo.DeleteForItems(model.KindMediaFileArtwork, ids)).To(Succeed())
 
 			for _, id := range ids {
-				_, err := repo.GetItemArtwork("mf", id, model.ImageTypePrimary)
+				_, err := repo.GetItemArtwork(model.KindMediaFileArtwork, id, model.ImageTypePrimary)
 				Expect(err).To(MatchError(model.ErrNotFound))
 			}
-			kept, err := repo.GetItemArtwork("mf", "keep", model.ImageTypePrimary)
+			kept, err := repo.GetItemArtwork(model.KindMediaFileArtwork, "keep", model.ImageTypePrimary)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(kept.ItemID).To(Equal("keep"))
 		})

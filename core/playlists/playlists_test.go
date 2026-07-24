@@ -428,7 +428,7 @@ var _ = Describe("Playlists", func() {
 
 			Expect(ps.RemoveImage(ctx, "pls-1")).To(Succeed())
 
-			_, err := ds.Artwork(ctx).GetItemArtwork("pl", "pls-1", model.ImageTypePrimary)
+			_, err := ds.Artwork(ctx).GetItemArtwork(model.KindPlaylistArtwork, "pls-1", model.ImageTypePrimary)
 			Expect(err).To(MatchError(model.ErrNotFound))
 			queued, _ := ds.ArtworkQueue(ctx).DequeueBatch(100)
 			Expect(queued).To(ContainElement(SatisfyAll(
