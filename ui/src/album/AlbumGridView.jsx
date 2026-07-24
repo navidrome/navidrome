@@ -12,19 +12,16 @@ import { Link } from 'react-router-dom'
 import { linkToRecord, useListContext, Loading } from 'react-admin'
 import { withContentRect } from 'react-measure'
 import { useDrag } from 'react-dnd'
-import subsonic from '../subsonic'
 import {
   AlbumContextMenu,
   PlayButton,
   ArtistLinkField,
   OverflowTooltip,
-  useImageUrl,
 } from '../common'
-import config from '../config'
 import { DraggableTypes } from '../consts'
 import clsx from 'clsx'
 import { AlbumDatesField } from './AlbumDatesField.jsx'
-import { BlurHashCanvas } from '../common/BlurHashCanvas'
+import { CoverImage } from '../common/CoverImage'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -139,23 +136,14 @@ const Cover = withContentRect('bounds')(({
     [record],
   )
 
-  const url = subsonic.getCoverArtUrl(record, config.uiCoverArtSize, true)
-  const { imgUrl, loading: imageLoading } = useImageUrl(url)
-  const showBlurHash = imageLoading && record.blurHash
-
   return (
     <div ref={measureRef} className={classes.coverContainer}>
-      <div ref={dragAlbumRef} style={{ position: 'relative' }}>
-        {showBlurHash && (
-          <BlurHashCanvas hash={record.blurHash} className={classes.cover} />
-        )}
-        <img
-          src={imgUrl || undefined}
-          alt={record.name}
-          className={`${classes.cover} ${imageLoading ? classes.coverLoading : ''}`}
-          style={
-            showBlurHash ? { position: 'absolute', left: 0, top: 0 } : undefined
-          }
+      <div ref={dragAlbumRef}>
+        <CoverImage
+          record={record}
+          square
+          className={classes.cover}
+          title={record.name}
         />
       </div>
     </div>

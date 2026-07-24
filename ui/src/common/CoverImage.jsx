@@ -45,6 +45,7 @@ export const CoverImage = ({
         onClick={handleClick}
         className={clsx(className, showBlurHash && classes.img)}
         style={{
+          objectFit: 'cover',
           opacity: loading ? 0.5 : 1,
           cursor: handleClick ? 'pointer' : 'default',
         }}
