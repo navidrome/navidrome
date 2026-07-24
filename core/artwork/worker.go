@@ -22,10 +22,12 @@ import (
 
 const (
 	workerPollInterval = 5 * time.Second
-	backoffBase        = 15 * time.Second
-	backoffCap         = 48 * time.Hour
-	breakerThreshold   = 5
-	breakerProbeAfter  = time.Minute
+	backoffBase        = 5 * time.Second
+	// giveUpAfter bounds the retry budget from enqueue: past it the worker stops retrying and
+	// hands the item to the periodic stale-absent recheck (settling absent on a bare failure).
+	giveUpAfter       = 12 * time.Hour
+	breakerThreshold  = 5
+	breakerProbeAfter = time.Minute
 )
 
 var errBreakerOpen = errors.New("artwork: external circuit breaker open")
@@ -215,11 +217,22 @@ func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) outco
 			log.Warn(ctx, "artwork: could not delete processed queue item", "kind", item.ItemKind, "id", item.ItemID, err)
 		}
 	case outcomeFoundStale, outcomeFailed:
-		// MarkFailedIfUnchanged, not MarkFailed: a scan that re-enqueued this row mid-flight reset
-		// retry_at, so stale backoff must not stomp its fresh, immediate eligibility.
 		retryAt := time.Now().Add(backoff(item.Attempts))
-		if err := queue.MarkFailedIfUnchanged(item.ItemKind, item.ItemID, item.ImageType, item.RetryAt, retryAt); err != nil {
-			log.Warn(ctx, "artwork: could not reschedule failed queue item", "kind", item.ItemKind, "id", item.ItemID, err)
+		if retryAt.Before(item.EnqueuedAt.Add(giveUpAfter)) {
+			// MarkFailedIfUnchanged, not MarkFailed: a scan that re-enqueued this row mid-flight reset
+			// retry_at, so stale backoff must not stomp its fresh, immediate eligibility.
+			if err := queue.MarkFailedIfUnchanged(item.ItemKind, item.ItemID, item.ImageType, item.RetryAt, retryAt); err != nil {
+				log.Warn(ctx, "artwork: could not reschedule failed queue item", "kind", item.ItemKind, "id", item.ItemID, err)
+			}
+			break
+		}
+		// Retry budget exhausted: stop retrying. A bare failure settles absent so the stale-absent
+		// sweep (and a page view) can still recover it; a stale-found keeps its already-served art.
+		if out == outcomeFailed {
+			writeAbsent(ctx, w.deps.ds.Artwork(ctx), item)
+		}
+		if err := queue.DeleteIfUnchanged(item.ItemKind, item.ItemID, item.ImageType, item.RetryAt); err != nil {
+			log.Warn(ctx, "artwork: could not remove exhausted queue item", "kind", item.ItemKind, "id", item.ItemID, err)
 		}
 	}
 	return out
@@ -314,14 +327,14 @@ func (w *Worker) gateFor(name string) *extGate {
 	return g
 }
 
-// backoffFor returns min(5m×4^n, 48h) scaled by (1+jitter), with jitter in [-0.2, 0.2].
+// backoffFor returns min(5s×4^n, giveUpAfter) scaled by (1+jitter), with jitter in [-0.4, 0.4].
 func backoffFor(attempts int, jitter float64) time.Duration {
-	d := math.Min(float64(backoffBase)*math.Pow(4, float64(attempts)), float64(backoffCap))
+	d := math.Min(float64(backoffBase)*math.Pow(4, float64(attempts)), float64(giveUpAfter))
 	return time.Duration(d * (1 + jitter))
 }
 
 func backoff(attempts int) time.Duration {
-	return backoffFor(attempts, rand.Float64()*0.4-0.2) //nolint:gosec // retry jitter, not security-sensitive
+	return backoffFor(attempts, rand.Float64()*0.8-0.4) //nolint:gosec // retry jitter, not security-sensitive
 }
 
 // breaker opens after breakerThreshold consecutive external errors and admits a

@@ -311,6 +311,31 @@ var _ = Describe("Worker", func() {
 			Expect(it.RetryAt).To(BeTemporally("==", dequeued.Add(time.Minute)))
 		})
 
+		It("gives up and settles absent once the retry budget is exhausted", func() {
+			conf.Server.CoverArtPriority = "external"
+			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al9", Name: "Album"}})
+			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
+			w = NewWorker(ds, store, ag, ffm, broker, imgCache)
+			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al9"})).To(Succeed())
+			// Age the row past the budget so the next retry would land beyond enqueued_at+giveUpAfter.
+			for k, v := range queueRepo.Data {
+				if v.ItemID == "al9" {
+					v.EnqueuedAt = time.Now().Add(-(giveUpAfter + time.Hour))
+					queueRepo.Data[k] = v
+				}
+			}
+
+			n, err := w.drain(ctx, 1)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(n).To(Equal(1))
+
+			// Row removed (stops retrying) and the failure settles absent for the periodic sweep.
+			Expect(findQueued(queueRepo, "al", "al9")).To(BeNil())
+			ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al9", model.ImageTypePrimary)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ia.Hash).To(BeEmpty())
+		})
+
 		It("resolves a private playlist under an admin context instead of failing forever", func() {
 			ds.MockedUser = adminUserRepo()
 			vds := &visibilityPlaylistDS{
@@ -565,15 +590,15 @@ var _ = Describe("backoff", func() {
 			attempts int
 			want     time.Duration
 		}{
-			{0, 15 * time.Second},
-			{1, 60 * time.Second},
-			{2, 4 * time.Minute},
-			{3, 16 * time.Minute},
-			{4, 64 * time.Minute},
-			{5, 256 * time.Minute},
-			{6, 1024 * time.Minute},
-			{7, 48 * time.Hour},
-			{8, 48 * time.Hour},
+			{0, 5 * time.Second},
+			{1, 20 * time.Second},
+			{2, 80 * time.Second},
+			{3, 320 * time.Second},
+			{4, 1280 * time.Second},
+			{5, 5120 * time.Second},
+			{6, 20480 * time.Second},
+			{7, 12 * time.Hour},
+			{8, 12 * time.Hour},
 		} {
 			Expect(backoffFor(c.attempts, 0)).To(Equal(c.want), "attempt %d", c.attempts)
 		}
@@ -585,9 +610,9 @@ var _ = Describe("backoff", func() {
 		Expect(backoffFor(2, -0.2)).To(Equal(time.Duration(float64(base) * 0.8)))
 	})
 
-	It("keeps random jitter within +/-20%", func() {
-		lo := time.Duration(float64(16*time.Minute) * 0.8)
-		hi := time.Duration(float64(16*time.Minute) * 1.2)
+	It("keeps random jitter within +/-40%", func() {
+		lo := time.Duration(float64(320*time.Second) * 0.6)
+		hi := time.Duration(float64(320*time.Second) * 1.4)
 		for range 200 {
 			d := backoff(3)
 			Expect(d).To(BeNumerically(">=", lo))
