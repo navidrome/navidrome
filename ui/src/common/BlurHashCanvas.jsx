@@ -12,17 +12,19 @@ export const BlurHashCanvas = ({ hash, className }) => {
     if (!hash || !canvasRef.current) {
       return
     }
+    const ctx = canvasRef.current.getContext('2d')
+    if (!ctx) {
+      return
+    }
+    // Clear first so a hash change that fails to decode never leaves a stale frame.
+    ctx.clearRect(0, 0, DECODE_SIZE, DECODE_SIZE)
     try {
       const pixels = decode(hash, DECODE_SIZE, DECODE_SIZE)
-      const ctx = canvasRef.current.getContext('2d')
-      if (!ctx) {
-        return
-      }
       const imageData = ctx.createImageData(DECODE_SIZE, DECODE_SIZE)
       imageData.data.set(pixels)
       ctx.putImageData(imageData, 0, 0)
     } catch {
-      // A malformed hash simply leaves the canvas transparent.
+      // A malformed hash simply leaves the canvas blank.
     }
   }, [hash])
 
