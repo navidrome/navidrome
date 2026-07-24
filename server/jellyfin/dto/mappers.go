@@ -200,9 +200,8 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 	return item
 }
 
-// primaryImageTag returns the image cache tag plus the real-blurhash map; absent art yields ("", nil),
-// and unresolved art falls back to the id. A blurhash is never synthesized: Finamp keys its cover cache
-// on the value, so a fake one pins a stale cover forever (#5798).
+// primaryImageTag never synthesizes a blurhash: Finamp keys its cover cache on the value,
+// so a fake one pins a stale cover forever (#5798).
 func primaryImageTag(img model.ItemImage, fallback string) (string, map[string]map[string]string) {
 	if img.ImageAbsent {
 		return "", nil
