@@ -2,16 +2,44 @@ package persistence
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"time"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pocketbase/dbx"
 )
+
+// seedAnnotations gives each id a distinct rating, play count, play date and starred_at for the
+// current user, dropping the rows again when the spec ends. It writes them directly, so that
+// SetRating's average_rating update does not outlive the cleanup.
+func seedAnnotations(itemType string, ids ...string) {
+	GinkgoHelper()
+	when := time.Date(2024, 3, 1, 12, 0, 0, 0, time.UTC)
+	for i, id := range ids {
+		_, err := GetDBXBuilder().NewQuery(`insert or replace into annotation
+			(user_id, item_id, item_type, play_count, play_date, rating, rated_at, starred, starred_at)
+			values ({:u}, {:id}, {:t}, {:pc}, {:d}, {:r}, {:d}, 1, {:d})`).
+			Bind(dbx.Params{"u": adminUser.ID, "id": id, "t": itemType,
+				"pc": i + 1, "r": 4 + i, "d": when.Add(time.Duration(i) * time.Hour)}).Execute()
+		Expect(err).ToNot(HaveOccurred())
+	}
+	DeferCleanup(func() {
+		for _, id := range ids {
+			_, err := GetDBXBuilder().NewQuery("delete from annotation where user_id={:u} and item_type={:t} and item_id={:id}").
+				Bind(dbx.Params{"u": adminUser.ID, "t": itemType, "id": id}).Execute()
+			Expect(err).ToNot(HaveOccurred())
+		}
+	})
+}
 
 var _ = Describe("Artwork hydration", func() {
 	var ctx context.Context
@@ -325,6 +353,288 @@ var _ = Describe("Artwork hydration", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).ToNot(BeEmpty())
 			Expect(res[0].ImageHash).To(Equal("alsrchhhhhhhhhhh"))
+		})
+	})
+
+	Describe("GetCursor", func() {
+		var albumRepo model.AlbumRepository
+		var artistRepo model.ArtistRepository
+		var playlistRepo model.PlaylistRepository
+		var onlyAlbums, onlyArtists, onlyPlaylists squirrel.Eq
+
+		scoped := func(opts model.QueryOptions, only squirrel.Eq) model.QueryOptions {
+			if opts.Filters == nil {
+				opts.Filters = only
+			} else {
+				opts.Filters = squirrel.And{only, opts.Filters}
+			}
+			return opts
+		}
+
+		BeforeEach(func() {
+			albumRepo = NewAlbumRepository(ctx, GetDBXBuilder())
+			artistRepo = NewArtistRepository(ctx, GetDBXBuilder())
+			playlistRepo = NewPlaylistRepository(ctx, GetDBXBuilder())
+			// Other specs leave rows behind, so scope every cursor spec to the fixtures.
+			onlyAlbums = squirrel.Eq{"album.id": []string{albumSgtPeppers.ID, albumAbbeyRoad.ID,
+				albumRadioactivity.ID, albumMultiDisc.ID, albumCJK.ID, albumPunctuation.ID}}
+			onlyArtists = squirrel.Eq{"artist.id": []string{artistKraftwerk.ID, artistBeatles.ID,
+				artistCJK.ID, artistPunctuation.ID}}
+			// Both fixture playlists belong to the same owner, so the owner_name sort would have a
+			// single value to order by. This one is also private and owned by a third user, which
+			// is what the non-admin visibility spec needs to see hidden.
+			foreign := model.Playlist{Name: "Foreign", OwnerID: thirdUser.ID, OwnerName: thirdUser.UserName}
+			Expect(playlistRepo.Put(&foreign)).To(Succeed())
+			DeferCleanup(func() { Expect(playlistRepo.Delete(foreign.ID)).To(Succeed()) })
+			onlyPlaylists = squirrel.Eq{"playlist.id": []string{plsBest.ID, plsCool.ID, foreign.ID}}
+
+			// The suite annotates a single album and artist, so the annotation-backed sorts would
+			// have nothing to order. Seed distinct values, and drop them again after each spec.
+			seedAnnotations("album", albumSgtPeppers.ID, albumAbbeyRoad.ID)
+			seedAnnotations("artist", artistKraftwerk.ID, artistCJK.ID)
+
+			Expect(aw.PutImage(&model.Artwork{
+				Hash: "curhash11111111", Mime: "image/jpeg", BlurHash: "LEHV6nWB2yk8",
+			})).To(Succeed())
+			putInfo("al", albumSgtPeppers.ID, "curhash11111111")
+			putInfo("al", albumAbbeyRoad.ID, "")
+			putInfo("ar", artistBeatles.ID, "curhash11111111")
+			putInfo("pl", plsBest.ID, "curhash11111111")
+		})
+
+		It("hydrates every streamed album, like GetAll", func() {
+			opts := model.QueryOptions{Sort: "name", Filters: onlyAlbums}
+			want, err := albumRepo.GetAll(opts)
+			Expect(err).ToNot(HaveOccurred())
+
+			got := collectCursor(albumRepo.GetCursor(opts))
+
+			Expect(got).To(ConsistOf(want))
+			byID := map[string]model.Album{}
+			for _, al := range got {
+				byID[al.ID] = al
+			}
+			Expect(byID[albumSgtPeppers.ID].ImageHash).To(Equal("curhash11111111"))
+			Expect(byID[albumSgtPeppers.ID].BlurHash).To(Equal("LEHV6nWB2yk8"))
+			Expect(byID[albumAbbeyRoad.ID].ImageAbsent).To(BeTrue())
+			Expect(byID[albumRadioactivity.ID].ImageHash).To(BeEmpty())
+			Expect(byID[albumRadioactivity.ID].ImageAbsent).To(BeFalse())
+		})
+
+		It("hydrates every streamed artist, like GetAll", func() {
+			opts := model.QueryOptions{Sort: "name", Filters: onlyArtists}
+			want, err := artistRepo.GetAll(opts)
+			Expect(err).ToNot(HaveOccurred())
+
+			got := collectCursor(artistRepo.GetCursor(opts))
+
+			Expect(got).To(ConsistOf(want))
+			Expect(slice.Map(got, func(a model.Artist) string { return a.ImageHash })).
+				To(ContainElement("curhash11111111"))
+		})
+
+		It("hydrates every streamed playlist, like GetAll", func() {
+			opts := model.QueryOptions{Sort: "name", Filters: onlyPlaylists}
+			want, err := playlistRepo.GetAll(opts)
+			Expect(err).ToNot(HaveOccurred())
+
+			got := collectCursor(playlistRepo.GetCursor(opts))
+
+			Expect(got).To(ConsistOf(want))
+			Expect(slice.Map(got, func(p model.Playlist) string { return p.ImageHash })).
+				To(ContainElement("curhash11111111"))
+		})
+
+		It("honors Max and Offset exactly once", func() {
+			opts := model.QueryOptions{Sort: "name", Filters: onlyAlbums, Max: 2, Offset: 1}
+			want, err := albumRepo.GetAll(opts)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(want).To(HaveLen(2))
+
+			got := collectCursor(albumRepo.GetCursor(opts))
+
+			Expect(slice.Map(got, func(a model.Album) string { return a.ID })).
+				To(Equal(slice.Map(want, func(a model.Album) string { return a.ID })))
+		})
+
+		// The sorts and filters the Jellyfin list endpoints issue: the id pre-pass must resolve each
+		// of them exactly like the full query. Comparing sort keys, not ids, keeps ties out of it.
+		DescribeTable("orders albums like GetAll",
+			func(opts model.QueryOptions, key func(model.Album) string) {
+				opts = scoped(opts, onlyAlbums)
+				want, err := albumRepo.GetAll(opts)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(want).ToNot(BeEmpty())
+
+				got := collectCursor(albumRepo.GetCursor(opts))
+
+				Expect(slice.Map(got, key)).To(Equal(slice.Map(want, key)))
+				Expect(slice.Map(got, func(a model.Album) string { return a.ID })).
+					To(ConsistOf(slice.Map(want, func(a model.Album) string { return a.ID })))
+			},
+			Entry("by name", model.QueryOptions{Sort: "name"},
+				func(a model.Album) string { return a.OrderAlbumName }),
+			Entry("by artist", model.QueryOptions{Sort: "artist"},
+				func(a model.Album) string { return a.OrderAlbumArtistName }),
+			Entry("by recently added", model.QueryOptions{Sort: "recently_added", Order: "desc"},
+				func(a model.Album) string { return fmt.Sprint(a.CreatedAt) }),
+			Entry("by year", model.QueryOptions{Sort: "max_year"},
+				func(a model.Album) string { return fmt.Sprint(a.MaxYear) }),
+			Entry("by play count", model.QueryOptions{Sort: "play_count", Order: "desc"},
+				func(a model.Album) string { return fmt.Sprint(a.PlayCount) }),
+			Entry("by last played", model.QueryOptions{Sort: "play_date", Order: "desc"},
+				func(a model.Album) string { return fmt.Sprint(a.PlayDate) }),
+			Entry("by rating", model.QueryOptions{Sort: "rating", Order: "desc"},
+				func(a model.Album) string { return fmt.Sprint(a.Rating) }),
+			Entry("starred only", model.QueryOptions{Sort: "starred_at", Order: "desc",
+				Filters: squirrel.Eq{"starred": true}},
+				func(a model.Album) string { return fmt.Sprint(a.StarredAt) }),
+		)
+
+		DescribeTable("orders artists like GetAll",
+			func(opts model.QueryOptions, key func(model.Artist) string) {
+				opts = scoped(opts, onlyArtists)
+				want, err := artistRepo.GetAll(opts)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(want).ToNot(BeEmpty())
+
+				got := collectCursor(artistRepo.GetCursor(opts))
+
+				Expect(slice.Map(got, key)).To(Equal(slice.Map(want, key)))
+				Expect(slice.Map(got, func(a model.Artist) string { return a.ID })).
+					To(ConsistOf(slice.Map(want, func(a model.Artist) string { return a.ID })))
+			},
+			Entry("by name", model.QueryOptions{Sort: "name"},
+				func(a model.Artist) string { return a.OrderArtistName }),
+			Entry("by album count", model.QueryOptions{Sort: "album_count", Order: "desc"},
+				func(a model.Artist) string { return fmt.Sprint(a.AlbumCount) }),
+			Entry("by song count", model.QueryOptions{Sort: "song_count", Order: "desc"},
+				func(a model.Artist) string { return fmt.Sprint(a.SongCount) }),
+			Entry("by play count", model.QueryOptions{Sort: "play_count", Order: "desc"},
+				func(a model.Artist) string { return fmt.Sprint(a.PlayCount) }),
+			Entry("starred only", model.QueryOptions{Sort: "starred_at", Order: "desc",
+				Filters: squirrel.Eq{"starred": true}},
+				func(a model.Artist) string { return fmt.Sprint(a.StarredAt) }),
+		)
+
+		DescribeTable("orders playlists like GetAll",
+			func(opts model.QueryOptions, key func(model.Playlist) string) {
+				opts = scoped(opts, onlyPlaylists)
+				want, err := playlistRepo.GetAll(opts)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(want).ToNot(BeEmpty())
+
+				got := collectCursor(playlistRepo.GetCursor(opts))
+
+				Expect(slice.Map(got, key)).To(Equal(slice.Map(want, key)))
+				Expect(slice.Map(got, func(p model.Playlist) string { return p.ID })).
+					To(ConsistOf(slice.Map(want, func(p model.Playlist) string { return p.ID })))
+			},
+			Entry("by name", model.QueryOptions{Sort: "name"},
+				func(p model.Playlist) string { return p.Name }),
+			Entry("by creation date", model.QueryOptions{Sort: "created_at", Order: "desc"},
+				func(p model.Playlist) string { return fmt.Sprint(p.CreatedAt) }),
+			Entry("by owner", model.QueryOptions{Sort: "owner_name"},
+				func(p model.Playlist) string { return p.OwnerName }),
+		)
+
+		It("streams every album exactly once when sorted randomly", func() {
+			opts := model.QueryOptions{Sort: "random", Filters: onlyAlbums}
+			want, err := albumRepo.GetAll(opts)
+			Expect(err).ToNot(HaveOccurred())
+
+			got := collectCursor(albumRepo.GetCursor(opts))
+
+			Expect(slice.Map(got, func(a model.Album) string { return a.ID })).
+				To(ConsistOf(slice.Map(want, func(a model.Album) string { return a.ID })))
+		})
+
+		It("keeps a non-admin from streaming another user's private playlists", func() {
+			otherCtx := request.WithUser(log.NewContext(context.Background()), regularUser)
+			repo := NewPlaylistRepository(otherCtx, GetDBXBuilder())
+			opts := model.QueryOptions{Sort: "name", Filters: onlyPlaylists}
+
+			// Both phases must filter on their own: the id pre-pass, and the chunk fetch that would
+			// otherwise re-read an id whose visibility changed in between.
+			Expect(repo.GetAllIDs(opts)).To(ConsistOf(plsBest.ID))
+			all, err := repo.GetAll(model.QueryOptions{Filters: onlyPlaylists})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(slice.Map(all, func(p model.Playlist) string { return p.ID })).To(ConsistOf(plsBest.ID))
+
+			got := collectCursor(repo.GetCursor(opts))
+
+			Expect(slice.Map(got, func(p model.Playlist) string { return p.Name })).
+				To(ConsistOf(plsBest.Name))
+		})
+	})
+
+	Describe("chunkOptions", func() {
+		It("carries Sort, Order and the caller's filters, but never Max/Offset", func() {
+			base := model.QueryOptions{Sort: "name", Order: "desc", Max: 10, Offset: 20,
+				Filters: squirrel.Eq{"missing": false}}
+
+			got := chunkOptions([]model.QueryOptions{base}, "album.id")([]string{"al-1", "al-2"})
+
+			Expect(got.Max).To(BeZero())
+			Expect(got.Offset).To(BeZero())
+			Expect(got.Sort).To(Equal("name"))
+			Expect(got.Order).To(Equal("desc"))
+			Expect(got.Filters).To(Equal(squirrel.And{
+				base.Filters, squirrel.Eq{"album.id": []string{"al-1", "al-2"}},
+			}))
+		})
+
+		It("filters by ids alone when the caller passed no filters", func() {
+			got := chunkOptions(nil, "artist.id")([]string{"ar-1"})
+			Expect(got.Filters).To(Equal(squirrel.Eq{"artist.id": []string{"ar-1"}}))
+		})
+	})
+
+	Describe("streamByIDs", func() {
+		It("fetches in chunks and yields every row in order", func() {
+			ids := make([]string, artworkChunkSize+3)
+			for i := range ids {
+				ids[i] = fmt.Sprintf("id-%d", i)
+			}
+			var chunks [][]string
+			got := collectCursor(streamByIDs(ids, func(chunk []string) ([]string, error) {
+				chunks = append(chunks, chunk)
+				return chunk, nil
+			}), nil)
+
+			Expect(chunks).To(HaveLen(2))
+			Expect(chunks[0]).To(HaveLen(artworkChunkSize))
+			Expect(chunks[1]).To(HaveLen(3))
+			Expect(got).To(Equal(ids))
+		})
+
+		It("yields the fetch error and stops", func() {
+			ids := make([]string, artworkChunkSize+1)
+			calls := 0
+			var errs []error
+			for _, err := range streamByIDs(ids, func(chunk []string) ([]string, error) {
+				calls++
+				return nil, errors.New("boom")
+			}) {
+				errs = append(errs, err)
+			}
+
+			Expect(calls).To(Equal(1))
+			Expect(errs).To(HaveLen(1))
+			Expect(errs[0]).To(MatchError("boom"))
+		})
+
+		It("stops fetching when the consumer breaks", func() {
+			ids := make([]string, artworkChunkSize+1)
+			calls := 0
+			for range streamByIDs(ids, func(chunk []string) ([]string, error) {
+				calls++
+				return chunk, nil
+			}) {
+				break
+			}
+
+			Expect(calls).To(Equal(1))
 		})
 	})
 

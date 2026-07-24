@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"iter"
 	"os"
 	"slices"
 	"strings"
@@ -267,9 +266,13 @@ func (r *artistRepository) GetAll(options ...model.QueryOptions) (model.Artists,
 }
 
 // GetAllIDs returns just the artist IDs for the same row set as GetAll, skipping the
-// heavy stats/annotation columns and JSON post-processing. Used by bulk enumeration (artwork backfill).
+// heavy stats columns and JSON post-processing. Used by bulk enumeration (artwork backfill)
+// and as GetCursor's id pre-pass.
 func (r *artistRepository) GetAllIDs(options ...model.QueryOptions) ([]string, error) {
 	sq := r.applyLibraryFilterToArtistQuery(r.newSelect(options...).Columns("artist.id")).GroupBy("artist.id")
+	if filtersNeedAnnotation(sq) {
+		sq = r.withAnnotation(sq, "artist.id")
+	}
 	ids := []string{}
 	err := r.queryAllSlice(sq, &ids)
 	return ids, err
@@ -288,16 +291,14 @@ func (r *artistRepository) hydrateArtwork(artists model.Artists) {
 }
 
 func (r *artistRepository) GetCursor(options ...model.QueryOptions) (model.ArtistCursor, error) {
-	sel := r.selectArtist(options...)
-	cursor, err := queryWithStableResults[dbArtist](r.sqlRepository, sel)
+	ids, err := r.GetAllIDs(options...)
 	if err != nil {
 		return nil, err
 	}
-	return wrapArtistCursor(cursor), nil
-}
-
-func wrapArtistCursor(cursor iter.Seq2[dbArtist, error]) model.ArtistCursor {
-	return model.ArtistCursor(wrapCursor(cursor, func(a dbArtist) *model.Artist { return a.Artist }))
+	opts := chunkOptions(options, "artist.id")
+	return model.ArtistCursor(streamByIDs(ids, func(chunk []string) (model.Artists, error) {
+		return r.GetAll(opts(chunk))
+	})), nil
 }
 
 func (r *artistRepository) getIndexKey(a model.Artist) string {

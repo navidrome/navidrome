@@ -269,21 +269,27 @@ func (r *albumRepository) hydrateArtwork(albums model.Albums) {
 }
 
 // GetAllIDs returns just the album IDs for the same row set as GetAll, skipping the
-// heavy column projection and JSON post-processing. Used by bulk enumeration (artwork backfill).
+// heavy column projection and JSON post-processing. Used by bulk enumeration (artwork backfill)
+// and as GetCursor's id pre-pass.
 func (r *albumRepository) GetAllIDs(options ...model.QueryOptions) ([]string, error) {
 	sq := r.applyLibraryFilter(r.newSelect(options...).Columns("album.id"))
+	if filtersNeedAnnotation(sq) {
+		sq = r.withAnnotation(sq, "album.id")
+	}
 	ids := []string{}
 	err := r.queryAllSlice(sq, &ids)
 	return ids, err
 }
 
 func (r *albumRepository) GetCursor(options ...model.QueryOptions) (model.AlbumCursor, error) {
-	sq := r.selectAlbum(options...)
-	cursor, err := queryWithStableResults[dbAlbum](r.sqlRepository, sq)
+	ids, err := r.GetAllIDs(options...)
 	if err != nil {
 		return nil, err
 	}
-	return wrapAlbumCursor(cursor), nil
+	opts := chunkOptions(options, "album.id")
+	return model.AlbumCursor(streamByIDs(ids, func(chunk []string) (model.Albums, error) {
+		return r.GetAll(opts(chunk))
+	})), nil
 }
 
 func (r *albumRepository) GetYears(libraryIDs ...int) ([]int, error) {

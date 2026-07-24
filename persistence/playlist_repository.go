@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"iter"
 	"slices"
 	"time"
 
@@ -207,28 +206,32 @@ func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playli
 }
 
 // GetAllIDs returns just the playlist IDs for the same row set as GetAll (honoring userFilter),
-// skipping the owner-name join columns and annotation. Used by bulk enumeration (artwork backfill).
+// skipping its per-row processing. Used by bulk enumeration (artwork backfill) and as GetCursor's
+// id pre-pass.
 func (r *playlistRepository) GetAllIDs(options ...model.QueryOptions) ([]string, error) {
-	sq := r.newSelect(options...).Columns("playlist.id").
-		Join("user on user.id = owner_id").Where(r.userFilter())
+	// Joins a projection of user, not the table: its name/created_at columns would otherwise make
+	// an ORDER BY on the playlist's own ambiguous.
+	sq := r.newSelect(options...).Columns("playlist.id", "user.user_name as owner_name").
+		Join("(select id, user_name from user) user on user.id = owner_id").Where(r.userFilter())
+	if filtersNeedAnnotation(sq) {
+		sq = r.withAnnotation(sq, "playlist.id")
+	}
 	ids := []string{}
 	err := r.queryAllSlice(sq, &ids)
 	return ids, err
 }
 
 func (r *playlistRepository) GetCursor(options ...model.QueryOptions) (model.PlaylistCursor, error) {
-	// Same userFilter as GetAll: a cursor must not widen visibility beyond public/owned playlists.
-	sel := r.selectPlaylist(options...).Where(r.userFilter())
-	cursor, err := queryWithStableResults[dbPlaylist](r.sqlRepository, sel)
+	// GetAllIDs and GetAll both apply userFilter: a cursor must not widen visibility beyond
+	// public/owned playlists, even if visibility changes between the two queries.
+	ids, err := r.GetAllIDs(options...)
 	if err != nil {
 		return nil, err
 	}
-	return wrapPlaylistCursor(cursor), nil
-}
-
-// dbPlaylist embeds a value, not a pointer, so its model is never nil.
-func wrapPlaylistCursor(cursor iter.Seq2[dbPlaylist, error]) model.PlaylistCursor {
-	return model.PlaylistCursor(wrapCursor(cursor, func(p dbPlaylist) *model.Playlist { return &p.Playlist }))
+	opts := chunkOptions(options, "playlist.id")
+	return model.PlaylistCursor(streamByIDs(ids, func(chunk []string) (model.Playlists, error) {
+		return r.GetAll(opts(chunk))
+	})), nil
 }
 
 func (r *playlistRepository) GetPlaylists(mediaFileId string) (model.Playlists, error) {
