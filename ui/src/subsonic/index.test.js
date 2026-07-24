@@ -120,6 +120,46 @@ describe('getCoverArtUrl', () => {
     expect(url).toContain('ar-test-123')
     expect(url).not.toContain('_=')
   })
+
+  it('appends the content hash to the artwork id', () => {
+    const url = subsonic.getCoverArtUrl({
+      id: 'album-123',
+      albumArtist: 'AA',
+      imageHash: '0123456789abcdef',
+    })
+    expect(url).toContain('al-album-123_0123456789abcdef')
+  })
+
+  it('drops the updatedAt buster once the url is hash-versioned', () => {
+    const url = subsonic.getCoverArtUrl({
+      id: 'album-123',
+      albumArtist: 'AA',
+      updatedAt: '2023-01-01T00:00:00Z',
+      imageHash: '0123456789abcdef',
+    })
+    expect(url).toContain('al-album-123_0123456789abcdef')
+    expect(url).not.toContain('_=')
+  })
+
+  it('keeps the updatedAt buster while artwork is unresolved', () => {
+    const url = subsonic.getCoverArtUrl({
+      id: 'album-123',
+      albumArtist: 'AA',
+      updatedAt: '2023-01-01T00:00:00Z',
+    })
+    expect(url).toContain('al-album-123')
+    expect(url).toContain('_=')
+  })
+
+  it('returns an empty url for known-absent artwork', () => {
+    expect(
+      subsonic.getCoverArtUrl({
+        id: 'album-123',
+        albumArtist: 'AA',
+        imageAbsent: true,
+      }),
+    ).toBe('')
+  })
 })
 
 describe('getDiscCoverArtUrl', () => {
