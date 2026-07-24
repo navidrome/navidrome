@@ -233,6 +233,31 @@ var _ = Describe("Artwork hydration", func() {
 			Expect(byID["2002"].ImageAbsent).To(BeFalse())
 		})
 
+		It("populates AlbumImage from hydrateArtwork regardless of which continue branch a track takes", func() {
+			setCover("1001", true) // eligible, resolves its own art -> own-art-wins continue
+			DeferCleanup(func() { setCover("1001", false) })
+
+			putInfo("al", "101", "alh101albimgxxxx") // 1001's album: own-art-wins branch
+			putInfo("al", "102", "alh102albimgxxxx") // 1002's album: single-disc inheritance branch
+			putInfo("al", "104", "")                 // 2002's album: known-absent, multi-disc branch
+			putInfo("mf", "1001", "mfh1001albimgxxx")
+
+			byID := getByID()
+
+			// own-art-wins: ImageHash is the track's own, but AlbumImage still carries the album's.
+			Expect(byID["1001"].ImageHash).To(Equal("mfh1001albimgxxx"))
+			Expect(byID["1001"].AlbumImage.ImageHash).To(Equal("alh101albimgxxxx"))
+
+			// single-disc album-inheritance: not eligible, so ImageHash mirrors the album's hash.
+			Expect(byID["1002"].ImageHash).To(Equal("alh102albimgxxxx"))
+			Expect(byID["1002"].AlbumImage.ImageHash).To(Equal("alh102albimgxxxx"))
+
+			// multi-disc bailout: ImageHash stays bare, but AlbumImage still reflects the absence.
+			Expect(byID["2002"].ImageHash).To(BeEmpty())
+			Expect(byID["2002"].ImageAbsent).To(BeFalse())
+			Expect(byID["2002"].AlbumImage.ImageAbsent).To(BeTrue())
+		})
+
 		It("keeps an eligible file optimistic when its own art is unresolved, even if the album is absent", func() {
 			// 1004 is eligible (has embedded cover) with no mf state row yet; its album (103) is absent.
 			setCover("1004", true)
