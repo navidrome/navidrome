@@ -291,12 +291,13 @@ func (l *lastfmAgent) GetArtistImages(ctx context.Context, _, name, mbid string)
 func (l *lastfmAgent) callAlbumGetInfo(ctx context.Context, name, artist, lang string) (*Album, error) {
 	a, err := l.client.albumGetInfo(ctx, name, artist, "", lang)
 	if err != nil {
-		var lfErr *lastFMError
-		if errors.As(err, &lfErr) && lfErr.Code == 6 {
-			log.Debug(ctx, "Album not found", "album", name, "artist", artist, err)
-		} else {
-			log.Error(ctx, "Error calling LastFM/album.getInfo", "album", name, "artist", artist, err)
+		if lfErr, ok := errors.AsType[*lastFMError](err); ok && lfErr.Code == 6 {
+			// A not-found is a definitive absence, not a fault: return the shared sentinel so the
+			// artwork worker's breaker/transient checks don't retry it, and log it at Debug.
+			log.Debug(ctx, "Album not found in Last.fm", "album", name, "artist", artist)
+			return nil, agents.ErrNotFound
 		}
+		log.Error(ctx, "Error calling LastFM/album.getInfo", "album", name, "artist", artist, err)
 		return nil, err
 	}
 	return a, nil
@@ -308,6 +309,12 @@ func (l *lastfmAgent) callArtistGetInfo(ctx context.Context, name string, lang s
 
 	a, err := l.client.artistGetInfo(ctx, name, lang)
 	if err != nil {
+		if lfErr, ok := errors.AsType[*lastFMError](err); ok && lfErr.Code == 6 {
+			// A not-found is a definitive absence, not a fault: return the shared sentinel so it
+			// doesn't trip the artwork worker's breaker, and log at Debug instead of Error.
+			log.Debug(ctx, "Artist not found in Last.fm", "artist", name)
+			return nil, agents.ErrNotFound
+		}
 		log.Error(ctx, "Error calling LastFM/artist.getInfo", "artist", name, err)
 		return nil, err
 	}
