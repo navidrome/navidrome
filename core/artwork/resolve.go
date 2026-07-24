@@ -10,15 +10,12 @@ import (
 	"image/png"
 	"io"
 	"io/fs"
-	"net/http"
 	"net/url"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/model"
@@ -216,7 +213,7 @@ func resolvePlaylist(ctx context.Context, ds model.DataStore, ag *agents.Agents,
 		return resolution{}, nil
 	}
 	if remoteImg != nil && conf.Server.EnableM3UExternalAlbumArt {
-		sf := func() (io.ReadCloser, string, error) { return fetchPlaylistImageURL(ctx, remoteImg) }
+		sf := func() (io.ReadCloser, string, error) { return fromURL(ctx, remoteImg) }
 		if res, ok, isErr := resolveExternalStep(gate, "m3u", sf); ok {
 			return res, nil
 		} else if isErr {
@@ -333,27 +330,6 @@ func classifyPlaylistImage(imageURL string) (localPath string, remote *url.URL) 
 	default:
 		return imageURL, nil
 	}
-}
-
-// Like sources.go's fromURL but maps 404/410 to ErrNotFound (definitive), so a stale M3U
-// cover URL falls through to the grid instead of retrying forever and tripping the breaker.
-func fetchPlaylistImageURL(ctx context.Context, imageURL *url.URL) (io.ReadCloser, string, error) {
-	hc := http.Client{Timeout: 5 * time.Second}
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, imageURL.String(), nil)
-	req.Header.Set("User-Agent", consts.HTTPUserAgent)
-	resp, err := hc.Do(req) //nolint:gosec
-	if err != nil {
-		return nil, "", err
-	}
-	if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusGone {
-		resp.Body.Close()
-		return nil, "", model.ErrNotFound
-	}
-	if resp.StatusCode != http.StatusOK {
-		resp.Body.Close()
-		return nil, "", fmt.Errorf("error retrieving artwork from %s: %s", imageURL, resp.Status)
-	}
-	return resp.Body, imageURL.String(), nil
 }
 
 func resolveEmbedded(ctx context.Context, lib libraryView, ffm ffmpeg.FFmpeg, embedRel string) (resolution, bool) {
