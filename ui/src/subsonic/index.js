@@ -81,8 +81,10 @@ const getAvatarUrl = (username, size) =>
   )
 
 const getCoverArtUrl = (record, size, square) => {
+  const dates = [record?.updatedAt, record?.importedAt].filter(Boolean).sort()
+  const bust = dates[dates.length - 1]
   const options = {
-    ...(record.updatedAt && { _: record.updatedAt }),
+    ...(bust && { _: bust }),
     ...(size && { size }),
     ...(square && { square }),
   }

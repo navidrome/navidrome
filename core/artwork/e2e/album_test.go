@@ -2,6 +2,7 @@ package artworke2e_test
 
 import (
 	"testing/fstest"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
@@ -465,5 +466,20 @@ var _ = Describe("Album artwork resolution", func() {
 			al := firstAlbum()
 			Expect(readArtwork(al.CoverArtID())).To(Equal(imageBytes("cover")))
 		})
+	})
+
+	// https://github.com/navidrome/navidrome/issues/5469
+	It("updates cover art after an image-only quick scan", func() {
+		conf.Server.CoverArtPriority = defaultCoverPriority
+		setLayout(fstest.MapFS{"Artist/Album/01 - Track.mp3": trackFile(1, "Track")})
+		scan()
+		alBefore := firstAlbum()
+
+		fakeFS.Add("Artist/Album/cover.jpg", imageFile("new-cover"), alBefore.UpdatedAt.Add(time.Hour))
+		scanQuick()
+
+		alAfter := firstAlbum()
+		Expect(alAfter.ImportedAt.After(alBefore.ImportedAt)).To(BeTrue())
+		Expect(readArtwork(alAfter.CoverArtID())).To(Equal(imageBytes("new-cover")))
 	})
 })
