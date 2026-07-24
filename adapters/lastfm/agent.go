@@ -93,7 +93,7 @@ func (l *lastfmAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid strin
 	var resp agents.AlbumInfo
 	for _, lang := range l.languages {
 		var err error
-		a, err = l.callAlbumGetInfo(ctx, name, artist, mbid, lang)
+		a, err = l.callAlbumGetInfo(ctx, name, artist, lang)
 		if err != nil {
 			return nil, err
 		}
@@ -114,7 +114,7 @@ func (l *lastfmAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid strin
 }
 
 func (l *lastfmAgent) GetAlbumImages(ctx context.Context, name, artist, mbid string) ([]agents.ExternalImage, error) {
-	a, err := l.callAlbumGetInfo(ctx, name, artist, mbid, l.languages[0])
+	a, err := l.callAlbumGetInfo(ctx, name, artist, l.languages[0])
 	if err != nil {
 		return nil, err
 	}
@@ -286,21 +286,16 @@ func (l *lastfmAgent) GetArtistImages(ctx context.Context, _, name, mbid string)
 	return res, nil
 }
 
-func (l *lastfmAgent) callAlbumGetInfo(ctx context.Context, name, artist, mbid string, lang string) (*Album, error) {
-	a, err := l.client.albumGetInfo(ctx, name, artist, mbid, lang)
-	var lfErr *lastFMError
-	isLastFMError := errors.As(err, &lfErr)
-
-	if mbid != "" && (isLastFMError && lfErr.Code == 6) {
-		log.Debug(ctx, "LastFM/album.getInfo could not find album by mbid, trying again", "album", name, "mbid", mbid)
-		return l.callAlbumGetInfo(ctx, name, artist, "", lang)
-	}
-
+// callAlbumGetInfo matches on name+artist only. Last.fm's album.getInfo by MBID is unreliable —
+// a correct MBID can return a different album (or none) — so the MBID is deliberately not passed.
+func (l *lastfmAgent) callAlbumGetInfo(ctx context.Context, name, artist, lang string) (*Album, error) {
+	a, err := l.client.albumGetInfo(ctx, name, artist, "", lang)
 	if err != nil {
-		if isLastFMError && lfErr.Code == 6 {
-			log.Debug(ctx, "Album not found", "album", name, "mbid", mbid, err)
+		var lfErr *lastFMError
+		if errors.As(err, &lfErr) && lfErr.Code == 6 {
+			log.Debug(ctx, "Album not found", "album", name, "artist", artist, err)
 		} else {
-			log.Error(ctx, "Error calling LastFM/album.getInfo", "album", name, "mbid", mbid, err)
+			log.Error(ctx, "Error calling LastFM/album.getInfo", "album", name, "artist", artist, err)
 		}
 		return nil, err
 	}
