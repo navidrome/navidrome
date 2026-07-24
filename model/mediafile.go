@@ -549,6 +549,11 @@ type MediaFileRepository interface {
 	GetRandom(options ...QueryOptions) (MediaFiles, error)
 	GetAllByTags(tag TagName, values []string, options ...QueryOptions) (MediaFiles, error)
 	GetCursor(options ...QueryOptions) (MediaFileCursor, error)
+	// GetAllIDs returns just the media_file IDs for the same row set as GetAll.
+	GetAllIDs(options ...QueryOptions) ([]string, error)
+	// GetCursorWithArtwork streams like GetCursor, hydrated, so callers that render images don't
+	// pay the scanner's per-row cost; it uses the same id pre-pass as the other cursors.
+	GetCursorWithArtwork(options ...QueryOptions) (MediaFileCursor, error)
 	Delete(id string) error
 	DeleteMissing(ids []string) error
 	DeleteAllMissing() (int64, error)

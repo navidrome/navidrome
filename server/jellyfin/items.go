@@ -588,7 +588,7 @@ func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, q ite
 	// A full-library request (Finamp's sync, with MediaSources) is tens of thousands of fat rows.
 	total, _ := repo.CountAll(model.QueryOptions{Filters: opts.Filters})
 	open := streamCursor(func() (func(func(model.MediaFile, error) bool), error) {
-		return repo.GetCursor(opts)
+		return repo.GetCursorWithArtwork(opts)
 	}, toItem)
 	return streamed(open, int(total), opts.Offset), nil
 }

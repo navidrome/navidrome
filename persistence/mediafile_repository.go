@@ -343,6 +343,31 @@ func (r *mediaFileRepository) GetCursor(options ...model.QueryOptions) (model.Me
 	return wrapMediaFileCursor(cursor), nil
 }
 
+// GetAllIDs returns just the media_file IDs for the same row set as GetAll, skipping the heavy
+// column projection. Used as GetCursorWithArtwork's id pre-pass.
+func (r *mediaFileRepository) GetAllIDs(options ...model.QueryOptions) ([]string, error) {
+	sq := r.applyLibraryFilter(r.newSelect(options...).Columns("media_file.id"))
+	if filtersNeedAnnotation(sq) {
+		sq = r.withAnnotation(sq, "media_file.id")
+	}
+	ids := []string{}
+	err := r.queryAllSlice(sq, &ids)
+	return ids, err
+}
+
+// GetCursorWithArtwork streams the same rows as GetCursor, hydrated, via the id pre-pass used by
+// the other cursors, rather than the scanner's bounded, unhydrated GetCursor itself.
+func (r *mediaFileRepository) GetCursorWithArtwork(options ...model.QueryOptions) (model.MediaFileCursor, error) {
+	ids, err := r.GetAllIDs(options...)
+	if err != nil {
+		return nil, err
+	}
+	opts := chunkOptions(options, "media_file.id")
+	return model.MediaFileCursor(streamByIDs(ids, func(chunk []string) (model.MediaFiles, error) {
+		return r.GetAll(opts(chunk))
+	})), nil
+}
+
 // FindByPaths finds media files by their paths.
 // The paths can be library-qualified (format: "libraryID:path") or unqualified ("path").
 // Library-qualified paths search within the specified library, while unqualified paths

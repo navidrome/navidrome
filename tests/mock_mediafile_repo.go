@@ -123,6 +123,22 @@ func (m *MockMediaFileRepo) GetCursor(qo ...model.QueryOptions) (model.MediaFile
 	}, nil
 }
 
+func (m *MockMediaFileRepo) GetCursorWithArtwork(qo ...model.QueryOptions) (model.MediaFileCursor, error) {
+	return m.GetCursor(qo...)
+}
+
+func (m *MockMediaFileRepo) GetAllIDs(qo ...model.QueryOptions) ([]string, error) {
+	all, err := m.GetAll(qo...)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, len(all))
+	for i, mf := range all {
+		ids[i] = mf.ID
+	}
+	return ids, nil
+}
+
 func (m *MockMediaFileRepo) Put(mf *model.MediaFile) error {
 	if m.Err {
 		return errors.New("error")

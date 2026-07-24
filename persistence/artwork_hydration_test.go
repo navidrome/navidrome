@@ -568,6 +568,84 @@ var _ = Describe("Artwork hydration", func() {
 		})
 	})
 
+	Describe("GetCursorWithArtwork", func() {
+		var mfRepo model.MediaFileRepository
+		var onlySongs squirrel.Eq
+
+		BeforeEach(func() {
+			mfRepo = NewMediaFileRepository(ctx, GetDBXBuilder())
+			putInfo("al", albumSgtPeppers.ID, "curhash11111111")
+			// Distinct titles keep the ordering/paging specs tie-free; other fixture songs share
+			// titles (e.g. "Antenna") or albums, which would make row order ambiguous.
+			onlySongs = squirrel.Eq{"media_file.id": []string{songDayInALife.ID, songComeTogether.ID,
+				songRadioactivity.ID, songAntenna.ID, songDisc1Track01.ID, songCJK.ID, songPunctuation.ID}}
+		})
+
+		It("hydrates artwork onto every streamed track, unlike GetCursor", func() {
+			opts := model.QueryOptions{Sort: "title"}
+			want, err := mfRepo.GetAll(opts)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(want).ToNot(BeEmpty())
+
+			cursor, err := mfRepo.GetCursorWithArtwork(opts)
+			Expect(err).ToNot(HaveOccurred())
+			var got model.MediaFiles
+			cursor(func(mf model.MediaFile, err error) bool {
+				Expect(err).ToNot(HaveOccurred())
+				got = append(got, mf)
+				return true
+			})
+
+			Expect(got).To(HaveLen(len(want)))
+			for i := range want {
+				Expect(got[i].ID).To(Equal(want[i].ID))
+				Expect(got[i].ImageHash).To(Equal(want[i].ImageHash))
+				Expect(got[i].ImageAbsent).To(Equal(want[i].ImageAbsent))
+				Expect(got[i].AlbumImage.ImageHash).To(Equal(want[i].AlbumImage.ImageHash))
+				Expect(got[i].AlbumImage.BlurHash).To(Equal(want[i].AlbumImage.BlurHash))
+			}
+			Expect(want).To(ContainElement(HaveField("AlbumImage.ImageHash", Not(BeEmpty()))),
+				"fixture must include at least one track with album artwork, or this proves nothing")
+		})
+
+		It("leaves the scanner's GetCursor unhydrated", func() {
+			cursor, err := mfRepo.GetCursor(model.QueryOptions{Sort: "title"})
+			Expect(err).ToNot(HaveOccurred())
+			var seen int
+			cursor(func(mf model.MediaFile, err error) bool {
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mf.AlbumImage.ImageHash).To(BeEmpty(), "GetCursor must stay unhydrated for the scanner")
+				seen++
+				return true
+			})
+			Expect(seen).To(BeNumerically(">", 0))
+		})
+
+		It("streams the same ids in the same order as GetAll", func() {
+			opts := model.QueryOptions{Sort: "title", Filters: onlySongs}
+			want, err := mfRepo.GetAll(opts)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(want).ToNot(BeEmpty())
+
+			got := collectCursor(mfRepo.GetCursorWithArtwork(opts))
+
+			Expect(slice.Map(got, func(mf model.MediaFile) string { return mf.ID })).
+				To(Equal(slice.Map(want, func(mf model.MediaFile) string { return mf.ID })))
+		})
+
+		It("honors Max and Offset exactly once", func() {
+			opts := model.QueryOptions{Sort: "title", Filters: onlySongs, Max: 2, Offset: 1}
+			want, err := mfRepo.GetAll(opts)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(want).To(HaveLen(2))
+
+			got := collectCursor(mfRepo.GetCursorWithArtwork(opts))
+
+			Expect(slice.Map(got, func(mf model.MediaFile) string { return mf.ID })).
+				To(Equal(slice.Map(want, func(mf model.MediaFile) string { return mf.ID })))
+		})
+	})
+
 	Describe("chunkOptions", func() {
 		It("carries Sort, Order and the caller's filters, but never Max/Offset", func() {
 			base := model.QueryOptions{Sort: "name", Order: "desc", Max: 10, Offset: 20,
