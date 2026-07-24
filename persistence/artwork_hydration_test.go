@@ -600,7 +600,9 @@ var _ = Describe("Artwork hydration", func() {
 		})
 
 		It("hydrates artwork onto every streamed track, unlike GetCursor", func() {
-			opts := model.QueryOptions{Sort: "title"}
+			// Scoped to onlySongs (distinct titles): the full fixture has title ties (e.g. "Antenna"
+			// x3), so positional comparison against GetAll would only pass by tie-order coincidence.
+			opts := model.QueryOptions{Sort: "title", Filters: onlySongs}
 			want, err := mfRepo.GetAll(opts)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(want).ToNot(BeEmpty())
