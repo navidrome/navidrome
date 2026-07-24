@@ -210,7 +210,8 @@
         "songCount": "Kappaleita",
         "comment": "Kommentti",
         "sync": "Automaattinen tuonti",
-        "path": "Tuo"
+        "path": "Tuo",
+        "starred": "Suosikki"
       },
       "actions": {
         "selectPlaylist": "Valitse soittolista:",
@@ -634,7 +635,8 @@
       "multipleLibraries": "%{selected} / %{total} kirjastoa",
       "selectLibraries": "Valitse kirjastot",
       "none": "Ei mitään"
-    }
+    },
+    "onlyFavourites": "Näytä vain suosikit"
   },
   "player": {
     "playListsText": "Jono",
