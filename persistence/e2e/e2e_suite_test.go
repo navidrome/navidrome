@@ -13,7 +13,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
-	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/core/storage/storagetest"
@@ -275,7 +275,7 @@ var _ = BeforeSuite(func() {
 
 	buildTestFS()
 	s := scanner.New(ctx, initDS, events.NoopBroker(),
-		playlists.NewPlaylists(initDS, core.NewImageUploadService(initDS)), metrics.NewNoopInstance())
+		playlists.NewPlaylists(initDS, artwork.NewUploader(initDS)), metrics.NewNoopInstance())
 	_, err = s.ScanAll(ctx, true)
 	Expect(err).ToNot(HaveOccurred())
 

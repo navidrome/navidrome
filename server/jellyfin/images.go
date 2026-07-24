@@ -16,7 +16,7 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -98,7 +98,7 @@ func (api *Router) postItemImage(w http.ResponseWriter, r *http.Request) {
 	}
 	// The limit caps the decoded image (native endpoint semantics); Jellyfin clients base64-encode
 	// the wire body (4/3 bigger), so the read cap allows for inflation.
-	limit := core.MaxImageUploadSize()
+	limit := artwork.MaxImageUploadSize()
 	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, limit*4/3+4))
 	if err != nil {
 		log.Warn(ctx, "Jellyfin API: cover upload rejected: body exceeds MaxImageUploadSize",

@@ -1,4 +1,4 @@
-package core
+package artwork
 
 import (
 	"context"
@@ -15,14 +15,6 @@ import (
 	"github.com/navidrome/navidrome/utils"
 )
 
-type ImageUploadService interface {
-	SetImage(ctx context.Context, entityType string, entityID string, name string, oldPath string, reader io.Reader, ext string) (filename string, err error)
-	RemoveImage(ctx context.Context, path string) error
-	// EnqueueArtwork clears an item's resolved state and re-queues it at Bump priority. Callers
-	// must invoke it AFTER persisting the new filename, so the worker never resolves the old one.
-	EnqueueArtwork(ctx context.Context, entityType, entityID string)
-}
-
 // MaxImageUploadSize returns the configured MaxImageUploadSize in bytes, or the built-in default
 // when it's unset/invalid. Shared by every API that accepts image uploads.
 func MaxImageUploadSize() int64 {
@@ -33,6 +25,16 @@ func MaxImageUploadSize() int64 {
 	return int64(size)
 }
 
+// Uploader stores a user-uploaded entity image and invalidates that entity's artwork state so the
+// upload becomes the served cover.
+type Uploader interface {
+	SetImage(ctx context.Context, entityType string, entityID string, name string, oldPath string, reader io.Reader, ext string) (filename string, err error)
+	RemoveImage(ctx context.Context, path string) error
+	// EnqueueArtwork clears an item's resolved state and re-queues it at Bump priority. Callers
+	// must invoke it AFTER persisting the new filename, so the worker never resolves the old one.
+	EnqueueArtwork(ctx context.Context, entityType, entityID string)
+}
+
 // uploadEntityKind maps an upload's entity type to its artwork kind prefix, so a
 // successful upload can clear and re-queue that item's artwork state.
 var uploadEntityKind = map[string]string{
@@ -41,15 +43,15 @@ var uploadEntityKind = map[string]string{
 	consts.EntityRadio:    model.KindRadioArtwork.Prefix(),
 }
 
-type imageUploadService struct {
+type uploader struct {
 	ds model.DataStore
 }
 
-func NewImageUploadService(ds model.DataStore) ImageUploadService {
-	return &imageUploadService{ds: ds}
+func NewUploader(ds model.DataStore) Uploader {
+	return &uploader{ds: ds}
 }
 
-func (s *imageUploadService) SetImage(ctx context.Context, entityType string, entityID string, name string, oldPath string, reader io.Reader, ext string) (string, error) {
+func (s *uploader) SetImage(ctx context.Context, entityType string, entityID string, name string, oldPath string, reader io.Reader, ext string) (string, error) {
 	filename := imageFilename(entityID, name, ext)
 	absPath := model.UploadedImagePath(entityType, filename)
 
@@ -79,22 +81,17 @@ func (s *imageUploadService) SetImage(ctx context.Context, entityType string, en
 
 // EnqueueArtwork clears the item's resolved state and re-queues it at Bump priority: the
 // upload is now the top-priority source, so the worker re-resolves and the UI swaps.
-func (s *imageUploadService) EnqueueArtwork(ctx context.Context, entityType, id string) {
+func (s *uploader) EnqueueArtwork(ctx context.Context, entityType, id string) {
 	kind, ok := uploadEntityKind[entityType]
 	if !ok {
 		return
 	}
-	if err := s.ds.Artwork(ctx).DeleteForItem(kind, id); err != nil {
-		log.Warn(ctx, "Could not clear artwork state after upload", "kind", kind, "id", id, err)
-	}
-	item := model.ArtworkQueueItem{ItemKind: kind, ItemID: id, ImageType: model.ImageTypePrimary,
-		Priority: model.ArtworkPriorityBump}
-	if err := s.ds.ArtworkQueue(ctx).Enqueue(item); err != nil {
-		log.Warn(ctx, "Could not enqueue artwork after upload", "kind", kind, "id", id, err)
+	if err := Refresh(ctx, s.ds, kind, id); err != nil {
+		log.Warn(ctx, "Could not refresh artwork after upload", "kind", kind, "id", id, err)
 	}
 }
 
-func (s *imageUploadService) RemoveImage(ctx context.Context, path string) error {
+func (s *uploader) RemoveImage(ctx context.Context, path string) error {
 	if path == "" {
 		return nil
 	}

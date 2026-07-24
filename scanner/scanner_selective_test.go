@@ -10,7 +10,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/core/storage/storagetest"
@@ -66,7 +66,7 @@ var _ = Describe("ScanFolders", Ordered, func() {
 		Expect(ds.User(ctx).Put(&adminUser)).To(Succeed())
 
 		s = scanner.New(ctx, ds, events.NoopBroker(),
-			playlists.NewPlaylists(ds, core.NewImageUploadService(ds)), metrics.NewNoopInstance())
+			playlists.NewPlaylists(ds, artwork.NewUploader(ds)), metrics.NewNoopInstance())
 
 		lib = model.Library{ID: 1, Name: "Fake Library", Path: "fake:///music"}
 		Expect(ds.Library(ctx).Put(&lib)).To(Succeed())

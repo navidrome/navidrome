@@ -114,7 +114,7 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 		Expect(ds.User(ctx).SetUserLibraries(adminUser.ID, []int{artLib.ID})).To(Succeed())
 
 		s := scanner.New(ctx, ds, events.NoopBroker(),
-			playlists.NewPlaylists(ds, core.NewImageUploadService(ds)), metrics.NewNoopInstance())
+			playlists.NewPlaylists(ds, artwork.NewUploader(ds)), metrics.NewNoopInstance())
 		_, err := s.ScanAll(ctx, true)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -228,10 +228,10 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 func buildArtworkRouter(art artwork.Service) *subsonic.Router {
 	decider := stream.NewTranscodeDecider(ds, harness.NoopFFmpeg{})
 	s := scanner.New(ctx, ds, events.NoopBroker(),
-		playlists.NewPlaylists(ds, core.NewImageUploadService(ds)), metrics.NewNoopInstance())
+		playlists.NewPlaylists(ds, artwork.NewUploader(ds)), metrics.NewNoopInstance())
 	return subsonic.New(
 		ds, art, streamerSpy, noopArchiver{}, core.NewPlayers(ds), noopProvider{}, s,
-		events.NoopBroker(), playlists.NewPlaylists(ds, core.NewImageUploadService(ds)),
+		events.NoopBroker(), playlists.NewPlaylists(ds, artwork.NewUploader(ds)),
 		scrobbler.NewPlayTracker(ds, events.NoopBroker(), nil), core.NewShare(ds),
 		playback.PlaybackServer(nil), metrics.NewNoopInstance(), lyrics.NewLyrics(ds, nil), decider, nil,
 	)

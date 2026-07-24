@@ -38,7 +38,9 @@ describe('CoverImage', () => {
 
   it('shows neither a broken <img> nor a canvas while loading a record with no blurhash', () => {
     useImageUrl.mockReturnValue({ imgUrl: null, loading: true })
-    const { container } = render(<CoverImage record={{ id: 'al-2', name: 'X' }} />)
+    const { container } = render(
+      <CoverImage record={{ id: 'al-2', name: 'X' }} />,
+    )
     expect(container.querySelector('img')).toBeNull()
     expect(container.querySelector('canvas')).toBeNull()
   })

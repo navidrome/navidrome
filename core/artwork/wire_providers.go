@@ -9,4 +9,5 @@ var Set = wire.NewSet(
 	GetImageCache,
 	NewWorker,
 	ProvideImageStore,
+	NewUploader,
 )

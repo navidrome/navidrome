@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
@@ -32,15 +33,8 @@ func (api *Router) refreshArtwork() http.HandlerFunc {
 			http.Error(w, "invalid artwork kind", http.StatusBadRequest)
 			return
 		}
-		if err := api.ds.Artwork(ctx).DeleteForItem(kind, id); err != nil {
-			log.Error(ctx, "Error clearing artwork state", "kind", kind, "id", id, err)
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			return
-		}
-		item := model.ArtworkQueueItem{ItemKind: kind, ItemID: id, ImageType: model.ImageTypePrimary,
-			Priority: model.ArtworkPriorityBump}
-		if err := api.ds.ArtworkQueue(ctx).Enqueue(item); err != nil {
-			log.Error(ctx, "Error enqueuing artwork refresh", "kind", kind, "id", id, err)
+		if err := artwork.Refresh(ctx, api.ds, kind, id); err != nil {
+			log.Error(ctx, "Error refreshing artwork", "kind", kind, "id", id, err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}

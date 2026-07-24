@@ -52,8 +52,8 @@ type Playlists interface {
 	TracksRepository(ctx context.Context, playlistId string, refreshSmartPlaylist bool) rest.Repository
 }
 
-// ImageUploadService is a local interface satisfied by core.ImageUploadService.
-// Defined here to avoid an import cycle between core and core/playlists.
+// ImageUploadService is a local interface satisfied by artwork.Uploader.
+// Defined here to avoid an import cycle between core/artwork and core/playlists.
 type ImageUploadService interface {
 	SetImage(ctx context.Context, entityType string, entityID string, name string, oldPath string, reader io.Reader, ext string) (filename string, err error)
 	RemoveImage(ctx context.Context, path string) error
