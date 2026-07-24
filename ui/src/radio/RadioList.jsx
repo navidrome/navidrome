@@ -22,7 +22,6 @@ import {
   useSelectedFields,
 } from '../common'
 import { CoverImage } from '../common/CoverImage'
-import subsonic from '../subsonic'
 import { StreamField } from './StreamField'
 import { setTrack } from '../actions'
 import { songFromRadio } from './helper'
@@ -103,7 +102,12 @@ const CoverArtField = ({ record }) => {
     )
   }
   return (
-    <Avatar src={RADIO_PLACEHOLDER_IMAGE} variant="rounded" style={avatarStyle} alt={record.name} />
+    <Avatar
+      src={RADIO_PLACEHOLDER_IMAGE}
+      variant="rounded"
+      style={avatarStyle}
+      alt={record.name}
+    />
   )
 }
 CoverArtField.defaultProps = { label: '' }

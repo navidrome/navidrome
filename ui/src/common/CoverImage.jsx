@@ -7,18 +7,31 @@ import { useImageUrl } from './useImageUrl'
 import { BlurHashCanvas } from './BlurHashCanvas'
 
 const useStyles = makeStyles({
-  root: { position: 'relative', display: 'inline-flex' },
-  blur: { position: 'absolute', top: 0, left: 0, zIndex: 0 },
-  img: { position: 'relative', zIndex: 1 },
+  // className supplies the size and shape; overflow:hidden clips the fills to a rounded shape.
+  root: {
+    position: 'relative',
+    display: 'inline-flex',
+    overflow: 'hidden',
+  },
+  fill: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+  },
+  '@keyframes fadeIn': { from: { opacity: 0 }, to: { opacity: 1 } },
+  img: { animation: '$fadeIn 0.3s ease-in-out' },
 })
 
 // CoverImage renders an entity's cover through the shared useImageUrl blob cache, so it survives
-// React remounts without re-fetching, with the blurhash as the loading placeholder. `className`
-// supplies the size (and any transition); the fade opacity is applied here.
+// React remounts without re-fetching. The blurhash is the loading placeholder; the image is only
+// mounted once its blob is ready, so an unresolved cover never renders as a broken <img>.
 export const CoverImage = ({
   record,
   size = config.uiCoverArtSize,
   square = false,
+  fit = 'cover',
   className,
   title,
   onClick,
@@ -31,25 +44,23 @@ export const CoverImage = ({
   const showBlurHash = loading && record.blurHash
   const handleClick = imgUrl && onClick ? onClick : undefined
   return (
-    <div className={classes.root}>
+    <div
+      className={clsx(classes.root, className)}
+      onClick={handleClick}
+      style={{ cursor: handleClick ? 'pointer' : 'default' }}
+    >
       {showBlurHash && (
-        <BlurHashCanvas
-          hash={record.blurHash}
-          className={clsx(className, classes.blur)}
+        <BlurHashCanvas hash={record.blurHash} className={classes.fill} />
+      )}
+      {imgUrl && (
+        <img
+          src={imgUrl}
+          alt={title}
+          title={title}
+          className={clsx(classes.fill, classes.img)}
+          style={{ objectFit: fit }}
         />
       )}
-      <img
-        src={imgUrl || undefined}
-        alt={title}
-        title={title}
-        onClick={handleClick}
-        className={clsx(className, showBlurHash && classes.img)}
-        style={{
-          objectFit: 'cover',
-          opacity: loading ? 0.5 : 1,
-          cursor: handleClick ? 'pointer' : 'default',
-        }}
-      />
     </div>
   )
 }
@@ -58,6 +69,7 @@ CoverImage.propTypes = {
   record: PropTypes.object,
   size: PropTypes.number,
   square: PropTypes.bool,
+  fit: PropTypes.oneOf(['cover', 'contain']),
   className: PropTypes.string,
   title: PropTypes.string,
   onClick: PropTypes.func,

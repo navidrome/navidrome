@@ -44,9 +44,6 @@ const useStyles = makeStyles(
       transition: 'opacity 0.3s ease-in-out',
       objectFit: 'cover',
     },
-    coverLoading: {
-      opacity: 0.5,
-    },
     artistImage: {
       maxHeight: '12rem',
       minHeight: '12rem',

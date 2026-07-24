@@ -55,9 +55,6 @@ const useStyles = makeStyles(
       transition: 'opacity 0.3s ease-in-out',
       objectFit: 'cover',
     },
-    coverLoading: {
-      opacity: 0.5,
-    },
     artistImage: {
       marginLeft: '1em',
       maxHeight: '7rem',

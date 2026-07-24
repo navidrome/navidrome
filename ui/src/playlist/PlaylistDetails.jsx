@@ -1,10 +1,5 @@
 import { useState } from 'react'
-import {
-  Card,
-  CardContent,
-  Typography,
-  useMediaQuery,
-} from '@material-ui/core'
+import { Card, CardContent, Typography, useMediaQuery } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import { useTranslate } from 'react-admin'
 import Lightbox from 'react-image-lightbox'
@@ -74,9 +69,6 @@ const useStyles = makeStyles(
       backgroundColor: 'transparent',
       transition: 'opacity 0.3s ease-in-out',
     },
-    coverLoading: {
-      opacity: 0.5,
-    },
     title: {
       overflow: 'hidden',
       textOverflow: 'ellipsis',
@@ -117,6 +109,7 @@ const PlaylistDetails = (props) => {
           <CoverImage
             record={record}
             square
+            fit="contain"
             className={classes.cover}
             title={record.name}
             onClick={() => setLightboxOpen(true)}

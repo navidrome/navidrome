@@ -87,9 +87,6 @@ const useStyles = makeStyles(
       backgroundColor: 'transparent',
       transition: 'opacity 0.3s ease-in-out',
     },
-    coverLoading: {
-      opacity: 0.5,
-    },
     loveButton: {
       top: theme.spacing(-0.2),
       left: theme.spacing(0.5),
@@ -253,6 +250,7 @@ const AlbumDetails = (props) => {
         <div className={classes.coverParent}>
           <CoverImage
             record={record}
+            fit="contain"
             className={classes.cover}
             title={record.name}
             onClick={() => setLightboxOpen(true)}

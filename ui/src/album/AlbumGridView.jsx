@@ -106,9 +106,6 @@ const useCoverStyles = makeStyles({
     height: (props) => props.height,
     transition: 'opacity 0.3s ease-in-out',
   },
-  coverLoading: {
-    opacity: 0,
-  },
 })
 
 const getColsForWidth = (width) => {

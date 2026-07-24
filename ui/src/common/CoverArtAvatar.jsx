@@ -17,7 +17,10 @@ const useStyles = makeStyles({
   },
 })
 
-export const CoverArtAvatar = ({ record: recordProp, variant = 'circular' }) => {
+export const CoverArtAvatar = ({
+  record: recordProp,
+  variant = 'circular',
+}) => {
   const classes = useStyles()
   const recordContext = useRecordContext()
   const record = recordProp || recordContext
@@ -28,7 +31,10 @@ export const CoverArtAvatar = ({ record: recordProp, variant = 'circular' }) => 
       record={record}
       size={config.uiCoverArtSize}
       square={square}
-      className={clsx(classes.avatar, square ? classes.square : classes.circular)}
+      className={clsx(
+        classes.avatar,
+        square ? classes.square : classes.circular,
+      )}
       title={record.name}
     />
   )
