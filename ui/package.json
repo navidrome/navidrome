@@ -24,6 +24,7 @@
     "@material-ui/lab": "^4.0.0-alpha.61",
     "@material-ui/styles": "^4.11.5",
     "blueimp-md5": "^2.19.0",
+    "blurhash": "^2.0.5",
     "clsx": "^2.1.1",
     "connected-react-router": "^6.9.3",
     "deepmerge": "^4.3.1",
