@@ -192,10 +192,13 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 	} else if mf.Genre != "" {
 		item.Genres = []string{mf.Genre}
 	}
-	// Finamp resolves song art via AlbumId + a non-empty AlbumPrimaryImageTag.
+	// Finamp resolves song art via AlbumId + a non-empty AlbumPrimaryImageTag, so this tag
+	// must version the ALBUM's image, not the track's own art.
 	if mf.AlbumID != "" {
-		item.AlbumPrimaryImageTag = mf.AlbumID
-		item.ImageBlurHashes = map[string]map[string]string{"Primary": {mf.AlbumID: blurHash(mf.AlbumID)}}
+		if tag, blurs := primaryImageTag(mf.AlbumImage, mf.AlbumID); tag != "" {
+			item.AlbumPrimaryImageTag = tag
+			item.ImageBlurHashes = blurs
+		}
 	}
 	return item
 }
@@ -306,10 +309,8 @@ func StudioToBaseItem(t model.Tag) BaseItemDto {
 
 // PlaylistToBaseItem maps a playlist to a Playlist BaseItemDto.
 func PlaylistToBaseItem(p model.Playlist) BaseItemDto {
-	// Finamp caches covers keyed by blurHash, so the tag (and blurhash) must change with the cover.
-	// UpdatedAt versions it (Put bumps it on upload); over-invalidation only costs a refetch.
-	tag := fmt.Sprintf("%s-%x", p.ID, p.UpdatedAt.UnixMilli())
-	return BaseItemDto{
+	tag, blurs := primaryImageTag(p.ItemImage, p.ID)
+	item := BaseItemDto{
 		Name: p.Name,
 		Id:   EncodeID(p.ID),
 		Type: "Playlist",
@@ -320,11 +321,14 @@ func PlaylistToBaseItem(p model.Playlist) BaseItemDto {
 		MediaType:         "Audio",
 		ChildCount:        new(p.SongCount),
 		RunTimeTicks:      TicksFromSeconds(p.Duration),
-		ImageTags:         map[string]string{"Primary": tag},
-		ImageBlurHashes:   map[string]map[string]string{"Primary": {tag: blurHash(tag)}},
+		ImageBlurHashes:   blurs,
 		BackdropImageTags: []string{},
 		UserData:          UserData(p.Annotations, p.ID),
 	}
+	if tag != "" {
+		item.ImageTags = map[string]string{"Primary": tag}
+	}
+	return item
 }
 
 // LyricDtoFromLyrics maps one lyric track to Jellyfin's LyricDto. Clients infer synced-vs-plain

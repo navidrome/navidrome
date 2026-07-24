@@ -6,8 +6,8 @@ import (
 	jpeglib "image/jpeg"
 	"net/http"
 	"os"
-	"time"
 
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -215,26 +215,27 @@ var _ = Describe("Playlists", func() {
 				To(Equal(http.StatusNotImplemented))
 		})
 
-		// Guards the whole chain: SetImage must go through a full Put (which bumps UpdatedAt), and the
-		// tag must be versioned by it, or clients keep their blurhash-keyed cover cache forever.
-		It("rotates the playlist's image tag and blurhash after a cover upload", func() {
+		// Guards the whole chain: an upload must clear any previously-resolved artwork state, or a
+		// stale tag stays live under clients' blurhash-keyed cover cache until the next scan (#5798).
+		It("clears the resolved image tag after a cover upload", func() {
 			plID := createPlaylist("Cover Tag", nil)
+			Expect(ds.Artwork(ctx).PutItemArtwork(&model.ItemArtwork{
+				ItemKind: model.KindPlaylistArtwork.Prefix(), ItemID: plID, Hash: "1111111111111111",
+			})).To(Succeed())
+
 			imageTag := func() string {
 				q := queryResult(get("/Items?ids=" + enc(plID)))
 				Expect(q.Items).To(HaveLen(1))
 				return q.Items[0].ImageTags["Primary"]
 			}
-			before := imageTag()
-			Expect(before).ToNot(BeEmpty())
+			Expect(imageTag()).To(Equal("1111111111111111"))
 
-			time.Sleep(2 * time.Millisecond) // UpdatedAt has millisecond resolution in the tag
 			Expect(upload(adminUser, "/Items/"+enc(plID)+"/Images/Primary", "image/jpeg", jpeg).Code).
 				To(Equal(http.StatusNoContent))
 
-			after := imageTag()
-			Expect(after).ToNot(Equal(before))
-			q := queryResult(get("/Items?ids=" + enc(plID)))
-			Expect(q.Items[0].ImageBlurHashes["Primary"]).To(HaveKey(after))
+			// The upload re-queues resolution instead of resolving inline, so the tag falls back to
+			// unresolved rather than carrying over the pre-upload hash.
+			Expect(imageTag()).ToNot(Equal("1111111111111111"))
 		})
 	})
 
