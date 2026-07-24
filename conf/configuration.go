@@ -348,8 +348,6 @@ func Load(noConfigDump bool) {
 	mapDeprecatedOption("CoverJpegQuality", "CoverArtQuality")
 	mapDeprecatedOption("SimilarSongsMatchThreshold", "Matcher.FuzzyThreshold")
 	mapDeprecatedOption("EnableTranscodingCancellation", "Transcoding.EnableCancellation")
-	mapDeprecatedOption("DevArtworkWorkerConcurrency", "ArtworkWorkerConcurrency")
-	mapDeprecatedOption("DevArtworkExternalRPS", "ArtworkExternalMaxRPS")
 
 	err := viper.Unmarshal(&Server, viper.DecodeHook(
 		mapstructure.ComposeDecodeHookFunc(
@@ -904,7 +902,11 @@ func setViperDefaults() {
 	viper.SetDefault("devartworkthrottlebackloglimit", consts.RequestThrottleBacklogLimit)
 	viper.SetDefault("devartworkthrottlebacklogtimeout", consts.RequestThrottleBacklogTimeout)
 	viper.SetDefault("devartworkthrottlebuffered", true)
-	viper.SetDefault("artworkworkerconcurrency", 4)
+	// Half the CPU count (min 2), so local resolution scales with the host but stays under the
+	// SQLite pool (MaxOpenConns) — leaving connections for the scanner, scrobbles and the UI.
+	viper.SetDefault("artworkworkerconcurrency", max(2, runtime.NumCPU()/2))
+	// External RPS gates outbound calls to third-party services (per service); it is bounded by
+	// their tolerance, not the host, so it stays a small constant regardless of CPU count.
 	viper.SetDefault("artworkexternalmaxrps", 2)
 	viper.SetDefault("devartistinfotimetolive", consts.ArtistInfoTimeToLive)
 	viper.SetDefault("devalbuminfotimetolive", consts.AlbumInfoTimeToLive)
