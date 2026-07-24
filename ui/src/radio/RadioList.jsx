@@ -22,6 +22,7 @@ import {
   ToggleFieldsMenu,
   useSelectedFields,
 } from '../common'
+import { BlurHashCanvas } from '../common/BlurHashCanvas'
 import subsonic from '../subsonic'
 import { StreamField } from './StreamField'
 import { setTrack } from '../actions'
@@ -82,16 +83,33 @@ const RadioListActions = ({
 }
 
 const avatarStyle = { width: 40, height: 40 }
+const blurStyle = {
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  width: '100%',
+  height: '100%',
+  borderRadius: '4px',
+}
 
 const CoverArtField = ({ record }) => {
   const directUrl = record?.uploadedImage
     ? subsonic.getCoverArtUrl(record, 40, true)
     : null
-  const { imgUrl } = useImageUrl(directUrl)
+  const { imgUrl, loading } = useImageUrl(directUrl)
   if (!record) return null
-  const src = imgUrl || RADIO_PLACEHOLDER_IMAGE
-  return (
+  const showBlurHash = loading && record.blurHash
+  // While the real image loads, prefer the blurhash over the generic radio icon.
+  const src = imgUrl || (showBlurHash ? undefined : RADIO_PLACEHOLDER_IMAGE)
+  const avatar = (
     <Avatar src={src} variant="rounded" style={avatarStyle} alt={record.name} />
+  )
+  if (!showBlurHash) return avatar
+  return (
+    <div style={{ position: 'relative', display: 'inline-flex', ...avatarStyle }}>
+      <BlurHashCanvas hash={record.blurHash} style={blurStyle} />
+      {avatar}
+    </div>
   )
 }
 CoverArtField.defaultProps = { label: '' }

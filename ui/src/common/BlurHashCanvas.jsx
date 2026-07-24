@@ -5,7 +5,7 @@ import { decode } from 'blurhash'
 // A blurhash carries no detail beyond a few dozen pixels; CSS upscales the canvas.
 const DECODE_SIZE = 32
 
-export const BlurHashCanvas = ({ hash, className }) => {
+export const BlurHashCanvas = ({ hash, className, style }) => {
   const canvasRef = useRef(null)
 
   useEffect(() => {
@@ -37,6 +37,7 @@ export const BlurHashCanvas = ({ hash, className }) => {
       width={DECODE_SIZE}
       height={DECODE_SIZE}
       className={className}
+      style={style}
       aria-hidden="true"
     />
   )
@@ -45,4 +46,5 @@ export const BlurHashCanvas = ({ hash, className }) => {
 BlurHashCanvas.propTypes = {
   hash: PropTypes.string,
   className: PropTypes.string,
+  style: PropTypes.object,
 }

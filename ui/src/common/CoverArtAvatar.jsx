@@ -5,8 +5,15 @@ import clsx from 'clsx'
 import config from '../config'
 import subsonic from '../subsonic'
 import { useImageUrl } from './useImageUrl'
+import { BlurHashCanvas } from './BlurHashCanvas'
 
 const useStyles = makeStyles({
+  root: {
+    position: 'relative',
+    display: 'inline-flex',
+    width: '55px',
+    height: '55px',
+  },
   avatar: {
     width: '55px',
     height: '55px',
@@ -16,6 +23,16 @@ const useStyles = makeStyles({
   },
   square: {
     borderRadius: '4px',
+  },
+  circular: {
+    borderRadius: '50%',
+  },
+  blur: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
   },
 })
 
@@ -30,9 +47,10 @@ export const CoverArtAvatar = ({
   const url = record
     ? subsonic.getCoverArtUrl(record, config.uiCoverArtSize, square)
     : null
-  const { imgUrl } = useImageUrl(url)
+  const { imgUrl, loading } = useImageUrl(url)
   if (!record) return null
-  return (
+
+  const avatar = (
     <Avatar
       src={imgUrl || undefined}
       variant={variant}
@@ -46,6 +64,18 @@ export const CoverArtAvatar = ({
       {/* Empty child prevents default person icon while loading */}
       {!imgUrl && <span />}
     </Avatar>
+  )
+
+  // Show the blurhash behind the transparent avatar until the real image loads.
+  if (!(loading && record.blurHash)) return avatar
+  return (
+    <div className={classes.root}>
+      <BlurHashCanvas
+        hash={record.blurHash}
+        className={clsx(classes.blur, square ? classes.square : classes.circular)}
+      />
+      {avatar}
+    </div>
   )
 }
 

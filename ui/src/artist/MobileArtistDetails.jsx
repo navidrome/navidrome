@@ -2,17 +2,12 @@ import React, { useState } from 'react'
 import { Typography, Collapse } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import Card from '@material-ui/core/Card'
-import CardMedia from '@material-ui/core/CardMedia'
 import config from '../config'
-import {
-  LoveButton,
-  RatingField,
-  ImageUploadOverlay,
-  useImageLoadingState,
-} from '../common'
+import { LoveButton, RatingField, ImageUploadOverlay } from '../common'
 import Lightbox from 'react-image-lightbox'
 import subsonic from '../subsonic'
 import { SafeHTML } from '../common/SafeHTML'
+import { CoverImage } from '../common/CoverImage'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -93,15 +88,7 @@ const MobileArtistDetails = ({ artistInfo, biography, record }) => {
   const [expanded, setExpanded] = useState(false)
   const classes = useStyles({ img, expanded })
   const title = record.name
-  const {
-    imageLoading,
-    imageError,
-    isLightboxOpen,
-    handleImageLoad,
-    handleImageError,
-    handleOpenLightbox,
-    handleCloseLightbox,
-  } = useImageLoadingState(record.id)
+  const [isLightboxOpen, setLightboxOpen] = useState(false)
 
   return (
     <>
@@ -109,18 +96,11 @@ const MobileArtistDetails = ({ artistInfo, biography, record }) => {
         <div className={classes.bgContainer}>
           <Card className={classes.artistImage}>
             {artistInfo && (
-              <CardMedia
-                key={record.id}
-                component="img"
-                src={subsonic.getCoverArtUrl(record, config.uiCoverArtSize)}
-                className={`${classes.cover} ${imageLoading ? classes.coverLoading : ''}`}
-                onClick={handleOpenLightbox}
-                onLoad={handleImageLoad}
-                onError={handleImageError}
+              <CoverImage
+                record={record}
+                className={classes.cover}
                 title={title}
-                style={{
-                  cursor: imageError ? 'default' : 'pointer',
-                }}
+                onClick={() => setLightboxOpen(true)}
               />
             )}
             <ImageUploadOverlay
@@ -165,13 +145,13 @@ const MobileArtistDetails = ({ artistInfo, biography, record }) => {
           </Typography>
         </Collapse>
       </div>
-      {isLightboxOpen && !imageError && (
+      {isLightboxOpen && (
         <Lightbox
           imagePadding={50}
           animationDuration={200}
           imageTitle={record.name}
           mainSrc={img}
-          onCloseRequest={handleCloseLightbox}
+          onCloseRequest={() => setLightboxOpen(false)}
         />
       )}
     </>

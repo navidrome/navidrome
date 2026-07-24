@@ -1,7 +1,7 @@
+import { useState } from 'react'
 import {
   Card,
   CardContent,
-  CardMedia,
   Typography,
   useMediaQuery,
 } from '@material-ui/core'
@@ -17,10 +17,9 @@ import {
   SizeField,
   isWritable,
   OverflowTooltip,
-  useImageLoadingState,
 } from '../common'
-import config from '../config'
 import subsonic from '../subsonic'
+import { CoverImage } from '../common/CoverImage'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -107,37 +106,20 @@ const PlaylistDetails = (props) => {
   const translate = useTranslate()
   const classes = useStyles()
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('lg'))
-  const {
-    imageLoading,
-    imageError,
-    isLightboxOpen,
-    handleImageLoad,
-    handleImageError,
-    handleOpenLightbox,
-    handleCloseLightbox,
-  } = useImageLoadingState(record.id)
+  const [isLightboxOpen, setLightboxOpen] = useState(false)
 
-  const imageUrl = subsonic.getCoverArtUrl(record, config.uiCoverArtSize, true)
   const fullImageUrl = subsonic.getCoverArtUrl(record)
 
   return (
     <Card className={classes.root}>
       <div className={classes.cardContents}>
         <div className={classes.coverParent}>
-          <CardMedia
-            key={record.id} // Force re-render when playlist changes
-            component={'img'}
-            src={imageUrl}
-            width="400"
-            height="400"
-            className={`${classes.cover} ${imageLoading ? classes.coverLoading : ''}`}
-            onClick={handleOpenLightbox}
-            onLoad={handleImageLoad}
-            onError={handleImageError}
+          <CoverImage
+            record={record}
+            square
+            className={classes.cover}
             title={record.name}
-            style={{
-              cursor: imageError ? 'default' : 'pointer',
-            }}
+            onClick={() => setLightboxOpen(true)}
           />
           {isWritable(record.ownerId) && (
             <ImageUploadOverlay
@@ -187,13 +169,13 @@ const PlaylistDetails = (props) => {
           </CardContent>
         </div>
       </div>
-      {isLightboxOpen && !imageError && (
+      {isLightboxOpen && (
         <Lightbox
           imagePadding={50}
           animationDuration={200}
           imageTitle={record.name}
           mainSrc={fullImageUrl}
-          onCloseRequest={handleCloseLightbox}
+          onCloseRequest={() => setLightboxOpen(false)}
         />
       )}
     </Card>
