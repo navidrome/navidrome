@@ -38,6 +38,27 @@ describe('useResourceRefresh', () => {
   const useDataProviderMock = () => ({ getMany })
   let lastTime
 
+  // Applies each real selector against a constructed store, so both useSelector
+  // calls in the hook (refresh payload + loaded records) resolve correctly.
+  const mockStore = ({ refresh: refreshPayload, loaded = {} }) => {
+    const state = {
+      activity: { refresh: refreshPayload },
+      admin: { resources: loaded },
+    }
+    vi.spyOn(Redux, 'useSelector').mockImplementation((selector) =>
+      selector(state),
+    )
+  }
+
+  // Turns id lists into the react-admin store shape: { album: { data: { 'al-1': {...} } } }
+  const asStore = (byResource) =>
+    Object.fromEntries(
+      Object.entries(byResource).map(([r, ids]) => [
+        r,
+        { data: Object.fromEntries(ids.map((id) => [id, { id }])) },
+      ]),
+    )
+
   beforeEach(() => {
     vi.spyOn(React, 'useState').mockImplementation(useStateMock)
     vi.spyOn(RA, 'useRefresh').mockImplementation(useRefreshMock)
@@ -50,8 +71,7 @@ describe('useResourceRefresh', () => {
   })
 
   it('stores last time checked, to avoid redundant runs', () => {
-    const useSelectorMock = () => ({ lastReceived: lastTime })
-    vi.spyOn(Redux, 'useSelector').mockImplementation(useSelectorMock)
+    mockStore({ refresh: { lastReceived: lastTime } })
 
     useResourceRefresh()
 
@@ -60,8 +80,7 @@ describe('useResourceRefresh', () => {
 
   it("does not run again if lastTime didn't change", () => {
     vi.spyOn(React, 'useState').mockImplementation(() => [lastTime, setState])
-    const useSelectorMock = () => ({ lastReceived: lastTime })
-    vi.spyOn(Redux, 'useSelector').mockImplementation(useSelectorMock)
+    mockStore({ refresh: { lastReceived: lastTime } })
 
     useResourceRefresh()
 
@@ -70,11 +89,9 @@ describe('useResourceRefresh', () => {
 
   describe('No visible resources specified', () => {
     it('triggers a UI refresh when received a "any" resource refresh', () => {
-      const useSelectorMock = () => ({
-        lastReceived: lastTime,
-        resources: { '*': '*' },
+      mockStore({
+        refresh: { lastReceived: lastTime, resources: { '*': '*' } },
       })
-      vi.spyOn(Redux, 'useSelector').mockImplementation(useSelectorMock)
 
       useResourceRefresh()
 
@@ -83,11 +100,9 @@ describe('useResourceRefresh', () => {
     })
 
     it('triggers a UI refresh when received an "any" id', () => {
-      const useSelectorMock = () => ({
-        lastReceived: lastTime,
-        resources: { album: ['*'] },
+      mockStore({
+        refresh: { lastReceived: lastTime, resources: { album: ['*'] } },
       })
-      vi.spyOn(Redux, 'useSelector').mockImplementation(useSelectorMock)
 
       useResourceRefresh()
 
@@ -95,12 +110,14 @@ describe('useResourceRefresh', () => {
       expect(getMany).not.toHaveBeenCalled()
     })
 
-    it('triggers a refetch of the resources received', () => {
-      const useSelectorMock = () => ({
-        lastReceived: lastTime,
-        resources: { album: ['al-1', 'al-2'], song: ['sg-1', 'sg-2'] },
+    it('refetches only the received resources already loaded in the store', () => {
+      mockStore({
+        refresh: {
+          lastReceived: lastTime,
+          resources: { album: ['al-1', 'al-2'], song: ['sg-1', 'sg-2'] },
+        },
+        loaded: asStore({ album: ['al-1', 'al-2'], song: ['sg-1', 'sg-2'] }),
       })
-      vi.spyOn(Redux, 'useSelector').mockImplementation(useSelectorMock)
 
       useResourceRefresh()
 
@@ -109,15 +126,42 @@ describe('useResourceRefresh', () => {
       expect(getMany).toHaveBeenCalledWith('album', { ids: ['al-1', 'al-2'] })
       expect(getMany).toHaveBeenCalledWith('song', { ids: ['sg-1', 'sg-2'] })
     })
+
+    it('skips ids that are not loaded in the store', () => {
+      mockStore({
+        refresh: {
+          lastReceived: lastTime,
+          resources: { album: ['al-1', 'al-2', 'al-3'] },
+        },
+        loaded: asStore({ album: ['al-2'] }),
+      })
+
+      useResourceRefresh()
+
+      expect(getMany).toHaveBeenCalledTimes(1)
+      expect(getMany).toHaveBeenCalledWith('album', { ids: ['al-2'] })
+    })
+
+    it('does not fetch when none of the received ids are loaded', () => {
+      mockStore({
+        refresh: {
+          lastReceived: lastTime,
+          resources: { artist: ['ar-1', 'ar-2'] },
+        },
+        loaded: asStore({ artist: ['ar-9'] }),
+      })
+
+      useResourceRefresh()
+
+      expect(getMany).not.toHaveBeenCalled()
+    })
   })
 
   describe('Visible resources specified', () => {
     it('triggers a UI refresh when received a "any" resource refresh', () => {
-      const useSelectorMock = () => ({
-        lastReceived: lastTime,
-        resources: { '*': '*' },
+      mockStore({
+        refresh: { lastReceived: lastTime, resources: { '*': '*' } },
       })
-      vi.spyOn(Redux, 'useSelector').mockImplementation(useSelectorMock)
 
       useResourceRefresh('album')
 
@@ -125,12 +169,14 @@ describe('useResourceRefresh', () => {
       expect(getMany).not.toHaveBeenCalled()
     })
 
-    it('triggers a refetch of the resources received if they are visible', () => {
-      const useSelectorMock = () => ({
-        lastReceived: lastTime,
-        resources: { album: ['al-1', 'al-2'], song: ['sg-1', 'sg-2'] },
+    it('refetches the received resources if they are visible and loaded', () => {
+      mockStore({
+        refresh: {
+          lastReceived: lastTime,
+          resources: { album: ['al-1', 'al-2'], song: ['sg-1', 'sg-2'] },
+        },
+        loaded: asStore({ album: ['al-1', 'al-2'], song: ['sg-1', 'sg-2'] }),
       })
-      vi.spyOn(Redux, 'useSelector').mockImplementation(useSelectorMock)
 
       useResourceRefresh('song')
 

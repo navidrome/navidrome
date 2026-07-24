@@ -70,6 +70,7 @@ export const useResourceRefresh = (...visibleResources) => {
   const refreshData = useSelector(
     (state) => state.activity?.refresh || { lastReceived: lastTime },
   )
+  const loadedResources = useSelector((state) => state.admin?.resources)
   const { resources, lastReceived } = refreshData
 
   if (lastReceived <= lastTime) {
@@ -89,7 +90,13 @@ export const useResourceRefresh = (...visibleResources) => {
     Object.keys(resources).forEach((r) => {
       if (visibleResources.length === 0 || visibleResources?.includes(r)) {
         if (resources[r]?.length > 0) {
-          dataProvider.getMany(r, { ids: resources[r] })
+          // Only refetch records already in the store; ones the UI never loaded will
+          // arrive fresh (with the new artwork) when navigated to, so fetching them is wasteful.
+          const loaded = loadedResources?.[r]?.data || {}
+          const ids = resources[r].filter((id) => loaded[id] !== undefined)
+          if (ids.length > 0) {
+            dataProvider.getMany(r, { ids })
+          }
         }
       }
     })
