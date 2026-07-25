@@ -14,8 +14,6 @@ import (
 	"github.com/navidrome/navidrome/plugins/host"
 	"github.com/navidrome/navidrome/scheduler"
 	"github.com/tetratelabs/wazero"
-	"github.com/tetratelabs/wazero/api"
-	"github.com/tetratelabs/wazero/experimental"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -398,12 +396,6 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 	runtimeConfig := wazero.NewRuntimeConfig().
 		WithCompilationCache(m.cache).
 		WithCloseOnContextDone(true)
-
-	// Enable experimental threads if requested in manifest
-	if pkg.Manifest.HasExperimentalThreads() {
-		runtimeConfig = runtimeConfig.WithCoreFeatures(api.CoreFeaturesV2 | experimental.CoreFeaturesThreads)
-		log.Debug(ctx, "Enabling experimental threads support")
-	}
 
 	extismConfig := extism.PluginConfig{
 		EnableWasi:                true,
