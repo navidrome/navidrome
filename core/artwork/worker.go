@@ -125,7 +125,10 @@ func (w *Worker) RunPrune(ctx context.Context) error {
 }
 
 func (w *Worker) drain(ctx context.Context, concurrency int) (int, error) {
-	batch, err := w.deps.ds.ArtworkQueue(ctx).DequeueBatch(2 * concurrency)
+	// Dequeue well past the worker pool so a slow item (an external lookup burning its
+	// timeout) never idles the other slots: the pool stays fed until the batch runs out.
+	// DequeueBatch does not mark rows taken, so this is one query per pass, not per slot.
+	batch, err := w.deps.ds.ArtworkQueue(ctx).DequeueBatch(max(16, 4*concurrency))
 	if err != nil {
 		return 0, err
 	}
@@ -141,7 +144,12 @@ func (w *Worker) drain(ctx context.Context, concurrency int) (int, error) {
 	var refreshMu sync.Mutex
 	var refresh []model.ArtworkQueueItem
 	for _, item := range items {
-		sem <- struct{}{}
+		select {
+		case sem <- struct{}{}:
+		case <-ctx.Done():
+			wg.Wait()
+			return len(items), nil
+		}
 		wg.Add(1)
 		go func(it model.ArtworkQueueItem) {
 			defer wg.Done()

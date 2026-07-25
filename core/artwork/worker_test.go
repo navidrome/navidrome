@@ -3,6 +3,7 @@ package artwork
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -599,6 +600,23 @@ var _ = Describe("Worker", func() {
 			Expect(err).ToNot(HaveOccurred())
 			defer stream.Close()
 			Expect(io.ReadAll(stream)).ToNot(BeEmpty())
+		})
+	})
+
+	Describe("batching", func() {
+		// The pool is fed from one dequeue per pass: a batch sized to the pool would make a
+		// single slow item idle the other slots for as long as it runs.
+		It("dequeues past the worker pool so one drain covers many items", func() {
+			for i := range 16 {
+				ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: fmt.Sprintf("alb%d", i), Name: "Album"}})
+				Expect(queueRepo.Enqueue(model.ArtworkQueueItem{
+					ItemKind: "al", ItemID: fmt.Sprintf("alb%d", i), Priority: model.ArtworkPriorityScan,
+				})).To(Succeed())
+			}
+
+			n, err := w.drain(ctx, 2)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(n).To(Equal(16), "a batch sized to the pool would have stopped at 4")
 		})
 	})
 
