@@ -1,6 +1,7 @@
 package artwork
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -137,10 +138,14 @@ func (s *ImageStore) Remove(hash, mimeType string, olderThan time.Time) error {
 
 // Sweep removes store files not accepted by keep. Files modified after cutoff
 // (including temp files) are always kept: their acquisition row may not be committed yet.
-func (s *ImageStore) Sweep(cutoff time.Time, keep func(hash, ext string) bool) (int, error) {
+// The walk is cancellable: it runs under the worker's prune lock, which shutdown waits on.
+func (s *ImageStore) Sweep(ctx context.Context, cutoff time.Time, keep func(hash, ext string) bool) (int, error) {
 	removed := 0
 	err := filepath.WalkDir(s.root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
+			return err
+		}
+		if err := ctx.Err(); err != nil {
 			return err
 		}
 		info, err := d.Info()

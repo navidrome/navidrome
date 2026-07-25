@@ -2,6 +2,7 @@ package artwork
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"os"
 	"path/filepath"
@@ -14,10 +15,12 @@ import (
 var _ = Describe("ImageStore", func() {
 	var store *ImageStore
 	var root string
+	var ctx context.Context
 
 	BeforeEach(func() {
 		root = GinkgoT().TempDir()
 		store = NewImageStore(root)
+		ctx = context.Background()
 	})
 
 	It("hashes deterministically", func() {
@@ -141,7 +144,7 @@ var _ = Describe("ImageStore", func() {
 		old := time.Now().Add(-2 * time.Hour)
 		Expect(os.Chtimes(store.path(h2, "image/jpeg"), old, old)).To(Succeed())
 
-		removed, err := store.Sweep(time.Now().Add(-time.Hour), func(h, _ string) bool { return h == h1 })
+		removed, err := store.Sweep(ctx, time.Now().Add(-time.Hour), func(h, _ string) bool { return h == h1 })
 		Expect(err).ToNot(HaveOccurred())
 		Expect(removed).To(Equal(1))
 		_, err = store.Open(h2, "image/jpeg")
@@ -161,7 +164,7 @@ var _ = Describe("ImageStore", func() {
 		Expect(os.Chtimes(store.path(h, "image/jpeg"), old, old)).To(Succeed())
 
 		// The recorded mime is image/jpeg, so the .png variant is obsolete.
-		removed, err := store.Sweep(time.Now().Add(-time.Hour), func(hash, ext string) bool {
+		removed, err := store.Sweep(ctx, time.Now().Add(-time.Hour), func(hash, ext string) bool {
 			return hash == h && ext == ".jpg"
 		})
 		Expect(err).ToNot(HaveOccurred())
@@ -178,7 +181,7 @@ var _ = Describe("ImageStore", func() {
 		h, _ := HashImage(bytes.NewReader(d))
 		Expect(store.Write(h, "image/jpeg", bytes.NewReader(d))).To(Succeed())
 
-		removed, err := store.Sweep(time.Now().Add(-time.Hour), func(string, string) bool { return false })
+		removed, err := store.Sweep(ctx, time.Now().Add(-time.Hour), func(string, string) bool { return false })
 		Expect(err).ToNot(HaveOccurred())
 		Expect(removed).To(Equal(0))
 		rc, err := store.Open(h, "image/jpeg")
@@ -195,10 +198,28 @@ var _ = Describe("ImageStore", func() {
 		freshTmp := filepath.Join(root, ".fresh.tmp")
 		Expect(os.WriteFile(freshTmp, []byte("y"), 0600)).To(Succeed())
 
-		removed, err := store.Sweep(time.Now().Add(-time.Hour), func(string, string) bool { return true })
+		removed, err := store.Sweep(ctx, time.Now().Add(-time.Hour), func(string, string) bool { return true })
 		Expect(err).ToNot(HaveOccurred())
 		Expect(removed).To(Equal(1))
 		Expect(oldTmp).ToNot(BeAnExistingFile())
 		Expect(freshTmp).To(BeAnExistingFile())
+	})
+
+	// Prune holds the worker's write lock for the whole sweep, and shutdown waits on the
+	// worker, so an uncancellable walk over a large store stalls it until SIGKILL.
+	It("abandons the walk when the context is cancelled", func() {
+		old := time.Now().Add(-2 * time.Hour)
+		for _, name := range []string{"a", "b", "c", "d"} {
+			p := filepath.Join(root, name+".jpg")
+			Expect(os.WriteFile(p, []byte("x"), 0600)).To(Succeed())
+			Expect(os.Chtimes(p, old, old)).To(Succeed())
+		}
+		cancelCtx, cancel := context.WithCancel(ctx)
+		cancel()
+
+		_, err := store.Sweep(cancelCtx, time.Now().Add(-time.Hour), func(string, string) bool { return false })
+		Expect(err).To(MatchError(context.Canceled))
+		matches, _ := filepath.Glob(filepath.Join(root, "*.jpg"))
+		Expect(matches).To(HaveLen(4), "a cancelled sweep must not keep deleting")
 	})
 })
