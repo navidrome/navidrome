@@ -214,3 +214,45 @@ func (m *MockArtworkQueueRepo) EnqueueStaleAbsent(kind model.Kind, attemptedBefo
 	}
 	return inserted, nil
 }
+
+// EnqueueMissing enqueues entities in ExistingIDs[kind] that have no item_artwork row in
+// ItemArtworkSource and are not already queued, mirroring the SQL set-difference insert.
+func (m *MockArtworkQueueRepo) EnqueueMissing(kind model.Kind) (int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.Err != nil {
+		return 0, m.Err
+	}
+	hasRow := func(id string) bool {
+		if m.ItemArtworkSource == nil {
+			return false
+		}
+		for _, ia := range m.ItemArtworkSource.ItemData {
+			if ia.ItemKind == kind.Prefix() && ia.ItemID == id {
+				return true
+			}
+		}
+		return false
+	}
+	now := time.Now()
+	var inserted int64
+	for id := range m.ExistingIDs[kind.Prefix()] {
+		if hasRow(id) {
+			continue
+		}
+		k := iaKey(kind.Prefix(), id, model.ImageTypePrimary)
+		if _, ok := m.Data[k]; ok { // DO NOTHING: never touch existing queue rows
+			continue
+		}
+		m.Data[k] = model.ArtworkQueueItem{
+			ItemKind:   kind.Prefix(),
+			ItemID:     id,
+			ImageType:  model.ImageTypePrimary,
+			Priority:   model.ArtworkPriorityRecheck,
+			RetryAt:    now,
+			EnqueuedAt: now,
+		}
+		inserted++
+	}
+	return inserted, nil
+}

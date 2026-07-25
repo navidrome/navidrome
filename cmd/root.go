@@ -368,6 +368,9 @@ func scheduleArtworkHousekeeping(ctx context.Context, worker *artwork.Worker) fu
 			if err := artwork.EnqueueStaleAbsentAll(ctx, ds); err != nil {
 				log.Error(ctx, "Error enqueueing stale artwork rechecks", err)
 			}
+			if err := artwork.EnqueueMissingAll(ctx, ds); err != nil {
+				log.Error(ctx, "Error enqueueing missing artwork rechecks", err)
+			}
 		}); err != nil {
 			log.Error(ctx, "Error scheduling artwork stale-absent recheck", err)
 		}
@@ -378,6 +381,12 @@ func scheduleArtworkHousekeeping(ctx context.Context, worker *artwork.Worker) fu
 			}
 		}); err != nil {
 			log.Error(ctx, "Error scheduling artwork prune", err)
+		}
+
+		// Also run the missing-row recheck once at startup so a never-scanned entity is picked up
+		// immediately, not only on the next hourly tick (e.g. after enabling the feature).
+		if err := artwork.EnqueueMissingAll(ctx, ds); err != nil {
+			log.Error(ctx, "Error enqueueing missing artwork rechecks", err)
 		}
 
 		backfilled, err := artwork.Backfill(ctx, ds)

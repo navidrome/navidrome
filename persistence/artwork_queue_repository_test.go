@@ -184,4 +184,45 @@ var _ = Describe("ArtworkQueueRepository", func() {
 		Expect(items[0].ItemID).To(Equal("stale1"))
 		Expect(items[0].Priority).To(Equal(model.ArtworkPriorityRecheck))
 	})
+
+	It("enqueues entities that have no item_artwork row at all", func() {
+		awRepo := NewArtworkRepository(context.Background(), GetDBXBuilder())
+		// albumSgtPeppers has a resolved row and albumAbbeyRoad an absent row: both already
+		// processed, so neither should be enqueued as "missing".
+		Expect(awRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "al", ItemID: albumSgtPeppers.ID, ImageType: model.ImageTypePrimary, Hash: "hX", AttemptedAt: time.Now()})).To(Succeed())
+		Expect(awRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "al", ItemID: albumAbbeyRoad.ID, ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: time.Now()})).To(Succeed())
+
+		n, err := repo.EnqueueMissing(model.KindAlbumArtwork)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(n).To(BeNumerically(">=", 1))
+
+		got, err := repo.DequeueBatch(1000)
+		Expect(err).ToNot(HaveOccurred())
+		ids := make([]string, 0, len(got))
+		for _, it := range got {
+			Expect(it.ItemKind).To(Equal("al"))
+			Expect(it.Priority).To(Equal(model.ArtworkPriorityRecheck))
+			ids = append(ids, it.ItemID)
+		}
+		Expect(ids).To(ContainElement(albumRadioactivity.ID), "an album with no row must be enqueued")
+		Expect(ids).ToNot(ContainElement(albumSgtPeppers.ID), "a resolved album must not be re-enqueued")
+		Expect(ids).ToNot(ContainElement(albumAbbeyRoad.ID), "an absent-state album must not be enqueued as missing")
+	})
+
+	It("does not disturb an already-queued entity when enqueueing missing rows", func() {
+		Expect(repo.Enqueue(item("al", albumRadioactivity.ID, model.ArtworkPriorityBump))).To(Succeed())
+
+		_, err := repo.EnqueueMissing(model.KindAlbumArtwork)
+		Expect(err).ToNot(HaveOccurred())
+
+		got, _ := repo.DequeueBatch(1000)
+		var count int
+		for _, it := range got {
+			if it.ItemID == albumRadioactivity.ID {
+				count++
+				Expect(it.Priority).To(Equal(model.ArtworkPriorityBump), "existing bump priority must survive")
+			}
+		}
+		Expect(count).To(Equal(1), "the already-queued row must not be duplicated")
+	})
 })

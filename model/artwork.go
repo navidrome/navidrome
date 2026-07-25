@@ -112,6 +112,9 @@ type ArtworkQueueRepository interface {
 	Count() (int64, error)
 	// EnqueueStaleAbsent inserts queue rows (priority Recheck) for absent states older than cutoff.
 	EnqueueStaleAbsent(kind Kind, attemptedBefore time.Time) (int64, error)
+	// EnqueueMissing inserts queue rows (priority Recheck) for entities of the kind that have no
+	// item_artwork row at all, so a never-processed entity is eventually resolved even without a scan.
+	EnqueueMissing(kind Kind) (int64, error)
 	// PurgeDangling removes queue rows whose entity no longer exists.
 	PurgeDangling() (int64, error)
 }

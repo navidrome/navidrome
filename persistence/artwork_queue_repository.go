@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"time"
 
@@ -117,6 +118,22 @@ func (r *artworkQueueRepository) EnqueueStaleAbsent(kind model.Kind, attemptedBe
 		FROM `+itemArtworkTable+` WHERE item_kind = ? AND hash = '' AND attempted_at < ?
 		ON CONFLICT (item_kind, item_id, image_type) DO NOTHING`,
 		model.ArtworkPriorityRecheck, now, now, kind.Prefix(), attemptedBefore)
+	return r.executeSQL(ins)
+}
+
+func (r *artworkQueueRepository) EnqueueMissing(kind model.Kind) (int64, error) {
+	entityTable, ok := danglingItemArtworkKinds[kind]
+	if !ok {
+		return 0, fmt.Errorf("artwork queue: no entity table for kind %q", kind.Prefix())
+	}
+	now := time.Now()
+	// DO NOTHING is deliberate: rechecks must not bump priority/retry_at of already-queued items.
+	ins := Expr(`INSERT INTO `+r.tableName+` (item_kind, item_id, image_type, priority, attempts, retry_at, enqueued_at)
+		SELECT ?, id, ?, ?, 0, ?, ?
+		FROM `+entityTable+`
+		WHERE id NOT IN (SELECT item_id FROM `+itemArtworkTable+` WHERE item_kind = ?)
+		ON CONFLICT (item_kind, item_id, image_type) DO NOTHING`,
+		kind.Prefix(), model.ImageTypePrimary, model.ArtworkPriorityRecheck, now, now, kind.Prefix())
 	return r.executeSQL(ins)
 }
 

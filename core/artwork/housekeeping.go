@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -21,17 +20,22 @@ const FingerprintPropertyKey = "artwork.fingerprint"
 // staleAbsentAge is how old an absent resolution must be before the recheck job retries it.
 const staleAbsentAge = 24 * time.Hour
 
-// staleAbsentKinds are the item kinds eligible for the periodic stale-absent recheck.
-var staleAbsentKinds = []model.Kind{
+// recheckKinds are the item kinds eligible for the periodic recheck jobs (stale-absent and
+// missing-row). Media files are excluded: they resolve embedded-only, at scan or on view.
+var recheckKinds = []model.Kind{
 	model.KindArtistArtwork, model.KindAlbumArtwork, model.KindPlaylistArtwork, model.KindRadioArtwork,
 }
 
-// Fingerprint summarizes the config knobs that affect artwork resolution outcomes; a
+// artworkEpoch invalidates all resolution state when bumped; bump it in the same change that
+// alters resolution semantics. Deliberately not the server version, which changes every build.
+const artworkEpoch = 1
+
+// Fingerprint summarizes the inputs that affect artwork resolution outcomes; a
 // change means previously resolved (or absent) state may no longer be correct.
 func Fingerprint() string {
-	raw := fmt.Sprintf("%s|%s|%s|%s|%t|%t|%s",
+	raw := fmt.Sprintf("%s|%s|%s|%s|%t|%t|%d",
 		conf.Server.CoverArtPriority, conf.Server.ArtistArtPriority, conf.Server.ArtistImageFolder,
-		conf.Server.Agents, conf.Server.EnableExternalServices, conf.Server.EnableM3UExternalAlbumArt, consts.Version)
+		conf.Server.Agents, conf.Server.EnableExternalServices, conf.Server.EnableM3UExternalAlbumArt, artworkEpoch)
 	sum := md5.Sum([]byte(raw)) //nolint:gosec // fingerprint, not security-sensitive
 	return hex.EncodeToString(sum[:])
 }
@@ -95,8 +99,20 @@ func enqueueBackfillKind(ctx context.Context, ds model.DataStore, kind model.Kin
 func EnqueueStaleAbsentAll(ctx context.Context, ds model.DataStore) error {
 	cutoff := time.Now().Add(-staleAbsentAge)
 	queue := ds.ArtworkQueue(ctx)
-	for _, kind := range staleAbsentKinds {
+	for _, kind := range recheckKinds {
 		if _, err := queue.EnqueueStaleAbsent(kind, cutoff); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// EnqueueMissingAll requeues entities that have no item_artwork row yet, across every recheck
+// kind: the safety net for entities a scan never enqueued (added between scans, or scanner off).
+func EnqueueMissingAll(ctx context.Context, ds model.DataStore) error {
+	queue := ds.ArtworkQueue(ctx)
+	for _, kind := range recheckKinds {
+		if _, err := queue.EnqueueMissing(kind); err != nil {
 			return err
 		}
 	}

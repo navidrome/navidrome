@@ -6,6 +6,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
@@ -109,6 +110,15 @@ var _ = Describe("Housekeeping", func() {
 			f1 := Fingerprint()
 			conf.Server.EnableM3UExternalAlbumArt = true
 			Expect(Fingerprint()).NotTo(Equal(f1))
+		})
+
+		It("does not change when the server version changes", func() {
+			original := consts.Version
+			DeferCleanup(func() { consts.Version = original })
+			f1 := Fingerprint()
+			consts.Version = original + "-next"
+			Expect(Fingerprint()).To(Equal(f1),
+				"the version must not invalidate artwork state: it would re-resolve every entity on every build")
 		})
 	})
 
@@ -221,6 +231,40 @@ var _ = Describe("Housekeeping", func() {
 			Expect(findQueued(queueRepo.MockArtworkQueueRepo, "ra", "ra1")).ToNot(BeNil())
 			Expect(findQueued(queueRepo.MockArtworkQueueRepo, "ar", "ar2")).To(BeNil())
 			Expect(findQueued(queueRepo.MockArtworkQueueRepo, "al", "al2")).To(BeNil())
+		})
+	})
+
+	Describe("EnqueueMissingAll", func() {
+		var artRepo *tests.MockArtworkRepo
+
+		BeforeEach(func() {
+			artRepo = tests.CreateMockArtworkRepo()
+			ds.MockedArtwork = artRepo
+			queueRepo.ItemArtworkSource = artRepo
+			queueRepo.ExistingIDs = map[string]map[string]bool{
+				"al": {"al1": true, "al2": true},
+				"ar": {"ar1": true},
+				"pl": {"pl1": true},
+				"ra": {"ra1": true},
+			}
+		})
+
+		It("enqueues only entities that have no item_artwork row, across all kinds", func() {
+			// al1 is already resolved and ar1 already absent: both must be skipped.
+			artRepo.ItemData["al-resolved"] = model.ItemArtwork{ItemKind: "al", ItemID: "al1", ImageType: model.ImageTypePrimary, Hash: "somehash", AttemptedAt: time.Now()}
+			artRepo.ItemData["ar-absent"] = model.ItemArtwork{ItemKind: "ar", ItemID: "ar1", ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: time.Now()}
+
+			err := EnqueueMissingAll(ctx, ds)
+			Expect(err).ToNot(HaveOccurred())
+
+			for _, it := range queueRepo.Data {
+				Expect(it.Priority).To(Equal(model.ArtworkPriorityRecheck))
+			}
+			Expect(findQueued(queueRepo.MockArtworkQueueRepo, "al", "al2")).ToNot(BeNil())
+			Expect(findQueued(queueRepo.MockArtworkQueueRepo, "pl", "pl1")).ToNot(BeNil())
+			Expect(findQueued(queueRepo.MockArtworkQueueRepo, "ra", "ra1")).ToNot(BeNil())
+			Expect(findQueued(queueRepo.MockArtworkQueueRepo, "al", "al1")).To(BeNil())
+			Expect(findQueued(queueRepo.MockArtworkQueueRepo, "ar", "ar1")).To(BeNil())
 		})
 	})
 })
