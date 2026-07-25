@@ -573,6 +573,33 @@ var _ = Describe("Worker", func() {
 
 			Expect(imgCache.getKeys()).To(BeEmpty())
 		})
+
+		// It warms from the bytes the acquisition already held, so no state row or store file
+		// needs to exist for it to work.
+		It("warms from the acquired bytes without reading them back", func() {
+			conf.Server.EnableArtworkPrecache = true
+			ia := &model.ItemArtwork{
+				ItemKind: "al", ItemID: "unpersisted", ImageType: model.ImageTypePrimary,
+				Hash: "abcdef0123456789", UpdatedAt: time.Now(),
+			}
+
+			data, err := os.ReadFile("tests/fixtures/artist/an-album/cover.jpg")
+			Expect(err).ToNot(HaveOccurred())
+
+			w.precache(ctx, &acquired{ia: ia, mime: "image/jpeg", data: data})
+
+			// Nothing backs that hash on disk or in the store, so the entry can only have come
+			// from the bytes handed in. Probing with a source that refuses to open proves it
+			// is really cached rather than re-read on demand.
+			probe := &resizedItem{
+				hash: ia.Hash, size: 300, lastUpdate: ia.UpdatedAt, ffmpeg: ffm,
+				open: func() (io.ReadCloser, error) { return nil, errors.New("precache must not re-read the source") },
+			}
+			stream, err := imgCache.Get(ctx, probe)
+			Expect(err).ToNot(HaveOccurred())
+			defer stream.Close()
+			Expect(io.ReadAll(stream)).ToNot(BeEmpty())
+		})
 	})
 
 	Describe("RunPrune", func() {

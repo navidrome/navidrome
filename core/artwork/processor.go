@@ -55,37 +55,45 @@ type workerDeps struct {
 	gate   gateFunc
 }
 
+// acquired is what processItem persisted, handed back so the caller can warm the resize
+// cache without re-reading the rows and the file it just wrote.
+type acquired struct {
+	ia   *model.ItemArtwork
+	mime string
+	data []byte
+}
+
 // processItem resolves one queue item end to end: find an image, hash/decode/
 // blurhash it, place its bytes, and persist the resulting state.
-func processItem(ctx context.Context, deps *workerDeps, item model.ArtworkQueueItem) outcome {
+func processItem(ctx context.Context, deps *workerDeps, item model.ArtworkQueueItem) (outcome, *acquired) {
 	repo := deps.ds.Artwork(ctx)
 
 	res, err := resolveItem(ctx, deps.ds, deps.agents, deps.ffmpeg, item, deps.gate)
 	if err != nil {
 		log.Warn(ctx, "artwork: could not resolve item", "kind", item.ItemKind, "id", item.ItemID, err)
-		return outcomeFailed
+		return outcomeFailed, nil
 	}
 	if res.reader == nil {
 		if res.extError || res.localError {
 			// A source errored/timed out rather than answering "no image": never settle on
 			// absent, keep serving old state.
-			return outcomeFailed
+			return outcomeFailed, nil
 		}
-		return writeAbsent(ctx, repo, item)
+		return writeAbsent(ctx, repo, item), nil
 	}
 	defer res.reader.Close()
 
 	data, err := readCapped(res.reader)
 	if err != nil {
 		log.Warn(ctx, "artwork: failed to read resolved image", "kind", item.ItemKind, "id", item.ItemID, "source", res.source, err)
-		return outcomeFailed
+		return outcomeFailed, nil
 	}
 	log.Debug(ctx, "artwork: read resolved image", "kind", item.ItemKind, "id", item.ItemID, "source", res.source, "bytes", len(data))
 
 	hash, err := HashImage(bytes.NewReader(data))
 	if err != nil {
 		log.Warn(ctx, "artwork: failed to hash image", "kind", item.ItemKind, "id", item.ItemID, err)
-		return outcomeFailed
+		return outcomeFailed, nil
 	}
 
 	art, err := repo.GetImage(hash)
@@ -96,24 +104,24 @@ func processItem(ctx context.Context, deps *workerDeps, item model.ArtworkQueueI
 		art, err = decodeArtwork(ctx, hash, data)
 		if err != nil {
 			log.Warn(ctx, "artwork: failed to decode resolved image", "kind", item.ItemKind, "id", item.ItemID, err)
-			return outcomeFailed
+			return outcomeFailed, nil
 		}
 	default:
 		log.Warn(ctx, "artwork: failed to look up image hash", "kind", item.ItemKind, "id", item.ItemID, err)
-		return outcomeFailed
+		return outcomeFailed, nil
 	}
 	art.SizeBytes = int64(len(data))
 
 	sourcePath, refMtime, err := placeBytes(deps.store, art, res, data)
 	if err != nil {
 		log.Warn(ctx, "artwork: failed to write image store", "kind", item.ItemKind, "id", item.ItemID, err)
-		return outcomeFailed
+		return outcomeFailed, nil
 	}
 	if err := repo.PutImage(art); err != nil {
 		log.Warn(ctx, "artwork: failed to persist artwork image", "kind", item.ItemKind, "id", item.ItemID, err)
-		return outcomeFailed
+		return outcomeFailed, nil
 	}
-	if err := repo.PutItemArtwork(&model.ItemArtwork{
+	ia := &model.ItemArtwork{
 		ItemKind:    item.ItemKind,
 		ItemID:      item.ItemID,
 		ImageType:   item.ImageType,
@@ -122,14 +130,17 @@ func processItem(ctx context.Context, deps *workerDeps, item model.ArtworkQueueI
 		SourcePath:  sourcePath,
 		RefMtime:    refMtime,
 		AttemptedAt: time.Now(),
-	}); err != nil {
+	}
+	// PutItemArtwork stamps UpdatedAt on ia, so what it holds now matches the persisted row.
+	if err := repo.PutItemArtwork(ia); err != nil {
 		log.Warn(ctx, "artwork: failed to persist item artwork state", "kind", item.ItemKind, "id", item.ItemID, err)
-		return outcomeFailed
+		return outcomeFailed, nil
 	}
+	got := &acquired{ia: ia, mime: art.Mime, data: data}
 	if res.extError {
-		return outcomeFoundStale
+		return outcomeFoundStale, got
 	}
-	return outcomeFound
+	return outcomeFound, got
 }
 
 // writeAbsent records a known-absent state: every local/external source answered definitively "no".

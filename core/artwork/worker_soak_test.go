@@ -100,7 +100,7 @@ var _ = Describe("Worker soak", func() {
 		start := time.Now()
 		for i := range soakCycles {
 			it := items[i%len(items)]
-			out := processItem(context.Background(), deps, it)
+			out, _ := processItem(context.Background(), deps, it)
 
 			// "Serve-adjacent" read-back: exercise the Phase 2 surfaces a caller would
 			// use after acquisition, not the old serving pipeline.

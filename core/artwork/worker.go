@@ -1,6 +1,7 @@
 package artwork
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -124,9 +125,6 @@ func (w *Worker) RunPrune(ctx context.Context) error {
 }
 
 func (w *Worker) drain(ctx context.Context, concurrency int) (int, error) {
-	// Resolved per drain, not once in Run: the worker starts at boot, possibly before any
-	// admin exists, so a late-created admin is picked up on the next poll (private playlists).
-	ctx = auth.WithAdminUser(ctx, w.deps.ds)
 	batch, err := w.deps.ds.ArtworkQueue(ctx).DequeueBatch(2 * concurrency)
 	if err != nil {
 		return 0, err
@@ -135,6 +133,9 @@ func (w *Worker) drain(ctx context.Context, concurrency int) (int, error) {
 	if len(items) == 0 {
 		return 0, nil
 	}
+	// Resolved only once there is work, and per drain rather than per item: the worker needs an
+	// admin identity for private playlists, and can start before any admin exists.
+	ctx = auth.WithAdminUser(ctx, w.deps.ds)
 	sem := make(chan struct{}, concurrency)
 	var wg sync.WaitGroup
 	var refreshMu sync.Mutex
@@ -146,7 +147,7 @@ func (w *Worker) drain(ctx context.Context, concurrency int) (int, error) {
 			defer wg.Done()
 			defer func() { <-sem }()
 			defer w.release(it)
-			out := w.process(ctx, it)
+			out, got := w.process(ctx, it)
 			// Refresh clients on any visible state change: found/foundStale (new art) and absent
 			// (removed art — clients must drop a previously-served immutable cover). foundStale
 			// also wrote a served state row.
@@ -157,8 +158,8 @@ func (w *Worker) drain(ctx context.Context, concurrency int) (int, error) {
 			}
 			// Precache only actual images. Post-outcome only: the queue row was already settled
 			// by process, so warming the resize cache here can never block or alter queue ops.
-			if out == outcomeFound || out == outcomeFoundStale {
-				w.precache(ctx, it)
+			if got != nil {
+				w.precache(ctx, got)
 			}
 		}(item)
 	}
@@ -200,12 +201,12 @@ func (w *Worker) broadcastRefresh(ctx context.Context, found []model.ArtworkQueu
 	w.broker.SendBroadcastMessage(ctx, event)
 }
 
-func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) outcome {
+func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) (outcome, *acquired) {
 	if item.ImageType == "" {
 		item.ImageType = model.ImageTypePrimary
 	}
 	w.pruneMu.RLock()
-	out := processItem(ctx, &w.deps, item)
+	out, got := processItem(ctx, &w.deps, item)
 	w.pruneMu.RUnlock()
 
 	queue := w.deps.ds.ArtworkQueue(ctx)
@@ -237,7 +238,7 @@ func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) outco
 			log.Warn(ctx, "artwork: could not remove exhausted queue item", "kind", item.ItemKind, "id", item.ItemID, err)
 		}
 	}
-	return out
+	return out, got
 }
 
 // hasResolvedArtwork reports whether the item already has a hash-bearing state row.
@@ -250,29 +251,24 @@ func (w *Worker) hasResolvedArtwork(ctx context.Context, item model.ArtworkQueue
 	return err == nil && ia.Hash != ""
 }
 
-// precache warms the resize cache for a newly-acquired image at the UI cover size, so the
-// first UI request is a cache hit. Skipped when disabled; failures are debug-only.
-func (w *Worker) precache(ctx context.Context, item model.ArtworkQueueItem) {
+// precache warms the resize cache at the UI cover size from the bytes just acquired, so the
+// first UI request is a cache hit without re-reading the rows or the file. Skipped when
+// disabled; failures are debug-only.
+func (w *Worker) precache(ctx context.Context, got *acquired) {
 	if !conf.Server.EnableArtworkPrecache || w.deps.cache == nil || w.deps.cache.Disabled(ctx) {
 		return
 	}
-	imageType := item.ImageType
-	if imageType == "" {
-		imageType = model.ImageTypePrimary
+	// Same key as the serving path (hash/size/square); only the source of the bytes differs.
+	item := &resizedItem{
+		hash:       got.ia.Hash,
+		size:       conf.Server.UICoverArtSize,
+		lastUpdate: got.ia.UpdatedAt,
+		ffmpeg:     w.deps.ffmpeg,
+		open:       func() (io.ReadCloser, error) { return io.NopCloser(bytes.NewReader(got.data)), nil },
 	}
-	repo := w.deps.ds.Artwork(ctx)
-	kind, _ := model.ParseKind(item.ItemKind)
-	ia, err := repo.GetItemArtwork(kind, item.ItemID, imageType)
-	if err != nil || ia.Hash == "" {
-		return
-	}
-	art, err := repo.GetImage(ia.Hash)
+	stream, err := w.deps.cache.Get(ctx, item)
 	if err != nil {
-		return
-	}
-	stream, err := w.deps.cache.Get(ctx, newResizedItem(ia, art.Mime, conf.Server.UICoverArtSize, false, w.deps.store, w.deps.ffmpeg))
-	if err != nil {
-		log.Debug(ctx, "artwork: precache failed", "kind", item.ItemKind, "id", item.ItemID, err)
+		log.Debug(ctx, "artwork: precache failed", "kind", got.ia.ItemKind, "id", got.ia.ItemID, err)
 		return
 	}
 	_, _ = io.Copy(io.Discard, stream)
