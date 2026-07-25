@@ -370,7 +370,9 @@ func (r *playlistRepository) loadTracks(query SelectBuilder, id string) (model.P
 	if err != nil {
 		return nil, err
 	}
-	return tracks.toModels(), err
+	res := tracks.toModels()
+	hydratePlaylistTrackArtwork(r.ctx, r.db, res)
+	return res, err
 }
 
 func (r *playlistRepository) Count(options ...rest.QueryOptions) (int64, error) {

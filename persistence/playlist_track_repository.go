@@ -130,8 +130,11 @@ func (r *playlistTrackRepository) GetCursor(options ...model.QueryOptions) (mode
 	if err != nil {
 		return nil, err
 	}
-	return model.PlaylistTrackCursor(wrapCursor(cursor, func(t dbPlaylistTrack) *model.PlaylistTrack {
+	tracks := wrapCursor(cursor, func(t dbPlaylistTrack) *model.PlaylistTrack {
 		return t.PlaylistTrack
+	})
+	return model.PlaylistTrackCursor(hydrateCursor(tracks, func(batch []model.PlaylistTrack) {
+		hydratePlaylistTrackArtwork(r.ctx, r.db, batch)
 	})), nil
 }
 

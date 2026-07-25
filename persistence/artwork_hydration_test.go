@@ -178,6 +178,38 @@ var _ = Describe("Artwork hydration", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.ImageHash).To(Equal("plget8888888888"))
 		})
+
+		// A track reached through a playlist must carry the same artwork state as one reached
+		// through the songs list, or its cover id has no hash to serve immutably or blur.
+		It("hydrates the tracks reached through a playlist", func() {
+			Expect(aw.PutImage(&model.Artwork{Hash: "pltrackhash1234", Mime: "image/jpeg", BlurHash: "LPLBLURhash"})).To(Succeed())
+			putInfo("al", songDayInALife.AlbumID, "pltrackhash1234")
+
+			pls, err := repo.GetWithTracks(plsBest.ID, true, false)
+			Expect(err).ToNot(HaveOccurred())
+			tracks := pls.Tracks
+			Expect(tracks).ToNot(BeEmpty())
+			byID := map[string]model.PlaylistTrack{}
+			for _, t := range tracks {
+				byID[t.MediaFile.ID] = t
+			}
+			Expect(byID).To(HaveKey(songDayInALife.ID))
+			Expect(byID[songDayInALife.ID].AlbumImage.ImageHash).To(Equal("pltrackhash1234"))
+			Expect(byID[songDayInALife.ID].BlurHash).To(Equal("LPLBLURhash"))
+
+			cursor, err := repo.Tracks(plsBest.ID, true).GetCursor()
+			Expect(err).ToNot(HaveOccurred())
+			var streamed *model.PlaylistTrack
+			for t, err := range cursor {
+				Expect(err).ToNot(HaveOccurred())
+				if t.MediaFile.ID == songDayInALife.ID {
+					streamed = &t
+				}
+			}
+			Expect(streamed).ToNot(BeNil())
+			Expect(streamed.AlbumImage.ImageHash).To(Equal("pltrackhash1234"),
+				"the streamed cursor Jellyfin uses must hydrate too")
+		})
 	})
 
 	Describe("radios", func() {
