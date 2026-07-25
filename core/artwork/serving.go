@@ -289,8 +289,13 @@ func (s *service) provisionalEmbedded(ctx context.Context, artID model.ArtworkID
 	if err != nil {
 		return nil, err
 	}
-	res, _ := resolveEmbedded(ctx, lib, s.ffmpeg, mf.Path)
+	res, ok := resolveEmbedded(ctx, lib, s.ffmpeg, mf.Path)
 	s.enqueue(ctx, artID, model.ArtworkPriorityBump)
+	if !ok {
+		// Eligible but unextractable (truncated frame, no ffmpeg): fall back the way
+		// CoverArtID does rather than answer with a placeholder.
+		return s.Get(ctx, mf.DiscCoverArtID(), size, square)
+	}
 	return s.serveResolution(ctx, res, size, square)
 }
 

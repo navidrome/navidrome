@@ -307,6 +307,23 @@ var _ = Describe("Service", func() {
 			Expect(readAll(img)).To(Equal(coverBytes))
 		})
 
+		// Jellyfin clients are now told to request the track image before it resolves, so an
+		// unextractable frame must not answer with a placeholder where the album has art.
+		It("falls back to the album when an eligible track's embedded art will not extract", func() {
+			conf.Server.EnableMediaFileCoverArt = true
+			// HasCoverArt is set, but the file yields no extractable image (it is not audio).
+			mfRepo.SetData(model.MediaFiles{{
+				ID: "mfbad", AlbumID: "albad", LibraryID: 0, HasCoverArt: true,
+				Path: "tests/fixtures/artist/an-album/front.png",
+			}})
+			albumRepo.SetData(model.Albums{{ID: "albad", Name: "Album"}})
+			seedFoundStore("al", "albad", coverBytes)
+
+			img, err := svc.Get(ctx, model.MustParseArtworkID("mf-mfbad"), 0, false)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(readAll(img)).To(Equal(coverBytes), "a placeholder here would be worse than the album cover")
+		})
+
 		It("routes a single-disc track through disc resolution too", func() {
 			// A single disc can carry its own art: DiscArtPriority still applies, so the disc
 			// image is served even when the album has different found art.

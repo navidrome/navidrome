@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -386,6 +388,55 @@ var _ = Describe("mappers", func() {
 		after := PlaylistToBaseItem(p)
 
 		Expect(after.ImageTags["Primary"]).To(Equal(before.ImageTags["Primary"]))
+	})
+
+	// Nothing enqueues media files, so a track's own art only resolves when something requests
+	// it. A Jellyfin client that is only told about the album image never asks, so the track's
+	// own cover would stay unreachable for Jellyfin-only users.
+	Describe("unresolved embedded art", func() {
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.EnableMediaFileCoverArt = true
+		})
+
+		It("advertises the track id so the client triggers the read-through", func() {
+			mf := model.MediaFile{ID: "mf-1", AlbumID: "alb-1", HasCoverArt: true}
+			mf.AlbumImage.ImageHash = "0123456789abcdef"
+
+			item := SongToBaseItem(mf, nil)
+			Expect(item.ImageTags).To(HaveKeyWithValue("Primary", "mf-1"))
+			Expect(item.ImageBlurHashes).To(BeNil(), "no resolved image means no blurhash to send")
+			Expect(item.AlbumPrimaryImageTag).To(BeEmpty())
+		})
+
+		It("falls back to the album when the track has no art of its own", func() {
+			mf := model.MediaFile{ID: "mf-2", AlbumID: "alb-1", HasCoverArt: false}
+			mf.AlbumImage.ImageHash = "0123456789abcdef"
+
+			item := SongToBaseItem(mf, nil)
+			Expect(item.ImageTags).To(BeEmpty())
+			Expect(item.AlbumPrimaryImageTag).To(Equal("0123456789abcdef"))
+		})
+
+		It("falls back to the album once the track's art is known absent", func() {
+			mf := model.MediaFile{ID: "mf-3", AlbumID: "alb-1", HasCoverArt: true}
+			mf.ItemImage.ImageAbsent = true
+			mf.AlbumImage.ImageHash = "0123456789abcdef"
+
+			item := SongToBaseItem(mf, nil)
+			Expect(item.ImageTags).To(BeEmpty())
+			Expect(item.AlbumPrimaryImageTag).To(Equal("0123456789abcdef"))
+		})
+
+		It("falls back to the album when per-track art is disabled", func() {
+			conf.Server.EnableMediaFileCoverArt = false
+			mf := model.MediaFile{ID: "mf-4", AlbumID: "alb-1", HasCoverArt: true}
+			mf.AlbumImage.ImageHash = "0123456789abcdef"
+
+			item := SongToBaseItem(mf, nil)
+			Expect(item.ImageTags).To(BeEmpty())
+			Expect(item.AlbumPrimaryImageTag).To(Equal("0123456789abcdef"))
+		})
 	})
 
 	Describe("primary image tags", func() {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
 )
@@ -197,6 +198,12 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 		tag, blurs := primaryImageTag(mf.ItemImage, mf.ID)
 		item.ImageTags = map[string]string{"Primary": tag}
 		item.ImageBlurHashes = blurs
+	} else if embeddedArtPending(mf) {
+		// Nothing enqueues media files, so an unresolved track only resolves when someone asks
+		// for its image. Advertising the id here is what makes a Jellyfin client ask; the
+		// request extracts the embedded art and queues the track for the worker. No blurhash:
+		// there is no resolved image to have one yet, and a fake would be cached forever.
+		item.ImageTags = map[string]string{"Primary": mf.ID}
 	} else if mf.AlbumID != "" {
 		if tag, blurs := primaryImageTag(mf.AlbumImage, mf.AlbumID); tag != "" {
 			item.AlbumPrimaryImageTag = tag
@@ -204,6 +211,13 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 		}
 	}
 	return item
+}
+
+// embeddedArtPending reports a track whose own art is eligible but not resolved yet, and not
+// known to be absent.
+func embeddedArtPending(mf model.MediaFile) bool {
+	return mf.HasCoverArt && conf.Server.EnableMediaFileCoverArt &&
+		mf.ImageHash == "" && !mf.ItemImage.ImageAbsent
 }
 
 // primaryImageTag never synthesizes a blurhash: Finamp keys its cover cache on the value,
