@@ -203,7 +203,7 @@ func expectAlbumFolderCover(al model.Album, suffix string) {
 	Expect(serveBytes(al.CoverArtID())).To(Equal(libFileBytes(suffix)))
 	ia := acquire(model.KindAlbumArtwork, al.ID)
 	Expect(ia.Source).To(Equal("folder"))
-	Expect(ia.SourcePath).To(HaveSuffix(suffix))
+	Expect(filepath.ToSlash(ia.SourcePath)).To(HaveSuffix(suffix))
 }
 
 // requireNoStateRow guards the byte-level folder assertions: a drain resolves every ready queue
@@ -232,7 +232,7 @@ func expectArtistFolder(ar model.Artist, suffix string) {
 	Expect(serveBytes(model.NewArtworkID(model.KindArtistArtwork, ar.ID, nil))).To(Equal(libFileBytes(suffix)))
 	ia := acquire(model.KindArtistArtwork, ar.ID)
 	Expect(ia.Source).To(Equal("folder"))
-	Expect(ia.SourcePath).To(HaveSuffix(suffix))
+	Expect(filepath.ToSlash(ia.SourcePath)).To(HaveSuffix(suffix))
 }
 
 // writeUploadedImage drops raw bytes into the per-entity upload folder under DataFolder, matching

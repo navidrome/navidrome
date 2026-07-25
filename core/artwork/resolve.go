@@ -192,10 +192,12 @@ func resolveArtist(ctx context.Context, ds model.DataStore, ag *agents.Agents, f
 			if lib.FS == nil || artistFolder == "" {
 				continue
 			}
-			if res, ok := resolveArtistFolderPattern(ctx, lib, artistFolder, pattern); ok {
+			res, ok := resolveArtistFolderPattern(ctx, lib, artistFolder, pattern)
+			if ok {
 				res.extError = extErr
 				return res, nil
 			}
+			localErr = localErr || res.localError
 		}
 	}
 	return resolution{extError: extErr, localError: localErr}, nil
@@ -393,9 +395,9 @@ func resolveArtistImageFolder(ar *model.Artist) (resolution, bool) {
 }
 
 func resolveArtistFolderPattern(ctx context.Context, lib libraryView, artistFolder, pattern string) (resolution, bool) {
-	r, path, _ := fromArtistFolder(ctx, lib.FS, lib.absRoot, artistFolder, pattern)()
+	r, path, err := fromArtistFolder(ctx, lib.FS, lib.absRoot, artistFolder, pattern)()
 	if r == nil {
-		return resolution{}, false
+		return resolution{localError: errors.Is(err, errSourceUnreadable)}, false
 	}
 	return resolution{reader: r, source: "folder", sourcePath: path, refMtime: mtimeOf(path)}, true
 }

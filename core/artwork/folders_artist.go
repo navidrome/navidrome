@@ -2,6 +2,7 @@ package artwork
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -38,16 +39,23 @@ func fromArtistFolder(ctx context.Context, libFS fs.FS, libPath, artistFolder, p
 		// return backslash separators on Windows.
 		rel = filepath.ToSlash(rel)
 		current := artistFolder
+		var unreadable error
 		for range maxArtistFolderTraversalDepth {
 			reader, hit, err := findImageInFolder(ctx, libFS, rel, current, pattern)
 			if err == nil {
 				return reader, hit, nil
+			}
+			if errors.Is(err, errSourceUnreadable) {
+				unreadable = err
 			}
 			if rel == "." {
 				break // reached library root; don't traverse above it
 			}
 			rel = path.Dir(rel)
 			current = filepath.Dir(current)
+		}
+		if unreadable != nil {
+			return nil, "", unreadable
 		}
 		return nil, "", fmt.Errorf(`no matches for '%s' in '%s' or its parent directories (within library)`, pattern, artistFolder)
 	}
@@ -82,14 +90,19 @@ func findImageInFolder(ctx context.Context, libFS fs.FS, relFolder, absFolder, p
 	// suffixes (e.g., artist.jpg before artist.1.jpg)
 	slices.SortFunc(imagePaths, compareImageFiles)
 
+	var openErr error
 	for _, p := range imagePaths {
 		f, err := libFS.Open(p)
 		if err != nil {
 			log.Warn(ctx, "Could not open cover art file", "file", p, err)
+			openErr = fmt.Errorf("%w: %s: %w", errSourceUnreadable, p, err)
 			continue
 		}
 		_, name := path.Split(p)
 		return f, filepath.Join(absFolder, name), nil
+	}
+	if openErr != nil {
+		return nil, "", openErr
 	}
 
 	return nil, "", fmt.Errorf(`no matches for '%s' in '%s'`, pattern, absFolder)
