@@ -228,7 +228,9 @@ func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) outco
 		}
 		// Retry budget exhausted: stop retrying. A bare failure settles absent so the stale-absent
 		// sweep (and a page view) can still recover it; a stale-found keeps its already-served art.
-		if out == outcomeFailed {
+		// Art we are already serving is kept too: exhaustion means the source stayed unreachable,
+		// not that the entity lost its cover.
+		if out == outcomeFailed && !w.hasResolvedArtwork(ctx, item) {
 			writeAbsent(ctx, w.deps.ds.Artwork(ctx), item)
 		}
 		if err := queue.DeleteIfUnchanged(item.ItemKind, item.ItemID, item.ImageType, item.RetryAt); err != nil {
@@ -236,6 +238,16 @@ func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) outco
 		}
 	}
 	return out
+}
+
+// hasResolvedArtwork reports whether the item already has a hash-bearing state row.
+func (w *Worker) hasResolvedArtwork(ctx context.Context, item model.ArtworkQueueItem) bool {
+	kind, ok := model.ParseKind(item.ItemKind)
+	if !ok {
+		return false
+	}
+	ia, err := w.deps.ds.Artwork(ctx).GetItemArtwork(kind, item.ItemID, item.ImageType)
+	return err == nil && ia.Hash != ""
 }
 
 // precache warms the resize cache for a newly-acquired image at the UI cover size, so the

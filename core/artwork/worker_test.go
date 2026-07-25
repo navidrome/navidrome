@@ -336,6 +336,33 @@ var _ = Describe("Worker", func() {
 			Expect(ia.Hash).To(BeEmpty())
 		})
 
+		It("keeps already-served art when the retry budget is exhausted", func() {
+			conf.Server.CoverArtPriority = "external"
+			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al10", Name: "Album"}})
+			Expect(artRepo.PutItemArtwork(&model.ItemArtwork{
+				ItemKind: "al", ItemID: "al10", ImageType: model.ImageTypePrimary,
+				Hash: "cafebabe", Source: "external:lastfm",
+			})).To(Succeed())
+			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
+			w = NewWorker(ds, store, ag, ffm, broker, imgCache)
+			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al10"})).To(Succeed())
+			for k, v := range queueRepo.Data {
+				if v.ItemID == "al10" {
+					v.EnqueuedAt = time.Now().Add(-(giveUpAfter + time.Hour))
+					queueRepo.Data[k] = v
+				}
+			}
+
+			n, err := w.drain(ctx, 1)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(n).To(Equal(1))
+
+			Expect(findQueued(queueRepo, "al", "al10")).To(BeNil())
+			ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al10", model.ImageTypePrimary)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ia.Hash).To(Equal("cafebabe"), "a persistent outage must not discard served art")
+		})
+
 		It("resolves a private playlist under an admin context instead of failing forever", func() {
 			ds.MockedUser = adminUserRepo()
 			vds := &visibilityPlaylistDS{
