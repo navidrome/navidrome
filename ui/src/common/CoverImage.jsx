@@ -7,6 +7,9 @@ import subsonic from '../subsonic'
 import { useImageUrl } from './useImageUrl'
 import { BlurHashCanvas } from './BlurHashCanvas'
 
+// Drives both the CSS transition and the timer that retires the blurhash, so they cannot drift.
+const fadeMs = 500
+
 const useStyles = makeStyles({
   // className supplies the size and shape; overflow:hidden clips the fills to a rounded shape.
   root: {
@@ -23,7 +26,7 @@ const useStyles = makeStyles({
   },
   img: {
     opacity: 0,
-    transition: 'opacity 500ms ease-out',
+    transition: `opacity ${fadeMs}ms ease-out`,
     '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
   },
   imgVisible: { opacity: 1 },
@@ -60,6 +63,14 @@ export const CoverImage = ({
     setFaded(false)
   }, [url])
 
+  // Retire the blurhash on a timer rather than transitionend: under prefers-reduced-motion the
+  // transition is none, so the event never fires and the placeholder would stay up forever.
+  useEffect(() => {
+    if (!decoded || faded) return undefined
+    const timer = setTimeout(() => setFaded(true), fadeMs)
+    return () => clearTimeout(timer)
+  }, [decoded, faded])
+
   if (!record) return null
 
   const instant = cachedOnMount.current
@@ -90,7 +101,6 @@ export const CoverImage = ({
           style={{ objectFit: fit }}
           // Fading on decode, not on mount, keeps the image from ramping up before it can paint.
           onLoad={() => setDecoded(true)}
-          onTransitionEnd={() => setFaded(true)}
         />
       )}
     </div>

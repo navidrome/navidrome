@@ -1,4 +1,4 @@
-import { render, fireEvent } from '@testing-library/react'
+import { render, fireEvent, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('./useImageUrl', () => ({ useImageUrl: vi.fn() }))
@@ -54,21 +54,35 @@ describe('CoverImage', () => {
   })
 
   it('keeps the blurhash under the image until the fade ends', () => {
-    useImageUrl.mockReturnValue({ imgUrl: null, loading: true })
-    const { container, rerender } = render(<CoverImage record={withArt} />)
+    vi.useFakeTimers()
+    try {
+      useImageUrl.mockReturnValue({ imgUrl: null, loading: true })
+      const { container, rerender } = render(<CoverImage record={withArt} />)
 
-    // Blob arrives: the image mounts transparent, with the blurhash still behind it.
-    useImageUrl.mockReturnValue({ imgUrl: 'blob:abc', loading: false })
-    rerender(<CoverImage record={withArt} />)
-    const img = container.querySelector('img')
-    expect(img).not.toBeNull()
-    expect(container.querySelector('canvas')).not.toBeNull()
+      // Blob arrives: the image mounts transparent, with the blurhash still behind it.
+      useImageUrl.mockReturnValue({ imgUrl: 'blob:abc', loading: false })
+      rerender(<CoverImage record={withArt} />)
+      const img = container.querySelector('img')
+      expect(img).not.toBeNull()
+      expect(container.querySelector('canvas')).not.toBeNull()
 
-    // Decoding starts the cross-fade; the blurhash only goes away once it finishes.
-    fireEvent.load(img)
-    expect(container.querySelector('canvas')).not.toBeNull()
-    fireEvent.transitionEnd(img)
-    expect(container.querySelector('canvas')).toBeNull()
+      // Decoding starts the cross-fade; the blurhash only goes away once it finishes. The clock
+      // drives it, not transitionend, which never fires under prefers-reduced-motion.
+      act(() => {
+        fireEvent.load(img)
+      })
+      expect(container.querySelector('canvas')).not.toBeNull()
+      act(() => {
+        fireEvent.transitionEnd(img)
+      })
+      expect(container.querySelector('canvas')).not.toBeNull()
+      act(() => {
+        vi.advanceTimersByTime(500)
+      })
+      expect(container.querySelector('canvas')).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('does not fade an image that was already cached on mount', () => {
