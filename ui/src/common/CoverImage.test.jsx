@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react'
+import { render, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('./useImageUrl', () => ({ useImageUrl: vi.fn() }))
@@ -51,6 +51,41 @@ describe('CoverImage', () => {
     const img = container.querySelector('img')
     expect(img).not.toBeNull()
     expect(img.getAttribute('src')).toBe('blob:abc')
+  })
+
+  it('keeps the blurhash under the image until the fade ends', () => {
+    useImageUrl.mockReturnValue({ imgUrl: null, loading: true })
+    const { container, rerender } = render(<CoverImage record={withArt} />)
+
+    // Blob arrives: the image mounts transparent, with the blurhash still behind it.
+    useImageUrl.mockReturnValue({ imgUrl: 'blob:abc', loading: false })
+    rerender(<CoverImage record={withArt} />)
+    const img = container.querySelector('img')
+    expect(img).not.toBeNull()
+    expect(container.querySelector('canvas')).not.toBeNull()
+
+    // Decoding starts the cross-fade; the blurhash only goes away once it finishes.
+    fireEvent.load(img)
+    expect(container.querySelector('canvas')).not.toBeNull()
+    fireEvent.transitionEnd(img)
+    expect(container.querySelector('canvas')).toBeNull()
+  })
+
+  it('does not fade an image that was already cached on mount', () => {
+    useImageUrl.mockReturnValue({ imgUrl: 'blob:abc', loading: false })
+    const { container } = render(<CoverImage record={withArt} />)
+    // No placeholder to cross-fade from, so it paints at once.
+    expect(container.querySelector('canvas')).toBeNull()
+    expect(container.querySelector('img').className).toContain('imgInstant')
+  })
+
+  it('keeps the blurhash visible when the image never decodes', () => {
+    useImageUrl.mockReturnValue({ imgUrl: null, loading: true })
+    const { container, rerender } = render(<CoverImage record={withArt} />)
+    useImageUrl.mockReturnValue({ imgUrl: 'blob:abc', loading: false })
+    rerender(<CoverImage record={withArt} />)
+
+    expect(container.querySelector('canvas')).not.toBeNull()
   })
 
   it('fires onClick only when the image is loaded', () => {
