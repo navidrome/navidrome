@@ -8,10 +8,13 @@ import {
 } from 'react'
 import {
   KARAOKE_CHARACTER_LIFT_PX,
-  KARAOKE_CHARACTER_PHASE_SPREAD,
+  KARAOKE_CHARACTER_RISE_MS,
+  KARAOKE_CHARACTER_WAVE_SPAN_MAX_MS,
+  KARAOKE_CHARACTER_WAVE_SPAN_RATIO,
   KARAOKE_CLOCK_DRIFT_RESET_MS,
   KARAOKE_HIGHLIGHT_LEAD_MS,
   KARAOKE_LINE_RELEASE_MS,
+  easeKaraokeMotion,
 } from './lyricsKaraokeConstants'
 import {
   buildLyricsTimeline,
@@ -42,33 +45,83 @@ const setProgress = (record, value) => {
   record.node.style.setProperty('--lyrics-progress', String(next))
 }
 
-const smootherStep = (value) =>
-  value * value * value * (value * (value * 6 - 15) + 10)
+const setCharacterTransform = (node, localProgress) => {
+  const lift = Math.max(
+    0,
+    Math.min(
+      KARAOKE_CHARACTER_LIFT_PX,
+      KARAOKE_CHARACTER_LIFT_PX * easeKaraokeMotion(localProgress),
+    ),
+  )
+  if (lift < 0.00005) {
+    if (node.style.transform) node.style.removeProperty('transform')
+    return
+  }
+  const nextTransform = `translate3d(0, -${lift.toFixed(4)}px, 0)`
+  if (node.style.transform !== nextTransform) {
+    node.style.transform = nextTransform
+  }
+}
 
-const setCharacterLift = (record, progress) => {
+const resetCharacterLift = (record) => {
+  const characters = record.characters || []
+  if (!characters.length) return
+  if (record.characterMotionState === 'future') return
+
+  characters.forEach(({ node }) => setCharacterTransform(node, 0))
+  record.characterMotionState = 'future'
+}
+
+const settleCharacterLift = (record) => {
+  const characters = record.characters || []
+  if (!characters.length) return
+  if (record.characterMotionState === 'settled') return
+
+  characters.forEach(({ node }) => setCharacterTransform(node, 1))
+  record.characterMotionState = 'settled'
+}
+
+const setCharacterLiftAtTime = (record, time) => {
   const characters = record.characters || []
   if (!characters.length) return
 
-  const riseSpan = Math.max(0.001, 1 - KARAOKE_CHARACTER_PHASE_SPREAD)
+  const current = Number(time)
+  if (!Number.isFinite(current) || current <= record.characterMotionStart) {
+    resetCharacterLift(record)
+    return
+  }
+  if (current >= record.characterMotionEnd) {
+    settleCharacterLift(record)
+    return
+  }
 
-  characters.forEach(({ node, phase }) => {
-    const local = Math.max(0, Math.min(1, (progress - phase) / riseSpan))
-    const lift = Math.max(
+  characters.forEach(({ node, start }) => {
+    const localProgress = Math.max(
       0,
-      Math.min(
-        KARAOKE_CHARACTER_LIFT_PX,
-        KARAOKE_CHARACTER_LIFT_PX * smootherStep(local),
-      ),
+      Math.min(1, (current - start) / KARAOKE_CHARACTER_RISE_MS),
     )
-    if (lift < 0.00005) {
-      if (node.style.transform) node.style.removeProperty('transform')
-      return
-    }
-    const nextTransform = `translateY(-${lift.toFixed(4)}px)`
-    if (node.style.transform !== nextTransform) {
-      node.style.transform = nextTransform
-    }
+    setCharacterTransform(node, localProgress)
   })
+  record.characterMotionState = 'moving'
+}
+
+const getCharacterTiming = (window, characterCount) => {
+  const start = Number(window?.start)
+  const duration = Number(window?.end) - Number(window?.start)
+  const safeStart = Number.isFinite(start) ? start : 0
+  const safeDuration = Number.isFinite(duration) ? Math.max(0, duration) : 0
+  const waveSpan =
+    characterCount <= 1
+      ? 0
+      : Math.min(
+          safeDuration * KARAOKE_CHARACTER_WAVE_SPAN_RATIO,
+          KARAOKE_CHARACTER_WAVE_SPAN_MAX_MS,
+        )
+  return {
+    start: safeStart,
+    waveSpan,
+    end: safeStart + waveSpan + KARAOKE_CHARACTER_RISE_MS,
+  }
 }
 
 const setCharacterGradient = (record) => {
@@ -171,7 +224,6 @@ const applyTokenState = (record, state, progress = 0) => {
   const isPast = state === 'inactive-past'
   const nextProgress = isFuture ? 0 : state === 'active' ? progress : 1
   setProgress(record, nextProgress)
-  setCharacterLift(record, nextProgress)
   setTokenOpacity(record, 1)
   setTokenActiveAlpha(
     record,
@@ -196,10 +248,13 @@ const setTokenReleasePresentation = (record, progress) => {
     record,
     activeAlpha + (targetAlpha - activeAlpha) * nextProgress,
   )
+  settleCharacterLift(record)
 }
 
 const resetToken = (record, state = 'future') => {
   applyTokenState(record, state, 0)
+  if (state === 'future') resetCharacterLift(record)
+  else settleCharacterLift(record)
 }
 
 const setTokenPresentation = (record, time) => {
@@ -209,6 +264,7 @@ const setTokenPresentation = (record, time) => {
   if (record.state !== state || state === 'active') {
     applyTokenState(record, state, progress)
   }
+  setCharacterLiftAtTime(record, time)
 }
 
 const canListenToMedia = (audio) =>
@@ -477,12 +533,17 @@ const useLyricsTimeline = ({
         ? []
         : Array.from(node.querySelectorAll('[data-lyrics-character="true"]'))
       const characterCount = characterNodes.length
+      const characterTiming = getCharacterTiming(
+        descriptor.window,
+        characterCount,
+      )
       const characters = characterNodes.map((characterNode, index) => ({
         node: characterNode,
-        phase:
+        start:
           characterCount <= 1
-            ? 0
-            : (index / (characterCount - 1)) * KARAOKE_CHARACTER_PHASE_SPREAD,
+            ? characterTiming.start
+            : characterTiming.start +
+              (index / (characterCount - 1)) * characterTiming.waveSpan,
       }))
       const record = {
         key,
@@ -492,6 +553,9 @@ const useLyricsTimeline = ({
         window: descriptor.window,
         presentation: descriptor.presentation,
         characters,
+        characterMotionStart: characterTiming.start,
+        characterMotionEnd: characterTiming.end,
+        characterMotionState: null,
         progress: null,
         opacity: null,
         activeAlpha: null,

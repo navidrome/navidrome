@@ -106,6 +106,7 @@ const createAudio = ({ currentTime = 0, duration = 10 } = {}) => {
 
 describe('<LyricsPanel />', () => {
   const originalMatchMedia = window.matchMedia
+  const originalResizeObserver = window.ResizeObserver
 
   beforeEach(() => {
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation(() => 0)
@@ -116,6 +117,7 @@ describe('<LyricsPanel />', () => {
     vi.useRealTimers()
     vi.restoreAllMocks()
     window.matchMedia = originalMatchMedia
+    window.ResizeObserver = originalResizeObserver
     cleanup()
   })
 
@@ -330,18 +332,33 @@ describe('<LyricsPanel />', () => {
   it('raises a line once and keeps it elevated after release', () => {
     const { rerenderPanel } = renderPanel({
       mainLyric,
+      translationLyric: {
+        synced: true,
+        line: [{ start: 0, end: 1000, value: 'translated line' }],
+      },
+      showTranslation: true,
       audioInstance: { currentTime: 0.5, paused: true },
     })
 
     const group = screen.getByTestId('lyrics-line-group')
+    const translation = screen
+      .getByText('translated line')
+      .closest('[data-tokenized]')
     const activeStyle = window.getComputedStyle(group)
     expect(group).toHaveAttribute('data-highlight-active', 'true')
     expect(group).toHaveAttribute('data-raised', 'true')
     expect(group).toHaveAttribute('data-line-motion', 'line')
+    expect(group).toHaveAttribute('data-character-wave', 'false')
     expect(activeStyle.transform).toBe(`translateY(-${KARAOKE_LINE_LIFT_PX}px)`)
+    expect(window.getComputedStyle(translation).transform).toBe('')
 
     rerenderPanel({
       mainLyric,
+      translationLyric: {
+        synced: true,
+        line: [{ start: 0, end: 1000, value: 'translated line' }],
+      },
+      showTranslation: true,
       audioInstance: { currentTime: 1.1, paused: true },
     })
 
@@ -351,24 +368,13 @@ describe('<LyricsPanel />', () => {
     expect(releasedStyle.transform).toBe(
       `translateY(-${KARAOKE_LINE_LIFT_PX}px)`,
     )
+    expect(window.getComputedStyle(translation).transform).toBe('')
   })
 
   it('keeps every word-timed layer on the same rise and release lifecycle', () => {
-    const offsetPronunciationLyric = {
-      ...tokenizedPronunciationLyric,
-      cueLine: [
-        {
-          ...tokenizedPronunciationLyric.cueLine[0],
-          cue: [
-            { start: 100, end: 850, value: 'mein' },
-            { start: 850, end: 1000, value: 'lain' },
-          ],
-        },
-      ],
-    }
     const propsAt = (currentTime) => ({
       mainLyric: tokenizedMainLyric,
-      pronunciationLyric: offsetPronunciationLyric,
+      pronunciationLyric: tokenizedPronunciationLyric,
       translationLyric: {
         synced: true,
         line: [{ start: 0, end: 1000, value: 'translated line' }],
@@ -377,7 +383,7 @@ describe('<LyricsPanel />', () => {
       showTranslation: true,
       audioInstance: { currentTime, paused: true },
     })
-    const { rerenderPanel } = renderPanel(propsAt(0.25))
+    const { rerenderPanel } = renderPanel(propsAt(0.15))
 
     const group = screen.getByTestId('lyrics-line-group')
     const translation = screen
@@ -403,7 +409,10 @@ describe('<LyricsPanel />', () => {
     expect(mainCharacters).toHaveLength(4)
     expect(pronunciationCharacters).toHaveLength(4)
     expect(mainCharacters[0].style.transform).toBe(
-      `translateY(-${KARAOKE_CHARACTER_LIFT_PX.toFixed(4)}px)`,
+      `translate3d(0, -${KARAOKE_CHARACTER_LIFT_PX.toFixed(4)}px, 0)`,
+    )
+    expect(window.getComputedStyle(mainCharacters[0]).willChange).toBe(
+      'transform',
     )
     expect(mainCharacters[3].style.transform).not.toBe(
       mainCharacters[0].style.transform,
@@ -422,14 +431,101 @@ describe('<LyricsPanel />', () => {
     expect(
       group.querySelectorAll('[data-lyrics-character="true"]'),
     ).toHaveLength(0)
-    expect(window.getComputedStyle(group).transform).toBe(
+    expect(window.getComputedStyle(group).transform).toBe('translateY(0)')
+    const releasedMainRow = screen
+      .getAllByTestId('lyrics-token')[0]
+      .closest('[data-tokenized]')
+    expect(window.getComputedStyle(releasedMainRow).transform).toBe(
       `translateY(-${KARAOKE_LINE_LIFT_PX}px)`,
     )
-    expect(window.getComputedStyle(translation).transform).toBe('')
+    expect(window.getComputedStyle(translation).transform).toBe(
+      `translateY(-${KARAOKE_LINE_LIFT_PX}px)`,
+    )
     const idleText = screen
       .getAllByTestId('lyrics-token')[0]
       .querySelector('[data-lyrics-wave-text="true"]')
     expect(idleText.style.backgroundImage).toContain('linear-gradient')
+  })
+
+  it('keeps the translation raised when a word-timed line wraps or unwraps', () => {
+    let wrapped = false
+    const observers = []
+    window.ResizeObserver = class {
+      constructor(callback) {
+        this.callback = callback
+        this.targets = []
+        observers.push(this)
+      }
+
+      observe(target) {
+        this.targets.push(target)
+      }
+
+      unobserve(target) {
+        this.targets = this.targets.filter((candidate) => candidate !== target)
+      }
+
+      disconnect() {
+        this.targets = []
+      }
+    }
+    vi.spyOn(HTMLElement.prototype, 'offsetTop', 'get').mockImplementation(
+      function getOffsetTop() {
+        if (!wrapped || this.dataset.stackedToken !== 'true') return 0
+        const tokens = Array.from(
+          this.parentElement?.querySelectorAll('[data-stacked-token="true"]') ||
+            [],
+        )
+        return tokens.indexOf(this) > 0 ? 32 : 0
+      },
+    )
+    const notifyResizeObservers = () => {
+      observers.forEach(({ callback, targets }) => {
+        callback(targets.map((target) => ({ target })))
+      })
+    }
+    const propsAt = (currentTime) => ({
+      mainLyric: tokenizedMainLyric,
+      pronunciationLyric: tokenizedPronunciationLyric,
+      translationLyric: {
+        synced: true,
+        line: [{ start: 0, end: 1000, value: 'translated line' }],
+      },
+      showPronunciation: true,
+      showTranslation: true,
+      audioInstance: { currentTime, paused: true },
+    })
+    const { rerenderPanel } = renderPanel(propsAt(0.25))
+    const row = screen
+      .getAllByTestId('lyrics-token')[0]
+      .closest('[data-wrapped]')
+    const translation = screen
+      .getByText('translated line')
+      .closest('[data-tokenized]')
+
+    expect(row).toHaveAttribute('data-wrapped', 'false')
+    expect(window.getComputedStyle(translation).transform).toBe(
+      `translateY(-${KARAOKE_LINE_LIFT_PX}px)`,
+    )
+
+    wrapped = true
+    act(notifyResizeObservers)
+    expect(row).toHaveAttribute('data-wrapped', 'true')
+    expect(window.getComputedStyle(translation).transform).toBe(
+      `translateY(-${KARAOKE_LINE_LIFT_PX}px)`,
+    )
+
+    rerenderPanel(propsAt(1.1))
+    expect(window.getComputedStyle(translation).transform).toBe(
+      `translateY(-${KARAOKE_LINE_LIFT_PX}px)`,
+    )
+
+    wrapped = false
+    act(notifyResizeObservers)
+    expect(row).toHaveAttribute('data-wrapped', 'false')
+    expect(window.getComputedStyle(translation).transform).toBe(
+      `translateY(-${KARAOKE_LINE_LIFT_PX}px)`,
+    )
   })
 
   it('keeps detailed grapheme markup on active lines without changing token layout', () => {
