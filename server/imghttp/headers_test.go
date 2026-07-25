@@ -41,6 +41,11 @@ func resized() *artwork.Image {
 	}
 }
 
+// unvalidated stands for a response with no content hash and no representation tag.
+func unvalidated() *artwork.Image {
+	return &artwork.Image{ReadCloser: io.NopCloser(strings.NewReader("IMG")), LastUpdated: lastMod}
+}
+
 var _ = Describe("WriteImageHeaders", func() {
 	type testCase struct {
 		img           *artwork.Image
@@ -101,5 +106,13 @@ var _ = Describe("WriteImageHeaders", func() {
 			testCase{img: found(), ifNoneMatch: `"deadbeefdeadbeef"`, want304: false, wantCache: "public, no-cache", wantETag: `"` + testHash + `"`, wantLastMod: true}),
 		Entry("placeholder ignores If-None-Match and never 304s",
 			testCase{img: placeholder(), ifNoneMatch: "*", want304: false, wantCache: "no-store"}),
+
+		// An image with neither ETag nor Hash has no validator. Emitting one would give every
+		// such response the same empty tag, and matching it would 304 changed bytes.
+		Entry("omits the ETag entirely when there is no validator",
+			testCase{img: unvalidated(), wantCache: "public, no-cache", wantLastMod: true}),
+		Entry("never 304s an empty validator echoed back by the client",
+			testCase{img: unvalidated(), ifNoneMatch: `""`, want304: false,
+				wantCache: "public, no-cache", wantLastMod: true}),
 	)
 })

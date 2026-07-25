@@ -313,20 +313,19 @@ func (s *service) serveDisc(ctx context.Context, artID model.ArtworkID, size int
 		return selectImageReader(ctx, artID, funcs...)
 	}
 	albumArtID := model.ArtworkID{Kind: model.KindAlbumArtwork, ID: dr.album.ID}
+	// Disc art has no state row, so there is no stored content hash — to key the resize cache
+	// on, or to fall back to as a validator. Keying on the id and the album's mtime, as the
+	// legacy reader did, lets a warm cache answer without touching the filesystem; the chain
+	// runs only on a miss. The key carries DiscArtPriority so changing it invalidates.
+	key := fmt.Sprintf("%s|%d|%s", artID.ID, dr.cacheTime().UnixNano(), conf.Server.DiscArtPriority)
 	if size == 0 && !square {
-		r, path, err := selectImage()
+		r, _, err := selectImage()
 		if err != nil || r == nil {
 			return s.Get(ctx, albumArtID, size, square)
 		}
-		return &Image{ReadCloser: r, LastUpdated: unixMtime(mtimeViaFS(dr.lib.FS, path))}, nil
+		return &Image{ReadCloser: r, ETag: representationTag(key, size, square), LastUpdated: dr.cacheTime()}, nil
 	}
 
-	// Disc art has no state row, so there is no stored content hash to key the resize cache on.
-	// Keying on the id and the album's mtime — as the legacy reader did — lets a warm cache
-	// answer without touching the filesystem at all; the chain runs only on a miss. The key
-	// carries DiscArtPriority so changing it invalidates. resizedItem.hash is key material
-	// here, not a content hash, so the response carries no Image.Hash.
-	key := fmt.Sprintf("%s|%d|%s", artID.ID, dr.cacheTime().UnixNano(), conf.Server.DiscArtPriority)
 	item := &resizedItem{
 		hash:       key,
 		size:       size,

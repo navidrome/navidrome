@@ -393,6 +393,28 @@ var _ = Describe("Service", func() {
 			Expect(second.ETag).ToNot(Equal(firstKey), "a replaced image must not keep the old cache entry")
 		})
 
+		// Disc art has no content hash to fall back to, so without an explicit validator the
+		// full-size response would carry an empty ETag — identical for every disc image.
+		It("gives a full-size disc image a validator that tracks the source", func() {
+			folderRepo.result = []model.Folder{{
+				Path: "tests/fixtures/artist/an-album", ImageFiles: []string{"cover.jpg"},
+				ImagesUpdatedAt: time.Now().Add(-time.Hour),
+			}}
+			albumRepo.SetData(model.Albums{{ID: "aldc5", Name: "Album", FolderIDs: []string{"f1"}}})
+			discID := model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID("aldc5", 1), nil)
+
+			first, err := svc.Get(ctx, discID, 0, false)
+			Expect(err).ToNot(HaveOccurred())
+			readAll(first)
+			Expect(first.ETag).ToNot(BeEmpty())
+
+			folderRepo.result[0].ImagesUpdatedAt = time.Now()
+			second, err := svc.Get(ctx, discID, 0, false)
+			Expect(err).ToNot(HaveOccurred())
+			readAll(second)
+			Expect(second.ETag).ToNot(Equal(first.ETag), "a replaced image must not revalidate as unchanged")
+		})
+
 		It("falls back to album art when no disc image matches", func() {
 			folderRepo.result = nil
 			albumRepo.SetData(model.Albums{{ID: "aldc2", Name: "Album"}})

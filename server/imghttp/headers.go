@@ -28,7 +28,11 @@ func WriteImageHeaders(w http.ResponseWriter, r *http.Request, img *artwork.Imag
 	if etag == "" {
 		etag = img.Hash
 	}
-	h.Set("ETag", `"`+etag+`"`)
+	// An empty validator is not one: emitting it would hand every such response the same ETag,
+	// and matching it would 304 a client that echoed it back even after the bytes changed.
+	if etag != "" {
+		h.Set("ETag", `"`+etag+`"`)
+	}
 	if !img.LastUpdated.IsZero() {
 		h.Set("Last-Modified", img.LastUpdated.UTC().Format(http.TimeFormat))
 	}
@@ -40,7 +44,7 @@ func WriteImageHeaders(w http.ResponseWriter, r *http.Request, img *artwork.Imag
 		h.Set("Cache-Control", "public, no-cache")
 	}
 
-	if ifNoneMatch(r.Header.Get("If-None-Match"), etag) {
+	if etag != "" && ifNoneMatch(r.Header.Get("If-None-Match"), etag) {
 		w.WriteHeader(http.StatusNotModified)
 		return true
 	}
