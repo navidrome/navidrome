@@ -53,19 +53,31 @@ func loadGoldens() map[string]string {
 }
 
 var _ = Describe("reference port", func() {
-	// solid.png and alpha.png are exactly uniform in color, so their true DCT AC term is 0 and the
-	// hash instead encodes float rounding noise from cos(), where Go and V8 disagree in the last bit.
-	floatUnstable := map[string]bool{"solid.png": true, "alpha.png": true}
-
 	It("reproduces every golden vector", func() {
 		for name, want := range loadGoldens() {
-			if floatUnstable[name] {
-				continue
+			if name == "solid.png" {
+				continue // see the dedicated header-only spec below
 			}
 			w, h, rgba := loadFixture(name)
 			got := base64.StdEncoding.EncodeToString(referenceEncode(w, h, rgba))
 			Expect(got).To(Equal(want), "fixture %s", name)
 		}
+	})
+
+	// solid.png is uniform, so its true AC term is 0 and the golden's AC nibbles are just float
+	// rounding noise from cos(); only the header (DC terms + scales, which quantize to 0) is well-defined.
+	It("reproduces the well-conditioned header of a uniform image", func() {
+		want, err := base64.StdEncoding.DecodeString(loadGoldens()["solid.png"])
+		Expect(err).ToNot(HaveOccurred())
+		w, h, rgba := loadFixture("solid.png")
+		got := referenceEncode(w, h, rgba)
+		Expect(got[:5]).To(Equal(want[:5]), "header bytes")
+
+		header24 := int(got[0]) | int(got[1])<<8 | int(got[2])<<16
+		header16 := int(got[3]) | int(got[4])<<8
+		Expect((header24>>18)&31).To(Equal(0), "lScale")
+		Expect((header16>>3)&63).To(Equal(0), "pScale")
+		Expect((header16>>9)&63).To(Equal(0), "qScale")
 	})
 
 	It("produces 24 bytes for a square opaque image", func() {
@@ -122,7 +134,7 @@ func referenceEncode(w, h int, rgba []byte) []byte {
 
 	encodeChannel := func(channel []float64, nx, ny int) (dc float64, ac []float64, scale float64) {
 		fx := make([]float64, w)
-		for cy := 0; cy < ny; cy++ {
+		for cy := range ny {
 			for cx := 0; cx*ny < nx*(ny-cy); cx++ {
 				f := 0.0
 				for x := range w {

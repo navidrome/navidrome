@@ -58,10 +58,12 @@ const solid = (rgba, i) => {
   rgba[i + 2] = 180
   rgba[i + 3] = 255
 }
-const alphaRamp = (rgba, i, x, y, w) => {
-  rgba[i] = 200
-  rgba[i + 1] = 50
-  rgba[i + 2] = 90
+// RGB must vary with position too: a constant color composited over its own average cancels to a
+// flat L/P/Q (the bug this fixture exists to catch), so pair a color gradient with the alpha ramp.
+const alphaRamp = (rgba, i, x, y, w, h) => {
+  rgba[i] = Math.floor((255 * x) / w)
+  rgba[i + 1] = Math.floor((255 * y) / h)
+  rgba[i + 2] = Math.floor((255 * (x + y)) / (w + h))
   rgba[i + 3] = Math.floor((255 * x) / w)
 }
 
