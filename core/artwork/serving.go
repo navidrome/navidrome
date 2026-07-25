@@ -303,17 +303,38 @@ func (s *service) serveDisc(ctx context.Context, artID model.ArtworkID, size int
 	}
 	// Single-disc albums run the chain too: a disc can carry its own art, distinct from the
 	// album cover, and DiscArtPriority is what expresses that preference.
-	funcs := dr.fromDiscArtPriority(ctx, s.ffmpeg, conf.Server.DiscArtPriority)
-	if r, path, err := selectImageReader(ctx, artID, funcs...); err == nil && r != nil {
-		defer r.Close()
-		if data, rerr := readCapped(r); rerr == nil {
-			if hash, herr := HashImage(bytes.NewReader(data)); herr == nil {
-				return s.serveBytes(ctx, hash, data, unixMtime(mtimeViaFS(dr.lib.FS, path)), size, square)
-			}
-		}
+	selectImage := func() (io.ReadCloser, string, error) {
+		funcs := dr.fromDiscArtPriority(ctx, s.ffmpeg, conf.Server.DiscArtPriority)
+		return selectImageReader(ctx, artID, funcs...)
 	}
 	albumArtID := model.ArtworkID{Kind: model.KindAlbumArtwork, ID: dr.album.ID}
-	return s.Get(ctx, albumArtID, size, square)
+	if size == 0 && !square {
+		r, path, err := selectImage()
+		if err != nil || r == nil {
+			return s.Get(ctx, albumArtID, size, square)
+		}
+		return &Image{ReadCloser: r, LastUpdated: unixMtime(mtimeViaFS(dr.lib.FS, path))}, nil
+	}
+
+	// Disc art has no state row, so there is no stored content hash to key the resize cache on.
+	// Keying on the id and the album's mtime — as the legacy reader did — lets a warm cache
+	// answer without touching the filesystem at all; the chain runs only on a miss. The key
+	// carries DiscArtPriority so changing it invalidates. resizedItem.hash is key material
+	// here, not a content hash, so the response carries no Image.Hash.
+	key := fmt.Sprintf("%s|%d|%s", artID.ID, dr.album.UpdatedAt.UnixNano(), conf.Server.DiscArtPriority)
+	item := &resizedItem{
+		hash:       key,
+		size:       size,
+		square:     square,
+		lastUpdate: dr.album.UpdatedAt,
+		ffmpeg:     s.ffmpeg,
+		open:       func() (io.ReadCloser, error) { rc, _, err := selectImage(); return rc, err },
+	}
+	stream, err := s.cache.Get(ctx, item)
+	if err != nil {
+		return s.Get(ctx, albumArtID, size, square)
+	}
+	return &Image{ReadCloser: stream, ETag: representationTag(key, size, square), LastUpdated: dr.album.UpdatedAt}, nil
 }
 
 // dangling enqueues a re-resolution at Scan priority and reports the artwork as

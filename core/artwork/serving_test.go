@@ -331,6 +331,28 @@ var _ = Describe("Service", func() {
 			Expect(readAll(img)).To(Equal(coverBytes))
 		})
 
+		// The resize cache is keyed on the id and the album's mtime, not on the image bytes, so a
+		// warm hit needs no filesystem access. Dropping the source between the two requests is
+		// how that shows: re-reading would fall back to the album instead.
+		It("serves a sized disc image from cache without re-reading the source", func() {
+			folderRepo.result = []model.Folder{{Path: "tests/fixtures/artist/an-album", ImageFiles: []string{"cover.jpg"}}}
+			albumRepo.SetData(model.Albums{{ID: "aldc3", Name: "Album", FolderIDs: []string{"f1"}}})
+			discID := model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID("aldc3", 1), nil)
+
+			first, err := svc.Get(ctx, discID, 64, false)
+			Expect(err).ToNot(HaveOccurred())
+			warmed := readAll(first)
+			Expect(warmed).ToNot(BeEmpty())
+
+			// With the source gone and the album holding no art of its own, a re-read would
+			// fall through to the album and fail.
+			folderRepo.result = nil
+
+			second, err := svc.Get(ctx, discID, 64, false)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(readAll(second)).To(Equal(warmed), "a warm sized request must not touch the source")
+		})
+
 		It("falls back to album art when no disc image matches", func() {
 			folderRepo.result = nil
 			albumRepo.SetData(model.Albums{{ID: "aldc2", Name: "Album"}})
