@@ -122,8 +122,14 @@ func resolveArtist(ctx context.Context, ds model.DataStore, ag *agents.Agents, f
 	if err != nil {
 		return resolution{}, err
 	}
-	if res, ok := resolveLocalFile(ar.UploadedImagePath(), "upload"); ok {
-		return res, nil
+	upload, ok := resolveLocalFile(ar.UploadedImagePath(), "upload")
+	if ok {
+		return upload, nil
+	}
+	if upload.localError {
+		// The upload outranks every other source; falling through would persist a lower-priority
+		// image as if the upload were gone.
+		return upload, nil
 	}
 
 	// Only consider albums where the artist is the sole album artist, same as reader_artist.go.
@@ -166,10 +172,12 @@ func resolveArtist(ctx context.Context, ds model.DataStore, ag *agents.Agents, f
 				extErr = true
 			}
 		case pattern == "image-folder":
-			if res, ok := resolveArtistImageFolder(ar); ok {
+			res, ok := resolveArtistImageFolder(ar)
+			if ok {
 				res.extError = extErr
 				return res, nil
 			}
+			localErr = localErr || res.localError
 		case strings.HasPrefix(pattern, "album/"):
 			if lib.FS == nil {
 				continue
@@ -201,18 +209,29 @@ func resolvePlaylist(ctx context.Context, ds model.DataStore, ag *agents.Agents,
 		return resolution{}, err
 	}
 
-	var extErr bool
-	if res, ok := resolveLocalFile(pl.UploadedImagePath(), "upload"); ok {
-		return res, nil
-	}
-	if res, ok := resolveLocalFile(findPlaylistSidecarPath(ctx, pl.Path), "folder"); ok {
-		return res, nil
+	var extErr, localErr bool
+	for _, src := range []struct{ path, source string }{
+		{pl.UploadedImagePath(), "upload"},
+		{findPlaylistSidecarPath(ctx, pl.Path), "folder"},
+	} {
+		res, ok := resolveLocalFile(src.path, src.source)
+		if ok {
+			return res, nil
+		}
+		if res.localError {
+			// These outrank the generated grid; falling through would replace them with it.
+			return res, nil
+		}
 	}
 	// A local ExternalImageURL is a file-backed reference: serve it in place (staleness-checked,
 	// and available even on the request path). Only http(s) URLs need the gated remote fetch.
 	localImg, remoteImg := classifyPlaylistImage(pl.ExternalImageURL)
 	if localImg != "" {
-		if res, ok := resolveLocalFile(localImg, "folder"); ok {
+		res, ok := resolveLocalFile(localImg, "folder")
+		if ok {
+			return res, nil
+		}
+		if res.localError {
 			return res, nil
 		}
 	}
@@ -266,7 +285,7 @@ func resolvePlaylist(ctx context.Context, ds model.DataStore, ag *agents.Agents,
 		if tileErr != nil {
 			return resolution{}, fmt.Errorf("resolvePlaylist: sampled album art failed: %w", tileErr)
 		}
-		return resolution{extError: extErr}, nil
+		return resolution{extError: extErr, localError: localErr}, nil
 	}
 	// Grow to 4 tiles by repeating what we have, mirroring reader_playlist.go's loadTiles.
 	switch len(tiles) {
@@ -381,15 +400,15 @@ func resolveArtistFolderPattern(ctx context.Context, lib libraryView, artistFold
 	return resolution{reader: r, source: "folder", sourcePath: path, refMtime: mtimeOf(path)}, true
 }
 
-// resolveLocalFile opens an absolute path directly (uploads, image-folder). A
-// missing or unreadable path is "no source", not an error.
+// resolveLocalFile opens an absolute path directly (uploads, image-folder). A missing path is
+// "no source"; any other open failure says nothing about whether the image exists.
 func resolveLocalFile(path, source string) (resolution, bool) {
 	if path == "" {
 		return resolution{}, false
 	}
 	f, err := os.Open(path)
 	if err != nil {
-		return resolution{}, false
+		return resolution{localError: !errors.Is(err, fs.ErrNotExist)}, false
 	}
 	return resolution{reader: f, source: source, sourcePath: path, refMtime: mtimeOf(path)}, true
 }

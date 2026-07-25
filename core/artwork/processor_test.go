@@ -13,6 +13,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -155,6 +156,28 @@ var _ = Describe("processItem", func() {
 
 		_, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al-io", model.ImageTypePrimary)
 		Expect(err).To(MatchError(model.ErrNotFound), "an I/O fault must not be recorded as absent")
+	})
+
+	// An upload outranks every other source, so an unreadable one must neither settle absent
+	// nor let a lower-priority image take its place.
+	It("failed-on-unreadable-upload: an upload that will not open never records absent", func() {
+		radioRepo := tests.CreateMockedRadioRepo()
+		radioRepo.Data = map[string]*model.Radio{}
+		ds.MockedRadio = radioRepo
+		dir := GinkgoT().TempDir()
+		conf.Server.DataFolder = conf.NewDir(dir)
+		upload := model.UploadedImagePath(consts.EntityRadio, "ra-io.jpg")
+		Expect(os.MkdirAll(filepath.Dir(upload), 0o755)).To(Succeed())
+		Expect(os.WriteFile(upload, []byte("x"), 0o600)).To(Succeed())
+		Expect(os.Chmod(upload, 0o000)).To(Succeed()) // present, but unreadable
+		DeferCleanup(func() { _ = os.Chmod(upload, 0o600) })
+		radioRepo.Data["ra-io"] = &model.Radio{ID: "ra-io", Name: "Station", UploadedImage: "ra-io.jpg"}
+
+		out, _ := processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "ra", ItemID: "ra-io"})
+		Expect(out).To(Equal(outcomeFailed))
+
+		_, err := artRepo.GetItemArtwork(model.KindRadioArtwork, "ra-io", model.ImageTypePrimary)
+		Expect(err).To(MatchError(model.ErrNotFound), "an unreadable upload must not be recorded as absent")
 	})
 
 	It("failed-on-extError: leaves the item's state untouched", func() {
