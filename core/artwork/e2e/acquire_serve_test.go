@@ -229,6 +229,20 @@ var _ = Describe("Acquisition → serve loop", func() {
 		Expect(art.BlurHash).ToNot(BeEmpty())
 	})
 
+	It("acquires GIF artwork, whose decoder only core/artwork's blank import registers", func() {
+		writeUploadedImage(consts.EntityRadio, "station.gif", gifFixture)
+		radioRepo.Data["ra1"] = &model.Radio{ID: "ra1", Name: "Station", UploadedImage: "station.gif"}
+		worker.Bump("ra", "ra1")
+		runWorkerUntil(ctx, worker, itemFound(model.KindRadioArtwork, "ra1"))
+
+		ia, err := artRepo.GetItemArtwork(model.KindRadioArtwork, "ra1", model.ImageTypePrimary)
+		Expect(err).ToNot(HaveOccurred())
+		art, err := artRepo.GetImage(ia.Hash)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(art.Mime).To(Equal("image/gif"))
+		Expect(art.Width).To(BeNumerically("==", 4))
+	})
+
 	It("deduplicates byte-identical art across entities onto one image row", func() {
 		folderRepo.result = []model.Folder{{Path: albumFolderPath, ImageFiles: []string{"cover.jpg"}}}
 		albumRepo.SetData(model.Albums{
@@ -298,4 +312,13 @@ func mustGet(img *artwork.Image, err error) *artwork.Image {
 	GinkgoHelper()
 	Expect(err).ToNot(HaveOccurred())
 	return img
+}
+
+// gifFixture is a 4x4 GIF held as raw bytes on purpose: encoding one would import image/gif into
+// this test binary and register the decoder, masking the production import the spec above guards.
+var gifFixture = []byte{
+	0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x04, 0x00, 0x04, 0x00, 0x80, 0x00,
+	0x00, 0x2e, 0x86, 0xc1, 0xf4, 0xd0, 0x3f, 0x2c, 0x00, 0x00, 0x00, 0x00,
+	0x04, 0x00, 0x04, 0x00, 0x00, 0x02, 0x05, 0x44, 0x7c, 0x67, 0xb8, 0x05,
+	0x00, 0x3b,
 }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"image"
 	"image/draw"
+	_ "image/gif" // the only artwork format with no other importer in this package
 	"io"
 	"time"
 
