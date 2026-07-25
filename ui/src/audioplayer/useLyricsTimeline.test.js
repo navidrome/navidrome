@@ -1,7 +1,13 @@
 import { act } from '@testing-library/react'
 import { renderHook } from '@testing-library/react-hooks'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { KARAOKE_CHARACTER_LIFT_PX } from './lyricsKaraokeConstants'
+import {
+  KARAOKE_CHARACTER_LIFT_PX,
+  KARAOKE_CHARACTER_RISE_MS,
+  KARAOKE_CHARACTER_WAVE_SPAN_MAX_MS,
+  KARAOKE_CHARACTER_WAVE_SPAN_RATIO,
+  KARAOKE_HIGHLIGHT_LEAD_MS,
+} from './lyricsKaraokeConstants'
 import useLyricsTimeline from './useLyricsTimeline'
 
 const createAudio = ({
@@ -40,6 +46,10 @@ const presentation = {
   gradient: 'linear-gradient(90deg, white, transparent)',
   useCrossfade: false,
 }
+
+const fullCharacterLift = `translate3d(0, -${KARAOKE_CHARACTER_LIFT_PX.toFixed(
+  4,
+)}px, 0)`
 
 const createTokenNode = (text = '') => {
   const tokenNode = document.createElement('span')
@@ -209,7 +219,7 @@ describe('useLyricsTimeline', () => {
     tokenNode
       .querySelectorAll('[data-lyrics-character="true"]')
       .forEach((character) =>
-        expect(character.style.transform).toBe('translateY(-1.5000px)'),
+        expect(character.style.transform).toBe(fullCharacterLift),
       )
   })
 
@@ -223,7 +233,7 @@ describe('useLyricsTimeline', () => {
       'first',
     )
 
-    syncNow(result, 1219)
+    syncNow(result, 1259)
     const gradient = tokenNode.style.backgroundImage
     const releaseAlpha = Number(
       tokenNode.style.getPropertyValue('--lyrics-token-active-alpha'),
@@ -232,7 +242,7 @@ describe('useLyricsTimeline', () => {
     expect(tokenNode.style.color).toBe('transparent')
     expect(tokenNode.style.opacity).toBe('1')
 
-    syncNow(result, 1220)
+    syncNow(result, 1260)
 
     const pastAlpha = Number(
       tokenNode.style.getPropertyValue('--lyrics-token-active-alpha'),
@@ -247,20 +257,20 @@ describe('useLyricsTimeline', () => {
     expect(tokenNode.style.getPropertyValue('--lyrics-progress')).toBe('1')
   })
 
-  it('uses the complete token duration for the character phase wave', () => {
-    const audio = createAudio({ currentTime: 0, duration: 5, paused: true })
+  it('completes long-token character waves while highlighting continues', () => {
+    const audio = createAudio({ currentTime: 0, duration: 6, paused: true })
     const longLines = [
       {
         start: 0,
-        end: 4000,
-        tokens: [{ start: 0, end: 4000, value: 'super' }],
+        end: 5000,
+        tokens: [{ start: 500, end: 4500, value: 'super' }],
       },
     ]
     const { result } = renderTimeline({ audio, sourceLines: longLines })
     const tokenNode = registerToken(
       result,
       '0:long-word',
-      { start: 0, end: 4000 },
+      { start: 500, end: 4500 },
       'super',
     )
 
@@ -270,77 +280,138 @@ describe('useLyricsTimeline', () => {
     expect(characters[0].style.backgroundImage).toBe(
       tokenNode.style.backgroundImage,
     )
+    const tokenStart = 500 - KARAOKE_HIGHLIGHT_LEAD_MS
+    syncNow(result, tokenStart)
     characters.forEach((character) =>
-      expect(character.style.transform).not.toMatch(/^translateY\(\d/),
-    )
-    const firstTransforms = []
-    ;[0, 160, 320, 480].forEach((time) => {
-      syncNow(result, time)
-      firstTransforms.push(characters[0].style.transform)
-    })
-
-    expect(new Set(firstTransforms).size).toBe(firstTransforms.length)
-    firstTransforms.forEach((transform) =>
-      expect(transform).toMatch(/^translateY\(-\d+\.\d{4}px\)$/),
+      expect(character.style.transform).toBe(''),
     )
 
-    syncNow(result, 1320)
-    const offsets = characters.map((character) =>
-      Math.abs(
-        Number.parseFloat(
-          character.style.transform.match(/-?\d+\.\d+/)?.[0] || '0',
-        ),
-      ),
-    )
-    offsets.forEach((offset) => expect(offset).toBeGreaterThanOrEqual(0))
-    expect(offsets.filter((offset) => offset > 0)).toHaveLength(4)
-    expect(offsets[0]).toBeGreaterThan(offsets[1])
-    expect(offsets[1]).toBeGreaterThan(offsets[2])
-    expect(offsets[2]).toBeGreaterThan(offsets[3])
-    expect(offsets[4]).toBe(0)
+    syncNow(result, tokenStart + KARAOKE_CHARACTER_RISE_MS / 2)
+    expect(characters[0].style.transform).not.toBe(fullCharacterLift)
+    expect(characters[0].style.transform).not.toBe('')
+    expect(characters[4].style.transform).toBe('')
 
-    syncNow(result, 3600)
-    expect(characters[4].style.transform).not.toBe(
-      `translateY(-${KARAOKE_CHARACTER_LIFT_PX.toFixed(4)}px)`,
+    syncNow(result, tokenStart + KARAOKE_CHARACTER_RISE_MS)
+    expect(characters[0].style.transform).toBe(fullCharacterLift)
+    expect(characters[4].style.transform).toMatch(
+      /^translate3d\(0, -\d+\.\d{4}px, 0\)$/,
     )
+    expect(characters[4].style.transform).not.toBe(fullCharacterLift)
 
-    syncNow(result, 3880)
+    const completeWaveAt =
+      tokenStart +
+      KARAOKE_CHARACTER_WAVE_SPAN_MAX_MS +
+      KARAOKE_CHARACTER_RISE_MS
+    syncNow(result, completeWaveAt)
     characters.forEach((character) =>
-      expect(character.style.transform).toBe(
-        `translateY(-${KARAOKE_CHARACTER_LIFT_PX.toFixed(4)}px)`,
-      ),
+      expect(character.style.transform).toBe(fullCharacterLift),
+    )
+    expect(
+      Number(tokenNode.style.getPropertyValue('--lyrics-progress')),
+    ).toBeCloseTo(
+      (KARAOKE_CHARACTER_WAVE_SPAN_MAX_MS + KARAOKE_CHARACTER_RISE_MS) / 4000,
+      5,
     )
   })
 
-  it('keeps the normalized wave shape for short token durations', () => {
-    const audio = createAudio({ currentTime: 0, duration: 1, paused: true })
+  it('finishes short-token motion after highlighting without dropping the lift', () => {
+    const audio = createAudio({ currentTime: 0, duration: 2, paused: true })
     const shortLines = [
       {
         start: 0,
-        end: 180,
-        tokens: [{ start: 0, end: 180, value: 'go' }],
+        end: 1200,
+        tokens: [{ start: 500, end: 680, value: 'go' }],
       },
     ]
     const { result } = renderTimeline({ audio, sourceLines: shortLines })
     const tokenNode = registerToken(
       result,
       '0:short-word',
-      { start: 0, end: 180 },
+      { start: 500, end: 680 },
       'go',
     )
-    syncNow(result, 0)
 
     const characters = tokenNode.querySelectorAll(
       '[data-lyrics-character="true"]',
     )
+    const tokenStart = 500 - KARAOKE_HIGHLIGHT_LEAD_MS
+    const waveSpan = 180 * KARAOKE_CHARACTER_WAVE_SPAN_RATIO
+    syncNow(result, tokenStart)
+    expect(characters[0].style.transform).toBe('')
+    expect(characters[1].style.transform).toBe('')
+
+    syncNow(result, 680 - KARAOKE_HIGHLIGHT_LEAD_MS)
+    expect(tokenNode.style.getPropertyValue('--lyrics-progress')).toBe('1')
     expect(characters[0].style.transform).not.toBe('')
-    expect(characters[1].style.transform).not.toBe(
-      `translateY(-${KARAOKE_CHARACTER_LIFT_PX.toFixed(4)}px)`,
+    expect(characters[1].style.transform).not.toBe(fullCharacterLift)
+
+    syncNow(result, tokenStart + waveSpan + KARAOKE_CHARACTER_RISE_MS)
+    expect(characters[0].style.transform).toBe(fullCharacterLift)
+    expect(characters[1].style.transform).toBe(fullCharacterLift)
+  })
+
+  it('gives a single character the same fixed rise duration', () => {
+    const audio = createAudio({ currentTime: 0, duration: 5, paused: true })
+    const sourceLines = [
+      {
+        start: 0,
+        end: 5000,
+        tokens: [{ start: 120, end: 4120, value: 'I' }],
+      },
+    ]
+    const { result } = renderTimeline({ audio, sourceLines })
+    const tokenNode = registerToken(
+      result,
+      '0:single-character',
+      { start: 120, end: 4120 },
+      'I',
+    )
+    const character = tokenNode.querySelector('[data-lyrics-character="true"]')
+    const tokenStart = 120 - KARAOKE_HIGHLIGHT_LEAD_MS
+
+    syncNow(result, tokenStart)
+    expect(character.style.transform).toBe('')
+    syncNow(result, tokenStart + KARAOKE_CHARACTER_RISE_MS / 2)
+    expect(character.style.transform).toMatch(
+      /^translate3d\(0, -\d+\.\d{4}px, 0\)$/,
+    )
+    expect(character.style.transform).not.toBe(fullCharacterLift)
+    syncNow(result, tokenStart + 240)
+    expect(character.style.transform).not.toBe(fullCharacterLift)
+    syncNow(result, tokenStart + 260)
+    expect(character.style.transform).toBe(fullCharacterLift)
+    expect(
+      Number(tokenNode.style.getPropertyValue('--lyrics-progress')),
+    ).toBeCloseTo(KARAOKE_CHARACTER_RISE_MS / 4000, 5)
+  })
+
+  it('forces an unfinished character wave to its raised release state', () => {
+    const audio = createAudio({ currentTime: 0, duration: 2, paused: true })
+    const sourceLines = [
+      {
+        start: 0,
+        end: 600,
+        tokens: [{ start: 500, end: 550, value: 'go' }],
+      },
+    ]
+    const { result } = renderTimeline({ audio, sourceLines })
+    const tokenNode = registerToken(
+      result,
+      '0:release-wave',
+      { start: 500, end: 550 },
+      'go',
+    )
+    const characters = tokenNode.querySelectorAll(
+      '[data-lyrics-character="true"]',
     )
 
-    syncNow(result, 60)
-    expect(characters[1].style.transform).toBe(
-      `translateY(-${KARAOKE_CHARACTER_LIFT_PX.toFixed(4)}px)`,
+    syncNow(result, 500 - KARAOKE_HIGHLIGHT_LEAD_MS)
+    expect(characters[1].style.transform).toBe('')
+
+    syncNow(result, 600)
+    expect(tokenNode.dataset.lyricsState).toBe('release')
+    characters.forEach((character) =>
+      expect(character.style.transform).toBe(fullCharacterLift),
     )
   })
 
@@ -380,6 +451,89 @@ describe('useLyricsTimeline', () => {
     )
 
     expect(secondProgress).toBeGreaterThanOrEqual(firstProgress)
+  })
+
+  it('drives character motion from playback-rate-adjusted media time', () => {
+    let frameCallback = null
+    let now = 0
+    window.requestAnimationFrame.mockImplementation((callback) => {
+      frameCallback = callback
+      return 1
+    })
+    vi.spyOn(performance, 'now').mockImplementation(() => now)
+
+    const audio = createAudio({
+      currentTime: 0.38,
+      duration: 2,
+      paused: false,
+      playbackRate: 2,
+    })
+    const sourceLines = [
+      {
+        start: 0,
+        end: 1200,
+        tokens: [{ start: 500, end: 1000, value: 'go' }],
+      },
+    ]
+    const { result } = renderTimeline({ audio, sourceLines })
+    const tokenNode = registerToken(
+      result,
+      '0:playback-rate-wave',
+      { start: 500, end: 1000 },
+      'go',
+    )
+    const character = tokenNode.querySelector('[data-lyrics-character="true"]')
+
+    expect(character.style.transform).toBe('')
+    now = KARAOKE_CHARACTER_RISE_MS / 4
+    act(() => frameCallback())
+    expect(character.style.transform).toMatch(
+      /^translate3d\(0, -\d+\.\d{4}px, 0\)$/,
+    )
+    expect(character.style.transform).not.toBe(fullCharacterLift)
+  })
+
+  it('reconstructs settled character motion after visibility recovery', () => {
+    let visibility = 'visible'
+    vi.spyOn(window.document, 'visibilityState', 'get').mockImplementation(
+      () => visibility,
+    )
+    const audio = createAudio({
+      currentTime: 0.38,
+      duration: 2,
+      paused: false,
+    })
+    const sourceLines = [
+      {
+        start: 0,
+        end: 1200,
+        tokens: [{ start: 500, end: 1000, value: 'go' }],
+      },
+    ]
+    const { result } = renderTimeline({ audio, sourceLines })
+    const tokenNode = registerToken(
+      result,
+      '0:visibility-wave',
+      { start: 500, end: 1000 },
+      'go',
+    )
+    const characters = tokenNode.querySelectorAll(
+      '[data-lyrics-character="true"]',
+    )
+
+    visibility = 'hidden'
+    act(() => {
+      window.document.dispatchEvent(new Event('visibilitychange'))
+    })
+    audio.currentTime = 0.8
+    visibility = 'visible'
+    act(() => {
+      window.document.dispatchEvent(new Event('visibilitychange'))
+    })
+
+    characters.forEach((character) =>
+      expect(character.style.transform).toBe(fullCharacterLift),
+    )
   })
 
   it('resets monotonic interpolation after an explicit backward seek', () => {

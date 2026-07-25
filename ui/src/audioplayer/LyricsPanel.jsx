@@ -127,10 +127,14 @@ const useStyles = makeStyles((theme) => ({
       transform: `translateY(-${KARAOKE_LINE_LIFT_PX}px)`,
       transition: `transform ${KARAOKE_LINE_ENTER_MS}ms ${KARAOKE_LINE_MOTION_EASING}, background-color 150ms ${KARAOKE_LINE_MOTION_EASING}`,
     },
-    '&[data-raised="true"][data-line-motion="character"][data-character-wave="false"]':
+    '&[data-raised="true"][data-line-motion="character"][data-character-wave="false"] $line':
       {
         transform: `translateY(-${KARAOKE_LINE_LIFT_PX}px)`,
       },
+    '&[data-raised="true"][data-line-motion="character"] $translationLine': {
+      transform: `translateY(-${KARAOKE_LINE_LIFT_PX}px)`,
+      transition: `${KARAOKE_LAYER_OPACITY_TRANSITION}, transform ${KARAOKE_LINE_ENTER_MS}ms ${KARAOKE_LINE_MOTION_EASING}`,
+    },
     '&[data-active="true"]': {
       '--lyrics-main-current-color':
         'var(--lyrics-main-active-color, var(--lyrics-main-idle-color, currentColor))',
@@ -143,15 +147,22 @@ const useStyles = makeStyles((theme) => ({
     '@media (prefers-reduced-motion: reduce)': {
       transition: 'none',
       transform: 'none',
+      '&[data-line-motion="character"] $line, &[data-line-motion="character"] $translationLine':
+        {
+          transition: 'none',
+          transform: 'none',
+        },
     },
   },
   waveCharacter: {
     display: 'inline-block',
     verticalAlign: 'baseline',
-    transform: 'translateY(0)',
+    transform: 'translate3d(0, 0, 0)',
     transformOrigin: 'center bottom',
+    willChange: 'transform',
     '@media (prefers-reduced-motion: reduce)': {
       transform: 'none !important',
+      willChange: 'auto',
     },
   },
   line: {
@@ -192,14 +203,6 @@ const useStyles = makeStyles((theme) => ({
     color: 'var(--lyrics-translation-active-color, currentColor)',
     WebkitTextFillColor: 'var(--lyrics-translation-active-color, currentColor)',
     transition: KARAOKE_LAYER_OPACITY_TRANSITION,
-    '@media (prefers-reduced-motion: reduce)': {
-      transition: 'none',
-      transform: 'none',
-    },
-  },
-  characterWaveAuxLine: {
-    transform: `translateY(-${KARAOKE_LINE_LIFT_PX}px)`,
-    transition: `${KARAOKE_LAYER_OPACITY_TRANSITION}, transform ${KARAOKE_LINE_ENTER_MS}ms ${KARAOKE_LINE_MOTION_EASING}`,
     '@media (prefers-reduced-motion: reduce)': {
       transition: 'none',
       transform: 'none',
@@ -746,7 +749,10 @@ const LyricsPanel = ({
             const canSeekLine = Boolean(audioInstance && line.start != null)
             const isActiveLine = activeIndexSet.has(idx)
             const renderCharacterWave = Boolean(
-              !prefersReducedMotion && hasTimedMainLines && isActiveLine,
+              !prefersReducedMotion &&
+              hasTimedMainLines &&
+              usesCharacterRise &&
+              isActiveLine,
             )
             const isStaticLine = !hasTimedMainLines
             return (
@@ -882,7 +888,6 @@ const LyricsPanel = ({
                     line={buildSynchronizedTranslationLine(line, trLine)}
                     nextLineStart={null}
                     className={clsx(classes.auxLine, classes.translationLine, {
-                      [classes.characterWaveAuxLine]: renderCharacterWave,
                       [classes.activeAuxLine]: isStaticLine || isActiveLine,
                     })}
                     style={layerStyles.translation}
