@@ -177,7 +177,9 @@ func decodeCapped(data []byte) (image.Image, string, error) {
 	if err != nil {
 		return nil, "", fmt.Errorf("decode image config: %w", err)
 	}
-	if int64(cfg.Width)*int64(cfg.Height) > maxImagePixels {
+	// Compared by division so the cap holds for any dimensions a decoder might report, without
+	// depending on a multiplication staying inside int64.
+	if cfg.Width <= 0 || cfg.Height <= 0 || cfg.Width > maxImagePixels/cfg.Height {
 		return nil, "", fmt.Errorf("image dimensions %dx%d exceed pixel cap %d", cfg.Width, cfg.Height, maxImagePixels)
 	}
 	img, _, err := image.Decode(bytes.NewReader(data))

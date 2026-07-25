@@ -374,6 +374,20 @@ var _ = Describe("processItem", func() {
 		Expect(err).To(MatchError(model.ErrNotFound))
 	})
 
+	// The cap is compared by division, so it cannot be slipped by dimensions whose product
+	// would overflow. No supported format can declare such dimensions today — image/png caps
+	// them at 2^30-1 and the rest are 16-bit — so this pins the arithmetic, not a live hole.
+	DescribeTable("rejects out-of-range declared dimensions",
+		func(w, h uint32) {
+			_, err := decodeArtwork(ctx, "bomb", pngHeaderWithDims(w, h))
+			Expect(err).To(HaveOccurred())
+		},
+		Entry("both dimensions at the 32-bit maximum", uint32(0xffffffff), uint32(0xffffffff)),
+		Entry("both dimensions at the signed 32-bit maximum", uint32(0x7fffffff), uint32(0x7fffffff)),
+		Entry("zero width", uint32(0), uint32(100)),
+		Entry("zero height", uint32(100), uint32(0)),
+	)
+
 	It("decompression bomb: rejects huge declared dimensions before the full decode", func() {
 		data := pngHeaderWithDims(50000, 50000) // 2.5 gigapixels, far above the cap
 		_, err := decodeArtwork(ctx, "bomb", data)
