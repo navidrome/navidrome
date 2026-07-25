@@ -190,10 +190,15 @@ func (w *Worker) drain(ctx context.Context, concurrency int, kinds ...string) (i
 	var wg sync.WaitGroup
 	var refreshMu sync.Mutex
 	var refresh []model.ArtworkQueueItem
-	for _, item := range items {
+	for i, item := range items {
 		select {
 		case sem <- struct{}{}:
 		case <-ctx.Done():
+			// claim() reserved the whole batch; anything not dispatched has to go back, or it
+			// stays in flight forever and no later drain can pick it up.
+			for _, undispatched := range items[i:] {
+				w.release(undispatched)
+			}
 			wg.Wait()
 			return len(items), nil
 		}

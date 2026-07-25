@@ -672,6 +672,29 @@ var _ = Describe("Worker", func() {
 	})
 
 	Describe("batching", func() {
+		// claim() reserves the whole batch before dispatching, so a cancel mid-batch used to
+		// strand the rest in the in-flight set, where no later drain could ever claim them.
+		It("returns undispatched items to the pool when cancelled mid-batch", func() {
+			for i := range 8 {
+				id := fmt.Sprintf("alc%d", i)
+				ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: id, Name: "Album"}})
+				Expect(queueRepo.Enqueue(model.ArtworkQueueItem{
+					ItemKind: "al", ItemID: id, Priority: model.ArtworkPriorityScan,
+				})).To(Succeed())
+			}
+			cancelledCtx, cancel := context.WithCancel(ctx)
+			cancel()
+
+			_, err := w.drain(cancelledCtx, 1)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Every item must be claimable again; a stranded one would be silently skipped.
+			w.mu.Lock()
+			stranded := len(w.inFlight)
+			w.mu.Unlock()
+			Expect(stranded).To(BeZero(), "a cancelled drain must not strand claimed items")
+		})
+
 		// The pool is fed from one dequeue per pass: a batch sized to the pool would make a
 		// single slow item idle the other slots for as long as it runs.
 		It("dequeues past the worker pool so one drain covers many items", func() {
