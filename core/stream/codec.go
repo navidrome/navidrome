@@ -43,14 +43,17 @@ func normalizeSourceSampleRate(sampleRate int, codec string) int {
 	return sampleRate
 }
 
-// normalizeSourceBitDepth adjusts the source bit depth for codecs that use
-// non-standard bit depths. Currently handles DSD (1-bit → 24-bit PCM, which is
-// what ffmpeg produces). For other codecs, returns the depth unchanged.
-func normalizeSourceBitDepth(bitDepth int, codec string) int {
-	if strings.EqualFold(codec, "dsd") && bitDepth == 1 {
+// targetBitDepth returns the bit depth for a transcoded stream: 0 for lossy
+// targets (they have no PCM bit depth), otherwise the source depth, with DSD
+// adjusted to the 24-bit PCM that ffmpeg produces.
+func targetBitDepth(srcBitDepth int, srcCodec string, targetIsLossless bool) int {
+	if !targetIsLossless {
+		return 0
+	}
+	if strings.EqualFold(srcCodec, "dsd") && srcBitDepth == 1 {
 		return 24
 	}
-	return bitDepth
+	return srcBitDepth
 }
 
 // codecFixedOutputSampleRate returns the mandatory output sample rate for codecs

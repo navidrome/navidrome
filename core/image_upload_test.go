@@ -97,3 +97,29 @@ var _ = Describe("ImageUploadService", func() {
 		})
 	})
 })
+
+var _ = Describe("MaxImageUploadSize", func() {
+	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
+	})
+
+	It("returns the configured size when valid", func() {
+		conf.Server.MaxImageUploadSize = "20MB"
+		Expect(core.MaxImageUploadSize()).To(Equal(int64(20_000_000)))
+	})
+
+	It("returns the default size when config is empty", func() {
+		conf.Server.MaxImageUploadSize = ""
+		Expect(core.MaxImageUploadSize()).To(Equal(int64(10_000_000)))
+	})
+
+	It("returns the default size when config is invalid", func() {
+		conf.Server.MaxImageUploadSize = "not-a-size"
+		Expect(core.MaxImageUploadSize()).To(Equal(int64(10_000_000)))
+	})
+
+	It("parses raw byte values", func() {
+		conf.Server.MaxImageUploadSize = "52428800"
+		Expect(core.MaxImageUploadSize()).To(Equal(int64(52_428_800)))
+	})
+})

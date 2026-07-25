@@ -9,6 +9,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/core/storage/storagetest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -30,10 +31,14 @@ var _ = Describe("Watcher", func() {
 		ctx, cancel = context.WithCancel(GinkgoT().Context())
 		DeferCleanup(cancel)
 
+		// Use a fake storage scheme: watchLibrary goroutines spawned by Run/Watch are not
+		// joined on spec teardown, and the real file:// storage reads conf.Server on
+		// construction, racing with the configtest cleanup that restores the config.
+		storagetest.Register("fake-watcher", &storagetest.FakeFS{})
 		lib = &model.Library{
 			ID:   1,
 			Name: "Test Library",
-			Path: "/test/library",
+			Path: "fake-watcher:///test/library",
 		}
 
 		// Set up mocks
@@ -234,7 +239,7 @@ var _ = Describe("Watcher", func() {
 			lib2 = &model.Library{
 				ID:   2,
 				Name: "Test Library 2",
-				Path: "/test/library2",
+				Path: "fake-watcher:///test/library2",
 			}
 
 			mockLibRepo := mockDS.MockedLibrary.(*tests.MockLibraryRepo)

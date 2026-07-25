@@ -45,12 +45,6 @@ func (j *ConfigDefinition) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
-// Experimental features that may change or be removed in future versions
-type Experimental struct {
-	// Threads corresponds to the JSON schema field "threads".
-	Threads *ThreadsFeature `json:"threads,omitempty" yaml:"threads,omitempty" mapstructure:"threads,omitempty"`
-}
-
 // HTTP access permissions for a plugin
 type HTTPPermission struct {
 	// Explanation for why HTTP access is needed
@@ -108,9 +102,6 @@ type Manifest struct {
 
 	// A brief description of what the plugin does
 	Description *string `json:"description,omitempty" yaml:"description,omitempty" mapstructure:"description,omitempty"`
-
-	// Experimental corresponds to the JSON schema field "experimental".
-	Experimental *Experimental `json:"experimental,omitempty" yaml:"experimental,omitempty" mapstructure:"experimental,omitempty"`
 
 	// The display name of the plugin
 	Name string `json:"name" yaml:"name" mapstructure:"name"`
@@ -240,12 +231,6 @@ func (j *TaskQueuePermission) UnmarshalJSON(value []byte) error {
 	}
 	*j = TaskQueuePermission(plain)
 	return nil
-}
-
-// Enable experimental WebAssembly threads support
-type ThreadsFeature struct {
-	// Explanation for why threads support is needed
-	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
 }
 
 // Users service permissions for accessing user information

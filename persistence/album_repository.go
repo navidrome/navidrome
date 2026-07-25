@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"iter"
 	"maps"
@@ -31,6 +32,10 @@ type dbAlbum struct {
 	Participants string `structs:"-" json:"-"`
 	Tags         string `structs:"-" json:"-"`
 	FolderIDs    string `structs:"-" json:"-"`
+	// dbx maps columns to fields by name; RGAlbumGain doesn't convert to
+	// rg_album_gain, so shim fields carry the read and PostScan copies them over.
+	RgAlbumGain *float64 `structs:"-" json:"-"`
+	RgAlbumPeak *float64 `structs:"-" json:"-"`
 }
 
 func (a *dbAlbum) PostScan() error {
@@ -58,6 +63,8 @@ func (a *dbAlbum) PostScan() error {
 		}
 		a.Album.FolderIDs = ids
 	}
+	a.Album.RGAlbumGain = a.RgAlbumGain
+	a.Album.RGAlbumPeak = a.RgAlbumPeak
 	return nil
 }
 
@@ -247,6 +254,29 @@ func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, e
 	return res.toModels(), nil
 }
 
+func (r *albumRepository) GetCursor(options ...model.QueryOptions) (model.AlbumCursor, error) {
+	sq := r.selectAlbum(options...)
+	cursor, err := queryWithStableResults[dbAlbum](r.sqlRepository, sq)
+	if err != nil {
+		return nil, err
+	}
+	return wrapAlbumCursor(cursor), nil
+}
+
+func (r *albumRepository) GetYears(libraryIDs ...int) ([]int, error) {
+	cond := And{Gt{"max_year": 0}, Eq{"missing": false}}
+	if len(libraryIDs) > 0 {
+		cond = append(cond, Eq{"library_id": libraryIDs})
+	}
+	sq := r.applyLibraryFilter(Select("distinct max_year").From("album").Where(cond).OrderBy("max_year"))
+	years := []int{}
+	err := r.queryAllSlice(sq, &years)
+	if err != nil && !errors.Is(err, model.ErrNotFound) {
+		return nil, err
+	}
+	return years, nil
+}
+
 func (r *albumRepository) CopyAttributes(fromID, toID string, columns ...string) error {
 	var from dbx.NullStringMap
 	err := r.queryOne(Select(columns...).From(r.tableName).Where(Eq{"id": fromID}), &from)
@@ -319,17 +349,7 @@ func (r *albumRepository) GetTouchedAlbums(libID int) (model.AlbumCursor, error)
 }
 
 func wrapAlbumCursor(cursor iter.Seq2[dbAlbum, error]) model.AlbumCursor {
-	return func(yield func(model.Album, error) bool) {
-		for a, err := range cursor {
-			if a.Album == nil {
-				yield(model.Album{}, fmt.Errorf("unexpected nil album (%v): %w", a, err))
-				return
-			}
-			if !yield(*a.Album, err) || err != nil {
-				return
-			}
-		}
-	}
+	return model.AlbumCursor(wrapCursor(cursor, func(a dbAlbum) *model.Album { return a.Album }))
 }
 
 // RefreshPlayCounts updates the play count and last play date annotations for all albums, based

@@ -21,6 +21,7 @@ import (
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/subsonic"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
+	"github.com/navidrome/navidrome/tests/harness"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -32,11 +33,11 @@ func buildSonicRouter(provider sonic.Provider) *subsonic.Router {
 	loader := &mockSonicPluginLoader{provider: provider}
 	m := matcher.New(ds)
 	sonicSvc := sonic.New(ds, loader, m)
-	decider := stream.NewTranscodeDecider(ds, noopFFmpeg{})
+	decider := stream.NewTranscodeDecider(ds, harness.NoopFFmpeg{})
 	return subsonic.New(
 		ds,
 		noopArtwork{},
-		&spyStreamer{},
+		&harness.SpyStreamer{},
 		noopArchiver{},
 		core.NewPlayers(ds),
 		noopProvider{},

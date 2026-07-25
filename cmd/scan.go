@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/gob"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -43,15 +44,20 @@ var scanCmd = &cobra.Command{
 	},
 }
 
-func trackScanInteractively(ctx context.Context, progress <-chan *scanner.ProgressInfo) {
+func trackScanInteractively(ctx context.Context, progress <-chan *scanner.ProgressInfo) (bool, error) {
+	var changesDetected bool
+	var scanErrors []error
 	for status := range pl.ReadOrDone(ctx, progress) {
 		if status.Warning != "" {
 			log.Warn(ctx, "Scan warning", "error", status.Warning)
 		}
 		if status.Error != "" {
 			log.Error(ctx, "Scan error", "error", status.Error)
+			scanErrors = append(scanErrors, errors.New(status.Error))
 		}
-		// Discard the progress status, we only care about errors
+		if status.ChangesDetected {
+			changesDetected = true
+		}
 	}
 
 	if fullScan {
@@ -59,6 +65,7 @@ func trackScanInteractively(ctx context.Context, progress <-chan *scanner.Progre
 	} else {
 		log.Info("Finished rescan")
 	}
+	return changesDetected, errors.Join(scanErrors...)
 }
 
 func trackScanAsSubprocess(ctx context.Context, progress <-chan *scanner.ProgressInfo) {
@@ -95,6 +102,16 @@ func runScanner(ctx context.Context) {
 		log.Info(ctx, "Scanning specific folders", "numTargets", len(scanTargets))
 	}
 
+	effectiveFullScan := fullScan
+	if !subprocess {
+		effectiveFullScan = scanner.EffectiveFullScan(ctx, ds, fullScan, scanTargets)
+		if effectiveFullScan {
+			if err := db.MarkOptimizePending(ctx); err != nil {
+				log.Error(ctx, "Error marking DB analysis pending", err)
+			}
+		}
+	}
+
 	progress, err := scanner.CallScan(ctx, ds, pls, fullScan, scanTargets)
 	if err != nil {
 		log.Fatal(ctx, "Failed to scan", err)
@@ -104,7 +121,21 @@ func runScanner(ctx context.Context) {
 	if subprocess {
 		trackScanAsSubprocess(ctx, progress)
 	} else {
-		trackScanInteractively(ctx, progress)
+		changesDetected, scanErr := trackScanInteractively(ctx, progress)
+		runPostScanAnalysis(ctx, changesDetected, effectiveFullScan, scanErr)
+	}
+}
+
+func runPostScanAnalysis(ctx context.Context, changesDetected, effectiveFullScan bool, scanErr error) {
+	if changesDetected {
+		if err := db.MarkOptimizePending(ctx); err != nil {
+			log.Error(ctx, "Error marking DB analysis pending", err)
+		}
+	}
+	if effectiveFullScan && scanErr == nil {
+		if err := db.Optimize(ctx); err != nil {
+			log.Error(ctx, "Error analyzing DB", err)
+		}
 	}
 }
 

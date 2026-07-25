@@ -191,6 +191,28 @@ var _ = Describe("ScrobbleBufferRepository", func() {
 
 		})
 
+		Describe("Discard", func() {
+			It("deletes all entries for a service, keeping other services intact", func() {
+				Expect(scrobble.Discard("a")).To(Succeed())
+
+				count, err := scrobble.Length()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(count).To(Equal(int64(1)))
+
+				entry, err := scrobble.Next("b", "2222")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(entry).ToNot(BeNil())
+			})
+
+			It("is a no-op for a service without entries", func() {
+				Expect(scrobble.Discard("nonexistent")).To(Succeed())
+
+				count, err := scrobble.Length()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(count).To(Equal(int64(4)))
+			})
+		})
+
 		Describe("UserIds", func() {
 			It("should return ordered list for services", func() {
 				ids, err := scrobble.UserIDs("a")

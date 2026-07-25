@@ -109,6 +109,7 @@ var _ = Describe("Sharing Endpoints", Ordered, func() {
 
 		Expect(resp.Status).To(Equal(responses.StatusFailed))
 		Expect(resp.Error).ToNot(BeNil())
+		Expect(resp.Error.Code).To(Equal(responses.ErrorMissingParameter))
 	})
 
 	It("updateShare returns error when id parameter is missing", func() {

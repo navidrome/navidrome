@@ -3,6 +3,7 @@ package criteria
 import (
 	"bytes"
 	"encoding/json"
+	"time"
 
 	"github.com/google/uuid"
 	. "github.com/onsi/ginkgo/v2"
@@ -78,6 +79,28 @@ var _ = Describe("Criteria", func() {
 			gomega.Expect(err).ToNot(gomega.HaveOccurred())
 			gomega.Expect(string(j)).To(gomega.Equal(jsonObj))
 		})
+	})
+
+	Context("with both top-level 'all' and 'any'", func() {
+		It("returns an error instead of silently dropping one of the groups", func() {
+			jsonStr := `{"any":[{"inPlaylist":{"path":"a.nsp"}}],"all":[{"notInPlaylist":{"path":"b.nsp"}}]}`
+			var c Criteria
+			err := json.Unmarshal([]byte(jsonStr), &c)
+			gomega.Expect(err).To(gomega.HaveOccurred())
+			gomega.Expect(err.Error()).To(gomega.And(gomega.ContainSubstring("all"), gomega.ContainSubstring("any")))
+		})
+
+		DescribeTable("rejects both keys even when one group is present but empty",
+			func(jsonStr string) {
+				var c Criteria
+				err := json.Unmarshal([]byte(jsonStr), &c)
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(err.Error()).To(gomega.And(gomega.ContainSubstring("all"), gomega.ContainSubstring("any")))
+			},
+			Entry("empty any", `{"any":[],"all":[{"is":{"loved":true}}]}`),
+			Entry("empty all", `{"all":[],"any":[{"is":{"loved":true}}]}`),
+			Entry("null any", `{"any":null,"all":[{"is":{"loved":true}}]}`),
+		)
 	})
 
 	Describe("LimitPercent", func() {
@@ -230,6 +253,71 @@ var _ = Describe("Criteria", func() {
 				c := Criteria{LimitPercent: 150}
 				gomega.Expect(c.IsPercentageLimit()).To(gomega.BeFalse())
 			})
+		})
+	})
+
+	Describe("refreshDelay", func() {
+		newCriteria := func(extra string) []byte {
+			return []byte(`{"all":[{"is":{"loved":true}}]` + extra + `}`)
+		}
+
+		It("unmarshals a valid refreshDelay", func() {
+			var c Criteria
+			gomega.Expect(json.Unmarshal(newCriteria(`,"refreshDelay":"1d"`), &c)).To(gomega.Succeed())
+			gomega.Expect(c.RefreshDelay).To(gomega.Equal(24 * time.Hour))
+		})
+
+		It("supports week units", func() {
+			var c Criteria
+			gomega.Expect(json.Unmarshal(newCriteria(`,"refreshDelay":"1w"`), &c)).To(gomega.Succeed())
+			gomega.Expect(c.RefreshDelay).To(gomega.Equal(7 * 24 * time.Hour))
+		})
+
+		It("leaves RefreshDelay zero when absent", func() {
+			var c Criteria
+			gomega.Expect(json.Unmarshal(newCriteria(``), &c)).To(gomega.Succeed())
+			gomega.Expect(c.RefreshDelay).To(gomega.BeZero())
+		})
+
+		It("rejects an invalid refreshDelay", func() {
+			var c Criteria
+			err := json.Unmarshal(newCriteria(`,"refreshDelay":"tomorrow"`), &c)
+			gomega.Expect(err).To(gomega.MatchError(gomega.ContainSubstring("refreshDelay")))
+		})
+
+		It("rejects a negative refreshDelay", func() {
+			var c Criteria
+			err := json.Unmarshal(newCriteria(`,"refreshDelay":"-1h"`), &c)
+			gomega.Expect(err).To(gomega.MatchError(gomega.ContainSubstring("refreshDelay")))
+		})
+
+		It("marshals RefreshDelay back as a duration string", func() {
+			c := Criteria{
+				Expression:   All{Is{"loved": true}},
+				RefreshDelay: 24 * time.Hour,
+			}
+			j, err := json.Marshal(c)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			gomega.Expect(string(j)).To(gomega.ContainSubstring(`"refreshDelay":"1d"`))
+		})
+
+		It("omits refreshDelay from JSON when zero", func() {
+			c := Criteria{Expression: All{Is{"loved": true}}}
+			j, err := json.Marshal(c)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			gomega.Expect(string(j)).ToNot(gomega.ContainSubstring("refreshDelay"))
+		})
+
+		It("round-trips through marshal and unmarshal", func() {
+			c := Criteria{
+				Expression:   All{Is{"loved": true}},
+				RefreshDelay: 36 * time.Hour,
+			}
+			j, err := json.Marshal(c)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			var c2 Criteria
+			gomega.Expect(json.Unmarshal(j, &c2)).To(gomega.Succeed())
+			gomega.Expect(c2.RefreshDelay).To(gomega.Equal(36 * time.Hour))
 		})
 	})
 

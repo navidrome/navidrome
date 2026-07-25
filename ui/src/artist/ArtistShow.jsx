@@ -100,6 +100,7 @@ const ArtistShowLayout = (props) => {
     const rowsPerPageOptions = [1, 2, 3].map((option) =>
       Math.trunc(option * (perPage / 3)),
     )
+    // react-admin's Pagination on purpose: the common one would persist 30/60/90 under the album grid's key
     pagination = <Pagination rowsPerPageOptions={rowsPerPageOptions} />
   }
 

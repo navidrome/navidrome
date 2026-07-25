@@ -432,6 +432,79 @@ var _ = Describe("walk_dir_tree", func() {
 				})
 			})
 
+			// Regression for #5752: the production localFS must resolve file symlinks.
+			// It wraps os.DirFS behind the fs.FS interface, so fs.ReadLink-based
+			// resolution is not available and full OS-level resolution is required.
+			Context("production local storage FS", func() {
+				var libRoot string
+				var musicFS storage.MusicFS
+
+				BeforeEach(func() {
+					conf.Server.Scanner.FollowSymlinks = true
+
+					// Reproduces the reported layout: a "pool" with the real files and a
+					// library containing only symlinks into the pool.
+					base := GinkgoT().TempDir()
+					pool := filepath.Join(base, "pool")
+					libRoot = filepath.Join(base, "userlib")
+					Expect(os.MkdirAll(pool, 0755)).To(Succeed())
+					Expect(os.MkdirAll(libRoot, 0755)).To(Succeed())
+					Expect(os.WriteFile(filepath.Join(pool, "real.mp3"), []byte("AUDIO"), 0600)).To(Succeed())
+					Expect(os.WriteFile(filepath.Join(pool, "secrets.txt"), []byte("TOPSECRET"), 0600)).To(Succeed())
+					// mid.wav lives OUTSIDE the library and has an audio name, but points at a
+					// non-audio file. A chain through it must be classified by the FINAL target.
+					Expect(os.Symlink(filepath.Join(pool, "secrets.txt"), filepath.Join(pool, "mid.wav"))).To(Succeed())
+
+					Expect(os.Symlink("../pool/real.mp3", filepath.Join(libRoot, "relative.mp3"))).To(Succeed())
+					Expect(os.Symlink(filepath.Join(pool, "real.mp3"), filepath.Join(libRoot, "absolute.mp3"))).To(Succeed())
+					Expect(os.Symlink(filepath.Join(pool, "mid.wav"), filepath.Join(libRoot, "evil.wav"))).To(Succeed())
+					Expect(os.Symlink(filepath.Join(pool, "missing.mp3"), filepath.Join(libRoot, "broken.mp3"))).To(Succeed())
+
+					u, err := storage.LocalPathToURL(libRoot)
+					Expect(err).ToNot(HaveOccurred())
+					s, err := storage.For(u.String())
+					Expect(err).ToNot(HaveOccurred())
+					musicFS, err = s.FS()
+					Expect(err).ToNot(HaveOccurred())
+				})
+
+				walkRoot := func() *folderEntry {
+					job := &scanJob{fs: musicFS, lib: model.Library{Path: libRoot}}
+					results, err := walkDirTree(GinkgoT().Context(), job)
+					Expect(err).ToNot(HaveOccurred())
+					var root *folderEntry
+					for folder := range results {
+						if folder.path == "." {
+							root = folder
+						}
+					}
+					Expect(root).ToNot(BeNil())
+					return root
+				}
+
+				It("imports symlinks to out-of-library audio files", func() {
+					root := walkRoot()
+					Expect(root.audioFiles).To(HaveKey("relative.mp3"))
+					Expect(root.audioFiles).To(HaveKey("absolute.mp3"))
+				})
+
+				It("rejects a chain that ends in a non-audio file, even through an audio-named intermediate", func() {
+					root := walkRoot()
+					Expect(root.audioFiles).ToNot(HaveKey("evil.wav"))
+				})
+
+				It("skips broken symlinks", func() {
+					root := walkRoot()
+					Expect(root.audioFiles).ToNot(HaveKey("broken.mp3"))
+				})
+
+				It("skips all file symlinks when FollowSymlinks is disabled", func() {
+					conf.Server.Scanner.FollowSymlinks = false
+					root := walkRoot()
+					Expect(root.audioFiles).To(BeEmpty())
+				})
+			})
+
 			Context("out-of-tree escape (temp dir)", func() {
 				var root string
 				BeforeEach(func() {

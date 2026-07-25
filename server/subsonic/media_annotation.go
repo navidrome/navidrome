@@ -2,6 +2,7 @@ package subsonic
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
@@ -52,6 +53,9 @@ func (api *Router) setRating(ctx context.Context, id string, rating int) error {
 	case *model.Album:
 		repo = api.ds.Album(ctx)
 		resource = "album"
+	case *model.Playlist:
+		repo = api.ds.Playlist(ctx)
+		resource = "playlist"
 	default:
 		repo = api.ds.MediaFile(ctx)
 		resource = "song"
@@ -67,9 +71,9 @@ func (api *Router) setRating(ctx context.Context, id string, rating int) error {
 
 func (api *Router) Star(r *http.Request) (*responses.Subsonic, error) {
 	p := req.Params(r)
-	ids, _ := p.Strings("id")
-	albumIds, _ := p.Strings("albumId")
-	artistIds, _ := p.Strings("artistId")
+	ids := p.Strings("id")
+	albumIds := p.Strings("albumId")
+	artistIds := p.Strings("artistId")
 	if len(ids)+len(albumIds)+len(artistIds) == 0 {
 		return nil, newError(responses.ErrorMissingParameter, "Required id parameter is missing")
 	}
@@ -86,9 +90,9 @@ func (api *Router) Star(r *http.Request) (*responses.Subsonic, error) {
 
 func (api *Router) Unstar(r *http.Request) (*responses.Subsonic, error) {
 	p := req.Params(r)
-	ids, _ := p.Strings("id")
-	albumIds, _ := p.Strings("albumId")
-	artistIds, _ := p.Strings("artistId")
+	ids := p.Strings("id")
+	albumIds := p.Strings("albumId")
+	artistIds := p.Strings("artistId")
 	if len(ids)+len(albumIds)+len(artistIds) == 0 {
 		return nil, newError(responses.ErrorMissingParameter, "Required id parameter is missing")
 	}
@@ -105,47 +109,49 @@ func (api *Router) Unstar(r *http.Request) (*responses.Subsonic, error) {
 
 func (api *Router) setStar(ctx context.Context, star bool, ids ...string) error {
 	if len(ids) == 0 {
-		return nil
-	}
-	log.Debug(ctx, "Changing starred", "ids", ids, "starred", star)
-	if len(ids) == 0 {
 		log.Warn(ctx, "Cannot star/unstar an empty list of ids")
 		return nil
 	}
-	event := &events.RefreshResource{}
+	log.Debug(ctx, "Changing starred", "ids", ids, "starred", star)
 	err := api.ds.WithTxImmediate(func(tx model.DataStore) error {
+		event := &events.RefreshResource{}
+		changed := false
 		for _, id := range ids {
-			exist, err := tx.Album(ctx).Exists(id)
+			var repo model.AnnotatedRepository
+			var resource string
+			entity, err := model.GetEntityByID(ctx, tx, id)
 			if err != nil {
-				return err
-			}
-			if exist {
-				err = tx.Album(ctx).SetStar(star, id)
-				if err != nil {
+				if !errors.Is(err, model.ErrNotFound) {
 					return err
 				}
-				event = event.With("album", id)
+				log.Warn(ctx, "Cannot star/unstar unknown id, skipping", "id", id)
 				continue
 			}
-			exist, err = tx.Artist(ctx).Exists(id)
-			if err != nil {
+			switch entity.(type) {
+			case *model.Artist:
+				repo = tx.Artist(ctx)
+				resource = "artist"
+			case *model.Album:
+				repo = tx.Album(ctx)
+				resource = "album"
+			case *model.Playlist:
+				repo = tx.Playlist(ctx)
+				resource = "playlist"
+			default:
+				repo = tx.MediaFile(ctx)
+				resource = "song"
+			}
+			if err := repo.SetStar(star, id); err != nil {
 				return err
 			}
-			if exist {
-				err = tx.Artist(ctx).SetStar(star, id)
-				if err != nil {
-					return err
-				}
-				event = event.With("artist", id)
-				continue
-			}
-			err = tx.MediaFile(ctx).SetStar(star, id)
-			if err != nil {
-				return err
-			}
-			event = event.With("song", id)
+			event = event.With(resource, id)
+			changed = true
 		}
-		api.broker.SendMessage(ctx, event)
+		// Skip the broadcast when nothing changed: an empty RefreshResource
+		// serializes as a "{*:*}" wildcard, forcing every client to refresh.
+		if changed {
+			api.broker.SendMessage(ctx, event)
+		}
 		return nil
 	})
 	if err != nil {
@@ -157,9 +163,9 @@ func (api *Router) setStar(ctx context.Context, star bool, ids ...string) error 
 
 func (api *Router) Scrobble(r *http.Request) (*responses.Subsonic, error) {
 	p := req.Params(r)
-	ids, err := p.Strings("id")
-	if err != nil {
-		return nil, err
+	ids := p.Strings("id")
+	if len(ids) == 0 {
+		return nil, newError(responses.ErrorMissingParameter, "missing parameter: 'id'")
 	}
 	times, _ := p.Times("time")
 	if len(times) > 0 && len(times) != len(ids) {

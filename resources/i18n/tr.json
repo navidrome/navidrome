@@ -36,7 +36,11 @@
         "bitDepth": "Bit derinliği",
         "sampleRate": "Örnekleme Oranı",
         "missing": "Eksik",
-        "libraryName": "Kütüphane"
+        "libraryName": "Kütüphane",
+        "composer": "Besteci",
+        "disc": "Disk %{discNumber}",
+        "albumGain": "Albüm Kazancı",
+        "trackGain": "Parça Kazancı"
       },
       "actions": {
         "addToQueue": "Oynatma Sırasına Ekle",
@@ -46,7 +50,8 @@
         "download": "İndir",
         "playNext": "Dinlenenden Sonra Oynat",
         "info": "Bilgiler",
-        "showInPlaylist": "Çalma Listesinde Göster"
+        "showInPlaylist": "Çalma Listesinde Göster",
+        "instantMix": "Anında Karışım"
       }
     },
     "album": {
@@ -328,6 +333,82 @@
         "scanInProgress": "Tarama devam ediyor...",
         "noLibrariesAssigned": "Bu kullanıcıya hiçbir kütüphane atanmadı"
       }
+    },
+    "plugin": {
+      "name": "Eklenti |||| Eklentiler",
+      "fields": {
+        "id": "Kimlik",
+        "name": "Ad",
+        "description": "Açıklama",
+        "version": "Sürüm",
+        "author": "Geliştirici",
+        "website": "Web Sitesi",
+        "permissions": "İzinler",
+        "enabled": "Etkin",
+        "status": "Durum",
+        "path": "Yol",
+        "lastError": "Son Hata",
+        "hasError": "Hata",
+        "updatedAt": "Güncellendi",
+        "createdAt": "Yüklendi",
+        "configKey": "Anahtar",
+        "configValue": "Değer",
+        "allUsers": "Tüm Kullanıcılara İzin Ver",
+        "selectedUsers": "Seçili Kullanıcılar",
+        "allLibraries": "Tüm Kütüphanelere İzin Ver",
+        "selectedLibraries": "Seçili Kütüphaneler",
+        "allowWriteAccess": "Yazma Erişimine İzin Ver"
+      },
+      "sections": {
+        "status": "Durum",
+        "info": "Eklenti Bilgileri",
+        "configuration": "Yapılandırma",
+        "manifest": "Manifest",
+        "usersPermission": "Kullanıcı İzinleri",
+        "libraryPermission": "Kütüphane İzinleri"
+      },
+      "status": {
+        "enabled": "Etkin",
+        "disabled": "Devre Dışı"
+      },
+      "actions": {
+        "enable": "Etkinleştir",
+        "disable": "Devre Dışı Bırak",
+        "disabledDueToError": "Etkinleştirmeden Önce Hatayı Düzeltin",
+        "disabledUsersRequired": "Etkinleştirmeden Önce Kullanıcı Seçin",
+        "disabledLibrariesRequired": "Etkinleştirmeden Önce Kütüphane Seçin",
+        "addConfig": "Yapılandırma Ekle",
+        "rescan": "Yeniden Tara"
+      },
+      "notifications": {
+        "enabled": "Eklenti etkinleştirildi",
+        "disabled": "Eklenti devre dışı bırakıldı",
+        "updated": "Eklenti güncellendi",
+        "error": "Eklenti güncellenirken hata oluştu"
+      },
+      "validation": {
+        "invalidJson": "Yapılandırma geçerli bir JSON olmalı"
+      },
+      "messages": {
+        "configHelp": "Eklentiyi anahtar-değer çiftleriyle yapılandırın. Eklenti yapılandırma gerektirmiyorsa boş bırakın.",
+        "clickPermissions": "Ayrıntıları görmek için bir izne tıklayın",
+        "noConfig": "Yapılandırma ayarlanmamış",
+        "allUsersHelp": "Etkinleştirildiğinde eklenti, ileride oluşturulanlar dahil tüm kullanıcılara erişebilir.",
+        "noUsers": "Kullanıcı seçilmedi",
+        "permissionReason": "Gerekçe",
+        "usersRequired": "Bu eklenti kullanıcı bilgilerine erişim gerektiriyor. Eklentinin erişebileceği kullanıcıları seçin veya 'Tüm Kullanıcılara İzin Ver' seçeneğini etkinleştirin.",
+        "allLibrariesHelp": "Etkinleştirildiğinde eklenti, ileride oluşturulanlar dahil tüm kütüphanelere erişebilir.",
+        "noLibraries": "Kütüphane seçilmedi",
+        "librariesRequired": "Bu eklenti kütüphane bilgilerine erişim gerektiriyor. Eklentinin erişebileceği kütüphaneleri seçin veya 'Tüm Kütüphanelere İzin Ver' \nseçeneğini etkinleştirin.",
+        "requiredHosts": "Gerekli Sunucular",
+        "configValidationError": "Yapılandırma doğrulanamadı:",
+        "schemaRenderError": "Yapılandırma formu oluşturulamadı. Eklentinin şeması geçersiz olabilir.",
+        "allowWriteAccessHelp": "Etkinleştirildiğinde eklenti, kütüphane dizinlerindeki dosyaları değiştirebilir. Eklentiler varsayılan olarak salt okunur erişime sahiptir."
+      },
+      "placeholders": {
+        "configKey": "anahtar",
+        "configValue": "değer"
+      }
     }
   },
   "ra": {
@@ -511,7 +592,14 @@
     "remove_all_missing_title": "Tüm eksik dosyaları kaldırın",
     "remove_all_missing_content": "Veritabanından tüm eksik dosyaları kaldırmak istediğinizden emin misiniz? Bu, oynatma sayısı ve derecelendirmelerde dahil olmak üzere bunlara ilişkili tüm değerleri kalıcı olarak kaldıracaktır.",
     "noSimilarSongsFound": "Benzer şarkı bulunamadı",
-    "noTopSongsFound": "En iyi şarkı listesi boş"
+    "noTopSongsFound": "En iyi şarkı listesi boş",
+    "startingInstantMix": "Anında Karışım yükleniyor...",
+    "uploadCover": "Kapak Görseli Yükle",
+    "removeCover": "Kapak Görselini Kaldır",
+    "coverUploaded": "Kapak görseli güncellendi",
+    "coverRemoved": "Kapak görseli kaldırıldı",
+    "coverUploadError": "Kapak görseli yüklenirken hata oluştu",
+    "coverRemoveError": "Kapak görseli kaldırılırken hata oluştu"
   },
   "menu": {
     "library": "Kütüphane",
@@ -597,7 +685,8 @@
       "exportSuccess": "Yapılandırma TOML formatında dışa aktarıldı",
       "exportFailed": "Yapılandırma kopyalanamadı",
       "devFlagsHeader": "Geliştirme Bayrakları (değişime/kaldırılmaya tabidir)",
-      "devFlagsComment": "Bunlar deneysel ayarlardır ve gelecekteki sürümlerde kaldırılabilir"
+      "devFlagsComment": "Bunlar deneysel ayarlardır ve gelecekteki sürümlerde kaldırılabilir",
+      "downloadToml": "Yapılandırmayı İndir (TOML)"
     }
   },
   "activity": {
