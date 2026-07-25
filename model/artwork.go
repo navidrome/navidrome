@@ -99,7 +99,9 @@ type ArtworkQueueRepository interface {
 	// request-triggered read-through never resets a failed resolution's backoff.
 	EnqueueBump(items ...ArtworkQueueItem) error
 	// DequeueBatch returns up to n items with retry_at <= now, priority desc, enqueued_at asc.
-	DequeueBatch(n int) ([]ArtworkQueueItem, error)
+	// Restricted to the given item kinds when any are passed, so a drain pool sees only its own
+	// work and cannot be held up behind another kind's backlog.
+	DequeueBatch(n int, kinds ...string) ([]ArtworkQueueItem, error)
 	// MarkFailed increments attempts and pushes retry_at into the future.
 	MarkFailed(kind, id, imageType string, retryAt time.Time) error
 	// MarkFailedIfUnchanged applies the failure backoff only while retry_at still matches

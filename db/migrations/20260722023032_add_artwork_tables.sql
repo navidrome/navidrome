@@ -34,7 +34,9 @@ CREATE TABLE artwork_queue (
   PRIMARY KEY (item_kind, item_id, image_type)
 ) WITHOUT ROWID;
 -- Ordered to match DequeueBatch (priority DESC, enqueued_at) so drains stop after n rows; retry_at makes it covering.
-CREATE INDEX ix_artwork_queue_drain ON artwork_queue(priority DESC, enqueued_at, retry_at);
+-- item_kind leads: each drain pool dequeues only its own kinds, so it must seek straight to
+-- them rather than scan past another pool's backlog.
+CREATE INDEX ix_artwork_queue_drain ON artwork_queue(item_kind, priority DESC, enqueued_at, retry_at);
 
 -- +goose Down
 DROP TABLE artwork_queue;

@@ -40,6 +40,15 @@ type extGate struct {
 	breaker *breaker
 }
 
+// drainPool drains one class of work with its own slot budget, so a kind whose resolution
+// blocks cannot occupy slots another kind needs.
+type drainPool struct {
+	name        string
+	kinds       []string
+	concurrency int
+	wake        chan struct{}
+}
+
 // Worker drains the artwork queue through processItem: each external agent is rate-limited
 // and circuit-broken independently, and prune is serialized against in-flight acquisitions
 // via pruneMu.
@@ -47,7 +56,7 @@ type Worker struct {
 	deps    workerDeps
 	broker  events.Broker
 	pruneMu sync.RWMutex
-	wake    chan struct{}
+	pools   []*drainPool
 	runCtx  context.Context
 
 	gatesMu sync.Mutex
@@ -61,7 +70,7 @@ func NewWorker(ds model.DataStore, store *ImageStore, ag *agents.Agents, ffmpeg 
 	w := &Worker{
 		deps:     workerDeps{ds: ds, store: store, agents: ag, ffmpeg: ffmpeg, cache: imgCache},
 		broker:   broker,
-		wake:     make(chan struct{}, 1),
+		pools:    newDrainPools(),
 		runCtx:   context.Background(),
 		gates:    map[string]*extGate{},
 		inFlight: map[string]struct{}{},
@@ -70,29 +79,63 @@ func NewWorker(ds model.DataStore, store *ImageStore, ag *agents.Agents, ffmpeg 
 	return w
 }
 
+// newDrainPools splits the drain by what bounds it: gate() waits for its rate-limit permit
+// while holding a slot, so a sleeping lookup would otherwise crowd out a cover sitting on disk.
+func newDrainPools() []*drainPool {
+	budget := conf.MaxOpenConns() // floored at 4, so both remainders below stay positive
+	local := min(max(1, conf.Server.ArtworkWorkerConcurrency), budget-1)
+	// More external slots than the rate allows would only sleep in the limiter.
+	external := min(max(2, 2*conf.Server.ArtworkExternalMaxRPS), budget-local)
+	return []*drainPool{
+		{name: "local", kinds: localDrainKinds, concurrency: local, wake: make(chan struct{}, 1)},
+		{name: "external", kinds: externalDrainKinds, concurrency: external, wake: make(chan struct{}, 1)},
+	}
+}
+
+// Kind is a proxy for cost: an album whose chain reaches "external" still costs a local slot,
+// but only the few with no local art do.
+var (
+	externalDrainKinds = []string{model.KindArtistArtwork.Prefix()}
+	localDrainKinds    = []string{
+		model.KindAlbumArtwork.Prefix(),
+		model.KindPlaylistArtwork.Prefix(),
+		model.KindRadioArtwork.Prefix(),
+		model.KindMediaFileArtwork.Prefix(),
+	}
+)
+
 // Run blocks draining the queue until ctx is cancelled. It exits cleanly with no
 // leaked goroutines: each drain waits for its batch before the loop can return.
 func (w *Worker) Run(ctx context.Context) error {
 	w.runCtx = ctx
-	concurrency := max(1, conf.Server.ArtworkWorkerConcurrency)
+	var wg sync.WaitGroup
+	for _, p := range w.pools {
+		wg.Go(func() { w.runPool(ctx, p) })
+	}
+	wg.Wait()
+	return nil
+}
+
+// runPool drains one pool's kinds until ctx is cancelled.
+func (w *Worker) runPool(ctx context.Context, p *drainPool) {
 	ticker := time.NewTicker(workerPollInterval)
 	defer ticker.Stop()
 	for {
-		n, err := w.drain(ctx, concurrency)
+		n, err := w.drain(ctx, p.concurrency, p.kinds...)
 		if err != nil && ctx.Err() == nil {
-			log.Warn(ctx, "artwork: worker drain failed", err)
+			log.Warn(ctx, "artwork: worker drain failed", "pool", p.name, err)
 		}
 		if ctx.Err() != nil {
-			return nil
+			return
 		}
 		if n > 0 {
-			continue // keep draining while the queue has ready work
+			continue // keep draining while this pool has ready work
 		}
 		select {
 		case <-ctx.Done():
-			return nil
+			return
 		case <-ticker.C:
-		case <-w.wake:
+		case <-p.wake:
 		}
 	}
 }
@@ -110,9 +153,13 @@ func (w *Worker) Bump(kind, id string) {
 		log.Warn("artwork: could not bump queue item", "kind", kind, "id", id, err)
 		return
 	}
-	select {
-	case w.wake <- struct{}{}:
-	default:
+	// Waking all beats routing by kind: a spurious wake costs one empty dequeue, while an
+	// unrouted kind would never wake at all.
+	for _, p := range w.pools {
+		select {
+		case p.wake <- struct{}{}:
+		default:
+		}
 	}
 }
 
@@ -124,11 +171,11 @@ func (w *Worker) RunPrune(ctx context.Context) error {
 	return Prune(ctx, w.deps.ds, w.deps.store)
 }
 
-func (w *Worker) drain(ctx context.Context, concurrency int) (int, error) {
+func (w *Worker) drain(ctx context.Context, concurrency int, kinds ...string) (int, error) {
 	// Dequeue well past the worker pool so a slow item (an external lookup burning its
 	// timeout) never idles the other slots: the pool stays fed until the batch runs out.
 	// DequeueBatch does not mark rows taken, so this is one query per pass, not per slot.
-	batch, err := w.deps.ds.ArtworkQueue(ctx).DequeueBatch(max(16, 4*concurrency))
+	batch, err := w.deps.ds.ArtworkQueue(ctx).DequeueBatch(max(16, 4*concurrency), kinds...)
 	if err != nil {
 		return 0, err
 	}

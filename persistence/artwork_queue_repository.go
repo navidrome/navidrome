@@ -59,11 +59,14 @@ func (r *artworkQueueRepository) enqueue(conflict string, items []model.ArtworkQ
 	return nil
 }
 
-func (r *artworkQueueRepository) DequeueBatch(n int) ([]model.ArtworkQueueItem, error) {
+func (r *artworkQueueRepository) DequeueBatch(n int, kinds ...string) ([]model.ArtworkQueueItem, error) {
 	sel := Select("*").From(r.tableName).
 		Where(LtOrEq{"retry_at": time.Now()}).
 		OrderBy("priority DESC", "enqueued_at ASC").
 		Limit(uint64(n))
+	if len(kinds) > 0 {
+		sel = sel.Where(Eq{"item_kind": kinds})
+	}
 	var res []model.ArtworkQueueItem
 	err := r.queryAll(sel, &res)
 	return res, err

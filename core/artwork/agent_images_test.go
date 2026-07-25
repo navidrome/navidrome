@@ -28,11 +28,16 @@ type fakeImageAgent struct {
 	albumCalls    int
 	gotArtistName string
 	gotAlbumName  string
+	// block, when set, holds every lookup until closed, standing in for a slow/rate-limited agent.
+	block chan struct{}
 }
 
 func (f *fakeImageAgent) AgentName() string { return f.name }
 
 func (f *fakeImageAgent) GetArtistImages(_ context.Context, _, name, _ string) ([]agents.ExternalImage, error) {
+	if f.block != nil {
+		<-f.block
+	}
 	f.artistCalls++
 	f.gotArtistName = name
 	return f.imgs, f.err

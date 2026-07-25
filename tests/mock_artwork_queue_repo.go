@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"slices"
 	"sort"
 	"sync"
 	"time"
@@ -53,7 +54,7 @@ func (m *MockArtworkQueueRepo) Enqueue(items ...model.ArtworkQueueItem) error {
 	return nil
 }
 
-func (m *MockArtworkQueueRepo) DequeueBatch(n int) ([]model.ArtworkQueueItem, error) {
+func (m *MockArtworkQueueRepo) DequeueBatch(n int, kinds ...string) ([]model.ArtworkQueueItem, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {
@@ -62,7 +63,7 @@ func (m *MockArtworkQueueRepo) DequeueBatch(n int) ([]model.ArtworkQueueItem, er
 	var res []model.ArtworkQueueItem
 	now := time.Now()
 	for _, it := range m.Data {
-		if !it.RetryAt.After(now) {
+		if !it.RetryAt.After(now) && (len(kinds) == 0 || slices.Contains(kinds, it.ItemKind)) {
 			res = append(res, it)
 		}
 	}

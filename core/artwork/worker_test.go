@@ -55,8 +55,8 @@ type reenqueueOnDequeue struct {
 	done bool
 }
 
-func (r *reenqueueOnDequeue) DequeueBatch(n int) ([]model.ArtworkQueueItem, error) {
-	items, err := r.MockArtworkQueueRepo.DequeueBatch(n)
+func (r *reenqueueOnDequeue) DequeueBatch(n int, kinds ...string) ([]model.ArtworkQueueItem, error) {
+	items, err := r.MockArtworkQueueRepo.DequeueBatch(n, kinds...)
 	if !r.done && len(items) > 0 {
 		r.done = true
 		for k, it := range r.Data {
@@ -600,6 +600,68 @@ var _ = Describe("Worker", func() {
 			Expect(err).ToNot(HaveOccurred())
 			defer stream.Close()
 			Expect(io.ReadAll(stream)).ToNot(BeEmpty())
+		})
+	})
+
+	Describe("drain pools", func() {
+		// A kind in neither pool is never dequeued, with nothing to catch it at compile time.
+		It("covers every kind the worker can process, exactly once", func() {
+			var pooled []string
+			for _, p := range newDrainPools() {
+				pooled = append(pooled, p.kinds...)
+			}
+			for kind := range artworkKindToResource {
+				Expect(pooled).To(ContainElement(kind.Prefix()), "kind %q belongs to no drain pool", kind.Prefix())
+			}
+			Expect(pooled).To(HaveLen(len(artworkKindToResource)), "a kind is claimed by more than one pool")
+		})
+
+		// A first backfill enqueues artists before albums, and artists resolve through a
+		// rate-limited agent that holds its slot while waiting. Sharing one pool let ~29k
+		// sleeping lookups sit in front of every album for hours.
+		It("resolves albums while artists are stuck on a slow agent", func() {
+			conf.Server.CoverArtPriority = "cover.jpg"
+			conf.Server.ArtistArtPriority = "external"
+			folderRepo.result = []model.Folder{{
+				Path:       "tests/fixtures/artist/an-album",
+				ImageFiles: []string{"cover.jpg"},
+			}}
+			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "alx", Name: "Album", FolderIDs: []string{"f1"}}})
+			ds.MockedArtist = tests.CreateMockArtistRepo()
+
+			// Every artist lookup blocks until released, standing in for the rate limiter.
+			block := make(chan struct{})
+			DeferCleanup(func() { close(block) })
+			artists := model.Artists{}
+			for i := range 8 {
+				artists = append(artists, model.Artist{ID: fmt.Sprintf("arx%d", i), Name: "A"})
+			}
+			ds.MockedArtist.(*tests.MockArtistRepo).SetData(artists)
+			imageAgents(&fakeImageAgent{name: "slowAgent", block: block})
+
+			// Artists first, exactly as Backfill orders them.
+			for _, a := range artists {
+				Expect(queueRepo.Enqueue(model.ArtworkQueueItem{
+					ItemKind: "ar", ItemID: a.ID, Priority: model.ArtworkPriorityBackfill,
+				})).To(Succeed())
+			}
+			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{
+				ItemKind: "al", ItemID: "alx", Priority: model.ArtworkPriorityBackfill,
+			})).To(Succeed())
+
+			runCtx, cancel := context.WithCancel(ctx)
+			DeferCleanup(cancel)
+			go func() { _ = w.Run(runCtx) }()
+
+			// The album must land while every artist is still parked in the agent.
+			Eventually(func() bool {
+				ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "alx", model.ImageTypePrimary)
+				return err == nil && ia.Hash != ""
+			}, 5*time.Second, 50*time.Millisecond).Should(BeTrue(),
+				"a blocked external pool must not hold up local artwork")
+
+			_, err := artRepo.GetItemArtwork(model.KindArtistArtwork, "arx0", model.ImageTypePrimary)
+			Expect(err).To(MatchError(model.ErrNotFound), "artists are still blocked, as intended")
 		})
 	})
 
