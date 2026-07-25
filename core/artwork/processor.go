@@ -66,8 +66,9 @@ func processItem(ctx context.Context, deps *workerDeps, item model.ArtworkQueueI
 		return outcomeFailed
 	}
 	if res.reader == nil {
-		if res.extError {
-			// An external source errored/timed out: never settle on absent, keep serving old state.
+		if res.extError || res.localError {
+			// A source errored/timed out rather than answering "no image": never settle on
+			// absent, keep serving old state.
 			return outcomeFailed
 		}
 		return writeAbsent(ctx, repo, item)

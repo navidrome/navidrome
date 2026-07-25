@@ -3,6 +3,7 @@ package artwork
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -21,6 +22,10 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"go.senan.xyz/taglib"
 )
+
+// errSourceUnreadable marks a candidate the resolver knows exists but could not read. Failing
+// to open it is not evidence the entity has no artwork, so callers must not settle on absent.
+var errSourceUnreadable = errors.New("artwork source unreadable")
 
 func selectImageReader(ctx context.Context, artID model.ArtworkID, extractFuncs ...sourceFunc) (io.ReadCloser, string, error) {
 	for _, f := range extractFuncs {
@@ -53,6 +58,7 @@ func (f sourceFunc) String() string {
 
 func fromExternalFile(ctx context.Context, libFS fs.FS, files []string, pattern string) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
+		var openErr error
 		for _, file := range files {
 			_, name := filepath.Split(file)
 			match, err := filepath.Match(pattern, strings.ToLower(name))
@@ -66,9 +72,13 @@ func fromExternalFile(ctx context.Context, libFS fs.FS, files []string, pattern 
 			f, err := libFS.Open(file)
 			if err != nil {
 				log.Warn(ctx, "Could not open cover art file", "file", file, err)
+				openErr = fmt.Errorf("%w: %s: %w", errSourceUnreadable, file, err)
 				continue
 			}
 			return f, file, nil
+		}
+		if openErr != nil {
+			return nil, "", openErr
 		}
 		return nil, "", fmt.Errorf("pattern '%s' not matched by files %v", pattern, files)
 	}
@@ -88,7 +98,7 @@ func fromTag(ctx context.Context, libFS fs.FS, relPath string) sourceFunc {
 		}
 		f, err := libFS.Open(relPath)
 		if err != nil {
-			return nil, "", err
+			return nil, "", fmt.Errorf("%w: %s: %w", errSourceUnreadable, relPath, err)
 		}
 		rs, ok := f.(io.ReadSeeker)
 		if !ok {
@@ -101,7 +111,7 @@ func fromTag(ctx context.Context, libFS fs.FS, relPath string) sourceFunc {
 		)
 		if err != nil {
 			f.Close()
-			return nil, "", err
+			return nil, "", fmt.Errorf("%w: %s: %w", errSourceUnreadable, relPath, err)
 		}
 		// Close in LIFO order: tf first (it holds rs internally), then f.
 		defer f.Close()

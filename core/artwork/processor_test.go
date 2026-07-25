@@ -138,6 +138,25 @@ var _ = Describe("processItem", func() {
 		Expect(ia.AttemptedAt).To(BeTemporally("~", time.Now(), time.Second))
 	})
 
+	It("failed-on-unreadable-local: a listed cover that will not open never records absent", func() {
+		conf.Server.CoverArtPriority = "cover.jpg"
+		// A healthy library whose folder listing names a cover the FS will not hand over —
+		// what a stale mount looks like from here.
+		libRoot := GinkgoT().TempDir()
+		Expect(os.MkdirAll(filepath.Join(libRoot, "an-album"), 0o755)).To(Succeed())
+		libRepo.SetData(model.Libraries{{ID: 0, Path: testFileLibPath(libRoot)}})
+		folderRepo.result = []model.Folder{{Path: "an-album", ImageFiles: []string{"cover.jpg"}}}
+		ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
+			{ID: "al-io", Name: "Album", FolderIDs: []string{"f1"}},
+		})
+
+		out := processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al-io"})
+		Expect(out).To(Equal(outcomeFailed))
+
+		_, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al-io", model.ImageTypePrimary)
+		Expect(err).To(MatchError(model.ErrNotFound), "an I/O fault must not be recorded as absent")
+	})
+
 	It("failed-on-extError: leaves the item's state untouched", func() {
 		conf.Server.CoverArtPriority = "external"
 		ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{

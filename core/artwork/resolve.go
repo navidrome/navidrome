@@ -30,6 +30,9 @@ type resolution struct {
 	// external source errored/timed out. With no reader: forces failed (never absent).
 	// On a hit: a higher-priority external step failed—serve this, but retry later.
 	extError bool
+	// a local source that should have been readable wasn't (stale mount, permissions).
+	// With no reader: forces failed, so a transient I/O fault never records absent.
+	localError bool
 }
 
 // resolveItem walks the kind's priority chain and returns the first hit.
@@ -80,15 +83,17 @@ func resolveAlbum(ctx context.Context, ds model.DataStore, ag *agents.Agents, ff
 		return resolution{}, err
 	}
 
-	var extErr bool
+	var extErr, localErr bool
 	for pattern := range strings.SplitSeq(strings.ToLower(conf.Server.CoverArtPriority), ",") {
 		pattern = strings.TrimSpace(pattern)
 		switch {
 		case pattern == "embedded":
-			if res, ok := resolveEmbedded(ctx, lib, ffm, al.EmbedArtPath); ok {
+			res, ok := resolveEmbedded(ctx, lib, ffm, al.EmbedArtPath)
+			if ok {
 				res.extError = extErr
 				return res, nil
 			}
+			localErr = localErr || res.localError
 		case pattern == "external":
 			if localOnly {
 				continue
@@ -99,13 +104,15 @@ func resolveAlbum(ctx context.Context, ds model.DataStore, ag *agents.Agents, ff
 				extErr = true
 			}
 		case len(imgFiles) > 0:
-			if res, ok := resolveFolderFile(ctx, lib, imgFiles, pattern); ok {
+			res, ok := resolveFolderFile(ctx, lib, imgFiles, pattern)
+			if ok {
 				res.extError = extErr
 				return res, nil
 			}
+			localErr = localErr || res.localError
 		}
 	}
-	return resolution{extError: extErr}, nil
+	return resolution{extError: extErr, localError: localErr}, nil
 }
 
 // resolveArtist ports the upload/folder/external selection from
@@ -145,7 +152,7 @@ func resolveArtist(ctx context.Context, ds model.DataStore, ag *agents.Agents, f
 		}
 	}
 
-	var extErr bool
+	var extErr, localErr bool
 	for pattern := range strings.SplitSeq(strings.ToLower(conf.Server.ArtistArtPriority), ",") {
 		pattern = strings.TrimSpace(pattern)
 		switch {
@@ -167,10 +174,12 @@ func resolveArtist(ctx context.Context, ds model.DataStore, ag *agents.Agents, f
 			if lib.FS == nil {
 				continue
 			}
-			if res, ok := resolveFolderFile(ctx, lib, imgFiles, strings.TrimPrefix(pattern, "album/")); ok {
+			res, ok := resolveFolderFile(ctx, lib, imgFiles, strings.TrimPrefix(pattern, "album/"))
+			if ok {
 				res.extError = extErr
 				return res, nil
 			}
+			localErr = localErr || res.localError
 		default:
 			if lib.FS == nil || artistFolder == "" {
 				continue
@@ -181,7 +190,7 @@ func resolveArtist(ctx context.Context, ds model.DataStore, ag *agents.Agents, f
 			}
 		}
 	}
-	return resolution{extError: extErr}, nil
+	return resolution{extError: extErr, localError: localErr}, nil
 }
 
 // resolvePlaylist ports reader_playlist.go's chain: uploaded image, sidecar,
@@ -337,18 +346,21 @@ func resolveEmbedded(ctx context.Context, lib libraryView, ffm ffmpeg.FFmpeg, em
 		return resolution{}, false
 	}
 	abs := lib.Abs(embedRel)
+	var unreadable bool
 	for _, sf := range []sourceFunc{fromTag(ctx, lib.FS, embedRel), fromFFmpegTag(ctx, ffm, abs)} {
-		if r, _, _ := sf(); r != nil {
+		r, _, err := sf()
+		if r != nil {
 			return resolution{reader: r, source: "embedded", sourcePath: abs, refMtime: mtimeViaFS(lib.FS, embedRel)}, true
 		}
+		unreadable = unreadable || errors.Is(err, errSourceUnreadable)
 	}
-	return resolution{}, false
+	return resolution{localError: unreadable}, false
 }
 
 func resolveFolderFile(ctx context.Context, lib libraryView, imgFiles []string, pattern string) (resolution, bool) {
-	r, path, _ := fromExternalFile(ctx, lib.FS, imgFiles, pattern)()
+	r, path, err := fromExternalFile(ctx, lib.FS, imgFiles, pattern)()
 	if r == nil {
-		return resolution{}, false
+		return resolution{localError: errors.Is(err, errSourceUnreadable)}, false
 	}
 	return resolution{reader: r, source: "folder", sourcePath: lib.Abs(path), refMtime: mtimeViaFS(lib.FS, path)}, true
 }
