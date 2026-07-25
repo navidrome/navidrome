@@ -3,26 +3,31 @@ package artwork
 import (
 	"context"
 	"errors"
-	"os"
-	"path/filepath"
+	"io/fs"
+	"testing/fstest"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
+// unreadableFS globs like its embedded MapFS but refuses to open anything, standing in for a
+// stale mount or a permissions failure. Injecting the error keeps this independent of the
+// filesystem: os.Chmod does not restrict read access on Windows.
+type unreadableFS struct{ fstest.MapFS }
+
+func (u unreadableFS) Open(string) (fs.File, error) { return nil, fs.ErrPermission }
+
 var _ = Describe("findImageInFolder", func() {
 	var ctx context.Context
-	var dir string
+	var files fstest.MapFS
 
 	BeforeEach(func() {
 		ctx = context.Background()
-		dir = GinkgoT().TempDir()
+		files = fstest.MapFS{"artist.jpg": &fstest.MapFile{Data: []byte("img")}}
 	})
 
 	It("returns the first matching image", func() {
-		Expect(os.WriteFile(filepath.Join(dir, "artist.jpg"), []byte("img"), 0o600)).To(Succeed())
-
-		r, hit, err := findImageInFolder(ctx, os.DirFS(dir), ".", dir, "artist.*")
+		r, hit, err := findImageInFolder(ctx, files, ".", "/lib", "artist.*")
 		Expect(err).ToNot(HaveOccurred())
 		defer r.Close()
 		Expect(hit).To(HaveSuffix("artist.jpg"))
@@ -31,17 +36,12 @@ var _ = Describe("findImageInFolder", func() {
 	// The glob matched, so the image exists; failing to open it says nothing about whether the
 	// artist has one, and must not let the resolver settle on absent.
 	It("reports a matched but unreadable image as unreadable, not as a miss", func() {
-		img := filepath.Join(dir, "artist.jpg")
-		Expect(os.WriteFile(img, []byte("img"), 0o600)).To(Succeed())
-		Expect(os.Chmod(img, 0o000)).To(Succeed())
-		DeferCleanup(func() { _ = os.Chmod(img, 0o600) })
-
-		_, _, err := findImageInFolder(ctx, os.DirFS(dir), ".", dir, "artist.*")
+		_, _, err := findImageInFolder(ctx, unreadableFS{files}, ".", "/lib", "artist.*")
 		Expect(err).To(MatchError(errSourceUnreadable))
 	})
 
 	It("reports a plain miss when nothing matches", func() {
-		_, _, err := findImageInFolder(ctx, os.DirFS(dir), ".", dir, "artist.*")
+		_, _, err := findImageInFolder(ctx, files, ".", "/lib", "nothing.*")
 		Expect(err).To(HaveOccurred())
 		Expect(errors.Is(err, errSourceUnreadable)).To(BeFalse(), "no match is definitive, not transient")
 	})

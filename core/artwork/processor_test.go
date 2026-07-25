@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -161,6 +162,11 @@ var _ = Describe("processItem", func() {
 	// An upload outranks every other source, so an unreadable one must neither settle absent
 	// nor let a lower-priority image take its place.
 	It("failed-on-unreadable-upload: an upload that will not open never records absent", func() {
+		if runtime.GOOS == "windows" {
+			// os.Chmod cannot revoke read access there, so the file would open and the spec
+			// would pass on the decode error instead of the unreadable source.
+			Skip("chmod does not restrict read access on Windows")
+		}
 		radioRepo := tests.CreateMockedRadioRepo()
 		radioRepo.Data = map[string]*model.Radio{}
 		ds.MockedRadio = radioRepo
