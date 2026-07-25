@@ -353,6 +353,29 @@ var _ = Describe("Service", func() {
 			Expect(readAll(second)).To(Equal(warmed), "a warm sized request must not touch the source")
 		})
 
+		// A disc image can be replaced without the album row changing, so the key folds in the
+		// folder's ImagesUpdatedAt; keying on album.UpdatedAt alone would serve the old image.
+		It("invalidates the cached image when the folder's images change", func() {
+			folderRepo.result = []model.Folder{{
+				Path: "tests/fixtures/artist/an-album", ImageFiles: []string{"cover.jpg"},
+				ImagesUpdatedAt: time.Now().Add(-time.Hour),
+			}}
+			albumRepo.SetData(model.Albums{{ID: "aldc4", Name: "Album", FolderIDs: []string{"f1"}}})
+			discID := model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID("aldc4", 1), nil)
+
+			first, err := svc.Get(ctx, discID, 64, false)
+			Expect(err).ToNot(HaveOccurred())
+			firstKey := first.ETag
+			readAll(first)
+
+			// The image was replaced: same album row, newer folder images timestamp.
+			folderRepo.result[0].ImagesUpdatedAt = time.Now()
+			second, err := svc.Get(ctx, discID, 64, false)
+			Expect(err).ToNot(HaveOccurred())
+			readAll(second)
+			Expect(second.ETag).ToNot(Equal(firstKey), "a replaced image must not keep the old cache entry")
+		})
+
 		It("falls back to album art when no disc image matches", func() {
 			folderRepo.result = nil
 			albumRepo.SetData(model.Albums{{ID: "aldc2", Name: "Album"}})

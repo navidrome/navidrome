@@ -8,11 +8,13 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils"
 )
 
 // discArtworkReader resolves disc-level artwork from a library's folder images
@@ -25,6 +27,16 @@ type discArtworkReader struct {
 	isMultiFolder  bool
 	firstTrackRel  string // library-relative; for fromTag / ffmpeg via lib.Abs
 	lib            libraryView
+	// imagesUpdatedAt is the newest ImagesUpdatedAt across the album's and this disc's folders.
+	// An image can be replaced without the album row changing, so this is what makes a cache
+	// key notice it.
+	imagesUpdatedAt time.Time
+}
+
+// cacheTime is the disc image's validity stamp: any of these moving means the selection may
+// have changed. Mirrors what the legacy reader folded into its cache key.
+func (d *discArtworkReader) cacheTime() time.Time {
+	return utils.TimeNewest(d.album.UpdatedAt, d.album.ImportedAt, d.imagesUpdatedAt)
 }
 
 func newDiscArtworkReader(ctx context.Context, ds model.DataStore, artID model.ArtworkID) (*discArtworkReader, error) {
@@ -38,9 +50,14 @@ func newDiscArtworkReader(ctx context.Context, ds model.DataStore, artID model.A
 		return nil, err
 	}
 
-	_, imgFiles, _, err := loadAlbumFoldersPaths(ctx, ds, *al)
+	_, imgFiles, albumImagesAt, err := loadAlbumFoldersPaths(ctx, ds, *al)
 	if err != nil {
 		return nil, err
+	}
+
+	var imagesUpdatedAt time.Time
+	if albumImagesAt != nil {
+		imagesUpdatedAt = *albumImagesAt
 	}
 
 	// Query mediafiles for this album + disc to find folder associations and first track
@@ -84,17 +101,19 @@ func newDiscArtworkReader(ctx context.Context, ds model.DataStore, artID model.A
 		for _, f := range folders {
 			rel := strings.TrimPrefix(path.Join(f.Path, f.Name), "/")
 			discFoldersRel[rel] = true
+			imagesUpdatedAt = utils.TimeNewest(imagesUpdatedAt, f.ImagesUpdatedAt)
 		}
 	}
 
 	return &discArtworkReader{
-		album:          *al,
-		discNumber:     discNumber,
-		imgFiles:       imgFiles,
-		discFoldersRel: discFoldersRel,
-		isMultiFolder:  len(al.FolderIDs) > 1,
-		firstTrackRel:  firstTrackRel,
-		lib:            lib,
+		album:           *al,
+		discNumber:      discNumber,
+		imgFiles:        imgFiles,
+		discFoldersRel:  discFoldersRel,
+		isMultiFolder:   len(al.FolderIDs) > 1,
+		firstTrackRel:   firstTrackRel,
+		lib:             lib,
+		imagesUpdatedAt: imagesUpdatedAt,
 	}, nil
 }
 

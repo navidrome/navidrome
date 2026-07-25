@@ -321,12 +321,12 @@ func (s *service) serveDisc(ctx context.Context, artID model.ArtworkID, size int
 	// answer without touching the filesystem at all; the chain runs only on a miss. The key
 	// carries DiscArtPriority so changing it invalidates. resizedItem.hash is key material
 	// here, not a content hash, so the response carries no Image.Hash.
-	key := fmt.Sprintf("%s|%d|%s", artID.ID, dr.album.UpdatedAt.UnixNano(), conf.Server.DiscArtPriority)
+	key := fmt.Sprintf("%s|%d|%s", artID.ID, dr.cacheTime().UnixNano(), conf.Server.DiscArtPriority)
 	item := &resizedItem{
 		hash:       key,
 		size:       size,
 		square:     square,
-		lastUpdate: dr.album.UpdatedAt,
+		lastUpdate: dr.cacheTime(),
 		ffmpeg:     s.ffmpeg,
 		open:       func() (io.ReadCloser, error) { rc, _, err := selectImage(); return rc, err },
 	}
@@ -334,7 +334,7 @@ func (s *service) serveDisc(ctx context.Context, artID model.ArtworkID, size int
 	if err != nil {
 		return s.Get(ctx, albumArtID, size, square)
 	}
-	return &Image{ReadCloser: stream, ETag: representationTag(key, size, square), LastUpdated: dr.album.UpdatedAt}, nil
+	return &Image{ReadCloser: stream, ETag: representationTag(key, size, square), LastUpdated: dr.cacheTime()}, nil
 }
 
 // dangling enqueues a re-resolution at Scan priority and reports the artwork as
