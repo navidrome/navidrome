@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -42,6 +43,14 @@ func loadFixture(name string) (int, int, []byte) {
 	return b.Dx(), b.Dy(), pix
 }
 
+// headerOnlyFixtures have mathematically-zero AC content, so every AC nibble is float rounding
+// noise sitting on a quantization tie; only the header bytes carry signal.
+var headerOnlyFixtures = []string{"solid.png", "tiny.png"}
+
+func isHeaderOnly(name string) bool {
+	return slices.Contains(headerOnlyFixtures, name)
+}
+
 func loadGoldens() map[string]string {
 	GinkgoHelper()
 	data, err := os.ReadFile(filepath.Join(testdataDir, "golden.json"))
@@ -55,7 +64,7 @@ func loadGoldens() map[string]string {
 var _ = Describe("reference port", func() {
 	It("reproduces every golden vector", func() {
 		for name, want := range loadGoldens() {
-			if name == "solid.png" {
+			if isHeaderOnly(name) {
 				continue // see the dedicated header-only spec below
 			}
 			w, h, rgba := loadFixture(name)
@@ -64,15 +73,18 @@ var _ = Describe("reference port", func() {
 		}
 	})
 
-	// solid.png is uniform, so its true AC term is 0 and the golden's AC nibbles are just float
-	// rounding noise from cos(); only the header (DC terms + scales, which quantize to 0) is well-defined.
-	It("reproduces the well-conditioned header of a uniform image", func() {
-		want, err := base64.StdEncoding.DecodeString(loadGoldens()["solid.png"])
-		Expect(err).ToNot(HaveOccurred())
+	It("reproduces the well-conditioned header of the ill-conditioned fixtures", func() {
+		for _, name := range headerOnlyFixtures {
+			want, err := base64.StdEncoding.DecodeString(loadGoldens()[name])
+			Expect(err).ToNot(HaveOccurred(), "fixture %s", name)
+			w, h, rgba := loadFixture(name)
+			Expect(referenceEncode(w, h, rgba)[:5]).To(Equal(want[:5]), "fixture %s header bytes", name)
+		}
+	})
+
+	It("quantizes a uniform image's scales to zero", func() {
 		w, h, rgba := loadFixture("solid.png")
 		got := referenceEncode(w, h, rgba)
-		Expect(got[:5]).To(Equal(want[:5]), "header bytes")
-
 		header24 := int(got[0]) | int(got[1])<<8 | int(got[2])<<16
 		header16 := int(got[3]) | int(got[4])<<8
 		Expect((header24>>18)&31).To(Equal(0), "lScale")

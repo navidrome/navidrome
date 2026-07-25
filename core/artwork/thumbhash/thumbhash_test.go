@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"image"
 	"image/color"
+	"image/draw"
 	"math/rand/v2"
 
 	"github.com/navidrome/navidrome/core/artwork/thumbhash"
@@ -26,7 +27,7 @@ func fixtureImage(name string) image.Image {
 var _ = Describe("Encode", func() {
 	It("matches every golden vector", func() {
 		for name, want := range loadGoldens() {
-			if name == "solid.png" {
+			if isHeaderOnly(name) {
 				continue // see the dedicated header-only spec below
 			}
 			got, err := thumbhash.Encode(fixtureImage(name))
@@ -35,26 +36,32 @@ var _ = Describe("Encode", func() {
 		}
 	})
 
-	// A uniform image has mathematically-zero AC terms, so its AC nibbles are rounding noise
-	// normalized by a scale that is itself noise; only the header is well-defined.
-	It("reproduces the well-conditioned header of a uniform image", func() {
-		want, err := base64.StdEncoding.DecodeString(loadGoldens()["solid.png"])
-		Expect(err).ToNot(HaveOccurred())
-		got, err := thumbhash.Encode(fixtureImage("solid.png"))
-		Expect(err).ToNot(HaveOccurred())
-		Expect(got[:5]).To(Equal(want[:5]), "header bytes")
+	It("reproduces the well-conditioned header of the ill-conditioned fixtures", func() {
+		for _, name := range headerOnlyFixtures {
+			want, err := base64.StdEncoding.DecodeString(loadGoldens()[name])
+			Expect(err).ToNot(HaveOccurred(), "fixture %s", name)
+			got, err := thumbhash.Encode(fixtureImage(name))
+			Expect(err).ToNot(HaveOccurred(), "fixture %s", name)
+			Expect(got[:5]).To(Equal(want[:5]), "fixture %s header bytes", name)
+		}
 	})
 
 	It("agrees with the reference port on randomized images", func() {
 		rng := rand.New(rand.NewPCG(1, 2)) //nolint:gosec // a fixed seed is the point: the run must be reproducible
-		for range 500 {
+		for iter := range 500 {
 			w := 1 + rng.IntN(100)
 			h := 1 + rng.IntN(100)
 			img := image.NewNRGBA(image.Rect(0, 0, w, h))
 			for i := range img.Pix {
 				img.Pix[i] = byte(rng.IntN(256))
 			}
-			// Alpha is randomized too, so the 5x5-plus-alpha layout is exercised as often as 7x7.
+			// Random alpha is opaque essentially never, so half the runs are forced opaque to
+			// fuzz the 7x7 no-alpha layout as well as the 5x5-plus-alpha one.
+			if iter%2 == 0 {
+				for i := 3; i < len(img.Pix); i += 4 {
+					img.Pix[i] = 255
+				}
+			}
 			got, err := thumbhash.Encode(img)
 			Expect(err).ToNot(HaveOccurred())
 
@@ -82,6 +89,22 @@ var _ = Describe("Encode", func() {
 		got, err := thumbhash.Encode(img)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(got).ToNot(BeEmpty())
+	})
+
+	It("encodes a sub-image like an origin-anchored copy of the same region", func() {
+		parent := image.NewNRGBA(image.Rect(0, 0, 60, 50))
+		for i := range parent.Pix {
+			parent.Pix[i] = byte(i * 7 % 251)
+		}
+		region := image.Rect(10, 7, 40, 30)
+		cropped := image.NewNRGBA(image.Rect(0, 0, region.Dx(), region.Dy()))
+		draw.Draw(cropped, cropped.Bounds(), parent, region.Min, draw.Src)
+
+		got, err := thumbhash.Encode(parent.SubImage(region))
+		Expect(err).ToNot(HaveOccurred())
+		want, err := thumbhash.Encode(cropped)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(got).To(Equal(want))
 	})
 
 	It("rejects an empty image", func() {

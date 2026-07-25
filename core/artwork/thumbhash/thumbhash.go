@@ -16,7 +16,8 @@ const maxInputSize = 100
 // term is one DCT coefficient's frequency pair, in the reference's triangular scan order.
 type term struct{ cx, cy int }
 
-// Encode returns the ThumbHash of img: 24 bytes when opaque, 25 with alpha.
+// Encode returns the ThumbHash of img: 24 bytes when opaque, 25 with alpha. Output matches
+// evanw/thumbhash except where a coefficient lands on a quantization tie, where a nibble may differ by 1.
 func Encode(img image.Image) ([]byte, error) {
 	rgba := toNRGBA(downscale(img))
 	b := rgba.Bounds()
@@ -83,8 +84,8 @@ func Encode(img image.Image) ([]byte, error) {
 				rowP[cx] += pv * f
 				rowQ[cx] += qv * f
 			}
-			// hasAlpha is loop-invariant, so this costs a predicted branch rather than a
-			// quarter of the inner loop on the opaque images that covers almost always are.
+			// hasAlpha is loop-invariant, so this costs a predicted branch rather than a quarter
+			// of the inner loop that opaque images never need.
 			if hasAlpha {
 				for cx := range nx {
 					rowA[cx] += alpha * cosX[cx][x]
@@ -184,7 +185,7 @@ func normalize(acc []float64, n float64) (dc float64, ac []float64, scale float6
 	ac = make([]float64, len(acc)-1)
 	for i, v := range acc[1:] {
 		ac[i] = v / n
-		scale = math.Max(scale, math.Abs(ac[i]))
+		scale = max(scale, math.Abs(ac[i]))
 	}
 	if scale > 0 {
 		for i := range ac {
@@ -247,7 +248,8 @@ func pack(w, h int, hasAlpha bool, lx, ly int,
 // NRGBA, not RGBA: ThumbHash requires non-premultiplied RGB and the pipeline hands us a
 // premultiplied *image.RGBA, which draw.Draw un-premultiplies on the way in.
 func toNRGBA(img image.Image) *image.NRGBA {
-	// The pixel loops index Pix from its start, so only an origin-anchored image can be used as-is.
+	// Conservative: a sub-image re-slices Pix so the loops would read it correctly too, but the
+	// copy costs nothing on the origin-anchored images the pipeline actually produces.
 	if nrgba, ok := img.(*image.NRGBA); ok && nrgba.Rect.Min == (image.Point{}) {
 		return nrgba
 	}
