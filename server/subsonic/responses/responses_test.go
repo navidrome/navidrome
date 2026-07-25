@@ -1066,7 +1066,7 @@ var _ = Describe("Responses", func() {
 
 		Describe("with data", func() {
 			BeforeEach(func() {
-				times := []int64{18800, 22801}
+				times := []int64{18800, 22801, 26000}
 				offset := int64(100)
 
 				response.LyricsList.StructuredLyrics = StructuredLyrics{
@@ -1083,6 +1083,7 @@ var _ = Describe("Responses", func() {
 							},
 							{
 								Start: &times[1],
+								End:   &times[2],
 								Value: "You know the rules and so do I",
 							},
 						},
