@@ -25,6 +25,30 @@ func benchImage(size int) image.Image {
 	return img
 }
 
+// BenchmarkEncodeAtInputSize mirrors the thumbhash bench of the same name. *image.RGBA, matching
+// makeThumbnail's output, so neither package is measured with a conversion the other avoids.
+func BenchmarkEncodeAtInputSize(b *testing.B) {
+	const size = 100
+	img := image.NewRGBA(image.Rect(0, 0, size, size))
+	for y := range size {
+		for x := range size {
+			img.SetRGBA(x, y, color.RGBA{
+				R: uint8(255 * x / size),
+				G: uint8(255 * y / size),
+				B: uint8((x + y) * 255 / (2 * size)),
+				A: 255,
+			})
+		}
+	}
+	x, y := blurhash.Components(size, size)
+	b.ReportAllocs()
+	for range b.N {
+		if _, err := blurhash.Encode(img, x, y); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
 func BenchmarkEncode(b *testing.B) {
 	for _, size := range []int{100, 300, 600, 900, 1200, 1500} {
 		img := benchImage(size)
