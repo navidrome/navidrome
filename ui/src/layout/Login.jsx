@@ -8,21 +8,15 @@ import CardActions from '@material-ui/core/CardActions'
 import CircularProgress from '@material-ui/core/CircularProgress'
 import Link from '@material-ui/core/Link'
 import TextField from '@material-ui/core/TextField'
-import { ThemeProvider, makeStyles } from '@material-ui/core/styles'
-import {
-  createMuiTheme,
-  useLogin,
-  useNotify,
-  useTranslate,
-  useVersion,
-} from 'react-admin'
+import { makeStyles } from '@material-ui/core/styles'
+import { useLogin, useNotify, useTranslate } from 'react-admin'
 import Logo from '../icons/android-icon-192x192.png'
 
 import Notification from './Notification'
-import useCurrentTheme from '../themes/useCurrentTheme'
 import config from '../config'
 import { clearQueue } from '../actions'
 import { INSIGHTS_DOC_URL } from '../consts.js'
+import withTheme from '../utils/withTheme'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -399,18 +393,6 @@ Login.propTypes = {
   previousRoute: PropTypes.string,
 }
 
-// We need to put the ThemeProvider decoration in another component
-// Because otherwise the useStyles() hook used in Login won't get
-// the right theme
-const LoginWithTheme = (props) => {
-  const theme = useCurrentTheme()
-  const version = useVersion()
-
-  return (
-    <ThemeProvider theme={createMuiTheme(theme)}>
-      <Login key={version} {...props} />
-    </ThemeProvider>
-  )
-}
+const LoginWithTheme = withTheme(Login)
 
 export default LoginWithTheme

@@ -253,6 +253,13 @@
         "updatedAt": "Oppdatert",
         "createdAt": "Opprettet",
         "downloadable": "Tillat Nedlastinger?"
+      },
+      "actions": {
+        "download": {
+          "title": "Last ned",
+          "currentTrack": "Gjeldende spor",
+          "allTracks": "Alle spor"
+        }
       }
     },
     "missing": {

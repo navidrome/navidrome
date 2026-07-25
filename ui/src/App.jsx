@@ -6,6 +6,7 @@ import {
   Resource,
   useSetLocale,
   useRefresh,
+  TranslationProvider,
 } from 'react-admin'
 import { HotKeys } from 'react-hotkeys'
 import dataProvider from './dataProvider'
@@ -192,7 +193,13 @@ const AppWithHotkeys = () => {
   let language = localStorage.getItem('locale') || 'en'
   document.documentElement.lang = language
   if (config.enableSharing && shareInfo) {
-    return <SharePlayer />
+    return (
+      <Provider store={adminStore}>
+        <TranslationProvider i18nProvider={i18nProvider}>
+          <SharePlayer />
+        </TranslationProvider>
+      </Provider>
+    )
   }
   return (
     <HotKeys keyMap={keyMap}>

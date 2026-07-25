@@ -256,6 +256,13 @@
         "updatedAt": "Posodobljeno ob",
         "createdAt": "Ustvarjeno ob",
         "downloadable": "Dovoli prenose?"
+      },
+      "actions": {
+        "download": {
+          "title": "Prenesi",
+          "currentTrack": "Trenutna skladba",
+          "allTracks": "Vse skladbe"
+        }
       }
     },
     "missing": {

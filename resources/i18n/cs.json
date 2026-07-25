@@ -196,6 +196,13 @@
                 "updatedAt": "Nahráno",
                 "createdAt": "Vytvořeno",
                 "downloadable": "Povolit stahování?"
+            },
+            "actions": {
+                "download": {
+                    "title": "Stáhnout",
+                    "currentTrack": "Aktuální skladba",
+                    "allTracks": "Všechny skladby"
+                }
             }
         }
     },

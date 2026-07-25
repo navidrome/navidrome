@@ -253,6 +253,13 @@
         "updatedAt": "更新日",
         "createdAt": "作成日",
         "downloadable": "ダウンロードを許可しますか？"
+      },
+      "actions": {
+        "download": {
+          "title": "ダウンロード",
+          "currentTrack": "現在のトラック",
+          "allTracks": "すべてのトラック"
+        }
       }
     },
     "missing": {

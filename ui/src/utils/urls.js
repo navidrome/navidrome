@@ -29,6 +29,12 @@ export const shareStreamUrl = (id) => {
   return shareUrl(config.publicBaseUrl + '/s/' + id)
 }
 
+export const toDownloadUrl = (src) => {
+  const url = new URL(src, window.origin)
+  url.searchParams.set('download', 'true')
+  return url.toString()
+}
+
 export const shareDownloadUrl = (id) => {
   return shareUrl(config.publicBaseUrl + '/d/' + id)
 }

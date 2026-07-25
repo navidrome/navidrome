@@ -196,6 +196,13 @@
                 "updatedAt": "آخر تحديث",
                 "createdAt": "تاريخ الإنشاء",
                 "downloadable": "هل يسمح بالتنزيل؟"
+            },
+            "actions": {
+                "download": {
+                    "title": "تحميل",
+                    "currentTrack": "المقطع الحالي",
+                    "allTracks": "جميع المقاطع"
+                }
             }
         }
     },
