@@ -39,7 +39,20 @@ const png = (w, h, rgba) => {
   ])
 }
 
+// A ramp has exactly-zero DCT coefficients, and a zero coefficient's nibble is decided by float
+// rounding noise, so no two summation orders agree on it. Dither gives every coefficient signal.
+let seed = 0
+const dither = () => {
+  seed ^= seed << 13
+  seed ^= seed >>> 17
+  seed ^= seed << 5
+  seed >>>= 0
+  return (seed % 9) - 4
+}
+const shade = (v) => Math.max(0, Math.min(255, v + dither()))
+
 const make = (w, h, fn) => {
+  seed = 0x9e3779b9
   const rgba = new Uint8Array(w * h * 4)
   for (let y = 0; y < h; y++)
     for (let x = 0; x < w; x++) fn(rgba, (y * w + x) * 4, x, y, w, h)
@@ -47,9 +60,9 @@ const make = (w, h, fn) => {
 }
 
 const gradient = (rgba, i, x, y, w, h) => {
-  rgba[i] = Math.floor((255 * x) / w)
-  rgba[i + 1] = Math.floor((255 * y) / h)
-  rgba[i + 2] = Math.floor((255 * (x + y)) / (w + h))
+  rgba[i] = shade(Math.floor((255 * x) / w))
+  rgba[i + 1] = shade(Math.floor((255 * y) / h))
+  rgba[i + 2] = shade(Math.floor((255 * (x + y)) / (w + h)))
   rgba[i + 3] = 255
 }
 const solid = (rgba, i) => {
@@ -61,10 +74,10 @@ const solid = (rgba, i) => {
 // RGB must vary with position too: a constant color composited over its own average cancels to a
 // flat L/P/Q (the bug this fixture exists to catch), so pair a color gradient with the alpha ramp.
 const alphaRamp = (rgba, i, x, y, w, h) => {
-  rgba[i] = Math.floor((255 * x) / w)
-  rgba[i + 1] = Math.floor((255 * y) / h)
-  rgba[i + 2] = Math.floor((255 * (x + y)) / (w + h))
-  rgba[i + 3] = Math.floor((255 * x) / w)
+  rgba[i] = shade(Math.floor((255 * x) / w))
+  rgba[i + 1] = shade(Math.floor((255 * y) / h))
+  rgba[i + 2] = shade(Math.floor((255 * (x + y)) / (w + h)))
+  rgba[i + 3] = shade(Math.floor((255 * (x + 2 * y)) / (w + 2 * h)))
 }
 
 const out = new URL('.', import.meta.url).pathname
