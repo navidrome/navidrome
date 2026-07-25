@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -30,6 +31,8 @@ type fakeImageAgent struct {
 	gotAlbumName  string
 	// block, when set, holds every lookup until closed, standing in for a slow/rate-limited agent.
 	block chan struct{}
+	// mu guards the call counters: the worker resolves several items concurrently.
+	mu sync.Mutex
 }
 
 func (f *fakeImageAgent) AgentName() string { return f.name }
@@ -38,8 +41,10 @@ func (f *fakeImageAgent) GetArtistImages(_ context.Context, _, name, _ string) (
 	if f.block != nil {
 		<-f.block
 	}
+	f.mu.Lock()
 	f.artistCalls++
 	f.gotArtistName = name
+	f.mu.Unlock()
 	return f.imgs, f.err
 }
 

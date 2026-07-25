@@ -631,7 +631,6 @@ var _ = Describe("Worker", func() {
 
 			// Every artist lookup blocks until released, standing in for the rate limiter.
 			block := make(chan struct{})
-			DeferCleanup(func() { close(block) })
 			artists := model.Artists{}
 			for i := range 8 {
 				artists = append(artists, model.Artist{ID: fmt.Sprintf("arx%d", i), Name: "A"})
@@ -650,8 +649,15 @@ var _ = Describe("Worker", func() {
 			})).To(Succeed())
 
 			runCtx, cancel := context.WithCancel(ctx)
-			DeferCleanup(cancel)
-			go func() { _ = w.Run(runCtx) }()
+			done := make(chan struct{})
+			go func() { defer close(done); _ = w.Run(runCtx) }()
+			// Wait for Run to return: a leaked pool goroutine outlives the spec and races the
+			// config snapshot Ginkgo restores on cleanup.
+			DeferCleanup(func() {
+				cancel()
+				close(block) // unpark the blocked lookups so the pools can unwind
+				<-done
+			})
 
 			// The album must land while every artist is still parked in the agent.
 			Eventually(func() bool {

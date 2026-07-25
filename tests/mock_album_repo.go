@@ -2,6 +2,7 @@ package tests
 
 import (
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/navidrome/navidrome/model"
@@ -20,6 +21,7 @@ type MockAlbumRepo struct {
 	All                     model.Albums
 	Err                     bool
 	Options                 model.QueryOptions
+	optionsMu               sync.Mutex
 	SearchQuery             string            // last query passed to Search
 	ReassignAnnotationCalls map[string]string // prevID -> newID
 	CopyAttributesCalls     map[string]string // fromID -> toID
@@ -68,7 +70,10 @@ func (m *MockAlbumRepo) Put(al *model.Album) error {
 
 func (m *MockAlbumRepo) GetAll(qo ...model.QueryOptions) (model.Albums, error) {
 	if len(qo) > 0 {
+		// Recording the last options is a read-path write, and callers resolve concurrently.
+		m.optionsMu.Lock()
 		m.Options = qo[0]
+		m.optionsMu.Unlock()
 	}
 	if m.Err {
 		return nil, errors.New("unexpected error")
