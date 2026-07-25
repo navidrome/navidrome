@@ -66,7 +66,9 @@ func (s *service) GetOrPlaceholder(ctx context.Context, id string, size int, squ
 	if err == nil {
 		img, err = s.Get(ctx, artID, size, square)
 	}
-	if errors.Is(err, ErrUnavailable) || errors.Is(err, model.ErrNotFound) {
+	// Only a resolvable entity with no art gets the placeholder. An id that matches no entity
+	// stays ErrNotFound, so getCoverArt keeps answering error 70 and Jellyfin keeps 404ing.
+	if errors.Is(err, ErrUnavailable) {
 		return s.placeholder(artID.Kind), nil
 	}
 	return img, err

@@ -378,6 +378,16 @@ var _ = Describe("Service", func() {
 			phBytes, _ := io.ReadAll(ph)
 			Expect(readAll(img)).To(Equal(phBytes))
 		})
+
+		// An entity that has no art and an id that names no entity are different answers:
+		// Subsonic reports error 70 for the latter, and Jellyfin 404s.
+		It("reports not-found rather than a placeholder for an id with no entity", func() {
+			_, err := svc.GetOrPlaceholder(ctx, "al-nosuchalbum", 0, false)
+			Expect(err).To(MatchError(model.ErrNotFound))
+
+			_, err = svc.GetOrPlaceholder(ctx, "nosuchrawid", 0, false)
+			Expect(err).To(MatchError(model.ErrNotFound))
+		})
 	})
 })
 

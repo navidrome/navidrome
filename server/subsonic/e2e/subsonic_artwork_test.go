@@ -201,6 +201,15 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 		Expect(w.Header().Get("Cache-Control")).To(Equal("no-store"))
 	})
 
+	// An album with no art and an id naming no album are different answers; only the former
+	// is a placeholder.
+	It("answers error 70 for an id that matches no entity", func() {
+		w := getCover("id", "al-nosuchalbum")
+		Expect(w.Code).To(Equal(http.StatusOK))
+		Expect(w.Body.String()).To(ContainSubstring(`"code":70`))
+		Expect(w.Body.Bytes()).ToNot(Equal(placeholder))
+	})
+
 	It("serves /share/img immutably for a JWT whose payload carries the hash", func() {
 		token, err := auth.CreateExpiringPublicToken(time.Now().Add(time.Hour),
 			auth.Claims{ID: "al-" + artfulID + "_" + artfulHash})
