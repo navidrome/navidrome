@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing/fstest"
 	"time"
@@ -178,14 +179,41 @@ func serveErr(artID model.ArtworkID) error {
 	return err
 }
 
-// expectAlbumFolderCover asserts the worker selected a folder image at the given path suffix as the
-// album cover. Folder art is file-backed (served via os.Open, which the in-memory FS can't satisfy),
-// so the persisted state row — which captures the resolver's selection — is what we assert.
+// libFileBytes returns the contents of the one library file whose path ends with suffix.
+func libFileBytes(suffix string) []byte {
+	GinkgoHelper()
+	var match string
+	for name := range fakeFS.MapFS {
+		if strings.HasSuffix(name, suffix) {
+			Expect(match).To(BeEmpty(), "suffix %q is ambiguous: %q and %q", suffix, match, name)
+			match = name
+		}
+	}
+	Expect(match).ToNot(BeEmpty(), "no library file ends with %q", suffix)
+	return fakeFS.MapFS[match].Data
+}
+
+// expectAlbumFolderCover asserts the album resolves to the library image at the given path suffix,
+// byte-for-byte. The serve happens before acquisition on purpose: with no state row the request
+// path resolves locally through the library FS, whereas a settled folder row is file-backed and
+// read with os.Open, which the in-memory FS cannot satisfy.
 func expectAlbumFolderCover(al model.Album, suffix string) {
 	GinkgoHelper()
+	requireNoStateRow(model.KindAlbumArtwork, al.ID)
+	Expect(serveBytes(al.CoverArtID())).To(Equal(libFileBytes(suffix)))
 	ia := acquire(model.KindAlbumArtwork, al.ID)
 	Expect(ia.Source).To(Equal("folder"))
 	Expect(ia.SourcePath).To(HaveSuffix(suffix))
+}
+
+// requireNoStateRow guards the byte-level folder assertions: a drain resolves every ready queue
+// row, so acquiring one entity can settle others. Once settled, folder art is file-backed and the
+// in-memory FS cannot serve it — so these assertions must come before any acquire in a spec.
+func requireNoStateRow(kind model.Kind, id string) {
+	GinkgoHelper()
+	_, err := rds.Artwork(rctx).GetItemArtwork(kind, id, model.ImageTypePrimary)
+	Expect(err).To(MatchError(model.ErrNotFound),
+		"assert %s %q before acquiring any other entity in this spec", kind, id)
 }
 
 // expectAlbumAbsent asserts the album settled absent (no source resolved) and serves unavailable.
@@ -200,6 +228,8 @@ func expectAlbumAbsent(al model.Album) {
 // as the artist image; like album folder art it is file-backed, so it is asserted on the state row.
 func expectArtistFolder(ar model.Artist, suffix string) {
 	GinkgoHelper()
+	requireNoStateRow(model.KindArtistArtwork, ar.ID)
+	Expect(serveBytes(model.NewArtworkID(model.KindArtistArtwork, ar.ID, nil))).To(Equal(libFileBytes(suffix)))
 	ia := acquire(model.KindArtistArtwork, ar.ID)
 	Expect(ia.Source).To(Equal("folder"))
 	Expect(ia.SourcePath).To(HaveSuffix(suffix))
@@ -224,6 +254,22 @@ func discArtID(al model.Album, disc int) model.ArtworkID {
 func expectDiscImage(al model.Album, disc int, label string) {
 	GinkgoHelper()
 	Expect(serveBytes(discArtID(al, disc))).To(Equal(pngBytes(label)))
+}
+
+// gridQuadrants decodes a generated 2x2 playlist cover and samples the center of each quadrant,
+// in rect() order: top-left, top-right, bottom-left, bottom-right. Each tile is a solid color, so
+// the samples identify which album art landed where (and whether tiles were mirrored).
+func gridQuadrants(data []byte) [4]color.RGBA {
+	GinkgoHelper()
+	img, _, err := image.Decode(bytes.NewReader(data))
+	Expect(err).ToNot(HaveOccurred())
+	b := img.Bounds()
+	qw, qh := b.Dx()/4, b.Dy()/4
+	at := func(x, y int) color.RGBA {
+		c := color.RGBAModel.Convert(img.At(b.Min.X+x, b.Min.Y+y))
+		return c.(color.RGBA)
+	}
+	return [4]color.RGBA{at(qw, qh), at(3*qw, qh), at(qw, 3*qh), at(3*qw, 3*qh)}
 }
 
 // storedBytes returns the bytes the worker placed in the content-addressed store for a

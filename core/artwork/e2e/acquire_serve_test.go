@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -211,6 +212,73 @@ var _ = Describe("Acquisition → serve loop", func() {
 		Expect(readAll(resolved)).To(Equal(provisionalBytes))
 	})
 
+	It("stores dimensions, mime and a real blurhash alongside the acquired bytes", func() {
+		seedFolderAlbum("al1")
+		worker.Bump("al", "al1")
+		runWorkerUntil(ctx, worker, itemFound(model.KindAlbumArtwork, "al1"))
+
+		ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al1", model.ImageTypePrimary)
+		Expect(err).ToNot(HaveOccurred())
+		art, err := artRepo.GetImage(ia.Hash)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(art.Mime).To(Equal("image/jpeg"))
+		Expect(art.Width).To(BeNumerically(">", 0))
+		Expect(art.Height).To(BeNumerically(">", 0))
+		Expect(art.SizeBytes).To(BeNumerically("==", len(coverBytes)))
+		// Never a synthesized value: the blurhash is encoded from the real pixels.
+		Expect(art.BlurHash).ToNot(BeEmpty())
+	})
+
+	It("deduplicates byte-identical art across entities onto one image row", func() {
+		folderRepo.result = []model.Folder{{Path: albumFolderPath, ImageFiles: []string{"cover.jpg"}}}
+		albumRepo.SetData(model.Albums{
+			{ID: "al1", Name: "Album", FolderIDs: []string{"f1"}, LibraryID: 0},
+			{ID: "al2", Name: "Same Cover", FolderIDs: []string{"f1"}, LibraryID: 0},
+		})
+		worker.Bump("al", "al1")
+		worker.Bump("al", "al2")
+		runWorkerUntil(ctx, worker, func() bool {
+			return itemFound(model.KindAlbumArtwork, "al1")() && itemFound(model.KindAlbumArtwork, "al2")()
+		})
+
+		ia1, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al1", model.ImageTypePrimary)
+		Expect(err).ToNot(HaveOccurred())
+		ia2, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al2", model.ImageTypePrimary)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(ia1.Hash).To(Equal(ia2.Hash), "identical bytes must share one content hash")
+		Expect(readAll(mustGet(svc.Get(ctx, model.MustParseArtworkID("al-al2"), 0, false)))).To(Equal(coverBytes))
+	})
+
+	It("stops serving a file-backed image once its source file changes underneath", func() {
+		name := writeUpload(consts.EntityRadio, "radio-stale.jpg", coverFixture)
+		radioRepo.Data["ra1"] = &model.Radio{ID: "ra1", Name: "Station", UploadedImage: name}
+		worker.Bump("ra", "ra1")
+		runWorkerUntil(ctx, worker, itemFound(model.KindRadioArtwork, "ra1"))
+
+		ia, err := artRepo.GetItemArtwork(model.KindRadioArtwork, "ra1", model.ImageTypePrimary)
+		Expect(err).ToNot(HaveOccurred())
+		staleHash := ia.Hash
+
+		// Replace the backing file with different bytes and a newer mtime.
+		path := model.UploadedImagePath(consts.EntityRadio, name)
+		Expect(os.WriteFile(path, readFixture(artistPngFixture), 0o600)).To(Succeed())
+		newer := time.Now().Add(2 * time.Second)
+		Expect(os.Chtimes(path, newer, newer)).To(Succeed())
+
+		// The mtime no longer matches the state row, so the old hash's bytes are never served.
+		_, err = svc.Get(ctx, model.MustParseArtworkID("ra-ra1"), 0, false)
+		Expect(err).To(MatchError(artwork.ErrUnavailable))
+
+		// That read enqueued a re-resolution; draining it republishes the new bytes.
+		runWorkerUntil(ctx, worker, func() bool {
+			cur, gerr := artRepo.GetItemArtwork(model.KindRadioArtwork, "ra1", model.ImageTypePrimary)
+			return gerr == nil && cur.Hash != "" && cur.Hash != staleHash
+		})
+		img, err := svc.Get(ctx, model.MustParseArtworkID("ra-ra1"), 0, false)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(readAll(img)).To(Equal(readFixture(artistPngFixture)))
+	})
+
 	It("records an absent state for an entity with no art and reports it unavailable", func() {
 		albumRepo.SetData(model.Albums{{ID: "alx", Name: "Artless", LibraryID: 0}})
 		worker.Bump("al", "alx")
@@ -224,3 +292,10 @@ var _ = Describe("Acquisition → serve loop", func() {
 		Expect(img.Placeholder).To(BeTrue())
 	})
 })
+
+// mustGet unwraps a Service.Get result for inline byte assertions.
+func mustGet(img *artwork.Image, err error) *artwork.Image {
+	GinkgoHelper()
+	Expect(err).ToNot(HaveOccurred())
+	return img
+}

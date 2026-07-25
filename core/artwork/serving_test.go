@@ -307,7 +307,9 @@ var _ = Describe("Service", func() {
 			Expect(readAll(img)).To(Equal(coverBytes))
 		})
 
-		It("delegates a single-disc track straight to the album, skipping disc resolution", func() {
+		It("routes a single-disc track through disc resolution too", func() {
+			// A single disc can carry its own art: DiscArtPriority still applies, so the disc
+			// image is served even when the album has different found art.
 			folderRepo.result = []model.Folder{{Path: "tests/fixtures/artist/an-album", ImageFiles: []string{"cover.jpg"}}}
 			albumRepo.SetData(model.Albums{{ID: "alsd", Name: "Album", FolderIDs: []string{"f1"}, Discs: model.Discs{1: ""}}})
 			seedFoundStore("al", "alsd", []byte("album-art-distinct"))
@@ -315,8 +317,7 @@ var _ = Describe("Service", func() {
 
 			img, err := svc.Get(ctx, model.MustParseArtworkID("mf-mf6"), 0, false)
 			Expect(err).ToNot(HaveOccurred())
-			// Single-disc album: album art wins; the folder disc image must not shadow it.
-			Expect(readAll(img)).To(Equal([]byte("album-art-distinct")))
+			Expect(readAll(img)).To(Equal(coverBytes))
 		})
 	})
 

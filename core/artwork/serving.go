@@ -299,17 +299,14 @@ func (s *service) serveDisc(ctx context.Context, artID model.ArtworkID, size int
 	if err != nil {
 		return nil, err
 	}
-	// Only multi-disc albums use disc-specific resolution (matching the legacy reader); a
-	// single-disc album serves album art directly, so a stray disc*/embedded image can't
-	// shadow higher-priority album art.
-	if len(dr.album.Discs) > 1 {
-		funcs := dr.fromDiscArtPriority(ctx, s.ffmpeg, conf.Server.DiscArtPriority)
-		if r, path, err := selectImageReader(ctx, artID, funcs...); err == nil && r != nil {
-			defer r.Close()
-			if data, rerr := readCapped(r); rerr == nil {
-				if hash, herr := HashImage(bytes.NewReader(data)); herr == nil {
-					return s.serveBytes(ctx, hash, data, unixMtime(mtimeViaFS(dr.lib.FS, path)), size, square)
-				}
+	// Single-disc albums run the chain too: a disc can carry its own art, distinct from the
+	// album cover, and DiscArtPriority is what expresses that preference.
+	funcs := dr.fromDiscArtPriority(ctx, s.ffmpeg, conf.Server.DiscArtPriority)
+	if r, path, err := selectImageReader(ctx, artID, funcs...); err == nil && r != nil {
+		defer r.Close()
+		if data, rerr := readCapped(r); rerr == nil {
+			if hash, herr := HashImage(bytes.NewReader(data)); herr == nil {
+				return s.serveBytes(ctx, hash, data, unixMtime(mtimeViaFS(dr.lib.FS, path)), size, square)
 			}
 		}
 	}

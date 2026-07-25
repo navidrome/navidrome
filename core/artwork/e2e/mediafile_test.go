@@ -111,6 +111,29 @@ var _ = Describe("MediaFile artwork resolution", func() {
 			Expect(storedBytes(ia)).To(Equal(embeddedArtBytes))
 		})
 	})
+
+	When("EnableMediaFileCoverArt is turned off after the track was scanned", func() {
+		// Artist/
+		// └── Album/
+		//     ├── 01 - Track.mp3       ← has embedded picture (must NOT be served)
+		//     └── cover.jpg            ← wins (per-track art disabled at serve time)
+		It("serves the album cover instead of the track's embedded art", func() {
+			conf.Server.CoverArtPriority = defaultCoverPriority
+			setLayout(fstest.MapFS{
+				"Artist/Album/01 - Track.mp3": trackFile(1, "Track", map[string]any{"has_picture": "true"}),
+				"Artist/Album/cover.jpg":      smallPNG("album-cover"),
+			})
+			scan()
+			replaceWithRealMP3("Artist/Album/01 - Track.mp3")
+
+			// The setting is not part of the artwork fingerprint, so a direct mf- request must
+			// honor it at serve time rather than serving previously-eligible embedded art.
+			conf.Server.EnableMediaFileCoverArt = false
+			mf := mediafileOn("Artist/Album/01 - Track.mp3")
+			trackArtID := model.NewArtworkID(model.KindMediaFileArtwork, mf.ID, nil)
+			Expect(serveBytes(trackArtID)).To(Equal(pngBytes("album-cover")))
+		})
+	})
 })
 
 func mediafileOn(relPath string) model.MediaFile {

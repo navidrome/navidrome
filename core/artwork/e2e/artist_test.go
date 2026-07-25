@@ -8,6 +8,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -73,22 +74,6 @@ var _ = Describe("Artist artwork resolution", func() {
 		})
 	})
 
-	When("ArtistArtPriority uses album/<arbitrary pattern> (not just album/artist.*)", func() {
-		// Artist/
-		// └── Album/
-		//     ├── 01 - Track.mp3
-		//     └── artist.jpg            ← matched by album/artist.*
-		It("resolves the pattern against the artist's album image files", func() {
-			conf.Server.ArtistArtPriority = "album/artist.*, external"
-			setLayout(fstest.MapFS{
-				"Artist/Album/01 - Track.mp3": trackFile(1, "Track", map[string]any{"albumartist": "Artist"}),
-				"Artist/Album/artist.jpg":     smallPNG("album-artist"),
-			})
-			scan()
-			expectArtistFolder(soleArtist(), "Artist/Album/artist.jpg")
-		})
-	})
-
 	When("an artist has an uploaded image and a matching artist.* file", func() {
 		// <DataFolder>/
 		// └── artwork/
@@ -116,6 +101,48 @@ var _ = Describe("Artist artwork resolution", func() {
 			ia := acquire(model.KindArtistArtwork, ar.ID)
 			Expect(ia.Source).To(Equal("upload"))
 			Expect(serveBytes(model.NewArtworkID(model.KindArtistArtwork, ar.ID, nil))).To(Equal(pngBytes("artist-uploaded")))
+		})
+	})
+
+	When("ArtistArtPriority uses album/<arbitrary pattern> (not just album/artist.*)", func() {
+		// Artist/
+		// └── Album/
+		//     ├── 01 - Track.mp3
+		//     └── artist.jpg            ← matched by album/artist.*
+		It("resolves the pattern against the artist's album image files", func() {
+			conf.Server.ArtistArtPriority = "album/artist.*, external"
+			setLayout(fstest.MapFS{
+				"Artist/Album/01 - Track.mp3": trackFile(1, "Track", map[string]any{"albumartist": "Artist"}),
+				"Artist/Album/artist.jpg":     smallPNG("album-artist"),
+			})
+			scan()
+			expectArtistFolder(soleArtist(), "Artist/Album/artist.jpg")
+		})
+	})
+
+	// resolveArtist only samples albums where this artist is the SOLE album artist, so a
+	// collaboration or compilation never donates its images as the artist's own.
+	When("the artist's only album is credited to two album artists", func() {
+		// Artist/
+		// └── Collab Album/            (album artists: "Artist" + a collaborator)
+		//     ├── 01 - Track.mp3
+		//     └── artist.jpg           ← must NOT become the artist image
+		It("ignores the album's images and settles absent", func() {
+			conf.Server.ArtistArtPriority = "album/artist.*"
+			// " / " is a default artists split separator, so this single tag yields two album artists.
+			setLayout(fstest.MapFS{
+				"Artist/Collab Album/01 - Track.mp3": trackFile(1, "Track", map[string]any{"albumartist": "Artist / Collaborator"}),
+				"Artist/Collab Album/artist.jpg":     smallPNG("collab-artist"),
+			})
+			scan()
+			Expect(firstAlbum().Participants[model.RoleAlbumArtist]).To(HaveLen(2),
+				"sanity check: the album must be credited to two album artists")
+
+			ar := soleArtist()
+			ia := acquire(model.KindArtistArtwork, ar.ID)
+			Expect(ia.Hash).To(BeEmpty())
+			Expect(serveErr(model.NewArtworkID(model.KindArtistArtwork, ar.ID, nil))).
+				To(MatchError(artwork.ErrUnavailable))
 		})
 	})
 

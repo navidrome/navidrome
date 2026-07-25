@@ -354,8 +354,10 @@ var _ = Describe("Album artwork resolution", func() {
 			})
 			scan()
 
-			expectAbsent(albumByName("Album A"))
+			// Album B first: a drain settles every ready item, and folder art is only
+			// byte-servable while the album still has no state row.
 			expectFolderCover(albumByName("Album B"), "Artist/Album B/cover.jpg")
+			expectAbsent(albumByName("Album A"))
 		})
 	})
 
@@ -384,6 +386,48 @@ var _ = Describe("Album artwork resolution", func() {
 			Expect(alA.FolderIDs).To(HaveLen(2),
 				"sanity check: the two sibling folders should form one spread album")
 			expectAbsent(alA)
+		})
+	})
+
+	// albumRootParent refuses the library root as an album root (parent.ParentID == ""), so a
+	// stray image at the top of the library never becomes some album's cover.
+	When("a multi-disc album sits directly at the library root with a cover.jpg beside it", func() {
+		// (library root)
+		// ├── cover.jpg                ← must NOT be adopted: the root is never an album root
+		// ├── CD1/
+		// │   └── 01 - Track.mp3
+		// └── CD2/
+		//     └── 01 - Track.mp3
+		It("does not adopt the library-root image as album art", func() {
+			conf.Server.CoverArtPriority = defaultCoverPriority
+			setLayout(fstest.MapFS{
+				"cover.jpg":          smallPNG("library-root"),
+				"CD1/01 - Track.mp3": trackFile(1, "T1", map[string]any{"album": "Rootless", "disc": "1"}),
+				"CD2/01 - Track.mp3": trackFile(1, "T2", map[string]any{"album": "Rootless", "disc": "2"}),
+			})
+			scan()
+			expectAbsent(firstAlbum())
+		})
+	})
+
+	// compareImageFiles prefers shallower paths on a basename tie, so an artist-folder cover.jpg
+	// would outrank the album's own if the parent folder were ever considered here. It is not:
+	// albumRootParent skips the parent for a single-folder album that has images of its own.
+	When("a single-folder album has its own cover.jpg and the artist folder has one too", func() {
+		// Artist/
+		// ├── cover.jpg                ← shallower, but must NOT win
+		// └── Album/
+		//     ├── 01 - Track.mp3
+		//     └── cover.jpg            ← should win (the album has images of its own)
+		It("prefers the album's own cover over the shallower artist-folder cover", func() {
+			conf.Server.CoverArtPriority = defaultCoverPriority
+			setLayout(fstest.MapFS{
+				"Artist/cover.jpg":            smallPNG("artist-image"),
+				"Artist/Album/01 - Track.mp3": trackFile(1, "Track", map[string]any{"albumartist": "Artist"}),
+				"Artist/Album/cover.jpg":      smallPNG("album-own"),
+			})
+			scan()
+			expectFolderCover(firstAlbum(), "Artist/Album/cover.jpg")
 		})
 	})
 

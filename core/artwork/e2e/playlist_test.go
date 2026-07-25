@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"image/color"
 	"os"
 	"path/filepath"
 	"testing/fstest"
@@ -153,6 +154,54 @@ var _ = Describe("Playlist artwork resolution", func() {
 			data := storedBytes(ia)
 			// The tiled cover is a PNG-encoded image; exact bytes vary (random album order).
 			Expect(data[:8]).To(Equal([]byte{0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a}))
+			// Two tiles are mirrored into the 2x2 grid as [A B B A], so opposite corners match.
+			q := gridQuadrants(data)
+			Expect(q[0]).To(Equal(q[3]))
+			Expect(q[1]).To(Equal(q[2]))
+			Expect(q[0]).ToNot(Equal(q[1]))
+		})
+	})
+
+	When("a playlist has tracks from four albums, each with its own cover", func() {
+		// Library:
+		// Artist/
+		// ├── AlbumA/{01 - Track.mp3, cover.png}   ← tile 1
+		// ├── AlbumB/{01 - Track.mp3, cover.png}   ← tile 2
+		// ├── AlbumC/{01 - Track.mp3, cover.png}   ← tile 3
+		// └── AlbumD/{01 - Track.mp3, cover.png}   ← tile 4
+		// Four distinct tiles fill the grid outright, with no mirroring.
+		It("fills all four grid quadrants with distinct album art", func() {
+			conf.Server.CoverArtPriority = "cover.*"
+			layout := fstest.MapFS{}
+			for _, name := range []string{"AlbumA", "AlbumB", "AlbumC", "AlbumD"} {
+				layout["Artist/"+name+"/01 - Track.mp3"] = trackFile(1, "T"+name, map[string]any{"album": name})
+				layout["Artist/"+name+"/cover.png"] = smallPNG(name)
+			}
+			setLayout(layout)
+			scan()
+
+			mfs, err := rds.MediaFile(rctx).GetAll(model.QueryOptions{})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mfs).To(HaveLen(4))
+			ids := make([]string, 0, len(mfs))
+			for _, mf := range mfs {
+				ids = append(ids, mf.ID)
+			}
+
+			pl := model.Playlist{ID: "pl-8", Name: "Four", OwnerID: "admin-1"}
+			pl.AddMediaFilesByID(ids)
+			Expect(rds.Playlist(rctx).Put(&pl)).To(Succeed())
+
+			ia := acquire(model.KindPlaylistArtwork, pl.ID)
+			Expect(ia.Source).To(Equal("generated"))
+			q := gridQuadrants(storedBytes(ia))
+			Expect([]color.RGBA{q[0], q[1], q[2], q[3]}).To(HaveLen(4))
+			Expect(q[0]).ToNot(Equal(q[1]))
+			Expect(q[0]).ToNot(Equal(q[2]))
+			Expect(q[0]).ToNot(Equal(q[3]))
+			Expect(q[1]).ToNot(Equal(q[2]))
+			Expect(q[1]).ToNot(Equal(q[3]))
+			Expect(q[2]).ToNot(Equal(q[3]))
 		})
 	})
 })
