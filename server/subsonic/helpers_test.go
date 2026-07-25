@@ -349,8 +349,17 @@ var _ = Describe("helpers", func() {
 		})
 
 		Describe("childFromMediaFile", func() {
-			It("suffixes coverArt with the content hash when resolved", func() {
-				mf := model.MediaFile{ID: "mf-1", AlbumID: "al-1", ItemImage: model.ItemImage{ImageHash: hash}}
+			// The album id carries the album's hash, which hydration puts in AlbumImage; the
+			// track's own ItemImage describes its own art and must not be stamped onto an al- id.
+			It("suffixes coverArt with the album's content hash when resolved", func() {
+				mf := model.MediaFile{ID: "mf-1", AlbumID: "al-1", AlbumImage: model.ItemImage{ImageHash: hash}}
+				Expect(childFromMediaFile(ctx, mf).CoverArt).To(Equal("al-al-1_" + hash))
+			})
+
+			It("does not stamp a track's own art hash onto the album id", func() {
+				mf := model.MediaFile{ID: "mf-1", AlbumID: "al-1",
+					ItemImage:  model.ItemImage{ImageHash: "0000ownarthash00"},
+					AlbumImage: model.ItemImage{ImageHash: hash}}
 				Expect(childFromMediaFile(ctx, mf).CoverArt).To(Equal("al-al-1_" + hash))
 			})
 			It("omits coverArt when known absent", func() {

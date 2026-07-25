@@ -151,8 +151,10 @@ func (mf MediaFile) DiscCoverArtID() ArtworkID {
 	return mf.AlbumCoverArtID()
 }
 
+// AlbumCoverArtID uses AlbumImage, not the track's own ItemImage: an album id must carry the
+// album's content hash even when the track resolved art of its own.
 func (mf MediaFile) AlbumCoverArtID() ArtworkID {
-	return artworkIDFromAlbum(Album{ID: mf.AlbumID, ItemImage: mf.ItemImage})
+	return artworkIDFromAlbum(Album{ID: mf.AlbumID, ItemImage: mf.AlbumImage})
 }
 
 func (mf MediaFile) StructuredLyrics() (LyricList, error) {

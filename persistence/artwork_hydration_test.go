@@ -374,14 +374,18 @@ var _ = Describe("Artwork hydration", func() {
 			Expect(byID["2002"].ImageHash).To(BeEmpty())
 		})
 
-		It("uses the album hash for an eligible file whose own art is unresolved but album is found", func() {
+		// serveMediaFile extracts this track's own embedded art (provisionalEmbedded), so the
+		// album's hash would advertise a content-version for bytes nobody will serve.
+		It("leaves the hash bare for an eligible file whose own art is unresolved", func() {
 			setCover("1004", true)
 			DeferCleanup(func() { setCover("1004", false) })
 			putInfo("al", "103", "alh103found11111")
 
 			byID := getByID()
 			Expect(byID["1004"].ImageAbsent).To(BeFalse())
-			Expect(byID["1004"].ImageHash).To(Equal("alh103found11111"))
+			Expect(byID["1004"].ImageHash).To(BeEmpty())
+			Expect(byID["1004"].AlbumImage.ImageHash).To(Equal("alh103found11111"),
+				"the album's own hash still hydrates, for AlbumCoverArtID")
 		})
 
 		It("uses album info for an eligible file when EnableMediaFileCoverArt is off", func() {

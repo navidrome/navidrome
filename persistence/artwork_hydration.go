@@ -102,12 +102,14 @@ func hydrateMediaFileArtwork(ctx context.Context, db dbx.Builder, mfs model.Medi
 			mf.BlurHash = ownInfo.BlurHash
 			continue
 		}
+		ownWontResolve := !eligible || (ownResolved && ownInfo.Absent())
 		// Fallback (see MediaFile.CoverArtID): inherit a found album hash for optimistic caching,
-		// but only for a single-disc track. A multi-disc track emits a dc- id served from
-		// disc-specific art of unknown identity, so stamping the album hash would advertise a
-		// wrong content-version; leave it bare (the served response still carries a correct ETag).
+		// but only when the album's bytes are what serving will actually return. A multi-disc track
+		// emits a dc- id served from disc art, and an eligible-but-unresolved track still extracts
+		// its own embedded image — stamping the album hash on either advertises a content-version
+		// (and a blurhash) belonging to a different image.
 		if album, ok := albumInfos[mf.AlbumID]; ok && !album.Absent() {
-			if mf.DiscNumber == 0 {
+			if mf.DiscNumber == 0 && ownWontResolve {
 				mf.ImageHash = album.Hash
 				mf.BlurHash = album.BlurHash
 			}
@@ -121,7 +123,6 @@ func hydrateMediaFileArtwork(ctx context.Context, db dbx.Builder, mfs model.Medi
 		if mf.DiscNumber > 0 {
 			continue
 		}
-		ownWontResolve := !eligible || (ownResolved && ownInfo.Absent())
 		if album, ok := albumInfos[mf.AlbumID]; ok && album.Absent() && ownWontResolve {
 			mf.ImageAbsent = true
 		}
