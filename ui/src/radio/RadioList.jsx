@@ -21,7 +21,7 @@ import {
   ToggleFieldsMenu,
   useSelectedFields,
 } from '../common'
-import { CoverImage } from '../common/CoverImage'
+import { Artwork } from '../common/Artwork'
 import { StreamField } from './StreamField'
 import { setTrack } from '../actions'
 import { songFromRadio } from './helper'
@@ -92,7 +92,7 @@ const CoverArtField = ({ record }) => {
   // Radios resolve art only from an uploaded image; otherwise show the generic radio icon.
   if (record.uploadedImage) {
     return (
-      <CoverImage
+      <Artwork
         record={record}
         size={40}
         square

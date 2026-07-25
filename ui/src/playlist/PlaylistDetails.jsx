@@ -14,7 +14,7 @@ import {
   OverflowTooltip,
 } from '../common'
 import subsonic from '../subsonic'
-import { CoverImage } from '../common/CoverImage'
+import { Artwork } from '../common/Artwork'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -106,7 +106,7 @@ const PlaylistDetails = (props) => {
     <Card className={classes.root}>
       <div className={classes.cardContents}>
         <div className={classes.coverParent}>
-          <CoverImage
+          <Artwork
             record={record}
             square
             fit="contain"

@@ -20,7 +20,7 @@ import Lightbox from 'react-image-lightbox'
 import config from '../config'
 import 'react-image-lightbox/style.css'
 import subsonic from '../subsonic'
-import { CoverImage } from '../common/CoverImage'
+import { Artwork } from '../common/Artwork'
 import {
   ArtistLinkField,
   CollapsibleComment,
@@ -248,7 +248,7 @@ const AlbumDetails = (props) => {
     <Card className={classes.root}>
       <div className={classes.cardContents}>
         <div className={classes.coverParent}>
-          <CoverImage
+          <Artwork
             record={record}
             fit="contain"
             className={classes.cover}

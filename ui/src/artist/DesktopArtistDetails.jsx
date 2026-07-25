@@ -11,7 +11,7 @@ import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 import AlbumInfo from '../album/AlbumInfo'
 import subsonic from '../subsonic'
 import { SafeHTML } from '../common/SafeHTML'
-import { CoverImage } from '../common/CoverImage'
+import { Artwork } from '../common/Artwork'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -90,7 +90,7 @@ const DesktopArtistDetails = ({ artistInfo, record, biography }) => {
       <Card className={classes.artistDetail}>
         <Card className={classes.artistImage}>
           {artistInfo && (
-            <CoverImage
+            <Artwork
               record={record}
               className={classes.cover}
               title={title}

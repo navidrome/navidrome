@@ -2,7 +2,7 @@ import { useRecordContext } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
 import clsx from 'clsx'
 import config from '../config'
-import { CoverImage } from './CoverImage'
+import { Artwork } from './Artwork'
 
 const useStyles = makeStyles({
   avatar: {
@@ -17,17 +17,14 @@ const useStyles = makeStyles({
   },
 })
 
-export const CoverArtAvatar = ({
-  record: recordProp,
-  variant = 'circular',
-}) => {
+export const ArtworkAvatar = ({ record: recordProp, variant = 'circular' }) => {
   const classes = useStyles()
   const recordContext = useRecordContext()
   const record = recordProp || recordContext
   if (!record) return null
   const square = variant !== 'circular'
   return (
-    <CoverImage
+    <Artwork
       record={record}
       size={config.uiCoverArtSize}
       square={square}
@@ -40,4 +37,4 @@ export const CoverArtAvatar = ({
   )
 }
 
-CoverArtAvatar.defaultProps = { label: '', sortable: false }
+ArtworkAvatar.defaultProps = { label: '', sortable: false }

@@ -34,10 +34,10 @@ const useStyles = makeStyles({
   imgInstant: { opacity: 1, transition: 'none' },
 })
 
-// CoverImage renders an entity's cover through the shared useImageUrl blob cache, so it survives
+// Artwork renders an entity's cover through the shared useImageUrl blob cache, so it survives
 // React remounts without re-fetching. The blurhash is the loading placeholder; the image is only
 // mounted once its blob is ready, so an unresolved cover never renders as a broken <img>.
-export const CoverImage = ({
+export const Artwork = ({
   record,
   size = config.uiCoverArtSize,
   square = false,
@@ -107,7 +107,7 @@ export const CoverImage = ({
   )
 }
 
-CoverImage.propTypes = {
+Artwork.propTypes = {
   record: PropTypes.object,
   size: PropTypes.number,
   square: PropTypes.bool,

@@ -7,7 +7,7 @@ import { LoveButton, RatingField, ImageUploadOverlay } from '../common'
 import Lightbox from 'react-image-lightbox'
 import subsonic from '../subsonic'
 import { SafeHTML } from '../common/SafeHTML'
-import { CoverImage } from '../common/CoverImage'
+import { Artwork } from '../common/Artwork'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -93,7 +93,7 @@ const MobileArtistDetails = ({ artistInfo, biography, record }) => {
         <div className={classes.bgContainer}>
           <Card className={classes.artistImage}>
             {artistInfo && (
-              <CoverImage
+              <Artwork
                 record={record}
                 className={classes.cover}
                 title={title}

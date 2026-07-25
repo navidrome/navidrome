@@ -21,7 +21,7 @@ import {
 import { DraggableTypes } from '../consts'
 import clsx from 'clsx'
 import { AlbumDatesField } from './AlbumDatesField.jsx'
-import { CoverImage } from '../common/CoverImage'
+import { Artwork } from '../common/Artwork'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -136,7 +136,7 @@ const Cover = withContentRect('bounds')(({
   return (
     <div ref={measureRef} className={classes.coverContainer}>
       <div ref={dragAlbumRef}>
-        <CoverImage
+        <Artwork
           record={record}
           square
           className={classes.cover}
