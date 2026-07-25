@@ -26,9 +26,12 @@ func NewArtworkQueueRepository(ctx context.Context, db dbx.Builder) model.Artwor
 	return r
 }
 
+// Enqueue also restarts the retry budget the worker measures from enqueued_at, so a fresh
+// request never inherits an old row's spent window and give up on its first attempt.
 func (r *artworkQueueRepository) Enqueue(items ...model.ArtworkQueueItem) error {
 	return r.enqueue(`ON CONFLICT (item_kind, item_id, image_type) DO UPDATE SET
-		priority = MAX(priority, excluded.priority), retry_at = excluded.retry_at`, items)
+		priority = MAX(priority, excluded.priority), retry_at = excluded.retry_at,
+		attempts = 0, enqueued_at = excluded.enqueued_at`, items)
 }
 
 // EnqueueBump raises priority like Enqueue but leaves an existing row's retry_at intact, so a

@@ -40,6 +40,8 @@ func (m *MockArtworkQueueRepo) Enqueue(items ...model.ArtworkQueueItem) error {
 		if prev, ok := m.Data[k]; ok {
 			prev.Priority = max(prev.Priority, it.Priority)
 			prev.RetryAt = now
+			prev.Attempts = 0
+			prev.EnqueuedAt = now
 			m.Data[k] = prev
 			continue
 		}

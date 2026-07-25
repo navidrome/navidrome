@@ -7,6 +7,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/pocketbase/dbx"
 )
 
 var _ = Describe("ArtworkQueueRepository", func() {
@@ -96,7 +97,7 @@ var _ = Describe("ArtworkQueueRepository", func() {
 		Expect(repo.MarkFailedIfUnchanged("al", "m1", model.ImageTypePrimary, original, future)).To(Succeed())
 		got, _ = repo.DequeueBatch(10)
 		Expect(got).To(HaveLen(1), "the fresh re-enqueue stays immediately eligible")
-		Expect(got[0].Attempts).To(Equal(1), "the stale failure must not bump attempts")
+		Expect(got[0].Attempts).To(BeZero(), "re-enqueue clears attempts, and the stale failure must not bump them")
 		current := got[0].RetryAt
 
 		// Failing with the current retry_at applies the backoff and bumps attempts.
@@ -105,6 +106,24 @@ var _ = Describe("ArtworkQueueRepository", func() {
 		Expect(got).To(BeEmpty(), "backed-off row is hidden until the future retry_at")
 		all, _ := repo.Count()
 		Expect(all).To(Equal(int64(1)))
+	})
+
+	It("Enqueue restarts the retry budget an existing row had spent", func() {
+		Expect(repo.Enqueue(item("al", "e1", model.ArtworkPriorityScan))).To(Succeed())
+		Expect(repo.MarkFailed("al", "e1", model.ImageTypePrimary, time.Now().Add(-time.Hour))).To(Succeed())
+		stale := time.Now().Add(-48 * time.Hour)
+		_, err := GetDBXBuilder().NewQuery("UPDATE artwork_queue SET enqueued_at = {:t} WHERE item_id = 'e1'").
+			Bind(dbx.Params{"t": stale}).Execute()
+		Expect(err).ToNot(HaveOccurred())
+
+		Expect(repo.Enqueue(item("al", "e1", model.ArtworkPriorityScan))).To(Succeed())
+
+		got, err := repo.DequeueBatch(10)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(got).To(HaveLen(1))
+		Expect(got[0].EnqueuedAt).To(BeTemporally("~", time.Now(), time.Minute),
+			"a re-request must not inherit a spent 12h window and give up on its first attempt")
+		Expect(got[0].Attempts).To(BeZero())
 	})
 
 	It("deletes on completion and counts", func() {
