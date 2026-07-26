@@ -195,9 +195,10 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 	}
 	// A track's own cover wins in Finamp's precedence (ImageTags.Primary before AlbumId).
 	if mf.ImageHash != "" && mf.ImageHash != mf.AlbumImage.ImageHash {
-		tag, blurs := primaryImageTag(mf.ItemImage, mf.ID)
+		tag, blurs, ratio := primaryImage(mf.ItemImage, mf.ID, fields)
 		item.ImageTags = map[string]string{"Primary": tag}
 		item.ImageBlurHashes = blurs
+		item.PrimaryImageAspectRatio = ratio
 	} else if embeddedArtPending(mf) {
 		// Nothing enqueues media files, so an unresolved track only resolves when someone asks
 		// for its image. Advertising the id here is what makes a Jellyfin client ask; the
@@ -205,9 +206,10 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 		// there is no resolved image to have one yet, and a fake would be cached forever.
 		item.ImageTags = map[string]string{"Primary": mf.ID}
 	} else if mf.AlbumID != "" {
-		if tag, blurs := primaryImageTag(mf.AlbumImage, mf.AlbumID); tag != "" {
+		if tag, blurs, ratio := primaryImage(mf.AlbumImage, mf.AlbumID, fields); tag != "" {
 			item.AlbumPrimaryImageTag = tag
 			item.ImageBlurHashes = blurs
+			item.PrimaryImageAspectRatio = ratio
 		}
 	}
 	return item
@@ -220,39 +222,41 @@ func embeddedArtPending(mf model.MediaFile) bool {
 		mf.ImageHash == "" && !mf.ItemImage.ImageAbsent
 }
 
-// primaryImageTag never synthesizes a blurhash: Finamp keys its cover cache on the value,
-// so a fake one pins a stale cover forever (#5798).
-func primaryImageTag(img model.ItemImage, fallback string) (string, map[string]map[string]string) {
+// primaryImage derives all a mapper advertises about one image, so Primary is chosen once. It never
+// fakes a blurhash: Finamp keys its cover cache on the value, pinning a stale cover forever (#5798).
+func primaryImage(img model.ItemImage, fallback string, fields Fields) (tag string, blurs map[string]map[string]string, ratio *float64) {
 	if img.ImageAbsent {
-		return "", nil
+		return "", nil, nil
 	}
-	tag := img.ImageHash
-	if tag == "" {
-		tag = fallback
+	tag = cmp.Or(img.ImageHash, fallback)
+	if img.BlurHash != "" {
+		blurs = map[string]map[string]string{"Primary": {tag: img.BlurHash}}
 	}
-	if img.BlurHash == "" {
-		return tag, nil
+	// Dimensions are unknown while an item is unresolved; omit rather than guess a ratio.
+	if fields.Has("PrimaryImageAspectRatio") && img.ImageWidth > 0 && img.ImageHeight > 0 {
+		ratio = new(float64(img.ImageWidth) / float64(img.ImageHeight))
 	}
-	return tag, map[string]map[string]string{"Primary": {tag: img.BlurHash}}
+	return tag, blurs, ratio
 }
 
 func AlbumToBaseItem(al model.Album, fields Fields) BaseItemDto {
-	tag, blurs := primaryImageTag(al.ItemImage, al.ID)
+	tag, blurs, ratio := primaryImage(al.ItemImage, al.ID, fields)
 	item := BaseItemDto{
-		Name:              al.Name,
-		Id:                EncodeID(al.ID),
-		Type:              "MusicAlbum",
-		IsFolder:          true,
-		ParentId:          EncodeID(al.AlbumArtistID),
-		AlbumArtist:       al.AlbumArtist,
-		Album:             al.Name,
-		ChildCount:        new(al.SongCount),
-		SongCount:         new(al.SongCount),
-		RunTimeTicks:      TicksFromSeconds(al.Duration),
-		DateCreated:       jellyfinDate(&al.CreatedAt),
-		ImageBlurHashes:   blurs,
-		BackdropImageTags: []string{},
-		UserData:          UserData(al.Annotations, al.ID),
+		Name:                    al.Name,
+		Id:                      EncodeID(al.ID),
+		Type:                    "MusicAlbum",
+		IsFolder:                true,
+		ParentId:                EncodeID(al.AlbumArtistID),
+		AlbumArtist:             al.AlbumArtist,
+		Album:                   al.Name,
+		ChildCount:              new(al.SongCount),
+		SongCount:               new(al.SongCount),
+		RunTimeTicks:            TicksFromSeconds(al.Duration),
+		DateCreated:             jellyfinDate(&al.CreatedAt),
+		ImageBlurHashes:         blurs,
+		PrimaryImageAspectRatio: ratio,
+		BackdropImageTags:       []string{},
+		UserData:                UserData(al.Annotations, al.ID),
 	}
 	if tag != "" {
 		item.ImageTags = map[string]string{"Primary": tag}
@@ -285,19 +289,20 @@ func AlbumToBaseItem(al model.Album, fields Fields) BaseItemDto {
 	return item
 }
 
-func ArtistToBaseItem(ar model.Artist) BaseItemDto {
-	tag, blurs := primaryImageTag(ar.ItemImage, ar.ID)
+func ArtistToBaseItem(ar model.Artist, fields Fields) BaseItemDto {
+	tag, blurs, ratio := primaryImage(ar.ItemImage, ar.ID, fields)
 	item := BaseItemDto{
-		Name:              ar.Name,
-		Id:                EncodeID(ar.ID),
-		Type:              "MusicArtist",
-		IsFolder:          true,
-		AlbumCount:        new(ar.AlbumCount),
-		SongCount:         new(ar.SongCount),
-		DateCreated:       jellyfinDate(ar.CreatedAt),
-		ImageBlurHashes:   blurs,
-		BackdropImageTags: []string{},
-		UserData:          UserData(ar.Annotations, ar.ID),
+		Name:                    ar.Name,
+		Id:                      EncodeID(ar.ID),
+		Type:                    "MusicArtist",
+		IsFolder:                true,
+		AlbumCount:              new(ar.AlbumCount),
+		SongCount:               new(ar.SongCount),
+		DateCreated:             jellyfinDate(ar.CreatedAt),
+		ImageBlurHashes:         blurs,
+		PrimaryImageAspectRatio: ratio,
+		BackdropImageTags:       []string{},
+		UserData:                UserData(ar.Annotations, ar.ID),
 	}
 	if tag != "" {
 		item.ImageTags = map[string]string{"Primary": tag}
@@ -325,22 +330,23 @@ func StudioToBaseItem(t model.Tag) BaseItemDto {
 }
 
 // PlaylistToBaseItem maps a playlist to a Playlist BaseItemDto.
-func PlaylistToBaseItem(p model.Playlist) BaseItemDto {
-	tag, blurs := primaryImageTag(p.ItemImage, p.ID)
+func PlaylistToBaseItem(p model.Playlist, fields Fields) BaseItemDto {
+	tag, blurs, ratio := primaryImage(p.ItemImage, p.ID, fields)
 	item := BaseItemDto{
 		Name: p.Name,
 		Id:   EncodeID(p.ID),
 		Type: "Playlist",
 		// Synthetic path: Jellify only surfaces playlists whose Path contains "data" (real Jellyfin
 		// stores them under its data folder), so without this its Playlists tab hides them all.
-		Path:              "/data/playlists/" + p.ID,
-		IsFolder:          true,
-		MediaType:         "Audio",
-		ChildCount:        new(p.SongCount),
-		RunTimeTicks:      TicksFromSeconds(p.Duration),
-		ImageBlurHashes:   blurs,
-		BackdropImageTags: []string{},
-		UserData:          UserData(p.Annotations, p.ID),
+		Path:                    "/data/playlists/" + p.ID,
+		IsFolder:                true,
+		MediaType:               "Audio",
+		ChildCount:              new(p.SongCount),
+		RunTimeTicks:            TicksFromSeconds(p.Duration),
+		ImageBlurHashes:         blurs,
+		PrimaryImageAspectRatio: ratio,
+		BackdropImageTags:       []string{},
+		UserData:                UserData(p.Annotations, p.ID),
 	}
 	if tag != "" {
 		item.ImageTags = map[string]string{"Primary": tag}

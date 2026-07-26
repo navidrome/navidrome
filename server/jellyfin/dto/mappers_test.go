@@ -290,9 +290,76 @@ var _ = Describe("mappers", func() {
 		Expect(string(b)).ToNot(ContainSubstring("NormalizationGain"))
 	})
 
+	// Real Jellyfin only attaches it when the client asks (DtoService.ContainsField), and derives
+	// it from the image's real dimensions.
+	Describe("PrimaryImageAspectRatio", func() {
+		nonSquare := func() model.Album {
+			al := model.Album{ID: "al1", Name: "Album"}
+			al.ImageHash, al.ImageWidth, al.ImageHeight = "abc", 1200, 800
+			return al
+		}
+
+		It("is omitted unless the request asks for it", func() {
+			Expect(AlbumToBaseItem(nonSquare(), nil).PrimaryImageAspectRatio).To(BeNil())
+			b, err := json.Marshal(AlbumToBaseItem(nonSquare(), nil))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(b)).ToNot(ContainSubstring("PrimaryImageAspectRatio"))
+		})
+
+		It("carries the real ratio when asked", func() {
+			item := AlbumToBaseItem(nonSquare(), ParseFields("PrimaryImageAspectRatio"))
+			Expect(*item.PrimaryImageAspectRatio).To(BeNumerically("~", 1.5, 0.0001))
+		})
+
+		It("is omitted when the dimensions are unknown, rather than guessing square", func() {
+			al := model.Album{ID: "al1", Name: "Album"}
+			al.ImageHash = "abc"
+			item := AlbumToBaseItem(al, ParseFields("PrimaryImageAspectRatio"))
+			Expect(item.PrimaryImageAspectRatio).To(BeNil())
+		})
+
+		It("is omitted when the item has no image at all", func() {
+			al := model.Album{ID: "al1", Name: "Album"}
+			al.ImageAbsent = true
+			al.ImageWidth, al.ImageHeight = 1200, 800
+			item := AlbumToBaseItem(al, ParseFields("PrimaryImageAspectRatio"))
+			Expect(item.PrimaryImageAspectRatio).To(BeNil())
+		})
+
+		It("carries the ratio for an artist", func() {
+			ar := model.Artist{ID: "ar1", Name: "Artist"}
+			ar.ImageHash, ar.ImageWidth, ar.ImageHeight = "abc", 1000, 500
+			Expect(*ArtistToBaseItem(ar, ParseFields("PrimaryImageAspectRatio")).PrimaryImageAspectRatio).
+				To(BeNumerically("~", 2.0, 0.0001))
+		})
+
+		It("carries the ratio for a playlist", func() {
+			pl := model.Playlist{ID: "pl1", Name: "Playlist"}
+			pl.ImageHash, pl.ImageWidth, pl.ImageHeight = "abc", 400, 800
+			Expect(*PlaylistToBaseItem(pl, ParseFields("PrimaryImageAspectRatio")).PrimaryImageAspectRatio).
+				To(BeNumerically("~", 0.5, 0.0001))
+		})
+
+		It("carries the ratio for a song with its own art", func() {
+			mf := model.MediaFile{ID: "mf1", Title: "Song"}
+			mf.ImageHash, mf.ImageWidth, mf.ImageHeight = "abc", 300, 600
+			Expect(*SongToBaseItem(mf, ParseFields("PrimaryImageAspectRatio")).PrimaryImageAspectRatio).
+				To(BeNumerically("~", 0.5, 0.0001))
+		})
+
+		// A track without its own art shows the album's, so the ratio has to describe that image.
+		It("uses the album's dimensions for a track falling back to album art", func() {
+			mf := model.MediaFile{ID: "mf1", Title: "Song", AlbumID: "al1"}
+			mf.AlbumImage.ImageHash, mf.AlbumImage.ImageWidth, mf.AlbumImage.ImageHeight = "abc", 1200, 800
+			item := SongToBaseItem(mf, ParseFields("PrimaryImageAspectRatio"))
+			Expect(item.AlbumPrimaryImageTag).To(Equal("abc"))
+			Expect(*item.PrimaryImageAspectRatio).To(BeNumerically("~", 1.5, 0.0001))
+		})
+	})
+
 	It("maps an artist to a MusicArtist folder item", func() {
 		ar := model.Artist{ID: "art-1", Name: "AA", AlbumCount: 2, SongCount: 20}
-		item := ArtistToBaseItem(ar)
+		item := ArtistToBaseItem(ar, nil)
 		Expect(item.Type).To(Equal("MusicArtist"))
 		Expect(item.IsFolder).To(BeTrue())
 		Expect(item.Id).To(Equal(EncodeID("art-1")))
@@ -354,7 +421,7 @@ var _ = Describe("mappers", func() {
 			ID: "pl-1", Name: "Chill", SongCount: 7, Duration: 120,
 			Annotations: model.Annotations{Starred: true, Rating: 4, PlayCount: 2},
 		}
-		item := PlaylistToBaseItem(p)
+		item := PlaylistToBaseItem(p, nil)
 		Expect(item.Type).To(Equal("Playlist"))
 		Expect(item.IsFolder).To(BeTrue())
 		Expect(item.Id).To(Equal(EncodeID("pl-1")))
@@ -372,9 +439,9 @@ var _ = Describe("mappers", func() {
 	It("changes the playlist image tag when the cover content changes", func() {
 		p := model.Playlist{ID: "pl-1", Name: "Chill"}
 		p.ImageHash = "1111111111111111"
-		before := PlaylistToBaseItem(p)
+		before := PlaylistToBaseItem(p, nil)
 		p.ImageHash = "2222222222222222"
-		after := PlaylistToBaseItem(p)
+		after := PlaylistToBaseItem(p, nil)
 
 		Expect(before.ImageTags["Primary"]).To(Equal("1111111111111111"))
 		Expect(after.ImageTags["Primary"]).To(Equal("2222222222222222"))
@@ -383,9 +450,9 @@ var _ = Describe("mappers", func() {
 	It("keeps the playlist image tag stable across a metadata-only edit", func() {
 		p := model.Playlist{ID: "pl-1", UpdatedAt: time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)}
 		p.ImageHash = "1111111111111111"
-		before := PlaylistToBaseItem(p)
+		before := PlaylistToBaseItem(p, nil)
 		p.UpdatedAt = time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC)
-		after := PlaylistToBaseItem(p)
+		after := PlaylistToBaseItem(p, nil)
 
 		Expect(after.ImageTags["Primary"]).To(Equal(before.ImageTags["Primary"]))
 	})
@@ -479,7 +546,7 @@ var _ = Describe("mappers", func() {
 			ar.ImageHash = "fedcba9876543210"
 			ar.BlurHash = "L6PZfSi_.AyE"
 
-			item := ArtistToBaseItem(ar)
+			item := ArtistToBaseItem(ar, nil)
 			Expect(item.ImageTags).To(HaveKeyWithValue("Primary", "fedcba9876543210"))
 			Expect(item.ImageBlurHashes["Primary"]).To(HaveKeyWithValue("fedcba9876543210", "L6PZfSi_.AyE"))
 		})
@@ -518,7 +585,7 @@ var _ = Describe("mappers", func() {
 			pl := model.Playlist{ID: "pl-1", Name: "Playlist"}
 			pl.ImageHash = "abcdef0123456789"
 
-			item := PlaylistToBaseItem(pl)
+			item := PlaylistToBaseItem(pl, nil)
 			Expect(item.ImageTags).To(HaveKeyWithValue("Primary", "abcdef0123456789"))
 		})
 	})
