@@ -732,6 +732,10 @@ func (e *provider) findArtist(ctx context.Context, artistName, id string) (*auxA
 		}
 	}
 
+	if artistName == "" {
+		return nil, model.ErrNotFound
+	}
+
 	artists, err := e.ds.Artist(ctx).GetAll(model.QueryOptions{
 		Filters: squirrel.Like{"artist.name": artistName},
 		Max:     1,
