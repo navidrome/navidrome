@@ -24,6 +24,7 @@ import { resolveKaraokeTokenWindows } from './lyricsTimeline'
 
 const EMPHASIS_TONE = 0.7
 const EMPHASIS_PAINT_OVERHANG = '0.18em'
+const DEFAULT_RGB = [255, 255, 255]
 
 const emphasisPaintOverhangStyle = {
   marginInlineEnd: `-${EMPHASIS_PAINT_OVERHANG}`,
@@ -225,7 +226,7 @@ export const KaraokeLineRow = memo(
       [line, nextLineStart],
     )
     const tokenRGB = useMemo(
-      () => (style?.color ? parseColorRGB(style.color) : [255, 255, 255]),
+      () => (style?.color ? parseColorRGB(style.color) : DEFAULT_RGB),
       [style?.color],
     )
     const hasTimedTokens = windows.some(
@@ -444,7 +445,7 @@ export const KaraokeStackedLineRow = memo(
       () =>
         pronunciationStyle?.color
           ? parseColorRGB(pronunciationStyle.color)
-          : [255, 255, 255],
+          : DEFAULT_RGB,
       [pronunciationStyle?.color],
     )
     const hasTimedTokens = mainWindows.some(

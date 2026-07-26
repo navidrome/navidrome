@@ -20,6 +20,7 @@ import {
   buildLyricsTimeline,
   getTimelineScrollTarget,
   LyricTimelineCursor,
+  sameIndexes,
   tokenProgressAt,
 } from './lyricsTimeline'
 
@@ -32,10 +33,6 @@ const mediaDurationMs = (audio) => {
   const seconds = Number(audio?.duration)
   return Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : null
 }
-
-const sameIndexes = (left, right) =>
-  left.length === right.length &&
-  left.every((value, index) => value === right[index])
 
 const setProgress = (record, value) => {
   const next = Math.max(0, Math.min(1, value))

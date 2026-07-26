@@ -7,12 +7,10 @@ export const resolveLyricsSidebarState = ({
 }) => ({
   lyricsVisible: Boolean(lyricsVisiblePreference),
   showTranslation: Boolean(
-    (translationPreference == null ? true : translationPreference) &&
-    hasTranslationLyric,
+    (translationPreference ?? true) && hasTranslationLyric,
   ),
   showPronunciation: Boolean(
-    (pronunciationPreference == null ? true : pronunciationPreference) &&
-    hasPronunciationLyric,
+    (pronunciationPreference ?? true) && hasPronunciationLyric,
   ),
 })
 
@@ -22,7 +20,5 @@ export const toggleLayerPreference = (
   defaultEnabled = true,
 ) => {
   if (!hasLayer) return false
-  const currentPreference =
-    previousPreference == null ? defaultEnabled : previousPreference
-  return !currentPreference
+  return !(previousPreference ?? defaultEnabled)
 }

@@ -1,5 +1,8 @@
 import { makeStyles } from '@material-ui/core/styles'
 
+const MOBILE_LYRICS_TRANSITION =
+  'opacity 260ms cubic-bezier(0.22, 1, 0.36, 1), transform 260ms cubic-bezier(0.22, 1, 0.36, 1)'
+
 const useStyle = makeStyles(
   (theme) => ({
     audioTitle: {
@@ -42,7 +45,7 @@ const useStyle = makeStyles(
         flexDirection: 'column',
       },
       '& .play-mode-title': {
-        'pointer-events': 'none',
+        pointerEvents: 'none',
       },
       '& .music-player-panel .panel-content div.img-rotate': {
         // Customize desktop player when cover animation is disabled
@@ -70,6 +73,7 @@ const useStyle = makeStyles(
           maxWidth: '100%',
           height: '100%',
           aspectRatio: 'auto',
+          borderRadius: 0,
           alignItems: 'stretch',
           justifyContent: 'stretch',
         },
@@ -79,8 +83,7 @@ const useStyle = makeStyles(
           inset: 0,
           opacity: 0,
           transform: 'scale(0.985)',
-          transition:
-            'opacity 260ms cubic-bezier(0.22, 1, 0.36, 1), transform 260ms cubic-bezier(0.22, 1, 0.36, 1)',
+          transition: MOBILE_LYRICS_TRANSITION,
           '@media (prefers-reduced-motion: reduce)': {
             transition: 'opacity 120ms linear',
             transform: 'none',
@@ -98,8 +101,7 @@ const useStyle = makeStyles(
         {
           animationDuration: (props) => !props.enableCoverAnimation && '0s',
           objectFit: 'contain', // Fix cover display when image is not square
-          transition:
-            'opacity 260ms cubic-bezier(0.22, 1, 0.36, 1), transform 260ms cubic-bezier(0.22, 1, 0.36, 1)',
+          transition: MOBILE_LYRICS_TRANSITION,
           '@media (prefers-reduced-motion: reduce)': {
             transition: 'opacity 120ms linear',
             transform: 'none',

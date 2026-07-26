@@ -245,18 +245,14 @@ describe('<LyricsSidebar />', () => {
     expect(screen.getByLabelText('Resize song words')).toBeInTheDocument()
     expect(pronunciation).toHaveAttribute('aria-label', 'Conceal pronunciation')
     expect(pronunciation).toHaveAttribute('aria-pressed', 'true')
-    expect(window.getComputedStyle(pronunciation).color).toBe(
-      'rgb(53, 170, 102)',
-    )
+    expect(pronunciation.className).toContain('controlActive')
     fireEvent.click(pronunciation)
     expect(onTogglePronunciation).toHaveBeenCalledTimes(1)
 
     expect(translation).toHaveAttribute('aria-label', 'Reveal translation')
     expect(translation).toHaveAttribute('aria-pressed', 'false')
     expect(translation).toBeDisabled()
-    expect(window.getComputedStyle(translation).color).not.toBe(
-      'rgb(53, 170, 102)',
-    )
+    expect(translation.className).not.toContain('controlActive')
     fireEvent.click(translation)
     expect(onToggleTranslation).not.toHaveBeenCalled()
   })

@@ -6,7 +6,9 @@ import {
   KARAOKE_CHARACTER_RISE_MS,
   KARAOKE_CHARACTER_WAVE_SPAN_MAX_MS,
   KARAOKE_CHARACTER_WAVE_SPAN_RATIO,
+  KARAOKE_CLOCK_DRIFT_RESET_MS,
   KARAOKE_HIGHLIGHT_LEAD_MS,
+  KARAOKE_LINE_RELEASE_MS,
 } from './lyricsKaraokeConstants'
 import useLyricsTimeline from './useLyricsTimeline'
 
@@ -233,7 +235,8 @@ describe('useLyricsTimeline', () => {
       'first',
     )
 
-    syncNow(result, 1259)
+    const releaseEnd = 1000 + KARAOKE_LINE_RELEASE_MS
+    syncNow(result, releaseEnd - 1)
     const gradient = tokenNode.style.backgroundImage
     const releaseAlpha = Number(
       tokenNode.style.getPropertyValue('--lyrics-token-active-alpha'),
@@ -242,7 +245,7 @@ describe('useLyricsTimeline', () => {
     expect(tokenNode.style.color).toBe('transparent')
     expect(tokenNode.style.opacity).toBe('1')
 
-    syncNow(result, 1260)
+    syncNow(result, releaseEnd)
 
     const pastAlpha = Number(
       tokenNode.style.getPropertyValue('--lyrics-token-active-alpha'),
@@ -286,7 +289,7 @@ describe('useLyricsTimeline', () => {
       expect(character.style.transform).toBe(''),
     )
 
-    syncNow(result, tokenStart + KARAOKE_CHARACTER_RISE_MS / 2)
+    syncNow(result, tokenStart + KARAOKE_CHARACTER_WAVE_SPAN_MAX_MS / 2)
     expect(characters[0].style.transform).not.toBe(fullCharacterLift)
     expect(characters[0].style.transform).not.toBe('')
     expect(characters[4].style.transform).toBe('')
@@ -376,9 +379,9 @@ describe('useLyricsTimeline', () => {
       /^translate3d\(0, -\d+\.\d{4}px, 0\)$/,
     )
     expect(character.style.transform).not.toBe(fullCharacterLift)
-    syncNow(result, tokenStart + 240)
+    syncNow(result, tokenStart + KARAOKE_CHARACTER_RISE_MS - 20)
     expect(character.style.transform).not.toBe(fullCharacterLift)
-    syncNow(result, tokenStart + 260)
+    syncNow(result, tokenStart + KARAOKE_CHARACTER_RISE_MS)
     expect(character.style.transform).toBe(fullCharacterLift)
     expect(
       Number(tokenNode.style.getPropertyValue('--lyrics-progress')),
@@ -485,7 +488,7 @@ describe('useLyricsTimeline', () => {
     const character = tokenNode.querySelector('[data-lyrics-character="true"]')
 
     expect(character.style.transform).toBe('')
-    now = KARAOKE_CHARACTER_RISE_MS / 4
+    now = KARAOKE_CLOCK_DRIFT_RESET_MS / 4
     act(() => frameCallback())
     expect(character.style.transform).toMatch(
       /^translate3d\(0, -\d+\.\d{4}px, 0\)$/,
@@ -525,7 +528,14 @@ describe('useLyricsTimeline', () => {
     act(() => {
       window.document.dispatchEvent(new Event('visibilitychange'))
     })
-    audio.currentTime = 0.8
+    const characterMotionEnd =
+      500 +
+      Math.min(
+        500 * KARAOKE_CHARACTER_WAVE_SPAN_RATIO,
+        KARAOKE_CHARACTER_WAVE_SPAN_MAX_MS,
+      ) +
+      KARAOKE_CHARACTER_RISE_MS
+    audio.currentTime = (characterMotionEnd - KARAOKE_HIGHLIGHT_LEAD_MS) / 1000
     visibility = 'visible'
     act(() => {
       window.document.dispatchEvent(new Event('visibilitychange'))
