@@ -11,6 +11,7 @@ import withWidth from '@material-ui/core/withWidth'
 import { Link } from 'react-router-dom'
 import { linkToRecord, useListContext, Loading } from 'react-admin'
 import { withContentRect } from 'react-measure'
+import { useRollChanged } from './useRollChanged'
 import { useDrag } from 'react-dnd'
 import {
   AlbumContextMenu,
@@ -230,9 +231,11 @@ const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
   )
 }
 
-const AlbumGridView = ({ albumListType, loaded, loading, ...props }) => {
-  const hide =
-    (loading && albumListType === 'random') || !props.data || !props.ids
+const AlbumGridView = ({ albumListType, loaded, loading, seed, ...props }) => {
+  // A re-roll replaces every album, so the previous roll must not linger while it loads. Blanking
+  // on any load instead collapsed the grid to a spinner on each search keystroke.
+  const rerolling = useRollChanged(seed, loading) && albumListType === 'random'
+  const hide = rerolling || !props.data || !props.ids
   return hide ? <Loading /> : <LoadedAlbumGrid {...props} />
 }
 

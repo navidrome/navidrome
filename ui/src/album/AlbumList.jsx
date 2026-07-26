@@ -28,6 +28,7 @@ import {
 import AlbumListActions from './AlbumListActions'
 import AlbumTableView from './AlbumTableView'
 import AlbumGridView from './AlbumGridView'
+import { useRollChanged } from './useRollChanged'
 import albumLists from './albumLists'
 import {
   getStoredDefaultView,
@@ -177,9 +178,10 @@ const AlbumListTitle = ({ albumListType }) => {
   return <Title subTitle={title} args={{ smart_count: 2 }} />
 }
 
-const AlbumListPagination = ({ albumListType, ...rest }) => {
+const AlbumListPagination = ({ albumListType, seed, ...rest }) => {
   const { loading } = useListContext()
-  if (loading && albumListType === 'random') {
+  const rerolling = useRollChanged(seed, loading)
+  if (rerolling && albumListType === 'random') {
     return null
   }
   return <Pagination {...rest} />
@@ -251,12 +253,13 @@ const AlbumList = (props) => {
           <AlbumListPagination
             rowsPerPageOptions={perPageOptions}
             albumListType={albumListType}
+            seed={seed}
           />
         }
         title={<AlbumListTitle albumListType={albumListType} />}
       >
         {albumView.grid ? (
-          <AlbumGridView albumListType={albumListType} {...props} />
+          <AlbumGridView albumListType={albumListType} seed={seed} {...props} />
         ) : (
           <AlbumTableView {...props} />
         )}
