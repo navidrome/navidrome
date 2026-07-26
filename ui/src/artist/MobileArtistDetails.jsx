@@ -80,7 +80,7 @@ const useStyles = makeStyles(
   { name: 'NDMobileArtistDetails' },
 )
 
-const MobileArtistDetails = ({ artistInfo, biography, record }) => {
+const MobileArtistDetails = ({ biography, record }) => {
   const img = subsonic.getCoverArtUrl(record, 800)
   const [expanded, setExpanded] = useState(false)
   const classes = useStyles({ img, expanded })
@@ -92,14 +92,12 @@ const MobileArtistDetails = ({ artistInfo, biography, record }) => {
       <div className={classes.root}>
         <div className={classes.bgContainer}>
           <Card className={classes.artistImage}>
-            {artistInfo && (
-              <Artwork
-                record={record}
-                className={classes.cover}
-                title={title}
-                onClick={() => setLightboxOpen(true)}
-              />
-            )}
+            <Artwork
+              record={record}
+              className={classes.cover}
+              title={title}
+              onClick={() => setLightboxOpen(true)}
+            />
             <ImageUploadOverlay
               entityType="artist"
               entityId={record.id}

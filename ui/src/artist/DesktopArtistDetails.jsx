@@ -89,14 +89,12 @@ const DesktopArtistDetails = ({ artistInfo, record, biography }) => {
     <div className={classes.root}>
       <Card className={classes.artistDetail}>
         <Card className={classes.artistImage}>
-          {artistInfo && (
-            <Artwork
-              record={record}
-              className={classes.cover}
-              title={title}
-              onClick={() => setLightboxOpen(true)}
-            />
-          )}
+          <Artwork
+            record={record}
+            className={classes.cover}
+            title={title}
+            onClick={() => setLightboxOpen(true)}
+          />
           <ImageUploadOverlay
             entityType="artist"
             entityId={record.id}
