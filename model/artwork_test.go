@@ -23,6 +23,22 @@ var _ = Describe("ItemImage JSON", func() {
 		Expect(out).To(HaveKeyWithValue("blurHash", "LEHV6nWB2yk8"))
 	})
 
+	// Clients decode the blurhash into a bitmap of their choosing, so without the dimensions they
+	// cannot know the placeholder's shape and default to a square.
+	It("exposes the image dimensions alongside the blurhash", func() {
+		al := model.Album{ID: "al-3", Name: "Album"}
+		al.BlurHash = "LEHV6nWB2yk8"
+		al.ImageWidth, al.ImageHeight = 1200, 800
+
+		var out map[string]any
+		data, err := json.Marshal(al)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(json.Unmarshal(data, &out)).To(Succeed())
+
+		Expect(out).To(HaveKeyWithValue("imageWidth", BeNumerically("==", 1200)))
+		Expect(out).To(HaveKeyWithValue("imageHeight", BeNumerically("==", 800)))
+	})
+
 	It("omits artwork state when the entity has none", func() {
 		var out map[string]any
 		data, err := json.Marshal(model.Album{ID: "al-2", Name: "Album"})
@@ -32,6 +48,8 @@ var _ = Describe("ItemImage JSON", func() {
 		Expect(out).ToNot(HaveKey("imageHash"))
 		Expect(out).ToNot(HaveKey("blurHash"))
 		Expect(out).ToNot(HaveKey("imageAbsent"))
+		Expect(out).ToNot(HaveKey("imageWidth"))
+		Expect(out).ToNot(HaveKey("imageHeight"))
 	})
 
 	It("exposes known-absent artwork so clients can skip the request", func() {

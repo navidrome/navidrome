@@ -21,6 +21,10 @@ type ItemImage struct {
 	ImageHash   string `structs:"-" json:"imageHash,omitempty"`
 	ImageAbsent bool   `structs:"-" json:"imageAbsent,omitempty"`
 	BlurHash    string `structs:"-" json:"blurHash,omitempty"`
+	// Dimensions of the original image. A blurhash carries no aspect ratio, so a client
+	// needs these to decode the placeholder into the shape the real image will occupy.
+	ImageWidth  int `structs:"-" json:"imageWidth,omitempty"`
+	ImageHeight int `structs:"-" json:"imageHeight,omitempty"`
 }
 
 // ItemArtwork is an entity's resolved artwork state. Hash=="" means known absent.
@@ -45,10 +49,24 @@ type ItemArtworkInfo struct {
 	ItemID   string
 	Hash     string
 	BlurHash string
+	Width    int
+	Height   int
 }
 
 // Absent reports a known-absent artwork state (resolved, no image).
 func (i ItemArtworkInfo) Absent() bool { return i.Hash == "" }
+
+// Image projects the hydration entry onto the entity-facing struct, so every hydration
+// site copies the same set of fields.
+func (i ItemArtworkInfo) Image() ItemImage {
+	return ItemImage{
+		ImageHash:   i.Hash,
+		ImageAbsent: i.Absent(),
+		BlurHash:    i.BlurHash,
+		ImageWidth:  i.Width,
+		ImageHeight: i.Height,
+	}
+}
 
 type ArtworkQueueItem struct {
 	ItemKind   string    `structs:"item_kind"`

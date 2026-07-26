@@ -190,7 +190,8 @@ func (r *artworkRepository) DeleteForItems(kind model.Kind, ids []string) error 
 func (r *artworkRepository) GetInfoForItems(kind model.Kind, ids []string) (map[string]model.ItemArtworkInfo, error) {
 	res := map[string]model.ItemArtworkInfo{}
 	for chunk := range slices.Chunk(ids, artworkBatchSize) {
-		sel := Select("ia.item_id", "ia.hash", "COALESCE(a.blur_hash, '') as blur_hash").
+		sel := Select("ia.item_id", "ia.hash", "COALESCE(a.blur_hash, '') as blur_hash",
+			"COALESCE(a.width, 0) as width", "COALESCE(a.height, 0) as height").
 			From(itemArtworkTable + " ia").
 			LeftJoin("artwork a ON a.hash = ia.hash").
 			Where(And{
@@ -198,18 +199,12 @@ func (r *artworkRepository) GetInfoForItems(kind model.Kind, ids []string) (map[
 				Eq{"ia.image_type": model.ImageTypePrimary},
 				Eq{"ia.item_id": chunk},
 			})
-		var rows []struct {
-			ItemID   string
-			Hash     string
-			BlurHash string
-		}
+		var rows []model.ItemArtworkInfo
 		if err := r.items.queryAll(sel, &rows); err != nil {
 			return nil, err
 		}
 		for _, row := range rows {
-			res[row.ItemID] = model.ItemArtworkInfo{
-				ItemID: row.ItemID, Hash: row.Hash, BlurHash: row.BlurHash,
-			}
+			res[row.ItemID] = row
 		}
 	}
 	return res, nil

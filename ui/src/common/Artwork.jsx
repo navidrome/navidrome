@@ -77,6 +77,10 @@ export const Artwork = ({
   // The blurhash stays mounted under the image until the fade ends. Swapping them the moment the
   // blob arrives would expose the empty container for the length of the fade.
   const showBlurHash = !!record.blurHash && !instant && !faded
+  // A square request is padded, not cropped, so its content is already aspect-fit inside the square
+  // the server returns; `contain` is what keeps placeholder and image on the same pixels.
+  const effectiveFit = square ? 'contain' : fit
+  const ratio = record.imageWidth / record.imageHeight
   const handleClick = imgUrl && onClick ? onClick : undefined
   return (
     <div
@@ -85,7 +89,12 @@ export const Artwork = ({
       style={{ cursor: handleClick ? 'pointer' : 'default' }}
     >
       {showBlurHash && (
-        <BlurHashCanvas hash={record.blurHash} className={classes.fill} />
+        <BlurHashCanvas
+          hash={record.blurHash}
+          ratio={ratio}
+          fit={effectiveFit}
+          className={classes.fill}
+        />
       )}
       {imgUrl && (
         <img
@@ -98,7 +107,7 @@ export const Artwork = ({
             instant && classes.imgInstant,
             decoded && classes.imgVisible,
           )}
-          style={{ objectFit: fit }}
+          style={{ objectFit: effectiveFit }}
           // Fading on decode, not on mount, keeps the image from ramping up before it can paint.
           onLoad={() => setDecoded(true)}
         />

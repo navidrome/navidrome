@@ -70,9 +70,7 @@ func hydrateItemImages(ctx context.Context, db dbx.Builder, kind model.Kind, ids
 // applyItemImage copies a hydration entry onto img; a missing entry leaves it zero (unresolved).
 func applyItemImage(infos map[string]model.ItemArtworkInfo, id string, img *model.ItemImage) {
 	if info, ok := infos[id]; ok {
-		img.ImageHash = info.Hash
-		img.ImageAbsent = info.Absent()
-		img.BlurHash = info.BlurHash
+		*img = info.Image()
 	}
 }
 
@@ -98,8 +96,7 @@ func hydrateMediaFileArtwork(ctx context.Context, db dbx.Builder, mfs model.Medi
 		eligible := mf.HasCoverArt && conf.Server.EnableMediaFileCoverArt
 		ownInfo, ownResolved := mfInfos[mf.ID]
 		if eligible && ownResolved && !ownInfo.Absent() {
-			mf.ImageHash = ownInfo.Hash // own resolved art wins
-			mf.BlurHash = ownInfo.BlurHash
+			mf.ItemImage = ownInfo.Image() // own resolved art wins
 			continue
 		}
 		ownWontResolve := !eligible || (ownResolved && ownInfo.Absent())
@@ -110,8 +107,7 @@ func hydrateMediaFileArtwork(ctx context.Context, db dbx.Builder, mfs model.Medi
 		// (and a blurhash) belonging to a different image.
 		if album, ok := albumInfos[mf.AlbumID]; ok && !album.Absent() {
 			if mf.DiscNumber == 0 && ownWontResolve {
-				mf.ImageHash = album.Hash
-				mf.BlurHash = album.BlurHash
+				mf.ItemImage = album.Image()
 			}
 			continue
 		}

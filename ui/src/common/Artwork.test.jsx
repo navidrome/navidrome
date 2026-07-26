@@ -43,6 +43,58 @@ describe('Artwork', () => {
     expect(container.querySelector('canvas')).toBeNull()
   })
 
+  // The placeholder has to land exactly where the image will, or it jumps when the image swaps in.
+  it('shapes the blurhash like the artwork and fits it like the image', () => {
+    useImageUrl.mockReturnValue({ imgUrl: null, loading: true })
+    const nonSquare = { ...withArt, imageWidth: 1200, imageHeight: 800 }
+    const { container } = render(
+      <Artwork record={nonSquare} fit="contain" title="Album" />,
+    )
+    const canvas = container.querySelector('canvas')
+    expect(canvas.width).toBe(32)
+    expect(canvas.height).toBe(21)
+    expect(canvas.style.objectFit).toBe('contain')
+  })
+
+  // A square request is padded, not cropped, so the artwork still sits letterboxed inside the
+  // square the server returns and the placeholder has to letterbox with it.
+  it('letterboxes the blurhash when the server pads a non-square image to a square', () => {
+    useImageUrl.mockReturnValue({ imgUrl: null, loading: true })
+    const nonSquare = { ...withArt, imageWidth: 1200, imageHeight: 800 }
+    const { container } = render(<Artwork record={nonSquare} square />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas.width).toBe(32)
+    expect(canvas.height).toBe(21)
+    expect(canvas.style.objectFit).toBe('contain')
+  })
+
+  // The padded square the server returns is aspect-fit, so cropping it would disagree with the
+  // placeholder. Both renderers have to read `square` the same way.
+  it('fits the image itself with contain when the server padded to a square', () => {
+    useImageUrl.mockReturnValue({ imgUrl: 'blob:abc', loading: false })
+    const { container } = render(
+      <Artwork record={withArt} square fit="cover" title="Album" />,
+    )
+    expect(container.querySelector('img').style.objectFit).toBe('contain')
+  })
+
+  it('fills the box for square artwork, the overwhelmingly common case', () => {
+    useImageUrl.mockReturnValue({ imgUrl: null, loading: true })
+    const sq = { ...withArt, imageWidth: 600, imageHeight: 600 }
+    const { container } = render(<Artwork record={sq} square />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas.width).toBe(32)
+    expect(canvas.height).toBe(32)
+  })
+
+  it('falls back to a square blurhash when the record has no dimensions', () => {
+    useImageUrl.mockReturnValue({ imgUrl: null, loading: true })
+    const { container } = render(<Artwork record={withArt} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas.width).toBe(32)
+    expect(canvas.height).toBe(32)
+  })
+
   it('mounts the image only once its blob is ready', () => {
     useImageUrl.mockReturnValue({ imgUrl: 'blob:abc', loading: false })
     const { container } = render(<Artwork record={withArt} title="Album" />)

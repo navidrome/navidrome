@@ -214,8 +214,8 @@ var _ = Describe("ArtworkRepository", func() {
 			Expect(got.Hash).To(BeEmpty())
 		})
 
-		It("hydrates a page in one batch, including blurhash and absence", func() {
-			Expect(repo.PutImage(&model.Artwork{Hash: "h9", Mime: "image/jpeg", BlurHash: "BH9"})).To(Succeed())
+		It("hydrates a page in one batch, including blurhash, dimensions and absence", func() {
+			Expect(repo.PutImage(&model.Artwork{Hash: "h9", Mime: "image/jpeg", BlurHash: "BH9", Width: 1200, Height: 800})).To(Succeed())
 			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "al", ItemID: "x1", ImageType: model.ImageTypePrimary, Hash: "h9", Source: "folder"})).To(Succeed())
 			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "al", ItemID: "x2", ImageType: model.ImageTypePrimary, Hash: "", Source: ""})).To(Succeed())
 
@@ -224,6 +224,8 @@ var _ = Describe("ArtworkRepository", func() {
 			Expect(info).To(HaveLen(2))
 			Expect(info["x1"].Hash).To(Equal("h9"))
 			Expect(info["x1"].BlurHash).To(Equal("BH9"))
+			Expect(info["x1"].Width).To(Equal(1200))
+			Expect(info["x1"].Height).To(Equal(800))
 			Expect(info["x1"].Absent()).To(BeFalse())
 			Expect(info["x2"].Absent()).To(BeTrue())
 			_, unresolved := info["x3"]
