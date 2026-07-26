@@ -10,7 +10,7 @@ import (
 	"github.com/navidrome/navidrome/plugins/host"
 )
 
-const STORAGE_MOUNT = "/storage"
+const storageMount = "/storage"
 
 type storageServiceImpl struct{}
 
@@ -28,7 +28,7 @@ func newStorageService(pluginName string) (host.StorageService, error) {
 }
 
 func (s *storageServiceImpl) GetStoragePath(ctx context.Context) string {
-	return STORAGE_MOUNT
+	return storageMount
 }
 
 var _ host.StorageService = (*storageServiceImpl)(nil)

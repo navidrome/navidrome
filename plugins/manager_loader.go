@@ -352,7 +352,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 		}
 
 		if pkg.Manifest.HasStoragePermissions() {
-			allowedPaths[getHostStoragePath(p.ID)] = STORAGE_MOUNT
+			allowedPaths[getHostStoragePath(p.ID)] = storageMount
 		}
 
 		pluginManifest.AllowedPaths = allowedPaths
