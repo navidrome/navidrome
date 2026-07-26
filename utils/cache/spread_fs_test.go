@@ -1,10 +1,12 @@
 package cache
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/djherbis/stream"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -36,6 +38,37 @@ var _ = Describe("Spread FS", func() {
 			mapped := fs.KeyMapper("abc")
 			Expect(mapped).To(HavePrefix(fs.root))
 			Expect(fs.KeyMapper(mapped)).To(Equal(mapped))
+		})
+	})
+
+	Describe("Create", func() {
+		It("leaves an already-open reader's bytes intact", func() {
+			// A re-created entry must not shrink the file an older stream is still
+			// serving: its reader would spin forever at the premature EOF.
+			name := filepath.Join(rootDir, "aa", "bb", "data")
+			s, err := stream.NewStream(name, fs)
+			Expect(err).To(BeNil())
+			_, err = s.Write([]byte("PARTIAL"))
+			Expect(err).To(BeNil())
+			r, err := s.NextReader()
+			Expect(err).To(BeNil())
+			Expect(s.Close()).To(Succeed())
+
+			f, err := fs.Create(name)
+			Expect(err).To(BeNil())
+			_, err = f.Write([]byte("GOOD"))
+			Expect(err).To(BeNil())
+			Expect(f.Close()).To(Succeed())
+
+			done := make(chan []byte, 1)
+			go func() {
+				b, _ := io.ReadAll(r)
+				done <- b
+			}()
+			Eventually(done).Should(Receive(Equal([]byte("PARTIAL"))))
+			Expect(r.Close()).To(Succeed())
+
+			Expect(os.ReadFile(name)).To(Equal([]byte("GOOD")))
 		})
 	})
 
