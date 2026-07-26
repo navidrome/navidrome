@@ -259,5 +259,10 @@ var _ = Describe("Logger", func() {
 			msg := "getLyrics.view?v=1.2.0&c=iSub&u=user_name&p=first%20and%20other%20words&title=Title"
 			Expect(Redact(msg)).To(Equal("getLyrics.view?v=1.2.0&c=iSub&u=user_name&p=[REDACTED]&title=Title"))
 		})
+
+		It("redacts a whole JWT in api_key, not just up to its first dot", func() {
+			msg := "/jellyfin/Audio/abc/universal?static=true&api_key=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiJ9.c2ln-X_1&other=1"
+			Expect(Redact(msg)).To(Equal("/jellyfin/Audio/abc/universal?static=true&api_key=[REDACTED]&other=1"))
+		})
 	})
 })

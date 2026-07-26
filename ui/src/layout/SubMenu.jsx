@@ -33,6 +33,9 @@ const useStyles = makeStyles(
     menuHeader: {
       width: '100%',
     },
+    headerText: {
+      flexGrow: 1,
+    },
     headerWrapper: {
       display: 'flex',
       '&:hover $actionIcon': {
@@ -55,6 +58,10 @@ const SubMenu = ({
   dense,
   onAction,
   actionIcon,
+  onSecondaryAction,
+  secondaryActionIcon,
+  secondaryActionTitle,
+  secondaryActionActive,
 }) => {
   const translate = useTranslate()
   const classes = useStyles()
@@ -70,6 +77,11 @@ const SubMenu = ({
     }
   }
 
+  const handleSecondaryClick = (e) => {
+    e.stopPropagation()
+    onSecondaryAction(e)
+  }
+
   const header = (
     <div className={classes.headerWrapper}>
       <MenuItem
@@ -81,9 +93,26 @@ const SubMenu = ({
         <ListItemIcon className={classes.icon}>
           {isOpen ? <ExpandMore /> : icon}
         </ListItemIcon>
-        <Typography variant="inherit" color="textSecondary">
+        <Typography
+          variant="inherit"
+          color="textSecondary"
+          className={classes.headerText}
+        >
           {translate(name)}
         </Typography>
+        {onSecondaryAction && sidebarIsOpen && (
+          <IconButton
+            size={'small'}
+            title={secondaryActionTitle}
+            aria-label={secondaryActionTitle}
+            className={
+              isDesktop && !secondaryActionActive ? classes.actionIcon : null
+            }
+            onClick={handleSecondaryClick}
+          >
+            {secondaryActionIcon}
+          </IconButton>
+        )}
         {onAction && sidebarIsOpen && (
           <IconButton
             size={'small'}

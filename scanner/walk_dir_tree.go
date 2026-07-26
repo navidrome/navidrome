@@ -5,11 +5,13 @@ import (
 	"io/fs"
 	"maps"
 	"path"
+	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
@@ -231,6 +233,20 @@ func resolveEntryName(ctx context.Context, fsys fs.FS, dirPath string, entry fs.
 	if !conf.Server.Scanner.FollowSymlinks {
 		log.Trace(ctx, "Scanner: Skipping symlink, following is disabled", "path", linkPath)
 		return "", false
+	}
+	// OS-backed filesystems can resolve the whole chain, even when it leaves the FS root
+	// (e.g. a link into another folder/drive), so the final target is always what gets
+	// classified. The fs.ReadLink loop below can't see past the root: it classifies by the
+	// last in-chain name it can reach.
+	if resolver, ok := fsys.(storage.SymlinkResolverFS); ok {
+		target, err := resolver.ResolveSymlink(linkPath)
+		if err != nil {
+			log.Trace(ctx, "Scanner: Skipping symlink, cannot resolve target", "path", linkPath, err)
+			return "", false
+		}
+		resolved := filepath.Base(target)
+		log.Trace(ctx, "Scanner: Resolved symlink", "path", linkPath, "target", target, "name", resolved)
+		return resolved, true
 	}
 	cur := linkPath
 	for hop := 0; hop < maxSymlinkHops; hop++ {

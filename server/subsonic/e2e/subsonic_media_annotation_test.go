@@ -155,6 +155,7 @@ var _ = Describe("Media Annotation Endpoints", Ordered, func() {
 
 			Expect(resp.Status).To(Equal(responses.StatusFailed))
 			Expect(resp.Error).ToNot(BeNil())
+			Expect(resp.Error.Code).To(Equal(responses.ErrorMissingParameter))
 		})
 	})
 

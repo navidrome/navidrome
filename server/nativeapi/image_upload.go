@@ -13,22 +13,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/dustin/go-humanize"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	_ "golang.org/x/image/webp"
 )
-
-func maxImageUploadSize() int64 {
-	if size, err := humanize.ParseBytes(conf.Server.MaxImageUploadSize); err == nil && size > 0 {
-		return int64(size)
-	}
-	size, _ := humanize.ParseBytes(consts.DefaultMaxImageUploadSize)
-	return int64(size)
-}
 
 func checkImageUploadPermission(w http.ResponseWriter, r *http.Request) bool {
 	user, _ := request.UserFrom(r.Context())
@@ -40,7 +31,7 @@ func checkImageUploadPermission(w http.ResponseWriter, r *http.Request) bool {
 }
 
 func handleImageUpload(saveFn func(ctx context.Context, reader io.Reader, ext string) error) http.HandlerFunc {
-	maxImageSize := maxImageUploadSize()
+	maxImageSize := core.MaxImageUploadSize()
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		if !checkImageUploadPermission(w, r) {

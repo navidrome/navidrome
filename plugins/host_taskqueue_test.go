@@ -42,15 +42,11 @@ var _ = Describe("TaskQueueService", func() {
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.DataFolder = conf.NewDir(tmpDir)
 
-		// Create a mock manager with context
-		managerCtx, cancel := context.WithCancel(ctx)
 		manager = &Manager{
 			plugins: make(map[string]*plugin),
-			ctx:     managerCtx,
 		}
-		DeferCleanup(cancel)
 
-		service, err = newTaskQueueService("test_plugin", manager, 5)
+		service, err = newTaskQueueService(ctx, "test_plugin", manager, 5)
 		Expect(err).ToNot(HaveOccurred())
 	})
 
@@ -730,14 +726,11 @@ var _ = Describe("TaskQueueService", func() {
 			service.Close()
 
 			// Create a new service pointing to the same DB
-			managerCtx2, cancel2 := context.WithCancel(ctx)
-			DeferCleanup(cancel2)
 			manager2 := &Manager{
 				plugins: make(map[string]*plugin),
-				ctx:     managerCtx2,
 			}
 
-			service, err = newTaskQueueService("test_plugin", manager2, 5)
+			service, err = newTaskQueueService(ctx, "test_plugin", manager2, 5)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Override callback to succeed
@@ -775,14 +768,11 @@ var _ = Describe("TaskQueueService", func() {
 
 	Describe("Plugin isolation", func() {
 		It("uses separate databases for different plugins", func() {
-			managerCtx2, cancel2 := context.WithCancel(ctx)
-			DeferCleanup(cancel2)
 			manager2 := &Manager{
 				plugins: make(map[string]*plugin),
-				ctx:     managerCtx2,
 			}
 
-			service2, err := newTaskQueueService("other_plugin", manager2, 5)
+			service2, err := newTaskQueueService(ctx, "other_plugin", manager2, 5)
 			Expect(err).ToNot(HaveOccurred())
 			defer service2.Close()
 

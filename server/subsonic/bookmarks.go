@@ -103,7 +103,7 @@ func (api *Router) GetPlayQueue(r *http.Request) (*responses.Subsonic, error) {
 
 func (api *Router) SavePlayQueue(r *http.Request) (*responses.Subsonic, error) {
 	p := req.Params(r)
-	ids, _ := p.Strings("id")
+	ids := p.Strings("id")
 	currentID, _ := p.String("current")
 	position := p.Int64Or("position", 0)
 
@@ -176,7 +176,7 @@ func (api *Router) GetPlayQueueByIndex(r *http.Request) (*responses.Subsonic, er
 
 func (api *Router) SavePlayQueueByIndex(r *http.Request) (*responses.Subsonic, error) {
 	p := req.Params(r)
-	ids, _ := p.Strings("id")
+	ids := p.Strings("id")
 
 	position := p.Int64Or("position", 0)
 

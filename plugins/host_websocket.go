@@ -54,6 +54,7 @@ type wsConnection struct {
 // webSocketServiceImpl implements host.WebSocketService.
 // It provides plugins with WebSocket communication capabilities.
 type webSocketServiceImpl struct {
+	baseCtx       context.Context // bounds the read loops, which outlive the Connect() call
 	pluginName    string
 	manager       *Manager
 	requiredHosts []string
@@ -63,8 +64,9 @@ type webSocketServiceImpl struct {
 }
 
 // newWebSocketService creates a new WebSocketService for a plugin.
-func newWebSocketService(pluginName string, manager *Manager, permission *WebSocketPermission) *webSocketServiceImpl {
+func newWebSocketService(ctx context.Context, pluginName string, manager *Manager, permission *WebSocketPermission) *webSocketServiceImpl {
 	return &webSocketServiceImpl{
+		baseCtx:       ctx,
 		pluginName:    pluginName,
 		manager:       manager,
 		requiredHosts: permission.RequiredHosts,
@@ -129,11 +131,12 @@ func (s *webSocketServiceImpl) Connect(ctx context.Context, urlStr string, heade
 	s.connections[connectionID] = wsConn
 	s.mu.Unlock()
 
-	// Start read goroutine with manager's context.
-	// We use manager.ctx instead of the caller's ctx because the readLoop must
-	// outlive the Connect() call. The manager's context is cancelled during
-	// application shutdown, ensuring graceful cleanup.
-	go s.readLoop(s.manager.ctx, connectionID, wsConn)
+	// Start read goroutine with the service's base context instead of the
+	// caller's ctx, because the readLoop must outlive the Connect() call.
+	// Connections are closed by Close() when the plugin is unloaded, which ends
+	// the readLoop; the base context is a backstop that also ends it on server
+	// shutdown (it is never cancelled in one-shot CLI runs).
+	go s.readLoop(s.baseCtx, connectionID, wsConn)
 
 	log.Debug(ctx, "WebSocket connected", "plugin", s.pluginName, "connectionID", connectionID, "url", urlStr)
 	return connectionID, nil

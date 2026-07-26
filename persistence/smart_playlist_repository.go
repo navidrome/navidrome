@@ -4,7 +4,6 @@ import (
 	"time"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
@@ -77,7 +76,7 @@ func (r *playlistRepository) shouldRefreshSmartPlaylist(pls *model.Playlist, usr
 	if !pls.IsSmartPlaylist() {
 		return false
 	}
-	if pls.EvaluatedAt != nil && time.Since(*pls.EvaluatedAt) < conf.Server.SmartPlaylistRefreshDelay {
+	if pls.EvaluatedAt != nil && time.Since(*pls.EvaluatedAt) < pls.RefreshDelay() {
 		return false
 	}
 	if pls.OwnerID != usr.ID {

@@ -71,14 +71,11 @@ var _ = Describe("decodeStreamInfo", func() {
 		Expect(err).To(HaveOccurred())
 	})
 
-	It("handles tokens without shareID (backward compat)", func() {
+	It("rejects a token without a shareID claim", func() {
 		claims := auth.Claims{ID: "mf-123", Format: "opus"}
 		token, _ := auth.CreatePublicToken(claims)
-		info, err := decodeStreamInfo(token)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(info.id).To(Equal("mf-123"))
-		Expect(info.format).To(Equal("opus"))
-		Expect(info.shareID).To(BeEmpty())
+		_, err := decodeStreamInfo(token)
+		Expect(err).To(HaveOccurred())
 	})
 })
 
@@ -133,7 +130,7 @@ var _ = Describe("handleStream", func() {
 
 	shareOwnedBy := func(owner model.User, mf model.MediaFile) {
 		shareRepo.ID = "share123"
-		shareRepo.Entity = &model.Share{ID: "share123", UserID: owner.ID}
+		shareRepo.Entity = &model.Share{ID: "share123", UserID: owner.ID, Tracks: model.MediaFiles{mf}}
 		userRepo := tests.CreateMockUserRepo()
 		Expect(userRepo.Put(&owner)).To(Succeed())
 		ds.MockedUser = userRepo
@@ -164,6 +161,25 @@ var _ = Describe("handleStream", func() {
 		)
 
 		claims := auth.Claims{ID: "mf-restricted", ShareID: "share123"}
+		token, _ := auth.CreateExpiringPublicToken(time.Now().Add(time.Hour), claims)
+		w := makeRequest(token)
+
+		Expect(w.Code).To(Equal(http.StatusNotFound))
+		Expect(streamer.called).To(BeFalse())
+	})
+
+	It("returns 404 when the track is not a member of the share", func() {
+		owner := model.User{ID: "owner1", UserName: "owner1", IsAdmin: true}
+		userRepo := tests.CreateMockUserRepo()
+		Expect(userRepo.Put(&owner)).To(Succeed())
+		ds.MockedUser = userRepo
+		mfRepo := tests.CreateMockMediaFileRepo()
+		mfRepo.SetData(model.MediaFiles{{ID: "mf-shared"}, {ID: "mf-other"}})
+		ds.MockedMediaFile = mfRepo
+		shareRepo.ID = "share123"
+		shareRepo.Entity = &model.Share{ID: "share123", UserID: owner.ID, Tracks: model.MediaFiles{{ID: "mf-shared"}}}
+
+		claims := auth.Claims{ID: "mf-other", ShareID: "share123"}
 		token, _ := auth.CreateExpiringPublicToken(time.Now().Add(time.Hour), claims)
 		w := makeRequest(token)
 
@@ -217,12 +233,12 @@ var _ = Describe("handleStream", func() {
 		Expect(w.Code).To(Equal(http.StatusInternalServerError))
 	})
 
-	It("skips share check for tokens without shareID (backward compat)", func() {
+	It("returns 400 for tokens without a shareID", func() {
 		claims := auth.Claims{ID: "mf-123"}
 		token, _ := auth.CreatePublicToken(claims)
 		w := makeRequest(token)
-		// Should get past share check, then fail on media file lookup (no mock data)
-		Expect(w.Code).To(Equal(http.StatusNotFound))
+		Expect(w.Code).To(Equal(http.StatusBadRequest))
+		Expect(streamer.called).To(BeFalse())
 	})
 
 	It("returns 400 for an invalid token", func() {

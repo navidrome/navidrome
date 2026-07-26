@@ -199,6 +199,78 @@ var _ = Describe("LocalStorage", func() {
 		})
 	})
 
+	Describe("localFS.ResolveSymlink", func() {
+		var musicFS storage.MusicFS
+
+		BeforeEach(func() {
+			if runtime.GOOS == "windows" {
+				Skip("symlink semantics")
+			}
+			u, err := storage.LocalPathToURL(tempDir)
+			Expect(err).ToNot(HaveOccurred())
+			musicFS, err = newLocalStorage(u).FS()
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("implements storage.SymlinkResolverFS", func() {
+			_, ok := musicFS.(storage.SymlinkResolverFS)
+			Expect(ok).To(BeTrue())
+		})
+
+		It("resolves a chain that leaves the library folder to its final target", func() {
+			outside, err := os.MkdirTemp("", "navidrome-symlink-outside-")
+			Expect(err).ToNot(HaveOccurred())
+			DeferCleanup(func() { os.RemoveAll(outside) })
+
+			target := filepath.Join(outside, "final.txt")
+			Expect(os.WriteFile(target, []byte("data"), 0600)).To(Succeed())
+			mid := filepath.Join(outside, "mid.wav")
+			Expect(os.Symlink(target, mid)).To(Succeed())
+			Expect(os.Symlink(mid, filepath.Join(tempDir, "link.wav"))).To(Succeed())
+
+			resolved, err := musicFS.(storage.SymlinkResolverFS).ResolveSymlink("link.wav")
+			Expect(err).ToNot(HaveOccurred())
+			expected, err := filepath.EvalSymlinks(target)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resolved).To(Equal(expected))
+		})
+
+		It("resolves entries in subfolders (slash-separated fs paths)", func() {
+			Expect(os.MkdirAll(filepath.Join(tempDir, "sub"), 0755)).To(Succeed())
+			target := filepath.Join(tempDir, "real.mp3")
+			Expect(os.WriteFile(target, []byte("audio"), 0600)).To(Succeed())
+			Expect(os.Symlink(target, filepath.Join(tempDir, "sub", "link.mp3"))).To(Succeed())
+
+			resolved, err := musicFS.(storage.SymlinkResolverFS).ResolveSymlink("sub/link.mp3")
+			Expect(err).ToNot(HaveOccurred())
+			expected, err := filepath.EvalSymlinks(target)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resolved).To(Equal(expected))
+		})
+
+		It("returns an error for a broken symlink", func() {
+			Expect(os.Symlink(filepath.Join(tempDir, "missing.mp3"), filepath.Join(tempDir, "broken.mp3"))).To(Succeed())
+
+			_, err := musicFS.(storage.SymlinkResolverFS).ResolveSymlink("broken.mp3")
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("rejects names that are not valid fs paths", func() {
+			for _, name := range []string{"../outside.mp3", "/etc/hosts", "sub/../../outside.mp3", ""} {
+				_, err := musicFS.(storage.SymlinkResolverFS).ResolveSymlink(name)
+				Expect(err).To(MatchError(fs.ErrInvalid), name)
+			}
+		})
+
+		It("returns an error for a symlink loop", func() {
+			Expect(os.Symlink(filepath.Join(tempDir, "loop2.mp3"), filepath.Join(tempDir, "loop1.mp3"))).To(Succeed())
+			Expect(os.Symlink(filepath.Join(tempDir, "loop1.mp3"), filepath.Join(tempDir, "loop2.mp3"))).To(Succeed())
+
+			_, err := musicFS.(storage.SymlinkResolverFS).ResolveSymlink("loop1.mp3")
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
 	Describe("localFS.ReadTags", func() {
 		var testFile string
 

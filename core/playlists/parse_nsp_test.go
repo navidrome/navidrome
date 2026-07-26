@@ -113,6 +113,20 @@ var _ = Describe("parseNSP", func() {
 		Expect(err.Error()).To(ContainSubstring("SmartPlaylist"))
 	})
 
+	It("rejects a NSP that mixes top-level 'any' and 'all' instead of silently dropping a group", func() {
+		nsp := `{
+			"name": "Overplayed Favorites",
+			"any": [{"inPlaylist": {"path": "most-played-favorites.nsp"}}],
+			"all": [{"notInPlaylist": {"path": "favorites-not-played-in-4-yrs.nsp"}}],
+			"sort": "playCount, lastPlayed"
+		}`
+		pls := &model.Playlist{}
+		err := s.parseNSP(ctx, pls, strings.NewReader(nsp))
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("SmartPlaylist"))
+		Expect(err.Error()).To(And(ContainSubstring("all"), ContainSubstring("any")))
+	})
+
 	It("gracefully handles non-string name field", func() {
 		nsp := `{"name": 123, "all": [{"is": {"loved": true}}]}`
 		pls := &model.Playlist{Name: "Original"}
