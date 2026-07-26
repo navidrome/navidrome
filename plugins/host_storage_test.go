@@ -6,9 +6,11 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"os"
 	"path/filepath"
 
+	extism "github.com/extism/go-sdk"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
@@ -76,21 +78,6 @@ var _ = Describe("Storage Host Function", Ordered, func() {
 		tmpDir, err = os.MkdirTemp("", "storage-test-*")
 		Expect(err).ToNot(HaveOccurred())
 
-		// Copy test plugin to temp dir
-		srcPath := filepath.Join(testdataDir, ID+PackageExtension)
-		destPath := filepath.Join(tmpDir, ID+PackageExtension)
-		data, err := os.ReadFile(srcPath)
-		Expect(err).ToNot(HaveOccurred())
-		err = os.WriteFile(destPath, data, 0600)
-		Expect(err).ToNot(HaveOccurred())
-
-		// Setup config
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.DataFolder = conf.NewDir(tmpDir)
-		conf.Server.Plugins.Enabled = true
-		conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
-		conf.Server.Plugins.AutoReload = false
-
 		// Setup mock router and data store
 		router = &fakeSubsonicRouter{}
 		userRepo = tests.CreateMockUserRepo()
@@ -103,24 +90,47 @@ var _ = Describe("Storage Host Function", Ordered, func() {
 		}
 		manager.SetSubsonicRouter(router)
 
-		// Pre-enable the plugin in the mock repo so it loads on startup
-		// Compute SHA256 of the plugin file to match what syncPlugins will compute
-		pluginPath := filepath.Join(tmpDir, ID+PackageExtension)
-		wasmData, err := os.ReadFile(pluginPath)
-		Expect(err).ToNot(HaveOccurred())
-		hash := sha256.Sum256(wasmData)
-		hashHex := hex.EncodeToString(hash[:])
-
 		mockPluginRepo := dataStore.Plugin(GinkgoT().Context()).(*tests.MockPluginRepo)
 		mockPluginRepo.Permitted = true
-		enabledPlugin := model.Plugin{
-			ID:       ID,
-			Path:     pluginPath,
-			SHA256:   hashHex,
-			Enabled:  true,
-			AllUsers: true, // Allow all users for test plugin
+
+		// Setup config
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.DataFolder = conf.NewDir(tmpDir)
+		conf.Server.Plugins.Enabled = true
+		conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
+		conf.Server.Plugins.AutoReload = false
+
+		pluginPaths := []string{ID, ID + "-2"}
+		plugins := []model.Plugin{}
+
+		for idx := range pluginPaths {
+			path := pluginPaths[idx] + PackageExtension
+			// Copy test plugin to temp dir
+			srcPath := filepath.Join(testdataDir, path)
+			destPath := filepath.Join(tmpDir, path)
+			data, err := os.ReadFile(srcPath)
+			Expect(err).ToNot(HaveOccurred())
+			err = os.WriteFile(destPath, data, 0600)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Pre-enable the plugin in the mock repo so it loads on startup
+			// Compute SHA256 of the plugin file to match what syncPlugins will compute
+			pluginPath := filepath.Join(tmpDir, path)
+			wasmData, err := os.ReadFile(pluginPath)
+			Expect(err).ToNot(HaveOccurred())
+			hash := sha256.Sum256(wasmData)
+			hashHex := hex.EncodeToString(hash[:])
+
+			plugins = append(plugins, model.Plugin{
+				ID:       pluginPaths[idx],
+				Path:     pluginPath,
+				SHA256:   hashHex,
+				Enabled:  true,
+				AllUsers: true, // Allow all users for test plugin
+			})
 		}
-		mockPluginRepo.SetData(model.Plugins{enabledPlugin})
+
+		mockPluginRepo.SetData(plugins)
 
 		// Start the manager
 		err = manager.Start(GinkgoT().Context())
@@ -171,7 +181,7 @@ var _ = Describe("Storage Host Function", Ordered, func() {
 	})
 
 	Describe("Write", func() {
-		var plugin *plugin
+		var p *plugin
 
 		BeforeAll(func() {
 			path := filepath.Join(getHostStoragePath(ID), "real")
@@ -181,13 +191,13 @@ var _ = Describe("Storage Host Function", Ordered, func() {
 
 		BeforeEach(func() {
 			manager.mu.RLock()
-			plugin = manager.plugins[ID]
+			p = manager.plugins[ID]
 			manager.mu.RUnlock()
-			Expect(plugin).ToNot(BeNil())
+			Expect(p).ToNot(BeNil())
 		})
 
 		It("should fail to write to nested file", func() {
-			instance, err := plugin.instance(GinkgoT().Context())
+			instance, err := p.instance(GinkgoT().Context())
 			Expect(err).ToNot(HaveOccurred())
 			defer instance.Close(GinkgoT().Context())
 
@@ -197,7 +207,7 @@ var _ = Describe("Storage Host Function", Ordered, func() {
 		})
 
 		It("should write to a file", func() {
-			instance, err := plugin.instance(GinkgoT().Context())
+			instance, err := p.instance(GinkgoT().Context())
 			Expect(err).ToNot(HaveOccurred())
 			defer instance.Close(GinkgoT().Context())
 
@@ -213,6 +223,42 @@ var _ = Describe("Storage Host Function", Ordered, func() {
 			Expect(exit).To(Equal(uint32(0)))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(output).To(Equal([]byte("contents")))
+		})
+
+		It("should have independent storage for multiple plugins", func() {
+			manager.mu.RLock()
+			plugin2 := manager.plugins[ID+"-2"]
+			manager.mu.RUnlock()
+
+			Expect(plugin2).ToNot(BeNil())
+
+			plugins := []*plugin{p, plugin2}
+			instances := []*extism.Plugin{}
+			names := []string{ID, ID + "-2"}
+
+			for idx := range plugins {
+				instance, err := plugins[idx].instance(GinkgoT().Context())
+				instances = append(instances, instance)
+				Expect(err).ToNot(HaveOccurred())
+				defer instance.Close(GinkgoT().Context())
+
+				exit, _, err := instance.Call("call_write", fmt.Appendf(nil, `{"path":"new","contents":"%s"}`, names[idx]))
+				Expect(exit).To(Equal(uint32(0)))
+				Expect(err).ToNot(HaveOccurred())
+			}
+
+			for idx := range names {
+				data, err := os.ReadFile(filepath.Join(getHostStoragePath(names[idx]), "new"))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(data).To(Equal([]byte(names[idx])))
+			}
+
+			for idx := range plugins {
+				exit, output, err := instances[idx].Call("call_read", []byte("new"))
+				Expect(exit).To(Equal(uint32(0)))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output).To(Equal([]byte(names[idx])))
+			}
 		})
 	})
 })
