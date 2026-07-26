@@ -319,9 +319,11 @@ func (w *Worker) precache(ctx context.Context, got *acquired) {
 		return
 	}
 	// Same key as the serving path (hash/size/square); only the source of the bytes differs.
+	// square matches what the list surfaces request, otherwise this warms a key nothing reads.
 	item := &resizedItem{
 		hash:       got.ia.Hash,
 		size:       conf.Server.UICoverArtSize,
+		square:     true,
 		lastUpdate: got.ia.UpdatedAt,
 		ffmpeg:     w.deps.ffmpeg,
 		open:       func() (io.ReadCloser, error) { return io.NopCloser(bytes.NewReader(got.data)), nil },

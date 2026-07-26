@@ -562,7 +562,8 @@ var _ = Describe("Worker", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(n).To(Equal(1))
 
-			Expect(imgCache.getKeys()).To(ContainElement(ContainSubstring(".300.false.")))
+			// The list surfaces request square covers, so warming any other key is wasted work.
+			Expect(imgCache.getKeys()).To(ContainElement(ContainSubstring(".300.true.")))
 		})
 
 		It("skips warming when precache is disabled", func() {
@@ -593,7 +594,7 @@ var _ = Describe("Worker", func() {
 			// from the bytes handed in. Probing with a source that refuses to open proves it
 			// is really cached rather than re-read on demand.
 			probe := &resizedItem{
-				hash: ia.Hash, size: 300, lastUpdate: ia.UpdatedAt, ffmpeg: ffm,
+				hash: ia.Hash, size: 300, square: true, lastUpdate: ia.UpdatedAt, ffmpeg: ffm,
 				open: func() (io.ReadCloser, error) { return nil, errors.New("precache must not re-read the source") },
 			}
 			stream, err := imgCache.Get(ctx, probe)
