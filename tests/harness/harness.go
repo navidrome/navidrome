@@ -86,17 +86,13 @@ func SetupDB(ctx context.Context, users ...*model.User) *DB {
 	return h
 }
 
-// Restore reloads every table from the golden snapshot via ATTACH DATABASE — much faster than a
-// rescan. FTS shadow tables are skipped; they are kept in sync by their content tables' triggers.
-func (h *DB) Restore() {
-	sqlDB := db.Db()
-	_, err := sqlDB.Exec("PRAGMA foreign_keys = OFF")
+// ResettableTables lists the tables a per-spec reset may write. FTS shadow tables are excluded;
+// they are kept in sync by their content tables' triggers, and writing them directly corrupts the
+// index.
+func ResettableTables() []string {
+	rows, err := db.Db().Query("SELECT name FROM main.sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '%_fts' AND name NOT LIKE '%_fts_%'")
 	Expect(err).ToNot(HaveOccurred())
-	_, err = sqlDB.Exec("ATTACH DATABASE ? AS snapshot", h.SnapshotPath)
-	Expect(err).ToNot(HaveOccurred())
-
-	rows, err := sqlDB.Query("SELECT name FROM main.sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '%_fts' AND name NOT LIKE '%_fts_%'")
-	Expect(err).ToNot(HaveOccurred())
+	defer rows.Close()
 	var tables []string
 	for rows.Next() {
 		var name string
@@ -104,9 +100,35 @@ func (h *DB) Restore() {
 		tables = append(tables, name)
 	}
 	Expect(rows.Err()).ToNot(HaveOccurred())
-	rows.Close()
+	return tables
+}
+
+// TruncateDB empties every resettable table, leaving the migrated schema in place. Suites whose
+// specs each build their own library use this instead of a golden snapshot, since re-migrating the
+// schema per spec costs ~400ms.
+func TruncateDB(tables []string) {
+	sqlDB := db.Db()
+	_, err := sqlDB.Exec("PRAGMA foreign_keys = OFF")
+	Expect(err).ToNot(HaveOccurred())
+	defer func() { _, _ = sqlDB.Exec("PRAGMA foreign_keys = ON") }()
 
 	for _, table := range tables {
+		// Table names come from sqlite_master, not user input.
+		_, err = sqlDB.Exec(`DELETE FROM main."` + table + `"`) //nolint:gosec
+		Expect(err).ToNot(HaveOccurred())
+	}
+}
+
+// Restore reloads every table from the golden snapshot via ATTACH DATABASE — much faster than a
+// rescan.
+func (h *DB) Restore() {
+	sqlDB := db.Db()
+	_, err := sqlDB.Exec("PRAGMA foreign_keys = OFF")
+	Expect(err).ToNot(HaveOccurred())
+	_, err = sqlDB.Exec("ATTACH DATABASE ? AS snapshot", h.SnapshotPath)
+	Expect(err).ToNot(HaveOccurred())
+
+	for _, table := range ResettableTables() {
 		// Table names come from sqlite_master, not user input.
 		_, err = sqlDB.Exec(`DELETE FROM main."` + table + `"`) //nolint:gosec
 		Expect(err).ToNot(HaveOccurred())

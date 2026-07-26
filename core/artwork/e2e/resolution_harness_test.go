@@ -31,6 +31,7 @@ import (
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/tests/harness"
 	"github.com/navidrome/navidrome/utils/cache"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -65,8 +66,19 @@ var (
 // Windows. A suite-level tempdir plus an AfterSuite close avoids the lock conflict.
 var suiteDBTempDir string
 
+// Migrating the schema costs ~400ms, so it runs once per suite and specs reset by truncating.
+var userTables []string
+
 var _ = BeforeSuite(func() {
 	suiteDBTempDir = GinkgoT().TempDir()
+
+	DeferCleanup(configtest.SetupConfig())
+	conf.Server.DbPath = filepath.Join(suiteDBTempDir, "artwork-resolution-e2e.db") + "?_journal_mode=WAL"
+	conf.Server.DataFolder = conf.NewDir(GinkgoT().TempDir())
+	db.Db().SetMaxOpenConns(1)
+	db.Init(request.WithUser(context.Background(), model.User{ID: "admin-1", IsAdmin: true}))
+
+	userTables = harness.ResettableTables()
 })
 
 var _ = AfterSuite(func() {
@@ -86,10 +98,8 @@ func setupResolutionHarness() {
 	conf.Server.EnableMediaFileCoverArt = true
 	conf.Server.ArtworkWorkerConcurrency = 1
 
-	db.Db().SetMaxOpenConns(1)
 	rctx = request.WithUser(GinkgoT().Context(), model.User{ID: "admin-1", UserName: "admin", IsAdmin: true})
-	db.Init(rctx)
-	DeferCleanup(func() { Expect(tests.ClearDB()).To(Succeed()) })
+	harness.TruncateDB(userTables)
 
 	rds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
 
