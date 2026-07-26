@@ -142,6 +142,7 @@ func (s *service) serveHash(ctx context.Context, artID model.ArtworkID, ia *mode
 		if errors.Is(err, context.Canceled) {
 			return nil, err
 		}
+		log.Warn(ctx, "artwork: could not serve resized image", "artID", artID, "size", size, err)
 		return s.dangling(ctx, artID)
 	}
 	return &Image{ReadCloser: stream, Hash: ia.Hash, ETag: representationTag(ia.Hash, size, square), LastUpdated: ia.UpdatedAt}, nil
