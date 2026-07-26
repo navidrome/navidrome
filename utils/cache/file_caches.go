@@ -2,8 +2,10 @@ package cache
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -158,6 +160,13 @@ func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
 
 	key := arg.Key()
 	r, w, err := fc.cache.Get(key)
+	if errors.Is(err, fs.ErrNotExist) {
+		// The entry outlived its data file. Drop it and retry, or every future Get
+		// for this key fails for the rest of the process's life.
+		log.Debug(ctx, "Cache entry lost its data file. Re-fetching", "cache", fc.name, "key", key)
+		_ = fc.invalidate(ctx, key)
+		r, w, err = fc.cache.Get(key)
+	}
 	if err != nil {
 		return nil, err
 	}
