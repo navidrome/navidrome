@@ -1,6 +1,6 @@
 import { KARAOKE_SCROLL_PRE_ROLL_MS } from './lyricsKaraokeConstants'
 
-const finiteTime = (value) => {
+export const finiteTime = (value) => {
   if (value == null || value === '') return null
   const number = Number(value)
   return Number.isFinite(number) ? number : null
@@ -17,7 +17,7 @@ const upperBound = (items, time, getTime) => {
   return low
 }
 
-const sameIndexes = (left, right) =>
+export const sameIndexes = (left, right) =>
   left.length === right.length &&
   left.every((value, index) => value === right[index])
 

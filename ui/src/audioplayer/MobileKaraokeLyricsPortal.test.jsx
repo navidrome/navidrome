@@ -18,8 +18,8 @@ import MobileKaraokeLyricsPortal, {
 } from './MobileKaraokeLyricsPortal'
 import usePlayerLyrics from './usePlayerLyrics'
 
-const { useEnhancedLyricsMock } = vi.hoisted(() => ({
-  useEnhancedLyricsMock: vi.fn(() => ({
+const { defaultLyricsResponse, useEnhancedLyricsMock } = vi.hoisted(() => {
+  const defaultLyricsResponse = {
     layers: {
       main: {
         synced: true,
@@ -31,8 +31,12 @@ const { useEnhancedLyricsMock } = vi.hoisted(() => ({
     loading: false,
     error: null,
     retry: vi.fn(),
-  })),
-}))
+  }
+  return {
+    defaultLyricsResponse,
+    useEnhancedLyricsMock: vi.fn(() => defaultLyricsResponse),
+  }
+})
 
 vi.mock('./useEnhancedLyrics', () => ({
   default: useEnhancedLyricsMock,
@@ -77,7 +81,8 @@ const MobileLyricsHarness = ({ trackId = 'track-1', isRadio = false }) => {
 describe('<MobileKaraokeLyricsPortal />', () => {
   afterEach(() => {
     vi.useRealTimers()
-    useEnhancedLyricsMock.mockClear()
+    useEnhancedLyricsMock.mockReset()
+    useEnhancedLyricsMock.mockImplementation(() => defaultLyricsResponse)
     cleanup()
     document.body.innerHTML = ''
   })
@@ -185,6 +190,60 @@ describe('<MobileKaraokeLyricsPortal />', () => {
 
     expect(
       screen.queryByText('Persistent panel lyrics'),
+    ).not.toBeInTheDocument()
+  })
+
+  it('centers working pronunciation and translation toggles below mobile lyrics', () => {
+    useEnhancedLyricsMock.mockImplementation(() => ({
+      ...defaultLyricsResponse,
+      layers: {
+        ...defaultLyricsResponse.layers,
+        pronunciation: {
+          synced: true,
+          line: [{ start: 0, end: 1000, value: 'Spoken lyrics' }],
+        },
+        translation: {
+          synced: true,
+          line: [{ start: 0, end: 1000, value: 'Translated lyrics' }],
+        },
+      },
+    }))
+    const host = createHost()
+    render(<MobileLyricsHarness />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Toggle lyrics' }))
+
+    const controls = within(host).getByTestId('lyrics-mobile-layer-controls')
+    expect(controls).toHaveAttribute('data-placement', 'mobile')
+    expect(controls).toHaveStyle({
+      bottom: '8px',
+      left: '50%',
+      transform: 'translateX(-50%)',
+    })
+
+    const pronunciation = within(host).getByTestId(
+      'toggle-pronunciation-button',
+    )
+    const translation = within(host).getByTestId('toggle-translation-button')
+    expect(pronunciation).toHaveAttribute(
+      'aria-label',
+      'player.hideLyricsPronunciationText',
+    )
+    expect(pronunciation).toHaveAttribute('aria-pressed', 'true')
+    expect(translation).toHaveAttribute(
+      'aria-label',
+      'player.hideLyricsTranslationText',
+    )
+    expect(translation).toHaveAttribute('aria-pressed', 'true')
+
+    fireEvent.click(pronunciation)
+    fireEvent.click(translation)
+
+    expect(pronunciation).toHaveAttribute('aria-pressed', 'false')
+    expect(translation).toHaveAttribute('aria-pressed', 'false')
+    expect(within(host).queryByText('Spoken lyrics')).not.toBeInTheDocument()
+    expect(
+      within(host).queryByText('Translated lyrics'),
     ).not.toBeInTheDocument()
   })
 

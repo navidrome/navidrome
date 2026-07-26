@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import LyricsLayerControls from './LyricsLayerControls'
 import LyricsPanel from './LyricsPanel'
 import MobileKaraokeLyricsPortal from './MobileKaraokeLyricsPortal'
 import { hasStructuredLyricContent } from './lyrics'
@@ -157,10 +158,23 @@ const usePlayerLyrics = ({
           labels={labels}
           inline
         />
+        <LyricsLayerControls
+          placement="mobile"
+          showTranslation={showTranslation}
+          showPronunciation={showPronunciation}
+          translationEnabled={hasTranslationLyric}
+          pronunciationEnabled={hasPronunciationLyric}
+          onToggleTranslation={toggleTranslation}
+          onTogglePronunciation={togglePronunciation}
+          labels={labels}
+          testId="lyrics-mobile-layer-controls"
+        />
       </MobileKaraokeLyricsPortal>
     ),
     [
       audioInstance,
+      hasPronunciationLyric,
+      hasTranslationLyric,
       lyricLayers.main,
       lyricLayers.pronunciation,
       lyricLayers.translation,
@@ -169,6 +183,8 @@ const usePlayerLyrics = ({
       labels,
       showPronunciation,
       showTranslation,
+      togglePronunciation,
+      toggleTranslation,
       useInlineMobileLyrics,
     ],
   )

@@ -12,8 +12,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import LyricsPanel from './LyricsPanel'
 import { KaraokeLineRow } from './LyricsLineRows'
 import {
-  KARAOKE_ANIMATION_MS,
+  KARAOKE_LINE_OPACITY_MS,
   KARAOKE_CHARACTER_LIFT_PX,
+  KARAOKE_CHARACTER_RISE_MS,
+  KARAOKE_HIGHLIGHT_LEAD_MS,
+  KARAOKE_IDLE_LAYER_OPACITY,
   KARAOKE_LINE_LIFT_PX,
   KARAOKE_MANUAL_SCROLL_PAUSE_MS,
   KARAOKE_TRANSLATION_OPACITY,
@@ -318,7 +321,7 @@ describe('<LyricsPanel />', () => {
       expect(row).toHaveAttribute('data-tokenized', 'false')
       expect(row.style.opacity).toBe('')
       expect(window.getComputedStyle(row).transition).toContain(
-        `opacity ${KARAOKE_ANIMATION_MS}ms`,
+        `opacity ${KARAOKE_LINE_OPACITY_MS}ms`,
       )
     })
     pronunciation.forEach((token) =>
@@ -372,6 +375,8 @@ describe('<LyricsPanel />', () => {
   })
 
   it('keeps every word-timed layer on the same rise and release lifecycle', () => {
+    const settledFirstCharacterTime =
+      (KARAOKE_CHARACTER_RISE_MS - KARAOKE_HIGHLIGHT_LEAD_MS) / 1000
     const propsAt = (currentTime) => ({
       mainLyric: tokenizedMainLyric,
       pronunciationLyric: tokenizedPronunciationLyric,
@@ -383,7 +388,7 @@ describe('<LyricsPanel />', () => {
       showTranslation: true,
       audioInstance: { currentTime, paused: true },
     })
-    const { rerenderPanel } = renderPanel(propsAt(0.15))
+    const { rerenderPanel } = renderPanel(propsAt(settledFirstCharacterTime))
 
     const group = screen.getByTestId('lyrics-line-group')
     const translation = screen
@@ -790,16 +795,19 @@ describe('<LyricsPanel />', () => {
         .getComputedStyle(group)
         .getPropertyValue('--lyrics-layer-opacity')
         .trim()
-    expect(groups.map(layerOpacity)).toEqual(['1', '0.49'])
+    expect(groups.map(layerOpacity)).toEqual([
+      '1',
+      String(KARAOKE_IDLE_LAYER_OPACITY),
+    ])
     expect(window.getComputedStyle(activeTranslation).opacity).toBe(
       String(KARAOKE_TRANSLATION_OPACITY),
     )
     expect(Number(window.getComputedStyle(futureTranslation).opacity)).toBe(
-      0.49 * KARAOKE_TRANSLATION_OPACITY,
+      KARAOKE_IDLE_LAYER_OPACITY * KARAOKE_TRANSLATION_OPACITY,
     )
     ;[activeTranslation, futureTranslation].forEach((translation) =>
       expect(window.getComputedStyle(translation).transition).toContain(
-        `opacity ${KARAOKE_ANIMATION_MS}ms`,
+        `opacity ${KARAOKE_LINE_OPACITY_MS}ms`,
       ),
     )
   })

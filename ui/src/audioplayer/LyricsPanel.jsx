@@ -15,10 +15,11 @@ import {
 } from './lyrics'
 import { KaraokeLineRow, KaraokeStackedLineRow } from './LyricsLineRows'
 import {
-  KARAOKE_ANIMATION_MS,
+  KARAOKE_LINE_OPACITY_MS,
   KARAOKE_AUX_LINE_HEIGHT,
   KARAOKE_DESKTOP_ACTIVE_LINE_ANCHOR_RATIO,
   KARAOKE_EASING,
+  KARAOKE_IDLE_LAYER_OPACITY,
   KARAOKE_INLINE_ACTIVE_LINE_ANCHOR_RATIO,
   KARAOKE_LINE_ENTER_MS,
   KARAOKE_LINE_LIFT_PX,
@@ -33,10 +34,10 @@ import {
   getAnchoredScrollTop,
   getScrollEndPadding,
 } from './lyricsScroll'
+import { finiteTime } from './lyricsTimeline'
 import useLyricsTimeline from './useLyricsTimeline'
 
-const KARAOKE_LAYER_OPACITY_TRANSITION = `opacity ${KARAOKE_ANIMATION_MS}ms ${KARAOKE_EASING}`
-const KARAOKE_IDLE_LAYER_OPACITY = 0.49
+const KARAOKE_LAYER_OPACITY_TRANSITION = `opacity ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}`
 const KARAOKE_TRANSLATION_IDLE_OPACITY =
   KARAOKE_IDLE_LAYER_OPACITY * KARAOKE_TRANSLATION_OPACITY
 
@@ -103,6 +104,7 @@ const useStyles = makeStyles((theme) => ({
     alignItems: 'stretch',
     gap: theme.spacing(3),
   },
+  inlineLines: {},
   lineGroup: {
     width: '100%',
     borderRadius: theme.shape.borderRadius,
@@ -186,9 +188,6 @@ const useStyles = makeStyles((theme) => ({
     '@media (prefers-reduced-motion: reduce)': {
       transition: 'none',
     },
-  },
-  inlineLine: {
-    fontSize: 24,
   },
   auxLine: {
     display: 'block',
@@ -307,18 +306,12 @@ const shouldShowAuxLine = (mainLine, auxLine) =>
     normalizeLineText(auxLine.value) !== normalizeLineText(mainLine?.value),
   )
 
-const finiteLineTime = (value) => {
-  if (value == null || value === '') return null
-  const number = Number(value)
-  return Number.isFinite(number) ? number : null
-}
-
 const getLayerMatchWindow = (lines, index) => {
   const line = lines[index]
   if (!line) return { start: null, end: null }
   return {
-    start: finiteLineTime(line.start),
-    end: finiteLineTime(line.end) ?? finiteLineTime(lines[index + 1]?.start),
+    start: finiteTime(line.start),
+    end: finiteTime(line.end) ?? finiteTime(lines[index + 1]?.start),
   }
 }
 
@@ -454,6 +447,7 @@ const LyricsPanel = ({
   const [layoutVersion, setLayoutVersion] = useState(0)
   const [hasTopFade, setHasTopFade] = useState(false)
   const [scrollEndPadding, setScrollEndPadding] = useState(0)
+  const [scrollStartPadding, setScrollStartPadding] = useState(0)
   const prefersReducedMotion = usePrefersReducedMotion()
   const activeLineAnchorRatio = inline
     ? KARAOKE_INLINE_ACTIVE_LINE_ANCHOR_RATIO
@@ -617,13 +611,24 @@ const LyricsPanel = ({
     const body = bodyRef.current
     if (!visible || !body) {
       setScrollEndPadding(0)
+      setScrollStartPadding(0)
       return
     }
-    const nextPadding = getScrollEndPadding(body, activeLineAnchorRatio)
+    const nextEndPadding = getScrollEndPadding(body, activeLineAnchorRatio)
     setScrollEndPadding((current) =>
-      current === nextPadding ? current : nextPadding,
+      current === nextEndPadding ? current : nextEndPadding,
     )
-  }, [activeLineAnchorRatio, layoutVersion, mainLines.length, visible])
+    if (inline) {
+      const nextStartPadding = Math.round(
+        body.clientHeight * activeLineAnchorRatio,
+      )
+      setScrollStartPadding((current) =>
+        current === nextStartPadding ? current : nextStartPadding,
+      )
+    } else {
+      setScrollStartPadding(0)
+    }
+  }, [activeLineAnchorRatio, inline, layoutVersion, mainLines.length, visible])
 
   useLayoutEffect(() => {
     const body = bodyRef.current
@@ -726,11 +731,16 @@ const LyricsPanel = ({
         onTouchMove={markManualScrollIntent}
       >
         <div
-          className={classes.lines}
+          className={clsx(classes.lines, {
+            [classes.inlineLines]: inline,
+          })}
           data-scroll-end-padding={scrollEndPadding}
           style={
-            scrollEndPadding > 0
-              ? { paddingBottom: scrollEndPadding }
+            scrollEndPadding > 0 || scrollStartPadding > 0
+              ? {
+                  paddingTop: scrollStartPadding || undefined,
+                  paddingBottom: scrollEndPadding || undefined,
+                }
               : undefined
           }
         >
@@ -807,7 +817,6 @@ const LyricsPanel = ({
                   >
                     {lineLanes.map((lane, laneIdx) => {
                       const laneClassName = clsx(classes.line, {
-                        [classes.inlineLine]: inline,
                         [classes.secondaryVoiceLane]: laneIdx > 0,
                       })
                       const rowKey = lane.key || `lane-${laneIdx}`
@@ -855,9 +864,7 @@ const LyricsPanel = ({
                     pronunciationLine={prLine}
                     pronunciationStyle={layerStyles.pronunciation}
                     nextLineStart={mainNextLineStart}
-                    className={clsx(classes.line, {
-                      [classes.inlineLine]: inline,
-                    })}
+                    className={classes.line}
                     style={layerStyles.main}
                     tokenClassName={classes.token}
                     waveCharacterClassName={classes.waveCharacter}
@@ -871,9 +878,7 @@ const LyricsPanel = ({
                     lineIndex={idx}
                     line={line}
                     nextLineStart={mainNextLineStart}
-                    className={clsx(classes.line, {
-                      [classes.inlineLine]: inline,
-                    })}
+                    className={classes.line}
                     style={layerStyles.main}
                     tokenClassName={classes.token}
                     waveCharacterClassName={classes.waveCharacter}
