@@ -128,12 +128,7 @@ func (sfs *spreadFS) Create(name string) (stream.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Unlink instead of truncating: an older stream may still be serving readers from
-	// this path, and shrinking the file under them spins them at a premature EOF.
-	if err := os.Remove(name); err != nil && !os.IsNotExist(err) {
-		return nil, err
-	}
-	return os.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
+	return createDataFile(name)
 }
 
 func (sfs *spreadFS) Open(name string) (stream.File, error) {

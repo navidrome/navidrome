@@ -4,6 +4,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/djherbis/stream"
@@ -45,6 +46,9 @@ var _ = Describe("Spread FS", func() {
 		It("leaves an already-open reader's bytes intact", func() {
 			// A re-created entry must not shrink the file an older stream is still
 			// serving: its reader would spin forever at the premature EOF.
+			if runtime.GOOS == "windows" {
+				Skip("Windows cannot unlink a file with open handles, so Create reuses the inode")
+			}
 			name := filepath.Join(rootDir, "aa", "bb", "data")
 			s, err := stream.NewStream(name, fs)
 			Expect(err).To(BeNil())
