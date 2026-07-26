@@ -6,7 +6,6 @@ import {
   Filter,
   NullableBooleanInput,
   NumberInput,
-  Pagination,
   ReferenceArrayInput,
   ReferenceInput,
   SearchInput,
@@ -20,6 +19,7 @@ import FavoriteIcon from '@material-ui/icons/Favorite'
 import { withWidth } from '@material-ui/core'
 import {
   List,
+  Pagination,
   Title,
   useAlbumsPerPage,
   useResourceRefresh,
