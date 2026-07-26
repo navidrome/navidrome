@@ -232,9 +232,8 @@ func primaryImage(img model.ItemImage, fallback string, fields Fields) (tag stri
 	if img.BlurHash != "" {
 		blurs = map[string]map[string]string{"Primary": {tag: img.BlurHash}}
 	}
-	// Dimensions are unknown while an item is unresolved; omit rather than guess a ratio.
-	if fields.Has("PrimaryImageAspectRatio") && img.ImageWidth > 0 && img.ImageHeight > 0 {
-		ratio = new(float64(img.ImageWidth) / float64(img.ImageHeight))
+	if fields.Has("PrimaryImageAspectRatio") {
+		ratio = img.AspectRatio()
 	}
 	return tag, blurs, ratio
 }

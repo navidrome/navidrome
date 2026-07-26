@@ -52,6 +52,24 @@ var _ = Describe("ItemImage JSON", func() {
 		Expect(out).ToNot(HaveKey("imageHeight"))
 	})
 
+	Describe("AspectRatio", func() {
+		It("returns width/height", func() {
+			img := model.ItemImage{ImageHash: "abc", ImageWidth: 1200, ImageHeight: 800}
+			Expect(*img.AspectRatio()).To(BeNumerically("~", 1.5, 0.0001))
+		})
+
+		It("returns nil when a dimension is missing, so callers never guess a ratio", func() {
+			Expect(model.ItemImage{ImageHash: "abc"}.AspectRatio()).To(BeNil())
+			Expect(model.ItemImage{ImageHash: "abc", ImageWidth: 1200}.AspectRatio()).To(BeNil())
+			Expect(model.ItemImage{ImageHash: "abc", ImageHeight: 800}.AspectRatio()).To(BeNil())
+		})
+
+		It("returns nil for a known-absent image, whatever the dimensions say", func() {
+			img := model.ItemImage{ImageAbsent: true, ImageWidth: 1200, ImageHeight: 800}
+			Expect(img.AspectRatio()).To(BeNil())
+		})
+	})
+
 	It("exposes known-absent artwork so clients can skip the request", func() {
 		ar := model.Artist{ID: "ar-1", Name: "Artist"}
 		ar.ImageAbsent = true

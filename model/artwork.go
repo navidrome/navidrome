@@ -27,6 +27,15 @@ type ItemImage struct {
 	ImageHeight int `structs:"-" json:"imageHeight,omitempty"`
 }
 
+// AspectRatio is the image's width/height, or nil when there is no image or its dimensions are
+// unknown (an unresolved item). Never guesses: a wrong ratio mis-shapes a client's placeholder.
+func (i ItemImage) AspectRatio() *float64 {
+	if i.ImageAbsent || i.ImageWidth <= 0 || i.ImageHeight <= 0 {
+		return nil
+	}
+	return new(float64(i.ImageWidth) / float64(i.ImageHeight))
+}
+
 // ItemArtwork is an entity's resolved artwork state. Hash=="" means known absent.
 type ItemArtwork struct {
 	ItemKind  string `structs:"item_kind"`
