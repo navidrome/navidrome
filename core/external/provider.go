@@ -34,7 +34,7 @@ type Provider interface {
 	UpdateAlbumInfo(ctx context.Context, id string) (*model.Album, error)
 	UpdateArtistInfo(ctx context.Context, id string, count int, includeNotPresent bool) (*model.Artist, error)
 	SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error)
-	TopSongs(ctx context.Context, artist string, count int) (model.MediaFiles, error)
+	TopSongs(ctx context.Context, artist, artistId string, count int) (model.MediaFiles, error)
 	ArtistImage(ctx context.Context, id string) (*url.URL, error)
 	AlbumImage(ctx context.Context, id string) (*url.URL, error)
 }
@@ -440,11 +440,16 @@ func (e *provider) AlbumImage(ctx context.Context, id string) (*url.URL, error) 
 	return url.Parse(img.URL)
 }
 
-func (e *provider) TopSongs(ctx context.Context, artistName string, count int) (model.MediaFiles, error) {
-	artist, err := e.findArtistByName(ctx, artistName)
+func (e *provider) TopSongs(ctx context.Context, artistName, id string, count int) (model.MediaFiles, error) {
+	artist, err := e.findArtist(ctx, artistName, id)
 	if err != nil {
-		log.Error(ctx, "Artist not found", "name", artistName, err)
-		return nil, nil
+		if errors.Is(err, model.ErrNotFound) {
+			log.Error(ctx, "Artist not found", "name", artistName, "id", id, err)
+			return nil, nil
+		}
+
+		log.Error(ctx, "Failure occurred when trying to fetch artist", "name", artistName, "id", id, err)
+		return nil, err
 	}
 
 	songs, err := e.getMatchingTopSongs(ctx, e.ag, artist, count)
@@ -713,7 +718,20 @@ func (e *provider) loadArtistsByName(ctx context.Context, similar []agents.Artis
 	return matches, nil
 }
 
-func (e *provider) findArtistByName(ctx context.Context, artistName string) (*auxArtist, error) {
+func (e *provider) findArtist(ctx context.Context, artistName, id string) (*auxArtist, error) {
+	if id != "" {
+		artist, err := e.ds.Artist(ctx).Get(id)
+		if err == nil {
+			return &auxArtist{Artist: *artist}, nil
+		}
+
+		if errors.Is(err, model.ErrNotFound) {
+			log.Warn(ctx, "Could not find artist by id", "id", id, err)
+		} else {
+			return nil, err
+		}
+	}
+
 	artists, err := e.ds.Artist(ctx).GetAll(model.QueryOptions{
 		Filters: squirrel.Like{"artist.name": artistName},
 		Max:     1,
