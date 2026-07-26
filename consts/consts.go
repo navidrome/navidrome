@@ -24,6 +24,9 @@ const (
 	LastDBAnalyzeAttemptAtKey     = "LastDBAnalyzeAttemptAt"
 	DBAnalyzePendingKey           = "DBAnalyzePending"
 	DBAnalyzeFailureCountKey      = "DBAnalyzeFailureCount"
+	// ArtConfFingerprintPropertyKey is the model.PropertyRepository key Backfill compares against
+	// to detect artwork-affecting config changes across restarts.
+	ArtConfFingerprintPropertyKey = "artwork.fingerprint"
 
 	UIAuthorizationHeader  = "X-ND-Authorization"
 	UIClientUniqueIDHeader = "X-ND-Client-Unique-Id"

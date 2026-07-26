@@ -125,7 +125,7 @@ var _ = Describe("Housekeeping", func() {
 	Describe("Backfill", func() {
 		It("enqueues nothing and returns false when the stored fingerprint matches", func() {
 			seedEntities()
-			Expect(propRepo.Put(FingerprintPropertyKey, Fingerprint())).To(Succeed())
+			Expect(propRepo.Put(consts.ArtConfFingerprintPropertyKey, Fingerprint())).To(Succeed())
 
 			did, err := Backfill(ctx, ds)
 			Expect(err).ToNot(HaveOccurred())
@@ -147,7 +147,7 @@ var _ = Describe("Housekeeping", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(count).To(Equal(int64(5))) // 2 artists + 1 album + 1 playlist + 1 radio
 
-			stored, err := propRepo.Get(FingerprintPropertyKey)
+			stored, err := propRepo.Get(consts.ArtConfFingerprintPropertyKey)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(stored).To(Equal(Fingerprint()))
 		})
@@ -168,7 +168,7 @@ var _ = Describe("Housekeeping", func() {
 
 		It("enqueues artists before albums/playlists/radios, all at Backfill priority", func() {
 			seedEntities()
-			Expect(propRepo.Put(FingerprintPropertyKey, "stale-fingerprint")).To(Succeed())
+			Expect(propRepo.Put(consts.ArtConfFingerprintPropertyKey, "stale-fingerprint")).To(Succeed())
 
 			did, err := Backfill(ctx, ds)
 			Expect(err).ToNot(HaveOccurred())

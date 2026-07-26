@@ -8,14 +8,11 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
-
-// FingerprintPropertyKey is the model.PropertyRepository key Backfill compares against
-// to detect artwork-affecting config changes across restarts.
-const FingerprintPropertyKey = "artwork.fingerprint"
 
 // staleAbsentAge is how old an absent resolution must be before the recheck job retries it.
 const staleAbsentAge = 24 * time.Hour
@@ -46,7 +43,7 @@ func Backfill(ctx context.Context, ds model.DataStore) (bool, error) {
 	ctx = auth.WithAdminUser(ctx, ds)
 	current := Fingerprint()
 	props := ds.Property(ctx)
-	stored, err := props.DefaultGet(FingerprintPropertyKey, "")
+	stored, err := props.DefaultGet(consts.ArtConfFingerprintPropertyKey, "")
 	if err != nil {
 		return false, err
 	}
@@ -74,7 +71,7 @@ func Backfill(ctx context.Context, ds model.DataStore) (bool, error) {
 		}
 	}
 
-	if err := props.Put(FingerprintPropertyKey, current); err != nil {
+	if err := props.Put(consts.ArtConfFingerprintPropertyKey, current); err != nil {
 		return false, err
 	}
 	log.Info(ctx, "Artwork: config fingerprint changed, backfill enqueued")
