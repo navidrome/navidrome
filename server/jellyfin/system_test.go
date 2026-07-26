@@ -38,6 +38,27 @@ var _ = Describe("System", func() {
 		Expect(info.ServerName).To(HavePrefix("Navidrome"))
 	})
 
+	It("returns authenticated system info with the public fields plus library monitor support", func() {
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.Jellyfin.ServerName = ""
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "/System/Info", nil)
+		api.getSystemInfo(w, r)
+
+		Expect(w.Code).To(Equal(http.StatusOK))
+		Expect(w.Header().Get("Content-Type")).To(ContainSubstring("application/json"))
+		var info dto.SystemInfo
+		Expect(json.Unmarshal(w.Body.Bytes(), &info)).To(Succeed())
+		Expect(info.Id).ToNot(BeEmpty())
+		Expect(info.Version).To(Equal(jellyfinVersion))
+		Expect(info.ProductName).To(Equal("Jellyfin Server"))
+		Expect(info.ServerName).To(HavePrefix("Navidrome"))
+		Expect(info.SupportsLibraryMonitor).To(BeTrue())
+		Expect(info.HasPendingRestart).To(BeFalse())
+		Expect(info.IsShuttingDown).To(BeFalse())
+	})
+
 	It("advertises a LocalAddress with the request scheme, host and Jellyfin base path", func() {
 		DeferCleanup(configtest.SetupConfig())
 

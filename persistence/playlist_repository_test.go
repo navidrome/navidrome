@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -153,6 +154,34 @@ var _ = Describe("PlaylistRepository", func() {
 			count, err := repo.CountAll(options)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(count).To(Equal(int64(len(starred))))
+		})
+
+		It("filters starred playlists through the registered REST filter", func() {
+			Expect(repo.SetStar(true, plsID)).To(Succeed())
+
+			res, err := repo.(model.ResourceRepository).ReadAll(rest.QueryOptions{
+				Filters: map[string]any{"starred": "true"},
+			})
+			Expect(err).ToNot(HaveOccurred())
+			starred := res.(model.Playlists)
+			Expect(starred).To(ContainElement(HaveField("ID", plsID)))
+			for _, p := range starred {
+				Expect(p.Starred).To(BeTrue())
+			}
+
+			res, err = repo.(model.ResourceRepository).ReadAll(rest.QueryOptions{
+				Filters: map[string]any{"starred": "false"},
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res.(model.Playlists)).ToNot(ContainElement(HaveField("ID", plsID)))
+		})
+
+		It("reads a playlist by id through the REST id filter without ambiguity", func() {
+			res, err := repo.(model.ResourceRepository).ReadAll(rest.QueryOptions{
+				Filters: map[string]any{"id": plsID},
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res.(model.Playlists)).To(ContainElement(HaveField("ID", plsID)))
 		})
 
 		It("does not leak an annotation row of another item_type sharing the playlist id", func() {

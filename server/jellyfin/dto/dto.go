@@ -61,19 +61,23 @@ type BaseItemDto struct {
 	PremiereDate *string `json:"PremiereDate,omitempty"`
 	// DateCreated is the ISO 8601 date the item was added to the library; clients show it as
 	// "Date Added" and sort "Recently Added" by it.
-	DateCreated          string            `json:"DateCreated,omitempty"`
-	Album                string            `json:"Album,omitempty"`
-	AlbumId              string            `json:"AlbumId,omitempty"`
-	AlbumArtist          string            `json:"AlbumArtist,omitempty"`
-	AlbumArtists         []NameGuidPair    `json:"AlbumArtists,omitempty"`
-	AlbumPrimaryImageTag string            `json:"AlbumPrimaryImageTag,omitempty"`
-	Artists              []string          `json:"Artists,omitempty"`
-	ArtistItems          []NameGuidPair    `json:"ArtistItems,omitempty"`
-	Genres               []string          `json:"Genres,omitempty"`
-	ChildCount           *int              `json:"ChildCount,omitempty"`
-	SongCount            *int              `json:"SongCount,omitempty"`
-	AlbumCount           *int              `json:"AlbumCount,omitempty"`
-	ImageTags            map[string]string `json:"ImageTags,omitempty"`
+	DateCreated            string            `json:"DateCreated,omitempty"`
+	Album                  string            `json:"Album,omitempty"`
+	AlbumId                string            `json:"AlbumId,omitempty"`
+	AlbumArtist            string            `json:"AlbumArtist,omitempty"`
+	AlbumArtists           []NameGuidPair    `json:"AlbumArtists,omitempty"`
+	AlbumPrimaryImageTag   string            `json:"AlbumPrimaryImageTag,omitempty"`
+	Artists                []string          `json:"Artists,omitempty"`
+	ArtistItems            []NameGuidPair    `json:"ArtistItems,omitempty"`
+	Genres                 []string          `json:"Genres,omitempty"`
+	GenreItems             []NameGuidPair    `json:"GenreItems,omitempty"`
+	Studios                []NameGuidPair    `json:"Studios,omitempty"`
+	NormalizationGain      *float64          `json:"NormalizationGain,omitempty"`
+	AlbumNormalizationGain *float64          `json:"AlbumNormalizationGain,omitempty"`
+	ChildCount             *int              `json:"ChildCount,omitempty"`
+	SongCount              *int              `json:"SongCount,omitempty"`
+	AlbumCount             *int              `json:"AlbumCount,omitempty"`
+	ImageTags              map[string]string `json:"ImageTags,omitempty"`
 	// ImageBlurHashes is keyed by image type (e.g. "Primary") then image tag. Finamp uses it as a
 	// de-dup key for image downloads (and a placeholder); absent, it warns the server isn't
 	// calculating blurhashes.
@@ -255,4 +259,42 @@ type MediaSourceInfo struct {
 type PlaybackInfoResponse struct {
 	MediaSources  []MediaSourceInfo `json:"MediaSources"`
 	PlaySessionId string            `json:"PlaySessionId"`
+}
+
+// LyricDto mirrors Jellyfin's GET /Audio/{itemId}/Lyrics response. Feishin and Jellify read only
+// Lyrics[].Text and Start (ticks); Metadata is for completeness/Finamp.
+type LyricDto struct {
+	Metadata LyricMetadata `json:"Metadata"`
+	Lyrics   []LyricLine   `json:"Lyrics"`
+}
+
+type LyricMetadata struct {
+	Artist   string `json:"Artist,omitempty"`
+	Album    string `json:"Album,omitempty"`
+	Title    string `json:"Title,omitempty"`
+	Length   int64  `json:"Length,omitempty"`
+	Offset   *int64 `json:"Offset,omitempty"`
+	IsSynced bool   `json:"IsSynced"`
+}
+
+type LyricLine struct {
+	Text  string         `json:"Text"`
+	Start *int64         `json:"Start,omitempty"`
+	Cues  []LyricLineCue `json:"Cues,omitempty"`
+}
+
+type LyricLineCue struct {
+	Position    int    `json:"Position"`
+	EndPosition int    `json:"EndPosition"`
+	Start       int64  `json:"Start"`
+	End         *int64 `json:"End,omitempty"`
+}
+
+// QueryFiltersLegacy is the response for GET /Items/Filters. All four lists are always present;
+// clients (jellyfin-web) render each unconditionally.
+type QueryFiltersLegacy struct {
+	Genres          []string `json:"Genres"`
+	Tags            []string `json:"Tags"`
+	OfficialRatings []string `json:"OfficialRatings"`
+	Years           []int    `json:"Years"`
 }

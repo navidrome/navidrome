@@ -33,7 +33,11 @@ var _ = Describe("Stream", func() {
 		ds = &tests.MockDataStore{}
 		streamer = &fakeMediaStreamer{}
 		decider = &fakeTranscodeDecider{}
-		api = &Router{ds: ds, streamer: streamer, transcodeDecider: decider}
+		api = &Router{
+			ds: ds, streamer: streamer, transcodeDecider: decider,
+			lyrics:      &fakeLyricsService{lyrics: map[string]model.LyricList{}},
+			lyricsCache: newTestLyricsCache(),
+		}
 	})
 
 	Describe("getPlaybackInfo", func() {
@@ -75,6 +79,88 @@ var _ = Describe("Stream", func() {
 			api.getPlaybackInfo(w, r)
 
 			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
+
+		playbackInfo := func() dto.PlaybackInfoResponse {
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID("s1")+"/PlaybackInfo", nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", dto.EncodeID("s1"))
+			api.getPlaybackInfo(w, r)
+			var res dto.PlaybackInfoResponse
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			return res
+		}
+
+		lyricStreams := func(res dto.PlaybackInfoResponse) []dto.MediaStream {
+			var out []dto.MediaStream
+			for _, s := range res.MediaSources[0].MediaStreams {
+				if s.Type == "Lyric" {
+					out = append(out, s)
+				}
+			}
+			return out
+		}
+
+		It("advertises a Lyric stream for plugin/sidecar-sourced lyrics not embedded in the file", func() {
+			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+				{ID: "s1", Title: "Song", Suffix: "mp3", LibraryID: 1},
+			})
+			api.lyrics = &fakeLyricsService{lyrics: map[string]model.LyricList{
+				"s1": {{Kind: "main", Synced: true, Line: []model.Line{{Value: "hello"}}}},
+			}}
+
+			Expect(lyricStreams(playbackInfo())).To(HaveLen(1))
+		})
+
+		It("advertises no Lyric stream when the pipeline finds nothing", func() {
+			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+				{ID: "s1", Title: "Song", Suffix: "mp3", LibraryID: 1},
+			})
+
+			Expect(lyricStreams(playbackInfo())).To(BeEmpty())
+		})
+
+		It("advertises no Lyric stream when the lyrics endpoint would 404 (main lyric has no lines)", func() {
+			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+				{ID: "s1", Title: "Song", Suffix: "mp3", LibraryID: 1},
+			})
+			api.lyrics = &fakeLyricsService{lyrics: map[string]model.LyricList{
+				"s1": {{Kind: "main", Lang: "eng"}},
+			}}
+
+			Expect(lyricStreams(playbackInfo())).To(BeEmpty())
+		})
+
+		It("doesn't duplicate the Lyric stream when lyrics are already embedded", func() {
+			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+				{ID: "s1", Title: "Song", Suffix: "mp3", LibraryID: 1, Lyrics: `[{"lang":"xxx","line":[]}]`},
+			})
+			api.lyrics = &fakeLyricsService{lyrics: map[string]model.LyricList{
+				"s1": {{Kind: "main", Synced: true, Line: []model.Line{{Value: "hello"}}}},
+			}}
+
+			Expect(lyricStreams(playbackInfo())).To(HaveLen(1))
+		})
+
+		It("still returns 200 with a valid MediaSource and no Lyric stream when the lyrics pipeline errors", func() {
+			// Own ID: an erroring loader isn't cached, but a shared ID could still pick up
+			// another test's cached (non-error) result and mask this assertion.
+			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+				{ID: "s-err", Title: "Song", Suffix: "mp3", Duration: 100, Size: 1000, LibraryID: 1},
+			})
+			api.lyrics = &fakeLyricsService{err: errors.New("boom")}
+
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID("s-err")+"/PlaybackInfo", nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", dto.EncodeID("s-err"))
+			api.getPlaybackInfo(w, r)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.PlaybackInfoResponse
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.MediaSources).To(HaveLen(1))
+			Expect(res.MediaSources[0].Id).To(Equal(dto.EncodeID("s-err")))
+			Expect(lyricStreams(res)).To(BeEmpty())
 		})
 	})
 

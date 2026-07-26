@@ -85,20 +85,7 @@ var _ = Describe("Images", func() {
 		Expect(w.Header().Get("Content-Type")).To(Equal("image/png"))
 	})
 
-	It("resolves a public playlist id to its cover artwork", func() {
-		ds := &tests.MockDataStore{}
-		ds.Playlist(context.Background()).(*tests.MockPlaylistRepo).SetData(model.Playlists{{ID: "pl1", Name: "Mix", Public: true}})
-		fa := &fakeArtwork{}
-		api := &Router{ds: ds, artwork: fa}
-
-		w, r := newImageRequest(dto.EncodeID("pl1"))
-		api.getItemImage(w, r)
-
-		Expect(w.Code).To(Equal(http.StatusOK))
-		Expect(fa.recvId).To(ContainSubstring("pl1"))
-	})
-
-	It("serves the placeholder, not the cover, for a private playlist and an anonymous caller", func() {
+	It("resolves a playlist's cover regardless of visibility, even for an anonymous caller", func() {
 		ds := &tests.MockDataStore{}
 		ds.Playlist(context.Background()).(*tests.MockPlaylistRepo).SetData(model.Playlists{{ID: "pl1", Name: "Mix", OwnerID: "someone"}})
 		fa := &fakeArtwork{}
@@ -108,7 +95,7 @@ var _ = Describe("Images", func() {
 		api.getItemImage(w, r)
 
 		Expect(w.Code).To(Equal(http.StatusOK))
-		Expect(fa.recvId).ToNot(ContainSubstring("pl1"))
+		Expect(fa.recvId).To(ContainSubstring("pl1"))
 	})
 
 	// This endpoint is public (no user in the request), so artwork must be resolved under an

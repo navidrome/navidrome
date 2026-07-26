@@ -3,6 +3,7 @@ package persistence
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -851,6 +852,65 @@ var _ = Describe("AlbumRepository", func() {
 		})
 	})
 
+	Describe("GetYears", func() {
+		It("returns distinct album years ascending, excluding zero", func() {
+			years, err := albumRepo.GetYears()
+			Expect(err).ToNot(HaveOccurred())
+			// Sorted ascending, no duplicates, no zero-year entries.
+			Expect(sort.IsSorted(sort.IntSlice(years))).To(BeTrue())
+			Expect(years).ToNot(ContainElement(0))
+			for i := 1; i < len(years); i++ {
+				Expect(years[i]).To(BeNumerically(">", years[i-1])) // strictly increasing = distinct
+			}
+		})
+
+		It("deduplicates repeated years", func() {
+			// Regression test: verify that DISTINCT is applied in the SQL.
+			// Insert two albums with the same non-zero max_year (2005).
+			album1 := &model.Album{LibraryID: 1, ID: "dedup-test-1", Name: "Album 1", MaxYear: 2005}
+			album2 := &model.Album{LibraryID: 1, ID: "dedup-test-2", Name: "Album 2", MaxYear: 2005}
+			Expect(albumRepo.Put(album1)).To(Succeed())
+			Expect(albumRepo.Put(album2)).To(Succeed())
+			DeferCleanup(func() {
+				_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": []string{"dedup-test-1", "dedup-test-2"}}))
+			})
+
+			years, err := albumRepo.GetYears()
+			Expect(err).ToNot(HaveOccurred())
+
+			// Count occurrences of 2005 in the result
+			count := 0
+			for _, y := range years {
+				if y == 2005 {
+					count++
+				}
+			}
+			Expect(count).To(Equal(1), "year 2005 should appear exactly once despite two albums having it")
+		})
+
+		It("scopes years to the given libraries", func() {
+			all, err := albumRepo.GetYears()
+			Expect(err).ToNot(HaveOccurred())
+			// A library with no albums yields no years.
+			scoped, err := albumRepo.GetYears(99999)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(scoped).To(BeEmpty())
+			Expect(all).ToNot(BeEmpty())
+		})
+
+		It("excludes years that belong only to missing albums", func() {
+			gone := &model.Album{LibraryID: 1, ID: "missing-year-1", Name: "Gone", MaxYear: 1911, Missing: true}
+			Expect(albumRepo.Put(gone)).To(Succeed())
+			DeferCleanup(func() {
+				_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": "missing-year-1"}))
+			})
+
+			years, err := albumRepo.GetYears()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(years).ToNot(ContainElement(1911))
+		})
+	})
+
 	Describe("wrapAlbumCursor", func() {
 		It("does not panic when the cursor yields a dbAlbum with nil Album", func() {
 			// Simulate what queryWithStableResults does on the rows.Err() path:
@@ -888,6 +948,33 @@ var _ = Describe("AlbumRepository", func() {
 			}
 			Expect(albums).To(HaveLen(1))
 			Expect(albums[0].ID).To(Equal("a1"))
+		})
+	})
+
+	Describe("ReplayGain", func() {
+		BeforeEach(func() {
+			DeferCleanup(func() {
+				_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": []string{"rg-1", "rg-2"}}))
+			})
+		})
+		It("round-trips album ReplayGain gain and peak", func() {
+			Expect(albumRepo.Put(&model.Album{
+				ID: "rg-1", Name: "rg", LibraryID: 1,
+				RGAlbumGain: new(-7.5), RGAlbumPeak: new(0.98),
+			})).To(Succeed())
+			got, err := albumRepo.Get("rg-1")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.RGAlbumGain).ToNot(BeNil())
+			Expect(*got.RGAlbumGain).To(Equal(-7.5))
+			Expect(got.RGAlbumPeak).ToNot(BeNil())
+			Expect(*got.RGAlbumPeak).To(Equal(0.98))
+		})
+		It("reads nil when ReplayGain is unset", func() {
+			Expect(albumRepo.Put(&model.Album{ID: "rg-2", Name: "rg2", LibraryID: 1})).To(Succeed())
+			got, err := albumRepo.Get("rg-2")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.RGAlbumGain).To(BeNil())
+			Expect(got.RGAlbumPeak).To(BeNil())
 		})
 	})
 })

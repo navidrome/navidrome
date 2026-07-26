@@ -71,9 +71,9 @@ func (api *Router) setRating(ctx context.Context, id string, rating int) error {
 
 func (api *Router) Star(r *http.Request) (*responses.Subsonic, error) {
 	p := req.Params(r)
-	ids, _ := p.Strings("id")
-	albumIds, _ := p.Strings("albumId")
-	artistIds, _ := p.Strings("artistId")
+	ids := p.Strings("id")
+	albumIds := p.Strings("albumId")
+	artistIds := p.Strings("artistId")
 	if len(ids)+len(albumIds)+len(artistIds) == 0 {
 		return nil, newError(responses.ErrorMissingParameter, "Required id parameter is missing")
 	}
@@ -90,9 +90,9 @@ func (api *Router) Star(r *http.Request) (*responses.Subsonic, error) {
 
 func (api *Router) Unstar(r *http.Request) (*responses.Subsonic, error) {
 	p := req.Params(r)
-	ids, _ := p.Strings("id")
-	albumIds, _ := p.Strings("albumId")
-	artistIds, _ := p.Strings("artistId")
+	ids := p.Strings("id")
+	albumIds := p.Strings("albumId")
+	artistIds := p.Strings("artistId")
 	if len(ids)+len(albumIds)+len(artistIds) == 0 {
 		return nil, newError(responses.ErrorMissingParameter, "Required id parameter is missing")
 	}
@@ -163,9 +163,9 @@ func (api *Router) setStar(ctx context.Context, star bool, ids ...string) error 
 
 func (api *Router) Scrobble(r *http.Request) (*responses.Subsonic, error) {
 	p := req.Params(r)
-	ids, err := p.Strings("id")
-	if err != nil {
-		return nil, err
+	ids := p.Strings("id")
+	if len(ids) == 0 {
+		return nil, newError(responses.ErrorMissingParameter, "missing parameter: 'id'")
 	}
 	times, _ := p.Times("time")
 	if len(times) > 0 && len(times) != len(ids) {

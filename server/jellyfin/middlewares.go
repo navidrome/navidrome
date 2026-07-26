@@ -152,7 +152,7 @@ func tokenFromRequest(r *http.Request) string {
 }
 
 // userFromToken resolves the user for the request's token; ok is false for a missing/invalid token
-// or unknown subject. Used by authenticate and by public routes that optionally identify the caller.
+// or unknown subject.
 func (api *Router) userFromToken(r *http.Request) (model.User, bool) {
 	token := tokenFromRequest(r)
 	if token == "" {

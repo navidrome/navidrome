@@ -117,11 +117,6 @@ func ValidateWithCapabilities(m *Manifest, capabilities []Capability) error {
 	return nil
 }
 
-// HasExperimentalThreads returns true if the manifest requests experimental threads support.
-func (m *Manifest) HasExperimentalThreads() bool {
-	return m.Experimental != nil && m.Experimental.Threads != nil
-}
-
 // HasLibraryFilesystemPermission checks if the manifest grants filesystem permission for libraries.
 func (m *Manifest) HasLibraryFilesystemPermission() bool {
 	return m.Permissions != nil &&

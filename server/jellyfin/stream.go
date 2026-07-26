@@ -5,6 +5,7 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -44,6 +45,15 @@ func (api *Router) getPlaybackInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	src := dto.MediaSourceFromMediaFile(*mf)
+	// The mapper only sees embedded lyrics; per-track we can afford the full pipeline
+	// (sidecars, plugins) so Finamp's Lyric-stream gate reflects every source.
+	if !slices.ContainsFunc(src.MediaStreams, func(s dto.MediaStream) bool { return s.Type == "Lyric" }) {
+		if _, found := servableLyric(api.cachedLyrics(r.Context(), mf)); found {
+			src.MediaStreams = append(src.MediaStreams, dto.MediaStream{
+				Type: "Lyric", Index: len(src.MediaStreams), IsExternal: true,
+			})
+		}
+	}
 	// Embed the caller's token in the stream URL: Jellify's native player fetches TranscodingUrl
 	// verbatim without an auth header, so a non-self-authenticating URL would 401. Direct-play clients
 	// (Finamp) build their own /File?ApiKey URL and ignore this. Include the /jellyfin mount prefix so

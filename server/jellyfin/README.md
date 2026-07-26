@@ -22,6 +22,10 @@ Enabled = true
 ServerName = "My Music Server"
 # Optional: usernames to show in the client login user-picker (default: none). See "Public user list".
 ExposedPublicUsers = "alice, bob"
+# Optional: max collection responses streaming at once (default: half the DB connection pool,
+# min 2). Each streaming response holds a DB connection for its whole duration; excess requests
+# queue rather than fail.
+MaxConcurrentStreams = 4
 ```
 
 or via environment variables:
@@ -104,18 +108,20 @@ authenticated user has access to; a library (or item within it) the user cannot 
 `GET /Items` accepts the filter params clients use to build screens: `ParentId` (a library view id
 for scoping, an artist id when browsing into an artist's albums, or an album id when browsing into
 an album's tracks); `AlbumArtistIds`/`ArtistIds`/`contributingArtistIds` (an artist's albums or
-tracks — Finamp's artist screen sends these *alongside* `ParentId=<libraryId>`); `GenreIds` (a
+tracks — Finamp's artist screen sends these *alongside* `ParentId=<libraryId>`); `AlbumIds` (an
+album's tracks — Feishin fetches them this way instead of `ParentId`); `GenreIds` (a
 genre's albums or tracks — Finamp's genre screen sends it the same way; `/Artists/AlbumArtists`
 and `MusicArtist` queries accept it too, matching artists credited on an album of that genre);
 `SearchTerm`;
 favorites-only (`Filters=IsFavorite` or the standalone `isFavorite=true`); `SortBy`/`SortOrder`;
-`StartIndex`/`Limit`; and `Ids` (batch fetch by id).
+`StartIndex`/`Limit`; and `Ids` (batch fetch by id). `Recursive=false` with a library `ParentId`
+returns direct children only (no tracks — no track is a library's direct child).
 
 ## Implemented endpoints
 
 | Area | Endpoints |
 |---|---|
-| Handshake / system | `GET System/Info/Public`, `GET`/`POST System/Ping`, `GET QuickConnect/Enabled` |
+| Handshake / system | `GET System/Info/Public`, `GET System/Info` (authenticated), `GET`/`POST System/Ping`, `GET QuickConnect/Enabled` |
 | Auth | `POST Users/AuthenticateByName`, `GET Users/Public` |
 | Users | `GET UserViews`, `GET Users/{userId}/Views`, `GET Users/Me`, `GET Users/{userId}` |
 | Browsing | `GET Items`, `GET Users/{userId}/Items`, `GET Items/{itemId}`, `GET Users/{userId}/Items/{itemId}`, `GET Users/{userId}/Items/Latest`, `DELETE Items/{itemId}` (playlists only) |
@@ -124,9 +130,11 @@ favorites-only (`Filters=IsFavorite` or the standalone `isFavorite=true`); `Sort
 | Images | `GET Items/{itemId}/Images/{type}[/{index}]` (public), `POST`/`DELETE Items/{itemId}/Images/{type}` (playlist cover, authenticated) |
 | Favorites / ratings for songs, albums, artists, and playlists | `POST`/`DELETE UserFavoriteItems/{itemId}`, `POST`/`DELETE Users/{userId}/FavoriteItems/{itemId}`, `POST`/`DELETE Users/{userId}/Items/{itemId}/Rating`, `GET UserItems/{itemId}/UserData`, `GET Users/{userId}/Items/{itemId}/UserData` |
 | Streaming | `GET Audio/{itemId}/stream[.{container}]`, `GET Audio/{itemId}/universal`, `GET Audio/{itemId}/main.m3u8`, `GET Items/{itemId}/File`, `GET Items/{itemId}/Download`, `GET`/`POST Items/{itemId}/PlaybackInfo` |
+| Lyrics | `GET Audio/{itemId}/Lyrics` |
 | Playback reporting | `POST Sessions/Playing`, `POST Sessions/Playing/Progress`, `POST Sessions/Playing/Stopped`, `POST Sessions/Capabilities[/Full]` |
 | Playlists | `POST Playlists`, `GET Playlists/{playlistId}`, `POST Playlists/{playlistId}` (rename / visibility / replace tracks), `GET Playlists/{playlistId}/Items`, `POST`/`DELETE Playlists/{playlistId}/Items`, `GET Playlists/{playlistId}/Users[/{userId}]` |
 | Real-time | `GET socket` (WebSocket; keeps clients like Finamp from 404-loop-reconnecting) |
+| AudioMuse-AI (see below) | `GET AudioMuseAI/info`, `GET AudioMuseAI/health`, `GET AudioMuseAI/similar_tracks`, `GET AudioMuseAI/find_path` |
 
 Any other path returns a `404` with a `{}` JSON body, and is logged server-side at `Debug` level
 as `Jellyfin API: unhandled route` (method + path). If a client you're testing needs an endpoint
@@ -217,7 +225,9 @@ The stream endpoints reuse the same transcode-decision pipeline as the Subsonic 
 
 ## AudioMuse-AI compatible endpoints
 
-Compatibility shim for Jellyfin front-ends that integrate [AudioMuse-AI](https://github.com/NeptuneHub/audiomuse-ai-plugin).
+Compatibility shim for Jellyfin front-ends that integrate [AudioMuse-AI](https://github.com/NeptuneHub/audiomuse-ai-plugin)
+— e.g. [Symfonium](https://symfonium.app/) can use these endpoints for sonic mixes when
+connected as a Jellyfin client.
 Backed natively by Navidrome's `core/sonic` engine (the `SonicSimilarity` plugin capability) — no
 external AudioMuse-AI backend or proxy is involved. The endpoints are gated on a `SonicSimilarity`
 plugin being loaded, like the Subsonic `sonicSimilarity` OpenSubsonic extension.
@@ -320,9 +330,6 @@ make test PKG=./server/jellyfin/...
   Access control for artists is enforced by scoping the `Artists`/`Items?IncludeItemTypes=MusicArtist`
   *list* to the user's libraries, plus the persistence layer's own defense-in-depth; a client
   that already has an artist id from elsewhere is not re-checked against library membership.
-- **MD5-hash ids from old migrated libraries.** The hex id codec assumes ids are opaque; a raw
-  32-char MD5 id is itself valid hex and so must be encoded/decoded symmetrically like any other.
-  This is handled, but is the most fragile id case — see the note in `dto/ids.go`.
 - **Blurhashes are synthetic, not computed from the artwork (follow-up).** `ImageBlurHashes` is
   populated by `dto/blurhash.go`, which derives a well-formed **1-component (solid color)**
   blurhash by hashing the item id — it never looks at the actual image. Real Jellyfin computes a
@@ -338,15 +345,18 @@ make test PKG=./server/jellyfin/...
   working session instead of 404-loop-reconnecting, but it never pushes anything. A follow-up
   would broadcast real session/playstate and library-change events over it (via `server/events`),
   mirroring Jellyfin's session messages.
-- **No lyrics endpoint (follow-up).** `GET Audio/{id}/Lyrics` is unimplemented (404), but Finamp
-  and Jellify both request it. Navidrome already has line-synced lyrics, so a follow-up would serve
-  Jellyfin's `LyricsResponse` (`Lyrics: [{Text, Start}]`, `Start` in 100ns ticks) — enough for both
-  clients' synced view. (Finamp also renders word-level `Cues`, but Navidrome has only line-level
-  timing, so word-sync is out of scope.)
-- **No sonic similarity (follow-up).** `Items/{id}/InstantMix` and the `/Similar` endpoints are
-  backed only by external metadata agents (Last.fm), not sonic analysis: an instant mix is the seed
-  track followed by the provider's similar songs (with agents disabled it degrades to a seed-only
-  mix). A follow-up would back them with Navidrome's `core/sonic` provider — the same one behind
-  the OpenSubsonic `sonicSimilarity` extension (`getSonicSimilarTracks`) that AudioMuse-AI feeds
-  via its Navidrome plugin, and the exact endpoint AudioMuse's own Jellyfin plugin overrides.
-  Needs the `core/sonic.Sonic` service injected into the `Router` (wire change).
+- **Lyrics.** `GET Audio/{id}/Lyrics` serves the main lyric track as a `LyricDto` (`Start` in
+  100ns ticks, word-level `Cues` when present), resolved through the full `core/lyrics` pipeline
+  (embedded, `.lrc` sidecars, plugins per `LyricsPriority`) behind a 5-minute TTL cache that also
+  caches misses — Jellify fetches for every played track, Feishin per song change, so lyric-less
+  tracks are the hot path. No lyrics → 404 (never an empty 200), which all three clients degrade
+  gracefully. Finamp gates its lyrics view on a `Lyric` `MediaStream` (not `HasLyrics`, which is
+  just a list badge): browse lists advertise it from embedded lyrics only (the `"[]"` sentinel
+  check — the column is never `""` post-scan), while `PlaybackInfo` runs the full pipeline per
+  track so sidecar/plugin lyrics also light up. Feishin additionally requires server version
+  ≥ 10.9 — the reason `jellyfinVersion` is 10.9.11.
+  Concurrent misses on the same track share one pipeline invocation (`SimpleCache.GetWithLoader`
+  is singleflighted), and the load runs detached from the request context with a one-minute bound,
+  so a cancelled request or hung plugin can't fail or pin the load for other waiters.
+  Follow-up: tracks whose only lyrics are sidecar/plugin-sourced show no `HasLyrics` badge in
+  lists (request-time sources can't be known at list time without per-row I/O).

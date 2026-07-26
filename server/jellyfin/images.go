@@ -25,14 +25,13 @@ import (
 )
 
 func (api *Router) getItemImage(w http.ResponseWriter, r *http.Request) {
-	// Public endpoint (no user in ctx): library artwork isn't user-sensitive, so resolution runs
-	// under an elevated context to bypass the persistence visibility filter; playlist access is
-	// gated inside resolveArtworkID.
+	// Public endpoint, like real Jellyfin's image routes: clients fetch cover URLs without credentials
+	// and item ids are unguessable, so resolution runs elevated to bypass the visibility filter.
 	ctx := request.WithUser(r.Context(), model.User{IsAdmin: true})
 	itemId := api.resolveItemID(ctx, dto.DecodeID(chi.URLParam(r, "itemId")))
 	size, _ := strconv.Atoi(r.URL.Query().Get("maxwidth"))
 
-	artID := api.resolveArtworkID(ctx, r, itemId)
+	artID := api.resolveArtworkID(ctx, itemId)
 	reader, _, err := api.artwork.GetOrPlaceholder(ctx, artID, size, false)
 	switch {
 	case errors.Is(err, context.Canceled):
@@ -49,7 +48,7 @@ func (api *Router) getItemImage(w http.ResponseWriter, r *http.Request) {
 
 // resolveArtworkID maps a Jellyfin item id to a Navidrome ArtworkID, probing
 // album -> artist -> media file -> playlist.
-func (api *Router) resolveArtworkID(ctx context.Context, r *http.Request, itemId string) string {
+func (api *Router) resolveArtworkID(ctx context.Context, itemId string) string {
 	if al, err := api.ds.Album(ctx).Get(itemId); err == nil {
 		return al.CoverArtID().String()
 	}
@@ -60,12 +59,7 @@ func (api *Router) resolveArtworkID(ctx context.Context, r *http.Request, itemId
 		return mf.CoverArtID().String()
 	}
 	if pl, err := api.ds.Playlist(ctx).Get(itemId); err == nil {
-		// Playlist covers are user-scoped: serve a private one only for a public playlist or a
-		// token identifying its owner/an admin, so this public route can't probe others' covers.
-		u, ok := api.userFromToken(r)
-		if pl.Public || (ok && (u.IsAdmin || pl.OwnerID == u.ID)) {
-			return pl.CoverArtID().String()
-		}
+		return pl.CoverArtID().String()
 	}
 	return (model.ArtworkID{}).String()
 }

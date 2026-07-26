@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"iter"
 	"maps"
@@ -31,6 +32,10 @@ type dbAlbum struct {
 	Participants string `structs:"-" json:"-"`
 	Tags         string `structs:"-" json:"-"`
 	FolderIDs    string `structs:"-" json:"-"`
+	// dbx maps columns to fields by name; RGAlbumGain doesn't convert to
+	// rg_album_gain, so shim fields carry the read and PostScan copies them over.
+	RgAlbumGain *float64 `structs:"-" json:"-"`
+	RgAlbumPeak *float64 `structs:"-" json:"-"`
 }
 
 func (a *dbAlbum) PostScan() error {
@@ -58,6 +63,8 @@ func (a *dbAlbum) PostScan() error {
 		}
 		a.Album.FolderIDs = ids
 	}
+	a.Album.RGAlbumGain = a.RgAlbumGain
+	a.Album.RGAlbumPeak = a.RgAlbumPeak
 	return nil
 }
 
@@ -254,6 +261,20 @@ func (r *albumRepository) GetCursor(options ...model.QueryOptions) (model.AlbumC
 		return nil, err
 	}
 	return wrapAlbumCursor(cursor), nil
+}
+
+func (r *albumRepository) GetYears(libraryIDs ...int) ([]int, error) {
+	cond := And{Gt{"max_year": 0}, Eq{"missing": false}}
+	if len(libraryIDs) > 0 {
+		cond = append(cond, Eq{"library_id": libraryIDs})
+	}
+	sq := r.applyLibraryFilter(Select("distinct max_year").From("album").Where(cond).OrderBy("max_year"))
+	years := []int{}
+	err := r.queryAllSlice(sq, &years)
+	if err != nil && !errors.Is(err, model.ErrNotFound) {
+		return nil, err
+	}
+	return years, nil
 }
 
 func (r *albumRepository) CopyAttributes(fromID, toID string, columns ...string) error {

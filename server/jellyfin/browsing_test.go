@@ -175,4 +175,52 @@ var _ = Describe("Browsing", func() {
 			Expect(w.Code).To(Equal(http.StatusOK))
 		})
 	})
+
+	Describe("getStudios", func() {
+		It("scopes results to the user's accessible libraries", func() {
+			tagRepo := ds.Tag(context.Background()).(*tests.MockTagRepo)
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Studios", nil).WithContext(ctxUser(model.Libraries{{ID: 1}, {ID: 2}}))
+			invoke(api.getStudios, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			sql, args, err := tagRepo.Options.Filters.ToSql()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(sql).To(ContainSubstring("library_tag.library_id"))
+			Expect(args).To(ContainElements(1, 2))
+		})
+
+		// An empty scope (admin, or a non-admin with no explicit library grants) must be treated
+		// as unrestricted, matching accessibleLibraryIDs' documented contract, not as "match nothing".
+		It("does not restrict results for an admin user", func() {
+			tagRepo := ds.Tag(context.Background()).(*tests.MockTagRepo)
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Studios", nil).WithContext(ctxAdmin())
+			invoke(api.getStudios, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(tagRepo.Options.Filters).To(BeNil())
+		})
+	})
+
+	Describe("getQueryFiltersLegacy", func() {
+		It("scopes genres to the user's accessible libraries", func() {
+			genreRepo := ds.Genre(context.Background()).(*tests.MockedGenreRepo)
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items/Filters", nil).WithContext(ctxUser(model.Libraries{{ID: 1}, {ID: 2}}))
+			invoke(api.getQueryFiltersLegacy, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			sql, args, err := genreRepo.Options.Filters.ToSql()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(sql).To(ContainSubstring("library_tag.library_id"))
+			Expect(args).To(ContainElements(1, 2))
+		})
+
+		It("does not restrict genres for an admin user", func() {
+			genreRepo := ds.Genre(context.Background()).(*tests.MockedGenreRepo)
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items/Filters", nil).WithContext(ctxAdmin())
+			invoke(api.getQueryFiltersLegacy, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(genreRepo.Options.Filters).To(BeNil())
+		})
+	})
 })

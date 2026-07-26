@@ -147,6 +147,50 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 					Expect(*nestedPlsAfterParentGet.EvaluatedAt).To(Equal(*nestedPlsRead.EvaluatedAt))
 				})
 			})
+
+			Context("per-playlist refreshDelay", func() {
+				BeforeEach(func() {
+					DeferCleanup(configtest.SetupConfig())
+				})
+
+				It("does NOT refresh when the per-playlist delay has not elapsed, even if global has", func() {
+					conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+					evaluatedAt := time.Now().Add(-1 * time.Hour)
+
+					rules := &criteria.Criteria{
+						Expression:   criteria.All{criteria.Contains{"title": "Day"}},
+						RefreshDelay: 24 * time.Hour,
+					}
+					pls := model.Playlist{Name: "Frozen Daily", OwnerID: "userid", Rules: rules, EvaluatedAt: &evaluatedAt}
+					Expect(repo.Put(&pls)).To(Succeed())
+					DeferCleanup(func() { _ = repo.Delete(pls.ID) })
+
+					got, err := repo.GetWithTracks(pls.ID, true, false)
+					Expect(err).ToNot(HaveOccurred())
+					// Not re-evaluated: EvaluatedAt unchanged, no tracks materialized
+					Expect(*got.EvaluatedAt).To(BeTemporally("~", evaluatedAt, time.Second))
+					Expect(got.Tracks).To(BeEmpty())
+				})
+
+				It("refreshes when the per-playlist delay has elapsed, even if global has not", func() {
+					conf.Server.SmartPlaylistRefreshDelay = 1 * time.Hour
+					evaluatedAt := time.Now().Add(-10 * time.Minute)
+
+					rules := &criteria.Criteria{
+						Expression:   criteria.All{criteria.Contains{"title": "Day"}},
+						RefreshDelay: 5 * time.Minute,
+					}
+					pls := model.Playlist{Name: "Fast Refresh", OwnerID: "userid", Rules: rules, EvaluatedAt: &evaluatedAt}
+					Expect(repo.Put(&pls)).To(Succeed())
+					DeferCleanup(func() { _ = repo.Delete(pls.ID) })
+
+					got, err := repo.GetWithTracks(pls.ID, true, false)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(*got.EvaluatedAt).To(BeTemporally("~", time.Now(), 2*time.Second))
+					Expect(got.Tracks).To(HaveLen(1))
+					Expect(got.Tracks[0].MediaFileID).To(Equal(songDayInALife.ID))
+				})
+			})
 		})
 	})
 

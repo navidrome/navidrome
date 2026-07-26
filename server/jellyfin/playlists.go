@@ -191,7 +191,7 @@ func (api *Router) getPlaylistItems(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p := req.Params(r)
-	fields := dto.ParseFields(p.StringOr("fields", ""))
+	fields := dto.ParseFields(p.Strings("fields")...)
 	res, err := api.playlistTrackPage(repo, fields, p.IntOr("startindex", 0), p.IntOr("limit", 0))
 	if err != nil {
 		api.internalError(w, r, err)

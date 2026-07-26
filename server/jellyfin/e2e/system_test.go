@@ -30,6 +30,27 @@ var _ = Describe("System", func() {
 		})
 	})
 
+	Describe("GET /System/Info", func() {
+		It("returns system info to any authenticated user, matching the public Version", func() {
+			w := getAs(regularUser, "/System/Info")
+			var info map[string]any
+			parseInto(w, &info)
+			Expect(info["Version"]).ToNot(BeEmpty())
+			Expect(info["SupportsLibraryMonitor"]).To(BeTrue())
+
+			pub := rawReq("GET", "/System/Info/Public", "")
+			var pubInfo map[string]any
+			parseInto(pub, &pubInfo)
+			Expect(info["Version"]).To(Equal(pubInfo["Version"]))
+			Expect(info["Id"]).To(Equal(pubInfo["Id"]))
+		})
+
+		It("rejects unauthenticated requests", func() {
+			w := rawReq("GET", "/System/Info", "")
+			Expect(w.Code).To(Equal(http.StatusUnauthorized))
+		})
+	})
+
 	Describe("GET/POST /System/Ping", func() {
 		It("answers GET with a plain-text server name", func() {
 			w := rawReq("GET", "/System/Ping", "")

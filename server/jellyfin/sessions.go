@@ -49,7 +49,7 @@ func (api *Router) reportPlaybackStart(w http.ResponseWriter, r *http.Request) {
 	clientId, clientName := clientIdentity(ctx)
 	err := api.scrobbler.ReportPlayback(ctx, scrobbler.ReportPlaybackParams{
 		MediaId:      body.ItemId,
-		PositionMs:   body.PositionTicks / 10_000,
+		PositionMs:   dto.MillisFromTicks(body.PositionTicks),
 		State:        scrobbler.StatePlaying,
 		PlaybackRate: 1.0,
 		ClientId:     clientId,
@@ -73,7 +73,7 @@ func (api *Router) reportPlaybackProgress(w http.ResponseWriter, r *http.Request
 	clientId, clientName := clientIdentity(ctx)
 	err := api.scrobbler.ReportPlayback(ctx, scrobbler.ReportPlaybackParams{
 		MediaId:      body.ItemId,
-		PositionMs:   body.PositionTicks / 10_000,
+		PositionMs:   dto.MillisFromTicks(body.PositionTicks),
 		State:        state,
 		PlaybackRate: 1.0,
 		ClientId:     clientId,
@@ -97,7 +97,7 @@ func (api *Router) reportPlaybackStopped(w http.ResponseWriter, r *http.Request)
 
 	err := api.scrobbler.ReportPlayback(ctx, scrobbler.ReportPlaybackParams{
 		MediaId:    body.ItemId,
-		PositionMs: body.PositionTicks / 10_000,
+		PositionMs: dto.MillisFromTicks(body.PositionTicks),
 		State:      scrobbler.StateStopped,
 		ClientId:   clientId,
 		ClientName: clientName,

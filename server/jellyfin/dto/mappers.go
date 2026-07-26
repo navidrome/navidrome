@@ -6,9 +6,19 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
-func TicksFromSeconds(sec float32) int64 { return int64(float64(sec) * 1e7) }
+// Jellyfin wire times are ticks: 100ns units, i.e. 10,000 per millisecond.
+const ticksPerMillis = 10_000
+
+func TicksFromSeconds(sec float32) int64 { return int64(float64(sec) * 1000 * ticksPerMillis) }
+
+// TicksFromMillis converts milliseconds (Navidrome lyric timestamps) to ticks.
+func TicksFromMillis(ms int64) int64 { return ms * ticksPerMillis }
+
+// MillisFromTicks converts ticks (client-reported playback positions) to milliseconds.
+func MillisFromTicks(ticks int64) int64 { return ticks / ticksPerMillis }
 
 // premiereDate converts a possibly partial date tag ("2007", "2007-02") into the ISO 8601
 // PremiereDate clients parse, falling back to year; nil when neither exists.
@@ -59,6 +69,20 @@ func channelLayout(n int) string {
 // Shared by SongToBaseItem and getPlaybackInfo so Size/Bitrate match across browse and /PlaybackInfo
 // responses (Finamp's download dialog reads MediaSources[0].Size from the browse response).
 func MediaSourceFromMediaFile(mf model.MediaFile) MediaSourceInfo {
+	streams := make([]MediaStream, 1, 2)
+	streams[0] = MediaStream{
+		Type:          "Audio",
+		Index:         0,
+		Codec:         mf.Codec,
+		BitRate:       mf.BitRate * 1000, // Navidrome stores kbps; Jellyfin's BitRate is bps.
+		Channels:      mf.Channels,
+		SampleRate:    mf.SampleRate,
+		ChannelLayout: channelLayout(mf.Channels),
+	}
+	// Finamp gates its lyrics view on a Lyric stream in PlaybackInfo, not on HasLyrics.
+	if mf.HasEmbeddedLyrics() {
+		streams = append(streams, MediaStream{Type: "Lyric", Index: 1, IsExternal: true})
+	}
 	return MediaSourceInfo{
 		Id:                   EncodeID(mf.ID),
 		Protocol:             "Http",
@@ -73,17 +97,9 @@ func MediaSourceFromMediaFile(mf model.MediaFile) MediaSourceInfo {
 		SupportsTranscoding:  true,
 		IsRemote:             false,
 		SupportsProbing:      true,
-		MediaStreams: []MediaStream{{
-			Type:          "Audio",
-			Index:         0,
-			Codec:         mf.Codec,
-			BitRate:       mf.BitRate * 1000, // Navidrome stores kbps; Jellyfin's BitRate is bps.
-			Channels:      mf.Channels,
-			SampleRate:    mf.SampleRate,
-			ChannelLayout: channelLayout(mf.Channels),
-		}},
-		MediaAttachments: []any{},
-		Formats:          []string{},
+		MediaStreams:         streams,
+		MediaAttachments:     []any{},
+		Formats:              []string{},
 	}
 }
 
@@ -119,12 +135,11 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 		MediaType:         "Audio",
 		IsFolder:          false,
 		LocationType:      "FileSystem",
-		HasLyrics:         mf.Lyrics != "",
+		HasLyrics:         mf.HasEmbeddedLyrics(),
 		ParentId:          EncodeID(mf.AlbumID),
 		Album:             mf.Album,
 		AlbumId:           EncodeID(mf.AlbumID),
 		AlbumArtist:       mf.AlbumArtist,
-		Artists:           []string{mf.Artist},
 		RunTimeTicks:      TicksFromSeconds(mf.Duration),
 		DateCreated:       jellyfinDate(&mf.CreatedAt),
 		Container:         mf.Suffix,
@@ -138,15 +153,27 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 	if fields.Has("SortName") {
 		item.SortName = cmp.Or(mf.SortTitle, mf.OrderTitle, mf.Title)
 	}
-	// Finamp's Now Playing screen reads ArtistItems for the displayed artist (falling back to "Unknown
-	// Artist" if absent), even though Artists carries the same name. ArtistItems is the track artist;
-	// AlbumArtists the album artist.
-	if mf.ArtistID != "" {
-		item.ArtistItems = []NameGuidPair{{Name: mf.Artist, Id: EncodeID(mf.ArtistID)}}
+	// Real Jellyfin splits Artists/ArtistItems per track artist (AlbumArtists stays a single credit).
+	// Participants holds the per-artist list; fall back to the flattened display fields when absent.
+	if artists := mf.Participants[model.RoleArtist]; len(artists) > 0 {
+		item.Artists = slice.Map(artists, func(p model.Participant) string { return p.Name })
+		item.ArtistItems = slice.Map(artists, func(p model.Participant) NameGuidPair {
+			return NameGuidPair{Name: p.Name, Id: EncodeID(p.ID)}
+		})
+	} else {
+		if mf.Artist != "" {
+			item.Artists = []string{mf.Artist}
+		}
+		if mf.ArtistID != "" {
+			item.ArtistItems = []NameGuidPair{{Name: mf.Artist, Id: EncodeID(mf.ArtistID)}}
+		}
 	}
 	if mf.AlbumArtistID != "" {
 		item.AlbumArtists = []NameGuidPair{{Name: mf.AlbumArtist, Id: EncodeID(mf.AlbumArtistID)}}
 	}
+	// dB to apply at the RG2 -18 LUFS reference, same convention real Jellyfin uses; no conversion.
+	item.NormalizationGain = mf.RGTrackGain
+	item.AlbumNormalizationGain = mf.RGAlbumGain
 	if mf.Year > 0 {
 		item.ProductionYear = new(mf.Year)
 	}
@@ -160,6 +187,7 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 	if len(mf.Genres) > 0 {
 		for _, g := range mf.Genres {
 			item.Genres = append(item.Genres, g.Name)
+			item.GenreItems = append(item.GenreItems, NameGuidPair{Id: EncodeID(g.ID), Name: g.Name})
 		}
 	} else if mf.Genre != "" {
 		item.Genres = []string{mf.Genre}
@@ -172,7 +200,7 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 	return item
 }
 
-func AlbumToBaseItem(al model.Album) BaseItemDto {
+func AlbumToBaseItem(al model.Album, fields Fields) BaseItemDto {
 	item := BaseItemDto{
 		Name:              al.Name,
 		Id:                EncodeID(al.ID),
@@ -201,8 +229,20 @@ func AlbumToBaseItem(al model.Album) BaseItemDto {
 	if len(al.Genres) > 0 {
 		for _, g := range al.Genres {
 			item.Genres = append(item.Genres, g.Name)
+			item.GenreItems = append(item.GenreItems, NameGuidPair{Id: EncodeID(g.ID), Name: g.Name})
 		}
 	}
+	// Jellyfin leaves Studios empty for music; we expose record labels here to match our /Studios
+	// list and StudioIds= filter, so a client can display and click through to filter by label.
+	if fields.Has("Studios") {
+		for _, label := range al.Tags.Values(model.TagRecordLabel) {
+			id := EncodeID(model.NewTag(model.TagRecordLabel, label).ID)
+			item.Studios = append(item.Studios, NameGuidPair{Name: label, Id: id})
+		}
+	}
+	// The album's own ReplayGain gain (dB at the RG2 -18 LUFS reference) — same
+	// convention as tracks; clients read it off the album item as NormalizationGain.
+	item.NormalizationGain = al.RGAlbumGain
 	return item
 }
 
@@ -232,6 +272,15 @@ func GenreToBaseItem(g model.Genre) BaseItemDto {
 	}
 }
 
+func StudioToBaseItem(t model.Tag) BaseItemDto {
+	return BaseItemDto{
+		Name:              t.TagValue,
+		Id:                EncodeID(t.ID),
+		Type:              "Studio",
+		BackdropImageTags: []string{},
+	}
+}
+
 // PlaylistToBaseItem maps a playlist to a Playlist BaseItemDto.
 func PlaylistToBaseItem(p model.Playlist) BaseItemDto {
 	// Finamp caches covers keyed by blurHash, so the tag (and blurhash) must change with the cover.
@@ -253,4 +302,50 @@ func PlaylistToBaseItem(p model.Playlist) BaseItemDto {
 		BackdropImageTags: []string{},
 		UserData:          UserData(p.Annotations, p.ID),
 	}
+}
+
+// LyricDtoFromLyrics maps one lyric track to Jellyfin's LyricDto. Clients infer synced-vs-plain
+// from per-line Start presence, so synced drops start-less lines and unsynced never emits Start.
+func LyricDtoFromLyrics(mf model.MediaFile, lyrics model.Lyrics) LyricDto {
+	d := LyricDto{
+		Metadata: LyricMetadata{
+			Artist:   cmp.Or(lyrics.DisplayArtist, mf.Artist),
+			Album:    mf.Album,
+			Title:    cmp.Or(lyrics.DisplayTitle, mf.Title),
+			Length:   TicksFromSeconds(mf.Duration),
+			IsSynced: lyrics.Synced,
+		},
+		Lyrics: make([]LyricLine, 0, len(lyrics.Line)),
+	}
+	if lyrics.Offset != nil {
+		offset := TicksFromMillis(*lyrics.Offset)
+		d.Metadata.Offset = &offset
+	}
+	for _, line := range lyrics.Line {
+		out := LyricLine{Text: line.Value}
+		if lyrics.Synced {
+			if line.Start == nil {
+				continue
+			}
+			start := TicksFromMillis(*line.Start)
+			out.Start = &start
+			for _, cue := range line.Cue {
+				if cue.Start == nil {
+					continue
+				}
+				c := LyricLineCue{
+					Position:    cue.ByteStart,
+					EndPosition: cue.ByteEnd,
+					Start:       TicksFromMillis(*cue.Start),
+				}
+				if cue.End != nil {
+					end := TicksFromMillis(*cue.End)
+					c.End = &end
+				}
+				out.Cues = append(out.Cues, c)
+			}
+		}
+		d.Lyrics = append(d.Lyrics, out)
+	}
+	return d
 }

@@ -209,4 +209,11 @@ func (m *MockAlbumRepo) SetStar(starred bool, itemIDs ...string) error {
 	return nil
 }
 
+func (m *MockAlbumRepo) GetYears(libraryIDs ...int) ([]int, error) {
+	if m.Err {
+		return nil, errors.New("error")
+	}
+	return []int{}, nil
+}
+
 var _ model.AlbumRepository = (*MockAlbumRepo)(nil)

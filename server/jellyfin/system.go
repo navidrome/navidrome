@@ -17,8 +17,9 @@ import (
 )
 
 // jellyfinVersion is the Jellyfin API version advertised in the handshake. Clients feature-gate
-// on it, so it must stay a real Jellyfin release, not Navidrome's own version.
-const jellyfinVersion = "10.8.13"
+// on it, so it must stay a real Jellyfin release, not Navidrome's own version. 10.9+ is required
+// for Feishin to use the server lyrics endpoint.
+const jellyfinVersion = "10.9.11"
 
 func (api *Router) serverName() string {
 	if conf.Server.Jellyfin.ServerName != "" {
@@ -81,6 +82,13 @@ func localAddress(r *http.Request) string {
 
 func (api *Router) getPublicSystemInfo(w http.ResponseWriter, r *http.Request) {
 	api.ok(w, r, api.publicInfo(r))
+}
+
+func (api *Router) getSystemInfo(w http.ResponseWriter, r *http.Request) {
+	api.ok(w, r, dto.SystemInfo{
+		PublicSystemInfo:       api.publicInfo(r),
+		SupportsLibraryMonitor: true,
+	})
 }
 
 // ping answers /System/Ping with a bare plain-text server name (not JSON-quoted): Jellyfin's

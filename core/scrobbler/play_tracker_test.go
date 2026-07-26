@@ -3,6 +3,7 @@ package scrobbler
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"sync"
 	"sync/atomic"
@@ -43,6 +44,17 @@ func (m *mockPluginLoader) LoadScrobbler(name string) (Scrobbler, bool) {
 	defer m.mu.RUnlock()
 	s, ok := m.scrobblers[name]
 	return s, ok
+}
+
+// slowMediaFileRepo widens the window between a report's session check and its
+// write, making check-then-write races reproducible.
+type slowMediaFileRepo struct {
+	model.MediaFileRepository
+}
+
+func (s *slowMediaFileRepo) GetWithParticipants(id string) (*model.MediaFile, error) {
+	time.Sleep(5 * time.Millisecond)
+	return s.MediaFileRepository.GetWithParticipants(id)
 }
 
 var _ = Describe("PlayTracker", func() {
@@ -376,18 +388,23 @@ var _ = Describe("PlayTracker", func() {
 			Expect(playing).To(BeEmpty())
 		})
 
-		It("starting replaces existing entry for same player", func() {
+		It("starting replaces existing entry when switching tracks on same player", func() {
+			track2 := track
+			track2.ID = "456"
+			_ = ds.MediaFile(ctx).Put(&track2)
+
 			err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
 				MediaId: "123", PositionMs: 50000, State: "playing", PlaybackRate: 1.0, ClientId: defaultClientId,
 			})
 			Expect(err).ToNot(HaveOccurred())
 			err = tracker.ReportPlayback(ctx, ReportPlaybackParams{
-				MediaId: "123", PositionMs: 0, State: "starting", PlaybackRate: 1.0, ClientId: defaultClientId,
+				MediaId: "456", PositionMs: 0, State: "starting", PlaybackRate: 1.0, ClientId: defaultClientId,
 			})
 			Expect(err).ToNot(HaveOccurred())
 			playing, err := tracker.GetNowPlaying(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(playing).To(HaveLen(1))
+			Expect(playing[0].MediaFile.ID).To(Equal("456"))
 			Expect(playing[0].State).To(Equal("starting"))
 			Expect(playing[0].PositionMs).To(Equal(int64(0)))
 		})
@@ -693,6 +710,119 @@ var _ = Describe("PlayTracker", func() {
 				})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(track.PlayCount).To(Equal(int64(0)))
+			})
+		})
+
+		Describe("resilience (out-of-order reports)", func() {
+			BeforeEach(func() {
+				track2 := track
+				track2.ID = "456"
+				_ = ds.MediaFile(ctx).Put(&track2)
+			})
+
+			It("does not downgrade an actively playing session when a late starting report arrives for the same track", func() {
+				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 1000, State: "playing", PlaybackRate: 1.0, ClientId: defaultClientId,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				err = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 0, State: "starting", PlaybackRate: 1.0, ClientId: defaultClientId,
+				})
+				Expect(err).ToNot(HaveOccurred())
+
+				playing, err := tracker.GetNowPlaying(ctx)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(playing).To(HaveLen(1))
+				Expect(playing[0].State).To(Equal("playing"))
+				Expect(playing[0].PositionMs).To(BeNumerically(">=", int64(1000)))
+			})
+
+			It("keeps the current session when a stopped report arrives for a different track", func() {
+				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "456", PositionMs: 0, State: "playing", PlaybackRate: 1.0, ClientId: defaultClientId,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				err = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 90000, State: "stopped", PlaybackRate: 1.0, ClientId: defaultClientId,
+				})
+				Expect(err).ToNot(HaveOccurred())
+
+				playing, err := tracker.GetNowPlaying(ctx)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(playing).To(HaveLen(1))
+				Expect(playing[0].MediaFile.ID).To(Equal("456"))
+				Expect(playing[0].State).To(Equal("playing"))
+			})
+
+			It("still auto-scrobbles the stopped track when the current session is for a different track", func() {
+				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "456", PositionMs: 0, State: "playing", PlaybackRate: 1.0, ClientId: defaultClientId,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				err = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 90000, State: "stopped", PlaybackRate: 1.0, ClientId: defaultClientId,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(track.PlayCount).To(Equal(int64(1)))
+			})
+
+			It("does not dispatch NowPlaying from an ignored out-of-order starting report", func() {
+				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 60000, State: "playing", PlaybackRate: 1.0, ClientId: defaultClientId,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Eventually(func() bool { return fake.GetNowPlayingCalled() }).Should(BeTrue())
+				fake.nowPlayingCalled.Store(false)
+
+				err = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 0, State: "starting", PlaybackRate: 1.0, ClientId: defaultClientId,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Consistently(func() bool { return fake.GetNowPlayingCalled() }).Should(BeFalse())
+			})
+
+			It("never lets a concurrent starting report downgrade the playing session", func() {
+				ds.(*tests.MockDataStore).MockedMediaFile = &slowMediaFileRepo{MediaFileRepository: ds.MediaFile(ctx)}
+				for i := range 20 {
+					raceClientId := fmt.Sprintf("race-client-%d", i)
+					var wg sync.WaitGroup
+					wg.Add(2)
+					go func() {
+						defer wg.Done()
+						defer GinkgoRecover()
+						_ = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+							MediaId: "123", PositionMs: 0, State: "starting", PlaybackRate: 1.0, ClientId: raceClientId,
+						})
+					}()
+					go func() {
+						defer wg.Done()
+						defer GinkgoRecover()
+						_ = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+							MediaId: "123", PositionMs: 0, State: "playing", PlaybackRate: 1.0, ClientId: raceClientId,
+						})
+					}()
+					wg.Wait()
+					info, err := tracker.playMap.Get(raceClientId)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(info.State).To(Equal("playing"), "iteration %d", i)
+				}
+			})
+
+			It("does NOT forward a stopped report for a different track to playback reporters", func() {
+				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "456", PositionMs: 0, State: "playing", PlaybackRate: 1.0, ClientId: defaultClientId,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Eventually(func() bool { return fake.PlaybackReportCalled.Load() }).Should(BeTrue())
+				fake.PlaybackReportCalled.Store(false)
+				fake.LastPlaybackReport.Store(nil)
+
+				err = tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", PositionMs: 100000, State: "stopped", PlaybackRate: 1.0, ClientId: defaultClientId,
+				})
+				Expect(err).ToNot(HaveOccurred())
+
+				Consistently(func() bool { return fake.PlaybackReportCalled.Load() }).Should(BeFalse())
 			})
 		})
 

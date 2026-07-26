@@ -8,53 +8,41 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	"github.com/navidrome/navidrome/utils/req"
 )
 
-// resolveAnnotated finds which annotated repo owns id. Albums and songs 404 when the user can't
-// access their library; artists span libraries (library_artist), so have no single LibraryID to
-// gate on and rely on list-time scoping. PlaylistRepository.Get enforces playlist visibility.
-// When ok is false the response has already been written, so callers must return without writing
-// the annotation.
-func (api *Router) resolveAnnotated(w http.ResponseWriter, r *http.Request, id string) (repo model.AnnotatedRepository, ok bool) {
+// resolveAnnotated finds which annotated repo owns id, returning the resource name used in
+// refreshResource events. Albums and songs 404 when the user can't access their library; artists
+// span libraries (library_artist), so have no single LibraryID to gate on and rely on list-time
+// scoping. PlaylistRepository.Get enforces playlist visibility. When repo is nil the response has
+// already been written, so callers must return without writing the annotation.
+func (api *Router) resolveAnnotated(w http.ResponseWriter, r *http.Request, id string) (repo model.AnnotatedRepository, resource string) {
 	ctx := r.Context()
+	entity, err := model.GetEntityByID(ctx, api.ds, id)
+	if err != nil && !errors.Is(err, model.ErrNotFound) {
+		api.internalError(w, r, err)
+		return nil, ""
+	}
 	u, _ := request.UserFrom(ctx)
-	if al, err := api.ds.Album(ctx).Get(id); err == nil {
-		if !u.HasLibraryAccess(al.LibraryID) {
-			http.Error(w, "Not Found", http.StatusNotFound)
-			return nil, false
+	switch e := entity.(type) {
+	case *model.Album:
+		if u.HasLibraryAccess(e.LibraryID) {
+			return api.ds.Album(ctx), "album"
 		}
-		return api.ds.Album(ctx), true
-	} else if !errors.Is(err, model.ErrNotFound) {
-		api.internalError(w, r, err)
-		return nil, false
-	}
-	if _, err := api.ds.Artist(ctx).Get(id); err == nil {
-		return api.ds.Artist(ctx), true
-	} else if !errors.Is(err, model.ErrNotFound) {
-		api.internalError(w, r, err)
-		return nil, false
-	}
-	if mf, err := api.ds.MediaFile(ctx).Get(id); err == nil {
-		if !u.HasLibraryAccess(mf.LibraryID) {
-			http.Error(w, "Not Found", http.StatusNotFound)
-			return nil, false
+	case *model.Artist:
+		return api.ds.Artist(ctx), "artist"
+	case *model.MediaFile:
+		if u.HasLibraryAccess(e.LibraryID) {
+			return api.ds.MediaFile(ctx), "song"
 		}
-		return api.ds.MediaFile(ctx), true
-	} else if !errors.Is(err, model.ErrNotFound) {
-		api.internalError(w, r, err)
-		return nil, false
+	case *model.Playlist:
+		return api.ds.Playlist(ctx), "playlist"
 	}
-	playlistRepo := api.ds.Playlist(ctx)
-	if _, err := playlistRepo.Get(id); err == nil {
-		return playlistRepo, true
-	} else if !errors.Is(err, model.ErrNotFound) {
-		api.internalError(w, r, err)
-		return nil, false
-	}
+	// Unknown ids, inaccessible-library items and non-annotatable entities (radios) all read as absent.
 	http.Error(w, "Not Found", http.StatusNotFound)
-	return nil, false
+	return nil, ""
 }
 
 // getUserItemData returns the caller's play/favorite/rating state for a single item. Jellify
@@ -77,14 +65,15 @@ func (api *Router) getUserItemData(w http.ResponseWriter, r *http.Request) {
 
 func (api *Router) setFavorite(w http.ResponseWriter, r *http.Request, starred bool) {
 	id := api.resolveItemID(r.Context(), dto.DecodeID(chi.URLParam(r, "itemId")))
-	repo, ok := api.resolveAnnotated(w, r, id)
-	if !ok {
+	repo, resource := api.resolveAnnotated(w, r, id)
+	if repo == nil {
 		return
 	}
 	if err := repo.SetStar(starred, id); err != nil {
 		api.internalError(w, r, err)
 		return
 	}
+	api.broker.SendMessage(r.Context(), (&events.RefreshResource{}).With(resource, id))
 	encodedID := dto.EncodeID(id)
 	api.ok(w, r, &dto.UserItemDataDto{IsFavorite: starred, Key: encodedID, ItemId: encodedID})
 }
@@ -96,14 +85,15 @@ func (api *Router) unmarkFavorite(w http.ResponseWriter, r *http.Request) {
 
 func (api *Router) setItemRating(w http.ResponseWriter, r *http.Request, rating int) {
 	id := api.resolveItemID(r.Context(), dto.DecodeID(chi.URLParam(r, "itemId")))
-	repo, ok := api.resolveAnnotated(w, r, id)
-	if !ok {
+	repo, resource := api.resolveAnnotated(w, r, id)
+	if repo == nil {
 		return
 	}
 	if err := repo.SetRating(rating, id); err != nil {
 		api.internalError(w, r, err)
 		return
 	}
+	api.broker.SendMessage(r.Context(), (&events.RefreshResource{}).With(resource, id))
 	encodedID := dto.EncodeID(id)
 	d := &dto.UserItemDataDto{Key: encodedID, ItemId: encodedID}
 	if rating > 0 {

@@ -221,6 +221,9 @@ type itemsQuery struct {
 	artistId         string
 	contributingOnly bool
 	genreIds         []string
+	albumIds         []string
+	years            []int
+	studioIds        []string
 }
 
 // parseItemsQuery also resolves the entity types (inferring them from the parent when
@@ -229,7 +232,7 @@ type itemsQuery struct {
 func (api *Router) parseItemsQuery(ctx context.Context, r *http.Request) itemsQuery {
 	p := req.Params(r)
 	q := itemsQuery{
-		fields:    dto.ParseFields(p.StringOr("fields", "")),
+		fields:    dto.ParseFields(p.Strings("fields")...),
 		ids:       decodedQueryIDs(r, "ids"),
 		rawTypes:  p.StringOr("includeitemtypes", ""),
 		search:    searchTerm(p),
@@ -243,6 +246,10 @@ func (api *Router) parseItemsQuery(ctx context.Context, r *http.Request) itemsQu
 		parentId: dto.DecodeID(p.StringOr("parentid", "")),
 		// Finamp's genre screen sends ParentId=<libraryId> for scoping plus GenreIds for the genre.
 		genreIds: decodedQueryIDs(r, "genreids"),
+		// Feishin fetches an album's tracks with AlbumIds instead of ParentId.
+		albumIds:  decodedQueryIDs(r, "albumids"),
+		years:     parseYears(r),
+		studioIds: decodedQueryIDs(r, "studioids"),
 	}
 	// An artist's page filters by artist, not ParentId: Finamp sends ParentId=<libraryId> for scoping
 	// plus AlbumArtistIds/ArtistIds/contributingArtistIds for the artist.
@@ -411,6 +418,17 @@ func decodedQueryIDs(r *http.Request, key string) []string {
 	return slice.Map(queryIDs(r, key), dto.DecodeID)
 }
 
+// parseYears reads Years= as a discrete list, accepting comma-separated and repeated params.
+func parseYears(r *http.Request) []int {
+	var years []int
+	for _, v := range queryIDs(r, "years") {
+		if y, err := strconv.Atoi(v); err == nil && y > 0 {
+			years = append(years, y)
+		}
+	}
+	return years
+}
+
 // parseTypes returns the recognized entries in IncludeItemTypes in order, defaulting to
 // {"MusicAlbum"} when none are recognized (so ParentId=<artistId> browses that artist's albums).
 func parseTypes(types string) []string {
@@ -478,6 +496,7 @@ func searchPage[S ~[]E, E any](opts model.QueryOptions, search func(model.QueryO
 }
 
 func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, q itemsQuery) (itemsResult, error) {
+	toItem := func(al model.Album) dto.BaseItemDto { return dto.AlbumToBaseItem(al, q.fields) }
 	repo := api.ds.Album(ctx)
 	filters := squirrel.And{}
 	// For albums, ParentId (browse an artist) and AlbumArtistIds/ArtistIds both mean "this artist's
@@ -493,6 +512,12 @@ func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, q it
 	if len(q.genreIds) > 0 {
 		filters = append(filters, filter.ByGenreID(q.genreIds))
 	}
+	if len(q.years) > 0 {
+		filters = append(filters, filter.AlbumsByYears(q.years))
+	}
+	if len(q.studioIds) > 0 {
+		filters = append(filters, filter.ByStudioID(q.studioIds))
+	}
 	if q.favOnly {
 		filters = append(filters, filter.ByStarred().Filters)
 	}
@@ -506,12 +531,12 @@ func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, q it
 		if err != nil {
 			return itemsResult{}, err
 		}
-		return materialized(result(slice.Map(albums, dto.AlbumToBaseItem), total, opts.Offset)), nil
+		return materialized(result(slice.Map(albums, toItem), total, opts.Offset)), nil
 	}
 	total, _ := repo.CountAll(model.QueryOptions{Filters: opts.Filters})
 	open := streamCursor(func() (func(func(model.Album, error) bool), error) {
 		return repo.GetCursor(opts)
-	}, dto.AlbumToBaseItem)
+	}, toItem)
 	return streamed(open, int(total), opts.Offset), nil
 }
 
@@ -528,8 +553,17 @@ func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, q ite
 	default:
 		filters = append(filters, notMissing)
 	}
+	if len(q.albumIds) > 0 {
+		filters = append(filters, filter.ByAlbumID(q.albumIds))
+	}
 	if len(q.genreIds) > 0 {
 		filters = append(filters, filter.ByGenreID(q.genreIds))
+	}
+	if len(q.years) > 0 {
+		filters = append(filters, filter.SongsByYears(q.years))
+	}
+	if len(q.studioIds) > 0 {
+		filters = append(filters, filter.ByStudioID(q.studioIds))
 	}
 	if q.favOnly {
 		filters = append(filters, filter.ByStarred().Filters)
@@ -659,7 +693,7 @@ func (api *Router) resolveItemByID(ctx context.Context, id string, fields dto.Fi
 		if !u.HasLibraryAccess(al.LibraryID) {
 			return dto.BaseItemDto{}, false
 		}
-		return dto.AlbumToBaseItem(*al), true
+		return dto.AlbumToBaseItem(*al, fields), true
 	}
 	if ar, err := api.ds.Artist(ctx).Get(id); err == nil {
 		// TODO: an artist spans multiple libraries (library_artist), so there's no single
@@ -724,7 +758,7 @@ func (api *Router) itemsByIDs(ctx context.Context, ids []string, fields dto.Fiel
 
 func (api *Router) getItem(w http.ResponseWriter, r *http.Request) {
 	id := api.resolveItemID(r.Context(), dto.DecodeID(chi.URLParam(r, "itemId")))
-	fields := dto.ParseFields(req.Params(r).StringOr("fields", ""))
+	fields := dto.ParseFields(req.Params(r).Strings("fields")...)
 	if item, ok := api.resolveItemByID(r.Context(), id, fields); ok {
 		api.ok(w, r, item)
 		return
@@ -748,13 +782,15 @@ func (api *Router) deleteItem(w http.ResponseWriter, r *http.Request) {
 // /Items/Latest, and why it writes directly instead of going through api.ok.
 func (api *Router) getLatest(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	p := req.Params(r)
+	fields := dto.ParseFields(p.Strings("fields")...)
 	opts := filter.AlbumsByNewest()
-	opts.Max = req.Params(r).IntOr("limit", 20)
+	opts.Max = p.IntOr("limit", 20)
 	opts = filter.ApplyLibraryFilter(opts, accessibleLibraryIDs(ctx))
 	repo := api.ds.Album(ctx)
 	open := streamCursor(func() (func(func(model.Album, error) bool), error) {
 		return repo.GetCursor(opts)
-	}, dto.AlbumToBaseItem)
+	}, func(al model.Album) dto.BaseItemDto { return dto.AlbumToBaseItem(al, fields) })
 	api.writeItemsArray(w, r, streamed(open, 0, 0))
 }
 
