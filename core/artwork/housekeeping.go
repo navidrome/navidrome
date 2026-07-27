@@ -35,9 +35,9 @@ func hasRecheckPath(prefix string) bool {
 // alters resolution semantics. Deliberately not the server version, which changes every build.
 const artworkEpoch = 1
 
-// Fingerprint summarizes the inputs that affect artwork resolution outcomes; a
+// fingerprint summarizes the inputs that affect artwork resolution outcomes; a
 // change means previously resolved (or absent) state may no longer be correct.
-func Fingerprint() string {
+func fingerprint() string {
 	raw := fmt.Sprintf("%s|%s|%s|%s|%t|%t|%d",
 		conf.Server.CoverArtPriority, conf.Server.ArtistArtPriority, conf.Server.ArtistImageFolder,
 		conf.Server.Agents, conf.Server.EnableExternalServices, conf.Server.EnableM3UExternalAlbumArt, artworkEpoch)
@@ -45,11 +45,11 @@ func Fingerprint() string {
 	return hex.EncodeToString(sum[:])
 }
 
-// Backfill enqueues artwork resolution for every entity when the config fingerprint changed
+// backfill enqueues artwork resolution for every entity when the config fingerprint changed
 // (or was never stored), artists first so those pages resolve before the larger backlog.
-func Backfill(ctx context.Context, ds model.DataStore) (bool, error) {
+func backfill(ctx context.Context, ds model.DataStore) (bool, error) {
 	ctx = auth.WithAdminUser(ctx, ds)
-	current := Fingerprint()
+	current := fingerprint()
 	props := ds.Property(ctx)
 	stored, err := props.DefaultGet(consts.ArtConfFingerprintPropertyKey, "")
 	if err != nil {
@@ -99,9 +99,9 @@ func enqueueBackfillKind(ctx context.Context, ds model.DataStore, kind model.Kin
 	return ds.ArtworkQueue(ctx).Enqueue(items...)
 }
 
-// EnqueueStaleAbsentAll requeues absent-state entries older than staleAbsentAge, across
+// enqueueStaleAbsentAll requeues absent-state entries older than staleAbsentAge, across
 // every artwork-bearing kind, for the periodic recheck job.
-func EnqueueStaleAbsentAll(ctx context.Context, ds model.DataStore) error {
+func enqueueStaleAbsentAll(ctx context.Context, ds model.DataStore) error {
 	cutoff := time.Now().Add(-staleAbsentAge)
 	queue := ds.ArtworkQueue(ctx)
 	for _, kind := range recheckKinds {
@@ -112,9 +112,9 @@ func EnqueueStaleAbsentAll(ctx context.Context, ds model.DataStore) error {
 	return nil
 }
 
-// EnqueueMissingAll requeues entities that have no item_artwork row yet, across every recheck
+// enqueueMissingAll requeues entities that have no item_artwork row yet, across every recheck
 // kind: the safety net for entities a scan never enqueued (added between scans, or scanner off).
-func EnqueueMissingAll(ctx context.Context, ds model.DataStore) error {
+func enqueueMissingAll(ctx context.Context, ds model.DataStore) error {
 	queue := ds.ArtworkQueue(ctx)
 	for _, kind := range recheckKinds {
 		if _, err := queue.EnqueueMissing(kind); err != nil {

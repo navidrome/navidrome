@@ -361,14 +361,13 @@ func startArtworkWorker(ctx context.Context, worker *artwork.Worker) func() erro
 // recurring stale-absent recheck and prune jobs. Scan-triggered prune lands in a later phase.
 func scheduleArtworkHousekeeping(ctx context.Context, worker *artwork.Worker) func() error {
 	return func() error {
-		ds := CreateDataStore()
 		schedulerInstance := scheduler.GetInstance()
 
 		if _, err := schedulerInstance.Add(consts.ArtworkStaleAbsentRecheckSchedule, func() {
-			if err := artwork.EnqueueStaleAbsentAll(ctx, ds); err != nil {
+			if err := worker.EnqueueStaleAbsentAll(ctx); err != nil {
 				log.Error(ctx, "Error enqueueing stale artwork rechecks", err)
 			}
-			if err := artwork.EnqueueMissingAll(ctx, ds); err != nil {
+			if err := worker.EnqueueMissingAll(ctx); err != nil {
 				log.Error(ctx, "Error enqueueing missing artwork rechecks", err)
 			}
 		}); err != nil {
@@ -385,11 +384,11 @@ func scheduleArtworkHousekeeping(ctx context.Context, worker *artwork.Worker) fu
 
 		// Also run the missing-row recheck once at startup so a never-scanned entity is picked up
 		// immediately, not only on the next hourly tick (e.g. after enabling the feature).
-		if err := artwork.EnqueueMissingAll(ctx, ds); err != nil {
+		if err := worker.EnqueueMissingAll(ctx); err != nil {
 			log.Error(ctx, "Error enqueueing missing artwork rechecks", err)
 		}
 
-		backfilled, err := artwork.Backfill(ctx, ds)
+		backfilled, err := worker.Backfill(ctx)
 		if err != nil {
 			log.Error(ctx, "Error running artwork backfill", err)
 			return nil

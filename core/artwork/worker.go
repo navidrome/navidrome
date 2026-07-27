@@ -159,6 +159,21 @@ func (w *Worker) RunPrune(ctx context.Context) error {
 	return prune(ctx, w.proc.ds, w.proc.store)
 }
 
+// Backfill, EnqueueStaleAbsentAll and EnqueueMissingAll are the scheduler's entry points into
+// housekeeping. Like RunPrune they exist so a caller needs only the Worker, not a second
+// DataStore handle onto the state the Worker already owns.
+func (w *Worker) Backfill(ctx context.Context) (bool, error) {
+	return backfill(ctx, w.proc.ds)
+}
+
+func (w *Worker) EnqueueStaleAbsentAll(ctx context.Context) error {
+	return enqueueStaleAbsentAll(ctx, w.proc.ds)
+}
+
+func (w *Worker) EnqueueMissingAll(ctx context.Context) error {
+	return enqueueMissingAll(ctx, w.proc.ds)
+}
+
 func (w *Worker) drain(ctx context.Context, concurrency int, kinds ...string) (int, error) {
 	// Dequeue well past the worker pool so a slow item (an external lookup burning its
 	// timeout) never idles the other slots: the pool stays fed until the batch runs out.

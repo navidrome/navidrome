@@ -92,32 +92,32 @@ var _ = Describe("Housekeeping", func() {
 
 	Describe("Fingerprint", func() {
 		It("changes when a fingerprint-affecting config value changes", func() {
-			f1 := Fingerprint()
+			f1 := fingerprint()
 			conf.Server.CoverArtPriority = "folder, embedded"
-			f2 := Fingerprint()
+			f2 := fingerprint()
 			Expect(f1).NotTo(Equal(f2))
 		})
 
 		It("changes when ArtistImageFolder changes", func() {
 			conf.Server.ArtistImageFolder = "/before"
-			f1 := Fingerprint()
+			f1 := fingerprint()
 			conf.Server.ArtistImageFolder = "/after"
-			Expect(Fingerprint()).NotTo(Equal(f1))
+			Expect(fingerprint()).NotTo(Equal(f1))
 		})
 
 		It("changes when EnableM3UExternalAlbumArt is toggled", func() {
 			conf.Server.EnableM3UExternalAlbumArt = false
-			f1 := Fingerprint()
+			f1 := fingerprint()
 			conf.Server.EnableM3UExternalAlbumArt = true
-			Expect(Fingerprint()).NotTo(Equal(f1))
+			Expect(fingerprint()).NotTo(Equal(f1))
 		})
 
 		It("does not change when the server version changes", func() {
 			original := consts.Version
 			DeferCleanup(func() { consts.Version = original })
-			f1 := Fingerprint()
+			f1 := fingerprint()
 			consts.Version = original + "-next"
-			Expect(Fingerprint()).To(Equal(f1),
+			Expect(fingerprint()).To(Equal(f1),
 				"the version must not invalidate artwork state: it would re-resolve every entity on every build")
 		})
 	})
@@ -125,9 +125,9 @@ var _ = Describe("Housekeeping", func() {
 	Describe("Backfill", func() {
 		It("enqueues nothing and returns false when the stored fingerprint matches", func() {
 			seedEntities()
-			Expect(propRepo.Put(consts.ArtConfFingerprintPropertyKey, Fingerprint())).To(Succeed())
+			Expect(propRepo.Put(consts.ArtConfFingerprintPropertyKey, fingerprint())).To(Succeed())
 
-			did, err := Backfill(ctx, ds)
+			did, err := backfill(ctx, ds)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(did).To(BeFalse())
 
@@ -139,7 +139,7 @@ var _ = Describe("Housekeeping", func() {
 		It("runs the backfill when no fingerprint was ever stored", func() {
 			seedEntities()
 
-			did, err := Backfill(ctx, ds)
+			did, err := backfill(ctx, ds)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(did).To(BeTrue())
 
@@ -149,7 +149,7 @@ var _ = Describe("Housekeeping", func() {
 
 			stored, err := propRepo.Get(consts.ArtConfFingerprintPropertyKey)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(stored).To(Equal(Fingerprint()))
+			Expect(stored).To(Equal(fingerprint()))
 		})
 
 		It("enqueues a private playlist by resolving it under an admin context", func() {
@@ -160,7 +160,7 @@ var _ = Describe("Housekeeping", func() {
 				tracks:        &tests.MockPlaylistTrackRepo{},
 			}
 
-			did, err := Backfill(ctx, vds)
+			did, err := backfill(ctx, vds)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(did).To(BeTrue())
 			Expect(findQueued(queueRepo.MockArtworkQueueRepo, "pl", "plPrivate")).ToNot(BeNil())
@@ -170,7 +170,7 @@ var _ = Describe("Housekeeping", func() {
 			seedEntities()
 			Expect(propRepo.Put(consts.ArtConfFingerprintPropertyKey, "stale-fingerprint")).To(Succeed())
 
-			did, err := Backfill(ctx, ds)
+			did, err := backfill(ctx, ds)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(did).To(BeTrue())
 
@@ -218,7 +218,7 @@ var _ = Describe("Housekeeping", func() {
 			// Not absent: has a resolved hash.
 			artRepo.ItemData["al-resolved"] = model.ItemArtwork{ItemKind: "al", ItemID: "al2", ImageType: model.ImageTypePrimary, Hash: "somehash", AttemptedAt: old}
 
-			err := EnqueueStaleAbsentAll(ctx, ds)
+			err := enqueueStaleAbsentAll(ctx, ds)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(queueRepo.Data).To(HaveLen(4))
@@ -254,7 +254,7 @@ var _ = Describe("Housekeeping", func() {
 			artRepo.ItemData["al-resolved"] = model.ItemArtwork{ItemKind: "al", ItemID: "al1", ImageType: model.ImageTypePrimary, Hash: "somehash", AttemptedAt: time.Now()}
 			artRepo.ItemData["ar-absent"] = model.ItemArtwork{ItemKind: "ar", ItemID: "ar1", ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: time.Now()}
 
-			err := EnqueueMissingAll(ctx, ds)
+			err := enqueueMissingAll(ctx, ds)
 			Expect(err).ToNot(HaveOccurred())
 
 			for _, it := range queueRepo.Data {
