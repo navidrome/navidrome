@@ -34,7 +34,7 @@ var _ = Describe("decodeArtworkID", func() {
 })
 
 type fakeArtwork struct {
-	artwork.Service
+	artwork.Artwork
 	img *artwork.Image
 	err error
 }

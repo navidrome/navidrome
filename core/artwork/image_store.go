@@ -34,9 +34,9 @@ func NewImageStore(rootDir string) *ImageStore {
 	return &ImageStore{root: rootDir}
 }
 
-// ProvideImageStore roots the store in its own subtree under the data folder, so
+// GetImageStore roots the store in its own subtree under the data folder, so
 // Prune's recursive sweep never reaches the per-entity upload folders next to it.
-func ProvideImageStore() *ImageStore {
+func GetImageStore() *ImageStore {
 	return NewImageStore(filepath.Join(conf.Server.DataFolder.String(), consts.ArtworkFolder, "store"))
 }
 

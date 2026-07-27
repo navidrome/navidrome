@@ -84,9 +84,9 @@ func CreateSubsonicAPIRouter(ctx context.Context) *subsonic.Router {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
 	fileCache := artwork.GetImageCache()
-	imageStore := artwork.ProvideImageStore()
+	imageStore := artwork.GetImageStore()
 	fFmpeg := ffmpeg.New()
-	service := artwork.NewService(dataStore, fileCache, imageStore, fFmpeg)
+	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, imageStore, fFmpeg)
 	transcodingCache := stream.GetTranscodingCache()
 	mediaStreamer := stream.NewMediaStreamer(dataStore, fFmpeg, transcodingCache)
 	share := core.NewShare(dataStore)
@@ -106,7 +106,7 @@ func CreateSubsonicAPIRouter(ctx context.Context) *subsonic.Router {
 	lyricsLyrics := lyrics.NewLyrics(dataStore, manager)
 	transcodeDecider := stream.NewTranscodeDecider(dataStore, fFmpeg)
 	sonicSonic := sonic.New(dataStore, manager, matcherMatcher)
-	router := subsonic.New(dataStore, service, mediaStreamer, archiver, players, provider, modelScanner, broker, playlistsPlaylists, playTracker, share, playbackServer, metricsMetrics, lyricsLyrics, transcodeDecider, sonicSonic)
+	router := subsonic.New(dataStore, artworkArtwork, mediaStreamer, archiver, players, provider, modelScanner, broker, playlistsPlaylists, playTracker, share, playbackServer, metricsMetrics, lyricsLyrics, transcodeDecider, sonicSonic)
 	return router
 }
 
@@ -114,9 +114,9 @@ func CreateJellyfinAPIRouter(ctx context.Context) *jellyfin.Router {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
 	fileCache := artwork.GetImageCache()
-	imageStore := artwork.ProvideImageStore()
+	imageStore := artwork.GetImageStore()
 	fFmpeg := ffmpeg.New()
-	service := artwork.NewService(dataStore, fileCache, imageStore, fFmpeg)
+	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, imageStore, fFmpeg)
 	transcodingCache := stream.GetTranscodingCache()
 	mediaStreamer := stream.NewMediaStreamer(dataStore, fFmpeg, transcodingCache)
 	transcodeDecider := stream.NewTranscodeDecider(dataStore, fFmpeg)
@@ -132,7 +132,7 @@ func CreateJellyfinAPIRouter(ctx context.Context) *jellyfin.Router {
 	provider := external.NewProvider(dataStore, agentsAgents, matcherMatcher)
 	sonicSonic := sonic.New(dataStore, manager, matcherMatcher)
 	lyricsLyrics := lyrics.NewLyrics(dataStore, manager)
-	router := jellyfin.New(dataStore, service, mediaStreamer, transcodeDecider, players, playTracker, playlistsPlaylists, provider, sonicSonic, lyricsLyrics, broker)
+	router := jellyfin.New(dataStore, artworkArtwork, mediaStreamer, transcodeDecider, players, playTracker, playlistsPlaylists, provider, sonicSonic, lyricsLyrics, broker)
 	return router
 }
 
@@ -140,14 +140,14 @@ func CreatePublicRouter() *public.Router {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
 	fileCache := artwork.GetImageCache()
-	imageStore := artwork.ProvideImageStore()
+	imageStore := artwork.GetImageStore()
 	fFmpeg := ffmpeg.New()
-	service := artwork.NewService(dataStore, fileCache, imageStore, fFmpeg)
+	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, imageStore, fFmpeg)
 	transcodingCache := stream.GetTranscodingCache()
 	mediaStreamer := stream.NewMediaStreamer(dataStore, fFmpeg, transcodingCache)
 	share := core.NewShare(dataStore)
 	archiver := core.NewArchiver(mediaStreamer, dataStore, share)
-	router := public.New(dataStore, service, mediaStreamer, share, archiver)
+	router := public.New(dataStore, artworkArtwork, mediaStreamer, share, archiver)
 	return router
 }
 
@@ -212,7 +212,7 @@ func GetPlaybackServer() playback.PlaybackServer {
 func CreateArtworkWorker() *artwork.Worker {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
-	imageStore := artwork.ProvideImageStore()
+	imageStore := artwork.GetImageStore()
 	broker := events.GetBroker()
 	metricsMetrics := metrics.GetPrometheusInstance(dataStore)
 	manager := plugins.GetManager(dataStore, broker, metricsMetrics)

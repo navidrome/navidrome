@@ -45,12 +45,12 @@ import (
 
 // The artwork serving path streams folder-backed originals via os.Open, which a fake FS cannot
 // back, so this suite scans a small REAL on-disk library and drives the real acquisition worker
-// and artwork.Service through the Subsonic and public image handlers.
+// and artwork.Artwork through the Subsonic and public image handlers.
 var _ = Describe("Artwork Serving", Ordered, func() {
 	var (
 		artRouter   *subsonic.Router
 		pubRouter   *public.Router
-		artSvc      artwork.Service
+		artSvc      artwork.Artwork
 		worker      *artwork.Worker
 		artfulID    string
 		artlessID   string
@@ -134,7 +134,7 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 		store := artwork.NewImageStore(GinkgoT().TempDir())
 		imgCache := newDummyImageCache(ctx)
 		ffm := harness.NoopFFmpeg{}
-		artSvc = artwork.NewService(ds, imgCache, store, ffm)
+		artSvc = artwork.NewArtwork(ds, imgCache, store, ffm)
 		worker = artwork.NewWorker(ds, store, agents.GetAgents(ds, nil), ffm, events.NoopBroker(), imgCache)
 
 		artRouter = buildArtworkRouter(artSvc)
@@ -233,8 +233,8 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 	})
 })
 
-// buildArtworkRouter mirrors setupTestDB's Subsonic wiring but with the real artwork.Service.
-func buildArtworkRouter(art artwork.Service) *subsonic.Router {
+// buildArtworkRouter mirrors setupTestDB's Subsonic wiring but with the real artwork.Artwork.
+func buildArtworkRouter(art artwork.Artwork) *subsonic.Router {
 	decider := stream.NewTranscodeDecider(ds, harness.NoopFFmpeg{})
 	s := scanner.New(ctx, ds, events.NoopBroker(),
 		playlists.NewPlaylists(ds, artwork.NewUploader(ds)), metrics.NewNoopInstance())
@@ -291,7 +291,7 @@ func readArtworkFixture(name string) []byte {
 	return data
 }
 
-// newDummyImageCache backs the artwork.Service's resize cache. size=0 requests stream originals
+// newDummyImageCache backs the artwork.Artwork's resize cache. size=0 requests stream originals
 // and never invoke the reader, so it only needs to satisfy the constructor; resize behavior is
 // covered by the artwork package's own suites.
 func newDummyImageCache(ctx context.Context) cache.FileCache {

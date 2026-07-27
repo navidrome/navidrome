@@ -56,7 +56,7 @@ var (
 	rctx    context.Context
 	rds     *tests.MockDataStore
 	rstore  *artwork.ImageStore
-	rsvc    artwork.Service
+	rsvc    artwork.Artwork
 	rworker *artwork.Worker
 	fakeFS  *storagetest.FakeFS
 )
@@ -125,7 +125,7 @@ func setupResolutionHarness() {
 		})
 	Eventually(func() bool { return imgCache.Available(rctx) }).Should(BeTrue())
 
-	rsvc = artwork.NewService(rds, imgCache, rstore, ffm)
+	rsvc = artwork.NewArtwork(rds, imgCache, rstore, ffm)
 	rworker = artwork.NewWorker(rds, rstore, agents.GetAgents(rds, nil), ffm, events.NoopBroker(), imgCache)
 }
 

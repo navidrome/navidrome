@@ -40,7 +40,7 @@ func representationTag(hash string, size int, square bool) string {
 	return fmt.Sprintf("%s.%d.%v.%s", hash, size, square, formatQualityTag())
 }
 
-type Service interface {
+type Artwork interface {
 	// Get serves resolved/provisional artwork; ErrUnavailable or model.ErrNotFound when
 	// there is nothing to serve (absent, pending, dangling) — caller picks placeholder vs 404.
 	Get(ctx context.Context, artID model.ArtworkID, size int, square bool) (*Image, error)
@@ -49,7 +49,7 @@ type Service interface {
 	GetOrPlaceholder(ctx context.Context, id string, size int, square bool) (*Image, error)
 }
 
-func NewService(ds model.DataStore, cache cache.FileCache, store *ImageStore, ffm ffmpeg.FFmpeg) Service {
+func NewArtwork(ds model.DataStore, cache cache.FileCache, store *ImageStore, ffm ffmpeg.FFmpeg) Artwork {
 	return &service{ds: ds, cache: cache, store: store, ffmpeg: ffm}
 }
 

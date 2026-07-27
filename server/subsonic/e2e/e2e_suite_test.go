@@ -308,7 +308,7 @@ func parseJSONResponse(w *httptest.ResponseRecorder) *responses.Subsonic {
 
 // --- Noop stub implementations for Router dependencies ---
 
-// noopArtwork implements artwork.Service
+// noopArtwork implements artwork.Artwork
 type noopArtwork struct{}
 
 func (n noopArtwork) Get(context.Context, model.ArtworkID, int, bool) (*artwork.Image, error) {
@@ -359,7 +359,7 @@ func (n noopProvider) TopSongs(context.Context, string, int) (model.MediaFiles, 
 
 // Compile-time interface checks
 var (
-	_ artwork.Service   = noopArtwork{}
+	_ artwork.Artwork   = noopArtwork{}
 	_ core.Archiver     = noopArchiver{}
 	_ external.Provider = noopProvider{}
 )

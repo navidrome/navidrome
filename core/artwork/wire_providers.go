@@ -5,9 +5,9 @@ import (
 )
 
 var Set = wire.NewSet(
-	NewService,
+	NewArtwork,
 	GetImageCache,
 	NewWorker,
-	ProvideImageStore,
+	GetImageStore,
 	NewUploader,
 )

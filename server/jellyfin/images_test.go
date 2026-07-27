@@ -29,7 +29,7 @@ import (
 )
 
 type fakeArtwork struct {
-	artwork.Service
+	artwork.Artwork
 	recvId  string
 	recvCtx context.Context
 	data    []byte

@@ -37,7 +37,7 @@ var _ = Describe("Acquisition → serve loop", func() {
 		folderRepo *fakeFolderRepo
 		libRepo    *tests.MockLibraryRepo
 		store      *artwork.ImageStore
-		svc        artwork.Service
+		svc        artwork.Artwork
 		worker     *artwork.Worker
 		coverBytes []byte
 	)
@@ -102,7 +102,7 @@ var _ = Describe("Acquisition → serve loop", func() {
 			})
 		Eventually(func() bool { return imgCache.Available(ctx) }).Should(BeTrue())
 
-		svc = artwork.NewService(ds, imgCache, store, ffm)
+		svc = artwork.NewArtwork(ds, imgCache, store, ffm)
 		worker = artwork.NewWorker(ds, store, agents.GetAgents(ds, nil), ffm, events.NoopBroker(), imgCache)
 	})
 

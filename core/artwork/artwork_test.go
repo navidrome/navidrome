@@ -20,7 +20,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Service", func() {
+var _ = Describe("Artwork", func() {
 	var (
 		ctx        context.Context
 		ds         *tests.MockDataStore
@@ -33,7 +33,7 @@ var _ = Describe("Service", func() {
 		ffm        *tests.MockFFmpeg
 		store      *ImageStore
 		imgCache   cache.FileCache
-		svc        Service
+		svc        Artwork
 		repoRoot   string
 		coverBytes []byte
 	)
@@ -96,7 +96,7 @@ var _ = Describe("Service", func() {
 				return arg.(artworkReader).Reader(ctx)
 			})
 		Eventually(func() bool { return imgCache.Available(ctx) }).Should(BeTrue())
-		svc = NewService(ds, imgCache, store, ffm)
+		svc = NewArtwork(ds, imgCache, store, ffm)
 	})
 
 	Describe("found state", func() {

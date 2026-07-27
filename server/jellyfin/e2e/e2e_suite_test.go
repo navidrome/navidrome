@@ -419,4 +419,4 @@ func (s *spyArtwork) GetOrPlaceholder(c context.Context, id string, _ int, _ boo
 	return &artwork.Image{ReadCloser: io.NopCloser(bytes.NewReader(d))}, nil
 }
 
-var _ artwork.Service = &spyArtwork{}
+var _ artwork.Artwork = &spyArtwork{}

@@ -248,7 +248,7 @@ var _ = Describe("MediaRetrievalController", func() {
 })
 
 type fakeArtwork struct {
-	artwork.Service
+	artwork.Artwork
 	data          string
 	hash          string
 	lastUpdated   time.Time
