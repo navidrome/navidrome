@@ -53,6 +53,35 @@ func NewArtwork(ds model.DataStore, cache cache.FileCache, store *ImageStore, ff
 	return &service{ds: ds, cache: cache, store: store, ffmpeg: ffm}
 }
 
+// EntityExists reports whether the entity an artwork id points at is still there: state rows
+// outlive a deleted entity until the next prune, so a servable row is not evidence of its owner.
+// The repositories are ctx-scoped, so a request context makes this a visibility check too.
+func EntityExists(ctx context.Context, ds model.DataStore, artID model.ArtworkID) bool {
+	var found bool
+	var err error
+	switch artID.Kind {
+	case model.KindArtistArtwork:
+		found, err = ds.Artist(ctx).Exists(artID.ID)
+	case model.KindAlbumArtwork:
+		found, err = ds.Album(ctx).Exists(artID.ID)
+	case model.KindMediaFileArtwork:
+		found, err = ds.MediaFile(ctx).Exists(artID.ID)
+	case model.KindPlaylistArtwork:
+		found, err = ds.Playlist(ctx).Exists(artID.ID)
+	case model.KindRadioArtwork:
+		found, err = ds.Radio(ctx).Exists(artID.ID)
+	case model.KindDiscArtwork:
+		albumID, _, perr := model.ParseDiscArtworkID(artID.ID)
+		if perr != nil {
+			return false
+		}
+		found, err = ds.Album(ctx).Exists(albumID)
+	default:
+		return false
+	}
+	return err == nil && found
+}
+
 type service struct {
 	ds     model.DataStore
 	cache  cache.FileCache
@@ -150,6 +179,11 @@ func (s *service) serveSource(ctx context.Context, key, hash string, lastUpdate 
 // serveHash serves the bytes of a found state row. A mismatch/open error is dangling (a warm
 // cache still serves), but a cancelled request is not: it must not enqueue a re-resolution.
 func (s *service) serveHash(ctx context.Context, artID model.ArtworkID, ia *model.ItemArtwork, size int, square bool) (*Image, error) {
+	// Only this path can hand back a deleted entity's bytes: an absent row is already
+	// unavailable, and the provisional and disc paths load their entity to resolve at all.
+	if !EntityExists(ctx, s.ds, artID) {
+		return nil, ErrUnavailable
+	}
 	art, err := s.ds.Artwork(ctx).GetImage(ia.Hash)
 	if err != nil {
 		if errors.Is(err, model.ErrNotFound) {

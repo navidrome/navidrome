@@ -17,6 +17,7 @@ import (
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -66,36 +67,21 @@ var _ = Describe("MediaRetrievalController", func() {
 			Expect(w.Body.String()).To(Equal(artwork.data))
 		})
 
-		It("serves radio artwork while the radio exists", func() {
-			r := newGetRequest("id=ra-rd1")
+		// Visibility now lives in the service, which resolves the entity through the
+		// request-scoped repositories. The handler's whole contribution is handing over the
+		// caller's context unchanged -- elevating here would bypass the library filter.
+		It("passes the caller's context to the service rather than elevating", func() {
+			r := newGetRequest("id=al-34")
+			usr := model.User{ID: "u1", UserName: "u1"}
+			r = r.WithContext(request.WithUser(r.Context(), usr))
+
 			_, err := router.GetCoverArt(w, r)
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(w.Body.String()).To(Equal(artwork.data))
-		})
-
-		// A deleted radio keeps its item_artwork row and uploaded file until the next prune, so
-		// existence has to be re-checked or the old id keeps serving the removed radio's image.
-		It("serves a placeholder once the radio is gone", func() {
-			r := newGetRequest("id=ra-deleted")
-			_, err := router.GetCoverArt(w, r)
-
-			Expect(err).ToNot(HaveOccurred())
-			Expect(w.Code).To(Equal(200))
-			Expect(w.Body.String()).ToNot(Equal(artwork.data))
-			Expect(w.Header().Get("Cache-Control")).To(Equal("no-store"))
-		})
-
-		It("serves a placeholder for an entity the caller cannot access", func() {
-			// al-99 is not in the (filtered) album repo, so the caller must not get its bytes.
-			r := newGetRequest("id=al-99")
-			_, err := router.GetCoverArt(w, r)
-
-			Expect(err).ToNot(HaveOccurred())
-			Expect(w.Code).To(Equal(200))
-			Expect(w.Body.String()).ToNot(Equal(artwork.data))
-			Expect(w.Header().Get("Cache-Control")).To(Equal("no-store"))
-			Expect(w.Header().Get("ETag")).To(BeEmpty())
+			got, ok := request.UserFrom(artwork.recvCtx)
+			Expect(ok).To(BeTrue(), "the service must see who is asking")
+			Expect(got.ID).To(Equal("u1"))
+			Expect(got.IsAdmin).To(BeFalse(), "the handler must not elevate")
 		})
 
 		It("should fail when the file is not found", func() {
@@ -281,9 +267,11 @@ type fakeArtwork struct {
 	recvId        string
 	recvSize      int
 	recvSquare    bool
+	recvCtx       context.Context
 }
 
-func (c *fakeArtwork) GetOrPlaceholder(_ context.Context, id string, size int, square bool) (*artwork.Image, error) {
+func (c *fakeArtwork) GetOrPlaceholder(ctx context.Context, id string, size int, square bool) (*artwork.Image, error) {
+	c.recvCtx = ctx
 	if c.err != nil {
 		return nil, c.err
 	}

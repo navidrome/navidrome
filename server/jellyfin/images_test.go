@@ -75,6 +75,20 @@ var _ = Describe("Images", func() {
 		Expect(fa.recvId).To(ContainSubstring("a1"))
 	})
 
+	// resolveArtworkID probes the entity tables, so a deleted item cannot produce an artwork id
+	// at all -- which is what stops artwork state outliving its entity from being served here.
+	It("asks for no artwork once the item is deleted, rather than its lingering state", func() {
+		ds := &tests.MockDataStore{} // no albums/artists/tracks/playlists at all
+		fa := &fakeArtwork{}
+		api := &Router{ds: ds, artwork: fa}
+
+		w, r := newImageRequest(dto.EncodeID("deleted-item"))
+		api.getItemImage(w, r)
+
+		Expect(fa.recvId).To(BeEmpty(), "an empty artwork id can only yield a placeholder")
+		Expect(w.Body.String()).ToNot(ContainSubstring("deleted-item"))
+	})
+
 	It("sniffs the Content-Type instead of hardcoding it", func() {
 		ds := &tests.MockDataStore{}
 		ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1", Name: "One"}})

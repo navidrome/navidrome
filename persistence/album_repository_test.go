@@ -992,6 +992,23 @@ var _ = Describe("AlbumRepository", func() {
 			Expect(got.RGAlbumPeak).To(BeNil())
 		})
 	})
+
+	// Exists used the unfiltered helper, so it reported albums in libraries the caller
+	// cannot see -- the same leak Get/GetAll/CountAll already guard against.
+	Describe("Exists library visibility", func() {
+		It("hides an album the user has no library access to", func() {
+			Expect(albumRepo.Put(&model.Album{ID: "vis-album", Name: "Vis", LibraryID: 1})).To(Succeed())
+			DeferCleanup(func() {
+				_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": "vis-album"}))
+			})
+
+			Expect(albumRepo.Exists("vis-album")).To(BeTrue(), "admin sees it")
+
+			restricted := model.User{ID: "restricted_album_user", UserName: "ra", Name: "RA", Email: "ra@t.com"}
+			rctx := request.WithUser(GinkgoT().Context(), restricted)
+			Expect(NewAlbumRepository(rctx, GetDBXBuilder()).Exists("vis-album")).To(BeFalse())
+		})
+	})
 })
 
 func _p(id, name string, sortName ...string) model.Participant {

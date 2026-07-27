@@ -36,6 +36,7 @@ var _ = Describe("Artwork", func() {
 		svc        Artwork
 		repoRoot   string
 		coverBytes []byte
+		seedEntity func(kind, id string)
 	)
 
 	primaryKey := func(kind, id string) string { return kind + "|" + id + "|" + model.ImageTypePrimary }
@@ -48,7 +49,20 @@ var _ = Describe("Artwork", func() {
 		Expect(store.Write(hash, "image/jpeg", bytes.NewReader(imgBytes))).To(Succeed())
 		Expect(artRepo.PutImage(&model.Artwork{Hash: hash, Mime: "image/jpeg"})).To(Succeed())
 		Expect(artRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: kind, ItemID: id, Hash: hash, Source: "external"})).To(Succeed())
+		seedEntity(kind, id)
 		return hash
+	}
+
+	// seedEntity registers the owning entity, without which the state row describes something
+	// that no longer exists and the service correctly refuses to serve it.
+	seedEntity = func(kind, id string) {
+		GinkgoHelper()
+		switch kind {
+		case "al":
+			Expect(albumRepo.Put(&model.Album{ID: id, Name: "Album"})).To(Succeed())
+		case "mf":
+			Expect(mfRepo.Put(&model.MediaFile{ID: id})).To(Succeed())
+		}
 	}
 
 	readAll := func(img *Image) []byte {
@@ -139,6 +153,7 @@ var _ = Describe("Artwork", func() {
 			Expect(os.WriteFile(imgPath, coverBytes, 0600)).To(Succeed())
 			mtime := fileMtime(imgPath)
 			Expect(artRepo.PutImage(&model.Artwork{Hash: "aaaaaaaaaaaaaaaa", Mime: "image/jpeg"})).To(Succeed())
+			seedEntity("al", "al2")
 			Expect(artRepo.PutItemArtwork(&model.ItemArtwork{
 				ItemKind: "al", ItemID: "al2", Hash: "aaaaaaaaaaaaaaaa",
 				Source: "folder", SourcePath: imgPath, RefMtime: mtime,
@@ -154,6 +169,7 @@ var _ = Describe("Artwork", func() {
 			imgPath := filepath.Join(dir, "cover.jpg")
 			Expect(os.WriteFile(imgPath, coverBytes, 0600)).To(Succeed())
 			Expect(artRepo.PutImage(&model.Artwork{Hash: "bbbbbbbbbbbbbbbb", Mime: "image/jpeg"})).To(Succeed())
+			seedEntity("al", "al3")
 			Expect(artRepo.PutItemArtwork(&model.ItemArtwork{
 				ItemKind: "al", ItemID: "al3", Hash: "bbbbbbbbbbbbbbbb",
 				Source: "folder", SourcePath: imgPath, RefMtime: fileMtime(imgPath) + 999,
@@ -172,6 +188,7 @@ var _ = Describe("Artwork", func() {
 			imgPath := filepath.Join(dir, "cover.jpg")
 			Expect(os.WriteFile(imgPath, coverBytes, 0600)).To(Succeed())
 			Expect(artRepo.PutImage(&model.Artwork{Hash: "cccccccccccccccc", Mime: "image/jpeg"})).To(Succeed())
+			seedEntity("al", "al3b")
 			Expect(artRepo.PutItemArtwork(&model.ItemArtwork{
 				ItemKind: "al", ItemID: "al3b", Hash: "cccccccccccccccc",
 				Source: "folder", SourcePath: imgPath, RefMtime: fileMtime(imgPath) + 999,
@@ -180,6 +197,17 @@ var _ = Describe("Artwork", func() {
 			_, err := svc.Get(ctx, model.MustParseArtworkID("al-al3b"), 100, false)
 			Expect(err).To(MatchError(ErrUnavailable))
 			Expect(queueRepo.Data[primaryKey("al", "al3b")].Priority).To(Equal(model.ArtworkPriorityScan))
+		})
+
+		// State rows and their bytes outlive a deleted entity until the next prune, so serving
+		// straight from the row would keep handing out a removed entity's image.
+		It("refuses to serve a found row whose entity is gone", func() {
+			hash := seedFoundStore("al", "alzz", coverBytes)
+			Expect(hash).ToNot(BeEmpty())
+			albumRepo.SetData(model.Albums{}) // the album is deleted; its artwork row survives
+
+			_, err := svc.Get(ctx, model.MustParseArtworkID("al-alzz"), 0, false)
+			Expect(err).To(MatchError(ErrUnavailable))
 		})
 
 		It("does not re-enqueue a recently-attempted absent state", func() {
@@ -480,3 +508,35 @@ func fileMtime(path string) int64 {
 	Expect(err).ToNot(HaveOccurred())
 	return info.ModTime().UnixNano()
 }
+
+var _ = Describe("EntityExists", func() {
+	var ctx context.Context
+	var ds *tests.MockDataStore
+
+	BeforeEach(func() {
+		ctx = context.Background()
+		albumRepo := tests.CreateMockAlbumRepo()
+		albumRepo.SetData(model.Albums{{ID: "al1"}})
+		artistRepo := tests.CreateMockArtistRepo()
+		artistRepo.SetData(model.Artists{{ID: "ar1"}})
+		radioRepo := tests.CreateMockedRadioRepo()
+		Expect(radioRepo.Put(&model.Radio{ID: "ra1", Name: "R"})).To(Succeed())
+		ds = &tests.MockDataStore{MockedAlbum: albumRepo, MockedArtist: artistRepo, MockedRadio: radioRepo}
+	})
+
+	DescribeTable("reports whether the owning entity is still there",
+		func(id string, expected bool) {
+			Expect(EntityExists(ctx, ds, model.MustParseArtworkID(id))).To(Equal(expected))
+		},
+		Entry("existing album", "al-al1", true),
+		Entry("deleted album", "al-gone", false),
+		Entry("existing artist", "ar-ar1", true),
+		Entry("deleted artist", "ar-gone", false),
+		Entry("existing radio", "ra-ra1", true),
+		Entry("deleted radio", "ra-gone", false),
+		// Disc art has no entity of its own; it stands or falls with its album.
+		Entry("disc of an existing album", "dc-al1:1", true),
+		Entry("disc of a deleted album", "dc-gone:1", false),
+		Entry("malformed disc id", "dc-nodiscnum", false),
+	)
+})

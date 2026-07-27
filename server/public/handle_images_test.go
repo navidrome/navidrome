@@ -12,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -52,18 +53,25 @@ var _ = Describe("handleImages", func() {
 		return httptest.NewRequest("GET", "/img?:id="+url.QueryEscape(token), nil)
 	}
 
+	// The handler re-checks that the entity behind the token still exists, so every spec needs
+	// a store where "1" is a live album.
+	var ds *tests.MockDataStore
+
 	BeforeEach(func() {
 		w = httptest.NewRecorder()
+		albumRepo := tests.CreateMockAlbumRepo()
+		albumRepo.SetData(model.Albums{{ID: "1"}})
+		ds = &tests.MockDataStore{MockedAlbum: albumRepo}
 	})
 
 	It("returns 404 when the artwork is unavailable", func() {
-		pub := &Router{artwork: &fakeArtwork{err: artwork.ErrUnavailable}}
+		pub := &Router{ds: ds, artwork: &fakeArtwork{err: artwork.ErrUnavailable}}
 		pub.handleImages(w, newImageRequest("al-1"))
 		Expect(w.Code).To(Equal(http.StatusNotFound))
 	})
 
 	It("returns 404 when the artwork is not found", func() {
-		pub := &Router{artwork: &fakeArtwork{err: model.ErrNotFound}}
+		pub := &Router{ds: ds, artwork: &fakeArtwork{err: model.ErrNotFound}}
 		pub.handleImages(w, newImageRequest("al-1"))
 		Expect(w.Code).To(Equal(http.StatusNotFound))
 	})
@@ -71,10 +79,11 @@ var _ = Describe("handleImages", func() {
 	It("serves the image immutable when the token asserts the current hash", func() {
 		const hash = "0123456789abcdef"
 		img := &artwork.Image{ReadCloser: io.NopCloser(bytes.NewReader([]byte("IMG"))), Hash: hash}
-		pub := &Router{artwork: &fakeArtwork{img: img}}
+		pub := &Router{ds: ds, artwork: &fakeArtwork{img: img}}
 		pub.handleImages(w, newImageRequest("al-1_"+hash))
 		Expect(w.Code).To(Equal(http.StatusOK))
 		Expect(w.Header().Get("Cache-Control")).To(Equal("public, max-age=31536000, immutable"))
 		Expect(w.Header().Get("ETag")).To(Equal(`"` + hash + `"`))
 	})
+
 })

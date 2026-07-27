@@ -38,6 +38,11 @@ func (r *radioRepository) CountAll(options ...model.QueryOptions) (int64, error)
 	return r.count(sql, options...)
 }
 
+// Exists needs no library or ownership filter: radios are visible to every user.
+func (r *radioRepository) Exists(id string) (bool, error) {
+	return r.exists(Eq{"id": id})
+}
+
 func (r *radioRepository) Delete(id string) error {
 	if !r.isPermitted() {
 		return rest.ErrPermissionDenied

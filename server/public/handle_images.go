@@ -11,6 +11,7 @@ import (
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/imghttp"
 	"github.com/navidrome/navidrome/utils/req"
 )
@@ -38,6 +39,10 @@ func (pub *Router) handleImages(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
+	// Elevated like the Jellyfin image route: the token is the authorization, so the service's
+	// entity check asks "is it still there", not "may this user see it" -- the latter would hide
+	// a shared private playlist, which is the case shares exist to serve.
+	ctx = request.WithUser(ctx, model.User{IsAdmin: true})
 	size := p.IntOr("size", 0)
 	square := p.BoolOr("square", false)
 

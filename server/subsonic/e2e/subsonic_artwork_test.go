@@ -201,6 +201,21 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 		Expect(w.Header().Get("Cache-Control")).To(Equal("no-store"))
 	})
 
+	// The BeforeAll grants the artwork library to adminUser only, so regularUser cannot see
+	// this album -- but its artwork state and bytes are perfectly servable by id. The service
+	// resolves the entity through the caller's repositories, so the filter still applies.
+	It("serves the placeholder for an album in a library the caller cannot see", func() {
+		w := httptest.NewRecorder()
+		artRouter.ServeHTTP(w, buildReq(regularUser, "getCoverArt", "id", "al-"+artfulID))
+
+		Expect(w.Code).To(Equal(http.StatusOK))
+		Expect(w.Body.Bytes()).To(Equal(placeholder), "must not leak the real cover")
+		Expect(w.Header().Get("Cache-Control")).To(Equal("no-store"))
+
+		// ...while the admin, who does have access, gets the real bytes for the same id.
+		Expect(getCover("id", "al-"+artfulID).Body.Bytes()).ToNot(Equal(placeholder))
+	})
+
 	// An album with no art and an id naming no album are different answers; only the former
 	// is a placeholder.
 	It("answers error 70 for an id that matches no entity", func() {

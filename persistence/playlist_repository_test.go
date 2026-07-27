@@ -384,4 +384,28 @@ var _ = Describe("PlaylistRepository", func() {
 			Expect(mediaFileIDs).To(Equal([]string{"1001", "1002"}))
 		})
 	})
+
+	// Exists is ctx-sensitive through userFilter: a private playlist is invisible to anyone but
+	// its owner or an admin. Callers that only want "does it still exist" -- the public image
+	// route serving a share -- must elevate, or a shared private playlist looks deleted.
+	Describe("Exists visibility", func() {
+		It("hides a private playlist from an unauthenticated context", func() {
+			// "userid" is the fixture user; playlist.owner_id has a FK to user(id).
+			owner := model.User{ID: "userid", UserName: "userid"}
+			octx := request.WithUser(GinkgoT().Context(), owner)
+			ownerRepo := NewPlaylistRepository(octx, GetDBXBuilder())
+			pls := model.Playlist{Name: "Private One", OwnerID: owner.ID, Public: false}
+			Expect(ownerRepo.Put(&pls)).To(Succeed())
+			DeferCleanup(func() { _ = ownerRepo.Delete(pls.ID) })
+
+			Expect(ownerRepo.Exists(pls.ID)).To(BeTrue(), "the owner sees it")
+
+			anon := NewPlaylistRepository(GinkgoT().Context(), GetDBXBuilder())
+			Expect(anon.Exists(pls.ID)).To(BeFalse(), "no user: userFilter hides it")
+
+			admin := request.WithUser(GinkgoT().Context(), model.User{ID: "userid", IsAdmin: true})
+			Expect(NewPlaylistRepository(admin, GetDBXBuilder()).Exists(pls.ID)).To(BeTrue(),
+				"elevating is what the public image route relies on")
+		})
+	})
 })

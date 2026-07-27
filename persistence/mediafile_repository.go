@@ -163,7 +163,10 @@ func (r *mediaFileRepository) CountBySuffix(options ...model.QueryOptions) (map[
 }
 
 func (r *mediaFileRepository) Exists(id string) (bool, error) {
-	return r.exists(Eq{"media_file.id": id})
+	// Filtered like CountAll: the plain exists() helper applies no library filter, so it
+	// would report a row in a library the caller cannot see.
+	c, err := r.count(r.applyLibraryFilter(r.newSelect().Where(Eq{"media_file.id": id})))
+	return c > 0, err
 }
 
 func (r *mediaFileRepository) Put(m *model.MediaFile) error {

@@ -32,6 +32,7 @@ type RadioRepository interface {
 	ResourceRepository
 	CountAll(options ...QueryOptions) (int64, error)
 	Delete(id string) error
+	Exists(id string) (bool, error)
 	Get(id string) (*Radio, error)
 	GetAll(options ...QueryOptions) (Radios, error)
 	GetAllIDs(options ...QueryOptions) ([]string, error)

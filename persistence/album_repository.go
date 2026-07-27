@@ -202,7 +202,10 @@ func (r *albumRepository) CountAll(options ...model.QueryOptions) (int64, error)
 }
 
 func (r *albumRepository) Exists(id string) (bool, error) {
-	return r.exists(Eq{"album.id": id})
+	// Filtered like CountAll: the plain exists() helper applies no library filter, so it
+	// would report a row in a library the caller cannot see.
+	c, err := r.count(r.applyLibraryFilter(r.newSelect().Where(Eq{"album.id": id})))
+	return c > 0, err
 }
 
 func (r *albumRepository) Put(al *model.Album) error {

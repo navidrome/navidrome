@@ -1118,4 +1118,16 @@ var _ = Describe("MediaRepository", func() {
 			Expect(mf.AlbumImage.ImageHash).To(Equal("bbbbbbbbbbbbbbbb"))
 		})
 	})
+
+	// Exists used the unfiltered helper, so it reported tracks in libraries the caller
+	// cannot see -- the same leak Get/GetAll/CountAll already guard against.
+	Describe("Exists library visibility", func() {
+		It("hides a track the user has no library access to", func() {
+			restricted := model.User{ID: "restricted_mf_user", UserName: "rm", Name: "RM", Email: "rm@t.com"}
+			rctx := request.WithUser(GinkgoT().Context(), restricted)
+
+			Expect(mr.Exists(songAntenna.ID)).To(BeTrue(), "admin sees it")
+			Expect(NewMediaFileRepository(rctx, GetDBXBuilder()).Exists(songAntenna.ID)).To(BeFalse())
+		})
+	})
 })
