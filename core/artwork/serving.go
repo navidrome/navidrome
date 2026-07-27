@@ -117,8 +117,38 @@ func (s *service) serveEntity(ctx context.Context, artID model.ArtworkID, size i
 	}
 }
 
-// serveHash serves the bytes of a found state row: full-size streams the original, sized
-// goes through the resize cache. A mismatch/open error is dangling (a warm cache still serves).
+// serveSource is the one place bytes become an Image: a full-size request streams open()
+// directly, anything else goes through the resize cache under key. hash is the pixel identity
+// where one exists ("" for disc art, which has no state row) and doubles as the full-size
+// validator, so an ETag is only needed when the bytes are resized or the hash is missing.
+func (s *service) serveSource(ctx context.Context, key, hash string, lastUpdate time.Time,
+	size int, square bool, open func() (io.ReadCloser, error),
+) (*Image, error) {
+	if size == 0 && !square {
+		rc, err := open()
+		if err != nil {
+			return nil, err
+		}
+		if rc == nil {
+			return nil, ErrUnavailable
+		}
+		img := &Image{ReadCloser: rc, Hash: hash, LastUpdated: lastUpdate}
+		if hash == "" {
+			img.ETag = representationTag(key, size, square)
+		}
+		return img, nil
+	}
+	stream, err := s.cache.Get(ctx, &resizedItem{
+		hash: key, size: size, square: square, ffmpeg: s.ffmpeg, open: open,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &Image{ReadCloser: stream, Hash: hash, ETag: representationTag(key, size, square), LastUpdated: lastUpdate}, nil
+}
+
+// serveHash serves the bytes of a found state row. A mismatch/open error is dangling (a warm
+// cache still serves), but a cancelled request is not: it must not enqueue a re-resolution.
 func (s *service) serveHash(ctx context.Context, artID model.ArtworkID, ia *model.ItemArtwork, size int, square bool) (*Image, error) {
 	art, err := s.ds.Artwork(ctx).GetImage(ia.Hash)
 	if err != nil {
@@ -127,28 +157,16 @@ func (s *service) serveHash(ctx context.Context, artID model.ArtworkID, ia *mode
 		}
 		return nil, err
 	}
-
-	if size == 0 && !square {
-		rc, err := openOriginal(ia, art.Mime, s.store)
-		if err != nil {
-			return s.dangling(ctx, artID)
-		}
-		return &Image{ReadCloser: rc, Hash: ia.Hash, LastUpdated: ia.UpdatedAt}, nil
-	}
-
-	item := &resizedItem{
-		hash: ia.Hash, size: size, square: square, ffmpeg: s.ffmpeg,
-		open: func() (io.ReadCloser, error) { return openOriginal(ia, art.Mime, s.store) },
-	}
-	stream, err := s.cache.Get(ctx, item)
+	img, err := s.serveSource(ctx, ia.Hash, ia.Hash, ia.UpdatedAt, size, square,
+		func() (io.ReadCloser, error) { return openOriginal(ia, art.Mime, s.store) })
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
 			return nil, err
 		}
-		log.Warn(ctx, "artwork: could not serve resized image", "artID", artID, "size", size, err)
+		log.Warn(ctx, "artwork: could not serve image", "artID", artID, "size", size, err)
 		return s.dangling(ctx, artID)
 	}
-	return &Image{ReadCloser: stream, Hash: ia.Hash, ETag: representationTag(ia.Hash, size, square), LastUpdated: ia.UpdatedAt}, nil
+	return img, nil
 }
 
 // openOriginal opens the full-resolution bytes for a found state row, enforcing the
@@ -211,27 +229,9 @@ func (s *service) serveResolution(ctx context.Context, res resolution, size int,
 	if err != nil {
 		return nil, ErrUnavailable
 	}
-	return s.serveBytes(ctx, hash, data, unixMtime(res.refMtime), size, square)
-}
-
-// serveBytes serves in-memory bytes: full-size directly, sized through the resize
-// cache keyed by the byte-hash (so it lines up with the worker's eventual store entry).
-func (s *service) serveBytes(ctx context.Context, hash string, data []byte, lastUpdate time.Time, size int, square bool) (*Image, error) {
-	if size == 0 && !square {
-		return &Image{ReadCloser: io.NopCloser(bytes.NewReader(data)), Hash: hash, LastUpdated: lastUpdate}, nil
-	}
-	item := &resizedItem{
-		hash:   hash,
-		size:   size,
-		square: square,
-		ffmpeg: s.ffmpeg,
-		open:   func() (io.ReadCloser, error) { return io.NopCloser(bytes.NewReader(data)), nil },
-	}
-	stream, err := s.cache.Get(ctx, item)
-	if err != nil {
-		return nil, err
-	}
-	return &Image{ReadCloser: stream, Hash: hash, ETag: representationTag(hash, size, square), LastUpdated: lastUpdate}, nil
+	// Keyed by the byte-hash, so the entry lines up with the worker's eventual store entry.
+	return s.serveSource(ctx, hash, hash, unixMtime(res.refMtime), size, square,
+		func() (io.ReadCloser, error) { return io.NopCloser(bytes.NewReader(data)), nil })
 }
 
 // serveMediaFile serves a track: own found art wins; an absent row delegates to the album;
@@ -308,26 +308,15 @@ func (s *service) serveDisc(ctx context.Context, artID model.ArtworkID, size int
 	// legacy reader did, lets a warm cache answer without touching the filesystem; the chain
 	// runs only on a miss. The key carries DiscArtPriority so changing it invalidates.
 	key := fmt.Sprintf("%s|%d|%s", artID.ID, dr.cacheTime().UnixNano(), conf.Server.DiscArtPriority)
-	if size == 0 && !square {
-		r, _, err := selectImage()
-		if err != nil || r == nil {
-			return s.Get(ctx, albumArtID, size, square)
-		}
-		return &Image{ReadCloser: r, ETag: representationTag(key, size, square), LastUpdated: dr.cacheTime()}, nil
-	}
-
-	item := &resizedItem{
-		hash:   key,
-		size:   size,
-		square: square,
-		ffmpeg: s.ffmpeg,
-		open:   func() (io.ReadCloser, error) { rc, _, err := selectImage(); return rc, err },
-	}
-	stream, err := s.cache.Get(ctx, item)
+	img, err := s.serveSource(ctx, key, "", dr.cacheTime(), size, square,
+		func() (io.ReadCloser, error) { rc, _, err := selectImage(); return rc, err })
 	if err != nil {
+		if errors.Is(err, context.Canceled) {
+			return nil, err
+		}
 		return s.Get(ctx, albumArtID, size, square)
 	}
-	return &Image{ReadCloser: stream, ETag: representationTag(key, size, square), LastUpdated: dr.cacheTime()}, nil
+	return img, nil
 }
 
 // dangling enqueues a re-resolution at Scan priority and reports the artwork as
