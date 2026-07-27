@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -505,6 +506,36 @@ var _ = Describe("resolveItem", func() {
 			defer res.reader.Close()
 			Expect(res.source).To(Equal("generated"))
 			Expect(res.extError).To(BeFalse())
+		})
+
+		// The request path must never reach the network nor sample album art synchronously. The
+		// worker resolving the same playlist is asserted alongside, so this cannot pass vacuously.
+		It("resolves a playlist locally without fetching remotely or building the grid", func() {
+			conf.Server.EnableM3UExternalAlbumArt = true
+			var hits atomic.Int32
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				hits.Add(1)
+				w.WriteHeader(http.StatusNotFound)
+			}))
+			defer srv.Close()
+
+			plRepo := tests.CreateMockPlaylistRepo()
+			plRepo.SetData(model.Playlists{{ID: "pllocal", Name: "Playlist", ExternalImageURL: srv.URL}})
+			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"t1"}}
+			ds.MockedPlaylist = plRepo
+			item := model.ArtworkQueueItem{ItemKind: "pl", ItemID: "pllocal"}
+
+			res, err := resolveItemLocal(ctx, ds, ffm, item)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res.reader).To(BeNil(), "no local source, and the grid is worker-only")
+			Expect(hits.Load()).To(BeZero(), "a request must never reach the network")
+
+			worker, err := resolveItem(ctx, ds, ag, ffm, item, nil)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(worker.reader).ToNot(BeNil())
+			defer worker.reader.Close()
+			Expect(worker.source).To(Equal("generated"), "the worker does build the grid")
+			Expect(hits.Load()).To(Equal(int32(1)), "and the worker does fetch")
 		})
 
 		It("treats an ExternalImageURL 500 as a transient failure and sets extError", func() {
