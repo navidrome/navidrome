@@ -24,18 +24,18 @@ var _ = Describe("ImageStore", func() {
 	})
 
 	It("hashes deterministically", func() {
-		h1, err := HashImage(bytes.NewReader([]byte("some image bytes")))
+		h1, err := hashImage(bytes.NewReader([]byte("some image bytes")))
 		Expect(err).ToNot(HaveOccurred())
-		h2, _ := HashImage(bytes.NewReader([]byte("some image bytes")))
+		h2, _ := hashImage(bytes.NewReader([]byte("some image bytes")))
 		Expect(h1).To(Equal(h2))
 		Expect(h1).To(HaveLen(16))
-		h3, _ := HashImage(bytes.NewReader([]byte("other bytes")))
+		h3, _ := hashImage(bytes.NewReader([]byte("other bytes")))
 		Expect(h3).ToNot(Equal(h1))
 	})
 
 	It("writes sharded and reads back", func() {
 		data := []byte("jpeg-bytes")
-		h, _ := HashImage(bytes.NewReader(data))
+		h, _ := hashImage(bytes.NewReader(data))
 		Expect(store.Write(h, "image/jpeg", bytes.NewReader(data))).To(Succeed())
 
 		Expect(filepath.Join(root, h[0:2], h[2:4], h+".jpg")).To(BeAnExistingFile())
@@ -49,7 +49,7 @@ var _ = Describe("ImageStore", func() {
 
 	It("is idempotent on duplicate writes and preserves the original content", func() {
 		data := []byte("dup")
-		h, _ := HashImage(bytes.NewReader(data))
+		h, _ := hashImage(bytes.NewReader(data))
 		Expect(store.Write(h, "image/png", bytes.NewReader(data))).To(Succeed())
 		// A duplicate write only touches mtime; passing different bytes under the same
 		// hash proves the second reader is never consumed to overwrite the file.
@@ -65,7 +65,7 @@ var _ = Describe("ImageStore", func() {
 
 	It("refreshes the mtime on a duplicate write", func() {
 		data := []byte("touch-me")
-		h, _ := HashImage(bytes.NewReader(data))
+		h, _ := hashImage(bytes.NewReader(data))
 		Expect(store.Write(h, "image/png", bytes.NewReader(data))).To(Succeed())
 		old := time.Now().Add(-2 * time.Hour)
 		Expect(os.Chtimes(store.path(h, "image/png"), old, old)).To(Succeed())
@@ -79,7 +79,7 @@ var _ = Describe("ImageStore", func() {
 
 	It("rewrites the bytes when the existing file vanished before the liveness touch", func() {
 		data := []byte("vanishing")
-		h, _ := HashImage(bytes.NewReader(data))
+		h, _ := hashImage(bytes.NewReader(data))
 		for range 10 {
 			Expect(store.Write(h, "image/png", bytes.NewReader(data))).To(Succeed())
 			Expect(os.Remove(store.path(h, "image/png"))).To(Succeed())
@@ -113,11 +113,11 @@ var _ = Describe("ImageStore", func() {
 
 	It("spares a file newer than the cutoff, removes an aged one", func() {
 		fresh := []byte("fresh")
-		hf, _ := HashImage(bytes.NewReader(fresh))
+		hf, _ := hashImage(bytes.NewReader(fresh))
 		Expect(store.Write(hf, "image/jpeg", bytes.NewReader(fresh))).To(Succeed())
 
 		aged := []byte("aged")
-		ha, _ := HashImage(bytes.NewReader(aged))
+		ha, _ := hashImage(bytes.NewReader(aged))
 		Expect(store.Write(ha, "image/jpeg", bytes.NewReader(aged))).To(Succeed())
 		old := time.Now().Add(-2 * time.Hour)
 		Expect(os.Chtimes(store.path(ha, "image/jpeg"), old, old)).To(Succeed())
@@ -135,10 +135,10 @@ var _ = Describe("ImageStore", func() {
 
 	It("sweeps unknown files, keeps known ones", func() {
 		d1 := []byte("keep-me")
-		h1, _ := HashImage(bytes.NewReader(d1))
+		h1, _ := hashImage(bytes.NewReader(d1))
 		Expect(store.Write(h1, "image/jpeg", bytes.NewReader(d1))).To(Succeed())
 		d2 := []byte("orphan")
-		h2, _ := HashImage(bytes.NewReader(d2))
+		h2, _ := hashImage(bytes.NewReader(d2))
 		Expect(store.Write(h2, "image/jpeg", bytes.NewReader(d2))).To(Succeed())
 
 		old := time.Now().Add(-2 * time.Hour)
@@ -156,7 +156,7 @@ var _ = Describe("ImageStore", func() {
 
 	It("sweeps a stale mime variant of a known hash, keeps the current one", func() {
 		data := []byte("same-bytes")
-		h, _ := HashImage(bytes.NewReader(data))
+		h, _ := hashImage(bytes.NewReader(data))
 		Expect(store.Write(h, "image/png", bytes.NewReader(data))).To(Succeed())
 		Expect(store.Write(h, "image/jpeg", bytes.NewReader(data))).To(Succeed())
 		old := time.Now().Add(-2 * time.Hour)
@@ -178,7 +178,7 @@ var _ = Describe("ImageStore", func() {
 
 	It("keeps young unknown files inside the grace window", func() {
 		d := []byte("fresh-orphan")
-		h, _ := HashImage(bytes.NewReader(d))
+		h, _ := hashImage(bytes.NewReader(d))
 		Expect(store.Write(h, "image/jpeg", bytes.NewReader(d))).To(Succeed())
 
 		removed, err := store.Sweep(ctx, time.Now().Add(-time.Hour), func(string, string) bool { return false })

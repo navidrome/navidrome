@@ -86,7 +86,7 @@ func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (o
 	}
 	log.Debug(ctx, "Artwork: Read resolved image", "kind", item.ItemKind, "id", item.ItemID, "source", res.source, "bytes", len(data))
 
-	hash, err := HashImage(bytes.NewReader(data))
+	hash, err := hashImage(bytes.NewReader(data))
 	if err != nil {
 		log.Warn(ctx, "Artwork: Failed to hash image", "kind", item.ItemKind, "id", item.ItemID, err)
 		return outcomeFailed, nil

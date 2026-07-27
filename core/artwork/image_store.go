@@ -16,14 +16,6 @@ import (
 	"github.com/zeebo/xxh3"
 )
 
-func HashImage(r io.Reader) (string, error) {
-	d := xxh3.New()
-	if _, err := io.Copy(d, r); err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("%016x", d.Sum64()), nil
-}
-
 // ImageStore is the content-addressed store for artwork images that have no
 // library file backing them (external downloads, embedded extractions, generated).
 type ImageStore struct {
@@ -54,6 +46,14 @@ func extForMime(m string) string {
 		return ".webp"
 	}
 	return ".img"
+}
+
+func hashImage(r io.Reader) (string, error) {
+	d := xxh3.New()
+	if _, err := io.Copy(d, r); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%016x", d.Sum64()), nil
 }
 
 // validHash rejects anything but 16 lowercase hex chars: known-absent states carry "",

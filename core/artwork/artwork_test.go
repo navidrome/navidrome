@@ -43,7 +43,7 @@ var _ = Describe("Artwork", func() {
 	// seedFoundStore installs a store-backed found state (bytes in the content-addressed
 	// store, no backing file) and returns the hash.
 	seedFoundStore := func(kind, id string, imgBytes []byte) string {
-		hash, err := HashImage(bytes.NewReader(imgBytes))
+		hash, err := hashImage(bytes.NewReader(imgBytes))
 		Expect(err).ToNot(HaveOccurred())
 		Expect(store.Write(hash, "image/jpeg", bytes.NewReader(imgBytes))).To(Succeed())
 		Expect(artRepo.PutImage(&model.Artwork{Hash: hash, Mime: "image/jpeg"})).To(Succeed())
@@ -116,7 +116,7 @@ var _ = Describe("Artwork", func() {
 
 			// Delete the store file: a warm resize-cache entry must keep serving without
 			// ever touching the original (the stale-serve self-heal).
-			hash, _ := HashImage(bytes.NewReader(coverBytes))
+			hash, _ := hashImage(bytes.NewReader(coverBytes))
 			Expect(store.Remove(hash, "image/jpeg", time.Now().Add(time.Hour))).To(Succeed())
 			Eventually(func(g Gomega) {
 				img2, err := svc.Get(ctx, model.MustParseArtworkID("al-al1"), 100, false)

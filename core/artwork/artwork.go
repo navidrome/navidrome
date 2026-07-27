@@ -225,7 +225,7 @@ func (s *service) serveResolution(ctx context.Context, res resolution, size int,
 	if err != nil {
 		return nil, ErrUnavailable
 	}
-	hash, err := HashImage(bytes.NewReader(data))
+	hash, err := hashImage(bytes.NewReader(data))
 	if err != nil {
 		return nil, ErrUnavailable
 	}

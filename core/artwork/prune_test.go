@@ -76,7 +76,7 @@ var _ = Describe("Prune", func() {
 
 	It("deletes orphan rows and their store files, keeps referenced ones", func() {
 		data := []byte("orphan-bytes")
-		h, _ := HashImage(bytes.NewReader(data))
+		h, _ := hashImage(bytes.NewReader(data))
 		Expect(store.Write(h, "image/jpeg", bytes.NewReader(data))).To(Succeed())
 		old := time.Now().Add(-2 * time.Hour)
 		Expect(os.Chtimes(store.path(h, "image/jpeg"), old, old)).To(Succeed())
@@ -85,7 +85,7 @@ var _ = Describe("Prune", func() {
 		awRepo.OrphanHashes = []string{h}
 
 		kept := []byte("kept-bytes")
-		hk, _ := HashImage(bytes.NewReader(kept))
+		hk, _ := hashImage(bytes.NewReader(kept))
 		Expect(store.Write(hk, "image/jpeg", bytes.NewReader(kept))).To(Succeed())
 		Expect(awRepo.PutImage(&model.Artwork{Hash: hk, Mime: "image/jpeg"})).To(Succeed())
 
@@ -102,7 +102,7 @@ var _ = Describe("Prune", func() {
 
 	It("spares a candidate reacquired between snapshot and delete", func() {
 		data := []byte("reacquired-bytes")
-		h, _ := HashImage(bytes.NewReader(data))
+		h, _ := hashImage(bytes.NewReader(data))
 		Expect(store.Write(h, "image/jpeg", bytes.NewReader(data))).To(Succeed())
 		Expect(awRepo.PutImage(&model.Artwork{Hash: h, Mime: "image/jpeg"})).To(Succeed())
 		ageArtwork(h, time.Now().Add(-2*time.Hour))
@@ -122,7 +122,7 @@ var _ = Describe("Prune", func() {
 
 	It("spares a candidate whose row was freshly recreated (created_at inside the grace window)", func() {
 		data := []byte("fresh-reacquired-bytes")
-		h, _ := HashImage(bytes.NewReader(data))
+		h, _ := hashImage(bytes.NewReader(data))
 		Expect(store.Write(h, "image/jpeg", bytes.NewReader(data))).To(Succeed())
 		// Reacquisition refreshed created_at after the snapshot; still unreferenced.
 		Expect(awRepo.PutImage(&model.Artwork{Hash: h, Mime: "image/jpeg"})).To(Succeed())
@@ -139,7 +139,7 @@ var _ = Describe("Prune", func() {
 
 	It("spares an orphan file freshly touched by an overlapping acquisition", func() {
 		data := []byte("racing-bytes")
-		h, _ := HashImage(bytes.NewReader(data))
+		h, _ := hashImage(bytes.NewReader(data))
 		Expect(store.Write(h, "image/jpeg", bytes.NewReader(data))).To(Succeed())
 		Expect(awRepo.PutImage(&model.Artwork{Hash: h, Mime: "image/jpeg"})).To(Succeed())
 		ageArtwork(h, time.Now().Add(-2*time.Hour))
@@ -156,7 +156,7 @@ var _ = Describe("Prune", func() {
 
 	It("sweeps store files that have no artwork row", func() {
 		stray := []byte("no-row-bytes")
-		h, _ := HashImage(bytes.NewReader(stray))
+		h, _ := hashImage(bytes.NewReader(stray))
 		Expect(store.Write(h, "image/jpeg", bytes.NewReader(stray))).To(Succeed())
 		old := time.Now().Add(-2 * time.Hour)
 		Expect(os.Chtimes(store.path(h, "image/jpeg"), old, old)).To(Succeed())
@@ -169,7 +169,7 @@ var _ = Describe("Prune", func() {
 
 	It("sweeps an obsolete mime variant of a reacquired hash", func() {
 		data := []byte("variant-bytes")
-		h, _ := HashImage(bytes.NewReader(data))
+		h, _ := hashImage(bytes.NewReader(data))
 		Expect(store.Write(h, "image/png", bytes.NewReader(data))).To(Succeed())
 		Expect(store.Write(h, "image/jpeg", bytes.NewReader(data))).To(Succeed())
 		old := time.Now().Add(-2 * time.Hour)
@@ -195,14 +195,14 @@ var _ = Describe("Prune", func() {
 		old := time.Now().Add(-2 * time.Hour)
 
 		blocked := []byte("blocked-bytes")
-		hb, _ := HashImage(bytes.NewReader(blocked))
+		hb, _ := hashImage(bytes.NewReader(blocked))
 		Expect(store.Write(hb, "image/jpeg", bytes.NewReader(blocked))).To(Succeed())
 		Expect(os.Chtimes(store.path(hb, "image/jpeg"), old, old)).To(Succeed())
 		Expect(awRepo.PutImage(&model.Artwork{Hash: hb, Mime: "image/jpeg"})).To(Succeed())
 		ageArtwork(hb, old)
 
 		good := []byte("good-bytes")
-		hg, _ := HashImage(bytes.NewReader(good))
+		hg, _ := hashImage(bytes.NewReader(good))
 		Expect(store.Write(hg, "image/jpeg", bytes.NewReader(good))).To(Succeed())
 		Expect(os.Chtimes(store.path(hg, "image/jpeg"), old, old)).To(Succeed())
 		Expect(awRepo.PutImage(&model.Artwork{Hash: hg, Mime: "image/jpeg"})).To(Succeed())
@@ -242,7 +242,7 @@ var _ = Describe("Prune", func() {
 		ds.MockedArtwork = &flakyGetArtworkRepo{MockArtworkRepo: tests.CreateMockArtworkRepo()}
 
 		data := []byte("live-bytes")
-		h, _ := HashImage(bytes.NewReader(data))
+		h, _ := hashImage(bytes.NewReader(data))
 		Expect(store.Write(h, "image/jpeg", bytes.NewReader(data))).To(Succeed())
 
 		Expect(prune(context.Background(), ds, store)).ToNot(Succeed())
