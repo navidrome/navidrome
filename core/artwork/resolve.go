@@ -32,6 +32,27 @@ type resolution struct {
 	localError bool
 }
 
+// chainState carries what a priority walk has seen so far. A hit takes extErr with it so a
+// transient external failure still schedules a retry, but not localErr: a local candidate a
+// later source recovered from is re-listed by the scanner when it actually changes.
+type chainState struct{ extErr, localErr bool }
+
+// try reports a hit, stamping the accumulated external failure onto it, and otherwise records
+// the miss. Folding both into one call is what keeps the OR from being forgotten at a new site.
+func (c *chainState) try(res resolution, ok bool) (resolution, bool) {
+	if ok {
+		res.extError = c.extErr
+		return res, true
+	}
+	c.localErr = c.localErr || res.localError
+	return resolution{}, false
+}
+
+// exhausted is the outcome when no source in the chain yielded an image.
+func (c *chainState) exhausted() resolution {
+	return resolution{extError: c.extErr, localError: c.localErr}
+}
+
 // externalSource is the ability to reach the network: which agents to ask, and the per-agent
 // rate limiter and circuit breaker to ask them through.
 type externalSource struct {
@@ -110,33 +131,27 @@ func (r *resolver) resolveAlbum(ctx context.Context, albumID string) (resolution
 		return resolution{}, err
 	}
 
-	var extErr, localErr bool
+	var chain chainState
 	for pattern := range strings.SplitSeq(strings.ToLower(conf.Server.CoverArtPriority), ",") {
 		pattern = strings.TrimSpace(pattern)
 		switch {
 		case pattern == "embedded":
-			res, ok := resolveEmbedded(ctx, lib, r.ffmpeg, al.EmbedArtPath)
-			if ok {
-				res.extError = extErr
+			if res, ok := chain.try(resolveEmbedded(ctx, lib, r.ffmpeg, al.EmbedArtPath)); ok {
 				return res, nil
 			}
-			localErr = localErr || res.localError
 		case pattern == "external":
 			if rd, name, isErr := r.fetchExternalAlbum(ctx, *al); rd != nil {
 				return resolution{reader: rd, source: "external:" + name}, nil
 			} else if isErr {
-				extErr = true
+				chain.extErr = true
 			}
 		case len(imgFiles) > 0:
-			res, ok := resolveFolderFile(ctx, lib, imgFiles, pattern)
-			if ok {
-				res.extError = extErr
+			if res, ok := chain.try(resolveFolderFile(ctx, lib, imgFiles, pattern)); ok {
 				return res, nil
 			}
-			localErr = localErr || res.localError
 		}
 	}
-	return resolution{extError: extErr, localError: localErr}, nil
+	return chain.exhausted(), nil
 }
 
 // resolveArtist ports the upload/folder/external selection from
@@ -182,7 +197,7 @@ func (r *resolver) resolveArtist(ctx context.Context, artistID string) (resoluti
 		}
 	}
 
-	var extErr, localErr bool
+	var chain chainState
 	for pattern := range strings.SplitSeq(strings.ToLower(conf.Server.ArtistArtPriority), ",") {
 		pattern = strings.TrimSpace(pattern)
 		switch {
@@ -190,38 +205,29 @@ func (r *resolver) resolveArtist(ctx context.Context, artistID string) (resoluti
 			if rd, name, isErr := r.fetchExternalArtist(ctx, *ar); rd != nil {
 				return resolution{reader: rd, source: "external:" + name}, nil
 			} else if isErr {
-				extErr = true
+				chain.extErr = true
 			}
 		case pattern == "image-folder":
-			res, ok := resolveArtistImageFolder(ar)
-			if ok {
-				res.extError = extErr
+			if res, ok := chain.try(resolveArtistImageFolder(ar)); ok {
 				return res, nil
 			}
-			localErr = localErr || res.localError
 		case strings.HasPrefix(pattern, "album/"):
 			if lib.FS == nil {
 				continue
 			}
-			res, ok := resolveFolderFile(ctx, lib, imgFiles, strings.TrimPrefix(pattern, "album/"))
-			if ok {
-				res.extError = extErr
+			if res, ok := chain.try(resolveFolderFile(ctx, lib, imgFiles, strings.TrimPrefix(pattern, "album/"))); ok {
 				return res, nil
 			}
-			localErr = localErr || res.localError
 		default:
 			if lib.FS == nil || artistFolder == "" {
 				continue
 			}
-			res, ok := resolveArtistFolderPattern(ctx, lib, artistFolder, pattern)
-			if ok {
-				res.extError = extErr
+			if res, ok := chain.try(resolveArtistFolderPattern(ctx, lib, artistFolder, pattern)); ok {
 				return res, nil
 			}
-			localErr = localErr || res.localError
 		}
 	}
-	return resolution{extError: extErr, localError: localErr}, nil
+	return chain.exhausted(), nil
 }
 
 // resolvePlaylist ports reader_playlist.go's chain: uploaded image, sidecar,
@@ -232,7 +238,7 @@ func (r *resolver) resolvePlaylist(ctx context.Context, playlistID string) (reso
 		return resolution{}, err
 	}
 
-	var extErr, localErr bool
+	var extErr bool
 	for _, src := range []struct{ path, source string }{
 		{pl.UploadedImagePath(), "upload"},
 		{findPlaylistSidecarPath(ctx, pl.Path), "folder"},
@@ -308,7 +314,7 @@ func (r *resolver) resolvePlaylist(ctx context.Context, playlistID string) (reso
 		if tileErr != nil {
 			return resolution{}, fmt.Errorf("resolvePlaylist: sampled album art failed: %w", tileErr)
 		}
-		return resolution{extError: extErr, localError: localErr}, nil
+		return resolution{extError: extErr}, nil
 	}
 	// Grow to 4 tiles by repeating what we have, mirroring reader_playlist.go's loadTiles.
 	switch len(tiles) {
