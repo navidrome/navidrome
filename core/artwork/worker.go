@@ -49,20 +49,11 @@ type drainPool struct {
 	wake        chan struct{}
 }
 
-// workerDeps are the collaborators processItem needs. The resolver is built once by NewWorker
-// rather than per item; pruneLock is nil only in tests, where nothing prunes.
-type workerDeps struct {
-	ds        model.DataStore
-	store     *ImageStore
-	resolver  *resolver
-	pruneLock sync.Locker
-}
-
-// Worker drains the artwork queue through processItem: each external agent is rate-limited
+// Worker drains the artwork queue through the processor: each external agent is rate-limited
 // and circuit-broken independently, and prune is serialized against the store-write window
 // via pruneMu.
 type Worker struct {
-	deps    workerDeps
+	proc    *processor
 	cache   cache.FileCache
 	ffmpeg  ffmpeg.FFmpeg
 	broker  events.Broker
@@ -76,7 +67,7 @@ type Worker struct {
 
 func NewWorker(ds model.DataStore, store *ImageStore, ag *agents.Agents, ffmpeg ffmpeg.FFmpeg, broker events.Broker, imgCache cache.FileCache) *Worker {
 	w := &Worker{
-		deps:   workerDeps{ds: ds, store: store},
+		proc:   &processor{ds: ds, store: store},
 		cache:  imgCache,
 		ffmpeg: ffmpeg,
 		broker: broker,
@@ -84,8 +75,8 @@ func NewWorker(ds model.DataStore, store *ImageStore, ag *agents.Agents, ffmpeg 
 		runCtx: context.Background(),
 		gates:  map[string]*extGate{},
 	}
-	w.deps.resolver = newResolver(ds, ag, ffmpeg, w.gate)
-	w.deps.pruneLock = w.pruneMu.RLocker()
+	w.proc.resolver = newResolver(ds, ag, ffmpeg, w.gate)
+	w.proc.pruneLock = w.pruneMu.RLocker()
 	return w
 }
 
@@ -159,7 +150,7 @@ func (w *Worker) Bump(kind, id string) {
 		ImageType: model.ImageTypePrimary,
 		Priority:  model.ArtworkPriorityBump,
 	}
-	if err := w.deps.ds.ArtworkQueue(context.Background()).Enqueue(item); err != nil {
+	if err := w.proc.ds.ArtworkQueue(context.Background()).Enqueue(item); err != nil {
 		log.Warn("Artwork: Could not bump queue item", "kind", kind, "id", id, err)
 		return
 	}
@@ -178,14 +169,14 @@ func (w *Worker) Bump(kind, id string) {
 func (w *Worker) RunPrune(ctx context.Context) error {
 	w.pruneMu.Lock()
 	defer w.pruneMu.Unlock()
-	return prune(ctx, w.deps.ds, w.deps.store)
+	return prune(ctx, w.proc.ds, w.proc.store)
 }
 
 func (w *Worker) drain(ctx context.Context, concurrency int, kinds ...string) (int, error) {
 	// Dequeue well past the worker pool so a slow item (an external lookup burning its
 	// timeout) never idles the other slots: the pool stays fed until the batch runs out.
 	// DequeueBatch does not mark rows taken, so this is one query per pass, not per slot.
-	items, err := w.deps.ds.ArtworkQueue(ctx).DequeueBatch(max(16, 4*concurrency), kinds...)
+	items, err := w.proc.ds.ArtworkQueue(ctx).DequeueBatch(max(16, 4*concurrency), kinds...)
 	if err != nil {
 		return 0, err
 	}
@@ -194,7 +185,7 @@ func (w *Worker) drain(ctx context.Context, concurrency int, kinds ...string) (i
 	}
 	// Resolved only once there is work, and per drain rather than per item: the worker needs an
 	// admin identity for private playlists, and can start before any admin exists.
-	ctx = auth.WithAdminUser(ctx, w.deps.ds)
+	ctx = auth.WithAdminUser(ctx, w.proc.ds)
 	sem := make(chan struct{}, concurrency)
 	var wg sync.WaitGroup
 	var refreshMu sync.Mutex
@@ -266,9 +257,9 @@ func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) (outc
 	if item.ImageType == "" {
 		item.ImageType = model.ImageTypePrimary
 	}
-	out, got := processItem(ctx, &w.deps, item)
+	out, got := w.proc.acquire(ctx, item)
 
-	queue := w.deps.ds.ArtworkQueue(ctx)
+	queue := w.proc.ds.ArtworkQueue(ctx)
 	switch out {
 	case outcomeFound, outcomeAbsent:
 		// DeleteIfUnchanged, not Delete: a scan that re-enqueued this row mid-flight reset
@@ -291,7 +282,7 @@ func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) (outc
 		// being served is kept, since exhaustion means the source stayed unreachable rather
 		// than that the entity lost its cover.
 		if out == outcomeFailed && hasRecheckPath(item.ItemKind) && !w.hasResolvedArtwork(ctx, item) {
-			writeAbsent(ctx, w.deps.ds.Artwork(ctx), item)
+			writeAbsent(ctx, w.proc.ds.Artwork(ctx), item)
 		}
 		if err := queue.DeleteIfUnchanged(item.ItemKind, item.ItemID, item.ImageType, item.RetryAt); err != nil {
 			log.Warn(ctx, "Artwork: Could not remove exhausted queue item", "kind", item.ItemKind, "id", item.ItemID, err)
@@ -306,7 +297,7 @@ func (w *Worker) hasResolvedArtwork(ctx context.Context, item model.ArtworkQueue
 	if !ok {
 		return false
 	}
-	ia, err := w.deps.ds.Artwork(ctx).GetItemArtwork(kind, item.ItemID, item.ImageType)
+	ia, err := w.proc.ds.Artwork(ctx).GetItemArtwork(kind, item.ItemID, item.ImageType)
 	return err == nil && ia.Hash != ""
 }
 
@@ -336,7 +327,7 @@ func (w *Worker) precache(ctx context.Context, got *acquired) {
 }
 
 // gate wraps a named external step with that agent's own rate limiter and circuit
-// breaker, matching gateFunc so it can be injected via workerDeps.gate.
+// breaker, matching gateFunc so it can be handed to the processor's resolver.
 func (w *Worker) gate(name string, f func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error) {
 	g := w.gateFor(name)
 	if !g.breaker.allow() {

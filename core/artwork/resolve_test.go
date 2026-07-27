@@ -620,7 +620,7 @@ var _ = Describe("resolveItem", func() {
 	})
 })
 
-// decodeTile runs on every sampled album's resolved bytes before processItem's
+// decodeTile runs on every sampled album's resolved bytes before the processor's
 // own guards apply, so it must enforce the same caps independently.
 var _ = Describe("decodeTile", func() {
 	It("rejects a decompression bomb before the full decode", func() {

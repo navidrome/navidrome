@@ -22,7 +22,7 @@ import (
 const soakCycles = 2200
 
 var _ = Describe("Worker soak", func() {
-	// Runs processItem over many cycles across a mix of sources, asserting
+	// Runs acquisition over many cycles across a mix of sources, asserting
 	// goroutines/heap plateau instead of growing unbounded (a leak guard). Skipped under -short.
 	It("does not leak goroutines, heap, or fds over many acquisition cycles", func() {
 		if testing.Short() {
@@ -54,7 +54,7 @@ var _ = Describe("Worker soak", func() {
 			MockedAlbum:   albumRepo,
 		}
 		store := NewImageStore(GinkgoT().TempDir())
-		deps := &workerDeps{ds: ds, store: store, resolver: newResolver(ds, ag, ffm, nil)}
+		proc := &processor{ds: ds, store: store, resolver: newResolver(ds, ag, ffm, nil)}
 		conf.Server.CoverArtPriority = "cover.jpg, embedded"
 
 		// Dangling refs (al/ra ids the repos don't know about) mirror an entity
@@ -100,7 +100,7 @@ var _ = Describe("Worker soak", func() {
 		start := time.Now()
 		for i := range soakCycles {
 			it := items[i%len(items)]
-			out, _ := processItem(context.Background(), deps, it)
+			out, _ := proc.acquire(context.Background(), it)
 
 			// "Serve-adjacent" read-back: exercise the Phase 2 surfaces a caller would
 			// use after acquisition, not the old serving pipeline.

@@ -462,7 +462,7 @@ func mtimeViaFS(fsys fs.FS, name string) int64 {
 
 // decodeTile and assembleTiles mirror playlistArtworkReader's createTile/
 // createTiledImage, reusing the same rect/fillCenter cropping helpers.
-// decodeTile runs on every sampled album's resolved bytes before processItem's
+// decodeTile runs on every sampled album's resolved bytes before the processor's
 // own maxImageBytes/maxImagePixels guards apply, so it enforces them itself too.
 func decodeTile(r io.ReadCloser) (image.Image, error) {
 	data, err := readCapped(r)

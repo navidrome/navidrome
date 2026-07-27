@@ -9,6 +9,7 @@ import (
 	"image/draw"
 	_ "image/gif" // the only artwork format with no other importer in this package
 	"io"
+	"sync"
 	"time"
 
 	"github.com/navidrome/navidrome/core/artwork/blurhash"
@@ -41,7 +42,7 @@ const maxImageBytes = 20 << 20
 // huge canvas that image.Decode would expand into gigabytes (decompression bomb).
 const maxImagePixels = 64 << 20
 
-// acquired is what processItem persisted, handed back so the caller can warm the resize
+// acquired is what a successful acquire persisted, handed back so the caller can warm the resize
 // cache without re-reading the rows and the file it just wrote.
 type acquired struct {
 	ia   *model.ItemArtwork
@@ -49,12 +50,21 @@ type acquired struct {
 	data []byte
 }
 
-// processItem resolves one queue item end to end: find an image, hash/decode/
-// blurhash it, place its bytes, and persist the resulting state.
-func processItem(ctx context.Context, deps *workerDeps, item model.ArtworkQueueItem) (outcome, *acquired) {
-	repo := deps.ds.Artwork(ctx)
+// processor turns one queue item into stored artwork. It owns acquisition only — settling the
+// queue row afterwards is the Worker's job. pruneLock is nil in tests, where nothing prunes.
+type processor struct {
+	ds        model.DataStore
+	store     *ImageStore
+	resolver  *resolver
+	pruneLock sync.Locker
+}
 
-	res, err := deps.resolver.resolve(ctx, item)
+// acquire resolves one queue item end to end: find an image, hash/decode/
+// blurhash it, place its bytes, and persist the resulting state.
+func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (outcome, *acquired) {
+	repo := p.ds.Artwork(ctx)
+
+	res, err := p.resolver.resolve(ctx, item)
 	if err != nil {
 		log.Warn(ctx, "Artwork: Could not resolve item", "kind", item.ItemKind, "id", item.ItemID, err)
 		return outcomeFailed, nil
@@ -98,7 +108,7 @@ func processItem(ctx context.Context, deps *workerDeps, item model.ArtworkQueueI
 	}
 	art.SizeBytes = int64(len(data))
 
-	ia, err := persist(deps, repo, item, art, res, data)
+	ia, err := p.persist(repo, item, art, res, data)
 	if err != nil {
 		log.Warn(ctx, "Artwork: Failed to persist resolved image", "kind", item.ItemKind, "id", item.ItemID, err)
 		return outcomeFailed, nil
@@ -113,14 +123,14 @@ func processItem(ctx context.Context, deps *workerDeps, item model.ArtworkQueueI
 // persist places the bytes and commits the rows referencing them. Only this window excludes
 // Prune, which reclaims store files no row points at; resolution stays outside so a slow fetch
 // cannot hold prune off.
-func persist(deps *workerDeps, repo model.ArtworkRepository, item model.ArtworkQueueItem,
+func (p *processor) persist(repo model.ArtworkRepository, item model.ArtworkQueueItem,
 	art *model.Artwork, res resolution, data []byte,
 ) (*model.ItemArtwork, error) {
-	if deps.pruneLock != nil {
-		deps.pruneLock.Lock()
-		defer deps.pruneLock.Unlock()
+	if p.pruneLock != nil {
+		p.pruneLock.Lock()
+		defer p.pruneLock.Unlock()
 	}
-	sourcePath, refMtime, err := placeBytes(deps.store, art, res, data)
+	sourcePath, refMtime, err := placeBytes(p.store, art, res, data)
 	if err != nil {
 		return nil, fmt.Errorf("writing image store: %w", err)
 	}

@@ -37,7 +37,7 @@ func pngHeaderWithDims(w, h uint32) []byte {
 	return binary.BigEndian.AppendUint32(out, crc32.ChecksumIEEE(chunk))
 }
 
-var _ = Describe("processItem", func() {
+var _ = Describe("processor.acquire", func() {
 	var (
 		ctx        context.Context
 		ds         *tests.MockDataStore
@@ -48,7 +48,7 @@ var _ = Describe("processItem", func() {
 		store      *ImageStore
 		artRepo    *tests.MockArtworkRepo
 		repoRoot   string
-		deps       *workerDeps
+		proc       *processor
 	)
 
 	BeforeEach(func() {
@@ -71,7 +71,7 @@ var _ = Describe("processItem", func() {
 		}
 		ds.MockedAlbum = tests.CreateMockAlbumRepo()
 		store = NewImageStore(GinkgoT().TempDir())
-		deps = &workerDeps{ds: ds, store: store, resolver: newResolver(ds, ag, ffm, nil)}
+		proc = &processor{ds: ds, store: store, resolver: newResolver(ds, ag, ffm, nil)}
 
 		conf.Server.CoverArtPriority = "cover.jpg, embedded"
 	})
@@ -85,7 +85,7 @@ var _ = Describe("processItem", func() {
 			{ID: "al1", Name: "Album", FolderIDs: []string{"f1"}},
 		})
 
-		out, _ := processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al1"})
+		out, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al1"})
 		Expect(out).To(Equal(outcomeFound))
 
 		ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al1", model.ImageTypePrimary)
@@ -106,7 +106,7 @@ var _ = Describe("processItem", func() {
 
 		BeforeEach(func() {
 			lock = &countingLocker{}
-			deps.pruneLock = lock
+			proc.pruneLock = lock
 		})
 
 		It("holds it once across the write window", func() {
@@ -118,10 +118,10 @@ var _ = Describe("processItem", func() {
 				{ID: "alL1", Name: "Album", FolderIDs: []string{"f1"}},
 			})
 
-			out, _ := processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alL1"})
+			out, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alL1"})
 			Expect(out).To(Equal(outcomeFound))
 			Expect(lock.locks).To(BeNumerically(">", 0), "the write window must exclude prune")
-			Expect(lock.held()).To(BeFalse(), "the window must close before processItem returns")
+			Expect(lock.held()).To(BeFalse(), "the window must close before acquire returns")
 		})
 
 		// Resolution can reach the network under its own timeout, so holding the lock across it
@@ -132,7 +132,7 @@ var _ = Describe("processItem", func() {
 				{ID: "alL2", Name: "Album", FolderIDs: []string{"f1"}},
 			})
 
-			out, _ := processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alL2"})
+			out, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alL2"})
 			Expect(out).To(Equal(outcomeAbsent))
 			Expect(lock.locks).To(BeZero())
 		})
@@ -144,7 +144,7 @@ var _ = Describe("processItem", func() {
 		})
 		folderRepo.result = nil
 
-		out, _ := processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al2"})
+		out, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al2"})
 		Expect(out).To(Equal(outcomeFound))
 
 		ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al2", model.ImageTypePrimary)
@@ -167,7 +167,7 @@ var _ = Describe("processItem", func() {
 			{ID: "al3", Name: "Album"},
 		})
 
-		out, _ := processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al3"})
+		out, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al3"})
 		Expect(out).To(Equal(outcomeAbsent))
 
 		ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al3", model.ImageTypePrimary)
@@ -189,7 +189,7 @@ var _ = Describe("processItem", func() {
 			{ID: "al-io", Name: "Album", FolderIDs: []string{"f1"}},
 		})
 
-		out, _ := processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al-io"})
+		out, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al-io"})
 		Expect(out).To(Equal(outcomeFailed))
 
 		_, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al-io", model.ImageTypePrimary)
@@ -216,7 +216,7 @@ var _ = Describe("processItem", func() {
 		DeferCleanup(func() { _ = os.Chmod(upload, 0o600) })
 		radioRepo.Data["ra-io"] = &model.Radio{ID: "ra-io", Name: "Station", UploadedImage: "ra-io.jpg"}
 
-		out, _ := processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "ra", ItemID: "ra-io"})
+		out, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "ra", ItemID: "ra-io"})
 		Expect(out).To(Equal(outcomeFailed))
 
 		_, err := artRepo.GetItemArtwork(model.KindRadioArtwork, "ra-io", model.ImageTypePrimary)
@@ -230,7 +230,7 @@ var _ = Describe("processItem", func() {
 		})
 		imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 
-		out, _ := processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al4"})
+		out, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al4"})
 		Expect(out).To(Equal(outcomeFailed))
 
 		_, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al4", model.ImageTypePrimary)
@@ -248,7 +248,7 @@ var _ = Describe("processItem", func() {
 		})
 		imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 
-		out, _ := processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alstale"})
+		out, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alstale"})
 		Expect(out).To(Equal(outcomeFoundStale))
 
 		ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "alstale", model.ImageTypePrimary)
@@ -269,7 +269,7 @@ var _ = Describe("processItem", func() {
 		ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "alext", Name: "Album"}})
 		imageAgents(&fakeImageAgent{name: "deezerFake", imgs: []agents.ExternalImage{{URL: srv.URL, Size: 500}}})
 
-		out, _ := processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alext"})
+		out, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alext"})
 		Expect(out).To(Equal(outcomeFound))
 
 		ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "alext", model.ImageTypePrimary)
@@ -295,7 +295,7 @@ var _ = Describe("processItem", func() {
 			{ID: "al6", Name: "Album B", FolderIDs: []string{"f1"}},
 		})
 
-		out1, _ := processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al5"})
+		out1, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al5"})
 		Expect(out1).To(Equal(outcomeFound))
 		ia1, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al5", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
@@ -306,7 +306,7 @@ var _ = Describe("processItem", func() {
 		poisoned.BlurHash = "SENTINEL"
 		artRepo.Data[ia1.Hash] = poisoned
 
-		out2, _ := processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al6"})
+		out2, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al6"})
 		Expect(out2).To(Equal(outcomeFound))
 		ia2, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al6", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
@@ -337,7 +337,7 @@ var _ = Describe("processItem", func() {
 		})
 
 		folderRepo.result = []model.Folder{{Path: "album-a", ImageFiles: []string{"cover.jpg"}}}
-		outN, _ := processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alA"})
+		outN, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alA"})
 		Expect(outN).To(Equal(outcomeFound))
 		iaA, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "alA", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
@@ -351,7 +351,7 @@ var _ = Describe("processItem", func() {
 		artRepo.Data[iaA.Hash] = poisoned
 
 		folderRepo.result = []model.Folder{{Path: "album-b", ImageFiles: []string{"cover.jpg"}}}
-		outN, _ = processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alB"})
+		outN, _ = proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alB"})
 		Expect(outN).To(Equal(outcomeFound))
 		iaB, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "alB", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
@@ -383,7 +383,7 @@ var _ = Describe("processItem", func() {
 		radioRepo.Data = map[string]*model.Radio{"ra1": {ID: "ra1", Name: "Radio", UploadedImage: "ra1_test.jpg"}}
 		ds.MockedRadio = radioRepo
 
-		out, _ := processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "ra", ItemID: "ra1"})
+		out, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "ra", ItemID: "ra1"})
 		Expect(out).To(Equal(outcomeFailed))
 
 		_, err := artRepo.GetItemArtwork(model.KindRadioArtwork, "ra1", model.ImageTypePrimary)
@@ -404,7 +404,7 @@ var _ = Describe("processItem", func() {
 		radioRepo.Data = map[string]*model.Radio{"big": {ID: "big", Name: "Radio", UploadedImage: "big_test.jpg"}}
 		ds.MockedRadio = radioRepo
 
-		out, _ := processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "ra", ItemID: "big"})
+		out, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "ra", ItemID: "big"})
 		Expect(out).To(Equal(outcomeFailed))
 
 		_, err = artRepo.GetItemArtwork(model.KindRadioArtwork, "big", model.ImageTypePrimary)
@@ -441,9 +441,9 @@ var _ = Describe("processItem", func() {
 		// A store root that is a plain file makes every MkdirAll under it fail.
 		blockedRoot := filepath.Join(GinkgoT().TempDir(), "not-a-dir")
 		Expect(os.WriteFile(blockedRoot, []byte("x"), 0600)).To(Succeed())
-		deps.store = NewImageStore(blockedRoot)
+		proc.store = NewImageStore(blockedRoot)
 
-		out, _ := processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al7"})
+		out, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al7"})
 		Expect(out).To(Equal(outcomeFailed))
 
 		_, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al7", model.ImageTypePrimary)
@@ -452,7 +452,7 @@ var _ = Describe("processItem", func() {
 })
 
 // countingLocker stands in for the worker's prune read-lock, recording how often and how long
-// processItem holds it.
+// acquire holds it.
 type countingLocker struct {
 	locks   int
 	unlocks int
