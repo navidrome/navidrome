@@ -159,17 +159,20 @@ func (w *Worker) RunPrune(ctx context.Context) error {
 	return prune(ctx, w.proc.ds, w.proc.store)
 }
 
-// Backfill, EnqueueStaleAbsentAll and EnqueueMissingAll are the scheduler's entry points into
-// housekeeping. Like RunPrune they exist so a caller needs only the Worker, not a second
-// DataStore handle onto the state the Worker already owns.
+// Backfill enqueues every entity for re-resolution when the artwork config fingerprint has
+// changed since the last run, artists first. It reports whether anything was enqueued.
 func (w *Worker) Backfill(ctx context.Context) (bool, error) {
 	return backfill(ctx, w.proc.ds)
 }
 
+// EnqueueStaleAbsentAll requeues known-absent entries older than staleAbsentAge, so artwork
+// that appeared since the last attempt is eventually picked up.
 func (w *Worker) EnqueueStaleAbsentAll(ctx context.Context) error {
 	return enqueueStaleAbsentAll(ctx, w.proc.ds)
 }
 
+// EnqueueMissingAll requeues entities that have no artwork state row at all: the safety net
+// for anything a scan never enqueued.
 func (w *Worker) EnqueueMissingAll(ctx context.Context) error {
 	return enqueueMissingAll(ctx, w.proc.ds)
 }
