@@ -12,6 +12,8 @@ import (
 const pruneMinAge = time.Hour
 
 func prune(ctx context.Context, ds model.DataStore, store *ImageStore) error {
+	start := time.Now()
+	defer func() { log.Debug(ctx, "Artwork: Prune finished", "elapsed", time.Since(start)) }()
 	repo := ds.Artwork(ctx)
 
 	purged, err := repo.PurgeDanglingItemArtwork()

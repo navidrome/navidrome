@@ -20,7 +20,7 @@ func TestArtworkBreakerHalfOpen(t *testing.T) {
 		b := newBreaker()
 
 		for range breakerThreshold {
-			b.record(errors.New("boom"))
+			b.record("agentA", errors.New("boom"))
 		}
 		g.Expect(b.allow()).To(BeFalse(), "breaker opens after consecutive errors")
 
@@ -31,11 +31,11 @@ func TestArtworkBreakerHalfOpen(t *testing.T) {
 		g.Expect(b.allow()).To(BeTrue(), "half-open: one probe is granted")
 		g.Expect(b.allow()).To(BeFalse(), "only a single probe per interval")
 
-		b.record(errors.New("boom")) // probe fails -> stay open
+		b.record("agentA", errors.New("boom")) // probe fails -> stay open
 		time.Sleep(breakerProbeAfter)
 		g.Expect(b.allow()).To(BeTrue(), "another probe after the next interval")
 
-		b.record(nil) // probe succeeds -> close
+		b.record("agentA", nil) // probe succeeds -> close
 		g.Expect(b.allow()).To(BeTrue(), "closed breaker admits freely")
 		g.Expect(b.allow()).To(BeTrue())
 	})

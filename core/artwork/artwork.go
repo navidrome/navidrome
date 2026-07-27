@@ -184,6 +184,8 @@ func openOriginal(ia *model.ItemArtwork, mime string, store *ImageStore) (io.Rea
 		}
 		if ia.RefMtime != 0 && info.ModTime().UnixNano() != ia.RefMtime {
 			f.Close()
+			log.Debug("Artwork: Backing file changed since resolution", "path", ia.SourcePath,
+				"hash", ia.Hash, "resolvedMtime", ia.RefMtime, "currentMtime", info.ModTime().UnixNano())
 			return nil, errStaleSource
 		}
 		return f, nil
@@ -196,6 +198,8 @@ func openOriginal(ia *model.ItemArtwork, mime string, store *ImageStore) (io.Rea
 			return nil, err
 		}
 		if info.ModTime().UnixNano() != ia.RefMtime {
+			log.Debug("Artwork: Source file changed since resolution", "path", ia.SourcePath,
+				"hash", ia.Hash, "resolvedMtime", ia.RefMtime, "currentMtime", info.ModTime().UnixNano())
 			return nil, errStaleSource
 		}
 	}
@@ -211,6 +215,8 @@ func (s *service) provisional(ctx context.Context, artID model.ArtworkID, size i
 		return nil, err
 	}
 	s.enqueue(ctx, artID, model.ArtworkPriorityBump)
+	log.Debug(ctx, "Artwork: Provisional read-through, no state row yet", "artID", artID,
+		"source", res.source, "hit", res.reader != nil)
 	return s.serveResolution(ctx, res, size, square)
 }
 
@@ -322,6 +328,7 @@ func (s *service) serveDisc(ctx context.Context, artID model.ArtworkID, size int
 // dangling enqueues a re-resolution at Scan priority and reports the artwork as
 // unavailable, leaving the state row untouched.
 func (s *service) dangling(ctx context.Context, artID model.ArtworkID) (*Image, error) {
+	log.Debug(ctx, "Artwork: State row points at bytes we cannot serve, re-resolving", "artID", artID)
 	s.enqueue(ctx, artID, model.ArtworkPriorityScan)
 	return nil, ErrUnavailable
 }

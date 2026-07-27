@@ -152,7 +152,7 @@ func (d *discArtworkReader) fromDiscSubtitle(ctx context.Context, subtitle strin
 			}
 			f, err := d.lib.FS.Open(file)
 			if err != nil {
-				log.Warn(ctx, "Could not open disc art file", "file", file, err)
+				log.Warn(ctx, "Artwork: Could not open disc art file", "file", file, err)
 				continue
 			}
 			return f, file, nil
@@ -210,7 +210,7 @@ func (d *discArtworkReader) fromExternalFile(ctx context.Context, pattern string
 			name := strings.ToLower(path.Base(file))
 			match, err := filepath.Match(pattern, name)
 			if err != nil {
-				log.Warn(ctx, "Error matching disc art file to pattern", "pattern", pattern, "file", file)
+				log.Warn(ctx, "Artwork: Error matching disc art file to pattern", "pattern", pattern, "file", file)
 				continue
 			}
 			if !match {
@@ -224,7 +224,7 @@ func (d *discArtworkReader) fromExternalFile(ctx context.Context, pattern string
 					}
 					f, err := d.lib.FS.Open(file)
 					if err != nil {
-						log.Warn(ctx, "Could not open disc art file", "file", file, err)
+						log.Warn(ctx, "Artwork: Could not open disc art file", "file", file, err)
 						continue
 					}
 					return f, file, nil
@@ -240,7 +240,7 @@ func (d *discArtworkReader) fromExternalFile(ctx context.Context, pattern string
 		for _, file := range fallbacks {
 			f, err := d.lib.FS.Open(file)
 			if err != nil {
-				log.Warn(ctx, "Could not open disc art file", "file", file, err)
+				log.Warn(ctx, "Artwork: Could not open disc art file", "file", file, err)
 				continue
 			}
 			return f, file, nil

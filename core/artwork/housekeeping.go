@@ -48,6 +48,7 @@ func fingerprint() string {
 // backfill enqueues artwork resolution for every entity when the config fingerprint changed
 // (or was never stored), artists first so those pages resolve before the larger backlog.
 func backfill(ctx context.Context, ds model.DataStore) (bool, error) {
+	start := time.Now()
 	ctx = auth.WithAdminUser(ctx, ds)
 	current := fingerprint()
 	props := ds.Property(ctx)
@@ -82,7 +83,7 @@ func backfill(ctx context.Context, ds model.DataStore) (bool, error) {
 	if err := props.Put(consts.ArtConfFingerprintPropertyKey, current); err != nil {
 		return false, err
 	}
-	log.Info(ctx, "Artwork: Config fingerprint changed, backfill enqueued")
+	log.Info(ctx, "Artwork: Config fingerprint changed, backfill enqueued", "elapsed", time.Since(start))
 	return true, nil
 }
 

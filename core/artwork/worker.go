@@ -188,6 +188,7 @@ func (w *Worker) drain(ctx context.Context, concurrency int, kinds ...string) (i
 	if len(items) == 0 {
 		return 0, nil
 	}
+	drainStart := time.Now()
 	// Resolved only once there is work, and per drain rather than per item: the worker needs an
 	// admin identity for private playlists, and can start before any admin exists.
 	ctx = auth.WithAdminUser(ctx, w.proc.ds)
@@ -222,6 +223,8 @@ func (w *Worker) drain(ctx context.Context, concurrency int, kinds ...string) (i
 	}
 	wg.Wait()
 	w.broadcastRefresh(ctx, refresh)
+	log.Debug(ctx, "Artwork: Drained a batch", "kinds", kinds, "items", len(items),
+		"refreshed", len(refresh), "concurrency", concurrency, "elapsed", time.Since(drainStart))
 	return len(items), nil
 }
 
@@ -280,15 +283,22 @@ func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) (outc
 			if err := queue.MarkFailedIfUnchanged(item.ItemKind, item.ItemID, item.ImageType, item.RetryAt, retryAt); err != nil {
 				log.Warn(ctx, "Artwork: Could not reschedule failed queue item", "kind", item.ItemKind, "id", item.ItemID, err)
 			}
+			log.Debug(ctx, "Artwork: Rescheduled item", "kind", item.ItemKind, "id", item.ItemID,
+				"outcome", out, "attempts", item.Attempts+1, "retryIn", time.Until(retryAt),
+				"budgetLeft", time.Until(item.EnqueuedAt.Add(giveUpAfter)))
 			break
 		}
 		// Retry budget exhausted: stop retrying. Absent is only recoverable where a periodic
 		// recheck will revisit it, so kinds without one keep no row at all; and art already
 		// being served is kept, since exhaustion means the source stayed unreachable rather
 		// than that the entity lost its cover.
+		settled := "kept previous state"
 		if out == outcomeFailed && hasRecheckPath(item.ItemKind) && !w.hasResolvedArtwork(ctx, item) {
 			writeAbsent(ctx, w.proc.ds.Artwork(ctx), item)
+			settled = "recorded absent"
 		}
+		log.Info(ctx, "Artwork: Retry budget exhausted, giving up", "kind", item.ItemKind, "id", item.ItemID,
+			"outcome", out, "attempts", item.Attempts+1, "budget", giveUpAfter, "settled", settled)
 		if err := queue.DeleteIfUnchanged(item.ItemKind, item.ItemID, item.ImageType, item.RetryAt); err != nil {
 			log.Warn(ctx, "Artwork: Could not remove exhausted queue item", "kind", item.ItemKind, "id", item.ItemID, err)
 		}
@@ -313,6 +323,7 @@ func (w *Worker) precache(ctx context.Context, got *acquired) {
 	if !conf.Server.EnableArtworkPrecache || w.cache == nil || w.cache.Disabled(ctx) {
 		return
 	}
+	precacheStart := time.Now()
 	// Same key as the serving path (hash/size/square); only the source of the bytes differs.
 	// square matches what the list surfaces request, otherwise this warms a key nothing reads.
 	item := &resizedItem{
@@ -329,6 +340,8 @@ func (w *Worker) precache(ctx context.Context, got *acquired) {
 	}
 	_, _ = io.Copy(io.Discard, stream)
 	_ = stream.Close()
+	log.Trace(ctx, "Artwork: Precached UI size", "kind", got.ia.ItemKind, "id", got.ia.ItemID,
+		"size", conf.Server.UICoverArtSize, "elapsed", time.Since(precacheStart))
 }
 
 // backoffFor returns min(5s×4^n, giveUpAfter) scaled by (1+jitter), with jitter in [-0.4, 0.4].

@@ -31,6 +31,19 @@ const (
 	outcomeFailed
 )
 
+func (o outcome) String() string {
+	switch o {
+	case outcomeFound:
+		return "found"
+	case outcomeFoundStale:
+		return "foundStale"
+	case outcomeAbsent:
+		return "absent"
+	default:
+		return "failed"
+	}
+}
+
 // thumbnailSize is the max dimension fed to blurhash.
 const thumbnailSize = 128
 
@@ -61,8 +74,15 @@ type processor struct {
 
 // acquire resolves one queue item end to end: find an image, hash/decode/
 // blurhash it, place its bytes, and persist the resulting state.
-func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (outcome, *acquired) {
+func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (out outcome, got *acquired) {
 	repo := p.ds.Artwork(ctx)
+	// Timed on every exit, failures included: an item that is slow is usually one that failed
+	// slowly, and the outcome alone doesn't say whether the cost was the network or the decode.
+	start := time.Now()
+	defer func() {
+		log.Debug(ctx, "Artwork: Acquisition finished", "kind", item.ItemKind, "id", item.ItemID,
+			"outcome", out, "elapsed", time.Since(start))
+	}()
 
 	res, err := p.resolver.resolve(ctx, item)
 	if err != nil {
@@ -73,35 +93,48 @@ func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (o
 		if res.extError || res.localError {
 			// A source errored/timed out rather than answering "no image": never settle on
 			// absent, keep serving old state.
+			log.Debug(ctx, "Artwork: No image, but a source faulted; keeping previous state",
+				"kind", item.ItemKind, "id", item.ItemID, "extError", res.extError, "localError", res.localError)
 			return outcomeFailed, nil
 		}
 		return writeAbsent(ctx, repo, item), nil
 	}
 	defer res.reader.Close()
 
+	// Times the download too: res.reader is the provider's response body for external sources.
+	readStart := time.Now()
 	data, err := readCapped(res.reader)
 	if err != nil {
 		log.Warn(ctx, "Artwork: Failed to read resolved image", "kind", item.ItemKind, "id", item.ItemID, "source", res.source, err)
 		return outcomeFailed, nil
 	}
-	log.Debug(ctx, "Artwork: Read resolved image", "kind", item.ItemKind, "id", item.ItemID, "source", res.source, "bytes", len(data))
+	log.Debug(ctx, "Artwork: Read resolved image", "kind", item.ItemKind, "id", item.ItemID,
+		"source", res.source, "bytes", len(data), "elapsed", time.Since(readStart))
 
+	hashStart := time.Now()
 	hash, err := hashImage(bytes.NewReader(data))
 	if err != nil {
 		log.Warn(ctx, "Artwork: Failed to hash image", "kind", item.ItemKind, "id", item.ItemID, err)
 		return outcomeFailed, nil
 	}
+	log.Trace(ctx, "Artwork: Hashed image", "kind", item.ItemKind, "id", item.ItemID,
+		"hash", hash, "bytes", len(data), "elapsed", time.Since(hashStart))
 
 	art, err := repo.GetImage(hash)
 	switch {
 	case err == nil:
 		// Dedup hit: identical bytes already known, reuse dims/mime/blurhash.
+		log.Debug(ctx, "Artwork: Reusing a known image, skipping decode", "kind", item.ItemKind,
+			"id", item.ItemID, "hash", hash)
 	case errors.Is(err, model.ErrNotFound):
+		decodeStart := time.Now()
 		art, err = decodeArtwork(ctx, hash, data)
 		if err != nil {
 			log.Warn(ctx, "Artwork: Failed to decode resolved image", "kind", item.ItemKind, "id", item.ItemID, err)
 			return outcomeFailed, nil
 		}
+		log.Debug(ctx, "Artwork: Decoded new image", "kind", item.ItemKind, "id", item.ItemID, "hash", hash,
+			"dims", fmt.Sprintf("%dx%d", art.Width, art.Height), "mime", art.Mime, "elapsed", time.Since(decodeStart))
 	default:
 		log.Warn(ctx, "Artwork: Failed to look up image hash", "kind", item.ItemKind, "id", item.ItemID, err)
 		return outcomeFailed, nil
@@ -113,8 +146,11 @@ func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (o
 		log.Warn(ctx, "Artwork: Failed to persist resolved image", "kind", item.ItemKind, "id", item.ItemID, err)
 		return outcomeFailed, nil
 	}
-	got := &acquired{ia: ia, mime: art.Mime, data: data}
+	got = &acquired{ia: ia, mime: art.Mime, data: data}
 	if res.extError {
+		// Served, but a higher-priority external source errored: the pick may improve on retry.
+		log.Debug(ctx, "Artwork: Serving a lower-priority source after an external failure",
+			"kind", item.ItemKind, "id", item.ItemID, "source", res.source)
 		return outcomeFoundStale, got
 	}
 	return outcomeFound, got
@@ -166,6 +202,8 @@ func writeAbsent(ctx context.Context, repo model.ArtworkRepository, item model.A
 		log.Warn(ctx, "Artwork: Failed to persist absent state", "kind", item.ItemKind, "id", item.ItemID, err)
 		return outcomeFailed
 	}
+	log.Debug(ctx, "Artwork: Settled absent, every source answered definitively",
+		"kind", item.ItemKind, "id", item.ItemID)
 	return outcomeAbsent
 }
 

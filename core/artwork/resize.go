@@ -10,6 +10,7 @@ import (
 	"image/png"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/gen2brain/webp"
 	"github.com/navidrome/navidrome/conf"
@@ -27,9 +28,9 @@ func init() {
 		// "nodynamic" tag (see Dockerfile), which makes webp.Dynamic() report an
 		// error here and forces the safe WASM path.
 		if err := webp.Dynamic(); err != nil {
-			log.Debug("Using WASM WebP encoder/decoder", "reason", err)
+			log.Debug("Artwork: Using WASM WebP encoder/decoder", "reason", err)
 		} else {
-			log.Debug("Using native libwebp for WebP encoding/decoding")
+			log.Debug("Artwork: Using native libwebp for WebP encoding/decoding")
 		}
 	})
 }
@@ -43,6 +44,11 @@ var bufPool = sync.Pool{
 // resizeImageData resizes raw image bytes to fit size, preserving animation where
 // possible. A nil reader means the image was already within bounds (no resize needed).
 func resizeImageData(ctx context.Context, ffm ffmpeg.FFmpeg, data []byte, size int, square bool) (io.Reader, int, error) {
+	start := time.Now()
+	defer func() {
+		log.Trace(ctx, "Artwork: Resized image", "bytes", len(data), "size", size, "square", square,
+			"elapsed", time.Since(start))
+	}()
 	// Preserve animation for animated images
 	if isAnimatedGIF(data) {
 		if ffm.IsAvailable() {
@@ -51,7 +57,7 @@ func resizeImageData(ctx context.Context, ffm ffmpeg.FFmpeg, data []byte, size i
 			if err == nil {
 				return r, 0, nil
 			}
-			log.Warn(ctx, "Could not convert animated GIF, falling back to static", err)
+			log.Warn(ctx, "Artwork: Could not convert animated GIF, falling back to static", err)
 		}
 	} else if isAnimatedWebP(data) || isAnimatedPNG(data) {
 		// Animated WebP/APNG: return original as-is (ffmpeg can't re-encode these)

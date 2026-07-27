@@ -66,14 +66,14 @@ func fromArtistFolder(ctx context.Context, libFS fs.FS, libPath, artistFolder, p
 // messages so callers see absolute-looking paths consistent with the rest of
 // the artwork pipeline.
 func findImageInFolder(ctx context.Context, libFS fs.FS, relFolder, absFolder, pattern string) (io.ReadCloser, string, error) {
-	log.Trace(ctx, "Looking for artist image", "pattern", pattern, "folder", absFolder)
+	log.Trace(ctx, "Artwork: Looking for artist image", "pattern", pattern, "folder", absFolder)
 	globPattern := pattern
 	if relFolder != "." {
 		globPattern = path.Join(escapeGlobLiteral(relFolder), pattern)
 	}
 	matches, err := fs.Glob(libFS, globPattern)
 	if err != nil {
-		log.Warn(ctx, "Error matching artist image pattern", "pattern", pattern, "folder", absFolder, err)
+		log.Warn(ctx, "Artwork: Error matching artist image pattern", "pattern", pattern, "folder", absFolder, err)
 		return nil, "", err
 	}
 
@@ -94,7 +94,7 @@ func findImageInFolder(ctx context.Context, libFS fs.FS, relFolder, absFolder, p
 	for _, p := range imagePaths {
 		f, err := libFS.Open(p)
 		if err != nil {
-			log.Warn(ctx, "Could not open cover art file", "file", p, err)
+			log.Warn(ctx, "Artwork: Could not open cover art file", "file", p, err)
 			openErr = fmt.Errorf("%w: %s: %w", errSourceUnreadable, p, err)
 			continue
 		}
@@ -138,13 +138,13 @@ func loadArtistFolder(ctx context.Context, ds model.DataStore, albums model.Albu
 	libPath := core.AbsolutePath(ctx, ds, libID, "")
 	folderID := model.FolderID(model.Library{ID: libID, Path: libPath}, folderPath)
 
-	log.Trace(ctx, "Calculating artist folder details", "folderPath", folderPath, "folderID", folderID,
+	log.Trace(ctx, "Artwork: Calculating artist folder details", "folderPath", folderPath, "folderID", folderID,
 		"libPath", libPath, "libID", libID, "albumPaths", paths)
 
 	// Get the last update time for the folder
 	folders, err := ds.Folder(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"folder.id": folderID, "missing": false}})
 	if err != nil || len(folders) == 0 {
-		log.Warn(ctx, "Could not find folder for artist", "folderPath", folderPath, "id", folderID,
+		log.Warn(ctx, "Artwork: Could not find folder for artist", "folderPath", folderPath, "id", folderID,
 			"libPath", libPath, "libID", libID, err)
 		return "", time.Time{}, err
 	}

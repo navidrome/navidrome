@@ -30,7 +30,7 @@ func findPlaylistSidecarPath(ctx context.Context, plsPath string) string {
 
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		log.Warn(ctx, "Could not read directory for playlist sidecar", "dir", dir, err)
+		log.Warn(ctx, "Artwork: Could not read directory for playlist sidecar", "dir", dir, err)
 		return ""
 	}
 	for _, entry := range entries {

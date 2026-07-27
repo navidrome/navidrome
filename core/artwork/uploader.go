@@ -62,7 +62,7 @@ func (s *uploader) SetImage(ctx context.Context, entityType string, entityID str
 	// Remove old image if it exists
 	if oldPath != "" {
 		if err := os.Remove(oldPath); err != nil && !os.IsNotExist(err) {
-			log.Warn(ctx, "Failed to remove old image", "path", oldPath, err)
+			log.Warn(ctx, "Artwork: Failed to remove old image", "path", oldPath, err)
 		}
 	}
 
@@ -87,7 +87,7 @@ func (s *uploader) EnqueueArtwork(ctx context.Context, entityType, id string) {
 		return
 	}
 	if err := Refresh(ctx, s.ds, kind, id); err != nil {
-		log.Warn(ctx, "Could not refresh artwork after upload", "kind", kind, "id", id, err)
+		log.Warn(ctx, "Artwork: Could not refresh artwork after upload", "kind", kind, "id", id, err)
 	}
 }
 

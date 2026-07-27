@@ -35,11 +35,11 @@ func selectImageReader(ctx context.Context, artID model.ArtworkID, extractFuncs 
 		start := time.Now()
 		r, path, err := f()
 		if r != nil {
-			msg := fmt.Sprintf("Found %s artwork", artID.Kind)
+			msg := fmt.Sprintf("Artwork: Found %s artwork", artID.Kind)
 			log.Debug(ctx, msg, "artID", artID, "path", path, "source", f, "elapsed", time.Since(start))
 			return r, path, nil
 		}
-		log.Trace(ctx, "Failed trying to extract artwork", "artID", artID, "source", f, "elapsed", time.Since(start), err)
+		log.Trace(ctx, "Artwork: Failed trying to extract artwork", "artID", artID, "source", f, "elapsed", time.Since(start), err)
 	}
 	return nil, "", fmt.Errorf("could not get `%s` cover art for %s: %w", artID.Kind, artID, ErrUnavailable)
 }
@@ -63,7 +63,7 @@ func fromExternalFile(ctx context.Context, libFS fs.FS, files []string, pattern 
 			_, name := filepath.Split(file)
 			match, err := filepath.Match(pattern, strings.ToLower(name))
 			if err != nil {
-				log.Warn(ctx, "Error matching cover art file to pattern", "pattern", pattern, "file", file)
+				log.Warn(ctx, "Artwork: Error matching cover art file to pattern", "pattern", pattern, "file", file)
 				continue
 			}
 			if !match {
@@ -71,7 +71,7 @@ func fromExternalFile(ctx context.Context, libFS fs.FS, files []string, pattern 
 			}
 			f, err := libFS.Open(file)
 			if err != nil {
-				log.Warn(ctx, "Could not open cover art file", "file", file, err)
+				log.Warn(ctx, "Artwork: Could not open cover art file", "file", file, err)
 				openErr = fmt.Errorf("%w: %s: %w", errSourceUnreadable, file, err)
 				continue
 			}
@@ -135,12 +135,12 @@ func findBestImageIndex(ctx context.Context, images []taglib.ImageDesc, path str
 	for _, regex := range picTypeRegexes {
 		for i, img := range images {
 			if regex.MatchString(img.Type) {
-				log.Trace(ctx, "Found embedded image", "type", img.Type, "path", path)
+				log.Trace(ctx, "Artwork: Found embedded image", "type", img.Type, "path", path)
 				return i
 			}
 		}
 	}
-	log.Trace(ctx, "Could not find a front image. Getting the first one", "type", images[0].Type, "path", path)
+	log.Trace(ctx, "Artwork: Could not find a front image. Getting the first one", "type", images[0].Type, "path", path)
 	return 0
 }
 

@@ -8,6 +8,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"golang.org/x/time/rate"
 )
@@ -45,13 +46,20 @@ type extGate struct {
 func (w *Worker) gate(name string, f func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error) {
 	g := w.gateFor(name)
 	if !g.breaker.allow() {
+		log.Debug(w.runCtx, "Artwork: Skipping agent, circuit breaker open", "agent", name)
 		return nil, "", errBreakerOpen
 	}
+	// Waiting for the rate-limit permit is counted separately: a slow agent and a throttled one
+	// look identical from the drain, but only one of them is the provider's fault.
+	waitStart := time.Now()
 	if err := g.limiter.Wait(w.runCtx); err != nil {
 		return nil, "", err
 	}
+	callStart := time.Now()
 	r, path, err := f()
-	g.breaker.record(err)
+	g.breaker.record(name, err)
+	log.Trace(w.runCtx, "Artwork: External agent call", "agent", name, "hit", r != nil,
+		"limiterWait", callStart.Sub(waitStart), "elapsed", time.Since(callStart), err)
 	return r, path, err
 }
 
@@ -96,17 +104,22 @@ func (b *breaker) allow() bool {
 	return false
 }
 
-func (b *breaker) record(err error) {
+func (b *breaker) record(name string, err error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	// A not-found (from either package) is a definitive answer, not a fault; only real
 	// errors trip the breaker. Must stay consistent with isTransientExternal.
 	if err == nil || errors.Is(err, model.ErrNotFound) || errors.Is(err, agents.ErrNotFound) {
+		if b.failures >= breakerThreshold {
+			log.Info("Artwork: Circuit breaker closed for agent", "agent", name)
+		}
 		b.failures = 0
 		return
 	}
 	b.failures++
 	if b.failures == breakerThreshold {
 		b.openedAt = time.Now()
+		log.Warn("Artwork: Circuit breaker opened for agent", "agent", name,
+			"consecutiveFailures", b.failures, "probeAfter", breakerProbeAfter, err)
 	}
 }

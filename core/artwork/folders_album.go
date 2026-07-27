@@ -79,7 +79,7 @@ func albumRootParent(ctx context.Context, ds model.DataStore, folders []model.Fo
 	}
 	parent, err := ds.Folder(ctx).Get(commonParentID)
 	if errors.Is(err, model.ErrNotFound) {
-		log.Warn(ctx, "Parent folder not found for album cover art lookup", "parentID", commonParentID)
+		log.Warn(ctx, "Artwork: Parent folder not found for album cover art lookup", "parentID", commonParentID)
 		return nil, nil
 	}
 	if err != nil {
