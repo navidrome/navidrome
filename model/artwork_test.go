@@ -23,8 +23,7 @@ var _ = Describe("ItemImage JSON", func() {
 		Expect(out).To(HaveKeyWithValue("blurHash", "LEHV6nWB2yk8"))
 	})
 
-	// Clients decode the blurhash into a bitmap of their choosing, so without the dimensions they
-	// cannot know the placeholder's shape and default to a square.
+	// Without the dimensions, clients cannot know the placeholder's shape and default to a square.
 	It("exposes the image dimensions alongside the blurhash", func() {
 		al := model.Album{ID: "al-3", Name: "Album"}
 		al.BlurHash = "LEHV6nWB2yk8"

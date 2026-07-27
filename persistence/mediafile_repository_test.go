@@ -1119,8 +1119,7 @@ var _ = Describe("MediaRepository", func() {
 		})
 	})
 
-	// Exists used the unfiltered helper, so it reported tracks in libraries the caller
-	// cannot see -- the same leak Get/GetAll/CountAll already guard against.
+	// Exists must apply the same library filter as Get/GetAll/CountAll.
 	Describe("Exists library visibility", func() {
 		It("hides a track the user has no library access to", func() {
 			restricted := model.User{ID: "restricted_mf_user", UserName: "rm", Name: "RM", Email: "rm@t.com"}

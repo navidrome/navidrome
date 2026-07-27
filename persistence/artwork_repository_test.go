@@ -11,7 +11,6 @@ import (
 	"github.com/pocketbase/dbx"
 )
 
-// clearArtworkTables resets the shared test DB's artwork tables so specs don't leak state.
 func clearArtworkTables() {
 	db := GetDBXBuilder()
 	for _, t := range []string{"artwork_queue", "item_artwork", "artwork"} {

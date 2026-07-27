@@ -11,8 +11,7 @@ import (
 )
 
 // Disc art is a serve-time read through the library FS (no worker state row), so per-disc images
-// are asserted byte-for-byte. Single-disc albums run the disc chain too — a disc can carry art
-// distinct from the album cover. Album-root covers are folder-backed and asserted on the state row.
+// are asserted byte-for-byte, while album-root covers are asserted on the state row.
 var _ = Describe("Disc artwork resolution", func() {
 	BeforeEach(func() {
 		setupResolutionHarness()

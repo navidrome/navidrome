@@ -41,8 +41,6 @@ var _ = Describe("Artwork", func() {
 
 	primaryKey := func(kind, id string) string { return kind + "|" + id + "|" + model.ImageTypePrimary }
 
-	// seedFoundStore installs a store-backed found state (bytes in the content-addressed
-	// store, no backing file) and returns the hash.
 	seedFoundStore := func(kind, id string, imgBytes []byte) string {
 		hash, err := hashImage(bytes.NewReader(imgBytes))
 		Expect(err).ToNot(HaveOccurred())
@@ -53,8 +51,7 @@ var _ = Describe("Artwork", func() {
 		return hash
 	}
 
-	// seedEntity registers the owning entity, without which the state row describes something
-	// that no longer exists and the service correctly refuses to serve it.
+	// Without its owning entity, a state row is not served at all.
 	seedEntity = func(kind, id string) {
 		GinkgoHelper()
 		switch kind {
@@ -119,8 +116,7 @@ var _ = Describe("Artwork", func() {
 
 			img, err := svc.Get(ctx, model.MustParseArtworkID("al-al1"), 100, false)
 			Expect(err).ToNot(HaveOccurred())
-			// A resized response versions its validator with the encode settings, distinct from
-			// the pixel hash, so a CoverArtQuality/WebP change invalidates client caches.
+			// A resized response versions its ETag with the encode settings, not the pixel hash.
 			Expect(img.ETag).To(Equal(representationTag(img.Hash, 100, false)))
 			Expect(img.ETag).ToNot(Equal(img.Hash))
 			resized := readAll(img)
@@ -128,8 +124,7 @@ var _ = Describe("Artwork", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(cfg.Width).To(Equal(100))
 
-			// Delete the store file: a warm resize-cache entry must keep serving without
-			// ever touching the original (the stale-serve self-heal).
+			// Deleting the store file proves the warm entry serves without touching the original.
 			hash, _ := hashImage(bytes.NewReader(coverBytes))
 			Expect(store.Remove(hash, "image/jpeg", time.Now().Add(time.Hour))).To(Succeed())
 			Eventually(func(g Gomega) {
@@ -199,8 +194,7 @@ var _ = Describe("Artwork", func() {
 			Expect(queueRepo.Data[primaryKey("al", "al3b")].Priority).To(Equal(model.ArtworkPriorityScan))
 		})
 
-		// State rows and their bytes outlive a deleted entity until the next prune, so serving
-		// straight from the row would keep handing out a removed entity's image.
+		// State rows outlive a deleted entity until the next prune.
 		It("refuses to serve a found row whose entity is gone", func() {
 			hash := seedFoundStore("al", "alzz", coverBytes)
 			Expect(hash).ToNot(BeEmpty())
@@ -228,7 +222,6 @@ var _ = Describe("Artwork", func() {
 			_, err := svc.Get(ctx, model.MustParseArtworkID("al-al4b"), 0, false)
 			Expect(err).To(MatchError(ErrUnavailable))
 			Expect(queueRepo.Data[primaryKey("al", "al4b")].Priority).To(Equal(model.ArtworkPriorityBump))
-			// The absent state row is left intact; only a recheck is scheduled.
 			ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al4b", model.ImageTypePrimary)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ia.Hash).To(BeEmpty())
@@ -272,7 +265,6 @@ var _ = Describe("Artwork", func() {
 
 		It("ignores a resolved mf row and delegates to the album when per-track art is disabled", func() {
 			conf.Server.EnableMediaFileCoverArt = false
-			// A resolved mf row exists (from when the setting was on) but must not be served.
 			seedFoundStore("mf", "mf7", []byte("stale embedded track art"))
 			seedFoundStore("al", "albz", coverBytes)
 			mfRepo.SetData(model.MediaFiles{{ID: "mf7", AlbumID: "albz"}})
@@ -322,7 +314,6 @@ var _ = Describe("Artwork", func() {
 		})
 
 		It("delegates a multi-disc track to its disc art, not straight to the album", func() {
-			// Not embedded-eligible: the fallback must mirror CoverArtID (disc first, then album).
 			folderRepo.result = []model.Folder{{Path: "tests/fixtures/artist/an-album", ImageFiles: []string{"cover.jpg"}}}
 			albumRepo.SetData(model.Albums{{ID: "aldd", Name: "Album", FolderIDs: []string{"f1"}, Discs: model.Discs{1: "One", 2: "Two"}}})
 			seedFoundStore("al", "aldd", []byte("album-art-distinct")) // album's own found art differs
@@ -330,15 +321,13 @@ var _ = Describe("Artwork", func() {
 
 			img, err := svc.Get(ctx, model.MustParseArtworkID("mf-mf5"), 0, false)
 			Expect(err).ToNot(HaveOccurred())
-			// The disc-folder image wins over the album's found art, proving it routed via serveDisc.
+			// The disc-folder image, not the album's own art: proof it routed through serveDisc.
 			Expect(readAll(img)).To(Equal(coverBytes))
 		})
 
-		// Jellyfin clients are now told to request the track image before it resolves, so an
-		// unextractable frame must not answer with a placeholder where the album has art.
 		It("falls back to the album when an eligible track's embedded art will not extract", func() {
 			conf.Server.EnableMediaFileCoverArt = true
-			// HasCoverArt is set, but the file yields no extractable image (it is not audio).
+			// HasCoverArt is set, but the file is not audio, so nothing extracts.
 			mfRepo.SetData(model.MediaFiles{{
 				ID: "mfbad", AlbumID: "albad", LibraryID: 0, HasCoverArt: true,
 				Path: "tests/fixtures/artist/an-album/front.png",
@@ -352,8 +341,7 @@ var _ = Describe("Artwork", func() {
 		})
 
 		It("routes a single-disc track through disc resolution too", func() {
-			// A single disc can carry its own art: DiscArtPriority still applies, so the disc
-			// image is served even when the album has different found art.
+			// DiscArtPriority applies to single-disc albums too, over the album's own found art.
 			folderRepo.result = []model.Folder{{Path: "tests/fixtures/artist/an-album", ImageFiles: []string{"cover.jpg"}}}
 			albumRepo.SetData(model.Albums{{ID: "alsd", Name: "Album", FolderIDs: []string{"f1"}, Discs: model.Discs{1: ""}}})
 			seedFoundStore("al", "alsd", []byte("album-art-distinct"))
@@ -375,9 +363,8 @@ var _ = Describe("Artwork", func() {
 			Expect(readAll(img)).To(Equal(coverBytes))
 		})
 
-		// The resize cache is keyed on the id and the album's mtime, not on the image bytes, so a
-		// warm hit needs no filesystem access. Dropping the source between the two requests is
-		// how that shows: re-reading would fall back to the album instead.
+		// The resize cache keys on id + album mtime, not on the bytes, so dropping the source
+		// between the two requests is what shows a warm hit never touches the filesystem.
 		It("serves a sized disc image from cache without re-reading the source", func() {
 			folderRepo.result = []model.Folder{{Path: "tests/fixtures/artist/an-album", ImageFiles: []string{"cover.jpg"}}}
 			albumRepo.SetData(model.Albums{{ID: "aldc3", Name: "Album", FolderIDs: []string{"f1"}}})
@@ -388,8 +375,6 @@ var _ = Describe("Artwork", func() {
 			warmed := readAll(first)
 			Expect(warmed).ToNot(BeEmpty())
 
-			// With the source gone and the album holding no art of its own, a re-read would
-			// fall through to the album and fail.
 			folderRepo.result = nil
 
 			second, err := svc.Get(ctx, discID, 64, false)
@@ -397,8 +382,7 @@ var _ = Describe("Artwork", func() {
 			Expect(readAll(second)).To(Equal(warmed), "a warm sized request must not touch the source")
 		})
 
-		// A disc image can be replaced without the album row changing, so the key folds in the
-		// folder's ImagesUpdatedAt; keying on album.UpdatedAt alone would serve the old image.
+		// A disc image can change without the album row changing, so the key folds in ImagesUpdatedAt.
 		It("invalidates the cached image when the folder's images change", func() {
 			folderRepo.result = []model.Folder{{
 				Path: "tests/fixtures/artist/an-album", ImageFiles: []string{"cover.jpg"},
@@ -412,7 +396,6 @@ var _ = Describe("Artwork", func() {
 			firstKey := first.ETag
 			readAll(first)
 
-			// The image was replaced: same album row, newer folder images timestamp.
 			folderRepo.result[0].ImagesUpdatedAt = time.Now()
 			second, err := svc.Get(ctx, discID, 64, false)
 			Expect(err).ToNot(HaveOccurred())
@@ -420,8 +403,7 @@ var _ = Describe("Artwork", func() {
 			Expect(second.ETag).ToNot(Equal(firstKey), "a replaced image must not keep the old cache entry")
 		})
 
-		// Disc art has no content hash to fall back to, so without an explicit validator the
-		// full-size response would carry an empty ETag — identical for every disc image.
+		// Disc art has no content hash, so without an explicit validator every ETag would be empty.
 		It("gives a full-size disc image a validator that tracks the source", func() {
 			folderRepo.result = []model.Folder{{
 				Path: "tests/fixtures/artist/an-album", ImageFiles: []string{"cover.jpg"},
@@ -490,8 +472,7 @@ var _ = Describe("Artwork", func() {
 			Expect(readAll(img)).To(Equal(phBytes))
 		})
 
-		// An entity that has no art and an id that names no entity are different answers:
-		// Subsonic reports error 70 for the latter, and Jellyfin 404s.
+		// "No art" and "no such entity" are different answers: clients 404 only on the latter.
 		It("reports not-found rather than a placeholder for an id with no entity", func() {
 			_, err := svc.GetOrPlaceholder(ctx, "al-nosuchalbum", 0, false)
 			Expect(err).To(MatchError(model.ErrNotFound))

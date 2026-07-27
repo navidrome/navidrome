@@ -358,7 +358,7 @@ func startArtworkWorker(ctx context.Context, worker *artwork.Worker) func() erro
 }
 
 // scheduleArtworkHousekeeping runs the startup fingerprint backfill and registers the
-// recurring stale-absent recheck and prune jobs. Scan-triggered prune lands in a later phase.
+// recurring stale-absent recheck and prune jobs.
 func scheduleArtworkHousekeeping(ctx context.Context, worker *artwork.Worker) func() error {
 	return func() error {
 		schedulerInstance := scheduler.GetInstance()

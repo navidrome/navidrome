@@ -13,9 +13,7 @@ import (
 	"github.com/navidrome/navidrome/utils/str"
 )
 
-// externalName applies the DevPreserveUnicodeInExternalCalls normalization the aggregate
-// provider used, so agent searches match the same way (typographic quotes/dashes cleared
-// unless preserved).
+// externalName mirrors the normalization the aggregate provider applies, so agent searches match.
 func externalName(name string) string {
 	if conf.Server.DevPreserveUnicodeInExternalCalls {
 		return name
@@ -23,9 +21,8 @@ func externalName(name string) string {
 	return str.Clear(name)
 }
 
-// bestImageURL returns the largest-Size image URL, skipping empty or unparseable
-// URLs; nil when none qualifies. Parsing happens per candidate so a malformed largest
-// URL never shadows a valid smaller one.
+// bestImageURL returns the largest parseable image URL, so a malformed candidate never
+// shadows a smaller valid one.
 func bestImageURL(imgs []agents.ExternalImage) *url.URL {
 	var best *url.URL
 	var bestSize int
@@ -44,12 +41,10 @@ func bestImageURL(imgs []agents.ExternalImage) *url.URL {
 	return best
 }
 
-// fetchArtistImage tries each enabled artist-image agent in order, each under its own gate.
-// Returns the winning reader + agent name; extErr is true only when NO agent succeeded and
-// at least one failed transiently (a later success beats an earlier agent error).
+// fetchArtistImage tries each enabled artist-image agent in order. extErr is true only when no
+// agent succeeded and at least one failed transiently.
 func fetchArtistImage(ctx context.Context, ag *agents.Agents, gate gateFunc, ar model.Artist) (r io.ReadCloser, agentName string, extErr bool) {
-	// Synthetic artists have no real external image; mirror Agents.GetArtistImages' guard so a
-	// direct retriever call can't assign an unrelated result to Unknown/Various Artists.
+	// Synthetic artists would otherwise get an unrelated agent result assigned to them.
 	switch ar.ID {
 	case consts.UnknownArtistID, consts.VariousArtistsID:
 		return nil, "", false
@@ -71,7 +66,7 @@ func fetchArtistImage(ctx context.Context, ag *agents.Agents, gate gateFunc, ar 
 			return reader, a.Name, false
 		}
 		if isTransientExternal(err) {
-			extErr = true // includes errBreakerOpen and download failures: retry via the next agent
+			extErr = true
 			log.Debug(ctx, "Artwork: External artist-image lookup failed", "agent", a.Name, "artist", ar.Name, err)
 		}
 	}

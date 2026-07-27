@@ -169,7 +169,6 @@ var _ = Describe("Playlist artwork resolution", func() {
 		// ├── AlbumB/{01 - Track.mp3, cover.png}   ← tile 2
 		// ├── AlbumC/{01 - Track.mp3, cover.png}   ← tile 3
 		// └── AlbumD/{01 - Track.mp3, cover.png}   ← tile 4
-		// Four distinct tiles fill the grid outright, with no mirroring.
 		It("fills all four grid quadrants with distinct album art", func() {
 			conf.Server.CoverArtPriority = "cover.*"
 			layout := fstest.MapFS{}

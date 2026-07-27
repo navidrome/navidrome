@@ -41,8 +41,6 @@ func TestArtworkBreakerHalfOpen(t *testing.T) {
 	})
 }
 
-// Drives the worker's per-name gate map with the fake clock: one agent's open breaker
-// must neither block another agent nor short-circuit the other's probe recovery.
 func TestArtworkGatePerAgentBreakerIsolation(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		g := NewWithT(t)

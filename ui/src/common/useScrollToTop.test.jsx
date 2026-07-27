@@ -12,8 +12,7 @@ describe('useScrollToTop', () => {
     expect(window.scrollTo).toHaveBeenCalledWith({ top: 0 })
   })
 
-  // Navigating straight from one detail page to another (an album's artist link, say) reuses the
-  // component, so only the key change tells us we are looking at something new.
+  // Detail-to-detail navigation reuses the component, so only the key change signals a new page.
   it('scrolls again when the key changes', () => {
     const { rerender } = renderHook(({ id }) => useScrollToTop(id), {
       initialProps: { id: 'al-1' },
@@ -32,8 +31,7 @@ describe('useScrollToTop', () => {
     expect(window.scrollTo).toHaveBeenCalledTimes(1)
   })
 
-  // The record arrives after the first render, so the key starts undefined; scrolling then would
-  // fire before the page has its content and read as a no-op.
+  // The record arrives after the first render, so the key starts undefined.
   it('waits for a key rather than scrolling on an empty record', () => {
     const { rerender } = renderHook(({ id }) => useScrollToTop(id), {
       initialProps: { id: undefined },

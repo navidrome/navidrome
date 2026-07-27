@@ -21,12 +21,8 @@ import (
 
 func init() {
 	conf.AddHook(func() {
-		// gen2brain/webp selects native (purego/libwebp) vs WASM in its own
-		// package init() and exposes the result only via webp.Dynamic(); there is
-		// no runtime way to switch back. On 32-bit ARM/x86 the purego callback path
-		// crashes (issue #5597), so those builds must be compiled with the
-		// "nodynamic" tag (see Dockerfile), which makes webp.Dynamic() report an
-		// error here and forces the safe WASM path.
+		// gen2brain/webp picks native vs WASM in its own init(), with no way to switch at
+		// runtime: 32-bit builds need the "nodynamic" tag (see Dockerfile) to force WASM.
 		if err := webp.Dynamic(); err != nil {
 			log.Debug("Artwork: Using WASM WebP encoder/decoder", "reason", err)
 		} else {
@@ -49,7 +45,6 @@ func resizeImageData(ctx context.Context, ffm ffmpeg.FFmpeg, data []byte, size i
 		log.Trace(ctx, "Artwork: Resized image", "bytes", len(data), "size", size, "square", square,
 			"elapsed", time.Since(start))
 	}()
-	// Preserve animation for animated images
 	if isAnimatedGIF(data) {
 		if ffm.IsAvailable() {
 			// Animated GIF: convert to animated WebP via ffmpeg (with optional resize)
@@ -67,11 +62,8 @@ func resizeImageData(ctx context.Context, ffm ffmpeg.FFmpeg, data []byte, size i
 	return resizeStaticImage(data, size, square)
 }
 
-// toFastScaleType converts images whose concrete type has no optimized scaler
-// in x/image/draw (e.g. *image.NYCbCrA from WebP, *image.Paletted from indexed
-// PNGs) into *image.RGBA, which has a fast path. Without this, CatmullRom.Scale
-// falls back to a generic per-pixel At()/RGBA() loop that is several times
-// slower. Fast-path types are returned unchanged.
+// toFastScaleType converts types x/image/draw has no optimized scaler for (e.g. *image.NYCbCrA,
+// *image.Paletted) to *image.RGBA, avoiding CatmullRom.Scale's generic per-pixel fallback.
 func toFastScaleType(img image.Image) image.Image {
 	switch img.(type) {
 	case *image.RGBA, *image.NRGBA, *image.Gray, *image.YCbCr:

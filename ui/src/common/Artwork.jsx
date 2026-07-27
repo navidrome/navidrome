@@ -11,7 +11,7 @@ import { BlurHashCanvas } from './BlurHashCanvas'
 const fadeMs = 500
 
 const useStyles = makeStyles({
-  // className supplies the size and shape; overflow:hidden clips the fills to a rounded shape.
+  // className supplies the size and shape; overflow:hidden clips the fills to it.
   root: {
     position: 'relative',
     display: 'inline-flex',
@@ -34,9 +34,8 @@ const useStyles = makeStyles({
   imgInstant: { opacity: 1, transition: 'none' },
 })
 
-// Artwork renders an entity's cover through the shared useImageUrl blob cache, so it survives
-// React remounts without re-fetching. The blurhash is the loading placeholder; the image is only
-// mounted once its blob is ready, so an unresolved cover never renders as a broken <img>.
+// Renders a cover through the shared useImageUrl blob cache, so it survives remounts without
+// re-fetching. The image mounts only once its blob is ready, so it never renders broken.
 export const Artwork = ({
   record,
   size = config.uiCoverArtSize,
@@ -50,8 +49,7 @@ export const Artwork = ({
   const url = record ? subsonic.getCoverArtUrl(record, size, square) : ''
   const { imgUrl } = useImageUrl(url)
 
-  // A blob already cached when this instance mounted paints on the first frame, so it skips the
-  // fade; anything fetched later cross-fades over the blurhash.
+  // A blob already cached at mount paints on the first frame, so it skips the fade.
   const cachedOnMount = useRef(null)
   if (cachedOnMount.current === null) {
     cachedOnMount.current = !!imgUrl
@@ -63,8 +61,7 @@ export const Artwork = ({
     setFaded(false)
   }, [url])
 
-  // Retire the blurhash on a timer rather than transitionend: under prefers-reduced-motion the
-  // transition is none, so the event never fires and the placeholder would stay up forever.
+  // Timer, not transitionend: under prefers-reduced-motion there is no transition to end.
   useEffect(() => {
     if (!decoded || faded) return undefined
     const timer = setTimeout(() => setFaded(true), fadeMs)
@@ -74,11 +71,9 @@ export const Artwork = ({
   if (!record) return null
 
   const instant = cachedOnMount.current
-  // The blurhash stays mounted under the image until the fade ends. Swapping them the moment the
-  // blob arrives would expose the empty container for the length of the fade.
+  // Kept mounted until the fade ends; swapping on blob arrival would flash an empty container.
   const showBlurHash = !!record.blurHash && !instant && !faded
-  // A square request is padded, not cropped, so its content is already aspect-fit inside the square
-  // the server returns; `contain` is what keeps placeholder and image on the same pixels.
+  // A square request is padded, not cropped, so `contain` keeps placeholder and image aligned.
   const effectiveFit = square ? 'contain' : fit
   const ratio = record.imageWidth / record.imageHeight
   const handleClick = imgUrl && onClick ? onClick : undefined

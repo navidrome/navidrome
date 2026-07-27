@@ -18,8 +18,7 @@ import (
 	"github.com/pocketbase/dbx"
 )
 
-// seedAnnotations gives each id a distinct rating, play count, play date and starred_at for the
-// current user, dropping the rows again when the spec ends. It writes them directly, so that
+// seedAnnotations gives each id distinct annotation values, writing them directly so that
 // SetRating's average_rating update does not outlive the cleanup.
 func seedAnnotations(itemType string, ids ...string) {
 	GinkgoHelper()
@@ -103,7 +102,6 @@ var _ = Describe("Artwork hydration", func() {
 			al.ImageAbsent = true
 			Expect(repo.(*albumRepository).Put(&al)).To(Succeed())
 
-			// No item_artwork rows exist, so a fresh read must observe zero values.
 			got, err := repo.Get(al.ID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.ImageHash).To(BeEmpty())
@@ -179,8 +177,6 @@ var _ = Describe("Artwork hydration", func() {
 			Expect(got.ImageHash).To(Equal("plget8888888888"))
 		})
 
-		// A track reached through a playlist must carry the same artwork state as one reached
-		// through the songs list, or its cover id has no hash to serve immutably or blur.
 		It("hydrates the tracks reached through a playlist", func() {
 			Expect(aw.PutImage(&model.Artwork{Hash: "pltrackhash1234", Mime: "image/jpeg", BlurHash: "LPLBLURhash"})).To(Succeed())
 			putInfo("al", songDayInALife.AlbumID, "pltrackhash1234")
@@ -279,16 +275,13 @@ var _ = Describe("Artwork hydration", func() {
 
 			byID := getByID()
 
-			// eligible + own hash -> own hash
 			Expect(byID["1001"].ImageHash).To(Equal("mfh1001xxxxxxxx"))
 			Expect(byID["1001"].ImageAbsent).To(BeFalse())
-			// eligible + embedded absent -> falls through to album 102 info
 			Expect(byID["1002"].ImageHash).To(Equal("alh102xxxxxxxxxx"))
 			Expect(byID["1002"].ImageAbsent).To(BeFalse())
-			// not eligible (no embedded cover) -> album 103 info (known-absent)
 			Expect(byID["1003"].ImageHash).To(BeEmpty())
 			Expect(byID["1003"].ImageAbsent).To(BeTrue())
-			// not eligible, album has no row -> zero values (unresolved)
+			// 2002: not eligible, and its album has no row at all -> unresolved
 			Expect(byID["2002"].ImageHash).To(BeEmpty())
 			Expect(byID["2002"].ImageAbsent).To(BeFalse())
 		})
@@ -304,15 +297,12 @@ var _ = Describe("Artwork hydration", func() {
 
 			byID := getByID()
 
-			// own-art-wins: ImageHash is the track's own, but AlbumImage still carries the album's.
 			Expect(byID["1001"].ImageHash).To(Equal("mfh1001albimgxxx"))
 			Expect(byID["1001"].AlbumImage.ImageHash).To(Equal("alh101albimgxxxx"))
 
-			// single-disc album-inheritance: not eligible, so ImageHash mirrors the album's hash.
 			Expect(byID["1002"].ImageHash).To(Equal("alh102albimgxxxx"))
 			Expect(byID["1002"].AlbumImage.ImageHash).To(Equal("alh102albimgxxxx"))
 
-			// multi-disc bailout: ImageHash stays bare, but AlbumImage still reflects the absence.
 			Expect(byID["2002"].ImageHash).To(BeEmpty())
 			Expect(byID["2002"].ImageAbsent).To(BeFalse())
 			Expect(byID["2002"].AlbumImage.ImageAbsent).To(BeTrue())
@@ -341,18 +331,16 @@ var _ = Describe("Artwork hydration", func() {
 		})
 
 		It("keeps an eligible file optimistic when its own art is unresolved, even if the album is absent", func() {
-			// 1004 is eligible (has embedded cover) with no mf state row yet; its album (103) is absent.
 			setCover("1004", true)
 			DeferCleanup(func() { setCover("1004", false) })
 			putInfo("al", "103", "") // album known-absent
 
 			byID := getByID()
 
-			// The track's own embedded art is still unresolved, so it must NOT inherit the album's
-			// absence: coverArt stays requestable so serving can extract the embedded art.
+			// 1004's own embedded art is still unresolved, so coverArt must stay requestable.
 			Expect(byID["1004"].ImageAbsent).To(BeFalse())
 			Expect(byID["1004"].ImageHash).To(BeEmpty())
-			// A non-eligible sibling on the same absent album still inherits the absence.
+			// 1003 is not eligible, so it still inherits the album's absence.
 			Expect(byID["1003"].ImageAbsent).To(BeTrue())
 		})
 
@@ -361,8 +349,6 @@ var _ = Describe("Artwork hydration", func() {
 
 			byID := getByID()
 
-			// 2002 is multi-disc (DiscNumber>0); CoverArtID emits a dc- id served from disc art of
-			// unknown identity, so it must not advertise the album's hash as its content-version.
 			Expect(byID["2002"].ImageHash).To(BeEmpty())
 			Expect(byID["2002"].ImageAbsent).To(BeFalse())
 		})
@@ -372,14 +358,12 @@ var _ = Describe("Artwork hydration", func() {
 
 			byID := getByID()
 
-			// 2002 is a multi-disc track (DiscNumber>0); CoverArtID points at disc art, which
-			// resolves provisionally, so it must never inherit the album's absence.
 			Expect(byID["2002"].ImageAbsent).To(BeFalse())
 			Expect(byID["2002"].ImageHash).To(BeEmpty())
 		})
 
-		// serveMediaFile extracts this track's own embedded art (provisionalEmbedded), so the
-		// album's hash would advertise a content-version for bytes nobody will serve.
+		// serveMediaFile serves this track's own embedded art, so the album's hash would
+		// advertise a content-version for bytes nobody will serve.
 		It("leaves the hash bare for an eligible file whose own art is unresolved", func() {
 			setCover("1004", true)
 			DeferCleanup(func() { setCover("1004", false) })
@@ -438,16 +422,15 @@ var _ = Describe("Artwork hydration", func() {
 				albumRadioactivity.ID, albumMultiDisc.ID, albumCJK.ID, albumPunctuation.ID}}
 			onlyArtists = squirrel.Eq{"artist.id": []string{artistKraftwerk.ID, artistBeatles.ID,
 				artistCJK.ID, artistPunctuation.ID}}
-			// Both fixture playlists belong to the same owner, so the owner_name sort would have a
-			// single value to order by. This one is also private and owned by a third user, which
-			// is what the non-admin visibility spec needs to see hidden.
+			// Both fixture playlists share an owner, leaving the owner_name sort a single value to
+			// order by; this one is also private, which the non-admin visibility spec needs.
 			foreign := model.Playlist{Name: "Foreign", OwnerID: thirdUser.ID, OwnerName: thirdUser.UserName}
 			Expect(playlistRepo.Put(&foreign)).To(Succeed())
 			DeferCleanup(func() { Expect(playlistRepo.Delete(foreign.ID)).To(Succeed()) })
 			onlyPlaylists = squirrel.Eq{"playlist.id": []string{plsBest.ID, plsCool.ID, foreign.ID}}
 
-			// The suite annotates a single album and artist, so the annotation-backed sorts would
-			// have nothing to order. Seed distinct values, and drop them again after each spec.
+			// The suite annotates a single album and artist, leaving the annotation-backed sorts
+			// nothing to order.
 			seedAnnotations("album", albumSgtPeppers.ID, albumAbbeyRoad.ID)
 			seedAnnotations("artist", artistKraftwerk.ID, artistCJK.ID)
 
@@ -515,8 +498,7 @@ var _ = Describe("Artwork hydration", func() {
 				To(Equal(slice.Map(want, func(a model.Album) string { return a.ID })))
 		})
 
-		// The sorts and filters the Jellyfin list endpoints issue: the id pre-pass must resolve each
-		// of them exactly like the full query. Comparing sort keys, not ids, keeps ties out of it.
+		// The sorts the Jellyfin list endpoints issue; comparing sort keys, not ids, keeps ties out.
 		DescribeTable("orders albums like GetAll",
 			func(opts model.QueryOptions, key func(model.Album) string) {
 				opts = scoped(opts, onlyAlbums)
@@ -612,8 +594,7 @@ var _ = Describe("Artwork hydration", func() {
 			repo := NewPlaylistRepository(otherCtx, GetDBXBuilder())
 			opts := model.QueryOptions{Sort: "name", Filters: onlyPlaylists}
 
-			// Both phases must filter on their own: the id pre-pass, and the chunk fetch that would
-			// otherwise re-read an id whose visibility changed in between.
+			// Both phases must filter on their own: the id pre-pass and the chunk fetch.
 			Expect(repo.GetAllIDs(opts)).To(ConsistOf(plsBest.ID))
 			all, err := repo.GetAll(model.QueryOptions{Filters: onlyPlaylists})
 			Expect(err).ToNot(HaveOccurred())
@@ -633,15 +614,13 @@ var _ = Describe("Artwork hydration", func() {
 		BeforeEach(func() {
 			mfRepo = NewMediaFileRepository(ctx, GetDBXBuilder())
 			putInfo("al", albumSgtPeppers.ID, "curhash11111111")
-			// Distinct titles keep the ordering/paging specs tie-free; other fixture songs share
-			// titles (e.g. "Antenna") or albums, which would make row order ambiguous.
+			// Distinct titles only: other fixture songs share titles (e.g. "Antenna" x3), which
+			// would make the positional comparisons against GetAll pass by tie-order coincidence.
 			onlySongs = squirrel.Eq{"media_file.id": []string{songDayInALife.ID, songComeTogether.ID,
 				songRadioactivity.ID, songAntenna.ID, songDisc1Track01.ID, songCJK.ID, songPunctuation.ID}}
 		})
 
 		It("hydrates artwork onto every streamed track, unlike GetCursor", func() {
-			// Scoped to onlySongs (distinct titles): the full fixture has title ties (e.g. "Antenna"
-			// x3), so positional comparison against GetAll would only pass by tie-order coincidence.
 			opts := model.QueryOptions{Sort: "title", Filters: onlySongs}
 			want, err := mfRepo.GetAll(opts)
 			Expect(err).ToNot(HaveOccurred())

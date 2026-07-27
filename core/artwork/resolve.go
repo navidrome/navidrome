@@ -24,21 +24,19 @@ type resolution struct {
 	source     string        // model.ItemArtwork.Source value: "folder", "embedded", "external", "upload", "generated"
 	sourcePath string        // backing library/upload file (folder/upload: the image; embedded: the audio file); "" otherwise
 	refMtime   int64         // sourcePath mtime (unix-nanoseconds) at resolution; 0 when no sourcePath
-	// external source errored/timed out. With no reader: forces failed (never absent).
-	// On a hit: a higher-priority external step failed—serve this, but retry later.
+	// external source errored/timed out. With no reader it forces failed (never absent);
+	// on a hit a higher-priority external step failed—serve this, but retry later.
 	extError bool
-	// a local source that should have been readable wasn't (stale mount, permissions).
-	// With no reader: forces failed, so a transient I/O fault never records absent.
+	// a local source that should have been readable wasn't. With no reader it forces failed,
+	// so a transient I/O fault never records absent.
 	localError bool
 }
 
 // chainState carries what a priority walk has seen so far. A hit takes extErr with it so a
-// transient external failure still schedules a retry, but not localErr: a local candidate a
-// later source recovered from is re-listed by the scanner when it actually changes.
+// transient external failure still retries; localErr is dropped, as the scanner re-lists changes.
 type chainState struct{ extErr, localErr bool }
 
-// try reports a hit, stamping the accumulated external failure onto it, and otherwise records
-// the miss. Folding both into one call is what keeps the OR from being forgotten at a new site.
+// try stamps the accumulated external failure onto a hit, and records the miss otherwise.
 func (c *chainState) try(res resolution, ok bool) (resolution, bool) {
 	if ok {
 		res.extError = c.extErr
@@ -53,15 +51,13 @@ func (c *chainState) exhausted() resolution {
 	return resolution{extError: c.extErr, localError: c.localErr}
 }
 
-// externalSource is the ability to reach the network: which agents to ask, and the per-agent
-// rate limiter and circuit breaker to ask them through.
+// externalSource holds the agents to ask and the rate limiter/circuit breaker to ask them through.
 type externalSource struct {
 	agents *agents.Agents
 	gate   gateFunc
 }
 
-// resolver walks a kind's priority chain and returns the first hit. A nil ext means local-only,
-// so "may this resolution go external" is one fact rather than two that could disagree.
+// resolver walks a kind's priority chain and returns the first hit; a nil ext means local-only.
 type resolver struct {
 	ds     model.DataStore
 	ffmpeg ffmpeg.FFmpeg
@@ -75,8 +71,8 @@ func newResolver(ds model.DataStore, ag *agents.Agents, ffm ffmpeg.FFmpeg, gate 
 	return &resolver{ds: ds, ffmpeg: ffm, ext: &externalSource{agents: ag, gate: gate}}
 }
 
-// newLocalResolver offers no parameter through which an external source could be supplied, so
-// a request can neither reach the network nor sample album art for the worker-built grid.
+// newLocalResolver builds a resolver that can neither reach the network nor sample album art
+// for the worker-built grid.
 func newLocalResolver(ds model.DataStore, ffm ffmpeg.FFmpeg) *resolver {
 	return &resolver{ds: ds, ffmpeg: ffm}
 }
@@ -115,8 +111,7 @@ func (r *resolver) fetchExternalArtist(ctx context.Context, ar model.Artist) (io
 	return fetchArtistImage(ctx, r.ext.agents, r.ext.gate, ar)
 }
 
-// resolveAlbum ports the folder/embedded/external selection from
-// reader_album.go, walking conf.Server.CoverArtPriority.
+// resolveAlbum walks conf.Server.CoverArtPriority over the folder, embedded and external sources.
 func (r *resolver) resolveAlbum(ctx context.Context, albumID string) (resolution, error) {
 	al, err := r.ds.Album(ctx).Get(albumID)
 	if err != nil {
@@ -154,8 +149,7 @@ func (r *resolver) resolveAlbum(ctx context.Context, albumID string) (resolution
 	return chain.exhausted(), nil
 }
 
-// resolveArtist ports the upload/folder/external selection from
-// reader_artist.go: upload always wins, then conf.Server.ArtistArtPriority.
+// resolveArtist tries the uploaded image first, then walks conf.Server.ArtistArtPriority.
 func (r *resolver) resolveArtist(ctx context.Context, artistID string) (resolution, error) {
 	ar, err := r.ds.Artist(ctx).Get(artistID)
 	if err != nil {
@@ -171,7 +165,7 @@ func (r *resolver) resolveArtist(ctx context.Context, artistID string) (resoluti
 		return upload, nil
 	}
 
-	// Only consider albums where the artist is the sole album artist, same as reader_artist.go.
+	// Only consider albums where the artist is the sole album artist.
 	als, err := r.ds.Album(ctx).GetAll(model.QueryOptions{
 		Filters: squirrel.And{
 			squirrel.Eq{"album_artist_id": artistID},
@@ -230,8 +224,7 @@ func (r *resolver) resolveArtist(ctx context.Context, artistID string) (resoluti
 	return chain.exhausted(), nil
 }
 
-// resolvePlaylist ports reader_playlist.go's chain: uploaded image, sidecar,
-// ExternalImageURL, then the generated 2x2 grid sourced through resolveAlbum.
+// resolvePlaylist tries the uploaded image, the sidecar and ExternalImageURL, then a generated grid.
 func (r *resolver) resolvePlaylist(ctx context.Context, playlistID string) (resolution, error) {
 	pl, err := r.ds.Playlist(ctx).Get(playlistID)
 	if err != nil {
@@ -252,8 +245,7 @@ func (r *resolver) resolvePlaylist(ctx context.Context, playlistID string) (reso
 			return res, nil
 		}
 	}
-	// A local ExternalImageURL is a file-backed reference: serve it in place (staleness-checked,
-	// and available even on the request path). Only http(s) URLs need the gated remote fetch.
+	// A local ExternalImageURL is file-backed and served in place; only http(s) needs the gated fetch.
 	localImg, remoteImg := classifyPlaylistImage(pl.ExternalImageURL)
 	if localImg != "" {
 		res, ok := resolveLocalFile(localImg, "folder")
@@ -265,8 +257,7 @@ func (r *resolver) resolvePlaylist(ctx context.Context, playlistID string) (reso
 		}
 	}
 	if r.ext == nil {
-		// The remote ExternalImageURL fetch and the 2x2 grid are worker-only; a request must
-		// not fetch remotely nor sample album art synchronously.
+		// The remote fetch and the generated grid are worker-only; a request must do neither.
 		return resolution{}, nil
 	}
 	if remoteImg != nil && conf.Server.EnableM3UExternalAlbumArt {
@@ -309,14 +300,13 @@ func (r *resolver) resolvePlaylist(ctx context.Context, playlistID string) (reso
 		}
 	}
 	if len(tiles) == 0 {
-		// A tile-level failure must never resolve as a clean absent: propagate
-		// internal errors, and force extError for external ones.
+		// A tile-level failure must never resolve as a clean absent.
 		if tileErr != nil {
 			return resolution{}, fmt.Errorf("resolvePlaylist: sampled album art failed: %w", tileErr)
 		}
 		return resolution{extError: extErr}, nil
 	}
-	// Grow to 4 tiles by repeating what we have, mirroring reader_playlist.go's loadTiles.
+	// Grow to 4 tiles by repeating what we have.
 	switch len(tiles) {
 	case 2:
 		tiles = append(tiles, tiles[1], tiles[0])
@@ -330,7 +320,7 @@ func (r *resolver) resolvePlaylist(ctx context.Context, playlistID string) (reso
 	return resolution{reader: grid, source: "generated", extError: extErr}, nil
 }
 
-// resolveRadio ports reader_radio.go: only an uploaded image, no fallback.
+// resolveRadio serves only an uploaded image; there is no fallback.
 func (r *resolver) resolveRadio(ctx context.Context, radioID string) (resolution, error) {
 	radio, err := r.ds.Radio(ctx).Get(radioID)
 	if err != nil {
@@ -340,8 +330,8 @@ func (r *resolver) resolveRadio(ctx context.Context, radioID string) (resolution
 	return res, nil
 }
 
-// resolveMediaFile resolves a track's own embedded art only; there is no folder or
-// external fallback, so disabled/missing cover art is a definitive absent.
+// resolveMediaFile resolves a track's own embedded art only, so disabled or missing cover art
+// is a definitive absent.
 func (r *resolver) resolveMediaFile(ctx context.Context, id string) (resolution, error) {
 	mf, err := r.ds.MediaFile(ctx).Get(id)
 	if err != nil {
@@ -358,9 +348,8 @@ func (r *resolver) resolveMediaFile(ctx context.Context, id string) (resolution,
 	return res, nil
 }
 
-// resolveExternalStep runs a single external sourceFunc through the named gate; used by
-// the playlist ExternalImageURL step. ok reports a hit; extErr reports a non-not-found
-// error (a not-found is a definitive "no", not a failure).
+// resolveExternalStep runs a single external sourceFunc through the named gate. extErr excludes
+// a not-found, which is a definitive "no" rather than a failure.
 func resolveExternalStep(gate gateFunc, name string, sf sourceFunc) (res resolution, ok bool, extErr bool) {
 	r, path, err := gate(name, sf)
 	if r != nil {
@@ -369,8 +358,8 @@ func resolveExternalStep(gate gateFunc, name string, sf sourceFunc) (res resolut
 	return resolution{}, false, err != nil && !errors.Is(err, model.ErrNotFound)
 }
 
-// classifyPlaylistImage splits a playlist ExternalImageURL into a local filesystem path
-// (served file-backed) or a remote http(s) URL (fetched and stored); at most one is set.
+// classifyPlaylistImage splits a playlist ExternalImageURL into a local filesystem path or a
+// remote http(s) URL; at most one is set.
 func classifyPlaylistImage(imageURL string) (localPath string, remote *url.URL) {
 	if imageURL == "" {
 		return "", nil
@@ -429,8 +418,8 @@ func resolveArtistFolderPattern(ctx context.Context, lib libraryView, artistFold
 	return resolution{reader: r, source: "folder", sourcePath: path, refMtime: mtimeOf(path)}, true
 }
 
-// resolveLocalFile opens an absolute path directly (uploads, image-folder). A missing path is
-// "no source"; any other open failure says nothing about whether the image exists.
+// resolveLocalFile opens an absolute path directly. A missing path is "no source"; any other
+// open failure says nothing about whether the image exists.
 func resolveLocalFile(path, source string) (resolution, bool) {
 	if path == "" {
 		return resolution{}, false
@@ -450,8 +439,7 @@ func mtimeOf(path string) int64 {
 	return info.ModTime().UnixNano()
 }
 
-// mtimeViaFS stats through the library FS instead of a joined absolute path,
-// since library roots in tests may not be real OS paths (e.g. testfile://).
+// mtimeViaFS stats through the library FS, since library roots in tests may not be real OS paths.
 func mtimeViaFS(fsys fs.FS, name string) int64 {
 	if fsys == nil || name == "" {
 		return 0

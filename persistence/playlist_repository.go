@@ -134,8 +134,8 @@ func (r *playlistRepository) Put(p *model.Playlist, cols ...string) error {
 	}
 	pls.ID = id // r.put assigns the generated id to p, not to this copy
 	if isNew {
-		// A brand-new playlist has art to find even with no tracks (an imported m3u can carry an
-		// ExternalImageURL). An update landing here changed only metadata, so leave its cover be.
+		// Even a trackless new playlist has art to find (an imported m3u can carry an
+		// ExternalImageURL); an update landing here changed only metadata, so leave its cover be.
 		r.enqueueCoverRebuild(id)
 	}
 	return r.refreshCounters(&pls.Playlist)
@@ -184,7 +184,6 @@ func (r *playlistRepository) findBy(sql Sqlizer) (*model.Playlist, error) {
 	return &list[0], nil
 }
 
-// hydrateArtwork fills each playlist's ImageHash/ImageAbsent from one batched item_artwork lookup.
 func (r *playlistRepository) hydrateArtwork(playlists model.Playlists) {
 	if len(playlists) == 0 {
 		return
@@ -211,12 +210,10 @@ func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playli
 	return playlists, err
 }
 
-// GetAllIDs returns just the playlist IDs for the same row set as GetAll (honoring userFilter),
-// skipping its per-row processing. Used by bulk enumeration (artwork backfill) and as GetCursor's
-// id pre-pass.
+// GetAllIDs returns the IDs of GetAll's row set, skipping its per-row processing.
 func (r *playlistRepository) GetAllIDs(options ...model.QueryOptions) ([]string, error) {
-	// Joins a projection of user, not the table: its name/created_at columns would otherwise make
-	// an ORDER BY on the playlist's own ambiguous.
+	// Joins a projection of user, not the table: its name/created_at columns would make an ORDER BY
+	// on the playlist's own ambiguous.
 	sq := r.newSelect(options...).Columns("playlist.id", "user.user_name as owner_name").
 		Join("(select id, user_name from user) user on user.id = owner_id").Where(r.userFilter())
 	if filtersNeedAnnotation(sq) {
@@ -228,8 +225,7 @@ func (r *playlistRepository) GetAllIDs(options ...model.QueryOptions) ([]string,
 }
 
 func (r *playlistRepository) GetCursor(options ...model.QueryOptions) (model.PlaylistCursor, error) {
-	// GetAllIDs and GetAll both apply userFilter: a cursor must not widen visibility beyond
-	// public/owned playlists, even if visibility changes between the two queries.
+	// Both passes apply userFilter, so a visibility change between them cannot widen the cursor.
 	ids, err := r.GetAllIDs(options...)
 	if err != nil {
 		return nil, err
@@ -338,10 +334,8 @@ func (r *playlistRepository) refreshCounters(pls *model.Playlist) error {
 	return nil
 }
 
-// enqueueCoverRebuild re-resolves the generated 2x2 grid, which depends on the track set. Called
-// only where that set actually changes: the grid samples albums at random, so rebuilding after a
-// mere rename would hand the playlist a different cover. No clear -- the old cover keeps serving
-// until the worker rebuilds, so there is no flicker.
+// enqueueCoverRebuild re-resolves the generated 2x2 grid. Call it only when the track set changes:
+// the grid samples albums at random, so rebuilding after a mere rename would change the cover.
 func (r *playlistRepository) enqueueCoverRebuild(id string) {
 	item := model.ArtworkQueueItem{ItemKind: model.KindPlaylistArtwork.Prefix(), ItemID: id,
 		ImageType: model.ImageTypePrimary, Priority: model.ArtworkPriorityScan}

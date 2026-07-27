@@ -232,8 +232,7 @@ const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
 }
 
 const AlbumGridView = ({ albumListType, loaded, loading, seed, ...props }) => {
-  // A re-roll replaces every album, so the previous roll must not linger while it loads. Blanking
-  // on any load instead collapsed the grid to a spinner on each search keystroke.
+  // A re-roll replaces every album, so the previous roll must not linger while it loads.
   const rerolling = useRollChanged(seed, loading) && albumListType === 'random'
   const hide = rerolling || !props.data || !props.ids
   return hide ? <Loading /> : <LoadedAlbumGrid {...props} />

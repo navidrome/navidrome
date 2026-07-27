@@ -20,32 +20,30 @@ import (
 
 var ErrUnavailable = errors.New("artwork unavailable")
 
-// errStaleSource signals that a backing file's mtime no longer matches the state
-// row's RefMtime: the stored hash may be stale, so the load is aborted (dangling).
+// errStaleSource means the backing file's mtime no longer matches RefMtime, so the stored hash may be stale.
 var errStaleSource = errors.New("artwork: source file changed since resolution")
 
 // Image is one servable artwork response.
 type Image struct {
 	io.ReadCloser
-	Hash        string    // pixel-identity hash (immutable URL match); "" for placeholders
-	ETag        string    // served-representation validator; "" falls back to Hash (full-size original)
-	LastUpdated time.Time // zero for placeholders
+	Hash        string // pixel identity; "" for placeholders
+	ETag        string // representation validator; "" means Hash applies (full-size original)
+	LastUpdated time.Time
 	Placeholder bool
 }
 
-// representationTag identifies a served resized representation for HTTP validation: it changes with
-// the dimensions and the encode settings (CoverArtQuality/EnableWebPEncoding), so a config change
-// invalidates a revalidating client's cache even though the pixel hash is unchanged.
+// representationTag varies with dimensions and encode settings, so a config change invalidates
+// a revalidating client's cache even though the pixel hash is unchanged.
 func representationTag(hash string, size int, square bool) string {
 	return fmt.Sprintf("%s.%d.%v.%s", hash, size, square, formatQualityTag())
 }
 
 type Artwork interface {
-	// Get serves resolved/provisional artwork; ErrUnavailable or model.ErrNotFound when
-	// there is nothing to serve (absent, pending, dangling) — caller picks placeholder vs 404.
+	// Get returns ErrUnavailable when there is nothing to serve and model.ErrNotFound when
+	// the id resolves to nothing, so the caller can pick placeholder vs 404.
 	Get(ctx context.Context, artID model.ArtworkID, size int, square bool) (*Image, error)
-	// GetOrPlaceholder parses a raw id token (raw entity ids accepted, as today) and falls
-	// back to the kind's placeholder image (never resized, Placeholder=true).
+	// GetOrPlaceholder accepts an artwork token or a raw entity id, falling back to the
+	// kind's placeholder image (never resized, Placeholder=true).
 	GetOrPlaceholder(ctx context.Context, id string, size int, square bool) (*Image, error)
 }
 
@@ -55,7 +53,6 @@ func NewArtwork(ds model.DataStore, cache cache.FileCache, store *ImageStore, ff
 
 // EntityExists reports whether the entity an artwork id points at is still there: state rows
 // outlive a deleted entity until the next prune, so a servable row is not evidence of its owner.
-// The repositories are ctx-scoped, so a request context makes this a visibility check too.
 func EntityExists(ctx context.Context, ds model.DataStore, artID model.ArtworkID) bool {
 	var found bool
 	var err error
@@ -95,8 +92,8 @@ func (s *service) GetOrPlaceholder(ctx context.Context, id string, size int, squ
 	if err == nil {
 		img, err = s.Get(ctx, artID, size, square)
 	}
-	// Only a resolvable entity with no art gets the placeholder. An id that matches no entity
-	// stays ErrNotFound, so getCoverArt keeps answering error 70 and Jellyfin keeps 404ing.
+	// Only a resolvable entity with no art gets a placeholder; an unknown id must stay
+	// ErrNotFound so callers can still answer 404 / Subsonic error 70.
 	if errors.Is(err, ErrUnavailable) {
 		return placeholderImage(artID.Kind), nil
 	}
@@ -108,7 +105,7 @@ func (s *service) Get(ctx context.Context, artID model.ArtworkID, size int, squa
 		return nil, ErrUnavailable
 	}
 	if size < 0 {
-		size = 0 // a negative size is a full-size request, not a giant (OOM) resize rectangle
+		size = 0 // a negative size means full-size, not a giant (OOM) resize rectangle
 	}
 	switch artID.Kind {
 	case model.KindDiscArtwork:
@@ -120,13 +117,10 @@ func (s *service) Get(ctx context.Context, artID model.ArtworkID, size int, squa
 	}
 }
 
-// requestRecheckAge throttles view-triggered rechecks of an absent entity so repeatedly opening a
-// genuinely-absent page can't hammer external services; below staleAbsentAge to catch younger absences.
+// requestRecheckAge throttles view-triggered rechecks so reopening a genuinely-absent page can't
+// hammer external services; below staleAbsentAge to catch younger absences.
 const requestRecheckAge = time.Hour
 
-// serveEntity serves an entity whose state the worker owns (album/artist/playlist/radio):
-// found row serves its hash, absent row is unavailable (promoting a stale recheck on view),
-// missing row reads through provisionally.
 func (s *service) serveEntity(ctx context.Context, artID model.ArtworkID, size int, square bool) (*Image, error) {
 	ia, err := s.ds.Artwork(ctx).GetItemArtwork(artID.Kind, artID.ID, model.ImageTypePrimary)
 	switch {
@@ -135,8 +129,8 @@ func (s *service) serveEntity(ctx context.Context, artID model.ArtworkID, size i
 	case err != nil:
 		return nil, err
 	case ia.Hash == "":
-		// EnqueueBump preserves an existing backoff row's retry_at; for a settled absent row
-		// (no queue row) it inserts a fresh, immediately-eligible recheck.
+		// EnqueueBump preserves an existing backoff row's retry_at, and inserts an
+		// immediately-eligible recheck for a settled absent row.
 		if time.Since(ia.AttemptedAt) > requestRecheckAge {
 			s.enqueue(ctx, artID, model.ArtworkPriorityBump)
 		}
@@ -146,10 +140,8 @@ func (s *service) serveEntity(ctx context.Context, artID model.ArtworkID, size i
 	}
 }
 
-// serveSource is the one place bytes become an Image: a full-size request streams open()
-// directly, anything else goes through the resize cache under key. hash is the pixel identity
-// where one exists ("" for disc art, which has no state row) and doubles as the full-size
-// validator, so an ETag is only needed when the bytes are resized or the hash is missing.
+// serveSource is the one place bytes become an Image. hash is the pixel identity ("" for disc art)
+// and doubles as the full-size validator, so an ETag is only needed when resized or hash is "".
 func (s *service) serveSource(ctx context.Context, key, hash string, lastUpdate time.Time,
 	size int, square bool, open func() (io.ReadCloser, error),
 ) (*Image, error) {
@@ -176,11 +168,10 @@ func (s *service) serveSource(ctx context.Context, key, hash string, lastUpdate 
 	return &Image{ReadCloser: stream, Hash: hash, ETag: representationTag(key, size, square), LastUpdated: lastUpdate}, nil
 }
 
-// serveHash serves the bytes of a found state row. A mismatch/open error is dangling (a warm
-// cache still serves), but a cancelled request is not: it must not enqueue a re-resolution.
+// serveHash serves the bytes of a found state row. A mismatch/open error is dangling, but a
+// cancelled request is not: it must not enqueue a re-resolution.
 func (s *service) serveHash(ctx context.Context, artID model.ArtworkID, ia *model.ItemArtwork, size int, square bool) (*Image, error) {
-	// Only this path can hand back a deleted entity's bytes: an absent row is already
-	// unavailable, and the provisional and disc paths load their entity to resolve at all.
+	// Only this path can hand back a deleted entity's bytes; the others load their entity anyway.
 	if !EntityExists(ctx, s.ds, artID) {
 		return nil, ErrUnavailable
 	}
@@ -203,8 +194,7 @@ func (s *service) serveHash(ctx context.Context, artID model.ArtworkID, ia *mode
 	return img, nil
 }
 
-// openOriginal opens the full-resolution bytes for a found state row, enforcing the
-// mtime invariant: bytes are never served under a hash they no longer match.
+// openOriginal enforces the mtime invariant: bytes are never served under a hash they no longer match.
 func openOriginal(ia *model.ItemArtwork, mime string, store *ImageStore) (io.ReadCloser, error) {
 	if isFileBacked(ia.Source) {
 		f, err := os.Open(ia.SourcePath)
@@ -224,8 +214,7 @@ func openOriginal(ia *model.ItemArtwork, mime string, store *ImageStore) (io.Rea
 		}
 		return f, nil
 	}
-	// Store-backed (embedded/external/generated): the bytes live in the content-addressed
-	// store, but an embedded source still carries the audio file's mtime to detect edits.
+	// Store-backed bytes still carry the source's mtime, to detect edits to embedded art.
 	if ia.SourcePath != "" && ia.RefMtime != 0 {
 		info, err := os.Stat(ia.SourcePath)
 		if err != nil {
@@ -240,8 +229,8 @@ func openOriginal(ia *model.ItemArtwork, mime string, store *ImageStore) (io.Rea
 	return store.Open(ia.Hash, mime)
 }
 
-// provisional does a local-only read-through for an entity with no state row: it enqueues
-// the worker (Bump) and serves any local bytes immediately, never writing a state row.
+// provisional serves local bytes for an entity with no state row, enqueuing the worker but
+// never writing a state row itself.
 func (s *service) provisional(ctx context.Context, artID model.ArtworkID, size int, square bool) (*Image, error) {
 	item := model.ArtworkQueueItem{ItemKind: artID.Kind.Prefix(), ItemID: artID.ID, ImageType: model.ImageTypePrimary}
 	res, err := newLocalResolver(s.ds, s.ffmpeg).resolve(ctx, item)
@@ -254,8 +243,7 @@ func (s *service) provisional(ctx context.Context, artID model.ArtworkID, size i
 	return s.serveResolution(ctx, res, size, square)
 }
 
-// serveResolution turns a local resolution's bytes into a servable Image (byte-hash
-// only, no decode). A resolution with no reader is unavailable.
+// serveResolution turns a local resolution's bytes into a servable Image (byte-hash only, no decode).
 func (s *service) serveResolution(ctx context.Context, res resolution, size int, square bool) (*Image, error) {
 	if res.reader == nil {
 		return nil, ErrUnavailable
@@ -274,12 +262,9 @@ func (s *service) serveResolution(ctx context.Context, res resolution, size int,
 		func() (io.ReadCloser, error) { return io.NopCloser(bytes.NewReader(data)), nil })
 }
 
-// serveMediaFile serves a track: own found art wins; an absent row delegates to the album;
-// a missing row extracts embedded art (if eligible, enqueuing) else delegates without enqueue.
 func (s *service) serveMediaFile(ctx context.Context, artID model.ArtworkID, size int, square bool) (*Image, error) {
-	// Per-track art can be disabled after mf rows were resolved (the setting is not in the
-	// config fingerprint). Honor it at serve time so a direct mf- URL falls back to disc/album
-	// instead of serving stale persisted embedded art.
+	// The setting is not in the config fingerprint, so honor it at serve time: a direct mf- URL
+	// must fall back to disc/album instead of serving stale persisted embedded art.
 	if !conf.Server.EnableMediaFileCoverArt {
 		mf, err := s.ds.MediaFile(ctx).Get(artID.ID)
 		if err != nil {
@@ -292,9 +277,9 @@ func (s *service) serveMediaFile(ctx context.Context, artID model.ArtworkID, siz
 	case err == nil && ia.Hash != "":
 		return s.serveHash(ctx, artID, ia, size, square)
 	case err == nil:
-		// absent row → fall through to album delegation
+		// absent row: fall through
 	case errors.Is(err, model.ErrNotFound):
-		// no row → fall through to embedded eligibility / album delegation
+		// no row: fall through
 	default:
 		return nil, err
 	}
@@ -307,13 +292,11 @@ func (s *service) serveMediaFile(ctx context.Context, artID model.ArtworkID, siz
 	if noRow && conf.Server.EnableMediaFileCoverArt && mf.HasCoverArt {
 		return s.provisionalEmbedded(ctx, artID, *mf, size, square)
 	}
-	// Mirror MediaFile.CoverArtID's fallback: a multi-disc track defers to its disc art
-	// (which itself falls back to the album), not straight to the album.
+	// Mirror MediaFile.CoverArtID: a track defers to its disc art, which falls back to the album.
 	return s.Get(ctx, mf.DiscCoverArtID(), size, square)
 }
 
-// provisionalEmbedded extracts a track's embedded art for an immediate serve and always
-// enqueues the track (Bump) so the worker persists state; it never writes a state row.
+// provisionalEmbedded serves a track's embedded art immediately, leaving the state row to the worker.
 func (s *service) provisionalEmbedded(ctx context.Context, artID model.ArtworkID, mf model.MediaFile, size int, square bool) (*Image, error) {
 	lib, err := loadLibraryView(ctx, s.ds, mf.LibraryID)
 	if err != nil {
@@ -322,31 +305,26 @@ func (s *service) provisionalEmbedded(ctx context.Context, artID model.ArtworkID
 	res, ok := resolveEmbedded(ctx, lib, s.ffmpeg, mf.Path)
 	s.enqueue(ctx, artID, model.ArtworkPriorityBump)
 	if !ok {
-		// Eligible but unextractable (truncated frame, no ffmpeg): fall back the way
-		// CoverArtID does rather than answer with a placeholder.
+		// Eligible but unextractable: fall back the way CoverArtID does, not to a placeholder.
 		return s.Get(ctx, mf.DiscCoverArtID(), size, square)
 	}
 	return s.serveResolution(ctx, res, size, square)
 }
 
-// serveDisc serves disc-level artwork as a pure provisional read-through: no state rows,
-// no enqueue. It tries the disc-folder selection chain and falls back to the album cover.
+// serveDisc reads disc art through with no state row and no enqueue, falling back to the album cover.
 func (s *service) serveDisc(ctx context.Context, artID model.ArtworkID, size int, square bool) (*Image, error) {
 	dr, err := newDiscArtworkReader(ctx, s.ds, artID)
 	if err != nil {
 		return nil, err
 	}
-	// Single-disc albums run the chain too: a disc can carry its own art, distinct from the
-	// album cover, and DiscArtPriority is what expresses that preference.
+	// Single-disc albums run the chain too: a disc can carry art distinct from the album cover.
 	selectImage := func() (io.ReadCloser, string, error) {
 		funcs := dr.fromDiscArtPriority(ctx, s.ffmpeg, conf.Server.DiscArtPriority)
 		return selectImageReader(ctx, artID, funcs...)
 	}
 	albumArtID := model.ArtworkID{Kind: model.KindAlbumArtwork, ID: dr.album.ID}
-	// Disc art has no state row, so there is no stored content hash — to key the resize cache
-	// on, or to fall back to as a validator. Keying on the id and the album's mtime, as the
-	// legacy reader did, lets a warm cache answer without touching the filesystem; the chain
-	// runs only on a miss. The key carries DiscArtPriority so changing it invalidates.
+	// Disc art has no state row, hence no content hash: keying on id, album mtime and
+	// DiscArtPriority lets a warm cache answer without running the chain or touching the disk.
 	key := fmt.Sprintf("%s|%d|%s", artID.ID, dr.cacheTime().UnixNano(), conf.Server.DiscArtPriority)
 	img, err := s.serveSource(ctx, key, "", dr.cacheTime(), size, square,
 		func() (io.ReadCloser, error) { rc, _, err := selectImage(); return rc, err })
@@ -359,16 +337,14 @@ func (s *service) serveDisc(ctx context.Context, artID model.ArtworkID, size int
 	return img, nil
 }
 
-// dangling enqueues a re-resolution at Scan priority and reports the artwork as
-// unavailable, leaving the state row untouched.
+// dangling enqueues a re-resolution and reports unavailable, leaving the state row untouched.
 func (s *service) dangling(ctx context.Context, artID model.ArtworkID) (*Image, error) {
 	log.Debug(ctx, "Artwork: State row points at bytes we cannot serve, re-resolving", "artID", artID)
 	s.enqueue(ctx, artID, model.ArtworkPriorityScan)
 	return nil, ErrUnavailable
 }
 
-// enqueue schedules a request-triggered re-resolution. It uses EnqueueBump so an incidental
-// read-through never resets a failed resolution's backoff (unlike scan/manual re-resolve).
+// enqueue uses EnqueueBump so an incidental read-through never resets a failed resolution's backoff.
 func (s *service) enqueue(ctx context.Context, artID model.ArtworkID, priority int) {
 	err := s.ds.ArtworkQueue(ctx).EnqueueBump(model.ArtworkQueueItem{
 		ItemKind:  artID.Kind.Prefix(),
@@ -390,8 +366,8 @@ func placeholderImage(kind model.Kind) *Image {
 	return &Image{ReadCloser: r, Placeholder: true}
 }
 
-// PlaceholderFor returns the kind-appropriate placeholder for an artwork id, for callers that must
-// serve a placeholder without consulting persisted state (e.g. an access-control denial).
+// PlaceholderFor returns the kind-appropriate placeholder for an artwork id, for callers that
+// must not consult persisted state (e.g. an access-control denial).
 func PlaceholderFor(id string) *Image {
 	artID, _ := model.ParseArtworkID(id)
 	return placeholderImage(artID.Kind)
@@ -401,8 +377,7 @@ type coverArtIDGetter interface {
 	CoverArtID() model.ArtworkID
 }
 
-// parseArtworkID ports the legacy getArtworkId: parse the token, and if it is a raw
-// entity id, resolve the entity and take its CoverArtID.
+// parseArtworkID accepts an artwork token or a raw entity id, resolving the latter to its CoverArtID.
 func (s *service) parseArtworkID(ctx context.Context, id string) (model.ArtworkID, error) {
 	if id == "" {
 		return model.ArtworkID{}, ErrUnavailable

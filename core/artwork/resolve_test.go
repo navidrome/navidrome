@@ -387,8 +387,7 @@ var _ = Describe("resolveItem", func() {
 				Expect(img.Bounds().Dx()).To(Equal(expectedSize))
 				Expect(img.Bounds().Dy()).To(Equal(expectedSize))
 			},
-			// tileSize-1: the 4-tile canvas is built as [0, tileSize-1], matching
-			// reader_playlist.go's createTiledImage exactly.
+			// tileSize-1: the 4-tile canvas is built as [0, tileSize-1].
 			Entry("1 album -> single tile", []string{"t1"}, tileSize/2),
 			Entry("2 albums -> duplicated to 4 tiles", []string{"t1", "t2"}, tileSize-1),
 			Entry("3 albums -> duplicated to 4 tiles", []string{"t1", "t2", "t3"}, tileSize-1),
@@ -508,8 +507,7 @@ var _ = Describe("resolveItem", func() {
 			Expect(res.extError).To(BeFalse())
 		})
 
-		// A local resolver holds no agents, and the external branch dereferences them before the
-		// gate is ever consulted, so reaching it at all would panic rather than degrade.
+		// A local resolver holds no agents: reaching the external branch would panic, not degrade.
 		It("skips the external step instead of dereferencing absent agents", func() {
 			conf.Server.CoverArtPriority = "external"
 			ds.MockedAlbum = tests.CreateMockAlbumRepo()
@@ -521,8 +519,7 @@ var _ = Describe("resolveItem", func() {
 			Expect(res.extError).To(BeFalse(), "a skipped step is not a failed one")
 		})
 
-		// The request path must never reach the network nor sample album art synchronously. The
-		// worker resolving the same playlist is asserted alongside, so this cannot pass vacuously.
+		// The worker resolving the same playlist is asserted alongside, so this cannot pass vacuously.
 		It("resolves a playlist locally without fetching remotely or building the grid", func() {
 			conf.Server.EnableM3UExternalAlbumArt = true
 			var hits atomic.Int32
@@ -587,7 +584,6 @@ var _ = Describe("resolveItem", func() {
 		})
 
 		It("skips a grid tile whose declared dimensions are a decompression bomb", func() {
-			// End-to-end regression: a bomb-declaring tile must not break the grid.
 			libRoot := GinkgoT().TempDir()
 			Expect(os.MkdirAll(filepath.Join(libRoot, "bomb"), 0755)).To(Succeed())
 			Expect(os.WriteFile(filepath.Join(libRoot, "bomb", "cover.jpg"), pngHeaderWithDims(50000, 50000), 0600)).To(Succeed())
@@ -606,8 +602,7 @@ var _ = Describe("resolveItem", func() {
 		})
 
 		It("does not resolve as absent when every sampled album fails to resolve", func() {
-			// "missing1"/"missing2" are not in MockAlbumRepo's data, so resolveAlbum
-			// returns a genuine (non-external) error for every sampled tile.
+			// The album ids are absent from MockAlbumRepo, so every tile fails non-externally.
 			plRepo := tests.CreateMockPlaylistRepo()
 			plRepo.SetData(model.Playlists{{ID: "pl3", Name: "Playlist"}})
 			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"missing1", "missing2"}}
@@ -620,8 +615,7 @@ var _ = Describe("resolveItem", func() {
 	})
 })
 
-// decodeTile runs on every sampled album's resolved bytes before the processor's
-// own guards apply, so it must enforce the same caps independently.
+// decodeTile runs before the processor's own guards, so it must enforce the caps itself.
 var _ = Describe("decodeTile", func() {
 	It("rejects a decompression bomb before the full decode", func() {
 		data := pngHeaderWithDims(50000, 50000) // 2.5 gigapixels, far above the cap

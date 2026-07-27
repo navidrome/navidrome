@@ -290,8 +290,6 @@ var _ = Describe("mappers", func() {
 		Expect(string(b)).ToNot(ContainSubstring("NormalizationGain"))
 	})
 
-	// Real Jellyfin only attaches it when the client asks (DtoService.ContainsField), and derives
-	// it from the image's real dimensions.
 	Describe("PrimaryImageAspectRatio", func() {
 		nonSquare := func() model.Album {
 			al := model.Album{ID: "al1", Name: "Album"}
@@ -457,9 +455,8 @@ var _ = Describe("mappers", func() {
 		Expect(after.ImageTags["Primary"]).To(Equal(before.ImageTags["Primary"]))
 	})
 
-	// Nothing enqueues media files, so a track's own art only resolves when something requests
-	// it. A Jellyfin client that is only told about the album image never asks, so the track's
-	// own cover would stay unreachable for Jellyfin-only users.
+	// Nothing enqueues media files, so a track's own art only resolves when a client requests it;
+	// advertising just the album image would leave that cover unreachable.
 	Describe("unresolved embedded art", func() {
 		BeforeEach(func() {
 			DeferCleanup(configtest.SetupConfig())

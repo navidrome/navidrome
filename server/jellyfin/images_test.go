@@ -75,8 +75,7 @@ var _ = Describe("Images", func() {
 		Expect(fa.recvId).To(ContainSubstring("a1"))
 	})
 
-	// resolveArtworkID probes the entity tables, so a deleted item cannot produce an artwork id
-	// at all -- which is what stops artwork state outliving its entity from being served here.
+	// resolveArtworkID probes the entity tables, so a deleted item yields no artwork id at all.
 	It("asks for no artwork once the item is deleted, rather than its lingering state", func() {
 		ds := &tests.MockDataStore{} // no albums/artists/tracks/playlists at all
 		fa := &fakeArtwork{}

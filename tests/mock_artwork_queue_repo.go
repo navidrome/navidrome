@@ -11,13 +11,13 @@ import (
 
 type MockArtworkQueueRepo struct {
 	model.ArtworkQueueRepository
-	// mu guards Data so the worker's concurrent drain can hit this mock race-free.
+	// mu guards Data: the worker drains this mock concurrently.
 	mu   sync.Mutex
 	Data map[string]model.ArtworkQueueItem // keyed by iaKey(kind, id, imageType)
 	Err  error
 	// ItemArtworkSource, when set, backs EnqueueStaleAbsent with real item_artwork state.
 	ItemArtworkSource *MockArtworkRepo
-	// ExistingIDs, keyed by item_kind, backs PurgeDangling; a nil per-kind map keeps that kind.
+	// ExistingIDs is keyed by item_kind; a nil per-kind map means PurgeDangling keeps that kind.
 	ExistingIDs map[string]map[string]bool
 }
 
@@ -191,8 +191,7 @@ func (m *MockArtworkQueueRepo) EnqueueStaleAbsent(kind model.Kind, attemptedBefo
 	return inserted, nil
 }
 
-// EnqueueMissing enqueues entities in ExistingIDs[kind] that have no item_artwork row in
-// ItemArtworkSource and are not already queued, mirroring the SQL set-difference insert.
+// EnqueueMissing mirrors the SQL set-difference insert: ExistingIDs[kind] minus ItemArtworkSource.
 func (m *MockArtworkQueueRepo) EnqueueMissing(kind model.Kind) (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

@@ -17,13 +17,10 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-// soakCycles is deliberately >2000: this is a leak regression guard, not a
-// performance benchmark, so it favors a stable signal over raw speed.
+// Deliberately >2000: a leak guard favors a stable signal over speed.
 const soakCycles = 2200
 
 var _ = Describe("Worker soak", func() {
-	// Runs acquisition over many cycles across a mix of sources, asserting
-	// goroutines/heap plateau instead of growing unbounded (a leak guard). Skipped under -short.
 	It("does not leak goroutines, heap, or fds over many acquisition cycles", func() {
 		if testing.Short() {
 			Skip("skipping soak test in short mode")
@@ -57,8 +54,7 @@ var _ = Describe("Worker soak", func() {
 		proc := &processor{ds: ds, store: store, resolver: newResolver(ds, ag, ffm, nil)}
 		conf.Server.CoverArtPriority = "cover.jpg, embedded"
 
-		// Dangling refs (al/ra ids the repos don't know about) mirror an entity
-		// deleted after being enqueued; ds.Radio auto-provisions an empty mock repo.
+		// Dangling refs mirror an entity deleted after being enqueued.
 		items := []model.ArtworkQueueItem{
 			{ItemKind: "al", ItemID: "al-folder"},
 			{ItemKind: "al", ItemID: "al-embed"},
@@ -78,8 +74,7 @@ var _ = Describe("Worker soak", func() {
 		}
 
 		settleGoroutines := func() int {
-			// Background goroutines (GC workers, etc.) can take a moment to wind down;
-			// poll for two consecutive equal samples instead of trusting a single one.
+			// Background goroutines wind down late, so poll for two consecutive equal samples.
 			prev := -1
 			for range 100 {
 				runtime.GC()
@@ -102,8 +97,7 @@ var _ = Describe("Worker soak", func() {
 			it := items[i%len(items)]
 			out, _ := proc.acquire(context.Background(), it)
 
-			// "Serve-adjacent" read-back: exercise the Phase 2 surfaces a caller would
-			// use after acquisition, not the old serving pipeline.
+			// Read-back exercises the surfaces a caller would use after acquisition.
 			if out == outcomeFound {
 				kind, _ := model.ParseKind(it.ItemKind)
 				ia, err := artRepo.GetItemArtwork(kind, it.ItemID, model.ImageTypePrimary)

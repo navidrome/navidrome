@@ -266,8 +266,7 @@ func (r *artistRepository) GetAll(options ...model.QueryOptions) (model.Artists,
 }
 
 // GetAllIDs returns just the artist IDs for the same row set as GetAll, skipping the
-// heavy stats columns and JSON post-processing. Used by bulk enumeration (artwork backfill)
-// and as GetCursor's id pre-pass.
+// heavy stats columns and JSON post-processing.
 func (r *artistRepository) GetAllIDs(options ...model.QueryOptions) ([]string, error) {
 	sq := r.applyLibraryFilterToArtistQuery(r.newSelect(options...).Columns("artist.id")).GroupBy("artist.id")
 	if filtersNeedAnnotation(sq) {

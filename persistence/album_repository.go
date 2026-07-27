@@ -202,8 +202,7 @@ func (r *albumRepository) CountAll(options ...model.QueryOptions) (int64, error)
 }
 
 func (r *albumRepository) Exists(id string) (bool, error) {
-	// Filtered like CountAll: the plain exists() helper applies no library filter, so it
-	// would report a row in a library the caller cannot see.
+	// The exists() helper applies no library filter, so it would report rows the caller cannot see.
 	c, err := r.count(r.applyLibraryFilter(r.newSelect().Where(Eq{"album.id": id})))
 	return c > 0, err
 }
@@ -259,7 +258,6 @@ func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, e
 	return albums, nil
 }
 
-// hydrateArtwork fills each album's ImageHash/ImageAbsent from one batched item_artwork lookup.
 func (r *albumRepository) hydrateArtwork(albums model.Albums) {
 	if len(albums) == 0 {
 		return
@@ -271,9 +269,7 @@ func (r *albumRepository) hydrateArtwork(albums model.Albums) {
 	}
 }
 
-// GetAllIDs returns just the album IDs for the same row set as GetAll, skipping the
-// heavy column projection and JSON post-processing. Used by bulk enumeration (artwork backfill)
-// and as GetCursor's id pre-pass.
+// GetAllIDs returns the IDs of GetAll's row set, skipping its column projection and JSON decoding.
 func (r *albumRepository) GetAllIDs(options ...model.QueryOptions) ([]string, error) {
 	sq := r.applyLibraryFilter(r.newSelect(options...).Columns("album.id"))
 	if filtersNeedAnnotation(sq) {

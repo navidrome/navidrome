@@ -9,10 +9,8 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-// Folder-backed album art is served via os.Open(SourcePath), which the in-memory library FS
-// cannot satisfy; the worker's persisted state row (Source + SourcePath) is the resolver's
-// selection, so folder scenarios assert on it. Embedded art lands in the content-addressed store
-// and is asserted byte-for-byte; a no-art album settles absent.
+// The in-memory library FS cannot satisfy the os.Open(SourcePath) used to serve folder art, so
+// folder scenarios assert on the worker's state row (Source + SourcePath) instead of the bytes.
 var _ = Describe("Album artwork resolution", func() {
 	BeforeEach(func() {
 		setupResolutionHarness()
@@ -354,8 +352,7 @@ var _ = Describe("Album artwork resolution", func() {
 			})
 			scan()
 
-			// Album B first: a drain settles every ready item, and folder art is only
-			// byte-servable while the album still has no state row.
+			// Album B first: the acquire in expectAbsent would settle Album B too.
 			expectFolderCover(albumByName("Album B"), "Artist/Album B/cover.jpg")
 			expectAbsent(albumByName("Album A"))
 		})
@@ -389,11 +386,10 @@ var _ = Describe("Album artwork resolution", func() {
 		})
 	})
 
-	// albumRootParent refuses the library root as an album root (parent.ParentID == ""), so a
-	// stray image at the top of the library never becomes some album's cover.
+	// albumRootParent refuses the library root as an album root (parent.ParentID == "").
 	When("a multi-disc album sits directly at the library root with a cover.jpg beside it", func() {
 		// (library root)
-		// ├── cover.jpg                ← must NOT be adopted: the root is never an album root
+		// ├── cover.jpg                ← must NOT be adopted
 		// ├── CD1/
 		// │   └── 01 - Track.mp3
 		// └── CD2/
@@ -410,15 +406,14 @@ var _ = Describe("Album artwork resolution", func() {
 		})
 	})
 
-	// compareImageFiles prefers shallower paths on a basename tie, so an artist-folder cover.jpg
-	// would outrank the album's own if the parent folder were ever considered here. It is not:
-	// albumRootParent skips the parent for a single-folder album that has images of its own.
+	// The shallower artist-folder cover.jpg would win the basename tie, but albumRootParent skips
+	// the parent folder for a single-folder album that has images of its own.
 	When("a single-folder album has its own cover.jpg and the artist folder has one too", func() {
 		// Artist/
 		// ├── cover.jpg                ← shallower, but must NOT win
 		// └── Album/
 		//     ├── 01 - Track.mp3
-		//     └── cover.jpg            ← should win (the album has images of its own)
+		//     └── cover.jpg            ← should win
 		It("prefers the album's own cover over the shallower artist-folder cover", func() {
 			conf.Server.CoverArtPriority = defaultCoverPriority
 			setLayout(fstest.MapFS{
@@ -441,8 +436,7 @@ var _ = Describe("Album artwork resolution", func() {
 		// ├── Album A bonus/
 		// │   └── 02 - Track.mp3       (album: "Album A")
 		// └── Album B/
-		//     └── 01 - Track.mp3       other-album audio, so the artist folder is
-		//                              correctly rejected as Album A's root
+		//     └── 01 - Track.mp3       (other-album audio: rejects the artist folder as a root)
 		It("prefers the album's own art over the artist image", func() {
 			conf.Server.CoverArtPriority = defaultCoverPriority
 			setLayout(fstest.MapFS{

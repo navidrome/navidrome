@@ -993,8 +993,7 @@ var _ = Describe("AlbumRepository", func() {
 		})
 	})
 
-	// Exists used the unfiltered helper, so it reported albums in libraries the caller
-	// cannot see -- the same leak Get/GetAll/CountAll already guard against.
+	// Exists must apply the same library filter as Get/GetAll/CountAll.
 	Describe("Exists library visibility", func() {
 		It("hides an album the user has no library access to", func() {
 			Expect(albumRepo.Put(&model.Album{ID: "vis-album", Name: "Vis", LibraryID: 1})).To(Succeed())

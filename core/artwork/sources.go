@@ -187,9 +187,8 @@ func fromURL(ctx context.Context, imageUrl *url.URL) (io.ReadCloser, string, err
 	if err != nil {
 		return nil, "", err
 	}
-	// A dead image URL is a definitive miss, not a transient fault: agents (e.g. Last.fm) can
-	// advertise an image URL that 404s. Map it to ErrNotFound so it settles absent instead of
-	// retrying forever and tripping the artwork breaker.
+	// An agent-advertised URL that 404s is a definitive miss, not a fault: settle absent
+	// instead of retrying forever and tripping the artwork breaker.
 	if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusGone {
 		resp.Body.Close()
 		return nil, "", model.ErrNotFound

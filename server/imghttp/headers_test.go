@@ -30,8 +30,8 @@ func placeholder() *artwork.Image {
 	return &artwork.Image{ReadCloser: io.NopCloser(strings.NewReader("PH")), Placeholder: true}
 }
 
-// resized carries a representation ETag distinct from the pixel hash (as a resized/re-encoded
-// response does), so the validator versions with the encode settings.
+// A re-encoded response carries a representation ETag distinct from the pixel hash, so the
+// validator versions with the encode settings.
 func resized() *artwork.Image {
 	return &artwork.Image{
 		ReadCloser:  io.NopCloser(strings.NewReader("IMG")),
@@ -41,7 +41,6 @@ func resized() *artwork.Image {
 	}
 }
 
-// unvalidated stands for a response with no content hash and no representation tag.
 func unvalidated() *artwork.Image {
 	return &artwork.Image{ReadCloser: io.NopCloser(strings.NewReader("IMG")), LastUpdated: lastMod}
 }
@@ -107,8 +106,8 @@ var _ = Describe("WriteImageHeaders", func() {
 		Entry("placeholder ignores If-None-Match and never 304s",
 			testCase{img: placeholder(), ifNoneMatch: "*", want304: false, wantCache: "no-store"}),
 
-		// An image with neither ETag nor Hash has no validator. Emitting one would give every
-		// such response the same empty tag, and matching it would 304 changed bytes.
+		// With no validator, an emitted ETag would be the same empty tag on every such response,
+		// and matching it would 304 changed bytes.
 		Entry("omits the ETag entirely when there is no validator",
 			testCase{img: unvalidated(), wantCache: "public, no-cache", wantLastMod: true}),
 		Entry("never 304s an empty validator echoed back by the client",

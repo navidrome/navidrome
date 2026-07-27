@@ -15,28 +15,23 @@ import (
 	"github.com/navidrome/navidrome/model"
 )
 
-// staleAbsentAge is how old an absent resolution must be before the recheck job retries it.
 const staleAbsentAge = 24 * time.Hour
 
-// recheckKinds are the item kinds eligible for the periodic recheck jobs (stale-absent and
-// missing-row). Media files are excluded: they resolve embedded-only, at scan or on view.
+// recheckKinds omits media files: they resolve embedded-only, at scan or on view.
 var recheckKinds = []model.Kind{
 	model.KindArtistArtwork, model.KindAlbumArtwork, model.KindPlaylistArtwork, model.KindRadioArtwork,
 }
 
-// hasRecheckPath reports whether a periodic job will revisit this kind, which is what makes
-// settling absent on an exhausted retry budget recoverable rather than permanent.
+// hasRecheckPath reports whether a periodic job will revisit this kind, making an absent settle recoverable.
 func hasRecheckPath(prefix string) bool {
 	kind, ok := model.ParseKind(prefix)
 	return ok && slices.Contains(recheckKinds, kind)
 }
 
-// artworkEpoch invalidates all resolution state when bumped; bump it in the same change that
-// alters resolution semantics. Deliberately not the server version, which changes every build.
+// artworkEpoch invalidates all resolution state when bumped; bump it whenever resolution semantics change.
 const artworkEpoch = 1
 
-// fingerprint summarizes the inputs that affect artwork resolution outcomes; a
-// change means previously resolved (or absent) state may no longer be correct.
+// fingerprint covers the inputs that affect resolution outcomes; a change invalidates stored state.
 func fingerprint() string {
 	raw := fmt.Sprintf("%s|%s|%s|%s|%t|%t|%d",
 		conf.Server.CoverArtPriority, conf.Server.ArtistArtPriority, conf.Server.ArtistImageFolder,
@@ -45,8 +40,7 @@ func fingerprint() string {
 	return hex.EncodeToString(sum[:])
 }
 
-// backfill enqueues artwork resolution for every entity when the config fingerprint changed
-// (or was never stored), artists first so those pages resolve before the larger backlog.
+// backfill enqueues artwork resolution for every entity when the config fingerprint changed.
 func backfill(ctx context.Context, ds model.DataStore) (bool, error) {
 	start := time.Now()
 	ctx = auth.WithAdminUser(ctx, ds)
@@ -60,7 +54,7 @@ func backfill(ctx context.Context, ds model.DataStore) (bool, error) {
 		return false, nil
 	}
 
-	// Artists first: few entities, most external-dependent, so they get queue headstart.
+	// Artists first: few entities, most external-dependent, so they get a queue headstart.
 	kinds := []struct {
 		kind  model.Kind
 		fetch func() ([]string, error)
@@ -100,8 +94,6 @@ func enqueueBackfillKind(ctx context.Context, ds model.DataStore, kind model.Kin
 	return ds.ArtworkQueue(ctx).Enqueue(items...)
 }
 
-// enqueueStaleAbsentAll requeues absent-state entries older than staleAbsentAge, across
-// every artwork-bearing kind, for the periodic recheck job.
 func enqueueStaleAbsentAll(ctx context.Context, ds model.DataStore) error {
 	cutoff := time.Now().Add(-staleAbsentAge)
 	queue := ds.ArtworkQueue(ctx)
@@ -113,8 +105,7 @@ func enqueueStaleAbsentAll(ctx context.Context, ds model.DataStore) error {
 	return nil
 }
 
-// enqueueMissingAll requeues entities that have no item_artwork row yet, across every recheck
-// kind: the safety net for entities a scan never enqueued (added between scans, or scanner off).
+// enqueueMissingAll is the safety net for entities a scan never enqueued (added between scans, or scanner off).
 func enqueueMissingAll(ctx context.Context, ds model.DataStore) error {
 	queue := ds.ArtworkQueue(ctx)
 	for _, kind := range recheckKinds {
@@ -125,8 +116,7 @@ func enqueueMissingAll(ctx context.Context, ds model.DataStore) error {
 	return nil
 }
 
-// Refresh clears an item's resolved artwork state and re-queues it at Bump priority, so a
-// deliberate refresh (image upload or manual re-resolve) drops the current pick and re-resolves it.
+// Refresh drops an item's resolved artwork state and re-queues it at Bump priority.
 func Refresh(ctx context.Context, ds model.DataStore, kind model.Kind, id string) error {
 	if err := ds.Artwork(ctx).DeleteForItem(kind, id); err != nil {
 		return fmt.Errorf("clearing artwork state: %w", err)

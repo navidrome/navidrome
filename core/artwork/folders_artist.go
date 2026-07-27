@@ -21,8 +21,6 @@ import (
 )
 
 const (
-	// maxArtistFolderTraversalDepth defines how many directory levels to search
-	// when looking for artist images (artist folder + parent directories)
 	maxArtistFolderTraversalDepth = 3
 )
 
@@ -35,8 +33,7 @@ func fromArtistFolder(ctx context.Context, libFS fs.FS, libPath, artistFolder, p
 		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 			return nil, "", fmt.Errorf(`artist folder '%s' is outside library '%s'`, artistFolder, libPath)
 		}
-		// fs.Glob / path.Join below expect forward-slash paths; filepath.Rel may
-		// return backslash separators on Windows.
+		// fs.Glob needs forward slashes; filepath.Rel returns backslashes on Windows.
 		rel = filepath.ToSlash(rel)
 		current := artistFolder
 		var unreadable error
@@ -49,7 +46,7 @@ func fromArtistFolder(ctx context.Context, libFS fs.FS, libPath, artistFolder, p
 				unreadable = err
 			}
 			if rel == "." {
-				break // reached library root; don't traverse above it
+				break // reached library root
 			}
 			rel = path.Dir(rel)
 			current = filepath.Dir(current)
@@ -61,10 +58,8 @@ func fromArtistFolder(ctx context.Context, libFS fs.FS, libPath, artistFolder, p
 	}
 }
 
-// findImageInFolder globs libFS at relFolder for pattern and returns the first
-// matching image. absFolder is used only for the returned display path and log
-// messages so callers see absolute-looking paths consistent with the rest of
-// the artwork pipeline.
+// findImageInFolder returns the first image matching pattern; absFolder is only used for
+// the returned display path and log messages.
 func findImageInFolder(ctx context.Context, libFS fs.FS, relFolder, absFolder, pattern string) (io.ReadCloser, string, error) {
 	log.Trace(ctx, "Artwork: Looking for artist image", "pattern", pattern, "folder", absFolder)
 	globPattern := pattern
@@ -77,7 +72,6 @@ func findImageInFolder(ctx context.Context, libFS fs.FS, relFolder, absFolder, p
 		return nil, "", err
 	}
 
-	// Filter to valid image files
 	var imagePaths []string
 	for _, m := range matches {
 		if !model.IsImageFile(m) {
@@ -86,8 +80,7 @@ func findImageInFolder(ctx context.Context, libFS fs.FS, relFolder, absFolder, p
 		imagePaths = append(imagePaths, m)
 	}
 
-	// Sort image files by prioritizing base filenames without numeric
-	// suffixes (e.g., artist.jpg before artist.1.jpg)
+	// Prefer base filenames over numeric-suffixed ones (artist.jpg before artist.1.jpg)
 	slices.SortFunc(imagePaths, compareImageFiles)
 
 	var openErr error
@@ -125,7 +118,7 @@ func loadArtistFolder(ctx context.Context, ds model.DataStore, albums model.Albu
 	if len(albums) == 0 {
 		return "", time.Time{}, nil
 	}
-	libID := albums[0].LibraryID // Just need one of the albums, as they should all be in the same Library - for now! TODO: Support multiple libraries
+	libID := albums[0].LibraryID // TODO: Support albums spanning multiple libraries
 
 	folderPath := str.LongestCommonPrefix(paths)
 	if !strings.HasSuffix(folderPath, string(filepath.Separator)) {
@@ -133,15 +126,13 @@ func loadArtistFolder(ctx context.Context, ds model.DataStore, albums model.Albu
 	}
 	folderPath = filepath.Dir(folderPath)
 
-	// Manipulate the path to get the folder ID
-	// TODO: This is a bit hacky, but it's the easiest way to get the folder ID, ATM
+	// TODO: Hacky, but the easiest way to get the folder ID ATM
 	libPath := core.AbsolutePath(ctx, ds, libID, "")
 	folderID := model.FolderID(model.Library{ID: libID, Path: libPath}, folderPath)
 
 	log.Trace(ctx, "Artwork: Calculating artist folder details", "folderPath", folderPath, "folderID", folderID,
 		"libPath", libPath, "libID", libID, "albumPaths", paths)
 
-	// Get the last update time for the folder
 	folders, err := ds.Folder(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"folder.id": folderID, "missing": false}})
 	if err != nil || len(folders) == 0 {
 		log.Warn(ctx, "Artwork: Could not find folder for artist", "folderPath", folderPath, "id", folderID,
@@ -151,8 +142,7 @@ func loadArtistFolder(ctx context.Context, ds model.DataStore, albums model.Albu
 	return folderPath, folders[0].ImagesUpdatedAt, nil
 }
 
-// findImageInArtistFolder scans a folder for an image file matching the artist's MBID or name
-// (case-insensitive). Returns the full path, or empty string if not found.
+// findImageInArtistFolder matches an image by MBID or artist name (case-insensitive), "" if none.
 func findImageInArtistFolder(folder, mbzArtistID, artistName string) string {
 	entries, err := os.ReadDir(folder)
 	if err != nil {

@@ -27,14 +27,13 @@ type discArtworkReader struct {
 	isMultiFolder  bool
 	firstTrackRel  string // library-relative; for fromTag / ffmpeg via lib.Abs
 	lib            libraryView
-	// imagesUpdatedAt is the newest ImagesUpdatedAt across the album's and this disc's folders.
-	// An image can be replaced without the album row changing, so this is what makes a cache
-	// key notice it.
+	// Newest ImagesUpdatedAt across the album's and this disc's folders: an image can be
+	// replaced without the album row changing, so this is what makes a cache key notice it.
 	imagesUpdatedAt time.Time
 }
 
 // cacheTime is the disc image's validity stamp: any of these moving means the selection may
-// have changed. Mirrors what the legacy reader folded into its cache key.
+// have changed.
 func (d *discArtworkReader) cacheTime() time.Time {
 	return utils.TimeNewest(d.album.UpdatedAt, d.album.ImportedAt, d.imagesUpdatedAt)
 }
@@ -161,19 +160,12 @@ func (d *discArtworkReader) fromDiscSubtitle(ctx context.Context, subtitle strin
 	}
 }
 
-// globMetaChars holds the substitution metacharacters understood by
-// filepath.Match. The '\' escape character is intentionally excluded:
-// disc art patterns come from user config and never include escaped
-// metachars in practice, and treating '\' as a metachar would misalign
-// the literal-prefix extraction in extractDiscNumber.
+// filepath.Match's '\' escape is excluded on purpose: treating it as a metachar
+// would misalign the literal-prefix extraction in extractDiscNumber.
 const globMetaChars = "*?["
 
-// extractDiscNumber parses the disc number from a filename matched by a
-// filepath.Match-style glob pattern.
-//
-// Both pattern and filename must already be lowercased by the caller, which
-// is also expected to have verified that filepath.Match(pattern, filename)
-// is true before calling this function.
+// extractDiscNumber parses the disc number from a filename matched by a filepath.Match-style
+// glob. Caller must lowercase both args and have already verified the match.
 func extractDiscNumber(pattern, filename string) (int, bool) {
 	metaIdx := strings.IndexAny(pattern, globMetaChars)
 	if metaIdx < 0 {
@@ -199,9 +191,8 @@ func extractDiscNumber(pattern, filename string) (int, bool) {
 	return num, true
 }
 
-// fromExternalFile returns a sourceFunc that matches image files against a glob
-// pattern. A numbered filename whose number equals the target disc wins over
-// any unnumbered candidate; callers must pass a lowercase pattern.
+// fromExternalFile matches image files against a (lowercase) glob pattern. A numbered
+// filename whose number equals the target disc wins over any unnumbered candidate.
 func (d *discArtworkReader) fromExternalFile(ctx context.Context, pattern string) sourceFunc {
 	isLiteral := !strings.ContainsAny(pattern, globMetaChars)
 	return func() (io.ReadCloser, string, error) {

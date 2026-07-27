@@ -342,8 +342,7 @@ var _ = Describe("File Caches", func() {
 			})
 
 			It("re-fetches when an adopted entry's data file vanished", func() {
-				// Entries adopted on startup take a different code path than ones
-				// created in-process, so cover both.
+				// Entries adopted on startup take a different code path than in-process ones.
 				var calls atomic.Int32
 				fc := callNewFileCache("test", "10MB", "test", 0, func(ctx context.Context, arg Item) (io.Reader, error) {
 					calls.Add(1)

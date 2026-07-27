@@ -273,8 +273,7 @@ var _ = Describe("PlaylistRepository", func() {
 		Expect(queued).ToNot(ContainElement(HaveField("ItemID", "")), "must not enqueue an empty playlist id")
 	})
 
-	// The grid samples albums at random, so re-resolving after a rename would silently hand the
-	// playlist a different cover.
+	// The grid samples albums at random, so re-resolving after a rename would change the cover.
 	It("does not enqueue artwork when only metadata changes", func() {
 		ctx := request.WithUser(log.NewContext(GinkgoT().Context()), model.User{ID: "userid", UserName: "userid", IsAdmin: true})
 		newPls := model.Playlist{Name: "Rename Me", OwnerID: "userid"}
@@ -411,9 +410,8 @@ var _ = Describe("PlaylistRepository", func() {
 		})
 	})
 
-	// Exists is ctx-sensitive through userFilter: a private playlist is invisible to anyone but
-	// its owner or an admin. Callers that only want "does it still exist" -- the public image
-	// route serving a share -- must elevate, or a shared private playlist looks deleted.
+	// Exists is ctx-sensitive through userFilter, so callers that only want "does it still exist"
+	// -- the public image route serving a share -- must elevate, or a private playlist looks gone.
 	Describe("Exists visibility", func() {
 		It("hides a private playlist from an unauthenticated context", func() {
 			// "userid" is the fixture user; playlist.owner_id has a FK to user(id).

@@ -11,7 +11,7 @@ import (
 	"github.com/pocketbase/dbx"
 )
 
-// enqueueChunkSize keeps each multi-row insert under SQLite's bind-variable limit (7 cols -> 700 vars).
+// Keeps each multi-row insert under SQLite's bind-variable limit (7 cols -> 700 vars).
 const enqueueChunkSize = 100
 
 type artworkQueueRepository struct {
@@ -26,16 +26,13 @@ func NewArtworkQueueRepository(ctx context.Context, db dbx.Builder) model.Artwor
 	return r
 }
 
-// Enqueue also restarts the retry budget the worker measures from enqueued_at, so a fresh
-// request never inherits an old row's spent window and give up on its first attempt.
+// Enqueue also resets enqueued_at, so a fresh request does not inherit an old row's spent retry budget.
 func (r *artworkQueueRepository) Enqueue(items ...model.ArtworkQueueItem) error {
 	return r.enqueue(`ON CONFLICT (item_kind, item_id, image_type) DO UPDATE SET
 		priority = MAX(priority, excluded.priority), retry_at = excluded.retry_at,
 		attempts = 0, enqueued_at = excluded.enqueued_at`, items)
 }
 
-// EnqueueBump raises priority like Enqueue but leaves an existing row's retry_at intact, so a
-// request-triggered read-through never resets a failed resolution's backoff. New rows insert eligible.
 func (r *artworkQueueRepository) EnqueueBump(items ...model.ArtworkQueueItem) error {
 	return r.enqueue(`ON CONFLICT (item_kind, item_id, image_type) DO UPDATE SET
 		priority = MAX(priority, excluded.priority)`, items)
@@ -72,8 +69,6 @@ func (r *artworkQueueRepository) DequeueBatch(n int, kinds ...string) ([]model.A
 	return res, err
 }
 
-// MarkFailedIfUnchanged applies the backoff only while retry_at still equals seenRetryAt;
-// a concurrent Enqueue resets retry_at, so its fresh eligibility survives untouched.
 func (r *artworkQueueRepository) MarkFailedIfUnchanged(kind, id, imageType string, seenRetryAt, retryAt time.Time) error {
 	upd := Update(r.tableName).
 		Set("attempts", Expr("attempts + 1")).
@@ -83,13 +78,10 @@ func (r *artworkQueueRepository) MarkFailedIfUnchanged(kind, id, imageType strin
 	return err
 }
 
-// DeleteIfUnchanged deletes the row only while its retry_at still equals the dequeued
-// value; a concurrent Enqueue resets retry_at, so the row survives to be re-resolved.
 func (r *artworkQueueRepository) DeleteIfUnchanged(kind, id, imageType string, retryAt time.Time) error {
 	return r.delete(Eq{"item_kind": kind, "item_id": id, "image_type": imageType, "retry_at": retryAt})
 }
 
-// PurgeDangling removes queue rows whose entity no longer exists, per kind.
 func (r *artworkQueueRepository) PurgeDangling() (int64, error) {
 	return purgeDangling(r.executeSQL, r.tableName)
 }

@@ -67,9 +67,8 @@ var _ = Describe("MediaRetrievalController", func() {
 			Expect(w.Body.String()).To(Equal(artwork.data))
 		})
 
-		// Visibility now lives in the service, which resolves the entity through the
-		// request-scoped repositories. The handler's whole contribution is handing over the
-		// caller's context unchanged -- elevating here would bypass the library filter.
+		// The service applies the library filter from the caller's context, so elevating here
+		// would bypass it.
 		It("passes the caller's context to the service rather than elevating", func() {
 			r := newGetRequest("id=al-34")
 			usr := model.User{ID: "u1", UserName: "u1"}

@@ -39,9 +39,8 @@ func (pub *Router) handleImages(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
-	// Elevated like the Jellyfin image route: the token is the authorization, so the service's
-	// entity check asks "is it still there", not "may this user see it" -- the latter would hide
-	// a shared private playlist, which is the case shares exist to serve.
+	// The token is the authorization, so the entity check must ask "is it still there", not
+	// "may this user see it" -- the latter would hide a shared private playlist.
 	ctx = request.WithUser(ctx, model.User{IsAdmin: true})
 	size := p.IntOr("size", 0)
 	square := p.BoolOr("square", false)

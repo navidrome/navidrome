@@ -38,7 +38,6 @@ func TestArtwork(t *testing.T) {
 }
 
 // osDirFS wraps os.DirFS as a storage.MusicFS for integration tests.
-// ReadTags is not exercised by these tests, so it is left as a stub.
 type osDirFS struct{ fs.FS }
 
 func (o osDirFS) ReadTags(...string) (map[string]metadata.Info, error) { return nil, nil }

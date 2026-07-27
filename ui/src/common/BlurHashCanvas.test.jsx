@@ -92,7 +92,6 @@ describe('BlurHashCanvas', () => {
     rerender(<BlurHashCanvas hash="!!!not-a-blurhash!!!" />)
 
     expect(ctxMock.clearRect).toHaveBeenCalledTimes(2)
-    // No new pixels drawn after the clear, so the stale frame stays gone.
     expect(ctxMock.putImageData).toHaveBeenCalledTimes(1)
   })
 })

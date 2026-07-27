@@ -18,14 +18,13 @@ import (
 	xdraw "golang.org/x/image/draw"
 )
 
-// outcome tells the worker what to do with the queue row: found/absent
-// delete it, failed reschedules it via MarkFailed.
+// outcome tells the worker whether to delete the queue row (found/absent) or reschedule it.
 type outcome int
 
 const (
 	outcomeFound outcome = iota
 	// outcomeFoundStale: state was written and is served, but a higher-priority external
-	// step failed, so the row must retry (via MarkFailed) to give that source another chance.
+	// source failed, so the row must retry to give it another chance.
 	outcomeFoundStale
 	outcomeAbsent
 	outcomeFailed
@@ -47,12 +46,12 @@ func (o outcome) String() string {
 // thumbnailSize is the max dimension fed to blurhash.
 const thumbnailSize = 128
 
-// maxImageBytes caps a resolved image read: a user-editable ExternalImageURL could
-// point at an arbitrarily large endpoint, and 20MB is generous for any real cover.
+// maxImageBytes caps a resolved image read: a user-editable ExternalImageURL could point at
+// an arbitrarily large endpoint.
 const maxImageBytes = 20 << 20
 
-// maxImagePixels caps declared dimensions: a tiny compressed file can declare a
-// huge canvas that image.Decode would expand into gigabytes (decompression bomb).
+// maxImagePixels guards against decompression bombs: a tiny file can declare a canvas that
+// image.Decode would expand into gigabytes.
 const maxImagePixels = 64 << 20
 
 // acquired is what a successful acquire persisted, handed back so the caller can warm the resize
@@ -63,8 +62,7 @@ type acquired struct {
 	data []byte
 }
 
-// processor turns one queue item into stored artwork. It owns acquisition only — settling the
-// queue row afterwards is the Worker's job. pruneLock is nil in tests, where nothing prunes.
+// processor turns one queue item into stored artwork; settling the queue row is the Worker's job.
 type processor struct {
 	ds        model.DataStore
 	store     *ImageStore
@@ -76,8 +74,6 @@ type processor struct {
 // blurhash it, place its bytes, and persist the resulting state.
 func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (out outcome, got *acquired) {
 	repo := p.ds.Artwork(ctx)
-	// Timed on every exit, failures included: an item that is slow is usually one that failed
-	// slowly, and the outcome alone doesn't say whether the cost was the network or the decode.
 	start := time.Now()
 	defer func() {
 		log.Debug(ctx, "Artwork: Acquisition finished", "kind", item.ItemKind, "id", item.ItemID,
@@ -91,8 +87,7 @@ func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (o
 	}
 	if res.reader == nil {
 		if res.extError || res.localError {
-			// A source errored/timed out rather than answering "no image": never settle on
-			// absent, keep serving old state.
+			// A fault is not a definitive "no image": never settle absent, keep serving old state.
 			log.Debug(ctx, "Artwork: No image, but a source faulted; keeping previous state",
 				"kind", item.ItemKind, "id", item.ItemID, "extError", res.extError, "localError", res.localError)
 			return outcomeFailed, nil
@@ -101,7 +96,6 @@ func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (o
 	}
 	defer res.reader.Close()
 
-	// Times the download too: res.reader is the provider's response body for external sources.
 	readStart := time.Now()
 	data, err := readCapped(res.reader)
 	if err != nil {
@@ -123,7 +117,6 @@ func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (o
 	art, err := repo.GetImage(hash)
 	switch {
 	case err == nil:
-		// Dedup hit: identical bytes already known, reuse dims/mime/blurhash.
 		log.Debug(ctx, "Artwork: Reusing a known image, skipping decode", "kind", item.ItemKind,
 			"id", item.ItemID, "hash", hash)
 	case errors.Is(err, model.ErrNotFound):
@@ -148,7 +141,6 @@ func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (o
 	}
 	got = &acquired{ia: ia, mime: art.Mime, data: data}
 	if res.extError {
-		// Served, but a higher-priority external source errored: the pick may improve on retry.
 		log.Debug(ctx, "Artwork: Serving a lower-priority source after an external failure",
 			"kind", item.ItemKind, "id", item.ItemID, "source", res.source)
 		return outcomeFoundStale, got
@@ -156,9 +148,8 @@ func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (o
 	return outcomeFound, got
 }
 
-// persist places the bytes and commits the rows referencing them. Only this window excludes
-// Prune, which reclaims store files no row points at; resolution stays outside so a slow fetch
-// cannot hold prune off.
+// persist places the bytes and commits the rows referencing them, excluding Prune for that
+// window only so a slow resolution can never hold it off.
 func (p *processor) persist(repo model.ArtworkRepository, item model.ArtworkQueueItem,
 	art *model.Artwork, res resolution, data []byte,
 ) (*model.ItemArtwork, error) {
@@ -183,14 +174,14 @@ func (p *processor) persist(repo model.ArtworkRepository, item model.ArtworkQueu
 		RefMtime:    refMtime,
 		AttemptedAt: time.Now(),
 	}
-	// PutItemArtwork stamps UpdatedAt on ia, so what it holds now matches the persisted row.
+	// PutItemArtwork stamps UpdatedAt on ia, so the returned struct matches the persisted row.
 	if err := repo.PutItemArtwork(ia); err != nil {
 		return nil, fmt.Errorf("persisting item artwork state: %w", err)
 	}
 	return ia, nil
 }
 
-// writeAbsent records a known-absent state: every local/external source answered definitively "no".
+// writeAbsent records a known-absent state: every source answered definitively "no".
 func writeAbsent(ctx context.Context, repo model.ArtworkRepository, item model.ArtworkQueueItem) outcome {
 	err := repo.PutItemArtwork(&model.ItemArtwork{
 		ItemKind:    item.ItemKind,
@@ -207,7 +198,6 @@ func writeAbsent(ctx context.Context, repo model.ArtworkRepository, item model.A
 	return outcomeAbsent
 }
 
-// readCapped reads r, rejecting anything over maxImageBytes.
 func readCapped(r io.Reader) ([]byte, error) {
 	data, err := io.ReadAll(io.LimitReader(r, maxImageBytes+1))
 	if err != nil {
@@ -219,15 +209,13 @@ func readCapped(r io.Reader) ([]byte, error) {
 	return data, nil
 }
 
-// decodeCapped rejects declared dimensions over maxImagePixels BEFORE the
-// full-decode allocation, then decodes.
+// decodeCapped rejects declared dimensions over maxImagePixels before the full-decode allocation.
 func decodeCapped(data []byte) (image.Image, string, error) {
 	cfg, format, err := image.DecodeConfig(bytes.NewReader(data))
 	if err != nil {
 		return nil, "", fmt.Errorf("decode image config: %w", err)
 	}
-	// Compared by division so the cap holds for any dimensions a decoder might report, without
-	// depending on a multiplication staying inside int64.
+	// Compared by division so the cap cannot be defeated by an int64 overflow.
 	if cfg.Width <= 0 || cfg.Height <= 0 || cfg.Width > maxImagePixels/cfg.Height {
 		return nil, "", fmt.Errorf("image dimensions %dx%d exceed pixel cap %d", cfg.Width, cfg.Height, maxImagePixels)
 	}
@@ -238,8 +226,7 @@ func decodeCapped(data []byte) (image.Image, string, error) {
 	return img, format, nil
 }
 
-// decodeArtwork builds a new Artwork row from raw bytes: dimensions, mime and a
-// blurhash computed from a downscaled thumbnail.
+// decodeArtwork builds a new Artwork row from raw bytes: dimensions, mime and blurhash.
 func decodeArtwork(ctx context.Context, hash string, data []byte) (*model.Artwork, error) {
 	img, format, err := decodeCapped(data)
 	if err != nil {
@@ -263,8 +250,7 @@ func decodeArtwork(ctx context.Context, hash string, data []byte) (*model.Artwor
 	}, nil
 }
 
-// makeThumbnail downscales img to fit within maxSize on its longest side.
-// Images within bounds are returned as-is (no upscaling).
+// makeThumbnail downscales img to fit within maxSize on its longest side; it never upscales.
 func makeThumbnail(img image.Image, maxSize int) image.Image {
 	b := img.Bounds()
 	w, h := b.Dx(), b.Dy()
@@ -277,14 +263,14 @@ func makeThumbnail(img image.Image, maxSize int) image.Image {
 	return dst
 }
 
-// isFileBacked reports whether a resolution's bytes already live in a library/upload
-// file, so the acquisition must not duplicate them into the content-addressed store.
+// isFileBacked reports whether the bytes already live in a library/upload file, so the
+// content-addressed store must not duplicate them.
 func isFileBacked(source string) bool {
 	return source == "folder" || source == "upload"
 }
 
-// placeBytes reports the item's backing-file provenance (folder/upload: image, embedded: audio,
-// external/generated: none) and writes the bytes into the store for the non-file-backed sources.
+// placeBytes reports the item's backing-file provenance and writes the bytes into the store
+// for the sources that have none.
 func placeBytes(store *ImageStore, art *model.Artwork, res resolution, data []byte) (sourcePath string, refMtime int64, err error) {
 	if isFileBacked(res.source) {
 		return res.sourcePath, res.refMtime, nil
@@ -295,8 +281,7 @@ func placeBytes(store *ImageStore, art *model.Artwork, res resolution, data []by
 	return sourcePath, refMtime, store.Write(art.Hash, art.Mime, bytes.NewReader(data))
 }
 
-// mimeForFormat maps an image.Decode format name to its MIME type; extForMime
-// in image_store.go performs the inverse for content-addressed file paths.
+// mimeForFormat maps an image.Decode format name to its MIME type; extForMime is the inverse.
 func mimeForFormat(format string) string {
 	switch format {
 	case "jpeg":

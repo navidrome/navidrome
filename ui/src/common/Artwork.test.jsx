@@ -56,8 +56,7 @@ describe('Artwork', () => {
     expect(canvas.style.objectFit).toBe('contain')
   })
 
-  // A square request is padded, not cropped, so the artwork still sits letterboxed inside the
-  // square the server returns and the placeholder has to letterbox with it.
+  // A square request is padded, not cropped, so the placeholder has to letterbox with it.
   it('letterboxes the blurhash when the server pads a non-square image to a square', () => {
     useImageUrl.mockReturnValue({ imgUrl: null, loading: true })
     const nonSquare = { ...withArt, imageWidth: 1200, imageHeight: 800 }
@@ -68,8 +67,7 @@ describe('Artwork', () => {
     expect(canvas.style.objectFit).toBe('contain')
   })
 
-  // The padded square the server returns is aspect-fit, so cropping it would disagree with the
-  // placeholder. Both renderers have to read `square` the same way.
+  // The padded square is aspect-fit, so `square` overrides fit="cover" as it does for the canvas.
   it('fits the image itself with contain when the server padded to a square', () => {
     useImageUrl.mockReturnValue({ imgUrl: 'blob:abc', loading: false })
     const { container } = render(
@@ -109,15 +107,13 @@ describe('Artwork', () => {
       useImageUrl.mockReturnValue({ imgUrl: null, loading: true })
       const { container, rerender } = render(<Artwork record={withArt} />)
 
-      // Blob arrives: the image mounts transparent, with the blurhash still behind it.
       useImageUrl.mockReturnValue({ imgUrl: 'blob:abc', loading: false })
       rerender(<Artwork record={withArt} />)
       const img = container.querySelector('img')
       expect(img).not.toBeNull()
       expect(container.querySelector('canvas')).not.toBeNull()
 
-      // Decoding starts the cross-fade; the blurhash only goes away once it finishes. The clock
-      // drives it, not transitionend, which never fires under prefers-reduced-motion.
+      // The clock ends the fade, not transitionend, which never fires under reduced-motion.
       act(() => {
         fireEvent.load(img)
       })
@@ -138,7 +134,6 @@ describe('Artwork', () => {
   it('does not fade an image that was already cached on mount', () => {
     useImageUrl.mockReturnValue({ imgUrl: 'blob:abc', loading: false })
     const { container } = render(<Artwork record={withArt} />)
-    // No placeholder to cross-fade from, so it paints at once.
     expect(container.querySelector('canvas')).toBeNull()
     expect(container.querySelector('img').className).toContain('imgInstant')
   })

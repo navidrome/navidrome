@@ -20,9 +20,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-// These specs wire the real Worker and Service over the same ImageStore and mock repositories,
-// then drive the full enqueue → drain → serve loop. They assert the integration of the chain, not
-// the per-source resolution rules (which the unit suites in package artwork already cover).
+// Covers the enqueue → drain → serve chain; per-source resolution rules live in the unit suites.
 var _ = Describe("Acquisition → serve loop", func() {
 	var (
 		ctx        context.Context
@@ -42,7 +40,6 @@ var _ = Describe("Acquisition → serve loop", func() {
 		coverBytes []byte
 	)
 
-	// itemFound reports whether the worker has persisted a resolved (hash-bearing) state row.
 	itemFound := func(kind model.Kind, id string) func() bool {
 		return func() bool {
 			ia, err := artRepo.GetItemArtwork(kind, id, model.ImageTypePrimary)
@@ -66,7 +63,7 @@ var _ = Describe("Acquisition → serve loop", func() {
 		conf.Server.CacheFolder = conf.NewDir(GinkgoT().TempDir())
 		conf.Server.DataFolder = conf.NewDir(GinkgoT().TempDir())
 		conf.Server.CoverArtPriority = "cover.jpg"
-		conf.Server.ArtistArtPriority = "artist.png" // upload wins first; kept offline as a safety net
+		conf.Server.ArtistArtPriority = "artist.png" // keeps artist resolution offline
 		conf.Server.EnableMediaFileCoverArt = true
 		conf.Server.ArtworkWorkerConcurrency = 1
 
@@ -94,8 +91,7 @@ var _ = Describe("Acquisition → serve loop", func() {
 		}
 		ffm := tests.NewMockFFmpeg("")
 		store = artwork.NewImageStore(GinkgoT().TempDir())
-		// size=0 requests stream originals and never touch the resize cache, so this reader is a
-		// compile-time stand-in only; the resize path is covered by the package's serving_test.
+		// size=0 requests stream originals, so this reader is never called (serving_test covers resizing).
 		imgCache := cache.NewFileCache("ArtworkPipelineE2E", "100MB", "images", 0,
 			func(context.Context, cache.Item) (io.Reader, error) {
 				return nil, errors.New("resize not exercised in e2e")
@@ -106,8 +102,6 @@ var _ = Describe("Acquisition → serve loop", func() {
 		worker = artwork.NewWorker(ds, store, agents.GetAgents(ds, nil), ffm, events.NoopBroker(), imgCache)
 	})
 
-	// seedFolderAlbum wires an album backed by the real fixture folder cover, shared by the album
-	// and playlist-grid scenarios.
 	seedFolderAlbum := func(albumID string) {
 		folderRepo.result = []model.Folder{{Path: albumFolderPath, ImageFiles: []string{"cover.jpg"}}}
 		albumRepo.SetData(model.Albums{{ID: albumID, Name: "Album", FolderIDs: []string{"f1"}, LibraryID: 0}})
@@ -159,7 +153,6 @@ var _ = Describe("Acquisition → serve loop", func() {
 		img, err := svc.Get(ctx, model.MustParseArtworkID("pl-pl1"), 0, false)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(img.Hash).To(Equal(ia.Hash))
-		// The generated grid is a fresh PNG placed in the content-addressed store.
 		art, err := artRepo.GetImage(ia.Hash)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(art.Mime).To(Equal("image/png"))
@@ -187,7 +180,6 @@ var _ = Describe("Acquisition → serve loop", func() {
 			ID: "mf1", AlbumID: "al1", HasCoverArt: true, LibraryID: 0, Path: mp3Fixture,
 		}})
 
-		// First read: no state row yet → extract embedded art provisionally and enqueue the track.
 		provisional, err := svc.Get(ctx, model.MustParseArtworkID("mf-mf1"), 0, false)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(provisional.Placeholder).To(BeFalse())
@@ -198,14 +190,13 @@ var _ = Describe("Acquisition → serve loop", func() {
 		_, err = artRepo.GetItemArtwork(model.KindMediaFileArtwork, "mf1", model.ImageTypePrimary)
 		Expect(err).To(MatchError(model.ErrNotFound), "provisional serving must not write a state row")
 
-		// The provisional read enqueued a Bump; drain it and confirm the persisted hash matches.
+		// The provisional read enqueued a Bump; drain it.
 		runWorkerUntil(ctx, worker, itemFound(model.KindMediaFileArtwork, "mf1"))
 		ia, err := artRepo.GetItemArtwork(model.KindMediaFileArtwork, "mf1", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ia.Source).To(Equal("embedded"))
 		Expect(ia.Hash).To(Equal(provisional.Hash))
 
-		// Second read: now served from the persisted state row / store, same bytes.
 		resolved, err := svc.Get(ctx, model.MustParseArtworkID("mf-mf1"), 0, false)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(resolved.Hash).To(Equal(ia.Hash))
@@ -225,7 +216,6 @@ var _ = Describe("Acquisition → serve loop", func() {
 		Expect(art.Width).To(BeNumerically(">", 0))
 		Expect(art.Height).To(BeNumerically(">", 0))
 		Expect(art.SizeBytes).To(BeNumerically("==", len(coverBytes)))
-		// Never a synthesized value: the blurhash is encoded from the real pixels.
 		Expect(art.BlurHash).ToNot(BeEmpty())
 	})
 
@@ -273,17 +263,16 @@ var _ = Describe("Acquisition → serve loop", func() {
 		Expect(err).ToNot(HaveOccurred())
 		staleHash := ia.Hash
 
-		// Replace the backing file with different bytes and a newer mtime.
 		path := model.UploadedImagePath(consts.EntityRadio, name)
 		Expect(os.WriteFile(path, readFixture(artistPngFixture), 0o600)).To(Succeed())
 		newer := time.Now().Add(2 * time.Second)
 		Expect(os.Chtimes(path, newer, newer)).To(Succeed())
 
-		// The mtime no longer matches the state row, so the old hash's bytes are never served.
+		// The mtime no longer matches the state row, so the stale bytes are not served.
 		_, err = svc.Get(ctx, model.MustParseArtworkID("ra-ra1"), 0, false)
 		Expect(err).To(MatchError(artwork.ErrUnavailable))
 
-		// That read enqueued a re-resolution; draining it republishes the new bytes.
+		// That failed read enqueued a re-resolution.
 		runWorkerUntil(ctx, worker, func() bool {
 			cur, gerr := artRepo.GetItemArtwork(model.KindRadioArtwork, "ra1", model.ImageTypePrimary)
 			return gerr == nil && cur.Hash != "" && cur.Hash != staleHash
@@ -307,15 +296,14 @@ var _ = Describe("Acquisition → serve loop", func() {
 	})
 })
 
-// mustGet unwraps a Service.Get result for inline byte assertions.
 func mustGet(img *artwork.Image, err error) *artwork.Image {
 	GinkgoHelper()
 	Expect(err).ToNot(HaveOccurred())
 	return img
 }
 
-// gifFixture is a 4x4 GIF held as raw bytes on purpose: encoding one would import image/gif into
-// this test binary and register the decoder, masking the production import the spec above guards.
+// Raw bytes on purpose: encoding a GIF here would register image/gif in the test binary, masking
+// the production import the spec above guards.
 var gifFixture = []byte{
 	0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x04, 0x00, 0x04, 0x00, 0x80, 0x00,
 	0x00, 0x2e, 0x86, 0xc1, 0xf4, 0xd0, 0x3f, 0x2c, 0x00, 0x00, 0x00, 0x00,

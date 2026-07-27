@@ -103,7 +103,6 @@ var _ = Describe("Encode", func() {
 	})
 
 	It("downscales large images internally without changing the result materially", func() {
-		// A 1000px solid image must encode fine and carry the same DC as its small version.
 		big, err := blurhash.Encode(solidImage(1000, 1000, color.NRGBA{R: 60, G: 120, B: 180, A: 255}), 5, 5)
 		Expect(err).ToNot(HaveOccurred())
 		small, err := blurhash.Encode(solidImage(16, 16, color.NRGBA{R: 60, G: 120, B: 180, A: 255}), 5, 5)

@@ -22,8 +22,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-// pngHeaderWithDims builds just a PNG signature + IHDR chunk declaring w×h. DecodeConfig
-// reads the header without touching pixel data, so the body can be omitted entirely.
+// DecodeConfig reads only the header, so the pixel data can be omitted entirely.
 func pngHeaderWithDims(w, h uint32) []byte {
 	ihdr := make([]byte, 13)
 	binary.BigEndian.PutUint32(ihdr[0:], w)
@@ -124,8 +123,8 @@ var _ = Describe("processor.acquire", func() {
 			Expect(lock.held()).To(BeFalse(), "the window must close before acquire returns")
 		})
 
-		// Resolution can reach the network under its own timeout, so holding the lock across it
-		// would let one slow provider block prune, and every drain queued behind prune's writer.
+		// Resolution can reach the network, so holding the lock across it would let one slow
+		// provider block prune, and every drain queued behind prune's writer.
 		It("never takes it while only resolving", func() {
 			folderRepo.result = nil
 			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
@@ -179,8 +178,7 @@ var _ = Describe("processor.acquire", func() {
 
 	It("failed-on-unreadable-local: a listed cover that will not open never records absent", func() {
 		conf.Server.CoverArtPriority = "cover.jpg"
-		// A healthy library whose folder listing names a cover the FS will not hand over —
-		// what a stale mount looks like from here.
+		// A folder listing that names a cover the FS will not hand over: a stale mount.
 		libRoot := GinkgoT().TempDir()
 		Expect(os.MkdirAll(filepath.Join(libRoot, "an-album"), 0o755)).To(Succeed())
 		libRepo.SetData(model.Libraries{{ID: 0, Path: testFileLibPath(libRoot)}})
@@ -196,12 +194,10 @@ var _ = Describe("processor.acquire", func() {
 		Expect(err).To(MatchError(model.ErrNotFound), "an I/O fault must not be recorded as absent")
 	})
 
-	// An upload outranks every other source, so an unreadable one must neither settle absent
-	// nor let a lower-priority image take its place.
+	// An upload outranks every source, so an unreadable one must not let a lower one take over.
 	It("failed-on-unreadable-upload: an upload that will not open never records absent", func() {
 		if runtime.GOOS == "windows" {
-			// os.Chmod cannot revoke read access there, so the file would open and the spec
-			// would pass on the decode error instead of the unreadable source.
+			// The file would still open, so the spec would pass on the decode error instead.
 			Skip("chmod does not restrict read access on Windows")
 		}
 		radioRepo := tests.CreateMockedRadioRepo()
@@ -277,7 +273,6 @@ var _ = Describe("processor.acquire", func() {
 		Expect(ia.Source).To(Equal("external:deezerFake"))
 		Expect(ia.Hash).ToNot(BeEmpty())
 
-		// External art is content-addressed into the store, not file-backed.
 		art, err := artRepo.GetImage(ia.Hash)
 		Expect(err).ToNot(HaveOccurred())
 		rc, err := store.Open(ia.Hash, art.Mime)
@@ -300,8 +295,7 @@ var _ = Describe("processor.acquire", func() {
 		ia1, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al5", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 
-		// Poison the stored blurhash: if the second item re-decodes instead of
-		// deduping on hash, this sentinel gets overwritten by a real computed value.
+		// A re-decode instead of a hash dedup would overwrite this sentinel.
 		poisoned := artRepo.Data[ia1.Hash]
 		poisoned.BlurHash = "SENTINEL"
 		artRepo.Data[ia1.Hash] = poisoned
@@ -318,8 +312,7 @@ var _ = Describe("processor.acquire", func() {
 	})
 
 	It("two items, two files, identical bytes: each item keeps its own provenance; the shared artwork row is written once", func() {
-		// Two distinct library files with byte-identical content resolve to the same
-		// hash. Provenance is per-item, so neither file's path may overwrite the other.
+		// Byte-identical files share one hash, but provenance is per item.
 		libRoot := GinkgoT().TempDir()
 		imgBytes, err := os.ReadFile(filepath.Join(repoRoot, "tests/fixtures/artist/an-album/cover.jpg"))
 		Expect(err).ToNot(HaveOccurred())
@@ -345,7 +338,7 @@ var _ = Describe("processor.acquire", func() {
 		Expect(filepath.ToSlash(iaA.SourcePath)).To(HaveSuffix("album-a/cover.jpg"))
 		Expect(iaA.RefMtime).To(Equal(time.Unix(1000, 0).UnixNano()))
 
-		// Poison the shared row's blurhash: the second item must dedup on hash, not re-decode.
+		// A re-decode instead of a hash dedup would overwrite this sentinel.
 		poisoned := artRepo.Data[iaA.Hash]
 		poisoned.BlurHash = "SENTINEL"
 		artRepo.Data[iaA.Hash] = poisoned
@@ -359,13 +352,11 @@ var _ = Describe("processor.acquire", func() {
 		Expect(filepath.ToSlash(iaB.SourcePath)).To(HaveSuffix("album-b/cover.jpg"))
 		Expect(iaB.RefMtime).To(Equal(time.Unix(2000, 0).UnixNano()))
 
-		// The first item's provenance survives the second item processing identical bytes.
 		iaAafter, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "alA", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(filepath.ToSlash(iaAafter.SourcePath)).To(HaveSuffix("album-a/cover.jpg"))
 		Expect(iaAafter.RefMtime).To(Equal(time.Unix(1000, 0).UnixNano()))
 
-		// One shared artwork row, and dedup preserved it untouched.
 		Expect(artRepo.Data).To(HaveLen(1))
 		reused, err := artRepo.GetImage(iaA.Hash)
 		Expect(err).ToNot(HaveOccurred())
@@ -411,9 +402,8 @@ var _ = Describe("processor.acquire", func() {
 		Expect(err).To(MatchError(model.ErrNotFound))
 	})
 
-	// The cap is compared by division, so it cannot be slipped by dimensions whose product
-	// would overflow. No supported format can declare such dimensions today — image/png caps
-	// them at 2^30-1 and the rest are 16-bit — so this pins the arithmetic, not a live hole.
+	// The cap is compared by division so an overflowing product cannot slip past it; no supported
+	// format can declare these dimensions, so this pins the arithmetic, not a live hole.
 	DescribeTable("rejects out-of-range declared dimensions",
 		func(w, h uint32) {
 			_, err := decodeArtwork(ctx, "bomb", pngHeaderWithDims(w, h))
@@ -451,8 +441,6 @@ var _ = Describe("processor.acquire", func() {
 	})
 })
 
-// countingLocker stands in for the worker's prune read-lock, recording how often and how long
-// acquire holds it.
 type countingLocker struct {
 	locks   int
 	unlocks int

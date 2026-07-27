@@ -9,7 +9,6 @@ import (
 	"github.com/navidrome/navidrome/model"
 )
 
-// refreshableArtworkKinds are the entity kinds a manual re-resolve accepts.
 var refreshableArtworkKinds = map[model.Kind]bool{
 	model.KindAlbumArtwork:     true,
 	model.KindArtistArtwork:    true,
@@ -22,7 +21,6 @@ func (api *Router) addArtworkRoute(r chi.Router) {
 	r.Post("/artwork/{kind}/{id}/refresh", api.refreshArtwork())
 }
 
-// refreshArtwork clears an item's resolved artwork state and re-queues it at Bump priority.
 // State is deliberately cleared so a wrong pick disappears immediately (placeholder until re-resolved).
 func (api *Router) refreshArtwork() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

@@ -193,17 +193,15 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 	} else if mf.Genre != "" {
 		item.Genres = []string{mf.Genre}
 	}
-	// A track's own cover wins in Finamp's precedence (ImageTags.Primary before AlbumId).
+	// Clients prefer ImageTags.Primary over AlbumId, so a track's own cover must win here.
 	if mf.ImageHash != "" && mf.ImageHash != mf.AlbumImage.ImageHash {
 		tag, blurs, ratio := primaryImage(mf.ItemImage, mf.ID, fields)
 		item.ImageTags = map[string]string{"Primary": tag}
 		item.ImageBlurHashes = blurs
 		item.PrimaryImageAspectRatio = ratio
 	} else if embeddedArtPending(mf) {
-		// Nothing enqueues media files, so an unresolved track only resolves when someone asks
-		// for its image. Advertising the id here is what makes a Jellyfin client ask; the
-		// request extracts the embedded art and queues the track for the worker. No blurhash:
-		// there is no resolved image to have one yet, and a fake would be cached forever.
+		// Nothing enqueues media files: advertising the id is what makes a client ask, and that
+		// request is what extracts the embedded art and queues the track.
 		item.ImageTags = map[string]string{"Primary": mf.ID}
 	} else if mf.AlbumID != "" {
 		if tag, blurs, ratio := primaryImage(mf.AlbumImage, mf.AlbumID, fields); tag != "" {
@@ -215,15 +213,13 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 	return item
 }
 
-// embeddedArtPending reports a track whose own art is eligible but not resolved yet, and not
-// known to be absent.
 func embeddedArtPending(mf model.MediaFile) bool {
 	return mf.HasCoverArt && conf.Server.EnableMediaFileCoverArt &&
 		mf.ImageHash == "" && !mf.ItemImage.ImageAbsent
 }
 
-// primaryImage derives all a mapper advertises about one image, so Primary is chosen once. It never
-// fakes a blurhash: Finamp keys its cover cache on the value, pinning a stale cover forever (#5798).
+// primaryImage never fakes a blurhash: clients key their cover cache on the value, which would
+// pin a stale cover forever.
 func primaryImage(img model.ItemImage, fallback string, fields Fields) (tag string, blurs map[string]map[string]string, ratio *float64) {
 	if img.ImageAbsent {
 		return "", nil, nil

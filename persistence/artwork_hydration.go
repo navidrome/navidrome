@@ -12,12 +12,12 @@ import (
 	"github.com/pocketbase/dbx"
 )
 
-// artworkChunkSize bounds each chunk fetch's id IN-list (under SQLite's bound-parameter limit); a
-// whole multiple of artworkBatchSize so a page re-chunks into even hydration batches.
+// Keeps the id IN-list under SQLite's bound-parameter limit; a whole multiple of artworkBatchSize
+// so a page re-chunks into even hydration batches.
 const artworkChunkSize = artworkBatchSize * 3
 
-// streamByIDs yields the rows of ids in chunks, fetching each chunk through the caller's hydrating
-// fetch. Resolving ids first keeps OFFSET out of the joined query (spec §6).
+// streamByIDs yields rows in id chunks through the caller's hydrating fetch. Resolving ids first
+// keeps OFFSET out of the joined query.
 func streamByIDs[S ~[]T, T any](ids []string, fetch func(chunk []string) (S, error)) iter.Seq2[T, error] {
 	return func(yield func(T, error) bool) {
 		for chunk := range slices.Chunk(ids, artworkChunkSize) {
@@ -36,8 +36,8 @@ func streamByIDs[S ~[]T, T any](ids []string, fetch func(chunk []string) (S, err
 	}
 }
 
-// chunkOptions narrows the caller's options to a chunk of ids, dropping Max/Offset (the id pre-pass
-// already consumed them) and reusing its Sort, which may be a seeded random expression by now.
+// chunkOptions narrows options to a chunk of ids, dropping Max/Offset (the id pre-pass already
+// consumed them) and reusing Sort, which may be a seeded random expression by now.
 func chunkOptions(options []model.QueryOptions, idField string) func([]string) model.QueryOptions {
 	var base model.QueryOptions
 	if len(options) > 0 {
@@ -53,8 +53,8 @@ func chunkOptions(options []model.QueryOptions, idField string) func([]string) m
 	}
 }
 
-// hydrateItemImages returns per-item artwork info for a fetched page via one batched query per kind
-// (never a join, see spec §6). On error it logs and returns an empty map so the page still renders.
+// hydrateItemImages returns per-item artwork info in one batched query per kind. On error it logs
+// and returns an empty map, so the page still renders.
 func hydrateItemImages(ctx context.Context, db dbx.Builder, kind model.Kind, ids []string) map[string]model.ItemArtworkInfo {
 	if len(ids) == 0 {
 		return map[string]model.ItemArtworkInfo{}
@@ -75,7 +75,7 @@ func applyItemImage(infos map[string]model.ItemArtworkInfo, id string, img *mode
 }
 
 // hydrateMediaFileArtwork mirrors MediaFile.CoverArtID: an embedded-eligible file with resolved own
-// art uses it, else it falls back to the album's. Two batched item_artwork lookups, never a join.
+// art uses it, else it falls back to the album's.
 func hydrateMediaFileArtwork(ctx context.Context, db dbx.Builder, mfs model.MediaFiles) {
 	if len(mfs) == 0 {
 		return
@@ -96,26 +96,20 @@ func hydrateMediaFileArtwork(ctx context.Context, db dbx.Builder, mfs model.Medi
 		eligible := mf.HasCoverArt && conf.Server.EnableMediaFileCoverArt
 		ownInfo, ownResolved := mfInfos[mf.ID]
 		if eligible && ownResolved && !ownInfo.Absent() {
-			mf.ItemImage = ownInfo.Image() // own resolved art wins
+			mf.ItemImage = ownInfo.Image()
 			continue
 		}
 		ownWontResolve := !eligible || (ownResolved && ownInfo.Absent())
-		// Fallback (see MediaFile.CoverArtID): inherit a found album hash for optimistic caching,
-		// but only when the album's bytes are what serving will actually return. A multi-disc track
-		// emits a dc- id served from disc art, and an eligible-but-unresolved track still extracts
-		// its own embedded image — stamping the album hash on either advertises a content-version
-		// (and a blurhash) belonging to a different image.
+		// Inherit the album hash only when serving returns those exact bytes: a multi-disc track is
+		// served disc art, and an eligible-but-unresolved one still extracts its own embedded image.
 		if album, ok := albumInfos[mf.AlbumID]; ok && !album.Absent() {
 			if mf.DiscNumber == 0 && ownWontResolve {
 				mf.ItemImage = album.Image()
 			}
 			continue
 		}
-		// Nothing found. Mark absent only when serving would definitively yield a placeholder:
-		// a single-disc track whose album is known-absent and whose own art won't resolve. A
-		// multi-disc track resolves disc art provisionally (never known-absent), and an
-		// eligible-but-unresolved track can still extract its own embedded art — both stay
-		// requestable.
+		// Mark absent only when serving would definitively yield a placeholder; disc art and
+		// still-extractable embedded art both keep a track requestable.
 		if mf.DiscNumber > 0 {
 			continue
 		}
@@ -125,8 +119,7 @@ func hydrateMediaFileArtwork(ctx context.Context, db dbx.Builder, mfs model.Medi
 	}
 }
 
-// hydrateCursor buffers a streamed page into batches and hydrates each before yielding, so a
-// cursor carries the same artwork state as a fetched page without a per-row query.
+// hydrateCursor hydrates a streamed cursor in batches, avoiding a per-row query.
 func hydrateCursor[T any](cursor iter.Seq2[T, error], hydrate func([]T)) iter.Seq2[T, error] {
 	return func(yield func(T, error) bool) {
 		buf := make([]T, 0, artworkBatchSize)
@@ -157,8 +150,7 @@ func hydrateCursor[T any](cursor iter.Seq2[T, error], hydrate func([]T)) iter.Se
 	}
 }
 
-// hydratePlaylistTrackArtwork hydrates the MediaFile embedded in each playlist track, so a track
-// reached through a playlist carries the same artwork state as one reached through the songs list.
+// hydratePlaylistTrackArtwork hydrates the MediaFile embedded in each playlist track.
 func hydratePlaylistTrackArtwork(ctx context.Context, db dbx.Builder, tracks model.PlaylistTracks) {
 	if len(tracks) == 0 {
 		return

@@ -126,8 +126,7 @@ var _ = Describe("MediaFile artwork resolution", func() {
 			scan()
 			replaceWithRealMP3("Artist/Album/01 - Track.mp3")
 
-			// The setting is not part of the artwork fingerprint, so a direct mf- request must
-			// honor it at serve time rather than serving previously-eligible embedded art.
+			// The setting is not part of the artwork fingerprint, so it must be honored at serve time.
 			conf.Server.EnableMediaFileCoverArt = false
 			mf := mediafileOn("Artist/Album/01 - Track.mp3")
 			trackArtID := model.NewArtworkID(model.KindMediaFileArtwork, mf.ID, nil)

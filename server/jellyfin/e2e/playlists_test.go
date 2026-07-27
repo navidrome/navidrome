@@ -215,8 +215,8 @@ var _ = Describe("Playlists", func() {
 				To(Equal(http.StatusNotImplemented))
 		})
 
-		// Guards the whole chain: an upload must clear any previously-resolved artwork state, or a
-		// stale tag stays live under clients' blurhash-keyed cover cache until the next scan (#5798).
+		// An upload must clear the resolved artwork state, or clients keep serving the stale cover
+		// from their tag-keyed cache until the next scan.
 		It("clears the resolved image tag after a cover upload", func() {
 			plID := createPlaylist("Cover Tag", nil)
 			Expect(ds.Artwork(ctx).PutItemArtwork(&model.ItemArtwork{
@@ -233,8 +233,7 @@ var _ = Describe("Playlists", func() {
 			Expect(upload(adminUser, "/Items/"+enc(plID)+"/Images/Primary", "image/jpeg", jpeg).Code).
 				To(Equal(http.StatusNoContent))
 
-			// The upload re-queues resolution instead of resolving inline, so the tag falls back to
-			// unresolved rather than carrying over the pre-upload hash.
+			// The upload re-queues resolution instead of resolving inline, so the tag goes bare.
 			Expect(imageTag()).ToNot(Equal("1111111111111111"))
 		})
 	})

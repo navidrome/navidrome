@@ -44,8 +44,7 @@ var _ = Describe("Spread FS", func() {
 
 	Describe("Create", func() {
 		It("leaves an already-open reader's bytes intact", func() {
-			// A re-created entry must not shrink the file an older stream is still
-			// serving: its reader would spin forever at the premature EOF.
+			// Shrinking a file an older stream still serves spins its reader at a premature EOF.
 			if runtime.GOOS == "windows" {
 				Skip("Windows cannot unlink a file with open handles, so Create reuses the inode")
 			}

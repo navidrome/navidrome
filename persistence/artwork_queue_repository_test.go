@@ -19,8 +19,8 @@ var _ = Describe("ArtworkQueueRepository", func() {
 			ImageType: model.ImageTypePrimary, Priority: prio}
 	}
 
-	// backOff puts a row into the state a failed resolution leaves behind. Production only ever
-	// reaches that state through MarkFailedIfUnchanged, which needs the retry_at it dequeued.
+	// Writes the post-failure state directly: the production path, MarkFailedIfUnchanged, needs
+	// a retry_at only a dequeue can hand it.
 	backOff := func(kind, id string, retryAt time.Time) {
 		GinkgoHelper()
 		r := repo.(*artworkQueueRepository)
@@ -63,11 +63,9 @@ var _ = Describe("ArtworkQueueRepository", func() {
 
 	It("EnqueueBump raises priority without resetting a backing-off row's retry_at", func() {
 		Expect(repo.Enqueue(item("al", "b1", model.ArtworkPriorityScan))).To(Succeed())
-		// Push retry_at into the future so the row is backing off and hidden from dequeue.
 		backOff("al", "b1", time.Now().Add(time.Hour))
 		Expect(repo.DequeueBatch(10)).To(BeEmpty())
 
-		// A request-triggered bump raises priority but must leave the backoff intact.
 		Expect(repo.EnqueueBump(item("al", "b1", model.ArtworkPriorityBump))).To(Succeed())
 		Expect(repo.DequeueBatch(10)).To(BeEmpty(), "bump must not reset retry_at")
 
@@ -101,7 +99,7 @@ var _ = Describe("ArtworkQueueRepository", func() {
 
 	It("MarkFailedIfUnchanged applies backoff only while retry_at is unchanged", func() {
 		Expect(repo.Enqueue(item("al", "m1", model.ArtworkPriorityScan))).To(Succeed())
-		// Anchor retry_at in the past (attempts -> 1) so it can never collide with the re-enqueue's now.
+		// Anchor retry_at in the past so it can never collide with the re-enqueue's now.
 		backOff("al", "m1", time.Now().Add(-time.Hour))
 		got, err := repo.DequeueBatch(10)
 		Expect(err).ToNot(HaveOccurred())
@@ -111,7 +109,6 @@ var _ = Describe("ArtworkQueueRepository", func() {
 		// A concurrent scan re-enqueues, resetting retry_at to now.
 		Expect(repo.Enqueue(item("al", "m1", model.ArtworkPriorityScan))).To(Succeed())
 
-		// Failing with the stale retry_at is a no-op: the re-enqueued row keeps its fresh state.
 		future := time.Now().Add(48 * time.Hour)
 		Expect(repo.MarkFailedIfUnchanged("al", "m1", model.ImageTypePrimary, original, future)).To(Succeed())
 		got, _ = repo.DequeueBatch(10)
@@ -119,7 +116,6 @@ var _ = Describe("ArtworkQueueRepository", func() {
 		Expect(got[0].Attempts).To(BeZero(), "re-enqueue clears attempts, and the stale failure must not bump them")
 		current := got[0].RetryAt
 
-		// Failing with the current retry_at applies the backoff and bumps attempts.
 		Expect(repo.MarkFailedIfUnchanged("al", "m1", model.ImageTypePrimary, current, future)).To(Succeed())
 		got, _ = repo.DequeueBatch(10)
 		Expect(got).To(BeEmpty(), "backed-off row is hidden until the future retry_at")
@@ -171,7 +167,6 @@ var _ = Describe("ArtworkQueueRepository", func() {
 		n, _ := repo.Count()
 		Expect(n).To(Equal(int64(1)))
 
-		// Deleting with the current retry_at removes it.
 		got, _ = repo.DequeueBatch(10)
 		Expect(got).To(HaveLen(1))
 		Expect(repo.DeleteIfUnchanged("al", "d1", model.ImageTypePrimary, got[0].RetryAt)).To(Succeed())
@@ -225,8 +220,6 @@ var _ = Describe("ArtworkQueueRepository", func() {
 
 	It("enqueues entities that have no item_artwork row at all", func() {
 		awRepo := NewArtworkRepository(context.Background(), GetDBXBuilder())
-		// albumSgtPeppers has a resolved row and albumAbbeyRoad an absent row: both already
-		// processed, so neither should be enqueued as "missing".
 		Expect(awRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "al", ItemID: albumSgtPeppers.ID, ImageType: model.ImageTypePrimary, Hash: "hX", AttemptedAt: time.Now()})).To(Succeed())
 		Expect(awRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "al", ItemID: albumAbbeyRoad.ID, ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: time.Now()})).To(Succeed())
 

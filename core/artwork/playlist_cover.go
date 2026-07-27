@@ -18,9 +18,7 @@ import (
 
 const tileSize = 600
 
-// findPlaylistSidecarPath scans the directory of the playlist file for a sidecar
-// image file with the same base name (case-insensitive). Returns empty string if
-// no matching image is found or if plsPath is empty.
+// findPlaylistSidecarPath finds an image beside plsPath with the same base name (case-insensitive).
 func findPlaylistSidecarPath(ctx context.Context, plsPath string) string {
 	if plsPath == "" {
 		return ""
@@ -59,25 +57,21 @@ func rect(pos int) image.Rectangle {
 	return r
 }
 
-// fillCenter crops the source image from the center and scales it to fill dstW x dstH exactly,
-// equivalent to imaging.Fill with Center anchor.
+// fillCenter center-crops src and scales it to fill dstW x dstH exactly.
 func fillCenter(src image.Image, dstW, dstH int) image.Image {
 	srcBounds := src.Bounds()
 	srcW := srcBounds.Dx()
 	srcH := srcBounds.Dy()
 
-	// Calculate crop rectangle (center crop to match destination aspect ratio)
 	srcAspect := float64(srcW) / float64(srcH)
 	dstAspect := float64(dstW) / float64(dstH)
 
 	var cropRect image.Rectangle
 	if srcAspect > dstAspect {
-		// Source is wider — crop horizontally
 		cropW := int(float64(srcH) * dstAspect)
 		cropX := (srcW - cropW) / 2
 		cropRect = image.Rect(srcBounds.Min.X+cropX, srcBounds.Min.Y, srcBounds.Min.X+cropX+cropW, srcBounds.Max.Y)
 	} else {
-		// Source is taller — crop vertically
 		cropH := int(float64(srcW) / dstAspect)
 		cropY := (srcH - cropH) / 2
 		cropRect = image.Rect(srcBounds.Min.X, srcBounds.Min.Y+cropY, srcBounds.Max.X, srcBounds.Min.Y+cropY+cropH)
@@ -88,10 +82,7 @@ func fillCenter(src image.Image, dstW, dstH int) image.Image {
 	return dst
 }
 
-// decodeTile and assembleTiles mirror playlistArtworkReader's createTile/
-// createTiledImage, reusing the same rect/fillCenter cropping helpers.
-// decodeTile runs on every sampled album's resolved bytes before the processor's
-// own maxImageBytes/maxImagePixels guards apply, so it enforces them itself too.
+// decodeTile runs before the processor's size guards apply, so it enforces the caps itself.
 func decodeTile(r io.ReadCloser) (image.Image, error) {
 	data, err := readCapped(r)
 	if err != nil {

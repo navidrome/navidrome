@@ -38,12 +38,6 @@ import (
 	"go.senan.xyz/taglib"
 )
 
-// This harness restores the pre-cutover artwork resolution edge-case coverage, but drives it
-// through the real pipeline: a real scanner populates the folder graph from an in-memory library,
-// the real Worker drains the queue to resolve/persist state, and the real Service serves it.
-// It documents the folder-selection rules (album/disc/artist priority, #5376/#5456/#5451/#5457)
-// that the lightweight acquire_serve_test.go intentionally leaves to this suite.
-
 const fakeLibScheme = "artworkfake"
 const fakeLibPath = fakeLibScheme + ":///music"
 
@@ -61,9 +55,8 @@ var (
 	fakeFS  *storagetest.FakeFS
 )
 
-// The DB file lives in a suite-level tempdir: the go-sqlite3 singleton keeps the file open for the
-// whole suite, and Ginkgo's per-spec TempDir cleanup can't unlink a file with a live handle on
-// Windows. A suite-level tempdir plus an AfterSuite close avoids the lock conflict.
+// The go-sqlite3 singleton holds the file open for the whole suite, and Windows cannot unlink a
+// file with a live handle, so the DB cannot live in Ginkgo's per-spec TempDir.
 var suiteDBTempDir string
 
 // Migrating the schema costs ~400ms, so it runs once per suite and specs reset by truncating.
@@ -117,8 +110,7 @@ func setupResolutionHarness() {
 
 	ffm := tests.NewMockFFmpeg("")
 	rstore = artwork.NewImageStore(filepath.Join(tempDir, "store"))
-	// size=0 requests stream originals and never touch the resize cache, so this reader is a
-	// compile-time stand-in only; the resize path is covered by the package's serving_test.
+	// size=0 requests stream originals, so this reader is never called (serving_test covers resizing).
 	imgCache := cache.NewFileCache("ArtworkResolutionE2E", "100MB", "images", 0,
 		func(context.Context, cache.Item) (io.Reader, error) {
 			return nil, fmt.Errorf("resize not exercised in e2e")
@@ -129,7 +121,7 @@ func setupResolutionHarness() {
 	rworker = artwork.NewWorker(rds, rstore, agents.GetAgents(rds, nil), ffm, events.NoopBroker(), imgCache)
 }
 
-// setLayout populates the fake library. All paths must be forward-slash and relative.
+// setLayout paths must be relative and forward-slash.
 func setLayout(files fstest.MapFS) {
 	GinkgoHelper()
 	fakeFS.SetFiles(files)
@@ -143,8 +135,6 @@ func scan() {
 	Expect(err).ToNot(HaveOccurred())
 }
 
-// acquire drives the worker to resolve one entity and returns its persisted state row. It fails if
-// the worker never settles (found or absent) within the timeout.
 func acquire(kind model.Kind, id string) model.ItemArtwork {
 	GinkgoHelper()
 	rworker.Bump(kind.Prefix(), id)
@@ -170,7 +160,6 @@ func runResolutionWorkerUntil(until func() bool) {
 	Eventually(done, 2*time.Second).Should(Receive(BeNil()))
 }
 
-// serveBytes reads an artwork ID through the real Service at full size and returns its bytes.
 func serveBytes(artID model.ArtworkID) []byte {
 	GinkgoHelper()
 	img, err := rsvc.Get(rctx, artID, 0, false)
@@ -189,7 +178,6 @@ func serveErr(artID model.ArtworkID) error {
 	return err
 }
 
-// libFileBytes returns the contents of the one library file whose path ends with suffix.
 func libFileBytes(suffix string) []byte {
 	GinkgoHelper()
 	var match string
@@ -203,10 +191,8 @@ func libFileBytes(suffix string) []byte {
 	return fakeFS.MapFS[match].Data
 }
 
-// expectAlbumFolderCover asserts the album resolves to the library image at the given path suffix,
-// byte-for-byte. The serve happens before acquisition on purpose: with no state row the request
-// path resolves locally through the library FS, whereas a settled folder row is file-backed and
-// read with os.Open, which the in-memory FS cannot satisfy.
+// Serving before acquiring is deliberate: with no state row the request resolves through the
+// library FS, while a settled folder row is read with os.Open, which the in-memory FS cannot serve.
 func expectAlbumFolderCover(al model.Album, suffix string) {
 	GinkgoHelper()
 	requireNoStateRow(model.KindAlbumArtwork, al.ID)
@@ -216,9 +202,7 @@ func expectAlbumFolderCover(al model.Album, suffix string) {
 	Expect(filepath.ToSlash(ia.SourcePath)).To(HaveSuffix(suffix))
 }
 
-// requireNoStateRow guards the byte-level folder assertions: a drain resolves every ready queue
-// row, so acquiring one entity can settle others. Once settled, folder art is file-backed and the
-// in-memory FS cannot serve it — so these assertions must come before any acquire in a spec.
+// A drain settles every ready item, so byte-level folder assertions must precede any acquire.
 func requireNoStateRow(kind model.Kind, id string) {
 	GinkgoHelper()
 	_, err := rds.Artwork(rctx).GetItemArtwork(kind, id, model.ImageTypePrimary)
@@ -226,7 +210,6 @@ func requireNoStateRow(kind model.Kind, id string) {
 		"assert %s %q before acquiring any other entity in this spec", kind, id)
 }
 
-// expectAlbumAbsent asserts the album settled absent (no source resolved) and serves unavailable.
 func expectAlbumAbsent(al model.Album) {
 	GinkgoHelper()
 	ia := acquire(model.KindAlbumArtwork, al.ID)
@@ -234,8 +217,6 @@ func expectAlbumAbsent(al model.Album) {
 	Expect(serveErr(al.CoverArtID())).To(MatchError(artwork.ErrUnavailable))
 }
 
-// expectArtistFolder asserts the worker selected a library folder image (artist.*, album/artist.*)
-// as the artist image; like album folder art it is file-backed, so it is asserted on the state row.
 func expectArtistFolder(ar model.Artist, suffix string) {
 	GinkgoHelper()
 	requireNoStateRow(model.KindArtistArtwork, ar.ID)
@@ -245,8 +226,6 @@ func expectArtistFolder(ar model.Artist, suffix string) {
 	Expect(filepath.ToSlash(ia.SourcePath)).To(HaveSuffix(suffix))
 }
 
-// writeUploadedImage drops raw bytes into the per-entity upload folder under DataFolder, matching
-// the layout model.UploadedImagePath expects. Uploads are real files on disk, so they serve back.
 func writeUploadedImage(entity, filename string, data []byte) {
 	GinkgoHelper()
 	dst := model.UploadedImagePath(entity, filename)
@@ -254,21 +233,17 @@ func writeUploadedImage(entity, filename string, data []byte) {
 	Expect(os.WriteFile(dst, data, 0o600)).To(Succeed())
 }
 
-// discArtID is the artwork ID for one disc of an album.
 func discArtID(al model.Album, disc int) model.ArtworkID {
 	return model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID(al.ID, disc), &al.UpdatedAt)
 }
 
-// expectDiscImage asserts a multi-disc album serves the given disc's art byte-for-byte. Disc art
-// is a pure serve-time read through the library FS (no worker/state row), so this serves it live.
+// Disc art is a pure serve-time read through the library FS: no worker, no state row.
 func expectDiscImage(al model.Album, disc int, label string) {
 	GinkgoHelper()
 	Expect(serveBytes(discArtID(al, disc))).To(Equal(pngBytes(label)))
 }
 
-// gridQuadrants decodes a generated 2x2 playlist cover and samples the center of each quadrant,
-// in rect() order: top-left, top-right, bottom-left, bottom-right. Each tile is a solid color, so
-// the samples identify which album art landed where (and whether tiles were mirrored).
+// Samples in rect() order: top-left, top-right, bottom-left, bottom-right.
 func gridQuadrants(data []byte) [4]color.RGBA {
 	GinkgoHelper()
 	img, _, err := image.Decode(bytes.NewReader(data))
@@ -282,9 +257,7 @@ func gridQuadrants(data []byte) [4]color.RGBA {
 	return [4]color.RGBA{at(qw, qh), at(3*qw, qh), at(qw, 3*qh), at(3*qw, 3*qh)}
 }
 
-// storedBytes returns the bytes the worker placed in the content-addressed store for a
-// store-backed resolution (embedded/generated). Folder/upload sources are file-backed and are
-// not in the store; assert those on ia.SourcePath instead.
+// Store-backed sources only (embedded/generated); file-backed ones assert on ia.SourcePath.
 func storedBytes(ia model.ItemArtwork) []byte {
 	GinkgoHelper()
 	art, err := rds.Artwork(rctx).GetImage(ia.Hash)
@@ -297,9 +270,7 @@ func storedBytes(ia model.ItemArtwork) []byte {
 	return data
 }
 
-// smallPNG builds a tiny valid PNG whose pixel color is derived from label, so the bytes are
-// distinct per label (a resolver picking a different file yields a different hash/path) while
-// still decoding cleanly for the worker's blurhash step.
+// The pixel color derives from label, so each label yields distinct, still-decodable bytes.
 func smallPNG(label string) *fstest.MapFile {
 	h := fnv.New32a()
 	_, _ = h.Write([]byte(label))
@@ -316,13 +287,11 @@ func smallPNG(label string) *fstest.MapFile {
 	return &fstest.MapFile{Data: buf.Bytes()}
 }
 
-// pngBytes returns the bytes smallPNG(label) writes, for byte-for-byte serve assertions.
 func pngBytes(label string) []byte {
 	GinkgoHelper()
 	return smallPNG(label).Data
 }
 
-// trackFile builds a fake MP3 entry with optional tag overrides (album, disc, discsubtitle, ...).
 func trackFile(num int, title string, extra ...map[string]any) *fstest.MapFile {
 	tags := storagetest.Track(num, title)
 	for _, e := range extra {
@@ -333,10 +302,8 @@ func trackFile(num int, title string, extra ...map[string]any) *fstest.MapFile {
 	return storagetest.MP3(tags)
 }
 
-// embeddedArtFixture is a real MP3 with an embedded picture; FakeFS's JSON-encoded tags aren't
-// taglib-readable, so embedded-art scenarios swap these bytes in after scanning. embeddedArtBytes
-// is the exact image taglib extracts from it. Both load lazily (after tests.Init chdirs to the
-// project root and registers Gomega), via loadEmbeddedFixture from setupResolutionHarness.
+// FakeFS's JSON-encoded tags aren't taglib-readable, so embedded-art specs swap in these real MP3
+// bytes after scanning. Loaded lazily: tests.Init must chdir to the project root first.
 var (
 	embeddedFixtureOnce sync.Once
 	embeddedArtFixture  []byte
@@ -367,8 +334,6 @@ func extractEmbeddedArt(mp3 []byte) []byte {
 	return data
 }
 
-// replaceWithRealMP3 swaps the fake entry at relPath for the real embedded-art MP3, so the
-// library FS returns a taglib-parseable stream during resolution.
 func replaceWithRealMP3(relPath string) {
 	GinkgoHelper()
 	fakeFS.MapFS[relPath] = &fstest.MapFile{Data: embeddedArtFixture}

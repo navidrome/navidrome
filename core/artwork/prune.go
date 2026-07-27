@@ -33,8 +33,7 @@ func prune(ctx context.Context, ds model.DataStore, store *ImageStore) error {
 		log.Info(ctx, "Artwork: Purged dangling queue rows", "count", queuePurged)
 	}
 
-	// One grace cutoff for both the DB orphan check and the file sweep: files younger
-	// than the window may belong to acquisitions whose rows aren't committed yet.
+	// Files younger than the grace window may belong to acquisitions whose rows aren't committed yet.
 	cutoff := time.Now().Add(-pruneMinAge)
 	candidates, err := repo.GetOrphanHashes(cutoff)
 	if err != nil {
@@ -48,8 +47,7 @@ func prune(ctx context.Context, ds model.DataStore, store *ImageStore) error {
 		if err := repo.DeleteOrphans(cutoff, candidates); err != nil {
 			return err
 		}
-		// DeleteOrphans may spare candidates reacquired since the snapshot; only remove files
-		// for rows actually gone (absent from the post-delete re-read).
+		// DeleteOrphans may spare candidates reacquired since the snapshot; only drop files whose rows are gone.
 		survivors, err := repo.GetImages(candidates)
 		if err != nil {
 			return err
@@ -59,8 +57,6 @@ func prune(ctx context.Context, ds model.DataStore, store *ImageStore) error {
 			if _, ok := survivors[h]; ok {
 				continue
 			}
-			// A spared fresh file is at worst a stray a later sweep reclaims;
-			// Worker.RunPrune serializes prune against in-flight acquisitions.
 			if err := store.Remove(h, arts[h].Mime, cutoff); err != nil {
 				log.Warn(ctx, "Artwork: Could not remove orphan file", "hash", h, err)
 			}

@@ -1,6 +1,5 @@
-// Package e2e exercises the artwork pipeline end to end: it enqueues real entities, drives the
-// real Worker to drain the queue, and serves the result through the real Service, over a real
-// ImageStore and real library files.
+// Package e2e exercises the artwork pipeline end to end: the real Worker drains the queue and the
+// real Service serves the result, over a real ImageStore and real library files.
 package e2e
 
 import (
@@ -36,7 +35,6 @@ const (
 	albumFolderPath  = "tests/fixtures/artist/an-album"
 )
 
-// readFixture returns the raw bytes of a project-relative fixture file.
 func readFixture(rel string) []byte {
 	GinkgoHelper()
 	data, err := os.ReadFile(rel)
@@ -44,7 +42,6 @@ func readFixture(rel string) []byte {
 	return data
 }
 
-// readAll drains an artwork image to bytes and closes it.
 func readAll(img *artwork.Image) []byte {
 	GinkgoHelper()
 	Expect(img).ToNot(BeNil())
@@ -54,8 +51,6 @@ func readAll(img *artwork.Image) []byte {
 	return data
 }
 
-// runWorkerUntil starts the real worker loop, waits for a condition, then cancels and joins it,
-// mirroring how cmd drives Worker.Run in production.
 func runWorkerUntil(ctx context.Context, worker *artwork.Worker, until func() bool) {
 	GinkgoHelper()
 	runCtx, cancel := context.WithCancel(ctx)
@@ -66,8 +61,6 @@ func runWorkerUntil(ctx context.Context, worker *artwork.Worker, until func() bo
 	Eventually(done, 2*time.Second).Should(Receive(BeNil()))
 }
 
-// fakeFolderRepo is the minimal FolderRepository the album/playlist resolution chains touch:
-// GetAll yields the seeded folders and the album-root parent lookup finds nothing.
 type fakeFolderRepo struct {
 	model.FolderRepository
 	result []model.Folder
@@ -81,8 +74,6 @@ func (f *fakeFolderRepo) HasAudioOutsideFolders(model.Folder, []string) (bool, e
 
 func (f *fakeFolderRepo) Get(string) (*model.Folder, error) { return nil, model.ErrNotFound }
 
-// writeUpload copies a fixture into the per-entity upload folder under the data dir and returns
-// the bare filename UploadedImagePath expects.
 func writeUpload(entityType, name, srcFixture string) string {
 	GinkgoHelper()
 	dst := model.UploadedImagePath(entityType, name)

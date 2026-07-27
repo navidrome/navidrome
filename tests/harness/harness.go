@@ -86,9 +86,8 @@ func SetupDB(ctx context.Context, users ...*model.User) *DB {
 	return h
 }
 
-// ResettableTables lists the tables a per-spec reset may write. FTS shadow tables are excluded;
-// they are kept in sync by their content tables' triggers, and writing them directly corrupts the
-// index.
+// ResettableTables lists the tables a per-spec reset may write. FTS shadow tables are excluded:
+// their content tables' triggers keep them in sync, and writing them directly corrupts the index.
 func ResettableTables() []string {
 	rows, err := db.Db().Query("SELECT name FROM main.sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '%_fts' AND name NOT LIKE '%_fts_%'")
 	Expect(err).ToNot(HaveOccurred())
@@ -103,9 +102,8 @@ func ResettableTables() []string {
 	return tables
 }
 
-// TruncateDB empties every resettable table, leaving the migrated schema in place. Suites whose
-// specs each build their own library use this instead of a golden snapshot, since re-migrating the
-// schema per spec costs ~400ms.
+// TruncateDB empties every resettable table, leaving the migrated schema in place — for suites
+// whose specs each build their own library, so the schema is not re-migrated per spec.
 func TruncateDB(tables []string) {
 	sqlDB := db.Db()
 	_, err := sqlDB.Exec("PRAGMA foreign_keys = OFF")

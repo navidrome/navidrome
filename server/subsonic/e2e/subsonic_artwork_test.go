@@ -43,9 +43,8 @@ import (
 	"go.senan.xyz/taglib"
 )
 
-// The artwork serving path streams folder-backed originals via os.Open, which a fake FS cannot
-// back, so this suite scans a small REAL on-disk library and drives the real acquisition worker
-// and artwork.Artwork through the Subsonic and public image handlers.
+// The serving path streams folder-backed originals via os.Open, which a fake FS cannot back, so
+// this suite scans a small REAL on-disk library and drives the real worker and artwork.Artwork.
 var _ = Describe("Artwork Serving", Ordered, func() {
 	var (
 		artRouter   *subsonic.Router
@@ -105,9 +104,8 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 		ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
 		auth.Init(ds)
 
-		// A re-scan of already-populated data deadlocks the parallel album-refresh phase at the
-		// harness's MaxOpenConns=1, so wipe the golden content and import ONLY the real artwork
-		// library fresh (the import path never enters that refresh phase).
+		// Re-scanning already-populated data deadlocks the parallel album-refresh phase at the
+		// harness's MaxOpenConns=1, so wipe the golden content and import this library fresh.
 		wipeScannedContent()
 		artLib := model.Library{Name: "Artwork Library", Path: musicDir}
 		Expect(ds.Library(ctx).Put(&artLib)).To(Succeed())
@@ -201,9 +199,8 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 		Expect(w.Header().Get("Cache-Control")).To(Equal("no-store"))
 	})
 
-	// The BeforeAll grants the artwork library to adminUser only, so regularUser cannot see
-	// this album -- but its artwork state and bytes are perfectly servable by id. The service
-	// resolves the entity through the caller's repositories, so the filter still applies.
+	// Only adminUser was granted this library, so regularUser must get the placeholder even
+	// though the artwork state and bytes are perfectly servable by id.
 	It("serves the placeholder for an album in a library the caller cannot see", func() {
 		w := httptest.NewRecorder()
 		artRouter.ServeHTTP(w, buildReq(regularUser, "getCoverArt", "id", "al-"+artfulID))
@@ -212,12 +209,10 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 		Expect(w.Body.Bytes()).To(Equal(placeholder), "must not leak the real cover")
 		Expect(w.Header().Get("Cache-Control")).To(Equal("no-store"))
 
-		// ...while the admin, who does have access, gets the real bytes for the same id.
 		Expect(getCover("id", "al-"+artfulID).Body.Bytes()).ToNot(Equal(placeholder))
 	})
 
-	// An album with no art and an id naming no album are different answers; only the former
-	// is a placeholder.
+	// An id naming no entity is a different answer from an album with no art: no placeholder.
 	It("answers error 70 for an id that matches no entity", func() {
 		w := getCover("id", "al-nosuchalbum")
 		Expect(w.Code).To(Equal(http.StatusOK))
@@ -261,8 +256,8 @@ func buildArtworkRouter(art artwork.Artwork) *subsonic.Router {
 	)
 }
 
-// wipeScannedContent clears all scanned library content (including the golden fake library) so the
-// next scan is a clean import. FKs are disabled for the bulk delete, mirroring harness.Restore.
+// wipeScannedContent clears all scanned content so the next scan is a clean import. FKs are
+// disabled for the bulk delete, mirroring harness.Restore.
 func wipeScannedContent() {
 	GinkgoHelper()
 	_, err := db.Db().Exec("PRAGMA foreign_keys = OFF")
@@ -283,8 +278,7 @@ func albumIDByName(name string) string {
 	return albums[0].ID
 }
 
-// writeArtworkTrack lays down one tag-distinct track (and optionally a folder cover) so the scanner
-// creates a self-contained album; distinct ALBUM/ALBUMARTIST tags keep the two albums from merging.
+// Distinct ALBUM/ALBUMARTIST tags keep the generated albums from merging into one.
 func writeArtworkTrack(root, artist, album, title string, withCover bool) {
 	GinkgoHelper()
 	dir := filepath.Join(root, artist, album)
@@ -306,9 +300,8 @@ func readArtworkFixture(name string) []byte {
 	return data
 }
 
-// newDummyImageCache backs the artwork.Artwork's resize cache. size=0 requests stream originals
-// and never invoke the reader, so it only needs to satisfy the constructor; resize behavior is
-// covered by the artwork package's own suites.
+// size=0 requests stream originals and never invoke the reader, so this resize cache only has
+// to satisfy the constructor.
 func newDummyImageCache(ctx context.Context) cache.FileCache {
 	GinkgoHelper()
 	c := cache.NewFileCache("SubsonicArtworkE2E", "100MB", "images", 0,
@@ -319,7 +312,6 @@ func newDummyImageCache(ctx context.Context) cache.FileCache {
 	return c
 }
 
-// runWorkerUntil drives the real worker loop until a condition holds, then cancels and joins it.
 func runWorkerUntil(ctx context.Context, worker *artwork.Worker, until func() bool) {
 	GinkgoHelper()
 	runCtx, cancel := context.WithCancel(ctx)

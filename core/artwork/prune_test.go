@@ -107,7 +107,6 @@ var _ = Describe("Prune", func() {
 		Expect(awRepo.PutImage(&model.Artwork{Hash: h, Mime: "image/jpeg"})).To(Succeed())
 		ageArtwork(h, time.Now().Add(-2*time.Hour))
 		awRepo.OrphanHashes = []string{h}
-		// Reacquisition: an item now references the hash the snapshot flagged as orphan.
 		Expect(awRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "al", ItemID: "a1",
 			ImageType: model.ImageTypePrimary, Hash: h, Source: "folder"})).To(Succeed())
 
@@ -144,8 +143,7 @@ var _ = Describe("Prune", func() {
 		Expect(awRepo.PutImage(&model.Artwork{Hash: h, Mime: "image/jpeg"})).To(Succeed())
 		ageArtwork(h, time.Now().Add(-2*time.Hour))
 		awRepo.OrphanHashes = []string{h}
-		// The row is legitimately orphaned, but a concurrent acquisition just touched the
-		// file's mtime (duplicate Write) and is about to commit a row referencing it.
+		// The row is orphaned, but a concurrent acquisition just touched the file's mtime.
 
 		Expect(prune(context.Background(), ds, store)).To(Succeed())
 
@@ -213,24 +211,19 @@ var _ = Describe("Prune", func() {
 		Expect(os.Chmod(shardDir, 0500)).To(Succeed())
 		DeferCleanup(func() { _ = os.Chmod(shardDir, 0755) })
 
-		// hb (blocked) is processed first: if store.Remove's failure aborted the loop
-		// instead of warning and continuing, hg would never be reached.
+		// hb is processed first: aborting on its Remove failure would leave hg unreached.
 		awRepo.OrphanHashes = []string{hb, hg}
 
-		// Prune still errors: Sweep independently revisits hb's leftover file and,
-		// unlike the loop below, has no warn-and-continue fallback of its own.
+		// Prune still errors: Sweep revisits hb's leftover file with no warn-and-continue of its own.
 		err := prune(context.Background(), ds, store)
 		Expect(err).To(HaveOccurred())
 
-		// hg: reached and fully pruned despite being queued after the failing hb -
-		// proof the loop didn't return/break on the first Remove error.
 		_, err = awRepo.GetImage(hg)
 		Expect(err).To(MatchError(model.ErrNotFound))
 		_, err = store.Open(hg, "image/jpeg")
 		Expect(os.IsNotExist(err)).To(BeTrue())
 
-		// hb: row still purged (DeleteOrphans doesn't depend on file removal), but the
-		// file itself survives since store.Remove failed and only warned.
+		// The row purge does not depend on file removal, so only the file survives.
 		_, err = awRepo.GetImage(hb)
 		Expect(err).To(MatchError(model.ErrNotFound))
 		rc, err := store.Open(hb, "image/jpeg")

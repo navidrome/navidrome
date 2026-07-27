@@ -16,8 +16,7 @@ import (
 	"github.com/zeebo/xxh3"
 )
 
-// ImageStore is the content-addressed store for artwork images that have no
-// library file backing them (external downloads, embedded extractions, generated).
+// ImageStore is the content-addressed store for artwork images with no library file backing them.
 type ImageStore struct {
 	root string
 }
@@ -26,14 +25,12 @@ func NewImageStore(rootDir string) *ImageStore {
 	return &ImageStore{root: rootDir}
 }
 
-// GetImageStore roots the store in its own subtree under the data folder, so
-// Prune's recursive sweep never reaches the per-entity upload folders next to it.
+// GetImageStore roots the store in its own subtree so Prune's sweep never reaches the upload folders beside it.
 func GetImageStore() *ImageStore {
 	return NewImageStore(filepath.Join(conf.Server.DataFolder.String(), consts.ArtworkFolder, "store"))
 }
 
-// extForMime is deliberately NOT mime.ExtensionsByType: extensions are baked into
-// content-addressed paths and re-derived on Open, so they must be stable across OSes.
+// extForMime must stay stable across OSes: extensions are baked into stored paths and re-derived on Open.
 func extForMime(m string) string {
 	switch m {
 	case "image/jpeg":
@@ -56,8 +53,7 @@ func hashImage(r io.Reader) (string, error) {
 	return fmt.Sprintf("%016x", d.Sum64()), nil
 }
 
-// validHash rejects anything but 16 lowercase hex chars: known-absent states carry "",
-// and malformed persisted hashes must never reach path sharding (slice panics, separators).
+// validHash guards path sharding: a malformed hash would slice-panic or inject path separators.
 func validHash(hash string) bool {
 	if len(hash) != 16 {
 		return false
@@ -85,7 +81,7 @@ func (s *ImageStore) Write(hash, mimeType string, r io.Reader) error {
 		if err := os.Chtimes(dst, now, now); err == nil {
 			return nil
 		}
-		// touch failed (file likely pruned concurrently) — fall through and write it
+		// touch failed (likely pruned concurrently) — fall through and rewrite it
 	}
 	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
 		return err
@@ -112,8 +108,7 @@ func (s *ImageStore) Open(hash, mimeType string) (io.ReadCloser, error) {
 	return os.Open(s.path(hash, mimeType))
 }
 
-// Remove deletes the store file unless it is newer than olderThan, in which case
-// an overlapping acquisition may have just touched it and be about to commit its row.
+// Remove skips files newer than olderThan: an overlapping acquisition may not have committed its row yet.
 func (s *ImageStore) Remove(hash, mimeType string, olderThan time.Time) error {
 	if !validHash(hash) {
 		return fmt.Errorf("imagestore: invalid hash %q", hash)
@@ -136,9 +131,8 @@ func (s *ImageStore) Remove(hash, mimeType string, olderThan time.Time) error {
 	return err
 }
 
-// Sweep removes store files not accepted by keep. Files modified after cutoff
-// (including temp files) are always kept: their acquisition row may not be committed yet.
-// The walk is cancellable: it runs under the worker's prune lock, which shutdown waits on.
+// Sweep removes store files not accepted by keep. Files modified after cutoff are always
+// kept: their acquisition row may not be committed yet.
 func (s *ImageStore) Sweep(ctx context.Context, cutoff time.Time, keep func(hash, ext string) bool) (int, error) {
 	removed := 0
 	err := filepath.WalkDir(s.root, func(path string, d fs.DirEntry, err error) error {

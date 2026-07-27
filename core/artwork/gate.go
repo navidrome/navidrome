@@ -21,36 +21,33 @@ const (
 var errBreakerOpen = errors.New("artwork: external circuit breaker open")
 
 // gateFunc gates one named external fetch (rate limit + circuit breaker per name).
-// resolveItem defaults to passthroughGate; the worker injects the per-agent gate.
 type gateFunc = func(name string, f func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error)
 
 func passthroughGate(_ string, f func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error) {
 	return f()
 }
 
-// isTransientExternal reports whether an external step failed in a way worth retrying;
-// a not-found (from either package) is a definitive answer, not a fault.
+// isTransientExternal reports whether an external failure is worth retrying; a not-found
+// (from either package) is a definitive answer, not a fault.
 func isTransientExternal(err error) bool {
 	return err != nil && !errors.Is(err, agents.ErrNotFound) && !errors.Is(err, model.ErrNotFound)
 }
 
-// extGate is one agent's rate limiter + circuit breaker; each external agent gets its
-// own so a provider whose API or CDN is down backs off in isolation from the others.
+// extGate is one agent's rate limiter and circuit breaker, so a failing provider backs off
+// in isolation from the others.
 type extGate struct {
 	limiter *rate.Limiter
 	breaker *breaker
 }
 
-// gate wraps a named external step with that agent's own rate limiter and circuit
-// breaker, matching gateFunc so it can be handed to the processor's resolver.
+// gate runs a named external step through that agent's rate limiter and circuit breaker.
 func (w *Worker) gate(name string, f func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error) {
 	g := w.gateFor(name)
 	if !g.breaker.allow() {
 		log.Debug(w.runCtx, "Artwork: Skipping agent, circuit breaker open", "agent", name)
 		return nil, "", errBreakerOpen
 	}
-	// Waiting for the rate-limit permit is counted separately: a slow agent and a throttled one
-	// look identical from the drain, but only one of them is the provider's fault.
+	// Timed separately so a throttled agent isn't mistaken for a slow provider.
 	waitStart := time.Now()
 	if err := g.limiter.Wait(w.runCtx); err != nil {
 		return nil, "", err
@@ -63,8 +60,7 @@ func (w *Worker) gate(name string, f func() (io.ReadCloser, string, error)) (io.
 	return r, path, err
 }
 
-// gateFor lazily creates the per-name gate on first use, each with its own limiter at
-// ArtworkExternalMaxRPS and its own breaker.
+// gateFor lazily creates the per-name gate on first use.
 func (w *Worker) gateFor(name string) *extGate {
 	w.gatesMu.Lock()
 	defer w.gatesMu.Unlock()
@@ -81,8 +77,8 @@ func (w *Worker) gateFor(name string) *extGate {
 	return g
 }
 
-// breaker opens after breakerThreshold consecutive external errors and admits a
-// single probe once breakerProbeAfter has elapsed; a success re-closes it.
+// breaker opens after breakerThreshold consecutive errors and admits a single probe once
+// breakerProbeAfter has elapsed; a success re-closes it.
 type breaker struct {
 	mu       sync.Mutex
 	failures int
@@ -107,8 +103,7 @@ func (b *breaker) allow() bool {
 func (b *breaker) record(name string, err error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	// A not-found (from either package) is a definitive answer, not a fault; only real
-	// errors trip the breaker. Must stay consistent with isTransientExternal.
+	// A not-found is a definitive answer, not a fault; keep in sync with isTransientExternal.
 	if err == nil || errors.Is(err, model.ErrNotFound) || errors.Is(err, agents.ErrNotFound) {
 		if b.failures >= breakerThreshold {
 			log.Info("Artwork: Circuit breaker closed for agent", "agent", name)

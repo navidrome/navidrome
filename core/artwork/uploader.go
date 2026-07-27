@@ -15,8 +15,7 @@ import (
 	"github.com/navidrome/navidrome/utils"
 )
 
-// MaxImageUploadSize returns the configured MaxImageUploadSize in bytes, or the built-in default
-// when it's unset/invalid. Shared by every API that accepts image uploads.
+// MaxImageUploadSize returns the configured max upload size in bytes, or the built-in default.
 func MaxImageUploadSize() int64 {
 	if size, err := humanize.ParseBytes(conf.Server.MaxImageUploadSize); err == nil && size > 0 {
 		return int64(size)
@@ -25,18 +24,15 @@ func MaxImageUploadSize() int64 {
 	return int64(size)
 }
 
-// Uploader stores a user-uploaded entity image and invalidates that entity's artwork state so the
-// upload becomes the served cover.
+// Uploader stores a user-uploaded entity image and invalidates that entity's artwork state.
 type Uploader interface {
 	SetImage(ctx context.Context, entityType string, entityID string, name string, oldPath string, reader io.Reader, ext string) (filename string, err error)
 	RemoveImage(ctx context.Context, path string) error
-	// EnqueueArtwork clears an item's resolved state and re-queues it at Bump priority. Callers
-	// must invoke it AFTER persisting the new filename, so the worker never resolves the old one.
+	// EnqueueArtwork re-resolves the item's artwork. Call it AFTER persisting the new
+	// filename, or the worker resolves the old one.
 	EnqueueArtwork(ctx context.Context, entityType, entityID string)
 }
 
-// uploadEntityKind maps an upload's entity type to its artwork kind prefix, so a
-// successful upload can clear and re-queue that item's artwork state.
 var uploadEntityKind = map[string]model.Kind{
 	consts.EntityArtist:   model.KindArtistArtwork,
 	consts.EntityPlaylist: model.KindPlaylistArtwork,
@@ -59,14 +55,12 @@ func (s *uploader) SetImage(ctx context.Context, entityType string, entityID str
 		return "", fmt.Errorf("creating image directory: %w", err)
 	}
 
-	// Remove old image if it exists
 	if oldPath != "" {
 		if err := os.Remove(oldPath); err != nil && !os.IsNotExist(err) {
 			log.Warn(ctx, "Artwork: Failed to remove old image", "path", oldPath, err)
 		}
 	}
 
-	// Save new image
 	f, err := os.Create(absPath)
 	if err != nil {
 		return "", fmt.Errorf("creating image file: %w", err)
@@ -79,8 +73,6 @@ func (s *uploader) SetImage(ctx context.Context, entityType string, entityID str
 	return filename, nil
 }
 
-// EnqueueArtwork clears the item's resolved state and re-queues it at Bump priority: the
-// upload is now the top-priority source, so the worker re-resolves and the UI swaps.
 func (s *uploader) EnqueueArtwork(ctx context.Context, entityType, id string) {
 	kind, ok := uploadEntityKind[entityType]
 	if !ok {

@@ -1,6 +1,5 @@
-// Package imghttp holds the shared HTTP caching contract for artwork responses, so the
-// subsonic, public, and jellyfin image handlers apply identical headers without importing
-// each other.
+// Package imghttp holds the HTTP caching contract shared by the subsonic, public, and jellyfin
+// image handlers, so they apply identical headers without importing each other.
 package imghttp
 
 import (
@@ -11,33 +10,30 @@ import (
 )
 
 // WriteImageHeaders applies the artwork caching contract and reports whether a 304 was written
-// (in which case the caller must not write a body). requestedHash is the hash the client asserted
-// (id suffix / JWT payload / jellyfin tag param), or "" when the request carried no hash.
+// (the caller must then not write a body). requestedHash is the hash the client asserted, or "".
 func WriteImageHeaders(w http.ResponseWriter, r *http.Request, img *artwork.Image, requestedHash string) (wrote304 bool) {
 	h := w.Header()
-	// Placeholders are transient stand-ins for not-yet-resolved art: never cached, no validators.
+	// Placeholders are transient stand-ins for unresolved art: never cached, no validators.
 	if img.Placeholder {
 		h.Set("Cache-Control", "no-store")
 		return false
 	}
 
-	// The validator identifies the served representation (resized/re-encoded bytes version it via
-	// ETag), so a CoverArtQuality/EnableWebPEncoding change invalidates a revalidating client's
-	// cache. Falls back to the pixel hash for full-size originals (bytes == the hash).
+	// The ETag versions the served representation, so a re-encoding config change invalidates a
+	// revalidating client's cache; full-size originals are their own pixel hash.
 	etag := img.ETag
 	if etag == "" {
 		etag = img.Hash
 	}
-	// An empty validator is not one: emitting it would hand every such response the same ETag,
-	// and matching it would 304 a client that echoed it back even after the bytes changed.
+	// An empty validator would be shared by every such response, 304ing clients that echo it back.
 	if etag != "" {
 		h.Set("ETag", `"`+etag+`"`)
 	}
 	if !img.LastUpdated.IsZero() {
 		h.Set("Last-Modified", img.LastUpdated.UTC().Format(http.TimeFormat))
 	}
-	// Immutable only when the client asked for the exact current pixel hash; bare/legacy/mismatched
-	// requests get cheap ETag revalidation instead, which fixes stale art after re-resolution.
+	// Immutable only when the client asked for the current pixel hash; anything else revalidates,
+	// so art that gets re-resolved is never pinned.
 	if requestedHash != "" && requestedHash == img.Hash {
 		h.Set("Cache-Control", "public, max-age=31536000, immutable")
 	} else {
@@ -51,8 +47,7 @@ func WriteImageHeaders(w http.ResponseWriter, r *http.Request, img *artwork.Imag
 	return false
 }
 
-// ifNoneMatch reports whether the If-None-Match header asserts the given hash, using weak
-// comparison (RFC 9110): "*" matches any current representation and W/ prefixes are ignored.
+// ifNoneMatch reports whether If-None-Match asserts hash, using RFC 9110 weak comparison.
 func ifNoneMatch(header, hash string) bool {
 	header = strings.TrimSpace(header)
 	if header == "" {

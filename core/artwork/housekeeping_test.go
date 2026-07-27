@@ -213,9 +213,7 @@ var _ = Describe("Housekeeping", func() {
 			artRepo.ItemData["al-stale"] = model.ItemArtwork{ItemKind: "al", ItemID: "al1", ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: old}
 			artRepo.ItemData["pl-stale"] = model.ItemArtwork{ItemKind: "pl", ItemID: "pl1", ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: old}
 			artRepo.ItemData["ra-stale"] = model.ItemArtwork{ItemKind: "ra", ItemID: "ra1", ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: old}
-			// Not stale: too recent.
 			artRepo.ItemData["ar-recent"] = model.ItemArtwork{ItemKind: "ar", ItemID: "ar2", ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: recent}
-			// Not absent: has a resolved hash.
 			artRepo.ItemData["al-resolved"] = model.ItemArtwork{ItemKind: "al", ItemID: "al2", ImageType: model.ImageTypePrimary, Hash: "somehash", AttemptedAt: old}
 
 			err := enqueueStaleAbsentAll(ctx, ds)
@@ -250,7 +248,6 @@ var _ = Describe("Housekeeping", func() {
 		})
 
 		It("enqueues only entities that have no item_artwork row, across all kinds", func() {
-			// al1 is already resolved and ar1 already absent: both must be skipped.
 			artRepo.ItemData["al-resolved"] = model.ItemArtwork{ItemKind: "al", ItemID: "al1", ImageType: model.ImageTypePrimary, Hash: "somehash", AttemptedAt: time.Now()}
 			artRepo.ItemData["ar-absent"] = model.ItemArtwork{ItemKind: "ar", ItemID: "ar1", ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: time.Now()}
 

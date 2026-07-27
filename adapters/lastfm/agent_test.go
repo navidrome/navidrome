@@ -576,10 +576,8 @@ var _ = Describe("lastfmAgent", func() {
 			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(lastfmError6)), StatusCode: 200}
 			_, err := agent.GetAlbumInfo(ctx, "123", "U2", "mbid-1234")
 			Expect(err).To(HaveOccurred())
-			// error 6 is a definitive not-found, so it must satisfy the shared sentinel (else it
-			// would trip the artwork worker's circuit breaker and be retried as a transient fault).
+			// A definitive not-found must satisfy the sentinel, or the artwork worker retries it.
 			Expect(errors.Is(err, agents.ErrNotFound)).To(BeTrue())
-			// No MBID retry: album.getInfo is queried by name+artist only, in a single call.
 			Expect(httpClient.RequestCount).To(Equal(1))
 			Expect(httpClient.SavedRequest.URL.Query().Get("mbid")).To(BeEmpty())
 		})
@@ -615,8 +613,7 @@ var _ = Describe("lastfmAgent", func() {
 		It("maps a Last.fm error 6 (artist not found) to the shared not-found sentinel", func() {
 			apiClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(lastfmError6)), StatusCode: 200}
 			_, err := agent.GetArtistImages(ctx, "123", "Nonexistent Artist", "")
-			// Definitive not-found, not a fault — must satisfy the sentinel through the %w wrap so
-			// runs of missing artists never trip the artwork worker's circuit breaker.
+			// Not a fault: runs of missing artists must not trip the worker's circuit breaker.
 			Expect(errors.Is(err, agents.ErrNotFound)).To(BeTrue())
 		})
 

@@ -54,9 +54,8 @@ func (f *fakeImageAgent) GetAlbumImages(_ context.Context, name, _, _ string) ([
 	return f.imgs, f.err
 }
 
-// imageAgents registers the fakes as built-in agents (ignoring the DataStore) and
-// enables them in order, returning the process-wide Agents. Because the fakes ignore
-// ds, reusing the GetAgents singleton across tests is safe.
+// imageAgents registers the fakes as built-in agents and enables them in order. The fakes
+// ignore the DataStore, so reusing the process-wide GetAgents singleton across tests is safe.
 func imageAgents(fakes ...*fakeImageAgent) *agents.Agents {
 	names := make([]string, 0, len(fakes))
 	for _, f := range fakes {

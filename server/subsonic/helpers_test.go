@@ -349,8 +349,7 @@ var _ = Describe("helpers", func() {
 		})
 
 		Describe("childFromMediaFile", func() {
-			// The album id carries the album's hash, which hydration puts in AlbumImage; the
-			// track's own ItemImage describes its own art and must not be stamped onto an al- id.
+			// An al- id must carry the album's hash (AlbumImage), never the track's own.
 			It("suffixes coverArt with the album's content hash when resolved", func() {
 				mf := model.MediaFile{ID: "mf-1", AlbumID: "al-1", AlbumImage: model.ItemImage{ImageHash: hash}}
 				Expect(childFromMediaFile(ctx, mf).CoverArt).To(Equal("al-al-1_" + hash))

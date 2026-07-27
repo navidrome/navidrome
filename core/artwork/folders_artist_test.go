@@ -10,9 +10,8 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-// unreadableFS globs like its embedded MapFS but refuses to open anything, standing in for a
-// stale mount or a permissions failure. Injecting the error keeps this independent of the
-// filesystem: os.Chmod does not restrict read access on Windows.
+// unreadableFS globs like its embedded MapFS but refuses to open anything. Injecting the error
+// keeps this independent of the filesystem: os.Chmod does not restrict read access on Windows.
 type unreadableFS struct{ fstest.MapFS }
 
 func (u unreadableFS) Open(string) (fs.File, error) { return nil, fs.ErrPermission }

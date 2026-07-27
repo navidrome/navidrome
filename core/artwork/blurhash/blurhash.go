@@ -1,5 +1,5 @@
-// Package blurhash implements the blurhash encoding algorithm (https://github.com/woltapp/blurhash),
-// matching Jellyfin's parameters so clients tuned against Jellyfin see equivalent hashes.
+// Package blurhash implements the blurhash encoding (https://github.com/woltapp/blurhash),
+// parameterized to match Jellyfin so clients see equivalent hashes.
 package blurhash
 
 import (
@@ -15,10 +15,10 @@ import (
 
 const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz#$%*+,-.:;=?@[]^_{|}~"
 
-// maxInputSize matches Jellyfin: larger inputs are slower with no visually discernible difference.
+// maxInputSize: larger inputs are slower with no visible difference in the result.
 const maxInputSize = 128
 
-// Components picks x/y component counts for an image, targeting ~16 near-square tiles (Jellyfin's formula).
+// Components picks x/y component counts targeting ~16 near-square tiles.
 func Components(width, height int) (int, int) {
 	if width <= 0 || height <= 0 {
 		return 0, 0
@@ -109,8 +109,7 @@ func Encode(img image.Image, xComp, yComp int) (string, error) {
 	return sb.String(), nil
 }
 
-// toRGBA gives the pixel loop direct Pix access, avoiding a per-pixel allocation through the
-// image.At interface (~16k allocs per encode).
+// toRGBA gives the pixel loop direct Pix access, avoiding a per-pixel allocation via image.At.
 func toRGBA(img image.Image) *image.RGBA {
 	if rgba, ok := img.(*image.RGBA); ok {
 		return rgba
@@ -165,8 +164,7 @@ func linearToSRGB(v float64) int {
 	return int((1.055*math.Pow(v, 1/2.4)-0.055)*255 + 0.5)
 }
 
-// Encode83 encodes value as a fixed-width, big-endian base83 string of the given length, using the
-// blurhash spec's alphabet.
+// Encode83 encodes value as a fixed-width, big-endian base83 string of the given length.
 func Encode83(value, length int) string {
 	b := make([]byte, length)
 	for i := length - 1; i >= 0; i-- {

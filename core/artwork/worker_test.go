@@ -22,8 +22,6 @@ import (
 	"go.uber.org/goleak"
 )
 
-// recordingCache captures the keys passed to Get so precache warming can be asserted,
-// and can be forced Disabled to exercise the skip path.
 type recordingCache struct {
 	cache.FileCache
 	mu       sync.Mutex
@@ -48,8 +46,8 @@ func (c *recordingCache) getKeys() []string {
 	return append([]string(nil), c.keys...)
 }
 
-// reenqueueOnDequeue simulates a concurrent scan Enqueue between DequeueBatch and the
-// worker's delete by bumping retry_at, so a DeleteIfUnchanged on the dequeued value no-ops.
+// Simulates a concurrent Enqueue between DequeueBatch and the worker's delete, so
+// DeleteIfUnchanged on the dequeued value no-ops.
 type reenqueueOnDequeue struct {
 	*tests.MockArtworkQueueRepo
 	done bool
@@ -303,8 +301,7 @@ var _ = Describe("Worker", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(n).To(Equal(1))
 
-			// The concurrent re-enqueue reset retry_at; the failure path must not stomp it
-			// with stale backoff nor bump attempts, so the row stays immediately eligible.
+			// The re-enqueue reset retry_at; the failure path must not stomp it nor bump attempts.
 			it := findQueued(queueRepo, "al", "al8")
 			Expect(it).ToNot(BeNil())
 			Expect(it.Attempts).To(BeZero())
@@ -317,7 +314,7 @@ var _ = Describe("Worker", func() {
 			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 			w = NewWorker(ds, store, ag, ffm, broker, imgCache)
 			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al9"})).To(Succeed())
-			// Age the row past the budget so the next retry would land beyond enqueued_at+giveUpAfter.
+			// Age the row past the retry budget.
 			for k, v := range queueRepo.Data {
 				if v.ItemID == "al9" {
 					v.EnqueuedAt = time.Now().Add(-(giveUpAfter + time.Hour))
@@ -329,7 +326,6 @@ var _ = Describe("Worker", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(n).To(Equal(1))
 
-			// Row removed (stops retrying) and the failure settles absent for the periodic sweep.
 			Expect(findQueued(queueRepo, "al", "al9")).To(BeNil())
 			ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al9", model.ImageTypePrimary)
 			Expect(err).ToNot(HaveOccurred())
@@ -363,8 +359,8 @@ var _ = Describe("Worker", func() {
 			Expect(ia.Hash).To(Equal("cafebabe"), "a persistent outage must not discard served art")
 		})
 
-		// Media files are excluded from recheckKinds, so an absent row written here would never
-		// be revisited: a transient read error would look like "this track has no cover" forever.
+		// Media files are excluded from recheckKinds, so an absent row here would never be
+		// revisited: a transient read error would look permanent.
 		It("does not settle absent on exhaustion for a kind with no recheck path", func() {
 			conf.Server.EnableMediaFileCoverArt = true
 			ds.MockedMediaFile = tests.CreateMockMediaFileRepo()
@@ -403,7 +399,6 @@ var _ = Describe("Worker", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(n).To(Equal(1))
 
-			// Resolved as absent (no art) and removed — not stuck failing on ErrNotFound forever.
 			Expect(findQueued(queueRepo, "pl", "plPriv")).To(BeNil())
 			ia, err := artRepo.GetItemArtwork(model.KindPlaylistArtwork, "plPriv", model.ImageTypePrimary)
 			Expect(err).ToNot(HaveOccurred())
@@ -526,9 +521,8 @@ var _ = Describe("Worker", func() {
 		})
 
 		It("does not open the breaker on a run of agent not-found misses", func() {
-			// Regression: agents.ErrNotFound is a definitive miss, not a fault. A run of
-			// artless items must never trip the breaker, or they'd loop in retry instead of
-			// settling absent. Uses the real gate, not passthroughGate.
+			// agents.ErrNotFound is a definitive miss, not a fault: artless items must not
+			// trip the breaker, or they would loop in retry instead of settling absent.
 			notFound := func() (io.ReadCloser, string, error) { return nil, "", agents.ErrNotFound }
 			for range breakerThreshold + 3 {
 				_, _, err := w.gate("A", notFound)
@@ -601,8 +595,7 @@ var _ = Describe("Worker", func() {
 			Expect(imgCache.getKeys()).To(BeEmpty())
 		})
 
-		// It warms from the bytes the acquisition already held, so no state row or store file
-		// needs to exist for it to work.
+		// It warms from the bytes acquisition already held, so no state row or store file is needed.
 		It("warms from the acquired bytes without reading them back", func() {
 			conf.Server.EnableArtworkPrecache = true
 			ia := &model.ItemArtwork{
@@ -615,9 +608,8 @@ var _ = Describe("Worker", func() {
 
 			w.precache(ctx, &acquired{ia: ia, mime: "image/jpeg", data: data})
 
-			// Nothing backs that hash on disk or in the store, so the entry can only have come
-			// from the bytes handed in. Probing with a source that refuses to open proves it
-			// is really cached rather than re-read on demand.
+			// Nothing backs that hash on disk, so a hit can only come from the bytes handed in;
+			// the probe refuses to open, proving nothing is re-read.
 			probe := &resizedItem{
 				hash: ia.Hash, size: 300, square: true, ffmpeg: ffm,
 				open: func() (io.ReadCloser, error) { return nil, errors.New("precache must not re-read the source") },
@@ -642,9 +634,8 @@ var _ = Describe("Worker", func() {
 			Expect(pooled).To(HaveLen(len(artworkKindToResource)), "a kind is claimed by more than one pool")
 		})
 
-		// A first backfill enqueues artists before albums, and artists resolve through a
-		// rate-limited agent that holds its slot while waiting. Sharing one pool let ~29k
-		// sleeping lookups sit in front of every album for hours.
+		// Artists resolve through a rate-limited agent that holds its slot while waiting, so one
+		// shared pool would park every album behind them.
 		It("resolves albums while artists are stuck on a slow agent", func() {
 			conf.Server.CoverArtPriority = "cover.jpg"
 			conf.Server.ArtistArtPriority = "external"
@@ -677,15 +668,13 @@ var _ = Describe("Worker", func() {
 			runCtx, cancel := context.WithCancel(ctx)
 			done := make(chan struct{})
 			go func() { defer close(done); _ = w.Run(runCtx) }()
-			// Wait for Run to return: a leaked pool goroutine outlives the spec and races the
-			// config snapshot Ginkgo restores on cleanup.
+			// Join Run: a leaked pool goroutine would race the config snapshot Ginkgo restores.
 			DeferCleanup(func() {
 				cancel()
 				close(block) // unpark the blocked lookups so the pools can unwind
 				<-done
 			})
 
-			// The album must land while every artist is still parked in the agent.
 			Eventually(func() bool {
 				ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "alx", model.ImageTypePrimary)
 				return err == nil && ia.Hash != ""
@@ -698,8 +687,6 @@ var _ = Describe("Worker", func() {
 	})
 
 	Describe("batching", func() {
-		// A cancelled drain leaves its undispatched rows untouched in the queue, so a later
-		// drain picks them up unchanged.
 		It("leaves undispatched items queued when cancelled mid-batch", func() {
 			for i := range 8 {
 				id := fmt.Sprintf("alc%d", i)
@@ -720,8 +707,6 @@ var _ = Describe("Worker", func() {
 			}
 		})
 
-		// The pool is fed from one dequeue per pass: a batch sized to the pool would make a
-		// single slow item idle the other slots for as long as it runs.
 		It("dequeues past the worker pool so one drain covers many items", func() {
 			for i := range 16 {
 				ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: fmt.Sprintf("alb%d", i), Name: "Album"}})

@@ -53,8 +53,7 @@ var _ = Describe("handleImages", func() {
 		return httptest.NewRequest("GET", "/img?:id="+url.QueryEscape(token), nil)
 	}
 
-	// The handler re-checks that the entity behind the token still exists, so every spec needs
-	// a store where "1" is a live album.
+	// The handler re-checks that the entity behind the token still exists, so "1" must be live.
 	var ds *tests.MockDataStore
 
 	BeforeEach(func() {

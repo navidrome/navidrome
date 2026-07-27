@@ -163,8 +163,7 @@ func (r *mediaFileRepository) CountBySuffix(options ...model.QueryOptions) (map[
 }
 
 func (r *mediaFileRepository) Exists(id string) (bool, error) {
-	// Filtered like CountAll: the plain exists() helper applies no library filter, so it
-	// would report a row in a library the caller cannot see.
+	// The exists() helper applies no library filter, so it would report rows the caller cannot see.
 	c, err := r.count(r.applyLibraryFilter(r.newSelect().Where(Eq{"media_file.id": id})))
 	return c > 0, err
 }
@@ -226,7 +225,6 @@ func (r *mediaFileRepository) GetAll(options ...model.QueryOptions) (model.Media
 	return mfs, nil
 }
 
-// hydrateArtwork hydrates a fetched page in place.
 func (r *mediaFileRepository) hydrateArtwork(mfs model.MediaFiles) {
 	hydrateMediaFileArtwork(r.ctx, r.db, mfs)
 }
@@ -301,8 +299,7 @@ func (r *mediaFileRepository) GetCursor(options ...model.QueryOptions) (model.Me
 	return wrapMediaFileCursor(cursor), nil
 }
 
-// GetAllIDs returns just the media_file IDs for the same row set as GetAll, skipping the heavy
-// column projection. Used as GetCursorWithArtwork's id pre-pass.
+// GetAllIDs returns the IDs of GetAll's row set, skipping its wide column projection.
 func (r *mediaFileRepository) GetAllIDs(options ...model.QueryOptions) ([]string, error) {
 	sq := r.applyLibraryFilter(r.newSelect(options...).Columns("media_file.id"))
 	if filtersNeedAnnotation(sq) {
@@ -313,8 +310,7 @@ func (r *mediaFileRepository) GetAllIDs(options ...model.QueryOptions) ([]string
 	return ids, err
 }
 
-// GetCursorWithArtwork streams the same rows as GetCursor, hydrated, via the id pre-pass used by
-// the other cursors, rather than the scanner's bounded, unhydrated GetCursor itself.
+// GetCursorWithArtwork streams the same rows as GetCursor, hydrated, via an id pre-pass.
 func (r *mediaFileRepository) GetCursorWithArtwork(options ...model.QueryOptions) (model.MediaFileCursor, error) {
 	ids, err := r.GetAllIDs(options...)
 	if err != nil {
