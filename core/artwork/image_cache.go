@@ -1,11 +1,13 @@
 package artwork
 
 import (
+	"bytes"
 	"context"
 	"io"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/utils/cache"
 	"github.com/navidrome/navidrome/utils/singleton"
 )
@@ -30,4 +32,41 @@ func GetImageCache() cache.FileCache {
 				}),
 		}
 	})
+}
+
+// resizedItem is an artworkReader that resizes bytes opened by open() and caches the
+// result under a hash-derived key.
+type resizedItem struct {
+	hash   string
+	size   int
+	square bool
+	ffmpeg ffmpeg.FFmpeg
+	open   func() (io.ReadCloser, error)
+}
+
+// Key is the ETag namespaced for the cache, so the validator a client holds and the entry it
+// validates can never drift apart.
+func (r *resizedItem) Key() string {
+	return "h-" + representationTag(r.hash, r.size, r.square)
+}
+
+func (r *resizedItem) Reader(ctx context.Context) (io.ReadCloser, error) {
+	orig, err := r.open()
+	if err != nil {
+		return nil, err
+	}
+	defer orig.Close()
+	data, err := readCapped(orig)
+	if err != nil {
+		return nil, err
+	}
+	resized, _, err := resizeImageData(ctx, r.ffmpeg, data, r.size, r.square)
+	if err != nil || resized == nil {
+		// Resize failed or image already within bounds: serve the original bytes.
+		return io.NopCloser(bytes.NewReader(data)), nil
+	}
+	if rc, ok := resized.(io.ReadCloser); ok {
+		return rc, nil
+	}
+	return io.NopCloser(resized), nil
 }
