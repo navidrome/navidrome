@@ -134,7 +134,7 @@ func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (o
 			return outcomeFailed, nil
 		}
 		log.Debug(ctx, "Artwork: Decoded new image", "kind", item.ItemKind, "id", item.ItemID, "hash", hash,
-			"dims", fmt.Sprintf("%dx%d", art.Width, art.Height), "mime", art.Mime, "elapsed", time.Since(decodeStart))
+			"width", art.Width, "height", art.Height, "mime", art.Mime, "elapsed", time.Since(decodeStart))
 	default:
 		log.Warn(ctx, "Artwork: Failed to look up image hash", "kind", item.ItemKind, "id", item.ItemID, err)
 		return outcomeFailed, nil
