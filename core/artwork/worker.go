@@ -50,7 +50,7 @@ type drainPool struct {
 }
 
 // Worker drains the artwork queue through processItem: each external agent is rate-limited
-// and circuit-broken independently, and prune is serialized against in-flight acquisitions
+// and circuit-broken independently, and prune is serialized against the store-write window
 // via pruneMu.
 type Worker struct {
 	deps    workerDeps
@@ -61,21 +61,18 @@ type Worker struct {
 
 	gatesMu sync.Mutex
 	gates   map[string]*extGate
-
-	mu       sync.Mutex
-	inFlight map[string]struct{}
 }
 
 func NewWorker(ds model.DataStore, store *ImageStore, ag *agents.Agents, ffmpeg ffmpeg.FFmpeg, broker events.Broker, imgCache cache.FileCache) *Worker {
 	w := &Worker{
-		deps:     workerDeps{ds: ds, store: store, agents: ag, ffmpeg: ffmpeg, cache: imgCache},
-		broker:   broker,
-		pools:    newDrainPools(),
-		runCtx:   context.Background(),
-		gates:    map[string]*extGate{},
-		inFlight: map[string]struct{}{},
+		deps:   workerDeps{ds: ds, store: store, agents: ag, ffmpeg: ffmpeg, cache: imgCache},
+		broker: broker,
+		pools:  newDrainPools(),
+		runCtx: context.Background(),
+		gates:  map[string]*extGate{},
 	}
 	w.deps.gate = w.gate
+	w.deps.pruneLock = w.pruneMu.RLocker()
 	return w
 }
 
@@ -175,11 +172,10 @@ func (w *Worker) drain(ctx context.Context, concurrency int, kinds ...string) (i
 	// Dequeue well past the worker pool so a slow item (an external lookup burning its
 	// timeout) never idles the other slots: the pool stays fed until the batch runs out.
 	// DequeueBatch does not mark rows taken, so this is one query per pass, not per slot.
-	batch, err := w.deps.ds.ArtworkQueue(ctx).DequeueBatch(max(16, 4*concurrency), kinds...)
+	items, err := w.deps.ds.ArtworkQueue(ctx).DequeueBatch(max(16, 4*concurrency), kinds...)
 	if err != nil {
 		return 0, err
 	}
-	items := w.claim(batch)
 	if len(items) == 0 {
 		return 0, nil
 	}
@@ -190,30 +186,22 @@ func (w *Worker) drain(ctx context.Context, concurrency int, kinds ...string) (i
 	var wg sync.WaitGroup
 	var refreshMu sync.Mutex
 	var refresh []model.ArtworkQueueItem
-	for i, item := range items {
+	for _, item := range items {
 		select {
 		case sem <- struct{}{}:
 		case <-ctx.Done():
-			// claim() reserved the whole batch; anything not dispatched has to go back, or it
-			// stays in flight forever and no later drain can pick it up.
-			for _, undispatched := range items[i:] {
-				w.release(undispatched)
-			}
 			wg.Wait()
 			return len(items), nil
 		}
-		wg.Add(1)
-		go func(it model.ArtworkQueueItem) {
-			defer wg.Done()
+		wg.Go(func() {
 			defer func() { <-sem }()
-			defer w.release(it)
-			out, got := w.process(ctx, it)
+			out, got := w.process(ctx, item)
 			// Refresh clients on any visible state change: found/foundStale (new art) and absent
 			// (removed art — clients must drop a previously-served immutable cover). foundStale
 			// also wrote a served state row.
 			if out == outcomeFound || out == outcomeFoundStale || out == outcomeAbsent {
 				refreshMu.Lock()
-				refresh = append(refresh, it)
+				refresh = append(refresh, item)
 				refreshMu.Unlock()
 			}
 			// Precache only actual images. Post-outcome only: the queue row was already settled
@@ -221,7 +209,7 @@ func (w *Worker) drain(ctx context.Context, concurrency int, kinds ...string) (i
 			if got != nil {
 				w.precache(ctx, got)
 			}
-		}(item)
+		})
 	}
 	wg.Wait()
 	w.broadcastRefresh(ctx, refresh)
@@ -265,9 +253,7 @@ func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) (outc
 	if item.ImageType == "" {
 		item.ImageType = model.ImageTypePrimary
 	}
-	w.pruneMu.RLock()
 	out, got := processItem(ctx, &w.deps, item)
-	w.pruneMu.RUnlock()
 
 	queue := w.deps.ds.ArtworkQueue(ctx)
 	switch out {
@@ -335,33 +321,6 @@ func (w *Worker) precache(ctx context.Context, got *acquired) {
 	}
 	_, _ = io.Copy(io.Discard, stream)
 	_ = stream.Close()
-}
-
-// claim reserves items not already in flight, so a row appearing twice within a single
-// batch is processed once.
-func (w *Worker) claim(batch []model.ArtworkQueueItem) []model.ArtworkQueueItem {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	var out []model.ArtworkQueueItem
-	for _, it := range batch {
-		k := queueKey(it)
-		if _, busy := w.inFlight[k]; busy {
-			continue
-		}
-		w.inFlight[k] = struct{}{}
-		out = append(out, it)
-	}
-	return out
-}
-
-func (w *Worker) release(it model.ArtworkQueueItem) {
-	w.mu.Lock()
-	delete(w.inFlight, queueKey(it))
-	w.mu.Unlock()
-}
-
-func queueKey(it model.ArtworkQueueItem) string {
-	return it.ItemKind + "|" + it.ItemID + "|" + it.ImageType
 }
 
 // gate wraps a named external step with that agent's own rate limiter and circuit

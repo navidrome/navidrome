@@ -101,6 +101,43 @@ var _ = Describe("processItem", func() {
 		Expect(os.IsNotExist(err)).To(BeTrue(), "folder-backed art must not be duplicated into the store")
 	})
 
+	Describe("prune lock scope", func() {
+		var lock *countingLocker
+
+		BeforeEach(func() {
+			lock = &countingLocker{}
+			deps.pruneLock = lock
+		})
+
+		It("holds it once across the write window", func() {
+			folderRepo.result = []model.Folder{{
+				Path:       "tests/fixtures/artist/an-album",
+				ImageFiles: []string{"cover.jpg"},
+			}}
+			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
+				{ID: "alL1", Name: "Album", FolderIDs: []string{"f1"}},
+			})
+
+			out, _ := processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alL1"})
+			Expect(out).To(Equal(outcomeFound))
+			Expect(lock.locks).To(BeNumerically(">", 0), "the write window must exclude prune")
+			Expect(lock.held()).To(BeFalse(), "the window must close before processItem returns")
+		})
+
+		// Resolution can reach the network under its own timeout, so holding the lock across it
+		// would let one slow provider block prune, and every drain queued behind prune's writer.
+		It("never takes it while only resolving", func() {
+			folderRepo.result = nil
+			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
+				{ID: "alL2", Name: "Album", FolderIDs: []string{"f1"}},
+			})
+
+			out, _ := processItem(ctx, deps, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alL2"})
+			Expect(out).To(Equal(outcomeAbsent))
+			Expect(lock.locks).To(BeZero())
+		})
+	})
+
 	It("found-embedded: writes a store file and computes a non-empty blurhash from a real fixture", func() {
 		ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
 			{ID: "al2", Name: "Album", EmbedArtPath: "tests/fixtures/artist/an-album/test.mp3", FolderIDs: []string{"f1"}},
@@ -413,3 +450,14 @@ var _ = Describe("processItem", func() {
 		Expect(err).To(MatchError(model.ErrNotFound))
 	})
 })
+
+// countingLocker stands in for the worker's prune read-lock, recording how often and how long
+// processItem holds it.
+type countingLocker struct {
+	locks   int
+	unlocks int
+}
+
+func (l *countingLocker) Lock()      { l.locks++ }
+func (l *countingLocker) Unlock()    { l.unlocks++ }
+func (l *countingLocker) held() bool { return l.locks != l.unlocks }

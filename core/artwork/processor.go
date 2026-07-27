@@ -9,6 +9,7 @@ import (
 	"image/draw"
 	_ "image/gif" // the only artwork format with no other importer in this package
 	"io"
+	"sync"
 	"time"
 
 	"github.com/navidrome/navidrome/core/agents"
@@ -44,15 +45,17 @@ const maxImageBytes = 20 << 20
 // huge canvas that image.Decode would expand into gigabytes (decompression bomb).
 const maxImagePixels = 64 << 20
 
-// workerDeps are the collaborators processItem needs; gate is set by NewWorker in
-// production and nil only in tests, where resolveItem falls back to a plain passthrough.
+// workerDeps are the collaborators processItem needs; gate and pruneLock are set by NewWorker
+// in production and nil only in tests, where resolveItem falls back to a plain passthrough and
+// nothing prunes.
 type workerDeps struct {
-	ds     model.DataStore
-	store  *ImageStore
-	agents *agents.Agents
-	ffmpeg ffmpeg.FFmpeg
-	cache  cache.FileCache
-	gate   gateFunc
+	ds        model.DataStore
+	store     *ImageStore
+	agents    *agents.Agents
+	ffmpeg    ffmpeg.FFmpeg
+	cache     cache.FileCache
+	gate      gateFunc
+	pruneLock sync.Locker
 }
 
 // acquired is what processItem persisted, handed back so the caller can warm the resize
@@ -112,14 +115,34 @@ func processItem(ctx context.Context, deps *workerDeps, item model.ArtworkQueueI
 	}
 	art.SizeBytes = int64(len(data))
 
-	sourcePath, refMtime, err := placeBytes(deps.store, art, res, data)
+	ia, err := persist(deps, repo, item, hash, art, res, data)
 	if err != nil {
-		log.Warn(ctx, "artwork: failed to write image store", "kind", item.ItemKind, "id", item.ItemID, err)
+		log.Warn(ctx, "artwork: failed to persist resolved image", "kind", item.ItemKind, "id", item.ItemID, err)
 		return outcomeFailed, nil
 	}
+	got := &acquired{ia: ia, mime: art.Mime, data: data}
+	if res.extError {
+		return outcomeFoundStale, got
+	}
+	return outcomeFound, got
+}
+
+// persist places the bytes and commits the rows referencing them. Only this window excludes
+// Prune, which reclaims store files no row points at; resolution stays outside so a slow fetch
+// cannot hold prune off.
+func persist(deps *workerDeps, repo model.ArtworkRepository, item model.ArtworkQueueItem, hash string,
+	art *model.Artwork, res resolution, data []byte,
+) (*model.ItemArtwork, error) {
+	if deps.pruneLock != nil {
+		deps.pruneLock.Lock()
+		defer deps.pruneLock.Unlock()
+	}
+	sourcePath, refMtime, err := placeBytes(deps.store, art, res, data)
+	if err != nil {
+		return nil, fmt.Errorf("writing image store: %w", err)
+	}
 	if err := repo.PutImage(art); err != nil {
-		log.Warn(ctx, "artwork: failed to persist artwork image", "kind", item.ItemKind, "id", item.ItemID, err)
-		return outcomeFailed, nil
+		return nil, fmt.Errorf("persisting artwork image: %w", err)
 	}
 	ia := &model.ItemArtwork{
 		ItemKind:    item.ItemKind,
@@ -133,14 +156,9 @@ func processItem(ctx context.Context, deps *workerDeps, item model.ArtworkQueueI
 	}
 	// PutItemArtwork stamps UpdatedAt on ia, so what it holds now matches the persisted row.
 	if err := repo.PutItemArtwork(ia); err != nil {
-		log.Warn(ctx, "artwork: failed to persist item artwork state", "kind", item.ItemKind, "id", item.ItemID, err)
-		return outcomeFailed, nil
+		return nil, fmt.Errorf("persisting item artwork state: %w", err)
 	}
-	got := &acquired{ia: ia, mime: art.Mime, data: data}
-	if res.extError {
-		return outcomeFoundStale, got
-	}
-	return outcomeFound, got
+	return ia, nil
 }
 
 // writeAbsent records a known-absent state: every local/external source answered definitively "no".
