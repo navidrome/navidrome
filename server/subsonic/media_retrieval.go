@@ -120,13 +120,15 @@ func (api *Router) artworkAccessible(ctx context.Context, id string) bool {
 		_, lookupErr = api.ds.MediaFile(ctx).Get(artID.ID)
 	case model.KindPlaylistArtwork:
 		_, lookupErr = api.ds.Playlist(ctx).Get(artID.ID)
+	case model.KindRadioArtwork:
+		_, lookupErr = api.ds.Radio(ctx).Get(artID.ID)
 	case model.KindDiscArtwork:
 		albumID, _, perr := model.ParseDiscArtworkID(artID.ID)
 		if perr != nil {
 			return false
 		}
 		_, lookupErr = api.ds.Album(ctx).Get(albumID)
-	default: // radio and anything else has no per-user artwork access control
+	default: // anything else has no per-user artwork access control
 		return true
 	}
 	return lookupErr == nil

@@ -16,7 +16,7 @@ type MockedRadioRepo struct {
 }
 
 func CreateMockedRadioRepo() *MockedRadioRepo {
-	return &MockedRadioRepo{}
+	return &MockedRadioRepo{Data: map[string]*model.Radio{}}
 }
 
 func (m *MockedRadioRepo) SetError(err bool) {

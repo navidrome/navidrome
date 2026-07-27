@@ -32,9 +32,12 @@ var _ = Describe("MediaRetrievalController", func() {
 	BeforeEach(func() {
 		albumRepo := &tests.MockAlbumRepo{}
 		albumRepo.SetData(model.Albums{{ID: "34"}}) // the id the specs request, made accessible
+		radioRepo := tests.CreateMockedRadioRepo()
+		Expect(radioRepo.Put(&model.Radio{ID: "rd1", Name: "Radio"})).To(Succeed())
 		ds = &tests.MockDataStore{
 			MockedMediaFile: mockRepo,
 			MockedAlbum:     albumRepo,
+			MockedRadio:     radioRepo,
 		}
 		artwork = &fakeArtwork{data: "image data"}
 		router = New(ds, artwork, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, lyrics.NewLyrics(ds, nil), nil, nil)
@@ -61,6 +64,26 @@ var _ = Describe("MediaRetrievalController", func() {
 			Expect(err).To(BeNil())
 			Expect(artwork.recvId).To(BeEmpty())
 			Expect(w.Body.String()).To(Equal(artwork.data))
+		})
+
+		It("serves radio artwork while the radio exists", func() {
+			r := newGetRequest("id=ra-rd1")
+			_, err := router.GetCoverArt(w, r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(w.Body.String()).To(Equal(artwork.data))
+		})
+
+		// A deleted radio keeps its item_artwork row and uploaded file until the next prune, so
+		// existence has to be re-checked or the old id keeps serving the removed radio's image.
+		It("serves a placeholder once the radio is gone", func() {
+			r := newGetRequest("id=ra-deleted")
+			_, err := router.GetCoverArt(w, r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(w.Code).To(Equal(200))
+			Expect(w.Body.String()).ToNot(Equal(artwork.data))
+			Expect(w.Header().Get("Cache-Control")).To(Equal("no-store"))
 		})
 
 		It("serves a placeholder for an entity the caller cannot access", func() {
