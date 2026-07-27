@@ -163,7 +163,7 @@ func (s *service) serveHash(ctx context.Context, artID model.ArtworkID, ia *mode
 		if errors.Is(err, context.Canceled) {
 			return nil, err
 		}
-		log.Warn(ctx, "artwork: could not serve image", "artID", artID, "size", size, err)
+		log.Warn(ctx, "Artwork: Could not serve image", "artID", artID, "size", size, err)
 		return s.dangling(ctx, artID)
 	}
 	return img, nil
@@ -336,7 +336,7 @@ func (s *service) enqueue(ctx context.Context, artID model.ArtworkID, priority i
 		Priority:  priority,
 	})
 	if err != nil {
-		log.Warn(ctx, "artwork: could not enqueue re-resolution", "artID", artID, err)
+		log.Warn(ctx, "Artwork: Could not enqueue re-resolution", "artID", artID, err)
 	}
 }
 

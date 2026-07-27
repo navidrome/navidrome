@@ -73,7 +73,7 @@ func processItem(ctx context.Context, deps *workerDeps, item model.ArtworkQueueI
 
 	res, err := newResolver(deps.ds, deps.agents, deps.ffmpeg, deps.gate).resolve(ctx, item)
 	if err != nil {
-		log.Warn(ctx, "artwork: could not resolve item", "kind", item.ItemKind, "id", item.ItemID, err)
+		log.Warn(ctx, "Artwork: Could not resolve item", "kind", item.ItemKind, "id", item.ItemID, err)
 		return outcomeFailed, nil
 	}
 	if res.reader == nil {
@@ -88,14 +88,14 @@ func processItem(ctx context.Context, deps *workerDeps, item model.ArtworkQueueI
 
 	data, err := readCapped(res.reader)
 	if err != nil {
-		log.Warn(ctx, "artwork: failed to read resolved image", "kind", item.ItemKind, "id", item.ItemID, "source", res.source, err)
+		log.Warn(ctx, "Artwork: Failed to read resolved image", "kind", item.ItemKind, "id", item.ItemID, "source", res.source, err)
 		return outcomeFailed, nil
 	}
-	log.Debug(ctx, "artwork: read resolved image", "kind", item.ItemKind, "id", item.ItemID, "source", res.source, "bytes", len(data))
+	log.Debug(ctx, "Artwork: Read resolved image", "kind", item.ItemKind, "id", item.ItemID, "source", res.source, "bytes", len(data))
 
 	hash, err := HashImage(bytes.NewReader(data))
 	if err != nil {
-		log.Warn(ctx, "artwork: failed to hash image", "kind", item.ItemKind, "id", item.ItemID, err)
+		log.Warn(ctx, "Artwork: Failed to hash image", "kind", item.ItemKind, "id", item.ItemID, err)
 		return outcomeFailed, nil
 	}
 
@@ -106,18 +106,18 @@ func processItem(ctx context.Context, deps *workerDeps, item model.ArtworkQueueI
 	case errors.Is(err, model.ErrNotFound):
 		art, err = decodeArtwork(ctx, hash, data)
 		if err != nil {
-			log.Warn(ctx, "artwork: failed to decode resolved image", "kind", item.ItemKind, "id", item.ItemID, err)
+			log.Warn(ctx, "Artwork: Failed to decode resolved image", "kind", item.ItemKind, "id", item.ItemID, err)
 			return outcomeFailed, nil
 		}
 	default:
-		log.Warn(ctx, "artwork: failed to look up image hash", "kind", item.ItemKind, "id", item.ItemID, err)
+		log.Warn(ctx, "Artwork: Failed to look up image hash", "kind", item.ItemKind, "id", item.ItemID, err)
 		return outcomeFailed, nil
 	}
 	art.SizeBytes = int64(len(data))
 
 	ia, err := persist(deps, repo, item, hash, art, res, data)
 	if err != nil {
-		log.Warn(ctx, "artwork: failed to persist resolved image", "kind", item.ItemKind, "id", item.ItemID, err)
+		log.Warn(ctx, "Artwork: Failed to persist resolved image", "kind", item.ItemKind, "id", item.ItemID, err)
 		return outcomeFailed, nil
 	}
 	got := &acquired{ia: ia, mime: art.Mime, data: data}
@@ -170,7 +170,7 @@ func writeAbsent(ctx context.Context, repo model.ArtworkRepository, item model.A
 		AttemptedAt: time.Now(),
 	})
 	if err != nil {
-		log.Warn(ctx, "artwork: failed to persist absent state", "kind", item.ItemKind, "id", item.ItemID, err)
+		log.Warn(ctx, "Artwork: Failed to persist absent state", "kind", item.ItemKind, "id", item.ItemID, err)
 		return outcomeFailed
 	}
 	return outcomeAbsent
@@ -219,7 +219,7 @@ func decodeArtwork(ctx context.Context, hash string, data []byte) (*model.Artwor
 	xComp, yComp := blurhash.Components(thumb.Bounds().Dx(), thumb.Bounds().Dy())
 	bh, err := blurhash.Encode(thumb, xComp, yComp)
 	if err != nil {
-		log.Warn(ctx, "artwork: blurhash encoding failed", "hash", hash, err)
+		log.Warn(ctx, "Artwork: Blurhash encoding failed", "hash", hash, err)
 		bh = ""
 	}
 

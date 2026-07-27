@@ -81,7 +81,7 @@ func fetchArtistImage(ctx context.Context, ag *agents.Agents, gate gateFunc, ar 
 		}
 		if isTransientExternal(err) {
 			extErr = true // includes errBreakerOpen and download failures: retry via the next agent
-			log.Debug(ctx, "artwork: external artist-image lookup failed", "agent", a.Name, "artist", ar.Name, err)
+			log.Debug(ctx, "Artwork: External artist-image lookup failed", "agent", a.Name, "artist", ar.Name, err)
 		}
 	}
 	return nil, "", extErr
@@ -107,7 +107,7 @@ func fetchAlbumImage(ctx context.Context, ag *agents.Agents, gate gateFunc, al m
 		}
 		if isTransientExternal(err) {
 			extErr = true
-			log.Debug(ctx, "artwork: external album-image lookup failed", "agent", a.Name, "album", al.Name, err)
+			log.Debug(ctx, "Artwork: External album-image lookup failed", "agent", a.Name, "album", al.Name, err)
 		}
 	}
 	return nil, "", extErr

@@ -82,7 +82,7 @@ func Backfill(ctx context.Context, ds model.DataStore) (bool, error) {
 	if err := props.Put(consts.ArtConfFingerprintPropertyKey, current); err != nil {
 		return false, err
 	}
-	log.Info(ctx, "Artwork: config fingerprint changed, backfill enqueued")
+	log.Info(ctx, "Artwork: Config fingerprint changed, backfill enqueued")
 	return true, nil
 }
 

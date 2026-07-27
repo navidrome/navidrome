@@ -66,7 +66,7 @@ func fromArtistFolder(ctx context.Context, libFS fs.FS, libPath, artistFolder, p
 // messages so callers see absolute-looking paths consistent with the rest of
 // the artwork pipeline.
 func findImageInFolder(ctx context.Context, libFS fs.FS, relFolder, absFolder, pattern string) (io.ReadCloser, string, error) {
-	log.Trace(ctx, "looking for artist image", "pattern", pattern, "folder", absFolder)
+	log.Trace(ctx, "Looking for artist image", "pattern", pattern, "folder", absFolder)
 	globPattern := pattern
 	if relFolder != "." {
 		globPattern = path.Join(escapeGlobLiteral(relFolder), pattern)

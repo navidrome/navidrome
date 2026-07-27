@@ -120,7 +120,7 @@ func (w *Worker) runPool(ctx context.Context, p *drainPool) {
 	for {
 		n, err := w.drain(ctx, p.concurrency, p.kinds...)
 		if err != nil && ctx.Err() == nil {
-			log.Warn(ctx, "artwork: worker drain failed", "pool", p.name, err)
+			log.Warn(ctx, "Artwork: Worker drain failed", "pool", p.name, err)
 		}
 		if ctx.Err() != nil {
 			return
@@ -147,7 +147,7 @@ func (w *Worker) Bump(kind, id string) {
 		Priority:  model.ArtworkPriorityBump,
 	}
 	if err := w.deps.ds.ArtworkQueue(context.Background()).Enqueue(item); err != nil {
-		log.Warn("artwork: could not bump queue item", "kind", kind, "id", id, err)
+		log.Warn("Artwork: Could not bump queue item", "kind", kind, "id", id, err)
 		return
 	}
 	// Waking all beats routing by kind: a spurious wake costs one empty dequeue, while an
@@ -261,7 +261,7 @@ func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) (outc
 		// DeleteIfUnchanged, not Delete: a scan that re-enqueued this row mid-flight reset
 		// its retry_at, so the row survives here and the next drain re-resolves it.
 		if err := queue.DeleteIfUnchanged(item.ItemKind, item.ItemID, item.ImageType, item.RetryAt); err != nil {
-			log.Warn(ctx, "artwork: could not delete processed queue item", "kind", item.ItemKind, "id", item.ItemID, err)
+			log.Warn(ctx, "Artwork: Could not delete processed queue item", "kind", item.ItemKind, "id", item.ItemID, err)
 		}
 	case outcomeFoundStale, outcomeFailed:
 		retryAt := time.Now().Add(backoff(item.Attempts))
@@ -269,7 +269,7 @@ func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) (outc
 			// MarkFailedIfUnchanged, not MarkFailed: a scan that re-enqueued this row mid-flight reset
 			// retry_at, so stale backoff must not stomp its fresh, immediate eligibility.
 			if err := queue.MarkFailedIfUnchanged(item.ItemKind, item.ItemID, item.ImageType, item.RetryAt, retryAt); err != nil {
-				log.Warn(ctx, "artwork: could not reschedule failed queue item", "kind", item.ItemKind, "id", item.ItemID, err)
+				log.Warn(ctx, "Artwork: Could not reschedule failed queue item", "kind", item.ItemKind, "id", item.ItemID, err)
 			}
 			break
 		}
@@ -281,7 +281,7 @@ func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) (outc
 			writeAbsent(ctx, w.deps.ds.Artwork(ctx), item)
 		}
 		if err := queue.DeleteIfUnchanged(item.ItemKind, item.ItemID, item.ImageType, item.RetryAt); err != nil {
-			log.Warn(ctx, "artwork: could not remove exhausted queue item", "kind", item.ItemKind, "id", item.ItemID, err)
+			log.Warn(ctx, "Artwork: Could not remove exhausted queue item", "kind", item.ItemKind, "id", item.ItemID, err)
 		}
 	}
 	return out, got
@@ -315,7 +315,7 @@ func (w *Worker) precache(ctx context.Context, got *acquired) {
 	}
 	stream, err := w.deps.cache.Get(ctx, item)
 	if err != nil {
-		log.Debug(ctx, "artwork: precache failed", "kind", got.ia.ItemKind, "id", got.ia.ItemID, err)
+		log.Debug(ctx, "Artwork: Precache failed", "kind", got.ia.ItemKind, "id", got.ia.ItemID, err)
 		return
 	}
 	_, _ = io.Copy(io.Discard, stream)

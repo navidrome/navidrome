@@ -19,7 +19,7 @@ func prune(ctx context.Context, ds model.DataStore, store *ImageStore) error {
 		return err
 	}
 	if purged > 0 {
-		log.Info(ctx, "Prune: purged dangling item artwork state", "count", purged)
+		log.Info(ctx, "Artwork: Purged dangling item state", "count", purged)
 	}
 
 	// Queue rows for deleted entities would otherwise retry forever (Get -> not found -> failed).
@@ -28,7 +28,7 @@ func prune(ctx context.Context, ds model.DataStore, store *ImageStore) error {
 		return err
 	}
 	if queuePurged > 0 {
-		log.Info(ctx, "Prune: purged dangling artwork queue rows", "count", queuePurged)
+		log.Info(ctx, "Artwork: Purged dangling queue rows", "count", queuePurged)
 	}
 
 	// One grace cutoff for both the DB orphan check and the file sweep: files younger
@@ -60,11 +60,11 @@ func prune(ctx context.Context, ds model.DataStore, store *ImageStore) error {
 			// A spared fresh file is at worst a stray a later sweep reclaims;
 			// Worker.RunPrune serializes prune against in-flight acquisitions.
 			if err := store.Remove(h, arts[h].Mime, cutoff); err != nil {
-				log.Warn(ctx, "Prune: could not remove artwork file", "hash", h, err)
+				log.Warn(ctx, "Artwork: Could not remove orphan file", "hash", h, err)
 			}
 			removed++
 		}
-		log.Info(ctx, "Prune: removed orphan artwork", "count", removed)
+		log.Info(ctx, "Artwork: Removed orphan images", "count", removed)
 	}
 
 	mimes, err := repo.GetAllMimes()
@@ -80,7 +80,7 @@ func prune(ctx context.Context, ds model.DataStore, store *ImageStore) error {
 		return err
 	}
 	if removed > 0 {
-		log.Info(ctx, "Prune: swept stray artwork files", "count", removed)
+		log.Info(ctx, "Artwork: Swept stray files", "count", removed)
 	}
 	return nil
 }
