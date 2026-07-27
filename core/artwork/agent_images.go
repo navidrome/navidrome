@@ -2,7 +2,6 @@ package artwork
 
 import (
 	"context"
-	"errors"
 	"io"
 	"net/url"
 
@@ -22,14 +21,6 @@ func externalName(name string) string {
 		return name
 	}
 	return str.Clear(name)
-}
-
-// gateFunc gates one named external fetch (rate limit + circuit breaker per name).
-// resolveItem defaults to passthroughGate; the worker injects the per-agent gate.
-type gateFunc = func(name string, f func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error)
-
-func passthroughGate(_ string, f func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error) {
-	return f()
 }
 
 // bestImageURL returns the largest-Size image URL, skipping empty or unparseable
@@ -111,10 +102,4 @@ func fetchAlbumImage(ctx context.Context, ag *agents.Agents, gate gateFunc, al m
 		}
 	}
 	return nil, "", extErr
-}
-
-// isTransientExternal reports whether an external step failed in a way worth retrying;
-// a not-found (from either package) is a definitive answer, not a fault.
-func isTransientExternal(err error) bool {
-	return err != nil && !errors.Is(err, agents.ErrNotFound) && !errors.Is(err, model.ErrNotFound)
 }

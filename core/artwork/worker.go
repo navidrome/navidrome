@@ -3,7 +3,6 @@ package artwork
 import (
 	"bytes"
 	"context"
-	"errors"
 	"io"
 	"math"
 	"math/rand/v2"
@@ -18,7 +17,6 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/utils/cache"
-	"golang.org/x/time/rate"
 )
 
 const (
@@ -26,19 +24,8 @@ const (
 	backoffBase        = 5 * time.Second
 	// giveUpAfter bounds the retry budget from enqueue: past it the worker stops retrying and
 	// hands the item to the periodic stale-absent recheck (settling absent on a bare failure).
-	giveUpAfter       = 12 * time.Hour
-	breakerThreshold  = 5
-	breakerProbeAfter = time.Minute
+	giveUpAfter = 12 * time.Hour
 )
-
-var errBreakerOpen = errors.New("artwork: external circuit breaker open")
-
-// extGate is one agent's rate limiter + circuit breaker; each external agent gets its
-// own so a provider whose API or CDN is down backs off in isolation from the others.
-type extGate struct {
-	limiter *rate.Limiter
-	breaker *breaker
-}
 
 // drainPool drains one class of work with its own slot budget, so a kind whose resolution
 // blocks cannot occupy slots another kind needs.
@@ -326,39 +313,6 @@ func (w *Worker) precache(ctx context.Context, got *acquired) {
 	_ = stream.Close()
 }
 
-// gate wraps a named external step with that agent's own rate limiter and circuit
-// breaker, matching gateFunc so it can be handed to the processor's resolver.
-func (w *Worker) gate(name string, f func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error) {
-	g := w.gateFor(name)
-	if !g.breaker.allow() {
-		return nil, "", errBreakerOpen
-	}
-	if err := g.limiter.Wait(w.runCtx); err != nil {
-		return nil, "", err
-	}
-	r, path, err := f()
-	g.breaker.record(err)
-	return r, path, err
-}
-
-// gateFor lazily creates the per-name gate on first use, each with its own limiter at
-// ArtworkExternalMaxRPS and its own breaker.
-func (w *Worker) gateFor(name string) *extGate {
-	w.gatesMu.Lock()
-	defer w.gatesMu.Unlock()
-	if g, ok := w.gates[name]; ok {
-		return g
-	}
-	rps := conf.Server.ArtworkExternalMaxRPS
-	limit := rate.Inf
-	if rps > 0 {
-		limit = rate.Limit(rps)
-	}
-	g := &extGate{limiter: rate.NewLimiter(limit, max(1, rps)), breaker: newBreaker()}
-	w.gates[name] = g
-	return g
-}
-
 // backoffFor returns min(5s×4^n, giveUpAfter) scaled by (1+jitter), with jitter in [-0.4, 0.4].
 func backoffFor(attempts int, jitter float64) time.Duration {
 	d := math.Min(float64(backoffBase)*math.Pow(4, float64(attempts)), float64(giveUpAfter))
@@ -367,42 +321,4 @@ func backoffFor(attempts int, jitter float64) time.Duration {
 
 func backoff(attempts int) time.Duration {
 	return backoffFor(attempts, rand.Float64()*0.8-0.4) //nolint:gosec // retry jitter, not security-sensitive
-}
-
-// breaker opens after breakerThreshold consecutive external errors and admits a
-// single probe once breakerProbeAfter has elapsed; a success re-closes it.
-type breaker struct {
-	mu       sync.Mutex
-	failures int
-	openedAt time.Time
-}
-
-func newBreaker() *breaker { return &breaker{} }
-
-func (b *breaker) allow() bool {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	if b.failures < breakerThreshold {
-		return true
-	}
-	if time.Since(b.openedAt) >= breakerProbeAfter {
-		b.openedAt = time.Now() // start a fresh probe window so only one caller passes
-		return true
-	}
-	return false
-}
-
-func (b *breaker) record(err error) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	// A not-found (from either package) is a definitive answer, not a fault; only real
-	// errors trip the breaker. Must stay consistent with isTransientExternal.
-	if err == nil || errors.Is(err, model.ErrNotFound) || errors.Is(err, agents.ErrNotFound) {
-		b.failures = 0
-		return
-	}
-	b.failures++
-	if b.failures == breakerThreshold {
-		b.openedAt = time.Now()
-	}
 }
