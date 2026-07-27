@@ -1,13 +1,10 @@
 package artwork
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"image"
-	"image/draw"
-	"image/png"
 	"io"
 	"io/fs"
 	"net/url"
@@ -458,39 +455,4 @@ func mtimeViaFS(fsys fs.FS, name string) int64 {
 		return 0
 	}
 	return info.ModTime().UnixNano()
-}
-
-// decodeTile and assembleTiles mirror playlistArtworkReader's createTile/
-// createTiledImage, reusing the same rect/fillCenter cropping helpers.
-// decodeTile runs on every sampled album's resolved bytes before the processor's
-// own maxImageBytes/maxImagePixels guards apply, so it enforces them itself too.
-func decodeTile(r io.ReadCloser) (image.Image, error) {
-	data, err := readCapped(r)
-	if err != nil {
-		return nil, err
-	}
-	img, _, err := decodeCapped(data)
-	if err != nil {
-		return nil, err
-	}
-	return fillCenter(img, tileSize/2, tileSize/2), nil
-}
-
-func assembleTiles(tiles []image.Image) (io.ReadCloser, error) {
-	buf := new(bytes.Buffer)
-	var err error
-	if len(tiles) == 4 {
-		rgba := image.NewRGBA(image.Rectangle{Max: image.Point{X: tileSize - 1, Y: tileSize - 1}})
-		draw.Draw(rgba, rect(0), tiles[0], image.Point{}, draw.Src)
-		draw.Draw(rgba, rect(1), tiles[1], image.Point{}, draw.Src)
-		draw.Draw(rgba, rect(2), tiles[2], image.Point{}, draw.Src)
-		draw.Draw(rgba, rect(3), tiles[3], image.Point{}, draw.Src)
-		err = png.Encode(buf, rgba)
-	} else {
-		err = png.Encode(buf, tiles[0])
-	}
-	if err != nil {
-		return nil, err
-	}
-	return io.NopCloser(buf), nil
 }
