@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -21,6 +22,13 @@ const staleAbsentAge = 24 * time.Hour
 // missing-row). Media files are excluded: they resolve embedded-only, at scan or on view.
 var recheckKinds = []model.Kind{
 	model.KindArtistArtwork, model.KindAlbumArtwork, model.KindPlaylistArtwork, model.KindRadioArtwork,
+}
+
+// hasRecheckPath reports whether a periodic job will revisit this kind, which is what makes
+// settling absent on an exhausted retry budget recoverable rather than permanent.
+func hasRecheckPath(prefix string) bool {
+	kind, ok := model.ParseKind(prefix)
+	return ok && slices.Contains(recheckKinds, kind)
 }
 
 // artworkEpoch invalidates all resolution state when bumped; bump it in the same change that

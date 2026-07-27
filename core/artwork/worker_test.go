@@ -364,6 +364,32 @@ var _ = Describe("Worker", func() {
 			Expect(ia.Hash).To(Equal("cafebabe"), "a persistent outage must not discard served art")
 		})
 
+		// Media files are excluded from recheckKinds, so an absent row written here would never
+		// be revisited: a transient read error would look like "this track has no cover" forever.
+		It("does not settle absent on exhaustion for a kind with no recheck path", func() {
+			conf.Server.EnableMediaFileCoverArt = true
+			ds.MockedMediaFile = tests.CreateMockMediaFileRepo()
+			ds.MockedMediaFile.(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+				{ID: "mfX", LibraryID: 0, Path: "tests/fixtures/artist/an-album/gone.mp3", HasCoverArt: true},
+			})
+			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "mf", ItemID: "mfX"})).To(Succeed())
+			for k, v := range queueRepo.Data {
+				if v.ItemID == "mfX" {
+					v.EnqueuedAt = time.Now().Add(-(giveUpAfter + time.Hour))
+					queueRepo.Data[k] = v
+				}
+			}
+
+			n, err := w.drain(ctx, 1)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(n).To(Equal(1))
+
+			Expect(findQueued(queueRepo, "mf", "mfX")).To(BeNil(), "the row must stop retrying")
+			_, err = artRepo.GetItemArtwork(model.KindMediaFileArtwork, "mfX", model.ImageTypePrimary)
+			Expect(err).To(MatchError(model.ErrNotFound),
+				"no row leaves the track unresolved, so a later view can still recover it")
+		})
+
 		It("resolves a private playlist under an admin context instead of failing forever", func() {
 			ds.MockedUser = adminUserRepo()
 			vds := &visibilityPlaylistDS{

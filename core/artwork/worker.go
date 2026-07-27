@@ -273,11 +273,11 @@ func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) (outc
 			}
 			break
 		}
-		// Retry budget exhausted: stop retrying. A bare failure settles absent so the stale-absent
-		// sweep (and a page view) can still recover it; a stale-found keeps its already-served art.
-		// Art we are already serving is kept too: exhaustion means the source stayed unreachable,
-		// not that the entity lost its cover.
-		if out == outcomeFailed && !w.hasResolvedArtwork(ctx, item) {
+		// Retry budget exhausted: stop retrying. Absent is only recoverable where a periodic
+		// recheck will revisit it, so kinds without one keep no row at all; and art already
+		// being served is kept, since exhaustion means the source stayed unreachable rather
+		// than that the entity lost its cover.
+		if out == outcomeFailed && hasRecheckPath(item.ItemKind) && !w.hasResolvedArtwork(ctx, item) {
 			writeAbsent(ctx, w.deps.ds.Artwork(ctx), item)
 		}
 		if err := queue.DeleteIfUnchanged(item.ItemKind, item.ItemID, item.ImageType, item.RetryAt); err != nil {
