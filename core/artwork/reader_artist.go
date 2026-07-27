@@ -54,7 +54,7 @@ func newArtistArtworkReader(ctx context.Context, artwork *artwork, artID model.A
 	if err != nil {
 		return nil, err
 	}
-	albumPaths, imgFiles, imagesUpdatedAt, err := loadAlbumFoldersPaths(ctx, artwork.ds, als...)
+	albumPaths, imgFiles, imagesUpdatedAt, err := loadAlbumFoldersPaths(ctx, artwork.ds, false, als...)
 	if err != nil {
 		return nil, err
 	}

@@ -37,7 +37,7 @@ func newAlbumArtworkReader(ctx context.Context, artwork *artwork, artID model.Ar
 	if err != nil {
 		return nil, err
 	}
-	_, imgFiles, imagesUpdateAt, err := loadAlbumFoldersPaths(ctx, artwork.ds, *al)
+	_, imgFiles, imagesUpdateAt, err := loadAlbumFoldersPaths(ctx, artwork.ds, true, *al)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +103,7 @@ func (a *albumArtworkReader) fromCoverArtPriority(ctx context.Context, ffmpeg ff
 	return ff
 }
 
-func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, albums ...model.Album) ([]string, []string, *time.Time, error) {
+func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, includeParent bool, albums ...model.Album) ([]string, []string, *time.Time, error) {
 	var folderIDs []string
 	for _, album := range albums {
 		folderIDs = append(folderIDs, album.FolderIDs...)
@@ -113,12 +113,14 @@ func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, albums ...mo
 		return nil, nil, nil, err
 	}
 
-	parent, err := albumRootParent(ctx, ds, folders, folderIDs)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	if parent != nil {
-		folders = append(folders, *parent)
+	if includeParent {
+		parent, err := albumRootParent(ctx, ds, folders, folderIDs)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		if parent != nil {
+			folders = append(folders, *parent)
+		}
 	}
 
 	var paths []string

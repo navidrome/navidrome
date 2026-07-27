@@ -57,7 +57,7 @@ var _ = Describe("Album Artwork Reader", func() {
 				},
 			}
 
-			_, imgFiles, imagesUpdatedAt, err := loadAlbumFoldersPaths(ctx, ds, album)
+			_, imgFiles, imagesUpdatedAt, err := loadAlbumFoldersPaths(ctx, ds, true, album)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(*imagesUpdatedAt).To(Equal(expectedAt))
@@ -85,7 +85,7 @@ var _ = Describe("Album Artwork Reader", func() {
 				},
 			}
 
-			_, imgFiles, _, err := loadAlbumFoldersPaths(ctx, ds, album)
+			_, imgFiles, _, err := loadAlbumFoldersPaths(ctx, ds, true, album)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(imgFiles).To(HaveLen(3))
@@ -106,7 +106,7 @@ var _ = Describe("Album Artwork Reader", func() {
 				},
 			}
 
-			_, imgFiles, _, err := loadAlbumFoldersPaths(ctx, ds, album)
+			_, imgFiles, _, err := loadAlbumFoldersPaths(ctx, ds, true, album)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(imgFiles).To(HaveLen(3))
@@ -146,7 +146,7 @@ var _ = Describe("Album Artwork Reader", func() {
 				ImageFiles:      []string{"cover.jpg", "back.jpg"},
 			}
 
-			_, imgFiles, imagesUpdatedAt, err := loadAlbumFoldersPaths(ctx, ds, album)
+			_, imgFiles, imagesUpdatedAt, err := loadAlbumFoldersPaths(ctx, ds, true, album)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(*imagesUpdatedAt).To(Equal(expectedAt))
@@ -175,7 +175,7 @@ var _ = Describe("Album Artwork Reader", func() {
 				},
 			}
 
-			_, imgFiles, _, err := loadAlbumFoldersPaths(ctx, ds, album)
+			_, imgFiles, _, err := loadAlbumFoldersPaths(ctx, ds, true, album)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(imgFiles).To(HaveLen(1))
@@ -205,7 +205,7 @@ var _ = Describe("Album Artwork Reader", func() {
 				},
 			}
 
-			_, imgFiles, _, err := loadAlbumFoldersPaths(ctx, ds, album)
+			_, imgFiles, _, err := loadAlbumFoldersPaths(ctx, ds, true, album)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(imgFiles).To(HaveLen(1))
@@ -242,7 +242,7 @@ var _ = Describe("Album Artwork Reader", func() {
 				ImageFiles: []string{"unrelated.jpg"},
 			}
 
-			_, imgFiles, _, err := loadAlbumFoldersPaths(ctx, ds, album)
+			_, imgFiles, _, err := loadAlbumFoldersPaths(ctx, ds, true, album)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(imgFiles).To(HaveLen(1))
@@ -279,7 +279,7 @@ var _ = Describe("Album Artwork Reader", func() {
 				ImageFiles:      []string{"cover.jpg"},
 			}
 
-			_, imgFiles, imagesUpdatedAt, err := loadAlbumFoldersPaths(ctx, ds, album)
+			_, imgFiles, imagesUpdatedAt, err := loadAlbumFoldersPaths(ctx, ds, true, album)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(*imagesUpdatedAt).To(Equal(expectedAt))
@@ -302,7 +302,7 @@ var _ = Describe("Album Artwork Reader", func() {
 				},
 			}
 
-			_, imgFiles, _, err := loadAlbumFoldersPaths(ctx, ds, album)
+			_, imgFiles, _, err := loadAlbumFoldersPaths(ctx, ds, true, album)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(imgFiles).To(HaveLen(1))
@@ -330,13 +330,45 @@ var _ = Describe("Album Artwork Reader", func() {
 				ImageFiles:      []string{"cover.jpg"},
 			}
 
-			_, imgFiles, imagesUpdatedAt, err := loadAlbumFoldersPaths(ctx, ds, album)
+			paths, imgFiles, imagesUpdatedAt, err := loadAlbumFoldersPaths(ctx, ds, true, album)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(*imagesUpdatedAt).To(Equal(expectedAt))
 			Expect(imgFiles).To(HaveLen(1))
 			Expect(imgFiles[0]).To(Equal("Artist/Album/cover.jpg"))
 			Expect(repo.getCallCount).To(Equal(1))
+			Expect(paths).To(Equal([]string{"Artist/Album/disc1", "Artist/Album"}))
+		})
+
+		It("properly responds whether to add parent or not", func() {
+			repo.result = []model.Folder{
+				{
+					ID:              "folder1",
+					Path:            "Artist",
+					Name:            "Album",
+					ParentID:        "artistFolder",
+					ImagesUpdatedAt: now,
+					ImageFiles:      []string{},
+				},
+			}
+			repo.parentResult = &model.Folder{
+				ID:              "artistFolder",
+				Path:            ".",
+				Name:            "Artist",
+				ParentID:        "libraryRoot",
+				ImagesUpdatedAt: expectedAt,
+				ImageFiles:      []string{"folder.jpg"},
+			}
+
+			paths, _, _, err := loadAlbumFoldersPaths(ctx, ds, false, album)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(paths).To(Equal([]string{"Artist/Album"}))
+
+			paths, _, _, err = loadAlbumFoldersPaths(ctx, ds, true, album)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(paths).To(Equal([]string{"Artist/Album", "Artist"}))
 		})
 
 		It("does not include parent images when other albums' audio lives under the parent", func() {
@@ -362,7 +394,7 @@ var _ = Describe("Album Artwork Reader", func() {
 			}
 			repo.hasOtherAudio = true
 
-			_, imgFiles, _, err := loadAlbumFoldersPaths(ctx, ds, album)
+			_, imgFiles, _, err := loadAlbumFoldersPaths(ctx, ds, true, album)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(imgFiles).To(BeEmpty())
@@ -389,7 +421,7 @@ var _ = Describe("Album Artwork Reader", func() {
 			}
 			repo.otherAudioErr = errors.New("db connection failed")
 
-			_, _, _, err := loadAlbumFoldersPaths(ctx, ds, album)
+			_, _, _, err := loadAlbumFoldersPaths(ctx, ds, true, album)
 
 			Expect(err).To(MatchError("db connection failed"))
 		})
@@ -415,7 +447,7 @@ var _ = Describe("Album Artwork Reader", func() {
 			}
 			repo.getErr = errors.New("db connection failed")
 
-			_, _, _, err := loadAlbumFoldersPaths(ctx, ds, album)
+			_, _, _, err := loadAlbumFoldersPaths(ctx, ds, true, album)
 
 			Expect(err).To(MatchError("db connection failed"))
 			Expect(repo.getCallCount).To(Equal(1))
@@ -443,7 +475,7 @@ var _ = Describe("Album Artwork Reader", func() {
 			}
 			// parentResult is nil, so Get will return ErrNotFound
 
-			_, imgFiles, _, err := loadAlbumFoldersPaths(ctx, ds, album)
+			_, imgFiles, _, err := loadAlbumFoldersPaths(ctx, ds, true, album)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(imgFiles).To(HaveLen(1))
