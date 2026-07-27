@@ -112,7 +112,8 @@ func (r *playlistRepository) Put(p *model.Playlist, cols ...string) error {
 		_, err := r.put(pls.ID, pls, cols...)
 		return err
 	}
-	if pls.ID == "" {
+	isNew := pls.ID == ""
+	if isNew {
 		pls.CreatedAt = time.Now()
 	}
 	pls.UpdatedAt = time.Now()
@@ -131,7 +132,12 @@ func (r *playlistRepository) Put(p *model.Playlist, cols ...string) error {
 	if len(pls.Tracks) > 0 {
 		return r.updateTracks(id, p.MediaFiles())
 	}
-	pls.ID = id // r.put assigns the generated id to p, not to this copy; refreshCounters enqueues by it
+	pls.ID = id // r.put assigns the generated id to p, not to this copy
+	if isNew {
+		// A brand-new playlist has art to find even with no tracks (an imported m3u can carry an
+		// ExternalImageURL). An update landing here changed only metadata, so leave its cover be.
+		r.enqueueCoverRebuild(id)
+	}
 	return r.refreshCounters(&pls.Playlist)
 }
 
@@ -295,6 +301,7 @@ func (r *playlistRepository) addTracks(playlistId string, startingPos int, media
 		}
 	}
 
+	r.enqueueCoverRebuild(playlistId)
 	return r.refreshCounters(&model.Playlist{ID: playlistId})
 }
 
@@ -328,14 +335,19 @@ func (r *playlistRepository) refreshCounters(pls *model.Playlist) error {
 	pls.SongCount = int(res.Count)
 	pls.Duration = res.Duration
 	pls.Size = int64(res.Size)
-	// The generated 2x2 grid depends on the track set, so re-resolve the cover whenever it
-	// changes. No clear: the old cover keeps serving until the worker rebuilds (no flicker).
-	item := model.ArtworkQueueItem{ItemKind: model.KindPlaylistArtwork.Prefix(), ItemID: pls.ID, ImageType: model.ImageTypePrimary,
-		Priority: model.ArtworkPriorityScan}
-	if err := NewArtworkQueueRepository(r.ctx, r.db).Enqueue(item); err != nil {
-		log.Warn(r.ctx, "could not enqueue playlist artwork after content change", "id", pls.ID, err)
-	}
 	return nil
+}
+
+// enqueueCoverRebuild re-resolves the generated 2x2 grid, which depends on the track set. Called
+// only where that set actually changes: the grid samples albums at random, so rebuilding after a
+// mere rename would hand the playlist a different cover. No clear -- the old cover keeps serving
+// until the worker rebuilds, so there is no flicker.
+func (r *playlistRepository) enqueueCoverRebuild(id string) {
+	item := model.ArtworkQueueItem{ItemKind: model.KindPlaylistArtwork.Prefix(), ItemID: id,
+		ImageType: model.ImageTypePrimary, Priority: model.ArtworkPriorityScan}
+	if err := NewArtworkQueueRepository(r.ctx, r.db).Enqueue(item); err != nil {
+		log.Warn(r.ctx, "could not enqueue playlist artwork after content change", "id", id, err)
+	}
 }
 
 // tracksQuery is shared by loadTracks and GetCursor, so both hydrate rows identically.
@@ -473,6 +485,7 @@ func (r *playlistRepository) renumber(id string) error {
 	if err != nil {
 		return err
 	}
+	r.enqueueCoverRebuild(id)
 	return r.refreshCounters(&model.Playlist{ID: id})
 }
 

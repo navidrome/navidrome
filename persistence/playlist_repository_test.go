@@ -273,6 +273,32 @@ var _ = Describe("PlaylistRepository", func() {
 		Expect(queued).ToNot(ContainElement(HaveField("ItemID", "")), "must not enqueue an empty playlist id")
 	})
 
+	// The grid samples albums at random, so re-resolving after a rename would silently hand the
+	// playlist a different cover.
+	It("does not enqueue artwork when only metadata changes", func() {
+		ctx := request.WithUser(log.NewContext(GinkgoT().Context()), model.User{ID: "userid", UserName: "userid", IsAdmin: true})
+		newPls := model.Playlist{Name: "Rename Me", OwnerID: "userid"}
+		Expect(repo.Put(&newPls)).To(Succeed())
+		DeferCleanup(func() { _ = repo.Delete(newPls.ID) })
+		// Clear the row creation just enqueued, so anything present afterwards came from the update.
+		queueRepo := NewArtworkQueueRepository(ctx, GetDBXBuilder())
+		queued, err := queueRepo.DequeueBatch(1000)
+		Expect(err).ToNot(HaveOccurred())
+		for _, q := range queued {
+			if q.ItemID == newPls.ID {
+				Expect(queueRepo.DeleteIfUnchanged(q.ItemKind, q.ItemID, q.ImageType, q.RetryAt)).To(Succeed())
+			}
+		}
+
+		newPls.Name = "Renamed"
+		newPls.Comment = "edited"
+		Expect(repo.Put(&newPls)).To(Succeed())
+
+		queued, err = queueRepo.DequeueBatch(1000)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(queued).ToNot(ContainElement(HaveField("ItemID", newPls.ID)))
+	})
+
 	It("enqueues the playlist's artwork when its track set changes", func() {
 		ctx := request.WithUser(log.NewContext(GinkgoT().Context()), model.User{ID: "userid", UserName: "userid", IsAdmin: true})
 		newPls := model.Playlist{Name: "Grid PL", OwnerID: "userid"}
