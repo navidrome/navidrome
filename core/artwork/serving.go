@@ -188,7 +188,7 @@ func openOriginal(ia *model.ItemArtwork, mime string, store *ImageStore) (io.Rea
 // the worker (Bump) and serves any local bytes immediately, never writing a state row.
 func (s *service) provisional(ctx context.Context, artID model.ArtworkID, size int, square bool) (*Image, error) {
 	item := model.ArtworkQueueItem{ItemKind: artID.Kind.Prefix(), ItemID: artID.ID, ImageType: model.ImageTypePrimary}
-	res, err := resolveItemLocal(ctx, s.ds, s.ffmpeg, item)
+	res, err := newLocalResolver(s.ds, s.ffmpeg).resolve(ctx, item)
 	if err != nil {
 		return nil, err
 	}

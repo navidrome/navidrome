@@ -71,7 +71,7 @@ type acquired struct {
 func processItem(ctx context.Context, deps *workerDeps, item model.ArtworkQueueItem) (outcome, *acquired) {
 	repo := deps.ds.Artwork(ctx)
 
-	res, err := resolveItem(ctx, deps.ds, deps.agents, deps.ffmpeg, item, deps.gate)
+	res, err := newResolver(deps.ds, deps.agents, deps.ffmpeg, deps.gate).resolve(ctx, item)
 	if err != nil {
 		log.Warn(ctx, "artwork: could not resolve item", "kind", item.ItemKind, "id", item.ItemID, err)
 		return outcomeFailed, nil

@@ -52,7 +52,7 @@ var _ = Describe("resolveItem", func() {
 
 	Describe("kind dispatch", func() {
 		It("returns an error for kinds the worker never enqueues", func() {
-			_, err := resolveItem(ctx, ds, ag, ffm, model.ArtworkQueueItem{ItemKind: "zz", ItemID: "x"}, nil)
+			_, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "zz", ItemID: "x"})
 			Expect(err).To(HaveOccurred())
 		})
 	})
@@ -68,7 +68,7 @@ var _ = Describe("resolveItem", func() {
 				{ID: "mf1", LibraryID: 0, Path: "tests/fixtures/artist/an-album/test.mp3", HasCoverArt: true},
 			})
 
-			res, err := resolveItem(ctx, ds, ag, ffm, model.ArtworkQueueItem{ItemKind: "mf", ItemID: "mf1"}, nil)
+			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "mf", ItemID: "mf1"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).ToNot(BeNil())
 			defer res.reader.Close()
@@ -83,7 +83,7 @@ var _ = Describe("resolveItem", func() {
 				{ID: "mf2", LibraryID: 0, Path: "tests/fixtures/artist/an-album/test.mp3", HasCoverArt: false},
 			})
 
-			res, err := resolveItem(ctx, ds, ag, ffm, model.ArtworkQueueItem{ItemKind: "mf", ItemID: "mf2"}, nil)
+			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "mf", ItemID: "mf2"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).To(BeNil())
 			Expect(res.extError).To(BeFalse())
@@ -95,13 +95,13 @@ var _ = Describe("resolveItem", func() {
 				{ID: "mf3", LibraryID: 0, Path: "tests/fixtures/artist/an-album/test.mp3", HasCoverArt: true},
 			})
 
-			res, err := resolveItem(ctx, ds, ag, ffm, model.ArtworkQueueItem{ItemKind: "mf", ItemID: "mf3"}, nil)
+			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "mf", ItemID: "mf3"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).To(BeNil())
 		})
 
 		It("returns the error when the track is not in the DB", func() {
-			res, err := resolveItem(ctx, ds, ag, ffm, model.ArtworkQueueItem{ItemKind: "mf", ItemID: "missing"}, nil)
+			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "mf", ItemID: "missing"})
 			Expect(err).To(MatchError(model.ErrNotFound))
 			Expect(res.reader).To(BeNil())
 		})
@@ -122,7 +122,7 @@ var _ = Describe("resolveItem", func() {
 				{ID: "al1", Name: "Album", FolderIDs: []string{"f1"}},
 			})
 
-			res, err := resolveItem(ctx, ds, ag, ffm, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al1"}, nil)
+			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al1"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).ToNot(BeNil())
 			defer res.reader.Close()
@@ -138,7 +138,7 @@ var _ = Describe("resolveItem", func() {
 				{ID: "al2", Name: "Album", EmbedArtPath: "tests/fixtures/artist/an-album/test.mp3", FolderIDs: []string{"f1"}},
 			})
 
-			res, err := resolveItem(ctx, ds, ag, ffm, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al2"}, nil)
+			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al2"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).ToNot(BeNil())
 			defer res.reader.Close()
@@ -154,7 +154,7 @@ var _ = Describe("resolveItem", func() {
 			})
 			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 
-			res, err := resolveItem(ctx, ds, ag, ffm, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al3"}, nil)
+			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al3"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).To(BeNil())
 			Expect(res.extError).To(BeTrue())
@@ -167,7 +167,7 @@ var _ = Describe("resolveItem", func() {
 			})
 			// no image agents enabled -> the external step is a definitive not-found
 
-			res, err := resolveItem(ctx, ds, ag, ffm, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al4"}, nil)
+			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al4"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).To(BeNil())
 			Expect(res.extError).To(BeFalse())
@@ -184,7 +184,7 @@ var _ = Describe("resolveItem", func() {
 			})
 			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 
-			res, err := resolveItem(ctx, ds, ag, ffm, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al6"}, nil)
+			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al6"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).ToNot(BeNil())
 			defer res.reader.Close()
@@ -203,7 +203,7 @@ var _ = Describe("resolveItem", func() {
 			})
 			// no image agents enabled -> the external step is a definitive not-found
 
-			res, err := resolveItem(ctx, ds, ag, ffm, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al7"}, nil)
+			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al7"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).ToNot(BeNil())
 			defer res.reader.Close()
@@ -223,7 +223,7 @@ var _ = Describe("resolveItem", func() {
 				return f()
 			}
 
-			res, err := resolveItem(ctx, ds, ag, ffm, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al5"}, gate)
+			res, err := newResolver(ds, ag, ffm, gate).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al5"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.extError).To(BeTrue())
 			Expect(gatedNames).To(Equal([]string{"failAgent"}))
@@ -242,7 +242,7 @@ var _ = Describe("resolveItem", func() {
 			artistRepo.SetData(model.Artists{{ID: "ar1", Name: "Artist", UploadedImage: "ar1_test.jpg"}})
 			ds.MockedArtist = artistRepo
 
-			res, err := resolveItem(ctx, ds, ag, ffm, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar1"}, nil)
+			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar1"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).ToNot(BeNil())
 			defer res.reader.Close()
@@ -265,7 +265,7 @@ var _ = Describe("resolveItem", func() {
 				{ID: "al9", Name: "Album", LibraryID: 0, FolderIDs: []string{"f1"}},
 			}
 
-			res, err := resolveItem(ctx, ds, ag, ffm, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar2"}, nil)
+			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar2"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).ToNot(BeNil())
 			defer res.reader.Close()
@@ -280,7 +280,7 @@ var _ = Describe("resolveItem", func() {
 			ds.MockedArtist = artistRepo
 			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 
-			res, err := resolveItem(ctx, ds, ag, ffm, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar3"}, nil)
+			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar3"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).To(BeNil())
 			Expect(res.extError).To(BeTrue())
@@ -293,7 +293,7 @@ var _ = Describe("resolveItem", func() {
 			ds.MockedArtist = artistRepo
 			// no image agents enabled -> the external step is a definitive not-found
 
-			res, err := resolveItem(ctx, ds, ag, ffm, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar4"}, nil)
+			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar4"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).To(BeNil())
 			Expect(res.extError).To(BeFalse())
@@ -311,7 +311,7 @@ var _ = Describe("resolveItem", func() {
 				return f()
 			}
 
-			res, err := resolveItem(ctx, ds, ag, ffm, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar5"}, gate)
+			res, err := newResolver(ds, ag, ffm, gate).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar5"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.extError).To(BeTrue())
 			Expect(gatedNames).To(Equal([]string{"failAgent"}))
@@ -327,7 +327,7 @@ var _ = Describe("resolveItem", func() {
 			radioRepo.Data = map[string]*model.Radio{"ra1": {ID: "ra1", Name: "Radio"}}
 			ds.MockedRadio = radioRepo
 
-			res, err := resolveItem(ctx, ds, ag, ffm, model.ArtworkQueueItem{ItemKind: "ra", ItemID: "ra1"}, nil)
+			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ra", ItemID: "ra1"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).To(Equal(resolution{}))
 		})
@@ -343,7 +343,7 @@ var _ = Describe("resolveItem", func() {
 			radioRepo.Data = map[string]*model.Radio{"ra2": {ID: "ra2", Name: "Radio", UploadedImage: "ra2_test.jpg"}}
 			ds.MockedRadio = radioRepo
 
-			res, err := resolveItem(ctx, ds, ag, ffm, model.ArtworkQueueItem{ItemKind: "ra", ItemID: "ra2"}, nil)
+			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ra", ItemID: "ra2"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).ToNot(BeNil())
 			defer res.reader.Close()
@@ -375,7 +375,7 @@ var _ = Describe("resolveItem", func() {
 				plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: albumIDs}
 				ds.MockedPlaylist = plRepo
 
-				res, err := resolveItem(ctx, ds, ag, ffm, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "pl1"}, nil)
+				res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "pl1"})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(res.reader).ToNot(BeNil())
 				defer res.reader.Close()
@@ -407,7 +407,7 @@ var _ = Describe("resolveItem", func() {
 			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"t1", "t2"}}
 			ds.MockedPlaylist = plRepo
 
-			res, err := resolveItem(ctx, ds, ag, ffm, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "plu"}, nil)
+			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "plu"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).ToNot(BeNil())
 			defer res.reader.Close()
@@ -425,7 +425,7 @@ var _ = Describe("resolveItem", func() {
 			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"t1", "t2"}}
 			ds.MockedPlaylist = plRepo
 
-			res, err := resolveItem(ctx, ds, ag, ffm, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "pls"}, nil)
+			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "pls"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).ToNot(BeNil())
 			defer res.reader.Close()
@@ -443,7 +443,7 @@ var _ = Describe("resolveItem", func() {
 			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"t1"}}
 			ds.MockedPlaylist = plRepo
 
-			res, err := resolveItem(ctx, ds, ag, ffm, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "pll"}, nil)
+			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "pll"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).ToNot(BeNil())
 			defer res.reader.Close()
@@ -467,7 +467,7 @@ var _ = Describe("resolveItem", func() {
 				return nil, "", errors.New("network down")
 			}
 
-			res, err := resolveItem(ctx, ds, ag, ffm, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "ple"}, gate)
+			res, err := newResolver(ds, ag, ffm, gate).resolve(ctx, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "ple"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).To(BeNil())
 			Expect(res.extError).To(BeTrue())
@@ -482,7 +482,7 @@ var _ = Describe("resolveItem", func() {
 			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"t1"}}
 			ds.MockedPlaylist = plRepo
 
-			res, err := resolveItem(ctx, ds, ag, ffm, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "plm"}, nil)
+			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "plm"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).To(BeNil())
 			Expect(res.extError).To(BeFalse())
@@ -500,12 +500,25 @@ var _ = Describe("resolveItem", func() {
 			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"t1"}}
 			ds.MockedPlaylist = plRepo
 
-			res, err := resolveItem(ctx, ds, ag, ffm, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "pl404"}, nil)
+			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "pl404"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).ToNot(BeNil())
 			defer res.reader.Close()
 			Expect(res.source).To(Equal("generated"))
 			Expect(res.extError).To(BeFalse())
+		})
+
+		// A local resolver holds no agents, and the external branch dereferences them before the
+		// gate is ever consulted, so reaching it at all would panic rather than degrade.
+		It("skips the external step instead of dereferencing absent agents", func() {
+			conf.Server.CoverArtPriority = "external"
+			ds.MockedAlbum = tests.CreateMockAlbumRepo()
+			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "alx", Name: "Album"}})
+
+			res, err := newLocalResolver(ds, ffm).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alx"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res.reader).To(BeNil())
+			Expect(res.extError).To(BeFalse(), "a skipped step is not a failed one")
 		})
 
 		// The request path must never reach the network nor sample album art synchronously. The
@@ -525,12 +538,12 @@ var _ = Describe("resolveItem", func() {
 			ds.MockedPlaylist = plRepo
 			item := model.ArtworkQueueItem{ItemKind: "pl", ItemID: "pllocal"}
 
-			res, err := resolveItemLocal(ctx, ds, ffm, item)
+			res, err := newLocalResolver(ds, ffm).resolve(ctx, item)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).To(BeNil(), "no local source, and the grid is worker-only")
 			Expect(hits.Load()).To(BeZero(), "a request must never reach the network")
 
-			worker, err := resolveItem(ctx, ds, ag, ffm, item, nil)
+			worker, err := newResolver(ds, ag, ffm, nil).resolve(ctx, item)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(worker.reader).ToNot(BeNil())
 			defer worker.reader.Close()
@@ -551,7 +564,7 @@ var _ = Describe("resolveItem", func() {
 			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"t1"}}
 			ds.MockedPlaylist = plRepo
 
-			res, err := resolveItem(ctx, ds, ag, ffm, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "pl500"}, nil)
+			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "pl500"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).To(BeNil())
 			Expect(res.extError).To(BeTrue())
@@ -567,7 +580,7 @@ var _ = Describe("resolveItem", func() {
 			ds.MockedPlaylist = plRepo
 			folderRepo.result = nil
 
-			res, err := resolveItem(ctx, ds, ag, ffm, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "pl2"}, nil)
+			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "pl2"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).To(BeNil())
 			Expect(res.source).To(BeEmpty())
@@ -586,7 +599,7 @@ var _ = Describe("resolveItem", func() {
 			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"t1"}}
 			ds.MockedPlaylist = plRepo
 
-			res, err := resolveItem(ctx, ds, ag, ffm, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "plbomb"}, nil)
+			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "plbomb"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).To(BeNil())
 			Expect(res.source).To(BeEmpty())
@@ -600,7 +613,7 @@ var _ = Describe("resolveItem", func() {
 			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"missing1", "missing2"}}
 			ds.MockedPlaylist = plRepo
 
-			res, err := resolveItem(ctx, ds, ag, ffm, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "pl3"}, nil)
+			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "pl3"})
 			Expect(err).To(HaveOccurred())
 			Expect(res).To(Equal(resolution{}))
 		})

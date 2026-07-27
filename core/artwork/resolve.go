@@ -35,50 +35,80 @@ type resolution struct {
 	localError bool
 }
 
-// resolveItem walks the kind's priority chain and returns the first hit.
-func resolveItem(ctx context.Context, ds model.DataStore, ag *agents.Agents, ffmpeg ffmpeg.FFmpeg, item model.ArtworkQueueItem, gate gateFunc) (resolution, error) {
-	return resolveItemMode(ctx, ds, ag, ffmpeg, item, gate, false)
+// externalSource is the ability to reach the network: which agents to ask, and the per-agent
+// rate limiter and circuit breaker to ask them through.
+type externalSource struct {
+	agents *agents.Agents
+	gate   gateFunc
 }
 
-// resolveItemLocal resolves using only local sources for the serving path's provisional
-// read-through: external steps are skipped and the worker-built playlist grid is not assembled.
-func resolveItemLocal(ctx context.Context, ds model.DataStore, ffmpeg ffmpeg.FFmpeg, item model.ArtworkQueueItem) (resolution, error) {
-	return resolveItemMode(ctx, ds, nil, ffmpeg, item, denyGate, true)
+// resolver walks a kind's priority chain and returns the first hit. A nil ext means local-only,
+// so "may this resolution go external" is one fact rather than two that could disagree.
+type resolver struct {
+	ds     model.DataStore
+	ffmpeg ffmpeg.FFmpeg
+	ext    *externalSource
 }
 
-func resolveItemMode(ctx context.Context, ds model.DataStore, ag *agents.Agents, ffmpeg ffmpeg.FFmpeg, item model.ArtworkQueueItem, gate gateFunc, localOnly bool) (resolution, error) {
+func newResolver(ds model.DataStore, ag *agents.Agents, ffm ffmpeg.FFmpeg, gate gateFunc) *resolver {
 	if gate == nil {
 		gate = passthroughGate
 	}
+	return &resolver{ds: ds, ffmpeg: ffm, ext: &externalSource{agents: ag, gate: gate}}
+}
+
+// newLocalResolver offers no parameter through which an external source could be supplied, so
+// a request can neither reach the network nor sample album art for the worker-built grid.
+func newLocalResolver(ds model.DataStore, ffm ffmpeg.FFmpeg) *resolver {
+	return &resolver{ds: ds, ffmpeg: ffm}
+}
+
+func (r *resolver) resolve(ctx context.Context, item model.ArtworkQueueItem) (resolution, error) {
 	kind, _ := model.ParseKind(item.ItemKind)
 	switch kind {
 	case model.KindAlbumArtwork:
-		return resolveAlbum(ctx, ds, ag, ffmpeg, item.ItemID, gate, localOnly)
+		return r.resolveAlbum(ctx, item.ItemID)
 	case model.KindArtistArtwork:
-		return resolveArtist(ctx, ds, ag, ffmpeg, item.ItemID, gate, localOnly)
+		return r.resolveArtist(ctx, item.ItemID)
 	case model.KindPlaylistArtwork:
-		return resolvePlaylist(ctx, ds, ag, ffmpeg, item.ItemID, gate, localOnly)
+		return r.resolvePlaylist(ctx, item.ItemID)
 	case model.KindRadioArtwork:
-		return resolveRadio(ctx, ds, item.ItemID)
+		return r.resolveRadio(ctx, item.ItemID)
 	case model.KindMediaFileArtwork:
-		return resolveMediaFile(ctx, ds, ffmpeg, item.ItemID)
+		return r.resolveMediaFile(ctx, item.ItemID)
 	default:
-		return resolution{}, fmt.Errorf("resolveItem: kind %q is not resolvable by the worker", item.ItemKind)
+		return resolution{}, fmt.Errorf("artwork: kind %q is not resolvable by the worker", item.ItemKind)
 	}
+}
+
+// fetchExternalAlbum and fetchExternalArtist are the only places resolution touches the network,
+// so a local-only resolver is stopped here rather than at each point in the chain walk.
+func (r *resolver) fetchExternalAlbum(ctx context.Context, al model.Album) (io.ReadCloser, string, bool) {
+	if r.ext == nil {
+		return nil, "", false
+	}
+	return fetchAlbumImage(ctx, r.ext.agents, r.ext.gate, al)
+}
+
+func (r *resolver) fetchExternalArtist(ctx context.Context, ar model.Artist) (io.ReadCloser, string, bool) {
+	if r.ext == nil {
+		return nil, "", false
+	}
+	return fetchArtistImage(ctx, r.ext.agents, r.ext.gate, ar)
 }
 
 // resolveAlbum ports the folder/embedded/external selection from
 // reader_album.go, walking conf.Server.CoverArtPriority.
-func resolveAlbum(ctx context.Context, ds model.DataStore, ag *agents.Agents, ffm ffmpeg.FFmpeg, albumID string, gate gateFunc, localOnly bool) (resolution, error) {
-	al, err := ds.Album(ctx).Get(albumID)
+func (r *resolver) resolveAlbum(ctx context.Context, albumID string) (resolution, error) {
+	al, err := r.ds.Album(ctx).Get(albumID)
 	if err != nil {
 		return resolution{}, err
 	}
-	_, imgFiles, _, err := loadAlbumFoldersPaths(ctx, ds, *al)
+	_, imgFiles, _, err := loadAlbumFoldersPaths(ctx, r.ds, *al)
 	if err != nil {
 		return resolution{}, err
 	}
-	lib, err := loadLibraryView(ctx, ds, al.LibraryID)
+	lib, err := loadLibraryView(ctx, r.ds, al.LibraryID)
 	if err != nil {
 		return resolution{}, err
 	}
@@ -88,18 +118,15 @@ func resolveAlbum(ctx context.Context, ds model.DataStore, ag *agents.Agents, ff
 		pattern = strings.TrimSpace(pattern)
 		switch {
 		case pattern == "embedded":
-			res, ok := resolveEmbedded(ctx, lib, ffm, al.EmbedArtPath)
+			res, ok := resolveEmbedded(ctx, lib, r.ffmpeg, al.EmbedArtPath)
 			if ok {
 				res.extError = extErr
 				return res, nil
 			}
 			localErr = localErr || res.localError
 		case pattern == "external":
-			if localOnly {
-				continue
-			}
-			if r, name, isErr := fetchAlbumImage(ctx, ag, gate, *al); r != nil {
-				return resolution{reader: r, source: "external:" + name}, nil
+			if rd, name, isErr := r.fetchExternalAlbum(ctx, *al); rd != nil {
+				return resolution{reader: rd, source: "external:" + name}, nil
 			} else if isErr {
 				extErr = true
 			}
@@ -117,8 +144,8 @@ func resolveAlbum(ctx context.Context, ds model.DataStore, ag *agents.Agents, ff
 
 // resolveArtist ports the upload/folder/external selection from
 // reader_artist.go: upload always wins, then conf.Server.ArtistArtPriority.
-func resolveArtist(ctx context.Context, ds model.DataStore, ag *agents.Agents, ffm ffmpeg.FFmpeg, artistID string, gate gateFunc, localOnly bool) (resolution, error) {
-	ar, err := ds.Artist(ctx).Get(artistID)
+func (r *resolver) resolveArtist(ctx context.Context, artistID string) (resolution, error) {
+	ar, err := r.ds.Artist(ctx).Get(artistID)
 	if err != nil {
 		return resolution{}, err
 	}
@@ -133,7 +160,7 @@ func resolveArtist(ctx context.Context, ds model.DataStore, ag *agents.Agents, f
 	}
 
 	// Only consider albums where the artist is the sole album artist, same as reader_artist.go.
-	als, err := ds.Album(ctx).GetAll(model.QueryOptions{
+	als, err := r.ds.Album(ctx).GetAll(model.QueryOptions{
 		Filters: squirrel.And{
 			squirrel.Eq{"album_artist_id": artistID},
 			squirrel.Eq{"json_array_length(participants, '$.albumartist')": 1},
@@ -142,17 +169,17 @@ func resolveArtist(ctx context.Context, ds model.DataStore, ag *agents.Agents, f
 	if err != nil {
 		return resolution{}, err
 	}
-	albumPaths, imgFiles, _, err := loadAlbumFoldersPaths(ctx, ds, als...)
+	albumPaths, imgFiles, _, err := loadAlbumFoldersPaths(ctx, r.ds, als...)
 	if err != nil {
 		return resolution{}, err
 	}
-	artistFolder, _, err := loadArtistFolder(ctx, ds, als, albumPaths)
+	artistFolder, _, err := loadArtistFolder(ctx, r.ds, als, albumPaths)
 	if err != nil {
 		return resolution{}, err
 	}
 	var lib libraryView
 	if len(als) > 0 {
-		lib, err = loadLibraryView(ctx, ds, als[0].LibraryID)
+		lib, err = loadLibraryView(ctx, r.ds, als[0].LibraryID)
 		if err != nil {
 			return resolution{}, err
 		}
@@ -163,11 +190,8 @@ func resolveArtist(ctx context.Context, ds model.DataStore, ag *agents.Agents, f
 		pattern = strings.TrimSpace(pattern)
 		switch {
 		case pattern == "external":
-			if localOnly {
-				continue
-			}
-			if r, name, isErr := fetchArtistImage(ctx, ag, gate, *ar); r != nil {
-				return resolution{reader: r, source: "external:" + name}, nil
+			if rd, name, isErr := r.fetchExternalArtist(ctx, *ar); rd != nil {
+				return resolution{reader: rd, source: "external:" + name}, nil
 			} else if isErr {
 				extErr = true
 			}
@@ -205,8 +229,8 @@ func resolveArtist(ctx context.Context, ds model.DataStore, ag *agents.Agents, f
 
 // resolvePlaylist ports reader_playlist.go's chain: uploaded image, sidecar,
 // ExternalImageURL, then the generated 2x2 grid sourced through resolveAlbum.
-func resolvePlaylist(ctx context.Context, ds model.DataStore, ag *agents.Agents, ffm ffmpeg.FFmpeg, playlistID string, gate gateFunc, localOnly bool) (resolution, error) {
-	pl, err := ds.Playlist(ctx).Get(playlistID)
+func (r *resolver) resolvePlaylist(ctx context.Context, playlistID string) (resolution, error) {
+	pl, err := r.ds.Playlist(ctx).Get(playlistID)
 	if err != nil {
 		return resolution{}, err
 	}
@@ -237,21 +261,21 @@ func resolvePlaylist(ctx context.Context, ds model.DataStore, ag *agents.Agents,
 			return res, nil
 		}
 	}
-	if localOnly {
+	if r.ext == nil {
 		// The remote ExternalImageURL fetch and the 2x2 grid are worker-only; a request must
 		// not fetch remotely nor sample album art synchronously.
 		return resolution{}, nil
 	}
 	if remoteImg != nil && conf.Server.EnableM3UExternalAlbumArt {
 		sf := func() (io.ReadCloser, string, error) { return fromURL(ctx, remoteImg) }
-		if res, ok, isErr := resolveExternalStep(gate, "m3u", sf); ok {
+		if res, ok, isErr := resolveExternalStep(r.ext.gate, "m3u", sf); ok {
 			return res, nil
 		} else if isErr {
 			extErr = true
 		}
 	}
 
-	albumIDs, err := ds.Playlist(ctx).Tracks(pl.ID, false).GetAlbumIDs(model.QueryOptions{Max: 4, Sort: "random()"})
+	albumIDs, err := r.ds.Playlist(ctx).Tracks(pl.ID, false).GetAlbumIDs(model.QueryOptions{Max: 4, Sort: "random()"})
 	if err != nil {
 		return resolution{}, err
 	}
@@ -259,7 +283,7 @@ func resolvePlaylist(ctx context.Context, ds model.DataStore, ag *agents.Agents,
 	var tiles []image.Image
 	var tileErr error // first internal (non-external) tile failure, e.g. album deleted mid-flight
 	for _, albumID := range albumIDs {
-		res, err := resolveAlbum(ctx, ds, ag, ffm, albumID, gate, false)
+		res, err := r.resolveAlbum(ctx, albumID)
 		if err != nil {
 			if tileErr == nil {
 				tileErr = err
@@ -296,38 +320,38 @@ func resolvePlaylist(ctx context.Context, ds model.DataStore, ag *agents.Agents,
 	case 3:
 		tiles = append(tiles, tiles[0])
 	}
-	r, err := assembleTiles(tiles)
+	grid, err := assembleTiles(tiles)
 	if err != nil {
-		return resolution{extError: extErr}, nil //nolint:nilerr // encode failure is a soft "no image", not a resolveItem error
+		return resolution{extError: extErr}, nil //nolint:nilerr // encode failure is a soft "no image", not a resolution error
 	}
-	return resolution{reader: r, source: "generated", extError: extErr}, nil
+	return resolution{reader: grid, source: "generated", extError: extErr}, nil
 }
 
 // resolveRadio ports reader_radio.go: only an uploaded image, no fallback.
-func resolveRadio(ctx context.Context, ds model.DataStore, radioID string) (resolution, error) {
-	r, err := ds.Radio(ctx).Get(radioID)
+func (r *resolver) resolveRadio(ctx context.Context, radioID string) (resolution, error) {
+	radio, err := r.ds.Radio(ctx).Get(radioID)
 	if err != nil {
 		return resolution{}, err
 	}
-	res, _ := resolveLocalFile(r.UploadedImagePath(), "upload")
+	res, _ := resolveLocalFile(radio.UploadedImagePath(), "upload")
 	return res, nil
 }
 
 // resolveMediaFile resolves a track's own embedded art only; there is no folder or
 // external fallback, so disabled/missing cover art is a definitive absent.
-func resolveMediaFile(ctx context.Context, ds model.DataStore, ffm ffmpeg.FFmpeg, id string) (resolution, error) {
-	mf, err := ds.MediaFile(ctx).Get(id)
+func (r *resolver) resolveMediaFile(ctx context.Context, id string) (resolution, error) {
+	mf, err := r.ds.MediaFile(ctx).Get(id)
 	if err != nil {
 		return resolution{}, err
 	}
 	if !conf.Server.EnableMediaFileCoverArt || !mf.HasCoverArt {
 		return resolution{}, nil
 	}
-	lib, err := loadLibraryView(ctx, ds, mf.LibraryID)
+	lib, err := loadLibraryView(ctx, r.ds, mf.LibraryID)
 	if err != nil {
 		return resolution{}, err
 	}
-	res, _ := resolveEmbedded(ctx, lib, ffm, mf.Path)
+	res, _ := resolveEmbedded(ctx, lib, r.ffmpeg, mf.Path)
 	return res, nil
 }
 

@@ -32,12 +32,6 @@ func passthroughGate(_ string, f func() (io.ReadCloser, string, error)) (io.Read
 	return f()
 }
 
-// denyGate refuses every external fetch with a definitive not-found, so local-only
-// resolution never runs a network step even if an external branch is reached.
-func denyGate(_ string, _ func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error) {
-	return nil, "", model.ErrNotFound
-}
-
 // bestImageURL returns the largest-Size image URL, skipping empty or unparseable
 // URLs; nil when none qualifies. Parsing happens per candidate so a malformed largest
 // URL never shadows a valid smaller one.
