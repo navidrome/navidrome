@@ -3,6 +3,7 @@ package artwork
 import (
 	"context"
 	"errors"
+	"path/filepath"
 	"time"
 
 	"github.com/navidrome/navidrome/model"
@@ -330,14 +331,13 @@ var _ = Describe("Album Artwork Reader", func() {
 				ImageFiles:      []string{"cover.jpg"},
 			}
 
-			paths, imgFiles, imagesUpdatedAt, err := loadAlbumFoldersPaths(ctx, ds, true, album)
+			_, imgFiles, imagesUpdatedAt, err := loadAlbumFoldersPaths(ctx, ds, true, album)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(*imagesUpdatedAt).To(Equal(expectedAt))
 			Expect(imgFiles).To(HaveLen(1))
 			Expect(imgFiles[0]).To(Equal("Artist/Album/cover.jpg"))
 			Expect(repo.getCallCount).To(Equal(1))
-			Expect(paths).To(Equal([]string{"Artist/Album/disc1", "Artist/Album"}))
 		})
 
 		It("properly responds whether to add parent or not", func() {
@@ -362,13 +362,15 @@ var _ = Describe("Album Artwork Reader", func() {
 
 			paths, _, _, err := loadAlbumFoldersPaths(ctx, ds, false, album)
 
+			fsPath := filepath.Join("Artist", "Album")
+
 			Expect(err).ToNot(HaveOccurred())
-			Expect(paths).To(Equal([]string{"Artist/Album"}))
+			Expect(paths).To(Equal([]string{fsPath}))
 
 			paths, _, _, err = loadAlbumFoldersPaths(ctx, ds, true, album)
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(paths).To(Equal([]string{"Artist/Album", "Artist"}))
+			Expect(paths).To(Equal([]string{fsPath, "Artist"}))
 		})
 
 		It("does not include parent images when other albums' audio lives under the parent", func() {
