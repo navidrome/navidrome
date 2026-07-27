@@ -79,23 +79,6 @@ func (m *MockArtworkQueueRepo) DequeueBatch(n int, kinds ...string) ([]model.Art
 	return res, nil
 }
 
-func (m *MockArtworkQueueRepo) MarkFailed(kind, id, imageType string, retryAt time.Time) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	if m.Err != nil {
-		return m.Err
-	}
-	k := iaKey(kind, id, imageType)
-	it, ok := m.Data[k]
-	if !ok {
-		return model.ErrNotFound
-	}
-	it.Attempts++
-	it.RetryAt = retryAt
-	m.Data[k] = it
-	return nil
-}
-
 func (m *MockArtworkQueueRepo) MarkFailedIfUnchanged(kind, id, imageType string, seenRetryAt, retryAt time.Time) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -108,16 +91,6 @@ func (m *MockArtworkQueueRepo) MarkFailedIfUnchanged(kind, id, imageType string,
 		it.RetryAt = retryAt
 		m.Data[k] = it
 	}
-	return nil
-}
-
-func (m *MockArtworkQueueRepo) Delete(kind, id, imageType string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	if m.Err != nil {
-		return m.Err
-	}
-	delete(m.Data, iaKey(kind, id, imageType))
 	return nil
 }
 

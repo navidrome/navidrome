@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -16,6 +17,24 @@ var _ = Describe("ArtworkQueueRepository", func() {
 	item := func(kind, id string, prio int) model.ArtworkQueueItem {
 		return model.ArtworkQueueItem{ItemKind: kind, ItemID: id,
 			ImageType: model.ImageTypePrimary, Priority: prio}
+	}
+
+	// backOff puts a row into the state a failed resolution leaves behind. Production only ever
+	// reaches that state through MarkFailedIfUnchanged, which needs the retry_at it dequeued.
+	backOff := func(kind, id string, retryAt time.Time) {
+		GinkgoHelper()
+		r := repo.(*artworkQueueRepository)
+		_, err := r.executeSQL(squirrel.Update(r.tableName).
+			Set("attempts", squirrel.Expr("attempts + 1")).
+			Set("retry_at", retryAt).
+			Where(squirrel.Eq{"item_kind": kind, "item_id": id, "image_type": model.ImageTypePrimary}))
+		Expect(err).ToNot(HaveOccurred())
+	}
+
+	remove := func(kind, id string) {
+		GinkgoHelper()
+		r := repo.(*artworkQueueRepository)
+		Expect(r.delete(squirrel.Eq{"item_kind": kind, "item_id": id, "image_type": model.ImageTypePrimary})).To(Succeed())
 	}
 
 	BeforeEach(func() {
@@ -45,7 +64,7 @@ var _ = Describe("ArtworkQueueRepository", func() {
 	It("EnqueueBump raises priority without resetting a backing-off row's retry_at", func() {
 		Expect(repo.Enqueue(item("al", "b1", model.ArtworkPriorityScan))).To(Succeed())
 		// Push retry_at into the future so the row is backing off and hidden from dequeue.
-		Expect(repo.MarkFailed("al", "b1", model.ImageTypePrimary, time.Now().Add(time.Hour))).To(Succeed())
+		backOff("al", "b1", time.Now().Add(time.Hour))
 		Expect(repo.DequeueBatch(10)).To(BeEmpty())
 
 		// A request-triggered bump raises priority but must leave the backoff intact.
@@ -68,13 +87,13 @@ var _ = Describe("ArtworkQueueRepository", func() {
 
 	It("hides failed items until retry_at", func() {
 		Expect(repo.Enqueue(item("al", "f1", model.ArtworkPriorityScan))).To(Succeed())
-		Expect(repo.MarkFailed("al", "f1", model.ImageTypePrimary, time.Now().Add(time.Hour))).To(Succeed())
+		backOff("al", "f1", time.Now().Add(time.Hour))
 
 		got, err := repo.DequeueBatch(10)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(got).To(BeEmpty())
 
-		Expect(repo.MarkFailed("al", "f1", model.ImageTypePrimary, time.Now().Add(-time.Minute))).To(Succeed())
+		backOff("al", "f1", time.Now().Add(-time.Minute))
 		got, _ = repo.DequeueBatch(10)
 		Expect(got).To(HaveLen(1))
 		Expect(got[0].Attempts).To(Equal(2))
@@ -83,7 +102,7 @@ var _ = Describe("ArtworkQueueRepository", func() {
 	It("MarkFailedIfUnchanged applies backoff only while retry_at is unchanged", func() {
 		Expect(repo.Enqueue(item("al", "m1", model.ArtworkPriorityScan))).To(Succeed())
 		// Anchor retry_at in the past (attempts -> 1) so it can never collide with the re-enqueue's now.
-		Expect(repo.MarkFailed("al", "m1", model.ImageTypePrimary, time.Now().Add(-time.Hour))).To(Succeed())
+		backOff("al", "m1", time.Now().Add(-time.Hour))
 		got, err := repo.DequeueBatch(10)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(got).To(HaveLen(1))
@@ -110,7 +129,7 @@ var _ = Describe("ArtworkQueueRepository", func() {
 
 	It("Enqueue restarts the retry budget an existing row had spent", func() {
 		Expect(repo.Enqueue(item("al", "e1", model.ArtworkPriorityScan))).To(Succeed())
-		Expect(repo.MarkFailed("al", "e1", model.ImageTypePrimary, time.Now().Add(-time.Hour))).To(Succeed())
+		backOff("al", "e1", time.Now().Add(-time.Hour))
 		stale := time.Now().Add(-48 * time.Hour)
 		_, err := GetDBXBuilder().NewQuery("UPDATE artwork_queue SET enqueued_at = {:t} WHERE item_id = 'e1'").
 			Bind(dbx.Params{"t": stale}).Execute()
@@ -130,7 +149,7 @@ var _ = Describe("ArtworkQueueRepository", func() {
 		Expect(repo.Enqueue(item("al", "c1", 0))).To(Succeed())
 		n, _ := repo.Count()
 		Expect(n).To(Equal(int64(1)))
-		Expect(repo.Delete("al", "c1", model.ImageTypePrimary)).To(Succeed())
+		remove("al", "c1")
 		n, _ = repo.Count()
 		Expect(n).To(BeZero())
 	})
@@ -138,7 +157,7 @@ var _ = Describe("ArtworkQueueRepository", func() {
 	It("DeleteIfUnchanged deletes only while retry_at is unchanged", func() {
 		Expect(repo.Enqueue(item("al", "d1", model.ArtworkPriorityScan))).To(Succeed())
 		// Anchor retry_at in the past so it can never collide with the re-enqueue's now.
-		Expect(repo.MarkFailed("al", "d1", model.ImageTypePrimary, time.Now().Add(-time.Hour))).To(Succeed())
+		backOff("al", "d1", time.Now().Add(-time.Hour))
 		got, err := repo.DequeueBatch(10)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(got).To(HaveLen(1))

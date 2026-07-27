@@ -72,18 +72,6 @@ func (r *artworkQueueRepository) DequeueBatch(n int, kinds ...string) ([]model.A
 	return res, err
 }
 
-func (r *artworkQueueRepository) MarkFailed(kind, id, imageType string, retryAt time.Time) error {
-	upd := Update(r.tableName).
-		Set("attempts", Expr("attempts + 1")).
-		Set("retry_at", retryAt).
-		Where(Eq{"item_kind": kind, "item_id": id, "image_type": imageType})
-	c, err := r.executeSQL(upd)
-	if err == nil && c == 0 {
-		return model.ErrNotFound
-	}
-	return err
-}
-
 // MarkFailedIfUnchanged applies the backoff only while retry_at still equals seenRetryAt;
 // a concurrent Enqueue resets retry_at, so its fresh eligibility survives untouched.
 func (r *artworkQueueRepository) MarkFailedIfUnchanged(kind, id, imageType string, seenRetryAt, retryAt time.Time) error {
@@ -93,10 +81,6 @@ func (r *artworkQueueRepository) MarkFailedIfUnchanged(kind, id, imageType strin
 		Where(Eq{"item_kind": kind, "item_id": id, "image_type": imageType, "retry_at": seenRetryAt})
 	_, err := r.executeSQL(upd)
 	return err
-}
-
-func (r *artworkQueueRepository) Delete(kind, id, imageType string) error {
-	return r.delete(Eq{"item_kind": kind, "item_id": id, "image_type": imageType})
 }
 
 // DeleteIfUnchanged deletes the row only while its retry_at still equals the dequeued

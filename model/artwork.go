@@ -129,12 +129,9 @@ type ArtworkQueueRepository interface {
 	// Restricted to the given item kinds when any are passed, so a drain pool sees only its own
 	// work and cannot be held up behind another kind's backlog.
 	DequeueBatch(n int, kinds ...string) ([]ArtworkQueueItem, error)
-	// MarkFailed increments attempts and pushes retry_at into the future.
-	MarkFailed(kind, id, imageType string, retryAt time.Time) error
 	// MarkFailedIfUnchanged applies the failure backoff only while retry_at still matches
 	// seenRetryAt; a concurrent re-enqueue (which resets retry_at) keeps its fresh eligibility.
 	MarkFailedIfUnchanged(kind, id, imageType string, seenRetryAt, retryAt time.Time) error
-	Delete(kind, id, imageType string) error
 	// DeleteIfUnchanged deletes the row only if its retry_at still matches retryAt, so a
 	// concurrent re-enqueue (which resets retry_at) survives instead of being erased.
 	DeleteIfUnchanged(kind, id, imageType string, retryAt time.Time) error
