@@ -69,7 +69,7 @@ func (s *service) GetOrPlaceholder(ctx context.Context, id string, size int, squ
 	// Only a resolvable entity with no art gets the placeholder. An id that matches no entity
 	// stays ErrNotFound, so getCoverArt keeps answering error 70 and Jellyfin keeps 404ing.
 	if errors.Is(err, ErrUnavailable) {
-		return s.placeholder(artID.Kind), nil
+		return placeholderImage(artID.Kind), nil
 	}
 	return img, err
 }
@@ -136,7 +136,10 @@ func (s *service) serveHash(ctx context.Context, artID model.ArtworkID, ia *mode
 		return &Image{ReadCloser: rc, Hash: ia.Hash, LastUpdated: ia.UpdatedAt}, nil
 	}
 
-	item := newResizedItem(ia, art.Mime, size, square, s.store, s.ffmpeg)
+	item := &resizedItem{
+		hash: ia.Hash, size: size, square: square, ffmpeg: s.ffmpeg,
+		open: func() (io.ReadCloser, error) { return openOriginal(ia, art.Mime, s.store) },
+	}
 	stream, err := s.cache.Get(ctx, item)
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
@@ -181,19 +184,6 @@ func openOriginal(ia *model.ItemArtwork, mime string, store *ImageStore) (io.Rea
 	return store.Open(ia.Hash, mime)
 }
 
-// newResizedItem builds the resize-cache reader for a found state row's bytes; shared by
-// the serving path and the worker's precache so both key the cache identically.
-func newResizedItem(ia *model.ItemArtwork, mime string, size int, square bool, store *ImageStore, ffm ffmpeg.FFmpeg) *resizedItem {
-	return &resizedItem{
-		hash:       ia.Hash,
-		size:       size,
-		square:     square,
-		lastUpdate: ia.UpdatedAt,
-		ffmpeg:     ffm,
-		open:       func() (io.ReadCloser, error) { return openOriginal(ia, mime, store) },
-	}
-}
-
 // provisional does a local-only read-through for an entity with no state row: it enqueues
 // the worker (Bump) and serves any local bytes immediately, never writing a state row.
 func (s *service) provisional(ctx context.Context, artID model.ArtworkID, size int, square bool) (*Image, error) {
@@ -231,12 +221,11 @@ func (s *service) serveBytes(ctx context.Context, hash string, data []byte, last
 		return &Image{ReadCloser: io.NopCloser(bytes.NewReader(data)), Hash: hash, LastUpdated: lastUpdate}, nil
 	}
 	item := &resizedItem{
-		hash:       hash,
-		size:       size,
-		square:     square,
-		lastUpdate: lastUpdate,
-		ffmpeg:     s.ffmpeg,
-		open:       func() (io.ReadCloser, error) { return io.NopCloser(bytes.NewReader(data)), nil },
+		hash:   hash,
+		size:   size,
+		square: square,
+		ffmpeg: s.ffmpeg,
+		open:   func() (io.ReadCloser, error) { return io.NopCloser(bytes.NewReader(data)), nil },
 	}
 	stream, err := s.cache.Get(ctx, item)
 	if err != nil {
@@ -328,12 +317,11 @@ func (s *service) serveDisc(ctx context.Context, artID model.ArtworkID, size int
 	}
 
 	item := &resizedItem{
-		hash:       key,
-		size:       size,
-		square:     square,
-		lastUpdate: dr.cacheTime(),
-		ffmpeg:     s.ffmpeg,
-		open:       func() (io.ReadCloser, error) { rc, _, err := selectImage(); return rc, err },
+		hash:   key,
+		size:   size,
+		square: square,
+		ffmpeg: s.ffmpeg,
+		open:   func() (io.ReadCloser, error) { rc, _, err := selectImage(); return rc, err },
 	}
 	stream, err := s.cache.Get(ctx, item)
 	if err != nil {
@@ -361,10 +349,6 @@ func (s *service) enqueue(ctx context.Context, artID model.ArtworkID, priority i
 	if err != nil {
 		log.Warn(ctx, "artwork: could not enqueue re-resolution", "artID", artID, err)
 	}
-}
-
-func (s *service) placeholder(kind model.Kind) *Image {
-	return placeholderImage(kind)
 }
 
 func placeholderImage(kind model.Kind) *Image {
@@ -416,37 +400,36 @@ func unixMtime(mtime int64) time.Time {
 // resizedItem is an artworkReader that resizes bytes opened by open() and caches the
 // result under a hash-derived key.
 type resizedItem struct {
-	hash       string
-	size       int
-	square     bool
-	lastUpdate time.Time
-	ffmpeg     ffmpeg.FFmpeg
-	open       func() (io.ReadCloser, error)
+	hash   string
+	size   int
+	square bool
+	ffmpeg ffmpeg.FFmpeg
+	open   func() (io.ReadCloser, error)
 }
 
+// Key is the ETag namespaced for the cache, so the validator a client holds and the entry it
+// validates can never drift apart.
 func (r *resizedItem) Key() string {
-	return fmt.Sprintf("h-%s.%d.%v.%s", r.hash, r.size, r.square, formatQualityTag())
+	return "h-" + representationTag(r.hash, r.size, r.square)
 }
 
-func (r *resizedItem) LastUpdated() time.Time { return r.lastUpdate }
-
-func (r *resizedItem) Reader(ctx context.Context) (io.ReadCloser, string, error) {
+func (r *resizedItem) Reader(ctx context.Context) (io.ReadCloser, error) {
 	orig, err := r.open()
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 	defer orig.Close()
 	data, err := readCapped(orig)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 	resized, _, err := resizeImageData(ctx, r.ffmpeg, data, r.size, r.square)
 	if err != nil || resized == nil {
 		// Resize failed or image already within bounds: serve the original bytes.
-		return io.NopCloser(bytes.NewReader(data)), r.Key(), nil
+		return io.NopCloser(bytes.NewReader(data)), nil
 	}
 	if rc, ok := resized.(io.ReadCloser); ok {
-		return rc, r.Key(), nil
+		return rc, nil
 	}
-	return io.NopCloser(resized), r.Key(), nil
+	return io.NopCloser(resized), nil
 }

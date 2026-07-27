@@ -49,7 +49,7 @@ var _ = Describe("Prune", func() {
 			"ar": {"live-artist": true},
 		}
 
-		Expect(Prune(context.Background(), ds, store)).To(Succeed())
+		Expect(prune(context.Background(), ds, store)).To(Succeed())
 
 		_, err := awRepo.GetItemArtwork(model.KindAlbumArtwork, "gone-album", model.ImageTypePrimary)
 		Expect(err).To(MatchError(model.ErrNotFound))
@@ -68,7 +68,7 @@ var _ = Describe("Prune", func() {
 		queueRepo.ExistingIDs = map[string]map[string]bool{"al": {"live-album": true}}
 		ds.MockedArtworkQueue = queueRepo
 
-		Expect(Prune(context.Background(), ds, store)).To(Succeed())
+		Expect(prune(context.Background(), ds, store)).To(Succeed())
 
 		Expect(findQueued(queueRepo, "al", "gone-album")).To(BeNil())
 		Expect(findQueued(queueRepo, "al", "live-album")).ToNot(BeNil())
@@ -89,7 +89,7 @@ var _ = Describe("Prune", func() {
 		Expect(store.Write(hk, "image/jpeg", bytes.NewReader(kept))).To(Succeed())
 		Expect(awRepo.PutImage(&model.Artwork{Hash: hk, Mime: "image/jpeg"})).To(Succeed())
 
-		Expect(Prune(context.Background(), ds, store)).To(Succeed())
+		Expect(prune(context.Background(), ds, store)).To(Succeed())
 
 		_, err := awRepo.GetImage(h)
 		Expect(err).To(MatchError(model.ErrNotFound))
@@ -111,7 +111,7 @@ var _ = Describe("Prune", func() {
 		Expect(awRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "al", ItemID: "a1",
 			ImageType: model.ImageTypePrimary, Hash: h, Source: "folder"})).To(Succeed())
 
-		Expect(Prune(context.Background(), ds, store)).To(Succeed())
+		Expect(prune(context.Background(), ds, store)).To(Succeed())
 
 		_, err := awRepo.GetImage(h)
 		Expect(err).ToNot(HaveOccurred())
@@ -128,7 +128,7 @@ var _ = Describe("Prune", func() {
 		Expect(awRepo.PutImage(&model.Artwork{Hash: h, Mime: "image/jpeg"})).To(Succeed())
 		awRepo.OrphanHashes = []string{h}
 
-		Expect(Prune(context.Background(), ds, store)).To(Succeed())
+		Expect(prune(context.Background(), ds, store)).To(Succeed())
 
 		_, err := awRepo.GetImage(h)
 		Expect(err).ToNot(HaveOccurred())
@@ -147,7 +147,7 @@ var _ = Describe("Prune", func() {
 		// The row is legitimately orphaned, but a concurrent acquisition just touched the
 		// file's mtime (duplicate Write) and is about to commit a row referencing it.
 
-		Expect(Prune(context.Background(), ds, store)).To(Succeed())
+		Expect(prune(context.Background(), ds, store)).To(Succeed())
 
 		rc, err := store.Open(h, "image/jpeg")
 		Expect(err).ToNot(HaveOccurred())
@@ -161,7 +161,7 @@ var _ = Describe("Prune", func() {
 		old := time.Now().Add(-2 * time.Hour)
 		Expect(os.Chtimes(store.path(h, "image/jpeg"), old, old)).To(Succeed())
 
-		Expect(Prune(context.Background(), ds, store)).To(Succeed())
+		Expect(prune(context.Background(), ds, store)).To(Succeed())
 
 		_, err := store.Open(h, "image/jpeg")
 		Expect(os.IsNotExist(err)).To(BeTrue())
@@ -178,7 +178,7 @@ var _ = Describe("Prune", func() {
 		// The row records the current mime; the .png file is a superseded variant.
 		Expect(awRepo.PutImage(&model.Artwork{Hash: h, Mime: "image/jpeg"})).To(Succeed())
 
-		Expect(Prune(context.Background(), ds, store)).To(Succeed())
+		Expect(prune(context.Background(), ds, store)).To(Succeed())
 
 		_, err := store.Open(h, "image/png")
 		Expect(os.IsNotExist(err)).To(BeTrue())
@@ -219,7 +219,7 @@ var _ = Describe("Prune", func() {
 
 		// Prune still errors: Sweep independently revisits hb's leftover file and,
 		// unlike the loop below, has no warn-and-continue fallback of its own.
-		err := Prune(context.Background(), ds, store)
+		err := prune(context.Background(), ds, store)
 		Expect(err).To(HaveOccurred())
 
 		// hg: reached and fully pruned despite being queued after the failing hb -
@@ -245,7 +245,7 @@ var _ = Describe("Prune", func() {
 		h, _ := HashImage(bytes.NewReader(data))
 		Expect(store.Write(h, "image/jpeg", bytes.NewReader(data))).To(Succeed())
 
-		Expect(Prune(context.Background(), ds, store)).ToNot(Succeed())
+		Expect(prune(context.Background(), ds, store)).ToNot(Succeed())
 
 		rc, err := store.Open(h, "image/jpeg")
 		Expect(err).ToNot(HaveOccurred())

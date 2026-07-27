@@ -160,12 +160,12 @@ func (w *Worker) Bump(kind, id string) {
 	}
 }
 
-// RunPrune runs Prune under the worker's write lock, so no acquisition can place
+// RunPrune runs prune under the worker's write lock, so no acquisition can place
 // a file while orphans are being reclaimed. This is the only sanctioned prune path.
 func (w *Worker) RunPrune(ctx context.Context) error {
 	w.pruneMu.Lock()
 	defer w.pruneMu.Unlock()
-	return Prune(ctx, w.deps.ds, w.deps.store)
+	return prune(ctx, w.deps.ds, w.deps.store)
 }
 
 func (w *Worker) drain(ctx context.Context, concurrency int, kinds ...string) (int, error) {
@@ -307,12 +307,11 @@ func (w *Worker) precache(ctx context.Context, got *acquired) {
 	// Same key as the serving path (hash/size/square); only the source of the bytes differs.
 	// square matches what the list surfaces request, otherwise this warms a key nothing reads.
 	item := &resizedItem{
-		hash:       got.ia.Hash,
-		size:       conf.Server.UICoverArtSize,
-		square:     true,
-		lastUpdate: got.ia.UpdatedAt,
-		ffmpeg:     w.deps.ffmpeg,
-		open:       func() (io.ReadCloser, error) { return io.NopCloser(bytes.NewReader(got.data)), nil },
+		hash:   got.ia.Hash,
+		size:   conf.Server.UICoverArtSize,
+		square: true,
+		ffmpeg: w.deps.ffmpeg,
+		open:   func() (io.ReadCloser, error) { return io.NopCloser(bytes.NewReader(got.data)), nil },
 	}
 	stream, err := w.deps.cache.Get(ctx, item)
 	if err != nil {

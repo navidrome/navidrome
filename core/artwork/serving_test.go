@@ -93,8 +93,7 @@ var _ = Describe("Service", func() {
 		store = NewImageStore(GinkgoT().TempDir())
 		imgCache = cache.NewFileCache("ServingTest", "100MB", "images", 0,
 			func(ctx context.Context, arg cache.Item) (io.Reader, error) {
-				r, _, err := arg.(artworkReader).Reader(ctx)
-				return r, err
+				return arg.(artworkReader).Reader(ctx)
 			})
 		Eventually(func() bool { return imgCache.Available(ctx) }).Should(BeTrue())
 		svc = NewService(ds, imgCache, store, ffm)

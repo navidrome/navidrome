@@ -149,8 +149,7 @@ var _ = Describe("Worker", func() {
 		broker = &fakeEventBroker{}
 		imgCache = &recordingCache{FileCache: cache.NewFileCache("WorkerTest", "100MB", "images", 0,
 			func(ctx context.Context, arg cache.Item) (io.Reader, error) {
-				r, _, err := arg.(artworkReader).Reader(ctx)
-				return r, err
+				return arg.(artworkReader).Reader(ctx)
 			})}
 		Eventually(func() bool { return imgCache.Available(ctx) }).Should(BeTrue())
 		w = NewWorker(ds, store, ag, ffm, broker, imgCache)
@@ -620,7 +619,7 @@ var _ = Describe("Worker", func() {
 			// from the bytes handed in. Probing with a source that refuses to open proves it
 			// is really cached rather than re-read on demand.
 			probe := &resizedItem{
-				hash: ia.Hash, size: 300, square: true, lastUpdate: ia.UpdatedAt, ffmpeg: ffm,
+				hash: ia.Hash, size: 300, square: true, ffmpeg: ffm,
 				open: func() (io.ReadCloser, error) { return nil, errors.New("precache must not re-read the source") },
 			}
 			stream, err := imgCache.Get(ctx, probe)

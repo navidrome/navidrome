@@ -11,7 +11,7 @@ import (
 // pruneMinAge guards the window between artwork insert and item_artwork upsert.
 const pruneMinAge = time.Hour
 
-func Prune(ctx context.Context, ds model.DataStore, store *ImageStore) error {
+func prune(ctx context.Context, ds model.DataStore, store *ImageStore) error {
 	repo := ds.Artwork(ctx)
 
 	purged, err := repo.PurgeDanglingItemArtwork()
