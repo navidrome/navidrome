@@ -54,7 +54,7 @@ var _ = Describe("Worker soak", func() {
 			MockedAlbum:   albumRepo,
 		}
 		store := NewImageStore(GinkgoT().TempDir())
-		deps := &workerDeps{ds: ds, store: store, agents: ag, ffmpeg: ffm}
+		deps := &workerDeps{ds: ds, store: store, resolver: newResolver(ds, ag, ffm, nil)}
 		conf.Server.CoverArtPriority = "cover.jpg, embedded"
 
 		// Dangling refs (al/ra ids the repos don't know about) mirror an entity

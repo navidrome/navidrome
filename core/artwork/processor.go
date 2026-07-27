@@ -9,15 +9,11 @@ import (
 	"image/draw"
 	_ "image/gif" // the only artwork format with no other importer in this package
 	"io"
-	"sync"
 	"time"
 
-	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/artwork/blurhash"
-	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils/cache"
 	xdraw "golang.org/x/image/draw"
 )
 
@@ -45,19 +41,6 @@ const maxImageBytes = 20 << 20
 // huge canvas that image.Decode would expand into gigabytes (decompression bomb).
 const maxImagePixels = 64 << 20
 
-// workerDeps are the collaborators processItem needs; gate and pruneLock are set by NewWorker
-// in production and nil only in tests, where resolveItem falls back to a plain passthrough and
-// nothing prunes.
-type workerDeps struct {
-	ds        model.DataStore
-	store     *ImageStore
-	agents    *agents.Agents
-	ffmpeg    ffmpeg.FFmpeg
-	cache     cache.FileCache
-	gate      gateFunc
-	pruneLock sync.Locker
-}
-
 // acquired is what processItem persisted, handed back so the caller can warm the resize
 // cache without re-reading the rows and the file it just wrote.
 type acquired struct {
@@ -71,7 +54,7 @@ type acquired struct {
 func processItem(ctx context.Context, deps *workerDeps, item model.ArtworkQueueItem) (outcome, *acquired) {
 	repo := deps.ds.Artwork(ctx)
 
-	res, err := newResolver(deps.ds, deps.agents, deps.ffmpeg, deps.gate).resolve(ctx, item)
+	res, err := deps.resolver.resolve(ctx, item)
 	if err != nil {
 		log.Warn(ctx, "Artwork: Could not resolve item", "kind", item.ItemKind, "id", item.ItemID, err)
 		return outcomeFailed, nil
@@ -115,7 +98,7 @@ func processItem(ctx context.Context, deps *workerDeps, item model.ArtworkQueueI
 	}
 	art.SizeBytes = int64(len(data))
 
-	ia, err := persist(deps, repo, item, hash, art, res, data)
+	ia, err := persist(deps, repo, item, art, res, data)
 	if err != nil {
 		log.Warn(ctx, "Artwork: Failed to persist resolved image", "kind", item.ItemKind, "id", item.ItemID, err)
 		return outcomeFailed, nil
@@ -130,7 +113,7 @@ func processItem(ctx context.Context, deps *workerDeps, item model.ArtworkQueueI
 // persist places the bytes and commits the rows referencing them. Only this window excludes
 // Prune, which reclaims store files no row points at; resolution stays outside so a slow fetch
 // cannot hold prune off.
-func persist(deps *workerDeps, repo model.ArtworkRepository, item model.ArtworkQueueItem, hash string,
+func persist(deps *workerDeps, repo model.ArtworkRepository, item model.ArtworkQueueItem,
 	art *model.Artwork, res resolution, data []byte,
 ) (*model.ItemArtwork, error) {
 	if deps.pruneLock != nil {
@@ -148,7 +131,7 @@ func persist(deps *workerDeps, repo model.ArtworkRepository, item model.ArtworkQ
 		ItemKind:    item.ItemKind,
 		ItemID:      item.ItemID,
 		ImageType:   item.ImageType,
-		Hash:        hash,
+		Hash:        art.Hash,
 		Source:      res.source,
 		SourcePath:  sourcePath,
 		RefMtime:    refMtime,

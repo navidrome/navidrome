@@ -49,11 +49,22 @@ type drainPool struct {
 	wake        chan struct{}
 }
 
+// workerDeps are the collaborators processItem needs. The resolver is built once by NewWorker
+// rather than per item; pruneLock is nil only in tests, where nothing prunes.
+type workerDeps struct {
+	ds        model.DataStore
+	store     *ImageStore
+	resolver  *resolver
+	pruneLock sync.Locker
+}
+
 // Worker drains the artwork queue through processItem: each external agent is rate-limited
 // and circuit-broken independently, and prune is serialized against the store-write window
 // via pruneMu.
 type Worker struct {
 	deps    workerDeps
+	cache   cache.FileCache
+	ffmpeg  ffmpeg.FFmpeg
 	broker  events.Broker
 	pruneMu sync.RWMutex
 	pools   []*drainPool
@@ -65,13 +76,15 @@ type Worker struct {
 
 func NewWorker(ds model.DataStore, store *ImageStore, ag *agents.Agents, ffmpeg ffmpeg.FFmpeg, broker events.Broker, imgCache cache.FileCache) *Worker {
 	w := &Worker{
-		deps:   workerDeps{ds: ds, store: store, agents: ag, ffmpeg: ffmpeg, cache: imgCache},
+		deps:   workerDeps{ds: ds, store: store},
+		cache:  imgCache,
+		ffmpeg: ffmpeg,
 		broker: broker,
 		pools:  newDrainPools(),
 		runCtx: context.Background(),
 		gates:  map[string]*extGate{},
 	}
-	w.deps.gate = w.gate
+	w.deps.resolver = newResolver(ds, ag, ffmpeg, w.gate)
 	w.deps.pruneLock = w.pruneMu.RLocker()
 	return w
 }
@@ -301,7 +314,7 @@ func (w *Worker) hasResolvedArtwork(ctx context.Context, item model.ArtworkQueue
 // first UI request is a cache hit without re-reading the rows or the file. Skipped when
 // disabled; failures are debug-only.
 func (w *Worker) precache(ctx context.Context, got *acquired) {
-	if !conf.Server.EnableArtworkPrecache || w.deps.cache == nil || w.deps.cache.Disabled(ctx) {
+	if !conf.Server.EnableArtworkPrecache || w.cache == nil || w.cache.Disabled(ctx) {
 		return
 	}
 	// Same key as the serving path (hash/size/square); only the source of the bytes differs.
@@ -310,10 +323,10 @@ func (w *Worker) precache(ctx context.Context, got *acquired) {
 		hash:   got.ia.Hash,
 		size:   conf.Server.UICoverArtSize,
 		square: true,
-		ffmpeg: w.deps.ffmpeg,
+		ffmpeg: w.ffmpeg,
 		open:   func() (io.ReadCloser, error) { return io.NopCloser(bytes.NewReader(got.data)), nil },
 	}
-	stream, err := w.deps.cache.Get(ctx, item)
+	stream, err := w.cache.Get(ctx, item)
 	if err != nil {
 		log.Debug(ctx, "Artwork: Precache failed", "kind", got.ia.ItemKind, "id", got.ia.ItemID, err)
 		return

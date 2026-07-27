@@ -71,7 +71,7 @@ var _ = Describe("processItem", func() {
 		}
 		ds.MockedAlbum = tests.CreateMockAlbumRepo()
 		store = NewImageStore(GinkgoT().TempDir())
-		deps = &workerDeps{ds: ds, store: store, agents: ag, ffmpeg: ffm}
+		deps = &workerDeps{ds: ds, store: store, resolver: newResolver(ds, ag, ffm, nil)}
 
 		conf.Server.CoverArtPriority = "cover.jpg, embedded"
 	})
