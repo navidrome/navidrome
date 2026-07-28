@@ -279,14 +279,8 @@ func (r *artistRepository) GetAllIDs(options ...model.QueryOptions) ([]string, e
 
 // hydrateArtwork fills each artist's ImageHash/ImageAbsent from one batched item_artwork lookup.
 func (r *artistRepository) hydrateArtwork(artists model.Artists) {
-	if len(artists) == 0 {
-		return
-	}
-	ids := slice.Map(artists, func(a model.Artist) string { return a.ID })
-	infos := hydrateItemImages(r.ctx, r.db, model.KindArtistArtwork, ids)
-	for i := range artists {
-		applyItemImage(infos, artists[i].ID, &artists[i].ItemImage)
-	}
+	hydrateItems(r.ctx, r.db, model.KindArtistArtwork, artists,
+		func(a *model.Artist) (string, *model.ItemImage) { return a.ID, &a.ItemImage })
 }
 
 func (r *artistRepository) GetCursor(options ...model.QueryOptions) (model.ArtistCursor, error) {

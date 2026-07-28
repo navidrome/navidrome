@@ -10,7 +10,6 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
-	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/pocketbase/dbx"
 )
 
@@ -76,14 +75,8 @@ func (r *radioRepository) GetAll(options ...model.QueryOptions) (model.Radios, e
 
 // hydrateArtwork fills each radio's ImageHash/ImageAbsent from one batched item_artwork lookup.
 func (r *radioRepository) hydrateArtwork(radios model.Radios) {
-	if len(radios) == 0 {
-		return
-	}
-	ids := slice.Map(radios, func(rd model.Radio) string { return rd.ID })
-	infos := hydrateItemImages(r.ctx, r.db, model.KindRadioArtwork, ids)
-	for i := range radios {
-		applyItemImage(infos, radios[i].ID, &radios[i].ItemImage)
-	}
+	hydrateItems(r.ctx, r.db, model.KindRadioArtwork, radios,
+		func(rd *model.Radio) (string, *model.ItemImage) { return rd.ID, &rd.ItemImage })
 }
 
 // GetAllIDs returns just the radio IDs. Used by bulk enumeration (artwork backfill).

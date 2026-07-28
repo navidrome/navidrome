@@ -259,14 +259,8 @@ func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, e
 }
 
 func (r *albumRepository) hydrateArtwork(albums model.Albums) {
-	if len(albums) == 0 {
-		return
-	}
-	ids := slice.Map(albums, func(a model.Album) string { return a.ID })
-	infos := hydrateItemImages(r.ctx, r.db, model.KindAlbumArtwork, ids)
-	for i := range albums {
-		applyItemImage(infos, albums[i].ID, &albums[i].ItemImage)
-	}
+	hydrateItems(r.ctx, r.db, model.KindAlbumArtwork, albums,
+		func(a *model.Album) (string, *model.ItemImage) { return a.ID, &a.ItemImage })
 }
 
 // GetAllIDs returns the IDs of GetAll's row set, skipping its column projection and JSON decoding.

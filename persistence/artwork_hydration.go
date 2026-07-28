@@ -74,6 +74,21 @@ func applyItemImage(infos map[string]model.ItemArtworkInfo, id string, img *mode
 	}
 }
 
+// hydrateItems fills every item's embedded ItemImage from one batched lookup. ref yields an
+// item's id and the ItemImage to fill, which is all that differs between the entity kinds.
+func hydrateItems[T any](ctx context.Context, db dbx.Builder, kind model.Kind, items []T,
+	ref func(*T) (string, *model.ItemImage)) {
+	ids := make([]string, len(items))
+	for i := range items {
+		ids[i], _ = ref(&items[i])
+	}
+	infos := hydrateItemImages(ctx, db, kind, ids)
+	for i := range items {
+		id, img := ref(&items[i])
+		applyItemImage(infos, id, img)
+	}
+}
+
 // hydrateMediaFileArtwork mirrors MediaFile.CoverArtID: an embedded-eligible file with resolved own
 // art uses it, else it falls back to the album's.
 func hydrateMediaFileArtwork(ctx context.Context, db dbx.Builder, mfs model.MediaFiles) {

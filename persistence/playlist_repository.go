@@ -13,7 +13,6 @@ import (
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/pocketbase/dbx"
 )
 
@@ -185,14 +184,8 @@ func (r *playlistRepository) findBy(sql Sqlizer) (*model.Playlist, error) {
 }
 
 func (r *playlistRepository) hydrateArtwork(playlists model.Playlists) {
-	if len(playlists) == 0 {
-		return
-	}
-	ids := slice.Map(playlists, func(p model.Playlist) string { return p.ID })
-	infos := hydrateItemImages(r.ctx, r.db, model.KindPlaylistArtwork, ids)
-	for i := range playlists {
-		applyItemImage(infos, playlists[i].ID, &playlists[i].ItemImage)
-	}
+	hydrateItems(r.ctx, r.db, model.KindPlaylistArtwork, playlists,
+		func(p *model.Playlist) (string, *model.ItemImage) { return p.ID, &p.ItemImage })
 }
 
 func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playlists, error) {
