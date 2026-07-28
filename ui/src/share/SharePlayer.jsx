@@ -34,10 +34,15 @@ const SharePlayer = () => {
       duration: s.duration,
     }
   })
-  const onBeforeAudioDownload = () => {
-    return Promise.resolve({
-      src: shareDownloadUrl(shareInfo?.id),
-    })
+  // An anchor, not a navigation: the service worker's NavigationRoute would
+  // intercept the streamed archive and fail it.
+  const customDownloader = () => {
+    const link = document.createElement('a')
+    link.href = shareDownloadUrl(shareInfo?.id)
+    link.download = ''
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
   const options = {
     audioLists: list,
@@ -59,7 +64,7 @@ const SharePlayer = () => {
     <ReactJkMusicPlayer
       {...options}
       className={classes.player}
-      onBeforeAudioDownload={onBeforeAudioDownload}
+      customDownloader={customDownloader}
     />
   )
 }
