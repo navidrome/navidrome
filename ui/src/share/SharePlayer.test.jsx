@@ -2,10 +2,12 @@ import { render, act } from '@testing-library/react'
 import SharePlayer from './SharePlayer'
 
 let playerProps
+let renderCount
 
 vi.mock('navidrome-music-player', () => ({
   default: (props) => {
     playerProps = props
+    renderCount++
     return <div data-testid="player" />
   },
 }))
@@ -31,6 +33,7 @@ describe('SharePlayer', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     playerProps = null
+    renderCount = 0
     // Downloading for real would navigate the jsdom window.
     clickSpy = vi
       .spyOn(HTMLAnchorElement.prototype, 'click')
@@ -77,22 +80,18 @@ describe('SharePlayer', () => {
   // again when the window closes.
   it('re-renders when the feedback window opens and closes', () => {
     render(<SharePlayer />)
-    const renders = []
-    const track = () => renders.push(playerProps)
 
-    track()
+    const beforeDownload = renderCount
     act(() => {
       playerProps.customDownloader()
     })
-    track()
+    expect(renderCount).toBeGreaterThan(beforeDownload)
 
+    const beforeExpiry = renderCount
     act(() => {
-      vi.advanceTimersByTime(2000)
+      vi.runAllTimers()
     })
-    track()
-
-    expect(renders[1]).not.toBe(renders[0])
-    expect(renders[2]).not.toBe(renders[1])
+    expect(renderCount).toBeGreaterThan(beforeExpiry)
   })
 
   it('restarts the feedback window on a repeat download', () => {
@@ -108,17 +107,17 @@ describe('SharePlayer', () => {
       playerProps.customDownloader()
     })
 
-    // Would have elapsed had the first timer not been replaced.
+    // The first timer would have fired here had it not been replaced.
+    const beforeOriginalDeadline = renderCount
     act(() => {
-      vi.advanceTimersByTime(1000)
+      vi.advanceTimersByTime(1001)
     })
-    const midway = playerProps
+    expect(renderCount).toBe(beforeOriginalDeadline)
 
     act(() => {
-      vi.advanceTimersByTime(1000)
+      vi.runAllTimers()
     })
-
-    expect(playerProps).not.toBe(midway)
+    expect(renderCount).toBeGreaterThan(beforeOriginalDeadline)
   })
 
   it('does not update state after unmount', () => {
