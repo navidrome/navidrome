@@ -7,6 +7,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
@@ -88,6 +89,15 @@ func (m *MockMediaFileRepo) GetAll(qo ...model.QueryOptions) (model.MediaFiles, 
 		return nil, errors.New("error")
 	}
 	values := slices.Collect(maps.Values(m.Data))
+	if len(qo) > 0 {
+		if ids, ok := mediaFileIDFilter(qo[0].Filters); ok {
+			idSet := make(map[string]bool, len(ids))
+			for _, id := range ids {
+				idSet[id] = true
+			}
+			values = slice.Filter(values, func(p *model.MediaFile) bool { return idSet[p.ID] })
+		}
+	}
 	result := slice.Map(values, func(p *model.MediaFile) model.MediaFile {
 		return *p
 	})
@@ -96,6 +106,22 @@ func (m *MockMediaFileRepo) GetAll(qo ...model.QueryOptions) (model.MediaFiles, 
 		return cmp.Compare(a.ID, b.ID)
 	})
 	return result, nil
+}
+
+// mediaFileIDFilter recognizes the Eq{"media_file.id": []string{...}} shape used by
+// callers that already have a specific set of IDs to hydrate (e.g. the UserTag/MyTag
+// Subsonic endpoints), so the mock can honor it instead of silently ignoring Filters.
+func mediaFileIDFilter(filters squirrel.Sqlizer) ([]string, bool) {
+	eq, ok := filters.(squirrel.Eq)
+	if !ok {
+		return nil, false
+	}
+	v, ok := eq["media_file.id"]
+	if !ok {
+		return nil, false
+	}
+	ids, ok := v.([]string)
+	return ids, ok
 }
 
 func (m *MockMediaFileRepo) GetRandom(qo ...model.QueryOptions) (model.MediaFiles, error) {

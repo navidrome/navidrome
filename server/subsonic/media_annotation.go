@@ -322,6 +322,56 @@ func (api *Router) GetSongsByUserTag(r *http.Request) (*responses.Subsonic, erro
 	return res, nil
 }
 
+// GetAllMyTags returns every distinct tag name the caller has hand-applied
+// themselves (source=user - the native REST /mediaFileTag "My Tags" feature),
+// so a client like Cirque can read them over Subsonic the same way it already
+// reads the AI-only UserTag family, without either family ever mixing with
+// the other.
+func (api *Router) GetAllMyTags(r *http.Request) (*responses.Subsonic, error) {
+	tags, err := api.ds.MediaFileTag(r.Context()).AllTagNames(model.MediaFileTagSourceUser)
+	if err != nil {
+		log.Error(r, err)
+		return nil, err
+	}
+
+	res := newResponse()
+	res.MyTags = &responses.UserTags{Tag: tags}
+	return res, nil
+}
+
+// GetSongsByMyTag returns every song the caller has hand-tagged (source=user)
+// with the given tag name, with full metadata - the My Tags counterpart to
+// GetSongsByUserTag.
+func (api *Router) GetSongsByMyTag(r *http.Request) (*responses.Subsonic, error) {
+	p := req.Params(r)
+	tag, err := p.String("tag")
+	if err != nil {
+		return nil, err
+	}
+
+	ctx := r.Context()
+	ids, err := api.ds.MediaFileTag(ctx).SongIDsForTag(tag, model.MediaFileTagSourceUser)
+	if err != nil {
+		log.Error(r, err)
+		return nil, err
+	}
+
+	res := newResponse()
+	if len(ids) == 0 {
+		res.SongsByMyTag = &responses.Songs{}
+		return res, nil
+	}
+
+	mfs, err := api.ds.MediaFile(ctx).GetAll(model.QueryOptions{Filters: Eq{"media_file.id": ids}})
+	if err != nil {
+		log.Error(r, err)
+		return nil, err
+	}
+
+	res.SongsByMyTag = &responses.Songs{Songs: slice.MapWithArg(mfs, ctx, childFromMediaFile)}
+	return res, nil
+}
+
 func (api *Router) Scrobble(r *http.Request) (*responses.Subsonic, error) {
 	p := req.Params(r)
 	ids, err := p.Strings("id")

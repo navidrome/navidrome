@@ -70,6 +70,10 @@ type Subsonic struct {
 	// Fork-specific: user tagging (media_file_tag)
 	UserTags       *UserTags `xml:"userTags,omitempty"                          json:"userTags,omitempty"`
 	SongsByUserTag *Songs    `xml:"songsByUserTag,omitempty"                    json:"songsByUserTag,omitempty"`
+
+	// Fork-specific: My Tags (media_file_tag, source=user - a human's own hand-added tags)
+	MyTags       *UserTags `xml:"myTags,omitempty"                            json:"myTags,omitempty"`
+	SongsByMyTag *Songs    `xml:"songsByMyTag,omitempty"                      json:"songsByMyTag,omitempty"`
 }
 
 const (

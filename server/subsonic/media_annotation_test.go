@@ -102,6 +102,86 @@ var _ = Describe("MediaAnnotationController", func() {
 		})
 	})
 
+	Describe("UserTags (AI) / MyTags (human) source isolation", func() {
+		var tagRepo *fakeMediaFileTagRepo
+
+		BeforeEach(func() {
+			tagRepo = &fakeMediaFileTagRepo{}
+			ds.(*tests.MockDataStore).MockedMediaFileTag = tagRepo
+
+			_ = ds.MediaFile(ctx).Put(&model.MediaFile{ID: "ai-song"})
+			_ = ds.MediaFile(ctx).Put(&model.MediaFile{ID: "user-song"})
+
+			// Same tag name ("rock") applied by both sources, on different songs -
+			// exercises that neither family leaks into the other's results.
+			_ = tagRepo.TagSong("ai-song", "rock", model.MediaFileTagSourceAI)
+			_ = tagRepo.TagSong("user-song", "rock", model.MediaFileTagSourceUser)
+			_ = tagRepo.TagSong("user-song", "workout", model.MediaFileTagSourceUser)
+		})
+
+		It("GetAllUserTags only returns AI-sourced tag names", func() {
+			r := newGetRequest()
+			resp, err := router.GetAllUserTags(r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.UserTags.Tag).To(ConsistOf("rock"))
+		})
+
+		It("GetAllMyTags only returns user-sourced tag names", func() {
+			r := newGetRequest()
+			resp, err := router.GetAllMyTags(r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.UserTags).To(BeNil())
+			Expect(resp.MyTags.Tag).To(ConsistOf("rock", "workout"))
+		})
+
+		It("GetSongsByUserTag for a name used in both sources only returns the AI-tagged song", func() {
+			r := newGetRequest("tag=rock")
+			resp, err := router.GetSongsByUserTag(r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.SongsByUserTag.Songs).To(HaveLen(1))
+			Expect(resp.SongsByUserTag.Songs[0].Id).To(Equal("ai-song"))
+		})
+
+		It("GetSongsByMyTag for a name used in both sources only returns the user-tagged song", func() {
+			r := newGetRequest("tag=rock")
+			resp, err := router.GetSongsByMyTag(r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.SongsByMyTag).ToNot(BeNil())
+			Expect(resp.SongsByMyTag.Songs).To(HaveLen(1))
+			Expect(resp.SongsByMyTag.Songs[0].Id).To(Equal("user-song"))
+		})
+
+		It("GetAllMyTags returns a valid empty response, not an error, when there are no user tags", func() {
+			tagRepo.tags = nil
+			r := newGetRequest()
+			resp, err := router.GetAllMyTags(r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.MyTags).ToNot(BeNil())
+			Expect(resp.MyTags.Tag).To(BeEmpty())
+		})
+
+		It("GetSongsByMyTag returns a valid empty response, not an error, for an unknown tag", func() {
+			r := newGetRequest("tag=does-not-exist")
+			resp, err := router.GetSongsByMyTag(r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.SongsByMyTag).ToNot(BeNil())
+			Expect(resp.SongsByMyTag.Songs).To(BeEmpty())
+		})
+
+		It("GetSongsByMyTag requires the tag parameter", func() {
+			r := newGetRequest()
+			_, err := router.GetSongsByMyTag(r)
+
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
 	Describe("ReportPlayback", func() {
 		It("returns error when mediaId is missing", func() {
 			r := newGetRequest("mediaType=song", "positionMs=0", "state=playing")
@@ -229,3 +309,68 @@ func (f *fakeEventBroker) SendBroadcastMessage(_ context.Context, event events.E
 }
 
 var _ events.Broker = (*fakeEventBroker)(nil)
+
+// fakeMediaFileTagRepo is an in-memory model.MediaFileTagRepository double,
+// used to verify the UserTag (AI) / MyTag (human) Subsonic endpoint families
+// never leak into each other's results.
+type fakeMediaFileTagRepo struct {
+	tags []model.MediaFileTag
+}
+
+func (f *fakeMediaFileTagRepo) TagSong(mediaFileID, tagName, source string) error {
+	f.tags = append(f.tags, model.MediaFileTag{MediaFileID: mediaFileID, TagName: tagName, Source: source})
+	return nil
+}
+
+func (f *fakeMediaFileTagRepo) UntagSong(mediaFileID, tagName string) error {
+	filtered := f.tags[:0]
+	for _, t := range f.tags {
+		if t.MediaFileID == mediaFileID && t.TagName == tagName {
+			continue
+		}
+		filtered = append(filtered, t)
+	}
+	f.tags = filtered
+	return nil
+}
+
+func (f *fakeMediaFileTagRepo) TagsForSong(mediaFileID, source string) ([]string, error) {
+	var names []string
+	for _, t := range f.tags {
+		if t.MediaFileID == mediaFileID && (source == "" || t.Source == source) {
+			names = append(names, t.TagName)
+		}
+	}
+	return names, nil
+}
+
+func (f *fakeMediaFileTagRepo) AllTagNames(source string) ([]string, error) {
+	seen := map[string]bool{}
+	var names []string
+	for _, t := range f.tags {
+		if source != "" && t.Source != source {
+			continue
+		}
+		if !seen[t.TagName] {
+			seen[t.TagName] = true
+			names = append(names, t.TagName)
+		}
+	}
+	return names, nil
+}
+
+func (f *fakeMediaFileTagRepo) SongIDsForTag(tagName, source string) ([]string, error) {
+	var ids []string
+	for _, t := range f.tags {
+		if t.TagName == tagName && (source == "" || t.Source == source) {
+			ids = append(ids, t.MediaFileID)
+		}
+	}
+	return ids, nil
+}
+
+func (f *fakeMediaFileTagRepo) TagCounts(_ string) ([]model.TagCount, error) {
+	return nil, nil
+}
+
+var _ model.MediaFileTagRepository = (*fakeMediaFileTagRepo)(nil)
