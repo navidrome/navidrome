@@ -93,7 +93,7 @@ var _ = Describe("updatePluginInDB", func() {
 			ID:                    "my-plugin",
 			SHA256:                "abc123",
 			ManifestSchemaVersion: CurrentManifestSchemaVersion - 1,
-			Enabled:               true,
+			Enabled:               false,
 		}
 		repo.SetData(model.Plugins{existing})
 
@@ -112,7 +112,63 @@ var _ = Describe("updatePluginInDB", func() {
 		Expect(stored.ManifestSchemaVersion).To(Equal(CurrentManifestSchemaVersion))
 		Expect(stored.SHA256).To(Equal("abc123"))
 		Expect(stored.Manifest).To(ContainSubstring("testModel"))
-		Expect(stored.Enabled).To(BeFalse(), "re-extraction disables the plugin for re-approval, same as a real file change")
+		Expect(stored.Enabled).To(BeFalse(), "was already disabled, re-extraction alone should not enable it")
+	})
+
+	It("disables and force-disables re-approval when the file itself actually changed", func() {
+		ctx := context.Background()
+		repo := tests.CreateMockPluginRepo()
+		existing := model.Plugin{
+			ID:                    "my-plugin",
+			Path:                  "/plugins/my-plugin.ndp",
+			SHA256:                "abc123",
+			ManifestSchemaVersion: CurrentManifestSchemaVersion,
+			Enabled:               true,
+		}
+		repo.SetData(model.Plugins{existing})
+
+		m := &Manager{}
+		metadata := &PluginMetadata{
+			Manifest: &Manifest{Name: "S", Author: "a", Version: "1.0.0"},
+			SHA256:   "def456", // file content actually changed
+		}
+		Expect(m.updatePluginInDB(ctx, repo, &existing, "/plugins/my-plugin.ndp", metadata)).To(Succeed())
+
+		stored, err := repo.Get("my-plugin")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(stored.SHA256).To(Equal("def456"))
+		Expect(stored.Enabled).To(BeFalse(), "a real binary change always requires manual re-enable, regardless of prior state")
+	})
+
+	It("falls back to disabled with LastError set when a schema-only re-extraction can't actually reload the plugin", func() {
+		// Was enabled, file unchanged, but the reload attempt itself fails
+		// (here: because the plugin's package can't be found on disk) - must
+		// not silently leave Enabled=true with nothing actually running,
+		// which is the exact "enabled but dead" state this whole fix exists
+		// to stop happening.
+		ctx := context.Background()
+		repo := tests.CreateMockPluginRepo()
+		existing := model.Plugin{
+			ID:                    "my-plugin",
+			Path:                  "/nonexistent/my-plugin.ndp",
+			SHA256:                "abc123",
+			ManifestSchemaVersion: CurrentManifestSchemaVersion - 1,
+			Enabled:               true,
+		}
+		repo.SetData(model.Plugins{existing})
+
+		m := &Manager{}
+		metadata := &PluginMetadata{
+			Manifest: &Manifest{Name: "S", Author: "a", Version: "1.0.0"},
+			SHA256:   "abc123", // file itself did not change
+		}
+		Expect(m.updatePluginInDB(ctx, repo, &existing, "/nonexistent/my-plugin.ndp", metadata)).To(Succeed())
+
+		stored, err := repo.Get("my-plugin")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(stored.ManifestSchemaVersion).To(Equal(CurrentManifestSchemaVersion))
+		Expect(stored.Enabled).To(BeFalse())
+		Expect(stored.LastError).ToNot(BeEmpty())
 	})
 })
 
