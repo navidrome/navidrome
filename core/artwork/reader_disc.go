@@ -43,7 +43,7 @@ func newDiscArtworkReader(ctx context.Context, a *artwork, artID model.ArtworkID
 		return nil, err
 	}
 
-	_, imgFiles, imagesUpdatedAt, err := loadAlbumFoldersPaths(ctx, a.ds, true, *al)
+	_, imgFiles, imagesUpdatedAt, err := loadAlbumFoldersPaths(ctx, a.ds, *al)
 	if err != nil {
 		return nil, err
 	}

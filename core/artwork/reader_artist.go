@@ -55,7 +55,7 @@ func newArtistArtworkReader(ctx context.Context, artwork *artwork, artID model.A
 	if err != nil {
 		return nil, err
 	}
-	albumPaths, imgFiles, imagesUpdatedAt, err := loadAlbumFoldersPaths(ctx, artwork.ds, false, als...)
+	albumPaths, imgFiles, imagesUpdatedAt, err := loadArtistAlbumRoots(ctx, artwork.ds, als)
 	if err != nil {
 		return nil, err
 	}
@@ -233,6 +233,39 @@ func escapeGlobLiteral(s string) string {
 	return b.String()
 }
 
+// loadArtistAlbumRoots returns one path per album — the deepest folder holding
+// all of that album's tracks — so an album split into disc subfolders can't
+// pull the artist folder's common prefix below the artist level.
+func loadArtistAlbumRoots(ctx context.Context, ds model.DataStore, albums model.Albums) ([]string, []string, *time.Time, error) {
+	var folderIDs []string
+	for _, album := range albums {
+		folderIDs = append(folderIDs, album.FolderIDs...)
+	}
+	folders, err := loadFolders(ctx, ds, folderIDs)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	pathByID := slice.ToMap(folders, func(f model.Folder) (string, string) {
+		return f.ID, f.AbsolutePath()
+	})
+	var roots []string
+	for _, album := range albums {
+		var albumPaths []string
+		for _, fid := range album.FolderIDs {
+			if p, ok := pathByID[fid]; ok {
+				albumPaths = append(albumPaths, p)
+			}
+		}
+		if len(albumPaths) > 0 {
+			roots = append(roots, commonDir(albumPaths))
+		}
+	}
+
+	imgFiles, updatedAt := folderImages(folders)
+	return roots, imgFiles, &updatedAt, nil
+}
+
 // commonDir returns the deepest directory containing all paths. Trailing
 // separators keep the comparison on segment boundaries, so a shared name
 // fragment (".../Album" and ".../Album2") is never read as a shared directory.
@@ -251,10 +284,11 @@ func loadArtistFolder(ctx context.Context, ds model.DataStore, albums model.Albu
 	}
 	libID := albums[0].LibraryID // Just need one of the albums, as they should all be in the same Library - for now! TODO: Support multiple libraries
 
-	// paths holds one root per album, so their common directory is already the
-	// artist folder; a single root is the album itself, so climb one level.
-	folderPath := commonDir(paths)
-	if len(paths) < 2 {
+	// paths holds one root per album: two or more distinct roots already meet at
+	// the artist folder, while a single root is an album folder needing a climb.
+	roots := slices.Compact(slices.Sorted(slices.Values(paths)))
+	folderPath := commonDir(roots)
+	if len(roots) < 2 {
 		folderPath = filepath.Dir(folderPath)
 	}
 

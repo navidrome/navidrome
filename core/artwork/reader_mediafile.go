@@ -27,7 +27,7 @@ func newMediafileArtworkReader(ctx context.Context, artwork *artwork, artID mode
 	if err != nil {
 		return nil, err
 	}
-	_, _, imagesUpdatedAt, err := loadAlbumFoldersPaths(ctx, artwork.ds, true, *al)
+	_, _, imagesUpdatedAt, err := loadAlbumFoldersPaths(ctx, artwork.ds, *al)
 	if err != nil {
 		return nil, err
 	}

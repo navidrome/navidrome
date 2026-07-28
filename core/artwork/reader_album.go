@@ -38,7 +38,7 @@ func newAlbumArtworkReader(ctx context.Context, artwork *artwork, artID model.Ar
 	if err != nil {
 		return nil, err
 	}
-	_, imgFiles, imagesUpdateAt, err := loadAlbumFoldersPaths(ctx, artwork.ds, true, *al)
+	_, imgFiles, imagesUpdateAt, err := loadAlbumFoldersPaths(ctx, artwork.ds, *al)
 	if err != nil {
 		return nil, err
 	}
@@ -104,53 +104,32 @@ func (a *albumArtworkReader) fromCoverArtPriority(ctx context.Context, ffmpeg ff
 	return ff
 }
 
-func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, includeParent bool, albums ...model.Album) ([]string, []string, *time.Time, error) {
-	var folderIDs []string
-	for _, album := range albums {
-		folderIDs = append(folderIDs, album.FolderIDs...)
-	}
-	folders, err := ds.Folder(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"folder.id": folderIDs, "missing": false}})
+func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, album model.Album) ([]string, []string, *time.Time, error) {
+	folders, err := loadFolders(ctx, ds, album.FolderIDs)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	if includeParent {
-		parent, err := albumRootParent(ctx, ds, folders, folderIDs)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		if parent != nil {
-			folders = append(folders, *parent)
-		}
+	parent, err := albumRootParent(ctx, ds, folders, album.FolderIDs)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if parent != nil {
+		folders = append(folders, *parent)
 	}
 
-	// Collapse each album to its own root so an album split into disc
-	// subfolders can't pull a shared prefix below the artist folder.
-	pathByID := slice.ToMap(folders, func(f model.Folder) (string, string) {
-		return f.ID, f.AbsolutePath()
-	})
-	var paths []string
-	var claimedIDs []string
-	for _, album := range albums {
-		var albumPaths []string
-		for _, fid := range album.FolderIDs {
-			if p, ok := pathByID[fid]; ok {
-				albumPaths = append(albumPaths, p)
-				claimedIDs = append(claimedIDs, fid)
-			}
-		}
-		if len(albumPaths) > 0 {
-			paths = append(paths, commonDir(albumPaths))
-		}
-	}
-	// Folders no album claims (e.g. the promoted parent) stay as-is.
-	claimed := slice.ToSet(claimedIDs)
-	for _, f := range folders {
-		if _, ok := claimed[f.ID]; !ok {
-			paths = append(paths, f.AbsolutePath())
-		}
-	}
+	paths := slice.Map(folders, func(f model.Folder) string { return f.AbsolutePath() })
+	imgFiles, updatedAt := folderImages(folders)
+	return paths, imgFiles, &updatedAt, nil
+}
 
+func loadFolders(ctx context.Context, ds model.DataStore, folderIDs []string) ([]model.Folder, error) {
+	return ds.Folder(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"folder.id": folderIDs, "missing": false}})
+}
+
+// folderImages collects the folders' image files, sorted so files without
+// numeric suffixes win (e.g. cover.jpg over cover.1.jpg).
+func folderImages(folders []model.Folder) ([]string, time.Time) {
 	var imgFiles []string
 	var updatedAt time.Time
 	for _, f := range folders {
@@ -162,13 +141,8 @@ func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, includeParen
 			imgFiles = append(imgFiles, path.Join(rel, img))
 		}
 	}
-
-	// Sort image files to ensure consistent selection of cover art
-	// This prioritizes files without numeric suffixes (e.g., cover.jpg over cover.1.jpg)
-	// by comparing base filenames without extensions
 	slices.SortFunc(imgFiles, compareImageFiles)
-
-	return paths, imgFiles, &updatedAt, nil
+	return imgFiles, updatedAt
 }
 
 // albumRootParent returns the common parent of the album's folders when it
