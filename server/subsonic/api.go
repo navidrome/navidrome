@@ -41,7 +41,7 @@ type handlerRaw = func(http.ResponseWriter, *http.Request) (*responses.Subsonic,
 
 // PodcastPlayNotifier dispatches podcast play events to interested listeners (e.g. plugins).
 type PodcastPlayNotifier interface {
-	DispatchPodcastPlayed(ctx context.Context, username string, episode *model.PodcastEpisode, channelTitle string)
+	DispatchPodcastPlayed(ctx context.Context, username, playerName string, episode *model.PodcastEpisode, channelTitle string)
 }
 
 type Router struct {

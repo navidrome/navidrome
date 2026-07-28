@@ -28,9 +28,10 @@ type PodcastScrobblerPlugin struct {
 	plugin *plugin
 }
 
-func (ps *PodcastScrobblerPlugin) OnPodcastPlayed(ctx context.Context, username string, episode *model.PodcastEpisode, channelTitle string) error {
+func (ps *PodcastScrobblerPlugin) OnPodcastPlayed(ctx context.Context, username, playerName string, episode *model.PodcastEpisode, channelTitle string) error {
 	input := capabilities.PodcastPlayedRequest{
-		Username: username,
+		Username:   username,
+		PlayerName: playerName,
 		Episode: capabilities.EpisodeInfo{
 			ID:           episode.ID,
 			Title:        episode.Title,
@@ -51,13 +52,13 @@ func (m *Manager) LoadPodcastScrobbler(name string) (*PodcastScrobblerPlugin, bo
 
 // DispatchPodcastPlayed calls OnPodcastPlayed on all loaded PodcastScrobbler plugins.
 // Errors from individual plugins are logged but do not stop dispatch to remaining plugins.
-func (m *Manager) DispatchPodcastPlayed(ctx context.Context, username string, episode *model.PodcastEpisode, channelTitle string) {
+func (m *Manager) DispatchPodcastPlayed(ctx context.Context, username, playerName string, episode *model.PodcastEpisode, channelTitle string) {
 	for _, name := range m.PluginNames(string(CapabilityPodcastScrobbler)) {
 		p, ok := m.LoadPodcastScrobbler(name)
 		if !ok {
 			continue
 		}
-		if err := p.OnPodcastPlayed(ctx, username, episode, channelTitle); err != nil {
+		if err := p.OnPodcastPlayed(ctx, username, playerName, episode, channelTitle); err != nil {
 			log.Warn(ctx, "Plugin podcast scrobbler error", "plugin", name, err)
 		}
 	}

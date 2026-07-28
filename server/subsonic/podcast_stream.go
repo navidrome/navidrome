@@ -37,11 +37,15 @@ func (api *Router) streamPodcastEpisode(ctx context.Context, w http.ResponseWrit
 
 	if api.podcastNotifier != nil {
 		username, _ := request.UsernameFrom(ctx)
+		playerName := ""
+		if player, ok := request.PlayerFrom(ctx); ok {
+			playerName = player.Name
+		}
 		channelTitle := ""
 		if ch, cerr := api.ds.PodcastChannel(ctx).Get(episode.ChannelID); cerr == nil {
 			channelTitle = ch.Title
 		}
-		api.podcastNotifier.DispatchPodcastPlayed(ctx, username, episode, channelTitle)
+		api.podcastNotifier.DispatchPodcastPlayed(ctx, username, playerName, episode, channelTitle)
 	}
 
 	if episode.IsDownloaded() {

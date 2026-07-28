@@ -15,6 +15,8 @@ type PodcastScrobbler interface {
 type PodcastPlayedRequest struct {
 	// Username is the username of the user who played the episode.
 	Username string `json:"username"`
+	// PlayerName is the user-assigned name of the Navidrome player (e.g. "Car", "Phone", "Desktop").
+	PlayerName string `json:"player_name,omitempty"`
 	// Episode contains metadata about the episode that was played.
 	Episode EpisodeInfo `json:"episode"`
 }
