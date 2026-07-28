@@ -11,6 +11,7 @@ import (
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 )
 
 const onDemandDownloadTimeout = 60 * time.Second
@@ -32,6 +33,15 @@ func (api *Router) streamPodcastEpisode(ctx context.Context, w http.ResponseWrit
 	// episodes don't support today.
 	if err := api.ds.PodcastEpisode(ctx).IncPlayCount(episode.ID, time.Now()); err != nil {
 		log.Warn(ctx, "Error recording podcast episode play", "id", id, err)
+	}
+
+	if api.podcastNotifier != nil {
+		username, _ := request.UsernameFrom(ctx)
+		channelTitle := ""
+		if ch, cerr := api.ds.PodcastChannel(ctx).Get(episode.ChannelID); cerr == nil {
+			channelTitle = ch.Title
+		}
+		api.podcastNotifier.DispatchPodcastPlayed(ctx, username, episode, channelTitle)
 	}
 
 	if episode.IsDownloaded() {

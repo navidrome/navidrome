@@ -54,6 +54,7 @@ var allProviders = wire.NewSet(
 	wire.Bind(new(core.PluginUnloader), new(*plugins.Manager)),
 	wire.Bind(new(plugins.PluginMetricsRecorder), new(metrics.Metrics)),
 	wire.Bind(new(core.Watcher), new(scanner.Watcher)),
+	wire.Bind(new(subsonic.PodcastPlayNotifier), new(*plugins.Manager)),
 )
 
 func CreateDataStore() model.DataStore {
