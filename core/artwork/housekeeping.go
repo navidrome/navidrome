@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 const staleAbsentAge = 24 * time.Hour
@@ -85,12 +86,11 @@ func enqueueBackfillKind(ctx context.Context, ds model.DataStore, kind model.Kin
 	if len(ids) == 0 {
 		return nil
 	}
-	items := make([]model.ArtworkQueueItem, len(ids))
-	for i, id := range ids {
-		items[i] = model.ArtworkQueueItem{
+	items := slice.Map(ids, func(id string) model.ArtworkQueueItem {
+		return model.ArtworkQueueItem{
 			ItemKind: kind.Prefix(), ItemID: id, ImageType: model.ImageTypePrimary, Priority: model.ArtworkPriorityBackfill,
 		}
-	}
+	})
 	return ds.ArtworkQueue(ctx).Enqueue(items...)
 }
 

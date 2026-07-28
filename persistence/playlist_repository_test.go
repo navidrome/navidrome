@@ -8,6 +8,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pocketbase/dbx"
@@ -42,13 +43,9 @@ var _ = Describe("PlaylistRepository", func() {
 			want, err := repo.GetAll()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(want).ToNot(BeEmpty())
-			wantIDs := make([]string, 0, len(want))
-			for _, p := range want {
-				wantIDs = append(wantIDs, p.ID)
-			}
 			ids, err := repo.GetAllIDs()
 			Expect(err).ToNot(HaveOccurred())
-			Expect(ids).To(ConsistOf(wantIDs))
+			Expect(ids).To(ConsistOf(slice.Map(want, func(p model.Playlist) string { return p.ID })))
 		})
 	})
 

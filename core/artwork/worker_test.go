@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"slices"
 	"sync"
 	"time"
 
@@ -43,7 +44,7 @@ func (c *recordingCache) Get(ctx context.Context, arg cache.Item) (*cache.Cached
 func (c *recordingCache) getKeys() []string {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return append([]string(nil), c.keys...)
+	return slices.Clone(c.keys)
 }
 
 // Simulates a concurrent Enqueue between DequeueBatch and the worker's delete, so
@@ -88,7 +89,7 @@ func (f *fakeEventBroker) SendBroadcastMessage(_ context.Context, event events.E
 func (f *fakeEventBroker) getEvents() []events.Event {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return f.events
+	return slices.Clone(f.events)
 }
 
 var _ events.Broker = (*fakeEventBroker)(nil)

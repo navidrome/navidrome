@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"slices"
@@ -43,10 +44,7 @@ func (r *artworkQueueRepository) enqueue(conflict string, items []model.ArtworkQ
 	for chunk := range slices.Chunk(items, enqueueChunkSize) {
 		ins := Insert(r.tableName).Columns("item_kind", "item_id", "image_type", "priority", "attempts", "retry_at", "enqueued_at")
 		for _, it := range chunk {
-			if it.ImageType == "" {
-				it.ImageType = model.ImageTypePrimary
-			}
-			ins = ins.Values(it.ItemKind, it.ItemID, it.ImageType, it.Priority, 0, now, now)
+			ins = ins.Values(it.ItemKind, it.ItemID, cmp.Or(it.ImageType, model.ImageTypePrimary), it.Priority, 0, now, now)
 		}
 		ins = ins.Suffix(conflict)
 		if _, err := r.executeSQL(ins); err != nil {

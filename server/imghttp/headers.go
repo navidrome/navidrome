@@ -56,7 +56,7 @@ func ifNoneMatch(header, hash string) bool {
 	if header == "*" {
 		return true
 	}
-	for _, tag := range strings.Split(header, ",") {
+	for tag := range strings.SplitSeq(header, ",") {
 		tag = strings.TrimSpace(tag)
 		tag = strings.TrimPrefix(tag, "W/")
 		if strings.Trim(tag, `"`) == hash {

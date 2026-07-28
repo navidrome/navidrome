@@ -9,6 +9,7 @@ import (
 	"image/color"
 	"image/png"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -295,9 +296,7 @@ func pngBytes(label string) []byte {
 func trackFile(num int, title string, extra ...map[string]any) *fstest.MapFile {
 	tags := storagetest.Track(num, title)
 	for _, e := range extra {
-		for k, v := range e {
-			tags[k] = v
-		}
+		maps.Copy(tags, e)
 	}
 	return storagetest.MP3(tags)
 }

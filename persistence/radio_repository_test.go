@@ -7,6 +7,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -83,13 +84,9 @@ var _ = Describe("RadioRepository", func() {
 				want, err := repo.GetAll()
 				Expect(err).To(BeNil())
 				Expect(want).ToNot(BeEmpty())
-				wantIDs := make([]string, 0, len(want))
-				for _, r := range want {
-					wantIDs = append(wantIDs, r.ID)
-				}
 				ids, err := repo.GetAllIDs()
 				Expect(err).To(BeNil())
-				Expect(ids).To(ConsistOf(wantIDs))
+				Expect(ids).To(ConsistOf(slice.Map(want, func(r model.Radio) string { return r.ID })))
 			})
 		})
 

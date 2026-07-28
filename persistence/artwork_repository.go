@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"cmp"
 	"context"
 	"slices"
 	"time"
@@ -155,9 +156,7 @@ func (r *artworkRepository) GetItemArtwork(kind model.Kind, id, imageType string
 }
 
 func (r *artworkRepository) PutItemArtwork(ia *model.ItemArtwork) error {
-	if ia.ImageType == "" {
-		ia.ImageType = model.ImageTypePrimary
-	}
+	ia.ImageType = cmp.Or(ia.ImageType, model.ImageTypePrimary)
 	ia.UpdatedAt = time.Now()
 	// PutItemArtwork records the outcome of an attempt, so an unset attempted_at is now.
 	if ia.AttemptedAt.IsZero() {

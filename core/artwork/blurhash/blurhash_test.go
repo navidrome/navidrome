@@ -22,8 +22,8 @@ func decode83(s string) int {
 
 func solidImage(w, h int, c color.NRGBA) image.Image {
 	img := image.NewNRGBA(image.Rect(0, 0, w, h))
-	for y := 0; y < h; y++ {
-		for x := 0; x < w; x++ {
+	for y := range h {
+		for x := range w {
 			img.SetNRGBA(x, y, c)
 		}
 	}
@@ -32,8 +32,8 @@ func solidImage(w, h int, c color.NRGBA) image.Image {
 
 func gradientImage(w, h int) image.Image {
 	img := image.NewNRGBA(image.Rect(0, 0, w, h))
-	for y := 0; y < h; y++ {
-		for x := 0; x < w; x++ {
+	for y := range h {
+		for x := range w {
 			img.SetNRGBA(x, y, color.NRGBA{R: uint8(255 * x / w), G: uint8(255 * y / h), B: 128, A: 255})
 		}
 	}

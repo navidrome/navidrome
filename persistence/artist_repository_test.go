@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -289,13 +290,9 @@ var _ = Describe("ArtistRepository", func() {
 				want, err := repo.GetAll()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(want).ToNot(BeEmpty())
-				wantIDs := make([]string, 0, len(want))
-				for _, a := range want {
-					wantIDs = append(wantIDs, a.ID)
-				}
 				ids, err := repo.GetAllIDs()
 				Expect(err).ToNot(HaveOccurred())
-				Expect(ids).To(ConsistOf(wantIDs))
+				Expect(ids).To(ConsistOf(slice.Map(want, func(a model.Artist) string { return a.ID })))
 			})
 		})
 

@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -89,13 +90,9 @@ var _ = Describe("AlbumRepository", func() {
 			want, err := albumRepo.GetAll()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(want).ToNot(BeEmpty())
-			wantIDs := make([]string, 0, len(want))
-			for _, a := range want {
-				wantIDs = append(wantIDs, a.ID)
-			}
 			ids, err := albumRepo.GetAllIDs()
 			Expect(err).ToNot(HaveOccurred())
-			Expect(ids).To(ConsistOf(wantIDs))
+			Expect(ids).To(ConsistOf(slice.Map(want, func(a model.Album) string { return a.ID })))
 		})
 	})
 

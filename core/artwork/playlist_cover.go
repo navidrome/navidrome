@@ -13,6 +13,7 @@ import (
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils"
 	xdraw "golang.org/x/image/draw"
 )
 
@@ -33,7 +34,7 @@ func findPlaylistSidecarPath(ctx context.Context, plsPath string) string {
 	}
 	for _, entry := range entries {
 		name := entry.Name()
-		nameBase := strings.TrimSuffix(name, filepath.Ext(name))
+		nameBase := utils.BaseName(name)
 		if !entry.IsDir() && strings.EqualFold(nameBase, base) && model.IsImageFile(name) {
 			return filepath.Join(dir, name)
 		}

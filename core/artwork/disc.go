@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 // discArtworkReader resolves disc-level artwork from a library's folder images
@@ -76,21 +77,17 @@ func newDiscArtworkReader(ctx context.Context, ds model.DataStore, artID model.A
 
 	// Build disc folder set and find first track. mf.Path is already library-relative.
 	var firstTrackRel string
-	allFolderIDs := make(map[string]bool)
 	for _, mf := range mfs {
-		allFolderIDs[mf.FolderID] = true
-		if firstTrackRel == "" {
+		if mf.Path != "" {
 			firstTrackRel = filepath.ToSlash(mf.Path)
+			break
 		}
 	}
+	folderIDs := slice.Unique(slice.Map(mfs, func(mf model.MediaFile) string { return mf.FolderID }))
 
 	// Resolve folder IDs to library-relative paths
 	discFoldersRel := make(map[string]bool)
-	if len(allFolderIDs) > 0 {
-		folderIDs := make([]string, 0, len(allFolderIDs))
-		for id := range allFolderIDs {
-			folderIDs = append(folderIDs, id)
-		}
+	if len(folderIDs) > 0 {
 		folders, err := ds.Folder(ctx).GetAll(model.QueryOptions{
 			Filters: squirrel.Eq{"folder.id": folderIDs},
 		})
@@ -144,8 +141,7 @@ func (d *discArtworkReader) fromDiscArtPriority(ctx context.Context, ffmpeg ffmp
 func (d *discArtworkReader) fromDiscSubtitle(ctx context.Context, subtitle string) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
 		for _, file := range d.imgFiles {
-			name := path.Base(file)
-			stem := strings.TrimSuffix(name, path.Ext(name))
+			stem := utils.BaseName(file)
 			if !strings.EqualFold(stem, subtitle) {
 				continue
 			}

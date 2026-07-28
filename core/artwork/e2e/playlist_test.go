@@ -10,6 +10,7 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -182,10 +183,7 @@ var _ = Describe("Playlist artwork resolution", func() {
 			mfs, err := rds.MediaFile(rctx).GetAll(model.QueryOptions{})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(mfs).To(HaveLen(4))
-			ids := make([]string, 0, len(mfs))
-			for _, mf := range mfs {
-				ids = append(ids, mf.ID)
-			}
+			ids := slice.Map(mfs, func(mf model.MediaFile) string { return mf.ID })
 
 			pl := model.Playlist{ID: "pl-8", Name: "Four", OwnerID: "admin-1"}
 			pl.AddMediaFilesByID(ids)

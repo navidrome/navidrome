@@ -7,6 +7,7 @@ import (
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 func CreateMockPlaylistRepo() *MockPlaylistRepo {
@@ -57,11 +58,7 @@ func (m *MockPlaylistRepo) GetAllIDs(options ...model.QueryOptions) ([]string, e
 	if err != nil {
 		return nil, err
 	}
-	ids := make([]string, len(all))
-	for i, p := range all {
-		ids[i] = p.ID
-	}
-	return ids, nil
+	return slice.Map(all, func(p model.Playlist) string { return p.ID }), nil
 }
 
 func (m *MockPlaylistRepo) GetCursor(options ...model.QueryOptions) (model.PlaylistCursor, error) {

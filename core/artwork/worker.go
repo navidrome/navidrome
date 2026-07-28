@@ -2,6 +2,7 @@ package artwork
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"io"
 	"math"
@@ -253,9 +254,7 @@ func (w *Worker) broadcastRefresh(ctx context.Context, found []model.ArtworkQueu
 }
 
 func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) (outcome, *acquired) {
-	if item.ImageType == "" {
-		item.ImageType = model.ImageTypePrimary
-	}
+	item.ImageType = cmp.Or(item.ImageType, model.ImageTypePrimary)
 	out, got := w.proc.acquire(ctx, item)
 
 	queue := w.proc.ds.ArtworkQueue(ctx)
@@ -333,7 +332,7 @@ func (w *Worker) precache(ctx context.Context, got *acquired) {
 
 // backoffFor returns min(5s×4^n, giveUpAfter) scaled by (1+jitter), with jitter in [-0.4, 0.4].
 func backoffFor(attempts int, jitter float64) time.Duration {
-	d := math.Min(float64(backoffBase)*math.Pow(4, float64(attempts)), float64(giveUpAfter))
+	d := min(float64(backoffBase)*math.Pow(4, float64(attempts)), float64(giveUpAfter))
 	return time.Duration(d * (1 + jitter))
 }
 

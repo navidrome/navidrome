@@ -132,11 +132,7 @@ func (m *MockMediaFileRepo) GetAllIDs(qo ...model.QueryOptions) ([]string, error
 	if err != nil {
 		return nil, err
 	}
-	ids := make([]string, len(all))
-	for i, mf := range all {
-		ids[i] = mf.ID
-	}
-	return ids, nil
+	return slice.Map(all, func(mf model.MediaFile) string { return mf.ID }), nil
 }
 
 func (m *MockMediaFileRepo) Put(mf *model.MediaFile) error {

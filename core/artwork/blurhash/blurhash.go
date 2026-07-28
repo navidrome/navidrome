@@ -57,13 +57,13 @@ func Encode(img image.Image, xComp, yComp int) (string, error) {
 
 	lin := srgbToLinearTable()
 	factors := make([][3]float64, xComp*yComp)
-	for y := 0; y < h; y++ {
+	for y := range h {
 		row := rgba.Pix[y*rgba.Stride:]
-		for x := 0; x < w; x++ {
+		for x := range w {
 			p := x * 4
 			lr, lg, lb := lin[row[p]], lin[row[p+1]], lin[row[p+2]]
-			for j := 0; j < yComp; j++ {
-				for i := 0; i < xComp; i++ {
+			for j := range yComp {
+				for i := range xComp {
 					basis := cosX[i][x] * cosY[j][y]
 					f := &factors[j*xComp+i]
 					f[0] += basis * lr
@@ -94,7 +94,7 @@ func Encode(img image.Image, xComp, yComp int) (string, error) {
 		for _, f := range ac {
 			actualMax = max(actualMax, math.Abs(f[0]), math.Abs(f[1]), math.Abs(f[2]))
 		}
-		quantMax := int(math.Max(0, math.Min(82, math.Floor(actualMax*166-0.5))))
+		quantMax := int(max(0, min(82, math.Floor(actualMax*166-0.5))))
 		maxVal = float64(quantMax+1) / 166
 		sb.WriteString(Encode83(quantMax, 1))
 	} else {
@@ -141,7 +141,7 @@ func downscale(img image.Image) image.Image {
 }
 
 func quantAC(v, maxVal float64) int {
-	return int(math.Max(0, math.Min(18, math.Floor(signPow(v/maxVal, 0.5)*9+9.5))))
+	return int(max(0, min(18, math.Floor(signPow(v/maxVal, 0.5)*9+9.5))))
 }
 
 func signPow(v, exp float64) float64 {
@@ -157,7 +157,7 @@ func srgbToLinear(v int) float64 {
 }
 
 func linearToSRGB(v float64) int {
-	v = math.Min(math.Max(0, v), 1)
+	v = min(max(0, v), 1)
 	if v <= 0.0031308 {
 		return int(v*12.92*255 + 0.5)
 	}

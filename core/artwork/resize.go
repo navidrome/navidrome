@@ -129,8 +129,7 @@ func resizeStaticImage(data []byte, size int, square bool) (io.Reader, int, erro
 		return nil, originalSize, err
 	}
 	// Copy bytes before returning buffer to pool (pool may reuse the buffer)
-	encoded := make([]byte, buf.Len())
-	copy(encoded, buf.Bytes())
+	encoded := bytes.Clone(buf.Bytes())
 	bufPool.Put(buf)
 	return bytes.NewReader(encoded), originalSize, nil
 }

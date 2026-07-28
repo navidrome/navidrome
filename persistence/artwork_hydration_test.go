@@ -66,12 +66,9 @@ var _ = Describe("Artwork hydration", func() {
 			putInfo("al", albumAbbeyRoad.ID, "")
 			// albumRadioactivity: no row -> unresolved
 
-			byID := map[string]model.Album{}
 			all, err := repo.GetAll()
 			Expect(err).ToNot(HaveOccurred())
-			for _, a := range all {
-				byID[a.ID] = a
-			}
+			byID := slice.ToMap(all, func(a model.Album) (string, model.Album) { return a.ID, a })
 
 			Expect(byID[albumSgtPeppers.ID].ImageHash).To(Equal("althash11111111"))
 			Expect(byID[albumSgtPeppers.ID].ImageAbsent).To(BeFalse())
@@ -118,12 +115,9 @@ var _ = Describe("Artwork hydration", func() {
 			putInfo("ar", artistKraftwerk.ID, "")
 			// artistCJK: no row -> unresolved
 
-			byID := map[string]model.Artist{}
 			all, err := repo.GetAll()
 			Expect(err).ToNot(HaveOccurred())
-			for _, a := range all {
-				byID[a.ID] = a
-			}
+			byID := slice.ToMap(all, func(a model.Artist) (string, model.Artist) { return a.ID, a })
 
 			Expect(byID[artistBeatles.ID].ImageHash).To(Equal("arhash444444444"))
 			Expect(byID[artistBeatles.ID].ImageAbsent).To(BeFalse())
@@ -157,12 +151,9 @@ var _ = Describe("Artwork hydration", func() {
 			putInfo("pl", plsBest.ID, "plhash777777777")
 			putInfo("pl", plsCool.ID, "")
 
-			byID := map[string]model.Playlist{}
 			all, err := repo.GetAll()
 			Expect(err).ToNot(HaveOccurred())
-			for _, p := range all {
-				byID[p.ID] = p
-			}
+			byID := slice.ToMap(all, func(p model.Playlist) (string, model.Playlist) { return p.ID, p })
 
 			Expect(byID[plsBest.ID].ImageHash).To(Equal("plhash777777777"))
 			Expect(byID[plsBest.ID].ImageAbsent).To(BeFalse())
@@ -185,10 +176,7 @@ var _ = Describe("Artwork hydration", func() {
 			Expect(err).ToNot(HaveOccurred())
 			tracks := pls.Tracks
 			Expect(tracks).ToNot(BeEmpty())
-			byID := map[string]model.PlaylistTrack{}
-			for _, t := range tracks {
-				byID[t.MediaFile.ID] = t
-			}
+			byID := slice.ToMap(tracks, func(t model.PlaylistTrack) (string, model.PlaylistTrack) { return t.MediaFile.ID, t })
 			Expect(byID).To(HaveKey(songDayInALife.ID))
 			Expect(byID[songDayInALife.ID].AlbumImage.ImageHash).To(Equal("pltrackhash1234"))
 			Expect(byID[songDayInALife.ID].BlurHash).To(Equal("LPLBLURhash"))
@@ -216,12 +204,9 @@ var _ = Describe("Artwork hydration", func() {
 			putInfo("ra", radioWithHomePage.ID, "rahash999999999")
 			putInfo("ra", radioWithoutHomePage.ID, "")
 
-			byID := map[string]model.Radio{}
 			all, err := repo.GetAll()
 			Expect(err).ToNot(HaveOccurred())
-			for _, rd := range all {
-				byID[rd.ID] = rd
-			}
+			byID := slice.ToMap(all, func(rd model.Radio) (string, model.Radio) { return rd.ID, rd })
 
 			Expect(byID[radioWithHomePage.ID].ImageHash).To(Equal("rahash999999999"))
 			Expect(byID[radioWithHomePage.ID].ImageAbsent).To(BeFalse())
@@ -247,13 +232,9 @@ var _ = Describe("Artwork hydration", func() {
 		}
 
 		getByID := func() map[string]model.MediaFile {
-			byID := map[string]model.MediaFile{}
 			all, err := repo.GetAll()
 			Expect(err).ToNot(HaveOccurred())
-			for _, mf := range all {
-				byID[mf.ID] = mf
-			}
-			return byID
+			return slice.ToMap(all, func(mf model.MediaFile) (string, model.MediaFile) { return mf.ID, mf })
 		}
 
 		BeforeEach(func() {

@@ -6,6 +6,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pocketbase/dbx"
@@ -193,10 +194,7 @@ var _ = Describe("ArtworkQueueRepository", func() {
 		Expect(purged).To(Equal(int64(5)))
 
 		got, _ := repo.DequeueBatch(100)
-		ids := make([]string, 0, len(got))
-		for _, it := range got {
-			ids = append(ids, it.ItemID)
-		}
+		ids := slice.Map(got, func(it model.ArtworkQueueItem) string { return it.ItemID })
 		Expect(ids).To(ConsistOf(albumSgtPeppers.ID, artistKraftwerk.ID, plsBest.ID, radioWithHomePage.ID, songDayInALife.ID))
 	})
 

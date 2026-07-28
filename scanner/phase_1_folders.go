@@ -401,10 +401,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 
 		// A re-imported track returns to unresolved so new embedded art is picked up lazily.
 		if len(entry.tracks) > 0 {
-			trackIDs := make([]string, len(entry.tracks))
-			for i := range entry.tracks {
-				trackIDs[i] = entry.tracks[i].ID
-			}
+			trackIDs := slice.Map(entry.tracks, func(t model.MediaFile) string { return t.ID })
 			if err := tx.Artwork(p.ctx).DeleteForItems(model.KindMediaFileArtwork, trackIDs); err != nil {
 				log.Warn(p.ctx, "Scanner: could not invalidate media_file artwork", "folder", entry.path, err)
 			}

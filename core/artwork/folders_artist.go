@@ -17,6 +17,8 @@ import (
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/navidrome/navidrome/utils/str"
 )
 
@@ -72,13 +74,7 @@ func findImageInFolder(ctx context.Context, libFS fs.FS, relFolder, absFolder, p
 		return nil, "", err
 	}
 
-	var imagePaths []string
-	for _, m := range matches {
-		if !model.IsImageFile(m) {
-			continue
-		}
-		imagePaths = append(imagePaths, m)
-	}
+	imagePaths := slice.Filter(matches, model.IsImageFile)
 
 	// Prefer base filenames over numeric-suffixed ones (artist.jpg before artist.1.jpg)
 	slices.SortFunc(imagePaths, compareImageFiles)
@@ -157,7 +153,7 @@ func findImageInArtistFolder(folder, mbzArtistID, artistName string) string {
 				continue
 			}
 			name := entry.Name()
-			base := strings.TrimSuffix(name, filepath.Ext(name))
+			base := utils.BaseName(name)
 			if strings.EqualFold(base, candidate) && model.IsImageFile(name) {
 				return filepath.Join(folder, name)
 			}

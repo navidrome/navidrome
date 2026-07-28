@@ -1,8 +1,8 @@
 package tests
 
 import (
+	"cmp"
 	"slices"
-	"sort"
 	"sync"
 	"time"
 
@@ -67,11 +67,8 @@ func (m *MockArtworkQueueRepo) DequeueBatch(n int, kinds ...string) ([]model.Art
 			res = append(res, it)
 		}
 	}
-	sort.Slice(res, func(i, j int) bool {
-		if res[i].Priority != res[j].Priority {
-			return res[i].Priority > res[j].Priority
-		}
-		return res[i].EnqueuedAt.Before(res[j].EnqueuedAt)
+	slices.SortFunc(res, func(a, b model.ArtworkQueueItem) int {
+		return cmp.Or(cmp.Compare(b.Priority, a.Priority), a.EnqueuedAt.Compare(b.EnqueuedAt))
 	})
 	if len(res) > n {
 		res = res[:n]

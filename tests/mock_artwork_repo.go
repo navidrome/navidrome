@@ -1,10 +1,12 @@
 package tests
 
 import (
+	"maps"
 	"sync"
 	"time"
 
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 type MockArtworkRepo struct {
@@ -167,11 +169,9 @@ func (m *MockArtworkRepo) DeleteForItem(kind model.Kind, id string) error {
 	if m.Err != nil {
 		return m.Err
 	}
-	for k, ia := range m.ItemData {
-		if ia.ItemKind == kind.Prefix() && ia.ItemID == id {
-			delete(m.ItemData, k)
-		}
-	}
+	maps.DeleteFunc(m.ItemData, func(_ string, ia model.ItemArtwork) bool {
+		return ia.ItemKind == kind.Prefix() && ia.ItemID == id
+	})
 	return nil
 }
 
@@ -181,15 +181,11 @@ func (m *MockArtworkRepo) DeleteForItems(kind model.Kind, ids []string) error {
 	if m.Err != nil {
 		return m.Err
 	}
-	idSet := make(map[string]bool, len(ids))
-	for _, id := range ids {
-		idSet[id] = true
-	}
-	for k, ia := range m.ItemData {
-		if ia.ItemKind == kind.Prefix() && idSet[ia.ItemID] {
-			delete(m.ItemData, k)
-		}
-	}
+	idSet := slice.ToSet(ids)
+	maps.DeleteFunc(m.ItemData, func(_ string, ia model.ItemArtwork) bool {
+		_, ok := idSet[ia.ItemID]
+		return ok && ia.ItemKind == kind.Prefix()
+	})
 	return nil
 }
 
