@@ -303,6 +303,14 @@ a person's My Tags can never make AI Auto-Tagging's "already classified this tra
 write/remove `source=user`, and its `GET` endpoints accept an optional `?source=ai` or `?source=user` query
 parameter to narrow results (omit it to get both, which is what the smart-playlist criteria and list filter do).
 
+For a Subsonic client (Cirque, for example) that wants to read a person's own My Tags specifically — not the
+native REST API, and not mixed in with AI Tags — two read-only endpoints mirror the AI-only family exactly, but
+scoped to `source=user`: `getAllMyTags.view` (every My Tag name in use) and `getSongsByMyTag.view` (every song
+carrying a given My Tag). These are strictly additive: the `*UserTag` family above is untouched and stays
+AI-only, so the AI Auto-Tagging plugin's behavior never changes. There's currently no `setMyTag.view`/
+`removeMyTag.view` — writing a My Tag from a client is native-REST-only for now, same as the "Edit Tags" dialog
+uses.
+
 This API is what powers two companion projects, both outside this repo:
 [AI Auto-Tagging](https://github.com/RFLundgren/AI-auto-tagging-plugin), which classifies tracks by genre/mood/
 language using an AI provider and writes the results as tags, and

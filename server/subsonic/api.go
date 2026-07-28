@@ -154,6 +154,8 @@ func (api *Router) routes() http.Handler {
 			h(r, "getUserTags", api.GetUserTags)
 			h(r, "getAllUserTags", api.GetAllUserTags)
 			h(r, "getSongsByUserTag", api.GetSongsByUserTag)
+			h(r, "getAllMyTags", api.GetAllMyTags)
+			h(r, "getSongsByMyTag", api.GetSongsByMyTag)
 			h(r, "scrobble", api.Scrobble)
 			h(r, "reportPlayback", api.ReportPlayback)
 		})
