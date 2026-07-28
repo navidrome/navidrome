@@ -19,6 +19,7 @@ import (
 	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/navidrome/navidrome/utils/str"
 )
 
@@ -232,17 +233,30 @@ func escapeGlobLiteral(s string) string {
 	return b.String()
 }
 
+// commonDir returns the deepest directory containing all paths. Trailing
+// separators keep the comparison on segment boundaries, so a shared name
+// fragment (".../Album" and ".../Album2") is never read as a shared directory.
+func commonDir(paths []string) string {
+	sep := string(filepath.Separator)
+	common := str.LongestCommonPrefix(slice.Map(paths, func(p string) string { return p + sep }))
+	if !strings.HasSuffix(common, sep) {
+		common, _ = filepath.Split(common)
+	}
+	return filepath.Clean(common)
+}
+
 func loadArtistFolder(ctx context.Context, ds model.DataStore, albums model.Albums, paths []string) (string, time.Time, error) {
 	if len(albums) == 0 {
 		return "", time.Time{}, nil
 	}
 	libID := albums[0].LibraryID // Just need one of the albums, as they should all be in the same Library - for now! TODO: Support multiple libraries
 
-	folderPath := str.LongestCommonPrefix(paths)
-	if !strings.HasSuffix(folderPath, string(filepath.Separator)) {
-		folderPath, _ = filepath.Split(folderPath)
+	// paths holds one root per album, so their common directory is already the
+	// artist folder; a single root is the album itself, so climb one level.
+	folderPath := commonDir(paths)
+	if len(paths) < 2 {
+		folderPath = filepath.Dir(folderPath)
 	}
-	folderPath = filepath.Dir(folderPath)
 
 	// Manipulate the path to get the folder ID
 	// TODO: This is a bit hacky, but it's the easiest way to get the folder ID, ATM

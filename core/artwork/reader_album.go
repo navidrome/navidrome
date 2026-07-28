@@ -20,6 +20,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/natural"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 type albumArtworkReader struct {
@@ -123,11 +124,36 @@ func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, includeParen
 		}
 	}
 
+	// Collapse each album to its own root so an album split into disc
+	// subfolders can't pull a shared prefix below the artist folder.
+	pathByID := slice.ToMap(folders, func(f model.Folder) (string, string) {
+		return f.ID, f.AbsolutePath()
+	})
 	var paths []string
+	var claimedIDs []string
+	for _, album := range albums {
+		var albumPaths []string
+		for _, fid := range album.FolderIDs {
+			if p, ok := pathByID[fid]; ok {
+				albumPaths = append(albumPaths, p)
+				claimedIDs = append(claimedIDs, fid)
+			}
+		}
+		if len(albumPaths) > 0 {
+			paths = append(paths, commonDir(albumPaths))
+		}
+	}
+	// Folders no album claims (e.g. the promoted parent) stay as-is.
+	claimed := slice.ToSet(claimedIDs)
+	for _, f := range folders {
+		if _, ok := claimed[f.ID]; !ok {
+			paths = append(paths, f.AbsolutePath())
+		}
+	}
+
 	var imgFiles []string
 	var updatedAt time.Time
 	for _, f := range folders {
-		paths = append(paths, f.AbsolutePath())
 		if f.ImagesUpdatedAt.After(updatedAt) {
 			updatedAt = f.ImagesUpdatedAt
 		}
