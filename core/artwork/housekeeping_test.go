@@ -2,6 +2,7 @@ package artwork
 
 import (
 	"context"
+	"slices"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -175,18 +176,11 @@ var _ = Describe("Housekeeping", func() {
 			Expect(did).To(BeTrue())
 
 			Expect(queueRepo.callKinds).ToNot(BeEmpty())
-			artistCallIdx := -1
-			for i, k := range queueRepo.callKinds {
-				if k == "ar" {
-					artistCallIdx = i
-					break
-				}
-			}
-			Expect(artistCallIdx).To(Equal(0), "artists must be the first Enqueue call")
-			for i, k := range queueRepo.callKinds {
-				if k != "ar" {
-					Expect(i).To(BeNumerically(">", artistCallIdx))
-				}
+			firstOther := slices.IndexFunc(queueRepo.callKinds, func(k string) bool { return k != "ar" })
+			Expect(firstOther).ToNot(Equal(0), "artists must be the first Enqueue call")
+			if firstOther >= 0 {
+				Expect(queueRepo.callKinds[firstOther:]).ToNot(ContainElement("ar"),
+					"no artist Enqueue may follow another kind")
 			}
 
 			for _, it := range queueRepo.Data {
