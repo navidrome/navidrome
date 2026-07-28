@@ -7,7 +7,7 @@ import { makeStyles } from '@material-ui/core/styles'
 
 // How long the download button stays inert after a click. The browser needs a
 // moment to show its own download UI; until then the page looks unresponsive.
-const DOWNLOAD_FEEDBACK_MS = 5000
+export const DOWNLOAD_FEEDBACK_MS = 5000
 
 const useStyle = makeStyles({
   player: {

@@ -1,5 +1,5 @@
 import { render, act } from '@testing-library/react'
-import SharePlayer from './SharePlayer'
+import SharePlayer, { DOWNLOAD_FEEDBACK_MS } from './SharePlayer'
 
 let playerProps
 let renderCount
@@ -100,17 +100,19 @@ describe('SharePlayer', () => {
     act(() => {
       playerProps.customDownloader()
     })
+    const elapsedBeforeRepeat = Math.floor(DOWNLOAD_FEEDBACK_MS / 2)
     act(() => {
-      vi.advanceTimersByTime(1500)
+      vi.advanceTimersByTime(elapsedBeforeRepeat)
     })
     act(() => {
       playerProps.customDownloader()
     })
 
-    // The first timer would have fired here had it not been replaced.
+    // Past the first timer's deadline, which it would have fired at had the
+    // repeat download not replaced it.
     const beforeOriginalDeadline = renderCount
     act(() => {
-      vi.advanceTimersByTime(1001)
+      vi.advanceTimersByTime(DOWNLOAD_FEEDBACK_MS - elapsedBeforeRepeat + 1)
     })
     expect(renderCount).toBe(beforeOriginalDeadline)
 
@@ -129,7 +131,7 @@ describe('SharePlayer', () => {
     })
     unmount()
     act(() => {
-      vi.advanceTimersByTime(2000)
+      vi.runAllTimers()
     })
 
     expect(errorSpy).not.toHaveBeenCalled()
