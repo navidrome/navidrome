@@ -36,6 +36,6 @@ func (pub *Router) handleDownloads(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", name+".zip"))
 	w.Header().Set("Content-Type", "application/zip")
 
-	err = pub.archiver.ZipShare(ctx, id, w)
+	err = pub.archiver.ZipShare(ctx, s, w)
 	checkShareError(ctx, w, err, id)
 }

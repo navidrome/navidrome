@@ -32,7 +32,7 @@ func (m *mockArchiver) ZipPlaylist(context.Context, string, string, int, io.Writ
 	return nil
 }
 
-func (m *mockArchiver) ZipShare(_ context.Context, _ string, w io.Writer) error {
+func (m *mockArchiver) ZipShare(_ context.Context, _ *model.Share, w io.Writer) error {
 	m.called = true
 	if m.err != nil {
 		return m.err
