@@ -37,7 +37,6 @@ import { finiteTime } from './lyricsTimeline'
 import useLyricsTimeline from './useLyricsTimeline'
 
 const KARAOKE_LAYER_OPACITY_TRANSITION = `opacity ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}`
-const KARAOKE_AUX_LINE_TRANSITION = `color ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}, -webkit-text-fill-color ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}`
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -123,18 +122,15 @@ const useStyles = makeStyles((theme) => ({
         backgroundColor: alpha(theme.palette.text.primary, 0.055),
       },
     },
-    '&[data-raised="true"][data-line-motion="line"]': {
+    '&[data-raised="true"][data-line-motion="line"] $line': {
       transform: `translateY(-${KARAOKE_LINE_LIFT_PX}px)`,
-      transition: `transform ${KARAOKE_LINE_ENTER_MS}ms ${KARAOKE_LINE_MOTION_EASING}, background-color 150ms ${KARAOKE_LINE_MOTION_EASING}`,
+      transition: `${KARAOKE_LAYER_OPACITY_TRANSITION}, transform ${KARAOKE_LINE_ENTER_MS}ms ${KARAOKE_LINE_MOTION_EASING}`,
     },
     '&[data-raised="true"][data-line-motion="character"][data-character-wave="false"] $line':
       {
         transform: `translateY(-${KARAOKE_LINE_LIFT_PX}px)`,
+        transition: `${KARAOKE_LAYER_OPACITY_TRANSITION}, transform ${KARAOKE_LINE_ENTER_MS}ms ${KARAOKE_LINE_MOTION_EASING}`,
       },
-    '&[data-raised="true"][data-line-motion="character"] $translationLine': {
-      transform: `translateY(-${KARAOKE_LINE_LIFT_PX}px)`,
-      transition: `${KARAOKE_AUX_LINE_TRANSITION}, transform ${KARAOKE_LINE_ENTER_MS}ms ${KARAOKE_LINE_MOTION_EASING}`,
-    },
     '&[data-active="true"]': {
       '--lyrics-main-current-color':
         'var(--lyrics-main-active-color, var(--lyrics-main-idle-color, currentColor))',
@@ -147,11 +143,10 @@ const useStyles = makeStyles((theme) => ({
     '@media (prefers-reduced-motion: reduce)': {
       transition: 'none',
       transform: 'none',
-      '&[data-line-motion="character"] $line, &[data-line-motion="character"] $translationLine':
-        {
-          transition: 'none',
-          transform: 'none',
-        },
+      '& $line': {
+        transition: 'none',
+        transform: 'none',
+      },
     },
   },
   waveCharacter: {
@@ -200,7 +195,7 @@ const useStyles = makeStyles((theme) => ({
     color: 'var(--lyrics-translation-current-color, currentColor)',
     WebkitTextFillColor:
       'var(--lyrics-translation-current-color, currentColor)',
-    transition: KARAOKE_AUX_LINE_TRANSITION,
+    transition: 'none',
     '@media (prefers-reduced-motion: reduce)': {
       transition: 'none',
       transform: 'none',
@@ -508,7 +503,7 @@ const LyricsPanel = ({
         return {
           opacity: 1,
           color: sourceColor,
-          '--lyrics-active-color': colors.main,
+          '--lyrics-active-color': sourceColor,
         }
       }
       if (!hasTimedMainLines) {
