@@ -3,13 +3,14 @@ import { describe, it, expect } from 'vitest'
 import { useRollChanged } from './useRollChanged'
 
 describe('useRollChanged', () => {
-  const setup = (props) =>
-    renderHook(({ seed, loading }) => useRollChanged(seed, loading), {
+  // Passing `shown` in mimics AlbumList owning it across a remount.
+  const setup = (props, shown = { current: null }) => ({
+    shown,
+    ...renderHook(({ seed, loading }) => useRollChanged(shown, seed, loading), {
       initialProps: props,
-    })
+    }),
+  })
 
-  // A re-roll remounts the grid, so on mount a load in flight means the store still holds the
-  // previous roll.
   it('reports a change while a load is in flight on a fresh mount', () => {
     const { result } = setup({ seed: 's1', loading: true })
     expect(result.current).toBe(true)
@@ -45,5 +46,28 @@ describe('useRollChanged', () => {
     const { result, rerender } = setup({ seed: 's1', loading: false })
     rerender({ seed: 's2', loading: false })
     expect(result.current).toBe(true)
+  })
+
+  // Refresh remounts the grid under the new seed a render before the refetch starts.
+  it('reports a change when a refresh remounts the grid before loading starts', () => {
+    const { shown, unmount } = setup({ seed: 's1', loading: false })
+    expect(shown.current).toBe('s1')
+    unmount()
+
+    const remounted = setup({ seed: 's2', loading: false }, shown)
+    expect(remounted.result.current).toBe(true)
+
+    remounted.rerender({ seed: 's2', loading: true })
+    expect(remounted.result.current).toBe(true)
+    remounted.rerender({ seed: 's2', loading: false })
+    expect(remounted.result.current).toBe(false)
+  })
+
+  it('reports no change when a remount keeps the same roll', () => {
+    const { shown, unmount } = setup({ seed: 's1', loading: false })
+    unmount()
+
+    const remounted = setup({ seed: 's1', loading: false }, shown)
+    expect(remounted.result.current).toBe(false)
   })
 })

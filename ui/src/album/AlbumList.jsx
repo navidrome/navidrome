@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { useSelector } from 'react-redux'
 import { Redirect, useLocation } from 'react-router-dom'
 import {
@@ -178,9 +179,9 @@ const AlbumListTitle = ({ albumListType }) => {
   return <Title subTitle={title} args={{ smart_count: 2 }} />
 }
 
-const AlbumListPagination = ({ albumListType, seed, ...rest }) => {
+const AlbumListPagination = ({ albumListType, seed, shownSeed, ...rest }) => {
   const { loading } = useListContext()
-  const rerolling = useRollChanged(seed, loading)
+  const rerolling = useRollChanged(shownSeed, seed, loading)
   if (rerolling && albumListType === 'random') {
     return null
   }
@@ -191,6 +192,7 @@ const randomStartingSeed = Math.random().toString()
 
 const AlbumList = (props) => {
   const { width } = props
+  const shownSeed = useRef(null)
   const albumView = useSelector((state) => state.albumView)
   const [perPage, perPageOptions] = useAlbumsPerPage(width)
   const location = useLocation()
@@ -254,12 +256,18 @@ const AlbumList = (props) => {
             rowsPerPageOptions={perPageOptions}
             albumListType={albumListType}
             seed={seed}
+            shownSeed={shownSeed}
           />
         }
         title={<AlbumListTitle albumListType={albumListType} />}
       >
         {albumView.grid ? (
-          <AlbumGridView albumListType={albumListType} seed={seed} {...props} />
+          <AlbumGridView
+            albumListType={albumListType}
+            seed={seed}
+            shownSeed={shownSeed}
+            {...props}
+          />
         ) : (
           <AlbumTableView {...props} />
         )}
