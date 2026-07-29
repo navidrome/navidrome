@@ -8,7 +8,6 @@ export const emptyLyricLayers = Object.freeze({
   pronunciation: null,
 })
 
-const LYRICS_CACHE_SCHEMA_VERSION = 3
 const MAX_LYRIC_CACHE_ENTRIES = 75
 const NEGATIVE_CACHE_TTL_MS = 30_000
 
@@ -25,12 +24,7 @@ const readStructuredLyrics = (response) =>
   response?.json?.['subsonic-response']?.lyricsList?.structuredLyrics || []
 
 const buildCacheKey = ({ trackId, preferredLanguage, updatedAt }) =>
-  [
-    trackId || '',
-    updatedAt || '',
-    preferredLanguage || '',
-    LYRICS_CACHE_SCHEMA_VERSION,
-  ].join('\u0000')
+  [trackId || '', updatedAt || '', preferredLanguage || ''].join('\u0000')
 
 const rememberLyrics = (cacheKey, layers, expiresAt = null) => {
   cache.delete(cacheKey)

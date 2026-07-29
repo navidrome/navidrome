@@ -100,7 +100,6 @@ const useStyles = makeStyles((theme) => ({
     alignItems: 'stretch',
     gap: theme.spacing(3),
   },
-  inlineLines: {},
   lineGroup: {
     width: '100%',
     borderRadius: theme.shape.borderRadius,
@@ -692,7 +691,6 @@ const LyricsPanel = ({
       <div
         className={clsx(classes.root, { [classes.inlineRoot]: inline })}
         data-testid="karaoke-lyrics-panel"
-        data-inline={inline ? 'true' : 'false'}
         onClick={inline ? (event) => event.stopPropagation() : undefined}
       >
         <div
@@ -749,7 +747,6 @@ const LyricsPanel = ({
     <div
       className={clsx(classes.root, { [classes.inlineRoot]: inline })}
       data-testid="karaoke-lyrics-panel"
-      data-inline={inline ? 'true' : 'false'}
       onClick={inline ? (event) => event.stopPropagation() : undefined}
     >
       <div
@@ -768,9 +765,7 @@ const LyricsPanel = ({
         onTouchMove={markManualScrollIntent}
       >
         <div
-          className={clsx(classes.lines, {
-            [classes.inlineLines]: inline,
-          })}
+          className={classes.lines}
           data-scroll-end-padding={scrollEndPadding}
           style={
             scrollEndPadding > 0 || scrollStartPadding > 0

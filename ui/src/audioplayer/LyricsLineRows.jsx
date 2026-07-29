@@ -240,9 +240,6 @@ export const KaraokeLineRow = memo(
         component="div"
         data-testid={testId}
         data-tokenized={hasTimedTokens ? 'true' : 'false'}
-        data-layer-animation={
-          hasTimedTokens ? 'token-gradient' : 'shared-opacity'
-        }
         style={lineStyle}
       >
         {segments.map((segment, idx) => {
@@ -485,9 +482,6 @@ export const KaraokeStackedLineRow = memo(
         data-wrapped={isWrapped ? 'true' : 'false'}
         data-testid={testId}
         data-tokenized={hasTimedTokens ? 'true' : 'false'}
-        data-layer-animation={
-          hasTimedTokens ? 'token-gradient' : 'shared-opacity'
-        }
         ref={rowRef}
         style={lineStyle}
       >
@@ -537,11 +531,7 @@ export const KaraokeStackedLineRow = memo(
               )}
             </span>
           ) : (
-            <span
-              key={`main-${idx}`}
-              className={classes.stackedSpacer}
-              style={buildStaticEmphasisStyle(segment.token)}
-            >
+            <span key={`main-${idx}`} className={classes.stackedSpacer}>
               {segment.text}
             </span>
           )

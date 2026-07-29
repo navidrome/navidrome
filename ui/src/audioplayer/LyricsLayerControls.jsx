@@ -120,7 +120,6 @@ const LyricsLayerControls = ({
         [classes.sidebarPlacement]: placement !== 'mobile',
       })}
       data-testid={testId}
-      data-placement={placement}
       onClick={(event) => event.stopPropagation()}
     >
       <LayerButton
