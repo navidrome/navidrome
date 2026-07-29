@@ -258,6 +258,25 @@ var _ = Describe("Configuration", func() {
 			Expect(conf.Server.Search.FullString).To(BeTrue())
 			Expect(conf.UnknownConfigKeys()).To(BeEmpty())
 		})
+
+		Context("with runtime-computed and removed options in the config", func() {
+			BeforeEach(func() {
+				conf.InitConfig(filepath.Join("testdata", "cfg_runtime_fields.toml"), false)
+				conf.Load(true)
+			})
+
+			It("reports values computed during Load, which the config cannot set", func() {
+				Expect(conf.UnknownConfigKeys()).To(ContainElements("ConfigFile", "LastFM.Languages"))
+			})
+
+			It("never suggests a removed option", func() {
+				Expect(conf.SuggestOptions("id")).To(BeEmpty())
+			})
+
+			It("keeps an explicit replacement over the deprecated value", func() {
+				Expect(conf.Server.Search.FullString).To(BeFalse())
+			})
+		})
 	})
 
 	Describe("logFatal", func() {

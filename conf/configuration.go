@@ -30,7 +30,7 @@ import (
 )
 
 type configOptions struct {
-	ConfigFile                      string
+	ConfigFile                      string `conf:"-"`
 	Address                         string
 	Port                            int
 	UnixSocketPerm                  string
@@ -206,7 +206,7 @@ type lastfmOptions struct {
 	ScrobbleFirstArtistOnly bool
 
 	// Computed values
-	Languages []string // Computed from Language, split by comma
+	Languages []string `conf:"-"` // Computed from Language, split by comma
 }
 
 type deezerOptions struct {
@@ -214,7 +214,7 @@ type deezerOptions struct {
 	Language string
 
 	// Computed values
-	Languages []string // Computed from Language, split by comma
+	Languages []string `conf:"-"` // Computed from Language, split by comma
 }
 
 type listenBrainzOptions struct {
@@ -503,8 +503,8 @@ var deprecatedOptions = []struct{ name, replacement string }{
 var removedOptions = []string{"Spotify.ID", "Spotify.Secret"}
 
 func logDeprecatedOptions(oldName, newName string) {
-	envVar := "ND_" + strings.ToUpper(strings.ReplaceAll(oldName, ".", "_"))
-	newEnvVar := "ND_" + strings.ToUpper(strings.ReplaceAll(newName, ".", "_"))
+	envVar := envVarName(oldName)
+	newEnvVar := envVarName(newName)
 	logWarning := func(oldName, newName string) {
 		if newName != "" {
 			log.Warn(fmt.Sprintf("Option '%s' is deprecated and will be ignored in a future release. Please use the new '%s'", oldName, newName))
@@ -524,7 +524,7 @@ func logDeprecatedOptions(oldName, newName string) {
 // not available anymore
 func logRemovedOptions(options ...string) {
 	for _, option := range options {
-		envVar := "ND_" + strings.ToUpper(strings.ReplaceAll(option, ".", "_"))
+		envVar := envVarName(option)
 		logWarning := func(option string) {
 			log.Warn(fmt.Sprintf("Option '%s' is not available anymore and will be ignored. Please remove it from your config", option))
 		}
@@ -572,9 +572,23 @@ func remapEnvVarKeysFromConfig() {
 // mapDeprecatedOption is used to provide backwards compatibility for deprecated options. It should be called after
 // the config has been read by viper, but before unmarshalling it into the Config struct.
 func mapDeprecatedOption(legacyName, newName string) {
-	if viper.IsSet(legacyName) {
+	// viper.Set outranks the config file, so an explicit replacement must win over the legacy value
+	if viper.IsSet(legacyName) && !explicitlySet(newName) {
 		viper.Set(newName, viper.Get(legacyName))
 	}
+}
+
+// explicitlySet reports whether the user provided the option, ignoring defaults,
+// which viper.IsSet counts as set.
+func explicitlySet(name string) bool {
+	return viper.InConfig(name) || os.Getenv(envVarName(name)) != ""
+}
+
+func envVarName(option string) string {
+	if option == "" {
+		return ""
+	}
+	return "ND_" + strings.ToUpper(strings.ReplaceAll(option, ".", "_"))
 }
 
 func logUnknownOptions() {
@@ -595,7 +609,8 @@ func suggestOptions(key string) []string {
 	canonical, _ := configKeys()
 	var matches []string
 	for known, name := range canonical {
-		if known != key && leafKey(known) == leaf {
+		// Removed options are known only so they get their own warning, never suggest them
+		if known != key && leafKey(known) == leaf && !slices.Contains(removedOptions, name) {
 			matches = append(matches, name)
 		}
 	}
@@ -686,7 +701,8 @@ var configKeys = sync.OnceValues(func() (map[string]string, []string) {
 	var collect func(t reflect.Type, prefix string)
 	collect = func(t reflect.Type, prefix string) {
 		for field := range t.Fields() {
-			if !field.IsExported() {
+			// `conf:"-"` marks values computed during Load, not settable in the config
+			if !field.IsExported() || field.Tag.Get("conf") == "-" {
 				continue
 			}
 			name := prefix + field.Name
