@@ -29,6 +29,9 @@ compatibility, same plugin system. This fork just adds:
   feature list.
 - 📡 **Enhanced scrobble attribution** *(stable & develop)* — richer client/source/playback-mode context on every
   scrobble, available to plugins too. See [below](#enhanced-scrobble-attribution-pulse-integration) for details.
+- 🎙️📡 **Podcast play attribution** *(develop only)* — podcast episode plays now dispatch to plugins too, with a
+  validated `nd_source` device-type field for precise client identification. See
+  [below](#enhanced-scrobble-attribution-pulse-integration) for details.
 - 🏷️ **User-defined song tagging** *(develop only)* — private per-user labels on songs, independent of file
   metadata, with tag-based filtering, bulk playlist add, smart-playlist criteria support, and a plugin-facing API
   powering an AI auto-tagging + auto-playlist ecosystem. See [below](#user-defined-song-tagging-experimental) for
@@ -423,6 +426,21 @@ distinguishing "Android Auto" from "Web" from "Windows Desktop"), stored alongsi
 The Plugin API's `ScrobbleRequest`/`NowPlayingRequest` types carry the same attribution fields, so a companion
 plugin (built for this fork's own Pulse project) can build listening stats like "you mostly listen via your
 Favorites mix" without needing a separate external bridge process.
+
+### 📱 `nd_source`: precise Cirque client identification *(develop only)*
+`source` above is a free-form field. `nd_source` is a stricter companion specifically for identifying which Cirque
+client variant sent the request — validated against a fixed allowlist (`android_phone`, `android_tablet`,
+`android_tv`, `android_auto`, `windows_desktop`); anything else is silently ignored rather than rejecting the
+request, so standard Subsonic clients that never send it are completely unaffected. It's read on both
+`scrobble.view` and podcast episode streaming.
+
+### 🎙️ Podcast plays get the same treatment *(develop only)*
+Podcast episode plays now dispatch to plugins too, through a new `PodcastScrobbler` capability
+(`OnPodcastPlayed`/`PodcastPlayedRequest`, mirroring the song-scrobble `Scrobbler` capability) — carrying username,
+player name, `nd_source`, and episode metadata. A plugin like Pulse can now build unified listening stats across
+songs *and* podcasts instead of only seeing half the picture. See
+[plugins/capabilities/README.md](plugins/capabilities/README.md#available-capabilities) for the full capability
+reference if you're writing a plugin against this.
 
 ## Genre Exploration (Experimental)
 
