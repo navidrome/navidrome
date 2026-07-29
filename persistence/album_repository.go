@@ -278,26 +278,32 @@ func (r *albumRepository) GetYears(libraryIDs ...int) ([]int, error) {
 }
 
 func (r *albumRepository) CopyAttributes(fromID, toID string, columns ...string) error {
-	var from dbx.NullStringMap
-	err := r.queryOne(Select(columns...).From(r.tableName).Where(Eq{"id": fromID}), &from)
+	if len(columns) == 0 {
+		return nil
+	}
+	var from struct{ ID string }
+	err := r.queryOne(Select("id").From(r.tableName).Where(Eq{"id": fromID}), &from)
 	if err != nil {
 		return fmt.Errorf("getting album to copy fields from: %w", err)
 	}
-	to := make(map[string]any)
+	// The values are copied entirely in SQL, never round-tripped through Go: go-sqlite3 decodes
+	// `datetime` columns into time.Time, and scanning that into a string reformats it as RFC3339
+	// ("2026-07-24T17:05:39.706028243Z"). Writing it back would store a T-separated timestamp,
+	// which string-sorts above the space-separated format the driver writes, pinning the album to
+	// the top of "Recently Added" forever.
+	upd := Update(r.tableName).Where(Eq{"id": toID})
 	for _, col := range columns {
-		v := from[col]
-		// created_at is aggregated from song birth_times and must never be
-		// overwritten with a zero/poisoned value, or it propagates forward on
-		// every metadata-driven album ID change.
-		if col == "created_at" && (!v.Valid || v.String == "" || strings.HasPrefix(v.String, "0001-")) {
-			continue
+		src := fmt.Sprintf("(select %[1]s from %[2]s where id = ?)", col, r.tableName)
+		if col == "created_at" {
+			// created_at is aggregated from song birth_times and must never be
+			// overwritten with a zero/poisoned value, or it propagates forward on
+			// every metadata-driven album ID change.
+			src = fmt.Sprintf("coalesce(nullif((select %[1]s from %[2]s where id = ? and %[1]s not like '0001-%%'), ''), %[1]s)",
+				col, r.tableName)
 		}
-		to[col] = v
+		upd = upd.Set(col, Expr(src, fromID))
 	}
-	if len(to) == 0 {
-		return nil
-	}
-	_, err = r.executeSQL(Update(r.tableName).SetMap(to).Where(Eq{"id": toID}))
+	_, err = r.executeSQL(upd)
 	return err
 }
 
