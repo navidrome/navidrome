@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import PropTypes from 'prop-types'
-import { decode } from 'blurhash'
+import { decode } from '../utils/blurhash'
 
 // A blurhash carries no detail beyond a few dozen pixels; CSS upscales the canvas.
 const DECODE_SIZE = 32
