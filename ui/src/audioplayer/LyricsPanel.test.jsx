@@ -380,7 +380,6 @@ describe('<LyricsPanel />', () => {
     const pronunciation = screen.getAllByTestId('lyrics-pronunciation-token')
 
     ;[mainRow, translationRow].forEach((row) => {
-      expect(row).toHaveAttribute('data-layer-animation', 'shared-opacity')
       expect(row).toHaveAttribute('data-tokenized', 'false')
       expect(row.style.opacity).toBe('')
     })

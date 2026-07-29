@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useMemo, useRef, useState } from 'react'
 import LyricsLayerControls from './LyricsLayerControls'
 import LyricsPanel from './LyricsPanel'
 import MobileKaraokeLyricsPortal from './MobileKaraokeLyricsPortal'
@@ -19,14 +19,9 @@ const usePlayerLyrics = ({
   translate,
 }) => {
   const [lyricsVisiblePreference, setLyricsVisiblePreference] = useState(false)
-  const [lyricsRequested, setLyricsRequested] = useState(false)
   const [translationPreference, setTranslationPreference] = useState(null)
   const [pronunciationPreference, setPronunciationPreference] = useState(null)
   const lyricsToggleRef = useRef(null)
-
-  useEffect(() => {
-    setLyricsRequested(lyricsVisiblePreference)
-  }, [trackId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const {
     layers: lyricLayers,
@@ -37,7 +32,7 @@ const usePlayerLyrics = ({
     trackId,
     updatedAt: trackUpdatedAt,
     disabled: isRadio,
-    requested: lyricsRequested || lyricsVisiblePreference,
+    requested: lyricsVisiblePreference,
   })
 
   const hasTranslationLyric = hasStructuredLyricContent(lyricLayers.translation)
@@ -74,7 +69,6 @@ const usePlayerLyrics = ({
   const toggleLyrics = useCallback(() => {
     const next = !lyricsVisiblePreference
     setLyricsVisiblePreference(next)
-    setLyricsRequested(next)
     if (next) {
       if (lyricsError) retryLyrics()
     }
@@ -82,7 +76,6 @@ const usePlayerLyrics = ({
 
   const closeLyrics = useCallback(() => {
     setLyricsVisiblePreference(false)
-    setLyricsRequested(false)
   }, [])
 
   const toggleTranslation = useCallback(() => {

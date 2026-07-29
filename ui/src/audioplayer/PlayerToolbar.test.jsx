@@ -77,22 +77,6 @@ describe('<PlayerToolbar />', () => {
       expect(listItems[0].className).toContain('toolbar')
     })
 
-    it('disables save queue button when isRadio is true', () => {
-      render(<PlayerToolbar id="song-1" isRadio={true} />)
-
-      const saveQueueButton = screen.getByTestId('save-queue-button')
-      expect(saveQueueButton).toBeDisabled()
-    })
-
-    it('disables love button when conditions are met', () => {
-      useGetOne.mockReturnValue({ data: mockSongData, loading: true })
-
-      render(<PlayerToolbar id="song-1" />)
-
-      const loveButton = screen.getByTestId('love-button')
-      expect(loveButton).toBeDisabled()
-    })
-
     it('opens save queue dialog when save button is clicked', () => {
       render(<PlayerToolbar id="song-1" />)
 
@@ -154,22 +138,6 @@ describe('<PlayerToolbar />', () => {
       expect(listItems[2].className).toContain('mobileListItem')
     })
 
-    it('disables save queue button when isRadio is true', () => {
-      render(<PlayerToolbar id="song-1" isRadio={true} />)
-
-      const saveQueueButton = screen.getByTestId('save-queue-button')
-      expect(saveQueueButton).toBeDisabled()
-    })
-
-    it('disables love button when conditions are met', () => {
-      useGetOne.mockReturnValue({ data: mockSongData, loading: true })
-
-      render(<PlayerToolbar id="song-1" />)
-
-      const loveButton = screen.getByTestId('love-button')
-      expect(loveButton).toBeDisabled()
-    })
-
     it('disables lyrics toggle when lyrics are unavailable', () => {
       render(
         <PlayerToolbar id="song-1" onToggleLyrics={vi.fn()} lyricsDisabled />,
@@ -192,6 +160,22 @@ describe('<PlayerToolbar />', () => {
   })
 
   describe('Common behavior', () => {
+    it('disables save queue button when isRadio is true', () => {
+      useMediaQuery.mockReturnValue(true)
+      render(<PlayerToolbar id="song-1" isRadio={true} />)
+
+      expect(screen.getByTestId('save-queue-button')).toBeDisabled()
+    })
+
+    it('disables love button when conditions are met', () => {
+      useMediaQuery.mockReturnValue(true)
+      useGetOne.mockReturnValue({ data: mockSongData, loading: true })
+
+      render(<PlayerToolbar id="song-1" />)
+
+      expect(screen.getByTestId('love-button')).toBeDisabled()
+    })
+
     it('renders global hotkeys in both layouts', () => {
       // Test desktop layout
       useMediaQuery.mockReturnValue(true)
