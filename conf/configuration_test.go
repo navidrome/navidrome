@@ -178,6 +178,88 @@ var _ = Describe("Configuration", func() {
 		})
 	})
 
+	Describe("unknownConfigKeys", func() {
+		BeforeEach(func() {
+			viper.Reset()
+			conf.SetViperDefaults()
+			viper.SetDefault("datafolder", GinkgoT().TempDir())
+			viper.SetDefault("loglevel", "error")
+			conf.ResetConf()
+		})
+
+		It("reports misplaced and misspelled options, as spelled in the config file", func() {
+			conf.InitConfig(filepath.Join("testdata", "cfg_unknown_keys.toml"), false)
+			conf.Load(true)
+
+			Expect(conf.UnknownConfigKeys()).To(ConsistOf(
+				"ArtistSplitExceptions", "EnableDownlods", "Whatever.Foo",
+			))
+		})
+
+		DescribeTable("recovers the original casing in all supported formats",
+			func(file string) {
+				conf.InitConfig(filepath.Join("testdata", file), false)
+				conf.Load(true)
+
+				Expect(conf.UnknownConfigKeys()).To(ConsistOf("NotAnOption"))
+			},
+			Entry("TOML", "cfg_unknown_casing.toml"),
+			Entry("YAML", "cfg_unknown_casing.yaml"),
+			Entry("JSON", "cfg_unknown_casing.json"),
+			Entry("INI", "cfg_unknown_casing.ini"),
+		)
+
+		It("does not report valid, deprecated or free-form keys", func() {
+			conf.InitConfig(filepath.Join("testdata", "cfg.toml"), false)
+			conf.Load(true)
+
+			Expect(conf.UnknownConfigKeys()).To(BeEmpty())
+		})
+
+		It("does not report the [default] section of INI files", func() {
+			conf.InitConfig(filepath.Join("testdata", "cfg.ini"), false)
+			conf.Load(true)
+
+			Expect(conf.UnknownConfigKeys()).To(BeEmpty())
+		})
+
+		DescribeTable("SuggestOptions",
+			func(key string, expected []string) {
+				Expect(conf.SuggestOptions(key)).To(Equal(expected))
+			},
+			Entry("suggests the section of a misplaced option", "artistsplitexceptions",
+				[]string{"Scanner.ArtistSplitExceptions"}),
+			Entry("suggests the section of a misplaced nested option", "backup.fuzzythreshold",
+				[]string{"Matcher.FuzzyThreshold"}),
+			Entry("suggests every section defining the option", "schedule",
+				[]string{"Backup.Schedule", "Scanner.Schedule"}),
+			Entry("suggests nothing for a typo", "enabledownlods", nil),
+		)
+
+		It("does not report ND_-prefixed keys, as they are remapped", func() {
+			conf.InitConfig(filepath.Join("testdata", "cfg_nd_keys.toml"), false)
+			conf.Load(true)
+
+			Expect(conf.UnknownConfigKeys()).To(BeEmpty())
+		})
+
+		It("reports ND_-prefixed keys that remap to no known option", func() {
+			conf.InitConfig(filepath.Join("testdata", "cfg_nd_bogus.toml"), false)
+			conf.Load(true)
+
+			Expect(conf.UnknownConfigKeys()).To(ConsistOf("ND_TOTALLY_BOGUS_OPTION"))
+			Expect(conf.Server.Scanner.Schedule).To(Equal("@every 1h"))
+		})
+
+		It("migrates every deprecated option that has a replacement", func() {
+			conf.InitConfig(filepath.Join("testdata", "cfg_deprecated_search.toml"), false)
+			conf.Load(true)
+
+			Expect(conf.Server.Search.FullString).To(BeTrue())
+			Expect(conf.UnknownConfigKeys()).To(BeEmpty())
+		})
+	})
+
 	Describe("logFatal", func() {
 		var invalidPath string
 		BeforeEach(func() {
