@@ -19,6 +19,7 @@ import {
   KARAOKE_HIGHLIGHT_LEAD_MS,
   KARAOKE_LINE_LIFT_PX,
   KARAOKE_MANUAL_SCROLL_PAUSE_MS,
+  KARAOKE_SCROLLBAR_VISIBLE_MS,
   TOKEN_FUTURE_ALPHA,
 } from './lyricsKaraokeConstants'
 
@@ -27,6 +28,11 @@ const theme = createTheme({
     primary: { main: '#2266aa' },
     text: { primary: '#111111', secondary: '#778899' },
   },
+})
+
+const translationColorsFor = (selectedTheme) => ({
+  active: selectedTheme.palette.text.secondary,
+  idle: selectedTheme.palette.text.disabled,
 })
 
 const panel = (props, selectedTheme = theme) => (
@@ -355,7 +361,7 @@ describe('<LyricsPanel />', () => {
     expect(pronunciation.style.color).toBe('')
   })
 
-  it('keeps translations subordinate and stable between line states', () => {
+  it('highlights translations with the shared layer transition', () => {
     const propsAt = (currentTime) => ({
       mainLyric,
       pronunciationLyric: {
@@ -386,26 +392,29 @@ describe('<LyricsPanel />', () => {
     expect(window.getComputedStyle(mainRow).transition).toContain(
       `opacity ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}`,
     )
-    expect(window.getComputedStyle(translationRow).transition).toBe('none')
+    expect(window.getComputedStyle(translationRow).transition).toContain(
+      `color ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}`,
+    )
     pronunciation.forEach((token) =>
       expect(token).toHaveAttribute('data-timed', 'false'),
     )
     expect(window.getComputedStyle(translationRow).opacity).toBe('1')
+    const translationColors = translationColorsFor(theme)
     expect(
       lineGroup.style.getPropertyValue('--lyrics-translation-idle-color'),
-    ).toBe(theme.palette.text.secondary)
+    ).toBe(translationColors.idle)
     expect(
       lineGroup.style.getPropertyValue('--lyrics-translation-active-color'),
-    ).toBe(theme.palette.text.secondary)
+    ).toBe(translationColors.active)
     expect(window.getComputedStyle(translationRow).transform).toBe('')
-    expect(window.getComputedStyle(translationRow).marginTop).toBe(
-      `${theme.spacing(0.6)}px`,
-    )
 
     rerenderPanel(propsAt(1.1))
 
+    expect(lineGroup).toHaveAttribute('data-active', 'false')
     expect(window.getComputedStyle(translationRow).opacity).toBe('1')
-    expect(window.getComputedStyle(translationRow).transition).toBe('none')
+    expect(window.getComputedStyle(translationRow).transition).toContain(
+      `color ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}`,
+    )
     expect(window.getComputedStyle(translationRow).transform).toBe('')
   })
 
@@ -877,6 +886,28 @@ describe('<LyricsPanel />', () => {
     })
   })
 
+  it('keeps scrollbar geometry stable before, during, and after manual scroll', () => {
+    vi.useFakeTimers()
+    renderPanel({ mainLyric })
+
+    const body = screen.getByTestId('lyrics-scroll-body')
+    const initialStyle = window.getComputedStyle(body)
+    expect(initialStyle.scrollbarGutter).toBe('stable')
+    expect(initialStyle.scrollbarWidth).toBe('thin')
+
+    fireEvent.wheel(body)
+    expect(body).toHaveAttribute('data-scrollbar-visible', 'true')
+    expect(window.getComputedStyle(body).scrollbarGutter).toBe('stable')
+    expect(window.getComputedStyle(body).scrollbarWidth).toBe('thin')
+
+    act(() => {
+      vi.advanceTimersByTime(KARAOKE_SCROLLBAR_VISIBLE_MS)
+    })
+    expect(body).toHaveAttribute('data-scrollbar-visible', 'false')
+    expect(window.getComputedStyle(body).scrollbarGutter).toBe('stable')
+    expect(window.getComputedStyle(body).scrollbarWidth).toBe('thin')
+  })
+
   it('resets scroll position when lyric content changes', () => {
     const { rerenderPanel } = renderPanel({ mainLyric })
     const body = screen.getByTestId('lyrics-scroll-body')
@@ -914,7 +945,7 @@ describe('<LyricsPanel />', () => {
   })
 
   it.each(['light', 'dark'])(
-    'keeps future tokens and translations readable in the %s theme',
+    'keeps future tokens readable and translations subordinate in the %s theme',
     (type) => {
       const accessibleTheme = createTheme({ palette: { type } })
       const background = accessibleTheme.palette.background.default
@@ -930,7 +961,6 @@ describe('<LyricsPanel />', () => {
       })
       const { rerenderPanel } = renderPanel(propsAt(0.25), accessibleTheme)
 
-      const group = screen.getByTestId('lyrics-line-group')
       const translation = screen
         .getByText('Readable translation')
         .closest('[data-tokenized]')
@@ -945,33 +975,23 @@ describe('<LyricsPanel />', () => {
         (match) => match[0],
       )
       const futureColor = gradientColors.at(-1)
+      const translationColors = translationColorsFor(accessibleTheme)
 
-      expect(
-        group.style.getPropertyValue('--lyrics-translation-idle-color'),
-      ).toBe(accessibleTheme.palette.text.secondary)
-      expect(
-        group.style.getPropertyValue('--lyrics-translation-active-color'),
-      ).toBe(accessibleTheme.palette.text.secondary)
       expect(parseCssColor(futureColor).alpha).toBe(TOKEN_FUTURE_ALPHA)
       expect(contrastRatio(futureColor, background)).toBeGreaterThanOrEqual(4.5)
       expect(
-        contrastRatio(accessibleTheme.palette.text.secondary, background),
+        contrastRatio(translationColors.active, background),
       ).toBeGreaterThanOrEqual(4.5)
-      expect(
-        contrastRatio(accessibleTheme.palette.text.secondary, background),
-      ).toBeLessThan(
-        contrastRatio(accessibleTheme.palette.text.primary, background),
+      expect(contrastRatio(translationColors.idle, background)).toBeLessThan(
+        contrastRatio(translationColors.active, background),
       )
 
       rerenderPanel(propsAt(1.25))
-      expect(group).toHaveAttribute('data-active', 'false')
+      expect(screen.getByTestId('lyrics-line-group')).toHaveAttribute(
+        'data-active',
+        'false',
+      )
       expect(window.getComputedStyle(translation).opacity).toBe('1')
-      expect(
-        group.style.getPropertyValue('--lyrics-translation-idle-color'),
-      ).toBe(accessibleTheme.palette.text.secondary)
-      expect(
-        group.style.getPropertyValue('--lyrics-translation-active-color'),
-      ).toBe(accessibleTheme.palette.text.secondary)
     },
   )
 })

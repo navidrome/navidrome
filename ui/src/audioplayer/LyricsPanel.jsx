@@ -36,6 +36,7 @@ import { finiteTime } from './lyricsTimeline'
 import useLyricsTimeline from './useLyricsTimeline'
 
 const KARAOKE_LAYER_OPACITY_TRANSITION = `opacity ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}`
+const KARAOKE_LAYER_COLOR_TRANSITION = `color ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}, -webkit-text-fill-color ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}`
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -58,15 +59,24 @@ const useStyles = makeStyles((theme) => ({
     overflowX: 'hidden',
     padding: theme.spacing(4, 2.25, 3.25),
     overscrollBehavior: 'contain',
-    scrollbarWidth: 'none',
-    msOverflowStyle: 'none',
+    scrollbarGutter: 'stable',
+    scrollbarWidth: 'thin',
+    scrollbarColor: 'transparent transparent',
     maskImage:
       'linear-gradient(to bottom, transparent 0, rgba(0, 0, 0, 0.15) 12px, #000 40px, #000 calc(100% - 120px), rgba(0, 0, 0, 0.12) calc(100% - 48px), transparent 100%)',
     WebkitMaskImage:
       'linear-gradient(to bottom, transparent 0, rgba(0, 0, 0, 0.15) 12px, #000 40px, #000 calc(100% - 120px), rgba(0, 0, 0, 0.12) calc(100% - 48px), transparent 100%)',
     '&::-webkit-scrollbar': {
-      width: 0,
-      height: 0,
+      width: 8,
+      height: 8,
+    },
+    // Player themes use two-class scrollbar selectors.
+    '&&&::-webkit-scrollbar-thumb': {
+      backgroundColor: 'transparent',
+      borderRadius: 999,
+    },
+    '&::-webkit-scrollbar-track': {
+      backgroundColor: 'transparent',
     },
   },
   bodyTopFade: {
@@ -76,18 +86,9 @@ const useStyles = makeStyles((theme) => ({
       'linear-gradient(to bottom, transparent 0, rgba(0, 0, 0, 0.15) 8px, #000 24px, #000 calc(100% - 120px), rgba(0, 0, 0, 0.12) calc(100% - 48px), transparent 100%)',
   },
   bodyUserScrolling: {
-    scrollbarWidth: 'thin',
-    msOverflowStyle: 'auto',
-    '&::-webkit-scrollbar': {
-      width: 8,
-      height: 8,
-    },
-    '&::-webkit-scrollbar-thumb': {
+    scrollbarColor: `${theme.palette.action.disabled} transparent`,
+    '&&&::-webkit-scrollbar-thumb': {
       backgroundColor: theme.palette.action.disabled,
-      borderRadius: 999,
-    },
-    '&::-webkit-scrollbar-track': {
-      backgroundColor: 'transparent',
     },
   },
   inlineBody: {
@@ -176,7 +177,7 @@ const useStyles = makeStyles((theme) => ({
       transition: 'none',
     },
   },
-  auxLine: {
+  translationLine: {
     display: 'block',
     opacity: 1,
     fontWeight: 600,
@@ -188,10 +189,12 @@ const useStyles = makeStyles((theme) => ({
     color: 'var(--lyrics-translation-current-color, currentColor)',
     WebkitTextFillColor:
       'var(--lyrics-translation-current-color, currentColor)',
-    transition: 'none',
+    transition: KARAOKE_LAYER_COLOR_TRANSITION,
+    '&&': {
+      marginTop: theme.spacing(0.6),
+    },
     '@media (prefers-reduced-motion: reduce)': {
       transition: 'none',
-      transform: 'none',
     },
   },
   stackedToken: {
@@ -246,9 +249,6 @@ const useStyles = makeStyles((theme) => ({
     '@media (prefers-reduced-motion: reduce)': {
       transition: 'none',
     },
-  },
-  translationLine: {
-    fontWeight: 600,
   },
   token: {
     whiteSpace: 'pre-wrap',
@@ -362,7 +362,7 @@ const buildUniqueLayerMap = (mainLines, layerLines) => {
 const getLineLanes = (line) =>
   Array.isArray(line?.lanes) && line.lanes.length > 0 ? line.lanes : [line]
 
-const buildSynchronizedTranslationLine = (_mainLine, translationLine) => {
+const buildStaticTranslationLine = (translationLine) => {
   if (!translationLine) return null
   return {
     ...translationLine,
@@ -382,8 +382,7 @@ const buildLineGroupStyle = (canSeekLine, layerStyles) => ({
     layerStyles.pronunciation.color,
   '--lyrics-translation-idle-color': layerStyles.translation.color,
   '--lyrics-translation-active-color':
-    layerStyles.translation['--lyrics-active-color'] ||
-    layerStyles.translation.color,
+    layerStyles.translation['--lyrics-active-color'],
 })
 
 const usePrefersReducedMotion = () => {
@@ -500,10 +499,6 @@ const LyricsPanel = ({
     () => ({
       main: theme.palette.text.primary,
       pronunciation: theme.palette.primary.main,
-      translation:
-        theme.palette.text.secondary ||
-        theme.palette.secondary?.main ||
-        theme.palette.text.primary,
     }),
     [theme],
   )
@@ -511,14 +506,6 @@ const LyricsPanel = ({
   const layerStyles = useMemo(() => {
     const styleFor = (layer) => {
       const sourceColor = colors[layer]
-      if (layer === 'translation') {
-        return {
-          opacity: 1,
-          marginTop: theme.spacing(0.6),
-          color: sourceColor,
-          '--lyrics-active-color': sourceColor,
-        }
-      }
       if (!hasTimedMainLines) {
         return {
           opacity: 1,
@@ -537,7 +524,10 @@ const LyricsPanel = ({
     return {
       main: styleFor('main'),
       pronunciation: styleFor('pronunciation'),
-      translation: styleFor('translation'),
+      translation: {
+        color: theme.palette.text.disabled,
+        '--lyrics-active-color': theme.palette.text.secondary,
+      },
     }
   }, [colors, hasTimedMainLines, theme])
 
@@ -932,10 +922,9 @@ const LyricsPanel = ({
                 {showTr && (
                   <KaraokeLineRow
                     lineIndex={idx}
-                    line={buildSynchronizedTranslationLine(line, trLine)}
+                    line={buildStaticTranslationLine(trLine)}
                     nextLineStart={null}
-                    className={clsx(classes.auxLine, classes.translationLine)}
-                    style={layerStyles.translation}
+                    className={classes.translationLine}
                     tokenClassName={classes.token}
                     rowKey="translation"
                   />
