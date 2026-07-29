@@ -296,8 +296,11 @@ func (r *albumRepository) GetYears(libraryIDs ...int) ([]int, error) {
 }
 
 func (r *albumRepository) CopyAttributes(fromID, toID string, columns ...string) error {
+	// Cast values to text so go-sqlite3 does not decode datetime columns as time.Time
+	// and reformat them as RFC3339 when written back.
+	sel := slice.Map(columns, func(c string) string { return fmt.Sprintf("cast(%[1]s as text) as %[1]s", c) })
 	var from dbx.NullStringMap
-	err := r.queryOne(Select(columns...).From(r.tableName).Where(Eq{"id": fromID}), &from)
+	err := r.queryOne(Select(sel...).From(r.tableName).Where(Eq{"id": fromID}), &from)
 	if err != nil {
 		return fmt.Errorf("getting album to copy fields from: %w", err)
 	}
