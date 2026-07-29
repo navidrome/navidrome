@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useRef } from 'react'
 import {
   GridList,
   GridListTile,
@@ -239,9 +239,12 @@ const AlbumGridView = ({
   shownSeed,
   ...props
 }) => {
+  // ArtistShow renders this grid too, with no roll to track, so own a ref when none is passed.
+  const ownSeed = useRef(null)
   // A re-roll replaces every album, so the previous roll must not linger while it loads.
   const rerolling =
-    useRollChanged(shownSeed, seed, loading) && albumListType === 'random'
+    useRollChanged(shownSeed ?? ownSeed, seed, loading) &&
+    albumListType === 'random'
   const hide = rerolling || !props.data || !props.ids
   return hide ? <Loading /> : <LoadedAlbumGrid {...props} />
 }
