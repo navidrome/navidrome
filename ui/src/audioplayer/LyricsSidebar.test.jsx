@@ -57,6 +57,9 @@ describe('<LyricsSidebar />', () => {
     cleanup()
     localStorage.clear()
     document.body.className = ''
+    document
+      .querySelectorAll('[data-lyrics-return-target]')
+      .forEach((node) => node.remove())
     Object.defineProperty(window, 'PointerEvent', {
       configurable: true,
       writable: true,
@@ -78,23 +81,45 @@ describe('<LyricsSidebar />', () => {
 
   it('keeps the sidebar mounted while sliding closed', () => {
     vi.useFakeTimers()
-    const { rerender } = renderSidebar()
+    const returnTarget = document.createElement('button')
+    returnTarget.dataset.lyricsReturnTarget = 'true'
+    document.body.appendChild(returnTarget)
+    const returnFocusRef = { current: returnTarget }
+    const { rerender } = renderSidebar({ returnFocusRef })
+    const sidebar = screen.getByTestId('lyrics-sidebar')
     const resizer = screen.getByTestId('lyrics-sidebar-resizer')
+    expect(sidebar).not.toHaveAttribute('inert')
     resizer.focus()
 
-    rerender(sidebarView({ visible: false }))
+    rerender(sidebarView({ visible: false, returnFocusRef }))
 
-    expect(screen.getByTestId('lyrics-sidebar')).toHaveStyle({
+    expect(sidebar).toHaveStyle({
       transform: 'translateX(100%)',
       opacity: '0',
     })
+    expect(sidebar).toHaveAttribute('aria-hidden', 'true')
+    expect(sidebar).toHaveAttribute('inert')
     expect(document.body.className).toBe('')
-    expect(document.activeElement).not.toBe(resizer)
+    expect(document.activeElement).toBe(returnTarget)
 
     vi.advanceTimersByTime(LYRICS_SIDEBAR_TRANSITION_MS)
 
     expect(screen.queryByTestId('lyrics-sidebar')).toBeNull()
     vi.useRealTimers()
+  })
+
+  it('restores focus if a breakpoint unmounts the open sidebar', () => {
+    const returnTarget = document.createElement('button')
+    returnTarget.dataset.lyricsReturnTarget = 'true'
+    document.body.appendChild(returnTarget)
+    const returnFocusRef = { current: returnTarget }
+    const { unmount } = renderSidebar({ returnFocusRef })
+    const resizer = screen.getByTestId('lyrics-sidebar-resizer')
+    resizer.focus()
+
+    unmount()
+
+    expect(document.activeElement).toBe(returnTarget)
   })
 
   it('clamps persisted and keyboard-resized widths', () => {

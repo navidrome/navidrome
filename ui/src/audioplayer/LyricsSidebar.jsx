@@ -13,6 +13,7 @@ import {
   saveSidebarWidth,
 } from './lyricsSidebarWidth'
 import useEnterExitTransition from './useEnterExitTransition'
+import useRestoreFocusOnExit from './useRestoreFocusOnExit'
 
 const useStyles = makeStyles((theme) => ({
   sidebar: {
@@ -97,6 +98,7 @@ const LyricsSidebar = ({
   loading = false,
   error = null,
   labels = {},
+  returnFocusRef,
 }) => {
   const [width, setWidth] = useState(loadSidebarWidth)
   const sidebarRef = useRef(null)
@@ -110,6 +112,12 @@ const LyricsSidebar = ({
   const [isResizing, setIsResizing] = useState(false)
   const classes = useStyles()
 
+  useRestoreFocusOnExit({
+    surfaceRef: sidebarRef,
+    entered,
+    returnFocusRef,
+  })
+
   useEffect(() => {
     widthRef.current = width
   }, [width])
@@ -121,14 +129,6 @@ const LyricsSidebar = ({
     },
     [],
   )
-
-  useEffect(() => {
-    if (entered || typeof document === 'undefined') return
-    const activeElement = document.activeElement
-    if (activeElement && sidebarRef.current?.contains(activeElement)) {
-      activeElement.blur()
-    }
-  }, [entered])
 
   const applyWidth = useCallback((next) => {
     const resolvedWidth = clampSidebarWidth(
@@ -255,6 +255,7 @@ const LyricsSidebar = ({
       }}
       aria-label={labels.title || 'Lyrics'}
       aria-hidden={!entered}
+      inert={entered ? undefined : ''}
       data-resizing={isResizing ? 'true' : 'false'}
     >
       <button
