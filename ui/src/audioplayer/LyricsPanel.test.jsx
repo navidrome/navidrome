@@ -19,7 +19,6 @@ import {
   KARAOKE_HIGHLIGHT_LEAD_MS,
   KARAOKE_LINE_LIFT_PX,
   KARAOKE_MANUAL_SCROLL_PAUSE_MS,
-  KARAOKE_TRANSLATION_IDLE_OPACITY,
   TOKEN_FUTURE_ALPHA,
 } from './lyricsKaraokeConstants'
 
@@ -356,7 +355,7 @@ describe('<LyricsPanel />', () => {
     expect(pronunciation.style.color).toBe('')
   })
 
-  it('dims inactive translations without moving them', () => {
+  it('keeps translations subordinate and stable between line states', () => {
     const propsAt = (currentTime) => ({
       mainLyric,
       pronunciationLyric: {
@@ -388,17 +387,17 @@ describe('<LyricsPanel />', () => {
     expect(window.getComputedStyle(mainRow).transition).toContain(
       `opacity ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}`,
     )
-    expect(window.getComputedStyle(translationRow).transition).toContain(
-      `opacity ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}`,
-    )
+    expect(window.getComputedStyle(translationRow).transition).toBe('none')
     pronunciation.forEach((token) =>
       expect(token).toHaveAttribute('data-timed', 'false'),
     )
+    expect(window.getComputedStyle(translationRow).opacity).toBe('1')
     expect(
-      window
-        .getComputedStyle(lineGroup)
-        .getPropertyValue('--lyrics-translation-opacity'),
-    ).toBe('1')
+      lineGroup.style.getPropertyValue('--lyrics-translation-idle-color'),
+    ).toBe(theme.palette.text.secondary)
+    expect(
+      lineGroup.style.getPropertyValue('--lyrics-translation-active-color'),
+    ).toBe(theme.palette.text.secondary)
     expect(window.getComputedStyle(translationRow).transform).toBe('')
     expect(window.getComputedStyle(translationRow).marginTop).toBe(
       `${theme.spacing(0.6)}px`,
@@ -406,12 +405,8 @@ describe('<LyricsPanel />', () => {
 
     rerenderPanel(propsAt(1.1))
 
-    const inactiveOpacity = Number(
-      window
-        .getComputedStyle(lineGroup)
-        .getPropertyValue('--lyrics-translation-opacity'),
-    )
-    expect(inactiveOpacity).toBe(KARAOKE_TRANSLATION_IDLE_OPACITY)
+    expect(window.getComputedStyle(translationRow).opacity).toBe('1')
+    expect(window.getComputedStyle(translationRow).transition).toBe('none')
     expect(window.getComputedStyle(translationRow).transform).toBe('')
   })
 
@@ -766,6 +761,97 @@ describe('<LyricsPanel />', () => {
     expect(audioInstance.currentTime).toBe(2.3)
   })
 
+  it('uses roving focus for seekable lines without seeking on navigation', () => {
+    const audioInstance = createAudio({ currentTime: 1.5 })
+    renderPanel({
+      mainLyric: {
+        synced: true,
+        line: [
+          { start: 0, end: 900, value: 'First seekable line' },
+          { value: 'Untimed line' },
+          { start: 1000, end: 1900, value: 'Active seekable line' },
+          { start: 2000, end: 2900, value: 'Last seekable line' },
+        ],
+      },
+      audioInstance,
+    })
+
+    const first = screen
+      .getByText('First seekable line')
+      .closest('[data-testid="lyrics-line-group"]')
+    const untimed = screen
+      .getByText('Untimed line')
+      .closest('[data-testid="lyrics-line-group"]')
+    const active = screen
+      .getByText('Active seekable line')
+      .closest('[data-testid="lyrics-line-group"]')
+    const last = screen
+      .getByText('Last seekable line')
+      .closest('[data-testid="lyrics-line-group"]')
+
+    expect(first).toHaveAttribute('tabindex', '-1')
+    expect(untimed).not.toHaveAttribute('tabindex')
+    expect(active).toHaveAttribute('tabindex', '0')
+    expect(last).toHaveAttribute('tabindex', '-1')
+
+    active.focus()
+    fireEvent.keyDown(active, { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(last)
+    expect(last).toHaveAttribute('tabindex', '0')
+    expect(audioInstance.currentTime).toBe(1.5)
+
+    fireEvent.keyDown(last, { key: 'ArrowRight' })
+    expect(document.activeElement).toBe(last)
+    fireEvent.keyDown(last, { key: 'ArrowUp' })
+    expect(document.activeElement).toBe(active)
+    fireEvent.keyDown(active, { key: 'ArrowLeft' })
+    expect(document.activeElement).toBe(first)
+    expect(audioInstance.currentTime).toBe(1.5)
+
+    fireEvent.keyDown(first, { key: 'End' })
+    expect(document.activeElement).toBe(last)
+    fireEvent.keyDown(last, { key: 'Home' })
+    expect(document.activeElement).toBe(first)
+    expect(audioInstance.currentTime).toBe(1.5)
+
+    fireEvent.keyDown(first, { key: ' ' })
+    expect(audioInstance.currentTime).toBe(0)
+    fireEvent.keyDown(last, { key: 'Enter' })
+    expect(audioInstance.currentTime).toBe(2)
+  })
+
+  it('keeps lyrics mounted but pauses timeline frames while obscured', () => {
+    const audioInstance = createAudio({ currentTime: 0.25 })
+    audioInstance.paused = false
+    window.requestAnimationFrame.mockImplementation(() => 7)
+    window.requestAnimationFrame.mockClear()
+    window.cancelAnimationFrame.mockClear()
+
+    const { rerenderPanel } = renderPanel({
+      mainLyric: tokenizedMainLyric,
+      audioInstance,
+      obscured: true,
+    })
+
+    expect(screen.getByTestId('karaoke-lyrics-panel')).toBeInTheDocument()
+    expect(window.requestAnimationFrame).not.toHaveBeenCalled()
+
+    rerenderPanel({
+      mainLyric: tokenizedMainLyric,
+      audioInstance,
+      obscured: false,
+    })
+    expect(window.requestAnimationFrame).toHaveBeenCalled()
+
+    rerenderPanel({
+      mainLyric: tokenizedMainLyric,
+      audioInstance,
+      obscured: true,
+    })
+    expect(screen.getByTestId('karaoke-lyrics-panel')).toBeInTheDocument()
+    expect(window.cancelAnimationFrame).toHaveBeenCalledWith(7)
+  })
+
   it('pauses auto-scroll only for genuine manual scroll intent', async () => {
     vi.useFakeTimers()
     const requestAnimationFrameSpy = vi
@@ -834,21 +920,23 @@ describe('<LyricsPanel />', () => {
       const accessibleTheme = createTheme({ palette: { type } })
       const background = accessibleTheme.palette.background.default
 
-      renderPanel(
-        {
-          mainLyric: tokenizedMainLyric,
-          translationLyric: {
-            synced: true,
-            line: [{ start: 0, end: 1000, value: 'Readable translation' }],
-          },
-          showTranslation: true,
-          audioInstance: { currentTime: 0.25, paused: true },
+      const propsAt = (currentTime) => ({
+        mainLyric: tokenizedMainLyric,
+        translationLyric: {
+          synced: true,
+          line: [{ start: 0, end: 1000, value: 'Readable translation' }],
         },
-        accessibleTheme,
-      )
+        showTranslation: true,
+        audioInstance: { currentTime, paused: true },
+      })
+      const { rerenderPanel } = renderPanel(propsAt(0.25), accessibleTheme)
 
       const group = screen.getByTestId('lyrics-line-group')
-      expect(screen.getByText('Readable translation')).toBeInTheDocument()
+      const translation = screen
+        .getByText('Readable translation')
+        .closest('[data-tokenized]')
+      expect(translation).toBeInTheDocument()
+      expect(window.getComputedStyle(translation).opacity).toBe('1')
       const token = screen.getAllByTestId('lyrics-token')[0]
       const gradientNode = [token, ...token.querySelectorAll('*')].find(
         (node) => node.style.backgroundImage.includes('linear-gradient'),
@@ -865,11 +953,6 @@ describe('<LyricsPanel />', () => {
       expect(
         group.style.getPropertyValue('--lyrics-translation-active-color'),
       ).toBe(accessibleTheme.palette.text.secondary)
-      expect(
-        window
-          .getComputedStyle(group)
-          .getPropertyValue('--lyrics-translation-opacity'),
-      ).toBe('1')
       expect(parseCssColor(futureColor).alpha).toBe(TOKEN_FUTURE_ALPHA)
       expect(contrastRatio(futureColor, background)).toBeGreaterThanOrEqual(4.5)
       expect(
@@ -880,6 +963,16 @@ describe('<LyricsPanel />', () => {
       ).toBeLessThan(
         contrastRatio(accessibleTheme.palette.text.primary, background),
       )
+
+      rerenderPanel(propsAt(1.25))
+      expect(group).toHaveAttribute('data-active', 'false')
+      expect(window.getComputedStyle(translation).opacity).toBe('1')
+      expect(
+        group.style.getPropertyValue('--lyrics-translation-idle-color'),
+      ).toBe(accessibleTheme.palette.text.secondary)
+      expect(
+        group.style.getPropertyValue('--lyrics-translation-active-color'),
+      ).toBe(accessibleTheme.palette.text.secondary)
     },
   )
 })

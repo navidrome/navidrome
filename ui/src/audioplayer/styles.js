@@ -1,8 +1,8 @@
 import { makeStyles } from '@material-ui/core/styles'
+import { MOBILE_KARAOKE_LYRICS_TRANSITION_MS } from './lyricsKaraokeConstants'
 import { PLAYER_MOBILE_MEDIA_QUERY } from './playerBreakpoints'
 
-const MOBILE_LYRICS_TRANSITION =
-  'opacity 260ms cubic-bezier(0.22, 1, 0.36, 1), transform 260ms cubic-bezier(0.22, 1, 0.36, 1)'
+const MOBILE_LYRICS_TRANSITION = `opacity ${MOBILE_KARAOKE_LYRICS_TRANSITION_MS}ms cubic-bezier(0.22, 1, 0.36, 1), transform ${MOBILE_KARAOKE_LYRICS_TRANSITION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`
 
 const useStyle = makeStyles(
   (theme) => ({
@@ -47,6 +47,9 @@ const useStyle = makeStyles(
       },
       '& .play-mode-title': {
         pointerEvents: 'none',
+      },
+      '& .audio-lists-panel': {
+        zIndex: theme.zIndex.appBar,
       },
       '& .music-player-panel .panel-content div.img-rotate': {
         // Customize desktop player when cover animation is disabled

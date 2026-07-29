@@ -14,8 +14,8 @@ import MobileKaraokeLyricsPortal, {
   MOBILE_KARAOKE_LYRICS_ENTERED_CLASS,
   MOBILE_KARAOKE_LYRICS_HOST_SELECTOR,
   MOBILE_KARAOKE_LYRICS_LAYER_CLASS,
-  MOBILE_KARAOKE_LYRICS_TRANSITION_MS,
 } from './MobileKaraokeLyricsPortal'
+import { MOBILE_KARAOKE_LYRICS_TRANSITION_MS } from './lyricsKaraokeConstants'
 import usePlayerLyrics from './usePlayerLyrics'
 
 const { defaultLyricsResponse, useEnhancedLyricsMock } = vi.hoisted(() => {
@@ -49,19 +49,28 @@ const createHost = () => {
   return host
 }
 
-const portal = (text, active = true, returnFocusRef) => (
-  <MobileKaraokeLyricsPortal active={active} returnFocusRef={returnFocusRef}>
+const portal = (text, active = true, returnFocusRef, obscured = false) => (
+  <MobileKaraokeLyricsPortal
+    active={active}
+    obscured={obscured}
+    returnFocusRef={returnFocusRef}
+  >
     <span>{text}</span>
   </MobileKaraokeLyricsPortal>
 )
 
-const MobileLyricsHarness = ({ trackId = 'track-1', isRadio = false }) => {
+const MobileLyricsHarness = ({
+  trackId = 'track-1',
+  isRadio = false,
+  obscuredByQueue = false,
+}) => {
   const { toolbarLyricsProps, mobileLyricsSurface } = usePlayerLyrics({
     trackId,
     trackUpdatedAt: 'now',
     isRadio,
     audioInstance: null,
     isDesktop: false,
+    obscuredByQueue,
     translate: (key) => key,
   })
   return (
@@ -157,6 +166,38 @@ describe('<MobileKaraokeLyricsPortal />', () => {
     expect(document.activeElement).toBe(returnTarget)
   })
 
+  it('keeps open lyrics mounted and inert while the queue obscures them', async () => {
+    const host = createHost()
+    const { rerender } = render(<MobileLyricsHarness />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Toggle lyrics' }))
+    const layer = host.querySelector(`.${MOBILE_KARAOKE_LYRICS_LAYER_CLASS}`)
+    const panel = within(host).getByTestId('karaoke-lyrics-panel')
+    await waitFor(() => expect(layer).toHaveAttribute('aria-hidden', 'false'))
+
+    rerender(<MobileLyricsHarness obscuredByQueue />)
+
+    expect(host).toHaveClass(MOBILE_KARAOKE_LYRICS_ACTIVE_CLASS)
+    expect(host).toHaveClass(MOBILE_KARAOKE_LYRICS_ENTERED_CLASS)
+    expect(host.querySelector(`.${MOBILE_KARAOKE_LYRICS_LAYER_CLASS}`)).toBe(
+      layer,
+    )
+    expect(within(host).getByTestId('karaoke-lyrics-panel')).toBe(panel)
+    expect(layer).toHaveAttribute('aria-hidden', 'true')
+    expect(layer).toHaveAttribute('inert')
+    expect(layer).toHaveStyle({ pointerEvents: 'none' })
+    expect(useEnhancedLyricsMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ requested: true }),
+    )
+
+    rerender(<MobileLyricsHarness />)
+
+    expect(within(host).getByTestId('karaoke-lyrics-panel')).toBe(panel)
+    await waitFor(() => expect(layer).toHaveAttribute('aria-hidden', 'false'))
+    expect(layer).not.toHaveAttribute('inert')
+    expect(layer).toHaveStyle({ pointerEvents: 'auto' })
+  })
+
   it('attaches when the mobile cover host appears after activation', async () => {
     vi.useFakeTimers()
 
@@ -248,7 +289,6 @@ describe('<MobileKaraokeLyricsPortal />', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Toggle lyrics' }))
 
     const controls = within(host).getByTestId('lyrics-mobile-layer-controls')
-    expect(controls).toHaveAttribute('data-placement', 'mobile')
     expect(controls).toHaveStyle({
       bottom: '8px',
       left: '50%',

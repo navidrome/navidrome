@@ -25,7 +25,6 @@ import {
   KARAOKE_LINE_MOTION_EASING,
   KARAOKE_MANUAL_SCROLL_PAUSE_MS,
   KARAOKE_SCROLLBAR_VISIBLE_MS,
-  KARAOKE_TRANSLATION_IDLE_OPACITY,
 } from './lyricsKaraokeConstants'
 import {
   animateScrollTop,
@@ -112,7 +111,6 @@ const useStyles = makeStyles((theme) => ({
     '--lyrics-translation-current-color':
       'var(--lyrics-translation-idle-color, currentColor)',
     '--lyrics-layer-opacity': KARAOKE_IDLE_LAYER_OPACITY,
-    '--lyrics-translation-opacity': KARAOKE_TRANSLATION_IDLE_OPACITY,
     transform: 'translateY(0)',
     transition: `background-color 150ms ${KARAOKE_LINE_MOTION_EASING}`,
     '&[role="button"]:focus-visible': {
@@ -136,7 +134,6 @@ const useStyles = makeStyles((theme) => ({
       '--lyrics-translation-current-color':
         'var(--lyrics-translation-active-color, var(--lyrics-translation-idle-color, currentColor))',
       '--lyrics-layer-opacity': 1,
-      '--lyrics-translation-opacity': 1,
     },
     '@media (prefers-reduced-motion: reduce)': {
       transition: 'none',
@@ -182,17 +179,17 @@ const useStyles = makeStyles((theme) => ({
   },
   auxLine: {
     display: 'block',
+    opacity: 1,
     fontWeight: 600,
     fontSize: 15,
     lineHeight: KARAOKE_AUX_LINE_HEIGHT,
     overflowWrap: 'anywhere',
     whiteSpace: 'pre-wrap',
     letterSpacing: 0,
-    opacity: 'var(--lyrics-translation-opacity)',
     color: 'var(--lyrics-translation-current-color, currentColor)',
     WebkitTextFillColor:
       'var(--lyrics-translation-current-color, currentColor)',
-    transition: KARAOKE_LAYER_OPACITY_TRANSITION,
+    transition: 'none',
     '@media (prefers-reduced-motion: reduce)': {
       transition: 'none',
       transform: 'none',
@@ -412,6 +409,7 @@ const usePrefersReducedMotion = () => {
 
 const LyricsPanel = ({
   visible = true,
+  obscured = false,
   mainLyric,
   translationLyric,
   pronunciationLyric,
@@ -436,7 +434,9 @@ const LyricsPanel = ({
   const [hasTopFade, setHasTopFade] = useState(false)
   const [scrollEndPadding, setScrollEndPadding] = useState(0)
   const [scrollStartPadding, setScrollStartPadding] = useState(0)
+  const [focusedLineIndex, setFocusedLineIndex] = useState(null)
   const prefersReducedMotion = usePrefersReducedMotion()
+  const timelineVisible = visible && !obscured
   const activeLineAnchorRatio = inline
     ? KARAOKE_INLINE_ACTIVE_LINE_ANCHOR_RATIO
     : KARAOKE_DESKTOP_ACTIVE_LINE_ANCHOR_RATIO
@@ -466,10 +466,26 @@ const LyricsPanel = ({
   } = useLyricsTimeline({
     lines: mainLines,
     audioInstance,
-    visible: visible && hasTimedMainLines,
+    visible: timelineVisible && hasTimedMainLines,
     reducedMotion: prefersReducedMotion,
   })
   const activeIndexSet = useMemo(() => new Set(activeIndexes), [activeIndexes])
+  const seekableLineIndexes = useMemo(() => {
+    if (!audioInstance) return []
+    return mainLines.reduce((indexes, line, index) => {
+      if (line.renderable !== false && line.start != null) indexes.push(index)
+      return indexes
+    }, [])
+  }, [audioInstance, mainLines])
+  const tabbableLineIndex = seekableLineIndexes.includes(focusedLineIndex)
+    ? focusedLineIndex
+    : seekableLineIndexes.includes(activeIndex)
+      ? activeIndex
+      : seekableLineIndexes[0]
+
+  useEffect(() => {
+    setFocusedLineIndex(null)
+  }, [mainLyric])
 
   const trByMainIndex = useMemo(() => {
     if (!showTranslation || translationLines.length === 0) return {}
@@ -630,7 +646,7 @@ const LyricsPanel = ({
   }, [clearManualScrollTimer, mainLyric, visible])
 
   useEffect(() => {
-    if (!visible || !hasTimedMainLines || scrollTargetIndex < 0) {
+    if (!timelineVisible || !hasTimedMainLines || scrollTargetIndex < 0) {
       cancelScrollAnimation(scrollAnimationRef)
       return undefined
     }
@@ -661,7 +677,7 @@ const LyricsPanel = ({
     layoutVersion,
     prefersReducedMotion,
     scrollTargetIndex,
-    visible,
+    timelineVisible,
   ])
 
   if (!visible) return null
@@ -695,6 +711,38 @@ const LyricsPanel = ({
     audioInstance.currentTime = line.start / 1000
     syncNow(line.start, true)
     resumeAutoScroll()
+  }
+
+  const focusSeekableLine = (index) => {
+    setFocusedLineIndex(index)
+    getLineNode(index)?.focus()
+  }
+
+  const handleLineKeyDown = (event, index, line) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      seekToLine(line)
+      return
+    }
+
+    const currentPosition = seekableLineIndexes.indexOf(index)
+    if (currentPosition < 0) return
+    let nextPosition = null
+    if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
+      nextPosition = Math.min(
+        currentPosition + 1,
+        seekableLineIndexes.length - 1,
+      )
+    } else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
+      nextPosition = Math.max(currentPosition - 1, 0)
+    } else if (event.key === 'Home') {
+      nextPosition = 0
+    } else if (event.key === 'End') {
+      nextPosition = seekableLineIndexes.length - 1
+    }
+    if (nextPosition == null) return
+    event.preventDefault()
+    focusSeekableLine(seekableLineIndexes[nextPosition])
   }
 
   return (
@@ -780,8 +828,22 @@ const LyricsPanel = ({
                 data-testid="lyrics-line-group"
                 style={buildLineGroupStyle(canSeekLine, layerStyles)}
                 role={canSeekLine ? 'button' : undefined}
-                tabIndex={canSeekLine ? 0 : undefined}
+                tabIndex={
+                  canSeekLine ? (idx === tabbableLineIndex ? 0 : -1) : undefined
+                }
                 onClick={() => seekToLine(line)}
+                onFocus={
+                  canSeekLine ? () => setFocusedLineIndex(idx) : undefined
+                }
+                onBlur={
+                  canSeekLine
+                    ? (event) => {
+                        if (!bodyRef.current?.contains(event.relatedTarget)) {
+                          setFocusedLineIndex(null)
+                        }
+                      }
+                    : undefined
+                }
                 onMouseDown={
                   canSeekLine
                     ? (event) => {
@@ -789,15 +851,11 @@ const LyricsPanel = ({
                       }
                     : undefined
                 }
-                onKeyDown={(event) => {
-                  if (
-                    canSeekLine &&
-                    (event.key === 'Enter' || event.key === ' ')
-                  ) {
-                    event.preventDefault()
-                    seekToLine(line)
-                  }
-                }}
+                onKeyDown={
+                  canSeekLine
+                    ? (event) => handleLineKeyDown(event, idx, line)
+                    : undefined
+                }
               >
                 {lineLanes.length > 1 ? (
                   <div

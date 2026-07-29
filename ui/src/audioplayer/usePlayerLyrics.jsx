@@ -15,6 +15,7 @@ const usePlayerLyrics = ({
   isRadio,
   audioInstance,
   isDesktop,
+  obscuredByQueue = false,
   translate,
 }) => {
   const [lyricsVisiblePreference, setLyricsVisiblePreference] = useState(false)
@@ -125,6 +126,7 @@ const usePlayerLyrics = ({
       loading: lyricsLoading,
       error: lyricsError,
       labels,
+      obscuredByQueue,
       returnFocusRef: lyricsToggleRef,
     }),
     [
@@ -139,6 +141,7 @@ const usePlayerLyrics = ({
       lyricsError,
       lyricsLoading,
       lyricsVisible,
+      obscuredByQueue,
       showPronunciation,
       showTranslation,
       togglePronunciation,
@@ -150,9 +153,12 @@ const usePlayerLyrics = ({
     () => (
       <MobileKaraokeLyricsPortal
         active={useInlineMobileLyrics}
+        obscured={obscuredByQueue}
         returnFocusRef={lyricsToggleRef}
       >
         <LyricsPanel
+          visible
+          obscured={obscuredByQueue}
           mainLyric={lyricLayers.main}
           translationLyric={lyricLayers.translation}
           pronunciationLyric={lyricLayers.pronunciation}
@@ -187,6 +193,7 @@ const usePlayerLyrics = ({
       lyricsError,
       lyricsLoading,
       labels,
+      obscuredByQueue,
       showPronunciation,
       showTranslation,
       togglePronunciation,
