@@ -1,4 +1,5 @@
 import { makeStyles } from '@material-ui/core/styles'
+import { PLAYER_MOBILE_MEDIA_QUERY } from './playerBreakpoints'
 
 const MOBILE_LYRICS_TRANSITION =
   'opacity 260ms cubic-bezier(0.22, 1, 0.36, 1), transform 260ms cubic-bezier(0.22, 1, 0.36, 1)'
@@ -30,7 +31,7 @@ const useStyle = makeStyles(
     },
     player: {
       display: (props) => (props.visible ? 'block' : 'none'),
-      '@media screen and (max-width:810px)': {
+      [PLAYER_MOBILE_MEDIA_QUERY]: {
         '& .sound-operation': {
           display: 'none',
         },

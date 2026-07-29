@@ -16,10 +16,9 @@ import {
   KARAOKE_CHARACTER_LIFT_PX,
   KARAOKE_CHARACTER_RISE_MS,
   KARAOKE_HIGHLIGHT_LEAD_MS,
-  KARAOKE_IDLE_LAYER_OPACITY,
   KARAOKE_LINE_LIFT_PX,
   KARAOKE_MANUAL_SCROLL_PAUSE_MS,
-  KARAOKE_TRANSLATION_OPACITY,
+  TOKEN_FUTURE_ALPHA,
 } from './lyricsKaraokeConstants'
 
 const theme = createTheme({
@@ -42,6 +41,62 @@ const renderPanel = (props, selectedTheme = theme) => {
     rerenderPanel: (nextProps) =>
       view.rerender(panel(nextProps, selectedTheme)),
   }
+}
+
+const parseCssColor = (value) => {
+  const hex = String(value).match(/^#([0-9a-f]{6})$/i)
+  if (hex) {
+    return {
+      channels: [
+        parseInt(hex[1].slice(0, 2), 16),
+        parseInt(hex[1].slice(2, 4), 16),
+        parseInt(hex[1].slice(4, 6), 16),
+      ],
+      alpha: 1,
+    }
+  }
+
+  const rgb = String(value).match(
+    /^rgba?\(\s*(\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\s*\)$/i,
+  )
+  if (!rgb) throw new Error(`Unsupported CSS color: ${value}`)
+  return {
+    channels: rgb.slice(1, 4).map(Number),
+    alpha: rgb[4] == null ? 1 : Number(rgb[4]),
+  }
+}
+
+const compositeColor = (foreground, background) => {
+  const fg = parseCssColor(foreground)
+  const bg = parseCssColor(background)
+  return fg.channels.map(
+    (channel, index) =>
+      channel * fg.alpha + bg.channels[index] * (1 - fg.alpha),
+  )
+}
+
+const relativeLuminance = (channels) =>
+  channels
+    .map((channel) => channel / 255)
+    .map((channel) =>
+      channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4,
+    )
+    .reduce(
+      (total, channel, index) =>
+        total + channel * [0.2126, 0.7152, 0.0722][index],
+      0,
+    )
+
+const contrastRatio = (foreground, background) => {
+  const foregroundLuminance = relativeLuminance(
+    compositeColor(foreground, background),
+  )
+  const backgroundLuminance = relativeLuminance(
+    parseCssColor(background).channels,
+  )
+  const lighter = Math.max(foregroundLuminance, backgroundLuminance)
+  const darker = Math.min(foregroundLuminance, backgroundLuminance)
+  return (lighter + 0.05) / (darker + 0.05)
 }
 
 const mainLyric = {
@@ -292,7 +347,7 @@ describe('<LyricsPanel />', () => {
     expect(pronunciation.style.color).toBe('')
   })
 
-  it('uses one shared opacity animation for every static line layer', () => {
+  it('uses one shared state transition for every static line layer', () => {
     renderPanel({
       mainLyric,
       pronunciationLyric: {
@@ -320,16 +375,17 @@ describe('<LyricsPanel />', () => {
       expect(row).toHaveAttribute('data-layer-animation', 'shared-opacity')
       expect(row).toHaveAttribute('data-tokenized', 'false')
       expect(row.style.opacity).toBe('')
-      expect(window.getComputedStyle(row).transition).toContain(
-        `opacity ${KARAOKE_LINE_OPACITY_MS}ms`,
-      )
     })
+    expect(window.getComputedStyle(mainRow).transition).toContain(
+      `opacity ${KARAOKE_LINE_OPACITY_MS}ms`,
+    )
+    expect(window.getComputedStyle(translationRow).transition).toContain(
+      `color ${KARAOKE_LINE_OPACITY_MS}ms`,
+    )
     pronunciation.forEach((token) =>
       expect(token).toHaveAttribute('data-timed', 'false'),
     )
-    expect(window.getComputedStyle(translationRow).opacity).toBe(
-      String(KARAOKE_TRANSLATION_OPACITY),
-    )
+    expect(window.getComputedStyle(translationRow).opacity).toBe('1')
   })
 
   it('raises a line once and keeps it elevated after release', () => {
@@ -747,68 +803,51 @@ describe('<LyricsPanel />', () => {
     )
   })
 
-  it('dims translations relative to their semantic theme color', () => {
-    const sameTextTheme = createTheme({
-      palette: {
-        primary: { main: '#ffffff' },
-        text: { primary: '#ffffff', secondary: '#ffffff' },
-      },
-    })
-    renderPanel(
-      {
-        mainLyric: {
-          synced: true,
-          line: [
-            { start: 0, end: 1000, value: 'Active' },
-            { start: 1000, end: 2000, value: 'Future' },
-          ],
-        },
-        translationLyric: {
-          synced: true,
-          line: [
-            { start: 0, end: 1000, value: 'Activa' },
-            { start: 1000, end: 2000, value: 'Futura' },
-          ],
-        },
-        showTranslation: true,
-        audioInstance: { currentTime: 0.5, paused: true },
-      },
-      sameTextTheme,
-    )
+  it.each(['light', 'dark'])(
+    'keeps future tokens and translations readable in the %s theme',
+    (type) => {
+      const accessibleTheme = createTheme({ palette: { type } })
+      const background = accessibleTheme.palette.background.default
 
-    const groups = screen.getAllByTestId('lyrics-line-group')
-    const activeTranslation = screen
-      .getByText('Activa')
-      .closest('[data-tokenized]')
-    const futureTranslation = screen
-      .getByText('Futura')
-      .closest('[data-tokenized]')
-    groups.forEach((group) => {
+      renderPanel(
+        {
+          mainLyric: tokenizedMainLyric,
+          translationLyric: {
+            synced: true,
+            line: [{ start: 0, end: 1000, value: 'Readable translation' }],
+          },
+          showTranslation: true,
+          audioInstance: { currentTime: 0.25, paused: true },
+        },
+        accessibleTheme,
+      )
+
+      const group = screen.getByTestId('lyrics-line-group')
+      const translation = screen
+        .getByText('Readable translation')
+        .closest('[data-tokenized]')
+      const token = screen.getAllByTestId('lyrics-token')[0]
+      const gradientNode = [token, ...token.querySelectorAll('*')].find(
+        (node) => node.style.backgroundImage.includes('linear-gradient'),
+      )
+      const gradientColors = Array.from(
+        gradientNode.style.backgroundImage.matchAll(/rgba?\([^)]+\)/g),
+        (match) => match[0],
+      )
+      const futureColor = gradientColors.at(-1)
+
+      expect(
+        group.style.getPropertyValue('--lyrics-translation-idle-color'),
+      ).toBe(accessibleTheme.palette.text.secondary)
       expect(
         group.style.getPropertyValue('--lyrics-translation-active-color'),
-      ).toBe('#ffffff')
-    })
-    expect(groups[0]).toHaveAttribute('data-active', 'true')
-    expect(groups[1]).toHaveAttribute('data-active', 'false')
-    const layerOpacity = (group) =>
-      window
-        .getComputedStyle(group)
-        .getPropertyValue('--lyrics-layer-opacity')
-        .trim()
-    expect(groups.map(layerOpacity)).toEqual([
-      '1',
-      String(KARAOKE_IDLE_LAYER_OPACITY),
-    ])
-    expect(window.getComputedStyle(activeTranslation).opacity).toBe(
-      String(KARAOKE_TRANSLATION_OPACITY),
-    )
-    expect(Number(window.getComputedStyle(futureTranslation).opacity)).toBe(
-      KARAOKE_IDLE_LAYER_OPACITY * KARAOKE_TRANSLATION_OPACITY,
-    )
-    ;[activeTranslation, futureTranslation].forEach((translation) =>
-      expect(window.getComputedStyle(translation).transition).toContain(
-        `opacity ${KARAOKE_LINE_OPACITY_MS}ms`,
-      ),
-    )
-  })
+      ).toBe(accessibleTheme.palette.text.primary)
+      expect(window.getComputedStyle(translation).opacity).toBe('1')
+      expect(parseCssColor(futureColor).alpha).toBe(TOKEN_FUTURE_ALPHA)
+      expect(contrastRatio(futureColor, background)).toBeGreaterThanOrEqual(4.5)
+      expect(
+        contrastRatio(accessibleTheme.palette.text.secondary, background),
+      ).toBeGreaterThanOrEqual(4.5)
+    },
+  )
 })

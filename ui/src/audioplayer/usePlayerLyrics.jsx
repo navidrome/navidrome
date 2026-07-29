@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import LyricsLayerControls from './LyricsLayerControls'
 import LyricsPanel from './LyricsPanel'
 import MobileKaraokeLyricsPortal from './MobileKaraokeLyricsPortal'
@@ -21,6 +21,7 @@ const usePlayerLyrics = ({
   const [lyricsRequested, setLyricsRequested] = useState(false)
   const [translationPreference, setTranslationPreference] = useState(null)
   const [pronunciationPreference, setPronunciationPreference] = useState(null)
+  const lyricsToggleRef = useRef(null)
 
   useEffect(() => {
     setLyricsRequested(lyricsVisiblePreference)
@@ -103,6 +104,7 @@ const usePlayerLyrics = ({
       lyricsLoading,
       lyricsLabel: labels.toggle,
       lyricsLoadingLabel: labels.loading,
+      lyricsToggleRef,
     }),
     [labels, lyricsLoading, lyricsToggleDisabled, lyricsVisible, toggleLyrics],
   )
@@ -123,6 +125,7 @@ const usePlayerLyrics = ({
       loading: lyricsLoading,
       error: lyricsError,
       labels,
+      returnFocusRef: lyricsToggleRef,
     }),
     [
       audioInstance,
@@ -145,7 +148,10 @@ const usePlayerLyrics = ({
 
   const mobileLyricsSurface = useMemo(
     () => (
-      <MobileKaraokeLyricsPortal active={useInlineMobileLyrics}>
+      <MobileKaraokeLyricsPortal
+        active={useInlineMobileLyrics}
+        returnFocusRef={lyricsToggleRef}
+      >
         <LyricsPanel
           mainLyric={lyricLayers.main}
           translationLyric={lyricLayers.translation}

@@ -26,7 +26,6 @@ import {
   KARAOKE_LINE_MOTION_EASING,
   KARAOKE_MANUAL_SCROLL_PAUSE_MS,
   KARAOKE_SCROLLBAR_VISIBLE_MS,
-  KARAOKE_TRANSLATION_OPACITY,
 } from './lyricsKaraokeConstants'
 import {
   animateScrollTop,
@@ -38,8 +37,7 @@ import { finiteTime } from './lyricsTimeline'
 import useLyricsTimeline from './useLyricsTimeline'
 
 const KARAOKE_LAYER_OPACITY_TRANSITION = `opacity ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}`
-const KARAOKE_TRANSLATION_IDLE_OPACITY =
-  KARAOKE_IDLE_LAYER_OPACITY * KARAOKE_TRANSLATION_OPACITY
+const KARAOKE_AUX_LINE_TRANSITION = `color ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}, -webkit-text-fill-color ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}`
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -135,7 +133,7 @@ const useStyles = makeStyles((theme) => ({
       },
     '&[data-raised="true"][data-line-motion="character"] $translationLine': {
       transform: `translateY(-${KARAOKE_LINE_LIFT_PX}px)`,
-      transition: `${KARAOKE_LAYER_OPACITY_TRANSITION}, transform ${KARAOKE_LINE_ENTER_MS}ms ${KARAOKE_LINE_MOTION_EASING}`,
+      transition: `${KARAOKE_AUX_LINE_TRANSITION}, transform ${KARAOKE_LINE_ENTER_MS}ms ${KARAOKE_LINE_MOTION_EASING}`,
     },
     '&[data-active="true"]': {
       '--lyrics-main-current-color':
@@ -198,17 +196,15 @@ const useStyles = makeStyles((theme) => ({
     overflowWrap: 'anywhere',
     whiteSpace: 'pre-wrap',
     letterSpacing: 0,
-    opacity: KARAOKE_TRANSLATION_IDLE_OPACITY,
-    color: 'var(--lyrics-translation-active-color, currentColor)',
-    WebkitTextFillColor: 'var(--lyrics-translation-active-color, currentColor)',
-    transition: KARAOKE_LAYER_OPACITY_TRANSITION,
+    opacity: 1,
+    color: 'var(--lyrics-translation-current-color, currentColor)',
+    WebkitTextFillColor:
+      'var(--lyrics-translation-current-color, currentColor)',
+    transition: KARAOKE_AUX_LINE_TRANSITION,
     '@media (prefers-reduced-motion: reduce)': {
       transition: 'none',
       transform: 'none',
     },
-  },
-  activeAuxLine: {
-    opacity: KARAOKE_TRANSLATION_OPACITY,
   },
   stackedToken: {
     display: 'inline-flex',
@@ -512,7 +508,7 @@ const LyricsPanel = ({
         return {
           opacity: 1,
           color: sourceColor,
-          '--lyrics-active-color': sourceColor,
+          '--lyrics-active-color': colors.main,
         }
       }
       if (!hasTimedMainLines) {
@@ -892,9 +888,7 @@ const LyricsPanel = ({
                     lineIndex={idx}
                     line={buildSynchronizedTranslationLine(line, trLine)}
                     nextLineStart={null}
-                    className={clsx(classes.auxLine, classes.translationLine, {
-                      [classes.activeAuxLine]: isStaticLine || isActiveLine,
-                    })}
+                    className={clsx(classes.auxLine, classes.translationLine)}
                     style={layerStyles.translation}
                     tokenClassName={classes.token}
                     rowKey="translation"

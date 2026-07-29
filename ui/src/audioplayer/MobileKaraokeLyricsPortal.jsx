@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import useEnterExitTransition from './useEnterExitTransition'
+import useRestoreFocusOnExit from './useRestoreFocusOnExit'
 
 export const MOBILE_KARAOKE_LYRICS_TRANSITION_MS = 260
 export const MOBILE_KARAOKE_LYRICS_HOST_SELECTOR =
@@ -14,7 +15,7 @@ const resolveMobileLyricsHost = () => {
   return document.querySelector(MOBILE_KARAOKE_LYRICS_HOST_SELECTOR)
 }
 
-const MobileKaraokeLyricsPortal = ({ active, children }) => {
+const MobileKaraokeLyricsPortal = ({ active, children, returnFocusRef }) => {
   const { rendered, entered } = useEnterExitTransition(
     active,
     MOBILE_KARAOKE_LYRICS_TRANSITION_MS,
@@ -22,6 +23,14 @@ const MobileKaraokeLyricsPortal = ({ active, children }) => {
   const [host, setHost] = useState(() =>
     active ? resolveMobileLyricsHost() : null,
   )
+  const layerRef = useRef(null)
+
+  useRestoreFocusOnExit({
+    surfaceRef: layerRef,
+    entered,
+    returnFocusRef,
+    surfaceKey: host,
+  })
 
   useEffect(() => {
     if (typeof document === 'undefined') {
@@ -60,8 +69,10 @@ const MobileKaraokeLyricsPortal = ({ active, children }) => {
   return createPortal(
     <div
       className={MOBILE_KARAOKE_LYRICS_LAYER_CLASS}
+      ref={layerRef}
       data-entered={entered ? 'true' : 'false'}
       aria-hidden={!entered}
+      inert={entered ? undefined : ''}
       style={{ pointerEvents: entered ? 'auto' : 'none' }}
     >
       {children}

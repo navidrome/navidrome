@@ -49,8 +49,8 @@ const createHost = () => {
   return host
 }
 
-const portal = (text, active = true) => (
-  <MobileKaraokeLyricsPortal active={active}>
+const portal = (text, active = true, returnFocusRef) => (
+  <MobileKaraokeLyricsPortal active={active} returnFocusRef={returnFocusRef}>
     <span>{text}</span>
   </MobileKaraokeLyricsPortal>
 )
@@ -101,6 +101,9 @@ describe('<MobileKaraokeLyricsPortal />', () => {
     expect(
       host.querySelector(`.${MOBILE_KARAOKE_LYRICS_LAYER_CLASS}`),
     ).toHaveStyle({ pointerEvents: 'auto' })
+    expect(
+      host.querySelector(`.${MOBILE_KARAOKE_LYRICS_LAYER_CLASS}`),
+    ).not.toHaveAttribute('inert')
 
     rerender(portal('Inline lyrics', false))
 
@@ -113,6 +116,9 @@ describe('<MobileKaraokeLyricsPortal />', () => {
     expect(
       host.querySelector(`.${MOBILE_KARAOKE_LYRICS_LAYER_CLASS}`),
     ).toHaveStyle({ pointerEvents: 'none' })
+    expect(
+      host.querySelector(`.${MOBILE_KARAOKE_LYRICS_LAYER_CLASS}`),
+    ).toHaveAttribute('inert')
 
     act(() => {
       vi.advanceTimersByTime(MOBILE_KARAOKE_LYRICS_TRANSITION_MS)
@@ -121,6 +127,34 @@ describe('<MobileKaraokeLyricsPortal />', () => {
     expect(screen.queryByText('Inline lyrics')).not.toBeInTheDocument()
     expect(host).not.toHaveClass(MOBILE_KARAOKE_LYRICS_ACTIVE_CLASS)
     expect(host).not.toHaveClass(MOBILE_KARAOKE_LYRICS_ENTERED_CLASS)
+  })
+
+  it('makes the exiting layer inert and returns focus to the lyrics toggle', () => {
+    vi.useFakeTimers()
+    const host = createHost()
+    const returnTarget = document.createElement('button')
+    document.body.appendChild(returnTarget)
+    const returnFocusRef = { current: returnTarget }
+    const { rerender } = render(
+      <MobileKaraokeLyricsPortal active returnFocusRef={returnFocusRef}>
+        <button type="button">Layer control</button>
+      </MobileKaraokeLyricsPortal>,
+    )
+    const layerControl = within(host).getByRole('button', {
+      name: 'Layer control',
+    })
+    layerControl.focus()
+
+    rerender(
+      <MobileKaraokeLyricsPortal active={false} returnFocusRef={returnFocusRef}>
+        <button type="button">Layer control</button>
+      </MobileKaraokeLyricsPortal>,
+    )
+
+    const layer = host.querySelector(`.${MOBILE_KARAOKE_LYRICS_LAYER_CLASS}`)
+    expect(layer).toHaveAttribute('aria-hidden', 'true')
+    expect(layer).toHaveAttribute('inert')
+    expect(document.activeElement).toBe(returnTarget)
   })
 
   it('attaches when the mobile cover host appears after activation', async () => {

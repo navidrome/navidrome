@@ -106,11 +106,13 @@ describe('<PlayerToolbar />', () => {
 
     it('toggles lyrics from an accessible toolbar button', () => {
       const onToggleLyrics = vi.fn()
+      const lyricsToggleRef = React.createRef()
       render(
         <PlayerToolbar
           id="song-1"
           onToggleLyrics={onToggleLyrics}
           lyricsActive
+          lyricsToggleRef={lyricsToggleRef}
         />,
       )
 
@@ -121,6 +123,7 @@ describe('<PlayerToolbar />', () => {
       )
       expect(lyricsButton).toHaveClass('MuiIconButton-colorPrimary')
       expect(lyricsButton).toHaveAttribute('aria-pressed', 'true')
+      expect(lyricsToggleRef.current).toBe(lyricsButton)
 
       fireEvent.click(lyricsButton)
 

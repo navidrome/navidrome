@@ -11,6 +11,7 @@ import { LoveButton, useToggleLove } from '../common'
 import { openSaveQueueDialog } from '../actions'
 import { keyMap } from '../hotkeys'
 import { makeStyles } from '@material-ui/core/styles'
+import { PLAYER_DESKTOP_MEDIA_QUERY } from './playerBreakpoints'
 
 const useStyles = makeStyles((theme) => ({
   toolbar: {
@@ -66,11 +67,12 @@ const PlayerToolbar = ({
   lyricsLoading = false,
   lyricsLabel = 'Toggle lyrics',
   lyricsLoadingLabel = 'Loading lyrics',
+  lyricsToggleRef,
 }) => {
   const dispatch = useDispatch()
   const { data, loading } = useGetOne('song', id, { enabled: !!id && !isRadio })
   const [toggleLove, toggling] = useToggleLove('song', data)
-  const isDesktop = useMediaQuery('(min-width:810px)')
+  const isDesktop = useMediaQuery(PLAYER_DESKTOP_MEDIA_QUERY)
   const classes = useStyles()
 
   const handlers = {
@@ -116,6 +118,7 @@ const PlayerToolbar = ({
     <Tooltip title={currentLyricsLabel}>
       <span>
         <IconButton
+          ref={lyricsToggleRef}
           size={isDesktop ? 'small' : undefined}
           onClick={onToggleLyrics}
           disabled={!onToggleLyrics || lyricsUnavailable}

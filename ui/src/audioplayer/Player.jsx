@@ -36,6 +36,10 @@ import { calculateGain } from '../utils/calculateReplayGain'
 import { detectBrowserProfile, decisionService } from '../transcode'
 import usePlayerLyrics from './usePlayerLyrics'
 import { useLyricsLayout } from './LyricsLayoutContext'
+import {
+  PLAYER_DESKTOP_MEDIA_QUERY,
+  PLAYER_MOBILE_MATCH_MEDIA_QUERY,
+} from './playerBreakpoints'
 
 const Player = () => {
   const theme = useCurrentTheme()
@@ -50,7 +54,7 @@ const Player = () => {
   const currentTrackIdRef = useRef(null)
   const stoppedRef = useRef(false)
   const [audioInstance, setAudioInstance] = useState(null)
-  const isDesktop = useMediaQuery('(min-width:810px)')
+  const isDesktop = useMediaQuery(PLAYER_DESKTOP_MEDIA_QUERY)
   const isMobilePlayer =
     /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
       navigator.userAgent,
@@ -247,6 +251,7 @@ const Player = () => {
       glassBg: false,
       showThemeSwitch: false,
       showMediaSession: true,
+      mobileMediaQuery: PLAYER_MOBILE_MATCH_MEDIA_QUERY,
       restartCurrentOnPrev: true,
       quietUpdate: true,
       defaultPosition: {
