@@ -234,8 +234,7 @@ func decodeArtwork(ctx context.Context, hash string, data []byte) (*model.Artwor
 	}
 
 	thumb := makeThumbnail(img, thumbnailSize)
-	xComp, yComp := blurhash.Components(thumb.Bounds().Dx(), thumb.Bounds().Dy())
-	bh, err := blurhash.Encode(thumb, xComp, yComp)
+	bh, err := blurhash.Encode(thumb)
 	if err != nil {
 		log.Warn(ctx, "Artwork: Blurhash encoding failed", "hash", hash, err)
 		bh = ""

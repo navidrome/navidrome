@@ -40,46 +40,36 @@ func gradientImage(w, h int) image.Image {
 	return img
 }
 
-var _ = Describe("Components", func() {
+var _ = Describe("Encode", func() {
+	// The size flag encodes (xComp-1) + (yComp-1)*9.
 	DescribeTable("derives component counts from aspect ratio (Jellyfin formula)",
 		func(w, h, expectedX, expectedY int) {
-			x, y := blurhash.Components(w, h)
-			Expect(x).To(Equal(expectedX))
-			Expect(y).To(Equal(expectedY))
+			hash, err := blurhash.Encode(gradientImage(w, h))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(decode83(hash[:1])).To(Equal((expectedX - 1) + (expectedY-1)*9))
 		},
-		Entry("square album art", 600, 600, 5, 5),
-		Entry("small square", 1, 1, 5, 5),
-		Entry("landscape 16:9", 1920, 1080, 6, 4),
-		Entry("portrait 9:16", 1080, 1920, 4, 6),
-		Entry("extreme landscape capped at 9", 10000, 100, 9, 1),
-		Entry("zero width", 0, 600, 0, 0),
-		Entry("zero height", 600, 0, 0, 0),
+		Entry("square album art", 60, 60, 5, 5),
+		Entry("smallest square", 1, 1, 5, 5),
+		Entry("landscape 16:9", 192, 108, 6, 4),
+		Entry("portrait 9:16", 108, 192, 4, 6),
+		Entry("extreme landscape capped at 9", 1000, 10, 9, 1),
+		Entry("extreme portrait capped at 9", 10, 1000, 1, 9),
 	)
-})
 
-var _ = Describe("Encode", func() {
-	It("rejects out-of-range components", func() {
-		_, err := blurhash.Encode(solidImage(8, 8, color.NRGBA{A: 255}), 0, 5)
-		Expect(err).To(HaveOccurred())
-		_, err = blurhash.Encode(solidImage(8, 8, color.NRGBA{A: 255}), 5, 10)
+	It("rejects an empty image", func() {
+		_, err := blurhash.Encode(image.NewNRGBA(image.Rect(0, 0, 0, 0)))
 		Expect(err).To(HaveOccurred())
 	})
 
 	It("produces the spec-mandated length", func() {
-		// 1 (size flag) + 1 (max AC) + 4 (DC) + 2 per AC component
-		h, err := blurhash.Encode(solidImage(8, 8, color.NRGBA{R: 10, G: 20, B: 30, A: 255}), 4, 3)
+		// 1 (size flag) + 1 (max AC) + 4 (DC) + 2 per AC component; a square derives 5x5
+		h, err := blurhash.Encode(solidImage(8, 8, color.NRGBA{R: 10, G: 20, B: 30, A: 255}))
 		Expect(err).ToNot(HaveOccurred())
-		Expect(h).To(HaveLen(4 + 2 + 2*(4*3-1)))
-	})
-
-	It("encodes the size flag as the first character", func() {
-		h, err := blurhash.Encode(solidImage(8, 8, color.NRGBA{A: 255}), 4, 3)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(decode83(h[:1])).To(Equal((4 - 1) + (3-1)*9))
+		Expect(h).To(HaveLen(4 + 2 + 2*(5*5-1)))
 	})
 
 	It("stores the average color in the DC component", func() {
-		h, err := blurhash.Encode(solidImage(16, 16, color.NRGBA{R: 200, G: 100, B: 50, A: 255}), 4, 3)
+		h, err := blurhash.Encode(solidImage(16, 16, color.NRGBA{R: 200, G: 100, B: 50, A: 255}))
 		Expect(err).ToNot(HaveOccurred())
 		dc := decode83(h[2:6])
 		Expect(dc >> 16).To(BeNumerically("~", 200, 1))
@@ -89,23 +79,23 @@ var _ = Describe("Encode", func() {
 
 	It("is deterministic", func() {
 		img := gradientImage(64, 64)
-		h1, err1 := blurhash.Encode(img, 5, 5)
-		h2, err2 := blurhash.Encode(img, 5, 5)
+		h1, err1 := blurhash.Encode(img)
+		h2, err2 := blurhash.Encode(img)
 		Expect(err1).ToNot(HaveOccurred())
 		Expect(err2).ToNot(HaveOccurred())
 		Expect(h1).To(Equal(h2))
 	})
 
 	It("produces different hashes for different images", func() {
-		h1, _ := blurhash.Encode(solidImage(16, 16, color.NRGBA{R: 255, A: 255}), 4, 4)
-		h2, _ := blurhash.Encode(gradientImage(16, 16), 4, 4)
+		h1, _ := blurhash.Encode(solidImage(16, 16, color.NRGBA{R: 255, A: 255}))
+		h2, _ := blurhash.Encode(gradientImage(16, 16))
 		Expect(h1).ToNot(Equal(h2))
 	})
 
 	It("downscales large images internally without changing the result materially", func() {
-		big, err := blurhash.Encode(solidImage(1000, 1000, color.NRGBA{R: 60, G: 120, B: 180, A: 255}), 5, 5)
+		big, err := blurhash.Encode(solidImage(1000, 1000, color.NRGBA{R: 60, G: 120, B: 180, A: 255}))
 		Expect(err).ToNot(HaveOccurred())
-		small, err := blurhash.Encode(solidImage(16, 16, color.NRGBA{R: 60, G: 120, B: 180, A: 255}), 5, 5)
+		small, err := blurhash.Encode(solidImage(16, 16, color.NRGBA{R: 60, G: 120, B: 180, A: 255}))
 		Expect(err).ToNot(HaveOccurred())
 		Expect(big[2:6]).To(Equal(small[2:6]))
 	})

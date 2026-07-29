@@ -28,11 +28,10 @@ func benchImage(size int) image.Image {
 func BenchmarkEncode(b *testing.B) {
 	for _, size := range []int{100, 300, 600, 900, 1200, 1500} {
 		img := benchImage(size)
-		x, y := blurhash.Components(size, size)
 		b.Run(fmt.Sprintf("%dx%d", size, size), func(b *testing.B) {
 			b.ReportAllocs()
 			for range b.N {
-				if _, err := blurhash.Encode(img, x, y); err != nil {
+				if _, err := blurhash.Encode(img); err != nil {
 					b.Fatal(err)
 				}
 			}

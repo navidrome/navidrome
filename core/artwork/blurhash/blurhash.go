@@ -18,8 +18,8 @@ const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz
 // maxInputSize: larger inputs are slower with no visible difference in the result.
 const maxInputSize = 128
 
-// Components picks x/y component counts targeting ~16 near-square tiles.
-func Components(width, height int) (int, int) {
+// components picks x/y component counts targeting ~16 near-square tiles.
+func components(width, height int) (int, int) {
 	if width <= 0 || height <= 0 {
 		return 0, 0
 	}
@@ -28,11 +28,10 @@ func Components(width, height int) (int, int) {
 	return min(int(xf)+1, 9), min(int(yf)+1, 9)
 }
 
-// Encode returns the blurhash of img using xComp x yComp components.
-func Encode(img image.Image, xComp, yComp int) (string, error) {
-	if xComp < 1 || xComp > 9 || yComp < 1 || yComp > 9 {
-		return "", errors.New("blurhash: components must be between 1 and 9")
-	}
+// Encode returns the blurhash of img, deriving the component counts from its aspect ratio.
+func Encode(img image.Image) (string, error) {
+	// Pre-downscale: its rounding can flip a component count, and the hash is a client cache key.
+	xComp, yComp := components(img.Bounds().Dx(), img.Bounds().Dy())
 	rgba := toRGBA(downscale(img))
 	bounds := rgba.Bounds()
 	w, h := bounds.Dx(), bounds.Dy()
