@@ -17,6 +17,8 @@ type PodcastPlayedRequest struct {
 	Username string `json:"username"`
 	// PlayerName is the user-assigned name of the Navidrome player (e.g. "Car", "Phone", "Desktop").
 	PlayerName string `json:"player_name,omitempty"`
+	// Source is the device type (e.g. "android_auto", "windows_desktop").
+	Source string `json:"source,omitempty"`
 	// Episode contains metadata about the episode that was played.
 	Episode EpisodeInfo `json:"episode"`
 }

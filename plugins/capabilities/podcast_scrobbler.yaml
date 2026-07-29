@@ -7,18 +7,6 @@ exports:
             contentType: application/json
 components:
     schemas:
-        PodcastPlayedRequest:
-            description: PodcastPlayedRequest is the request sent when a podcast episode is played.
-            properties:
-                username:
-                    type: string
-                    description: Username is the username of the user who played the episode.
-                episode:
-                    $ref: '#/components/schemas/EpisodeInfo'
-                    description: Episode contains metadata about the episode that was played.
-            required:
-                - username
-                - episode
         EpisodeInfo:
             description: EpisodeInfo contains podcast episode metadata.
             properties:
@@ -48,3 +36,21 @@ components:
                 - channelId
                 - channelTitle
                 - timestamp
+        PodcastPlayedRequest:
+            description: PodcastPlayedRequest is the request sent when a podcast episode is played.
+            properties:
+                username:
+                    type: string
+                    description: Username is the username of the user who played the episode.
+                player_name:
+                    type: string
+                    description: PlayerName is the user-assigned name of the Navidrome player (e.g. "Car", "Phone", "Desktop").
+                source:
+                    type: string
+                    description: Source is the device type (e.g. "android_auto", "windows_desktop").
+                episode:
+                    $ref: '#/components/schemas/EpisodeInfo'
+                    description: Episode contains metadata about the episode that was played.
+            required:
+                - username
+                - episode

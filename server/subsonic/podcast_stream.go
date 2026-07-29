@@ -41,11 +41,16 @@ func (api *Router) streamPodcastEpisode(ctx context.Context, w http.ResponseWrit
 		if player, ok := request.PlayerFrom(ctx); ok {
 			playerName = player.Name
 		}
+		source := r.URL.Query().Get("nd_source")
+		if !validCirqueSource(source) {
+			source = ""
+		}
+		log.Info(ctx, "Cirque source attribution", "nd_source", source, "path", r.URL.Path) // TODO: remove after verification
 		channelTitle := ""
 		if ch, cerr := api.ds.PodcastChannel(ctx).Get(episode.ChannelID); cerr == nil {
 			channelTitle = ch.Title
 		}
-		api.podcastNotifier.DispatchPodcastPlayed(ctx, username, playerName, episode, channelTitle)
+		api.podcastNotifier.DispatchPodcastPlayed(ctx, username, playerName, source, episode, channelTitle)
 	}
 
 	if episode.IsDownloaded() {

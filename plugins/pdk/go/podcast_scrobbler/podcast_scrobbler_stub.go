@@ -30,13 +30,18 @@ type PodcastPlayedRequest struct {
 	Username string `json:"username"`
 	// PlayerName is the user-assigned name of the Navidrome player (e.g. "Car", "Phone", "Desktop").
 	PlayerName string `json:"player_name,omitempty"`
+	// Source is the device type (e.g. "android_auto", "windows_desktop").
+	Source string `json:"source,omitempty"`
 	// Episode contains metadata about the episode that was played.
 	Episode EpisodeInfo `json:"episode"`
 }
 
+// PodcastScrobbler requires all methods to be implemented.
 // PodcastScrobbler allows plugins to receive podcast episode play events.
+// Plugins implementing this capability can track podcast listening history
+// for analytics, cross-device sync, or custom podcast tracking backends.
 type PodcastScrobbler interface {
-	// OnPodcastPlayed is called when a user plays a podcast episode.
+	// OnPodcastPlayed - OnPodcastPlayed is called when a user plays a podcast episode.
 	OnPodcastPlayed(PodcastPlayedRequest) error
 }
 

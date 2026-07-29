@@ -7,9 +7,11 @@
 
 pub use nd_pdk_types as types;
 
+pub mod action;
 pub mod lifecycle;
 pub mod lyrics;
 pub mod metadata;
+pub mod podcast_scrobbler;
 pub mod scheduler;
 pub mod scrobbler;
 pub mod sonicsimilarity;

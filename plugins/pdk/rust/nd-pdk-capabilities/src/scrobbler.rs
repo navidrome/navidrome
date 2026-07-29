@@ -50,6 +50,9 @@ pub struct NowPlayingRequest {
     /// Position is the current playback position in seconds.
     #[serde(default)]
     pub position: i32,
+    /// Client is the name of the client app.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub client: String,
 }
 /// PlaybackReportRequest is the request for playback report notifications.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -93,6 +96,18 @@ pub struct ScrobbleRequest {
     /// Timestamp is the Unix timestamp when the track started playing.
     #[serde(default)]
     pub timestamp: i64,
+    /// Client is the name of the client app (e.g. "Cirque", "DSub").
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub client: String,
+    /// Source is the device type (e.g. "android_auto", "windows_desktop").
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub source: String,
+    /// Origin is the playback starting point (e.g. "album", "playlist").
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub origin: String,
+    /// PlaybackMode indicates if it was "streamed" or "downloaded".
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub playback_mode: String,
 }
 /// TrackInfo contains track metadata.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

@@ -33,21 +33,28 @@ type PodcastPlayedRequest struct {
 	Username string `json:"username"`
 	// PlayerName is the user-assigned name of the Navidrome player (e.g. "Car", "Phone", "Desktop").
 	PlayerName string `json:"player_name,omitempty"`
+	// Source is the device type (e.g. "android_auto", "windows_desktop").
+	Source string `json:"source,omitempty"`
 	// Episode contains metadata about the episode that was played.
 	Episode EpisodeInfo `json:"episode"`
 }
 
+// PodcastScrobbler requires all methods to be implemented.
 // PodcastScrobbler allows plugins to receive podcast episode play events.
+// Plugins implementing this capability can track podcast listening history
+// for analytics, cross-device sync, or custom podcast tracking backends.
 type PodcastScrobbler interface {
-	// OnPodcastPlayed is called when a user plays a podcast episode.
+	// OnPodcastPlayed - OnPodcastPlayed is called when a user plays a podcast episode.
 	OnPodcastPlayed(PodcastPlayedRequest) error
-}
+} // Internal implementation holders
+var (
+	podcastPlayedImpl func(PodcastPlayedRequest) error
+)
 
-var onPodcastPlayedImpl func(PodcastPlayedRequest) error
-
-// Register registers a PodcastScrobbler implementation.
+// Register registers a podcast_scrobbler implementation.
+// All methods are required.
 func Register(impl PodcastScrobbler) {
-	onPodcastPlayedImpl = impl.OnPodcastPlayed
+	podcastPlayedImpl = impl.OnPodcastPlayed
 }
 
 // NotImplementedCode is the standard return code for unimplemented functions.
@@ -56,7 +63,8 @@ const NotImplementedCode int32 = -2
 
 //go:wasmexport nd_podcast_scrobbler_on_played
 func _NdPodcastScrobblerOnPlayed() int32 {
-	if onPodcastPlayedImpl == nil {
+	if podcastPlayedImpl == nil {
+		// Return standard code - host will skip this plugin gracefully
 		return NotImplementedCode
 	}
 
@@ -66,7 +74,7 @@ func _NdPodcastScrobblerOnPlayed() int32 {
 		return -1
 	}
 
-	if err := onPodcastPlayedImpl(input); err != nil {
+	if err := podcastPlayedImpl(input); err != nil {
 		pdk.SetError(err)
 		return -1
 	}
