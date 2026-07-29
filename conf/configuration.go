@@ -2,14 +2,18 @@ package conf
 
 import (
 	"cmp"
+	"encoding"
 	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
+	"reflect"
+	"regexp"
 	"runtime"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bmatcuk/doublestar/v4"
@@ -21,11 +25,12 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/scheduler"
 	"github.com/navidrome/navidrome/utils/run"
+	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/spf13/viper"
 )
 
 type configOptions struct {
-	ConfigFile                      string
+	ConfigFile                      string `conf:"-"`
 	Address                         string
 	Port                            int
 	UnixSocketPerm                  string
@@ -203,7 +208,7 @@ type lastfmOptions struct {
 	ScrobbleFirstArtistOnly bool
 
 	// Computed values
-	Languages []string // Computed from Language, split by comma
+	Languages []string `conf:"-"` // Computed from Language, split by comma
 }
 
 type deezerOptions struct {
@@ -211,7 +216,7 @@ type deezerOptions struct {
 	Language string
 
 	// Computed values
-	Languages []string // Computed from Language, split by comma
+	Languages []string `conf:"-"` // Computed from Language, split by comma
 }
 
 type listenBrainzOptions struct {
@@ -342,12 +347,11 @@ func Load(noConfigDump bool) {
 	remapEnvVarKeysFromConfig()
 
 	// Map deprecated options to their new names for backwards compatibility
-	mapDeprecatedOption("ReverseProxyWhitelist", "ExtAuth.TrustedSources")
-	mapDeprecatedOption("ReverseProxyUserHeader", "ExtAuth.UserHeader")
-	mapDeprecatedOption("HTTPSecurityHeaders.CustomFrameOptionsValue", "HTTPHeaders.FrameOptions")
-	mapDeprecatedOption("CoverJpegQuality", "CoverArtQuality")
-	mapDeprecatedOption("SimilarSongsMatchThreshold", "Matcher.FuzzyThreshold")
-	mapDeprecatedOption("EnableTranscodingCancellation", "Transcoding.EnableCancellation")
+	for _, o := range deprecatedOptions {
+		if o.replacement != "" {
+			mapDeprecatedOption(o.name, o.replacement)
+		}
+	}
 
 	err := viper.Unmarshal(&Server, viper.DecodeHook(
 		mapstructure.ComposeDecodeHookFunc(
@@ -404,6 +408,13 @@ func Load(noConfigDump bool) {
 	log.SetLogLevels(Server.DevLogLevels)
 	log.SetLogSourceLine(Server.DevLogSourceLine)
 	log.SetRedacting(Server.EnableLogRedacting)
+
+	// Log deprecated, removed and unknown options
+	for _, o := range deprecatedOptions {
+		logDeprecatedOptions(o.name, o.replacement)
+	}
+	logRemovedOptions(removedOptions...)
+	logUnknownOptions()
 
 	err = run.Sequentially(
 		validateScanSchedule,
@@ -463,21 +474,6 @@ func Load(noConfigDump bool) {
 	// Parse Deezer.Language into Languages slice (comma-separated, with fallback to DefaultInfoLanguage)
 	Server.Deezer.Languages = parseLanguages(Server.Deezer.Language)
 
-	// Deprecated options
-	logDeprecatedOptions("Scanner.GenreSeparators", "")
-	logDeprecatedOptions("Scanner.GroupAlbumReleases", "")
-	logDeprecatedOptions("DevEnableBufferedScrobble", "") // Deprecated: Buffered scrobbling is now always enabled and this option is ignored
-	logDeprecatedOptions("SearchFullString", "Search.FullString")
-	logDeprecatedOptions("ReverseProxyWhitelist", "ExtAuth.TrustedSources")
-	logDeprecatedOptions("ReverseProxyUserHeader", "ExtAuth.UserHeader")
-	logDeprecatedOptions("HTTPSecurityHeaders.CustomFrameOptionsValue", "HTTPHeaders.FrameOptions")
-	logDeprecatedOptions("CoverJpegQuality", "CoverArtQuality")
-	logDeprecatedOptions("SimilarSongsMatchThreshold", "Matcher.FuzzyThreshold")
-	logDeprecatedOptions("EnableTranscodingCancellation", "Transcoding.EnableCancellation")
-
-	// Removed options
-	logRemovedOptions("Spotify.ID", "Spotify.Secret")
-
 	// Validate other options
 	if Server.UICoverArtSize < 200 || Server.UICoverArtSize > 1200 {
 		newValue := max(200, min(1200, Server.UICoverArtSize))
@@ -491,9 +487,26 @@ func Load(noConfigDump bool) {
 	}
 }
 
+// deprecatedOptions still work, but will be removed in a future release. An empty
+// replacement means the option is now ignored.
+var deprecatedOptions = []struct{ name, replacement string }{
+	{"Scanner.GenreSeparators", ""},
+	{"Scanner.GroupAlbumReleases", ""},
+	{"DevEnableBufferedScrobble", ""},
+	{"SearchFullString", "Search.FullString"},
+	{"ReverseProxyWhitelist", "ExtAuth.TrustedSources"},
+	{"ReverseProxyUserHeader", "ExtAuth.UserHeader"},
+	{"HTTPSecurityHeaders.CustomFrameOptionsValue", "HTTPHeaders.FrameOptions"},
+	{"CoverJpegQuality", "CoverArtQuality"},
+	{"SimilarSongsMatchThreshold", "Matcher.FuzzyThreshold"},
+	{"EnableTranscodingCancellation", "Transcoding.EnableCancellation"},
+}
+
+var removedOptions = []string{"Spotify.ID", "Spotify.Secret"}
+
 func logDeprecatedOptions(oldName, newName string) {
-	envVar := "ND_" + strings.ToUpper(strings.ReplaceAll(oldName, ".", "_"))
-	newEnvVar := "ND_" + strings.ToUpper(strings.ReplaceAll(newName, ".", "_"))
+	envVar := envVarName(oldName)
+	newEnvVar := envVarName(newName)
 	logWarning := func(oldName, newName string) {
 		if newName != "" {
 			log.Warn(fmt.Sprintf("Option '%s' is deprecated and will be ignored in a future release. Please use the new '%s'", oldName, newName))
@@ -513,7 +526,7 @@ func logDeprecatedOptions(oldName, newName string) {
 // not available anymore
 func logRemovedOptions(options ...string) {
 	for _, option := range options {
-		envVar := "ND_" + strings.ToUpper(strings.ReplaceAll(option, ".", "_"))
+		envVar := envVarName(option)
 		logWarning := func(option string) {
 			log.Warn(fmt.Sprintf("Option '%s' is not available anymore and will be ignored. Please remove it from your config", option))
 		}
@@ -534,34 +547,192 @@ func remapEnvVarKeysFromConfig() {
 			continue
 		}
 		stripped := strings.TrimPrefix(key, "nd_")
-		canonicalKey := strings.ReplaceAll(stripped, "_", ".")
+		canonicalKey := ndKeyToCanonical(key)
 		displayNDKey := "ND_" + strings.ToUpper(stripped)
-		displayCanonical := toPascalCase(canonicalKey)
+		canonicalName := canonicalOptionName(canonicalKey)
 
 		if viper.InConfig(canonicalKey) {
 			logFatal(fmt.Sprintf(
 				"Config file contains both '%s' and '%s'. Remove the ND_-prefixed version. "+
 					"The 'ND_' prefix is only needed for environment variables, not config file keys.",
-				displayNDKey, displayCanonical,
+				displayNDKey, cmp.Or(canonicalName, toPascalCase(canonicalKey)),
 			))
 			return
 		}
 
 		viper.Set(canonicalKey, viper.Get(key))
-		_, _ = fmt.Fprintf(os.Stderr, "WARNING: Config key '%s' uses environment variable naming. Use '%s' instead. "+
-			"The 'ND_' prefix is only needed for environment variables.\n",
-			displayNDKey, displayCanonical,
-		)
+		// Unknown keys get no advice here, logUnknownOptions reports them instead
+		if canonicalName != "" {
+			_, _ = fmt.Fprintf(os.Stderr, "WARNING: Config key '%s' uses environment variable naming. Use '%s' instead. "+
+				"The 'ND_' prefix is only needed for environment variables.\n",
+				displayNDKey, canonicalName,
+			)
+		}
 	}
 }
 
 // mapDeprecatedOption is used to provide backwards compatibility for deprecated options. It should be called after
 // the config has been read by viper, but before unmarshalling it into the Config struct.
 func mapDeprecatedOption(legacyName, newName string) {
-	if viper.IsSet(legacyName) {
+	// viper.Set outranks the config file, so an explicit replacement must win over the legacy value
+	if viper.IsSet(legacyName) && !explicitlySet(newName) {
 		viper.Set(newName, viper.Get(legacyName))
 	}
 }
+
+// explicitlySet reports whether the user provided the option, ignoring defaults,
+// which viper.IsSet counts as set. The ND_ spelling is also accepted in the config
+// file, and remapEnvVarKeysFromConfig has already moved it out of InConfig's reach.
+func explicitlySet(name string) bool {
+	envVar := envVarName(name)
+	return viper.InConfig(name) || os.Getenv(envVar) != "" || viper.InConfig(strings.ToLower(envVar))
+}
+
+func envVarName(option string) string {
+	if option == "" {
+		return ""
+	}
+	return "ND_" + strings.ToUpper(strings.ReplaceAll(option, ".", "_"))
+}
+
+func logUnknownOptions() {
+	for _, key := range unknownConfigKeys() {
+		msg := fmt.Sprintf("Option '%s' is not recognized and will be ignored", key)
+		if matches := suggestOptions(key); len(matches) > 0 {
+			msg += fmt.Sprintf(". Did you mean '%s'?", strings.Join(matches, "' or '"))
+		}
+		log.Warn(msg)
+	}
+}
+
+// suggestOptions returns the known options sharing the last segment with key,
+// catching options written outside their section.
+func suggestOptions(key string) []string {
+	key = strings.ToLower(key)
+	leaf := leafKey(key)
+	canonical, _ := configKeys()
+	var matches []string
+	for known, name := range canonical {
+		// Removed options are known only so they get their own warning, never suggest them
+		if known != key && leafKey(known) == leaf && !slices.Contains(removedOptions, name) {
+			matches = append(matches, name)
+		}
+	}
+	slices.Sort(matches)
+	return matches
+}
+
+func leafKey(key string) string {
+	return key[strings.LastIndex(key, ".")+1:]
+}
+
+// unknownConfigKeys returns config file keys that don't match any known option, so
+// typos and options written outside their section don't fail silently.
+func unknownConfigKeys() []string {
+	// INI files keep the original [default] section alongside the merged one
+	skipDefault := strings.EqualFold(filepath.Ext(viper.ConfigFileUsed()), ".ini")
+
+	var unknown []string
+	for _, key := range viper.AllKeys() {
+		if !viper.InConfig(key) || canonicalOptionName(key) != "" {
+			continue
+		}
+		if skipDefault && strings.HasPrefix(key, "default.") {
+			continue
+		}
+		// Only ND_-prefixed keys that remapEnvVarKeysFromConfig could resolve are valid
+		if strings.HasPrefix(key, "nd_") && canonicalOptionName(ndKeyToCanonical(key)) != "" {
+			continue
+		}
+		unknown = append(unknown, key)
+	}
+	slices.Sort(unknown)
+	return asWrittenInConfigFile(unknown)
+}
+
+func ndKeyToCanonical(key string) string {
+	return strings.ReplaceAll(strings.TrimPrefix(key, "nd_"), "_", ".")
+}
+
+// canonicalOptionName returns the documented spelling of a known option key, or ""
+// if it matches no option. Subkeys of free-form maps have no fixed spelling.
+func canonicalOptionName(key string) string {
+	keys, prefixes := configKeys()
+	if name, ok := keys[key]; ok {
+		return name
+	}
+	if slices.ContainsFunc(prefixes, func(p string) bool { return strings.HasPrefix(key, p) }) {
+		return toPascalCase(key)
+	}
+	return ""
+}
+
+// asWrittenInConfigFile restores the casing the keys have in the config file, as
+// viper lowercases every key it loads.
+func asWrittenInConfigFile(keys []string) []string {
+	if len(keys) == 0 {
+		return nil
+	}
+	data, err := os.ReadFile(viper.ConfigFileUsed())
+	if err != nil {
+		return keys
+	}
+	casing := map[string]string{}
+	for _, match := range configFileKeyRx.FindAllStringSubmatch(string(data), -1) {
+		for segment := range strings.SplitSeq(match[1], ".") {
+			lower := strings.ToLower(segment)
+			casing[lower] = cmp.Or(casing[lower], segment)
+		}
+	}
+	return slice.Map(keys, func(key string) string {
+		segments := strings.Split(key, ".")
+		for i, s := range segments {
+			segments[i] = cmp.Or(casing[s], s)
+		}
+		return strings.Join(segments, ".")
+	})
+}
+
+// Matches keys and section headers in all supported config formats.
+var configFileKeyRx = regexp.MustCompile(`(?m)^\s*\[?\s*"?([\w.]+)"?\s*[]=:]`)
+
+// configKeys maps every accepted option name, lowercased, to its canonical spelling,
+// plus the prefixes of free-form map options (Tags, DevLogLevels).
+var configKeys = sync.OnceValues(func() (map[string]string, []string) {
+	keys := map[string]string{}
+	var prefixes []string
+
+	var collect func(t reflect.Type, prefix string)
+	collect = func(t reflect.Type, prefix string) {
+		for field := range t.Fields() {
+			// `conf:"-"` marks values computed during Load, not settable in the config
+			if !field.IsExported() || field.Tag.Get("conf") == "-" {
+				continue
+			}
+			name := prefix + field.Name
+			if field.Type.Kind() == reflect.Struct && !reflect.PointerTo(field.Type).Implements(textUnmarshalerType) {
+				collect(field.Type, name+".")
+				continue
+			}
+			lower := strings.ToLower(name)
+			keys[lower] = name
+			if field.Type.Kind() == reflect.Map {
+				prefixes = append(prefixes, lower+".")
+			}
+		}
+	}
+	collect(reflect.TypeFor[configOptions](), "")
+
+	for _, o := range deprecatedOptions {
+		keys[strings.ToLower(o.name)] = o.name
+	}
+	for _, o := range removedOptions {
+		keys[strings.ToLower(o)] = o
+	}
+	return keys, prefixes
+})
+
+var textUnmarshalerType = reflect.TypeFor[encoding.TextUnmarshaler]()
 
 // parseIniFileConfiguration is used to parse the config file when it is in INI format. For INI files, it
 // would require a nested structure, so instead we unmarshal it to a map and then merge the nested [default]
