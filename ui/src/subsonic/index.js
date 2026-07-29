@@ -70,7 +70,14 @@ const startScan = (options) => httpClient(url('startScan', null, options))
 
 const getScanStatus = () => httpClient(url('getScanStatus'))
 
-const getNowPlaying = () => httpClient(url('getNowPlaying'))
+const getNowPlaying = (musicFolderId) =>
+  httpClient(
+    url(
+      'getNowPlaying',
+      null,
+      musicFolderId?.length ? { musicFolderId } : undefined,
+    ),
+  )
 
 const getAvatarUrl = (username, size) =>
   baseUrl(

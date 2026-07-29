@@ -3,9 +3,11 @@ package subsonic
 import (
 	"context"
 	"net/http"
+	"slices"
 	"strconv"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -203,14 +205,33 @@ func (api *Router) GetStarred2(r *http.Request) (*responses.Subsonic, error) {
 
 func (api *Router) GetNowPlaying(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
+	response := newResponse()
+	response.NowPlaying = &responses.NowPlaying{}
+
+	// When restricted to admins, non-admin users get an empty list
+	if conf.Server.NowPlaying.AdminOnly && !getUser(ctx).IsAdmin {
+		return response, nil
+	}
+
 	npInfo, err := api.scrobbler.GetNowPlaying(ctx)
 	if err != nil {
 		log.Error(r, "Error retrieving now playing list", err)
 		return nil, err
 	}
 
-	response := newResponse()
-	response.NowPlaying = &responses.NowPlaying{}
+	// Optionally restrict to specific libraries via the standard Subsonic musicFolderId param.
+	// When absent, all entries are returned, per the getNowPlaying spec.
+	requestedFolderIds, _ := req.Params(r).Ints("musicFolderId")
+	if len(requestedFolderIds) > 0 {
+		folderIds, ferr := selectedMusicFolderIds(r, false)
+		if ferr != nil {
+			return nil, ferr
+		}
+		npInfo = slice.Filter(npInfo, func(np scrobbler.PlaybackSession) bool {
+			return slices.Contains(folderIds, np.MediaFile.LibraryID)
+		})
+	}
+
 	var i int32
 	response.NowPlaying.Entry = slice.Map(npInfo, func(np scrobbler.PlaybackSession) responses.NowPlayingEntry {
 		i++

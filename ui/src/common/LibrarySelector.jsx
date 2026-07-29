@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { useDataProvider, useTranslate, useRefresh } from 'react-admin'
+import { useTranslate, useRefresh } from 'react-admin'
 import {
   Box,
   Chip,
@@ -15,8 +15,8 @@ import {
   makeStyles,
 } from '@material-ui/core'
 import { ExpandMore, ExpandLess, LibraryMusic } from '@material-ui/icons'
-import { setSelectedLibraries, setUserLibraries } from '../actions'
-import { useRefreshOnEvents } from './useRefreshOnEvents'
+import { setSelectedLibraries } from '../actions'
+import { useUserLibraries } from './useUserLibraries'
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -70,7 +70,6 @@ const useStyles = makeStyles((theme) => ({
 const LibrarySelector = () => {
   const classes = useStyles()
   const dispatch = useDispatch()
-  const dataProvider = useDataProvider()
   const translate = useTranslate()
   const refresh = useRefresh()
   const [anchorEl, setAnchorEl] = useState(null)
@@ -80,34 +79,9 @@ const LibrarySelector = () => {
     (state) => state.library,
   )
 
-  // Load user's libraries when component mounts
-  const loadUserLibraries = useCallback(async () => {
-    const userId = localStorage.getItem('userId')
-    if (userId) {
-      try {
-        const { data } = await dataProvider.getOne('user', { id: userId })
-        const libraries = data.libraries || []
-        dispatch(setUserLibraries(libraries))
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.warn(
-          'Could not load user libraries (this may be expected for non-admin users):',
-          error,
-        )
-      }
-    }
-  }, [dataProvider, dispatch])
-
-  // Initial load
-  useEffect(() => {
-    loadUserLibraries()
-  }, [loadUserLibraries])
-
-  // Reload user libraries when library changes occur
-  useRefreshOnEvents({
-    events: ['library', 'user'],
-    onRefresh: loadUserLibraries,
-  })
+  // Keep the user's libraries loaded (also done at the Layout level so the data
+  // is available even when this selector isn't rendered).
+  useUserLibraries()
 
   // Don't render if user has no libraries or only has one library
   if (!userLibraries.length || userLibraries.length === 1) {

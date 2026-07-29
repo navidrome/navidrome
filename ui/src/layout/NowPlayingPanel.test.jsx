@@ -55,7 +55,7 @@ vi.mock('@material-ui/core/styles/useTheme', () => ({
 }))
 
 describe('<NowPlayingPanel />', () => {
-  const createMockStore = (overrides = {}) => {
+  const createMockStore = (overrides = {}, libraryOverrides = {}) => {
     const defaultState = {
       activity: {
         nowPlayingCount: 1,
@@ -63,9 +63,17 @@ describe('<NowPlayingPanel />', () => {
         streamReconnected: 0,
         ...overrides,
       },
+      library: {
+        userLibraries: [],
+        selectedLibraries: [],
+        ...libraryOverrides,
+      },
     }
     return createStore(
-      combineReducers({ activity: activityReducer }),
+      combineReducers({
+        activity: activityReducer,
+        library: (state = defaultState.library) => state,
+      }),
       defaultState,
     )
   }
@@ -121,6 +129,38 @@ describe('<NowPlayingPanel />', () => {
         '/artist/artist1/show',
       )
     })
+  })
+
+  it('requests all accessible libraries when no explicit selection', async () => {
+    const store = createMockStore(
+      {},
+      { userLibraries: [{ id: 1 }, { id: 2 }], selectedLibraries: [] },
+    )
+    render(
+      <Provider store={store}>
+        <NowPlayingPanel />
+      </Provider>,
+    )
+
+    await vi.advanceTimersByTimeAsync(500)
+
+    expect(subsonic.getNowPlaying).toHaveBeenCalledWith([1, 2])
+  })
+
+  it('requests only the selected libraries when narrowed', async () => {
+    const store = createMockStore(
+      {},
+      { userLibraries: [{ id: 1 }, { id: 2 }], selectedLibraries: [2] },
+    )
+    render(
+      <Provider store={store}>
+        <NowPlayingPanel />
+      </Provider>,
+    )
+
+    await vi.advanceTimersByTimeAsync(500)
+
+    expect(subsonic.getNowPlaying).toHaveBeenCalledWith([2])
   })
 
   it('displays player name after username', async () => {
