@@ -1,12 +1,14 @@
 package conf_test
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/log"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/viper"
@@ -257,6 +259,22 @@ var _ = Describe("Configuration", func() {
 
 			Expect(conf.Server.Search.FullString).To(BeTrue())
 			Expect(conf.UnknownConfigKeys()).To(BeEmpty())
+		})
+
+		It("warns about each unrecognized option at startup", func() {
+			var logBuf bytes.Buffer
+			log.SetOutput(&logBuf)
+			DeferCleanup(func() { log.SetOutput(GinkgoWriter) })
+
+			conf.InitConfig(filepath.Join("testdata", "cfg_warning_output.toml"), false)
+			conf.Load(true)
+
+			Expect(logBuf.String()).To(ContainSubstring(
+				"Option 'ArtistSplitExceptions' is not recognized and will be ignored. " +
+					"Did you mean 'Scanner.ArtistSplitExceptions'?"))
+			Expect(logBuf.String()).To(ContainSubstring(
+				"Option 'EnableDownlods' is not recognized and will be ignored"))
+			Expect(logBuf.String()).ToNot(ContainSubstring("ArtistJoiner"))
 		})
 
 		Context("with runtime-computed and removed options in the config", func() {

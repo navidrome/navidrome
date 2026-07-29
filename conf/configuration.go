@@ -579,9 +579,11 @@ func mapDeprecatedOption(legacyName, newName string) {
 }
 
 // explicitlySet reports whether the user provided the option, ignoring defaults,
-// which viper.IsSet counts as set.
+// which viper.IsSet counts as set. The ND_ spelling is also accepted in the config
+// file, and remapEnvVarKeysFromConfig has already moved it out of InConfig's reach.
 func explicitlySet(name string) bool {
-	return viper.InConfig(name) || os.Getenv(envVarName(name)) != ""
+	envVar := envVarName(name)
+	return viper.InConfig(name) || os.Getenv(envVar) != "" || viper.InConfig(strings.ToLower(envVar))
 }
 
 func envVarName(option string) string {
