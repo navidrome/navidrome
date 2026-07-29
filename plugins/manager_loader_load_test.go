@@ -76,4 +76,45 @@ var _ = Describe("loadPluginWithConfig", func() {
 			DeferCleanup(func() { _ = manager.unloadPlugin("test-taskqueue") })
 		})
 	})
+
+	Describe("schema-only manifest re-extraction", func() {
+		It("transparently reloads and stays enabled when the plugin was already running", func() {
+			// Regression test for the bug this was written to fix: a manifest
+			// re-extraction triggered purely by CurrentManifestSchemaVersion
+			// advancing (not by the .ndp file itself changing) must not leave
+			// an already-working plugin quietly disabled with no user-visible
+			// signal - it should come back up on its own.
+			Expect(manager.Start(GinkgoT().Context())).To(Succeed())
+			DeferCleanup(func() { _ = manager.Stop() })
+
+			Expect(manager.EnablePlugin(GinkgoT().Context(), "test-taskqueue")).To(Succeed())
+			DeferCleanup(func() { _ = manager.unloadPlugin("test-taskqueue") })
+
+			repo := manager.ds.Plugin(GinkgoT().Context())
+			existing, err := repo.Get("test-taskqueue")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(existing.Enabled).To(BeTrue())
+
+			metadata := &PluginMetadata{
+				Manifest: rereadManifest(existing),
+				SHA256:   existing.SHA256, // file itself is unchanged
+			}
+			Expect(manager.updatePluginInDB(GinkgoT().Context(), repo, existing, existing.Path, metadata)).To(Succeed())
+
+			stored, err := repo.Get("test-taskqueue")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(stored.ManifestSchemaVersion).To(Equal(CurrentManifestSchemaVersion))
+			Expect(stored.Enabled).To(BeTrue(), "schema-only re-extraction of an already-working plugin should reload it, not leave it disabled")
+			Expect(stored.LastError).To(BeEmpty())
+		})
+	})
 })
+
+// rereadManifest re-parses a loaded plugin's own manifest.json, so the
+// schema-only-re-extraction test above can simulate "this build now
+// understands the manifest differently" without needing a second .ndp fixture.
+func rereadManifest(p *model.Plugin) *Manifest {
+	pkg, err := openPackage(p.Path)
+	Expect(err).ToNot(HaveOccurred())
+	return pkg.Manifest
+}

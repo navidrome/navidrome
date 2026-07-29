@@ -76,8 +76,17 @@ func (m *Manager) addPluginToDB(ctx context.Context, repo model.PluginRepository
 
 // updatePluginInDB updates an existing plugin in the database after its file
 // changed and/or this build's understanding of the manifest schema advanced
-// past what was stored. If the plugin was enabled, it will be unloaded and
-// disabled either way, since its manifest data is being replaced.
+// past what was stored.
+//
+// A real file change always forces a disable requiring manual re-enable - a
+// new binary could behave differently, so auto-reloading it without review
+// would be risky. A schema-only re-extraction (the .ndp file itself is
+// unchanged, only this build's understanding of the manifest format
+// advanced) is safe to transparently reload if the plugin was already
+// running, since nothing about what's actually executing has changed -
+// force-disabling it in that case would just silently stop a working plugin
+// with no user-visible signal, which is the exact failure mode this
+// mechanism exists to avoid in the first place.
 func (m *Manager) updatePluginInDB(ctx context.Context, repo model.PluginRepository, dbPlugin *model.Plugin, path string, metadata *PluginMetadata) error {
 	wasEnabled := dbPlugin.Enabled
 	fileChanged := dbPlugin.SHA256 != metadata.SHA256
@@ -90,16 +99,35 @@ func (m *Manager) updatePluginInDB(ctx context.Context, repo model.PluginReposit
 	dbPlugin.Manifest = marshalManifest(metadata.Manifest)
 	dbPlugin.SHA256 = metadata.SHA256
 	dbPlugin.ManifestSchemaVersion = CurrentManifestSchemaVersion
-	dbPlugin.Enabled = false
 	dbPlugin.LastError = ""
 	dbPlugin.UpdatedAt = time.Now()
+
+	reloaded := false
+	if fileChanged || !wasEnabled {
+		dbPlugin.Enabled = false
+	} else if err := m.checkPermissionGates(dbPlugin); err != nil {
+		log.Error(ctx, "Plugin failed permission gate after schema re-extraction", "plugin", dbPlugin.ID, err)
+		dbPlugin.Enabled = false
+		dbPlugin.LastError = err.Error()
+	} else if err := m.loadPluginWithConfig(dbPlugin); err != nil {
+		log.Error(ctx, "Failed to reload plugin after schema re-extraction", "plugin", dbPlugin.ID, err)
+		dbPlugin.Enabled = false
+		dbPlugin.LastError = err.Error()
+	} else {
+		dbPlugin.Enabled = true
+		reloaded = true
+	}
+
 	if err := repo.Put(dbPlugin); err != nil {
+		if reloaded {
+			_ = m.unloadPlugin(dbPlugin.ID)
+		}
 		return fmt.Errorf("updating plugin in DB: %w", err)
 	}
 	if fileChanged {
 		log.Info(ctx, "Plugin file changed", "plugin", dbPlugin.ID, "wasEnabled", wasEnabled)
 	} else {
-		log.Info(ctx, "Plugin manifest re-extracted after schema upgrade", "plugin", dbPlugin.ID, "wasEnabled", wasEnabled)
+		log.Info(ctx, "Plugin manifest re-extracted after schema upgrade", "plugin", dbPlugin.ID, "wasEnabled", wasEnabled, "reloaded", reloaded)
 	}
 	m.sendPluginRefreshEvent(ctx, dbPlugin.ID)
 	return nil
