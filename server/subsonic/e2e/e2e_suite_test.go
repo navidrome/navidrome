@@ -330,7 +330,7 @@ func (n noopArchiver) ZipArtist(context.Context, string, string, int, io.Writer)
 	return model.ErrNotFound
 }
 
-func (n noopArchiver) ZipShare(context.Context, string, io.Writer) error {
+func (n noopArchiver) ZipShare(context.Context, *model.Share, io.Writer) error {
 	return model.ErrNotFound
 }
 
