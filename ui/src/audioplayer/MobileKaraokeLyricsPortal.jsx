@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { MOBILE_KARAOKE_LYRICS_TRANSITION_MS } from './lyricsKaraokeConstants'
 import useEnterExitTransition from './useEnterExitTransition'
 import useRestoreFocusOnExit from './useRestoreFocusOnExit'
 
-export const MOBILE_KARAOKE_LYRICS_TRANSITION_MS = 260
 export const MOBILE_KARAOKE_LYRICS_HOST_SELECTOR =
   '.react-jinke-music-player-mobile-cover'
 export const MOBILE_KARAOKE_LYRICS_ACTIVE_CLASS = 'nd-mobile-lyrics-active'
@@ -15,7 +15,12 @@ const resolveMobileLyricsHost = () => {
   return document.querySelector(MOBILE_KARAOKE_LYRICS_HOST_SELECTOR)
 }
 
-const MobileKaraokeLyricsPortal = ({ active, children, returnFocusRef }) => {
+const MobileKaraokeLyricsPortal = ({
+  active,
+  children,
+  obscured = false,
+  returnFocusRef,
+}) => {
   const { rendered, entered } = useEnterExitTransition(
     active,
     MOBILE_KARAOKE_LYRICS_TRANSITION_MS,
@@ -24,10 +29,11 @@ const MobileKaraokeLyricsPortal = ({ active, children, returnFocusRef }) => {
     active ? resolveMobileLyricsHost() : null,
   )
   const layerRef = useRef(null)
+  const interactive = entered && !obscured
 
   useRestoreFocusOnExit({
     surfaceRef: layerRef,
-    entered,
+    entered: interactive,
     returnFocusRef,
     surfaceKey: host,
   })
@@ -71,9 +77,9 @@ const MobileKaraokeLyricsPortal = ({ active, children, returnFocusRef }) => {
       className={MOBILE_KARAOKE_LYRICS_LAYER_CLASS}
       ref={layerRef}
       data-entered={entered ? 'true' : 'false'}
-      aria-hidden={!entered}
-      inert={entered ? undefined : ''}
-      style={{ pointerEvents: entered ? 'auto' : 'none' }}
+      aria-hidden={!interactive}
+      inert={interactive ? undefined : ''}
+      style={{ pointerEvents: interactive ? 'auto' : 'none' }}
     >
       {children}
     </div>,

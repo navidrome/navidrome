@@ -1,16 +1,15 @@
 import { alpha, makeStyles } from '@material-ui/core/styles'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef } from 'react'
 import LyricsLayerControls from './LyricsLayerControls'
 import LyricsPanel from './LyricsPanel'
 import {
+  LYRICS_SIDEBAR_DEFAULT_WIDTH,
   LYRICS_SIDEBAR_MAX_WIDTH,
   LYRICS_SIDEBAR_MIN_WIDTH,
   LYRICS_SIDEBAR_TRANSITION_MS,
   LYRICS_SIDEBAR_WIDTH_STEP,
+  clampSidebarMaxWidth,
   clampSidebarWidth,
-  loadSidebarWidth,
-  notifySidebarWidthChange,
-  saveSidebarWidth,
 } from './lyricsSidebarWidth'
 import useEnterExitTransition from './useEnterExitTransition'
 import useRestoreFocusOnExit from './useRestoreFocusOnExit'
@@ -83,8 +82,14 @@ const useStyles = makeStyles((theme) => ({
   },
 }))
 
+const noop = () => {}
+
 const LyricsSidebar = ({
   visible,
+  obscuredByQueue = false,
+  width = LYRICS_SIDEBAR_DEFAULT_WIDTH,
+  maxWidth = LYRICS_SIDEBAR_MAX_WIDTH,
+  onWidthChange = noop,
   mainLyric,
   translationLyric,
   pronunciationLyric,
@@ -100,27 +105,28 @@ const LyricsSidebar = ({
   labels = {},
   returnFocusRef,
 }) => {
-  const [width, setWidth] = useState(loadSidebarWidth)
+  const resolvedMaxWidth = clampSidebarMaxWidth(maxWidth)
+  const resolvedWidth = clampSidebarWidth(width, resolvedMaxWidth)
   const sidebarRef = useRef(null)
   const resizerRef = useRef(null)
-  const widthRef = useRef(width)
+  const widthRef = useRef(resolvedWidth)
   const resizeCleanupRef = useRef(null)
   const { rendered, entered } = useEnterExitTransition(
     visible,
     LYRICS_SIDEBAR_TRANSITION_MS,
   )
-  const [isResizing, setIsResizing] = useState(false)
+  const interactive = entered && !obscuredByQueue
   const classes = useStyles()
 
   useRestoreFocusOnExit({
     surfaceRef: sidebarRef,
-    entered,
+    entered: interactive,
     returnFocusRef,
   })
 
   useEffect(() => {
-    widthRef.current = width
-  }, [width])
+    widthRef.current = resolvedWidth
+  }, [resolvedWidth])
 
   useEffect(
     () => () => {
@@ -130,26 +136,21 @@ const LyricsSidebar = ({
     [],
   )
 
-  const applyWidth = useCallback((next) => {
-    const resolvedWidth = clampSidebarWidth(
-      typeof next === 'function' ? next(widthRef.current) : next,
-    )
-    widthRef.current = resolvedWidth
-    if (sidebarRef.current) {
-      sidebarRef.current.style.width = `${resolvedWidth}px`
-    }
-    resizerRef.current?.setAttribute('aria-valuenow', String(resolvedWidth))
-    notifySidebarWidthChange(resolvedWidth)
-    return resolvedWidth
-  }, [])
-
-  const updateWidth = useCallback(
+  const applyWidth = useCallback(
     (next, { persist = false } = {}) => {
-      const resolvedWidth = applyWidth(next)
-      setWidth(resolvedWidth)
-      if (persist) saveSidebarWidth(resolvedWidth)
+      const nextWidth = clampSidebarWidth(
+        typeof next === 'function' ? next(widthRef.current) : next,
+        resolvedMaxWidth,
+      )
+      widthRef.current = nextWidth
+      if (sidebarRef.current) {
+        sidebarRef.current.style.width = `${nextWidth}px`
+      }
+      resizerRef.current?.setAttribute('aria-valuenow', String(nextWidth))
+      onWidthChange(nextWidth, { persist })
+      return nextWidth
     },
-    [applyWidth],
+    [onWidthChange, resolvedMaxWidth],
   )
 
   const handleResizePointerDown = useCallback(
@@ -166,7 +167,6 @@ const LyricsSidebar = ({
       const canCapture =
         pointerId != null && typeof target.setPointerCapture === 'function'
       const listenerTarget = window
-      setIsResizing(true)
 
       const handlePointerMove = (moveEvent) => {
         latestWidth = applyWidth(startWidth + startX - moveEvent.clientX)
@@ -190,9 +190,7 @@ const LyricsSidebar = ({
             // Ignore stale pointer capture state.
           }
         }
-        setWidth(latestWidth)
-        if (persist) saveSidebarWidth(latestWidth)
-        setIsResizing(false)
+        if (persist) onWidthChange(latestWidth, { persist: true })
         if (resizeCleanupRef.current === cleanupResize) {
           resizeCleanupRef.current = null
         }
@@ -214,30 +212,30 @@ const LyricsSidebar = ({
         }
       }
     },
-    [applyWidth],
+    [applyWidth, onWidthChange],
   )
 
   const handleResizeKeyDown = useCallback(
     (event) => {
       if (event.key === 'ArrowLeft') {
         event.preventDefault()
-        updateWidth((current) => current + LYRICS_SIDEBAR_WIDTH_STEP, {
+        applyWidth((current) => current + LYRICS_SIDEBAR_WIDTH_STEP, {
           persist: true,
         })
       } else if (event.key === 'ArrowRight') {
         event.preventDefault()
-        updateWidth((current) => current - LYRICS_SIDEBAR_WIDTH_STEP, {
+        applyWidth((current) => current - LYRICS_SIDEBAR_WIDTH_STEP, {
           persist: true,
         })
       } else if (event.key === 'Home') {
         event.preventDefault()
-        updateWidth(LYRICS_SIDEBAR_MIN_WIDTH, { persist: true })
+        applyWidth(LYRICS_SIDEBAR_MIN_WIDTH, { persist: true })
       } else if (event.key === 'End') {
         event.preventDefault()
-        updateWidth(LYRICS_SIDEBAR_MAX_WIDTH, { persist: true })
+        applyWidth(resolvedMaxWidth, { persist: true })
       }
     },
-    [updateWidth],
+    [applyWidth, resolvedMaxWidth],
   )
 
   if (!rendered) return null
@@ -248,15 +246,14 @@ const LyricsSidebar = ({
       data-testid="lyrics-sidebar"
       ref={sidebarRef}
       style={{
-        width: widthRef.current,
+        width: resolvedWidth,
         transform: entered ? 'translateX(0)' : 'translateX(100%)',
         opacity: entered ? 1 : 0,
-        pointerEvents: entered ? 'auto' : 'none',
+        pointerEvents: interactive ? 'auto' : 'none',
       }}
       aria-label={labels.title || 'Lyrics'}
-      aria-hidden={!entered}
-      inert={entered ? undefined : ''}
-      data-resizing={isResizing ? 'true' : 'false'}
+      aria-hidden={!interactive}
+      inert={interactive ? undefined : ''}
     >
       <button
         type="button"
@@ -266,8 +263,8 @@ const LyricsSidebar = ({
         aria-label={labels.resize || 'Resize lyrics sidebar'}
         aria-orientation="vertical"
         aria-valuemin={LYRICS_SIDEBAR_MIN_WIDTH}
-        aria-valuemax={LYRICS_SIDEBAR_MAX_WIDTH}
-        aria-valuenow={width}
+        aria-valuemax={resolvedMaxWidth}
+        aria-valuenow={resolvedWidth}
         role="separator"
         onPointerDown={handleResizePointerDown}
         onKeyDown={handleResizeKeyDown}
@@ -285,6 +282,7 @@ const LyricsSidebar = ({
         />
         <LyricsPanel
           visible={visible}
+          obscured={obscuredByQueue}
           mainLyric={mainLyric}
           translationLyric={translationLyric}
           pronunciationLyric={pronunciationLyric}

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useCallback, useState } from 'react'
 import {
   cleanup,
   fireEvent,
@@ -10,9 +10,9 @@ import { ThemeProvider, createTheme } from '@material-ui/core/styles'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import LyricsSidebar from './LyricsSidebar'
 import {
+  LYRICS_SIDEBAR_DEFAULT_WIDTH,
   LYRICS_SIDEBAR_MAX_WIDTH,
   LYRICS_SIDEBAR_MIN_WIDTH,
-  LYRICS_SIDEBAR_STORAGE_KEY,
   LYRICS_SIDEBAR_TRANSITION_MS,
 } from './lyricsSidebarWidth'
 
@@ -33,9 +33,34 @@ const lyric = {
 }
 const originalPointerEvent = window.PointerEvent
 
+const ControlledLyricsSidebar = ({
+  initialWidth = LYRICS_SIDEBAR_DEFAULT_WIDTH,
+  maxWidth = LYRICS_SIDEBAR_MAX_WIDTH,
+  onWidthChange,
+  ...props
+}) => {
+  const [width, setWidth] = useState(initialWidth)
+  const handleWidthChange = useCallback(
+    (nextWidth, options) => {
+      setWidth(nextWidth)
+      onWidthChange?.(nextWidth, options)
+    },
+    [onWidthChange],
+  )
+
+  return (
+    <LyricsSidebar
+      width={width}
+      maxWidth={maxWidth}
+      onWidthChange={handleWidthChange}
+      {...props}
+    />
+  )
+}
+
 const sidebarView = (props = {}) => (
   <ThemeProvider theme={theme}>
-    <LyricsSidebar
+    <ControlledLyricsSidebar
       visible
       mainLyric={lyric}
       showTranslation
@@ -122,32 +147,66 @@ describe('<LyricsSidebar />', () => {
     expect(document.activeElement).toBe(returnTarget)
   })
 
-  it('clamps persisted and keyboard-resized widths', () => {
-    localStorage.setItem(LYRICS_SIDEBAR_STORAGE_KEY, '999')
-    renderSidebar()
+  it('keeps lyrics mounted but noninteractive while the queue obscures them', () => {
+    const returnTarget = document.createElement('button')
+    returnTarget.dataset.lyricsReturnTarget = 'true'
+    document.body.appendChild(returnTarget)
+    const returnFocusRef = { current: returnTarget }
+    const { rerender } = renderSidebar({ returnFocusRef })
+    const sidebar = screen.getByTestId('lyrics-sidebar')
+    const panel = screen.getByTestId('karaoke-lyrics-panel')
+    screen.getByTestId('lyrics-sidebar-resizer').focus()
+
+    rerender(
+      sidebarView({
+        obscuredByQueue: true,
+        returnFocusRef,
+      }),
+    )
+
+    expect(screen.getByTestId('lyrics-sidebar')).toBe(sidebar)
+    expect(screen.getByTestId('karaoke-lyrics-panel')).toBe(panel)
+    expect(sidebar).toHaveStyle({
+      transform: 'translateX(0)',
+      opacity: '1',
+      pointerEvents: 'none',
+    })
+    expect(sidebar).toHaveAttribute('aria-hidden', 'true')
+    expect(sidebar).toHaveAttribute('inert')
+    expect(document.activeElement).toBe(returnTarget)
+
+    rerender(sidebarView({ returnFocusRef }))
+
+    expect(screen.getByTestId('lyrics-sidebar')).toBe(sidebar)
+    expect(screen.getByTestId('karaoke-lyrics-panel')).toBe(panel)
+    expect(sidebar).toHaveStyle({ pointerEvents: 'auto' })
+    expect(sidebar).toHaveAttribute('aria-hidden', 'false')
+    expect(sidebar).not.toHaveAttribute('inert')
+  })
+
+  it('clamps controlled keyboard resizing to the available width', () => {
+    const onWidthChange = vi.fn()
+    renderSidebar({ initialWidth: 999, maxWidth: 435, onWidthChange })
 
     const sidebar = screen.getByTestId('lyrics-sidebar')
     const resizer = screen.getByTestId('lyrics-sidebar-resizer')
 
-    expect(sidebar).toHaveStyle({ width: `${LYRICS_SIDEBAR_MAX_WIDTH}px` })
-    expect(resizer).toHaveAttribute(
-      'aria-valuenow',
-      String(LYRICS_SIDEBAR_MAX_WIDTH),
-    )
+    expect(sidebar).toHaveStyle({ width: '435px' })
+    expect(resizer).toHaveAttribute('aria-valuemax', '435')
+    expect(resizer).toHaveAttribute('aria-valuenow', '435')
 
     fireEvent.keyDown(resizer, { key: 'Home' })
 
     expect(sidebar).toHaveStyle({ width: `${LYRICS_SIDEBAR_MIN_WIDTH}px` })
-    expect(localStorage.getItem(LYRICS_SIDEBAR_STORAGE_KEY)).toBe(
-      String(LYRICS_SIDEBAR_MIN_WIDTH),
-    )
+    expect(onWidthChange).toHaveBeenLastCalledWith(LYRICS_SIDEBAR_MIN_WIDTH, {
+      persist: true,
+    })
 
     fireEvent.keyDown(resizer, { key: 'End' })
 
-    expect(sidebar).toHaveStyle({ width: `${LYRICS_SIDEBAR_MAX_WIDTH}px` })
-    expect(localStorage.getItem(LYRICS_SIDEBAR_STORAGE_KEY)).toBe(
-      String(LYRICS_SIDEBAR_MAX_WIDTH),
-    )
+    expect(sidebar).toHaveStyle({ width: '435px' })
+    expect(resizer).toHaveAttribute('aria-valuenow', '435')
+    expect(onWidthChange).toHaveBeenLastCalledWith(435, { persist: true })
   })
 
   it('clamps pointer resizing from the left separator', async () => {
@@ -156,7 +215,8 @@ describe('<LyricsSidebar />', () => {
       writable: true,
       value: MouseEvent,
     })
-    renderSidebar()
+    const onWidthChange = vi.fn()
+    renderSidebar({ maxWidth: 435, onWidthChange })
 
     const sidebar = screen.getByTestId('lyrics-sidebar')
     const resizer = screen.getByTestId('lyrics-sidebar-resizer')
@@ -167,10 +227,10 @@ describe('<LyricsSidebar />', () => {
 
     fireEvent.pointerDown(resizer, { clientX: 500 })
     window.dispatchEvent(new MouseEvent('pointermove', { clientX: -100 }))
-    await waitFor(() =>
-      expect(sidebar).toHaveStyle({ width: `${LYRICS_SIDEBAR_MAX_WIDTH}px` }),
-    )
-    expect(localStorage.getItem(LYRICS_SIDEBAR_STORAGE_KEY)).toBeNull()
+    await waitFor(() => expect(sidebar).toHaveStyle({ width: '435px' }))
+    expect(resizer).toHaveAttribute('aria-valuemax', '435')
+    expect(resizer).toHaveAttribute('aria-valuenow', '435')
+    expect(onWidthChange).toHaveBeenLastCalledWith(435, { persist: false })
 
     window.dispatchEvent(new MouseEvent('pointermove', { clientX: 1000 }))
     await waitFor(() =>
@@ -178,9 +238,9 @@ describe('<LyricsSidebar />', () => {
     )
 
     window.dispatchEvent(new MouseEvent('pointerup'))
-    expect(localStorage.getItem(LYRICS_SIDEBAR_STORAGE_KEY)).toBe(
-      String(LYRICS_SIDEBAR_MIN_WIDTH),
-    )
+    expect(onWidthChange).toHaveBeenLastCalledWith(LYRICS_SIDEBAR_MIN_WIDTH, {
+      persist: true,
+    })
   })
 
   it('keeps the live pointer width through an unrelated rerender', async () => {
@@ -214,7 +274,8 @@ describe('<LyricsSidebar />', () => {
       writable: true,
       value: MouseEvent,
     })
-    const { unmount } = renderSidebar()
+    const onWidthChange = vi.fn()
+    const { unmount } = renderSidebar({ onWidthChange })
 
     const sidebar = screen.getByTestId('lyrics-sidebar')
     const resizer = screen.getByTestId('lyrics-sidebar-resizer')
@@ -226,13 +287,14 @@ describe('<LyricsSidebar />', () => {
     )
 
     window.dispatchEvent(new MouseEvent('pointercancel'))
-    await waitFor(() =>
-      expect(sidebar).toHaveAttribute('data-resizing', 'false'),
-    )
+    const callsAfterCancel = onWidthChange.mock.calls.length
 
     window.dispatchEvent(new MouseEvent('pointermove', { clientX: 1000 }))
     expect(sidebar).toHaveStyle({ width: `${LYRICS_SIDEBAR_MAX_WIDTH}px` })
-    expect(localStorage.getItem(LYRICS_SIDEBAR_STORAGE_KEY)).toBeNull()
+    expect(onWidthChange).toHaveBeenCalledTimes(callsAfterCancel)
+    expect(onWidthChange).not.toHaveBeenCalledWith(expect.anything(), {
+      persist: true,
+    })
 
     fireEvent.pointerDown(resizer, { clientX: 500 })
     window.dispatchEvent(new MouseEvent('pointermove', { clientX: 1000 }))
@@ -241,9 +303,13 @@ describe('<LyricsSidebar />', () => {
     )
 
     unmount()
+    const callsBeforePointerUp = onWidthChange.mock.calls.length
     window.dispatchEvent(new MouseEvent('pointerup'))
 
-    expect(localStorage.getItem(LYRICS_SIDEBAR_STORAGE_KEY)).toBeNull()
+    expect(onWidthChange).toHaveBeenCalledTimes(callsBeforePointerUp)
+    expect(onWidthChange).not.toHaveBeenCalledWith(expect.anything(), {
+      persist: true,
+    })
   })
 
   it('uses icon toggle buttons with pressed and disabled states', () => {

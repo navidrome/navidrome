@@ -54,6 +54,7 @@ const Player = () => {
   const currentTrackIdRef = useRef(null)
   const stoppedRef = useRef(false)
   const [audioInstance, setAudioInstance] = useState(null)
+  const [audioListsPanelVisible, setAudioListsPanelVisible] = useState(false)
   const isDesktop = useMediaQuery(PLAYER_DESKTOP_MEDIA_QUERY)
   const isMobilePlayer =
     /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
@@ -158,6 +159,7 @@ const Player = () => {
     isRadio: playerState.current?.isRadio || false,
     audioInstance,
     isDesktop,
+    obscuredByQueue: audioListsPanelVisible,
     translate,
   })
 
@@ -501,6 +503,7 @@ const Player = () => {
         {...options}
         className={classes.player}
         onAudioListsChange={onAudioListsChange}
+        onAudioListsPanelChange={setAudioListsPanelVisible}
         onAudioVolumeChange={onAudioVolumeChange}
         onAudioProgress={onAudioProgress}
         onAudioPlay={onAudioPlay}
