@@ -254,6 +254,17 @@ playback position, a cross-channel "up next" queue, OPML import/export), see [PO
 plugins via the same `ScrobbleRequest`/`NowPlayingRequest` types, for this fork's own Pulse companion project. See
 the [README](README.md#enhanced-scrobble-attribution-pulse-integration) for details.
 
+**Follow-up, shipped later (2026-07-29):** two additions on top of the original work, both develop-only (not yet in
+a tagged release). First, `nd_source` — a stricter, allowlist-validated companion to the original free-form
+`source` field, specifically for identifying which Cirque client variant (phone/tablet/TV/Android Auto/Windows
+desktop) sent a request; unknown/missing values are silently ignored rather than rejecting the request. Second, a
+new `PodcastScrobbler` plugin capability (`OnPodcastPlayed`/`PodcastPlayedRequest`) so podcast episode plays
+dispatch to plugins the same way song scrobbles already did — Pulse previously only saw half a user's listening
+activity. Regenerating the PDK bindings for this also caught a real latent bug: `plugins/pdk/go/scrobbler`'s
+generated Go struct was missing the `Client`/`Source`/`Origin`/`PlaybackMode` fields the host side had already been
+sending for some time, meaning Go plugins (Pulse included) couldn't actually read scrobble attribution at all until
+this regen.
+
 ### AI Tags / My Tags exploration dashboards + view toggles
 
 **Source:** own project, direct follow-up to the AI Tags vs. My Tags source-separation work (see "User-defined

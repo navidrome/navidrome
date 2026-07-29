@@ -1,6 +1,7 @@
 package subsonic
 
 import (
+	"context"
 	"encoding/json"
 	"encoding/xml"
 	"errors"
@@ -38,6 +39,11 @@ var validJSIdentifier = regexp.MustCompile(`^[a-zA-Z_$][a-zA-Z0-9_$.]*$`)
 type handler = func(*http.Request) (*responses.Subsonic, error)
 type handlerRaw = func(http.ResponseWriter, *http.Request) (*responses.Subsonic, error)
 
+// PodcastPlayNotifier dispatches podcast play events to interested listeners (e.g. plugins).
+type PodcastPlayNotifier interface {
+	DispatchPodcastPlayed(ctx context.Context, username, playerName, source string, episode *model.PodcastEpisode, channelTitle string)
+}
+
 type Router struct {
 	http.Handler
 	ds                model.DataStore
@@ -57,13 +63,14 @@ type Router struct {
 	transcodeDecision stream.TranscodeDecider
 	sonic             *sonicsvc.Sonic
 	podcasts          podcastsvc.Podcasts
+	podcastNotifier   PodcastPlayNotifier
 }
 
 func New(ds model.DataStore, artwork artwork.Artwork, streamer stream.MediaStreamer, archiver core.Archiver,
 	players core.Players, provider external.Provider, scanner model.Scanner, broker events.Broker,
 	playlists playlistsvc.Playlists, scrobbler scrobbler.PlayTracker, share core.Share, playback playback.PlaybackServer,
 	metrics metrics.Metrics, lyrics lyricssvc.Lyrics, transcodeDecision stream.TranscodeDecider,
-	sonic *sonicsvc.Sonic, podcasts podcastsvc.Podcasts,
+	sonic *sonicsvc.Sonic, podcasts podcastsvc.Podcasts, podcastNotifier PodcastPlayNotifier,
 ) *Router {
 	r := &Router{
 		ds:                ds,
@@ -83,6 +90,7 @@ func New(ds model.DataStore, artwork artwork.Artwork, streamer stream.MediaStrea
 		transcodeDecision: transcodeDecision,
 		sonic:             sonic,
 		podcasts:          podcasts,
+		podcastNotifier:   podcastNotifier,
 	}
 	r.Handler = r.routes()
 	return r

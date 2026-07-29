@@ -27,8 +27,9 @@ import (
 )
 
 const (
-	// defaultTimeout is the default timeout for plugin function calls
-	defaultTimeout = 30 * time.Second
+	// defaultTimeout is the default timeout for plugin function calls.
+	// 5 minutes to accommodate data-processing plugins (e.g. Pulse snapshot generation).
+	defaultTimeout = 5 * time.Minute
 
 	// maxPluginLoadConcurrency is the maximum number of plugins that can be
 	// compiled/loaded in parallel during startup

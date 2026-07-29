@@ -385,11 +385,18 @@ func (api *Router) Scrobble(r *http.Request) (*responses.Subsonic, error) {
 	submission := p.BoolOr("submission", true)
 	position := p.IntOr("position", 0)
 
-	source := p.StringOr("source", "")
+	source := r.URL.Query().Get("nd_source")
+	if source == "" {
+		source = p.StringOr("source", "")
+	}
+	if !validCirqueSource(source) {
+		source = ""
+	}
 	origin := p.StringOr("origin", "")
 	playbackMode := p.StringOr("playbackMode", "")
 
 	ctx := r.Context()
+	log.Info(ctx, "Cirque source attribution", "nd_source", source, "path", r.URL.Path) // TODO: remove after verification
 
 	if submission {
 		err := api.scrobblerSubmit(ctx, ids, times, source, origin, playbackMode)

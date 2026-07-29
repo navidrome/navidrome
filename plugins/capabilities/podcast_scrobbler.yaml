@@ -1,0 +1,56 @@
+version: v1-draft
+exports:
+    nd_podcast_scrobbler_on_played:
+        description: OnPodcastPlayed is called when a user plays a podcast episode.
+        input:
+            $ref: '#/components/schemas/PodcastPlayedRequest'
+            contentType: application/json
+components:
+    schemas:
+        EpisodeInfo:
+            description: EpisodeInfo contains podcast episode metadata.
+            properties:
+                id:
+                    type: string
+                    description: ID is the internal Navidrome episode ID.
+                title:
+                    type: string
+                    description: Title is the episode title.
+                channelId:
+                    type: string
+                    description: ChannelID is the podcast channel's internal ID.
+                channelTitle:
+                    type: string
+                    description: ChannelTitle is the podcast channel name.
+                duration:
+                    type: number
+                    format: float
+                    description: Duration is the episode duration in seconds (0 if unknown).
+                timestamp:
+                    type: integer
+                    format: int64
+                    description: Timestamp is the Unix timestamp when the episode play was recorded.
+            required:
+                - id
+                - title
+                - channelId
+                - channelTitle
+                - timestamp
+        PodcastPlayedRequest:
+            description: PodcastPlayedRequest is the request sent when a podcast episode is played.
+            properties:
+                username:
+                    type: string
+                    description: Username is the username of the user who played the episode.
+                player_name:
+                    type: string
+                    description: PlayerName is the user-assigned name of the Navidrome player (e.g. "Car", "Phone", "Desktop").
+                source:
+                    type: string
+                    description: Source is the device type (e.g. "android_auto", "windows_desktop").
+                episode:
+                    $ref: '#/components/schemas/EpisodeInfo'
+                    description: Episode contains metadata about the episode that was played.
+            required:
+                - username
+                - episode

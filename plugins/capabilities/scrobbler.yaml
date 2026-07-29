@@ -46,6 +46,9 @@ components:
                     type: integer
                     format: int32
                     description: Position is the current playback position in seconds.
+                client:
+                    type: string
+                    description: Client is the name of the client app.
             required:
                 - username
                 - track
@@ -102,6 +105,18 @@ components:
                     type: integer
                     format: int64
                     description: Timestamp is the Unix timestamp when the track started playing.
+                client:
+                    type: string
+                    description: Client is the name of the client app (e.g. "Cirque", "DSub").
+                source:
+                    type: string
+                    description: Source is the device type (e.g. "android_auto", "windows_desktop").
+                origin:
+                    type: string
+                    description: Origin is the playback starting point (e.g. "album", "playlist").
+                playbackMode:
+                    type: string
+                    description: PlaybackMode indicates if it was "streamed" or "downloaded".
             required:
                 - username
                 - track

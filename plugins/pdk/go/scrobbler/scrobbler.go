@@ -44,6 +44,8 @@ type NowPlayingRequest struct {
 	Track TrackInfo `json:"track"`
 	// Position is the current playback position in seconds.
 	Position int32 `json:"position"`
+	// Client is the name of the client app.
+	Client string `json:"client,omitempty"`
 }
 
 // PlaybackReportRequest is the request for playback report notifications.
@@ -74,6 +76,14 @@ type ScrobbleRequest struct {
 	Track TrackInfo `json:"track"`
 	// Timestamp is the Unix timestamp when the track started playing.
 	Timestamp int64 `json:"timestamp"`
+	// Client is the name of the client app (e.g. "Cirque", "DSub").
+	Client string `json:"client,omitempty"`
+	// Source is the device type (e.g. "android_auto", "windows_desktop").
+	Source string `json:"source,omitempty"`
+	// Origin is the playback starting point (e.g. "album", "playlist").
+	Origin string `json:"origin,omitempty"`
+	// PlaybackMode indicates if it was "streamed" or "downloaded".
+	PlaybackMode string `json:"playbackMode,omitempty"`
 }
 
 // TrackInfo contains track metadata.

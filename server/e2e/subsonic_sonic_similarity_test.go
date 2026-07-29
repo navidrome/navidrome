@@ -51,6 +51,7 @@ func buildSonicRouter(provider sonic.Provider) *subsonic.Router {
 		decider,
 		sonicSvc,
 		nil,
+		nil,
 	)
 }
 

@@ -58,13 +58,18 @@ xtp plugin init --schema-file plugins/capabilities/websocket_callback.yaml \
 
 ### Available Capabilities
 
-| Capability         | Schema File               | Description                                                 |
-|--------------------|---------------------------|-------------------------------------------------------------|
-| Metadata Agent     | `metadata_agent.yaml`     | Fetch artist biographies, album images, and similar artists |
-| Scrobbler          | `scrobbler.yaml`          | Report listening activity to external services              |
-| Lifecycle          | `lifecycle.yaml`          | Plugin initialization callbacks                             |
-| Scheduler Callback | `scheduler_callback.yaml` | Scheduled task execution                                    |
-| WebSocket Callback | `websocket_callback.yaml` | Real-time WebSocket message handling                        |
+| Capability         | Schema File               | Description                                                        |
+|--------------------|---------------------------|----------------------------------------------------------------------|
+| Metadata Agent     | `metadata_agent.yaml`     | Fetch artist biographies, album images, and similar artists         |
+| Scrobbler          | `scrobbler.yaml`          | Report listening activity to external services                     |
+| Podcast Scrobbler  | `podcast_scrobbler.yaml`  | Receive podcast episode play events for listening-history tracking  |
+| Lyrics             | `lyrics.yaml`             | Fetch lyrics for a track from an external source                    |
+| Sonic Similarity   | `sonic_similarity.yaml`   | Provide audio-similarity based track discovery                      |
+| Task Worker        | `taskworker.yaml`         | Process background jobs from Navidrome's task queue                 |
+| Action             | `action.yaml`             | Expose a one-off, user-triggered button on the plugin's config page |
+| Lifecycle          | `lifecycle.yaml`          | Plugin initialization callbacks                                     |
+| Scheduler Callback | `scheduler_callback.yaml` | Scheduled task execution                                            |
+| WebSocket Callback | `websocket_callback.yaml` | Real-time WebSocket message handling                                |
 
 ### Building Your Plugin
 

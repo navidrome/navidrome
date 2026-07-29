@@ -552,6 +552,7 @@ func setupTestDB() {
 		decider,
 		nil,
 		nil,
+		nil,
 	)
 }
 
