@@ -15,6 +15,7 @@ import {
   KARAOKE_HIGHLIGHT_LEAD_MS,
   KARAOKE_LINE_RELEASE_MS,
   easeKaraokeMotion,
+  easeKaraokeOpacity,
 } from './lyricsKaraokeConstants'
 import {
   buildLyricsTimeline,
@@ -233,6 +234,7 @@ const applyTokenState = (record, state, progress = 0) => {
 const setTokenReleasePresentation = (record, progress) => {
   const presentation = record.presentation || {}
   const nextProgress = Math.max(0, Math.min(1, progress))
+  const easedProgress = easeKaraokeOpacity(nextProgress)
   if (record.state !== 'release') {
     applyTokenState(record, 'completed', 1)
     record.state = 'release'
@@ -243,7 +245,7 @@ const setTokenReleasePresentation = (record, progress) => {
   setTokenOpacity(record, 1)
   setTokenActiveAlpha(
     record,
-    activeAlpha + (targetAlpha - activeAlpha) * nextProgress,
+    activeAlpha + (targetAlpha - activeAlpha) * easedProgress,
   )
   settleCharacterLift(record)
 }

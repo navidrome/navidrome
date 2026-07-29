@@ -9,6 +9,7 @@ import {
   KARAOKE_CLOCK_DRIFT_RESET_MS,
   KARAOKE_HIGHLIGHT_LEAD_MS,
   KARAOKE_LINE_RELEASE_MS,
+  easeKaraokeOpacity,
 } from './lyricsKaraokeConstants'
 import useLyricsTimeline from './useLyricsTimeline'
 
@@ -258,6 +259,31 @@ describe('useLyricsTimeline', () => {
     expect(Math.abs(pastAlpha - releaseAlpha)).toBeLessThan(0.01)
     expect(pastAlpha).toBeCloseTo(presentation.futureAlpha, 5)
     expect(tokenNode.style.getPropertyValue('--lyrics-progress')).toBe('1')
+  })
+
+  it('uses the shared opacity easing throughout line release', () => {
+    const audio = createAudio({ currentTime: 0.25, paused: true })
+    const { result } = renderTimeline({ audio })
+    const lineNode = document.createElement('div')
+    act(() => result.current.registerLine(0, lineNode))
+    const tokenNode = registerToken(
+      result,
+      '0:eased-release',
+      { start: 0, end: 500 },
+      'first',
+    )
+
+    syncNow(result, 1000 + KARAOKE_LINE_RELEASE_MS / 2)
+
+    expect(lineNode).toHaveAttribute('data-lifecycle', 'release')
+    expect(lineNode).toHaveAttribute('data-active', 'false')
+    const expectedAlpha =
+      presentation.activeAlpha +
+      (presentation.futureAlpha - presentation.activeAlpha) *
+        easeKaraokeOpacity(0.5)
+    expect(
+      Number(tokenNode.style.getPropertyValue('--lyrics-token-active-alpha')),
+    ).toBeCloseTo(expectedAlpha, 5)
   })
 
   it('completes long-token character waves while highlighting continues', () => {
