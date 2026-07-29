@@ -97,6 +97,22 @@ var _ = Describe("Scanner", Ordered, func() {
 		return err
 	}
 
+	// Stands in for the artwork worker: drains the queue and records every item as resolved,
+	// so a later scan can only queue genuine reprocessing.
+	resolveQueuedArtwork := func() []model.ArtworkQueueItem {
+		GinkgoHelper()
+		queued, err := ds.ArtworkQueue(ctx).DequeueBatch(1000)
+		Expect(err).ToNot(HaveOccurred())
+		for _, it := range queued {
+			Expect(ds.Artwork(ctx).PutItemArtwork(&model.ItemArtwork{
+				ItemKind: it.ItemKind, ItemID: it.ItemID, ImageType: it.ImageType,
+				Hash: "resolved", Source: "embedded", UpdatedAt: time.Now(),
+			})).To(Succeed())
+			Expect(ds.ArtworkQueue(ctx).DeleteIfUnchanged(it.ItemKind, it.ItemID, it.ImageType, it.RetryAt)).To(Succeed())
+		}
+		return queued
+	}
+
 	Context("Simple library, 'artis/album/track - title.mp3'", func() {
 		var help, revolver func(...map[string]any) *fstest.MapFile
 		var fsys storagetest.FakeFS
@@ -177,17 +193,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			It("should not re-enqueue already resolved artwork on a repeat full scan", func() {
 				Expect(runScanner(ctx, true)).To(Succeed())
 
-				// Stand in for the worker: once resolved, a second scan can only queue reprocessing.
-				queued, err := ds.ArtworkQueue(ctx).DequeueBatch(1000)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(queued).ToNot(BeEmpty())
-				for _, it := range queued {
-					Expect(ds.Artwork(ctx).PutItemArtwork(&model.ItemArtwork{
-						ItemKind: it.ItemKind, ItemID: it.ItemID, ImageType: it.ImageType,
-						Hash: "resolved", Source: "embedded", UpdatedAt: time.Now(),
-					})).To(Succeed())
-					Expect(ds.ArtworkQueue(ctx).DeleteIfUnchanged(it.ItemKind, it.ItemID, it.ImageType, it.RetryAt)).To(Succeed())
-				}
+				Expect(resolveQueuedArtwork()).ToNot(BeEmpty())
 
 				Expect(runScanner(ctx, true)).To(Succeed())
 
@@ -216,15 +222,7 @@ var _ = Describe("Scanner", Ordered, func() {
 				tests.SkipOnWindows("path separator bug (#TBD-path-sep-scanner)")
 				Expect(runScanner(ctx, true)).To(Succeed())
 
-				queued, err := ds.ArtworkQueue(ctx).DequeueBatch(1000)
-				Expect(err).ToNot(HaveOccurred())
-				for _, it := range queued {
-					Expect(ds.Artwork(ctx).PutItemArtwork(&model.ItemArtwork{
-						ItemKind: it.ItemKind, ItemID: it.ItemID, ImageType: it.ImageType,
-						Hash: "resolved", Source: "embedded", UpdatedAt: time.Now(),
-					})).To(Succeed())
-					Expect(ds.ArtworkQueue(ctx).DeleteIfUnchanged(it.ItemKind, it.ItemID, it.ImageType, it.RetryAt)).To(Succeed())
-				}
+				resolveQueuedArtwork()
 
 				fsys.UpdateTags("The Beatles/Help!/01 - Help!.mp3", _t{"producer": "George Martin"})
 				Expect(runScanner(ctx, false)).To(Succeed())

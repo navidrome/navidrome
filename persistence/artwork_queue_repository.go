@@ -13,7 +13,7 @@ import (
 	"github.com/pocketbase/dbx"
 )
 
-// Keeps each multi-row insert under SQLite's bind-variable limit (7 cols -> 700 vars).
+// Keeps each multi-row insert under SQLite's bind-variable limit (at most 7 vars per row).
 const enqueueChunkSize = 100
 
 type artworkQueueRepository struct {

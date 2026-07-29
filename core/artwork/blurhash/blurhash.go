@@ -20,9 +20,6 @@ const maxInputSize = 128
 
 // components picks x/y component counts targeting ~16 near-square tiles.
 func components(width, height int) (int, int) {
-	if width <= 0 || height <= 0 {
-		return 0, 0
-	}
 	xf := math.Sqrt(16.0 * float64(width) / float64(height))
 	yf := xf * float64(height) / float64(width)
 	return min(int(xf)+1, 9), min(int(yf)+1, 9)
@@ -30,14 +27,14 @@ func components(width, height int) (int, int) {
 
 // Encode returns the blurhash of img, deriving the component counts from its aspect ratio.
 func Encode(img image.Image) (string, error) {
+	if img.Bounds().Dx() == 0 || img.Bounds().Dy() == 0 {
+		return "", errors.New("blurhash: empty image")
+	}
 	// Pre-downscale: its rounding can flip a component count, and the hash is a client cache key.
 	xComp, yComp := components(img.Bounds().Dx(), img.Bounds().Dy())
 	rgba := toRGBA(downscale(img))
 	bounds := rgba.Bounds()
 	w, h := bounds.Dx(), bounds.Dy()
-	if w == 0 || h == 0 {
-		return "", errors.New("blurhash: empty image")
-	}
 
 	cosX := make([][]float64, xComp)
 	for i := range cosX {
@@ -86,19 +83,15 @@ func Encode(img image.Image) (string, error) {
 	var sb strings.Builder
 	sb.WriteString(Encode83((xComp-1)+(yComp-1)*9, 1))
 
+	// Derived counts are at least 1x9, so there is always at least one AC factor.
 	ac := factors[1:]
-	maxVal := 1.0
-	if len(ac) > 0 {
-		actualMax := 0.0
-		for _, f := range ac {
-			actualMax = max(actualMax, math.Abs(f[0]), math.Abs(f[1]), math.Abs(f[2]))
-		}
-		quantMax := int(max(0, min(82, math.Floor(actualMax*166-0.5))))
-		maxVal = float64(quantMax+1) / 166
-		sb.WriteString(Encode83(quantMax, 1))
-	} else {
-		sb.WriteString(Encode83(0, 1))
+	actualMax := 0.0
+	for _, f := range ac {
+		actualMax = max(actualMax, math.Abs(f[0]), math.Abs(f[1]), math.Abs(f[2]))
 	}
+	quantMax := int(max(0, min(82, math.Floor(actualMax*166-0.5))))
+	maxVal := float64(quantMax+1) / 166
+	sb.WriteString(Encode83(quantMax, 1))
 
 	dc := factors[0]
 	sb.WriteString(Encode83(linearToSRGB(dc[0])<<16|linearToSRGB(dc[1])<<8|linearToSRGB(dc[2]), 4))

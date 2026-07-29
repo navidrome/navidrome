@@ -64,6 +64,21 @@ export const decode = (hash, width, height) => {
     )
   }
 
+  // Tabulated rather than called per pixel per component: a 32x32 decode would otherwise make
+  // tens of thousands of Math.cos calls, and a grid page mounts one of these per tile.
+  const cosX = new Float64Array(width * numX)
+  for (let i = 0; i < numX; i++) {
+    for (let x = 0; x < width; x++) {
+      cosX[i * width + x] = Math.cos((Math.PI * x * i) / width)
+    }
+  }
+  const cosY = new Float64Array(height * numY)
+  for (let j = 0; j < numY; j++) {
+    for (let y = 0; y < height; y++) {
+      cosY[j * height + y] = Math.cos((Math.PI * y * j) / height)
+    }
+  }
+
   const bytesPerRow = width * 4
   const pixels = new Uint8ClampedArray(bytesPerRow * height)
   for (let y = 0; y < height; y++) {
@@ -72,10 +87,9 @@ export const decode = (hash, width, height) => {
       let g = 0
       let b = 0
       for (let j = 0; j < numY; j++) {
+        const basisY = cosY[j * height + y]
         for (let i = 0; i < numX; i++) {
-          const basis =
-            Math.cos((Math.PI * x * i) / width) *
-            Math.cos((Math.PI * y * j) / height)
+          const basis = cosX[i * width + x] * basisY
           const color = colors[i + j * numX]
           r += color[0] * basis
           g += color[1] * basis

@@ -31,6 +31,11 @@ func (m *MockArtworkQueueRepo) Enqueue(items ...model.ArtworkQueueItem) error {
 	if m.Err != nil {
 		return m.Err
 	}
+	m.enqueueLocked(items)
+	return nil
+}
+
+func (m *MockArtworkQueueRepo) enqueueLocked(items []model.ArtworkQueueItem) {
 	now := time.Now()
 	for _, it := range items {
 		if it.ImageType == "" {
@@ -51,43 +56,30 @@ func (m *MockArtworkQueueRepo) Enqueue(items ...model.ArtworkQueueItem) error {
 		it.EnqueuedAt = now
 		m.Data[k] = it
 	}
-	return nil
 }
 
 // EnqueueIfMissing mirrors the SQL anti-join: skip anything that already has an item_artwork row.
 func (m *MockArtworkQueueRepo) EnqueueIfMissing(items ...model.ArtworkQueueItem) error {
 	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.Err != nil {
-		m.mu.Unlock()
 		return m.Err
-	}
-	hasRow := func(kind, id, imageType string) bool {
-		if m.ItemArtworkSource == nil {
-			return false
-		}
-		for _, ia := range m.ItemArtworkSource.ItemData {
-			if ia.ItemKind == kind && ia.ItemID == id && ia.ImageType == imageType {
-				return true
-			}
-		}
-		return false
 	}
 	var fresh []model.ArtworkQueueItem
 	for _, it := range items {
-		imageType := cmp.Or(it.ImageType, model.ImageTypePrimary)
-		if hasRow(it.ItemKind, it.ItemID, imageType) {
-			continue
+		k := iaKey(it.ItemKind, it.ItemID, cmp.Or(it.ImageType, model.ImageTypePrimary))
+		if m.ItemArtworkSource != nil {
+			if _, ok := m.ItemArtworkSource.ItemData[k]; ok {
+				continue
+			}
 		}
-		if _, ok := m.Data[iaKey(it.ItemKind, it.ItemID, imageType)]; ok { // DO NOTHING
+		if _, ok := m.Data[k]; ok { // DO NOTHING
 			continue
 		}
 		fresh = append(fresh, it)
 	}
-	m.mu.Unlock()
-	if len(fresh) == 0 {
-		return nil
-	}
-	return m.Enqueue(fresh...)
+	m.enqueueLocked(fresh)
+	return nil
 }
 
 func (m *MockArtworkQueueRepo) DequeueBatch(n int, kinds ...string) ([]model.ArtworkQueueItem, error) {
