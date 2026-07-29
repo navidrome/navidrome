@@ -116,6 +116,12 @@ type ArtworkQueueRepository interface {
 	// EnqueueBump upserts like Enqueue but preserves an existing row's retry_at, so a
 	// request-triggered read-through never resets a failed resolution's backoff.
 	EnqueueBump(items ...ArtworkQueueItem) error
+	// EnqueueStaleAbsent inserts queue rows (priority Recheck) for absent states older than cutoff.
+	EnqueueStaleAbsent(kind Kind, attemptedBefore time.Time) (int64, error)
+	// EnqueueAllMissing inserts queue rows for all entities with no item_artwork row, at the given priority.
+	EnqueueAllMissing(kind Kind, priority int) (int64, error)
+	// EnqueueIfMissing inserts only for items with no item_artwork row yet.
+	EnqueueIfMissing(items ...ArtworkQueueItem) error
 	// DequeueBatch returns up to n items with retry_at <= now, priority desc, enqueued_at asc.
 	// Restricted to the given kinds when any are passed, so one kind cannot block another's drain.
 	DequeueBatch(n int, kinds ...string) ([]ArtworkQueueItem, error)
@@ -125,10 +131,6 @@ type ArtworkQueueRepository interface {
 	// DeleteIfUnchanged deletes only while retry_at still matches, sparing a concurrent re-enqueue.
 	DeleteIfUnchanged(kind, id, imageType string, retryAt time.Time) error
 	Count() (int64, error)
-	// EnqueueStaleAbsent inserts queue rows (priority Recheck) for absent states older than cutoff.
-	EnqueueStaleAbsent(kind Kind, attemptedBefore time.Time) (int64, error)
-	// EnqueueMissing inserts queue rows (priority Recheck) for entities with no item_artwork row.
-	EnqueueMissing(kind Kind) (int64, error)
 	// PurgeDangling removes queue rows whose entity no longer exists.
 	PurgeDangling() (int64, error)
 }

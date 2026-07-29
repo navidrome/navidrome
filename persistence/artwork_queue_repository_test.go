@@ -221,7 +221,7 @@ var _ = Describe("ArtworkQueueRepository", func() {
 		Expect(awRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "al", ItemID: albumSgtPeppers.ID, ImageType: model.ImageTypePrimary, Hash: "hX", AttemptedAt: time.Now()})).To(Succeed())
 		Expect(awRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "al", ItemID: albumAbbeyRoad.ID, ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: time.Now()})).To(Succeed())
 
-		n, err := repo.EnqueueMissing(model.KindAlbumArtwork)
+		n, err := repo.EnqueueAllMissing(model.KindAlbumArtwork, model.ArtworkPriorityRecheck)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(n).To(BeNumerically(">=", 1))
 
@@ -241,7 +241,7 @@ var _ = Describe("ArtworkQueueRepository", func() {
 	It("does not disturb an already-queued entity when enqueueing missing rows", func() {
 		Expect(repo.Enqueue(item("al", albumRadioactivity.ID, model.ArtworkPriorityBump))).To(Succeed())
 
-		_, err := repo.EnqueueMissing(model.KindAlbumArtwork)
+		_, err := repo.EnqueueAllMissing(model.KindAlbumArtwork, model.ArtworkPriorityRecheck)
 		Expect(err).ToNot(HaveOccurred())
 
 		got, _ := repo.DequeueBatch(1000)

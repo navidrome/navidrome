@@ -109,7 +109,7 @@ func enqueueStaleAbsentAll(ctx context.Context, ds model.DataStore) error {
 func enqueueMissingAll(ctx context.Context, ds model.DataStore) error {
 	queue := ds.ArtworkQueue(ctx)
 	for _, kind := range recheckKinds {
-		if _, err := queue.EnqueueMissing(kind); err != nil {
+		if _, err := queue.EnqueueAllMissing(kind, model.ArtworkPriorityRecheck); err != nil {
 			return err
 		}
 	}

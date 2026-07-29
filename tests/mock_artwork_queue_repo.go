@@ -54,6 +54,42 @@ func (m *MockArtworkQueueRepo) Enqueue(items ...model.ArtworkQueueItem) error {
 	return nil
 }
 
+// EnqueueIfMissing mirrors the SQL anti-join: skip anything that already has an item_artwork row.
+func (m *MockArtworkQueueRepo) EnqueueIfMissing(items ...model.ArtworkQueueItem) error {
+	m.mu.Lock()
+	if m.Err != nil {
+		m.mu.Unlock()
+		return m.Err
+	}
+	hasRow := func(kind, id, imageType string) bool {
+		if m.ItemArtworkSource == nil {
+			return false
+		}
+		for _, ia := range m.ItemArtworkSource.ItemData {
+			if ia.ItemKind == kind && ia.ItemID == id && ia.ImageType == imageType {
+				return true
+			}
+		}
+		return false
+	}
+	var fresh []model.ArtworkQueueItem
+	for _, it := range items {
+		imageType := cmp.Or(it.ImageType, model.ImageTypePrimary)
+		if hasRow(it.ItemKind, it.ItemID, imageType) {
+			continue
+		}
+		if _, ok := m.Data[iaKey(it.ItemKind, it.ItemID, imageType)]; ok { // DO NOTHING
+			continue
+		}
+		fresh = append(fresh, it)
+	}
+	m.mu.Unlock()
+	if len(fresh) == 0 {
+		return nil
+	}
+	return m.Enqueue(fresh...)
+}
+
 func (m *MockArtworkQueueRepo) DequeueBatch(n int, kinds ...string) ([]model.ArtworkQueueItem, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -189,7 +225,7 @@ func (m *MockArtworkQueueRepo) EnqueueStaleAbsent(kind model.Kind, attemptedBefo
 }
 
 // EnqueueMissing mirrors the SQL set-difference insert: ExistingIDs[kind] minus ItemArtworkSource.
-func (m *MockArtworkQueueRepo) EnqueueMissing(kind model.Kind) (int64, error) {
+func (m *MockArtworkQueueRepo) EnqueueAllMissing(kind model.Kind, priority int) (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {
@@ -220,7 +256,7 @@ func (m *MockArtworkQueueRepo) EnqueueMissing(kind model.Kind) (int64, error) {
 			ItemKind:   kind.Prefix(),
 			ItemID:     id,
 			ImageType:  model.ImageTypePrimary,
-			Priority:   model.ArtworkPriorityRecheck,
+			Priority:   priority,
 			RetryAt:    now,
 			EnqueuedAt: now,
 		}

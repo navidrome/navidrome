@@ -428,8 +428,14 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 		}
 
 		// Enqueue artwork resolution for changed albums/artists. Never fails the scan.
+		// A full scan re-imports every track, so a re-import is no evidence the art changed.
 		if len(queueItems) > 0 {
-			if err := tx.ArtworkQueue(p.ctx).Enqueue(queueItems...); err != nil {
+			queue := tx.ArtworkQueue(p.ctx)
+			enqueue := queue.Enqueue
+			if p.state.fullScan {
+				enqueue = queue.EnqueueIfMissing
+			}
+			if err := enqueue(queueItems...); err != nil {
 				log.Warn(p.ctx, "Scanner: could not enqueue artwork resolution", "folder", entry.path, err)
 			}
 		}

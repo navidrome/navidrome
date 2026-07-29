@@ -153,6 +153,9 @@ func (s *scannerImpl) scanFolders(ctx context.Context, fullScan bool, targets []
 		// Run GC if there were any changes (Remove dangling tracks, empty albums and artists, and orphan annotations)
 		s.runGC(ctx, &state),
 
+		// Queue artwork for entities that never resolved (after GC, so nothing dangling is queued)
+		s.runEnqueueMissingArtwork(ctx, &state),
+
 		// Refresh artist and tags stats
 		s.runRefreshStats(ctx, &state),
 
@@ -246,6 +249,29 @@ func (s *scannerImpl) runGC(ctx context.Context, state *scanState) func() error 
 			}
 			return nil
 		}, "scanner: GC")
+	}
+}
+
+// runEnqueueMissingArtwork is the safety net for entities phase 1 never enqueued.
+func (s *scannerImpl) runEnqueueMissingArtwork(ctx context.Context, state *scanState) func() error {
+	return func() error {
+		if !state.changesDetected.Load() {
+			log.Debug(ctx, "Scanner: No changes detected, skipping artwork enqueue")
+			return nil
+		}
+		start := time.Now()
+		queue := s.ds.ArtworkQueue(ctx)
+		var total int64
+		for _, kind := range []model.Kind{model.KindAlbumArtwork, model.KindArtistArtwork} {
+			n, err := queue.EnqueueAllMissing(kind, model.ArtworkPriorityScan)
+			if err != nil {
+				log.Error(ctx, "Scanner: Error enqueueing missing artwork", "kind", kind, err)
+				return fmt.Errorf("enqueueing missing artwork: %w", err)
+			}
+			total += n
+		}
+		log.Debug(ctx, "Scanner: Enqueued missing artwork", "items", total, "elapsed", time.Since(start))
+		return nil
 	}
 }
 
