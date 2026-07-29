@@ -12,12 +12,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import LyricsPanel from './LyricsPanel'
 import { KaraokeLineRow } from './LyricsLineRows'
 import {
+  KARAOKE_EASING,
   KARAOKE_LINE_OPACITY_MS,
   KARAOKE_CHARACTER_LIFT_PX,
   KARAOKE_CHARACTER_RISE_MS,
   KARAOKE_HIGHLIGHT_LEAD_MS,
   KARAOKE_LINE_LIFT_PX,
   KARAOKE_MANUAL_SCROLL_PAUSE_MS,
+  KARAOKE_TRANSLATION_IDLE_OPACITY,
   TOKEN_FUTURE_ALPHA,
 } from './lyricsKaraokeConstants'
 
@@ -354,8 +356,8 @@ describe('<LyricsPanel />', () => {
     expect(pronunciation.style.color).toBe('')
   })
 
-  it('keeps static translations visually stable while main layers transition', () => {
-    renderPanel({
+  it('dims inactive translations without moving them', () => {
+    const propsAt = (currentTime) => ({
       mainLyric,
       pronunciationLyric: {
         synced: true,
@@ -367,12 +369,12 @@ describe('<LyricsPanel />', () => {
       },
       showPronunciation: true,
       showTranslation: true,
-      audioInstance: { currentTime: 0.5, paused: true },
+      audioInstance: { currentTime, paused: true },
     })
+    const { rerenderPanel } = renderPanel(propsAt(0.5))
 
-    const mainRow = screen
-      .getByTestId('lyrics-line-group')
-      .querySelector('[data-tokenized]')
+    const lineGroup = screen.getByTestId('lyrics-line-group')
+    const mainRow = lineGroup.querySelector('[data-tokenized]')
     const translationRow = screen
       .getByText('translated line')
       .closest('[data-tokenized]')
@@ -384,16 +386,36 @@ describe('<LyricsPanel />', () => {
       expect(row.style.opacity).toBe('')
     })
     expect(window.getComputedStyle(mainRow).transition).toContain(
-      `opacity ${KARAOKE_LINE_OPACITY_MS}ms`,
+      `opacity ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}`,
     )
-    expect(window.getComputedStyle(translationRow).transition).toBe('none')
+    expect(window.getComputedStyle(translationRow).transition).toContain(
+      `opacity ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}`,
+    )
     pronunciation.forEach((token) =>
       expect(token).toHaveAttribute('data-timed', 'false'),
     )
-    expect(window.getComputedStyle(translationRow).opacity).toBe('1')
+    expect(
+      window
+        .getComputedStyle(lineGroup)
+        .getPropertyValue('--lyrics-translation-opacity'),
+    ).toBe('1')
+    expect(window.getComputedStyle(translationRow).transform).toBe('')
+    expect(window.getComputedStyle(translationRow).marginTop).toBe(
+      `${theme.spacing(0.6)}px`,
+    )
+
+    rerenderPanel(propsAt(1.1))
+
+    const inactiveOpacity = Number(
+      window
+        .getComputedStyle(lineGroup)
+        .getPropertyValue('--lyrics-translation-opacity'),
+    )
+    expect(inactiveOpacity).toBe(KARAOKE_TRANSLATION_IDLE_OPACITY)
+    expect(window.getComputedStyle(translationRow).transform).toBe('')
   })
 
-  it('raises the main line without moving its translation', () => {
+  it('keeps line-timed main and translation rows still', () => {
     const { rerenderPanel } = renderPanel({
       mainLyric,
       translationLyric: {
@@ -415,8 +437,12 @@ describe('<LyricsPanel />', () => {
     expect(group).toHaveAttribute('data-line-motion', 'line')
     expect(group).toHaveAttribute('data-character-wave', 'false')
     expect(activeStyle.transform).toBe('translateY(0)')
-    expect(window.getComputedStyle(mainRow).transform).toBe(
-      `translateY(-${KARAOKE_LINE_LIFT_PX}px)`,
+    expect(window.getComputedStyle(mainRow).transform).toBe('')
+    expect(window.getComputedStyle(mainRow).transition).toContain(
+      `opacity ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}`,
+    )
+    expect(window.getComputedStyle(mainRow).transition).not.toContain(
+      'transform',
     )
     expect(window.getComputedStyle(translation).transform).toBe('')
 
@@ -434,9 +460,7 @@ describe('<LyricsPanel />', () => {
     expect(group).toHaveAttribute('data-highlight-active', 'false')
     expect(group).toHaveAttribute('data-raised', 'true')
     expect(releasedStyle.transform).toBe('translateY(0)')
-    expect(window.getComputedStyle(mainRow).transform).toBe(
-      `translateY(-${KARAOKE_LINE_LIFT_PX}px)`,
-    )
+    expect(window.getComputedStyle(mainRow).transform).toBe('')
     expect(window.getComputedStyle(translation).transform).toBe('')
   })
 
@@ -506,6 +530,9 @@ describe('<LyricsPanel />', () => {
       .closest('[data-tokenized]')
     expect(window.getComputedStyle(releasedMainRow).transform).toBe(
       `translateY(-${KARAOKE_LINE_LIFT_PX}px)`,
+    )
+    expect(window.getComputedStyle(releasedMainRow).transition).not.toContain(
+      'transform',
     )
     expect(window.getComputedStyle(translation).transform).toBe('')
     const idleText = screen
@@ -821,9 +848,7 @@ describe('<LyricsPanel />', () => {
       )
 
       const group = screen.getByTestId('lyrics-line-group')
-      const translation = screen
-        .getByText('Readable translation')
-        .closest('[data-tokenized]')
+      expect(screen.getByText('Readable translation')).toBeInTheDocument()
       const token = screen.getAllByTestId('lyrics-token')[0]
       const gradientNode = [token, ...token.querySelectorAll('*')].find(
         (node) => node.style.backgroundImage.includes('linear-gradient'),
@@ -840,7 +865,11 @@ describe('<LyricsPanel />', () => {
       expect(
         group.style.getPropertyValue('--lyrics-translation-active-color'),
       ).toBe(accessibleTheme.palette.text.secondary)
-      expect(window.getComputedStyle(translation).opacity).toBe('1')
+      expect(
+        window
+          .getComputedStyle(group)
+          .getPropertyValue('--lyrics-translation-opacity'),
+      ).toBe('1')
       expect(parseCssColor(futureColor).alpha).toBe(TOKEN_FUTURE_ALPHA)
       expect(contrastRatio(futureColor, background)).toBeGreaterThanOrEqual(4.5)
       expect(

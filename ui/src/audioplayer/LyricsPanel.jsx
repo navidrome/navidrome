@@ -21,11 +21,11 @@ import {
   KARAOKE_EASING,
   KARAOKE_IDLE_LAYER_OPACITY,
   KARAOKE_INLINE_ACTIVE_LINE_ANCHOR_RATIO,
-  KARAOKE_LINE_ENTER_MS,
   KARAOKE_LINE_LIFT_PX,
   KARAOKE_LINE_MOTION_EASING,
   KARAOKE_MANUAL_SCROLL_PAUSE_MS,
   KARAOKE_SCROLLBAR_VISIBLE_MS,
+  KARAOKE_TRANSLATION_IDLE_OPACITY,
 } from './lyricsKaraokeConstants'
 import {
   animateScrollTop,
@@ -112,6 +112,7 @@ const useStyles = makeStyles((theme) => ({
     '--lyrics-translation-current-color':
       'var(--lyrics-translation-idle-color, currentColor)',
     '--lyrics-layer-opacity': KARAOKE_IDLE_LAYER_OPACITY,
+    '--lyrics-translation-opacity': KARAOKE_TRANSLATION_IDLE_OPACITY,
     transform: 'translateY(0)',
     transition: `background-color 150ms ${KARAOKE_LINE_MOTION_EASING}`,
     '&[role="button"]:focus-visible': {
@@ -122,14 +123,10 @@ const useStyles = makeStyles((theme) => ({
         backgroundColor: alpha(theme.palette.text.primary, 0.055),
       },
     },
-    '&[data-raised="true"][data-line-motion="line"] $line': {
-      transform: `translateY(-${KARAOKE_LINE_LIFT_PX}px)`,
-      transition: `${KARAOKE_LAYER_OPACITY_TRANSITION}, transform ${KARAOKE_LINE_ENTER_MS}ms ${KARAOKE_LINE_MOTION_EASING}`,
-    },
     '&[data-raised="true"][data-line-motion="character"][data-character-wave="false"] $line':
       {
         transform: `translateY(-${KARAOKE_LINE_LIFT_PX}px)`,
-        transition: `${KARAOKE_LAYER_OPACITY_TRANSITION}, transform ${KARAOKE_LINE_ENTER_MS}ms ${KARAOKE_LINE_MOTION_EASING}`,
+        transition: KARAOKE_LAYER_OPACITY_TRANSITION,
       },
     '&[data-active="true"]': {
       '--lyrics-main-current-color':
@@ -139,6 +136,7 @@ const useStyles = makeStyles((theme) => ({
       '--lyrics-translation-current-color':
         'var(--lyrics-translation-active-color, var(--lyrics-translation-idle-color, currentColor))',
       '--lyrics-layer-opacity': 1,
+      '--lyrics-translation-opacity': 1,
     },
     '@media (prefers-reduced-motion: reduce)': {
       transition: 'none',
@@ -184,18 +182,17 @@ const useStyles = makeStyles((theme) => ({
   },
   auxLine: {
     display: 'block',
-    marginTop: theme.spacing(0.8),
     fontWeight: 600,
     fontSize: 15,
     lineHeight: KARAOKE_AUX_LINE_HEIGHT,
     overflowWrap: 'anywhere',
     whiteSpace: 'pre-wrap',
     letterSpacing: 0,
-    opacity: 1,
+    opacity: 'var(--lyrics-translation-opacity)',
     color: 'var(--lyrics-translation-current-color, currentColor)',
     WebkitTextFillColor:
       'var(--lyrics-translation-current-color, currentColor)',
-    transition: 'none',
+    transition: KARAOKE_LAYER_OPACITY_TRANSITION,
     '@media (prefers-reduced-motion: reduce)': {
       transition: 'none',
       transform: 'none',
@@ -502,6 +499,7 @@ const LyricsPanel = ({
       if (layer === 'translation') {
         return {
           opacity: 1,
+          marginTop: theme.spacing(0.6),
           color: sourceColor,
           '--lyrics-active-color': sourceColor,
         }
@@ -526,7 +524,7 @@ const LyricsPanel = ({
       pronunciation: styleFor('pronunciation'),
       translation: styleFor('translation'),
     }
-  }, [colors, hasTimedMainLines])
+  }, [colors, hasTimedMainLines, theme])
 
   const showScrollbarForManualScroll = useCallback(() => {
     if (scrollbarTimerRef.current) {
