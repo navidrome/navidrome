@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { APP_SIDEBAR_OPEN_WIDTH } from '../layout/layoutWidths'
 import {
   LYRICS_SIDEBAR_DESKTOP_MEDIA_QUERY,
   LYRICS_SIDEBAR_DESKTOP_MIN_WIDTH,
-  LYRICS_SIDEBAR_MIN_CONTENT_WIDTH,
   PLAYER_DESKTOP_MEDIA_QUERY,
   PLAYER_DESKTOP_MIN_WIDTH,
   PLAYER_MOBILE_MATCH_MEDIA_QUERY,
@@ -11,7 +9,6 @@ import {
   PLAYER_MOBILE_MEDIA_QUERY,
   PLAYER_MEDIA_QUERY_STEP,
 } from './playerBreakpoints'
-import { LYRICS_SIDEBAR_MAX_WIDTH } from './lyricsSidebarWidth'
 
 describe('player breakpoints', () => {
   it('keeps compact and desktop player ranges from overlapping', () => {
@@ -29,15 +26,13 @@ describe('player breakpoints', () => {
     )
   })
 
-  it('only opens the desktop lyrics sidebar when primary content still fits', () => {
+  it('keeps tablet layouts on the desktop player and lyrics sidebar', () => {
+    expect(PLAYER_DESKTOP_MIN_WIDTH).toBe(810)
+    expect(PLAYER_MOBILE_MAX_WIDTH).toBe(809.95)
+    expect(LYRICS_SIDEBAR_DESKTOP_MIN_WIDTH).toBe(810)
     expect(LYRICS_SIDEBAR_DESKTOP_MEDIA_QUERY).toBe(
       `(min-width:${LYRICS_SIDEBAR_DESKTOP_MIN_WIDTH}px)`,
     )
-    expect(
-      LYRICS_SIDEBAR_DESKTOP_MIN_WIDTH -
-        APP_SIDEBAR_OPEN_WIDTH -
-        LYRICS_SIDEBAR_MAX_WIDTH,
-    ).toBeGreaterThanOrEqual(LYRICS_SIDEBAR_MIN_CONTENT_WIDTH)
     expect(LYRICS_SIDEBAR_DESKTOP_MIN_WIDTH).toBe(PLAYER_DESKTOP_MIN_WIDTH)
   })
 })
