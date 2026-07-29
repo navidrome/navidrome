@@ -18,6 +18,7 @@ import (
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/tests"
 	"github.com/navidrome/navidrome/utils/cache"
+	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.uber.org/goleak"
@@ -439,7 +440,31 @@ var _ = Describe("Worker", func() {
 			Expect(data).To(ContainSubstring("al2"))
 			Expect(data).ToNot(ContainSubstring("artist"), "a failed (unresolved) artist must not be refreshed")
 			Expect(data).ToNot(ContainSubstring("ar1"))
+			Expect(data).To(ContainSubstring(`"song"`), "tracks with no art of their own are served the album's")
 		})
+
+		DescribeTable("only pairs songs with album refreshes",
+			func(kinds []string, wantSong bool) {
+				items := slice.Map(kinds, func(k string) model.ArtworkQueueItem {
+					return model.ArtworkQueueItem{ItemKind: k, ItemID: k + "1"}
+				})
+				w.broadcastRefresh(ctx, items)
+
+				evts := broker.getEvents()
+				Expect(evts).To(HaveLen(1))
+				data := evts[0].(*events.RefreshResource).Data(evts[0])
+				if wantSong {
+					Expect(data).To(ContainSubstring(`"song"`))
+				} else {
+					Expect(data).ToNot(ContainSubstring(`"song"`))
+				}
+			},
+			Entry("album alone drags songs along", []string{"al"}, true),
+			Entry("artist alone does not", []string{"ar"}, false),
+			Entry("playlist alone does not", []string{"pl"}, false),
+			Entry("album mixed with others still does", []string{"ar", "al"}, true),
+			Entry("songs resolving on their own stay single-listed", []string{"mf"}, true),
+		)
 
 		It("broadcasts a refresh when an item resolves to absent (removed cover)", func() {
 			conf.Server.CoverArtPriority = "cover.*" // local-only; no folder image → absent
