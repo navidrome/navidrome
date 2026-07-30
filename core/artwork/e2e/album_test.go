@@ -16,9 +16,6 @@ var _ = Describe("Album artwork resolution", func() {
 		setupResolutionHarness()
 	})
 
-	expectFolderCover := expectAlbumFolderCover
-	expectAbsent := expectAlbumAbsent
-
 	When("an album has a single folder with cover.jpg at the album root", func() {
 		// Artist/
 		// └── Album/
@@ -31,7 +28,7 @@ var _ = Describe("Album artwork resolution", func() {
 				"Artist/Album/cover.jpg":      smallPNG("album-root"),
 			})
 			scan()
-			expectFolderCover(firstAlbum(), "Artist/Album/cover.jpg")
+			expectAlbumFolderCover(firstAlbum(), "Artist/Album/cover.jpg")
 		})
 	})
 
@@ -62,7 +59,7 @@ var _ = Describe("Album artwork resolution", func() {
 			al := firstAlbum()
 			Expect(al.FolderIDs).To(HaveLen(2),
 				"sanity check: the two disc subfolders should form one multi-disc album")
-			expectFolderCover(al, "Artist/Album/cover.jpg")
+			expectAlbumFolderCover(al, "Artist/Album/cover.jpg")
 		})
 	})
 
@@ -89,7 +86,7 @@ var _ = Describe("Album artwork resolution", func() {
 				"Artist/Album/CD2/folder.jpg":     smallPNG("disc2"),
 			})
 			scan()
-			expectFolderCover(firstAlbum(), "Artist/Album/folder.jpg")
+			expectAlbumFolderCover(firstAlbum(), "Artist/Album/folder.jpg")
 		})
 	})
 
@@ -108,7 +105,7 @@ var _ = Describe("Album artwork resolution", func() {
 				"Artist/Album/cover.jpg":            smallPNG("album-root"),
 			})
 			scan()
-			expectFolderCover(firstAlbum(), "Artist/Album/cover.jpg")
+			expectAlbumFolderCover(firstAlbum(), "Artist/Album/cover.jpg")
 		})
 	})
 
@@ -132,7 +129,7 @@ var _ = Describe("Album artwork resolution", func() {
 				"Album/CD2/folder.jpg":     smallPNG("disc2"),
 			})
 			scan()
-			expectFolderCover(firstAlbum(), "Album/cover.jpg")
+			expectAlbumFolderCover(firstAlbum(), "Album/cover.jpg")
 		})
 	})
 
@@ -186,7 +183,7 @@ var _ = Describe("Album artwork resolution", func() {
 				"Artist/Album/Cover.JPG":      smallPNG("case-insensitive"),
 			})
 			scan()
-			expectFolderCover(firstAlbum(), "Artist/Album/Cover.JPG")
+			expectAlbumFolderCover(firstAlbum(), "Artist/Album/Cover.JPG")
 		})
 	})
 
@@ -204,7 +201,7 @@ var _ = Describe("Album artwork resolution", func() {
 				"Artist/Album/cover.1.jpg":    smallPNG("secondary"),
 			})
 			scan()
-			expectFolderCover(firstAlbum(), "Artist/Album/cover.jpg")
+			expectAlbumFolderCover(firstAlbum(), "Artist/Album/cover.jpg")
 		})
 	})
 
@@ -218,7 +215,7 @@ var _ = Describe("Album artwork resolution", func() {
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
 			})
 			scan()
-			expectAbsent(firstAlbum())
+			expectAlbumAbsent(firstAlbum())
 		})
 	})
 
@@ -237,7 +234,7 @@ var _ = Describe("Album artwork resolution", func() {
 				"Artist/Album/folder.jpg":     smallPNG("folder"),
 			})
 			scan()
-			expectFolderCover(firstAlbum(), "Artist/Album/folder.jpg")
+			expectAlbumFolderCover(firstAlbum(), "Artist/Album/folder.jpg")
 		})
 	})
 
@@ -253,7 +250,7 @@ var _ = Describe("Album artwork resolution", func() {
 				"Artist/Album/front.jpg":      smallPNG("front"),
 			})
 			scan()
-			expectFolderCover(firstAlbum(), "Artist/Album/front.jpg")
+			expectAlbumFolderCover(firstAlbum(), "Artist/Album/front.jpg")
 		})
 	})
 
@@ -273,7 +270,7 @@ var _ = Describe("Album artwork resolution", func() {
 				"Artist/Album/front.jpg":      smallPNG("front"),
 			})
 			scan()
-			expectFolderCover(firstAlbum(), "Artist/Album/cover.jpg")
+			expectAlbumFolderCover(firstAlbum(), "Artist/Album/cover.jpg")
 		})
 	})
 
@@ -291,7 +288,7 @@ var _ = Describe("Album artwork resolution", func() {
 				"Artist/Album/front.jpg":      smallPNG("front"),
 			})
 			scan()
-			expectFolderCover(firstAlbum(), "Artist/Album/folder.jpg")
+			expectAlbumFolderCover(firstAlbum(), "Artist/Album/folder.jpg")
 		})
 	})
 
@@ -311,7 +308,7 @@ var _ = Describe("Album artwork resolution", func() {
 				"Artist/Album/cover.1.jpg":    smallPNG("first"),
 			})
 			scan()
-			expectFolderCover(firstAlbum(), "Artist/Album/cover.jpg")
+			expectAlbumFolderCover(firstAlbum(), "Artist/Album/cover.jpg")
 		})
 	})
 
@@ -327,7 +324,7 @@ var _ = Describe("Album artwork resolution", func() {
 				"Artist/Album/cover.jpg":      smallPNG("cover"),
 			})
 			scan()
-			expectFolderCover(firstAlbum(), "Artist/Album/cover.jpg")
+			expectAlbumFolderCover(firstAlbum(), "Artist/Album/cover.jpg")
 		})
 	})
 
@@ -352,9 +349,9 @@ var _ = Describe("Album artwork resolution", func() {
 			})
 			scan()
 
-			// Album B first: the acquire in expectAbsent would settle Album B too.
-			expectFolderCover(albumByName("Album B"), "Artist/Album B/cover.jpg")
-			expectAbsent(albumByName("Album A"))
+			// Album B first: the acquire in expectAlbumAbsent would settle Album B too.
+			expectAlbumFolderCover(albumByName("Album B"), "Artist/Album B/cover.jpg")
+			expectAlbumAbsent(albumByName("Album A"))
 		})
 	})
 
@@ -382,7 +379,7 @@ var _ = Describe("Album artwork resolution", func() {
 			alA := albumByName("Album A")
 			Expect(alA.FolderIDs).To(HaveLen(2),
 				"sanity check: the two sibling folders should form one spread album")
-			expectAbsent(alA)
+			expectAlbumAbsent(alA)
 		})
 	})
 
@@ -402,7 +399,7 @@ var _ = Describe("Album artwork resolution", func() {
 				"CD2/01 - Track.mp3": trackFile(1, "T2", map[string]any{"album": "Rootless", "disc": "2"}),
 			})
 			scan()
-			expectAbsent(firstAlbum())
+			expectAlbumAbsent(firstAlbum())
 		})
 	})
 
@@ -422,7 +419,7 @@ var _ = Describe("Album artwork resolution", func() {
 				"Artist/Album/cover.jpg":      smallPNG("album-own"),
 			})
 			scan()
-			expectFolderCover(firstAlbum(), "Artist/Album/cover.jpg")
+			expectAlbumFolderCover(firstAlbum(), "Artist/Album/cover.jpg")
 		})
 	})
 
@@ -451,7 +448,7 @@ var _ = Describe("Album artwork resolution", func() {
 			alA := albumByName("Album A")
 			Expect(alA.FolderIDs).To(HaveLen(2),
 				"sanity check: the two sibling folders should form one spread album")
-			expectFolderCover(alA, "Artist/Album A/front.jpg")
+			expectAlbumFolderCover(alA, "Artist/Album A/front.jpg")
 		})
 	})
 
@@ -467,7 +464,7 @@ var _ = Describe("Album artwork resolution", func() {
 				"Artist/Album/cover.jpg":      smallPNG("cover"),
 			})
 			scan()
-			expectFolderCover(firstAlbum(), "Artist/Album/cover.jpg")
+			expectAlbumFolderCover(firstAlbum(), "Artist/Album/cover.jpg")
 		})
 	})
 })
