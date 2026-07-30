@@ -82,12 +82,19 @@ func (s *osDirStorage) FS() (storage.MusicFS, error) {
 	return osDirFS{os.DirFS(s.root)}, nil
 }
 
-// fakeFolderRepo covers the three FolderRepository methods the resolvers reach for; only the
-// folder listing varies per spec, so the other two answer as an unremarkable library does.
+// fakeFolderRepo covers the three FolderRepository methods the resolvers reach for. The zero value
+// answers as an unremarkable library does; the fields drive the album-root lookup and its failures.
 type fakeFolderRepo struct {
 	model.FolderRepository
-	result []model.Folder
-	err    error
+	result       []model.Folder
+	err          error
+	parentResult *model.Folder
+	getErr       error
+	getCallCount int
+	// hasOtherAudio is returned by HasAudioOutsideFolders (the album-root check).
+	// False means the parent qualifies as an album root.
+	hasOtherAudio bool
+	otherAudioErr error
 }
 
 func (f *fakeFolderRepo) GetAll(...model.QueryOptions) ([]model.Folder, error) {
@@ -95,9 +102,16 @@ func (f *fakeFolderRepo) GetAll(...model.QueryOptions) ([]model.Folder, error) {
 }
 
 func (f *fakeFolderRepo) HasAudioOutsideFolders(model.Folder, []string) (bool, error) {
-	return false, nil
+	return f.hasOtherAudio, f.otherAudioErr
 }
 
 func (f *fakeFolderRepo) Get(string) (*model.Folder, error) {
+	f.getCallCount++
+	if f.getErr != nil {
+		return nil, f.getErr
+	}
+	if f.parentResult != nil {
+		return f.parentResult, nil
+	}
 	return nil, model.ErrNotFound
 }
