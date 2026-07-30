@@ -20,6 +20,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/natural"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 type albumArtworkReader struct {
@@ -103,17 +104,13 @@ func (a *albumArtworkReader) fromCoverArtPriority(ctx context.Context, ffmpeg ff
 	return ff
 }
 
-func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, albums ...model.Album) ([]string, []string, *time.Time, error) {
-	var folderIDs []string
-	for _, album := range albums {
-		folderIDs = append(folderIDs, album.FolderIDs...)
-	}
-	folders, err := ds.Folder(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"folder.id": folderIDs, "missing": false}})
+func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, album model.Album) ([]string, []string, *time.Time, error) {
+	folders, err := loadFolders(ctx, ds, album.FolderIDs)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	parent, err := albumRootParent(ctx, ds, folders, folderIDs)
+	parent, err := albumRootParent(ctx, ds, folders, album.FolderIDs)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -121,11 +118,21 @@ func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, albums ...mo
 		folders = append(folders, *parent)
 	}
 
-	var paths []string
+	paths := slice.Map(folders, func(f model.Folder) string { return f.AbsolutePath() })
+	imgFiles, updatedAt := folderImages(folders)
+	return paths, imgFiles, &updatedAt, nil
+}
+
+func loadFolders(ctx context.Context, ds model.DataStore, folderIDs []string) ([]model.Folder, error) {
+	return ds.Folder(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"folder.id": folderIDs, "missing": false}})
+}
+
+// folderImages collects the folders' image files, sorted so files without
+// numeric suffixes win (e.g. cover.jpg over cover.1.jpg).
+func folderImages(folders []model.Folder) ([]string, time.Time) {
 	var imgFiles []string
 	var updatedAt time.Time
 	for _, f := range folders {
-		paths = append(paths, f.AbsolutePath())
 		if f.ImagesUpdatedAt.After(updatedAt) {
 			updatedAt = f.ImagesUpdatedAt
 		}
@@ -134,13 +141,8 @@ func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, albums ...mo
 			imgFiles = append(imgFiles, path.Join(rel, img))
 		}
 	}
-
-	// Sort image files to ensure consistent selection of cover art
-	// This prioritizes files without numeric suffixes (e.g., cover.jpg over cover.1.jpg)
-	// by comparing base filenames without extensions
 	slices.SortFunc(imgFiles, compareImageFiles)
-
-	return paths, imgFiles, &updatedAt, nil
+	return imgFiles, updatedAt
 }
 
 // albumRootParent returns the common parent of the album's folders when it
