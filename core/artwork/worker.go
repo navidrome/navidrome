@@ -71,9 +71,9 @@ func NewWorker(ds model.DataStore, store *ImageStore, ag *agents.Agents, ffmpeg 
 // rate-limit permit, so a sleeping lookup would crowd out a cover sitting on disk.
 func newDrainPools() []*drainPool {
 	budget := conf.MaxOpenConns() // floored at 4, so both remainders below stay positive
-	local := min(max(1, conf.Server.ArtworkWorkerConcurrency), budget-1)
+	local := min(max(1, conf.Server.DevArtworkWorkerConcurrency), budget-1)
 	// More external slots than the rate allows would only sleep in the limiter.
-	external := min(max(2, 2*conf.Server.ArtworkExternalMaxRPS), budget-local)
+	external := min(max(2, 2*conf.Server.DevArtworkExternalMaxRPS), budget-local)
 	return []*drainPool{
 		{name: "local", kinds: localDrainKinds, concurrency: local, wake: make(chan struct{}, 1)},
 		{name: "external", kinds: externalDrainKinds, concurrency: external, wake: make(chan struct{}, 1)},

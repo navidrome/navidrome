@@ -62,8 +62,6 @@ type configOptions struct {
 	ImageCacheSize                  string
 	AlbumPlayCountMode              string
 	EnableArtworkPrecache           bool
-	ArtworkWorkerConcurrency        int
-	ArtworkExternalMaxRPS           int
 	AutoImportPlaylists             bool
 	DefaultPlaylistPublicVisibility bool
 	PlaylistsPath                   string
@@ -146,6 +144,8 @@ type configOptions struct {
 	DevArtworkThrottleBacklogLimit    int
 	DevArtworkThrottleBacklogTimeout  time.Duration
 	DevArtworkThrottleBuffered        bool
+	DevArtworkWorkerConcurrency       int
+	DevArtworkExternalMaxRPS          int
 	DevArtistInfoTimeToLive           time.Duration
 	DevAlbumInfoTimeToLive            time.Duration
 	DevExternalScanner                bool
@@ -1075,10 +1075,10 @@ func setViperDefaults() {
 	viper.SetDefault("devartworkthrottlebuffered", true)
 	// Half the CPU count (min 2), so local resolution scales with the host but stays under the
 	// SQLite pool (MaxOpenConns) — leaving connections for the scanner, scrobbles and the UI.
-	viper.SetDefault("artworkworkerconcurrency", max(2, runtime.NumCPU()/2))
+	viper.SetDefault("devartworkworkerconcurrency", max(2, runtime.NumCPU()/2))
 	// External RPS gates outbound calls to third-party services (per service); it is bounded by
 	// their tolerance, not the host, so it stays a small constant regardless of CPU count.
-	viper.SetDefault("artworkexternalmaxrps", 2)
+	viper.SetDefault("devartworkexternalmaxrps", 2)
 	viper.SetDefault("devartistinfotimetolive", consts.ArtistInfoTimeToLive)
 	viper.SetDefault("devalbuminfotimetolive", consts.AlbumInfoTimeToLive)
 	viper.SetDefault("devexternalscanner", true)

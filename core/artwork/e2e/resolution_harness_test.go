@@ -90,7 +90,7 @@ func setupResolutionHarness() {
 	conf.Server.ImageCacheSize = "0"
 	conf.Server.EnableExternalServices = false
 	conf.Server.EnableMediaFileCoverArt = true
-	conf.Server.ArtworkWorkerConcurrency = 1
+	conf.Server.DevArtworkWorkerConcurrency = 1
 
 	rctx = request.WithUser(GinkgoT().Context(), model.User{ID: "admin-1", UserName: "admin", IsAdmin: true})
 	harness.TruncateDB(userTables)

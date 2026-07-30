@@ -145,7 +145,7 @@ var _ = Describe("Worker", func() {
 		ds.MockedAlbum = tests.CreateMockAlbumRepo()
 		store = NewImageStore(GinkgoT().TempDir())
 		conf.Server.CoverArtPriority = "cover.jpg, embedded"
-		conf.Server.ArtworkExternalMaxRPS = 1000 // keep the limiter out of the way of behavior tests
+		conf.Server.DevArtworkExternalMaxRPS = 1000 // keep the limiter out of the way of behavior tests
 		broker = &fakeEventBroker{}
 		imgCache = &recordingCache{FileCache: cache.NewFileCache("WorkerTest", "100MB", "images", 0,
 			func(ctx context.Context, arg cache.Item) (io.Reader, error) {

@@ -67,7 +67,7 @@ func (w *Worker) gateFor(name string) *extGate {
 	if g, ok := w.gates[name]; ok {
 		return g
 	}
-	rps := conf.Server.ArtworkExternalMaxRPS
+	rps := conf.Server.DevArtworkExternalMaxRPS
 	limit := rate.Inf
 	if rps > 0 {
 		limit = rate.Limit(rps)
