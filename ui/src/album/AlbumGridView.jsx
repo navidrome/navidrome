@@ -104,6 +104,9 @@ const useCoverStyles = makeStyles({
     display: 'inline-block',
     width: '100%',
     objectFit: 'contain',
+    // The image fills this box absolutely, so it lends no height: a remount that has not been
+    // re-measured yet would collapse the tile and blank the cover for a frame.
+    aspectRatio: '1',
     height: (props) => props.height,
     transition: 'opacity 0.3s ease-in-out',
   },
