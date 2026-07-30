@@ -500,15 +500,6 @@ var _ = Describe("Worker", func() {
 		})
 	})
 
-	Describe("Bump", func() {
-		It("enqueues at Bump priority and wakes the loop", func() {
-			w.Bump("al", "al9")
-			it := findQueued(queueRepo, "al", "al9")
-			Expect(it).ToNot(BeNil())
-			Expect(it.Priority).To(Equal(model.ArtworkPriorityBump))
-		})
-	})
-
 	Describe("gate/breaker", func() {
 		It("opens after 5 consecutive external errors and short-circuits the step", func() {
 			var calls int

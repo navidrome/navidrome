@@ -139,7 +139,11 @@ func scan() {
 
 func acquire(kind model.Kind, id string) model.ItemArtwork {
 	GinkgoHelper()
-	rworker.Bump(kind.Prefix(), id)
+	// Enqueues the way the serving paths do, so the drain is driven by a plain queue row.
+	Expect(rds.ArtworkQueue(rctx).EnqueueBump(model.ArtworkQueueItem{
+		ItemKind: kind.Prefix(), ItemID: id, ImageType: model.ImageTypePrimary,
+		Priority: model.ArtworkPriorityBump,
+	})).To(Succeed())
 	var ia *model.ItemArtwork
 	runResolutionWorkerUntil(func() bool {
 		got, err := rds.Artwork(rctx).GetItemArtwork(kind, id, model.ImageTypePrimary)

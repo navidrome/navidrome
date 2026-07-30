@@ -34,7 +34,6 @@ type drainPool struct {
 	name        string
 	kinds       []string
 	concurrency int
-	wake        chan struct{}
 }
 
 // Worker drains the artwork queue: each external agent is rate-limited and circuit-broken
@@ -75,8 +74,8 @@ func newDrainPools() []*drainPool {
 	// More external slots than the rate allows would only sleep in the limiter.
 	external := min(max(2, 2*conf.Server.DevArtworkExternalMaxRPS), budget-local)
 	return []*drainPool{
-		{name: "local", kinds: localDrainKinds, concurrency: local, wake: make(chan struct{}, 1)},
-		{name: "external", kinds: externalDrainKinds, concurrency: external, wake: make(chan struct{}, 1)},
+		{name: "local", kinds: localDrainKinds, concurrency: local},
+		{name: "external", kinds: externalDrainKinds, concurrency: external},
 	}
 }
 
@@ -120,28 +119,6 @@ func (w *Worker) runPool(ctx context.Context, p *drainPool) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-		case <-p.wake:
-		}
-	}
-}
-
-// Bump enqueues an item at the highest priority and wakes the drain loops.
-func (w *Worker) Bump(kind, id string) {
-	item := model.ArtworkQueueItem{
-		ItemKind:  kind,
-		ItemID:    id,
-		ImageType: model.ImageTypePrimary,
-		Priority:  model.ArtworkPriorityBump,
-	}
-	if err := w.proc.ds.ArtworkQueue(context.Background()).Enqueue(item); err != nil {
-		log.Warn("Artwork: Could not bump queue item", "kind", kind, "id", id, err)
-		return
-	}
-	// Wake every pool: a spurious wake only costs an empty dequeue.
-	for _, p := range w.pools {
-		select {
-		case p.wake <- struct{}{}:
-		default:
 		}
 	}
 }

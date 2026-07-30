@@ -52,6 +52,14 @@ var _ = Describe("Acquisition → serve loop", func() {
 			return err == nil && ia.Hash == ""
 		}
 	}
+	// Enqueues the way the serving paths do, so the drain is driven by a plain queue row.
+	bump := func(kind, id string) {
+		GinkgoHelper()
+		Expect(ds.ArtworkQueue(ctx).EnqueueBump(model.ArtworkQueueItem{
+			ItemKind: kind, ItemID: id, ImageType: model.ImageTypePrimary,
+			Priority: model.ArtworkPriorityBump,
+		})).To(Succeed())
+	}
 
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
@@ -109,7 +117,7 @@ var _ = Describe("Acquisition → serve loop", func() {
 
 	It("acquires album folder art and serves the exact bytes under its hash", func() {
 		seedFolderAlbum("al1")
-		worker.Bump("al", "al1")
+		bump("al", "al1")
 		runWorkerUntil(ctx, worker, itemFound(model.KindAlbumArtwork, "al1"))
 
 		ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al1", model.ImageTypePrimary)
@@ -126,7 +134,7 @@ var _ = Describe("Acquisition → serve loop", func() {
 	It("acquires an artist's uploaded image and serves it", func() {
 		name := writeUpload(consts.EntityArtist, "artist-e2e.png", artistPngFixture)
 		artistRepo.SetData(model.Artists{{ID: "ar1", Name: "Artist", UploadedImage: name}})
-		worker.Bump("ar", "ar1")
+		bump("ar", "ar1")
 		runWorkerUntil(ctx, worker, itemFound(model.KindArtistArtwork, "ar1"))
 
 		ia, err := artRepo.GetItemArtwork(model.KindArtistArtwork, "ar1", model.ImageTypePrimary)
@@ -143,7 +151,7 @@ var _ = Describe("Acquisition → serve loop", func() {
 		seedFolderAlbum("al1")
 		plRepo.SetData(model.Playlists{{ID: "pl1", Name: "Playlist"}})
 		plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"al1"}}
-		worker.Bump("pl", "pl1")
+		bump("pl", "pl1")
 		runWorkerUntil(ctx, worker, itemFound(model.KindPlaylistArtwork, "pl1"))
 
 		ia, err := artRepo.GetItemArtwork(model.KindPlaylistArtwork, "pl1", model.ImageTypePrimary)
@@ -162,7 +170,7 @@ var _ = Describe("Acquisition → serve loop", func() {
 	It("acquires a radio station's uploaded image and serves it", func() {
 		name := writeUpload(consts.EntityRadio, "radio-e2e.jpg", coverFixture)
 		radioRepo.Data["ra1"] = &model.Radio{ID: "ra1", Name: "Station", UploadedImage: name}
-		worker.Bump("ra", "ra1")
+		bump("ra", "ra1")
 		runWorkerUntil(ctx, worker, itemFound(model.KindRadioArtwork, "ra1"))
 
 		ia, err := artRepo.GetItemArtwork(model.KindRadioArtwork, "ra1", model.ImageTypePrimary)
@@ -205,7 +213,7 @@ var _ = Describe("Acquisition → serve loop", func() {
 
 	It("stores dimensions, mime and a real blurhash alongside the acquired bytes", func() {
 		seedFolderAlbum("al1")
-		worker.Bump("al", "al1")
+		bump("al", "al1")
 		runWorkerUntil(ctx, worker, itemFound(model.KindAlbumArtwork, "al1"))
 
 		ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al1", model.ImageTypePrimary)
@@ -222,7 +230,7 @@ var _ = Describe("Acquisition → serve loop", func() {
 	It("acquires GIF artwork, whose decoder only core/artwork's blank import registers", func() {
 		writeUploadedImage(consts.EntityRadio, "station.gif", gifFixture)
 		radioRepo.Data["ra1"] = &model.Radio{ID: "ra1", Name: "Station", UploadedImage: "station.gif"}
-		worker.Bump("ra", "ra1")
+		bump("ra", "ra1")
 		runWorkerUntil(ctx, worker, itemFound(model.KindRadioArtwork, "ra1"))
 
 		ia, err := artRepo.GetItemArtwork(model.KindRadioArtwork, "ra1", model.ImageTypePrimary)
@@ -239,8 +247,8 @@ var _ = Describe("Acquisition → serve loop", func() {
 			{ID: "al1", Name: "Album", FolderIDs: []string{"f1"}, LibraryID: 0},
 			{ID: "al2", Name: "Same Cover", FolderIDs: []string{"f1"}, LibraryID: 0},
 		})
-		worker.Bump("al", "al1")
-		worker.Bump("al", "al2")
+		bump("al", "al1")
+		bump("al", "al2")
 		runWorkerUntil(ctx, worker, func() bool {
 			return itemFound(model.KindAlbumArtwork, "al1")() && itemFound(model.KindAlbumArtwork, "al2")()
 		})
@@ -256,7 +264,7 @@ var _ = Describe("Acquisition → serve loop", func() {
 	It("stops serving a file-backed image once its source file changes underneath", func() {
 		name := writeUpload(consts.EntityRadio, "radio-stale.jpg", coverFixture)
 		radioRepo.Data["ra1"] = &model.Radio{ID: "ra1", Name: "Station", UploadedImage: name}
-		worker.Bump("ra", "ra1")
+		bump("ra", "ra1")
 		runWorkerUntil(ctx, worker, itemFound(model.KindRadioArtwork, "ra1"))
 
 		ia, err := artRepo.GetItemArtwork(model.KindRadioArtwork, "ra1", model.ImageTypePrimary)
@@ -284,7 +292,7 @@ var _ = Describe("Acquisition → serve loop", func() {
 
 	It("records an absent state for an entity with no art and reports it unavailable", func() {
 		albumRepo.SetData(model.Albums{{ID: "alx", Name: "Artless", LibraryID: 0}})
-		worker.Bump("al", "alx")
+		bump("al", "alx")
 		runWorkerUntil(ctx, worker, itemAbsent(model.KindAlbumArtwork, "alx"))
 
 		_, err := svc.Get(ctx, model.MustParseArtworkID("al-alx"), 0, false)

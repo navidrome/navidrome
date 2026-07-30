@@ -146,8 +146,13 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 	})
 
 	It("drains the queue: folder art is acquired, the artless album settles absent", func() {
-		worker.Bump("al", artfulID)
-		worker.Bump("al", artlessID)
+		// Enqueues the way the serving paths do, so the drain is driven by a plain queue row.
+		for _, id := range []string{artfulID, artlessID} {
+			Expect(ds.ArtworkQueue(ctx).EnqueueBump(model.ArtworkQueueItem{
+				ItemKind: model.KindAlbumArtwork.Prefix(), ItemID: id,
+				ImageType: model.ImageTypePrimary, Priority: model.ArtworkPriorityBump,
+			})).To(Succeed())
+		}
 		runWorkerUntil(ctx, worker, func() bool {
 			found, err := ds.Artwork(ctx).GetItemArtwork(model.KindAlbumArtwork, artfulID, model.ImageTypePrimary)
 			if err != nil || found.Hash == "" {
