@@ -35,11 +35,28 @@ var _ = Describe("idColumns inventory", func() {
 		for _, tc := range idColumns {
 			covered[tc.table+"."+tc.col] = true
 		}
-		// Columns that are id-named but intentionally not Navidrome canonical ids.
+		for _, tc := range embeddedIDColumns {
+			covered[tc.table+"."+tc.col] = true
+		}
+		// Columns that are id-named or JSON but need no rewrite.
 		exempt := map[string]string{
-			"share.id":    "public share URLs, generated separately",
-			"property.id": "property key, not an entity id",
-			"plugin.id":   "plugin name, not an entity id",
+			"share.id":                       "public share URLs, generated separately",
+			"property.id":                    "property key, not an entity id",
+			"plugin.id":                      "plugin name, not an entity id",
+			"media_file.participants":        "hash-family artist ids, unchanged",
+			"album.participants":             "hash-family artist ids, unchanged",
+			"media_file.tags":                "hash-family tag ids, unchanged",
+			"album.tags":                     "hash-family tag ids, unchanged",
+			"album.folder_ids":               "hash-family folder ids, unchanged",
+			"artist.similar_artists":         "hash-family artist ids, unchanged",
+			"media_file.search_participants": "participant names for FTS, not ids",
+			"album.search_participants":      "participant names for FTS, not ids",
+			"album.discs":                    "disc number -> title map",
+			"media_file.lyrics":              "synced lyrics, no ids",
+			"folder.image_files":             "image file names, no ids",
+			"plugin.manifest":                "plugin-authored manifest, no Navidrome ids",
+			"plugin.config":                  "free-form plugin config, must not be rewritten",
+			"plugin.libraries":               "integer library ids",
 		}
 
 		tables, err := queryColumn(ctx, db, "SELECT name FROM sqlite_master WHERE type='table'")
@@ -56,11 +73,15 @@ var _ = Describe("idColumns inventory", func() {
 				var name, typ string
 				Expect(rows.Scan(&name, &typ)).To(Succeed())
 				lname := strings.ToLower(name)
-				if lname != "id" && lname != "pid" && !strings.HasSuffix(lname, "_id") {
+				utyp := strings.ToUpper(typ)
+				// JSON can hide an id under any key, so every JSON column needs a verdict.
+				isJSON := strings.Contains(utyp, "JSON")
+				isIDName := lname == "id" || lname == "pid" ||
+					strings.HasSuffix(lname, "_id") || strings.HasSuffix(lname, "_ids")
+				if !isJSON && !isIDName {
 					continue
 				}
-				utyp := strings.ToUpper(typ)
-				if !strings.Contains(utyp, "TEXT") && !strings.Contains(utyp, "CHAR") {
+				if !isJSON && !strings.Contains(utyp, "TEXT") && !strings.Contains(utyp, "CHAR") {
 					continue // INTEGER ids (rowid PKs, library.id) are not canonical ids
 				}
 				if strings.HasPrefix(lname, "mbz_") {

@@ -1,6 +1,9 @@
 package migrations
 
 import (
+	"strings"
+
+	"github.com/navidrome/navidrome/model/id"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -21,6 +24,18 @@ var _ = Describe("canonicalID", func() {
 		Entry("32 chars non-hex passes through", "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz", "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"),
 		Entry("36 chars without uuid dashes passes through", "000000000000000000000000000000000000", "000000000000000000000000000000000000"),
 	)
+
+	// The exemptions for participants/tags/folder_ids/similar_artists rest on this invariant.
+	It("is the identity on every NewHash id", func() {
+		for _, parts := range [][]string{
+			{""}, {"a"}, {"The Beatles"}, {"genre", "electronic"},
+			{"/music/Artist/Album", "1"}, {strings.Repeat("x", 500)},
+		} {
+			h := id.NewHash(parts...)
+			Expect(h).To(HaveLen(22))
+			Expect(canonicalID(h)).To(Equal(h), "NewHash(%v) = %q was rewritten", parts, h)
+		}
+	})
 
 	It("is idempotent for every shape", func() {
 		for _, s := range []string{"5cLJPkLA5DK2BADhoeotPk", "zzzzzzzzzzzzzzzzzzzzzz",

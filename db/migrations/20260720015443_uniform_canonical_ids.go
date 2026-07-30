@@ -79,6 +79,18 @@ var idColumns = []struct{ table, col string }{
 	{"library_tag", "tag_id"},
 }
 
+// embeddedIDColumns holds ids nested inside a larger value; the id-columns guard checks this
+// list against the schema, so every JSON column must appear here or be exempted there.
+var embeddedIDColumns = []struct {
+	table, col string
+	transform  func(string) (string, bool)
+}{
+	{"playqueue", "items", canonicalizeIDList},
+	{"share", "resource_ids", canonicalizeIDList},
+	{"plugin", "users", canonicalizePluginUsers},
+	{"playlist", "rules", canonicalizePlaylistRules},
+}
+
 func upUniformCanonicalIds(ctx context.Context, tx *sql.Tx) error {
 	if err := buildIDMap(ctx, tx); err != nil {
 		return err
@@ -88,17 +100,10 @@ func upUniformCanonicalIds(ctx context.Context, tx *sql.Tx) error {
 			return fmt.Errorf("canonicalizing %s.%s: %w", tc.table, tc.col, err)
 		}
 	}
-	if err := rewriteColumn(ctx, tx, "playqueue", "items", canonicalizeIDList); err != nil {
-		return err
-	}
-	if err := rewriteColumn(ctx, tx, "share", "resource_ids", canonicalizeIDList); err != nil {
-		return err
-	}
-	if err := rewriteColumn(ctx, tx, "plugin", "users", canonicalizePluginUsers); err != nil {
-		return err
-	}
-	if err := rewriteColumn(ctx, tx, "playlist", "rules", canonicalizePlaylistRules); err != nil {
-		return err
+	for _, tc := range embeddedIDColumns {
+		if err := rewriteColumn(ctx, tx, tc.table, tc.col, tc.transform); err != nil {
+			return fmt.Errorf("canonicalizing %s.%s: %w", tc.table, tc.col, err)
+		}
 	}
 	// Legacy PID specs embed old-shaped album/track ids into composite pids; a full rescan
 	// rewrites every pid with the new encoding so path-based move matching stays consistent.
