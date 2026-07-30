@@ -81,7 +81,7 @@ func Encode(img image.Image) (string, error) {
 	}
 
 	var sb strings.Builder
-	sb.WriteString(Encode83((xComp-1)+(yComp-1)*9, 1))
+	sb.WriteString(encode83((xComp-1)+(yComp-1)*9, 1))
 
 	// Derived counts are at least 1x9, so there is always at least one AC factor.
 	ac := factors[1:]
@@ -91,12 +91,12 @@ func Encode(img image.Image) (string, error) {
 	}
 	quantMax := int(max(0, min(82, math.Floor(actualMax*166-0.5))))
 	maxVal := float64(quantMax+1) / 166
-	sb.WriteString(Encode83(quantMax, 1))
+	sb.WriteString(encode83(quantMax, 1))
 
 	dc := factors[0]
-	sb.WriteString(Encode83(linearToSRGB(dc[0])<<16|linearToSRGB(dc[1])<<8|linearToSRGB(dc[2]), 4))
+	sb.WriteString(encode83(linearToSRGB(dc[0])<<16|linearToSRGB(dc[1])<<8|linearToSRGB(dc[2]), 4))
 	for _, f := range ac {
-		sb.WriteString(Encode83(quantAC(f[0], maxVal)*19*19+quantAC(f[1], maxVal)*19+quantAC(f[2], maxVal), 2))
+		sb.WriteString(encode83(quantAC(f[0], maxVal)*19*19+quantAC(f[1], maxVal)*19+quantAC(f[2], maxVal), 2))
 	}
 	return sb.String(), nil
 }
@@ -156,8 +156,8 @@ func linearToSRGB(v float64) int {
 	return int((1.055*math.Pow(v, 1/2.4)-0.055)*255 + 0.5)
 }
 
-// Encode83 encodes value as a fixed-width, big-endian base83 string of the given length.
-func Encode83(value, length int) string {
+// encode83 encodes value as a fixed-width, big-endian base83 string of the given length.
+func encode83(value, length int) string {
 	b := make([]byte, length)
 	for i := length - 1; i >= 0; i-- {
 		b[i] = alphabet[value%83]

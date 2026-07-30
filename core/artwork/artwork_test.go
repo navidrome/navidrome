@@ -507,7 +507,7 @@ var _ = Describe("EntityExists", func() {
 
 	DescribeTable("reports whether the owning entity is still there",
 		func(id string, expected bool) {
-			Expect(EntityExists(ctx, ds, model.MustParseArtworkID(id))).To(Equal(expected))
+			Expect(entityExists(ctx, ds, model.MustParseArtworkID(id))).To(Equal(expected))
 		},
 		Entry("existing album", "al-al1", true),
 		Entry("deleted album", "al-gone", false),

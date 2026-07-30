@@ -51,9 +51,9 @@ func NewArtwork(ds model.DataStore, cache cache.FileCache, store *ImageStore, ff
 	return &service{ds: ds, cache: cache, store: store, ffmpeg: ffm}
 }
 
-// EntityExists reports whether the entity an artwork id points at is still there: state rows
+// entityExists reports whether the entity an artwork id points at is still there: state rows
 // outlive a deleted entity until the next prune, so a servable row is not evidence of its owner.
-func EntityExists(ctx context.Context, ds model.DataStore, artID model.ArtworkID) bool {
+func entityExists(ctx context.Context, ds model.DataStore, artID model.ArtworkID) bool {
 	var found bool
 	var err error
 	switch artID.Kind {
@@ -172,7 +172,7 @@ func (s *service) serveSource(ctx context.Context, key, hash string, lastUpdate 
 // cancelled request is not: it must not enqueue a re-resolution.
 func (s *service) serveHash(ctx context.Context, artID model.ArtworkID, ia *model.ItemArtwork, size int, square bool) (*Image, error) {
 	// Only this path can hand back a deleted entity's bytes; the others load their entity anyway.
-	if !EntityExists(ctx, s.ds, artID) {
+	if !entityExists(ctx, s.ds, artID) {
 		return nil, ErrUnavailable
 	}
 	art, err := s.ds.Artwork(ctx).GetImage(ia.Hash)
@@ -364,13 +364,6 @@ func placeholderImage(kind model.Kind) *Image {
 	}
 	r, _ := resources.FS().Open(path)
 	return &Image{ReadCloser: r, Placeholder: true}
-}
-
-// PlaceholderFor returns the kind-appropriate placeholder for an artwork id, for callers that
-// must not consult persisted state (e.g. an access-control denial).
-func PlaceholderFor(id string) *Image {
-	artID, _ := model.ParseArtworkID(id)
-	return placeholderImage(artID.Kind)
 }
 
 type coverArtIDGetter interface {
