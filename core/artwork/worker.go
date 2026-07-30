@@ -250,13 +250,6 @@ func (w *Worker) broadcastRefresh(ctx context.Context, found []model.ArtworkQueu
 	for res, ids := range byResource {
 		event = event.With(res, ids...)
 	}
-	// A track with no art of its own is served its album's, so an album change moves the track's
-	// hash too. The dependent id list is unbounded, so refresh the resource as a whole.
-	if _, ok := byResource["album"]; ok {
-		if _, ok := byResource["song"]; !ok {
-			event = event.With("song")
-		}
-	}
 	w.broker.SendBroadcastMessage(ctx, event)
 }
 

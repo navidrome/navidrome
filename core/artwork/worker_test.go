@@ -440,10 +440,9 @@ var _ = Describe("Worker", func() {
 			Expect(data).To(ContainSubstring("al2"))
 			Expect(data).ToNot(ContainSubstring("artist"), "a failed (unresolved) artist must not be refreshed")
 			Expect(data).ToNot(ContainSubstring("ar1"))
-			Expect(data).To(ContainSubstring(`"song"`), "tracks with no art of their own are served the album's")
 		})
 
-		DescribeTable("only pairs songs with album refreshes",
+		DescribeTable("only lists the kinds it actually resolved",
 			func(kinds []string, wantSong bool) {
 				items := slice.Map(kinds, func(k string) model.ArtworkQueueItem {
 					return model.ArtworkQueueItem{ItemKind: k, ItemID: k + "1"}
@@ -459,11 +458,13 @@ var _ = Describe("Worker", func() {
 					Expect(data).ToNot(ContainSubstring(`"song"`))
 				}
 			},
-			Entry("album alone drags songs along", []string{"al"}, true),
+			// An album's tracks inherit its art, but the dependent ids are unbounded: the client
+			// fans an album refresh out to the tracks it has loaded.
+			Entry("album alone does not name songs", []string{"al"}, false),
 			Entry("artist alone does not", []string{"ar"}, false),
 			Entry("playlist alone does not", []string{"pl"}, false),
-			Entry("album mixed with others still does", []string{"ar", "al"}, true),
-			Entry("songs resolving on their own stay single-listed", []string{"mf"}, true),
+			Entry("album mixed with others still does not", []string{"ar", "al"}, false),
+			Entry("songs resolving on their own are listed by id", []string{"mf"}, true),
 		)
 
 		It("broadcasts a refresh when an item resolves to absent (removed cover)", func() {

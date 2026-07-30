@@ -63,6 +63,9 @@ import { useRefresh, useDataProvider } from 'react-admin'
  * - Global refresh: { '*': '*' } or { someResource: ['*'] }
  * - Specific resources: { album: ['id1', 'id2'], song: ['id3'] }
  */
+// Resources whose records are media files, and so inherit their album's artwork.
+const trackResources = ['song', 'playlistTrack']
+
 export const useResourceRefresh = (...visibleResources) => {
   const [lastTime, setLastTime] = useState(Date.now())
   const refresh = useRefresh()
@@ -78,26 +81,48 @@ export const useResourceRefresh = (...visibleResources) => {
   }
   setLastTime(lastReceived)
 
-  if (
+  const isWatched = (r) =>
+    visibleResources.length === 0 || visibleResources.includes(r)
+  // A wildcard on a resource this component does not show is somebody else's business: reloading
+  // the page for it throws away the list the user is looking at.
+  const hasWildcard =
     resources &&
     (resources['*'] === '*' ||
-      Object.values(resources).find((v) => v.find((v2) => v2 === '*')))
-  ) {
+      Object.entries(resources).some(
+        ([r, ids]) => isWatched(r) && ids.includes?.('*'),
+      ))
+
+  if (hasWildcard) {
     refresh()
     return
   }
-  if (resources) {
-    Object.keys(resources).forEach((r) => {
-      if (visibleResources.length === 0 || visibleResources?.includes(r)) {
-        if (resources[r]?.length > 0) {
-          // Only refetch records already in the store; ones the UI never loaded will
-          // arrive fresh (with the new artwork) when navigated to, so fetching them is wasteful.
-          const loaded = loadedResources?.[r]?.data || {}
-          const ids = resources[r].filter((id) => loaded[id] !== undefined)
-          if (ids.length > 0) {
-            dataProvider.getMany(r, { ids })
-          }
+  if (!resources) {
+    return
+  }
+  Object.keys(resources).forEach((r) => {
+    if (isWatched(r)) {
+      if (resources[r]?.length > 0) {
+        // Only refetch records already in the store; ones the UI never loaded will
+        // arrive fresh (with the new artwork) when navigated to, so fetching them is wasteful.
+        const loaded = loadedResources?.[r]?.data || {}
+        const ids = resources[r].filter((id) => loaded[id] !== undefined)
+        if (ids.length > 0) {
+          dataProvider.getMany(r, { ids })
         }
+      }
+    }
+  })
+
+  // A track with no art of its own is served its album's, so an album's new coverArt id moves its
+  // tracks' too. The dependent ids are unbounded server-side, but the store knows which are loaded.
+  if (resources.album?.length > 0) {
+    const albumIds = new Set(resources.album)
+    trackResources.filter(isWatched).forEach((r) => {
+      const ids = Object.values(loadedResources?.[r]?.data || {})
+        .filter((t) => albumIds.has(t?.albumId))
+        .map((t) => t.id)
+      if (ids.length > 0) {
+        dataProvider.getMany(r, { ids })
       }
     })
   }

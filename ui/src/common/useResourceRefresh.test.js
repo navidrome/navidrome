@@ -169,6 +169,93 @@ describe('useResourceRefresh', () => {
       expect(getMany).not.toHaveBeenCalled()
     })
 
+    it('does not refresh the page when the wildcard is on a resource it does not watch', () => {
+      // Guards other senders: a wildcard on an unwatched resource must not reload this list.
+      mockStore({
+        refresh: {
+          lastReceived: lastTime,
+          resources: { album: ['al-1', 'al-2'], song: ['*'] },
+        },
+        loaded: asStore({ album: ['al-1', 'al-2'] }),
+      })
+
+      useResourceRefresh('album')
+
+      expect(refresh).not.toHaveBeenCalled()
+      expect(getMany).toHaveBeenCalledWith('album', { ids: ['al-1', 'al-2'] })
+    })
+
+    it('refetches the loaded songs of a refreshed album', () => {
+      // A track with no art of its own is served its album's, so its coverArt id moves with the
+      // album's. The backend cannot know which tracks are loaded; the store can.
+      mockStore({
+        refresh: { lastReceived: lastTime, resources: { album: ['al-1'] } },
+        loaded: {
+          album: { data: { 'al-1': { id: 'al-1' } } },
+          song: {
+            data: {
+              'sg-1': { id: 'sg-1', albumId: 'al-1' },
+              'sg-2': { id: 'sg-2', albumId: 'al-2' },
+            },
+          },
+        },
+      })
+
+      useResourceRefresh('song')
+
+      expect(refresh).not.toHaveBeenCalled()
+      expect(getMany).toHaveBeenCalledWith('song', { ids: ['sg-1'] })
+    })
+
+    it('fans an album refresh out to loaded playlist tracks, which have their own ids', () => {
+      mockStore({
+        refresh: { lastReceived: lastTime, resources: { album: ['al-1'] } },
+        loaded: {
+          playlistTrack: {
+            data: {
+              'pt-1': { id: 'pt-1', albumId: 'al-1' },
+              'pt-2': { id: 'pt-2', albumId: 'al-2' },
+            },
+          },
+        },
+      })
+
+      useResourceRefresh('playlistTrack', 'song', 'playlist')
+
+      expect(refresh).not.toHaveBeenCalled()
+      expect(getMany).toHaveBeenCalledWith('playlistTrack', { ids: ['pt-1'] })
+    })
+
+    it('does not fan out to track resources the component does not show', () => {
+      mockStore({
+        refresh: { lastReceived: lastTime, resources: { album: ['al-1'] } },
+        loaded: {
+          album: { data: { 'al-1': { id: 'al-1' } } },
+          song: { data: { 'sg-1': { id: 'sg-1', albumId: 'al-1' } } },
+        },
+      })
+
+      useResourceRefresh('album')
+
+      expect(refresh).not.toHaveBeenCalled()
+      expect(getMany).toHaveBeenCalledTimes(1)
+      expect(getMany).toHaveBeenCalledWith('album', { ids: ['al-1'] })
+    })
+
+    it('does not refetch songs when no loaded song belongs to the refreshed album', () => {
+      mockStore({
+        refresh: { lastReceived: lastTime, resources: { album: ['al-9'] } },
+        loaded: {
+          song: { data: { 'sg-1': { id: 'sg-1', albumId: 'al-1' } } },
+        },
+      })
+
+      useResourceRefresh('song')
+
+      expect(refresh).not.toHaveBeenCalled()
+      expect(getMany).not.toHaveBeenCalled()
+    })
+
     it('refetches the received resources if they are visible and loaded', () => {
       mockStore({
         refresh: {
