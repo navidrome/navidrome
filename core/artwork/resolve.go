@@ -175,7 +175,7 @@ func (r *resolver) resolveArtist(ctx context.Context, artistID string) (resoluti
 	if err != nil {
 		return resolution{}, err
 	}
-	albumPaths, imgFiles, _, err := loadAlbumFoldersPaths(ctx, r.ds, als...)
+	albumPaths, imgFiles, _, err := loadArtistAlbumRoots(ctx, r.ds, als)
 	if err != nil {
 		return resolution{}, err
 	}
