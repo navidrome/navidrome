@@ -129,8 +129,7 @@ func (s *service) serveEntity(ctx context.Context, artID model.ArtworkID, size i
 	case err != nil:
 		return nil, err
 	case ia.Hash == "":
-		// EnqueueBump preserves an existing backoff row's retry_at, and inserts an
-		// immediately-eligible recheck for a settled absent row.
+		// Inserts an immediately-eligible recheck for a settled absent row.
 		if time.Since(ia.AttemptedAt) > requestRecheckAge {
 			s.enqueue(ctx, artID, model.ArtworkPriorityBump)
 		}
@@ -344,9 +343,8 @@ func (s *service) dangling(ctx context.Context, artID model.ArtworkID) (*Image, 
 	return nil, ErrUnavailable
 }
 
-// enqueue uses EnqueueBump so an incidental read-through never resets a failed resolution's backoff.
 func (s *service) enqueue(ctx context.Context, artID model.ArtworkID, priority int) {
-	err := s.ds.ArtworkQueue(ctx).EnqueueBump(model.ArtworkQueueItem{
+	err := s.ds.ArtworkQueue(ctx).EnqueuePreservingBackoff(model.ArtworkQueueItem{
 		ItemKind:  artID.Kind.Prefix(),
 		ItemID:    artID.ID,
 		ImageType: model.ImageTypePrimary,

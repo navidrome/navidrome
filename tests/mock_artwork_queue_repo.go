@@ -161,7 +161,7 @@ func (m *MockArtworkQueueRepo) Count() (int64, error) {
 	return int64(len(m.Data)), nil
 }
 
-func (m *MockArtworkQueueRepo) EnqueueBump(items ...model.ArtworkQueueItem) error {
+func (m *MockArtworkQueueRepo) EnqueuePreservingBackoff(items ...model.ArtworkQueueItem) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {

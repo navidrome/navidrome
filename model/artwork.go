@@ -113,9 +113,9 @@ type ArtworkRepository interface {
 type ArtworkQueueRepository interface {
 	// Enqueue upserts; an existing row keeps the higher priority and has its retry_at reset.
 	Enqueue(items ...ArtworkQueueItem) error
-	// EnqueueBump upserts like Enqueue but preserves an existing row's retry_at, so a
+	// EnqueuePreservingBackoff upserts like Enqueue but preserves an existing row's retry_at, so a
 	// request-triggered read-through never resets a failed resolution's backoff.
-	EnqueueBump(items ...ArtworkQueueItem) error
+	EnqueuePreservingBackoff(items ...ArtworkQueueItem) error
 	// EnqueueStaleAbsent inserts queue rows (priority Recheck) for absent states older than cutoff.
 	EnqueueStaleAbsent(kind Kind, attemptedBefore time.Time) (int64, error)
 	// EnqueueAllMissing inserts queue rows for all entities with no item_artwork row, at the given priority.

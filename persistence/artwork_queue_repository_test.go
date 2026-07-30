@@ -62,12 +62,12 @@ var _ = Describe("ArtworkQueueRepository", func() {
 		Expect(got[0].Priority).To(Equal(model.ArtworkPriorityBump))
 	})
 
-	It("EnqueueBump raises priority without resetting a backing-off row's retry_at", func() {
+	It("EnqueuePreservingBackoff raises priority without resetting a backing-off row's retry_at", func() {
 		Expect(repo.Enqueue(item("al", "b1", model.ArtworkPriorityScan))).To(Succeed())
 		backOff("al", "b1", time.Now().Add(time.Hour))
 		Expect(repo.DequeueBatch(10)).To(BeEmpty())
 
-		Expect(repo.EnqueueBump(item("al", "b1", model.ArtworkPriorityBump))).To(Succeed())
+		Expect(repo.EnqueuePreservingBackoff(item("al", "b1", model.ArtworkPriorityBump))).To(Succeed())
 		Expect(repo.DequeueBatch(10)).To(BeEmpty(), "bump must not reset retry_at")
 
 		// Enqueue (scan/manual), by contrast, resets retry_at and makes it eligible now.
@@ -77,8 +77,8 @@ var _ = Describe("ArtworkQueueRepository", func() {
 		Expect(got[0].Priority).To(Equal(model.ArtworkPriorityBump), "bump's higher priority is preserved")
 	})
 
-	It("EnqueueBump inserts a brand-new row eligible immediately", func() {
-		Expect(repo.EnqueueBump(item("ar", "n1", model.ArtworkPriorityBump))).To(Succeed())
+	It("EnqueuePreservingBackoff inserts a brand-new row eligible immediately", func() {
+		Expect(repo.EnqueuePreservingBackoff(item("ar", "n1", model.ArtworkPriorityBump))).To(Succeed())
 		got, _ := repo.DequeueBatch(10)
 		Expect(got).To(HaveLen(1))
 		Expect(got[0].ItemID).To(Equal("n1"))
@@ -236,6 +236,33 @@ var _ = Describe("ArtworkQueueRepository", func() {
 		Expect(ids).To(ContainElement(albumRadioactivity.ID), "an album with no row must be enqueued")
 		Expect(ids).ToNot(ContainElement(albumSgtPeppers.ID), "a resolved album must not be re-enqueued")
 		Expect(ids).ToNot(ContainElement(albumAbbeyRoad.ID), "an absent-state album must not be enqueued as missing")
+	})
+
+	It("EnqueueIfMissing skips items that already have an item_artwork row", func() {
+		awRepo := NewArtworkRepository(context.Background(), GetDBXBuilder())
+		Expect(awRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "al", ItemID: "resolved", ImageType: model.ImageTypePrimary, Hash: "hX", AttemptedAt: time.Now()})).To(Succeed())
+		Expect(awRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "al", ItemID: "absent", ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: time.Now()})).To(Succeed())
+
+		Expect(repo.EnqueueIfMissing(
+			item("al", "resolved", model.ArtworkPriorityScan),
+			item("al", "absent", model.ArtworkPriorityScan),
+			item("al", "brandnew", model.ArtworkPriorityScan),
+		)).To(Succeed())
+
+		got, err := repo.DequeueBatch(100)
+		Expect(err).ToNot(HaveOccurred())
+		ids := slice.Map(got, func(it model.ArtworkQueueItem) string { return it.ItemID })
+		Expect(ids).To(ConsistOf("brandnew"), "only an item with no state row may be enqueued")
+	})
+
+	It("EnqueueIfMissing leaves an already-queued row untouched", func() {
+		Expect(repo.Enqueue(item("al", "queued", model.ArtworkPriorityBump))).To(Succeed())
+
+		Expect(repo.EnqueueIfMissing(item("al", "queued", model.ArtworkPriorityScan))).To(Succeed())
+
+		got, _ := repo.DequeueBatch(100)
+		Expect(got).To(HaveLen(1))
+		Expect(got[0].Priority).To(Equal(model.ArtworkPriorityBump), "the existing priority must survive")
 	})
 
 	It("does not disturb an already-queued entity when enqueueing missing rows", func() {

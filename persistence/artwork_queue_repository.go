@@ -16,6 +16,9 @@ import (
 // Keeps each multi-row insert under SQLite's bind-variable limit (at most 7 vars per row).
 const enqueueChunkSize = 100
 
+// Every insert writes these, in this order; the INSERT..SELECT forms must project them to match.
+var enqueueColumns = []string{"item_kind", "item_id", "image_type", "priority", "attempts", "retry_at", "enqueued_at"}
+
 type artworkQueueRepository struct {
 	sqlRepository
 }
@@ -35,20 +38,16 @@ func (r *artworkQueueRepository) Enqueue(items ...model.ArtworkQueueItem) error 
 		attempts = 0, enqueued_at = excluded.enqueued_at`, items)
 }
 
-func (r *artworkQueueRepository) EnqueueBump(items ...model.ArtworkQueueItem) error {
+func (r *artworkQueueRepository) EnqueuePreservingBackoff(items ...model.ArtworkQueueItem) error {
 	return r.enqueue(`ON CONFLICT (item_kind, item_id, image_type) DO UPDATE SET
 		priority = MAX(priority, excluded.priority)`, items)
 }
 
 func (r *artworkQueueRepository) EnqueueStaleAbsent(kind model.Kind, attemptedBefore time.Time) (int64, error) {
 	now := time.Now()
-	// DO NOTHING is deliberate: rechecks must not bump priority/retry_at of already-queued items.
-	ins := Expr(`INSERT INTO `+r.tableName+` (item_kind, item_id, image_type, priority, attempts, retry_at, enqueued_at)
-		SELECT item_kind, item_id, image_type, ?, 0, ?, ?
-		FROM `+itemArtworkTable+` WHERE item_kind = ? AND hash = '' AND attempted_at < ?
-		ON CONFLICT (item_kind, item_id, image_type) DO NOTHING`,
+	return r.insertIfNotQueued("", `SELECT item_kind, item_id, image_type, ?, 0, ?, ?
+		FROM `+itemArtworkTable+` WHERE item_kind = ? AND hash = '' AND attempted_at < ?`,
 		model.ArtworkPriorityRecheck, now, now, kind.Prefix(), attemptedBefore)
-	return r.executeSQL(ins)
 }
 
 func (r *artworkQueueRepository) EnqueueAllMissing(kind model.Kind, priority int) (int64, error) {
@@ -57,14 +56,10 @@ func (r *artworkQueueRepository) EnqueueAllMissing(kind model.Kind, priority int
 		return 0, fmt.Errorf("artwork queue: no entity table for kind %q", kind.Prefix())
 	}
 	now := time.Now()
-	// DO NOTHING is deliberate: rechecks must not bump priority/retry_at of already-queued items.
-	ins := Expr(`INSERT INTO `+r.tableName+` (item_kind, item_id, image_type, priority, attempts, retry_at, enqueued_at)
-		SELECT ?, id, ?, ?, 0, ?, ?
+	return r.insertIfNotQueued("", `SELECT ?, id, ?, ?, 0, ?, ?
 		FROM `+entityTable+`
-		WHERE id NOT IN (SELECT item_id FROM `+itemArtworkTable+` WHERE item_kind = ?)
-		ON CONFLICT (item_kind, item_id, image_type) DO NOTHING`,
+		WHERE id NOT IN (SELECT item_id FROM `+itemArtworkTable+` WHERE item_kind = ?)`,
 		kind.Prefix(), model.ImageTypePrimary, priority, now, now, kind.Prefix())
-	return r.executeSQL(ins)
 }
 
 func (r *artworkQueueRepository) EnqueueIfMissing(items ...model.ArtworkQueueItem) error {
@@ -77,26 +72,33 @@ func (r *artworkQueueRepository) EnqueueIfMissing(items ...model.ArtworkQueueIte
 			args = append(args, it.ItemKind, it.ItemID, cmp.Or(it.ImageType, model.ImageTypePrimary), it.Priority)
 		}
 		args = append(args, now, now)
-		ins := Expr(`WITH new_items(item_kind, item_id, image_type, priority) AS (VALUES `+
-			strings.Join(rows, ",")+`)
-			INSERT INTO `+r.tableName+` (item_kind, item_id, image_type, priority, attempts, retry_at, enqueued_at)
-			SELECT n.item_kind, n.item_id, n.image_type, n.priority, 0, ?, ?
+		_, err := r.insertIfNotQueued(
+			`WITH new_items(item_kind, item_id, image_type, priority) AS (VALUES `+strings.Join(rows, ",")+`) `,
+			`SELECT n.item_kind, n.item_id, n.image_type, n.priority, 0, ?, ?
 			FROM new_items n
 			WHERE NOT EXISTS (
 				SELECT 1 FROM `+itemArtworkTable+` ia
-				WHERE ia.item_kind = n.item_kind AND ia.item_id = n.item_id AND ia.image_type = n.image_type)
-			ON CONFLICT (item_kind, item_id, image_type) DO NOTHING`, args...)
-		if _, err := r.executeSQL(ins); err != nil {
+				WHERE ia.item_kind = n.item_kind AND ia.item_id = n.item_id AND ia.image_type = n.image_type)`,
+			args...)
+		if err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
+// insertIfNotQueued inserts the rows selected by the given SQL, optionally prefixed by a CTE. DO NOTHING is
+// deliberate: a recheck must not bump the priority or retry_at of an already-queued item.
+func (r *artworkQueueRepository) insertIfNotQueued(with, sql string, args ...any) (int64, error) {
+	return r.executeSQL(Expr(with+`INSERT INTO `+r.tableName+
+		` (`+strings.Join(enqueueColumns, ", ")+`) `+sql+
+		` ON CONFLICT (item_kind, item_id, image_type) DO NOTHING`, args...))
+}
+
 func (r *artworkQueueRepository) enqueue(conflict string, items []model.ArtworkQueueItem) error {
 	now := time.Now()
 	for chunk := range slices.Chunk(items, enqueueChunkSize) {
-		ins := Insert(r.tableName).Columns("item_kind", "item_id", "image_type", "priority", "attempts", "retry_at", "enqueued_at")
+		ins := Insert(r.tableName).Columns(enqueueColumns...)
 		for _, it := range chunk {
 			ins = ins.Values(it.ItemKind, it.ItemID, cmp.Or(it.ImageType, model.ImageTypePrimary), it.Priority, 0, now, now)
 		}

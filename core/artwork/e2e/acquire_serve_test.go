@@ -55,7 +55,7 @@ var _ = Describe("Acquisition → serve loop", func() {
 	// Enqueues the way the serving paths do, so the drain is driven by a plain queue row.
 	bump := func(kind, id string) {
 		GinkgoHelper()
-		Expect(ds.ArtworkQueue(ctx).EnqueueBump(model.ArtworkQueueItem{
+		Expect(ds.ArtworkQueue(ctx).EnqueuePreservingBackoff(model.ArtworkQueueItem{
 			ItemKind: kind, ItemID: id, ImageType: model.ImageTypePrimary,
 			Priority: model.ArtworkPriorityBump,
 		})).To(Succeed())

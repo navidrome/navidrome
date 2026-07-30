@@ -140,7 +140,7 @@ func scan() {
 func acquire(kind model.Kind, id string) model.ItemArtwork {
 	GinkgoHelper()
 	// Enqueues the way the serving paths do, so the drain is driven by a plain queue row.
-	Expect(rds.ArtworkQueue(rctx).EnqueueBump(model.ArtworkQueueItem{
+	Expect(rds.ArtworkQueue(rctx).EnqueuePreservingBackoff(model.ArtworkQueueItem{
 		ItemKind: kind.Prefix(), ItemID: id, ImageType: model.ImageTypePrimary,
 		Priority: model.ArtworkPriorityBump,
 	})).To(Succeed())
