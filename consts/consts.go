@@ -26,7 +26,7 @@ const (
 	DBAnalyzeFailureCountKey      = "DBAnalyzeFailureCount"
 	// ArtConfFingerprintPropertyKey is the model.PropertyRepository key Backfill compares against
 	// to detect artwork-affecting config changes across restarts.
-	ArtConfFingerprintPropertyKey = "artwork.fingerprint"
+	ArtConfFingerprintPropertyKey = "ArtConfFingerprint"
 
 	UIAuthorizationHeader  = "X-ND-Authorization"
 	UIClientUniqueIDHeader = "X-ND-Client-Unique-Id"
@@ -86,6 +86,9 @@ const (
 	I18nFolder     = "i18n"
 	ScanIgnoreFile = ".ndignore"
 	ArtworkFolder  = "artwork"
+	// HashedArtworkFolder is a subtree of ArtworkFolder, kept apart from the name-addressed
+	// upload folders beside it so Prune's sweep never reaches them.
+	HashedArtworkFolder = "hashed"
 
 	PlaceholderArtistArt            = "artist-placeholder.webp"
 	PlaceholderAlbumArt             = "album-placeholder.webp"

@@ -25,9 +25,8 @@ func NewImageStore(rootDir string) *ImageStore {
 	return &ImageStore{root: rootDir}
 }
 
-// GetImageStore roots the store in its own subtree so Prune's sweep never reaches the upload folders beside it.
 func GetImageStore() *ImageStore {
-	return NewImageStore(filepath.Join(conf.Server.DataFolder.String(), consts.ArtworkFolder, "store"))
+	return NewImageStore(filepath.Join(conf.Server.DataFolder.String(), consts.ArtworkFolder, consts.HashedArtworkFolder))
 }
 
 // extForMime must stay stable across OSes: extensions are baked into stored paths and re-derived on Open.

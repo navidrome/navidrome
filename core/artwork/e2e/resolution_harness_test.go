@@ -20,6 +20,7 @@ import (
 	_ "github.com/navidrome/navidrome/adapters/gotaglib"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/metrics"
@@ -110,7 +111,7 @@ func setupResolutionHarness() {
 	storagetest.Register(fakeLibScheme, fakeFS)
 
 	ffm := tests.NewMockFFmpeg("")
-	rstore = artwork.NewImageStore(filepath.Join(tempDir, "store"))
+	rstore = artwork.NewImageStore(filepath.Join(tempDir, consts.HashedArtworkFolder))
 	// size=0 requests stream originals, so this reader is never called (serving_test covers resizing).
 	imgCache := cache.NewFileCache("ArtworkResolutionE2E", "100MB", "images", 0,
 		func(context.Context, cache.Item) (io.Reader, error) {
