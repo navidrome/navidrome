@@ -20,9 +20,10 @@ const ImageTypePrimary = "primary"
 type ItemImage struct {
 	ImageHash   string `structs:"-" json:"imageHash,omitempty"`
 	ImageAbsent bool   `structs:"-" json:"imageAbsent,omitempty"`
-	BlurHash    string `structs:"-" json:"blurHash,omitempty"`
-	ThumbHash   string `structs:"-" json:"thumbHash,omitempty"`
-	// A blurhash carries no aspect ratio, so clients need these to shape the placeholder.
+	// BlurHash is Jellyfin's; its mappers read this field directly, so it stays off native JSON.
+	BlurHash  string `structs:"-" json:"-"`
+	ThumbHash string `structs:"-" json:"thumbHash,omitempty"`
+	// A thumbhash's own aspect is quantised, so clients need these to shape the placeholder exactly.
 	ImageWidth  int `structs:"-" json:"imageWidth,omitempty"`
 	ImageHeight int `structs:"-" json:"imageHeight,omitempty"`
 }

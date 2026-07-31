@@ -8,64 +8,49 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+func jsonOf(v any) map[string]any {
+	GinkgoHelper()
+	data, err := json.Marshal(v)
+	Expect(err).ToNot(HaveOccurred())
+	var out map[string]any
+	Expect(json.Unmarshal(data, &out)).To(Succeed())
+	return out
+}
+
 var _ = Describe("ItemImage JSON", func() {
-	It("exposes artwork state on an album", func() {
+	It("exposes the artwork state a client needs to render a placeholder", func() {
 		al := model.Album{ID: "al-1", Name: "Album"}
 		al.ImageHash = "0123456789abcdef"
-		al.BlurHash = "LEHV6nWB2yk8"
-
-		var out map[string]any
-		data, err := json.Marshal(al)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(json.Unmarshal(data, &out)).To(Succeed())
-
-		Expect(out).To(HaveKeyWithValue("imageHash", "0123456789abcdef"))
-		Expect(out).To(HaveKeyWithValue("blurHash", "LEHV6nWB2yk8"))
-	})
-
-	It("exposes the thumbhash, and omits it when the entity has none", func() {
-		al := model.Album{ID: "al-4", Name: "Album"}
 		al.ThumbHash = "1QcSHQRn"
-
-		var out map[string]any
-		data, err := json.Marshal(al)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(json.Unmarshal(data, &out)).To(Succeed())
-		Expect(out).To(HaveKeyWithValue("thumbHash", "1QcSHQRn"))
-
-		var bare map[string]any
-		data, err = json.Marshal(model.Album{ID: "al-5", Name: "Album"})
-		Expect(err).ToNot(HaveOccurred())
-		Expect(json.Unmarshal(data, &bare)).To(Succeed())
-		Expect(bare).ToNot(HaveKey("thumbHash"))
-	})
-
-	// Without the dimensions, clients cannot know the placeholder's shape and default to a square.
-	It("exposes the image dimensions alongside the blurhash", func() {
-		al := model.Album{ID: "al-3", Name: "Album"}
-		al.BlurHash = "LEHV6nWB2yk8"
 		al.ImageWidth, al.ImageHeight = 1200, 800
 
-		var out map[string]any
-		data, err := json.Marshal(al)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(json.Unmarshal(data, &out)).To(Succeed())
-
-		Expect(out).To(HaveKeyWithValue("imageWidth", BeNumerically("==", 1200)))
-		Expect(out).To(HaveKeyWithValue("imageHeight", BeNumerically("==", 800)))
+		Expect(jsonOf(al)).To(SatisfyAll(
+			HaveKeyWithValue("imageHash", "0123456789abcdef"),
+			HaveKeyWithValue("thumbHash", "1QcSHQRn"),
+			HaveKeyWithValue("imageWidth", BeNumerically("==", 1200)),
+			HaveKeyWithValue("imageHeight", BeNumerically("==", 800)),
+		))
 	})
 
-	It("omits artwork state when the entity has none", func() {
-		var out map[string]any
-		data, err := json.Marshal(model.Album{ID: "al-2", Name: "Album"})
-		Expect(err).ToNot(HaveOccurred())
-		Expect(json.Unmarshal(data, &out)).To(Succeed())
+	It("keeps the blurhash off the native API, where nothing consumes it", func() {
+		al := model.Album{ID: "al-1", Name: "Album"}
+		al.BlurHash = "LEHV6nWB2yk8"
+		Expect(jsonOf(al)).ToNot(HaveKey("blurHash"))
+	})
 
-		Expect(out).ToNot(HaveKey("imageHash"))
-		Expect(out).ToNot(HaveKey("blurHash"))
-		Expect(out).ToNot(HaveKey("imageAbsent"))
-		Expect(out).ToNot(HaveKey("imageWidth"))
-		Expect(out).ToNot(HaveKey("imageHeight"))
+	It("omits every artwork field when the entity has none", func() {
+		out := jsonOf(model.Album{ID: "al-2", Name: "Album"})
+		for _, key := range []string{
+			"imageHash", "blurHash", "thumbHash", "imageAbsent", "imageWidth", "imageHeight",
+		} {
+			Expect(out).ToNot(HaveKey(key))
+		}
+	})
+
+	It("exposes known-absent artwork so clients can skip the request", func() {
+		ar := model.Artist{ID: "ar-1", Name: "Artist"}
+		ar.ImageAbsent = true
+		Expect(jsonOf(ar)).To(HaveKeyWithValue("imageAbsent", true))
 	})
 
 	Describe("AspectRatio", func() {
@@ -84,17 +69,5 @@ var _ = Describe("ItemImage JSON", func() {
 			img := model.ItemImage{ImageAbsent: true, ImageWidth: 1200, ImageHeight: 800}
 			Expect(img.AspectRatio()).To(BeNil())
 		})
-	})
-
-	It("exposes known-absent artwork so clients can skip the request", func() {
-		ar := model.Artist{ID: "ar-1", Name: "Artist"}
-		ar.ImageAbsent = true
-
-		var out map[string]any
-		data, err := json.Marshal(ar)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(json.Unmarshal(data, &out)).To(Succeed())
-
-		Expect(out).To(HaveKeyWithValue("imageAbsent", true))
 	})
 })
