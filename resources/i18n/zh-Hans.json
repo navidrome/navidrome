@@ -32,7 +32,7 @@
         "rating": "评分",
         "quality": "品质",
         "bpm": "BPM",
-        "playDate": "最后一次播放",
+        "playDate": "上次播放",
         "createdAt": "加入日期",
         "grouping": "分组",
         "mood": "情绪",
@@ -184,7 +184,7 @@
         "maxBitRate": "最大比特率",
         "client": "客户端",
         "userName": "用户名",
-        "lastSeen": "上次浏览",
+        "lastSeen": "上次使用",
         "reportRealPath": "报告真实路径",
         "scrobbleEnabled": "发送个性化记录到外部服务"
       }
@@ -210,7 +210,8 @@
         "songCount": "歌曲数",
         "comment": "注释",
         "sync": "自动导入",
-        "path": "导入路径"
+        "path": "导入路径",
+        "starred": "收藏"
       },
       "actions": {
         "selectPlaylist": "选择歌单",
@@ -530,7 +531,7 @@
       "no_results": "未找到结果",
       "no_more_results": "页码 %{page} 超出范围，尝试返回上一页",
       "page_out_of_boundaries": "页码 %{page} 超出范围",
-      "page_out_from_end": "已经最后一页",
+      "page_out_from_end": "已经是最后一页",
       "page_out_from_begin": "已经是第一页",
       "page_range_info": "%{offsetBegin}-%{offsetEnd} / %{total}",
       "page_rows_per_page": "每页项目数：",
@@ -636,6 +637,7 @@
     "albumList": "专辑",
     "playlists": "歌单",
     "sharedPlaylists": "共享的歌单",
+    "onlyFavourites": "仅显示收藏项",
     "about": "关于"
   },
   "player": {
@@ -668,10 +670,10 @@
       "homepage": "主页",
       "source": "源代码",
       "featureRequests": "功能需求",
-      "lastInsightsCollection": "最近的分析收集",
+      "lastInsightsCollection": "上次的匿名数据收集",
       "insights": {
-        "disabled": "禁用",
-        "waiting": "等待"
+        "disabled": "已禁用",
+        "waiting": "等待中"
       }
     },
     "tabs": {
