@@ -40,6 +40,54 @@ func gradientImage(w, h int) image.Image {
 	return img
 }
 
+var _ = Describe("Encode input types", func() {
+	// The pipeline hands Encode an *image.NRGBA; reading it must stay equivalent to the
+	// premultiplied *image.RGBA it used to receive, or every hash silently shifts.
+	buildPair := func(alpha uint8) (*image.NRGBA, *image.RGBA) {
+		const size = 40
+		nrgba := image.NewNRGBA(image.Rect(0, 0, size, size))
+		rgba := image.NewRGBA(image.Rect(0, 0, size, size))
+		for y := range size {
+			for x := range size {
+				c := color.NRGBA{
+					R: uint8(255 * x / size), G: uint8(255 * y / size),
+					B: uint8((x + y) * 255 / (2 * size)), A: alpha,
+				}
+				nrgba.SetNRGBA(x, y, c)
+				rgba.Set(x, y, c) // image.RGBA.Set premultiplies
+			}
+		}
+		return nrgba, rgba
+	}
+
+	It("gives an opaque NRGBA the same hash as the equivalent RGBA", func() {
+		nrgba, rgba := buildPair(255)
+		fromNRGBA, err := blurhash.Encode(nrgba)
+		Expect(err).ToNot(HaveOccurred())
+		fromRGBA, err := blurhash.Encode(rgba)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(fromNRGBA).To(Equal(fromRGBA))
+	})
+
+	It("premultiplies a partly transparent NRGBA, matching the RGBA it replaces", func() {
+		nrgba, rgba := buildPair(128)
+		fromNRGBA, err := blurhash.Encode(nrgba)
+		Expect(err).ToNot(HaveOccurred())
+		fromRGBA, err := blurhash.Encode(rgba)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(fromNRGBA).To(Equal(fromRGBA))
+	})
+
+	It("treats a fully transparent NRGBA as black, as premultiplication does", func() {
+		nrgba, rgba := buildPair(0)
+		fromNRGBA, err := blurhash.Encode(nrgba)
+		Expect(err).ToNot(HaveOccurred())
+		fromRGBA, err := blurhash.Encode(rgba)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(fromNRGBA).To(Equal(fromRGBA))
+	})
+})
+
 var _ = Describe("Encode", func() {
 	// The size flag encodes (xComp-1) + (yComp-1)*9.
 	DescribeTable("derives component counts from aspect ratio (Jellyfin formula)",

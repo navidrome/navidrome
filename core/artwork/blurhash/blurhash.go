@@ -32,9 +32,8 @@ func Encode(img image.Image) (string, error) {
 	}
 	// Pre-downscale: its rounding can flip a component count, and the hash is a client cache key.
 	xComp, yComp := components(img.Bounds().Dx(), img.Bounds().Dy())
-	rgba := toRGBA(downscale(img))
-	bounds := rgba.Bounds()
-	w, h := bounds.Dx(), bounds.Dy()
+	src := pixelsOf(downscale(img))
+	w, h := src.w, src.h
 
 	cosX := make([][]float64, xComp)
 	for i := range cosX {
@@ -54,10 +53,14 @@ func Encode(img image.Image) (string, error) {
 	lin := srgbToLinearTable()
 	factors := make([][3]float64, xComp*yComp)
 	for y := range h {
-		row := rgba.Pix[y*rgba.Stride:]
+		row := src.pix[y*src.stride:]
 		for x := range w {
 			p := x * 4
-			lr, lg, lb := lin[row[p]], lin[row[p+1]], lin[row[p+2]]
+			r, g, b := row[p], row[p+1], row[p+2]
+			if src.straight {
+				r, g, b = premultiply(r, g, b, row[p+3])
+			}
+			lr, lg, lb := lin[r], lin[g], lin[b]
 			for j := range yComp {
 				for i := range xComp {
 					basis := cosX[i][x] * cosY[j][y]
@@ -101,15 +104,36 @@ func Encode(img image.Image) (string, error) {
 	return sb.String(), nil
 }
 
-// toRGBA gives the pixel loop direct Pix access, avoiding a per-pixel allocation via image.At.
-func toRGBA(img image.Image) *image.RGBA {
-	if rgba, ok := img.(*image.RGBA); ok {
-		return rgba
-	}
+// pixels is direct Pix access for the pixel loop, avoiding a per-pixel allocation via image.At.
+type pixels struct {
+	pix    []uint8
+	stride int
+	w, h   int
+	// straight marks non-premultiplied alpha, which the loop premultiplies to keep the hash
+	// identical to the one an equivalent *image.RGBA produces.
+	straight bool
+}
+
+// pixelsOf accepts the two types the artwork pipeline produces without copying, and converts
+// anything else.
+func pixelsOf(img image.Image) pixels {
 	b := img.Bounds()
+	switch src := img.(type) {
+	case *image.RGBA:
+		return pixels{pix: src.Pix, stride: src.Stride, w: b.Dx(), h: b.Dy()}
+	case *image.NRGBA:
+		return pixels{pix: src.Pix, stride: src.Stride, w: b.Dx(), h: b.Dy(), straight: true}
+	}
 	dst := image.NewRGBA(image.Rect(0, 0, b.Dx(), b.Dy()))
 	draw.Draw(dst, dst.Bounds(), img, b.Min, draw.Src)
-	return dst
+	return pixels{pix: dst.Pix, stride: dst.Stride, w: b.Dx(), h: b.Dy()}
+}
+
+func premultiply(r, g, b, a uint8) (uint8, uint8, uint8) {
+	if a == 255 {
+		return r, g, b
+	}
+	return uint8(uint32(r) * uint32(a) / 255), uint8(uint32(g) * uint32(a) / 255), uint8(uint32(b) * uint32(a) / 255)
 }
 
 var srgbToLinearTable = sync.OnceValue(func() *[256]float64 {

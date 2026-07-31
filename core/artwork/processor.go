@@ -268,7 +268,9 @@ func makeThumbnail(img image.Image, maxSize int) image.Image {
 		return toFastScaleType(img)
 	}
 	scale := float64(maxSize) / float64(max(w, h))
-	dst := image.NewRGBA(image.Rect(0, 0, max(1, int(float64(w)*scale)), max(1, int(float64(h)*scale))))
+	// NRGBA, not RGBA: thumbhash requires straight alpha, and blurhash reads this type without
+	// converting, so neither encoder allocates a second copy of the thumbnail.
+	dst := image.NewNRGBA(image.Rect(0, 0, max(1, int(float64(w)*scale)), max(1, int(float64(h)*scale))))
 	xdraw.CatmullRom.Scale(dst, dst.Bounds(), toFastScaleType(img), b, draw.Src, nil)
 	return dst
 }
