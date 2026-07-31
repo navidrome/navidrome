@@ -13,13 +13,13 @@ import { Artwork } from './Artwork'
 const withArt = {
   id: 'al-1',
   name: 'Album',
-  blurHash: 'LEHV6nWB2yk8pyo0adR*.7kCMdnj',
+  thumbHash: 'H/gNBxpwh4dwd3eIiHd3iHeHeJ+dcH8I',
 }
 
 describe('Artwork', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    // jsdom has no 2D context; stub it so BlurHashCanvas bails cleanly without console noise
+    // jsdom has no 2D context; stub it so ThumbHashCanvas bails cleanly without console noise
     HTMLCanvasElement.prototype.getContext = vi.fn(() => null)
   })
 
@@ -29,14 +29,14 @@ describe('Artwork', () => {
     expect(container.firstChild).toBeNull()
   })
 
-  it('shows the blurhash and no <img> while loading', () => {
+  it('shows the placeholder and no <img> while loading', () => {
     useImageUrl.mockReturnValue({ imgUrl: null, loading: true })
     const { container } = render(<Artwork record={withArt} title="Album" />)
     expect(container.querySelector('canvas')).not.toBeNull()
     expect(container.querySelector('img')).toBeNull()
   })
 
-  it('shows neither a broken <img> nor a canvas while loading a record with no blurhash', () => {
+  it('shows neither a broken <img> nor a canvas while loading a record with no thumbhash', () => {
     useImageUrl.mockReturnValue({ imgUrl: null, loading: true })
     const { container } = render(<Artwork record={{ id: 'al-2', name: 'X' }} />)
     expect(container.querySelector('img')).toBeNull()
@@ -44,7 +44,7 @@ describe('Artwork', () => {
   })
 
   // The placeholder has to land exactly where the image will, or it jumps when the image swaps in.
-  it('shapes the blurhash like the artwork and fits it like the image', () => {
+  it('shapes the placeholder like the artwork and fits it like the image', () => {
     useImageUrl.mockReturnValue({ imgUrl: null, loading: true })
     const nonSquare = { ...withArt, imageWidth: 1200, imageHeight: 800 }
     const { container } = render(
@@ -57,7 +57,7 @@ describe('Artwork', () => {
   })
 
   // A square request is padded, not cropped, so the placeholder has to letterbox with it.
-  it('letterboxes the blurhash when the server pads a non-square image to a square', () => {
+  it('letterboxes the placeholder when the server pads a non-square image to a square', () => {
     useImageUrl.mockReturnValue({ imgUrl: null, loading: true })
     const nonSquare = { ...withArt, imageWidth: 1200, imageHeight: 800 }
     const { container } = render(<Artwork record={nonSquare} square />)
@@ -85,7 +85,8 @@ describe('Artwork', () => {
     expect(canvas.height).toBe(32)
   })
 
-  it('falls back to a square blurhash when the record has no dimensions', () => {
+  // Without dimensions the placeholder falls back to the aspect the hash itself carries.
+  it('falls back to the hash own aspect when the record has no dimensions', () => {
     useImageUrl.mockReturnValue({ imgUrl: null, loading: true })
     const { container } = render(<Artwork record={withArt} />)
     const canvas = container.querySelector('canvas')
@@ -101,7 +102,7 @@ describe('Artwork', () => {
     expect(img.getAttribute('src')).toBe('blob:abc')
   })
 
-  it('keeps the blurhash under the image until the fade ends', () => {
+  it('keeps the placeholder under the image until the fade ends', () => {
     vi.useFakeTimers()
     try {
       useImageUrl.mockReturnValue({ imgUrl: null, loading: true })
@@ -138,7 +139,7 @@ describe('Artwork', () => {
     expect(container.querySelector('img').className).toContain('imgInstant')
   })
 
-  it('keeps the blurhash visible when the image never decodes', () => {
+  it('keeps the placeholder visible when the image never decodes', () => {
     useImageUrl.mockReturnValue({ imgUrl: null, loading: true })
     const { container, rerender } = render(<Artwork record={withArt} />)
     useImageUrl.mockReturnValue({ imgUrl: 'blob:abc', loading: false })

@@ -1,8 +1,12 @@
 import { render } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { BlurHashCanvas } from './BlurHashCanvas'
+import { ThumbHashCanvas } from './ThumbHashCanvas'
 
-describe('BlurHashCanvas', () => {
+// Golden hashes from core/artwork/thumbhash/testdata/golden.json.
+const SQUARE = 'H/gNBxpwh4dwd3eIiHd3iHeHeJ+dcH8I'
+const LANDSCAPE = '3wcOFJpwh4eBh3d4iIePgAj3hw=='
+
+describe('ThumbHashCanvas', () => {
   // jsdom has no real 2D context; stub it (tracked) so specs can assert the draw path ran.
   let ctxMock
   let getContextSpy
@@ -23,16 +27,13 @@ describe('BlurHashCanvas', () => {
   })
 
   it('renders nothing without a hash', () => {
-    const { container } = render(<BlurHashCanvas hash="" />)
+    const { container } = render(<ThumbHashCanvas hash="" />)
     expect(container.querySelector('canvas')).toBeNull()
   })
 
   it('decodes a valid hash and draws non-trivial pixel data', () => {
-    const { container } = render(
-      <BlurHashCanvas hash="LEHV6nWB2yk8pyo0adR*.7kCMdnj" />,
-    )
+    const { container } = render(<ThumbHashCanvas hash={SQUARE} />)
     expect(container.querySelector('canvas')).not.toBeNull()
-    expect(ctxMock.createImageData).toHaveBeenCalledWith(32, 32)
     expect(ctxMock.putImageData).toHaveBeenCalledTimes(1)
     const [imageData] = ctxMock.putImageData.mock.calls[0]
     expect(imageData.data.some((byte) => byte !== 0)).toBe(true)
@@ -40,9 +41,8 @@ describe('BlurHashCanvas', () => {
 
   it('decodes into a bitmap shaped like the image, so the blur is not distorted', () => {
     const { container } = render(
-      <BlurHashCanvas hash="LEHV6nWB2yk8pyo0adR*.7kCMdnj" ratio={1200 / 800} />,
+      <ThumbHashCanvas hash={SQUARE} ratio={1200 / 800} />,
     )
-    // Longest side pinned to the decode size; the other follows the ratio.
     expect(ctxMock.createImageData).toHaveBeenCalledWith(32, 21)
     const canvas = container.querySelector('canvas')
     expect(canvas.width).toBe(32)
@@ -50,46 +50,44 @@ describe('BlurHashCanvas', () => {
   })
 
   it('shapes a portrait ratio the other way round', () => {
-    render(<BlurHashCanvas hash="LEHV6nWB2yk8pyo0adR*.7kCMdnj" ratio={0.5} />)
+    render(<ThumbHashCanvas hash={SQUARE} ratio={0.5} />)
     expect(ctxMock.createImageData).toHaveBeenCalledWith(16, 32)
   })
 
   it('never collapses an extreme ratio to a zero-sized bitmap', () => {
-    render(<BlurHashCanvas hash="LEHV6nWB2yk8pyo0adR*.7kCMdnj" ratio={200} />)
+    render(<ThumbHashCanvas hash={SQUARE} ratio={200} />)
     expect(ctxMock.createImageData).toHaveBeenCalledWith(32, 1)
   })
 
-  it('falls back to a square when the ratio is unknown or nonsense', () => {
-    render(<BlurHashCanvas hash="LEHV6nWB2yk8pyo0adR*.7kCMdnj" ratio={0} />)
-    expect(ctxMock.createImageData).toHaveBeenCalledWith(32, 32)
+  // Unlike a blurhash, a thumbhash carries its own approximate aspect, so an unknown ratio
+  // falls back to that rather than to a square.
+  it('falls back to the hash own aspect when the ratio is unknown', () => {
+    render(<ThumbHashCanvas hash={LANDSCAPE} ratio={0} />)
+    expect(ctxMock.createImageData).toHaveBeenCalledWith(32, 18)
   })
 
   it('applies the object-fit it is given, so it lands where the image will', () => {
     const { container } = render(
-      <BlurHashCanvas
-        hash="LEHV6nWB2yk8pyo0adR*.7kCMdnj"
-        ratio={1.5}
-        fit="contain"
-      />,
+      <ThumbHashCanvas hash={SQUARE} ratio={1.5} fit="contain" />,
     )
     expect(container.querySelector('canvas').style.objectFit).toBe('contain')
   })
 
   it('renders a canvas without throwing on a malformed hash, and draws nothing', () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const { container } = render(<BlurHashCanvas hash="!!!not-a-blurhash!!!" />)
+    const { container } = render(
+      <ThumbHashCanvas hash="!!!not-a-thumbhash!!!" />,
+    )
     expect(container.querySelector('canvas')).not.toBeNull()
     expect(ctxMock.putImageData).not.toHaveBeenCalled()
     spy.mockRestore()
   })
 
   it('clears the canvas when a hash change fails to decode', () => {
-    const { rerender } = render(
-      <BlurHashCanvas hash="LEHV6nWB2yk8pyo0adR*.7kCMdnj" />,
-    )
+    const { rerender } = render(<ThumbHashCanvas hash={SQUARE} />)
     expect(ctxMock.putImageData).toHaveBeenCalledTimes(1)
 
-    rerender(<BlurHashCanvas hash="!!!not-a-blurhash!!!" />)
+    rerender(<ThumbHashCanvas hash="!!!not-a-thumbhash!!!" />)
 
     expect(ctxMock.clearRect).toHaveBeenCalledTimes(2)
     expect(ctxMock.putImageData).toHaveBeenCalledTimes(1)

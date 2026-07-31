@@ -1,15 +1,19 @@
 import { useEffect, useRef } from 'react'
 import PropTypes from 'prop-types'
-import { decode } from '../utils/blurhash'
+import { decode, naturalSize } from '../utils/thumbhash'
 
-// A blurhash carries no detail beyond a few dozen pixels; CSS upscales the canvas.
+// A thumbhash carries no detail beyond a few dozen pixels; CSS upscales the canvas.
 const DECODE_SIZE = 32
 
-// bitmapSize shapes the decode target like the source image: a blurhash carries no aspect ratio,
-// so a square decode stretched to the box distorts the blur and overpaints where the image won't reach.
-const bitmapSize = (ratio) => {
+// bitmapSize prefers the artwork's true ratio, falling back to the aspect the hash itself carries,
+// which is quantised to a ratio of small integers and so only approximates the image.
+const bitmapSize = (hash, ratio) => {
   if (!(ratio > 0) || !Number.isFinite(ratio)) {
-    return { width: DECODE_SIZE, height: DECODE_SIZE }
+    try {
+      return naturalSize(hash)
+    } catch {
+      return { width: DECODE_SIZE, height: DECODE_SIZE }
+    }
   }
   return ratio >= 1
     ? {
@@ -22,9 +26,9 @@ const bitmapSize = (ratio) => {
       }
 }
 
-export const BlurHashCanvas = ({ hash, ratio, fit, className, style }) => {
+export const ThumbHashCanvas = ({ hash, ratio, fit, className, style }) => {
   const canvasRef = useRef(null)
-  const { width, height } = bitmapSize(ratio)
+  const { width, height } = bitmapSize(hash, ratio)
 
   useEffect(() => {
     if (!hash || !canvasRef.current) {
@@ -61,9 +65,9 @@ export const BlurHashCanvas = ({ hash, ratio, fit, className, style }) => {
   )
 }
 
-BlurHashCanvas.propTypes = {
+ThumbHashCanvas.propTypes = {
   hash: PropTypes.string,
-  // Aspect ratio (width / height) of the image this stands in for; square when omitted or unusable.
+  // Aspect ratio (width / height) of the image this stands in for; the hash's own when omitted.
   ratio: PropTypes.number,
   fit: PropTypes.oneOf(['cover', 'contain']),
   className: PropTypes.string,

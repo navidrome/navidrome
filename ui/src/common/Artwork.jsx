@@ -5,9 +5,9 @@ import { makeStyles } from '@material-ui/core/styles'
 import config from '../config'
 import subsonic from '../subsonic'
 import { useImageUrl } from './useImageUrl'
-import { BlurHashCanvas } from './BlurHashCanvas'
+import { ThumbHashCanvas } from './ThumbHashCanvas'
 
-// Drives both the CSS transition and the timer that retires the blurhash, so they cannot drift.
+// Drives both the CSS transition and the timer that retires the placeholder, so they cannot drift.
 const fadeMs = 500
 
 const useStyles = makeStyles({
@@ -72,7 +72,7 @@ export const Artwork = ({
 
   const instant = cachedOnMount.current
   // Kept mounted until the fade ends; swapping on blob arrival would flash an empty container.
-  const showBlurHash = !!record.blurHash && !instant && !faded
+  const showPlaceholder = !!record.thumbHash && !instant && !faded
   // A square request is padded, not cropped, so `contain` keeps placeholder and image aligned.
   const effectiveFit = square ? 'contain' : fit
   const ratio = record.imageWidth / record.imageHeight
@@ -83,9 +83,9 @@ export const Artwork = ({
       onClick={handleClick}
       style={{ cursor: handleClick ? 'pointer' : 'default' }}
     >
-      {showBlurHash && (
-        <BlurHashCanvas
-          hash={record.blurHash}
+      {showPlaceholder && (
+        <ThumbHashCanvas
+          hash={record.thumbHash}
           ratio={ratio}
           fit={effectiveFit}
           className={classes.fill}
