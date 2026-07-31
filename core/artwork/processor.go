@@ -3,6 +3,7 @@ package artwork
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"image"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/core/artwork/blurhash"
+	"github.com/navidrome/navidrome/core/artwork/thumbhash"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	xdraw "golang.org/x/image/draw"
@@ -43,8 +45,8 @@ func (o outcome) String() string {
 	}
 }
 
-// thumbnailSize is the max dimension fed to blurhash.
-const thumbnailSize = 128
+// thumbnailSize is the max dimension fed to both hash encoders; thumbhash rejects anything larger.
+const thumbnailSize = 100
 
 // maxImageBytes caps a resolved image read: a user-editable ExternalImageURL could point at
 // an arbitrarily large endpoint.
@@ -226,7 +228,8 @@ func decodeCapped(data []byte) (image.Image, string, error) {
 	return img, format, nil
 }
 
-// decodeArtwork builds a new Artwork row from raw bytes: dimensions, mime and blurhash.
+// decodeArtwork builds a new Artwork row from raw bytes: dimensions, mime and the two
+// placeholder hashes, both encoded from one shared downscaled thumbnail.
 func decodeArtwork(ctx context.Context, hash string, data []byte) (*model.Artwork, error) {
 	img, format, err := decodeCapped(data)
 	if err != nil {
@@ -240,12 +243,20 @@ func decodeArtwork(ctx context.Context, hash string, data []byte) (*model.Artwor
 		bh = ""
 	}
 
+	var th string
+	if raw, err := thumbhash.Encode(thumb); err != nil {
+		log.Warn(ctx, "Artwork: Thumbhash encoding failed", "hash", hash, err)
+	} else {
+		th = base64.StdEncoding.EncodeToString(raw)
+	}
+
 	return &model.Artwork{
-		Hash:     hash,
-		Mime:     mimeForFormat(format),
-		Width:    img.Bounds().Dx(),
-		Height:   img.Bounds().Dy(),
-		BlurHash: bh,
+		Hash:      hash,
+		Mime:      mimeForFormat(format),
+		Width:     img.Bounds().Dx(),
+		Height:    img.Bounds().Dy(),
+		BlurHash:  bh,
+		ThumbHash: th,
 	}, nil
 }
 

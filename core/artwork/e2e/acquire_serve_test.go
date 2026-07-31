@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"io"
 	"os"
@@ -224,7 +225,12 @@ var _ = Describe("Acquisition → serve loop", func() {
 		Expect(art.Width).To(BeNumerically(">", 0))
 		Expect(art.Height).To(BeNumerically(">", 0))
 		Expect(art.SizeBytes).To(BeNumerically("==", len(coverBytes)))
+		// Never a synthesized value: both hashes are encoded from the real pixels.
 		Expect(art.BlurHash).ToNot(BeEmpty())
+		Expect(art.ThumbHash).ToNot(BeEmpty())
+		raw, err := base64.StdEncoding.DecodeString(art.ThumbHash)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(len(raw)).To(BeNumerically(">=", 5))
 	})
 
 	It("acquires GIF artwork, whose decoder only core/artwork's blank import registers", func() {
