@@ -83,7 +83,7 @@ var _ = Describe("ffmpeg", func() {
 
 	Describe("isDefaultCommand", func() {
 		It("returns true for known default mp3 command", func() {
-			Expect(isDefaultCommand("mp3", "ffmpeg -ss %t -i %s -map 0:a:0 -map_metadata 0 -map_metadata 0:s:a:0 -b:a %bk -v 0 -f mp3 -")).To(BeTrue())
+			Expect(isDefaultCommand("mp3", "ffmpeg -ss %t -i %s -map 0:a:0 -map 0:v:0? -map_metadata 0 -map_metadata 0:s:a:0 -b:a %bk -v 0 -c:v copy -disposition:v attached_pic -f mp3 -")).To(BeTrue())
 		})
 		It("returns true for known default opus command", func() {
 			Expect(isDefaultCommand("opus", "ffmpeg -ss %t -i %s -map 0:a:0 -map_metadata 0 -map_metadata 0:s:a:0 -b:a %bk -v 0 -c:a libopus -f opus -")).To(BeTrue())
@@ -92,7 +92,7 @@ var _ = Describe("ffmpeg", func() {
 			Expect(isDefaultCommand("aac", "ffmpeg -ss %t -i %s -map 0:a:0 -map_metadata 0 -map_metadata 0:s:a:0 -b:a %bk -v 0 -c:a aac -f adts -")).To(BeTrue())
 		})
 		It("returns true for known default flac command", func() {
-			Expect(isDefaultCommand("flac", "ffmpeg -ss %t -i %s -map 0:a:0 -map_metadata 0 -map_metadata 0:s:a:0 -v 0 -c:a flac -f flac -")).To(BeTrue())
+			Expect(isDefaultCommand("flac", "ffmpeg -ss %t -i %s -map 0:a:0 -map 0:v:0? -map_metadata 0 -map_metadata 0:s:a:0 -v 0 -c:a flac -c:v copy -disposition:v attached_pic -f flac -")).To(BeTrue())
 		})
 		It("returns false for a custom command", func() {
 			Expect(isDefaultCommand("mp3", "ffmpeg -i %s -b:a %bk -custom-flag -f mp3 -")).To(BeFalse())
