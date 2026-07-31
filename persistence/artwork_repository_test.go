@@ -40,6 +40,25 @@ var _ = Describe("ArtworkRepository", func() {
 			Expect(got.CreatedAt).ToNot(BeZero())
 		})
 
+		It("round-trips the thumbhash alongside the blurhash", func() {
+			a := &model.Artwork{Hash: "both1", Mime: "image/jpeg", BlurHash: "LKO2?U%2Tw=w", ThumbHash: "1QcSHQRnh493V4dIh4eXh1h4kJUI"}
+			Expect(repo.PutImage(a)).To(Succeed())
+
+			got, err := repo.GetImage("both1")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.BlurHash).To(Equal("LKO2?U%2Tw=w"))
+			Expect(got.ThumbHash).To(Equal("1QcSHQRnh493V4dIh4eXh1h4kJUI"))
+		})
+
+		It("overwrites the thumbhash on re-acquisition", func() {
+			Expect(repo.PutImage(&model.Artwork{Hash: "th2", Mime: "image/png", ThumbHash: "first"})).To(Succeed())
+			Expect(repo.PutImage(&model.Artwork{Hash: "th2", Mime: "image/png", ThumbHash: "second"})).To(Succeed())
+
+			got, err := repo.GetImage("th2")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.ThumbHash).To(Equal("second"))
+		})
+
 		It("is idempotent on Put (upsert by hash)", func() {
 			a := &model.Artwork{Hash: "dup1", Mime: "image/png"}
 			Expect(repo.PutImage(a)).To(Succeed())

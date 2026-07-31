@@ -10,6 +10,7 @@ type Artwork struct {
 	Height    int       `structs:"height"`
 	SizeBytes int64     `structs:"size_bytes"`
 	BlurHash  string    `structs:"blur_hash"`
+	ThumbHash string    `structs:"thumb_hash"`
 	CreatedAt time.Time `structs:"created_at"`
 }
 
