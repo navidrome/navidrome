@@ -23,6 +23,23 @@ var _ = Describe("ItemImage JSON", func() {
 		Expect(out).To(HaveKeyWithValue("blurHash", "LEHV6nWB2yk8"))
 	})
 
+	It("exposes the thumbhash, and omits it when the entity has none", func() {
+		al := model.Album{ID: "al-4", Name: "Album"}
+		al.ThumbHash = "1QcSHQRn"
+
+		var out map[string]any
+		data, err := json.Marshal(al)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(json.Unmarshal(data, &out)).To(Succeed())
+		Expect(out).To(HaveKeyWithValue("thumbHash", "1QcSHQRn"))
+
+		var bare map[string]any
+		data, err = json.Marshal(model.Album{ID: "al-5", Name: "Album"})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(json.Unmarshal(data, &bare)).To(Succeed())
+		Expect(bare).ToNot(HaveKey("thumbHash"))
+	})
+
 	// Without the dimensions, clients cannot know the placeholder's shape and default to a square.
 	It("exposes the image dimensions alongside the blurhash", func() {
 		al := model.Album{ID: "al-3", Name: "Album"}

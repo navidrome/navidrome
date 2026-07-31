@@ -21,6 +21,7 @@ type ItemImage struct {
 	ImageHash   string `structs:"-" json:"imageHash,omitempty"`
 	ImageAbsent bool   `structs:"-" json:"imageAbsent,omitempty"`
 	BlurHash    string `structs:"-" json:"blurHash,omitempty"`
+	ThumbHash   string `structs:"-" json:"thumbHash,omitempty"`
 	// A blurhash carries no aspect ratio, so clients need these to shape the placeholder.
 	ImageWidth  int `structs:"-" json:"imageWidth,omitempty"`
 	ImageHeight int `structs:"-" json:"imageHeight,omitempty"`
@@ -52,11 +53,12 @@ type ItemArtwork struct {
 
 // ItemArtworkInfo is the list-hydration projection (item_artwork joined with artwork).
 type ItemArtworkInfo struct {
-	ItemID   string
-	Hash     string
-	BlurHash string
-	Width    int
-	Height   int
+	ItemID    string
+	Hash      string
+	BlurHash  string
+	ThumbHash string
+	Width     int
+	Height    int
 }
 
 // Absent reports a known-absent artwork state (resolved, no image).
@@ -68,6 +70,7 @@ func (i ItemArtworkInfo) Image() ItemImage {
 		ImageHash:   i.Hash,
 		ImageAbsent: i.Absent(),
 		BlurHash:    i.BlurHash,
+		ThumbHash:   i.ThumbHash,
 		ImageWidth:  i.Width,
 		ImageHeight: i.Height,
 	}

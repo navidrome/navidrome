@@ -40,10 +40,9 @@ func BenchmarkEncodeAtInputSize(b *testing.B) {
 			})
 		}
 	}
-	x, y := blurhash.Components(size, size)
 	b.ReportAllocs()
 	for range b.N {
-		if _, err := blurhash.Encode(img, x, y); err != nil {
+		if _, err := blurhash.Encode(img); err != nil {
 			b.Fatal(err)
 		}
 	}

@@ -289,12 +289,12 @@ var _ = Describe("Artwork hydration", func() {
 			Expect(byID["2002"].AlbumImage.ImageAbsent).To(BeTrue())
 		})
 
-		It("carries the blurhash and its dimensions alongside the hash in both the own-art and inherited branches", func() {
+		It("carries both hashes and the dimensions alongside the hash in the own-art and inherited branches", func() {
 			setCover("1001", true) // eligible, resolves its own art -> own-art-wins branch
 			DeferCleanup(func() { setCover("1001", false) })
 
-			Expect(aw.PutImage(&model.Artwork{Hash: "mfh1001blurxxxxx", Mime: "image/jpeg", BlurHash: "LTRACKblur", Width: 640, Height: 480})).To(Succeed())
-			Expect(aw.PutImage(&model.Artwork{Hash: "alh102blurxxxxxx", Mime: "image/jpeg", BlurHash: "LALBUMblur", Width: 1200, Height: 800})).To(Succeed())
+			Expect(aw.PutImage(&model.Artwork{Hash: "mfh1001blurxxxxx", Mime: "image/jpeg", BlurHash: "LTRACKblur", ThumbHash: "THtrack", Width: 640, Height: 480})).To(Succeed())
+			Expect(aw.PutImage(&model.Artwork{Hash: "alh102blurxxxxxx", Mime: "image/jpeg", BlurHash: "LALBUMblur", ThumbHash: "THalbum", Width: 1200, Height: 800})).To(Succeed())
 			putInfo("mf", "1001", "mfh1001blurxxxxx")
 			putInfo("al", "102", "alh102blurxxxxxx") // 1002's album: single-disc inheritance branch
 
@@ -302,11 +302,13 @@ var _ = Describe("Artwork hydration", func() {
 
 			Expect(byID["1001"].ImageHash).To(Equal("mfh1001blurxxxxx"))
 			Expect(byID["1001"].BlurHash).To(Equal("LTRACKblur"))
+			Expect(byID["1001"].ThumbHash).To(Equal("THtrack"))
 			Expect(byID["1001"].ImageWidth).To(Equal(640))
 			Expect(byID["1001"].ImageHeight).To(Equal(480))
 
 			Expect(byID["1002"].ImageHash).To(Equal("alh102blurxxxxxx"))
 			Expect(byID["1002"].BlurHash).To(Equal("LALBUMblur"))
+			Expect(byID["1002"].ThumbHash).To(Equal("THalbum"))
 			Expect(byID["1002"].ImageWidth).To(Equal(1200))
 			Expect(byID["1002"].ImageHeight).To(Equal(800))
 		})
@@ -739,13 +741,14 @@ var _ = Describe("Artwork hydration", func() {
 	Describe("applyItemImage", func() {
 		It("copies hash, absence, blurhash and dimensions onto the item", func() {
 			infos := map[string]model.ItemArtworkInfo{
-				"al-1": {ItemID: "al-1", Hash: "0123456789abcdef", BlurHash: "LEHV6nWB2yk8", Width: 1200, Height: 800},
+				"al-1": {ItemID: "al-1", Hash: "0123456789abcdef", BlurHash: "LEHV6nWB2yk8", ThumbHash: "1QcSHQRn", Width: 1200, Height: 800},
 			}
 			var img model.ItemImage
 			applyItemImage(infos, "al-1", &img)
 			Expect(img.ImageHash).To(Equal("0123456789abcdef"))
 			Expect(img.ImageAbsent).To(BeFalse())
 			Expect(img.BlurHash).To(Equal("LEHV6nWB2yk8"))
+			Expect(img.ThumbHash).To(Equal("1QcSHQRn"))
 			Expect(img.ImageWidth).To(Equal(1200))
 			Expect(img.ImageHeight).To(Equal(800))
 		})
@@ -756,6 +759,7 @@ var _ = Describe("Artwork hydration", func() {
 			applyItemImage(infos, "al-2", &img)
 			Expect(img.ImageAbsent).To(BeTrue())
 			Expect(img.BlurHash).To(BeEmpty())
+			Expect(img.ThumbHash).To(BeEmpty())
 		})
 
 		It("leaves an unresolved item zero-valued", func() {
