@@ -60,32 +60,19 @@ var _ = Describe("Encode input types", func() {
 		return nrgba, rgba
 	}
 
-	It("gives an opaque NRGBA the same hash as the equivalent RGBA", func() {
-		nrgba, rgba := buildPair(255)
-		fromNRGBA, err := blurhash.Encode(nrgba)
-		Expect(err).ToNot(HaveOccurred())
-		fromRGBA, err := blurhash.Encode(rgba)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(fromNRGBA).To(Equal(fromRGBA))
-	})
-
-	It("premultiplies a partly transparent NRGBA, matching the RGBA it replaces", func() {
-		nrgba, rgba := buildPair(128)
-		fromNRGBA, err := blurhash.Encode(nrgba)
-		Expect(err).ToNot(HaveOccurred())
-		fromRGBA, err := blurhash.Encode(rgba)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(fromNRGBA).To(Equal(fromRGBA))
-	})
-
-	It("treats a fully transparent NRGBA as black, as premultiplication does", func() {
-		nrgba, rgba := buildPair(0)
-		fromNRGBA, err := blurhash.Encode(nrgba)
-		Expect(err).ToNot(HaveOccurred())
-		fromRGBA, err := blurhash.Encode(rgba)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(fromNRGBA).To(Equal(fromRGBA))
-	})
+	DescribeTable("gives an NRGBA the same hash as the premultiplied RGBA it replaces",
+		func(alpha uint8) {
+			nrgba, rgba := buildPair(alpha)
+			fromNRGBA, err := blurhash.Encode(nrgba)
+			Expect(err).ToNot(HaveOccurred())
+			fromRGBA, err := blurhash.Encode(rgba)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(fromNRGBA).To(Equal(fromRGBA))
+		},
+		Entry("opaque", uint8(255)),
+		Entry("partly transparent", uint8(128)),
+		Entry("fully transparent, which premultiplication crushes to black", uint8(0)),
+	)
 })
 
 var _ = Describe("Encode", func() {

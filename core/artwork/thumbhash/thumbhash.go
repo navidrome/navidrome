@@ -50,9 +50,14 @@ func Encode(img image.Image) ([]byte, error) {
 		aTerms = terms(5, 5)
 	}
 
-	nx := maxCX(lTerms, pTerms, qTerms, aTerms) + 1
+	// The widest coefficient region wins: 3x3 chroma, 5x5 alpha, and luma's own lx by ly.
+	chan5 := 3
+	if hasAlpha {
+		chan5 = 5
+	}
+	nx := max(max(3, lx), chan5)
 	cosX := cosTable(nx, w)
-	cosY := cosTable(maxCY(lTerms, pTerms, qTerms, aTerms)+1, h)
+	cosY := cosTable(max(max(3, ly), chan5), h)
 
 	lAcc := make([]float64, len(lTerms))
 	pAcc := make([]float64, len(pTerms))
@@ -117,26 +122,6 @@ func terms(nx, ny int) []term {
 		}
 	}
 	return ts
-}
-
-func maxCX(groups ...[]term) int {
-	m := 0
-	for _, g := range groups {
-		for _, t := range g {
-			m = max(m, t.cx)
-		}
-	}
-	return m
-}
-
-func maxCY(groups ...[]term) int {
-	m := 0
-	for _, g := range groups {
-		for _, t := range g {
-			m = max(m, t.cy)
-		}
-	}
-	return m
 }
 
 // cosTable precomputes cos(pi/size * c * (i+0.5)) with the reference's exact expression, so the

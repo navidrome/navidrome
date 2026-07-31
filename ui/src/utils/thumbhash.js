@@ -37,7 +37,7 @@ const header = (bytes) => {
     lx: Math.max(3, isLandscape ? alphaLimit : header16 & 7),
     ly: Math.max(3, isLandscape ? header16 & 7 : alphaLimit),
     aDC: hasAlpha ? (bytes[5] & 15) / 15 : 1,
-    aScale: hasAlpha ? bytes[5] >> 4 : 0,
+    aScale: hasAlpha ? (bytes[5] >> 4) / 15 : 0,
   }
 }
 
@@ -55,7 +55,7 @@ const cosTable = (n, size) => {
   const table = new Float64Array(n * size)
   for (let c = 0; c < n; c++) {
     for (let i = 0; i < size; i++) {
-      table[c * size + i] = Math.cos(((Math.PI / size) * (i + 0.5) * c))
+      table[c * size + i] = Math.cos((Math.PI / size) * (i + 0.5) * c)
     }
   }
   return table
@@ -84,7 +84,7 @@ export const decode = (hash, width, height) => {
   const lAC = channel(h.lx, h.ly, h.lScale)
   const pAC = channel(3, 3, h.pScale * 1.25)
   const qAC = channel(3, 3, h.qScale * 1.25)
-  const aAC = h.hasAlpha ? channel(5, 5, h.aScale / 15) : []
+  const aAC = h.hasAlpha ? channel(5, 5, h.aScale) : []
 
   const nx = Math.max(h.lx, h.hasAlpha ? 5 : 3)
   const ny = Math.max(h.ly, h.hasAlpha ? 5 : 3)

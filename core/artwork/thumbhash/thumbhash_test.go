@@ -2,24 +2,82 @@ package thumbhash_test
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"image"
 	"image/color"
 	"image/draw"
-	"math/rand/v2"
+	_ "image/png"
+	"os"
+	"path/filepath"
+	"runtime"
+	"slices"
 
 	"github.com/navidrome/navidrome/core/artwork/thumbhash"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
-// fixtureImage rebuilds a testdata PNG as an image.Image for the Encode API. NRGBA, not RGBA:
-// the pixels are non-premultiplied and must stay that way.
-func fixtureImage(name string) image.Image {
+// testdataDir is resolved via runtime.Caller because tests.Init (thumbhash_suite_test.go) chdirs
+// the process to the repo root, which would break a plain relative "testdata" path.
+var testdataDir = func() string {
+	_, file, _, _ := runtime.Caller(0)
+	return filepath.Join(filepath.Dir(file), "testdata")
+}()
+
+// fixtureImage decodes a testdata PNG. NRGBA, not RGBA: ThumbHash needs non-premultiplied pixels,
+// and RGBA would silently premultiply every fixture that has alpha.
+func fixtureImage(name string) *image.NRGBA {
 	GinkgoHelper()
-	w, h, pix := loadFixture(name)
+	f, err := os.Open(filepath.Join(testdataDir, name))
+	Expect(err).ToNot(HaveOccurred())
+	defer f.Close()
+	src, _, err := image.Decode(f)
+	Expect(err).ToNot(HaveOccurred())
+	b := src.Bounds()
+	dst := image.NewNRGBA(image.Rect(0, 0, b.Dx(), b.Dy()))
+	draw.Draw(dst, dst.Bounds(), src, b.Min, draw.Src)
+	return dst
+}
+
+// headerOnlyFixtures have mathematically-zero AC content, so every AC nibble is float rounding
+// noise sitting on a quantization tie; only the header bytes carry signal.
+var headerOnlyFixtures = []string{"solid.png", "tiny.png"}
+
+func loadJSON[T any](name string) T {
+	GinkgoHelper()
+	data, err := os.ReadFile(filepath.Join(testdataDir, name))
+	Expect(err).ToNot(HaveOccurred())
+	var out T
+	Expect(json.Unmarshal(data, &out)).To(Succeed())
+	return out
+}
+
+func loadGoldens() map[string]string {
+	GinkgoHelper()
+	golden := loadJSON[map[string]string]("golden.json")
+	Expect(golden).ToNot(BeEmpty())
+	return golden
+}
+
+// mix is a stateless 32-bit finaliser matching gen_generated.mjs, so both languages build the
+// same synthetic pixels and only the reference's hashes need committing.
+func mix(n uint32) uint32 {
+	n = (n ^ (n >> 16)) * 2246822507
+	n = (n ^ (n >> 13)) * 3266489909
+	return n ^ (n >> 16)
+}
+
+func generatedImage(i int) *image.NRGBA {
+	w := 1 + int(mix(uint32(i)*3+1)%100)
+	h := 1 + int(mix(uint32(i)*3+2)%100)
 	img := image.NewNRGBA(image.Rect(0, 0, w, h))
-	for y := range h {
-		copy(img.Pix[y*img.Stride:], pix[y*w*4:(y+1)*w*4])
+	for k := range img.Pix {
+		img.Pix[k] = byte(mix(uint32(i)*1000003 + uint32(k)))
+	}
+	if i%2 == 0 {
+		for k := 3; k < len(img.Pix); k += 4 {
+			img.Pix[k] = 255
+		}
 	}
 	return img
 }
@@ -27,7 +85,7 @@ func fixtureImage(name string) image.Image {
 var _ = Describe("Encode", func() {
 	It("matches every golden vector", func() {
 		for name, want := range loadGoldens() {
-			if isHeaderOnly(name) {
+			if slices.Contains(headerOnlyFixtures, name) {
 				continue // see the dedicated header-only spec below
 			}
 			got, err := thumbhash.Encode(fixtureImage(name))
@@ -46,31 +104,44 @@ var _ = Describe("Encode", func() {
 		}
 	})
 
-	It("agrees with the reference port on randomized images", func() {
-		rng := rand.New(rand.NewPCG(1, 2)) //nolint:gosec // a fixed seed is the point: the run must be reproducible
-		for iter := range 500 {
-			w := 1 + rng.IntN(100)
-			h := 1 + rng.IntN(100)
-			img := image.NewNRGBA(image.Rect(0, 0, w, h))
-			for i := range img.Pix {
-				img.Pix[i] = byte(rng.IntN(256))
-			}
-			// Random alpha is opaque essentially never, so half the runs are forced opaque to
-			// fuzz the 7x7 no-alpha layout as well as the 5x5-plus-alpha one.
-			if iter%2 == 0 {
-				for i := 3; i < len(img.Pix); i += 4 {
-					img.Pix[i] = 255
-				}
-			}
+	// The PNG fixtures cannot reach every layout; these sweep random sizes, aspects and both the
+	// 7x7 no-alpha and 5x5-plus-alpha coefficient regions against the same reference.
+	It("matches the reference on 300 generated images", func() {
+		vectors := loadJSON[[]struct {
+			W, H int
+			Hash string
+		}]("generated.json")
+		Expect(vectors).ToNot(BeEmpty())
+		for i, want := range vectors {
+			img := generatedImage(i)
+			Expect(img.Bounds().Dx()).To(Equal(want.W), "vector %d width", i)
+			Expect(img.Bounds().Dy()).To(Equal(want.H), "vector %d height", i)
 			got, err := thumbhash.Encode(img)
-			Expect(err).ToNot(HaveOccurred())
-
-			pix := make([]byte, 0, w*h*4)
-			for y := range h {
-				pix = append(pix, img.Pix[y*img.Stride:y*img.Stride+w*4]...)
-			}
-			Expect(got).To(Equal(referenceEncode(w, h, pix)), "%dx%d", w, h)
+			Expect(err).ToNot(HaveOccurred(), "vector %d", i)
+			Expect(base64.StdEncoding.EncodeToString(got)).To(Equal(want.Hash), "vector %d (%dx%d)", i, want.W, want.H)
 		}
+	})
+
+	It("quantizes a uniform image's scales to zero", func() {
+		got, err := thumbhash.Encode(fixtureImage("solid.png"))
+		Expect(err).ToNot(HaveOccurred())
+		header24 := int(got[0]) | int(got[1])<<8 | int(got[2])<<16
+		header16 := int(got[3]) | int(got[4])<<8
+		Expect((header24>>18)&31).To(Equal(0), "lScale")
+		Expect((header16>>3)&63).To(Equal(0), "pScale")
+		Expect((header16>>9)&63).To(Equal(0), "qScale")
+	})
+
+	It("produces 24 bytes for a square opaque image", func() {
+		got, err := thumbhash.Encode(fixtureImage("square.png"))
+		Expect(err).ToNot(HaveOccurred())
+		Expect(got).To(HaveLen(24))
+	})
+
+	It("produces 25 bytes when the image has alpha", func() {
+		got, err := thumbhash.Encode(fixtureImage("alpha.png"))
+		Expect(err).ToNot(HaveOccurred())
+		Expect(got).To(HaveLen(25))
 	})
 
 	It("downscales an oversized image rather than failing", func() {
