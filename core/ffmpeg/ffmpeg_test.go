@@ -114,6 +114,7 @@ var _ = Describe("ffmpeg", func() {
 			Expect(args).To(Equal([]string{
 				"ffmpeg", "-i", "/music/file.flac",
 				"-map", "0:a:0",
+				"-map", "0:v:0?", "-c:v", "copy", "-disposition:v", "attached_pic",
 				"-map_metadata", "0", "-map_metadata", "0:s:a:0",
 				"-c:a", "libmp3lame",
 				"-b:a", "256k",
@@ -134,6 +135,7 @@ var _ = Describe("ffmpeg", func() {
 			Expect(args).To(Equal([]string{
 				"ffmpeg", "-i", "/music/file.dsf",
 				"-map", "0:a:0",
+				"-map", "0:v:0?", "-c:v", "copy", "-disposition:v", "attached_pic",
 				"-map_metadata", "0", "-map_metadata", "0:s:a:0",
 				"-c:a", "flac",
 				"-ar", "48000",
@@ -161,6 +163,20 @@ var _ = Describe("ffmpeg", func() {
 			}))
 		})
 
+		It("does not map cover art for muxers that reject it", func() {
+			// The opus and adts muxers refuse a video stream outright, so mapping
+			// the attached picture there would break transcoding rather than
+			// preserve artwork.
+			for _, format := range []string{"opus", "aac"} {
+				args := buildDynamicArgs(TranscodeOptions{
+					Format:   format,
+					FilePath: "/music/file.flac",
+					BitRate:  128,
+				})
+				Expect(strings.Join(args, " ")).ToNot(ContainSubstring("0:v:0?"), format)
+			}
+		})
+
 		It("includes offset when specified", func() {
 			args := buildDynamicArgs(TranscodeOptions{
 				Format:   "mp3",
@@ -173,6 +189,7 @@ var _ = Describe("ffmpeg", func() {
 				"-ss", "30",
 				"-i", "/music/file.mp3",
 				"-map", "0:a:0",
+				"-map", "0:v:0?", "-c:v", "copy", "-disposition:v", "attached_pic",
 				"-map_metadata", "0", "-map_metadata", "0:s:a:0",
 				"-c:a", "libmp3lame",
 				"-b:a", "192k",
@@ -209,6 +226,7 @@ var _ = Describe("ffmpeg", func() {
 			Expect(args).To(Equal([]string{
 				"ffmpeg", "-i", "/music/file.dsf",
 				"-map", "0:a:0",
+				"-map", "0:v:0?", "-c:v", "copy", "-disposition:v", "attached_pic",
 				"-map_metadata", "0", "-map_metadata", "0:s:a:0",
 				"-c:a", "flac",
 				"-sample_fmt", "s32",
