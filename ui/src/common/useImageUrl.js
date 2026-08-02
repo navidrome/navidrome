@@ -43,6 +43,18 @@ export const useImageUrl = (url) => {
   const [error, setError] = useState(cached?.error || false)
   const abortedRef = useRef(false)
 
+  // Resync during render, not in the effect below: for one render otherwise imgUrl still holds the
+  // previous url's blob, so only fromCache can answer "was this url already cached when it started".
+  const [fromCache, setFromCache] = useState(!!cached)
+  const [trackedUrl, setTrackedUrl] = useState(url)
+  if (trackedUrl !== url) {
+    setTrackedUrl(url)
+    setImgUrl(cached?.blobUrl || null)
+    setLoading(!!url && !cached)
+    setError(cached?.error || false)
+    setFromCache(!!cached)
+  }
+
   useEffect(() => {
     abortedRef.current = false
 
@@ -140,5 +152,5 @@ export const useImageUrl = (url) => {
     }
   }, [url])
 
-  return { imgUrl, loading, error }
+  return { imgUrl, loading, error, fromCache }
 }

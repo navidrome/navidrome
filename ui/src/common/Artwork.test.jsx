@@ -3,7 +3,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('./useImageUrl', () => ({ useImageUrl: vi.fn() }))
 vi.mock('../subsonic', () => ({
-  default: { getCoverArtUrl: () => '/rest/getCoverArt?id=al-1' },
+  default: {
+    // Mirrors the real hash suffix, so a refreshed record yields a different URL.
+    getCoverArtUrl: (record) =>
+      '/rest/getCoverArt?id=al-1' +
+      (record.imageHash ? `_${record.imageHash}` : ''),
+  },
 }))
 vi.mock('../config', () => ({ default: { uiCoverArtSize: 300 } }))
 
@@ -69,7 +74,11 @@ describe('Artwork', () => {
 
   // The padded square is aspect-fit, so `square` overrides fit="cover" as it does for the canvas.
   it('fits the image itself with contain when the server padded to a square', () => {
-    useImageUrl.mockReturnValue({ imgUrl: 'blob:abc', loading: false })
+    useImageUrl.mockReturnValue({
+      imgUrl: 'blob:abc',
+      loading: false,
+      fromCache: true,
+    })
     const { container } = render(
       <Artwork record={withArt} square fit="cover" title="Album" />,
     )
@@ -95,7 +104,11 @@ describe('Artwork', () => {
   })
 
   it('mounts the image only once its blob is ready', () => {
-    useImageUrl.mockReturnValue({ imgUrl: 'blob:abc', loading: false })
+    useImageUrl.mockReturnValue({
+      imgUrl: 'blob:abc',
+      loading: false,
+      fromCache: true,
+    })
     const { container } = render(<Artwork record={withArt} title="Album" />)
     const img = container.querySelector('img')
     expect(img).not.toBeNull()
@@ -108,7 +121,11 @@ describe('Artwork', () => {
       useImageUrl.mockReturnValue({ imgUrl: null, loading: true })
       const { container, rerender } = render(<Artwork record={withArt} />)
 
-      useImageUrl.mockReturnValue({ imgUrl: 'blob:abc', loading: false })
+      useImageUrl.mockReturnValue({
+        imgUrl: 'blob:abc',
+        loading: false,
+        fromCache: false,
+      })
       rerender(<Artwork record={withArt} />)
       const img = container.querySelector('img')
       expect(img).not.toBeNull()
@@ -133,7 +150,11 @@ describe('Artwork', () => {
   })
 
   it('does not fade an image that was already cached on mount', () => {
-    useImageUrl.mockReturnValue({ imgUrl: 'blob:abc', loading: false })
+    useImageUrl.mockReturnValue({
+      imgUrl: 'blob:abc',
+      loading: false,
+      fromCache: true,
+    })
     const { container } = render(<Artwork record={withArt} />)
     expect(container.querySelector('canvas')).toBeNull()
     expect(container.querySelector('img').className).toContain('imgInstant')
@@ -142,7 +163,11 @@ describe('Artwork', () => {
   it('keeps the placeholder visible when the image never decodes', () => {
     useImageUrl.mockReturnValue({ imgUrl: null, loading: true })
     const { container, rerender } = render(<Artwork record={withArt} />)
-    useImageUrl.mockReturnValue({ imgUrl: 'blob:abc', loading: false })
+    useImageUrl.mockReturnValue({
+      imgUrl: 'blob:abc',
+      loading: false,
+      fromCache: false,
+    })
     rerender(<Artwork record={withArt} />)
 
     expect(container.querySelector('canvas')).not.toBeNull()
@@ -157,9 +182,34 @@ describe('Artwork', () => {
     container.firstChild.click()
     expect(onClick).not.toHaveBeenCalled()
 
-    useImageUrl.mockReturnValue({ imgUrl: 'blob:abc', loading: false })
+    useImageUrl.mockReturnValue({
+      imgUrl: 'blob:abc',
+      loading: false,
+      fromCache: false,
+    })
     rerender(<Artwork record={withArt} onClick={onClick} />)
     container.firstChild.click()
     expect(onClick).toHaveBeenCalledTimes(1)
+  })
+
+  it('falls back to the placeholder when a refresh swaps in an uncached hash', () => {
+    useImageUrl.mockReturnValue({
+      imgUrl: 'blob:old',
+      loading: false,
+      fromCache: true,
+    })
+    const cached = { ...withArt, imageHash: 'aaaa' }
+    const { container, rerender } = render(<Artwork record={cached} />)
+    expect(container.querySelector('canvas')).toBeNull()
+
+    useImageUrl.mockReturnValue({
+      imgUrl: null,
+      loading: true,
+      fromCache: false,
+    })
+    rerender(<Artwork record={{ ...withArt, imageHash: 'bbbb' }} />)
+
+    expect(container.querySelector('img')).toBeNull()
+    expect(container.querySelector('canvas')).not.toBeNull()
   })
 })

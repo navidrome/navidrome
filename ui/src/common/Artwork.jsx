@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import PropTypes from 'prop-types'
 import clsx from 'clsx'
 import { makeStyles } from '@material-ui/core/styles'
@@ -47,13 +47,8 @@ export const Artwork = ({
 }) => {
   const classes = useStyles()
   const url = record ? subsonic.getCoverArtUrl(record, size, square) : ''
-  const { imgUrl } = useImageUrl(url)
+  const { imgUrl, fromCache } = useImageUrl(url)
 
-  // A blob already cached at mount paints on the first frame, so it skips the fade.
-  const cachedOnMount = useRef(null)
-  if (cachedOnMount.current === null) {
-    cachedOnMount.current = !!imgUrl
-  }
   const [decoded, setDecoded] = useState(false)
   const [faded, setFaded] = useState(false)
   useEffect(() => {
@@ -70,7 +65,8 @@ export const Artwork = ({
 
   if (!record) return null
 
-  const instant = cachedOnMount.current
+  // A blob already cached paints on the first frame, so it skips the fade.
+  const instant = fromCache
   // Kept mounted until the fade ends; swapping on blob arrival would flash an empty container.
   const showPlaceholder = !!record.thumbHash && !instant && !faded
   // A square request is padded, not cropped, so `contain` keeps placeholder and image aligned.
