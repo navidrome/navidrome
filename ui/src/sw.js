@@ -1,5 +1,7 @@
 /* eslint-disable */
 
+import { createNavigationHandler } from './swNavigation'
+
 // documentation: https://developers.google.com/web/tools/workbox/modules/workbox-sw
 importScripts('3rdparty/workbox/workbox-sw.js')
 
@@ -39,17 +41,10 @@ const networkOnly = new workbox.strategies.NetworkOnly()
 const fallbackToCachedHtml = () =>
   caches.match(FALLBACK_HTML_URL, { cacheName: CACHE_NAME })
 
-const navigationHandler = async (params) => {
-  try {
-    // Attempt a network request.
-    const response = await networkOnly.handle(params)
-    // A 5xx reaches us as a normal response, but carries no usable app
-    return response.status >= 500 ? fallbackToCachedHtml() : response
-  } catch (error) {
-    // If it fails, return the cached HTML.
-    return fallbackToCachedHtml()
-  }
-}
+const navigationHandler = createNavigationHandler(
+  networkOnly,
+  fallbackToCachedHtml,
+)
 
 // self.__WB_MANIFEST is default injection point
 workbox.precaching.precacheAndRoute(self.__WB_MANIFEST)
