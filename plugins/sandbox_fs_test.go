@@ -30,8 +30,7 @@ type sandboxOutput struct {
 	Error       *string `json:"error,omitempty"`
 }
 
-// startSandboxManager loads test-library against libraryDir, with whatever
-// access grant the spec needs.
+// startSandboxManager loads test-library against libraryDir with the given grant.
 func startSandboxManager(tmpDir, libraryDir string, grant func(*model.Plugin)) *Manager {
 	GinkgoHelper()
 	installed := installTestPlugins(tmpDir, "test-library"+PackageExtension)
@@ -133,8 +132,7 @@ var _ = Describe("Plugin filesystem sandbox", Ordered, ContinueOnFailure, func()
 		Expect(filepath.Join(outsideDir, "via-created-symlink.txt")).ToNot(BeAnExistingFile())
 	})
 
-	// Accepted residual: only creating symlinks is denied, not following the ones
-	// music libraries legitimately rely on. Switching to os.Root would break this.
+	// Accepted residual, pinned so a future tightening can't happen silently
 	It("still follows a symlink planted in the mount by something else", func() {
 		Expect(os.Symlink(outsideDir, filepath.Join(libraryDir, "planted"))).To(Succeed())
 

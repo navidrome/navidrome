@@ -5,6 +5,28 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+var _ = Describe("buildExtismManifest", func() {
+	var pkg *ndpPackage
+
+	BeforeEach(func() {
+		pkg = &ndpPackage{
+			WasmBytes: []byte("wasm"),
+			Manifest: &Manifest{Permissions: &Permissions{
+				Library: &LibraryPermission{Reason: new("test"), Filesystem: true},
+				Http:    &HTTPPermission{Reason: new("test"), RequiredHosts: []string{"example.com"}},
+			}},
+		}
+	})
+
+	It("never sets AllowedPaths, even with filesystem permission", func() {
+		Expect(buildExtismManifest(pkg, nil).AllowedPaths).To(BeEmpty())
+	})
+
+	It("carries the hosts the plugin is allowed to reach", func() {
+		Expect(buildExtismManifest(pkg, nil).AllowedHosts).To(Equal([]string{"example.com"}))
+	})
+})
+
 var _ = Describe("parsePluginConfig", func() {
 	It("returns nil for empty string", func() {
 		result, err := parsePluginConfig("")

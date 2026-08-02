@@ -28,8 +28,7 @@ type plugin struct {
 	fsConfig       wazero.FSConfig // Sandboxed library mounts, nil if no filesystem permission
 }
 
-// instanceConfig is the only way plugin instances are created, so every one of
-// them gets the sandboxed mounts.
+// instanceConfig is used by every call site, so all instances get the sandboxed mounts.
 func instanceConfig(fsConfig wazero.FSConfig) extism.PluginInstanceConfig {
 	moduleConfig := wazero.NewModuleConfig().WithSysWalltime().WithRandSource(rand.Reader)
 	if fsConfig != nil {

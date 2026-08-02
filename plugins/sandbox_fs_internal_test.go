@@ -107,8 +107,7 @@ var _ = Describe("jailedFS", func() {
 		Expect(fs.Rename("inside.txt", "../outside/leaked.txt")).To(Equal(experimentalsys.EPERM))
 	})
 
-	// Music libraries commonly symlink in folders from elsewhere; only creating
-	// new symlinks is denied, not following the ones already there.
+	// Music libraries symlink in folders from elsewhere; following them is intended
 	It("follows symlinks that already exist in the mount", func() {
 		if err := os.Symlink(outsideDir, filepath.Join(root, "linked")); err != nil {
 			Skip("cannot create symlinks here: " + err.Error()) // Windows without privileges

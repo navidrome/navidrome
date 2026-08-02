@@ -307,23 +307,9 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 		return fmt.Errorf("opening package: %w", err)
 	}
 
-	// Build extism manifest
-	pluginManifest := extism.Manifest{
-		Wasm: []extism.Wasm{
-			extism.WasmData{Data: pkg.WasmBytes, Name: "main"},
-		},
-		Config:  pluginConfig,
-		Timeout: uint64(defaultTimeout.Milliseconds()),
-	}
+	pluginManifest := buildExtismManifest(pkg, pluginConfig)
 
-	if pkg.Manifest.Permissions != nil && pkg.Manifest.Permissions.Http != nil {
-		if hosts := pkg.Manifest.Permissions.Http.RequiredHosts; len(hosts) > 0 {
-			pluginManifest.AllowedHosts = hosts
-		}
-	}
-
-	// Configure filesystem access for library permission. Mounts are applied per
-	// instance: extism ignores our FSConfig if the manifest sets AllowedPaths.
+	// Configure filesystem access for library permission, applied per instance
 	var fsConfig wazero.FSConfig
 	if pkg.Manifest.HasLibraryFilesystemPermission() {
 		adminCtx := adminContext(ctx)
@@ -459,4 +445,20 @@ func parsePluginConfig(configJSON string) (map[string]string, error) {
 		}
 	}
 	return pluginConfig, nil
+}
+
+// buildExtismManifest describes the plugin to extism. It must never set
+// AllowedPaths: extism would replace our jailed FSConfig with plain dir mounts.
+func buildExtismManifest(pkg *ndpPackage, pluginConfig map[string]string) extism.Manifest {
+	manifest := extism.Manifest{
+		Wasm:    []extism.Wasm{extism.WasmData{Data: pkg.WasmBytes, Name: "main"}},
+		Config:  pluginConfig,
+		Timeout: uint64(defaultTimeout.Milliseconds()),
+	}
+	if pkg.Manifest.Permissions != nil && pkg.Manifest.Permissions.Http != nil {
+		if hosts := pkg.Manifest.Permissions.Http.RequiredHosts; len(hosts) > 0 {
+			manifest.AllowedHosts = hosts
+		}
+	}
+	return manifest
 }
