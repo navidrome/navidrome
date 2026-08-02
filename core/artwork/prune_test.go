@@ -204,6 +204,7 @@ var _ = Describe("Prune", func() {
 
 		// A read-only shard directory makes os.Remove fail (EACCES) for hb's file only.
 		shardDir := filepath.Dir(store.path(hb, "image/jpeg"))
+		Expect(shardDir).ToNot(Equal(filepath.Dir(store.path(hg, "image/jpeg"))), "fixtures must land in different shards")
 		Expect(os.Chmod(shardDir, 0500)).To(Succeed())
 		DeferCleanup(func() { _ = os.Chmod(shardDir, 0755) })
 

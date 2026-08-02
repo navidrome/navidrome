@@ -40,7 +40,7 @@ func prune(ctx context.Context, ds model.DataStore, store *ImageStore) error {
 		return err
 	}
 	if orphans > 0 {
-		log.Info(ctx, "Artwork: Removed orphan images", "count", orphans)
+		log.Info(ctx, "Artwork: Removed orphan image rows", "count", orphans)
 	}
 
 	// Read after the delete, so the sweep below reclaims the files of the rows just removed.

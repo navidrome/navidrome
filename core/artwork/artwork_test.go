@@ -126,7 +126,7 @@ var _ = Describe("Artwork", func() {
 
 			// Deleting the store file proves the warm entry serves without touching the original.
 			hash, _ := hashImage(bytes.NewReader(coverBytes))
-			Expect(store.Remove(hash, "image/jpeg", time.Now().Add(time.Hour))).To(Succeed())
+			Expect(os.Remove(store.path(hash, "image/jpeg"))).To(Succeed())
 			Eventually(func(g Gomega) {
 				img2, err := svc.Get(ctx, model.MustParseArtworkID("al-al1"), 100, false)
 				g.Expect(err).ToNot(HaveOccurred())

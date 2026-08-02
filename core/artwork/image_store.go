@@ -108,33 +108,11 @@ func (s *ImageStore) Open(hash, mimeType string) (io.ReadCloser, error) {
 	return os.Open(s.path(hash, mimeType))
 }
 
-// Remove skips files newer than olderThan: an overlapping acquisition may not have committed its row yet.
-func (s *ImageStore) Remove(hash, mimeType string, olderThan time.Time) error {
-	if !validHash(hash) {
-		return fmt.Errorf("imagestore: invalid hash %q", hash)
-	}
-	path := s.path(hash, mimeType)
-	info, err := os.Stat(path)
-	if errors.Is(err, fs.ErrNotExist) {
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-	if info.ModTime().After(olderThan) {
-		return nil
-	}
-	err = os.Remove(path)
-	if errors.Is(err, fs.ErrNotExist) {
-		return nil
-	}
-	return err
-}
-
 // Sweep removes store files not accepted by keep. Files modified after cutoff are always
 // kept: their acquisition row may not be committed yet.
 func (s *ImageStore) Sweep(ctx context.Context, cutoff time.Time, keep func(hash, ext string) bool) (int, error) {
-	removed := 0
+	removed, failed := 0, 0
+	var lastErr error
 	err := filepath.WalkDir(s.root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return err
@@ -159,13 +137,17 @@ func (s *ImageStore) Sweep(ctx context.Context, cutoff time.Time, keep func(hash
 			// #nosec G122 -- path comes from WalkDir over our own store root, no attacker-controlled symlinks
 			if err := os.Remove(path); err != nil {
 				// One unremovable file must not strand the rest of the store until the next prune.
-				log.Warn(ctx, "Artwork: Could not remove store file", "path", path, err)
-				return nil
+				failed, lastErr = failed+1, err
+				return nil //nolint:nilerr // counted and reported in aggregate below
 			}
 			removed++
 		}
 		return nil
 	})
+	// Aggregated: a store that has gone read-only would otherwise warn once per file, every prune.
+	if failed > 0 {
+		log.Warn(ctx, "Artwork: Could not remove store files", "count", failed, "swept", removed, lastErr)
+	}
 	if errors.Is(err, fs.ErrNotExist) {
 		return removed, nil
 	}

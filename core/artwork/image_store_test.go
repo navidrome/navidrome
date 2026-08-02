@@ -99,39 +99,12 @@ var _ = Describe("ImageStore", func() {
 		Expect(os.IsNotExist(err)).To(BeTrue())
 	})
 
-	It("removes without error when already gone", func() {
-		Expect(store.Remove("beefbeefbeefbeef", "image/jpeg", time.Now())).To(Succeed())
-	})
-
 	It("rejects invalid hashes instead of panicking", func() {
 		for _, h := range []string{"", "ab", "BEEFBEEFBEEFBEEF", "../../../../etcpw", "beefbeefbeefbee/"} {
 			Expect(store.Write(h, "image/jpeg", bytes.NewReader([]byte("x")))).To(MatchError(ContainSubstring("invalid hash")))
 			_, err := store.Open(h, "image/jpeg")
 			Expect(err).To(MatchError(ContainSubstring("invalid hash")))
-			Expect(store.Remove(h, "image/jpeg", time.Now())).To(MatchError(ContainSubstring("invalid hash")))
 		}
-	})
-
-	It("spares a file newer than the cutoff, removes an aged one", func() {
-		fresh := []byte("fresh")
-		hf, _ := hashImage(bytes.NewReader(fresh))
-		Expect(store.Write(hf, "image/jpeg", bytes.NewReader(fresh))).To(Succeed())
-
-		aged := []byte("aged")
-		ha, _ := hashImage(bytes.NewReader(aged))
-		Expect(store.Write(ha, "image/jpeg", bytes.NewReader(aged))).To(Succeed())
-		old := time.Now().Add(-2 * time.Hour)
-		Expect(os.Chtimes(store.path(ha, "image/jpeg"), old, old)).To(Succeed())
-
-		cutoff := time.Now().Add(-time.Hour)
-		Expect(store.Remove(hf, "image/jpeg", cutoff)).To(Succeed())
-		Expect(store.Remove(ha, "image/jpeg", cutoff)).To(Succeed())
-
-		rc, err := store.Open(hf, "image/jpeg")
-		Expect(err).ToNot(HaveOccurred())
-		rc.Close()
-		_, err = store.Open(ha, "image/jpeg")
-		Expect(os.IsNotExist(err)).To(BeTrue())
 	})
 
 	It("sweeps unknown files, keeps known ones", func() {
