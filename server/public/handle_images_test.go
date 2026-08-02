@@ -19,7 +19,7 @@ import (
 
 var _ = Describe("decodeArtworkID", func() {
 	BeforeEach(func() {
-		auth.TokenAuth = jwtauth.New("HS256", []byte("super secret"), nil)
+		auth.PublicTokenAuth = jwtauth.New("HS256", []byte("super secret"), nil)
 	})
 
 	It("fails to decode an invalid token", func() {
@@ -48,7 +48,7 @@ var _ = Describe("handleImages", func() {
 	var w *httptest.ResponseRecorder
 
 	newImageRequest := func(claimID string) *http.Request {
-		auth.TokenAuth = jwtauth.New("HS256", []byte("super secret"), nil)
+		auth.PublicTokenAuth = jwtauth.New("HS256", []byte("super secret"), nil)
 		token, _ := auth.CreatePublicToken(auth.Claims{ID: claimID})
 		return httptest.NewRequest("GET", "/img?:id="+url.QueryEscape(token), nil)
 	}
