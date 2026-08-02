@@ -14,10 +14,12 @@ import (
 
 // TestLibraryInput is the input for nd_test_library callback.
 type TestLibraryInput struct {
-	Operation  string `json:"operation"` // "get_library", "get_all_libraries", "read_file", "list_dir"
+	Operation  string `json:"operation"` // "get_library", "get_all_libraries", "read_file", "list_dir", "write_file", "symlink"
 	LibraryID  int32  `json:"library_id,omitempty"`
 	MountPoint string `json:"mount_point,omitempty"` // For filesystem operations
 	FilePath   string `json:"file_path,omitempty"`   // For read_file operation (relative to mount point)
+	Content    string `json:"content,omitempty"`     // For write_file operation
+	Target     string `json:"target,omitempty"`      // For symlink operation
 }
 
 // TestLibraryOutput is the output from nd_test_library callback.
@@ -86,6 +88,28 @@ func ndTestLibrary() int32 {
 			names = append(names, entry.Name())
 		}
 		pdk.OutputJSON(TestLibraryOutput{DirEntries: names})
+		return 0
+
+	case "write_file":
+		// Write a file to the mounted library directory
+		fullPath := filepath.Join(input.MountPoint, input.FilePath)
+		if err := os.WriteFile(fullPath, []byte(input.Content), 0600); err != nil {
+			errStr := err.Error()
+			pdk.OutputJSON(TestLibraryOutput{Error: &errStr})
+			return 0
+		}
+		pdk.OutputJSON(TestLibraryOutput{})
+		return 0
+
+	case "symlink":
+		// Create a symlink inside the mounted library directory
+		fullPath := filepath.Join(input.MountPoint, input.FilePath)
+		if err := os.Symlink(input.Target, fullPath); err != nil {
+			errStr := err.Error()
+			pdk.OutputJSON(TestLibraryOutput{Error: &errStr})
+			return 0
+		}
+		pdk.OutputJSON(TestLibraryOutput{})
 		return 0
 
 	default:
