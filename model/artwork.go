@@ -106,8 +106,8 @@ type ArtworkRepository interface {
 	DeleteForItems(kind Kind, ids []string) error
 	// GetInfoForItems hydrates a page in one batched query.
 	GetInfoForItems(kind Kind, ids []string) (map[string]ItemArtworkInfo, error)
-	// GetAllMimes returns hash -> current mime for every stored artwork.
-	GetAllMimes() (map[string]string, error)
+	// GetMimeByHash returns hash -> current mime for every stored artwork.
+	GetMimeByHash() (map[string]string, error)
 	// PurgeDanglingItemArtwork removes state rows whose entity no longer exists.
 	PurgeDanglingItemArtwork() (int64, error)
 }

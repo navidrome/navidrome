@@ -50,7 +50,7 @@ func (m *MockArtworkRepo) PutImage(a *model.Artwork) error {
 	return nil
 }
 
-func (m *MockArtworkRepo) GetAllMimes() (map[string]string, error) {
+func (m *MockArtworkRepo) GetMimeByHash() (map[string]string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {

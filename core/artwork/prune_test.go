@@ -18,7 +18,7 @@ type flakyGetArtworkRepo struct {
 	*tests.MockArtworkRepo
 }
 
-func (f *flakyGetArtworkRepo) GetAllMimes() (map[string]string, error) {
+func (f *flakyGetArtworkRepo) GetMimeByHash() (map[string]string, error) {
 	return nil, errors.New("db locked")
 }
 

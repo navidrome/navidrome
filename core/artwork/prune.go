@@ -44,7 +44,7 @@ func prune(ctx context.Context, ds model.DataStore, store *ImageStore) error {
 	}
 
 	// Read after the delete, so the sweep below reclaims the files of the rows just removed.
-	mimes, err := repo.GetAllMimes()
+	mimes, err := repo.GetMimeByHash()
 	if err != nil {
 		return err
 	}

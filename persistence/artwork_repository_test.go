@@ -89,7 +89,7 @@ var _ = Describe("ArtworkRepository", func() {
 		It("returns every stored hash with its current mime", func() {
 			Expect(repo.PutImage(&model.Artwork{Hash: "all1", Mime: "image/jpeg"})).To(Succeed())
 			Expect(repo.PutImage(&model.Artwork{Hash: "all2", Mime: "image/png"})).To(Succeed())
-			mimes, err := repo.GetAllMimes()
+			mimes, err := repo.GetMimeByHash()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(mimes).To(HaveKeyWithValue("all1", "image/jpeg"))
 			Expect(mimes).To(HaveKeyWithValue("all2", "image/png"))

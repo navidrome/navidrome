@@ -56,7 +56,7 @@ func (r *artworkRepository) PutImage(a *model.Artwork) error {
 	return err
 }
 
-func (r *artworkRepository) GetAllMimes() (map[string]string, error) {
+func (r *artworkRepository) GetMimeByHash() (map[string]string, error) {
 	sel := Select("hash", "mime").From(r.tableName)
 	var rows []struct {
 		Hash string
