@@ -214,11 +214,9 @@ var _ = Describe("Prune", func() {
 		// hb is processed first: aborting on its Remove failure would leave hg unreached.
 		awRepo.OrphanHashes = []string{hb, hg}
 
-		// Prune still errors: Sweep revisits hb's leftover file with no warn-and-continue of its own.
-		err := prune(context.Background(), ds, store)
-		Expect(err).To(HaveOccurred())
+		Expect(prune(context.Background(), ds, store)).To(Succeed())
 
-		_, err = awRepo.GetImage(hg)
+		_, err := awRepo.GetImage(hg)
 		Expect(err).To(MatchError(model.ErrNotFound))
 		_, err = store.Open(hg, "image/jpeg")
 		Expect(os.IsNotExist(err)).To(BeTrue())

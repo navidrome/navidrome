@@ -13,6 +13,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/log"
 	"github.com/zeebo/xxh3"
 )
 
@@ -157,7 +158,9 @@ func (s *ImageStore) Sweep(ctx context.Context, cutoff time.Time, keep func(hash
 		if remove {
 			// #nosec G122 -- path comes from WalkDir over our own store root, no attacker-controlled symlinks
 			if err := os.Remove(path); err != nil {
-				return err
+				// One unremovable file must not strand the rest of the store until the next prune.
+				log.Warn(ctx, "Artwork: Could not remove store file", "path", path, err)
+				return nil
 			}
 			removed++
 		}

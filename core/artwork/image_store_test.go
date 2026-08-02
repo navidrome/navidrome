@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -203,6 +204,35 @@ var _ = Describe("ImageStore", func() {
 		Expect(removed).To(Equal(1))
 		Expect(oldTmp).ToNot(BeAnExistingFile())
 		Expect(freshTmp).To(BeAnExistingFile())
+	})
+
+	It("keeps sweeping past a file it cannot remove", func() {
+		tests.SkipOnWindows("uses Unix file permission bits")
+		if os.Geteuid() == 0 {
+			Skip("read-only dir cannot block root (e.g. tests in a container)")
+		}
+		old := time.Now().Add(-2 * time.Hour)
+		// "blocked" sorts before "ok", so the walk hits the unremovable file first.
+		blockedDir := filepath.Join(root, "blocked")
+		Expect(os.MkdirAll(blockedDir, 0755)).To(Succeed())
+		blocked := filepath.Join(blockedDir, "a.jpg")
+		Expect(os.WriteFile(blocked, []byte("x"), 0600)).To(Succeed())
+		Expect(os.Chtimes(blocked, old, old)).To(Succeed())
+
+		okDir := filepath.Join(root, "ok")
+		Expect(os.MkdirAll(okDir, 0755)).To(Succeed())
+		reachable := filepath.Join(okDir, "b.jpg")
+		Expect(os.WriteFile(reachable, []byte("y"), 0600)).To(Succeed())
+		Expect(os.Chtimes(reachable, old, old)).To(Succeed())
+
+		Expect(os.Chmod(blockedDir, 0500)).To(Succeed())
+		DeferCleanup(func() { _ = os.Chmod(blockedDir, 0755) })
+
+		removed, err := store.Sweep(ctx, time.Now().Add(-time.Hour), func(string, string) bool { return false })
+		Expect(err).ToNot(HaveOccurred())
+		Expect(removed).To(Equal(1))
+		Expect(blocked).To(BeAnExistingFile())
+		Expect(reachable).ToNot(BeAnExistingFile())
 	})
 
 	// Prune holds the worker's write lock for the whole sweep, and shutdown waits on the
