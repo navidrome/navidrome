@@ -192,6 +192,18 @@ describe('Artwork', () => {
     expect(onClick).toHaveBeenCalledTimes(1)
   })
 
+  it('shows the placeholder for a cached fetch failure, which has no blob', () => {
+    useImageUrl.mockReturnValue({
+      imgUrl: null,
+      loading: false,
+      error: true,
+      fromCache: false,
+    })
+    const { container } = render(<Artwork record={withArt} />)
+    expect(container.querySelector('img')).toBeNull()
+    expect(container.querySelector('canvas')).not.toBeNull()
+  })
+
   it('falls back to the placeholder when a refresh swaps in an uncached hash', () => {
     useImageUrl.mockReturnValue({
       imgUrl: 'blob:old',
