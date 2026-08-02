@@ -118,7 +118,7 @@ func enqueueMissingAll(ctx context.Context, ds model.DataStore) error {
 
 // Refresh drops an item's resolved artwork state and re-queues it at Bump priority.
 func Refresh(ctx context.Context, ds model.DataStore, kind model.Kind, id string) error {
-	if err := ds.Artwork(ctx).DeleteForItem(kind, id); err != nil {
+	if err := ds.Artwork(ctx).DeleteForItems(kind, []string{id}); err != nil {
 		return fmt.Errorf("clearing artwork state: %w", err)
 	}
 	item := model.ArtworkQueueItem{ItemKind: kind.Prefix(), ItemID: id, ImageType: model.ImageTypePrimary, Priority: model.ArtworkPriorityBump}

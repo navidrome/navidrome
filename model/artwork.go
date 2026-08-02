@@ -95,21 +95,21 @@ const (
 	ArtworkPriorityBump     = 100
 )
 
+// Delete* takes the rows to remove; Purge* finds them itself and reports how many went.
 type ArtworkRepository interface {
 	GetImage(hash string) (*Artwork, error)
 	PutImage(a *Artwork) error
-	// DeleteOrphans deletes rows referenced by no item_artwork row and older than cutoff.
-	DeleteOrphans(createdBefore time.Time) (int64, error)
+	// PurgeOrphans deletes rows referenced by no item_artwork row and older than cutoff.
+	PurgeOrphans(createdBefore time.Time) (int64, error)
 	GetItemArtwork(kind Kind, id, imageType string) (*ItemArtwork, error)
 	PutItemArtwork(ia *ItemArtwork) error
-	DeleteForItem(kind Kind, id string) error
 	DeleteForItems(kind Kind, ids []string) error
 	// GetInfoForItems hydrates a page in one batched query.
 	GetInfoForItems(kind Kind, ids []string) (map[string]ItemArtworkInfo, error)
 	// GetMimeByHash returns hash -> current mime for every stored artwork.
 	GetMimeByHash() (map[string]string, error)
-	// PurgeDanglingItemArtwork removes state rows whose entity no longer exists.
-	PurgeDanglingItemArtwork() (int64, error)
+	// PurgeDanglingItems removes state rows whose entity no longer exists.
+	PurgeDanglingItems() (int64, error)
 }
 
 type ArtworkQueueRepository interface {

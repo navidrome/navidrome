@@ -16,7 +16,7 @@ func prune(ctx context.Context, ds model.DataStore, store *ImageStore) error {
 	defer func() { log.Debug(ctx, "Artwork: Prune finished", "elapsed", time.Since(start)) }()
 	repo := ds.Artwork(ctx)
 
-	purged, err := repo.PurgeDanglingItemArtwork()
+	purged, err := repo.PurgeDanglingItems()
 	if err != nil {
 		return err
 	}
@@ -35,7 +35,7 @@ func prune(ctx context.Context, ds model.DataStore, store *ImageStore) error {
 
 	// Files younger than the grace window may belong to acquisitions whose rows aren't committed yet.
 	cutoff := time.Now().Add(-pruneMinAge)
-	orphans, err := repo.DeleteOrphans(cutoff)
+	orphans, err := repo.PurgeOrphans(cutoff)
 	if err != nil {
 		return err
 	}

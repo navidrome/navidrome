@@ -72,7 +72,7 @@ func (r *artworkRepository) GetMimeByHash() (map[string]string, error) {
 	return res, nil
 }
 
-func (r *artworkRepository) DeleteOrphans(createdBefore time.Time) (int64, error) {
+func (r *artworkRepository) PurgeOrphans(createdBefore time.Time) (int64, error) {
 	del := Delete(r.tableName).Where(And{
 		Lt{"created_at": createdBefore},
 		Expr("hash NOT IN (SELECT hash FROM " + itemArtworkTable + " WHERE hash <> '')"),
@@ -106,7 +106,7 @@ func purgeDangling(r sqlRepository) (int64, error) {
 	return total, nil
 }
 
-func (r *artworkRepository) PurgeDanglingItemArtwork() (int64, error) {
+func (r *artworkRepository) PurgeDanglingItems() (int64, error) {
 	return purgeDangling(r.items)
 }
 
@@ -136,10 +136,6 @@ func (r *artworkRepository) PutItemArtwork(ia *model.ItemArtwork) error {
 		attempted_at=excluded.attempted_at, updated_at=excluded.updated_at`)
 	_, err = r.items.executeSQL(ins)
 	return err
-}
-
-func (r *artworkRepository) DeleteForItem(kind model.Kind, id string) error {
-	return r.items.delete(Eq{"item_kind": kind.Prefix(), "item_id": id})
 }
 
 func (r *artworkRepository) DeleteForItems(kind model.Kind, ids []string) error {

@@ -16,7 +16,7 @@ type MockArtworkRepo struct {
 	Data     map[string]model.Artwork
 	ItemData map[string]model.ItemArtwork // keyed by iaKey(kind, id, imageType)
 	Err      error
-	// ExistingIDs, keyed by item_kind, backs PurgeDanglingItemArtwork; nil map keeps everything.
+	// ExistingIDs, keyed by item_kind, backs PurgeDanglingItems; nil map keeps everything.
 	ExistingIDs map[string]map[string]bool
 }
 
@@ -63,7 +63,7 @@ func (m *MockArtworkRepo) GetMimeByHash() (map[string]string, error) {
 	return mimes, nil
 }
 
-func (m *MockArtworkRepo) PurgeDanglingItemArtwork() (int64, error) {
+func (m *MockArtworkRepo) PurgeDanglingItems() (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {
@@ -84,7 +84,7 @@ func (m *MockArtworkRepo) PurgeDanglingItemArtwork() (int64, error) {
 	return purged, nil
 }
 
-func (m *MockArtworkRepo) DeleteOrphans(createdBefore time.Time) (int64, error) {
+func (m *MockArtworkRepo) PurgeOrphans(createdBefore time.Time) (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {
@@ -136,18 +136,6 @@ func (m *MockArtworkRepo) PutItemArtwork(ia *model.ItemArtwork) error {
 		ia.AttemptedAt = ia.UpdatedAt
 	}
 	m.ItemData[iaKey(ia.ItemKind, ia.ItemID, ia.ImageType)] = *ia
-	return nil
-}
-
-func (m *MockArtworkRepo) DeleteForItem(kind model.Kind, id string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	if m.Err != nil {
-		return m.Err
-	}
-	maps.DeleteFunc(m.ItemData, func(_ string, ia model.ItemArtwork) bool {
-		return ia.ItemKind == kind.Prefix() && ia.ItemID == id
-	})
 	return nil
 }
 

@@ -101,7 +101,7 @@ var _ = Describe("ArtworkRepository", func() {
 			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "al", ItemID: "a1",
 				ImageType: model.ImageTypePrimary, Hash: "dref", Source: "folder"})).To(Succeed())
 
-			Expect(repo.DeleteOrphans(time.Now().Add(time.Minute))).To(BeNumerically("==", 1))
+			Expect(repo.PurgeOrphans(time.Now().Add(time.Minute))).To(BeNumerically("==", 1))
 
 			_, err := repo.GetImage("d1")
 			Expect(err).To(MatchError(model.ErrNotFound))
@@ -111,7 +111,7 @@ var _ = Describe("ArtworkRepository", func() {
 
 		It("spares an unreferenced row younger than the cutoff", func() {
 			Expect(repo.PutImage(&model.Artwork{Hash: "young", Mime: "image/jpeg"})).To(Succeed())
-			Expect(repo.DeleteOrphans(time.Now().Add(-time.Hour))).To(BeNumerically("==", 0))
+			Expect(repo.PurgeOrphans(time.Now().Add(-time.Hour))).To(BeNumerically("==", 0))
 			_, err := repo.GetImage("young")
 			Expect(err).ToNot(HaveOccurred())
 		})
@@ -130,7 +130,7 @@ var _ = Describe("ArtworkRepository", func() {
 			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "mf", ItemID: songDayInALife.ID, ImageType: model.ImageTypePrimary, Hash: "keepMf"})).To(Succeed())
 			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "mf", ItemID: "no-such-mediafile", ImageType: model.ImageTypePrimary, Hash: "danglingMf"})).To(Succeed())
 
-			purged, err := repo.PurgeDanglingItemArtwork()
+			purged, err := repo.PurgeDanglingItems()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(purged).To(Equal(int64(5)))
 
@@ -212,9 +212,9 @@ var _ = Describe("ArtworkRepository", func() {
 			Expect(unresolved).To(BeFalse())
 		})
 
-		It("deletes all rows for an item", func() {
+		It("deletes all rows for a single item", func() {
 			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "pl", ItemID: "p1", ImageType: model.ImageTypePrimary, Hash: "h1"})).To(Succeed())
-			Expect(repo.DeleteForItem(model.KindPlaylistArtwork, "p1")).To(Succeed())
+			Expect(repo.DeleteForItems(model.KindPlaylistArtwork, []string{"p1"})).To(Succeed())
 			_, err := repo.GetItemArtwork(model.KindPlaylistArtwork, "p1", model.ImageTypePrimary)
 			Expect(err).To(MatchError(model.ErrNotFound))
 		})
