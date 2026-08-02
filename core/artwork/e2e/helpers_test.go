@@ -171,7 +171,7 @@ func (n *noopProvider) UpdateArtistInfo(context.Context, string, int, bool) (*mo
 func (n *noopProvider) SimilarSongs(context.Context, string, int) (model.MediaFiles, error) {
 	return nil, nil
 }
-func (n *noopProvider) TopSongs(context.Context, string, int) (model.MediaFiles, error) {
+func (n *noopProvider) TopSongs(context.Context, string, string, int) (model.MediaFiles, error) {
 	return nil, nil
 }
 func (n *noopProvider) ArtistImage(context.Context, string) (*url.URL, error) {
