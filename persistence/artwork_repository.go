@@ -16,13 +16,9 @@ const (
 	artworkBatchSize = 200
 )
 
-type itemArtworkSQL struct {
-	sqlRepository
-}
-
 type artworkRepository struct {
 	sqlRepository
-	items itemArtworkSQL
+	items sqlRepository
 }
 
 func NewArtworkRepository(ctx context.Context, db dbx.Builder) model.ArtworkRepository {
@@ -116,8 +112,8 @@ func (r *artworkRepository) DeleteOrphans(createdBefore time.Time, hashes []stri
 	return nil
 }
 
-// danglingItemArtworkKinds maps an artwork kind to the table that owns the entity.
-var danglingItemArtworkKinds = map[model.Kind]string{
+// artworkOwnerTables maps an artwork kind to the table that owns the entity.
+var artworkOwnerTables = map[model.Kind]string{
 	model.KindAlbumArtwork:     "album",
 	model.KindArtistArtwork:    "artist",
 	model.KindPlaylistArtwork:  "playlist",
@@ -125,15 +121,15 @@ var danglingItemArtworkKinds = map[model.Kind]string{
 	model.KindMediaFileArtwork: "media_file",
 }
 
-// purgeDangling deletes rows in table whose owning entity is gone, one statement per kind.
-func purgeDangling(execute func(Sqlizer) (int64, error), table string) (int64, error) {
+// purgeDangling deletes rows in r's table whose owning entity is gone, one statement per kind.
+func purgeDangling(r sqlRepository) (int64, error) {
 	var total int64
-	for kind, entityTable := range danglingItemArtworkKinds {
-		del := Delete(table).Where(And{
+	for kind, entityTable := range artworkOwnerTables {
+		del := Delete(r.tableName).Where(And{
 			Eq{"item_kind": kind.Prefix()},
 			Expr("item_id NOT IN (SELECT id FROM " + entityTable + ")"),
 		})
-		c, err := execute(del)
+		c, err := r.executeSQL(del)
 		if err != nil {
 			return total, err
 		}
@@ -143,7 +139,7 @@ func purgeDangling(execute func(Sqlizer) (int64, error), table string) (int64, e
 }
 
 func (r *artworkRepository) PurgeDanglingItemArtwork() (int64, error) {
-	return purgeDangling(r.items.executeSQL, itemArtworkTable)
+	return purgeDangling(r.items)
 }
 
 func (r *artworkRepository) GetItemArtwork(kind model.Kind, id, imageType string) (*model.ItemArtwork, error) {

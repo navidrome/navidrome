@@ -51,7 +51,7 @@ func (r *artworkQueueRepository) EnqueueStaleAbsent(kind model.Kind, attemptedBe
 }
 
 func (r *artworkQueueRepository) EnqueueAllMissing(kind model.Kind, priority int) (int64, error) {
-	entityTable, ok := danglingItemArtworkKinds[kind]
+	entityTable, ok := artworkOwnerTables[kind]
 	if !ok {
 		return 0, fmt.Errorf("artwork queue: no entity table for kind %q", kind.Prefix())
 	}
@@ -137,7 +137,7 @@ func (r *artworkQueueRepository) DeleteIfUnchanged(kind, id, imageType string, r
 }
 
 func (r *artworkQueueRepository) PurgeDangling() (int64, error) {
-	return purgeDangling(r.executeSQL, r.tableName)
+	return purgeDangling(r.sqlRepository)
 }
 
 func (r *artworkQueueRepository) Count() (int64, error) {
