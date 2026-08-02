@@ -36,15 +36,18 @@ self.addEventListener('install', async (event) => {
 })
 
 const networkOnly = new workbox.strategies.NetworkOnly()
+const fallbackToCachedHtml = () =>
+  caches.match(FALLBACK_HTML_URL, { cacheName: CACHE_NAME })
+
 const navigationHandler = async (params) => {
   try {
     // Attempt a network request.
-    return await networkOnly.handle(params)
+    const response = await networkOnly.handle(params)
+    // A 5xx reaches us as a normal response, but carries no usable app
+    return response.status >= 500 ? fallbackToCachedHtml() : response
   } catch (error) {
     // If it fails, return the cached HTML.
-    return caches.match(FALLBACK_HTML_URL, {
-      cacheName: CACHE_NAME,
-    })
+    return fallbackToCachedHtml()
   }
 }
 
