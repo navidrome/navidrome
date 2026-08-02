@@ -6,7 +6,7 @@ import (
 )
 
 var _ = Describe("id codec", func() {
-	It("round-trips a base62 nanoid through Encode/Decode", func() {
+	It("round-trips a base62 id", func() {
 		id := "5QFKvMsJrd57QE2Le2dKKo"
 		Expect(DecodeID(EncodeID(id))).To(Equal(id))
 	})
