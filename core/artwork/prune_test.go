@@ -82,7 +82,6 @@ var _ = Describe("Prune", func() {
 		Expect(os.Chtimes(store.path(h, "image/jpeg"), old, old)).To(Succeed())
 		Expect(awRepo.PutImage(&model.Artwork{Hash: h, Mime: "image/jpeg"})).To(Succeed())
 		ageArtwork(h, old)
-		awRepo.OrphanHashes = []string{h}
 
 		kept := []byte("kept-bytes")
 		hk, _ := hashImage(bytes.NewReader(kept))
@@ -100,13 +99,12 @@ var _ = Describe("Prune", func() {
 		rc.Close()
 	})
 
-	It("spares a candidate reacquired between snapshot and delete", func() {
+	It("spares an aged row that item_artwork state still references", func() {
 		data := []byte("reacquired-bytes")
 		h, _ := hashImage(bytes.NewReader(data))
 		Expect(store.Write(h, "image/jpeg", bytes.NewReader(data))).To(Succeed())
 		Expect(awRepo.PutImage(&model.Artwork{Hash: h, Mime: "image/jpeg"})).To(Succeed())
 		ageArtwork(h, time.Now().Add(-2*time.Hour))
-		awRepo.OrphanHashes = []string{h}
 		Expect(awRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "al", ItemID: "a1",
 			ImageType: model.ImageTypePrimary, Hash: h, Source: "folder"})).To(Succeed())
 
@@ -119,13 +117,12 @@ var _ = Describe("Prune", func() {
 		rc.Close()
 	})
 
-	It("spares a candidate whose row was freshly recreated (created_at inside the grace window)", func() {
+	It("spares an unreferenced row recreated inside the grace window", func() {
 		data := []byte("fresh-reacquired-bytes")
 		h, _ := hashImage(bytes.NewReader(data))
 		Expect(store.Write(h, "image/jpeg", bytes.NewReader(data))).To(Succeed())
-		// Reacquisition refreshed created_at after the snapshot; still unreferenced.
+		// Reacquisition refreshed created_at, so the row is unreferenced but too young to drop.
 		Expect(awRepo.PutImage(&model.Artwork{Hash: h, Mime: "image/jpeg"})).To(Succeed())
-		awRepo.OrphanHashes = []string{h}
 
 		Expect(prune(context.Background(), ds, store)).To(Succeed())
 
@@ -142,7 +139,6 @@ var _ = Describe("Prune", func() {
 		Expect(store.Write(h, "image/jpeg", bytes.NewReader(data))).To(Succeed())
 		Expect(awRepo.PutImage(&model.Artwork{Hash: h, Mime: "image/jpeg"})).To(Succeed())
 		ageArtwork(h, time.Now().Add(-2*time.Hour))
-		awRepo.OrphanHashes = []string{h}
 		// The row is orphaned, but a concurrent acquisition just touched the file's mtime.
 
 		Expect(prune(context.Background(), ds, store)).To(Succeed())
@@ -185,7 +181,7 @@ var _ = Describe("Prune", func() {
 		rc.Close()
 	})
 
-	It("warns and continues past a store.Remove failure instead of aborting the loop", func() {
+	It("reclaims the other orphan files when one of them cannot be removed", func() {
 		tests.SkipOnWindows("uses Unix file permission bits")
 		if os.Geteuid() == 0 {
 			Skip("read-only dir cannot block root (e.g. tests in a container)")
@@ -210,9 +206,6 @@ var _ = Describe("Prune", func() {
 		shardDir := filepath.Dir(store.path(hb, "image/jpeg"))
 		Expect(os.Chmod(shardDir, 0500)).To(Succeed())
 		DeferCleanup(func() { _ = os.Chmod(shardDir, 0755) })
-
-		// hb is processed first: aborting on its Remove failure would leave hg unreached.
-		awRepo.OrphanHashes = []string{hb, hg}
 
 		Expect(prune(context.Background(), ds, store)).To(Succeed())
 

@@ -98,11 +98,8 @@ const (
 type ArtworkRepository interface {
 	GetImage(hash string) (*Artwork, error)
 	PutImage(a *Artwork) error
-	GetImages(hashes []string) (map[string]Artwork, error)
-	// GetOrphanHashes returns hashes referenced by no item_artwork row and older than cutoff.
-	GetOrphanHashes(createdBefore time.Time) ([]string, error)
-	// DeleteOrphans deletes the given hashes only if still unreferenced and older than cutoff.
-	DeleteOrphans(createdBefore time.Time, hashes []string) error
+	// DeleteOrphans deletes rows referenced by no item_artwork row and older than cutoff.
+	DeleteOrphans(createdBefore time.Time) (int64, error)
 	GetItemArtwork(kind Kind, id, imageType string) (*ItemArtwork, error)
 	PutItemArtwork(ia *ItemArtwork) error
 	DeleteForItem(kind Kind, id string) error

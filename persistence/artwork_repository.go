@@ -56,21 +56,6 @@ func (r *artworkRepository) PutImage(a *model.Artwork) error {
 	return err
 }
 
-func (r *artworkRepository) GetImages(hashes []string) (map[string]model.Artwork, error) {
-	res := map[string]model.Artwork{}
-	for chunk := range slices.Chunk(hashes, artworkBatchSize) {
-		sel := Select("*").From(r.tableName).Where(Eq{"hash": chunk})
-		var all []model.Artwork
-		if err := r.queryAll(sel, &all); err != nil {
-			return nil, err
-		}
-		for _, a := range all {
-			res[a.Hash] = a
-		}
-	}
-	return res, nil
-}
-
 func (r *artworkRepository) GetAllMimes() (map[string]string, error) {
 	sel := Select("hash", "mime").From(r.tableName)
 	var rows []struct {
@@ -87,29 +72,12 @@ func (r *artworkRepository) GetAllMimes() (map[string]string, error) {
 	return res, nil
 }
 
-func (r *artworkRepository) GetOrphanHashes(createdBefore time.Time) ([]string, error) {
-	sel := Select("hash").From(r.tableName).
-		Where(And{
-			Lt{"created_at": createdBefore},
-			Expr("hash NOT IN (SELECT hash FROM " + itemArtworkTable + " WHERE hash <> '')"),
-		})
-	var hashes []string
-	err := r.queryAllSlice(sel, &hashes)
-	return hashes, err
-}
-
-func (r *artworkRepository) DeleteOrphans(createdBefore time.Time, hashes []string) error {
-	for chunk := range slices.Chunk(hashes, artworkBatchSize) {
-		del := Delete(r.tableName).Where(And{
-			Eq{"hash": chunk},
-			Lt{"created_at": createdBefore},
-			Expr("hash NOT IN (SELECT hash FROM " + itemArtworkTable + " WHERE hash <> '')"),
-		})
-		if _, err := r.executeSQL(del); err != nil {
-			return err
-		}
-	}
-	return nil
+func (r *artworkRepository) DeleteOrphans(createdBefore time.Time) (int64, error) {
+	del := Delete(r.tableName).Where(And{
+		Lt{"created_at": createdBefore},
+		Expr("hash NOT IN (SELECT hash FROM " + itemArtworkTable + " WHERE hash <> '')"),
+	})
+	return r.executeSQL(del)
 }
 
 // artworkOwnerTables maps an artwork kind to the table that owns the entity.

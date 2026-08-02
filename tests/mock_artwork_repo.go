@@ -12,11 +12,10 @@ import (
 type MockArtworkRepo struct {
 	model.ArtworkRepository
 	// mu guards the maps so the worker's concurrent drain can hit this mock race-free.
-	mu           sync.Mutex
-	Data         map[string]model.Artwork
-	ItemData     map[string]model.ItemArtwork // keyed by iaKey(kind, id, imageType)
-	OrphanHashes []string
-	Err          error
+	mu       sync.Mutex
+	Data     map[string]model.Artwork
+	ItemData map[string]model.ItemArtwork // keyed by iaKey(kind, id, imageType)
+	Err      error
 	// ExistingIDs, keyed by item_kind, backs PurgeDanglingItemArtwork; nil map keeps everything.
 	ExistingIDs map[string]map[string]bool
 }
@@ -49,27 +48,6 @@ func (m *MockArtworkRepo) PutImage(a *model.Artwork) error {
 	a.CreatedAt = time.Now()
 	m.Data[a.Hash] = *a
 	return nil
-}
-
-func (m *MockArtworkRepo) GetImages(hashes []string) (map[string]model.Artwork, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	if m.Err != nil {
-		return nil, m.Err
-	}
-	res := map[string]model.Artwork{}
-	for _, h := range hashes {
-		if a, ok := m.Data[h]; ok {
-			res[h] = a
-		}
-	}
-	return res, nil
-}
-
-func (m *MockArtworkRepo) GetOrphanHashes(createdBefore time.Time) ([]string, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return m.OrphanHashes, m.Err
 }
 
 func (m *MockArtworkRepo) GetAllMimes() (map[string]string, error) {
@@ -106,23 +84,21 @@ func (m *MockArtworkRepo) PurgeDanglingItemArtwork() (int64, error) {
 	return purged, nil
 }
 
-func (m *MockArtworkRepo) DeleteOrphans(createdBefore time.Time, hashes []string) error {
+func (m *MockArtworkRepo) DeleteOrphans(createdBefore time.Time) (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {
-		return m.Err
+		return 0, m.Err
 	}
-	// Mirror the SQL re-check: only unreferenced rows older than the cutoff are deleted.
-	for _, h := range hashes {
-		if m.referenced(h) {
-			continue
-		}
-		if a, ok := m.Data[h]; ok && !a.CreatedAt.Before(createdBefore) {
+	var deleted int64
+	for h, a := range m.Data {
+		if m.referenced(h) || !a.CreatedAt.Before(createdBefore) {
 			continue
 		}
 		delete(m.Data, h)
+		deleted++
 	}
-	return nil
+	return deleted, nil
 }
 
 func (m *MockArtworkRepo) referenced(hash string) bool {

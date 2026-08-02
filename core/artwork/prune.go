@@ -35,36 +35,15 @@ func prune(ctx context.Context, ds model.DataStore, store *ImageStore) error {
 
 	// Files younger than the grace window may belong to acquisitions whose rows aren't committed yet.
 	cutoff := time.Now().Add(-pruneMinAge)
-	candidates, err := repo.GetOrphanHashes(cutoff)
+	orphans, err := repo.DeleteOrphans(cutoff)
 	if err != nil {
 		return err
 	}
-	if len(candidates) > 0 {
-		arts, err := repo.GetImages(candidates)
-		if err != nil {
-			return err
-		}
-		if err := repo.DeleteOrphans(cutoff, candidates); err != nil {
-			return err
-		}
-		// DeleteOrphans may spare candidates reacquired since the snapshot; only drop files whose rows are gone.
-		survivors, err := repo.GetImages(candidates)
-		if err != nil {
-			return err
-		}
-		removed := 0
-		for _, h := range candidates {
-			if _, ok := survivors[h]; ok {
-				continue
-			}
-			if err := store.Remove(h, arts[h].Mime, cutoff); err != nil {
-				log.Warn(ctx, "Artwork: Could not remove orphan file", "hash", h, err)
-			}
-			removed++
-		}
-		log.Info(ctx, "Artwork: Removed orphan images", "count", removed)
+	if orphans > 0 {
+		log.Info(ctx, "Artwork: Removed orphan images", "count", orphans)
 	}
 
+	// Read after the delete, so the sweep below reclaims the files of the rows just removed.
 	mimes, err := repo.GetAllMimes()
 	if err != nil {
 		return err
