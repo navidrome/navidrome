@@ -4,14 +4,16 @@ import "time"
 
 // Artwork is one unique image, identified by the XXH3-64 hash of its bytes.
 type Artwork struct {
-	Hash      string    `structs:"hash"`
-	Mime      string    `structs:"mime"`
-	Width     int       `structs:"width"`
-	Height    int       `structs:"height"`
-	SizeBytes int64     `structs:"size_bytes"`
-	BlurHash  string    `structs:"blur_hash"`
-	ThumbHash string    `structs:"thumb_hash"`
-	CreatedAt time.Time `structs:"created_at"`
+	Hash      string `structs:"hash"`
+	Mime      string `structs:"mime"`
+	Width     int    `structs:"width"`
+	Height    int    `structs:"height"`
+	SizeBytes int64  `structs:"size_bytes"`
+	BlurHash  string `structs:"blur_hash"`
+	ThumbHash string `structs:"thumb_hash"`
+	// DominantColor is "#rrggbb": a flat placeholder clients can paint before any decode.
+	DominantColor string    `structs:"dominant_color"`
+	CreatedAt     time.Time `structs:"created_at"`
 }
 
 const ImageTypePrimary = "primary"
@@ -23,6 +25,8 @@ type ItemImage struct {
 	// BlurHash is Jellyfin's; its mappers read this field directly, so it stays off native JSON.
 	BlurHash  string `structs:"-" json:"-"`
 	ThumbHash string `structs:"-" json:"thumbHash,omitempty"`
+	// DominantColor is the only placeholder needing no decode, so it can paint on the first frame.
+	DominantColor string `structs:"-" json:"dominantColor,omitempty"`
 	// A thumbhash's own aspect is quantised, so clients need these to shape the placeholder exactly.
 	ImageWidth  int `structs:"-" json:"imageWidth,omitempty"`
 	ImageHeight int `structs:"-" json:"imageHeight,omitempty"`
@@ -54,12 +58,13 @@ type ItemArtwork struct {
 
 // ItemArtworkInfo is the list-hydration projection (item_artwork joined with artwork).
 type ItemArtworkInfo struct {
-	ItemID    string
-	Hash      string
-	BlurHash  string
-	ThumbHash string
-	Width     int
-	Height    int
+	ItemID        string
+	Hash          string
+	BlurHash      string
+	ThumbHash     string
+	DominantColor string
+	Width         int
+	Height        int
 }
 
 // Absent reports a known-absent artwork state (resolved, no image).
@@ -68,12 +73,13 @@ func (i ItemArtworkInfo) Absent() bool { return i.Hash == "" }
 // Image projects the hydration entry onto the entity-facing struct.
 func (i ItemArtworkInfo) Image() ItemImage {
 	return ItemImage{
-		ImageHash:   i.Hash,
-		ImageAbsent: i.Absent(),
-		BlurHash:    i.BlurHash,
-		ThumbHash:   i.ThumbHash,
-		ImageWidth:  i.Width,
-		ImageHeight: i.Height,
+		ImageHash:     i.Hash,
+		ImageAbsent:   i.Absent(),
+		BlurHash:      i.BlurHash,
+		ThumbHash:     i.ThumbHash,
+		DominantColor: i.DominantColor,
+		ImageWidth:    i.Width,
+		ImageHeight:   i.Height,
 	}
 }
 

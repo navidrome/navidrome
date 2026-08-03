@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/core/artwork/blurhash"
+	"github.com/navidrome/navidrome/core/artwork/dominant"
 	"github.com/navidrome/navidrome/core/artwork/thumbhash"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -251,12 +252,13 @@ func decodeArtwork(ctx context.Context, hash string, data []byte) (*model.Artwor
 	}
 
 	return &model.Artwork{
-		Hash:      hash,
-		Mime:      mimeForFormat(format),
-		Width:     img.Bounds().Dx(),
-		Height:    img.Bounds().Dy(),
-		BlurHash:  bh,
-		ThumbHash: th,
+		Hash:          hash,
+		Mime:          mimeForFormat(format),
+		Width:         img.Bounds().Dx(),
+		Height:        img.Bounds().Dy(),
+		BlurHash:      bh,
+		ThumbHash:     th,
+		DominantColor: dominant.Color(thumb),
 	}, nil
 }
 

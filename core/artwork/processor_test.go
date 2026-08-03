@@ -98,6 +98,10 @@ var _ = Describe("processor.acquire", func() {
 
 		art, err := artRepo.GetImage(ia.Hash)
 		Expect(err).ToNot(HaveOccurred())
+		// Every placeholder is derived from the one shared thumbnail, so all three land together.
+		Expect(art.BlurHash).ToNot(BeEmpty())
+		Expect(art.ThumbHash).ToNot(BeEmpty())
+		Expect(art.DominantColor).To(MatchRegexp(`^#[0-9a-f]{6}$`))
 		_, err = store.Open(ia.Hash, art.Mime)
 		Expect(os.IsNotExist(err)).To(BeTrue(), "folder-backed art must not be duplicated into the store")
 	})

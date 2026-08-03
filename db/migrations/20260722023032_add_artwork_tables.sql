@@ -7,6 +7,7 @@ CREATE TABLE artwork (
   size_bytes INTEGER NOT NULL DEFAULT 0,
   blur_hash TEXT NOT NULL DEFAULT '',
   thumb_hash TEXT NOT NULL DEFAULT '',
+  dominant_color TEXT NOT NULL DEFAULT '',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

@@ -51,7 +51,8 @@ func (r *artworkRepository) PutImage(a *model.Artwork) error {
 	// created_at=excluded.created_at: reacquiring an orphan must reset the prune grace window.
 	ins := Insert(r.tableName).SetMap(values).Suffix(`ON CONFLICT (hash) DO UPDATE SET mime=excluded.mime, width=excluded.width,
 		height=excluded.height, size_bytes=excluded.size_bytes, blur_hash=excluded.blur_hash,
-		thumb_hash=excluded.thumb_hash, created_at=excluded.created_at`)
+		thumb_hash=excluded.thumb_hash, dominant_color=excluded.dominant_color,
+		created_at=excluded.created_at`)
 	_, err = r.executeSQL(ins)
 	return err
 }
@@ -152,6 +153,7 @@ func (r *artworkRepository) GetInfoForItems(kind model.Kind, ids []string) (map[
 	for chunk := range slices.Chunk(ids, artworkBatchSize) {
 		sel := Select("ia.item_id", "ia.hash", "COALESCE(a.blur_hash, '') as blur_hash",
 			"COALESCE(a.thumb_hash, '') as thumb_hash",
+			"COALESCE(a.dominant_color, '') as dominant_color",
 			"COALESCE(a.width, 0) as width", "COALESCE(a.height, 0) as height").
 			From(itemArtworkTable + " ia").
 			LeftJoin("artwork a ON a.hash = ia.hash").
