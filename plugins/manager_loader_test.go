@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -24,6 +25,18 @@ var _ = Describe("buildExtismManifest", func() {
 
 	It("carries the hosts the plugin is allowed to reach", func() {
 		Expect(buildExtismManifest(pkg, nil).AllowedHosts).To(Equal([]string{"example.com"}))
+	})
+})
+
+var _ = Describe("loadPluginWithConfig", func() {
+	// Discovery already rejects these, but a row predating that check, or one
+	// left behind by a failed sync, must not reach the mount setup
+	It("refuses a plugin whose ID is not usable as a directory name", func() {
+		m := &Manager{plugins: make(map[string]*plugin)}
+
+		err := m.loadPluginWithConfig(&model.Plugin{ID: "..", Path: "/does/not/matter.ndp"})
+
+		Expect(err).To(MatchError(ContainSubstring("invalid plugin ID")))
 	})
 })
 
