@@ -282,6 +282,10 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 		return fmt.Errorf("manager is stopped")
 	}
 
+	if !validPluginID(p.ID) {
+		return fmt.Errorf("invalid plugin ID %q", p.ID)
+	}
+
 	// Track this operation
 	m.loadWg.Add(1)
 	defer m.loadWg.Done()
