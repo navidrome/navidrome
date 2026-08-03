@@ -30,6 +30,7 @@ The plugin system is built on **[Extism](https://extism.org/)**, a cross-languag
   - [Scheduler](#scheduler)
   - [Cache](#cache)
   - [KVStore](#kvstore)
+  - [Storage](#storage)
   - [Task](#task)
   - [WebSocket](#websocket)
   - [Library](#library)
@@ -547,6 +548,52 @@ host.KVStoreDeleteByPrefix("user:")
 usage, err := host.KVStoreGetStorageUsed()
 fmt.Printf("Using %d bytes\n", usage)
 ```
+
+### Storage
+
+A private read-write directory, mounted into the sandbox at `/storage` and backed by `${DataFolder}/plugins/${pluginID}/storage`. Survives server restarts. Use it for data that doesn't fit a key-value store: caches, downloaded files, generated indexes.
+
+**Manifest permission:**
+
+```json
+{
+  "permissions": {
+    "storage": {
+      "reason": "Cache generated playlists between restarts"
+    }
+  }
+}
+```
+
+**Host functions:**
+
+| Function                 | Parameters | Description                        |
+|--------------------------|------------|------------------------------------|
+| `storage_getstoragepath` | –          | Get the guest path of the mount    |
+
+**Usage:**
+
+Normal WASI filesystem calls work inside the mount, so use the `os` package directly:
+
+```go
+import (
+	"os"
+	"path/filepath"
+
+	"github.com/navidrome/navidrome/plugins/pdk/go/host"
+)
+
+// The path never changes, so read it once instead of per operation
+var storageDir = host.StorageGetStoragePath() // "/storage"
+
+err := os.WriteFile(filepath.Join(storageDir, "cache.json"), data, 0600)
+content, err := os.ReadFile(filepath.Join(storageDir, "cache.json"))
+entries, err := os.ReadDir(storageDir)
+```
+
+> **Security:** The mount is confined to your plugin's own directory. Paths that would resolve outside it are rejected, and plugins cannot create symlinks inside the mount.
+
+> **Note:** There is no size limit, unlike [KVStore](#kvstore). The directory is not deleted when a plugin is uninstalled.
 
 ### Task
 
