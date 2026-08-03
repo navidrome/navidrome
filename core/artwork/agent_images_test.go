@@ -110,6 +110,42 @@ var _ = Describe("agent images", func() {
 			Expect(bestImageURL(nil)).To(BeNil())
 			Expect(bestImageURL([]agents.ExternalImage{{URL: "", Size: 5}})).To(BeNil())
 		})
+
+		// Plugins hand these over as free-form strings, and url.Parse accepts them all. An
+		// unfetchable candidate that wins here ends the agent's turn before its valid images run.
+		DescribeTable("skips a candidate that cannot be fetched",
+			func(badURL string) {
+				u := bestImageURL([]agents.ExternalImage{
+					{URL: badURL, Size: 100}, // largest, and first
+					{URL: "https://cdn.example.com/ok.jpg", Size: 10},
+				})
+				Expect(u).ToNot(BeNil())
+				Expect(u.String()).To(Equal("https://cdn.example.com/ok.jpg"))
+			},
+			Entry("a relative path", "images/big.jpg"),
+			Entry("a root-relative path", "/images/big.jpg"),
+			Entry("a scheme we cannot fetch", "ftp://host/big.jpg"),
+			Entry("a scheme-relative URL", "//host/big.jpg"),
+			Entry("a URL with no host", "http:///big.jpg"),
+		)
+
+		// Size is often 0 for every candidate, and only a strictly larger one replaces the first,
+		// so an unfetchable entry in first position would otherwise stick.
+		It("skips an unfetchable first candidate when every Size is zero", func() {
+			u := bestImageURL([]agents.ExternalImage{
+				{URL: "images/rel.jpg"},
+				{URL: "https://cdn.example.com/ok.jpg"},
+			})
+			Expect(u).ToNot(BeNil())
+			Expect(u.String()).To(Equal("https://cdn.example.com/ok.jpg"))
+		})
+
+		It("returns nil when no candidate is fetchable", func() {
+			Expect(bestImageURL([]agents.ExternalImage{
+				{URL: "images/a.jpg", Size: 10},
+				{URL: "ftp://host/b.jpg", Size: 20},
+			})).To(BeNil())
+		})
 	})
 
 	Describe("fetchArtistImage", func() {

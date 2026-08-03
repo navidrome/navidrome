@@ -21,8 +21,8 @@ func externalName(name string) string {
 	return str.Clear(name)
 }
 
-// bestImageURL returns the largest parseable image URL, so a malformed candidate never
-// shadows a smaller valid one.
+// bestImageURL returns the largest fetchable image URL. Only one is returned and its failure ends
+// the agent's turn, so an unfetchable candidate must never win: url.Parse alone accepts anything.
 func bestImageURL(imgs []agents.ExternalImage) *url.URL {
 	var best *url.URL
 	var bestSize int
@@ -31,7 +31,7 @@ func bestImageURL(imgs []agents.ExternalImage) *url.URL {
 			continue
 		}
 		u, err := url.Parse(imgs[i].URL)
-		if err != nil {
+		if err != nil || !u.IsAbs() || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
 			continue
 		}
 		if best == nil || imgs[i].Size > bestSize {
