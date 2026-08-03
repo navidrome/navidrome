@@ -2,7 +2,7 @@
   "name": "Test SubsonicAPI Plugin",
   "author": "Navidrome Test",
   "version": "1.0.0",
-  "description": "Test plugin for SubsonicAPI host function",
+  "description": "Test plugin for storage host function",
   "permissions": {
     "storage": {
       "reason": "persistent storage for testing"

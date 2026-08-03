@@ -322,7 +322,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 
 	// Configure filesystem access for library permission, applied per instance
 	var fsConfig wazero.FSConfig
-	if pkg.Manifest.HasLibraryFilesystemPermission() || pkg.Manifest.HasStoragePermissions() {
+	if pkg.Manifest.HasLibraryFilesystemPermission() || pkg.Manifest.HasStoragePermission() {
 		mounts := []mount{}
 
 		if pkg.Manifest.HasLibraryFilesystemPermission() {
@@ -334,7 +334,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 			mounts = buildMounts(ctx, libraries, allowedLibraries, p.AllLibraries, p.AllowWriteAccess)
 		}
 
-		if pkg.Manifest.HasStoragePermissions() {
+		if pkg.Manifest.HasStoragePermission() {
 			pluginStore := getHostStoragePath(p.ID)
 			log.Info(ctx, "Granting read-write filesystem access to plugin storage", "path", pluginStore, "id", p.ID)
 
@@ -343,8 +343,6 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 				guestPath: storageMount,
 			})
 		}
-
-		log.Info(ctx, "mounts", "plugin", p.ID, "mounts", mounts)
 
 		fsConfig = buildFSConfig(mounts)
 	}
