@@ -3,6 +3,7 @@ package artwork
 import (
 	"context"
 	"errors"
+	"path/filepath"
 	"time"
 
 	"github.com/navidrome/navidrome/model"
@@ -337,6 +338,32 @@ var _ = Describe("Album Artwork Reader", func() {
 			Expect(imgFiles).To(HaveLen(1))
 			Expect(imgFiles[0]).To(Equal("Artist/Album/cover.jpg"))
 			Expect(repo.getCallCount).To(Equal(1))
+		})
+
+		It("promotes the album root parent into the returned paths", func() {
+			repo.result = []model.Folder{
+				{
+					ID:              "folder1",
+					Path:            "Artist",
+					Name:            "Album",
+					ParentID:        "artistFolder",
+					ImagesUpdatedAt: now,
+					ImageFiles:      []string{},
+				},
+			}
+			repo.parentResult = &model.Folder{
+				ID:              "artistFolder",
+				Path:            ".",
+				Name:            "Artist",
+				ParentID:        "libraryRoot",
+				ImagesUpdatedAt: expectedAt,
+				ImageFiles:      []string{"folder.jpg"},
+			}
+
+			paths, _, _, err := loadAlbumFoldersPaths(ctx, ds, album)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(paths).To(Equal([]string{filepath.Join("Artist", "Album"), "Artist"}))
 		})
 
 		It("does not include parent images when other albums' audio lives under the parent", func() {

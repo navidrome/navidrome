@@ -66,11 +66,8 @@ var _ = Describe("Storage Host Function", Ordered, func() {
 	const ID = "test-storage-plugin"
 
 	var (
-		manager   *Manager
-		tmpDir    string
-		router    *fakeSubsonicRouter
-		userRepo  *tests.MockedUserRepo
-		dataStore *tests.MockDataStore
+		manager *Manager
+		tmpDir  string
 	)
 
 	BeforeAll(func() {
@@ -79,9 +76,9 @@ var _ = Describe("Storage Host Function", Ordered, func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		// Setup mock router and data store
-		router = &fakeSubsonicRouter{}
-		userRepo = tests.CreateMockUserRepo()
-		dataStore = &tests.MockDataStore{MockedUser: userRepo}
+		router := &fakeSubsonicRouter{}
+		userRepo := tests.CreateMockUserRepo()
+		dataStore := &tests.MockDataStore{MockedUser: userRepo}
 
 		// Create and configure manager
 		manager = &Manager{
@@ -142,75 +139,76 @@ var _ = Describe("Storage Host Function", Ordered, func() {
 		})
 	})
 
-	Describe("Read", func() {
-		var plugin *plugin
+	var instance *extism.Plugin
+	BeforeEach(func() {
+		var err error
+		manager.mu.RLock()
+		plugin := manager.plugins[ID]
+		manager.mu.RUnlock()
+		Expect(plugin).ToNot(BeNil())
 
+		ctx := GinkgoT().Context()
+		instance, err = plugin.instance(ctx)
+		Expect(err).ToNot(HaveOccurred())
+
+		DeferCleanup(func() {
+			instance.Close(ctx)
+		})
+	})
+
+	Describe("Read", func() {
 		BeforeAll(func() {
 			path := filepath.Join(getHostStoragePath(ID), "real")
 			err := os.WriteFile(path, []byte("1234"), 0600)
 			Expect(err).ToNot(HaveOccurred())
-		})
 
-		BeforeEach(func() {
-			manager.mu.RLock()
-			plugin = manager.plugins[ID]
-			manager.mu.RUnlock()
-			Expect(plugin).ToNot(BeNil())
+			DeferCleanup(func() {
+				_ = os.Remove(path)
+			})
 		})
 
 		It("should fail to read missing file", func() {
-			instance, err := plugin.instance(GinkgoT().Context())
-			Expect(err).ToNot(HaveOccurred())
-			defer instance.Close(GinkgoT().Context())
-
 			exit, _, err := instance.Call("call_read", []byte("missing"))
 			Expect(exit).To(Equal(uint32(1)))
 			Expect(err).To(HaveOccurred())
 		})
 
 		It("should read an existing file", func() {
-			instance, err := plugin.instance(GinkgoT().Context())
-			Expect(err).ToNot(HaveOccurred())
-			defer instance.Close(GinkgoT().Context())
-
 			exit, output, err := instance.Call("call_read", []byte("real"))
 			Expect(exit).To(Equal(uint32(0)))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(output).To(Equal([]byte("1234")))
 		})
+
+		It("should not escape read", func() {
+			path := filepath.Join(getHostStoragePath(ID), "..", "outside")
+			err := os.WriteFile(path, []byte("outside"), 0600)
+			Expect(err).ToNot(HaveOccurred())
+
+			exit, _, err := instance.Call("call_read", []byte("../outside"))
+			Expect(exit).To(Equal(uint32(1)))
+			Expect(err).To(HaveOccurred())
+		})
 	})
 
 	Describe("Write", func() {
-		var p *plugin
-
 		BeforeAll(func() {
 			path := filepath.Join(getHostStoragePath(ID), "real")
 			err := os.WriteFile(path, []byte("1234"), 0600)
 			Expect(err).ToNot(HaveOccurred())
-		})
 
-		BeforeEach(func() {
-			manager.mu.RLock()
-			p = manager.plugins[ID]
-			manager.mu.RUnlock()
-			Expect(p).ToNot(BeNil())
+			DeferCleanup(func() {
+				_ = os.Remove(path)
+			})
 		})
 
 		It("should fail to write to nested file", func() {
-			instance, err := p.instance(GinkgoT().Context())
-			Expect(err).ToNot(HaveOccurred())
-			defer instance.Close(GinkgoT().Context())
-
 			exit, _, err := instance.Call("call_write", []byte(`{"path":"nested/file","contents":"1234"}`))
 			Expect(exit).To(Equal(uint32(1)))
 			Expect(err).To(HaveOccurred())
 		})
 
 		It("should write to a file", func() {
-			instance, err := p.instance(GinkgoT().Context())
-			Expect(err).ToNot(HaveOccurred())
-			defer instance.Close(GinkgoT().Context())
-
 			exit, _, err := instance.Call("call_write", []byte(`{"path":"new","contents":"contents"}`))
 			Expect(exit).To(Equal(uint32(0)))
 			Expect(err).ToNot(HaveOccurred())
@@ -225,6 +223,16 @@ var _ = Describe("Storage Host Function", Ordered, func() {
 			Expect(output).To(Equal([]byte("contents")))
 		})
 
+		It("should not escape writing a file", func() {
+			path := filepath.Join(getHostStoragePath(ID), "..", "outside")
+			err := os.WriteFile(path, []byte("outside"), 0600)
+			Expect(err).ToNot(HaveOccurred())
+
+			exit, _, err := instance.Call("call_write", []byte(`{"path":"../new","contents":"contents"}`))
+			Expect(exit).To(Equal(uint32(1)))
+			Expect(err).To(HaveOccurred())
+		})
+
 		It("should have independent storage for multiple plugins", func() {
 			manager.mu.RLock()
 			plugin2 := manager.plugins[ID+"-2"]
@@ -232,17 +240,15 @@ var _ = Describe("Storage Host Function", Ordered, func() {
 
 			Expect(plugin2).ToNot(BeNil())
 
-			plugins := []*plugin{p, plugin2}
-			instances := []*extism.Plugin{}
+			secondInstance, err := plugin2.instance(GinkgoT().Context())
+			Expect(err).ToNot(HaveOccurred())
+			defer secondInstance.Close(GinkgoT().Context())
+
+			instances := []*extism.Plugin{instance, secondInstance}
 			names := []string{ID, ID + "-2"}
 
-			for idx := range plugins {
-				instance, err := plugins[idx].instance(GinkgoT().Context())
-				instances = append(instances, instance)
-				Expect(err).ToNot(HaveOccurred())
-				defer instance.Close(GinkgoT().Context())
-
-				exit, _, err := instance.Call("call_write", fmt.Appendf(nil, `{"path":"new","contents":"%s"}`, names[idx]))
+			for idx := range instances {
+				exit, _, err := instances[idx].Call("call_write", fmt.Appendf(nil, `{"path":"new","contents":"%s"}`, names[idx]))
 				Expect(exit).To(Equal(uint32(0)))
 				Expect(err).ToNot(HaveOccurred())
 			}
@@ -253,7 +259,7 @@ var _ = Describe("Storage Host Function", Ordered, func() {
 				Expect(data).To(Equal([]byte(names[idx])))
 			}
 
-			for idx := range plugins {
+			for idx := range instances {
 				exit, output, err := instances[idx].Call("call_read", []byte("new"))
 				Expect(exit).To(Equal(uint32(0)))
 				Expect(err).ToNot(HaveOccurred())

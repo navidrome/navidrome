@@ -85,6 +85,19 @@ var _ = Describe("artistArtworkReader", func() {
 			})
 		})
 
+		When("two albums share the same folder", func() {
+			It("climbs above the shared album folder", func() {
+				paths = []string{
+					filepath.FromSlash("/music/artist/split"),
+					filepath.FromSlash("/music/artist/split"),
+				}
+				folder, upd, err := loadArtistFolder(ctx, fds, albums, paths)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(folder).To(Equal(filepath.FromSlash("/music/artist")))
+				Expect(upd).To(Equal(expectedUpdTime))
+			})
+		})
+
 		When("the album paths contain same prefix", func() {
 			It("returns the common prefix", func() {
 				paths = []string{

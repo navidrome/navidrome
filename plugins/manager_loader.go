@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"maps"
 	"time"
 
 	extism "github.com/extism/go-sdk"
@@ -319,24 +318,12 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 		return fmt.Errorf("opening package: %w", err)
 	}
 
-	// Build extism manifest
-	pluginManifest := extism.Manifest{
-		Wasm: []extism.Wasm{
-			extism.WasmData{Data: pkg.WasmBytes, Name: "main"},
-		},
-		Config:  pluginConfig,
-		Timeout: uint64(defaultTimeout.Milliseconds()),
-	}
+	pluginManifest := buildExtismManifest(pkg, pluginConfig)
 
-	if pkg.Manifest.Permissions != nil && pkg.Manifest.Permissions.Http != nil {
-		if hosts := pkg.Manifest.Permissions.Http.RequiredHosts; len(hosts) > 0 {
-			pluginManifest.AllowedHosts = hosts
-		}
-	}
-
-	// Configure filesystem access for library permission
+	// Configure filesystem access for library permission, applied per instance
+	var fsConfig wazero.FSConfig
 	if pkg.Manifest.HasLibraryFilesystemPermission() || pkg.Manifest.HasStoragePermissions() {
-		allowedPaths := map[string]string{}
+		mounts := []mount{}
 
 		if pkg.Manifest.HasLibraryFilesystemPermission() {
 			adminCtx := adminContext(ctx)
@@ -344,16 +331,22 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 			if err != nil {
 				return fmt.Errorf("failed to get libraries for filesystem access: %w", err)
 			}
-
-			libraryPaths := buildAllowedPaths(ctx, libraries, allowedLibraries, p.AllLibraries, p.AllowWriteAccess)
-			maps.Copy(allowedPaths, libraryPaths)
+			mounts = buildMounts(ctx, libraries, allowedLibraries, p.AllLibraries, p.AllowWriteAccess)
 		}
 
 		if pkg.Manifest.HasStoragePermissions() {
-			allowedPaths[getHostStoragePath(p.ID)] = storageMount
+			pluginStore := getHostStoragePath(p.ID)
+			log.Info(ctx, "Granting read-write filesystem access to plugin storage", "path", pluginStore, "id", p.ID)
+
+			mounts = append(mounts, mount{
+				hostPath:  pluginStore,
+				guestPath: storageMount,
+			})
 		}
 
-		pluginManifest.AllowedPaths = allowedPaths
+		log.Info(ctx, "mounts", "plugin", p.ID, "mounts", mounts)
+
+		fsConfig = buildFSConfig(mounts)
 	}
 
 	// Build host functions based on permissions from manifest
@@ -408,7 +401,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 	}
 
 	// Create instance to detect capabilities
-	instance, err := compiled.Instance(ctx, extism.PluginInstanceConfig{})
+	instance, err := compiled.Instance(ctx, instanceConfig(fsConfig))
 	if err != nil {
 		compiled.Close(ctx)
 		return fmt.Errorf("creating instance: %w", err)
@@ -435,6 +428,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 		allowedUserIDs: allowedUsers,
 		allUsers:       p.AllUsers,
 		libraries:      newLibraryAccess(allowedLibraries, p.AllLibraries),
+		fsConfig:       fsConfig,
 		lyricsSem:      make(chan struct{}, maxConcurrentLyricsCalls),
 	}
 	m.mu.Unlock()
@@ -481,31 +475,18 @@ func parsePluginConfig(configJSON string) (map[string]string, error) {
 	return pluginConfig, nil
 }
 
-// buildAllowedPaths constructs the extism AllowedPaths map for filesystem access.
-// When allowWriteAccess is false (default), paths are prefixed with "ro:" for read-only.
-// Only libraries that match the allowed set (or all libraries if allLibraries is true) are included.
-func buildAllowedPaths(ctx context.Context, libraries model.Libraries, allowedLibraryIDs []int, allLibraries, allowWriteAccess bool) map[string]string {
-	allowedLibrarySet := make(map[int]struct{}, len(allowedLibraryIDs))
-	for _, id := range allowedLibraryIDs {
-		allowedLibrarySet[id] = struct{}{}
+// buildExtismManifest describes the plugin to extism. It must never set
+// AllowedPaths: extism would replace our jailed FSConfig with plain dir mounts.
+func buildExtismManifest(pkg *ndpPackage, pluginConfig map[string]string) extism.Manifest {
+	manifest := extism.Manifest{
+		Wasm:    []extism.Wasm{extism.WasmData{Data: pkg.WasmBytes, Name: "main"}},
+		Config:  pluginConfig,
+		Timeout: uint64(defaultTimeout.Milliseconds()),
 	}
-	allowedPaths := make(map[string]string)
-	for _, lib := range libraries {
-		_, allowed := allowedLibrarySet[lib.ID]
-		if allLibraries || allowed {
-			mountPoint := toPluginMountPoint(int32(lib.ID))
-			hostPath := lib.Path
-			if !allowWriteAccess {
-				hostPath = "ro:" + hostPath
-			}
-			allowedPaths[hostPath] = mountPoint
-			log.Trace(ctx, "Added library to allowed paths", "libraryID", lib.ID, "mountPoint", mountPoint, "writeAccess", allowWriteAccess, "hostPath", hostPath)
+	if pkg.Manifest.Permissions != nil && pkg.Manifest.Permissions.Http != nil {
+		if hosts := pkg.Manifest.Permissions.Http.RequiredHosts; len(hosts) > 0 {
+			manifest.AllowedHosts = hosts
 		}
 	}
-	if allowWriteAccess {
-		log.Info(ctx, "Granting read-write filesystem access to libraries", "libraryCount", len(allowedPaths), "allLibraries", allLibraries)
-	} else {
-		log.Debug(ctx, "Granting read-only filesystem access to libraries", "libraryCount", len(allowedPaths), "allLibraries", allLibraries)
-	}
-	return allowedPaths
+	return manifest
 }
