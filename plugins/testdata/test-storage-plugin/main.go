@@ -1,5 +1,5 @@
 // Test plugin for Storage host function integration tests.
-// Build with: tinygo build -o ../test-subsonicapi-plugin.wasm -target wasip1 -buildmode=c-shared ./main.go
+// Build with: tinygo build -o ../test-storage-plugin.wasm -target wasip1 -buildmode=c-shared ./main.go
 package main
 
 import (
