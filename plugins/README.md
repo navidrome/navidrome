@@ -591,7 +591,7 @@ content, err := os.ReadFile(filepath.Join(storageDir, "cache.json"))
 entries, err := os.ReadDir(storageDir)
 ```
 
-> **Security:** The mount is confined to your plugin's own directory. Paths that would resolve outside it are rejected, and plugins cannot create symlinks inside the mount.
+> **Security:** Plugins cannot create symlinks inside the mount, and `..` or absolute paths are rejected. Symlinks that already exist in the directory are still followed, so anything linked in from elsewhere remains reachable.
 
 > **Note:** There is no size limit, unlike [KVStore](#kvstore). The directory is not deleted when a plugin is uninstalled.
 
@@ -730,7 +730,7 @@ content, err := os.ReadFile("/libraries/1/Artist/Album/track.mp3")
 entries, err := os.ReadDir("/libraries/1/Artist")
 ```
 
-> **Security:** The mount is confined to the library directory. Paths that would resolve outside it are rejected, and plugins cannot create symlinks inside the mount. Access is read-only unless an administrator grants the plugin write access (`navidrome plugin edit <name> --write-access`).
+> **Security:** Plugins cannot create symlinks inside the mount, and `..` or absolute paths are rejected. Symlinks already present in the library are still followed, so folders linked in from elsewhere work as expected. Access is read-only unless an administrator grants the plugin write access (`navidrome plugin edit <name> --write-access`).
 
 **Usage:**
 
@@ -1105,7 +1105,7 @@ See [examples/](examples/) for complete working plugins:
 Plugins run in a secure WebAssembly sandbox provided by [Extism](https://extism.org/) and the [Wazero](https://wazero.io/) runtime:
 
 1. **Host Allowlisting** – Only explicitly allowed hosts are accessible via HTTP/WebSocket
-2. **Limited File System** – Mounts are confined to their own directory: paths resolving outside are rejected and plugins cannot create symlinks. Library access requires the `library.filesystem` permission and is read-only unless an administrator grants write access; the `storage` permission grants a read-write directory private to the plugin
+2. **Limited File System** – Plugins cannot create symlinks inside a mount and `..` or absolute paths are rejected, though symlinks already present are followed. Library access requires the `library.filesystem` permission and is read-only unless an administrator grants write access; the `storage` permission grants a read-write directory private to the plugin
 3. **No Network Listeners** – Plugins cannot bind ports
 4. **Config Isolation** – Plugins only receive their own config section
 5. **Memory Limits** – Controlled by the WebAssembly runtime
