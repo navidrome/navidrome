@@ -3,7 +3,7 @@ import useMediaQuery from '@material-ui/core/useMediaQuery'
 import themes from './index'
 import { AUTO_THEME_ID } from '../consts'
 import config from '../config'
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 
 const useCurrentTheme = () => {
   const prefersLightMode = useMediaQuery('(prefers-color-scheme: light)')
@@ -50,7 +50,15 @@ const useCurrentTheme = () => {
     document.body.style.backgroundColor = bgColor
   }, [theme])
 
-  return theme
+  // We never server-render, so let media queries resolve on the first render: the default
+  // defers them to an effect, which makes every mount paint the wrong breakpoint and reflow.
+  return useMemo(
+    () => ({
+      ...theme,
+      props: { ...theme.props, MuiUseMediaQuery: { noSsr: true } },
+    }),
+    [theme],
+  )
 }
 
 export default useCurrentTheme
