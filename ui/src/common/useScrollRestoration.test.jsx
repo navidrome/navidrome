@@ -26,7 +26,10 @@ describe('useScrollRestoration', () => {
     mockLocation.search = ''
     mockHistory.action = 'PUSH'
   })
-  afterEach(() => vi.clearAllMocks())
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.clearAllMocks()
+  })
 
   const scrollTo = (y) => {
     window.scrollY = y
@@ -34,6 +37,28 @@ describe('useScrollRestoration', () => {
       window.dispatchEvent(new Event('scroll'))
     })
   }
+
+  // Returns to a page whose rows have not arrived, so scrollTo still clamps. The returned setter
+  // grows the page to the height it reaches once they do.
+  const returnToUnfilledPage = (saved) => {
+    vi.useFakeTimers()
+    let maxScroll = saved
+    window.scrollTo = vi.fn(({ top }) => {
+      window.scrollY = Math.min(top, maxScroll)
+    })
+
+    const first = renderHook(() => useScrollRestoration())
+    scrollTo(saved)
+    first.unmount()
+
+    maxScroll = 0
+    window.scrollY = 0
+    mockHistory.action = 'POP'
+    renderHook(() => useScrollRestoration())
+    return (height) => (maxScroll = height)
+  }
+
+  const advanceFrames = () => act(() => vi.advanceTimersByTime(100))
 
   it('starts a pushed route at the top', () => {
     renderHook(() => useScrollRestoration())
@@ -125,73 +150,27 @@ describe('useScrollRestoration', () => {
   // The artist page reports ready as soon as its header record is cached, while the albums below
   // are still loading. A single scrollTo lands on a viewport-tall document and is clamped to 0.
   it('keeps trying until the page is tall enough to hold the offset', () => {
-    vi.useFakeTimers()
-    let maxScroll = 1200
-    window.scrollTo = vi.fn(({ top }) => {
-      window.scrollY = Math.min(top, maxScroll)
-    })
-
-    const first = renderHook(() => useScrollRestoration())
-    scrollTo(800)
-    first.unmount()
-
-    maxScroll = 0 // back on an empty page: nothing to scroll yet
-    window.scrollY = 0
-    mockHistory.action = 'POP'
-    renderHook(() => useScrollRestoration())
+    const fillPageTo = returnToUnfilledPage(800)
     expect(window.scrollY).toBe(0)
 
-    maxScroll = 1200 // the albums arrive
-    act(() => {
-      vi.advanceTimersByTime(100)
-    })
+    fillPageTo(1200)
+    advanceFrames()
     expect(window.scrollY).toBe(800)
-    vi.useRealTimers()
   })
 
-  // Yielding to the user has to key on where the page actually is. Keying on input events instead
-  // breaks the trackpad back-swipe, whose wheel momentum keeps firing through the restore.
   it('stops retrying once the user scrolls somewhere else', () => {
-    vi.useFakeTimers()
-    let maxScroll = 1200
-    window.scrollTo = vi.fn(({ top }) => {
-      window.scrollY = Math.min(top, maxScroll)
-    })
+    const fillPageTo = returnToUnfilledPage(800)
 
-    const first = renderHook(() => useScrollRestoration())
-    scrollTo(800)
-    first.unmount()
-
-    maxScroll = 0
-    window.scrollY = 0
-    mockHistory.action = 'POP'
-    renderHook(() => useScrollRestoration())
-
-    // the user scrolls while we are still waiting for the page to fill in
-    maxScroll = 1200
+    fillPageTo(1200)
     window.scrollY = 300
-    act(() => {
-      vi.advanceTimersByTime(100)
-    })
+    advanceFrames()
     expect(window.scrollY).toBe(300)
-    vi.useRealTimers()
   })
 
+  // A trackpad back-swipe keeps firing wheel momentum through the restore, so treating input as
+  // the yield signal cancels the gesture's own restore.
   it('keeps restoring while wheel momentum fires, as a back-swipe does', () => {
-    vi.useFakeTimers()
-    let maxScroll = 1200
-    window.scrollTo = vi.fn(({ top }) => {
-      window.scrollY = Math.min(top, maxScroll)
-    })
-
-    const first = renderHook(() => useScrollRestoration())
-    scrollTo(800)
-    first.unmount()
-
-    maxScroll = 0
-    window.scrollY = 0
-    mockHistory.action = 'POP'
-    renderHook(() => useScrollRestoration())
+    const fillPageTo = returnToUnfilledPage(800)
 
     act(() => {
       for (let i = 0; i < 10; i++) {
@@ -200,12 +179,9 @@ describe('useScrollRestoration', () => {
         )
       }
     })
-    maxScroll = 1200
-    act(() => {
-      vi.advanceTimersByTime(100)
-    })
+    fillPageTo(1200)
+    advanceFrames()
     expect(window.scrollY).toBe(800)
-    vi.useRealTimers()
   })
 
   // Navigating away unmounts this page, the document collapses to the incoming page's height and

@@ -41,8 +41,7 @@ import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 import { humanize } from 'inflection'
 import { makeStyles } from '@material-ui/core/styles'
 
-// React Admin clones the List's single child with the list props, so this pass-through can wait
-// for rows: restoring into an unrendered list leaves the page too short and the offset is lost.
+// Waits for rows: restoring into an unrendered list leaves the page too short to hold the offset.
 const ScrollRestorer = ({ children, ...rest }) => {
   const { loaded, total } = useListContext()
   useScrollRestoration(loaded && total > 0)

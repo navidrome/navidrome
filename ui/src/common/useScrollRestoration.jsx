@@ -1,8 +1,8 @@
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { useHistory, useLocation } from 'react-router-dom'
 
-// Keyed on the route, not location.key: the app uses hash history, which never assigns one, so
-// every page would otherwise share a slot and overwrite the offset we came back for.
+// Keyed on the route because hash history assigns no location.key, so every page would
+// otherwise share one slot and overwrite the offset we came back for.
 const positions = new Map()
 const MAX_ENTRIES = 50
 const MAX_FRAMES = 60
@@ -17,47 +17,45 @@ export const useScrollRestoration = (ready = true) => {
   useEffect(() => {
     latest.current = window.scrollY
     const track = () => {
-      // A document with nothing to scroll is a page being torn down, not a user scrolling: the
-      // collapse snaps us to the top, and recording that would erase the offset we are leaving.
-      if (document.documentElement.scrollHeight <= window.innerHeight) return
-      latest.current = window.scrollY
+      const y = window.scrollY
+      // Leaving collapses this page's document and snaps us to the top, which is not a scroll
+      // the user asked for and must not replace the offset we are leaving behind.
+      if (
+        y === 0 &&
+        document.documentElement.scrollHeight <= window.innerHeight
+      ) {
+        return
+      }
+      latest.current = y
     }
     window.addEventListener('scroll', track, { passive: true })
-    return () => window.removeEventListener('scroll', track)
-  }, [key])
-
-  // Committed on the way out rather than on every scroll: leaving collapses this page's document
-  // and snaps us to the top, which a live listener would record over the offset we are leaving.
-  useLayoutEffect(
-    () => () => {
+    return () => {
+      window.removeEventListener('scroll', track)
       positions.delete(key)
       positions.set(key, latest.current)
       if (positions.size > MAX_ENTRIES) {
         positions.delete(positions.keys().next().value)
       }
-    },
-    [key],
-  )
+    }
+  }, [key])
 
-  // Layout effect, not passive: a passive one runs after paint, so the restored list would be
-  // painted at the old offset first and visibly jump.
+  // Layout effect: a passive one runs after paint, so the list would be painted at the old
+  // offset first and visibly jump.
   useLayoutEffect(() => {
     if (!ready || handled.current === key) return
     handled.current = key
     const saved = positions.get(key)
     const top = history.action === 'POP' && saved !== undefined ? saved : 0
     window.scrollTo({ top })
-    if (!top) return
+    if (!top || Math.round(window.scrollY) === top) return
 
-    // A page can still be filling in once `ready` turns true, and until it is tall enough the
-    // browser silently clamps us to the top. Keep asking until the offset sticks.
+    // The page can still be filling in, and until it is tall enough the browser clamps us to
+    // the top. Keep asking until the offset sticks, yielding if anything else moves us.
     let frame
     let frames = 0
     let landed = Math.round(window.scrollY)
     const retry = () => {
       const y = Math.round(window.scrollY)
-      // Yielding on where we actually are, not on input events: a trackpad back-swipe keeps
-      // firing wheel momentum through the restore, and that is the gesture asking to come back.
       if (y === top || y !== landed || ++frames > MAX_FRAMES) return
       window.scrollTo({ top })
       landed = Math.round(window.scrollY)

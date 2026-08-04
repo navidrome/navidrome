@@ -6,7 +6,11 @@ import config from '../config'
 import { useEffect, useMemo } from 'react'
 
 const useCurrentTheme = () => {
-  const prefersLightMode = useMediaQuery('(prefers-color-scheme: light)')
+  // Runs above the ThemeProvider carrying the prop below, so it needs its own noSsr or the
+  // auto theme renders dark first and flips.
+  const prefersLightMode = useMediaQuery('(prefers-color-scheme: light)', {
+    noSsr: true,
+  })
   const theme = useSelector((state) => {
     if (state.theme === AUTO_THEME_ID) {
       return prefersLightMode ? themes.LightTheme : themes.DarkTheme
