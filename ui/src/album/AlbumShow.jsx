@@ -10,7 +10,7 @@ import { makeStyles } from '@material-ui/core/styles'
 import AlbumSongs from './AlbumSongs'
 import AlbumDetails from './AlbumDetails'
 import AlbumActions from './AlbumActions'
-import { useResourceRefresh, useScrollToTop, Title } from '../common'
+import { useResourceRefresh, Title } from '../common'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -28,7 +28,6 @@ const AlbumShowLayout = (props) => {
   const { record } = context
   const classes = useStyles()
   useResourceRefresh('album', 'song')
-  useScrollToTop(record?.id)
 
   return (
     <>
