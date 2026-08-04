@@ -1,14 +1,15 @@
 import { useEffect, useRef } from 'react'
 import { useHistory, useLocation } from 'react-router-dom'
 
-// Keyed on the history entry, so back and forward each restore their own offset. Bounded because
-// history entries are not: without a cap this grows for the life of the session.
+// Keyed on the route, not location.key: the app uses hash history, which never assigns one, so
+// every page would otherwise share a slot and overwrite the offset we came back for.
 const positions = new Map()
 const maxEntries = 50
 
 export const useScrollRestoration = (ready = true) => {
-  const { key = 'initial' } = useLocation()
+  const { pathname, search } = useLocation()
   const history = useHistory()
+  const key = pathname + search
   const handled = useRef(null)
 
   useEffect(() => {

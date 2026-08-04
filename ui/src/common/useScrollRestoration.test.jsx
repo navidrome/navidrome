@@ -1,7 +1,7 @@
 import { renderHook, act } from '@testing-library/react-hooks'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-const mockLocation = { key: 'k1' }
+const mockLocation = { pathname: '/album', search: '' }
 const mockHistory = { action: 'PUSH' }
 vi.mock('react-router-dom', () => ({
   useLocation: () => mockLocation,
@@ -14,7 +14,8 @@ describe('useScrollRestoration', () => {
   beforeEach(() => {
     window.scrollTo = vi.fn()
     window.scrollY = 0
-    mockLocation.key = 'k1'
+    mockLocation.pathname = '/album'
+    mockLocation.search = ''
     mockHistory.action = 'PUSH'
   })
   afterEach(() => vi.clearAllMocks())
@@ -36,12 +37,12 @@ describe('useScrollRestoration', () => {
     scrollTo(640)
     first.unmount()
 
-    mockLocation.key = 'k2'
+    mockLocation.pathname = '/album/al-1/show'
     const second = renderHook(() => useScrollRestoration())
     expect(window.scrollTo).toHaveBeenLastCalledWith({ top: 0 })
     second.unmount()
 
-    mockLocation.key = 'k1'
+    mockLocation.pathname = '/album'
     mockHistory.action = 'POP'
     renderHook(() => useScrollRestoration())
     expect(window.scrollTo).toHaveBeenLastCalledWith({ top: 640 })
@@ -60,13 +61,34 @@ describe('useScrollRestoration', () => {
   // Restoring before the rows exist leaves the document too short: the browser clamps to the
   // top and the offset is lost with no error.
   it('waits for readiness before touching the scroll position', () => {
-    const { rerender } = renderHook(({ ready }) => useScrollRestoration(ready), {
-      initialProps: { ready: false },
-    })
+    const { rerender } = renderHook(
+      ({ ready }) => useScrollRestoration(ready),
+      {
+        initialProps: { ready: false },
+      },
+    )
     expect(window.scrollTo).not.toHaveBeenCalled()
 
     rerender({ ready: true })
     expect(window.scrollTo).toHaveBeenCalledWith({ top: 0 })
+  })
+
+  // Hash history assigns no location.key, so an implementation keyed on it would collapse every
+  // route into one slot and the detail page would erase the list's offset before we returned.
+  it('keeps a separate offset per route', () => {
+    const list = renderHook(() => useScrollRestoration())
+    scrollTo(900)
+    list.unmount()
+
+    mockLocation.pathname = '/album/al-1/show'
+    const detail = renderHook(() => useScrollRestoration())
+    scrollTo(0)
+    detail.unmount()
+
+    mockLocation.pathname = '/album'
+    mockHistory.action = 'POP'
+    renderHook(() => useScrollRestoration())
+    expect(window.scrollTo).toHaveBeenLastCalledWith({ top: 900 })
   })
 
   it('scrolls once per entry, not on every re-render', () => {
