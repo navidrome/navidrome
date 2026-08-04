@@ -11,9 +11,17 @@ vi.mock('react-router-dom', () => ({
 import { useScrollRestoration } from './useScrollRestoration'
 
 describe('useScrollRestoration', () => {
+  const setPageHeight = (h) =>
+    Object.defineProperty(document.documentElement, 'scrollHeight', {
+      value: h,
+      configurable: true,
+    })
+
   beforeEach(() => {
     window.scrollTo = vi.fn()
     window.scrollY = 0
+    window.innerHeight = 700
+    setPageHeight(3000)
     mockLocation.pathname = '/album'
     mockLocation.search = ''
     mockHistory.action = 'PUSH'
@@ -112,6 +120,110 @@ describe('useScrollRestoration', () => {
     rerender()
     rerender()
     expect(window.scrollTo).toHaveBeenCalledTimes(1)
+  })
+
+  // The artist page reports ready as soon as its header record is cached, while the albums below
+  // are still loading. A single scrollTo lands on a viewport-tall document and is clamped to 0.
+  it('keeps trying until the page is tall enough to hold the offset', () => {
+    vi.useFakeTimers()
+    let maxScroll = 1200
+    window.scrollTo = vi.fn(({ top }) => {
+      window.scrollY = Math.min(top, maxScroll)
+    })
+
+    const first = renderHook(() => useScrollRestoration())
+    scrollTo(800)
+    first.unmount()
+
+    maxScroll = 0 // back on an empty page: nothing to scroll yet
+    window.scrollY = 0
+    mockHistory.action = 'POP'
+    renderHook(() => useScrollRestoration())
+    expect(window.scrollY).toBe(0)
+
+    maxScroll = 1200 // the albums arrive
+    act(() => {
+      vi.advanceTimersByTime(100)
+    })
+    expect(window.scrollY).toBe(800)
+    vi.useRealTimers()
+  })
+
+  // Yielding to the user has to key on where the page actually is. Keying on input events instead
+  // breaks the trackpad back-swipe, whose wheel momentum keeps firing through the restore.
+  it('stops retrying once the user scrolls somewhere else', () => {
+    vi.useFakeTimers()
+    let maxScroll = 1200
+    window.scrollTo = vi.fn(({ top }) => {
+      window.scrollY = Math.min(top, maxScroll)
+    })
+
+    const first = renderHook(() => useScrollRestoration())
+    scrollTo(800)
+    first.unmount()
+
+    maxScroll = 0
+    window.scrollY = 0
+    mockHistory.action = 'POP'
+    renderHook(() => useScrollRestoration())
+
+    // the user scrolls while we are still waiting for the page to fill in
+    maxScroll = 1200
+    window.scrollY = 300
+    act(() => {
+      vi.advanceTimersByTime(100)
+    })
+    expect(window.scrollY).toBe(300)
+    vi.useRealTimers()
+  })
+
+  it('keeps restoring while wheel momentum fires, as a back-swipe does', () => {
+    vi.useFakeTimers()
+    let maxScroll = 1200
+    window.scrollTo = vi.fn(({ top }) => {
+      window.scrollY = Math.min(top, maxScroll)
+    })
+
+    const first = renderHook(() => useScrollRestoration())
+    scrollTo(800)
+    first.unmount()
+
+    maxScroll = 0
+    window.scrollY = 0
+    mockHistory.action = 'POP'
+    renderHook(() => useScrollRestoration())
+
+    act(() => {
+      for (let i = 0; i < 10; i++) {
+        window.dispatchEvent(
+          new WheelEvent('wheel', { deltaX: -30, deltaY: 0 }),
+        )
+      }
+    })
+    maxScroll = 1200
+    act(() => {
+      vi.advanceTimersByTime(100)
+    })
+    expect(window.scrollY).toBe(800)
+    vi.useRealTimers()
+  })
+
+  // Navigating away unmounts this page, the document collapses to the incoming page's height and
+  // the browser snaps to the top. That clamp is not a user scroll and must not be remembered.
+  it('ignores the scroll caused by leaving the page', () => {
+    const first = renderHook(() => useScrollRestoration())
+    scrollTo(1400)
+
+    // Leaving swaps in a shorter page; the collapse snaps us to the top while this page's
+    // listener is still attached.
+    setPageHeight(window.innerHeight)
+    scrollTo(0)
+    first.unmount()
+
+    mockHistory.action = 'POP'
+    setPageHeight(3000)
+    renderHook(() => useScrollRestoration())
+    expect(window.scrollTo).toHaveBeenLastCalledWith({ top: 1400 })
   })
 
   it('keeps saving after the restore, so leaving again remembers the new offset', () => {
