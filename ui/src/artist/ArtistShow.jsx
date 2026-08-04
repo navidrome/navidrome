@@ -16,7 +16,7 @@ import DesktopArtistDetails from './DesktopArtistDetails'
 import {
   useAlbumsPerPage,
   useResourceRefresh,
-  useScrollToTop,
+  useScrollRestoration,
   Title,
 } from '../common/index.js'
 import ArtistActions from './ArtistActions'
@@ -90,7 +90,7 @@ const ArtistShowLayout = (props) => {
   const [, perPageOptions] = useAlbumsPerPage(width)
   const classes = useStyles()
   useResourceRefresh('artist', 'album')
-  useScrollToTop(record?.id)
+  useScrollRestoration(!!record?.id)
 
   const maxPerPage = 90
   let perPage = 0
