@@ -91,6 +91,22 @@ describe('useScrollRestoration', () => {
     expect(window.scrollTo).toHaveBeenLastCalledWith({ top: 900 })
   })
 
+  // Without the per-instance guard this fires again when readiness flickers, fighting a user who
+  // has already started scrolling. Nothing else in the suite pins it.
+  it('does not scroll again when readiness flickers on the same route', () => {
+    const { rerender } = renderHook(
+      ({ ready }) => useScrollRestoration(ready),
+      {
+        initialProps: { ready: true },
+      },
+    )
+    expect(window.scrollTo).toHaveBeenCalledTimes(1)
+
+    rerender({ ready: false })
+    rerender({ ready: true })
+    expect(window.scrollTo).toHaveBeenCalledTimes(1)
+  })
+
   it('scrolls once per entry, not on every re-render', () => {
     const { rerender } = renderHook(() => useScrollRestoration())
     rerender()

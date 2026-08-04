@@ -1,10 +1,10 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 import { useHistory, useLocation } from 'react-router-dom'
 
 // Keyed on the route, not location.key: the app uses hash history, which never assigns one, so
 // every page would otherwise share a slot and overwrite the offset we came back for.
 const positions = new Map()
-const maxEntries = 50
+const MAX_ENTRIES = 50
 
 export const useScrollRestoration = (ready = true) => {
   const { pathname, search } = useLocation()
@@ -16,7 +16,7 @@ export const useScrollRestoration = (ready = true) => {
     const save = () => {
       positions.delete(key)
       positions.set(key, window.scrollY)
-      if (positions.size > maxEntries) {
+      if (positions.size > MAX_ENTRIES) {
         positions.delete(positions.keys().next().value)
       }
     }
@@ -24,7 +24,9 @@ export const useScrollRestoration = (ready = true) => {
     return () => window.removeEventListener('scroll', save)
   }, [key])
 
-  useEffect(() => {
+  // Layout effect, not passive: a passive one runs after paint, so the restored list would be
+  // painted at the old offset first and visibly jump.
+  useLayoutEffect(() => {
     if (!ready || handled.current === key) return
     handled.current = key
     const saved = positions.get(key)

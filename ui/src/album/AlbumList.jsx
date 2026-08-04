@@ -44,7 +44,8 @@ import { makeStyles } from '@material-ui/core/styles'
 // React Admin clones the List's single child with the list props, so this pass-through can wait
 // for rows: restoring into an unrendered list leaves the page too short and the offset is lost.
 const ScrollRestorer = ({ children, ...rest }) => {
-  useScrollRestoration(rest.loaded && rest.total > 0)
+  const { loaded, total } = useListContext()
+  useScrollRestoration(loaded && total > 0)
   return cloneElement(children, rest)
 }
 
