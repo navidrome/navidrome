@@ -166,6 +166,17 @@ var hostServices = []hostServiceEntry{
 			return host.RegisterTaskHostFunctions(service), service, nil
 		},
 	},
+	{
+		name:          "Storage",
+		hasPermission: func(p *Permissions) bool { return p != nil && p.Storage != nil },
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
+			service, err := newStorageService(ctx.pluginName)
+			if err != nil {
+				return nil, nil, err
+			}
+			return host.RegisterStorageHostFunctions(service), nil, nil
+		},
+	},
 }
 
 // extractManifest reads manifest from an .ndp package and computes its SHA-256 hash.
@@ -271,6 +282,10 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 		return fmt.Errorf("manager is stopped")
 	}
 
+	if !validPluginID(p.ID) {
+		return fmt.Errorf("invalid plugin ID %q", p.ID)
+	}
+
 	// Track this operation
 	m.loadWg.Add(1)
 	defer m.loadWg.Done()
@@ -311,14 +326,29 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 
 	// Configure filesystem access for library permission, applied per instance
 	var fsConfig wazero.FSConfig
-	if pkg.Manifest.HasLibraryFilesystemPermission() {
-		adminCtx := adminContext(ctx)
-		libraries, err := m.ds.Library(adminCtx).GetAll()
-		if err != nil {
-			return fmt.Errorf("failed to get libraries for filesystem access: %w", err)
+	if pkg.Manifest.HasLibraryFilesystemPermission() || pkg.Manifest.HasStoragePermission() {
+		mounts := []mount{}
+
+		if pkg.Manifest.HasLibraryFilesystemPermission() {
+			adminCtx := adminContext(ctx)
+			libraries, err := m.ds.Library(adminCtx).GetAll()
+			if err != nil {
+				return fmt.Errorf("failed to get libraries for filesystem access: %w", err)
+			}
+			mounts = buildMounts(ctx, libraries, allowedLibraries, p.AllLibraries, p.AllowWriteAccess)
 		}
 
-		fsConfig = buildFSConfig(buildMounts(ctx, libraries, allowedLibraries, p.AllLibraries, p.AllowWriteAccess))
+		if pkg.Manifest.HasStoragePermission() {
+			pluginStore := getHostStoragePath(p.ID)
+			log.Info(ctx, "Granting read-write filesystem access to plugin storage", "path", pluginStore, "id", p.ID)
+
+			mounts = append(mounts, mount{
+				hostPath:  pluginStore,
+				guestPath: storageMount,
+			})
+		}
+
+		fsConfig = buildFSConfig(mounts)
 	}
 
 	// Build host functions based on permissions from manifest
