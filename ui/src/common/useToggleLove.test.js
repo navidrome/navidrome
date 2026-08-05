@@ -2,7 +2,7 @@ import { renderHook, act } from '@testing-library/react-hooks'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { useToggleLove } from './useToggleLove'
 import subsonic from '../subsonic'
-import { useDataProvider } from 'react-admin'
+import { useDataProvider, useNotify } from 'react-admin'
 
 vi.mock('../subsonic', () => ({
   default: {
@@ -16,16 +16,21 @@ vi.mock('react-admin', async () => {
   return {
     ...actual,
     useDataProvider: vi.fn(),
-    useNotify: vi.fn(() => vi.fn()),
+    useNotify: vi.fn(),
   }
 })
 
 describe('useToggleLove', () => {
   let getOne
+  let mockNotify
   beforeEach(() => {
+    vi.clearAllMocks()
+    mockNotify = vi.fn()
     getOne = vi.fn(() => Promise.resolve())
     useDataProvider.mockReturnValue({ getOne })
-    vi.clearAllMocks()
+    useNotify.mockReturnValue(mockNotify)
+    subsonic.star.mockResolvedValue()
+    subsonic.unstar.mockResolvedValue()
   })
 
   it('uses mediaFileId when present', async () => {
@@ -35,6 +40,8 @@ describe('useToggleLove', () => {
       await result.current[0]()
     })
     expect(subsonic.star).toHaveBeenCalledWith('sg-1')
+    expect(getOne).toHaveBeenCalledTimes(2)
+    expect(getOne).toHaveBeenCalledWith('song', { id: 'pt-1' })
     expect(getOne).toHaveBeenCalledWith('song', { id: 'sg-1' })
   })
 
@@ -55,6 +62,15 @@ describe('useToggleLove', () => {
       await result.current[0]()
     })
     expect(subsonic.unstar).toHaveBeenCalledWith('sg-1')
+  })
+
+  it('does not call notify on a successful toggle', async () => {
+    const record = { id: 'sg-1', starred: false }
+    const { result } = renderHook(() => useToggleLove('song', record))
+    await act(async () => {
+      await result.current[0]()
+    })
+    expect(mockNotify).not.toHaveBeenCalled()
   })
 
   describe('playlist track scenarios', () => {
@@ -131,6 +147,98 @@ describe('useToggleLove', () => {
 
       // Should refresh without any filter
       expect(getOne).toHaveBeenCalledWith('song', { id: 'sg-1' })
+    })
+  })
+
+  describe('error handling', () => {
+    it('calls notify when star() fails', async () => {
+      subsonic.star.mockRejectedValue(new Error('Network error'))
+      const record = { id: 'sg-1', starred: false }
+      const { result } = renderHook(() => useToggleLove('song', record))
+      await act(async () => {
+        await result.current[0]()
+      })
+      expect(mockNotify).toHaveBeenCalledWith('ra.page.error', 'warning')
+    })
+
+    it('calls notify when unstar() fails', async () => {
+      subsonic.unstar.mockRejectedValue(new Error('Network error'))
+      const record = { id: 'sg-1', starred: true }
+      const { result } = renderHook(() => useToggleLove('song', record))
+      await act(async () => {
+        await result.current[0]()
+      })
+      expect(mockNotify).toHaveBeenCalledWith('ra.page.error', 'warning')
+    })
+
+    it('does not call notify when refresh fails after a successful toggle', async () => {
+      getOne.mockRejectedValue(new Error('refresh failed'))
+      const record = { id: 'sg-1', starred: false }
+      const { result } = renderHook(() => useToggleLove('song', record))
+      await act(async () => {
+        await result.current[0]()
+      })
+      expect(subsonic.star).toHaveBeenCalledWith('sg-1')
+      expect(mockNotify).not.toHaveBeenCalled()
+      expect(result.current[1]).toBe(false)
+    })
+  })
+
+  describe('loading state', () => {
+    it('is true while the API call is pending and false after resolve', async () => {
+      let resolveToggle
+      subsonic.star.mockReturnValue(new Promise((r) => { resolveToggle = r }))
+      const record = { id: 'sg-1', starred: false }
+      const { result } = renderHook(() => useToggleLove('song', record))
+
+      act(() => { result.current[0]() })
+      expect(result.current[1]).toBe(true)
+
+      await act(async () => { resolveToggle() })
+      expect(result.current[1]).toBe(false)
+    })
+
+    it('returns to false even when the API call fails', async () => {
+      subsonic.star.mockRejectedValue(new Error('fail'))
+      const record = { id: 'sg-1', starred: false }
+      const { result } = renderHook(() => useToggleLove('song', record))
+      await act(async () => {
+        await result.current[0]()
+      })
+      expect(result.current[1]).toBe(false)
+    })
+  })
+
+  describe('unmount safety', () => {
+    it('does not warn when the promise resolves after unmount', async () => {
+      let resolveStar
+      subsonic.star.mockReturnValue(
+        new Promise((r) => {
+          resolveStar = r
+        }),
+      )
+      const record = { id: 'sg-1', starred: false }
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      const { result, unmount } = renderHook(() =>
+        useToggleLove('song', record),
+      )
+      act(() => {
+        result.current[0]()
+      })
+      unmount()
+      await act(async () => {
+        resolveStar()
+      })
+
+      const stateUpdateWarnings = errorSpy.mock.calls.filter(
+        ([msg]) =>
+          typeof msg === 'string' &&
+          msg.includes("Can't perform a React state update"),
+      )
+      expect(stateUpdateWarnings).toHaveLength(0)
+
+      errorSpy.mockRestore()
     })
   })
 })

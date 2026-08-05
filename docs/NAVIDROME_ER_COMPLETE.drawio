@@ -1,0 +1,529 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2026-05-14T10:00:00.000Z" agent="Mozilla/5.0" version="24.0.0" type="device">
+  <diagram id="navidrome_complete_er" name="Navidrome Complete ER">
+    <mxGraphModel dx="2000" dy="1400" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2000" pageHeight="1400" background="white" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- USER table -->
+        <mxCell id="user_title" parent="1" vertex="1" value="USER" style="shape=rectangle;filled=1;fillColor=#e1d5e7;strokeColor=#9673a6;rounded=0;fontSize=12;fontStyle=1;spacingLeft=5;spacingTop=5">
+          <mxGeometry x="20" y="20" width="180" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="user_pk_id" parent="1" vertex="1" value="PK  id" style="shape=rectangle;filled=1;fillColor=#fff2cc;strokeColor=#d6b656;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="20" y="45" width="180" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="user_uk_user_name" parent="1" vertex="1" value="UK  user_name" style="shape=rectangle;filled=1;fillColor=#fff2cc;strokeColor=#d6b656;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="20" y="60" width="180" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="user_uk_email" parent="1" vertex="1" value="UK  email" style="shape=rectangle;filled=1;fillColor=#fff2cc;strokeColor=#d6b656;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="20" y="75" width="180" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="user_cols" parent="1" vertex="1" value="name, password, is_admin&#xa;last_login_at, last_access_at&#xa;created_at, updated_at" style="shape=rectangle;filled=1;fillColor=#f5f5f5;strokeColor=#999999;rounded=0;fontSize=8;align=left;spacingLeft=5;whiteSpace=wrap">
+          <mxGeometry x="20" y="90" width="180" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- ARTIST table -->
+        <mxCell id="artist_title" parent="1" vertex="1" value="ARTIST" style="shape=rectangle;filled=1;fillColor=#e1d5e7;strokeColor:#9673a6;rounded=0;fontSize=12;fontStyle=1;spacingLeft=5;spacingTop=5">
+          <mxGeometry x="250" y="20" width="180" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="artist_pk_id" parent="1" vertex="1" value="PK  id" style="shape=rectangle;filled=1;fillColor=#fff2cc;strokeColor=#d6b656;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="250" y="45" width="180" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="artist_cols" parent="1" vertex="1" value="name, album_count, artist_count&#xa;folder_count, full_text" style="shape=rectangle;filled=1;fillColor:#f5f5f5;strokeColor=#999999;rounded=0;fontSize=8;align=left;spacingLeft=5;whiteSpace=wrap">
+          <mxGeometry x="250" y="60" width="180" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- LIBRARY table -->
+        <mxCell id="library_title" parent="1" vertex="1" value="LIBRARY" style="shape=rectangle;filled=1;fillColor:#e1d5e7;strokeColor:#9673a6;rounded=0;fontSize=12;fontStyle=1;spacingLeft=5;spacingTop=5">
+          <mxGeometry x="480" y="20" width="180" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="library_pk_id" parent="1" vertex="1" value="PK  id" style="shape=rectangle;filled=1;fillColor:#fff2cc;strokeColor:#d6b656;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="480" y="45" width="180" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="library_cols" parent="1" vertex="1" value="name, path&#xa;last_scan_started_at&#xa;full_scan_in_progress" style="shape=rectangle;filled=1;fillColor=#f5f5f5;strokeColor=#999999;rounded=0;fontSize=8;align=left;spacingLeft=5;whiteSpace=wrap">
+          <mxGeometry x="480" y="60" width="180" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- ALBUM table -->
+        <mxCell id="album_title" parent="1" vertex="1" value="ALBUM" style="shape=rectangle;filled=1;fillColor:#e1d5e7;strokeColor:#9673a6;rounded=0;fontSize=12;fontStyle=1;spacingLeft=5;spacingTop=5">
+          <mxGeometry x="710" y="20" width="200" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="album_pk_id" parent="1" vertex="1" value="PK  id" style="shape=rectangle;filled=1;fillColor=#fff2cc;strokeColor:#d6b656;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="710" y="45" width="200" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="album_fk_artist" parent="1" vertex="1" value="FK  artist_id → ARTIST" style="shape=rectangle;filled=1;fillColor=#dae8fc;strokeColor:#6c8ebf;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="710" y="60" width="200" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="album_cols" parent="1" vertex="1" value="name, artist, album_artist, year&#xa;compilation, song_count, duration, genre&#xa;cover_art_path, mbid&#xa;created_at, updated_at" style="shape=rectangle;filled=1;fillColor=#f5f5f5;strokeColor:#999999;rounded=0;fontSize=8;align=left;spacingLeft=5;whiteSpace=wrap">
+          <mxGeometry x="710" y="75" width="200" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- MEDIA_FILE table -->
+        <mxCell id="mediafile_title" parent="1" vertex="1" value="MEDIA_FILE" style="shape=rectangle;filled=1;fillColor:#e1d5e7;strokeColor:#9673a6;rounded=0;fontSize=12;fontStyle=1;spacingLeft=5;spacingTop=5">
+          <mxGeometry x="960" y="20" width="220" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="mediafile_pk_id" parent="1" vertex="1" value="PK  id" style="shape=rectangle;filled=1;fillColor:#fff2cc;strokeColor=#d6b656;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="960" y="45" width="220" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="mediafile_fk_album" parent="1" vertex="1" value="FK  album_id → ALBUM" style="shape=rectangle;filled=1;fillColor:#dae8fc;strokeColor:#6c8ebf;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="960" y="60" width="220" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="mediafile_fk_artist" parent="1" vertex="1" value="FK  artist_id → ARTIST  |  FK  library_id → LIBRARY" style="shape=rectangle;filled=1;fillColor=#dae8fc;strokeColor:#6c8ebf;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="960" y="75" width="220" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="mediafile_fk_folder" parent="1" vertex="1" value="FK  folder_id → FOLDER" style="shape=rectangle;filled=1;fillColor:#dae8fc;strokeColor:#6c8ebf;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="960" y="90" width="220" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="mediafile_cols" parent="1" vertex="1" value="path, title, track_number, disc_number&#xa;year, size, suffix, duration, bit_rate&#xa;genre, mbid, created_at, updated_at" style="shape=rectangle;filled=1;fillColor:#f5f5f5;strokeColor=#999999;rounded=0;fontSize=8;align=left;spacingLeft=5;whiteSpace=wrap">
+          <mxGeometry x="960" y="105" width="220" height="45" as="geometry"/>
+        </mxCell>
+
+        <!-- PLAYLIST table -->
+        <mxCell id="playlist_title" parent="1" vertex="1" value="PLAYLIST" style="shape=rectangle;filled=1;fillColor:#e1d5e7;strokeColor:#9673a6;rounded=0;fontSize=12;fontStyle=1;spacingLeft=5;spacingTop=5">
+          <mxGeometry x="20" y="200" width="180" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="playlist_pk_id" parent="1" vertex="1" value="PK  id" style="shape=rectangle;filled=1;fillColor:#fff2cc;strokeColor=#d6b656;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="20" y="225" width="180" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="playlist_fk_owner" parent="1" vertex="1" value="FK  owner → USER" style="shape=rectangle;filled=1;fillColor:#dae8fc;strokeColor=#6c8ebf;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="20" y="240" width="180" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="playlist_fk_user" parent="1" vertex="1" value="FK  user_id → USER" style="shape=rectangle;filled=1;fillColor:#dae8fc;strokeColor:#6c8ebf;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="20" y="255" width="180" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="playlist_cols" parent="1" vertex="1" value="name, comment, duration&#xa;public, playlist_type, rules&#xa;image_file, created_at, updated_at" style="shape=rectangle;filled=1;fillColor=#f5f5f5;strokeColor:#999999;rounded=0;fontSize=8;align=left;spacingLeft=5;whiteSpace=wrap">
+          <mxGeometry x="20" y="270" width="180" height="45" as="geometry"/>
+        </mxCell>
+
+        <!-- PLAYLIST_TRACKS table -->
+        <mxCell id="playlisttracks_title" parent="1" vertex="1" value="PLAYLIST_TRACKS" style="shape=rectangle;filled=1;fillColor:#e1d5e7;strokeColor:#9673a6;rounded=0;fontSize=12;fontStyle=1;spacingLeft=5;spacingTop=5">
+          <mxGeometry x="250" y="200" width="210" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="playlisttracks_pk_id" parent="1" vertex="1" value="PK  id  (composite with playlist_id)" style="shape=rectangle;filled=1;fillColor=#fff2cc;strokeColor=#d6b656;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="250" y="225" width="210" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="playlisttracks_fk_playlist" parent="1" vertex="1" value="FK  playlist_id → PLAYLIST" style="shape=rectangle;filled=1;fillColor=#dae8fc;strokeColor:#6c8ebf;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="250" y="240" width="210" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="playlisttracks_fk_mediafile" parent="1" vertex="1" value="FK  media_file_id → MEDIA_FILE" style="shape=rectangle;filled=1;fillColor:#dae8fc;strokeColor:#6c8ebf;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="250" y="255" width="210" height="15" as="geometry"/>
+        </mxCell>
+
+        <!-- ANNOTATION table -->
+        <mxCell id="annotation_title" parent="1" vertex="1" value="ANNOTATION (Polimórfico)" style="shape=rectangle;filled=1;fillColor=#e1d5e7;strokeColor:#9673a6;rounded=0;fontSize=12;fontStyle=1;spacingLeft=5;spacingTop=5">
+          <mxGeometry x="510" y="200" width="210" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="annotation_fk_user" parent="1" vertex="1" value="FK  user_id → USER" style="shape=rectangle;filled=1;fillColor:#dae8fc;strokeColor:#6c8ebf;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="510" y="225" width="210" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="annotation_cols" parent="1" vertex="1" value="item_id, item_type (album|track|artist|etc)&#xa;play_count, play_date, rating&#xa;starred, starred_at, rating_date" style="shape=rectangle;filled=1;fillColor:#f5f5f5;strokeColor:#999999;rounded=0;fontSize=8;align=left;spacingLeft=5;whiteSpace=wrap">
+          <mxGeometry x="510" y="240" width="210" height="45" as="geometry"/>
+        </mxCell>
+
+        <!-- PLAYER table -->
+        <mxCell id="player_title" parent="1" vertex="1" value="PLAYER" style="shape=rectangle;filled=1;fillColor:#e1d5e7;strokeColor:#9673a6;rounded=0;fontSize=12;fontStyle=1;spacingLeft=5;spacingTop=5">
+          <mxGeometry x="760" y="200" width="190" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="player_pk_id" parent="1" vertex="1" value="PK  id" style="shape=rectangle;filled=1;fillColor:#fff2cc;strokeColor=#d6b656;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="760" y="225" width="190" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="player_fk_user" parent="1" vertex="1" value="FK  user_id → USER" style="shape=rectangle;filled=1;fillColor:#dae8fc;strokeColor:#6c8ebf;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="760" y="240" width="190" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="player_fk_transoding" parent="1" vertex="1" value="FK  transcoding_id → TRANSCODING" style="shape=rectangle;filled=1;fillColor:#dae8fc;strokeColor:#6c8ebf;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="760" y="255" width="190" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="player_cols" parent="1" vertex="1" value="name, type, client, ip_address&#xa;last_seen, max_bit_rate" style="shape=rectangle;filled=1;fillColor=#f5f5f5;strokeColor=#999999;rounded=0;fontSize=8;align=left;spacingLeft=5;whiteSpace=wrap">
+          <mxGeometry x="760" y="270" width="190" height="35" as="geometry"/>
+        </mxCell>
+
+        <!-- PLAYQUEUE table -->
+        <mxCell id="playqueue_title" parent="1" vertex="1" value="PLAYQUEUE" style="shape=rectangle;filled=1;fillColor:#e1d5e7;strokeColor:#9673a6;rounded=0;fontSize=12;fontStyle=1;spacingLeft=5;spacingTop=5">
+          <mxGeometry x="1010" y="200" width="180" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="playqueue_pk_id" parent="1" vertex="1" value="PK  id" style="shape=rectangle;filled=1;fillColor=#fff2cc;strokeColor=#d6b656;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="1010" y="225" width="180" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="playqueue_fk_user" parent="1" vertex="1" value="FK  user_id → USER" style="shape=rectangle;filled=1;fillColor:#dae8fc;strokeColor:#6c8ebf;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="1010" y="240" width="180" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="playqueue_cols" parent="1" vertex="1" value="comment, current, position&#xa;changed_by, items, current_index&#xa;created_at, updated_at" style="shape=rectangle;filled=1;fillColor=#f5f5f5;strokeColor:#999999;rounded=0;fontSize=8;align=left;spacingLeft=5;whiteSpace=wrap">
+          <mxGeometry x="1010" y="255" width="180" height="45" as="geometry"/>
+        </mxCell>
+
+        <!-- FOLDER table -->
+        <mxCell id="folder_title" parent="1" vertex="1" value="FOLDER" style="shape=rectangle;filled=1;fillColor:#e1d5e7;strokeColor:#9673a6;rounded=0;fontSize=12;fontStyle=1;spacingLeft=5;spacingTop=5">
+          <mxGeometry x="20" y="380" width="180" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="folder_pk_id" parent="1" vertex="1" value="PK  id" style="shape=rectangle;filled=1;fillColor:#fff2cc;strokeColor:#d6b656;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="20" y="405" width="180" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="folder_fk_library" parent="1" vertex="1" value="FK  library_id → LIBRARY" style="shape=rectangle;filled=1;fillColor=#dae8fc;strokeColor:#6c8ebf;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="20" y="420" width="180" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="folder_cols" parent="1" vertex="1" value="path, name, missing&#xa;parent_id, num_audio_files&#xa;num_playlists, image_files&#xa;created_at, updated_at" style="shape=rectangle;filled=1;fillColor=#f5f5f5;strokeColor:#999999;rounded=0;fontSize=8;align=left;spacingLeft=5;whiteSpace=wrap">
+          <mxGeometry x="20" y="435" width="180" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- BOOKMARK table -->
+        <mxCell id="bookmark_title" parent="1" vertex="1" value="BOOKMARK" style="shape=rectangle;filled=1;fillColor:#e1d5e7;strokeColor:#9673a6;rounded=0;fontSize=12;fontStyle=1;spacingLeft=5;spacingTop=5">
+          <mxGeometry x="250" y="380" width="180" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="bookmark_fk_user" parent="1" vertex="1" value="FK  user_id → USER" style="shape=rectangle;filled=1;fillColor:#dae8fc;strokeColor:#6c8ebf;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="250" y="405" width="180" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="bookmark_cols" parent="1" vertex="1" value="item_id, item_type&#xa;comment, position, changed_by&#xa;created_at, updated_at" style="shape=rectangle;filled=1;fillColor:#f5f5f5;strokeColor:#999999;rounded=0;fontSize=8;align=left;spacingLeft=5;whiteSpace=wrap">
+          <mxGeometry x="250" y="420" width="180" height="45" as="geometry"/>
+        </mxCell>
+
+        <!-- TRANSCODING table -->
+        <mxCell id="transcoding_title" parent="1" vertex="1" value="TRANSCODING" style="shape=rectangle;filled=1;fillColor:#e1d5e7;strokeColor:#9673a6;rounded=0;fontSize=12;fontStyle=1;spacingLeft=5;spacingTop=5">
+          <mxGeometry x="480" y="380" width="180" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="transcoding_pk_id" parent="1" vertex="1" value="PK  id  (UK: target_format)" style="shape=rectangle;filled=1;fillColor=#fff2cc;strokeColor=#d6b656;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="480" y="405" width="180" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="transcoding_cols" parent="1" vertex="1" value="name (UK), target_format (UK)&#xa;command, default_bit_rate" style="shape=rectangle;filled=1;fillColor=#f5f5f5;strokeColor:#999999;rounded=0;fontSize=8;align=left;spacingLeft=5;whiteSpace=wrap">
+          <mxGeometry x="480" y="420" width="180" height="35" as="geometry"/>
+        </mxCell>
+
+        <!-- SHARE table -->
+        <mxCell id="share_title" parent="1" vertex="1" value="SHARE" style="shape=rectangle;filled=1;fillColor:#e1d5e7;strokeColor:#9673a6;rounded=0;fontSize=12;fontStyle=1;spacingLeft=5;spacingTop=5">
+          <mxGeometry x="710" y="380" width="200" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="share_pk_id" parent="1" vertex="1" value="PK  id" style="shape=rectangle;filled=1;fillColor:#fff2cc;strokeColor:#d6b656;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="710" y="405" width="200" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="share_fk_user" parent="1" vertex="1" value="FK  user_id → USER" style="shape=rectangle;filled=1;fillColor:#dae8fc;strokeColor:#6c8ebf;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="710" y="420" width="200" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="share_cols" parent="1" vertex="1" value="name (UK), description, expires&#xa;created, last_visited, resource_ids&#xa;resource_type, visit_count&#xa;download, comments" style="shape=rectangle;filled=1;fillColor=#f5f5f5;strokeColor:#999999;rounded=0;fontSize=8;align=left;spacingLeft=5;whiteSpace=wrap">
+          <mxGeometry x="710" y="435" width="200" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- SCROBBLE_BUFFER table -->
+        <mxCell id="scrobble_title" parent="1" vertex="1" value="SCROBBLE_BUFFER" style="shape=rectangle;filled=1;fillColor:#e1d5e7;strokeColor:#9673a6;rounded=0;fontSize=12;fontStyle=1;spacingLeft=5;spacingTop=5">
+          <mxGeometry x="960" y="380" width="220" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="scrobble_pk_id" parent="1" vertex="1" value="PK  id" style="shape=rectangle;filled=1;fillColor=#fff2cc;strokeColor:#d6b656;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="960" y="405" width="220" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="scrobble_fk" parent="1" vertex="1" value="FK  user_id → USER  |  FK  media_file_id → MEDIA_FILE" style="shape=rectangle;filled=1;fillColor:#dae8fc;strokeColor:#6c8ebf;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="960" y="420" width="220" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="scrobble_cols" parent="1" vertex="1" value="artist_name, album_name, track_name&#xa;play_time" style="shape=rectangle;filled=1;fillColor=#f5f5f5;strokeColor:#999999;rounded=0;fontSize=8;align=left;spacingLeft=5;whiteSpace=wrap">
+          <mxGeometry x="960" y="435" width="220" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- USER_PROPS table -->
+        <mxCell id="userprops_title" parent="1" vertex="1" value="USER_PROPS" style="shape=rectangle;filled=1;fillColor:#e1d5e7;strokeColor:#9673a6;rounded=0;fontSize=12;fontStyle=1;spacingLeft=5;spacingTop=5">
+          <mxGeometry x="20" y="550" width="180" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="userprops_fk_user" parent="1" vertex="1" value="FK  user_id → USER" style="shape=rectangle;filled=1;fillColor:#dae8fc;strokeColor:#6c8ebf;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="20" y="575" width="180" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="userprops_cols" parent="1" vertex="1" value="property_name, property_value" style="shape=rectangle;filled=1;fillColor=#f5f5f5;strokeColor=#999999;rounded=0;fontSize=8;align=left;spacingLeft=5">
+          <mxGeometry x="20" y="590" width="180" height="15" as="geometry"/>
+        </mxCell>
+
+        <!-- TAG table -->
+        <mxCell id="tag_title" parent="1" vertex="1" value="TAG" style="shape=rectangle;filled=1;fillColor:#e1d5e7;strokeColor:#9673a6;rounded=0;fontSize=12;fontStyle=1;spacingLeft=5;spacingTop=5">
+          <mxGeometry x="250" y="550" width="150" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="tag_pk_id" parent="1" vertex="1" value="PK  id" style="shape=rectangle;filled=1;fillColor=#fff2cc;strokeColor:#d6b656;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="250" y="575" width="150" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="tag_cols" parent="1" vertex="1" value="tag_name, tag_value (UK)&#xa;album_count, media_file_count" style="shape=rectangle;filled=1;fillColor:#f5f5f5;strokeColor=#999999;rounded=0;fontSize=8;align=left;spacingLeft=5;whiteSpace=wrap">
+          <mxGeometry x="250" y="590" width="150" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- GENRE table -->
+        <mxCell id="genre_title" parent="1" vertex="1" value="GENRE" style="shape=rectangle;filled=1;fillColor:#e1d5e7;strokeColor:#9673a6;rounded=0;fontSize=12;fontStyle=1;spacingLeft=5;spacingTop=5">
+          <mxGeometry x="460" y="550" width="140" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="genre_pk_id" parent="1" vertex="1" value="PK  id" style="shape=rectangle;filled=1;fillColor:#fff2cc;strokeColor:#d6b656;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="460" y="575" width="140" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="genre_cols" parent="1" vertex="1" value="name" style="shape=rectangle;filled=1;fillColor=#f5f5f5;strokeColor:#999999;rounded=0;fontSize=8;align=left;spacingLeft=5">
+          <mxGeometry x="460" y="590" width="140" height="15" as="geometry"/>
+        </mxCell>
+
+        <!-- RADIO table -->
+        <mxCell id="radio_title" parent="1" vertex="1" value="RADIO" style="shape=rectangle;filled=1;fillColor=#e1d5e7;strokeColor:#9673a6;rounded=0;fontSize=12;fontStyle=1;spacingLeft=5;spacingTop=5">
+          <mxGeometry x="660" y="550" width="180" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="radio_pk_id" parent="1" vertex="1" value="PK  id" style="shape=rectangle;filled=1;fillColor=#fff2cc;strokeColor:#d6b656;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="660" y="575" width="180" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="radio_cols" parent="1" vertex="1" value="name, stream_url, homepage_url" style="shape=rectangle;filled=1;fillColor=#f5f5f5;strokeColor:#999999;rounded=0;fontSize=8;align=left;spacingLeft=5;whiteSpace=wrap">
+          <mxGeometry x="660" y="590" width="180" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- MANY-TO-MANY JUNCTION TABLES -->
+        <!-- ALBUM_GENRES -->
+        <mxCell id="albumgenres_title" parent="1" vertex="1" value="ALBUM_GENRES" style="shape=rectangle;filled=1;fillColor:#f0e6ff;strokeColor:#9673a6;rounded=0;fontSize=11;fontStyle=1;spacingLeft=5;spacingTop=3">
+          <mxGeometry x="710" y="550" width="180" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="albumgenres_fk" parent="1" vertex="1" value="FK album_id, genre_id" style="shape=rectangle;filled=1;fillColor:#dae8fc;strokeColor=#6c8ebf;rounded=0;fontSize=8;align=left;spacingLeft=5">
+          <mxGeometry x="710" y="570" width="180" height="15" as="geometry"/>
+        </mxCell>
+
+        <!-- MEDIA_FILE_GENRES -->
+        <mxCell id="mediafilegenres_title" parent="1" vertex="1" value="MEDIA_FILE_GENRES" style="shape=rectangle;filled=1;fillColor:#f0e6ff;strokeColor:#9673a6;rounded=0;fontSize=11;fontStyle=1;spacingLeft=5;spacingTop=3">
+          <mxGeometry x="910" y="550" width="210" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="mediafilegenres_fk" parent="1" vertex="1" value="FK media_file_id, genre_id" style="shape=rectangle;filled=1;fillColor:#dae8fc;strokeColor=#6c8ebf;rounded=0;fontSize=8;align=left;spacingLeft=5">
+          <mxGeometry x="910" y="570" width="210" height="15" as="geometry"/>
+        </mxCell>
+
+        <!-- ARTIST_GENRES -->
+        <mxCell id="artistgenres_title" parent="1" vertex="1" value="ARTIST_GENRES" style="shape=rectangle;filled=1;fillColor:#f0e6ff;strokeColor:#9673a6;rounded=0;fontSize=11;fontStyle=1;spacingLeft=5;spacingTop=3">
+          <mxGeometry x="1160" y="550" width="190" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="artistgenres_fk" parent="1" vertex="1" value="FK artist_id, genre_id" style="shape=rectangle;filled=1;fillColor:#dae8fc;strokeColor:#6c8ebf;rounded=0;fontSize=8;align=left;spacingLeft=5">
+          <mxGeometry x="1160" y="570" width="190" height="15" as="geometry"/>
+        </mxCell>
+
+        <!-- ALBUM_ARTISTS -->
+        <mxCell id="albumartists_title" parent="1" vertex="1" value="ALBUM_ARTISTS" style="shape=rectangle;filled=1;fillColor:#f0e6ff;strokeColor:#9673a6;rounded=0;fontSize=11;fontStyle=1;spacingLeft=5;spacingTop=3">
+          <mxGeometry x="20" y="680" width="190" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="albumartists_fk" parent="1" vertex="1" value="FK album_id, artist_id, role, sub_role" style="shape=rectangle;filled=1;fillColor:#dae8fc;strokeColor=#6c8ebf;rounded=0;fontSize=8;align=left;spacingLeft=5;whiteSpace=wrap">
+          <mxGeometry x="20" y="700" width="190" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- MEDIA_FILE_ARTISTS -->
+        <mxCell id="mediafileartists_title" parent="1" vertex="1" value="MEDIA_FILE_ARTISTS" style="shape=rectangle;filled=1;fillColor:#f0e6ff;strokeColor:#9673a6;rounded=0;fontSize=11;fontStyle=1;spacingLeft=5;spacingTop=3">
+          <mxGeometry x="240" y="680" width="220" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="mediafileartists_fk" parent="1" vertex="1" value="FK media_file_id, artist_id, role, sub_role" style="shape=rectangle;filled=1;fillColor:#dae8fc;strokeColor=#6c8ebf;rounded=0;fontSize=8;align=left;spacingLeft=5;whiteSpace=wrap">
+          <mxGeometry x="240" y="700" width="220" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- LIBRARY_ARTIST -->
+        <mxCell id="libraryartist_title" parent="1" vertex="1" value="LIBRARY_ARTIST" style="shape=rectangle;filled=1;fillColor:#f0e6ff;strokeColor:#9673a6;rounded=0;fontSize=11;fontStyle=1;spacingLeft=5;spacingTop=3">
+          <mxGeometry x="510" y="680" width="200" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="libraryartist_fk" parent="1" vertex="1" value="FK library_id, artist_id" style="shape=rectangle;filled=1;fillColor:#dae8fc;strokeColor:#6c8ebf;rounded=0;fontSize=8;align=left;spacingLeft=5">
+          <mxGeometry x="510" y="700" width="200" height="15" as="geometry"/>
+        </mxCell>
+
+        <!-- LIBRARY_TAG -->
+        <mxCell id="librarytag_title" parent="1" vertex="1" value="LIBRARY_TAG" style="shape=rectangle;filled=1;fillColor:#f0e6ff;strokeColor:#9673a6;rounded=0;fontSize=11;fontStyle=1;spacingLeft=5;spacingTop=3">
+          <mxGeometry x="760" y="680" width="190" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="librarytag_fk" parent="1" vertex="1" value="FK library_id, tag_id" style="shape=rectangle;filled=1;fillColor:#dae8fc;strokeColor:#6c8ebf;rounded=0;fontSize=8;align=left;spacingLeft=5">
+          <mxGeometry x="760" y="700" width="190" height="15" as="geometry"/>
+        </mxCell>
+
+        <!-- USER_LIBRARY -->
+        <mxCell id="userlibrary_title" parent="1" vertex="1" value="USER_LIBRARY" style="shape=rectangle;filled=1;fillColor:#f0e6ff;strokeColor:#9673a6;rounded=0;fontSize=11;fontStyle=1;spacingLeft=5;spacingTop=3">
+          <mxGeometry x="1010" y="680" width="180" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="userlibrary_fk" parent="1" vertex="1" value="FK user_id, library_id" style="shape=rectangle;filled=1;fillColor=#dae8fc;strokeColor:#6c8ebf;rounded=0;fontSize=8;align=left;spacingLeft=5">
+          <mxGeometry x="1010" y="700" width="180" height="15" as="geometry"/>
+        </mxCell>
+
+        <!-- LEGEND -->
+        <mxCell id="legend_box" parent="1" vertex="1" value="" style="shape=rectangle;filled=0;strokeColor=#999999;rounded=0;fontSize=10;dashed=1">
+          <mxGeometry x="20" y="770" width="1170" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend_title" parent="1" vertex="1" value="LEYENDA" style="shape=rectangle;filled=0;strokeColor=none;rounded=0;fontSize=11;fontStyle=1;align=left">
+          <mxGeometry x="30" y="775" width="80" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend_pk" parent="1" vertex="1" value="PK = Primary Key (amarillo)" style="shape=rectangle;filled=1;fillColor=#fff2cc;strokeColor=#d6b656;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="30" y="795" width="200" height="18" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend_fk" parent="1" vertex="1" value="FK = Foreign Key (azul)" style="shape=rectangle;filled=1;fillColor=#dae8fc;strokeColor=#6c8ebf;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="260" y="795" width="200" height="18" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend_uk" parent="1" vertex="1" value="UK = Unique Key (amarillo turbio)" style="shape=rectangle;filled=0;strokeColor=#999999;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="490" y="795" width="220" height="18" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend_entity" parent="1" vertex="1" value="Entidad (púrpura/gris)" style="shape=rectangle;filled=1;fillColor=#f0e6ff;strokeColor=#9673a6;rounded=0;fontSize=9;align=left;spacingLeft=5">
+          <mxGeometry x="760" y="795" width="180" height="18" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend_note" parent="1" vertex="1" value="• Foreign Keys con ON DELETE CASCADE (integridad referencial)&#xa;• ANNOTATION es polimórfico (item_id + item_type soportan múltiples entidades)&#xa;• SQLite con FTS5 para búsquedas full-text. Migraciones con Goose.&#xa;• 30+ tablas representadas. Uniones M:N con color más claro." style="shape=rectangle;filled=0;strokeColor=none;rounded=0;fontSize=8;align=left;spacingLeft=5;whiteSpace=wrap">
+          <mxGeometry x="30" y="825" width="1160" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- RELACIONES 1:N -->
+        <!-- USER -> PLAYLIST (owner) -->
+        <mxCell id="rel_user_playlist_owner" parent="1" edge="1" source="user_title" target="playlist_title" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=ERoneToMany;startArrow=ERone;strokeColor=#9673a6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- USER -> PLAYLIST (user_id) -->
+        <mxCell id="rel_user_playlist_userid" parent="1" edge="1" source="user_title" target="playlist_title" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=ERoneToMany;startArrow=ERone;strokeColor=#9673a6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ARTIST -> ALBUM -->
+        <mxCell id="rel_artist_album" parent="1" edge="1" source="artist_title" target="album_title" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;endArrow=ERoneToMany;startArrow=ERone;strokeColor=#9673a6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ARTIST -> MEDIA_FILE -->
+        <mxCell id="rel_artist_mediafile" parent="1" edge="1" source="artist_title" target="mediafile_title" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;endArrow=ERoneToMany;startArrow=ERone;strokeColor=#9673a6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ALBUM -> MEDIA_FILE -->
+        <mxCell id="rel_album_mediafile" parent="1" edge="1" source="album_title" target="mediafile_title" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;endArrow=ERoneToMany;startArrow=ERone;strokeColor=#9673a6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- LIBRARY -> MEDIA_FILE -->
+        <mxCell id="rel_library_mediafile" parent="1" edge="1" source="library_title" target="mediafile_title" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=ERoneToMany;startArrow=ERone;strokeColor=#9673a6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- LIBRARY -> FOLDER -->
+        <mxCell id="rel_library_folder" parent="1" edge="1" source="library_title" target="folder_title" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;endArrow=ERoneToMany;startArrow=ERone;strokeColor=#9673a6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- FOLDER -> MEDIA_FILE -->
+        <mxCell id="rel_folder_mediafile" parent="1" edge="1" source="folder_title" target="mediafile_title" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=ERoneToMany;startArrow=ERone;strokeColor=#9673a6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- PLAYLIST -> PLAYLIST_TRACKS -->
+        <mxCell id="rel_playlist_tracks" parent="1" edge="1" source="playlist_title" target="playlisttracks_title" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;endArrow=ERoneToMany;startArrow=ERone;strokeColor=#9673a6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- MEDIA_FILE -> PLAYLIST_TRACKS -->
+        <mxCell id="rel_mediafile_tracks" parent="1" edge="1" source="mediafile_title" target="playlisttracks_title" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;endArrow=ERoneToMany;startArrow=ERone;strokeColor=#9673a6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- USER -> ANNOTATION -->
+        <mxCell id="rel_user_annotation" parent="1" edge="1" source="user_title" target="annotation_title" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=ERoneToMany;startArrow=ERone;strokeColor=#9673a6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- USER -> PLAYER -->
+        <mxCell id="rel_user_player" parent="1" edge="1" source="user_title" target="player_title" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;endArrow=ERoneToMany;startArrow=ERone;strokeColor=#9673a6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- TRANSCODING -> PLAYER -->
+        <mxCell id="rel_transcoding_player" parent="1" edge="1" source="transcoding_title" target="player_title" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=ERoneToMany;startArrow=ERone;strokeColor=#9673a6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- USER -> PLAYQUEUE -->
+        <mxCell id="rel_user_playqueue" parent="1" edge="1" source="user_title" target="playqueue_title" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;endArrow=ERoneToMany;startArrow=ERone;strokeColor=#9673a6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- USER -> BOOKMARK -->
+        <mxCell id="rel_user_bookmark" parent="1" edge="1" source="user_title" target="bookmark_title" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=ERoneToMany;startArrow=ERone;strokeColor=#9673a6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- USER -> SHARE -->
+        <mxCell id="rel_user_share" parent="1" edge="1" source="user_title" target="share_title" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=ERoneToMany;startArrow=ERone;strokeColor=#9673a6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- USER -> SCROBBLE_BUFFER -->
+        <mxCell id="rel_user_scrobble" parent="1" edge="1" source="user_title" target="scrobble_title" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=ERoneToMany;startArrow=ERone;strokeColor=#9673a6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- USER -> USER_PROPS -->
+        <mxCell id="rel_user_userprops" parent="1" edge="1" source="user_title" target="userprops_title" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=ERoneToMany;startArrow=ERone;strokeColor=#9673a6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- MEDIA_FILE -> SCROBBLE_BUFFER -->
+        <mxCell id="rel_mediafile_scrobble" parent="1" edge="1" source="mediafile_title" target="scrobble_title" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=ERoneToMany;startArrow=ERone;strokeColor=#9673a6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- GENRE -> ALBUM_GENRES -->
+        <mxCell id="rel_genre_albumgenres" parent="1" edge="1" source="genre_title" target="albumgenres_title" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;endArrow=ERoneToMany;startArrow=ERone;strokeColor=#999999;dashed=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ALBUM -> ALBUM_GENRES -->
+        <mxCell id="rel_album_albumgenres" parent="1" edge="1" source="album_title" target="albumgenres_title" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;endArrow=ERoneToMany;startArrow=ERone;strokeColor=#999999;dashed=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- GENRE -> MEDIA_FILE_GENRES -->
+        <mxCell id="rel_genre_mediafilegenres" parent="1" edge="1" source="genre_title" target="mediafilegenres_title" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;endArrow=ERoneToMany;startArrow=ERone;strokeColor=#999999;dashed=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- MEDIA_FILE -> MEDIA_FILE_GENRES -->
+        <mxCell id="rel_mediafile_mediafilegenres" parent="1" edge="1" source="mediafile_title" target="mediafilegenres_title" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;endArrow=ERoneToMany;startArrow=ERone;strokeColor=#999999;dashed=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- GENRE -> ARTIST_GENRES -->
+        <mxCell id="rel_genre_artistgenres" parent="1" edge="1" source="genre_title" target="artistgenres_title" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;endArrow=ERoneToMany;startArrow=ERone;strokeColor=#999999;dashed=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ARTIST -> ARTIST_GENRES -->
+        <mxCell id="rel_artist_artistgenres" parent="1" edge="1" source="artist_title" target="artistgenres_title" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;endArrow=ERoneToMany;startArrow=ERone;strokeColor=#999999;dashed=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ALBUM -> ALBUM_ARTISTS -->
+        <mxCell id="rel_album_albumartists" parent="1" edge="1" source="album_title" target="albumartists_title" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;endArrow=ERoneToMany;startArrow=ERone;strokeColor=#999999;dashed=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ARTIST -> ALBUM_ARTISTS -->
+        <mxCell id="rel_artist_albumartists" parent="1" edge="1" source="artist_title" target="albumartists_title" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;endArrow=ERoneToMany;startArrow=ERone;strokeColor=#999999;dashed=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- MEDIA_FILE -> MEDIA_FILE_ARTISTS -->
+        <mxCell id="rel_mediafile_mediafileartists" parent="1" edge="1" source="mediafile_title" target="mediafileartists_title" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;endArrow=ERoneToMany;startArrow=ERone;strokeColor=#999999;dashed=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ARTIST -> MEDIA_FILE_ARTISTS -->
+        <mxCell id="rel_artist_mediafileartists" parent="1" edge="1" source="artist_title" target="mediafileartists_title" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;endArrow=ERoneToMany;startArrow=ERone;strokeColor=#999999;dashed=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- LIBRARY -> LIBRARY_ARTIST -->
+        <mxCell id="rel_library_libraryartist" parent="1" edge="1" source="library_title" target="libraryartist_title" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;endArrow=ERoneToMany;startArrow=ERone;strokeColor=#999999;dashed=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ARTIST -> LIBRARY_ARTIST -->
+        <mxCell id="rel_artist_libraryartist" parent="1" edge="1" source="artist_title" target="libraryartist_title" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;endArrow=ERoneToMany;startArrow=ERone;strokeColor=#999999;dashed=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- LIBRARY -> LIBRARY_TAG -->
+        <mxCell id="rel_library_librarytag" parent="1" edge="1" source="library_title" target="librarytag_title" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;endArrow=ERoneToMany;startArrow=ERone;strokeColor=#999999;dashed=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- TAG -> LIBRARY_TAG -->
+        <mxCell id="rel_tag_librarytag" parent="1" edge="1" source="tag_title" target="librarytag_title" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;endArrow=ERoneToMany;startArrow=ERone;strokeColor=#999999;dashed=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- USER -> USER_LIBRARY -->
+        <mxCell id="rel_user_userlibrary" parent="1" edge="1" source="user_title" target="userlibrary_title" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;endArrow=ERoneToMany;startArrow=ERone;strokeColor=#999999;dashed=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- LIBRARY -> USER_LIBRARY -->
+        <mxCell id="rel_library_userlibrary" parent="1" edge="1" source="library_title" target="userlibrary_title" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;endArrow=ERoneToMany;startArrow=ERone;strokeColor=#999999;dashed=1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
