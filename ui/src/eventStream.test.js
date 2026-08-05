@@ -1,6 +1,6 @@
 import { describe, it, beforeEach, vi, expect } from 'vitest'
 import { startEventStream } from './eventStream'
-import { serverDown } from './actions'
+import { processEvent, serverDown } from './actions'
 import config from './config'
 
 class MockEventSource {
@@ -47,5 +47,25 @@ describe('startEventStream', () => {
     expect(dispatch).toHaveBeenCalledWith(serverDown())
     vi.advanceTimersByTime(5000)
     expect(global.EventSource).toHaveBeenCalledTimes(2)
+  })
+
+  it('dispatches radio now-playing events', async () => {
+    await startEventStream(dispatch)
+    instance.listeners.radioNowPlaying({
+      type: 'radioNowPlaying',
+      data: JSON.stringify({
+        radioId: 'rd-1',
+        title: 'Artist - Title',
+        updatedAt: '2026-06-30T12:34:56Z',
+      }),
+    })
+
+    expect(dispatch).toHaveBeenCalledWith(
+      processEvent('radioNowPlaying', {
+        radioId: 'rd-1',
+        title: 'Artist - Title',
+        updatedAt: '2026-06-30T12:34:56Z',
+      }),
+    )
   })
 })

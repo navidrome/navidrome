@@ -7,15 +7,22 @@ import (
 	"strings"
 	"time"
 	"unicode"
+
+	coreradio "github.com/navidrome/navidrome/core/radio"
 )
 
 type eventCtxKey string
 
 const broadcastToAllKey eventCtxKey = "broadcastToAll"
+const sendToSameUserKey eventCtxKey = "sendToSameUser"
 
 // broadcastToAll is a context key that can be used to broadcast an event to all clients
 func broadcastToAll(ctx context.Context) context.Context {
 	return context.WithValue(ctx, broadcastToAllKey, true)
+}
+
+func sendToSameUser(ctx context.Context) context.Context {
+	return context.WithValue(ctx, sendToSameUserKey, true)
 }
 
 type Event interface {
@@ -66,6 +73,26 @@ type RefreshResource struct {
 type NowPlayingCount struct {
 	baseEvent
 	Count int `json:"count"`
+}
+
+type RadioNowPlaying struct {
+	baseEvent
+	RadioID   string    `json:"radioId"`
+	Title     string    `json:"title"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+func NewRadioMetadataPublisher(broker Broker) coreradio.TitlePublisher {
+	return func(ctx context.Context, update coreradio.TitleUpdate) {
+		if broker == nil {
+			return
+		}
+		broker.SendMessage(sendToSameUser(ctx), &RadioNowPlaying{
+			RadioID:   update.RadioID,
+			Title:     update.Title,
+			UpdatedAt: update.UpdatedAt,
+		})
+	}
 }
 
 func (rr *RefreshResource) With(resource string, ids ...string) *RefreshResource {

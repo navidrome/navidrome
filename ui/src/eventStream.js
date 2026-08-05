@@ -1,6 +1,11 @@
 import { baseUrl } from './utils'
 import throttle from 'lodash.throttle'
-import { processEvent, serverDown, streamReconnected } from './actions'
+import {
+  EVENT_RADIO_NOW_PLAYING,
+  processEvent,
+  serverDown,
+  streamReconnected,
+} from './actions'
 import { REST_URL } from './consts'
 import config from './config'
 
@@ -20,6 +25,7 @@ const setupHandlers = (stream, dispatchFn) => {
   stream.addEventListener('serverStart', eventHandler(dispatchFn))
   stream.addEventListener('scanStatus', throttledEventHandler(dispatchFn))
   stream.addEventListener('refreshResource', eventHandler(dispatchFn))
+  stream.addEventListener(EVENT_RADIO_NOW_PLAYING, eventHandler(dispatchFn))
   if (config.enableNowPlaying) {
     stream.addEventListener('nowPlayingCount', eventHandler(dispatchFn))
   }
@@ -76,6 +82,10 @@ const startEventStreamLegacy = async (dispatchFn) => {
         throttledEventHandler(dispatchFn),
       )
       newStream.addEventListener('refreshResource', eventHandler(dispatchFn))
+      newStream.addEventListener(
+        EVENT_RADIO_NOW_PLAYING,
+        eventHandler(dispatchFn),
+      )
       if (config.enableNowPlaying) {
         newStream.addEventListener('nowPlayingCount', eventHandler(dispatchFn))
       }

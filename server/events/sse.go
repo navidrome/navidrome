@@ -197,6 +197,15 @@ func (b *broker) shouldSend(msg message, c client) bool {
 	if broadcastToAll, ok := msg.senderCtx.Value(broadcastToAllKey).(bool); ok && broadcastToAll {
 		return true
 	}
+	if sendToSameUser, ok := msg.senderCtx.Value(sendToSameUserKey).(bool); ok && sendToSameUser {
+		if username, ok := request.UsernameFrom(msg.senderCtx); ok {
+			return username == c.username
+		}
+		if user, ok := request.UserFrom(msg.senderCtx); ok {
+			return user.UserName == c.username
+		}
+		return true
+	}
 	clientUniqueId, originatedFromClient := request.ClientUniqueIdFrom(msg.senderCtx)
 	if !originatedFromClient {
 		return true

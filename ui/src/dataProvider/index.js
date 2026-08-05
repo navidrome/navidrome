@@ -1,6 +1,10 @@
-import httpClient, { clientUniqueId, clientUniqueIdHeader } from './httpClient'
+import httpClient, {
+  clientUniqueId,
+  clientUniqueIdHeader,
+  httpVoid,
+} from './httpClient'
 import wrapperDataProvider from './wrapperDataProvider'
 
-export { httpClient, clientUniqueId, clientUniqueIdHeader }
+export { httpClient, httpVoid, clientUniqueId, clientUniqueIdHeader }
 
 export default wrapperDataProvider
