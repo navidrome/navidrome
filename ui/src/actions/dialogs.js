@@ -29,9 +29,10 @@ export const closeShareMenu = () => ({
   type: SHARE_MENU_CLOSE,
 })
 
-export const openAddToPlaylist = ({ selectedIds, onSuccess }) => ({
+export const openAddToPlaylist = ({ selectedIds, albumIds, onSuccess }) => ({
   type: ADD_TO_PLAYLIST_OPEN,
   selectedIds,
+  albumIds,
   onSuccess,
 })
 
