@@ -1,4 +1,6 @@
 import { renderHook, act } from '@testing-library/react-hooks'
+import { render } from '@testing-library/react'
+import { useLayoutEffect } from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 const mockLocation = { pathname: '/album', search: '' }
@@ -11,17 +13,9 @@ vi.mock('react-router-dom', () => ({
 import { useScrollRestoration } from './useScrollRestoration'
 
 describe('useScrollRestoration', () => {
-  const setPageHeight = (h) =>
-    Object.defineProperty(document.documentElement, 'scrollHeight', {
-      value: h,
-      configurable: true,
-    })
-
   beforeEach(() => {
     window.scrollTo = vi.fn()
     window.scrollY = 0
-    window.innerHeight = 700
-    setPageHeight(3000)
     mockLocation.pathname = '/album'
     mockLocation.search = ''
     mockHistory.action = 'PUSH'
@@ -184,20 +178,29 @@ describe('useScrollRestoration', () => {
     expect(window.scrollY).toBe(800)
   })
 
-  // Navigating away unmounts this page, the document collapses to the incoming page's height and
-  // the browser snaps to the top. That clamp is not a user scroll and must not be remembered.
-  it('ignores the scroll caused by leaving the page', () => {
-    const first = renderHook(() => useScrollRestoration())
+  // The incoming page tops itself in its own layout effect, while this page's scroll listener is
+  // still attached. Banking the offset any later than the teardown records that 0 instead.
+  it('records the offset before the next page scrolls to the top', () => {
+    const Outgoing = () => {
+      useScrollRestoration()
+      return null
+    }
+    const Incoming = () => {
+      useLayoutEffect(() => {
+        window.scrollY = 0
+        window.dispatchEvent(new Event('scroll'))
+      }, [])
+      return null
+    }
+
+    const { rerender } = render(<Outgoing />)
     scrollTo(1400)
 
-    // Leaving swaps in a shorter page; the collapse snaps us to the top while this page's
-    // listener is still attached.
-    setPageHeight(window.innerHeight)
-    scrollTo(0)
-    first.unmount()
+    mockLocation.pathname = '/album/al-1/show'
+    rerender(<Incoming />)
 
+    mockLocation.pathname = '/album'
     mockHistory.action = 'POP'
-    setPageHeight(3000)
     renderHook(() => useScrollRestoration())
     expect(window.scrollTo).toHaveBeenLastCalledWith({ top: 1400 })
   })

@@ -17,27 +17,24 @@ export const useScrollRestoration = (ready = true) => {
   useEffect(() => {
     latest.current = window.scrollY
     const track = () => {
-      const y = window.scrollY
-      // Leaving collapses this page's document and snaps us to the top, which is not a scroll
-      // the user asked for and must not replace the offset we are leaving behind.
-      if (
-        y === 0 &&
-        document.documentElement.scrollHeight <= window.innerHeight
-      ) {
-        return
-      }
-      latest.current = y
+      latest.current = window.scrollY
     }
     window.addEventListener('scroll', track, { passive: true })
-    return () => {
-      window.removeEventListener('scroll', track)
+    return () => window.removeEventListener('scroll', track)
+  }, [key])
+
+  // Layout cleanup, so the offset is banked while this page is torn down. A passive one runs
+  // after the incoming page tops itself, and this page's listener records that 0 first.
+  useLayoutEffect(
+    () => () => {
       positions.delete(key)
       positions.set(key, latest.current)
       if (positions.size > MAX_ENTRIES) {
         positions.delete(positions.keys().next().value)
       }
-    }
-  }, [key])
+    },
+    [key],
+  )
 
   // Layout effect: a passive one runs after paint, so the list would be painted at the old
   // offset first and visibly jump.
