@@ -77,6 +77,10 @@ func (s *SQLStore) User(ctx context.Context) model.UserRepository {
 	return NewUserRepository(ctx, s.getDBXBuilder())
 }
 
+func (s *SQLStore) AppPassword(ctx context.Context) model.AppPasswordRepository {
+	return NewAppPasswordRepository(ctx, s.getDBXBuilder())
+}
+
 func (s *SQLStore) Transcoding(ctx context.Context) model.TranscodingRepository {
 	return NewTranscodingRepository(ctx, s.getDBXBuilder())
 }
