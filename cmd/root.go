@@ -2,10 +2,8 @@ package cmd
 
 import (
 	"context"
-	"os"
 	"os/signal"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
@@ -103,12 +101,7 @@ func runNavidrome(ctx context.Context) {
 
 // mainContext returns a context that is cancelled when the process receives a signal to exit.
 func mainContext(ctx context.Context) (context.Context, context.CancelFunc) {
-	return signal.NotifyContext(ctx,
-		os.Interrupt,
-		syscall.SIGHUP,
-		syscall.SIGTERM,
-		syscall.SIGABRT,
-	)
+	return signal.NotifyContext(ctx, shutdownSignals...)
 }
 
 // startServer starts the Navidrome web server, adding all the necessary routers.
