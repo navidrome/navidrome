@@ -47,7 +47,8 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 		Entry("in range", criteria.InTheRange{"year": []int{1980, 1990}}, "(media_file.year >= ? AND media_file.year <= ?)", 1980, 1990),
 		Entry("before", criteria.Before{"lastPlayed": time.Date(2021, 10, 1, 0, 0, 0, 0, time.Local)}, "annotation.play_date < ?", time.Date(2021, 10, 1, 0, 0, 0, 0, time.Local)),
 		Entry("after", criteria.After{"lastPlayed": time.Date(2021, 10, 1, 0, 0, 0, 0, time.Local)}, "annotation.play_date > ?", time.Date(2021, 10, 1, 0, 0, 0, 0, time.Local)),
-		Entry("in playlist", criteria.InPlaylist{"id": "deadbeef-dead-beef"}, "media_file.id IN (SELECT media_file_id FROM playlist_tracks pl LEFT JOIN playlist on pl.playlist_id = playlist.id WHERE (pl.playlist_id = ? AND playlist.public = ?))", "deadbeef-dead-beef", 1),
+		Entry("in playlist [path]", criteria.InPlaylist{"path": "lacuslacus.nsp"}, "media_file.id IN (SELECT media_file_id FROM playlist_tracks pl LEFT JOIN playlist on pl.playlist_id = playlist.id WHERE (playlist.path = ? AND playlist.public = ?))", "lacuslacus.nsp", 1),
+		Entry("in playlist [id]", criteria.InPlaylist{"id": "deadbeef-dead-beef"}, "media_file.id IN (SELECT media_file_id FROM playlist_tracks pl LEFT JOIN playlist on pl.playlist_id = playlist.id WHERE (pl.playlist_id = ? AND playlist.public = ?))", "deadbeef-dead-beef", 1),
 		Entry("not in playlist", criteria.NotInPlaylist{"id": "deadbeef-dead-beef"}, "media_file.id NOT IN (SELECT media_file_id FROM playlist_tracks pl LEFT JOIN playlist on pl.playlist_id = playlist.id WHERE (pl.playlist_id = ? AND playlist.public = ?))", "deadbeef-dead-beef", 1),
 		Entry("album annotation", criteria.Gt{"albumRating": 3}, "album_annotation.rating > ?", 3),
 		Entry("artist annotation", criteria.Is{"artistLoved": true}, "artist_annotation.starred = ?", true),
@@ -261,6 +262,13 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 	It("returns an error when isMissing has a non-boolean value", func() {
 		_, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: criteria.IsMissing{"genre": "hello"}}).Where()
 		Expect(err).To(MatchError(ContainSubstring("invalid boolean value for 'missing' expression")))
+	})
+
+	It("returns an error when inPlaylist has empty path", func() {
+		_, err := newSmartPlaylistCriteria(
+			criteria.Criteria{Expression: criteria.InPlaylist{"path": ""}},
+			withSmartPlaylistOwner(model.User{ID: "owner-id", IsAdmin: false})).Where()
+		Expect(err).To(MatchError(ContainSubstring("playlist id or path not given")))
 	})
 
 	It("returns an error for a range over a tag/role field", func() {
