@@ -342,6 +342,9 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 		albumRepo := tx.Album(p.ctx)
 		mfRepo := tx.MediaFile(p.ctx)
 
+		prevFolder, _ := folderRepo.Get(entry.id)
+		imagesChanged := folderImagesChanged(prevFolder, entry)
+
 		// Save folder to DB
 		folder := entry.toFolder()
 		err := folderRepo.Put(folder)
@@ -415,6 +418,13 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 				return err
 			}
 		}
+
+		// #5469: bump ImportedAt when sidecar images change so cover URLs invalidate.
+		if imagesChanged {
+			if err := p.touchAlbumsForFolderImages(mfRepo, albumRepo, entry); err != nil {
+				return err
+			}
+		}
 		return nil
 	}, "scanner: persist changes")
 	if err != nil {
@@ -429,6 +439,34 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 	}
 
 	return entry, err
+}
+
+func folderImagesChanged(prev *model.Folder, entry *folderEntry) bool {
+	if prev == nil {
+		return len(entry.imageFiles) > 0
+	}
+	newFiles := slices.Collect(maps.Keys(entry.imageFiles))
+	slices.Sort(newFiles)
+	prevFiles := slices.Clone(prev.ImageFiles)
+	slices.Sort(prevFiles)
+	return !slices.Equal(prevFiles, newFiles) || !prev.ImagesUpdatedAt.Equal(entry.imagesUpdatedAt)
+}
+
+func (p *phaseFolders) touchAlbumsForFolderImages(
+	mfRepo model.MediaFileRepository,
+	albumRepo model.AlbumRepository,
+	entry *folderEntry,
+) error {
+	mfs, err := mfRepo.GetAll(model.QueryOptions{
+		Filters: squirrel.And{
+			squirrel.Eq{"folder_id": entry.id},
+			squirrel.Eq{"missing": false},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	return albumRepo.Touch(slice.Unique(slice.Map(mfs, func(mf model.MediaFile) string { return mf.AlbumID }))...)
 }
 
 // persistAlbum persists the given album to the database, and reassigns annotations from the previous album ID

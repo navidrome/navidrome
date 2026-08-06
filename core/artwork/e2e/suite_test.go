@@ -98,6 +98,14 @@ func scan() {
 	Expect(err).ToNot(HaveOccurred())
 }
 
+func scanQuick() {
+	GinkgoHelper()
+	s := scanner.New(ctx, ds, artwork.NoopCacheWarmer(), events.NoopBroker(),
+		playlists.NewPlaylists(ds, core.NewImageUploadService()), metrics.NewNoopInstance())
+	_, err := s.ScanAll(ctx, false)
+	Expect(err).ToNot(HaveOccurred())
+}
+
 func firstAlbum() model.Album {
 	GinkgoHelper()
 	albums, err := ds.Album(ctx).GetAll(model.QueryOptions{})
