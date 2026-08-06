@@ -13,7 +13,12 @@ import subsonic from '../subsonic'
 import AlbumGridView from '../album/AlbumGridView'
 import MobileArtistDetails from './MobileArtistDetails'
 import DesktopArtistDetails from './DesktopArtistDetails'
-import { useAlbumsPerPage, useResourceRefresh, Title } from '../common/index.js'
+import {
+  useAlbumsPerPage,
+  useResourceRefresh,
+  useScrollRestoration,
+  Title,
+} from '../common/index.js'
 import ArtistActions from './ArtistActions'
 import { makeStyles } from '@material-ui/core'
 
@@ -85,6 +90,7 @@ const ArtistShowLayout = (props) => {
   const [, perPageOptions] = useAlbumsPerPage(width)
   const classes = useStyles()
   useResourceRefresh('artist', 'album')
+  useScrollRestoration(!!record?.id)
 
   const maxPerPage = 90
   let perPage = 0

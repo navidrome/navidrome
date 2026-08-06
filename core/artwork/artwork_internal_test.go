@@ -202,6 +202,7 @@ var _ = Describe("Artwork", func() {
 				repoRoot, err := os.Getwd()
 				Expect(err).ToNot(HaveOccurred())
 				folderRepo.result = []model.Folder{{
+					ID:          "f1",
 					LibraryPath: testFileLibPath(repoRoot),
 					Path:        "tests/fixtures/artist/an-album",
 					ImageFiles:  []string{"artist.png"},

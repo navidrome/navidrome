@@ -40,3 +40,4 @@ openspec/
 .agents
 go.work*
 .worktrees/
+.playwright-mcp/

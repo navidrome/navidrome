@@ -32,3 +32,7 @@ func SetLogFatal(f func(...any)) func() {
 	logFatal = f
 	return func() { logFatal = old }
 }
+
+var UnknownConfigKeys = unknownConfigKeys
+
+var SuggestOptions = suggestOptions

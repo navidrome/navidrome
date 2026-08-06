@@ -68,7 +68,7 @@ func (pub *Router) handleImages(w http.ResponseWriter, r *http.Request) {
 }
 
 func decodeArtworkID(tokenString string) (model.ArtworkID, error) {
-	token, err := auth.TokenAuth.Decode(tokenString)
+	token, err := auth.PublicTokenAuth.Decode(tokenString)
 	if err != nil {
 		return model.ArtworkID{}, err
 	}
