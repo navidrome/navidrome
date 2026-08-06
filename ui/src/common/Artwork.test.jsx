@@ -140,8 +140,13 @@ describe('Artwork', () => {
         fireEvent.transitionEnd(img)
       })
       expect(container.querySelector('canvas')).not.toBeNull()
+      // Two frames pass before the fade starts, so opacity 0 gets painted first.
       act(() => {
-        vi.advanceTimersByTime(500)
+        vi.advanceTimersByTime(32)
+      })
+      expect(container.querySelector('canvas')).not.toBeNull()
+      act(() => {
+        vi.advanceTimersByTime(150)
       })
       expect(container.querySelector('canvas')).toBeNull()
     } finally {

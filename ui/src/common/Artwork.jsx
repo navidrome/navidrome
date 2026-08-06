@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import PropTypes from 'prop-types'
 import clsx from 'clsx'
 import { makeStyles } from '@material-ui/core/styles'
@@ -8,7 +8,7 @@ import { useImageUrl } from './useImageUrl'
 import { ThumbHashCanvas } from './ThumbHashCanvas'
 
 // Drives both the CSS transition and the timer that retires the placeholder, so they cannot drift.
-const fadeMs = 500
+const fadeMs = 150
 
 const useStyles = makeStyles({
   // className supplies the size and shape; overflow:hidden clips the fills to it.
@@ -51,10 +51,20 @@ export const Artwork = ({
 
   const [decoded, setDecoded] = useState(false)
   const [faded, setFaded] = useState(false)
+  const frame = useRef(0)
   useEffect(() => {
     setDecoded(false)
     setFaded(false)
+    return () => cancelAnimationFrame(frame.current)
   }, [url])
+
+  // Two frames: a blob decodes from memory, so onLoad can beat the first paint of opacity 0,
+  // leaving the transition no start value and popping some tiles in while others fade.
+  const handleLoad = () => {
+    frame.current = requestAnimationFrame(() => {
+      frame.current = requestAnimationFrame(() => setDecoded(true))
+    })
+  }
 
   // Timer, not transitionend: under prefers-reduced-motion there is no transition to end.
   useEffect(() => {
@@ -99,8 +109,7 @@ export const Artwork = ({
             decoded && classes.imgVisible,
           )}
           style={{ objectFit: effectiveFit }}
-          // Fading on decode, not on mount, keeps the image from ramping up before it can paint.
-          onLoad={() => setDecoded(true)}
+          onLoad={handleLoad}
         />
       )}
     </div>
