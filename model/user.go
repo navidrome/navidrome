@@ -18,6 +18,13 @@ type User struct {
 	// Library associations (many-to-many relationship)
 	Libraries Libraries `structs:"-" json:"libraries,omitempty"`
 
+	// FeaturePermissions holds this user's admin-gated fork feature access,
+	// keyed by the feature constants in user_feature_permission.go. Populated
+	// alongside Libraries when the user is loaded for a request (see
+	// userRepository.selectUserWithLibraries) - a feature absent from this map
+	// should be treated as enabled (opt-out model), not blocked.
+	FeaturePermissions map[string]bool `structs:"-" json:"featurePermissions,omitempty"`
+
 	// This is only available on the backend, and it is never sent over the wire
 	Password string `structs:"-" json:"-"`
 	// This is used to set or change a password when calling Put. If it is empty, the password is not changed.
@@ -59,4 +66,10 @@ type UserRepository interface {
 	// Library association methods
 	GetUserLibraries(userID string) (Libraries, error)
 	SetUserLibraries(userID string, libraryIDs []int) error
+
+	// Feature permission methods. GetUserFeaturePermissions always returns an
+	// entry for every key in AllUserFeatures, defaulting to true when no
+	// explicit row exists for that user/feature pair.
+	GetUserFeaturePermissions(userID string) (map[string]bool, error)
+	SetUserFeaturePermissions(userID string, permissions map[string]bool) error
 }

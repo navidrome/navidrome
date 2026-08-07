@@ -83,4 +83,62 @@ var _ = Describe("User Service", func() {
 			Expect(pluginManager.unloadCalls).To(Equal(0))
 		})
 	})
+
+	Describe("Feature Permissions", func() {
+		var nonAdminUser, adminUser *model.User
+
+		BeforeEach(func() {
+			nonAdminUser = &model.User{ID: "regular-user", UserName: "regular", IsAdmin: false}
+			nonAdminUser.NewPassword = "password"
+			Expect(userRepo.Put(nonAdminUser)).To(Succeed())
+
+			adminUser = &model.User{ID: "admin-user", UserName: "theadmin", IsAdmin: true}
+			adminUser.NewPassword = "password"
+			Expect(userRepo.Put(adminUser)).To(Succeed())
+		})
+
+		Describe("GetUserFeaturePermissions", func() {
+			It("returns an error for a non-existent user", func() {
+				_, err := service.GetUserFeaturePermissions(ctx, "does-not-exist")
+				Expect(err).To(Equal(model.ErrNotFound))
+			})
+
+			It("returns every known feature defaulting to enabled", func() {
+				permissions, err := service.GetUserFeaturePermissions(ctx, nonAdminUser.ID)
+				Expect(err).ToNot(HaveOccurred())
+				for _, f := range model.AllUserFeatures {
+					Expect(permissions[f]).To(BeTrue())
+				}
+			})
+		})
+
+		Describe("SetUserFeaturePermissions", func() {
+			It("returns an error for a non-existent user", func() {
+				_, err := service.SetUserFeaturePermissions(ctx, "does-not-exist", map[string]bool{})
+				Expect(err).To(Equal(model.ErrNotFound))
+			})
+
+			It("rejects restricting an admin user", func() {
+				_, err := service.SetUserFeaturePermissions(ctx, adminUser.ID, map[string]bool{model.FeatureFolders: false})
+				Expect(err).To(HaveOccurred())
+				Expect(errors.Is(err, model.ErrValidation)).To(BeTrue())
+			})
+
+			It("rejects an unknown feature key", func() {
+				_, err := service.SetUserFeaturePermissions(ctx, nonAdminUser.ID, map[string]bool{"not-a-real-feature": false})
+				Expect(err).To(HaveOccurred())
+				Expect(errors.Is(err, model.ErrValidation)).To(BeTrue())
+			})
+
+			It("persists a valid override for a non-admin user", func() {
+				result, err := service.SetUserFeaturePermissions(ctx, nonAdminUser.ID, map[string]bool{model.FeatureFolders: false})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result[model.FeatureFolders]).To(BeFalse())
+
+				permissions, err := service.GetUserFeaturePermissions(ctx, nonAdminUser.ID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(permissions[model.FeatureFolders]).To(BeFalse())
+			})
+		})
+	})
 })

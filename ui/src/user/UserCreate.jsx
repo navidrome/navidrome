@@ -16,6 +16,7 @@ import {
 import { Typography } from '@material-ui/core'
 import { Title } from '../common'
 import { LibrarySelectionField } from './LibrarySelectionField.jsx'
+import { FeaturePermissionsField } from './FeaturePermissionsField.jsx'
 
 const UserCreate = (props) => {
   const translate = useTranslate()
@@ -89,6 +90,27 @@ const UserCreate = (props) => {
                   style={{ marginTop: 16, marginBottom: 16 }}
                 >
                   {translate('resources.user.message.adminAutoLibraries')}
+                </Typography>
+              )}
+            </>
+          )}
+        </FormDataConsumer>
+
+        {/* Conditional Feature Permissions */}
+        <FormDataConsumer>
+          {({ formData }) => (
+            <>
+              {!formData.isAdmin && <FeaturePermissionsField />}
+
+              {formData.isAdmin && (
+                <Typography
+                  variant="body2"
+                  color="textSecondary"
+                  style={{ marginTop: 16, marginBottom: 16 }}
+                >
+                  {translate(
+                    'resources.user.message.adminAutoFeaturePermissions',
+                  )}
                 </Typography>
               )}
             </>

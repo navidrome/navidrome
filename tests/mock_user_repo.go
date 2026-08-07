@@ -11,16 +11,18 @@ import (
 
 func CreateMockUserRepo() *MockedUserRepo {
 	return &MockedUserRepo{
-		Data:          map[string]*model.User{},
-		UserLibraries: map[string][]int{},
+		Data:             map[string]*model.User{},
+		UserLibraries:    map[string][]int{},
+		UserFeaturePerms: map[string]map[string]bool{},
 	}
 }
 
 type MockedUserRepo struct {
 	model.UserRepository
-	Error         error
-	Data          map[string]*model.User
-	UserLibraries map[string][]int // userID -> libraryIDs
+	Error            error
+	Data             map[string]*model.User
+	UserLibraries    map[string][]int           // userID -> libraryIDs
+	UserFeaturePerms map[string]map[string]bool // userID -> feature -> enabled
 }
 
 func (u *MockedUserRepo) CountAll(qo ...model.QueryOptions) (int64, error) {
@@ -143,6 +145,33 @@ func (u *MockedUserRepo) SetUserLibraries(userID string, libraryIDs []int) error
 		u.UserLibraries = make(map[string][]int)
 	}
 	u.UserLibraries[userID] = libraryIDs
+	return nil
+}
+
+// Feature permission methods - mock implementations
+
+func (u *MockedUserRepo) GetUserFeaturePermissions(userID string) (map[string]bool, error) {
+	if u.Error != nil {
+		return nil, u.Error
+	}
+	res := make(map[string]bool, len(model.AllUserFeatures))
+	for _, f := range model.AllUserFeatures {
+		res[f] = true
+	}
+	for feature, enabled := range u.UserFeaturePerms[userID] {
+		res[feature] = enabled
+	}
+	return res, nil
+}
+
+func (u *MockedUserRepo) SetUserFeaturePermissions(userID string, permissions map[string]bool) error {
+	if u.Error != nil {
+		return u.Error
+	}
+	if u.UserFeaturePerms == nil {
+		u.UserFeaturePerms = make(map[string]map[string]bool)
+	}
+	u.UserFeaturePerms[userID] = permissions
 	return nil
 }
 

@@ -108,10 +108,26 @@ const handleUserLibraryAssociation = async (userId, libraryIds) => {
   }
 }
 
+// Helper function to handle admin-gated fork feature permissions (folders/ai_tags/my_tags -
+// see model/user_feature_permission.go). Unlike libraries, an empty/all-true map is still a
+// meaningful value to send (it's how an admin re-enables a previously revoked feature), so this
+// doesn't early-return on an empty object the way handleUserLibraryAssociation does on an empty array.
+const handleUserFeaturePermissions = async (userId, featurePermissions) => {
+  try {
+    await httpClient(`${REST_URL}/user/${userId}/featurePermissions`, {
+      method: 'PUT',
+      body: JSON.stringify({ permissions: featurePermissions }),
+    })
+  } catch (error) {
+    console.error('Error setting user feature permissions:', error) //eslint-disable-line no-console
+    throw error
+  }
+}
+
 // Enhanced user creation that handles library associations
 const createUser = async (params) => {
   const { data } = params
-  const { libraryIds, ...userData } = data
+  const { libraryIds, featurePermissions, ...userData } = data
 
   // First create the user
   const userResponse = await dataProvider.create('user', { data: userData })
@@ -122,13 +138,18 @@ const createUser = async (params) => {
     await handleUserLibraryAssociation(userId, libraryIds)
   }
 
+  // And feature permissions - same admin-only, non-admin-target restriction as libraries
+  if (!userData.isAdmin && featurePermissions !== undefined) {
+    await handleUserFeaturePermissions(userId, featurePermissions)
+  }
+
   return userResponse
 }
 
 // Enhanced user update that handles library associations
 const updateUser = async (params) => {
   const { data } = params
-  const { libraryIds, ...userData } = data
+  const { libraryIds, featurePermissions, ...userData } = data
   const userId = params.id
 
   // First update the user
@@ -141,6 +162,12 @@ const updateUser = async (params) => {
   // this endpoint; for self-edits the server manages library assignments
   if (isAdmin() && !userData.isAdmin && libraryIds !== undefined) {
     await handleUserLibraryAssociation(userId, libraryIds)
+  }
+
+  // And feature permissions - the server itself also rejects this for admin
+  // targets (they bypass every gate), this just avoids the round-trip
+  if (isAdmin() && !userData.isAdmin && featurePermissions !== undefined) {
+    await handleUserFeaturePermissions(userId, featurePermissions)
   }
 
   return userResponse

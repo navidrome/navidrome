@@ -16,6 +16,7 @@ import PlaylistsSubMenu from './PlaylistsSubMenu'
 import LibrarySelector from '../common/LibrarySelector'
 import config from '../config'
 import { TAG_DASHBOARDS } from '../tagDashboard/tagDashboards'
+import { getFeaturePermissions } from '../authProvider'
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -57,7 +58,9 @@ const Menu = ({ dense = false }) => {
   const queue = useSelector((state) => state.player?.queue)
   const classes = useStyles({ addPadding: queue.length > 0 })
   const resources = useSelector(getResources)
-  const showFolderView = useSelector(
+  // Personal show/hide toggles - always read unconditionally (React Hooks can't be called
+  // conditionally). Admin-gated fork feature access is combined in afterward, below.
+  const personalShowFolderView = useSelector(
     (state) => state.settings.showFolderView !== false,
   )
   const showPodcasts = useSelector(
@@ -66,15 +69,28 @@ const Menu = ({ dense = false }) => {
   const showGenreView = useSelector(
     (state) => state.settings.showGenreView !== false,
   )
-  const showAiGenreView = useSelector(
+  const personalShowAiGenreView = useSelector(
     (state) => state.settings.showAiGenreView !== false,
   )
-  const showAiMoodView = useSelector(
+  const personalShowAiMoodView = useSelector(
     (state) => state.settings.showAiMoodView !== false,
   )
-  const showMyTagsView = useSelector(
+  const personalShowMyTagsView = useSelector(
     (state) => state.settings.showMyTagsView !== false,
   )
+
+  // Admin-gated fork feature access (folders/ai_tags/my_tags) - a feature key absent from the
+  // stored grant means enabled, matching the backend's opt-out default. Genre and Podcasts have no
+  // admin gate yet (see model/user_feature_permission.go), so only their personal toggle applies.
+  const featurePermissions = getFeaturePermissions()
+  const showFolderView =
+    featurePermissions.folders !== false && personalShowFolderView
+  const showAiGenreView =
+    featurePermissions.ai_tags !== false && personalShowAiGenreView
+  const showAiMoodView =
+    featurePermissions.ai_tags !== false && personalShowAiMoodView
+  const showMyTagsView =
+    featurePermissions.my_tags !== false && personalShowMyTagsView
 
   // TODO State is not persisted in mobile when you close the sidebar menu. Move to redux?
   const [state, setState] = useState({

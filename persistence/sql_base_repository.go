@@ -262,6 +262,22 @@ func (r sqlRepository) applyLibraryFilter(sq SelectBuilder, tableName ...string)
 		"SELECT ul.library_id FROM user_library ul WHERE ul.user_id = ?)", user.ID))
 }
 
+// hasFeaturePermission reports whether the current logged-in user is allowed to use the given
+// admin-gated fork feature (see model.AllUserFeatures). Admins and headless processes always pass.
+// Reads loggedUser(ctx).FeaturePermissions, populated once per request alongside Libraries
+// (userRepository.selectUserWithLibraries) - no extra query per call. A feature missing from that
+// map is treated as enabled, matching the opt-out default applied when it's populated.
+func (r sqlRepository) hasFeaturePermission(feature string) bool {
+	user := loggedUser(r.ctx)
+	if user.IsAdmin || user.ID == invalidUserId {
+		return true
+	}
+	if enabled, ok := user.FeaturePermissions[feature]; ok {
+		return enabled
+	}
+	return true
+}
+
 // userSeesAllLibraries reports whether the visible set already covers every library, so a
 // library filter would exclude nothing.
 func (r sqlRepository) userSeesAllLibraries(visible []int) bool {

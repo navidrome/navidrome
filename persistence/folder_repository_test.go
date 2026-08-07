@@ -389,4 +389,58 @@ var _ = Describe("FolderRepository", func() {
 			Expect(ids).To(ConsistOf(withPls.ID)) // only the non-missing folder with playlists
 		})
 	})
+
+	Describe("Feature permission gating", func() {
+		var gatedCtx context.Context
+		var gatedRepo model.FolderRepository
+		var folder *model.Folder
+
+		BeforeEach(func() {
+			folder = model.NewFolder(testLib, "TestFeatureGating/Folder")
+			Expect(repo.Put(folder)).To(Succeed())
+
+			gatedCtx = request.WithUser(log.NewContext(context.TODO()), model.User{
+				ID:                 "gated-userid",
+				FeaturePermissions: map[string]bool{model.FeatureFolders: false},
+			})
+			gatedRepo = newFolderRepository(gatedCtx, conn)
+		})
+
+		It("Get returns ErrNotFound when the folders feature is disabled for this user", func() {
+			_, err := gatedRepo.Get(folder.ID)
+			Expect(err).To(Equal(model.ErrNotFound))
+		})
+
+		It("GetAll returns an empty list when the folders feature is disabled for this user", func() {
+			// No filter, deliberately - the gate must return empty regardless of what would
+			// otherwise match, not just for this specific folder.
+			results, err := gatedRepo.GetAll()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(BeEmpty())
+		})
+
+		It("CountAll returns zero when the folders feature is disabled for this user", func() {
+			count, err := gatedRepo.CountAll()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(count).To(Equal(int64(0)))
+		})
+
+		It("admins bypass the gate even when explicitly marked disabled", func() {
+			adminCtx := request.WithUser(log.NewContext(context.TODO()), model.User{
+				ID:                 "gated-admin",
+				IsAdmin:            true,
+				FeaturePermissions: map[string]bool{model.FeatureFolders: false},
+			})
+			adminRepo := newFolderRepository(adminCtx, conn)
+			_, err := adminRepo.Get(folder.ID)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("does not gate a user with no explicit override (opt-out default)", func() {
+			ungatedCtx := request.WithUser(log.NewContext(context.TODO()), model.User{ID: "ungated-userid"})
+			ungatedRepo := newFolderRepository(ungatedCtx, conn)
+			_, err := ungatedRepo.Get(folder.ID)
+			Expect(err).ToNot(HaveOccurred())
+		})
+	})
 })

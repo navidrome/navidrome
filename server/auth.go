@@ -70,10 +70,11 @@ func doLogin(ds model.DataStore, username string, password string, w http.Respon
 
 func buildAuthPayload(user *model.User) map[string]any {
 	payload := map[string]any{
-		"id":       user.ID,
-		"name":     user.Name,
-		"username": user.UserName,
-		"isAdmin":  user.IsAdmin,
+		"id":                 user.ID,
+		"name":               user.Name,
+		"username":           user.UserName,
+		"isAdmin":            user.IsAdmin,
+		"featurePermissions": user.FeaturePermissions,
 	}
 	if conf.Server.EnableGravatar && user.Email != "" {
 		payload["avatar"] = gravatar.Url(user.Email, 50)
