@@ -19,6 +19,9 @@ import (
 
 const (
 	apiBaseUrl = "https://ws.audioscrobbler.com/2.0/"
+
+	// https://www.last.fm/api/errorcodes
+	errorInvalidSessionKey = 9
 )
 
 type lastFMError struct {
