@@ -391,35 +391,57 @@ var _ = Describe("FolderRepository", func() {
 	})
 
 	Describe("Feature permission gating", func() {
-		var gatedCtx context.Context
-		var gatedRepo model.FolderRepository
 		var folder *model.Folder
+		var gatedUser, ungatedUser *model.User
 
+		// Real, persisted users granted real access to testLib - Get/GetAll/CountAll also apply
+		// applyLibraryFilter, so a synthetic context-only user (never actually granted library
+		// access in the DB) would be filtered out for that unrelated reason, making these
+		// assertions meaningless. Feature-permission state is still set purely via context,
+		// matching how it's actually populated per-request (userRepository.selectUserWithLibraries).
 		BeforeEach(func() {
 			folder = model.NewFolder(testLib, "TestFeatureGating/Folder")
 			Expect(repo.Put(folder)).To(Succeed())
 
-			gatedCtx = request.WithUser(log.NewContext(context.TODO()), model.User{
-				ID:                 "gated-userid",
-				FeaturePermissions: map[string]bool{model.FeatureFolders: false},
-			})
-			gatedRepo = newFolderRepository(gatedCtx, conn)
+			userRepo := NewUserRepository(log.NewContext(context.TODO()), conn)
+
+			gatedUser = &model.User{ID: "gated-userid", UserName: "gateduser"}
+			gatedUser.NewPassword = "password"
+			Expect(userRepo.Put(gatedUser)).To(Succeed())
+			Expect(userRepo.SetUserLibraries(gatedUser.ID, []int{testLib.ID})).To(Succeed())
+
+			ungatedUser = &model.User{ID: "ungated-userid", UserName: "ungateduser"}
+			ungatedUser.NewPassword = "password"
+			Expect(userRepo.Put(ungatedUser)).To(Succeed())
+			Expect(userRepo.SetUserLibraries(ungatedUser.ID, []int{testLib.ID})).To(Succeed())
 		})
 
+		AfterEach(func() {
+			_, _ = conn.NewQuery("DELETE FROM user WHERE id IN ('gated-userid', 'ungated-userid')").Execute()
+		})
+
+		gatedCtx := func() context.Context {
+			return request.WithUser(log.NewContext(context.TODO()), model.User{
+				ID: "gated-userid", Libraries: model.Libraries{testLib},
+				FeaturePermissions: map[string]bool{model.FeatureFolders: false},
+			})
+		}
+
 		It("Get returns ErrNotFound when the folders feature is disabled for this user", func() {
+			gatedRepo := newFolderRepository(gatedCtx(), conn)
 			_, err := gatedRepo.Get(folder.ID)
 			Expect(err).To(Equal(model.ErrNotFound))
 		})
 
 		It("GetAll returns an empty list when the folders feature is disabled for this user", func() {
-			// No filter, deliberately - the gate must return empty regardless of what would
-			// otherwise match, not just for this specific folder.
+			gatedRepo := newFolderRepository(gatedCtx(), conn)
 			results, err := gatedRepo.GetAll()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(results).To(BeEmpty())
 		})
 
 		It("CountAll returns zero when the folders feature is disabled for this user", func() {
+			gatedRepo := newFolderRepository(gatedCtx(), conn)
 			count, err := gatedRepo.CountAll()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(count).To(Equal(int64(0)))
@@ -437,7 +459,9 @@ var _ = Describe("FolderRepository", func() {
 		})
 
 		It("does not gate a user with no explicit override (opt-out default)", func() {
-			ungatedCtx := request.WithUser(log.NewContext(context.TODO()), model.User{ID: "ungated-userid"})
+			ungatedCtx := request.WithUser(log.NewContext(context.TODO()), model.User{
+				ID: "ungated-userid", Libraries: model.Libraries{testLib},
+			})
 			ungatedRepo := newFolderRepository(ungatedCtx, conn)
 			_, err := ungatedRepo.Get(folder.ID)
 			Expect(err).ToNot(HaveOccurred())

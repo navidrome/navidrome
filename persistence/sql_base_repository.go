@@ -285,7 +285,12 @@ func (r sqlRepository) userSeesAllLibraries(visible []int) bool {
 	if user.IsAdmin || user.ID == invalidUserId {
 		return true // visible is the whole library table
 	}
-	total, err := NewLibraryRepository(r.ctx, r.db).CountAll()
+	// The true system-wide total, not this user's own access-filtered count - libraryRepository's
+	// GetAll/CountAll now apply applyUserLibraryAccessFilter, so calling them with r.ctx as-is
+	// would compare "libraries I can see" against "libraries I can see" and never detect a real
+	// restriction. Force the system/admin bypass explicitly for this one lookup.
+	systemCtx := request.WithUser(r.ctx, model.User{ID: invalidUserId})
+	total, err := NewLibraryRepository(systemCtx, r.db).CountAll()
 	if err != nil || total == 0 {
 		return false
 	}
