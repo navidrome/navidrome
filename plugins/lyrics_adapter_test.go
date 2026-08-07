@@ -150,6 +150,22 @@ var _ = Describe("LyricsPlugin", Ordered, func() {
 			Entry("lrc", "lrc", true, "plugin lrc line"),
 			Entry("plain", "plain", false, "plugin plain line"),
 		)
+
+		It("keeps valid entries when another plugin lyric is malformed", func() {
+			manager, _ := createTestManagerWithPlugins(map[string]map[string]string{
+				"test-lyrics": {"format": "mixed"},
+			}, "test-lyrics"+PackageExtension)
+
+			p, ok := manager.LoadLyricsProvider("test-lyrics")
+			Expect(ok).To(BeTrue())
+
+			result, err := p.GetLyrics(GinkgoT().Context(), &model.MediaFile{ID: "track-1"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(HaveLen(1))
+			Expect(result[0].Line).To(Equal([]model.Line{
+				{Start: new(int64(1000)), Value: "valid plugin line"},
+			}))
+		})
 	})
 
 	Describe("PluginNames", func() {

@@ -546,6 +546,7 @@ type JukeboxPlaylist struct {
 
 type Line struct {
 	Start *int64 `xml:"start,attr,omitempty" json:"start,omitempty"`
+	End   *int64 `xml:"end,attr,omitempty"   json:"end,omitempty"`
 	Value string `xml:",chardata"            json:"value"`
 }
 

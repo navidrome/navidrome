@@ -33,13 +33,20 @@ func buildLyricsList(mf *model.MediaFile, lyricsList model.LyricList, enhanced b
 }
 
 func buildStructuredLyric(mf *model.MediaFile, lyrics model.Lyrics, enhanced bool) responses.StructuredLyric {
+	lyrics = model.NormalizeLyrics(lyrics)
 	agents := newLyricAgents(lyrics.Agents)
 
 	lines := make([]responses.Line, len(lyrics.Line))
 	var cueLines []responses.CueLine
 	for i, line := range lyrics.Line {
-		lines[i] = responses.Line{Start: line.Start, Value: line.Value}
-		if enhanced && len(line.Cue) > 0 {
+		lines[i] = responses.Line{Value: line.Value}
+		if lyrics.Synced && line.Start != nil {
+			lines[i].Start = line.Start
+			if enhanced && line.End != nil && *line.End >= *line.Start {
+				lines[i].End = line.End
+			}
+		}
+		if enhanced && lyrics.Synced && len(line.Cue) > 0 {
 			cueLines = append(cueLines, buildCueLines(line, int32(i), agents)...)
 		}
 	}
