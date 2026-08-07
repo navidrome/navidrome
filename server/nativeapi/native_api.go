@@ -3,7 +3,6 @@ package nativeapi
 import (
 	"context"
 	"encoding/json"
-	"html"
 	"net/http"
 	"strconv"
 	"time"
@@ -199,22 +198,27 @@ func (api *Router) addMissingFilesRoute(r chi.Router) {
 }
 
 func writeDeleteManyResponse(w http.ResponseWriter, r *http.Request, ids []string) {
-	var resp []byte
-	var err error
+	// Marshal both shapes instead of building the single-id case by hand: ids come
+	// from the query string, and html.EscapeString leaves backslashes untouched, so
+	// an id containing one produced a malformed body.
+	var payload any
 	if len(ids) == 1 {
-		resp = []byte(`{"id":"` + html.EscapeString(ids[0]) + `"}`)
+		payload = struct {
+			ID string `json:"id"`
+		}{ID: ids[0]}
 	} else {
-		resp, err = json.Marshal(&struct {
+		payload = struct {
 			Ids []string `json:"ids"`
-		}{Ids: ids})
-		if err != nil {
-			log.Error(r.Context(), "Error marshaling response", "ids", ids, err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
+		}{Ids: ids}
 	}
-	_, err = w.Write(resp) //nolint:gosec
+	resp, err := json.Marshal(payload)
 	if err != nil {
+		log.Error(r.Context(), "Error marshaling response", "ids", ids, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if _, err := w.Write(resp); err != nil {
+		log.Error(r.Context(), "Error writing response", "ids", ids, err)
 	}
 }
 

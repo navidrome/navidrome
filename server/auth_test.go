@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -60,6 +61,20 @@ var _ = Describe("Auth", func() {
 				Expect(parsed["name"]).To(Equal("Johndoe"))
 				Expect(parsed["id"]).ToNot(BeEmpty())
 				Expect(parsed["token"]).ToNot(BeEmpty())
+			})
+		})
+
+		// createAdminUser used to swallow the Put error and return nil, so a failure
+		// fell through to doLogin and surfaced as a misleading 401.
+		Describe("createAdmin when the user cannot be stored", func() {
+			It("responds 500 rather than falling through to login", func() {
+				failing := dsWithFailingPut(errors.New("db is down"))
+				req = httptest.NewRequest("POST", "/createAdmin", strings.NewReader(`{"username":"johndoe", "password":"secret"}`))
+				resp = httptest.NewRecorder()
+
+				createAdmin(failing)(resp, req)
+
+				Expect(resp.Code).To(Equal(http.StatusInternalServerError))
 			})
 		})
 
