@@ -218,11 +218,11 @@ var _ = Describe("MediaFiles", func() {
 							{Tags: Tags{"genre": []string{"Alternative", "Rock"}}},
 						}
 					})
-					It("sets the correct Genre, sorted by frequency, then alphabetically", func() {
+					It("sets the correct Genre, sorted by frequency, then by order of appearance", func() {
 						album := mfs.ToAlbum()
 						Expect(album.Tags).To(HaveLen(2))
-						Expect(album.Tags).To(HaveKeyWithValue(TagGenre, []string{"Rock", "Alternative", "Punk"}))
-						Expect(album.Tags).To(HaveKeyWithValue(TagMood, []string{"Chill", "Happy"}))
+						Expect(album.Tags).To(HaveKeyWithValue(TagGenre, []string{"Rock", "Punk", "Alternative"}))
+						Expect(album.Tags).To(HaveKeyWithValue(TagMood, []string{"Happy", "Chill"}))
 					})
 				})
 				When("we have tags with mismatching case", func() {

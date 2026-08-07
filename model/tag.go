@@ -24,13 +24,17 @@ type TagList []Tag
 func (l TagList) GroupByFrequency() Tags {
 	grouped := map[string]map[string]int{}
 	values := map[string]string{}
-	for _, t := range l {
+	firstSeen := map[string]int{}
+	for i, t := range l {
 		if m, ok := grouped[string(t.TagName)]; !ok {
 			grouped[string(t.TagName)] = map[string]int{t.ID: 1}
 		} else {
 			m[t.ID]++
 		}
 		values[t.ID] = t.TagValue
+		if _, ok := firstSeen[t.ID]; !ok {
+			firstSeen[t.ID] = i
+		}
 	}
 
 	tags := Tags{}
@@ -42,7 +46,7 @@ func (l TagList) GroupByFrequency() Tags {
 		slices.SortFunc(idList, func(a, b string) int {
 			return cmp.Or(
 				cmp.Compare(counts[b], counts[a]),
-				cmp.Compare(values[a], values[b]),
+				cmp.Compare(firstSeen[a], firstSeen[b]),
 			)
 		})
 		tags[TagName(name)] = slice.Map(idList, func(id string) string { return values[id] })
