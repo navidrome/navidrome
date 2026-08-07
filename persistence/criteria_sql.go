@@ -416,7 +416,12 @@ type userTagCond struct {
 }
 
 func (e userTagCond) ToSql() (string, []any, error) {
-	inner := "select tag_name as value from media_file_tag where media_file_id = media_file.id and user_id = ?"
+	// AI-sourced tags are shared, admin-written data (Option B in FEATURE_ROADMAP.md): a usertag
+	// criterion matches the owner's own tags OR any admin's AI-sourced ones, not just what the
+	// owner personally wrote - consistent with TagCounts/AllTagNames/SongIDsForTag and the Songs
+	// list AI Tags column, which already union by admin instead of scoping to the caller.
+	inner := "select tag_name as value from media_file_tag where media_file_id = media_file.id " +
+		"and (user_id = ? or (source = 'ai' and user_id in (select id from user where is_admin)))"
 	var cond string
 	var innerArgs []any
 	if e.cond != nil {
