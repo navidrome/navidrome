@@ -330,7 +330,7 @@ func (n noopArchiver) ZipArtist(context.Context, string, string, int, io.Writer)
 	return model.ErrNotFound
 }
 
-func (n noopArchiver) ZipShare(context.Context, string, io.Writer) error {
+func (n noopArchiver) ZipShare(context.Context, *model.Share, io.Writer) error {
 	return model.ErrNotFound
 }
 
@@ -353,7 +353,7 @@ func (n noopProvider) SimilarSongs(context.Context, string, int) (model.MediaFil
 	return nil, nil
 }
 
-func (n noopProvider) TopSongs(context.Context, string, int) (model.MediaFiles, error) {
+func (n noopProvider) TopSongs(context.Context, string, string, int) (model.MediaFiles, error) {
 	return nil, nil
 }
 

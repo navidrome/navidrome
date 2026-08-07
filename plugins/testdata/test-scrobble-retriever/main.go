@@ -47,6 +47,8 @@ type TestScrobbleOptions struct {
 	Username      string `json:"username"`
 	FromTimestamp *int64 `json:"fromTimestamp,omitempty"`
 	ToTimestamp   *int64 `json:"toTimestamp,omitempty"`
+	Descending    bool   `json:"descending"`
+	Cursor        int    `json:"cursor,omitempty"`
 	MaxItems      int    `json:"maxItems"`
 }
 
@@ -64,6 +66,8 @@ func callGetScrobbles() int32 {
 		FromTimestamp: options.FromTimestamp,
 		ToTimestamp:   options.ToTimestamp,
 		MaxItems:      options.MaxItems,
+		Descending:    options.Descending,
+		Cursor:        options.Cursor,
 	})
 
 	if err != nil {

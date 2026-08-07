@@ -65,7 +65,7 @@ var _ = Describe("Provider - TopSongs", func() {
 		song2 := model.MediaFile{ID: "song-2", Title: "Song Two", ArtistID: "artist-1", MbzRecordingID: "mbid-song-2"}
 		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{song1, song2}, nil).Once()
 
-		songs, err := p.TopSongs(ctx, "Artist One", 2)
+		songs, err := p.TopSongs(ctx, "Artist One", "", 2)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(songs).To(HaveLen(2))
@@ -74,6 +74,59 @@ var _ = Describe("Provider - TopSongs", func() {
 		artistRepo.AssertExpectations(GinkgoT())
 		ag.AssertExpectations(GinkgoT())
 		mediaFileRepo.AssertExpectations(GinkgoT())
+	})
+
+	Context("artist id and/or name", func() {
+		artist1 := model.Artist{ID: "artist-1", Name: "Artist One", MbzArtistID: "mbid-artist-1"}
+
+		BeforeEach(func() {
+			agentSongs := []agents.Song{{Name: "Song One", MBID: "mbid-song-1"}}
+			ag.On("GetArtistTopSongs", ctx, "artist-1", "Artist One", "mbid-artist-1", 2).Return(agentSongs, nil).Once()
+
+			song1 := model.MediaFile{ID: "song-1", Title: "Song One", ArtistID: "artist-1", MbzRecordingID: "mbid-song-1"}
+			mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{song1}, nil).Once()
+		})
+
+		It("returns top songs for a known artist by id only", func() {
+			artistRepo.On("Get", "artist-1").Return(&artist1, nil).Once()
+
+			songs, err := p.TopSongs(ctx, "", "artist-1", 2)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(songs).To(HaveLen(1))
+			Expect(songs[0].ID).To(Equal("song-1"))
+			artistRepo.AssertExpectations(GinkgoT())
+			ag.AssertExpectations(GinkgoT())
+			mediaFileRepo.AssertExpectations(GinkgoT())
+		})
+
+		It("returns top songs for a known artist by id, falling back to name", func() {
+			artistRepo.On("Get", "fake-id").Return(nil, model.ErrNotFound).Once()
+			artistRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.Artists{artist1}, nil).Once()
+
+			songs, err := p.TopSongs(ctx, "Artist One", "fake-id", 2)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(songs).To(HaveLen(1))
+			Expect(songs[0].ID).To(Equal("song-1"))
+			artistRepo.AssertExpectations(GinkgoT())
+			ag.AssertExpectations(GinkgoT())
+			mediaFileRepo.AssertExpectations(GinkgoT())
+		})
+	})
+
+	It("bails if lookup by id returns a fatal error", func() {
+		artistRepo.On("Get", "artist-1").Return(nil, model.ErrInvalidAuth).Once()
+		songs, err := p.TopSongs(ctx, "Artist One", "artist-1", 2)
+		Expect(songs).To(BeEmpty())
+		Expect(err).To(HaveOccurred())
+	})
+
+	It("bails if lookup by name returns a fatal error", func() {
+		artistRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(nil, model.ErrInvalidAuth).Once()
+		songs, err := p.TopSongs(ctx, "Artist One", "", 2)
+		Expect(songs).To(BeEmpty())
+		Expect(err).To(HaveOccurred())
 	})
 
 	It("backfills name and MBID onto an unnamed primary credit (the queried artist) and matches", func() {
@@ -96,7 +149,7 @@ var _ = Describe("Provider - TopSongs", func() {
 		}
 		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{track}, nil)
 
-		songs, err := p.TopSongs(ctx, "Artist One", 1)
+		songs, err := p.TopSongs(ctx, "Artist One", "", 1)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(songs).To(HaveLen(1))
@@ -116,7 +169,8 @@ var _ = Describe("Provider - TopSongs", func() {
 		ag.On("GetArtistTopSongs", ctx, "artist-1", "Artist One", "mbid-artist-1", 1).Return(agentSongs, nil).Once()
 
 		// Library track is credited to Artist One (the queried artist) under a same title. If the
-		// queried MBID were wrongly stamped onto the "Artist Two" credit, that mismatched name+MBID
+		// queried MBID were wrongly stamped onto the "Artist Two" credit, that mismatched name+MBID			artistRepo.On("Get", "fake-id").Return(nil, model.ErrNotFound).Once()
+
 		// could mis-resolve. With the guard, "Artist Two" stays MBID-less and does not match One's track.
 		track := model.MediaFile{
 			ID: "one-track", Title: "Collab Song", ArtistID: "artist-1",
@@ -126,7 +180,7 @@ var _ = Describe("Provider - TopSongs", func() {
 		}
 		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{track}, nil)
 
-		songs, err := p.TopSongs(ctx, "Artist One", 1)
+		songs, err := p.TopSongs(ctx, "Artist One", "", 1)
 
 		Expect(err).ToNot(HaveOccurred())
 		// "Artist Two" (named, MBID-less, not in the library) does not resolve to One's track.
@@ -137,7 +191,7 @@ var _ = Describe("Provider - TopSongs", func() {
 		// Mock artist not found
 		artistRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.Artists{}, nil).Once()
 
-		songs, err := p.TopSongs(ctx, "Unknown Artist", 5)
+		songs, err := p.TopSongs(ctx, "Unknown Artist", "", 5)
 
 		Expect(err).ToNot(HaveOccurred()) // TopSongs returns nil error if artist not found
 		Expect(songs).To(BeNil())
@@ -154,7 +208,7 @@ var _ = Describe("Provider - TopSongs", func() {
 		agentErr := errors.New("agent error")
 		ag.On("GetArtistTopSongs", ctx, "artist-1", "Artist One", "mbid-artist-1", 5).Return(nil, agentErr).Once()
 
-		songs, err := p.TopSongs(ctx, "Artist One", 5)
+		songs, err := p.TopSongs(ctx, "Artist One", "", 5)
 
 		Expect(err).To(MatchError(agentErr))
 		Expect(songs).To(BeNil())
@@ -170,7 +224,7 @@ var _ = Describe("Provider - TopSongs", func() {
 		// Mock agent ErrNotFound
 		ag.On("GetArtistTopSongs", ctx, "artist-1", "Artist One", "mbid-artist-1", 5).Return(nil, agents.ErrNotFound).Once()
 
-		songs, err := p.TopSongs(ctx, "Artist One", 5)
+		songs, err := p.TopSongs(ctx, "Artist One", "", 5)
 
 		Expect(err).To(MatchError(model.ErrNotFound))
 		Expect(songs).To(BeNil())
@@ -191,7 +245,7 @@ var _ = Describe("Provider - TopSongs", func() {
 		song1 := model.MediaFile{ID: "song-1", Title: "Song One", ArtistID: "artist-1", MbzRecordingID: "mbid-song-1"}
 		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{song1}, nil).Once()
 
-		songs, err := p.TopSongs(ctx, "Artist One", 1)
+		songs, err := p.TopSongs(ctx, "Artist One", "", 1)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(songs).To(HaveLen(1))
@@ -220,7 +274,7 @@ var _ = Describe("Provider - TopSongs", func() {
 		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{song1}, nil).Once() // bulk MBID query
 		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{}, nil).Once()      // title track-fetch for song2: no match
 
-		songs, err := p.TopSongs(ctx, "Artist One", 2)
+		songs, err := p.TopSongs(ctx, "Artist One", "", 2)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(songs).To(HaveLen(1))
@@ -242,7 +296,7 @@ var _ = Describe("Provider - TopSongs", func() {
 		ag.On("GetArtistTopSongs", canceledCtx, "artist-1", "Artist One", "mbid-artist-1", 5).Return(nil, context.Canceled).Once()
 
 		cancel() // Cancel the context before calling
-		songs, err := p.TopSongs(canceledCtx, "Artist One", 5)
+		songs, err := p.TopSongs(canceledCtx, "Artist One", "", 5)
 
 		Expect(err).To(MatchError(context.Canceled))
 		Expect(songs).To(BeNil())
@@ -276,7 +330,7 @@ var _ = Describe("Provider - TopSongs", func() {
 		}
 		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{song1, song2}, nil).Once()
 
-		songs, err := p.TopSongs(ctx, "Artist One", 2)
+		songs, err := p.TopSongs(ctx, "Artist One", "", 2)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(songs).To(HaveLen(2))
@@ -313,7 +367,7 @@ var _ = Describe("Provider - TopSongs", func() {
 		}
 		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{song2}, nil).Once()
 
-		songs, err := p.TopSongs(ctx, "Artist One", 2)
+		songs, err := p.TopSongs(ctx, "Artist One", "", 2)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(songs).To(HaveLen(2))
@@ -341,7 +395,7 @@ var _ = Describe("Provider - TopSongs", func() {
 		song2 := model.MediaFile{ID: "song-2", Title: "Song Two", ArtistID: "artist-1", MbzRecordingID: "mbid-song-2"}
 		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{song1, song2}, nil).Once()
 
-		songs, err := p.TopSongs(ctx, "Artist One", 1)
+		songs, err := p.TopSongs(ctx, "Artist One", "", 1)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(songs).To(HaveLen(1))
@@ -369,7 +423,7 @@ var _ = Describe("Provider - TopSongs", func() {
 		song2 := model.MediaFile{ID: "song-2", Title: "Song Two", ArtistID: "artist-1"}
 		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{song1, song2}, nil).Once()
 
-		songs, err := p.TopSongs(ctx, "Artist One", 2)
+		songs, err := p.TopSongs(ctx, "Artist One", "", 2)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(songs).To(HaveLen(2))
@@ -397,7 +451,7 @@ var _ = Describe("Provider - TopSongs", func() {
 		song1 := model.MediaFile{ID: "song-1", Title: "Song One", ArtistID: "artist-1", MbzRecordingID: "mbid-song-1"}
 		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{song1}, nil).Once()
 
-		songs, err := p.TopSongs(ctx, "Artist One", 1)
+		songs, err := p.TopSongs(ctx, "Artist One", "", 1)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(songs).To(HaveLen(1))

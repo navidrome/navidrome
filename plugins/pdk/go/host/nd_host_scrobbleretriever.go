@@ -27,6 +27,7 @@ type ScrobbleCountOptions struct {
 type ScrobbleList struct {
 	Scrobbles     []ScrobbleRef `json:"scrobbles"`
 	NextTimestamp *int64        `json:"nextTimestamp"`
+	Cursor        int           `json:"cursor"`
 }
 
 // ScrobbleOptions represents the ScrobbleOptions data structure.
@@ -34,6 +35,8 @@ type ScrobbleList struct {
 type ScrobbleOptions struct {
 	FromTimestamp *int64 `json:"fromTimestamp"`
 	ToTimestamp   *int64 `json:"toTimestamp"`
+	Descending    bool   `json:"descending"`
+	Cursor        int    `json:"cursor"`
 	MaxItems      int    `json:"maxItems"`
 }
 

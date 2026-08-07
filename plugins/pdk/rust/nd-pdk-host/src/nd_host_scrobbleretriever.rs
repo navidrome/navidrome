@@ -24,6 +24,8 @@ pub struct ScrobbleList {
     pub scrobbles: Vec<ScrobbleRef>,
     #[serde(default)]
     pub next_timestamp: Option<i64>,
+    #[serde(default)]
+    pub cursor: i32,
 }
 
 /// ScrobbleOptions carries optional parameters for retrieving user scrobbles
@@ -34,6 +36,9 @@ pub struct ScrobbleOptions {
     pub from_timestamp: Option<i64>,
     #[serde(default)]
     pub to_timestamp: Option<i64>,
+    pub descending: bool,
+    #[serde(default)]
+    pub cursor: i32,
     pub max_items: i32,
 }
 

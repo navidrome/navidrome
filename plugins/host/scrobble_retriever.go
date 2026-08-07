@@ -9,6 +9,10 @@ type ScrobbleList struct {
 	Scrobbles []ScrobbleRef `json:"scrobbles"`
 	// If additional items are available, the timestamp of the next scrobble to fetch
 	NextTimestamp *int64 `json:"nextTimestamp,omitempty"`
+	// In the event that multiple scrobbles were submitted at the same time, cursor
+	// will be populated to enable future queries. If this cursor is nonero
+	// it should be passed on for the next request
+	Cursor int `json:"cursor,omitempty"`
 }
 
 // ScrobbleRef represents one instance of a scrobble (instance id, file id, submission time)
@@ -29,6 +33,12 @@ type ScrobbleOptions struct {
 	// The ending unix timestamp to query for scrobbles (inclusive).
 	// If not specified, go up to the last scrobble
 	ToTimestamp *int64 `json:"toTimestamp,omitempty"`
+	// Descending is only relevant if both FromTimestamp and ToTimestamp are specified
+	// If both timestamps are specified (or omitted), the default order will be ascending submission time
+	// If Descending is true, instead query in descending order
+	Descending bool `json:"descending"`
+	// A cursor retrieved from a prior call to GetScrobbles
+	Cursor int `json:"cursor,omitempty"`
 	// The maximum number of items to retrieve. This is capped at 5000, the
 	// default if not specified
 	MaxItems int `json:"maxItems"`

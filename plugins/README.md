@@ -30,6 +30,7 @@ The plugin system is built on **[Extism](https://extism.org/)**, a cross-languag
   - [Scheduler](#scheduler)
   - [Cache](#cache)
   - [KVStore](#kvstore)
+  - [Storage](#storage)
   - [Task](#task)
   - [WebSocket](#websocket)
   - [Library](#library)
@@ -548,6 +549,52 @@ usage, err := host.KVStoreGetStorageUsed()
 fmt.Printf("Using %d bytes\n", usage)
 ```
 
+### Storage
+
+A private read-write directory, mounted into the sandbox at `/storage` and backed by `${DataFolder}/plugins/${pluginID}/storage`. Survives server restarts. Use it for data that doesn't fit a key-value store: caches, downloaded files, generated indexes.
+
+**Manifest permission:**
+
+```json
+{
+  "permissions": {
+    "storage": {
+      "reason": "Cache generated playlists between restarts"
+    }
+  }
+}
+```
+
+**Host functions:**
+
+| Function                 | Parameters | Description                        |
+|--------------------------|------------|------------------------------------|
+| `storage_getstoragepath` | –          | Get the guest path of the mount    |
+
+**Usage:**
+
+Normal WASI filesystem calls work inside the mount, so use the `os` package directly:
+
+```go
+import (
+	"os"
+	"path/filepath"
+
+	"github.com/navidrome/navidrome/plugins/pdk/go/host"
+)
+
+// The path never changes, so read it once instead of per operation
+var storageDir = host.StorageGetStoragePath() // "/storage"
+
+err := os.WriteFile(filepath.Join(storageDir, "cache.json"), data, 0600)
+content, err := os.ReadFile(filepath.Join(storageDir, "cache.json"))
+entries, err := os.ReadDir(storageDir)
+```
+
+> **Security:** Plugins cannot create symlinks inside the mount, and `..` or absolute paths are rejected. Symlinks that already exist in the directory are still followed, so anything linked in from elsewhere remains reachable.
+
+> **Note:** There is no size limit, unlike [KVStore](#kvstore). The directory is not deleted when a plugin is uninstalled.
+
 ### Task
 
 Background task queue with retry support. Plugins enqueue tasks and process them by exporting the [`nd_task_execute`](#taskworker) capability function.
@@ -644,7 +691,7 @@ Access music library metadata and optionally read files from library directories
 }
 ```
 
-- `filesystem` – Set to `true` to enable read-only access to library directories (default: `false`)
+- `filesystem` – Set to `true` to enable access to library directories, read-only unless an administrator grants write access (default: `false`)
 
 **Host functions:**
 
@@ -683,7 +730,7 @@ content, err := os.ReadFile("/libraries/1/Artist/Album/track.mp3")
 entries, err := os.ReadDir("/libraries/1/Artist")
 ```
 
-> **Security:** Filesystem access is read-only and restricted to configured library paths only.
+> **Security:** Plugins cannot create symlinks inside the mount, and `..` or absolute paths are rejected. Symlinks already present in the library are still followed, so folders linked in from elsewhere work as expected. Access is read-only unless an administrator grants the plugin write access (`navidrome plugin edit <name> --write-access`).
 
 **Usage:**
 
@@ -1058,7 +1105,7 @@ See [examples/](examples/) for complete working plugins:
 Plugins run in a secure WebAssembly sandbox provided by [Extism](https://extism.org/) and the [Wazero](https://wazero.io/) runtime:
 
 1. **Host Allowlisting** – Only explicitly allowed hosts are accessible via HTTP/WebSocket
-2. **Limited File System** – Read-only access to library directories, only when explicitly granted the `library.filesystem` permission
+2. **Limited File System** – Plugins cannot create symlinks inside a mount and `..` or absolute paths are rejected, though symlinks already present are followed. Library access requires the `library.filesystem` permission and is read-only unless an administrator grants write access; the `storage` permission grants a read-write directory private to the plugin
 3. **No Network Listeners** – Plugins cannot bind ports
 4. **Config Isolation** – Plugins only receive their own config section
 5. **Memory Limits** – Controlled by the WebAssembly runtime

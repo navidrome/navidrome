@@ -130,12 +130,15 @@ var _ = Describe("Archiver", func() {
 				Tracks:       mfs,
 			}
 
-			sh.On("Load", mock.Anything, "1").Return(share, nil)
 			ms.On("NewStream", mock.Anything, mock.Anything, stream.Request{Format: "mp3", BitRate: 128}).Return(io.NopCloser(strings.NewReader("test")), nil).Times(2)
 
 			out := new(bytes.Buffer)
-			err := arch.ZipShare(context.Background(), "1", out)
+			err := arch.ZipShare(context.Background(), share, out)
 			Expect(err).To(BeNil())
+
+			// Share.Load records a visit; re-loading here would double-count
+			// every download.
+			sh.AssertNotCalled(GinkgoT(), "Load", mock.Anything, mock.Anything)
 
 			zr, err := zip.NewReader(bytes.NewReader(out.Bytes()), int64(out.Len()))
 			Expect(err).To(BeNil())

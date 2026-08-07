@@ -68,6 +68,10 @@ func (s *scrobbleRetrieverServiceImpl) GetScrobbles(ctx context.Context, usernam
 		options.MaxItems = 5000
 	}
 
+	if options.Cursor < 0 {
+		options.Cursor = 0
+	}
+
 	// Fetch one more item than requested. The last item is the next timestamp to fetch
 	options.MaxItems += 1
 
@@ -81,7 +85,13 @@ func (s *scrobbleRetrieverServiceImpl) GetScrobbles(ctx context.Context, usernam
 	}
 
 	var order string
-	if options.ToTimestamp != nil && options.FromTimestamp == nil {
+	if (options.ToTimestamp != nil) == (options.FromTimestamp != nil) {
+		if options.Descending {
+			order = "DESC"
+		} else {
+			order = "ASC"
+		}
+	} else if options.ToTimestamp != nil {
 		order = "DESC"
 	} else {
 		order = "ASC"
@@ -92,11 +102,18 @@ func (s *scrobbleRetrieverServiceImpl) GetScrobbles(ctx context.Context, usernam
 		Filters: filters,
 		Sort:    "submission_time",
 		Order:   order,
+		Offset:  options.Cursor,
 	})
 
 	if err != nil {
 		return nil, err
 	}
+
+	if len(scrobbles) == 0 {
+		return &host.ScrobbleList{Scrobbles: []host.ScrobbleRef{}}, nil
+	}
+
+	cursor := 0
 
 	var nextTimestamp *int64
 	var targetLen int
@@ -104,6 +121,21 @@ func (s *scrobbleRetrieverServiceImpl) GetScrobbles(ctx context.Context, usernam
 	if len(scrobbles) == options.MaxItems {
 		nextTimestamp = &scrobbles[options.MaxItems-1].SubmissionTime
 		targetLen = options.MaxItems - 1
+
+		lastTimestamp := scrobbles[len(scrobbles)-1].SubmissionTime
+		for i := len(scrobbles) - 2; i >= 0; i-- {
+			if scrobbles[i].SubmissionTime != lastTimestamp {
+				break
+			}
+
+			cursor += 1
+		}
+
+		// In this case, every scrobble in this query is the same timestamp
+		// We should continue from the previous cursor
+		if cursor == len(scrobbles)-1 {
+			cursor += options.Cursor
+		}
 	} else {
 		targetLen = len(scrobbles)
 	}
@@ -119,6 +151,7 @@ func (s *scrobbleRetrieverServiceImpl) GetScrobbles(ctx context.Context, usernam
 	response := host.ScrobbleList{
 		Scrobbles:     scrobbleRefs,
 		NextTimestamp: nextTimestamp,
+		Cursor:        cursor,
 	}
 
 	return &response, nil
