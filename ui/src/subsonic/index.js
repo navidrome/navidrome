@@ -96,7 +96,6 @@ const getCoverArtUrl = (record, size, square) => {
     // This is a playlist
     return baseUrl(url('getCoverArt', 'pl-' + record.id, options))
   } else if (record.streamUrl !== undefined) {
-    // This is a radio station
     return baseUrl(url('getCoverArt', 'ra-' + record.id, options))
   } else {
     return baseUrl(url('getCoverArt', 'ar-' + record.id, options))
@@ -129,6 +128,13 @@ const getTopSongs = (artist, count = 50) => {
   return httpClient(url('getTopSongs', null, { artist, count }))
 }
 
+const getLyricsBySongId = (id, requestOptions) => {
+  const requestUrl = url('getLyricsBySongId', id, { enhanced: true })
+  return requestOptions
+    ? httpClient(requestUrl, requestOptions)
+    : httpClient(requestUrl)
+}
+
 const streamUrl = (id, options) => {
   return baseUrl(
     url('stream', id, {
@@ -158,4 +164,5 @@ export default {
   getArtistInfo,
   getTopSongs,
   getSimilarSongs2,
+  getLyricsBySongId,
 }
