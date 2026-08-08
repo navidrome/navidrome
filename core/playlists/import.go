@@ -187,6 +187,13 @@ func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist, 
 		newPls.Public = pls.Public
 		newPls.UploadedImage = pls.UploadedImage // Preserve manual upload
 		newPls.EvaluatedAt = nil                 // force re-evaluation on next read
+		if newPls.IsSmartPlaylist() {
+			// Smart-playlist tracks aren't materialized at parse time, so carry the
+			// stored counters over; a re-sync must not blank the count before re-eval.
+			newPls.SongCount = pls.SongCount
+			newPls.Duration = pls.Duration
+			newPls.Size = pls.Size
+		}
 	} else {
 		log.Info(ctx, "Adding synced playlist", "playlist", newPls.Name, "path", newPls.Path, "owner", owner.UserName)
 		newPls.OwnerID = owner.ID

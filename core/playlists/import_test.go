@@ -371,6 +371,38 @@ var _ = Describe("Playlists - Import", func() {
 				Expect(pls.Name).To(Equal("Recently Played"))
 				Expect(pls.Public).To(BeTrue()) // Should be true since server default is true
 			})
+
+			It("preserves counters when re-importing an existing smart playlist", func() {
+				tmpDir := GinkgoT().TempDir()
+				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
+				ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+
+				nsp := `{"name":"My Smart","all":[{"is":{"loved":true}}],"sort":"title","order":"asc"}`
+				plsFile := filepath.Join(tmpDir, "smart.nsp")
+				Expect(os.WriteFile(plsFile, []byte(nsp), 0600)).To(Succeed())
+
+				existingPls := &model.Playlist{
+					ID:        "smart-id",
+					Name:      "My Smart",
+					Path:      plsFile,
+					Sync:      true,
+					OwnerID:   "123",
+					SongCount: 42,
+					Duration:  123.4,
+					Size:      5000,
+				}
+				mockPlsRepo.PathMap = map[string]*model.Playlist{plsFile: existingPls}
+
+				plsFolder := &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: ""}
+				_, err := ps.ImportFromFolder(ctx, plsFolder, "smart.nsp")
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mockPlsRepo.Last).ToNot(BeNil())
+				Expect(mockPlsRepo.Last.IsSmartPlaylist()).To(BeTrue())
+				Expect(mockPlsRepo.Last.SongCount).To(Equal(42))
+				Expect(mockPlsRepo.Last.Duration).To(Equal(float32(123.4)))
+				Expect(mockPlsRepo.Last.Size).To(Equal(int64(5000)))
+			})
 		})
 
 		DescribeTable("Playlist filename Unicode normalization (regression fix-playlist-filename-normalization)",
