@@ -867,6 +867,37 @@ var _ = Describe("Playlists - Import", func() {
 			Expect(pls.ID).To(Equal("existing-id"))
 			Expect(pls.Sync).To(BeTrue())
 		})
+
+		It("unsyncs a synced smart playlist with sync=false even when content is unchanged", func() {
+			tmpDir := GinkgoT().TempDir()
+			mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
+
+			mockFolderRepo := &mockFolderRepoForImport{
+				folder: &model.Folder{
+					ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: "",
+				},
+			}
+			ds.MockedFolder = mockFolderRepo
+			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+
+			nsp := `{"name":"My Smart","all":[{"is":{"loved":true}}]}`
+			plsFile := filepath.Join(tmpDir, "smart.nsp")
+			Expect(os.WriteFile(plsFile, []byte(nsp), 0600)).To(Succeed())
+
+			existingPls := &model.Playlist{
+				ID: "smart-id", Name: "My Smart", Path: plsFile, Sync: true,
+				OwnerID: "123", SongCount: 42,
+				ImportedHash: fmt.Sprintf("%x", sha256.Sum256([]byte(nsp))),
+			}
+			mockPlsRepo.PathMap = map[string]*model.Playlist{plsFile: existingPls}
+
+			pls, err := ps.ImportFile(ctx, plsFile, false)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(pls.ID).To(Equal("smart-id"))
+			Expect(pls.Sync).To(BeFalse())
+			Expect(mockPlsRepo.Last).ToNot(BeNil())
+			Expect(mockPlsRepo.Last.Sync).To(BeFalse())
+		})
 	})
 
 	Describe("ImportM3U", func() {

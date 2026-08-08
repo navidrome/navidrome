@@ -182,6 +182,7 @@ func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist, 
 		// Only smart playlists skip on an unchanged file; M3U must re-run so newly-added tracks resolve.
 		if !forceSync && newPls.IsSmartPlaylist() && newPls.ImportedHash != "" && newPls.ImportedHash == pls.ImportedHash {
 			log.Trace(ctx, "Playlist file unchanged since last import, skipping", "playlist", pls.Name, "path", pls.Path)
+			*newPls = *pls // callers must see the stored record, so e.g. ImportFile can still flip Sync
 			return nil
 		}
 		log.Info(ctx, "Updating synced playlist", "playlist", pls.Name, "path", newPls.Path)
