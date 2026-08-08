@@ -200,6 +200,7 @@ describe('useImageUrl', () => {
     expect(global.fetch).toHaveBeenCalledTimes(1)
     expect(result2.current.imgUrl).toBe('blob:mock-url')
     expect(result2.current.loading).toBe(false)
+    expect(result2.current.fromCache).toBe(true)
   })
 
   it('should cache errors and not re-fetch broken URLs', async () => {
@@ -230,5 +231,7 @@ describe('useImageUrl', () => {
     expect(result2.current.error).toBe(true)
     expect(result2.current.imgUrl).toBeNull()
     expect(result2.current.loading).toBe(false)
+    // A remembered failure has no blob, so callers must not treat it as instantly painted.
+    expect(result2.current.fromCache).toBe(false)
   })
 })
