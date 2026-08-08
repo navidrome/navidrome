@@ -92,13 +92,15 @@ func parseLRC(language, text string) (*Lyrics, error) {
 			}
 
 			if validLine {
-				value, baseCues := parseEnhancedLine(priorLine)
+				value, baseCues, baseEnd := parseEnhancedLine(priorLine)
 				for idx := range timestamps {
 					startCopy := timestamps[idx]
+					shift := timestamps[idx] - timestamps[0]
 					structuredLines = append(structuredLines, Line{
 						Start: &startCopy,
+						End:   shiftELRCTime(baseEnd, shift),
 						Value: value,
-						Cue:   shiftELRCCues(baseCues, timestamps[idx]-timestamps[0]),
+						Cue:   shiftELRCCues(baseCues, shift),
 					})
 				}
 				timestamps = nil
@@ -143,13 +145,15 @@ func parseLRC(language, text string) (*Lyrics, error) {
 	}
 
 	if validLine {
-		value, baseCues := parseEnhancedLine(priorLine)
+		value, baseCues, baseEnd := parseEnhancedLine(priorLine)
 		for idx := range timestamps {
 			startCopy := timestamps[idx]
+			shift := timestamps[idx] - timestamps[0]
 			structuredLines = append(structuredLines, Line{
 				Start: &startCopy,
+				End:   shiftELRCTime(baseEnd, shift),
 				Value: value,
-				Cue:   shiftELRCCues(baseCues, timestamps[idx]-timestamps[0]),
+				Cue:   shiftELRCCues(baseCues, shift),
 			})
 		}
 	}
@@ -162,23 +166,23 @@ func parseLRC(language, text string) (*Lyrics, error) {
 		})
 	}
 
-	lyrics := Lyrics{
+	lyrics := NormalizeLyrics(Lyrics{
 		DisplayArtist: artist,
 		DisplayTitle:  title,
 		Lang:          language,
-		Line:          normalizeCueLines(structuredLines),
+		Line:          structuredLines,
 		Offset:        offset,
 		Synced:        synced,
-	}
+	})
 	return &lyrics, nil
 }
 
 // parseEnhancedLine extracts word-level timing cues from Enhanced LRC inline markers
 // and computes UTF-8 byte offsets against the final stripped line value.
-func parseEnhancedLine(text string) (string, []Cue) {
+func parseEnhancedLine(text string) (string, []Cue, *int64) {
 	matches := enhancedLRCRegex.FindAllStringSubmatchIndex(text, -1)
 	if len(matches) == 0 {
-		return strings.TrimSpace(text), nil
+		return strings.TrimSpace(text), nil, nil
 	}
 
 	type segment struct {
@@ -189,6 +193,9 @@ func parseEnhancedLine(text string) (string, []Cue) {
 
 	segments := make([]segment, 0, len(matches))
 	var rawValue strings.Builder
+	// Enhanced LRC permits text before the first inline timestamp. It is part of
+	// the visible line even though it has no word-level timing of its own.
+	rawValue.WriteString(text[:matches[0][0]])
 	var trailingEnd *int64
 	for i, match := range matches {
 		timeMs, err := parseTime(
@@ -234,7 +241,7 @@ func parseEnhancedLine(text string) (string, []Cue) {
 	}
 
 	if len(segments) == 0 {
-		return strings.TrimSpace(stripEnhancedMarkers(text)), nil
+		return strings.TrimSpace(stripEnhancedMarkers(text)), nil, trailingEnd
 	}
 
 	finalRaw := rawValue.String()
@@ -266,7 +273,7 @@ func parseEnhancedLine(text string) (string, []Cue) {
 		cues[len(cues)-1].End = trailingEnd
 	}
 
-	return strings.TrimSpace(finalRaw), cues
+	return strings.TrimSpace(finalRaw), cues, trailingEnd
 }
 
 // adjustGroup remaps a capture group index from the original match to our rewritten "[...]" string.
@@ -284,6 +291,14 @@ func adjustGroup(match []int, groupIdx int) int {
 // returning the plain lyric text.
 func stripEnhancedMarkers(text string) string {
 	return enhancedLRCRegex.ReplaceAllString(text, "")
+}
+
+func shiftELRCTime(value *int64, offsetMs int64) *int64 {
+	if value == nil {
+		return nil
+	}
+	shifted := *value + offsetMs
+	return &shifted
 }
 
 // shiftELRCCues returns a deep copy of baseCues with each cue's Start/End
