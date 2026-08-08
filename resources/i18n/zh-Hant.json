@@ -210,7 +210,8 @@
         "songCount": "歌曲數",
         "comment": "註解",
         "sync": "自動匯入",
-        "path": "匯入來源"
+        "path": "匯入來源",
+        "starred": "收藏"
       },
       "actions": {
         "selectPlaylist": "選取播放清單：",
@@ -634,7 +635,8 @@
       "multipleLibraries": "已選 %{selected} 共 %{total} 媒體庫",
       "selectLibraries": "選取媒體庫",
       "none": "無"
-    }
+    },
+    "onlyFavourites": "僅顯示收藏"
   },
   "player": {
     "playListsText": "播放佇列",

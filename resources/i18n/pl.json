@@ -37,7 +37,10 @@
         "sampleRate": "Częstotliwość próbkowania",
         "missing": "Brak",
         "libraryName": "Biblioteka",
-        "composer": "Kompozytor"
+        "composer": "Kompozytor",
+        "disc": "Dysk %{discNumber}",
+        "albumGain": "Wzmocnienie albumu",
+        "trackGain": "Wzmocnienie utworu"
       },
       "actions": {
         "addToQueue": "Odtwarzaj Później",
@@ -207,7 +210,8 @@
         "songCount": "Liczba utworów",
         "comment": "Komentarz",
         "sync": "Import automatyczny",
-        "path": "Zaimportuj z"
+        "path": "Zaimportuj z",
+        "starred": "Ulubione"
       },
       "actions": {
         "selectPlaylist": "Wybierz playlistę:",
@@ -353,7 +357,8 @@
         "allUsers": "Zezwalaj wszystkim użytkownikom",
         "selectedUsers": "Wybrani użytkownicy",
         "allLibraries": "Zezwalaj dla wszystkich bibliotek",
-        "selectedLibraries": "Wybrane biblioteki"
+        "selectedLibraries": "Wybrane biblioteki",
+        "allowWriteAccess": "Zezwól na zapis"
       },
       "sections": {
         "status": "Status",
@@ -398,7 +403,8 @@
         "librariesRequired": "Wtyczka wymaga dostępu do informacji o bibliotece. Wybierz, dla której biblioteki zezwolić dostęp, lub włącz 'Zezwalaj dla wszystkich bibliotek'.",
         "requiredHosts": "Wymagane hosty",
         "configValidationError": "Weryfikacja konfiguracji nie powiodła się:",
-        "schemaRenderError": "Nie można wyrenderować formularza konfiguracji. Schemat wtyczki może być nieprawidłowy."
+        "schemaRenderError": "Nie można wyrenderować formularza konfiguracji. Schemat wtyczki może być nieprawidłowy.",
+        "allowWriteAccessHelp": "Po włączeniu wtyczka może modyfikować pliki w katalogach bibliotek. Domyślnie wtyczki mają dostęp tylko do odczytu."
       },
       "placeholders": {
         "configKey": "klucz",
@@ -588,7 +594,13 @@
     "remove_all_missing_content": "Czy chcesz usunąć wszystkie brakujące pliki z bazy danych? Spowoduje to trwałe usunięcie wszelkich odniesień do tych plików, takich jak liczba odtworzeń, czy oceny.",
     "noSimilarSongsFound": "Brak podobnych utworów",
     "noTopSongsFound": "Brak najlepszych utworów",
-    "startingInstantMix": "Ładowanie Natychmiastowego Miksu..."
+    "startingInstantMix": "Ładowanie Natychmiastowego Miksu...",
+    "uploadCover": "Prześlij Okładkę",
+    "removeCover": "Usuń Okładkę",
+    "coverUploaded": "Okładka zaktualizowana",
+    "coverRemoved": "Okładka usunięta",
+    "coverUploadError": "Błąd przesyłania okładki",
+    "coverRemoveError": "Błąd usuwania okładki"
   },
   "menu": {
     "library": "Biblioteka",
@@ -623,7 +635,8 @@
       "multipleLibraries": "%{selected} z %{total} Bibliotek",
       "selectLibraries": "Wybierz Biblioteki",
       "none": "Żadna"
-    }
+    },
+    "onlyFavourites": "Pokaż tylko ulubione"
   },
   "player": {
     "playListsText": "Kolejka Odtwarzania",
@@ -674,7 +687,8 @@
       "exportSuccess": "Konfiguracja wyeksportowana do schowka w formacie TOML",
       "exportFailed": "Błąd kopiowania konfiguracji",
       "devFlagsHeader": "Flagi Rozwojowe (mogą ulec zmianie/usunięciu)",
-      "devFlagsComment": "To są ustawienia eksperymentalne i mogą zostać usunięte w przyszłych wydaniach"
+      "devFlagsComment": "To są ustawienia eksperymentalne i mogą zostać usunięte w przyszłych wydaniach",
+      "downloadToml": "Konfiguracja Pobierania (TOML)"
     }
   },
   "activity": {

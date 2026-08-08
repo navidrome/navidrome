@@ -210,7 +210,8 @@
         "songCount": "Titelanzahl",
         "comment": "Kommentar",
         "sync": "Auto-Import",
-        "path": "Importieren aus"
+        "path": "Importieren aus",
+        "starred": "Favorit"
       },
       "actions": {
         "selectPlaylist": "Wiedergabeliste auswählen:",
@@ -634,7 +635,8 @@
       "multipleLibraries": "%{selected} von %{total} Bibliotheken",
       "selectLibraries": "Bibliotheken auswählen",
       "none": "Keine"
-    }
+    },
+    "onlyFavourites": "Nur Favoriten anzeigen"
   },
   "player": {
     "playListsText": "Warteschlange abspielen",
