@@ -32,6 +32,7 @@ import { AlbumLinkField } from '../song/AlbumLinkField'
 import { playTracks } from '../actions'
 import PlaylistSongBulkActions from './PlaylistSongBulkActions'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
+import { TagEditorSongDialog } from '../tageditor'
 import config from '../config'
 
 const useStyles = makeStyles(
@@ -97,6 +98,7 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const classes = useStyles({ isDesktop })
   const dispatch = useDispatch()
+  const [editingSongId, setEditingSongId] = React.useState(null)
   const dataProvider = useDataProvider()
   const notify = useNotify()
   const version = useVersion()
@@ -231,6 +233,7 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
             >
               {columns}
               <SongContextMenu
+                onEditTags={(record) => setEditingSongId(record.mediaFileId || record.id)}
                 onAddToPlaylist={onAddToPlaylist}
                 showLove={true}
                 className={classes.contextMenu}
@@ -240,6 +243,11 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
         </Card>
       </div>
       <ExpandInfoDialog content={<SongInfo />} />
+      <TagEditorSongDialog
+        open={Boolean(editingSongId)}
+        songId={editingSongId}
+        onClose={() => setEditingSongId(null)}
+      />
       {React.cloneElement(props.pagination, listContext)}
     </>
   )
