@@ -89,3 +89,36 @@ func (m *MockedPodcastEpisodeRepo) Put(episode *model.PodcastEpisode, _ ...strin
 	m.Data[episode.ID] = episode
 	return nil
 }
+
+func (m *MockedPodcastEpisodeRepo) SetDownloaded(_ string, downloaded bool, ids ...string) error {
+	if m.Err {
+		return errors.New("error")
+	}
+	for _, epID := range ids {
+		if e, ok := m.Data[epID]; ok {
+			e.Downloaded = downloaded
+		}
+	}
+	return nil
+}
+
+func (m *MockedPodcastEpisodeRepo) AnyUserWantsDownload(epID string) (bool, error) {
+	if m.Err {
+		return false, errors.New("error")
+	}
+	e, ok := m.Data[epID]
+	return ok && e.Downloaded, nil
+}
+
+func (m *MockedPodcastEpisodeRepo) GetDownloadedForUser(_, channelID string) (model.PodcastEpisodes, error) {
+	if m.Err {
+		return nil, errors.New("error")
+	}
+	var res model.PodcastEpisodes
+	for _, e := range m.All {
+		if e.ChannelID == channelID && e.Downloaded {
+			res = append(res, e)
+		}
+	}
+	return res, nil
+}

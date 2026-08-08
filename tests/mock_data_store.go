@@ -8,32 +8,33 @@ import (
 )
 
 type MockDataStore struct {
-	RealDS               model.DataStore
-	MockedLibrary        model.LibraryRepository
-	MockedFolder         model.FolderRepository
-	MockedGenre          model.GenreRepository
-	MockedGenreAlias     model.GenreAliasRepository
-	MockedAlbum          model.AlbumRepository
-	MockedArtist         model.ArtistRepository
-	MockedMediaFile      model.MediaFileRepository
-	MockedTag            model.TagRepository
-	MockedUser           model.UserRepository
-	MockedProperty       model.PropertyRepository
-	MockedPlayer         model.PlayerRepository
-	MockedPlaylist       model.PlaylistRepository
-	MockedPlayQueue      model.PlayQueueRepository
-	MockedShare          model.ShareRepository
-	MockedTranscoding    model.TranscodingRepository
-	MockedUserProps      model.UserPropsRepository
-	MockedScrobbleBuffer model.ScrobbleBufferRepository
-	MockedScrobble       model.ScrobbleRepository
-	MockedRadio          model.RadioRepository
-	MockedPodcastChannel model.PodcastChannelRepository
-	MockedPodcastEpisode model.PodcastEpisodeRepository
-	MockedPlugin         model.PluginRepository
-	MockedMediaFileTag   model.MediaFileTagRepository
-	scrobbleBufferMu     sync.Mutex
-	repoMu               sync.Mutex
+	RealDS                    model.DataStore
+	MockedLibrary             model.LibraryRepository
+	MockedFolder              model.FolderRepository
+	MockedGenre               model.GenreRepository
+	MockedGenreAlias          model.GenreAliasRepository
+	MockedAlbum               model.AlbumRepository
+	MockedArtist              model.ArtistRepository
+	MockedMediaFile           model.MediaFileRepository
+	MockedTag                 model.TagRepository
+	MockedUser                model.UserRepository
+	MockedProperty            model.PropertyRepository
+	MockedPlayer              model.PlayerRepository
+	MockedPlaylist            model.PlaylistRepository
+	MockedPlayQueue           model.PlayQueueRepository
+	MockedShare               model.ShareRepository
+	MockedTranscoding         model.TranscodingRepository
+	MockedUserProps           model.UserPropsRepository
+	MockedScrobbleBuffer      model.ScrobbleBufferRepository
+	MockedScrobble            model.ScrobbleRepository
+	MockedRadio               model.RadioRepository
+	MockedPodcastChannel      model.PodcastChannelRepository
+	MockedPodcastEpisode      model.PodcastEpisodeRepository
+	MockedPodcastSubscription model.PodcastSubscriptionRepository
+	MockedPlugin              model.PluginRepository
+	MockedMediaFileTag        model.MediaFileTagRepository
+	scrobbleBufferMu          sync.Mutex
+	repoMu                    sync.Mutex
 
 	// GC tracking
 	GCCalled bool
@@ -282,6 +283,17 @@ func (db *MockDataStore) PodcastEpisode(ctx context.Context) model.PodcastEpisod
 	}
 	db.MockedPodcastEpisode = CreateMockedPodcastEpisodeRepo()
 	return db.MockedPodcastEpisode
+}
+
+func (db *MockDataStore) PodcastSubscription(ctx context.Context) model.PodcastSubscriptionRepository {
+	if db.MockedPodcastSubscription != nil {
+		return db.MockedPodcastSubscription
+	}
+	if db.RealDS != nil {
+		return db.RealDS.PodcastSubscription(ctx)
+	}
+	db.MockedPodcastSubscription = CreateMockedPodcastSubscriptionRepo()
+	return db.MockedPodcastSubscription
 }
 
 func (db *MockDataStore) Plugin(ctx context.Context) model.PluginRepository {

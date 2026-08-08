@@ -13,29 +13,101 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 )
 
+// DownloadEpisode marks the episode downloaded for the current user (from ctx) - see the
+// Podcasts interface doc for why this doubles as "resolve instantly from an existing shared file"
+// for a second subscriber. The actual fetch (if needed) and the episode Put() both run against an
+// admin context, since writing shared infrastructure state must succeed regardless of whether the
+// requesting subscriber happens to be an admin.
 func (p *podcasts) DownloadEpisode(ctx context.Context, episodeID string) error {
+	user, ok := request.UserFrom(ctx)
+	if !ok {
+		return errors.New("downloading an episode requires an authenticated user")
+	}
 	episode, err := p.ds.PodcastEpisode(ctx).Get(episodeID)
 	if err != nil {
 		return err
 	}
+	if err := p.ds.PodcastEpisode(ctx).SetDownloaded(user.ID, true, episodeID); err != nil {
+		return fmt.Errorf("marking episode downloaded for user: %w", err)
+	}
 	if episode.IsDownloaded() {
 		return nil
 	}
-	p.downloadOne(ctx, episode)
+	adminCtx := adminContext(ctx)
+	p.downloadOne(adminCtx, episode)
 	if episode.DownloadStatus != model.PodcastEpisodeDownloaded {
 		return fmt.Errorf("downloading episode %s: %s", episodeID, episode.ErrorMessage)
 	}
 	return nil
 }
 
+// DeleteEpisode clears the current user's (from ctx) own downloaded flag. The shared file is
+// only actually removed once no subscriber anywhere still has the episode flagged - see
+// cleanupOrphanedFile in retention.go, called here for just this one episode rather than a full
+// retention sweep, so unflagging feels immediate rather than waiting for the next scheduled run.
 func (p *podcasts) DeleteEpisode(ctx context.Context, id string) error {
-	episode, err := p.ds.PodcastEpisode(ctx).Get(id)
+	user, ok := request.UserFrom(ctx)
+	if !ok {
+		return errors.New("deleting an episode requires an authenticated user")
+	}
+	if err := p.ds.PodcastEpisode(ctx).SetDownloaded(user.ID, false, id); err != nil {
+		return err
+	}
+	return p.cleanupOrphanedFile(adminContext(ctx), id)
+}
+
+// cleanupOrphanedFile deletes the shared file for episodeID only if no user, anywhere, still has
+// it flagged as downloaded - called after any single user's flag is cleared (DeleteEpisode,
+// per-subscriber retention eviction), so the file lingers as long as even one subscriber still
+// wants it, and disappears promptly once the last one gives it up rather than waiting for the
+// next scheduled retention sweep. ctx must carry admin/system privileges.
+func (p *podcasts) cleanupOrphanedFile(ctx context.Context, episodeID string) error {
+	stillWanted, err := p.ds.PodcastEpisode(ctx).AnyUserWantsDownload(episodeID)
+	if err != nil {
+		return fmt.Errorf("checking remaining demand for episode %s: %w", episodeID, err)
+	}
+	if stillWanted {
+		return nil
+	}
+	episode, err := p.ds.PodcastEpisode(ctx).Get(episodeID)
 	if err != nil {
 		return err
 	}
+	if !episode.IsDownloaded() {
+		return nil
+	}
 	return p.deleteEpisodeFile(ctx, episode)
+}
+
+// downloadForSubscriber applies sub's download policy to episodes - policy None does nothing,
+// New/All both mark every episode in the list as downloaded for sub's user and fetch the shared
+// file if it doesn't already exist. Callers control which episodes this means in practice:
+// RefreshChannel passes only newly-discovered episodes (so New and All behave identically for a
+// fresh episode), while Subscribe's initial backfill only calls this at all when policy is All,
+// passing the channel's full existing episode list.
+func (p *podcasts) downloadForSubscriber(ctx context.Context, channel model.PodcastChannel, sub model.PodcastSubscription, episodes model.PodcastEpisodes) {
+	if sub.DownloadPolicy == model.PodcastDownloadPolicyNone || len(episodes) == 0 {
+		return
+	}
+	ids := make([]string, len(episodes))
+	for i, ep := range episodes {
+		ids[i] = ep.ID
+	}
+	if err := p.ds.PodcastEpisode(ctx).SetDownloaded(sub.UserID, true, ids...); err != nil {
+		log.Error(ctx, "Error marking episodes downloaded for subscriber", "channelId", channel.ID, "userId", sub.UserID, err)
+		return
+	}
+	adminCtx := adminContext(ctx)
+	var toFetch []model.PodcastEpisode
+	for _, ep := range episodes {
+		if !ep.IsDownloaded() {
+			toFetch = append(toFetch, ep)
+		}
+	}
+	p.downloadEpisodes(adminCtx, toFetch)
 }
 
 // deleteEpisodeFile removes a downloaded episode's local file (if any) and

@@ -10,6 +10,7 @@ import React from 'react'
 const all = {
   list: PodcastChannelList,
   show: PodcastChannelShow,
+  create: PodcastChannelCreate,
   icon: (
     <DynamicMenuIcon
       path={'podcastChannel'}
@@ -19,9 +20,12 @@ const all = {
   ),
 }
 
+// Subscribing (create) and viewing/managing a personal subscription (show) are available to any
+// user - see core/podcasts.Subscribe/Unsubscribe, which only require an authenticated caller, not
+// admin. Editing the shared channel's own metadata (title/url/cover art) stays admin-only, since
+// that's genuinely shared infrastructure gated at the persistence layer.
 const admin = {
   ...all,
-  create: PodcastChannelCreate,
   edit: PodcastChannelEdit,
 }
 

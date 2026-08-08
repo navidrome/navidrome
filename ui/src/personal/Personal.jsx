@@ -22,8 +22,8 @@ const Personal = () => {
   const translate = useTranslate()
   const classes = useStyles()
   // Admin-gated fork feature access - a toggle for a feature the admin has revoked shouldn't be
-  // offered at all, not just default off (there'd be nothing for it to control). Genre and
-  // Podcasts have no admin gate yet, so their toggles are unconditional.
+  // offered at all, not just default off (there'd be nothing for it to control). Genre has no
+  // admin gate yet, so its toggle is unconditional.
   const featurePermissions = getFeaturePermissions()
 
   return (
@@ -36,7 +36,7 @@ const Personal = () => {
         {config.enableReplayGain && <ReplayGainToggle />}
         <NotificationsToggle />
         {featurePermissions.folders !== false && <FolderViewToggle />}
-        <PodcastsToggle />
+        {featurePermissions.podcasts !== false && <PodcastsToggle />}
         <ViewToggle
           settingsKey="showGenreView"
           labelKey="menu.personal.options.showGenreView"

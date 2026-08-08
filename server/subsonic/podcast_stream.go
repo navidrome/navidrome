@@ -65,7 +65,7 @@ func (api *Router) streamPodcastEpisode(ctx context.Context, w http.ResponseWrit
 		return err
 	}
 
-	if channel.DownloadPolicy == model.PodcastDownloadPolicyNone {
+	if subscriptionPolicy(*channel) == model.PodcastDownloadPolicyNone {
 		return proxyPodcastEnclosure(ctx, w, r, episode)
 	}
 

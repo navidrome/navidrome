@@ -1,8 +1,6 @@
 import {
   DateField,
   Edit,
-  NumberInput,
-  SelectInput,
   SimpleForm,
   TextInput,
   useTranslate,
@@ -46,33 +44,15 @@ const PodcastChannelTitle = ({ record }) => {
   return <Title subTitle={`${resourceName} ${record ? record.title : ''}`} />
 }
 
+// Edits the shared channel's own metadata only (url, cover art) - download policy and retention
+// are per-subscriber settings now (see model.PodcastSubscription), managed from the channel's Show
+// page instead, where every subscriber (not just admins) can reach their own settings.
 const PodcastChannelEdit = (props) => {
-  const translate = useTranslate()
   return (
     <Edit title={<PodcastChannelTitle />} {...props}>
       <SimpleForm variant="outlined" {...props}>
         <PodcastChannelCoverArt />
         <TextInput source="url" fullWidth disabled />
-        <SelectInput
-          source="downloadPolicy"
-          choices={[
-            {
-              id: 'none',
-              name: translate('resources.podcastChannel.downloadPolicy.none'),
-            },
-            {
-              id: 'new',
-              name: translate('resources.podcastChannel.downloadPolicy.new'),
-            },
-            {
-              id: 'all',
-              name: translate('resources.podcastChannel.downloadPolicy.all'),
-            },
-          ]}
-        />
-        <NumberInput source="retentionCount" />
-        <NumberInput source="retentionDays" />
-        <NumberInput source="maxStorageMb" />
         <DateField variant="body1" source="lastCheckedAt" showTime />
         <DateField variant="body1" source="updatedAt" showTime />
         <DateField variant="body1" source="createdAt" showTime />

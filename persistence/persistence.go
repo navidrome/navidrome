@@ -77,6 +77,10 @@ func (s *SQLStore) PodcastEpisode(ctx context.Context) model.PodcastEpisodeRepos
 	return NewPodcastEpisodeRepository(ctx, s.getDBXBuilder())
 }
 
+func (s *SQLStore) PodcastSubscription(ctx context.Context) model.PodcastSubscriptionRepository {
+	return NewPodcastSubscriptionRepository(ctx, s.getDBXBuilder())
+}
+
 func (s *SQLStore) MediaFileTag(ctx context.Context) model.MediaFileTagRepository {
 	return NewMediaFileTagRepository(ctx, s.getDBXBuilder())
 }
