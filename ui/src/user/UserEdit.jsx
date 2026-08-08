@@ -48,14 +48,16 @@ const UserToolbar = ({ showDelete, ...props }) => (
 
 const CurrentPasswordInput = ({ formData, isMyself, ...rest }) => {
   const { permissions } = usePermissions()
-  return formData.changePassword && (isMyself || permissions !== 'admin') ? (
+  return formData.changePassword &&
+    !formData.authSource &&
+    (isMyself || permissions !== 'admin') ? (
     <PasswordInput className="ra-input" source="currentPassword" {...rest} />
   ) : null
 }
 
 const NewPasswordInput = ({ formData, ...rest }) => {
   const translate = useTranslate()
-  return formData.changePassword ? (
+  return formData.changePassword && !formData.authSource ? (
     <PasswordInput
       source="password"
       className="ra-input"
@@ -119,19 +121,52 @@ const UserEdit = (props) => {
         validate={validateForm}
       >
         {permissions === 'admin' && (
-          <TextInput
-            spellCheck={false}
-            source="userName"
-            validate={[required()]}
-          />
+          <FormDataConsumer>
+            {({ formData }) => (
+              <TextInput
+                spellCheck={false}
+                source="userName"
+                validate={[required()]}
+                disabled={!!formData.authSource}
+              />
+            )}
+          </FormDataConsumer>
         )}
-        <TextInput
-          source="name"
-          validate={[required()]}
-          {...getNameHelperText()}
-        />
-        <TextInput spellCheck={false} source="email" validate={[email()]} />
-        <BooleanInput source="changePassword" />
+        <FormDataConsumer>
+          {({ formData }) => (
+            <TextInput
+              source="name"
+              validate={[required()]}
+              disabled={!!formData.authSource}
+              {...getNameHelperText()}
+            />
+          )}
+        </FormDataConsumer>
+        <FormDataConsumer>
+          {({ formData }) => (
+            <TextInput
+              spellCheck={false}
+              source="email"
+              validate={[email()]}
+              disabled={!!formData.authSource}
+            />
+          )}
+        </FormDataConsumer>
+        <FormDataConsumer>
+          {({ formData }) =>
+            formData.authSource ? (
+              <Typography
+                variant="body2"
+                color="textSecondary"
+                style={{ marginTop: 16, marginBottom: 16 }}
+              >
+                {translate('resources.user.message.externalPasswordReadOnly')}
+              </Typography>
+            ) : (
+              <BooleanInput source="changePassword" />
+            )
+          }
+        </FormDataConsumer>
         <FormDataConsumer>
           {(formDataProps) => (
             <CurrentPasswordInput
