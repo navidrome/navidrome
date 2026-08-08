@@ -444,7 +444,7 @@ var _ = Describe("Playlists - Import", func() {
 				existingPls := &model.Playlist{
 					ID: "smart-id", Name: "My Smart", Path: plsFile, Sync: true,
 					OwnerID: "123", SongCount: 42,
-					ImportedHash: fmt.Sprintf("%x", sha256.Sum256([]byte(nsp))),
+					ImportedHash: hashOf(nsp),
 				}
 				mockPlsRepo.PathMap = map[string]*model.Playlist{plsFile: existingPls}
 
@@ -467,7 +467,7 @@ var _ = Describe("Playlists - Import", func() {
 				existingPls := &model.Playlist{
 					ID: "smart-id", Name: "My Smart", Path: plsFile, Sync: true,
 					OwnerID: "123", SongCount: 42,
-					ImportedHash: fmt.Sprintf("%x", sha256.Sum256([]byte("old content"))),
+					ImportedHash: hashOf("old content"),
 				}
 				mockPlsRepo.PathMap = map[string]*model.Playlist{plsFile: existingPls}
 
@@ -476,7 +476,7 @@ var _ = Describe("Playlists - Import", func() {
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mockPlsRepo.Last).ToNot(BeNil()) // Put called: file changed
-				Expect(mockPlsRepo.Last.ImportedHash).To(Equal(fmt.Sprintf("%x", sha256.Sum256([]byte(nsp)))))
+				Expect(mockPlsRepo.Last.ImportedHash).To(Equal(hashOf(nsp)))
 			})
 		})
 
@@ -887,7 +887,7 @@ var _ = Describe("Playlists - Import", func() {
 			existingPls := &model.Playlist{
 				ID: "smart-id", Name: "My Smart", Path: plsFile, Sync: true,
 				OwnerID: "123", SongCount: 42,
-				ImportedHash: fmt.Sprintf("%x", sha256.Sum256([]byte(nsp))),
+				ImportedHash: hashOf(nsp),
 			}
 			mockPlsRepo.PathMap = map[string]*model.Playlist{plsFile: existingPls}
 
@@ -1220,4 +1220,8 @@ func (m *mockFolderRepoForImport) GetByPath(_ model.Library, _ string) (*model.F
 		return m.folder, nil
 	}
 	return nil, model.ErrNotFound
+}
+
+func hashOf(content string) string {
+	return fmt.Sprintf("%x", sha256.Sum256([]byte(content)))
 }

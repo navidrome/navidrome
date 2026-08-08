@@ -2,6 +2,8 @@ package playlists
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -57,10 +59,12 @@ func (s *playlists) ImportFile(ctx context.Context, absolutePath string, sync bo
 	}
 	defer file.Close()
 
-	reader := ioutils.UTF8Reader(file)
+	hasher := sha256.New()
+	reader := io.TeeReader(ioutils.UTF8Reader(file), hasher)
 	if err := s.parseM3U(ctx, pls, nil, reader); err != nil {
 		return nil, err
 	}
+	pls.ImportedHash = hex.EncodeToString(hasher.Sum(nil))
 	if err := s.updatePlaylist(ctx, pls, sync); err != nil {
 		return nil, err
 	}
@@ -138,7 +142,9 @@ func (s *playlists) parsePlaylist(ctx context.Context, playlistFile string, fold
 	}
 	defer file.Close()
 
-	reader := ioutils.UTF8Reader(file)
+	// Hash the bytes the parser consumes, giving every imported playlist a content fingerprint
+	hasher := sha256.New()
+	reader := io.TeeReader(ioutils.UTF8Reader(file), hasher)
 	extension := strings.ToLower(filepath.Ext(playlistFile))
 	switch extension {
 	case ".nsp":
@@ -146,7 +152,11 @@ func (s *playlists) parsePlaylist(ctx context.Context, playlistFile string, fold
 	default:
 		err = s.parseM3U(ctx, pls, folder, reader)
 	}
-	return pls, err
+	if err != nil {
+		return pls, err
+	}
+	pls.ImportedHash = hex.EncodeToString(hasher.Sum(nil))
+	return pls, nil
 }
 
 // findByPathNormalized looks up a playlist by path, trying both NFC and NFD Unicode
@@ -194,8 +204,7 @@ func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist, 
 		newPls.UploadedImage = pls.UploadedImage // Preserve manual upload
 		newPls.EvaluatedAt = nil                 // force re-evaluation on next read
 		if newPls.IsSmartPlaylist() {
-			// Smart-playlist tracks aren't materialized at parse time, so carry the
-			// stored counters over; a re-sync must not blank the count before re-eval.
+			// Tracks aren't materialized at parse time; carry the stored counters so callers see real values
 			newPls.SongCount = pls.SongCount
 			newPls.Duration = pls.Duration
 			newPls.Size = pls.Size

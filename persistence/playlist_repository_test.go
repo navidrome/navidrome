@@ -7,6 +7,7 @@ import (
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/request"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -215,6 +216,32 @@ var _ = Describe("PlaylistRepository", func() {
 
 			Expect(repo.(*playlistRepository).cleanAnnotations()).To(Succeed())
 			Expect(countAnnotations()).To(Equal(0))
+		})
+	})
+
+	Describe("Put", func() {
+		It("does not overwrite counters when saving a smart playlist", func() {
+			pls := model.Playlist{Name: "Smart Counters", OwnerID: "userid", Rules: &criteria.Criteria{
+				Expression: criteria.All{criteria.Contains{"title": "love"}},
+			}}
+			Expect(repo.Put(&pls)).To(Succeed())
+			DeferCleanup(func() { Expect(repo.Delete(pls.ID)).To(Succeed()) })
+
+			// Simulate a previous evaluation having stored the counters
+			_, err := GetDBXBuilder().NewQuery("update playlist set song_count = 42, duration = 123, size = 456 where id = {:id}").
+				Bind(dbx.Params{"id": pls.ID}).Execute()
+			Expect(err).ToNot(HaveOccurred())
+
+			pls.SongCount = 0
+			pls.Duration = 0
+			pls.Size = 0
+			Expect(repo.Put(&pls)).To(Succeed())
+
+			saved, err := repo.Get(pls.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(saved.SongCount).To(Equal(42))
+			Expect(saved.Duration).To(Equal(float32(123)))
+			Expect(saved.Size).To(Equal(int64(456)))
 		})
 	})
 

@@ -40,6 +40,10 @@ func (p dbPlaylist) PostMapArgs(args map[string]any) error {
 		if err != nil {
 			return fmt.Errorf("invalid criteria expression: %w", err)
 		}
+		// Smart playlist counters are owned by refreshCounters (evaluation), never by callers
+		delete(args, "song_count")
+		delete(args, "duration")
+		delete(args, "size")
 		return nil
 	}
 	delete(args, "rules")
