@@ -3,6 +3,7 @@ package playlists
 import (
 	"cmp"
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"net/url"
@@ -24,6 +25,10 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *m
 	if err != nil {
 		return err
 	}
+	// Hash the file bytes as they stream past; the hash is stored but not acted on
+	// (M3U imports always re-run so newly-added tracks resolve), unlike NSP.
+	hasher := sha256.New()
+	reader = io.TeeReader(reader, hasher)
 	var mfs model.MediaFiles
 	// Chunk size of 100 lines, as each line can generate up to 4 lookup candidates
 	// (NFC/NFD × raw/lowercase), and SQLite has a max expression tree depth of 1000.
@@ -129,6 +134,7 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *m
 	pls.Tracks = nil
 	pls.AddMediaFiles(mfs)
 
+	pls.ImportedHash = fmt.Sprintf("%x", hasher.Sum(nil))
 	return nil
 }
 

@@ -308,6 +308,33 @@ var _ = Describe("Playlists - Import", func() {
 				Expect(pls.ID).To(BeEmpty())
 			})
 
+			It("stores a content hash but re-imports unchanged M3U playlists", func() {
+				tmpDir := GinkgoT().TempDir()
+				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
+				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3"}}
+				ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+
+				plsFile := filepath.Join(tmpDir, "test.m3u")
+				Expect(os.WriteFile(plsFile, []byte("test.mp3\n"), 0600)).To(Succeed())
+				plsFolder := &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: ""}
+
+				first, err := ps.ImportFromFolder(ctx, plsFolder, "test.m3u")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(first.ImportedHash).ToNot(BeEmpty())
+
+				// Re-import with a matching stored hash: M3U must still be re-imported, not skipped.
+				existingPls := &model.Playlist{
+					ID: "m3u-id", Name: "Test", Path: plsFile, Sync: true,
+					OwnerID: "123", ImportedHash: first.ImportedHash,
+				}
+				mockPlsRepo.PathMap = map[string]*model.Playlist{plsFile: existingPls}
+				mockPlsRepo.Last = nil
+
+				_, err = ps.ImportFromFolder(ctx, plsFolder, "test.m3u")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mockPlsRepo.Last).ToNot(BeNil())
+			})
+
 			It("clears ExternalImageURL on re-scan when directive is removed", func() {
 				tmpDir := GinkgoT().TempDir()
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})

@@ -179,7 +179,8 @@ func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist, 
 	}
 
 	if err == nil {
-		if !forceSync && newPls.ImportedHash != "" && newPls.ImportedHash == pls.ImportedHash {
+		// Only smart playlists skip on an unchanged file; M3U must re-run so newly-added tracks resolve.
+		if !forceSync && newPls.IsSmartPlaylist() && newPls.ImportedHash != "" && newPls.ImportedHash == pls.ImportedHash {
 			log.Trace(ctx, "Playlist file unchanged since last import, skipping", "playlist", pls.Name, "path", pls.Path)
 			return nil
 		}
