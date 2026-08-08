@@ -51,6 +51,11 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 		Entry("not in playlist", criteria.NotInPlaylist{"id": "deadbeef-dead-beef"}, "media_file.id NOT IN (SELECT media_file_id FROM playlist_tracks pl LEFT JOIN playlist on pl.playlist_id = playlist.id WHERE (pl.playlist_id = ? AND playlist.public = ?))", "deadbeef-dead-beef", 1),
 		Entry("album annotation", criteria.Gt{"albumRating": 3}, "album_annotation.rating > ?", 3),
 		Entry("artist annotation", criteria.Is{"artistLoved": true}, "artist_annotation.starred = ?", true),
+		Entry("album column", criteria.Gt{"albumSongCount": 5}, "album.song_count > ?", 5),
+		Entry("album duration column", criteria.Lt{"albumDuration": 600}, "album.duration < ?", 600),
+		Entry("album size column", criteria.Gt{"albumSize": 1000}, "album.size > ?", 1000),
+		Entry("album date column", criteria.After{"albumDateAdded": time.Date(2021, 10, 1, 0, 0, 0, 0, time.Local)}, "album.created_at > ?", time.Date(2021, 10, 1, 0, 0, 0, 0, time.Local)),
+		Entry("album modified column", criteria.Before{"albumDateModified": time.Date(2021, 10, 1, 0, 0, 0, 0, time.Local)}, "album.updated_at < ?", time.Date(2021, 10, 1, 0, 0, 0, 0, time.Local)),
 		// Annotation fields use a COALESCE default (0 for numeric, false for bool) so that tracks
 		// with no annotation row behave as that default. To keep the annotation index usable, the
 		// COALESCE is dropped when the compared value cannot match the default (the missing-row
@@ -298,6 +303,11 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 			Expect(newSmartPlaylistCriteria(criteria.Criteria{Sort: "random"}).OrderBy()).To(Equal("random() asc"))
 		})
 
+		It("sorts by album columns bare, with no COALESCE default", func() {
+			Expect(newSmartPlaylistCriteria(criteria.Criteria{Sort: "-albumDateAdded,trackNumber"}).OrderBy()).
+				To(Equal("album.created_at desc, media_file.track_number asc"))
+		})
+
 		It("sorts by multiple fields", func() {
 			Expect(newSmartPlaylistCriteria(criteria.Criteria{Sort: "title,-rating"}).OrderBy()).To(Equal("media_file.title asc, COALESCE(annotation.rating, 0) desc"))
 		})
@@ -320,6 +330,28 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 			}
 			_, hasSQLField := smartPlaylistFields[info.Name()]
 			Expect(hasSQLField).To(BeTrue(), "criteria field %q (name=%q) has no entry in smartPlaylistFields", name, info.Name())
+		}
+	})
+
+	It("declares a joinType matching the table each field selects from", func() {
+		// Omitting the joinType still compiles, so without this the field would only fail at
+		// refresh time with "no such column".
+		joinByTable := map[string]smartPlaylistJoinType{
+			"media_file":        smartPlaylistJoinNone,
+			"annotation":        smartPlaylistJoinNone,
+			"album":             smartPlaylistJoinAlbum,
+			"album_annotation":  smartPlaylistJoinAlbumAnnotation,
+			"artist_annotation": smartPlaylistJoinArtistAnnotation,
+		}
+		for name, field := range smartPlaylistFields {
+			if field.expr == "" {
+				continue
+			}
+			table, _, ok := strings.Cut(field.expr, ".")
+			Expect(ok).To(BeTrue(), "field %q has expr %q with no table prefix", name, field.expr)
+			want, known := joinByTable[table]
+			Expect(known).To(BeTrue(), "field %q selects from unknown table %q", name, table)
+			Expect(field.joinType).To(Equal(want), "field %q selects from %q but declares the wrong joinType", name, table)
 		}
 	})
 
@@ -584,6 +616,22 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 			c := criteria.Criteria{Expression: criteria.All{criteria.Contains{"title": "love"}}, Sort: "-artistRating"}
 
 			Expect(newSmartPlaylistCriteria(c).RequiredJoins().has(smartPlaylistJoinArtistAnnotation)).To(BeTrue())
+		})
+
+		It("keeps a sort-only album join out of the expression joins", func() {
+			c := criteria.Criteria{Expression: criteria.All{criteria.Contains{"title": "love"}}, Sort: "-albumDateAdded"}
+			cSQL := newSmartPlaylistCriteria(c)
+
+			Expect(cSQL.ExpressionJoins()).To(Equal(smartPlaylistJoinNone))
+			Expect(cSQL.RequiredJoins().has(smartPlaylistJoinAlbum)).To(BeTrue())
+		})
+
+		It("distinguishes the album join from the album annotation join", func() {
+			c := criteria.Criteria{Expression: criteria.All{criteria.Gt{"albumRating": 3}}}
+			joins := newSmartPlaylistCriteria(c).RequiredJoins()
+
+			Expect(joins.has(smartPlaylistJoinAlbumAnnotation)).To(BeTrue())
+			Expect(joins.has(smartPlaylistJoinAlbum)).To(BeFalse())
 		})
 	})
 })
