@@ -1,95 +1,95 @@
-import stylesheet from './catppuccinMacchiato.css.js'
+import stylesheet from './catppuccinFrappe.css.js'
 
 export default {
-  themeName: 'Catppuccin Macchiato',
+  themeName: 'Catppuccin Frappé',
   palette: {
     primary: {
-      main: '#c6a0f6', // Mauve
+      main: '#ca9ee6', // Mauve
     },
     secondary: {
-      main: '#1e2030', // Mantle
-      contrastText: '#cad3f5', // Text
+      main: '#292c3c', //Mantle
+      contrastText: '#c6d0f5', // Text
     },
     type: 'dark',
     background: {
-      default: '#24273a', // Base
+      default: '#303446', // Base
     },
   },
   overrides: {
     MuiPaper: {
       root: {
-        color: '#cad3f5', // Text
-        backgroundColor: '#1e2030', // Mantle
+        color: '#c6d0f5', // Text
+        backgroundColor: '#292c3c', // Mantle
         MuiSnackbarContent: {
           root: {
-            color: '#cad3f5', // Text
-            backgroundColor: '#ed8796', // Red
+            color: '#c6d0f5', // Text
+            backgroundColor: '#e78284', // Red
           },
           message: {
-            color: '#cad3f5', // Text
-            backgroundColor: '#ed8796', // Red
+            color: '#c6d0f5', // Text
+            backgroundColor: '#e78284', // Red
           },
         },
       },
     },
     MuiButton: {
       textPrimary: {
-        color: '#8aadf4', // Blue
+        color: '#8caaee', // Blue
       },
       textSecondary: {
-        color: '#cad3f5', // Text
+        color: '#c6d0f5', // Text
       },
     },
     MuiChip: {
       clickable: {
-        background: '#1e2030', // Mantle
+        background: '#292c3c', //Mantle
       },
     },
     MuiFormGroup: {
       root: {
-        color: '#cad3f5', // Text
+        color: '#c6d0f5', // Text
       },
     },
     MuiFormHelperText: {
       root: {
         Mui: {
           error: {
-            color: '#ed8796', // Red
+            color: '#e78284', // Red
           },
         },
       },
     },
     MuiTableHead: {
       root: {
-        color: '#cad3f5', // Text
-        background: '#1e2030', // Mantle
+        color: '#c6d0f5', // Text
+        background: '#292c3c', //Mantle
       },
     },
     MuiTableCell: {
       root: {
-        color: '#cad3f5', // Text
-        background: '#1e2030 !important', // Mantle
+        color: '#c6d0f5', // Text
+        background: '#292c3c !important', //Mantle
       },
       head: {
-        color: '#cad3f5', // Text
-        background: '#1e2030 !important', // Mantle
+        color: '#c6d0f5', // Text
+        background: '#292c3c !important', //Mantle
       },
     },
     NDLogin: {
       systemNameLink: {
-        color: '#c6a0f6', // Mauve
+        color: '#ca9ee6', // Mauve
       },
       icon: {},
       welcome: {
-        color: '#cad3f5', // Text
+        color: '#c6d0f5', // Text
       },
       card: {
         minWidth: 300,
-        background: '#24273a', // Base
+        background: '#303446', // Base
       },
       avatar: {},
       button: {
-        boxShadow: '3px 3px 5px #24273a', // Base
+        boxShadow: '3px 3px 5px #303446', // Base
       },
     },
     NDMobileArtistDetails: {
