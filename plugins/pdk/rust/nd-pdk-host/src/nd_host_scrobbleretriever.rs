@@ -169,7 +169,7 @@ pub fn get_last_timestamp(username: &str) -> Result<Option<i64>, Error> {
 ///   - options.ToTimestamp: If specified, the last UNIX timestamp to fetch (inclusive). Otherwise, end at the last scrobble
 ///   - options.Descending: If true, order from newest to oldest. Otherwise, oldest to newest
 ///   - options.MaxItems: The maximum number of items to retrieve. The maximum value (and default) if not specified is 5000
-///   - options.Offset: How many scrobbles to skip. Comes pre-set on the options returned by a previous call
+///   - options.Offset: Pagination state; only valid as received on the options returned by a previous call. Never set it manually
 /// 
 /// Returns:
 ///   - scrobbles: The scrobbles in the requested range, ordered by submission time

@@ -25,8 +25,8 @@ type ScrobbleOptions struct {
 	// The maximum number of items to retrieve. This is capped at 5000, the
 	// default if not specified
 	MaxItems int `json:"maxItems"`
-	// How many scrobbles to skip. GetScrobbles sets this on the options it returns for
-	// the next page; plugins never need to set it themselves
+	// Pagination state managed by GetScrobbles; only meaningful on the options it returns.
+	// Never set it or combine it with your own timestamps — scrobbles may be silently skipped
 	Offset int `json:"offset,omitempty"`
 }
 
@@ -64,7 +64,7 @@ type ScrobbleRetrieverService interface {
 	//   - options.ToTimestamp: If specified, the last UNIX timestamp to fetch (inclusive). Otherwise, end at the last scrobble
 	//   - options.Descending: If true, order from newest to oldest. Otherwise, oldest to newest
 	//   - options.MaxItems: The maximum number of items to retrieve. The maximum value (and default) if not specified is 5000
-	//   - options.Offset: How many scrobbles to skip. Comes pre-set on the options returned by a previous call
+	//   - options.Offset: Pagination state; only valid as received on the options returned by a previous call. Never set it manually
 	//
 	// Returns:
 	//   - scrobbles: The scrobbles in the requested range, ordered by submission time
