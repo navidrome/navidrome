@@ -179,6 +179,10 @@ func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist, 
 	}
 
 	if err == nil {
+		if !forceSync && newPls.ImportedHash != "" && newPls.ImportedHash == pls.ImportedHash {
+			log.Trace(ctx, "Playlist file unchanged since last import, skipping", "playlist", pls.Name, "path", pls.Path)
+			return nil
+		}
 		log.Info(ctx, "Updating synced playlist", "playlist", pls.Name, "path", newPls.Path)
 		newPls.ID = pls.ID
 		newPls.Name = pls.Name
@@ -187,6 +191,13 @@ func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist, 
 		newPls.Public = pls.Public
 		newPls.UploadedImage = pls.UploadedImage // Preserve manual upload
 		newPls.EvaluatedAt = nil                 // force re-evaluation on next read
+		if newPls.IsSmartPlaylist() {
+			// Smart-playlist tracks aren't materialized at parse time, so carry the
+			// stored counters over; a re-sync must not blank the count before re-eval.
+			newPls.SongCount = pls.SongCount
+			newPls.Duration = pls.Duration
+			newPls.Size = pls.Size
+		}
 	} else {
 		log.Info(ctx, "Adding synced playlist", "playlist", newPls.Name, "path", newPls.Path, "owner", owner.UserName)
 		newPls.OwnerID = owner.ID
