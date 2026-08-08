@@ -162,10 +162,10 @@ func (r *podcastEpisodeRepository) SetDownloaded(userID string, downloaded bool,
 	}
 	for _, itemID := range ids {
 		_, err := r.executeSQL(Expr(
-			"INSERT INTO annotation (ann_id, user_id, item_id, item_type, downloaded, downloaded_at) "+
-				"VALUES (?, ?, ?, 'podcast_episode', ?, ?) "+
+			"INSERT INTO annotation (user_id, item_id, item_type, downloaded, downloaded_at) "+
+				"VALUES (?, ?, 'podcast_episode', ?, ?) "+
 				"ON CONFLICT (user_id, item_id, item_type) DO UPDATE SET downloaded = excluded.downloaded, downloaded_at = excluded.downloaded_at",
-			id.NewRandom(), userID, itemID, downloaded, downloadedAt,
+			userID, itemID, downloaded, downloadedAt,
 		))
 		if err != nil {
 			return err

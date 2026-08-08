@@ -45,8 +45,8 @@ JOIN (SELECT id FROM user WHERE is_admin ORDER BY updated_at DESC LIMIT 1) u;
 -- their existing downloads stay visible to them under the new per-subscriber visibility model
 -- instead of silently disappearing from their list.
 -- +goose StatementBegin
-INSERT INTO annotation (ann_id, user_id, item_id, item_type, downloaded, downloaded_at)
-SELECT lower(hex(randomblob(16))), ps.user_id, pe.id, 'podcast_episode', true, pe.updated_at
+INSERT INTO annotation (user_id, item_id, item_type, downloaded, downloaded_at)
+SELECT ps.user_id, pe.id, 'podcast_episode', true, pe.updated_at
 FROM podcast_episode pe
 JOIN podcast_subscription ps ON ps.channel_id = pe.channel_id
 WHERE pe.download_status = 'downloaded'
