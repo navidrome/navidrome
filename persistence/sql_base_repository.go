@@ -262,6 +262,22 @@ func (r sqlRepository) applyLibraryFilter(sq SelectBuilder, tableName ...string)
 		"SELECT ul.library_id FROM user_library ul WHERE ul.user_id = ?)", user.ID))
 }
 
+// hasFeaturePermission reports whether the current logged-in user is allowed to use the given
+// admin-gated fork feature (see model.AllUserFeatures). Admins and headless processes always pass.
+// Reads loggedUser(ctx).FeaturePermissions, populated once per request alongside Libraries
+// (userRepository.selectUserWithLibraries) - no extra query per call. A feature missing from that
+// map is treated as enabled, matching the opt-out default applied when it's populated.
+func (r sqlRepository) hasFeaturePermission(feature string) bool {
+	user := loggedUser(r.ctx)
+	if user.IsAdmin || user.ID == invalidUserId {
+		return true
+	}
+	if enabled, ok := user.FeaturePermissions[feature]; ok {
+		return enabled
+	}
+	return true
+}
+
 // userSeesAllLibraries reports whether the visible set already covers every library, so a
 // library filter would exclude nothing.
 func (r sqlRepository) userSeesAllLibraries(visible []int) bool {
@@ -269,7 +285,12 @@ func (r sqlRepository) userSeesAllLibraries(visible []int) bool {
 	if user.IsAdmin || user.ID == invalidUserId {
 		return true // visible is the whole library table
 	}
-	total, err := NewLibraryRepository(r.ctx, r.db).CountAll()
+	// The true system-wide total, not this user's own access-filtered count - libraryRepository's
+	// GetAll/CountAll now apply applyUserLibraryAccessFilter, so calling them with r.ctx as-is
+	// would compare "libraries I can see" against "libraries I can see" and never detect a real
+	// restriction. Force the system/admin bypass explicitly for this one lookup.
+	systemCtx := request.WithUser(r.ctx, model.User{ID: invalidUserId})
+	total, err := NewLibraryRepository(systemCtx, r.db).CountAll()
 	if err != nil || total == 0 {
 		return false
 	}

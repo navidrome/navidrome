@@ -24,6 +24,7 @@ import { Typography } from '@material-ui/core'
 import { Title } from '../common'
 import DeleteUserButton from './DeleteUserButton'
 import { LibrarySelectionField } from './LibrarySelectionField.jsx'
+import { FeaturePermissionsField } from './FeaturePermissionsField.jsx'
 import { validateUserForm } from './userValidation'
 
 const useStyles = makeStyles({
@@ -165,6 +166,29 @@ const UserEdit = (props) => {
                     style={{ marginTop: 16, marginBottom: 16 }}
                   >
                     {translate('resources.user.message.adminAutoLibraries')}
+                  </Typography>
+                )}
+              </>
+            )}
+          </FormDataConsumer>
+        )}
+
+        {/* Conditional Feature Permissions for Admin Users Only */}
+        {permissions === 'admin' && (
+          <FormDataConsumer>
+            {({ formData }) => (
+              <>
+                {!formData.isAdmin && <FeaturePermissionsField />}
+
+                {formData.isAdmin && (
+                  <Typography
+                    variant="body2"
+                    color="textSecondary"
+                    style={{ marginTop: 16, marginBottom: 16 }}
+                  >
+                    {translate(
+                      'resources.user.message.adminAutoFeaturePermissions',
+                    )}
                   </Typography>
                 )}
               </>

@@ -27,8 +27,9 @@ type userRepository struct {
 }
 
 type dbUser struct {
-	*model.User   `structs:",flatten"`
-	LibrariesJSON string `structs:"-" json:"-"`
+	*model.User            `structs:",flatten"`
+	LibrariesJSON          string `structs:"-" json:"-"`
+	FeaturePermissionsJSON string `structs:"-" json:"-"`
 }
 
 func (u *dbUser) PostScan() error {
@@ -37,6 +38,22 @@ func (u *dbUser) PostScan() error {
 			return fmt.Errorf("parsing user libraries from db: %w", err)
 		}
 	}
+	// Default every known feature to enabled, then apply explicit overrides - an opt-out model, so
+	// existing users are unaffected until an admin explicitly revokes access to a feature.
+	permissions := make(map[string]bool, len(model.AllUserFeatures))
+	for _, f := range model.AllUserFeatures {
+		permissions[f] = true
+	}
+	if u.FeaturePermissionsJSON != "" {
+		var overrides map[string]bool
+		if err := json.Unmarshal([]byte(u.FeaturePermissionsJSON), &overrides); err != nil {
+			return fmt.Errorf("parsing user feature permissions from db: %w", err)
+		}
+		for feature, enabled := range overrides {
+			permissions[feature] = enabled
+		}
+	}
+	u.User.FeaturePermissions = permissions
 	return nil
 }
 
@@ -67,7 +84,11 @@ func NewUserRepository(ctx context.Context, db dbx.Builder) model.UserRepository
 	return r
 }
 
-// selectUserWithLibraries returns a SelectBuilder that includes library information
+// selectUserWithLibraries returns a SelectBuilder that includes library information and feature
+// permissions. Feature permissions are a scalar correlated subquery, not a third table joined into
+// the main FROM chain - joining it alongside user_library would multiply rows (a cross product of
+// libraries x feature rows) before the GROUP BY collapses them, corrupting both json_group_array
+// aggregates with duplicates.
 func (r *userRepository) selectUserWithLibraries(options ...model.QueryOptions) SelectBuilder {
 	return r.newSelect(options...).
 		Columns(`user.*`,
@@ -81,7 +102,12 @@ func (r *userRepository) selectUserWithLibraries(options ...model.QueryOptions) 
 				'full_scan_in_progress', library.full_scan_in_progress,
 				'updated_at', library.updated_at,
 				'created_at', library.created_at
-			)) FILTER (WHERE library.id IS NOT NULL), '[]') AS libraries_json`).
+			)) FILTER (WHERE library.id IS NOT NULL), '[]') AS libraries_json`,
+			`COALESCE((
+				SELECT json_group_object(feature, json(iif(enabled, 'true', 'false')))
+				FROM user_feature_permission
+				WHERE user_feature_permission.user_id = user.id
+			), '{}') AS feature_permissions_json`).
 		LeftJoin("user_library ul ON user.id = ul.user_id").
 		LeftJoin("library ON ul.library_id = library.id").
 		GroupBy("user.id")
@@ -476,6 +502,49 @@ func (r *userRepository) SetUserLibraries(userID string, libraryIDs []int) error
 		return err
 	}
 	return nil
+}
+
+// Feature permission methods
+
+func (r *userRepository) GetUserFeaturePermissions(userID string) (map[string]bool, error) {
+	sel := Select("feature", "enabled").
+		From("user_feature_permission").
+		Where(Eq{"user_id": userID})
+	var rows []struct {
+		Feature string
+		Enabled bool
+	}
+	if err := r.queryAll(sel, &rows); err != nil {
+		return nil, err
+	}
+	// Default every known feature to enabled, then apply explicit overrides -
+	// an opt-out model, so existing users are unaffected until an admin
+	// explicitly revokes access to a feature.
+	res := make(map[string]bool, len(model.AllUserFeatures))
+	for _, f := range model.AllUserFeatures {
+		res[f] = true
+	}
+	for _, row := range rows {
+		res[row.Feature] = row.Enabled
+	}
+	return res, nil
+}
+
+func (r *userRepository) SetUserFeaturePermissions(userID string, permissions map[string]bool) error {
+	delSql := Delete("user_feature_permission").Where(Eq{"user_id": userID})
+	if _, err := r.executeSQL(delSql); err != nil {
+		return err
+	}
+	if len(permissions) == 0 {
+		return nil
+	}
+	insert := Insert("user_feature_permission").Columns("user_id", "feature", "enabled", "updated_at")
+	now := time.Now()
+	for feature, enabled := range permissions {
+		insert = insert.Values(userID, feature, enabled, now)
+	}
+	_, err := r.executeSQL(insert)
+	return err
 }
 
 var _ model.UserRepository = (*userRepository)(nil)

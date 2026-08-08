@@ -240,11 +240,13 @@
         "currentPassword": "Current Password",
         "newPassword": "New Password",
         "token": "Token",
-        "libraries": "Libraries"
+        "libraries": "Libraries",
+        "featurePermissions": "Fork Feature Access"
       },
       "helperTexts": {
         "name": "Changes to your name will only be reflected on next login",
-        "libraries": "Select specific libraries for this user, or leave empty to use default libraries"
+        "libraries": "Select specific libraries for this user, or leave empty to use default libraries",
+        "featurePermissions": "Which of this fork's optional features this user can see and use. Unchecking one also hides that user's own show/hide toggle for it, since there'd be nothing left for it to control."
       },
       "notifications": {
         "created": "User created",
@@ -258,7 +260,13 @@
         "listenBrainzToken": "Enter your ListenBrainz user token.",
         "clickHereForToken": "Click here to get your token",
         "selectAllLibraries": "Select all libraries",
-        "adminAutoLibraries": "Admin users automatically have access to all libraries"
+        "adminAutoLibraries": "Admin users automatically have access to all libraries",
+        "adminAutoFeaturePermissions": "Admin users automatically have access to every feature"
+      },
+      "featurePermissions": {
+        "folders": "Physical Folder Browsing",
+        "ai_tags": "AI Genre / AI Mood dashboards",
+        "my_tags": "My Tags dashboard"
       }
     },
     "player": {

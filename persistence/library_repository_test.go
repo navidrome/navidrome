@@ -252,4 +252,79 @@ var _ = Describe("LibraryRepository", func() {
 			Expect(artistMissing(sharedArtist.ID)).To(BeFalse(), "artist still in another library must stay visible")
 		})
 	})
+
+	Describe("GetAll access filtering", func() {
+		// Regression test: GetAll previously returned every library on the server to any
+		// logged-in user regardless of actual grants, unlike every other repository (which all
+		// call applyLibraryFilter). This is what made the web UI's folder browser pick a library
+		// the current user might not actually have access to.
+		var grantedLib, ungrantedLib model.Library
+		var nonAdminUser *model.User
+
+		BeforeEach(func() {
+			adminCtx := request.WithUser(log.NewContext(context.TODO()), model.User{IsAdmin: true})
+			adminRepo := NewLibraryRepository(adminCtx, conn)
+
+			grantedLib = model.Library{Name: "Granted Library", Path: "/music/granted"}
+			Expect(adminRepo.Put(&grantedLib)).To(Succeed())
+			ungrantedLib = model.Library{Name: "Ungranted Library", Path: "/music/ungranted"}
+			Expect(adminRepo.Put(&ungrantedLib)).To(Succeed())
+
+			userRepo := NewUserRepository(adminCtx, conn)
+			nonAdminUser = &model.User{ID: "lib-access-userid", UserName: "libaccessuser", IsAdmin: false}
+			nonAdminUser.NewPassword = "password"
+			Expect(userRepo.Put(nonAdminUser)).To(Succeed())
+			Expect(userRepo.SetUserLibraries(nonAdminUser.ID, []int{grantedLib.ID})).To(Succeed())
+		})
+
+		AfterEach(func() {
+			_, _ = conn.NewQuery("DELETE FROM library WHERE id IN ({:g}, {:u})").
+				Bind(dbx.Params{"g": grantedLib.ID, "u": ungrantedLib.ID}).Execute()
+		})
+
+		It("only returns libraries the non-admin user has been granted", func() {
+			userCtx := request.WithUser(log.NewContext(context.TODO()), *nonAdminUser)
+			userRepoScoped := NewLibraryRepository(userCtx, conn)
+
+			libs, err := userRepoScoped.GetAll()
+			Expect(err).ToNot(HaveOccurred())
+
+			ids := make([]int, len(libs))
+			for i, l := range libs {
+				ids[i] = l.ID
+			}
+			Expect(ids).To(ContainElement(grantedLib.ID))
+			Expect(ids).ToNot(ContainElement(ungrantedLib.ID))
+		})
+
+		It("still returns every library for an admin", func() {
+			adminCtx := request.WithUser(log.NewContext(context.TODO()), model.User{IsAdmin: true})
+			adminRepoScoped := NewLibraryRepository(adminCtx, conn)
+
+			libs, err := adminRepoScoped.GetAll()
+			Expect(err).ToNot(HaveOccurred())
+
+			ids := make([]int, len(libs))
+			for i, l := range libs {
+				ids[i] = l.ID
+			}
+			Expect(ids).To(ContainElement(grantedLib.ID))
+			Expect(ids).To(ContainElement(ungrantedLib.ID))
+		})
+
+		It("still returns every library for a system/background context (no logged-in user)", func() {
+			systemCtx := log.NewContext(context.TODO())
+			systemRepo := NewLibraryRepository(systemCtx, conn)
+
+			libs, err := systemRepo.GetAll()
+			Expect(err).ToNot(HaveOccurred())
+
+			ids := make([]int, len(libs))
+			for i, l := range libs {
+				ids[i] = l.ID
+			}
+			Expect(ids).To(ContainElement(grantedLib.ID))
+			Expect(ids).To(ContainElement(ungrantedLib.ID))
+		})
+	})
 })

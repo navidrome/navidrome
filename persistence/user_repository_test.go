@@ -383,6 +383,100 @@ var _ = Describe("UserRepository", func() {
 		})
 	})
 
+	Describe("Feature Permission Methods", func() {
+		var userID string
+
+		BeforeEach(func() {
+			testUser := model.User{
+				ID:          "feature-perm-user-id",
+				UserName:    "featurepermuser",
+				Name:        "Feature Perm User",
+				Email:       "featureperm@example.com",
+				NewPassword: "password",
+				IsAdmin:     false,
+			}
+			Expect(repo.Put(&testUser)).To(BeNil())
+			userID = testUser.ID
+		})
+
+		AfterEach(func() {
+			_ = repo.SetUserFeaturePermissions(userID, map[string]bool{})
+		})
+
+		Describe("GetUserFeaturePermissions", func() {
+			It("defaults every known feature to enabled when no explicit rows exist", func() {
+				permissions, err := repo.GetUserFeaturePermissions(userID)
+				Expect(err).ToNot(HaveOccurred())
+				for _, f := range model.AllUserFeatures {
+					Expect(permissions[f]).To(BeTrue(), "feature %q should default to enabled", f)
+				}
+			})
+		})
+
+		Describe("SetUserFeaturePermissions", func() {
+			It("persists an explicit override", func() {
+				err := repo.SetUserFeaturePermissions(userID, map[string]bool{model.FeatureFolders: false})
+				Expect(err).ToNot(HaveOccurred())
+
+				permissions, err := repo.GetUserFeaturePermissions(userID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(permissions[model.FeatureFolders]).To(BeFalse())
+				// Untouched features still default to enabled
+				Expect(permissions[model.FeatureAITags]).To(BeTrue())
+				Expect(permissions[model.FeatureMyTags]).To(BeTrue())
+			})
+
+			It("replaces, not merges, on a subsequent call", func() {
+				Expect(repo.SetUserFeaturePermissions(userID, map[string]bool{
+					model.FeatureFolders: false,
+					model.FeatureAITags:  false,
+				})).To(Succeed())
+
+				// Second call only mentions FeatureFolders - FeatureAITags' override should be
+				// cleared, not preserved, since Set fully replaces the stored row set.
+				Expect(repo.SetUserFeaturePermissions(userID, map[string]bool{
+					model.FeatureFolders: false,
+				})).To(Succeed())
+
+				permissions, err := repo.GetUserFeaturePermissions(userID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(permissions[model.FeatureFolders]).To(BeFalse())
+				Expect(permissions[model.FeatureAITags]).To(BeTrue())
+			})
+		})
+
+		Describe("Get/FindByUsername feature permission population", func() {
+			// Regression test for the correlated-subquery approach in selectUserWithLibraries:
+			// a user with BOTH multiple libraries and explicit feature permission overrides must
+			// get both aggregates populated correctly, with no row-multiplication cross-product
+			// between the two one-to-many relations.
+			It("populates User.FeaturePermissions alongside Libraries, without corrupting either", func() {
+				library1 := model.Library{ID: 0, Name: "FP Library 1", Path: "/fp/path1"}
+				library2 := model.Library{ID: 0, Name: "FP Library 2", Path: "/fp/path2"}
+				libRepo := NewLibraryRepository(log.NewContext(context.TODO()), GetDBXBuilder())
+				Expect(libRepo.Put(&library1)).To(BeNil())
+				Expect(libRepo.Put(&library2)).To(BeNil())
+				defer func() {
+					_ = libRepo.(*libraryRepository).delete(squirrel.Eq{"id": []int{library1.ID, library2.ID}})
+				}()
+
+				Expect(repo.SetUserLibraries(userID, []int{library1.ID, library2.ID})).To(Succeed())
+				Expect(repo.SetUserFeaturePermissions(userID, map[string]bool{
+					model.FeatureFolders: false,
+					model.FeatureAITags:  false,
+					model.FeatureMyTags:  true,
+				})).To(Succeed())
+
+				fetched, err := repo.Get(userID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(fetched.Libraries).To(HaveLen(2), "library aggregation must not be duplicated by the feature permission subquery")
+				Expect(fetched.FeaturePermissions[model.FeatureFolders]).To(BeFalse())
+				Expect(fetched.FeaturePermissions[model.FeatureAITags]).To(BeFalse())
+				Expect(fetched.FeaturePermissions[model.FeatureMyTags]).To(BeTrue())
+			})
+		})
+	})
+
 	Describe("Admin User Auto-Assignment", func() {
 		var (
 			libRepo         model.LibraryRepository

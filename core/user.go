@@ -2,6 +2,8 @@ package core
 
 import (
 	"context"
+	"fmt"
+	"slices"
 
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/model"
@@ -16,6 +18,10 @@ type PluginUnloader interface {
 // User provides business logic for user management with plugin coordination.
 type User interface {
 	NewRepository(ctx context.Context) rest.Repository
+
+	// Feature permission operations
+	GetUserFeaturePermissions(ctx context.Context, userID string) (map[string]bool, error)
+	SetUserFeaturePermissions(ctx context.Context, userID string, permissions map[string]bool) (map[string]bool, error)
 }
 
 type userService struct {
@@ -57,6 +63,40 @@ func (r *userRepositoryWrapper) Save(entity any) (string, error) {
 // Update implements rest.Persistable by delegating to the underlying repository.
 func (r *userRepositoryWrapper) Update(id string, entity any, cols ...string) error {
 	return r.UserRepository.(rest.Persistable).Update(id, entity, cols...)
+}
+
+// Feature permission operations
+
+func (s *userService) GetUserFeaturePermissions(ctx context.Context, userID string) (map[string]bool, error) {
+	// Verify user exists
+	if _, err := s.ds.User(ctx).Get(userID); err != nil {
+		return nil, err
+	}
+	return s.ds.User(ctx).GetUserFeaturePermissions(userID)
+}
+
+func (s *userService) SetUserFeaturePermissions(ctx context.Context, userID string, permissions map[string]bool) (map[string]bool, error) {
+	user, err := s.ds.User(ctx).Get(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Admins bypass every feature gate (see persistence.hasFeaturePermission) - don't allow
+	// manual restriction that would have no effect and would only confuse the admin UI.
+	if user.IsAdmin {
+		return nil, fmt.Errorf("%w: cannot restrict feature access for admin users", model.ErrValidation)
+	}
+
+	for feature := range permissions {
+		if !slices.Contains(model.AllUserFeatures, feature) {
+			return nil, fmt.Errorf("%w: unknown feature %q", model.ErrValidation, feature)
+		}
+	}
+
+	if err := s.ds.User(ctx).SetUserFeaturePermissions(userID, permissions); err != nil {
+		return nil, err
+	}
+	return s.ds.User(ctx).GetUserFeaturePermissions(userID)
 }
 
 // Delete implements rest.Persistable and coordinates plugin unloading.

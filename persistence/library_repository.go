@@ -278,15 +278,28 @@ func (r *libraryRepository) Delete(id int) error {
 	return nil
 }
 
+// applyUserLibraryAccessFilter restricts a query against the library table itself to the libraries
+// the current user has been granted. Unlike applyLibraryFilter (for tables with their own
+// library_id FK column), library.id IS the library ID, so the subquery compares against that
+// directly. Admins and system/background contexts (invalidUserId, e.g. the scanner) are
+// unrestricted, matching applyLibraryFilter's own bypass.
+func (r *libraryRepository) applyUserLibraryAccessFilter(sq SelectBuilder) SelectBuilder {
+	user := loggedUser(r.ctx)
+	if user.IsAdmin || user.ID == invalidUserId {
+		return sq
+	}
+	return sq.Where(Expr("library.id IN (SELECT ul.library_id FROM user_library ul WHERE ul.user_id = ?)", user.ID))
+}
+
 func (r *libraryRepository) GetAll(ops ...model.QueryOptions) (model.Libraries, error) {
-	sq := r.newSelect(ops...).Columns("*")
+	sq := r.applyUserLibraryAccessFilter(r.newSelect(ops...).Columns("*"))
 	res := model.Libraries{}
 	err := r.queryAll(sq, &res)
 	return res, err
 }
 
 func (r *libraryRepository) CountAll(ops ...model.QueryOptions) (int64, error) {
-	sq := r.newSelect(ops...)
+	sq := r.applyUserLibraryAccessFilter(r.newSelect(ops...))
 	return r.count(sq)
 }
 

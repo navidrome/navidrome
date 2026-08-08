@@ -1,5 +1,10 @@
 export const REST_URL = '/api'
 
+// Admin-gated fork feature keys, mirroring model.AllUserFeatures
+// (model/user_feature_permission.go). Keep in sync manually - there's no
+// shared-schema generation between the Go backend and this JS bundle.
+export const ALL_USER_FEATURES = ['folders', 'ai_tags', 'my_tags']
+
 export const INSIGHTS_DOC_URL =
   'https://navidrome.org/docs/getting-started/insights'
 

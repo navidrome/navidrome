@@ -99,6 +99,7 @@ func (api *Router) routes() http.Handler {
 			api.addInspectRoute(r)
 			api.addConfigRoute(r)
 			api.addUserLibraryRoute(r)
+			api.addUserFeaturePermissionsRoute(r)
 			api.addPluginRoute(r)
 			api.RX(r, "/library", api.libs.NewRepository, true)
 		})

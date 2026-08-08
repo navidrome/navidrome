@@ -142,6 +142,9 @@ func (r folderRepository) populateBreadcrumbs(f *model.Folder, libPath, libName 
 }
 
 func (r folderRepository) Get(id string) (*model.Folder, error) {
+	if !r.hasFeaturePermission(model.FeatureFolders) {
+		return nil, model.ErrNotFound
+	}
 	sq := r.selectFolder().Where(Eq{"folder.id": id})
 	var res dbFolder
 	err := r.queryOne(sq, &res)
@@ -157,6 +160,9 @@ func (r folderRepository) GetByPath(lib model.Library, path string) (*model.Fold
 }
 
 func (r folderRepository) GetAll(opt ...model.QueryOptions) (model.Folders, error) {
+	if !r.hasFeaturePermission(model.FeatureFolders) {
+		return model.Folders{}, nil
+	}
 	sq := r.selectFolder(opt...)
 	var res dbFolders
 	err := r.queryAll(sq, &res)
@@ -170,6 +176,9 @@ func (r folderRepository) GetAll(opt ...model.QueryOptions) (model.Folders, erro
 }
 
 func (r folderRepository) CountAll(opt ...model.QueryOptions) (int64, error) {
+	if !r.hasFeaturePermission(model.FeatureFolders) {
+		return 0, nil
+	}
 	query := r.newSelect()
 	query = r.applyLibraryFilter(query)
 	return r.count(query, opt...)

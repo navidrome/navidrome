@@ -23,7 +23,26 @@ function storeAuthenticationInfo(authInfo) {
   localStorage.setItem('role', authInfo.isAdmin ? 'admin' : 'regular')
   localStorage.setItem('subsonic-salt', authInfo.subsonicSalt)
   localStorage.setItem('subsonic-token', authInfo.subsonicToken)
+  // Admin-gated fork feature access (folders/ai_tags/my_tags, see model/user_feature_permission.go).
+  // Absent/null means "not restricted" - admins never receive this, and a feature missing from the
+  // map defaults to enabled, so JSON.stringify(undefined) => "undefined" here is intentionally
+  // read back as "{}" by getFeaturePermissions() below rather than crashing on JSON.parse.
+  localStorage.setItem(
+    'featurePermissions',
+    JSON.stringify(authInfo.featurePermissions || {}),
+  )
   localStorage.setItem('is-authenticated', 'true')
+}
+
+// Reads this session's admin-gated fork feature grants. A feature key absent from the stored map
+// means enabled (opt-out default, matching the backend) - callers should check
+// `getFeaturePermissions().folders !== false`, not truthiness of the key itself.
+export const getFeaturePermissions = () => {
+  try {
+    return JSON.parse(localStorage.getItem('featurePermissions') || '{}')
+  } catch {
+    return {}
+  }
 }
 
 const authProvider = {
@@ -109,6 +128,7 @@ const removeItems = () => {
   localStorage.removeItem('role')
   localStorage.removeItem('subsonic-salt')
   localStorage.removeItem('subsonic-token')
+  localStorage.removeItem('featurePermissions')
   localStorage.removeItem('is-authenticated')
 }
 
