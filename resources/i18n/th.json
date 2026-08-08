@@ -210,7 +210,8 @@
         "songCount": "เพลง",
         "comment": "ความคิดเห็น",
         "sync": "นำเข้าอัตโนมัติ",
-        "path": "นำเข้าจาก"
+        "path": "นำเข้าจาก",
+        "starred": "ชื่นชอบ"
       },
       "actions": {
         "selectPlaylist": "เลือกเพลย์ลิสต์",
@@ -634,7 +635,8 @@
       "multipleLibraries": "%{selected} ของ %{total} ห้องสมุด",
       "selectLibraries": "เลือกห้องสมุด",
       "none": "ไม่มี"
-    }
+    },
+    "onlyFavourites": "แสดงเฉพาะที่ชื่นชอบ"
   },
   "player": {
     "playListsText": "คิวเล่น",

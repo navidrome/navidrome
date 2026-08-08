@@ -210,7 +210,8 @@
         "songCount": "Cancións",
         "comment": "Comentario",
         "sync": "Autoimportación",
-        "path": "Importar desde"
+        "path": "Importar desde",
+        "starred": "Favorita"
       },
       "actions": {
         "selectPlaylist": "Elixe unha lista:",
@@ -435,7 +436,7 @@
       "minValue": "Ten que ter polo menos %{min}",
       "maxValue": "Ten que ter %{max} ou menos",
       "number": "Ten que ser un número",
-      "email": "Ten que ser un email válido",
+      "email": "Ten que ser un correo válido",
       "oneOf": "Ten que ser un de: %{options}",
       "regex": "Ten que ter un formato específico (regexp): %{pattern}",
       "unique": "Ten que ser único",
@@ -509,7 +510,7 @@
       }
     },
     "message": {
-      "about": "Acerca de",
+      "about": "Sobre",
       "are_you_sure": "Tes certeza?",
       "bulk_delete_content": "Tes a certeza de querer borrar a %{name} |||| Tes a certeza de querer eleminar estes %{smart_count} elementos?",
       "bulk_delete_title": "Eliminar %{name} |||| Eliminar %{smart_count} %{name}",
@@ -626,7 +627,7 @@
       }
     },
     "albumList": "Álbums",
-    "about": "Acerca de",
+    "about": "Sobre",
     "playlists": "Listas de reprodución",
     "sharedPlaylists": "Listas compartidas",
     "librarySelector": {
@@ -634,7 +635,8 @@
       "multipleLibraries": "%{selected} de %{total} Bibliotecas",
       "selectLibraries": "Seleccionar Bibliotecas",
       "none": "Ningunha"
-    }
+    },
+    "onlyFavourites": "Mostrar só as favoritas"
   },
   "player": {
     "playListsText": "Reproducir cola",
