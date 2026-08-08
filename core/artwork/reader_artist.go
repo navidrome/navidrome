@@ -61,7 +61,13 @@ func newArtistArtworkReader(ctx context.Context, artwork *artwork, artID model.A
 	}
 	artistFolder, artistFolderLastUpdate, err := loadArtistFolder(ctx, artwork.ds, als, albumPaths)
 	if err != nil {
-		return nil, err
+		// The artist folder is only one of the possible art sources, so a failure to
+		// resolve it must not discard the remaining ones (uploaded image, image-folder,
+		// external). Carry on without it and let the priority chain fall through.
+		log.Warn(ctx, "Could not load artist folder, trying remaining art sources", "artist", ar.Name,
+			"id", artID.ID, err)
+		artistFolder = ""
+		artistFolderLastUpdate = time.Time{}
 	}
 	var lib libraryView
 	if len(als) > 0 {

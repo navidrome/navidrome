@@ -125,6 +125,19 @@ var _ = Describe("artistArtworkReader", func() {
 				Expect(upd).To(BeZero())
 			})
 		})
+
+		When("the folder is not in the database", func() {
+			It("returns no folder without an error, so other art sources are still tried", func() {
+				paths = []string{
+					filepath.FromSlash("/music/artist/album1"),
+				}
+				repo.result = []model.Folder{}
+				folder, upd, err := loadArtistFolder(ctx, fds, albums, paths)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(folder).To(BeEmpty())
+				Expect(upd).To(BeZero())
+			})
+		})
 	})
 
 	var _ = Describe("fromArtistFolder", func() {
