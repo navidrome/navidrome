@@ -1,7 +1,9 @@
 package playlists
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -51,9 +53,13 @@ func getPositionFromOffset(data []byte, offset int64) (line, column int) {
 
 func (s *playlists) parseNSP(_ context.Context, pls *model.Playlist, reader io.Reader) error {
 	nsp := &nspFile{}
-	reader = io.LimitReader(reader, 100*1024) // Limit to 100KB
-	reader = jsoncommentstrip.NewReader(reader)
-	input, err := io.ReadAll(reader)
+	raw, err := io.ReadAll(io.LimitReader(reader, 100*1024)) // Limit to 100KB
+	if err != nil {
+		return fmt.Errorf("reading SmartPlaylist: %w", err)
+	}
+	pls.ImportedHash = fmt.Sprintf("%x", sha256.Sum256(raw))
+
+	input, err := io.ReadAll(jsoncommentstrip.NewReader(bytes.NewReader(raw)))
 	if err != nil {
 		return fmt.Errorf("reading SmartPlaylist: %w", err)
 	}

@@ -2,6 +2,7 @@ package playlists_test
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -402,6 +403,53 @@ var _ = Describe("Playlists - Import", func() {
 				Expect(mockPlsRepo.Last.SongCount).To(Equal(42))
 				Expect(mockPlsRepo.Last.Duration).To(Equal(float32(123.4)))
 				Expect(mockPlsRepo.Last.Size).To(Equal(int64(5000)))
+			})
+
+			It("skips re-import when the smart playlist file content is unchanged", func() {
+				tmpDir := GinkgoT().TempDir()
+				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
+				ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+
+				nsp := `{"name":"My Smart","all":[{"is":{"loved":true}}]}`
+				plsFile := filepath.Join(tmpDir, "smart.nsp")
+				Expect(os.WriteFile(plsFile, []byte(nsp), 0600)).To(Succeed())
+
+				existingPls := &model.Playlist{
+					ID: "smart-id", Name: "My Smart", Path: plsFile, Sync: true,
+					OwnerID: "123", SongCount: 42,
+					ImportedHash: fmt.Sprintf("%x", sha256.Sum256([]byte(nsp))),
+				}
+				mockPlsRepo.PathMap = map[string]*model.Playlist{plsFile: existingPls}
+
+				plsFolder := &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: ""}
+				_, err := ps.ImportFromFolder(ctx, plsFolder, "smart.nsp")
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mockPlsRepo.Last).To(BeNil()) // Put never called: nothing re-written
+			})
+
+			It("re-imports when the smart playlist file content changed", func() {
+				tmpDir := GinkgoT().TempDir()
+				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
+				ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+
+				nsp := `{"name":"My Smart","all":[{"is":{"loved":true}}]}`
+				plsFile := filepath.Join(tmpDir, "smart.nsp")
+				Expect(os.WriteFile(plsFile, []byte(nsp), 0600)).To(Succeed())
+
+				existingPls := &model.Playlist{
+					ID: "smart-id", Name: "My Smart", Path: plsFile, Sync: true,
+					OwnerID: "123", SongCount: 42,
+					ImportedHash: fmt.Sprintf("%x", sha256.Sum256([]byte("old content"))),
+				}
+				mockPlsRepo.PathMap = map[string]*model.Playlist{plsFile: existingPls}
+
+				plsFolder := &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: ""}
+				_, err := ps.ImportFromFolder(ctx, plsFolder, "smart.nsp")
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mockPlsRepo.Last).ToNot(BeNil()) // Put called: file changed
+				Expect(mockPlsRepo.Last.ImportedHash).To(Equal(fmt.Sprintf("%x", sha256.Sum256([]byte(nsp)))))
 			})
 		})
 

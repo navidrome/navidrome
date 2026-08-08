@@ -179,6 +179,10 @@ func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist, 
 	}
 
 	if err == nil {
+		if !forceSync && newPls.ImportedHash != "" && newPls.ImportedHash == pls.ImportedHash {
+			log.Trace(ctx, "Playlist file unchanged since last import, skipping", "playlist", pls.Name, "path", pls.Path)
+			return nil
+		}
 		log.Info(ctx, "Updating synced playlist", "playlist", pls.Name, "path", newPls.Path)
 		newPls.ID = pls.ID
 		newPls.Name = pls.Name
