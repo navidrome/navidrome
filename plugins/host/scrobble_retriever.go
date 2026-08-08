@@ -10,7 +10,7 @@ type ScrobbleList struct {
 	// If additional items are available, the timestamp of the next scrobble to fetch
 	NextTimestamp *int64 `json:"nextTimestamp,omitempty"`
 	// In the event that multiple scrobbles were submitted at the same time, cursor
-	// will be populated to enable future queries. If this cursor is nonero
+	// will be populated to enable future queries. If this cursor is nonzero
 	// it should be passed on for the next request
 	Cursor int `json:"cursor,omitempty"`
 }
@@ -81,7 +81,7 @@ type ScrobbleRetrieverService interface {
 	// Returns:
 	//   - Scrobbles: A list of scrobbles within the constraints given (if any). The order
 	//     of the items depends on the options: if ToTimestamp is specified AND
-	//     FromTImestamp is not specified, the order is in descending submission time.
+	//     FromTimestamp is not specified, the order is in descending submission time.
 	//     Otherwise, the scrobbles are returned in ascending submission time.
 	//   - NextTimestamp: If there are additional items to retrieve in the range, the timestamp
 	//     of the next scrobble that would be retrieved in the order (asc or desc)

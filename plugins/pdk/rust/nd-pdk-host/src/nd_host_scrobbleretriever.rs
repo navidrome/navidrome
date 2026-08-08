@@ -182,7 +182,7 @@ pub fn get_last_timestamp(username: &str) -> Result<Option<i64>, Error> {
 /// Returns:
 ///   - Scrobbles: A list of scrobbles within the constraints given (if any). The order
 ///     of the items depends on the options: if ToTimestamp is specified AND
-///     FromTImestamp is not specified, the order is in descending submission time.
+///     FromTimestamp is not specified, the order is in descending submission time.
 ///     Otherwise, the scrobbles are returned in ascending submission time.
 ///   - NextTimestamp: If there are additional items to retrieve in the range, the timestamp
 ///     of the next scrobble that would be retrieved in the order (asc or desc)

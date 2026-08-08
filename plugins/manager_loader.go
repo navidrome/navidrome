@@ -181,7 +181,7 @@ var hostServices = []hostServiceEntry{
 		name:          "ScrobbleRetriever",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.ScrobbleRetriever != nil },
 		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
-			service := newScrobbleRetreverService(ctx.manager.ds, newUserAccess(ctx.allowedUsers, ctx.allUsers))
+			service := newScrobbleRetrieverService(ctx.manager.ds, newUserAccess(ctx.allowedUsers, ctx.allUsers))
 			return host.RegisterScrobbleRetrieverHostFunctions(service), nil, nil
 		},
 	},

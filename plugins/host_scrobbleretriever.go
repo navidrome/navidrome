@@ -15,7 +15,7 @@ type scrobbleRetrieverServiceImpl struct {
 	users userAccess
 }
 
-func newScrobbleRetreverService(ds model.DataStore, users userAccess) host.ScrobbleRetrieverService {
+func newScrobbleRetrieverService(ds model.DataStore, users userAccess) host.ScrobbleRetrieverService {
 	return &scrobbleRetrieverServiceImpl{
 		ds:    ds,
 		users: users,

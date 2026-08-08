@@ -24,7 +24,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Scrobbble Retriever Host Function", Ordered, func() {
+var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 	var (
 		manager   *Manager
 		tmpDir    string
@@ -257,12 +257,12 @@ var _ = Describe("Scrobbble Retriever Host Function", Ordered, func() {
 			}))
 		},
 			Entry("calls scrobbles in ascending order", `{"username":"adminuser"}`, scrobbles, nil, 0),
-			Entry("calls scrobbles in ascending order by request", `{"username":"adminuser","descending":true}`, scrobblesReversed, nil, 0),
+			Entry("calls scrobbles in descending order by request", `{"username":"adminuser","descending":true}`, scrobblesReversed, nil, 0),
 			Entry("calls scrobbles in ascending order, beyond range", `{"username":"adminuser","fromTimestamp":-1, "toTimestamp": 1000}`, scrobbles, nil, 0),
 			Entry("calls subset of scrobbles in ascending order, next timestamp", `{"username":"adminuser","maxItems":2}`, scrobbles[:2], p(2), 0),
 			Entry("calls subset of scrobbles in ascending order, with offset next timestamp", `{"username":"adminuser","maxItems":2,"fromTimestamp":1}`, scrobbles[1:3], p(2), 1),
 			Entry("calls subset of scrobbles in ascending order, from and to timestamp", `{"username":"adminuser","toTimestamp":2,"fromTimestamp":1}`, scrobbles[1:], nil, 0),
-			Entry("calls subset of scrobbles in descing order, from and to timestamp", `{"username":"adminuser","toTimestamp":2,"fromTimestamp":1,"descending":true}`, scrobblesReversed[:3], nil, 0),
+			Entry("calls subset of scrobbles in descending order, from and to timestamp", `{"username":"adminuser","toTimestamp":2,"fromTimestamp":1,"descending":true}`, scrobblesReversed[:3], nil, 0),
 			Entry("calls in reverse order, full", `{"username":"adminuser","toTimestamp":2}`, scrobblesReversed, nil, 0),
 			Entry("calls in reverse order, with count", `{"username":"adminuser","toTimestamp":2, "maxItems": 3}`, scrobblesReversed[:3], p(0), 0),
 			Entry("calls in reverse order, with count of 1", `{"username":"adminuser","toTimestamp":2, "maxItems": 1}`, scrobblesReversed[:1], p(2), 1),
