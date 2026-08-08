@@ -10,6 +10,9 @@ import (
 	"github.com/navidrome/navidrome/plugins/host"
 )
 
+// maxScrobbleItems caps how many scrobbles a single GetScrobbles call can return.
+const maxScrobbleItems = 5000
+
 type scrobbleRetrieverServiceImpl struct {
 	ds    model.DataStore
 	users userAccess
@@ -64,8 +67,8 @@ func (s *scrobbleRetrieverServiceImpl) GetScrobbles(ctx context.Context, usernam
 		return nil, err
 	}
 
-	if options.MaxItems < 1 || options.MaxItems > 5000 {
-		options.MaxItems = 5000
+	if options.MaxItems < 1 || options.MaxItems > maxScrobbleItems {
+		options.MaxItems = maxScrobbleItems
 	}
 
 	if options.Cursor < 0 {
@@ -75,34 +78,19 @@ func (s *scrobbleRetrieverServiceImpl) GetScrobbles(ctx context.Context, usernam
 	// Fetch one more item than requested. The last item is the next timestamp to fetch
 	options.MaxItems += 1
 
-	var filters squirrel.And
-	if options.FromTimestamp != nil {
-		filters = append(filters, squirrel.GtOrEq{"submission_time": *options.FromTimestamp})
-	}
-
-	if options.ToTimestamp != nil {
-		filters = append(filters, squirrel.LtOrEq{"submission_time": *options.ToTimestamp})
-	}
-
-	var order string
-	if (options.ToTimestamp != nil) == (options.FromTimestamp != nil) {
-		if options.Descending {
-			order = "DESC"
-		} else {
-			order = "ASC"
-		}
-	} else if options.ToTimestamp != nil {
+	order := "ASC"
+	if options.Descending {
 		order = "DESC"
-	} else {
-		order = "ASC"
 	}
 
 	scrobbles, err := s.ds.Scrobble(ctx).GetAll(model.QueryOptions{
 		Max:     options.MaxItems,
-		Filters: filters,
-		Sort:    "submission_time",
-		Order:   order,
-		Offset:  options.Cursor,
+		Filters: scrobbleRangeFilters(options.FromTimestamp, options.ToTimestamp),
+		// The id tiebreak makes the order of equal timestamps stable, which is what
+		// lets Cursor skip exactly the ties already returned
+		Sort:   "scrobbles.submission_time, scrobbles.id",
+		Order:  order,
+		Offset: options.Cursor,
 	})
 
 	if err != nil {
@@ -163,24 +151,20 @@ func (s *scrobbleRetrieverServiceImpl) GetScrobbleCount(ctx context.Context, use
 		return 0, err
 	}
 
-	var filters squirrel.And
-	if options.FromTimestamp != nil {
-		filters = append(filters, squirrel.GtOrEq{"submission_time": *options.FromTimestamp})
-	}
-
-	if options.ToTimestamp != nil {
-		filters = append(filters, squirrel.LtOrEq{"submission_time": *options.ToTimestamp})
-	}
-
-	count, err := s.ds.Scrobble(ctx).CountAll(model.QueryOptions{
-		Filters: filters,
+	return s.ds.Scrobble(ctx).CountAll(model.QueryOptions{
+		Filters: scrobbleRangeFilters(options.FromTimestamp, options.ToTimestamp),
 	})
+}
 
-	if err != nil {
-		return 0, err
+func scrobbleRangeFilters(from, to *int64) squirrel.And {
+	var filters squirrel.And
+	if from != nil {
+		filters = append(filters, squirrel.GtOrEq{"scrobbles.submission_time": *from})
 	}
-
-	return count, nil
+	if to != nil {
+		filters = append(filters, squirrel.LtOrEq{"scrobbles.submission_time": *to})
+	}
+	return filters
 }
 
 var _ host.ScrobbleRetrieverService = (*scrobbleRetrieverServiceImpl)(nil)

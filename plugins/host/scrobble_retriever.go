@@ -33,9 +33,7 @@ type ScrobbleOptions struct {
 	// The ending unix timestamp to query for scrobbles (inclusive).
 	// If not specified, go up to the last scrobble
 	ToTimestamp *int64 `json:"toTimestamp,omitempty"`
-	// Descending is only relevant if both FromTimestamp and ToTimestamp are specified
-	// If both timestamps are specified (or omitted), the default order will be ascending submission time
-	// If Descending is true, instead query in descending order
+	// If true, return scrobbles from newest to oldest. Defaults to oldest first
 	Descending bool `json:"descending"`
 	// A cursor retrieved from a prior call to GetScrobbles
 	Cursor int `json:"cursor,omitempty"`
@@ -79,10 +77,9 @@ type ScrobbleRetrieverService interface {
 	//   - options.MaxItems: The maximum number of items to retrieve. The maximum value (and default) if not specified is 5000
 	//
 	// Returns:
-	//   - Scrobbles: A list of scrobbles within the constraints given (if any). The order
-	//     of the items depends on the options: if ToTimestamp is specified AND
-	//     FromTimestamp is not specified, the order is in descending submission time.
-	//     Otherwise, the scrobbles are returned in ascending submission time.
+	//   - Scrobbles: A list of scrobbles within the constraints given (if any), ordered by
+	//     submission time (ties broken by scrobble ID) in the direction given by
+	//     options.Descending
 	//   - NextTimestamp: If there are additional items to retrieve in the range, the timestamp
 	//     of the next scrobble that would be retrieved in the order (asc or desc)
 	//nd:hostfunc
