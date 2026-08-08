@@ -2,19 +2,6 @@ package host
 
 import "context"
 
-// ScrobbleList is a list of scrobbles, plus an optional timestamp
-// that can be used as a cursor for the next fetch
-type ScrobbleList struct {
-	// The scrobbles in a given range
-	Scrobbles []ScrobbleRef `json:"scrobbles"`
-	// If additional items are available, the timestamp of the next scrobble to fetch
-	NextTimestamp *int64 `json:"nextTimestamp,omitempty"`
-	// In the event that multiple scrobbles were submitted at the same time, cursor
-	// will be populated to enable future queries. If this cursor is nonzero
-	// it should be passed on for the next request
-	Cursor int `json:"cursor,omitempty"`
-}
-
 // ScrobbleRef represents one instance of a scrobble (instance id, file id, submission time)
 type ScrobbleRef struct {
 	// The ID of the scrobble. Useful if duplicate scrobbles happen for the same time
@@ -35,11 +22,12 @@ type ScrobbleOptions struct {
 	ToTimestamp *int64 `json:"toTimestamp,omitempty"`
 	// If true, return scrobbles from newest to oldest. Defaults to oldest first
 	Descending bool `json:"descending"`
-	// A cursor retrieved from a prior call to GetScrobbles
-	Cursor int `json:"cursor,omitempty"`
 	// The maximum number of items to retrieve. This is capped at 5000, the
 	// default if not specified
 	MaxItems int `json:"maxItems"`
+	// How many scrobbles to skip. GetScrobbles sets this on the options it returns for
+	// the next page; plugins never need to set it themselves
+	Offset int `json:"offset,omitempty"`
 }
 
 // ScrobbleCountOptions carries optional parameters for counting user scrobbles
@@ -68,22 +56,24 @@ type ScrobbleRetrieverService interface {
 	//nd:hostfunc
 	GetLastTimestamp(ctx context.Context, username string) (*int64, error)
 
-	// GetScrobbles returns scrobbles for a user.
+	// GetScrobbles returns one page of scrobbles for a user.
 	//
 	// Parameters:
 	//   - username: the user to query for scrobbles
 	//   - options.FromTimestamp: If specified, the first UNIX timestamp to start fetching scrobbles (inclusive). Otherwise, start from the first scrobble
 	//   - options.ToTimestamp: If specified, the last UNIX timestamp to fetch (inclusive). Otherwise, end at the last scrobble
+	//   - options.Descending: If true, order from newest to oldest. Otherwise, oldest to newest
 	//   - options.MaxItems: The maximum number of items to retrieve. The maximum value (and default) if not specified is 5000
+	//   - options.Offset: How many scrobbles to skip. Comes pre-set on the options returned by a previous call
 	//
 	// Returns:
-	//   - Scrobbles: A list of scrobbles within the constraints given (if any), ordered by
-	//     submission time (ties broken by scrobble ID) in the direction given by
-	//     options.Descending
-	//   - NextTimestamp: If there are additional items to retrieve in the range, the timestamp
-	//     of the next scrobble that would be retrieved in the order (asc or desc)
+	//   - scrobbles: The scrobbles in the requested range, ordered by submission time
+	//     (ties broken by scrobble ID) in the direction given by options.Descending
+	//   - next: The options for the following page, or nil once no scrobbles remain.
+	//     Pass it back to GetScrobbles unchanged and repeat until it is nil. It carries an
+	//     adjusted FromTimestamp/ToTimestamp, so keep a copy if you still need the original range
 	//nd:hostfunc
-	GetScrobbles(ctx context.Context, username string, options ScrobbleOptions) (*ScrobbleList, error)
+	GetScrobbles(ctx context.Context, username string, options ScrobbleOptions) (scrobbles []ScrobbleRef, next *ScrobbleOptions, err error)
 
 	// GetScrobbleCount returns the number of scrobbles for a user in a given range
 	//

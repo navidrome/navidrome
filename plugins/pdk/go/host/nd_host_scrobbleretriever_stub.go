@@ -19,23 +19,14 @@ type ScrobbleCountOptions struct {
 	ToTimestamp   *int64 `json:"toTimestamp"`
 }
 
-// ScrobbleList represents the ScrobbleList data structure.
-// ScrobbleList is a list of scrobbles, plus an optional timestamp
-// that can be used as a cursor for the next fetch
-type ScrobbleList struct {
-	Scrobbles     []ScrobbleRef `json:"scrobbles"`
-	NextTimestamp *int64        `json:"nextTimestamp"`
-	Cursor        int           `json:"cursor"`
-}
-
 // ScrobbleOptions represents the ScrobbleOptions data structure.
 // ScrobbleOptions carries optional parameters for retrieving user scrobbles
 type ScrobbleOptions struct {
 	FromTimestamp *int64 `json:"fromTimestamp"`
 	ToTimestamp   *int64 `json:"toTimestamp"`
 	Descending    bool   `json:"descending"`
-	Cursor        int    `json:"cursor"`
 	MaxItems      int    `json:"maxItems"`
+	Offset        int    `json:"offset"`
 }
 
 // ScrobbleRef represents the ScrobbleRef data structure.
@@ -82,28 +73,29 @@ func ScrobbleRetrieverGetLastTimestamp(username string) (*int64, error) {
 }
 
 // GetScrobbles is the mock method for ScrobbleRetrieverGetScrobbles.
-func (m *mockScrobbleRetrieverService) GetScrobbles(username string, options ScrobbleOptions) (*ScrobbleList, error) {
+func (m *mockScrobbleRetrieverService) GetScrobbles(username string, options ScrobbleOptions) ([]ScrobbleRef, *ScrobbleOptions, error) {
 	args := m.Called(username, options)
-	return args.Get(0).(*ScrobbleList), args.Error(1)
+	return args.Get(0).([]ScrobbleRef), args.Get(1).(*ScrobbleOptions), args.Error(2)
 }
 
 // ScrobbleRetrieverGetScrobbles delegates to the mock instance.
-// GetScrobbles returns scrobbles for a user.
+// GetScrobbles returns one page of scrobbles for a user.
 //
 // Parameters:
 //   - username: the user to query for scrobbles
 //   - options.FromTimestamp: If specified, the first UNIX timestamp to start fetching scrobbles (inclusive). Otherwise, start from the first scrobble
 //   - options.ToTimestamp: If specified, the last UNIX timestamp to fetch (inclusive). Otherwise, end at the last scrobble
+//   - options.Descending: If true, order from newest to oldest. Otherwise, oldest to newest
 //   - options.MaxItems: The maximum number of items to retrieve. The maximum value (and default) if not specified is 5000
+//   - options.Offset: How many scrobbles to skip. Comes pre-set on the options returned by a previous call
 //
 // Returns:
-//   - Scrobbles: A list of scrobbles within the constraints given (if any). The order
-//     of the items depends on the options: if ToTimestamp is specified AND
-//     FromTimestamp is not specified, the order is in descending submission time.
-//     Otherwise, the scrobbles are returned in ascending submission time.
-//   - NextTimestamp: If there are additional items to retrieve in the range, the timestamp
-//     of the next scrobble that would be retrieved in the order (asc or desc)
-func ScrobbleRetrieverGetScrobbles(username string, options ScrobbleOptions) (*ScrobbleList, error) {
+//   - scrobbles: The scrobbles in the requested range, ordered by submission time
+//     (ties broken by scrobble ID) in the direction given by options.Descending
+//   - next: The options for the following page, or nil once no scrobbles remain.
+//     Pass it back to GetScrobbles unchanged and repeat until it is nil. It carries an
+//     adjusted FromTimestamp/ToTimestamp, so keep a copy if you still need the original range
+func ScrobbleRetrieverGetScrobbles(username string, options ScrobbleOptions) ([]ScrobbleRef, *ScrobbleOptions, error) {
 	return ScrobbleRetrieverMock.GetScrobbles(username, options)
 }
 

@@ -24,6 +24,12 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+// scrobblePage mirrors what the test plugin emits for the multi-return GetScrobbles
+type scrobblePage struct {
+	Scrobbles []host.ScrobbleRef    `json:"scrobbles"`
+	Next      *host.ScrobbleOptions `json:"next"`
+}
+
 var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 	var (
 		manager   *Manager
@@ -33,6 +39,13 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 
 	p := func(val int64) *int64 {
 		return &val
+	}
+
+	opts := func(from, to *int64, descending bool, offset, maxItems int) *host.ScrobbleOptions {
+		return &host.ScrobbleOptions{
+			FromTimestamp: from, ToTimestamp: to,
+			Descending: descending, Offset: offset, MaxItems: maxItems,
+		}
 	}
 
 	BeforeAll(func() {
@@ -200,7 +213,7 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(exit).To(Equal(uint32(0)))
 
-			Expect(output).To(Equal([]byte(`{"scrobbles":[],"nextTimestamp":null,"cursor":0}`)))
+			Expect(output).To(Equal([]byte(`{"scrobbles":[],"next":null}`)))
 		})
 
 		It("calls get scrobble count", func() {
@@ -243,30 +256,26 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 			Expect(output).To(Equal([]byte("{\"timestamp\":2}")))
 		})
 
-		DescribeTable("getScrobbles", func(params string, scrobbles []host.ScrobbleRef, timestamp *int64, cursor int) {
+		DescribeTable("getScrobbles", func(params string, scrobbles []host.ScrobbleRef, next *host.ScrobbleOptions) {
 			exit, output, err := instance.Call("call_get_scrobbles", []byte(params))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(exit).To(Equal(uint32(0)))
 
-			var scrobbleList host.ScrobbleList
-			Expect(json.Unmarshal(output, &scrobbleList)).To(Succeed())
-			Expect(scrobbleList).To(Equal(host.ScrobbleList{
-				Scrobbles:     scrobbles,
-				NextTimestamp: timestamp,
-				Cursor:        cursor,
-			}))
+			var page scrobblePage
+			Expect(json.Unmarshal(output, &page)).To(Succeed())
+			Expect(page).To(Equal(scrobblePage{Scrobbles: scrobbles, Next: next}))
 		},
-			Entry("calls scrobbles in ascending order", `{"username":"adminuser"}`, scrobbles, nil, 0),
-			Entry("calls scrobbles in descending order by request", `{"username":"adminuser","descending":true}`, scrobblesReversed, nil, 0),
-			Entry("calls scrobbles in ascending order, beyond range", `{"username":"adminuser","fromTimestamp":-1, "toTimestamp": 1000}`, scrobbles, nil, 0),
-			Entry("defaults to ascending even when only toTimestamp is given", `{"username":"adminuser","toTimestamp":2}`, scrobbles, nil, 0),
-			Entry("calls subset of scrobbles in ascending order, next timestamp", `{"username":"adminuser","maxItems":2}`, scrobbles[:2], p(2), 0),
-			Entry("calls subset of scrobbles in ascending order, with offset next timestamp", `{"username":"adminuser","maxItems":2,"fromTimestamp":1}`, scrobbles[1:3], p(2), 1),
-			Entry("calls subset of scrobbles in ascending order, from and to timestamp", `{"username":"adminuser","toTimestamp":2,"fromTimestamp":1}`, scrobbles[1:], nil, 0),
-			Entry("calls subset of scrobbles in descending order, from and to timestamp", `{"username":"adminuser","toTimestamp":2,"fromTimestamp":1,"descending":true}`, scrobblesReversed[:3], nil, 0),
-			Entry("calls in reverse order, full", `{"username":"adminuser","toTimestamp":2,"descending":true}`, scrobblesReversed, nil, 0),
-			Entry("calls in reverse order, with count", `{"username":"adminuser","toTimestamp":2,"descending":true, "maxItems": 3}`, scrobblesReversed[:3], p(0), 0),
-			Entry("calls in reverse order, with count of 1", `{"username":"adminuser","toTimestamp":2,"descending":true, "maxItems": 1}`, scrobblesReversed[:1], p(2), 1),
+			Entry("calls scrobbles in ascending order", `{"username":"adminuser"}`, scrobbles, nil),
+			Entry("calls scrobbles in descending order by request", `{"username":"adminuser","descending":true}`, scrobblesReversed, nil),
+			Entry("calls scrobbles in ascending order, beyond range", `{"username":"adminuser","fromTimestamp":-1, "toTimestamp": 1000}`, scrobbles, nil),
+			Entry("defaults to ascending even when only toTimestamp is given", `{"username":"adminuser","toTimestamp":2}`, scrobbles, nil),
+			Entry("calls subset of scrobbles in ascending order, next page", `{"username":"adminuser","maxItems":2}`, scrobbles[:2], opts(p(2), nil, false, 0, 2)),
+			Entry("calls subset of scrobbles in ascending order, next page with offset", `{"username":"adminuser","maxItems":2,"fromTimestamp":1}`, scrobbles[1:3], opts(p(2), nil, false, 1, 2)),
+			Entry("calls subset of scrobbles in ascending order, from and to timestamp", `{"username":"adminuser","toTimestamp":2,"fromTimestamp":1}`, scrobbles[1:], nil),
+			Entry("calls subset of scrobbles in descending order, from and to timestamp", `{"username":"adminuser","toTimestamp":2,"fromTimestamp":1,"descending":true}`, scrobblesReversed[:3], nil),
+			Entry("calls in reverse order, full", `{"username":"adminuser","toTimestamp":2,"descending":true}`, scrobblesReversed, nil),
+			Entry("calls in reverse order, with count", `{"username":"adminuser","toTimestamp":2,"descending":true, "maxItems": 3}`, scrobblesReversed[:3], opts(nil, p(0), true, 0, 3)),
+			Entry("calls in reverse order, with count of 1", `{"username":"adminuser","toTimestamp":2,"descending":true, "maxItems": 1}`, scrobblesReversed[:1], opts(nil, p(2), true, 1, 1)),
 		)
 
 		DescribeTable("GetScrobblesCount", func(params string, count int) {
@@ -305,24 +314,22 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 			}
 		})
 
-		type TestScrobbleOptions struct {
-			Username      string `json:"username"`
-			FromTimestamp *int64 `json:"fromTimestamp,omitempty"`
-			ToTimestamp   *int64 `json:"toTimestamp,omitempty"`
-			Descending    bool   `json:"descending"`
-			Cursor        int    `json:"cursor,omitempty"`
-			MaxItems      int    `json:"maxItems"`
-		}
-
-		getPage := func(cursor, count int, descending bool) host.ScrobbleList {
+		getPage := func(o host.ScrobbleOptions) scrobblePage {
 			GinkgoHelper()
-			payload, err := json.Marshal(TestScrobbleOptions{
+			payload, err := json.Marshal(struct {
+				Username      string `json:"username"`
+				FromTimestamp *int64 `json:"fromTimestamp,omitempty"`
+				ToTimestamp   *int64 `json:"toTimestamp,omitempty"`
+				Descending    bool   `json:"descending"`
+				Offset        int    `json:"offset,omitempty"`
+				MaxItems      int    `json:"maxItems"`
+			}{
 				Username:      "adminuser",
-				FromTimestamp: p(100),
-				ToTimestamp:   p(100),
-				Descending:    descending,
-				Cursor:        cursor,
-				MaxItems:      count,
+				FromTimestamp: o.FromTimestamp,
+				ToTimestamp:   o.ToTimestamp,
+				Descending:    o.Descending,
+				Offset:        o.Offset,
+				MaxItems:      o.MaxItems,
 			})
 			Expect(err).ToNot(HaveOccurred())
 
@@ -330,41 +337,48 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(exit).To(Equal(uint32(0)))
 
-			var scrobbleList host.ScrobbleList
-			Expect(json.Unmarshal(output, &scrobbleList)).To(Succeed())
-			return scrobbleList
+			var page scrobblePage
+			Expect(json.Unmarshal(output, &page)).To(Succeed())
+			return page
 		}
 
-		DescribeTable("Edge cases; duplicate scrobbles", func(cursor, count int, descending bool, scrobbles []host.ScrobbleRef, timestamp *int64, expectedCursor int) {
-			Expect(getPage(cursor, count, descending)).To(Equal(host.ScrobbleList{
-				Scrobbles:     scrobbles,
-				NextTimestamp: timestamp,
-				Cursor:        expectedCursor,
-			}))
+		// every scrobble here shares timestamp 100, so only Offset advances between pages
+		tied := func(offset, maxItems int, descending bool) host.ScrobbleOptions {
+			return *opts(p(100), p(100), descending, offset, maxItems)
+		}
+
+		DescribeTable("Edge cases; duplicate scrobbles", func(offset, count int, descending bool, scrobbles []host.ScrobbleRef, nextOffset *int) {
+			var next *host.ScrobbleOptions
+			if nextOffset != nil {
+				next = opts(p(100), p(100), descending, *nextOffset, count)
+			}
+			Expect(getPage(tied(offset, count, descending))).To(Equal(scrobblePage{Scrobbles: scrobbles, Next: next}))
 		},
-			Entry("All tracks, in order", 0, 100, false, duplicates, nil, 0),
-			Entry("All tracks, in reverse order", 0, 100, true, duplicatesReversed, nil, 0),
-			Entry("Ascending order, from the start", 0, 1, false, duplicates[:1], p(100), 1),
-			Entry("Ascending order, middle page", 1, 2, false, duplicates[1:3], p(100), 3),
-			Entry("Ascending order, to the end", 3, 100, false, duplicates[3:], nil, 0),
-			Entry("Ascending order, from the start, continuing cursor", 3, 1, false, duplicates[3:4], p(100), 4),
-			Entry("start descending", 0, 2, true, duplicatesReversed[:2], p(100), 2),
-			Entry("start descending, next step", 2, 2, true, duplicatesReversed[2:4], p(100), 4),
-			Entry("start descending, end", 4, 1, true, duplicatesReversed[4:], nil, 0),
+			Entry("All tracks, in order", 0, 100, false, duplicates, nil),
+			Entry("All tracks, in reverse order", 0, 100, true, duplicatesReversed, nil),
+			Entry("Ascending order, from the start", 0, 1, false, duplicates[:1], new(1)),
+			Entry("Ascending order, middle page", 1, 2, false, duplicates[1:3], new(3)),
+			Entry("Ascending order, to the end", 3, 100, false, duplicates[3:], nil),
+			Entry("Ascending order, from the start, continuing offset", 3, 1, false, duplicates[3:4], new(4)),
+			Entry("start descending", 0, 2, true, duplicatesReversed[:2], new(2)),
+			Entry("start descending, next step", 2, 2, true, duplicatesReversed[2:4], new(4)),
+			Entry("start descending, end", 4, 1, true, duplicatesReversed[4:], nil),
 		)
 
 		It("walks every page exactly once when all timestamps collide", func() {
 			for _, descending := range []bool{false, true} {
 				var seen []host.ScrobbleRef
-				page := host.ScrobbleList{}
+				o := tied(0, 2, descending)
+				var page scrobblePage
 				for range 10 {
-					page = getPage(page.Cursor, 2, descending)
+					page = getPage(o)
 					seen = append(seen, page.Scrobbles...)
-					if page.NextTimestamp == nil {
+					if page.Next == nil {
 						break
 					}
+					o = *page.Next
 				}
-				Expect(page.NextTimestamp).To(BeNil(), "pagination did not terminate")
+				Expect(page.Next).To(BeNil(), "pagination did not terminate")
 				if descending {
 					Expect(seen).To(Equal(duplicatesReversed))
 				} else {

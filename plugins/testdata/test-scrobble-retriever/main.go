@@ -48,8 +48,14 @@ type TestScrobbleOptions struct {
 	FromTimestamp *int64 `json:"fromTimestamp,omitempty"`
 	ToTimestamp   *int64 `json:"toTimestamp,omitempty"`
 	Descending    bool   `json:"descending"`
-	Cursor        int    `json:"cursor,omitempty"`
+	Offset        int    `json:"offset,omitempty"`
 	MaxItems      int    `json:"maxItems"`
+}
+
+// TestScrobblePage mirrors the multi-return shape so tests can assert on both values
+type TestScrobblePage struct {
+	Scrobbles []host.ScrobbleRef    `json:"scrobbles"`
+	Next      *host.ScrobbleOptions `json:"next"`
 }
 
 //go:wasmexport call_get_scrobbles
@@ -62,12 +68,12 @@ func callGetScrobbles() int32 {
 		return 1
 	}
 
-	scrobbles, err := host.ScrobbleRetrieverGetScrobbles(options.Username, host.ScrobbleOptions{
+	scrobbles, next, err := host.ScrobbleRetrieverGetScrobbles(options.Username, host.ScrobbleOptions{
 		FromTimestamp: options.FromTimestamp,
 		ToTimestamp:   options.ToTimestamp,
 		MaxItems:      options.MaxItems,
 		Descending:    options.Descending,
-		Cursor:        options.Cursor,
+		Offset:        options.Offset,
 	})
 
 	if err != nil {
@@ -75,7 +81,11 @@ func callGetScrobbles() int32 {
 		return 1
 	}
 
-	pdk.OutputJSON(scrobbles)
+	if scrobbles == nil {
+		scrobbles = []host.ScrobbleRef{}
+	}
+
+	pdk.OutputJSON(TestScrobblePage{Scrobbles: scrobbles, Next: next})
 	return 0
 }
 

@@ -61,88 +61,79 @@ func (s *scrobbleRetrieverServiceImpl) GetLastTimestamp(ctx context.Context, use
 	return s.getFirstLastScrobble(ctx, username, "DESC")
 }
 
-func (s *scrobbleRetrieverServiceImpl) GetScrobbles(ctx context.Context, username string, options host.ScrobbleOptions) (*host.ScrobbleList, error) {
+func (s *scrobbleRetrieverServiceImpl) GetScrobbles(ctx context.Context, username string, options host.ScrobbleOptions) ([]host.ScrobbleRef, *host.ScrobbleOptions, error) {
 	ctx, err := s.getUserContext(ctx, username)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if options.MaxItems < 1 || options.MaxItems > maxScrobbleItems {
 		options.MaxItems = maxScrobbleItems
 	}
-
-	if options.Cursor < 0 {
-		options.Cursor = 0
-	}
-
-	// Fetch one more item than requested. The last item is the next timestamp to fetch
-	options.MaxItems += 1
+	options.Offset = max(options.Offset, 0)
 
 	order := "ASC"
 	if options.Descending {
 		order = "DESC"
 	}
 
+	// Fetch one more item than requested. The last item is the next timestamp to fetch
+	lookahead := options.MaxItems + 1
+
 	scrobbles, err := s.ds.Scrobble(ctx).GetAll(model.QueryOptions{
-		Max:     options.MaxItems,
+		Max:     lookahead,
 		Filters: scrobbleRangeFilters(options.FromTimestamp, options.ToTimestamp),
 		// The id tiebreak makes the order of equal timestamps stable, which is what
-		// lets Cursor skip exactly the ties already returned
+		// lets Offset skip exactly the ties already returned
 		Sort:   "scrobbles.submission_time, scrobbles.id",
 		Order:  order,
-		Offset: options.Cursor,
+		Offset: options.Offset,
 	})
-
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	if len(scrobbles) == 0 {
-		return &host.ScrobbleList{Scrobbles: []host.ScrobbleRef{}}, nil
-	}
+	var next *host.ScrobbleOptions
+	targetLen := len(scrobbles)
 
-	cursor := 0
+	if len(scrobbles) == lookahead {
+		nextTimestamp := scrobbles[lookahead-1].SubmissionTime
+		targetLen = lookahead - 1
 
-	var nextTimestamp *int64
-	var targetLen int
-
-	if len(scrobbles) == options.MaxItems {
-		nextTimestamp = &scrobbles[options.MaxItems-1].SubmissionTime
-		targetLen = options.MaxItems - 1
-
-		lastTimestamp := scrobbles[len(scrobbles)-1].SubmissionTime
-		for i := len(scrobbles) - 2; i >= 0; i-- {
-			if scrobbles[i].SubmissionTime != lastTimestamp {
+		ties := 0
+		for i := targetLen - 1; i >= 0; i-- {
+			if scrobbles[i].SubmissionTime != nextTimestamp {
 				break
 			}
-
-			cursor += 1
+			ties++
 		}
 
-		// In this case, every scrobble in this query is the same timestamp
-		// We should continue from the previous cursor
-		if cursor == len(scrobbles)-1 {
-			cursor += options.Cursor
+		// Every scrobble in this page shares the timestamp, so the ties skipped by the
+		// incoming offset are still ahead of us and must be carried over
+		if ties == targetLen {
+			ties += options.Offset
 		}
-	} else {
-		targetLen = len(scrobbles)
+
+		advanced := options
+		advanced.Offset = ties
+		if options.Descending {
+			advanced.ToTimestamp = &nextTimestamp
+		} else {
+			advanced.FromTimestamp = &nextTimestamp
+		}
+		next = &advanced
 	}
 
 	scrobbleRefs := make([]host.ScrobbleRef, targetLen)
-
-	for idx := range targetLen {
-		scrobbleRefs[idx].ID = scrobbles[idx].ID
-		scrobbleRefs[idx].MediaFileID = scrobbles[idx].MediaFileID
-		scrobbleRefs[idx].SubmissionTime = scrobbles[idx].SubmissionTime
+	for idx, scrobble := range scrobbles[:targetLen] {
+		scrobbleRefs[idx] = host.ScrobbleRef{
+			ID:             scrobble.ID,
+			MediaFileID:    scrobble.MediaFileID,
+			SubmissionTime: scrobble.SubmissionTime,
+		}
 	}
 
-	response := host.ScrobbleList{
-		Scrobbles:     scrobbleRefs,
-		NextTimestamp: nextTimestamp,
-		Cursor:        cursor,
-	}
-
-	return &response, nil
+	return scrobbleRefs, next, nil
 }
 
 func (s *scrobbleRetrieverServiceImpl) GetScrobbleCount(ctx context.Context, username string, options host.ScrobbleCountOptions) (int64, error) {

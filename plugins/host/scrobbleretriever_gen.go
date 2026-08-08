@@ -39,8 +39,9 @@ type ScrobbleRetrieverGetScrobblesRequest struct {
 
 // ScrobbleRetrieverGetScrobblesResponse is the response type for ScrobbleRetriever.GetScrobbles.
 type ScrobbleRetrieverGetScrobblesResponse struct {
-	Result *ScrobbleList `json:"result,omitempty"`
-	Error  string        `json:"error,omitempty"`
+	Scrobbles []ScrobbleRef    `json:"scrobbles,omitempty"`
+	Next      *ScrobbleOptions `json:"next,omitempty"`
+	Error     string           `json:"error,omitempty"`
 }
 
 // ScrobbleRetrieverGetScrobbleCountRequest is the request type for ScrobbleRetriever.GetScrobbleCount.
@@ -151,7 +152,7 @@ func newScrobbleRetrieverGetScrobblesHostFunction(service ScrobbleRetrieverServi
 			}
 
 			// Call the service method
-			result, svcErr := service.GetScrobbles(ctx, req.Username, req.Options)
+			scrobbles, next, svcErr := service.GetScrobbles(ctx, req.Username, req.Options)
 			if svcErr != nil {
 				scrobbleretrieverWriteError(p, stack, svcErr)
 				return
@@ -159,7 +160,8 @@ func newScrobbleRetrieverGetScrobblesHostFunction(service ScrobbleRetrieverServi
 
 			// Write JSON response to plugin memory
 			resp := ScrobbleRetrieverGetScrobblesResponse{
-				Result: result,
+				Scrobbles: scrobbles,
+				Next:      next,
 			}
 			scrobbleretrieverWriteResponse(p, stack, resp)
 		},

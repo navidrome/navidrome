@@ -16,18 +16,6 @@ pub struct ScrobbleCountOptions {
     pub to_timestamp: Option<i64>,
 }
 
-/// ScrobbleList is a list of scrobbles, plus an optional timestamp
-/// that can be used as a cursor for the next fetch
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ScrobbleList {
-    pub scrobbles: Vec<ScrobbleRef>,
-    #[serde(default)]
-    pub next_timestamp: Option<i64>,
-    #[serde(default)]
-    pub cursor: i32,
-}
-
 /// ScrobbleOptions carries optional parameters for retrieving user scrobbles
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -37,9 +25,9 @@ pub struct ScrobbleOptions {
     #[serde(default)]
     pub to_timestamp: Option<i64>,
     pub descending: bool,
-    #[serde(default)]
-    pub cursor: i32,
     pub max_items: i32,
+    #[serde(default)]
+    pub offset: i32,
 }
 
 /// ScrobbleRef represents one instance of a scrobble (instance id, file id, submission time)
@@ -92,7 +80,9 @@ struct ScrobbleRetrieverGetScrobblesRequest {
 #[serde(rename_all = "camelCase")]
 struct ScrobbleRetrieverGetScrobblesResponse {
     #[serde(default)]
-    result: Option<ScrobbleList>,
+    scrobbles: Vec<ScrobbleRef>,
+    #[serde(default)]
+    next: Option<ScrobbleOptions>,
     #[serde(default)]
     error: Option<String>,
 }
@@ -171,32 +161,33 @@ pub fn get_last_timestamp(username: &str) -> Result<Option<i64>, Error> {
     Ok(response.0.result)
 }
 
-/// GetScrobbles returns scrobbles for a user.
+/// GetScrobbles returns one page of scrobbles for a user.
 /// 
 /// Parameters:
 ///   - username: the user to query for scrobbles
 ///   - options.FromTimestamp: If specified, the first UNIX timestamp to start fetching scrobbles (inclusive). Otherwise, start from the first scrobble
 ///   - options.ToTimestamp: If specified, the last UNIX timestamp to fetch (inclusive). Otherwise, end at the last scrobble
+///   - options.Descending: If true, order from newest to oldest. Otherwise, oldest to newest
 ///   - options.MaxItems: The maximum number of items to retrieve. The maximum value (and default) if not specified is 5000
+///   - options.Offset: How many scrobbles to skip. Comes pre-set on the options returned by a previous call
 /// 
 /// Returns:
-///   - Scrobbles: A list of scrobbles within the constraints given (if any). The order
-///     of the items depends on the options: if ToTimestamp is specified AND
-///     FromTimestamp is not specified, the order is in descending submission time.
-///     Otherwise, the scrobbles are returned in ascending submission time.
-///   - NextTimestamp: If there are additional items to retrieve in the range, the timestamp
-///     of the next scrobble that would be retrieved in the order (asc or desc)
+///   - scrobbles: The scrobbles in the requested range, ordered by submission time
+///     (ties broken by scrobble ID) in the direction given by options.Descending
+///   - next: The options for the following page, or nil once no scrobbles remain.
+///     Pass it back to GetScrobbles unchanged and repeat until it is nil. It carries an
+///     adjusted FromTimestamp/ToTimestamp, so keep a copy if you still need the original range
 ///
 /// # Arguments
 /// * `username` - String parameter.
 /// * `options` - ScrobbleOptions parameter.
 ///
 /// # Returns
-/// The result value.
+/// A tuple of (scrobbles, next).
 ///
 /// # Errors
 /// Returns an error if the host function call fails.
-pub fn get_scrobbles(username: &str, options: ScrobbleOptions) -> Result<Option<ScrobbleList>, Error> {
+pub fn get_scrobbles(username: &str, options: ScrobbleOptions) -> Result<(Vec<ScrobbleRef>, Option<ScrobbleOptions>), Error> {
     let response = unsafe {
         scrobbleretriever_getscrobbles(Json(ScrobbleRetrieverGetScrobblesRequest {
             username: username.to_owned(),
@@ -208,7 +199,7 @@ pub fn get_scrobbles(username: &str, options: ScrobbleOptions) -> Result<Option<
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.result)
+    Ok((response.0.scrobbles, response.0.next))
 }
 
 /// GetScrobbleCount returns the number of scrobbles for a user in a given range
