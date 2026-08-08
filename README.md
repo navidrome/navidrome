@@ -23,7 +23,8 @@ Everything else works exactly like upstream Navidrome — same installation, sam
 compatibility, same plugin system. This fork just adds:
 
 - 🎙️ **[Podcast support](PODCAST_PLAN.md)** *(stable & develop)* — full RSS subscriptions, streamed or downloaded,
-  through the real Subsonic API. See [below](#podcast-support-experimental) for the full feature list.
+  through the real Subsonic API. Any user can subscribe, on a shared feed fetched once no matter how many
+  subscribers it has. See [below](#podcast-support-experimental) for the full feature list.
 - 📁 **[Physical folder browsing](navidrome-folder-roadmap.md)** *(stable & develop)* — navigate, play, and manage
   your library exactly as it's laid out on disk. See [below](#physical-folder-browsing-experimental) for the full
   feature list.
@@ -32,10 +33,10 @@ compatibility, same plugin system. This fork just adds:
 - 🎙️📡 **Podcast play attribution** *(develop only)* — podcast episode plays now dispatch to plugins too, with a
   validated `nd_source` device-type field for precise client identification. See
   [below](#enhanced-scrobble-attribution-pulse-integration) for details.
-- 🏷️ **User-defined song tagging** *(develop only)* — private per-user labels on songs, independent of file
-  metadata, with tag-based filtering, bulk playlist add, smart-playlist criteria support, and a plugin-facing API
-  powering an AI auto-tagging + auto-playlist ecosystem. See [below](#user-defined-song-tagging-experimental) for
-  details.
+- 🏷️ **User-defined song tagging** *(develop only)* — free-form personal labels (**My Tags**) plus shared,
+  admin-written classification tags (**AI Tags**), with tag-based filtering, bulk playlist add, smart-playlist
+  criteria support, and a plugin-facing API powering an AI auto-tagging + auto-playlist ecosystem. See
+  [below](#user-defined-song-tagging-experimental) for details.
 - 🏷️ **AI Genre / AI Mood / My Tags dashboards** *(develop only)* — three chip-grid browsing pages built from your
   tags, each independently toggleable from Settings → Personal. See
   [below](#ai-genre--ai-mood--my-tags-dashboards-experimental) for details.
@@ -51,6 +52,9 @@ compatibility, same plugin system. This fork just adds:
 - 🔗 **Genre merging** *(develop only)* — collapse near-duplicate genres from inconsistent tagging into one, applied
   at scan time so every Subsonic client and smart playlist sees the merge too, not just this web UI. See
   [below](#genre-merging-experimental) for details.
+- 🔐 **Admin-controlled feature access** *(develop only)* — an admin can revoke any individual user's access to
+  Folders, AI Tags, My Tags, or Podcasts, per user, without affecting anyone else. See
+  [below](#admin-controlled-feature-access-experimental) for details.
 
 *(develop only)* features haven't reached a tagged `:stable` checkpoint yet — see
 [Getting navidrome-experimental](#getting-navidrome-experimental) below for what the two tags mean. They'll move to
@@ -158,10 +162,24 @@ new episodes** as they publish, or **backfill and download the entire back catal
     <img width="800" src=".github/screenshots/ss-podcast-subscriptions.png" alt="Podcast subscriptions list, showing status and download policy per channel">
 </p>
 
+### 👥 Subscribe to any show — the feed itself is shared, your list isn't
+Any user can subscribe to a podcast, not just admins. The underlying feed is shared infrastructure — a show is only
+ever fetched and refreshed once no matter how many people on your server subscribe to it — but everything else is
+personal: your own download policy, your own retention limits, and your own "downloaded" list. If another
+subscriber already downloaded an episode, your download click resolves instantly from that existing file instead
+of fetching it again, and it only shows up in *your* list once you actually ask for it — subscribing to a channel
+someone else already downloaded episodes for doesn't silently dump their whole back catalog into your own list.
+Unsubscribing removes just your own subscription; the shared feed and its files stick around as long as anyone
+else is still subscribed, and clean up automatically once the last subscriber leaves.
+
 ### 💾 Never worry about disk space
-Set retention per channel by episode count, age, or total storage, and let oldest-downloaded-first cleanup run
-automatically on the same schedule as feed refreshes. Add an episode to a playlist and it's automatically protected
-from cleanup — retention will never quietly delete something you're actively queued up to listen to.
+Set retention per subscription — yours, specifically — by episode count, age, or total storage, and let
+oldest-downloaded-first cleanup run automatically on the same schedule as feed refreshes. Because retention is
+per-subscriber, two different people subscribed to the same show can keep completely different amounts of it
+downloaded. A file is only actually deleted from disk once no subscriber anywhere still wants it — clearing your
+own retention limit never yanks an episode out from under someone else who's still keeping it. Add an episode to a
+playlist and it's automatically protected from cleanup — retention will never quietly delete something you're
+actively queued up to listen to.
 
 ### 🎵 Episodes are real library citizens, not a bolted-on side feature
 Downloaded episodes slot into regular playlists right alongside your music — reorder them, mix songs and episodes
@@ -180,8 +198,10 @@ songs — no separate playback path to build.
 
 ### 🎛️ Fine-grained control
 Personal toggle to hide the Podcasts section from your own sidebar if you don't use it (same mechanism as the
-Folder view toggle below) — and every setting above is per-channel, so a daily news show and a sprawling back
-catalog can be managed completely differently on the same server.
+Folder view toggle below) — and every download/retention setting above is per-subscription, so a daily news show
+and a sprawling back catalog can be managed completely differently, even by two different people subscribed to the
+exact same feed on the same server. An admin can also revoke a specific user's access to Podcasts entirely — see
+[Admin-Controlled Feature Access](#admin-controlled-feature-access-experimental) below.
 
 <p align="left">
     <img width="800" src=".github/screenshots/ss-personal-settings.png" alt="Personal settings, showing the Show Folder View and Show Podcasts toggles">
@@ -268,10 +288,11 @@ be able to add to) your own hand-added tags. That's intentional, not a bug: AI T
 entirely by the plugin's own classification runs, not spot-edited per song — see the next section.
 
 ### 🤖 AI Tags: written automatically by a plugin, not edited by hand
-If you've installed [AI Auto-Tagging](https://github.com/RFLundgren/AI-auto-tagging-plugin), it classifies tracks
-by genre/mood/language using an AI provider and writes the results here. These show up in their own **AI Tags**
-column in the Songs list (a separate column from **My Tags** — both are off by default; turn them on via the
-column-visibility menu in the Songs list toolbar). To change *which words* the AI is allowed to use (e.g. add
+If you've installed [AI Auto-Tagging](https://github.com/RFLundgren/AI-auto-tagging-plugin) on an admin account,
+it classifies tracks by genre/mood/language using an AI provider and writes the results here, shared for every
+user who has AI Tags visibility. These show up in their own **AI Tags** column in the Songs list (a separate
+column from **My Tags** — both are off by default; turn them on via the column-visibility menu in the Songs list
+toolbar). To change *which words* the AI is allowed to use (e.g. add
 "trance" to the genre list, or remove moods you don't care about), edit that plugin's **Genre Vocabulary**/**Mood
 Vocabulary** config fields — not anything in this UI. There is currently no button in this UI to manually add or
 remove an individual AI Tag on a song; that's a deliberate scope boundary, not a missing feature — AI Tags are
@@ -279,9 +300,15 @@ meant to reflect what the classifier actually decided, not be hand-edited afterw
 specific AI-assigned tag, the supported path is a **My Tag** of your own alongside it, not editing the AI Tag
 itself.
 
-### 🔒 Yours alone, even on a shared server
-Both kinds of tags are scoped entirely to your own account. Two people tagging songs on the same shared library
-never see each other's tags, and there's no admin-managed or global tag list to work around.
+### 🔒 My Tags stay private — AI Tags are shared library data
+My Tags are scoped entirely to your own account: two people tagging songs on the same shared library never see
+each other's My Tags, and there's no admin-managed or global My Tags list to work around. AI Tags work
+differently, by design — a tag written by *any* admin account's AI Auto-Tagging run is shared library data,
+visible to every user who has access to it, the same way genre/mood metadata from your files already is. This
+means one admin sets up and runs AI Auto-Tagging once for the whole server, instead of every individual user
+needing their own separate classification pass over the same library. Whether a given user can see AI Tags at all
+(and independently, whether they can see My Tags, Folders, or Podcasts) is controlled per-user by an admin — see
+[Admin-Controlled Feature Access](#admin-controlled-feature-access-experimental) below.
 
 ### 🎯 Filter and bulk-add in one action
 A "Tag" filter on the song list narrows to everything carrying a given tag name (matching either My Tags or AI
@@ -509,6 +536,27 @@ actually re-read — a normal quick Scan Now skips files whose mtime on disk has
 already in your library, so **a Full Scan is required** to apply a new merge to existing data (new/changed files
 pick it up on their next normal scan either way). Chained merges flatten automatically (merging B into C after A was
 already merged into B repoints A straight at C), and merges that would create a cycle are rejected.
+
+## Admin-Controlled Feature Access (Experimental)
+
+This fork adds several opt-in features beyond stock Navidrome. Not every admin wants every user to see all of
+them — an admin can now revoke any individual user's access to **Folders**, **AI Tags**, **My Tags**, or
+**Podcasts**, one feature at a time, per user, without affecting anyone else on the server.
+
+### 🔓 Opt-out, not opt-in
+Every feature is enabled by default for every user — existing users see no change at all unless an admin actively
+revokes something. There's nothing to configure just to keep current behavior.
+
+### 🚫 Revoked means gone, not just hidden
+Turning a feature off for a user removes it completely for them: the sidebar entry disappears, their own
+Settings → Personal show/hide toggle for it disappears too (there'd be nothing left for it to control), and the
+underlying API/Subsonic endpoints stop returning that user's data for it — this isn't just a UI hint, the
+server-side query layer enforces it too, so a revoked user can't see it by calling the API directly either.
+
+### ⚙️ Managed from each user's edit page
+Go to Settings → Users, open a user, and use the new **Fork Feature Access** checkboxes to grant or revoke Folders,
+AI Tags, My Tags, and Podcasts individually for that user. Admin accounts always have full access to everything
+and aren't affected by these checkboxes — the gate only applies to non-admin users.
 
 ## Translations
 
