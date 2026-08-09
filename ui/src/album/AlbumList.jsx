@@ -1,3 +1,4 @@
+import { cloneElement } from 'react'
 import { useSelector } from 'react-redux'
 import { Redirect, useLocation } from 'react-router-dom'
 import {
@@ -23,6 +24,7 @@ import {
   Title,
   useAlbumsPerPage,
   useResourceRefresh,
+  useScrollRestoration,
   useSetToggleableFields,
 } from '../common'
 import AlbumListActions from './AlbumListActions'
@@ -38,6 +40,13 @@ import AlbumInfo from './AlbumInfo'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 import { humanize } from 'inflection'
 import { makeStyles } from '@material-ui/core/styles'
+
+// Waits for rows: restoring into an unrendered list leaves the page too short to hold the offset.
+const ScrollRestorer = ({ children, ...rest }) => {
+  const { loaded, total } = useListContext()
+  useScrollRestoration(loaded && total > 0)
+  return cloneElement(children, rest)
+}
 
 const useStyles = makeStyles({
   chip: {
@@ -255,11 +264,13 @@ const AlbumList = (props) => {
         }
         title={<AlbumListTitle albumListType={albumListType} />}
       >
-        {albumView.grid ? (
-          <AlbumGridView albumListType={albumListType} {...props} />
-        ) : (
-          <AlbumTableView {...props} />
-        )}
+        <ScrollRestorer>
+          {albumView.grid ? (
+            <AlbumGridView albumListType={albumListType} {...props} />
+          ) : (
+            <AlbumTableView {...props} />
+          )}
+        </ScrollRestorer>
       </List>
       <ExpandInfoDialog content={<AlbumInfo />} />
     </>

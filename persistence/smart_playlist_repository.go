@@ -122,7 +122,7 @@ func (r *playlistRepository) resolvePercentageLimit(pls *model.Playlist, rulesSQ
 	exprJoins := rulesSQL.ExpressionJoins()
 	countSq := Select("count(*) as count").From("media_file")
 	countSq = r.addMediaFileAnnotationJoin(countSq, userID)
-	countSq = r.addSmartPlaylistAnnotationJoins(countSq, exprJoins, userID)
+	countSq = r.addSmartPlaylistJoins(countSq, exprJoins, userID)
 	countSq = r.applyLibraryFilter(countSq, "media_file")
 
 	cond, err := rulesSQL.Where()
@@ -144,7 +144,7 @@ func (r *playlistRepository) resolvePercentageLimit(pls *model.Playlist, rulesSQ
 }
 
 // buildSmartPlaylistQuery constructs the SQL query to select media files matching the smart playlist criteria,
-// including necessary joins for annotations and library filtering.
+// including the joins its fields require and library filtering.
 func (r *playlistRepository) buildSmartPlaylistQuery(pls *model.Playlist, rulesSQL smartPlaylistCriteria, userID string) SelectBuilder {
 	orderBy := rulesSQL.OrderBy()
 	sq := Select("row_number() over (order by "+orderBy+") as id", "'"+pls.ID+"' as playlist_id", "media_file.id as media_file_id").
@@ -152,7 +152,7 @@ func (r *playlistRepository) buildSmartPlaylistQuery(pls *model.Playlist, rulesS
 	sq = r.addMediaFileAnnotationJoin(sq, userID)
 
 	requiredJoins := rulesSQL.RequiredJoins()
-	sq = r.addSmartPlaylistAnnotationJoins(sq, requiredJoins, userID)
+	sq = r.addSmartPlaylistJoins(sq, requiredJoins, userID)
 	sq = r.applyLibraryFilter(sq, "media_file")
 	return sq
 }
@@ -166,9 +166,8 @@ func (r *playlistRepository) addMediaFileAnnotationJoin(sq SelectBuilder, userID
 		" AND annotation.user_id = ?)", userID)
 }
 
-// addSmartPlaylistAnnotationJoins adds left joins to the annotation table for albums and artists as needed based on
-// the smart playlist criteria, filtering by user ID to include user-specific annotations in the evaluation.
-func (r *playlistRepository) addSmartPlaylistAnnotationJoins(sq SelectBuilder, joins smartPlaylistJoinType, userID string) SelectBuilder {
+// addSmartPlaylistJoins adds the left joins required by the criteria's fields.
+func (r *playlistRepository) addSmartPlaylistJoins(sq SelectBuilder, joins smartPlaylistJoinType, userID string) SelectBuilder {
 	if joins.has(smartPlaylistJoinAlbumAnnotation) {
 		sq = sq.LeftJoin("annotation AS album_annotation ON ("+
 			"album_annotation.item_id = media_file.album_id"+
@@ -180,6 +179,9 @@ func (r *playlistRepository) addSmartPlaylistAnnotationJoins(sq SelectBuilder, j
 			"artist_annotation.item_id = media_file.artist_id"+
 			" AND artist_annotation.item_type = 'artist'"+
 			" AND artist_annotation.user_id = ?)", userID)
+	}
+	if joins.has(smartPlaylistJoinAlbum) {
+		sq = sq.LeftJoin("album ON album.id = media_file.album_id")
 	}
 	return sq
 }
