@@ -31,6 +31,7 @@ import {
 } from '../common'
 import config from '../config'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
+import { TagEditorSongDialog } from '../tageditor'
 import { removeAlbumCommentsFromSongs } from './utils.js'
 
 const useStyles = makeStyles(
@@ -92,6 +93,7 @@ const AlbumSongs = (props) => {
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const classes = useStyles({ isDesktop })
   const dispatch = useDispatch()
+  const [editingSongId, setEditingSongId] = React.useState(null)
   const version = useVersion()
   useResourceRefresh('song', 'album')
 
@@ -194,6 +196,7 @@ const AlbumSongs = (props) => {
           >
             {columns}
             <SongContextMenu
+              onEditTags={(record) => setEditingSongId(record.mediaFileId || record.id)}
               source={'starred'}
               sortable={false}
               className={classes.contextMenu}
@@ -210,6 +213,11 @@ const AlbumSongs = (props) => {
         </Card>
       </div>
       <ExpandInfoDialog content={<SongInfo />} />
+      <TagEditorSongDialog
+        open={Boolean(editingSongId)}
+        songId={editingSongId}
+        onClose={() => setEditingSongId(null)}
+      />
     </>
   )
 }
