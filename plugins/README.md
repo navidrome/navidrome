@@ -1077,6 +1077,8 @@ replace github.com/navidrome/navidrome => ../../..
 | `scheduler`       | `plugins/pdk/go/scheduler`           | Scheduled task callbacks             |
 | `websocket`       | `plugins/pdk/go/websocket`           | WebSocket event handlers             |
 | `host`            | `plugins/pdk/go/host`                | Host service SDK (all services)      |
+| `types`           | `plugins/pdk/go/types`               | Shared data types (tracks, artists, song refs) |
+| `pdk`             | `plugins/pdk/go/pdk`                 | Low-level helpers (wraps extism/go-pdk: config, logging, memory) |
 
 See the example plugins in [examples/](examples/) for complete usage patterns.
 
