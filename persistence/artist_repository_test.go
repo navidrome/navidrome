@@ -268,6 +268,22 @@ var _ = Describe("ArtistRepository", func() {
 			repo = NewArtistRepository(ctx, GetDBXBuilder())
 		})
 
+		Describe("GetCursor", func() {
+			It("yields the same artists as GetAll", func() {
+				opts := model.QueryOptions{Sort: "name"}
+				want, err := repo.GetAll(opts)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(collectCursor(repo.GetCursor(opts))).To(Equal([]model.Artist(want)))
+			})
+
+			It("honors Max/Offset like GetAll", func() {
+				opts := model.QueryOptions{Sort: "name", Max: 2, Offset: 1}
+				want, err := repo.GetAll(opts)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(collectCursor(repo.GetCursor(opts))).To(Equal([]model.Artist(want)))
+			})
+		})
+
 		Describe("Basic Operations", func() {
 			Describe("Count", func() {
 				It("returns the number of artists in the DB", func() {

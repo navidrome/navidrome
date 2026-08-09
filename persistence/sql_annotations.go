@@ -67,7 +67,8 @@ func (r sqlRepository) withAnnotation(query SelectBuilder, idField string) Selec
 	query = query.
 		LeftJoin("annotation on ("+
 			"annotation.item_id = "+idField+
-			" AND annotation.user_id = '"+userID+"')").
+			" AND annotation.item_type = ?"+
+			" AND annotation.user_id = ?)", r.tableName, userID).
 		Columns(
 			"coalesce(starred, 0) as starred",
 			"coalesce(rating, 0) as rating",

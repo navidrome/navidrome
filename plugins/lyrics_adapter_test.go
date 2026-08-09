@@ -3,6 +3,8 @@
 package plugins
 
 import (
+	"context"
+
 	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -69,6 +71,45 @@ var _ = Describe("LyricsPlugin", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(HaveLen(1))
 			Expect(result[0].Lang).To(Equal("xxx"))
+		})
+
+		It("blocks new calls while the per-plugin concurrency cap is saturated", func() {
+			sem := provider.plugin.lyricsSem
+			for range cap(sem) {
+				sem <- struct{}{}
+			}
+
+			ctx := GinkgoT().Context()
+			track := &model.MediaFile{ID: "track-1", Title: "Test Song", Artist: "Test Artist"}
+			done := make(chan error, 1)
+			go func() {
+				_, err := provider.GetLyrics(ctx, track)
+				done <- err
+			}()
+
+			Consistently(done, "500ms").ShouldNot(Receive())
+			<-sem // free one slot; the pending call should now proceed
+			Eventually(done).Should(Receive(BeNil()))
+			for range cap(sem) - 1 {
+				<-sem
+			}
+		})
+
+		It("gives up waiting for a slot when the context is cancelled", func() {
+			sem := provider.plugin.lyricsSem
+			for range cap(sem) {
+				sem <- struct{}{}
+			}
+			defer func() {
+				for range cap(sem) {
+					<-sem
+				}
+			}()
+
+			ctx, cancel := context.WithCancel(GinkgoT().Context())
+			cancel()
+			_, err := provider.GetLyrics(ctx, &model.MediaFile{ID: "track-1"})
+			Expect(err).To(MatchError(context.Canceled))
 		})
 
 		It("returns error when plugin returns error", func() {

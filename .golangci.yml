@@ -69,6 +69,7 @@ linters:
       - examples$
       - node_modules
       - _gen\.go$
+      - .worktrees
 formatters:
   exclusions:
     generated: lax

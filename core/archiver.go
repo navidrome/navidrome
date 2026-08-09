@@ -22,7 +22,7 @@ type Archiver interface {
 	ZipAlbum(ctx context.Context, id string, format string, bitrate int, w io.Writer) error
 	ZipArtist(ctx context.Context, id string, format string, bitrate int, w io.Writer) error
 	ZipFolder(ctx context.Context, id string, format string, bitrate int, w io.Writer) error
-	ZipShare(ctx context.Context, id string, w io.Writer) error
+	ZipShare(ctx context.Context, s *model.Share, w io.Writer) error
 	ZipPlaylist(ctx context.Context, id string, format string, bitrate int, w io.Writer) error
 }
 
@@ -105,16 +105,14 @@ func (a *archiver) albumFilename(mf model.MediaFile, format string, isMultiDisc 
 	return fmt.Sprintf("%s/%s", str.SanitizeFilename(mf.Album), file)
 }
 
-func (a *archiver) ZipShare(ctx context.Context, id string, out io.Writer) error {
-	s, err := a.shares.Load(ctx, id)
-	if err != nil {
-		return err
-	}
+// ZipShare takes an already-loaded share: Share.Load records a visit, so
+// loading it again here would count every download twice.
+func (a *archiver) ZipShare(ctx context.Context, s *model.Share, out io.Writer) error {
 	if !s.Downloadable {
 		return model.ErrNotAuthorized
 	}
 	log.Debug(ctx, "Zipping share", "name", s.ID, "format", s.Format, "bitrate", s.MaxBitRate, "numTracks", len(s.Tracks))
-	return a.zipMediaFiles(ctx, id, s.ID, s.Format, s.MaxBitRate, out, s.Tracks, false)
+	return a.zipMediaFiles(ctx, s.ID, s.ID, s.Format, s.MaxBitRate, out, s.Tracks, false)
 }
 
 func (a *archiver) ZipPlaylist(ctx context.Context, id string, format string, bitrate int, out io.Writer) error {

@@ -1,12 +1,14 @@
 package conf_test
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/log"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/viper"
@@ -55,6 +57,19 @@ var _ = Describe("Configuration", func() {
 
 		It("handles multiple languages with various spacing", func() {
 			Expect(conf.ParseLanguages("ja, pt, en")).To(Equal([]string{"ja", "pt", "en"}))
+		})
+	})
+
+	Describe("scheduled DB analysis", func() {
+		It("is enabled by default", func() {
+			conf.Load(true)
+			Expect(conf.Server.EnableScheduledDBAnalyze).To(BeTrue())
+		})
+
+		It("can be disabled", func() {
+			viper.Set("enablescheduleddbanalyze", false)
+			conf.Load(true)
+			Expect(conf.Server.EnableScheduledDBAnalyze).To(BeFalse())
 		})
 	})
 
@@ -162,6 +177,123 @@ var _ = Describe("Configuration", func() {
 
 			// Verify normal config loading still works
 			Expect(conf.Server.MusicFolder).To(Equal("/toml/music"))
+		})
+	})
+
+	Describe("unknownConfigKeys", func() {
+		BeforeEach(func() {
+			viper.Reset()
+			conf.SetViperDefaults()
+			viper.SetDefault("datafolder", GinkgoT().TempDir())
+			viper.SetDefault("loglevel", "error")
+			conf.ResetConf()
+		})
+
+		It("reports misplaced and misspelled options, as spelled in the config file", func() {
+			conf.InitConfig(filepath.Join("testdata", "cfg_unknown_keys.toml"), false)
+			conf.Load(true)
+
+			Expect(conf.UnknownConfigKeys()).To(ConsistOf(
+				"ArtistSplitExceptions", "EnableDownlods", "Whatever.Foo",
+			))
+		})
+
+		DescribeTable("recovers the original casing in all supported formats",
+			func(file string) {
+				conf.InitConfig(filepath.Join("testdata", file), false)
+				conf.Load(true)
+
+				Expect(conf.UnknownConfigKeys()).To(ConsistOf("NotAnOption"))
+			},
+			Entry("TOML", "cfg_unknown_casing.toml"),
+			Entry("YAML", "cfg_unknown_casing.yaml"),
+			Entry("JSON", "cfg_unknown_casing.json"),
+			Entry("INI", "cfg_unknown_casing.ini"),
+		)
+
+		It("does not report valid, deprecated or free-form keys", func() {
+			conf.InitConfig(filepath.Join("testdata", "cfg.toml"), false)
+			conf.Load(true)
+
+			Expect(conf.UnknownConfigKeys()).To(BeEmpty())
+		})
+
+		It("does not report the [default] section of INI files", func() {
+			conf.InitConfig(filepath.Join("testdata", "cfg.ini"), false)
+			conf.Load(true)
+
+			Expect(conf.UnknownConfigKeys()).To(BeEmpty())
+		})
+
+		DescribeTable("SuggestOptions",
+			func(key string, expected []string) {
+				Expect(conf.SuggestOptions(key)).To(Equal(expected))
+			},
+			Entry("suggests the section of a misplaced option", "artistsplitexceptions",
+				[]string{"Scanner.ArtistSplitExceptions"}),
+			Entry("suggests the section of a misplaced nested option", "backup.fuzzythreshold",
+				[]string{"Matcher.FuzzyThreshold"}),
+			Entry("suggests every section defining the option", "schedule",
+				[]string{"Backup.Schedule", "Scanner.Schedule"}),
+			Entry("suggests nothing for a typo", "enabledownlods", nil),
+		)
+
+		It("does not report ND_-prefixed keys, as they are remapped", func() {
+			conf.InitConfig(filepath.Join("testdata", "cfg_nd_keys.toml"), false)
+			conf.Load(true)
+
+			Expect(conf.UnknownConfigKeys()).To(BeEmpty())
+		})
+
+		It("reports ND_-prefixed keys that remap to no known option", func() {
+			conf.InitConfig(filepath.Join("testdata", "cfg_nd_bogus.toml"), false)
+			conf.Load(true)
+
+			Expect(conf.UnknownConfigKeys()).To(ConsistOf("ND_TOTALLY_BOGUS_OPTION"))
+			Expect(conf.Server.Scanner.Schedule).To(Equal("@every 1h"))
+		})
+
+		It("migrates every deprecated option that has a replacement", func() {
+			conf.InitConfig(filepath.Join("testdata", "cfg_deprecated_search.toml"), false)
+			conf.Load(true)
+
+			Expect(conf.Server.Search.FullString).To(BeTrue())
+			Expect(conf.UnknownConfigKeys()).To(BeEmpty())
+		})
+
+		It("warns about each unrecognized option at startup", func() {
+			var logBuf bytes.Buffer
+			log.SetOutput(&logBuf)
+			DeferCleanup(func() { log.SetOutput(GinkgoWriter) })
+
+			conf.InitConfig(filepath.Join("testdata", "cfg_warning_output.toml"), false)
+			conf.Load(true)
+
+			Expect(logBuf.String()).To(ContainSubstring(
+				"Option 'ArtistSplitExceptions' is not recognized and will be ignored. " +
+					"Did you mean 'Scanner.ArtistSplitExceptions'?"))
+			Expect(logBuf.String()).To(ContainSubstring(
+				"Option 'EnableDownlods' is not recognized and will be ignored"))
+			Expect(logBuf.String()).ToNot(ContainSubstring("ArtistJoiner"))
+		})
+
+		Context("with runtime-computed and removed options in the config", func() {
+			BeforeEach(func() {
+				conf.InitConfig(filepath.Join("testdata", "cfg_runtime_fields.toml"), false)
+				conf.Load(true)
+			})
+
+			It("reports values computed during Load, which the config cannot set", func() {
+				Expect(conf.UnknownConfigKeys()).To(ContainElements("ConfigFile", "LastFM.Languages"))
+			})
+
+			It("never suggests a removed option", func() {
+				Expect(conf.SuggestOptions("id")).To(BeEmpty())
+			})
+
+			It("keeps an explicit replacement over the deprecated value", func() {
+				Expect(conf.Server.Search.FullString).To(BeFalse())
+			})
 		})
 	})
 

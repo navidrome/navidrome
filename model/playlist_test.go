@@ -1,7 +1,12 @@
 package model_test
 
 import (
+	"time"
+
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -41,6 +46,31 @@ var _ = Describe("Playlist", func() {
 /music/library/Legião Urbana/Música p_ acampamentos/02-05 On the Way Home.mp3
 `
 			Expect(pls.ToM3U8()).To(Equal(expected))
+		})
+	})
+
+	Describe("RefreshDelay", func() {
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.SmartPlaylistRefreshDelay = 5 * time.Second
+		})
+
+		It("returns the global config value when rules have no refreshDelay", func() {
+			pls := model.Playlist{Rules: &criteria.Criteria{Expression: criteria.All{criteria.Is{"loved": true}}}}
+			Expect(pls.RefreshDelay()).To(Equal(5 * time.Second))
+		})
+
+		It("returns the per-playlist value when set", func() {
+			pls := model.Playlist{Rules: &criteria.Criteria{
+				Expression:   criteria.All{criteria.Is{"loved": true}},
+				RefreshDelay: 24 * time.Hour,
+			}}
+			Expect(pls.RefreshDelay()).To(Equal(24 * time.Hour))
+		})
+
+		It("returns the global value for non-smart playlists", func() {
+			pls := model.Playlist{}
+			Expect(pls.RefreshDelay()).To(Equal(5 * time.Second))
 		})
 	})
 })

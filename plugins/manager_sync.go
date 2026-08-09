@@ -191,7 +191,11 @@ func (m *Manager) syncPlugins(ctx context.Context, folder string) error {
 			log.Trace(ctx, "Skipping non-plugin entry", "name", entry.Name(), "isDir", entry.IsDir())
 			continue
 		}
-		name := strings.TrimSuffix(entry.Name(), PackageExtension)
+		name, ok := pluginIDFromPath(entry.Name())
+		if !ok {
+			log.Warn(ctx, "Skipping plugin with unusable name", "name", entry.Name())
+			continue
+		}
 		filesOnDisk[name] = filepath.Join(folder, entry.Name())
 	}
 	log.Debug(ctx, "Plugin sync: scanned folder", "folder", folder, "entriesTotal", len(entries), "pluginsFound", len(filesOnDisk))

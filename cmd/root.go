@@ -86,7 +86,7 @@ func runNavidrome(ctx context.Context) {
 	g.Go(startPlaybackServer(ctx))
 	g.Go(schedulePeriodicBackup(ctx))
 	g.Go(startInsightsCollector(ctx))
-	g.Go(scheduleDBOptimizer(ctx))
+	g.Go(scheduleDBAnalyzer(ctx))
 	g.Go(startPluginManager(ctx))
 	g.Go(runInitialScan(ctx))
 	if conf.Server.Scanner.Enabled {
@@ -126,6 +126,9 @@ func startServer(ctx context.Context) func() error {
 		}
 		if conf.Server.ListenBrainz.Enabled {
 			a.MountRouter("ListenBrainz Auth", consts.URLPathNativeAPI+"/listenbrainz", CreateListenBrainzRouter())
+		}
+		if conf.Server.Jellyfin.Enabled {
+			a.MountRouter("Jellyfin API", consts.URLPathJellyfinAPI, CreateJellyfinAPIRouter(ctx))
 		}
 		if conf.Server.Prometheus.Enabled {
 			p := CreatePrometheus()
@@ -306,16 +309,24 @@ func schedulePeriodicBackup(ctx context.Context) func() error {
 	}
 }
 
-func scheduleDBOptimizer(ctx context.Context) func() error {
+func scheduleDBAnalyzer(ctx context.Context) func() error {
 	return func() error {
-		log.Info(ctx, "Scheduling DB optimizer", "schedule", consts.OptimizeDBSchedule)
+		if !conf.Server.EnableScheduledDBAnalyze {
+			log.Info(ctx, "Scheduled DB analysis is DISABLED")
+			return nil
+		}
+		log.Info(ctx, "Scheduling DB analysis check", "schedule", consts.DBAnalyzeCheckSchedule)
 		schedulerInstance := scheduler.GetInstance()
-		_, err := schedulerInstance.Add(consts.OptimizeDBSchedule, func() {
-			if scanner.IsScanning() {
-				log.Debug(ctx, "Skipping DB optimization because a scan is in progress")
+		_, err := schedulerInstance.Add(consts.DBAnalyzeCheckSchedule, func() {
+			release, ok := scanner.LockForMaintenance()
+			if !ok {
+				log.Debug(ctx, "Skipping DB analysis check because a scan is in progress")
 				return
 			}
-			db.Optimize(ctx)
+			defer release()
+			if _, err := db.OptimizeIfNeeded(ctx); err != nil {
+				log.Error(ctx, "Error analyzing DB", err)
+			}
 		})
 		return err
 	}
@@ -414,7 +425,7 @@ func init() {
 	rootCmd.Flags().String("albumplaycountmode", viper.GetString("albumplaycountmode"), "how to compute playcount for albums. absolute (default) or normalized")
 	rootCmd.Flags().Bool("autoimportplaylists", viper.GetBool("autoimportplaylists"), "enable/disable .m3u playlist auto-import`")
 
-	rootCmd.Flags().Bool("prometheus.enabled", viper.GetBool("prometheus.enabled"), "enable/disable prometheus metrics endpoint`")
+	rootCmd.Flags().Bool("prometheus.enabled", viper.GetBool("prometheus.enabled"), "enable/disable prometheus metrics endpoint")
 	rootCmd.Flags().String("prometheus.metricspath", viper.GetString("prometheus.metricspath"), "http endpoint for prometheus metrics")
 
 	_ = viper.BindPFlag("address", rootCmd.Flags().Lookup("address"))

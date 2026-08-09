@@ -8,6 +8,8 @@ export const SET_SHOW_PODCASTS = 'SET_SHOW_PODCASTS'
 // standard Genre sidebar toggles) - data is { key, value }, merged directly
 // into settings state under that key.
 export const SET_VIEW_TOGGLE = 'SET_VIEW_TOGGLE'
+export const SET_SIDEBAR_PLAYLISTS_FAVOURITES =
+  'SET_SIDEBAR_PLAYLISTS_FAVOURITES'
 
 export const setNotificationsState = (enabled) => ({
   type: SET_NOTIFICATIONS_STATE,
@@ -37,4 +39,9 @@ export const setShowPodcasts = (enabled) => ({
 export const setViewToggle = (key, enabled) => ({
   type: SET_VIEW_TOGGLE,
   data: { key, value: enabled },
+})
+
+export const setSidebarPlaylistsOnlyFavourites = (enabled) => ({
+  type: SET_SIDEBAR_PLAYLISTS_FAVOURITES,
+  data: enabled,
 })

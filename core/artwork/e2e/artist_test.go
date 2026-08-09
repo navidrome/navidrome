@@ -80,6 +80,101 @@ var _ = Describe("Artist artwork resolution", func() {
 		})
 	})
 
+	When("ArtistArtPriority has no album/ fallback", func() {
+		// Artist/
+		// ├── artist.jpg               ← must resolve via the artist folder itself
+		// └── Album/
+		//     └── 01 - Track.mp3
+		It("still resolves the artist folder and returns artist.*", func() {
+			conf.Server.ArtistArtPriority = "artist.*"
+			setLayout(fstest.MapFS{
+				"Artist/Album/01 - Track.mp3": trackFile(1, "Track", map[string]any{"albumartist": "Artist"}),
+				"Artist/artist.jpg":           imageFile("artist-folder"),
+			})
+			scan()
+
+			ar := soleArtist()
+			artID := model.NewArtworkID(model.KindArtistArtwork, ar.ID, nil)
+			Expect(readArtwork(artID)).To(Equal(imageBytes("artist-folder")))
+		})
+	})
+
+	When("the artist's only album has its tracks in disc subfolders", func() {
+		// Artist/
+		// ├── artist.jpg               ← wins (artist.* before album/artist.*)
+		// └── Album/
+		//     ├── artist.jpg
+		//     ├── CD1/01 - Track.mp3
+		//     └── CD2/02 - Track.mp3
+		It("prefers the artist-folder image over the album-folder one", func() {
+			conf.Server.ArtistArtPriority = "artist.*, album/artist.*, external"
+			setLayout(fstest.MapFS{
+				"Artist/Album/CD1/01 - Track.mp3": trackFile(1, "Track 1", map[string]any{"albumartist": "Artist", "album": "Album"}),
+				"Artist/Album/CD2/02 - Track.mp3": trackFile(2, "Track 2", map[string]any{"albumartist": "Artist", "album": "Album"}),
+				"Artist/artist.jpg":               imageFile("artist-folder"),
+				"Artist/Album/artist.jpg":         imageFile("album-artist"),
+			})
+			scan()
+
+			ar := soleArtist()
+			artID := model.NewArtworkID(model.KindArtistArtwork, ar.ID, nil)
+			Expect(readArtwork(artID)).To(Equal(imageBytes("artist-folder")))
+		})
+	})
+
+	When("one album has disc subfolders and another sits at artist level", func() {
+		// Artist/
+		// ├── artist.jpg               ← wins
+		// ├── Album1/
+		// │   ├── artist.jpg
+		// │   ├── CD1/01 - Track.mp3
+		// │   └── CD2/02 - Track.mp3
+		// └── Album2/03 - Track.mp3
+		It("prefers the artist-folder image over the album-folder one", func() {
+			conf.Server.ArtistArtPriority = "artist.*, album/artist.*, external"
+			setLayout(fstest.MapFS{
+				"Artist/Album1/CD1/01 - Track.mp3": trackFile(1, "Track 1", map[string]any{"albumartist": "Artist", "album": "Album1"}),
+				"Artist/Album1/CD2/02 - Track.mp3": trackFile(2, "Track 2", map[string]any{"albumartist": "Artist", "album": "Album1"}),
+				"Artist/Album2/03 - Track.mp3":     trackFile(3, "Track 3", map[string]any{"albumartist": "Artist", "album": "Album2"}),
+				"Artist/artist.jpg":                imageFile("artist-folder"),
+				"Artist/Album1/artist.jpg":         imageFile("album-artist"),
+			})
+			scan()
+
+			ar := soleArtist()
+			artID := model.NewArtworkID(model.KindArtistArtwork, ar.ID, nil)
+			Expect(readArtwork(artID)).To(Equal(imageBytes("artist-folder")))
+		})
+	})
+
+	When("every album of the artist has its tracks in disc subfolders", func() {
+		// Artist/
+		// ├── artist.jpg               ← wins
+		// ├── Album1/
+		// │   ├── artist.jpg
+		// │   ├── CD1/01 - Track.mp3
+		// │   └── CD2/02 - Track.mp3
+		// └── Album2/
+		//     ├── CD1/03 - Track.mp3
+		//     └── CD2/04 - Track.mp3
+		It("prefers the artist-folder image over the album-folder one", func() {
+			conf.Server.ArtistArtPriority = "artist.*, album/artist.*, external"
+			setLayout(fstest.MapFS{
+				"Artist/Album1/CD1/01 - Track.mp3": trackFile(1, "Track 1", map[string]any{"albumartist": "Artist", "album": "Album1"}),
+				"Artist/Album1/CD2/02 - Track.mp3": trackFile(2, "Track 2", map[string]any{"albumartist": "Artist", "album": "Album1"}),
+				"Artist/Album2/CD1/03 - Track.mp3": trackFile(3, "Track 3", map[string]any{"albumartist": "Artist", "album": "Album2"}),
+				"Artist/Album2/CD2/04 - Track.mp3": trackFile(4, "Track 4", map[string]any{"albumartist": "Artist", "album": "Album2"}),
+				"Artist/artist.jpg":                imageFile("artist-folder"),
+				"Artist/Album1/artist.jpg":         imageFile("album-artist"),
+			})
+			scan()
+
+			ar := soleArtist()
+			artID := model.NewArtworkID(model.KindArtistArtwork, ar.ID, nil)
+			Expect(readArtwork(artID)).To(Equal(imageBytes("artist-folder")))
+		})
+	})
+
 	When("an artist has an uploaded image and a matching artist.* file", func() {
 		// <DataFolder>/
 		// └── artwork/

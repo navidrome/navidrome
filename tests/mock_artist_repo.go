@@ -73,6 +73,28 @@ func (m *MockArtistRepo) IncPlayCount(id string, timestamp time.Time) error {
 	return model.ErrNotFound
 }
 
+func (m *MockArtistRepo) SetStar(starred bool, itemIDs ...string) error {
+	if m.Err {
+		return errors.New("error")
+	}
+	for _, id := range itemIDs {
+		if d, ok := m.Data[id]; ok {
+			d.Starred = starred
+		}
+	}
+	return nil
+}
+
+func (m *MockArtistRepo) SetRating(rating int, itemID string) error {
+	if m.Err {
+		return errors.New("error")
+	}
+	if d, ok := m.Data[itemID]; ok {
+		d.Rating = rating
+	}
+	return nil
+}
+
 func (m *MockArtistRepo) GetAll(options ...model.QueryOptions) (model.Artists, error) {
 	if len(options) > 0 {
 		m.Options = options[0]
@@ -89,6 +111,20 @@ func (m *MockArtistRepo) GetAll(options ...model.QueryOptions) (model.Artists, e
 		return allArtists[:1], nil
 	}
 	return allArtists, nil
+}
+
+func (m *MockArtistRepo) GetCursor(options ...model.QueryOptions) (model.ArtistCursor, error) {
+	res, err := m.GetAll(options...)
+	if err != nil {
+		return nil, err
+	}
+	return func(yield func(model.Artist, error) bool) {
+		for _, a := range res {
+			if !yield(a, nil) {
+				return
+			}
+		}
+	}, nil
 }
 
 func (m *MockArtistRepo) UpdateExternalInfo(artist *model.Artist) error {
@@ -143,6 +179,13 @@ func (m *MockArtistRepo) GetIndex(includeMissing bool, libraryIds []int, roles .
 	}
 
 	return result, nil
+}
+
+func (m *MockArtistRepo) CountAll(...model.QueryOptions) (int64, error) {
+	if m.Err {
+		return 0, errors.New("mock repo error")
+	}
+	return int64(len(m.Data)), nil
 }
 
 func (m *MockArtistRepo) Search(q string, options ...model.QueryOptions) (model.Artists, error) {

@@ -1,15 +1,19 @@
 package model
 
 import (
+	"iter"
 	"slices"
 	"strconv"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model/criteria"
 )
 
 type Playlist struct {
+	Annotations `structs:"-"`
+
 	ID               string         `structs:"id" json:"id"`
 	Name             string         `structs:"name" json:"name"`
 	Comment          string         `structs:"comment" json:"comment"`
@@ -35,6 +39,15 @@ type Playlist struct {
 
 func (pls Playlist) IsSmartPlaylist() bool {
 	return pls.Rules != nil && pls.Rules.Expression != nil
+}
+
+// RefreshDelay returns the playlist's own refresh window when set, falling
+// back to the global SmartPlaylistRefreshDelay.
+func (pls Playlist) RefreshDelay() time.Duration {
+	if pls.IsSmartPlaylist() && pls.Rules.RefreshDelay > 0 {
+		return pls.Rules.RefreshDelay
+	}
+	return conf.Server.SmartPlaylistRefreshDelay
 }
 
 func (pls Playlist) MediaFiles() MediaFiles {
@@ -138,8 +151,11 @@ func (pls Playlist) UploadedImagePath() string {
 
 type Playlists []Playlist
 
+type PlaylistCursor iter.Seq2[Playlist, error]
+
 type PlaylistRepository interface {
 	ResourceRepository
+	AnnotatedRepository
 	CountAll(options ...QueryOptions) (int64, error)
 	Exists(id string) (bool, error)
 	Put(pls *Playlist, cols ...string) error
@@ -147,6 +163,7 @@ type PlaylistRepository interface {
 	GetWithTracks(id string, refreshSmartPlaylist, includeMissing bool) (*Playlist, error)
 	GetAll(options ...QueryOptions) (Playlists, error)
 	GetSyncPlaylists() (Playlists, error)
+	GetCursor(options ...QueryOptions) (PlaylistCursor, error)
 	FindByPath(path string) (*Playlist, error)
 	Delete(id string) error
 	Tracks(playlistId string, refreshSmartPlaylist bool) PlaylistTrackRepository
@@ -192,10 +209,15 @@ type PlaylistTrackRef struct {
 	ItemType PlaylistTrackItemType
 }
 
+type PlaylistTrackCursor iter.Seq2[PlaylistTrack, error]
+
 type PlaylistTrackRepository interface {
 	ResourceRepository
+	CountAll(options ...QueryOptions) (int64, error)
 	GetAll(options ...QueryOptions) (PlaylistTracks, error)
+	GetCursor(options ...QueryOptions) (PlaylistTrackCursor, error)
 	GetAlbumIDs(options ...QueryOptions) ([]string, error)
+	GetMediaFileIDs(options ...QueryOptions) ([]string, error)
 	Add(mediaFileIds []string) (int, error)
 	AddItems(items []PlaylistTrackRef) (int, error)
 	AddAlbums(albumIds []string) (int, error)

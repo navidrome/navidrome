@@ -2,41 +2,29 @@ package model
 
 import (
 	"context"
+	"errors"
 )
 
 // TODO: Should the type be encoded in the ID?
 func GetEntityByID(ctx context.Context, ds DataStore, id string) (any, error) {
-	ar, err := ds.Artist(ctx).Get(id)
-	if err == nil {
-		return ar, nil
+	getters := []func() (any, error){
+		func() (any, error) { return ds.Artist(ctx).Get(id) },
+		func() (any, error) { return ds.Album(ctx).Get(id) },
+		func() (any, error) { return ds.Playlist(ctx).Get(id) },
+		func() (any, error) { return ds.MediaFile(ctx).Get(id) },
+		func() (any, error) { return ds.Radio(ctx).Get(id) },
+		func() (any, error) { return ds.Folder(ctx).Get(id) },
+		func() (any, error) { return ds.PodcastChannel(ctx).Get(id) },
+		func() (any, error) { return ds.PodcastEpisode(ctx).Get(id) },
 	}
-	al, err := ds.Album(ctx).Get(id)
-	if err == nil {
-		return al, nil
+	for _, get := range getters {
+		entity, err := get()
+		if err == nil {
+			return entity, nil
+		}
+		if !errors.Is(err, ErrNotFound) {
+			return nil, err
+		}
 	}
-	pls, err := ds.Playlist(ctx).Get(id)
-	if err == nil {
-		return pls, nil
-	}
-	mf, err := ds.MediaFile(ctx).Get(id)
-	if err == nil {
-		return mf, nil
-	}
-	f, err := ds.Folder(ctx).Get(id)
-	if err == nil {
-		return f, nil
-	}
-	r, err := ds.Radio(ctx).Get(id)
-	if err == nil {
-		return r, nil
-	}
-	pc, err := ds.PodcastChannel(ctx).Get(id)
-	if err == nil {
-		return pc, nil
-	}
-	pe, err := ds.PodcastEpisode(ctx).Get(id)
-	if err == nil {
-		return pe, nil
-	}
-	return nil, err
+	return nil, ErrNotFound
 }

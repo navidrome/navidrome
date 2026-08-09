@@ -1,3 +1,4 @@
+import { cloneElement } from 'react'
 import { useSelector } from 'react-redux'
 import { Redirect, useLocation } from 'react-router-dom'
 import {
@@ -6,7 +7,6 @@ import {
   Filter,
   NullableBooleanInput,
   NumberInput,
-  Pagination,
   ReferenceArrayInput,
   ReferenceInput,
   SearchInput,
@@ -20,20 +20,33 @@ import FavoriteIcon from '@material-ui/icons/Favorite'
 import { withWidth } from '@material-ui/core'
 import {
   List,
+  Pagination,
   Title,
   useAlbumsPerPage,
   useResourceRefresh,
+  useScrollRestoration,
   useSetToggleableFields,
 } from '../common'
 import AlbumListActions from './AlbumListActions'
 import AlbumTableView from './AlbumTableView'
 import AlbumGridView from './AlbumGridView'
-import albumLists, { defaultAlbumList } from './albumLists'
+import albumLists from './albumLists'
+import {
+  getStoredDefaultView,
+  isResourceDefaultView,
+} from '../personal/defaultViews'
 import config from '../config'
 import AlbumInfo from './AlbumInfo'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 import { humanize } from 'inflection'
 import { makeStyles } from '@material-ui/core/styles'
+
+// Waits for rows: restoring into an unrendered list leaves the page too short to hold the offset.
+const ScrollRestorer = ({ children, ...rest }) => {
+  const { loaded, total } = useListContext()
+  useScrollRestoration(loaded && total > 0)
+  return cloneElement(children, rest)
+}
 
 const useStyles = makeStyles({
   chip: {
@@ -220,8 +233,10 @@ const AlbumList = (props) => {
   // If it does not have filter/sort params (usually coming from Menu),
   // reload with correct filter/sort params
   if (!location.search) {
-    const type =
-      albumListType || localStorage.getItem('defaultView') || defaultAlbumList
+    const type = albumListType || getStoredDefaultView()
+    if (isResourceDefaultView(type)) {
+      return <Redirect to={`/${type}`} />
+    }
     const listParams = albumLists[type]
     if (type === 'random') {
       refresh()
@@ -249,11 +264,13 @@ const AlbumList = (props) => {
         }
         title={<AlbumListTitle albumListType={albumListType} />}
       >
-        {albumView.grid ? (
-          <AlbumGridView albumListType={albumListType} {...props} />
-        ) : (
-          <AlbumTableView {...props} />
-        )}
+        <ScrollRestorer>
+          {albumView.grid ? (
+            <AlbumGridView albumListType={albumListType} {...props} />
+          ) : (
+            <AlbumTableView {...props} />
+          )}
+        </ScrollRestorer>
       </List>
       <ExpandInfoDialog content={<AlbumInfo />} />
     </>

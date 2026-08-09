@@ -21,6 +21,7 @@ const (
 	smartPlaylistJoinNone            smartPlaylistJoinType = 0
 	smartPlaylistJoinAlbumAnnotation smartPlaylistJoinType = 1 << iota
 	smartPlaylistJoinArtistAnnotation
+	smartPlaylistJoinAlbum
 )
 
 func (j smartPlaylistJoinType) has(other smartPlaylistJoinType) bool {
@@ -103,6 +104,11 @@ var smartPlaylistFields = map[string]smartPlaylistField{
 	"albumlastplayed":      {expr: "album_annotation.play_date", joinType: smartPlaylistJoinAlbumAnnotation},
 	"albumdateloved":       {expr: "album_annotation.starred_at", joinType: smartPlaylistJoinAlbumAnnotation},
 	"albumdaterated":       {expr: "album_annotation.rated_at", joinType: smartPlaylistJoinAlbumAnnotation},
+	"albumdateadded":       {expr: "album.created_at", joinType: smartPlaylistJoinAlbum},
+	"albumdatemodified":    {expr: "album.updated_at", joinType: smartPlaylistJoinAlbum},
+	"albumduration":        {expr: "album.duration", joinType: smartPlaylistJoinAlbum},
+	"albumsongcount":       {expr: "album.song_count", joinType: smartPlaylistJoinAlbum},
+	"albumsize":            {expr: "album.size", joinType: smartPlaylistJoinAlbum},
 	"artistrating":         {expr: "artist_annotation.rating", coalesceDefault: 0, joinType: smartPlaylistJoinArtistAnnotation},
 	"artistloved":          {expr: "artist_annotation.starred", coalesceDefault: false, joinType: smartPlaylistJoinArtistAnnotation},
 	"artistplaycount":      {expr: "artist_annotation.play_count", coalesceDefault: 0, joinType: smartPlaylistJoinArtistAnnotation},

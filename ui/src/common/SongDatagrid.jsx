@@ -81,7 +81,7 @@ const useStyles = makeStyles({
   },
 })
 
-const DiscSubtitleRow = forwardRef(
+export const DiscSubtitleRow = forwardRef(
   ({ record, onClick, colSpan, contextAlwaysVisible }, ref) => {
     const translate = useTranslate()
     const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
@@ -156,13 +156,17 @@ const DiscSubtitleRow = forwardRef(
             {subtitle}
           </Typography>
           {isLightboxOpen && !imageError && (
-            <Lightbox
-              imagePadding={50}
-              animationDuration={200}
-              imageTitle={record.album + ' - ' + subtitle}
-              mainSrc={fullImageUrl}
-              onCloseRequest={handleCloseLightbox}
-            />
+            // Lightbox portals out of the row, but React still bubbles its
+            // events up this tree, where the row's onClick would play the disc.
+            <span onClick={(e) => e.stopPropagation()}>
+              <Lightbox
+                imagePadding={50}
+                animationDuration={200}
+                imageTitle={record.album + ' - ' + subtitle}
+                mainSrc={fullImageUrl}
+                onCloseRequest={handleCloseLightbox}
+              />
+            </span>
           )}
         </TableCell>
         <TableCell>

@@ -202,10 +202,10 @@ func reqToCtx(key any, fn func(req *http.Request) any) func(http.Handler) http.H
 func serverAddressMiddleware(h http.Handler) http.Handler {
 	// Define a new handler function that will be returned by this middleware function.
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		// Call the serverAddress function to get the scheme and host of the server
+		// Call the ServerAddress function to get the scheme and host of the server
 		// handling the request. If a host is found, modify the request object to use
 		// that host and scheme instead of the original ones.
-		if rScheme, rHost := serverAddress(r); rHost != "" {
+		if rScheme, rHost := ServerAddress(r); rHost != "" {
 			r.Host = rHost
 			r.URL.Scheme = rScheme
 		}
@@ -225,10 +225,10 @@ var (
 	xForwardedScheme = http.CanonicalHeaderKey("X-Forwarded-Scheme")
 )
 
-// serverAddress is a helper function that returns the scheme and host of the server
+// ServerAddress is a helper function that returns the scheme and host of the server
 // handling the given request, as determined by the presence of X-Forwarded-* headers
 // or the scheme and host of the request URL.
-func serverAddress(r *http.Request) (scheme, host string) {
+func ServerAddress(r *http.Request) (scheme, host string) {
 	// Save the original request host for later comparison.
 	origHost := r.Host
 

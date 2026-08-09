@@ -7,6 +7,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/dustin/go-humanize"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
@@ -15,6 +18,16 @@ import (
 type ImageUploadService interface {
 	SetImage(ctx context.Context, entityType string, entityID string, name string, oldPath string, reader io.Reader, ext string) (filename string, err error)
 	RemoveImage(ctx context.Context, path string) error
+}
+
+// MaxImageUploadSize returns the configured MaxImageUploadSize in bytes, or the built-in default
+// when it's unset/invalid. Shared by every API that accepts image uploads.
+func MaxImageUploadSize() int64 {
+	if size, err := humanize.ParseBytes(conf.Server.MaxImageUploadSize); err == nil && size > 0 {
+		return int64(size)
+	}
+	size, _ := humanize.ParseBytes(consts.DefaultMaxImageUploadSize)
+	return int64(size)
 }
 
 type imageUploadService struct{}
