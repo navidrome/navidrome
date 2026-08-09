@@ -367,6 +367,8 @@ Receives WebSocket events. Export any subset of these to handle events from the 
 | `nd_websocket_on_error`          | `{connectionId, error}`         | Connection error                 |
 | `nd_websocket_on_close`          | `{connectionId, code, reason}`  | Connection closed                |
 
+Each callback invocation is subject to a 30-second timeout.
+
 ---
 
 ## Host Services
@@ -410,6 +412,8 @@ Make HTTP requests to external services. This is a dedicated host service (separ
 | Function    | Parameters                                               | Returns                          |
 |-------------|----------------------------------------------------------|----------------------------------|
 | `http_send` | `method, url, headers, body, timeoutMs, noFollowRedirects` | `statusCode, headers, body`    |
+
+**Limits:** Requests time out after 10 seconds by default (override per request with `timeoutMs`). Redirects are followed up to 5 times, re-checking the allowed hosts on every hop. Response bodies are capped at 10MB.
 
 **Usage:**
 
@@ -636,13 +640,21 @@ Background task queue with retry support. Plugins enqueue tasks and process them
 
 **Host functions:**
 
-| Function            | Parameters                                        | Description                |
-|---------------------|---------------------------------------------------|----------------------------|
-| `task_createqueue`  | `name, concurrency, maxRetries, backoffMs, ...`   | Create a named task queue  |
-| `task_enqueue`      | `queueName, payload`                              | Add a task to the queue    |
-| `task_get`          | `taskID`                                          | Get task status and result |
-| `task_cancel`       | `taskID`                                          | Cancel a pending task      |
-| `task_clearqueue`   | `queueName`                                       | Remove all tasks from queue|
+| Function            | Parameters                                                    | Description                |
+|---------------------|---------------------------------------------------------------|----------------------------|
+| `task_createqueue`  | `name, concurrency, maxRetries, backoffMs, delayMs, retentionMs` | Create a named task queue  |
+| `task_enqueue`      | `queueName, payload`                                          | Add a task to the queue    |
+| `task_get`          | `taskID`                                                      | Get task status and result |
+| `task_cancel`       | `taskID`                                                      | Cancel a pending task      |
+| `task_clearqueue`   | `queueName`                                                   | Remove all tasks from queue|
+
+Tasks are persisted to SQLite, so pending tasks survive server restarts. Queue behavior:
+
+- `concurrency` – Parallel workers (default 1), capped by the manifest's `maxConcurrency`
+- `maxRetries` – Retries for a failed task (default 0); `backoffMs` (default 1000) doubles on each retry
+- `delayMs` – Minimum delay between consecutive task starts, useful for rate limiting (default 0)
+- `retentionMs` – How long finished tasks are kept (default 1 hour, min 1 minute, max 1 week)
+- Payloads are capped at 1MB
 
 **Usage:**
 
