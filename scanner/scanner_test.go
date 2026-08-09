@@ -224,7 +224,6 @@ var _ = Describe("Scanner", func() {
 			})
 
 			It("should update the album", func() {
-				tests.SkipOnWindows("path separator bug (#TBD-path-sep-scanner)")
 				Expect(runScanner(ctx, true)).To(Succeed())
 
 				albums, err := ds.Album().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"album.name": "Help!"}})
@@ -613,7 +612,6 @@ var _ = Describe("Scanner", func() {
 		var beatlesMBID = uuid.NewString()
 
 		BeforeEach(func() {
-			tests.SkipOnWindows("path separator bug (#TBD-path-sep-scanner)")
 			By("Having two MP3 albums")
 			beatles := _t{
 				"artist":               "The Beatles",
