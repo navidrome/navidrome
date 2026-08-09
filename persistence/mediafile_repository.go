@@ -238,17 +238,35 @@ const userTagsSeparator = "\x1f"
 func (r *mediaFileRepository) selectMediaFile(options ...model.QueryOptions) SelectBuilder {
 	userID := loggedUser(r.ctx).ID
 	sql := r.newSelect(options...).Columns("media_file.*", "library.path as library_path", "library.name as library_name").
-		LeftJoin("library on media_file.library_id = library.id").
-		Column(
+		LeftJoin("library on media_file.library_id = library.id")
+
+	// AI Tags is shared, admin-written data (Option B): every admin's source=ai rows are unioned
+	// together and shown to any permitted user, not just whoever's logged in - matching
+	// TagCounts/AllTagNames/SongIDsForTag in media_file_tag_repository.go. My Tags stays private
+	// per caller, as it always has been. Both columns still respect the ai_tags/my_tags admin
+	// gate (hasFeaturePermission) - a user without the permission gets an empty column here too,
+	// not just an empty dashboard.
+	if r.hasFeaturePermission(model.FeatureAITags) {
+		sql = sql.Column(
 			"coalesce((select group_concat(mft.tag_name, ?) from media_file_tag mft "+
-				"where mft.media_file_id = media_file.id and mft.user_id = ? and mft.source = ?), '') as user_tags",
-			userTagsSeparator, userID, model.MediaFileTagSourceAI,
-		).
-		Column(
+				"where mft.media_file_id = media_file.id "+
+				"and mft.user_id in (select id from user where is_admin) and mft.source = ?), '') as user_tags",
+			userTagsSeparator, model.MediaFileTagSourceAI,
+		)
+	} else {
+		sql = sql.Column("'' as user_tags")
+	}
+
+	if r.hasFeaturePermission(model.FeatureMyTags) {
+		sql = sql.Column(
 			"coalesce((select group_concat(mft.tag_name, ?) from media_file_tag mft "+
 				"where mft.media_file_id = media_file.id and mft.user_id = ? and mft.source = ?), '') as my_tags",
 			userTagsSeparator, userID, model.MediaFileTagSourceUser,
 		)
+	} else {
+		sql = sql.Column("'' as my_tags")
+	}
+
 	sql = r.withAnnotation(sql, "media_file.id")
 	sql = r.withBookmark(sql, "media_file.id")
 	return r.applyLibraryFilter(sql)

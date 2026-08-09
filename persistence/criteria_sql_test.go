@@ -192,19 +192,19 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 			"(media_file.explicit_status IS NULL OR media_file.explicit_status = ?)", ""),
 		Entry("isPresent comment [true]", criteria.IsPresent{"comment": true},
 			"(media_file.comment IS NOT NULL AND media_file.comment <> ?)", ""),
-		// User tags (model.MediaFileTag) - scoped by ownerID, empty here since this table builds
-		// criteria without withSmartPlaylistOwner. See "user tag ownership scoping" below for a
-		// non-empty owner.
+		// User tags (model.MediaFileTag) - scoped by ownerID (plus any admin's AI-sourced rows,
+		// see aggregateOwnerCond/Option B), empty here since this table builds criteria without
+		// withSmartPlaylistOwner. See "user tag ownership scoping" below for a non-empty owner.
 		Entry("usertag is", criteria.Is{"usertag": "workout"},
-			"exists (select 1 from (select tag_name as value from media_file_tag where media_file_id = media_file.id and user_id = ?) where value = ?)", "", "workout"),
+			"exists (select 1 from (select tag_name as value from media_file_tag where media_file_id = media_file.id and (user_id = ? or (source = 'ai' and user_id in (select id from user where is_admin)))) where value = ?)", "", "workout"),
 		Entry("usertag is not", criteria.IsNot{"usertag": "workout"},
-			"not exists (select 1 from (select tag_name as value from media_file_tag where media_file_id = media_file.id and user_id = ?) where value = ?)", "", "workout"),
+			"not exists (select 1 from (select tag_name as value from media_file_tag where media_file_id = media_file.id and (user_id = ? or (source = 'ai' and user_id in (select id from user where is_admin)))) where value = ?)", "", "workout"),
 		Entry("usertag contains", criteria.Contains{"usertag": "work"},
-			"exists (select 1 from (select tag_name as value from media_file_tag where media_file_id = media_file.id and user_id = ?) where value LIKE ?)", "", "%work%"),
+			"exists (select 1 from (select tag_name as value from media_file_tag where media_file_id = media_file.id and (user_id = ? or (source = 'ai' and user_id in (select id from user where is_admin)))) where value LIKE ?)", "", "%work%"),
 		Entry("isMissing usertag [true]", criteria.IsMissing{"usertag": true},
-			"not exists (select tag_name as value from media_file_tag where media_file_id = media_file.id and user_id = ?)", ""),
+			"not exists (select tag_name as value from media_file_tag where media_file_id = media_file.id and (user_id = ? or (source = 'ai' and user_id in (select id from user where is_admin))))", ""),
 		Entry("isPresent usertag [true]", criteria.IsPresent{"usertag": true},
-			"exists (select tag_name as value from media_file_tag where media_file_id = media_file.id and user_id = ?)", ""),
+			"exists (select tag_name as value from media_file_tag where media_file_id = media_file.id and (user_id = ? or (source = 'ai' and user_id in (select id from user where is_admin))))", ""),
 	)
 
 	Describe("playlist permissions", func() {
@@ -297,7 +297,7 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 
 			sql, args, err := sqlizer.ToSql()
 			Expect(err).ToNot(HaveOccurred())
-			Expect(sql).To(Equal("exists (select 1 from (select tag_name as value from media_file_tag where media_file_id = media_file.id and user_id = ?) where value = ?)"))
+			Expect(sql).To(Equal("exists (select 1 from (select tag_name as value from media_file_tag where media_file_id = media_file.id and (user_id = ? or (source = 'ai' and user_id in (select id from user where is_admin)))) where value = ?)"))
 			Expect(args).To(HaveExactElements("owner-id", "workout"))
 		})
 	})

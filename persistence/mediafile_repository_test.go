@@ -1077,4 +1077,58 @@ var _ = Describe("MediaRepository", func() {
 			_ = mr.Delete(newID)
 		})
 	})
+
+	Describe("AI Tags / My Tags columns (media_file_tag)", func() {
+		// AI Tags is shared, admin-written data (Option B): any admin's source=ai rows show up
+		// for any permitted reader, not just the admin who wrote them. My Tags stays private
+		// per writer, unchanged. Both columns respect the ai_tags/my_tags admin gate - an empty
+		// column when disabled, not an error.
+		var tagRepo model.MediaFileTagRepository
+
+		BeforeEach(func() {
+			adminCtx := request.WithUser(log.NewContext(context.TODO()), adminUser)
+			tagRepo = NewMediaFileTagRepository(adminCtx, GetDBXBuilder())
+			Expect(tagRepo.TagSong(songDayInALife.ID, "genre:rock", model.MediaFileTagSourceAI)).To(Succeed())
+		})
+
+		AfterEach(func() {
+			_ = tagRepo.UntagSong(songDayInALife.ID, "genre:rock")
+		})
+
+		// Readers below reuse the regularUser/thirdUser package fixtures (already granted real
+		// library 1 access in BeforeSuite) rather than inventing new synthetic user IDs -
+		// applyLibraryFilter would otherwise block a library-ungranted reader for a reason
+		// unrelated to what these tests actually check.
+		It("shows the admin-written AI tag to a reader who isn't the writer", func() {
+			readerCtx := request.WithUser(log.NewContext(context.TODO()), regularUser)
+			readerMr := NewMediaFileRepository(readerCtx, GetDBXBuilder())
+
+			song, err := readerMr.Get(songDayInALife.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(song.UserTags).To(ContainElement("genre:rock"))
+		})
+
+		It("returns an empty AI Tags column when the reader's ai_tags permission is disabled", func() {
+			gatedReader := regularUser
+			gatedReader.FeaturePermissions = map[string]bool{model.FeatureAITags: false}
+			readerCtx := request.WithUser(log.NewContext(context.TODO()), gatedReader)
+			readerMr := NewMediaFileRepository(readerCtx, GetDBXBuilder())
+
+			song, err := readerMr.Get(songDayInALife.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(song.UserTags).To(BeEmpty())
+		})
+
+		It("does not leak My Tags between users", func() {
+			Expect(tagRepo.TagSong(songDayInALife.ID, "admins-private-note", model.MediaFileTagSourceUser)).To(Succeed())
+			defer func() { _ = tagRepo.UntagSong(songDayInALife.ID, "admins-private-note") }()
+
+			readerCtx := request.WithUser(log.NewContext(context.TODO()), regularUser)
+			readerMr := NewMediaFileRepository(readerCtx, GetDBXBuilder())
+
+			song, err := readerMr.Get(songDayInALife.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(song.MyTags).ToNot(ContainElement("admins-private-note"))
+		})
+	})
 })

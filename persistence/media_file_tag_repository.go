@@ -76,6 +76,18 @@ func (r *mediaFileTagRepository) hasAggregateTagPermission(source string) bool {
 	}
 }
 
+// aggregateOwnerCond is the ownership predicate for the aggregate/browse tag reads. AI-sourced
+// tags are shared, admin-written data (Option B in FEATURE_ROADMAP.md): any admin's rows count as
+// "the" shared AI tags, not just whoever happens to be logged in - that's what lets a permitted
+// non-admin user see the same AI Genre/AI Mood data an admin does, rather than their own (empty)
+// set. My-sourced (and any other/unspecified source) reads stay scoped to the caller, unchanged.
+func aggregateOwnerCond(source, callerID string) Sqlizer {
+	if source == model.MediaFileTagSourceAI {
+		return Expr("user_id IN (SELECT id FROM user WHERE is_admin)")
+	}
+	return Eq{"user_id": callerID}
+}
+
 func (r *mediaFileTagRepository) TagsForSong(mediaFileID, source string) ([]string, error) {
 	userID := loggedUser(r.ctx).ID
 	cond := bySourceIfSet(And{Eq{"user_id": userID}, Eq{"media_file_id": mediaFileID}}, source)
@@ -91,8 +103,7 @@ func (r *mediaFileTagRepository) AllTagNames(source string) ([]string, error) {
 	if !r.hasAggregateTagPermission(source) {
 		return []string{}, nil
 	}
-	userID := loggedUser(r.ctx).ID
-	cond := bySourceIfSet(And{Eq{"user_id": userID}}, source)
+	cond := bySourceIfSet(And{aggregateOwnerCond(source, loggedUser(r.ctx).ID)}, source)
 	sel := r.newSelect().Distinct().Columns("tag_name").
 		Where(cond).
 		OrderBy("tag_name")
@@ -105,8 +116,7 @@ func (r *mediaFileTagRepository) SongIDsForTag(tagName, source string) ([]string
 	if !r.hasAggregateTagPermission(source) {
 		return []string{}, nil
 	}
-	userID := loggedUser(r.ctx).ID
-	cond := bySourceIfSet(And{Eq{"user_id": userID}, Eq{"tag_name": tagName}}, source)
+	cond := bySourceIfSet(And{aggregateOwnerCond(source, loggedUser(r.ctx).ID), Eq{"tag_name": tagName}}, source)
 	sel := r.newSelect().Columns("media_file_id").
 		Where(cond)
 	var res []string
@@ -118,8 +128,7 @@ func (r *mediaFileTagRepository) TagCounts(source string) ([]model.TagCount, err
 	if !r.hasAggregateTagPermission(source) {
 		return []model.TagCount{}, nil
 	}
-	userID := loggedUser(r.ctx).ID
-	cond := bySourceIfSet(And{Eq{"user_id": userID}}, source)
+	cond := bySourceIfSet(And{aggregateOwnerCond(source, loggedUser(r.ctx).ID)}, source)
 	sel := r.newSelect().
 		Columns("tag_name", "count(distinct media_file_id) as count").
 		Where(cond).

@@ -175,4 +175,77 @@ var _ = Describe("MediaFileTagRepository", func() {
 			Expect(tags).ToNot(ContainElement("my-favorite"))
 		})
 	})
+
+	Describe("Option B: shared AI tags", func() {
+		// AI-sourced tags are shared, admin-written data: any admin's rows count as "the" shared
+		// AI tags for the aggregate/browse reads, not just whoever's currently logged in. My tags
+		// stay private per caller, unaffected - regression coverage for that split.
+		var secondAdmin model.User
+
+		BeforeEach(func() {
+			secondAdmin = model.User{ID: "second-admin-id", UserName: "second-admin", IsAdmin: true}
+			secondAdmin.NewPassword = "password"
+			userRepo := NewUserRepository(log.NewContext(context.TODO()), GetDBXBuilder())
+			Expect(userRepo.Put(&secondAdmin)).To(Succeed())
+
+			// adminUser (the package fixture, "userid") writes the AI tag.
+			Expect(repo.TagSong(songDayInALife.ID, "genre:rock", model.MediaFileTagSourceAI)).To(Succeed())
+		})
+
+		AfterEach(func() {
+			_, _ = GetDBXBuilder().NewQuery("DELETE FROM user WHERE id = 'second-admin-id'").Execute()
+		})
+
+		It("is visible to a different admin, not just the admin who wrote it", func() {
+			otherAdminCtx := request.WithUser(log.NewContext(context.TODO()), secondAdmin)
+			otherAdminRepo := NewMediaFileTagRepository(otherAdminCtx, GetDBXBuilder())
+
+			names, err := otherAdminRepo.AllTagNames(model.MediaFileTagSourceAI)
+			Expect(err).To(BeNil())
+			Expect(names).To(ContainElement("genre:rock"))
+
+			ids, err := otherAdminRepo.SongIDsForTag("genre:rock", model.MediaFileTagSourceAI)
+			Expect(err).To(BeNil())
+			Expect(ids).To(ContainElement(songDayInALife.ID))
+
+			counts, err := otherAdminRepo.TagCounts(model.MediaFileTagSourceAI)
+			Expect(err).To(BeNil())
+			found := false
+			for _, c := range counts {
+				if c.TagName == "genre:rock" {
+					found = true
+				}
+			}
+			Expect(found).To(BeTrue())
+		})
+
+		It("is visible to a non-admin user with no AI tags of their own (Option B's whole point)", func() {
+			nonAdminUser := model.User{ID: "opt-b-nonadmin-id", UserName: "opt-b-nonadmin"}
+			nonAdminUser.NewPassword = "password"
+			userRepo := NewUserRepository(log.NewContext(context.TODO()), GetDBXBuilder())
+			Expect(userRepo.Put(&nonAdminUser)).To(Succeed())
+			defer func() {
+				_, _ = GetDBXBuilder().NewQuery("DELETE FROM user WHERE id = 'opt-b-nonadmin-id'").Execute()
+			}()
+
+			nonAdminCtx := request.WithUser(log.NewContext(context.TODO()), nonAdminUser)
+			nonAdminRepo := NewMediaFileTagRepository(nonAdminCtx, GetDBXBuilder())
+
+			names, err := nonAdminRepo.AllTagNames(model.MediaFileTagSourceAI)
+			Expect(err).To(BeNil())
+			Expect(names).To(ContainElement("genre:rock"), "a permitted non-admin must see the same AI tags an admin does, not their own (empty) set")
+		})
+
+		It("does not extend the same sharing to My Tags", func() {
+			Expect(repo.TagSong(songDayInALife.ID, "admins-personal-note", model.MediaFileTagSourceUser)).To(Succeed())
+			defer func() { _ = repo.UntagSong(songDayInALife.ID, "admins-personal-note") }()
+
+			otherAdminCtx := request.WithUser(log.NewContext(context.TODO()), secondAdmin)
+			otherAdminRepo := NewMediaFileTagRepository(otherAdminCtx, GetDBXBuilder())
+
+			names, err := otherAdminRepo.AllTagNames(model.MediaFileTagSourceUser)
+			Expect(err).To(BeNil())
+			Expect(names).ToNot(ContainElement("admins-personal-note"), "My Tags must stay private per writer, even between two admins")
+		})
+	})
 })
