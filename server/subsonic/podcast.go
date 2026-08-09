@@ -156,8 +156,8 @@ func (api *Router) DownloadPodcastEpisode(r *http.Request) (*responses.Subsonic,
 // externally) record a listen without re-streaming it through Navidrome.
 func (api *Router) MarkPodcastEpisodeListened(r *http.Request) (*responses.Subsonic, error) {
 	p := req.Params(r)
-	ids, err := p.Strings("id")
-	if err != nil || len(ids) == 0 {
+	ids := p.Strings("id")
+	if len(ids) == 0 {
 		return nil, newError(responses.ErrorMissingParameter, "Required id parameter is missing")
 	}
 	if err := api.setPodcastListened(r.Context(), true, ids...); err != nil {
@@ -170,8 +170,8 @@ func (api *Router) MarkPodcastEpisodeListened(r *http.Request) (*responses.Subso
 // MarkPodcastEpisodeListened.
 func (api *Router) MarkPodcastEpisodeUnlistened(r *http.Request) (*responses.Subsonic, error) {
 	p := req.Params(r)
-	ids, err := p.Strings("id")
-	if err != nil || len(ids) == 0 {
+	ids := p.Strings("id")
+	if len(ids) == 0 {
 		return nil, newError(responses.ErrorMissingParameter, "Required id parameter is missing")
 	}
 	if err := api.setPodcastListened(r.Context(), false, ids...); err != nil {

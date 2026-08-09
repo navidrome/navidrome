@@ -165,12 +165,12 @@ func (api *Router) setStar(ctx context.Context, star bool, ids ...string) error 
 
 func (api *Router) Skip(r *http.Request) (*responses.Subsonic, error) {
 	p := req.Params(r)
-	ids, err := p.Strings("id")
-	if err != nil || len(ids) == 0 {
+	ids := p.Strings("id")
+	if len(ids) == 0 {
 		return nil, newError(responses.ErrorMissingParameter, "Required id parameter is missing")
 	}
 
-	err = api.setSkip(r.Context(), true, ids...)
+	err := api.setSkip(r.Context(), true, ids...)
 	if err != nil {
 		return nil, err
 	}
@@ -180,12 +180,12 @@ func (api *Router) Skip(r *http.Request) (*responses.Subsonic, error) {
 
 func (api *Router) Unskip(r *http.Request) (*responses.Subsonic, error) {
 	p := req.Params(r)
-	ids, err := p.Strings("id")
-	if err != nil || len(ids) == 0 {
+	ids := p.Strings("id")
+	if len(ids) == 0 {
 		return nil, newError(responses.ErrorMissingParameter, "Required id parameter is missing")
 	}
 
-	err = api.setSkip(r.Context(), false, ids...)
+	err := api.setSkip(r.Context(), false, ids...)
 	if err != nil {
 		return nil, err
 	}
