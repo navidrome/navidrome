@@ -47,7 +47,7 @@ var _ = Describe("upUniformCanonicalIds", func() {
 			CREATE TABLE library_artist (artist_id text);
 			CREATE TABLE user (id text);
 			CREATE TABLE user_props (user_id text);
-			CREATE TABLE playlist (id text, owner_id text, rules text);
+			CREATE TABLE playlist (id text, owner_id text, rules text, physical_folder_id text);
 			CREATE TABLE playlist_tracks (playlist_id text, media_file_id text);
 			CREATE TABLE playlist_fields (playlist_id text);
 			CREATE TABLE annotation (user_id text, item_id text, item_type text);
@@ -65,6 +65,14 @@ var _ = Describe("upUniformCanonicalIds", func() {
 			CREATE TABLE library_tag (tag_id text, library_id integer);
 			CREATE TABLE plugin (id text, users text);
 			CREATE TABLE property (id text primary key, value text);
+			-- Fork-specific tables, present only so idColumns entries for them don't error against
+			-- a schema that has no idea they exist; empty tables need no seed data.
+			CREATE TABLE podcast_channel (id text);
+			CREATE TABLE podcast_episode (id text, channel_id text);
+			CREATE TABLE media_file_tag (user_id text, media_file_id text);
+			CREATE TABLE genre_alias (id text);
+			CREATE TABLE user_feature_permission (user_id text);
+			CREATE TABLE podcast_subscription (id text, channel_id text, user_id text);
 		`)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -77,7 +85,7 @@ var _ = Describe("upUniformCanonicalIds", func() {
 		seed(`INSERT INTO album VALUES (?, ?)`, legacyOld, hashID)
 		seed(`INSERT INTO user VALUES (?)`, randOld)
 		// uuid id, random owner, smart-playlist rules with an embedded inPlaylist id and a sibling operator
-		seed(`INSERT INTO playlist VALUES (?, ?, ?)`, uuidOld, randOld, `{"all":[{"inPlaylist":{"id":"`+uuidOld+`"}},{"inTheLast":{"lastPlayed":30}}]}`)
+		seed(`INSERT INTO playlist VALUES (?, ?, ?, '')`, uuidOld, randOld, `{"all":[{"inPlaylist":{"id":"`+uuidOld+`"}},{"inTheLast":{"lastPlayed":30}}]}`)
 		seed(`INSERT INTO annotation VALUES (?, ?, 'media_file')`, randOld, legacyOld)
 		seed(`INSERT INTO playqueue VALUES (?, ?, ?)`, randOld, randOld, legacyOld+","+hashID)
 		seed(`INSERT INTO share VALUES (?, ?, ?, 'Album Foo...')`, shareID, randOld, legacyOld+","+uuidOld)
@@ -90,7 +98,7 @@ var _ = Describe("upUniformCanonicalIds", func() {
 		seed(`INSERT INTO plugin VALUES ('empty', '[]')`) // exempt: empty user list untouched
 		// malformed JSON in both a plugin list and a playlist rule: must pass through byte-for-byte
 		seed(`INSERT INTO plugin VALUES ('broken', 'not-json')`)
-		seed(`INSERT INTO playlist VALUES (?, ?, '{broken')`, hashID, hashID)
+		seed(`INSERT INTO playlist VALUES (?, ?, '{broken', '')`, hashID, hashID)
 		seed(`INSERT INTO property VALUES (?, ?)`, consts.JWTSecretKey, sessionSecret)
 	})
 
