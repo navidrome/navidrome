@@ -330,7 +330,7 @@ Each match contains a `song` reference and a `similarity` score (float64, 0.0–
 
 ### TaskWorker
 
-Processes tasks from a queue. The method is **optional** — export it if your plugin uses the [Task](#task) host service for background work.
+Processes tasks from a queue. **Required** if your plugin uses the [Task](#task) host service: declaring the `taskqueue` permission without exporting this function fails the plugin load.
 
 | Function            | Input                                       | Output  | Description          |
 |---------------------|---------------------------------------------|---------|----------------------|
@@ -350,7 +350,7 @@ Useful for initializing connections, scheduling recurring tasks, etc. Errors are
 
 ### SchedulerCallback
 
-Receives scheduled task events. **Required** if your plugin uses the [Scheduler](#scheduler) host service.
+Receives scheduled task events. **Required** if your plugin uses the [Scheduler](#scheduler) host service: declaring the `scheduler` permission without exporting this function fails the plugin load.
 
 | Function                  | Input                                        | Output | Description                 |
 |---------------------------|----------------------------------------------|--------|-----------------------------|
