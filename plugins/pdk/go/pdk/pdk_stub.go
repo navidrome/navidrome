@@ -62,7 +62,11 @@ func GetConfig(key string) (string, bool) {
 // GetVar GetVar returns the byte slice (if any) associated with `key`.
 func GetVar(key string) []byte {
 	args := PDKMock.Called(key)
-	return args.Get(0).([]byte)
+	var r0 []byte
+	if v := args.Get(0); v != nil {
+		r0 = v.([]byte)
+	}
+	return r0
 }
 
 // GetVarInt GetVarInt returns the int associated with `key` (or 0 if none).
@@ -74,7 +78,11 @@ func GetVarInt(key string) int {
 // Input Input returns a slice of bytes from the host.
 func Input() []byte {
 	args := PDKMock.Called()
-	return args.Get(0).([]byte)
+	var r0 []byte
+	if v := args.Get(0); v != nil {
+		r0 = v.([]byte)
+	}
+	return r0
 }
 
 // InputJSON InputJSON returns unmartialed JSON data from the host "input".
@@ -108,7 +116,11 @@ func LogMemory(level LogLevel, m Memory) {
 // NewHTTPRequest NewHTTPRequest returns a new `HTTPRequest`.
 func NewHTTPRequest(method HTTPMethod, url string) *HTTPRequest {
 	args := PDKMock.Called(method, url)
-	return args.Get(0).(*HTTPRequest)
+	var r0 *HTTPRequest
+	if v := args.Get(0); v != nil {
+		r0 = v.(*HTTPRequest)
+	}
+	return r0
 }
 func NewMemory(offset uint64, length uint64) Memory {
 	args := PDKMock.Called(offset, length)
@@ -139,7 +151,11 @@ func OutputString(s string) {
 // ParamBytes ParamBytes returns bytes from Extism host memory given an offset.
 func ParamBytes(offset uint64) []byte {
 	args := PDKMock.Called(offset)
-	return args.Get(0).([]byte)
+	var r0 []byte
+	if v := args.Get(0); v != nil {
+		r0 = v.([]byte)
+	}
+	return r0
 }
 
 // ParamString ParamString returns UTF-8 string data from Extism host memory given an offset.

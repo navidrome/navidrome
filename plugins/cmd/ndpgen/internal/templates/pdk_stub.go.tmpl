@@ -34,7 +34,7 @@ func ResetMock() {
 func {{.Name}}({{paramList .Params}}){{returnList .Returns}} {
 {{- if .Returns}}
 	args := PDKMock.Called({{argList .Params}})
-	return {{mockReturns .Returns}}
+{{mockReturnBody .Returns}}
 {{- else}}
 	PDKMock.Called({{argList .Params}})
 {{- end}}
