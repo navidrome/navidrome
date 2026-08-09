@@ -14,7 +14,7 @@ import (
 )
 
 // Version of the uniform-canonical-ids migration whose idColumns list this guard protects.
-const idColumnsMigrationVersion = 20260720015443
+const idColumnsMigrationVersion = 20270101010123
 
 var _ = Describe("idColumns inventory", func() {
 	It("covers every id-bearing column present at the migration version", func() {
