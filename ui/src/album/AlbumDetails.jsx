@@ -23,6 +23,7 @@ import 'react-image-lightbox/style.css'
 import subsonic from '../subsonic'
 import {
   ArtistLinkField,
+  AverageRatingField,
   CollapsibleComment,
   DurationField,
   formatRange,
@@ -307,6 +308,10 @@ const AlbumDetails = (props) => {
                 <RatingField
                   record={record}
                   resource={'album'}
+                  size={isDesktop ? 'medium' : 'small'}
+                />
+                <AverageRatingField
+                  record={record}
                   size={isDesktop ? 'medium' : 'small'}
                 />
               </div>

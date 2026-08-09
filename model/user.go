@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"time"
 )
 
@@ -41,6 +42,26 @@ func (u User) HasLibraryAccess(libraryID int) bool {
 
 type Users []User
 
+type RatingStat struct {
+	Rating int `json:"rating"`
+	Count  int `json:"count"`
+}
+
+type UserRatingStats struct {
+	UserID     string       `json:"userId"`
+	UserName   string       `json:"userName"`
+	SongStats  []RatingStat `json:"songStats"`
+	AlbumStats []RatingStat `json:"albumStats"`
+}
+
+type RatedItem struct {
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	Artist    string    `json:"artist"`
+	AlbumID   string    `json:"albumId,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
 type UserRepository interface {
 	ResourceRepository
 	CountAll(...QueryOptions) (int64, error)
@@ -59,4 +80,7 @@ type UserRepository interface {
 	// Library association methods
 	GetUserLibraries(userID string) (Libraries, error)
 	SetUserLibraries(userID string, libraryIDs []int) error
+
+	RatingStats(ctx context.Context, userID string) ([]UserRatingStats, error)
+	RatingItems(ctx context.Context, userID, itemType string, rating int) ([]RatedItem, error)
 }

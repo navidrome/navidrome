@@ -1,4 +1,5 @@
 export * from './AddToPlaylistButton'
+export * from './AverageRatingField'
 export * from './ArtistLinkField'
 export * from './BatchPlayButton'
 export * from './BitrateField'
