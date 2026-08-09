@@ -3,6 +3,7 @@ package agents
 import (
 	"context"
 	"errors"
+	"slices"
 
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
@@ -65,6 +66,22 @@ var _ = Describe("Agents", func() {
 			// local agent is always appended to the end of the agents list
 			Expect(ags).To(HaveExactElements("empty", "fake", "local"))
 			Expect(ags).ToNot(ContainElement("disabled"))
+		})
+
+		Describe("availableAgentNames", func() {
+			It("combines built-in agents with the given plugins", func() {
+				names := availableAgentNames([]string{"apple-music"})
+				Expect(names).To(ContainElements("apple-music", LocalAgentName, "fake", "empty"))
+			})
+
+			It("returns the names sorted", func() {
+				names := availableAgentNames([]string{"zz-plugin", "aa-plugin"})
+				Expect(slices.IsSorted(names)).To(BeTrue())
+			})
+
+			It("works when there are no plugins", func() {
+				Expect(availableAgentNames(nil)).To(ContainElement(LocalAgentName))
+			})
 		})
 
 		Describe("GetArtistMBID", func() {
