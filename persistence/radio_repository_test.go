@@ -7,6 +7,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -78,6 +79,17 @@ var _ = Describe("RadioRepository", func() {
 			})
 		})
 
+		Describe("GetAllIDs", func() {
+			It("returns the same id set as GetAll", func() {
+				want, err := repo.GetAll()
+				Expect(err).To(BeNil())
+				Expect(want).ToNot(BeEmpty())
+				ids, err := repo.GetAllIDs()
+				Expect(err).To(BeNil())
+				Expect(ids).To(ConsistOf(slice.Map(want, func(r model.Radio) string { return r.ID })))
+			})
+		})
+
 		Describe("Put", func() {
 			It("successfully updates item", func() {
 				err := repo.Put(&model.Radio{
@@ -106,6 +118,27 @@ var _ = Describe("RadioRepository", func() {
 				all, err := repo.GetAll()
 				Expect(err).To(BeNil())
 				Expect(all[2].StreamUrl).To(Equal("https://example.com:4533/app"))
+			})
+
+			It("enqueues artwork resolution for the saved radio", func() {
+				err := repo.Put(&model.Radio{
+					Name:      "Artwork radio",
+					StreamUrl: "https://example.com:4533/artwork",
+				})
+				Expect(err).To(BeNil())
+
+				all, err := repo.GetAll()
+				Expect(err).To(BeNil())
+				created := all[len(all)-1]
+
+				queueRepo := NewArtworkQueueRepository(context.Background(), GetDBXBuilder())
+				queued, err := queueRepo.DequeueBatch(1000)
+				Expect(err).To(BeNil())
+				Expect(queued).To(ContainElement(SatisfyAll(
+					HaveField("ItemKind", "ra"),
+					HaveField("ItemID", created.ID),
+					HaveField("Priority", model.ArtworkPriorityBump),
+				)))
 			})
 		})
 	})

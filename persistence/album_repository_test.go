@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -81,6 +82,17 @@ var _ = Describe("AlbumRepository", func() {
 			want, err := albumRepo.GetAll(opts)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(collectCursor(albumRepo.GetCursor(opts))).To(Equal([]model.Album(want)))
+		})
+	})
+
+	Describe("GetAllIDs", func() {
+		It("returns the same id set as GetAll", func() {
+			want, err := albumRepo.GetAll()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(want).ToNot(BeEmpty())
+			ids, err := albumRepo.GetAllIDs()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ids).To(ConsistOf(slice.Map(want, func(a model.Album) string { return a.ID })))
 		})
 	})
 
@@ -975,6 +987,22 @@ var _ = Describe("AlbumRepository", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.RGAlbumGain).To(BeNil())
 			Expect(got.RGAlbumPeak).To(BeNil())
+		})
+	})
+
+	// Exists must apply the same library filter as Get/GetAll/CountAll.
+	Describe("Exists library visibility", func() {
+		It("hides an album the user has no library access to", func() {
+			Expect(albumRepo.Put(&model.Album{ID: "vis-album", Name: "Vis", LibraryID: 1})).To(Succeed())
+			DeferCleanup(func() {
+				_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": "vis-album"}))
+			})
+
+			Expect(albumRepo.Exists("vis-album")).To(BeTrue(), "admin sees it")
+
+			restricted := model.User{ID: "restricted_album_user", UserName: "ra", Name: "RA", Email: "ra@t.com"}
+			rctx := request.WithUser(GinkgoT().Context(), restricted)
+			Expect(NewAlbumRepository(rctx, GetDBXBuilder()).Exists("vis-album")).To(BeFalse())
 		})
 	})
 })
