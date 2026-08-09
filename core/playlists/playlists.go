@@ -73,6 +73,10 @@ func InPath(folder model.Folder) bool {
 		return true
 	}
 	rel, _ := filepath.Rel(folder.LibraryPath, folder.AbsolutePath())
+	// doublestar globs always use "/" as the separator (and treat "\" as an
+	// escape), but filepath.Rel returns OS separators, so on Windows the
+	// back-slashed rel never matches a "foo/**" pattern. Normalize to slashes.
+	rel = filepath.ToSlash(rel)
 	for path := range strings.SplitSeq(conf.Server.PlaylistsPath, string(filepath.ListSeparator)) {
 		if match, _ := doublestar.Match(path, rel); match {
 			return true
