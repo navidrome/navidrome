@@ -35,7 +35,7 @@ require (
 	github.com/jellydator/ttlcache/v3 v3.4.1
 	github.com/kardianos/service v1.3.0
 	github.com/kr/pretty v0.3.1
-	github.com/lestrrat-go/jwx/v3 v3.1.1
+	github.com/lestrrat-go/jwx/v3 v3.2.0
 	github.com/mattn/go-sqlite3 v1.14.48
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/mileusna/useragent v1.3.5
