@@ -31,7 +31,11 @@ var MatcherMock = &mockMatcherService{}
 // MatchSongs is the mock method for MatcherMatchSongs.
 func (m *mockMatcherService) MatchSongs(songs []types.SongRef, opts MatchOptions) ([]*types.Track, error) {
 	args := m.Called(songs, opts)
-	return args.Get(0).([]*types.Track), args.Error(1)
+	var r0 []*types.Track
+	if v := args.Get(0); v != nil {
+		r0 = v.([]*types.Track)
+	}
+	return r0, args.Error(1)
 }
 
 // MatcherMatchSongs delegates to the mock instance.

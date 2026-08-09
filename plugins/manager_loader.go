@@ -177,6 +177,14 @@ var hostServices = []hostServiceEntry{
 			return host.RegisterStorageHostFunctions(service), nil, nil
 		},
 	},
+	{
+		name:          "ScrobbleRetriever",
+		hasPermission: func(p *Permissions) bool { return p != nil && p.ScrobbleRetriever != nil },
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
+			service := newScrobbleRetrieverService(ctx.manager.ds, newUserAccess(ctx.allowedUsers, ctx.allUsers))
+			return host.RegisterScrobbleRetrieverHostFunctions(service), nil, nil
+		},
+	},
 }
 
 // extractManifest reads manifest from an .ndp package and computes its SHA-256 hash.

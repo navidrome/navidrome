@@ -2,7 +2,7 @@
   
 name=$RC_SVCNAME
 command="/opt/navidrome/${RC_SVCNAME}"
-command_args="-datafolder /opt/navidrome"
+command_args="--datafolder /opt/navidrome"
 command_user="${RC_SVCNAME}"
 pidfile="/var/run/${RC_SVCNAME}.pid"
 output_log="/opt/navidrome/${RC_SVCNAME}.log"

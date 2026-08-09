@@ -39,7 +39,11 @@ func SubsonicAPICall(uri string) (string, error) {
 // CallRaw is the mock method for SubsonicAPICallRaw.
 func (m *mockSubsonicAPIService) CallRaw(uri string) (string, []byte, error) {
 	args := m.Called(uri)
-	return args.String(0), args.Get(1).([]byte), args.Error(2)
+	var r1 []byte
+	if v := args.Get(1); v != nil {
+		r1 = v.([]byte)
+	}
+	return args.String(0), r1, args.Error(2)
 }
 
 // SubsonicAPICallRaw delegates to the mock instance.
