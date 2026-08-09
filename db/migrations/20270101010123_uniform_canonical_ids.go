@@ -77,6 +77,16 @@ var idColumns = []struct{ table, col string }{
 	{"media_file_artists", "media_file_id"}, {"media_file_artists", "artist_id"},
 	{"album_artists", "album_id"}, {"album_artists", "artist_id"},
 	{"library_tag", "tag_id"},
+	// Fork-specific tables/columns. None of their FK constraints declare ON UPDATE CASCADE
+	// (only ON DELETE CASCADE, where present), so without these explicit entries a canonicalized
+	// user.id/media_file.id/folder.id would silently orphan these rows on upgrade.
+	{"playlist", "physical_folder_id"},
+	{"podcast_channel", "id"},
+	{"podcast_episode", "id"}, {"podcast_episode", "channel_id"},
+	{"media_file_tag", "user_id"}, {"media_file_tag", "media_file_id"},
+	{"genre_alias", "id"},
+	{"user_feature_permission", "user_id"},
+	{"podcast_subscription", "id"}, {"podcast_subscription", "channel_id"}, {"podcast_subscription", "user_id"},
 }
 
 // embeddedIDColumns holds ids nested inside a larger value; the id-columns guard checks this

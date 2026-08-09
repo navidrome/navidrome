@@ -391,6 +391,36 @@ func (t dbPlaylistEpisodeTrack) toPlaylistTrack(playlistID string) model.Playlis
 	}
 }
 
+// tracksQuery decorates a caller-supplied base query with the standard song-track columns/joins
+// (library filter, annotation, media_file, library) plus the playlist_id filter. Used by
+// playlistTrackRepository.GetCursor for streaming song tracks only - unlike loadTracks below, it
+// has no podcast-episode-track awareness, since a cursor over a mixed song/episode result isn't
+// needed by any caller yet.
+func (r *playlistRepository) tracksQuery(query SelectBuilder, id string) SelectBuilder {
+	query = r.applyLibraryFilter(query, "f")
+	userID := loggedUser(r.ctx).ID
+	return query.
+		Columns(
+			"coalesce(starred, 0) as starred",
+			"starred_at",
+			"coalesce(play_count, 0) as play_count",
+			"play_date",
+			"coalesce(rating, 0) as rating",
+			"rated_at",
+			"f.*",
+			"playlist_tracks.*",
+			"library.path as library_path",
+			"library.name as library_name",
+		).
+		LeftJoin("annotation on (" +
+			"annotation.item_id = media_file_id" +
+			" AND annotation.item_type = 'media_file'" +
+			" AND annotation.user_id = '" + userID + "')").
+		Join("media_file f on f.id = media_file_id").
+		Join("library on f.library_id = library.id").
+		Where(Eq{"playlist_id": id})
+}
+
 // loadTracks loads a playlist's tracks, which may reference songs
 // (media_file) and/or downloaded podcast episodes. The two are fetched with
 // separate queries - podcast episodes have no library/annotation/missing

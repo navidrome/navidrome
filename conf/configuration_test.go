@@ -234,7 +234,7 @@ var _ = Describe("Configuration", func() {
 			Entry("suggests the section of a misplaced nested option", "backup.fuzzythreshold",
 				[]string{"Matcher.FuzzyThreshold"}),
 			Entry("suggests every section defining the option", "schedule",
-				[]string{"Backup.Schedule", "Scanner.Schedule"}),
+				[]string{"Backup.Schedule", "Podcasts.Schedule", "Scanner.Schedule"}),
 			Entry("suggests nothing for a typo", "enabledownlods", nil),
 		)
 
