@@ -5,13 +5,17 @@ import (
 	"errors"
 	"time"
 
-	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/events"
 )
 
+// RefreshChannel fetches the feed and writes the shared channel/episode rows - infrastructure any
+// subscriber can trigger (not just admins), so every read/write in here runs against an admin
+// context regardless of who called it, matching Subscribe/Unsubscribe's use of adminContext for
+// the same shared-infrastructure reason.
 func (p *podcasts) RefreshChannel(ctx context.Context, id string) error {
+	ctx = adminContext(ctx)
 	channel, err := p.ds.PodcastChannel(ctx).Get(id)
 	if err != nil {
 		return err
@@ -80,31 +84,26 @@ func (p *podcasts) RefreshChannel(ctx context.Context, id string) error {
 		p.notifyRefresh(ctx, "podcastEpisode")
 	}
 
-	p.downloadForPolicy(ctx, *channel, newEpisodes)
+	p.fanOutDownloads(ctx, *channel, newEpisodes)
 
 	return nil
 }
 
-// downloadForPolicy enqueues episode downloads according to the channel's
-// DownloadPolicy: "none" downloads nothing (stream-only), "new" downloads
-// only episodes discovered by this refresh, "all" also backfills any
-// previously-undownloaded episode in the channel.
-func (p *podcasts) downloadForPolicy(ctx context.Context, channel model.PodcastChannel, newEpisodes []model.PodcastEpisode) {
-	switch channel.DownloadPolicy {
-	case model.PodcastDownloadPolicyNew:
-		p.downloadEpisodes(ctx, newEpisodes)
-	case model.PodcastDownloadPolicyAll:
-		episodes, err := p.ds.PodcastEpisode(ctx).GetAll(model.QueryOptions{
-			Filters: And{
-				Eq{"channel_id": channel.ID},
-				Eq{"download_status": string(model.PodcastEpisodeNotDownloaded)},
-			},
-		})
-		if err != nil {
-			log.Error(ctx, "Error listing podcast episodes to backfill", "channel", channel.ID, err)
-			return
-		}
-		p.downloadEpisodes(ctx, episodes)
+// fanOutDownloads applies each subscriber's own download policy to the episodes newly discovered
+// by this refresh - unlike the old channel-level DownloadPolicy, different subscribers to the same
+// shared channel can decide independently whether (and which of) these episodes get fetched.
+// Called with ctx already carrying admin privileges (see RefreshChannel).
+func (p *podcasts) fanOutDownloads(ctx context.Context, channel model.PodcastChannel, newEpisodes []model.PodcastEpisode) {
+	if len(newEpisodes) == 0 {
+		return
+	}
+	subs, err := p.ds.PodcastSubscription(ctx).FindByChannel(channel.ID)
+	if err != nil {
+		log.Error(ctx, "Error listing subscriptions to fan out new podcast episodes", "channel", channel.ID, err)
+		return
+	}
+	for _, sub := range subs {
+		p.downloadForSubscriber(ctx, channel, sub, newEpisodes)
 	}
 }
 

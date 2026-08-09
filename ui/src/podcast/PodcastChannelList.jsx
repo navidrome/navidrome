@@ -5,6 +5,7 @@ import {
   DateField,
   EditButton,
   Filter,
+  FunctionField,
   sanitizeListRestProps,
   SearchInput,
   TextField,
@@ -48,17 +49,14 @@ const PodcastChannelListActions = ({
   showFilter,
   displayedFilters,
   filterValues,
-  isAdmin,
   ...rest
 }) => {
   const translate = useTranslate()
   return (
     <TopToolbar className={className} {...sanitizeListRestProps(rest)}>
-      {isAdmin && (
-        <CreateButton basePath="/podcastChannel">
-          {translate('ra.action.create')}
-        </CreateButton>
-      )}
+      <CreateButton basePath="/podcastChannel">
+        {translate('ra.action.create')}
+      </CreateButton>
     </TopToolbar>
   )
 }
@@ -114,18 +112,27 @@ const PodcastChannelList = ({ permissions, ...props }) => {
       exporter={false}
       title={<Title title={translate('menu.podcasts')} />}
       sort={{ field: 'title', order: 'ASC' }}
-      bulkActionButtons={isAdmin ? undefined : false}
-      hasCreate={isAdmin}
-      actions={<PodcastChannelListActions isAdmin={isAdmin} />}
+      hasCreate
+      actions={<PodcastChannelListActions />}
       filters={<PodcastChannelFilter />}
-      empty={isAdmin ? <EmptyPodcastList /> : false}
+      empty={<EmptyPodcastList />}
       perPage={25}
     >
       <Datagrid rowClick="show">
         <CoverArtField source="id" sortable={false} />
         <TextField source="title" />
         <TextField source="status" />
-        <TextField source="downloadPolicy" />
+        <FunctionField
+          source="downloadPolicy"
+          sortable={false}
+          render={(record) =>
+            record.subscription
+              ? translate(
+                  `resources.podcastChannel.downloadPolicy.${record.subscription.downloadPolicy}`,
+                )
+              : null
+          }
+        />
         <DateField source="lastCheckedAt" showTime />
         {isAdmin && <EditButton />}
       </Datagrid>

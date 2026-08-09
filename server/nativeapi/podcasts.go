@@ -12,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server"
 )
 
@@ -26,12 +27,13 @@ func (api *Router) addPodcastRoutes(r chi.Router) {
 		r.Get("/", rest.GetAll(channelConstructor))
 		r.Get("/search", api.searchPodcastChannels())
 		r.Get("/top", api.topPodcastChannels())
-		r.Post("/", api.createPodcastChannel())
+		r.Post("/", api.subscribePodcastChannel())
 		r.Route("/{id}", func(r chi.Router) {
 			r.Use(server.URLParamsMiddleware)
 			r.Get("/", rest.Get(channelConstructor))
 			r.Put("/", rest.Put(channelConstructor))
-			r.Delete("/", api.deletePodcastChannel())
+			r.Delete("/", api.unsubscribePodcastChannel())
+			r.Put("/subscription", api.updatePodcastSubscription())
 			r.Post("/refresh", api.refreshPodcastChannel())
 			r.Post("/image", api.uploadPodcastChannelImage())
 			r.Delete("/image", api.deletePodcastChannelImage())
@@ -72,7 +74,10 @@ func (api *Router) topPodcastChannels() http.HandlerFunc {
 	}
 }
 
-func (api *Router) createPodcastChannel() http.HandlerFunc {
+// subscribePodcastChannel handles adding a podcast for the current user: finds-or-creates the
+// shared channel for the given feed url, then subscribes the caller to it. Any authenticated user
+// can call this, not just admins - subscribing is a personal action, unlike direct channel edits.
+func (api *Router) subscribePodcastChannel() http.HandlerFunc {
 	type payload struct {
 		Url string `json:"url"`
 	}
@@ -82,7 +87,7 @@ func (api *Router) createPodcastChannel() http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		channel, err := api.podcasts.CreateChannel(r.Context(), p.Url)
+		channel, err := api.podcasts.Subscribe(r.Context(), p.Url)
 		if err != nil {
 			_ = rest.RespondWithError(w, http.StatusBadRequest, err.Error())
 			return
@@ -91,10 +96,12 @@ func (api *Router) createPodcastChannel() http.HandlerFunc {
 	}
 }
 
-func (api *Router) deletePodcastChannel() http.HandlerFunc {
+// unsubscribePodcastChannel removes the current user's own subscription to the channel. If they
+// were the last subscriber, Unsubscribe also tears down the now-orphaned shared channel and files.
+func (api *Router) unsubscribePodcastChannel() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParamFromCtx(r.Context(), "id")
-		if err := api.podcasts.DeleteChannel(r.Context(), id); err != nil {
+		if err := api.podcasts.Unsubscribe(r.Context(), id); err != nil {
 			if errors.Is(err, model.ErrNotFound) || errors.Is(err, rest.ErrNotFound) {
 				_ = rest.RespondWithError(w, http.StatusNotFound, err.Error())
 				return
@@ -109,6 +116,50 @@ func (api *Router) deletePodcastChannel() http.HandlerFunc {
 		// react-admin's bulk delete reads response.json.id off every DELETE
 		// response; an empty body resolves to a null/undefined json and crashes.
 		_ = rest.RespondWithJSON(w, http.StatusOK, map[string]string{"id": id})
+	}
+}
+
+// updatePodcastSubscription saves the current user's own download policy/retention settings for
+// a channel they're subscribed to - the per-user counterpart to the old channel-level PUT, which
+// used to carry these same fields before they moved to PodcastSubscription.
+func (api *Router) updatePodcastSubscription() http.HandlerFunc {
+	type payload struct {
+		DownloadPolicy model.PodcastDownloadPolicy `json:"downloadPolicy"`
+		RetentionCount int                         `json:"retentionCount"`
+		RetentionDays  int                         `json:"retentionDays"`
+		MaxStorageMB   int                         `json:"maxStorageMb"`
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		channelID := chi.URLParamFromCtx(r.Context(), "id")
+		user, ok := request.UserFrom(r.Context())
+		if !ok {
+			_ = rest.RespondWithError(w, http.StatusUnauthorized, "authentication required")
+			return
+		}
+		existing, err := api.ds.PodcastSubscription(r.Context()).FindByChannelAndUser(channelID, user.ID)
+		if err != nil {
+			if errors.Is(err, model.ErrNotFound) {
+				_ = rest.RespondWithError(w, http.StatusNotFound, "not subscribed to this channel")
+				return
+			}
+			_ = rest.RespondWithError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		var p payload
+		if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		sub := *existing
+		sub.DownloadPolicy = p.DownloadPolicy
+		sub.RetentionCount = p.RetentionCount
+		sub.RetentionDays = p.RetentionDays
+		sub.MaxStorageMB = p.MaxStorageMB
+		if err := api.podcasts.UpdateSubscription(r.Context(), &sub); err != nil {
+			_ = rest.RespondWithError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		_ = rest.RespondWithJSON(w, http.StatusOK, sub)
 	}
 }
 

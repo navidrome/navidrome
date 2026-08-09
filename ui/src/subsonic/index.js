@@ -108,8 +108,9 @@ const getCoverArtUrl = (record, size, square) => {
   } else if (record.streamUrl !== undefined) {
     // This is a radio station
     return baseUrl(url('getCoverArt', 'ra-' + record.id, options))
-  } else if (record.downloadPolicy !== undefined) {
-    // This is a podcast channel
+  } else if (record.status !== undefined) {
+    // This is a podcast channel (status is always present, unlike downloadPolicy which used to
+    // be this discriminator but moved onto the per-user subscription object)
     return baseUrl(url('getCoverArt', 'pc-' + record.id, options))
   } else if (record.parentId !== undefined) {
     // This is a folder

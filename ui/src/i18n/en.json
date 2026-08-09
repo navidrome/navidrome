@@ -266,7 +266,8 @@
       "featurePermissions": {
         "folders": "Physical Folder Browsing",
         "ai_tags": "AI Genre / AI Mood dashboards",
-        "my_tags": "My Tags dashboard"
+        "my_tags": "My Tags dashboard",
+        "podcasts": "Podcasts"
       }
     },
     "player": {
@@ -365,10 +366,12 @@
       "trendingLabel": "Or pick a trending show",
       "emptyTitle": "No podcasts yet",
       "emptyBody": "Search for a podcast by name, paste a feed URL, or try one of these",
+      "subscriptionSettings": "My download settings",
       "notifications": {
         "searchFailed": "Could not search for podcasts",
         "subscribeFailed": "Could not subscribe to this podcast",
-        "subscribed": "Subscribed"
+        "subscribed": "Subscribed",
+        "subscriptionSaved": "Settings saved"
       }
     },
     "podcastEpisode": {

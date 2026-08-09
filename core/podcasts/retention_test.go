@@ -28,29 +28,29 @@ func TestRetentionCandidates(t *testing.T) {
 	}
 
 	t.Run("no limits configured", func(t *testing.T) {
-		channel := model.PodcastChannel{}
-		got := retentionCandidates(channel, episodes)
+		sub := model.PodcastSubscription{}
+		got := retentionCandidates(sub, episodes)
 		if len(got) != 0 {
 			t.Fatalf("expected no candidates, got %d", len(got))
 		}
 	})
 
 	t.Run("retention count keeps only the newest N", func(t *testing.T) {
-		channel := model.PodcastChannel{RetentionCount: 2}
-		got := retentionCandidates(channel, episodes)
+		sub := model.PodcastSubscription{RetentionCount: 2}
+		got := retentionCandidates(sub, episodes)
 		assertIDs(t, got, []string{"e3", "e4", "e5"})
 	})
 
 	t.Run("retention days drops episodes older than the cutoff", func(t *testing.T) {
-		channel := model.PodcastChannel{RetentionDays: 2} // cutoff ~48h ago
-		got := retentionCandidates(channel, episodes)
+		sub := model.PodcastSubscription{RetentionDays: 2} // cutoff ~48h ago
+		got := retentionCandidates(sub, episodes)
 		assertIDs(t, got, []string{"e3", "e4", "e5"})
 	})
 
 	t.Run("episodes with no publish date are exempt from age-based cleanup", func(t *testing.T) {
-		channel := model.PodcastChannel{RetentionDays: 1}
+		sub := model.PodcastSubscription{RetentionDays: 1}
 		noDate := model.PodcastEpisode{ID: "nodate", Size: 100}
-		got := retentionCandidates(channel, model.PodcastEpisodes{episodes[0], noDate, episodes[4]})
+		got := retentionCandidates(sub, model.PodcastEpisodes{episodes[0], noDate, episodes[4]})
 		assertIDs(t, got, []string{"e5"})
 	})
 
@@ -61,23 +61,23 @@ func TestRetentionCandidates(t *testing.T) {
 			episodeAgo("s3", 3*time.Hour, 400_000),
 			episodeAgo("s4", 4*time.Hour, 400_000),
 		}
-		channel := model.PodcastChannel{MaxStorageMB: 1} // 1,048,576 byte budget
-		got := retentionCandidates(channel, sized)
+		sub := model.PodcastSubscription{MaxStorageMB: 1} // 1,048,576 byte budget
+		got := retentionCandidates(sub, sized)
 		// s1+s2 = 800,000 (under budget); s1+s2+s3 = 1,200,000 (over) -> s3 and everything after are candidates.
 		assertIDs(t, got, []string{"s3", "s4"})
 	})
 
 	t.Run("zero max storage is unlimited", func(t *testing.T) {
-		channel := model.PodcastChannel{MaxStorageMB: 0}
-		got := retentionCandidates(channel, episodes)
+		sub := model.PodcastSubscription{MaxStorageMB: 0}
+		got := retentionCandidates(sub, episodes)
 		if len(got) != 0 {
 			t.Fatalf("expected no candidates with MaxStorageMB=0, got %d", len(got))
 		}
 	})
 
 	t.Run("combined limits union their candidates", func(t *testing.T) {
-		channel := model.PodcastChannel{RetentionCount: 3, RetentionDays: 1} // cutoff ~24h ago
-		got := retentionCandidates(channel, episodes)
+		sub := model.PodcastSubscription{RetentionCount: 3, RetentionDays: 1} // cutoff ~24h ago
+		got := retentionCandidates(sub, episodes)
 		// count alone would keep e1-e3; days alone (cutoff ~24h) only keeps e1 (1h old).
 		// union of both limits keeps just e1.
 		assertIDs(t, got, []string{"e2", "e3", "e4", "e5"})

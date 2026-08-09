@@ -103,7 +103,7 @@ func (api *Router) CreatePodcastChannel(r *http.Request) (*responses.Subsonic, e
 	if err != nil {
 		return nil, err
 	}
-	if _, err := api.podcasts.CreateChannel(r.Context(), url); err != nil {
+	if _, err := api.podcasts.Subscribe(r.Context(), url); err != nil {
 		return nil, err
 	}
 	return newResponse(), nil
@@ -115,7 +115,7 @@ func (api *Router) DeletePodcastChannel(r *http.Request) (*responses.Subsonic, e
 	if err != nil {
 		return nil, err
 	}
-	if err := api.podcasts.DeleteChannel(r.Context(), id); err != nil {
+	if err := api.podcasts.Unsubscribe(r.Context(), id); err != nil {
 		return nil, err
 	}
 	return newResponse(), nil
@@ -228,6 +228,16 @@ func podcastEpisodeStatus(status model.PodcastEpisodeDownloadStatus, policy mode
 	}
 }
 
+// subscriptionPolicy returns the current user's own download policy for a channel, or None if
+// they have no subscription row for it (e.g. an admin viewing a channel they haven't personally
+// subscribed to) - Subscription is nil in that case, see model.PodcastChannel.Subscription.
+func subscriptionPolicy(ch model.PodcastChannel) model.PodcastDownloadPolicy {
+	if ch.Subscription == nil {
+		return model.PodcastDownloadPolicyNone
+	}
+	return ch.Subscription.DownloadPolicy
+}
+
 func toPodcastChannel(ch model.PodcastChannel, includeEpisodes bool) responses.PodcastChannel {
 	var coverArt string
 	if ch.UploadedImage != "" {
@@ -279,7 +289,7 @@ func toPodcastEpisode(ep model.PodcastEpisode, channel model.PodcastChannel) res
 		StreamId:    ep.ID,
 		ChannelId:   ep.ChannelID,
 		Description: ep.Description,
-		Status:      podcastEpisodeStatus(ep.DownloadStatus, channel.DownloadPolicy),
+		Status:      podcastEpisodeStatus(ep.DownloadStatus, subscriptionPolicy(channel)),
 		PublishDate: ep.PublishDate,
 	}
 }

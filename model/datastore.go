@@ -36,6 +36,7 @@ type DataStore interface {
 	Radio(ctx context.Context) RadioRepository
 	PodcastChannel(ctx context.Context) PodcastChannelRepository
 	PodcastEpisode(ctx context.Context) PodcastEpisodeRepository
+	PodcastSubscription(ctx context.Context) PodcastSubscriptionRepository
 	MediaFileTag(ctx context.Context) MediaFileTagRepository
 	Share(ctx context.Context) ShareRepository
 	Property(ctx context.Context) PropertyRepository

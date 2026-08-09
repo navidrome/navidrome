@@ -20,8 +20,14 @@ import {
   Typography,
   Box,
   Avatar,
+  Button,
   Chip,
+  FormControl,
   IconButton,
+  InputLabel,
+  MenuItem,
+  Select,
+  TextField as MuiTextField,
   Tooltip,
   makeStyles,
 } from '@material-ui/core'
@@ -79,6 +85,103 @@ const PodcastChannelHeader = () => {
             {record.description}
           </Typography>
         )}
+      </Box>
+    </Box>
+  )
+}
+
+const downloadPolicyChoices = ['none', 'new', 'all']
+
+// Lets the current user manage their own download policy/retention settings for this channel -
+// available to any subscriber (not just admins), since download policy/retention are per-user
+// now (see model.PodcastSubscription). Not present when record.subscription is nil (e.g. an
+// admin viewing a channel they haven't personally subscribed to).
+const SubscriptionSettings = ({ record }) => {
+  const translate = useTranslate()
+  const notify = useNotify()
+  const refresh = useRefresh()
+  const sub = record.subscription
+  const [downloadPolicy, setDownloadPolicy] = useState(sub?.downloadPolicy)
+  const [retentionCount, setRetentionCount] = useState(sub?.retentionCount)
+  const [retentionDays, setRetentionDays] = useState(sub?.retentionDays)
+  const [maxStorageMb, setMaxStorageMb] = useState(sub?.maxStorageMb)
+  const [saving, setSaving] = useState(false)
+
+  if (!sub) return null
+
+  const handleSave = () => {
+    setSaving(true)
+    httpClient(`${REST_URL}/podcastChannel/${record.id}/subscription`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        downloadPolicy,
+        retentionCount: Number(retentionCount) || 0,
+        retentionDays: Number(retentionDays) || 0,
+        maxStorageMb: Number(maxStorageMb) || 0,
+      }),
+    })
+      .then(() => {
+        notify('resources.podcastChannel.notifications.subscriptionSaved', {
+          type: 'info',
+        })
+        refresh()
+      })
+      .catch(() => notify('ra.page.error', { type: 'warning' }))
+      .finally(() => setSaving(false))
+  }
+
+  return (
+    <Box mt={2} mb={2} maxWidth={360}>
+      <Typography variant="subtitle1" gutterBottom>
+        {translate('resources.podcastChannel.subscriptionSettings')}
+      </Typography>
+      <FormControl fullWidth variant="outlined" margin="dense">
+        <InputLabel>
+          {translate('resources.podcastChannel.fields.downloadPolicy')}
+        </InputLabel>
+        <Select
+          value={downloadPolicy}
+          onChange={(e) => setDownloadPolicy(e.target.value)}
+          label={translate('resources.podcastChannel.fields.downloadPolicy')}
+        >
+          {downloadPolicyChoices.map((id) => (
+            <MenuItem key={id} value={id}>
+              {translate(`resources.podcastChannel.downloadPolicy.${id}`)}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+      <MuiTextField
+        variant="outlined"
+        margin="dense"
+        fullWidth
+        type="number"
+        label={translate('resources.podcastChannel.fields.retentionCount')}
+        value={retentionCount}
+        onChange={(e) => setRetentionCount(e.target.value)}
+      />
+      <MuiTextField
+        variant="outlined"
+        margin="dense"
+        fullWidth
+        type="number"
+        label={translate('resources.podcastChannel.fields.retentionDays')}
+        value={retentionDays}
+        onChange={(e) => setRetentionDays(e.target.value)}
+      />
+      <MuiTextField
+        variant="outlined"
+        margin="dense"
+        fullWidth
+        type="number"
+        label={translate('resources.podcastChannel.fields.maxStorageMb')}
+        value={maxStorageMb}
+        onChange={(e) => setMaxStorageMb(e.target.value)}
+      />
+      <Box mt={1}>
+        <Button variant="outlined" onClick={handleSave} disabled={saving}>
+          {translate('ra.action.save')}
+        </Button>
       </Box>
     </Box>
   )
@@ -146,7 +249,7 @@ const ListenedToggle = ({ record }) => {
   )
 }
 
-const EpisodeActions = ({ record, isAdmin }) => {
+const EpisodeActions = ({ record }) => {
   const dispatch = useDispatch()
   const notify = useNotify()
   if (!record) return null
@@ -172,34 +275,38 @@ const EpisodeActions = ({ record, isAdmin }) => {
     dispatch(openAddToPlaylist({ selectedIds: [record.id] }))
   }
 
-  // Only downloaded episodes can be added to a playlist - a playlist entry
-  // has no way to represent "stream this from the source URL".
-  const isDownloaded = record.downloadStatus === 'downloaded'
+  // "downloaded" is the CURRENT USER's own "in my list" flag (model.PodcastEpisode.Downloaded) -
+  // distinct from downloadStatus, which just tracks whether the shared file exists on disk at all.
+  // A file can already exist (downloadStatus=downloaded, fetched for some other subscriber) while
+  // this user hasn't personally requested it yet, so they should still see a Download action.
+  const isMine = Boolean(record.downloaded)
+  const isPending =
+    record.downloadStatus === 'downloading' ||
+    record.downloadStatus === 'queued'
 
   return (
     <>
-      {isDownloaded && (
+      {/* Only downloaded episodes can be added to a playlist - a playlist entry has no way to
+          represent "stream this from the source URL". */}
+      {isMine && (
         <IconButton size="small" onClick={handleAddToPlaylist} onFocus={stop}>
           <PlaylistAddIcon fontSize="small" />
         </IconButton>
       )}
-      {isAdmin &&
-        (isDownloaded ||
-        record.downloadStatus === 'downloading' ||
-        record.downloadStatus === 'queued' ? (
-          <IconButton size="small" onClick={handleDelete} onFocus={stop}>
-            <DeleteIcon fontSize="small" />
-          </IconButton>
-        ) : (
-          <IconButton size="small" onClick={handleDownload} onFocus={stop}>
-            <DownloadIcon fontSize="small" />
-          </IconButton>
-        ))}
+      {isMine || isPending ? (
+        <IconButton size="small" onClick={handleDelete} onFocus={stop}>
+          <DeleteIcon fontSize="small" />
+        </IconButton>
+      ) : (
+        <IconButton size="small" onClick={handleDownload} onFocus={stop}>
+          <DownloadIcon fontSize="small" />
+        </IconButton>
+      )}
     </>
   )
 }
 
-const EpisodesSection = ({ channel, isAdmin }) => {
+const EpisodesSection = ({ channel }) => {
   const dispatch = useDispatch()
   const translate = useTranslate()
 
@@ -242,19 +349,16 @@ const EpisodesSection = ({ channel, isAdmin }) => {
           source="id"
           label=""
           sortable={false}
-          render={(record) => (
-            <EpisodeActions record={record} isAdmin={isAdmin} />
-          )}
+          render={(record) => <EpisodeActions record={record} />}
         />
       </Datagrid>
     </>
   )
 }
 
-const PodcastChannelShowLayout = ({ permissions, ...props }) => {
+const PodcastChannelShowLayout = (props) => {
   const { record, loading } = useShowContext(props)
   useResourceRefresh('podcastChannel', 'podcastEpisode')
-  const isAdmin = permissions === 'admin'
 
   if (loading || !record) return null
 
@@ -263,6 +367,7 @@ const PodcastChannelShowLayout = ({ permissions, ...props }) => {
       <RaTitle title={<Title subTitle={record.title} />} />
       <SimpleShowLayout>
         <PodcastChannelHeader />
+        <SubscriptionSettings record={record} />
         <ReferenceManyField
           reference="podcastEpisode"
           target="channel_id"
@@ -272,7 +377,7 @@ const PodcastChannelShowLayout = ({ permissions, ...props }) => {
           pagination={<Pagination rowsPerPageOptions={[50, 100, 250]} />}
           fullWidth
         >
-          <EpisodesSection channel={record} isAdmin={isAdmin} />
+          <EpisodesSection channel={record} />
         </ReferenceManyField>
       </SimpleShowLayout>
     </>

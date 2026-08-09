@@ -79,9 +79,9 @@ const Menu = ({ dense = false }) => {
     (state) => state.settings.showMyTagsView !== false,
   )
 
-  // Admin-gated fork feature access (folders/ai_tags/my_tags) - a feature key absent from the
-  // stored grant means enabled, matching the backend's opt-out default. Genre and Podcasts have no
-  // admin gate yet (see model/user_feature_permission.go), so only their personal toggle applies.
+  // Admin-gated fork feature access (folders/ai_tags/my_tags/podcasts) - a feature key absent
+  // from the stored grant means enabled, matching the backend's opt-out default. Genre has no
+  // admin gate yet (see model/user_feature_permission.go), so only its personal toggle applies.
   const featurePermissions = getFeaturePermissions()
   const showFolderView =
     featurePermissions.folders !== false && personalShowFolderView
@@ -91,6 +91,7 @@ const Menu = ({ dense = false }) => {
     featurePermissions.ai_tags !== false && personalShowAiMoodView
   const showMyTagsView =
     featurePermissions.my_tags !== false && personalShowMyTagsView
+  const showPodcastsFeature = featurePermissions.podcasts !== false
 
   // TODO State is not persisted in mobile when you close the sidebar menu. Move to redux?
   const [state, setState] = useState({
@@ -221,7 +222,8 @@ const Menu = ({ dense = false }) => {
           (r) =>
             r.name !== 'folder' &&
             r.name !== 'genre' &&
-            (r.name !== 'podcastChannel' || showPodcasts) &&
+            (r.name !== 'podcastChannel' ||
+              (showPodcastsFeature && showPodcasts)) &&
             subItems(undefined)(r),
         )
         .map(renderResourceMenuItemLink)}

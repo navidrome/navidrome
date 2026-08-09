@@ -93,10 +93,10 @@ describe('getCoverArtUrl', () => {
     expect(url).toContain('square=true')
   })
 
-  it('should return podcast channel cover art URL for records with downloadPolicy', () => {
+  it('should return podcast channel cover art URL for records with status', () => {
     const podcastChannelRecord = {
       id: 'channel-123',
-      downloadPolicy: 'none',
+      status: 'completed',
       updatedAt: '2023-01-01T00:00:00Z',
     }
 

@@ -4,27 +4,28 @@ import (
 	"context"
 	"time"
 
-	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
 
-// RunRetention enforces each channel's RetentionCount, RetentionDays and
-// MaxStorageMB policies (0 = unlimited), deleting the oldest downloaded
-// episodes beyond whichever limits are configured. Run after each scheduled
-// refresh, and callable directly.
+// RunRetention enforces each subscription's own RetentionCount, RetentionDays and MaxStorageMB
+// policies (0 = unlimited) against that subscriber's own downloaded episodes for the channel -
+// not the channel as a whole, since different subscribers to the same channel can have
+// completely different retention preferences. Evicting a subscriber's own flag never deletes the
+// shared file outright; the file is only removed once no subscriber anywhere still wants it (see
+// cleanupOrphanedFile). Run after each scheduled refresh, and callable directly.
 func (p *podcasts) RunRetention(ctx context.Context) error {
-	channels, err := p.ds.PodcastChannel(ctx).GetAll()
+	subs, err := p.ds.PodcastSubscription(ctx).GetAll()
 	if err != nil {
 		return err
 	}
 	var firstErr error
-	for _, channel := range channels {
-		if channel.RetentionCount <= 0 && channel.RetentionDays <= 0 && channel.MaxStorageMB <= 0 {
+	for _, sub := range subs {
+		if !sub.HasRetentionLimit() {
 			continue
 		}
-		if err := p.runChannelRetention(ctx, channel); err != nil {
-			log.Error(ctx, "Error enforcing podcast retention", "channel", channel.ID, err)
+		if err := p.runSubscriptionRetention(ctx, sub); err != nil {
+			log.Error(ctx, "Error enforcing podcast retention", "subscription", sub.ID, "channel", sub.ChannelID, "user", sub.UserID, err)
 			if firstErr == nil {
 				firstErr = err
 			}
@@ -33,27 +34,27 @@ func (p *podcasts) RunRetention(ctx context.Context) error {
 	return firstErr
 }
 
-func (p *podcasts) runChannelRetention(ctx context.Context, channel model.PodcastChannel) error {
-	episodes, err := p.ds.PodcastEpisode(ctx).GetAll(model.QueryOptions{
-		Filters: And{Eq{"channel_id": channel.ID}, Eq{"download_status": string(model.PodcastEpisodeDownloaded)}},
-		Sort:    "publish_date",
-		Order:   "desc",
-	})
+func (p *podcasts) runSubscriptionRetention(ctx context.Context, sub model.PodcastSubscription) error {
+	episodes, err := p.ds.PodcastEpisode(ctx).GetDownloadedForUser(sub.UserID, sub.ChannelID)
 	if err != nil {
 		return err
 	}
-	for _, ep := range retentionCandidates(channel, episodes) {
+	for _, ep := range retentionCandidates(sub, episodes) {
 		pinned, err := p.isPinnedByPlaylist(ctx, ep.ID)
 		if err != nil {
-			log.Error(ctx, "Error checking playlist membership before retention delete", "channel", channel.ID, "episode", ep.ID, err)
+			log.Error(ctx, "Error checking playlist membership before retention eviction", "subscription", sub.ID, "episode", ep.ID, err)
 			continue
 		}
 		if pinned {
-			log.Debug(ctx, "Skipping retention delete for episode referenced by a playlist", "channel", channel.ID, "episode", ep.ID)
+			log.Debug(ctx, "Skipping retention eviction for episode referenced by a playlist", "subscription", sub.ID, "episode", ep.ID)
 			continue
 		}
-		if err := p.deleteEpisodeFile(ctx, &ep); err != nil {
-			log.Error(ctx, "Error deleting podcast episode during retention cleanup", "channel", channel.ID, "episode", ep.ID, err)
+		if err := p.ds.PodcastEpisode(ctx).SetDownloaded(sub.UserID, false, ep.ID); err != nil {
+			log.Error(ctx, "Error clearing downloaded flag during retention eviction", "subscription", sub.ID, "episode", ep.ID, err)
+			continue
+		}
+		if err := p.cleanupOrphanedFile(ctx, ep.ID); err != nil {
+			log.Error(ctx, "Error cleaning up podcast episode file during retention", "episode", ep.ID, err)
 		}
 	}
 	return nil
@@ -70,25 +71,25 @@ func (p *podcasts) isPinnedByPlaylist(ctx context.Context, episodeID string) (bo
 	return len(playlists) > 0, nil
 }
 
-// retentionCandidates returns which of a channel's downloaded episodes
-// (already sorted newest-first by publish date) exceed the channel's
-// retention policy. Each configured limit (0 = unlimited) is evaluated
-// independently; an episode beyond the count cap, older than the day cap,
-// or beyond the cumulative storage budget is a candidate for deletion.
-func retentionCandidates(channel model.PodcastChannel, episodes model.PodcastEpisodes) model.PodcastEpisodes {
+// retentionCandidates returns which of a subscriber's own downloaded episodes for one channel
+// (already sorted newest-first by publish date) exceed that subscription's own retention policy.
+// Each configured limit (0 = unlimited) is evaluated independently; an episode beyond the count
+// cap, older than the day cap, or beyond the cumulative storage budget is a candidate for
+// eviction from just this subscriber's own list.
+func retentionCandidates(sub model.PodcastSubscription, episodes model.PodcastEpisodes) model.PodcastEpisodes {
 	var cutoff time.Time
-	if channel.RetentionDays > 0 {
-		cutoff = time.Now().AddDate(0, 0, -channel.RetentionDays)
+	if sub.RetentionDays > 0 {
+		cutoff = time.Now().AddDate(0, 0, -sub.RetentionDays)
 	}
-	maxStorageBytes := int64(channel.MaxStorageMB) * 1024 * 1024
+	maxStorageBytes := int64(sub.MaxStorageMB) * 1024 * 1024
 
 	var candidates model.PodcastEpisodes
 	var cumulativeSize int64
 	for i, ep := range episodes {
 		cumulativeSize += ep.Size
-		exceedsCount := channel.RetentionCount > 0 && i >= channel.RetentionCount
-		exceedsAge := channel.RetentionDays > 0 && ep.PublishDate != nil && ep.PublishDate.Before(cutoff)
-		exceedsStorage := channel.MaxStorageMB > 0 && cumulativeSize > maxStorageBytes
+		exceedsCount := sub.RetentionCount > 0 && i >= sub.RetentionCount
+		exceedsAge := sub.RetentionDays > 0 && ep.PublishDate != nil && ep.PublishDate.Before(cutoff)
+		exceedsStorage := sub.MaxStorageMB > 0 && cumulativeSize > maxStorageBytes
 		if exceedsCount || exceedsAge || exceedsStorage {
 			candidates = append(candidates, ep)
 		}
