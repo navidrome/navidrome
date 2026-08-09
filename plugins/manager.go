@@ -53,6 +53,7 @@ type Manager struct {
 	cancel  context.CancelFunc
 	cache   wazero.CompilationCache
 	stopped atomic.Bool    // Set to true when Stop() is called
+	started atomic.Bool    // Set to true when Start() returns, i.e. the initial load is done
 	loadWg  sync.WaitGroup // Tracks in-flight plugin load operations
 
 	// File watcher fields (used when AutoReload is enabled)
@@ -104,6 +105,7 @@ func (m *Manager) SetSubsonicRouter(router SubsonicRouter) {
 // 1. Sync plugins folder with DB (discover new, update changed, remove deleted)
 // 2. Load only enabled plugins from DB
 func (m *Manager) Start(ctx context.Context) error {
+	defer m.started.Store(true)
 	if !conf.Server.Plugins.Enabled {
 		log.Debug(ctx, "Plugin system is disabled")
 		return nil
@@ -231,6 +233,12 @@ func (m *Manager) PluginNames(capability string) []string {
 		}
 	}
 	return names
+}
+
+// PluginsLoaded reports whether the initial plugin load has completed. Until then,
+// PluginNames may be missing plugins that are still being compiled.
+func (m *Manager) PluginsLoaded() bool {
+	return m.started.Load()
 }
 
 func (m *Manager) LoadMediaAgent(name string) (agents.Interface, bool) {

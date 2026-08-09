@@ -15,6 +15,7 @@ type MockPluginLoader struct {
 	pluginNames     []string
 	loadedAgents    map[string]*MockAgent
 	pluginCallCount map[string]int
+	loaded          bool
 }
 
 func NewMockPluginLoader() *MockPluginLoader {
@@ -22,11 +23,16 @@ func NewMockPluginLoader() *MockPluginLoader {
 		pluginNames:     []string{},
 		loadedAgents:    make(map[string]*MockAgent),
 		pluginCallCount: make(map[string]int),
+		loaded:          true,
 	}
 }
 
 func (m *MockPluginLoader) PluginNames(serviceName string) []string {
 	return m.pluginNames
+}
+
+func (m *MockPluginLoader) PluginsLoaded() bool {
+	return m.loaded
 }
 
 func (m *MockPluginLoader) LoadMediaAgent(name string) (Interface, bool) {

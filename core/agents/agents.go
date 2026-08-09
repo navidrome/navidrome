@@ -22,6 +22,8 @@ type PluginLoader interface {
 	PluginNames(capability string) []string
 	// LoadMediaAgent loads and returns a media agent plugin
 	LoadMediaAgent(name string) (Interface, bool)
+	// PluginsLoaded reports whether the initial plugin load has completed
+	PluginsLoaded() bool
 }
 
 // Agents is a meta-agent that aggregates multiple built-in and plugin agents. It tries each enabled agent in order
@@ -81,18 +83,24 @@ type enabledAgent struct {
 // Each enabledAgent contains the name and whether it's a plugin (true) or built-in (false)
 // Recomputed only when the config or the set of loaded plugins changes.
 func (a *Agents) getEnabledAgentNames() []enabledAgent {
+	config := conf.Server.Agents
 	var availablePlugins []string
 	if a.pluginLoader != nil {
 		availablePlugins = slices.Sorted(slices.Values(a.pluginLoader.PluginNames("MetadataAgent")))
+		// While plugins are still loading, a valid name can look unknown. Skip the cache
+		// (so nothing wrong is remembered) and keep the noise at Debug.
+		if !a.pluginLoader.PluginsLoaded() {
+			return resolveEnabledAgents(config, availablePlugins, log.LevelDebug)
+		}
 	}
 
-	return a.cache.get(conf.Server.Agents, availablePlugins, func() []enabledAgent {
+	return a.cache.get(config, availablePlugins, func() []enabledAgent {
 		log.Trace("Available MetadataAgent plugins", "plugins", availablePlugins)
-		return resolveEnabledAgents(conf.Server.Agents, availablePlugins)
+		return resolveEnabledAgents(config, availablePlugins, log.LevelWarn)
 	})
 }
 
-func resolveEnabledAgents(configured string, availablePlugins []string) []enabledAgent {
+func resolveEnabledAgents(configured string, availablePlugins []string, unknownLevel log.Level) []enabledAgent {
 	// If no agents configured, ONLY use the local agent
 	if configured == "" {
 		return []enabledAgent{{name: LocalAgentName, isPlugin: false}}
@@ -122,7 +130,7 @@ func resolveEnabledAgents(configured string, availablePlugins []string) []enable
 		} else if isPlugin {
 			validAgents = append(validAgents, enabledAgent{name: name, isPlugin: true})
 		} else {
-			log.Warn("Unknown agent ignored", "name", name, "available", known())
+			log.Log(unknownLevel, "Unknown agent ignored", "name", name, "available", known())
 		}
 	}
 	return validAgents

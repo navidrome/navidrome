@@ -138,6 +138,23 @@ var _ = Describe("Agents", func() {
 				second := cached.getEnabledAgentNames()
 				Expect(&first[0]).To(BeIdenticalTo(&second[0]))
 			})
+
+			It("does not cache while plugins are still loading", func() {
+				loader.loaded = false
+				first := cached.getEnabledAgentNames()
+				second := cached.getEnabledAgentNames()
+				Expect(&first[0]).ToNot(BeIdenticalTo(&second[0]))
+			})
+
+			It("starts caching once plugins finish loading, even if the plugin list did not change", func() {
+				loader.loaded = false
+				loader.pluginNames = nil
+				cached.getEnabledAgentNames()
+				loader.loaded = true
+				first := cached.getEnabledAgentNames()
+				second := cached.getEnabledAgentNames()
+				Expect(&first[0]).To(BeIdenticalTo(&second[0]))
+			})
 		})
 
 		Describe("GetArtistMBID", func() {
