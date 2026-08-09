@@ -11,6 +11,16 @@ const calculateReplayGain = (preAmp, gain, peak) => {
 export const calculateGain = (gainInfo, song) => {
   switch (gainInfo.gainMode) {
     case 'album': {
+      // Fall back to track gain when the album gain is missing (singles, or
+      // tracks without album ReplayGain tags), matching common ReplayGain
+      // players instead of applying no adjustment at all.
+      if (song.rgAlbumGain === undefined || song.rgAlbumPeak === undefined) {
+        return calculateReplayGain(
+          gainInfo.preAmp,
+          song.rgTrackGain,
+          song.rgTrackPeak,
+        )
+      }
       return calculateReplayGain(
         gainInfo.preAmp,
         song.rgAlbumGain,
