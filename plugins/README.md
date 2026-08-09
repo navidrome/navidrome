@@ -808,7 +808,7 @@ Match externally-obtained songs (e.g. results from a recommendation or similarit
 |----------------------|---------------|-------------------------|
 | `matcher_matchsongs` | `songs, opts` | Array of matched tracks |
 
-The result has one entry per input song, in the same order; the entry for a song with no match is empty. Results are limited to the libraries the plugin (and the scoped user, if any) can access. Set `opts.username` to run the match as a specific user: their favorites and ratings inform tiebreaking, and the returned tracks carry their annotations.
+The result has one entry per input song, in the same order; the entry for a song with no match is empty. Results are limited to the libraries the plugin (and the scoped user, if any) can access. Set `opts.username` to run the match as a specific user: their favorites and ratings inform tiebreaking, and the returned tracks carry their annotations. User scoping additionally requires the [`users`](#users) permission, with users assigned to the plugin.
 
 **Usage:**
 
@@ -817,7 +817,7 @@ import "github.com/navidrome/navidrome/plugins/pdk/go/types"
 
 matches, err := host.MatcherMatchSongs([]types.SongRef{
     {Name: "Song Title", Artists: []types.ArtistRef{{Name: "Artist Name"}}},
-}, host.MatchOptions{Username: "john"})
+}, host.MatchOptions{})
 ```
 
 ### Artwork
