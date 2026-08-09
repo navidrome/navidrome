@@ -226,13 +226,14 @@ func ndGetArtistBiography() int32 {
 
 ### Scrobbler
 
-Integrates with external scrobbling services. All three methods are **required**.
+Integrates with external scrobbling services. All four methods are **required**.
 
-| Function                     | Input                 | Output | Description                 |
-|------------------------------|-----------------------|--------|-----------------------------|
-| `nd_scrobbler_is_authorized` | `{username}`          | `bool` | Check if user is authorized |
-| `nd_scrobbler_now_playing`   | See below             | (none) | Send now playing            |
-| `nd_scrobbler_scrobble`      | See below             | (none) | Submit a scrobble           |
+| Function                        | Input        | Output | Description                  |
+|---------------------------------|--------------|--------|------------------------------|
+| `nd_scrobbler_is_authorized`    | `{username}` | `bool` | Check if user is authorized  |
+| `nd_scrobbler_now_playing`      | See below    | (none) | Send now playing             |
+| `nd_scrobbler_scrobble`         | See below    | (none) | Submit a scrobble            |
+| `nd_scrobbler_playback_report`  | See below    | (none) | Send playback state report   |
 
 > **Important:** Scrobbler plugins require the `users` permission in their manifest. Scrobble events are only sent for users assigned to the plugin through Navidrome's configuration.
 
@@ -269,6 +270,25 @@ Integrates with external scrobbling services. All three methods are **required**
   "timestamp": 1703270400
 }
 ```
+
+**PlaybackReport Input:**
+
+Same `username` and `track` fields, plus playback state details:
+
+```json
+{
+  "username": "john",
+  "track": { ... },
+  "state": "playing",
+  "positionMs": 45000,
+  "playbackRate": 1.0,
+  "playerId": "player-id",
+  "playerName": "My Client",
+  "timestamp": 1703270400
+}
+```
+
+`state` is one of `starting`, `playing`, `paused`, `stopped`, or `expired`.
 
 **Error Handling:**
 
