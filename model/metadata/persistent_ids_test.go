@@ -6,7 +6,6 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -80,7 +79,6 @@ var _ = Describe("getPID", func() {
 		})
 		When("field is folder", func() {
 			It("should return the pid", func() {
-				tests.SkipOnWindows("path separator bug (#TBD-path-sep-metadata)")
 				spec := "folder|title"
 				md.tags = map[model.TagName][]string{"title": {"title"}}
 				mf.Path = "/path/to/file.mp3"

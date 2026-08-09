@@ -3,7 +3,7 @@ package metadata
 import (
 	"cmp"
 	"fmt"
-	"path/filepath"
+	"path"
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
@@ -68,7 +68,10 @@ func getPIDAttr(mf model.MediaFile, md Metadata, attr string, prependLibId bool,
 		}
 		return computePID(mf, md, conf.Server.PID.Album, prependLibId, hash)
 	case "folder":
-		return filepath.Dir(mf.Path)
+		// Persistent IDs must be stable across OSes, and mf.Path is stored with
+		// forward slashes, so use path.Dir (not filepath.Dir, which would emit
+		// back-slashes on Windows and change the PID).
+		return path.Dir(mf.Path)
 	case "albumartistid":
 		return hash(str.Clear(strings.ToLower(mf.AlbumArtist)))
 	case "title":
