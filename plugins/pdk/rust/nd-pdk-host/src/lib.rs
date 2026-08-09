@@ -40,6 +40,7 @@
 //! - [`library`] - provides access to music library metadata for plugins.
 //! - [`matcher`] - resolves externally-obtained songs to local library tracks,
 //! - [`scheduler`] - provides task scheduling capabilities for plugins.
+//! - [`scrobbleretriever`] - allows a plugin to retrieve scrobbles for one or more authorized users.
 //! - [`storage`] - provides access to a plugin-specific directory with read/write permissions
 //! - [`subsonicapi`] - provides access to Navidrome's Subsonic API from plugins.
 //! - [`task`] - provides persistent task queues for plugins.
@@ -100,6 +101,13 @@ mod nd_host_scheduler;
 /// provides task scheduling capabilities for plugins.
 pub mod scheduler {
     pub use super::nd_host_scheduler::*;
+}
+
+#[doc(hidden)]
+mod nd_host_scrobbleretriever;
+/// allows a plugin to retrieve scrobbles for one or more authorized users.
+pub mod scrobbleretriever {
+    pub use super::nd_host_scrobbleretriever::*;
 }
 
 #[doc(hidden)]

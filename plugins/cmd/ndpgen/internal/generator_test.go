@@ -748,8 +748,9 @@ var _ = Describe("Generator", func() {
 			// Check bool return uses args.Bool(1)
 			Expect(codeStr).To(ContainSubstring("args.Bool(1)"))
 
-			// Check []byte return uses args.Get(0).([]byte)
-			Expect(codeStr).To(ContainSubstring("args.Get(0).([]byte)"))
+			// []byte is nil-able, so it gets a guarded extraction
+			Expect(codeStr).To(ContainSubstring("var r0 []byte"))
+			Expect(codeStr).To(ContainSubstring("r0 = v.([]byte)"))
 
 			// Check error returns use args.Error(N)
 			Expect(codeStr).To(ContainSubstring("args.Error("))
@@ -1697,6 +1698,97 @@ var _ = Describe("Rust Generation", func() {
 
 			Expect(codeStr).NotTo(ContainSubstring("mod base64_bytes"))
 			Expect(codeStr).NotTo(ContainSubstring("use base64"))
+		})
+	})
+
+	Describe("nil-safe mock accessors", func() {
+		Describe("GenerateClientGoStub", func() {
+			It("guards pointer, slice and map returns so Return(nil, ...) does not panic", func() {
+				svc := Service{
+					Name:      "Paged",
+					Interface: "PagedService",
+					Methods: []Method{
+						{
+							Name:     "GetPage",
+							HasError: true,
+							Params:   []Param{NewParam("query", "string")},
+							Returns:  []Param{NewParam("items", "[]Item"), NewParam("next", "*PageOptions")},
+						},
+						{
+							Name:     "GetLabels",
+							HasError: true,
+							Params:   []Param{NewParam("id", "string")},
+							Returns:  []Param{NewParam("labels", "map[string]string")},
+						},
+					},
+				}
+
+				code, err := GenerateClientGoStub(svc, "host")
+				Expect(err).NotTo(HaveOccurred())
+				_, err = format.Source(code)
+				Expect(err).NotTo(HaveOccurred())
+
+				codeStr := string(code)
+				Expect(codeStr).To(ContainSubstring("var r0 []Item"))
+				Expect(codeStr).To(ContainSubstring("var r1 *PageOptions"))
+				Expect(codeStr).To(ContainSubstring("if v := args.Get(1); v != nil {"))
+				Expect(codeStr).To(ContainSubstring("r1 = v.(*PageOptions)"))
+				Expect(codeStr).To(ContainSubstring("return r0, r1, args.Error(2)"))
+				Expect(codeStr).To(ContainSubstring("var r0 map[string]string"))
+				Expect(codeStr).NotTo(ContainSubstring("args.Get(0).([]Item)"))
+				Expect(codeStr).NotTo(ContainSubstring("args.Get(1).(*PageOptions)"))
+			})
+
+			It("keeps non-nilable returns as inline accessors", func() {
+				svc := Service{
+					Name:      "Counter",
+					Interface: "CounterService",
+					Methods: []Method{
+						{
+							Name:     "Count",
+							HasError: true,
+							Params:   []Param{NewParam("id", "string")},
+							Returns:  []Param{NewParam("count", "int64"), NewParam("name", "string")},
+						},
+					},
+				}
+
+				code, err := GenerateClientGoStub(svc, "host")
+				Expect(err).NotTo(HaveOccurred())
+
+				codeStr := string(code)
+				Expect(codeStr).To(ContainSubstring("return args.Get(0).(int64), args.String(1), args.Error(2)"))
+				Expect(codeStr).NotTo(ContainSubstring("var r0"))
+			})
+		})
+
+		Describe("GeneratePDKGoStub", func() {
+			It("guards pointer and slice returns", func() {
+				symbols := &PDKSymbols{
+					Functions: []PDKFunc{
+						{
+							Name:    "NewHTTPRequest",
+							Params:  []PDKParam{{Name: "method", Type: "HTTPMethod"}, {Name: "url", Type: "string"}},
+							Returns: []PDKReturn{{Type: "*HTTPRequest"}},
+						},
+						{
+							Name:    "Input",
+							Returns: []PDKReturn{{Type: "[]byte"}},
+						},
+					},
+				}
+
+				code, err := GeneratePDKGoStub(symbols)
+				Expect(err).NotTo(HaveOccurred())
+				_, err = format.Source(code)
+				Expect(err).NotTo(HaveOccurred())
+
+				codeStr := string(code)
+				Expect(codeStr).To(ContainSubstring("var r0 *HTTPRequest"))
+				Expect(codeStr).To(ContainSubstring("r0 = v.(*HTTPRequest)"))
+				Expect(codeStr).To(ContainSubstring("var r0 []byte"))
+				Expect(codeStr).NotTo(ContainSubstring("return args.Get(0).(*HTTPRequest)"))
+			})
 		})
 	})
 })
