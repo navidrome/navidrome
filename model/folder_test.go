@@ -7,7 +7,6 @@ import (
 
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -67,7 +66,6 @@ var _ = Describe("Folder", func() {
 
 		When("the folder has multiple subdirs", func() {
 			It("should return the correct folder ID", func() {
-				tests.SkipOnWindows("path separator bug (#TBD-path-sep-model)")
 				folderPath := filepath.FromSlash("/music/rock/metal")
 				expectedID := id.NewHash("1:rock/metal")
 				Expect(model.FolderID(lib, folderPath)).To(Equal(expectedID))
@@ -77,7 +75,6 @@ var _ = Describe("Folder", func() {
 
 	Describe("NewFolder", func() {
 		It("should create a new SubFolder with the correct attributes", func() {
-			tests.SkipOnWindows("path separator bug (#TBD-path-sep-model)")
 			folderPath := filepath.FromSlash("rock/metal")
 			folder := model.NewFolder(lib, folderPath)
 
