@@ -29,23 +29,28 @@ type PluginLoader interface {
 type Agents struct {
 	ds           model.DataStore
 	pluginLoader PluginLoader
-
-	mu    sync.Mutex
-	cache agentsCache
+	cache        agentsCache
 }
 
 // agentsCache holds a resolved agent list next to the inputs it came from, so the
 // two can only ever be replaced together.
 type agentsCache struct {
+	mu      sync.Mutex
 	config  string
 	plugins []string
 	agents  []enabledAgent
 }
 
-// matches reports whether the cache was built from these exact inputs. A nil
-// agents slice means nothing has been cached yet.
-func (c *agentsCache) matches(config string, plugins []string) bool {
-	return c.agents != nil && c.config == config && slices.Equal(c.plugins, plugins)
+// get returns the list cached for these inputs, calling resolve under the lock when
+// they changed. A nil agents slice means nothing has been cached yet.
+func (c *agentsCache) get(config string, plugins []string, resolve func() []enabledAgent) []enabledAgent {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.agents != nil && c.config == config && slices.Equal(c.plugins, plugins) {
+		return c.agents
+	}
+	c.config, c.plugins, c.agents = config, plugins, resolve()
+	return c.agents
 }
 
 // GetAgents returns the singleton instance of Agents
@@ -81,19 +86,10 @@ func (a *Agents) getEnabledAgentNames() []enabledAgent {
 		availablePlugins = slices.Sorted(slices.Values(a.pluginLoader.PluginNames("MetadataAgent")))
 	}
 
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	if a.cache.matches(conf.Server.Agents, availablePlugins) {
-		return a.cache.agents
-	}
-
-	log.Trace("Available MetadataAgent plugins", "plugins", availablePlugins)
-	a.cache = agentsCache{
-		config:  conf.Server.Agents,
-		plugins: availablePlugins,
-		agents:  resolveEnabledAgents(conf.Server.Agents, availablePlugins),
-	}
-	return a.cache.agents
+	return a.cache.get(conf.Server.Agents, availablePlugins, func() []enabledAgent {
+		log.Trace("Available MetadataAgent plugins", "plugins", availablePlugins)
+		return resolveEnabledAgents(conf.Server.Agents, availablePlugins)
+	})
 }
 
 func resolveEnabledAgents(configured string, availablePlugins []string) []enabledAgent {
