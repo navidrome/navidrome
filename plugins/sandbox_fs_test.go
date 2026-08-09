@@ -34,6 +34,10 @@ type sandboxOutput struct {
 func startSandboxManager(tmpDir, libraryDir string, grant func(*model.Plugin)) *Manager {
 	GinkgoHelper()
 	installed := installTestPlugins(tmpDir, "test-library"+PackageExtension)
+	// installTestPlugins doesn't set this - without it, manager_sync's schema-mismatch
+	// check would force every first load through the reload-in-sync path, which gates
+	// on checkPermissionGates and would disable a plugin granted no library at all.
+	installed[0].ManifestSchemaVersion = CurrentManifestSchemaVersion
 	grant(&installed[0])
 
 	DeferCleanup(configtest.SetupConfig())
