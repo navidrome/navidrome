@@ -1151,7 +1151,6 @@ See [examples/](examples/) for complete working plugins:
 | [minimal](examples/minimal/)                                   | Go             | MetadataAgent | –                                          | Basic structure example        |
 | [wikimedia](examples/wikimedia/)                               | Go             | MetadataAgent | HTTP                                       | Wikidata/Wikipedia integration |
 | [coverartarchive-py](examples/coverartarchive-py/)             | Python         | MetadataAgent | HTTP                                       | Cover Art Archive              |
-| [coverartarchive-as](examples/coverartarchive-as/)             | AssemblyScript | MetadataAgent | HTTP                                       | Cover Art Archive              |
 | [webhook-rs](examples/webhook-rs/)                             | Rust           | Scrobbler     | HTTP                                       | HTTP webhooks                  |
 | [nowplaying-py](examples/nowplaying-py/)                       | Python         | Lifecycle     | Scheduler, SubsonicAPI                     | Periodic now-playing logger    |
 | [library-inspector-rs](examples/library-inspector-rs/)         | Rust           | Lifecycle     | Library, Scheduler                         | Periodic library stats logging |
