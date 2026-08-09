@@ -34,6 +34,7 @@ The plugin system is built on **[Extism](https://extism.org/)**, a cross-languag
   - [Task](#task)
   - [WebSocket](#websocket)
   - [Library](#library)
+  - [Matcher](#matcher)
   - [Artwork](#artwork)
   - [SubsonicAPI](#subsonicapi)
   - [Config](#config)
@@ -744,6 +745,45 @@ libraries, err := host.LibraryGetAllLibraries()
 for _, lib := range libraries {
     fmt.Printf("Library: %s (%d songs)\n", lib.Name, lib.TotalSongs)
 }
+```
+
+### Matcher
+
+Match externally-obtained songs (e.g. results from a recommendation or similarity API) to tracks in the local library, reusing Navidrome's matching algorithm (ID > MBID > ISRC > fuzzy title).
+
+**Manifest permission:**
+
+```json
+{
+  "permissions": {
+    "matcher": {
+      "reason": "Resolve external recommendations to library tracks"
+    },
+    "library": {
+      "reason": "Required by the matcher permission"
+    }
+  }
+}
+```
+
+> **Important:** The `matcher` permission requires the `library` permission.
+
+**Host functions:**
+
+| Function             | Parameters    | Returns                 |
+|----------------------|---------------|-------------------------|
+| `matcher_matchsongs` | `songs, opts` | Array of matched tracks |
+
+The result has one entry per input song, in the same order; the entry for a song with no match is empty. Results are limited to the libraries the plugin (and the scoped user, if any) can access. Set `opts.username` to run the match as a specific user: their favorites and ratings inform tiebreaking, and the returned tracks carry their annotations.
+
+**Usage:**
+
+```go
+import "github.com/navidrome/navidrome/plugins/pdk/go/types"
+
+matches, err := host.MatcherMatchSongs([]types.SongRef{
+    {Name: "Song Title", Artists: []types.ArtistRef{{Name: "Artist Name"}}},
+}, host.MatchOptions{Username: "john"})
 ```
 
 ### Artwork
