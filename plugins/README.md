@@ -38,6 +38,7 @@ The plugin system is built on **[Extism](https://extism.org/)**, a cross-languag
   - [SubsonicAPI](#subsonicapi)
   - [Config](#config)
   - [Users](#users)
+  - [ScrobbleRetriever](#scrobbleretriever)
 - [Configuration](#configuration)
 - [Building Plugins](#building-plugins)
 - [Examples](#examples)
@@ -895,6 +896,82 @@ for _, user := range users {
 
 admins, err := host.UsersGetAdmins()
 ```
+
+### ScrobbleRetriever
+
+Retrieve the scrobble history of users the plugin has been granted access to. Each scrobble carries only the media file ID and the submission time; use the Matcher host service to resolve them to track metadata.
+
+**Manifest permission:**
+
+```json
+{
+  "permissions": {
+    "scrobbleRetriever": {
+      "reason": "Sync scrobble history to an external service"
+    },
+    "users": {
+      "reason": "Access user information for scrobble retrieval"
+    }
+  }
+}
+```
+
+> **Important:** The `scrobbleRetriever` permission requires the `users` permission. Which users the plugin can act as is controlled through the Navidrome UI.
+
+**Host functions:**
+
+| Function                              | Parameters            | Returns                          |
+|---------------------------------------|-----------------------|----------------------------------|
+| `scrobbleretriever_getfirsttimestamp` | `username`            | Unix timestamp of oldest scrobble, or null |
+| `scrobbleretriever_getlasttimestamp`  | `username`            | Unix timestamp of newest scrobble, or null |
+| `scrobbleretriever_getscrobbles`      | `username`, `options` | One page of scrobbles + options for the next page |
+| `scrobbleretriever_getscrobblecount`  | `username`, `options` | Number of scrobbles in the range |
+
+**ScrobbleOptions fields** (all optional):
+
+| Field           | Type    | Description                                              |
+|-----------------|---------|----------------------------------------------------------|
+| `fromTimestamp` | int64   | Start of the range (inclusive). Default: first scrobble  |
+| `toTimestamp`   | int64   | End of the range (inclusive). Default: last scrobble     |
+| `descending`    | boolean | Newest first. Default: oldest first                      |
+| `maxItems`      | int     | Page size, capped at 5000 (the default)                  |
+| `offset`        | int     | Managed by the host for pagination. Never set it manually |
+
+**ScrobbleRef fields:**
+
+| Field            | Type   | Description                                    |
+|------------------|--------|------------------------------------------------|
+| `id`             | int64  | Scrobble ID, unique even for duplicate submissions |
+| `mediaFileId`    | string | The media file that was scrobbled              |
+| `submissionTime` | int64  | Unix timestamp of the submission               |
+
+**Usage:**
+
+`GetScrobbles` returns one page plus the options to fetch the following page. Pass them back unchanged and repeat until they are nil:
+
+```go
+opts := host.ScrobbleOptions{MaxItems: 500}
+var all []host.ScrobbleRef
+for {
+    page, next, err := host.ScrobbleRetrieverGetScrobbles("username", opts)
+    if err != nil {
+        return err
+    }
+    all = append(all, page...)
+    if next == nil {
+        break // no more scrobbles
+    }
+    opts = *next
+}
+
+// Range boundaries and counts
+first, err := host.ScrobbleRetrieverGetFirstTimestamp("username") // nil if no scrobbles
+count, err := host.ScrobbleRetrieverGetScrobbleCount("username", host.ScrobbleCountOptions{
+    FromTimestamp: first,
+})
+```
+
+> **Note:** The returned `next` options carry an adjusted `fromTimestamp`/`toTimestamp`, so keep a copy of your original options if you still need the range.
 
 ---
 
