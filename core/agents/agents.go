@@ -62,9 +62,7 @@ type enabledAgent struct {
 // 2. Always include LocalAgentName
 // 3. If config is empty, include ONLY LocalAgentName
 // Each enabledAgent contains the name and whether it's a plugin (true) or built-in (false)
-//
-// The result is cached until the config or the set of loaded plugins changes, so
-// this runs once per change instead of once per agent call.
+// Recomputed only when the config or the set of loaded plugins changes.
 func (a *Agents) getEnabledAgentNames() []enabledAgent {
 	var availablePlugins []string
 	if a.pluginLoader != nil {
@@ -99,6 +97,8 @@ func resolveEnabledAgents(configured string, availablePlugins []string) []enable
 		configuredAgents = append(configuredAgents, LocalAgentName)
 	}
 
+	known := sync.OnceValue(func() []string { return availableAgentNames(availablePlugins) })
+
 	// Non-nil even when every name is invalid, which is what marks the cache as populated
 	validAgents := make([]enabledAgent, 0, len(configuredAgents))
 	for _, name := range configuredAgents {
@@ -113,7 +113,7 @@ func resolveEnabledAgents(configured string, availablePlugins []string) []enable
 		} else if isPlugin {
 			validAgents = append(validAgents, enabledAgent{name: name, isPlugin: true})
 		} else {
-			log.Warn("Unknown agent ignored", "name", name, "available", availableAgentNames(availablePlugins))
+			log.Warn("Unknown agent ignored", "name", name, "available", known())
 		}
 	}
 	return validAgents

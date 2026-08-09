@@ -101,7 +101,11 @@ var _ = Describe("Agents", func() {
 			})
 
 			It("recomputes when the Agents config changes", func() {
-				Expect(cached.getEnabledAgentNames()).To(HaveLen(3)) // fake, plugin-a, local
+				Expect(cached.getEnabledAgentNames()).To(HaveExactElements(
+					enabledAgent{name: "fake"},
+					enabledAgent{name: "plugin-a", isPlugin: true},
+					enabledAgent{name: LocalAgentName},
+				))
 				conf.Server.Agents = "fake"
 				Expect(cached.getEnabledAgentNames()).To(HaveExactElements(
 					enabledAgent{name: "fake"},
@@ -110,7 +114,7 @@ var _ = Describe("Agents", func() {
 			})
 
 			It("recomputes when a plugin is installed", func() {
-				Expect(cached.getEnabledAgentNames()).To(HaveLen(3))
+				cached.getEnabledAgentNames()
 				conf.Server.Agents = "fake,plugin-a,plugin-b"
 				loader.pluginNames = []string{"plugin-a", "plugin-b"}
 				Expect(cached.getEnabledAgentNames()).To(ContainElement(
@@ -119,7 +123,7 @@ var _ = Describe("Agents", func() {
 			})
 
 			It("recomputes when a plugin is removed", func() {
-				Expect(cached.getEnabledAgentNames()).To(HaveLen(3))
+				cached.getEnabledAgentNames()
 				loader.pluginNames = nil
 				Expect(cached.getEnabledAgentNames()).To(HaveExactElements(
 					enabledAgent{name: "fake"},

@@ -2,30 +2,11 @@ import React from 'react'
 import { render, screen } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 
-vi.mock('react-admin', async () => {
-  const actual = await vi.importActual('react-admin')
-  return {
-    ...actual,
-    useTranslate: vi.fn(() => (key) => key),
-  }
-})
-
 vi.mock('../common', () => ({
   DateField: ({ source }) => <span data-testid={`date-${source}`} />,
 }))
 
 const { InfoCard } = await import('./InfoCard')
-
-const classes = {
-  section: '',
-  sectionTitle: '',
-  infoGrid: '',
-  infoLabel: '',
-  pathField: '',
-  permissionChip: '',
-  permissionsContainer: '',
-  tooltipContent: '',
-}
 
 const record = {
   id: 'apple-music',
@@ -34,12 +15,12 @@ const record = {
   createdAt: '2026-01-01T00:00:00Z',
 }
 
-const renderCard = (manifest = { name: 'Apple Music Metadata Agent' }) =>
+const renderCard = () =>
   render(
     <InfoCard
       record={record}
-      manifest={manifest}
-      classes={classes}
+      manifest={{ name: 'Apple Music Metadata Agent' }}
+      classes={{}}
       translate={(key) => key}
       isSmall={false}
     />,
