@@ -5,6 +5,7 @@ import (
 	"maps"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -28,6 +29,11 @@ type PluginLoader interface {
 type Agents struct {
 	ds           model.DataStore
 	pluginLoader PluginLoader
+
+	mu            sync.Mutex
+	cachedConfig  string
+	cachedPlugins []string
+	cachedAgents  []enabledAgent
 }
 
 // GetAgents returns the singleton instance of Agents
@@ -56,20 +62,36 @@ type enabledAgent struct {
 // 2. Always include LocalAgentName
 // 3. If config is empty, include ONLY LocalAgentName
 // Each enabledAgent contains the name and whether it's a plugin (true) or built-in (false)
+//
+// The result is cached until the config or the set of loaded plugins changes, so
+// this runs once per change instead of once per agent call.
 func (a *Agents) getEnabledAgentNames() []enabledAgent {
+	var availablePlugins []string
+	if a.pluginLoader != nil {
+		availablePlugins = slices.Sorted(slices.Values(a.pluginLoader.PluginNames("MetadataAgent")))
+	}
+
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.cachedAgents != nil && a.cachedConfig == conf.Server.Agents &&
+		slices.Equal(a.cachedPlugins, availablePlugins) {
+		return a.cachedAgents
+	}
+
+	log.Trace("Available MetadataAgent plugins", "plugins", availablePlugins)
+	a.cachedConfig = conf.Server.Agents
+	a.cachedPlugins = availablePlugins
+	a.cachedAgents = resolveEnabledAgents(conf.Server.Agents, availablePlugins)
+	return a.cachedAgents
+}
+
+func resolveEnabledAgents(configured string, availablePlugins []string) []enabledAgent {
 	// If no agents configured, ONLY use the local agent
-	if conf.Server.Agents == "" {
+	if configured == "" {
 		return []enabledAgent{{name: LocalAgentName, isPlugin: false}}
 	}
 
-	// Get all available plugin names
-	var availablePlugins []string
-	if a.pluginLoader != nil {
-		availablePlugins = a.pluginLoader.PluginNames("MetadataAgent")
-	}
-	log.Trace("Available MetadataAgent plugins", "plugins", availablePlugins)
-
-	configuredAgents := strings.Split(conf.Server.Agents, ",")
+	configuredAgents := strings.Split(configured, ",")
 
 	// Always add LocalAgentName if not already included
 	hasLocalAgent := slices.Contains(configuredAgents, LocalAgentName)
@@ -77,8 +99,8 @@ func (a *Agents) getEnabledAgentNames() []enabledAgent {
 		configuredAgents = append(configuredAgents, LocalAgentName)
 	}
 
-	// Filter to only include valid agents (built-in or plugins)
-	var validAgents []enabledAgent
+	// Non-nil even when every name is invalid, which is what marks the cache as populated
+	validAgents := make([]enabledAgent, 0, len(configuredAgents))
 	for _, name := range configuredAgents {
 		// Check if it's a built-in agent
 		isBuiltIn := Map[name] != nil
@@ -91,7 +113,7 @@ func (a *Agents) getEnabledAgentNames() []enabledAgent {
 		} else if isPlugin {
 			validAgents = append(validAgents, enabledAgent{name: name, isPlugin: true})
 		} else {
-			log.Debug("Unknown agent ignored", "name", name, "available", availableAgentNames(availablePlugins))
+			log.Warn("Unknown agent ignored", "name", name, "available", availableAgentNames(availablePlugins))
 		}
 	}
 	return validAgents

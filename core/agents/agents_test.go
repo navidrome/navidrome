@@ -84,6 +84,58 @@ var _ = Describe("Agents", func() {
 			})
 		})
 
+		Describe("caching", func() {
+			var loader *MockPluginLoader
+			var cached *Agents
+			BeforeEach(func() {
+				loader = NewMockPluginLoader()
+				loader.pluginNames = []string{"plugin-a"}
+				conf.Server.Agents = "fake,plugin-a"
+				cached = createAgents(ds, loader)
+			})
+
+			It("reuses the previous result when nothing changed", func() {
+				first := cached.getEnabledAgentNames()
+				second := cached.getEnabledAgentNames()
+				Expect(&first[0]).To(BeIdenticalTo(&second[0]))
+			})
+
+			It("recomputes when the Agents config changes", func() {
+				Expect(cached.getEnabledAgentNames()).To(HaveLen(3)) // fake, plugin-a, local
+				conf.Server.Agents = "fake"
+				Expect(cached.getEnabledAgentNames()).To(HaveExactElements(
+					enabledAgent{name: "fake"},
+					enabledAgent{name: LocalAgentName},
+				))
+			})
+
+			It("recomputes when a plugin is installed", func() {
+				Expect(cached.getEnabledAgentNames()).To(HaveLen(3))
+				conf.Server.Agents = "fake,plugin-a,plugin-b"
+				loader.pluginNames = []string{"plugin-a", "plugin-b"}
+				Expect(cached.getEnabledAgentNames()).To(ContainElement(
+					enabledAgent{name: "plugin-b", isPlugin: true},
+				))
+			})
+
+			It("recomputes when a plugin is removed", func() {
+				Expect(cached.getEnabledAgentNames()).To(HaveLen(3))
+				loader.pluginNames = nil
+				Expect(cached.getEnabledAgentNames()).To(HaveExactElements(
+					enabledAgent{name: "fake"},
+					enabledAgent{name: LocalAgentName},
+				))
+			})
+
+			It("is not fooled by the plugin list coming back in a different order", func() {
+				loader.pluginNames = []string{"plugin-a", "plugin-b"}
+				first := cached.getEnabledAgentNames()
+				loader.pluginNames = []string{"plugin-b", "plugin-a"}
+				second := cached.getEnabledAgentNames()
+				Expect(&first[0]).To(BeIdenticalTo(&second[0]))
+			})
+		})
+
 		Describe("GetArtistMBID", func() {
 			It("returns on first match", func() {
 				Expect(ag.GetArtistMBID(ctx, "123", "test")).To(Equal("mbid"))
