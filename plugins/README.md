@@ -40,6 +40,7 @@ The plugin system is built on **[Extism](https://extism.org/)**, a cross-languag
   - [Config](#config)
   - [Users](#users)
 - [Configuration](#configuration)
+- [Command Line Interface](#command-line-interface)
 - [Building Plugins](#building-plugins)
 - [Examples](#examples)
 - [Security](#security)
@@ -991,6 +992,29 @@ For more advanced access (listing keys, integer values), use the [Config](#confi
 
 ---
 
+## Command Line Interface
+
+Manage plugins from the command line with `navidrome plugin`:
+
+| Command                                                | Description                                                |
+|--------------------------------------------------------|------------------------------------------------------------|
+| `navidrome plugin list [-f table\|csv\|json]`          | List installed plugins                                     |
+| `navidrome plugin info <id\|file.ndp> [-f text\|json]` | Show details for an installed plugin or a `.ndp` package   |
+| `navidrome plugin validate <id\|file.ndp>`             | Validate an installed plugin or a `.ndp` package manifest  |
+| `navidrome plugin enable <id>`                         | Enable a plugin                                            |
+| `navidrome plugin disable <id>`                        | Disable a plugin                                           |
+| `navidrome plugin edit <id>`                           | Update a plugin's config and/or permissions                |
+| `navidrome plugin rescan`                              | Re-discover plugins in the plugins folder                  |
+
+**`plugin edit` flags:**
+
+- `--config <json>` / `--config-file <path>` – Set the plugin configuration (`-` reads from stdin)
+- `--users <list>` / `--all-users` – Usernames the plugin may access (comma-separated or JSON array), or all users
+- `--libraries <list>` / `--all-libraries` – Library IDs the plugin may access (comma-separated or JSON array), or all libraries
+- `--write-access` / `--no-write-access` – Allow or deny the plugin write access to libraries
+
+---
+
 ## Building Plugins
 
 ### Supported Languages
@@ -1183,7 +1207,7 @@ If `AutoReload` is disabled, Navidrome needs to be restarted to pick up plugin c
 
 ### Enabling/Disabling Plugins
 
-Plugins can be enabled/disabled via the Navidrome UI. The plugin state is persisted in the database.
+Plugins can be enabled/disabled via the Navidrome UI or the [`navidrome plugin` CLI](#command-line-interface). The plugin state is persisted in the database.
 
 ### Important Notes
 
