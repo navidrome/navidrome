@@ -59,7 +59,11 @@ func ConfigGetInt(key string) (int64, bool) {
 // Keys is the mock method for ConfigKeys.
 func (m *mockConfigService) Keys(prefix string) []string {
 	args := m.Called(prefix)
-	return args.Get(0).([]string)
+	var r0 []string
+	if v := args.Get(0); v != nil {
+		r0 = v.([]string)
+	}
+	return r0
 }
 
 // ConfigKeys delegates to the mock instance.
