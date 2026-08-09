@@ -1283,7 +1283,7 @@ Plugins run in a secure WebAssembly sandbox provided by [Extism](https://extism.
 3. **No Network Listeners** – Plugins cannot bind ports
 4. **Config Isolation** – Plugins only receive their own config section
 5. **Memory Limits** – Controlled by the WebAssembly runtime
-6. **User-Scoped Authorization** – Plugins with `subsonicapi` or `scrobbler` capabilities can only access/receive events for users assigned to them through Navidrome's configuration
+6. **User-Scoped Authorization** – Plugins with `subsonicapi`, `scrobbleRetriever`, or `scrobbler` capabilities can only access/receive events for users assigned to them through Navidrome's configuration
 7. **Users Permission** – Plugins requesting user access must be explicitly configured with allowed users; sensitive data (passwords, emails) is never exposed
 
 ---
