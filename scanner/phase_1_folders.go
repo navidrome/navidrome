@@ -165,7 +165,7 @@ func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
 				log.Trace(p.ctx, "Scanner: Checking folder state", " folder", folder.path, "_updTime", folder.updTime,
 					"_modTime", folder.modTime, "_lastScanStartedAt", folder.job.lib.LastScanStartedAt,
 					"numAudioFiles", len(folder.audioFiles), "numImageFiles", len(folder.imageFiles),
-					"numPlaylists", folder.numPlaylists, "numSubfolders", folder.numSubFolders)
+					"numPlaylists", len(folder.playlistFiles), "numSubfolders", folder.numSubFolders)
 
 				// Check if folder is outdated
 				if folder.isOutdated() {
@@ -492,7 +492,7 @@ func (p *phaseFolders) logFolder(entry *folderEntry) (*folderEntry, error) {
 		logCall = log.Trace
 	}
 	logCall(p.ctx, "Scanner: Completed processing folder",
-		"audioCount", len(entry.audioFiles), "imageCount", len(entry.imageFiles), "plsCount", entry.numPlaylists,
+		"audioCount", len(entry.audioFiles), "imageCount", len(entry.imageFiles), "plsCount", len(entry.playlistFiles),
 		"elapsed", entry.elapsed.Elapsed(), "tracksMissing", len(entry.missingTracks),
 		"tracksImported", len(entry.tracks), "library", entry.job.lib.Name, consts.Zwsp+"folder", entry.path)
 	return entry, nil
