@@ -30,10 +30,22 @@ type Agents struct {
 	ds           model.DataStore
 	pluginLoader PluginLoader
 
-	mu            sync.Mutex
-	cachedConfig  string
-	cachedPlugins []string
-	cachedAgents  []enabledAgent
+	mu    sync.Mutex
+	cache agentsCache
+}
+
+// agentsCache holds a resolved agent list next to the inputs it came from, so the
+// two can only ever be replaced together.
+type agentsCache struct {
+	config  string
+	plugins []string
+	agents  []enabledAgent
+}
+
+// matches reports whether the cache was built from these exact inputs. A nil
+// agents slice means nothing has been cached yet.
+func (c *agentsCache) matches(config string, plugins []string) bool {
+	return c.agents != nil && c.config == config && slices.Equal(c.plugins, plugins)
 }
 
 // GetAgents returns the singleton instance of Agents
@@ -71,16 +83,17 @@ func (a *Agents) getEnabledAgentNames() []enabledAgent {
 
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	if a.cachedAgents != nil && a.cachedConfig == conf.Server.Agents &&
-		slices.Equal(a.cachedPlugins, availablePlugins) {
-		return a.cachedAgents
+	if a.cache.matches(conf.Server.Agents, availablePlugins) {
+		return a.cache.agents
 	}
 
 	log.Trace("Available MetadataAgent plugins", "plugins", availablePlugins)
-	a.cachedConfig = conf.Server.Agents
-	a.cachedPlugins = availablePlugins
-	a.cachedAgents = resolveEnabledAgents(conf.Server.Agents, availablePlugins)
-	return a.cachedAgents
+	a.cache = agentsCache{
+		config:  conf.Server.Agents,
+		plugins: availablePlugins,
+		agents:  resolveEnabledAgents(conf.Server.Agents, availablePlugins),
+	}
+	return a.cache.agents
 }
 
 func resolveEnabledAgents(configured string, availablePlugins []string) []enabledAgent {
@@ -99,7 +112,7 @@ func resolveEnabledAgents(configured string, availablePlugins []string) []enable
 
 	known := sync.OnceValue(func() []string { return availableAgentNames(availablePlugins) })
 
-	// Non-nil even when every name is invalid, which is what marks the cache as populated
+	// Non-nil even when every name is invalid, so an all-bad config still caches
 	validAgents := make([]enabledAgent, 0, len(configuredAgents))
 	for _, name := range configuredAgents {
 		// Check if it's a built-in agent
