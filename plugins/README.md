@@ -1177,11 +1177,11 @@ See [examples/](examples/) for complete working plugins:
 | [minimal](examples/minimal/)                                   | Go             | MetadataAgent | –                                          | Basic structure example        |
 | [wikimedia](examples/wikimedia/)                               | Go             | MetadataAgent | HTTP                                       | Wikidata/Wikipedia integration |
 | [coverartarchive-py](examples/coverartarchive-py/)             | Python         | MetadataAgent | HTTP                                       | Cover Art Archive              |
-| [webhook-rs](examples/webhook-rs/)                             | Rust           | Scrobbler     | HTTP                                       | HTTP webhooks                  |
-| [nowplaying-py](examples/nowplaying-py/)                       | Python         | Lifecycle     | Scheduler, SubsonicAPI                     | Periodic now-playing logger    |
-| [library-inspector-rs](examples/library-inspector-rs/)         | Rust           | Lifecycle     | Library, Scheduler                         | Periodic library stats logging |
-| [crypto-ticker](examples/crypto-ticker/)                       | Go             | Lifecycle     | WebSocket, Scheduler                       | Real-time crypto prices demo   |
-| [discord-rich-presence-rs](examples/discord-rich-presence-rs/) | Rust           | Scrobbler     | HTTP, WebSocket, Cache, Scheduler, Artwork | Discord integration            |
+| [webhook-rs](examples/webhook-rs/)                             | Rust           | Scrobbler                                        | HTTP                                               | HTTP webhooks                  |
+| [nowplaying-py](examples/nowplaying-py/)                       | Python         | Lifecycle, SchedulerCallback                     | Scheduler, SubsonicAPI                             | Periodic now-playing logger    |
+| [library-inspector-rs](examples/library-inspector-rs/)         | Rust           | Lifecycle, SchedulerCallback                     | Library, Scheduler                                 | Periodic library stats logging |
+| [crypto-ticker](examples/crypto-ticker/)                       | Go             | Lifecycle, SchedulerCallback, WebSocketCallback  | WebSocket, Scheduler                               | Real-time crypto prices demo   |
+| [discord-rich-presence-rs](examples/discord-rich-presence-rs/) | Rust           | Scrobbler, SchedulerCallback, WebSocketCallback  | HTTP, WebSocket, Cache, Scheduler, Artwork, Config | Discord integration            |
 
 ---
 
