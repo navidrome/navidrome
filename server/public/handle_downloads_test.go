@@ -32,6 +32,10 @@ func (m *mockArchiver) ZipPlaylist(context.Context, string, string, int, io.Writ
 	return nil
 }
 
+func (m *mockArchiver) ZipFolder(context.Context, string, string, int, io.Writer) error {
+	return nil
+}
+
 func (m *mockArchiver) ZipShare(_ context.Context, _ *model.Share, w io.Writer) error {
 	m.called = true
 	if m.err != nil {
