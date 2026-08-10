@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -248,6 +249,91 @@ var _ = Describe("Maintenance", func() {
 				Expect(hook.LastEntry().Level).To(Equal(logrus.WarnLevel))
 				Expect(hook.LastEntry().Message).To(Equal("Error tracking affected albums for refresh"))
 			})
+		})
+	})
+
+	Describe("RemapMissingFile", func() {
+		It("relocates the missing file's identity onto the target and runs GC", func() {
+			created := time.Now().Add(-30 * 24 * time.Hour)
+			mfRepo.SetData(model.MediaFiles{
+				{ID: "m1", Path: "old/song.mp3", AlbumID: "album1", CreatedAt: created, Missing: true},
+				{ID: "t1", Path: "new/song.mp3", AlbumID: "album1", Missing: false},
+			})
+
+			Expect(service.RemapMissingFile(ctx, "m1", "t1")).To(Succeed())
+
+			got, err := mfRepo.Get("m1")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.Path).To(Equal("new/song.mp3")) // moved to target's location
+			Expect(got.Missing).To(BeFalse())
+			Expect(got.CreatedAt).To(BeTemporally("==", created)) // created_at preserved
+			exists, _ := mfRepo.Exists("t1")
+			Expect(exists).To(BeFalse()) // discarded row removed
+			Expect(ds.GCCalled).To(BeTrue())
+		})
+
+		It("reassigns album annotations when the album changes", func() {
+			albumRepo := ds.MockedAlbum.(*extendedAlbumRepo)
+			mfRepo.SetData(model.MediaFiles{
+				{ID: "m1", AlbumID: "album1", Missing: true},
+				{ID: "t1", AlbumID: "album2", Missing: false},
+			})
+
+			Expect(service.RemapMissingFile(ctx, "m1", "t1")).To(Succeed())
+
+			Expect(albumRepo.ReassignAnnotationCalls).To(HaveKeyWithValue("album1", "album2"))
+		})
+
+		It("does not reassign annotations when the album is unchanged", func() {
+			albumRepo := ds.MockedAlbum.(*extendedAlbumRepo)
+			mfRepo.SetData(model.MediaFiles{
+				{ID: "m1", AlbumID: "album1", Missing: true},
+				{ID: "t1", AlbumID: "album1", Missing: false},
+			})
+
+			Expect(service.RemapMissingFile(ctx, "m1", "t1")).To(Succeed())
+
+			Expect(albumRepo.ReassignAnnotationCalls).To(BeEmpty())
+		})
+
+		It("returns ErrNotFound when the missing file does not exist", func() {
+			mfRepo.SetData(model.MediaFiles{{ID: "t1", Missing: false}})
+
+			Expect(service.RemapMissingFile(ctx, "nope", "t1")).To(MatchError(model.ErrNotFound))
+		})
+
+		It("refuses to remap from a file that is not missing", func() {
+			mfRepo.SetData(model.MediaFiles{
+				{ID: "m1", Missing: false},
+				{ID: "t1", Missing: false},
+			})
+
+			Expect(service.RemapMissingFile(ctx, "m1", "t1")).To(MatchError(ErrNotMissing))
+		})
+
+		It("refuses to remap a file onto itself", func() {
+			mfRepo.SetData(model.MediaFiles{{ID: "m1", Missing: true}})
+
+			Expect(service.RemapMissingFile(ctx, "m1", "m1")).To(MatchError(ErrSameFile))
+		})
+
+		It("refuses to remap onto a target that is itself missing", func() {
+			mfRepo.SetData(model.MediaFiles{
+				{ID: "m1", Missing: true},
+				{ID: "t1", Missing: true},
+			})
+
+			Expect(service.RemapMissingFile(ctx, "m1", "t1")).To(MatchError(ErrTargetMissing))
+		})
+
+		It("returns an error if GC fails", func() {
+			mfRepo.SetData(model.MediaFiles{
+				{ID: "m1", AlbumID: "album1", Missing: true},
+				{ID: "t1", AlbumID: "album1", Missing: false},
+			})
+			ds.GCError = errors.New("gc failed")
+
+			Expect(service.RemapMissingFile(ctx, "m1", "t1")).To(MatchError(ContainSubstring("gc failed")))
 		})
 	})
 })
