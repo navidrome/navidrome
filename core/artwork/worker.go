@@ -167,19 +167,15 @@ func (w *Worker) drain(ctx context.Context, concurrency int, kinds ...string) (i
 	var refreshMu sync.Mutex
 	var refresh []model.ArtworkQueueItem
 	for _, item := range items {
-		// Checked first: with a free slot AND a cancelled ctx both cases of the blocking
-		// select are ready and it picks randomly, which would dispatch after cancellation.
-		select {
-		case <-ctx.Done():
-			wg.Wait()
-			return len(items), nil
-		default:
-		}
 		select {
 		case sem <- struct{}{}:
 		case <-ctx.Done():
+		}
+		// Checked outside the select: with a free slot AND a cancelled ctx both cases
+		// are ready and select picks randomly, which could dispatch after cancellation.
+		if ctx.Err() != nil {
 			wg.Wait()
-			return len(items), nil
+			return len(items), nil //nolint:nilerr // a cancelled drain is a clean stop, not an error
 		}
 		wg.Go(func() {
 			defer func() { <-sem }()
