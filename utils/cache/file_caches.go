@@ -2,8 +2,10 @@ package cache
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -158,6 +160,13 @@ func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
 
 	key := arg.Key()
 	r, w, err := fc.cache.Get(key)
+	if errors.Is(err, fs.ErrNotExist) {
+		// The entry outlived its data file. Drop it and retry, or every future Get
+		// for this key fails for the rest of the process's life.
+		log.Debug(ctx, "Cache entry lost its data file. Re-fetching", "cache", fc.name, "key", key)
+		_ = fc.invalidate(ctx, key)
+		r, w, err = fc.cache.Get(key)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -174,12 +183,11 @@ func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
 			return nil, err
 		}
 		go func() {
-			if err := copyAndClose(w, reader); err != nil {
+			if err := fc.copyAndClose(ctx, key, w, reader); err != nil {
 				log.Debug(ctx, "Error storing file in cache", "cache", fc.name, "key", key, err)
 				_ = fc.invalidate(ctx, key)
 			} else {
 				log.Trace(ctx, "File successfully stored in cache", "cache", fc.name, "key", key)
-				fc.markComplete(ctx, key)
 			}
 		}()
 	}
@@ -234,7 +242,8 @@ func getFinalCachedSize(r fscache.ReadAtCloser) int64 {
 	return -1
 }
 
-func copyAndClose(w io.WriteCloser, r io.Reader) error {
+// copyAndClose marks the entry complete before closing w, so EOF implies the entry is settled on disk.
+func (fc *fileCache) copyAndClose(ctx context.Context, key string, w io.WriteCloser, r io.Reader) error {
 	_, err := io.Copy(w, r)
 	if err != nil {
 		err = fmt.Errorf("copying data to cache: %w", err)
@@ -244,7 +253,9 @@ func copyAndClose(w io.WriteCloser, r io.Reader) error {
 			err = multierror.Append(err, fmt.Errorf("closing source stream: %w", cErr))
 		}
 	}
-
+	if err == nil {
+		fc.markComplete(ctx, key)
+	}
 	if cErr := w.Close(); cErr != nil {
 		err = multierror.Append(err, fmt.Errorf("closing cache writer: %w", cErr))
 	}
