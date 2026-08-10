@@ -1,4 +1,4 @@
-package artworke2e_test
+package e2e
 
 import (
 	"testing/fstest"
@@ -17,13 +17,11 @@ import (
 //  2. For multi-disc albums, disc-level artwork
 //  3. Album cover art
 //
-// FakeFS cannot synthesize taglib-readable embedded JPEGs, so scenario (1)
-// is covered by the existing embedded-art album tests (which currently
-// Skip under FakeFS). The tests below cover (2) and (3): the fallback
-// chain for tracks without embedded art.
-var _ = Describe("MediaFile artwork fallback", func() {
+// Embedded art lands in the content-addressed store (asserted byte-for-byte); disc-level art is a
+// serve-time read through the library FS.
+var _ = Describe("MediaFile artwork resolution", func() {
 	BeforeEach(func() {
-		setupHarness()
+		setupResolutionHarness()
 	})
 
 	When("a multi-disc album track has no embedded art", func() {
@@ -42,14 +40,14 @@ var _ = Describe("MediaFile artwork fallback", func() {
 			setLayout(fstest.MapFS{
 				"Artist/Album/CD1/01 - Track.mp3": trackFile(1, "T1", map[string]any{"disc": "1"}),
 				"Artist/Album/CD2/01 - Track.mp3": trackFile(1, "T2", map[string]any{"disc": "2"}),
-				"Artist/Album/CD1/disc1.jpg":      imageFile("disc-1"),
-				"Artist/Album/CD2/disc2.jpg":      imageFile("disc-2"),
-				"Artist/Album/cover.jpg":          imageFile("album-root"),
+				"Artist/Album/CD1/disc1.jpg":      smallPNG("disc-1"),
+				"Artist/Album/CD2/disc2.jpg":      smallPNG("disc-2"),
+				"Artist/Album/cover.jpg":          smallPNG("album-root"),
 			})
 			scan()
 
 			mf := mediafileOn("Artist/Album/CD2/01 - Track.mp3")
-			Expect(readArtwork(mf.CoverArtID())).To(Equal(imageBytes("disc-2")))
+			Expect(serveBytes(mf.CoverArtID())).To(Equal(pngBytes("disc-2")))
 		})
 	})
 
@@ -63,12 +61,12 @@ var _ = Describe("MediaFile artwork fallback", func() {
 			conf.Server.DiscArtPriority = defaultDiscPriority
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
-				"Artist/Album/cover.jpg":      imageFile("album-cover"),
+				"Artist/Album/cover.jpg":      smallPNG("album-cover"),
 			})
 			scan()
 
 			mf := mediafileOn("Artist/Album/01 - Track.mp3")
-			Expect(readArtwork(mf.CoverArtID())).To(Equal(imageBytes("album-cover")))
+			Expect(serveBytes(mf.CoverArtID())).To(Equal(pngBytes("album-cover")))
 		})
 	})
 
@@ -86,19 +84,60 @@ var _ = Describe("MediaFile artwork fallback", func() {
 			setLayout(fstest.MapFS{
 				"Artist/Album/CD1/01 - Track.mp3": trackFile(1, "T1", map[string]any{"disc": "1"}),
 				"Artist/Album/CD2/01 - Track.mp3": trackFile(1, "T2", map[string]any{"disc": "2"}),
-				"Artist/Album/cover.jpg":          imageFile("album-root"),
+				"Artist/Album/cover.jpg":          smallPNG("album-root"),
 			})
 			scan()
 
 			mf := mediafileOn("Artist/Album/CD2/01 - Track.mp3")
-			Expect(readArtwork(mf.CoverArtID())).To(Equal(imageBytes("album-root")))
+			Expect(serveBytes(mf.CoverArtID())).To(Equal(pngBytes("album-root")))
+		})
+	})
+
+	When("a track has its own embedded art", func() {
+		// Artist/
+		// └── Album/
+		//     └── 01 - Track.mp3       ← has embedded picture (wins over every fallback)
+		It("resolves the track's embedded image into the store", func() {
+			conf.Server.CoverArtPriority = defaultCoverPriority
+			setLayout(fstest.MapFS{
+				"Artist/Album/01 - Track.mp3": trackFile(1, "Track", map[string]any{"has_picture": "true"}),
+			})
+			scan()
+			replaceWithRealMP3("Artist/Album/01 - Track.mp3")
+
+			mf := mediafileOn("Artist/Album/01 - Track.mp3")
+			ia := acquire(model.KindMediaFileArtwork, mf.ID)
+			Expect(ia.Source).To(Equal("embedded"))
+			Expect(storedBytes(ia)).To(Equal(embeddedArtBytes))
+		})
+	})
+
+	When("EnableMediaFileCoverArt is turned off after the track was scanned", func() {
+		// Artist/
+		// └── Album/
+		//     ├── 01 - Track.mp3       ← has embedded picture (must NOT be served)
+		//     └── cover.jpg            ← wins (per-track art disabled at serve time)
+		It("serves the album cover instead of the track's embedded art", func() {
+			conf.Server.CoverArtPriority = defaultCoverPriority
+			setLayout(fstest.MapFS{
+				"Artist/Album/01 - Track.mp3": trackFile(1, "Track", map[string]any{"has_picture": "true"}),
+				"Artist/Album/cover.jpg":      smallPNG("album-cover"),
+			})
+			scan()
+			replaceWithRealMP3("Artist/Album/01 - Track.mp3")
+
+			// The setting is not part of the artwork fingerprint, so it must be honored at serve time.
+			conf.Server.EnableMediaFileCoverArt = false
+			mf := mediafileOn("Artist/Album/01 - Track.mp3")
+			trackArtID := model.NewArtworkID(model.KindMediaFileArtwork, mf.ID, nil)
+			Expect(serveBytes(trackArtID)).To(Equal(pngBytes("album-cover")))
 		})
 	})
 })
 
 func mediafileOn(relPath string) model.MediaFile {
 	GinkgoHelper()
-	mfs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+	mfs, err := rds.MediaFile(rctx).GetAll(model.QueryOptions{
 		Filters: squirrel.Like{"media_file.path": relPath},
 	})
 	Expect(err).ToNot(HaveOccurred())

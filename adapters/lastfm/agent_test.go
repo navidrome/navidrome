@@ -539,7 +539,10 @@ var _ = Describe("lastfmAgent", func() {
 				URL:         "https://www.last.fm/music/Cher/Believe",
 			}))
 			Expect(httpClient.RequestCount).To(Equal(1))
-			Expect(httpClient.SavedRequest.URL.Query().Get("mbid")).To(Equal("03c91c40-49a6-44a7-90e7-a700edf97a62"))
+			// MBID is deliberately not sent — album.getInfo matches on name+artist only.
+			Expect(httpClient.SavedRequest.URL.Query().Get("mbid")).To(BeEmpty())
+			Expect(httpClient.SavedRequest.URL.Query().Get("album")).To(Equal("Believe"))
+			Expect(httpClient.SavedRequest.URL.Query().Get("artist")).To(Equal("Cher"))
 		})
 
 		It("returns empty images if no images are available", func() {
@@ -558,7 +561,7 @@ var _ = Describe("lastfmAgent", func() {
 			_, err := agent.GetAlbumInfo(ctx, "123", "U2", "mbid-1234")
 			Expect(err).To(HaveOccurred())
 			Expect(httpClient.RequestCount).To(Equal(1))
-			Expect(httpClient.SavedRequest.URL.Query().Get("mbid")).To(Equal("mbid-1234"))
+			Expect(httpClient.SavedRequest.URL.Query().Get("mbid")).To(BeEmpty())
 		})
 
 		It("returns an error if Last.fm call returns an error", func() {
@@ -566,23 +569,17 @@ var _ = Describe("lastfmAgent", func() {
 			_, err := agent.GetAlbumInfo(ctx, "123", "U2", "mbid-1234")
 			Expect(err).To(HaveOccurred())
 			Expect(httpClient.RequestCount).To(Equal(1))
-			Expect(httpClient.SavedRequest.URL.Query().Get("mbid")).To(Equal("mbid-1234"))
+			Expect(httpClient.SavedRequest.URL.Query().Get("mbid")).To(BeEmpty())
 		})
 
-		It("returns an error if Last.fm call returns an error 6 and mbid is empty", func() {
+		It("returns an error when Last.fm returns an error 6 (album not found)", func() {
 			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(lastfmError6)), StatusCode: 200}
-			_, err := agent.GetAlbumInfo(ctx, "123", "U2", "")
+			_, err := agent.GetAlbumInfo(ctx, "123", "U2", "mbid-1234")
 			Expect(err).To(HaveOccurred())
+			// A definitive not-found must satisfy the sentinel, or the artwork worker retries it.
+			Expect(errors.Is(err, agents.ErrNotFound)).To(BeTrue())
 			Expect(httpClient.RequestCount).To(Equal(1))
-		})
-
-		Context("MBID non existent in Last.fm", func() {
-			It("calls again when last.fm returns an error 6", func() {
-				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(lastfmError6)), StatusCode: 200}
-				_, _ = agent.GetAlbumInfo(ctx, "123", "U2", "mbid-1234")
-				Expect(httpClient.RequestCount).To(Equal(2))
-				Expect(httpClient.SavedRequest.URL.Query().Get("mbid")).To(BeEmpty())
-			})
+			Expect(httpClient.SavedRequest.URL.Query().Get("mbid")).To(BeEmpty())
 		})
 	})
 
@@ -611,6 +608,13 @@ var _ = Describe("lastfmAgent", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(images).To(HaveLen(1))
 			Expect(images[0].URL).To(Equal("https://lastfm.freetls.fastly.net/i/u/ar0/818148bf682d429dc21b59a73ef6f68e.png"))
+		})
+
+		It("maps a Last.fm error 6 (artist not found) to the shared not-found sentinel", func() {
+			apiClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(lastfmError6)), StatusCode: 200}
+			_, err := agent.GetArtistImages(ctx, "123", "Nonexistent Artist", "")
+			// Not a fault: runs of missing artists must not trip the worker's circuit breaker.
+			Expect(errors.Is(err, agents.ErrNotFound)).To(BeTrue())
 		})
 
 		It("returns empty list if image is the ignored default image", func() {
