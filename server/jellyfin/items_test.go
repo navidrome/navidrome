@@ -219,7 +219,7 @@ var _ = Describe("Items", func() {
 			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
 			sql, _, err := albumRepo.Options.Filters.ToSql()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(sql).To(ContainSubstring("json_tree"))
+			Expect(sql).To(ContainSubstring("album_artists"))
 		})
 
 		It("lists artists when IncludeItemTypes=MusicArtist", func() {
@@ -708,7 +708,7 @@ var _ = Describe("Items", func() {
 				Expect(w.Code).To(Equal(http.StatusOK))
 				sql, args, err := albumRepo.Options.Filters.ToSql()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(sql).NotTo(ContainSubstring("json_tree")) // not treated as an artist-parent filter
+				Expect(sql).NotTo(ContainSubstring("album_artists")) // not treated as an artist-parent filter
 				Expect(sql).To(ContainSubstring("library_id"))
 				Expect(args).To(ContainElement(2))
 			})
@@ -724,7 +724,7 @@ var _ = Describe("Items", func() {
 				sql, args, err := albumRepo.Options.Filters.ToSql()
 				Expect(err).NotTo(HaveOccurred())
 				// Falls back to treating "99" as an (empty-matching) artist-parent id...
-				Expect(sql).To(ContainSubstring("json_tree"))
+				Expect(sql).To(ContainSubstring("album_artists"))
 				// ...while still scoping to the user's own accessible libraries.
 				Expect(sql).To(ContainSubstring("library_id"))
 				Expect(args).To(ContainElement(1))
