@@ -588,7 +588,7 @@ func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, q ite
 	// A full-library request (Finamp's sync, with MediaSources) is tens of thousands of fat rows.
 	total, _ := repo.CountAll(model.QueryOptions{Filters: opts.Filters})
 	open := streamCursor(func() (func(func(model.MediaFile, error) bool), error) {
-		return repo.GetCursor(opts)
+		return repo.GetCursorWithArtwork(opts)
 	}, toItem)
 	return streamed(open, int(total), opts.Offset), nil
 }
@@ -598,6 +598,7 @@ func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, q ite
 // genreIds isn't applied to search — a name lookup, like role (see below).
 func (api *Router) listArtists(ctx context.Context, opts model.QueryOptions, q itemsQuery, role model.Role) (itemsResult, error) {
 	repo := api.ds.Artist(ctx)
+	toItem := func(ar model.Artist) dto.BaseItemDto { return dto.ArtistToBaseItem(ar, q.fields) }
 
 	// Artist Search does its own library scoping: it consumes a sole Eq{"library_id": ...} filter as a
 	// search scope (artists have no library_id column). A compound or join-based filter
@@ -613,7 +614,7 @@ func (api *Router) listArtists(ctx context.Context, opts model.QueryOptions, q i
 		if err != nil {
 			return itemsResult{}, err
 		}
-		return materialized(result(slice.Map(artists, dto.ArtistToBaseItem), total, opts.Offset)), nil
+		return materialized(result(slice.Map(artists, toItem), total, opts.Offset)), nil
 	}
 
 	if q.favOnly {
@@ -629,7 +630,7 @@ func (api *Router) listArtists(ctx context.Context, opts model.QueryOptions, q i
 	total, _ := repo.CountAll(model.QueryOptions{Filters: opts.Filters})
 	open := streamCursor(func() (func(func(model.Artist, error) bool), error) {
 		return repo.GetCursor(opts)
-	}, dto.ArtistToBaseItem)
+	}, toItem)
 	return streamed(open, int(total), opts.Offset), nil
 }
 
@@ -663,7 +664,7 @@ func (api *Router) listPlaylists(ctx context.Context, opts model.QueryOptions, q
 	}
 	open := streamCursor(func() (func(func(model.Playlist, error) bool), error) {
 		return repo.GetCursor(opts)
-	}, dto.PlaylistToBaseItem)
+	}, func(p model.Playlist) dto.BaseItemDto { return dto.PlaylistToBaseItem(p, q.fields) })
 	return streamed(open, int(total), opts.Offset), nil
 }
 
@@ -698,7 +699,7 @@ func (api *Router) resolveItemByID(ctx context.Context, id string, fields dto.Fi
 	if ar, err := api.ds.Artist(ctx).Get(id); err == nil {
 		// TODO: an artist spans multiple libraries (library_artist), so there's no single
 		// LibraryID to gate here; artist access relies on list-time scoping and persistence.
-		return dto.ArtistToBaseItem(*ar), true
+		return dto.ArtistToBaseItem(*ar, fields), true
 	}
 	if mf, err := api.ds.MediaFile(ctx).Get(id); err == nil {
 		if !u.HasLibraryAccess(mf.LibraryID) {
@@ -708,7 +709,7 @@ func (api *Router) resolveItemByID(ctx context.Context, id string, fields dto.Fi
 	}
 	// api.playlists.Get enforces ownership/visibility, so a non-owned or missing id falls through.
 	if pl, err := api.playlists.Get(ctx, id); err == nil {
-		return dto.PlaylistToBaseItem(*pl), true
+		return dto.PlaylistToBaseItem(*pl, fields), true
 	}
 	return dto.BaseItemDto{}, false
 }
