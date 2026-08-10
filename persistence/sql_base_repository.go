@@ -15,6 +15,7 @@ import (
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	id2 "github.com/navidrome/navidrome/model/id"
@@ -597,9 +598,15 @@ func (r sqlRepository) delete(cond Sqlizer) error {
 
 func (r sqlRepository) logSQL(sql string, args dbx.Params, err error, rowsAffected int64, start time.Time) {
 	elapsed := time.Since(start)
+	fields := []any{r.ctx, "SQL: `" + sql + "`", "args", args, "rowsAffected", rowsAffected, "elapsedTime", elapsed}
 	if err == nil || errors.Is(err, context.Canceled) {
-		log.Trace(r.ctx, "SQL: `"+sql+"`", "args", args, "rowsAffected", rowsAffected, "elapsedTime", elapsed, err)
-	} else {
-		log.Error(r.ctx, "SQL: `"+sql+"`", "args", args, "rowsAffected", rowsAffected, "elapsedTime", elapsed, err)
+		log.Trace(append(fields, err)...)
+		return
 	}
+	// The result codes separate errors that share a message, notably SQLITE_BUSY from
+	// SQLITE_BUSY_SNAPSHOT, which no busy_timeout can retry.
+	if code, extended, ok := db.ErrorCodes(err); ok {
+		fields = append(fields, "sqliteCode", code, "sqliteExtended", extended)
+	}
+	log.Error(append(fields, err)...)
 }

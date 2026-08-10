@@ -1,4 +1,4 @@
-import { cloneElement } from 'react'
+import { cloneElement, useRef } from 'react'
 import { useSelector } from 'react-redux'
 import { Redirect, useLocation } from 'react-router-dom'
 import {
@@ -30,6 +30,7 @@ import {
 import AlbumListActions from './AlbumListActions'
 import AlbumTableView from './AlbumTableView'
 import AlbumGridView from './AlbumGridView'
+import { useRollChanged } from './useRollChanged'
 import albumLists from './albumLists'
 import {
   getStoredDefaultView,
@@ -186,9 +187,10 @@ const AlbumListTitle = ({ albumListType }) => {
   return <Title subTitle={title} args={{ smart_count: 2 }} />
 }
 
-const AlbumListPagination = ({ albumListType, ...rest }) => {
+const AlbumListPagination = ({ albumListType, seed, shownSeed, ...rest }) => {
   const { loading } = useListContext()
-  if (loading && albumListType === 'random') {
+  const rerolling = useRollChanged(shownSeed, seed, loading)
+  if (rerolling && albumListType === 'random') {
     return null
   }
   return <Pagination {...rest} />
@@ -198,6 +200,7 @@ const randomStartingSeed = Math.random().toString()
 
 const AlbumList = (props) => {
   const { width } = props
+  const shownSeed = useRef(null)
   const albumView = useSelector((state) => state.albumView)
   const [perPage, perPageOptions] = useAlbumsPerPage(width)
   const location = useLocation()
@@ -260,13 +263,20 @@ const AlbumList = (props) => {
           <AlbumListPagination
             rowsPerPageOptions={perPageOptions}
             albumListType={albumListType}
+            seed={seed}
+            shownSeed={shownSeed}
           />
         }
         title={<AlbumListTitle albumListType={albumListType} />}
       >
         <ScrollRestorer>
           {albumView.grid ? (
-            <AlbumGridView albumListType={albumListType} {...props} />
+            <AlbumGridView
+              albumListType={albumListType}
+              seed={seed}
+              shownSeed={shownSeed}
+              {...props}
+            />
           ) : (
             <AlbumTableView {...props} />
           )}

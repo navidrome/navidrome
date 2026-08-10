@@ -32,6 +32,13 @@ var _ = Describe("loadLibraryView", Ordered, func() {
 		Expect(lib.absRoot).To(Equal("fake:///music"))
 	})
 
+	It("normalizes a library path to an OS root that Abs can join for os.Open/os.Stat", func() {
+		// file:// URLs become their parsed OS path; bare paths and non-local schemes are unchanged.
+		Expect(localOSRoot("file:///music/library")).To(Equal("/music/library"))
+		Expect(localOSRoot("/music/library")).To(Equal("/music/library"))
+		Expect(localOSRoot("fake:///music")).To(Equal("fake:///music"))
+	})
+
 	It("returns an error when the library does not exist", func() {
 		_, err := loadLibraryView(ctx, ds, 999)
 		Expect(err).To(HaveOccurred())
