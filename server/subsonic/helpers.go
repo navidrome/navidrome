@@ -95,13 +95,24 @@ func getArtistAlbumCount(a *model.Artist) int32 {
 	}
 }
 
+// coverArtOrEmpty stamps the (hash-suffixed) coverArt id, or omits it (empty
+// string + the field's omitempty tag) when artwork is known absent.
+func coverArtOrEmpty(id model.ArtworkID, absent bool) string {
+	if absent {
+		return ""
+	}
+	return id.String()
+}
+
 func toArtist(r *http.Request, a model.Artist) responses.Artist {
 	artist := responses.Artist{
-		Id:             a.ID,
-		Name:           a.Name,
-		UserRating:     int32(a.Rating),
-		CoverArt:       a.CoverArtID().String(),
-		ArtistImageUrl: publicurl.ImageURL(r, a.CoverArtID(), 600),
+		Id:         a.ID,
+		Name:       a.Name,
+		UserRating: int32(a.Rating),
+		CoverArt:   coverArtOrEmpty(a.CoverArtID(), a.ImageAbsent),
+	}
+	if !a.ImageAbsent {
+		artist.ArtistImageUrl = publicurl.ImageURL(r, a.CoverArtID(), 600)
 	}
 	if conf.Server.Subsonic.EnableAverageRating {
 		artist.AverageRating = a.AverageRating
@@ -114,12 +125,14 @@ func toArtist(r *http.Request, a model.Artist) responses.Artist {
 
 func toArtistID3(r *http.Request, a model.Artist) responses.ArtistID3 {
 	artist := responses.ArtistID3{
-		Id:             a.ID,
-		Name:           a.Name,
-		AlbumCount:     getArtistAlbumCount(&a),
-		CoverArt:       a.CoverArtID().String(),
-		ArtistImageUrl: publicurl.ImageURL(r, a.CoverArtID(), 600),
-		UserRating:     int32(a.Rating),
+		Id:         a.ID,
+		Name:       a.Name,
+		AlbumCount: getArtistAlbumCount(&a),
+		CoverArt:   coverArtOrEmpty(a.CoverArtID(), a.ImageAbsent),
+		UserRating: int32(a.Rating),
+	}
+	if !a.ImageAbsent {
+		artist.ArtistImageUrl = publicurl.ImageURL(r, a.CoverArtID(), 600)
 	}
 	if conf.Server.Subsonic.EnableAverageRating {
 		artist.AverageRating = a.AverageRating
@@ -208,7 +221,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	child.Size = mf.Size
 	child.Suffix = mf.Suffix
 	child.BitRate = int32(mf.BitRate)
-	child.CoverArt = mf.CoverArtID().String()
+	child.CoverArt = coverArtOrEmpty(mf.CoverArtID(), mf.ImageAbsent)
 	child.ContentType = mf.ContentType()
 
 	if ok && player.ReportRealPath {
@@ -369,7 +382,7 @@ func childFromAlbum(ctx context.Context, al model.Album) responses.Child {
 	child.Artist = al.AlbumArtist
 	child.Year = int32(cmp.Or(al.MaxOriginalYear, al.MaxYear))
 	child.Genre = al.Genre
-	child.CoverArt = al.CoverArtID().String()
+	child.CoverArt = coverArtOrEmpty(al.CoverArtID(), al.ImageAbsent)
 	child.Created = new(albumCreatedAt(al))
 	child.Parent = al.AlbumArtistID
 	child.ArtistId = al.AlbumArtistID
@@ -460,7 +473,7 @@ func buildAlbumID3(ctx context.Context, album model.Album) responses.AlbumID3 {
 	dir.Name = album.FullName()
 	dir.Artist = album.AlbumArtist
 	dir.ArtistId = album.AlbumArtistID
-	dir.CoverArt = album.CoverArtID().String()
+	dir.CoverArt = coverArtOrEmpty(album.CoverArtID(), album.ImageAbsent)
 	dir.SongCount = int32(album.SongCount)
 	dir.Duration = int32(album.Duration)
 	dir.PlayCount = album.PlayCount

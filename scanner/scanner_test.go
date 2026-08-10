@@ -13,7 +13,6 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playlists"
@@ -86,8 +85,8 @@ var _ = Describe("Scanner", Ordered, func() {
 		}
 		Expect(ds.User(ctx).Put(&adminUser)).To(Succeed())
 
-		s = scanner.New(ctx, ds, artwork.NoopCacheWarmer(), events.NoopBroker(),
-			playlists.NewPlaylists(ds, core.NewImageUploadService()), metrics.NewNoopInstance())
+		s = scanner.New(ctx, ds, events.NoopBroker(),
+			playlists.NewPlaylists(ds, artwork.NewUploader(ds)), metrics.NewNoopInstance())
 
 		lib = model.Library{ID: 1, Name: "Fake Library", Path: "fake:///music"}
 		Expect(ds.Library(ctx).Put(&lib)).To(Succeed())
@@ -96,6 +95,22 @@ var _ = Describe("Scanner", Ordered, func() {
 	runScanner := func(ctx context.Context, fullScan bool) error {
 		_, err := s.ScanAll(ctx, fullScan)
 		return err
+	}
+
+	// Stands in for the artwork worker: drains the queue and records every item as resolved,
+	// so a later scan can only queue genuine reprocessing.
+	resolveQueuedArtwork := func() []model.ArtworkQueueItem {
+		GinkgoHelper()
+		queued, err := ds.ArtworkQueue(ctx).DequeueBatch(1000)
+		Expect(err).ToNot(HaveOccurred())
+		for _, it := range queued {
+			Expect(ds.Artwork(ctx).PutItemArtwork(&model.ItemArtwork{
+				ItemKind: it.ItemKind, ItemID: it.ItemID, ImageType: it.ImageType,
+				Hash: "resolved", Source: "embedded", UpdatedAt: time.Now(),
+			})).To(Succeed())
+			Expect(ds.ArtworkQueue(ctx).DeleteIfUnchanged(it.ItemKind, it.ItemID, it.ImageType, it.RetryAt)).To(Succeed())
+		}
+		return queued
 	}
 
 	Context("Simple library, 'artis/album/track - title.mp3'", func() {
@@ -152,6 +167,40 @@ var _ = Describe("Scanner", Ordered, func() {
 					HaveField("SongCount", Equal(4)),
 				))
 			})
+			It("should enqueue artwork resolution for the scanned albums and artists", func() {
+				Expect(runScanner(ctx, true)).To(Succeed())
+
+				albums, _ := ds.Album(ctx).GetAll()
+				artists, _ := ds.Artist(ctx).GetAll(model.QueryOptions{Filters: squirrel.NotEq{"name": consts.UnknownArtist}})
+				queued, err := ds.ArtworkQueue(ctx).DequeueBatch(1000)
+				Expect(err).ToNot(HaveOccurred())
+
+				for _, al := range albums {
+					Expect(queued).To(ContainElement(SatisfyAll(
+						HaveField("ItemKind", "al"),
+						HaveField("ItemID", al.ID),
+						HaveField("Priority", model.ArtworkPriorityScan),
+					)))
+				}
+				for _, ar := range artists {
+					Expect(queued).To(ContainElement(SatisfyAll(
+						HaveField("ItemKind", "ar"),
+						HaveField("ItemID", ar.ID),
+						HaveField("Priority", model.ArtworkPriorityScan),
+					)))
+				}
+			})
+			It("should not re-enqueue already resolved artwork on a repeat full scan", func() {
+				Expect(runScanner(ctx, true)).To(Succeed())
+
+				Expect(resolveQueuedArtwork()).ToNot(BeEmpty())
+
+				Expect(runScanner(ctx, true)).To(Succeed())
+
+				requeued, err := ds.ArtworkQueue(ctx).DequeueBatch(1000)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(requeued).To(BeEmpty())
+			})
 		})
 		When("a file was changed", func() {
 			It("should update the media_file", func() {
@@ -167,6 +216,25 @@ var _ = Describe("Scanner", Ordered, func() {
 				mf, err = ds.MediaFile(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"title": "Help!"}})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mf[0].Tags).To(HaveKeyWithValue(model.TagName("barcode"), []string{"123"}))
+			})
+
+			It("should re-enqueue the album artwork even though it already resolved", func() {
+				tests.SkipOnWindows("path separator bug (#TBD-path-sep-scanner)")
+				Expect(runScanner(ctx, true)).To(Succeed())
+
+				resolveQueuedArtwork()
+
+				fsys.UpdateTags("The Beatles/Help!/01 - Help!.mp3", _t{"producer": "George Martin"})
+				Expect(runScanner(ctx, false)).To(Succeed())
+
+				albums, err := ds.Album(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album.name": "Help!"}})
+				Expect(err).ToNot(HaveOccurred())
+				requeued, err := ds.ArtworkQueue(ctx).DequeueBatch(1000)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(requeued).To(ContainElement(SatisfyAll(
+					HaveField("ItemKind", "al"),
+					HaveField("ItemID", albums[0].ID),
+				)))
 			})
 
 			It("should update the album", func() {
@@ -186,6 +254,26 @@ var _ = Describe("Scanner", Ordered, func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(albums[0].Participants.First(model.RoleProducer).Name).To(Equal("George Martin"))
 				Expect(albums[0].SongCount).To(Equal(3))
+			})
+
+			It("invalidates the media_file artwork state so new embedded art is picked up lazily", func() {
+				Expect(runScanner(ctx, true)).To(Succeed())
+
+				mf, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"title": "Help!"}})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mf).ToNot(BeEmpty())
+				trackID := mf[0].ID
+
+				Expect(ds.Artwork(ctx).PutItemArtwork(&model.ItemArtwork{
+					ItemKind: "mf", ItemID: trackID, ImageType: model.ImageTypePrimary,
+					Source: "embedded", Hash: "stalehash",
+				})).To(Succeed())
+
+				fsys.UpdateTags("The Beatles/Help!/01 - Help!.mp3", _t{"comment": "reimport"})
+				Expect(runScanner(ctx, true)).To(Succeed())
+
+				_, err = ds.Artwork(ctx).GetItemArtwork(model.KindMediaFileArtwork, trackID, model.ImageTypePrimary)
+				Expect(err).To(MatchError(model.ErrNotFound))
 			})
 		})
 	})

@@ -138,7 +138,7 @@ func (api *Router) similarArtists(ctx context.Context, id string, limit int) dto
 		return result(nil, 0, 0)
 	}
 	present := slice.Filter(artist.SimilarArtists, func(a model.Artist) bool { return a.ID != "" })
-	items := slice.Map(present, dto.ArtistToBaseItem)
+	items := slice.Map(present, func(a model.Artist) dto.BaseItemDto { return dto.ArtistToBaseItem(a, nil) })
 	return result(items, len(items), 0)
 }
 
