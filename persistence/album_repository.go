@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -109,7 +110,7 @@ func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumReposito
 	r.tableName = "album"
 	r.registerModel(&model.Album{}, albumFilters())
 	r.setSortMappings(map[string]string{
-		"name":         "order_album_name, order_album_artist_name",
+		"name":         "order_album_name, order_album_artist_name, album.id",
 		"artist":       "compilation, order_album_artist_name, order_album_name",
 		"album_artist": "compilation, order_album_artist_name, order_album_name",
 		// TODO Rename this to just year (or date)
@@ -239,7 +240,14 @@ func (r *albumRepository) Get(id string) (*model.Album, error) {
 	return &res[0], nil
 }
 
+// Above this page size the id round-trip stops paying for itself and the IN list gets unwieldy.
+const maxRandomPageIDs = 1000
+
 func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, error) {
+	if len(options) > 0 && options[0].Sort == "random" &&
+		options[0].Max > 0 && options[0].Max <= maxRandomPageIDs {
+		return r.getRandomPage(options[0])
+	}
 	sq := r.selectAlbum(options...)
 	var res dbAlbums
 	err := r.queryAll(sq, &res)
@@ -248,6 +256,28 @@ func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, e
 	}
 	albums := res.toModels()
 	r.hydrateArtwork(albums)
+	return albums, nil
+}
+
+// No index can serve a random sort, so the sort pass visits every matching row. Resolving ids
+// first keeps that pass on a covering index instead of dragging full rows and joins through it.
+func (r *albumRepository) getRandomPage(options model.QueryOptions) (model.Albums, error) {
+	ids, err := r.GetAllIDs(options)
+	if err != nil {
+		return nil, err
+	}
+	if len(ids) == 0 {
+		return model.Albums{}, nil
+	}
+	albums, err := r.GetAll(model.QueryOptions{Filters: Eq{"album.id": ids}})
+	if err != nil {
+		return nil, err
+	}
+	pos := make(map[string]int, len(ids))
+	for i, albumID := range ids {
+		pos[albumID] = i
+	}
+	slices.SortFunc(albums, func(a, b model.Album) int { return cmp.Compare(pos[a.ID], pos[b.ID]) })
 	return albums, nil
 }
 
