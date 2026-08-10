@@ -212,12 +212,7 @@ func (r *albumRepository) Put(al *model.Album) error {
 		return err
 	}
 	al.ID = id
-	if len(al.Participants) > 0 {
-		if err = r.updateParticipants(al.ID, al.Participants); err != nil {
-			return err
-		}
-	}
-	return nil
+	return r.updateParticipants(al.ID, al.Participants)
 }
 
 // TODO Move external metadata to a separated table

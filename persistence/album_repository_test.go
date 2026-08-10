@@ -683,6 +683,32 @@ var _ = Describe("AlbumRepository", func() {
 			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": album.ID}))
 		})
 
+		It("clears album_artists rows when saved with empty participants", func() {
+			artist := &model.Artist{ID: "clear-artist-1", Name: "Clear Artist", OrderArtistName: "clear artist"}
+			Expect(createArtistWithLibrary(artistRepo, artist, 1)).To(Succeed())
+
+			album := &model.Album{
+				LibraryID:     1,
+				ID:            "clear-album-1",
+				Name:          "Clear Album",
+				AlbumArtistID: artist.ID,
+				AlbumArtist:   artist.Name,
+				Participants: model.Participants{
+					model.RoleAlbumArtist: {{Artist: model.Artist{ID: artist.ID, Name: artist.Name}}},
+				},
+			}
+			DeferCleanup(func() {
+				_, _ = artistRepo.executeSQL(squirrel.Delete("artist").Where(squirrel.Eq{"id": artist.ID}))
+				_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": album.ID}))
+			})
+			Expect(albumRepo.Put(album)).To(Succeed())
+			verifyAlbumArtists(album.ID, []albumArtistRecord{{ArtistID: artist.ID, Role: "albumartist", SubRole: ""}})
+
+			album.Participants = model.Participants{}
+			Expect(albumRepo.Put(album)).To(Succeed())
+			verifyAlbumArtists(album.ID, []albumArtistRecord{})
+		})
+
 		It("filters out invalid artist IDs leaving only valid participants in database", func() {
 			// Create two real artists in the database
 			artist1 := &model.Artist{
