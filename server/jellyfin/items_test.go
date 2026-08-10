@@ -896,4 +896,19 @@ var _ = Describe("Items", func() {
 			Expect(args).To(ContainElements(1, 2))
 		})
 	})
+
+	Describe("applySort random for all merge types", func() {
+		DescribeTable("maps Random -> random",
+			func(itemType string) {
+				var opts model.QueryOptions
+				applySort(&opts, itemType, "Random", "")
+				Expect(opts.Sort).To(Equal("random"))
+			},
+			Entry("Audio", "Audio"),
+			Entry("MusicAlbum", "MusicAlbum"),
+			Entry("MusicArtist", "MusicArtist"),
+			Entry("MusicGenre", "MusicGenre"),
+			Entry("Playlist", "Playlist"),
+		)
+	})
 })

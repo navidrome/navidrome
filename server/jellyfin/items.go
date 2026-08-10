@@ -818,9 +818,8 @@ func applySort(opts *model.QueryOptions, itemType, sortBy, order string) {
 	}
 }
 
-// sortColumnsByType maps lowercased-SortBy -> repo-sort-key per item type. Each repository maps
-// logical fields to different real columns (e.g. media_file has "title" not "name"; artist has no
-// "random").
+// sortColumnsByType maps lowercased-SortBy -> repo-sort-key per item type (repos map logical fields
+// to different real columns, e.g. media_file has "title" not "name").
 var sortColumnsByType = map[string]map[string]string{
 	"Audio": {
 		"sortname": "title", "name": "title",
@@ -848,6 +847,7 @@ var sortColumnsByType = map[string]map[string]string{
 		"playcount":       "play_count",
 		"dateplayed":      "play_date",
 		"communityrating": "rating",
+		"random":          "random",
 	},
 	"MusicAlbum": {
 		"sortname": "name", "name": "name", "album": "name",
@@ -862,10 +862,12 @@ var sortColumnsByType = map[string]map[string]string{
 	},
 	"MusicGenre": {
 		"sortname": "name", "name": "name",
+		"random": "random",
 	},
 	"Playlist": {
 		"sortname": "name", "name": "name",
 		"datecreated": "created_at",
+		"random":      "random",
 	},
 }
 
