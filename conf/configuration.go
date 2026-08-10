@@ -90,6 +90,7 @@ type configOptions struct {
 	EnableUserEditing               bool
 	EnableArtworkUpload             bool
 	MaxImageUploadSize              string
+	MaxImageSize                    string
 	EnableSharing                   bool
 	ShareURL                        string
 	DefaultShareExpiration          time.Duration
@@ -421,7 +422,8 @@ func Load(noConfigDump bool) {
 		validateBackupSchedule,
 		validatePlaylistsPath,
 		validatePurgeMissingOption,
-		validateMaxImageUploadSize,
+		validateByteSize("MaxImageUploadSize", Server.MaxImageUploadSize),
+		validateByteSize("MaxImageSize", Server.MaxImageSize),
 		validateURL("ExtAuth.LogoutURL", Server.ExtAuth.LogoutURL),
 	)
 	if err != nil {
@@ -479,6 +481,14 @@ func Load(noConfigDump bool) {
 		newValue := max(200, min(1200, Server.UICoverArtSize))
 		log.Warn("UICoverArtSize must be between 200 and 1200, clamping", "value", Server.UICoverArtSize, "newValue", newValue)
 		Server.UICoverArtSize = newValue
+	}
+
+	// Floor MaxImageSize at MaxImageUploadSize so accepted uploads can always be read back.
+	imgSize, _ := humanize.ParseBytes(Server.MaxImageSize)
+	uploadSize, _ := humanize.ParseBytes(Server.MaxImageUploadSize)
+	if imgSize < uploadSize {
+		log.Warn("MaxImageSize must be at least MaxImageUploadSize, raising", "value", Server.MaxImageSize, "newValue", Server.MaxImageUploadSize)
+		Server.MaxImageSize = Server.MaxImageUploadSize
 	}
 
 	// Call init hooks
@@ -806,11 +816,13 @@ func validatePurgeMissingOption() error {
 	return nil
 }
 
-func validateMaxImageUploadSize() error {
-	if _, err := humanize.ParseBytes(Server.MaxImageUploadSize); err != nil {
-		return fmt.Errorf("invalid MaxImageUploadSize %q: use values like '10MB', '1GB', or raw bytes like '10485760': %w", Server.MaxImageUploadSize, err)
+func validateByteSize(name, value string) func() error {
+	return func() error {
+		if _, err := humanize.ParseBytes(value); err != nil {
+			return fmt.Errorf("invalid %s %q: use values like '10MB', '1GB', or raw bytes like '10485760': %w", name, value, err)
+		}
+		return nil
 	}
-	return nil
 }
 
 func validateEnforceNonRootUser() error {
@@ -980,6 +992,7 @@ func setViperDefaults() {
 	viper.SetDefault("uiplaybackreportinterval", consts.DefaultUIPlaybackReportInterval)
 	viper.SetDefault("enableartworkupload", true)
 	viper.SetDefault("maximageuploadsize", consts.DefaultMaxImageUploadSize)
+	viper.SetDefault("maximagesize", consts.DefaultMaxImageSize)
 	viper.SetDefault("enablesharing", true)
 	viper.SetDefault("shareurl", "")
 	viper.SetDefault("defaultshareexpiration", 8760*time.Hour)

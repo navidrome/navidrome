@@ -625,7 +625,7 @@ var _ = Describe("decodeTile", func() {
 	})
 
 	It("rejects a tile larger than the size cap", func() {
-		data := bytes.Repeat([]byte{0}, maxImageBytes+1)
+		data := bytes.Repeat([]byte{0}, int(maxImageBytes())+1)
 		_, err := decodeTile(io.NopCloser(bytes.NewReader(data)))
 		Expect(err).To(HaveOccurred())
 	})

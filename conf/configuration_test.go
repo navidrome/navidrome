@@ -336,19 +336,10 @@ var _ = Describe("Configuration", func() {
 
 	})
 
-	Describe("ValidateMaxImageUploadSize", func() {
-		BeforeEach(func() {
-			viper.Reset()
-			conf.SetViperDefaults()
-			viper.SetDefault("datafolder", GinkgoT().TempDir())
-			viper.SetDefault("loglevel", "error")
-			conf.ResetConf()
-		})
-
+	Describe("ValidateByteSize", func() {
 		DescribeTable("accepts valid size values",
 			func(input string) {
-				conf.Server.MaxImageUploadSize = input
-				Expect(conf.ValidateMaxImageUploadSize()).To(Succeed())
+				Expect(conf.ValidateByteSize("MaxImageSize", input)()).To(Succeed())
 			},
 			Entry("megabytes", "10MB"),
 			Entry("gigabytes", "1GB"),
@@ -359,12 +350,34 @@ var _ = Describe("Configuration", func() {
 
 		DescribeTable("rejects invalid size values",
 			func(input string) {
-				conf.Server.MaxImageUploadSize = input
-				Expect(conf.ValidateMaxImageUploadSize()).To(MatchError(ContainSubstring("invalid MaxImageUploadSize")))
+				Expect(conf.ValidateByteSize("MaxImageSize", input)()).To(MatchError(ContainSubstring("invalid MaxImageSize")))
 			},
 			Entry("garbage string", "not-a-size"),
 			Entry("negative-looking", "-10MB"),
 		)
+	})
+
+	Describe("MaxImageSize floor", func() {
+		BeforeEach(func() {
+			viper.Reset()
+			conf.SetViperDefaults()
+			viper.SetDefault("datafolder", GinkgoT().TempDir())
+			viper.SetDefault("loglevel", "error")
+			conf.ResetConf()
+		})
+
+		It("is raised to MaxImageUploadSize when configured lower", func() {
+			viper.SetDefault("maximagesize", "5MB")
+			viper.SetDefault("maximageuploadsize", "50MB")
+			conf.Load(true)
+			Expect(conf.Server.MaxImageSize).To(Equal("50MB"))
+		})
+
+		It("keeps a larger MaxImageSize unchanged", func() {
+			viper.SetDefault("maximagesize", "30MB")
+			conf.Load(true)
+			Expect(conf.Server.MaxImageSize).To(Equal("30MB"))
+		})
 	})
 
 	Describe("EnforceNonRootUser", func() {
