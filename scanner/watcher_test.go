@@ -26,7 +26,9 @@ var _ = Describe("Watcher", func() {
 
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
-		conf.Server.Scanner.WatcherWait = 50 * time.Millisecond // Short wait for tests
+		// Must dwarf the 20ms Consistently windows below: the debouncing spec fails if a
+		// loaded runner delays a timer reset past this wait (seen at 50ms on Windows CI).
+		conf.Server.Scanner.WatcherWait = 200 * time.Millisecond
 
 		ctx, cancel = context.WithCancel(GinkgoT().Context())
 		DeferCleanup(cancel)
@@ -91,7 +93,7 @@ var _ = Describe("Watcher", func() {
 					return nil
 				}
 				return calls[0].Targets
-			}, 500*time.Millisecond, 10*time.Millisecond).Should(HaveLen(2))
+			}, 2*time.Second, 10*time.Millisecond).Should(HaveLen(2))
 
 			// Verify targets
 			calls := mockScanner.GetScanFoldersCalls()
@@ -111,7 +113,7 @@ var _ = Describe("Watcher", func() {
 			// Wait for watcher to process and trigger scan
 			Eventually(func() int {
 				return mockScanner.GetScanFoldersCallCount()
-			}, 500*time.Millisecond, 10*time.Millisecond).Should(Equal(1))
+			}, 2*time.Second, 10*time.Millisecond).Should(Equal(1))
 
 			// Verify the target
 			calls := mockScanner.GetScanFoldersCalls()
@@ -129,7 +131,7 @@ var _ = Describe("Watcher", func() {
 			// Wait for watcher to process and trigger scan
 			Eventually(func() int {
 				return mockScanner.GetScanFoldersCallCount()
-			}, 500*time.Millisecond, 10*time.Millisecond).Should(Equal(1))
+			}, 2*time.Second, 10*time.Millisecond).Should(Equal(1))
 
 			// Verify only one target despite multiple file/folder changes
 			calls := mockScanner.GetScanFoldersCalls()
@@ -170,7 +172,7 @@ var _ = Describe("Watcher", func() {
 			// Now wait for the debounce timer to expire and trigger scan
 			Eventually(func() int {
 				return mockScanner.GetScanFoldersCallCount()
-			}, 500*time.Millisecond, 10*time.Millisecond).Should(Equal(1))
+			}, 2*time.Second, 10*time.Millisecond).Should(Equal(1))
 		})
 
 		It("triggers scan after quiet period", func() {
@@ -183,7 +185,7 @@ var _ = Describe("Watcher", func() {
 			// Wait for quiet period
 			Eventually(func() int {
 				return mockScanner.GetScanFoldersCallCount()
-			}, 500*time.Millisecond, 10*time.Millisecond).Should(Equal(1))
+			}, 2*time.Second, 10*time.Millisecond).Should(Equal(1))
 		})
 	})
 
@@ -205,7 +207,7 @@ var _ = Describe("Watcher", func() {
 			// Wait for scan
 			Eventually(func() int {
 				return mockScanner.GetScanFoldersCallCount()
-			}, 500*time.Millisecond, 10*time.Millisecond).Should(Equal(1))
+			}, 2*time.Second, 10*time.Millisecond).Should(Equal(1))
 
 			// Should scan the library root
 			calls := mockScanner.GetScanFoldersCalls()
@@ -222,7 +224,7 @@ var _ = Describe("Watcher", func() {
 			// Wait for scan
 			Eventually(func() int {
 				return mockScanner.GetScanFoldersCallCount()
-			}, 500*time.Millisecond, 10*time.Millisecond).Should(Equal(1))
+			}, 2*time.Second, 10*time.Millisecond).Should(Equal(1))
 
 			// Should have only one target
 			calls := mockScanner.GetScanFoldersCalls()
@@ -266,7 +268,7 @@ var _ = Describe("Watcher", func() {
 					return nil
 				}
 				return calls[0].Targets
-			}, 500*time.Millisecond, 10*time.Millisecond).Should(HaveLen(2))
+			}, 2*time.Second, 10*time.Millisecond).Should(HaveLen(2))
 
 			// Verify library IDs are different
 			calls := mockScanner.GetScanFoldersCalls()
