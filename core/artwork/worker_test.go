@@ -151,7 +151,8 @@ var _ = Describe("Worker", func() {
 			func(ctx context.Context, arg cache.Item) (io.Reader, error) {
 				return arg.(artworkReader).Reader(ctx)
 			})}
-		Eventually(func() bool { return imgCache.Available(ctx) }).Should(BeTrue())
+		// Init walks the cache dir on a goroutine; loaded CI runners can take >1s.
+		Eventually(func() bool { return imgCache.Available(ctx) }, 10*time.Second).Should(BeTrue())
 		w = NewWorker(ds, store, ag, ffm, broker, imgCache)
 	})
 
