@@ -818,8 +818,12 @@ func validatePurgeMissingOption() error {
 
 func validateByteSize(name, value string) func() error {
 	return func() error {
-		if _, err := humanize.ParseBytes(value); err != nil {
+		size, err := humanize.ParseBytes(value)
+		if err != nil {
 			return fmt.Errorf("invalid %s %q: use values like '10MB', '1GB', or raw bytes like '10485760': %w", name, value, err)
+		}
+		if size == 0 {
+			return fmt.Errorf("invalid %s %q: must be greater than zero", name, value)
 		}
 		return nil
 	}

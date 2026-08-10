@@ -354,6 +354,8 @@ var _ = Describe("Configuration", func() {
 			},
 			Entry("garbage string", "not-a-size"),
 			Entry("negative-looking", "-10MB"),
+			Entry("zero", "0"),
+			Entry("zero with unit", "0MB"),
 		)
 	})
 
