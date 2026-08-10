@@ -16,10 +16,11 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/server/imghttp"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	_ "golang.org/x/image/webp"
 )
@@ -32,7 +33,7 @@ func (api *Router) getItemImage(w http.ResponseWriter, r *http.Request) {
 	size, _ := strconv.Atoi(r.URL.Query().Get("maxwidth"))
 
 	artID := api.resolveArtworkID(ctx, itemId)
-	reader, _, err := api.artwork.GetOrPlaceholder(ctx, artID, size, false)
+	img, err := api.artwork.GetOrPlaceholder(ctx, artID, size, false)
 	switch {
 	case errors.Is(err, context.Canceled):
 		return
@@ -41,9 +42,27 @@ func (api *Router) getItemImage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
-	defer reader.Close()
+	defer img.Close()
+	if imghttp.WriteImageHeaders(w, r, img, hashFromTag(r)) {
+		return
+	}
 	// Leave Content-Type unset so net/http sniffs it (covers may be PNG/WebP/JPEG).
-	_, _ = io.Copy(w, reader)
+	_, _ = io.Copy(w, img)
+}
+
+// hashFromTag returns the ?tag query param when it is exactly a 16-char lowercase-hex content
+// hash (what Finamp/Jellyfin clients append), so a matching request can be served immutable.
+func hashFromTag(r *http.Request) string {
+	tag := r.URL.Query().Get("tag")
+	if len(tag) != 16 {
+		return ""
+	}
+	for _, c := range tag {
+		if !(c >= '0' && c <= '9' || c >= 'a' && c <= 'f') {
+			return ""
+		}
+	}
+	return tag
 }
 
 // resolveArtworkID maps a Jellyfin item id to a Navidrome ArtworkID, probing
@@ -79,7 +98,7 @@ func (api *Router) postItemImage(w http.ResponseWriter, r *http.Request) {
 	}
 	// The limit caps the decoded image (native endpoint semantics); Jellyfin clients base64-encode
 	// the wire body (4/3 bigger), so the read cap allows for inflation.
-	limit := core.MaxImageUploadSize()
+	limit := artwork.MaxImageUploadSize()
 	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, limit*4/3+4))
 	if err != nil {
 		log.Warn(ctx, "Jellyfin API: cover upload rejected: body exceeds MaxImageUploadSize",

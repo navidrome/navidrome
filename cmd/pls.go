@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -260,7 +260,7 @@ func runImport(ctx context.Context, files []string) {
 		ctx = request.WithUser(ctx, *user)
 	}
 
-	pls := playlists.NewPlaylists(ds, core.NewImageUploadService())
+	pls := playlists.NewPlaylists(ds, artwork.NewUploader(ds))
 
 	for _, file := range files {
 		absPath, err := filepath.Abs(file)

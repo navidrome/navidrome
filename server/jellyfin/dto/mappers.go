@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
 )
@@ -192,31 +193,68 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 	} else if mf.Genre != "" {
 		item.Genres = []string{mf.Genre}
 	}
-	// Finamp resolves song art via AlbumId + a non-empty AlbumPrimaryImageTag.
-	if mf.AlbumID != "" {
-		item.AlbumPrimaryImageTag = mf.AlbumID
-		item.ImageBlurHashes = map[string]map[string]string{"Primary": {mf.AlbumID: blurHash(mf.AlbumID)}}
+	// Clients prefer ImageTags.Primary over AlbumId, so a track's own cover must win here.
+	if mf.ImageHash != "" && mf.ImageHash != mf.AlbumImage.ImageHash {
+		tag, blurs, ratio := primaryImage(mf.ItemImage, mf.ID, fields)
+		item.ImageTags = map[string]string{"Primary": tag}
+		item.ImageBlurHashes = blurs
+		item.PrimaryImageAspectRatio = ratio
+	} else if embeddedArtPending(mf) {
+		// Nothing enqueues media files: advertising the id is what makes a client ask, and that
+		// request is what extracts the embedded art and queues the track.
+		item.ImageTags = map[string]string{"Primary": mf.ID}
+	} else if mf.AlbumID != "" {
+		if tag, blurs, ratio := primaryImage(mf.AlbumImage, mf.AlbumID, fields); tag != "" {
+			item.AlbumPrimaryImageTag = tag
+			item.ImageBlurHashes = blurs
+			item.PrimaryImageAspectRatio = ratio
+		}
 	}
 	return item
 }
 
+func embeddedArtPending(mf model.MediaFile) bool {
+	return mf.HasCoverArt && conf.Server.EnableMediaFileCoverArt &&
+		mf.ImageHash == "" && !mf.ItemImage.ImageAbsent
+}
+
+// primaryImage never fakes a blurhash: clients key their cover cache on the value, which would
+// pin a stale cover forever.
+func primaryImage(img model.ItemImage, fallback string, fields Fields) (tag string, blurs map[string]map[string]string, ratio *float64) {
+	if img.ImageAbsent {
+		return "", nil, nil
+	}
+	tag = cmp.Or(img.ImageHash, fallback)
+	if img.BlurHash != "" {
+		blurs = map[string]map[string]string{"Primary": {tag: img.BlurHash}}
+	}
+	if fields.Has("PrimaryImageAspectRatio") {
+		ratio = img.AspectRatio()
+	}
+	return tag, blurs, ratio
+}
+
 func AlbumToBaseItem(al model.Album, fields Fields) BaseItemDto {
+	tag, blurs, ratio := primaryImage(al.ItemImage, al.ID, fields)
 	item := BaseItemDto{
-		Name:              al.Name,
-		Id:                EncodeID(al.ID),
-		Type:              "MusicAlbum",
-		IsFolder:          true,
-		ParentId:          EncodeID(al.AlbumArtistID),
-		AlbumArtist:       al.AlbumArtist,
-		Album:             al.Name,
-		ChildCount:        new(al.SongCount),
-		SongCount:         new(al.SongCount),
-		RunTimeTicks:      TicksFromSeconds(al.Duration),
-		DateCreated:       jellyfinDate(&al.CreatedAt),
-		ImageTags:         map[string]string{"Primary": al.ID},
-		ImageBlurHashes:   map[string]map[string]string{"Primary": {al.ID: blurHash(al.ID)}},
-		BackdropImageTags: []string{},
-		UserData:          UserData(al.Annotations, al.ID),
+		Name:                    al.Name,
+		Id:                      EncodeID(al.ID),
+		Type:                    "MusicAlbum",
+		IsFolder:                true,
+		ParentId:                EncodeID(al.AlbumArtistID),
+		AlbumArtist:             al.AlbumArtist,
+		Album:                   al.Name,
+		ChildCount:              new(al.SongCount),
+		SongCount:               new(al.SongCount),
+		RunTimeTicks:            TicksFromSeconds(al.Duration),
+		DateCreated:             jellyfinDate(&al.CreatedAt),
+		ImageBlurHashes:         blurs,
+		PrimaryImageAspectRatio: ratio,
+		BackdropImageTags:       []string{},
+		UserData:                UserData(al.Annotations, al.ID),
+	}
+	if tag != "" {
+		item.ImageTags = map[string]string{"Primary": tag}
 	}
 	if al.AlbumArtistID != "" {
 		item.AlbumArtists = []NameGuidPair{{Name: al.AlbumArtist, Id: EncodeID(al.AlbumArtistID)}}
@@ -246,20 +284,25 @@ func AlbumToBaseItem(al model.Album, fields Fields) BaseItemDto {
 	return item
 }
 
-func ArtistToBaseItem(ar model.Artist) BaseItemDto {
-	return BaseItemDto{
-		Name:              ar.Name,
-		Id:                EncodeID(ar.ID),
-		Type:              "MusicArtist",
-		IsFolder:          true,
-		AlbumCount:        new(ar.AlbumCount),
-		SongCount:         new(ar.SongCount),
-		DateCreated:       jellyfinDate(ar.CreatedAt),
-		ImageTags:         map[string]string{"Primary": ar.ID},
-		ImageBlurHashes:   map[string]map[string]string{"Primary": {ar.ID: blurHash(ar.ID)}},
-		BackdropImageTags: []string{},
-		UserData:          UserData(ar.Annotations, ar.ID),
+func ArtistToBaseItem(ar model.Artist, fields Fields) BaseItemDto {
+	tag, blurs, ratio := primaryImage(ar.ItemImage, ar.ID, fields)
+	item := BaseItemDto{
+		Name:                    ar.Name,
+		Id:                      EncodeID(ar.ID),
+		Type:                    "MusicArtist",
+		IsFolder:                true,
+		AlbumCount:              new(ar.AlbumCount),
+		SongCount:               new(ar.SongCount),
+		DateCreated:             jellyfinDate(ar.CreatedAt),
+		ImageBlurHashes:         blurs,
+		PrimaryImageAspectRatio: ratio,
+		BackdropImageTags:       []string{},
+		UserData:                UserData(ar.Annotations, ar.ID),
 	}
+	if tag != "" {
+		item.ImageTags = map[string]string{"Primary": tag}
+	}
+	return item
 }
 
 func GenreToBaseItem(g model.Genre) BaseItemDto {
@@ -282,26 +325,28 @@ func StudioToBaseItem(t model.Tag) BaseItemDto {
 }
 
 // PlaylistToBaseItem maps a playlist to a Playlist BaseItemDto.
-func PlaylistToBaseItem(p model.Playlist) BaseItemDto {
-	// Finamp caches covers keyed by blurHash, so the tag (and blurhash) must change with the cover.
-	// UpdatedAt versions it (Put bumps it on upload); over-invalidation only costs a refetch.
-	tag := fmt.Sprintf("%s-%x", p.ID, p.UpdatedAt.UnixMilli())
-	return BaseItemDto{
+func PlaylistToBaseItem(p model.Playlist, fields Fields) BaseItemDto {
+	tag, blurs, ratio := primaryImage(p.ItemImage, p.ID, fields)
+	item := BaseItemDto{
 		Name: p.Name,
 		Id:   EncodeID(p.ID),
 		Type: "Playlist",
 		// Synthetic path: Jellify only surfaces playlists whose Path contains "data" (real Jellyfin
 		// stores them under its data folder), so without this its Playlists tab hides them all.
-		Path:              "/data/playlists/" + p.ID,
-		IsFolder:          true,
-		MediaType:         "Audio",
-		ChildCount:        new(p.SongCount),
-		RunTimeTicks:      TicksFromSeconds(p.Duration),
-		ImageTags:         map[string]string{"Primary": tag},
-		ImageBlurHashes:   map[string]map[string]string{"Primary": {tag: blurHash(tag)}},
-		BackdropImageTags: []string{},
-		UserData:          UserData(p.Annotations, p.ID),
+		Path:                    "/data/playlists/" + p.ID,
+		IsFolder:                true,
+		MediaType:               "Audio",
+		ChildCount:              new(p.SongCount),
+		RunTimeTicks:            TicksFromSeconds(p.Duration),
+		ImageBlurHashes:         blurs,
+		PrimaryImageAspectRatio: ratio,
+		BackdropImageTags:       []string{},
+		UserData:                UserData(p.Annotations, p.ID),
 	}
+	if tag != "" {
+		item.ImageTags = map[string]string{"Primary": tag}
+	}
+	return item
 }
 
 // LyricDtoFromLyrics maps one lyric track to Jellyfin's LyricDto. Clients infer synced-vs-plain

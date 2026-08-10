@@ -94,6 +94,54 @@ var _ = Describe("deezerAgent", func() {
 		})
 	})
 
+	Describe("GetArtistImages", func() {
+		var agent *deezerAgent
+		var httpClient *fakeHttpClient
+
+		BeforeEach(func() {
+			httpClient = &fakeHttpClient{}
+			agent = &deezerAgent{
+				dataStore: &tests.MockDataStore{},
+				client:    newClient(httpClient),
+			}
+		})
+
+		It("returns the real images when the artist has a picture", func() {
+			httpClient.mock("https://api.deezer.com/search/artist", http.Response{
+				StatusCode: 200,
+				Body: io.NopCloser(bytes.NewBufferString(`{"data":[
+					{"id":412,"name":"Queen","nb_fan":12744378,
+					 "picture_xl":"https://cdn-images.dzcdn.net/images/artist/abc/1000x1000-000000-80-0-0.jpg",
+					 "picture_big":"https://cdn-images.dzcdn.net/images/artist/abc/500x500-000000-80-0-0.jpg"}
+				],"total":1}`)),
+			})
+
+			images, err := agent.GetArtistImages(ctx, "", "Queen", "")
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(images).To(HaveLen(2))
+			Expect(images[0].URL).To(ContainSubstring("1000x1000"))
+		})
+
+		It("returns ErrNotFound when the artist only has empty-id placeholder pictures", func() {
+			httpClient.mock("https://api.deezer.com/search/artist", http.Response{
+				StatusCode: 200,
+				Body: io.NopCloser(bytes.NewBufferString(`{"data":[
+					{"id":412,"name":"Queen","nb_fan":12744378,
+					 "picture_xl":"https://cdn-images.dzcdn.net/images/artist//1000x1000-000000-80-0-0.jpg",
+					 "picture_big":"https://cdn-images.dzcdn.net/images/artist//500x500-000000-80-0-0.jpg",
+					 "picture_medium":"https://cdn-images.dzcdn.net/images/artist//250x250-000000-80-0-0.jpg",
+					 "picture_small":"https://cdn-images.dzcdn.net/images/artist//56x56-000000-80-0-0.jpg"}
+				],"total":1}`)),
+			})
+
+			images, err := agent.GetArtistImages(ctx, "", "Queen", "")
+
+			Expect(err).To(MatchError(agents.ErrNotFound))
+			Expect(images).To(BeEmpty())
+		})
+	})
+
 	Describe("GetArtistBiography - Language Fallback", func() {
 		var agent *deezerAgent
 		var httpClient *langAwareHttpClient

@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import {
   Card,
   CardContent,
-  CardMedia,
   Collapse,
   makeStyles,
   Typography,
@@ -21,6 +20,7 @@ import Lightbox from 'react-image-lightbox'
 import config from '../config'
 import 'react-image-lightbox/style.css'
 import subsonic from '../subsonic'
+import { Artwork } from '../common/Artwork'
 import {
   ArtistLinkField,
   CollapsibleComment,
@@ -30,7 +30,6 @@ import {
   RatingField,
   SizeField,
   useAlbumsPerPage,
-  useImageLoadingState,
 } from '../common'
 import { formatFullDate, intersperse } from '../utils'
 import AlbumExternalLinks from './AlbumExternalLinks'
@@ -87,9 +86,6 @@ const useStyles = makeStyles(
       height: '100%',
       backgroundColor: 'transparent',
       transition: 'opacity 0.3s ease-in-out',
-    },
-    coverLoading: {
-      opacity: 0.5,
     },
     loveButton: {
       top: theme.spacing(-0.2),
@@ -223,15 +219,7 @@ const AlbumDetails = (props) => {
   const classes = useStyles()
   const [expanded, setExpanded] = useState(false)
   const [albumInfo, setAlbumInfo] = useState()
-  const {
-    imageLoading,
-    imageError,
-    isLightboxOpen,
-    handleImageLoad,
-    handleImageError,
-    handleOpenLightbox,
-    handleCloseLightbox,
-  } = useImageLoadingState(record.id)
+  const [isLightboxOpen, setLightboxOpen] = useState(false)
 
   let notes = albumInfo?.notes || record.notes
 
@@ -254,27 +242,18 @@ const AlbumDetails = (props) => {
       })
   }, [record])
 
-  const imageUrl = subsonic.getCoverArtUrl(record, config.uiCoverArtSize)
   const fullImageUrl = subsonic.getCoverArtUrl(record)
 
   return (
     <Card className={classes.root}>
       <div className={classes.cardContents}>
         <div className={classes.coverParent}>
-          <CardMedia
-            key={record.id}
-            component={'img'}
-            src={imageUrl}
-            width="400"
-            height="400"
-            className={`${classes.cover} ${imageLoading ? classes.coverLoading : ''}`}
-            onClick={handleOpenLightbox}
-            onLoad={handleImageLoad}
-            onError={handleImageError}
+          <Artwork
+            record={record}
+            fit="contain"
+            className={classes.cover}
             title={record.name}
-            style={{
-              cursor: imageError ? 'default' : 'pointer',
-            }}
+            onClick={() => setLightboxOpen(true)}
           />
         </div>
         <div className={classes.details}>
@@ -363,13 +342,13 @@ const AlbumDetails = (props) => {
           </Collapse>
         </div>
       )}
-      {isLightboxOpen && !imageError && (
+      {isLightboxOpen && (
         <Lightbox
           imagePadding={50}
           animationDuration={200}
           imageTitle={record.name}
           mainSrc={fullImageUrl}
-          onCloseRequest={handleCloseLightbox}
+          onCloseRequest={() => setLightboxOpen(false)}
         />
       )}
     </Card>

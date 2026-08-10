@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"embed"
+	"errors"
 	"fmt"
 	"time"
 
@@ -104,6 +105,17 @@ func Init(ctx context.Context) func() {
 	return func() {
 		Close(ctx)
 	}
+}
+
+// ErrorCodes reports the SQLite result code and extended result code carried by err.
+// The extended code is what distinguishes errors that share a message: "database is locked"
+// is both SQLITE_BUSY, which busy_timeout retries, and SQLITE_BUSY_SNAPSHOT, which it never can.
+func ErrorCodes(err error) (code, extended int, ok bool) {
+	var se sqlite3.Error
+	if !errors.As(err, &se) {
+		return 0, 0, false
+	}
+	return int(se.Code), int(se.ExtendedCode), true
 }
 
 type statusLogger struct{ numPending int }

@@ -20,7 +20,7 @@ import Switch from '@material-ui/core/Switch'
 import { makeStyles } from '@material-ui/core/styles'
 import { useMediaQuery } from '@material-ui/core'
 import {
-  CoverArtAvatar,
+  ArtworkAvatar,
   DurationField,
   List,
   LoveButton,
@@ -197,7 +197,7 @@ const PlaylistList = (props) => {
       bulkActionButtons={!isXsmall && <PlaylistListBulkActions />}
     >
       <Datagrid rowClick="show" isRowSelectable={(r) => isWritable(r?.ownerId)}>
-        <CoverArtAvatar source="id" variant="square" />
+        <ArtworkAvatar source="id" variant="square" />
         <TextField source="name" />
         {columns}
         <Writable>

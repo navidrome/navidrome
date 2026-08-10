@@ -47,17 +47,13 @@ func AlbumsByArtist() Options {
 }
 
 func AlbumsByArtistID(artistId string) Options {
-	filters := []Sqlizer{
-		persistence.Exists("json_tree(participants, '$.albumartist')", Eq{"value": artistId}),
-	}
+	roles := []model.Role{model.RoleAlbumArtist}
 	if conf.Server.Subsonic.ArtistParticipations {
-		filters = append(filters,
-			persistence.Exists("json_tree(participants, '$.artist')", Eq{"value": artistId}),
-		)
+		roles = append(roles, model.RoleArtist)
 	}
 	return addDefaultFilters(Options{
 		Sort:    "max_year",
-		Filters: Or(filters),
+		Filters: persistence.ParticipantIDFilter("album", artistId, roles...),
 	})
 }
 
@@ -68,8 +64,8 @@ func AlbumsByContributingArtistID(artistId string) Options {
 	return addDefaultFilters(Options{
 		Sort: "max_year",
 		Filters: And{
-			persistence.Exists("json_tree(participants, '$.artist')", Eq{"value": artistId}),
-			persistence.NotExists("json_tree(participants, '$.albumartist')", Eq{"value": artistId}),
+			persistence.ParticipantIDFilter("album", artistId, model.RoleArtist),
+			persistence.NotParticipantIDFilter("album", artistId, model.RoleAlbumArtist),
 		},
 	})
 }
@@ -104,13 +100,11 @@ func SongsByAlbum(albumId string) Options {
 }
 
 // SongsByArtistID matches media files where the artist participates as album or track artist, in
-// album order. Semi-joins media_file_artists; scanning the participants JSON is ~10x slower at scale.
+// album order.
 func SongsByArtistID(artistId string) Options {
 	return addDefaultFilters(Options{
-		Sort: "album",
-		Filters: Expr(
-			"media_file.id IN (SELECT media_file_id FROM media_file_artists WHERE artist_id = ? AND role IN (?, ?))",
-			artistId, model.RoleArtist.String(), model.RoleAlbumArtist.String()),
+		Sort:    "album",
+		Filters: persistence.ParticipantIDFilter("media_file", artistId, model.RoleArtist, model.RoleAlbumArtist),
 	})
 }
 
