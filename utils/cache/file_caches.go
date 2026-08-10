@@ -242,8 +242,7 @@ func getFinalCachedSize(r fscache.ReadAtCloser) int64 {
 	return -1
 }
 
-// copyAndClose marks the entry complete before closing w: readers only see EOF at
-// Close, so EOF must already imply all of the entry's on-disk writes are finished.
+// copyAndClose marks the entry complete before closing w, so EOF implies the entry is settled on disk.
 func (fc *fileCache) copyAndClose(ctx context.Context, key string, w io.WriteCloser, r io.Reader) error {
 	_, err := io.Copy(w, r)
 	if err != nil {

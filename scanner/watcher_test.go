@@ -26,8 +26,7 @@ var _ = Describe("Watcher", func() {
 
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
-		// Must dwarf the 20ms Consistently windows below: the debouncing spec fails if a
-		// loaded runner delays a timer reset past this wait (seen at 50ms on Windows CI).
+		// Must dwarf the 20ms Consistently windows below, or a loaded runner's delayed timer reset flakes the debouncing spec.
 		conf.Server.Scanner.WatcherWait = 200 * time.Millisecond
 
 		ctx, cancel = context.WithCancel(GinkgoT().Context())

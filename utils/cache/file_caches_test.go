@@ -115,8 +115,7 @@ var _ = Describe("File Caches", func() {
 			_, _ = io.ReadAll(s)
 			_ = s.Close()
 
-			// EOF must imply the entry is settled on disk: callers treat end-of-stream as
-			// "no more cache writes are coming" (e.g. test temp-dir cleanups on Windows).
+			// EOF must imply the entry is settled on disk (Windows temp-dir cleanups rely on it).
 			dataPath := fcSpreadFS(fc).KeyMapper((&testArg{"markme"}).Key())
 			_, statErr := os.Stat(dataPath + ".complete")
 			Expect(statErr).ToNot(HaveOccurred())

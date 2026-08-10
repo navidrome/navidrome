@@ -707,8 +707,7 @@ var _ = Describe("Worker", func() {
 
 	Describe("batching", func() {
 		It("leaves undispatched items queued when cancelled mid-batch", func() {
-			// Every album must resolve (to absent), so ANY dispatched item deletes its row
-			// and the assertion below can see it — regardless of dequeue order.
+			// Every album must resolve, so any dispatched item deletes its row regardless of dequeue order.
 			albums := model.Albums{}
 			for i := range 8 {
 				id := fmt.Sprintf("alc%d", i)

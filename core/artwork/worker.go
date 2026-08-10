@@ -171,8 +171,7 @@ func (w *Worker) drain(ctx context.Context, concurrency int, kinds ...string) (i
 		case sem <- struct{}{}:
 		case <-ctx.Done():
 		}
-		// Checked outside the select: with a free slot AND a cancelled ctx both cases
-		// are ready and select picks randomly, which could dispatch after cancellation.
+		// select picks randomly when both cases are ready, so re-check to never dispatch after cancellation.
 		if ctx.Err() != nil {
 			wg.Wait()
 			return len(items), nil //nolint:nilerr // a cancelled drain is a clean stop, not an error
