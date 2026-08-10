@@ -170,8 +170,11 @@ func (w *Worker) drain(ctx context.Context, concurrency int, kinds ...string) (i
 		select {
 		case sem <- struct{}{}:
 		case <-ctx.Done():
+		}
+		// select picks randomly when both cases are ready, so re-check to never dispatch after cancellation.
+		if ctx.Err() != nil {
 			wg.Wait()
-			return len(items), nil
+			return len(items), nil //nolint:nilerr // a cancelled drain is a clean stop, not an error
 		}
 		wg.Go(func() {
 			defer func() { <-sem }()

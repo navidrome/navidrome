@@ -151,7 +151,8 @@ var _ = Describe("Worker", func() {
 			func(ctx context.Context, arg cache.Item) (io.Reader, error) {
 				return arg.(artworkReader).Reader(ctx)
 			})}
-		Eventually(func() bool { return imgCache.Available(ctx) }).Should(BeTrue())
+		// Init walks the cache dir on a goroutine; loaded CI runners can take >1s.
+		Eventually(func() bool { return imgCache.Available(ctx) }, 10*time.Second).Should(BeTrue())
 		w = NewWorker(ds, store, ag, ffm, broker, imgCache)
 	})
 
@@ -706,13 +707,16 @@ var _ = Describe("Worker", func() {
 
 	Describe("batching", func() {
 		It("leaves undispatched items queued when cancelled mid-batch", func() {
+			// Every album must resolve, so any dispatched item deletes its row regardless of dequeue order.
+			albums := model.Albums{}
 			for i := range 8 {
 				id := fmt.Sprintf("alc%d", i)
-				ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: id, Name: "Album"}})
+				albums = append(albums, model.Album{ID: id, Name: "Album"})
 				Expect(queueRepo.Enqueue(model.ArtworkQueueItem{
 					ItemKind: "al", ItemID: id, Priority: model.ArtworkPriorityScan,
 				})).To(Succeed())
 			}
+			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(albums)
 			cancelledCtx, cancel := context.WithCancel(ctx)
 			cancel()
 
