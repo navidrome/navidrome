@@ -128,7 +128,7 @@ func (sfs *spreadFS) Create(name string) (stream.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	return os.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
+	return createDataFile(name)
 }
 
 func (sfs *spreadFS) Open(name string) (stream.File, error) {
