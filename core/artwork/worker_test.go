@@ -706,13 +706,17 @@ var _ = Describe("Worker", func() {
 
 	Describe("batching", func() {
 		It("leaves undispatched items queued when cancelled mid-batch", func() {
+			// Every album must resolve (to absent), so ANY dispatched item deletes its row
+			// and the assertion below can see it — regardless of dequeue order.
+			albums := model.Albums{}
 			for i := range 8 {
 				id := fmt.Sprintf("alc%d", i)
-				ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: id, Name: "Album"}})
+				albums = append(albums, model.Album{ID: id, Name: "Album"})
 				Expect(queueRepo.Enqueue(model.ArtworkQueueItem{
 					ItemKind: "al", ItemID: id, Priority: model.ArtworkPriorityScan,
 				})).To(Succeed())
 			}
+			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(albums)
 			cancelledCtx, cancel := context.WithCancel(ctx)
 			cancel()
 
