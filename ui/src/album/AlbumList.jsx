@@ -1,3 +1,4 @@
+import { cloneElement, useRef } from 'react'
 import { useSelector } from 'react-redux'
 import { Redirect, useLocation } from 'react-router-dom'
 import {
@@ -23,11 +24,13 @@ import {
   Title,
   useAlbumsPerPage,
   useResourceRefresh,
+  useScrollRestoration,
   useSetToggleableFields,
 } from '../common'
 import AlbumListActions from './AlbumListActions'
 import AlbumTableView from './AlbumTableView'
 import AlbumGridView from './AlbumGridView'
+import { useRollChanged } from './useRollChanged'
 import albumLists from './albumLists'
 import {
   getStoredDefaultView,
@@ -38,6 +41,13 @@ import AlbumInfo from './AlbumInfo'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 import { humanize } from 'inflection'
 import { makeStyles } from '@material-ui/core/styles'
+
+// Waits for rows: restoring into an unrendered list leaves the page too short to hold the offset.
+const ScrollRestorer = ({ children, ...rest }) => {
+  const { loaded, total } = useListContext()
+  useScrollRestoration(loaded && total > 0)
+  return cloneElement(children, rest)
+}
 
 const useStyles = makeStyles({
   chip: {
@@ -177,9 +187,10 @@ const AlbumListTitle = ({ albumListType }) => {
   return <Title subTitle={title} args={{ smart_count: 2 }} />
 }
 
-const AlbumListPagination = ({ albumListType, ...rest }) => {
+const AlbumListPagination = ({ albumListType, seed, shownSeed, ...rest }) => {
   const { loading } = useListContext()
-  if (loading && albumListType === 'random') {
+  const rerolling = useRollChanged(shownSeed, seed, loading)
+  if (rerolling && albumListType === 'random') {
     return null
   }
   return <Pagination {...rest} />
@@ -189,6 +200,7 @@ const randomStartingSeed = Math.random().toString()
 
 const AlbumList = (props) => {
   const { width } = props
+  const shownSeed = useRef(null)
   const albumView = useSelector((state) => state.albumView)
   const [perPage, perPageOptions] = useAlbumsPerPage(width)
   const location = useLocation()
@@ -251,15 +263,24 @@ const AlbumList = (props) => {
           <AlbumListPagination
             rowsPerPageOptions={perPageOptions}
             albumListType={albumListType}
+            seed={seed}
+            shownSeed={shownSeed}
           />
         }
         title={<AlbumListTitle albumListType={albumListType} />}
       >
-        {albumView.grid ? (
-          <AlbumGridView albumListType={albumListType} {...props} />
-        ) : (
-          <AlbumTableView {...props} />
-        )}
+        <ScrollRestorer>
+          {albumView.grid ? (
+            <AlbumGridView
+              albumListType={albumListType}
+              seed={seed}
+              shownSeed={shownSeed}
+              {...props}
+            />
+          ) : (
+            <AlbumTableView {...props} />
+          )}
+        </ScrollRestorer>
       </List>
       <ExpandInfoDialog content={<AlbumInfo />} />
     </>

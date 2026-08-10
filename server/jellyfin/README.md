@@ -90,9 +90,9 @@ skipped, so it doesn't create a nameless player.
 Navidrome item ids are **hex-encoded at the API boundary** (`dto.EncodeID`/`DecodeID`): every id
 is hex-encoded on the way out and hex-decoded on the way in. This is required because some clients
 parse ids as radix-16 — Finamp's queue `packIds`, for instance, does `int.parse(chunk, radix:16)`,
-which chokes on Navidrome's base-62 nanoids (e.g. `5QFKvMsJrd57QE2Le2dKKo`). Because a raw MD5 id
-from an old migrated library is itself valid hex, correctness depends on every emit path encoding
-and every receive path decoding — see `dto/ids.go`.
+which chokes on Navidrome's base62 ids (e.g. `5QFKvMsJrd57QE2Le2dKKo`). Because a base62 id can
+itself be valid hex, correctness depends on every emit path encoding and every receive path
+decoding — see `dto/ids.go`.
 
 ## Multi-library behavior
 
@@ -184,13 +184,13 @@ their Navidrome `ArtworkID`.
 
 Real Jellyfin item ids are GUIDs — 128-bit values, always 32 hex characters. Finamp relies on that
 when persisting its play queue across restarts: `packIds()` bit-packs every id into exactly 16
-bytes. Navidrome ids are longer (nanoid ids can exceed 128 bits, so they cannot be mapped into
-GUIDs), which means Finamp silently stores only the first 16 characters of each id and asks for
-those **truncated ids** back when restoring the queue — item lookups, then streaming, images,
-favorites and playback reports for the restored tracks.
+bytes. Navidrome ids are 22-character base62 strings, not 32-hex GUIDs, which means Finamp silently
+stores only the first 16 characters of each id and asks for those **truncated ids** back when
+restoring the queue — item lookups, then streaming, images, favorites and playback reports for the
+restored tracks.
 
 This API compensates server-side (`truncated_ids.go`): a 16-character id — a length no Navidrome
-id family uses — is resolved to the full id by unique-prefix lookup (an indexed range scan;
+id uses — is resolved to the full id by unique-prefix lookup (an indexed range scan;
 ambiguity is detected and fails safe). The `/Items?ids=` batch response echoes the id **as
 requested**, because Finamp matches restored items back to its stored ids, and the other item
 endpoints accept truncated ids transparently.
