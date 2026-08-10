@@ -113,7 +113,7 @@ var mediaFileFilter = sync.OnceValue(func() map[string]filterFunc {
 		"has_rating": annotationBoolFilter("rating"),
 		"genre_id":   tagIDFilter,
 		"missing":    booleanFilter,
-		"artists_id": artistFilter,
+		"artists_id": mediaFileArtistFilter,
 		"library_id": libraryIdFilter,
 		"path":       startsWithFilter("media_file.path"),
 	}
@@ -125,6 +125,10 @@ var mediaFileFilter = sync.OnceValue(func() map[string]filterFunc {
 	}
 	return filters
 })
+
+func mediaFileArtistFilter(_ string, value any) Sqlizer {
+	return ParticipantIDFilter("media_file", value, model.RoleAlbumArtist, model.RoleArtist)
+}
 
 func mediaFileRecentlyAddedSort() string {
 	if conf.Server.RecentlyAddedByModTime {
@@ -163,7 +167,9 @@ func (r *mediaFileRepository) CountBySuffix(options ...model.QueryOptions) (map[
 }
 
 func (r *mediaFileRepository) Exists(id string) (bool, error) {
-	return r.exists(Eq{"media_file.id": id})
+	// The exists() helper applies no library filter, so it would report rows the caller cannot see.
+	c, err := r.count(r.applyLibraryFilter(r.newSelect().Where(Eq{"media_file.id": id})))
+	return c > 0, err
 }
 
 func (r *mediaFileRepository) Put(m *model.MediaFile) error {
@@ -218,7 +224,13 @@ func (r *mediaFileRepository) GetAll(options ...model.QueryOptions) (model.Media
 	if err != nil {
 		return nil, err
 	}
-	return res.toModels(), nil
+	mfs := res.toModels()
+	r.hydrateArtwork(mfs)
+	return mfs, nil
+}
+
+func (r *mediaFileRepository) hydrateArtwork(mfs model.MediaFiles) {
+	hydrateMediaFileArtwork(r.ctx, r.db, mfs)
 }
 
 // GetRandom uses two passes so the random sort runs over a narrow rowid index instead of the
@@ -252,7 +264,9 @@ func (r *mediaFileRepository) GetRandom(options ...model.QueryOptions) (model.Me
 	if err := r.queryAll(sq, &res); err != nil {
 		return nil, err
 	}
-	return res.toModels(), nil
+	mfs := res.toModels()
+	r.hydrateArtwork(mfs)
+	return mfs, nil
 }
 
 func (r *mediaFileRepository) GetAllByTags(tag model.TagName, values []string, options ...model.QueryOptions) (model.MediaFiles, error) {
@@ -287,6 +301,29 @@ func (r *mediaFileRepository) GetCursor(options ...model.QueryOptions) (model.Me
 		return nil, err
 	}
 	return wrapMediaFileCursor(cursor), nil
+}
+
+// GetAllIDs returns the IDs of GetAll's row set, skipping its wide column projection.
+func (r *mediaFileRepository) GetAllIDs(options ...model.QueryOptions) ([]string, error) {
+	sq := r.applyLibraryFilter(r.newSelect(options...).Columns("media_file.id"))
+	if filtersNeedAnnotation(sq) {
+		sq = r.withAnnotation(sq, "media_file.id")
+	}
+	ids := []string{}
+	err := r.queryAllSlice(sq, &ids)
+	return ids, err
+}
+
+// GetCursorWithArtwork streams the same rows as GetCursor, hydrated, via an id pre-pass.
+func (r *mediaFileRepository) GetCursorWithArtwork(options ...model.QueryOptions) (model.MediaFileCursor, error) {
+	ids, err := r.GetAllIDs(options...)
+	if err != nil {
+		return nil, err
+	}
+	opts := chunkOptions(options, "media_file.id")
+	return model.MediaFileCursor(streamByIDs(ids, func(chunk []string) (model.MediaFiles, error) {
+		return r.GetAll(opts(chunk))
+	})), nil
 }
 
 // FindByPaths finds media files by their paths.
@@ -487,7 +524,9 @@ func (r *mediaFileRepository) Search(q string, options ...model.QueryOptions) (m
 	if err != nil {
 		return nil, fmt.Errorf("searching media_file %q: %w", q, err)
 	}
-	return res.toModels(), nil
+	mfs := res.toModels()
+	r.hydrateArtwork(mfs)
+	return mfs, nil
 }
 
 func (r *mediaFileRepository) Count(options ...rest.QueryOptions) (int64, error) {

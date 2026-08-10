@@ -172,24 +172,22 @@ func yearFilter(_ string, value any) Sqlizer {
 }
 
 func artistFilter(_ string, value any) Sqlizer {
-	return Or{
-		Exists("json_tree(participants, '$.albumartist')", Eq{"value": value}),
-		Exists("json_tree(participants, '$.artist')", Eq{"value": value}),
-	}
+	return ParticipantIDFilter("album", value, model.RoleAlbumArtist, model.RoleArtist)
 }
 
 func artistRoleFilter(name string, value any) Sqlizer {
 	roleName := strings.TrimSuffix(strings.TrimPrefix(name, "role_"), "_id")
 
 	// Check if the role name is valid. If not, return an invalid filter
-	if _, ok := model.AllRoles[roleName]; !ok {
+	role, ok := model.AllRoles[roleName]
+	if !ok {
 		return Gt{"": nil}
 	}
-	return Exists(fmt.Sprintf("json_tree(participants, '$.%s')", roleName), Eq{"value": value})
+	return ParticipantIDFilter("album", value, role)
 }
 
 func allRolesFilter(_ string, value any) Sqlizer {
-	return Like{"participants": fmt.Sprintf(`%%"%s"%%`, value)}
+	return ParticipantIDFilter("album", value)
 }
 
 func (r *albumRepository) CountAll(options ...model.QueryOptions) (int64, error) {
@@ -202,7 +200,9 @@ func (r *albumRepository) CountAll(options ...model.QueryOptions) (int64, error)
 }
 
 func (r *albumRepository) Exists(id string) (bool, error) {
-	return r.exists(Eq{"album.id": id})
+	// The exists() helper applies no library filter, so it would report rows the caller cannot see.
+	c, err := r.count(r.applyLibraryFilter(r.newSelect().Where(Eq{"album.id": id})))
+	return c > 0, err
 }
 
 func (r *albumRepository) Put(al *model.Album) error {
@@ -212,12 +212,7 @@ func (r *albumRepository) Put(al *model.Album) error {
 		return err
 	}
 	al.ID = id
-	if len(al.Participants) > 0 {
-		if err = r.updateParticipants(al.ID, al.Participants); err != nil {
-			return err
-		}
-	}
-	return nil
+	return r.updateParticipants(al.ID, al.Participants)
 }
 
 // TODO Move external metadata to a separated table
@@ -251,16 +246,36 @@ func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, e
 	if err != nil {
 		return nil, err
 	}
-	return res.toModels(), nil
+	albums := res.toModels()
+	r.hydrateArtwork(albums)
+	return albums, nil
+}
+
+func (r *albumRepository) hydrateArtwork(albums model.Albums) {
+	hydrateItems(r.ctx, r.db, model.KindAlbumArtwork, albums,
+		func(a *model.Album) (string, *model.ItemImage) { return a.ID, &a.ItemImage })
+}
+
+// GetAllIDs returns the IDs of GetAll's row set, skipping its column projection and JSON decoding.
+func (r *albumRepository) GetAllIDs(options ...model.QueryOptions) ([]string, error) {
+	sq := r.applyLibraryFilter(r.newSelect(options...).Columns("album.id"))
+	if filtersNeedAnnotation(sq) {
+		sq = r.withAnnotation(sq, "album.id")
+	}
+	ids := []string{}
+	err := r.queryAllSlice(sq, &ids)
+	return ids, err
 }
 
 func (r *albumRepository) GetCursor(options ...model.QueryOptions) (model.AlbumCursor, error) {
-	sq := r.selectAlbum(options...)
-	cursor, err := queryWithStableResults[dbAlbum](r.sqlRepository, sq)
+	ids, err := r.GetAllIDs(options...)
 	if err != nil {
 		return nil, err
 	}
-	return wrapAlbumCursor(cursor), nil
+	opts := chunkOptions(options, "album.id")
+	return model.AlbumCursor(streamByIDs(ids, func(chunk []string) (model.Albums, error) {
+		return r.GetAll(opts(chunk))
+	})), nil
 }
 
 func (r *albumRepository) GetYears(libraryIDs ...int) ([]int, error) {
@@ -405,7 +420,9 @@ func (r *albumRepository) Search(q string, options ...model.QueryOptions) (model
 	if err != nil {
 		return nil, fmt.Errorf("searching album %q: %w", q, err)
 	}
-	return res.toModels(), nil
+	albums := res.toModels()
+	r.hydrateArtwork(albums)
+	return albums, nil
 }
 
 func (r *albumRepository) Count(options ...rest.QueryOptions) (int64, error) {
