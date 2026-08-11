@@ -46,10 +46,9 @@ var _ = Describe("mappers", func() {
 		mf := model.MediaFile{ID: "s1", Title: "Song", Size: 2_500_000, Suffix: "mp3", Duration: 60,
 			SortTitle: "sort song", Lyrics: `[{"line":[{"value":"la"}]}]`}
 
-		It("omits MediaSources and SortName when Fields does not ask for them", func() {
+		It("omits MediaSources when Fields does not ask for them", func() {
 			item := SongToBaseItem(mf, nil)
 			Expect(item.MediaSources).To(BeNil())
-			Expect(item.SortName).To(BeEmpty())
 		})
 
 		It("includes MediaSources only when Fields=MediaSources", func() {
@@ -58,8 +57,50 @@ var _ = Describe("mappers", func() {
 			Expect(item.MediaSources[0].Size).To(Equal(int64(2_500_000)))
 		})
 
-		It("includes SortName (from the sort title) only when Fields=SortName", func() {
-			Expect(SongToBaseItem(mf, ParseFields("SortName")).SortName).To(Equal("sort song"))
+		// SortName must match the server sort order — see the sortName helper.
+		Describe("SortName", func() {
+			song := model.MediaFile{ID: "s1", Title: "The Song", SortTitle: "Song, The", OrderTitle: "song"}
+			ar := model.Artist{ID: "art-1", Name: "The B-52's", SortArtistName: "B-52's, The", OrderArtistName: "b-52's"}
+			al := model.Album{ID: "alb-1", Name: "The Wall", SortAlbumName: "Wall, The", OrderAlbumName: "wall"}
+
+			BeforeEach(func() {
+				DeferCleanup(configtest.SetupConfig())
+			})
+
+			It("is omitted unless Fields=SortName", func() {
+				Expect(SongToBaseItem(song, nil).SortName).To(BeEmpty())
+				Expect(ArtistToBaseItem(ar, nil).SortName).To(BeEmpty())
+				Expect(AlbumToBaseItem(al, nil).SortName).To(BeEmpty())
+			})
+
+			It("uses the order names by default, ignoring sort tags", func() {
+				Expect(SongToBaseItem(song, ParseFields("SortName")).SortName).To(Equal("song"))
+				Expect(ArtistToBaseItem(ar, ParseFields("SortName")).SortName).To(Equal("b-52's"))
+				Expect(AlbumToBaseItem(al, ParseFields("SortName")).SortName).To(Equal("wall"))
+			})
+
+			Context("with PreferSortTags", func() {
+				BeforeEach(func() {
+					conf.Server.PreferSortTags = true
+				})
+
+				It("prefers the sort tags", func() {
+					Expect(SongToBaseItem(song, ParseFields("SortName")).SortName).To(Equal("Song, The"))
+					Expect(ArtistToBaseItem(ar, ParseFields("SortName")).SortName).To(Equal("B-52's, The"))
+					Expect(AlbumToBaseItem(al, ParseFields("SortName")).SortName).To(Equal("Wall, The"))
+				})
+
+				It("falls back to the order name when there is no sort tag", func() {
+					Expect(ArtistToBaseItem(model.Artist{ID: "a", Name: "The X", OrderArtistName: "x"},
+						ParseFields("SortName")).SortName).To(Equal("x"))
+				})
+			})
+
+			It("falls back to the display name when order name and sort tag are empty", func() {
+				Expect(SongToBaseItem(model.MediaFile{ID: "s", Title: "T"}, ParseFields("SortName")).SortName).To(Equal("T"))
+				Expect(ArtistToBaseItem(model.Artist{ID: "a", Name: "N"}, ParseFields("SortName")).SortName).To(Equal("N"))
+				Expect(AlbumToBaseItem(model.Album{ID: "al", Name: "A"}, ParseFields("SortName")).SortName).To(Equal("A"))
+			})
 		})
 
 		It("sets HasLyrics from the media file's lyrics", func() {

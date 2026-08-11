@@ -18,6 +18,7 @@ import (
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	"github.com/navidrome/navidrome/utils/req"
 	"github.com/navidrome/navidrome/utils/slice"
+	"golang.org/x/sync/errgroup"
 )
 
 // notMissing excludes items whose backing files are all gone ("missing" is a real column on
@@ -330,52 +331,97 @@ func (api *Router) playlistTracksRepo(ctx context.Context, q itemsQuery) (model.
 }
 
 func (api *Router) mergeTypes(ctx context.Context, q itemsQuery) (itemsResult, error) {
-	// Each per-type query needs at most offset+limit rows (the worst case where one type fills the
-	// whole [offset, offset+limit) window). Totals are unaffected — they come from CountAll.
-	window := 0
-	if q.limit > 0 {
-		window = q.offset + q.limit
+	if q.limit == 0 {
+		return api.mergeTypesStreaming(ctx, q)
 	}
-	// A search can't stream, so the window is what each type materializes and StartIndex would drive
-	// it without bound. Only below the window are the merged rows the true order, hence the clip
-	// below too. Non-search stays unbounded in StartIndex: a known gap, fixable with per-type counts.
-	if q.search != "" {
-		window = min(window, maxSearchLimit)
+	// A random page doesn't stack on the previous one (the order reshuffles each request), so serving
+	// from 0 is an equivalent fresh draw and avoids materializing offset+limit rows per type.
+	offset := q.offset
+	if randomlySorted(q) {
+		offset = 0
 	}
+	return api.mergeTypesPaged(ctx, q, offset)
+}
+
+// randomlySorted reports whether every merged type resolves to a random sort — the case where a page
+// is an independent draw, so the offset can be collapsed to 0. Resolving via applySort (rather than
+// matching the raw SortBy) keeps this in step with how each type's sort is actually chosen.
+func randomlySorted(q itemsQuery) bool {
+	for _, itemType := range q.types {
+		var opts model.QueryOptions
+		applySort(&opts, itemType, q.sortBy, q.sortOrder)
+		if opts.Sort != "random" {
+			return false
+		}
+	}
+	return true
+}
+
+// mergeTypesStreaming keeps the unbounded path lazy: chaining the per-type cursors yields their rows
+// in order minus the first offset, without pulling every row into memory.
+func (api *Router) mergeTypesStreaming(ctx context.Context, q itemsQuery) (itemsResult, error) {
 	var results []itemsResult
 	total := 0
 	for _, itemType := range q.types {
-		var opts model.QueryOptions
-		opts.Max = window
-		applySort(&opts, itemType, q.sortBy, q.sortOrder)
-		res, err := api.queryItemsOfType(ctx, itemType, opts, q)
+		res, err := api.queryTypeWindow(ctx, itemType, 0, q)
 		if err != nil {
 			return itemsResult{}, err
 		}
 		results = append(results, res)
 		total += res.total
 	}
-	if q.limit == 0 {
-		// No cap above, so merging in memory would pull every row of every type. The merged page is
-		// just their rows in order minus the first offset — what chaining the cursors yields.
-		return chained(results, total, q.offset), nil
+	return chained(results, total, q.offset), nil
+}
+
+// queryTypeWindow queries one type for the merge paths, capping it to window rows with the sort applied.
+func (api *Router) queryTypeWindow(ctx context.Context, itemType string, window int, q itemsQuery) (itemsResult, error) {
+	var opts model.QueryOptions
+	opts.Max = window
+	applySort(&opts, itemType, q.sortBy, q.sortOrder)
+	return api.queryItemsOfType(ctx, itemType, opts, q)
+}
+
+// mergeTypesPaged runs each type's query concurrently, then round-robins the per-type rows so the limited page
+// is a mix rather than one type's rows followed by the next.
+func (api *Router) mergeTypesPaged(ctx context.Context, q itemsQuery, offset int) (itemsResult, error) {
+	// Each per-type query needs at most offset+limit rows (worst case: one type fills the whole window).
+	window := offset + q.limit
+	if q.search != "" {
+		window = min(window, maxSearchLimit)
 	}
-	var items []dto.BaseItemDto
-	for _, res := range results {
-		typeItems, err := res.collect()
-		if err != nil {
-			return itemsResult{}, err
-		}
-		items = append(items, typeItems...)
+	lists := make([][]dto.BaseItemDto, len(q.types))
+	totals := make([]int, len(q.types))
+	g, ctx := errgroup.WithContext(ctx)
+	for i, itemType := range q.types {
+		g.Go(func() error {
+			res, err := api.queryTypeWindow(ctx, itemType, window, q)
+			if err != nil {
+				return err
+			}
+			items, err := res.collect()
+			if err != nil {
+				return err
+			}
+			lists[i] = items
+			totals[i] = res.total
+			return nil
+		})
 	}
+	if err := g.Wait(); err != nil {
+		return itemsResult{}, err
+	}
+	total := 0
+	for _, t := range totals {
+		total += t
+	}
+	items := interleave(lists)
 	if q.search != "" {
 		// Past the window the merged order isn't the true one, so drop it rather than serve another
-		// type's rows. The total is what's pageable overall, not this page, or a client paging on it
-		// would stop after the first page.
+		// type's rows. The total is what's pageable overall, so a client paging on it won't stop early.
 		items = items[:min(window, len(items))]
 		total = min(total, maxSearchLimit)
 	}
-	return materialized(result(paginate(items, q.offset, q.limit), total, q.offset)), nil
+	return materialized(result(paginate(items, offset, q.limit), total, q.offset)), nil
 }
 
 func (api *Router) queryItemsOfType(ctx context.Context, itemType string, opts model.QueryOptions, q itemsQuery) (itemsResult, error) {
@@ -440,6 +486,8 @@ func parseTypes(types string) []string {
 			recognized = append(recognized, t)
 		}
 	}
+	// Dedupe: a repeated type would duplicate items in the merge and spawn a redundant query.
+	recognized = slice.Unique(recognized)
 	if len(recognized) == 0 {
 		return []string{"MusicAlbum"}
 	}
@@ -457,6 +505,25 @@ func paginate(items []dto.BaseItemDto, offset, limit int) []dto.BaseItemDto {
 		items = items[:limit]
 	}
 	return items
+}
+
+// interleave merges per-type item lists round-robin: one item from each list in turn, preserving
+// each list's own order, so no single type dominates the head of a mixed-type result.
+func interleave(lists [][]dto.BaseItemDto) []dto.BaseItemDto {
+	total, maxLen := 0, 0
+	for _, l := range lists {
+		total += len(l)
+		maxLen = max(maxLen, len(l))
+	}
+	out := make([]dto.BaseItemDto, 0, total)
+	for i := 0; i < maxLen; i++ {
+		for _, l := range lists {
+			if i < len(l) {
+				out = append(out, l[i])
+			}
+		}
+	}
+	return out
 }
 
 // Search can't stream (Search returns a slice), so it needs both a default and a ceiling: without
@@ -510,7 +577,7 @@ func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, q it
 		filters = append(filters, notMissing)
 	}
 	if len(q.genreIds) > 0 {
-		filters = append(filters, filter.ByGenreID(q.genreIds))
+		filters = append(filters, filter.AlbumsByGenreID(q.genreIds))
 	}
 	if len(q.years) > 0 {
 		filters = append(filters, filter.AlbumsByYears(q.years))
@@ -557,7 +624,7 @@ func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, q ite
 		filters = append(filters, filter.ByAlbumID(q.albumIds))
 	}
 	if len(q.genreIds) > 0 {
-		filters = append(filters, filter.ByGenreID(q.genreIds))
+		filters = append(filters, filter.SongsByGenreID(q.genreIds))
 	}
 	if len(q.years) > 0 {
 		filters = append(filters, filter.SongsByYears(q.years))
@@ -669,7 +736,7 @@ func (api *Router) listPlaylists(ctx context.Context, opts model.QueryOptions, q
 }
 
 // resolveItemByID resolves a decoded navidrome id to its BaseItemDto, trying library view, album,
-// artist, song and playlist in turn. Albums and songs report not-found when the user lacks access
+// artist, song, playlist and genre in turn. Albums and songs report not-found when the user lacks access
 // to their library, so an id can't probe content outside the user's libraries.
 func (api *Router) resolveItemByID(ctx context.Context, id string, fields dto.Fields) (dto.BaseItemDto, bool) {
 	// The synthetic playlists folder must resolve by the id we advertised, not 404.
@@ -710,6 +777,9 @@ func (api *Router) resolveItemByID(ctx context.Context, id string, fields dto.Fi
 	// api.playlists.Get enforces ownership/visibility, so a non-owned or missing id falls through.
 	if pl, err := api.playlists.Get(ctx, id); err == nil {
 		return dto.PlaylistToBaseItem(*pl, fields), true
+	}
+	if g, err := api.ds.Genre(ctx).Get(id); err == nil {
+		return dto.GenreToBaseItem(*g), true
 	}
 	return dto.BaseItemDto{}, false
 }
@@ -818,9 +888,8 @@ func applySort(opts *model.QueryOptions, itemType, sortBy, order string) {
 	}
 }
 
-// sortColumnsByType maps lowercased-SortBy -> repo-sort-key per item type. Each repository maps
-// logical fields to different real columns (e.g. media_file has "title" not "name"; artist has no
-// "random").
+// sortColumnsByType maps lowercased-SortBy -> repo-sort-key per item type (repos map logical fields
+// to different real columns, e.g. media_file has "title" not "name").
 var sortColumnsByType = map[string]map[string]string{
 	"Audio": {
 		"sortname": "title", "name": "title",
@@ -848,6 +917,7 @@ var sortColumnsByType = map[string]map[string]string{
 		"playcount":       "play_count",
 		"dateplayed":      "play_date",
 		"communityrating": "rating",
+		"random":          "random",
 	},
 	"MusicAlbum": {
 		"sortname": "name", "name": "name", "album": "name",
@@ -862,10 +932,12 @@ var sortColumnsByType = map[string]map[string]string{
 	},
 	"MusicGenre": {
 		"sortname": "name", "name": "name",
+		"random": "random",
 	},
 	"Playlist": {
 		"sortname": "name", "name": "name",
 		"datecreated": "created_at",
+		"random":      "random",
 	},
 }
 

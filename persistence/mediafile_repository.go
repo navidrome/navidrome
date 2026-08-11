@@ -111,7 +111,7 @@ var mediaFileFilter = sync.OnceValue(func() map[string]filterFunc {
 		"title":      fullTextFilter("media_file", "mbz_recording_id", "mbz_release_track_id"),
 		"starred":    annotationBoolFilter("starred"),
 		"has_rating": annotationBoolFilter("rating"),
-		"genre_id":   tagIDFilter,
+		"genre_id":   genreFilter(SongGenres),
 		"missing":    booleanFilter,
 		"artists_id": mediaFileArtistFilter,
 		"library_id": libraryIdFilter,
@@ -181,7 +181,10 @@ func (r *mediaFileRepository) Put(m *model.MediaFile) error {
 		return err
 	}
 	m.ID = id
-	return r.updateParticipants(m.ID, m.Participants)
+	if err := r.updateParticipants(m.ID, m.Participants); err != nil {
+		return err
+	}
+	return r.updateTags(m.ID, m.Tags)
 }
 
 func (r *mediaFileRepository) UpdateProbeData(id string, data string) error {
