@@ -236,7 +236,11 @@ func primaryImage(img model.ItemImage, fallback string, fields Fields) (tag stri
 	}
 	tag = cmp.Or(img.ImageHash, fallback)
 	if tag != "" {
-		blurs = map[string]map[string]string{"Primary": {tag: cmp.Or(img.BlurHash, blurhash.Synthetic(tag, ""))}}
+		hash := img.BlurHash
+		if hash == "" {
+			hash = blurhash.Synthetic(tag, "")
+		}
+		blurs = map[string]map[string]string{"Primary": {tag: hash}}
 	}
 	if fields.Has("PrimaryImageAspectRatio") {
 		ratio = img.AspectRatio()
