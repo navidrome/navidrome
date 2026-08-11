@@ -10,6 +10,15 @@ import (
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
+// sortName must match the persistence ORDER BY key (see setSortMappings): Finamp's A-Z jump
+// scans SortName client-side, and any mismatch with the server's sort order scrolls to the top.
+func sortName(sortTag, orderName, displayName string) string {
+	if conf.Server.PreferSortTags {
+		return cmp.Or(sortTag, orderName, displayName)
+	}
+	return cmp.Or(orderName, displayName)
+}
+
 // Jellyfin wire times are ticks: 100ns units, i.e. 10,000 per millisecond.
 const ticksPerMillis = 10_000
 
@@ -152,7 +161,7 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 		item.MediaSources = []MediaSourceInfo{MediaSourceFromMediaFile(mf)}
 	}
 	if fields.Has("SortName") {
-		item.SortName = cmp.Or(mf.SortTitle, mf.OrderTitle, mf.Title)
+		item.SortName = sortName(mf.SortTitle, mf.OrderTitle, mf.Title)
 	}
 	// Real Jellyfin splits Artists/ArtistItems per track artist (AlbumArtists stays a single credit).
 	// Participants holds the per-artist list; fall back to the flattened display fields when absent.
@@ -281,6 +290,9 @@ func AlbumToBaseItem(al model.Album, fields Fields) BaseItemDto {
 	// The album's own ReplayGain gain (dB at the RG2 -18 LUFS reference) — same
 	// convention as tracks; clients read it off the album item as NormalizationGain.
 	item.NormalizationGain = al.RGAlbumGain
+	if fields.Has("SortName") {
+		item.SortName = sortName(al.SortAlbumName, al.OrderAlbumName, al.Name)
+	}
 	return item
 }
 
@@ -301,6 +313,9 @@ func ArtistToBaseItem(ar model.Artist, fields Fields) BaseItemDto {
 	}
 	if tag != "" {
 		item.ImageTags = map[string]string{"Primary": tag}
+	}
+	if fields.Has("SortName") {
+		item.SortName = sortName(ar.SortArtistName, ar.OrderArtistName, ar.Name)
 	}
 	return item
 }

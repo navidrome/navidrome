@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"net/http"
+	"slices"
 	"sort"
 	"time"
 
@@ -77,6 +78,24 @@ var _ = Describe("Browsing", func() {
 			q := queryResult(get("/Items?IncludeItemTypes=MusicArtist&Recursive=true"))
 			Expect(q.TotalRecordCount).To(Equal(4))
 			Expect(names(q.Items)).To(ConsistOf("The Beatles", "Led Zeppelin", "Miles Davis", "Solo Artist"))
+		})
+
+		// Finamp's A-Z jump scans SortName client-side, so it must follow the response order.
+		It("returns artists' SortName matching the server sort order when Fields=SortName", func() {
+			plain := queryResult(get("/Artists/AlbumArtists?Recursive=true&SortBy=SortName"))
+			for _, it := range plain.Items {
+				Expect(it.SortName).To(BeEmpty())
+			}
+			q := queryResult(get("/Artists/AlbumArtists?Recursive=true&SortBy=SortName&Fields=SortName"))
+			Expect(q.Items).ToNot(BeEmpty())
+			sortNames := make([]string, 0, len(q.Items))
+			for _, it := range q.Items {
+				Expect(it.SortName).ToNot(BeEmpty())
+				sortNames = append(sortNames, it.SortName)
+			}
+			Expect(slices.IsSorted(sortNames)).To(BeTrue(), "SortName values must follow the response order: %v", sortNames)
+			// "The Beatles" must be filed under B, exposing the article-stripped key to clients.
+			Expect(sortNames).To(ContainElement("beatles"))
 		})
 
 		It("lists all genres", func() {
