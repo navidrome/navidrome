@@ -22,11 +22,17 @@ var _ = Describe("Synthetic", func() {
 		}
 	})
 
-	It("cannot collide with a real blurhash, which is far longer", func() {
-		// `real` is a Go builtin; do not name the variable that.
-		encoded, err := blurhash.Encode(gradientImage(64, 64))
-		Expect(err).ToNot(HaveOccurred())
-		Expect(len(encoded)).To(BeNumerically(">", 22))
+	It("keeps its prefix exclusive to real encodes, across aspect ratios", func() {
+		Expect(blurhash.Synthetic("alb-1", "")).To(HavePrefix("K"))
+
+		ratios := []struct{ w, h int }{
+			{10, 200}, {200, 10}, {1, 50}, {50, 1}, {64, 64}, {100, 300}, {300, 100},
+		}
+		for _, r := range ratios {
+			encoded, err := blurhash.Encode(gradientImage(r.w, r.h))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(encoded).ToNot(HavePrefix("K"), "real encode at %dx%d produced the synthetic prefix", r.w, r.h)
+		}
 	})
 
 	It("is deterministic for one seed", func() {

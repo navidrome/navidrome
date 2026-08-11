@@ -8,8 +8,7 @@ import (
 	"github.com/zeebo/xxh3"
 )
 
-// synthComponents is deliberately below the ~4x4 Encode derives, so a synthetic value is
-// always shorter than a real one and the two can never collide.
+// A real hash never has 3x3 components: components() always targets ~16 tiles.
 const synthComponents = 3
 
 // Synthetic returns a blurhash unique to seed, for artwork whose real hash does not exist
