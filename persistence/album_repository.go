@@ -133,7 +133,7 @@ var albumFilters = sync.OnceValue(func() map[string]filterFunc {
 		"starred":         annotationBoolFilter("starred"),
 		"has_rating":      annotationBoolFilter("rating"),
 		"missing":         booleanFilter,
-		"genre_id":        tagIDFilter,
+		"genre_id":        genreFilter(AlbumGenres),
 		"role_total_id":   allRolesFilter,
 		"library_id":      libraryIdFilter,
 	}
@@ -212,7 +212,10 @@ func (r *albumRepository) Put(al *model.Album) error {
 		return err
 	}
 	al.ID = id
-	return r.updateParticipants(al.ID, al.Participants)
+	if err := r.updateParticipants(al.ID, al.Participants); err != nil {
+		return err
+	}
+	return r.updateTags(al.ID, al.Tags)
 }
 
 // TODO Move external metadata to a separated table
