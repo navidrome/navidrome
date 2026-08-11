@@ -3,7 +3,9 @@ package publicurl_test
 import (
 	"net/http"
 	"net/url"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-chi/jwtauth/v5"
 	"github.com/navidrome/navidrome/conf"
@@ -168,6 +170,36 @@ var _ = Describe("Public URL Utilities", func() {
 			params := url.Values{"key": []string{"value"}}
 			result := publicurl.AbsoluteURL(r, "/path", params)
 			Expect(result).To(Equal("https://example.com/path?key=value"))
+		})
+	})
+
+	Describe("PlaybackURL", func() {
+		BeforeEach(func() {
+			conf.Server.BaseHost = "lan.example"
+			conf.Server.BaseScheme = "https"
+			conf.Server.BasePath = "/music"
+			auth.PublicTokenAuth = jwtauth.New("HS256", []byte("test secret"), nil)
+		})
+
+		It("returns an absolute URL with the configured base address", func() {
+			before := time.Now()
+			result, err := publicurl.PlaybackURL("mf-123")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(HavePrefix("https://lan.example/music/share/playback/"))
+
+			token := strings.TrimPrefix(result, "https://lan.example/music/share/playback/")
+			claims, err := auth.ValidatePlaybackToken(token)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(claims.Scope).To(Equal(auth.PlaybackScope))
+			Expect(claims.ID).To(Equal("mf-123"))
+			Expect(claims.ExpiresAt).To(BeTemporally("~", before.Add(auth.PlaybackTokenTTL), time.Minute))
+		})
+
+		It("errors when BaseHost is unset", func() {
+			conf.Server.BaseHost = ""
+			result, err := publicurl.PlaybackURL("mf-123")
+			Expect(err).To(MatchError(publicurl.ErrBaseHostRequired))
+			Expect(result).To(BeEmpty())
 		})
 	})
 

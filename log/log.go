@@ -49,6 +49,9 @@ var redacted = &Hook{
 		// to the next query separator or whitespace, not just word chars. A [\w]+ class would stop
 		// at a JWT's first '.' and leak its payload and signature.
 		"([^\\w]api_key=)[^&\\s]+",
+
+		// Playback capability URLs carry a signed bearer token in the path.
+		"(/share/playback/)[^?\\s]+",
 	},
 }
 

@@ -22,6 +22,7 @@ type Claims struct {
 	Format  string // "f" - audio format
 	BitRate int    // "b" - audio bitrate
 	ShareID string // "sid" - share ID for share stream tokens
+	Scope   string // "scope" - capability scope for public tokens
 }
 
 // ToMap converts Claims to a map[string]any for use with TokenAuth.Encode().
@@ -57,6 +58,9 @@ func (c Claims) ToMap() map[string]any {
 	}
 	if c.ShareID != "" {
 		m["sid"] = c.ShareID
+	}
+	if c.Scope != "" {
+		m["scope"] = c.Scope
 	}
 	return m
 }
@@ -99,6 +103,10 @@ func ClaimsFromToken(token jwt.Token) Claims {
 	var sid string
 	if err := token.Get("sid", &sid); err == nil {
 		c.ShareID = sid
+	}
+	var scope string
+	if err := token.Get("scope", &scope); err == nil {
+		c.Scope = scope
 	}
 	return c
 }

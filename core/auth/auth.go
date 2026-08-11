@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"crypto/sha256"
+	"errors"
 	"sync"
 	"time"
 
@@ -25,6 +26,13 @@ var (
 	// PublicTokenAuth signs public-link tokens (artwork, share streams), on a separate secret that survives the rotation.
 	PublicTokenAuth *jwtauth.JWTAuth
 )
+
+const (
+	PlaybackScope    = "playback"
+	PlaybackTokenTTL = 2 * time.Hour
+)
+
+var ErrInvalidPlaybackToken = errors.New("invalid playback token")
 
 // Init creates the JWTAuth objects from the secrets stored in the DB.
 // Missing or undecryptable secrets are regenerated and stored.
@@ -104,6 +112,21 @@ func ValidatePublic(tokenStr string) (Claims, error) {
 		return Claims{}, err
 	}
 	return ClaimsFromToken(token), nil
+}
+
+func CreatePlaybackToken(mediaID string) (string, error) {
+	return CreateExpiringPublicToken(time.Now().Add(PlaybackTokenTTL), Claims{ID: mediaID, Scope: PlaybackScope})
+}
+
+func ValidatePlaybackToken(tokenStr string) (Claims, error) {
+	claims, err := ValidatePublic(tokenStr)
+	if err != nil {
+		return Claims{}, err
+	}
+	if claims.Scope != PlaybackScope || claims.ID == "" || claims.ExpiresAt.IsZero() {
+		return Claims{}, ErrInvalidPlaybackToken
+	}
+	return claims, nil
 }
 
 func WithAdminUser(ctx context.Context, ds model.DataStore) context.Context {
