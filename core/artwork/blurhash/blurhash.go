@@ -39,22 +39,25 @@ func Encode(img image.Image) (string, error) {
 // bounds, and a source far larger than the counts: too few samples overshoot the AC terms.
 func encodeAt(img image.Image, xComp, yComp int) string {
 	src := pixelsOf(downscale(img))
-	w, h := src.w, src.h
+	return encodePixels(src, xComp, yComp, cosBasis(xComp, src.w), cosBasis(yComp, src.h))
+}
 
-	cosX := make([][]float64, xComp)
-	for i := range cosX {
-		cosX[i] = make([]float64, w)
-		for x := range cosX[i] {
-			cosX[i][x] = math.Cos(math.Pi * float64(i) * float64(x) / float64(w))
+// cosBasis is the cosine basis for comp components sampled across n pixels. It depends only
+// on its arguments, so a caller with a fixed shape can build it once and reuse it.
+func cosBasis(comp, n int) [][]float64 {
+	basis := make([][]float64, comp)
+	for i := range basis {
+		basis[i] = make([]float64, n)
+		for x := range basis[i] {
+			basis[i][x] = math.Cos(math.Pi * float64(i) * float64(x) / float64(n))
 		}
 	}
-	cosY := make([][]float64, yComp)
-	for j := range cosY {
-		cosY[j] = make([]float64, h)
-		for y := range cosY[j] {
-			cosY[j][y] = math.Cos(math.Pi * float64(j) * float64(y) / float64(h))
-		}
-	}
+	return basis
+}
+
+// encodePixels is the encoder proper; cosX and cosY must match src's dimensions.
+func encodePixels(src pixels, xComp, yComp int, cosX, cosY [][]float64) string {
+	w, h := src.w, src.h
 
 	lin := srgbToLinearTable()
 	factors := make([][3]float64, xComp*yComp)

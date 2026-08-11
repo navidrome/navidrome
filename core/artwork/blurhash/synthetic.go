@@ -34,8 +34,15 @@ func Synthetic(seed, baseColor string) string {
 		r, g, b := hslToRGB(hue+dh, clamp01(sat+ds), clamp01(light+dl))
 		grid[i] = [3]float64{float64(r), float64(g), float64(b)}
 	}
-	return encodeAt(upscale(&grid), synthComponents, synthComponents)
+	// The shape is fixed, so the cosine basis is reused instead of rebuilt per call.
+	basis := synthBasis()
+	return encodePixels(pixelsOf(upscale(&grid)), synthComponents, synthComponents, basis, basis)
 }
+
+// synthBasis is the cosine basis for the fixed synthetic shape. Square, so one serves both axes.
+var synthBasis = sync.OnceValue(func() [][]float64 {
+	return cosBasis(synthComponents, synthSourceSize)
+})
 
 // upscale renders the cell grid bilinearly at synthSourceSize. Hand-rolled because
 // x/image's scaler allocates per call, and this runs once per mapped item.
