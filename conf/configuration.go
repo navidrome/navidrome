@@ -5,6 +5,7 @@ import (
 	"encoding"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -824,6 +825,9 @@ func validateByteSize(name, value string) func() error {
 		}
 		if size == 0 {
 			return fmt.Errorf("invalid %s %q: must be greater than zero", name, value)
+		}
+		if size > math.MaxInt64 {
+			return fmt.Errorf("invalid %s %q: value is too large", name, value)
 		}
 		return nil
 	}
