@@ -17,19 +17,22 @@ const synthComponents = 3
 func Synthetic(seed, baseColor string) string {
 	hue, sat, light := baseTone(baseColor, xxh3.HashStringSeed(seed, 0))
 
-	const n = synthComponents
-	img := image.NewNRGBA(image.Rect(0, 0, n, n))
-	for i := range n * n {
+	img := image.NewNRGBA(image.Rect(0, 0, synthComponents, synthComponents))
+	for i := range synthComponents * synthComponents {
 		// Each cell hashes the seed separately, so one tint shared by many items still
 		// yields one value per item.
 		bits := xxh3.HashStringSeed(seed, uint64(i)+1)
-		dh := (float64(bits&0xFF)/255 - 0.5) * 60
-		ds := (float64(bits>>8&0x3F)/63 - 0.5) * 0.16
-		dl := (float64(bits>>14&0x3F)/63 - 0.5) * 0.30
+		dh := (byteFrac(bits, 0) - 0.5) * 60
+		ds := (byteFrac(bits, 8) - 0.5) * 0.16
+		dl := (byteFrac(bits, 16) - 0.5) * 0.30
 		r, g, b := hslToRGB(hue+dh, clamp01(sat+ds), clamp01(light+dl))
-		img.SetNRGBA(i%n, i/n, color.NRGBA{R: r, G: g, B: b, A: 255})
+		img.SetNRGBA(i%synthComponents, i/synthComponents, color.NRGBA{R: r, G: g, B: b, A: 255})
 	}
-	return encodeAt(img, n, n)
+	return encodeAt(img, synthComponents, synthComponents)
+}
+
+func byteFrac(bits uint64, shift int) float64 {
+	return float64(bits>>shift&0xFF) / 255
 }
 
 // baseTone clamps saturation and lightness away from the extremes, so a placeholder
