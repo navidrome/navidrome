@@ -18,6 +18,7 @@ import (
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	"github.com/navidrome/navidrome/utils/req"
 	"github.com/navidrome/navidrome/utils/slice"
+	"golang.org/x/sync/errgroup"
 )
 
 // notMissing excludes items whose backing files are all gone ("missing" is a real column on
@@ -336,12 +337,19 @@ func (api *Router) mergeTypes(ctx context.Context, q itemsQuery) (itemsResult, e
 	if q.limit > 0 {
 		window = q.offset + q.limit
 	}
-	// A search can't stream, so the window is what each type materializes and StartIndex would drive
-	// it without bound. Only below the window are the merged rows the true order, hence the clip
-	// below too. Non-search stays unbounded in StartIndex: a known gap, fixable with per-type counts.
+	// A search can't stream, so the window bounds what each type materializes.
 	if q.search != "" {
 		window = min(window, maxSearchLimit)
 	}
+	if q.limit == 0 {
+		return api.mergeTypesStreaming(ctx, q, window)
+	}
+	return api.mergeTypesPaged(ctx, q, window)
+}
+
+// mergeTypesStreaming keeps the unbounded path lazy: chaining the per-type cursors yields their rows
+// in order minus the first offset, without pulling every row into memory.
+func (api *Router) mergeTypesStreaming(ctx context.Context, q itemsQuery, window int) (itemsResult, error) {
 	var results []itemsResult
 	total := 0
 	for _, itemType := range q.types {
@@ -355,23 +363,44 @@ func (api *Router) mergeTypes(ctx context.Context, q itemsQuery) (itemsResult, e
 		results = append(results, res)
 		total += res.total
 	}
-	if q.limit == 0 {
-		// No cap above, so merging in memory would pull every row of every type. The merged page is
-		// just their rows in order minus the first offset — what chaining the cursors yields.
-		return chained(results, total, q.offset), nil
+	return chained(results, total, q.offset), nil
+}
+
+// mergeTypesPaged runs each type's query concurrently (like Subsonic searchAll), then round-robins
+// the per-type rows so the limited page is a mix rather than one type's rows followed by the next.
+func (api *Router) mergeTypesPaged(ctx context.Context, q itemsQuery, window int) (itemsResult, error) {
+	lists := make([][]dto.BaseItemDto, len(q.types))
+	totals := make([]int, len(q.types))
+	g, ctx := errgroup.WithContext(ctx)
+	for i, itemType := range q.types {
+		g.Go(func() error {
+			var opts model.QueryOptions
+			opts.Max = window
+			applySort(&opts, itemType, q.sortBy, q.sortOrder)
+			res, err := api.queryItemsOfType(ctx, itemType, opts, q)
+			if err != nil {
+				return err
+			}
+			items, err := res.collect()
+			if err != nil {
+				return err
+			}
+			lists[i] = items
+			totals[i] = res.total
+			return nil
+		})
 	}
-	var items []dto.BaseItemDto
-	for _, res := range results {
-		typeItems, err := res.collect()
-		if err != nil {
-			return itemsResult{}, err
-		}
-		items = append(items, typeItems...)
+	if err := g.Wait(); err != nil {
+		return itemsResult{}, err
 	}
+	total := 0
+	for _, t := range totals {
+		total += t
+	}
+	items := interleave(lists)
 	if q.search != "" {
 		// Past the window the merged order isn't the true one, so drop it rather than serve another
-		// type's rows. The total is what's pageable overall, not this page, or a client paging on it
-		// would stop after the first page.
+		// type's rows. The total is what's pageable overall, so a client paging on it won't stop early.
 		items = items[:min(window, len(items))]
 		total = min(total, maxSearchLimit)
 	}
