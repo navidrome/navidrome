@@ -518,7 +518,7 @@ var _ = Describe("mappers", func() {
 		})
 
 		// The client's image request is what extracts the embedded art. Reusing the album's
-		// value would let Finamp answer from cache and never send it.
+		// value would let it answer from cache and never send it.
 		It("gives the track a value distinct from its album's", func() {
 			mf := model.MediaFile{ID: "mf-3", AlbumID: "alb-1", HasCoverArt: true}
 			mf.AlbumImage.ImageHash = "0123456789abcdef"

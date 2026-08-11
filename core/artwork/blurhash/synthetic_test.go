@@ -52,8 +52,6 @@ var _ = Describe("Synthetic", func() {
 		Expect(min(r, g, b)).To(BeNumerically(">", 10), "lightness is capped above black")
 	})
 
-	// The Finamp maintainers' condition for accepting a fabricated value is that it is
-	// unique; this is the assertion that holds us to it.
 	It("keeps 1,000,000 seeds effectively distinct", func() {
 		const count = 1_000_000
 		seen := make(map[uint64]struct{}, count)
