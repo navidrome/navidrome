@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/core/artwork/blurhash"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
 )
@@ -227,15 +228,15 @@ func embeddedArtPending(mf model.MediaFile) bool {
 		mf.ImageHash == "" && !mf.ItemImage.ImageAbsent
 }
 
-// primaryImage never fakes a blurhash: clients key their cover cache on the value, which would
-// pin a stale cover forever.
+// primaryImage synthesizes a blurhash when none was computed yet: clients key their cover
+// cache on the value, so it must be unique per image, never shared or reused.
 func primaryImage(img model.ItemImage, fallback string, fields Fields) (tag string, blurs map[string]map[string]string, ratio *float64) {
 	if img.ImageAbsent {
 		return "", nil, nil
 	}
 	tag = cmp.Or(img.ImageHash, fallback)
-	if img.BlurHash != "" {
-		blurs = map[string]map[string]string{"Primary": {tag: img.BlurHash}}
+	if tag != "" {
+		blurs = map[string]map[string]string{"Primary": {tag: cmp.Or(img.BlurHash, blurhash.Synthetic(tag, ""))}}
 	}
 	if fields.Has("PrimaryImageAspectRatio") {
 		ratio = img.AspectRatio()
