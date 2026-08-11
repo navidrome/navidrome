@@ -56,6 +56,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/tetratelabs/wazero v1.12.0
 	github.com/unrolled/secure v1.17.0
+	github.com/vishen/go-chromecast v0.3.4
 	github.com/xrash/smetrics v0.0.0-20250705151800-55b8f293f342
 	github.com/zeebo/xxh3 v1.1.0
 	go.senan.xyz/taglib v0.11.1
@@ -76,6 +77,7 @@ require (
 	github.com/atombender/go-jsonschema v0.20.0 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/cespare/reflex v0.3.2 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/creack/pty v1.1.24 // indirect
@@ -89,6 +91,7 @@ require (
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/goccy/go-json v0.10.6 // indirect
 	github.com/goccy/go-yaml v1.19.2 // indirect
+	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/pprof v0.0.0-20260709232956-b9395ee17fa0 // indirect
 	github.com/google/subcommands v1.2.0 // indirect
