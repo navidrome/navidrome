@@ -32,6 +32,11 @@ func Encode(img image.Image) (string, error) {
 	}
 	// Pre-downscale: its rounding can flip a component count, and the hash is a client cache key.
 	xComp, yComp := components(img.Bounds().Dx(), img.Bounds().Dy())
+	return encodeAt(img, xComp, yComp), nil
+}
+
+// encodeAt encodes img at the given component counts (each 1..9). Callers guarantee non-empty bounds.
+func encodeAt(img image.Image, xComp, yComp int) string {
 	src := pixelsOf(downscale(img))
 	w, h := src.w, src.h
 
@@ -86,7 +91,7 @@ func Encode(img image.Image) (string, error) {
 	var sb strings.Builder
 	sb.WriteString(encode83((xComp-1)+(yComp-1)*9, 1))
 
-	// Derived counts are at least 1x9, so there is always at least one AC factor.
+	// Every caller passes at least 2 components, so there is always at least one AC factor.
 	ac := factors[1:]
 	actualMax := 0.0
 	for _, f := range ac {
@@ -101,7 +106,7 @@ func Encode(img image.Image) (string, error) {
 	for _, f := range ac {
 		sb.WriteString(encode83(quantAC(f[0], maxVal)*19*19+quantAC(f[1], maxVal)*19+quantAC(f[2], maxVal), 2))
 	}
-	return sb.String(), nil
+	return sb.String()
 }
 
 // pixels is direct Pix access for the pixel loop, avoiding a per-pixel allocation via image.At.
