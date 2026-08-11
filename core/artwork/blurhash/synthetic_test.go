@@ -94,9 +94,7 @@ var _ = Describe("Synthetic", func() {
 		Expect(dark).To(BeNumerically("<", light))
 	})
 
-	// One album's colour is shared by all its tracks, so the seed alone has to carry
-	// uniqueness. A collision here would make Finamp skip a track's image request, and
-	// that request is what extracts its embedded art.
+	// A shared tint must not become a shared value: the seed alone carries uniqueness.
 	It("keeps 1,000,000 seeds distinct under a single fixed tint", func() {
 		const count = 1_000_000
 		seen := make(map[uint64]struct{}, count)
