@@ -35,7 +35,8 @@ func Encode(img image.Image) (string, error) {
 	return encodeAt(img, xComp, yComp), nil
 }
 
-// encodeAt encodes img at the given component counts (each 2..9). Callers guarantee non-empty bounds.
+// encodeAt encodes img at the given component counts (each 2..9). Callers guarantee non-empty
+// bounds, and a source far larger than the counts: too few samples overshoot the AC terms.
 func encodeAt(img image.Image, xComp, yComp int) string {
 	src := pixelsOf(downscale(img))
 	w, h := src.w, src.h

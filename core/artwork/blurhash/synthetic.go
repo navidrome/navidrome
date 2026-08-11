@@ -15,12 +15,14 @@ const synthComponents = 3
 // clamping the corners to black; the encoder assumes many samples per component.
 const synthSourceSize = 8
 
+type colorGrid = [synthComponents * synthComponents][3]float64
+
 // Synthetic returns a blurhash unique to seed, for artwork whose real hash does not exist
 // yet. baseColor ("#rrggbb") sets the hue family; "" derives it from the seed.
 func Synthetic(seed, baseColor string) string {
 	hue, sat, light := baseTone(baseColor, xxh3.HashStringSeed(seed, 0))
 
-	var grid [synthComponents * synthComponents][3]float64
+	var grid colorGrid
 	for i := range grid {
 		// Each cell hashes the seed separately, so one tint shared by many items still
 		// yields one value per item.
@@ -36,7 +38,7 @@ func Synthetic(seed, baseColor string) string {
 
 // upscale renders the cell grid bilinearly at synthSourceSize. Hand-rolled because
 // x/image's scaler allocates per call, and this runs once per mapped item.
-func upscale(grid *[synthComponents * synthComponents][3]float64) *image.NRGBA {
+func upscale(grid *colorGrid) *image.NRGBA {
 	const n, size = synthComponents, synthSourceSize
 	img := image.NewNRGBA(image.Rect(0, 0, size, size))
 	for y := range size {
@@ -58,9 +60,10 @@ func upscale(grid *[synthComponents * synthComponents][3]float64) *image.NRGBA {
 }
 
 // cellWeight splits a grid coordinate into its lower cell and the fraction toward the next.
+// Edge pixels fall outside the cell centres, so both ends clamp rather than extrapolate.
 func cellWeight(f float64) (int, float64) {
-	f = min(max(f, 0), synthComponents-1-1e-9)
-	i := int(f)
+	f = min(max(f, 0), synthComponents-1)
+	i := min(int(f), synthComponents-2)
 	return i, f - float64(i)
 }
 
