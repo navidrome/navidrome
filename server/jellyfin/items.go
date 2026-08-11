@@ -577,7 +577,7 @@ func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, q it
 		filters = append(filters, notMissing)
 	}
 	if len(q.genreIds) > 0 {
-		filters = append(filters, filter.ByGenreID(q.genreIds))
+		filters = append(filters, filter.AlbumsByGenreID(q.genreIds))
 	}
 	if len(q.years) > 0 {
 		filters = append(filters, filter.AlbumsByYears(q.years))
@@ -624,7 +624,7 @@ func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, q ite
 		filters = append(filters, filter.ByAlbumID(q.albumIds))
 	}
 	if len(q.genreIds) > 0 {
-		filters = append(filters, filter.ByGenreID(q.genreIds))
+		filters = append(filters, filter.SongsByGenreID(q.genreIds))
 	}
 	if len(q.years) > 0 {
 		filters = append(filters, filter.SongsByYears(q.years))
