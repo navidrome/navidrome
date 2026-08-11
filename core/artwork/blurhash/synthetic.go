@@ -4,6 +4,7 @@ import (
 	"image"
 	"math"
 	"strconv"
+	"sync"
 
 	"github.com/zeebo/xxh3"
 )
@@ -40,18 +41,26 @@ func Synthetic(seed, baseColor string) string {
 // x/image's scaler allocates per call, and this runs once per mapped item.
 func upscale(grid *colorGrid) *image.NRGBA {
 	const n, size = synthComponents, synthSourceSize
+	axis := axisWeights()
+
+	// Separable: each grid row is stretched horizontally once, then rows blend vertically.
+	// Doing it per pixel instead would repeat every horizontal lerp `size` times.
+	var rows [n][size][3]float64
+	for r := range n {
+		for x, a := range axis {
+			for c := range 3 {
+				rows[r][x][c] = grid[r*n+a.cell][c]*(1-a.frac) + grid[r*n+a.cell+1][c]*a.frac
+			}
+		}
+	}
+
 	img := image.NewNRGBA(image.Rect(0, 0, size, size))
-	for y := range size {
-		fy := (float64(y)+0.5)*n/size - 0.5
-		y0, wy := cellWeight(fy)
+	for y, a := range axis {
+		top, bot := &rows[a.cell], &rows[a.cell+1]
 		for x := range size {
-			fx := (float64(x)+0.5)*n/size - 0.5
-			x0, wx := cellWeight(fx)
 			p := img.Pix[y*img.Stride+x*4:]
 			for c := range 3 {
-				top := grid[y0*n+x0][c]*(1-wx) + grid[y0*n+x0+1][c]*wx
-				bot := grid[(y0+1)*n+x0][c]*(1-wx) + grid[(y0+1)*n+x0+1][c]*wx
-				p[c] = uint8(top*(1-wy) + bot*wy + 0.5)
+				p[c] = uint8(top[x][c]*(1-a.frac) + bot[x][c]*a.frac + 0.5)
 			}
 			p[3] = 255
 		}
@@ -59,13 +68,24 @@ func upscale(grid *colorGrid) *image.NRGBA {
 	return img
 }
 
-// cellWeight splits a grid coordinate into its lower cell and the fraction toward the next.
-// Edge pixels fall outside the cell centres, so both ends clamp rather than extrapolate.
-func cellWeight(f float64) (int, float64) {
-	f = min(max(f, 0), synthComponents-1)
-	i := min(int(f), synthComponents-2)
-	return i, f - float64(i)
-}
+// axisWeights maps each source pixel to its lower cell and the fraction toward the next.
+// Both axes are square and constant-sized, so one table serves both and outlives the call.
+var axisWeights = sync.OnceValue(func() *[synthSourceSize]struct {
+	cell int
+	frac float64
+} {
+	var t [synthSourceSize]struct {
+		cell int
+		frac float64
+	}
+	for i := range t {
+		// Edge pixels fall outside the cell centres, so both ends clamp rather than extrapolate.
+		f := min(max((float64(i)+0.5)*synthComponents/synthSourceSize-0.5, 0), synthComponents-1)
+		t[i].cell = min(int(f), synthComponents-2)
+		t[i].frac = f - float64(t[i].cell)
+	}
+	return &t
+})
 
 func byteFrac(bits uint64, shift int) float64 {
 	return float64(bits>>shift&0xFF) / 255
