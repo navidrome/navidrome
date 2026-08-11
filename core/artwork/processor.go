@@ -13,6 +13,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/artwork/blurhash"
 	"github.com/navidrome/navidrome/core/artwork/dominant"
 	"github.com/navidrome/navidrome/core/artwork/thumbhash"
@@ -51,7 +53,9 @@ const thumbnailSize = 100
 
 // maxImageBytes caps a resolved image read: a user-editable ExternalImageURL could point at
 // an arbitrarily large endpoint.
-const maxImageBytes = 20 << 20
+func maxImageBytes() int64 {
+	return parseSize(conf.Server.MaxImageSize, consts.DefaultMaxImageSize)
+}
 
 // maxImagePixels guards against decompression bombs: a tiny file can declare a canvas that
 // image.Decode would expand into gigabytes.
@@ -202,12 +206,13 @@ func writeAbsent(ctx context.Context, repo model.ArtworkRepository, item model.A
 }
 
 func readCapped(r io.Reader) ([]byte, error) {
-	data, err := io.ReadAll(io.LimitReader(r, maxImageBytes+1))
+	limit := maxImageBytes()
+	data, err := io.ReadAll(io.LimitReader(r, limit+1))
 	if err != nil {
 		return nil, err
 	}
-	if len(data) > maxImageBytes {
-		return nil, fmt.Errorf("image exceeds size cap %d", maxImageBytes)
+	if int64(len(data)) > limit {
+		return nil, fmt.Errorf("image exceeds size cap %d", limit)
 	}
 	return data, nil
 }

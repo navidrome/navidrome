@@ -394,7 +394,7 @@ var _ = Describe("processor.acquire", func() {
 		imgPath := filepath.Join(tmpDir, "artwork", "radio", "big_test.jpg")
 		f, err := os.Create(imgPath)
 		Expect(err).ToNot(HaveOccurred())
-		Expect(f.Truncate(maxImageBytes + 1)).To(Succeed())
+		Expect(f.Truncate(maxImageBytes() + 1)).To(Succeed())
 		Expect(f.Close()).To(Succeed())
 
 		radioRepo := tests.CreateMockedRadioRepo()
@@ -491,5 +491,16 @@ var _ = Describe("makeThumbnail", func() {
 		// Premultiplied storage would have halved this to ~100.
 		Expect(thumb.Pix[0]).To(BeNumerically("==", 200))
 		Expect(thumb.Pix[3]).To(BeNumerically("==", 128))
+	})
+})
+
+var _ = Describe("maxImageBytes", func() {
+	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
+	})
+
+	It("reads MaxImageSize from config", func() {
+		conf.Server.MaxImageSize = "30MB"
+		Expect(maxImageBytes()).To(Equal(int64(30_000_000)))
 	})
 })

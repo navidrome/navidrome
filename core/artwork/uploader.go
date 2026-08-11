@@ -17,10 +17,14 @@ import (
 
 // MaxImageUploadSize returns the configured max upload size in bytes, or the built-in default.
 func MaxImageUploadSize() int64 {
-	if size, err := humanize.ParseBytes(conf.Server.MaxImageUploadSize); err == nil && size > 0 {
+	return parseSize(conf.Server.MaxImageUploadSize, consts.DefaultMaxImageUploadSize)
+}
+
+func parseSize(value, fallback string) int64 {
+	if size, err := humanize.ParseBytes(value); err == nil && size > 0 {
 		return int64(size)
 	}
-	size, _ := humanize.ParseBytes(consts.DefaultMaxImageUploadSize)
+	size, _ := humanize.ParseBytes(fallback)
 	return int64(size)
 }
 
