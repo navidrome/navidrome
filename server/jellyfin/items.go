@@ -331,20 +331,32 @@ func (api *Router) playlistTracksRepo(ctx context.Context, q itemsQuery) (model.
 }
 
 func (api *Router) mergeTypes(ctx context.Context, q itemsQuery) (itemsResult, error) {
-	// Each per-type query needs at most offset+limit rows (the worst case where one type fills the
-	// whole [offset, offset+limit) window). Totals are unaffected — they come from CountAll.
-	window := 0
-	if q.limit > 0 {
-		window = q.offset + q.limit
+	if q.limit == 0 {
+		return api.mergeTypesStreaming(ctx, q, 0)
 	}
-	// A search can't stream, so the window bounds what each type materializes.
+	// A random page doesn't stack on the previous one (the order reshuffles each request), so serving
+	// from 0 is an equivalent fresh draw and avoids materializing offset+limit rows per type.
+	offset := q.offset
+	if isRandomSort(q.sortBy) {
+		offset = 0
+	}
+	// Each per-type query needs at most offset+limit rows (worst case: one type fills the whole window).
+	window := offset + q.limit
 	if q.search != "" {
 		window = min(window, maxSearchLimit)
 	}
-	if q.limit == 0 {
-		return api.mergeTypesStreaming(ctx, q, window)
+	return api.mergeTypesPaged(ctx, q, window, offset)
+}
+
+// isRandomSort reports whether the request's primary sort is Random. "random" is a valid sort for
+// every merge type, so a leading Random key applies uniformly across the merged types.
+func isRandomSort(sortBy string) bool {
+	for key := range strings.SplitSeq(sortBy, ",") {
+		if key = strings.TrimSpace(key); key != "" {
+			return strings.EqualFold(key, "Random")
+		}
 	}
-	return api.mergeTypesPaged(ctx, q, window)
+	return false
 }
 
 // mergeTypesStreaming keeps the unbounded path lazy: chaining the per-type cursors yields their rows
@@ -373,7 +385,7 @@ func (api *Router) queryTypeWindow(ctx context.Context, itemType string, window 
 
 // mergeTypesPaged runs each type's query concurrently, then round-robins the per-type rows so the limited page
 // is a mix rather than one type's rows followed by the next.
-func (api *Router) mergeTypesPaged(ctx context.Context, q itemsQuery, window int) (itemsResult, error) {
+func (api *Router) mergeTypesPaged(ctx context.Context, q itemsQuery, window, offset int) (itemsResult, error) {
 	lists := make([][]dto.BaseItemDto, len(q.types))
 	totals := make([]int, len(q.types))
 	g, ctx := errgroup.WithContext(ctx)
@@ -406,7 +418,7 @@ func (api *Router) mergeTypesPaged(ctx context.Context, q itemsQuery, window int
 		items = items[:min(window, len(items))]
 		total = min(total, maxSearchLimit)
 	}
-	return materialized(result(paginate(items, q.offset, q.limit), total, q.offset)), nil
+	return materialized(result(paginate(items, offset, q.limit), total, q.offset)), nil
 }
 
 func (api *Router) queryItemsOfType(ctx context.Context, itemType string, opts model.QueryOptions, q itemsQuery) (itemsResult, error) {

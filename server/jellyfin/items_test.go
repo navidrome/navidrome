@@ -792,6 +792,17 @@ var _ = Describe("Items", func() {
 				Expect(res.TotalRecordCount).To(Equal(4))
 			})
 
+			It("serves a full random page from offset 0 regardless of StartIndex", func() {
+				// A deep StartIndex on a random merge must not materialize offset+limit rows; since random
+				// reshuffles per request, offset 0 is an equivalent fresh draw. Old behavior returned empty.
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio,MusicAlbum&SortBy=Random&Recursive=true&StartIndex=1000&Limit=4", nil).WithContext(ctxUser())
+				invoke(api.getItems, w, r)
+				var res dto.QueryResult
+				Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+				Expect(res.Items).To(HaveLen(4))
+			})
+
 			It("propagates a per-type query error", func() {
 				ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetError(true)
 				w := httptest.NewRecorder()
