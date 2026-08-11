@@ -62,4 +62,47 @@ var _ = Describe("Synthetic", func() {
 		}
 		Expect(len(seen)).To(BeNumerically(">=", 999_900))
 	})
+
+	dcOf := func(hash string) (int, int, int) {
+		dc := decode83(hash[2:6])
+		return dc >> 16 & 0xFF, dc >> 8 & 0xFF, dc & 0xFF
+	}
+
+	It("leans the DC towards a red tint", func() {
+		r, g, b := dcOf(blurhash.Synthetic("alb-1", "#c04040"))
+		Expect(r).To(BeNumerically(">", g))
+		Expect(r).To(BeNumerically(">", b))
+	})
+
+	It("leans the DC towards a blue tint", func() {
+		r, g, b := dcOf(blurhash.Synthetic("alb-1", "#4040c0"))
+		Expect(b).To(BeNumerically(">", r))
+		Expect(b).To(BeNumerically(">", g))
+	})
+
+	It("changes the value when only the tint changes", func() {
+		Expect(blurhash.Synthetic("alb-1", "#c04040")).ToNot(Equal(blurhash.Synthetic("alb-1", "#4040c0")))
+	})
+
+	It("falls back to the seed hue for an unparseable tint", func() {
+		Expect(blurhash.Synthetic("alb-1", "not-a-colour")).To(Equal(blurhash.Synthetic("alb-1", "")))
+	})
+
+	It("tracks a dark tint's lightness", func() {
+		dark, _, _ := dcOf(blurhash.Synthetic("alb-1", "#101820"))
+		light, _, _ := dcOf(blurhash.Synthetic("alb-1", "#e8f0f8"))
+		Expect(dark).To(BeNumerically("<", light))
+	})
+
+	// One album's colour is shared by all its tracks, so the seed alone has to carry
+	// uniqueness. A collision here would make Finamp skip a track's image request, and
+	// that request is what extracts its embedded art.
+	It("keeps 1,000,000 seeds distinct under a single fixed tint", func() {
+		const count = 1_000_000
+		seen := make(map[uint64]struct{}, count)
+		for i := range count {
+			seen[xxh3.HashString(blurhash.Synthetic(fmt.Sprintf("track-%d", i), "#3a5f7d"))] = struct{}{}
+		}
+		Expect(len(seen)).To(BeNumerically(">=", 999_900))
+	})
 })

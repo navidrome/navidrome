@@ -4,6 +4,7 @@ import (
 	"image"
 	"image/color"
 	"math"
+	"strconv"
 
 	"github.com/zeebo/xxh3"
 )
@@ -31,9 +32,49 @@ func Synthetic(seed, baseColor string) string {
 	return encodeAt(img, n, n)
 }
 
-// baseTone is the hue, saturation and lightness the cells orbit.
+// baseTone clamps saturation and lightness away from the extremes, so a placeholder
+// never reads as neon or as solid black.
 func baseTone(baseColor string, hueBits uint64) (hue, sat, light float64) {
+	if r, g, b, ok := parseHex(baseColor); ok {
+		h, s, l := rgbToHSL(r, g, b)
+		return h, min(max(s, 0.10), 0.35), min(max(l, 0.15), 0.75)
+	}
 	return float64(hueBits&0x1FF) / 512 * 360, 0.22, 0.40
+}
+
+func parseHex(s string) (r, g, b uint8, ok bool) {
+	if len(s) != 7 || s[0] != '#' {
+		return 0, 0, 0, false
+	}
+	v, err := strconv.ParseUint(s[1:], 16, 32)
+	if err != nil {
+		return 0, 0, 0, false
+	}
+	return uint8(v >> 16), uint8(v >> 8), uint8(v), true
+}
+
+func rgbToHSL(r, g, b uint8) (h, s, l float64) {
+	rf, gf, bf := float64(r)/255, float64(g)/255, float64(b)/255
+	mx, mn := max(rf, gf, bf), min(rf, gf, bf)
+	l = (mx + mn) / 2
+	if mx == mn {
+		return 0, 0, l
+	}
+	d := mx - mn
+	s = d / (1 - math.Abs(2*l-1))
+	switch mx {
+	case rf:
+		h = math.Mod((gf-bf)/d, 6)
+	case gf:
+		h = (bf-rf)/d + 2
+	default:
+		h = (rf-gf)/d + 4
+	}
+	h *= 60
+	if h < 0 {
+		h += 360
+	}
+	return h, s, l
 }
 
 func hslToRGB(h, s, l float64) (uint8, uint8, uint8) {
