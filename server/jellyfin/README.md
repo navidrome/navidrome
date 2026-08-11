@@ -180,7 +180,7 @@ warmer uses — so user-scoped items like private playlists still resolve their 
 falling back to the placeholder. Album, artist, media-file and playlist ids are all resolved to
 their Navidrome `ArtworkID`.
 
-Blurhash placeholders follow the same principle. A real blurhash is computed once in
+Blurhashes come in three tiers. A real blurhash is computed once in
 `core/artwork` from the decoded image and stored per artwork row; the mappers read it whenever it
 exists. While artwork is still unresolved, `dto/mappers.go` instead emits a synthetic 3x3 blurhash
 (`core/artwork/blurhash.Synthetic`), seeded on the image tag so it's effectively unique per image
