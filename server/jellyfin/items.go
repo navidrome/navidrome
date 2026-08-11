@@ -353,10 +353,7 @@ func (api *Router) mergeTypesStreaming(ctx context.Context, q itemsQuery, window
 	var results []itemsResult
 	total := 0
 	for _, itemType := range q.types {
-		var opts model.QueryOptions
-		opts.Max = window
-		applySort(&opts, itemType, q.sortBy, q.sortOrder)
-		res, err := api.queryItemsOfType(ctx, itemType, opts, q)
+		res, err := api.queryTypeWindow(ctx, itemType, window, q)
 		if err != nil {
 			return itemsResult{}, err
 		}
@@ -364,6 +361,14 @@ func (api *Router) mergeTypesStreaming(ctx context.Context, q itemsQuery, window
 		total += res.total
 	}
 	return chained(results, total, q.offset), nil
+}
+
+// queryTypeWindow queries one type for the merge paths, capping it to window rows with the sort applied.
+func (api *Router) queryTypeWindow(ctx context.Context, itemType string, window int, q itemsQuery) (itemsResult, error) {
+	var opts model.QueryOptions
+	opts.Max = window
+	applySort(&opts, itemType, q.sortBy, q.sortOrder)
+	return api.queryItemsOfType(ctx, itemType, opts, q)
 }
 
 // mergeTypesPaged runs each type's query concurrently, then round-robins the per-type rows so the limited page
@@ -374,10 +379,7 @@ func (api *Router) mergeTypesPaged(ctx context.Context, q itemsQuery, window int
 	g, ctx := errgroup.WithContext(ctx)
 	for i, itemType := range q.types {
 		g.Go(func() error {
-			var opts model.QueryOptions
-			opts.Max = window
-			applySort(&opts, itemType, q.sortBy, q.sortOrder)
-			res, err := api.queryItemsOfType(ctx, itemType, opts, q)
+			res, err := api.queryTypeWindow(ctx, itemType, window, q)
 			if err != nil {
 				return err
 			}
@@ -462,18 +464,15 @@ func parseYears(r *http.Request) []int {
 // {"MusicAlbum"} when none are recognized (so ParentId=<artistId> browses that artist's albums).
 func parseTypes(types string) []string {
 	var recognized []string
-	seen := map[string]bool{}
 	for t := range strings.SplitSeq(types, ",") {
 		t = strings.TrimSpace(t)
 		switch t {
 		case "Audio", "MusicArtist", "MusicAlbum", "MusicGenre", "Playlist":
-			// A repeated type would duplicate items in the merge and spawn a redundant query.
-			if !seen[t] {
-				seen[t] = true
-				recognized = append(recognized, t)
-			}
+			recognized = append(recognized, t)
 		}
 	}
+	// Dedupe: a repeated type would duplicate items in the merge and spawn a redundant query.
+	recognized = slice.Unique(recognized)
 	if len(recognized) == 0 {
 		return []string{"MusicAlbum"}
 	}
