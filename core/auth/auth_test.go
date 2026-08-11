@@ -143,8 +143,14 @@ var _ = Describe("Auth", func() {
 			claims, err := auth.ValidatePlaybackToken(tokenStr)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(claims.ID).To(Equal("mf-123"))
-			Expect(claims.Scope).To(Equal(auth.PlaybackScope))
-			Expect(claims.ExpiresAt).To(BeTemporally("~", before.Add(auth.PlaybackTokenTTL), time.Minute))
+			Expect(claims.Scope).To(Equal("playback"))
+			Expect(claims.ExpiresAt).To(BeTemporally("~", before.Add(2*time.Hour), time.Minute))
+		})
+
+		It("rejects an empty media id", func() {
+			tokenStr, err := auth.CreatePlaybackToken("")
+			Expect(err).To(MatchError("media id is required"))
+			Expect(tokenStr).To(BeEmpty())
 		})
 	})
 
@@ -154,27 +160,27 @@ var _ = Describe("Auth", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			_, err = auth.ValidatePlaybackToken(tokenStr)
-			Expect(err).To(MatchError(auth.ErrInvalidPlaybackToken))
+			Expect(err).To(MatchError("invalid playback token"))
 		})
 
 		It("rejects playback tokens without an id", func() {
-			tokenStr, err := auth.CreateExpiringPublicToken(time.Now().Add(time.Hour), auth.Claims{Scope: auth.PlaybackScope})
+			tokenStr, err := auth.CreateExpiringPublicToken(time.Now().Add(time.Hour), auth.Claims{Scope: "playback"})
 			Expect(err).NotTo(HaveOccurred())
 
 			_, err = auth.ValidatePlaybackToken(tokenStr)
-			Expect(err).To(MatchError(auth.ErrInvalidPlaybackToken))
+			Expect(err).To(MatchError("invalid playback token"))
 		})
 
 		It("rejects playback tokens without an expiry", func() {
-			tokenStr, err := auth.CreatePublicToken(auth.Claims{ID: "mf-123", Scope: auth.PlaybackScope})
+			tokenStr, err := auth.CreatePublicToken(auth.Claims{ID: "mf-123", Scope: "playback"})
 			Expect(err).NotTo(HaveOccurred())
 
 			_, err = auth.ValidatePlaybackToken(tokenStr)
-			Expect(err).To(MatchError(auth.ErrInvalidPlaybackToken))
+			Expect(err).To(MatchError("invalid playback token"))
 		})
 
 		It("rejects expired playback tokens", func() {
-			tokenStr, err := auth.CreateExpiringPublicToken(time.Now().Add(-time.Hour), auth.Claims{ID: "mf-123", Scope: auth.PlaybackScope})
+			tokenStr, err := auth.CreateExpiringPublicToken(time.Now().Add(-time.Hour), auth.Claims{ID: "mf-123", Scope: "playback"})
 			Expect(err).NotTo(HaveOccurred())
 
 			_, err = auth.ValidatePlaybackToken(tokenStr)

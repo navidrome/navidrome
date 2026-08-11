@@ -77,6 +77,13 @@ var _ = Describe("decodeStreamInfo", func() {
 		_, err := decodeStreamInfo(token)
 		Expect(err).To(HaveOccurred())
 	})
+
+	It("rejects tokens with a non-empty scope", func() {
+		claims := auth.Claims{ID: "mf-123", ShareID: "share123", Scope: "playback"}
+		token, _ := auth.CreateExpiringPublicToken(time.Now().Add(time.Hour), claims)
+		_, err := decodeStreamInfo(token)
+		Expect(err).To(MatchError("scoped tokens are not accepted"))
+	})
 })
 
 var _ = Describe("encodeMediafileShare", func() {

@@ -16,7 +16,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 )
 
-var ErrBaseHostRequired = errors.New("playback URL requires BaseHost")
+var errBaseHostRequired = errors.New("playback URL requires BaseHost")
 
 // ImageURL generates a public URL for artwork images.
 // It creates a signed token for the artwork ID and builds a complete public URL.
@@ -34,7 +34,7 @@ func ImageURL(req *http.Request, artID model.ArtworkID, size int) string {
 // The URL is intended for external renderers fetching the original media bytes over HTTP.
 func PlaybackURL(mediaID string) (string, error) {
 	if conf.Server.BaseHost == "" {
-		return "", ErrBaseHostRequired
+		return "", errBaseHostRequired
 	}
 	token, err := auth.CreatePlaybackToken(mediaID)
 	if err != nil {

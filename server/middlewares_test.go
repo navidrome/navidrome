@@ -32,6 +32,8 @@ var _ = Describe("middlewares", func() {
 			var buf bytes.Buffer
 			prev := log.SetDefaultLogger(logrus.New())
 			DeferCleanup(func() { log.SetDefaultLogger(prev) })
+			prevLevel := log.CurrentLevel()
+			DeferCleanup(func() { log.SetLevel(prevLevel) })
 			log.SetOutput(&buf)
 			DeferCleanup(func() { log.SetOutput(GinkgoWriter) })
 			log.SetLevel(log.LevelDebug)
@@ -120,7 +122,7 @@ var _ = Describe("middlewares", func() {
 
 		Context("with X-Forwarded-Host header", func() {
 			BeforeEach(func() {
-				req, _ = http.NewRequest("GET", "http://example.com", nil)
+				req, _ = http.NewRequest("GET", "http://example.com/share/playback/secret.token.value?foo=bar", nil)
 				req.Header.Set("X-Forwarded-Host", "forwarded.example.com")
 			})
 
@@ -128,6 +130,22 @@ var _ = Describe("middlewares", func() {
 				middleware.ServeHTTP(recorder, req)
 				Expect(req.Host).To(Equal("forwarded.example.com"))
 				Expect(req.URL.Scheme).To(Equal("http"))
+			})
+
+			It("redacts playback capability tokens in trace logs", func() {
+				var buf bytes.Buffer
+				prev := log.SetDefaultLogger(logrus.New())
+				DeferCleanup(func() { log.SetDefaultLogger(prev) })
+				prevLevel := log.CurrentLevel()
+				DeferCleanup(func() { log.SetLevel(prevLevel) })
+				log.SetOutput(&buf)
+				DeferCleanup(func() { log.SetOutput(GinkgoWriter) })
+				log.SetLevel(log.LevelTrace)
+				log.SetRedacting(true)
+
+				middleware.ServeHTTP(recorder, req)
+				Expect(buf.String()).To(ContainSubstring("/share/playback/[REDACTED]?foo=bar"))
+				Expect(buf.String()).NotTo(ContainSubstring("secret.token.value"))
 			})
 		})
 

@@ -28,11 +28,14 @@ var (
 )
 
 const (
-	PlaybackScope    = "playback"
-	PlaybackTokenTTL = 2 * time.Hour
+	playbackScope    = "playback"
+	playbackTokenTTL = 2 * time.Hour
 )
 
-var ErrInvalidPlaybackToken = errors.New("invalid playback token")
+var (
+	errInvalidPlaybackToken = errors.New("invalid playback token")
+	errMediaIDRequired      = errors.New("media id is required")
+)
 
 // Init creates the JWTAuth objects from the secrets stored in the DB.
 // Missing or undecryptable secrets are regenerated and stored.
@@ -115,7 +118,10 @@ func ValidatePublic(tokenStr string) (Claims, error) {
 }
 
 func CreatePlaybackToken(mediaID string) (string, error) {
-	return CreateExpiringPublicToken(time.Now().Add(PlaybackTokenTTL), Claims{ID: mediaID, Scope: PlaybackScope})
+	if mediaID == "" {
+		return "", errMediaIDRequired
+	}
+	return CreateExpiringPublicToken(time.Now().Add(playbackTokenTTL), Claims{ID: mediaID, Scope: playbackScope})
 }
 
 func ValidatePlaybackToken(tokenStr string) (Claims, error) {
@@ -123,8 +129,8 @@ func ValidatePlaybackToken(tokenStr string) (Claims, error) {
 	if err != nil {
 		return Claims{}, err
 	}
-	if claims.Scope != PlaybackScope || claims.ID == "" || claims.ExpiresAt.IsZero() {
-		return Claims{}, ErrInvalidPlaybackToken
+	if claims.Scope != playbackScope || claims.ID == "" || claims.ExpiresAt.IsZero() {
+		return Claims{}, errInvalidPlaybackToken
 	}
 	return claims, nil
 }

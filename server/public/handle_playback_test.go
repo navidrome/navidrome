@@ -10,7 +10,6 @@ import (
 	"os"
 	"path"
 	"strings"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/jwtauth/v5"
@@ -36,12 +35,6 @@ var _ = Describe("handlePlayback", func() {
 		fixture    = "tests/fixtures/test.mp3"
 		missing    string
 	)
-
-	newToken := func(claims auth.Claims, exp time.Time) string {
-		token, err := auth.CreateExpiringPublicToken(exp, claims)
-		Expect(err).NotTo(HaveOccurred())
-		return token
-	}
 
 	mutateTokenMediaID := func(token, mediaID string) string {
 		parts := strings.Split(token, ".")
@@ -134,31 +127,6 @@ var _ = Describe("handlePlayback", func() {
 
 	It("rejects an invalid token", func() {
 		w := makeRequest(http.MethodGet, consts.URLPathPublic+"/playback/not-a-token")
-		Expect(w.Code).To(Equal(http.StatusBadRequest))
-	})
-
-	It("rejects an expired token", func() {
-		token := newToken(auth.Claims{ID: "mf-123", Scope: auth.PlaybackScope}, time.Now().Add(-time.Hour))
-		w := makeRequest(http.MethodGet, consts.URLPathPublic+"/playback/"+token)
-		Expect(w.Code).To(Equal(http.StatusBadRequest))
-	})
-
-	It("rejects a token with the wrong scope", func() {
-		token := newToken(auth.Claims{ID: "mf-123", Scope: "share"}, time.Now().Add(time.Hour))
-		w := makeRequest(http.MethodGet, consts.URLPathPublic+"/playback/"+token)
-		Expect(w.Code).To(Equal(http.StatusBadRequest))
-	})
-
-	It("rejects a token without an id", func() {
-		token := newToken(auth.Claims{Scope: auth.PlaybackScope}, time.Now().Add(time.Hour))
-		w := makeRequest(http.MethodGet, consts.URLPathPublic+"/playback/"+token)
-		Expect(w.Code).To(Equal(http.StatusBadRequest))
-	})
-
-	It("rejects a token without an expiry", func() {
-		token, err := auth.CreatePublicToken(auth.Claims{ID: "mf-123", Scope: auth.PlaybackScope})
-		Expect(err).NotTo(HaveOccurred())
-		w := makeRequest(http.MethodGet, consts.URLPathPublic+"/playback/"+token)
 		Expect(w.Code).To(Equal(http.StatusBadRequest))
 	})
 

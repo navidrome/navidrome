@@ -111,6 +111,9 @@ func decodeStreamInfo(tokenString string) (shareTrackInfo, error) {
 	if err != nil {
 		return shareTrackInfo{}, err
 	}
+	if c.Scope != "" {
+		return shareTrackInfo{}, errors.New("scoped tokens are not accepted")
+	}
 	if c.ID == "" {
 		return shareTrackInfo{}, errors.New("required claim \"id\" not found")
 	}

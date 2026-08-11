@@ -62,9 +62,9 @@ var _ = Describe("Claims", func() {
 		})
 
 		It("includes scope claim when set", func() {
-			c := auth.Claims{Scope: auth.PlaybackScope}
+			c := auth.Claims{Scope: "playback"}
 			m := c.ToMap()
-			Expect(m).To(HaveKeyWithValue("scope", auth.PlaybackScope))
+			Expect(m).To(HaveKeyWithValue("scope", "playback"))
 		})
 	})
 
@@ -99,7 +99,7 @@ var _ = Describe("Claims", func() {
 				Format:  "opus",
 				BitRate: 128,
 				ShareID: "abc1234567",
-				Scope:   auth.PlaybackScope,
+				Scope:   "playback",
 			}
 			token, _, err := tokenAuth.Encode(original.ToMap())
 			Expect(err).NotTo(HaveOccurred())
@@ -108,7 +108,7 @@ var _ = Describe("Claims", func() {
 			Expect(c.Issuer).To(Equal("ND"))
 			Expect(c.ID).To(Equal("al-456"))
 			Expect(c.ShareID).To(Equal("abc1234567"))
-			Expect(c.Scope).To(Equal(auth.PlaybackScope))
+			Expect(c.Scope).To(Equal("playback"))
 			Expect(c.Format).To(Equal("opus"))
 			Expect(c.BitRate).To(Equal(128))
 		})

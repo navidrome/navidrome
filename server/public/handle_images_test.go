@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"time"
 
 	"github.com/go-chi/jwtauth/v5"
 	"github.com/navidrome/navidrome/core/artwork"
@@ -31,6 +32,13 @@ var _ = Describe("decodeArtworkID", func() {
 		token, _ := auth.CreatePublicToken(auth.Claims{})
 		_, err := decodeArtworkID(token)
 		Expect(err).To(HaveOccurred())
+	})
+
+	It("rejects scoped playback tokens", func() {
+		token, err := auth.CreateExpiringPublicToken(time.Now().Add(time.Hour), auth.Claims{ID: "mf-123", Scope: "playback"})
+		Expect(err).NotTo(HaveOccurred())
+		_, err = decodeArtworkID(token)
+		Expect(err).To(MatchError("scoped tokens are not accepted"))
 	})
 })
 

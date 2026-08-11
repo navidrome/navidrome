@@ -82,6 +82,9 @@ func decodeArtworkID(tokenString string) (model.ArtworkID, error) {
 		return model.ArtworkID{}, errors.New("unauthorized")
 	}
 	c := auth.ClaimsFromToken(token)
+	if c.Scope != "" {
+		return model.ArtworkID{}, errors.New("scoped tokens are not accepted")
+	}
 	if c.ID == "" {
 		return model.ArtworkID{}, errors.New("required claim \"id\" not found")
 	}

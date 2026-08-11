@@ -190,15 +190,15 @@ var _ = Describe("Public URL Utilities", func() {
 			token := strings.TrimPrefix(result, "https://lan.example/music/share/playback/")
 			claims, err := auth.ValidatePlaybackToken(token)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(claims.Scope).To(Equal(auth.PlaybackScope))
+			Expect(claims.Scope).To(Equal("playback"))
 			Expect(claims.ID).To(Equal("mf-123"))
-			Expect(claims.ExpiresAt).To(BeTemporally("~", before.Add(auth.PlaybackTokenTTL), time.Minute))
+			Expect(claims.ExpiresAt).To(BeTemporally("~", before.Add(2*time.Hour), time.Minute))
 		})
 
 		It("errors when BaseHost is unset", func() {
 			conf.Server.BaseHost = ""
 			result, err := publicurl.PlaybackURL("mf-123")
-			Expect(err).To(MatchError(publicurl.ErrBaseHostRequired))
+			Expect(err).To(MatchError("playback URL requires BaseHost"))
 			Expect(result).To(BeEmpty())
 		})
 	})
