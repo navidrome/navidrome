@@ -332,40 +332,38 @@ func (api *Router) playlistTracksRepo(ctx context.Context, q itemsQuery) (model.
 
 func (api *Router) mergeTypes(ctx context.Context, q itemsQuery) (itemsResult, error) {
 	if q.limit == 0 {
-		return api.mergeTypesStreaming(ctx, q, 0)
+		return api.mergeTypesStreaming(ctx, q)
 	}
 	// A random page doesn't stack on the previous one (the order reshuffles each request), so serving
 	// from 0 is an equivalent fresh draw and avoids materializing offset+limit rows per type.
 	offset := q.offset
-	if isRandomSort(q.sortBy) {
+	if randomlySorted(q) {
 		offset = 0
 	}
-	// Each per-type query needs at most offset+limit rows (worst case: one type fills the whole window).
-	window := offset + q.limit
-	if q.search != "" {
-		window = min(window, maxSearchLimit)
-	}
-	return api.mergeTypesPaged(ctx, q, window, offset)
+	return api.mergeTypesPaged(ctx, q, offset)
 }
 
-// isRandomSort reports whether the request's primary sort is Random. "random" is a valid sort for
-// every merge type, so a leading Random key applies uniformly across the merged types.
-func isRandomSort(sortBy string) bool {
-	for key := range strings.SplitSeq(sortBy, ",") {
-		if key = strings.TrimSpace(key); key != "" {
-			return strings.EqualFold(key, "Random")
+// randomlySorted reports whether every merged type resolves to a random sort — the case where a page
+// is an independent draw, so the offset can be collapsed to 0. Resolving via applySort (rather than
+// matching the raw SortBy) keeps this in step with how each type's sort is actually chosen.
+func randomlySorted(q itemsQuery) bool {
+	for _, itemType := range q.types {
+		var opts model.QueryOptions
+		applySort(&opts, itemType, q.sortBy, q.sortOrder)
+		if opts.Sort != "random" {
+			return false
 		}
 	}
-	return false
+	return true
 }
 
 // mergeTypesStreaming keeps the unbounded path lazy: chaining the per-type cursors yields their rows
 // in order minus the first offset, without pulling every row into memory.
-func (api *Router) mergeTypesStreaming(ctx context.Context, q itemsQuery, window int) (itemsResult, error) {
+func (api *Router) mergeTypesStreaming(ctx context.Context, q itemsQuery) (itemsResult, error) {
 	var results []itemsResult
 	total := 0
 	for _, itemType := range q.types {
-		res, err := api.queryTypeWindow(ctx, itemType, window, q)
+		res, err := api.queryTypeWindow(ctx, itemType, 0, q)
 		if err != nil {
 			return itemsResult{}, err
 		}
@@ -385,7 +383,12 @@ func (api *Router) queryTypeWindow(ctx context.Context, itemType string, window 
 
 // mergeTypesPaged runs each type's query concurrently, then round-robins the per-type rows so the limited page
 // is a mix rather than one type's rows followed by the next.
-func (api *Router) mergeTypesPaged(ctx context.Context, q itemsQuery, window, offset int) (itemsResult, error) {
+func (api *Router) mergeTypesPaged(ctx context.Context, q itemsQuery, offset int) (itemsResult, error) {
+	// Each per-type query needs at most offset+limit rows (worst case: one type fills the whole window).
+	window := offset + q.limit
+	if q.search != "" {
+		window = min(window, maxSearchLimit)
+	}
 	lists := make([][]dto.BaseItemDto, len(q.types))
 	totals := make([]int, len(q.types))
 	g, ctx := errgroup.WithContext(ctx)
