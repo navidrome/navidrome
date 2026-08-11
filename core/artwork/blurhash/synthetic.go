@@ -2,7 +2,6 @@ package blurhash
 
 import (
 	"image"
-	"image/color"
 	"math"
 	"strconv"
 
@@ -12,13 +11,17 @@ import (
 // A real hash never has 3x3 components: components() always targets ~16 tiles.
 const synthComponents = 3
 
+// Encoding a source no bigger than the component grid overshoots the AC coefficients,
+// clamping the corners to black; the encoder assumes many samples per component.
+const synthSourceSize = 8
+
 // Synthetic returns a blurhash unique to seed, for artwork whose real hash does not exist
 // yet. baseColor ("#rrggbb") sets the hue family; "" derives it from the seed.
 func Synthetic(seed, baseColor string) string {
 	hue, sat, light := baseTone(baseColor, xxh3.HashStringSeed(seed, 0))
 
-	img := image.NewNRGBA(image.Rect(0, 0, synthComponents, synthComponents))
-	for i := range synthComponents * synthComponents {
+	var grid [synthComponents * synthComponents][3]float64
+	for i := range grid {
 		// Each cell hashes the seed separately, so one tint shared by many items still
 		// yields one value per item.
 		bits := xxh3.HashStringSeed(seed, uint64(i)+1)
@@ -26,9 +29,39 @@ func Synthetic(seed, baseColor string) string {
 		ds := (byteFrac(bits, 8) - 0.5) * 0.16
 		dl := (byteFrac(bits, 16) - 0.5) * 0.30
 		r, g, b := hslToRGB(hue+dh, clamp01(sat+ds), clamp01(light+dl))
-		img.SetNRGBA(i%synthComponents, i/synthComponents, color.NRGBA{R: r, G: g, B: b, A: 255})
+		grid[i] = [3]float64{float64(r), float64(g), float64(b)}
 	}
-	return encodeAt(img, synthComponents, synthComponents)
+	return encodeAt(upscale(&grid), synthComponents, synthComponents)
+}
+
+// upscale renders the cell grid bilinearly at synthSourceSize. Hand-rolled because
+// x/image's scaler allocates per call, and this runs once per mapped item.
+func upscale(grid *[synthComponents * synthComponents][3]float64) *image.NRGBA {
+	const n, size = synthComponents, synthSourceSize
+	img := image.NewNRGBA(image.Rect(0, 0, size, size))
+	for y := range size {
+		fy := (float64(y)+0.5)*n/size - 0.5
+		y0, wy := cellWeight(fy)
+		for x := range size {
+			fx := (float64(x)+0.5)*n/size - 0.5
+			x0, wx := cellWeight(fx)
+			p := img.Pix[y*img.Stride+x*4:]
+			for c := range 3 {
+				top := grid[y0*n+x0][c]*(1-wx) + grid[y0*n+x0+1][c]*wx
+				bot := grid[(y0+1)*n+x0][c]*(1-wx) + grid[(y0+1)*n+x0+1][c]*wx
+				p[c] = uint8(top*(1-wy) + bot*wy + 0.5)
+			}
+			p[3] = 255
+		}
+	}
+	return img
+}
+
+// cellWeight splits a grid coordinate into its lower cell and the fraction toward the next.
+func cellWeight(f float64) (int, float64) {
+	f = min(max(f, 0), synthComponents-1-1e-9)
+	i := int(f)
+	return i, f - float64(i)
 }
 
 func byteFrac(bits uint64, shift int) float64 {
