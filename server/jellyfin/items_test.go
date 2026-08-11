@@ -911,4 +911,23 @@ var _ = Describe("Items", func() {
 			Entry("Playlist", "Playlist"),
 		)
 	})
+
+	Describe("interleave", func() {
+		It("round-robins one item per list in turn", func() {
+			lists := [][]dto.BaseItemDto{
+				{{Id: "a0"}, {Id: "a1"}, {Id: "a2"}},
+				{{Id: "b0"}, {Id: "b1"}},
+			}
+			got := interleave(lists)
+			ids := make([]string, len(got))
+			for i, it := range got {
+				ids[i] = it.Id
+			}
+			Expect(ids).To(Equal([]string{"a0", "b0", "a1", "b1", "a2"}))
+		})
+
+		It("returns empty for no lists", func() {
+			Expect(interleave(nil)).To(BeEmpty())
+		})
+	})
 })

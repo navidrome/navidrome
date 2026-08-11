@@ -459,6 +459,25 @@ func paginate(items []dto.BaseItemDto, offset, limit int) []dto.BaseItemDto {
 	return items
 }
 
+// interleave merges per-type item lists round-robin: one item from each list in turn, preserving
+// each list's own order, so no single type dominates the head of a mixed-type result.
+func interleave(lists [][]dto.BaseItemDto) []dto.BaseItemDto {
+	total, maxLen := 0, 0
+	for _, l := range lists {
+		total += len(l)
+		maxLen = max(maxLen, len(l))
+	}
+	out := make([]dto.BaseItemDto, 0, total)
+	for i := 0; i < maxLen; i++ {
+		for _, l := range lists {
+			if i < len(l) {
+				out = append(out, l[i])
+			}
+		}
+	}
+	return out
+}
+
 // Search can't stream (Search returns a slice), so it needs both a default and a ceiling: without
 // the ceiling, Limit=999999 still materializes every match.
 const (
