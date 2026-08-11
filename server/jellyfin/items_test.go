@@ -982,4 +982,10 @@ var _ = Describe("Items", func() {
 			Expect(interleave(nil)).To(BeEmpty())
 		})
 	})
+
+	Describe("parseTypes", func() {
+		It("dedupes repeated types, preserving first-seen order", func() {
+			Expect(parseTypes("Audio,MusicAlbum,Audio")).To(Equal([]string{"Audio", "MusicAlbum"}))
+		})
+	})
 })

@@ -366,8 +366,8 @@ func (api *Router) mergeTypesStreaming(ctx context.Context, q itemsQuery, window
 	return chained(results, total, q.offset), nil
 }
 
-// mergeTypesPaged runs each type's query concurrently (like Subsonic searchAll), then round-robins
-// the per-type rows so the limited page is a mix rather than one type's rows followed by the next.
+// mergeTypesPaged runs each type's query concurrently, then round-robins the per-type rows so the limited page
+// is a mix rather than one type's rows followed by the next.
 func (api *Router) mergeTypesPaged(ctx context.Context, q itemsQuery, window int) (itemsResult, error) {
 	lists := make([][]dto.BaseItemDto, len(q.types))
 	totals := make([]int, len(q.types))
@@ -462,11 +462,16 @@ func parseYears(r *http.Request) []int {
 // {"MusicAlbum"} when none are recognized (so ParentId=<artistId> browses that artist's albums).
 func parseTypes(types string) []string {
 	var recognized []string
+	seen := map[string]bool{}
 	for t := range strings.SplitSeq(types, ",") {
 		t = strings.TrimSpace(t)
 		switch t {
 		case "Audio", "MusicArtist", "MusicAlbum", "MusicGenre", "Playlist":
-			recognized = append(recognized, t)
+			// A repeated type would duplicate items in the merge and spawn a redundant query.
+			if !seen[t] {
+				seen[t] = true
+				recognized = append(recognized, t)
+			}
 		}
 	}
 	if len(recognized) == 0 {
