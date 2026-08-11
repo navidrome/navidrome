@@ -736,7 +736,7 @@ func (api *Router) listPlaylists(ctx context.Context, opts model.QueryOptions, q
 }
 
 // resolveItemByID resolves a decoded navidrome id to its BaseItemDto, trying library view, album,
-// artist, song and playlist in turn. Albums and songs report not-found when the user lacks access
+// artist, song, playlist and genre in turn. Albums and songs report not-found when the user lacks access
 // to their library, so an id can't probe content outside the user's libraries.
 func (api *Router) resolveItemByID(ctx context.Context, id string, fields dto.Fields) (dto.BaseItemDto, bool) {
 	// The synthetic playlists folder must resolve by the id we advertised, not 404.
@@ -777,6 +777,9 @@ func (api *Router) resolveItemByID(ctx context.Context, id string, fields dto.Fi
 	// api.playlists.Get enforces ownership/visibility, so a non-owned or missing id falls through.
 	if pl, err := api.playlists.Get(ctx, id); err == nil {
 		return dto.PlaylistToBaseItem(*pl, fields), true
+	}
+	if g, err := api.ds.Genre(ctx).Get(id); err == nil {
+		return dto.GenreToBaseItem(*g), true
 	}
 	return dto.BaseItemDto{}, false
 }

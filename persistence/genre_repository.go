@@ -30,13 +30,17 @@ func (r *genreRepository) GetAll(opt ...model.QueryOptions) (model.Genres, error
 	return res, err
 }
 
-// Override ResourceRepository methods to return Genre objects instead of Tag objects
-
-func (r *genreRepository) Read(id string) (any, error) {
+func (r *genreRepository) Get(id string) (*model.Genre, error) {
 	sel := r.selectGenre().Where(Eq{"tag.id": id})
 	var res model.Genre
 	err := r.queryOne(sel, &res)
 	return &res, err
+}
+
+// Override ResourceRepository methods to return Genre objects instead of Tag objects
+
+func (r *genreRepository) Read(id string) (any, error) {
+	return r.Get(id)
 }
 
 func (r *genreRepository) ReadAll(options ...rest.QueryOptions) (any, error) {

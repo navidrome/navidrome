@@ -917,6 +917,21 @@ var _ = Describe("Items", func() {
 			Expect(w.Code).To(Equal(http.StatusNotFound))
 		})
 
+		// Finamp's genre "See all" fetches the genre by id; a 404 white-screens it (see resolveItemByID).
+		It("resolves a genre id as a MusicGenre item", func() {
+			Expect(ds.Genre(context.Background()).(*tests.MockedGenreRepo).Put(&model.Genre{ID: "g1", Name: "Rock"})).To(Succeed())
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items/"+dto.EncodeID("g1"), nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", dto.EncodeID("g1"))
+			invoke(api.getItem, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var item dto.BaseItemDto
+			Expect(json.Unmarshal(w.Body.Bytes(), &item)).To(Succeed())
+			Expect(item.Id).To(Equal(dto.EncodeID("g1")))
+			Expect(item.Name).To(Equal("Rock"))
+			Expect(item.Type).To(Equal("MusicGenre"))
+		})
+
 		It("resolves a library-view id for an admin even though their Libraries slice is empty", func() {
 			ds.Library(context.Background()).(*tests.MockLibraryRepo).SetData(model.Libraries{{ID: 1, Name: "Music Library"}})
 			w := httptest.NewRecorder()
