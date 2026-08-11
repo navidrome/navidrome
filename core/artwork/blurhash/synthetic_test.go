@@ -43,9 +43,13 @@ var _ = Describe("Synthetic", func() {
 		Expect(blurhash.Synthetic("alb-1", "")).ToNot(Equal(blurhash.Synthetic("alb-2", "")))
 	})
 
+	dcOf := func(hash string) (int, int, int) {
+		dc := decode83(hash[2:6])
+		return dc >> 16 & 0xFF, dc >> 8 & 0xFF, dc & 0xFF
+	}
+
 	It("decodes to a muted DC colour", func() {
-		dc := decode83(blurhash.Synthetic("alb-1", "")[2:6])
-		r, g, b := dc>>16&0xFF, dc>>8&0xFF, dc&0xFF
+		r, g, b := dcOf(blurhash.Synthetic("alb-1", ""))
 		spread := max(r, g, b) - min(r, g, b)
 		Expect(spread).To(BeNumerically("<", 120), "saturation is capped, so no channel should run away")
 		Expect(max(r, g, b)).To(BeNumerically("<", 240), "lightness is capped below white")
@@ -60,11 +64,6 @@ var _ = Describe("Synthetic", func() {
 		}
 		Expect(len(seen)).To(BeNumerically(">=", 999_900))
 	})
-
-	dcOf := func(hash string) (int, int, int) {
-		dc := decode83(hash[2:6])
-		return dc >> 16 & 0xFF, dc >> 8 & 0xFF, dc & 0xFF
-	}
 
 	It("leans the DC towards a red tint", func() {
 		r, g, b := dcOf(blurhash.Synthetic("alb-1", "#c04040"))
