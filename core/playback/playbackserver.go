@@ -75,7 +75,11 @@ func (ps *playbackServer) initDeviceStatus(ctx context.Context, devices []conf.A
 			if len(devices[0]) != 2 {
 				return []playbackDevice{}, fmt.Errorf("audio device definition ought to contain 2 fields, found: %d ", len(devices[0]))
 			}
-			pbDevices[0] = *NewPlaybackDevice(ctx, ps, devices[0][0], devices[0][1], trackFactory)
+			deviceFactory, err := resolveTrackFactory(devices[0][0], devices[0][1], trackFactory)
+			if err != nil {
+				return []playbackDevice{}, err
+			}
+			pbDevices[0] = *NewPlaybackDevice(ctx, ps, devices[0][0], devices[0][1], deviceFactory)
 		}
 
 		if len(devices) > 1 {
@@ -91,7 +95,12 @@ func (ps *playbackServer) initDeviceStatus(ctx context.Context, devices []conf.A
 			return []playbackDevice{}, fmt.Errorf("audio device definition ought to contain 2 fields, found: %d ", len(audioDevice))
 		}
 
-		pbDevices[idx] = *NewPlaybackDevice(ctx, ps, audioDevice[0], audioDevice[1], trackFactory)
+		deviceFactory, err := resolveTrackFactory(audioDevice[0], audioDevice[1], trackFactory)
+		if err != nil {
+			return []playbackDevice{}, err
+		}
+
+		pbDevices[idx] = *NewPlaybackDevice(ctx, ps, audioDevice[0], audioDevice[1], deviceFactory)
 
 		if audioDevice[0] == defaultDevice {
 			pbDevices[idx].Default = true
