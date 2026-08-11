@@ -508,11 +508,35 @@ var _ = Describe("mappers", func() {
 		It("advertises the track id so the client triggers the read-through", func() {
 			mf := model.MediaFile{ID: "mf-1", AlbumID: "alb-1", HasCoverArt: true}
 			mf.AlbumImage.ImageHash = "0123456789abcdef"
+			mf.AlbumImage.DominantColor = "#3a5f7d"
 
 			item := SongToBaseItem(mf, nil)
 			Expect(item.ImageTags).To(HaveKeyWithValue("Primary", "mf-1"))
-			Expect(item.ImageBlurHashes).To(BeNil(), "no resolved image means no blurhash to send")
+			Expect(item.ImageBlurHashes["Primary"]).To(
+				HaveKeyWithValue("mf-1", blurhash.Synthetic("mf-1", "#3a5f7d")))
 			Expect(item.AlbumPrimaryImageTag).To(BeEmpty())
+		})
+
+		// The client's image request is what extracts the embedded art. Reusing the album's
+		// value would let Finamp answer from cache and never send it.
+		It("gives the track a value distinct from its album's", func() {
+			mf := model.MediaFile{ID: "mf-3", AlbumID: "alb-1", HasCoverArt: true}
+			mf.AlbumImage.ImageHash = "0123456789abcdef"
+			mf.AlbumImage.BlurHash = "LEHV6nWB2yk8"
+			mf.AlbumImage.DominantColor = "#3a5f7d"
+
+			track := SongToBaseItem(mf, nil).ImageBlurHashes["Primary"]["mf-3"]
+			album := AlbumToBaseItem(model.Album{ID: "alb-1", ItemImage: mf.AlbumImage}, nil).
+				ImageBlurHashes["Primary"]["0123456789abcdef"]
+			Expect(track).ToNot(BeEmpty())
+			Expect(track).ToNot(Equal(album))
+		})
+
+		It("still emits a value when the album has no dominant colour", func() {
+			mf := model.MediaFile{ID: "mf-4", AlbumID: "alb-1", HasCoverArt: true}
+
+			item := SongToBaseItem(mf, nil)
+			Expect(item.ImageBlurHashes["Primary"]).To(HaveKeyWithValue("mf-4", blurhash.Synthetic("mf-4", "")))
 		})
 
 		It("falls back to the album when the track has no art of its own", func() {

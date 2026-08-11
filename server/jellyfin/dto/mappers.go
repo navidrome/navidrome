@@ -213,6 +213,8 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 		// Nothing enqueues media files: advertising the id is what makes a client ask, and that
 		// request is what extracts the embedded art and queues the track.
 		item.ImageTags = map[string]string{"Primary": mf.ID}
+		hash := blurhash.Synthetic(mf.ID, mf.AlbumImage.DominantColor)
+		item.ImageBlurHashes = map[string]map[string]string{"Primary": {mf.ID: hash}}
 	} else if mf.AlbumID != "" {
 		if tag, blurs, ratio := primaryImage(mf.AlbumImage, mf.AlbumID, fields); tag != "" {
 			item.AlbumPrimaryImageTag = tag
