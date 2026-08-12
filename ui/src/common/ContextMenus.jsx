@@ -23,7 +23,8 @@ import {
 } from '../actions'
 import { LoveButton } from './LoveButton'
 import config from '../config'
-import { artistDownloadSize, formatBytes } from '../utils'
+import { formatBytes } from '../utils'
+import { artistDownloadSize } from './artist'
 
 const useStyles = makeStyles({
   noWrap: {

@@ -9,7 +9,8 @@ import {
 } from '@material-ui/core'
 import subsonic from '../subsonic'
 import { closeDownloadMenu, DOWNLOAD_MENU_ARTIST } from '../actions'
-import { artistDownloadSize, formatBytes } from '../utils'
+import { formatBytes } from '../utils'
+import { artistDownloadSize } from '../common/artist'
 import { useTranscodingOptions } from './useTranscodingOptions'
 
 const DownloadMenuDialog = () => {

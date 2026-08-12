@@ -1,4 +1,3 @@
-export * from './artist'
 export * from './formatters'
 export * from './intersperse'
 export * from './notifications'

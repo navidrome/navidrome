@@ -24,7 +24,8 @@ import {
   DOWNLOAD_MENU_ARTIST,
 } from '../actions'
 import config from '../config'
-import { artistDownloadSize, formatBytes } from '../utils'
+import { formatBytes } from '../utils'
+import { artistDownloadSize } from '../common/artist'
 
 const useStyles = makeStyles((theme) => ({
   toolbar: {
