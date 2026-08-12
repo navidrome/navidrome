@@ -310,6 +310,35 @@ var _ = Describe("Provider - SimilarSongs", func() {
 			})
 		})
 
+		Context("when ID is an Artist and both the artist agent and the similar-artists fallback are empty", func() {
+			It("samples the artist's tracks and returns their track-similars", func() {
+				artist := model.Artist{ID: "ar-1", Name: "The Artist"}
+				// Get is called twice: once to resolve the entity, once inside similarSongsFallback.
+				artistRepo.On("Get", "ar-1").Return(&artist, nil).Maybe()
+
+				agentsCombined.On("GetSimilarSongsByArtist", mock.Anything, "ar-1", "The Artist", "", 5).
+					Return([]agents.Song{}, nil).Once()
+				// similarSongsFallback: no similar artists, no top songs -> empty (allow its lookups).
+				mockAgent.On("GetSimilarArtists", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+					Return([]agents.Artist{}, nil).Maybe()
+				mockAgent.On("GetArtistTopSongs", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+					Return([]agents.Song{}, nil).Maybe()
+
+				mediaFileRepo.On("GetRandom", mock.MatchedBy(func(opt model.QueryOptions) bool {
+					eq, ok := opt.Filters.(squirrel.Eq)
+					return ok && eq["artist_id"] == "ar-1"
+				})).Return(model.MediaFiles{{ID: "s1", Title: "Seed"}}, nil).Once()
+				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "s1", "Seed", "", "", 5).
+					Return([]agents.Song{{Name: "Result"}}, nil).Once()
+				mediaFileRepo.On("GetAll", mock.Anything).Return(model.MediaFiles{{ID: "m1", Title: "Result"}}, nil).Maybe()
+
+				songs, err := provider.SimilarSongs(ctx, "ar-1", 5)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(songs).ToNot(BeEmpty())
+			})
+		})
+
 		Context("when ID is a Playlist", func() {
 			It("samples playlist tracks and returns their track-similars", func() {
 				pls := model.Playlist{ID: "pl-1", Name: "My List"}
@@ -549,6 +578,12 @@ var _ = Describe("Provider - SimilarSongs", func() {
 
 		mockAgent.On("GetArtistTopSongs", mock.Anything, "artist-1", "Artist One", "", mock.Anything).
 			Return(nil, errors.New("error getting top songs")).Once()
+
+		// Fallback yields nothing, so the sampling path is tried and also finds no tracks.
+		mediaFileRepo.On("GetRandom", mock.MatchedBy(func(opt model.QueryOptions) bool {
+			eq, ok := opt.Filters.(squirrel.Eq)
+			return ok && eq["artist_id"] == "artist-1"
+		})).Return(model.MediaFiles{}, nil).Once()
 
 		songs, err := provider.SimilarSongs(ctx, "artist-1", 5)
 

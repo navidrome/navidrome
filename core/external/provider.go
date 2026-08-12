@@ -294,15 +294,17 @@ func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (mode
 		return nil, err
 	}
 
-	var songs []agents.Song
-
 	// Try entity-specific similarity first
 	switch v := entity.(type) {
 	case *model.MediaFile:
-		songs, err = e.ag.GetSimilarSongsByTrack(ctx, v.ID, v.Title, v.Artist, v.MbzRecordingID, count)
+		songs, serr := e.ag.GetSimilarSongsByTrack(ctx, v.ID, v.Title, v.Artist, v.MbzRecordingID, count)
+		if serr == nil && len(songs) > 0 {
+			return e.matcher.MatchSongs(ctx, songs, count)
+		}
+		return e.similarSongsFallback(ctx, id, count)
 	case *model.Album:
-		songs, err = e.ag.GetSimilarSongsByAlbum(ctx, v.ID, v.Name, v.AlbumArtist, v.MbzAlbumID, count)
-		if err == nil && len(songs) > 0 {
+		songs, serr := e.ag.GetSimilarSongsByAlbum(ctx, v.ID, v.Name, v.AlbumArtist, v.MbzAlbumID, count)
+		if serr == nil && len(songs) > 0 {
 			return e.matcher.MatchSongs(ctx, songs, count)
 		}
 		seeds, serr := e.sampleAlbumTracks(ctx, v.ID, maxSeeds)
@@ -311,7 +313,18 @@ func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (mode
 		}
 		return e.mixFromSeeds(ctx, seeds, count)
 	case *model.Artist:
-		songs, err = e.ag.GetSimilarSongsByArtist(ctx, v.ID, v.Name, v.MbzArtistID, count)
+		songs, serr := e.ag.GetSimilarSongsByArtist(ctx, v.ID, v.Name, v.MbzArtistID, count)
+		if serr == nil && len(songs) > 0 {
+			return e.matcher.MatchSongs(ctx, songs, count)
+		}
+		if res, ferr := e.similarSongsFallback(ctx, id, count); ferr == nil && len(res) > 0 {
+			return res, nil
+		}
+		seeds, serr := e.sampleArtistTracks(ctx, v.ID, maxSeeds)
+		if serr != nil {
+			return nil, serr
+		}
+		return e.mixFromSeeds(ctx, seeds, count)
 	case *model.Playlist:
 		seeds, serr := e.samplePlaylistTracks(ctx, v.ID, maxSeeds)
 		if serr != nil {
@@ -322,13 +335,6 @@ func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (mode
 		log.Warn(ctx, "Unknown entity type", "id", id, "type", fmt.Sprintf("%T", entity))
 		return nil, model.ErrNotFound
 	}
-
-	if err == nil && len(songs) > 0 {
-		return e.matcher.MatchSongs(ctx, songs, count)
-	}
-
-	// Fallback to existing similar artists + top songs algorithm
-	return e.similarSongsFallback(ctx, id, count)
 }
 
 // mixFromSeeds runs each seed through the agent chain's per-track similarity and merges the
@@ -379,6 +385,14 @@ func (e *provider) samplePlaylistTracks(ctx context.Context, playlistID string, 
 func (e *provider) sampleAlbumTracks(ctx context.Context, albumID string, n int) (model.MediaFiles, error) {
 	return e.ds.MediaFile(ctx).GetRandom(model.QueryOptions{
 		Filters: squirrel.Eq{"album_id": albumID},
+		Max:     n,
+	})
+}
+
+// sampleArtistTracks returns up to n random tracks by the given artist, used as seeds for a mix.
+func (e *provider) sampleArtistTracks(ctx context.Context, artistID string, n int) (model.MediaFiles, error) {
+	return e.ds.MediaFile(ctx).GetRandom(model.QueryOptions{
+		Filters: squirrel.Eq{"artist_id": artistID},
 		Max:     n,
 	})
 }
