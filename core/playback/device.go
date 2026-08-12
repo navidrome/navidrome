@@ -318,13 +318,6 @@ func (pd *playbackDevice) SetGain(ctx context.Context, gain float32) (DeviceStat
 	return pd.getStatus(), nil
 }
 
-func (pd *playbackDevice) isPlaying() bool {
-	pd.mu.RLock()
-	activeTrack := pd.ActiveTrack
-	pd.mu.RUnlock()
-	return activeTrack != nil && activeTrack.IsPlaying()
-}
-
 func (pd *playbackDevice) trackSwitcherGoroutine() {
 	log.Debug("Started trackSwitcher goroutine", "device", pd)
 	for {

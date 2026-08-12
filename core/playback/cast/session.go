@@ -338,16 +338,12 @@ func (s *castSession) waitForReceiverApp(ctx context.Context, appID string) erro
 func (s *castSession) getReceiverStatus(ctx context.Context) (*libcast.ReceiverStatusResponse, error) {
 	msg, err := s.sendAndWait(ctx, &getStatusPayload{payloadHeader{Type: "GET_STATUS"}}, defaultSenderID, defaultReceiverID, namespaceRecv)
 	if err != nil {
-		log.Debug("Cast init: getReceiverStatus failed", "target", s.target.Name, "state", s.sanitizedStateFields(), "err", err)
 		return nil, err
 	}
 	if msg.ReceiverStatus != nil {
-		log.Debug("Cast init: getReceiverStatus ok", "target", s.target.Name, "state", s.sanitizedStateFields())
 		return msg.ReceiverStatus, nil
 	}
-	err = fmt.Errorf("unexpected receiver status response type: %s", msg.Type)
-	log.Debug("Cast init: getReceiverStatus failed", "target", s.target.Name, "state", s.sanitizedStateFields(), "err", err)
-	return nil, err
+	return nil, fmt.Errorf("unexpected receiver status response type: %s", msg.Type)
 }
 
 func (s *castSession) waitUntilReady(ctx context.Context, contentID string) error {
