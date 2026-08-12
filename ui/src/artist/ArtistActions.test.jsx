@@ -4,7 +4,11 @@ import { TestContext } from 'ra-test'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import ArtistActions from './ArtistActions'
 import subsonic from '../subsonic'
-import { openShareMenu } from '../actions'
+import {
+  openShareMenu,
+  openDownloadMenu,
+  DOWNLOAD_MENU_ARTIST,
+} from '../actions'
 import { ThemeProvider, createTheme } from '@material-ui/core/styles'
 
 const mockDispatch = vi.fn()
@@ -249,6 +253,22 @@ describe('ArtistActions', () => {
       mockConfig.enableSharing = false
       renderArtistActions()
       expect(screen.queryByText('ra.action.share')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('Download action', () => {
+    it('shows the download button and dispatches openDownloadMenu when clicked', () => {
+      renderArtistActions()
+      fireEvent.click(screen.getByText('ra.action.download'))
+      expect(mockDispatch).toHaveBeenCalledWith(
+        openDownloadMenu(defaultRecord, DOWNLOAD_MENU_ARTIST),
+      )
+    })
+
+    it('hides the download button when downloads are disabled', () => {
+      mockConfig.enableDownloads = false
+      renderArtistActions()
+      expect(screen.queryByText('ra.action.download')).not.toBeInTheDocument()
     })
   })
 })

@@ -14,10 +14,15 @@ import {
 import ShuffleIcon from '@material-ui/icons/Shuffle'
 import PlayArrowIcon from '@material-ui/icons/PlayArrow'
 import ShareIcon from '@material-ui/icons/Share'
+import CloudDownloadOutlinedIcon from '@material-ui/icons/CloudDownloadOutlined'
 import { IoIosRadio } from 'react-icons/io'
 import { playShuffle, playTopSongs } from './actions.js'
 import { playSimilar } from '../common/playbackActions.js'
-import { openShareMenu } from '../actions'
+import {
+  openShareMenu,
+  openDownloadMenu,
+  DOWNLOAD_MENU_ARTIST,
+} from '../actions'
 import config from '../config'
 
 const useStyles = makeStyles((theme) => ({
@@ -108,6 +113,10 @@ const ArtistActions = ({ className, record, ...rest }) => {
     dispatch(openShareMenu([record.id], 'artist', record.name))
   }, [dispatch, record])
 
+  const handleDownload = React.useCallback(() => {
+    dispatch(openDownloadMenu(record, DOWNLOAD_MENU_ARTIST))
+  }, [dispatch, record])
+
   return (
     <TopToolbar
       className={`${className} ${classes.toolbar}`}
@@ -147,6 +156,15 @@ const ArtistActions = ({ className, record, ...rest }) => {
           className={classes.button}
           size={isMobile ? 'small' : 'medium'}
           icon={<ShareIcon />}
+        />
+      )}
+      {config.enableDownloads && (
+        <LoadingButton
+          onClick={handleDownload}
+          label={translate('ra.action.download')}
+          className={classes.button}
+          size={isMobile ? 'small' : 'medium'}
+          icon={<CloudDownloadOutlinedIcon />}
         />
       )}
     </TopToolbar>
