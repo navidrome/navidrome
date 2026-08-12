@@ -1,4 +1,5 @@
 export * from './AddToPlaylistButton'
+export * from './artist'
 export * from './ArtistLinkField'
 export * from './BatchPlayButton'
 export * from './BitrateField'
