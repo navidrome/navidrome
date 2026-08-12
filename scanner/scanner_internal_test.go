@@ -4,6 +4,7 @@ package scanner
 import (
 	"context"
 	"errors"
+	"os"
 	"path/filepath"
 	"sync/atomic"
 
@@ -20,6 +21,12 @@ var _ = Describe("libraryRelativePath", func() {
 
 	It("returns a relative path unchanged", func() {
 		Expect(libraryRelativePath(libRoot, "_Collection")).To(Equal("_Collection"))
+	})
+
+	It("rebases an absolute target when the library root is relative", func() {
+		cwd, err := os.Getwd()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(libraryRelativePath(filepath.Join("music", "library"), filepath.Join(cwd, "music", "library", "rock"))).To(Equal("rock"))
 	})
 
 	It("rebases an absolute path that equals the library root to '.'", func() {

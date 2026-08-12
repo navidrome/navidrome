@@ -59,7 +59,13 @@ func libraryRelativePath(libPath, folderPath string) string {
 	if !filepath.IsAbs(folderPath) {
 		return folderPath
 	}
-	rel, err := filepath.Rel(libPath, folderPath)
+	// The library root may be relative (e.g. the default "./music"); it must be made absolute
+	// to match against an absolute target, and it resolves against the same cwd as the scanner's fs.
+	absLib, err := filepath.Abs(libPath)
+	if err != nil {
+		return folderPath
+	}
+	rel, err := filepath.Rel(absLib, folderPath)
 	if err != nil || !filepath.IsLocal(rel) {
 		return folderPath
 	}
