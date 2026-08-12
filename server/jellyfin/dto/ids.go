@@ -71,26 +71,41 @@ func encodeReserved(kind byte, payload int) string {
 }
 
 // DecodeID maps an inbound GUID back to the identifier the rest of the API uses: a canonical id,
-// a decimal library id, or PlaylistsFolderID. Dashed and uppercase forms are accepted, as
-// Jellyfin's Guid.Parse accepts them. Malformed input yields "", which callers surface as a 404.
-// Playlist entries decode through DecodePlaylistEntryID instead, so a position can't reach a
-// caller expecting an entity id.
-func DecodeID(guid string) string {
+// a decimal library id, or PlaylistsFolderID. ok is false for anything that isn't a well-formed
+// GUID — including the empty string — so an undecodable id can't reach a caller as "no filter".
+// Dashed and uppercase forms are accepted, as Jellyfin's Guid.Parse accepts them. Playlist entries
+// decode through DecodePlaylistEntryID instead, so a position can't reach a caller expecting an
+// entity id.
+func DecodeID(guid string) (string, bool) {
 	b, ok := decodeGUID(guid)
 	if !ok {
-		return ""
+		return "", false
 	}
 	kind, payload, reserved := reservedFields(b)
 	if !reserved {
-		return id.Encode(b)
+		return id.Encode(b), true
 	}
 	switch kind {
 	case kindLibrary:
-		return strconv.Itoa(payload)
+		return strconv.Itoa(payload), true
 	case kindPlaylistsFolder:
-		return PlaylistsFolderID
+		return PlaylistsFolderID, true
 	}
-	return ""
+	return "", false
+}
+
+// DecodeIDs decodes a list of GUIDs, all-or-nothing: ok is false if any entry is malformed, so a
+// caller can't mistake "every entry failed" for "no filter" (see DecodeID).
+func DecodeIDs(guids []string) ([]string, bool) {
+	out := make([]string, len(guids))
+	for i, guid := range guids {
+		decoded, ok := DecodeID(guid)
+		if !ok {
+			return nil, false
+		}
+		out[i] = decoded
+	}
+	return out, true
 }
 
 // DecodePlaylistEntryID decodes a playlist entry GUID to its position. It rejects every other kind,

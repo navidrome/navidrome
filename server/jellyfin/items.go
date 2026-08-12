@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -242,9 +241,29 @@ func (api *Router) parseItemsQuery(ctx context.Context, r *http.Request) (itemsQ
 	if !ok {
 		return itemsQuery{}, model.ErrNotFound
 	}
+	// Any malformed entry in one of these id lists must 404, not silently drop out of the filter
+	// (see dto.DecodeIDs) — an all-malformed list would otherwise widen the query to everything.
+	ids, ok := decodedQueryIDs(r, "ids")
+	if !ok {
+		return itemsQuery{}, model.ErrNotFound
+	}
+	// Finamp's genre screen sends ParentId=<libraryId> for scoping plus GenreIds for the genre.
+	genreIds, ok := decodedQueryIDs(r, "genreids")
+	if !ok {
+		return itemsQuery{}, model.ErrNotFound
+	}
+	// Feishin fetches an album's tracks with AlbumIds instead of ParentId.
+	albumIds, ok := decodedQueryIDs(r, "albumids")
+	if !ok {
+		return itemsQuery{}, model.ErrNotFound
+	}
+	studioIds, ok := decodedQueryIDs(r, "studioids")
+	if !ok {
+		return itemsQuery{}, model.ErrNotFound
+	}
 	q := itemsQuery{
 		fields:    dto.ParseFields(p.Strings("fields")...),
-		ids:       decodedQueryIDs(r, "ids"),
+		ids:       ids,
 		rawTypes:  p.StringOr("includeitemtypes", ""),
 		search:    searchTerm(p),
 		sortBy:    p.StringOr("sortby", ""),
@@ -253,14 +272,12 @@ func (api *Router) parseItemsQuery(ctx context.Context, r *http.Request) (itemsQ
 		limit:     p.IntOr("limit", 0),
 		// Clients express "favorites only" two ways: Filters=IsFavorite and the standalone
 		// isFavorite=true param (Finamp's "Favourite tracks" widget uses the latter).
-		favOnly:  strings.Contains(p.StringOr("filters", ""), "IsFavorite") || p.BoolOr("isfavorite", false),
-		parentId: parentId,
-		// Finamp's genre screen sends ParentId=<libraryId> for scoping plus GenreIds for the genre.
-		genreIds: decodedQueryIDs(r, "genreids"),
-		// Feishin fetches an album's tracks with AlbumIds instead of ParentId.
-		albumIds:  decodedQueryIDs(r, "albumids"),
+		favOnly:   strings.Contains(p.StringOr("filters", ""), "IsFavorite") || p.BoolOr("isfavorite", false),
+		parentId:  parentId,
+		genreIds:  genreIds,
+		albumIds:  albumIds,
 		years:     parseYears(r),
-		studioIds: decodedQueryIDs(r, "studioids"),
+		studioIds: studioIds,
 	}
 	// An artist's page filters by artist, not ParentId: Finamp sends ParentId=<libraryId> for scoping
 	// plus AlbumArtistIds/ArtistIds/contributingArtistIds for the artist.
@@ -477,9 +494,10 @@ func firstDecodedID(s string) (string, bool) {
 	return decodeFilterParam(strings.TrimSpace(first))
 }
 
-// decodedQueryIDs reads an id-list param in both client spellings (see queryIDs), decoding each id.
-func decodedQueryIDs(r *http.Request, key string) []string {
-	return slice.Map(queryIDs(r, key), dto.DecodeID)
+// decodedQueryIDs reads an id-list param in both client spellings (see queryIDs). ok is false if
+// any entry is malformed, so a dropped entry can't shrink the list into an empty, no-op filter.
+func decodedQueryIDs(r *http.Request, key string) ([]string, bool) {
+	return dto.DecodeIDs(queryIDs(r, key))
 }
 
 // parseYears reads Years= as a discrete list, accepting comma-separated and repeated params.
@@ -840,7 +858,10 @@ func (api *Router) itemsByIDs(ctx context.Context, ids []string, fields dto.Fiel
 }
 
 func (api *Router) getItem(w http.ResponseWriter, r *http.Request) {
-	id := dto.DecodeID(chi.URLParam(r, "itemId"))
+	id, ok := itemIDParam(w, r, "itemId")
+	if !ok {
+		return
+	}
 	fields := dto.ParseFields(req.Params(r).Strings("fields")...)
 	if item, ok := api.resolveItemByID(r.Context(), id, fields); ok {
 		api.ok(w, r, item)
@@ -853,7 +874,10 @@ func (api *Router) getItem(w http.ResponseWriter, r *http.Request) {
 // scanning), so a non-playlist id 404s. core/playlists.Delete enforces ownership.
 func (api *Router) deleteItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	id := dto.DecodeID(chi.URLParam(r, "itemId"))
+	id, ok := itemIDParam(w, r, "itemId")
+	if !ok {
+		return
+	}
 	if err := api.playlists.Delete(ctx, id); err != nil {
 		api.playlistError(w, r, err)
 		return

@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
@@ -34,13 +35,24 @@ func resolveLibraryScope(ctx context.Context, parentId string) (scopeIDs []int, 
 }
 
 // decodeFilterParam separates an absent param from an undecodable one: dropping the filter for a
-// stale id would silently widen the query to the whole library.
+// stale id would silently widen the query to the whole library. It is the only place that opts
+// into treating "absent" as fine — every other caller of dto.DecodeID must 404 on ok=false.
 func decodeFilterParam(raw string) (id string, ok bool) {
 	if raw == "" {
 		return "", true
 	}
-	id = dto.DecodeID(raw)
-	return id, id != ""
+	return dto.DecodeID(raw)
+}
+
+// itemIDParam decodes a chi URL id param, writing 404 and reporting false when it isn't a
+// well-formed GUID. Handlers must return immediately when ok is false.
+func itemIDParam(w http.ResponseWriter, r *http.Request, key string) (string, bool) {
+	id, ok := dto.DecodeID(chi.URLParam(r, key))
+	if !ok {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return "", false
+	}
+	return id, true
 }
 
 // parentIDScope resolves the request's ParentId param to a library scope (see resolveLibraryScope).

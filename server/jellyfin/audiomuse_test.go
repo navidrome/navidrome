@@ -169,6 +169,15 @@ var _ = Describe("AudioMuse similar_tracks", func() {
 		Expect(fake.gotID).To(Equal(""))
 	})
 
+	// A malformed item_id degrades the same way as a missing one (200, empty array) rather than
+	// 404ing: every other failure on this endpoint already degrades gracefully.
+	It("returns an empty array without calling the engine when item_id is malformed", func() {
+		w := call("item_id=not-a-valid-id", model.User{IsAdmin: true})
+		Expect(w.Code).To(Equal(200))
+		Expect(strings.TrimSpace(w.Body.String())).To(Equal("[]"))
+		Expect(fake.gotID).To(Equal(""))
+	})
+
 	It("returns 404 when no sonic provider is loaded", func() {
 		fake.provider = false
 		w := call("item_id="+dto.EncodeID(testID("seed")), model.User{IsAdmin: true})
@@ -246,5 +255,12 @@ var _ = Describe("AudioMuse find_path", func() {
 		Expect(json.Unmarshal(w.Body.Bytes(), &body)).To(Succeed())
 		Expect(body.Path).To(BeEmpty())
 		Expect(body.TotalDistance).To(Equal(0.0))
+	})
+
+	It("400s without calling the engine when an id is malformed", func() {
+		w := call("start_song_id=not-a-valid-id&end_song_id="+dto.EncodeID(testID("e")), model.User{IsAdmin: true})
+		Expect(w.Code).To(Equal(http.StatusBadRequest))
+		Expect(fake.gotStart).To(Equal(""))
+		Expect(fake.gotEnd).To(Equal(""))
 	})
 })

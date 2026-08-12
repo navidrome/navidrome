@@ -33,11 +33,16 @@ func (api *Router) listArtistsByRole(w http.ResponseWriter, r *http.Request, rol
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
+	genreIds, ok := decodedQueryIDs(r, "genreids")
+	if !ok {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
 	// Only the fields listArtists reads; /Artists has no favorites filter, so favOnly stays false.
 	// Finamp's artist tab sends GenreIds when a genre filter is active.
 	q := itemsQuery{
 		scopeIDs: scopeIDs,
-		genreIds: decodedQueryIDs(r, "genreids"),
+		genreIds: genreIds,
 		search:   searchTerm(p),
 		fields:   dto.ParseFields(p.Strings("fields")...),
 	}

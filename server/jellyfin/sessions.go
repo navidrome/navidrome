@@ -21,13 +21,19 @@ type playbackReport struct {
 
 // decodeReport reads the playback report body. ItemId falls back to a query param (some clients send
 // it there) and is decoded here since it flows straight into scrobbler lookups by media file id.
+// These endpoints always answer 204 (see reportPlaybackStart), so a malformed id isn't a request
+// failure; it just can't identify a track, same as an absent one.
 func (api *Router) decodeReport(r *http.Request) playbackReport {
 	var body playbackReport
 	_ = json.NewDecoder(r.Body).Decode(&body)
 	if body.ItemId == "" {
 		body.ItemId = r.URL.Query().Get("itemid")
 	}
-	body.ItemId = dto.DecodeID(body.ItemId)
+	if id, ok := dto.DecodeID(body.ItemId); ok {
+		body.ItemId = id
+	} else {
+		body.ItemId = ""
+	}
 	return body
 }
 

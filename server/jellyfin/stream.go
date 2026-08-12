@@ -23,7 +23,10 @@ import (
 // Shared by getPlaybackInfo and streamAudio so a guessed id can't probe or stream another library.
 func (api *Router) mediaFileForRequest(w http.ResponseWriter, r *http.Request) (*model.MediaFile, bool) {
 	ctx := r.Context()
-	id := dto.DecodeID(chi.URLParam(r, "itemId"))
+	id, ok := itemIDParam(w, r, "itemId")
+	if !ok {
+		return nil, false
+	}
 	mf, err := api.ds.MediaFile(ctx).Get(id)
 	if err != nil {
 		http.Error(w, "Not Found", http.StatusNotFound)

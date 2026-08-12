@@ -46,6 +46,20 @@ var _ = Describe("Playlists", func() {
 			plID := createPlaylist("From Artist", []string{enc(artistID("The Beatles"))})
 			Expect(playlistItems(plID).TotalRecordCount).To(Equal(3)) // Abbey Road (2) + Help! (1)
 		})
+
+		// dto.DecodeIDs is all-or-nothing: a malformed entry must 404 the whole request, not get
+		// dropped while the well-formed entries are still used to create a playlist.
+		It("404s when one of the Ids is malformed, without creating a playlist", func() {
+			before, err := ds.Playlist(ctx).CountAll()
+			Expect(err).ToNot(HaveOccurred())
+
+			body := `{"Name":"ShouldNotExist","Ids":["` + enc(songID("So What")) + `","not-a-valid-id"]}`
+			Expect(post("/Playlists", body).Code).To(Equal(http.StatusNotFound))
+
+			after, err := ds.Playlist(ctx).CountAll()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(after).To(Equal(before))
+		})
 	})
 
 	Describe("items", func() {
@@ -79,6 +93,13 @@ var _ = Describe("Playlists", func() {
 				"&ids=" + enc(songID("Come Together")) + "&ids=" + enc(songID("Help!"))
 			Expect(post(url, "").Code).To(Equal(http.StatusNoContent))
 			Expect(playlistItems(plID).TotalRecordCount).To(Equal(3))
+		})
+
+		It("404s when one of the ids to add is malformed, without adding any track", func() {
+			plID := createPlaylist("AddMalformed", nil)
+			url := "/Playlists/" + enc(plID) + "/Items?ids=" + enc(songID("So What")) + ",not-a-valid-id"
+			Expect(post(url, "").Code).To(Equal(http.StatusNotFound))
+			Expect(playlistItems(plID).TotalRecordCount).To(BeZero())
 		})
 
 		It("removes an entry by its PlaylistItemId", func() {
@@ -239,6 +260,15 @@ var _ = Describe("Playlists", func() {
 	})
 
 	Describe("update", func() {
+		It("404s when one of the replacement Ids is malformed, leaving the track list unchanged", func() {
+			plID := createPlaylist("UpdateMalformed", []string{enc(songID("Come Together"))})
+			body := `{"Ids":["` + enc(songID("So What")) + `","not-a-valid-id"]}`
+			Expect(post("/Playlists/"+enc(plID), body).Code).To(Equal(http.StatusNotFound))
+			q := playlistItems(plID)
+			Expect(q.TotalRecordCount).To(Equal(1))
+			Expect(names(q.Items)).To(ConsistOf("Come Together"))
+		})
+
 		It("makes a playlist public", func() {
 			plID := createPlaylist("Make Public", nil)
 			Expect(post("/Playlists/"+enc(plID), `{"Name":"Make Public","IsPublic":true}`).Code).To(Equal(http.StatusNoContent))
@@ -296,8 +326,8 @@ var _ = Describe("Playlists", func() {
 			Expect(postAs(regularUser, "/Playlists/"+enc(plID), `{"Name":"Hijacked"}`).Code).To(Equal(http.StatusForbidden))
 		})
 
-		// A malformed id decodes to "", which core/playlists.Create treats as "make a new playlist" —
-		// the overload createPlaylist deliberately relies on. Must 404, not silently create one.
+		// An id that decodes to "" would tell Create to make a new playlist instead of updating one —
+		// itemIDParam must 404 before that decode ever runs, not silently create one.
 		It("404s for a malformed playlist id, without creating a playlist", func() {
 			before, err := ds.Playlist(ctx).CountAll()
 			Expect(err).ToNot(HaveOccurred())

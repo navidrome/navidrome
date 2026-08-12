@@ -14,12 +14,16 @@ var _ = Describe("id codec", func() {
 	Describe("canonical ids", func() {
 		It("round-trips a random id", func() {
 			ndID := id.NewRandom()
-			Expect(DecodeID(EncodeID(ndID))).To(Equal(ndID))
+			decoded, ok := DecodeID(EncodeID(ndID))
+			Expect(ok).To(BeTrue())
+			Expect(decoded).To(Equal(ndID))
 		})
 
 		It("round-trips a hash id", func() {
 			ndID := id.NewHash("artist", "Weird Al")
-			Expect(DecodeID(EncodeID(ndID))).To(Equal(ndID))
+			decoded, ok := DecodeID(EncodeID(ndID))
+			Expect(ok).To(BeTrue())
+			Expect(decoded).To(Equal(ndID))
 		})
 
 		It("emits exactly 32 lowercase hex chars", func() {
@@ -32,12 +36,16 @@ var _ = Describe("id codec", func() {
 			ndID := id.NewRandom()
 			guid := EncodeID(ndID)
 			dashed := guid[0:8] + "-" + guid[8:12] + "-" + guid[12:16] + "-" + guid[16:20] + "-" + guid[20:32]
-			Expect(DecodeID(dashed)).To(Equal(ndID))
+			decoded, ok := DecodeID(dashed)
+			Expect(ok).To(BeTrue())
+			Expect(decoded).To(Equal(ndID))
 		})
 
 		It("accepts an uppercase GUID", func() {
 			ndID := id.NewRandom()
-			Expect(DecodeID(strings.ToUpper(EncodeID(ndID)))).To(Equal(ndID))
+			decoded, ok := DecodeID(strings.ToUpper(EncodeID(ndID)))
+			Expect(ok).To(BeTrue())
+			Expect(decoded).To(Equal(ndID))
 		})
 	})
 
@@ -45,7 +53,9 @@ var _ = Describe("id codec", func() {
 		DescribeTable("round-trips library ids",
 			func(libID int, guid string) {
 				Expect(EncodeLibraryID(libID)).To(Equal(guid))
-				Expect(DecodeID(guid)).To(Equal(strconv.Itoa(libID)))
+				decoded, ok := DecodeID(guid)
+				Expect(ok).To(BeTrue())
+				Expect(decoded).To(Equal(strconv.Itoa(libID)))
 			},
 			Entry("first library", 1, "00000000000000000000000001000001"),
 			Entry("double digit", 42, "0000000000000000000000000100002a"),
@@ -54,7 +64,9 @@ var _ = Describe("id codec", func() {
 
 		It("round-trips the playlists folder", func() {
 			Expect(PlaylistsFolderGUID).To(Equal("00000000000000000000000002000000"))
-			Expect(DecodeID(PlaylistsFolderGUID)).To(Equal(PlaylistsFolderID))
+			decoded, ok := DecodeID(PlaylistsFolderGUID)
+			Expect(ok).To(BeTrue())
+			Expect(decoded).To(Equal(PlaylistsFolderID))
 		})
 
 		DescribeTable("round-trips playlist entry positions",
@@ -85,15 +97,17 @@ var _ = Describe("id codec", func() {
 		})
 
 		It("does not let one reserved kind decode as another", func() {
-			Expect(DecodeID(EncodePlaylistEntryID("3"))).To(Equal(""))
-			_, ok := DecodePlaylistEntryID(EncodeLibraryID(3))
+			_, ok := DecodeID(EncodePlaylistEntryID("3"))
+			Expect(ok).To(BeFalse())
+			_, ok = DecodePlaylistEntryID(EncodeLibraryID(3))
 			Expect(ok).To(BeFalse())
 			_, ok = DecodePlaylistEntryID(PlaylistsFolderGUID)
 			Expect(ok).To(BeFalse())
 		})
 
 		It("rejects an unknown kind tag", func() {
-			Expect(DecodeID("000000000000000000000000ff000000")).To(Equal(""))
+			_, ok := DecodeID("000000000000000000000000ff000000")
+			Expect(ok).To(BeFalse())
 		})
 
 		It("never emits the all-zero GUID, which Jellyfin serializes as null", func() {
@@ -103,9 +117,11 @@ var _ = Describe("id codec", func() {
 	})
 
 	Describe("malformed input", func() {
-		DescribeTable("decodes to the empty string",
+		DescribeTable("DecodeID reports ok=false",
 			func(input string) {
-				Expect(DecodeID(input)).To(Equal(""))
+				decoded, ok := DecodeID(input)
+				Expect(ok).To(BeFalse())
+				Expect(decoded).To(BeEmpty())
 			},
 			Entry("empty", ""),
 			Entry("too short", "abc123"),
@@ -119,6 +135,27 @@ var _ = Describe("id codec", func() {
 			Expect(EncodeID("")).To(Equal(""))
 			Expect(EncodeID("playlists")).To(Equal(""))
 			Expect(EncodeID("42")).To(Equal(""))
+		})
+	})
+
+	Describe("DecodeIDs", func() {
+		It("decodes every entry when all are well-formed", func() {
+			a, b := id.NewRandom(), id.NewRandom()
+			decoded, ok := DecodeIDs([]string{EncodeID(a), EncodeID(b)})
+			Expect(ok).To(BeTrue())
+			Expect(decoded).To(Equal([]string{a, b}))
+		})
+
+		It("is all-or-nothing: one malformed entry fails the whole list", func() {
+			decoded, ok := DecodeIDs([]string{EncodeID(id.NewRandom()), "not-a-guid"})
+			Expect(ok).To(BeFalse())
+			Expect(decoded).To(BeNil())
+		})
+
+		It("succeeds on an empty list", func() {
+			decoded, ok := DecodeIDs(nil)
+			Expect(ok).To(BeTrue())
+			Expect(decoded).To(BeEmpty())
 		})
 	})
 })

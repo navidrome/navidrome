@@ -246,6 +246,48 @@ var _ = Describe("Browsing", func() {
 			Expect(q.TotalRecordCount).To(BeZero())
 			Expect(q.Items).To(BeEmpty())
 		})
+
+		It("404s a malformed Ids entry instead of batch-fetching nothing", func() {
+			w := get("/Items?Ids=not-a-valid-id")
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
+
+		It("404s when only one of several Ids entries is malformed", func() {
+			w := get("/Items?Ids=" + enc(songID("Something")) + ",not-a-valid-id")
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
+
+		It("returns zero items, not an error, for a well-formed but unknown Ids entry", func() {
+			q := queryResult(get("/Items?Ids=" + enc(testID("no-such-item"))))
+			Expect(q.TotalRecordCount).To(BeZero())
+			Expect(q.Items).To(BeEmpty())
+		})
+
+		It("404s a malformed GenreIds entry instead of listing every album", func() {
+			w := get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true&GenreIds=not-a-valid-id")
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
+
+		It("404s when only one of several GenreIds entries is malformed", func() {
+			w := get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true&GenreIds=" + enc(genreID("Jazz")) + ",not-a-valid-id")
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
+
+		It("404s a malformed AlbumIds entry instead of listing every song", func() {
+			w := get("/Items?IncludeItemTypes=Audio&Recursive=true&AlbumIds=not-a-valid-id")
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
+
+		It("404s a malformed StudioIds entry instead of listing every album", func() {
+			w := get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true&StudioIds=not-a-valid-id")
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
+
+		It("returns zero albums, not every album, for a well-formed but unknown StudioIds", func() {
+			q := queryResult(get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true&StudioIds=" + enc(testID("no-such-studio"))))
+			Expect(q.TotalRecordCount).To(BeZero())
+			Expect(q.Items).To(BeEmpty())
+		})
 	})
 
 	// Feishin fetches an album's tracks with AlbumIds=<albumId>&IncludeItemTypes=Audio&Recursive=true.

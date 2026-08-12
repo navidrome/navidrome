@@ -192,8 +192,8 @@ They use a reserved GUID space — 12 zero bytes, a non-zero kind tag, a 24-bit 
 library `1` is `00000000000000000000000001000001`. The tag is never zero, because Jellyfin
 serializes the all-zero GUID as `null`.
 
-`DecodeID` accepts dashed and uppercase GUIDs (Jellyfin's `Guid.Parse` does) and returns `""`
-for anything malformed, which handlers surface as a 404.
+`DecodeID` accepts dashed and uppercase GUIDs (Jellyfin's `Guid.Parse` does) and returns
+`ok=false` for anything malformed — including "" — which handlers surface as a 404.
 
 The wire format must stay GUID-shaped for this reason: Finamp's saved-queue persistence bit-packs
 each item id into exactly 16 bytes (`packIds()` in `lib/models/finamp_models.dart`), so a 32-hex

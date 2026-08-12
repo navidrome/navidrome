@@ -224,7 +224,9 @@ func createPlaylistAs(user model.User, name string, encodedIds ...string) string
 	var res map[string]string
 	parseInto(postAs(user, "/Playlists", string(body)), &res)
 	Expect(res["Id"]).ToNot(BeEmpty())
-	return dto.DecodeID(res["Id"])
+	id, ok := dto.DecodeID(res["Id"])
+	Expect(ok).To(BeTrue())
+	return id
 }
 
 // --- Seeded-id lookup helpers (return Navidrome ids; wrap with enc() for URLs) ---

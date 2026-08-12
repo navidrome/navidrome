@@ -62,12 +62,13 @@ func (api *Router) audioMuseSimilarTracks(w http.ResponseWriter, r *http.Request
 	tracks := []audioMuseSimilarTrack{}
 
 	itemID := p.StringOr("item_id", "")
-	if itemID == "" {
+	id, ok := dto.DecodeID(itemID)
+	if !ok {
+		// Every other failure here (no provider, no match) degrades to an empty list rather than an
+		// error, so a malformed id does too instead of being the one path that 404s.
 		api.ok(w, r, tracks)
 		return
 	}
-
-	id := dto.DecodeID(itemID)
 	n := min(p.IntOr("n", 10), maxSimilarLimit) // cap a user-controlled count, like clampLimit
 	eliminateDuplicates := p.BoolOr("eliminate_duplicates", true)
 
@@ -129,11 +130,16 @@ func (api *Router) audioMuseFindPath(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := audioMusePathResponse{Path: []audioMusePathTrack{}}
+	startDecoded, startOk := dto.DecodeID(startID)
+	endDecoded, endOk := dto.DecodeID(endID)
+	if !startOk || !endOk {
+		// This endpoint already 400s when an endpoint id is absent, so an unusable one reports the
+		// same way rather than looking like a successful search that found no path.
+		http.Error(w, "start_song_id and end_song_id must be valid item ids.", http.StatusBadRequest)
+		return
+	}
 	maxSteps := min(p.IntOr("max_steps", 25), maxSimilarLimit) // cap a user-controlled count
-	matches, err := api.sonic.FindSonicPath(ctx,
-		dto.DecodeID(startID),
-		dto.DecodeID(endID),
-		maxSteps)
+	matches, err := api.sonic.FindSonicPath(ctx, startDecoded, endDecoded, maxSteps)
 	if err != nil {
 		api.ok(w, r, resp)
 		return

@@ -1,6 +1,8 @@
 package e2e
 
 import (
+	"net/http"
+
 	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -24,6 +26,13 @@ var _ = Describe("Similar", func() {
 			q := queryResult(get("/Artists/" + enc(artistID("The Beatles")) + "/Similar"))
 			Expect(q.Items).To(BeEmpty())
 			Expect(q.TotalRecordCount).To(Equal(0))
+		})
+
+		// Unlike an unresolvable-but-well-formed id (empty result above), a malformed itemId never
+		// reaches provider lookup at all — itemIDParam rejects it first.
+		It("404s a malformed itemId", func() {
+			w := get("/Artists/not-a-valid-id/Similar")
+			Expect(w.Code).To(Equal(http.StatusNotFound))
 		})
 	})
 
@@ -74,6 +83,11 @@ var _ = Describe("Similar", func() {
 		It("returns an empty result (not 404) for an unknown item, so the client stops retrying", func() {
 			q := queryResult(get("/Items/" + enc(testID("does-not-exist")) + "/Similar"))
 			Expect(q.Items).To(BeEmpty())
+		})
+
+		It("404s a malformed itemId", func() {
+			w := get("/Items/not-a-valid-id/Similar")
+			Expect(w.Code).To(Equal(http.StatusNotFound))
 		})
 	})
 
@@ -129,6 +143,11 @@ var _ = Describe("Similar", func() {
 		It("returns only the seed when the provider has nothing", func() {
 			q := queryResult(get("/Items/" + enc(songID("Help!")) + "/InstantMix"))
 			Expect(names(q.Items)).To(Equal([]string{"Help!"}))
+		})
+
+		It("404s a malformed itemId", func() {
+			w := get("/Items/not-a-valid-id/InstantMix")
+			Expect(w.Code).To(Equal(http.StatusNotFound))
 		})
 	})
 })

@@ -94,6 +94,17 @@ var _ = Describe("Sessions", func() {
 			Expect(pt.reported).To(HaveLen(1))
 			Expect(pt.reported[0].MediaId).To(Equal(testID("s2")))
 		})
+
+		It("still reports (with an empty MediaId) for a malformed ItemId, rather than failing the request", func() {
+			w := httptest.NewRecorder()
+			r := authed(httptest.NewRequest("POST", "/Sessions/Playing", strings.NewReader(`{"ItemId":"not-a-valid-id","PositionTicks":10000000}`)))
+
+			invoke(api.reportPlaybackStart, w, r)
+
+			Expect(w.Code).To(Equal(http.StatusNoContent))
+			Expect(pt.reported).To(HaveLen(1))
+			Expect(pt.reported[0].MediaId).To(BeEmpty())
+		})
 	})
 
 	Describe("reportPlaybackProgress", func() {

@@ -1093,4 +1093,27 @@ var _ = Describe("Items", func() {
 			Expect(ok).To(BeFalse())
 		})
 	})
+
+	Describe("decodedQueryIDs", func() {
+		It("decodes every entry when all are well-formed", func() {
+			r := httptest.NewRequest("GET", "/Items?ids="+dto.EncodeID(testID("a1"))+","+dto.EncodeID(testID("a2")), nil)
+			ids, ok := decodedQueryIDs(r, "ids")
+			Expect(ok).To(BeTrue())
+			Expect(ids).To(Equal([]string{testID("a1"), testID("a2")}))
+		})
+
+		It("reports not ok and an empty list, not a partially-decoded one, for a mix of valid and malformed entries", func() {
+			r := httptest.NewRequest("GET", "/Items?ids="+dto.EncodeID(testID("a1"))+",not-a-valid-id", nil)
+			ids, ok := decodedQueryIDs(r, "ids")
+			Expect(ok).To(BeFalse())
+			Expect(ids).To(BeEmpty())
+		})
+
+		It("reports ok for an absent param, decoding to an empty list", func() {
+			r := httptest.NewRequest("GET", "/Items", nil)
+			ids, ok := decodedQueryIDs(r, "ids")
+			Expect(ok).To(BeTrue())
+			Expect(ids).To(BeEmpty())
+		})
+	})
 })

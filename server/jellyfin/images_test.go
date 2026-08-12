@@ -75,6 +75,19 @@ var _ = Describe("Images", func() {
 		Expect(fa.recvId).To(ContainSubstring(testID("a1")))
 	})
 
+	// A malformed itemId now 404s via itemIDParam instead of falling through to a placeholder image.
+	It("404s a malformed itemId instead of serving a placeholder", func() {
+		ds := &tests.MockDataStore{}
+		fa := &fakeArtwork{}
+		api := &Router{ds: ds, artwork: fa}
+
+		w, r := newImageRequest("not-a-valid-id")
+		api.getItemImage(w, r)
+
+		Expect(w.Code).To(Equal(http.StatusNotFound))
+		Expect(fa.recvId).To(BeEmpty(), "artwork resolution must not run for an undecodable id")
+	})
+
 	// resolveArtworkID probes the entity tables, so a deleted item yields no artwork id at all.
 	It("asks for no artwork once the item is deleted, rather than its lingering state", func() {
 		ds := &tests.MockDataStore{} // no albums/artists/tracks/playlists at all
@@ -84,6 +97,8 @@ var _ = Describe("Images", func() {
 		w, r := newImageRequest(dto.EncodeID(testID("deleted-item")))
 		api.getItemImage(w, r)
 
+		// 200 here is what separates a well-formed unknown id from a malformed one, which 404s.
+		Expect(w.Code).To(Equal(http.StatusOK))
 		Expect(fa.recvId).To(BeEmpty(), "an empty artwork id can only yield a placeholder")
 	})
 
