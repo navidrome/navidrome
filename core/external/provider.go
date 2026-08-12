@@ -281,6 +281,11 @@ func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (au
 }
 
 func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error) {
+	// Subsonic passes the client's count straight through, and a non-positive one has no valid
+	// interpretation downstream.
+	if count <= 0 {
+		return nil, nil
+	}
 	entity, err := model.GetEntityByID(ctx, e.ds, id)
 	if err != nil {
 		// Genre ids don't resolve via GetEntityByID; look them up before giving up.
@@ -359,9 +364,19 @@ func (e *provider) seedMix(ctx context.Context, count int, sample func() (model.
 	}
 	_ = g.Wait()
 
+	// Interleave the per-seed results: the matcher keeps input order and stops at count, so a
+	// seed-grouped list would let the first seed fill the whole mix on its own.
 	var songs []agents.Song
-	for _, s := range perSeed {
-		songs = append(songs, s...)
+	for i := 0; ; i++ {
+		before := len(songs)
+		for _, s := range perSeed {
+			if i < len(s) {
+				songs = append(songs, s[i])
+			}
+		}
+		if len(songs) == before {
+			break
+		}
 	}
 	matched, err := e.matcher.MatchSongs(ctx, songs, count)
 	if err != nil {

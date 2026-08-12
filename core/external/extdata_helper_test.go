@@ -144,25 +144,6 @@ func (m *mockMediaFileRepo) FindByArtistAndTitle(artistID string, title string, 
 	})).Return(model.MediaFiles{mediaFile}, nil).Once()
 }
 
-// mockPlaylistTrackRepo mocks model.PlaylistTrackRepository
-type mockPlaylistTrackRepo struct {
-	mock.Mock
-	model.PlaylistTrackRepository
-}
-
-// GetAll implements model.PlaylistTrackRepository.
-func (m *mockPlaylistTrackRepo) GetAll(options ...model.QueryOptions) (model.PlaylistTracks, error) {
-	argsSlice := make([]any, len(options))
-	for i, v := range options {
-		argsSlice[i] = v
-	}
-	args := m.Called(argsSlice...)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(model.PlaylistTracks), args.Error(1)
-}
-
 // mockAlbumRepo mocks model.AlbumRepository
 type mockAlbumRepo struct {
 	mock.Mock

@@ -27,7 +27,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 	var mediaFileRepo *mockMediaFileRepo
 	var albumRepo *mockAlbumRepo
 	var playlistRepo *tests.MockPlaylistRepo
-	var playlistTrackRepo *mockPlaylistTrackRepo
+	var playlistTrackRepo *tests.MockPlaylistTrackRepo
 	var genreRepo *tests.MockedGenreRepo
 	var ctx context.Context
 
@@ -37,7 +37,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 		artistRepo = newMockArtistRepo()
 		mediaFileRepo = newMockMediaFileRepo()
 		albumRepo = newMockAlbumRepo()
-		playlistTrackRepo = &mockPlaylistTrackRepo{}
+		playlistTrackRepo = &tests.MockPlaylistTrackRepo{}
 		playlistRepo = tests.CreateMockPlaylistRepo()
 		playlistRepo.TracksRepo = playlistTrackRepo
 		genreRepo = &tests.MockedGenreRepo{}
@@ -350,9 +350,9 @@ var _ = Describe("Provider - SimilarSongs", func() {
 				playlistRepo.SetData(model.Playlists{pls})
 
 				// samplePlaylistTracks -> Tracks(...).GetAll -> one seed track, bounded+randomized in SQL
-				playlistTrackRepo.On("GetAll", model.QueryOptions{Sort: "random", Max: 5}).Return(model.PlaylistTracks{
+				playlistTrackRepo.SetData(model.PlaylistTracks{
 					{MediaFile: seedTrack},
-				}, nil).Once()
+				})
 
 				// seedMix -> GetSimilarSongsByTrack for the seed
 				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "s1", "Seed One", "A", "", 5).
@@ -368,6 +368,55 @@ var _ = Describe("Provider - SimilarSongs", func() {
 				Expect(songs).ToNot(BeEmpty())
 			})
 
+			It("does not panic when the caller asks for a non-positive count", func() {
+				pls := model.Playlist{ID: "pl-neg", Name: "Negative"}
+				artistRepo.On("Get", "pl-neg").Return(nil, model.ErrNotFound).Once()
+				albumRepo.On("Get", "pl-neg").Return(nil, model.ErrNotFound).Once()
+				playlistRepo.SetData(model.Playlists{pls})
+				playlistTrackRepo.SetData(model.PlaylistTracks{
+					{MediaFile: model.MediaFile{ID: "s1", Title: "Seed One"}},
+					{MediaFile: model.MediaFile{ID: "s2", Title: "Seed Two"}},
+				})
+				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+					Return([]agents.Song{}, nil).Maybe()
+
+				// Subsonic passes count straight through, so a negative one reaches the provider.
+				songs, err := provider.SimilarSongs(ctx, "pl-neg", -1)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(songs).To(BeEmpty())
+			})
+
+			It("blends results from every seed, not just the first", func() {
+				pls := model.Playlist{ID: "pl-blend", Name: "Blend"}
+				artistRepo.On("Get", "pl-blend").Return(nil, model.ErrNotFound).Once()
+				albumRepo.On("Get", "pl-blend").Return(nil, model.ErrNotFound).Once()
+				playlistRepo.SetData(model.Playlists{pls})
+				playlistTrackRepo.SetData(model.PlaylistTracks{
+					{MediaFile: model.MediaFile{ID: "s1", Title: "Seed One"}},
+					{MediaFile: model.MediaFile{ID: "s2", Title: "Seed Two"}},
+				})
+
+				// Each seed returns a full count's worth, as a real similarity agent does. Grouped by
+				// seed, the matcher's count cap would consume seed one's block and drop seed two.
+				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "s1", "Seed One", "", "", 2).
+					Return([]agents.Song{{ID: "a1", Name: "A1"}, {ID: "a2", Name: "A2"}}, nil).Once()
+				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "s2", "Seed Two", "", "", 2).
+					Return([]agents.Song{{ID: "b1", Name: "B1"}, {ID: "b2", Name: "B2"}}, nil).Once()
+
+				mediaFileRepo.On("GetAll", mock.Anything).Return(model.MediaFiles{
+					{ID: "a1", Title: "A1"}, {ID: "a2", Title: "A2"},
+					{ID: "b1", Title: "B1"}, {ID: "b2", Title: "B2"},
+				}, nil).Maybe()
+
+				songs, err := provider.SimilarSongs(ctx, "pl-blend", 2)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(songs).To(HaveLen(2))
+				ids := []string{songs[0].ID, songs[1].ID}
+				Expect(ids).To(ContainElement(BeElementOf("b1", "b2")), "seed two must be represented in the mix")
+			})
+
 			It("falls back to the seed tracks themselves when no similar songs are found", func() {
 				pls := model.Playlist{ID: "pl-2", Name: "Fallback List"}
 				seed1 := model.MediaFile{ID: "s1", Title: "Seed One", Artist: "A"}
@@ -377,10 +426,10 @@ var _ = Describe("Provider - SimilarSongs", func() {
 				albumRepo.On("Get", "pl-2").Return(nil, model.ErrNotFound).Once()
 				playlistRepo.SetData(model.Playlists{pls})
 
-				playlistTrackRepo.On("GetAll", model.QueryOptions{Sort: "random", Max: 5}).Return(model.PlaylistTracks{
+				playlistTrackRepo.SetData(model.PlaylistTracks{
 					{MediaFile: seed1},
 					{MediaFile: seed2},
-				}, nil).Once()
+				})
 
 				// Both seeds come back empty, so the mix must fall back to the seeds themselves.
 				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "s1", "Seed One", "A", "", 5).
@@ -410,8 +459,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 				albumRepo.On("Get", "pl-3").Return(nil, model.ErrNotFound).Once()
 				playlistRepo.SetData(model.Playlists{pls})
 
-				// The bound lives in the query; over-returning here proves seedMix still caps agent calls.
-				playlistTrackRepo.On("GetAll", model.QueryOptions{Sort: "random", Max: 5}).Return(tracks, nil).Once()
+				playlistTrackRepo.SetData(tracks)
 
 				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, 5).
 					Return([]agents.Song{}, nil)
@@ -420,6 +468,8 @@ var _ = Describe("Provider - SimilarSongs", func() {
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(songs).To(HaveLen(5))
+				// The bound belongs to the query, so the repo never has to return the extra track.
+				Expect(playlistTrackRepo.Options).To(Equal(model.QueryOptions{Sort: "random", Max: 5}))
 				agentsCombined.AssertNumberOfCalls(GinkgoT(), "GetSimilarSongsByTrack", 5)
 			})
 		})
