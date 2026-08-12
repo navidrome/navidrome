@@ -377,7 +377,6 @@ func (e *provider) seedMix(ctx context.Context, count int, sample func() (model.
 	return matched, nil
 }
 
-// samplePlaylistTracks returns up to n random tracks from a playlist, used as seeds for a mix.
 func (e *provider) samplePlaylistTracks(ctx context.Context, playlistID string, n int) (model.MediaFiles, error) {
 	// refreshSmartPlaylist=false: mix seeds don't need a fresh smart-playlist rebuild.
 	tracks, err := e.ds.Playlist(ctx).Tracks(playlistID, false).GetAll(model.QueryOptions{Sort: "random", Max: n})
@@ -387,7 +386,6 @@ func (e *provider) samplePlaylistTracks(ctx context.Context, playlistID string, 
 	return tracks.MediaFiles(), nil
 }
 
-// sampleAlbumTracks returns up to n random tracks from the given album, used as seeds for a mix.
 func (e *provider) sampleAlbumTracks(ctx context.Context, albumID string, n int) (model.MediaFiles, error) {
 	return e.ds.MediaFile(ctx).GetRandom(model.QueryOptions{
 		Filters: squirrel.Eq{"album_id": albumID},
@@ -395,7 +393,6 @@ func (e *provider) sampleAlbumTracks(ctx context.Context, albumID string, n int)
 	})
 }
 
-// sampleArtistTracks returns up to n random tracks by the given artist, used as seeds for a mix.
 func (e *provider) sampleArtistTracks(ctx context.Context, artistID string, n int) (model.MediaFiles, error) {
 	return e.ds.MediaFile(ctx).GetRandom(model.QueryOptions{
 		Filters: squirrel.Eq{"artist_id": artistID},
@@ -403,7 +400,6 @@ func (e *provider) sampleArtistTracks(ctx context.Context, artistID string, n in
 	})
 }
 
-// sampleGenreTracks returns up to n random tracks tagged with the given genre, used as seeds for a mix.
 func (e *provider) sampleGenreTracks(ctx context.Context, genre *model.Genre, n int) (model.MediaFiles, error) {
 	return e.ds.MediaFile(ctx).GetRandom(model.QueryOptions{
 		Filters: persistence.SongGenres.ByID(genre.ID),

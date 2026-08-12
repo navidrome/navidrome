@@ -227,7 +227,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 					return ok && eq["album_id"] == "album-1"
 				})).Return(model.MediaFiles{seed}, nil).Once()
 
-				// mixFromSeeds falls back to the seed itself when the agent finds nothing.
+				// seedMix falls back to the seed itself when the agent finds nothing.
 				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "seed-1", "Seed", "Artist", "", mock.Anything).
 					Return([]agents.Song{}, nil).Once()
 
@@ -354,7 +354,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 					{MediaFile: seedTrack},
 				}, nil).Once()
 
-				// mixFromSeeds -> GetSimilarSongsByTrack for the seed
+				// seedMix -> GetSimilarSongsByTrack for the seed
 				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "s1", "Seed One", "A", "", 5).
 					Return([]agents.Song{{Name: "Similar", Artists: []agents.Artist{{Name: "A"}}}}, nil).Once()
 
@@ -382,8 +382,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 					{MediaFile: seed2},
 				}, nil).Once()
 
-				// Both seeds come back empty from the agent, so mixFromSeeds must fall back
-				// to the seeds themselves rather than returning an empty mix.
+				// Both seeds come back empty, so the mix must fall back to the seeds themselves.
 				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "s1", "Seed One", "A", "", 5).
 					Return([]agents.Song{}, nil).Once()
 				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "s2", "Seed Two", "B", "", 5).
@@ -411,9 +410,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 				albumRepo.On("Get", "pl-3").Return(nil, model.ErrNotFound).Once()
 				playlistRepo.SetData(model.Playlists{pls})
 
-				// The bound now lives in the query itself (Sort:"random", Max:5); this mock
-				// defensively returns more than requested to prove mixFromSeeds still caps
-				// agent calls as a second line of defense.
+				// The bound lives in the query; over-returning here proves seedMix still caps agent calls.
 				playlistTrackRepo.On("GetAll", model.QueryOptions{Sort: "random", Max: 5}).Return(tracks, nil).Once()
 
 				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, 5).
@@ -429,8 +426,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 
 		Context("when ID is a Genre (not resolved by GetEntityByID)", func() {
 			It("samples genre songs and returns their track-similars", func() {
-				// GetEntityByID misses across Artist, Album, Playlist (empty repo, no mock needed),
-				// MediaFile and Radio (auto-created empty mock, no mock needed).
+				// GetEntityByID misses everywhere; the empty/auto-created mocks need no setup.
 				artistRepo.On("Get", "g-1").Return(nil, model.ErrNotFound).Once()
 				albumRepo.On("Get", "g-1").Return(nil, model.ErrNotFound).Once()
 				mediaFileRepo.On("Get", "g-1").Return(nil, model.ErrNotFound).Once()

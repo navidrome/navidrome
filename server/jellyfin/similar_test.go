@@ -187,7 +187,6 @@ var _ = Describe("getInstantMix", func() {
 })
 
 var _ = Describe("getSimilarAlbums", func() {
-	// Powers Finamp's albumMix radio mode.
 	It("returns albums derived from the provider's similar songs", func() {
 		ds := &tests.MockDataStore{}
 		ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{
