@@ -209,6 +209,45 @@ var _ = Describe("Browsing", func() {
 		})
 	})
 
+	// A malformed id must 404, not silently drop the filter and widen the query to the whole
+	// library; a well-formed but unknown one must still fail closed to zero results.
+	Describe("stale and malformed id filtering", func() {
+		lib1 := dto.EncodeLibraryID(1)
+
+		It("404s a malformed ParentId instead of listing every song", func() {
+			w := get("/Items?IncludeItemTypes=Audio&ParentId=not-a-valid-id")
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
+
+		It("returns zero songs, not the whole library, for a well-formed but unknown ParentId", func() {
+			q := queryResult(get("/Items?IncludeItemTypes=Audio&ParentId=" + enc(testID("no-such-album"))))
+			Expect(q.TotalRecordCount).To(BeZero())
+			Expect(q.Items).To(BeEmpty())
+		})
+
+		It("404s a malformed AlbumArtistIds instead of listing every album", func() {
+			w := get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true&ParentId=" + lib1 + "&AlbumArtistIds=not-a-valid-id")
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
+
+		It("returns zero albums, not every album, for a well-formed but unknown AlbumArtistIds", func() {
+			q := queryResult(get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true&ParentId=" + lib1 + "&AlbumArtistIds=" + enc(testID("no-such-artist"))))
+			Expect(q.TotalRecordCount).To(BeZero())
+			Expect(q.Items).To(BeEmpty())
+		})
+
+		It("404s a malformed ArtistIds instead of listing every song", func() {
+			w := get("/Items?IncludeItemTypes=Audio&Recursive=true&ParentId=" + lib1 + "&ArtistIds=not-a-valid-id")
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
+
+		It("returns zero songs, not every song, for a well-formed but unknown ArtistIds", func() {
+			q := queryResult(get("/Items?IncludeItemTypes=Audio&Recursive=true&ParentId=" + lib1 + "&ArtistIds=" + enc(testID("no-such-artist"))))
+			Expect(q.TotalRecordCount).To(BeZero())
+			Expect(q.Items).To(BeEmpty())
+		})
+	})
+
 	// Feishin fetches an album's tracks with AlbumIds=<albumId>&IncludeItemTypes=Audio&Recursive=true.
 	Describe("album filtering (AlbumIds)", func() {
 		It("filters songs by AlbumIds", func() {

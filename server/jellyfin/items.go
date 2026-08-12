@@ -2,6 +2,7 @@ package jellyfin
 
 import (
 	"context"
+	"errors"
 	"io"
 	"iter"
 	"net/http"
@@ -34,6 +35,10 @@ func searchTerm(p *req.Values) string {
 func (api *Router) getItems(w http.ResponseWriter, r *http.Request) {
 	res, err := api.queryItems(r.Context(), r)
 	if err != nil {
+		if errors.Is(err, model.ErrNotFound) {
+			http.Error(w, "Not Found", http.StatusNotFound)
+			return
+		}
 		api.internalError(w, r, err)
 		return
 	}
@@ -229,9 +234,14 @@ type itemsQuery struct {
 
 // parseItemsQuery also resolves the entity types (inferring them from the parent when
 // IncludeItemTypes is absent) and the library scope. Query keys are read lowercase because
-// normalizeQueryKeys folded them (Jellyfin binds case-insensitively).
-func (api *Router) parseItemsQuery(ctx context.Context, r *http.Request) itemsQuery {
+// normalizeQueryKeys folded them (Jellyfin binds case-insensitively). A non-empty id param that
+// fails to decode reports model.ErrNotFound rather than silently dropping the filter (see decodeFilterParam).
+func (api *Router) parseItemsQuery(ctx context.Context, r *http.Request) (itemsQuery, error) {
 	p := req.Params(r)
+	parentId, ok := decodeFilterParam(p.StringOr("parentid", ""))
+	if !ok {
+		return itemsQuery{}, model.ErrNotFound
+	}
 	q := itemsQuery{
 		fields:    dto.ParseFields(p.Strings("fields")...),
 		ids:       decodedQueryIDs(r, "ids"),
@@ -244,7 +254,7 @@ func (api *Router) parseItemsQuery(ctx context.Context, r *http.Request) itemsQu
 		// Clients express "favorites only" two ways: Filters=IsFavorite and the standalone
 		// isFavorite=true param (Finamp's "Favourite tracks" widget uses the latter).
 		favOnly:  strings.Contains(p.StringOr("filters", ""), "IsFavorite") || p.BoolOr("isfavorite", false),
-		parentId: dto.DecodeID(p.StringOr("parentid", "")),
+		parentId: parentId,
 		// Finamp's genre screen sends ParentId=<libraryId> for scoping plus GenreIds for the genre.
 		genreIds: decodedQueryIDs(r, "genreids"),
 		// Feishin fetches an album's tracks with AlbumIds instead of ParentId.
@@ -256,7 +266,11 @@ func (api *Router) parseItemsQuery(ctx context.Context, r *http.Request) itemsQu
 	// plus AlbumArtistIds/ArtistIds/contributingArtistIds for the artist.
 	albumArtistScope := firstNonEmpty(p.StringOr("albumartistids", ""), p.StringOr("artistids", ""))
 	contributingScope := p.StringOr("contributingartistids", "")
-	q.artistId = firstDecodedID(firstNonEmpty(albumArtistScope, contributingScope))
+	artistId, ok := firstDecodedID(firstNonEmpty(albumArtistScope, contributingScope))
+	if !ok {
+		return itemsQuery{}, model.ErrNotFound
+	}
+	q.artistId = artistId
 	q.contributingOnly = albumArtistScope == "" && contributingScope != ""
 
 	q.types = parseTypes(q.rawTypes)
@@ -285,14 +299,17 @@ func (api *Router) parseItemsQuery(ctx context.Context, r *http.Request) itemsQu
 	if q.isLibraryParent || len(q.types) > 1 {
 		q.entityParent = ""
 	}
-	return q
+	return q, nil
 }
 
 // queryItems is the /Items dispatcher: it resolves the request to entity types and queries each via
 // the matching listXxx, merging multi-type results into one paginated list (as Finamp's favorites
 // screen requests).
 func (api *Router) queryItems(ctx context.Context, r *http.Request) (itemsResult, error) {
-	q := api.parseItemsQuery(ctx, r)
+	q, err := api.parseItemsQuery(ctx, r)
+	if err != nil {
+		return itemsResult{}, err
+	}
 	switch {
 	// /Items?ids= is a batch-fetch-by-id that bypasses the type dispatch.
 	case len(q.ids) > 0:
@@ -450,13 +467,14 @@ func firstNonEmpty(vals ...string) string {
 	return ""
 }
 
-// firstDecodedID decodes the first id from a (possibly comma-separated) Jellyfin id list.
-func firstDecodedID(s string) string {
+// firstDecodedID decodes the first id from a (possibly comma-separated) Jellyfin id list, reporting
+// whether it decoded successfully (see decodeFilterParam).
+func firstDecodedID(s string) (string, bool) {
 	if s == "" {
-		return ""
+		return "", true
 	}
 	first, _, _ := strings.Cut(s, ",")
-	return dto.DecodeID(strings.TrimSpace(first))
+	return decodeFilterParam(strings.TrimSpace(first))
 }
 
 // decodedQueryIDs reads an id-list param in both client spellings (see queryIDs), decoding each id.

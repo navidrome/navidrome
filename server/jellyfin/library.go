@@ -33,9 +33,25 @@ func resolveLibraryScope(ctx context.Context, parentId string) (scopeIDs []int, 
 	return accessibleLibraryIDs(ctx), false
 }
 
+// decodeFilterParam separates an absent param from an undecodable one: dropping the filter for a
+// stale id would silently widen the query to the whole library.
+func decodeFilterParam(raw string) (id string, ok bool) {
+	if raw == "" {
+		return "", true
+	}
+	id = dto.DecodeID(raw)
+	return id, id != ""
+}
+
 // parentIDScope resolves the request's ParentId param to a library scope (see resolveLibraryScope).
-func parentIDScope(ctx context.Context, r *http.Request) (scopeIDs []int, isLibraryParent bool) {
-	return resolveLibraryScope(ctx, dto.DecodeID(req.Params(r).StringOr("parentid", "")))
+// ok is false when a non-empty ParentId fails to decode (see decodeFilterParam).
+func parentIDScope(ctx context.Context, r *http.Request) (scopeIDs []int, isLibraryParent bool, ok bool) {
+	parentId, ok := decodeFilterParam(req.Params(r).StringOr("parentid", ""))
+	if !ok {
+		return nil, false, false
+	}
+	scopeIDs, isLibraryParent = resolveLibraryScope(ctx, parentId)
+	return scopeIDs, isLibraryParent, true
 }
 
 // libraryScopeFilter restricts a tag query to the given library scope. Empty scope means

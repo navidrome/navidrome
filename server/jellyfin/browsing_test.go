@@ -155,6 +155,16 @@ var _ = Describe("Browsing", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(sql).NotTo(ContainSubstring("library_artist.library_id"))
 		})
+
+		// A malformed ParentId must 404 rather than silently fall back to an unrestricted scope.
+		It("404s a malformed ParentId instead of listing every library's artists", func() {
+			artistRepo := ds.Artist(context.Background()).(*tests.MockArtistRepo)
+			artistRepo.SetData(model.Artists{{ID: testID("ar1"), Name: "Artist"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Artists?ParentId=not-a-valid-id", nil).WithContext(ctxUser(model.Libraries{{ID: 1}}))
+			invoke(api.getArtists, w, r)
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
 	})
 
 	Describe("getGenres", func() {
@@ -199,6 +209,14 @@ var _ = Describe("Browsing", func() {
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(tagRepo.Options.Filters).To(BeNil())
 		})
+
+		// A malformed ParentId must 404 rather than silently fall back to an unrestricted scope.
+		It("404s a malformed ParentId instead of listing every library's studios", func() {
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Studios?ParentId=not-a-valid-id", nil).WithContext(ctxUser(model.Libraries{{ID: 1}}))
+			invoke(api.getStudios, w, r)
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
 	})
 
 	Describe("getQueryFiltersLegacy", func() {
@@ -221,6 +239,14 @@ var _ = Describe("Browsing", func() {
 			invoke(api.getQueryFiltersLegacy, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(genreRepo.Options.Filters).To(BeNil())
+		})
+
+		// A malformed ParentId must 404 rather than silently fall back to an unrestricted scope.
+		It("404s a malformed ParentId instead of listing every library's filters", func() {
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items/Filters?ParentId=not-a-valid-id", nil).WithContext(ctxUser(model.Libraries{{ID: 1}}))
+			invoke(api.getQueryFiltersLegacy, w, r)
+			Expect(w.Code).To(Equal(http.StatusNotFound))
 		})
 	})
 })

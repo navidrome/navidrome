@@ -240,7 +240,7 @@ plugin being loaded, like the Subsonic `sonicSimilarity` OpenSubsonic extension.
   loaded; otherwise `{"path": [{author, item_id, title, tempo?}], "total_distance": <float>}` (200), or 400
   with `start_song_id and end_song_id are required.` when either id is missing.
 
-`item_id`/`start_song_id`/`end_song_id` are the hex-encoded ids Navidrome hands Jellyfin clients.
+`item_id`/`start_song_id`/`end_song_id` are the GUID-form ids Navidrome hands Jellyfin clients.
 `tempo` comes from the track's BPM when known; the richer AudioMuse per-track features
 (`energy`, `key`, `mood_vector`, `scale`, `other_features`) are not provided. In multi-library
 setups, `find_path`'s `path` and `total_distance` only reflect hops through tracks in libraries

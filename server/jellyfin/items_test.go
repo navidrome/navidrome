@@ -756,6 +756,59 @@ var _ = Describe("Items", func() {
 			})
 		})
 
+		// A malformed id must 404, not silently drop the filter; a well-formed but unknown one must
+		// still reach the entity filter, not the unfiltered default.
+		Describe("stale and malformed id filtering", func() {
+			It("404s a malformed ParentId instead of listing every song", func() {
+				ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}})
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio&ParentId=not-a-valid-id", nil).WithContext(ctxUser())
+				invoke(api.getItems, w, r)
+				Expect(w.Code).To(Equal(http.StatusNotFound))
+			})
+
+			It("404s a malformed AlbumArtistIds instead of listing every album", func() {
+				ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&AlbumArtistIds=not-a-valid-id", nil).WithContext(ctxUser())
+				invoke(api.getItems, w, r)
+				Expect(w.Code).To(Equal(http.StatusNotFound))
+			})
+
+			It("404s a malformed ArtistIds instead of listing every song", func() {
+				ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}})
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio&ArtistIds=not-a-valid-id", nil).WithContext(ctxUser())
+				invoke(api.getItems, w, r)
+				Expect(w.Code).To(Equal(http.StatusNotFound))
+			})
+
+			It("still applies the artist filter (rather than dropping it) for a well-formed but unknown AlbumArtistIds", func() {
+				albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
+				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&AlbumArtistIds="+dto.EncodeID(testID("no-such-artist")), nil).WithContext(ctxUser())
+				invoke(api.getItems, w, r)
+				Expect(w.Code).To(Equal(http.StatusOK))
+				sql, _, err := albumRepo.Options.Filters.ToSql()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(sql).To(ContainSubstring("album_artists"))
+			})
+
+			It("still applies the album filter (rather than dropping it) for a well-formed but unknown ParentId", func() {
+				mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
+				mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}})
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio&ParentId="+dto.EncodeID(testID("no-such-album")), nil).WithContext(ctxUser())
+				invoke(api.getItems, w, r)
+				Expect(w.Code).To(Equal(http.StatusOK))
+				sql, args, err := mfRepo.Options.Filters.ToSql()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(sql).To(ContainSubstring("album_id"))
+				Expect(args).To(ContainElement(testID("no-such-album")))
+			})
+		})
+
 		Describe("mixed IncludeItemTypes merge", func() {
 			BeforeEach(func() {
 				ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}, {ID: testID("a2"), Name: "Two"}})
@@ -1018,6 +1071,26 @@ var _ = Describe("Items", func() {
 	Describe("parseTypes", func() {
 		It("dedupes repeated types, preserving first-seen order", func() {
 			Expect(parseTypes("Audio,MusicAlbum,Audio")).To(Equal([]string{"Audio", "MusicAlbum"}))
+		})
+	})
+
+	Describe("decodeFilterParam", func() {
+		It("reports ok for an absent param, decoding to \"\"", func() {
+			id, ok := decodeFilterParam("")
+			Expect(id).To(BeEmpty())
+			Expect(ok).To(BeTrue())
+		})
+
+		It("reports ok for a well-formed id, whether or not it exists", func() {
+			id, ok := decodeFilterParam(dto.EncodeID(testID("a1")))
+			Expect(id).To(Equal(testID("a1")))
+			Expect(ok).To(BeTrue())
+		})
+
+		It("reports not ok for a non-empty param that fails to decode", func() {
+			id, ok := decodeFilterParam("not-a-valid-id")
+			Expect(id).To(BeEmpty())
+			Expect(ok).To(BeFalse())
 		})
 	})
 })

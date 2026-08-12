@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/id"
 )
 
@@ -36,6 +37,11 @@ const (
 func EncodeID(ndID string) string {
 	b, err := id.Decode(ndID)
 	if err != nil {
+		// A non-canonical id should never reach here post-migration; ndID == "" is the legitimate
+		// case (e.g. an absent AlbumArtistID), so only a non-empty failure is worth a diagnostic.
+		if ndID != "" {
+			log.Warn("Jellyfin API: id is not canonical, encoding to empty", "id", ndID, err)
+		}
 		return ""
 	}
 	return hex.EncodeToString(b)
