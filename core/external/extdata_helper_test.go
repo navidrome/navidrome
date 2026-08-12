@@ -110,6 +110,19 @@ func (m *mockMediaFileRepo) GetAll(options ...model.QueryOptions) (model.MediaFi
 	return args.Get(0).(model.MediaFiles), args.Error(1)
 }
 
+// GetRandom implements model.MediaFileRepository.
+func (m *mockMediaFileRepo) GetRandom(options ...model.QueryOptions) (model.MediaFiles, error) {
+	argsSlice := make([]any, len(options))
+	for i, v := range options {
+		argsSlice[i] = v
+	}
+	args := m.Called(argsSlice...)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(model.MediaFiles), args.Error(1)
+}
+
 // SetError is a helper to set up a generic error for GetAll.
 func (m *mockMediaFileRepo) SetError(hasError bool) {
 	if hasError {

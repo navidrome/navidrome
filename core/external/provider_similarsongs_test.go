@@ -212,46 +212,66 @@ var _ = Describe("Provider - SimilarSongs", func() {
 				Expect(songs[0].ID).To(Equal("matched-1"))
 			})
 
-			It("falls back when GetSimilarSongsByAlbum returns ErrNotFound", func() {
+			It("falls back to sampled album tracks when GetSimilarSongsByAlbum returns ErrNotFound", func() {
 				album := model.Album{ID: "album-1", Name: "Album", AlbumArtist: "Artist", AlbumArtistID: "artist-1"}
-				artist := model.Artist{ID: "artist-1", Name: "Artist"}
-				song := model.MediaFile{ID: "song-1", Title: "Song One", ArtistID: "artist-1", MbzRecordingID: "mbid-1"}
+				seed := model.MediaFile{ID: "seed-1", Title: "Seed", Artist: "Artist"}
 
-				// GetEntityByID for the initial call tries Artist, Album, Playlist, then MediaFile
 				artistRepo.On("Get", "album-1").Return(nil, model.ErrNotFound).Once()
 				albumRepo.On("Get", "album-1").Return(&album, nil).Once()
 
 				agentsCombined.On("GetSimilarSongsByAlbum", mock.Anything, "album-1", "Album", "Artist", "", mock.Anything).
 					Return(nil, agents.ErrNotFound).Once()
 
-				// Fallback calls getArtist(id) which calls GetEntityByID again - this time it finds the album
-				// and recursively calls getArtist(v.AlbumArtistID)
-				artistRepo.On("Get", "album-1").Return(nil, model.ErrNotFound).Once()
-				albumRepo.On("Get", "album-1").Return(&album, nil).Once()
+				mediaFileRepo.On("GetRandom", mock.MatchedBy(func(opt model.QueryOptions) bool {
+					eq, ok := opt.Filters.(squirrel.Eq)
+					return ok && eq["album_id"] == "album-1"
+				})).Return(model.MediaFiles{seed}, nil).Once()
 
-				// Then it recurses with the artist-1 ID
-				artistRepo.On("Get", "artist-1").Return(&artist, nil).Maybe()
-				artistRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
-					return opt.Max == 1 && opt.Filters != nil
-				})).Return(model.Artists{artist}, nil).Maybe()
-
-				mockAgent.On("GetSimilarArtists", mock.Anything, "artist-1", "Artist", "", 15).
-					Return([]agents.Artist{}, nil).Once()
-
-				artistRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
-					return opt.Max == 0 && opt.Filters != nil
-				})).Return(model.Artists{}, nil).Once()
-
-				mockAgent.On("GetArtistTopSongs", mock.Anything, "artist-1", "Artist", "", mock.Anything).
-					Return([]agents.Song{{Name: "Song One", MBID: "mbid-1"}}, nil).Once()
-
-				mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{song}, nil).Once()
+				// mixFromSeeds falls back to the seed itself when the agent finds nothing.
+				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "seed-1", "Seed", "Artist", "", mock.Anything).
+					Return([]agents.Song{}, nil).Once()
 
 				songs, err := provider.SimilarSongs(ctx, "album-1", 5)
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(songs).To(HaveLen(1))
-				Expect(songs[0].ID).To(Equal("song-1"))
+				Expect(songs[0].ID).To(Equal("seed-1"))
+			})
+		})
+
+		Context("when ID is an Album and the album agent returns nothing (AudioMuse-only)", func() {
+			It("samples the album's tracks and returns their track-similars", func() {
+				album := model.Album{ID: "al-1", Name: "The Album", AlbumArtist: "A"}
+				artistRepo.On("Get", "al-1").Return(nil, model.ErrNotFound).Once()
+				albumRepo.On("Get", "al-1").Return(&album, nil).Once()
+
+				// AudioMuse doesn't implement album similarity -> empty.
+				agentsCombined.On("GetSimilarSongsByAlbum", mock.Anything, "al-1", "The Album", "A", "", 5).
+					Return([]agents.Song{}, nil).Once()
+
+				// sampleAlbumTracks -> GetRandom(album_id) -> one seed track
+				mediaFileRepo.On("GetRandom", mock.MatchedBy(func(opt model.QueryOptions) bool {
+					eq, ok := opt.Filters.(squirrel.Eq)
+					return ok && eq["album_id"] == "al-1"
+				})).Return(model.MediaFiles{{ID: "s1", Title: "Seed", Artist: "A"}}, nil).Once()
+
+				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "s1", "Seed", "A", "", 5).
+					Return([]agents.Song{{Name: "AudioMuseResult", Artists: []agents.Artist{{Name: "A"}}}}, nil).Once()
+
+				// Matcher resolves "AudioMuseResult" -> a real MediaFile credited to artist "A".
+				aArtist := model.Artist{ID: "a1", Name: "A", OrderArtistName: "a"}
+				matchedTrack := model.MediaFile{
+					ID: "m1", Title: "AudioMuseResult", Artist: "A",
+					Participants: model.Participants{model.RoleArtist: model.ParticipantList{{Artist: aArtist}}},
+				}
+				artistRepo.On("GetAll", mock.Anything).Return(model.Artists{aArtist}, nil).Maybe()
+				mediaFileRepo.On("GetAll", mock.Anything).Return(model.MediaFiles{matchedTrack}, nil).Maybe()
+
+				songs, err := provider.SimilarSongs(ctx, "al-1", 5)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(songs).ToNot(BeEmpty())
+				Expect(songs[0].ID).To(Equal("m1"))
 			})
 		})
 

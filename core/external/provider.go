@@ -302,6 +302,14 @@ func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (mode
 		songs, err = e.ag.GetSimilarSongsByTrack(ctx, v.ID, v.Title, v.Artist, v.MbzRecordingID, count)
 	case *model.Album:
 		songs, err = e.ag.GetSimilarSongsByAlbum(ctx, v.ID, v.Name, v.AlbumArtist, v.MbzAlbumID, count)
+		if err == nil && len(songs) > 0 {
+			return e.matcher.MatchSongs(ctx, songs, count)
+		}
+		seeds, serr := e.sampleAlbumTracks(ctx, v.ID, maxSeeds)
+		if serr != nil {
+			return nil, serr
+		}
+		return e.mixFromSeeds(ctx, seeds, count)
 	case *model.Artist:
 		songs, err = e.ag.GetSimilarSongsByArtist(ctx, v.ID, v.Name, v.MbzArtistID, count)
 	case *model.Playlist:
@@ -365,6 +373,14 @@ func (e *provider) samplePlaylistTracks(ctx context.Context, playlistID string, 
 		mfs = mfs[:n]
 	}
 	return mfs, nil
+}
+
+// sampleAlbumTracks returns up to n random tracks from the given album, used as seeds for a mix.
+func (e *provider) sampleAlbumTracks(ctx context.Context, albumID string, n int) (model.MediaFiles, error) {
+	return e.ds.MediaFile(ctx).GetRandom(model.QueryOptions{
+		Filters: squirrel.Eq{"album_id": albumID},
+		Max:     n,
+	})
 }
 
 // sampleGenreTracks returns up to n random tracks tagged with the given genre, used as seeds for a mix.
