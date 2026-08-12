@@ -286,7 +286,7 @@ func (api *Router) parseItemsQuery(ctx context.Context, r *http.Request) (itemsQ
 	// (Jellify opens albums this way). An artist parent keeps parseTypes' MusicAlbum default (browse
 	// its albums).
 	if q.rawTypes == "" && q.parentId != "" && !q.isLibraryParent {
-		if q.parentId == playlistsFolderID {
+		if q.parentId == dto.PlaylistsFolderID {
 			// Browsing into the synthetic playlists folder lists the user's playlists.
 			q.types = []string{"Playlist"}
 		} else if _, err := api.ds.Album(ctx).Get(q.parentId); err == nil {
@@ -339,7 +339,7 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (itemsResult
 // ok is false when ParentId isn't a visible playlist, so the caller falls through to the type
 // dispatch: ParentId is usually an album or artist.
 func (api *Router) playlistTracksRepo(ctx context.Context, q itemsQuery) (model.PlaylistTrackRepository, bool) {
-	if q.parentId == "" || q.isLibraryParent || q.parentId == playlistsFolderID {
+	if q.parentId == "" || q.isLibraryParent || q.parentId == dto.PlaylistsFolderID {
 		return nil, false
 	}
 	// Tracks enforces visibility.
@@ -758,7 +758,7 @@ func (api *Router) listPlaylists(ctx context.Context, opts model.QueryOptions, q
 // to their library, so an id can't probe content outside the user's libraries.
 func (api *Router) resolveItemByID(ctx context.Context, id string, fields dto.Fields) (dto.BaseItemDto, bool) {
 	// The synthetic playlists folder must resolve by the id we advertised, not 404.
-	if id == playlistsFolderID {
+	if id == dto.PlaylistsFolderID {
 		return playlistsFolder(), true
 	}
 	u, _ := request.UserFrom(ctx)

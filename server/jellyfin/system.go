@@ -2,6 +2,7 @@ package jellyfin
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
@@ -65,7 +66,8 @@ func (api *Router) serverID(ctx context.Context) string {
 
 // newServerID returns a UUID in Jellyfin's no-dash GUID form (Guid.ToString("N")).
 func newServerID() string {
-	return strings.ReplaceAll(uuid.NewString(), "-", "")
+	u := uuid.New()
+	return hex.EncodeToString(u[:])
 }
 
 func (api *Router) publicInfo(r *http.Request) dto.PublicSystemInfo {

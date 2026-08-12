@@ -412,6 +412,15 @@ var _ = Describe("Playlists", func() {
 			Expect(fp.removeIds).To(Equal([]string{"1", "2"}))
 		})
 
+		It("404s an entryId that is a song id rather than a playlist-entry position", func() {
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("DELETE", "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?entryIds="+dto.EncodeID(testID("s1")), nil).WithContext(context.Background())
+			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
+			invoke(api.removeFromPlaylist, w, r)
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+			Expect(fp.removeIds).To(BeEmpty())
+		})
+
 		It("returns 404 when the service rejects the request (not found/not owned)", func() {
 			fp.removeErr = model.ErrNotFound
 			w := httptest.NewRecorder()

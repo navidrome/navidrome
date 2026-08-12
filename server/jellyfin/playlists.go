@@ -17,10 +17,6 @@ import (
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
-// playlistsFolderID is the reserved id of the synthetic "playlists library" folder. Clients resolve
-// it via a ManualPlaylistsFolder query, then list playlists with ParentId set to it.
-const playlistsFolderID = dto.PlaylistsFolderID
-
 // playlistsFolder is the item returned for a ManualPlaylistsFolder query. CollectionType must be
 // "playlists" — how the client identifies it; without it Jellify's playlist-library query loops.
 func playlistsFolder() dto.BaseItemDto {
@@ -271,7 +267,16 @@ func (api *Router) addToPlaylist(w http.ResponseWriter, r *http.Request) {
 func (api *Router) removeFromPlaylist(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := dto.DecodeID(chi.URLParam(r, "playlistId"))
-	ids := slice.Map(queryIDs(r, "entryids"), dto.DecodeID)
+	raw := queryIDs(r, "entryids")
+	ids := make([]string, 0, len(raw))
+	for _, entryGUID := range raw {
+		entry, ok := dto.DecodePlaylistEntryID(entryGUID)
+		if !ok {
+			http.Error(w, "Not Found", http.StatusNotFound)
+			return
+		}
+		ids = append(ids, entry)
+	}
 	if err := api.playlists.RemoveTracks(ctx, id, ids); err != nil {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return

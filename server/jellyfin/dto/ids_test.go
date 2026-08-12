@@ -60,7 +60,9 @@ var _ = Describe("id codec", func() {
 		DescribeTable("round-trips playlist entry positions",
 			func(entryID, guid string) {
 				Expect(EncodePlaylistEntryID(entryID)).To(Equal(guid))
-				Expect(DecodeID(guid)).To(Equal(entryID))
+				decoded, ok := DecodePlaylistEntryID(guid)
+				Expect(ok).To(BeTrue())
+				Expect(decoded).To(Equal(entryID))
 			},
 			Entry("first entry", "1", "00000000000000000000000003000001"),
 			Entry("later entry", "300", "0000000000000000000000000300012c"),
@@ -72,8 +74,22 @@ var _ = Describe("id codec", func() {
 			Expect(EncodePlaylistEntryID("-1")).To(Equal(""))
 		})
 
+		It("rejects a payload wider than the reserved 24 bits", func() {
+			Expect(EncodeLibraryID(1 << 24)).To(Equal(""))
+			Expect(EncodeLibraryID(-1)).To(Equal(""))
+			Expect(EncodePlaylistEntryID("16777216")).To(Equal(""))
+		})
+
 		It("keeps library and playlist-entry GUIDs distinct for the same number", func() {
 			Expect(EncodeLibraryID(3)).ToNot(Equal(EncodePlaylistEntryID("3")))
+		})
+
+		It("does not let one reserved kind decode as another", func() {
+			Expect(DecodeID(EncodePlaylistEntryID("3"))).To(Equal(""))
+			_, ok := DecodePlaylistEntryID(EncodeLibraryID(3))
+			Expect(ok).To(BeFalse())
+			_, ok = DecodePlaylistEntryID(PlaylistsFolderGUID)
+			Expect(ok).To(BeFalse())
 		})
 
 		It("rejects an unknown kind tag", func() {
