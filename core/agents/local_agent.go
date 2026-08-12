@@ -47,6 +47,36 @@ func (p *localAgent) GetArtistTopSongs(ctx context.Context, id, artistName, mbid
 	return result, nil
 }
 
+func (p *localAgent) GetSimilarSongsByTrack(ctx context.Context, id, name, artist, mbid string, count int) ([]Song, error) {
+	seed, err := p.ds.MediaFile(ctx).Get(id)
+	if err != nil {
+		return nil, err
+	}
+	genres := seed.Tags[model.TagGenre]
+	if len(genres) == 0 {
+		return nil, nil
+	}
+	// Ask for extra so we can drop the seed itself and still fill the count.
+	candidates, err := p.ds.MediaFile(ctx).GetAllByTags(model.TagGenre, genres, model.QueryOptions{
+		Sort: "random",
+		Max:  count + 1,
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]Song, 0, len(candidates))
+	for _, s := range candidates {
+		if s.ID == id {
+			continue
+		}
+		result = append(result, Song{Name: s.Title, MBID: s.MbzReleaseTrackID})
+		if len(result) >= count {
+			break
+		}
+	}
+	return result, nil
+}
+
 func init() {
 	Register(LocalAgentName, localsConstructor)
 }
