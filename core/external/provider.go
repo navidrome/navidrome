@@ -393,8 +393,9 @@ func (e *provider) seedMix(ctx context.Context, count int, sample func() (model.
 }
 
 func (e *provider) samplePlaylistTracks(ctx context.Context, playlistID string, n int) (model.MediaFiles, error) {
-	// refreshSmartPlaylist=false: mix seeds don't need a fresh smart-playlist rebuild.
-	tracks, err := e.ds.Playlist(ctx).Tracks(playlistID, false).GetAll(model.QueryOptions{Sort: "random", Max: n})
+	// Refresh: a smart playlist materializes no tracks until it is evaluated, so skipping it would
+	// mix an empty seed set. It is a no-op for regular playlists and inside the refresh delay.
+	tracks, err := e.ds.Playlist(ctx).Tracks(playlistID, true).GetAll(model.QueryOptions{Sort: "random", Max: n})
 	if err != nil {
 		return nil, err
 	}

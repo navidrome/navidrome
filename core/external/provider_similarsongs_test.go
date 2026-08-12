@@ -10,6 +10,7 @@ import (
 	. "github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/matcher"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -366,6 +367,26 @@ var _ = Describe("Provider - SimilarSongs", func() {
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(songs).ToNot(BeEmpty())
+			})
+
+			It("asks for a smart-playlist refresh so an unevaluated one still yields seeds", func() {
+				// A smart playlist materializes no playlist_tracks until it is evaluated, so sampling
+				// without the refresh would mix an empty seed set.
+				pls := model.Playlist{ID: "pl-smart", Name: "Smart", Rules: &criteria.Criteria{}}
+				artistRepo.On("Get", "pl-smart").Return(nil, model.ErrNotFound).Once()
+				albumRepo.On("Get", "pl-smart").Return(nil, model.ErrNotFound).Once()
+				playlistRepo.SetData(model.Playlists{pls})
+				playlistTrackRepo.SetData(model.PlaylistTracks{
+					{MediaFile: model.MediaFile{ID: "s1", Title: "Seed One"}},
+				})
+				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+					Return([]agents.Song{}, nil).Maybe()
+
+				songs, err := provider.SimilarSongs(ctx, "pl-smart", 5)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(songs).ToNot(BeEmpty())
+				Expect(playlistRepo.TracksRefreshed).To(BeTrue())
 			})
 
 			It("does not panic when the caller asks for a non-positive count", func() {
