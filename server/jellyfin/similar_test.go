@@ -168,15 +168,15 @@ var _ = Describe("getInstantMix", func() {
 	It("returns a mix for a genre id, which GetEntityByID can't resolve", func() {
 		ds := &tests.MockDataStore{}
 		songs := model.MediaFiles{
-			{ID: "m1", Title: "Track 1", LibraryID: 1},
-			{ID: "m2", Title: "Track 2", LibraryID: 1},
+			{ID: testID("m1"), Title: "Track 1", LibraryID: 1},
+			{ID: testID("m2"), Title: "Track 2", LibraryID: 1},
 		}
 		api := &Router{ds: ds, provider: &fakeSimilarProvider{songs: songs}}
 
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/Items/"+dto.EncodeID("g1")+"/InstantMix", nil).
-			WithContext(request.WithUser(context.Background(), model.User{ID: "u1", Libraries: model.Libraries{{ID: 1}}}))
-		r = withChiURLParam(r, "itemId", dto.EncodeID("g1"))
+		r := httptest.NewRequest("GET", "/Items/"+dto.EncodeID(testID("g1"))+"/InstantMix", nil).
+			WithContext(request.WithUser(context.Background(), model.User{ID: testID("u1"), Libraries: model.Libraries{{ID: 1}}}))
+		r = withChiURLParam(r, "itemId", dto.EncodeID(testID("g1")))
 		api.getInstantMix(w, r)
 
 		Expect(w.Code).To(Equal(200))
@@ -190,16 +190,16 @@ var _ = Describe("getSimilarAlbums", func() {
 	It("returns albums derived from the provider's similar songs", func() {
 		ds := &tests.MockDataStore{}
 		ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{
-			{ID: "al-2", Name: "Other", LibraryID: 1},
+			{ID: testID("al-2"), Name: "Other", LibraryID: 1},
 		})
 		api := &Router{ds: ds, provider: &fakeSimilarProvider{
-			songs: model.MediaFiles{{ID: "m1", AlbumID: "al-2", LibraryID: 1}},
+			songs: model.MediaFiles{{ID: testID("m1"), AlbumID: testID("al-2"), LibraryID: 1}},
 		}}
 
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/Albums/"+dto.EncodeID("al-1")+"/Similar?limit=10", nil).
-			WithContext(request.WithUser(context.Background(), model.User{ID: "u1", Libraries: model.Libraries{{ID: 1}}}))
-		r = withChiURLParam(r, "itemId", dto.EncodeID("al-1"))
+		r := httptest.NewRequest("GET", "/Albums/"+dto.EncodeID(testID("al-1"))+"/Similar?limit=10", nil).
+			WithContext(request.WithUser(context.Background(), model.User{ID: testID("u1"), Libraries: model.Libraries{{ID: 1}}}))
+		r = withChiURLParam(r, "itemId", dto.EncodeID(testID("al-1")))
 		api.getSimilarAlbums(w, r)
 
 		Expect(w.Code).To(Equal(200))
