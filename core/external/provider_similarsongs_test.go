@@ -28,6 +28,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 	var albumRepo *mockAlbumRepo
 	var playlistRepo *tests.MockPlaylistRepo
 	var playlistTrackRepo *mockPlaylistTrackRepo
+	var genreRepo *tests.MockedGenreRepo
 	var ctx context.Context
 
 	BeforeEach(func() {
@@ -39,12 +40,14 @@ var _ = Describe("Provider - SimilarSongs", func() {
 		playlistTrackRepo = &mockPlaylistTrackRepo{}
 		playlistRepo = tests.CreateMockPlaylistRepo()
 		playlistRepo.TracksRepo = playlistTrackRepo
+		genreRepo = &tests.MockedGenreRepo{}
 
 		ds = &tests.MockDataStore{
 			MockedArtist:    artistRepo,
 			MockedMediaFile: mediaFileRepo,
 			MockedAlbum:     albumRepo,
 			MockedPlaylist:  playlistRepo,
+			MockedGenre:     genreRepo,
 		}
 
 		mockAgent = &mockSimilarArtistAgent{}
@@ -371,6 +374,28 @@ var _ = Describe("Provider - SimilarSongs", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(songs).To(HaveLen(5))
 				agentsCombined.AssertNumberOfCalls(GinkgoT(), "GetSimilarSongsByTrack", 5)
+			})
+		})
+
+		Context("when ID is a Genre (not resolved by GetEntityByID)", func() {
+			It("samples genre songs and returns their track-similars", func() {
+				// GetEntityByID misses across Artist, Album, Playlist (empty repo, no mock needed),
+				// MediaFile and Radio (auto-created empty mock, no mock needed).
+				artistRepo.On("Get", "g-1").Return(nil, model.ErrNotFound).Once()
+				albumRepo.On("Get", "g-1").Return(nil, model.ErrNotFound).Once()
+				mediaFileRepo.On("Get", "g-1").Return(nil, model.ErrNotFound).Once()
+				genreRepo.Data = map[string]model.Genre{"g-1": {ID: "g-1", Name: "Jazz"}}
+
+				// sampleGenreTracks -> GetAllByTags -> one seed (mock GetAllByTags delegates to GetAll)
+				mediaFileRepo.On("GetAll", mock.Anything).Return(model.MediaFiles{{ID: "s1", Title: "Seed"}}, nil).Once()
+				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "s1", "Seed", "", "", 5).
+					Return([]agents.Song{{Name: "Similar"}}, nil).Once()
+				mediaFileRepo.On("GetAll", mock.Anything).Return(model.MediaFiles{{ID: "m1", Title: "Similar"}}, nil).Maybe()
+
+				songs, err := provider.SimilarSongs(ctx, "g-1", 5)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(songs).ToNot(BeEmpty())
 			})
 		})
 	})

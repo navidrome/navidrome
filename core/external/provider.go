@@ -282,6 +282,15 @@ func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (au
 func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error) {
 	entity, err := model.GetEntityByID(ctx, e.ds, id)
 	if err != nil {
+		if errors.Is(err, model.ErrNotFound) {
+			if genre, gerr := e.ds.Genre(ctx).Get(id); gerr == nil {
+				seeds, serr := e.sampleGenreTracks(ctx, genre, maxSeeds)
+				if serr != nil {
+					return nil, serr
+				}
+				return e.mixFromSeeds(ctx, seeds, count)
+			}
+		}
 		return nil, err
 	}
 
@@ -356,6 +365,14 @@ func (e *provider) samplePlaylistTracks(ctx context.Context, playlistID string, 
 		mfs = mfs[:n]
 	}
 	return mfs, nil
+}
+
+// sampleGenreTracks returns up to n random tracks tagged with the given genre, used as seeds for a mix.
+func (e *provider) sampleGenreTracks(ctx context.Context, genre *model.Genre, n int) (model.MediaFiles, error) {
+	return e.ds.MediaFile(ctx).GetAllByTags(model.TagGenre, []string{genre.Name}, model.QueryOptions{
+		Sort: "random",
+		Max:  n,
+	})
 }
 
 // similarSongsFallback uses the original similar artists + top songs algorithm. The idea is to
