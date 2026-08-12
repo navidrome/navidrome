@@ -6,7 +6,6 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
-	"github.com/navidrome/navidrome/core/artwork/blurhash"
 	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -38,7 +37,7 @@ var _ = Describe("mappers", func() {
 		Expect(item.UserData.Key).To(Equal(EncodeID(testID("song-1"))))
 		Expect(item.UserData.ItemId).To(Equal(EncodeID(testID("song-1"))))
 		Expect(item.AlbumPrimaryImageTag).To(Equal(testID("alb-1")))
-		Expect(item.ImageBlurHashes["Primary"]).To(HaveKeyWithValue(testID("alb-1"), blurhash.Synthetic(testID("alb-1"), "")))
+		Expect(item.ImageBlurHashes).To(BeNil())
 		Expect(item.Genres).To(Equal([]string{"genre 1", "genre 2"}))
 		Expect(item.GenreItems).To(Equal([]NameGuidPair{{Id: EncodeID(testID("1")), Name: "genre 1"}, {Id: EncodeID(testID("2")), Name: "genre 2"}}))
 	})
@@ -299,7 +298,7 @@ var _ = Describe("mappers", func() {
 		Expect(*item.ProductionYear).To(Equal(1999))
 		Expect(*item.ChildCount).To(Equal(10))
 		Expect(item.ImageTags).To(HaveKeyWithValue("Primary", testID("alb-1")))
-		Expect(item.ImageBlurHashes["Primary"]).To(HaveKeyWithValue(testID("alb-1"), blurhash.Synthetic(testID("alb-1"), "")))
+		Expect(item.ImageBlurHashes).To(BeNil())
 		Expect(item.Genres).To(Equal([]string{"genre 1", "genre 2"}))
 		Expect(item.GenreItems).To(Equal([]NameGuidPair{{Id: EncodeID(testID("1")), Name: "genre 1"}, {Id: EncodeID(testID("2")), Name: "genre 2"}}))
 	})
@@ -473,7 +472,7 @@ var _ = Describe("mappers", func() {
 		Expect(item.UserData.PlayCount).To(Equal(2))
 		Expect(*item.UserData.Rating).To(Equal(8.0))
 		Expect(item.ImageTags).To(HaveKeyWithValue("Primary", testID("pl-1")))
-		Expect(item.ImageBlurHashes["Primary"]).To(HaveKeyWithValue(testID("pl-1"), blurhash.Synthetic(testID("pl-1"), "")))
+		Expect(item.ImageBlurHashes).To(BeNil())
 	})
 
 	It("changes the playlist image tag when the cover content changes", func() {
@@ -508,35 +507,11 @@ var _ = Describe("mappers", func() {
 		It("advertises the track id so the client triggers the read-through", func() {
 			mf := model.MediaFile{ID: testID("mf-1"), AlbumID: testID("alb-1"), HasCoverArt: true}
 			mf.AlbumImage.ImageHash = "0123456789abcdef"
-			mf.AlbumImage.DominantColor = "#3a5f7d"
 
 			item := SongToBaseItem(mf, nil)
 			Expect(item.ImageTags).To(HaveKeyWithValue("Primary", testID("mf-1")))
-			Expect(item.ImageBlurHashes["Primary"]).To(
-				HaveKeyWithValue(testID("mf-1"), blurhash.Synthetic(testID("mf-1"), "#3a5f7d")))
+			Expect(item.ImageBlurHashes).To(BeNil(), "no resolved image means no blurhash to send")
 			Expect(item.AlbumPrimaryImageTag).To(BeEmpty())
-		})
-
-		// The client's image request is what extracts the embedded art. Reusing the album's
-		// value would let it answer from cache and never send it.
-		It("gives the track a value distinct from its album's", func() {
-			mf := model.MediaFile{ID: testID("mf-3"), AlbumID: testID("alb-1"), HasCoverArt: true}
-			mf.AlbumImage.ImageHash = "0123456789abcdef"
-			mf.AlbumImage.BlurHash = "LEHV6nWB2yk8"
-			mf.AlbumImage.DominantColor = "#3a5f7d"
-
-			track := SongToBaseItem(mf, nil).ImageBlurHashes["Primary"][testID("mf-3")]
-			album := AlbumToBaseItem(model.Album{ID: testID("alb-1"), ItemImage: mf.AlbumImage}, nil).
-				ImageBlurHashes["Primary"]["0123456789abcdef"]
-			Expect(track).ToNot(BeEmpty())
-			Expect(track).ToNot(Equal(album))
-		})
-
-		It("still emits a value when the album has no dominant colour", func() {
-			mf := model.MediaFile{ID: testID("mf-4"), AlbumID: testID("alb-1"), HasCoverArt: true}
-
-			item := SongToBaseItem(mf, nil)
-			Expect(item.ImageBlurHashes["Primary"]).To(HaveKeyWithValue(testID("mf-4"), blurhash.Synthetic(testID("mf-4"), "")))
 		})
 
 		It("falls back to the album when the track has no art of its own", func() {
@@ -580,14 +555,13 @@ var _ = Describe("mappers", func() {
 			Expect(item.ImageBlurHashes["Primary"]).To(HaveKeyWithValue("0123456789abcdef", "LEHV6nWB2yk8"))
 		})
 
-		It("synthesizes a blurhash when none was computed", func() {
+		It("omits the blurhash entirely when none was computed", func() {
 			al := model.Album{ID: testID("alb-2"), Name: "Album"}
 			al.ImageHash = "0123456789abcdef"
 
 			item := AlbumToBaseItem(al, nil)
 			Expect(item.ImageTags).To(HaveKeyWithValue("Primary", "0123456789abcdef"))
-			Expect(item.ImageBlurHashes["Primary"]).To(
-				HaveKeyWithValue("0123456789abcdef", blurhash.Synthetic("0123456789abcdef", "")))
+			Expect(item.ImageBlurHashes).To(BeNil(), "a synthesized blurhash pins stale covers in Finamp")
 		})
 
 		It("omits tags for known-absent artwork", func() {
@@ -599,19 +573,10 @@ var _ = Describe("mappers", func() {
 			Expect(item.ImageBlurHashes).To(BeNil())
 		})
 
-		It("keeps known-absent artwork free of any synthesized value", func() {
-			al := model.Album{ID: testID("alb-5"), Name: "Album"}
-			al.ImageAbsent = true
-
-			item := AlbumToBaseItem(al, nil)
-			Expect(item.ImageBlurHashes).To(BeNil(),
-				"there is no image to key a cache on, and nothing will ever re-key it")
-		})
-
 		It("falls back to the entity id while artwork is still unresolved", func() {
 			item := AlbumToBaseItem(model.Album{ID: testID("alb-4"), Name: "Album"}, nil)
 			Expect(item.ImageTags).To(HaveKeyWithValue("Primary", testID("alb-4")))
-			Expect(item.ImageBlurHashes["Primary"]).To(HaveKeyWithValue(testID("alb-4"), blurhash.Synthetic(testID("alb-4"), "")))
+			Expect(item.ImageBlurHashes).To(BeNil())
 		})
 
 		It("versions an artist's tag by content hash", func() {
@@ -636,14 +601,13 @@ var _ = Describe("mappers", func() {
 			Expect(item.ImageBlurHashes["Primary"]).To(HaveKeyWithValue("0123456789abcdef", "LEHV6nWB2yk8"))
 		})
 
-		It("synthesizes a song's album blurhash when the album has none", func() {
+		It("never synthesizes a song blurhash when the album has none", func() {
 			mf := model.MediaFile{ID: testID("song-2"), Title: "Song", AlbumID: testID("alb-2")}
 			mf.AlbumImage.ImageHash = "0123456789abcdef"
 
 			item := SongToBaseItem(mf, nil)
 			Expect(item.AlbumPrimaryImageTag).To(Equal("0123456789abcdef"))
-			Expect(item.ImageBlurHashes["Primary"]).To(
-				HaveKeyWithValue("0123456789abcdef", blurhash.Synthetic("0123456789abcdef", "")))
+			Expect(item.ImageBlurHashes).To(BeNil())
 		})
 
 		It("omits a song's album tag when the album art is known absent", func() {

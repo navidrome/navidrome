@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/core/artwork/blurhash"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
 )
@@ -214,8 +213,6 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 		// Nothing enqueues media files: advertising the id is what makes a client ask, and that
 		// request is what extracts the embedded art and queues the track.
 		item.ImageTags = map[string]string{"Primary": mf.ID}
-		hash := blurhash.Synthetic(mf.ID, mf.AlbumImage.DominantColor)
-		item.ImageBlurHashes = map[string]map[string]string{"Primary": {mf.ID: hash}}
 	} else if mf.AlbumID != "" {
 		if tag, blurs, ratio := primaryImage(mf.AlbumImage, mf.AlbumID, fields); tag != "" {
 			item.AlbumPrimaryImageTag = tag
@@ -231,19 +228,15 @@ func embeddedArtPending(mf model.MediaFile) bool {
 		mf.ImageHash == "" && !mf.ItemImage.ImageAbsent
 }
 
-// primaryImage synthesizes a blurhash when none was computed yet: clients key their cover
-// cache on the value, so it must be unique per image, never shared or reused.
+// primaryImage never fakes a blurhash: clients key their cover cache on the value, which would
+// pin a stale cover forever.
 func primaryImage(img model.ItemImage, fallback string, fields Fields) (tag string, blurs map[string]map[string]string, ratio *float64) {
 	if img.ImageAbsent {
 		return "", nil, nil
 	}
 	tag = cmp.Or(img.ImageHash, fallback)
-	if tag != "" {
-		hash := img.BlurHash
-		if hash == "" {
-			hash = blurhash.Synthetic(tag, "")
-		}
-		blurs = map[string]map[string]string{"Primary": {tag: hash}}
+	if img.BlurHash != "" {
+		blurs = map[string]map[string]string{"Primary": {tag: img.BlurHash}}
 	}
 	if fields.Has("PrimaryImageAspectRatio") {
 		ratio = img.AspectRatio()
