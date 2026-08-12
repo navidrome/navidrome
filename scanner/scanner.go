@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"path/filepath"
 	"slices"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -51,6 +53,20 @@ func (s *scanState) sendError(err error) {
 	s.sendProgress(&ProgressInfo{Error: err.Error()})
 }
 
+// libraryRelativePath rebases an absolute scan target path onto the library root, since the
+// scanner's fs.FS only accepts paths relative to it. Relative paths, and absolute paths outside
+// the library root, are returned unchanged.
+func libraryRelativePath(libPath, folderPath string) string {
+	if !filepath.IsAbs(folderPath) {
+		return folderPath
+	}
+	rel, err := filepath.Rel(libPath, folderPath)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return folderPath
+	}
+	return rel
+}
+
 func (s *scannerImpl) scanFolders(ctx context.Context, fullScan bool, targets []model.ScanTarget, progress chan<- *ProgressInfo) {
 	startTime := time.Now()
 
@@ -77,8 +93,13 @@ func (s *scannerImpl) scanFolders(ctx context.Context, fullScan bool, targets []
 		// Selective scan: filter libraries and build targets map
 		state.targets = make(map[int][]string)
 
+		libPaths := make(map[int]string, len(allLibs))
+		for _, lib := range allLibs {
+			libPaths[lib.ID] = lib.Path
+		}
+
 		for _, target := range targets {
-			folderPath := target.FolderPath
+			folderPath := libraryRelativePath(libPaths[target.LibraryID], target.FolderPath)
 			if folderPath == "" {
 				folderPath = "."
 			}

@@ -11,6 +11,32 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+var _ = Describe("libraryRelativePath", func() {
+	It("returns a relative path unchanged", func() {
+		Expect(libraryRelativePath("/jukebox/collection", "_Collection")).To(Equal("_Collection"))
+	})
+
+	It("rebases an absolute path that equals the library root to '.'", func() {
+		Expect(libraryRelativePath("/jukebox/collection", "/jukebox/collection")).To(Equal("."))
+	})
+
+	It("rebases an absolute path under the library root", func() {
+		Expect(libraryRelativePath("/jukebox/collection", "/jukebox/collection/_Collection")).To(Equal("_Collection"))
+	})
+
+	It("handles a trailing slash on the library path", func() {
+		Expect(libraryRelativePath("/jukebox/collection/", "/jukebox/collection/_Collection")).To(Equal("_Collection"))
+	})
+
+	It("leaves an absolute path outside the library root unchanged", func() {
+		Expect(libraryRelativePath("/jukebox/collection", "/somewhere/else")).To(Equal("/somewhere/else"))
+	})
+
+	It("returns an empty path unchanged", func() {
+		Expect(libraryRelativePath("/jukebox/collection", "")).To(Equal(""))
+	})
+})
+
 type mockPhase struct {
 	num           int
 	produceFunc   func() ppl.Producer[int]
