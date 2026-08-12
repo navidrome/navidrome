@@ -29,7 +29,7 @@ func (api *Router) getItemImage(w http.ResponseWriter, r *http.Request) {
 	// Public endpoint, like real Jellyfin's image routes: clients fetch cover URLs without credentials
 	// and item ids are unguessable, so resolution runs elevated to bypass the visibility filter.
 	ctx := request.WithUser(r.Context(), model.User{IsAdmin: true})
-	itemId := api.resolveItemID(ctx, dto.DecodeID(chi.URLParam(r, "itemId")))
+	itemId := dto.DecodeID(chi.URLParam(r, "itemId"))
 	size, _ := strconv.Atoi(r.URL.Query().Get("maxwidth"))
 
 	artID := api.resolveArtworkID(ctx, itemId)

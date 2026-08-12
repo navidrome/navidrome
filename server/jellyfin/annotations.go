@@ -49,7 +49,7 @@ func (api *Router) resolveAnnotated(w http.ResponseWriter, r *http.Request, id s
 // fetches this per item to render played/favourite indicators; resolveItemByID enforces the
 // library-access gate.
 func (api *Router) getUserItemData(w http.ResponseWriter, r *http.Request) {
-	id := api.resolveItemID(r.Context(), dto.DecodeID(chi.URLParam(r, "itemId")))
+	id := dto.DecodeID(chi.URLParam(r, "itemId"))
 	item, ok := api.resolveItemByID(r.Context(), id, nil)
 	if !ok {
 		http.Error(w, "Not Found", http.StatusNotFound)
@@ -64,7 +64,7 @@ func (api *Router) getUserItemData(w http.ResponseWriter, r *http.Request) {
 }
 
 func (api *Router) setFavorite(w http.ResponseWriter, r *http.Request, starred bool) {
-	id := api.resolveItemID(r.Context(), dto.DecodeID(chi.URLParam(r, "itemId")))
+	id := dto.DecodeID(chi.URLParam(r, "itemId"))
 	repo, resource := api.resolveAnnotated(w, r, id)
 	if repo == nil {
 		return
@@ -84,7 +84,7 @@ func (api *Router) unmarkFavorite(w http.ResponseWriter, r *http.Request) {
 }
 
 func (api *Router) setItemRating(w http.ResponseWriter, r *http.Request, rating int) {
-	id := api.resolveItemID(r.Context(), dto.DecodeID(chi.URLParam(r, "itemId")))
+	id := dto.DecodeID(chi.URLParam(r, "itemId"))
 	repo, resource := api.resolveAnnotated(w, r, id)
 	if repo == nil {
 		return

@@ -364,35 +364,6 @@ var _ = Describe("Browsing", func() {
 			Expect(names(q.Items)).To(ConsistOf("Abbey Road", "IV"))
 		})
 
-		// Finamp restores its saved queue with ids truncated to 16 bytes (see README).
-		Describe("Finamp-truncated ids (saved queue restore)", func() {
-			It("resolves a truncated id by unique prefix and echoes the requested id", func() {
-				full := songID("Come Together")
-				truncated := full[:16]
-				q := queryResult(get("/Items?ids=" + enc(truncated)))
-				Expect(names(q.Items)).To(ConsistOf("Come Together"))
-				// Finamp matches restored items by its stored ids, so the requested id must be echoed.
-				Expect(q.Items[0].Id).To(Equal(enc(truncated)))
-			})
-
-			It("batch-resolves a mixed list of truncated and full ids, keeping order", func() {
-				ids := enc(songID("Come Together")[:16]) + "," + enc(songID("So What")) + "," + enc(songID("Help!")[:16])
-				q := queryResult(get("/Items?ids=" + ids))
-				Expect(names(q.Items)).To(Equal([]string{"Come Together", "So What", "Help!"}))
-			})
-
-			It("streams a track by its truncated id", func() {
-				full := songID("So What")
-				w := get("/Audio/" + enc(full[:16]) + "/stream")
-				Expect(w.Code).To(Equal(http.StatusOK))
-				Expect(streamerSpy.LastMediaFile.ID).To(Equal(full))
-			})
-
-			It("still 404s for a truncated id matching nothing", func() {
-				Expect(get("/Audio/" + enc("zzzzzzzzzzzzzzzz") + "/stream").Code).To(Equal(http.StatusNotFound))
-			})
-		})
-
 		It("applies Limit while reporting the full TotalRecordCount", func() {
 			q := queryResult(get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true&Limit=2"))
 			Expect(q.Items).To(HaveLen(2))
