@@ -62,7 +62,7 @@ func (api *Router) getPlaybackInfo(w http.ResponseWriter, r *http.Request) {
 		src.TranscodingSubProtocol = "http"
 		src.TranscodingUrl = consts.URLPathJellyfinAPI + "/Audio/" + src.Id + "/universal?static=true&api_key=" + url.QueryEscape(token)
 	}
-	api.ok(w, r, dto.PlaybackInfoResponse{MediaSources: []dto.MediaSourceInfo{src}, PlaySessionId: mf.ID})
+	api.ok(w, r, dto.PlaybackInfoResponse{MediaSources: []dto.MediaSourceInfo{src}, PlaySessionId: dto.EncodeID(mf.ID)})
 }
 
 // streamAudio serves /Audio/{itemId}/stream[.container] and /Audio/{itemId}/universal,

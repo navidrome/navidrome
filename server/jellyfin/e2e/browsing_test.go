@@ -46,7 +46,7 @@ var _ = Describe("Browsing", func() {
 				Expect(it.Type).To(Equal("Audio"))
 				Expect(it.MediaType).To(Equal("Audio"))
 				Expect(it.LocationType).To(Equal("FileSystem"))
-				Expect(it.ServerId).ToNot(BeEmpty()) // real Jellyfin always sets it
+				Expect(it.ServerId).To(MatchRegexp("^[0-9a-f]{32}$")) // real Jellyfin always sets it, no-dash GUID form
 				Expect(it.AlbumId).ToNot(BeEmpty())
 			}
 		})

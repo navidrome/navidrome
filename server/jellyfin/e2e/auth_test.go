@@ -29,7 +29,7 @@ var _ = Describe("Authentication", func() {
 			Expect(res.User.Name).To(Equal("admin"))
 			Expect(res.User.Id).To(Equal(enc(testID("admin-1"))))
 			Expect(res.User.Policy.IsAdministrator).To(BeTrue())
-			Expect(res.ServerId).ToNot(BeEmpty())
+			Expect(res.ServerId).To(MatchRegexp("^[0-9a-f]{32}$"))
 
 			// The returned token must actually authenticate a protected request.
 			r := httptest.NewRequest("GET", "/Users/Me", nil)

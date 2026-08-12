@@ -57,7 +57,7 @@ var _ = Describe("Stream", func() {
 			Expect(res.MediaSources[0].Id).To(Equal(dto.EncodeID(testID("s1"))))
 			Expect(res.MediaSources[0].Container).To(Equal("mp3"))
 			Expect(res.MediaSources[0].Size).To(Equal(int64(1000)))
-			Expect(res.PlaySessionId).ToNot(BeEmpty())
+			Expect(res.PlaySessionId).To(MatchRegexp("^[0-9a-f]{32}$"))
 		})
 
 		It("returns 404 for a track in a library the user can't access", func() {

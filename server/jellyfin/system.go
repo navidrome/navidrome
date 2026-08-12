@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"path"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
@@ -42,23 +43,29 @@ func (api *Router) serverID(ctx context.Context) string {
 		return api.serverIDVal
 	}
 	if api.ds == nil {
-		api.serverIDVal = uuid.NewString()
+		api.serverIDVal = newServerID()
 		return api.serverIDVal
 	}
 	id, err := api.ds.Property(ctx).Get(consts.JellyfinServerIDKey)
 	switch {
 	case errors.Is(err, model.ErrNotFound):
-		id = uuid.NewString()
+		id = newServerID()
 		if err := api.ds.Property(ctx).Put(consts.JellyfinServerIDKey, id); err != nil {
 			log.Error(ctx, "Jellyfin API: could not persist server id", err)
 			return id
 		}
 	case err != nil:
 		log.Error(ctx, "Jellyfin API: could not read server id", err)
-		return uuid.NewString()
+		return newServerID()
 	}
-	api.serverIDVal = id
+	// Ids persisted before this change are dashed; normalize on read rather than rewriting the DB.
+	api.serverIDVal = strings.ReplaceAll(id, "-", "")
 	return api.serverIDVal
+}
+
+// newServerID returns a UUID in Jellyfin's no-dash GUID form (Guid.ToString("N")).
+func newServerID() string {
+	return strings.ReplaceAll(uuid.NewString(), "-", "")
 }
 
 func (api *Router) publicInfo(r *http.Request) dto.PublicSystemInfo {
