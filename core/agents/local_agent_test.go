@@ -24,7 +24,7 @@ var _ = Describe("localAgent GetSimilarSongsByTrack", func() {
 
 	It("returns songs sharing the seed's genres, excluding the seed", func() {
 		seed := model.MediaFile{ID: "seed-1", Title: "Seed", Tags: model.Tags{model.TagGenre: []string{"Rock"}}}
-		related := model.MediaFile{ID: "rel-1", Title: "Related", MbzReleaseTrackID: "mbz-1"}
+		related := model.MediaFile{ID: "rel-1", Title: "Related", Tags: model.Tags{model.TagGenre: []string{"Rock"}}}
 		// SetData keys by ID; a duplicate "seed-1" entry would clobber the real seed.
 		mfRepo.SetData(model.MediaFiles{seed, related})
 
@@ -37,6 +37,24 @@ var _ = Describe("localAgent GetSimilarSongsByTrack", func() {
 		}
 		Expect(ids).To(ContainElement("Related"))
 		Expect(ids).ToNot(ContainElement("Seed"))
+	})
+
+	// The mock ignores QueryOptions.Filters, so assert the predicate itself: otherwise this spec
+	// would pass just as well with no genre filter at all.
+	It("queries the indexed genre join for the seed's own genres, skipping missing files", func() {
+		rock := model.NewTag(model.TagGenre, "Rock")
+		seed := model.MediaFile{ID: "seed-4", Title: "Seed", Tags: model.Tags{model.TagGenre: []string{"Rock"}}}
+		mfRepo.SetData(model.MediaFiles{seed})
+
+		_, err := agent.GetSimilarSongsByTrack(ctx, "seed-4", "Seed", "", "", 10)
+		Expect(err).ToNot(HaveOccurred())
+
+		sql, args, sqlErr := mfRepo.Options.Filters.ToSql()
+		Expect(sqlErr).ToNot(HaveOccurred())
+		Expect(sql).To(ContainSubstring("media_file_tags"), "must use the indexed join, not a json_tree scan")
+		Expect(sql).To(ContainSubstring("missing"))
+		Expect(args).To(ContainElement(rock.ID), "must filter on the seed's own genre tag id")
+		Expect(args).ToNot(ContainElement(model.NewTag(model.TagGenre, "Jazz").ID))
 	})
 
 	It("returns the library id so the matcher can resolve the song", func() {
