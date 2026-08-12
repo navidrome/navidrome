@@ -187,7 +187,8 @@ func (api *Router) similarAlbums(ctx context.Context, id string, limit int) dto.
 		return result(nil, 0, 0)
 	}
 	u, _ := request.UserFrom(ctx)
-	seen := make(map[string]bool, limit)
+	// An album is not similar to itself, and the sampled-seed fallback returns its own tracks.
+	seen := map[string]bool{id: true}
 	var items []dto.BaseItemDto
 	for _, s := range songs {
 		if s.AlbumID == "" || seen[s.AlbumID] {
