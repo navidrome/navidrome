@@ -37,14 +37,7 @@ func (p *localAgent) GetArtistTopSongs(ctx context.Context, id, artistName, mbid
 	if err != nil {
 		return nil, err
 	}
-	var result []Song
-	for _, s := range top {
-		result = append(result, Song{
-			Name: s.Title,
-			MBID: s.MbzReleaseTrackID,
-		})
-	}
-	return result, nil
+	return songsFrom(top), nil
 }
 
 func (p *localAgent) GetSimilarSongsByTrack(ctx context.Context, id, name, artist, mbid string, count int) ([]Song, error) {
@@ -64,17 +57,28 @@ func (p *localAgent) GetSimilarSongsByTrack(ctx context.Context, id, name, artis
 	if err != nil {
 		return nil, err
 	}
-	result := make([]Song, 0, len(candidates))
+	filtered := make(model.MediaFiles, 0, len(candidates))
 	for _, s := range candidates {
 		if s.ID == id {
 			continue
 		}
-		result = append(result, Song{Name: s.Title, MBID: s.MbzReleaseTrackID})
-		if len(result) >= count {
+		filtered = append(filtered, s)
+		if len(filtered) >= count {
 			break
 		}
 	}
-	return result, nil
+	return songsFrom(filtered), nil
+}
+
+func songsFrom(mfs model.MediaFiles) []Song {
+	if len(mfs) == 0 {
+		return nil
+	}
+	songs := make([]Song, 0, len(mfs))
+	for _, mf := range mfs {
+		songs = append(songs, Song{Name: mf.Title, MBID: mf.MbzReleaseTrackID})
+	}
+	return songs
 }
 
 func init() {

@@ -282,19 +282,20 @@ func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (au
 func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error) {
 	entity, err := model.GetEntityByID(ctx, e.ds, id)
 	if err != nil {
-		if errors.Is(err, model.ErrNotFound) {
-			if genre, gerr := e.ds.Genre(ctx).Get(id); gerr == nil {
-				seeds, serr := e.sampleGenreTracks(ctx, genre, maxSeeds)
-				if serr != nil {
-					return nil, serr
-				}
-				return e.mixFromSeeds(ctx, seeds, count)
-			}
+		// Genre ids don't resolve via GetEntityByID; look them up before giving up.
+		if !errors.Is(err, model.ErrNotFound) {
+			return nil, err
 		}
-		return nil, err
+		genre, gerr := e.ds.Genre(ctx).Get(id)
+		if gerr != nil {
+			return nil, err
+		}
+		return e.seedMix(ctx, count, func() (model.MediaFiles, error) {
+			return e.sampleGenreTracks(ctx, genre, maxSeeds)
+		})
 	}
 
-	// Try entity-specific similarity first
+	// Try entity-specific similarity first, then fall back to seed-track sampling.
 	switch v := entity.(type) {
 	case *model.MediaFile:
 		songs, serr := e.ag.GetSimilarSongsByTrack(ctx, v.ID, v.Title, v.Artist, v.MbzRecordingID, count)
@@ -307,11 +308,9 @@ func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (mode
 		if serr == nil && len(songs) > 0 {
 			return e.matcher.MatchSongs(ctx, songs, count)
 		}
-		seeds, serr := e.sampleAlbumTracks(ctx, v.ID, maxSeeds)
-		if serr != nil {
-			return nil, serr
-		}
-		return e.mixFromSeeds(ctx, seeds, count)
+		return e.seedMix(ctx, count, func() (model.MediaFiles, error) {
+			return e.sampleAlbumTracks(ctx, v.ID, maxSeeds)
+		})
 	case *model.Artist:
 		songs, serr := e.ag.GetSimilarSongsByArtist(ctx, v.ID, v.Name, v.MbzArtistID, count)
 		if serr == nil && len(songs) > 0 {
@@ -320,21 +319,26 @@ func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (mode
 		if res, ferr := e.similarSongsFallback(ctx, id, count); ferr == nil && len(res) > 0 {
 			return res, nil
 		}
-		seeds, serr := e.sampleArtistTracks(ctx, v.ID, maxSeeds)
-		if serr != nil {
-			return nil, serr
-		}
-		return e.mixFromSeeds(ctx, seeds, count)
+		return e.seedMix(ctx, count, func() (model.MediaFiles, error) {
+			return e.sampleArtistTracks(ctx, v.ID, maxSeeds)
+		})
 	case *model.Playlist:
-		seeds, serr := e.samplePlaylistTracks(ctx, v.ID, maxSeeds)
-		if serr != nil {
-			return nil, serr
-		}
-		return e.mixFromSeeds(ctx, seeds, count)
+		return e.seedMix(ctx, count, func() (model.MediaFiles, error) {
+			return e.samplePlaylistTracks(ctx, v.ID, maxSeeds)
+		})
 	default:
 		log.Warn(ctx, "Unknown entity type", "id", id, "type", fmt.Sprintf("%T", entity))
 		return nil, model.ErrNotFound
 	}
+}
+
+// seedMix fetches seed tracks via sample and turns them into a mix, propagating sample errors.
+func (e *provider) seedMix(ctx context.Context, count int, sample func() (model.MediaFiles, error)) (model.MediaFiles, error) {
+	seeds, err := sample()
+	if err != nil {
+		return nil, err
+	}
+	return e.mixFromSeeds(ctx, seeds, count)
 }
 
 // mixFromSeeds runs each seed through the agent chain's per-track similarity and merges the
@@ -343,15 +347,25 @@ func (e *provider) mixFromSeeds(ctx context.Context, seeds model.MediaFiles, cou
 	if len(seeds) == 0 {
 		return nil, nil
 	}
-	var songs []agents.Song
+	seeds = seeds[:min(len(seeds), maxSeeds)]
+
+	// The per-seed similarity calls are independent and hit the (possibly remote) agent chain, so
+	// run them concurrently. Best-effort: a seed that errors just contributes nothing.
+	perSeed := make([][]agents.Song, len(seeds))
+	var g errgroup.Group
 	for i, seed := range seeds {
-		if i >= maxSeeds {
-			break
-		}
-		s, err := e.ag.GetSimilarSongsByTrack(ctx, seed.ID, seed.Title, seed.Artist, seed.MbzRecordingID, count)
-		if err == nil {
-			songs = append(songs, s...)
-		}
+		g.Go(func() error {
+			if s, err := e.ag.GetSimilarSongsByTrack(ctx, seed.ID, seed.Title, seed.Artist, seed.MbzRecordingID, count); err == nil {
+				perSeed[i] = s
+			}
+			return nil
+		})
+	}
+	_ = g.Wait()
+
+	var songs []agents.Song
+	for _, s := range perSeed {
+		songs = append(songs, s...)
 	}
 	matched, err := e.matcher.MatchSongs(ctx, songs, count)
 	if err != nil {
@@ -369,7 +383,8 @@ func (e *provider) mixFromSeeds(ctx context.Context, seeds model.MediaFiles, cou
 
 // samplePlaylistTracks returns up to n random tracks from a playlist, used as seeds for a mix.
 func (e *provider) samplePlaylistTracks(ctx context.Context, playlistID string, n int) (model.MediaFiles, error) {
-	tracks, err := e.ds.Playlist(ctx).Tracks(playlistID, true).GetAll(model.QueryOptions{Sort: "random", Max: n})
+	// refreshSmartPlaylist=false: mix seeds don't need a fresh smart-playlist rebuild.
+	tracks, err := e.ds.Playlist(ctx).Tracks(playlistID, false).GetAll(model.QueryOptions{Sort: "random", Max: n})
 	if err != nil {
 		return nil, err
 	}
