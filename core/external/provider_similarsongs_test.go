@@ -315,6 +315,63 @@ var _ = Describe("Provider - SimilarSongs", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(songs).ToNot(BeEmpty())
 			})
+
+			It("falls back to the seed tracks themselves when no similar songs are found", func() {
+				pls := model.Playlist{ID: "pl-2", Name: "Fallback List"}
+				seed1 := model.MediaFile{ID: "s1", Title: "Seed One", Artist: "A"}
+				seed2 := model.MediaFile{ID: "s2", Title: "Seed Two", Artist: "B"}
+
+				artistRepo.On("Get", "pl-2").Return(nil, model.ErrNotFound).Once()
+				albumRepo.On("Get", "pl-2").Return(nil, model.ErrNotFound).Once()
+				playlistRepo.SetData(model.Playlists{pls})
+
+				playlistTrackRepo.On("GetAll", mock.Anything).Return(model.PlaylistTracks{
+					{MediaFile: seed1},
+					{MediaFile: seed2},
+				}, nil).Once()
+
+				// Both seeds come back empty from the agent, so mixFromSeeds must fall back
+				// to the seeds themselves rather than returning an empty mix.
+				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "s1", "Seed One", "A", "", 5).
+					Return([]agents.Song{}, nil).Once()
+				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "s2", "Seed Two", "B", "", 5).
+					Return([]agents.Song{}, nil).Once()
+
+				songs, err := provider.SimilarSongs(ctx, "pl-2", 5)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(songs).To(HaveLen(2))
+				Expect([]string{songs[0].ID, songs[1].ID}).To(ConsistOf("s1", "s2"))
+			})
+
+			It("caps agent calls at maxSeeds when the playlist has more tracks", func() {
+				pls := model.Playlist{ID: "pl-3", Name: "Big List"}
+				tracks := model.PlaylistTracks{
+					{MediaFile: model.MediaFile{ID: "seed-1", Title: "Seed 1", Artist: "A"}},
+					{MediaFile: model.MediaFile{ID: "seed-2", Title: "Seed 2", Artist: "A"}},
+					{MediaFile: model.MediaFile{ID: "seed-3", Title: "Seed 3", Artist: "A"}},
+					{MediaFile: model.MediaFile{ID: "seed-4", Title: "Seed 4", Artist: "A"}},
+					{MediaFile: model.MediaFile{ID: "seed-5", Title: "Seed 5", Artist: "A"}},
+					{MediaFile: model.MediaFile{ID: "seed-6", Title: "Seed 6", Artist: "A"}},
+				}
+
+				artistRepo.On("Get", "pl-3").Return(nil, model.ErrNotFound).Once()
+				albumRepo.On("Get", "pl-3").Return(nil, model.ErrNotFound).Once()
+				playlistRepo.SetData(model.Playlists{pls})
+
+				playlistTrackRepo.On("GetAll", mock.Anything).Return(tracks, nil).Once()
+
+				// samplePlaylistTracks shuffles before capping, so any 5 of the 6 seeds may be
+				// picked; match any seed and assert the call count instead of specific IDs.
+				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, 5).
+					Return([]agents.Song{}, nil)
+
+				songs, err := provider.SimilarSongs(ctx, "pl-3", 5)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(songs).To(HaveLen(5))
+				agentsCombined.AssertNumberOfCalls(GinkgoT(), "GetSimilarSongsByTrack", 5)
+			})
 		})
 	})
 
