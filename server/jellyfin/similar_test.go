@@ -165,8 +165,6 @@ var _ = Describe("getInstantMix", func() {
 		Expect(res.Items[0].Name).To(Equal("Seed Song"), "the seed must still lead the mix")
 	})
 
-	// Genre ids don't resolve via GetEntityByID (see model.GetEntityByID); the handler must still
-	// route them to the provider instead of early-returning empty.
 	It("returns a mix for a genre id, which GetEntityByID can't resolve", func() {
 		ds := &tests.MockDataStore{}
 		songs := model.MediaFiles{
@@ -189,7 +187,7 @@ var _ = Describe("getInstantMix", func() {
 })
 
 var _ = Describe("getSimilarAlbums", func() {
-	// Powers Finamp's albumMix radio mode: /Albums/{id}/Similar was previously unregistered (404).
+	// Powers Finamp's albumMix radio mode.
 	It("returns albums derived from the provider's similar songs", func() {
 		ds := &tests.MockDataStore{}
 		ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{

@@ -57,6 +57,7 @@ func (r *playlistRepository) Tracks(playlistId string, refreshSmartPlaylist bool
 			"album_artist": "order_album_artist_name",
 			"album":        "order_album_name, album_id, disc_number, track_number, order_artist_name, title",
 			"title":        "order_title",
+			"random":       "random()",
 			// To make sure these fields will be whitelisted
 			"duration": "duration",
 			"year":     "year",

@@ -349,8 +349,8 @@ var _ = Describe("Provider - SimilarSongs", func() {
 				albumRepo.On("Get", "pl-1").Return(nil, model.ErrNotFound).Once()
 				playlistRepo.SetData(model.Playlists{pls})
 
-				// samplePlaylistTracks -> Tracks(...).GetAll -> one seed track
-				playlistTrackRepo.On("GetAll", mock.Anything).Return(model.PlaylistTracks{
+				// samplePlaylistTracks -> Tracks(...).GetAll -> one seed track, bounded+randomized in SQL
+				playlistTrackRepo.On("GetAll", model.QueryOptions{Sort: "random", Max: 5}).Return(model.PlaylistTracks{
 					{MediaFile: seedTrack},
 				}, nil).Once()
 
@@ -377,7 +377,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 				albumRepo.On("Get", "pl-2").Return(nil, model.ErrNotFound).Once()
 				playlistRepo.SetData(model.Playlists{pls})
 
-				playlistTrackRepo.On("GetAll", mock.Anything).Return(model.PlaylistTracks{
+				playlistTrackRepo.On("GetAll", model.QueryOptions{Sort: "random", Max: 5}).Return(model.PlaylistTracks{
 					{MediaFile: seed1},
 					{MediaFile: seed2},
 				}, nil).Once()
@@ -396,7 +396,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 				Expect([]string{songs[0].ID, songs[1].ID}).To(ConsistOf("s1", "s2"))
 			})
 
-			It("caps agent calls at maxSeeds when the playlist has more tracks", func() {
+			It("caps agent calls at maxSeeds even if the repo returns more than requested", func() {
 				pls := model.Playlist{ID: "pl-3", Name: "Big List"}
 				tracks := model.PlaylistTracks{
 					{MediaFile: model.MediaFile{ID: "seed-1", Title: "Seed 1", Artist: "A"}},
@@ -411,10 +411,11 @@ var _ = Describe("Provider - SimilarSongs", func() {
 				albumRepo.On("Get", "pl-3").Return(nil, model.ErrNotFound).Once()
 				playlistRepo.SetData(model.Playlists{pls})
 
-				playlistTrackRepo.On("GetAll", mock.Anything).Return(tracks, nil).Once()
+				// The bound now lives in the query itself (Sort:"random", Max:5); this mock
+				// defensively returns more than requested to prove mixFromSeeds still caps
+				// agent calls as a second line of defense.
+				playlistTrackRepo.On("GetAll", model.QueryOptions{Sort: "random", Max: 5}).Return(tracks, nil).Once()
 
-				// samplePlaylistTracks shuffles before capping, so any 5 of the 6 seeds may be
-				// picked; match any seed and assert the call count instead of specific IDs.
 				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, 5).
 					Return([]agents.Song{}, nil)
 

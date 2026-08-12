@@ -37,6 +37,16 @@ var _ = Describe("PlaylistTrackRepository", func() {
 		})
 	})
 
+	Describe("GetAll", func() {
+		It("accepts a random sort and honors Max", func() {
+			// Proves the sort is whitelisted (not silently dropped) and the bound reaches SQL:
+			// the playlist has 2 tracks, Max:1 must still return exactly 1.
+			got, err := repo.GetAll(model.QueryOptions{Sort: "random", Max: 1})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got).To(HaveLen(1))
+		})
+	})
+
 	Describe("CountAll", func() {
 		It("returns the number of tracks in the playlist", func() {
 			Expect(repo.CountAll()).To(Equal(int64(2)))

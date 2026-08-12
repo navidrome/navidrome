@@ -369,16 +369,11 @@ func (e *provider) mixFromSeeds(ctx context.Context, seeds model.MediaFiles, cou
 
 // samplePlaylistTracks returns up to n random tracks from a playlist, used as seeds for a mix.
 func (e *provider) samplePlaylistTracks(ctx context.Context, playlistID string, n int) (model.MediaFiles, error) {
-	tracks, err := e.ds.Playlist(ctx).Tracks(playlistID, true).GetAll(model.QueryOptions{})
+	tracks, err := e.ds.Playlist(ctx).Tracks(playlistID, true).GetAll(model.QueryOptions{Sort: "random", Max: n})
 	if err != nil {
 		return nil, err
 	}
-	mfs := tracks.MediaFiles()
-	rand.Shuffle(len(mfs), func(i, j int) { mfs[i], mfs[j] = mfs[j], mfs[i] })
-	if len(mfs) > n {
-		mfs = mfs[:n]
-	}
-	return mfs, nil
+	return tracks.MediaFiles(), nil
 }
 
 // sampleAlbumTracks returns up to n random tracks from the given album, used as seeds for a mix.
