@@ -5,6 +5,8 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 const LocalAgentName = "local"
@@ -45,14 +47,15 @@ func (p *localAgent) GetSimilarSongsByTrack(ctx context.Context, id, name, artis
 	if err != nil {
 		return nil, err
 	}
-	genres := seed.Tags[model.TagGenre]
-	if len(genres) == 0 {
+	// Tag ids derive from (name, value), so the seed's genre ids need no extra query.
+	genreIDs := slice.Map(seed.Tags.Flatten(model.TagGenre), func(t model.Tag) string { return t.ID })
+	if len(genreIDs) == 0 {
 		return nil, nil
 	}
 	// Ask for extra so we can drop the seed itself and still fill the count.
-	candidates, err := p.ds.MediaFile(ctx).GetAllByTags(model.TagGenre, genres, model.QueryOptions{
-		Sort: "random",
-		Max:  count + 1,
+	candidates, err := p.ds.MediaFile(ctx).GetRandom(model.QueryOptions{
+		Filters: persistence.SongGenres.ByID(genreIDs),
+		Max:     count + 1,
 	})
 	if err != nil {
 		return nil, err
@@ -74,11 +77,12 @@ func songsFrom(mfs model.MediaFiles) []Song {
 	if len(mfs) == 0 {
 		return nil
 	}
-	songs := make([]Song, 0, len(mfs))
-	for _, mf := range mfs {
-		songs = append(songs, Song{Name: mf.Title, MBID: mf.MbzReleaseTrackID})
-	}
-	return songs
+
+	// These are library tracks already, so carry the id: the matcher resolves by id first and
+	// exactly. MBID must be the recording id — the matcher matches mbz_recording_id.
+	return slice.Map(mfs, func(mf model.MediaFile) Song {
+		return Song{ID: mf.ID, Name: mf.Title, MBID: mf.MbzRecordingID}
+	})
 }
 
 func init() {

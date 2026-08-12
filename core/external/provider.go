@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/core/matcher"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/utils"
 	. "github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/random"
@@ -286,8 +287,8 @@ func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (mode
 		if !errors.Is(err, model.ErrNotFound) {
 			return nil, err
 		}
-		genre, gerr := e.ds.Genre(ctx).Get(id)
-		if gerr != nil {
+		genre, err := e.ds.Genre(ctx).Get(id)
+		if err != nil {
 			return nil, err
 		}
 		return e.seedMix(ctx, count, func() (model.MediaFiles, error) {
@@ -409,9 +410,9 @@ func (e *provider) sampleArtistTracks(ctx context.Context, artistID string, n in
 
 // sampleGenreTracks returns up to n random tracks tagged with the given genre, used as seeds for a mix.
 func (e *provider) sampleGenreTracks(ctx context.Context, genre *model.Genre, n int) (model.MediaFiles, error) {
-	return e.ds.MediaFile(ctx).GetAllByTags(model.TagGenre, []string{genre.Name}, model.QueryOptions{
-		Sort: "random",
-		Max:  n,
+	return e.ds.MediaFile(ctx).GetRandom(model.QueryOptions{
+		Filters: persistence.SongGenres.ByID(genre.ID),
+		Max:     n,
 	})
 }
 

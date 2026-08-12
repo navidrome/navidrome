@@ -34,10 +34,15 @@ var _ = Describe("Agents", func() {
 		})
 
 		It("calls the placeholder GetArtistImages", func() {
-			mfRepo.SetData(model.MediaFiles{{ID: "1", Title: "One", MbzReleaseTrackID: "111"}, {ID: "2", Title: "Two", MbzReleaseTrackID: "222"}})
+			mfRepo.SetData(model.MediaFiles{{ID: "1", Title: "One", MbzRecordingID: "111"}, {ID: "2", Title: "Two", MbzRecordingID: "222"}})
 			songs, err := ag.GetArtistTopSongs(ctx, "123", "John Doe", "mb123", 2)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(songs).To(ConsistOf([]Song{{Name: "One", MBID: "111"}, {Name: "Two", MBID: "222"}}))
+			// Carries the library id (the matcher resolves by id first) and the recording MBID,
+			// which is the field the matcher looks up.
+			Expect(songs).To(ConsistOf([]Song{
+				{ID: "1", Name: "One", MBID: "111"},
+				{ID: "2", Name: "Two", MBID: "222"},
+			}))
 		})
 	})
 

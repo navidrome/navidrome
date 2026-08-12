@@ -436,8 +436,14 @@ var _ = Describe("Provider - SimilarSongs", func() {
 				mediaFileRepo.On("Get", "g-1").Return(nil, model.ErrNotFound).Once()
 				genreRepo.Data = map[string]model.Genre{"g-1": {ID: "g-1", Name: "Jazz"}}
 
-				// sampleGenreTracks -> GetAllByTags -> one seed (mock GetAllByTags delegates to GetAll)
-				mediaFileRepo.On("GetAll", mock.Anything).Return(model.MediaFiles{{ID: "s1", Title: "Seed"}}, nil).Once()
+				// sampleGenreTracks -> GetRandom with the indexed media_file_tags semi-join (not a json_tree scan)
+				mediaFileRepo.On("GetRandom", mock.MatchedBy(func(opt model.QueryOptions) bool {
+					if opt.Filters == nil {
+						return false
+					}
+					sql, _, err := opt.Filters.ToSql()
+					return err == nil && strings.Contains(sql, "media_file_tags") && !strings.Contains(sql, "json_tree")
+				})).Return(model.MediaFiles{{ID: "s1", Title: "Seed"}}, nil).Once()
 				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "s1", "Seed", "", "", 5).
 					Return([]agents.Song{{Name: "Similar"}}, nil).Once()
 				mediaFileRepo.On("GetAll", mock.Anything).Return(model.MediaFiles{{ID: "m1", Title: "Similar"}}, nil).Maybe()

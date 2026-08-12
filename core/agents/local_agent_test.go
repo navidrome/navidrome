@@ -39,6 +39,19 @@ var _ = Describe("localAgent GetSimilarSongsByTrack", func() {
 		Expect(ids).ToNot(ContainElement("Seed"))
 	})
 
+	It("returns songs the matcher can resolve: library id + recording MBID", func() {
+		seed := model.MediaFile{ID: "seed-3", Title: "Seed", Tags: model.Tags{model.TagGenre: []string{"Rock"}}}
+		// MbzReleaseTrackID must NOT be used as the MBID: the matcher looks up mbz_recording_id,
+		// so a release-track id there resolves to nothing and the mix silently comes back empty.
+		related := model.MediaFile{ID: "rel-3", Title: "Related", MbzRecordingID: "rec-3", MbzReleaseTrackID: "trk-3"}
+		mfRepo.SetData(model.MediaFiles{seed, related})
+
+		songs, err := agent.GetSimilarSongsByTrack(ctx, "seed-3", "Seed", "", "", 10)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(songs).To(ContainElement(Song{ID: "rel-3", Name: "Related", MBID: "rec-3"}))
+	})
+
 	It("returns nil when the seed track has no genres", func() {
 		seed := model.MediaFile{ID: "seed-2", Title: "NoGenre"}
 		mfRepo.SetData(model.MediaFiles{seed})
