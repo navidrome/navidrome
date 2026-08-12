@@ -80,6 +80,12 @@ type updatePlaylistRequest struct {
 func (api *Router) updatePlaylist(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := dto.DecodeID(chi.URLParam(r, "playlistId"))
+	if id == "" {
+		// An empty id tells Create to make a new playlist instead of updating one — a malformed
+		// playlistId must 404, not silently create.
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
 	var body updatePlaylistRequest
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		http.Error(w, "Bad Request", http.StatusBadRequest)

@@ -75,7 +75,7 @@ var _ = Describe("Stream", func() {
 		It("returns 404 when the id doesn't match any media file", func() {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Items/missing/PlaybackInfo", nil).WithContext(ctxUser())
-			r = withChiURLParam(r, "itemId", "missing")
+			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("missing")))
 			api.getPlaybackInfo(w, r)
 
 			Expect(w.Code).To(Equal(http.StatusNotFound))
@@ -198,7 +198,7 @@ var _ = Describe("Stream", func() {
 		It("returns 404 when the id doesn't match any media file, without invoking the streamer or decider", func() {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("GET", "/Audio/missing/stream", nil).WithContext(ctxUser())
-			r = withChiURLParam(r, "itemId", "missing")
+			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("missing")))
 			invoke(api.streamAudio, w, r)
 
 			Expect(w.Code).To(Equal(http.StatusNotFound))
@@ -348,7 +348,7 @@ var _ = Describe("Stream", func() {
 		It("returns 404 when the id doesn't match any media file, without invoking the streamer or decider", func() {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("GET", "/Items/missing/File", nil).WithContext(ctxUser())
-			r = withChiURLParam(r, "itemId", "missing")
+			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("missing")))
 			api.streamFile(w, r)
 
 			Expect(w.Code).To(Equal(http.StatusNotFound))

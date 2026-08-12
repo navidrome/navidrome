@@ -183,7 +183,8 @@ album's dominant colour. Known-absent artwork emits no tag and no blurhash at al
 
 Jellyfin item ids are GUIDs, serialized as 32 lowercase hex chars with no dashes
 (`Guid.ToString("N")`). Navidrome ids are canonical 22-char base62 encodings of a 128-bit value,
-so `dto.EncodeID`/`dto.DecodeID` map between the two losslessly via `model/id`.
+so `dto.EncodeID`/`dto.DecodeID` map between the two via `model/id` — losslessly except for the
+~2⁻⁹⁶ chance an id's 128-bit value falls in the reserved space below (leading 12 bytes all zero).
 
 Three emitted ids aren't 128-bit values: integer library ids, the synthetic playlists folder, and
 `PlaylistItemId` (a playlist *entry position* — `playlist_tracks.id` is an `integer` column).

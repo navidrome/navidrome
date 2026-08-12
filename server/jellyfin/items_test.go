@@ -836,7 +836,7 @@ var _ = Describe("Items", func() {
 		It("returns 404 when the id doesn't match any entity", func() {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("GET", "/Items/missing", nil).WithContext(ctxUser())
-			r = withChiURLParam(r, "itemId", "missing")
+			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("missing")))
 			invoke(api.getItem, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
 		})

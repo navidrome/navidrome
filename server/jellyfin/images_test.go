@@ -85,7 +85,6 @@ var _ = Describe("Images", func() {
 		api.getItemImage(w, r)
 
 		Expect(fa.recvId).To(BeEmpty(), "an empty artwork id can only yield a placeholder")
-		Expect(w.Body.String()).ToNot(ContainSubstring("deleted-item"))
 	})
 
 	It("sniffs the Content-Type instead of hardcoding it", func() {

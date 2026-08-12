@@ -185,7 +185,7 @@ var _ = Describe("Playlists", func() {
 			}
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("GET", "/Playlists/"+testID("pl1")+"/Items", nil).WithContext(context.Background())
-			r = withChiURLParam(r, "playlistId", testID("pl1"))
+			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			api.getPlaylistItems(w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res dto.QueryResult
@@ -211,7 +211,7 @@ var _ = Describe("Playlists", func() {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("GET", "/Playlists/"+testID("pl1")+"/Items?StartIndex=1&Limit=1", nil).
 				WithContext(context.Background())
-			r = withChiURLParam(r, "playlistId", testID("pl1"))
+			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			invoke(api.getPlaylistItems, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res dto.QueryResult
@@ -227,7 +227,7 @@ var _ = Describe("Playlists", func() {
 			fp.getErr = model.ErrNotFound
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("GET", "/Playlists/missing/Items", nil).WithContext(context.Background())
-			r = withChiURLParam(r, "playlistId", "missing")
+			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("missing")))
 			api.getPlaylistItems(w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
 		})
@@ -297,7 +297,7 @@ var _ = Describe("Playlists", func() {
 			fp.getPls, fp.getByIDPls = pls, pls
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("GET", "/Playlists/"+testID("pl1"), nil).WithContext(context.Background())
-			r = withChiURLParam(r, "playlistId", testID("pl1"))
+			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			invoke(api.getPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res dto.PlaylistInfo
@@ -311,7 +311,7 @@ var _ = Describe("Playlists", func() {
 			fp.getErr = model.ErrNotFound
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("GET", "/Playlists/missing", nil).WithContext(context.Background())
-			r = withChiURLParam(r, "playlistId", "missing")
+			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("missing")))
 			invoke(api.getPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
 		})
@@ -437,7 +437,7 @@ var _ = Describe("Playlists", func() {
 			w := httptest.NewRecorder()
 			ctx := request.WithUser(context.Background(), model.User{ID: testID("u1"), UserName: "alice"})
 			r := httptest.NewRequest("GET", "/Playlists/"+testID("pl1")+"/Users", nil).WithContext(ctx)
-			r = withChiURLParam(r, "playlistId", testID("pl1"))
+			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			api.getPlaylistUsers(w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res []dto.PlaylistUserPermissions

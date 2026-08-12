@@ -124,7 +124,7 @@ var _ = Describe("Annotations", func() {
 		It("returns 404 when the id doesn't match any entity", func() {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/missing", nil).WithContext(ctxUser())
-			r = withChiURLParam(r, "itemId", "missing")
+			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("missing")))
 			invoke(api.markFavorite, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
 		})
@@ -133,7 +133,7 @@ var _ = Describe("Annotations", func() {
 			ds.Album(context.Background()).(*tests.MockAlbumRepo).SetError(true)
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/x1", nil).WithContext(ctxUser())
-			r = withChiURLParam(r, "itemId", "x1")
+			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("x1")))
 			invoke(api.markFavorite, w, r)
 			Expect(w.Code).To(Equal(http.StatusInternalServerError))
 		})

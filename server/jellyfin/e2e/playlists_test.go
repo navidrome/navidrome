@@ -295,6 +295,20 @@ var _ = Describe("Playlists", func() {
 			post("/Playlists/"+enc(plID), `{"IsPublic":true}`) // make it visible to the regular user
 			Expect(postAs(regularUser, "/Playlists/"+enc(plID), `{"Name":"Hijacked"}`).Code).To(Equal(http.StatusForbidden))
 		})
+
+		// A malformed id decodes to "", which core/playlists.Create treats as "make a new playlist" —
+		// the overload createPlaylist deliberately relies on. Must 404, not silently create one.
+		It("404s for a malformed playlist id, without creating a playlist", func() {
+			before, err := ds.Playlist(ctx).CountAll()
+			Expect(err).ToNot(HaveOccurred())
+
+			w := post("/Playlists/00000000000000000000000000000000", `{"Ids":["`+enc(songID("So What"))+`"]}`)
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+
+			after, err := ds.Playlist(ctx).CountAll()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(after).To(Equal(before))
+		})
 	})
 
 	Describe("delete", func() {
