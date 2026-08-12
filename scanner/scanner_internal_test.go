@@ -4,6 +4,7 @@ package scanner
 import (
 	"context"
 	"errors"
+	"path/filepath"
 	"sync/atomic"
 
 	ppl "github.com/google/go-pipeline/pkg/pipeline"
@@ -12,28 +13,33 @@ import (
 )
 
 var _ = Describe("libraryRelativePath", func() {
+	// Paths are built with filepath so the "absolute" cases stay absolute on every OS
+	// (a Unix-style "/foo" is not absolute on Windows).
+	libRoot, _ := filepath.Abs(filepath.Join("jukebox", "collection"))
+	outside, _ := filepath.Abs(filepath.Join("somewhere", "else"))
+
 	It("returns a relative path unchanged", func() {
-		Expect(libraryRelativePath("/jukebox/collection", "_Collection")).To(Equal("_Collection"))
+		Expect(libraryRelativePath(libRoot, "_Collection")).To(Equal("_Collection"))
 	})
 
 	It("rebases an absolute path that equals the library root to '.'", func() {
-		Expect(libraryRelativePath("/jukebox/collection", "/jukebox/collection")).To(Equal("."))
+		Expect(libraryRelativePath(libRoot, libRoot)).To(Equal("."))
 	})
 
 	It("rebases an absolute path under the library root", func() {
-		Expect(libraryRelativePath("/jukebox/collection", "/jukebox/collection/_Collection")).To(Equal("_Collection"))
+		Expect(libraryRelativePath(libRoot, filepath.Join(libRoot, "_Collection"))).To(Equal("_Collection"))
 	})
 
 	It("handles a trailing slash on the library path", func() {
-		Expect(libraryRelativePath("/jukebox/collection/", "/jukebox/collection/_Collection")).To(Equal("_Collection"))
+		Expect(libraryRelativePath(libRoot+string(filepath.Separator), filepath.Join(libRoot, "_Collection"))).To(Equal("_Collection"))
 	})
 
 	It("leaves an absolute path outside the library root unchanged", func() {
-		Expect(libraryRelativePath("/jukebox/collection", "/somewhere/else")).To(Equal("/somewhere/else"))
+		Expect(libraryRelativePath(libRoot, outside)).To(Equal(outside))
 	})
 
 	It("returns an empty path unchanged", func() {
-		Expect(libraryRelativePath("/jukebox/collection", "")).To(Equal(""))
+		Expect(libraryRelativePath(libRoot, "")).To(Equal(""))
 	})
 })
 

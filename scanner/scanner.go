@@ -63,7 +63,8 @@ func libraryRelativePath(libPath, folderPath string) string {
 	if err != nil || !filepath.IsLocal(rel) {
 		return folderPath
 	}
-	return rel
+	// The scanner's fs.FS is an io/fs, which always uses forward slashes.
+	return filepath.ToSlash(rel)
 }
 
 func (s *scannerImpl) scanFolders(ctx context.Context, fullScan bool, targets []model.ScanTarget, progress chan<- *ProgressInfo) {
