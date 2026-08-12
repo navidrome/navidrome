@@ -1,0 +1,390 @@
+//go:build !windows
+
+package plugins
+
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"strconv"
+	"time"
+
+	extism "github.com/extism/go-sdk"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/plugins/host"
+	"github.com/navidrome/navidrome/tests"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+)
+
+// scrobblePage mirrors what the test plugin emits for the multi-return GetScrobbles
+type scrobblePage struct {
+	Scrobbles []host.ScrobbleRef    `json:"scrobbles"`
+	Next      *host.ScrobbleOptions `json:"next"`
+}
+
+var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
+	var (
+		manager   *Manager
+		tmpDir    string
+		dataStore *tests.MockDataStore
+	)
+
+	p := func(val int64) *int64 {
+		return &val
+	}
+
+	opts := func(from, to *int64, descending bool, offset, maxItems int) *host.ScrobbleOptions {
+		return &host.ScrobbleOptions{
+			FromTimestamp: from, ToTimestamp: to,
+			Descending: descending, Offset: offset, MaxItems: maxItems,
+		}
+	}
+
+	BeforeAll(func() {
+		ctx := GinkgoT().Context()
+
+		var err error
+		tmpDir, err = os.MkdirTemp("", "scrobble-retriever-test-*")
+		Expect(err).ToNot(HaveOccurred())
+
+		conf.Server.DbPath = filepath.Join(tmpDir, "test-scanner.db?_journal_mode=WAL")
+
+		db.Init(ctx)
+		DeferCleanup(func() {
+			Expect(tests.ClearDB()).To(Succeed())
+		})
+		dataStore = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
+
+		// Copy test plugin to temp dir
+		srcPath := filepath.Join(testdataDir, "test-scrobble-retriever"+PackageExtension)
+		destPath := filepath.Join(tmpDir, "test-scrobble-retriever"+PackageExtension)
+		data, err := os.ReadFile(srcPath)
+		Expect(err).ToNot(HaveOccurred())
+		err = os.WriteFile(destPath, data, 0600)
+		Expect(err).ToNot(HaveOccurred())
+
+		// Setup config
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.Plugins.Enabled = true
+		conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
+		conf.Server.Plugins.AutoReload = false
+
+		userRepo := dataStore.User(ctx)
+		// Add test users
+		_ = userRepo.Put(&model.User{
+			ID:       "user1",
+			UserName: "testuser",
+			IsAdmin:  false,
+		})
+		_ = userRepo.Put(&model.User{
+			ID:       "admin1",
+			UserName: "adminuser",
+			IsAdmin:  true,
+		})
+
+		err = dataStore.MediaFile(ctx).Put(&model.MediaFile{ID: "1", LibraryID: 1})
+		Expect(err).To(BeNil())
+		err = dataStore.MediaFile(ctx).Put(&model.MediaFile{ID: "2", LibraryID: 1})
+		Expect(err).To(BeNil())
+		err = dataStore.MediaFile(ctx).Put(&model.MediaFile{ID: "3", LibraryID: 1})
+		Expect(err).To(BeNil())
+
+		scrobbleCtx := request.WithUser(GinkgoT().Context(), model.User{ID: "admin1", UserName: "adminuser"})
+
+		scrobbleRepo := dataStore.Scrobble(scrobbleCtx)
+		err = scrobbleRepo.RecordScrobble("1", time.Unix(0, 0))
+		Expect(err).To(BeNil())
+		err = scrobbleRepo.RecordScrobble("2", time.Unix(1, 0))
+		Expect(err).To(BeNil())
+		err = scrobbleRepo.RecordScrobble("3", time.Unix(2, 0))
+		Expect(err).To(BeNil())
+		err = scrobbleRepo.RecordScrobble("1", time.Unix(2, 0))
+		Expect(err).To(BeNil())
+
+		// Create and configure manager
+		manager = &Manager{
+			plugins: make(map[string]*plugin),
+			ds:      dataStore,
+		}
+		router := &fakeSubsonicRouter{}
+		manager.SetSubsonicRouter(router)
+
+		// Pre-enable the plugin in the mock repo so it loads on startup
+		// Compute SHA256 of the plugin file to match what syncPlugins will compute
+		pluginPath := filepath.Join(tmpDir, "test-scrobble-retriever"+PackageExtension)
+		wasmData, err := os.ReadFile(pluginPath)
+		Expect(err).ToNot(HaveOccurred())
+		hash := sha256.Sum256(wasmData)
+		hashHex := hex.EncodeToString(hash[:])
+
+		dataStore.MockedPlugin = tests.CreateMockPluginRepo()
+
+		mockPluginRepo := dataStore.Plugin(GinkgoT().Context()).(*tests.MockPluginRepo)
+		mockPluginRepo.Permitted = true
+		enabledPlugin := model.Plugin{
+			ID:      "test-scrobble-retriever",
+			Path:    pluginPath,
+			SHA256:  hashHex,
+			Enabled: true,
+			Users:   `["user1","admin1"]`,
+		}
+		mockPluginRepo.SetData(model.Plugins{enabledPlugin})
+
+		// Start the manager
+		err = manager.Start(GinkgoT().Context())
+		Expect(err).ToNot(HaveOccurred())
+
+		DeferCleanup(func() {
+			_ = manager.Stop()
+			_ = os.RemoveAll(tmpDir)
+		})
+	})
+
+	var instance *extism.Plugin
+
+	BeforeEach(func() {
+		manager.mu.RLock()
+		plugin := manager.plugins["test-scrobble-retriever"]
+		manager.mu.RUnlock()
+		Expect(plugin).ToNot(BeNil())
+
+		var err error
+		ctx := GinkgoT().Context()
+		instance, err = plugin.instance(ctx)
+		Expect(err).ToNot(HaveOccurred())
+		DeferCleanup(func() {
+			instance.Close(ctx)
+		})
+	})
+
+	Describe("not authorized", func() {
+		It("rejects first timestamp", func() {
+			exit, _, err := instance.Call("call_get_first_timestamp", []byte("baduser"))
+			Expect(err).To(HaveOccurred())
+			Expect(exit).To(Equal(uint32(1)))
+		})
+
+		It("rejects last timestamp", func() {
+			exit, _, err := instance.Call("call_get_last_timestamp", []byte("baduser"))
+			Expect(err).To(HaveOccurred())
+			Expect(exit).To(Equal(uint32(1)))
+		})
+
+		It("rejects scrobbles", func() {
+			exit, _, err := instance.Call("call_get_scrobbles", []byte(`{"username":"baduser"}`))
+			Expect(err).To(HaveOccurred())
+			Expect(exit).To(Equal(uint32(1)))
+		})
+
+		It("rejects scrobbles", func() {
+			exit, _, err := instance.Call("call_get_scrobbles_count", []byte(`{"username":"baduser"}`))
+			Expect(err).To(HaveOccurred())
+			Expect(exit).To(Equal(uint32(1)))
+		})
+	})
+
+	Describe("no items", func() {
+		It("calls get first timestamp", func() {
+			exit, output, err := instance.Call("call_get_first_timestamp", []byte("testuser"))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(exit).To(Equal(uint32(0)))
+
+			Expect(output).To(Equal([]byte("{\"timestamp\":null}")))
+		})
+
+		It("calls get last timestamp", func() {
+			exit, output, err := instance.Call("call_get_last_timestamp", []byte("testuser"))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(exit).To(Equal(uint32(0)))
+
+			Expect(output).To(Equal([]byte("{\"timestamp\":null}")))
+		})
+
+		It("calls scrobbles", func() {
+			exit, output, err := instance.Call("call_get_scrobbles", []byte(`{"username":"testuser"}`))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(exit).To(Equal(uint32(0)))
+
+			Expect(output).To(Equal([]byte(`{"scrobbles":[],"next":null}`)))
+		})
+
+		It("calls get scrobble count", func() {
+			exit, output, err := instance.Call("call_get_scrobbles_count", []byte(`{"username":"testuser"}`))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(exit).To(Equal(uint32(0)))
+			Expect(output).To(Equal([]byte("0")))
+		})
+	})
+
+	Describe("with items", func() {
+		scrobbles := []host.ScrobbleRef{
+			{ID: 1, MediaFileID: "1", SubmissionTime: 0},
+			{ID: 2, MediaFileID: "2", SubmissionTime: 1},
+			{ID: 3, MediaFileID: "3", SubmissionTime: 2},
+			{ID: 4, MediaFileID: "1", SubmissionTime: 2},
+		}
+
+		scrobblesReversed := make([]host.ScrobbleRef, 4)
+
+		BeforeAll(func() {
+			for idx := range scrobbles {
+				scrobblesReversed[3-idx] = scrobbles[idx]
+			}
+		})
+
+		It("calls get first timestamp", func() {
+			exit, output, err := instance.Call("call_get_first_timestamp", []byte("adminuser"))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(exit).To(Equal(uint32(0)))
+
+			Expect(output).To(Equal([]byte("{\"timestamp\":0}")))
+		})
+
+		It("calls get last timestamp", func() {
+			exit, output, err := instance.Call("call_get_last_timestamp", []byte("adminuser"))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(exit).To(Equal(uint32(0)))
+
+			Expect(output).To(Equal([]byte("{\"timestamp\":2}")))
+		})
+
+		DescribeTable("getScrobbles", func(params string, scrobbles []host.ScrobbleRef, next *host.ScrobbleOptions) {
+			exit, output, err := instance.Call("call_get_scrobbles", []byte(params))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(exit).To(Equal(uint32(0)))
+
+			var page scrobblePage
+			Expect(json.Unmarshal(output, &page)).To(Succeed())
+			Expect(page).To(Equal(scrobblePage{Scrobbles: scrobbles, Next: next}))
+		},
+			Entry("calls scrobbles in ascending order", `{"username":"adminuser"}`, scrobbles, nil),
+			Entry("calls scrobbles in descending order by request", `{"username":"adminuser","descending":true}`, scrobblesReversed, nil),
+			Entry("calls scrobbles in ascending order, beyond range", `{"username":"adminuser","fromTimestamp":-1, "toTimestamp": 1000}`, scrobbles, nil),
+			Entry("defaults to ascending even when only toTimestamp is given", `{"username":"adminuser","toTimestamp":2}`, scrobbles, nil),
+			Entry("calls subset of scrobbles in ascending order, next page", `{"username":"adminuser","maxItems":2}`, scrobbles[:2], opts(p(2), nil, false, 0, 2)),
+			Entry("calls subset of scrobbles in ascending order, next page with offset", `{"username":"adminuser","maxItems":2,"fromTimestamp":1}`, scrobbles[1:3], opts(p(2), nil, false, 1, 2)),
+			Entry("calls subset of scrobbles in ascending order, from and to timestamp", `{"username":"adminuser","toTimestamp":2,"fromTimestamp":1}`, scrobbles[1:], nil),
+			Entry("calls subset of scrobbles in descending order, from and to timestamp", `{"username":"adminuser","toTimestamp":2,"fromTimestamp":1,"descending":true}`, scrobblesReversed[:3], nil),
+			Entry("calls in reverse order, full", `{"username":"adminuser","toTimestamp":2,"descending":true}`, scrobblesReversed, nil),
+			Entry("calls in reverse order, with count", `{"username":"adminuser","toTimestamp":2,"descending":true, "maxItems": 3}`, scrobblesReversed[:3], opts(nil, p(0), true, 0, 3)),
+			Entry("calls in reverse order, with count of 1", `{"username":"adminuser","toTimestamp":2,"descending":true, "maxItems": 1}`, scrobblesReversed[:1], opts(nil, p(2), true, 1, 1)),
+		)
+
+		DescribeTable("GetScrobblesCount", func(params string, count int) {
+			exit, output, err := instance.Call("call_get_scrobbles_count", []byte(params))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(exit).To(Equal(uint32(0)))
+
+			value, err := strconv.ParseInt(string(output), 10, 64)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(value).To(Equal(int64(count)))
+		},
+			Entry("gets all scrobbles", `{"username":"adminuser"}`, 4),
+			Entry("gets two scrobbles ascending", `{"username":"adminuser", "fromTimestamp": 2}`, 2),
+			Entry("gets one scrobble descending", `{"username":"adminuser", "toTimestamp": 0}`, 1),
+			Entry("filters upper and bottom", `{"username":"adminuser", "fromTimestamp": 1, "toTimestamp": 1}`, 1),
+			Entry("accepts filter out of range", `{"username":"adminuser", "fromTimestamp": -1, "toTimestamp": 1000}`, 4),
+		)
+	})
+
+	Context("Complex edge cases - multiple scrobbles at the same timestamp", func() {
+		duplicates := make([]host.ScrobbleRef, 5)
+		duplicatesReversed := make([]host.ScrobbleRef, 5)
+
+		BeforeAll(func() {
+			scrobbleCtx := request.WithUser(GinkgoT().Context(), model.User{ID: "admin1", UserName: "adminuser"})
+
+			scrobbleRepo := dataStore.Scrobble(scrobbleCtx)
+
+			for i := range 5 {
+				err := scrobbleRepo.RecordScrobble("3", time.Unix(100, 0))
+				Expect(err).To(BeNil())
+
+				scrobble := host.ScrobbleRef{ID: 5 + int64(i), MediaFileID: "3", SubmissionTime: 100}
+				duplicates[i] = scrobble
+				duplicatesReversed[4-i] = scrobble
+			}
+		})
+
+		getPage := func(o host.ScrobbleOptions) scrobblePage {
+			GinkgoHelper()
+			payload, err := json.Marshal(struct {
+				Username      string `json:"username"`
+				FromTimestamp *int64 `json:"fromTimestamp,omitempty"`
+				ToTimestamp   *int64 `json:"toTimestamp,omitempty"`
+				Descending    bool   `json:"descending"`
+				Offset        int    `json:"offset,omitempty"`
+				MaxItems      int    `json:"maxItems"`
+			}{
+				Username:      "adminuser",
+				FromTimestamp: o.FromTimestamp,
+				ToTimestamp:   o.ToTimestamp,
+				Descending:    o.Descending,
+				Offset:        o.Offset,
+				MaxItems:      o.MaxItems,
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			exit, output, err := instance.Call("call_get_scrobbles", payload)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(exit).To(Equal(uint32(0)))
+
+			var page scrobblePage
+			Expect(json.Unmarshal(output, &page)).To(Succeed())
+			return page
+		}
+
+		// every scrobble here shares timestamp 100, so only Offset advances between pages
+		tied := func(offset, maxItems int, descending bool) host.ScrobbleOptions {
+			return *opts(p(100), p(100), descending, offset, maxItems)
+		}
+
+		DescribeTable("Edge cases; duplicate scrobbles", func(offset, count int, descending bool, scrobbles []host.ScrobbleRef, nextOffset *int) {
+			var next *host.ScrobbleOptions
+			if nextOffset != nil {
+				next = opts(p(100), p(100), descending, *nextOffset, count)
+			}
+			Expect(getPage(tied(offset, count, descending))).To(Equal(scrobblePage{Scrobbles: scrobbles, Next: next}))
+		},
+			Entry("All tracks, in order", 0, 100, false, duplicates, nil),
+			Entry("All tracks, in reverse order", 0, 100, true, duplicatesReversed, nil),
+			Entry("Ascending order, from the start", 0, 1, false, duplicates[:1], new(1)),
+			Entry("Ascending order, middle page", 1, 2, false, duplicates[1:3], new(3)),
+			Entry("Ascending order, to the end", 3, 100, false, duplicates[3:], nil),
+			Entry("Ascending order, from the start, continuing offset", 3, 1, false, duplicates[3:4], new(4)),
+			Entry("start descending", 0, 2, true, duplicatesReversed[:2], new(2)),
+			Entry("start descending, next step", 2, 2, true, duplicatesReversed[2:4], new(4)),
+			Entry("start descending, end", 4, 1, true, duplicatesReversed[4:], nil),
+		)
+
+		It("walks every page exactly once when all timestamps collide", func() {
+			for _, descending := range []bool{false, true} {
+				var seen []host.ScrobbleRef
+				o := tied(0, 2, descending)
+				var page scrobblePage
+				for range 10 {
+					page = getPage(o)
+					seen = append(seen, page.Scrobbles...)
+					if page.Next == nil {
+						break
+					}
+					o = *page.Next
+				}
+				Expect(page.Next).To(BeNil(), "pagination did not terminate")
+				if descending {
+					Expect(seen).To(Equal(duplicatesReversed))
+				} else {
+					Expect(seen).To(Equal(duplicates))
+				}
+			}
+		})
+	})
+})

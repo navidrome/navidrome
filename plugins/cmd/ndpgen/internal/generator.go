@@ -27,32 +27,46 @@ func hostFuncMap(svc Service) template.FuncMap {
 // Uses private (lowercase) type names for request/response structs.
 func clientFuncMap(svc Service) template.FuncMap {
 	return template.FuncMap{
-		"lower":            strings.ToLower,
-		"title":            strings.Title,
-		"exportName":       func(m Method) string { return m.FunctionName(svc.ExportPrefix()) },
-		"requestType":      func(m Method) string { return m.ClientRequestTypeName(svc.Name) },
-		"responseType":     func(m Method) string { return m.ClientResponseTypeName(svc.Name) },
-		"formatDoc":        formatDoc,
-		"mockReturnValues": mockReturnValues,
+		"lower":          strings.ToLower,
+		"title":          strings.Title,
+		"exportName":     func(m Method) string { return m.FunctionName(svc.ExportPrefix()) },
+		"requestType":    func(m Method) string { return m.ClientRequestTypeName(svc.Name) },
+		"responseType":   func(m Method) string { return m.ClientResponseTypeName(svc.Name) },
+		"formatDoc":      formatDoc,
+		"mockReturnBody": mockReturnBody,
 	}
 }
 
-// mockReturnValues generates the testify mock return value accessors for a method.
-// For example: args.String(0), args.Bool(1), args.Error(2)
-func mockReturnValues(m Method) string {
+// mockReturnBody generates the testify mock body lines that extract return values.
+// Nil-able returns are guarded so tests can use Return(nil, ...) without the
+// type-assertion panic testify produces on an untyped nil.
+func mockReturnBody(m Method) string {
+	var b strings.Builder
 	var parts []string
-	idx := 0
 
-	for _, r := range m.Returns {
-		parts = append(parts, mockAccessor(r.Type, idx))
-		idx++
+	for idx, r := range m.Returns {
+		if isNilableType(r.Type) {
+			name := fmt.Sprintf("r%d", idx)
+			fmt.Fprintf(&b, "\tvar %s %s\n\tif v := args.Get(%d); v != nil {\n\t\t%s = v.(%s)\n\t}\n", name, r.Type, idx, name, r.Type)
+			parts = append(parts, name)
+		} else {
+			parts = append(parts, mockAccessor(r.Type, idx))
+		}
 	}
 
 	if m.HasError {
-		parts = append(parts, fmt.Sprintf("args.Error(%d)", idx))
+		parts = append(parts, fmt.Sprintf("args.Error(%d)", len(m.Returns)))
 	}
 
-	return strings.Join(parts, ", ")
+	b.WriteString("\treturn " + strings.Join(parts, ", "))
+	return b.String()
+}
+
+// isNilableType reports whether a nil mock return value is a valid intent for the
+// type, rather than a malformed test expectation.
+func isNilableType(typ string) bool {
+	return strings.HasPrefix(typ, "*") || strings.HasPrefix(typ, "[]") ||
+		strings.HasPrefix(typ, "map[") || typ == "any" || typ == "interface{}"
 }
 
 // mockAccessor returns the testify mock accessor call for a given type and index.
@@ -725,7 +739,7 @@ func pdkFuncMap() template.FuncMap {
 		"returnList":          pdkReturnList,
 		"argList":             pdkArgList,
 		"argListWithReceiver": pdkArgListWithReceiver,
-		"mockReturns":         pdkMockReturns,
+		"mockReturnBody":      pdkMockReturnBody,
 		"constValue":          pdkConstValue,
 		"stubTypeUnderlying":  stubTypeUnderlying,
 		"methodReceiver":      pdkMethodReceiver,
@@ -834,12 +848,20 @@ func pdkMethodReceiver(receiver, typeName string) string {
 }
 
 // pdkMockReturns generates the mock return accessors for a function.
-func pdkMockReturns(returns []PDKReturn) string {
+func pdkMockReturnBody(returns []PDKReturn) string {
+	var b strings.Builder
 	var parts []string
 	for i, r := range returns {
-		parts = append(parts, mockAccessorForType(r.Type, i))
+		if isNilableType(r.Type) {
+			name := fmt.Sprintf("r%d", i)
+			fmt.Fprintf(&b, "\tvar %s %s\n\tif v := args.Get(%d); v != nil {\n\t\t%s = v.(%s)\n\t}\n", name, r.Type, i, name, r.Type)
+			parts = append(parts, name)
+		} else {
+			parts = append(parts, mockAccessorForType(r.Type, i))
+		}
 	}
-	return strings.Join(parts, ", ")
+	b.WriteString("\treturn " + strings.Join(parts, ", "))
+	return b.String()
 }
 
 // mockAccessorForType returns the testify mock accessor for a type.

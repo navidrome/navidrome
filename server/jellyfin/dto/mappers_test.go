@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/core/artwork/blurhash"
 	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -34,8 +37,8 @@ var _ = Describe("mappers", func() {
 		Expect(item.UserData.Played).To(BeTrue())
 		Expect(item.UserData.Key).To(Equal(EncodeID("song-1")))
 		Expect(item.UserData.ItemId).To(Equal(EncodeID("song-1")))
-		Expect(item.ImageBlurHashes["Primary"]).To(HaveKey(item.AlbumPrimaryImageTag))
-		Expect(item.ImageBlurHashes["Primary"][item.AlbumPrimaryImageTag]).To(HaveLen(6))
+		Expect(item.AlbumPrimaryImageTag).To(Equal("alb-1"))
+		Expect(item.ImageBlurHashes["Primary"]).To(HaveKeyWithValue("alb-1", blurhash.Synthetic("alb-1", "")))
 		Expect(item.Genres).To(Equal([]string{"genre 1", "genre 2"}))
 		Expect(item.GenreItems).To(Equal([]NameGuidPair{{Id: EncodeID("1"), Name: "genre 1"}, {Id: EncodeID("2"), Name: "genre 2"}}))
 	})
@@ -44,10 +47,9 @@ var _ = Describe("mappers", func() {
 		mf := model.MediaFile{ID: "s1", Title: "Song", Size: 2_500_000, Suffix: "mp3", Duration: 60,
 			SortTitle: "sort song", Lyrics: `[{"line":[{"value":"la"}]}]`}
 
-		It("omits MediaSources and SortName when Fields does not ask for them", func() {
+		It("omits MediaSources when Fields does not ask for them", func() {
 			item := SongToBaseItem(mf, nil)
 			Expect(item.MediaSources).To(BeNil())
-			Expect(item.SortName).To(BeEmpty())
 		})
 
 		It("includes MediaSources only when Fields=MediaSources", func() {
@@ -56,8 +58,50 @@ var _ = Describe("mappers", func() {
 			Expect(item.MediaSources[0].Size).To(Equal(int64(2_500_000)))
 		})
 
-		It("includes SortName (from the sort title) only when Fields=SortName", func() {
-			Expect(SongToBaseItem(mf, ParseFields("SortName")).SortName).To(Equal("sort song"))
+		// SortName must match the server sort order — see the sortName helper.
+		Describe("SortName", func() {
+			song := model.MediaFile{ID: "s1", Title: "The Song", SortTitle: "Song, The", OrderTitle: "song"}
+			ar := model.Artist{ID: "art-1", Name: "The B-52's", SortArtistName: "B-52's, The", OrderArtistName: "b-52's"}
+			al := model.Album{ID: "alb-1", Name: "The Wall", SortAlbumName: "Wall, The", OrderAlbumName: "wall"}
+
+			BeforeEach(func() {
+				DeferCleanup(configtest.SetupConfig())
+			})
+
+			It("is omitted unless Fields=SortName", func() {
+				Expect(SongToBaseItem(song, nil).SortName).To(BeEmpty())
+				Expect(ArtistToBaseItem(ar, nil).SortName).To(BeEmpty())
+				Expect(AlbumToBaseItem(al, nil).SortName).To(BeEmpty())
+			})
+
+			It("uses the order names by default, ignoring sort tags", func() {
+				Expect(SongToBaseItem(song, ParseFields("SortName")).SortName).To(Equal("song"))
+				Expect(ArtistToBaseItem(ar, ParseFields("SortName")).SortName).To(Equal("b-52's"))
+				Expect(AlbumToBaseItem(al, ParseFields("SortName")).SortName).To(Equal("wall"))
+			})
+
+			Context("with PreferSortTags", func() {
+				BeforeEach(func() {
+					conf.Server.PreferSortTags = true
+				})
+
+				It("prefers the sort tags", func() {
+					Expect(SongToBaseItem(song, ParseFields("SortName")).SortName).To(Equal("Song, The"))
+					Expect(ArtistToBaseItem(ar, ParseFields("SortName")).SortName).To(Equal("B-52's, The"))
+					Expect(AlbumToBaseItem(al, ParseFields("SortName")).SortName).To(Equal("Wall, The"))
+				})
+
+				It("falls back to the order name when there is no sort tag", func() {
+					Expect(ArtistToBaseItem(model.Artist{ID: "a", Name: "The X", OrderArtistName: "x"},
+						ParseFields("SortName")).SortName).To(Equal("x"))
+				})
+			})
+
+			It("falls back to the display name when order name and sort tag are empty", func() {
+				Expect(SongToBaseItem(model.MediaFile{ID: "s", Title: "T"}, ParseFields("SortName")).SortName).To(Equal("T"))
+				Expect(ArtistToBaseItem(model.Artist{ID: "a", Name: "N"}, ParseFields("SortName")).SortName).To(Equal("N"))
+				Expect(AlbumToBaseItem(model.Album{ID: "al", Name: "A"}, ParseFields("SortName")).SortName).To(Equal("A"))
+			})
 		})
 
 		It("sets HasLyrics from the media file's lyrics", func() {
@@ -254,8 +298,8 @@ var _ = Describe("mappers", func() {
 		Expect(item.ArtistItems).To(Equal(item.AlbumArtists))
 		Expect(*item.ProductionYear).To(Equal(1999))
 		Expect(*item.ChildCount).To(Equal(10))
-		Expect(item.ImageBlurHashes["Primary"]).To(HaveKey(item.ImageTags["Primary"]))
-		Expect(item.ImageBlurHashes["Primary"][item.ImageTags["Primary"]]).To(HaveLen(6))
+		Expect(item.ImageTags).To(HaveKeyWithValue("Primary", "alb-1"))
+		Expect(item.ImageBlurHashes["Primary"]).To(HaveKeyWithValue("alb-1", blurhash.Synthetic("alb-1", "")))
 		Expect(item.Genres).To(Equal([]string{"genre 1", "genre 2"}))
 		Expect(item.GenreItems).To(Equal([]NameGuidPair{{Id: EncodeID("1"), Name: "genre 1"}, {Id: EncodeID("2"), Name: "genre 2"}}))
 	})
@@ -288,9 +332,74 @@ var _ = Describe("mappers", func() {
 		Expect(string(b)).ToNot(ContainSubstring("NormalizationGain"))
 	})
 
+	Describe("PrimaryImageAspectRatio", func() {
+		nonSquare := func() model.Album {
+			al := model.Album{ID: "al1", Name: "Album"}
+			al.ImageHash, al.ImageWidth, al.ImageHeight = "abc", 1200, 800
+			return al
+		}
+
+		It("is omitted unless the request asks for it", func() {
+			Expect(AlbumToBaseItem(nonSquare(), nil).PrimaryImageAspectRatio).To(BeNil())
+			b, err := json.Marshal(AlbumToBaseItem(nonSquare(), nil))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(b)).ToNot(ContainSubstring("PrimaryImageAspectRatio"))
+		})
+
+		It("carries the real ratio when asked", func() {
+			item := AlbumToBaseItem(nonSquare(), ParseFields("PrimaryImageAspectRatio"))
+			Expect(*item.PrimaryImageAspectRatio).To(BeNumerically("~", 1.5, 0.0001))
+		})
+
+		It("is omitted when the dimensions are unknown, rather than guessing square", func() {
+			al := model.Album{ID: "al1", Name: "Album"}
+			al.ImageHash = "abc"
+			item := AlbumToBaseItem(al, ParseFields("PrimaryImageAspectRatio"))
+			Expect(item.PrimaryImageAspectRatio).To(BeNil())
+		})
+
+		It("is omitted when the item has no image at all", func() {
+			al := model.Album{ID: "al1", Name: "Album"}
+			al.ImageAbsent = true
+			al.ImageWidth, al.ImageHeight = 1200, 800
+			item := AlbumToBaseItem(al, ParseFields("PrimaryImageAspectRatio"))
+			Expect(item.PrimaryImageAspectRatio).To(BeNil())
+		})
+
+		It("carries the ratio for an artist", func() {
+			ar := model.Artist{ID: "ar1", Name: "Artist"}
+			ar.ImageHash, ar.ImageWidth, ar.ImageHeight = "abc", 1000, 500
+			Expect(*ArtistToBaseItem(ar, ParseFields("PrimaryImageAspectRatio")).PrimaryImageAspectRatio).
+				To(BeNumerically("~", 2.0, 0.0001))
+		})
+
+		It("carries the ratio for a playlist", func() {
+			pl := model.Playlist{ID: "pl1", Name: "Playlist"}
+			pl.ImageHash, pl.ImageWidth, pl.ImageHeight = "abc", 400, 800
+			Expect(*PlaylistToBaseItem(pl, ParseFields("PrimaryImageAspectRatio")).PrimaryImageAspectRatio).
+				To(BeNumerically("~", 0.5, 0.0001))
+		})
+
+		It("carries the ratio for a song with its own art", func() {
+			mf := model.MediaFile{ID: "mf1", Title: "Song"}
+			mf.ImageHash, mf.ImageWidth, mf.ImageHeight = "abc", 300, 600
+			Expect(*SongToBaseItem(mf, ParseFields("PrimaryImageAspectRatio")).PrimaryImageAspectRatio).
+				To(BeNumerically("~", 0.5, 0.0001))
+		})
+
+		// A track without its own art shows the album's, so the ratio has to describe that image.
+		It("uses the album's dimensions for a track falling back to album art", func() {
+			mf := model.MediaFile{ID: "mf1", Title: "Song", AlbumID: "al1"}
+			mf.AlbumImage.ImageHash, mf.AlbumImage.ImageWidth, mf.AlbumImage.ImageHeight = "abc", 1200, 800
+			item := SongToBaseItem(mf, ParseFields("PrimaryImageAspectRatio"))
+			Expect(item.AlbumPrimaryImageTag).To(Equal("abc"))
+			Expect(*item.PrimaryImageAspectRatio).To(BeNumerically("~", 1.5, 0.0001))
+		})
+	})
+
 	It("maps an artist to a MusicArtist folder item", func() {
 		ar := model.Artist{ID: "art-1", Name: "AA", AlbumCount: 2, SongCount: 20}
-		item := ArtistToBaseItem(ar)
+		item := ArtistToBaseItem(ar, nil)
 		Expect(item.Type).To(Equal("MusicArtist"))
 		Expect(item.IsFolder).To(BeTrue())
 		Expect(item.Id).To(Equal(EncodeID("art-1")))
@@ -352,7 +461,7 @@ var _ = Describe("mappers", func() {
 			ID: "pl-1", Name: "Chill", SongCount: 7, Duration: 120,
 			Annotations: model.Annotations{Starred: true, Rating: 4, PlayCount: 2},
 		}
-		item := PlaylistToBaseItem(p)
+		item := PlaylistToBaseItem(p, nil)
 		Expect(item.Type).To(Equal("Playlist"))
 		Expect(item.IsFolder).To(BeTrue())
 		Expect(item.Id).To(Equal(EncodeID("pl-1")))
@@ -363,26 +472,237 @@ var _ = Describe("mappers", func() {
 		Expect(item.UserData.IsFavorite).To(BeTrue())
 		Expect(item.UserData.PlayCount).To(Equal(2))
 		Expect(*item.UserData.Rating).To(Equal(8.0))
-		tag := item.ImageTags["Primary"]
-		Expect(tag).ToNot(BeEmpty())
-		Expect(item.ImageBlurHashes["Primary"]).To(HaveKey(tag))
-		Expect(item.ImageBlurHashes["Primary"][tag]).To(HaveLen(6))
+		Expect(item.ImageTags).To(HaveKeyWithValue("Primary", "pl-1"))
+		Expect(item.ImageBlurHashes["Primary"]).To(HaveKeyWithValue("pl-1", blurhash.Synthetic("pl-1", "")))
 	})
 
-	It("changes the playlist image tag and blurhash when the playlist is updated (cover upload)", func() {
-		p := model.Playlist{ID: "pl-1", Name: "Chill", UpdatedAt: time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)}
-		before := PlaylistToBaseItem(p)
-		p.UpdatedAt = time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC)
-		after := PlaylistToBaseItem(p)
+	It("changes the playlist image tag when the cover content changes", func() {
+		p := model.Playlist{ID: "pl-1", Name: "Chill"}
+		p.ImageHash = "1111111111111111"
+		before := PlaylistToBaseItem(p, nil)
+		p.ImageHash = "2222222222222222"
+		after := PlaylistToBaseItem(p, nil)
 
-		// Finamp caches covers keyed by blurHash, so tag and blurhash must change with the cover.
-		Expect(after.ImageTags["Primary"]).ToNot(Equal(before.ImageTags["Primary"]))
-		Expect(after.ImageBlurHashes["Primary"]).ToNot(Equal(before.ImageBlurHashes["Primary"]))
+		Expect(before.ImageTags["Primary"]).To(Equal("1111111111111111"))
+		Expect(after.ImageTags["Primary"]).To(Equal("2222222222222222"))
 	})
 
-	It("keeps the playlist image tag stable when nothing changed", func() {
+	It("keeps the playlist image tag stable across a metadata-only edit", func() {
 		p := model.Playlist{ID: "pl-1", UpdatedAt: time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)}
-		Expect(PlaylistToBaseItem(p).ImageTags).To(Equal(PlaylistToBaseItem(p).ImageTags))
+		p.ImageHash = "1111111111111111"
+		before := PlaylistToBaseItem(p, nil)
+		p.UpdatedAt = time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC)
+		after := PlaylistToBaseItem(p, nil)
+
+		Expect(after.ImageTags["Primary"]).To(Equal(before.ImageTags["Primary"]))
+	})
+
+	// Nothing enqueues media files, so a track's own art only resolves when a client requests it;
+	// advertising just the album image would leave that cover unreachable.
+	Describe("unresolved embedded art", func() {
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.EnableMediaFileCoverArt = true
+		})
+
+		It("advertises the track id so the client triggers the read-through", func() {
+			mf := model.MediaFile{ID: "mf-1", AlbumID: "alb-1", HasCoverArt: true}
+			mf.AlbumImage.ImageHash = "0123456789abcdef"
+			mf.AlbumImage.DominantColor = "#3a5f7d"
+
+			item := SongToBaseItem(mf, nil)
+			Expect(item.ImageTags).To(HaveKeyWithValue("Primary", "mf-1"))
+			Expect(item.ImageBlurHashes["Primary"]).To(
+				HaveKeyWithValue("mf-1", blurhash.Synthetic("mf-1", "#3a5f7d")))
+			Expect(item.AlbumPrimaryImageTag).To(BeEmpty())
+		})
+
+		// The client's image request is what extracts the embedded art. Reusing the album's
+		// value would let it answer from cache and never send it.
+		It("gives the track a value distinct from its album's", func() {
+			mf := model.MediaFile{ID: "mf-3", AlbumID: "alb-1", HasCoverArt: true}
+			mf.AlbumImage.ImageHash = "0123456789abcdef"
+			mf.AlbumImage.BlurHash = "LEHV6nWB2yk8"
+			mf.AlbumImage.DominantColor = "#3a5f7d"
+
+			track := SongToBaseItem(mf, nil).ImageBlurHashes["Primary"]["mf-3"]
+			album := AlbumToBaseItem(model.Album{ID: "alb-1", ItemImage: mf.AlbumImage}, nil).
+				ImageBlurHashes["Primary"]["0123456789abcdef"]
+			Expect(track).ToNot(BeEmpty())
+			Expect(track).ToNot(Equal(album))
+		})
+
+		It("still emits a value when the album has no dominant colour", func() {
+			mf := model.MediaFile{ID: "mf-4", AlbumID: "alb-1", HasCoverArt: true}
+
+			item := SongToBaseItem(mf, nil)
+			Expect(item.ImageBlurHashes["Primary"]).To(HaveKeyWithValue("mf-4", blurhash.Synthetic("mf-4", "")))
+		})
+
+		It("falls back to the album when the track has no art of its own", func() {
+			mf := model.MediaFile{ID: "mf-2", AlbumID: "alb-1", HasCoverArt: false}
+			mf.AlbumImage.ImageHash = "0123456789abcdef"
+
+			item := SongToBaseItem(mf, nil)
+			Expect(item.ImageTags).To(BeEmpty())
+			Expect(item.AlbumPrimaryImageTag).To(Equal("0123456789abcdef"))
+		})
+
+		It("falls back to the album once the track's art is known absent", func() {
+			mf := model.MediaFile{ID: "mf-3", AlbumID: "alb-1", HasCoverArt: true}
+			mf.ItemImage.ImageAbsent = true
+			mf.AlbumImage.ImageHash = "0123456789abcdef"
+
+			item := SongToBaseItem(mf, nil)
+			Expect(item.ImageTags).To(BeEmpty())
+			Expect(item.AlbumPrimaryImageTag).To(Equal("0123456789abcdef"))
+		})
+
+		It("falls back to the album when per-track art is disabled", func() {
+			conf.Server.EnableMediaFileCoverArt = false
+			mf := model.MediaFile{ID: "mf-4", AlbumID: "alb-1", HasCoverArt: true}
+			mf.AlbumImage.ImageHash = "0123456789abcdef"
+
+			item := SongToBaseItem(mf, nil)
+			Expect(item.ImageTags).To(BeEmpty())
+			Expect(item.AlbumPrimaryImageTag).To(Equal("0123456789abcdef"))
+		})
+	})
+
+	Describe("primary image tags", func() {
+		It("uses the content hash as the tag and emits the real blurhash", func() {
+			al := model.Album{ID: "alb-1", Name: "Album"}
+			al.ImageHash = "0123456789abcdef"
+			al.BlurHash = "LEHV6nWB2yk8"
+
+			item := AlbumToBaseItem(al, nil)
+			Expect(item.ImageTags).To(HaveKeyWithValue("Primary", "0123456789abcdef"))
+			Expect(item.ImageBlurHashes["Primary"]).To(HaveKeyWithValue("0123456789abcdef", "LEHV6nWB2yk8"))
+		})
+
+		It("synthesizes a blurhash when none was computed", func() {
+			al := model.Album{ID: "alb-2", Name: "Album"}
+			al.ImageHash = "0123456789abcdef"
+
+			item := AlbumToBaseItem(al, nil)
+			Expect(item.ImageTags).To(HaveKeyWithValue("Primary", "0123456789abcdef"))
+			Expect(item.ImageBlurHashes["Primary"]).To(
+				HaveKeyWithValue("0123456789abcdef", blurhash.Synthetic("0123456789abcdef", "")))
+		})
+
+		It("omits tags for known-absent artwork", func() {
+			al := model.Album{ID: "alb-3", Name: "Album"}
+			al.ImageAbsent = true
+
+			item := AlbumToBaseItem(al, nil)
+			Expect(item.ImageTags).To(BeEmpty())
+			Expect(item.ImageBlurHashes).To(BeNil())
+		})
+
+		It("keeps known-absent artwork free of any synthesized value", func() {
+			al := model.Album{ID: "alb-5", Name: "Album"}
+			al.ImageAbsent = true
+
+			item := AlbumToBaseItem(al, nil)
+			Expect(item.ImageBlurHashes).To(BeNil(),
+				"there is no image to key a cache on, and nothing will ever re-key it")
+		})
+
+		It("falls back to the entity id while artwork is still unresolved", func() {
+			item := AlbumToBaseItem(model.Album{ID: "alb-4", Name: "Album"}, nil)
+			Expect(item.ImageTags).To(HaveKeyWithValue("Primary", "alb-4"))
+			Expect(item.ImageBlurHashes["Primary"]).To(HaveKeyWithValue("alb-4", blurhash.Synthetic("alb-4", "")))
+		})
+
+		It("versions an artist's tag by content hash", func() {
+			ar := model.Artist{ID: "art-1", Name: "Artist"}
+			ar.ImageHash = "fedcba9876543210"
+			ar.BlurHash = "L6PZfSi_.AyE"
+
+			item := ArtistToBaseItem(ar, nil)
+			Expect(item.ImageTags).To(HaveKeyWithValue("Primary", "fedcba9876543210"))
+			Expect(item.ImageBlurHashes["Primary"]).To(HaveKeyWithValue("fedcba9876543210", "L6PZfSi_.AyE"))
+		})
+	})
+
+	Describe("song and playlist image tags", func() {
+		It("versions a song's album tag by the album's content hash", func() {
+			mf := model.MediaFile{ID: "song-1", Title: "Song", AlbumID: "alb-1"}
+			mf.AlbumImage.ImageHash = "0123456789abcdef"
+			mf.AlbumImage.BlurHash = "LEHV6nWB2yk8"
+
+			item := SongToBaseItem(mf, nil)
+			Expect(item.AlbumPrimaryImageTag).To(Equal("0123456789abcdef"))
+			Expect(item.ImageBlurHashes["Primary"]).To(HaveKeyWithValue("0123456789abcdef", "LEHV6nWB2yk8"))
+		})
+
+		It("synthesizes a song's album blurhash when the album has none", func() {
+			mf := model.MediaFile{ID: "song-2", Title: "Song", AlbumID: "alb-2"}
+			mf.AlbumImage.ImageHash = "0123456789abcdef"
+
+			item := SongToBaseItem(mf, nil)
+			Expect(item.AlbumPrimaryImageTag).To(Equal("0123456789abcdef"))
+			Expect(item.ImageBlurHashes["Primary"]).To(
+				HaveKeyWithValue("0123456789abcdef", blurhash.Synthetic("0123456789abcdef", "")))
+		})
+
+		It("omits a song's album tag when the album art is known absent", func() {
+			mf := model.MediaFile{ID: "song-3", Title: "Song", AlbumID: "alb-3"}
+			mf.AlbumImage.ImageAbsent = true
+
+			item := SongToBaseItem(mf, nil)
+			Expect(item.AlbumPrimaryImageTag).To(BeEmpty())
+			Expect(item.ImageBlurHashes).To(BeNil())
+		})
+
+		It("versions a playlist tag by content hash instead of UpdatedAt", func() {
+			pl := model.Playlist{ID: "pl-1", Name: "Playlist"}
+			pl.ImageHash = "abcdef0123456789"
+
+			item := PlaylistToBaseItem(pl, nil)
+			Expect(item.ImageTags).To(HaveKeyWithValue("Primary", "abcdef0123456789"))
+		})
+	})
+
+	Describe("per-song artwork", func() {
+		It("emits the track's own Primary tag when it has distinct art", func() {
+			mf := model.MediaFile{ID: "song-own", Title: "Song", AlbumID: "alb-1"}
+			mf.ImageHash = "aaaaaaaaaaaaaaaa"
+			mf.BlurHash = "LTRACKblur"
+			mf.AlbumImage.ImageHash = "bbbbbbbbbbbbbbbb"
+			mf.AlbumImage.BlurHash = "LALBUMblur"
+
+			item := SongToBaseItem(mf, nil)
+			Expect(item.ImageTags).To(HaveKeyWithValue("Primary", "aaaaaaaaaaaaaaaa"))
+			Expect(item.ImageBlurHashes["Primary"]).To(HaveLen(1),
+				"exactly one Primary entry: Go sorts map keys, so a second entry could pair the wrong blurhash with imageId")
+			Expect(item.ImageBlurHashes["Primary"]).To(HaveKeyWithValue("aaaaaaaaaaaaaaaa", "LTRACKblur"))
+		})
+
+		It("falls back to the album tag when the track has no distinct art", func() {
+			mf := model.MediaFile{ID: "song-inherit", Title: "Song", AlbumID: "alb-1"}
+			mf.ImageHash = "bbbbbbbbbbbbbbbb"
+			mf.BlurHash = "LALBUMblur"
+			mf.AlbumImage.ImageHash = "bbbbbbbbbbbbbbbb"
+			mf.AlbumImage.BlurHash = "LALBUMblur"
+
+			item := SongToBaseItem(mf, nil)
+			Expect(item.ImageTags).To(BeEmpty(), "an inherited cover is the album's image, not the track's")
+			Expect(item.AlbumPrimaryImageTag).To(Equal("bbbbbbbbbbbbbbbb"))
+			Expect(item.ImageBlurHashes["Primary"]).To(HaveLen(1))
+			Expect(item.ImageBlurHashes["Primary"]).To(HaveKeyWithValue("bbbbbbbbbbbbbbbb", "LALBUMblur"))
+		})
+
+		It("omits the track tag when its own art is known absent", func() {
+			mf := model.MediaFile{ID: "song-absent", Title: "Song", AlbumID: "alb-1"}
+			mf.ImageAbsent = true
+			mf.AlbumImage.ImageAbsent = true
+
+			item := SongToBaseItem(mf, nil)
+			Expect(item.ImageTags).To(BeEmpty())
+			Expect(item.AlbumPrimaryImageTag).To(BeEmpty())
+			Expect(item.ImageBlurHashes).To(BeNil())
+		})
 	})
 })
 

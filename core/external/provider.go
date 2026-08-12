@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
 	"sort"
 	"strings"
 	"time"
@@ -34,9 +33,7 @@ type Provider interface {
 	UpdateAlbumInfo(ctx context.Context, id string) (*model.Album, error)
 	UpdateArtistInfo(ctx context.Context, id string, count int, includeNotPresent bool) (*model.Artist, error)
 	SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error)
-	TopSongs(ctx context.Context, artist string, count int) (model.MediaFiles, error)
-	ArtistImage(ctx context.Context, id string) (*url.URL, error)
-	AlbumImage(ctx context.Context, id string) (*url.URL, error)
+	TopSongs(ctx context.Context, artist, artistId string, count int) (model.MediaFiles, error)
 }
 
 type provider struct {
@@ -258,7 +255,7 @@ func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (au
 	// Call all registered agents and collect information
 	g := errgroup.Group{}
 	g.SetLimit(2)
-	g.Go(func() error { e.callGetImage(ctx, e.ag, &artist); return nil })
+	g.Go(func() error { _ = e.callGetImage(ctx, e.ag, &artist); return nil })
 	g.Go(func() error { e.callGetBiography(ctx, e.ag, &artist); return nil })
 	g.Go(func() error { e.callGetURL(ctx, e.ag, &artist); return nil })
 	g.Go(func() error { e.callGetSimilarArtists(ctx, e.ag, &artist, maxSimilarArtists, true); return nil })
@@ -370,81 +367,16 @@ func (e *provider) similarSongsFallback(ctx context.Context, id string, count in
 	return similarSongs, nil
 }
 
-func (e *provider) ArtistImage(ctx context.Context, id string) (*url.URL, error) {
-	artist, err := e.getArtist(ctx, id)
+func (e *provider) TopSongs(ctx context.Context, artistName, id string, count int) (model.MediaFiles, error) {
+	artist, err := e.findArtist(ctx, artistName, id)
 	if err != nil {
+		if errors.Is(err, model.ErrNotFound) {
+			log.Error(ctx, "Artist not found", "name", artistName, "id", id, err)
+			return nil, nil
+		}
+
+		log.Error(ctx, "Failure occurred when trying to fetch artist", "name", artistName, "id", id, err)
 		return nil, err
-	}
-
-	imageUrl := artist.ArtistImageUrl()
-	if imageUrl == "" {
-		// No cached URL — must fetch from external source synchronously
-		e.callGetImage(ctx, e.ag, &artist)
-		if utils.IsCtxDone(ctx) {
-			log.Warn(ctx, "ArtistImage call canceled", ctx.Err())
-			return nil, ctx.Err()
-		}
-		imageUrl = artist.ArtistImageUrl()
-	} else {
-		// If cached info is expired, enqueue a background refresh so that config changes
-		// (e.g. disabling an agent) take effect without waiting for a full artist info refresh.
-		updatedAt := V(artist.ExternalInfoUpdatedAt)
-		if !updatedAt.IsZero() && time.Since(updatedAt) > conf.Server.DevArtistInfoTimeToLive {
-			log.Debug(ctx, "Artist image info expired, enqueuing background refresh", "artist", artist.Name(), "updatedAt", updatedAt)
-			e.artistQueue.enqueue(&artist)
-		}
-	}
-
-	if imageUrl == "" {
-		return nil, model.ErrNotFound
-	}
-	return url.Parse(imageUrl)
-}
-
-func (e *provider) AlbumImage(ctx context.Context, id string) (*url.URL, error) {
-	album, err := e.getAlbum(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-
-	albumName := album.Name()
-	images, err := e.ag.GetAlbumImages(ctx, albumName, album.AlbumArtist, album.MbzAlbumID)
-	if err != nil {
-		switch {
-		case errors.Is(err, agents.ErrNotFound):
-			log.Trace(ctx, "Album not found in agent", "albumID", id, "name", albumName, "artist", album.AlbumArtist)
-			return nil, model.ErrNotFound
-		case errors.Is(err, context.Canceled):
-			log.Debug(ctx, "GetAlbumImages call canceled", err)
-		default:
-			log.Warn(ctx, "Error getting album images from agent", "albumID", id, "name", albumName, "artist", album.AlbumArtist, err)
-		}
-		return nil, err
-	}
-
-	if len(images) == 0 {
-		log.Warn(ctx, "Agent returned no images without error", "albumID", id, "name", albumName, "artist", album.AlbumArtist)
-		return nil, model.ErrNotFound
-	}
-
-	// Return the biggest image
-	var img agents.ExternalImage
-	for _, i := range images {
-		if img.Size <= i.Size {
-			img = i
-		}
-	}
-	if img.URL == "" {
-		return nil, model.ErrNotFound
-	}
-	return url.Parse(img.URL)
-}
-
-func (e *provider) TopSongs(ctx context.Context, artistName string, count int) (model.MediaFiles, error) {
-	artist, err := e.findArtistByName(ctx, artistName)
-	if err != nil {
-		log.Error(ctx, "Artist not found", "name", artistName, err)
-		return nil, nil
 	}
 
 	songs, err := e.getMatchingTopSongs(ctx, e.ag, artist, count)
@@ -519,10 +451,15 @@ func (e *provider) callGetBiography(ctx context.Context, agent agents.ArtistBiog
 	artist.Biography = strings.ReplaceAll(bio, "<a ", "<a target='_blank' ")
 }
 
-func (e *provider) callGetImage(ctx context.Context, agent agents.ArtistImageRetriever, artist *auxArtist) {
+// callGetImage populates artist's image URLs. A transient agent failure is
+// returned as-is; a definitive "no image" is normalized to model.ErrNotFound.
+func (e *provider) callGetImage(ctx context.Context, agent agents.ArtistImageRetriever, artist *auxArtist) error {
 	images, err := agent.GetArtistImages(ctx, artist.ID, artist.Name(), artist.MbzArtistID)
 	if err != nil {
-		return
+		if errors.Is(err, agents.ErrNotFound) {
+			return model.ErrNotFound
+		}
+		return err
 	}
 	sort.Slice(images, func(i, j int) bool { return images[i].Size > images[j].Size })
 
@@ -535,6 +472,7 @@ func (e *provider) callGetImage(ctx context.Context, agent agents.ArtistImageRet
 	if len(images) >= 3 {
 		artist.SmallImageUrl = images[2].URL
 	}
+	return nil
 }
 
 func (e *provider) callGetSimilarArtists(ctx context.Context, agent agents.ArtistSimilarRetriever, artist *auxArtist,
@@ -713,7 +651,24 @@ func (e *provider) loadArtistsByName(ctx context.Context, similar []agents.Artis
 	return matches, nil
 }
 
-func (e *provider) findArtistByName(ctx context.Context, artistName string) (*auxArtist, error) {
+func (e *provider) findArtist(ctx context.Context, artistName, id string) (*auxArtist, error) {
+	if id != "" {
+		artist, err := e.ds.Artist(ctx).Get(id)
+		if err == nil {
+			return &auxArtist{Artist: *artist}, nil
+		}
+
+		if errors.Is(err, model.ErrNotFound) {
+			log.Warn(ctx, "Could not find artist by id", "id", id, err)
+		} else {
+			return nil, err
+		}
+	}
+
+	if artistName == "" {
+		return nil, model.ErrNotFound
+	}
+
 	artists, err := e.ds.Artist(ctx).GetAll(model.QueryOptions{
 		Filters: squirrel.Like{"artist.name": artistName},
 		Max:     1,

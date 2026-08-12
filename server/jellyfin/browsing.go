@@ -35,6 +35,7 @@ func (api *Router) listArtistsByRole(w http.ResponseWriter, r *http.Request, rol
 		scopeIDs: scopeIDs,
 		genreIds: decodedQueryIDs(r, "genreids"),
 		search:   searchTerm(p),
+		fields:   dto.ParseFields(p.Strings("fields")...),
 	}
 	if q.search != "" {
 		opts.Max = clampLimit(opts.Max, defaultSearchLimit, maxSearchLimit)

@@ -219,7 +219,7 @@ var _ = Describe("Items", func() {
 			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
 			sql, _, err := albumRepo.Options.Filters.ToSql()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(sql).To(ContainSubstring("json_tree"))
+			Expect(sql).To(ContainSubstring("album_artists"))
 		})
 
 		It("lists artists when IncludeItemTypes=MusicArtist", func() {
@@ -462,9 +462,9 @@ var _ = Describe("Items", func() {
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res dto.QueryResult
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
-			// Clipped to the window, and still the real row at that index — not the album behind it.
+			// Clipped to the window; the interleaved album takes one slot, shifting this song in by one.
 			Expect(res.Items).To(HaveLen(1))
-			Expect(res.Items[0].Id).To(Equal(dto.EncodeID(songs[maxSearchLimit-1].ID)))
+			Expect(res.Items[0].Id).To(Equal(dto.EncodeID(songs[maxSearchLimit-2].ID)))
 		})
 
 		It("bounds an unbounded multi-type search to the default in total, not per type", func() {
@@ -500,7 +500,8 @@ var _ = Describe("Items", func() {
 			var res dto.QueryResult
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
 			Expect(res.Items).ToNot(BeEmpty())
-			Expect(res.Items[0].Id).To(Equal(dto.EncodeID(songs[defaultSearchLimit+50].ID)))
+			// The interleaved album takes one slot ahead of it, shifting this song in by one.
+			Expect(res.Items[0].Id).To(Equal(dto.EncodeID(songs[defaultSearchLimit+49].ID)))
 		})
 
 		It("reports a search total beyond the fetched page instead of the page length", func() {
@@ -708,7 +709,7 @@ var _ = Describe("Items", func() {
 				Expect(w.Code).To(Equal(http.StatusOK))
 				sql, args, err := albumRepo.Options.Filters.ToSql()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(sql).NotTo(ContainSubstring("json_tree")) // not treated as an artist-parent filter
+				Expect(sql).NotTo(ContainSubstring("album_artists")) // not treated as an artist-parent filter
 				Expect(sql).To(ContainSubstring("library_id"))
 				Expect(args).To(ContainElement(2))
 			})
@@ -724,7 +725,7 @@ var _ = Describe("Items", func() {
 				sql, args, err := albumRepo.Options.Filters.ToSql()
 				Expect(err).NotTo(HaveOccurred())
 				// Falls back to treating "99" as an (empty-matching) artist-parent id...
-				Expect(sql).To(ContainSubstring("json_tree"))
+				Expect(sql).To(ContainSubstring("album_artists"))
 				// ...while still scoping to the user's own accessible libraries.
 				Expect(sql).To(ContainSubstring("library_id"))
 				Expect(args).To(ContainElement(1))
@@ -746,6 +747,68 @@ var _ = Describe("Items", func() {
 				sql, _, err := albumRepo.Options.Filters.ToSql()
 				Expect(err).NotTo(HaveOccurred())
 				Expect(sql).NotTo(ContainSubstring("library_id"))
+			})
+		})
+
+		Describe("mixed IncludeItemTypes merge", func() {
+			BeforeEach(func() {
+				ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1", Name: "One"}, {ID: "a2", Name: "Two"}})
+				ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: "s1", Title: "S1"}, {ID: "s2", Title: "S2"}})
+			})
+
+			It("returns a mix of both types, not all of one", func() {
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio,MusicAlbum&Recursive=true&Limit=4", nil).WithContext(ctxUser())
+				invoke(api.getItems, w, r)
+				var res dto.QueryResult
+				Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+				Expect(res.Items).To(HaveLen(4))
+				Expect(res.TotalRecordCount).To(Equal(4))
+				types := map[string]int{}
+				for _, it := range res.Items {
+					types[it.Type]++
+				}
+				Expect(types["Audio"]).To(Equal(2))
+				Expect(types["MusicAlbum"]).To(Equal(2))
+			})
+
+			It("interleaves types round-robin (Audio first, per IncludeItemTypes order)", func() {
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio,MusicAlbum&Recursive=true&Limit=4", nil).WithContext(ctxUser())
+				invoke(api.getItems, w, r)
+				var res dto.QueryResult
+				Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+				got := []string{res.Items[0].Type, res.Items[1].Type, res.Items[2].Type, res.Items[3].Type}
+				Expect(got).To(Equal([]string{"Audio", "MusicAlbum", "Audio", "MusicAlbum"}))
+			})
+
+			It("honors Limit across the merged set", func() {
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio,MusicAlbum&Recursive=true&Limit=1", nil).WithContext(ctxUser())
+				invoke(api.getItems, w, r)
+				var res dto.QueryResult
+				Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+				Expect(res.Items).To(HaveLen(1))
+				Expect(res.TotalRecordCount).To(Equal(4))
+			})
+
+			It("serves a full random page from offset 0 regardless of StartIndex", func() {
+				// A deep StartIndex on a random merge must not materialize offset+limit rows; since random
+				// reshuffles per request, offset 0 is an equivalent fresh draw. Old behavior returned empty.
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio,MusicAlbum&SortBy=Random&Recursive=true&StartIndex=1000&Limit=4", nil).WithContext(ctxUser())
+				invoke(api.getItems, w, r)
+				var res dto.QueryResult
+				Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+				Expect(res.Items).To(HaveLen(4))
+			})
+
+			It("propagates a per-type query error", func() {
+				ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetError(true)
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio,MusicAlbum&Recursive=true&Limit=4", nil).WithContext(ctxUser())
+				invoke(api.getItems, w, r)
+				Expect(w.Code).To(Equal(http.StatusInternalServerError))
 			})
 		})
 	})
@@ -854,6 +917,21 @@ var _ = Describe("Items", func() {
 			Expect(w.Code).To(Equal(http.StatusNotFound))
 		})
 
+		// Finamp's genre "See all" fetches the genre by id; a 404 white-screens it (see resolveItemByID).
+		It("resolves a genre id as a MusicGenre item", func() {
+			Expect(ds.Genre(context.Background()).(*tests.MockedGenreRepo).Put(&model.Genre{ID: "g1", Name: "Rock"})).To(Succeed())
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items/"+dto.EncodeID("g1"), nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", dto.EncodeID("g1"))
+			invoke(api.getItem, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var item dto.BaseItemDto
+			Expect(json.Unmarshal(w.Body.Bytes(), &item)).To(Succeed())
+			Expect(item.Id).To(Equal(dto.EncodeID("g1")))
+			Expect(item.Name).To(Equal("Rock"))
+			Expect(item.Type).To(Equal("MusicGenre"))
+		})
+
 		It("resolves a library-view id for an admin even though their Libraries slice is empty", func() {
 			ds.Library(context.Background()).(*tests.MockLibraryRepo).SetData(model.Libraries{{ID: 1, Name: "Music Library"}})
 			w := httptest.NewRecorder()
@@ -894,6 +972,46 @@ var _ = Describe("Items", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(sql).To(ContainSubstring("library_id"))
 			Expect(args).To(ContainElements(1, 2))
+		})
+	})
+
+	Describe("applySort random for all merge types", func() {
+		DescribeTable("maps Random -> random",
+			func(itemType string) {
+				var opts model.QueryOptions
+				applySort(&opts, itemType, "Random", "")
+				Expect(opts.Sort).To(Equal("random"))
+			},
+			Entry("Audio", "Audio"),
+			Entry("MusicAlbum", "MusicAlbum"),
+			Entry("MusicArtist", "MusicArtist"),
+			Entry("MusicGenre", "MusicGenre"),
+			Entry("Playlist", "Playlist"),
+		)
+	})
+
+	Describe("interleave", func() {
+		It("round-robins one item per list in turn", func() {
+			lists := [][]dto.BaseItemDto{
+				{{Id: "a0"}, {Id: "a1"}, {Id: "a2"}},
+				{{Id: "b0"}, {Id: "b1"}},
+			}
+			got := interleave(lists)
+			ids := make([]string, len(got))
+			for i, it := range got {
+				ids[i] = it.Id
+			}
+			Expect(ids).To(Equal([]string{"a0", "b0", "a1", "b1", "a2"}))
+		})
+
+		It("returns empty for no lists", func() {
+			Expect(interleave(nil)).To(BeEmpty())
+		})
+	})
+
+	Describe("parseTypes", func() {
+		It("dedupes repeated types, preserving first-seen order", func() {
+			Expect(parseTypes("Audio,MusicAlbum,Audio")).To(Equal([]string{"Audio", "MusicAlbum"}))
 		})
 	})
 })

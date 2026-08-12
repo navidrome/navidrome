@@ -90,9 +90,9 @@ skipped, so it doesn't create a nameless player.
 Navidrome item ids are **hex-encoded at the API boundary** (`dto.EncodeID`/`DecodeID`): every id
 is hex-encoded on the way out and hex-decoded on the way in. This is required because some clients
 parse ids as radix-16 — Finamp's queue `packIds`, for instance, does `int.parse(chunk, radix:16)`,
-which chokes on Navidrome's base-62 nanoids (e.g. `5QFKvMsJrd57QE2Le2dKKo`). Because a raw MD5 id
-from an old migrated library is itself valid hex, correctness depends on every emit path encoding
-and every receive path decoding — see `dto/ids.go`.
+which chokes on Navidrome's base62 ids (e.g. `5QFKvMsJrd57QE2Le2dKKo`). Because a base62 id can
+itself be valid hex, correctness depends on every emit path encoding and every receive path
+decoding — see `dto/ids.go`.
 
 ## Multi-library behavior
 
@@ -180,17 +180,25 @@ warmer uses — so user-scoped items like private playlists still resolve their 
 falling back to the placeholder. Album, artist, media-file and playlist ids are all resolved to
 their Navidrome `ArtworkID`.
 
+Blurhashes come in three tiers. A real blurhash is computed once in
+`core/artwork` from the decoded image and stored per artwork row; the mappers read it whenever it
+exists. While artwork is still unresolved, `dto/mappers.go` instead emits a synthetic 3x3 blurhash
+(`core/artwork/blurhash.Synthetic`), seeded on the image tag so it's effectively unique per image
+and can never collide with a real hash's leading byte, giving clients a valid cache key while art
+loads. A track awaiting embedded-art extraction has its synthetic hash tinted from the parent
+album's dominant colour. Known-absent artwork emits no tag and no blurhash at all.
+
 ## Finamp saved-queue id truncation
 
 Real Jellyfin item ids are GUIDs — 128-bit values, always 32 hex characters. Finamp relies on that
 when persisting its play queue across restarts: `packIds()` bit-packs every id into exactly 16
-bytes. Navidrome ids are longer (nanoid ids can exceed 128 bits, so they cannot be mapped into
-GUIDs), which means Finamp silently stores only the first 16 characters of each id and asks for
-those **truncated ids** back when restoring the queue — item lookups, then streaming, images,
-favorites and playback reports for the restored tracks.
+bytes. Navidrome ids are 22-character base62 strings, not 32-hex GUIDs, which means Finamp silently
+stores only the first 16 characters of each id and asks for those **truncated ids** back when
+restoring the queue — item lookups, then streaming, images, favorites and playback reports for the
+restored tracks.
 
 This API compensates server-side (`truncated_ids.go`): a 16-character id — a length no Navidrome
-id family uses — is resolved to the full id by unique-prefix lookup (an indexed range scan;
+id uses — is resolved to the full id by unique-prefix lookup (an indexed range scan;
 ambiguity is detected and fails safe). The `/Items?ids=` batch response echoes the id **as
 requested**, because Finamp matches restored items back to its stored ids, and the other item
 endpoints accept truncated ids transparently.
@@ -330,16 +338,6 @@ make test PKG=./server/jellyfin/...
   Access control for artists is enforced by scoping the `Artists`/`Items?IncludeItemTypes=MusicArtist`
   *list* to the user's libraries, plus the persistence layer's own defense-in-depth; a client
   that already has an artist id from elsewhere is not re-checked against library membership.
-- **Blurhashes are synthetic, not computed from the artwork (follow-up).** `ImageBlurHashes` is
-  populated by `dto/blurhash.go`, which derives a well-formed **1-component (solid color)**
-  blurhash by hashing the item id — it never looks at the actual image. Real Jellyfin computes a
-  multi-component blurhash from the cover's pixels (downscaled to 128×128) once at scan time and
-  stores it per image, so its placeholder approximates the art. Ours satisfies the protocol
-  (Finamp gets a valid value to use as a de-dup key and a placeholder, no missing-blurhash
-  warning) but renders as a flat color while art loads. A proper implementation would compute the
-  real blurhash in the `core/artwork` pipeline (where the image is already decoded), cache it
-  keyed like the artwork, and have the mappers read it — keeping the synthetic value as a fallback
-  for art that hasn't been rendered yet.
 - **The WebSocket only keep-alives; it pushes no events (follow-up).** `GET socket` sends a
   `ForceKeepAlive` and answers `KeepAlive` pings so real-time clients (Finamp) settle into a
   working session instead of 404-loop-reconnecting, but it never pushes anything. A follow-up
