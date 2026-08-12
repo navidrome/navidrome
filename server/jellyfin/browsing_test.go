@@ -74,7 +74,7 @@ var _ = Describe("Browsing", func() {
 			artistRepo.SetData(model.Artists{{ID: testID("ar1"), Name: "Artist"}})
 			w := httptest.NewRecorder()
 			libs := model.Libraries{{ID: 1}, {ID: 2}}
-			r := httptest.NewRequest("GET", "/Artists?ParentId=2", nil).WithContext(ctxUser(libs))
+			r := httptest.NewRequest("GET", "/Artists?ParentId="+dto.EncodeLibraryID(2), nil).WithContext(ctxUser(libs))
 			invoke(api.getArtists, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			sql, args, err := artistRepo.Options.Filters.ToSql()
@@ -89,7 +89,7 @@ var _ = Describe("Browsing", func() {
 			artistRepo.SetData(model.Artists{{ID: testID("ar1"), Name: "Artist"}})
 			w := httptest.NewRecorder()
 			libs := model.Libraries{{ID: 1}} // no access to library 99
-			r := httptest.NewRequest("GET", "/Artists?ParentId=99", nil).WithContext(ctxUser(libs))
+			r := httptest.NewRequest("GET", "/Artists?ParentId="+dto.EncodeLibraryID(99), nil).WithContext(ctxUser(libs))
 			invoke(api.getArtists, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			sql, args, err := artistRepo.Options.Filters.ToSql()

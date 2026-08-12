@@ -88,7 +88,7 @@ var _ = Describe("Items", func() {
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
 			Expect(res.Items).To(HaveLen(2))
 			Expect(res.Items[0].Id).To(Equal(dto.EncodeID(testID("s1"))))
-			Expect(res.Items[0].PlaylistItemId).To(Equal(dto.EncodeID("1")))
+			Expect(res.Items[0].PlaylistItemId).To(Equal(dto.EncodePlaylistEntryID("1")))
 			Expect(res.TotalRecordCount).To(Equal(2))
 		})
 
@@ -145,7 +145,7 @@ var _ = Describe("Items", func() {
 
 			It("returns no songs for a library parent, as tracks are never its direct children", func() {
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeID("1")+"&IncludeItemTypes=Audio&Recursive=false", nil).
+				r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeLibraryID(1)+"&IncludeItemTypes=Audio&Recursive=false", nil).
 					WithContext(ctxUser())
 				invoke(api.getItems, w, r)
 				Expect(w.Code).To(Equal(http.StatusOK))
@@ -157,7 +157,7 @@ var _ = Describe("Items", func() {
 
 			It("drops only Audio from a multi-type library query", func() {
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeID("1")+"&IncludeItemTypes=Audio,MusicAlbum&Recursive=false", nil).
+				r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeLibraryID(1)+"&IncludeItemTypes=Audio,MusicAlbum&Recursive=false", nil).
 					WithContext(ctxUser())
 				invoke(api.getItems, w, r)
 				var res dto.QueryResult
@@ -168,7 +168,7 @@ var _ = Describe("Items", func() {
 
 			It("still lists albums for a library parent, as they are its direct children", func() {
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeID("1")+"&IncludeItemTypes=MusicAlbum&Recursive=false", nil).
+				r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeLibraryID(1)+"&IncludeItemTypes=MusicAlbum&Recursive=false", nil).
 					WithContext(ctxUser())
 				invoke(api.getItems, w, r)
 				var res dto.QueryResult
@@ -201,7 +201,7 @@ var _ = Describe("Items", func() {
 			// `recursive ?? false`, so an omitted Recursive is a non-recursive request.
 			It("treats an omitted Recursive as false, like Jellyfin", func() {
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeID("1")+"&IncludeItemTypes=Audio", nil).
+				r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeLibraryID(1)+"&IncludeItemTypes=Audio", nil).
 					WithContext(ctxUser())
 				invoke(api.getItems, w, r)
 				var res dto.QueryResult
@@ -710,7 +710,7 @@ var _ = Describe("Items", func() {
 				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 				w := httptest.NewRecorder()
 				libs := model.Libraries{{ID: 1}, {ID: 2}}
-				r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeID("2")+"&IncludeItemTypes=MusicAlbum", nil).WithContext(ctxUserWithLibraries(libs))
+				r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeLibraryID(2)+"&IncludeItemTypes=MusicAlbum", nil).WithContext(ctxUserWithLibraries(libs))
 				invoke(api.getItems, w, r)
 				Expect(w.Code).To(Equal(http.StatusOK))
 				sql, args, err := albumRepo.Options.Filters.ToSql()
@@ -725,7 +725,7 @@ var _ = Describe("Items", func() {
 				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 				w := httptest.NewRecorder()
 				libs := model.Libraries{{ID: 1}} // no access to library 99
-				r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeID("99")+"&IncludeItemTypes=MusicAlbum", nil).WithContext(ctxUserWithLibraries(libs))
+				r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeLibraryID(99)+"&IncludeItemTypes=MusicAlbum", nil).WithContext(ctxUserWithLibraries(libs))
 				invoke(api.getItems, w, r)
 				Expect(w.Code).To(Equal(http.StatusOK))
 				sql, args, err := albumRepo.Options.Filters.ToSql()
@@ -876,13 +876,13 @@ var _ = Describe("Items", func() {
 		It("resolves a library-view id (from /UserViews) as a CollectionFolder item", func() {
 			w := httptest.NewRecorder()
 			libs := model.Libraries{{ID: 1, Name: "Music Library"}}
-			r := httptest.NewRequest("GET", "/Items/"+dto.EncodeID("1"), nil).WithContext(ctxUserWithLibraries(libs))
-			r = withChiURLParam(r, "itemId", dto.EncodeID("1"))
+			r := httptest.NewRequest("GET", "/Items/"+dto.EncodeLibraryID(1), nil).WithContext(ctxUserWithLibraries(libs))
+			r = withChiURLParam(r, "itemId", dto.EncodeLibraryID(1))
 			invoke(api.getItem, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var item dto.BaseItemDto
 			Expect(json.Unmarshal(w.Body.Bytes(), &item)).To(Succeed())
-			Expect(item.Id).To(Equal(dto.EncodeID("1")))
+			Expect(item.Id).To(Equal(dto.EncodeLibraryID(1)))
 			Expect(item.Name).To(Equal("Music Library"))
 			Expect(item.Type).To(Equal("CollectionFolder"))
 			Expect(item.CollectionType).To(Equal("music"))
@@ -892,8 +892,8 @@ var _ = Describe("Items", func() {
 		It("does not resolve a library-view id the user has no access to", func() {
 			w := httptest.NewRecorder()
 			libs := model.Libraries{{ID: 2, Name: "Other"}} // no access to library 1
-			r := httptest.NewRequest("GET", "/Items/"+dto.EncodeID("1"), nil).WithContext(ctxUserWithLibraries(libs))
-			r = withChiURLParam(r, "itemId", dto.EncodeID("1"))
+			r := httptest.NewRequest("GET", "/Items/"+dto.EncodeLibraryID(1), nil).WithContext(ctxUserWithLibraries(libs))
+			r = withChiURLParam(r, "itemId", dto.EncodeLibraryID(1))
 			invoke(api.getItem, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
 		})
@@ -941,13 +941,13 @@ var _ = Describe("Items", func() {
 		It("resolves a library-view id for an admin even though their Libraries slice is empty", func() {
 			ds.Library(context.Background()).(*tests.MockLibraryRepo).SetData(model.Libraries{{ID: 1, Name: "Music Library"}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items/"+dto.EncodeID("1"), nil).WithContext(ctxAdmin())
-			r = withChiURLParam(r, "itemId", dto.EncodeID("1"))
+			r := httptest.NewRequest("GET", "/Items/"+dto.EncodeLibraryID(1), nil).WithContext(ctxAdmin())
+			r = withChiURLParam(r, "itemId", dto.EncodeLibraryID(1))
 			invoke(api.getItem, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var item dto.BaseItemDto
 			Expect(json.Unmarshal(w.Body.Bytes(), &item)).To(Succeed())
-			Expect(item.Id).To(Equal(dto.EncodeID("1")))
+			Expect(item.Id).To(Equal(dto.EncodeLibraryID(1)))
 			Expect(item.Name).To(Equal("Music Library"))
 			Expect(item.Type).To(Equal("CollectionFolder"))
 		})

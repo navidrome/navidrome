@@ -135,12 +135,12 @@ var _ = Describe("Playlists", func() {
 			q := queryResult(get("/Items?includeItemTypes=ManualPlaylistsFolder&excludeItemTypes=CollectionFolder"))
 			Expect(q.Items).To(HaveLen(1))
 			Expect(q.Items[0].CollectionType).To(Equal("playlists"))
-			Expect(q.Items[0].Id).To(Equal(enc("playlists")))
+			Expect(q.Items[0].Id).To(Equal(dto.PlaylistsFolderGUID))
 		})
 
 		It("lists the user's playlists when browsing the folder by ParentId (no IncludeItemTypes)", func() {
 			createPlaylist("My Mix", nil)
-			q := queryResult(get("/Items?parentId=" + enc("playlists")))
+			q := queryResult(get("/Items?parentId=" + dto.PlaylistsFolderGUID))
 			Expect(names(q.Items)).To(ContainElement("My Mix"))
 			Expect(q.Items[0].Type).To(Equal("Playlist"))
 			// Jellify keeps only playlists whose Path contains "data".
@@ -149,10 +149,10 @@ var _ = Describe("Playlists", func() {
 
 		It("resolves the synthetic playlists folder by its own advertised id", func() {
 			var item dto.BaseItemDto
-			parseInto(get("/Items/"+enc("playlists")), &item)
+			parseInto(get("/Items/"+dto.PlaylistsFolderGUID), &item)
 			Expect(item.Type).To(Equal("ManualPlaylistsFolder"))
 			Expect(item.CollectionType).To(Equal("playlists"))
-			Expect(item.Id).To(Equal(enc("playlists")))
+			Expect(item.Id).To(Equal(dto.PlaylistsFolderGUID))
 		})
 	})
 

@@ -51,7 +51,7 @@ func libraryScopeFilter(scope []int) squirrel.Sqlizer {
 // Shared by getUserViews and getItem, since Finamp fetches a UserView's id as a plain item.
 func libraryView(lib model.Library) dto.BaseItemDto {
 	return dto.BaseItemDto{
-		Id:                dto.EncodeID(strconv.Itoa(lib.ID)),
+		Id:                dto.EncodeLibraryID(lib.ID),
 		Name:              lib.Name,
 		Type:              "CollectionFolder",
 		CollectionType:    "music",

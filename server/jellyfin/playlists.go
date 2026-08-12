@@ -18,15 +18,14 @@ import (
 )
 
 // playlistsFolderID is the reserved id of the synthetic "playlists library" folder. Clients resolve
-// it via a ManualPlaylistsFolder query, then list playlists with ParentId set to it. The literal
-// can't collide with real ids (those are hashes).
-const playlistsFolderID = "playlists"
+// it via a ManualPlaylistsFolder query, then list playlists with ParentId set to it.
+const playlistsFolderID = dto.PlaylistsFolderID
 
 // playlistsFolder is the item returned for a ManualPlaylistsFolder query. CollectionType must be
 // "playlists" — how the client identifies it; without it Jellify's playlist-library query loops.
 func playlistsFolder() dto.BaseItemDto {
 	return dto.BaseItemDto{
-		Id:             dto.EncodeID(playlistsFolderID),
+		Id:             dto.PlaylistsFolderGUID,
 		Name:           "Playlists",
 		Type:           "ManualPlaylistsFolder",
 		CollectionType: "playlists",
@@ -146,7 +145,7 @@ func (api *Router) playlistTrackPage(repo model.PlaylistTrackRepository, fields 
 // individually removable.
 func trackToBaseItem(t model.PlaylistTrack, fields dto.Fields) dto.BaseItemDto {
 	item := dto.SongToBaseItem(t.MediaFile, fields)
-	item.PlaylistItemId = dto.EncodeID(t.ID)
+	item.PlaylistItemId = dto.EncodePlaylistEntryID(t.ID)
 	return item
 }
 

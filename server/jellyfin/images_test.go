@@ -81,7 +81,7 @@ var _ = Describe("Images", func() {
 		fa := &fakeArtwork{}
 		api := &Router{ds: ds, artwork: fa}
 
-		w, r := newImageRequest(dto.EncodeID("deleted-item"))
+		w, r := newImageRequest(dto.EncodeID(testID("deleted-item")))
 		api.getItemImage(w, r)
 
 		Expect(fa.recvId).To(BeEmpty(), "an empty artwork id can only yield a placeholder")

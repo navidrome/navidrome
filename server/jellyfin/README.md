@@ -85,15 +85,6 @@ player id is the device id from `X-Emby-Authorization` (`DeviceId="..."`); the p
 client/device info (e.g. the `GET socket` handshake, which authenticates via `?api_key=` only) is
 skipped, so it doesn't create a nameless player.
 
-## ID encoding
-
-Navidrome item ids are **hex-encoded at the API boundary** (`dto.EncodeID`/`DecodeID`): every id
-is hex-encoded on the way out and hex-decoded on the way in. This is required because some clients
-parse ids as radix-16 — Finamp's queue `packIds`, for instance, does `int.parse(chunk, radix:16)`,
-which chokes on Navidrome's base62 ids (e.g. `5QFKvMsJrd57QE2Le2dKKo`). Because a base62 id can
-itself be valid hex, correctness depends on every emit path encoding and every receive path
-decoding — see `dto/ids.go`.
-
 ## Multi-library behavior
 
 Jellyfin has no native concept of multiple music libraries the way Navidrome does, so each
@@ -187,6 +178,21 @@ exists. While artwork is still unresolved, `dto/mappers.go` instead emits a synt
 and can never collide with a real hash's leading byte, giving clients a valid cache key while art
 loads. A track awaiting embedded-art extraction has its synthetic hash tinted from the parent
 album's dominant colour. Known-absent artwork emits no tag and no blurhash at all.
+
+## Item ids are GUIDs
+
+Jellyfin item ids are GUIDs, serialized as 32 lowercase hex chars with no dashes
+(`Guid.ToString("N")`). Navidrome ids are canonical 22-char base62 encodings of a 128-bit value,
+so `dto.EncodeID`/`dto.DecodeID` map between the two losslessly via `model/id`.
+
+Three emitted ids aren't 128-bit values: integer library ids, the synthetic playlists folder, and
+`PlaylistItemId` (a playlist *entry position* — `playlist_tracks.id` is an `integer` column).
+They use a reserved GUID space — 12 zero bytes, a non-zero kind tag, a 24-bit payload — so
+library `1` is `00000000000000000000000001000001`. The tag is never zero, because Jellyfin
+serializes the all-zero GUID as `null`.
+
+`DecodeID` accepts dashed and uppercase GUIDs (Jellyfin's `Guid.Parse` does) and returns `""`
+for anything malformed, which handlers surface as a 404.
 
 ## Finamp saved-queue id truncation
 

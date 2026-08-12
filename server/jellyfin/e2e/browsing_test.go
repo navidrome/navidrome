@@ -151,7 +151,7 @@ var _ = Describe("Browsing", func() {
 	// Finamp's download sync asks a library for the tracks outside any album this way; answering
 	// with every track would stream the whole library.
 	Describe("Recursive=false", func() {
-		lib1 := enc("1")
+		lib1 := dto.EncodeLibraryID(1)
 
 		It("returns no songs for a library parent", func() {
 			q := queryResult(get("/Items?IncludeItemTypes=Audio&ParentId=" + lib1 + "&Recursive=false"))
@@ -173,7 +173,7 @@ var _ = Describe("Browsing", func() {
 	// Finamp's artist screen sends ParentId=<libraryId> (scoping) plus AlbumArtistIds/ArtistIds
 	// for the actual artist filter, not ParentId=<artistId>.
 	Describe("artist filtering (AlbumArtistIds / ArtistIds)", func() {
-		lib1 := enc("1")
+		lib1 := dto.EncodeLibraryID(1)
 
 		It("filters albums by AlbumArtistIds", func() {
 			q := queryResult(get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true&ParentId=" + lib1 + "&AlbumArtistIds=" + enc(artistID("The Beatles"))))
@@ -261,16 +261,16 @@ var _ = Describe("Browsing", func() {
 
 		It("returns filter lists scoped to a ParentId library", func() {
 			var filters dto.QueryFiltersLegacy
-			parseInto(get("/Items/Filters?ParentId="+enc("1")+"&IncludeItemTypes=Audio&Recursive=true"), &filters)
+			parseInto(get("/Items/Filters?ParentId="+dto.EncodeLibraryID(1)+"&IncludeItemTypes=Audio&Recursive=true"), &filters)
 			Expect(filters.Years).To(ContainElements(1959, 1965))
-			studios := queryResult(get("/Studios?ParentId=" + enc("1")))
+			studios := queryResult(get("/Studios?ParentId=" + dto.EncodeLibraryID(1)))
 			Expect(names(studios.Items)).To(ContainElement("Columbia"))
 		})
 	})
 
 	// Finamp's genre screen sends ParentId=<libraryId> (scoping) plus GenreIds=<genreId>.
 	Describe("genre filtering (GenreIds)", func() {
-		lib1 := enc("1")
+		lib1 := dto.EncodeLibraryID(1)
 
 		It("filters albums by GenreIds", func() {
 			q := queryResult(get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true&ParentId=" + lib1 + "&GenreIds=" + enc(genreID("Jazz"))))
@@ -327,7 +327,7 @@ var _ = Describe("Browsing", func() {
 	// binds them case-insensitively; these guard that our dispatcher does too, and that browsing an
 	// album with only parentId (no IncludeItemTypes, as Jellify does) returns its tracks.
 	Describe("camelCase query params (Jellify / JS SDK)", func() {
-		lib1 := enc("1")
+		lib1 := dto.EncodeLibraryID(1)
 
 		It("filters albums by camelCase albumArtistIds", func() {
 			q := queryResult(get("/Items?includeItemTypes=MusicAlbum&recursive=true&parentId=" + lib1 + "&albumArtistIds=" + enc(artistID("The Beatles"))))
