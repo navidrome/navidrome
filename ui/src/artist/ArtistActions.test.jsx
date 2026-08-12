@@ -283,5 +283,11 @@ describe('ArtistActions', () => {
       expect(screen.queryByText('ra.action.share')).not.toBeInTheDocument()
       expect(screen.queryByText(/ra\.action\.download/)).not.toBeInTheDocument()
     })
+
+    it('hides Share and Download for a missing artist', () => {
+      renderArtistActions({ ...defaultRecord, missing: true })
+      expect(screen.queryByText('ra.action.share')).not.toBeInTheDocument()
+      expect(screen.queryByText(/ra\.action\.download/)).not.toBeInTheDocument()
+    })
   })
 })

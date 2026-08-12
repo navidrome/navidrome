@@ -70,8 +70,11 @@ var _ = Describe("Archiver", func() {
 
 			mfRepo := &mockMediaFileRepository{}
 			mfRepo.On("GetAll", []model.QueryOptions{{
-				Filters: persistence.ParticipantIDFilter("media_file", "1", model.RoleAlbumArtist),
-				Sort:    "album",
+				Filters: squirrel.And{
+					persistence.ParticipantIDFilter("media_file", "1", model.RoleAlbumArtist),
+					squirrel.Eq{"missing": false},
+				},
+				Sort: "album",
 			}}).Return(mfs, nil)
 
 			ds.On("MediaFile", mock.Anything).Return(mfRepo)

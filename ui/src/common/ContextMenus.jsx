@@ -70,11 +70,13 @@ const ContextMenu = ({
   const notify = useNotify()
   const [anchorEl, setAnchorEl] = useState(null)
 
-  // Artist download/share only cover album-artist songs, so use that size, not
-  // the role-inclusive total (which would offer guest-only artists an empty zip)
+  // Artist download/share only cover present album-artist songs, so use that
+  // size, not the role-inclusive total (empty zip for guest-only artists)
   const isArtist = resource === 'artist'
   const downloadSize = isArtist
-    ? record?.stats?.albumartist?.size
+    ? record?.missing
+      ? undefined
+      : record?.stats?.albumartist?.size
     : record?.size
 
   const options = {

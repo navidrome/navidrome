@@ -43,7 +43,11 @@ func (a *archiver) ZipAlbum(ctx context.Context, id string, format string, bitra
 func (a *archiver) ZipArtist(ctx context.Context, id string, format string, bitrate int, out io.Writer) error {
 	// Match by album-artist participation, not the deprecated album_artist_id
 	// column (first album artist only), so co-album-artists are included too.
-	return a.zipAlbums(ctx, id, format, bitrate, out, persistence.ParticipantIDFilter("media_file", id, model.RoleAlbumArtist))
+	filter := squirrel.And{
+		persistence.ParticipantIDFilter("media_file", id, model.RoleAlbumArtist),
+		squirrel.Eq{"missing": false},
+	}
+	return a.zipAlbums(ctx, id, format, bitrate, out, filter)
 }
 
 func (a *archiver) zipAlbums(ctx context.Context, id string, format string, bitrate int, out io.Writer, filters squirrel.Sqlizer) error {
