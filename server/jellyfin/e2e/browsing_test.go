@@ -224,7 +224,7 @@ var _ = Describe("Browsing", func() {
 		})
 
 		It("returns nothing for an unknown album id", func() {
-			q := queryResult(get("/Items?IncludeItemTypes=Audio&Recursive=true&AlbumIds=" + enc("no-such-album")))
+			q := queryResult(get("/Items?IncludeItemTypes=Audio&Recursive=true&AlbumIds=" + enc(testID("no-such-album"))))
 			Expect(q.Items).To(BeEmpty())
 			Expect(q.TotalRecordCount).To(Equal(0))
 		})
@@ -295,7 +295,7 @@ var _ = Describe("Browsing", func() {
 		})
 
 		It("returns nothing for an unknown genre id", func() {
-			q := queryResult(get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true&GenreIds=" + enc("no-such-genre")))
+			q := queryResult(get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true&GenreIds=" + enc(testID("no-such-genre"))))
 			Expect(q.Items).To(BeEmpty())
 			Expect(q.TotalRecordCount).To(Equal(0))
 		})
@@ -317,7 +317,7 @@ var _ = Describe("Browsing", func() {
 		})
 
 		It("returns no artists for an unknown genre id", func() {
-			q := queryResult(get("/Artists/AlbumArtists?GenreIds=" + enc("no-such-genre")))
+			q := queryResult(get("/Artists/AlbumArtists?GenreIds=" + enc(testID("no-such-genre"))))
 			Expect(q.Items).To(BeEmpty())
 		})
 	})
@@ -496,7 +496,7 @@ var _ = Describe("Browsing", func() {
 		})
 
 		It("returns 404 for an unknown id", func() {
-			Expect(get("/Items/" + enc("does-not-exist")).Code).To(Equal(http.StatusNotFound))
+			Expect(get("/Items/" + enc(testID("does-not-exist"))).Code).To(Equal(http.StatusNotFound))
 		})
 	})
 

@@ -43,7 +43,7 @@ var _ = Describe("Streaming", func() {
 		})
 
 		It("returns 404 for an unknown track", func() {
-			Expect(get("/Audio/" + enc("nope") + "/stream").Code).To(Equal(http.StatusNotFound))
+			Expect(get("/Audio/" + enc(testID("nope")) + "/stream").Code).To(Equal(http.StatusNotFound))
 		})
 	})
 
