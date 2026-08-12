@@ -118,28 +118,28 @@ var _ = Describe("AudioMuse similar_tracks", func() {
 
 	It("maps matches, decodes the seed id, encodes item ids, copies distance", func() {
 		fake.similar = []sonic.SimilarMatch{
-			{MediaFile: mf("mf1", "A", "T1", 1), Similarity: 0.3},
-			{MediaFile: mf("mf2", "B", "T2", 1), Similarity: 0.5},
+			{MediaFile: mf(testID("mf1"), "A", "T1", 1), Similarity: 0.3},
+			{MediaFile: mf(testID("mf2"), "B", "T2", 1), Similarity: 0.5},
 		}
-		w := call("item_id="+dto.EncodeID("seed")+"&n=5", model.User{IsAdmin: true})
+		w := call("item_id="+dto.EncodeID(testID("seed"))+"&n=5", model.User{IsAdmin: true})
 
 		Expect(w.Code).To(Equal(200))
-		Expect(fake.gotID).To(Equal("seed"))
+		Expect(fake.gotID).To(Equal(testID("seed")))
 		Expect(fake.gotCount).To(Equal(5))
 		var body []audioMuseSimilarTrack
 		Expect(json.Unmarshal(w.Body.Bytes(), &body)).To(Succeed())
 		Expect(body).To(HaveLen(2))
 		Expect(body[0]).To(Equal(audioMuseSimilarTrack{
-			Author: "A", Distance: 0.3, ItemID: dto.EncodeID("mf1"), Title: "T1",
+			Author: "A", Distance: 0.3, ItemID: dto.EncodeID(testID("mf1")), Title: "T1",
 		}))
 	})
 
 	It("collapses to one track per artist when eliminate_duplicates defaults on", func() {
 		fake.similar = []sonic.SimilarMatch{
-			{MediaFile: mf("mf1", "A", "T1", 1), Similarity: 0.3},
-			{MediaFile: mf("mf2", "A", "T2", 1), Similarity: 0.5},
+			{MediaFile: mf(testID("mf1"), "A", "T1", 1), Similarity: 0.3},
+			{MediaFile: mf(testID("mf2"), "A", "T2", 1), Similarity: 0.5},
 		}
-		w := call("item_id="+dto.EncodeID("seed"), model.User{IsAdmin: true})
+		w := call("item_id="+dto.EncodeID(testID("seed")), model.User{IsAdmin: true})
 		var body []audioMuseSimilarTrack
 		Expect(json.Unmarshal(w.Body.Bytes(), &body)).To(Succeed())
 		Expect(body).To(HaveLen(1))
@@ -147,18 +147,18 @@ var _ = Describe("AudioMuse similar_tracks", func() {
 
 	It("keeps same-artist tracks when eliminate_duplicates=false", func() {
 		fake.similar = []sonic.SimilarMatch{
-			{MediaFile: mf("mf1", "A", "T1", 1), Similarity: 0.3},
-			{MediaFile: mf("mf2", "A", "T2", 1), Similarity: 0.5},
+			{MediaFile: mf(testID("mf1"), "A", "T1", 1), Similarity: 0.3},
+			{MediaFile: mf(testID("mf2"), "A", "T2", 1), Similarity: 0.5},
 		}
-		w := call("item_id="+dto.EncodeID("seed")+"&eliminate_duplicates=false", model.User{IsAdmin: true})
+		w := call("item_id="+dto.EncodeID(testID("seed"))+"&eliminate_duplicates=false", model.User{IsAdmin: true})
 		var body []audioMuseSimilarTrack
 		Expect(json.Unmarshal(w.Body.Bytes(), &body)).To(Succeed())
 		Expect(body).To(HaveLen(2))
 	})
 
 	It("filters out tracks in libraries the user cannot access", func() {
-		fake.similar = []sonic.SimilarMatch{{MediaFile: mf("mf1", "A", "T1", 2), Similarity: 0.3}}
-		w := call("item_id="+dto.EncodeID("seed"), model.User{Libraries: model.Libraries{{ID: 1}}})
+		fake.similar = []sonic.SimilarMatch{{MediaFile: mf(testID("mf1"), "A", "T1", 2), Similarity: 0.3}}
+		w := call("item_id="+dto.EncodeID(testID("seed")), model.User{Libraries: model.Libraries{{ID: 1}}})
 		Expect(strings.TrimSpace(w.Body.String())).To(Equal("[]"))
 	})
 
@@ -171,14 +171,14 @@ var _ = Describe("AudioMuse similar_tracks", func() {
 
 	It("returns 404 when no sonic provider is loaded", func() {
 		fake.provider = false
-		w := call("item_id="+dto.EncodeID("seed"), model.User{IsAdmin: true})
+		w := call("item_id="+dto.EncodeID(testID("seed")), model.User{IsAdmin: true})
 		Expect(w.Code).To(Equal(404))
 	})
 
 	It("returns an empty array when the engine errors", func() {
 		fake.similarErr = errors.New("boom")
-		fake.similar = []sonic.SimilarMatch{{MediaFile: mf("mf1", "A", "T1", 1), Similarity: 0.3}}
-		w := call("item_id="+dto.EncodeID("seed"), model.User{IsAdmin: true})
+		fake.similar = []sonic.SimilarMatch{{MediaFile: mf(testID("mf1"), "A", "T1", 1), Similarity: 0.3}}
+		w := call("item_id="+dto.EncodeID(testID("seed")), model.User{IsAdmin: true})
 		Expect(w.Code).To(Equal(200))
 		Expect(strings.TrimSpace(w.Body.String())).To(Equal("[]"))
 	})
@@ -198,49 +198,49 @@ var _ = Describe("AudioMuse find_path", func() {
 	})
 
 	It("returns 400 with the exact message when start_song_id is missing", func() {
-		w := call("end_song_id="+dto.EncodeID("e"), model.User{IsAdmin: true})
+		w := call("end_song_id="+dto.EncodeID(testID("e")), model.User{IsAdmin: true})
 		Expect(w.Code).To(Equal(400))
 		Expect(strings.TrimSpace(w.Body.String())).To(Equal("start_song_id and end_song_id are required."))
 	})
 
 	It("returns 400 when end_song_id is missing", func() {
-		w := call("start_song_id="+dto.EncodeID("s"), model.User{IsAdmin: true})
+		w := call("start_song_id="+dto.EncodeID(testID("s")), model.User{IsAdmin: true})
 		Expect(w.Code).To(Equal(400))
 	})
 
 	It("maps the path, decodes ids, sums total_distance, fills tempo from BPM", func() {
 		bpm := 120
-		withBPM := mf("mf1", "A", "T1", 1)
+		withBPM := mf(testID("mf1"), "A", "T1", 1)
 		withBPM.BPM = &bpm
 		fake.path = []sonic.SimilarMatch{
 			{MediaFile: withBPM, Similarity: 1.5},
-			{MediaFile: mf("mf2", "B", "T2", 1), Similarity: 2.0},
+			{MediaFile: mf(testID("mf2"), "B", "T2", 1), Similarity: 2.0},
 		}
-		w := call("start_song_id="+dto.EncodeID("s")+"&end_song_id="+dto.EncodeID("e")+"&max_steps=10", model.User{IsAdmin: true})
+		w := call("start_song_id="+dto.EncodeID(testID("s"))+"&end_song_id="+dto.EncodeID(testID("e"))+"&max_steps=10", model.User{IsAdmin: true})
 
 		Expect(w.Code).To(Equal(200))
-		Expect(fake.gotStart).To(Equal("s"))
-		Expect(fake.gotEnd).To(Equal("e"))
+		Expect(fake.gotStart).To(Equal(testID("s")))
+		Expect(fake.gotEnd).To(Equal(testID("e")))
 		Expect(fake.gotCount).To(Equal(10))
 		var body audioMusePathResponse
 		Expect(json.Unmarshal(w.Body.Bytes(), &body)).To(Succeed())
 		Expect(body.Path).To(HaveLen(2))
 		Expect(body.TotalDistance).To(Equal(3.5))
-		Expect(body.Path[0].ItemID).To(Equal(dto.EncodeID("mf1")))
+		Expect(body.Path[0].ItemID).To(Equal(dto.EncodeID(testID("mf1"))))
 		Expect(*body.Path[0].Tempo).To(Equal(120.0))
 		Expect(body.Path[1].Tempo).To(BeNil())
 	})
 
 	It("returns 404 when no sonic provider is loaded", func() {
 		fake.provider = false
-		w := call("start_song_id="+dto.EncodeID("s")+"&end_song_id="+dto.EncodeID("e"), model.User{IsAdmin: true})
+		w := call("start_song_id="+dto.EncodeID(testID("s"))+"&end_song_id="+dto.EncodeID(testID("e")), model.User{IsAdmin: true})
 		Expect(w.Code).To(Equal(404))
 	})
 
 	It("returns an empty path object when the engine errors", func() {
 		fake.pathErr = errors.New("boom")
-		fake.path = []sonic.SimilarMatch{{MediaFile: mf("mf1", "A", "T1", 1), Similarity: 1.0}}
-		w := call("start_song_id="+dto.EncodeID("s")+"&end_song_id="+dto.EncodeID("e"), model.User{IsAdmin: true})
+		fake.path = []sonic.SimilarMatch{{MediaFile: mf(testID("mf1"), "A", "T1", 1), Similarity: 1.0}}
+		w := call("start_song_id="+dto.EncodeID(testID("s"))+"&end_song_id="+dto.EncodeID(testID("e")), model.User{IsAdmin: true})
 		Expect(w.Code).To(Equal(200))
 		var body audioMusePathResponse
 		Expect(json.Unmarshal(w.Body.Bytes(), &body)).To(Succeed())
