@@ -82,13 +82,15 @@ func (r *shareRepository) loadMedia(share *model.Share) error {
 	}
 	switch share.ResourceType {
 	case "artist":
+		// Match by album-artist participation, not the deprecated album_artist_id
+		// column (first album artist only), so co-album-artists are included too.
 		albumRepo := NewAlbumRepository(r.ctx, r.db)
-		share.Albums, err = albumRepo.GetAll(model.QueryOptions{Filters: noMissing(Eq{"album_artist_id": ids}), Sort: "artist"})
+		share.Albums, err = albumRepo.GetAll(model.QueryOptions{Filters: noMissing(ParticipantIDFilter("album", ids, model.RoleAlbumArtist)), Sort: "artist"})
 		if err != nil {
 			return err
 		}
 		mfRepo := NewMediaFileRepository(r.ctx, r.db)
-		share.Tracks, err = mfRepo.GetAll(model.QueryOptions{Filters: noMissing(Eq{"album_artist_id": ids}), Sort: "artist"})
+		share.Tracks, err = mfRepo.GetAll(model.QueryOptions{Filters: noMissing(ParticipantIDFilter("media_file", ids, model.RoleAlbumArtist)), Sort: "artist"})
 		return err
 	case "album":
 		albumRepo := NewAlbumRepository(r.ctx, r.db)

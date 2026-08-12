@@ -14,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/navidrome/navidrome/utils/str"
 )
@@ -40,7 +41,9 @@ func (a *archiver) ZipAlbum(ctx context.Context, id string, format string, bitra
 }
 
 func (a *archiver) ZipArtist(ctx context.Context, id string, format string, bitrate int, out io.Writer) error {
-	return a.zipAlbums(ctx, id, format, bitrate, out, squirrel.Eq{"album_artist_id": id})
+	// Match by album-artist participation, not the deprecated album_artist_id
+	// column (first album artist only), so co-album-artists are included too.
+	return a.zipAlbums(ctx, id, format, bitrate, out, persistence.ParticipantIDFilter("media_file", id, model.RoleAlbumArtist))
 }
 
 func (a *archiver) zipAlbums(ctx context.Context, id string, format string, bitrate int, out io.Writer, filters squirrel.Sqlizer) error {
