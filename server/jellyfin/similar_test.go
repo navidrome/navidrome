@@ -187,3 +187,28 @@ var _ = Describe("getInstantMix", func() {
 		Expect(res.Items).To(HaveLen(2))
 	})
 })
+
+var _ = Describe("getSimilarAlbums", func() {
+	// Powers Finamp's albumMix radio mode: /Albums/{id}/Similar was previously unregistered (404).
+	It("returns albums derived from the provider's similar songs", func() {
+		ds := &tests.MockDataStore{}
+		ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{
+			{ID: "al-2", Name: "Other", LibraryID: 1},
+		})
+		api := &Router{ds: ds, provider: &fakeSimilarProvider{
+			songs: model.MediaFiles{{ID: "m1", AlbumID: "al-2", LibraryID: 1}},
+		}}
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "/Albums/"+dto.EncodeID("al-1")+"/Similar?limit=10", nil).
+			WithContext(request.WithUser(context.Background(), model.User{ID: "u1", Libraries: model.Libraries{{ID: 1}}}))
+		r = withChiURLParam(r, "itemId", dto.EncodeID("al-1"))
+		api.getSimilarAlbums(w, r)
+
+		Expect(w.Code).To(Equal(200))
+		var res dto.QueryResult
+		Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+		Expect(res.Items).To(HaveLen(1))
+		Expect(res.Items[0].Name).To(Equal("Other"))
+	})
+})

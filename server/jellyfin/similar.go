@@ -88,6 +88,16 @@ func (api *Router) getSimilarItems(w http.ResponseWriter, r *http.Request) {
 	}))
 }
 
+// getSimilarAlbums answers GET /Albums/{itemId}/Similar, powering Finamp's albumMix radio mode.
+func (api *Router) getSimilarAlbums(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id := api.resolveItemID(ctx, dto.DecodeID(chi.URLParam(r, "itemId")))
+	limit := clampLimit(req.Params(r).IntOr("limit", 0), defaultSimilarLimit, maxSimilarLimit)
+	api.ok(w, r, api.awaitSimilar(ctx, "albsim|"+id, limit, func(ctx context.Context) dto.QueryResult {
+		return api.similarAlbums(ctx, id, limit)
+	}))
+}
+
 // getInstantMix answers GET /Items/{itemId}/InstantMix. Finamp plays exactly what is returned, so
 // a track seed leads its own mix; provider errors and unknown seeds degrade to seed-only/empty
 // results, never a 404 the client would surface as an error.
