@@ -5,7 +5,6 @@ import (
 	"math"
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/events"
@@ -49,7 +48,10 @@ func (api *Router) resolveAnnotated(w http.ResponseWriter, r *http.Request, id s
 // fetches this per item to render played/favourite indicators; resolveItemByID enforces the
 // library-access gate.
 func (api *Router) getUserItemData(w http.ResponseWriter, r *http.Request) {
-	id := api.resolveItemID(r.Context(), dto.DecodeID(chi.URLParam(r, "itemId")))
+	id, ok := itemIDParam(w, r, "itemId")
+	if !ok {
+		return
+	}
 	item, ok := api.resolveItemByID(r.Context(), id, nil)
 	if !ok {
 		http.Error(w, "Not Found", http.StatusNotFound)
@@ -64,7 +66,10 @@ func (api *Router) getUserItemData(w http.ResponseWriter, r *http.Request) {
 }
 
 func (api *Router) setFavorite(w http.ResponseWriter, r *http.Request, starred bool) {
-	id := api.resolveItemID(r.Context(), dto.DecodeID(chi.URLParam(r, "itemId")))
+	id, ok := itemIDParam(w, r, "itemId")
+	if !ok {
+		return
+	}
 	repo, resource := api.resolveAnnotated(w, r, id)
 	if repo == nil {
 		return
@@ -84,7 +89,10 @@ func (api *Router) unmarkFavorite(w http.ResponseWriter, r *http.Request) {
 }
 
 func (api *Router) setItemRating(w http.ResponseWriter, r *http.Request, rating int) {
-	id := api.resolveItemID(r.Context(), dto.DecodeID(chi.URLParam(r, "itemId")))
+	id, ok := itemIDParam(w, r, "itemId")
+	if !ok {
+		return
+	}
 	repo, resource := api.resolveAnnotated(w, r, id)
 	if repo == nil {
 		return

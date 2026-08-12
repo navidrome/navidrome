@@ -138,6 +138,7 @@ func UserData(a model.Annotations, itemID string) *UserItemDataDto {
 // only when the request's Fields asks for them, mirroring real Jellyfin (which omits both from a
 // plain list response); a nil fields set means neither.
 func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
+	albumID := EncodeID(mf.AlbumID)
 	item := BaseItemDto{
 		Name:              mf.Title,
 		Id:                EncodeID(mf.ID),
@@ -146,9 +147,9 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 		IsFolder:          false,
 		LocationType:      "FileSystem",
 		HasLyrics:         mf.HasEmbeddedLyrics(),
-		ParentId:          EncodeID(mf.AlbumID),
+		ParentId:          albumID,
 		Album:             mf.Album,
-		AlbumId:           EncodeID(mf.AlbumID),
+		AlbumId:           albumID,
 		AlbumArtist:       mf.AlbumArtist,
 		RunTimeTicks:      TicksFromSeconds(mf.Duration),
 		DateCreated:       jellyfinDate(&mf.CreatedAt),

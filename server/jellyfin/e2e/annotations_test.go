@@ -79,7 +79,7 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("returns 404 when favoriting an unknown item", func() {
-			Expect(post("/Users/admin-1/FavoriteItems/"+enc("nope"), "").Code).To(Equal(http.StatusNotFound))
+			Expect(post("/Users/admin-1/FavoriteItems/"+enc(testID("nope")), "").Code).To(Equal(http.StatusNotFound))
 		})
 	})
 
@@ -102,7 +102,7 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("returns 404 for an unknown item", func() {
-			Expect(get("/UserItems/" + enc("nope") + "/UserData").Code).To(Equal(http.StatusNotFound))
+			Expect(get("/UserItems/" + enc(testID("nope")) + "/UserData").Code).To(Equal(http.StatusNotFound))
 		})
 	})
 
