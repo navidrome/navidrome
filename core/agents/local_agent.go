@@ -78,10 +78,8 @@ func songsFrom(mfs model.MediaFiles) []Song {
 		return nil
 	}
 
-	// These are library tracks already, so carry the id: the matcher resolves by id first and
-	// exactly. MBID must be the recording id — the matcher matches mbz_recording_id.
 	return slice.Map(mfs, func(mf model.MediaFile) Song {
-		return Song{ID: mf.ID, Name: mf.Title, MBID: mf.MbzRecordingID}
+		return Song{ID: mf.ID, Name: mf.Title}
 	})
 }
 

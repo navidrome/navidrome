@@ -333,18 +333,13 @@ func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (mode
 	}
 }
 
-// seedMix fetches seed tracks via sample and turns them into a mix, propagating sample errors.
+// seedMix samples seed tracks, runs each through the agent chain's per-track similarity and merges
+// the results, falling back to the seeds themselves so the result is never empty.
 func (e *provider) seedMix(ctx context.Context, count int, sample func() (model.MediaFiles, error)) (model.MediaFiles, error) {
 	seeds, err := sample()
 	if err != nil {
 		return nil, err
 	}
-	return e.mixFromSeeds(ctx, seeds, count)
-}
-
-// mixFromSeeds runs each seed through the agent chain's per-track similarity and merges the
-// results, falling back to the seeds themselves so the result is never empty.
-func (e *provider) mixFromSeeds(ctx context.Context, seeds model.MediaFiles, count int) (model.MediaFiles, error) {
 	if len(seeds) == 0 {
 		return nil, nil
 	}
