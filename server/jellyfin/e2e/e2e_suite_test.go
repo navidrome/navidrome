@@ -51,6 +51,7 @@ import (
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/server/events"
@@ -69,6 +70,10 @@ func TestJellyfinE2E(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Jellyfin API E2E Suite")
 }
+
+// testID maps a readable label to a deterministic canonical id, so fixtures exercise the same
+// id shape production uses.
+func testID(label string) string { return id.NewHash("jellyfin-test", label) }
 
 // Easy aliases for the storagetest package
 type _t = map[string]any
@@ -91,14 +96,14 @@ var (
 	dataFolder        string
 
 	adminUser = model.User{
-		ID:       "admin-1",
+		ID:       testID("admin-1"),
 		UserName: "admin",
 		Name:     "Admin User",
 		IsAdmin:  true,
 	}
 
 	regularUser = model.User{
-		ID:       "regular-1",
+		ID:       testID("regular-1"),
 		UserName: "regular",
 		Name:     "Regular User",
 		IsAdmin:  false,
