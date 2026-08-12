@@ -37,7 +37,11 @@ vi.mock('react-admin', async (importOriginal) => {
 })
 
 describe('ArtistActions', () => {
-  const defaultRecord = { id: 'ar1', name: 'Artist' }
+  const defaultRecord = {
+    id: 'ar1',
+    name: 'Artist',
+    stats: { albumartist: { songCount: 3, albumCount: 1, size: 1024 } },
+  }
 
   const renderArtistActions = (record = defaultRecord) => {
     const theme = createTheme()
@@ -257,9 +261,10 @@ describe('ArtistActions', () => {
   })
 
   describe('Download action', () => {
-    it('shows the download button and dispatches openDownloadMenu when clicked', () => {
+    it('shows the download button with album-artist size and dispatches openDownloadMenu when clicked', () => {
       renderArtistActions()
-      fireEvent.click(screen.getByText('ra.action.download'))
+      expect(screen.getByText('ra.action.download (1 KB)')).toBeInTheDocument()
+      fireEvent.click(screen.getByText(/ra\.action\.download/))
       expect(mockDispatch).toHaveBeenCalledWith(
         openDownloadMenu(defaultRecord, DOWNLOAD_MENU_ARTIST),
       )
@@ -268,7 +273,15 @@ describe('ArtistActions', () => {
     it('hides the download button when downloads are disabled', () => {
       mockConfig.enableDownloads = false
       renderArtistActions()
-      expect(screen.queryByText('ra.action.download')).not.toBeInTheDocument()
+      expect(screen.queryByText(/ra\.action\.download/)).not.toBeInTheDocument()
+    })
+  })
+
+  describe('Album-artist gating', () => {
+    it('hides Share and Download for artists with no album-artist content', () => {
+      renderArtistActions({ id: 'ar1', name: 'Artist', stats: {} })
+      expect(screen.queryByText('ra.action.share')).not.toBeInTheDocument()
+      expect(screen.queryByText(/ra\.action\.download/)).not.toBeInTheDocument()
     })
   })
 })

@@ -24,6 +24,7 @@ import {
   DOWNLOAD_MENU_ARTIST,
 } from '../actions'
 import config from '../config'
+import { formatBytes } from '../utils'
 
 const useStyles = makeStyles((theme) => ({
   toolbar: {
@@ -69,6 +70,11 @@ const ArtistActions = ({ className, record, ...rest }) => {
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const [loadingAction, setLoadingAction] = React.useState(null)
   const isLoading = !!loadingAction
+
+  // Download/Share only cover album-artist songs, so gate on that size (not the
+  // role-inclusive total, which would offer an empty archive for guest artists)
+  const albumArtistSize = record.stats?.albumartist?.size
+  const hasAlbumArtistContent = Boolean(albumArtistSize)
 
   const handlePlay = React.useCallback(async () => {
     setLoadingAction('play')
@@ -149,7 +155,7 @@ const ArtistActions = ({ className, record, ...rest }) => {
         loading={loadingAction === 'radio'}
         icon={<IoIosRadio className={classes.radioIcon} />}
       />
-      {config.enableSharing && (
+      {config.enableSharing && hasAlbumArtistContent && (
         <LoadingButton
           onClick={handleShare}
           label={translate('ra.action.share')}
@@ -158,10 +164,12 @@ const ArtistActions = ({ className, record, ...rest }) => {
           icon={<ShareIcon />}
         />
       )}
-      {config.enableDownloads && (
+      {config.enableDownloads && hasAlbumArtistContent && (
         <LoadingButton
           onClick={handleDownload}
-          label={translate('ra.action.download')}
+          label={`${translate('ra.action.download')} (${formatBytes(
+            albumArtistSize,
+          )})`}
           className={classes.button}
           size={isMobile ? 'small' : 'medium'}
           icon={<CloudDownloadOutlinedIcon />}

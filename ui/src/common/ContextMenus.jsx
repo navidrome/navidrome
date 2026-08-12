@@ -70,6 +70,13 @@ const ContextMenu = ({
   const notify = useNotify()
   const [anchorEl, setAnchorEl] = useState(null)
 
+  // Artist download/share only cover album-artist songs, so use that size, not
+  // the role-inclusive total (which would offer guest-only artists an empty zip)
+  const isArtist = resource === 'artist'
+  const downloadSize = isArtist
+    ? record?.stats?.albumartist?.size
+    : record?.size
+
   const options = {
     play: {
       enabled: true,
@@ -103,7 +110,7 @@ const ContextMenu = ({
     },
     ...(!hideShare && {
       share: {
-        enabled: config.enableSharing,
+        enabled: config.enableSharing && (!isArtist || downloadSize),
         needData: false,
         label: translate('ra.action.share'),
         action: (record) =>
@@ -111,9 +118,9 @@ const ContextMenu = ({
       },
     }),
     download: {
-      enabled: config.enableDownloads && record.size,
+      enabled: config.enableDownloads && downloadSize,
       needData: false,
-      label: `${translate('ra.action.download')} (${formatBytes(record.size)})`,
+      label: `${translate('ra.action.download')} (${formatBytes(downloadSize)})`,
       action: () => {
         dispatch(
           openDownloadMenu(
