@@ -32,32 +32,23 @@ func Encode(img image.Image) (string, error) {
 	}
 	// Pre-downscale: its rounding can flip a component count, and the hash is a client cache key.
 	xComp, yComp := components(img.Bounds().Dx(), img.Bounds().Dy())
-	return encodeAt(img, xComp, yComp), nil
-}
-
-// encodeAt encodes img at the given component counts (each 2..9). Callers guarantee non-empty
-// bounds, and a source far larger than the counts: too few samples overshoot the AC terms.
-func encodeAt(img image.Image, xComp, yComp int) string {
 	src := pixelsOf(downscale(img))
-	return encodePixels(src, xComp, yComp, cosBasis(xComp, src.w), cosBasis(yComp, src.h))
-}
+	w, h := src.w, src.h
 
-// cosBasis is the cosine basis for comp components sampled across n pixels. It depends only
-// on its arguments, so a caller with a fixed shape can build it once and reuse it.
-func cosBasis(comp, n int) [][]float64 {
-	basis := make([][]float64, comp)
-	for i := range basis {
-		basis[i] = make([]float64, n)
-		for x := range basis[i] {
-			basis[i][x] = math.Cos(math.Pi * float64(i) * float64(x) / float64(n))
+	cosX := make([][]float64, xComp)
+	for i := range cosX {
+		cosX[i] = make([]float64, w)
+		for x := range cosX[i] {
+			cosX[i][x] = math.Cos(math.Pi * float64(i) * float64(x) / float64(w))
 		}
 	}
-	return basis
-}
-
-// encodePixels is the encoder proper; cosX and cosY must match src's dimensions.
-func encodePixels(src pixels, xComp, yComp int, cosX, cosY [][]float64) string {
-	w, h := src.w, src.h
+	cosY := make([][]float64, yComp)
+	for j := range cosY {
+		cosY[j] = make([]float64, h)
+		for y := range cosY[j] {
+			cosY[j][y] = math.Cos(math.Pi * float64(j) * float64(y) / float64(h))
+		}
+	}
 
 	lin := srgbToLinearTable()
 	factors := make([][3]float64, xComp*yComp)
@@ -95,7 +86,7 @@ func encodePixels(src pixels, xComp, yComp int, cosX, cosY [][]float64) string {
 	var sb strings.Builder
 	sb.WriteString(encode83((xComp-1)+(yComp-1)*9, 1))
 
-	// Every caller passes at least 2 components, so there is always at least one AC factor.
+	// Derived counts are at least 1x9, so there is always at least one AC factor.
 	ac := factors[1:]
 	actualMax := 0.0
 	for _, f := range ac {
@@ -110,7 +101,7 @@ func encodePixels(src pixels, xComp, yComp int, cosX, cosY [][]float64) string {
 	for _, f := range ac {
 		sb.WriteString(encode83(quantAC(f[0], maxVal)*19*19+quantAC(f[1], maxVal)*19+quantAC(f[2], maxVal), 2))
 	}
-	return sb.String()
+	return sb.String(), nil
 }
 
 // pixels is direct Pix access for the pixel loop, avoiding a per-pixel allocation via image.At.
