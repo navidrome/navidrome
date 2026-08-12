@@ -82,13 +82,20 @@ func (r *shareRepository) loadMedia(share *model.Share) error {
 	}
 	switch share.ResourceType {
 	case "artist":
-		albumRepo := NewAlbumRepository(r.ctx, r.db)
-		share.Albums, err = albumRepo.GetAll(model.QueryOptions{Filters: noMissing(Eq{"album_artist_id": ids}), Sort: "artist"})
+		// Match by album-artist participation, not the deprecated album_artist_id
+		// column (first album artist only), so co-album-artists are included too.
+		// Load as the share owner so their library access is applied.
+		ctx, err := r.ownerContext(share)
 		if err != nil {
 			return err
 		}
-		mfRepo := NewMediaFileRepository(r.ctx, r.db)
-		share.Tracks, err = mfRepo.GetAll(model.QueryOptions{Filters: noMissing(Eq{"album_artist_id": ids}), Sort: "artist"})
+		albumRepo := NewAlbumRepository(ctx, r.db)
+		share.Albums, err = albumRepo.GetAll(model.QueryOptions{Filters: noMissing(ParticipantIDFilter("album", ids, model.RoleAlbumArtist)), Sort: "artist"})
+		if err != nil {
+			return err
+		}
+		mfRepo := NewMediaFileRepository(ctx, r.db)
+		share.Tracks, err = mfRepo.GetAll(model.QueryOptions{Filters: noMissing(ParticipantIDFilter("media_file", ids, model.RoleAlbumArtist)), Sort: "artist"})
 		return err
 	case "album":
 		albumRepo := NewAlbumRepository(r.ctx, r.db)
@@ -101,14 +108,10 @@ func (r *shareRepository) loadMedia(share *model.Share) error {
 		return err
 	case "playlist":
 		// Load tracks as the share owner so their library access is applied.
-		owner, err := NewUserRepository(r.ctx, r.db).Get(share.UserID)
+		ctx, err := r.ownerContext(share)
 		if err != nil {
-			return fmt.Errorf("loading share owner %q: %w", share.UserID, err)
+			return err
 		}
-		if owner == nil {
-			return fmt.Errorf("share owner %q not found", share.UserID)
-		}
-		ctx := request.WithUser(r.ctx, *owner)
 		plsRepo := NewPlaylistRepository(ctx, r.db)
 		// Tracks returns nil when the playlist is no longer visible to the owner
 		// (e.g. it was made private after the share was created); leave the share
@@ -131,6 +134,19 @@ func (r *shareRepository) loadMedia(share *model.Share) error {
 	}
 	log.Warn(r.ctx, "Unsupported Share ResourceType", "share", share.ID, "resourceType", share.ResourceType)
 	return nil
+}
+
+// ownerContext returns a context scoped to the share owner, so repository
+// queries apply the owner's library access when a public share is rendered.
+func (r *shareRepository) ownerContext(share *model.Share) (context.Context, error) {
+	owner, err := NewUserRepository(r.ctx, r.db).Get(share.UserID)
+	if err != nil {
+		return nil, fmt.Errorf("loading share owner %q: %w", share.UserID, err)
+	}
+	if owner == nil {
+		return nil, fmt.Errorf("share owner %q not found", share.UserID)
+	}
+	return request.WithUser(r.ctx, *owner), nil
 }
 
 func sortByIdPosition(mfs model.MediaFiles, ids []string) model.MediaFiles {

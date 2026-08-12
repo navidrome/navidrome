@@ -11,6 +11,7 @@ import (
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
@@ -69,8 +70,11 @@ var _ = Describe("Archiver", func() {
 
 			mfRepo := &mockMediaFileRepository{}
 			mfRepo.On("GetAll", []model.QueryOptions{{
-				Filters: squirrel.Eq{"album_artist_id": "1"},
-				Sort:    "album",
+				Filters: squirrel.And{
+					persistence.ParticipantIDFilter("media_file", "1", model.RoleAlbumArtist),
+					squirrel.Eq{"missing": false},
+				},
+				Sort: "album",
 			}}).Return(mfs, nil)
 
 			ds.On("MediaFile", mock.Anything).Return(mfRepo)
