@@ -9,7 +9,7 @@ import {
 } from '@material-ui/core'
 import subsonic from '../subsonic'
 import { closeDownloadMenu, DOWNLOAD_MENU_ARTIST } from '../actions'
-import { formatBytes } from '../utils'
+import { artistDownloadSize, formatBytes } from '../utils'
 import { useTranscodingOptions } from './useTranscodingOptions'
 
 const DownloadMenuDialog = () => {
@@ -25,7 +25,7 @@ const DownloadMenuDialog = () => {
   // Artist downloads only include album-artist songs, so show that size
   const downloadSize =
     recordType === DOWNLOAD_MENU_ARTIST
-      ? record?.stats?.albumartist?.size
+      ? artistDownloadSize(record)
       : record?.size
 
   const handleClose = (e) => {

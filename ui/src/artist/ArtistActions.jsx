@@ -24,7 +24,7 @@ import {
   DOWNLOAD_MENU_ARTIST,
 } from '../actions'
 import config from '../config'
-import { formatBytes } from '../utils'
+import { artistDownloadSize, formatBytes } from '../utils'
 
 const useStyles = makeStyles((theme) => ({
   toolbar: {
@@ -71,11 +71,7 @@ const ArtistActions = ({ className, record, ...rest }) => {
   const [loadingAction, setLoadingAction] = React.useState(null)
   const isLoading = !!loadingAction
 
-  // Download/Share only cover present album-artist songs, so gate on that size
-  // (not the role-inclusive total, which would offer an empty archive for guests)
-  const albumArtistSize = record.missing
-    ? undefined
-    : record.stats?.albumartist?.size
+  const albumArtistSize = artistDownloadSize(record)
   const hasAlbumArtistContent = Boolean(albumArtistSize)
 
   const handlePlay = React.useCallback(async () => {

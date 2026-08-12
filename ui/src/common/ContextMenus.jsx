@@ -23,7 +23,7 @@ import {
 } from '../actions'
 import { LoveButton } from './LoveButton'
 import config from '../config'
-import { formatBytes } from '../utils'
+import { artistDownloadSize, formatBytes } from '../utils'
 
 const useStyles = makeStyles({
   noWrap: {
@@ -70,14 +70,8 @@ const ContextMenu = ({
   const notify = useNotify()
   const [anchorEl, setAnchorEl] = useState(null)
 
-  // Artist download/share only cover present album-artist songs, so use that
-  // size, not the role-inclusive total (empty zip for guest-only artists)
   const isArtist = resource === 'artist'
-  const downloadSize = isArtist
-    ? record?.missing
-      ? undefined
-      : record?.stats?.albumartist?.size
-    : record?.size
+  const downloadSize = isArtist ? artistDownloadSize(record) : record?.size
 
   const options = {
     play: {
