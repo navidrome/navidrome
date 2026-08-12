@@ -29,6 +29,68 @@ please file a [GitHub issue](https://github.com/navidrome/navidrome/issues) or j
 [themes](https://www.navidrome.org/docs/developers/creating-themes)), please join the chat in our 
 [Discord server](https://discord.gg/xh7j7yF). 
 
+## Local Development
+
+The easiest way to run the full stack locally is with Docker Compose. It starts the Go backend and Vite frontend as separate services with hot-reload enabled.
+
+**Prerequisites:** Docker and Docker Compose.
+
+```bash
+# First run — builds the Go image and downloads all dependencies
+docker compose -f docker-compose.dev.yml up --build
+
+# Subsequent runs
+docker compose -f docker-compose.dev.yml up
+```
+
+Open **http://localhost:4533**.
+
+### Default credentials
+
+| Username | Password |
+|----------|----------|
+| `admin`  | `admin`  |
+
+### Adding music
+
+Place your audio files in the `music/` folder at the project root. If the folder doesn't exist yet, create it first:
+
+```bash
+mkdir music
+```
+
+The scanner picks up new files automatically.
+
+```bash
+# Run in the background
+docker compose -f docker-compose.dev.yml up -d
+
+# Follow logs
+docker compose -f docker-compose.dev.yml logs -f
+
+# Stop
+docker compose -f docker-compose.dev.yml down
+```
+
+Both services support hot-reload: editing `.go` files restarts the backend via `reflex`, and editing frontend source triggers Vite's HMR.
+
+### Inspecting the database
+
+Open a SQLite shell inside the running backend container:
+
+```bash
+docker compose -f docker-compose.dev.yml exec backend sqlite3 /data/navidrome.db
+```
+
+Useful commands once inside:
+
+```sql
+.tables               -- list all tables
+.schema media_file    -- show a table's schema
+SELECT * FROM user;   -- query data
+.quit                 -- exit
+```
+
 ## Installation
 
 See instructions on the [project's website](https://www.navidrome.org/docs/installation/)
