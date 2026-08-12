@@ -84,12 +84,21 @@ func (r *shareRepository) loadMedia(share *model.Share) error {
 	case "artist":
 		// Match by album-artist participation, not the deprecated album_artist_id
 		// column (first album artist only), so co-album-artists are included too.
-		albumRepo := NewAlbumRepository(r.ctx, r.db)
+		// Load as the share owner so their library access is applied.
+		owner, err := NewUserRepository(r.ctx, r.db).Get(share.UserID)
+		if err != nil {
+			return fmt.Errorf("loading share owner %q: %w", share.UserID, err)
+		}
+		if owner == nil {
+			return fmt.Errorf("share owner %q not found", share.UserID)
+		}
+		ctx := request.WithUser(r.ctx, *owner)
+		albumRepo := NewAlbumRepository(ctx, r.db)
 		share.Albums, err = albumRepo.GetAll(model.QueryOptions{Filters: noMissing(ParticipantIDFilter("album", ids, model.RoleAlbumArtist)), Sort: "artist"})
 		if err != nil {
 			return err
 		}
-		mfRepo := NewMediaFileRepository(r.ctx, r.db)
+		mfRepo := NewMediaFileRepository(ctx, r.db)
 		share.Tracks, err = mfRepo.GetAll(model.QueryOptions{Filters: noMissing(ParticipantIDFilter("media_file", ids, model.RoleAlbumArtist)), Sort: "artist"})
 		return err
 	case "album":
