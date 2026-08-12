@@ -26,6 +26,8 @@ var _ = Describe("Provider - SimilarSongs", func() {
 	var artistRepo *mockArtistRepo
 	var mediaFileRepo *mockMediaFileRepo
 	var albumRepo *mockAlbumRepo
+	var playlistRepo *tests.MockPlaylistRepo
+	var playlistTrackRepo *mockPlaylistTrackRepo
 	var ctx context.Context
 
 	BeforeEach(func() {
@@ -34,11 +36,15 @@ var _ = Describe("Provider - SimilarSongs", func() {
 		artistRepo = newMockArtistRepo()
 		mediaFileRepo = newMockMediaFileRepo()
 		albumRepo = newMockAlbumRepo()
+		playlistTrackRepo = &mockPlaylistTrackRepo{}
+		playlistRepo = tests.CreateMockPlaylistRepo()
+		playlistRepo.TracksRepo = playlistTrackRepo
 
 		ds = &tests.MockDataStore{
 			MockedArtist:    artistRepo,
 			MockedMediaFile: mediaFileRepo,
 			MockedAlbum:     albumRepo,
+			MockedPlaylist:  playlistRepo,
 		}
 
 		mockAgent = &mockSimilarArtistAgent{}
@@ -278,6 +284,36 @@ var _ = Describe("Provider - SimilarSongs", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(songs).To(HaveLen(1))
 				Expect(songs[0].ID).To(Equal("matched-1"))
+			})
+		})
+
+		Context("when ID is a Playlist", func() {
+			It("samples playlist tracks and returns their track-similars", func() {
+				pls := model.Playlist{ID: "pl-1", Name: "My List"}
+				seedTrack := model.MediaFile{ID: "s1", Title: "Seed One", Artist: "A"}
+
+				// GetEntityByID order: Artist, Album, Playlist(hit)
+				artistRepo.On("Get", "pl-1").Return(nil, model.ErrNotFound).Once()
+				albumRepo.On("Get", "pl-1").Return(nil, model.ErrNotFound).Once()
+				playlistRepo.SetData(model.Playlists{pls})
+
+				// samplePlaylistTracks -> Tracks(...).GetAll -> one seed track
+				playlistTrackRepo.On("GetAll", mock.Anything).Return(model.PlaylistTracks{
+					{MediaFile: seedTrack},
+				}, nil).Once()
+
+				// mixFromSeeds -> GetSimilarSongsByTrack for the seed
+				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "s1", "Seed One", "A", "", 5).
+					Return([]agents.Song{{Name: "Similar", Artists: []agents.Artist{{Name: "A"}}}}, nil).Once()
+
+				// Matcher resolves "Similar" -> a real MediaFile (allow the matcher's lookups).
+				artistRepo.On("GetAll", mock.Anything).Return(model.Artists{{ID: "a1", Name: "A"}}, nil).Maybe()
+				mediaFileRepo.On("GetAll", mock.Anything).Return(model.MediaFiles{{ID: "m1", Title: "Similar"}}, nil).Maybe()
+
+				songs, err := provider.SimilarSongs(ctx, "pl-1", 5)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(songs).ToNot(BeEmpty())
 			})
 		})
 	})

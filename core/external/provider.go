@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand/v2"
 	"sort"
 	"strings"
 	"time"
@@ -24,6 +25,7 @@ import (
 
 const (
 	maxSimilarArtists  = 100
+	maxSeeds           = 5
 	refreshDelay       = 5 * time.Second
 	refreshTimeout     = 15 * time.Second
 	refreshQueueLength = 2000
@@ -293,6 +295,12 @@ func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (mode
 		songs, err = e.ag.GetSimilarSongsByAlbum(ctx, v.ID, v.Name, v.AlbumArtist, v.MbzAlbumID, count)
 	case *model.Artist:
 		songs, err = e.ag.GetSimilarSongsByArtist(ctx, v.ID, v.Name, v.MbzArtistID, count)
+	case *model.Playlist:
+		seeds, serr := e.samplePlaylistTracks(ctx, v.ID, maxSeeds)
+		if serr != nil {
+			return nil, serr
+		}
+		return e.mixFromSeeds(ctx, seeds, count)
 	default:
 		log.Warn(ctx, "Unknown entity type", "id", id, "type", fmt.Sprintf("%T", entity))
 		return nil, model.ErrNotFound
@@ -304,6 +312,50 @@ func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (mode
 
 	// Fallback to existing similar artists + top songs algorithm
 	return e.similarSongsFallback(ctx, id, count)
+}
+
+// mixFromSeeds runs each seed through the agent chain's per-track similarity and merges the
+// results, falling back to the seeds themselves so the result is never empty.
+func (e *provider) mixFromSeeds(ctx context.Context, seeds model.MediaFiles, count int) (model.MediaFiles, error) {
+	if len(seeds) == 0 {
+		return nil, nil
+	}
+	var songs []agents.Song
+	for i, seed := range seeds {
+		if i >= maxSeeds {
+			break
+		}
+		s, err := e.ag.GetSimilarSongsByTrack(ctx, seed.ID, seed.Title, seed.Artist, seed.MbzRecordingID, count)
+		if err == nil {
+			songs = append(songs, s...)
+		}
+	}
+	matched, err := e.matcher.MatchSongs(ctx, songs, count)
+	if err != nil {
+		return nil, err
+	}
+	if len(matched) == 0 {
+		matched = seeds
+	}
+	rand.Shuffle(len(matched), func(i, j int) { matched[i], matched[j] = matched[j], matched[i] })
+	if len(matched) > count {
+		matched = matched[:count]
+	}
+	return matched, nil
+}
+
+// samplePlaylistTracks returns up to n random tracks from a playlist, used as seeds for a mix.
+func (e *provider) samplePlaylistTracks(ctx context.Context, playlistID string, n int) (model.MediaFiles, error) {
+	tracks, err := e.ds.Playlist(ctx).Tracks(playlistID, true).GetAll(model.QueryOptions{})
+	if err != nil {
+		return nil, err
+	}
+	mfs := tracks.MediaFiles()
+	rand.Shuffle(len(mfs), func(i, j int) { mfs[i], mfs[j] = mfs[j], mfs[i] })
+	if len(mfs) > n {
+		mfs = mfs[:n]
+	}
+	return mfs, nil
 }
 
 // similarSongsFallback uses the original similar artists + top songs algorithm. The idea is to
