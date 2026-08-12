@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/navidrome/navidrome/log"
 	libcast "github.com/vishen/go-chromecast/cast"
 	pb "github.com/vishen/go-chromecast/cast/proto"
 )
@@ -71,7 +72,15 @@ type protocolMessage struct {
 	RequestID      int
 	ReceiverStatus *libcast.ReceiverStatusResponse
 	MediaStatus    *libcast.MediaStatusResponse
+	LaunchError    *launchErrorMessage
 	Err            error
+}
+
+// launchErrorMessage captures only safe structured receiver-side launch
+// failure fields for diagnostics.
+type launchErrorMessage struct {
+	Reason    string
+	ErrorCode string
 }
 
 type payloadHeader struct {
@@ -169,9 +178,12 @@ func (s *castSession) Snapshot() sessionSnapshot {
 func (s *castSession) Events() <-chan sessionEvent { return s.events }
 
 func (s *castSession) initialize(ctx context.Context, load loadSpec) error {
+	log.Debug("Cast init: conn.Start begin", "target", s.target.Name, "host", s.target.Host, "port", s.target.portOrDefault())
 	if err := s.conn.Start(s.target.Host, s.target.portOrDefault()); err != nil {
-		return err
+		log.Debug("Cast init: conn.Start failed", "target", s.target.Name, "host", s.target.Host, "port", s.target.portOrDefault(), "err", err)
+		return fmt.Errorf("cast conn start: %w", err)
 	}
+	log.Debug("Cast init: conn.Start ok", "target", s.target.Name, "host", s.target.Host, "port", s.target.portOrDefault())
 	s.mu.Lock()
 	s.connStarted = true
 	s.mu.Unlock()
@@ -180,19 +192,27 @@ func (s *castSession) initialize(ctx context.Context, load loadSpec) error {
 		ss.Connected = true
 		ss.Closed = false
 	})
+	log.Debug("Cast init: receiver CONNECT begin", "target", s.target.Name)
 	if err := s.sendNoWait(&connectPayload{payloadHeader{Type: "CONNECT"}}, defaultSenderID, defaultReceiverID, namespaceConn); err != nil {
-		return err
+		log.Debug("Cast init: receiver CONNECT failed", "target", s.target.Name, "err", err)
+		return fmt.Errorf("cast receiver connect: %w", err)
 	}
+	log.Debug("Cast init: receiver CONNECT ok", "target", s.target.Name)
 	if err := s.ensureDefaultMediaReceiver(ctx); err != nil {
 		return err
 	}
 	snap := s.Snapshot()
 	if snap.TransportID == "" {
+		log.Debug("Cast init: receiver app ready but transport missing", "target", s.target.Name, "appId", snap.AppID, "transportIdPresent", false)
 		return errMissingTransport
 	}
+	log.Debug("Cast init: media transport CONNECT begin", "target", s.target.Name, "appId", snap.AppID, "transportIdPresent", true)
 	if err := s.sendNoWait(&connectPayload{payloadHeader{Type: "CONNECT"}}, defaultSenderID, snap.TransportID, namespaceConn); err != nil {
-		return err
+		log.Debug("Cast init: media transport CONNECT failed", "target", s.target.Name, "appId", snap.AppID, "transportIdPresent", true, "err", err)
+		return fmt.Errorf("cast media transport connect: %w", err)
 	}
+	log.Debug("Cast init: media transport CONNECT ok", "target", s.target.Name, "appId", snap.AppID, "transportIdPresent", true)
+	log.Debug("Cast init: LOAD begin", "target", s.target.Name, "appId", snap.AppID, "transportIdPresent", true)
 	if _, err := s.sendAndWait(ctx, &loadPayload{
 		payloadHeader: payloadHeader{Type: "LOAD"},
 		CurrentTime:   0,
@@ -204,23 +224,42 @@ func (s *castSession) initialize(ctx context.Context, load loadSpec) error {
 			Duration:    load.Duration,
 		},
 	}, defaultSenderID, snap.TransportID, namespaceMedia); err != nil {
+		log.Debug("Cast init: LOAD failed", "target", s.target.Name, "appId", snap.AppID, "transportIdPresent", true, "err", err)
+		return fmt.Errorf("load media: %w", err)
+	}
+	log.Debug("Cast init: LOAD ack received", "target", s.target.Name, "appId", snap.AppID, "transportIdPresent", true)
+	if err := s.waitUntilReady(ctx, load.ContentID); err != nil {
 		return err
 	}
-	return s.waitUntilReady(ctx, load.ContentID)
+	log.Debug("Cast init: waitUntilReady ok", "target", s.target.Name, "state", s.sanitizedStateFields())
+	return nil
 }
 
 func (s *castSession) ensureDefaultMediaReceiver(ctx context.Context) error {
 	status, err := s.getReceiverStatus(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("get receiver status: %w", err)
 	}
 	app := applicationByAppID(status, defaultMediaReceiverAppID)
+	log.Debug("Cast init: receiver app state", "target", s.target.Name, "expectedAppId", defaultMediaReceiverAppID, "present", app != nil, "transportIdPresent", app != nil && app.TransportId != "", "applications", sanitizedApplications(status, defaultMediaReceiverAppID))
 	if app == nil {
-		if _, err := s.sendAndWait(ctx, &launchPayload{payloadHeader: payloadHeader{Type: "LAUNCH"}, AppID: defaultMediaReceiverAppID}, defaultSenderID, defaultReceiverID, namespaceRecv); err != nil {
-			return err
+		log.Debug("Cast init: LAUNCH begin", "target", s.target.Name, "appId", defaultMediaReceiverAppID)
+		msg, err := s.sendAndWait(ctx, &launchPayload{payloadHeader: payloadHeader{Type: "LAUNCH"}, AppID: defaultMediaReceiverAppID}, defaultSenderID, defaultReceiverID, namespaceRecv)
+		if err != nil {
+			log.Debug("Cast init: LAUNCH failed", "target", s.target.Name, "appId", defaultMediaReceiverAppID, "err", err)
+			return fmt.Errorf("launch receiver app: %w", err)
 		}
+		if err := s.validateLaunchReply(defaultMediaReceiverAppID, msg); err != nil {
+			log.Debug("Cast init: LAUNCH failed", "target", s.target.Name, "appId", defaultMediaReceiverAppID, "err", err)
+			return fmt.Errorf("launch receiver app: %w", err)
+		}
+		log.Debug("Cast init: LAUNCH acknowledged", "target", s.target.Name, "appId", defaultMediaReceiverAppID)
 	}
-	return s.waitForReceiverApp(ctx, defaultMediaReceiverAppID)
+	log.Debug("Cast init: waitForReceiverApp begin", "target", s.target.Name, "appId", defaultMediaReceiverAppID)
+	if err := s.waitForReceiverApp(ctx, defaultMediaReceiverAppID); err != nil {
+		return fmt.Errorf("wait for receiver app: %w", err)
+	}
+	return nil
 }
 
 func applicationByAppID(status *libcast.ReceiverStatusResponse, appID string) *libcast.Application {
@@ -260,27 +299,33 @@ func (s *castSession) waitForReceiverApp(ctx context.Context, appID string) erro
 	for {
 		snap := s.Snapshot()
 		if snap.AppID == appID && snap.TransportID != "" {
+			log.Debug("Cast init: expected receiver app observed", "target", s.target.Name, "state", s.sanitizedStateFields())
 			return nil
 		}
 		if _, err := s.getReceiverStatus(ctx); err != nil {
-			return err
+			log.Debug("Cast init: waitForReceiverApp getReceiverStatus failed", "target", s.target.Name, "state", s.sanitizedStateFields(), "err", err)
+			return fmt.Errorf("get receiver status: %w", err)
 		}
 		snap = s.Snapshot()
 		if snap.AppID == appID && snap.TransportID != "" {
+			log.Debug("Cast init: expected receiver app observed", "target", s.target.Name, "state", s.sanitizedStateFields())
 			return nil
 		}
 		select {
 		case <-ctx.Done():
+			log.Debug("Cast init: waitForReceiverApp context done", "target", s.target.Name, "state", s.sanitizedStateFields(), "err", ctx.Err())
 			return ctx.Err()
 		case <-s.stateChanged:
 		case ev := <-s.terminal:
 			switch ev.Type {
 			case sessionEventDisconnected, sessionEventClosed:
+				log.Debug("Cast init: waitForReceiverApp terminal", "target", s.target.Name, "state", s.sanitizedStateFields(), "err", ev.Err)
 				if ev.Err != nil {
 					return ev.Err
 				}
 				return errDisconnected
 			case sessionEventLoadFailed:
+				log.Debug("Cast init: waitForReceiverApp load failed", "target", s.target.Name, "state", s.sanitizedStateFields(), "err", ev.Err)
 				if ev.Err != nil {
 					return ev.Err
 				}
@@ -293,46 +338,65 @@ func (s *castSession) waitForReceiverApp(ctx context.Context, appID string) erro
 func (s *castSession) getReceiverStatus(ctx context.Context) (*libcast.ReceiverStatusResponse, error) {
 	msg, err := s.sendAndWait(ctx, &getStatusPayload{payloadHeader{Type: "GET_STATUS"}}, defaultSenderID, defaultReceiverID, namespaceRecv)
 	if err != nil {
+		log.Debug("Cast init: getReceiverStatus failed", "target", s.target.Name, "state", s.sanitizedStateFields(), "err", err)
 		return nil, err
 	}
 	if msg.ReceiverStatus != nil {
+		log.Debug("Cast init: getReceiverStatus ok", "target", s.target.Name, "state", s.sanitizedStateFields())
 		return msg.ReceiverStatus, nil
 	}
-	return nil, fmt.Errorf("unexpected receiver status response type: %s", msg.Type)
+	err = fmt.Errorf("unexpected receiver status response type: %s", msg.Type)
+	log.Debug("Cast init: getReceiverStatus failed", "target", s.target.Name, "state", s.sanitizedStateFields(), "err", err)
+	return nil, err
 }
 
 func (s *castSession) waitUntilReady(ctx context.Context, contentID string) error {
+	log.Debug("Cast init: waitUntilReady begin", "target", s.target.Name, "state", s.sanitizedStateFields())
 	var pauseIssued bool
+	var lastLogged sessionSnapshot
 	for {
 		snap := s.Snapshot()
+		if snap.AppID != lastLogged.AppID || (snap.TransportID != "") != (lastLogged.TransportID != "") || snap.MediaSessionID != lastLogged.MediaSessionID || snap.PlayerState != lastLogged.PlayerState || snap.IdleReason != lastLogged.IdleReason {
+			log.Debug("Cast init: waitUntilReady state", "target", s.target.Name, "state", sanitizedState(snap))
+			lastLogged = snap
+		}
 		if err := readinessError(snap, contentID); err != nil {
-			return err
+			log.Debug("Cast init: waitUntilReady failed", "target", s.target.Name, "state", sanitizedState(snap), "err", err)
+			return fmt.Errorf("wait until ready: %w", err)
 		}
 		if readyNonPlaying(snap, contentID) {
+			log.Debug("Cast init: waitUntilReady success", "target", s.target.Name, "state", sanitizedState(snap))
 			return nil
 		}
 		if snap.ContentID == contentID && snap.MediaSessionID != 0 && snap.PlayerState == "PLAYING" {
 			if pauseIssued {
-				return errUnexpectedPlaying
+				log.Debug("Cast init: waitUntilReady failed", "target", s.target.Name, "state", sanitizedState(snap), "err", errUnexpectedPlaying)
+				return fmt.Errorf("wait until ready: %w", errUnexpectedPlaying)
 			}
 			pauseIssued = true
 			if err := s.Pause(ctx); err != nil {
-				return err
+				log.Debug("Cast init: waitUntilReady pause failed", "target", s.target.Name, "state", sanitizedState(snap), "err", err)
+				return fmt.Errorf("wait until ready: %w", err)
 			}
 		}
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			log.Debug("Cast init: waitUntilReady context done", "target", s.target.Name, "state", s.sanitizedStateFields(), "err", ctx.Err())
+			return fmt.Errorf("wait until ready: %w", ctx.Err())
 		case <-s.stateChanged:
 		case ev := <-s.terminal:
 			switch ev.Type {
 			case sessionEventLoadFailed:
-				return fmt.Errorf("%w: %v", errLoadFailed, ev.Err)
+				err := fmt.Errorf("%w: %v", errLoadFailed, ev.Err)
+				log.Debug("Cast init: waitUntilReady load failed", "target", s.target.Name, "state", s.sanitizedStateFields(), "err", err)
+				return fmt.Errorf("wait until ready: %w", err)
 			case sessionEventDisconnected, sessionEventClosed:
 				if ev.Err != nil {
-					return ev.Err
+					log.Debug("Cast init: waitUntilReady terminal", "target", s.target.Name, "state", s.sanitizedStateFields(), "err", ev.Err)
+					return fmt.Errorf("wait until ready: %w", ev.Err)
 				}
-				return errDisconnected
+				log.Debug("Cast init: waitUntilReady terminal", "target", s.target.Name, "state", s.sanitizedStateFields(), "err", errDisconnected)
+				return fmt.Errorf("wait until ready: %w", errDisconnected)
 			}
 		}
 	}
@@ -482,6 +546,10 @@ func (s *castSession) dispatch(msg protocolMessage) {
 		if msg.ReceiverStatus != nil {
 			s.applyReceiverStatus(msg.ReceiverStatus)
 			s.signalStateChanged()
+			snap := s.Snapshot()
+			if snap.MediaSessionID != 0 {
+				s.emitNonBlockingEvent(sessionEvent{Type: sessionEventReceiverStatus, Snapshot: snap})
+			}
 		}
 	case "MEDIA_STATUS":
 		if msg.MediaStatus != nil {
@@ -543,6 +611,112 @@ func (s *castSession) applyMediaStatus(status *libcast.MediaStatusResponse) {
 	})
 }
 
+func sanitizedState(snap sessionSnapshot) map[string]any {
+	return map[string]any{
+		"appId":              snap.AppID,
+		"transportIdPresent": snap.TransportID != "",
+		"mediaSessionId":     snap.MediaSessionID,
+		"playerState":        snap.PlayerState,
+		"idleReason":         snap.IdleReason,
+	}
+}
+
+func sanitizedApplications(status *libcast.ReceiverStatusResponse, expectedAppID string) map[string]any {
+	apps := []map[string]any{}
+	anyTransport := false
+	expectedPresent := false
+	if status != nil {
+		for _, app := range status.Status.Applications {
+			transportPresent := app.TransportId != ""
+			sessionPresent := app.SessionId != ""
+			if transportPresent {
+				anyTransport = true
+			}
+			if app.AppId == expectedAppID {
+				expectedPresent = true
+			}
+			apps = append(apps, map[string]any{
+				"appId":              app.AppId,
+				"transportIdPresent": transportPresent,
+				"sessionIdPresent":   sessionPresent,
+				"isIdleScreen":       app.IsIdleScreen,
+			})
+		}
+	}
+	return map[string]any{
+		"count":              len(apps),
+		"expectedAppId":      expectedAppID,
+		"expectedAppPresent": expectedPresent,
+		"anyTransportId":     anyTransport,
+		"applications":       apps,
+	}
+}
+
+func (s *castSession) sanitizedStateFields() map[string]any {
+	return sanitizedState(s.Snapshot())
+}
+
+func (s *castSession) validateLaunchReply(expectedAppID string, msg protocolMessage) error {
+	fields := []any{
+		"target", s.target.Name,
+		"appId", expectedAppID,
+		"replyType", msg.Type,
+		"requestId", msg.RequestID,
+	}
+	switch msg.Type {
+	case "RECEIVER_STATUS":
+		fields = append(fields, "classification", "A_RECEIVER_STATUS")
+		if msg.ReceiverStatus != nil {
+			fields = append(fields, "applications", sanitizedApplications(msg.ReceiverStatus, expectedAppID))
+		}
+		log.Debug(append([]any{"Cast init: LAUNCH correlated reply"}, fields...)...)
+		return nil
+	case "LAUNCH_ERROR":
+		fields = append(fields, "classification", "B_LAUNCH_ERROR")
+		err := &launchReplyError{ReplyType: msg.Type}
+		if msg.LaunchError != nil {
+			fields = append(fields,
+				"reason", msg.LaunchError.Reason,
+				"errorCode", msg.LaunchError.ErrorCode,
+			)
+			err.Reason = msg.LaunchError.Reason
+			err.ErrorCode = msg.LaunchError.ErrorCode
+		}
+		log.Debug(append([]any{"Cast init: LAUNCH correlated reply"}, fields...)...)
+		return err
+	default:
+		fields = append(fields, "classification", "C_OTHER")
+		log.Debug(append([]any{"Cast init: LAUNCH correlated reply"}, fields...)...)
+		return &launchReplyError{ReplyType: msg.Type}
+	}
+}
+
+type launchReplyError struct {
+	ReplyType string
+	Reason    string
+	ErrorCode string
+}
+
+func (e *launchReplyError) Error() string {
+	if e == nil {
+		return "cast launch failed"
+	}
+	if e.ReplyType == "LAUNCH_ERROR" {
+		switch {
+		case e.Reason != "" && e.ErrorCode != "":
+			return fmt.Sprintf("cast launch failed: replyType=%s reason=%s errorCode=%s", e.ReplyType, e.Reason, e.ErrorCode)
+		case e.Reason != "":
+			return fmt.Sprintf("cast launch failed: replyType=%s reason=%s", e.ReplyType, e.Reason)
+		case e.ErrorCode != "":
+			return fmt.Sprintf("cast launch failed: replyType=%s errorCode=%s", e.ReplyType, e.ErrorCode)
+		}
+	}
+	if e.ReplyType != "" {
+		return fmt.Sprintf("cast launch failed: unexpected correlated reply type: %s", e.ReplyType)
+	}
+	return "cast launch failed"
+}
+
 func (s *castSession) signalStateChanged() {
 	select {
 	case s.stateChanged <- struct{}{}:
@@ -574,6 +748,22 @@ func (s *castSession) emitEvent(ev sessionEvent) {
 	select {
 	case s.events <- ev:
 	case <-s.done:
+	}
+}
+
+// emitNonBlockingEvent is best-effort for state sync updates. Dropping an
+// intermediate receiver-status event is acceptable because the latest snapshot
+// remains available without risking constructor/read-loop stalls.
+func (s *castSession) emitNonBlockingEvent(ev sessionEvent) {
+	s.eventsMu.RLock()
+	defer s.eventsMu.RUnlock()
+	if s.eventsClosed {
+		return
+	}
+	select {
+	case s.events <- ev:
+	case <-s.done:
+	default:
 	}
 }
 
@@ -679,6 +869,16 @@ func parseProtocolMessage(msg *pb.CastMessage) protocolMessage {
 			return parsed
 		}
 		parsed.MediaStatus = &status
+	case "LAUNCH_ERROR":
+		var launchErr struct {
+			Reason    string `json:"reason"`
+			ErrorCode string `json:"errorCode"`
+		}
+		if err := json.Unmarshal([]byte(*msg.PayloadUtf8), &launchErr); err != nil {
+			parsed.Err = err
+			return parsed
+		}
+		parsed.LaunchError = &launchErrorMessage{Reason: launchErr.Reason, ErrorCode: launchErr.ErrorCode}
 	}
 	return parsed
 }

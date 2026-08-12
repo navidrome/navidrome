@@ -157,6 +157,34 @@ var _ = Describe("CastTrack", func() {
 		Expect(fs.setVolumeCalls).To(Equal([]float32{0.25}))
 	})
 
+	It("forwards receiver volume events to the registered handler", func() {
+		fs := newFakeSession(sessionSnapshot{Connected: true, PlayerState: "PAUSED"})
+		track, err := newTrack(ctx, playbackDone, target, mf, func(_ context.Context, _ Target, _ loadSpec) (session, error) {
+			return fs, nil
+		})
+		Expect(err).ToNot(HaveOccurred())
+		DeferCleanup(track.Close)
+		received := make(chan float32, 1)
+		track.SetReceiverVolumeHandler(func(level float32) { received <- level })
+
+		fs.events <- sessionEvent{Type: sessionEventReceiverStatus, Snapshot: sessionSnapshot{ReceiverVolume: 0.42}}
+		Eventually(received).Should(Receive(Equal(float32(0.42))))
+		Expect(fs.setVolumeCalls).To(BeEmpty())
+	})
+
+	It("does not invoke receiver volume handlers after close", func() {
+		fs := newFakeSession(sessionSnapshot{Connected: true, PlayerState: "PAUSED"})
+		track, err := newTrack(ctx, playbackDone, target, mf, func(_ context.Context, _ Target, _ loadSpec) (session, error) {
+			return fs, nil
+		})
+		Expect(err).ToNot(HaveOccurred())
+		called := make(chan struct{}, 1)
+		track.SetReceiverVolumeHandler(func(float32) { called <- struct{}{} })
+		track.Close()
+		fs.events <- sessionEvent{Type: sessionEventReceiverStatus, Snapshot: sessionSnapshot{ReceiverVolume: 0.55}}
+		Consistently(called, 150*time.Millisecond).ShouldNot(Receive())
+	})
+
 	It("sends PLAY and PAUSE through the session", func() {
 		fs := newFakeSession(sessionSnapshot{Connected: true, PlayerState: "PAUSED"})
 		track := &CastTrack{session: fs, trackCtx: ctx, cancel: cancel}

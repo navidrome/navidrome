@@ -3,6 +3,7 @@ package cast
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -125,11 +126,15 @@ func receiverStatus(requestID int, appID, transportID string) any {
 }
 
 func receiverStatusWithApps(requestID int, apps []map[string]any) any {
+	return receiverStatusWithVolume(requestID, 0.5, apps)
+}
+
+func receiverStatusWithVolume(requestID int, level float32, apps []map[string]any) any {
 	return map[string]any{
 		"type":      "RECEIVER_STATUS",
 		"requestId": requestID,
 		"status": map[string]any{
-			"volume":       map[string]any{"level": 0.5},
+			"volume":       map[string]any{"level": level},
 			"applications": apps,
 		},
 	}
@@ -153,6 +158,20 @@ func mediaStatus(requestID int, mediaSessionID int, playerState, idleReason, con
 			},
 		}},
 	}
+}
+
+func launchError(requestID int, reason, errorCode string) any {
+	payload := map[string]any{
+		"type":      "LAUNCH_ERROR",
+		"requestId": requestID,
+	}
+	if reason != "" {
+		payload["reason"] = reason
+	}
+	if errorCode != "" {
+		payload["errorCode"] = errorCode
+	}
+	return payload
 }
 
 var _ = Describe("castSession", func() {
@@ -190,6 +209,7 @@ var _ = Describe("castSession", func() {
 		msgs := conn.sentMessages()
 		Expect(msgs).To(HaveLen(4))
 		Expect(msgs[0].Payload["type"]).To(Equal("CONNECT"))
+		Expect(msgs[0].Payload["requestId"]).To(BeNumerically("==", 1))
 		Expect(msgs[0].Namespace).To(Equal(namespaceConn))
 		Expect(msgs[1].Payload["type"]).To(Equal("GET_STATUS"))
 		Expect(msgs[2].Payload["type"]).To(Equal("CONNECT"))
@@ -203,6 +223,32 @@ var _ = Describe("castSession", func() {
 		Expect(media["streamType"]).To(Equal("BUFFERED"))
 		Expect(conn.debugCalls).To(Equal(0))
 		Expect(sess.Snapshot().PlayerState).To(Equal("PAUSED"))
+	})
+
+	It("keeps request ids on cast commands", func() {
+		conn.onSend = func(msg sentMessage) {
+			switch msg.Payload["type"] {
+			case "GET_STATUS":
+				conn.emit(receiverStatus(msg.RequestID, defaultMediaReceiverAppID, "transport-1"), msg.RequestID, defaultReceiverID, defaultSenderID, namespaceRecv)
+			case "LOAD":
+				conn.emit(mediaStatus(msg.RequestID, 77, "PAUSED", "", load.ContentID, 0), msg.RequestID, "transport-1", defaultSenderID, namespaceMedia)
+			}
+		}
+
+		sess, err := newSessionWithConnFactory(ctx, target, load, func() libcast.Conn { return conn })
+		Expect(err).ToNot(HaveOccurred())
+		DeferCleanup(func() { _ = sess.Close() })
+
+		msgs := conn.sentMessages()
+		Expect(msgs).To(HaveLen(4))
+		Expect(msgs[0].RequestID).To(Equal(1))
+		Expect(msgs[0].Payload["requestId"]).To(BeNumerically("==", 1))
+		Expect(msgs[1].RequestID).To(Equal(2))
+		Expect(msgs[1].Payload["requestId"]).To(BeNumerically("==", 2))
+		Expect(msgs[2].RequestID).To(Equal(3))
+		Expect(msgs[2].Payload["requestId"]).To(BeNumerically("==", 3))
+		Expect(msgs[3].RequestID).To(Equal(4))
+		Expect(msgs[3].Payload["requestId"]).To(BeNumerically("==", 4))
 	})
 
 	It("launches the default media receiver when needed", func() {
@@ -478,11 +524,119 @@ var _ = Describe("castSession", func() {
 		Eventually(playDone).Should(BeClosed())
 	})
 
+	It("summarizes receiver applications without exposing payload details", func() {
+		status := &libcast.ReceiverStatusResponse{}
+		status.Status.Applications = []libcast.Application{
+			{AppId: "CC1AD845", TransportId: "transport-1", SessionId: "session-1", IsIdleScreen: false},
+			{AppId: "E8C28D3C", IsIdleScreen: true},
+		}
+		summary := sanitizedApplications(status, defaultMediaReceiverAppID)
+		Expect(summary["count"]).To(Equal(2))
+		Expect(summary["expectedAppId"]).To(Equal(defaultMediaReceiverAppID))
+		Expect(summary["expectedAppPresent"]).To(Equal(true))
+		Expect(summary["anyTransportId"]).To(Equal(true))
+		apps := summary["applications"].([]map[string]any)
+		Expect(apps).To(HaveLen(2))
+		Expect(apps[0]).To(Equal(map[string]any{"appId": "CC1AD845", "transportIdPresent": true, "sessionIdPresent": true, "isIdleScreen": false}))
+		Expect(apps[1]).To(Equal(map[string]any{"appId": "E8C28D3C", "transportIdPresent": false, "sessionIdPresent": false, "isIdleScreen": true}))
+	})
+
+	It("parses launch error messages with safe structured fields only", func() {
+		payload := launchError(17, "NOT_ALLOWED", "APP_NOT_AVAILABLE")
+		b, err := json.Marshal(payload)
+		Expect(err).ToNot(HaveOccurred())
+		utf8 := string(b)
+		parsed := parseProtocolMessage(&pb.CastMessage{PayloadUtf8: &utf8})
+		Expect(parsed.Err).ToNot(HaveOccurred())
+		Expect(parsed.Type).To(Equal("LAUNCH_ERROR"))
+		Expect(parsed.RequestID).To(Equal(17))
+		Expect(parsed.LaunchError).ToNot(BeNil())
+		Expect(parsed.LaunchError.Reason).To(Equal("NOT_ALLOWED"))
+		Expect(parsed.LaunchError.ErrorCode).To(Equal("APP_NOT_AVAILABLE"))
+		Expect(parsed.ReceiverStatus).To(BeNil())
+		Expect(parsed.MediaStatus).To(BeNil())
+	})
+
+	It("fails fast on a correlated launch error reply", func() {
+		var getStatusCalls int
+		conn.onSend = func(msg sentMessage) {
+			switch msg.Payload["type"] {
+			case "GET_STATUS":
+				getStatusCalls++
+				conn.emit(receiverStatus(msg.RequestID, "OTHER_APP", "transport-other"), msg.RequestID, defaultReceiverID, defaultSenderID, namespaceRecv)
+			case "LAUNCH":
+				conn.emit(launchError(msg.RequestID, "NOT_ALLOWED", "APP_NOT_AVAILABLE"), msg.RequestID, defaultReceiverID, defaultSenderID, namespaceRecv)
+			}
+		}
+
+		_, err := newSessionWithConnFactory(ctx, target, load, func() libcast.Conn { return conn })
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("launch receiver app"))
+		Expect(err.Error()).To(ContainSubstring("replyType=LAUNCH_ERROR"))
+		Expect(err.Error()).To(ContainSubstring("reason=NOT_ALLOWED"))
+		Expect(err.Error()).To(ContainSubstring("errorCode=APP_NOT_AVAILABLE"))
+		Expect(getStatusCalls).To(Equal(1))
+	})
+
+	It("fails fast on correlated non-status launch replies", func() {
+		var getStatusCalls int
+		conn.onSend = func(msg sentMessage) {
+			switch msg.Payload["type"] {
+			case "GET_STATUS":
+				getStatusCalls++
+				conn.emit(receiverStatus(msg.RequestID, "OTHER_APP", "transport-other"), msg.RequestID, defaultReceiverID, defaultSenderID, namespaceRecv)
+			case "LAUNCH":
+				conn.emit(map[string]any{"type": "SOME_OTHER_REPLY", "requestId": msg.RequestID}, msg.RequestID, defaultReceiverID, defaultSenderID, namespaceRecv)
+			}
+		}
+
+		_, err := newSessionWithConnFactory(ctx, target, load, func() libcast.Conn { return conn })
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("launch receiver app"))
+		Expect(err.Error()).To(ContainSubstring("unexpected correlated reply type: SOME_OTHER_REPLY"))
+		Expect(getStatusCalls).To(Equal(1))
+	})
+
+	It("preserves context deadline classification in stage-wrapped errors", func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+		DeferCleanup(cancel)
+		_, err := newSessionWithConnFactory(ctx, target, load, func() libcast.Conn { return conn })
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("get receiver status"))
+		Expect(errors.Is(err, context.DeadlineExceeded)).To(BeTrue())
+	})
+
 	It("does not call unsafe close when start fails", func() {
 		conn.startErr = fmt.Errorf("boom")
 		conn.unsafeCloseBeforeStart = true
 		_, err := newSessionWithConnFactory(ctx, target, load, func() libcast.Conn { return conn })
-		Expect(err).To(MatchError("boom"))
+		Expect(err).To(MatchError(ContainSubstring("cast conn start: boom")))
+	})
+
+	It("emits receiver status events with parsed receiver volume", func() {
+		conn.onSend = func(msg sentMessage) {
+			switch msg.Payload["type"] {
+			case "GET_STATUS":
+				conn.emit(receiverStatus(msg.RequestID, defaultMediaReceiverAppID, "transport-1"), msg.RequestID, defaultReceiverID, defaultSenderID, namespaceRecv)
+			case "LOAD":
+				conn.emit(mediaStatus(msg.RequestID, 77, "PAUSED", "", load.ContentID, 0), msg.RequestID, "transport-1", defaultSenderID, namespaceMedia)
+			}
+		}
+
+		sess, err := newSessionWithConnFactory(ctx, target, load, func() libcast.Conn { return conn })
+		Expect(err).ToNot(HaveOccurred())
+		DeferCleanup(func() { _ = sess.Close() })
+
+		conn.emit(receiverStatusWithVolume(0, 0.37, []map[string]any{{
+			"appId":       defaultMediaReceiverAppID,
+			"sessionId":   "session-1",
+			"transportId": "transport-1",
+		}}), 0, defaultReceiverID, defaultSenderID, namespaceRecv)
+
+		Eventually(sess.Events()).Should(Receive(WithTransform(func(ev sessionEvent) sessionEventType {
+			return ev.Type
+		}, Equal(sessionEventReceiverStatus))))
+		Eventually(func() float32 { return sess.Snapshot().ReceiverVolume }).Should(Equal(float32(0.37)))
 	})
 
 	It("best-effort stops media and closes cleanly", func() {

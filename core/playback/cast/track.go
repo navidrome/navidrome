@@ -18,13 +18,14 @@ type sessionFactory func(context.Context, Target, loadSpec) (session, error)
 type CastTrack struct {
 	mu sync.Mutex
 
-	mediaFile     model.MediaFile
-	target        Target
-	playbackDone  chan bool
-	naturalFinish chan struct{}
-	trackCtx      context.Context
-	cancel        context.CancelFunc
-	session       session
+	mediaFile             model.MediaFile
+	target                Target
+	playbackDone          chan bool
+	naturalFinish         chan struct{}
+	trackCtx              context.Context
+	cancel                context.CancelFunc
+	session               session
+	receiverVolumeHandler func(float32)
 
 	closing       bool
 	finishQueued  bool
@@ -143,6 +144,15 @@ func (t *CastTrack) SetPosition(offset int) error {
 	return t.session.SeekTo(t.trackCtx, float32(offset), resumeState)
 }
 
+func (t *CastTrack) SetReceiverVolumeHandler(handler func(float32)) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.closing || t.trackCtx.Err() != nil {
+		return
+	}
+	t.receiverVolumeHandler = handler
+}
+
 // Close wins over any not-yet-delivered natural completion. Once closing is set,
 // PlaybackDone is suppressed even if FINISHED was already observed.
 func (t *CastTrack) Close() {
@@ -152,6 +162,7 @@ func (t *CastTrack) Close() {
 		return
 	}
 	t.closing = true
+	t.receiverVolumeHandler = nil
 	t.mu.Unlock()
 
 	t.cancel()
@@ -178,11 +189,26 @@ func (t *CastTrack) sessionEventLoop() {
 				if ev.Snapshot.MediaSessionID != 0 && ev.Snapshot.PlayerState == "IDLE" && ev.Snapshot.IdleReason == "FINISHED" {
 					t.queueNaturalCompletion()
 				}
+			case sessionEventReceiverStatus:
+				t.handleReceiverVolume(ev.Snapshot.ReceiverVolume)
 			case sessionEventDisconnected, sessionEventClosed, sessionEventLoadFailed:
 				t.cancel()
 				return
 			}
 		}
+	}
+}
+
+func (t *CastTrack) handleReceiverVolume(level float32) {
+	t.mu.Lock()
+	if t.closing || t.trackCtx.Err() != nil {
+		t.mu.Unlock()
+		return
+	}
+	handler := t.receiverVolumeHandler
+	t.mu.Unlock()
+	if handler != nil {
+		handler(level)
 	}
 }
 
