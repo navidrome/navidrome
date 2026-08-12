@@ -395,7 +395,15 @@ func (e *provider) seedMix(ctx context.Context, count int, sample func() (model.
 func (e *provider) samplePlaylistTracks(ctx context.Context, playlistID string, n int) (model.MediaFiles, error) {
 	// Refresh: a smart playlist materializes no tracks until it is evaluated, so skipping it would
 	// mix an empty seed set. It is a no-op for regular playlists and inside the refresh delay.
-	tracks, err := e.ds.Playlist(ctx).Tracks(playlistID, true).GetAll(model.QueryOptions{Sort: "random", Max: n})
+	repo := e.ds.Playlist(ctx).Tracks(playlistID, true)
+	if repo == nil {
+		return nil, model.ErrNotFound
+	}
+	tracks, err := repo.GetAll(model.QueryOptions{
+		Sort:    "random",
+		Max:     n,
+		Filters: squirrel.Eq{"missing": false},
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -403,22 +411,22 @@ func (e *provider) samplePlaylistTracks(ctx context.Context, playlistID string, 
 }
 
 func (e *provider) sampleAlbumTracks(ctx context.Context, albumID string, n int) (model.MediaFiles, error) {
-	return e.ds.MediaFile(ctx).GetRandom(model.QueryOptions{
-		Filters: squirrel.Eq{"album_id": albumID},
-		Max:     n,
-	})
+	return e.sampleTracks(ctx, squirrel.Eq{"album_id": albumID}, n)
 }
 
 func (e *provider) sampleArtistTracks(ctx context.Context, artistID string, n int) (model.MediaFiles, error) {
-	return e.ds.MediaFile(ctx).GetRandom(model.QueryOptions{
-		Filters: squirrel.Eq{"artist_id": artistID},
-		Max:     n,
-	})
+	return e.sampleTracks(ctx, squirrel.Eq{"artist_id": artistID}, n)
 }
 
 func (e *provider) sampleGenreTracks(ctx context.Context, genre *model.Genre, n int) (model.MediaFiles, error) {
+	return e.sampleTracks(ctx, persistence.SongGenres.ByID(genre.ID), n)
+}
+
+// sampleTracks returns up to n random present tracks. Seeds can end up in the mix verbatim, so
+// missing files would surface as unplayable entries.
+func (e *provider) sampleTracks(ctx context.Context, filter squirrel.Sqlizer, n int) (model.MediaFiles, error) {
 	return e.ds.MediaFile(ctx).GetRandom(model.QueryOptions{
-		Filters: persistence.SongGenres.ByID(genre.ID),
+		Filters: squirrel.And{filter, squirrel.Eq{"missing": false}},
 		Max:     n,
 	})
 }

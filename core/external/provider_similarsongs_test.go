@@ -3,6 +3,7 @@ package external_test
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 
 	"github.com/Masterminds/squirrel"
@@ -224,8 +225,9 @@ var _ = Describe("Provider - SimilarSongs", func() {
 					Return(nil, agents.ErrNotFound).Once()
 
 				mediaFileRepo.On("GetRandom", mock.MatchedBy(func(opt model.QueryOptions) bool {
-					eq, ok := opt.Filters.(squirrel.Eq)
-					return ok && eq["album_id"] == "album-1"
+					sql, args, err := opt.Filters.ToSql()
+					return err == nil && strings.Contains(sql, "album_id") &&
+						strings.Contains(sql, "missing") && slices.Contains(args, any("album-1"))
 				})).Return(model.MediaFiles{seed}, nil).Once()
 
 				// seedMix falls back to the seed itself when the agent finds nothing.
@@ -252,8 +254,9 @@ var _ = Describe("Provider - SimilarSongs", func() {
 
 				// sampleAlbumTracks -> GetRandom(album_id) -> one seed track
 				mediaFileRepo.On("GetRandom", mock.MatchedBy(func(opt model.QueryOptions) bool {
-					eq, ok := opt.Filters.(squirrel.Eq)
-					return ok && eq["album_id"] == "al-1"
+					sql, args, err := opt.Filters.ToSql()
+					return err == nil && strings.Contains(sql, "album_id") &&
+						strings.Contains(sql, "missing") && slices.Contains(args, any("al-1"))
 				})).Return(model.MediaFiles{{ID: "s1", Title: "Seed", Artist: "A"}}, nil).Once()
 
 				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "s1", "Seed", "A", "", 5).
@@ -326,8 +329,9 @@ var _ = Describe("Provider - SimilarSongs", func() {
 					Return([]agents.Song{}, nil).Maybe()
 
 				mediaFileRepo.On("GetRandom", mock.MatchedBy(func(opt model.QueryOptions) bool {
-					eq, ok := opt.Filters.(squirrel.Eq)
-					return ok && eq["artist_id"] == "ar-1"
+					sql, args, err := opt.Filters.ToSql()
+					return err == nil && strings.Contains(sql, "artist_id") &&
+						strings.Contains(sql, "missing") && slices.Contains(args, any("ar-1"))
 				})).Return(model.MediaFiles{{ID: "s1", Title: "Seed"}}, nil).Once()
 				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "s1", "Seed", "", "", 5).
 					Return([]agents.Song{{Name: "Result"}}, nil).Once()
@@ -387,6 +391,38 @@ var _ = Describe("Provider - SimilarSongs", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(songs).ToNot(BeEmpty())
 				Expect(playlistRepo.TracksRefreshed).To(BeTrue())
+			})
+
+			It("returns an error instead of panicking when the track repository is unavailable", func() {
+				// Tracks() logs and returns a nil repository when its own lookup fails.
+				pls := model.Playlist{ID: "pl-nil", Name: "Gone"}
+				artistRepo.On("Get", "pl-nil").Return(nil, model.ErrNotFound).Once()
+				albumRepo.On("Get", "pl-nil").Return(nil, model.ErrNotFound).Once()
+				playlistRepo.SetData(model.Playlists{pls})
+				playlistRepo.TracksRepo = nil
+
+				_, err := provider.SimilarSongs(ctx, "pl-nil", 5)
+
+				Expect(err).To(MatchError(model.ErrNotFound))
+			})
+
+			It("does not seed a mix with missing tracks", func() {
+				pls := model.Playlist{ID: "pl-missing", Name: "Missing"}
+				artistRepo.On("Get", "pl-missing").Return(nil, model.ErrNotFound).Once()
+				albumRepo.On("Get", "pl-missing").Return(nil, model.ErrNotFound).Once()
+				playlistRepo.SetData(model.Playlists{pls})
+				playlistTrackRepo.SetData(model.PlaylistTracks{
+					{MediaFile: model.MediaFile{ID: "s1", Title: "Seed One"}},
+				})
+				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+					Return([]agents.Song{}, nil).Maybe()
+
+				_, err := provider.SimilarSongs(ctx, "pl-missing", 5)
+
+				Expect(err).ToNot(HaveOccurred())
+				sql, _, sqlErr := playlistTrackRepo.Options.Filters.ToSql()
+				Expect(sqlErr).ToNot(HaveOccurred())
+				Expect(sql).To(ContainSubstring("missing"))
 			})
 
 			It("does not panic when the caller asks for a non-positive count", func() {
@@ -490,7 +526,8 @@ var _ = Describe("Provider - SimilarSongs", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(songs).To(HaveLen(5))
 				// The bound belongs to the query, so the repo never has to return the extra track.
-				Expect(playlistTrackRepo.Options).To(Equal(model.QueryOptions{Sort: "random", Max: 5}))
+				Expect(playlistTrackRepo.Options.Sort).To(Equal("random"))
+				Expect(playlistTrackRepo.Options.Max).To(Equal(5))
 				agentsCombined.AssertNumberOfCalls(GinkgoT(), "GetSimilarSongsByTrack", 5)
 			})
 		})
@@ -509,7 +546,8 @@ var _ = Describe("Provider - SimilarSongs", func() {
 						return false
 					}
 					sql, _, err := opt.Filters.ToSql()
-					return err == nil && strings.Contains(sql, "media_file_tags") && !strings.Contains(sql, "json_tree")
+					return err == nil && strings.Contains(sql, "media_file_tags") &&
+						!strings.Contains(sql, "json_tree") && strings.Contains(sql, "missing")
 				})).Return(model.MediaFiles{{ID: "s1", Title: "Seed"}}, nil).Once()
 				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "s1", "Seed", "", "", 5).
 					Return([]agents.Song{{Name: "Similar"}}, nil).Once()
@@ -655,8 +693,9 @@ var _ = Describe("Provider - SimilarSongs", func() {
 
 		// Fallback yields nothing, so the sampling path is tried and also finds no tracks.
 		mediaFileRepo.On("GetRandom", mock.MatchedBy(func(opt model.QueryOptions) bool {
-			eq, ok := opt.Filters.(squirrel.Eq)
-			return ok && eq["artist_id"] == "artist-1"
+			sql, args, err := opt.Filters.ToSql()
+			return err == nil && strings.Contains(sql, "artist_id") &&
+				strings.Contains(sql, "missing") && slices.Contains(args, any("artist-1"))
 		})).Return(model.MediaFiles{}, nil).Once()
 
 		songs, err := provider.SimilarSongs(ctx, "artist-1", 5)

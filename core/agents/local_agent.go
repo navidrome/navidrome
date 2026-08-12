@@ -54,8 +54,11 @@ func (p *localAgent) GetSimilarSongsByTrack(ctx context.Context, id, name, artis
 	}
 	// Ask for extra so we can drop the seed itself and still fill the count.
 	candidates, err := p.ds.MediaFile(ctx).GetRandom(model.QueryOptions{
-		Filters: persistence.SongGenres.ByID(genreIDs),
-		Max:     count + 1,
+		Filters: squirrel.And{
+			persistence.SongGenres.ByID(genreIDs),
+			squirrel.Eq{"missing": false},
+		},
+		Max: count + 1,
 	})
 	if err != nil {
 		return nil, err
