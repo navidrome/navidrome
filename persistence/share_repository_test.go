@@ -253,9 +253,13 @@ var _ = Describe("ShareRepository", func() {
 				{Artist: model.Artist{ID: primaryID, Name: "AA Primary"}},
 				{Artist: model.Artist{ID: secondaryID, Name: "AA Secondary"}},
 			}}
+			alr := NewAlbumRepository(adminCtx, b)
+			Expect(alr.Put(&model.Album{ID: "art-album-ok", LibraryID: 1, Name: "Art Album OK", AlbumArtistID: primaryID, AlbumArtist: "AA Primary", Participants: aaParticipants})).To(Succeed())
+			Expect(alr.Put(&model.Album{ID: "art-album-other", LibraryID: otherLib.ID, Name: "Art Album Other", AlbumArtistID: primaryID, AlbumArtist: "AA Primary", Participants: aaParticipants})).To(Succeed())
+
 			mr := NewMediaFileRepository(adminCtx, b)
-			Expect(mr.Put(&model.MediaFile{ID: "art-ok", LibraryID: 1, Path: "a/ok.mp3", Title: "ArtOK", AlbumArtistID: primaryID, Participants: aaParticipants})).To(Succeed())
-			Expect(mr.Put(&model.MediaFile{ID: "art-other", LibraryID: otherLib.ID, Path: "a/other.mp3", Title: "ArtOther", AlbumArtistID: primaryID, Participants: aaParticipants})).To(Succeed())
+			Expect(mr.Put(&model.MediaFile{ID: "art-ok", LibraryID: 1, AlbumID: "art-album-ok", Path: "a/ok.mp3", Title: "ArtOK", AlbumArtistID: primaryID, Participants: aaParticipants})).To(Succeed())
+			Expect(mr.Put(&model.MediaFile{ID: "art-other", LibraryID: otherLib.ID, AlbumID: "art-album-other", Path: "a/other.mp3", Title: "ArtOther", AlbumArtistID: primaryID, Participants: aaParticipants})).To(Succeed())
 
 			// Non-admin owner with access to library 1 only
 			owner = createUserWithLibraries("artist-share-owner", []int{1})
@@ -279,6 +283,8 @@ var _ = Describe("ShareRepository", func() {
 			_, _ = b.NewQuery(`DELETE FROM share WHERE id = 'art-share'`).Execute()
 			mr := NewMediaFileRepository(adminCtx, b).(*mediaFileRepository)
 			_, _ = mr.executeSQL(squirrel.Delete("media_file").Where(squirrel.Eq{"id": []string{"art-ok", "art-other"}}))
+			alr := NewAlbumRepository(adminCtx, b).(*albumRepository)
+			_, _ = alr.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": []string{"art-album-ok", "art-album-other"}}))
 			ar := NewArtistRepository(adminCtx, b).(*artistRepository)
 			_, _ = ar.executeSQL(squirrel.Delete("artist").Where(squirrel.Eq{"id": []string{primaryID, secondaryID}}))
 			lr := NewLibraryRepository(adminCtx, b).(*libraryRepository)
@@ -297,6 +303,11 @@ var _ = Describe("ShareRepository", func() {
 				"a co-album-artist track (not matched by album_artist_id) must be included")
 			Expect(share.Tracks).ToNot(ContainElement(HaveField("ID", "art-other")),
 				"a track outside the owner's libraries must not appear in the share")
+
+			Expect(share.Albums).To(ContainElement(HaveField("ID", "art-album-ok")),
+				"a co-album-artist album must be included")
+			Expect(share.Albums).ToNot(ContainElement(HaveField("ID", "art-album-other")),
+				"an album outside the owner's libraries must not appear in the share")
 		})
 	})
 
