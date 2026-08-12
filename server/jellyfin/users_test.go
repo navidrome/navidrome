@@ -19,7 +19,7 @@ import (
 var _ = Describe("Users", func() {
 	var api *Router
 	authedWithLibraries := func(r *http.Request, libs model.Libraries) *http.Request {
-		ctx := request.WithUser(context.Background(), model.User{ID: "u1", UserName: "alice", Libraries: libs})
+		ctx := request.WithUser(context.Background(), model.User{ID: testID("u1"), UserName: "alice", Libraries: libs})
 		return r.WithContext(ctx)
 	}
 	BeforeEach(func() { api = &Router{ds: &tests.MockDataStore{}} })
@@ -92,8 +92,8 @@ var _ = Describe("Users", func() {
 		BeforeEach(func() {
 			DeferCleanup(configtest.SetupConfig())
 			ur = api.ds.User(context.Background()).(*tests.MockedUserRepo)
-			Expect(ur.Put(&model.User{ID: "u1", UserName: "alice"})).To(Succeed())
-			Expect(ur.Put(&model.User{ID: "u2", UserName: "bob"})).To(Succeed())
+			Expect(ur.Put(&model.User{ID: testID("u1"), UserName: "alice"})).To(Succeed())
+			Expect(ur.Put(&model.User{ID: testID("u2"), UserName: "bob"})).To(Succeed())
 		})
 
 		It("returns an empty list when the config is unset", func() {
@@ -106,7 +106,7 @@ var _ = Describe("Users", func() {
 			users := publicUsers()
 			Expect(users).To(HaveLen(2))
 			Expect(users[0].Name).To(Equal("bob"))
-			Expect(users[0].Id).To(Equal(dto.EncodeID("u2")))
+			Expect(users[0].Id).To(Equal(dto.EncodeID(testID("u2"))))
 			Expect(users[1].Name).To(Equal("alice"))
 			// The public list must not expose Policy/Configuration to unauthenticated callers.
 			Expect(users[0].Policy).To(BeNil())
