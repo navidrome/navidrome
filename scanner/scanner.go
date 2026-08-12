@@ -6,7 +6,6 @@ import (
 	"maps"
 	"path/filepath"
 	"slices"
-	"strings"
 	"sync/atomic"
 	"time"
 
@@ -61,7 +60,7 @@ func libraryRelativePath(libPath, folderPath string) string {
 		return folderPath
 	}
 	rel, err := filepath.Rel(libPath, folderPath)
-	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+	if err != nil || !filepath.IsLocal(rel) {
 		return folderPath
 	}
 	return rel
@@ -93,10 +92,9 @@ func (s *scannerImpl) scanFolders(ctx context.Context, fullScan bool, targets []
 		// Selective scan: filter libraries and build targets map
 		state.targets = make(map[int][]string)
 
-		libPaths := make(map[int]string, len(allLibs))
-		for _, lib := range allLibs {
-			libPaths[lib.ID] = lib.Path
-		}
+		libPaths := slice.ToMap(allLibs, func(lib model.Library) (int, string) {
+			return lib.ID, lib.Path
+		})
 
 		for _, target := range targets {
 			folderPath := libraryRelativePath(libPaths[target.LibraryID], target.FolderPath)
