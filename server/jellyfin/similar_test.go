@@ -164,4 +164,26 @@ var _ = Describe("getInstantMix", func() {
 		Expect(res.Items).To(HaveLen(want), "a Radio Mix-sized request must not be truncated to the Similar ceiling")
 		Expect(res.Items[0].Name).To(Equal("Seed Song"), "the seed must still lead the mix")
 	})
+
+	// Genre ids don't resolve via GetEntityByID (see model.GetEntityByID); the handler must still
+	// route them to the provider instead of early-returning empty.
+	It("returns a mix for a genre id, which GetEntityByID can't resolve", func() {
+		ds := &tests.MockDataStore{}
+		songs := model.MediaFiles{
+			{ID: "m1", Title: "Track 1", LibraryID: 1},
+			{ID: "m2", Title: "Track 2", LibraryID: 1},
+		}
+		api := &Router{ds: ds, provider: &fakeSimilarProvider{songs: songs}}
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "/Items/"+dto.EncodeID("g1")+"/InstantMix", nil).
+			WithContext(request.WithUser(context.Background(), model.User{ID: "u1", Libraries: model.Libraries{{ID: 1}}}))
+		r = withChiURLParam(r, "itemId", dto.EncodeID("g1"))
+		api.getInstantMix(w, r)
+
+		Expect(w.Code).To(Equal(200))
+		var res dto.QueryResult
+		Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+		Expect(res.Items).To(HaveLen(2))
+	})
 })

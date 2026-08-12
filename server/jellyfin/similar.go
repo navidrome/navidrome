@@ -96,11 +96,8 @@ func (api *Router) getInstantMix(w http.ResponseWriter, r *http.Request) {
 	id := api.resolveItemID(ctx, dto.DecodeID(chi.URLParam(r, "itemId")))
 	limit := clampLimit(req.Params(r).IntOr("limit", 0), defaultSimilarLimit, maxInstantMixLimit)
 
-	entity, err := model.GetEntityByID(ctx, api.ds, id)
-	if err != nil {
-		api.ok(w, r, result(nil, 0, 0))
-		return
-	}
+	// Genre ids don't resolve via GetEntityByID; a nil entity is fine — it's just "not a song".
+	entity, _ := model.GetEntityByID(ctx, api.ds, id)
 	mf, isSong := entity.(*model.MediaFile)
 	if isSong {
 		if u, _ := request.UserFrom(ctx); !u.HasLibraryAccess(mf.LibraryID) {
