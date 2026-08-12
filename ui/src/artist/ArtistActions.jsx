@@ -13,9 +13,12 @@ import {
 } from 'react-admin'
 import ShuffleIcon from '@material-ui/icons/Shuffle'
 import PlayArrowIcon from '@material-ui/icons/PlayArrow'
+import ShareIcon from '@material-ui/icons/Share'
 import { IoIosRadio } from 'react-icons/io'
 import { playShuffle, playTopSongs } from './actions.js'
 import { playSimilar } from '../common/playbackActions.js'
+import { openShareMenu } from '../actions'
+import config from '../config'
 
 const useStyles = makeStyles((theme) => ({
   toolbar: {
@@ -101,6 +104,10 @@ const ArtistActions = ({ className, record, ...rest }) => {
     }
   }, [dispatch, notify, record])
 
+  const handleShare = React.useCallback(() => {
+    dispatch(openShareMenu([record.id], 'artist', record.name))
+  }, [dispatch, record])
+
   return (
     <TopToolbar
       className={`${className} ${classes.toolbar}`}
@@ -133,6 +140,15 @@ const ArtistActions = ({ className, record, ...rest }) => {
         loading={loadingAction === 'radio'}
         icon={<IoIosRadio className={classes.radioIcon} />}
       />
+      {config.enableSharing && (
+        <LoadingButton
+          onClick={handleShare}
+          label={translate('ra.action.share')}
+          className={classes.button}
+          size={isMobile ? 'small' : 'medium'}
+          icon={<ShareIcon />}
+        />
+      )}
     </TopToolbar>
   )
 }
