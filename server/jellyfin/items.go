@@ -2,6 +2,7 @@ package jellyfin
 
 import (
 	"context"
+	"errors"
 	"io"
 	"iter"
 	"net/http"
@@ -10,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -34,6 +34,10 @@ func searchTerm(p *req.Values) string {
 func (api *Router) getItems(w http.ResponseWriter, r *http.Request) {
 	res, err := api.queryItems(r.Context(), r)
 	if err != nil {
+		if errors.Is(err, model.ErrNotFound) {
+			http.Error(w, "Not Found", http.StatusNotFound)
+			return
+		}
 		api.internalError(w, r, err)
 		return
 	}
@@ -229,12 +233,37 @@ type itemsQuery struct {
 
 // parseItemsQuery also resolves the entity types (inferring them from the parent when
 // IncludeItemTypes is absent) and the library scope. Query keys are read lowercase because
-// normalizeQueryKeys folded them (Jellyfin binds case-insensitively).
-func (api *Router) parseItemsQuery(ctx context.Context, r *http.Request) itemsQuery {
+// normalizeQueryKeys folded them (Jellyfin binds case-insensitively). A non-empty id param that
+// fails to decode reports model.ErrNotFound rather than silently dropping the filter (see decodeFilterParam).
+func (api *Router) parseItemsQuery(ctx context.Context, r *http.Request) (itemsQuery, error) {
 	p := req.Params(r)
+	parentId, ok := decodeFilterParam(p.StringOr("parentid", ""))
+	if !ok {
+		return itemsQuery{}, model.ErrNotFound
+	}
+	// Any malformed entry in one of these id lists must 404, not silently drop out of the filter
+	// (see dto.DecodeIDs) — an all-malformed list would otherwise widen the query to everything.
+	ids, ok := decodedQueryIDs(r, "ids")
+	if !ok {
+		return itemsQuery{}, model.ErrNotFound
+	}
+	// Finamp's genre screen sends ParentId=<libraryId> for scoping plus GenreIds for the genre.
+	genreIds, ok := decodedQueryIDs(r, "genreids")
+	if !ok {
+		return itemsQuery{}, model.ErrNotFound
+	}
+	// Feishin fetches an album's tracks with AlbumIds instead of ParentId.
+	albumIds, ok := decodedQueryIDs(r, "albumids")
+	if !ok {
+		return itemsQuery{}, model.ErrNotFound
+	}
+	studioIds, ok := decodedQueryIDs(r, "studioids")
+	if !ok {
+		return itemsQuery{}, model.ErrNotFound
+	}
 	q := itemsQuery{
 		fields:    dto.ParseFields(p.Strings("fields")...),
-		ids:       decodedQueryIDs(r, "ids"),
+		ids:       ids,
 		rawTypes:  p.StringOr("includeitemtypes", ""),
 		search:    searchTerm(p),
 		sortBy:    p.StringOr("sortby", ""),
@@ -243,20 +272,22 @@ func (api *Router) parseItemsQuery(ctx context.Context, r *http.Request) itemsQu
 		limit:     p.IntOr("limit", 0),
 		// Clients express "favorites only" two ways: Filters=IsFavorite and the standalone
 		// isFavorite=true param (Finamp's "Favourite tracks" widget uses the latter).
-		favOnly:  strings.Contains(p.StringOr("filters", ""), "IsFavorite") || p.BoolOr("isfavorite", false),
-		parentId: dto.DecodeID(p.StringOr("parentid", "")),
-		// Finamp's genre screen sends ParentId=<libraryId> for scoping plus GenreIds for the genre.
-		genreIds: decodedQueryIDs(r, "genreids"),
-		// Feishin fetches an album's tracks with AlbumIds instead of ParentId.
-		albumIds:  decodedQueryIDs(r, "albumids"),
+		favOnly:   strings.Contains(p.StringOr("filters", ""), "IsFavorite") || p.BoolOr("isfavorite", false),
+		parentId:  parentId,
+		genreIds:  genreIds,
+		albumIds:  albumIds,
 		years:     parseYears(r),
-		studioIds: decodedQueryIDs(r, "studioids"),
+		studioIds: studioIds,
 	}
 	// An artist's page filters by artist, not ParentId: Finamp sends ParentId=<libraryId> for scoping
 	// plus AlbumArtistIds/ArtistIds/contributingArtistIds for the artist.
 	albumArtistScope := firstNonEmpty(p.StringOr("albumartistids", ""), p.StringOr("artistids", ""))
 	contributingScope := p.StringOr("contributingartistids", "")
-	q.artistId = firstDecodedID(firstNonEmpty(albumArtistScope, contributingScope))
+	artistId, ok := firstDecodedID(firstNonEmpty(albumArtistScope, contributingScope))
+	if !ok {
+		return itemsQuery{}, model.ErrNotFound
+	}
+	q.artistId = artistId
 	q.contributingOnly = albumArtistScope == "" && contributingScope != ""
 
 	q.types = parseTypes(q.rawTypes)
@@ -272,7 +303,7 @@ func (api *Router) parseItemsQuery(ctx context.Context, r *http.Request) itemsQu
 	// (Jellify opens albums this way). An artist parent keeps parseTypes' MusicAlbum default (browse
 	// its albums).
 	if q.rawTypes == "" && q.parentId != "" && !q.isLibraryParent {
-		if q.parentId == playlistsFolderID {
+		if q.parentId == dto.PlaylistsFolderID {
 			// Browsing into the synthetic playlists folder lists the user's playlists.
 			q.types = []string{"Playlist"}
 		} else if _, err := api.ds.Album(ctx).Get(q.parentId); err == nil {
@@ -285,14 +316,17 @@ func (api *Router) parseItemsQuery(ctx context.Context, r *http.Request) itemsQu
 	if q.isLibraryParent || len(q.types) > 1 {
 		q.entityParent = ""
 	}
-	return q
+	return q, nil
 }
 
 // queryItems is the /Items dispatcher: it resolves the request to entity types and queries each via
 // the matching listXxx, merging multi-type results into one paginated list (as Finamp's favorites
 // screen requests).
 func (api *Router) queryItems(ctx context.Context, r *http.Request) (itemsResult, error) {
-	q := api.parseItemsQuery(ctx, r)
+	q, err := api.parseItemsQuery(ctx, r)
+	if err != nil {
+		return itemsResult{}, err
+	}
 	switch {
 	// /Items?ids= is a batch-fetch-by-id that bypasses the type dispatch.
 	case len(q.ids) > 0:
@@ -322,7 +356,7 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (itemsResult
 // ok is false when ParentId isn't a visible playlist, so the caller falls through to the type
 // dispatch: ParentId is usually an album or artist.
 func (api *Router) playlistTracksRepo(ctx context.Context, q itemsQuery) (model.PlaylistTrackRepository, bool) {
-	if q.parentId == "" || q.isLibraryParent || q.parentId == playlistsFolderID {
+	if q.parentId == "" || q.isLibraryParent || q.parentId == dto.PlaylistsFolderID {
 		return nil, false
 	}
 	// Tracks enforces visibility.
@@ -450,18 +484,20 @@ func firstNonEmpty(vals ...string) string {
 	return ""
 }
 
-// firstDecodedID decodes the first id from a (possibly comma-separated) Jellyfin id list.
-func firstDecodedID(s string) string {
+// firstDecodedID decodes the first id from a (possibly comma-separated) Jellyfin id list, reporting
+// whether it decoded successfully (see decodeFilterParam).
+func firstDecodedID(s string) (string, bool) {
 	if s == "" {
-		return ""
+		return "", true
 	}
 	first, _, _ := strings.Cut(s, ",")
-	return dto.DecodeID(strings.TrimSpace(first))
+	return decodeFilterParam(strings.TrimSpace(first))
 }
 
-// decodedQueryIDs reads an id-list param in both client spellings (see queryIDs), decoding each id.
-func decodedQueryIDs(r *http.Request, key string) []string {
-	return slice.Map(queryIDs(r, key), dto.DecodeID)
+// decodedQueryIDs reads an id-list param in both client spellings (see queryIDs). ok is false if
+// any entry is malformed, so a dropped entry can't shrink the list into an empty, no-op filter.
+func decodedQueryIDs(r *http.Request, key string) ([]string, bool) {
+	return dto.DecodeIDs(queryIDs(r, key))
 }
 
 // parseYears reads Years= as a discrete list, accepting comma-separated and repeated params.
@@ -740,7 +776,7 @@ func (api *Router) listPlaylists(ctx context.Context, opts model.QueryOptions, q
 // to their library, so an id can't probe content outside the user's libraries.
 func (api *Router) resolveItemByID(ctx context.Context, id string, fields dto.Fields) (dto.BaseItemDto, bool) {
 	// The synthetic playlists folder must resolve by the id we advertised, not 404.
-	if id == playlistsFolderID {
+	if id == dto.PlaylistsFolderID {
 		return playlistsFolder(), true
 	}
 	u, _ := request.UserFrom(ctx)
@@ -802,14 +838,11 @@ func (api *Router) songsByIDs(ctx context.Context, ids []string) map[string]mode
 }
 
 // itemsByIDs resolves a decoded id list, keeping input order and skipping unresolvable ids.
-// A Finamp-truncated id is resolved by prefix but echoed as requested — Finamp matches restored
-// queue items against its stored (truncated) ids.
 func (api *Router) itemsByIDs(ctx context.Context, ids []string, fields dto.Fields) dto.QueryResult {
 	u, _ := request.UserFrom(ctx)
-	fullIDs := api.resolveItemIDs(ctx, ids)
-	songs := api.songsByIDs(ctx, fullIDs)
+	songs := api.songsByIDs(ctx, ids)
 	var items []dto.BaseItemDto
-	for i, id := range fullIDs {
+	for _, id := range ids {
 		var item dto.BaseItemDto
 		if mf, ok := songs[id]; ok {
 			if !u.HasLibraryAccess(mf.LibraryID) {
@@ -819,16 +852,16 @@ func (api *Router) itemsByIDs(ctx context.Context, ids []string, fields dto.Fiel
 		} else if item, ok = api.resolveItemByID(ctx, id, fields); !ok {
 			continue
 		}
-		if id != ids[i] {
-			item.Id = dto.EncodeID(ids[i])
-		}
 		items = append(items, item)
 	}
 	return result(items, len(items), 0)
 }
 
 func (api *Router) getItem(w http.ResponseWriter, r *http.Request) {
-	id := api.resolveItemID(r.Context(), dto.DecodeID(chi.URLParam(r, "itemId")))
+	id, ok := itemIDParam(w, r, "itemId")
+	if !ok {
+		return
+	}
 	fields := dto.ParseFields(req.Params(r).Strings("fields")...)
 	if item, ok := api.resolveItemByID(r.Context(), id, fields); ok {
 		api.ok(w, r, item)
@@ -841,7 +874,10 @@ func (api *Router) getItem(w http.ResponseWriter, r *http.Request) {
 // scanning), so a non-playlist id 404s. core/playlists.Delete enforces ownership.
 func (api *Router) deleteItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	id := dto.DecodeID(chi.URLParam(r, "itemId"))
+	id, ok := itemIDParam(w, r, "itemId")
+	if !ok {
+		return
+	}
 	if err := api.playlists.Delete(ctx, id); err != nil {
 		api.playlistError(w, r, err)
 		return

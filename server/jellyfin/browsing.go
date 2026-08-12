@@ -28,12 +28,21 @@ func (api *Router) listArtistsByRole(w http.ResponseWriter, r *http.Request, rol
 	opts := model.QueryOptions{Offset: p.IntOr("startindex", 0), Max: p.IntOr("limit", 0)}
 	applySort(&opts, "MusicArtist", p.StringOr("sortby", ""), p.StringOr("sortorder", ""))
 
-	scopeIDs, _ := parentIDScope(ctx, r)
+	scopeIDs, _, ok := parentIDScope(ctx, r)
+	if !ok {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+	genreIds, ok := decodedQueryIDs(r, "genreids")
+	if !ok {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
 	// Only the fields listArtists reads; /Artists has no favorites filter, so favOnly stays false.
 	// Finamp's artist tab sends GenreIds when a genre filter is active.
 	q := itemsQuery{
 		scopeIDs: scopeIDs,
-		genreIds: decodedQueryIDs(r, "genreids"),
+		genreIds: genreIds,
 		search:   searchTerm(p),
 		fields:   dto.ParseFields(p.Strings("fields")...),
 	}
@@ -67,7 +76,11 @@ func (api *Router) getGenres(w http.ResponseWriter, r *http.Request) {
 func (api *Router) getStudios(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	p := req.Params(r)
-	scope, _ := parentIDScope(ctx, r)
+	scope, _, ok := parentIDScope(ctx, r)
+	if !ok {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
 	opts := model.QueryOptions{Sort: "tag_value", Filters: libraryScopeFilter(scope)}
 	labels, err := api.ds.Tag(ctx).GetAll(model.TagRecordLabel, opts)
 	if err != nil {
@@ -83,7 +96,11 @@ func (api *Router) getStudios(w http.ResponseWriter, r *http.Request) {
 // library when accessible. Tags/OfficialRatings have no music source, so they are always empty.
 func (api *Router) getQueryFiltersLegacy(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	scope, _ := parentIDScope(ctx, r)
+	scope, _, ok := parentIDScope(ctx, r)
+	if !ok {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
 	genreOpts := model.QueryOptions{Sort: "name", Filters: libraryScopeFilter(scope)}
 	genres, err := api.ds.Genre(ctx).GetAll(genreOpts)
 	if err != nil {

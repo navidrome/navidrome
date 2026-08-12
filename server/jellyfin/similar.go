@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -56,7 +55,10 @@ func (api *Router) awaitSimilar(ctx context.Context, id string, limit int, fetch
 // external.Provider that powers Subsonic's getArtistInfo2. Only artists present in the library are
 // returned. Any provider error degrades to an empty result, not a 404 the client would keep retrying.
 func (api *Router) getSimilarArtists(w http.ResponseWriter, r *http.Request) {
-	id := api.resolveItemID(r.Context(), dto.DecodeID(chi.URLParam(r, "itemId")))
+	id, ok := itemIDParam(w, r, "itemId")
+	if !ok {
+		return
+	}
 	limit := clampLimit(req.Params(r).IntOr("limit", 0), defaultSimilarLimit, maxSimilarLimit)
 	api.ok(w, r, api.awaitSimilar(r.Context(), id, limit, func(ctx context.Context) dto.QueryResult {
 		return api.similarArtists(ctx, id, limit)
@@ -68,7 +70,10 @@ func (api *Router) getSimilarArtists(w http.ResponseWriter, r *http.Request) {
 // result (not 404) so the client stops retrying.
 func (api *Router) getSimilarItems(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	id := api.resolveItemID(ctx, dto.DecodeID(chi.URLParam(r, "itemId")))
+	id, ok := itemIDParam(w, r, "itemId")
+	if !ok {
+		return
+	}
 	limit := clampLimit(req.Params(r).IntOr("limit", 0), defaultSimilarLimit, maxSimilarLimit)
 
 	entity, err := model.GetEntityByID(ctx, api.ds, id)
@@ -103,7 +108,10 @@ func (api *Router) getSimilarAlbums(w http.ResponseWriter, r *http.Request) {
 // results, never a 404 the client would surface as an error.
 func (api *Router) getInstantMix(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	id := api.resolveItemID(ctx, dto.DecodeID(chi.URLParam(r, "itemId")))
+	id, ok := itemIDParam(w, r, "itemId")
+	if !ok {
+		return
+	}
 	limit := clampLimit(req.Params(r).IntOr("limit", 0), defaultSimilarLimit, maxInstantMixLimit)
 
 	// Genre ids don't resolve via GetEntityByID; a nil entity is fine — it's just "not a song".

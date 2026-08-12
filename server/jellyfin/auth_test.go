@@ -22,7 +22,7 @@ var _ = Describe("AuthenticateByName", func() {
 		ds = &tests.MockDataStore{}
 		auth.Init(ds)
 		ur := ds.User(context.Background()).(*tests.MockedUserRepo)
-		Expect(ur.Put(&model.User{ID: "u1", UserName: "alice", NewPassword: "secret"})).To(Succeed())
+		Expect(ur.Put(&model.User{ID: testID("u1"), UserName: "alice", NewPassword: "secret"})).To(Succeed())
 		api = &Router{ds: ds}
 	})
 
@@ -68,7 +68,7 @@ var _ = Describe("AuthenticateByName", func() {
 
 	It("reflects an administrator in the User.Policy", func() {
 		ur := ds.User(context.Background()).(*tests.MockedUserRepo)
-		Expect(ur.Put(&model.User{ID: "admin1", UserName: "root", NewPassword: "secret", IsAdmin: true})).To(Succeed())
+		Expect(ur.Put(&model.User{ID: testID("admin1"), UserName: "root", NewPassword: "secret", IsAdmin: true})).To(Succeed())
 
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("POST", "/Users/AuthenticateByName",
@@ -92,7 +92,7 @@ var _ = Describe("AuthenticateByName", func() {
 
 	It("rejects an empty password even for a user with an empty stored password with 401", func() {
 		ur := ds.User(context.Background()).(*tests.MockedUserRepo)
-		Expect(ur.Put(&model.User{ID: "e", UserName: "empty", NewPassword: ""})).To(Succeed())
+		Expect(ur.Put(&model.User{ID: testID("e"), UserName: "empty", NewPassword: ""})).To(Succeed())
 
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("POST", "/Users/AuthenticateByName",
