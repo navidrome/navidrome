@@ -2,6 +2,7 @@ package jellyfin
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -117,8 +118,13 @@ func (api *Router) getInstantMix(w http.ResponseWriter, r *http.Request) {
 	}
 	limit := clampLimit(req.Params(r).IntOr("limit", 0), defaultSimilarLimit, maxInstantMixLimit)
 
-	// Genre ids don't resolve via GetEntityByID; a nil entity is fine — it's just "not a song".
-	entity, _ := model.GetEntityByID(ctx, api.ds, id)
+	// Genre ids don't resolve via GetEntityByID, so a not-found entity is fine: it is just "not a
+	// song" and the provider knows what to do with it. A real lookup failure still stops here.
+	entity, err := model.GetEntityByID(ctx, api.ds, id)
+	if err != nil && !errors.Is(err, model.ErrNotFound) {
+		api.ok(w, r, result(nil, 0, 0))
+		return
+	}
 	mf, isSong := entity.(*model.MediaFile)
 	if isSong {
 		if u, _ := request.UserFrom(ctx); !u.HasLibraryAccess(mf.LibraryID) {
