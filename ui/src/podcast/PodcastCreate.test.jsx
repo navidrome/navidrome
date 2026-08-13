@@ -3,7 +3,17 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('../subsonic', () => ({
-  default: { createPodcastChannel: vi.fn().mockResolvedValue({}) },
+  default: {
+    createPodcastChannel: vi.fn().mockResolvedValue({}),
+    previewPodcastFeed: vi.fn().mockResolvedValue({
+      json: {
+        title: 'Example Podcast',
+        description: 'An example feed',
+        episodeCount: 3,
+        alreadyExists: false,
+      },
+    }),
+  },
 }))
 
 const mockRedirect = vi.fn()
@@ -19,11 +29,26 @@ vi.mock('react-admin', async (importOriginal) => {
     useRedirect: () => mockRedirect,
     useRefresh: () => mockRefresh,
     Title: () => null,
+    Button: ({ children, onClick, label, disabled }) => (
+      <button aria-label={label} onClick={onClick} disabled={disabled}>
+        {children}
+      </button>
+    ),
   }
 })
 
 import subsonic from '../subsonic'
 import PodcastCreate from './PodcastCreate'
+
+const fetchPreview = async (url) => {
+  fireEvent.change(screen.getByRole('textbox'), { target: { value: url } })
+  fireEvent.click(
+    screen.getByLabelText('resources.podcast.actions.fetchFeed'),
+  )
+  await waitFor(() => {
+    expect(subsonic.previewPodcastFeed).toHaveBeenCalledWith(url)
+  })
+}
 
 describe('PodcastCreate', () => {
   beforeEach(() => vi.clearAllMocks())
@@ -33,12 +58,18 @@ describe('PodcastCreate', () => {
     expect(screen.getByRole('textbox')).toBeTruthy()
   })
 
-  it('calls createPodcastChannel with the entered URL on submit', async () => {
+  it('fetches a preview of the feed for the entered URL', async () => {
     render(<PodcastCreate />)
-    fireEvent.change(screen.getByRole('textbox'), {
-      target: { value: 'https://example.com/feed.xml' },
-    })
-    fireEvent.submit(screen.getByRole('form'))
+    await fetchPreview('https://example.com/feed.xml')
+    expect(await screen.findByText('Example Podcast')).toBeTruthy()
+  })
+
+  it('calls createPodcastChannel with the entered URL when adding the previewed channel', async () => {
+    render(<PodcastCreate />)
+    await fetchPreview('https://example.com/feed.xml')
+    fireEvent.click(
+      await screen.findByLabelText('resources.podcast.actions.addChannel'),
+    )
     await waitFor(() => {
       expect(subsonic.createPodcastChannel).toHaveBeenCalledWith(
         'https://example.com/feed.xml',
@@ -46,12 +77,12 @@ describe('PodcastCreate', () => {
     })
   })
 
-  it('redirects to /podcast after successful submit', async () => {
+  it('redirects to /podcast after successfully adding the channel', async () => {
     render(<PodcastCreate />)
-    fireEvent.change(screen.getByRole('textbox'), {
-      target: { value: 'https://example.com/feed.xml' },
-    })
-    fireEvent.submit(screen.getByRole('form'))
+    await fetchPreview('https://example.com/feed.xml')
+    fireEvent.click(
+      await screen.findByLabelText('resources.podcast.actions.addChannel'),
+    )
     await waitFor(() => {
       expect(mockRedirect).toHaveBeenCalledWith('/podcast')
     })
@@ -59,10 +90,10 @@ describe('PodcastCreate', () => {
 
   it('notifies on success', async () => {
     render(<PodcastCreate />)
-    fireEvent.change(screen.getByRole('textbox'), {
-      target: { value: 'https://example.com/feed.xml' },
-    })
-    fireEvent.submit(screen.getByRole('form'))
+    await fetchPreview('https://example.com/feed.xml')
+    fireEvent.click(
+      await screen.findByLabelText('resources.podcast.actions.addChannel'),
+    )
     await waitFor(() => {
       expect(mockNotify).toHaveBeenCalledWith(
         'resources.podcast.notifications.channelAdded',
