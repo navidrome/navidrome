@@ -368,22 +368,13 @@ func (e *provider) seedMix(ctx context.Context, count int, sample func() (model.
 	}
 	_ = g.Wait()
 
-	// Interleave the per-seed results: the matcher keeps input order and stops at count, so a
-	// seed-grouped list would let the first seed fill the whole mix on its own.
 	var songs []agents.Song
-	for i := 0; ; i++ {
-		before := len(songs)
-		for _, s := range perSeed {
-			if i < len(s) {
-				songs = append(songs, s[i])
-			}
-		}
-		if len(songs) == before {
-			break
-		}
+	for _, s := range perSeed {
+		songs = append(songs, s...)
 	}
 	// Match the whole merged set, not just count of it: the matcher re-emits a track when two
-	// seeds recommend it identically, so the duplicates have to be dropped before trimming.
+	// seeds recommend it identically, so the duplicates have to be dropped before trimming. Every
+	// seed reaches the shuffle, so no seed can crowd out the others.
 	matched, err := e.matcher.MatchSongs(ctx, songs, len(songs))
 	if err != nil {
 		return nil, err
