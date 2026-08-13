@@ -46,10 +46,6 @@ func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (mode
 		})
 	}
 
-	artistFallback := func() (model.MediaFiles, error) {
-		return e.similarSongsFallback(ctx, id, count)
-	}
-
 	// Try entity-specific similarity first, then fall back to seed-track sampling.
 	switch v := entity.(type) {
 	case *model.MediaFile:
@@ -57,7 +53,9 @@ func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (mode
 			func() ([]agents.Song, error) {
 				return e.ag.GetSimilarSongsByTrack(ctx, v.ID, v.Title, v.Artist, v.MbzRecordingID, count)
 			},
-			artistFallback)
+			func() (model.MediaFiles, error) {
+				return e.similarSongsFallback(ctx, id, count)
+			})
 	case *model.Album:
 		return e.mixFromAgent(ctx, count,
 			func() ([]agents.Song, error) {
@@ -73,7 +71,9 @@ func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (mode
 			func() ([]agents.Song, error) {
 				return e.ag.GetSimilarSongsByArtist(ctx, v.ID, v.Name, v.MbzArtistID, count)
 			},
-			artistFallback,
+			func() (model.MediaFiles, error) {
+				return e.similarSongsFallback(ctx, id, count)
+			},
 			func() (model.MediaFiles, error) {
 				return e.seedMix(ctx, count, func() (model.MediaFiles, error) {
 					return e.sampleArtistTracks(ctx, v.ID, maxSeeds)
