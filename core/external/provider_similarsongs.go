@@ -46,6 +46,10 @@ func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (mode
 		})
 	}
 
+	artistFallback := func() (model.MediaFiles, error) {
+		return e.similarSongsFallback(ctx, id, count)
+	}
+
 	// Try entity-specific similarity first, then fall back to seed-track sampling.
 	switch v := entity.(type) {
 	case *model.MediaFile:
@@ -53,9 +57,7 @@ func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (mode
 			func() ([]agents.Song, error) {
 				return e.ag.GetSimilarSongsByTrack(ctx, v.ID, v.Title, v.Artist, v.MbzRecordingID, count)
 			},
-			func() (model.MediaFiles, error) {
-				return e.similarSongsFallback(ctx, id, count)
-			})
+			artistFallback)
 	case *model.Album:
 		return e.mixFromAgent(ctx, count,
 			func() ([]agents.Song, error) {
@@ -71,9 +73,7 @@ func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (mode
 			func() ([]agents.Song, error) {
 				return e.ag.GetSimilarSongsByArtist(ctx, v.ID, v.Name, v.MbzArtistID, count)
 			},
-			func() (model.MediaFiles, error) {
-				return e.similarSongsFallback(ctx, id, count)
-			},
+			artistFallback,
 			func() (model.MediaFiles, error) {
 				return e.seedMix(ctx, count, func() (model.MediaFiles, error) {
 					return e.sampleArtistTracks(ctx, v.ID, maxSeeds)
@@ -94,24 +94,20 @@ func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (mode
 func (e *provider) mixFromAgent(ctx context.Context, count int, fetch func() ([]agents.Song, error), fallbacks ...func() (model.MediaFiles, error)) (model.MediaFiles, error) {
 	var matched model.MediaFiles
 	if songs, err := fetch(); err == nil {
-		// Match the whole response, not count of it: the matcher re-emits a track when the same
-		// song repeats, so capping here can stop before a later unique pick. topUp does the trim.
-		var merr error
-		if matched, merr = e.matcher.MatchSongs(ctx, songs, len(songs)); merr != nil {
-			return nil, merr
+		// Match the whole response: capping at count can stop before a later unique pick.
+		matched, err = e.matcher.MatchSongs(ctx, songs, len(songs))
+		if err != nil {
+			return nil, err
 		}
 	}
 	return topUp(ctx, matched, count, fallbacks...)
 }
 
-// topUp draws on each source in turn until the mix holds count tracks. A short mix is worse than a
-// slow one: clients that ask for count and get a handful re-ask with an ever-larger limit forever.
-// Sources are measured against the whole mix, so a later (costlier) one is skipped once it's full.
+// topUp draws on each source in turn until the mix holds count distinct tracks.
 func topUp(ctx context.Context, res model.MediaFiles, count int, sources ...func() (model.MediaFiles, error)) (model.MediaFiles, error) {
-	// Dedup before measuring: the matcher re-emits a track when the same input song repeats, so a
-	// full-looking res can hold fewer unique tracks than count and stop the top-up too early.
+	// The matcher can re-emit a track, so a full-looking res may hold fewer than count unique ones.
 	res = dedupByID(res)
-	var firstErr error
+	var lastErr error
 	for _, more := range sources {
 		if len(res) >= count {
 			break
@@ -119,15 +115,13 @@ func topUp(ctx context.Context, res model.MediaFiles, count int, sources ...func
 		extra, err := more()
 		if err != nil {
 			log.Debug(ctx, "Could not top up a short mix", "have", len(res), "want", count, err)
-			if firstErr == nil {
-				firstErr = err
-			}
+			lastErr = err
 			continue
 		}
 		res = dedupByID(append(res, extra...))
 	}
-	if len(res) == 0 && firstErr != nil {
-		return nil, firstErr
+	if len(res) == 0 {
+		return nil, lastErr
 	}
 	return res[:min(len(res), count)], nil
 }
@@ -287,17 +281,17 @@ func (e *provider) similarSongsFallback(ctx context.Context, id string, count in
 	// Count distinct tracks, not picks: a collaboration sits in the chooser once per artist that
 	// lists it, and letting those repeats consume the budget strands unique candidates.
 	var similarSongs model.MediaFiles
-	picked := map[string]bool{}
+	picked := map[string]struct{}{}
 	for len(similarSongs) < count && weightedSongs.Size() > 0 {
 		s, err := weightedSongs.Pick()
 		if err != nil {
 			log.Warn(ctx, "Error getting weighted song", err)
 			continue
 		}
-		if picked[s.ID] {
+		if _, dup := picked[s.ID]; dup {
 			continue
 		}
-		picked[s.ID] = true
+		picked[s.ID] = struct{}{}
 		similarSongs = append(similarSongs, s)
 	}
 

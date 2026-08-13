@@ -13,7 +13,6 @@ import (
 	"github.com/navidrome/navidrome/core/matcher"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
-	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
@@ -64,6 +63,18 @@ var _ = Describe("Provider - SimilarSongs", func() {
 
 		provider = NewProvider(ds, agentsCombined, matcher.New(ds))
 	})
+
+	// Resolves track-1 through the GetEntityByID probe order and on to its artist. Left permissive:
+	// no spec here asserts how many times the entity is looked up.
+	stubTrackEntity := func() {
+		track := model.MediaFile{ID: "track-1", Title: "Track", Artist: "Artist", ArtistID: "artist-1"}
+		artist := model.Artist{ID: "artist-1", Name: "Artist"}
+		artistRepo.On("Get", "track-1").Return(nil, model.ErrNotFound).Maybe()
+		albumRepo.On("Get", "track-1").Return(nil, model.ErrNotFound).Maybe()
+		mediaFileRepo.On("Get", "track-1").Return(&track, nil).Maybe()
+		artistRepo.On("Get", "artist-1").Return(&artist, nil).Maybe()
+		artistRepo.On("GetAll", mock.Anything).Return(model.Artists{artist}, nil).Maybe()
+	}
 
 	Describe("dispatch by entity type", func() {
 		Context("when ID is a MediaFile (track)", func() {
@@ -178,14 +189,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 			})
 
 			It("tops the mix up with the fallback when the agent's picks alone are too few", func() {
-				track := model.MediaFile{ID: "track-1", Title: "Track", Artist: "Artist", ArtistID: "artist-1"}
-				artist := model.Artist{ID: "artist-1", Name: "Artist"}
-
-				artistRepo.On("Get", "track-1").Return(nil, model.ErrNotFound).Twice()
-				albumRepo.On("Get", "track-1").Return(nil, model.ErrNotFound).Twice()
-				mediaFileRepo.On("Get", "track-1").Return(&track, nil).Twice()
-				artistRepo.On("Get", "artist-1").Return(&artist, nil).Maybe()
-				artistRepo.On("GetAll", mock.Anything).Return(model.Artists{artist}, nil).Maybe()
+				stubTrackEntity()
 
 				// The agent knows one track of the three asked for.
 				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "track-1", "Track", "Artist", "", 3).
@@ -203,19 +207,11 @@ var _ = Describe("Provider - SimilarSongs", func() {
 				songs, err := provider.SimilarSongs(ctx, "track-1", 3)
 
 				Expect(err).ToNot(HaveOccurred())
-				Expect(slice.Map(songs, func(mf model.MediaFile) string { return mf.ID })).
-					To(ConsistOf("agent-1", "song-1"))
+				Expect(ids(songs)).To(ConsistOf("agent-1", "song-1"))
 			})
 
 			It("reaches a unique pick that sits past the count-th repeat", func() {
-				track := model.MediaFile{ID: "track-1", Title: "Track", Artist: "Artist", ArtistID: "artist-1"}
-				artist := model.Artist{ID: "artist-1", Name: "Artist"}
-
-				artistRepo.On("Get", "track-1").Return(nil, model.ErrNotFound).Maybe()
-				albumRepo.On("Get", "track-1").Return(nil, model.ErrNotFound).Maybe()
-				mediaFileRepo.On("Get", "track-1").Return(&track, nil).Maybe()
-				artistRepo.On("Get", "artist-1").Return(&artist, nil).Maybe()
-				artistRepo.On("GetAll", mock.Anything).Return(model.Artists{artist}, nil).Maybe()
+				stubTrackEntity()
 				mockAgent.On("GetSimilarArtists", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 					Return([]agents.Artist{}, nil).Maybe()
 				mockAgent.On("GetArtistTopSongs", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
@@ -233,19 +229,11 @@ var _ = Describe("Provider - SimilarSongs", func() {
 				songs, err := provider.SimilarSongs(ctx, "track-1", 2)
 
 				Expect(err).ToNot(HaveOccurred())
-				Expect(slice.Map(songs, func(mf model.MediaFile) string { return mf.ID })).
-					To(ConsistOf("t-a", "t-b"))
+				Expect(ids(songs)).To(ConsistOf("t-a", "t-b"))
 			})
 
 			It("keeps topping up when the agent's picks repeat a track", func() {
-				track := model.MediaFile{ID: "track-1", Title: "Track", Artist: "Artist", ArtistID: "artist-1"}
-				artist := model.Artist{ID: "artist-1", Name: "Artist"}
-
-				artistRepo.On("Get", "track-1").Return(nil, model.ErrNotFound).Twice()
-				albumRepo.On("Get", "track-1").Return(nil, model.ErrNotFound).Twice()
-				mediaFileRepo.On("Get", "track-1").Return(&track, nil).Twice()
-				artistRepo.On("Get", "artist-1").Return(&artist, nil).Maybe()
-				artistRepo.On("GetAll", mock.Anything).Return(model.Artists{artist}, nil).Maybe()
+				stubTrackEntity()
 
 				// The matcher re-emits a track when the same input song repeats, so these three
 				// picks resolve to only two distinct library tracks.
@@ -267,8 +255,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 				songs, err := provider.SimilarSongs(ctx, "track-1", 3)
 
 				Expect(err).ToNot(HaveOccurred())
-				Expect(slice.Map(songs, func(mf model.MediaFile) string { return mf.ID })).
-					To(ConsistOf("t-a", "t-b", "t-c"))
+				Expect(ids(songs)).To(ConsistOf("t-a", "t-b", "t-c"))
 			})
 		})
 
@@ -471,8 +458,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 				songs, err := provider.SimilarSongs(ctx, "ar-1", 5)
 
 				Expect(err).ToNot(HaveOccurred())
-				Expect(slice.Map(songs, func(mf model.MediaFile) string { return mf.ID })).
-					To(ConsistOf("top-1", "mix-1"))
+				Expect(ids(songs)).To(ConsistOf("top-1", "mix-1"))
 			})
 		})
 
@@ -504,8 +490,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 				songs, err := provider.SimilarSongs(ctx, "ar-1", 3)
 
 				Expect(err).ToNot(HaveOccurred())
-				Expect(slice.Map(songs, func(mf model.MediaFile) string { return mf.ID })).
-					To(ConsistOf("t-a", "t-b", "t-c"))
+				Expect(ids(songs)).To(ConsistOf("t-a", "t-b", "t-c"))
 				mediaFileRepo.AssertNotCalled(GinkgoT(), "GetRandom", mock.Anything)
 			})
 		})
@@ -715,7 +700,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(songs).To(HaveLen(3))
-				ids := slice.Map(songs, func(mf model.MediaFile) string { return mf.ID })
+				ids := ids(songs)
 				Expect(ids).To(ContainElement(BeElementOf("b1", "b2")), "seed two must be represented in the mix")
 			})
 
@@ -963,8 +948,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 		songs, err := provider.SimilarSongs(ctx, "track-1", 3)
 
 		Expect(err).ToNot(HaveOccurred())
-		Expect(slice.Map(songs, func(mf model.MediaFile) string { return mf.ID })).
-			To(ConsistOf("t-a", "t-b", "t-c"))
+		Expect(ids(songs)).To(ConsistOf("t-a", "t-b", "t-c"))
 	})
 
 	It("returns ErrNotFound when artist is not found", func() {
