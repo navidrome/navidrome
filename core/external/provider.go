@@ -308,48 +308,36 @@ func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (mode
 	// Try entity-specific similarity first, then fall back to seed-track sampling.
 	switch v := entity.(type) {
 	case *model.MediaFile:
-		songs, serr := e.ag.GetSimilarSongsByTrack(ctx, v.ID, v.Title, v.Artist, v.MbzRecordingID, count)
-		if serr == nil {
-			matched, merr := e.matchAgentSongs(ctx, songs, count)
-			if merr != nil {
-				return nil, merr
-			}
-			if len(matched) > 0 {
-				return matched, nil
-			}
-		}
-		return e.similarSongsFallback(ctx, id, count)
+		return e.mixFromAgent(ctx, count,
+			func() ([]agents.Song, error) {
+				return e.ag.GetSimilarSongsByTrack(ctx, v.ID, v.Title, v.Artist, v.MbzRecordingID, count)
+			},
+			func() (model.MediaFiles, error) {
+				return e.similarSongsFallback(ctx, id, count)
+			})
 	case *model.Album:
-		songs, serr := e.ag.GetSimilarSongsByAlbum(ctx, v.ID, v.Name, v.AlbumArtist, v.MbzAlbumID, count)
-		if serr == nil {
-			matched, merr := e.matchAgentSongs(ctx, songs, count)
-			if merr != nil {
-				return nil, merr
-			}
-			if len(matched) > 0 {
-				return matched, nil
-			}
-		}
-		return e.seedMix(ctx, count, func() (model.MediaFiles, error) {
-			return e.sampleAlbumTracks(ctx, v.ID, maxSeeds)
-		})
+		return e.mixFromAgent(ctx, count,
+			func() ([]agents.Song, error) {
+				return e.ag.GetSimilarSongsByAlbum(ctx, v.ID, v.Name, v.AlbumArtist, v.MbzAlbumID, count)
+			},
+			func() (model.MediaFiles, error) {
+				return e.seedMix(ctx, count, func() (model.MediaFiles, error) {
+					return e.sampleAlbumTracks(ctx, v.ID, maxSeeds)
+				})
+			})
 	case *model.Artist:
-		songs, serr := e.ag.GetSimilarSongsByArtist(ctx, v.ID, v.Name, v.MbzArtistID, count)
-		if serr == nil {
-			matched, merr := e.matchAgentSongs(ctx, songs, count)
-			if merr != nil {
-				return nil, merr
-			}
-			if len(matched) > 0 {
-				return matched, nil
-			}
-		}
-		if res, ferr := e.similarSongsFallback(ctx, id, count); ferr == nil && len(res) > 0 {
-			return res, nil
-		}
-		return e.seedMix(ctx, count, func() (model.MediaFiles, error) {
-			return e.sampleArtistTracks(ctx, v.ID, maxSeeds)
-		})
+		return e.mixFromAgent(ctx, count,
+			func() ([]agents.Song, error) {
+				return e.ag.GetSimilarSongsByArtist(ctx, v.ID, v.Name, v.MbzArtistID, count)
+			},
+			func() (model.MediaFiles, error) {
+				if res, ferr := e.similarSongsFallback(ctx, id, count); ferr == nil && len(res) > 0 {
+					return res, nil
+				}
+				return e.seedMix(ctx, count, func() (model.MediaFiles, error) {
+					return e.sampleArtistTracks(ctx, v.ID, maxSeeds)
+				})
+			})
 	case *model.Playlist:
 		return e.seedMix(ctx, count, func() (model.MediaFiles, error) {
 			return e.samplePlaylistTracks(ctx, v.ID, maxSeeds)
@@ -360,13 +348,20 @@ func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (mode
 	}
 }
 
-// matchAgentSongs resolves an agent's recommendations to library tracks. It returns nothing when
-// the agent had nothing to say or when none of its picks exist here, so the caller can fall back.
-func (e *provider) matchAgentSongs(ctx context.Context, songs []agents.Song, count int) (model.MediaFiles, error) {
-	if len(songs) == 0 {
-		return nil, nil
+// mixFromAgent returns the agent's recommendations matched to library tracks, or the fallback
+// when the agent errors or none of its picks are in the library.
+func (e *provider) mixFromAgent(ctx context.Context, count int, fetch func() ([]agents.Song, error), fallback func() (model.MediaFiles, error)) (model.MediaFiles, error) {
+	songs, err := fetch()
+	if err == nil {
+		matched, merr := e.matcher.MatchSongs(ctx, songs, count)
+		if merr != nil {
+			return nil, merr
+		}
+		if len(matched) > 0 {
+			return matched, nil
+		}
 	}
-	return e.matcher.MatchSongs(ctx, songs, count)
+	return fallback()
 }
 
 // seedMix samples seed tracks, runs each through the agent chain's per-track similarity and merges
