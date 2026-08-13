@@ -331,11 +331,14 @@ func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (mode
 				return e.ag.GetSimilarSongsByArtist(ctx, v.ID, v.Name, v.MbzArtistID, count)
 			},
 			func() (model.MediaFiles, error) {
-				if res, ferr := e.similarSongsFallback(ctx, id, count); ferr == nil && len(res) > 0 {
-					return res, nil
+				res, ferr := e.similarSongsFallback(ctx, id, count)
+				if ferr != nil {
+					res = nil
 				}
-				return e.seedMix(ctx, count, func() (model.MediaFiles, error) {
-					return e.sampleArtistTracks(ctx, v.ID, maxSeeds)
+				return topUp(ctx, res, count, func() (model.MediaFiles, error) {
+					return e.seedMix(ctx, count, func() (model.MediaFiles, error) {
+						return e.sampleArtistTracks(ctx, v.ID, maxSeeds)
+					})
 				})
 			})
 	case *model.Playlist:
@@ -348,20 +351,35 @@ func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (mode
 	}
 }
 
-// mixFromAgent returns the agent's recommendations matched to library tracks, or the fallback
-// when the agent errors or none of its picks are in the library.
+// mixFromAgent returns the agent's recommendations matched to library tracks, topped up from the
+// fallback when they don't fill the mix on their own.
 func (e *provider) mixFromAgent(ctx context.Context, count int, fetch func() ([]agents.Song, error), fallback func() (model.MediaFiles, error)) (model.MediaFiles, error) {
-	songs, err := fetch()
-	if err == nil {
-		matched, merr := e.matcher.MatchSongs(ctx, songs, count)
-		if merr != nil {
+	var matched model.MediaFiles
+	if songs, err := fetch(); err == nil {
+		var merr error
+		if matched, merr = e.matcher.MatchSongs(ctx, songs, count); merr != nil {
 			return nil, merr
 		}
-		if len(matched) > 0 {
-			return matched, nil
-		}
 	}
-	return fallback()
+	return topUp(ctx, matched, count, fallback)
+}
+
+// topUp extends res with more tracks until it holds count of them. A short mix is worse than a
+// slow one: clients that ask for count and get a handful re-ask with an ever-larger limit forever.
+func topUp(ctx context.Context, res model.MediaFiles, count int, more func() (model.MediaFiles, error)) (model.MediaFiles, error) {
+	if len(res) >= count {
+		return res, nil
+	}
+	extra, err := more()
+	if err != nil {
+		if len(res) > 0 {
+			log.Debug(ctx, "Could not top up a short mix", "have", len(res), "want", count, err)
+			return res, nil
+		}
+		return nil, err
+	}
+	res = dedupByID(append(res, extra...))
+	return res[:min(len(res), count)], nil
 }
 
 // seedMix samples seed tracks, runs each through the agent chain's per-track similarity and merges
