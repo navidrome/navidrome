@@ -207,6 +207,36 @@ var _ = Describe("Provider - SimilarSongs", func() {
 					To(ConsistOf("agent-1", "song-1"))
 			})
 
+			It("reaches a unique pick that sits past the count-th repeat", func() {
+				track := model.MediaFile{ID: "track-1", Title: "Track", Artist: "Artist", ArtistID: "artist-1"}
+				artist := model.Artist{ID: "artist-1", Name: "Artist"}
+
+				artistRepo.On("Get", "track-1").Return(nil, model.ErrNotFound).Maybe()
+				albumRepo.On("Get", "track-1").Return(nil, model.ErrNotFound).Maybe()
+				mediaFileRepo.On("Get", "track-1").Return(&track, nil).Maybe()
+				artistRepo.On("Get", "artist-1").Return(&artist, nil).Maybe()
+				artistRepo.On("GetAll", mock.Anything).Return(model.Artists{artist}, nil).Maybe()
+				mockAgent.On("GetSimilarArtists", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+					Return([]agents.Artist{}, nil).Maybe()
+				mockAgent.On("GetArtistTopSongs", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+					Return([]agents.Song{}, nil).Maybe()
+
+				// "Song B" sits past the second repeat, so a matcher capped at count never reaches it.
+				repeated := agents.Song{Name: "Song A", MBID: "mbid-a"}
+				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "track-1", "Track", "Artist", "", 2).
+					Return([]agents.Song{repeated, repeated, {Name: "Song B", MBID: "mbid-b"}}, nil).Once()
+				mediaFileRepo.On("GetAll", mock.Anything).Return(model.MediaFiles{
+					{ID: "t-a", Title: "Song A", MbzRecordingID: "mbid-a"},
+					{ID: "t-b", Title: "Song B", MbzRecordingID: "mbid-b"},
+				}, nil).Once()
+
+				songs, err := provider.SimilarSongs(ctx, "track-1", 2)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(slice.Map(songs, func(mf model.MediaFile) string { return mf.ID })).
+					To(ConsistOf("t-a", "t-b"))
+			})
+
 			It("keeps topping up when the agent's picks repeat a track", func() {
 				track := model.MediaFile{ID: "track-1", Title: "Track", Artist: "Artist", ArtistID: "artist-1"}
 				artist := model.Artist{ID: "artist-1", Name: "Artist"}

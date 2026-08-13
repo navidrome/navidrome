@@ -94,8 +94,10 @@ func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (mode
 func (e *provider) mixFromAgent(ctx context.Context, count int, fetch func() ([]agents.Song, error), fallbacks ...func() (model.MediaFiles, error)) (model.MediaFiles, error) {
 	var matched model.MediaFiles
 	if songs, err := fetch(); err == nil {
+		// Match the whole response, not count of it: the matcher re-emits a track when the same
+		// song repeats, so capping here can stop before a later unique pick. topUp does the trim.
 		var merr error
-		if matched, merr = e.matcher.MatchSongs(ctx, songs, count); merr != nil {
+		if matched, merr = e.matcher.MatchSongs(ctx, songs, len(songs)); merr != nil {
 			return nil, merr
 		}
 	}
@@ -285,7 +287,7 @@ func (e *provider) similarSongsFallback(ctx context.Context, id string, count in
 	// Count distinct tracks, not picks: a collaboration sits in the chooser once per artist that
 	// lists it, and letting those repeats consume the budget strands unique candidates.
 	var similarSongs model.MediaFiles
-	picked := make(map[string]bool, count)
+	picked := map[string]bool{}
 	for len(similarSongs) < count && weightedSongs.Size() > 0 {
 		s, err := weightedSongs.Pick()
 		if err != nil {
