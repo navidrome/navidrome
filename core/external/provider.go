@@ -411,7 +411,16 @@ func (e *provider) samplePlaylistTracks(ctx context.Context, playlistID string, 
 	if err != nil {
 		return nil, err
 	}
-	return tracks.MediaFiles(), nil
+	// A playlist can hold the same file at several positions, and a repeated seed both wastes an
+	// agent call and can reach the mix twice through the seed fallback.
+	seen := make(map[string]struct{}, len(tracks))
+	return slice.Filter(tracks.MediaFiles(), func(mf model.MediaFile) bool {
+		if _, dup := seen[mf.ID]; dup {
+			return false
+		}
+		seen[mf.ID] = struct{}{}
+		return true
+	}), nil
 }
 
 func (e *provider) sampleAlbumTracks(ctx context.Context, albumID string, n int) (model.MediaFiles, error) {

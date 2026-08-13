@@ -426,6 +426,24 @@ var _ = Describe("Provider - SimilarSongs", func() {
 				Expect(sql).To(ContainSubstring("missing"))
 			})
 
+			It("does not seed a mix twice with a track the playlist repeats", func() {
+				pls := model.Playlist{ID: "pl-dup", Name: "Dupes"}
+				artistRepo.On("Get", "pl-dup").Return(nil, model.ErrNotFound).Once()
+				albumRepo.On("Get", "pl-dup").Return(nil, model.ErrNotFound).Once()
+				playlistRepo.SetData(model.Playlists{pls})
+				// The same file at two positions, which playlists allow.
+				dup := model.MediaFile{ID: "s1", Title: "Seed One"}
+				playlistTrackRepo.SetData(model.PlaylistTracks{{MediaFile: dup}, {MediaFile: dup}})
+				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "s1", "Seed One", "", "", 5).
+					Return([]agents.Song{}, nil).Once()
+
+				songs, err := provider.SimilarSongs(ctx, "pl-dup", 5)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(songs).To(HaveLen(1), "the repeated track must appear once")
+				agentsCombined.AssertNumberOfCalls(GinkgoT(), "GetSimilarSongsByTrack", 1)
+			})
+
 			It("clamps an enormous count before it reaches the queries", func() {
 				// count+1 in the local agent overflows on MaxInt64, and GetRandom omits the SQL
 				// limit unless Max is positive, so the query would hydrate the whole library.
