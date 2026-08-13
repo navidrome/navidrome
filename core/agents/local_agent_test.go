@@ -53,6 +53,7 @@ var _ = Describe("localAgent GetSimilarSongsByTrack", func() {
 		Expect(sqlErr).ToNot(HaveOccurred())
 		Expect(sql).To(ContainSubstring("media_file_tags"), "must use the indexed join, not a json_tree scan")
 		Expect(sql).To(ContainSubstring("missing"))
+		Expect(args).To(ContainElement(false), "must exclude missing files, not select them")
 		Expect(args).To(ContainElement(rock.ID), "must filter on the seed's own genre tag id")
 		Expect(args).ToNot(ContainElement(model.NewTag(model.TagGenre, "Jazz").ID))
 	})
@@ -70,6 +71,20 @@ var _ = Describe("localAgent GetSimilarSongsByTrack", func() {
 		Expect(songs).To(ContainElement(Song{ID: "rel-3", Name: "Related"}))
 	})
 
+	It("asks for one extra candidate so dropping the seed still fills the count", func() {
+		// The mock returns rows sorted by id, so the seed comes first and would consume the only
+		// slot if the query did not over-fetch.
+		seed := model.MediaFile{ID: "a-seed", Title: "Seed", Tags: model.Tags{model.TagGenre: []string{"Rock"}}}
+		related := model.MediaFile{ID: "b-rel", Title: "Related", Tags: model.Tags{model.TagGenre: []string{"Rock"}}}
+		mfRepo.SetData(model.MediaFiles{seed, related})
+
+		songs, err := agent.GetSimilarSongsByTrack(ctx, "a-seed", "Seed", "", "", 1)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(songs).To(HaveLen(1))
+		Expect(songs[0].Name).To(Equal("Related"))
+	})
+
 	It("returns nil when the seed track has no genres", func() {
 		seed := model.MediaFile{ID: "seed-2", Title: "NoGenre"}
 		mfRepo.SetData(model.MediaFiles{seed})
@@ -78,5 +93,7 @@ var _ = Describe("localAgent GetSimilarSongsByTrack", func() {
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(songs).To(BeEmpty())
+		// Without the early return an empty tag filter would scan the whole library.
+		Expect(mfRepo.Options).To(Equal(model.QueryOptions{}), "must not query at all")
 	})
 })

@@ -229,7 +229,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 				mediaFileRepo.On("GetRandom", mock.MatchedBy(func(opt model.QueryOptions) bool {
 					sql, args, err := opt.Filters.ToSql()
 					return err == nil && strings.Contains(sql, "album_id") &&
-						strings.Contains(sql, "missing") && slices.Contains(args, any("album-1"))
+						strings.Contains(sql, "missing") && slices.Contains(args, any(false)) && slices.Contains(args, any("album-1"))
 				})).Return(model.MediaFiles{seed}, nil).Once()
 
 				// seedMix falls back to the seed itself when the agent finds nothing.
@@ -258,7 +258,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 				mediaFileRepo.On("GetRandom", mock.MatchedBy(func(opt model.QueryOptions) bool {
 					sql, args, err := opt.Filters.ToSql()
 					return err == nil && strings.Contains(sql, "album_id") &&
-						strings.Contains(sql, "missing") && slices.Contains(args, any("al-1"))
+						strings.Contains(sql, "missing") && slices.Contains(args, any(false)) && slices.Contains(args, any("al-1"))
 				})).Return(model.MediaFiles{{ID: "s1", Title: "Seed", Artist: "A"}}, nil).Once()
 
 				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "s1", "Seed", "A", "", 5).
@@ -335,7 +335,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 				mediaFileRepo.On("GetRandom", mock.MatchedBy(func(opt model.QueryOptions) bool {
 					sql, args, err := opt.Filters.ToSql()
 					return err == nil && strings.Contains(sql, "media_file_artists") &&
-						strings.Contains(sql, "missing") && slices.Contains(args, any("ar-1")) &&
+						strings.Contains(sql, "missing") && slices.Contains(args, any(false)) && slices.Contains(args, any("ar-1")) &&
 						slices.Contains(args, any(model.RoleAlbumArtist.String())) && slices.Contains(args, any(model.RoleArtist.String()))
 				})).Return(model.MediaFiles{{ID: "s1", Title: "Seed"}}, nil).Once()
 				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "s1", "Seed", "", "", 5).
@@ -425,9 +425,36 @@ var _ = Describe("Provider - SimilarSongs", func() {
 				_, err := provider.SimilarSongs(ctx, "pl-missing", 5)
 
 				Expect(err).ToNot(HaveOccurred())
-				sql, _, sqlErr := playlistTrackRepo.Options.Filters.ToSql()
+				sql, args, sqlErr := playlistTrackRepo.Options.Filters.ToSql()
 				Expect(sqlErr).ToNot(HaveOccurred())
 				Expect(sql).To(ContainSubstring("missing"))
+				Expect(args).To(ContainElement(false), "must exclude missing files, not select them")
+			})
+
+			It("keeps a later seed's picks when an earlier seed overlaps it", func() {
+				// The matcher stops once it has count matches, and it re-emits the shared track, so
+				// matching only count of the merged set would spend slots on the duplicate.
+				pls := model.Playlist{ID: "pl-overlap2", Name: "Overlap2"}
+				artistRepo.On("Get", "pl-overlap2").Return(nil, model.ErrNotFound).Once()
+				albumRepo.On("Get", "pl-overlap2").Return(nil, model.ErrNotFound).Once()
+				playlistRepo.SetData(model.Playlists{pls})
+				playlistTrackRepo.SetData(model.PlaylistTracks{
+					{MediaFile: model.MediaFile{ID: "s1", Title: "Seed One"}},
+					{MediaFile: model.MediaFile{ID: "s2", Title: "Seed Two"}},
+				})
+				shared := agents.Song{ID: "x", Name: "X"}
+				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "s1", "Seed One", "", "", 3).
+					Return([]agents.Song{shared}, nil).Once()
+				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "s2", "Seed Two", "", "", 3).
+					Return([]agents.Song{shared, {ID: "y", Name: "Y"}, {ID: "z", Name: "Z"}}, nil).Once()
+				mediaFileRepo.On("GetAll", mock.Anything).Return(model.MediaFiles{
+					{ID: "x", Title: "X"}, {ID: "y", Title: "Y"}, {ID: "z", Title: "Z"},
+				}, nil).Maybe()
+
+				songs, err := provider.SimilarSongs(ctx, "pl-overlap2", 3)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(songs).To(HaveLen(3), "the duplicate must not cost a slot")
 			})
 
 			It("returns a track once when two seeds recommend it", func() {
@@ -613,9 +640,9 @@ var _ = Describe("Provider - SimilarSongs", func() {
 					if opt.Filters == nil {
 						return false
 					}
-					sql, _, err := opt.Filters.ToSql()
+					sql, args, err := opt.Filters.ToSql()
 					return err == nil && strings.Contains(sql, "media_file_tags") &&
-						!strings.Contains(sql, "json_tree") && strings.Contains(sql, "missing")
+						!strings.Contains(sql, "json_tree") && strings.Contains(sql, "missing") && slices.Contains(args, any(false))
 				})).Return(model.MediaFiles{{ID: "s1", Title: "Seed"}}, nil).Once()
 				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "s1", "Seed", "", "", 5).
 					Return([]agents.Song{{Name: "Similar"}}, nil).Once()
@@ -763,7 +790,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 		mediaFileRepo.On("GetRandom", mock.MatchedBy(func(opt model.QueryOptions) bool {
 			sql, args, err := opt.Filters.ToSql()
 			return err == nil && strings.Contains(sql, "artist_id") &&
-				strings.Contains(sql, "missing") && slices.Contains(args, any("artist-1"))
+				strings.Contains(sql, "missing") && slices.Contains(args, any(false)) && slices.Contains(args, any("artist-1"))
 		})).Return(model.MediaFiles{}, nil).Once()
 
 		songs, err := provider.SimilarSongs(ctx, "artist-1", 5)
