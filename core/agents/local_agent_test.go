@@ -61,12 +61,7 @@ var _ = Describe("localAgent GetSimilarSongsByTrack", func() {
 		seed := model.MediaFile{ID: "seed-3", Title: "Seed", Tags: model.Tags{model.TagGenre: []string{"Rock"}}}
 		// Without the id the matcher falls through to its MBID/title phases and resolves nothing,
 		// so the local fallback silently returns an empty mix.
-		// Shares the seed's genre, so the real query would return it too. MbzReleaseTrackID is set
-		// to catch it being copied into the Song's MBID, which the matcher looks up as a recording id.
-		related := model.MediaFile{
-			ID: "rel-3", Title: "Related", MbzReleaseTrackID: "trk-3",
-			Tags: model.Tags{model.TagGenre: []string{"Rock"}},
-		}
+		related := model.MediaFile{ID: "rel-3", Title: "Related", Tags: model.Tags{model.TagGenre: []string{"Rock"}}}
 		mfRepo.SetData(model.MediaFiles{seed, related})
 
 		songs, err := agent.GetSimilarSongsByTrack(ctx, "seed-3", "Seed", "", "", 10)
