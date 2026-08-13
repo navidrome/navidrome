@@ -282,13 +282,20 @@ func (e *provider) similarSongsFallback(ctx context.Context, id string, count in
 		}
 	}
 
+	// Count distinct tracks, not picks: a collaboration sits in the chooser once per artist that
+	// lists it, and letting those repeats consume the budget strands unique candidates.
 	var similarSongs model.MediaFiles
+	picked := make(map[string]bool, count)
 	for len(similarSongs) < count && weightedSongs.Size() > 0 {
 		s, err := weightedSongs.Pick()
 		if err != nil {
 			log.Warn(ctx, "Error getting weighted song", err)
 			continue
 		}
+		if picked[s.ID] {
+			continue
+		}
+		picked[s.ID] = true
 		similarSongs = append(similarSongs, s)
 	}
 

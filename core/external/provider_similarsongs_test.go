@@ -882,6 +882,61 @@ var _ = Describe("Provider - SimilarSongs", func() {
 		}
 	})
 
+	It("keeps picking until the fallback holds count distinct tracks", func() {
+		// A collaboration in two artists' top songs lands in the chooser twice. Picking a fixed
+		// count of entries lets those duplicates eat the budget and strand unique candidates.
+		track := model.MediaFile{ID: "track-1", Title: "Track", Artist: "Artist One", ArtistID: "artist-1"}
+		artist1 := model.Artist{ID: "artist-1", Name: "Artist One"}
+		similarArtist := model.Artist{ID: "artist-3", Name: "Similar Artist"}
+
+		artistRepo.On("Get", "track-1").Return(nil, model.ErrNotFound).Twice()
+		albumRepo.On("Get", "track-1").Return(nil, model.ErrNotFound).Twice()
+		mediaFileRepo.On("Get", "track-1").Return(&track, nil).Twice()
+		artistRepo.On("Get", "artist-1").Return(&artist1, nil).Maybe()
+		artistRepo.On("Get", "artist-3").Return(&similarArtist, nil).Maybe()
+		artistRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
+			return opt.Max == 1 && opt.Filters != nil
+		})).Return(model.Artists{artist1}, nil).Maybe()
+
+		agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "track-1", "Track", "Artist One", "", 3).
+			Return([]agents.Song{}, nil).Once()
+
+		mockAgent.On("GetSimilarArtists", mock.Anything, "artist-1", "Artist One", "", 15).
+			Return([]agents.Artist{{Name: "Similar Artist"}}, nil).Once()
+		artistRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
+			_, ok := opt.Filters.(squirrel.Eq)
+			return opt.Max == 0 && ok
+		})).Return(model.Artists{}, nil).Once()
+		artistRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
+			_, ok := opt.Filters.(squirrel.Or)
+			return opt.Max == 0 && ok
+		})).Return(model.Artists{similarArtist}, nil).Once()
+
+		shared := model.MediaFile{ID: "t-a", Title: "Shared", MbzRecordingID: "mbid-a"}
+		mockAgent.On("GetArtistTopSongs", mock.Anything, "artist-1", "Artist One", "", mock.Anything).
+			Return([]agents.Song{{Name: "Shared", MBID: "mbid-a"}}, nil).Once()
+		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).
+			Return(model.MediaFiles{shared}, nil).Once()
+
+		mockAgent.On("GetArtistTopSongs", mock.Anything, "artist-3", "Similar Artist", "", mock.Anything).
+			Return([]agents.Song{
+				{Name: "Shared", MBID: "mbid-a"},
+				{Name: "B", MBID: "mbid-b"},
+				{Name: "C", MBID: "mbid-c"},
+			}, nil).Once()
+		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{
+			shared,
+			{ID: "t-b", Title: "B", MbzRecordingID: "mbid-b"},
+			{ID: "t-c", Title: "C", MbzRecordingID: "mbid-c"},
+		}, nil).Once()
+
+		songs, err := provider.SimilarSongs(ctx, "track-1", 3)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(slice.Map(songs, func(mf model.MediaFile) string { return mf.ID })).
+			To(ConsistOf("t-a", "t-b", "t-c"))
+	})
+
 	It("returns ErrNotFound when artist is not found", func() {
 		artistRepo.On("Get", "artist-unknown-artist").Return(nil, model.ErrNotFound)
 		mediaFileRepo.On("Get", "artist-unknown-artist").Return(nil, model.ErrNotFound)
