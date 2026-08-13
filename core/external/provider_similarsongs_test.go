@@ -3,6 +3,7 @@ package external_test
 import (
 	"context"
 	"errors"
+	"math"
 	"slices"
 	"strings"
 
@@ -423,6 +424,25 @@ var _ = Describe("Provider - SimilarSongs", func() {
 				sql, _, sqlErr := playlistTrackRepo.Options.Filters.ToSql()
 				Expect(sqlErr).ToNot(HaveOccurred())
 				Expect(sql).To(ContainSubstring("missing"))
+			})
+
+			It("clamps an enormous count before it reaches the queries", func() {
+				// count+1 in the local agent overflows on MaxInt64, and GetRandom omits the SQL
+				// limit unless Max is positive, so the query would hydrate the whole library.
+				pls := model.Playlist{ID: "pl-huge", Name: "Huge"}
+				artistRepo.On("Get", "pl-huge").Return(nil, model.ErrNotFound).Once()
+				albumRepo.On("Get", "pl-huge").Return(nil, model.ErrNotFound).Once()
+				playlistRepo.SetData(model.Playlists{pls})
+				playlistTrackRepo.SetData(model.PlaylistTracks{
+					{MediaFile: model.MediaFile{ID: "s1", Title: "Seed One"}},
+				})
+				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "s1", "Seed One", "", "", 500).
+					Return([]agents.Song{}, nil).Once()
+
+				_, err := provider.SimilarSongs(ctx, "pl-huge", math.MaxInt64)
+
+				Expect(err).ToNot(HaveOccurred())
+				agentsCombined.AssertExpectations(GinkgoT())
 			})
 
 			It("does not panic when the caller asks for a non-positive count", func() {

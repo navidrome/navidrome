@@ -25,8 +25,11 @@ import (
 )
 
 const (
-	maxSimilarArtists  = 100
-	maxSeeds           = 5
+	maxSimilarArtists = 100
+	maxSeeds          = 5
+	// Subsonic passes the client's count through unbounded, and it ends up as a SQL limit. 500 is
+	// what the widest caller (similarAlbums, limit*5) legitimately asks for.
+	maxSimilarSongs    = 500
 	refreshDelay       = 5 * time.Second
 	refreshTimeout     = 15 * time.Second
 	refreshQueueLength = 2000
@@ -281,11 +284,12 @@ func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (au
 }
 
 func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error) {
-	// Subsonic passes the client's count straight through, and a non-positive one has no valid
-	// interpretation downstream.
+	// Subsonic passes the client's count straight through: a non-positive one has no valid
+	// interpretation, and an enormous one overflows the +1 in the local agent's query limit.
 	if count <= 0 {
 		return nil, nil
 	}
+	count = min(count, maxSimilarSongs)
 	entity, err := model.GetEntityByID(ctx, e.ds, id)
 	if err != nil {
 		// Genre ids don't resolve via GetEntityByID; look them up before giving up.
