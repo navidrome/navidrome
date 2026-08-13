@@ -212,7 +212,11 @@ const PodcastShow = (props) => {
                     <StatusBadge status={ep.status} errorMessage={ep.errorMessage} downloadedBytes={ep.downloadedBytes} size={ep.size} />
                   </TableCell>
                   <TableCell>
-                    <EpisodeActions episode={ep} onRefresh={loadEpisodes} />
+                    <EpisodeActions
+                      episode={ep}
+                      onRefresh={loadEpisodes}
+                      channelTitle={record.title}
+                    />
                   </TableCell>
                 </TableRow>
               ))}

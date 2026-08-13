@@ -22,6 +22,7 @@ const StatusBadge = ({ status, errorMessage, downloadedBytes, size }) => {
     return (
       <Box display="flex" alignItems="center" style={{ gap: 6 }}>
         <CircularProgress size={14} />
+        <Typography variant="caption">{label}</Typography>
         {pct !== null && <Typography variant="caption">{`${pct}%`}</Typography>}
       </Box>
     )
