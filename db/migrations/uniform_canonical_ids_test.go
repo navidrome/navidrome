@@ -65,6 +65,14 @@ var _ = Describe("upUniformCanonicalIds", func() {
 			CREATE TABLE library_tag (tag_id text, library_id integer);
 			CREATE TABLE plugin (id text, users text);
 			CREATE TABLE property (id text primary key, value text);
+			CREATE TABLE podcast_channel (id text);
+			CREATE TABLE podcast_episode (id text, channel_id text, stream_id text);
+			CREATE TABLE podcast_transcript (id text, episode_id text);
+			CREATE TABLE podcast_person (id text, channel_id text, episode_id text);
+			CREATE TABLE podcast_podroll (id text, channel_id text);
+			CREATE TABLE podcast_live_item (id text, channel_id text);
+			CREATE TABLE podcast_funding (id text, channel_id text);
+			CREATE TABLE podcast_image (id text, channel_id text, episode_id text);
 		`)
 		Expect(err).ToNot(HaveOccurred())
 

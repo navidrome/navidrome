@@ -49,7 +49,7 @@ var _ = Describe("PodcastService", func() {
 		}))
 		DeferCleanup(mockServer.Close)
 
-		conf.Server.DataFolder = GinkgoT().TempDir()
+		conf.Server.DataFolder = conf.NewDir(GinkgoT().TempDir())
 		svc = podcasts.NewPodcastService(ctx, ds, nil, nil)
 	})
 
@@ -145,7 +145,7 @@ var _ = Describe("PodcastService", func() {
 
 		It("creates the audio file at the expected path", func() {
 			_ = svc.DownloadEpisode(ctx, "ep-1")
-			expectedPath := filepath.Join(conf.Server.DataFolder, "podcasts", "ch-1", "ep-1.mp3")
+			expectedPath := filepath.Join(conf.Server.DataFolder.String(), "podcasts", "ch-1", "ep-1.mp3")
 			Eventually(func() bool {
 				_, err := os.Stat(expectedPath)
 				return err == nil
@@ -161,7 +161,7 @@ var _ = Describe("PodcastService", func() {
 
 		It("records the file path after download", func() {
 			_ = svc.DownloadEpisode(ctx, "ep-1")
-			expectedPath := filepath.Join(conf.Server.DataFolder, "podcasts", "ch-1", "ep-1.mp3")
+			expectedPath := filepath.Join(conf.Server.DataFolder.String(), "podcasts", "ch-1", "ep-1.mp3")
 			Eventually(func() string {
 				return episodeRepo.Data["ep-1"].Path
 			}, "3s").Should(Equal(expectedPath))
