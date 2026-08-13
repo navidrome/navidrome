@@ -44,7 +44,7 @@ var _ = Describe("GetOpenSubsonicExtensions", func() {
 			router = subsonic.New(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 		})
 
-		It("should return the base 15 OpenSubsonicExtensions without sonicSimilarity", func() {
+		It("should return the base 17 OpenSubsonicExtensions without sonicSimilarity", func() {
 			router.ServeHTTP(w, r)
 
 			// Make sure the endpoint is public, by not passing any authentication
@@ -55,7 +55,7 @@ var _ = Describe("GetOpenSubsonicExtensions", func() {
 			err := json.Unmarshal(w.Body.Bytes(), &response)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(*response.Subsonic.OpenSubsonicExtensions).To(SatisfyAll(
-				HaveLen(15),
+				HaveLen(17),
 				ContainElement(responses.OpenSubsonicExtension{Name: "transcodeOffset", Versions: []int32{1}}),
 				ContainElement(responses.OpenSubsonicExtension{Name: "formPost", Versions: []int32{1}}),
 				ContainElement(responses.OpenSubsonicExtension{Name: "songLyrics", Versions: []int32{1, 2}}),
@@ -86,7 +86,7 @@ var _ = Describe("GetOpenSubsonicExtensions", func() {
 			router = subsonic.New(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, sonicService)
 		})
 
-		It("should return 16 extensions including all podcast 2.0 and sonicSimilarity", func() {
+		It("should return 18 extensions including all podcast 2.0 and sonicSimilarity", func() {
 			router.ServeHTTP(w, r)
 
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -96,7 +96,7 @@ var _ = Describe("GetOpenSubsonicExtensions", func() {
 			err := json.Unmarshal(w.Body.Bytes(), &response)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(*response.Subsonic.OpenSubsonicExtensions).To(SatisfyAll(
-				HaveLen(16),
+				HaveLen(18),
 				ContainElement(responses.OpenSubsonicExtension{Name: "transcodeOffset", Versions: []int32{1}}),
 				ContainElement(responses.OpenSubsonicExtension{Name: "formPost", Versions: []int32{1}}),
 				ContainElement(responses.OpenSubsonicExtension{Name: "songLyrics", Versions: []int32{1, 2}}),

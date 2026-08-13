@@ -56,7 +56,7 @@ func (s *podcastService) podcastLibraryID(ctx context.Context) (int, error) {
 	}
 	lib := &model.Library{
 		Name: podcastLibraryName,
-		Path: conf.Server.DataFolder,
+		Path: conf.Server.DataFolder.String(),
 	}
 	if err := s.ds.Library(ctx).Put(lib); err != nil {
 		return 0, err
@@ -296,7 +296,7 @@ func (s *podcastService) doDownload(ctx context.Context, ep *model.PodcastEpisod
 	if suffix == "" {
 		suffix = "mp3"
 	}
-	dir := filepath.Join(conf.Server.DataFolder, "podcasts", ep.ChannelID)
+	dir := filepath.Join(conf.Server.DataFolder.String(), "podcasts", ep.ChannelID)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		s.setEpisodeError(ctx, ep, err)
 		return
@@ -345,7 +345,7 @@ func (s *podcastService) doDownload(ctx context.Context, ep *model.PodcastEpisod
 	if libErr != nil {
 		log.Warn(ctx, "Failed to get podcast library, streaming may not work", "episode", ep.ID, libErr)
 	} else {
-		relPath := strings.TrimPrefix(dest, conf.Server.DataFolder+string(filepath.Separator))
+		relPath := strings.TrimPrefix(dest, conf.Server.DataFolder.String()+string(filepath.Separator))
 		now := time.Now()
 		tags := model.Tags{}
 		tags.Add("genre", "Podcast")
