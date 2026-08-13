@@ -446,6 +446,40 @@ var _ = Describe("Provider - SimilarSongs", func() {
 			})
 		})
 
+		Context("when ID is an Artist and the agent plus the similar-artists fallback already fill the mix", func() {
+			It("does not pay for seed-track sampling", func() {
+				artist := model.Artist{ID: "ar-1", Name: "The Artist"}
+				artistRepo.On("Get", "ar-1").Return(&artist, nil).Maybe()
+				artistRepo.On("GetAll", mock.Anything).Return(model.Artists{artist}, nil).Maybe()
+
+				agentsCombined.On("GetSimilarSongsByArtist", mock.Anything, "ar-1", "The Artist", "", 3).
+					Return([]agents.Song{{Name: "A", MBID: "mbid-a"}, {Name: "B", MBID: "mbid-b"}}, nil).Once()
+				mediaFileRepo.On("GetAll", mock.Anything).Return(model.MediaFiles{
+					{ID: "t-a", Title: "A", MbzRecordingID: "mbid-a"},
+					{ID: "t-b", Title: "B", MbzRecordingID: "mbid-b"},
+				}, nil).Once()
+
+				// The similar-artists fallback supplies the third track, so the mix is full.
+				mockAgent.On("GetSimilarArtists", mock.Anything, "ar-1", "The Artist", "", 15).
+					Return([]agents.Artist{}, nil).Once()
+				mockAgent.On("GetArtistTopSongs", mock.Anything, "ar-1", "The Artist", "", mock.Anything).
+					Return([]agents.Song{{Name: "C", MBID: "mbid-c"}}, nil).Once()
+				mediaFileRepo.On("GetAll", mock.Anything).
+					Return(model.MediaFiles{{ID: "t-c", Title: "C", MbzRecordingID: "mbid-c"}}, nil).Once()
+
+				mediaFileRepo.On("GetRandom", mock.Anything).Return(model.MediaFiles{{ID: "seed"}}, nil).Maybe()
+				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+					Return([]agents.Song{}, nil).Maybe()
+
+				songs, err := provider.SimilarSongs(ctx, "ar-1", 3)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(slice.Map(songs, func(mf model.MediaFile) string { return mf.ID })).
+					To(ConsistOf("t-a", "t-b", "t-c"))
+				mediaFileRepo.AssertNotCalled(GinkgoT(), "GetRandom", mock.Anything)
+			})
+		})
+
 		Context("when ID is a Playlist", func() {
 			It("samples playlist tracks and returns their track-similars", func() {
 				pls := model.Playlist{ID: "pl-1", Name: "My List"}
