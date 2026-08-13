@@ -14,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
@@ -516,11 +517,12 @@ var _ = Describe("Provider - SimilarSongs", func() {
 					{MediaFile: model.MediaFile{ID: "s2", Title: "Seed Two"}},
 				})
 
-				// Each seed returns a full count's worth, as a real similarity agent does. Grouped by
-				// seed, the matcher's count cap would consume seed one's block and drop seed two.
-				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "s1", "Seed One", "", "", 2).
+				// Each seed returns a full count's worth, as a real similarity agent does. Asking for
+				// one more than seed one can supply makes this independent of the final shuffle:
+				// three of the four matches always include a seed-two track.
+				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "s1", "Seed One", "", "", 3).
 					Return([]agents.Song{{ID: "a1", Name: "A1"}, {ID: "a2", Name: "A2"}}, nil).Once()
-				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "s2", "Seed Two", "", "", 2).
+				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "s2", "Seed Two", "", "", 3).
 					Return([]agents.Song{{ID: "b1", Name: "B1"}, {ID: "b2", Name: "B2"}}, nil).Once()
 
 				mediaFileRepo.On("GetAll", mock.Anything).Return(model.MediaFiles{
@@ -528,11 +530,11 @@ var _ = Describe("Provider - SimilarSongs", func() {
 					{ID: "b1", Title: "B1"}, {ID: "b2", Title: "B2"},
 				}, nil).Maybe()
 
-				songs, err := provider.SimilarSongs(ctx, "pl-blend", 2)
+				songs, err := provider.SimilarSongs(ctx, "pl-blend", 3)
 
 				Expect(err).ToNot(HaveOccurred())
-				Expect(songs).To(HaveLen(2))
-				ids := []string{songs[0].ID, songs[1].ID}
+				Expect(songs).To(HaveLen(3))
+				ids := slice.Map(songs, func(mf model.MediaFile) string { return mf.ID })
 				Expect(ids).To(ContainElement(BeElementOf("b1", "b2")), "seed two must be represented in the mix")
 			})
 
