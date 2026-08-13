@@ -3,6 +3,8 @@
 package plugins
 
 import (
+	"errors"
+
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/plugins/capabilities"
 	. "github.com/onsi/ginkgo/v2"
@@ -242,6 +244,60 @@ var _ = Describe("MetadataAgent error handling", Ordered, func() {
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("simulated plugin error"))
 	})
+
+	// A fault reported as ErrNotFound reads as a definitive answer, so callers that back off on
+	// faults (the artwork circuit breaker) never trip and keep hammering a failing provider.
+	DescribeTable("keeps a plugin failure distinguishable from a definitive not-found",
+		func(call func() error) {
+			err := call()
+			Expect(err).To(HaveOccurred())
+			Expect(errors.Is(err, agents.ErrNotFound)).To(BeFalse())
+		},
+		Entry("GetArtistMBID", func() error {
+			_, err := errorAgent.(agents.ArtistMBIDRetriever).GetArtistMBID(GinkgoT().Context(), "artist-1", "Test")
+			return err
+		}),
+		Entry("GetArtistURL", func() error {
+			_, err := errorAgent.(agents.ArtistURLRetriever).GetArtistURL(GinkgoT().Context(), "artist-1", "Test", "mbid")
+			return err
+		}),
+		Entry("GetArtistBiography", func() error {
+			_, err := errorAgent.(agents.ArtistBiographyRetriever).GetArtistBiography(GinkgoT().Context(), "artist-1", "Test", "mbid")
+			return err
+		}),
+		Entry("GetSimilarArtists", func() error {
+			_, err := errorAgent.(agents.ArtistSimilarRetriever).GetSimilarArtists(GinkgoT().Context(), "artist-1", "Test", "mbid", 5)
+			return err
+		}),
+		Entry("GetArtistImages", func() error {
+			_, err := errorAgent.(agents.ArtistImageRetriever).GetArtistImages(GinkgoT().Context(), "artist-1", "Test", "mbid")
+			return err
+		}),
+		Entry("GetArtistTopSongs", func() error {
+			_, err := errorAgent.(agents.ArtistTopSongsRetriever).GetArtistTopSongs(GinkgoT().Context(), "artist-1", "Test", "mbid", 5)
+			return err
+		}),
+		Entry("GetAlbumInfo", func() error {
+			_, err := errorAgent.(agents.AlbumInfoRetriever).GetAlbumInfo(GinkgoT().Context(), "Album", "Artist", "mbid")
+			return err
+		}),
+		Entry("GetAlbumImages", func() error {
+			_, err := errorAgent.(agents.AlbumImageRetriever).GetAlbumImages(GinkgoT().Context(), "Album", "Artist", "mbid")
+			return err
+		}),
+		Entry("GetSimilarSongsByTrack", func() error {
+			_, err := errorAgent.(agents.SimilarSongsByTrackRetriever).GetSimilarSongsByTrack(GinkgoT().Context(), "track-1", "Test", "Artist", "mbid", 5)
+			return err
+		}),
+		Entry("GetSimilarSongsByAlbum", func() error {
+			_, err := errorAgent.(agents.SimilarSongsByAlbumRetriever).GetSimilarSongsByAlbum(GinkgoT().Context(), "album-1", "Album", "Artist", "mbid", 5)
+			return err
+		}),
+		Entry("GetSimilarSongsByArtist", func() error {
+			_, err := errorAgent.(agents.SimilarSongsByArtistRetriever).GetSimilarSongsByArtist(GinkgoT().Context(), "artist-1", "Artist", "mbid", 5)
+			return err
+		}),
+	)
 })
 
 var _ = Describe("MetadataAgent partial implementation", Ordered, func() {

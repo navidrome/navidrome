@@ -2,7 +2,6 @@ package plugins
 
 import (
 	"context"
-	"errors"
 
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/plugins/capabilities"
@@ -69,7 +68,7 @@ func (a *MetadataAgent) GetArtistMBID(ctx context.Context, id string, name strin
 	input := capabilities.ArtistMBIDRequest{ID: id, Name: name}
 	result, err := callPluginFunction[capabilities.ArtistMBIDRequest, *capabilities.ArtistMBIDResponse](ctx, a.plugin, FuncGetArtistMBID, input)
 	if err != nil {
-		return "", errors.Join(agents.ErrNotFound, err)
+		return "", err
 	}
 
 	if result == nil || result.MBID == "" {
@@ -84,7 +83,7 @@ func (a *MetadataAgent) GetArtistURL(ctx context.Context, id, name, mbid string)
 	input := capabilities.ArtistRequest{ID: id, Name: name, MBID: mbid}
 	result, err := callPluginFunction[capabilities.ArtistRequest, *capabilities.ArtistURLResponse](ctx, a.plugin, FuncGetArtistURL, input)
 	if err != nil {
-		return "", errors.Join(agents.ErrNotFound, err)
+		return "", err
 	}
 	if result == nil || result.URL == "" {
 		return "", agents.ErrNotFound
@@ -97,7 +96,7 @@ func (a *MetadataAgent) GetArtistBiography(ctx context.Context, id, name, mbid s
 	input := capabilities.ArtistRequest{ID: id, Name: name, MBID: mbid}
 	result, err := callPluginFunction[capabilities.ArtistRequest, *capabilities.ArtistBiographyResponse](ctx, a.plugin, FuncGetArtistBiography, input)
 	if err != nil {
-		return "", errors.Join(agents.ErrNotFound, err)
+		return "", err
 	}
 
 	if result == nil || result.Biography == "" {
@@ -112,7 +111,7 @@ func (a *MetadataAgent) GetSimilarArtists(ctx context.Context, id, name, mbid st
 	input := capabilities.SimilarArtistsRequest{ID: id, Name: name, MBID: mbid, Limit: int32(limit)}
 	result, err := callPluginFunction[capabilities.SimilarArtistsRequest, *capabilities.SimilarArtistsResponse](ctx, a.plugin, FuncGetSimilarArtists, input)
 	if err != nil {
-		return nil, errors.Join(agents.ErrNotFound, err)
+		return nil, err
 	}
 
 	if result == nil || len(result.Artists) == 0 {
@@ -132,7 +131,7 @@ func (a *MetadataAgent) GetArtistImages(ctx context.Context, id, name, mbid stri
 	input := capabilities.ArtistRequest{ID: id, Name: name, MBID: mbid}
 	result, err := callPluginFunction[capabilities.ArtistRequest, *capabilities.ArtistImagesResponse](ctx, a.plugin, FuncGetArtistImages, input)
 	if err != nil {
-		return nil, errors.Join(agents.ErrNotFound, err)
+		return nil, err
 	}
 
 	if result == nil || len(result.Images) == 0 {
@@ -152,7 +151,7 @@ func (a *MetadataAgent) GetArtistTopSongs(ctx context.Context, id, artistName, m
 	input := capabilities.TopSongsRequest{ID: id, Name: artistName, MBID: mbid, Count: int32(count)}
 	result, err := callPluginFunction[capabilities.TopSongsRequest, *capabilities.TopSongsResponse](ctx, a.plugin, FuncGetArtistTopSongs, input)
 	if err != nil {
-		return nil, errors.Join(agents.ErrNotFound, err)
+		return nil, err
 	}
 
 	if result == nil || len(result.Songs) == 0 {
@@ -167,7 +166,7 @@ func (a *MetadataAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid str
 	input := capabilities.AlbumRequest{Name: name, Artist: artist, MBID: mbid}
 	result, err := callPluginFunction[capabilities.AlbumRequest, *capabilities.AlbumInfoResponse](ctx, a.plugin, FuncGetAlbumInfo, input)
 	if err != nil {
-		return nil, errors.Join(agents.ErrNotFound, err)
+		return nil, err
 	}
 
 	if result == nil {
@@ -187,7 +186,7 @@ func (a *MetadataAgent) GetAlbumImages(ctx context.Context, name, artist, mbid s
 	input := capabilities.AlbumRequest{Name: name, Artist: artist, MBID: mbid}
 	result, err := callPluginFunction[capabilities.AlbumRequest, *capabilities.AlbumImagesResponse](ctx, a.plugin, FuncGetAlbumImages, input)
 	if err != nil {
-		return nil, errors.Join(agents.ErrNotFound, err)
+		return nil, err
 	}
 
 	if result == nil || len(result.Images) == 0 {
