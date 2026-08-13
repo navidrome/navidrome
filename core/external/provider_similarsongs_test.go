@@ -206,6 +206,40 @@ var _ = Describe("Provider - SimilarSongs", func() {
 				Expect(slice.Map(songs, func(mf model.MediaFile) string { return mf.ID })).
 					To(ConsistOf("agent-1", "song-1"))
 			})
+
+			It("keeps topping up when the agent's picks repeat a track", func() {
+				track := model.MediaFile{ID: "track-1", Title: "Track", Artist: "Artist", ArtistID: "artist-1"}
+				artist := model.Artist{ID: "artist-1", Name: "Artist"}
+
+				artistRepo.On("Get", "track-1").Return(nil, model.ErrNotFound).Twice()
+				albumRepo.On("Get", "track-1").Return(nil, model.ErrNotFound).Twice()
+				mediaFileRepo.On("Get", "track-1").Return(&track, nil).Twice()
+				artistRepo.On("Get", "artist-1").Return(&artist, nil).Maybe()
+				artistRepo.On("GetAll", mock.Anything).Return(model.Artists{artist}, nil).Maybe()
+
+				// The matcher re-emits a track when the same input song repeats, so these three
+				// picks resolve to only two distinct library tracks.
+				repeated := agents.Song{Name: "Song A", MBID: "mbid-a"}
+				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "track-1", "Track", "Artist", "", 3).
+					Return([]agents.Song{repeated, repeated, {Name: "Song B", MBID: "mbid-b"}}, nil).Once()
+				mediaFileRepo.On("GetAll", mock.Anything).Return(model.MediaFiles{
+					{ID: "t-a", Title: "Song A", MbzRecordingID: "mbid-a"},
+					{ID: "t-b", Title: "Song B", MbzRecordingID: "mbid-b"},
+				}, nil).Once()
+
+				mockAgent.On("GetSimilarArtists", mock.Anything, "artist-1", "Artist", "", 15).
+					Return([]agents.Artist{}, nil).Once()
+				mockAgent.On("GetArtistTopSongs", mock.Anything, "artist-1", "Artist", "", mock.Anything).
+					Return([]agents.Song{{Name: "Song C", MBID: "mbid-c"}}, nil).Once()
+				mediaFileRepo.On("GetAll", mock.Anything).
+					Return(model.MediaFiles{{ID: "t-c", Title: "Song C", MbzRecordingID: "mbid-c"}}, nil).Once()
+
+				songs, err := provider.SimilarSongs(ctx, "track-1", 3)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(slice.Map(songs, func(mf model.MediaFile) string { return mf.ID })).
+					To(ConsistOf("t-a", "t-b", "t-c"))
+			})
 		})
 
 		Context("when ID is an Album", func() {

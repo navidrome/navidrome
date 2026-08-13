@@ -108,8 +108,11 @@ func (e *provider) mixFromAgent(ctx context.Context, count int, fetch func() ([]
 // topUp extends res with more tracks until it holds count of them. A short mix is worse than a
 // slow one: clients that ask for count and get a handful re-ask with an ever-larger limit forever.
 func topUp(ctx context.Context, res model.MediaFiles, count int, more func() (model.MediaFiles, error)) (model.MediaFiles, error) {
+	// Dedup before measuring: the matcher re-emits a track when the same input song repeats, so a
+	// full-looking res can hold fewer unique tracks than count and stop the top-up too early.
+	res = dedupByID(res)
 	if len(res) >= count {
-		return res, nil
+		return res[:count], nil
 	}
 	extra, err := more()
 	if err != nil {
