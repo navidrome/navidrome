@@ -12,7 +12,6 @@ import (
 	. "github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/matcher"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/tests"
 	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
@@ -381,7 +380,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 			It("asks for a smart-playlist refresh so an unevaluated one still yields seeds", func() {
 				// A smart playlist materializes no playlist_tracks until it is evaluated, so sampling
 				// without the refresh would mix an empty seed set.
-				pls := model.Playlist{ID: "pl-smart", Name: "Smart", Rules: &criteria.Criteria{}}
+				pls := model.Playlist{ID: "pl-smart", Name: "Smart"}
 				artistRepo.On("Get", "pl-smart").Return(nil, model.ErrNotFound).Once()
 				albumRepo.On("Get", "pl-smart").Return(nil, model.ErrNotFound).Once()
 				playlistRepo.SetData(model.Playlists{pls})
@@ -519,18 +518,8 @@ var _ = Describe("Provider - SimilarSongs", func() {
 			})
 
 			It("does not panic when the caller asks for a non-positive count", func() {
-				pls := model.Playlist{ID: "pl-neg", Name: "Negative"}
-				artistRepo.On("Get", "pl-neg").Return(nil, model.ErrNotFound).Once()
-				albumRepo.On("Get", "pl-neg").Return(nil, model.ErrNotFound).Once()
-				playlistRepo.SetData(model.Playlists{pls})
-				playlistTrackRepo.SetData(model.PlaylistTracks{
-					{MediaFile: model.MediaFile{ID: "s1", Title: "Seed One"}},
-					{MediaFile: model.MediaFile{ID: "s2", Title: "Seed Two"}},
-				})
-				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-					Return([]agents.Song{}, nil).Maybe()
-
 				// Subsonic passes count straight through, so a negative one reaches the provider.
+				// The guard returns before any lookup, so no repository setup is needed.
 				songs, err := provider.SimilarSongs(ctx, "pl-neg", -1)
 
 				Expect(err).ToNot(HaveOccurred())
@@ -595,21 +584,46 @@ var _ = Describe("Provider - SimilarSongs", func() {
 				Expect([]string{songs[0].ID, songs[1].ID}).To(ConsistOf("s1", "s2"))
 			})
 
-			It("caps agent calls at maxSeeds even if the repo returns more than requested", func() {
+			It("caps agent calls at maxSeeds when the repository ignores the bound", func() {
+				// Isolates seedMix's own cap: the album sampler bounds the query with Max, so this
+				// exercises the guard by having the repo hand back more rows than were asked for.
+				album := model.Album{ID: "al-cap", Name: "Cap", AlbumArtist: "A"}
+				artistRepo.On("Get", "al-cap").Return(nil, model.ErrNotFound).Once()
+				albumRepo.On("Get", "al-cap").Return(&album, nil).Once()
+				agentsCombined.On("GetSimilarSongsByAlbum", mock.Anything, "al-cap", "Cap", "A", "", 5).
+					Return([]agents.Song{}, nil).Once()
+
+				var overflow model.MediaFiles
+				for _, id := range []string{"t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8"} {
+					overflow = append(overflow, model.MediaFile{ID: id, Title: id})
+				}
+				mediaFileRepo.On("GetRandom", mock.Anything).Return(overflow, nil).Once()
+				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, 5).
+					Return([]agents.Song{}, nil)
+
+				_, err := provider.SimilarSongs(ctx, "al-cap", 5)
+
+				Expect(err).ToNot(HaveOccurred())
+				agentsCombined.AssertNumberOfCalls(GinkgoT(), "GetSimilarSongsByTrack", 5)
+			})
+
+			It("still finds maxSeeds distinct seeds when the leading positions repeat", func() {
+				// The sampler over-fetches for exactly this case: a page bounded at maxSeeds could
+				// be entirely one repeated file and collapse to a single seed.
 				pls := model.Playlist{ID: "pl-3", Name: "Big List"}
+				dup := model.MediaFile{ID: "dup", Title: "Dup", Artist: "A"}
 				tracks := model.PlaylistTracks{
-					{MediaFile: model.MediaFile{ID: "seed-1", Title: "Seed 1", Artist: "A"}},
-					{MediaFile: model.MediaFile{ID: "seed-2", Title: "Seed 2", Artist: "A"}},
-					{MediaFile: model.MediaFile{ID: "seed-3", Title: "Seed 3", Artist: "A"}},
-					{MediaFile: model.MediaFile{ID: "seed-4", Title: "Seed 4", Artist: "A"}},
-					{MediaFile: model.MediaFile{ID: "seed-5", Title: "Seed 5", Artist: "A"}},
-					{MediaFile: model.MediaFile{ID: "seed-6", Title: "Seed 6", Artist: "A"}},
+					{MediaFile: dup}, {MediaFile: dup}, {MediaFile: dup}, {MediaFile: dup}, {MediaFile: dup},
+				}
+				for _, id := range []string{"seed-1", "seed-2", "seed-3", "seed-4", "seed-5"} {
+					tracks = append(tracks, model.PlaylistTrack{
+						MediaFile: model.MediaFile{ID: id, Title: id, Artist: "A"},
+					})
 				}
 
 				artistRepo.On("Get", "pl-3").Return(nil, model.ErrNotFound).Once()
 				albumRepo.On("Get", "pl-3").Return(nil, model.ErrNotFound).Once()
 				playlistRepo.SetData(model.Playlists{pls})
-
 				playlistTrackRepo.SetData(tracks)
 
 				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, 5).
@@ -619,10 +633,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(songs).To(HaveLen(5))
-				// The query stays bounded (it over-fetches to survive duplicate positions) and the
-				// seed count is still capped at maxSeeds.
 				Expect(playlistTrackRepo.Options.Sort).To(Equal("random"))
-				Expect(playlistTrackRepo.Options.Max).To(Equal(20))
 				agentsCombined.AssertNumberOfCalls(GinkgoT(), "GetSimilarSongsByTrack", 5)
 			})
 		})

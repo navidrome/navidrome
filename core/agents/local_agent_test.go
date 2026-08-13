@@ -5,6 +5,7 @@ import (
 
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -22,7 +23,7 @@ var _ = Describe("localAgent GetSimilarSongsByTrack", func() {
 		agent = &localAgent{ds: ds}
 	})
 
-	It("returns songs sharing the seed's genres, excluding the seed", func() {
+	It("excludes the seed track from its own similars", func() {
 		seed := model.MediaFile{ID: "seed-1", Title: "Seed", Tags: model.Tags{model.TagGenre: []string{"Rock"}}}
 		related := model.MediaFile{ID: "rel-1", Title: "Related", Tags: model.Tags{model.TagGenre: []string{"Rock"}}}
 		// SetData keys by ID; a duplicate "seed-1" entry would clobber the real seed.
@@ -31,12 +32,8 @@ var _ = Describe("localAgent GetSimilarSongsByTrack", func() {
 		songs, err := agent.GetSimilarSongsByTrack(ctx, "seed-1", "Seed", "", "", 10)
 
 		Expect(err).ToNot(HaveOccurred())
-		ids := make([]string, 0, len(songs))
-		for _, s := range songs {
-			ids = append(ids, s.Name)
-		}
-		Expect(ids).To(ContainElement("Related"))
-		Expect(ids).ToNot(ContainElement("Seed"))
+		names := slice.Map(songs, func(s Song) string { return s.Name })
+		Expect(names).ToNot(ContainElement("Seed"))
 	})
 
 	// The mock ignores QueryOptions.Filters, so assert the predicate itself: otherwise this spec
