@@ -37,7 +37,6 @@ var _ = Describe("Agents", func() {
 			mfRepo.SetData(model.MediaFiles{{ID: "1", Title: "One"}, {ID: "2", Title: "Two"}})
 			songs, err := ag.GetArtistTopSongs(ctx, "123", "John Doe", "mb123", 2)
 			Expect(err).ToNot(HaveOccurred())
-			// The library id is what the matcher resolves on; no MBID needed.
 			Expect(songs).To(ConsistOf([]Song{{ID: "1", Name: "One"}, {ID: "2", Name: "Two"}}))
 		})
 	})
