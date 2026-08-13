@@ -330,10 +330,13 @@ var _ = Describe("Provider - SimilarSongs", func() {
 				mockAgent.On("GetArtistTopSongs", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 					Return([]agents.Song{}, nil).Maybe()
 
+				// Seeds come from the participant join covering both roles, so an artist credited
+				// only on the album (compilations, classical) still yields seeds.
 				mediaFileRepo.On("GetRandom", mock.MatchedBy(func(opt model.QueryOptions) bool {
 					sql, args, err := opt.Filters.ToSql()
-					return err == nil && strings.Contains(sql, "artist_id") &&
-						strings.Contains(sql, "missing") && slices.Contains(args, any("ar-1"))
+					return err == nil && strings.Contains(sql, "media_file_artists") &&
+						strings.Contains(sql, "missing") && slices.Contains(args, any("ar-1")) &&
+						slices.Contains(args, any(model.RoleAlbumArtist.String())) && slices.Contains(args, any(model.RoleArtist.String()))
 				})).Return(model.MediaFiles{{ID: "s1", Title: "Seed"}}, nil).Once()
 				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "s1", "Seed", "", "", 5).
 					Return([]agents.Song{{Name: "Result"}}, nil).Once()

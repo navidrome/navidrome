@@ -436,7 +436,10 @@ func (e *provider) sampleAlbumTracks(ctx context.Context, albumID string, n int)
 }
 
 func (e *provider) sampleArtistTracks(ctx context.Context, artistID string, n int) (model.MediaFiles, error) {
-	return e.sampleTracks(ctx, squirrel.Eq{"artist_id": artistID}, n)
+	// media_file.artist_id is the deprecated primary artist, so it misses an artist credited only
+	// on the album, as on compilations. Same filter the artist listings use.
+	filter := persistence.ParticipantIDFilter("media_file", artistID, model.RoleArtist, model.RoleAlbumArtist)
+	return e.sampleTracks(ctx, filter, n)
 }
 
 func (e *provider) sampleGenreTracks(ctx context.Context, genre *model.Genre, n int) (model.MediaFiles, error) {
