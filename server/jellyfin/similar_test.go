@@ -164,4 +164,71 @@ var _ = Describe("getInstantMix", func() {
 		Expect(res.Items).To(HaveLen(want), "a Radio Mix-sized request must not be truncated to the Similar ceiling")
 		Expect(res.Items[0].Name).To(Equal("Seed Song"), "the seed must still lead the mix")
 	})
+
+	It("returns a mix for a genre id, which GetEntityByID can't resolve", func() {
+		ds := &tests.MockDataStore{}
+		songs := model.MediaFiles{
+			{ID: testID("m1"), Title: "Track 1", LibraryID: 1},
+			{ID: testID("m2"), Title: "Track 2", LibraryID: 1},
+		}
+		api := &Router{ds: ds, provider: &fakeSimilarProvider{songs: songs}}
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "/Items/"+dto.EncodeID(testID("g1"))+"/InstantMix", nil).
+			WithContext(request.WithUser(context.Background(), model.User{ID: testID("u1"), Libraries: model.Libraries{{ID: 1}}}))
+		r = withChiURLParam(r, "itemId", dto.EncodeID(testID("g1")))
+		api.getInstantMix(w, r)
+
+		Expect(w.Code).To(Equal(200))
+		var res dto.QueryResult
+		Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+		Expect(res.Items).To(HaveLen(2))
+	})
+})
+
+var _ = Describe("getSimilarAlbums", func() {
+	It("does not return the seed album as its own similar album", func() {
+		// With no external agent the provider falls back to the album's own tracks, which map
+		// straight back to the requested album.
+		ds := &tests.MockDataStore{}
+		ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{
+			{ID: testID("al-1"), Name: "Seed Album", LibraryID: 1},
+		})
+		api := &Router{ds: ds, provider: &fakeSimilarProvider{
+			songs: model.MediaFiles{{ID: testID("m1"), AlbumID: testID("al-1"), LibraryID: 1}},
+		}}
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "/Albums/"+dto.EncodeID(testID("al-1"))+"/Similar?limit=10", nil).
+			WithContext(request.WithUser(context.Background(), model.User{ID: testID("u1"), Libraries: model.Libraries{{ID: 1}}}))
+		r = withChiURLParam(r, "itemId", dto.EncodeID(testID("al-1")))
+		api.getSimilarAlbums(w, r)
+
+		Expect(w.Code).To(Equal(200))
+		var res dto.QueryResult
+		Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+		Expect(res.Items).To(BeEmpty())
+	})
+
+	It("returns albums derived from the provider's similar songs", func() {
+		ds := &tests.MockDataStore{}
+		ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{
+			{ID: testID("al-2"), Name: "Other", LibraryID: 1},
+		})
+		api := &Router{ds: ds, provider: &fakeSimilarProvider{
+			songs: model.MediaFiles{{ID: testID("m1"), AlbumID: testID("al-2"), LibraryID: 1}},
+		}}
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "/Albums/"+dto.EncodeID(testID("al-1"))+"/Similar?limit=10", nil).
+			WithContext(request.WithUser(context.Background(), model.User{ID: testID("u1"), Libraries: model.Libraries{{ID: 1}}}))
+		r = withChiURLParam(r, "itemId", dto.EncodeID(testID("al-1")))
+		api.getSimilarAlbums(w, r)
+
+		Expect(w.Code).To(Equal(200))
+		var res dto.QueryResult
+		Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+		Expect(res.Items).To(HaveLen(1))
+		Expect(res.Items[0].Name).To(Equal("Other"))
+	})
 })

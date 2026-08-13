@@ -2,6 +2,7 @@ package jellyfin
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -93,6 +94,19 @@ func (api *Router) getSimilarItems(w http.ResponseWriter, r *http.Request) {
 	}))
 }
 
+// getSimilarAlbums answers GET /Albums/{itemId}/Similar, powering Finamp's albumMix radio mode.
+func (api *Router) getSimilarAlbums(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id, ok := itemIDParam(w, r, "itemId")
+	if !ok {
+		return
+	}
+	limit := clampLimit(req.Params(r).IntOr("limit", 0), defaultSimilarLimit, maxSimilarLimit)
+	api.ok(w, r, api.awaitSimilar(ctx, "albsim|"+id, limit, func(ctx context.Context) dto.QueryResult {
+		return api.similarAlbums(ctx, id, limit)
+	}))
+}
+
 // getInstantMix answers GET /Items/{itemId}/InstantMix. Finamp plays exactly what is returned, so
 // a track seed leads its own mix; provider errors and unknown seeds degrade to seed-only/empty
 // results, never a 404 the client would surface as an error.
@@ -104,8 +118,10 @@ func (api *Router) getInstantMix(w http.ResponseWriter, r *http.Request) {
 	}
 	limit := clampLimit(req.Params(r).IntOr("limit", 0), defaultSimilarLimit, maxInstantMixLimit)
 
+	// Genre ids don't resolve via GetEntityByID, so a not-found entity is fine: it is just "not a
+	// song" and the provider knows what to do with it. A real lookup failure still stops here.
 	entity, err := model.GetEntityByID(ctx, api.ds, id)
-	if err != nil {
+	if err != nil && !errors.Is(err, model.ErrNotFound) {
 		api.ok(w, r, result(nil, 0, 0))
 		return
 	}
@@ -177,7 +193,8 @@ func (api *Router) similarAlbums(ctx context.Context, id string, limit int) dto.
 		return result(nil, 0, 0)
 	}
 	u, _ := request.UserFrom(ctx)
-	seen := make(map[string]bool, limit)
+	// An album is not similar to itself, and the sampled-seed fallback returns its own tracks.
+	seen := map[string]bool{id: true}
 	var items []dto.BaseItemDto
 	for _, s := range songs {
 		if s.AlbumID == "" || seen[s.AlbumID] {
