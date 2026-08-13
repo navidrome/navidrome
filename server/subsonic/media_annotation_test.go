@@ -185,6 +185,64 @@ var _ = Describe("MediaAnnotationController", func() {
 			Expect(playTracker.ReportedPlayback[0].ClientName).To(BeEmpty())
 		})
 	})
+
+	Describe("Star/Unstar playlists", func() {
+		var plRepo *tests.MockPlaylistRepo
+
+		BeforeEach(func() {
+			plRepo = tests.CreateMockPlaylistRepo()
+			plRepo.SetData(model.Playlists{{ID: "pl-1", Name: "My Playlist", OwnerID: "u1"}})
+			ds.(*tests.MockDataStore).MockedPlaylist = plRepo
+		})
+
+		It("stars a playlist by dispatching to the Playlist repo", func() {
+			r := newGetRequest("id=pl-1")
+
+			_, err := router.Star(r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(plRepo.Starred).To(HaveKeyWithValue("pl-1", true))
+		})
+
+		It("unstars a playlist by dispatching to the Playlist repo", func() {
+			r := newGetRequest("id=pl-1")
+
+			_, err := router.Unstar(r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(plRepo.Starred).To(HaveKeyWithValue("pl-1", false))
+		})
+	})
+
+	Describe("SetRating playlists", func() {
+		var plRepo *tests.MockPlaylistRepo
+
+		BeforeEach(func() {
+			plRepo = tests.CreateMockPlaylistRepo()
+			plRepo.SetData(model.Playlists{{ID: "pl-1", Name: "My Playlist", OwnerID: "u1"}})
+			ds.(*tests.MockDataStore).MockedPlaylist = plRepo
+		})
+
+		It("rates a playlist by dispatching to the Playlist repo", func() {
+			r := newGetRequest("id=pl-1", "rating=4")
+
+			_, err := router.SetRating(r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(plRepo.Ratings).To(HaveKeyWithValue("pl-1", 4))
+		})
+	})
+
+	Describe("Star with an unresolvable id", func() {
+		It("skips the id without broadcasting an empty (wildcard) refresh", func() {
+			r := newGetRequest("id=does-not-exist")
+
+			_, err := router.Star(r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(eventBroker.Events).To(BeEmpty())
+		})
+	})
 })
 
 type fakePlayTracker struct {

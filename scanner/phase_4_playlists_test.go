@@ -10,7 +10,6 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -27,7 +26,6 @@ var _ = Describe("phasePlaylists", func() {
 		folderRepo *mockFolderRepository
 		ds         *tests.MockDataStore
 		pls        *mockPlaylists
-		cw         artwork.CacheWarmer
 	)
 
 	var userRepo *tests.MockedUserRepo
@@ -48,9 +46,8 @@ var _ = Describe("phasePlaylists", func() {
 			MockedProperty: propRepo,
 		}
 		pls = &mockPlaylists{}
-		cw = artwork.NoopCacheWarmer()
 		state = &scanState{}
-		phase = createPhasePlaylists(ctx, state, ds, pls, cw)
+		phase = createPhasePlaylists(ctx, state, ds, pls)
 	})
 
 	Describe("description", func() {
@@ -191,6 +188,29 @@ var _ = Describe("phasePlaylists", func() {
 			Expect(pls.Calls[0].Arguments[2]).To(Equal("playlist1.m3u"))
 			Expect(pls.Calls[1].Arguments[2]).To(Equal("playlist2.m3u"))
 			Expect(phase.refreshed.Load()).To(Equal(uint32(2)))
+		})
+
+		It("enqueues artwork resolution for the imported playlist", func() {
+			libPath := GinkgoT().TempDir()
+			folder := &model.Folder{LibraryPath: libPath, Path: "path/to", Name: "folder"}
+			_ = os.MkdirAll(folder.AbsolutePath(), 0755)
+
+			file1 := filepath.Join(folder.AbsolutePath(), "playlist1.m3u")
+			_ = os.WriteFile(file1, []byte{}, 0600)
+
+			pls.On("ImportFromFolder", mock.Anything, folder, "playlist1.m3u").
+				Return(&model.Playlist{ID: "pl1"}, nil)
+
+			_, err := phase.processPlaylistsInFolder(folder)
+			Expect(err).ToNot(HaveOccurred())
+
+			queued, err := ds.ArtworkQueue(ctx).DequeueBatch(10)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(queued).To(ContainElement(SatisfyAll(
+				HaveField("ItemKind", "pl"),
+				HaveField("ItemID", "pl1"),
+				HaveField("Priority", model.ArtworkPriorityScan),
+			)))
 		})
 
 		It("reports an error if there is an error reading files", func() {

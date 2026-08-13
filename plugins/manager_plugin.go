@@ -24,15 +24,24 @@ type plugin struct {
 	allowedUserIDs []string // User IDs this plugin can access (from DB configuration)
 	allUsers       bool     // If true, plugin can access all users
 	libraries      libraryAccess
+	lyricsSem      chan struct{}   // Caps concurrent lyrics calls (see LyricsPlugin.GetLyrics)
+	fsConfig       wazero.FSConfig // Sandboxed library mounts, nil if no filesystem permission
+}
+
+// instanceConfig is used by every call site, so all instances get the sandboxed mounts.
+func instanceConfig(fsConfig wazero.FSConfig) extism.PluginInstanceConfig {
+	moduleConfig := wazero.NewModuleConfig().WithSysWalltime().WithRandSource(rand.Reader)
+	if fsConfig != nil {
+		moduleConfig = moduleConfig.WithFSConfig(fsConfig)
+	}
+	return extism.PluginInstanceConfig{ModuleConfig: moduleConfig}
 }
 
 // instance creates a new plugin instance for the given context.
 // The context is used for cancellation - if cancelled during a call,
 // the module will be terminated and the instance becomes unusable.
 func (p *plugin) instance(ctx context.Context) (*extism.Plugin, error) {
-	instance, err := p.compiled.Instance(ctx, extism.PluginInstanceConfig{
-		ModuleConfig: wazero.NewModuleConfig().WithSysWalltime().WithRandSource(rand.Reader),
-	})
+	instance, err := p.compiled.Instance(ctx, instanceConfig(p.fsConfig))
 	if err != nil {
 		return nil, err
 	}

@@ -8,7 +8,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
-	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
@@ -42,7 +42,7 @@ var _ = Describe("Playlists", func() {
 				"pls-1": {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
 			}
 			mockPlsRepo.TracksRepo = mockTracks
-			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+			ps = playlists.NewPlaylists(ds, artwork.NewUploader(ds))
 		})
 
 		It("allows owner to delete their playlist", func() {
@@ -73,6 +73,28 @@ var _ = Describe("Playlists", func() {
 		})
 	})
 
+	Describe("Tracks", func() {
+		var mockTracks *tests.MockPlaylistTrackRepo
+
+		BeforeEach(func() {
+			mockTracks = &tests.MockPlaylistTrackRepo{}
+			mockPlsRepo.Data = map[string]*model.Playlist{
+				"pls-1": {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
+			}
+			mockPlsRepo.TracksRepo = mockTracks
+			ps = playlists.NewPlaylists(ds, artwork.NewUploader(ds))
+		})
+
+		It("returns the playlist's track repository", func() {
+			Expect(ps.Tracks(ctx, "pls-1")).To(BeIdenticalTo(mockTracks))
+		})
+
+		It("returns ErrNotFound for an unknown or invisible playlist", func() {
+			_, err := ps.Tracks(ctx, "nonexistent")
+			Expect(err).To(MatchError(model.ErrNotFound))
+		})
+	})
+
 	Describe("Create", func() {
 		BeforeEach(func() {
 			mockPlsRepo.Data = map[string]*model.Playlist{
@@ -81,7 +103,7 @@ var _ = Describe("Playlists", func() {
 				"pls-smart": {ID: "pls-smart", Name: "Smart", OwnerID: "user-1",
 					Rules: &criteria.Criteria{Expression: criteria.Contains{"title": "test"}}},
 			}
-			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+			ps = playlists.NewPlaylists(ds, artwork.NewUploader(ds))
 		})
 
 		It("creates a new playlist with owner set from context", func() {
@@ -139,7 +161,7 @@ var _ = Describe("Playlists", func() {
 					Rules: &criteria.Criteria{Expression: criteria.Contains{"title": "test"}}},
 			}
 			mockPlsRepo.TracksRepo = mockTracks
-			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+			ps = playlists.NewPlaylists(ds, artwork.NewUploader(ds))
 		})
 
 		It("allows owner to update their playlist", func() {
@@ -197,7 +219,7 @@ var _ = Describe("Playlists", func() {
 				"pls-other": {ID: "pls-other", Name: "Other's", OwnerID: "other-user"},
 			}
 			mockPlsRepo.TracksRepo = mockTracks
-			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+			ps = playlists.NewPlaylists(ds, artwork.NewUploader(ds))
 		})
 
 		It("allows owner to add tracks", func() {
@@ -245,7 +267,7 @@ var _ = Describe("Playlists", func() {
 					Rules: &criteria.Criteria{Expression: criteria.Contains{"title": "test"}}},
 			}
 			mockPlsRepo.TracksRepo = mockTracks
-			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+			ps = playlists.NewPlaylists(ds, artwork.NewUploader(ds))
 		})
 
 		It("allows owner to remove tracks", func() {
@@ -279,7 +301,7 @@ var _ = Describe("Playlists", func() {
 					Rules: &criteria.Criteria{Expression: criteria.Contains{"title": "test"}}},
 			}
 			mockPlsRepo.TracksRepo = mockTracks
-			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+			ps = playlists.NewPlaylists(ds, artwork.NewUploader(ds))
 		})
 
 		It("allows owner to reorder", func() {
@@ -308,7 +330,7 @@ var _ = Describe("Playlists", func() {
 				"pls-1":     {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
 				"pls-other": {ID: "pls-other", Name: "Other's", OwnerID: "other-user"},
 			}
-			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+			ps = playlists.NewPlaylists(ds, artwork.NewUploader(ds))
 		})
 
 		It("saves image file and updates UploadedImage", func() {
@@ -378,7 +400,7 @@ var _ = Describe("Playlists", func() {
 				"pls-empty": {ID: "pls-empty", Name: "No Cover", OwnerID: "user-1"},
 				"pls-other": {ID: "pls-other", Name: "Other's", OwnerID: "other-user"},
 			}
-			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+			ps = playlists.NewPlaylists(ds, artwork.NewUploader(ds))
 		})
 
 		It("removes file and clears UploadedImage", func() {
@@ -396,6 +418,24 @@ var _ = Describe("Playlists", func() {
 			err := ps.RemoveImage(ctx, "pls-empty")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(mockPlsRepo.Last.UploadedImage).To(BeEmpty())
+		})
+
+		It("clears the resolved artwork state and re-queues after removing an upload", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			Expect(ds.Artwork(ctx).PutItemArtwork(&model.ItemArtwork{
+				ItemKind: "pl", ItemID: "pls-1", Hash: "oldhash", Source: "upload",
+			})).To(Succeed())
+
+			Expect(ps.RemoveImage(ctx, "pls-1")).To(Succeed())
+
+			_, err := ds.Artwork(ctx).GetItemArtwork(model.KindPlaylistArtwork, "pls-1", model.ImageTypePrimary)
+			Expect(err).To(MatchError(model.ErrNotFound))
+			queued, _ := ds.ArtworkQueue(ctx).DequeueBatch(100)
+			Expect(queued).To(ContainElement(SatisfyAll(
+				HaveField("ItemKind", "pl"),
+				HaveField("ItemID", "pls-1"),
+				HaveField("Priority", model.ArtworkPriorityBump),
+			)))
 		})
 
 		It("denies non-owner", func() {

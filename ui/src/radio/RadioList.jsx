@@ -16,11 +16,12 @@ import {
 } from 'react-admin'
 import {
   List,
-  useImageUrl,
+  defaultRowsPerPageOptions,
+  getStoredPerPage,
   ToggleFieldsMenu,
   useSelectedFields,
 } from '../common'
-import subsonic from '../subsonic'
+import { Artwork } from '../common/Artwork'
 import { StreamField } from './StreamField'
 import { setTrack } from '../actions'
 import { songFromRadio } from './helper'
@@ -81,15 +82,32 @@ const RadioListActions = ({
 
 const avatarStyle = { width: 40, height: 40 }
 
+const useCoverStyles = makeStyles({
+  cover: { width: 40, height: 40, borderRadius: '4px' },
+})
+
 const CoverArtField = ({ record }) => {
-  const directUrl = record?.uploadedImage
-    ? subsonic.getCoverArtUrl(record, 40, true)
-    : null
-  const { imgUrl } = useImageUrl(directUrl)
+  const classes = useCoverStyles()
   if (!record) return null
-  const src = imgUrl || RADIO_PLACEHOLDER_IMAGE
+  // Radios resolve art only from an uploaded image; otherwise show the generic radio icon.
+  if (record.uploadedImage) {
+    return (
+      <Artwork
+        record={record}
+        size={40}
+        square
+        className={classes.cover}
+        title={record.name}
+      />
+    )
+  }
   return (
-    <Avatar src={src} variant="rounded" style={avatarStyle} alt={record.name} />
+    <Avatar
+      src={RADIO_PLACEHOLDER_IMAGE}
+      variant="rounded"
+      style={avatarStyle}
+      alt={record.name}
+    />
   )
 }
 CoverArtField.defaultProps = { label: '' }
@@ -135,7 +153,11 @@ const RadioList = ({ permissions, ...props }) => {
       hasCreate={isAdmin}
       actions={<RadioListActions isAdmin={isAdmin} />}
       filters={<RadioFilter />}
-      perPage={isXsmall ? 25 : 10}
+      perPage={getStoredPerPage(
+        'radio',
+        defaultRowsPerPageOptions,
+        isXsmall ? 25 : 10,
+      )}
     >
       {isXsmall ? (
         <SimpleList

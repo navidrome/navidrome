@@ -13,7 +13,12 @@ import subsonic from '../subsonic'
 import AlbumGridView from '../album/AlbumGridView'
 import MobileArtistDetails from './MobileArtistDetails'
 import DesktopArtistDetails from './DesktopArtistDetails'
-import { useAlbumsPerPage, useResourceRefresh, Title } from '../common/index.js'
+import {
+  useAlbumsPerPage,
+  useResourceRefresh,
+  useScrollRestoration,
+  Title,
+} from '../common/index.js'
 import ArtistActions from './ArtistActions'
 import { makeStyles } from '@material-ui/core'
 
@@ -85,6 +90,7 @@ const ArtistShowLayout = (props) => {
   const [, perPageOptions] = useAlbumsPerPage(width)
   const classes = useStyles()
   useResourceRefresh('artist', 'album')
+  useScrollRestoration(!!record?.id)
 
   const maxPerPage = 90
   let perPage = 0
@@ -100,6 +106,7 @@ const ArtistShowLayout = (props) => {
     const rowsPerPageOptions = [1, 2, 3].map((option) =>
       Math.trunc(option * (perPage / 3)),
     )
+    // react-admin's Pagination on purpose: the common one would persist 30/60/90 under the album grid's key
     pagination = <Pagination rowsPerPageOptions={rowsPerPageOptions} />
   }
 

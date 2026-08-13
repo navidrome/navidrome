@@ -51,7 +51,7 @@ var {{.Service.Name}}Mock = &mock{{.Service.Name}}Service{}
 // {{.Name}} is the mock method for {{$.Service.Name}}{{.Name}}.
 func (m *mock{{$.Service.Name}}Service) {{.Name}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.Name}} {{$p.Type}}{{end}}) {{.ReturnSignature}} {
 	args := m.Called({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.Name}}{{end}})
-	return {{mockReturnValues .}}
+{{mockReturnBody .}}
 }
 
 // {{$.Service.Name}}{{.Name}} delegates to the mock instance.

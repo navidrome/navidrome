@@ -28,6 +28,8 @@ type MockDataStore struct {
 	MockedScrobble       model.ScrobbleRepository
 	MockedRadio          model.RadioRepository
 	MockedPlugin         model.PluginRepository
+	MockedArtwork        model.ArtworkRepository
+	MockedArtworkQueue   model.ArtworkQueueRepository
 	scrobbleBufferMu     sync.Mutex
 	repoMu               sync.Mutex
 
@@ -37,6 +39,8 @@ type MockDataStore struct {
 }
 
 func (db *MockDataStore) Library(ctx context.Context) model.LibraryRepository {
+	db.repoMu.Lock()
+	defer db.repoMu.Unlock()
 	if db.MockedLibrary != nil {
 		return db.MockedLibrary
 	}
@@ -48,6 +52,8 @@ func (db *MockDataStore) Library(ctx context.Context) model.LibraryRepository {
 }
 
 func (db *MockDataStore) Folder(ctx context.Context) model.FolderRepository {
+	db.repoMu.Lock()
+	defer db.repoMu.Unlock()
 	if db.MockedFolder != nil {
 		return db.MockedFolder
 	}
@@ -59,17 +65,21 @@ func (db *MockDataStore) Folder(ctx context.Context) model.FolderRepository {
 }
 
 func (db *MockDataStore) Tag(ctx context.Context) model.TagRepository {
+	db.repoMu.Lock()
+	defer db.repoMu.Unlock()
 	if db.MockedTag != nil {
 		return db.MockedTag
 	}
 	if db.RealDS != nil {
 		return db.RealDS.Tag(ctx)
 	}
-	db.MockedTag = struct{ model.TagRepository }{}
+	db.MockedTag = &MockTagRepo{}
 	return db.MockedTag
 }
 
 func (db *MockDataStore) Album(ctx context.Context) model.AlbumRepository {
+	db.repoMu.Lock()
+	defer db.repoMu.Unlock()
 	if db.MockedAlbum != nil {
 		return db.MockedAlbum
 	}
@@ -81,6 +91,8 @@ func (db *MockDataStore) Album(ctx context.Context) model.AlbumRepository {
 }
 
 func (db *MockDataStore) Artist(ctx context.Context) model.ArtistRepository {
+	db.repoMu.Lock()
+	defer db.repoMu.Unlock()
 	if db.MockedArtist != nil {
 		return db.MockedArtist
 	}
@@ -92,11 +104,11 @@ func (db *MockDataStore) Artist(ctx context.Context) model.ArtistRepository {
 }
 
 func (db *MockDataStore) MediaFile(ctx context.Context) model.MediaFileRepository {
+	db.repoMu.Lock()
+	defer db.repoMu.Unlock()
 	if db.RealDS != nil && db.MockedMediaFile == nil {
 		return db.RealDS.MediaFile(ctx)
 	}
-	db.repoMu.Lock()
-	defer db.repoMu.Unlock()
 	if db.MockedMediaFile == nil {
 		db.MockedMediaFile = CreateMockMediaFileRepo()
 	}
@@ -104,6 +116,8 @@ func (db *MockDataStore) MediaFile(ctx context.Context) model.MediaFileRepositor
 }
 
 func (db *MockDataStore) Genre(ctx context.Context) model.GenreRepository {
+	db.repoMu.Lock()
+	defer db.repoMu.Unlock()
 	if db.MockedGenre != nil {
 		return db.MockedGenre
 	}
@@ -115,6 +129,8 @@ func (db *MockDataStore) Genre(ctx context.Context) model.GenreRepository {
 }
 
 func (db *MockDataStore) Playlist(ctx context.Context) model.PlaylistRepository {
+	db.repoMu.Lock()
+	defer db.repoMu.Unlock()
 	if db.MockedPlaylist != nil {
 		return db.MockedPlaylist
 	}
@@ -126,6 +142,8 @@ func (db *MockDataStore) Playlist(ctx context.Context) model.PlaylistRepository 
 }
 
 func (db *MockDataStore) PlayQueue(ctx context.Context) model.PlayQueueRepository {
+	db.repoMu.Lock()
+	defer db.repoMu.Unlock()
 	if db.MockedPlayQueue != nil {
 		return db.MockedPlayQueue
 	}
@@ -137,6 +155,8 @@ func (db *MockDataStore) PlayQueue(ctx context.Context) model.PlayQueueRepositor
 }
 
 func (db *MockDataStore) UserProps(ctx context.Context) model.UserPropsRepository {
+	db.repoMu.Lock()
+	defer db.repoMu.Unlock()
 	if db.MockedUserProps != nil {
 		return db.MockedUserProps
 	}
@@ -148,6 +168,8 @@ func (db *MockDataStore) UserProps(ctx context.Context) model.UserPropsRepositor
 }
 
 func (db *MockDataStore) Property(ctx context.Context) model.PropertyRepository {
+	db.repoMu.Lock()
+	defer db.repoMu.Unlock()
 	if db.MockedProperty != nil {
 		return db.MockedProperty
 	}
@@ -159,6 +181,8 @@ func (db *MockDataStore) Property(ctx context.Context) model.PropertyRepository 
 }
 
 func (db *MockDataStore) Share(ctx context.Context) model.ShareRepository {
+	db.repoMu.Lock()
+	defer db.repoMu.Unlock()
 	if db.MockedShare != nil {
 		return db.MockedShare
 	}
@@ -170,6 +194,8 @@ func (db *MockDataStore) Share(ctx context.Context) model.ShareRepository {
 }
 
 func (db *MockDataStore) User(ctx context.Context) model.UserRepository {
+	db.repoMu.Lock()
+	defer db.repoMu.Unlock()
 	if db.MockedUser != nil {
 		return db.MockedUser
 	}
@@ -181,6 +207,8 @@ func (db *MockDataStore) User(ctx context.Context) model.UserRepository {
 }
 
 func (db *MockDataStore) Transcoding(ctx context.Context) model.TranscodingRepository {
+	db.repoMu.Lock()
+	defer db.repoMu.Unlock()
 	if db.MockedTranscoding != nil {
 		return db.MockedTranscoding
 	}
@@ -192,6 +220,8 @@ func (db *MockDataStore) Transcoding(ctx context.Context) model.TranscodingRepos
 }
 
 func (db *MockDataStore) Player(ctx context.Context) model.PlayerRepository {
+	db.repoMu.Lock()
+	defer db.repoMu.Unlock()
 	if db.MockedPlayer != nil {
 		return db.MockedPlayer
 	}
@@ -203,6 +233,8 @@ func (db *MockDataStore) Player(ctx context.Context) model.PlayerRepository {
 }
 
 func (db *MockDataStore) ScrobbleBuffer(ctx context.Context) model.ScrobbleBufferRepository {
+	db.repoMu.Lock()
+	defer db.repoMu.Unlock()
 	if db.RealDS != nil && db.MockedScrobbleBuffer == nil {
 		return db.RealDS.ScrobbleBuffer(ctx)
 	}
@@ -215,6 +247,8 @@ func (db *MockDataStore) ScrobbleBuffer(ctx context.Context) model.ScrobbleBuffe
 }
 
 func (db *MockDataStore) Scrobble(ctx context.Context) model.ScrobbleRepository {
+	db.repoMu.Lock()
+	defer db.repoMu.Unlock()
 	if db.MockedScrobble != nil {
 		return db.MockedScrobble
 	}
@@ -226,6 +260,8 @@ func (db *MockDataStore) Scrobble(ctx context.Context) model.ScrobbleRepository 
 }
 
 func (db *MockDataStore) Radio(ctx context.Context) model.RadioRepository {
+	db.repoMu.Lock()
+	defer db.repoMu.Unlock()
 	if db.MockedRadio != nil {
 		return db.MockedRadio
 	}
@@ -237,6 +273,8 @@ func (db *MockDataStore) Radio(ctx context.Context) model.RadioRepository {
 }
 
 func (db *MockDataStore) Plugin(ctx context.Context) model.PluginRepository {
+	db.repoMu.Lock()
+	defer db.repoMu.Unlock()
 	if db.MockedPlugin != nil {
 		return db.MockedPlugin
 	}
@@ -245,6 +283,42 @@ func (db *MockDataStore) Plugin(ctx context.Context) model.PluginRepository {
 	}
 	db.MockedPlugin = CreateMockPluginRepo()
 	return db.MockedPlugin
+}
+
+func (db *MockDataStore) Artwork(ctx context.Context) model.ArtworkRepository {
+	db.repoMu.Lock()
+	defer db.repoMu.Unlock()
+	return db.artworkLocked(ctx)
+}
+
+// artworkLocked is the body of Artwork for callers already holding repoMu; repoMu is a plain
+// Mutex, so re-entering through the exported method would deadlock.
+func (db *MockDataStore) artworkLocked(ctx context.Context) model.ArtworkRepository {
+	if db.MockedArtwork != nil {
+		return db.MockedArtwork
+	}
+	if db.RealDS != nil {
+		return db.RealDS.Artwork(ctx)
+	}
+	db.MockedArtwork = CreateMockArtworkRepo()
+	return db.MockedArtwork
+}
+
+func (db *MockDataStore) ArtworkQueue(ctx context.Context) model.ArtworkQueueRepository {
+	db.repoMu.Lock()
+	defer db.repoMu.Unlock()
+	if db.MockedArtworkQueue != nil {
+		return db.MockedArtworkQueue
+	}
+	if db.RealDS != nil {
+		return db.RealDS.ArtworkQueue(ctx)
+	}
+	q := CreateMockArtworkQueueRepo()
+	if aw, ok := db.artworkLocked(ctx).(*MockArtworkRepo); ok {
+		q.ItemArtworkSource = aw
+	}
+	db.MockedArtworkQueue = q
+	return db.MockedArtworkQueue
 }
 
 func (db *MockDataStore) WithTx(block func(tx model.DataStore) error, label ...string) error {

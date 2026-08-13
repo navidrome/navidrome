@@ -4,6 +4,7 @@ import {
   DateField,
   EditButton,
   Filter,
+  NullableBooleanInput,
   NumberField,
   ReferenceInput,
   SearchInput,
@@ -19,14 +20,17 @@ import Switch from '@material-ui/core/Switch'
 import { makeStyles } from '@material-ui/core/styles'
 import { useMediaQuery } from '@material-ui/core'
 import {
-  CoverArtAvatar,
+  ArtworkAvatar,
   DurationField,
   List,
+  LoveButton,
   Writable,
   isWritable,
   useSelectedFields,
   useResourceRefresh,
 } from '../common'
+import FavoriteIcon from '@material-ui/icons/Favorite'
+import config from '../config'
 import PlaylistListActions from './PlaylistListActions'
 import ChangePublicStatusButton from './ChangePublicStatusButton'
 
@@ -52,6 +56,12 @@ const PlaylistFilter = (props) => {
         >
           <SelectInput optionText="name" />
         </ReferenceInput>
+      )}
+      {config.enableFavourites && (
+        <NullableBooleanInput
+          source="starred"
+          label={<FavoriteIcon fontSize={'small'} />}
+        />
       )}
     </Filter>
   )
@@ -139,6 +149,13 @@ const PlaylistListBulkActions = (props) => {
   )
 }
 
+// Datagrid reads `source`/`sortable`/`label` off this element for the column
+// header; only record/resource are forwarded so they never leak onto the button.
+export const PlaylistLove = ({ record, className }) => (
+  <LoveButton record={record} resource={'playlist'} className={className} />
+)
+PlaylistLove.defaultProps = { source: 'starred', sortable: false }
+
 const PlaylistList = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
@@ -159,6 +176,7 @@ const PlaylistList = (props) => {
       sync: !isXsmall && (
         <ToggleAutoImport source="sync" sortByOrder={'DESC'} />
       ),
+      starred: config.enableFavourites && <PlaylistLove />,
     }),
     [isDesktop, isXsmall],
   )
@@ -179,7 +197,7 @@ const PlaylistList = (props) => {
       bulkActionButtons={!isXsmall && <PlaylistListBulkActions />}
     >
       <Datagrid rowClick="show" isRowSelectable={(r) => isWritable(r?.ownerId)}>
-        <CoverArtAvatar source="id" variant="square" />
+        <ArtworkAvatar source="id" variant="square" />
         <TextField source="name" />
         {columns}
         <Writable>

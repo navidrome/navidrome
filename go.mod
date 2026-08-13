@@ -3,7 +3,7 @@ module github.com/navidrome/navidrome
 go 1.26
 
 // Fork to implement raw tags support
-replace go.senan.xyz/taglib => github.com/deluan/go-taglib v0.0.0-20260619222856-1975cb12f59d
+replace go.senan.xyz/taglib => github.com/deluan/go-taglib v0.0.0-20260720134629-a133b9719ea3
 
 require (
 	github.com/Masterminds/squirrel v1.5.4
@@ -57,6 +57,7 @@ require (
 	github.com/tetratelabs/wazero v1.12.0
 	github.com/unrolled/secure v1.17.0
 	github.com/xrash/smetrics v0.0.0-20250705151800-55b8f293f342
+	github.com/zeebo/xxh3 v1.1.0
 	go.senan.xyz/taglib v0.11.1
 	go.uber.org/goleak v1.3.0
 	golang.org/x/image v0.44.0
@@ -131,7 +132,6 @@ require (
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/tetratelabs/wabin v0.0.0-20230304001439-f6f874872834 // indirect
 	github.com/valyala/fastjson v1.6.10 // indirect
-	github.com/zeebo/xxh3 v1.1.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.10.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect

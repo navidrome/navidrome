@@ -9,7 +9,7 @@ import (
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/server/subsonic/filter"
+	"github.com/navidrome/navidrome/server/filter"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/req"
 	"github.com/navidrome/navidrome/utils/run"
@@ -46,7 +46,7 @@ func (api *Router) getAlbumList(r *http.Request) (model.Albums, int64, error) {
 		if err != nil {
 			return nil, 0, err
 		}
-		opts = filter.ByGenre(genre)
+		opts = filter.AlbumsByGenre(genre)
 	case "byYear":
 		fromYear, err := p.Int("fromYear")
 		if err != nil {
@@ -267,7 +267,7 @@ func (api *Router) GetSongsByGenre(r *http.Request) (*responses.Subsonic, error)
 	if err != nil {
 		return nil, err
 	}
-	opts := filter.ByGenre(genre)
+	opts := filter.SongsByGenre(genre)
 	opts = filter.ApplyLibraryFilter(opts, musicFolderIds)
 
 	ctx := r.Context()

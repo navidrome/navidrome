@@ -22,6 +22,7 @@ type Playlists interface {
 	GetAll(ctx context.Context, options ...model.QueryOptions) (model.Playlists, error)
 	Get(ctx context.Context, id string) (*model.Playlist, error)
 	GetWithTracks(ctx context.Context, id string) (*model.Playlist, error)
+	Tracks(ctx context.Context, id string) (model.PlaylistTrackRepository, error)
 	GetPlaylists(ctx context.Context, mediaFileId string) (model.Playlists, error)
 
 	// Mutations
@@ -51,11 +52,12 @@ type Playlists interface {
 	TracksRepository(ctx context.Context, playlistId string, refreshSmartPlaylist bool) rest.Repository
 }
 
-// ImageUploadService is a local interface satisfied by core.ImageUploadService.
-// Defined here to avoid an import cycle between core and core/playlists.
+// ImageUploadService is a local interface satisfied by artwork.Uploader.
+// Defined here to avoid an import cycle between core/artwork and core/playlists.
 type ImageUploadService interface {
 	SetImage(ctx context.Context, entityType string, entityID string, name string, oldPath string, reader io.Reader, ext string) (filename string, err error)
 	RemoveImage(ctx context.Context, path string) error
+	EnqueueArtwork(ctx context.Context, entityType, entityID string)
 }
 
 type playlists struct {
@@ -96,6 +98,21 @@ func (s *playlists) GetWithTracks(ctx context.Context, id string) (*model.Playli
 
 func (s *playlists) GetPlaylists(ctx context.Context, mediaFileId string) (model.Playlists, error) {
 	return s.ds.Playlist(ctx).GetPlaylists(mediaFileId)
+}
+
+// Tracks scopes a repository to one playlist's tracks, for callers that page or stream them rather
+// than loading every one like GetWithTracks. Gets first because PlaylistRepository.Tracks discards
+// its error behind a nil (and warns), and this is probed with ids that are usually not playlists.
+func (s *playlists) Tracks(ctx context.Context, id string) (model.PlaylistTrackRepository, error) {
+	repo := s.ds.Playlist(ctx)
+	if _, err := repo.Get(id); err != nil {
+		return nil, err
+	}
+	tracks := repo.Tracks(id, true)
+	if tracks == nil {
+		return nil, model.ErrNotFound
+	}
+	return tracks, nil
 }
 
 // --- Mutation operations ---
@@ -304,7 +321,11 @@ func (s *playlists) SetImage(ctx context.Context, playlistID string, reader io.R
 	}
 
 	pls.UploadedImage = filename
-	return s.ds.Playlist(ctx).Put(pls)
+	if err := s.ds.Playlist(ctx).Put(pls); err != nil {
+		return err
+	}
+	s.imgUpload.EnqueueArtwork(ctx, consts.EntityPlaylist, pls.ID)
+	return nil
 }
 
 func (s *playlists) RemoveImage(ctx context.Context, playlistID string) error {
@@ -318,5 +339,9 @@ func (s *playlists) RemoveImage(ctx context.Context, playlistID string) error {
 	}
 
 	pls.UploadedImage = ""
-	return s.ds.Playlist(ctx).Put(pls)
+	if err := s.ds.Playlist(ctx).Put(pls); err != nil {
+		return err
+	}
+	s.imgUpload.EnqueueArtwork(ctx, consts.EntityPlaylist, pls.ID)
+	return nil
 }

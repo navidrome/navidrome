@@ -33,8 +33,8 @@ github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.1 h1:5RVFMOWjMyRy8cARdy79nAmgYw3hK/4HUq48LQ6Wwqo=
 github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.1/go.mod h1:ZXNYxsqcloTdSy/rNShjYzMhyjf0LaoftYK0p+A3h40=
-github.com/deluan/go-taglib v0.0.0-20260619222856-1975cb12f59d h1:/MmnVPIlGzX5kYF6sNtMaOHMkjmu0Us7WtDyJZTglMs=
-github.com/deluan/go-taglib v0.0.0-20260619222856-1975cb12f59d/go.mod h1:QGxQ4Z1IWyY9w56xNEFjYAaWE8uSxA/gneQ7RPcFJrY=
+github.com/deluan/go-taglib v0.0.0-20260720134629-a133b9719ea3 h1:j7eSXqgtjhlNfwnMEzRdXnJGZTEw4I7J9TeQAll83bU=
+github.com/deluan/go-taglib v0.0.0-20260720134629-a133b9719ea3/go.mod h1:QGxQ4Z1IWyY9w56xNEFjYAaWE8uSxA/gneQ7RPcFJrY=
 github.com/deluan/rest v0.0.0-20211102003136-6260bc399cbf h1:tb246l2Zmpt/GpF9EcHCKTtwzrd0HGfEmoODFA/qnk4=
 github.com/deluan/rest v0.0.0-20211102003136-6260bc399cbf/go.mod h1:tSgDythFsl0QgS/PFWfIZqcJKnkADWneY80jaVRlqK8=
 github.com/deluan/sanitize v0.0.0-20241120162836-fdfd8fdfaa55 h1:wSCnggTs2f2ji6nFwQmfwgINcmSMj0xF0oHnoyRSPe4=

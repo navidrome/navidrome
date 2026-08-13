@@ -57,6 +57,7 @@ func (r *playlistRepository) Tracks(playlistId string, refreshSmartPlaylist bool
 			"album_artist": "order_album_artist_name",
 			"album":        "order_album_name, album_id, disc_number, track_number, order_artist_name, title",
 			"title":        "order_title",
+			"random":       "random()",
 			// To make sure these fields will be whitelisted
 			"duration": "duration",
 			"year":     "year",
@@ -75,6 +76,14 @@ func (r *playlistRepository) Tracks(playlistId string, refreshSmartPlaylist bool
 	}
 	p.playlist = pls
 	return p
+}
+
+func (r *playlistTrackRepository) CountAll(options ...model.QueryOptions) (int64, error) {
+	query := Select().
+		Join("media_file f on f.id = media_file_id").
+		Where(Eq{"playlist_id": r.playlistId})
+	query = r.applyLibraryFilter(query, "f")
+	return r.count(query, options...)
 }
 
 func (r *playlistTrackRepository) Count(options ...rest.QueryOptions) (int64, error) {
@@ -114,6 +123,33 @@ func (r *playlistTrackRepository) GetAll(options ...model.QueryOptions) (model.P
 		return nil, err
 	}
 	return tracks, err
+}
+
+func (r *playlistTrackRepository) GetCursor(options ...model.QueryOptions) (model.PlaylistTrackCursor, error) {
+	sel := r.playlistRepo.tracksQuery(r.newSelect(options...), r.playlistId)
+	cursor, err := queryWithStableResults[dbPlaylistTrack](r.sqlRepository, sel)
+	if err != nil {
+		return nil, err
+	}
+	tracks := wrapCursor(cursor, func(t dbPlaylistTrack) *model.PlaylistTrack {
+		return t.PlaylistTrack
+	})
+	return model.PlaylistTrackCursor(hydrateCursor(tracks, func(batch []model.PlaylistTrack) {
+		hydratePlaylistTrackArtwork(r.ctx, r.db, batch)
+	})), nil
+}
+
+// GetMediaFileIDs returns the tracks' song ids, for callers that need every id but no track data.
+func (r *playlistTrackRepository) GetMediaFileIDs(options ...model.QueryOptions) ([]string, error) {
+	query := r.newSelect(options...).Columns("media_file_id").
+		Join("media_file f on f.id = media_file_id").
+		Where(Eq{"playlist_id": r.playlistId})
+	query = r.applyLibraryFilter(query, "f")
+	var ids []string
+	if err := r.queryAllSlice(query, &ids); err != nil {
+		return nil, err
+	}
+	return ids, nil
 }
 
 func (r *playlistTrackRepository) GetAlbumIDs(options ...model.QueryOptions) ([]string, error) {

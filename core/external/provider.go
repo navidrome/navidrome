@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
+	"math/rand/v2"
 	"sort"
 	"strings"
 	"time"
@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/core/matcher"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/utils"
 	. "github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/random"
@@ -24,7 +25,11 @@ import (
 )
 
 const (
-	maxSimilarArtists  = 100
+	maxSimilarArtists = 100
+	maxSeeds          = 5
+	// Subsonic passes the client's count through unbounded, and it ends up as a SQL limit. 500 is
+	// what the widest caller (similarAlbums, limit*5) legitimately asks for.
+	maxSimilarSongs    = 500
 	refreshDelay       = 5 * time.Second
 	refreshTimeout     = 15 * time.Second
 	refreshQueueLength = 2000
@@ -34,9 +39,7 @@ type Provider interface {
 	UpdateAlbumInfo(ctx context.Context, id string) (*model.Album, error)
 	UpdateArtistInfo(ctx context.Context, id string, count int, includeNotPresent bool) (*model.Artist, error)
 	SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error)
-	TopSongs(ctx context.Context, artist string, count int) (model.MediaFiles, error)
-	ArtistImage(ctx context.Context, id string) (*url.URL, error)
-	AlbumImage(ctx context.Context, id string) (*url.URL, error)
+	TopSongs(ctx context.Context, artist, artistId string, count int) (model.MediaFiles, error)
 }
 
 type provider struct {
@@ -258,7 +261,7 @@ func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (au
 	// Call all registered agents and collect information
 	g := errgroup.Group{}
 	g.SetLimit(2)
-	g.Go(func() error { e.callGetImage(ctx, e.ag, &artist); return nil })
+	g.Go(func() error { _ = e.callGetImage(ctx, e.ag, &artist); return nil })
 	g.Go(func() error { e.callGetBiography(ctx, e.ag, &artist); return nil })
 	g.Go(func() error { e.callGetURL(ctx, e.ag, &artist); return nil })
 	g.Go(func() error { e.callGetSimilarArtists(ctx, e.ag, &artist, maxSimilarArtists, true); return nil })
@@ -281,32 +284,188 @@ func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (au
 }
 
 func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error) {
+	// Subsonic passes the client's count straight through: a non-positive one has no valid
+	// interpretation, and an enormous one overflows the +1 in the local agent's query limit.
+	if count <= 0 {
+		return nil, nil
+	}
+	count = min(count, maxSimilarSongs)
 	entity, err := model.GetEntityByID(ctx, e.ds, id)
 	if err != nil {
-		return nil, err
+		// Genre ids don't resolve via GetEntityByID; look them up before giving up.
+		if !errors.Is(err, model.ErrNotFound) {
+			return nil, err
+		}
+		genre, err := e.ds.Genre(ctx).Get(id)
+		if err != nil {
+			return nil, err
+		}
+		return e.seedMix(ctx, count, func() (model.MediaFiles, error) {
+			return e.sampleGenreTracks(ctx, genre, maxSeeds)
+		})
 	}
 
-	var songs []agents.Song
-
-	// Try entity-specific similarity first
+	// Try entity-specific similarity first, then fall back to seed-track sampling.
 	switch v := entity.(type) {
 	case *model.MediaFile:
-		songs, err = e.ag.GetSimilarSongsByTrack(ctx, v.ID, v.Title, v.Artist, v.MbzRecordingID, count)
+		return e.mixFromAgent(ctx, count,
+			func() ([]agents.Song, error) {
+				return e.ag.GetSimilarSongsByTrack(ctx, v.ID, v.Title, v.Artist, v.MbzRecordingID, count)
+			},
+			func() (model.MediaFiles, error) {
+				return e.similarSongsFallback(ctx, id, count)
+			})
 	case *model.Album:
-		songs, err = e.ag.GetSimilarSongsByAlbum(ctx, v.ID, v.Name, v.AlbumArtist, v.MbzAlbumID, count)
+		return e.mixFromAgent(ctx, count,
+			func() ([]agents.Song, error) {
+				return e.ag.GetSimilarSongsByAlbum(ctx, v.ID, v.Name, v.AlbumArtist, v.MbzAlbumID, count)
+			},
+			func() (model.MediaFiles, error) {
+				return e.seedMix(ctx, count, func() (model.MediaFiles, error) {
+					return e.sampleAlbumTracks(ctx, v.ID, maxSeeds)
+				})
+			})
 	case *model.Artist:
-		songs, err = e.ag.GetSimilarSongsByArtist(ctx, v.ID, v.Name, v.MbzArtistID, count)
+		return e.mixFromAgent(ctx, count,
+			func() ([]agents.Song, error) {
+				return e.ag.GetSimilarSongsByArtist(ctx, v.ID, v.Name, v.MbzArtistID, count)
+			},
+			func() (model.MediaFiles, error) {
+				if res, ferr := e.similarSongsFallback(ctx, id, count); ferr == nil && len(res) > 0 {
+					return res, nil
+				}
+				return e.seedMix(ctx, count, func() (model.MediaFiles, error) {
+					return e.sampleArtistTracks(ctx, v.ID, maxSeeds)
+				})
+			})
+	case *model.Playlist:
+		return e.seedMix(ctx, count, func() (model.MediaFiles, error) {
+			return e.samplePlaylistTracks(ctx, v.ID, maxSeeds)
+		})
 	default:
 		log.Warn(ctx, "Unknown entity type", "id", id, "type", fmt.Sprintf("%T", entity))
 		return nil, model.ErrNotFound
 	}
+}
 
-	if err == nil && len(songs) > 0 {
-		return e.matcher.MatchSongs(ctx, songs, count)
+// mixFromAgent returns the agent's recommendations matched to library tracks, or the fallback
+// when the agent errors or none of its picks are in the library.
+func (e *provider) mixFromAgent(ctx context.Context, count int, fetch func() ([]agents.Song, error), fallback func() (model.MediaFiles, error)) (model.MediaFiles, error) {
+	songs, err := fetch()
+	if err == nil {
+		matched, merr := e.matcher.MatchSongs(ctx, songs, count)
+		if merr != nil {
+			return nil, merr
+		}
+		if len(matched) > 0 {
+			return matched, nil
+		}
 	}
+	return fallback()
+}
 
-	// Fallback to existing similar artists + top songs algorithm
-	return e.similarSongsFallback(ctx, id, count)
+// seedMix samples seed tracks, runs each through the agent chain's per-track similarity and merges
+// the results, falling back to the seeds themselves so the result is never empty.
+func (e *provider) seedMix(ctx context.Context, count int, sample func() (model.MediaFiles, error)) (model.MediaFiles, error) {
+	seeds, err := sample()
+	if err != nil {
+		return nil, err
+	}
+	if len(seeds) == 0 {
+		return nil, nil
+	}
+	seeds = seeds[:min(len(seeds), maxSeeds)]
+
+	// The per-seed similarity calls are independent and hit the (possibly remote) agent chain, so
+	// run them concurrently. Best-effort: a seed that errors just contributes nothing.
+	perSeed := make([][]agents.Song, len(seeds))
+	var g errgroup.Group
+	for i, seed := range seeds {
+		g.Go(func() error {
+			if s, err := e.ag.GetSimilarSongsByTrack(ctx, seed.ID, seed.Title, seed.Artist, seed.MbzRecordingID, count); err == nil {
+				perSeed[i] = s
+			}
+			return nil
+		})
+	}
+	_ = g.Wait()
+
+	var songs []agents.Song
+	for _, s := range perSeed {
+		songs = append(songs, s...)
+	}
+	// Match the whole merged set, not just count of it: the matcher re-emits a track when two
+	// seeds recommend it identically, so the duplicates have to be dropped before trimming. Every
+	// seed reaches the shuffle, so no seed can crowd out the others.
+	matched, err := e.matcher.MatchSongs(ctx, songs, len(songs))
+	if err != nil {
+		return nil, err
+	}
+	matched = dedupByID(matched)
+	if len(matched) == 0 {
+		matched = seeds
+	}
+	rand.Shuffle(len(matched), func(i, j int) { matched[i], matched[j] = matched[j], matched[i] })
+	if len(matched) > count {
+		matched = matched[:count]
+	}
+	return matched, nil
+}
+
+func (e *provider) samplePlaylistTracks(ctx context.Context, playlistID string, n int) (model.MediaFiles, error) {
+	// Refresh: a smart playlist materializes no tracks until it is evaluated, so skipping it would
+	// mix an empty seed set. It is a no-op for regular playlists and inside the refresh delay.
+	repo := e.ds.Playlist(ctx).Tracks(playlistID, true)
+	if repo == nil {
+		return nil, model.ErrNotFound
+	}
+	// A playlist can hold the same file at several positions, so over-fetch and dedup: a repeated
+	// seed wastes an agent call and can reach the mix twice through the seed fallback.
+	tracks, err := repo.GetAll(model.QueryOptions{
+		Sort:    "random",
+		Max:     n * 4,
+		Filters: squirrel.Eq{"missing": false},
+	})
+	if err != nil {
+		return nil, err
+	}
+	mfs := dedupByID(tracks.MediaFiles())
+	return mfs[:min(len(mfs), n)], nil
+}
+
+func dedupByID(mfs model.MediaFiles) model.MediaFiles {
+	seen := make(map[string]struct{}, len(mfs))
+	return slice.Filter(mfs, func(mf model.MediaFile) bool {
+		if _, dup := seen[mf.ID]; dup {
+			return false
+		}
+		seen[mf.ID] = struct{}{}
+		return true
+	})
+}
+
+func (e *provider) sampleAlbumTracks(ctx context.Context, albumID string, n int) (model.MediaFiles, error) {
+	return e.sampleTracks(ctx, squirrel.Eq{"album_id": albumID}, n)
+}
+
+func (e *provider) sampleArtistTracks(ctx context.Context, artistID string, n int) (model.MediaFiles, error) {
+	// media_file.artist_id is the deprecated primary artist, so it misses an artist credited only
+	// on the album, as on compilations. Same filter the artist listings use.
+	filter := persistence.ParticipantIDFilter("media_file", artistID, model.RoleArtist, model.RoleAlbumArtist)
+	return e.sampleTracks(ctx, filter, n)
+}
+
+func (e *provider) sampleGenreTracks(ctx context.Context, genre *model.Genre, n int) (model.MediaFiles, error) {
+	return e.sampleTracks(ctx, persistence.SongGenres.ByID(genre.ID), n)
+}
+
+// sampleTracks returns up to n random present tracks. Seeds can end up in the mix verbatim, so
+// missing files would surface as unplayable entries.
+func (e *provider) sampleTracks(ctx context.Context, filter squirrel.Sqlizer, n int) (model.MediaFiles, error) {
+	return e.ds.MediaFile(ctx).GetRandom(model.QueryOptions{
+		Filters: squirrel.And{filter, squirrel.Eq{"missing": false}},
+		Max:     n,
+	})
 }
 
 // similarSongsFallback uses the original similar artists + top songs algorithm. The idea is to
@@ -370,81 +529,16 @@ func (e *provider) similarSongsFallback(ctx context.Context, id string, count in
 	return similarSongs, nil
 }
 
-func (e *provider) ArtistImage(ctx context.Context, id string) (*url.URL, error) {
-	artist, err := e.getArtist(ctx, id)
+func (e *provider) TopSongs(ctx context.Context, artistName, id string, count int) (model.MediaFiles, error) {
+	artist, err := e.findArtist(ctx, artistName, id)
 	if err != nil {
+		if errors.Is(err, model.ErrNotFound) {
+			log.Error(ctx, "Artist not found", "name", artistName, "id", id, err)
+			return nil, nil
+		}
+
+		log.Error(ctx, "Failure occurred when trying to fetch artist", "name", artistName, "id", id, err)
 		return nil, err
-	}
-
-	imageUrl := artist.ArtistImageUrl()
-	if imageUrl == "" {
-		// No cached URL — must fetch from external source synchronously
-		e.callGetImage(ctx, e.ag, &artist)
-		if utils.IsCtxDone(ctx) {
-			log.Warn(ctx, "ArtistImage call canceled", ctx.Err())
-			return nil, ctx.Err()
-		}
-		imageUrl = artist.ArtistImageUrl()
-	} else {
-		// If cached info is expired, enqueue a background refresh so that config changes
-		// (e.g. disabling an agent) take effect without waiting for a full artist info refresh.
-		updatedAt := V(artist.ExternalInfoUpdatedAt)
-		if !updatedAt.IsZero() && time.Since(updatedAt) > conf.Server.DevArtistInfoTimeToLive {
-			log.Debug(ctx, "Artist image info expired, enqueuing background refresh", "artist", artist.Name(), "updatedAt", updatedAt)
-			e.artistQueue.enqueue(&artist)
-		}
-	}
-
-	if imageUrl == "" {
-		return nil, model.ErrNotFound
-	}
-	return url.Parse(imageUrl)
-}
-
-func (e *provider) AlbumImage(ctx context.Context, id string) (*url.URL, error) {
-	album, err := e.getAlbum(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-
-	albumName := album.Name()
-	images, err := e.ag.GetAlbumImages(ctx, albumName, album.AlbumArtist, album.MbzAlbumID)
-	if err != nil {
-		switch {
-		case errors.Is(err, agents.ErrNotFound):
-			log.Trace(ctx, "Album not found in agent", "albumID", id, "name", albumName, "artist", album.AlbumArtist)
-			return nil, model.ErrNotFound
-		case errors.Is(err, context.Canceled):
-			log.Debug(ctx, "GetAlbumImages call canceled", err)
-		default:
-			log.Warn(ctx, "Error getting album images from agent", "albumID", id, "name", albumName, "artist", album.AlbumArtist, err)
-		}
-		return nil, err
-	}
-
-	if len(images) == 0 {
-		log.Warn(ctx, "Agent returned no images without error", "albumID", id, "name", albumName, "artist", album.AlbumArtist)
-		return nil, model.ErrNotFound
-	}
-
-	// Return the biggest image
-	var img agents.ExternalImage
-	for _, i := range images {
-		if img.Size <= i.Size {
-			img = i
-		}
-	}
-	if img.URL == "" {
-		return nil, model.ErrNotFound
-	}
-	return url.Parse(img.URL)
-}
-
-func (e *provider) TopSongs(ctx context.Context, artistName string, count int) (model.MediaFiles, error) {
-	artist, err := e.findArtistByName(ctx, artistName)
-	if err != nil {
-		log.Error(ctx, "Artist not found", "name", artistName, err)
-		return nil, nil
 	}
 
 	songs, err := e.getMatchingTopSongs(ctx, e.ag, artist, count)
@@ -519,10 +613,15 @@ func (e *provider) callGetBiography(ctx context.Context, agent agents.ArtistBiog
 	artist.Biography = strings.ReplaceAll(bio, "<a ", "<a target='_blank' ")
 }
 
-func (e *provider) callGetImage(ctx context.Context, agent agents.ArtistImageRetriever, artist *auxArtist) {
+// callGetImage populates artist's image URLs. A transient agent failure is
+// returned as-is; a definitive "no image" is normalized to model.ErrNotFound.
+func (e *provider) callGetImage(ctx context.Context, agent agents.ArtistImageRetriever, artist *auxArtist) error {
 	images, err := agent.GetArtistImages(ctx, artist.ID, artist.Name(), artist.MbzArtistID)
 	if err != nil {
-		return
+		if errors.Is(err, agents.ErrNotFound) {
+			return model.ErrNotFound
+		}
+		return err
 	}
 	sort.Slice(images, func(i, j int) bool { return images[i].Size > images[j].Size })
 
@@ -535,6 +634,7 @@ func (e *provider) callGetImage(ctx context.Context, agent agents.ArtistImageRet
 	if len(images) >= 3 {
 		artist.SmallImageUrl = images[2].URL
 	}
+	return nil
 }
 
 func (e *provider) callGetSimilarArtists(ctx context.Context, agent agents.ArtistSimilarRetriever, artist *auxArtist,
@@ -713,7 +813,24 @@ func (e *provider) loadArtistsByName(ctx context.Context, similar []agents.Artis
 	return matches, nil
 }
 
-func (e *provider) findArtistByName(ctx context.Context, artistName string) (*auxArtist, error) {
+func (e *provider) findArtist(ctx context.Context, artistName, id string) (*auxArtist, error) {
+	if id != "" {
+		artist, err := e.ds.Artist(ctx).Get(id)
+		if err == nil {
+			return &auxArtist{Artist: *artist}, nil
+		}
+
+		if errors.Is(err, model.ErrNotFound) {
+			log.Warn(ctx, "Could not find artist by id", "id", id, err)
+		} else {
+			return nil, err
+		}
+	}
+
+	if artistName == "" {
+		return nil, model.ErrNotFound
+	}
+
 	artists, err := e.ds.Artist(ctx).GetAll(model.QueryOptions{
 		Filters: squirrel.Like{"artist.name": artistName},
 		Max:     1,

@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"iter"
 	"maps"
@@ -31,6 +32,10 @@ type dbAlbum struct {
 	Participants string `structs:"-" json:"-"`
 	Tags         string `structs:"-" json:"-"`
 	FolderIDs    string `structs:"-" json:"-"`
+	// dbx maps columns to fields by name; RGAlbumGain doesn't convert to
+	// rg_album_gain, so shim fields carry the read and PostScan copies them over.
+	RgAlbumGain *float64 `structs:"-" json:"-"`
+	RgAlbumPeak *float64 `structs:"-" json:"-"`
 }
 
 func (a *dbAlbum) PostScan() error {
@@ -58,6 +63,8 @@ func (a *dbAlbum) PostScan() error {
 		}
 		a.Album.FolderIDs = ids
 	}
+	a.Album.RGAlbumGain = a.RgAlbumGain
+	a.Album.RGAlbumPeak = a.RgAlbumPeak
 	return nil
 }
 
@@ -126,7 +133,7 @@ var albumFilters = sync.OnceValue(func() map[string]filterFunc {
 		"starred":         annotationBoolFilter("starred"),
 		"has_rating":      annotationBoolFilter("rating"),
 		"missing":         booleanFilter,
-		"genre_id":        tagIDFilter,
+		"genre_id":        genreFilter(AlbumGenres),
 		"role_total_id":   allRolesFilter,
 		"library_id":      libraryIdFilter,
 	}
@@ -165,24 +172,22 @@ func yearFilter(_ string, value any) Sqlizer {
 }
 
 func artistFilter(_ string, value any) Sqlizer {
-	return Or{
-		Exists("json_tree(participants, '$.albumartist')", Eq{"value": value}),
-		Exists("json_tree(participants, '$.artist')", Eq{"value": value}),
-	}
+	return ParticipantIDFilter("album", value, model.RoleAlbumArtist, model.RoleArtist)
 }
 
 func artistRoleFilter(name string, value any) Sqlizer {
 	roleName := strings.TrimSuffix(strings.TrimPrefix(name, "role_"), "_id")
 
 	// Check if the role name is valid. If not, return an invalid filter
-	if _, ok := model.AllRoles[roleName]; !ok {
+	role, ok := model.AllRoles[roleName]
+	if !ok {
 		return Gt{"": nil}
 	}
-	return Exists(fmt.Sprintf("json_tree(participants, '$.%s')", roleName), Eq{"value": value})
+	return ParticipantIDFilter("album", value, role)
 }
 
 func allRolesFilter(_ string, value any) Sqlizer {
-	return Like{"participants": fmt.Sprintf(`%%"%s"%%`, value)}
+	return ParticipantIDFilter("album", value)
 }
 
 func (r *albumRepository) CountAll(options ...model.QueryOptions) (int64, error) {
@@ -195,7 +200,9 @@ func (r *albumRepository) CountAll(options ...model.QueryOptions) (int64, error)
 }
 
 func (r *albumRepository) Exists(id string) (bool, error) {
-	return r.exists(Eq{"album.id": id})
+	// The exists() helper applies no library filter, so it would report rows the caller cannot see.
+	c, err := r.count(r.applyLibraryFilter(r.newSelect().Where(Eq{"album.id": id})))
+	return c > 0, err
 }
 
 func (r *albumRepository) Put(al *model.Album) error {
@@ -205,12 +212,10 @@ func (r *albumRepository) Put(al *model.Album) error {
 		return err
 	}
 	al.ID = id
-	if len(al.Participants) > 0 {
-		if err = r.updateParticipants(al.ID, al.Participants); err != nil {
-			return err
-		}
+	if err := r.updateParticipants(al.ID, al.Participants); err != nil {
+		return err
 	}
-	return nil
+	return r.updateTags(al.ID, al.Tags)
 }
 
 // TODO Move external metadata to a separated table
@@ -244,7 +249,50 @@ func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, e
 	if err != nil {
 		return nil, err
 	}
-	return res.toModels(), nil
+	albums := res.toModels()
+	r.hydrateArtwork(albums)
+	return albums, nil
+}
+
+func (r *albumRepository) hydrateArtwork(albums model.Albums) {
+	hydrateItems(r.ctx, r.db, model.KindAlbumArtwork, albums,
+		func(a *model.Album) (string, *model.ItemImage) { return a.ID, &a.ItemImage })
+}
+
+// GetAllIDs returns the IDs of GetAll's row set, skipping its column projection and JSON decoding.
+func (r *albumRepository) GetAllIDs(options ...model.QueryOptions) ([]string, error) {
+	sq := r.applyLibraryFilter(r.newSelect(options...).Columns("album.id"))
+	if filtersNeedAnnotation(sq) {
+		sq = r.withAnnotation(sq, "album.id")
+	}
+	ids := []string{}
+	err := r.queryAllSlice(sq, &ids)
+	return ids, err
+}
+
+func (r *albumRepository) GetCursor(options ...model.QueryOptions) (model.AlbumCursor, error) {
+	ids, err := r.GetAllIDs(options...)
+	if err != nil {
+		return nil, err
+	}
+	opts := chunkOptions(options, "album.id")
+	return model.AlbumCursor(streamByIDs(ids, func(chunk []string) (model.Albums, error) {
+		return r.GetAll(opts(chunk))
+	})), nil
+}
+
+func (r *albumRepository) GetYears(libraryIDs ...int) ([]int, error) {
+	cond := And{Gt{"max_year": 0}, Eq{"missing": false}}
+	if len(libraryIDs) > 0 {
+		cond = append(cond, Eq{"library_id": libraryIDs})
+	}
+	sq := r.applyLibraryFilter(Select("distinct max_year").From("album").Where(cond).OrderBy("max_year"))
+	years := []int{}
+	err := r.queryAllSlice(sq, &years)
+	if err != nil && !errors.Is(err, model.ErrNotFound) {
+		return nil, err
+	}
+	return years, nil
 }
 
 func (r *albumRepository) CopyAttributes(fromID, toID string, columns ...string) error {
@@ -319,17 +367,7 @@ func (r *albumRepository) GetTouchedAlbums(libID int) (model.AlbumCursor, error)
 }
 
 func wrapAlbumCursor(cursor iter.Seq2[dbAlbum, error]) model.AlbumCursor {
-	return func(yield func(model.Album, error) bool) {
-		for a, err := range cursor {
-			if a.Album == nil {
-				yield(model.Album{}, fmt.Errorf("unexpected nil album (%v): %w", a, err))
-				return
-			}
-			if !yield(*a.Album, err) || err != nil {
-				return
-			}
-		}
-	}
+	return model.AlbumCursor(wrapCursor(cursor, func(a dbAlbum) *model.Album { return a.Album }))
 }
 
 // RefreshPlayCounts updates the play count and last play date annotations for all albums, based
@@ -385,7 +423,9 @@ func (r *albumRepository) Search(q string, options ...model.QueryOptions) (model
 	if err != nil {
 		return nil, fmt.Errorf("searching album %q: %w", q, err)
 	}
-	return res.toModels(), nil
+	albums := res.toModels()
+	r.hydrateArtwork(albums)
+	return albums, nil
 }
 
 func (r *albumRepository) Count(options ...rest.QueryOptions) (int64, error) {

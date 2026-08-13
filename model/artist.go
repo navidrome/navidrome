@@ -1,6 +1,7 @@
 package model
 
 import (
+	"iter"
 	"maps"
 	"slices"
 	"time"
@@ -10,6 +11,7 @@ import (
 
 type Artist struct {
 	Annotations `structs:"-"`
+	ItemImage   `structs:"-"`
 
 	ID string `structs:"id" json:"id"`
 
@@ -79,6 +81,8 @@ type ArtistIndex struct {
 }
 type ArtistIndexes []ArtistIndex
 
+type ArtistCursor iter.Seq2[Artist, error]
+
 type ArtistRepository interface {
 	CountAll(options ...QueryOptions) (int64, error)
 	Exists(id string) (bool, error)
@@ -86,6 +90,8 @@ type ArtistRepository interface {
 	UpdateExternalInfo(a *Artist) error
 	Get(id string) (*Artist, error)
 	GetAll(options ...QueryOptions) (Artists, error)
+	GetAllIDs(options ...QueryOptions) ([]string, error)
+	GetCursor(options ...QueryOptions) (ArtistCursor, error)
 	GetIndex(includeMissing bool, libraryIds []int, roles ...Role) (ArtistIndexes, error)
 
 	// The following methods are used exclusively by the scanner:

@@ -34,6 +34,114 @@ var _ = Describe("deezerAgent", func() {
 		})
 	})
 
+	Describe("searchArtist", func() {
+		var agent *deezerAgent
+		var httpClient *fakeHttpClient
+
+		BeforeEach(func() {
+			httpClient = &fakeHttpClient{}
+			agent = &deezerAgent{
+				dataStore: &tests.MockDataStore{},
+				client:    newClient(httpClient),
+			}
+		})
+
+		It("picks the exact-name match with the most fans when several share the name", func() {
+			// Deezer RANKING order returns a low-popularity homonym first (see issue #5802)
+			httpClient.mock("https://api.deezer.com/search/artist", http.Response{
+				StatusCode: 200,
+				Body: io.NopCloser(bytes.NewBufferString(`{"data":[
+					{"id":61045802,"name":"Queen","nb_fan":75},
+					{"id":141954732,"name":"Queen","nb_fan":397},
+					{"id":135041032,"name":"Queen(Ares)","nb_fan":133},
+					{"id":183179807,"name":"Queen","nb_fan":53},
+					{"id":412,"name":"Queen","nb_fan":12744378}
+				],"total":5}`)),
+			})
+
+			artist, err := agent.searchArtist(ctx, "Queen")
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(artist.ID).To(Equal(412))
+		})
+
+		It("matches the name case-insensitively", func() {
+			httpClient.mock("https://api.deezer.com/search/artist", http.Response{
+				StatusCode: 200,
+				Body: io.NopCloser(bytes.NewBufferString(`{"data":[
+					{"id":1,"name":"QUEEN","nb_fan":10},
+					{"id":2,"name":"queen","nb_fan":20}
+				],"total":2}`)),
+			})
+
+			artist, err := agent.searchArtist(ctx, "Queen")
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(artist.ID).To(Equal(2))
+		})
+
+		It("returns ErrNotFound when no result matches the name exactly", func() {
+			httpClient.mock("https://api.deezer.com/search/artist", http.Response{
+				StatusCode: 200,
+				Body: io.NopCloser(bytes.NewBufferString(`{"data":[
+					{"id":1,"name":"Queens of the Stone Age","nb_fan":100}
+				],"total":1}`)),
+			})
+
+			_, err := agent.searchArtist(ctx, "Queen")
+
+			Expect(err).To(MatchError(agents.ErrNotFound))
+		})
+	})
+
+	Describe("GetArtistImages", func() {
+		var agent *deezerAgent
+		var httpClient *fakeHttpClient
+
+		BeforeEach(func() {
+			httpClient = &fakeHttpClient{}
+			agent = &deezerAgent{
+				dataStore: &tests.MockDataStore{},
+				client:    newClient(httpClient),
+			}
+		})
+
+		It("returns the real images when the artist has a picture", func() {
+			httpClient.mock("https://api.deezer.com/search/artist", http.Response{
+				StatusCode: 200,
+				Body: io.NopCloser(bytes.NewBufferString(`{"data":[
+					{"id":412,"name":"Queen","nb_fan":12744378,
+					 "picture_xl":"https://cdn-images.dzcdn.net/images/artist/abc/1000x1000-000000-80-0-0.jpg",
+					 "picture_big":"https://cdn-images.dzcdn.net/images/artist/abc/500x500-000000-80-0-0.jpg"}
+				],"total":1}`)),
+			})
+
+			images, err := agent.GetArtistImages(ctx, "", "Queen", "")
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(images).To(HaveLen(2))
+			Expect(images[0].URL).To(ContainSubstring("1000x1000"))
+		})
+
+		It("returns ErrNotFound when the artist only has empty-id placeholder pictures", func() {
+			httpClient.mock("https://api.deezer.com/search/artist", http.Response{
+				StatusCode: 200,
+				Body: io.NopCloser(bytes.NewBufferString(`{"data":[
+					{"id":412,"name":"Queen","nb_fan":12744378,
+					 "picture_xl":"https://cdn-images.dzcdn.net/images/artist//1000x1000-000000-80-0-0.jpg",
+					 "picture_big":"https://cdn-images.dzcdn.net/images/artist//500x500-000000-80-0-0.jpg",
+					 "picture_medium":"https://cdn-images.dzcdn.net/images/artist//250x250-000000-80-0-0.jpg",
+					 "picture_small":"https://cdn-images.dzcdn.net/images/artist//56x56-000000-80-0-0.jpg"}
+				],"total":1}`)),
+			})
+
+			images, err := agent.GetArtistImages(ctx, "", "Queen", "")
+
+			Expect(err).To(MatchError(agents.ErrNotFound))
+			Expect(images).To(BeEmpty())
+		})
+	})
+
 	Describe("GetArtistBiography - Language Fallback", func() {
 		var agent *deezerAgent
 		var httpClient *langAwareHttpClient

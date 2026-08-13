@@ -29,6 +29,22 @@ var _ = Describe("MediaRepository", func() {
 		mr = NewMediaFileRepository(ctx, GetDBXBuilder())
 	})
 
+	Describe("GetCursor", func() {
+		It("yields the same media files as GetAll", func() {
+			opts := model.QueryOptions{Sort: "title"}
+			want, err := mr.GetAll(opts)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(collectCursor(mr.GetCursor(opts))).To(Equal([]model.MediaFile(want)))
+		})
+
+		It("honors Max/Offset like GetAll", func() {
+			opts := model.QueryOptions{Sort: "title", Max: 2, Offset: 1}
+			want, err := mr.GetAll(opts)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(collectCursor(mr.GetCursor(opts))).To(Equal([]model.MediaFile(want)))
+		})
+	})
+
 	It("gets mediafile from the DB", func() {
 		actual, err := mr.Get("1004")
 		Expect(err).ToNot(HaveOccurred())
@@ -1012,7 +1028,7 @@ var _ = Describe("MediaRepository", func() {
 				}
 			}).ToNot(Panic())
 			Expect(gotErr).To(HaveOccurred())
-			Expect(gotErr.Error()).To(ContainSubstring("unexpected nil mediafile"))
+			Expect(gotErr.Error()).To(ContainSubstring("unexpected nil model.MediaFile"))
 			Expect(errors.Is(gotErr, dbErr)).To(BeTrue(), "should wrap the original cursor error")
 		})
 
@@ -1075,6 +1091,42 @@ var _ = Describe("MediaRepository", func() {
 			Expect(*retrieved.BitDepth).To(Equal(24))
 
 			_ = mr.Delete(newID)
+		})
+	})
+
+	Describe("AlbumImage hydration", func() {
+		It("carries the parent album's artwork state onto each track", func() {
+			mfs := model.MediaFiles{{ID: "mf-1", AlbumID: "al-1"}}
+			infos := map[string]model.ItemArtworkInfo{
+				"al-1": {ItemID: "al-1", Hash: "0123456789abcdef", BlurHash: "LEHV6nWB2yk8"},
+			}
+			applyItemImage(infos, mfs[0].AlbumID, &mfs[0].AlbumImage)
+
+			Expect(mfs[0].AlbumImage.ImageHash).To(Equal("0123456789abcdef"))
+			Expect(mfs[0].AlbumImage.BlurHash).To(Equal("LEHV6nWB2yk8"))
+			Expect(mfs[0].AlbumImage.ImageAbsent).To(BeFalse())
+		})
+
+		It("keeps the album state independent of the track's own art", func() {
+			mf := model.MediaFile{ID: "mf-2", AlbumID: "al-2"}
+			mf.ImageHash = "aaaaaaaaaaaaaaaa" // the track's own art
+			applyItemImage(
+				map[string]model.ItemArtworkInfo{"al-2": {ItemID: "al-2", Hash: "bbbbbbbbbbbbbbbb"}},
+				mf.AlbumID, &mf.AlbumImage,
+			)
+			Expect(mf.ImageHash).To(Equal("aaaaaaaaaaaaaaaa"))
+			Expect(mf.AlbumImage.ImageHash).To(Equal("bbbbbbbbbbbbbbbb"))
+		})
+	})
+
+	// Exists must apply the same library filter as Get/GetAll/CountAll.
+	Describe("Exists library visibility", func() {
+		It("hides a track the user has no library access to", func() {
+			restricted := model.User{ID: "restricted_mf_user", UserName: "rm", Name: "RM", Email: "rm@t.com"}
+			rctx := request.WithUser(GinkgoT().Context(), restricted)
+
+			Expect(mr.Exists(songAntenna.ID)).To(BeTrue(), "admin sees it")
+			Expect(NewMediaFileRepository(rctx, GetDBXBuilder()).Exists(songAntenna.ID)).To(BeFalse())
 		})
 	})
 })

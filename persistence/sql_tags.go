@@ -48,6 +48,78 @@ func marshalTags(tags model.Tags) string {
 	return string(res)
 }
 
+// indexedTagNames are the tag types materialized into the <table>_tags join tables, so filtering by
+// them is an index-backed semi-join instead of a per-row json_tree(tags) scan. Genre only for now.
+var indexedTagNames = []model.TagName{model.TagGenre}
+
+// updateTags rewrites this item's <table>_tags rows from its in-memory tags, mirroring
+// updateParticipants (delete-then-insert in the same Put; JOIN to tag skips not-yet-saved ids).
+func (r sqlRepository) updateTags(itemID string, tags model.Tags) error {
+	del := Delete(r.tableName + "_tags").Where(Eq{r.tableName + "_id": itemID})
+	if _, err := r.executeSQL(del); err != nil {
+		return err
+	}
+	var tagIDs []string
+	for _, name := range indexedTagNames {
+		for _, value := range tags.Values(name) {
+			tagIDs = append(tagIDs, model.NewTag(name, value).ID)
+		}
+	}
+	if len(tagIDs) == 0 {
+		return nil
+	}
+	idsJSON, err := json.Marshal(tagIDs)
+	if err != nil {
+		return fmt.Errorf("marshaling tag ids: %w", err)
+	}
+	query := fmt.Sprintf(`
+		INSERT INTO %[1]s_tags (%[1]s_id, tag_id)
+		SELECT ?, value FROM json_each(?)
+		JOIN tag ON tag.id = value
+		ON CONFLICT (%[1]s_id, tag_id) DO NOTHING`, r.tableName)
+	_, err = r.executeSQL(Expr(query, itemID, string(idsJSON)))
+	return err
+}
+
+// genreFilterDef builds indexed genre filters for one item type. Callers use the exported SongGenres / AlbumGenres instances.
+type genreFilterDef struct{ idCol, table, joinCol string }
+
+var (
+	SongGenres  = genreFilterDef{"media_file.id", "media_file_tags", "media_file_id"}
+	AlbumGenres = genreFilterDef{"album.id", "album_tags", "album_id"}
+)
+
+// ByID matches items tagged with any of the given genre tag ids (scalar or slice).
+func (g genreFilterDef) ByID(tagIDs any) Sqlizer {
+	sub, args, _ := Select(g.joinCol).From(g.table).Where(Eq{"tag_id": tagIDs}).ToSql()
+	return Expr(g.idCol+" IN ("+sub+")", args...)
+}
+
+// ByName matches by genre name (Subsonic passes a name, not an id), resolved through the tag
+// dictionary, which is uniquely indexed on (tag_name, tag_value).
+func (g genreFilterDef) ByName(genre string) Sqlizer {
+	sub, args, _ := Select("jt." + g.joinCol).From(g.table + " jt").
+		Join("tag on tag.id = jt.tag_id").
+		Where(And{Eq{"tag.tag_name": "genre"}, Like{"tag.tag_value": genre}}).ToSql()
+	return Expr(g.idCol+" IN ("+sub+")", args...)
+}
+
+// AlbumArtistsByGenreID matches album artists of albums tagged with any of the genre ids. It's a
+// two-table join (album_artists ⨝ album_tags), so it doesn't fit the single-table genreFilterDef.
+func AlbumArtistsByGenreID(tagIDs []string) Sqlizer {
+	sub, args, _ := Select("aa.artist_id").From("album_artists aa").
+		Join("album_tags at on at.album_id = aa.album_id").
+		Where(And{Eq{"aa.role": "albumartist"}, Eq{"at.tag_id": tagIDs}}).ToSql()
+	return Expr("artist.id IN ("+sub+")", args...)
+}
+
+func genreFilter(filter genreFilterDef) func(_ string, v any) Sqlizer {
+	return func(_ string, v any) Sqlizer {
+		return filter.ByID(v)
+	}
+}
+
+// tagIDFilter matches rows whose tags JSON contains the tag id(s); a "<name>_id" key maps to "$.<name>".
 func tagIDFilter(name string, idValue any) Sqlizer {
 	name = strings.TrimSuffix(name, "_id")
 	return Exists(

@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"iter"
 	"math"
 	"sync"
@@ -14,6 +13,7 @@ import (
 
 type Album struct {
 	Annotations `structs:"-" hash:"ignore"`
+	ItemImage   `structs:"-" hash:"ignore"`
 
 	ID            string `structs:"id" json:"id"`
 	LibraryID     int    `structs:"library_id" json:"libraryId"`
@@ -49,6 +49,8 @@ type Album struct {
 	MbzReleaseGroupID    string   `structs:"mbz_release_group_id" json:"mbzReleaseGroupId,omitempty"`
 	FolderIDs            []string `structs:"folder_ids" json:"-" hash:"set"` // All folders that contain media_files for this album
 	ExplicitStatus       string   `structs:"explicit_status" json:"explicitStatus"`
+	RGAlbumGain          *float64 `structs:"rg_album_gain" json:"rgAlbumGain"`
+	RGAlbumPeak          *float64 `structs:"rg_album_peak" json:"rgAlbumPeak"`
 
 	// External metadata fields
 	Description           string     `structs:"description" json:"description,omitempty" hash:"ignore"`
@@ -75,7 +77,7 @@ func (a Album) CoverArtID() ArtworkID {
 
 func (a Album) FullName() string {
 	if conf.Server.Subsonic.AppendAlbumVersion && len(a.Tags[TagAlbumVersion]) > 0 {
-		return fmt.Sprintf("%s (%s)", a.Name, a.Tags[TagAlbumVersion][0])
+		return appendSuffix(a.Name, a.Tags[TagAlbumVersion][0])
 	}
 	return a.Name
 }
@@ -141,6 +143,9 @@ type AlbumRepository interface {
 	UpdateExternalInfo(*Album) error
 	Get(id string) (*Album, error)
 	GetAll(...QueryOptions) (Albums, error)
+	GetAllIDs(...QueryOptions) ([]string, error)
+	GetCursor(...QueryOptions) (AlbumCursor, error)
+	GetYears(libraryIDs ...int) ([]int, error)
 
 	// The following methods are used exclusively by the scanner:
 	Touch(ids ...string) error

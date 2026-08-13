@@ -8,7 +8,7 @@ import ListItemSecondaryAction from '@material-ui/core/ListItemSecondaryAction'
 import ListItemText from '@material-ui/core/ListItemText'
 import { makeStyles } from '@material-ui/core/styles'
 import { sanitizeListRestProps } from 'react-admin'
-import { ArtistContextMenu, CoverArtAvatar, RatingField } from '../common'
+import { ArtistContextMenu, ArtworkAvatar, RatingField } from '../common'
 import config from '../config'
 
 const useStyles = makeStyles(
@@ -49,7 +49,7 @@ const ArtistSimpleList = ({
               <span key={id} onClick={() => linkType(id)}>
                 <ListItem className={classes.listItem} button={true}>
                   <ListItemAvatar>
-                    <CoverArtAvatar record={data[id]} />
+                    <ArtworkAvatar record={data[id]} />
                   </ListItemAvatar>
                   <ListItemText
                     style={{ marginLeft: '8px' }}

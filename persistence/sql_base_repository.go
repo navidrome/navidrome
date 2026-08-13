@@ -15,6 +15,7 @@ import (
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	id2 "github.com/navidrome/navidrome/model/id"
@@ -283,7 +284,9 @@ func (r sqlRepository) resetSeededRandom(options []model.QueryOptions) {
 	if len(options) == 0 || options[0].Sort != "random" {
 		return
 	}
-	options[0].Sort = fmt.Sprintf("SEEDEDRAND('%s', %s.id)", r.seedKey(), r.tableName)
+	// CAST: playlist_tracks.id is an INTEGER (unlike other tables' TEXT ids); passing it to
+	// SEEDEDRAND's string param uncast silently drops every row (go-sqlite3 binding gotcha).
+	options[0].Sort = fmt.Sprintf("SEEDEDRAND('%s', CAST(%s.id AS TEXT))", r.seedKey(), r.tableName)
 	if options[0].Seed != "" {
 		hasher.SetSeed(r.seedKey(), options[0].Seed)
 		return
@@ -345,6 +348,24 @@ func (r sqlRepository) queryOne(sq Sqlizer, response any) error {
 	}
 	r.logSQL(query, args, err, 1, start)
 	return err
+}
+
+// wrapCursor adapts a cursor over db rows into one over their models. toModel pulls out the row's
+// embedded model, which a type parameter can't reach on its own.
+func wrapCursor[D, T any](cursor iter.Seq2[D, error], toModel func(D) *T) iter.Seq2[T, error] {
+	return func(yield func(T, error) bool) {
+		for row, err := range cursor {
+			m := toModel(row)
+			if m == nil {
+				var zero T
+				yield(zero, fmt.Errorf("unexpected nil %T (%v): %w", zero, row, err))
+				return
+			}
+			if !yield(*m, err) || err != nil {
+				return
+			}
+		}
+	}
 }
 
 // queryWithStableResults is a helper function to execute a query and return an iterator that will yield its results
@@ -579,9 +600,15 @@ func (r sqlRepository) delete(cond Sqlizer) error {
 
 func (r sqlRepository) logSQL(sql string, args dbx.Params, err error, rowsAffected int64, start time.Time) {
 	elapsed := time.Since(start)
+	fields := []any{r.ctx, "SQL: `" + sql + "`", "args", args, "rowsAffected", rowsAffected, "elapsedTime", elapsed}
 	if err == nil || errors.Is(err, context.Canceled) {
-		log.Trace(r.ctx, "SQL: `"+sql+"`", "args", args, "rowsAffected", rowsAffected, "elapsedTime", elapsed, err)
-	} else {
-		log.Error(r.ctx, "SQL: `"+sql+"`", "args", args, "rowsAffected", rowsAffected, "elapsedTime", elapsed, err)
+		log.Trace(append(fields, err)...)
+		return
 	}
+	// The result codes separate errors that share a message, notably SQLITE_BUSY from
+	// SQLITE_BUSY_SNAPSHOT, which no busy_timeout can retry.
+	if code, extended, ok := db.ErrorCodes(err); ok {
+		fields = append(fields, "sqliteCode", code, "sqliteExtended", extended)
+	}
+	log.Error(append(fields, err)...)
 }

@@ -249,6 +249,7 @@ func (r *artistRepository) Get(id string) (*model.Artist, error) {
 		return nil, model.ErrNotFound
 	}
 	res := dba.toModels()
+	r.hydrateArtwork(res)
 	return &res[0], nil
 }
 
@@ -260,7 +261,37 @@ func (r *artistRepository) GetAll(options ...model.QueryOptions) (model.Artists,
 		return nil, err
 	}
 	res := dba.toModels()
+	r.hydrateArtwork(res)
 	return res, err
+}
+
+// GetAllIDs returns just the artist IDs for the same row set as GetAll, skipping the
+// heavy stats columns and JSON post-processing.
+func (r *artistRepository) GetAllIDs(options ...model.QueryOptions) ([]string, error) {
+	sq := r.applyLibraryFilterToArtistQuery(r.newSelect(options...).Columns("artist.id")).GroupBy("artist.id")
+	if filtersNeedAnnotation(sq) {
+		sq = r.withAnnotation(sq, "artist.id")
+	}
+	ids := []string{}
+	err := r.queryAllSlice(sq, &ids)
+	return ids, err
+}
+
+// hydrateArtwork fills each artist's ImageHash/ImageAbsent from one batched item_artwork lookup.
+func (r *artistRepository) hydrateArtwork(artists model.Artists) {
+	hydrateItems(r.ctx, r.db, model.KindArtistArtwork, artists,
+		func(a *model.Artist) (string, *model.ItemImage) { return a.ID, &a.ItemImage })
+}
+
+func (r *artistRepository) GetCursor(options ...model.QueryOptions) (model.ArtistCursor, error) {
+	ids, err := r.GetAllIDs(options...)
+	if err != nil {
+		return nil, err
+	}
+	opts := chunkOptions(options, "artist.id")
+	return model.ArtistCursor(streamByIDs(ids, func(chunk []string) (model.Artists, error) {
+		return r.GetAll(opts(chunk))
+	})), nil
 }
 
 func (r *artistRepository) getIndexKey(a model.Artist) string {
@@ -621,7 +652,9 @@ func (r *artistRepository) Search(q string, options ...model.QueryOptions) (mode
 	if err != nil {
 		return nil, fmt.Errorf("searching artist %q: %w", q, err)
 	}
-	return res.toModels(), nil
+	artists := res.toModels()
+	r.hydrateArtwork(artists)
+	return artists, nil
 }
 
 // searchScope returns the library IDs the search must be restricted to, or nil to skip the filter

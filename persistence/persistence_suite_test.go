@@ -329,3 +329,16 @@ var _ = BeforeSuite(func() {
 func GetDBXBuilder() *dbx.DB {
 	return dbx.NewFromDB(db.Db(), db.Dialect)
 }
+
+// collectCursor takes the cursor's underlying func type so the named cursor types
+// (model.AlbumCursor, ...) infer T.
+func collectCursor[T any](cursor func(func(T, error) bool), err error) []T {
+	GinkgoHelper()
+	Expect(err).ToNot(HaveOccurred())
+	var out []T
+	for item, err := range cursor {
+		Expect(err).ToNot(HaveOccurred())
+		out = append(out, item)
+	}
+	return out
+}
