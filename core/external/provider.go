@@ -309,22 +309,40 @@ func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (mode
 	switch v := entity.(type) {
 	case *model.MediaFile:
 		songs, serr := e.ag.GetSimilarSongsByTrack(ctx, v.ID, v.Title, v.Artist, v.MbzRecordingID, count)
-		if serr == nil && len(songs) > 0 {
-			return e.matcher.MatchSongs(ctx, songs, count)
+		if serr == nil {
+			matched, merr := e.matchAgentSongs(ctx, songs, count)
+			if merr != nil {
+				return nil, merr
+			}
+			if len(matched) > 0 {
+				return matched, nil
+			}
 		}
 		return e.similarSongsFallback(ctx, id, count)
 	case *model.Album:
 		songs, serr := e.ag.GetSimilarSongsByAlbum(ctx, v.ID, v.Name, v.AlbumArtist, v.MbzAlbumID, count)
-		if serr == nil && len(songs) > 0 {
-			return e.matcher.MatchSongs(ctx, songs, count)
+		if serr == nil {
+			matched, merr := e.matchAgentSongs(ctx, songs, count)
+			if merr != nil {
+				return nil, merr
+			}
+			if len(matched) > 0 {
+				return matched, nil
+			}
 		}
 		return e.seedMix(ctx, count, func() (model.MediaFiles, error) {
 			return e.sampleAlbumTracks(ctx, v.ID, maxSeeds)
 		})
 	case *model.Artist:
 		songs, serr := e.ag.GetSimilarSongsByArtist(ctx, v.ID, v.Name, v.MbzArtistID, count)
-		if serr == nil && len(songs) > 0 {
-			return e.matcher.MatchSongs(ctx, songs, count)
+		if serr == nil {
+			matched, merr := e.matchAgentSongs(ctx, songs, count)
+			if merr != nil {
+				return nil, merr
+			}
+			if len(matched) > 0 {
+				return matched, nil
+			}
 		}
 		if res, ferr := e.similarSongsFallback(ctx, id, count); ferr == nil && len(res) > 0 {
 			return res, nil
@@ -340,6 +358,15 @@ func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (mode
 		log.Warn(ctx, "Unknown entity type", "id", id, "type", fmt.Sprintf("%T", entity))
 		return nil, model.ErrNotFound
 	}
+}
+
+// matchAgentSongs resolves an agent's recommendations to library tracks. It returns nothing when
+// the agent had nothing to say or when none of its picks exist here, so the caller can fall back.
+func (e *provider) matchAgentSongs(ctx context.Context, songs []agents.Song, count int) (model.MediaFiles, error) {
+	if len(songs) == 0 {
+		return nil, nil
+	}
+	return e.matcher.MatchSongs(ctx, songs, count)
 }
 
 // seedMix samples seed tracks, runs each through the agent chain's per-track similarity and merges

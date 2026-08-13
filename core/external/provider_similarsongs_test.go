@@ -584,6 +584,30 @@ var _ = Describe("Provider - SimilarSongs", func() {
 				Expect([]string{songs[0].ID, songs[1].ID}).To(ConsistOf("s1", "s2"))
 			})
 
+			It("samples the album when the agent's picks are not in this library", func() {
+				// Last.fm answers from its own catalogue, so a small library can match none of it.
+				// An unmatched non-empty answer must not shortcut the sampling fallback.
+				album := model.Album{ID: "al-nm", Name: "NoMatch", AlbumArtist: "A"}
+				artistRepo.On("Get", "al-nm").Return(nil, model.ErrNotFound).Once()
+				albumRepo.On("Get", "al-nm").Return(&album, nil).Once()
+				agentsCombined.On("GetSimilarSongsByAlbum", mock.Anything, "al-nm", "NoMatch", "A", "", 5).
+					Return([]agents.Song{{Name: "Not In Library"}}, nil).Once()
+				artistRepo.On("GetAll", mock.Anything).Return(model.Artists{}, nil).Maybe()
+
+				// The matcher resolves nothing; the sampled seed is what reaches the mix.
+				mediaFileRepo.On("GetRandom", mock.Anything).
+					Return(model.MediaFiles{{ID: "s1", Title: "Album Track"}}, nil).Once()
+				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "s1", "Album Track", "", "", 5).
+					Return([]agents.Song{}, nil).Once()
+				mediaFileRepo.On("GetAll", mock.Anything).Return(model.MediaFiles{}, nil).Maybe()
+
+				songs, err := provider.SimilarSongs(ctx, "al-nm", 5)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(songs).To(HaveLen(1))
+				Expect(songs[0].ID).To(Equal("s1"))
+			})
+
 			It("caps agent calls at maxSeeds when the repository ignores the bound", func() {
 				// Isolates seedMix's own cap: the album sampler bounds the query with Max, so this
 				// exercises the guard by having the repo hand back more rows than were asked for.
