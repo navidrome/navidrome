@@ -382,10 +382,13 @@ func (e *provider) seedMix(ctx context.Context, count int, sample func() (model.
 			break
 		}
 	}
-	matched, err := e.matcher.MatchSongs(ctx, songs, count)
+	// Match the whole merged set, not just count of it: the matcher re-emits a track when two
+	// seeds recommend it identically, so the duplicates have to be dropped before trimming.
+	matched, err := e.matcher.MatchSongs(ctx, songs, len(songs))
 	if err != nil {
 		return nil, err
 	}
+	matched = dedupByID(matched)
 	if len(matched) == 0 {
 		matched = seeds
 	}
@@ -403,24 +406,29 @@ func (e *provider) samplePlaylistTracks(ctx context.Context, playlistID string, 
 	if repo == nil {
 		return nil, model.ErrNotFound
 	}
+	// A playlist can hold the same file at several positions, so over-fetch and dedup: a repeated
+	// seed wastes an agent call and can reach the mix twice through the seed fallback.
 	tracks, err := repo.GetAll(model.QueryOptions{
 		Sort:    "random",
-		Max:     n,
+		Max:     n * 4,
 		Filters: squirrel.Eq{"missing": false},
 	})
 	if err != nil {
 		return nil, err
 	}
-	// A playlist can hold the same file at several positions, and a repeated seed both wastes an
-	// agent call and can reach the mix twice through the seed fallback.
-	seen := make(map[string]struct{}, len(tracks))
-	return slice.Filter(tracks.MediaFiles(), func(mf model.MediaFile) bool {
+	mfs := dedupByID(tracks.MediaFiles())
+	return mfs[:min(len(mfs), n)], nil
+}
+
+func dedupByID(mfs model.MediaFiles) model.MediaFiles {
+	seen := make(map[string]struct{}, len(mfs))
+	return slice.Filter(mfs, func(mf model.MediaFile) bool {
 		if _, dup := seen[mf.ID]; dup {
 			return false
 		}
 		seen[mf.ID] = struct{}{}
 		return true
-	}), nil
+	})
 }
 
 func (e *provider) sampleAlbumTracks(ctx context.Context, albumID string, n int) (model.MediaFiles, error) {

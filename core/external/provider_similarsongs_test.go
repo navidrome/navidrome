@@ -426,6 +426,30 @@ var _ = Describe("Provider - SimilarSongs", func() {
 				Expect(sql).To(ContainSubstring("missing"))
 			})
 
+			It("returns a track once when two seeds recommend it", func() {
+				// The matcher re-emits a track when two inputs are identical, so overlapping
+				// recommendations would otherwise take two slots in the mix.
+				pls := model.Playlist{ID: "pl-overlap", Name: "Overlap"}
+				artistRepo.On("Get", "pl-overlap").Return(nil, model.ErrNotFound).Once()
+				albumRepo.On("Get", "pl-overlap").Return(nil, model.ErrNotFound).Once()
+				playlistRepo.SetData(model.Playlists{pls})
+				playlistTrackRepo.SetData(model.PlaylistTracks{
+					{MediaFile: model.MediaFile{ID: "s1", Title: "Seed One"}},
+					{MediaFile: model.MediaFile{ID: "s2", Title: "Seed Two"}},
+				})
+				shared := agents.Song{ID: "m1", Name: "Shared"}
+				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "s1", "Seed One", "", "", 5).
+					Return([]agents.Song{shared}, nil).Once()
+				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "s2", "Seed Two", "", "", 5).
+					Return([]agents.Song{shared}, nil).Once()
+				mediaFileRepo.On("GetAll", mock.Anything).Return(model.MediaFiles{{ID: "m1", Title: "Shared"}}, nil).Maybe()
+
+				songs, err := provider.SimilarSongs(ctx, "pl-overlap", 5)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(songs).To(HaveLen(1), "the shared recommendation must appear once")
+			})
+
 			It("does not seed a mix twice with a track the playlist repeats", func() {
 				pls := model.Playlist{ID: "pl-dup", Name: "Dupes"}
 				artistRepo.On("Get", "pl-dup").Return(nil, model.ErrNotFound).Once()
@@ -563,9 +587,10 @@ var _ = Describe("Provider - SimilarSongs", func() {
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(songs).To(HaveLen(5))
-				// The bound belongs to the query, so the repo never has to return the extra track.
+				// The query stays bounded (it over-fetches to survive duplicate positions) and the
+				// seed count is still capped at maxSeeds.
 				Expect(playlistTrackRepo.Options.Sort).To(Equal("random"))
-				Expect(playlistTrackRepo.Options.Max).To(Equal(5))
+				Expect(playlistTrackRepo.Options.Max).To(Equal(20))
 				agentsCombined.AssertNumberOfCalls(GinkgoT(), "GetSimilarSongsByTrack", 5)
 			})
 		})
