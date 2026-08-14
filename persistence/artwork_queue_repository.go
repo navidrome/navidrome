@@ -31,6 +31,16 @@ func NewArtworkQueueRepository(ctx context.Context, db dbx.Builder) model.Artwor
 	return r
 }
 
+func (r *artworkQueueRepository) Get(kind model.Kind, id, imageType string) (*model.ArtworkQueueItem, error) {
+	var res model.ArtworkQueueItem
+	err := r.queryOne(Select("*").From(r.tableName).
+		Where(Eq{"item_kind": kind.Prefix(), "item_id": id, "image_type": imageType}), &res)
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
 // Enqueue also resets enqueued_at, so a fresh request does not inherit an old row's spent retry budget.
 func (r *artworkQueueRepository) Enqueue(items ...model.ArtworkQueueItem) error {
 	return r.enqueue(`ON CONFLICT (item_kind, item_id, image_type) DO UPDATE SET

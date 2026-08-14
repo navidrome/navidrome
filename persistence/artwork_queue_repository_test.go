@@ -54,6 +54,22 @@ var _ = Describe("ArtworkQueueRepository", func() {
 		Expect(got[0].ItemID).To(Equal("high"))
 	})
 
+	It("Get returns a queued row, including one still backing off", func() {
+		Expect(repo.Enqueue(item("ar", "g1", model.ArtworkPriorityScan))).To(Succeed())
+		backOff("ar", "g1", time.Now().Add(time.Hour))
+
+		got, err := repo.Get(model.KindArtistArtwork, "g1", model.ImageTypePrimary)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(got.Priority).To(Equal(model.ArtworkPriorityScan))
+		Expect(got.Attempts).To(Equal(1))
+		Expect(got.RetryAt).To(BeTemporally(">", time.Now()))
+	})
+
+	It("Get reports ErrNotFound when the item is not queued", func() {
+		_, err := repo.Get(model.KindArtistArtwork, "nope", model.ImageTypePrimary)
+		Expect(err).To(MatchError(model.ErrNotFound))
+	})
+
 	It("keeps the higher priority on duplicate enqueue", func() {
 		Expect(repo.Enqueue(item("al", "a1", model.ArtworkPriorityBump))).To(Succeed())
 		Expect(repo.Enqueue(item("al", "a1", model.ArtworkPriorityBackfill))).To(Succeed())

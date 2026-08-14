@@ -119,6 +119,8 @@ type ArtworkRepository interface {
 }
 
 type ArtworkQueueRepository interface {
+	// Get returns the pending row for an item, or ErrNotFound when it is not queued.
+	Get(kind Kind, id, imageType string) (*ArtworkQueueItem, error)
 	// Enqueue upserts; an existing row keeps the higher priority and has its retry_at reset.
 	Enqueue(items ...ArtworkQueueItem) error
 	// EnqueuePreservingBackoff upserts like Enqueue but preserves an existing row's retry_at, so a

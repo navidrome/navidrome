@@ -25,6 +25,19 @@ func CreateMockArtworkQueueRepo() *MockArtworkQueueRepo {
 	return &MockArtworkQueueRepo{Data: map[string]model.ArtworkQueueItem{}}
 }
 
+func (m *MockArtworkQueueRepo) Get(kind model.Kind, id, imageType string) (*model.ArtworkQueueItem, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.Err != nil {
+		return nil, m.Err
+	}
+	it, ok := m.Data[iaKey(kind.Prefix(), id, imageType)]
+	if !ok {
+		return nil, model.ErrNotFound
+	}
+	return &it, nil
+}
+
 func (m *MockArtworkQueueRepo) Enqueue(items ...model.ArtworkQueueItem) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
