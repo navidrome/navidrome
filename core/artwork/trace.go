@@ -31,6 +31,9 @@ type chainTrace struct {
 }
 
 func (t *chainTrace) add(step traceStep) {
+	if t == nil {
+		return
+	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.steps = append(t.steps, step)

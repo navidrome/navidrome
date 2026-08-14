@@ -34,16 +34,31 @@ type resolution struct {
 
 // chainState carries what a priority walk has seen so far. A hit takes extErr with it so a
 // transient external failure still retries; localErr is dropped, as the scanner re-lists changes.
-type chainState struct{ extErr, localErr bool }
+type chainState struct {
+	extErr, localErr bool
+	trace            *chainTrace // nil unless the CLI asked for a trace
+}
 
 // try stamps the accumulated external failure onto a hit, and records the miss otherwise.
-func (c *chainState) try(res resolution, ok bool) (resolution, bool) {
+func (c *chainState) try(candidate string, res resolution, ok bool) (resolution, bool) {
 	if ok {
 		res.extError = c.extErr
+		c.record(candidate, outcomeHit, res.sourcePath)
 		return res, true
 	}
 	c.localErr = c.localErr || res.localError
+	if res.localError {
+		c.record(candidate, outcomeUnreadable, "")
+	} else {
+		c.record(candidate, outcomeMiss, "")
+	}
 	return resolution{}, false
+}
+
+func (c *chainState) record(candidate, outcome, detail string) {
+	if c.trace != nil {
+		c.trace.add(traceStep{Candidate: candidate, Outcome: outcome, Detail: detail})
+	}
 }
 
 // exhausted is the outcome when no source in the chain yielded an image.
@@ -126,12 +141,13 @@ func (r *resolver) resolveAlbum(ctx context.Context, albumID string) (resolution
 		return resolution{}, err
 	}
 
-	var chain chainState
+	chain := chainState{trace: traceFrom(ctx)}
 	for pattern := range strings.SplitSeq(strings.ToLower(conf.Server.CoverArtPriority), ",") {
 		pattern = strings.TrimSpace(pattern)
 		switch {
 		case pattern == "embedded":
-			if res, ok := chain.try(resolveEmbedded(ctx, lib, r.ffmpeg, al.EmbedArtPath)); ok {
+			res, ok := resolveEmbedded(ctx, lib, r.ffmpeg, al.EmbedArtPath)
+			if res, ok = chain.try(pattern, res, ok); ok {
 				return res, nil
 			}
 		case pattern == "external":
@@ -141,7 +157,8 @@ func (r *resolver) resolveAlbum(ctx context.Context, albumID string) (resolution
 				chain.extErr = true
 			}
 		case len(imgFiles) > 0:
-			if res, ok := chain.try(resolveFolderFile(ctx, lib, imgFiles, pattern)); ok {
+			res, ok := resolveFolderFile(ctx, lib, imgFiles, pattern)
+			if res, ok = chain.try(pattern, res, ok); ok {
 				return res, nil
 			}
 		}
@@ -155,9 +172,10 @@ func (r *resolver) resolveArtist(ctx context.Context, artistID string) (resoluti
 	if err != nil {
 		return resolution{}, err
 	}
-	upload, ok := resolveLocalFile(ar.UploadedImagePath(), "upload")
-	if ok {
-		return upload, nil
+	chain := chainState{trace: traceFrom(ctx)}
+	upload, uploadOK := resolveLocalFile(ar.UploadedImagePath(), "upload")
+	if res, ok := chain.try("upload", upload, uploadOK); ok {
+		return res, nil
 	}
 	if upload.localError {
 		// The upload outranks every other source; falling through would persist a lower-priority
@@ -191,7 +209,6 @@ func (r *resolver) resolveArtist(ctx context.Context, artistID string) (resoluti
 		}
 	}
 
-	var chain chainState
 	for pattern := range strings.SplitSeq(strings.ToLower(conf.Server.ArtistArtPriority), ",") {
 		pattern = strings.TrimSpace(pattern)
 		switch {
@@ -202,21 +219,24 @@ func (r *resolver) resolveArtist(ctx context.Context, artistID string) (resoluti
 				chain.extErr = true
 			}
 		case pattern == "image-folder":
-			if res, ok := chain.try(resolveArtistImageFolder(ar)); ok {
+			res, ok := resolveArtistImageFolder(ar)
+			if res, ok = chain.try(pattern, res, ok); ok {
 				return res, nil
 			}
 		case strings.HasPrefix(pattern, "album/"):
 			if lib.FS == nil {
 				continue
 			}
-			if res, ok := chain.try(resolveFolderFile(ctx, lib, imgFiles, strings.TrimPrefix(pattern, "album/"))); ok {
+			res, ok := resolveFolderFile(ctx, lib, imgFiles, strings.TrimPrefix(pattern, "album/"))
+			if res, ok = chain.try(pattern, res, ok); ok {
 				return res, nil
 			}
 		default:
 			if lib.FS == nil || artistFolder == "" {
 				continue
 			}
-			if res, ok := chain.try(resolveArtistFolderPattern(ctx, lib, artistFolder, pattern)); ok {
+			res, ok := resolveArtistFolderPattern(ctx, lib, artistFolder, pattern)
+			if res, ok = chain.try(pattern, res, ok); ok {
 				return res, nil
 			}
 		}
