@@ -270,6 +270,28 @@ var _ = Describe("promptConfirm", func() {
 		Expect(promptConfirm(strings.NewReader("nope\n"))(&out, 1, 1)).To(BeFalse())
 		Expect(promptConfirm(strings.NewReader(""))(&out, 1, 1)).To(BeFalse())
 	})
+
+	It("drops the external clause when no lookup will be made", func() {
+		Expect(promptConfirm(strings.NewReader("y\n"))(&out, 3, 0)).To(BeTrue())
+		Expect(out.String()).To(ContainSubstring("re-resolve 3 items."))
+		Expect(out.String()).ToNot(ContainSubstring("external lookups"))
+	})
+})
+
+var _ = Describe("reprocessConfirm", func() {
+	var out strings.Builder
+
+	BeforeEach(func() { out.Reset() })
+
+	It("prompts when --yes was not given", func() {
+		Expect(reprocessConfirm(false, strings.NewReader("n\n"))(&out, 5, 5)).To(BeFalse())
+		Expect(out.String()).To(ContainSubstring("Continue?"))
+	})
+
+	It("bypasses the prompt only for --yes", func() {
+		Expect(reprocessConfirm(true, strings.NewReader(""))(&out, 5, 5)).To(BeTrue())
+		Expect(out.String()).To(BeEmpty(), "--yes must not print a prompt it never reads")
+	})
 })
 
 var _ = Describe("reprocessArtwork", func() {
@@ -367,7 +389,22 @@ var _ = Describe("reprocessArtwork", func() {
 	It("reports an empty selection as a dry run when one was asked for", func() {
 		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindRadioArtwork}, nil, true, accept, &out)).To(Succeed())
 
+		Expect(out.String()).To(ContainSubstring("Nothing matches"))
 		Expect(out.String()).To(ContainSubstring("Dry run"))
+	})
+
+	It("shows the external estimate on a dry run, which never reaches the prompt", func() {
+		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindAlbumArtwork}, nil, true, accept, &out)).To(Succeed())
+
+		Expect(out.String()).To(ContainSubstring("External lookups: up to 2"))
+	})
+
+	It("says so when the selection needs no external lookup", func() {
+		put(model.KindPlaylistArtwork, "pl-1", "playlist")
+
+		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindPlaylistArtwork}, nil, true, accept, &out)).To(Succeed())
+
+		Expect(out.String()).To(ContainSubstring("External lookups: none"))
 	})
 
 	It("counts only the kinds that call an external agent as external cost", func() {

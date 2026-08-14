@@ -102,12 +102,8 @@ func runReprocess(ctx context.Context) {
 	defer db.Init(ctx)()
 	ds, ctx := getAdminContext(ctx)
 
-	confirm := promptConfirm(os.Stdin)
-	if reprocessYes {
-		confirm = func(io.Writer, int64, int64) bool { return true }
-	}
 	if err := reprocessArtwork(ctx, ds, kinds, repositorySources(reprocessSources),
-		reprocessDryRun, confirm, os.Stdout); err != nil {
+		reprocessDryRun, reprocessConfirm(reprocessYes, os.Stdin), os.Stdout); err != nil {
 		log.Fatal(ctx, err)
 	}
 }
@@ -157,10 +153,21 @@ func displaySource(s string) string { return cmp.Or(s, absentSource) }
 // reach an external agent.
 type confirmFunc func(out io.Writer, total, external int64) bool
 
+// reprocessConfirm is the only bypass of the confirmation: --yes, for scripted use.
+func reprocessConfirm(yes bool, in io.Reader) confirmFunc {
+	if yes {
+		return func(io.Writer, int64, int64) bool { return true }
+	}
+	return promptConfirm(in)
+}
+
 func promptConfirm(in io.Reader) confirmFunc {
 	return func(out io.Writer, total, external int64) bool {
-		fmt.Fprintf(out, "\nThis will re-resolve %d items, requiring up to %d external lookups. Continue? [y/N] ",
-			total, external)
+		cost := fmt.Sprintf(", requiring up to %d external lookups", external)
+		if external == 0 {
+			cost = ""
+		}
+		fmt.Fprintf(out, "\nThis will re-resolve %d items%s. Continue? [y/N] ", total, cost)
 		var answer string
 		if _, err := fmt.Fscanln(in, &answer); err != nil {
 			return false
@@ -225,14 +232,17 @@ func reprocessArtwork(ctx context.Context, ds model.DataStore, kinds []model.Kin
 			external += n
 		}
 	}
-	printReprocessPreview(out, kinds, matched, total, sources)
+	printReprocessPreview(out, kinds, matched, total, external, sources)
 
+	if total == 0 {
+		fmt.Fprintln(out, "\nNothing matches this selection.")
+	}
 	switch {
 	case dryRun:
 		fmt.Fprintln(out, "\nDry run: nothing was queued.")
 		return nil
 	case total == 0:
-		fmt.Fprintln(out, "\nNothing matches this selection; nothing was queued.")
+		fmt.Fprintln(out, "Nothing was queued.")
 		return nil
 	case !confirm(out, total, external):
 		fmt.Fprintln(out, "Aborted: nothing was queued.")
@@ -258,7 +268,9 @@ func reprocessArtwork(ctx context.Context, ds model.DataStore, kinds []model.Kin
 	return nil
 }
 
-func printReprocessPreview(out io.Writer, kinds []model.Kind, matched []int64, total int64, sources []string) {
+// printReprocessPreview also states the external estimate, which --dry-run must show precisely
+// because it skips the prompt that would otherwise carry it.
+func printReprocessPreview(out io.Writer, kinds []model.Kind, matched []int64, total, external int64, sources []string) {
 	w := tabwriter.NewWriter(out, 0, 4, 2, ' ', 0)
 	shown := slice.Map(sources, displaySource)
 	fmt.Fprintf(w, "Sources:\t%s\n\n", cmp.Or(strings.Join(shown, ", "), "(any)"))
@@ -268,6 +280,12 @@ func printReprocessPreview(out io.Writer, kinds []model.Kind, matched []int64, t
 	}
 	fmt.Fprintf(w, "TOTAL\t%d\n", total)
 	w.Flush()
+
+	estimate := fmt.Sprintf("up to %d", external)
+	if external == 0 {
+		estimate = "none"
+	}
+	fmt.Fprintf(out, "\nExternal lookups: %s\n", estimate)
 }
 
 func runRefresh(ctx context.Context, kind model.Kind, ids []string) {
